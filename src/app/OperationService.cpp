@@ -521,6 +521,9 @@ void OperationService::finish(Operation op,JsonReply reply) {
 void OperationService::recent(JsonReply reply) {const auto path=databasePath();const int limit=settings_.snapshot().recentActivityLimit;background([path,limit](Error& e) {HistoryStore store(path);return QJsonObject{{"operations",store.recent(limit,&e)}};},[this,reply](Error e,QJsonObject data){auto values=data["operations"].toArray();for(qsizetype i=0;i<values.size();++i)values[i]=currentObservation(values[i].toObject());data["operations"]=values;reply(e,data);});}
 void OperationService::inspect(const QString& id,JsonReply reply) {const auto path=databasePath();background([path,id](Error& e) {HistoryStore store(path);return store.operation(id,&e).publicJson();},[this,reply](Error e,QJsonObject data){reply(e,currentObservation(data));});}
 void OperationService::cancel(const QString& id,JsonReply reply) {
+ // A recording session lives in the recording service, not the upload queue:
+ // cancelling its operation ends the capture or review and discards the clip.
+ if(recording_&&recording_->activeId()==id){recording_->command("cancel",{{"id",id}},[reply,id](Error error,QJsonObject){reply(error,error?QJsonObject{}:QJsonObject{{"operationId",id},{"cancellationRequested",true},{"effect","The recording and its working clip are discarded"}});});return;}
  if(active_.contains(id)) {active_[id]->store(true);interruptUploadCopy(id);if(selectingId_==id)source_.cancelAcquisition();if(editingId_==id&&editor_)editor_->cancel();
   for(int index=0;index<queue_.size();++index)if(queue_[index].op.id==id){auto job=queue_.takeAt(index);job.payload={};job.payloadLease.reset();job.op.cancelled=true;job.op.state="cancelled";finish(job.op);break;}
   reply({},{{"operationId",id},{"cancellationRequested",true},{"effect","Already sent network requests cannot be rolled back"}});return;}

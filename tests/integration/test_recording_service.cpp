@@ -266,6 +266,16 @@ private slots:
   const auto edited=h.rec("edit",{{"id",id},{"revision",double(revision)},{"commands",QJsonArray{QJsonObject{{"op","setTrim"},{"start",0},{"end",4000000}}}}});QVERIFY2(!edited.error,qPrintable(edited.error.message));
   const auto uploaded=h.rec("upload",{{"id",id},{"revision",double(revision+1)}});QVERIFY2(!uploaded.error,qPrintable(uploaded.error.message));QCOMPARE(uploaded.result["mime"].toString(),QString("image/gif"));
  }
+ // The activity window's Cancel is operation.cancel: for a recording it must end
+ // the session (capture or review), not only mark the journal record.
+ void operationCancelEndsAnActiveRecording(){
+  Harness h;QTRY_VERIFY(h.operations->ready());
+  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QCOMPARE(h.rec("stop",{{"id",id}}).result["state"].toString(),QString("reviewing"));
+  const auto cancelled=call(*h.server,"operation.cancel",{{"id",id}});QVERIFY2(!cancelled.error,qPrintable(cancelled.error.message));QVERIFY(cancelled.result["cancellationRequested"].toBool());
+  QTRY_COMPARE(h.rec("inspect",{{"id",id}}).error.code,QString("recording_unavailable"));
+  QString state;for(int i=0;i<200&&state!="cancelled";++i){state=call(*h.server,"operation.inspect",{{"id",id}}).result["state"].toString();if(state!="cancelled")QTest::qWait(10);}QCOMPARE(state,QString("cancelled"));QCOMPARE(h.backend->discards,1);
+  QVERIFY(h.operations->activeObservations().isEmpty());
+ }
 };
 QTEST_GUILESS_MAIN(RecordingServiceContract)
 #include "test_recording_service.moc"

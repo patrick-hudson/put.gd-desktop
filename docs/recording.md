@@ -219,7 +219,9 @@ has been handed over. Save copy keeps the window open with the controls
 disabled and the status showing progress, so the user can still upload
 afterwards. A refused export after Upload (a stale revision, or an animation
 over its limits) reopens the window with the resident's reason, so the
-session never sits silently in `reviewing`.
+session never sits silently in `reviewing`. `operation.cancel` on the
+recording's operation (the Activity window's Cancel) ends the session the
+same way `recording.cancel` does, discarding the working clip.
 
 Choosing GIF or WebP is a format choice, not a pixel count: when the output
 would exceed `limits.recordingAnimationEdge`, the resident sets `maxEdge` to
