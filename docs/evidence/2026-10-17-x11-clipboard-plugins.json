@@ -1,0 +1,555 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-17",
+  "candidate": {
+    "commit": "d11940f4b5339f25a1b213b1039ada819c6c9c07",
+    "tree": "1ee12ea3898263a62155c65e1836a1e2b5b4b731",
+    "commitCount": 294,
+    "branch": "claude/vigilant-aryabhata-d2dfa4",
+    "base": "95a0f9bb6839319756ba31c9633e4824b4c1d461",
+    "archiveSha256": "0c2e193577ffbfeb6ac9554f139c2926b42dfabb44b53dc5b610cc24f29f1de8",
+    "packageVersion": "0.1.1~dev.294+gd11940f4b533",
+    "provenance": "archive builds with supplied commit/tree/count on each host"
+  },
+  "supersedes": "main-based candidate a6cdb0c (kept on branch claude/vigilant-aryabhata-d2dfa4-main-based); the worktree had been created from main instead of feat/edit-and-upload",
+  "hostTests": {
+    "passed": true,
+    "sourceCommit": "d11940f4b5339f25a1b213b1039ada819c6c9c07",
+    "build": "build/dev at d11940f (git, clean)",
+    "command": "ctest --preset dev --output-junit dev-suite.xml",
+    "tests": 64,
+    "failed": 0,
+    "qt": "6.4.2 (workstation Linux Mint 22.3)",
+    "junitSha256": "42822678749c37d44e4f5785d7eb8ff3a99704c2d5b210fb7436c26d8bf71a0a",
+    "logSha256": "f93a94d56c9837123dfc3955f96a064cade4dd057ed5dff8c6a74f166483790c",
+    "earlierAttempts": [
+      {
+        "commit": "a237588",
+        "result": "62/64: x11_clipboard_import cancellation race (fixed in d11940f) and gui_history_view (1 of 3 isolated runs failed; feature-branch timing flake)"
+      },
+      {
+        "commit": "d11940f",
+        "result": "interrupted at test 30 by another session pattern-killing ctest; no verdict"
+      }
+    ],
+    "redCheck": "x11_clipboard_import fails 5/10 against the feat/edit-and-upload X11Clipboard/ImageJob (95a0f9b)",
+    "deterministicCancel": "cancellation case passed 10/10 consecutive runs; slow plugin holds discovery 3.0 s vs 0.02 s"
+  },
+  "gates": {
+    "cinnamon-x11 (Mint 22.3 VM, local)": {
+      "cases": {
+        "region-qt": true,
+        "window-qt": true,
+        "desktop-qt": true,
+        "clipboard-text-qt": true,
+        "clipboard-image-qt": true,
+        "clipboard-files-qt": true,
+        "region-cancel-escape-qt": true,
+        "region-cancel-right-click-qt": true,
+        "region-cancel-zero-area-qt": true,
+        "clipboard-text-gtk": true,
+        "clipboard-image-gtk": true,
+        "clipboard-files-gtk": true
+      },
+      "casesPassed": 12,
+      "caseCount": 12,
+      "checks": {
+        "views.py": true,
+        "restart.py": true
+      },
+      "memory": {
+        "passed": true,
+        "windows": [
+          {
+            "peakMiB": 25.9453125,
+            "peakPssMiB": 16.060546875,
+            "durationSeconds": 300.00015008699995,
+            "samples": 61,
+            "zeroSwap": true,
+            "noHelpers": true,
+            "cpuPercentOneCore": 0.003333331665700835
+          },
+          {
+            "peakMiB": 25.9453125,
+            "peakPssMiB": 16.0576171875,
+            "durationSeconds": 300.0001548590001,
+            "samples": 61,
+            "zeroSwap": true,
+            "noHelpers": true,
+            "cpuPercentOneCore": 0.006666663225357331
+          }
+        ],
+        "build": "0.1.1-dev.294+gd11940f4b533"
+      },
+      "pluginWitnessCandidate": {
+        "build": "0.1.1-dev.294+gd11940f4b533",
+        "qt": "6.4.2",
+        "installed": 3,
+        "steps": [
+          [
+            "fresh-resident",
+            0,
+            25.96
+          ],
+          [
+            "clipboard-text-qt",
+            0,
+            26.5
+          ],
+          [
+            "clipboard-files-qt",
+            0,
+            26.84
+          ],
+          [
+            "clipboard-text-gtk",
+            0,
+            27.02
+          ],
+          [
+            "clipboard-files-gtk",
+            0,
+            26.93
+          ],
+          [
+            "clipboard-image-qt",
+            3,
+            27.7
+          ]
+        ],
+        "receiptSha256": "02009b2792b84fba92a1145ce85bb690b72befab50662c2522003a08426d7227"
+      },
+      "pluginWitnessBaseline": null
+    },
+    "kde-x11 (Kubuntu 26.04 physical k72)": {
+      "cases": {
+        "region-qt": true,
+        "window-qt": true,
+        "desktop-qt": true,
+        "clipboard-text-qt": true,
+        "clipboard-image-qt": true,
+        "clipboard-files-qt": true,
+        "region-cancel-escape-qt": true,
+        "region-cancel-right-click-qt": true,
+        "region-cancel-zero-area-qt": true,
+        "clipboard-text-gtk": true,
+        "clipboard-image-gtk": true,
+        "clipboard-files-gtk": true
+      },
+      "casesPassed": 12,
+      "caseCount": 12,
+      "checks": {
+        "views.py": true,
+        "restart.py": true
+      },
+      "memory": {
+        "passed": true,
+        "windows": [
+          {
+            "peakMiB": 37.57421875,
+            "peakPssMiB": 12.5146484375,
+            "durationSeconds": 300.0003606080063,
+            "samples": 61,
+            "zeroSwap": true,
+            "noHelpers": true,
+            "cpuPercentOneCore": 0.003333329326582524
+          },
+          {
+            "peakMiB": 37.57421875,
+            "peakPssMiB": 12.5146484375,
+            "durationSeconds": 300.00036741399526,
+            "samples": 61,
+            "zeroSwap": true,
+            "noHelpers": true,
+            "cpuPercentOneCore": 0.0033333292509606085
+          }
+        ],
+        "build": "0.1.1-dev.294+gd11940f4b533"
+      },
+      "pluginWitnessCandidate": {
+        "build": "0.1.1-dev.294+gd11940f4b533",
+        "qt": "6.10.2",
+        "installed": 34,
+        "steps": [
+          [
+            "fresh-resident",
+            0,
+            35.41
+          ],
+          [
+            "clipboard-text-qt",
+            0,
+            36.26
+          ],
+          [
+            "clipboard-files-qt",
+            0,
+            36.75
+          ],
+          [
+            "clipboard-text-gtk",
+            0,
+            36.75
+          ],
+          [
+            "clipboard-files-gtk",
+            0,
+            36.82
+          ],
+          [
+            "clipboard-image-qt",
+            0,
+            36.8
+          ]
+        ],
+        "receiptSha256": "b45972ea3e1e2810dc7c5e22dca98dd9c5e038a701cfe322efea28a04c5cd4a0"
+      },
+      "pluginWitnessBaseline": {
+        "build": "0.1.1-dev.293+g95a0f9bb6839",
+        "qt": "6.10.2",
+        "installed": 34,
+        "steps": [
+          [
+            "fresh-resident",
+            0,
+            35.26
+          ],
+          [
+            "clipboard-text-qt",
+            33,
+            46.48
+          ],
+          [
+            "clipboard-files-qt",
+            33,
+            46.98
+          ],
+          [
+            "clipboard-text-gtk",
+            33,
+            47.09
+          ],
+          [
+            "clipboard-files-gtk",
+            33,
+            47.12
+          ],
+          [
+            "clipboard-image-qt",
+            33,
+            47.8
+          ]
+        ],
+        "receiptSha256": "3f7c650e115a2bb6cb033831808c3c7b74888c604d5b48deccb792fe9d9ea54c"
+      }
+    },
+    "kde-wayland (Debian 13 physical d69)": {
+      "cases": {
+        "desktop-qt": true,
+        "clipboard-text-qt": true,
+        "clipboard-image-qt": true,
+        "clipboard-files-qt": true,
+        "region-cancel-escape-qt": true,
+        "region-cancel-right-click-qt": true,
+        "region-cancel-zero-area-qt": true,
+        "clipboard-text-gtk": true,
+        "clipboard-image-gtk": true,
+        "clipboard-files-gtk": true,
+        "region-qt": true,
+        "window-qt": false
+      },
+      "casesPassed": 11,
+      "caseCount": 12,
+      "checks": {
+        "views.py": true,
+        "restart.py": true
+      },
+      "memory": {
+        "passed": true,
+        "windows": [
+          {
+            "peakMiB": 28.85546875,
+            "peakPssMiB": 7.3408203125,
+            "durationSeconds": 300.0000665270054,
+            "samples": 61,
+            "zeroSwap": true,
+            "noHelpers": true,
+            "cpuPercentOneCore": 0.0033333325941445487
+          },
+          {
+            "peakMiB": 28.85546875,
+            "peakPssMiB": 7.3408203125,
+            "durationSeconds": 300.0001761869935,
+            "samples": 61,
+            "zeroSwap": true,
+            "noHelpers": true,
+            "cpuPercentOneCore": 0.003333331375701222
+          }
+        ],
+        "build": "0.1.1-dev.294+gd11940f4b533"
+      },
+      "pluginWitnessCandidate": {
+        "build": "0.1.1-dev.294+gd11940f4b533",
+        "qt": "6.8.2",
+        "installed": 4,
+        "steps": [
+          [
+            "fresh-resident",
+            0,
+            28.65
+          ],
+          [
+            "clipboard-text-qt",
+            0,
+            29.16
+          ],
+          [
+            "clipboard-files-qt",
+            0,
+            29.24
+          ],
+          [
+            "clipboard-text-gtk",
+            0,
+            29.43
+          ],
+          [
+            "clipboard-files-gtk",
+            0,
+            29.33
+          ],
+          [
+            "clipboard-image-qt",
+            4,
+            30.26
+          ]
+        ],
+        "receiptSha256": "5d7acdf14b795b8909e403bcf71bc4c8a05ca8e45983475403b40ed76f460c55"
+      },
+      "pluginWitnessBaseline": {
+        "build": "0.1.1-dev.293+g95a0f9bb6839",
+        "qt": "6.8.2",
+        "installed": 4,
+        "steps": [
+          [
+            "fresh-resident",
+            0,
+            28.8
+          ],
+          [
+            "clipboard-text-qt",
+            0,
+            29.28
+          ],
+          [
+            "clipboard-files-qt",
+            0,
+            29.45
+          ],
+          [
+            "clipboard-text-gtk",
+            0,
+            29.6
+          ],
+          [
+            "clipboard-files-gtk",
+            0,
+            29.61
+          ],
+          [
+            "clipboard-image-qt",
+            4,
+            30.36
+          ]
+        ],
+        "receiptSha256": "141736d7879e1edb2c9d4b6cc90cfc42e50ce5fbd18afb32bb07980bc795a74b"
+      }
+    },
+    "gnome-wayland (Fedora 44 physical f44, AppIndicator)": {
+      "cases": {
+        "region-qt": true,
+        "window-qt": true,
+        "desktop-qt": true,
+        "clipboard-text-qt": true,
+        "clipboard-image-qt": true,
+        "clipboard-files-qt": true,
+        "region-cancel-escape-qt": true,
+        "region-cancel-right-click-qt": true,
+        "region-cancel-zero-area-qt": true,
+        "clipboard-text-gtk": true,
+        "clipboard-image-gtk": true,
+        "clipboard-files-gtk": true
+      },
+      "casesPassed": 12,
+      "caseCount": 12,
+      "checks": {
+        "views.py": true,
+        "restart.py": true
+      },
+      "memory": {
+        "passed": true,
+        "windows": [
+          {
+            "peakMiB": 33.23046875,
+            "peakPssMiB": 19.1962890625,
+            "durationSeconds": 300.0003634750028,
+            "samples": 61,
+            "zeroSwap": true,
+            "noHelpers": true,
+            "cpuPercentOneCore": 0.0
+          },
+          {
+            "peakMiB": 33.23046875,
+            "peakPssMiB": 19.1953125,
+            "durationSeconds": 300.0003571790003,
+            "samples": 61,
+            "zeroSwap": true,
+            "noHelpers": true,
+            "cpuPercentOneCore": 0.0
+          }
+        ],
+        "build": "0.1.1-dev.294+gd11940f4b533"
+      },
+      "pluginWitnessCandidate": {
+        "build": "0.1.1-dev.294+gd11940f4b533",
+        "qt": "6.11.2",
+        "installed": 0,
+        "steps": [
+          [
+            "fresh-resident",
+            0,
+            32.85
+          ],
+          [
+            "clipboard-text-qt",
+            0,
+            33.46
+          ],
+          [
+            "clipboard-files-qt",
+            0,
+            33.85
+          ],
+          [
+            "clipboard-text-gtk",
+            0,
+            34.05
+          ],
+          [
+            "clipboard-files-gtk",
+            0,
+            34.02
+          ],
+          [
+            "clipboard-image-qt",
+            0,
+            34.52
+          ]
+        ],
+        "receiptSha256": "6a5b04896f1dfb1d39f4951e9af27aa3186ca4fb0655198938f3c73728ed7f89"
+      },
+      "pluginWitnessBaseline": null
+    }
+  },
+  "hosts": {
+    "cinnamon-x11 (Mint 22.3 VM, local)": {
+      "where": "workstation KVM VM, fresh overlay of golden p2c-provisioned-a1 (sha256 ebc60005\u2026)",
+      "session": "Cinnamon 6.6.4 / Muffin 6.6.1, X11",
+      "qt": "6.4.2",
+      "packageAssets": {
+        "putgd_0.1.1~dev.294+gd11940f4b533_amd64.deb": "46105662931ba12d6846d48720cd7639d607c1068a811afcef8cf55e3209d1e4",
+        "putgd-desktop-fixture": "1aa4dc3f9a2f7a8cace43ffd231f9f48dd058d8fd89b31ba8738c6fed5b1e4cc"
+      },
+      "whyLocal": "the Cinnamon goldens trust only the workstation lab key"
+    },
+    "kde-x11 (Kubuntu 26.04 physical k72)": {
+      "where": "physical Kubuntu 26.04.1, 1920x1080",
+      "session": "Plasma 6.6.6, X11 (kwin_x11), graphical fallback resident",
+      "qt": "6.10.2",
+      "imagePluginsInstalled": 34,
+      "packageAssets": {
+        "putgd_0.1.1~dev.294+gd11940f4b533_amd64.deb": "b4ff4b39d6133055570961d9e32277582d5aa29c4b7a1f5a75ef8986e865ab62",
+        "putgd-desktop-fixture": "9c66cbd3aff8391cfe12d79cdee301594d582e4afb53d6bca12cb7ecb08cd750"
+      },
+      "baselinePackageAssets": {
+        "putgd_0.1.1~dev.293+g95a0f9bb6839_amd64.deb": "ec3f205d819bd2398e4aed59ff3caee0771f00c5a0eca2c693209693e49529c3",
+        "putgd-desktop-fixture": "9c66cbd3aff8391cfe12d79cdee301594d582e4afb53d6bca12cb7ecb08cd750"
+      }
+    },
+    "kde-wayland (Debian 13 physical d69)": {
+      "where": "physical Debian 13, 1920x1080",
+      "session": "Plasma 6.3.6, Wayland",
+      "qt": "6.8.2",
+      "imagePluginsInstalled": 4,
+      "packageAssets": {
+        "putgd_0.1.1~dev.294+gd11940f4b533_amd64.deb": "f4325d16617fcaa7fc182b9435a4409b400fd730ac093b488fec791a41332a9e",
+        "putgd-desktop-fixture": "f970ab04d04817a83b86301ebf9d0f8a5147cdb52e6d5f93d374dad6a6c3d4ab"
+      },
+      "baselinePackageAssets": {
+        "putgd_0.1.1~dev.293+g95a0f9bb6839_amd64.deb": "545ce93019a546242b5d13b5288c6c240445d467db3df8cd9f730f5e50f9159a",
+        "putgd-desktop-fixture": "f970ab04d04817a83b86301ebf9d0f8a5147cdb52e6d5f93d374dad6a6c3d4ab"
+      }
+    },
+    "gnome-wayland (Fedora 44 physical f44, AppIndicator)": {
+      "where": "physical Fedora 44, 1920x1080",
+      "session": "GNOME Shell 50.0 / Mutter 50.0, Wayland; gnome-shell-extension-appindicator 64 installed and enabled with user approval",
+      "qt": "6.11.2",
+      "imagePluginsInstalled": 30,
+      "installedListNote": "the witness helper lists only /usr/lib/x86_64-linux-gnu; Fedora uses /usr/lib64, so its installed count shows 0 while the mapped-plugin check (any /imageformats/ path) is valid",
+      "packageAssets": {
+        "putgd-0.1.1~dev.294+gd11940f4b533-1.fc44.x86_64.rpm": "62dbf8097c4c68492591c3706693afe95f9db7c0cb837c082ec6d448d09085c3",
+        "putgd-desktop-fixture": "b998ef6b1f52614a54e2f7432489200afac0819a57fe527e16bed704e55979de"
+      }
+    }
+  },
+  "harnessAttemptsAndFixes": [
+    {
+      "desktop": "kde-x11",
+      "attempt": 1,
+      "failure": "fixture obscured by a maximized Konsole (btop); user moved it"
+    },
+    {
+      "desktop": "kde-x11",
+      "attempt": 2,
+      "failure": "window case: pointer left over the fixture by the region drag; runner now parks the pointer"
+    },
+    {
+      "desktop": "kde-wayland",
+      "failure": "window case: KWin 6.3 capture includes title bar and frame (642x449); identical with the unchanged 95a0f9b baseline, so it predates this change (follow-up task opened)"
+    },
+    {
+      "desktop": "gnome-wayland",
+      "attempt": 1,
+      "failure": "views: GNOME focus-stealing prevention left Settings unfocused; harness now clicks the physical title bar"
+    },
+    {
+      "desktop": "gnome-wayland",
+      "attempt": "memory 1",
+      "failure": "frozen harness resident_tray_unavailable on stock Fedora GNOME (no StatusNotifier host)"
+    },
+    {
+      "desktop": "gnome-wayland",
+      "attempt": "after GDM restart",
+      "failure": "all cases obscured: fresh login opened the Activities overview; closed and rerun"
+    },
+    {
+      "desktop": "host",
+      "failure": "f44 configure: SDK runtime is under lib64 on Fedora; build script now detects it"
+    }
+  ],
+  "pluginSavingKdeX11": {
+    "baselineAfterFirstTextImportMiB": 46.48,
+    "candidateAfterFirstTextImportMiB": 36.26,
+    "pluginsBaseline": 33,
+    "pluginsCandidate": 0,
+    "note": "same physical host, fresh resident each, synthetic Qt clipboard text"
+  },
+  "policyChange": "commit e59c040 retires Cinnamon-first ordering (user instruction 2026-10-17)",
+  "openItems": [
+    "Debian 13 Plasma 6.3 window capture includes decorations (predates this change)",
+    "Qt 6.4.2/6.8.2 in-process PNG writer still loads all plugins after an image import (separate follow-up session)",
+    "guarded overlay cleanup blocked by raw-backed Windows USB overlays under work/windows/runs/usb*; x11c1/x11c2 overlays and the restored p2c golden retained",
+    "Kubuntu 26.04 KDE/Wayland and Ubuntu 26.04 GNOME VM profiles were not rerun; KDE/Wayland and GNOME/Wayland are covered on physical Debian and Fedora"
+  ],
+  "privateEvidence": "/home/patrick/work/put.gd/work/x11-plugins/feat/"
+}

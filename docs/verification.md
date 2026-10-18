@@ -9,6 +9,19 @@ missing profiles, and run physical-hardware release gates on physical machines.
 This requirement is separate from the historical results below; missing new
 rows and current-candidate evidence remain gates.
 
+## X11 clipboard image plugins — 2026-10-17
+
+The [X11 clipboard receipt](evidence/2026-10-17-x11-clipboard-plugins.md) records
+candidate `d11940f` on `feat/edit-and-upload`:
+
+- Dev suite 64/64 on Mint.
+- In parallel: Cinnamon VM, physical Kubuntu Plasma/X11, physical Debian
+  Plasma/Wayland and physical Fedora GNOME/Wayland, each with native cases, views,
+  restart and two 300-second memory windows (25.9–37.6 MiB peak).
+- Plasma/X11 resident 10.2 MiB smaller after its first clipboard import, with no
+  image plugin mapped. The Debian window capture includes decorations, as on the
+  unchanged baseline.
+
 ## Edit & upload — 2026-10-17
 
 The [issue 51 receipt](evidence/2026-10-17-issue51-edit-and-upload.md) records
