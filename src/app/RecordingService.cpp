@@ -8,6 +8,7 @@
 #include <QThread>
 #include <algorithm>
 #include <cmath>
+#include <utility>
 
 namespace putgd {
 namespace {
@@ -147,9 +148,19 @@ void RecordingService::handleEvent(const QJsonObject& event) {
 }
 void RecordingService::command(const QString& command, const QJsonObject& params, JsonReply reply) {
     if (stopping_) { reply({"session_unavailable", "The resident is shutting down", {}}, {}); return; }
-    if (command == "capabilities") { reply({}, capabilities()); return; }
+    QPointer<RecordingService> self(this);
+    if (command == "capabilities") { backend_->refreshCapabilities([self, reply] { if (self && !self->stopping_) reply({}, self->capabilities()); }); return; }
     if (command == "prepare") {
-        if (session_) { reply({"recording_active", "A recording is already active; stop or cancel it first", {{"recordingId", session_->op.id}}}, {}); return; }
+        // The helper probe is lazy; make it current before judging support.
+        auto probed = std::make_shared<bool>(false);
+        backend_->refreshCapabilities([self, reply, params, probed] { if (!self || self->stopping_ || std::exchange(*probed, true)) return; self->prepareSession(params, reply); });
+        return;
+    }
+    commandSession(command, params, std::move(reply));
+}
+void RecordingService::prepareSession(const QJsonObject& params, JsonReply reply) {
+    if (session_) { reply({"recording_active", "A recording is already active; stop or cancel it first", {{"recordingId", session_->op.id}}}, {}); return; }
+    {
         Session s;
         if (auto error = recording::parseTarget(params["target"], s.target)) { reply(error, {}); return; }
         auto config = params;
@@ -191,8 +202,9 @@ void RecordingService::command(const QString& command, const QJsonObject& params
                 guard->transition(s, "ready");
             }));
         });
-        return;
     }
+}
+void RecordingService::commandSession(const QString& command, const QJsonObject& params, JsonReply reply) {
     if (!session_) { reply({"recording_unavailable", "No recording is active", {}}, {}); return; }
     const auto id = params["id"].toString();
     if (id != session_->op.id) { reply({"recording_unavailable", "No active recording has this ID", {{"recordingId", id}}}, {}); return; }

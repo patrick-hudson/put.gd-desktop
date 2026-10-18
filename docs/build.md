@@ -10,8 +10,16 @@ sudo apt-get install build-essential git cmake ninja-build pkg-config \
   qtkeychain-qt6-dev libxcb1-dev libxcb-keysyms1-dev libxcb-util-dev \
   libxcb-image0-dev libxcb-randr0-dev libxcb-xfixes0-dev libxcb-damage0-dev libxcb-shape0-dev libxcb-xtest0-dev xvfb xauth dbus-daemon \
   libxcursor-dev libxkbcommon-dev libxkbcommon-x11-dev libcurl4-openssl-dev libssl-dev \
-  zlib1g-dev libwayland-dev wayland-protocols liblayershellqtinterface-dev
+  zlib1g-dev libwayland-dev wayland-protocols liblayershellqtinterface-dev \
+  libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libavcodec-dev libavformat-dev \
+  libavfilter-dev libavutil-dev libswscale-dev libswresample-dev
 ```
+
+The last line builds the optional `putgd-record` screen-recording helper
+(GStreamer >= 1.24, FFmpeg libraries >= 6.1; Fedora: `gstreamer1-devel
+gstreamer1-plugins-base-devel ffmpeg-free-devel`). Without them CMake reports
+`putgd-record not built` and the resident answers `recording_helper_missing`.
+See [recording](recording.md).
 
 `liblayershellqtinterface-dev` (Qt 6.5+ distributions) enables the native KDE
 Plasma/Wayland region selector, which Edit & upload also uses. CMake finds it

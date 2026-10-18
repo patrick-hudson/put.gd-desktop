@@ -108,6 +108,13 @@ set(CPACK_RPM_PACKAGE_RELEASE_DIST ON)
 # RPM's default stripping also changes bytes after our runtime digest is written.
 set(CPACK_RPM_SPEC_MORE_DEFINE
   "%global __provides_exclude_from ^${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/putgd/.*$\n%global __requires_exclude ^(libaws[-A-Za-z0-9_]*|libs2n)[.]so.*$\n%define __spec_install_post /bin/true")
+if(TARGET putgd-record)
+  # The helper links the distro GStreamer/FFmpeg libraries (shlibdeps/RPM find
+  # those); element plugins are separate packages that must be present.
+  string(APPEND CPACK_DEBIAN_PACKAGE_DEPENDS ", gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer1.0-pipewire")
+  set(CPACK_DEBIAN_PACKAGE_RECOMMENDS "gstreamer1.0-plugins-ugly, gstreamer1.0-libav, gstreamer1.0-vaapi")
+  string(APPEND CPACK_RPM_PACKAGE_REQUIRES ", gstreamer1-plugins-base, gstreamer1-plugins-good, gstreamer1-plugins-bad-free, pipewire-gstreamer")
+endif()
 if(PUTGD_BUNDLE_PROTON)
   string(APPEND CPACK_DEBIAN_PACKAGE_DEPENDS ", xdg-utils, libsecret-1-0")
   string(APPEND CPACK_RPM_PACKAGE_REQUIRES ", xdg-utils, libsecret")

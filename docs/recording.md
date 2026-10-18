@@ -1,10 +1,12 @@
 # Screen recording
 
-Status: **slice 1 of the [recording plan](plans/2026-10-17-2230-feat-screen-recording-plan.md)**.
-The contract below is implemented and tested against a fake backend; the
-production backend (the transient `putgd-record` helper with GStreamer capture
-and FFmpeg export) is not built yet, so every installation currently reports
-`recording.capabilities` with `available: false` and `recording.prepare`
+Status: **slices 1 and 2 of the [recording plan](plans/2026-10-17-2230-feat-screen-recording-plan.md)**.
+The contract below is implemented and tested against a fake backend and
+against the real helper handshake. The transient `putgd-record` helper exists
+with its identity handshake, command/event framing and a truthful media probe,
+but no capture, review or export pipeline yet, so every installation still
+reports `recording.capabilities` with `available: false` (reason
+`capture_not_implemented`, or a more specific gap) and `recording.prepare`
 returns `recording_unavailable`. Nothing here is desktop acceptance evidence.
 
 ## Workflow
@@ -90,14 +92,51 @@ GIF/WebP (`invalid_request`); `audio.microphone` is reserved and refused
 | `limits.recordingAnimationSeconds` | Optional, default 60 |
 | `limits.recordingAnimationEdge` | Optional, default 1280 |
 
-## Process boundary (slice 1 state)
+## Process boundary
 
 `RecordingService` (`src/app/RecordingService.*`) owns the session, journal
 intent, state machine, edit model and export staging under
 `<data>/recording/<id>/`; `RecordingBackend` (`src/app/RecordingBackend.h`)
-is the only media seam. The resident never decodes frames or audio. The
-helper supervisor that implements the backend arrives in slice 2; until then
-`UnavailableRecordingBackend` is installed.
+is the only media seam. The resident never links GStreamer or FFmpeg and never
+decodes frames or audio.
+
+`RecordingHelperBackend` (`src/app/RecordingHelperBackend.*`) is the production
+backend. It launches one `putgd-record` process per recording session from the
+resident's own directory and speaks the private UiControl framing over the
+child's pipes, mirroring the capture and editor helpers:
+
+- `bootstrap {role: record, nonce, generation, build}` → `ready` echoing the
+  envelope and the helper's build manifest; a mismatch is `recording_incompatible`,
+  silence past the startup deadline (10 s) is `recording_helper_start_timeout`.
+- `command {requestId, command, params}` → `commandResult {requestId, ok, result}`
+  or `{..., ok: false, code, message, details}`; commands are `capabilities`,
+  `prepare`, `start`, `pause`, `resume`, `stop`, `cancel`, `raise`, `overlay`,
+  `preview` and `export`. Deadlines: 15 s per command, 30 s for `stop`, 120 s for
+  `prepare` (OS consent), 600 s for `export`; a missed deadline is
+  `recording_helper_timeout` and leaves the session where it was.
+- `event {event: progress|stopped|failed, ...}` from the helper is forwarded to
+  the service with the session ID; an unexpected exit fails the session with
+  `recording_helper_crashed` (or `recording_helper_exited`) and never uploads.
+- `shutdown` after upload, cancel or failure; the helper must exit normally
+  within 2 s or it is killed. Only control metadata crosses the pipes: frames,
+  audio and files stay in the helper and its private staging.
+
+`putgd-record --capabilities` is a separate transient run whose JSON the backend
+caches for the resident's lifetime (a failed probe is retried after a minute).
+It never opens a capture source, audio device or portal session. The result
+carries `session` (x11/wayland/none), the GStreamer version and element
+inventory (`ximagesrc`, `pipewiresrc`, `pulsesrc`, the H.264 encoders in
+preference order, muxers, `webpenc` animation support), the FFmpeg library
+versions with encoders, muxers and filters, the derived `formats`/`codecs`
+the export side can produce, `liveCapture {source, encoder, audio}` and the
+honest `available`/`reason` pair. Encoder presence is registry/library
+presence, not hardware proof: stock Fedora's FFmpeg lists `h264_vaapi` and
+`hevc_vaapi` while its free Intel driver has no H.264/HEVC encode profiles, so
+the capture slice must select encoders by a real negotiation attempt and
+report the one actually used. CMake builds the helper only when
+`gstreamer-1.0 >= 1.24` and FFmpeg libraries `>= 6.1` are found
+(`PUTGD_RECORDING`, default on; off for the AppImage); a resident without the
+sibling binary reports `recording_helper_missing`.
 
 ## Agent and MCP control
 
@@ -124,6 +163,12 @@ helper supervisor that implements the backend arrives in slice 2; until then
   stop while paused, stale revisions, local copies, export failure, cancel,
   helper events, animation limits, malformed requests, editor exclusion and
   restart interruption.
+- `recording_helper_integration` (`tests/integration/test_recording_helper.cpp`):
+  the helper supervisor against a fixture helper (probe caching, lifecycle,
+  progress and helper-initiated stop events, crash, silence, wrong build,
+  export timeout, broken probes, missing helper) and, when built, the product
+  `putgd-record`: its probe JSON, the identity handshake, the explicit
+  `capture_not_implemented` refusal and its normal exit.
 - `tests/integration/test_mcp.py`: tool → method forwarding parity and the
   preview image route against the synthetic peer.
 - `tests/integration/test_config_schema.py`: optional `record` action,

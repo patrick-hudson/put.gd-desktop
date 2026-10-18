@@ -63,6 +63,8 @@ private:
     void fail(Error);
     void cancelActive(JsonReply);
     void handleEvent(const QJsonObject&);
+    void prepareSession(const QJsonObject& params, JsonReply);
+    void commandSession(const QString& command, const QJsonObject& params, JsonReply);
     void exportTo(const QString& command, const QJsonObject& params, JsonReply);
     RecordingBackend::Reply marshal(quint64 generation, std::function<void(Error, QJsonObject)>);
     QString stagingRoot_;

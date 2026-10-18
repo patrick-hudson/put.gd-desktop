@@ -15,6 +15,8 @@ public:
     virtual ~RecordingBackend() = default;
     // {available, reason?, targets, formats, codecs, audio:{system,microphone}, overlayExclusion}
     virtual QJsonObject capabilities() const = 0;
+    // Makes capabilities() current (a lazy helper probe); never starts capture.
+    virtual void refreshCapabilities(std::function<void()> done) { done(); }
     // Unsolicited events: {"id", "event": "stopped"|"failed"|"progress", ...}.
     virtual void setEventSink(Event) = 0;
     // Shows ready bounds/controls and asks for any consent. Result: {canvas:[w,h]}.

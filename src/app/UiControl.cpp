@@ -8,7 +8,9 @@ namespace {
 bool knownType(const QString& type){
  static const QStringList types{"bootstrap","ready","incompatible","activate","shown","activationFailed","invalidated","observed","checkpoint","checkpointAccepted","checkpointRejected","closeRequested","closeAccepted","closeRejected","closeCancel","closeCancelled","closeConfirmed","shutdown","focusChanged","shortcutRecording","shortcutRecordingChanged",
   // Image editor helper: progress, agent commands and their results.
-  "editing","finalizing","command","commandResult"};
+  "editing","finalizing","command","commandResult",
+  // Recording helper: unsolicited progress/stop/failure notifications.
+  "event"};
  return types.contains(type);
 }
 }
