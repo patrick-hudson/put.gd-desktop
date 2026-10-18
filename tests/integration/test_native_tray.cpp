@@ -286,6 +286,8 @@ private slots:
   QJsonObject snapshot;
   QTRY_VERIFY_WITH_TIMEOUT((snapshot=request("ui.snapshot"))["operationsReady"].toBool(), 5000);
   QTRY_VERIFY(!watcher.registrations.isEmpty());
+  // Notifications wait for the resident's registration reply, not just the watcher's view of the call.
+  QTRY_VERIFY(request("ui.snapshot")["diagnostics"].toObject()["trayAvailable"].toBool());
   QVERIFY(snapshot["diagnostics"].toObject()["shortcuts"].toObject()["bindings"].toObject()["region"].toObject()["bound"].toBool());
   QCOMPARE(snapshot["diagnostics"].toObject()["ui"].toObject()["pid"].toInteger(), qint64(0));
   X11DesktopFixture desktop;
