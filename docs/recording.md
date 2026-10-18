@@ -115,8 +115,8 @@ child's pipes, mirroring the capture and editor helpers:
 - `command {requestId, command, params}` → `commandResult {requestId, ok, result}`
   or `{..., ok: false, code, message, details}`; commands are `capabilities`,
   `prepare`, `start`, `pause`, `resume`, `stop`, `cancel`, `raise`, `overlay`,
-  `preview` and `export`. Deadlines: 15 s per command, 30 s for `stop`, 120 s for
-  `prepare` (OS consent), 600 s for `export`; a missed deadline is
+  `preview` and `export`. Deadlines: 15 s per command, 30 s for `stop`, 600 s for
+  `prepare` (a hands-on drag selection or OS consent), 600 s for `export`; a missed deadline is
   `recording_helper_timeout` and leaves the session where it was.
 - `event {event: progress|stopped|failed, ...}` from the helper is forwarded to
   the service with the session ID; an unexpected exit fails the session with
@@ -213,8 +213,9 @@ Dimensions shrink to even values rather than growing into unselected pixels.
 The live pipeline is `ximagesrc → videoconvert → H.264 encoder → h264parse →
 matroskamux` with `pulsesrc device=@DEFAULT_MONITOR@ → AAC` when system audio
 is requested. Encoders are tried in order `vah264lpenc, vah264enc,
-vaapih264enc, x264enc, openh264enc` (AAC: `avenc_aac, fdkaacenc, voaacenc`)
-by actually starting the pipeline, and the chosen names are reported in
+x264enc, openh264enc, vaapih264enc` (AAC: `avenc_aac, fdkaacenc, voaacenc`)
+by actually starting the pipeline (the legacy `vaapih264enc` is tried last:
+it fails with `ximagesrc` on Ubuntu 26.04 and Mint 22.3), and the chosen names are reported in
 `recording.inspect` progress. Bitrate is about 0.1 bit per pixel per frame,
 bounded to 1.5–20 Mbit/s. Pause drops buffers at the encoder queues and folds
 the gap into a timestamp offset, so the working clip's timeline excludes

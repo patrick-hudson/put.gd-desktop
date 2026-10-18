@@ -276,6 +276,10 @@ builder, local build only as fallback.
    helper events) implemented and exercised on the same desktop with saved
    screenshots; 3.3 (review window with scrubber, trim, timed blur/solid
    masks, format choice, Save copy and Upload, round-tripping edits through
-   the resident) implemented and exercised on the same desktop.
+   the resident) implemented and exercised on the same desktop. Mint 22.3
+   Cinnamon/X11 (the workstation, local build against GStreamer 1.24 and
+   FFmpeg 6.1) ran region, cross-monitor region, monitor and window sessions
+   with all four formats through the CLI; receipts in
+   `work/verification/2026-10-18-recording-cinnamon/`.
 4. System audio: captured and exported for MP4 (AAC) on the Plasma desktop;
    speaker/headphone and synthetic A/V-sync checks pending.

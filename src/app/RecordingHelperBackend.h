@@ -53,7 +53,8 @@ private:
     std::unique_ptr<Child> child_;
     quint64 generation_ = 0;
     QTimer startup_, stopDeadline_;
-    int startupMs_ = 10000, commandMs_ = 15000, prepareMs_ = 120000, exportMs_ = 600000;
+    // prepare covers a hands-on drag selection and OS consent; the overlay stays visible and Escape cancels.
+    int startupMs_ = 10000, commandMs_ = 15000, prepareMs_ = 600000, exportMs_ = 600000;
     QJsonObject cached_, lastExit_;
     qint64 cachedAt_ = 0;
     QProcess* probe_ = nullptr;

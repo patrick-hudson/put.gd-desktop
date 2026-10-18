@@ -3,6 +3,7 @@
 #include "core/UploadNaming.h"
 #include "core/ArtifactStore.h"
 #include <QJsonArray>
+#include <QJsonDocument>
 #include <QTemporaryDir>
 #include <QTest>
 using namespace putgd;

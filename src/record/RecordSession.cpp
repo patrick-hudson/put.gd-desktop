@@ -24,7 +24,8 @@ bool integer(const QJsonValue& value, qint64 min, qint64 max, qint64* out) {
     return true;
 }
 // Encoder preference: hardware (VA) first, then x264, then OpenH264.
-const QStringList videoEncoders{"vah264lpenc", "vah264enc", "vaapih264enc", "x264enc", "openh264enc"};
+// The legacy vaapih264enc fails with ximagesrc on Ubuntu 26.04 and Mint 22.3; keep it last.
+const QStringList videoEncoders{"vah264lpenc", "vah264enc", "x264enc", "openh264enc", "vaapih264enc"};
 const QStringList audioEncoders{"avenc_aac", "fdkaacenc", "voaacenc"};
 QStringList available(const QStringList& names) {
     QStringList result;
