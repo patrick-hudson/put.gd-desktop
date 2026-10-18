@@ -9,6 +9,7 @@
 #include "storage/s3/S3Provider.h"
 #include <QCoreApplication>
 #include <QDir>
+#include <QElapsedTimer>
 #include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -456,7 +457,13 @@ private slots:
         artifact.sha256 = QString::fromLatin1(QCryptographicHash::hash(bytes, QCryptographicHash::Sha256).toHex());
         auto token = std::make_shared<std::atomic_bool>(false);
         UploadRequest request{target, artifact, artifact.name, "cancel-publication", "absent", {{"schemaVersion", 1}, {"key", artifact.name}}, {}, token};
-        std::thread cancel([token] { std::this_thread::sleep_for(std::chrono::milliseconds(100)); token->store(true); });
+        // Cancel an active, heartbeating worker: wait for its activation record
+        // instead of a fixed delay, which a loaded host can outrun.
+        std::thread cancel([token] {
+            QElapsedTimer clock; clock.start();
+            while (!state()["activated"].toBool() && clock.elapsed() < 10000) std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            token->store(true);
+        });
         int callbacks = 0; UploadResult result;
         driver->upload(request, [&](UploadResult value) { ++callbacks; result = std::move(value); });
         cancel.join();
