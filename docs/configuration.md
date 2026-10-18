@@ -37,6 +37,9 @@ the last accepted in-memory settings and the bad file so it can be corrected.
 | `naming.captureTemplate` | Optional screenshot pattern, default `Screen-Capture-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}` |
 | `naming.imageTemplate` / `naming.textTemplate` | Optional clipboard patterns, default timestamped `Image-…` / `Text-…` names |
 | `limits.pendingImageBytes` | Optional aggregate retained decoded-image budget, default 67,108,864 bytes (64 MiB); released after persistence/cancellation |
+| `naming.recordingTemplate` | Optional screen-recording pattern, default `Screen-Recording-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}` |
+| `limits.recordingAnimationSeconds` / `recordingAnimationEdge` | Optional animated GIF/WebP export budget: retained seconds (default 60) and output long edge (default 1280); see [recording](recording.md) |
+| `actions.record` | Optional screen-recording route; absent documents inherit the region route with no shortcut |
 | `naming.collisionPolicy` | `rename` by default; `skip` or explicit `overwrite` |
 | `limits.maxFiles` | 100; maximum clipboard batch file count |
 | `limits.pendingOperations` | 8 |

@@ -48,6 +48,32 @@ def safe_patch(value: Any) -> bool:
 
 EDITOR_SOURCES = {'region', 'window', 'desktop', 'clipboard', 'file'}
 EDITOR_OPS = {'add', 'update', 'remove', 'crop', 'resetCrop', 'undo', 'redo'}
+RECORDING_TARGETS = {'monitor', 'desktop', 'region', 'window'}
+RECORDING_FORMATS = {'mp4', 'webm', 'gif', 'webp'}
+RECORDING_CODECS = {'h264', 'h265', 'vp9'}
+RECORDING_CONTROLS = {'start', 'pause', 'resume', 'stop', 'cancel', 'raise'}
+RECORDING_EDIT_OPS = {'setTrim', 'resetTrim', 'addMask', 'updateMask', 'removeMask'}
+
+
+def safe_recording_target(target: Any) -> bool:
+    # Geometry/identity semantics are validated by the resident; this keeps the
+    # forwarded target a small typed object.
+    if not isinstance(target, dict) or target.get('kind') not in RECORDING_TARGETS:
+        return False
+    if not set(target) <= {'kind', 'identity', 'rect'}:
+        return False
+    if 'identity' in target and not identifier(target['identity']):
+        return False
+    if 'rect' in target and not (isinstance(target['rect'], list) and len(target['rect']) == 4 and
+                                 all(type(value) is int for value in target['rect'])):
+        return False
+    return True
+
+
+def safe_recording_commands(commands: Any) -> bool:
+    return (isinstance(commands, list) and 0 < len(commands) <= 100 and
+            all(isinstance(command, dict) and command.get('op') in RECORDING_EDIT_OPS and
+                safe_patch(command) for command in commands))
 
 
 def safe_commands(commands: Any) -> bool:
@@ -137,6 +163,7 @@ def create_server(adapter: CliAdapter) -> FastMCP:
         'Deletion requires exact history IDs and acknowledgement of their original destination/effect. '
         'Capture region & edit (the edit action) opens a visible editor; use edit_image/preview_editor, then submit_editor or cancel_editor. '
         'Use redact, never blur, for private information. '
+        'Screen recording: prepare_recording, control_recording start/pause/resume/stop, then review with edit_recording/preview_recording; only upload_recording publishes. '
         'Supply only non-secret configuration and credential references.'))
     read = ToolAnnotations(readOnlyHint=True, destructiveHint=False, openWorldHint=False)
     effect = ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=True)
@@ -226,6 +253,94 @@ def create_server(adapter: CliAdapter) -> FastMCP:
     async def raise_editor(id: str) -> Json:
         """Bring the open editor window to the front."""
         return await adapter.call('editor.raise', {'id': id}) if identifier(id) else invalid()
+
+    @server.tool(annotations=read)
+    async def get_recording_capabilities() -> Json:
+        """Read screen-recording support: availability, target kinds, formats/codecs, audio sources, the active recording ID, limits and the microsecond time unit. Starts nothing and shows no prompt."""
+        return await adapter.call('recording.capabilities', {})
+
+    @server.tool(annotations=effect)
+    async def prepare_recording(target: Json, format: str, codec: str | None = None, fps: int | None = None,
+                                system_audio: bool = False, max_edge: int | None = None) -> Json:
+        """Create one recording session in the ready state: target {kind: monitor|desktop|region|window, identity?, rect?: [x,y,w,h]}, format mp4|webm|gif|webp, optional codec (mp4: h264|h265, webm: vp9), fps 1-60, system_audio (MP4/WebM only; the computer's playback, never a microphone) and max_edge to downscale the output. Shows the ready bounds/controls and may ask the user for OS consent; nothing is captured until control_recording start. Returns recordingId = operationId; poll get_recording until state is ready."""
+        if not safe_recording_target(target) or format not in RECORDING_FORMATS:
+            return invalid()
+        if codec is not None and codec not in RECORDING_CODECS:
+            return invalid()
+        if fps is not None and (type(fps) is not int or not 1 <= fps <= 60):
+            return invalid()
+        if type(system_audio) is not bool or (max_edge is not None and (type(max_edge) is not int or not 16 <= max_edge <= 8192)):
+            return invalid()
+        params: Json = {'target': target, 'format': format}
+        if codec is not None:
+            params['codec'] = codec
+        if fps is not None:
+            params['fps'] = fps
+        if system_audio:
+            params['audio'] = {'system': True}
+        if max_edge is not None:
+            params['maxEdge'] = max_edge
+        return await adapter.call('recording.prepare', params)
+
+    @server.tool(annotations=effect)
+    async def control_recording(id: str, command: str) -> Json:
+        """start (ready), pause (recording), resume (paused), stop (recording/paused: always opens private review, uploads nothing), cancel (discards without upload) or raise the overlay. Acknowledged only once the helper reached the state; a duplicate in-flight command returns the current state."""
+        if not identifier(id) or command not in RECORDING_CONTROLS:
+            return invalid()
+        return await adapter.call('recording.' + command, {'id': id})
+
+    @server.tool(annotations=read)
+    async def get_recording(id: str) -> Json:
+        """Read the session: state, pending command, target, config, canvas, retained durationUs, trim/masks with their revision, helper progress and any error."""
+        return await adapter.call('recording.inspect', {'id': id}) if identifier(id) else invalid()
+
+    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
+    async def set_recording_overlay(id: str, visible: bool) -> Json:
+        """Hide or show the floating control overlay while ready/recording/paused; the recording indicator stays visible."""
+        if not identifier(id) or type(visible) is not bool:
+            return invalid()
+        return await adapter.call('recording.overlay', {'id': id, 'visible': visible})
+
+    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
+    async def edit_recording(id: str, revision: int, commands: list[Json]) -> Json:
+        """Apply 1-100 review edits atomically at the current edit revision (from get_recording). Times are microseconds on the recorded clip (pauses removed); rects are output-canvas pixels. Ops: setTrim {start, end|null}, resetTrim, addMask {mask}, updateMask {maskId, mask}, removeMask {maskId}; mask = {kind: blur|solid, rect: [x,y,w,h], start, end, strength?}. Masks keep their source times when the trim changes. A stale revision is refused."""
+        if not identifier(id) or type(revision) is not int or revision < 1 or not safe_recording_commands(commands):
+            return invalid()
+        return await adapter.call('recording.edit', {'id': id, 'revision': revision, 'commands': commands})
+
+    @server.tool(annotations=read, structured_output=False)
+    async def preview_recording(id: str, time_us: int, max_edge: int = 1024) -> list[Any]:
+        """Render one frame at a clip time (microseconds) with the current trim and masks applied, scaled to at most max_edge (64-1600); returns the PNG plus metadata (retained, outputTimeUs, revision)."""
+        if not identifier(id) or type(time_us) is not int or time_us < 0 or type(max_edge) is not int or not 64 <= max_edge <= 1600:
+            return [invalid()]
+        reply = await adapter.call('recording.preview', {'id': id, 'time': time_us, 'maxEdge': max_edge})
+        if not reply['ok']:
+            return [reply]
+        result = dict(reply['result'])
+        try:
+            data = base64.b64decode(result.pop('png'), validate=True)
+        except (KeyError, TypeError, binascii.Error):
+            return [failure('invalid_response', 'Recording preview is not a PNG', reply['requestId'])]
+        if not data.startswith(b'\x89PNG\r\n\x1a\n'):
+            return [failure('invalid_response', 'Recording preview is not a PNG', reply['requestId'])]
+        return [Image(data=data, format='png'), {**reply, 'result': result}]
+
+    @server.tool(annotations=effect)
+    async def save_recording_copy(id: str, path: str, overwrite: bool = False) -> Json:
+        """Export the reviewed result (trim and masks applied) to an absolute path with the format's extension, without uploading; refuses an existing file unless overwrite is true."""
+        if not identifier(id) or not identifier(path, 4096) or not path.startswith('/') or type(overwrite) is not bool:
+            return invalid()
+        params: Json = {'id': id, 'path': path}
+        if overwrite:
+            params['overwrite'] = True
+        return await adapter.call('recording.saveCopy', params)
+
+    @server.tool(annotations=effect)
+    async def upload_recording(id: str, revision: int) -> Json:
+        """The only action that publishes: export the result at the reviewed revision, validate it and send it through the configured destination (may publish a public link and copy it). Inspect the returned operationId afterwards. Never falls back to the unedited clip."""
+        if not identifier(id) or type(revision) is not int or revision < 1:
+            return invalid()
+        return await adapter.call('recording.upload', {'id': id, 'revision': revision})
 
     @server.tool(annotations=read)
     async def get_operation(id: str, kind: str = 'operation') -> Json:

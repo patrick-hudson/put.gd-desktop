@@ -41,6 +41,21 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
   for(const auto& id:ids)emit changed(id);
   if(!ids.isEmpty())emit observationsChanged();
  });
+ RecordingService::Host host;
+ host.settings=[this]{return settings_.snapshot();};
+ host.accept=[this](Operation& op){return acceptRecording(op);};
+ host.persist=[this](const Operation& op,std::function<void(Error)> done){const auto path=databasePath();background([path,op](Error& e){HistoryStore store(path);e=store.saveOperation(op);return QJsonObject{};},[done](Error e,QJsonObject){done(e);});};
+ host.observe=[this](const Operation& op){observe(op.publicJson());emit changed(op.id);emit observationsChanged();};
+ host.admit=[this](Operation op,ClipboardPayload payload,std::function<void()> released){
+  auto flag=active_.value(op.id);if(!flag){released();return;}
+  Job job{op,std::move(payload),true,flag,{}};
+  // The staged export stays until the artifact store has streamed it.
+  job.payloadLease=std::shared_ptr<qint64>(new qint64(0),[released](qint64* value){released();delete value;});
+  enqueue(std::move(job));
+ };
+ host.finish=[this](Operation op){finish(op);};
+ recording_=std::make_unique<RecordingService>(root_+"/recording",std::move(host),this);
+ connect(recording_.get(),&RecordingService::changed,this,[this](const QString& id){emit changed(id);emit observationsChanged();});
  heapReclamationTimer_.setSingleShot(true);
  connect(&heapReclamationTimer_,&QTimer::timeout,this,[this] {
   if(!heapReclamationPending_||!heapReclamationIdle())return;
@@ -59,8 +74,9 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
   if(!QDir().mkpath(root_)||!QFile::setPermissions(root_,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner)) {e={"history_io","Cannot create private journal storage",{}};return QJsonObject{};}
   journalOwner_=std::make_unique<QLockFile>(root_+"/resident.lock");journalOwner_->setStaleLockTime(0);
   if(!journalOwner_->tryLock(0)) {e={"journal_busy","Another resident owns this operation journal",{}};return QJsonObject{};}
-  // Unsubmitted editor sources never survive their resident.
+  // Unsubmitted editor sources and recording exports never survive their resident.
   EditorJob::discardStaging(root_+"/editing");
+  RecordingService::discardStaging(root_+"/recording");
   HistoryStore store(path);e=store.error();if(e)return QJsonObject{};e=store.indexPublications(providers_);if(e)return QJsonObject{};ArtifactStore artifacts(artifactsRoot);artifacts.discardIncomplete();const auto recovered=store.recover(&e);
   for(auto op:recovered)if(op.items.isEmpty()) {auto batch=artifacts.recover(op.id);if(batch.error) {op.error=batch.error;e=store.saveOperation(op);if(e)break;}else if(!batch.artifacts.isEmpty()) {for(const auto& artifact:batch.artifacts) {OperationItem item;item.artifact=artifact;item.publicationId=uuid();op.items.append(item);}op.error={"operation_interrupted","Acquired artifacts retained; retry explicitly",{}};e=store.saveOperation(op);if(e)break;}}
   return QJsonObject{};
@@ -73,9 +89,9 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
  });
 }
 OperationService::~OperationService() {shutdown();}
-void OperationService::shutdown() {if(stopping_)return;stopping_=true;heapReclamationTimer_.stop();observationTimer_.stop();for(auto flag:active_) flag->store(true);if(editor_)editor_->cancel();invalidateCopyEligibility();source_.cancelAcquisition();for(auto* thread:threads_) {thread->wait();delete thread;}threads_.clear();}
+void OperationService::shutdown() {if(stopping_)return;stopping_=true;heapReclamationTimer_.stop();observationTimer_.stop();for(auto flag:active_) flag->store(true);if(recording_)recording_->shutdown();if(editor_)editor_->cancel();invalidateCopyEligibility();source_.cancelAcquisition();for(auto* thread:threads_) {thread->wait();delete thread;}threads_.clear();}
 bool OperationService::heapReclamationIdle() const {
- return !stopping_&&threads_.isEmpty()&&queue_.isEmpty()&&running_==0&&active_.isEmpty()&&copies_.isEmpty()&&!currentCopy_&&selectingId_.isEmpty()&&payloadBytes_->load()==0;
+ return !stopping_&&threads_.isEmpty()&&queue_.isEmpty()&&running_==0&&active_.isEmpty()&&copies_.isEmpty()&&!currentCopy_&&selectingId_.isEmpty()&&payloadBytes_->load()==0&&!(recording_&&recording_->active());
 }
 void OperationService::scheduleHeapReclamation() {
  if(heapReclamationPending_&&heapReclamationIdle())heapReclamationTimer_.start(2000);
@@ -140,6 +156,7 @@ void OperationService::invoke(const QString& action,JsonReply reply,const QJsonO
  const auto sourcePath=options["path"].toString();
  if((action!="edit"&&!options.isEmpty())||(action=="edit"&&(!QStringList{"region","window","desktop","clipboard","file"}.contains(source)||(source=="file")!=options.contains("path")||(source=="file"&&!QDir::isAbsolutePath(sourcePath))))){reply({"invalid_request","Edit sources are region, window, desktop, clipboard, or file with an absolute path",{}},{});return;}
  if(action=="edit"&&editor_){editor_->request("raise",{},[](Error,QJsonObject){});reply({"editor_active","An edit is already open; finish or cancel it first",{{"operationId",editingId_}}},{});return;}
+ if(action=="edit"&&recording_->active()){reply({"recording_active","A recording is active; stop or cancel it before editing",{{"operationId",recording_->activeId()}}},{});return;}
  const bool interactive=source!="clipboard"&&source!="file";
  auto snapshot=settings_.snapshot();if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads) {reply({"queue_full","Pending operation limit reached",{}},{});return;}
  if(interactive&&!selectingId_.isEmpty()) {reply({"busy_selecting","Another interactive acquisition is active",{}},{});return;}
@@ -285,6 +302,27 @@ void OperationService::startEditing(Operation op,std::shared_ptr<std::atomic_boo
 void OperationService::rememberEditorColors(const QStringList& colors) {
  if(colors==settings_.snapshot().editorRecentColors||!settings_.metadata()["validation"].toObject()["ok"].toBool())return;
  settings_.patchAsync({{"preferences",QJsonObject{{"editorRecentColors",QJsonArray::fromStringList(colors)}}}},settings_.revision(),[](Result){});
+}
+// Recording shares the editor's exclusivity: one interactive private review at a time.
+Error OperationService::acceptRecording(Operation& op) {
+ if(!ready_)return startupError_?startupError_:Error{"initializing","Journal recovery is in progress",{}};
+ if(editor_)return {"editor_active","An edit is open; finish or cancel it before recording",{{"operationId",editingId_}}};
+ if(!selectingId_.isEmpty())return {"busy_selecting","Another interactive acquisition is active",{}};
+ auto snapshot=settings_.snapshot();if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads)return {"queue_full","Pending operation limit reached",{}};
+ const auto route=snapshot.actions.value(Settings::recordingActionName());
+ const bool upload=route.destination=="upload"&&!route.profileId.isEmpty();
+ if(!upload&&!snapshot.archive.keepUploads)return {"output_required","No output is enabled. Choose a destination in Settings → Capture or enable Keep a local copy in Settings → General.",{}};
+ op.id=uuid();op.action=Settings::recordingActionName();op.settings=snapshot;op.settingsRevision=settings_.revision();op.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);op.invocation=upload?++invocation_:invalidateCopyEligibility();op.clipboardRevision=source_.clipboardRevision();
+ if(upload) {const auto profile=snapshot.profiles.value(route.profileId);op.destination={profile["provider"].toString(),route.profileId,settings_.revision(),profile["settings"].toObject(),profile["credentials"].toObject()};}
+ auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(op.id,flag);if(upload)beginUploadCopies(op,false);
+#ifdef __GLIBC__
+ heapReclamationPending_=true;
+#endif
+ return {};
+}
+void OperationService::recordingCommand(const QString& command,const QJsonObject& params,JsonReply reply) {
+ if(!ready_&&command!="capabilities") {reply(startupError_?startupError_:Error{"initializing","Journal recovery is in progress",{}},{});return;}
+ recording_->command(command,params,std::move(reply));
 }
 void OperationService::editorCommand(const QString& id,const QString& command,const QJsonObject& params,JsonReply reply) {
  if(!editor_||editingId_!=id){reply({"editor_unavailable","No open editor has this operation ID",{}},{});return;}
@@ -628,7 +666,8 @@ QJsonObject OperationService::capabilities() const {
   {"editor",QJsonObject{{"available",editor},{"admissionPixels",double(EditorJob::admissionPixels)},{"open",!editingId_.isEmpty()},
    {"sources",QJsonArray{"region","window","desktop","clipboard","file"}},{"fileFormats",QJsonArray{"png","jpeg"}},{"output","png"},
    {"shapes",QJsonArray{"redact","blur","arrow","rectangle","text","highlight"}},
-   {"commands",QJsonArray{"inspect","apply","preview","saveCopy","submit","cancel","raise"}}}}};
+   {"commands",QJsonArray{"inspect","apply","preview","saveCopy","submit","cancel","raise"}}}},
+  {"recording",recording_->capabilities()}};
 }
 QJsonObject OperationService::diagnostics() const {
 #ifdef __GLIBC__

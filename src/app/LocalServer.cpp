@@ -72,7 +72,7 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  if(!request["schemaVersion"].isDouble()||request["schemaVersion"].toDouble()!=1) {reply({"unsupported_version","Request schemaVersion must be 1",{}},{});return;}
  if(request["session"].toString()!=socketPath()) {reply({"wrong_session","Request targets a different resident session",{}},{});return;}
  const auto method=request["method"].toString();const auto p=request["params"].toObject();
- if(!operations_.ready()&&(method.startsWith("operation.")||method.startsWith("history.")||method.startsWith("delete.")||method=="cache.clear")) {reply({"initializing","Wait for resident journal recovery",{}},{});return;}
+ if(!operations_.ready()&&(method.startsWith("operation.")||method.startsWith("history.")||method.startsWith("delete.")||method=="cache.clear"||(method.startsWith("recording.")&&method!="recording.capabilities"))) {reply({"initializing","Wait for resident journal recovery",{}},{});return;}
  if(method=="ui.quit") {
   if(!p.isEmpty()){reply(invalid(),{});return;}
   if(!uiQuit_){reply({"ui_unavailable","This resident has no application quit handler",{}},{});return;}
@@ -99,6 +99,21 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   if(!string(p,"id")){reply(invalid(),{});return;}
   auto params=p;params.remove("id");operations_.editorCommand(p["id"].toString(),method.mid(7),params,reply);return;
  }
+ // Screen recording: one session, backend-neutral; the service validates semantics.
+ if(method=="recording.capabilities") {if(!p.isEmpty())reply(invalid(),{});else operations_.recordingCommand("capabilities",{},reply);return;}
+ if(method=="recording.prepare") {
+  if(!fields(p,{"target","format"},{"codec","fps","audio","maxEdge"})||!p["target"].isObject()||!string(p,"format",8)||(p.contains("codec")&&!string(p,"codec",8))||(p.contains("audio")&&!p["audio"].isObject())){reply(invalid(),{});return;}
+  operations_.recordingCommand("prepare",p,reply);return;
+ }
+ if(QStringList{"recording.start","recording.pause","recording.resume","recording.stop","recording.cancel","recording.inspect","recording.raise"}.contains(method)) {
+  if(!fields(p,{"id"})||!string(p,"id")){reply(invalid(),{});return;}
+  operations_.recordingCommand(method.mid(10),p,reply);return;
+ }
+ if(method=="recording.overlay") {if(!fields(p,{"id","visible"})||!string(p,"id")||!p["visible"].isBool()){reply(invalid(),{});return;}operations_.recordingCommand("overlay",p,reply);return;}
+ if(method=="recording.edit") {if(!fields(p,{"id","revision","commands"})||!string(p,"id")||!p["revision"].isDouble()||!p["commands"].isArray()||p["commands"].toArray().size()>100){reply(invalid(),{});return;}operations_.recordingCommand("edit",p,reply);return;}
+ if(method=="recording.preview") {if(!fields(p,{"id","time"},{"maxEdge"})||!string(p,"id")||!p["time"].isDouble()||(p.contains("maxEdge")&&!p["maxEdge"].isDouble())){reply(invalid(),{});return;}operations_.recordingCommand("preview",p,reply);return;}
+ if(method=="recording.saveCopy") {if(!fields(p,{"id","path"},{"overwrite"})||!string(p,"id")||!string(p,"path",4096)||(p.contains("overwrite")&&!p["overwrite"].isBool())){reply(invalid(),{});return;}operations_.recordingCommand("saveCopy",p,reply);return;}
+ if(method=="recording.upload") {if(!fields(p,{"id","revision"})||!string(p,"id")||!p["revision"].isDouble()){reply(invalid(),{});return;}operations_.recordingCommand("upload",p,reply);return;}
  if(method=="operation.recent") {if(!p.isEmpty())reply(invalid(),{});else operations_.recent(reply);return;}
  if(method.startsWith("operation.")) {if(!fields(p,{"id"})||!string(p,"id")) {reply(invalid(),{});return;}const auto id=p["id"].toString();if(method=="operation.inspect")operations_.inspect(id,reply);else if(method=="operation.cancel")operations_.cancel(id,reply);else if(method=="operation.retry")operations_.retry(id,reply);else if(method=="operation.copy")operations_.copyResult(id,reply);else if(method=="operation.retryLocalSave")operations_.retryLocalSave(id,reply);else reply({"unknown_method","Unknown operation method",{}},{});return;}
  if(method=="history.share"||method=="history.revokeLink"||method=="history.inspectLink") {

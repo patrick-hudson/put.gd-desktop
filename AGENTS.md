@@ -72,9 +72,11 @@ with a patch bump and are merged back into `nightly` by pull request. The releas
 runbook is `docs/release.md`; CI coverage is `docs/ci.md`.
 
 Record what was actually built/tested and any blocked acceptance gates. Commit explicit
-owned paths, preserving unrelated pre-existing changes. Do not add recording or OCR
-features: future video support currently means finalized video files in the shared pipeline.
-The user-approved Edit & upload image editor (#51) is the only editing feature; its
+owned paths, preserving unrelated pre-existing changes. Do not add OCR features.
+Screen recording (#50) is user-approved and in progress: follow
+`docs/plans/2026-10-17-2230-feat-screen-recording-plan.md` and `docs/recording.md`;
+its finalized files enter the shared pipeline only through the explicit Upload action.
+The user-approved Edit & upload image editor (#51) is the still-image editing feature; its
 contract, privacy boundaries and agent control are in `docs/image-editor.md`.
 New windows reuse the redesign theme and IconArt glyphs, and every interactive
 capability stays controllable through session methods, `putgd-cli` and the MCP helper.
