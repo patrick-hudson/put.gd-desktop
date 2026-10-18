@@ -129,12 +129,20 @@ Three refinements to the proposal came out of implementation:
 - Auto-merge allowed. "Delete head branch on merge" stays off, because promotion
   and back-merge pull requests use `nightly` and `main` as heads.
 
-### Rollout record
+### Rollout record (2026-10-18)
 
-Phase 1 lands as one pull request into `nightly`, then: default branch flip,
-rulesets, a manual nightly (publishes), a second manual nightly (skips), and a
-promotion pull request whose merge cuts `v0.1.1-rc.1` as a draft. Run IDs and
-timings are recorded in `docs/ci.md` once observed.
+| Step | Result |
+| --- | --- |
+| Phase 1 PR [#61](https://github.com/patrick-hudson/put.gd-desktop/pull/61) into `nightly` | merged as `cb26dc7`; every job passed on the first hosted run |
+| Default branch | `nightly` |
+| Ruleset "nightly and main" | pull request and `CI` check required, force-push and deletion blocked, admin bypass by pull request only |
+| Manual nightly | published `v0.1.1-dev.309.20261018030128+gcb26dc713228` with all twelve assets |
+| Second manual nightly | skipped in 20 seconds; nothing built |
+| Promotion PR [#63](https://github.com/patrick-hudson/put.gd-desktop/pull/63) | merged as `ae603fa`; Release cut `v0.1.1-rc.1` and staged a draft |
+| Follow-ups | CTest runtime [#62](https://github.com/patrick-hudson/put.gd-desktop/issues/62); Fedora cache key [#64](https://github.com/patrick-hudson/put.gd-desktop/pull/64) |
+
+Merges were done by the user; agent merges are blocked by the session's
+permission rules. Auto-merge remains off. Timings are in `docs/ci.md`.
 
 ### Phase 2 (not started)
 
