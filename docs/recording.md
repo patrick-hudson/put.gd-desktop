@@ -329,7 +329,9 @@ traces, `PUTGD_RECORD_KEEP_WORKING=<dir>` keeps a copy of each working clip,
 [--trim startUs endUs] [--no-audio]` exports a kept clip the way the review
 does and prints the encoder, frame count, bytes and wall time, and
 `PUTGD_RECORD_EXPORT_ENCODERS=<comma list>` replaces the encoder preference
-order for such timing runs. None is read by the resident and none carries
+order for such timing runs; `putgd-record --motion CLIP [SAMPLES]` prints the
+mean frame difference between frames sampled across a clip (about 0.01 for a
+still picture), so a recording test can require that it captured movement. None is read by the resident and none carries
 frames.
 
 ## Agent and MCP control

@@ -21,6 +21,7 @@
 #include <QTimer>
 #include <cstdio>
 #include <cstdlib>
+#include <cmath>
 #include <cstring>
 #include <sys/resource.h>
 
@@ -49,6 +50,41 @@ int main(int argc, char** argv) {
         if (error) { std::fprintf(stderr, "%s: %s\n", qPrintable(error.code), qPrintable(error.message)); return 1; }
         std::printf("frame %dx%d at %lld us\n", image.width(), image.height(), static_cast<long long>(actual));
         return image.save(QString::fromLocal8Bit(argv[4]), "PNG") ? 0 : 3;
+    }
+    if (argc >= 3 && std::strcmp(argv[1], "--motion") == 0) {
+        // Lab diagnostic: does the clip contain movement? Samples frames evenly
+        // across the clip and prints the mean absolute pixel difference between
+        // consecutive samples (0 for a still picture) so a test can require motion.
+        QCoreApplication app(argc, argv);
+        const QString clip = QString::fromLocal8Bit(argv[2]);
+        const int samples = argc >= 4 ? std::max(2, std::atoi(argv[3])) : 8;
+        qint64 durationUs = 0;
+        QSize canvas;
+        if (auto error = record::probeClip(clip, durationUs, canvas)) { std::fprintf(stderr, "%s: %s\n", qPrintable(error.code), qPrintable(error.message)); return 1; }
+        QImage previous;
+        double total = 0;
+        int compared = 0;
+        qint64 previousUs = -1;
+        for (int i = 0; i < samples; ++i) {
+            const qint64 at = durationUs * (2 * i + 1) / (2 * samples);
+            QImage image;
+            qint64 actual = 0;
+            if (auto error = record::previewFrame(clip, {}, {}, at, 320, canvas, image, &actual)) { std::fprintf(stderr, "%s: %s\n", qPrintable(error.code), qPrintable(error.message)); return 1; }
+            if (!previous.isNull() && actual != previousUs && image.size() == previous.size()) {
+                double sum = 0;
+                for (int y = 0; y < image.height(); ++y) {
+                    const auto* a = reinterpret_cast<const QRgb*>(image.constScanLine(y));
+                    const auto* b = reinterpret_cast<const QRgb*>(previous.constScanLine(y));
+                    for (int x = 0; x < image.width(); ++x) sum += std::abs(qGray(a[x]) - qGray(b[x]));
+                }
+                total += sum / (double(image.width()) * image.height());
+                ++compared;
+            }
+            previous = image;
+            previousUs = actual;
+        }
+        std::printf("motion=%.3f compared=%d samples=%d durationMs=%lld size=%dx%d\n", compared ? total / compared : 0.0, compared, samples, static_cast<long long>(durationUs / 1000), canvas.width(), canvas.height());
+        return 0;
     }
     if (argc >= 4 && std::strcmp(argv[1], "--export") == 0) {
         // Lab diagnostic: export a working clip the way the review does and
