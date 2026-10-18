@@ -41,6 +41,9 @@ private slots:
         QVERIFY(!recording::parseTarget(QJsonObject{{"kind", "monitor"}, {"identity", "DP-3"}}, target));
         QVERIFY(!recording::parseTarget(QJsonObject{{"kind", "desktop"}}, target));
         QVERIFY(target.toJson()["kind"] == "desktop" && !target.toJson().contains("rect"));
+        // A region without a rect means the user drags it; release keeps the bounds.
+        QVERIFY(!recording::parseTarget(QJsonObject{{"kind", "region"}}, target));
+        QVERIFY(target.rect.isEmpty() && !target.toJson().contains("rect"));
         QVERIFY(recording::parseTarget(QJsonObject{{"kind", "monitor"}}, target));
         QVERIFY(recording::parseTarget(QJsonObject{{"kind", "region"}, {"rect", QJsonArray{0, 0, 0, 10}}}, target));
         QVERIFY(recording::parseTarget(QJsonObject{{"kind", "region"}, {"rect", QJsonArray{0, 0, 10}}}, target));

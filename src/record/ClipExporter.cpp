@@ -5,6 +5,7 @@
 #include <QPainter>
 #include <QStringList>
 #include <algorithm>
+#include <cstring>
 #include <memory>
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -489,13 +490,20 @@ Error previewFrame(const QString& path, const RecordingEdit& edit, const Recordi
     }
     if (!chosen) return {"recording_export_failed", "No frame could be decoded at this time", {}};
     const int width = chosen->width, height = chosen->height;
-    QImage image(width, height, QImage::Format_RGB32);
+    // Convert into a frame FFmpeg allocates with its own alignment and padding:
+    // libswscale's SIMD paths write whole vectors, so a row that is not a
+    // multiple of 16 pixels overruns a tightly sized buffer on its last row.
+    FramePtr rgb(av_frame_alloc());
+    rgb->format = AV_PIX_FMT_BGRA;
+    rgb->width = width;
+    rgb->height = height;
+    if (av_frame_get_buffer(rgb.get(), 64) < 0) return {"recording_export_failed", "Cannot allocate the frame", {}};
     SwsContext* scaler = sws_getContext(width, height, AVPixelFormat(chosen->format), width, height, AV_PIX_FMT_BGRA, SWS_BILINEAR, nullptr, nullptr, nullptr);
     if (!scaler) return {"recording_export_failed", "Cannot convert the frame", {}};
-    uint8_t* planes[1] = {image.bits()};
-    int strides[1] = {int(image.bytesPerLine())};
-    sws_scale(scaler, chosen->data, chosen->linesize, 0, height, planes, strides);
+    sws_scale(scaler, chosen->data, chosen->linesize, 0, height, rgb->data, rgb->linesize);
     sws_freeContext(scaler);
+    QImage image(width, height, QImage::Format_RGB32);
+    for (int y = 0; y < height; ++y) std::memcpy(image.scanLine(y), rgb->data[0] + qint64(y) * rgb->linesize[0], size_t(width) * 4);
     const auto frameUs = av_rescale_q(chosen->best_effort_timestamp - origin, timeBase, microseconds);
     if (actualTimeUs) *actualTimeUs = frameUs;
     const QRect bounds(QPoint(0, 0), canvas.isEmpty() ? image.size() : canvas);

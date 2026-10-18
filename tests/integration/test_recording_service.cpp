@@ -15,7 +15,7 @@ public:
  QByteArray exportBytes=QByteArray("\0\0\0\x18" "ftypisom",12)+QByteArray(4096,'r');RecordingEdit lastEdit;RecordingConfig lastConfig;qint64 lastPreviewTime=-1;
  QJsonObject capabilities() const override {return {{"available",available},{"reason",available?QString():QString("fake_off")},{"targets",QJsonArray{"monitor","desktop","region","window"}},{"formats",QJsonArray{"mp4","webm","gif","webp"}},{"codecs",QJsonObject{{"mp4",QJsonArray{"h264","h265"}},{"webm",QJsonArray{"vp9"}}}},{"audio",QJsonObject{{"system",true},{"microphone",false}}},{"overlayExclusion",QJsonObject{{"region",true}}}};}
  void setEventSink(Event e) override {sink=std::move(e);}
- void prepare(const QString&,const RecordingTarget&,const RecordingConfig& config,const QString& dir,Reply reply) override {log<<"prepare";staging=dir;lastConfig=config;reply({},{{"canvas",QJsonArray{1280,720}}});}
+ void prepare(const QString&,const RecordingTarget& target,const RecordingConfig& config,const QString& dir,Reply reply) override {log<<"prepare";staging=dir;lastConfig=config;reply({},{{"canvas",QJsonArray{1280,720}},{"rect",target.rect.isEmpty()?QJsonArray{300,250,1280,720}:QJsonArray{target.rect.x(),target.rect.y(),target.rect.width(),target.rect.height()}},{"overlayExcluded",true}});}
  void control(const QString&,const QString& command,const QJsonObject&,Reply reply) override {
   log<<command;
   if(command=="cancel"){++cancels;reply({},{});return;}
@@ -31,6 +31,8 @@ public:
   reply({},{{"bytes",double(exportBytes.size())},{"durationUs",double(edit.exportDuration(durationUs))}});
  }
  void discard(const QString&) override {++discards;}
+ int editsPushed=0;RecordingEdit pushedEdit;
+ void setEdit(const QString&,const RecordingEdit& edit,const RecordingConfig&) override {++editsPushed;pushedEdit=edit;}
 };
 struct Call {Error error;QJsonObject result;bool done=false;};
 Call call(LocalServer& server,const QString& method,const QJsonObject& params){
@@ -50,6 +52,7 @@ struct Harness {
  void open(){operations=std::make_unique<OperationService>(dir.filePath("data"),settings,registry,source);auto fake=std::make_unique<FakeBackend>();backend=fake.get();operations->setRecordingBackend(std::move(fake));history=std::make_unique<HistoryService>(*operations);server=std::make_unique<LocalServer>(settings,*operations,*history);}
  void close(){server.reset();history.reset();operations.reset();backend=nullptr;}
  Call rec(const QString& command,const QJsonObject& params={}){return call(*server,"recording."+command,params);}
+ QString state(const QString& id){return rec("inspect",{{"id",id}}).result["state"].toString();}
  QString prepareReady(const QJsonObject& extra={}){
   QJsonObject params{{"target",region()},{"format","mp4"}};for(auto it=extra.begin();it!=extra.end();++it)params[it.key()]=it.value();
   const auto prepared=rec("prepare",params);if(prepared.error)return {};
@@ -168,6 +171,52 @@ private slots:
   const auto second=h.prepareReady();QVERIFY(!second.isEmpty());QVERIFY(!h.rec("start",{{"id",second}}).error);
   h.backend->sink({{"id",second},{"event","failed"},{"error",QJsonObject{{"code","recording_source_lost"},{"message","Synthetic source vanished"}}}});
   QTRY_COMPARE(journal.operation(second).state,QString("failed"));QCOMPARE(journal.operation(second).error.code,QString("recording_source_lost"));QCOMPARE(h.backend->exports,1);
+ }
+ void controlBarEventsDriveTheSession(){
+  Harness h;QTRY_VERIFY(h.operations->ready());HistoryStore journal(h.operations->databasePath());
+  // A dragged region: prepare without a rect; the helper reports the bounds it got.
+  const auto prepared=h.rec("prepare",{{"target",QJsonObject{{"kind","region"}}},{"format","mp4"}});QVERIFY2(!prepared.error,qPrintable(prepared.error.message));const auto id=prepared.result["recordingId"].toString();
+  QTRY_COMPARE(h.state(id),QString("ready"));
+  h.backend->sink({{"id",id},{"event","configChanged"},{"config",QJsonObject{{"format","webm"},{"codec","vp9"},{"fps",30},{"audio",QJsonObject{{"system",false},{"microphone",false}}}}}});
+  QTRY_COMPARE(h.rec("inspect",{{"id",id}}).result["config"].toObject()["format"].toString(),QString("webm"));
+  h.backend->sink({{"id",id},{"event","started"},{"encoder","x264enc"}});
+  QTRY_COMPARE(h.state(id),QString("recording"));QCOMPARE(h.rec("inspect",{{"id",id}}).result["progress"].toObject()["encoder"].toString(),QString("x264enc"));
+  // Config changes after Record are ignored.
+  h.backend->sink({{"id",id},{"event","configChanged"},{"config",QJsonObject{{"format","gif"}}}});
+  h.backend->sink({{"id",id},{"event","paused"}});QTRY_COMPARE(h.state(id),QString("paused"));
+  QCOMPARE(h.rec("inspect",{{"id",id}}).result["config"].toObject()["format"].toString(),QString("webm"));
+  h.backend->sink({{"id",id},{"event","resumed"}});QTRY_COMPARE(h.state(id),QString("recording"));
+  h.backend->sink({{"id",id},{"event","stopped"},{"durationUs",5000000.0},{"canvas",QJsonArray{800,600}},{"reason","user"}});
+  QTRY_COMPARE(h.state(id),QString("reviewing"));QCOMPARE(h.rec("inspect",{{"id",id}}).result["canvas"].toArray(),QJsonArray({800,600}));
+  // Cancel from the bar ends the operation without any upload.
+  h.backend->sink({{"id",id},{"event","cancelled"}});
+  QTRY_COMPARE(journal.operation(id).state,QString("cancelled"));QCOMPARE(h.backend->exports,0);QTRY_COMPARE(h.operations->diagnostics()["activeOperations"].toInt(),0);
+ }
+ void reviewWindowEventsRoundTripThroughTheResident(){
+  Harness h;QTRY_VERIFY(h.operations->ready());HistoryStore journal(h.operations->databasePath());
+  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QCOMPARE(h.rec("stop",{{"id",id}}).result["state"].toString(),QString("reviewing"));
+  // A proposed edit at the shown revision is applied and pushed back; a stale one is refused but still answered with the current edit.
+  h.backend->sink({{"id",id},{"event","edit"},{"revision",1},{"commands",QJsonArray{QJsonObject{{"op","setTrim"},{"start",2000000},{"end",9000000}}}}});
+  QTRY_COMPARE(h.backend->editsPushed,1);QCOMPARE(h.backend->pushedEdit.revision,quint64(2));QCOMPARE(h.backend->pushedEdit.trimStart,qint64(2000000));
+  h.backend->sink({{"id",id},{"event","edit"},{"revision",1},{"commands",QJsonArray{QJsonObject{{"op","resetTrim"}}}}});
+  QTRY_COMPARE(h.backend->editsPushed,2);QCOMPARE(h.backend->pushedEdit.revision,quint64(2));QCOMPARE(h.backend->pushedEdit.trimStart,qint64(2000000));
+  // MCP/CLI edits reach the window the same way.
+  QVERIFY(!h.rec("edit",{{"id",id},{"revision",2},{"commands",QJsonArray{QJsonObject{{"op","addMask"},{"mask",QJsonObject{{"kind","solid"},{"rect",QJsonArray{1,1,10,10}},{"start",0},{"end",1000000}}}}}}}).error);
+  QTRY_COMPARE(h.backend->editsPushed,3);QCOMPARE(h.backend->pushedEdit.masks.size(),1);
+  // A format change in review keeps fps and cannot add audio.
+  h.backend->sink({{"id",id},{"event","configChanged"},{"config",QJsonObject{{"format","gif"},{"fps",60},{"audio",QJsonObject{{"system",true}}}}}});
+  QTRY_COMPARE(h.rec("inspect",{{"id",id}}).result["config"].toObject()["format"].toString(),QString("gif"));
+  QCOMPARE(h.rec("inspect",{{"id",id}}).result["config"].toObject()["fps"].toInt(),30);QVERIFY(!h.rec("inspect",{{"id",id}}).result["config"].toObject()["audio"].toObject()["system"].toBool());
+  h.backend->sink({{"id",id},{"event","configChanged"},{"config",QJsonObject{{"format","mp4"}}}});
+  QTRY_COMPARE(h.rec("inspect",{{"id",id}}).result["config"].toObject()["format"].toString(),QString("mp4"));
+  // Save copy and Upload from the window run the same exports as the CLI; only Upload admits bytes.
+  const auto copyPath=h.dir.filePath("review-copy.mp4");
+  h.backend->sink({{"id",id},{"event","saveCopyRequested"},{"revision",3},{"path",copyPath}});
+  QTRY_VERIFY(QFileInfo::exists(copyPath));QTRY_COMPARE(h.state(id),QString("reviewing"));QCOMPARE(journal.operation(id).items.size(),0);
+  h.backend->sink({{"id",id},{"event","uploadRequested"},{"revision",1}});
+  QTRY_COMPARE(h.backend->editsPushed,4);QCOMPARE(h.state(id),QString("reviewing"));
+  h.backend->sink({{"id",id},{"event","uploadRequested"},{"revision",3}});
+  QTRY_COMPARE(journal.operation(id).state,QString("completed"));QCOMPARE(h.backend->exports,2);QCOMPARE(journal.operation(id).items.first().artifact.mime,QString("video/mp4"));
  }
  void serverRejectsMalformedRequestsBeforeTheBackend(){
   Harness h;QTRY_VERIFY(h.operations->ready());

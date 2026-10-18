@@ -73,6 +73,7 @@ QJsonObject RecordingService::publicJson(const Session& s) const {
         {"target", s.target.toJson()}, {"config", s.config.toJson()}, {"canvas", sizeJson(s.canvas)}, {"durationUs", double(s.duration)},
         {"retainedUs", double(retained)}, {"edit", s.edit.toJson()}, {"progress", s.progress}, {"exports", s.exports}, {"error", s.op.error.toJson()}};
     if (!s.canvas.isEmpty()) o["outputSize"] = sizeJson(recording::outputSize(s.canvas, s.config.maxEdge));
+    if (s.overlayExcluded) o["overlayExcluded"] = *s.overlayExcluded;
     return o;
 }
 void RecordingService::transition(Session& s, const QString& state) {
@@ -101,9 +102,13 @@ void RecordingService::fail(Error error) {
     session_.reset();
     backend_->discard(s.op.id);
     QDir(s.staging).removeRecursively();
+    // A user cancellation reported by the helper (Escape during selection,
+    // Cancel on the bar) ends as cancelled, not as a failure.
+    const bool cancelled = error.code == "cancelled" || error.code == "source_cancelled";
     s.op.error = error;
-    s.op.state = "failed";
-    s.op.phase = "failed";
+    s.op.cancelled = cancelled;
+    s.op.state = cancelled ? "cancelled" : "failed";
+    s.op.phase = s.op.state;
     host_.finish(s.op);
     emit changed(s.op.id);
 }
@@ -144,6 +149,46 @@ void RecordingService::handleEvent(const QJsonObject& event) {
     } else if (kind == "failed") {
         auto error = event["error"].toObject();
         fail({error["code"].toString("recording_failed"), error["message"].toString("The recording helper failed"), error["details"].toObject()});
+    } else if (kind == "started" && (s.state == "ready" || s.state == "starting")) {
+        // The user pressed Record on the helper's control bar.
+        for (auto it = event.begin(); it != event.end(); ++it) if (it.key() != "id" && it.key() != "event") s.progress[it.key()] = it.value();
+        transition(s, "recording");
+    } else if (kind == "paused" && s.state == "recording") transition(s, "paused");
+    else if (kind == "resumed" && s.state == "paused") transition(s, "recording");
+    else if (kind == "cancelled" && !recording::terminal(s.state)) cancelActive({});
+    else if (kind == "configChanged" && (s.state == "ready" || s.state == "reviewing")) {
+        auto json = event["config"].toObject();
+        for (const auto* key : {"mime", "budgetBytes"}) json.remove(key);
+        if (s.state == "reviewing") {
+            // After the clip exists only the output can change: the capture rate is
+            // fixed and audio cannot appear (and is dropped for silent formats).
+            const auto format = json["format"].toString();
+            json.remove("fps");
+            json["audio"] = QJsonObject{{"system", s.config.audio.system && format != "gif" && format != "webp"}, {"microphone", false}};
+        }
+        RecordingConfig config;
+        if (!recording::parseConfig(json, config)) {
+            config.budgetBytes = s.config.budgetBytes;
+            if (s.state == "reviewing") config.fps = s.config.fps;
+            s.config = config;
+            host_.observe(s.op);
+            emit changed(s.op.id);
+        }
+    } else if (kind == "edit" && s.state == "reviewing") {
+        // The review window proposes commands at the revision it showed; the
+        // resident's answer (setEdit) is what it displays, accepted or not.
+        qint64 revision = 0;
+        if (integer(event["revision"], 1, 1LL << 52, &revision) && quint64(revision) == s.edit.revision && event["commands"].isArray())
+            if (!recording::applyEditCommands(s.edit, event["commands"].toArray(), s.duration, s.canvas, s.config.fps)) { host_.observe(s.op); emit changed(s.op.id); }
+        backend_->setEdit(s.op.id, s.edit, s.config);
+    } else if ((kind == "uploadRequested" || kind == "saveCopyRequested") && s.state == "reviewing") {
+        QJsonObject params{{"id", s.op.id}, {"revision", event["revision"]}};
+        if (kind == "saveCopyRequested") { params["path"] = event["path"]; params["overwrite"] = true; }
+        exportTo(kind == "uploadRequested" ? "upload" : "saveCopy", params, [this](Error error, QJsonObject) {
+            // The helper learns the outcome from its own export command; a refused
+            // request (stale revision, budget) is pushed back as the current edit.
+            if (error && session_) backend_->setEdit(session_->op.id, session_->edit, session_->config);
+        });
     }
 }
 void RecordingService::command(const QString& command, const QJsonObject& params, JsonReply reply) {
@@ -201,6 +246,9 @@ void RecordingService::prepareSession(const QJsonObject& params, JsonReply reply
                 if (s.state != "preparing") return;
                 if (error) { guard->fail(error); return; }
                 if (result["canvas"].isArray() && result["canvas"].toArray().size() == 2) s.canvas = QSize(result["canvas"].toArray()[0].toInt(), result["canvas"].toArray()[1].toInt());
+                // A dragged region reports its bounds; the overlay says whether it stayed outside them.
+                if (s.target.kind == "region" && result["rect"].isArray() && result["rect"].toArray().size() == 4) { const auto r = result["rect"].toArray(); s.target.rect = QRect(r[0].toInt(), r[1].toInt(), r[2].toInt(), r[3].toInt()); }
+                if (result["overlayExcluded"].isBool()) s.overlayExcluded = result["overlayExcluded"].toBool();
                 guard->transition(s, "ready");
             }));
         });
@@ -257,6 +305,7 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
         if (!integer(params["revision"], 1, 1LL << 52, &revision) || !params["commands"].isArray()) { reply(invalid("edit takes the current revision and 1 to 100 commands"), {}); return; }
         if (quint64(revision) != s.edit.revision) { reply({"recording_stale", "The edit revision moved; inspect and retry", {{"currentRevision", double(s.edit.revision)}}}, {}); return; }
         if (auto error = recording::applyEditCommands(s.edit, params["commands"].toArray(), s.duration, s.canvas, s.config.fps)) { reply(error, {}); return; }
+        backend_->setEdit(s.op.id, s.edit, s.config);
         host_.observe(s.op);
         emit changed(s.op.id);
         reply({}, publicJson(s));

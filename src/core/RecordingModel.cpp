@@ -37,7 +37,7 @@ bool knownKeys(const QJsonObject& object, const QStringList& allowed) {
 QJsonObject RecordingTarget::toJson() const {
     QJsonObject o{{"kind", kind}};
     if (!identity.isEmpty()) o["identity"] = identity;
-    if (kind == "region") o["rect"] = rectJson(rect);
+    if (kind == "region" && rect.isValid() && !rect.isEmpty()) o["rect"] = rectJson(rect);
     return o;
 }
 QString RecordingConfig::mime() const {
@@ -111,7 +111,9 @@ Error parseTarget(const QJsonValue& value, RecordingTarget& out) {
         target.identity = object["identity"].toString();
     }
     if (target.kind == "region") {
-        if (!rect(object["rect"], target.rect)) return invalid("A region needs rect [x, y, width, height] with positive size", "target.rect");
+        // Without a rect the helper asks the user to drag the area; release keeps
+        // the bounds in the ready state.
+        if (object.contains("rect") && !rect(object["rect"], target.rect)) return invalid("A region rect is [x, y, width, height] with positive size", "target.rect");
     } else if (object.contains("rect")) return invalid("Only region targets take a rect", "target.rect");
     if ((target.kind == "monitor" || target.kind == "window") && target.identity.isEmpty()) return invalid("Monitor and window targets need an identity", "target.identity");
     if ((target.kind == "desktop" || target.kind == "region") && !target.identity.isEmpty()) return invalid("Desktop and region targets take no identity", "target.identity");

@@ -1,13 +1,14 @@
 # Screen recording
 
-Status: **slices 1 to 3.1 of the [recording plan](plans/2026-10-17-2230-feat-screen-recording-plan.md)**.
+Status: **slices 1 to 3.3 of the [recording plan](plans/2026-10-17-2230-feat-screen-recording-plan.md)**.
 The contract below is implemented and tested against a fake backend and the
 real helper. On **X11 sessions** the `putgd-record` helper records monitors, the
 desktop, regions and windows through `ximagesrc`, pauses and resumes on one
 clip timeline, previews frames with masks, and exports MP4 (H.264, H.265), WebM
 (VP9), GIF and animated WebP with trim and timed masks; the agent path (CLI
-and MCP) is complete. The ready-bounds/dimming/control overlay and the review
-window are the next slices, and Wayland acquisition (portal + `pipewiresrc`)
+and MCP) is complete, and the drag selection, ready bounds, outside dimming
+and floating control bar are in place, and every Stop opens the private review
+window. A tray/hotkey entry point and Wayland acquisition (portal + `pipewiresrc`)
 is not implemented, so Wayland installations report `available: false` with
 reason `wayland_not_implemented`. Desktop acceptance evidence is recorded
 separately in `docs/verification.md` when it exists; nothing here claims it.
@@ -66,7 +67,7 @@ All methods go through `putgd-cli` unchanged. `id` is the recording ID.
 | Method | Params | Result / effect |
 | --- | --- | --- |
 | `recording.capabilities` | | availability and reason, target kinds, formats, codecs per format, audio sources, `active` recording ID, limits, `timeUnit`; no capture, no prompt |
-| `recording.prepare` | `target {kind: monitor\|desktop\|region\|window, identity?, rect?}`, `format mp4\|webm\|gif\|webp`, `codec?`, `fps? (1–60)`, `audio? {system?, microphone?}`, `maxEdge?` | durable intent, then ready bounds/controls and any OS consent; replies at once with `state: preparing`; poll `inspect` for `ready` |
+| `recording.prepare` | `target {kind: monitor\|desktop\|region\|window, identity?, rect?}`, `format mp4\|webm\|gif\|webp`, `codec?`, `fps? (1–60)`, `audio? {system?, microphone?}`, `maxEdge?` | durable intent, then ready bounds/controls and any OS consent; replies at once with `state: preparing`; poll `inspect` for `ready`. A region without `rect` asks the user to drag it (Escape cancels); the chosen bounds appear in `inspect` as `target.rect`, and `overlayExcluded` says whether the control bar stayed outside them |
 | `recording.start` / `pause` / `resume` / `stop` | `{id}` | acknowledged once the backend reached the state; a duplicate of the in-flight command returns the current state, a different one is `recording_busy`; `stop` returns `durationUs` and enters `reviewing` |
 | `recording.cancel` | `{id}` | discards the clip; the operation ends `cancelled` |
 | `recording.inspect` | `{id}` | state, pending command, target, config, canvas, `durationUs`, `retainedUs`, edit, progress, error |
@@ -140,6 +141,66 @@ report the one actually used. CMake builds the helper only when
 `gstreamer-1.0 >= 1.24` and FFmpeg libraries `>= 6.1` are found
 (`PUTGD_RECORDING`, default on; off for the AppImage); a resident without the
 sibling binary reports `recording_helper_missing`.
+
+## Overlay (X11)
+
+`prepare` for a region without a rect shows a translucent drag surface on every
+screen ("Drag to choose the area to record. Esc cancels."); release keeps the
+bounds and nothing records yet. The ready state draws a 3 px white ring with a
+dark hairline just outside the recorded rectangle (never over its pixels) and
+places the control bar below it, above it, or, when neither fits, inside its
+bottom-right corner (`overlayExcluded: false`, also for monitor and desktop
+targets). While recording, four translucent strips dim everything outside the
+rectangle; ring and strips are transparent for input, bypass the window
+manager and stay on top, so the desktop inside and outside stays usable and
+the capture never sees them.
+
+The control bar shows a state dot (green ready, red recording, amber paused),
+the retained time, the target, a system-audio checkbox and a format/codec
+choice (editable only before Record; GIF/WebP disable audio), and Record,
+Pause/Resume, Stop and Cancel. Its actions run in the helper and are reported
+to the resident as events (`started`, `paused`, `resumed`, `stopped` with
+reason `user`, `cancelled`, `configChanged`), which the service applies to the
+same state machine the CLI drives; `recording.overlay` hides or shows the bar
+and `recording.raise` brings it forward. Stop and Cancel from the bar are
+mouse actions; a keyboard or tray stop route is not provided yet.
+
+## Review window
+
+Every Stop (from the bar, the CLI, or the byte budget) opens the helper's
+private review window: the frame at the scrubber position with the masks
+active at that time drawn over it, "Trim start here" / "Trim end here" /
+"Reset trim" and the retained interval, a mask list with "Add blur" / "Add
+solid cover" (then drag on the frame), "Remove", "Mask starts here" / "Mask
+ends here" and the blur strength, an output format choice (GIF/WebP drop
+audio; the capture rate cannot change), and Save copy… / Discard / Upload.
+Previews are rendered in the helper by the same `previewFrame` the CLI and
+MCP preview use, so timing and placement agree with the export.
+
+The window never owns the edit: each change is proposed to the resident as an
+`edit {revision, commands}` event, the resident applies it to the authoritative
+model (or refuses a stale or invalid proposal) and pushes the result back with
+the `setEdit` command, which is also sent after every CLI/MCP edit. "Save
+copy…" and "Upload" send `saveCopyRequested {path, revision}` and
+`uploadRequested {revision}`; the resident runs exactly the `saveCopy` and
+`upload` paths, so a stale revision or an animation over budget is refused
+and the window shows the resident's current edit again. Discard, closing the
+window and Escape during selection end the operation as `cancelled`. While an
+export runs the controls are disabled and the status shows progress; after a
+successful Upload the resident shuts the helper down with the window.
+
+### Helper events
+
+| Event | Meaning |
+| --- | --- |
+| `progress {durationUs, bytes, paused, encoder, audioEncoder}` / `{exportFraction}` | retained time and file size while recording; export progress |
+| `started`, `paused`, `resumed` | the bar's Record / Pause / Resume |
+| `stopped {durationUs, canvas, reason: user\|budget}` | the clip is finalized and under review |
+| `cancelled` | Cancel on the bar, Discard in the review, the window closed |
+| `configChanged {config}` | format/codec/audio changed on the bar (ready) or the format changed in review |
+| `edit {revision, commands}` | a review-window proposal at the revision it displayed |
+| `uploadRequested {revision}`, `saveCopyRequested {path, revision}` | the review's Upload / Save copy |
+| `failed {error}` | the pipeline or helper failed; the operation ends `failed` without an upload |
 
 ## Capture and export engine (X11)
 

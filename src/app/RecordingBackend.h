@@ -28,6 +28,8 @@ public:
     virtual void preview(const QString& id, const RecordingEdit&, const RecordingConfig&, qint64 timeUs, int maxEdge, Reply) = 0;
     // Writes the final file to outputPath: {bytes, durationUs}.
     virtual void exportClip(const QString& id, const RecordingEdit&, const RecordingConfig&, const QString& outputPath, Reply) = 0;
+    // Pushes the authoritative edit (and config) to the helper's review window.
+    virtual void setEdit(const QString&, const RecordingEdit&, const RecordingConfig&) {}
     // Releases helper/staging ownership for the id without an upload.
     virtual void discard(const QString& id) = 0;
 };

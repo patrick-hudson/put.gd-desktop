@@ -4,7 +4,7 @@ type: feat
 date: 2026-10-17
 issue: https://github.com/patrick-hudson/put.gd-desktop/issues/50
 execution: code
-status: design approved 2026-10-17; slices 1-3.1 implemented (contract, helper, X11 capture/export via CLI); overlays and review UI pending
+status: design approved 2026-10-17; slices 1-3.3 implemented (contract, helper, X11 capture/export, overlays, review window); Cinnamon run, Wayland and tray pending
 ---
 
 # Screen recording
@@ -272,4 +272,10 @@ builder, local build only as fallback.
    `capture_not_implemented`. AppImage builds without the helper for now.
 3. X11 slice: 3.1 (capture, pause/resume, preview, export, upload through the
    CLI) implemented and exercised on the Kubuntu Plasma X11 desktop for all
-   four formats; 3.2 overlays and 3.3 review window pending.
+   four formats; 3.2 (drag selection, ready ring, dimming, control bar with
+   helper events) implemented and exercised on the same desktop with saved
+   screenshots; 3.3 (review window with scrubber, trim, timed blur/solid
+   masks, format choice, Save copy and Upload, round-tripping edits through
+   the resident) implemented and exercised on the same desktop.
+4. System audio: captured and exported for MP4 (AAC) on the Plasma desktop;
+   speaker/headphone and synthetic A/V-sync checks pending.

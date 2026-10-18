@@ -54,6 +54,7 @@ private:
         qint64 duration = 0;
         RecordingEdit edit;
         QJsonObject progress;
+        std::optional<bool> overlayExcluded;
         QString staging;
         int exports = 0;
         quint64 generation = 0;

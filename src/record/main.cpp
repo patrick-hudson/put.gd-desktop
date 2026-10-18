@@ -4,18 +4,21 @@
 // live GStreamer capture, the private working clip, frame previews and the
 // FFmpeg export; only control metadata crosses the pipes.
 #include "MediaProbe.h"
+#include "ClipExporter.h"
 #include "DebugLog.h"
 #include "RecordSession.h"
 #include "app/UiControl.h"
 #include "core/BuildInfo.h"
 #include "ui/StdioDevice.h"
 #include <QApplication>
+#include <QImage>
 #include <QCoreApplication>
 #include <QGuiApplication>
 #include <gst/gst.h>
 #include <QJsonDocument>
 #include <QTimer>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <sys/resource.h>
 
@@ -33,7 +36,22 @@ int main(int argc, char** argv) {
         std::fputc('\n', stdout);
         return 0;
     }
+    if (argc == 5 && std::strcmp(argv[1], "--preview") == 0) {
+        // Lab diagnostic: render one preview frame of a working clip to a PNG.
+        QCoreApplication app(argc, argv);
+        QImage image;
+        qint64 actual = 0;
+        RecordingEdit edit;
+        RecordingConfig config;
+        const auto error = record::previewFrame(QString::fromLocal8Bit(argv[2]), edit, config, QString::fromLocal8Bit(argv[3]).toLongLong(), 1280, {}, image, &actual);
+        if (error) { std::fprintf(stderr, "%s: %s\n", qPrintable(error.code), qPrintable(error.message)); return 1; }
+        std::printf("frame %dx%d at %lld us\n", image.width(), image.height(), static_cast<long long>(actual));
+        return image.save(QString::fromLocal8Bit(argv[4]), "PNG") ? 0 : 3;
+    }
     if (argc != 1) return 2;
+    // Qt diagnostics go to the lab debug log when enabled; stderr is discarded by the resident.
+    if (!qEnvironmentVariableIsEmpty("PUTGD_RECORD_DEBUG_LOG")) qInstallMessageHandler([](QtMsgType type, const QMessageLogContext&, const QString& message) { record::debugLog(QStringLiteral("qt%1: %2").arg(int(type)).arg(message.left(300))); if (type == QtFatalMsg) std::abort(); });
+    record::installCrashLog();
     UiControlPipes handles;
     if (!handles.valid()) return 2;
     // Raster overlays and frame previews only: no desktop theme plugins.

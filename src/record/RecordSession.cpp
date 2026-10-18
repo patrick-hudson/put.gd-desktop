@@ -1,16 +1,21 @@
 #include "RecordSession.h"
+#include "DebugLog.h"
+#include "MediaProbe.h"
 #include <QBuffer>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QGuiApplication>
 #include <QJsonArray>
 #include <QPointer>
+#include <QScreen>
 #include <QTimer>
 #include <cmath>
 
 namespace putgd::record {
 namespace {
 QJsonArray sizeJson(const QSize& s) { return {s.width(), s.height()}; }
+QJsonArray rectJson(const QRect& r) { return {r.x(), r.y(), r.width(), r.height()}; }
 bool integer(const QJsonValue& value, qint64 min, qint64 max, qint64* out) {
     if (!value.isDouble()) return false;
     const double number = value.toDouble();
@@ -26,22 +31,40 @@ QStringList available(const QStringList& names) {
     for (const auto& name : names) if (GstElementFactory* f = gst_element_factory_find(name.toUtf8().constData())) { gst_object_unref(f); result.append(name); }
     return result;
 }
+QRect desktopRoot() {
+    QRect desktop;
+    for (QScreen* screen : QGuiApplication::screens()) {
+        const qreal dpr = screen->devicePixelRatio();
+        desktop |= QRect(QPoint(screen->geometry().topLeft()) * dpr, screen->geometry().size() * dpr);
+    }
+    return desktop;
+}
 }
 
-RecordSession::RecordSession(QObject* parent) : QObject(parent), pipeline_(this), progress_(this) {
+RecordSession::RecordSession(QObject* parent) : QObject(parent), pipeline_(this), progress_(this), barTimer_(this), bounds_(this) {
     progress_.setInterval(1000);
     connect(&progress_, &QTimer::timeout, this, &RecordSession::emitProgress);
+    barTimer_.setInterval(200);
+    connect(&barTimer_, &QTimer::timeout, this, [this] { if (bar_ && pipeline_.running()) bar_->setRetained(pipeline_.retainedUs()); });
     connect(&pipeline_, &RecordingPipeline::failed, this, [this](Error error) {
         progress_.stop();
+        barTimer_.stop();
+        bounds_.hideAll();
+        if (bar_) bar_->hide();
         emit event({{"event", "failed"}, {"error", error.toJson()}});
     });
     connect(&pipeline_, &RecordingPipeline::budgetReached, this, [this] {
         // The admitted byte budget is nearly spent: finish the clip and open review.
+        showBar("stopping");
         pipeline_.stop([this](Error error, qint64 durationUs) {
             progress_.stop();
+            barTimer_.stop();
+            bounds_.hideAll();
+            if (bar_) bar_->hide();
             if (error || durationUs < 1) { emit event({{"event", "failed"}, {"error", (error ? error : Error{"recording_failed", "The clip could not be finalized", {}}).toJson()}}); return; }
             durationUs_ = durationUs;
             recorded_ = true;
+            openReview();
             emit event({{"event", "stopped"}, {"durationUs", double(durationUs)}, {"canvas", sizeJson(resolved_.canvas)}, {"reason", "budget"}});
         });
     });
@@ -50,29 +73,60 @@ RecordSession::~RecordSession() {
     if (exportCancel_) exportCancel_->store(true);
     if (exportThread_) { exportThread_->wait(); delete exportThread_; }
     pipeline_.cancel();
+    delete review_;
+    delete bar_;
+    delete selection_;
+}
+QString RecordSession::targetLabel() const {
+    if (target_.kind == "region") return QStringLiteral("Region %1×%2").arg(resolved_.canvas.width()).arg(resolved_.canvas.height());
+    if (target_.kind == "monitor") return QStringLiteral("Monitor %1").arg(target_.identity);
+    if (target_.kind == "window") return QStringLiteral("Window %1×%2").arg(resolved_.canvas.width()).arg(resolved_.canvas.height());
+    return QStringLiteral("Whole desktop");
+}
+void RecordSession::showBar(const QString& state) {
+    if (!bar_) return;
+    bar_->setState(state);
+    bar_->show();
+    bar_->raise();
 }
 void RecordSession::command(const QString& command, const QJsonObject& params, Reply reply) {
     if (command == "prepare") { prepare(params, std::move(reply)); return; }
     if (!prepared_) { reply({"recording_state", "The helper has no prepared session", {}}, {}); return; }
     if (command == "start") { start(std::move(reply)); return; }
-    if (command == "pause") { if (auto e = pipeline_.pause()) reply(e, {}); else { emitProgress(); reply({}, pipeline_.status()); } return; }
-    if (command == "resume") { if (auto e = pipeline_.resume()) reply(e, {}); else { emitProgress(); reply({}, pipeline_.status()); } return; }
+    if (command == "pause") { if (auto e = pipeline_.pause()) reply(e, {}); else { showBar("paused"); emitProgress(); reply({}, pipeline_.status()); } return; }
+    if (command == "resume") { if (auto e = pipeline_.resume()) reply(e, {}); else { showBar("recording"); emitProgress(); reply({}, pipeline_.status()); } return; }
     if (command == "stop") { stop(std::move(reply)); return; }
-    if (command == "cancel") {
-        if (exportCancel_) exportCancel_->store(true);
-        progress_.stop();
-        pipeline_.cancel();
-        QFile::remove(workingClip_);
+    if (command == "cancel") { cancelLocal(); reply({}, {}); return; }
+    if (command == "setEdit") {
+        RecordingEdit edit;
+        if (!parseEdit(params["edit"].toObject(), edit)) { reply({"invalid_request", "Invalid edit", {}}, {}); return; }
+        auto configJson = params["config"].toObject();
+        for (const auto* key : {"mime", "budgetBytes"}) configJson.remove(key);
+        RecordingConfig config;
+        if (!configJson.isEmpty() && !recording::parseConfig(configJson, config)) { config.budgetBytes = config_.budgetBytes; config_ = config; if (review_) review_->setConfig(config_); }
+        if (review_) review_->setEdit(edit);
         reply({}, {});
         return;
     }
-    if (command == "raise" || command == "overlay") { reply({}, {}); return; }
+    if (command == "raise") { if (bar_) { bar_->show(); bar_->raise(); } reply({}, {}); return; }
+    if (command == "overlay") { if (bar_) bar_->setVisible(params["visible"].toBool(true)); reply({}, {{"visible", bar_ ? bar_->isVisible() : false}}); return; }
     if (command == "preview") { preview(params, std::move(reply)); return; }
     if (command == "export") { exportClip(params, std::move(reply)); return; }
     reply({"unknown_method", "Unknown recording helper command", {}}, {});
 }
+void RecordSession::cancelLocal() {
+    if (exportCancel_) exportCancel_->store(true);
+    progress_.stop();
+    barTimer_.stop();
+    if (selection_) { selection_->disconnect(this); selection_->cancel(); selection_->deleteLater(); selection_ = nullptr; }
+    pipeline_.cancel();
+    bounds_.hideAll();
+    if (bar_) bar_->hide();
+    if (review_) review_->hide();
+    QFile::remove(workingClip_);
+}
 void RecordSession::prepare(const QJsonObject& params, Reply reply) {
-    if (prepared_) { reply({"recording_state", "The helper already has a session", {}}, {}); return; }
+    if (prepared_ || selection_) { reply({"recording_state", "The helper already has a session", {}}, {}); return; }
     RecordingTarget target;
     RecordingConfig config;
     if (auto e = recording::parseTarget(params["target"], target)) { reply(e, {}); return; }
@@ -84,19 +138,81 @@ void RecordSession::prepare(const QJsonObject& params, Reply reply) {
     config.budgetBytes = budget;
     const auto staging = params["staging"].toString();
     if (staging.isEmpty() || !QFileInfo(staging).isDir()) { reply({"recording_io", "The staging directory is missing", {}}, {}); return; }
-    ResolvedTarget resolved;
-    if (auto e = resolveX11Target(target, resolved)) { reply(e, {}); return; }
-    if (target.kind == "region" && resolved.rect.size() != target.rect.size()) {
-        // Even dimensions only: the recorded area shrinks by at most one pixel per side.
-    }
     id_ = params["id"].toString();
     target_ = target;
     config_ = config;
-    resolved_ = resolved;
     staging_ = staging;
     workingClip_ = staging + "/working.mkv";
+    capabilities_ = probeMedia();
+    if (target_.kind == "region" && target_.rect.isEmpty()) {
+        // Drag release keeps the bounds and shows the controls; nothing records yet.
+        selection_ = new SelectionOverlay(this);
+        QPointer<RecordSession> guard(this);
+        connect(selection_, &SelectionOverlay::selected, this, [guard, reply](const QRect& root) {
+            if (!guard) return;
+            guard->selection_->deleteLater();
+            guard->selection_ = nullptr;
+            guard->target_.rect = root;
+            guard->finishPrepare(reply);
+        });
+        connect(selection_, &SelectionOverlay::cancelled, this, [guard, reply](const Error& error) {
+            if (!guard) return;
+            guard->selection_->deleteLater();
+            guard->selection_ = nullptr;
+            reply(error.code == "cancelled" ? Error{"cancelled", "Region selection cancelled; nothing was recorded", {}} : error, {});
+        });
+        selection_->start();
+        return;
+    }
+    finishPrepare(std::move(reply));
+}
+void RecordSession::finishPrepare(Reply reply) {
+    ResolvedTarget resolved;
+    if (auto e = resolveX11Target(target_, resolved)) { reply(e, {}); return; }
+    resolved_ = resolved;
     prepared_ = true;
-    reply({}, {{"canvas", sizeJson(resolved_.canvas)}, {"rect", QJsonArray{resolved_.rect.x(), resolved_.rect.y(), resolved_.rect.width(), resolved_.rect.height()}}, {"window", double(resolved_.window)}});
+    if (target_.kind != "desktop") bounds_.showBounds(resolved_.rect);
+    ControlBar::Options options;
+    options.targetLabel = targetLabel();
+    for (const auto& value : capabilities_["formats"].toArray()) options.formats.append(value.toString());
+    options.codecs = capabilities_["codecs"].toObject();
+    options.audioSupported = capabilities_["audio"].toObject()["system"].toBool();
+    delete bar_;
+    bar_ = new ControlBar(options, config_);
+    QPointer<RecordSession> guard(this);
+    connect(bar_, &ControlBar::configChanged, this, [guard](const RecordingConfig& config) {
+        if (!guard || guard->pipeline_.running() || guard->recorded_) return;
+        const auto budget = guard->config_.budgetBytes;
+        guard->config_ = config;
+        guard->config_.budgetBytes = budget;
+        emit guard->event({{"event", "configChanged"}, {"config", config.toJson()}});
+    });
+    connect(bar_, &ControlBar::recordRequested, this, [guard] {
+        if (!guard || guard->pipeline_.running() || guard->recorded_) return;
+        guard->start([guard](Error error, QJsonObject status) {
+            if (!guard) return;
+            if (error) { emit guard->event({{"event", "failed"}, {"error", error.toJson()}}); return; }
+            status["event"] = "started";
+            emit guard->event(status);
+        });
+    });
+    connect(bar_, &ControlBar::pauseRequested, this, [guard] { if (guard && !guard->pipeline_.pause()) { guard->showBar("paused"); auto s = guard->pipeline_.status(); s["event"] = "paused"; emit guard->event(s); } });
+    connect(bar_, &ControlBar::resumeRequested, this, [guard] { if (guard && !guard->pipeline_.resume()) { guard->showBar("recording"); auto s = guard->pipeline_.status(); s["event"] = "resumed"; emit guard->event(s); } });
+    connect(bar_, &ControlBar::stopRequested, this, [guard] {
+        if (!guard || !guard->pipeline_.running()) return;
+        guard->stop([guard](Error error, QJsonObject result) {
+            if (!guard) return;
+            if (error) { emit guard->event({{"event", "failed"}, {"error", error.toJson()}}); return; }
+            result["event"] = "stopped";
+            result["reason"] = "user";
+            emit guard->event(result);
+        });
+    });
+    connect(bar_, &ControlBar::cancelRequested, this, [guard] { if (!guard) return; guard->cancelLocal(); emit guard->event({{"event", "cancelled"}}); });
+    overlayExcluded_ = bar_->placeAround(target_.kind == "desktop" ? QRect() : resolved_.rect, desktopRoot());
+    if (target_.kind == "desktop" || target_.kind == "monitor") overlayExcluded_ = false;
+    showBar("ready");
+    reply({}, {{"canvas", sizeJson(resolved_.canvas)}, {"rect", rectJson(resolved_.rect)}, {"window", double(resolved_.window)}, {"overlayExcluded", overlayExcluded_}});
 }
 void RecordSession::start(Reply reply) {
     if (pipeline_.running() || recorded_) { reply({"recording_state", "The session already recorded", {}}, {}); return; }
@@ -112,23 +228,59 @@ void RecordSession::start(Reply reply) {
     options.audioEncoders = available(audioEncoders);
     if (options.encoders.isEmpty()) { reply({"recording_unsupported", "No H.264 encoder is installed", {}}, {}); return; }
     if (auto e = pipeline_.start(options)) { reply(e, {}); return; }
+    bounds_.setDimmed(true);
+    showBar("recording");
     progress_.start();
+    barTimer_.start();
     reply({}, pipeline_.status());
 }
 void RecordSession::stop(Reply reply) {
     if (!pipeline_.running()) { reply({"recording_state", "Nothing is recording", {}}, {}); return; }
+    showBar("stopping");
     QPointer<RecordSession> guard(this);
     pipeline_.stop([guard, reply](Error error, qint64 durationUs) {
         if (!guard) return;
         guard->progress_.stop();
+        guard->barTimer_.stop();
+        guard->bounds_.hideAll();
+        if (guard->bar_) guard->bar_->hide();
         if (error) { reply(error, {}); return; }
         if (durationUs < 1 || !QFileInfo(guard->workingClip_).isFile()) { reply({"recording_failed", "The recording produced no retained frames", {}}, {}); return; }
         guard->durationUs_ = durationUs;
         guard->recorded_ = true;
         // Lab diagnostics only: keep a private copy of the working clip for inspection.
         if (const auto keep = qEnvironmentVariable("PUTGD_RECORD_KEEP_WORKING"); !keep.isEmpty()) QFile::copy(guard->workingClip_, keep + "/" + guard->id_ + ".mkv");
+        guard->openReview();
         reply({}, {{"durationUs", double(durationUs)}, {"canvas", sizeJson(guard->resolved_.canvas)}, {"bytes", double(QFileInfo(guard->workingClip_).size())}, {"encoder", guard->pipeline_.encoder()}, {"audioEncoder", guard->pipeline_.audioEncoder()}});
     });
+}
+void RecordSession::openReview() {
+    debugLog("review: open");
+    delete review_;
+    ReviewWindow::Options options;
+    options.workingClip = workingClip_;
+    options.durationUs = durationUs_;
+    options.canvas = resolved_.canvas;
+    for (const auto& value : capabilities_["formats"].toArray()) options.formats.append(value.toString());
+    options.codecs = capabilities_["codecs"].toObject();
+    options.audioRecorded = config_.audio.system && !pipeline_.audioEncoder().isEmpty();
+    review_ = new ReviewWindow(options, config_);
+    QPointer<RecordSession> guard(this);
+    connect(review_, &ReviewWindow::editProposed, this, [guard](quint64 revision, const QJsonArray& commands) { if (guard) emit guard->event({{"event", "edit"}, {"revision", double(revision)}, {"commands", commands}}); });
+    connect(review_, &ReviewWindow::configChanged, this, [guard](const RecordingConfig& config) {
+        if (!guard) return;
+        const auto budget = guard->config_.budgetBytes;
+        guard->config_ = config;
+        guard->config_.budgetBytes = budget;
+        emit guard->event({{"event", "configChanged"}, {"config", config.toJson()}});
+    });
+    connect(review_, &ReviewWindow::uploadRequested, this, [guard](quint64 revision) { if (guard) emit guard->event({{"event", "uploadRequested"}, {"revision", double(revision)}}); });
+    connect(review_, &ReviewWindow::saveCopyRequested, this, [guard](const QString& path, quint64 revision) { if (guard) emit guard->event({{"event", "saveCopyRequested"}, {"path", path}, {"revision", double(revision)}}); });
+    connect(review_, &ReviewWindow::cancelRequested, this, [guard] { if (!guard) return; guard->cancelLocal(); emit guard->event({{"event", "cancelled"}}); });
+    review_->show();
+    review_->raise();
+    review_->activateWindow();
+    debugLog("review: shown");
 }
 void RecordSession::emitProgress() {
     if (!pipeline_.running()) return;
@@ -198,10 +350,12 @@ void RecordSession::exportClip(const QJsonObject& params, Reply reply) {
         });
     });
     exportThread_ = thread;
+    if (review_) review_->setExporting(true, QStringLiteral("Exporting %1…").arg(request.config.format.toUpper()));
     connect(thread, &QThread::finished, this, [this, thread, result, error, request, reply] {
         thread->deleteLater();
         if (exportThread_ == thread) exportThread_ = nullptr;
         exportCancel_.reset();
+        if (review_) review_->setExporting(false, *error ? QStringLiteral("Export failed: %1").arg(error->message) : QStringLiteral("Exported %1 (%2 KiB)").arg(request.config.format.toUpper()).arg(result->bytes / 1024));
         if (*error) { QFile::remove(request.output); reply(*error, {}); return; }
         reply({}, {{"bytes", double(result->bytes)}, {"durationUs", double(result->durationUs)}, {"frames", result->frames}, {"videoEncoder", result->videoEncoder}, {"audioEncoder", result->audioEncoder}, {"size", sizeJson(result->size)}});
     });
