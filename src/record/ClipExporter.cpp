@@ -82,7 +82,12 @@ struct Input {
         videoIndex = av_find_best_stream(format, AVMEDIA_TYPE_VIDEO, -1, -1, &decoder, 0);
         if (videoIndex < 0 || !decoder) return fail("recording_export_failed", "The working clip has no video");
         video = avcodec_alloc_context3(decoder);
-        if (!video || avcodec_parameters_to_context(video, format->streams[videoIndex]->codecpar) < 0 || avcodec_open2(video, decoder, nullptr) < 0) return fail("recording_export_failed", "Cannot decode the working clip");
+        if (!video || avcodec_parameters_to_context(video, format->streams[videoIndex]->codecpar) < 0) return fail("recording_export_failed", "Cannot decode the working clip");
+        // libavcodec decodes on one thread unless told otherwise; a 3 MP H.264
+        // clip then feeds even a GPU encoder at well under real time.
+        video->thread_count = 0;
+        video->thread_type = FF_THREAD_FRAME | FF_THREAD_SLICE;
+        if (avcodec_open2(video, decoder, nullptr) < 0) return fail("recording_export_failed", "Cannot decode the working clip");
         if (wantAudio) {
             const AVCodec* audioDecoder = nullptr;
             audioIndex = av_find_best_stream(format, AVMEDIA_TYPE_AUDIO, -1, -1, &audioDecoder, 0);
@@ -181,28 +186,47 @@ struct Encoder {
     QString name;
     ~Encoder() { if (context) avcodec_free_context(&context); }
 };
+// Encoder candidates in preference order. NVENC runs on an NVIDIA GPU and
+// takes system-memory frames, so it is tried first where libavcodec knows it;
+// opening fails without the driver and the next candidate is used. The lab
+// override PUTGD_RECORD_EXPORT_ENCODERS (comma list) replaces the order.
+QStringList videoEncoderCandidates(const RecordingConfig& config) {
+    const auto override = qEnvironmentVariable("PUTGD_RECORD_EXPORT_ENCODERS");
+    if (!override.isEmpty()) return override.split(',', Qt::SkipEmptyParts);
+    if (config.format == "mp4" && config.codec == "h264") return {"h264_nvenc", "libx264", "libopenh264"};
+    if (config.format == "mp4" && config.codec == "h265") return {"hevc_nvenc", "libx265"};
+    if (config.format == "webm") return {"libvpx-vp9"};
+    if (config.format == "gif") return {"gif"};
+    return {"libwebp_anim"};
+}
 Error openVideoEncoder(AVFormatContext* output, const RecordingConfig& config, const QSize& size, int fps, AVPixelFormat format, AVRational timeBase, Encoder& out) {
-    QStringList candidates;
-    if (config.format == "mp4" && config.codec == "h264") candidates = {"libx264", "libopenh264"};
-    else if (config.format == "mp4" && config.codec == "h265") candidates = {"libx265"};
-    else if (config.format == "webm") candidates = {"libvpx-vp9"};
-    else if (config.format == "gif") candidates = {"gif"};
-    else candidates = {"libwebp_anim"};
-    const AVCodec* codec = nullptr;
-    for (const auto& name : candidates) if ((codec = avcodec_find_encoder_by_name(name.toUtf8().constData()))) { out.name = name; break; }
-    if (!codec) return {"recording_unsupported", "No encoder is available for this format", {{"format", config.format}, {"codec", config.codec}}};
-    out.context = avcodec_alloc_context3(codec);
+    Error lastError{"recording_unsupported", "No encoder is available for this format", {{"format", config.format}, {"codec", config.codec}}};
+    for (const auto& name : videoEncoderCandidates(config)) {
+        const AVCodec* codec = avcodec_find_encoder_by_name(name.toUtf8().constData());
+        if (!codec) continue;
+        if (out.context) avcodec_free_context(&out.context);
+        out.name = name;
+        out.context = avcodec_alloc_context3(codec);
+        auto* c = out.context;
+        c->width = size.width(); c->height = size.height(); c->pix_fmt = format; c->time_base = timeBase; c->framerate = {fps, 1};
+        c->gop_size = std::max(1, fps * 2); c->max_b_frames = 0;
+        if (output->oformat->flags & AVFMT_GLOBALHEADER) c->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+        // Apple players need the hvc1 sample entry for HEVC in MP4.
+        if (config.format == "mp4" && config.codec == "h265") c->codec_tag = MKTAG('h', 'v', 'c', '1');
+        if (name == "libx264") { av_opt_set(c->priv_data, "preset", "veryfast", 0); av_opt_set(c->priv_data, "crf", "23", 0); av_opt_set(c->priv_data, "profile", "high", 0); }
+        else if (name == "libopenh264") { c->bit_rate = qint64(std::clamp(double(size.width()) * size.height() * fps * 0.1, 1500000.0, 20000000.0)); av_opt_set(c->priv_data, "profile", "constrained_baseline", 0); }
+        else if (name == "libx265") { av_opt_set(c->priv_data, "preset", "faster", 0); av_opt_set(c->priv_data, "crf", "26", 0); av_opt_set(c->priv_data, "x265-params", "log-level=none", 0); }
+        else if (name == "h264_nvenc" || name == "hevc_nvenc") { c->bit_rate = 0; av_opt_set(c->priv_data, "preset", "p4", 0); av_opt_set(c->priv_data, "tune", "hq", 0); av_opt_set(c->priv_data, "rc", "vbr", 0); av_opt_set(c->priv_data, "cq", name == "h264_nvenc" ? "26" : "28", 0); av_opt_set(c->priv_data, "b_ref_mode", "disabled", 0); }
+        else if (name == "libvpx-vp9") { c->bit_rate = 0; av_opt_set(c->priv_data, "crf", "32", 0); av_opt_set(c->priv_data, "row-mt", "1", 0); av_opt_set(c->priv_data, "cpu-used", "5", 0); av_opt_set(c->priv_data, "deadline", "realtime", 0); c->thread_count = 0; }
+        else if (name == "libwebp_anim") { av_opt_set(c->priv_data, "quality", "70", 0); av_opt_set(c->priv_data, "lossless", "0", 0); }
+        const int rc = avcodec_open2(c, codec, nullptr);
+        if (rc == 0) break;
+        lastError = fail("recording_export_failed", "Cannot open the video encoder " + name, rc);
+        avcodec_free_context(&out.context);
+        out.name.clear();
+    }
+    if (!out.context) return lastError;
     auto* c = out.context;
-    c->width = size.width(); c->height = size.height(); c->pix_fmt = format; c->time_base = timeBase; c->framerate = {fps, 1};
-    c->gop_size = std::max(1, fps * 2); c->max_b_frames = 0;
-    if (output->oformat->flags & AVFMT_GLOBALHEADER) c->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
-    if (out.name == "libx264") { av_opt_set(c->priv_data, "preset", "fast", 0); av_opt_set(c->priv_data, "crf", "23", 0); av_opt_set(c->priv_data, "profile", "high", 0); }
-    else if (out.name == "libopenh264") { c->bit_rate = qint64(std::clamp(double(size.width()) * size.height() * fps * 0.1, 1500000.0, 20000000.0)); av_opt_set(c->priv_data, "profile", "constrained_baseline", 0); }
-    else if (out.name == "libx265") { av_opt_set(c->priv_data, "preset", "fast", 0); av_opt_set(c->priv_data, "crf", "26", 0); av_opt_set(c->priv_data, "x265-params", "log-level=none", 0); }
-    else if (out.name == "libvpx-vp9") { c->bit_rate = 0; av_opt_set(c->priv_data, "crf", "32", 0); av_opt_set(c->priv_data, "row-mt", "1", 0); av_opt_set(c->priv_data, "cpu-used", "4", 0); av_opt_set(c->priv_data, "deadline", "good", 0); c->thread_count = 0; }
-    else if (out.name == "libwebp_anim") { av_opt_set(c->priv_data, "quality", "70", 0); av_opt_set(c->priv_data, "lossless", "0", 0); }
-    const int rc = avcodec_open2(c, codec, nullptr);
-    if (rc < 0) return fail("recording_export_failed", "Cannot open the video encoder " + out.name, rc);
     out.stream = avformat_new_stream(output, nullptr);
     if (!out.stream || avcodec_parameters_from_context(out.stream->codecpar, c) < 0) return fail("recording_export_failed", "Cannot create the video stream");
     out.stream->time_base = c->time_base;
@@ -503,6 +527,14 @@ QImage fitPreview(const QImage& image, int maxEdge) {
     const auto size = recording::outputSize(image.size(), maxEdge);
     return size == image.size() ? image : image.scaled(size, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
 }
+}
+Error probeClip(const QString& path, qint64& durationUs, QSize& canvas) {
+    Input input;
+    if (auto e = input.open(path, false)) return e;
+    const auto* stream = input.format->streams[input.videoIndex];
+    canvas = QSize(stream->codecpar->width, stream->codecpar->height);
+    durationUs = input.format->duration > 0 ? input.format->duration : (stream->duration > 0 ? av_rescale_q(stream->duration, stream->time_base, microseconds) : 0);
+    return {};
 }
 Error previewFrame(const QString& path, const RecordingEdit& edit, const RecordingConfig& config, qint64 timeUs, int maxEdge, const QSize& canvas, QImage& out, qint64* actualTimeUs) {
     Input input;

@@ -204,7 +204,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     for (const auto& format : options.formats) {
         const auto codecs = options.codecs[format].toArray();
         if (codecs.isEmpty()) format_->addItem(formatLabel(format, {}), QStringList{format, QString()});
-        for (const auto& codec : codecs) format_->addItem(formatLabel(format, codec.toString()), QStringList{format, codec.toString()});
+        for (const auto& codec : codecs) { format_->addItem(formatLabel(format, codec.toString()), QStringList{format, codec.toString()}); format_->setItemData(format_->count() - 1, formatHint(format, codec.toString()), Qt::ToolTipRole); }
     }
     status_ = new QLabel(this);
     status_->setObjectName("status");
@@ -345,7 +345,7 @@ void ReviewWindow::refreshLabels() {
     strength_->setEnabled(mask && mask->kind == "blur");
     if (mask) { strength_->blockSignals(true); strength_->setValue(mask->strength); strength_->blockSignals(false); maskTimes_->setText(QStringLiteral("%1 – %2").arg(timeText(mask->start), timeText(mask->end))); }
     else maskTimes_->setText("Select a mask to set its times");
-    if (!exporting_) status_->setText(config_.silent() ? QStringLiteral("%1 is silent; the export has no audio").arg(config_.format.toUpper()) : options_.audioRecorded ? QStringLiteral("System audio recorded") : QStringLiteral("No audio"));
+    if (!exporting_) status_->setText((config_.silent() ? QStringLiteral("%1 is silent; the export has no audio").arg(config_.format.toUpper()) : options_.audioRecorded ? QStringLiteral("System audio recorded") : QStringLiteral("No audio")) + (config_.format == "mp4" && config_.codec == "h265" ? QStringLiteral(" · H.265 does not play in Firefox or Chrome on Linux") : QString{}));
 }
 void ReviewWindow::refreshFrame() {
     QImage image;

@@ -63,6 +63,13 @@ QPushButton:disabled { color: #6f7685; background: #1c1f26; }
 )QSS";
 }
 
+QString formatHint(const QString& format, const QString& codec) {
+    if (format == "mp4" && codec == "h265") return QStringLiteral("Smaller files, but Firefox and Chrome on Linux cannot play H.265 links; Safari and Edge can. Choose H.264 for a link anyone can open.");
+    if (format == "mp4") return QStringLiteral("Plays everywhere.");
+    if (format == "webm") return QStringLiteral("VP9 with Opus audio; plays in browsers except older Safari.");
+    if (format == "gif") return QStringLiteral("Silent animation, at most 60 s and 1280 px.");
+    return QStringLiteral("Silent animated WebP, at most 60 s and 1280 px.");
+}
 QString formatLabel(const QString& format, const QString& codec) {
     if (format == "mp4") return codec == "h265" ? QStringLiteral("MP4 (H.265)") : QStringLiteral("MP4 (H.264)");
     if (format == "webm") return QStringLiteral("WebM (VP9)");
@@ -212,7 +219,7 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
     for (const auto& format : options.formats) {
         const auto codecs = options.codecs[format].toArray();
         if (codecs.isEmpty()) format_->addItem(formatLabel(format, {}), QStringList{format, QString()});
-        for (const auto& codec : codecs) format_->addItem(formatLabel(format, codec.toString()), QStringList{format, codec.toString()});
+        for (const auto& codec : codecs) { format_->addItem(formatLabel(format, codec.toString()), QStringList{format, codec.toString()}); format_->setItemData(format_->count() - 1, formatHint(format, codec.toString()), Qt::ToolTipRole); }
     }
     for (int i = 0; i < format_->count(); ++i) { const auto value = format_->itemData(i).toStringList(); if (value.size() == 2 && value[0] == config.format && value[1] == config.codec) format_->setCurrentIndex(i); }
     record_ = new QPushButton("Record", this); record_->setObjectName("record");

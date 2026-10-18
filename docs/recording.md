@@ -273,10 +273,25 @@ Export runs in the helper with the FFmpeg libraries on the working clip:
 `trim` in stream ticks, `setpts` rebase, RGB conversion, per-mask
 `crop→boxblur→overlay` or `drawbox` enabled on `gte(t,a)*lt(t,b)` in output
 time, optional `scale` to `maxEdge`, `fps` (at most 15 for animations), then
-`libx264` (`libopenh264` fallback) for MP4/H.264, `libx265` for H.265,
-`libvpx-vp9` for WebM, a two-pass `palettegen`/`paletteuse` GIF, or
-`libwebp_anim`. Audio is trimmed with `atrim` in seconds and encoded as AAC
-(MP4) or Opus (WebM). MP4 output is written with `faststart`. Each decode pass
+the first encoder that opens from a preference list: MP4/H.264 tries
+`h264_nvenc` (NVIDIA GPU, system-memory frames), then `libx264` (`veryfast`,
+CRF 23) and `libopenh264`; H.265 tries `hevc_nvenc`, then `libx265`
+(`faster`, CRF 26); WebM uses `libvpx-vp9` (`realtime` deadline, `cpu-used`
+5, row threads); GIF is a two-pass `palettegen`/`paletteuse`; WebP is
+`libwebp_anim`. NVENC is opened with `p4`/`hq`, VBR and a constant quality
+target (26 for H.264, 28 for HEVC); opening fails without the driver and the
+next candidate is used, so other machines keep the CPU path. HEVC in MP4 is
+tagged `hvc1` for Apple players. The working clip is decoded with frame and
+slice threads on every core. Audio is trimmed with `atrim` in seconds and
+encoded as AAC (MP4) or Opus (WebM). MP4 output is written with `faststart`.
+
+On the workstation (i9-9880H, Quadro T2000, 60 s 2238×1318 clip with audio,
+`putgd-record --export`): H.264 and H.265 on NVENC export at about 3.9× real
+time (15.6 s), `libx264` at 2.1×, VP9 at 1.7×, a 10 s GIF at 0.9×; `libx265`
+stays below real time (0.68× at `faster`), which is why the GPU path comes
+first. H.265 links do not play in Firefox or Chrome on Linux; both format
+menus say so in the item tooltip and the review status, and the default
+stays H.264. Each decode pass
 opens its own demuxer and verifies that a backward seek did not overshoot the
 trim start (Matroska clips whose first cluster has no cue point otherwise
 start at the next keyframe). Preview decodes the frame at or after the
@@ -284,8 +299,13 @@ requested time and applies the masks active at that source time with a box
 blur or a solid fill, so preview and export agree on timing and placement.
 
 Lab diagnostics: `PUTGD_RECORD_DEBUG_LOG=<file>` appends pipeline and command
-traces, `PUTGD_RECORD_KEEP_WORKING=<dir>` keeps a copy of each working clip.
-Neither is read by the resident and neither carries frames.
+traces, `PUTGD_RECORD_KEEP_WORKING=<dir>` keeps a copy of each working clip,
+`putgd-record --export CLIP OUT.ext [--codec h264|h265|vp9] [--max-edge N]
+[--trim startUs endUs] [--no-audio]` exports a kept clip the way the review
+does and prints the encoder, frame count, bytes and wall time, and
+`PUTGD_RECORD_EXPORT_ENCODERS=<comma list>` replaces the encoder preference
+order for such timing runs. None is read by the resident and none carries
+frames.
 
 ## Agent and MCP control
 

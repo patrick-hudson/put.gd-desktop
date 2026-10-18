@@ -32,6 +32,8 @@ Error exportClip(const ExportRequest&, ExportResult&, const std::atomic_bool& ca
 // One decoded frame at clip time with the masks active at that time applied,
 // scaled so the long edge is at most maxEdge. Trimmed-out times still render.
 Error previewFrame(const QString& input, const RecordingEdit&, const RecordingConfig&, qint64 timeUs, int maxEdge, const QSize& canvas, QImage& out, qint64* actualTimeUs = nullptr);
+// The working clip's duration and frame size (lab diagnostics and tests).
+Error probeClip(const QString& input, qint64& durationUs, QSize& canvas);
 // Sequential frames for review playback: opened at a clip time, each call
 // returns the next decoded frame at or after it with the masks active at its
 // time applied and the long edge scaled to at most maxEdge. Decoding runs on

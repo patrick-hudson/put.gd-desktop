@@ -94,4 +94,6 @@ private:
     QPushButton *record_ = nullptr, *pause_ = nullptr, *resume_ = nullptr, *stop_ = nullptr, *cancel_ = nullptr;
 };
 QString formatLabel(const QString& format, const QString& codec);
+// Why to pick this output; shown as the combo item tooltip and in the review status.
+QString formatHint(const QString& format, const QString& codec);
 }

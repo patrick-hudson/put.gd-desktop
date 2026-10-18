@@ -13,6 +13,8 @@
 #include <QApplication>
 #include <QImage>
 #include <QCoreApplication>
+#include <atomic>
+#include <QElapsedTimer>
 #include <QGuiApplication>
 #include <gst/gst.h>
 #include <QJsonDocument>
@@ -47,6 +49,37 @@ int main(int argc, char** argv) {
         if (error) { std::fprintf(stderr, "%s: %s\n", qPrintable(error.code), qPrintable(error.message)); return 1; }
         std::printf("frame %dx%d at %lld us\n", image.width(), image.height(), static_cast<long long>(actual));
         return image.save(QString::fromLocal8Bit(argv[4]), "PNG") ? 0 : 3;
+    }
+    if (argc >= 4 && std::strcmp(argv[1], "--export") == 0) {
+        // Lab diagnostic: export a working clip the way the review does and
+        // report the wall time, so encoder settings can be compared per machine.
+        QCoreApplication app(argc, argv);
+        record::ExportRequest request;
+        request.input = QString::fromLocal8Bit(argv[2]);
+        request.output = QString::fromLocal8Bit(argv[3]);
+        const auto extension = request.output.section('.', -1).toLower();
+        request.config.format = extension == "mkv" ? "mp4" : extension;
+        request.config.audio.system = true;
+        for (int i = 4; i < argc; ++i) {
+            const QString arg = QString::fromLocal8Bit(argv[i]);
+            if (arg == "--codec" && i + 1 < argc) request.config.codec = QString::fromLocal8Bit(argv[++i]);
+            else if (arg == "--max-edge" && i + 1 < argc) request.config.maxEdge = std::atoi(argv[++i]);
+            else if (arg == "--trim" && i + 2 < argc) { request.edit.trimStart = std::atoll(argv[++i]); request.edit.trimEnd = std::atoll(argv[++i]); }
+            else if (arg == "--no-audio") request.config.audio.system = false;
+            else { std::fprintf(stderr, "unknown export option %s\n", argv[i]); return 2; }
+        }
+        if (request.config.codec.isEmpty()) request.config.codec = request.config.format == "mp4" ? "h264" : request.config.format == "webm" ? "vp9" : QString{};
+        if (request.config.animation()) request.config.audio.system = false;
+        if (auto error = record::probeClip(request.input, request.durationUs, request.canvas)) { std::fprintf(stderr, "%s: %s\n", qPrintable(error.code), qPrintable(error.message)); return 1; }
+        record::ExportResult result;
+        std::atomic_bool cancelled{false};
+        QElapsedTimer clock;
+        clock.start();
+        const auto error = record::exportClip(request, result, cancelled);
+        const auto ms = clock.elapsed();
+        if (error) { std::fprintf(stderr, "%s: %s\n", qPrintable(error.code), qPrintable(error.message)); return 1; }
+        std::printf("encoder=%s audio=%s frames=%d size=%dx%d durationMs=%lld bytes=%lld wallMs=%lld speed=%.2fx\n", qPrintable(result.videoEncoder), qPrintable(result.audioEncoder.isEmpty() ? QStringLiteral("none") : result.audioEncoder), result.frames, result.size.width(), result.size.height(), static_cast<long long>(result.durationUs / 1000), static_cast<long long>(result.bytes), static_cast<long long>(ms), ms > 0 ? double(result.durationUs) / 1000.0 / double(ms) : 0.0);
+        return 0;
     }
     if (argc != 1) return 2;
     // Qt diagnostics go to the lab debug log when enabled; stderr is discarded by the resident.
