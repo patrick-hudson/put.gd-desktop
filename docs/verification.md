@@ -20,9 +20,10 @@ speakers with a GStreamer player on every desktop.
   working clip's audio starts 20–110 ms after its video, so MP4/WebM played the
   sound that much early. PipeWire video was also anchored to the first frame's
   arrival delay (0–90 ms per run on KWin).
-- Exported MP4 medians, before → after: d69 Plasma 6.3 `kde-screencast` −86.7 /
-  −25.3 → −8.7 / +4.7 ms (ffplay +18.7), d69 portal −112.7 → +7.3, f44 GNOME 50
-  `mutter-screencast` −92.7 → +3.3 / −6.0, f44 portal (window) −54.0 → −4.7.
+- Exported MP4 medians, before → after (n runs): d69 Plasma 6.3 `kde-screencast`
+  −86.7 / −25.3 → −8.7 / +4.7 ms (n=2; ffplay +18.7), d69 portal −112.7 →
+  −10.7..+7.3 (n=3), f44 GNOME 50 `mutter-screencast` −92.7 → −6.0..+3.3 (n=3),
+  f44 portal (window) −54.0 → −4.7..+6.0 (n=3).
   k72 Kubuntu 26.04 X11 is unchanged at −12.0 / −18.0 (ffplay +7.3). Working
   clips and exports now agree within 0.7 ms.
 - `test_export_av_sync`: MP4 and WebM keep a 110 ms audio start (nightly's

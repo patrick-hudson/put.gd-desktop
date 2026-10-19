@@ -66,9 +66,21 @@ Final build `0500748` (both fixes, the default):
 | d69 `kde-screencast` | GStreamer | +5.0 | +4.7 | 20 ms | 0.15 |
 | d69 `kde-screencast` | ffplay | +19.0 | +18.7 | 10 ms | 0.17 |
 | d69 portal (monitor) | GStreamer | +7.0 | +7.3 | 100 ms | 0.86 |
+| d69 portal (monitor) | GStreamer | −10.7 | −10.7 | 110 ms | 0.44 |
+| d69 portal (monitor) | GStreamer | −5.0 | −4.7 | 110 ms | 0.04 |
 | f44 `mutter-screencast` | GStreamer | +3.0 | +3.3 | 90 ms | 0.56 |
 | f44 `mutter-screencast` | GStreamer | −6.0 | −6.0 | 90 ms | 0.62 |
+| f44 `mutter-screencast` | GStreamer | −3.0 | −2.7 | 90 ms | 0.71 |
 | f44 portal (window) | GStreamer | −5.0 | −4.7 | 60 ms | 1.12 |
+| f44 portal (window) | GStreamer | +6.0 | +6.0 | 60 ms | 0.06 |
+| f44 portal (window) | GStreamer | −4.0 | −4.0 | 50 ms | 0.49 |
+
+Per path (GStreamer player, exported MP4): `kde-screencast` n=2, medians −8.7
+and +4.7 (range 13.4); d69 portal n=3, −10.7..+7.3 (range 18.0); Mutter n=3,
+−6.0..+3.3 (range 9.3); GNOME portal n=3, −4.7..+6.0 (range 10.7); k72 X11
+n=2, −18.0 and −12.0 (range 6.0). Within a run, pairs after the first agree
+exactly or differ by one frame (33.3 ms); the first pair is up to three
+frames off while the player starts.
 
 Before (nightly behaviour: first-frame-anchored video, old export), same
 desktops, scratch build `81d42ab` in `legacy` mode for capture; d69 MP4s from
