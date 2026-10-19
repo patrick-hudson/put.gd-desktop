@@ -81,6 +81,21 @@ loopback, reached through authenticated SSH tunnels. Never expose it to the LAN.
 The services in the inventory table run on the workstation. Inspect/recover the
 existing service before starting a duplicate tunnel or taking its port.
 
+Each tile's VNC server runs in the host's desktop session as user `patrick`
+(found on the hosts on 2026-10-19; none of it is in this repository):
+
+| Host | Server | Unit | Listens |
+| --- | --- | --- | --- |
+| f44 GNOME Wayland | `w0vncserver` from Fedora's `tigervnc-wayland-server` 1.16.2 | user `putgd-gnome-vnc.service` (`WantedBy=graphical-session.target`) | `127.0.0.1:5901` |
+| d69 Plasma Wayland | `/usr/local/bin/w0vncserver`, TigerVNC `v1.16.2` (`b555312d`) built from source in `~/work/bootstrap` (CMake Release, `ENABLE_WAYLAND=ON`, no viewer) | user `w0vncserver.service` (Wayland + KDE only, `WantedBy=plasma-workspace-wayland.target`) plus the `localhost.conf` drop-in that binds it to loopback | `127.0.0.1:5900` |
+| k72 Plasma X11 | `X0tigervnc` (Ubuntu's `tigervnc-scraping-server` 1.15) on display `:0` | user `patrick-vnc.service`, started by the `patrick-vnc` autostart entry only in an X11 session | `127.0.0.1:5900` |
+
+All use `-SecurityTypes=None`, so they must stay on loopback. The servers keep
+their portal restore token under `~/.local/state/tigervnc`
+(`-RememberDisplayChoice=Always`); the first start in a new session asks for the
+desktop's screen-sharing consent once. k72's X11 server can't show a Wayland
+session: a Plasma Wayland login there needs a Wayland server of its own (#87).
+
 Keep graphical tests visible there throughout the run. Capture screenshots or
 short recordings of the initial desktop, decisive actions, results, failures and
 completion. Save the visual files with the host, session/compositor/version, exact
