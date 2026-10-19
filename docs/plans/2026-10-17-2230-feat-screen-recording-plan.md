@@ -300,9 +300,10 @@ builder, local build only as fallback.
    placeholder reports `h264_encoder_unusable` with the install command, which
    the dashboard and tray show; the RPM recommends `gstreamer1-plugin-openh264`
    and `openh264`. Packaging (2026-10-18, pull request #75): recording ships in
-   the DEB, RPM and AppImage. The AppImage carries a pinned LGPL-only FFmpeg and
-   the Ubuntu 24.04 GStreamer plugins, with host VA-API, PipeWire and GPU
-   drivers and no bundled software H.264 encoder, and AppRun registers the
+   the DEB, RPM and AppImage. The AppImage carries a pinned GPL FFmpeg and the
+   Ubuntu 24.04 GStreamer plugins with x264 and x265 as fallbacks after the
+   host's VA-API/NVENC encoders (Patrick's decision, 2026-10-19), publishes
+   their corresponding source with each release, and AppRun registers the
    mounted helper with KWin. Installed-package and AppImage recordings
    (record, review, export, upload, motion-scored) were run on the physical
    Kubuntu, Debian and Fedora desktops; see

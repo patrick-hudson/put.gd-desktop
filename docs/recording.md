@@ -425,7 +425,7 @@ than all of them.
 | --- | --- | --- | --- |
 | DEB (Ubuntu 24.04 / Mint 22.3, Ubuntu 26.04 / Kubuntu) | `vah264lpenc`/`vah264enc` (plugins-bad, or plugins-extra on 26.04), `vaapih264enc` (Recommends `gstreamer1.0-vaapi`), `x264enc` (Recommends `gstreamer1.0-plugins-ugly`), `openh264enc` (plugins-bad, a Depends) | `h264_nvenc`, `h264_vaapi`, `libx264`, `libopenh264` | none: plugins-bad always brings `openh264enc` and `voaacenc` |
 | RPM (Fedora 44) | `vah264*enc` (stock Intel and AMD drivers have no H.264 encode; RPM Fusion's do), `openh264enc` (Recommends `gstreamer1-plugin-openh264`) | `h264_nvenc`, `h264_vaapi`, `libopenh264` | Fedora Workstation ships `libopenh264` as the `noopenh264` placeholder until Cisco's `openh264` replaces it: `sudo dnf install openh264 gstreamer1-plugin-openh264`. The RPM recommends both, so a default `dnf install` brings them when the `fedora-cisco-openh264` repository is on (Fedora's default); if it was turned off, run `sudo dnf config-manager setopt fedora-cisco-openh264.enabled=1` first |
-| AppImage | `vah264lpenc`/`vah264enc`, `vaapih264enc` through the host's VA-API driver | `h264_nvenc`, `h264_vaapi` through the host's NVIDIA or VA-API driver | a GPU driver that encodes H.264 (Intel `iHD` with encode, NVIDIA's driver, or Mesa with H.264 enabled); otherwise the DEB or RPM |
+| AppImage | `vah264lpenc`/`vah264enc`, `vaapih264enc` through the host's VA-API driver, then the bundled `x264enc` | `h264_nvenc`, `h264_vaapi` through the host's driver, then the bundled `libx264`; H.265 `hevc_nvenc`, `hevc_vaapi`, then the bundled `libx265` | none: the bundled x264/x265 cover hosts whose driver cannot encode |
 
 On Fedora with the placeholder the probe reports `h264_encoder_unusable`
 (`openh264enc`: "Could not initialize supporting library"), FFmpeg's
@@ -438,24 +438,33 @@ helper is packaged.
 ### AppImage runtime
 
 The AppImage builds `putgd-record` against a pinned upstream FFmpeg
-(`packaging/appimage/tools.lock.json`) configured LGPL-only with exactly the
-demuxer, decoders, encoders, muxers and filters the export uses
+(`packaging/appimage/tools.lock.json`) configured with `--enable-gpl` and
+exactly the demuxer, decoders, encoders, muxers and filters the export uses
 (`packaging/appimage/media.json`): the native H.264 and AAC decoders,
-`h264_vaapi`, `hevc_vaapi`, `h264_nvenc`, `hevc_nvenc`, `libvpx-vp9`, `gif`,
-`libwebp_anim`, `aac` and `libopus`. It bundles no software H.264 or H.265
-encoder (x264 and x265 are GPL, and OpenH264 binaries are royalty-free only
-when users get them from Cisco), so MP4 export and live capture use the host
-GPU's encoder, and H.265 export is hardware-only. GStreamer comes from the
-Ubuntu 24.04 builder: the core libraries, the plugins the live pipeline uses
-(`coreelements`, `videotestsrc` for the probe, `videoconvertscale`,
-`videorate`, `videocrop`, `audioconvert`, `audioresample`, `ximagesrc`,
-`pipewire`, `pulseaudio`, `matroska`, `audioparsers`, `videoparsersbad`,
-`va`, `vaapi`, `voaacenc`) and `gst-plugin-scanner` under
-`usr/libexec/gstreamer-1.0/`. VA-API (`libva*`), PipeWire's client library,
-the NVIDIA libraries and any OpenH264 stay the host's: libva must match the
-host's VA drivers and libpipewire its daemon and modules. On a host without
-libva, AppRun adds the bundled copy in `usr/lib/putgd-host-fallback/` so the
-helper still starts.
+`h264_nvenc`, `h264_vaapi`, `libx264`, `hevc_nvenc`, `hevc_vaapi`, `libx265`,
+`libvpx-vp9`, `gif`, `libwebp_anim`, `aac` and `libopus`. The encoder order
+puts the machine first: the host's GPU encoders (NVENC, VA-API) are tried by
+actually opening or starting them, and the bundled x264 (live and MP4) and
+x265 (H.265 export) are used only when none of them works; the encoder used
+is reported as for the other packages. Live H.265 does not exist, so only
+FFmpeg's `libx265` is bundled, not GStreamer's `x265enc`. With x264, x265 and a
+GPL FFmpeg inside, the image is a GPL-2.0-or-later combined work:
+`usr/share/doc/putgd/APPIMAGE-GPL-NOTICE.txt` says so and names the bundled
+versions, the licence texts are under `usr/share/doc/putgd/bundled-licenses`,
+and every release publishes the corresponding source as
+`putgd-VERSION-appimage-media-source.tar.gz` (see [releases](release.md)).
+GStreamer comes from the Ubuntu 24.04 builder: the core libraries, the plugins
+the live pipeline uses (`coreelements`, `videotestsrc` for the probe,
+`videoconvertscale`, `videorate`, `videocrop`, `audioconvert`, `audioresample`,
+`ximagesrc`, `pipewire`, `pulseaudio`, `matroska`, `audioparsers`,
+`videoparsersbad`, `va`, `vaapi`, `x264`, `voaacenc`) and `gst-plugin-scanner`
+under `usr/libexec/gstreamer-1.0/`. VA-API (`libva*`), PipeWire's client
+library, the NVIDIA libraries and any OpenH264 stay the host's: libva must
+match the host's VA drivers and libpipewire its daemon and modules. On a host
+without libva, AppRun adds the bundled copy in `usr/lib/putgd-host-fallback/`
+so the helper still starts. (A host OpenH264 cannot be used: the image's
+GStreamer and FFmpeg were built against Ubuntu 24.04's `libopenh264.so.7`,
+while Fedora 44 ships `.so.8`.)
 
 When `putgd-record` runs from the mounted image (`APPDIR` contains the
 executable), it confines its own GStreamer before initialising it
@@ -471,9 +480,11 @@ writes a second temporary private entry next to the ScreenShot2 one,
 so KWin offers its screencast protocol to the helper; both entries are removed
 on exit. The assembly audit runs the relocated helper's probe and fails unless
 every required element loads from the image's plugin directory only, the
-H.264 decoder opens, WebM, GIF and WebP export, and no host-matched library
-was bundled; the receipt records the result under
-`postDeploymentAudit.recording`.
+H.264 decoder opens, all four formats export, the bundled `x264enc`,
+`libx264` and `libx265` work (the builder has no GPU, so they are what must)
+and no host-matched library was bundled; the receipt records the result under
+`postDeploymentAudit.recording` and the bundled GPL packages under
+`recordingRuntime.gplComponents`.
 
 ## Agent and MCP control
 

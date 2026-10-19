@@ -53,7 +53,7 @@ to a static control from the same desktop.
 | Ubuntu 26.04 DEB | Ubuntu 26.04 GNOME/Wayland, Kubuntu 26.04 Plasma/Wayland | VMs on a builder | Mutter and KWin native streams from the installed helper; the portal path |
 | Debian 13 DEB built on Debian (`native.py`) | Debian 13 Plasma/Wayland | physical `.69` | `kde-screencast` from the installed `putgd-record.desktop`; the portal path |
 | Fedora 44 RPM | Fedora 44 GNOME/Wayland | physical `.70` | `mutter-screencast` and the portal; a stock install pulling Cisco's OpenH264 through the RPM's Recommends; the actionable `h264_encoder_unusable` message with the `noopenh264` placeholder |
-| AppImage | the Kubuntu, Debian and Fedora physical desktops above | physical | every plugin loaded from the image; AppRun's KWin entry giving `kde-screencast` on Plasma/Wayland and removed on exit; where the GPU driver has no H.264 encoder (stock Fedora), the AppImage's refusal message |
+| AppImage | the Kubuntu, Debian and Fedora physical desktops above | physical | every plugin loaded from the image; the host GPU encoder used where it works and the bundled x264 where it does not (stock Fedora); AppRun's KWin entry giving `kde-screencast` on Plasma/Wayland and removed on exit |
 
 No release DEB installs on Debian 13: the Ubuntu 24.04 and 26.04 DEBs require
 FFmpeg 6.1 and 8.0 sonames (`libavcodec60`, `libavcodec62`) and Debian 13 ships

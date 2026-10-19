@@ -39,7 +39,7 @@ Recording needs an H.264 encoder. When none works, put.gd says so and what to in
 
 - **Ubuntu, Kubuntu, Mint and Debian packages** bring one with their GStreamer dependencies.
 - **Fedora**: Fedora installs a placeholder OpenH264 library. Replace it with Cisco's: `sudo dnf install openh264 gstreamer1-plugin-openh264`. If the `fedora-cisco-openh264` repository was turned off, first run `sudo dnf config-manager setopt fedora-cisco-openh264.enabled=1`.
-- **AppImage**: it carries its own recorder and encodes H.264 with your graphics driver (Intel or AMD VA-API with H.264 encoding, or NVIDIA's driver). Where the driver cannot, use the DEB or RPM package.
+- **AppImage**: it carries its own recorder. It encodes with your graphics driver where it can (VA-API or NVIDIA) and otherwise with its bundled x264 and x265, so it needs no setup.
 
 ## Destinations and credentials
 

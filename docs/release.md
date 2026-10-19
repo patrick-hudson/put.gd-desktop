@@ -27,8 +27,8 @@ with every commit on `nightly`; for example `v0.1.1-nightly.312`, titled
 "put.gd 0.1.1 nightly 312". The tag, base, full commit, tree and count must match
 the clean source. Nightlies before 2026-10-18 used `vBASE-dev.COUNT.UTC+gSHORT`.
 Nightlies never replace GitHub's Latest stable release. Every channel publishes
-all twelve individual downloads listed below, including both raw DEBs, the RPM
-and the exact compiled curated source archive.
+all thirteen individual downloads listed below, including both raw DEBs, the RPM,
+the exact compiled curated source archive and the AppImage's media source.
 
 ### Nightly
 
@@ -154,15 +154,40 @@ substitute a newer-glibc build or omit KDE region support to produce an asset.
 Screen recording ships in every installer. The DEBs and the RPM depend on the
 distro's GStreamer plugin packages and link the distro FFmpeg; the RPM also
 recommends `gstreamer1-plugin-openh264` and `openh264`, Cisco's library that
-replaces Fedora's `noopenh264` placeholder. The AppImage builds `putgd-record`
-against a pinned LGPL-only FFmpeg (`packaging/appimage/tools.lock.json`,
-options in `media.json`) and bundles the Ubuntu 24.04 GStreamer plugins the
-helper uses. It takes VA-API, PipeWire and NVIDIA's libraries from the host and
-bundles no software H.264 or H.265 encoder, so its MP4 and live capture use the
-host GPU driver. The FFmpeg license files ship under
-`usr/share/doc/putgd/bundled-licenses/ffmpeg`; its source is the pinned
-upstream commit. The Ubuntu DEBs require FFmpeg sonames that Debian 13 does not
-ship (see the [acceptance matrix](acceptance-matrix.md#screen-recording-rows)).
+replaces Fedora's `noopenh264` placeholder. The Ubuntu DEBs require FFmpeg
+sonames that Debian 13 does not ship (see the
+[acceptance matrix](acceptance-matrix.md#screen-recording-rows)).
+
+The AppImage builds `putgd-record` against a pinned FFmpeg configured with
+`--enable-gpl` (`packaging/appimage/tools.lock.json`, options in `media.json`)
+and bundles the Ubuntu 24.04 GStreamer plugins the helper uses, including
+`x264enc`, with the distro's `libx264` and `libx265`. The host's GPU encoders
+(VA-API, NVENC) are tried first; the bundled x264 and x265 are the fallback when
+none of them works. VA-API, PipeWire and NVIDIA's libraries always come from
+the host. This was Patrick's decision on 2026-10-19 ("bundle x264, and then
+default to whatever is best ... only fall back to the library when absolutely
+necessary"; "x265 can be bundled too").
+
+Because of x264, x265 and the GPL FFmpeg, the AppImage is a GPL-2.0-or-later
+combined work; put.gd's own code stays MIT and each component keeps its
+licence. The image carries `usr/share/doc/putgd/APPIMAGE-GPL-NOTICE.txt` and
+the licence texts under `usr/share/doc/putgd/bundled-licenses`. Every release
+publishes the corresponding source as `putgd-VERSION-appimage-media-source.tar.gz`,
+built in the AppImage job by `tools/releases/appimage_media_sources.py`: the
+pinned FFmpeg commit as `git archive` output with its configure options, and
+the Ubuntu source packages (`apt-get source`, checked against the signed
+archive index) of every bundled GPL binary: x264, x265 and
+`gst-plugins-ugly1.0` for the `x264enc` plugin. The collector binds that
+archive to the exact AppImage digest, FFmpeg commit and package versions in the
+AppImage receipt before staging either. put.gd's own source is the
+`-source.tar.gz` asset. Qt, GLib and the other LGPL libraries keep their
+upstream sources, as before.
+
+For information: H.264 and HEVC are covered by patent pools. Via LA licenses
+H.264 (AVC) and HEVC, and Access Advance also licenses HEVC. The AVC licence
+has a royalty-free tier for small unit volumes (100,000 units a year). The
+DEBs and the RPM use the codecs the distribution supplies; the AppImage ships
+x264 and x265 binaries.
 
 GNOME capture currently targets Shell 50 and requires the host extension.
 Release collection also emits the matching extension ZIP. Installing files inside
@@ -175,9 +200,10 @@ native support claim.
 
 The GitHub Release page publishes each installer as an individual download:
 Ubuntu 24.04 and 26.04 DEBs, the Fedora 44 RPM, and the x86_64 AppImage. It also
-publishes `putgd-VERSION-source.tar.gz`, the GNOME extension ZIP, full build
+publishes `putgd-VERSION-source.tar.gz`, the AppImage's
+`putgd-VERSION-appimage-media-source.tar.gz`, the GNOME extension ZIP, full build
 receipts, the Proton source catalog and two source transport parts, and
-`SHA256SUMS`. `putgd-VERSION-release.zip` contains the eight smaller underlying
+`SHA256SUMS`. `putgd-VERSION-release.zip` contains the nine smaller underlying
 files and an inner checksum list. The two large source parts stay separate; the
 outer checksum list covers them and the combined ZIP. ZIP timestamps and modes are fixed from the source commit,
 so repeating collection preserves the bytes needed to resume a draft. Extract the
