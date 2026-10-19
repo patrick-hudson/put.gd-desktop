@@ -34,7 +34,9 @@ No new host binary is needed on any desktop. What each desktop keeps:
   the Screenshot portal (full screen only, a one-time permission dialog on
   Plasma 6.6, and a stray file in `~/Pictures` per capture) or from a single
   frame of a screen cast. Silent screen casts need a desktop entry on the host
-  that the Flatpak cannot install for itself on a patched Flatpak.
+  that the Flatpak cannot install for itself on a patched Flatpak; the proposal
+  makes the two a choice in Settings → Advanced, with put.gd offering to write
+  that entry through a save dialog the user confirms.
 
 So the companion in #14 can be dropped. Plasma Wayland is the one desktop where
 the Flatpak behaves differently from the native packages, and the proposal at
@@ -461,21 +463,46 @@ the KDE region helper and the GNOME extension, and this spike only touches
    sandbox. Keep the 0700 directory, pre-created 0600 files and the inotify
    close-write wait. (Falling back to post-selection root capture would also
    work, but it brings back the compositor-settle problem that path exists for.)
-6. **Plasma Wayland capture in a sandbox.** ScreenShot2 cannot be authorized.
-   The region selector already selects on the live desktop and captures after
-   the overlay is gone, so the post-selection ScreenShot2 call can become a
-   Screenshot portal call (`interactive: false`) cropped to the selection, and
-   desktop capture can use it directly. Costs: a one-time permission dialog on
-   Plasma 6.6, one file left in `~/Pictures` per capture (portal-kde behavior),
-   and no active-window capture without a picker (the ScreenCast portal's window
-   source shows one every time). The capture diagnostics should say
-   "sandboxed" instead of claiming the restricted entry matches.
-7. **Silent KWin screen casts (optional).** When the helper reports
-   `kde_screencast_unavailable` in a sandbox, put.gd can offer the exact host
-   entry for the user to install, for example by saving it through the
-   FileChooser portal into `~/.local/share/applications/gd.put.Putgd.desktop`
-   (keeping the exported `Exec` so the menu entry still launches). Frame capture
-   from that cast would also make window and region screenshots silent.
+6. **Plasma Wayland capture: a choice in Settings → Advanced.** In a sandbox on
+   Plasma Wayland, Advanced gets a "Plasma screen capture" setting with two modes;
+   it is hidden on every other desktop and outside a sandbox.
+   - **Desktop portal** (default, nothing on the host). Region capture keeps the
+     live-desktop selector, then makes a Screenshot portal call
+     (`interactive: false`) after the overlay is gone and crops the frame to the
+     selection; desktop capture uses the same call uncropped. Costs: a one-time
+     "Allow put.gd to take screenshots?" on Plasma 6.6 (none on 6.3), a copy of
+     each capture in `~/Pictures` that portal-kde writes and the sandbox cannot
+     delete, and active-window capture either through the ScreenCast portal's
+     window picker every time or reported unavailable (decide when implementing).
+   - **KWin screen cast** (silent). Region (`stream_region`), desktop (each
+     output) and active window (`stream_window`) are taken as one frame of a KWin
+     screen cast: no dialog and no `~/Pictures` copies. KWin offers
+     `zkde_screencast_unstable_v1` to the sandbox only when the user has a desktop
+     entry named after the app ID that lists it. Choosing this mode offers to
+     write that entry: put.gd shows its exact content and saves it through the
+     FileChooser portal as `~/.local/share/applications/gd.put.Putgd.desktop`
+     (keeping the exported `Exec`, so the menu entry still launches), then checks
+     that KWin now offers the protocol. Active-window capture also needs the
+     window's identity, from `org_kde_plasma_window_management` granted by the
+     same entry; that is not measured yet, and it lets the app see every window's
+     title, which the setting's description must say. If the entry is missing,
+     removed or not yet indexed, captures fall back to the portal mode with a
+     visible reason instead of failing. Choosing the portal mode again stops
+     using the protocol; the sandbox cannot delete the entry, so Settings shows
+     its path for the user to remove.
+
+   The setting is an ordinary configuration key (for example
+   `preferences.plasmaSandboxCapture`: `portal` or `kwin-screencast`), validated
+   by `SettingsService`, reported in `capabilities` together with the active mode
+   and whether the entry was detected, and controllable through `settings.patch`,
+   `putgd-cli` and the MCP helper like every other setting. The capture
+   diagnostics say "sandboxed" instead of claiming the restricted entry matches.
+7. **Plasma Wayland recording follows the same setting.** Portal mode records
+   through the ScreenCast portal with restore tokens (a picker once per target
+   kind); KWin mode records through `kde-screencast`, as measured with the host
+   entry. The helper takes the mode from the setting rather than probing for the
+   protocol, and falls back to the portal with a reason when the entry is
+   missing.
 8. **Window identity.** Under Flatpak, `putgd-ui` and `putgd-record` should use
    the app ID as their desktop file name so title bars and task switchers show
    the app icon. `ImageJob` and the capture helper keep using `/tmp`, which is
@@ -512,11 +539,18 @@ is included. DEB, RPM and AppImage keep their current behavior.
   every other format, after changes 1 and 2. The sandbox may talk to
   `org.putgd.Gnome50` only, never to `org.gnome.Shell`.
 - Plasma Wayland: shortcuts through KGlobalAccel, clipboard through data
-  control, tray, layer-shell region selection, recording through the ScreenCast
-  portal with restore tokens, captures through the Screenshot portal (change 6).
-  Active-window capture needs a picker or is reported unavailable. An optional,
-  user-installed host entry granting `zkde_screencast_unstable_v1` to the app ID
-  turns recording and frame capture silent (change 7); the app never writes it.
+  control, tray and layer-shell region selection. Captures and recordings use one
+  of two modes chosen in Settings → Advanced (changes 6 and 7): **Desktop
+  portal** by default (Screenshot portal cropped to the selection, ScreenCast
+  portal with restore tokens; nothing on the host, but a one-time permission on
+  Plasma 6.6, a copy of each capture in `~/Pictures`, and active-window capture
+  through a picker or unavailable), or **KWin screen cast** (silent region,
+  desktop and window captures and recordings from KWin's screen-cast protocol).
+  The KWin mode needs a desktop entry named after the app ID in the user's
+  `~/.local/share/applications`; put.gd offers to write it through a FileChooser
+  save dialog the user confirms, verifies that KWin then offers the protocol,
+  and falls back to the portal mode with a reason when it doesn't. The setting is
+  controllable through `settings.patch`, `putgd-cli` and MCP.
 - Every desktop: Background portal for start at login (change 4), a tray name
   the sandbox may own (change 3), the private socket shared through
   `xdg-run/putgd`, the default archive through `xdg-documents/put.gd`, the
@@ -539,8 +573,12 @@ is included. DEB, RPM and AppImage keep their current behavior.
   (Kubuntu 26.04) and Plasma 6.3 Wayland (Debian 13), each with functional and
   memory gates, visible on the VNC wall, with saved screenshots:
   - the four capture actions and their shortcuts, including own-window refusal,
-    with exact output dimensions; on Plasma Wayland the portal dialogs and the
-    `~/Pictures` side effect are recorded;
+    with exact output dimensions; on Plasma Wayland in **both** capture modes:
+    the portal mode's dialogs and `~/Pictures` copies recorded, and the KWin mode
+    switched on from Settings → Advanced (entry written through the save dialog,
+    protocol detected, silent captures with no `~/Pictures` copies), switched on
+    through `settings.patch`/CLI/MCP, and with the entry removed (visible fallback
+    to the portal mode);
   - unfocused clipboard import and result copy, witnessed by a native paste;
   - tray icon, menu and progress; notifications;
   - a recording with moving content whose motion score beats a static control,
@@ -586,7 +624,11 @@ is included. DEB, RPM and AppImage keep their current behavior.
 - **Flathub tooling** (`flatpak-builder-lint`, AppStream metadata) was not run;
   the manifest has no metainfo file yet.
 - **The proposed changes 1 to 10** are described, not implemented, so the
-  Plasma Wayland portal capture design (change 6) has no measured behavior.
+  two Plasma Wayland capture modes (changes 6 and 7) are unmeasured as
+  features: only their pieces were measured (the portal screenshot, the host
+  entry granting the screen cast, recordings through both). The
+  `org_kde_plasma_window_management` grant needed for silent window capture was
+  not tried.
 - **Patched Flatpak on every host.** Only Debian has the export filter; the
   Fedora and Kubuntu results were on unfiltered Flatpak.
 
