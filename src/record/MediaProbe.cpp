@@ -190,7 +190,7 @@ QJsonObject probeMedia() {
     if (reason == "live_encoder_missing" || reason == "h264_encoder_unusable" || reason == "h264_decoder_unusable") {
         result["message"] = reason == "h264_decoder_unusable" ? QStringLiteral("Screen recording needs an H.264 decoder, and FFmpeg cannot open one here.")
             : reason == "h264_encoder_unusable" ? QStringLiteral("Screen recording needs an H.264 encoder, and none of the installed ones (%1) works here.").arg(strings(gst["liveH264Encoders"].toArray()).join(", "))
-            : QStringLiteral("Screen recording needs an H.264 encoder, and none is installed.");
+            : QStringLiteral("Screen recording needs an H.264 encoder, and none is available here.");
         result["hint"] = h264Hint(reason);
     }
     return result;

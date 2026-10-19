@@ -51,6 +51,18 @@ cmake --build build/qtkeychain --parallel 2
 cmake --install build/qtkeychain
 ```
 
+The screen recorder `putgd-record` links a pinned upstream FFmpeg (`ffmpeg` in
+`tools.lock.json`, 7.1.5) that `tools/releases/provision-appimage.py` builds into
+the same dependency prefix with FFmpeg's own `configure`, using exactly the
+LGPL-only options in `media.json` (no GPL or non-free components, no programs,
+only the demuxer, decoders, encoders, muxers and filters the export uses). It
+needs `nasm libva-dev libvpx-dev libwebp-dev libopus-dev libffmpeg-nvenc-dev`
+from Ubuntu 24.04. The GStreamer plugins come from the builder's own
+`gstreamer1.0-plugins-base`, `-good`, `-bad`, `gstreamer1.0-pipewire`,
+`gstreamer1.0-pulseaudio` and `gstreamer1.0-vaapi` packages. The FFmpeg source
+checkout under `build/dependencies/appimage/ffmpeg` is passed as a
+`--license-source`, so its COPYING.LGPLv2.1 and LICENSE.md travel with the image.
+
 Use the pinned SDK provisioning instructions in `docs/build.md`; build the SDK
 with the same distro compiler and OpenSSL/curl, with `USE_OPENSSL=ON`. The
 application's release preset accepts `CMAKE_PREFIX_PATH` containing this SDK,
@@ -62,6 +74,8 @@ cmake --build --preset release
 ```
 
 `putgd-kde-region` must exist: omitting it breaks native KDE region capture.
+`putgd-record` must exist and link `libavcodec.so.61` from the dependency
+prefix; `build-appimage.sh` refuses a helper linked against the distro FFmpeg.
 After the release build, use CMake's `DESTDIR` install into a new staging root.
 Do not reuse stale staging contents.
 
@@ -90,6 +104,52 @@ AppDir before packing. Exact-image acceptance verifies the packed contents and
 actual desktop behavior separately.
 It records desktop acceptance as pending: assembly is not compositor evidence.
 Only upload the image and receipt after package-specific acceptance passes.
+
+## Screen recording runtime
+
+`portable_appimage.py` deploys the GStreamer plugins listed in `media.json`
+and `gst-plugin-scanner` with linuxdeploy (so their dependencies land in
+`usr/lib`), then moves them to `usr/lib/gstreamer-1.0/` and
+`usr/libexec/gstreamer-1.0/` with RPATHs pointing at `usr/lib`. Libraries that
+must match the host are excluded from every linuxdeploy pass (`hostLibraries`:
+libva, libpipewire, the NVIDIA encode libraries, OpenH264); libva and
+libva-drm are also kept in `usr/lib/putgd-host-fallback/`, which AppRun adds to
+the library path only when the host's linker cache has no `libva.so.2`.
+`putgd-record` confines GStreamer to the image itself when it runs from the
+mount (see [recording](../../docs/recording.md), "AppImage runtime"); nothing
+else in the image or on the host inherits those variables.
+
+On Plasma, AppRun writes a second temporary private entry beside the
+ScreenShot2 one: `putgd-record-appimage-XXXXXXXX.desktop`, `Exec` naming the
+mounted `putgd-record` and `X-KDE-Wayland-Interfaces=zkde_screencast_unstable_v1`,
+so KWin offers its screencast protocol to the recorder; the same cleanup
+removes both entries.
+
+The image carries Qt's Wayland platform plugins but not its `xdg-shell`
+shell integration (only LayerShellQt's), so on a Wayland session Qt falls back
+to XWayland for ordinary windows, including the recorder's control bar and
+review window; frames still come from KWin's or Mutter's native stream. With
+`QT_QPA_PLATFORM=wayland` forced in the environment those windows abort ("No
+shell integration named xdg-shell found"). This predates recording and applies
+to every window in the image.
+
+The post-deployment audit runs the relocated `putgd-record --capabilities`
+with `APPDIR` set and no display. It fails unless GStreamer initialises, every
+`requiredElements` entry loads, every plugin comes from `usr/lib/gstreamer-1.0`,
+FFmpeg's H.264 decoder opens, WebM, GIF and WebP export are available and no
+host-matched library was bundled. The receipt keeps the result under
+`postDeploymentAudit.recording` and the media list, fallbacks and FFmpeg pin
+under `recordingRuntime`. A build without a GPU (CI) has no H.264 encoder, so
+MP4 export is absent there by design; it appears on hosts whose driver encodes
+H.264.
+
+The runtime added 10,461,184 bytes to the image (98,929,144 for nightly 317,
+109,390,328 for this change), about 17 MB uncompressed. The idle family on the
+Debian 13 Plasma/Wayland desktop measured 111.0 MiB RSS / 75.4 MiB PSS before
+and 111.5 / 75.9 MiB after (resident, `putgd-ui`, AppRun and runtime; the
+resident itself 29.0 and 29.3 MiB). While recording, the image's helper peaks
+at 96-108 MiB against 142-156 MiB for the distro packages' helper, whose
+FFmpeg carries every codec.
 
 ## Compression and memory
 

@@ -151,6 +151,19 @@ explicit distribution exception added by the user's October 12 release request.
 The GTK platform theme must remain available for native dialogs/fonts. Never
 substitute a newer-glibc build or omit KDE region support to produce an asset.
 
+Screen recording ships in every installer. The DEBs and the RPM depend on the
+distro's GStreamer plugin packages and link the distro FFmpeg; the RPM also
+recommends `gstreamer1-plugin-openh264` and `openh264`, Cisco's library that
+replaces Fedora's `noopenh264` placeholder. The AppImage builds `putgd-record`
+against a pinned LGPL-only FFmpeg (`packaging/appimage/tools.lock.json`,
+options in `media.json`) and bundles the Ubuntu 24.04 GStreamer plugins the
+helper uses. It takes VA-API, PipeWire and NVIDIA's libraries from the host and
+bundles no software H.264 or H.265 encoder, so its MP4 and live capture use the
+host GPU driver. The FFmpeg license files ship under
+`usr/share/doc/putgd/bundled-licenses/ffmpeg`; its source is the pinned
+upstream commit. The Ubuntu DEBs require FFmpeg sonames that Debian 13 does not
+ship (see the [acceptance matrix](acceptance-matrix.md#screen-recording-rows)).
+
 GNOME capture currently targets Shell 50 and requires the host extension.
 Release collection also emits the matching extension ZIP. Installing files inside
 an AppImage does not install a host extension. See [GNOME setup](desktops/gnome.md).
@@ -287,8 +300,9 @@ passing. See the measured compression tradeoff in [AppImage assembly](../packagi
 
 For AppImage, include the outer launcher/mount processes in family memory and
 prove GTK dialogs/fonts, persistent-image autostart, KDE permission registration
-and cleanup, all capture/clipboard actions, local archives, live S3/history and
-production CLI/MCP behavior. Native packages need install/upgrade/removal and
+and cleanup (both the ScreenShot2 and the recorder's screencast entries), all
+capture/clipboard actions, screen recording with the bundled runtime, local
+archives, live S3/history and production CLI/MCP behavior. Native packages need install/upgrade/removal and
 host integration checks appropriate to the target distro. Full U9/U10 release
 certification remains separate; [verification.md](verification.md) and the
 implementation contract list remaining gates. A prerelease must describe its
