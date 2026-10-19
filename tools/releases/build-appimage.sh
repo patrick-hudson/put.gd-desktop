@@ -5,12 +5,16 @@ release_tag=${RELEASE_TAG:-}
 if [ "${GITHUB_EVENT_NAME:-}" = 'pull_request' ]; then
   release_tag=
 fi
-# The AppImage bundles its own runtime; the recording helper and its media
-# libraries are a separate decision (docs/recording.md), so it is not built here.
-cmake --preset release -DPUTGD_BUNDLE_PROTON=ON -DBUILD_TESTING=OFF -DPUTGD_LAB_FIXTURE=OFF -DPUTGD_PHYSICAL_BENCHMARKS=OFF -DPUTGD_RECORDING=OFF \
+# The AppImage bundles its own runtime, including putgd-record's GStreamer
+# plugins and the pinned FFmpeg from build/appimage-deps (packaging/appimage/media.json).
+cmake --preset release -DPUTGD_BUNDLE_PROTON=ON -DBUILD_TESTING=OFF -DPUTGD_LAB_FIXTURE=OFF -DPUTGD_PHYSICAL_BENCHMARKS=OFF -DPUTGD_RECORDING=ON \
   -DPUTGD_RELEASE_TAG="$release_tag" -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib \
   -DCMAKE_PREFIX_PATH="$PWD/build/appimage-deps;$QT_ROOT_DIR;$PWD/build/sdk"
 cmake --build --preset release --parallel "${PUTGD_BUILD_JOBS:-2}"
+# The helper must link the pinned FFmpeg, never the builder's distro libraries.
+if ! readelf -d build/release/putgd-record | grep -q 'libavcodec\.so\.61'; then
+  echo 'putgd-record is not linked against the pinned FFmpeg in build/appimage-deps' >&2; exit 1
+fi
 stage="$PWD/build/appimage-stage"
 if [ -e "$stage" ]; then echo 'AppImage staging directory must be new' >&2; exit 1; fi
 DESTDIR="$stage" cmake --install build/release
@@ -25,4 +29,5 @@ python3 tools/releases/portable_appimage.py --stage "$stage" --output-dir "$PWD/
   --license-source build/dependencies/appimage/qtsvg \
   --license-source build/dependencies/appimage/qtimageformats \
   --license-source build/dependencies/appimage/qtkeychain \
-  --license-source build/dependencies/appimage/layershell
+  --license-source build/dependencies/appimage/layershell \
+  --license-source build/dependencies/appimage/ffmpeg

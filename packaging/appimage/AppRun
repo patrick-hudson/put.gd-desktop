@@ -10,6 +10,21 @@ host_cache() {
 }
 export LD_LIBRARY_PATH="$appdir/usr/lib:$appdir/usr/lib/putgd${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 export QT_PLUGIN_PATH="$appdir/usr/plugins:$appdir/usr/lib/qt6/plugins${QT_PLUGIN_PATH:+:$QT_PLUGIN_PATH}"
+host_has_library() {
+    for tool in ldconfig /sbin/ldconfig /usr/sbin/ldconfig; do
+        if command -v "$tool" >/dev/null 2>&1; then
+            "$tool" -p 2>/dev/null | awk -v want="$1" '$1 == want && /x86-64/ { found = 1 } END { exit !found }'
+            return
+        fi
+    done
+    return 1
+}
+# libva must match the host's VA drivers, so screen recording uses the host's;
+# the bundled copy is added only on a host without one. putgd-record confines
+# its bundled GStreamer to the image itself, so nothing else inherits that.
+if [ -d "$appdir/usr/lib/putgd-host-fallback" ] && ! host_has_library libva.so.2; then
+    LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$appdir/usr/lib/putgd-host-fallback"
+fi
 # Identity queries are headless; they need no host desktop registration.
 if [ "$#" -eq 1 ]; then
     case $1 in
@@ -17,10 +32,11 @@ if [ "$#" -eq 1 ]; then
     esac
 fi
 permission_entry=
+record_entry=
 child=
 cleanup() {
-    if [ -n "$permission_entry" ]; then
-        rm -f -- "$permission_entry"
+    if [ -n "$permission_entry$record_entry" ]; then
+        rm -f -- ${permission_entry:+"$permission_entry"} ${record_entry:+"$record_entry"}
         host_cache || :
     fi
 }
@@ -38,6 +54,13 @@ case ${XDG_CURRENT_DESKTOP:-} in
         permission_entry=$(umask 077; mktemp "$applications/putgd-appimage-XXXXXXXX.desktop")
         escaped=$(printf '%s' "$appdir/usr/bin/putgd" | sed 's/[\\"$`]/\\&/g; s/%/%%/g')
         printf '[Desktop Entry]\nType=Application\nName=put.gd AppImage capture\nExec="%s"\nIcon=putgd\nNoDisplay=true\nX-KDE-DBUS-Restricted-Interfaces=org.kde.KWin.ScreenShot2\n' "$escaped" >"$permission_entry"
+        # KWin offers its screencast protocol only to an executable whose own
+        # entry lists it, so the mounted recorder gets a second entry.
+        if [ -x "$appdir/usr/bin/putgd-record" ]; then
+            record_entry=$(umask 077; mktemp "$applications/putgd-record-appimage-XXXXXXXX.desktop")
+            escaped=$(printf '%s' "$appdir/usr/bin/putgd-record" | sed 's/[\\"$`]/\\&/g; s/%/%%/g')
+            printf '[Desktop Entry]\nType=Application\nName=put.gd AppImage screen recorder\nExec="%s"\nIcon=putgd\nNoDisplay=true\nX-KDE-Wayland-Interfaces=zkde_screencast_unstable_v1\n' "$escaped" >"$record_entry"
+        fi
         if ! host_cache; then
             printf '%s\n' 'put.gd could not register native KDE capture permission.' >&2
             exit 1

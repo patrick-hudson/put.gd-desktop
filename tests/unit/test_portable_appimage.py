@@ -61,6 +61,36 @@ exit 7
         self.assertEqual(existing.read_text(), "user entry\n")
         self.assertEqual(list(applications.glob("putgd-appimage-*.desktop")), [])
 
+    def test_kde_registers_mounted_recorder_for_screencast_and_cleans_it(self):
+        self.write(self.app / "usr/bin/putgd-record", "#!/bin/sh\nexit 0\n")
+        self.write(self.app / "usr/bin/putgd-launcher", """#!/bin/sh
+for entry in "$XDG_DATA_HOME"/applications/putgd-record-appimage-*.desktop; do
+    cat "$entry" > "$PG_TEST_RECEIPT"
+    stat -c '%a' "$entry" >> "$PG_TEST_RECEIPT"
+done
+exit 0
+""")
+        completed = subprocess.run([str(APP_RUN)], env=self.env)
+        self.assertEqual(completed.returncode, 0)
+        receipt = self.receipt.read_text()
+        self.assertIn('Exec="' + str(self.app / "usr/bin/putgd-record") + '"', receipt)
+        self.assertIn("X-KDE-Wayland-Interfaces=zkde_screencast_unstable_v1", receipt)
+        self.assertNotIn("ScreenShot2", receipt)
+        self.assertTrue(receipt.endswith("600\n"))
+        self.assertEqual(list((self.data / "applications").glob("putgd-*appimage-*.desktop")), [])
+
+    def test_bundled_libva_is_used_only_without_a_host_copy(self):
+        (self.app / "usr/lib/putgd-host-fallback").mkdir(parents=True)
+        self.env["XDG_CURRENT_DESKTOP"] = "GNOME"
+        self.write(self.app / "usr/bin/putgd-launcher", "#!/bin/sh\nprintf '%s\\n' \"$LD_LIBRARY_PATH\" > \"$PG_TEST_RECEIPT\"\n")
+        fallback = str(self.app / "usr/lib/putgd-host-fallback")
+        for cache, expected in (("\tlibva.so.2 (libc6,x86-64) => /usr/lib/x86_64-linux-gnu/libva.so.2\n", False),
+                                ("\tlibva-drm.so.2 (libc6,x86-64) => /usr/lib/x86_64-linux-gnu/libva-drm.so.2\n", True)):
+            with self.subTest(cache=cache):
+                self.write(self.root / "bin/ldconfig", "#!/bin/sh\nprintf '" + cache.replace("\\", "\\\\") + "'\n")
+                self.assertEqual(subprocess.run([str(APP_RUN)], env=self.env).returncode, 0)
+                self.assertEqual(fallback in self.receipt.read_text(), expected)
+
     def test_termination_stops_exact_child_and_cleans_permission(self):
         self.write(self.app / "usr/bin/putgd-launcher", """#!/bin/sh
 trap 'exit 0' TERM
@@ -138,6 +168,26 @@ class DeploymentRejectionTest(unittest.TestCase):
     def test_unresolved_dependency_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "Unresolved"):
             self.run_audit(dependencies="libmissing.so => not found\n")
+
+    def test_recording_probe_must_stay_inside_the_image(self):
+        media = {"gstreamer": {"requiredElements": ["ximagesrc"]}, "hostLibraries": ["libva.so.*"]}
+        (self.app / "usr/lib/gstreamer-1.0").mkdir(parents=True)
+        inside = str(self.app / "usr/lib/gstreamer-1.0")
+        good = {"gstreamer": {"available": True, "version": "1.24.2", "elements": {"ximagesrc": "1.24.2"},
+                              "pluginDirectories": [inside]},
+                "ffmpeg": {"h264Decoder": {"usable": True, "name": "h264"}}, "formats": ["webm", "gif", "webp"]}
+        self.assertEqual(portable.audit_media(self.app, media, json.dumps(good))["pluginDirectories"], [inside])
+        leaked = json.loads(json.dumps(good))
+        leaked["gstreamer"]["pluginDirectories"].append("/usr/lib/x86_64-linux-gnu/gstreamer-1.0")
+        with self.assertRaisesRegex(ValueError, "outside the image"):
+            portable.audit_media(self.app, media, json.dumps(leaked))
+        missing = json.loads(json.dumps(good))
+        missing["gstreamer"]["elements"]["ximagesrc"] = None
+        with self.assertRaisesRegex(ValueError, "elements missing"):
+            portable.audit_media(self.app, media, json.dumps(missing))
+        (self.app / "usr/lib/libva.so.2").write_bytes(b"\x7fELFsynthetic")
+        with self.assertRaisesRegex(ValueError, "Host-provided libraries were bundled"):
+            portable.audit_media(self.app, media, json.dumps(good))
 
     def test_host_qt_or_aws_dependency_is_rejected(self):
         for library in ("libQt6Core.so.6", "libaws-cpp-sdk-core.so"):

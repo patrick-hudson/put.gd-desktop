@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Screen recording runtime inside the AppImage: putgd-record's GStreamer capture plugins and its private FFmpeg export libraries (docs/recording.md, packaging/appimage/README.md).",
+  "gstreamer": {
+    "plugins": [
+      "coreelements",
+      "videotestsrc",
+      "videoconvertscale",
+      "videorate",
+      "videocrop",
+      "audioconvert",
+      "audioresample",
+      "ximagesrc",
+      "pipewire",
+      "pulseaudio",
+      "matroska",
+      "audioparsers",
+      "videoparsersbad",
+      "va",
+      "vaapi",
+      "voaacenc"
+    ],
+    "requiredElements": [
+      "ximagesrc",
+      "pipewiresrc",
+      "pulsesrc",
+      "videoconvert",
+      "videorate",
+      "videocrop",
+      "matroskamux",
+      "h264parse",
+      "aacparse",
+      "voaacenc"
+    ]
+  },
+  "hostLibraries": [
+    "libva.so.*",
+    "libva-drm.so.*",
+    "libva-x11.so.*",
+    "libva-wayland.so.*",
+    "libpipewire-0.3.so.*",
+    "libopenh264.so.*",
+    "libcuda.so.*",
+    "libnvidia-encode.so.*"
+  ],
+  "hostFallbackLibraries": [
+    "libva.so.2",
+    "libva-drm.so.2"
+  ],
+  "ffmpeg": {
+    "license": "LGPL-2.1-or-later",
+    "configure": [
+      "--enable-shared",
+      "--disable-static",
+      "--enable-pic",
+      "--disable-programs",
+      "--disable-avdevice",
+      "--disable-doc",
+      "--disable-debug",
+      "--disable-autodetect",
+      "--disable-everything",
+      "--disable-network",
+      "--disable-xlib",
+      "--enable-pthreads",
+      "--enable-avcodec",
+      "--enable-avformat",
+      "--enable-avfilter",
+      "--enable-swscale",
+      "--enable-swresample",
+      "--enable-vaapi",
+      "--enable-ffnvcodec",
+      "--enable-nvenc",
+      "--enable-libvpx",
+      "--enable-libwebp",
+      "--enable-libopus",
+      "--enable-protocol=file",
+      "--enable-demuxer=matroska",
+      "--enable-muxer=mp4,webm,gif,webp,matroska",
+      "--enable-decoder=h264,aac",
+      "--enable-parser=h264,aac,vp9,opus",
+      "--enable-bsfs",
+      "--enable-encoder=h264_vaapi,hevc_vaapi,h264_nvenc,hevc_nvenc,libvpx_vp9,gif,libwebp_anim,aac,libopus",
+      "--enable-filter=buffer,buffersink,abuffer,abuffersink,null,anull,trim,atrim,setpts,asetpts,format,aformat,aresample,scale,crop,avgblur,drawbox,split,overlay,fps,palettegen,paletteuse"
+    ]
+  }
+}
