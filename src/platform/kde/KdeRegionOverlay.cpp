@@ -82,7 +82,9 @@ bool KdeRegionOverlay::eventFilter(QObject* watched,QEvent* event){
 }
 void KdeRegionOverlay::dismiss(){
 #ifdef PUTGD_NATIVE_REGION
- if(dismissing_)return;dismissing_=true;finish();
+ if(dismissing_)return;
+ dismissing_=true;
+ finish();
  // Order the capture after KWin has processed the unmaps. D-Bus and Wayland are
  // separate transports, so merely hiding the widgets is not enough.
  auto* native=qGuiApp->nativeInterface<QNativeInterface::QWaylandApplication>();
