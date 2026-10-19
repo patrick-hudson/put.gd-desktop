@@ -47,6 +47,17 @@ private slots:
   QCOMPARE(call(server,"recording.inspect",{{"id","nothing"}}).error.code,QString("recording_unavailable"));
   QCOMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
  }
+ void unavailableProbeExplainsWhatToInstall(){
+  Harness h;QTRY_VERIFY(h.operations->ready());h.backend->available=false;
+  h.backend->unavailableDetails={{"reason","h264_encoder_unusable"},{"message","Screen recording needs an H.264 encoder, and none of the installed ones (openh264enc) works here."},{"hint","Install Cisco's OpenH264."}};
+  const auto prepared=h.rec("prepare",{{"target",region()},{"format","mp4"}});
+  QCOMPARE(prepared.error.code,QString("recording_unavailable"));QCOMPARE(prepared.error.details["reason"].toString(),QString("h264_encoder_unusable"));
+  QCOMPARE(prepared.error.details["hint"].toString(),QString("Install Cisco's OpenH264."));
+  QCOMPARE(prepared.error.message,QString("Screen recording needs an H.264 encoder, and none of the installed ones (openh264enc) works here. Install Cisco's OpenH264."));
+  QCOMPARE(h.rec("capabilities").result["hint"].toString(),QString("Install Cisco's OpenH264."));
+  // Without a probe message the generic sentence stays.
+  h.backend->unavailableDetails={};QCOMPARE(h.rec("prepare",{{"target",region()},{"format","mp4"}}).error.message,QString("Screen recording is not available on this installation"));
+ }
  void lifecycleAdmitsOnlyTheExplicitUploadExport(){
   Harness h;QTRY_VERIFY(h.operations->ready());
   const auto prepared=h.rec("prepare",{{"target",region()},{"format","mp4"},{"audio",QJsonObject{{"system",true}}},{"fps",24}});

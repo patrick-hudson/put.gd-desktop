@@ -1,4 +1,5 @@
 #include "MediaProbe.h"
+#include "EncoderCheck.h"
 #include "core/RecordingModel.h"
 #include "PortalScreenCast.h"
 #include "WaylandAcquisition.h"
@@ -26,13 +27,19 @@ QString sessionType() {
     if (type == "x11" || (type.isEmpty() && !env.value("DISPLAY").isEmpty())) return "x11";
     return type.isEmpty() ? QStringLiteral("none") : type;
 }
-// Plugin version of a registered element factory, or null when absent.
-QJsonValue element(const char* name) {
+// Plugin version of a registered element factory, or null when absent; the
+// plugin file's directory goes into `directories` (the AppImage audit checks
+// that every one is inside the image).
+QJsonValue element(const char* name, QStringList& directories) {
     GstElementFactory* factory = gst_element_factory_find(name);
     if (!factory) return QJsonValue(QJsonValue::Null);
     QString version;
     if (GstPlugin* plugin = gst_plugin_feature_get_plugin(GST_PLUGIN_FEATURE(factory))) {
         version = QString::fromUtf8(gst_plugin_get_version(plugin));
+        if (const gchar* file = gst_plugin_get_filename(plugin)) {
+            const auto directory = QFileInfo(QString::fromUtf8(file)).absolutePath();
+            if (!directories.contains(directory)) directories.append(directory);
+        }
         gst_object_unref(plugin);
     }
     gst_object_unref(factory);
@@ -51,6 +58,7 @@ QJsonArray present(const QJsonObject& inventory, const QStringList& ordered) {
     return result;
 }
 QString avVersion(unsigned packed) { return QStringLiteral("%1.%2.%3").arg(packed >> 16).arg((packed >> 8) & 0xff).arg(packed & 0xff); }
+QStringList strings(const QJsonArray& values) { QStringList result; for (const auto& value : values) result.append(value.toString()); return result; }
 }
 
 QJsonObject probeMedia() {
@@ -65,14 +73,19 @@ QJsonObject probeMedia() {
         gst["available"] = true;
         gst["version"] = QString::fromUtf8(gst_version_string());
         QJsonObject elements;
+        QStringList directories;
         for (const char* name : {"ximagesrc", "pipewiresrc", "pulsesrc", "vah264lpenc", "vah264enc", "vaapih264enc", "x264enc", "openh264enc",
                                  "avenc_aac", "fdkaacenc", "voaacenc", "matroskamux", "mp4mux", "webmmux", "videoconvert", "videoscale", "videorate",
-                                 "videocrop", "compositor", "appsink", "webpenc", "vp9enc", "x265enc"})
-            elements[name] = element(name);
+                                 "videocrop", "compositor", "appsink", "webpenc", "vp9enc", "x265enc", "h264parse", "aacparse", "audioconvert", "audioresample"})
+            elements[name] = element(name, directories);
         gst["elements"] = elements;
+        gst["pluginDirectories"] = QJsonArray::fromStringList(directories);
         gst["webpAnimated"] = !elements["webpenc"].isNull() && elementProperty("webpenc", "animated");
         gst["liveSources"] = present(elements, {"ximagesrc", "pipewiresrc"});
         gst["liveH264Encoders"] = present(elements, {"vah264lpenc", "vah264enc", "vaapih264enc", "x264enc", "openh264enc"});
+        QJsonObject failures;
+        gst["usableH264Encoders"] = QJsonArray::fromStringList(usableLiveEncoders(strings(gst["liveH264Encoders"].toArray()), failures));
+        gst["encoderFailures"] = failures;
         gst["liveAacEncoders"] = present(elements, {"avenc_aac", "fdkaacenc", "voaacenc"});
         gst["audioSources"] = present(elements, {"pulsesrc", "pipewiresrc"});
     }
@@ -87,26 +100,34 @@ QJsonObject probeMedia() {
     for (const char* name : {"mp4", "webm", "gif", "webp", "matroska"}) muxers[name] = av_guess_format(name, nullptr, nullptr) != nullptr;
     ff["muxers"] = muxers;
     QJsonObject filters;
-    for (const char* name : {"trim", "atrim", "setpts", "asetpts", "boxblur", "drawbox", "crop", "scale", "fps", "palettegen", "paletteuse", "format"})
+    for (const char* name : {"trim", "atrim", "setpts", "asetpts", "avgblur", "drawbox", "crop", "scale", "fps", "palettegen", "paletteuse", "format"})
         filters[name] = avfilter_get_by_name(name) != nullptr;
     ff["filters"] = filters;
-    result["ffmpeg"] = ff;
 
-    auto any = [&](std::initializer_list<const char*> names) { for (const char* n : names) if (encoders[n].toBool()) return true; return false; };
     auto filtersOk = [&](std::initializer_list<const char*> names) { for (const char* n : names) if (!filters[n].toBool()) return false; return true; };
     auto list = [&](std::initializer_list<const char*> names) { QJsonArray a; for (const char* n : names) if (encoders[n].toBool()) a.append(n); return a; };
-    result["exportEncoders"] = QJsonObject{{"h264", list({"h264_nvenc", "libx264", "h264_vaapi", "libopenh264"})}, {"h265", list({"hevc_nvenc", "libx265", "hevc_vaapi"})}, {"vp9", list({"libvpx-vp9"})}};
+    // Only encoders that actually open count: a registered libopenh264 may be
+    // Fedora's placeholder and a registered h264_vaapi may lack a driver profile.
+    QJsonObject exportFailures;
+    auto usable = [&](const QJsonArray& names) { return QJsonArray::fromStringList(usableExportEncoders(strings(names), exportFailures)); };
+    result["exportEncoders"] = QJsonObject{{"h264", usable(list({"h264_nvenc", "libx264", "h264_vaapi", "libopenh264"}))}, {"h265", usable(list({"hevc_nvenc", "libx265", "hevc_vaapi"}))}, {"vp9", usable(list({"libvpx-vp9"}))}};
+    ff["encoderFailures"] = exportFailures;
+    QString decoderName, decoderFailure;
+    const bool decoderOk = h264DecoderUsable(decoderName, decoderFailure);
+    ff["h264Decoder"] = QJsonObject{{"name", decoderName.isEmpty() ? QJsonValue() : QJsonValue(decoderName)}, {"usable", decoderOk}, {"failure", decoderOk ? QJsonValue() : QJsonValue(decoderFailure)}};
+    result["ffmpeg"] = ff;
+    const auto exportable = result["exportEncoders"].toObject();
 
-    const bool baseFilters = filtersOk({"trim", "setpts", "boxblur", "drawbox", "crop", "scale", "fps", "format"});
+    const bool baseFilters = filtersOk({"trim", "setpts", "avgblur", "drawbox", "crop", "scale", "fps", "format"});
     QJsonArray formats;
     QJsonObject codecs;
-    if (baseFilters && muxers["mp4"].toBool() && any({"h264_nvenc", "libx264", "h264_vaapi", "libopenh264"})) {
+    if (baseFilters && muxers["mp4"].toBool() && !exportable["h264"].toArray().isEmpty()) {
         formats.append("mp4");
         QJsonArray mp4{"h264"};
-        if (any({"libx265", "hevc_vaapi"})) mp4.append("h265");
+        if (!exportable["h265"].toArray().isEmpty()) mp4.append("h265");
         codecs["mp4"] = mp4;
     }
-    if (baseFilters && muxers["webm"].toBool() && encoders["libvpx-vp9"].toBool()) { formats.append("webm"); codecs["webm"] = QJsonArray{"vp9"}; }
+    if (baseFilters && muxers["webm"].toBool() && !exportable["vp9"].toArray().isEmpty()) { formats.append("webm"); codecs["webm"] = QJsonArray{"vp9"}; }
     if (baseFilters && muxers["gif"].toBool() && encoders["gif"].toBool() && filtersOk({"palettegen", "paletteuse"})) formats.append("gif");
     if (baseFilters && muxers["webp"].toBool() && encoders["libwebp_anim"].toBool()) formats.append("webp");
     result["formats"] = formats;
@@ -114,7 +135,7 @@ QJsonObject probeMedia() {
 
     const auto session = result["session"].toString();
     const bool liveSource = gst["available"].toBool() && ((session == "x11" && gst["liveSources"].toArray().contains("ximagesrc")) || (session == "wayland" && gst["liveSources"].toArray().contains("pipewiresrc")));
-    const bool liveEncoder = gst["available"].toBool() && !gst["liveH264Encoders"].toArray().isEmpty();
+    const bool liveEncoder = gst["available"].toBool() && !gst["usableH264Encoders"].toArray().isEmpty();
     result["liveCapture"] = QJsonObject{{"source", liveSource}, {"encoder", liveEncoder}, {"audio", gst["available"].toBool() && !gst["audioSources"].toArray().isEmpty() && !gst["liveAacEncoders"].toArray().isEmpty()}};
     // X11 reads the root with ximagesrc; Wayland shares a monitor or window
     // through the ScreenCast portal (the compositor's picker) into pipewiresrc.
@@ -154,14 +175,24 @@ QJsonObject probeMedia() {
     result["audio"] = QJsonObject{{"system", result["liveCapture"].toObject()["audio"].toBool()}, {"microphone", false}};
     result["overlayExclusion"] = QJsonObject{};
     const bool implemented = session == "x11" || portalOk || nativeOk;
-    result["available"] = gst["available"].toBool() && liveSource && liveEncoder && !formats.isEmpty() && implemented;
+    result["available"] = gst["available"].toBool() && liveSource && liveEncoder && decoderOk && !formats.isEmpty() && implemented;
     if (!result["available"].toBool())
         result["reason"] = !gst["available"].toBool() ? QStringLiteral("gstreamer_unavailable")
             : !liveSource ? (session == "none" ? QStringLiteral("no_display_session") : QStringLiteral("live_source_missing"))
-            : !liveEncoder ? QStringLiteral("live_encoder_missing")
+            : !liveEncoder ? (gst["liveH264Encoders"].toArray().isEmpty() ? QStringLiteral("live_encoder_missing") : QStringLiteral("h264_encoder_unusable"))
+            : !decoderOk ? QStringLiteral("h264_decoder_unusable")
             : formats.isEmpty() ? QStringLiteral("export_encoder_missing")
             : session == "wayland" ? (portalReason.isEmpty() ? QStringLiteral("portal_unavailable") : portalReason)
             : QStringLiteral("session_unsupported");
+    // Recording keeps an H.264 working clip, so without a working H.264 encoder
+    // or decoder nothing records; say what to install rather than only why.
+    const auto reason = result["reason"].toString();
+    if (reason == "live_encoder_missing" || reason == "h264_encoder_unusable" || reason == "h264_decoder_unusable") {
+        result["message"] = reason == "h264_decoder_unusable" ? QStringLiteral("Screen recording needs an H.264 decoder, and FFmpeg cannot open one here.")
+            : reason == "h264_encoder_unusable" ? QStringLiteral("Screen recording needs an H.264 encoder, and none of the installed ones (%1) works here.").arg(strings(gst["liveH264Encoders"].toArray()).join(", "))
+            : QStringLiteral("Screen recording needs an H.264 encoder, and none is installed.");
+        result["hint"] = h264Hint(reason);
+    }
     return result;
 }
 }
