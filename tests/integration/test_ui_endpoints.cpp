@@ -62,6 +62,42 @@ private slots:
   done=false;request(f.server,"settings.save",{{"document",candidate},{"expectedRevision",revision}},[&](Error e,QJsonObject){error=e;done=true;});
   QTRY_VERIFY(done);QCOMPARE(error.code,QString("config_conflict"));
  }
+ void reorderProfilesChangesOnlyTheOrderAndRejectsWithoutWriting() {
+  Fixture f;QVERIFY(f.saveProfiles(3));auto document=f.settings.document();auto actions=document["actions"].toObject();
+  for(const auto& name:Settings::actionNames()){auto action=actions[name].toObject();action["destination"]="upload";action["profileId"]=name=="clipboard"?"profile2":"profile0";actions[name]=action;}
+  document["actions"]=actions;QVERIFY(!f.settings.save(document,f.settings.revision()).error);
+  QFile file(f.settings.path());QVERIFY(file.open(QIODevice::ReadOnly));const auto bytes=file.readAll();file.close();
+  auto call=[&](const QJsonObject& params){Error error;QJsonObject result;bool done=false;request(f.server,"settings.reorderProfiles",params,[&](Error e,QJsonObject value){error=e;result=value;done=true;});[&]{QTRY_VERIFY(done);}();return std::pair{error,result};};
+  auto unchanged=[&]{QFile current(f.settings.path());[&]{QVERIFY(current.open(QIODevice::ReadOnly));}();return current.readAll()==bytes;};
+  const auto revision=f.settings.revision();
+  const QList<QPair<QJsonArray,QString>> rejected{{{"profile0","profile1"},"missing"},{{"profile0","profile1","profile2","other"},"extra"},{{"profile0","profile1","profile2","profile1"},"duplicate"}};
+  for(const auto& [order,field]:rejected){
+   const auto [error,result]=call({{"order",order},{"expectedRevision",revision}});
+   QCOMPARE(error.code,QString("profile_order_invalid"));QVERIFY2(!error.details[field].toArray().isEmpty(),qPrintable(field));QVERIFY(unchanged());QCOMPARE(f.settings.revision(),revision);
+  }
+  QCOMPARE(call({{"order",QJsonArray{"profile2","profile1","profile0"}},{"expectedRevision","stale"}}).first.code,QString("config_conflict"));QVERIFY(unchanged());
+  QCOMPARE(call({{"order",QJsonArray{1,2}},{"expectedRevision",revision}}).first.code,QString("profile_order_invalid"));
+  QCOMPARE(call({{"order","profile0"},{"expectedRevision",revision}}).first.code,QString("invalid_request"));
+  QCOMPARE(call({{"order",QJsonArray{}}}).first.code,QString("invalid_request"));QVERIFY(unchanged());
+  // An unchanged order does not rewrite the file.
+  auto [same,sameResult]=call({{"order",QJsonArray{"profile0","profile1","profile2"}},{"expectedRevision",revision}});QVERIFY(!same);QVERIFY(!sameResult["changed"].toBool());QVERIFY(unchanged());
+  const auto [moved,movedResult]=call({{"order",QJsonArray{"profile2","profile0","profile1"}},{"expectedRevision",revision}});
+  QVERIFY2(!moved,qPrintable(moved.code));QVERIFY(movedResult["changed"].toBool());QCOMPARE(movedResult["metadata"].toObject()["acceptedRevision"].toString(),f.settings.revision());
+  QStringList ids;for(const auto& p:f.settings.document()["profiles"].toArray())ids.append(p.toObject()["id"].toString());QCOMPARE(ids,QStringList({"profile2","profile0","profile1"}));
+  auto expected=document;auto profiles=document["profiles"].toArray();expected["profiles"]=QJsonArray{profiles[2],profiles[0],profiles[1]};
+  QCOMPARE(f.settings.document()["profiles"].toArray(),expected["profiles"].toArray());
+  auto withoutProfiles=[](QJsonObject doc){doc.remove("profiles");return doc;};QCOMPARE(withoutProfiles(f.settings.document()),withoutProfiles(Settings::normalized(document)));
+  QCOMPARE(f.settings.snapshot().actions["clipboard"].profileId,QString("profile2"));QCOMPARE(f.settings.snapshot().actions["region"].profileId,QString("profile0"));
+  QCOMPARE(call({{"order",QJsonArray{"profile0","profile1","profile2"}},{"expectedRevision",revision}}).first.code,QString("config_conflict"));
+ }
+ void moveDestinationNeedsAnInterface() {
+  Fixture f;QVERIFY(f.saveProfiles(2));Error error;bool done=false;
+  for(const auto& params:QList<QJsonObject>{{{"direction","left"}},{},{{"direction","up"},{"profileId",""}},{{"direction","up"},{"extra",true}}}){done=false;request(f.server,"ui.moveDestination",params,[&](Error e,QJsonObject){error=e;done=true;});QVERIFY(done);QCOMPARE(error.code,QString("invalid_request"));}
+  done=false;request(f.server,"ui.moveDestination",{{"direction","down"}},[&](Error e,QJsonObject){error=e;done=true;});QVERIFY(done);QCOMPARE(error.code,QString("ui_unavailable"));
+  QString command;QJsonObject forwarded;f.server.setUiCommand([&](const QString& name,const QJsonObject& params,JsonReply reply){command=name;forwarded=params;reply({},{{"order",QJsonArray{"profile1","profile0"}}});});
+  QJsonObject result;done=false;request(f.server,"ui.moveDestination",{{"direction","up"},{"profileId","profile1"}},[&](Error e,QJsonObject value){error=e;result=value;done=true;});
+  QVERIFY(done);QVERIFY(!error);QCOMPARE(command,QString("moveDestination"));QCOMPARE(forwarded,QJsonObject({{"direction","up"},{"profileId","profile1"}}));QCOMPARE(result["order"].toArray().size(),2);
+ }
  void setupEndpointsWithoutServiceReportUnavailable() {
   Fixture f;
   for(const auto& method:QStringList{"setup.storeCredentials","setup.unlockCredentials","setup.testDestination","setup.revealCredentialSecret","setup.inspect"}) {

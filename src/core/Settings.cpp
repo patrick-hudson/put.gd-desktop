@@ -326,4 +326,26 @@ Settings Settings::fromValidated(const QJsonObject& original) {
     for (const auto& color : doc["preferences"].toObject()["editorRecentColors"].toArray()) settings.editorRecentColors.append(color.toString());
     return settings;
 }
+Error Settings::reorderProfiles(const QJsonObject& document, const QJsonArray& order, QJsonObject& reordered) {
+    const auto profiles = document["profiles"].toArray();
+    QHash<QString, QJsonObject> byId;
+    for (const auto& entry : profiles) byId.insert(entry.toObject()["id"].toString(), entry.toObject());
+    QStringList seen, missing, extra, duplicate;
+    for (const auto& value : order) {
+        if (!value.isString()) return {"profile_order_invalid", "The order must be a list of destination IDs.", {}};
+        const auto id = value.toString();
+        if (seen.contains(id)) { if (!duplicate.contains(id)) duplicate.append(id); continue; }
+        seen.append(id);
+        if (!byId.contains(id)) extra.append(id);
+    }
+    for (const auto& entry : profiles) if (!seen.contains(entry.toObject()["id"].toString())) missing.append(entry.toObject()["id"].toString());
+    if (!missing.isEmpty() || !extra.isEmpty() || !duplicate.isEmpty())
+        return {"profile_order_invalid", "The order must list every destination ID exactly once.",
+            {{"missing", QJsonArray::fromStringList(missing)}, {"extra", QJsonArray::fromStringList(extra)}, {"duplicate", QJsonArray::fromStringList(duplicate)}}};
+    QJsonArray result;
+    for (const auto& id : seen) result.append(byId.value(id));
+    reordered = document;
+    reordered["profiles"] = result;
+    return {};
+}
 }

@@ -63,6 +63,21 @@ private slots:
   controller.activate("about",[&](Error e){error=e;++shown;});controller.invalidate();QTRY_COMPARE(shown,2);QVERIFY2(!error,qPrintable(error.code));QCOMPARE(controller.status()["state"].toString(),QString("ready"));
   controller.invalidate();QTest::qWait(100);QCOMPARE(controller.status()["state"].toString(),QString("ready"));bool stopped=false;controller.shutdown([&]{stopped=true;});QTRY_VERIFY(stopped);
  }
+ void commandsReachOnlyAReadyHelper(){
+  UiProcessController controller("/unused/test.sock","epoch",helper(),valid);int launches=0;
+  connect(&controller,&UiProcessController::helperPidChanged,this,[&](qint64 pid){if(pid)++launches;});
+  Error error;QJsonObject result;bool done=false;auto reply=[&](Error e,QJsonObject value){error=e;result=value;done=true;};
+  controller.command("moveDestination",{{"direction","up"}},reply);QVERIFY(done);QCOMPARE(error.code,QString("ui_view_closed"));QCOMPARE(launches,0);
+  bool shown=false;controller.activate("settings",[&](Error e){QVERIFY(!e);shown=true;});QTRY_VERIFY(shown);
+  done=false;controller.command("moveDestination",{{"direction","up"}},reply);QTRY_VERIFY(done);QVERIFY2(!error,qPrintable(error.code));
+  QCOMPARE(result["command"].toString(),QString("moveDestination"));QCOMPARE(result["params"].toObject(),QJsonObject({{"direction","up"}}));QCOMPARE(launches,1);
+  bool stopped=false;controller.shutdown([&]{stopped=true;});QTRY_VERIFY(stopped);
+ }
+ void helperExitFailsOutstandingCommands(){
+  qputenv("PUTGD_TEST_UI_MODE","command-crash");UiProcessController controller("/unused/test.sock","epoch",helper(),valid);
+  bool shown=false;controller.activate("settings",[&](Error){shown=true;});QTRY_VERIFY(shown);
+  Error error;bool done=false;controller.command("moveDestination",{{"direction","down"}},[&](Error e,QJsonObject){error=e;done=true;});QTRY_VERIFY(done);QVERIFY(bool(error));
+ }
  void startsOneHelperAndShowsAllRequestedViews(){
   UiProcessController controller("/unused/test.sock","epoch",helper(),valid);int launches=0,shown=0;Error error;
   connect(&controller,&UiProcessController::helperPidChanged,this,[&](qint64 pid){if(pid)++launches;});

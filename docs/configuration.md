@@ -68,7 +68,7 @@ the last accepted in-memory settings and the bad file so it can be corrected.
 | Each action's `shortcut` | One Qt PortableText combination; empty means unbound; independent of output inheritance |
 | Each action's `publicationMode` | Optional `default`, `share` or `private`; `default` uses the destination's sharing preference |
 | `captureDefaults` | Optional shared output: `destination` (`upload` or `local`), `profileId` (configured ID or `null`), and `publicationMode` (`default`, `share` or `private`) |
-| `profiles` | At most 32 provider destinations; empty on fresh startup |
+| `profiles` | At most 32 provider destinations; empty on fresh startup. Array order is the display order of Settings → Destinations and the Destination dropdowns only; everything else refers to profiles by `id`. Reorder with `settings.reorderProfiles` (see [cli.md](cli.md)) |
 | Each profile's `id`, `label`, `provider` | Unique stable ID, display label, registered adapter ID |
 | Each profile's `settings` | Non-secret settings validated by its provider adapter |
 | Each profile's `credentials` | `keychain` plus a nonempty `reference`, or `session` plus `null` reference |

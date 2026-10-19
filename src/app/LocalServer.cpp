@@ -108,6 +108,12 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   if(!uiActivation_){reply({"ui_unavailable","This resident has no graphical interface",{}},{});return;}
   const auto view=p["view"].toString();uiActivation_(view,[reply=std::move(reply),view](Error error){reply(error,{{"shown",view}});});return;
  }
+ // Drives the open Settings window the way a user does (Move up / Move down).
+ if(method=="ui.moveDestination") {
+  if(!fields(p,{"direction"},{"profileId"})||!QStringList{"up","down"}.contains(p["direction"].toString())||(p.contains("profileId")&&!string(p,"profileId",64))){reply(invalid(),{});return;}
+  if(!uiCommand_){reply({"ui_unavailable","This resident has no graphical interface",{}},{});return;}
+  uiCommand_("moveDestination",p,std::move(reply));return;
+ }
  if(method=="action.invoke") {
   if(!fields(p,{"action"},{"source","path"})||!string(p,"action")||(p.contains("source")&&!string(p,"source",32))||(p.contains("path")&&!string(p,"path",4096))){reply(invalid(),{});return;}
   auto options=p;options.remove("action");operations_.invoke(p["action"].toString(),reply,options);return;
@@ -192,6 +198,15 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   QPointer<LocalServer> guarded(this);settings_.saveAsync(p["document"].toObject(),p["expectedRevision"].toString(),[guarded,reply](Result result) {if(guarded)reply(result.error,{{"document",guarded->settings_.document()},{"metadata",guarded->settings_.metadata()}});});return;
  }
  if(method=="settings.patch") {if(!fields(p,{"patch","expectedRevision"})||!p["patch"].isObject()||!p["expectedRevision"].isString()) {reply(invalid(),{});return;}QPointer<LocalServer> guarded(this);settings_.patchAsync(p["patch"].toObject(),p["expectedRevision"].toString(),[guarded,reply](Result result) {if(guarded)reply(result.error,guarded->settings_.metadata());});return;}
+ // Display order only: routing, exceptions and history refer to profiles by ID.
+ if(method=="settings.reorderProfiles") {
+  if(!fields(p,{"order","expectedRevision"})||!p["order"].isArray()||p["order"].toArray().size()>64||!p["expectedRevision"].isString()) {reply(invalid(),{});return;}
+  // Reorder only the accepted document it was read from; the save rechecks the file under its lock.
+  if(p["expectedRevision"].toString()!=settings_.revision()) {reply({"config_conflict","Configuration changed; reload or rebase before saving.",{{"observedRevision",settings_.metadata()["observedRevision"]}}},{});return;}
+  QJsonObject document;if(auto error=Settings::reorderProfiles(settings_.document(),p["order"].toArray(),document)) {reply(error,{});return;}
+  if(document==settings_.document()) {reply({},{{"changed",false},{"metadata",settings_.metadata()}});return;}
+  QPointer<LocalServer> guarded(this);settings_.saveAsync(document,p["expectedRevision"].toString(),[guarded,reply](Result result) {if(guarded)reply(result.error,{{"changed",true},{"metadata",guarded->settings_.metadata()}});});return;
+ }
  if(method=="settings.importDevelopment") {
   if(!fields(p,{"expectedRevision"})||!p["expectedRevision"].isString()) {reply(invalid(),{});return;}
   QPointer<LocalServer> guarded(this);settings_.saveAsync(Settings::developmentTemplate(),p["expectedRevision"].toString(),[guarded,reply](Result result) {if(guarded)reply(result.error,guarded->settings_.metadata());});return;

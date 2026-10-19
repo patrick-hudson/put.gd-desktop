@@ -6,6 +6,7 @@ for local bulk artifacts and [verification](../verification.md) for limitations.
 
 | Topic | Starting point |
 | --- | --- |
+| Destination reorder in Settings (issue #59) | [Suites and Cinnamon X11 guest: native drag, drop line, Alt+Down, ⋯ menu, `ui.moveDestination`, `settings.reorderProfiles`, restart](2026-10-19-destination-reorder.md) |
 | Recording bar audio box and WebM Opus decode (issues #120, #119) | [f44 GNOME, d69 KWin 6.3 Wayland and k72 X11 bar frames with sound on/off; FFmpeg 8.0 parser cause, decode test, Firefox and Chromium](2026-10-19-recording-fixes-119-120.md) |
 | Wayland recording A/V sync (issue #86) | [d69 KWin/portal, f44 Mutter/portal and k72 X11: working clip vs export offsets, timestamp A/B, before/after](2026-10-19-wayland-av-sync.md) |
 | Recording control bar placement and handle (issue #108) | [k72 X11, d69 KWin 6.3, f44 GNOME and a two-monitor Cinnamon guest: placement, frame checks, motion](2026-10-19-recording-bar-placement.md) |
