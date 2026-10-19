@@ -137,6 +137,7 @@ void RecordSession::command(const QString& command, const QJsonObject& params, R
     reply({"unknown_method", "Unknown recording helper command", {}}, {});
 }
 void RecordSession::cancelLocal() {
+    cancelled_ = true;
     if (exportCancel_) exportCancel_->store(true);
     progress_.stop();
     barTimer_.stop();
@@ -179,6 +180,8 @@ void RecordSession::prepare(const QJsonObject& params, Reply reply) {
     acquire(std::move(reply));
 }
 void RecordSession::acquire(Reply reply) {
+    // A cancel that arrived while the selector was closing opens nothing.
+    if (cancelled_) { reply({"cancelled", "Recording cancelled before the source opened", {}}, {}); return; }
     const auto acquisition = capabilities_["acquisition"].toString();
     if (acquisition == "kde-screencast" || acquisition == "mutter-screencast") { prepareNative(std::move(reply)); return; }
     if (acquisition == "portal") { preparePortal(std::move(reply)); return; }
@@ -230,7 +233,8 @@ void RecordSession::select(Reply reply) {
             guard->kdeSelection_->deleteLater();
             guard->kdeSelection_ = nullptr;
             guard->target_.rect = logical.toAlignedRect();
-            guard->acquire(reply);
+            // Emitted from a Wayland callback: open the stream and the surfaces outside it.
+            QTimer::singleShot(0, guard, [guard, reply] { if (guard) guard->acquire(reply); });
         });
         connect(kdeSelection_, &KdeRegionOverlay::cancelled, this, [guard, cancelled](const Error& error) {
             if (!guard || !guard->kdeSelection_) return;

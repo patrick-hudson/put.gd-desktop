@@ -69,7 +69,7 @@ private:
     QJsonObject capabilities_;
     QString staging_, workingClip_;
     qint64 durationUs_ = 0;
-    bool prepared_ = false, recorded_ = false, overlayExcluded_ = true;
+    bool prepared_ = false, recorded_ = false, overlayExcluded_ = true, cancelled_ = false;
     QString overlayPlacement_;
     RecordingPipeline pipeline_;
     PortalScreenCast portal_;
