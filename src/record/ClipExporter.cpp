@@ -26,6 +26,11 @@ namespace putgd::record {
 namespace {
 QString avError(int code) { char text[AV_ERROR_MAX_STRING_SIZE] = {}; av_strerror(code, text, sizeof text); return QString::fromUtf8(text); }
 Error fail(const QString& code, const QString& message, int av = 0) { return {code, av ? message + ": " + avError(av) : message, {}}; }
+// Closes a buffer source. AVERROR_EOF only means the graph already ended, for example at the trim end.
+int flushSource(AVFilterContext* source) {
+    const int rc = av_buffersrc_add_frame_flags(source, nullptr, 0);
+    return rc >= 0 || rc == AVERROR_EOF ? 0 : rc;
+}
 constexpr AVRational microseconds{1, 1000000};
 QString seconds(qint64 us) { return QString::number(us / 1000000.0, 'f', 6); }
 QString enable(qint64 startUs, qint64 endUs) { return QStringLiteral("enable='gte(t\\,%1)*lt(t\\,%2)'").arg(seconds(startUs), seconds(endUs)); }
@@ -365,7 +370,7 @@ Error driveVideo(const QString& path, Graph& graph, qint64 fromUs, qint64 untilU
         for (;;) {
             rc = avcodec_receive_frame(input.video, frame.get());
             if (rc == AVERROR(EAGAIN)) break;
-            if (rc == AVERROR_EOF) { av_buffersrc_add_frame_flags(graph.source, nullptr, 0); if (auto e = drain()) return e; return {}; }
+            if (rc == AVERROR_EOF) { if ((rc = flushSource(graph.source)) < 0) return fail("recording_export_failed", "Filtering failed", rc); if (auto e = drain()) return e; return {}; }
             if (rc < 0) return fail("recording_export_failed", QStringLiteral("Decoding failed (%1, code %2)").arg(QString::fromUtf8(input.video->codec->name)).arg(rc), rc);
             frame->pts = frame->best_effort_timestamp;
             rc = av_buffersrc_add_frame_flags(graph.source, frame.get(), AV_BUFFERSRC_FLAG_KEEP_REF);
@@ -377,7 +382,7 @@ Error driveVideo(const QString& path, Graph& graph, qint64 fromUs, qint64 untilU
             if (auto e = drain()) return e;
         }
     }
-    av_buffersrc_add_frame_flags(graph.source, nullptr, 0);
+    if (const int flushed = flushSource(graph.source); flushed < 0) return fail("recording_export_failed", "Filtering failed", flushed);
     auto e = drain();
     debugLog(QStringLiteral("drive: input EOF after pushed=%1 pulled=%2 lastRc=%3").arg(pushed).arg(pulled).arg(lastRc));
     return e;
@@ -429,7 +434,11 @@ Error exportClip(const ExportRequest& request, ExportResult& result, const std::
     Graph graph;
     const auto description = request.config.format == "gif" ? base + "[pv];[pv][pal]paletteuse=dither=bayer:bayer_scale=3:diff_mode=rectangle[out]" : base + tail + "[out]";
     if (auto e = graph.build(description, input.video, videoTimeBase, request.config.format == "gif", paletteFrame.get())) return e;
-    if (graph.palette) { av_buffersrc_add_frame_flags(graph.palette, paletteFrame.get(), AV_BUFFERSRC_FLAG_KEEP_REF); av_buffersrc_add_frame_flags(graph.palette, nullptr, 0); }
+    if (graph.palette) {
+        rc = av_buffersrc_add_frame_flags(graph.palette, paletteFrame.get(), AV_BUFFERSRC_FLAG_KEEP_REF);
+        if (rc >= 0) rc = flushSource(graph.palette);
+        if (rc < 0) return fail("recording_export_failed", "Cannot load the GIF palette", rc);
+    }
     int frames = 0;
     qint64 lastPts = 0;
     const auto sinkTimeBase = av_buffersink_get_time_base(graph.sink);
@@ -486,7 +495,7 @@ Error exportClip(const ExportRequest& request, ExportResult& result, const std::
             for (;;) {
                 r = avcodec_receive_frame(input.audio, frame.get());
                 if (r == AVERROR(EAGAIN)) break;
-                if (r == AVERROR_EOF) { av_buffersrc_add_frame_flags(audioGraph.source, nullptr, 0); if (auto e = drain()) return e; break; }
+                if (r == AVERROR_EOF) { if ((r = flushSource(audioGraph.source)) < 0) return fail("recording_export_failed", "Audio filtering failed", r); if (auto e = drain()) return e; break; }
                 if (r < 0) return fail("recording_export_failed", "Audio decoding failed", r);
                 frame->pts = frame->best_effort_timestamp;
                 r = av_buffersrc_add_frame_flags(audioGraph.source, frame.get(), AV_BUFFERSRC_FLAG_KEEP_REF);

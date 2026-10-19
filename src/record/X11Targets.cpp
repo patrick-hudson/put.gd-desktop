@@ -22,7 +22,7 @@ Error windowRect(unsigned long window, QRect& out) {
     const auto* setup = xcb_get_setup(connection);
     auto iterator = xcb_setup_roots_iterator(setup);
     for (int i = 0; i < screen && iterator.rem; ++i) xcb_screen_next(&iterator);
-    const xcb_window_t root = iterator.data ? iterator.data->root : XCB_WINDOW_NONE;
+    const xcb_window_t root = iterator.data ? iterator.data->root : xcb_window_t(XCB_WINDOW_NONE);
     std::unique_ptr<xcb_get_window_attributes_reply_t, decltype(&free)> attributes(xcb_get_window_attributes_reply(connection, xcb_get_window_attributes(connection, xcb_window_t(window)), nullptr), free);
     std::unique_ptr<xcb_get_geometry_reply_t, decltype(&free)> geometry(xcb_get_geometry_reply(connection, xcb_get_geometry(connection, xcb_window_t(window)), nullptr), free);
     std::unique_ptr<xcb_translate_coordinates_reply_t, decltype(&free)> origin(geometry ? xcb_translate_coordinates_reply(connection, xcb_translate_coordinates(connection, xcb_window_t(window), root, 0, 0), nullptr) : nullptr, free);
