@@ -431,6 +431,27 @@ def create_server(adapter: CliAdapter) -> FastMCP:
         """Validate/reload the active file; invalid edits preserve accepted settings; no cloud/capture activity."""
         return await adapter.call('settings.reload', {})
 
+    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
+    async def create_diagnostics_bundle(operation_id: str | None = None, since: str | None = None,
+                                        include_names: bool = False, output: str | None = None) -> Json:
+        """Save a diagnostics package (.zip) locally for a maintainer: manifest with SHA-256s, environment, diagnostics, redacted configuration, failed/partial/interrupted operations with HTTP/provider codes and S3 request IDs, and log records, at most 20 MiB. operation_id packages one operation and the log around it; otherwise since (1m-365d, default 7d) picks failures and logs. File names, object keys and URLs are hashed unless include_names; credentials, tokens, signed URLs, file bytes, clipboard and the raw history database are never included. output is an absolute .zip path (never overwritten) or folder; the default <archive>/diagnostics keeps only the newest 10 packages for 30 days. Nothing is uploaded. Returns path, bytes, sha256 and counts."""
+        if operation_id is not None and not identifier(operation_id, 128):
+            return invalid()
+        if since is not None and not (isinstance(since, str) and 2 <= len(since) <= 8):
+            return invalid()
+        if type(include_names) is not bool or (output is not None and (not identifier(output, 4096) or not output.startswith('/'))):
+            return invalid()
+        params: Json = {}
+        if operation_id is not None:
+            params['operation'] = operation_id
+        if since is not None:
+            params['since'] = since
+        if include_names:
+            params['includeNames'] = True
+        if output is not None:
+            params['output'] = output
+        return await adapter.call('diagnostics.bundle', params)
+
     @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, openWorldHint=False))
     async def clear_logs() -> Json:
         """Delete every persistent log file in put.gd's state folder and start a new one; returns removedFiles and removedBytes. Uploads, history, settings and saved diagnostics packages are untouched. inspect shows the log folder size, file count and oldest record under diagnostics.logging."""

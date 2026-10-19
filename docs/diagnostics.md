@@ -2,8 +2,9 @@
 
 put.gd keeps a persistent log so a failed capture or upload can be worked out
 afterwards (#74). This page covers where the log lives, what a record holds, what
-is never written, how long files are kept and how unclean exits are reported.
-The `diagnostics` method ([cli.md](cli.md)) reports the log's current state.
+is never written, how long files are kept, how unclean exits are reported, and the
+diagnostics package a user sends to a maintainer. The `diagnostics` method
+([cli.md](cli.md)) reports the log's current state.
 
 ## Location and permissions
 
@@ -169,9 +170,87 @@ The last 10 records are kept in `unclean-exits.json`. `diagnostics.uncleanExit` 
 `detected` (this start found one), `last` and `recent` (newest first). Crash
 backtraces are #74 §5, tracked in #124.
 
+## Diagnostics package
+
+One `.zip` a user can send to a maintainer, who can then work out what happened.
+It is created through the session method `diagnostics.bundle` (CLI and MCP; the
+Settings button and failure-notification triggers are #122) and saved locally only;
+nothing is uploaded (#123 tracks the optional upload).
+
+```sh
+putgd-cli diagnostics.bundle [--operation ID] [--since 7d] [--include-names] [--output PATH]
+```
+
+The flags map to the JSON parameters `operation`, `since`, `includeNames` and
+`output`; MCP `create_diagnostics_bundle` takes `operation_id`, `since`,
+`include_names` and `output`.
+
+- **`operation`:** package that one operation, with the log records from ten minutes
+  before it was accepted to ten minutes after its last record. `since` is ignored.
+- **`since`:** without `operation`, the failed, partial and interrupted operations
+  created in this window (newest first, at most 50) and its log records. `1m` to
+  `365d` with `m`, `h` or `d`; the default is `7d`.
+- **`includeNames`:** keep file names, object keys, URLs, buckets, endpoints and
+  labels. Without it they are hashed.
+- **`output`:** an absolute `.zip` path, which must not exist yet (a package never
+  replaces a file), or an existing folder. The CLI makes a relative path absolute.
+  The default is `<archive root>/diagnostics/`, `~/Documents/put.gd/diagnostics/`
+  unless the archive root was changed.
+
+Packages are named `putgd-diagnostics-<UTC yyyyMMdd-HHmmss>Z.zip` and written 0600.
+The reply gives `path`, `bytes`, `sha256`, `redaction` (`hashed` or `names`), `files`,
+`operations`, `logRecords`, `droppedLogRecords`, `defaultFolder` and `pruned`. One
+package is built at a time (`diagnostics_busy`); other errors are
+`operation_not_found`, `diagnostics_output_exists`, `diagnostics_output_unavailable`
+and `invalid_request`.
+
+### Contents
+
+| File | Contents |
+| --- | --- |
+| `manifest.json` | Package `schemaVersion` 1, creation time, build manifest, `redaction`, `scope` (operation or window), every other file's path, size and SHA-256, log record counts (`records`, `eligibleRecords`, `droppedRecords`) and the size limit |
+| `environment.json` | `/etc/os-release` `ID`, `ID_LIKE`, `VERSION_ID`, `VERSION_CODENAME`, `VARIANT_ID`; kernel; architecture; desktop and session type; Qt compile-time and runtime versions; platform plugin and resident kind; tray and portal availability; locale; screen count with each screen's device pixel ratio and logical DPI (no pixels); total RAM; free bytes under the data folder |
+| `diagnostics.json` | The current `diagnostics` output, including each helper's `lastExit`, `logging` and `uncleanExit` |
+| `config.redacted.json` | The accepted settings. Credential references are reduced to their `mode`, a Proton share-password reference likewise. Buckets, endpoints, public URL bases, labels, Proton folder names and IDs are hashed; region, storage class, ACL mode, timeouts and other options stay. Archive folders keep their shape below `<home>` |
+| `operations.json` | Each operation's ID, action, state, phase, creation time, cancellation, copy status, provider, profile and error, and per item its ID, MIME type, category, size, name, upload name, upload/share/remote status, phase, local-copy status, error (with HTTP status, provider code and S3 request IDs), object key, direct URL and the number of upload attempts in the log window |
+| `logs/putgd.jsonl` | The log records in the window, oldest first, with the package redaction applied |
+
+The package is at most 20 MiB. The other files go first; the log records fill the
+rest, newest first, so when it would go over, the oldest records are dropped and
+counted in `droppedRecords`.
+
+**Never included:** credentials, secrets or tokens, keychain data, signed URLs,
+artifact or preview bytes, screenshots, clipboard content and the raw
+`history.sqlite`.
+
+### Redaction in packages
+
+On top of the log's own redaction, which applies again:
+
+- Known folders become placeholders in both modes: `<config>`, `<data>`, `<state>`,
+  `<runtime>`, `<archive>` and `<home>`.
+- Without `includeNames`, each file name, upload name, object key, URL, bucket,
+  endpoint, label and Proton ID becomes `<kind:hash>` (names, keys and paths keep
+  their extension, as in `<name:3f2a9c1b7d0e.png>`), and so does the rest of any path
+  below `<home>` or `<archive>`. The hash is an HMAC with a key made for that package
+  and never stored, so one value has the same token throughout a package, which lets
+  a maintainer follow a file across records, but tokens can't be matched across
+  packages or guessed from likely names. put.gd's own GitHub release links stay.
+
+`tests/unit/test_diagnostics_bundle.cpp` checks the contents and hashes, the size
+limit, the default-folder rules and that synthetic secrets, clipboard text, credential
+references and names stay out of a hashed package.
+
+### The default folder
+
+`<archive root>/diagnostics/` belongs to put.gd. After saving a package there, put.gd
+deletes the packages beyond the newest 10 and any older than 30 days, matching only
+its own `putgd-diagnostics-*.zip` names. A package saved anywhere else is never
+deleted, and other files in the folder are left alone.
+
 ## Not yet available
 
-The diagnostics package (`diagnostics.bundle`, #74 §3) follows in a separate pull
-request. The Settings controls (debug logging, Clear logs, Create diagnostics package)
-and failure-notification triggers are #122; upload-and-copy-link for packages is #123;
-crash backtraces and kept debug symbols are #124; Windows is #125.
+The Settings controls (debug logging, Clear logs, Create diagnostics package) and the
+failure-notification triggers with **Show in folder** are #122; uploading a package
+and copying its link is #123; crash backtraces and kept debug symbols are #124;
+Windows is #125.

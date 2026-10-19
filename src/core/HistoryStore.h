@@ -24,6 +24,9 @@ public:
  HistoryPage list(const HistoryQuery&) const;
  QJsonObject detail(const QString&,Error* = nullptr) const;
  QJsonArray recent(int limit,Error* = nullptr) const;
+ // Operations created at or after `from` (ISO UTC) in one of `states`, newest
+ // first, at most `limit`; for diagnostics packages (#74).
+ QList<Operation> operationsSince(const QString& from,const QStringList& states,int limit,Error* = nullptr) const;
  Error expireBefore(const QString& timestamp);
  Error clear(); // preserves any identities retained by in-progress deletion
  Error saveDeletion(const QJsonObject&);

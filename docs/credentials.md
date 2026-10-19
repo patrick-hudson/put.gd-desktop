@@ -32,7 +32,9 @@ No secret is written to configuration, operation journals, payload spools, the
 persistent log or exported diagnostics. The log redacts authorization headers, session
 tokens, presigned query strings, share-link fragments and secret-shaped values when it
 writes each record, and the AWS SDK never logs above Warn (Info with debug logging),
-so request headers are not logged ([diagnostics.md](diagnostics.md#redaction)). Keys do live in memory and the SDK client until drained/destructed;
+so request headers are not logged ([diagnostics.md](diagnostics.md#redaction)).
+A diagnostics package reduces each credential reference to its `mode` and never
+includes keychain data ([diagnostics.md](diagnostics.md#diagnostics-package)). Keys do live in memory and the SDK client until drained/destructed;
 this implementation does not promise locked or securely wiped process memory.
 
 The explicit GUI **Show** action can read an unlocked saved S3 secret access key through `setup.revealCredentialSecret`. It returns only that secret from the resident cache for the saved profile and accepted/observed revision; it does no keychain IO. If the cache is empty, unlock saved credentials explicitly first. The CLI rejects this method and the MCP helper does not expose it. The UI holds the revealed value read-only until Hide, a destination/provider change, page hide, close, reload, or credential clearing. Revealed saved values never become credential drafts, setup job records, snapshots, diagnostics, or checkpoints.

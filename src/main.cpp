@@ -6,6 +6,7 @@
 #include "storage/s3/S3Provider.h"
 #include "storage/proton/ProtonProvider.h"
 #include "app/LocalServer.h"
+#include "app/DiagnosticsBundle.h"
 #include "app/LogService.h"
 #include "app/LoginStartup.h"
 #include "app/UiProcessController.h"
@@ -16,6 +17,7 @@
 #include "ui/ViewState.h"
 #include "ui/TrayController.h"
 #include <QApplication>
+#include <QScreen>
 #include "platform/NativeSession.h"
 #include <QCommandLineParser>
 #include <QStandardPaths>
@@ -214,6 +216,8 @@ int main(int argc,char* argv[]) {
  putgd::logging::open(stateRoot+"/logs",{settings.snapshot().logDays,settings.snapshot().logBytes},"putgd");
  putgd::RunMarker::begin(stateRoot,putgd::buildVersion());
  putgd::LogService logService(settings,stateRoot);logService.apply();
+ putgd::DiagnosticsBundles bundles(operations,stateRoot);server.setDiagnosticsBundles(&bundles);
+ QJsonObject portalStatus;
  QObject::connect(&app,&QCoreApplication::aboutToQuit,&logService,[]{putgd::logging::info(putgd::logApp(),"Resident stopping");});
 #ifdef PUTGD_NATIVE_X11
  if(coreNative) {
@@ -303,7 +307,17 @@ int main(int argc,char* argv[]) {
  QObject::connect(&ui,&putgd::UiProcessController::failure,&tray,&putgd::TrayController::notifyFailure);
  server.setUiActivation([&](const QString& requested,std::function<void(putgd::Error)> reply){startupRecovery.stop();ui.activate(requested,std::move(reply));});
  server.setUiViewState([&]{return ui.viewState();});
- server.setUiDiagnostics([&]{auto diagnostics=operations.diagnostics();diagnostics["loginStartup"]=loginStatus;diagnostics["shortcuts"]=source->capabilities()["shortcuts"];diagnostics["ui"]=ui.status();diagnostics["trayAvailable"]=tray.available();return diagnostics;});
+ const auto fullDiagnostics=[&]{auto diagnostics=operations.diagnostics();diagnostics["loginStartup"]=loginStatus;diagnostics["shortcuts"]=source->capabilities()["shortcuts"];diagnostics["ui"]=ui.status();diagnostics["trayAvailable"]=tray.available();return diagnostics;};
+ server.setUiDiagnostics(fullDiagnostics);
+ bundles.setDiagnostics(fullDiagnostics);
+ // environment.json's session-side facts: no pixels, only geometry scale.
+ bundles.setEnvironment([&]{
+  QJsonArray screens;
+  if(qobject_cast<QGuiApplication*>(QCoreApplication::instance()))for(const auto* screen:QGuiApplication::screens())screens.append(QJsonObject{{"devicePixelRatio",screen->devicePixelRatio()},{"logicalDpi",screen->logicalDotsPerInch()}});
+  return QJsonObject{{"platform",coreResident||gnomeCoreResident||kdeCoreResident?QStringLiteral("none"):QGuiApplication::platformName()},
+   {"resident",coreResident?"x11-core":gnomeCoreResident?"gnome-core":kdeCoreResident?"kde-core":"graphical"},{"trayAvailable",tray.available()},
+   {"portal",portalStatus},{"screenCount",screens.size()},{"screens",screens}};
+ });
  QObject::connect(&settings,&putgd::SettingsService::statusChanged,&ui,&putgd::UiProcessController::invalidate);
  QObject::connect(&operations,&putgd::OperationService::initialized,&ui,&putgd::UiProcessController::invalidate);
  QObject::connect(&operations,&putgd::OperationService::changed,&ui,&putgd::UiProcessController::invalidate);
@@ -344,7 +358,7 @@ int main(int argc,char* argv[]) {
    const auto running=bus.interface()->isServiceRegistered("org.freedesktop.portal.Desktop");
    const QDBusReply<QStringList> activatable=bus.interface()->call("ListActivatableNames");
    return QJsonObject{{"sessionBus",true},{"portalRunning",running.isValid()&&running.value()},{"portalActivatable",activatable.isValid()&&activatable.value().contains("org.freedesktop.portal.Desktop")}};
-  },[](putgd::Error,QJsonObject portal){putgd::logging::info(putgd::logApp(),"Desktop portal availability",portal);});
+  },[&portalStatus](putgd::Error,QJsonObject portal){portalStatus=portal;putgd::logging::info(putgd::logApp(),"Desktop portal availability",portal);});
 #endif
  }
  QObject::connect(&app,&QCoreApplication::aboutToQuit,&operations,[&]{proton->shutdown();operations.shutdown();});
