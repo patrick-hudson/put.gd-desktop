@@ -1,11 +1,14 @@
 #include "record/BarPlacement.h"
 #include "record/Overlays.h"
 #include <QApplication>
+#include <QCheckBox>
 #include <QJsonArray>
 #include <QPushButton>
 #include <QRandomGenerator>
 #include <QScreen>
+#include <QStyleOptionButton>
 #include <QtTest>
+#include <memory>
 using namespace putgd::record;
 
 // Issue #108: on X11 the control bar must stay out of the recorded pixels when
@@ -33,6 +36,24 @@ ControlBar::Options barOptions() {
     options.codecs = QJsonObject{{"mp4", QJsonArray{"h264", "h265"}}, {"webm", QJsonArray{"vp9"}}};
     options.audioSupported = true;
     return options;
+}
+// The System audio box's indicator as the bar draws it.
+QImage audioIndicator(QCheckBox* audio) {
+    QStyleOptionButton option;
+    option.initFrom(audio);
+    const QRect rect = audio->style()->subElementRect(QStyle::SE_CheckBoxIndicator, &option, audio);
+    const QImage image = audio->grab().toImage();
+    const qreal ratio = image.devicePixelRatio();
+    return image.copy(QRect((QPointF(rect.topLeft()) * ratio).toPoint(), (QSizeF(rect.size()) * ratio).toSize()));
+}
+// Darkest and mean grey level inside the indicator's border.
+std::pair<int, double> greyLevels(const QImage& indicator) {
+    int darkest = 255;
+    double sum = 0;
+    int count = 0;
+    for (int y = 2; y < indicator.height() - 2; ++y)
+        for (int x = 2; x < indicator.width() - 2; ++x) { const int grey = qGray(indicator.pixel(x, y)); darkest = std::min(darkest, grey); sum += grey; ++count; }
+    return {darkest, count ? sum / count : 0};
 }
 }
 
@@ -121,6 +142,35 @@ private slots:
         }
     }
 
+    // #120: from Record on the System audio box is locked, and it still shows
+    // whether the sound is recorded: filled with the theme's tick, or empty.
+    // The disabled rule used to repaint a checked box as an unchecked one.
+    void lockedAudioBoxShowsTheRecordedSound() {
+        auto barWith = [](bool sound) { putgd::RecordingConfig config; config.audio.system = sound; return std::make_unique<ControlBar>(barOptions(), config); };
+        const auto withSound = barWith(true), silent = barWith(false);
+        auto* on = withSound->findChild<QCheckBox*>();
+        auto* off = silent->findChild<QCheckBox*>();
+        QVERIFY(on && off);
+        // Before Record the box is live and ticked.
+        QVERIFY(on->isChecked() && on->isEnabled());
+        const auto [readyDarkest, readyMean] = greyLevels(audioIndicator(on));
+        QVERIFY2(readyDarkest < 70 && readyMean > 120, qPrintable(QStringLiteral("ready: darkest %1 mean %2").arg(readyDarkest).arg(readyMean)));
+        for (const char* state : {"recording", "paused", "stopping"}) {
+            withSound->setState(QString::fromLatin1(state));
+            silent->setState(QString::fromLatin1(state));
+            QVERIFY(on->isChecked() && !on->isEnabled());
+            QVERIFY(!off->isChecked() && !off->isEnabled());
+            QCOMPARE(on->toolTip(), QStringLiteral("System audio is being recorded"));
+            QCOMPARE(off->toolTip(), QStringLiteral("System audio is not being recorded"));
+            const QImage ticked = audioIndicator(on), empty = audioIndicator(off);
+            QVERIFY(ticked.width() >= 8 && ticked.height() >= 8 && ticked.size() == empty.size());
+            const auto [tickedDarkest, tickedMean] = greyLevels(ticked);
+            const auto [emptyDarkest, emptyMean] = greyLevels(empty);
+            // A light fill behind a dark tick, against an empty dark box.
+            QVERIFY2(tickedMean - emptyMean > 40, qPrintable(QStringLiteral("%1: mean %2 vs %3").arg(state).arg(tickedMean).arg(emptyMean)));
+            QVERIFY2(tickedDarkest < 70, qPrintable(QStringLiteral("%1: no tick, darkest %2 (empty %3)").arg(state).arg(tickedDarkest).arg(emptyDarkest)));
+        }
+    }
     // The real bar, on the offscreen platform's screens (three monitors or one, from ctest).
     void barStaysOnItsScreenAfterRecord() {
         const auto screens = qtScreens();

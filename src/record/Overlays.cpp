@@ -98,8 +98,9 @@ QLabel#time { font-family: "DejaVu Sans Mono", monospace; font-size: 14px; min-w
 QCheckBox { color: #e6e8ee; spacing: 6px; }
 QCheckBox:disabled { color: #6f7685; }
 QCheckBox::indicator { width: 14px; height: 14px; border: 1px solid #9bbcff; border-radius: 3px; background: #22262f; }
-QCheckBox::indicator:checked { background: #9bbcff; }
+QCheckBox::indicator:checked { image: url(:/record/check.png); background: #9bbcff; }
 QCheckBox::indicator:disabled { border-color: #3a4150; background: #1c1f26; }
+QCheckBox::indicator:checked:disabled { border-color: #6f86b5; background: #6f86b5; }
 QComboBox { background: #22262f; color: #e6e8ee; border: 1px solid #3a4150; border-radius: 6px; padding: 2px 8px; }
 QComboBox:disabled { color: #6f7685; }
 QComboBox::drop-down { border: none; width: 18px; }
@@ -322,9 +323,11 @@ void ControlBar::refresh() {
     const bool ready = state_ == "ready", recording = state_ == "recording", paused = state_ == "paused";
     const bool handle = handle_ && !ready;
     dot_->setStyleSheet(QStringLiteral("background: %1; border-radius: 6px;").arg(recording ? "#e53935" : paused ? "#f9a825" : ready ? "#4caf50" : "#9e9e9e"));
+    // Locked from Record on, the box still shows what is being recorded (#120).
+    const bool withSound = config_.audio.system && !config_.silent();
     audio_->setEnabled(ready && options_.audioSupported && !config_.silent());
-    audio_->setChecked(config_.audio.system && !config_.silent());
-    audio_->setToolTip(config_.silent() ? QStringLiteral("GIF and WebP are silent") : QStringLiteral("Include the sound the computer plays"));
+    audio_->setChecked(withSound);
+    audio_->setToolTip(config_.silent() ? QStringLiteral("GIF and WebP are silent") : ready ? QStringLiteral("Include the sound the computer plays") : withSound ? QStringLiteral("System audio is being recorded") : QStringLiteral("System audio is not being recorded"));
     format_->setEnabled(ready);
     for (auto* w : std::initializer_list<QWidget*>{time_, target_, audio_, format_, cancel_}) w->setVisible(!handle);
     record_->setVisible(ready);
