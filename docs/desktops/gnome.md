@@ -94,7 +94,9 @@ editor (`putgd-ui --edit-image`) and the recording helper, which never register
 opened by the views helper through the desktop, so they are never the
 resident's direct children. A sandboxed resident needs the app-ID
 rule described in [Flatpak](../flatpak.md), change 2, because its PIDs are not
-host PIDs; these native PID rules stay for native callers.
+host PIDs; these native PID rules stay for native callers. The
+[editor refusal receipt](../evidence/2026-10-19-gnome-editor-refusal.md)
+records the physical Fedora 44 runs from the RPM and the AppImage.
 
 Recording protocol 1 (`recordingVersion: 1` in `Hello`) serves screen
 recording, which must not show its own surfaces on GNOME. `SelectArea(id)`
