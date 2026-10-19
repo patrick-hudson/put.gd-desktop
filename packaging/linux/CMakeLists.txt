@@ -119,9 +119,17 @@ set(CPACK_RPM_SPEC_MORE_DEFINE
 if(TARGET putgd-record)
   # The helper links the distro GStreamer/FFmpeg libraries (shlibdeps/RPM find
   # those); element plugins are separate packages that must be present.
+  # Debian/Ubuntu: plugins-bad carries openh264enc and voaacenc (and pulls
+  # plugins-extra, which holds the va encoders on Ubuntu 26.04), so a live
+  # H.264 and AAC encoder are always there; x264 and VA-API are preferred.
   string(APPEND CPACK_DEBIAN_PACKAGE_DEPENDS ", gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer1.0-pipewire")
   set(CPACK_DEBIAN_PACKAGE_RECOMMENDS "gstreamer1.0-plugins-ugly, gstreamer1.0-libav, gstreamer1.0-vaapi")
+  # Fedora: bad-free carries the va and fdkaacenc elements, but its stock Intel
+  # and AMD drivers have no H.264 encoding, so openh264enc is the only live
+  # encoder; it and FFmpeg load libopenh264, which is the noopenh264
+  # placeholder unless Cisco's openh264 (fedora-cisco-openh264) replaces it.
   string(APPEND CPACK_RPM_PACKAGE_REQUIRES ", gstreamer1-plugins-base, gstreamer1-plugins-good, gstreamer1-plugins-bad-free, pipewire-gstreamer")
+  set(CPACK_RPM_PACKAGE_RECOMMENDS "gstreamer1-plugin-openh264, openh264")
 endif()
 if(PUTGD_BUNDLE_PROTON)
   string(APPEND CPACK_DEBIAN_PACKAGE_DEPENDS ", xdg-utils, libsecret-1-0")
