@@ -18,6 +18,14 @@ the user authorizes dependency/tool setup and testing with passwordless
 `sudo -n`; preserve existing projects and desktop work. Keep the SSH private key
 on the workstation. Verify host capacity, KVM and display access before VM runs;
 host preference does not change the required guest versions.
+
+The three physical desktops serve one session at a time. Before any GUI work on
+one, take its lock with `python3 tools/lab/desktop_lock.py acquire`, heartbeat it,
+and release it only after its cleanup check passes. Never wait for another
+session's reply while holding a lock: notify with a deadline, and silence means go.
+SSH builds and VMs on the builders are shared; heavy work stays off the workstation.
+The full rules, including one coordinator per session family, are in
+`docs/remote-builders.md` under "Sharing the lab between concurrent sessions".
 Linux goldens and Windows bases are not kept on the workstation. They live on the
 Fedora and Debian builders and in a private S3 bucket. Find, copy and restore
 them using `docs/remote-golden-images.md`, and expose
