@@ -545,7 +545,8 @@ is included. DEB, RPM and AppImage keep their current behavior.
   portal with restore tokens; nothing on the host, but a one-time permission on
   Plasma 6.6, a copy of each capture in `~/Pictures`, and active-window capture
   through a picker or unavailable), or **KWin screen cast** (silent region,
-  desktop and window captures and recordings from KWin's screen-cast protocol).
+  desktop and window captures and recordings from KWin's screen-cast protocol;
+  window capture needs one more grant that is not tested yet).
   The KWin mode needs a desktop entry named after the app ID in the user's
   `~/.local/share/applications`; put.gd offers to write it through a FileChooser
   save dialog the user confirms, verifies that KWin then offers the protocol,
