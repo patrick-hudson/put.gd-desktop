@@ -56,13 +56,15 @@ to a static control from the same desktop.
 | Ubuntu 24.04 DEB | Mint 22.3 Cinnamon/X11 | Cinnamon VM on a builder, or physical Mint | `ximagesrc` capture with the distro encoders |
 | Ubuntu 26.04 DEB | Kubuntu 26.04 Plasma/X11 | physical `.72` | `ximagesrc` capture; VA-API live encoding |
 | Ubuntu 26.04 DEB | Ubuntu 26.04 GNOME/Wayland, Kubuntu 26.04 Plasma/Wayland | VMs on a builder | Mutter and KWin native streams from the installed helper; the portal path |
-| Debian 13 DEB built on Debian (`native.py`) | Debian 13 Plasma/Wayland | physical `.69` | `kde-screencast` from the installed `putgd-record.desktop`; the portal path |
+| Debian 13 DEB (`putgd-VERSION-debian13-x86_64.deb`) | Debian 13 Plasma/Wayland | physical `.69` | `kde-screencast` from the installed `putgd-record.desktop`; the portal path |
 | Fedora 44 RPM | Fedora 44 GNOME/Wayland | physical `.70` | `mutter-screencast` and the portal; a stock install pulling Cisco's OpenH264 through the RPM's Recommends; the actionable `h264_encoder_unusable` message with the `noopenh264` placeholder |
 | AppImage | the Kubuntu, Debian and Fedora physical desktops above | physical | every plugin loaded from the image; the host GPU encoder used where it works and the bundled x264 where it does not (stock Fedora); AppRun's KWin entry giving `kde-screencast` on Plasma/Wayland and removed on exit |
 
-No release DEB installs on Debian 13: the Ubuntu 24.04 and 26.04 DEBs require
-FFmpeg 6.1 and 8.0 sonames (`libavcodec60`, `libavcodec62`) and Debian 13 ships
-7.1. Debian rows therefore use a DEB built on Debian until a Debian asset exists.
+Each DEB installs only on the release it was built for. The Ubuntu 24.04 and
+26.04 DEBs require FFmpeg 6.1 and 8.0 sonames (`libavcodec60`, `libavcodec62`),
+and Debian 13 ships 7.1, so Debian rows install the release `debian13` DEB, built
+in a Debian 13 container against `libavcodec61` (issue #85). Before that asset
+existed they used a DEB built on the Debian host.
 
 ## Choose physical hardware or a VM for each gate
 

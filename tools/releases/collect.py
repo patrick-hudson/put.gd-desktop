@@ -12,6 +12,10 @@ import proton_sources
 import appimage_media_sources
 from release_bundle import create_gnome_zip, create_release_bundle
 
+# Package matrix names in .github/workflows/package.yml, each built on its own distro.
+NATIVE_TARGETS = (('ubuntu24.04', 'DEB', '.deb'), ('ubuntu26.04', 'DEB', '.deb'),
+                  ('debian13', 'DEB', '.deb'), ('fedora44', 'RPM', '.rpm'))
+
 
 def identity_matches(manifest, release):
     fields = ('version', 'baseVersion', 'packageVersion', 'gitCommit', 'gitTree', 'commitCount')
@@ -62,7 +66,7 @@ def collect(root, inputs, output, tag):
     # Resolve everything before making an output directory or copying assets.
     selected = []
     receipts = {}
-    for distro, kind, suffix in [('ubuntu24.04', 'DEB', '.deb'), ('ubuntu26.04', 'DEB', '.deb'), ('fedora44', 'RPM', '.rpm')]:
+    for distro, kind, suffix in NATIVE_TARGETS:
         directory = inputs / ('release-native-' + distro)
         receipt = json.loads((directory / 'native-audit.json').read_text())
         package = receipt['package']
@@ -105,7 +109,7 @@ def collect(root, inputs, output, tag):
     if (rebuilt.get('sha256') != catalog['helperSha256']
             or rebuilt.get('bundledSha256') != catalog['helperSha256']):
         raise ValueError('Source build has no matching rebuilt Proton helper')
-    for kind in ('ubuntu24.04', 'ubuntu26.04', 'fedora44', 'appimage'):
+    for kind in (*(distro for distro, _, _ in NATIVE_TARGETS), 'appimage'):
         inventory = (receipts[kind].get('postDeploymentAudit', {}).get('proton', {}) if kind == 'appimage'
                      else receipts[kind].get('proton', {}))
         if (inventory.get('runtimeSha256') != catalog['helperSha256']

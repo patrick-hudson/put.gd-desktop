@@ -25,6 +25,7 @@ class Bundle(unittest.TestCase):
         self.names = [
             'putgd-0.1.1-rc.1-ubuntu24.04-x86_64.deb',
             'putgd-0.1.1-rc.1-ubuntu26.04-x86_64.deb',
+            'putgd-0.1.1-rc.1-debian13-x86_64.deb',
             'putgd-0.1.1-rc.1-fedora44-x86_64.rpm',
             'putgd-0.1.1-rc.1-x86_64.AppImage',
             'putgd-0.1.1-rc.1-appimage-media-source.tar.gz',

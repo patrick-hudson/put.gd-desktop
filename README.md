@@ -159,22 +159,24 @@ Every image below is the current nightly build (`0.1.1-dev.343+gac92b2158535`) o
 <p align="center">
   <a href="https://github.com/patrick-hudson/put.gd-desktop/releases"><img alt="Ubuntu 24.04 DEB" src="https://img.shields.io/badge/Ubuntu_24.04-.deb-E95420?style=for-the-badge&logo=ubuntu&logoColor=white"></a>&nbsp;
   <a href="https://github.com/patrick-hudson/put.gd-desktop/releases"><img alt="Ubuntu 26.04 DEB" src="https://img.shields.io/badge/Ubuntu_26.04-.deb-E95420?style=for-the-badge&logo=ubuntu&logoColor=white"></a>&nbsp;
+  <a href="https://github.com/patrick-hudson/put.gd-desktop/releases"><img alt="Debian 13 DEB" src="https://img.shields.io/badge/Debian_13-.deb-A81D33?style=for-the-badge&logo=debian&logoColor=white"></a>&nbsp;
   <a href="https://github.com/patrick-hudson/put.gd-desktop/releases"><img alt="Fedora 44 RPM" src="https://img.shields.io/badge/Fedora_44-.rpm-51A2DA?style=for-the-badge&logo=fedora&logoColor=white"></a>&nbsp;
   <a href="https://github.com/patrick-hudson/put.gd-desktop/releases"><img alt="AppImage" src="https://img.shields.io/badge/Any_distro-.AppImage-1E1E1E?style=for-the-badge&logo=linux&logoColor=white"></a>
 </p>
 
-Every build, nightly or stable, ships the same twelve files. Grab the one for your distro from the [releases page](https://github.com/patrick-hudson/put.gd-desktop/releases):
+Every build, nightly or stable, ships the same fourteen files. Grab the one for your distro from the [releases page](https://github.com/patrick-hudson/put.gd-desktop/releases):
 
 | You run | Download | Qt |
 | --- | --- | --- |
 | Ubuntu 24.04 · Linux Mint 22 | `putgd-VERSION-ubuntu24.04-x86_64.deb` | distro Qt 6.4 |
 | Ubuntu 26.04 · Kubuntu 26.04 | `putgd-VERSION-ubuntu26.04-x86_64.deb` | distro Qt + LayerShellQt |
+| Debian 13 | `putgd-VERSION-debian13-x86_64.deb` | distro Qt 6.8 + LayerShellQt |
 | Fedora 44 | `putgd-VERSION-fedora44-x86_64.rpm` | distro Qt + LayerShellQt |
 | Anything else with glibc 2.39+ | `putgd-VERSION-x86_64.AppImage` | bundled Qt 6.8.3, dynamically linked |
 | GNOME 50 (any of the above) | `putgd-gnome50-VERSION.zip` | host Shell extension; the DEB/RPM already install it |
 | Building it yourself | `putgd-VERSION-source.tar.gz` | curated source with `source-info.json` |
 
-Plus `SHA256SUMS`, `release-builds.json` (full build receipts), a combined `putgd-VERSION-release.zip`, and the Proton helper's corresponding source in two parts.
+Plus `SHA256SUMS`, `release-builds.json` (full build receipts), a combined `putgd-VERSION-release.zip`, the AppImage's media source, and the Proton helper's corresponding source in two parts. Each DEB installs only on the release it names, because it links that release's FFmpeg.
 
 <details open>
 <summary><b>Fetch the newest nightly from the terminal</b></summary>
@@ -182,7 +184,7 @@ Plus `SHA256SUMS`, `release-builds.json` (full build receipts), a combined `putg
 ```bash
 repo=patrick-hudson/put.gd-desktop
 tag=$(gh release list -R "$repo" --exclude-drafts --json tagName -q '[.[].tagName | select(test("-nightly\\."))][0]')
-gh release download "$tag" -R "$repo" -p '*ubuntu24.04*.deb' -p SHA256SUMS   # or *ubuntu26.04*, *fedora44*, *.AppImage
+gh release download "$tag" -R "$repo" -p '*ubuntu24.04*.deb' -p SHA256SUMS   # or *ubuntu26.04*, *debian13*, *fedora44*, *.AppImage
 sha256sum --check --ignore-missing SHA256SUMS
 ```
 

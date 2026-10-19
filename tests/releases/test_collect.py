@@ -1,6 +1,7 @@
 """Release collection rejects bytes/source mismatches before exposing any output."""
 import hashlib
 import io
+import shutil
 import tarfile
 from datetime import datetime, timezone
 import json
@@ -69,7 +70,7 @@ class ReleaseCollection(unittest.TestCase):
         identity = {field: self.release[field] for field in ('version', 'baseVersion', 'packageVersion', 'gitCommit', 'gitTree', 'commitCount')}
         identity.update(schemaVersion=1, dirty=False, sourceProvenance='git')
         self.inputs = self.root / 'build/inputs'
-        for distro, kind, suffix, arch in [('ubuntu24.04', 'DEB', '.deb', 'amd64'), ('ubuntu26.04', 'DEB', '.deb', 'amd64'), ('fedora44', 'RPM', '.rpm', 'x86_64')]:
+        for distro, kind, suffix, arch in [('ubuntu24.04', 'DEB', '.deb', 'amd64'), ('ubuntu26.04', 'DEB', '.deb', 'amd64'), ('debian13', 'DEB', '.deb', 'amd64'), ('fedora44', 'RPM', '.rpm', 'x86_64')]:
             directory = self.inputs / ('release-native-' + distro)
             directory.mkdir(parents=True)
             path = directory / ('synthetic' + suffix)
@@ -116,12 +117,13 @@ class ReleaseCollection(unittest.TestCase):
         files = {path.name for path in self.output.iterdir()}
         self.assertIn('putgd-0.1.1-rc.1-ubuntu24.04-x86_64.deb', files)
         self.assertIn('putgd-0.1.1-rc.1-ubuntu26.04-x86_64.deb', files)
+        self.assertIn('putgd-0.1.1-rc.1-debian13-x86_64.deb', files)
         lines = (self.output / 'SHA256SUMS').read_text().splitlines()
         self.assertIn('putgd-0.1.1-rc.1-source.tar.gz', files)
         self.assertIn('putgd-0.1.1-rc.1-fedora44-x86_64.rpm', files)
         self.assertIn('putgd-0.1.1-rc.1-x86_64.AppImage', files)
         self.assertIn('putgd-0.1.1-rc.1-appimage-media-source.tar.gz', files)
-        self.assertEqual(len(lines), 12)
+        self.assertEqual(len(lines), 13)
         self.assertEqual((self.output / 'putgd-0.1.1-rc.1-source.tar.gz').read_bytes(),
                          (self.inputs / 'release-native-ubuntu24.04' / self.source_receipt['artifact']['file']).read_bytes())
         combined = self.output / 'putgd-0.1.1-rc.1-release.zip'
@@ -311,6 +313,20 @@ class ReleaseCollection(unittest.TestCase):
             self.run_collection()
         self.assertFalse(self.output.exists())
 
+    def test_missing_or_foreign_debian_package_rejected_before_output(self):
+        directory = self.inputs / 'release-native-debian13'
+        path = directory / 'native-audit.json'
+        receipt = json.loads(path.read_text())
+        receipt['package']['format'] = 'RPM'
+        path.write_text(json.dumps(receipt))
+        with self.assertRaisesRegex(ValueError, 'debian13'):
+            self.run_collection()
+        self.assertFalse(self.output.exists())
+        shutil.rmtree(directory)
+        with self.assertRaises(FileNotFoundError):
+            self.run_collection()
+        self.assertFalse(self.output.exists())
+
     def test_changed_package_version_rejected(self):
         path = self.inputs / 'release-native-fedora44/native-audit.json'
         receipt = json.loads(path.read_text())
@@ -340,7 +356,7 @@ class ReleaseCollection(unittest.TestCase):
         (directory / 'source-archive.json').write_text(json.dumps(self.source_receipt))
         return tag, archive
 
-    def test_nightly_cli_preserves_all_thirteen_raw_assets_and_exact_compiled_source(self):
+    def test_nightly_cli_preserves_all_fourteen_raw_assets_and_exact_compiled_source(self):
         tag, source = self.nightly_inputs()
         (self.inputs / 'credentials.txt').write_text('synthetic excluded fixture')
         argv = ['collect.py', '--tag', tag, '--root', str(self.root),
@@ -353,7 +369,7 @@ class ReleaseCollection(unittest.TestCase):
         expected = set(expected_members(self.release['version']) +
                        ['putgd-' + self.release['version'] + '-release.zip', 'SHA256SUMS', *proton_sources.PART_NAMES])
         self.assertEqual(files, expected)
-        self.assertEqual(len(files), 13)
+        self.assertEqual(len(files), 14)
         self.assertEqual((self.output / source.name).read_bytes(), source.read_bytes())
         builds = json.loads((self.output / 'release-builds.json').read_text())
         self.assertEqual(builds['release']['channel'], 'nightly')

@@ -31,6 +31,10 @@ jobs:
             format: DEB
             image: ubuntu:26.04@sha256:f144425ff09be612d6d9ad965196e9cdc23dae1f42110a8a11a3e9a8198759f7
             kde: --require-kde
+          - name: debian13
+            format: DEB
+            image: debian:13@sha256:913f6706df59a68922d1dd08f78c2476560a8d367897200a6005b00e5f67c2d5
+            kde: --require-kde
           - name: fedora44
             format: RPM
             image: fedora:44@sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80

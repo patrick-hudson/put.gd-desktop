@@ -530,10 +530,10 @@ than all of them.
 On Fedora with the placeholder the probe reports `h264_encoder_unusable`
 (`openh264enc`: "Could not initialize supporting library"), FFmpeg's
 `libopenh264` decoder and encoder fail to open, and the hint names the
-command above. A Debian 13 install uses a DEB built on Debian with
-`tools/releases/native.py`: the Ubuntu DEBs link FFmpeg 6.1 (24.04) or 8.0
-(26.04), and Debian 13 ships 7.1, so neither installs there now that the
-helper is packaged.
+command above. Debian 13 has its own release DEB
+(`putgd-VERSION-debian13-x86_64.deb`), built against Debian's FFmpeg 7.1: the
+Ubuntu DEBs link FFmpeg 6.1 (24.04) or 8.0 (26.04), so neither installs there
+now that the helper is packaged.
 
 ### AppImage runtime
 

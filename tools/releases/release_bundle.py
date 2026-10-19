@@ -17,6 +17,7 @@ def expected_members(version):
     return [
         'putgd-' + version + '-ubuntu24.04-x86_64.deb',
         'putgd-' + version + '-ubuntu26.04-x86_64.deb',
+        'putgd-' + version + '-debian13-x86_64.deb',
         'putgd-' + version + '-fedora44-x86_64.rpm',
         'putgd-' + version + '-x86_64.AppImage',
         'putgd-' + version + '-appimage-media-source.tar.gz',
