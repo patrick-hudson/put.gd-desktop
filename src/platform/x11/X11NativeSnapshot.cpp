@@ -1,5 +1,6 @@
 #include "X11NativeSnapshot.h"
 #include "X11Reply.h"
+#include "X11WindowOwner.h"
 #include "platform/NativeSession.h"
 #include <QCryptographicHash>
 #include <QJsonArray>
@@ -70,7 +71,7 @@ QJsonObject X11NativeSnapshot::freeze(const QString& action,const QSet<qint64>& 
   auto active=x11::reply(xcb_get_property_reply(connection_,xcb_get_property(connection_,0,root_,atom("_NET_ACTIVE_WINDOW"),XCB_ATOM_WINDOW,0,1),nullptr));if(!active||active->format!=32||xcb_get_property_value_length(active.get())!=4){error=targetError();return {};}
   std::memcpy(&window,xcb_get_property_value(active.get()),4);if(!window||window==root_){error=targetError();return {};}
   auto owner=x11::reply(xcb_get_property_reply(connection_,xcb_get_property(connection_,0,window,atom("_NET_WM_PID"),XCB_ATOM_CARDINAL,0,1),nullptr));uint32_t pid=0;if(owner&&owner->format==32&&xcb_get_property_value_length(owner.get())==4)std::memcpy(&pid,xcb_get_property_value(owner.get()),4);
-  if(pid&&excluded.contains(pid)){error={"capture_target","Focus an external window before invoking window capture",{}};return {};}
+  if(pid&&(excluded.contains(pid)||x11::startedByResident(pid))){error={"capture_target","Focus an external window before invoking window capture",{}};return {};}
   geometry=windowRect(window,error);if(error)return {};
  }
  if(layout(error)!=before){if(!error)error=changedError();return {};}
