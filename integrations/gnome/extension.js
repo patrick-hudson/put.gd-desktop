@@ -96,10 +96,12 @@ function subtract(rects, hole) {
     }
     return result.filter(r => r[2] > 0 && r[3] > 0);
 }
-// Where the control bar goes: below the recorded rectangle, else above it, in
-// the work area holding its centre; else at the top of another monitor's work
-// area; else inside the rectangle's bottom-right corner (it is then recorded).
-function barPlacement(rect, size, areas, gap = 10) {
+// Where the control bar goes (the helper's BarPlacement rules): below the
+// recorded rectangle, else above it, in the work area holding its centre; else
+// at the top or bottom of another monitor's work area; else inside the
+// rectangle's bottom-right corner (it is then recorded), kept on that work
+// area. allowOutside false keeps an earlier inside decision for a resized bar.
+function barPlacement(rect, size, areas, allowOutside = true, gap = 10) {
     const [x, y, w, h] = rect, [bw, bh] = size;
     const centre = [x + w / 2, y + h / 2];
     const home = areas.find(a => centre[0] >= a[0] && centre[0] < a[0] + a[2] && centre[1] >= a[1] && centre[1] < a[1] + a[3]) ?? areas[0];
@@ -109,13 +111,19 @@ function barPlacement(rect, size, areas, gap = 10) {
         candidates.push([left, y + h + gap, bw, bh], [left, y - gap - bh, bw, bh]);
     }
     for (const area of areas) {
-        if (area !== home)
-            candidates.push([area[0] + Math.round((area[2] - bw) / 2), area[1] + gap, bw, bh]);
+        if (area !== home) {
+            const left = area[0] + Math.round((area[2] - bw) / 2);
+            candidates.push([left, area[1] + gap, bw, bh], [left, area[1] + area[3] - gap - bh, bw, bh]);
+        }
     }
-    const chosen = candidates.find(c => areas.some(a => contains(a, c)) && !overlaps(c, rect));
+    const chosen = allowOutside && candidates.find(c => areas.some(a => contains(a, c)) && !overlaps(c, rect));
     if (chosen)
         return {rect: chosen, outside: true};
     const inside = [x + w - bw - gap, y + h - bh - gap, bw, bh];
+    if (home) {
+        inside[0] = Math.max(home[0], Math.min(inside[0], home[0] + home[2] - bw));
+        inside[1] = Math.max(home[1], Math.min(inside[1], home[1] + home[3] - bh));
+    }
     return {rect: inside, outside: !overlaps(inside, rect)};
 }
 
@@ -129,6 +137,8 @@ class RecordingFrame {
     }
     show(rect, kind, dimmed, bar) {
         this.destroy();
+        this._shown = [rect, kind, dimmed];
+        this._bar = bar;
         const add = (r, color) => {
             if (r[2] <= 0 || r[3] <= 0)
                 return;
@@ -153,6 +163,13 @@ class RecordingFrame {
             add(r, 'rgba(255, 255, 255, 0.92)');
         for (const r of [[x - 1, y - 1, w + 2, 1], [x - 1, y + h, w + 2, 1], [x - 1, y, 1, h], [x + w, y, 1, h]])
             add(r, 'rgba(0, 0, 0, 0.78)');
+    }
+    // The bar moved: cut its new spot out of the dim strips.
+    moveBar(bar) {
+        if (this._shown && this._bar && this._shown[2] && (bar[0] !== this._bar[0] || bar[1] !== this._bar[1] || bar[2] !== this._bar[2] || bar[3] !== this._bar[3]))
+            this.show(...this._shown, bar);
+        else if (this._bar)
+            this._bar = bar;
     }
     destroy() {
         for (const actor of this._actors)
@@ -1089,7 +1106,10 @@ export default class PutgdExtension extends Extension {
             await pause(50);
         const frame = window.get_frame_rect();
         const areas = Main.layoutManager.monitors.map((_monitor, index) => rectangle(Main.layoutManager.getWorkAreaForMonitor(index)));
-        const target = barPlacement(rect, [frame.width, frame.height], areas);
+        // A later state of the same frame keeps the first decision, so a bar
+        // that had to sit inside stays in the corner as its handle.
+        const earlier = this._barFollow?.window === window && this._barFollow.rect.every((v, i) => v === rect[i]) ? this._barFollow : null;
+        const target = barPlacement(rect, [frame.width, frame.height], areas, earlier ? earlier.outside : true);
         if (!window.is_above())
             window.make_above();
         let actual = null;
@@ -1101,7 +1121,43 @@ export default class PutgdExtension extends Extension {
             if (actual[0] === target.rect[0] && actual[1] === target.rect[1])
                 break;
         }
+        this._followRecordingBar(window, rect, earlier ? earlier.outside : target.outside);
         return {placed: true, outside: !overlaps(actual, rect), rect: actual};
+    }
+
+    // The helper resizes its bar when the state changes (wider while recording,
+    // a handle when it has to sit inside); place it again on every size change
+    // so it never runs past its monitor and the dim strips keep its hole.
+    _followRecordingBar(window, rect, outside) {
+        if (this._barFollow?.window !== window) {
+            this._unfollowRecordingBar();
+            const id = window.connect('size-changed', () => this._replaceRecordingBar());
+            this._barFollow = {window, id};
+        }
+        Object.assign(this._barFollow, {rect, outside});
+    }
+
+    _replaceRecordingBar() {
+        const follow = this._barFollow;
+        if (!follow || !this._enabled)
+            return;
+        const frame = follow.window.get_frame_rect();
+        const areas = Main.layoutManager.monitors.map((_monitor, index) => rectangle(Main.layoutManager.getWorkAreaForMonitor(index)));
+        const target = barPlacement(follow.rect, [frame.width, frame.height], areas, follow.outside);
+        if (frame.x !== target.rect[0] || frame.y !== target.rect[1])
+            follow.window.move_frame(true, target.rect[0], target.rect[1]);
+        this._recordingFrame?.moveBar(target.rect);
+    }
+
+    _unfollowRecordingBar() {
+        if (!this._barFollow)
+            return;
+        try {
+            this._barFollow.window.disconnect(this._barFollow.id);
+        } catch {
+            // The window is already gone.
+        }
+        this._barFollow = null;
     }
 
     ShowRecordingFrameAsync([json], invocation) {
@@ -1129,6 +1185,7 @@ export default class PutgdExtension extends Extension {
     }
 
     _hideRecordingFrame() {
+        this._unfollowRecordingBar();
         this._recordingFrame?.destroy();
         this._recordingFrame = null;
     }

@@ -136,7 +136,14 @@ void RecordSession::command(const QString& command, const QJsonObject& params, R
         reply({}, {});
         return;
     }
-    if (command == "overlay") { barHidden_ = !params["visible"].toBool(true); if (bar_) bar_->setVisible(!barHidden_); reply({}, {{"visible", bar_ ? bar_->isVisible() : false}}); return; }
+    if (command == "overlay") {
+        // {visible} hides or shows the bar; {handle} (from the resident, when the
+        // GNOME Shell had to leave the bar inside the area) collapses it from Record on.
+        if (params["handle"].isBool() && bar_) bar_->setHandleWhileRecording(params["handle"].toBool());
+        if (params.contains("visible")) { barHidden_ = !params["visible"].toBool(true); if (bar_) bar_->setVisible(!barHidden_); }
+        reply({}, {{"visible", bar_ ? bar_->isVisible() : false}});
+        return;
+    }
     if (command == "preview") { preview(params, std::move(reply)); return; }
     if (command == "export") { exportClip(params, std::move(reply)); return; }
     reply({"unknown_method", "Unknown recording helper command", {}}, {});
