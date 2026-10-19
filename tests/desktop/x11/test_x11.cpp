@@ -416,7 +416,7 @@ private slots:
   xcb_change_property(c,XCB_PROP_MODE_REPLACE,root,active,XCB_ATOM_WINDOW,32,1,&desktop.window);
   own(uint32_t(editor.processId()));
   X11Capture capture;Error error;capture.freeze("window",error);QCOMPARE(error.code,QString("capture_target"));
-  capture.setUiProcess(editor.processId()+1);error={};capture.freeze("window",error);QCOMPARE(error.code,QString("capture_target"));capture.setUiProcess(0);
+  capture.setUiProcess(424242);error={};capture.freeze("window",error);QCOMPARE(error.code,QString("capture_target"));capture.setUiProcess(0);
   // A process this one didn't start, and a PID with no /proc entry, stay external.
   own(uint32_t(getppid()));error={};auto frozen=capture.freeze("window",error);QVERIFY2(!error,qPrintable(error.message));QCOMPARE(frozen.window,desktop.window);
   own(gone);error={};frozen=capture.freeze("window",error);QVERIFY2(!error,qPrintable(error.message));QCOMPARE(frozen.window,desktop.window);

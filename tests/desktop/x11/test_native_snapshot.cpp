@@ -30,7 +30,7 @@ private slots:
   const auto window=xcb_generate_id(connection);const uint32_t values[]{1};xcb_create_window(connection,screen->root_depth,window,root,10,10,50,40,0,XCB_WINDOW_CLASS_INPUT_OUTPUT,screen->root_visual,XCB_CW_OVERRIDE_REDIRECT,values);xcb_map_window(connection,window);
   auto own=[&](uint32_t owner){xcb_change_property(connection,XCB_PROP_MODE_REPLACE,window,pid,XCB_ATOM_CARDINAL,32,1,&owner);xcb_flush(connection);auto response=putgd::x11::reply(xcb_get_input_focus_reply(connection,xcb_get_input_focus(connection),nullptr));QVERIFY(response);};
   xcb_change_property(connection,XCB_PROP_MODE_REPLACE,root,active,XCB_ATOM_WINDOW,32,1,&window);own(uint32_t(editor.processId()));
-  const QSet<qint64> excluded{QCoreApplication::applicationPid(),editor.processId()+1};
+  const QSet<qint64> excluded{QCoreApplication::applicationPid(),424242};
   putgd::X11NativeSnapshot native;QVERIFY(native.available());putgd::Error error;native.freeze("window",excluded,error);QCOMPARE(error.code,QString("capture_target"));
   // A process this one didn't start, and a PID with no /proc entry, stay external.
   own(uint32_t(getppid()));error={};auto frozen=native.freeze("window",excluded,error);QVERIFY2(!error,qPrintable(error.code));QCOMPARE(frozen["window"].toString(),QString::number(window));
