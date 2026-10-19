@@ -524,7 +524,7 @@ private slots:
   const QString clean="0.1.1-dev.430+g528fe444b0cb";apply(clean,false);QTRY_VERIFY(label->isVisible());QVERIFY(!link->isVisible());QCOMPARE(label->text().remove(QChar(0x200B)),clean);QVERIFY2(label->heightForWidth(label->width())<=label->fontMetrics().lineSpacing()+2,"A clean development version fits on one line");
   // Dirty development builds have no public page: the full string stays readable, unlinked, wrapping after "+" if needed.
   const QString dirty="0.1.1-dev.430+g528fe444b0cb.dirty";apply(dirty,true);QTRY_VERIFY(label->isVisible());QVERIFY(!link->isVisible());QCOMPARE(label->text().remove(QChar(0x200B)),dirty);QCOMPARE(label->accessibleName(),"put.gd version "+dirty);
-  QVERIFY2(label->width()<=rail->contentsRect().width()-28&&label->height()>=label->heightForWidth(label->width()),"The longest development version fits in the rail");QCOMPARE(openedUrls_.size(),1);
+  QTRY_VERIFY2(label->width()<=rail->contentsRect().width()-28&&label->height()>=label->heightForWidth(label->width()),"The longest development version fits in the rail");QCOMPARE(openedUrls_.size(),1);
  }
 };
 QTEST_MAIN(SettingsGui)
