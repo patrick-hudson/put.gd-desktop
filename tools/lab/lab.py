@@ -41,9 +41,10 @@ def lifecycle_operation(function):
     return locked
 
 
-def cleanup_overlay(run, *, evidence_manifest=None, dry_run=False):
+def cleanup_overlay(run, *, evidence_manifest=None, dry_run=False, images_root=None):
     try:
-        return overlay_cleanup.cleanup(run, evidence_manifest=evidence_manifest, dry_run=dry_run)
+        return overlay_cleanup.cleanup(run, evidence_manifest=evidence_manifest, dry_run=dry_run,
+                                       images_root=images_root)
     except overlay_cleanup.CleanupError as error:
         raise LabError(str(error)) from error
 
@@ -1540,6 +1541,7 @@ def main():
         if name == 'cleanup':
             child.add_argument('--evidence-manifest', help='Verified completion manifest for a custom or reviewed failed run')
             child.add_argument('--dry-run', action='store_true', help='Validate retirement without removing the disk')
+            child.add_argument('--images-root', help="Absolute work/lab-images holding the run's golden, when it is not this checkout's")
         if name == 'cli':
             child.add_argument('--method', required=True)
             child.add_argument('--params', default='{}', help='Production JSON parameters (credential references only)')
@@ -1579,7 +1581,8 @@ def main():
         elif args.action == 'reset':
             value = reset(args.run)
         elif args.action == 'cleanup':
-            value = cleanup_overlay(args.run, evidence_manifest=args.evidence_manifest, dry_run=args.dry_run)
+            value = cleanup_overlay(args.run, evidence_manifest=args.evidence_manifest, dry_run=args.dry_run,
+                                    images_root=args.images_root)
         elif args.action == 'collect':
             value = collect(args.run)
         elif args.action == 'screenshot':

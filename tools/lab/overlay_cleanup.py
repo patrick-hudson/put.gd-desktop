@@ -126,7 +126,26 @@ def lifecycle_lock():
             os.close(fd)
 
 
-def _run_state(run):
+def _images_root(value):
+    """The golden root: this checkout's work/lab-images, or an explicit one.
+
+    A lab.py copy outside the main tree (a scratch checkout on a builder) keeps
+    its runs next to itself while its goldens stay in the main tree. The
+    explicit root must be an owned, symlink-free `.../work/lab-images`.
+    """
+    if value is None:
+        return ROOT / 'work/lab-images'
+    if not Path(value).is_absolute():
+        raise CleanupError('The images root must be an absolute path')
+    root = _no_symlinks(value)
+    if root.name != 'lab-images' or root.parent.name != 'work':
+        raise CleanupError('The images root must be a work/lab-images directory')
+    if not root.is_dir() or root.stat().st_uid != os.getuid():
+        raise CleanupError('The images root must be an owned directory')
+    return root
+
+
+def _run_state(run, images_root=None):
     run = _no_symlinks(run)
     allowed = [ROOT / 'work/lab-runs', ROOT / 'work/windows/runs']
     if run.parent not in allowed or not run.is_dir() or run.stat().st_uid != os.getuid():
@@ -139,7 +158,7 @@ def _run_state(run):
         if info.get('schemaVersion') != 1 or info.get('overlay') != str(disk):
             raise CleanupError('Linux state overlay identity does not match the run')
         base_name, identity = info.get('golden'), info.get('id')
-        base_root = ROOT / 'work/lab-images'
+        base_root = _images_root(images_root)
     else:
         base_name, identity = info.get('base'), info.get('run_id')
         base_root = ROOT / 'work/windows/bases'
@@ -255,16 +274,20 @@ def _chain(disk):
     return paths
 
 
-def _check_chains(disk, base):
+def _check_chains(disk, base, images_root=None):
     selected = _chain(disk)
     if len(selected) < 2 or selected[1] != base:
         raise CleanupError('Actual overlay backing file does not match recorded base')
-    roots = ('work/lab-runs', 'work/lab-images', 'work/windows')
+    roots = [ROOT / relative for relative in ('work/lab-runs', 'work/lab-images', 'work/windows')]
+    if images_root is not None:
+        # Also inventory the tree that owns the explicit golden root.
+        explicit = _images_root(images_root)
+        roots += [explicit, explicit.parent / 'lab-runs', explicit.parent / 'windows']
     visited = set()
     def incomplete(_error):
         raise CleanupError('Cannot completely inventory lab image dependencies')
-    for relative in roots:
-        root = _no_symlinks(ROOT / relative)
+    for candidate in dict.fromkeys(roots):
+        root = _no_symlinks(candidate)
         if not root.exists():
             continue
         for directory, subdirs, files in os.walk(root, followlinks=False, onerror=incomplete):
@@ -392,11 +415,11 @@ def _check_processes(run, disk, *, lock_process=None):
             raise CleanupError('Host process inventory is not fully visible; cleanup refused') from error
 
 
-def cleanup(run, *, evidence_manifest=None, dry_run=False):
+def cleanup(run, *, evidence_manifest=None, dry_run=False, images_root=None):
     """Retire exactly one stopped, unreferenced overlay, retaining durable evidence."""
     try:
         with lifecycle_lock():
-            run, disk, base, run_id = _run_state(Path(run))
+            run, disk, base, run_id = _run_state(Path(run), images_root)
             _no_symlinks(disk)
             evidence = _evidence(run, run_id, evidence_manifest)
             receipt_path = _no_symlinks(run / 'overlay-cleanup.json')
@@ -421,7 +444,7 @@ def cleanup(run, *, evidence_manifest=None, dry_run=False):
             identity = _identity(disk)
             with _image_lock(disk) as lock_process:
                 _check_processes(run, disk, lock_process=lock_process)
-                _check_chains(disk, base)
+                _check_chains(disk, base, images_root)
                 receipt = {'schemaVersion': 1, 'status': 'dry-run' if dry_run else 'prepared',
                            'run': str(run), 'disk': str(disk), 'diskIdentity': identity,
                            'base': str(base), 'stateSha256': state_hash, 'evidence': evidence,
