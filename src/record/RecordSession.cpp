@@ -455,7 +455,8 @@ void RecordSession::finishPrepare(Reply reply) {
     reply({}, {{"canvas", sizeJson(resolved_.canvas)}, {"rect", rectJson(resolved_.rect)}, {"window", double(resolved_.window)}, {"overlayExcluded", overlayExcluded_}, {"overlayPlacement", overlayPlacement_}});
 }
 void RecordSession::start(Reply reply) {
-    if (pipeline_.running() || recorded_ || starting_) { reply({"recording_state", "The session already recorded", {}}, {}); return; }
+    if (starting_) { reply({"recording_state", "Recording is already starting", {}}, {}); return; }
+    if (pipeline_.running() || recorded_) { reply({"recording_state", "The session already recorded", {}}, {}); return; }
     if (!bar_ || barHidden_ || !bar_->handleWhileRecording() || !bar_->isVisible()) { begin(std::move(reply)); return; }
     // The ready bar sits inside the area: shrink it to its handle and give the
     // X server and any compositor a moment to repaint, so the first frame
