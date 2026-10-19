@@ -76,18 +76,29 @@ private:
 
 // The floating controls: state dot and retained time, target and output,
 // system-audio and format choices before Record, and Record / Pause / Resume /
-// Stop / Cancel. It is placed outside the recorded rectangle when it fits.
+// Stop / Cancel. It is placed outside the recorded rectangle when it fits
+// (placeBar) and placed again whenever its size changes, so it never leaves its
+// screen. When it has to sit inside, it collapses to a handle (state dot,
+// Resume while paused, Stop) from Record on. On X11 it can be dragged; a bar
+// outside the rectangle cannot be dragged into it.
 class ControlBar final : public QWidget {
     Q_OBJECT
 public:
     struct Options { QString targetLabel; QStringList formats; QJsonObject codecs; bool audioSupported = false; };
     explicit ControlBar(const Options&, const RecordingConfig&, QWidget* parent = nullptr);
-    // Positions the bar around rootRect; returns false when it had to sit inside it.
-    bool placeAround(const QRect& rootRect, const QRect& desktop);
+    // X11: positions the bar around rootRect (root pixels) on any screen;
+    // returns false when it had to sit inside it.
+    bool placeAround(const QRect& rootRect);
     // KDE Wayland: makes the bar an overlay layer surface below or above the
     // logical rectangle, else on another screen, else inside its corner. Call
     // before the first show; returns whether it stays outside the rectangle.
     bool placeOnLayer(const QRect& logical);
+    // Collapse to the handle while recording, paused or stopping.
+    void setHandleWhileRecording(bool handle) { handle_ = handle; refresh(); }
+    bool handleWhileRecording() const { return handle_; }
+    bool outside() const { return outside_; }
+    // The recorded rectangle in Qt logical pixels, as placed.
+    QRect recordedArea() const { return recorded_; }
     void setState(const QString& state);  // ready | recording | paused | stopping
     void setRetained(qint64 us);
     RecordingConfig config() const { return config_; }
@@ -100,11 +111,26 @@ signals:
     void configChanged(const RecordingConfig&);
 protected:
     void keyPressEvent(QKeyEvent*) override;
+    void mousePressEvent(QMouseEvent*) override;
+    void mouseMoveEvent(QMouseEvent*) override;
+    void mouseReleaseEvent(QMouseEvent*) override;
 private:
+    enum class Placed { None, Root, Layer };
     void refresh();
+    // Places the bar again for its current size: by the placement rules, or,
+    // after a drag, kept by its right edge on the screen it was dropped on.
+    void reposition();
+    void apply(const QRect& logical, int screen);
+    // The largest size the full bar takes in any state; placement decides with it.
+    QSize widestSize();
     RecordingConfig config_;
     Options options_;
     QString state_ = "ready";
+    Placed placed_ = Placed::None;
+    QRect recorded_, spot_;
+    int screen_ = -1, layerScreen_ = -1;
+    bool outside_ = false, handle_ = false, dragged_ = false, dragging_ = false;
+    QPoint dragOffset_;
     QLabel *dot_ = nullptr, *time_ = nullptr, *target_ = nullptr;
     QCheckBox* audio_ = nullptr;
     QComboBox* format_ = nullptr;

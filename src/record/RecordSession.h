@@ -53,6 +53,8 @@ private:
     QString loadPortalToken() const;
     void storePortalToken(const QString&) const;
     void start(Reply);
+    // Starts the pipeline; start() calls it once the bar is out of the way.
+    void begin(Reply);
     void stop(Reply);
     void cancelLocal();
     void preview(const QJsonObject& params, Reply);
@@ -69,7 +71,9 @@ private:
     QJsonObject capabilities_;
     QString staging_, workingClip_;
     qint64 durationUs_ = 0;
-    bool prepared_ = false, recorded_ = false, overlayExcluded_ = true, cancelled_ = false;
+    bool prepared_ = false, recorded_ = false, overlayExcluded_ = true, cancelled_ = false, starting_ = false;
+    // recording.overlay {visible: false} keeps the bar hidden across state changes until raise.
+    bool barHidden_ = false;
     QString overlayPlacement_;
     RecordingPipeline pipeline_;
     PortalScreenCast portal_;
