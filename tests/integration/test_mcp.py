@@ -137,7 +137,7 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                             'preview_editor', 'save_editor_copy', 'submit_editor', 'cancel_editor',
                             'raise_editor', 'get_recording_capabilities', 'prepare_recording', 'control_recording',
                             'get_recording', 'select_recording_region', 'set_recording_overlay', 'edit_recording', 'preview_recording',
-                            'save_recording_copy', 'upload_recording', 'clear_logs'}
+                            'save_recording_copy', 'upload_recording', 'clear_logs', 'create_diagnostics_bundle'}
                 self.assertEqual({tool.name for tool in discovered}, expected)
                 for tool in discovered:
                     self.assertEqual(tool.inputSchema['type'], 'object')
@@ -149,6 +149,8 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                 for name, args in [
                     ('perform_action', {'action': 'clipboard', 'shell': 'extra'}),
                     ('perform_action', {'action': 17}),
+                    ('create_diagnostics_bundle', {'output': 'relative.zip'}),
+                    ('create_diagnostics_bundle', {'include_names': 'yes'}),
                     ('list_history', {'limit': True}),
                     ('delete_history_uploads', {'ids': ['synthetic-entry'], 'acknowledgement': False}),
                 ]:
@@ -187,6 +189,9 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('patch_configuration', {'patch': {'captureDefaults': {'destination': 'local', 'profileId': None, 'publicationMode': 'default'}, 'actions': {'clipboard': {'destination': 'default', 'profileId': None}}}, 'expected_revision': 'synthetic-revision'}, 'settings.patch', {'patch': {'captureDefaults': {'destination': 'local', 'profileId': None, 'publicationMode': 'default'}, 'actions': {'clipboard': {'destination': 'default', 'profileId': None}}}, 'expectedRevision': 'synthetic-revision'}),
                     ('reload_configuration', {}, 'settings.reload', {}),
                     ('clear_logs', {}, 'logs.clear', {}),
+                    ('create_diagnostics_bundle', {}, 'diagnostics.bundle', {}),
+                    ('create_diagnostics_bundle', {'operation_id': 'synthetic-operation', 'since': '24h', 'include_names': True, 'output': '/synthetic dir/package.zip'},
+                     'diagnostics.bundle', {'operation': 'synthetic-operation', 'since': '24h', 'includeNames': True, 'output': '/synthetic dir/package.zip'}),
                     ('get_view_state', {}, 'ui.viewState', {}),
                     ('perform_action', {'action': 'edit'}, 'action.invoke', {'action': 'edit'}),
                     ('open_editor', {}, 'editor.open', {'source': 'region'}),

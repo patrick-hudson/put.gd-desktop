@@ -66,6 +66,7 @@ Methods and parameters:
 | `history.detail`, `history.copyLink`, `history.copyImage` | history `id` |
 | `history.clear`, `cache.clear` | empty object |
 | `logs.clear` | empty object; deletes every persistent log file and starts a new one ([diagnostics.md](diagnostics.md#retention)) |
+| `diagnostics.bundle` | optional `operation`, `since` (`1m`–`365d`, default `7d`), `includeNames`, absolute `output`; or the CLI flags `--operation`, `--since`, `--include-names`, `--output`. Saves a redacted diagnostics package locally ([diagnostics.md](diagnostics.md#diagnostics-package)) |
 | `delete.prepare` | `ids` array of confirmed history IDs |
 | `delete.confirm` | identical ordered `ids`, exact returned `acknowledgement` |
 | `delete.inspect`, `.retry`, `.cancel` | deletion-operation `id` |

@@ -66,7 +66,7 @@ add_library(putgd_core STATIC src/core/Settings.cpp src/core/SettingsService.cpp
   src/core/ClipboardPayload.cpp src/core/ArtifactStore.cpp src/core/ImageJob.cpp src/core/LocalArchive.cpp
   src/core/UploadNaming.cpp src/core/StorageReceipt.cpp src/core/StorageProvider.cpp
   src/core/Operation.cpp src/core/HistoryStore.cpp src/core/SanitizedPng.cpp src/core/EditorJob.cpp src/core/RecordingModel.cpp
-  src/core/ReleaseLink.cpp)
+  src/core/ReleaseLink.cpp src/core/ZipWriter.cpp)
 set_target_properties(putgd_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(putgd_core PUBLIC src)
 target_link_libraries(putgd_core PUBLIC putgd_build_options putgd_build_identity putgd_log Qt6::Core Qt6::Gui Qt6::Sql PRIVATE putgd_ui_control)
@@ -159,7 +159,7 @@ endif()
 add_dependencies(putgd_s3 putgd_s3_module)
 install(TARGETS putgd_s3_module LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}/putgd")
 
-add_library(putgd_app STATIC src/app/OperationService.cpp src/app/OperationClipboard.cpp src/app/RecordingService.cpp src/app/RecordingHelperBackend.cpp src/app/HistoryService.cpp src/app/SetupService.cpp src/app/LocalServer.cpp src/app/LocalIpc.cpp src/app/LoginStartup.cpp src/app/StorageLocations.cpp src/app/LogService.cpp)
+add_library(putgd_app STATIC src/app/OperationService.cpp src/app/OperationClipboard.cpp src/app/RecordingService.cpp src/app/RecordingHelperBackend.cpp src/app/HistoryService.cpp src/app/SetupService.cpp src/app/LocalServer.cpp src/app/LocalIpc.cpp src/app/LoginStartup.cpp src/app/StorageLocations.cpp src/app/LogService.cpp src/app/DiagnosticsBundle.cpp)
 target_link_libraries(putgd_app PUBLIC putgd_core PRIVATE putgd_credentials putgd_ui_control)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   find_package(PkgConfig REQUIRED)
@@ -819,6 +819,14 @@ if(BUILD_TESTING)
   target_link_libraries(test_logging PRIVATE putgd_app putgd_s3_runtime Qt6::Test)
   add_test(NAME logging_contract COMMAND test_logging)
   set_tests_properties(logging_contract PROPERTIES TIMEOUT 120)
+  # Diagnostics packages: contents, redaction, size limit and the default folder (#74 §3).
+  add_executable(test_diagnostics_bundle tests/unit/test_diagnostics_bundle.cpp)
+  target_include_directories(test_diagnostics_bundle PRIVATE src tests)
+  target_link_libraries(test_diagnostics_bundle PRIVATE putgd_app Qt6::Network Qt6::Test)
+  target_compile_definitions(test_diagnostics_bundle PRIVATE PUTGD_CLI_PATH="$<TARGET_FILE:putgd-cli>")
+  add_dependencies(test_diagnostics_bundle putgd-cli)
+  add_test(NAME diagnostics_bundle_contract COMMAND test_diagnostics_bundle)
+  set_tests_properties(diagnostics_bundle_contract PROPERTIES TIMEOUT 180)
   set_tests_properties(settings_contract PROPERTIES TIMEOUT 30)
   add_test(NAME json_ref_lifetime_contract COMMAND "${CMAKE_COMMAND}"
     "-DREPO_ROOT=${CMAKE_CURRENT_SOURCE_DIR}"

@@ -66,6 +66,7 @@ such as `session_unavailable` and `config_conflict` retain their original envelo
 | `delete_history_uploads` | nonempty ids; optional acknowledgement | Omitted acknowledgement prepares effects; exact returned acknowledgement confirms remote deletion |
 | `reload_configuration` | settings.reload | Validates/reloads existing file; no source/provider activity |
 | `patch_configuration` | patch, expected_revision → settings.patch | Validates full candidate and atomically saves via shared SettingsService |
+| `create_diagnostics_bundle` | optional operation_id, since, include_names, output → diagnostics.bundle | Saves a redacted diagnostics package (.zip, at most 20 MiB) locally and returns its path; uploads nothing ([diagnostics.md](diagnostics.md#diagnostics-package)) |
 | `clear_logs` | logs.clear | Deletes every persistent log file and starts a new one; uploads, history, settings and saved diagnostics packages stay. `inspect` reports the log under `diagnostics.logging` ([diagnostics.md](diagnostics.md)) |
 | `open_editor` | optional source region/window/desktop/clipboard/file, path → editor.open | Opens the visible editor (Capture region & edit); uploads nothing yet. History's **Edit again** is `source: file` with the item's `local.path` from `history.list` or `history.detail` |
 | `get_editor` | id → editor.inspect | Image size, crop, shapes, undo/redo, phase |
