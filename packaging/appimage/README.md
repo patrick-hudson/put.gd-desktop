@@ -54,14 +54,19 @@ cmake --install build/qtkeychain
 The screen recorder `putgd-record` links a pinned upstream FFmpeg (`ffmpeg` in
 `tools.lock.json`, 7.1.5) that `tools/releases/provision-appimage.py` builds into
 the same dependency prefix with FFmpeg's own `configure`, using exactly the
-LGPL-only options in `media.json` (no GPL or non-free components, no programs,
-only the demuxer, decoders, encoders, muxers and filters the export uses). It
-needs `nasm libva-dev libvpx-dev libwebp-dev libopus-dev libffmpeg-nvenc-dev`
-from Ubuntu 24.04. The GStreamer plugins come from the builder's own
-`gstreamer1.0-plugins-base`, `-good`, `-bad`, `gstreamer1.0-pipewire`,
+options in `media.json` (`--enable-gpl` with libx264 and libx265, nothing
+non-free, no programs, only the demuxer, decoders, encoders, muxers and
+filters the export uses). It needs `nasm libva-dev libvpx-dev libwebp-dev
+libopus-dev libffmpeg-nvenc-dev libx264-dev libx265-dev` from Ubuntu 24.04. The
+GStreamer plugins come from the builder's own `gstreamer1.0-plugins-base`,
+`-good`, `-bad`, `-ugly` (`x264enc`), `gstreamer1.0-pipewire`,
 `gstreamer1.0-pulseaudio` and `gstreamer1.0-vaapi` packages. The FFmpeg source
 checkout under `build/dependencies/appimage/ffmpeg` is passed as a
-`--license-source`, so its COPYING.LGPLv2.1 and LICENSE.md travel with the image.
+`--license-source`, so its COPYING.GPLv2, COPYING.LGPLv2.1 and LICENSE.md travel
+with the image. After assembly, `build-appimage.sh` runs
+`appimage_media_sources.py`, which needs `deb-src` entries for Ubuntu 24.04 (the
+CI job adds them) to fetch the bundled GPL source packages for the
+corresponding-source asset.
 
 Use the pinned SDK provisioning instructions in `docs/build.md`; build the SDK
 with the same distro compiler and OpenSSL/curl, with `USE_OPENSSL=ON`. The
