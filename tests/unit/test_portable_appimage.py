@@ -30,14 +30,36 @@ class AppRunTest(unittest.TestCase):
         (self.root / "bin").mkdir()
         self.data = self.root / "data"
         self.receipt = self.root / "receipt"
+        self.host_data = self.root / "host-data"
         self.env = dict(os.environ, APPDIR=str(self.app), XDG_DATA_HOME=str(self.data),
+                        XDG_DATA_DIRS=str(self.host_data),
                         XDG_CURRENT_DESKTOP="KDE", PATH=str(self.root / "bin") + ":" + os.environ["PATH"],
                         PG_TEST_RECEIPT=str(self.receipt))
+        for name in ("WAYLAND_DISPLAY", "XDG_SESSION_TYPE", "APPIMAGE"):
+            self.env.pop(name, None)
         self.write(self.root / "bin/kbuildsycoca6", "#!/bin/sh\nexit 0\n")
 
     def write(self, path, data):
         path.write_text(data)
         path.chmod(0o755)
+
+    def mount_windowed_helpers(self):
+        """The image's windowed helpers and the icon AppRun names; synthetic files."""
+        for name in ("putgd-ui", "putgd-record"):
+            self.write(self.app / "usr/bin" / name, "#!/bin/sh\nexit 0\n")
+        icon = self.app / portable.WINDOW_ICON
+        icon.parent.mkdir(parents=True)
+        icon.write_text("<svg/>\n")
+        return icon
+
+    @staticmethod
+    def identity(pid):
+        fields = Path("/proc/%d/stat" % pid).read_text().rsplit(") ", 1)[1].split()
+        return "%d %s" % (pid, fields[19])
+
+    def entries(self):
+        applications = self.data / "applications"
+        return sorted(path.name for path in applications.iterdir()) if applications.exists() else []
 
     def test_kde_registers_current_mount_and_cleans_only_owned_entry(self):
         applications = self.data / "applications"
@@ -92,6 +114,8 @@ exit 0
                 self.assertEqual(fallback in self.receipt.read_text(), expected)
 
     def test_termination_stops_exact_child_and_cleans_permission(self):
+        self.mount_windowed_helpers()
+        self.env.update(WAYLAND_DISPLAY="wayland-0")
         self.write(self.app / "usr/bin/putgd-launcher", """#!/bin/sh
 trap 'exit 0' TERM
 printf '%s\n' "$$" > "$PG_TEST_RECEIPT"
@@ -108,7 +132,7 @@ while :; do sleep 0.05; done
             self.assertEqual(process.wait(timeout=5), 143)
             with self.assertRaises(ProcessLookupError):
                 os.kill(child, 0)
-            self.assertEqual(list((self.data / "applications").glob("putgd-appimage-*.desktop")), [])
+            self.assertEqual(self.entries(), [])
         finally:
             if process.poll() is None:
                 process.kill()
@@ -133,12 +157,127 @@ while :; do sleep 0.05; done
         self.assertEqual(self.receipt.read_text(), "--version-json\n")
         self.assertFalse((self.data / "applications").exists())
 
+    def test_wayland_adds_icon_entries_for_window_app_ids_and_removes_them(self):
+        icon = self.mount_windowed_helpers()
+        self.env.update(XDG_CURRENT_DESKTOP="GNOME", WAYLAND_DISPLAY="wayland-0",
+                        APPIMAGE=str(self.root / "put.gd $1.AppImage"))
+        self.write(self.app / "usr/bin/putgd-launcher", """#!/bin/sh
+for id in putgd-ui putgd-record; do
+    cat "$XDG_DATA_HOME/applications/$id.desktop" >> "$PG_TEST_RECEIPT"
+    stat -c '%a' "$XDG_DATA_HOME/applications/$id.desktop" >> "$PG_TEST_RECEIPT"
+done
+ls -A "$XDG_DATA_HOME/applications" >> "$PG_TEST_RECEIPT"
+printf 'parent=%s\\n' "$PPID" >> "$PG_TEST_RECEIPT"
+exit 0
+""")
+        process = subprocess.Popen([str(APP_RUN)], env=self.env)
+        self.assertEqual(process.wait(timeout=10), 0)
+        receipt = self.receipt.read_text()
+        ui, record, listing = receipt.split("600\n")[0], receipt.split("600\n")[1], receipt.split("600\n")[2]
+        self.assertIn("parent=%d" % process.pid, listing)
+        for entry, app_id, name in ((ui, "putgd-ui", "put.gd"), (record, "putgd-record", "put.gd screen recorder")):
+            lines = entry.splitlines()
+            self.assertEqual(lines[0], "[Desktop Entry]")
+            self.assertIn("Name=" + name, lines)
+            self.assertIn("Icon=" + str(icon), lines)
+            self.assertIn("NoDisplay=true", lines)
+            self.assertIn("StartupWMClass=" + app_id, lines)
+            self.assertIn('Exec="' + str(self.root) + '/put.gd \\$1.AppImage"', lines)
+            owner = [line for line in lines if line.startswith("X-PutGD-AppImage-Owner=")]
+            self.assertEqual(len(owner), 1)
+            self.assertRegex(owner[0], r"^X-PutGD-AppImage-Owner=%d [0-9]+$" % process.pid)
+        # No staged copy and no KDE permission entry off Plasma.
+        self.assertEqual(listing.split("parent=")[0].split(), ["putgd-record.desktop", "putgd-ui.desktop"])
+        self.assertEqual(self.entries(), [])
+
+    def test_wayland_session_type_alone_adds_icon_entries(self):
+        self.mount_windowed_helpers()
+        self.env.update(XDG_CURRENT_DESKTOP="GNOME", XDG_SESSION_TYPE="wayland")
+        self.write(self.app / "usr/bin/putgd-launcher",
+                   "#!/bin/sh\nls \"$XDG_DATA_HOME/applications\" > \"$PG_TEST_RECEIPT\"\n")
+        self.assertEqual(subprocess.run([str(APP_RUN)], env=self.env).returncode, 0)
+        self.assertEqual(self.receipt.read_text().split(), ["putgd-record.desktop", "putgd-ui.desktop"])
+        self.assertEqual(self.entries(), [])
+
+    def test_wayland_keeps_host_and_foreign_entries_and_skips_supervisor(self):
+        self.mount_windowed_helpers()
+        self.env.update(XDG_CURRENT_DESKTOP="GNOME", WAYLAND_DISPLAY="wayland-0")
+        (self.host_data / "applications").mkdir(parents=True)
+        (self.host_data / "applications/putgd-ui.desktop").write_text("distro entry\n")
+        applications = self.data / "applications"
+        applications.mkdir(parents=True)
+        foreign = applications / "putgd-record.desktop"
+        foreign.write_text("[Desktop Entry]\nName=user entry\n")
+        self.write(self.app / "usr/bin/putgd-launcher", "#!/bin/sh\nprintf '%s\\n' \"$$\" > \"$PG_TEST_RECEIPT\"\n")
+        process = subprocess.Popen([str(APP_RUN)], env=self.env)
+        self.assertEqual(process.wait(timeout=10), 0)
+        # Nothing to remove: AppRun executes the launcher in place.
+        self.assertEqual(int(self.receipt.read_text()), process.pid)
+        self.assertEqual(self.entries(), ["putgd-record.desktop"])
+        self.assertEqual(foreign.read_text(), "[Desktop Entry]\nName=user entry\n")
+        self.assertEqual((self.host_data / "applications/putgd-ui.desktop").read_text(), "distro entry\n")
+
+    def test_entries_of_killed_launch_are_replaced_and_running_launch_kept(self):
+        self.mount_windowed_helpers()
+        applications = self.data / "applications"
+        applications.mkdir(parents=True)
+        live = "[Desktop Entry]\nX-PutGD-AppImage-Owner=%s\n" % self.identity(os.getpid())
+        dead_pid = os.getpid()
+        dead = "[Desktop Entry]\nX-PutGD-AppImage-Owner=%d 1\n" % dead_pid
+        (applications / "putgd-ui.desktop").write_text(dead)
+        (applications / "putgd-record.desktop").write_text(live)
+        (applications / "putgd-appimage-STALE001.desktop").write_text(dead)
+        (applications / "putgd-record-appimage-LIVE0001.desktop").write_text(live)
+        (applications / "putgd-appimage-OLDFORMAT.desktop").write_text("[Desktop Entry]\nExec=/gone\n")
+        self.env.update(WAYLAND_DISPLAY="wayland-0")
+        self.write(self.app / "usr/bin/putgd-launcher", """#!/bin/sh
+cat "$XDG_DATA_HOME/applications/putgd-ui.desktop" > "$PG_TEST_RECEIPT"
+""")
+        process = subprocess.Popen([str(APP_RUN)], env=self.env)
+        self.assertEqual(process.wait(timeout=10), 0)
+        # The killed launch's entries go; this launch wrote its own putgd-ui entry.
+        self.assertIn("X-PutGD-AppImage-Owner=%d " % process.pid, self.receipt.read_text())
+        self.assertEqual(self.entries(), ["putgd-appimage-OLDFORMAT.desktop", "putgd-record-appimage-LIVE0001.desktop",
+                                          "putgd-record.desktop"])
+        self.assertEqual((applications / "putgd-record.desktop").read_text(), live)
+
+    def test_kde_wayland_rebuilds_cache_after_removing_all_entries(self):
+        self.mount_windowed_helpers()
+        calls = self.root / "sycoca-calls"
+        self.env.update(WAYLAND_DISPLAY="wayland-0", PG_SYCOCA=str(calls))
+        self.write(self.root / "bin/kbuildsycoca6", "#!/bin/sh\nls \"$XDG_DATA_HOME/applications\" >> \"$PG_SYCOCA\"\necho -- >> \"$PG_SYCOCA\"\n")
+        self.write(self.app / "usr/bin/putgd-launcher", "#!/bin/sh\nexit 0\n")
+        self.assertEqual(subprocess.run([str(APP_RUN)], env=self.env).returncode, 0)
+        registered, removed, _ = calls.read_text().split("--\n")
+        self.assertIn("putgd-ui.desktop", registered.split())
+        self.assertIn("putgd-record.desktop", registered.split())
+        self.assertEqual(len(registered.split()), 4)
+        self.assertEqual(removed.split(), [])
+        self.assertEqual(self.entries(), [])
+
     def test_non_kde_does_not_register_permission(self):
         self.env["XDG_CURRENT_DESKTOP"] = "X-Cinnamon"
         self.write(self.app / "usr/bin/putgd-launcher", "#!/bin/sh\nexit 0\n")
         completed = subprocess.run([str(APP_RUN)], env=self.env)
         self.assertEqual(completed.returncode, 0)
         self.assertFalse((self.data / "applications").exists())
+
+
+class WindowIconAuditTest(unittest.TestCase):
+    """The icon AppRun's Wayland entries name must be inside the image."""
+
+    def test_deployed_icon_is_accepted_and_missing_one_rejected(self):
+        with tempfile.TemporaryDirectory(prefix="pgicon-") as directory:
+            appdir = Path(directory)
+            with self.assertRaisesRegex(ValueError, "window icon is missing"):
+                portable.audit_window_icon(appdir)
+            icon = appdir / portable.WINDOW_ICON
+            icon.parent.mkdir(parents=True)
+            icon.write_text("<svg/>\n")
+            self.assertEqual(portable.audit_window_icon(appdir), portable.WINDOW_ICON)
+
+    def test_apprun_names_the_audited_icon(self):
+        self.assertIn("$appdir/" + portable.WINDOW_ICON, APP_RUN.read_text())
 
 
 class DeploymentRejectionTest(unittest.TestCase):

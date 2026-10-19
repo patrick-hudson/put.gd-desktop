@@ -216,11 +216,23 @@ starts (as in the DEB/RPM). The region helper sets LayerShellQt's overlay role
 per window and needs the Wayland platform, so KDE region capture works only
 natively. Before the image carried `xdg-shell` it answered `region_unavailable`.
 A Wayland compositor takes a window's icon from the desktop entry named by its
-app ID (`putgd-ui`), not from the window, and Qt 6.8 has no
-`xdg-toplevel-icon` support. Without a host entry for the image, KWin's title
-bar and GNOME's overview show a generic icon for those windows; the DEB/RPM
-install `putgd-ui.desktop`. Acceptance:
-[2026-10-19 native Wayland](../../docs/evidence/2026-10-19-appimage-native-wayland.md).
+app ID (`putgd-ui` for the views and the editor, `putgd-record` for the
+recorder's bar and review), not from the window, and Qt 6.8 has no
+`xdg-toplevel-icon` support. So in a Wayland session AppRun writes
+`putgd-ui.desktop` and `putgd-record.desktop` into the user's applications
+directory while the image runs: NoDisplay entries with `StartupWMClass` set to
+the app ID, `Icon` naming the mounted
+`usr/share/icons/hicolor/scalable/apps/putgd.svg` (the build rejects an image
+without it) and `Exec` naming the persistent `APPIMAGE`. The file name must be
+the app ID: KWin looks the entry up by name only, so `StartupWMClass` in an
+integrated install's own entry (AppImageLauncher, Gear Lever) would restore
+GNOME's icon but not KWin's. AppRun skips an ID the host already has, in
+`XDG_DATA_HOME` or `XDG_DATA_DIRS` (a DEB/RPM install, a user's own entry, or
+another running launch), and publishes each entry with `ln`, so it never
+replaces one. On X11 the windows carry their own icon and nothing is written.
+Acceptance:
+[2026-10-19 native Wayland](../../docs/evidence/2026-10-19-appimage-native-wayland.md),
+[2026-10-19 window icons](../../docs/evidence/2026-10-19-appimage-wayland-icons.md).
 
 The application AppRun is installed after deployment, so generic deployment
 hooks cannot override its host-tool environment or force unavailable GTK2 themes.
@@ -234,11 +246,18 @@ and removes only that entry on normal exit/termination. Existing user desktop
 entries are never rewritten. The resident applies the same executable and
 restricted-interface checks to these entries. KWin's own permission check stays
 enabled. A missing/rejected host registration is an explicit startup failure.
-A killed wrapper cannot guarantee cleanup; stale entries name an unmounted
-executable and cannot grant access to a later mount. Normal launches clean up.
 
-AppRun uses a lightweight shell supervisor to keep the permission entry alive;
-measure this process as part of the resident family on KDE. Neither this wrapper
+Every entry AppRun writes carries `X-PutGD-AppImage-Owner`, the PID and start
+time of the launch that wrote it. On exit or termination AppRun removes the
+entries it wrote (and on Plasma rebuilds the KDE cache), so nothing remains once
+the image stops, and nothing is left to remove when the file is deleted. A
+killed wrapper cannot clean up; its entries name an unmounted executable and
+cannot grant access to a later mount, and the next launch in a Plasma or
+Wayland session removes every entry whose owner no longer runs. Entries without
+the key (a user's own, or ones written by older images) are never touched.
+
+AppRun uses a lightweight shell supervisor to keep these entries alive; measure
+this process as part of the resident family on KDE and on Wayland. Neither this wrapper
 nor a successful `--version` invocation establishes the <=40 MiB memory gate.
 
 Notification clicks use the host `gio open` command and its configured HTTP(S)
