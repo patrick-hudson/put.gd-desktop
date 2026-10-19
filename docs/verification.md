@@ -29,8 +29,10 @@ speakers with a GStreamer player on every desktop.
 - `test_export_av_sync`: MP4 and WebM keep a 110 ms audio start (nightly's
   exporter: −110 ms); silent MP4, GIF and WebP carry no audio, and their frames
   match nightly's exporter.
-- Not covered: headphone or Bluetooth sinks, multi-monitor, the AppImage build,
-  and ffplay on GNOME Wayland (it doesn't play there).
+- Not covered: headphone or Bluetooth sinks, multi-monitor, the AppImage build
+  (tracked in #87), and ffplay on GNOME Wayland (it doesn't play there).
+  Follow-ups: #119 (an undecodable Opus packet in WebM exports, pre-existing),
+  #120 (the bar's System audio box on GNOME).
 
 ## X11 editor window refusal — 2026-10-19
 

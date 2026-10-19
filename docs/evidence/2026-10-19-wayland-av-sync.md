@@ -158,8 +158,10 @@ unticked. Input agents were stopped and every desktop released
 
 ## Not covered
 
-- Headphone or Bluetooth sinks, multi-monitor, and pause/resume across a gap.
+- Headphone or Bluetooth sinks, multi-monitor, pause/resume across a gap and
+  the AppImage build; tracked in #87.
 - `ffplay` on GNOME Wayland (it doesn't play there).
-- The AppImage build; this ran distro-linked scratch builds.
 - One Opus packet in every WebM export fails to decode in FFmpeg's CLI with
-  nightly's exporter and this one alike (pre-existing, not this change).
+  nightly's exporter and this one alike (pre-existing): #119.
+- On f44 the recording bar's disabled "System audio" box looked unticked
+  while audio was being recorded: #120.
