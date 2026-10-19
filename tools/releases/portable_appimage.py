@@ -5,9 +5,11 @@ import argparse
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import tempfile
+import time
 import urllib.request
 
 from audit_native import sha256 as digest
@@ -166,6 +168,71 @@ def audit_platforms(appdir: Path, inventory: dict) -> dict:
                          (lines[0] if lines else "exit status " + str(worker.returncode)))
     return {"platformPlugins": sorted(path.name for path in platforms.glob("*.so")),
             "imageWorkerStartedOffscreen": True}
+
+
+# Qt's Wayland platform does not start without a shell integration: Qt then
+# falls back to XWayland, or aborts where QT_QPA_PLATFORM=wayland is set.
+# linuxdeploy's Qt plugin deploys these client plugins only for Qt Wayland
+# Compositor apps, so deploy what distro qt6-wayland packages ship: xdg-shell
+# for ordinary windows (the KDE region overlay sets LayerShellQt per window),
+# client-side decorations where the compositor draws none (Qt picks adwaita on
+# GNOME, bradient elsewhere) and the EGL buffer integration that the generic
+# platform loads for OpenGL windows.
+WAYLAND_CLIENT_PLUGINS = ("wayland-shell-integration/libxdg-shell.so",
+                          "wayland-decoration-client/libbradient.so",
+                          "wayland-decoration-client/libadwaita.so",
+                          "wayland-graphics-integration-client/libqt-plugin-wayland-egl.so")
+# A headless compositor offering xdg-shell and, like GNOME, no server-side decorations.
+HEADLESS_COMPOSITOR = ("weston", "--backend=headless-backend.so", "--shell=kiosk-shell.so",
+                       "--no-config", "--socket={socket}")
+
+
+def audit_wayland(appdir: Path, inventory: dict, compositor: tuple[str, ...] = HEADLESS_COMPOSITOR) -> dict:
+    """Start the image worker on Qt's Wayland platform under a private headless compositor."""
+    plugins = appdir / "usr/plugins"
+    missing = [name for name in ("wayland-shell-integration/liblayer-shell.so", *WAYLAND_CLIENT_PLUGINS)
+               if not (plugins / name).is_file()]
+    if missing:
+        raise ValueError("Qt Wayland client plugins missing from the image: " + ", ".join(missing))
+    if shutil.which(compositor[0]) is None:
+        raise ValueError("The Wayland start check requires " + compositor[0])
+    environment = {key: value for key, value in os.environ.items()
+                   if key not in ("DISPLAY", "WAYLAND_DISPLAY", "XDG_RUNTIME_DIR") and not key.startswith("QT_")}
+    with tempfile.TemporaryDirectory(prefix="pgwl-") as runtime:
+        environment["XDG_RUNTIME_DIR"] = runtime
+        socket = Path(runtime) / "putgd-audit"
+        log = (Path(runtime) / "compositor.log").open("w")
+        server = subprocess.Popen([part.format(socket=socket.name) for part in compositor], env=environment,
+                                  stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT)
+        try:
+            deadline = time.monotonic() + 20
+            while not socket.exists() and server.poll() is None and time.monotonic() < deadline:
+                time.sleep(0.1)
+            if not socket.exists():
+                lines = (Path(runtime) / "compositor.log").read_text(errors="replace").strip().splitlines()
+                raise ValueError("The headless Wayland compositor did not start" + (": " + lines[-1] if lines else ""))
+            environment.update(LD_LIBRARY_PATH=str(appdir / "usr/lib") + ":" + str(appdir / inventory["privateLibraryDirectory"]),
+                               WAYLAND_DISPLAY=socket.name, XDG_SESSION_TYPE="wayland", QT_QPA_PLATFORM="wayland",
+                               QT_LOGGING_RULES="qt.qpa.wayland.debug=true")
+            worker = subprocess.run([str(appdir / "usr/bin/putgd-ui"), "--image-job"], input="", env=environment,
+                                    capture_output=True, text=True, timeout=30)
+        finally:
+            server.terminate()
+            try:
+                server.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                server.kill()
+                server.wait()
+            log.close()
+    lines = worker.stderr.strip().splitlines()
+    shells = re.findall(r"Using the '([^']+)' shell integration", worker.stderr)
+    if worker.returncode != 3 or shells != ["xdg-shell"]:
+        failures = [line for line in lines if "failed" in line.lower() or "could not" in line.lower()]
+        raise ValueError("Image worker did not start on the Wayland platform with xdg-shell: " +
+                         (failures[0] if failures else lines[-1] if lines else "exit status " + str(worker.returncode)))
+    return {"waylandClientPlugins": sorted(str(path.relative_to(plugins)) for path in plugins.glob("wayland-*/*.so")),
+            "headlessCompositor": compositor[0], "imageWorkerStartedOnWayland": True,
+            "waylandShellIntegration": shells[0]}
 
 
 def refresh_runtime_manifest(appdir: Path) -> None:
@@ -438,6 +505,9 @@ def main() -> int:
     gtk = qt / "plugins/platformthemes/libqgtk3.so"
     if not qmake.is_file() or not gtk.is_file():
         raise ValueError("Official Qt must include qmake and the native GTK3 platform theme plugin")
+    missing_wayland = [name for name in WAYLAND_CLIENT_PLUGINS if not (qt / "plugins" / name).is_file()]
+    if missing_wayland:
+        raise ValueError("Official Qt must include the Qt Wayland client plugins: " + ", ".join(missing_wayland))
     qt_version = subprocess.run([str(qmake), "-query", "QT_VERSION"], check=True,
                                 text=True, capture_output=True).stdout.strip()
     if qt_version != lock["buildInputs"]["qt"]:
@@ -490,6 +560,13 @@ def main() -> int:
     shutil.copy2(layer_plugins[0], layer)
     subprocess.run([str(executables["linuxdeploy-x86_64.AppImage"]), "--appdir", str(appdir),
                     "--library", str(layer), *excludes], check=True, env=environment)
+    wayland = []
+    for name in WAYLAND_CLIENT_PLUGINS:
+        wayland += ["--library", str(appdir / "usr/plugins" / name)]
+        (appdir / "usr/plugins" / name).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(qt / "plugins" / name, appdir / "usr/plugins" / name)
+    subprocess.run([str(executables["linuxdeploy-x86_64.AppImage"]), "--appdir", str(appdir), *wayland, *excludes],
+                   check=True, env=environment)
     fallbacks = stage_host_fallbacks(appdir, media)
     gpl = gpl_components(appdir, media)
     write_gpl_notice(appdir, gpl, lock["buildInputs"]["ffmpeg"], args.version)
@@ -501,6 +578,7 @@ def main() -> int:
     refresh_runtime_manifest(appdir)
     deployed = audit_deployed(appdir, inventory)
     deployed["qtPlatforms"] = audit_platforms(appdir, inventory)
+    deployed["qtWayland"] = audit_wayland(appdir, inventory)
     proton = audit_proton(appdir, required=args.require_proton,
                           expected_manifest=inventory.get("proton", {}).get("manifest"))
     if proton:

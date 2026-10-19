@@ -129,7 +129,7 @@ The corresponding-source asset adds 18,418,513 bytes to each release.
   - The `7aa1aff` Kubuntu rows ran after that. The void runs from the frozen display are kept apart as `k72/*-invalid-*`.
   - No reordering of encoders was made on this one event.
 - **Debian 13 installed-DEB recording flow: blocked here.** A pre-existing resident crash in `Settings::validate` (a dangling `QJsonValueRef`) hit every settings save on Debian. So only the capabilities and the KWin authorization ran from the Debian DEB. The fix is pull request #76 (confirmed on the same desktop by its session).
-- **Qt platform plugins missing from the AppImage.** The image lacks two of them. Both are pre-existing, and both are handled in their own pull requests (#80 and a follow-up session):
+- **Qt platform plugins missing from the AppImage.** The image lacks two of them. Both are pre-existing; #80 and #81 deployed them after these runs, and their own receipts cover them:
   - Qt's `offscreen` platform: `putgd-ui --image-job`, which previews non-PNG images such as the recorded GIF/WebP, aborts. The uploads still complete.
   - Qt's `xdg-shell` integration: its windows, including the recorder's control bar and review, use XWayland on Wayland sessions.
 

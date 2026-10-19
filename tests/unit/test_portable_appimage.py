@@ -254,5 +254,107 @@ kill -ABRT $$
             self.audit()
 
 
+class WaylandAuditTest(unittest.TestCase):
+    """The Wayland start contract, with a synthetic compositor and putgd-ui; not desktop acceptance."""
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory(prefix="pgwayland-")
+        self.addCleanup(self.directory.cleanup)
+        self.root = Path(self.directory.name)
+        self.app = self.root / "AppDir"
+        (self.app / "usr/bin").mkdir(parents=True)
+        self.plugins = self.app / "usr/plugins"
+        for name in ("wayland-shell-integration/liblayer-shell.so", *portable.WAYLAND_CLIENT_PLUGINS):
+            (self.plugins / name).parent.mkdir(parents=True, exist_ok=True)
+            (self.plugins / name).write_bytes(b"\x7fELFsynthetic")
+        self.inventory = {"privateLibraryDirectory": "usr/lib/putgd"}
+        self.receipt = self.root / "compositor-pid"
+        # Like weston: create the named socket in the private runtime directory, run until TERM.
+        self.compositor = self.script("compositor", """for argument; do
+    case $argument in --socket=*) socket=${argument#--socket=} ;; esac
+done
+printf '%s\\n' "$$" > "$PG_COMPOSITOR_PID"
+trap 'exit 0' TERM
+: > "$XDG_RUNTIME_DIR/$socket"
+while :; do sleep 0.05; done
+""")
+        self.worker("""[ "$1" = --image-job ] && [ "$QT_QPA_PLATFORM" = wayland ] || exit 9
+[ -e "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ] && [ "$XDG_SESSION_TYPE" = wayland ] || exit 8
+[ -z "${DISPLAY-}" ] && [ -z "${QT_PLUGIN_PATH-}" ] || exit 7
+[ -p /dev/stdin ] && [ -p /dev/stdout ] || exit 2
+printf '%s\\n' "qt.qpa.wayland: Using the 'xdg-shell' shell integration" >&2
+cat >/dev/null
+exit 3
+""")
+
+    def script(self, name, body):
+        path = self.root / name
+        path.write_text("#!/bin/sh\n" + body)
+        path.chmod(0o755)
+        return path
+
+    def worker(self, body):
+        path = self.app / "usr/bin/putgd-ui"
+        path.write_text("#!/bin/sh\n" + body)
+        path.chmod(0o755)
+
+    def audit(self, compositor=None):
+        with patch.dict(os.environ, {"DISPLAY": ":99", "WAYLAND_DISPLAY": "wayland-9",
+                                     "QT_PLUGIN_PATH": "/usr/lib/qt6/plugins",
+                                     "PG_COMPOSITOR_PID": str(self.receipt)}):
+            return portable.audit_wayland(self.app, self.inventory,
+                                          compositor or (str(self.compositor), "--socket={socket}"))
+
+    def assert_compositor_stopped(self):
+        pid = int(self.receipt.read_text())
+        with self.assertRaises(ProcessLookupError):
+            os.kill(pid, 0)
+
+    def test_distro_client_plugin_set_is_deployed(self):
+        self.assertEqual(set(portable.WAYLAND_CLIENT_PLUGINS), {
+            "wayland-shell-integration/libxdg-shell.so", "wayland-decoration-client/libbradient.so",
+            "wayland-decoration-client/libadwaita.so",
+            "wayland-graphics-integration-client/libqt-plugin-wayland-egl.so"})
+        self.assertEqual(portable.HEADLESS_COMPOSITOR[0], "weston")
+
+    def test_worker_starts_with_xdg_shell_and_compositor_is_stopped(self):
+        result = self.audit()
+        self.assertTrue(result["imageWorkerStartedOnWayland"])
+        self.assertEqual(result["waylandShellIntegration"], "xdg-shell")
+        self.assertIn("wayland-shell-integration/libxdg-shell.so", result["waylandClientPlugins"])
+        self.assert_compositor_stopped()
+
+    def test_missing_shell_integration_is_rejected(self):
+        (self.plugins / "wayland-shell-integration/libxdg-shell.so").unlink()
+        with self.assertRaisesRegex(ValueError, "missing from the image: wayland-shell-integration/libxdg-shell.so"):
+            self.audit()
+
+    def test_aborting_worker_is_rejected_with_its_qt_message(self):
+        self.worker("""printf '%s\\n' 'qt.qpa.wayland: No shell integration named "xdg-shell" found' \\
+    'qt.qpa.wayland: Loading shell integration failed.' \\
+    'qt.qpa.plugin: Could not load the Qt platform plugin "wayland" in "" even though it was found.' >&2
+kill -ABRT $$
+""")
+        with self.assertRaisesRegex(ValueError, "Loading shell integration failed"):
+            self.audit()
+        self.assert_compositor_stopped()
+
+    def test_other_shell_integration_is_rejected(self):
+        self.worker("""printf '%s\\n' "qt.qpa.wayland: Using the 'wl-shell' shell integration" >&2
+cat >/dev/null
+exit 3
+""")
+        with self.assertRaisesRegex(ValueError, "with xdg-shell"):
+            self.audit()
+
+    def test_compositor_that_exits_is_rejected_with_its_message(self):
+        failing = self.script("failing", "printf '%s\\n' $$ > \"$PG_COMPOSITOR_PID\"; echo 'fatal: no backend' >&2; exit 1\n")
+        with self.assertRaisesRegex(ValueError, "compositor did not start: fatal: no backend"):
+            self.audit((str(failing),))
+
+    def test_missing_compositor_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "requires " + str(self.root / "absent")):
+            self.audit((str(self.root / "absent"), "--socket={socket}"))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -21,7 +21,16 @@ and Qt Wayland development headers. The image also carries Qt's offscreen platfo
 the resident runs image decoding and previews in `putgd-ui --image-job` on it, and
 Qt aborts that worker when the plugin is absent. After deployment the builder
 starts the worker from the AppDir on offscreen and rejects an image where it does
-not start. Do not force a different platform theme or
+not start. It carries Qt's Wayland client plugins too, which linuxdeploy deploys
+only for Qt Wayland Compositor applications: the `xdg-shell` shell integration,
+the `bradient` and `adwaita` decorations and the EGL client buffer integration,
+the set that Debian's and Fedora's qt6-wayland packages ship. Qt's Wayland
+platform does not start without a shell integration (LayerShellQt's is applied
+per window, never as the default), so without them every window fell back to
+XWayland, and a forced `QT_QPA_PLATFORM=wayland` aborted. The builder then starts
+the same worker on Wayland under a private headless weston (install `weston` on
+the builder) and rejects an image whose worker does not start with `xdg-shell`.
+Do not force a different platform theme or
 replace native folder dialogs. The builder rejects a missing GTK3 theme plugin. Qt's standard `qt.conf`
 deployment paths select only the SQLite SQL driver, preserving all other plugin
 directories and leaving the original official SDK untouched. MySQL/Mimer and
@@ -134,13 +143,13 @@ mounted `putgd-record` and `X-KDE-Wayland-Interfaces=zkde_screencast_unstable_v1
 so KWin offers its screencast protocol to the recorder; the same cleanup
 removes both entries.
 
-The image carries Qt's Wayland platform plugins but not its `xdg-shell`
-shell integration (only LayerShellQt's), so on a Wayland session Qt falls back
-to XWayland for ordinary windows, including the recorder's control bar and
-review window; frames still come from KWin's or Mutter's native stream. With
-`QT_QPA_PLATFORM=wayland` forced in the environment those windows abort ("No
-shell integration named xdg-shell found"). This predates recording and applies
-to every window in the image.
+On Wayland the recorder's windows behave like the image's other windows (see
+"Runtime behavior"): the control bar and the review window are native Wayland
+clients, and on Plasma the helper's region selector, ring and dimming are
+LayerShellQt overlay surfaces. Frames still come from KWin's or Mutter's
+stream. The AppImage recordings in the
+[packaging receipt](../../docs/evidence/2026-10-18-recording-packaging.md)
+ran before the image carried `xdg-shell`, with those windows on XWayland.
 
 The post-deployment audit runs the relocated `putgd-record --capabilities`
 with `APPDIR` set and no display. It fails unless GStreamer initialises, every
@@ -185,6 +194,20 @@ pins the package bytes, commands, observer and results. Include every mount and
 launcher process in future quiet-family measurements; never hide FUSE from RSS.
 
 ## Runtime behavior
+
+On Wayland sessions the views, the editor and the KDE region helper are native
+Wayland clients, as with the DEB/RPM; set `QT_QPA_PLATFORM=xcb` to use XWayland
+instead. KWin draws their frames; on GNOME, Qt draws adwaita frames for the
+views and bradient for the editor, which clears the desktop identity before it
+starts (as in the DEB/RPM). The region helper sets LayerShellQt's overlay role
+per window and needs the Wayland platform, so KDE region capture works only
+natively. Before the image carried `xdg-shell` it answered `region_unavailable`.
+A Wayland compositor takes a window's icon from the desktop entry named by its
+app ID (`putgd-ui`), not from the window, and Qt 6.8 has no
+`xdg-toplevel-icon` support. Without a host entry for the image, KWin's title
+bar and GNOME's overview show a generic icon for those windows; the DEB/RPM
+install `putgd-ui.desktop`. Acceptance:
+[2026-10-19 native Wayland](../../docs/evidence/2026-10-19-appimage-native-wayland.md).
 
 The application AppRun is installed after deployment, so generic deployment
 hooks cannot override its host-tool environment or force unavailable GTK2 themes.
