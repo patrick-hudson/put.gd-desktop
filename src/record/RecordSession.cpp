@@ -3,6 +3,7 @@
 #include "MediaProbe.h"
 #include <QBuffer>
 #include <QDir>
+#include <QElapsedTimer>
 #include <QFile>
 #include <QFileInfo>
 #include <QGuiApplication>
@@ -568,8 +569,13 @@ void RecordSession::exportClip(const QJsonObject& params, Reply reply) {
     auto error = std::make_shared<Error>();
     QPointer<RecordSession> guard(this);
     auto* thread = QThread::create([request, result, error, cancel, guard] {
-        *error = record::exportClip(request, *result, *cancel, [guard, cancel](double fraction) {
+        // The exporter reports every frame; a GPU export runs hundreds a second, more
+        // than the control channel accepts, so forward at most ten updates a second.
+        QElapsedTimer sinceReport;
+        *error = record::exportClip(request, *result, *cancel, [guard, cancel, &sinceReport](double fraction) {
             if (!guard || cancel->load()) return;
+            if (sinceReport.isValid() && sinceReport.elapsed() < 100 && fraction < 1.0) return;
+            sinceReport.start();
             QMetaObject::invokeMethod(guard, [guard, fraction] { if (guard) emit guard->event({{"event", "progress"}, {"exportFraction", fraction}}); }, Qt::QueuedConnection);
         });
     });
