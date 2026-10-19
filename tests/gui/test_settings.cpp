@@ -1,4 +1,6 @@
 #include "ui/MainWindow.h"
+#include "core/BuildInfo.h"
+#include "core/ReleaseLink.h"
 #include "ui/VisualStyle.h"
 #include "ui/RedesignTheme.h"
 #include <QVBoxLayout>
@@ -505,6 +507,22 @@ private slots:
   record->click();QTest::keyClick(input,Qt::Key_1,Qt::ControlModifier);const auto recorded=status->text();
   restored({"shortcut_recording_interrupted","Global shortcut configuration changed.",{}});QCOMPARE(status->text(),recorded);QCOMPARE(input->text(),QString("Ctrl+1"));
   record->click();QTest::keyClick(input,Qt::Key_Escape);restored({"shortcut_restore_failed","Synthetic restore failure",{}});QVERIFY(status->text().contains("Could not restore shortcuts"));QCOMPARE(input->text(),QString("Ctrl+1"));
+ }
+ void railShowsTheResidentVersionAndOpensItsGitHubPage(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.show();QTRY_VERIFY(fixture.session.ready());
+  auto* rail=window.findChild<QWidget*>("mainRail");auto* label=window.findChild<QLabel*>("appVersion");auto* link=window.findChild<QPushButton*>("appVersionLink");QVERIFY(rail&&label&&link);QVERIFY(rail->isAncestorOf(label)&&rail->isAncestorOf(link));
+  // The real build identity: the full compiled version, as diagnostics and About report it.
+  const auto build=QJsonDocument::fromJson(buildManifestJson()).object();QCOMPARE(fixture.session.build(),build);const auto current=releaseLink(build);QWidget* shown=current.url.isEmpty()?static_cast<QWidget*>(label):link;
+  QTRY_VERIFY(shown->isVisible());QCOMPARE(shown->property("text").toString(),QString::fromLatin1(buildVersion()));QCOMPARE(shown->accessibleName(),"put.gd version "+QString::fromLatin1(buildVersion()));
+  QVERIFY2(shown->mapTo(rail,QPoint(0,shown->height())).y()>rail->height()-60,"The version sits at the bottom of the rail");
+  openedUrls_.clear();QDesktopServices::setUrlHandler("https",this,"recordProtonUrl");auto cleanup=qScopeGuard([]{QDesktopServices::unsetUrlHandler("https");});
+  QJsonObject snapshot;fixture.server.dispatch({{"schemaVersion",1},{"requestId","version"},{"session",fixture.server.socketPath()},{"method","ui.snapshot"},{"params",QJsonObject{}}},[&](Error e,QJsonObject data){QVERIFY(!e);snapshot=data;});QTRY_VERIFY(!snapshot.isEmpty());
+  auto apply=[&](const QString& version,bool dirty){auto injected=build;injected["version"]=version;injected["dirty"]=dirty;injected["gitCommit"]="528fe444b0cb0123456789abcdef0123456789ab";auto data=snapshot;data["build"]=injected;fixture.session.applySnapshot(data);};
+  apply("0.1.1-nightly.430",false);QTRY_VERIFY(link->isVisible());QVERIFY(!label->isVisible());QCOMPARE(link->text(),QString("0.1.1-nightly.430"));QCOMPARE(link->accessibleName(),QString("put.gd version 0.1.1-nightly.430"));QVERIFY(link->focusPolicy()&Qt::TabFocus);
+  link->setFocus();QTest::keyClick(link,Qt::Key_Space);QTRY_COMPARE(openedUrls_.size(),1);QCOMPARE(openedUrls_.first(),QUrl("https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v0.1.1-nightly.430"));
+  // Dirty development builds have no public page: the full string stays readable, unlinked.
+  const QString dirty="0.1.1-dev.430+g528fe444b0cb.dirty";apply(dirty,true);QTRY_VERIFY(label->isVisible());QVERIFY(!link->isVisible());QCOMPARE(label->text(),dirty);QCOMPARE(label->accessibleName(),"put.gd version "+dirty);
+  QVERIFY2(label->sizeHint().width()<=rail->contentsRect().width()-28,"The longest development version fits in the rail");QCOMPARE(openedUrls_.size(),1);
  }
 };
 QTEST_MAIN(SettingsGui)

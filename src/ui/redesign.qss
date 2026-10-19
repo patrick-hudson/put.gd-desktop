@@ -75,6 +75,10 @@ QPushButton[visualRole="danger"]:focus, QToolButton[visualRole="danger"]:focus {
 QPushButton[visualRole="link"], QToolButton[visualRole="link"] { color: #8DBBFF; border-color: transparent; background: transparent; padding: 4px 3px; }
 QPushButton[visualRole="link"]:hover, QToolButton[visualRole="link"]:hover { text-decoration: underline; }
 QPushButton[visualRole="link"]:focus, QToolButton[visualRole="link"]:focus { border-color: #6EA8FE; padding: 3px 2px; }
+QLabel[visualRole="version"] { color: #9AA1AD; font-size: 11px; padding: 0 3px; }
+QPushButton[visualRole="version"] { color: #9AA1AD; font-size: 11px; border-color: transparent; background: transparent; padding: 2px 3px; min-height: 0; text-align: left; }
+QPushButton[visualRole="version"]:hover { color: #8DBBFF; text-decoration: underline; }
+QPushButton[visualRole="version"]:focus { color: #8DBBFF; border-color: #6EA8FE; padding: 1px 2px; }
 QPushButton#captureRailButton { background: #181B21; text-align: left; padding: 8px 10px; min-height: 24px; }
 QPushButton#captureRailButton:hover { background: #20242C; }
 QPushButton#captureRailButton:focus { border: 2px solid #6EA8FE; padding: 7px 9px; }
