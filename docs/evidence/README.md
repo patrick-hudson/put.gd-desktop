@@ -11,6 +11,7 @@ for local bulk artifacts and [verification](../verification.md) for limitations.
 | AppImage native Wayland windows (Qt xdg-shell, decorations) | [Builder check, d69/f44/k72 desktop acceptance](2026-10-19-appimage-native-wayland.md) |
 | AppImage screen recording on Wayland after native windows (nightly `9042776`) | [d69/f44 Wayland and k72 X11 runs, placement, native windows, motion vs frozen controls](2026-10-19-appimage-recording-wayland.md) |
 | AppImage Wayland window icons and GNOME own-window refusal (issue #88) | [d69 KWin and f44 GNOME icons, entry cleanup, Settings/History refusal](2026-10-19-appimage-wayland-icons.md) |
+| X11 window capture refuses the editor (issue #103, X11 half) | [k72 Plasma X11 DEB and AppImage: editor, Settings and History refused, external captured](2026-10-19-x11-editor-refusal.md) |
 | Settings save crash on Debian 13 (dangling `QJsonValueRef`) | [Suites, source contract and Debian Plasma before/after](2026-10-19-settings-validate-uaf.md) |
 | Single-name configuration and data folders (issue #56) | [Suites, interrupted-move coverage and Cinnamon upgrade check](2026-10-18-issue56-storage-locations.md) |
 | Inherited capture output in Settings (issue #58) | [Suites and Cinnamon check](2026-10-18-issue58-inherited-capture-output.md) |
