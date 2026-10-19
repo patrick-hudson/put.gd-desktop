@@ -425,20 +425,27 @@ the **dimming** of everything else while recording or paused and the
   for the bar as non-reactive actors outside the area, and moves the helper's
   bar window (title `put.gd recording controls`, accepted only when its
   process is a direct child of the authenticated resident) below or above
-  the area, onto another monitor, or, failing all, inside the corner.
+  the area, onto another monitor, or, failing all, inside the corner. The
+  extension follows the bar window's size changes and places it again with
+  that first decision, so a widened bar stays on its monitor. A bar left
+  inside makes the resident report `handle` and send the helper
+  `overlay {handle: true}`: from Record on the bar is the dot-and-Stop handle,
+  which the extension keeps in the corner.
   `HideRecordingFrame` removes everything when the clip is under review or
   the session ends; disabling the extension, locking or the resident leaving
   the bus does too. Mutter has no per-window screencast exclusion, so a whole
-  single-monitor recording on GNOME contains the bar.
+  single-monitor recording on GNOME contains the handle (or nothing, after
+  `recording.overlay {visible: false}`).
 - A `window` stream (portal) carries only that window: `overlayExcluded` is
   true and no ring is drawn.
 
 `overlayPlacement` reports where the bar went: `outside`, `handle` (no room
-outside: X11 and KDE shrink it to the dot-and-Stop handle while recording,
-and the handle is in the clip), `hidden` (KWin 6.6 leaves it out of its own
-stream), `compositor` (nobody could place it; it may be in the clip) or
-`inside` (the GNOME extension had to leave the full bar in the area's corner);
-`overlayExcluded` is true only for `outside` and `hidden`.
+outside: X11, KDE and the GNOME Shell keep it in the area's corner and it
+shrinks to the dot-and-Stop handle while recording, so the handle is in the
+clip), `hidden` (KWin 6.6 leaves it out of its own stream) or `compositor`
+(nobody could place it; it may be in the clip). Releases before #108 also
+reported `inside` for a full bar left in the clip. `overlayExcluded` is true
+only for `outside` and `hidden`.
 
 ## Capture and export engine (X11)
 
