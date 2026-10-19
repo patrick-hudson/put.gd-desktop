@@ -148,12 +148,14 @@ under `recordingRuntime`. A build without a GPU (CI) has no H.264 encoder, so
 MP4 export is absent there by design; it appears on hosts whose driver encodes
 H.264.
 
-The runtime added 10,461,184 bytes to the image (98,929,144 for nightly 317,
-109,390,328 for this change), about 17 MB uncompressed. The idle family on the
-Debian 13 Plasma/Wayland desktop measured 111.0 MiB RSS / 75.4 MiB PSS before
-and 111.5 / 75.9 MiB after (resident, `putgd-ui`, AppRun and runtime; the
+The recording runtime grew the image from 98,929,144 bytes (nightly 317) to
+112,736,760 bytes (`7aa1aff`): 10.5 MB for GStreamer, FFmpeg and the plugins,
+and 3.3 MB for x264/x265. Each release also carries the 18.4 MB
+corresponding-source asset. The idle family on the Debian 13 Plasma/Wayland
+desktop measured 111.7 MiB RSS / 76.1 MiB PSS for nightly 317 and
+112.3 / 76.7 MiB for this image (resident, `putgd-ui`, AppRun and runtime; the
 resident itself 29.0 and 29.3 MiB). While recording, the image's helper peaks
-at 96-108 MiB against 142-156 MiB for the distro packages' helper, whose
+at 110-131 MiB, against 141-153 MiB for the distro packages' helpers, whose
 FFmpeg carries every codec.
 
 ## Compression and memory
