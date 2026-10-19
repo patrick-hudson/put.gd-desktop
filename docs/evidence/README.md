@@ -6,6 +6,7 @@ for local bulk artifacts and [verification](../verification.md) for limitations.
 
 | Topic | Starting point |
 | --- | --- |
+| Wayland recording A/V sync (issue #86) | [d69 KWin/portal, f44 Mutter/portal and k72 X11: working clip vs export offsets, timestamp A/B, before/after](2026-10-19-wayland-av-sync.md) |
 | Recording control bar placement and handle (issue #108) | [k72 X11, d69 KWin 6.3, f44 GNOME and a two-monitor Cinnamon guest: placement, frame checks, motion](2026-10-19-recording-bar-placement.md) |
 | Screen recording in every package (issue #50 packaging) | [Installed DEB/RPM and AppImage runs, AppImage size and memory](2026-10-18-recording-packaging.md) |
 | Debian 13 release DEB (issue #85) | [CI build and audit, unchanged Ubuntu/Fedora packages, d69 install, recording and uninstall](2026-10-19-debian13-deb.md) |
