@@ -431,6 +431,11 @@ def create_server(adapter: CliAdapter) -> FastMCP:
         """Validate/reload the active file; invalid edits preserve accepted settings; no cloud/capture activity."""
         return await adapter.call('settings.reload', {})
 
+    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, openWorldHint=False))
+    async def clear_logs() -> Json:
+        """Delete every persistent log file in put.gd's state folder and start a new one; returns removedFiles and removedBytes. Uploads, history, settings and saved diagnostics packages are untouched. inspect shows the log folder size, file count and oldest record under diagnostics.logging."""
+        return await adapter.call('logs.clear', {})
+
     @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
     async def patch_configuration(patch: Json, expected_revision: str) -> Json:
         """Patch non-secret settings with expected file revision; conflicts require reread/rebase. Null is explicit."""

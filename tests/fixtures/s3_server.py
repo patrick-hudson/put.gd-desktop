@@ -43,6 +43,8 @@ class Handler(BaseHTTPRequestHandler):
             try: self.wfile.write(body)
             except (BrokenPipeError, ConnectionResetError): pass
     def error(self, code, name='AccessDenied', headers=None):
+        # Real S3 identifies every failed request with these two headers.
+        headers = {'x-amz-request-id': 'SYNTHREQ0123ABCD', 'x-amz-id-2': 'synthetic+Extended/Id2=', **(headers or {})}
         self.respond(code, ('<Error><Code>' + name + '</Code><Message>synthetic fixture</Message></Error>').encode(), headers)
     def do_POST(self):
         body = self.rfile.read(int(self.headers.get('Content-Length', 0)))

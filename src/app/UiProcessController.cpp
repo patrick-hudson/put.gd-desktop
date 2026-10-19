@@ -53,12 +53,15 @@ void UiProcessController::launch(){
  control_=new UiControl(*child,child);
  connect(control_,&UiControl::frame,this,&UiProcessController::receive);
  connect(control_,&UiControl::failed,this,&UiProcessController::fail);
- connect(child,&QProcess::readyReadStandardError,this,[child]{
-  // Helper diagnostics must never persist private protocol or credential input.
-  while(!child->readAllStandardError().isEmpty()){}
+ connect(child,&QProcess::readyReadStandardError,this,[this,child,generation]{
+  // Only toolkit diagnostics use stderr; the protocol and any credential input
+  // travel on the private pipes. The log redacts and bounds what arrives.
+  const auto bytes=child->readAllStandardError();
+  if(process_==child&&processGeneration_==generation)output_.append(bytes);
  });
  connect(child,&QProcess::started,this,[this,child,generation]{
   if(process_!=child||processGeneration_!=generation)return;
+  output_.started(child->processId(),{{"generation",qint64(generation)}});
   QPointer<UiProcessController> guard(this);
   emit helperPidChanged(child->processId());
   if(!guard||process_!=child||stopping_)return;
@@ -67,6 +70,7 @@ void UiProcessController::launch(){
  connect(child,&QProcess::errorOccurred,this,[this,child,generation](QProcess::ProcessError error){
   if(process_!=child||processGeneration_!=generation)return;
   if(error==QProcess::FailedToStart){
+   output_.failedToStart(child->errorString());
    QPointer<UiProcessController> guard(this);fail(unavailable("ui_start_failed"));
    if(!guard)return;
    finished(child,generation,-1,QProcess::CrashExit);
@@ -215,6 +219,7 @@ void UiProcessController::finished(QProcess* child,quint64 generation,int code,Q
  restoreShortcuts();
  lastExit_={{"generation",qint64(generation)},{"code",code},{"status",exitStatus==QProcess::NormalExit?"normal":"crash"}};
  const bool expected=(phase_==Phase::Closing&&closeConfirmed_&&code==0&&exitStatus==QProcess::NormalExit)||phase_==Phase::Failed||stopping_;
+ if(output_.pid()>0){output_.append(child->readAllStandardError());output_.finished(code,exitStatus,expected);}
  startup_.stop();stopDeadline_.stop();closeDeadline_.stop();
  finishing_=true;
  QPointer<UiProcessController> guard(this);

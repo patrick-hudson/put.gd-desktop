@@ -181,6 +181,9 @@ private slots:
         QVERIFY2(result.error.message.contains(guidance),qPrintable(result.error.message));
         QVERIFY(!QJsonDocument(result.error.toJson()).toJson().contains("synthetic fixture"));
         QCOMPARE(result.error.details["serviceCode"].toString(),service);
+        // #74: the request IDs AWS support asks for survive the worker protocol.
+        QCOMPARE(result.error.details["requestId"].toString(),QString("SYNTHREQ0123ABCD"));
+        QCOMPARE(result.error.details["extendedRequestId"].toString(),QString("synthetic+Extended/Id2="));
         QCOMPARE(f.events("PUT").size(), 1);
         QCOMPARE(f.events("DELETE").size(), 0);
         QCOMPARE(f.events("PUT")[0].toObject()["headers"].toObject()["x-amz-acl"].toString(), QString("public-read"));
