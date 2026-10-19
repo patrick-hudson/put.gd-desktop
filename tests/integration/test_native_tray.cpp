@@ -356,7 +356,7 @@ private slots:
   QVERIFY(client.connect(service,"/StatusNotifierItem","org.kde.StatusNotifierItem","NewIcon",&observer,SLOT(iconChanged())));
   QVERIFY(client.connect(service,"/StatusNotifierItem","org.kde.StatusNotifierItem","NewToolTip",&observer,SLOT(tooltipChanged())));
   tray.setActivity(QColor("#62d69b"),"Uploading: 2 MiB of 4 MiB (50%)",50);QTRY_COMPARE(observer.icons,1);QTRY_COMPARE(observer.tooltips,1);
-  tray.setActivity(QColor("#62d69b"),"Uploading: 3 MiB of 4 MiB (75%)",75);QTRY_COMPARE(observer.tooltips,2);QCOMPARE(observer.icons,2);
+  tray.setActivity(QColor("#62d69b"),"Uploading: 3 MiB of 4 MiB (75%)",75);QTRY_COMPARE(observer.tooltips,2);QTRY_COMPARE(observer.icons,2);
   tray.setActivity(QColor("#62d69b"),"Uploading: 3 MiB of 4 MiB (75%)",75);QTest::qWait(50);QCOMPARE(observer.tooltips,2);QCOMPARE(observer.icons,2);
   changeHost(false);QTRY_VERIFY(!tray.available());tray.setActivity(QColor("#62d69b"),"Finalizing: 4 MiB of 4 MiB (100%)",100);
   changeHost(true);QTRY_VERIFY(tray.available());
