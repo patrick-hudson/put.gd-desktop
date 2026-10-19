@@ -14,7 +14,11 @@ shortcut" below). On Wayland the helper takes a PipeWire stream from the
 compositor without a dialog where it can (KWin's screencast protocol on
 Plasma, Mutter's screen cast service on GNOME) and otherwise through the
 ScreenCast portal, whose picker is shown once per target kind thanks to
-restore tokens; see "Wayland acquisition". Desktop acceptance evidence is recorded
+restore tokens; see "Wayland acquisition". A region without a rectangle is
+chosen first with the desktop's own screenshot selector (KDE's layer-shell
+selector, the GNOME Shell extension's), and the ready ring, the dimming and
+the control bar stay outside the recorded area; see "Wayland selection, bounds
+and bar". Desktop acceptance evidence is recorded
 separately in `docs/verification.md` when it exists; nothing here claims it.
 
 ## Workflow
@@ -71,10 +75,11 @@ All methods go through `putgd-cli` unchanged. `id` is the recording ID.
 | Method | Params | Result / effect |
 | --- | --- | --- |
 | `recording.capabilities` | | availability and reason, target kinds, formats, codecs per format, audio sources, `active` recording ID, limits, `timeUnit`; no capture, no prompt |
-| `recording.prepare` | `target {kind: monitor\|desktop\|region\|window, identity?, rect?}`, `format mp4\|webm\|gif\|webp`, `codec?`, `fps? (1–60)`, `audio? {system?, microphone?}`, `maxEdge?` | durable intent, then ready bounds/controls and any OS consent; replies at once with `state: preparing`; poll `inspect` for `ready`. A region without `rect` asks the user to drag it (Escape cancels); the chosen bounds appear in `inspect` as `target.rect`, and `overlayExcluded` says whether the control bar stayed outside them |
+| `recording.prepare` | `target {kind: monitor\|desktop\|region\|window, identity?, rect?}`, `format mp4\|webm\|gif\|webp`, `codec?`, `fps? (1–60)`, `audio? {system?, microphone?}`, `maxEdge?` | durable intent, then ready bounds/controls and any OS consent; replies at once with `state: preparing`; poll `inspect` for `ready`. A region without `rect` opens the desktop's selector (Escape cancels; `inspect` shows `selecting: true`); the chosen bounds appear in `inspect` as `target.rect`, and `overlayExcluded` / `overlayPlacement` say whether the control bar stayed out of the recorded pixels |
+| `recording.select` | `{id, rect: [x, y, w, h]}` | completes an open region selector with that rectangle as a drag would (X11 root pixels, logical desktop pixels on Wayland); `recording_state` when no selector is open |
 | `recording.start` / `pause` / `resume` / `stop` | `{id}` | acknowledged once the backend reached the state; a duplicate of the in-flight command returns the current state, a different one is `recording_busy`; `stop` returns `durationUs` and enters `reviewing` |
 | `recording.cancel` | `{id}` | discards the clip; the operation ends `cancelled` |
-| `recording.inspect` | `{id}` | state, pending command, target, config, canvas, `durationUs`, `retainedUs`, edit, progress, error |
+| `recording.inspect` | `{id}` | state, pending command, `selecting`, target, config, canvas, `durationUs`, `retainedUs`, edit, progress, `overlayExcluded`, `overlayPlacement`, error |
 | `recording.raise` / `recording.overlay` | `{id}` / `{id, visible}` | overlay control; the recording indicator stays visible |
 | `recording.edit` | `{id, revision, commands[1–100]}` | atomic `setTrim {start, end\|null}`, `resetTrim`, `addMask {mask}`, `updateMask {maskId, mask}`, `removeMask {maskId}` |
 | `recording.preview` | `{id, time, maxEdge? 64–1600}` | one PNG frame (base64 `png`) at clip time with current trim/masks, plus `retained`, `outputTimeUs`, `revision`; returned only to the requesting client |
@@ -87,6 +92,7 @@ GIF/WebP (`invalid_request`); `audio.microphone` is reserved and refused
 (`recording_unsupported`). Errors: `recording_unavailable`,
 `recording_unsupported`, `recording_active`, `recording_state`,
 `recording_busy`, `recording_stale`, `recording_mask_unknown`,
+`region_unavailable` (a Wayland desktop without a region selector),
 `recording_animation_too_long`, `recording_animation_too_large`,
 `recording_export_failed`, `file_exists`, plus the shared `invalid_request`,
 `queue_full`, `busy_selecting`, `editor_active` and `output_required`.
@@ -252,6 +258,7 @@ backend.
 | Event | Meaning |
 | --- | --- |
 | `progress {durationUs, bytes, paused, encoder, audioEncoder}` / `{exportFraction}` | retained time and file size while recording; export progress |
+| `selecting {selector: x11\|kde-layer-shell}` | the helper's region selector is open; `recording.select` can complete it |
 | `started`, `paused`, `resumed` | the bar's Record / Pause / Resume |
 | `stopped {durationUs, canvas, reason: user\|budget}` | the clip is finalized and under review |
 | `cancelled` | Cancel on the bar, Discard in the review, the window closed |
@@ -297,10 +304,9 @@ one of three ways to obtain that stream and reports it as `acquisition`:
   keyed by desktop and target kind, so the next recording of that kind
   restores the share without a picker until the compositor invalidates the
   token (a refused token simply shows the picker again and stores the new
-  one). A `region` with a rectangle records the shared monitor cropped to
-  the rectangle (`videocrop`, stream-relative); a `region` without one
-  records the whole shared monitor, since drag overlays cannot be placed on
-  Wayland.
+  one). A `region` records the shared monitor cropped to its rectangle
+  (`videocrop`, stream-relative), which is chosen before the portal session
+  opens (see below).
 
 Both native paths name a node on the session's PipeWire daemon, so the probe
 also requires its socket (`pipewire {socket}`; `PIPEWIRE_REMOTE`,
@@ -310,12 +316,67 @@ is missing. Monitor and window identities are optional everywhere (on X11 an
 empty monitor identity means the first connected monitor). Reasons for an
 unavailable Wayland session are `live_source_missing` (no `pipewiresrc`),
 `portal_unavailable`, `portal_too_old` or `session_bus_unavailable`.
-There is no ready ring or dimming on Wayland; the control bar floats where
-the compositor puts it and `overlayExcluded` is `false`. Cancelling a
-picker ends the operation as `cancelled`; Cancel, Stop and discard close the
-stream (`Session.Close`, `Session.Stop` or the protocol's `close`), which
-ends the share. `tests/unit` covers the portal stream demarshalling; the
-three paths are exercised on the Fedora GNOME and Debian KDE desktops.
+Cancelling a picker ends the operation as `cancelled`; Cancel, Stop and
+discard close the stream (`Session.Close`, `Session.Stop` or the protocol's
+`close`), which ends the share. `tests/unit` covers the portal stream
+demarshalling; the three paths are exercised on the Fedora GNOME and Debian
+KDE desktops.
+
+### Wayland selection, bounds and bar
+
+A `region` without a rectangle (the tray, the dashboard's Record screen and
+the shortcut all start one) is chosen **before** any compositor stream or
+portal session exists, with the selector screenshots already use, so Escape
+or a right click leaves nothing behind: the operation ends `cancelled` and no
+share was ever opened.
+
+- **KDE Plasma**: the helper itself shows the layer-shell screenshot selector
+  (`KdeRegionOverlay`, the same class `putgd-kde-region` runs), which reports
+  a logical rectangle only after KWin has rendered its surfaces transparent
+  and unmapped them; then `stream_region` (or the portal plus `videocrop`)
+  starts for exactly that rectangle. The helper sends `selecting` while it is
+  open.
+- **GNOME**: clients cannot place surfaces, so the resident asks the put.gd
+  Shell extension (recording protocol 1, `SelectArea`) for the rectangle with
+  its St selector, then launches the helper with it; `RecordArea` streams
+  that area. Without the extension (or with an older one) a rectless region
+  is refused with `region_unavailable` instead of recording the whole monitor.
+- Elsewhere on Wayland a region needs `target.rect`.
+
+`recording.select {id, rect}` (MCP `select_recording_region`) completes an
+open selector of either kind as a drag would; `recording.cancel` closes it.
+
+The **ready ring** (3 px white, dark hairline, just outside the rectangle),
+the **dimming** of everything else while recording or paused and the
+**control bar** follow the X11 rules where the compositor allows them:
+
+- KDE: the ring and the dim strips are input-transparent overlay layer
+  surfaces (split per output), and the bar is an overlay layer surface placed
+  below the rectangle, else above it, else at the top of another output, else
+  inside its bottom-right corner. A rectangle's stream contains none of them
+  unless the bar had to sit inside. KWin 6.6 and later also leave every
+  window of the client that requested a `zkde_screencast` stream out of that
+  stream, so on those versions the bar is excluded even from monitor
+  recordings (`kdeScreencast.hidesRequester`, from the KWin version on
+  D-Bus); KWin 6.3 does not, and the portal path never does.
+- GNOME: once the helper reports `overlayPlacement: compositor`, the resident
+  calls the extension's `ShowRecordingFrame {rect, kind, state, pid}`: the
+  Shell draws the ring and, while recording or paused, dim strips with a hole
+  for the bar as non-reactive actors outside the area, and moves the helper's
+  bar window (title `put.gd recording controls`, accepted only when its
+  process is a direct child of the authenticated resident) below or above
+  the area, onto another monitor, or, failing all, inside the corner.
+  `HideRecordingFrame` removes everything when the clip is under review or
+  the session ends; disabling the extension, locking or the resident leaving
+  the bus does too. Mutter has no per-window screencast exclusion, so a whole
+  single-monitor recording on GNOME contains the bar.
+- A `window` stream (portal) carries only that window: `overlayExcluded` is
+  true and no ring is drawn.
+
+`overlayPlacement` reports where the bar went: `outside`, `inside` (it is in
+the clip), `hidden` (KWin 6.6 leaves it out of its own stream) or
+`compositor` (nobody could place it; it may be in the clip); `overlayExcluded`
+is true only for `outside` and `hidden`.
 
 ## Capture and export engine (X11)
 
@@ -392,7 +453,17 @@ does and prints the encoder, frame count, bytes and wall time, and
 `PUTGD_RECORD_EXPORT_ENCODERS=<comma list>` replaces the encoder preference
 order for such timing runs; `putgd-record --motion CLIP [SAMPLES]` prints the
 mean frame difference between frames sampled across a clip (about 0.01 for a
-still picture), so a recording test can require that it captured movement. None is read by the resident and none carries
+still picture), so a recording test can require that it captured movement.
+For system audio, `putgd-record --av-marker OUT.mkv SECONDS` writes a
+synthetic marker clip (MJPEG and PCM in Matroska, built-in FFmpeg encoders
+only): black 1280×720 frames with a white flash and a 1 kHz tone burst, both
+100 ms, at the start of every second. Play it in the recorded area with
+system audio on, then `putgd-record --av-sync CLIP` decodes the recording in
+one demux pass, finds the flash onsets (mean luma rising edges) and burst
+onsets (2 ms RMS envelope), pairs each flash with the nearest burst within
+half a period and prints JSON with every offset (`offsetsMs`, audio minus
+video, positive when the sound is late), `medianMs` and `spreadMs`; the
+marker itself measures 0 ms. None is read by the resident and none carries
 frames.
 
 ## Agent and MCP control
@@ -403,6 +474,7 @@ frames.
 | `prepare_recording` | `recording.prepare` |
 | `control_recording` (start/pause/resume/stop/cancel/raise) | `recording.<command>` |
 | `get_recording` | `recording.inspect` |
+| `select_recording_region` | `recording.select` |
 | `set_recording_overlay` | `recording.overlay` |
 | `edit_recording` | `recording.edit` |
 | `preview_recording` (MCP image) | `recording.preview` |
@@ -419,7 +491,10 @@ frames.
   the full lifecycle through `LocalServer` with a fake backend, including
   stop while paused, stale revisions, local copies, export failure, cancel,
   helper events, animation limits, malformed requests, editor exclusion and
-  restart interruption.
+  restart interruption, a fake desktop shell selecting a region and framing
+  the bar (`overlayPlacement`), cancelling and driving a shell selection
+  without ever starting the helper, and the helper's `selecting` event with
+  `recording.select`.
 - `recording_helper_integration` (`tests/integration/test_recording_helper.cpp`):
   the helper supervisor against a fixture helper (probe caching, lifecycle,
   progress and helper-initiated stop events, crash, silence, wrong build,
@@ -428,5 +503,9 @@ frames.
   `capture_not_implemented` refusal and its normal exit.
 - `tests/integration/test_mcp.py`: tool → method forwarding parity and the
   preview image route against the synthetic peer.
+- `gnome_ui_ownership_contract` (`tests/desktop/test_gnome_ownership.mjs`,
+  GNOME hosts only): `SelectArea` answering and `Release` cancelling, bar
+  placement order, dim strips cut around the area and the bar, and refusing
+  a bar whose process is not the resident's child.
 - `tests/integration/test_config_schema.py`: optional `record` action,
   template and limits.

@@ -30,6 +30,7 @@ public:
     void exportClip(const QString& id, const RecordingEdit&, const RecordingConfig&, const QString& outputPath, Reply) override;
     void setEdit(const QString& id, const RecordingEdit&, const RecordingConfig&, const QJsonObject& limits) override;
     void discard(const QString& id) override;
+    qint64 processId(const QString& id) const override;
     QJsonObject diagnostics() const;
 private:
     struct Outstanding { Reply reply; };

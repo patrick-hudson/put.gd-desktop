@@ -15,6 +15,9 @@
 #include <QTimer>
 #include <cmath>
 #include <unistd.h>
+#ifdef PUTGD_RECORD_LAYER_SHELL
+#include "platform/kde/KdeRegionOverlay.h"
+#endif
 
 namespace putgd::record {
 namespace {
@@ -82,6 +85,9 @@ RecordSession::~RecordSession() {
     delete review_;
     delete bar_;
     delete selection_;
+#ifdef PUTGD_RECORD_LAYER_SHELL
+    delete kdeSelection_;
+#endif
 }
 QString RecordSession::targetLabel() const {
     if (target_.kind == "region") return QStringLiteral("Region %1×%2").arg(resolved_.canvas.width()).arg(resolved_.canvas.height());
@@ -97,6 +103,7 @@ void RecordSession::showBar(const QString& state) {
 }
 void RecordSession::command(const QString& command, const QJsonObject& params, Reply reply) {
     if (command == "prepare") { prepare(params, std::move(reply)); return; }
+    if (command == "select") { completeSelection(params, std::move(reply)); return; }
     if (!prepared_) { reply({"recording_state", "The helper has no prepared session", {}}, {}); return; }
     if (command == "start") { start(std::move(reply)); return; }
     if (command == "pause") { if (auto e = pipeline_.pause()) reply(e, {}); else { showBar("paused"); emitProgress(); reply({}, pipeline_.status()); } return; }
@@ -134,6 +141,9 @@ void RecordSession::cancelLocal() {
     progress_.stop();
     barTimer_.stop();
     if (selection_) { selection_->disconnect(this); selection_->cancel(); selection_->deleteLater(); selection_ = nullptr; }
+#ifdef PUTGD_RECORD_LAYER_SHELL
+    if (kdeSelection_) { kdeSelection_->disconnect(this); kdeSelection_->cancel(); kdeSelection_->deleteLater(); kdeSelection_ = nullptr; }
+#endif
     pipeline_.cancel();
     portal_.close();
     mutter_.close();
@@ -147,7 +157,7 @@ void RecordSession::cancelLocal() {
     QFile::remove(workingClip_);
 }
 void RecordSession::prepare(const QJsonObject& params, Reply reply) {
-    if (prepared_ || selection_) { reply({"recording_state", "The helper already has a session", {}}, {}); return; }
+    if (prepared_ || selection_ || kdeSelection_) { reply({"recording_state", "The helper already has a session", {}}, {}); return; }
     RecordingTarget target;
     RecordingConfig config;
     if (auto e = recording::parseTarget(params["target"], target)) { reply(e, {}); return; }
@@ -165,30 +175,87 @@ void RecordSession::prepare(const QJsonObject& params, Reply reply) {
     staging_ = staging;
     workingClip_ = staging + "/working.mkv";
     capabilities_ = probeMedia();
+    if (target_.kind == "region" && target_.rect.isEmpty()) { select(std::move(reply)); return; }
+    acquire(std::move(reply));
+}
+void RecordSession::acquire(Reply reply) {
     const auto acquisition = capabilities_["acquisition"].toString();
     if (acquisition == "kde-screencast" || acquisition == "mutter-screencast") { prepareNative(std::move(reply)); return; }
     if (acquisition == "portal") { preparePortal(std::move(reply)); return; }
-    if (target_.kind == "region" && target_.rect.isEmpty()) {
-        // Drag release keeps the bounds and shows the controls; nothing records yet.
+    finishPrepare(std::move(reply));
+}
+void RecordSession::select(Reply reply) {
+    // Release keeps the bounds and shows the controls; nothing streams or records
+    // until the rectangle exists, so Escape leaves no compositor session behind.
+    QPointer<RecordSession> guard(this);
+    auto cancelled = [guard, reply](const Error& error) {
+        if (!guard) return;
+        reply(error.code == "cancelled" ? Error{"cancelled", "Region selection cancelled; nothing was recorded", {}} : error, {});
+    };
+    const auto mode = surfaceMode();
+    if (mode == SurfaceMode::X11) {
         selection_ = new SelectionOverlay(this);
-        QPointer<RecordSession> guard(this);
         connect(selection_, &SelectionOverlay::selected, this, [guard, reply](const QRect& root) {
             if (!guard) return;
             guard->selection_->deleteLater();
             guard->selection_ = nullptr;
             guard->target_.rect = root;
-            guard->finishPrepare(reply);
+            guard->acquire(reply);
         });
-        connect(selection_, &SelectionOverlay::cancelled, this, [guard, reply](const Error& error) {
+        connect(selection_, &SelectionOverlay::cancelled, this, [guard, cancelled](const Error& error) {
             if (!guard) return;
             guard->selection_->deleteLater();
             guard->selection_ = nullptr;
-            reply(error.code == "cancelled" ? Error{"cancelled", "Region selection cancelled; nothing was recorded", {}} : error, {});
+            cancelled(error);
         });
         selection_->start();
+        emit event({{"event", "selecting"}, {"selector", "x11"}});
         return;
     }
-    finishPrepare(std::move(reply));
+#ifdef PUTGD_RECORD_LAYER_SHELL
+    if (mode == SurfaceMode::LayerShell) {
+        // The KDE screenshot selector: crosshair and outline on overlay layer
+        // surfaces, emitted only after KWin has rendered and unmapped them.
+        QList<CaptureFrame> frames;
+        for (QScreen* screen : QGuiApplication::screens()) {
+            CaptureFrame frame;
+            frame.identity = screen->name();
+            frame.logicalRect = screen->geometry();
+            frame.rotation = screen->angleBetween(screen->nativeOrientation(), screen->orientation());
+            frames.append(frame);
+        }
+        kdeSelection_ = new KdeRegionOverlay(frames, this);
+        connect(kdeSelection_, &KdeRegionOverlay::selected, this, [guard, reply](const QRectF& logical) {
+            if (!guard || !guard->kdeSelection_) return;
+            guard->kdeSelection_->deleteLater();
+            guard->kdeSelection_ = nullptr;
+            guard->target_.rect = logical.toAlignedRect();
+            guard->acquire(reply);
+        });
+        connect(kdeSelection_, &KdeRegionOverlay::cancelled, this, [guard, cancelled](const Error& error) {
+            if (!guard || !guard->kdeSelection_) return;
+            guard->kdeSelection_->deleteLater();
+            guard->kdeSelection_ = nullptr;
+            cancelled(error);
+        });
+        kdeSelection_->start();
+        if (kdeSelection_) emit event({{"event", "selecting"}, {"selector", "kde-layer-shell"}});
+        return;
+    }
+#endif
+    // GNOME's selector lives in the Shell extension: the resident asks it for the
+    // rectangle before the helper starts. Without one there is no honest region.
+    reply({"region_unavailable", "This desktop has no region selector for recordings; pass target.rect, or enable the put.gd GNOME Shell extension", {}}, {});
+}
+void RecordSession::completeSelection(const QJsonObject& params, Reply reply) {
+    const auto r = params["rect"].toArray();
+    const QRect rect = r.size() == 4 ? QRect(r[0].toInt(), r[1].toInt(), r[2].toInt(), r[3].toInt()) : QRect();
+    if (rect.width() < 4 || rect.height() < 4) { reply({"invalid_request", "select takes a rectangle of at least 4 x 4 pixels", {}}, {}); return; }
+    if (selection_) { selection_->complete(rect); reply({}, {}); return; }
+#ifdef PUTGD_RECORD_LAYER_SHELL
+    if (kdeSelection_) { kdeSelection_->select(QRectF(rect)); reply({}, {}); return; }
+#endif
+    reply({"recording_state", "No region selection is open", {}}, {});
 }
 // Restore tokens live beside the resident's data (the helper inherits its
 // XDG directories): one per desktop and source class, replaced on every grant.
@@ -302,7 +369,10 @@ void RecordSession::finishPrepare(Reply reply) {
         resolved_ = resolved;
         prepared_ = true;
     }
-    if (target_.kind != "desktop" && !portalTarget_) bounds_.showBounds(resolved_.rect);
+    // X11 and KDE Wayland draw the ready ring themselves; on other Wayland
+    // desktops the resident's shell (the GNOME extension) draws it.
+    const auto mode = surfaceMode();
+    if (target_.kind != "desktop" && (!portalTarget_ || (mode == SurfaceMode::LayerShell && target_.kind != "window"))) bounds_.showBounds(resolved_.rect);
     ControlBar::Options options;
     options.targetLabel = targetLabel();
     for (const auto& value : capabilities_["formats"].toArray()) options.formats.append(value.toString());
@@ -340,10 +410,28 @@ void RecordSession::finishPrepare(Reply reply) {
         });
     });
     connect(bar_, &ControlBar::cancelRequested, this, [guard] { if (!guard) return; guard->cancelLocal(); emit guard->event({{"event", "cancelled"}}); });
-    overlayExcluded_ = bar_->placeAround(target_.kind == "desktop" || portalTarget_ ? QRect() : resolved_.rect, desktopRoot());
-    if (target_.kind == "desktop" || target_.kind == "monitor" || portalTarget_) overlayExcluded_ = false;
+    if (!portalTarget_) {
+        overlayExcluded_ = bar_->placeAround(target_.kind == "desktop" ? QRect() : resolved_.rect, desktopRoot());
+        if (target_.kind == "desktop" || target_.kind == "monitor") overlayExcluded_ = false;
+        overlayPlacement_ = overlayExcluded_ ? QStringLiteral("outside") : QStringLiteral("inside");
+    } else if (target_.kind == "window") {
+        // A window stream carries only that window's pixels, never the bar.
+        overlayExcluded_ = true;
+        overlayPlacement_ = QStringLiteral("outside");
+    } else if (mode == SurfaceMode::LayerShell) {
+        // Below or above the recorded area, or on another output; KWin 6.6 and
+        // later also leave the requesting client's windows out of its own stream.
+        const bool outside = bar_->placeOnLayer(resolved_.rect);
+        const bool hidden = resolved_.layout["acquisition"].toString() == "kde-screencast" && capabilities_["kdeScreencast"].toObject()["hidesRequester"].toBool();
+        overlayExcluded_ = outside || hidden;
+        overlayPlacement_ = outside ? QStringLiteral("outside") : hidden ? QStringLiteral("hidden") : QStringLiteral("inside");
+    } else {
+        // The compositor places the bar; the resident's shell may move it outside.
+        overlayExcluded_ = false;
+        overlayPlacement_ = QStringLiteral("compositor");
+    }
     showBar("ready");
-    reply({}, {{"canvas", sizeJson(resolved_.canvas)}, {"rect", rectJson(resolved_.rect)}, {"window", double(resolved_.window)}, {"overlayExcluded", overlayExcluded_}});
+    reply({}, {{"canvas", sizeJson(resolved_.canvas)}, {"rect", rectJson(resolved_.rect)}, {"window", double(resolved_.window)}, {"overlayExcluded", overlayExcluded_}, {"overlayPlacement", overlayPlacement_}});
 }
 void RecordSession::start(Reply reply) {
     if (pipeline_.running() || recorded_) { reply({"recording_state", "The session already recorded", {}}, {}); return; }

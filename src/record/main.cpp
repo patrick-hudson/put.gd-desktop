@@ -6,6 +6,7 @@
 #include "MediaProbe.h"
 #include "ClipExporter.h"
 #include "DebugLog.h"
+#include "AvSync.h"
 #include "RecordSession.h"
 #include "app/UiControl.h"
 #include "core/BuildInfo.h"
@@ -84,6 +85,21 @@ int main(int argc, char** argv) {
             previousUs = actual;
         }
         std::printf("motion=%.3f compared=%d samples=%d durationMs=%lld size=%dx%d\n", compared ? total / compared : 0.0, compared, samples, static_cast<long long>(durationUs / 1000), canvas.width(), canvas.height());
+        return 0;
+    }
+    if (argc == 4 && std::strcmp(argv[1], "--av-marker") == 0) {
+        // Lab diagnostic: write the synthetic A/V marker clip to play while recording.
+        QCoreApplication app(argc, argv);
+        if (auto error = record::writeAvMarker(QString::fromLocal8Bit(argv[2]), std::atoi(argv[3]))) { std::fprintf(stderr, "%s: %s\n", qPrintable(error.code), qPrintable(error.message)); return 1; }
+        return 0;
+    }
+    if (argc == 3 && std::strcmp(argv[1], "--av-sync") == 0) {
+        // Lab diagnostic: A/V sync of a recording of the synthetic marker clip
+        // (flashes with simultaneous tone bursts); prints one JSON object.
+        QCoreApplication app(argc, argv);
+        QJsonObject result;
+        if (auto error = record::measureAvSync(QString::fromLocal8Bit(argv[2]), result)) { std::fprintf(stderr, "%s: %s\n", qPrintable(error.code), qPrintable(error.message)); return 1; }
+        std::printf("%s\n", QJsonDocument(result).toJson(QJsonDocument::Compact).constData());
         return 0;
     }
     if (argc >= 4 && std::strcmp(argv[1], "--export") == 0) {

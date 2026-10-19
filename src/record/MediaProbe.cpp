@@ -7,8 +7,11 @@
 #ifdef PUTGD_RECORD_KDE_SCREENCAST
 #include "KdeScreencast.h"
 #endif
+#include <QDBusConnection>
+#include <QDBusMessage>
 #include <QJsonArray>
 #include <QProcessEnvironment>
+#include <QRegularExpression>
 #include <gst/gst.h>
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -19,6 +22,16 @@ extern "C" {
 
 namespace putgd::record {
 namespace {
+#ifdef PUTGD_RECORD_KDE_SCREENCAST
+// "major.minor.patch" from KWin's support information, or empty.
+QString kwinVersion() {
+    auto message = QDBusMessage::createMethodCall("org.kde.KWin", "/KWin", "org.kde.KWin", "supportInformation");
+    const auto reply = QDBusConnection::sessionBus().call(message, QDBus::Block, 1500);
+    if (reply.type() != QDBusMessage::ReplyMessage || reply.arguments().isEmpty()) return {};
+    const auto match = QRegularExpression(QStringLiteral("KWin version: (\\d+\\.\\d+(?:\\.\\d+)?)")).match(reply.arguments().first().toString().left(65536));
+    return match.hasMatch() ? match.captured(1) : QString{};
+}
+#endif
 QString sessionType() {
     const auto env = QProcessEnvironment::systemEnvironment();
     const auto type = env.value("XDG_SESSION_TYPE");
@@ -136,7 +149,14 @@ QJsonObject probeMedia() {
     } else if (session == "wayland" && desktop.contains("kde")) {
 #ifdef PUTGD_RECORD_KDE_SCREENCAST
         QJsonObject kde; QString reason; KdeScreencast probe;
-        const bool ok = probe.available(kde, &reason); kde["available"] = ok; if (!ok) kde["reason"] = reason; result["kdeScreencast"] = kde;
+        const bool ok = probe.available(kde, &reason); kde["available"] = ok; if (!ok) kde["reason"] = reason;
+        // KWin 6.6 leaves the requesting client's own windows (the control bar,
+        // ring and dimming) out of the streams it creates for that client.
+        const auto version = kwinVersion();
+        const auto parts = version.split('.');
+        kde["kwinVersion"] = version.isEmpty() ? QJsonValue() : QJsonValue(version);
+        kde["hidesRequester"] = parts.size() >= 2 && (parts[0].toInt() > 6 || (parts[0].toInt() == 6 && parts[1].toInt() >= 6));
+        result["kdeScreencast"] = kde;
         if (ok) acquisition = "kde-screencast";
 #endif
     } else if (session == "wayland" && desktop.contains("gnome")) {

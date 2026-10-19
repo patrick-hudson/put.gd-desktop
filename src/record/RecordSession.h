@@ -18,6 +18,7 @@
 #include <functional>
 #include <memory>
 
+namespace putgd { class KdeRegionOverlay; }
 namespace putgd::record {
 // The helper's view of one recording session: resolves the target (after a
 // drag selection when a region has no rectangle), shows the ready bounds,
@@ -37,6 +38,12 @@ signals:
     void event(const QJsonObject&);
 private:
     void prepare(const QJsonObject& params, Reply);
+    // A region without a rectangle: the X11 drag surface or, on KDE Wayland, the
+    // layer-shell screenshot selector; the stream starts only after the choice.
+    void select(Reply);
+    void completeSelection(const QJsonObject& params, Reply);
+    // Opens the source for the resolved target (X11 directly, or a Wayland stream).
+    void acquire(Reply);
     void finishPrepare(Reply);
     // Wayland: share through the portal picker, then continue like X11 with the stream as the target.
     void preparePortal(Reply);
@@ -63,6 +70,7 @@ private:
     QString staging_, workingClip_;
     qint64 durationUs_ = 0;
     bool prepared_ = false, recorded_ = false, overlayExcluded_ = true;
+    QString overlayPlacement_;
     RecordingPipeline pipeline_;
     PortalScreenCast portal_;
     MutterScreenCast mutter_;
@@ -75,6 +83,7 @@ private:
     bool portalTarget_ = false;
     QTimer progress_, barTimer_;
     SelectionOverlay* selection_ = nullptr;
+    KdeRegionOverlay* kdeSelection_ = nullptr;
     BoundsOverlay bounds_;
     ControlBar* bar_ = nullptr;
     ReviewWindow* review_ = nullptr;
