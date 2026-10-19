@@ -440,6 +440,24 @@ def create_server(adapter: CliAdapter) -> FastMCP:
             return invalid()
         return await adapter.call('settings.patch', {'patch': patch, 'expectedRevision': expected_revision})
 
+    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
+    async def reorder_destinations(order: list[str], expected_revision: str) -> Json:
+        """Set the display order of destinations (Settings list and Destination dropdowns) by listing every profile ID exactly once. Routing, exceptions and history keep their IDs. A stale revision or a missing, extra or duplicate ID changes nothing."""
+        if (not isinstance(order, list) or len(order) > 64 or not all(identifier(item, 64) for item in order) or
+                not isinstance(expected_revision, str) or len(expected_revision) > 256):
+            return invalid()
+        return await adapter.call('settings.reorderProfiles', {'order': order, 'expectedRevision': expected_revision})
+
+    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
+    async def move_destination(direction: str, profile_id: str | None = None) -> Json:
+        """Drive the open Settings window like Move up / Move down: select profile_id (or keep the selection), move it one place and save. Returns the new order; read settings via inspect to confirm the save."""
+        if direction not in {'up', 'down'} or (profile_id is not None and not identifier(profile_id, 64)):
+            return invalid()
+        params: Json = {'direction': direction}
+        if profile_id is not None:
+            params['profileId'] = profile_id
+        return await adapter.call('ui.moveDestination', params)
+
     return server
 
 

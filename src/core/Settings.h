@@ -1,6 +1,7 @@
 #pragma once
 #include "Error.h"
 #include <QHash>
+#include <QJsonArray>
 #include <QJsonObject>
 #include <QStringList>
 #include <functional>
@@ -79,5 +80,8 @@ struct Settings {
     static QString recordingActionName();
     // Adds absent edit and record actions inheriting the region route without a shortcut.
     static QJsonObject normalized(const QJsonObject&);
+    // The document with its profiles in the given ID order. The order must name
+    // every profile exactly once; nothing else in the document changes.
+    static Error reorderProfiles(const QJsonObject& document, const QJsonArray& order, QJsonObject& reordered);
 };
 }

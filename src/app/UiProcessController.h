@@ -15,6 +15,9 @@ public:
  using ShortcutRecordingHandler=std::function<void(bool,Reply)>;
  void setShortcutRecordingHandler(ShortcutRecordingHandler handler){shortcutRecordingHandler_=std::move(handler);}
  void activate(const QString& view,Reply reply={});
+ // Forwards one command to an open view; the helper validates and answers it.
+ using CommandReply=std::function<void(Error,QJsonObject)>;
+ void command(const QString& name,const QJsonObject& params,CommandReply reply);
  void invalidate();
  void shutdown(std::function<void()> finished={});
  QJsonObject status()const;
@@ -27,7 +30,7 @@ private:
  struct Activation {QString view;QList<Reply> replies;};
  void launch();void flushActivations();void sendInvalidation();
  void receive(const QString& type,const QString& sequence,const QJsonObject& payload);
- void fail(Error);void failActivations(Error);void finished(QProcess*,quint64,int,QProcess::ExitStatus);
+ void fail(Error);void failActivations(Error);void failCommands(const Error&);void finished(QProcess*,quint64,int,QProcess::ExitStatus);
  void updateShortcutRecording();void restoreShortcuts();
  Error storeState(const QJsonObject&);void completeShutdown();
  struct RecordingRequest {QString sequence;bool active;};
@@ -41,6 +44,7 @@ private:
  Phase phase_=Phase::Stopped;
  QHash<QString,QList<Reply>> pending_;
  QHash<QString,Activation> activations_;
+ QHash<QString,CommandReply> commands_;QTimer commandDeadline_;
  QJsonObject state_,lastExit_;
  qsizetype stateBytes_=0;
  quint64 processGeneration_=0,invalidationGeneration_=0,sentInvalidation_=0;

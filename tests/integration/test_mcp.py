@@ -47,6 +47,10 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
             ('preview_editor', {'id': 'synthetic-operation', 'max_edge': 10}),
             ('save_editor_copy', {'id': 'synthetic-operation', 'path': 'relative.png'}),
             ('submit_editor', {'id': ''}),
+            ('reorder_destinations', {'order': ['a', ''], 'expected_revision': 'r'}),
+            ('reorder_destinations', {'order': ['a' * 65], 'expected_revision': 'r'}),
+            ('move_destination', {'direction': 'left'}),
+            ('move_destination', {'direction': 'up', 'profile_id': ''}),
         ]:
             result = await server.call_tool(name, args)
             self.assertIn('invalid_request', str(result), name)
@@ -137,7 +141,7 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                             'preview_editor', 'save_editor_copy', 'submit_editor', 'cancel_editor',
                             'raise_editor', 'get_recording_capabilities', 'prepare_recording', 'control_recording',
                             'get_recording', 'select_recording_region', 'set_recording_overlay', 'edit_recording', 'preview_recording',
-                            'save_recording_copy', 'upload_recording'}
+                            'save_recording_copy', 'upload_recording', 'reorder_destinations', 'move_destination'}
                 self.assertEqual({tool.name for tool in discovered}, expected)
                 for tool in discovered:
                     self.assertEqual(tool.inputSchema['type'], 'object')
@@ -186,6 +190,9 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('delete_history_uploads', {'ids': ['synthetic-entry'], 'acknowledgement': 'synthetic-effect'}, 'delete.confirm', {'ids': ['synthetic-entry'], 'acknowledgement': 'synthetic-effect'}),
                     ('patch_configuration', {'patch': {'captureDefaults': {'destination': 'local', 'profileId': None, 'publicationMode': 'default'}, 'actions': {'clipboard': {'destination': 'default', 'profileId': None}}}, 'expected_revision': 'synthetic-revision'}, 'settings.patch', {'patch': {'captureDefaults': {'destination': 'local', 'profileId': None, 'publicationMode': 'default'}, 'actions': {'clipboard': {'destination': 'default', 'profileId': None}}}, 'expectedRevision': 'synthetic-revision'}),
                     ('reload_configuration', {}, 'settings.reload', {}),
+                    ('reorder_destinations', {'order': ['second', 'first'], 'expected_revision': 'synthetic-revision'}, 'settings.reorderProfiles', {'order': ['second', 'first'], 'expectedRevision': 'synthetic-revision'}),
+                    ('move_destination', {'direction': 'down'}, 'ui.moveDestination', {'direction': 'down'}),
+                    ('move_destination', {'direction': 'up', 'profile_id': 'second'}, 'ui.moveDestination', {'direction': 'up', 'profileId': 'second'}),
                     ('get_view_state', {}, 'ui.viewState', {}),
                     ('perform_action', {'action': 'edit'}, 'action.invoke', {'action': 'edit'}),
                     ('open_editor', {}, 'editor.open', {'source': 'region'}),

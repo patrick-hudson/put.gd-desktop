@@ -124,6 +124,15 @@ void UiApplicationController::receive(const QString& type,const QString& sequenc
   window->raise();window->activateWindow();
   control_.send("shown",{{"replyTo",sequence},{"view",name}});return;
  }
+ if(type=="command"){
+  // Agent control of an open view; unknown commands are refused, not ignored.
+  const auto name=payload["command"].toString();const auto params=payload["params"].toObject();
+  Error error;QJsonObject result;
+  if(name!="moveDestination")error={"ui_command_unknown","This window does not support that command.",{}};
+  else if(!main_||!main_->isVisible()||closing_)error={"ui_view_closed","Open Settings before driving it.",{}};
+  else error=main_->settings()->moveSelectedDestination(params["direction"].toString()=="up"?-1:1,params["profileId"].toString(),result);
+  control_.send("commandResult",{{"replyTo",sequence},{"error",error.toJson()},{"result",result}});return;
+ }
  if(type=="invalidated"){
   QPointer<UiApplicationController> guard(this);
   session_.refreshSnapshot([guard,sequence](Error){if(guard&&!guard->exiting_)guard->control_.send("observed",{{"replyTo",sequence}});});return;

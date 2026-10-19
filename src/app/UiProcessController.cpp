@@ -21,6 +21,8 @@ UiProcessController::UiProcessController(QString socket,QString epoch,QString he
  connect(&startup_,&QTimer::timeout,this,[this]{fail(unavailable("ui_start_timeout"));});
  connect(&activationDeadline_,&QTimer::timeout,this,[this]{fail(unavailable("ui_show_timeout"));});
  connect(&stopDeadline_,&QTimer::timeout,this,[this]{if(process_)process_->kill();else completeShutdown();});
+ commandDeadline_.setSingleShot(true);commandDeadline_.setInterval(10000);
+ connect(&commandDeadline_,&QTimer::timeout,this,[this]{failCommands({"ui_command_timeout","The window did not answer in time. Check it before retrying.",{{"outcomeUnknown",true}}});});
 }
 UiProcessController::~UiProcessController(){
  restoreShortcuts();
@@ -43,6 +45,20 @@ void UiProcessController::activate(const QString& view,Reply reply){
  if(!activationDeadline_.isActive())activationDeadline_.start();
  if(!process_&&!finishing_)launch();
  else if(phase_==Phase::Ready)flushActivations();
+}
+void UiProcessController::command(const QString& name,const QJsonObject& params,CommandReply reply){
+ // Commands act on views the user already opened; they never start the helper.
+ if(stopping_||phase_!=Phase::Ready||!control_){reply({"ui_view_closed","Open Settings before driving it.",{}},{});return;}
+ if(commands_.size()>=8){reply(unavailable("ui_busy"),{});return;}
+ QPointer<UiProcessController> guard(this);
+ const auto sequence=control_->send("command",{{"command",name},{"params",params}});
+ if(!guard)return;
+ if(sequence.isEmpty()){reply(unavailable(),{});return;}
+ commands_.insert(sequence,std::move(reply));commandDeadline_.start();
+}
+void UiProcessController::failCommands(const Error& error){
+ commandDeadline_.stop();auto pending=std::exchange(commands_,{});
+ for(auto& reply:pending)if(reply)reply(error,{});
 }
 void UiProcessController::launch(){
  if(process_||stopping_||finishing_||pending_.isEmpty())return;
@@ -128,6 +144,13 @@ void UiProcessController::receive(const QString& type,const QString& sequence,co
   for(auto& reply:replies)if(reply)reply(error);
   return;
  }
+ if(type=="commandResult"){
+  auto it=commands_.find(payload["replyTo"].toString());
+  if((phase_!=Phase::Ready&&phase_!=Phase::Closing)||it==commands_.end()||payload.size()!=3||!payload["error"].isObject()||!payload["result"].isObject()){fail(unavailable("ui_protocol"));return;}
+  auto reply=std::move(it.value());commands_.erase(it);if(commands_.isEmpty())commandDeadline_.stop();
+  const auto value=payload["error"].toObject();const Error error{value["code"].toString(),value["message"].toString(),value["details"].toObject()};
+  reply(error,error?QJsonObject{}:payload["result"].toObject());return;
+ }
  if(type=="observed"){
   if((phase_!=Phase::Ready&&phase_!=Phase::Closing)||invalidationSequence_.isEmpty()||payload["replyTo"]!=invalidationSequence_){fail(unavailable("ui_protocol"));return;}
   invalidationSequence_.clear();sendInvalidation();return;
@@ -208,6 +231,8 @@ void UiProcessController::fail(Error error){
  if(control_)control_->stop();
  if(process_&&process_->state()!=QProcess::NotRunning)process_->kill();
  QPointer<UiProcessController> guard(this);failActivations(error);
+ if(!guard)return;
+ failCommands(error);
  if(guard)emit failure(error);
 }
 void UiProcessController::finished(QProcess* child,quint64 generation,int code,QProcess::ExitStatus exitStatus){
@@ -226,6 +251,8 @@ void UiProcessController::finished(QProcess* child,quint64 generation,int code,Q
   activations_.clear();
  }
  if(control_)control_->stop();
+ failCommands({"ui_view_closed","The window closed before answering.",{{"outcomeUnknown",true}}});
+ if(!guard)return;
  control_=nullptr;process_=nullptr;
  child->disconnect(this);child->deleteLater();
  invalidationSequence_.clear();closeSequence_.clear();closeConfirmed_=false;sentInvalidation_=invalidationGeneration_;
@@ -244,6 +271,8 @@ void UiProcessController::shutdown(std::function<void()> done){
  restoreShortcuts();
  stopping_=true;stopped_=std::move(done);phase_=Phase::Stopping;startup_.stop();closeDeadline_.stop();
  QPointer<UiProcessController> guard(this);failActivations(unavailable("ui_stopping"));
+ if(!guard)return;
+ failCommands(unavailable("ui_stopping"));
  if(!guard)return;
  if(!process_){completeShutdown();return;}
  if(process_->state()==QProcess::Running&&control_)control_->send("shutdown");

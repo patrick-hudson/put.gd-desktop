@@ -34,13 +34,89 @@
 #include <QWheelEvent>
 #include <QDesktopServices>
 #include <QScopeGuard>
+#include <QAction>
 using namespace putgd;using namespace putgd::test;
+namespace {
+// Three S3 destinations: development-s3 is the capture default, clipboard is an exception to synthetic-third.
+QJsonObject threeDestinations(){
+ auto doc=Settings::developmentTemplate();auto profiles=doc["profiles"].toArray();
+ for(const auto& [id,label]:QList<QPair<QString,QString>>{{"synthetic-alternate","Synthetic alternate"},{"synthetic-third","Synthetic third"}}){auto profile=profiles.first().toObject();profile["id"]=id;profile["label"]=label;profile["credentials"]=QJsonObject{{"mode","keychain"},{"reference","putgd/"+id}};profiles.append(profile);}
+ doc["profiles"]=profiles;doc["captureDefaults"]=QJsonObject{{"destination","upload"},{"profileId","development-s3"},{"publicationMode","default"}};
+ auto actions=doc["actions"].toObject();for(const auto& name:Settings::actionNames()){auto action=actions[name].toObject();action["destination"]=name=="clipboard"?"upload":"default";action["profileId"]=name=="clipboard"?QJsonValue("synthetic-third"):QJsonValue(QJsonValue::Null);actions[name]=action;}doc["actions"]=actions;return doc;
+}
+QStringList profileIds(const QJsonObject& document){QStringList ids;for(const auto& p:document["profiles"].toArray())ids.append(p.toObject()["id"].toString());return ids;}
+QStringList rowLabels(QListWidget* list){QStringList labels;for(int i=0;i<list->count();++i)labels.append(list->item(i)->text().section('\n',0,0));return labels;}
+}
 class SettingsGui:public QObject {
  Q_OBJECT
  QList<QUrl> openedUrls_;
 public slots:
  void recordProtonUrl(const QUrl& url){openedUrls_.append(url);}
 private slots:
+ void reorderingDestinationsKeepsSelectionEditsAndRouting(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));
+  auto routing=[&]{auto doc=service.document();doc.remove("profiles");return doc;};const auto routes=routing();
+  CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();
+  auto* list=window.findChild<QListWidget*>("destinationList");QVERIFY(list);QCOMPARE(list->dragDropMode(),QAbstractItemView::InternalMove);
+  auto* up=window.findChild<QAction*>("moveDestinationUp");auto* down=window.findChild<QAction*>("moveDestinationDown");QVERIFY(up&&down);
+  QCOMPARE(up->shortcut(),QKeySequence(Qt::ALT|Qt::Key_Up));QCOMPARE(down->shortcut(),QKeySequence(Qt::ALT|Qt::Key_Down));
+  QVERIFY(!up->isEnabled());QVERIFY(down->isEnabled());
+  list->setCurrentRow(1);QVERIFY(up->isEnabled());
+  // A queued label edit and an unstored credential input both stay with their destination.
+  auto* label=window.findChild<QLineEdit*>("destinationLabel");auto* access=window.findChild<QLineEdit*>("credentialAccessKey");
+  label->setText("Edited alternate");access->setText("SYNTHETICACCESSKEY");
+  down->trigger();
+  QCOMPARE(rowLabels(list),QStringList({"put.gd development destination","Synthetic third","Edited alternate"}));
+  QCOMPARE(list->currentRow(),2);QCOMPARE(window.findChild<QLineEdit*>("destinationId")->text(),QString("synthetic-alternate"));
+  QCOMPARE(label->text(),QString("Edited alternate"));QCOMPARE(access->text(),QString("SYNTHETICACCESSKEY"));QVERIFY(up->isEnabled());QVERIFY(!down->isEnabled());
+  QTRY_COMPARE(profileIds(service.document()),QStringList({"development-s3","synthetic-third","synthetic-alternate"}));
+  QTRY_COMPARE(service.document()["profiles"].toArray()[2].toObject()["label"].toString(),QString("Edited alternate"));
+  QCOMPARE(routing(),routes);QCOMPARE(service.snapshot().actions["clipboard"].profileId,QString("synthetic-third"));
+  // The Destination dropdowns follow the order and keep their selections by ID.
+  for(const auto& name:{"profileRegion","profileClipboard","defaultCaptureDestination"}){
+   auto* combo=window.findChild<QComboBox*>(name);QVERIFY2(combo,name);QStringList ids;for(int i=1;i<combo->count();++i)ids.append(combo->itemData(i).toString());
+   QCOMPARE(ids,profileIds(service.document()));
+  }
+  QCOMPARE(window.findChild<QComboBox*>("profileClipboard")->currentData().toString(),QString("synthetic-third"));
+  QCOMPARE(window.findChild<QComboBox*>("defaultCaptureDestination")->currentData().toString(),QString("development-s3"));
+  QVERIFY(list->item(0)->text().contains("Default"));QVERIFY(!list->item(1)->text().contains("Default"));QVERIFY(!list->item(2)->text().contains("Default"));
+  // Alt+Up on the focused list is the same move.
+  list->setFocus();QTest::keyClick(list,Qt::Key_Up,Qt::AltModifier);
+  QCOMPARE(rowLabels(list),QStringList({"put.gd development destination","Edited alternate","Synthetic third"}));QCOMPARE(list->currentRow(),1);QCOMPARE(access->text(),QString("SYNTHETICACCESSKEY"));
+  QTRY_COMPARE(profileIds(service.document()),QStringList({"development-s3","synthetic-alternate","synthetic-third"}));
+  // The UI-driving path selects by ID and moves, reporting the new order.
+  QJsonObject result;QVERIFY(!window.settings()->moveSelectedDestination(-1,"synthetic-third",result));
+  QCOMPARE(result["selected"].toString(),QString("synthetic-third"));QCOMPARE(result["order"].toArray(),QJsonArray({"development-s3","synthetic-third","synthetic-alternate"}));
+  QTRY_COMPARE(profileIds(service.document()),QStringList({"development-s3","synthetic-third","synthetic-alternate"}));
+  QCOMPARE(window.settings()->moveSelectedDestination(-1,"development-s3",result).code,QString("destination_move_invalid"));
+  QCOMPARE(window.settings()->moveSelectedDestination(1,"missing",result).code,QString("profile_not_found"));
+  QCOMPARE(routing(),routes);access->clear();
+  // The saved order survives a restart.
+  SettingsService restarted(dir.filePath("config.json"),[](auto,auto){return Error{};});QCOMPARE(profileIds(restarted.document()),QStringList({"development-s3","synthetic-third","synthetic-alternate"}));
+  UiSessionFixture restartedFixture(restarted,secrets);MainWindow reopened(restartedFixture.session);reopened.navigate("destinations");
+  QCOMPARE(rowLabels(reopened.findChild<QListWidget*>("destinationList")),QStringList({"put.gd development destination","Synthetic third","Edited alternate"}));
+  QVERIFY(!validateUiState({{"schemaVersion",1},{"settings",window.settings()->saveViewState()}}));
+ }
+ void conflictingReorderRestoresThePreviousOrder(){
+  QTemporaryDir dir;const auto path=dir.filePath("config.json");SettingsService service(path,[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));
+  CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();
+  auto* list=window.findChild<QListWidget*>("destinationList");list->setCurrentRow(0);
+  // Another writer changes the file just before the reorder is saved.
+  QByteArray external;fixture.client.beforeDispatch=[&](const QString& method,const QJsonObject&){if(method!="settings.save"||!external.isEmpty())return;auto doc=service.document();auto preferences=doc["preferences"].toObject();preferences["notifications"]=false;doc["preferences"]=preferences;external=QJsonDocument(doc).toJson();QFile file(path);QVERIFY(file.open(QIODevice::WriteOnly));file.write(external);};
+  window.findChild<QAction*>("moveDestinationDown")->trigger();
+  QCOMPARE(rowLabels(list),QStringList({"Synthetic alternate","put.gd development destination","Synthetic third"}));
+  QLabel* status=window.findChild<QLabel*>("settingsStatus");QVERIFY(status);
+  QTRY_VERIFY2(status->text().contains("config_conflict"),qPrintable(status->text()));QVERIFY(status->text().contains("previous destination order is restored"));
+  QCOMPARE(rowLabels(list),QStringList({"put.gd development destination","Synthetic alternate","Synthetic third"}));QCOMPARE(list->currentRow(),0);
+  QCOMPARE(window.findChild<QLineEdit*>("destinationId")->text(),QString("development-s3"));
+  QFile file(path);QVERIFY(file.open(QIODevice::ReadOnly));QCOMPARE(file.readAll(),external);
+  QVERIFY(window.settings()->autosaveText().contains("changed elsewhere"));
+  // Further moves wait for a reload instead of saving over the other writer.
+  QJsonObject result;QCOMPARE(window.settings()->moveSelectedDestination(1,{},result).code,QString("config_conflict"));
+  window.findChild<QPushButton*>("reloadSettings")->click();QTRY_VERIFY(!window.settings()->autosaveText().contains("changed elsewhere"));
+  QVERIFY(!window.settings()->moveSelectedDestination(1,"development-s3",result));
+  QTRY_COMPARE(profileIds(service.document()),QStringList({"synthetic-alternate","development-s3","synthetic-third"}));QVERIFY(!service.snapshot().notifications);
+ }
  void captureDefaultAndExplicitExceptionPersistAcrossReopen(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(Settings::developmentTemplate(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(1);window.show();
   QVERIFY(!window.findChild<QComboBox*>("defaultCaptureOutput"));QVERIFY(!window.findChild<QComboBox*>("destinationClipboard"));auto* destination=window.findChild<QComboBox*>("defaultCaptureDestination");QVERIFY(destination);const auto profileId=destination->currentData().toString();QVERIFY(!profileId.isEmpty());auto* local=window.findChild<QCheckBox*>("keepUploadCopies");QVERIFY(local);local->setChecked(true);QTRY_VERIFY(service.snapshot().archive.keepUploads);QCOMPARE(service.snapshot().actions["region"].profileId,profileId);

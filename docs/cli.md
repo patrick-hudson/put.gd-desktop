@@ -73,8 +73,10 @@ Methods and parameters:
 | `settings.get`, `.reload` | empty object |
 | `settings.validate` | complete `document` |
 | `settings.patch` | recursive `patch`, `expectedRevision`; null is a value |
+| `settings.reorderProfiles` | `order` (every profile ID exactly once), `expectedRevision`; display order only |
 | `capabilities`, `diagnostics` | empty object |
 | `ui.quit` | empty object; explicitly exit the resident application |
+| `ui.moveDestination` | `direction` up/down, optional `profileId`; drives the open Settings window |
 
 Editor methods, command shapes and error codes are specified in
 [image-editor.md](image-editor.md). Nothing is uploaded until `editor.submit` or the
@@ -104,6 +106,27 @@ patch's `expectedRevision` and reread after a successful patch or conflict:
 putgd-cli settings.patch '{"patch":{"retention":{"recentActivityLimit":77}},"expectedRevision":"RETURNED-OBSERVED-REVISION"}'
 putgd-cli settings.get
 ```
+
+`settings.reorderProfiles` changes only the order of the `profiles` array, which is
+the order of the Destinations list and every Destination dropdown. Routing,
+per-action exceptions, the Default badge and history refer to profiles by ID and
+do not change. The `order` must name every current profile ID exactly once:
+a missing, extra or duplicate ID returns `profile_order_invalid` with
+`details.missing`, `details.extra` and `details.duplicate`, and a stale
+`expectedRevision` returns `config_conflict`. Neither writes anything. An order that
+matches the current one returns `changed: false` without rewriting the file.
+
+```sh
+putgd-cli settings.reorderProfiles '{"order":["proton","s3-1"],"expectedRevision":"RETURNED-OBSERVED-REVISION"}'
+```
+
+`ui.moveDestination` is the UI path for agents and tests: it acts on an open Settings
+window like **Move up** / **Move down** in the destination's ⋯ menu. With `profileId`
+it first selects that destination. It moves the selection one place, keeps it
+selected and saves through the window's revision-checked autosave. The reply gives
+`order`, `selected` and `saving`; confirm the save with `settings.get`. Without an open
+Settings window it returns `ui_view_closed`; at the top or bottom of the list it
+returns `destination_move_invalid`.
 
 A successful `settings.get` envelope can still report
 `result.metadata.validation.ok: false` for invalid on-disk bytes; `result.document`

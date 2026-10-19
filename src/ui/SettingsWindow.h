@@ -8,7 +8,7 @@
 #include <QMap>
 #include <QPointer>
 #include <QSet>
-class QToolButton;class QTabWidget;class QListWidget;class QSpinBox;class QDoubleSpinBox;class QTimer;class QComboBox;class QLineEdit;class QCheckBox;class QLabel;class QPushButton;class QPlainTextEdit;
+class QAction;class QToolButton;class QTabWidget;class QListWidget;class QSpinBox;class QDoubleSpinBox;class QTimer;class QComboBox;class QLineEdit;class QCheckBox;class QLabel;class QPushButton;class QPlainTextEdit;
 namespace putgd {
 class ShortcutEditor;
 class SettingsWindow final:public RetainedWindow {
@@ -26,6 +26,8 @@ public:
  void clearCredentialInputs();
  void refreshDiagnostics();
  void activateDestinations(bool forceRefresh=false);
+ // Moves the selected (or the given) destination one place; saves right away.
+ Error moveSelectedDestination(int delta,const QString& profileId,QJsonObject& result);
 signals:
  void viewStateChanged();
  void actionRequested(const QString&);
@@ -58,6 +60,8 @@ private:
  void populate();QJsonObject profileEditorState()const;void applyProfileEditor(const QJsonObject&);QJsonObject editedProfile()const;
  void refresh(bool preserveDrafts=false);void refreshMetadata();void dirty();void save();void addS3Profile(const QString& defaultLabel="S3 destination");void resetDraft(bool reloadFile);QJsonObject candidate() const;bool selectedDestinationChanged()const;void loadProfile();void storeProfile();void rebuildProfiles(int selected,const QString& defaultProfile={});void status(const Error&);
  void switchProvider();void importDevelopmentProfile();
+ QStringList profileOrder()const;void applyProfileOrder(const QStringList&);Error moveDestination(int from,int to);void restoreReorderBaseline();
+ QStringList reorderBaseline_;QAction *moveUp_=nullptr,*moveDown_=nullptr;
  QJsonObject retainedProfileEditor()const;bool hasRetainedDrafts()const;
  void rememberCredentialInputs();void restoreCredentialInputs();void clearCurrentCredentialInputs();
  void toggleCredentialSecret(bool shown);void resetCredentialSecretDisplay();

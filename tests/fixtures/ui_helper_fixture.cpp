@@ -37,6 +37,10 @@ int main(int argc,char**argv){
    if(mode=="cancel"){QTimer::singleShot(250,&app,[&,payload]{control.send("closeCancel",{{"replyTo",payload["replyTo"]}});});return;}
    control.send("closeConfirmed",{{"replyTo",payload["replyTo"]}});QTimer::singleShot(100,&app,[&]{app.exit(mode=="crash-after-close"?77:0);});}
   else if(type=="invalidated"){if(mode=="cancel")QTimer::singleShot(50,&app,[&,seq]{control.send("observed",{{"replyTo",seq}});});else control.send("observed",{{"replyTo",seq}});}
+  else if(type=="command"){
+   if(mode=="command-crash"){app.exit(77);return;}
+   control.send("commandResult",{{"replyTo",seq},{"error",QJsonObject{{"code",""},{"message",""},{"details",QJsonObject{}}}},{"result",QJsonObject{{"command",payload["command"]},{"params",payload["params"]}}}});
+  }
   else if(type=="shutdown")app.quit();
  });
  return app.exec();

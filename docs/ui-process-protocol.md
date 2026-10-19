@@ -28,6 +28,7 @@ Transient Qt strings/JSON are released normally; this is not a cryptographic wip
 | `ui.show` | `view`: settings/history/activity/about | `shown` only after helper acknowledgement |
 | `ui.quit` | `{}` | `quitting:true`, then explicit resident shutdown |
 | `ui.snapshot` | `{}` | build manifest, resident epoch, readiness, settings document/metadata and diagnostics |
+| `ui.moveDestination` | `direction` up/down, optional `profileId` | the open Settings window's new `order`, `selected` ID and `saving`, after the helper's `commandResult` |
 | `ui.viewState` | `{}` | helper `state`; with a Settings checkpoint, `settings.section` and the derived `settings.captureRouting` only (see [state](ui-process-state.md)) |
 | `settings.save` | `document`, `expectedRevision` | authoritative document and metadata |
 | `setup.storeCredentials` | `profileId`, `expectedRevision`, `credentials` | `setupId` |
@@ -81,6 +82,17 @@ application identity and excludes `putgd-ui`; it does not recapture whichever
 window happens to have focus after the first reply. Missing identity while the
 helper is live fails window capture explicitly. See the isolated ownership tests;
 native compositor evidence is a separate gate.
+
+## View commands
+
+`ui.moveDestination` reaches the helper as a `command` frame with `command` and
+`params`. The resident sends it only to a ready helper. It never starts one, and
+without a helper it answers `ui_view_closed`. At most eight commands are outstanding;
+each answer is a `commandResult` with `replyTo`, an error object and a `result`
+object. The helper refuses unknown commands (`ui_command_unknown`) and answers
+`ui_view_closed` when no Settings window is open. A helper exit, failure or shutdown
+fails outstanding commands, and an unanswered command fails after ten seconds with
+`details.outcomeUnknown=true`.
 
 ## Shortcut recording
 
