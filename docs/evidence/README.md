@@ -8,6 +8,7 @@ for local bulk artifacts and [verification](../verification.md) for limitations.
 | --- | --- |
 | Screen recording in every package (issue #50 packaging) | [Installed DEB/RPM and AppImage runs, AppImage size and memory](2026-10-18-recording-packaging.md) |
 | AppImage native Wayland windows (Qt xdg-shell, decorations) | [Builder check, d69/f44/k72 desktop acceptance](2026-10-19-appimage-native-wayland.md) |
+| AppImage screen recording on Wayland after native windows (nightly `9042776`) | [d69/f44 Wayland and k72 X11 runs, placement, native windows, motion vs frozen controls](2026-10-19-appimage-recording-wayland.md) |
 | Settings save crash on Debian 13 (dangling `QJsonValueRef`) | [Suites, source contract and Debian Plasma before/after](2026-10-19-settings-validate-uaf.md) |
 | Single-name configuration and data folders (issue #56) | [Suites, interrupted-move coverage and Cinnamon upgrade check](2026-10-18-issue56-storage-locations.md) |
 | Inherited capture output in Settings (issue #58) | [Suites and Cinnamon check](2026-10-18-issue58-inherited-capture-output.md) |

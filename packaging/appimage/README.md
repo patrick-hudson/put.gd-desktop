@@ -150,6 +150,19 @@ LayerShellQt overlay surfaces. Frames still come from KWin's or Mutter's
 stream. The AppImage recordings in the
 [packaging receipt](../../docs/evidence/2026-10-18-recording-packaging.md)
 ran before the image carried `xdg-shell`, with those windows on XWayland.
+[2026-10-19 Wayland recording](../../docs/evidence/2026-10-19-appimage-recording-wayland.md)
+repeats them with nightly `9042776`. On Debian 13 Plasma 6.3 Wayland, Fedora 44
+GNOME 50 Wayland and the Kubuntu Plasma X11 control:
+
+- the bar and review were native Wayland windows;
+- the region selector, ring and dimming came from the helper's layer-shell surfaces
+  on Plasma and from the put.gd Shell extension on GNOME;
+- `overlayPlacement` matched [recording](../../docs/recording.md) for each compositor;
+- every clip scored far above a frozen-pattern control in MP4, WebM, GIF and WebP.
+
+The image's own `putgd-record` diagnostics (`--motion`, `--preview`,
+`--av-sync`, `--av-marker`) read only its Matroska working clips, so score saved
+copies with a distro build (issue #92).
 
 The post-deployment audit runs the relocated `putgd-record --capabilities`
 with `APPDIR` set and no display. It fails unless GStreamer initialises, every
