@@ -1,10 +1,13 @@
 #include "RecordingPipeline.h"
 #include "DebugLog.h"
+#include "WaylandAcquisition.h"
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QElapsedTimer>
 #include <algorithm>
+#include <gst/base/gstbasesrc.h>
+#include <ctime>
 
 namespace putgd::record {
 namespace {
@@ -29,6 +32,58 @@ QString audioDescription(const QString& name) {
     if (name == "avenc_aac" || name == "fdkaacenc" || name == "voaacenc") return name + " bitrate=128000";
     return name;
 }
+// The pad's element's running time now, or -1 before it has a clock.
+gint64 runningNow(GstPad* pad) {
+    GstElement* element = GST_ELEMENT(GST_PAD_PARENT(pad));
+    GstClock* clock = element ? gst_element_get_clock(element) : nullptr;
+    if (!clock) return -1;
+    const gint64 now = gint64(gst_clock_get_time(clock)) - gint64(gst_element_get_base_time(element));
+    gst_object_unref(clock);
+    return now;
+}
+gint64 monotonicNow() {
+    timespec now{};
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    return gint64(now.tv_sec) * GST_SECOND + now.tv_nsec;
+}
+// pipewiresrc as a live GstBaseSrc: with a header PTS on every frame, base
+// class sync adds one constant to all of them so that the first frame equals
+// its arrival time, which bakes that first frame's delay (0-90 ms measured on
+// KWin) into the whole video track, and then waits on the clock for frames that
+// arrive sooner than the first did. This private subclass only drops the sync
+// times; stampFrame stamps each frame itself. Empty when pipewiresrc is missing.
+void noSyncTimes(GstBaseSrc*, GstBuffer*, GstClockTime* start, GstClockTime* end) { *start = *end = GST_CLOCK_TIME_NONE; }
+void frameClockSourceInit(gpointer klass, gpointer) { GST_BASE_SRC_CLASS(klass)->get_times = noSyncTimes; }
+QString frameClockSource() {
+    static const QString name = [] {
+        GstElementFactory* factory = gst_element_factory_find("pipewiresrc");
+        if (!factory) return QString();
+        GstPluginFeature* loaded = gst_plugin_feature_load(GST_PLUGIN_FEATURE(factory));
+        gst_object_unref(factory);
+        if (!loaded) return QString();
+        const GType parent = gst_element_factory_get_element_type(GST_ELEMENT_FACTORY(loaded));
+        gst_object_unref(loaded);
+        GTypeQuery query{};
+        g_type_query(parent, &query);
+        if (!query.type || !g_type_is_a(parent, GST_TYPE_BASE_SRC)) return QString();
+        const GTypeInfo info{guint16(query.class_size), nullptr, nullptr, frameClockSourceInit, nullptr, nullptr, guint16(query.instance_size), 0, nullptr, nullptr};
+        const GType type = g_type_register_static(parent, "PutgdPipeWireSrc", &info, GTypeFlags(0));
+        if (!type || !gst_element_register(nullptr, "putgdpipewiresrc", GST_RANK_NONE, type)) return QString();
+        return QStringLiteral("putgdpipewiresrc");
+    }();
+    return name;
+}
+}
+
+void RecordingPipeline::Spread::add(gint64 value) {
+    min = count ? std::min(min, value) : value;
+    max = count ? std::max(max, value) : value;
+    sum += value;
+    ++count;
+}
+QString RecordingPipeline::Spread::text() const {
+    if (!count) return QStringLiteral("none");
+    return QStringLiteral("%1/%2/%3 ms (n=%4)").arg(double(min) / 1e6, 0, 'f', 1).arg(double(sum) / double(count) / 1e6, 0, 'f', 1).arg(double(max) / 1e6, 0, 'f', 1).arg(count);
 }
 
 RecordingPipeline::RecordingPipeline(QObject* parent) : QObject(parent), bus_(this), progress_(this) {
@@ -37,13 +92,14 @@ RecordingPipeline::RecordingPipeline(QObject* parent) : QObject(parent), bus_(th
 }
 RecordingPipeline::~RecordingPipeline() { tearDown(); }
 
-GstPadProbeReturn RecordingPipeline::probe(GstPad*, GstPadProbeInfo* info, gpointer user) {
+GstPadProbeReturn RecordingPipeline::probe(GstPad* pad, GstPadProbeInfo* info, gpointer user) {
     auto* context = static_cast<ProbeContext*>(user);
     auto* rebase = static_cast<Rebase*>(context->rebase);
     GstBuffer* buffer = GST_PAD_PROBE_INFO_BUFFER(info);
     if (!buffer || !GST_BUFFER_PTS_IS_VALID(buffer)) return GST_PAD_PROBE_OK;
     const gint64 pts = gint64(GST_BUFFER_PTS(buffer));
     if (context->paused->load()) { rebase->dropped.store(true); return GST_PAD_PROBE_DROP; }
+    if (const gint64 now = runningNow(pad); now >= 0) rebase->lateness.add(now - pts);
     const gint64 last = rebase->lastPassed.load();
     if (rebase->dropped.exchange(false) && last >= 0) {
         // Buffers dropped while paused leave a gap; fold it into the offset so the
@@ -64,15 +120,38 @@ GstPadProbeReturn RecordingPipeline::probe(GstPad*, GstPadProbeInfo* info, gpoin
     return GST_PAD_PROBE_OK;
 }
 
+GstPadProbeReturn RecordingPipeline::stampFrame(GstPad* pad, GstPadProbeInfo* info, gpointer user) {
+    auto* clock = static_cast<FrameClock*>(user);
+    GstBuffer* buffer = GST_PAD_PROBE_INFO_BUFFER(info);
+    const gint64 running = runningNow(pad);
+    if (!buffer || running < 0) return GST_PAD_PROBE_OK;
+    auto frame = pipewireFrameTime(GST_BUFFER_PTS_IS_VALID(buffer) ? gint64(GST_BUFFER_PTS(buffer)) : -1, monotonicNow(), running, clock->previous);
+    if (frame.ageNs < 0) ++clock->arrival;
+    else clock->age.add(frame.ageNs);
+    // Arrival is the default: KWin's header time is the output's previous
+    // presentation, ~40 ms before the frame arrives, and recordings stamped with
+    // it played the sound late (+35..+48 ms) where arrival times matched X11.
+    if (!clock->compositorTimes) frame = pipewireFrameTime(-1, 0, running, clock->previous);
+    clock->previous = frame.running;
+    buffer = gst_buffer_make_writable(buffer);
+    GST_PAD_PROBE_INFO_DATA(info) = buffer;
+    GST_BUFFER_PTS(buffer) = GST_BUFFER_DTS(buffer) = GstClockTime(frame.running);
+    return GST_PAD_PROBE_OK;
+}
+
 bool RecordingPipeline::launch(const Options& options, const QString& encoder, const QString& audioEncoder, QString& failure) {
     const QSize encoded = options.crop.isValid() ? options.crop.size() : options.rect.size();
     const int kbps = bitrateKbps(encoded, options.fps);
     QString description;
+    // Lab A/B runs: PUTGD_RECORD_PIPEWIRE_TIMESTAMPS=legacy restores the
+    // first-frame-anchored timestamps of releases before #86, =compositor maps
+    // each frame's header time instead of stamping its arrival.
+    const QString frameSource = options.pipewireNode && qEnvironmentVariable("PUTGD_RECORD_PIPEWIRE_TIMESTAMPS") != "legacy" ? frameClockSource() : QString();
     if (options.pipewireNode) {
-        // The portal stream arrives at the compositor's pace; videorate holds
-        // the configured frame rate, and a region is cropped out of the shared
+        // The stream arrives at the compositor's pace; videorate holds the
+        // configured frame rate, and a region is cropped out of the shared
         // monitor (crop values are stream-relative).
-        description = QStringLiteral("pipewiresrc name=src %1path=%2 do-timestamp=true keepalive-time=1000 resend-last=true ! videorate ! video/x-raw,framerate=%3/1 ! videoconvert n-threads=2").arg(options.pipewireFd >= 0 ? QStringLiteral("fd=%1 ").arg(options.pipewireFd) : QString()).arg(options.pipewireNode).arg(options.fps);
+        description = QStringLiteral("%1 name=src %2path=%3 %4keepalive-time=1000 resend-last=true ! videorate ! video/x-raw,framerate=%5/1 ! videoconvert n-threads=2").arg(frameSource.isEmpty() ? QStringLiteral("pipewiresrc") : frameSource, options.pipewireFd >= 0 ? QStringLiteral("fd=%1 ").arg(options.pipewireFd) : QString()).arg(options.pipewireNode).arg(frameSource.isEmpty() ? QStringLiteral("do-timestamp=true ") : QString()).arg(options.fps);
         if (options.crop.isValid()) description += QStringLiteral(" ! videocrop left=%1 top=%2 right=%3 bottom=%4").arg(options.crop.x()).arg(options.crop.y()).arg(std::max(0, options.rect.width() - options.crop.x() - options.crop.width())).arg(std::max(0, options.rect.height() - options.crop.y() - options.crop.height()));
     } else if (options.window) description = QStringLiteral("ximagesrc name=src xid=%1 use-damage=false show-pointer=true ! video/x-raw,framerate=%2/1 ! videoconvert n-threads=2").arg(options.window).arg(options.fps);
     else description = QStringLiteral("ximagesrc name=src use-damage=false show-pointer=true startx=%1 starty=%2 endx=%3 endy=%4 ! video/x-raw,framerate=%5/1 ! videoconvert n-threads=2").arg(options.rect.x()).arg(options.rect.y()).arg(options.rect.x() + options.rect.width() - 1).arg(options.rect.y() + options.rect.height() - 1).arg(options.fps);
@@ -87,8 +166,24 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
     GError* error = nullptr;
     GstElement* pipeline = gst_parse_launch(description.toUtf8().constData(), &error);
     if (!pipeline || error) { failure = error ? QString::fromUtf8(error->message) : QStringLiteral("parse failed"); if (error) g_error_free(error); if (pipeline) gst_object_unref(pipeline); return false; }
-    video_.offset = 0; video_.firstPassed = -1; video_.lastPassed = -1; video_.step = frameDurationNs_; video_.dropped = false;
-    audio_.offset = 0; audio_.firstPassed = -1; audio_.lastPassed = -1; audio_.step = 20 * GST_MSECOND; audio_.dropped = false;
+    video_.offset = 0; video_.firstPassed = -1; video_.lastPassed = -1; video_.step = frameDurationNs_; video_.dropped = false; video_.lateness = {};
+    audio_.offset = 0; audio_.firstPassed = -1; audio_.lastPassed = -1; audio_.step = 20 * GST_MSECOND; audio_.dropped = false; audio_.lateness = {};
+    frameClock_ = {};
+    frameClock_.compositorTimes = qEnvironmentVariable("PUTGD_RECORD_PIPEWIRE_TIMESTAMPS") == "compositor";
+    clockName_.clear();
+    if (!frameSource.isEmpty()) {
+        // The monotonic system clock is the compositors' frame clock, so frame
+        // ages read directly; pulsesrc slaves to it rather than providing the
+        // clock (pipewiresrc would otherwise offer its own stream clock).
+        GstClock* system = gst_system_clock_obtain();
+        gst_pipeline_use_clock(GST_PIPELINE(pipeline), system);
+        gst_object_unref(system);
+        GstElement* source = gst_bin_get_by_name(GST_BIN(pipeline), "src");
+        GstPad* pad = source ? gst_element_get_static_pad(source, "src") : nullptr;
+        if (pad) gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, &RecordingPipeline::stampFrame, &frameClock_, nullptr);
+        if (pad) gst_object_unref(pad);
+        if (source) gst_object_unref(source);
+    }
     debugLog("pipeline: " + description);
     auto attach = [&](const char* element, Rebase& rebase) {
         GstElement* queue = gst_bin_get_by_name(GST_BIN(pipeline), element);
@@ -141,7 +236,8 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
     }
     gst_object_unref(bus);
     if (failed) { debugLog("start failed: " + failure); gst_element_set_state(pipeline, GST_STATE_NULL); gst_object_unref(pipeline); QFile::remove(options.output); return false; }
-    debugLog("started with " + encoder + (audioEncoder.isEmpty() ? QString() : " + " + audioEncoder));
+    if (GstClock* clock = gst_pipeline_get_clock(GST_PIPELINE(pipeline))) { clockName_ = QString::fromUtf8(G_OBJECT_TYPE_NAME(clock)); gst_object_unref(clock); }
+    debugLog("started with " + encoder + (audioEncoder.isEmpty() ? QString() : " + " + audioEncoder) + " on " + clockName_);
     pipeline_ = pipeline;
     return true;
 }
@@ -232,6 +328,10 @@ void RecordingPipeline::tearDown() {
     gst_element_set_state(pipeline_, GST_STATE_NULL);
     gst_object_unref(pipeline_);
     pipeline_ = nullptr;
+    // Lateness: running time at the encoder minus the buffer's time; age: how
+    // old a compositor frame time was when the frame reached the source pad.
+    debugLog(QStringLiteral("timestamps: clock %1, video lateness %2, audio lateness %3, frame age %4, arrival-stamped frames %5")
+                 .arg(clockName_, video_.lateness.text(), audio_.lateness.text(), frameClock_.age.text()).arg(frameClock_.arrival));
     stopping_ = false;
 }
 }

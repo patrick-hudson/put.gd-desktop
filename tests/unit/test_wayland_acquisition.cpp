@@ -27,6 +27,44 @@ private slots:
         QFile named(runtime.filePath("pipewire-1")); QVERIFY(named.open(QIODevice::WriteOnly)); named.close();
         QCOMPARE(pipewireSocket(env), runtime.filePath("pipewire-1"));
     }
+    // #86: a frame keeps the compositor's time, mapped through one reading of
+    // both clocks, instead of the time it reached the pipeline.
+    void mapsCompositorFrameTimesToRunningTime() {
+        const qint64 ms = 1'000'000, mono = 5'000'000 * ms, running = 2'000 * ms;
+        // Painted 40 ms before it arrived: 40 ms before now in running time.
+        auto frame = pipewireFrameTime(mono - 40 * ms, mono, running, -1);
+        QCOMPARE(frame.running, running - 40 * ms);
+        QCOMPARE(frame.ageNs, 40 * ms);
+        // Each frame gets its own age; there is no offset carried from the first one.
+        frame = pipewireFrameTime(mono + 33 * ms - 2 * ms, mono + 33 * ms, running + 33 * ms, frame.running);
+        QCOMPARE(frame.running, running + 31 * ms);
+        QCOMPARE(frame.ageNs, 2 * ms);
+        // A time slightly ahead of this reading is now.
+        frame = pipewireFrameTime(mono + 2 * ms, mono, running + 40 * ms, -1);
+        QCOMPARE(frame.running, running + 40 * ms);
+        QCOMPARE(frame.ageNs, qint64(0));
+    }
+    void fallsBackToArrivalForMissingOrStaleTimes() {
+        const qint64 ms = 1'000'000, mono = 5'000'000 * ms, running = 2'000 * ms;
+        // No header PTS, a stale KWin presentation time after an idle output, a time from the future.
+        for (const qint64 pts : {qint64(-1), mono - kMaxFrameAgeNs - 1, mono + kFutureSlackNs + 1}) {
+            const auto frame = pipewireFrameTime(pts, mono, running, -1);
+            QCOMPARE(frame.running, running);
+            QCOMPARE(frame.ageNs, qint64(-1));
+        }
+        // Just inside the window still counts as a compositor time.
+        QCOMPARE(pipewireFrameTime(mono - kMaxFrameAgeNs, mono, running, -1).running, running - kMaxFrameAgeNs);
+        // Early in the pipeline's life a time before running time zero clamps to zero.
+        QCOMPARE(pipewireFrameTime(mono - 30 * ms, mono, 10 * ms, -1).running, qint64(0));
+    }
+    void keepsFrameTimesIncreasing() {
+        const qint64 ms = 1'000'000, mono = 5'000'000 * ms, running = 2'000 * ms;
+        // A resent keepalive frame stamped at arrival, then a real frame painted earlier.
+        const auto keepalive = pipewireFrameTime(-1, mono, running, -1);
+        const auto late = pipewireFrameTime(mono - 20 * ms, mono + 1 * ms, running + 1 * ms, keepalive.running);
+        QCOMPARE(late.running, keepalive.running + 1);
+        QCOMPARE(late.ageNs, 21 * ms);
+    }
 };
 QTEST_GUILESS_MAIN(WaylandAcquisition)
 #include "test_wayland_acquisition.moc"
