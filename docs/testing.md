@@ -176,9 +176,12 @@ PUTGD_APP="$PWD/build/dev/putgd" PUTGD_CLI="$PWD/build/dev/putgd-cli" \
 `json_ref_lifetime_contract` scans `src/` and `tests/` for an `auto` variable that
 keeps the `QJsonValueRef` returned by `operator[]` on a temporary from
 `toObject()`, `toArray()`, `object()` or `array()`. `Settings::validate` had this
-defect and crashed the Debian 13 resident on `settings.save`. GCC's ASan does not
-poison full-expression temporaries, so the asan preset passed with the defect in
-place. Read through `.value(key)` or `.at(index)`, or convert in the same expression.
+defect and crashed the Debian 13 resident on `settings.save`. GCC and clang both
+poison the dead temporary, but only exported functions in the uninstrumented distro
+libQt6Core read through the reference, so the asan preset passed with the defect in
+place. The CI `sanitizers` job loads an ASan-instrumented QtCore for that reason
+([ci.md](ci.md#jobs)). Read through `.value(key)` or `.at(index)`, or convert in the
+same expression.
 
 Repeat the affected sanitizer contracts with
 `payload_contract|archive_contract|upload_naming_contract|settings_contract|operations_contract|gui_settings|gui_history_view|collision_policy_integration`

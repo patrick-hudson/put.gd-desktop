@@ -6,7 +6,7 @@ through the Actions API.
 
 | Workflow | Runs on | Does |
 | --- | --- | --- |
-| `ci.yml` | every pull request, pushes to `nightly`, manual runs; called by nightly and release | contracts, Linux tests, Windows compile, packages |
+| `ci.yml` | every pull request, pushes to `nightly`, manual runs; called by nightly and release | contracts, Linux tests, clang ASan/UBSan core tests, Windows compile, packages |
 | `package.yml` | called by `ci.yml` | four native packages, AppImage, and with a tag the collected `release-assets` |
 | `nightly.yml` | 05:23 UTC daily and manual | skip unchanged source, or tag, test, package and publish a nightly |
 | `release.yml` | pushes to `main` and manual | cut a candidate (or stable on request), test, package and stage a draft |
@@ -28,8 +28,13 @@ schedule, manual runs and release callers always select everything.
 | `packaging/`, `tools/releases/`, `tools/proton/`, `tools/ci/`, `cmake/`, `integrations/`, `.github/workflows/`, root CMake files, `LICENSE`, `THIRD_PARTY_NOTICES.md`, `.gitignore`, `docs/build.md`, `docs/proton-drive.md` | yes | yes | yes |
 
 Unknown paths select the build by default. The last row lists every input to the
-package builders and the curated source archive. `tests/ci/test_changes.py` pins
-these rules.
+package builders and the curated source archive.
+
+The **sanitizers** job is selected separately: by `src/core/`, `src/app/`, the C++
+sources under `tests/unit/`, `tests/integration/` and `tests/fixtures/`, and by
+`cmake/`, `tools/ci/`, `CMakeLists.txt`, `CMakePresets.json` and `ci.yml`. UI,
+platform, storage and packaging changes don't select it. `tests/ci/test_changes.py`
+pins these rules.
 
 ## Jobs
 
@@ -54,6 +59,34 @@ saved socket preflight, JUnit, test logs and build identity. Hosted Xvfb and
 offscreen contracts do not establish compositor support or physical memory
 acceptance. The Release-preset compile happens in the package builders, not here.
 
+**sanitizers** builds the `clang-asan` preset (the `asan` preset's
+`-fsanitize=address,undefined`, compiled with clang) in an Ubuntu 26.04 container and
+runs the core contracts and short unit tests the `clang-asan` test preset selects:
+settings, operations, history, storage locations, payload, archive, upload naming,
+recording model, storage, config reload, local IPC and the small parser and
+platform-model tests. The test preset makes every UBSan report fatal; any ASan
+report already is. The job is not in the required `CI` summary yet (issue
+[#90](https://github.com/patrick-hudson/put.gd-desktop/issues/90)); add it there once
+it has run green on `nightly` for a while.
+
+Distro Qt is not instrumented, so ASan can't check loads made inside it. The bug
+[#76](https://github.com/patrick-hudson/put.gd-desktop/pull/76) fixed kept a
+`QJsonValueRef` to a destroyed temporary `QJsonObject`, and only exported QtCore
+functions read through it. It passed both GCC and clang ASan against distro Qt; both
+compilers do poison the temporary, but no instrumented code read it. The job
+therefore builds QtCore itself with ASan (`tools/ci/provision-qt-asan.sh`: the
+pinned qtbase archive matching the distro version, Core only, the distro's
+absolute install paths so the distro plugins still load) and caches it. The
+application still compiles against the distro headers; the tests run with
+`LD_LIBRARY_PATH` pointing at the instrumented `libQt6Core.so.6`, and distro QtGui,
+QtSql, QtTest and the plugins bind to it. When Ubuntu 26.04 moves to another Qt
+release the recipe stops with a version mismatch and fails the job; update its
+version and SHA-256 together. The cache key names the distro Qt version, the clang
+version and the recipe's hash, so any of them changing rebuilds QtCore. The
+instrumented QtCore is a CI-only test library: no package, AppImage or release build
+uses it, and release builds stay on distro Qt. `json_ref_lifetime_contract` still
+rejects the #76 pattern in source.
+
 **portable** compiles the shared production code on Windows with tests disabled,
 using the official Qt installation and pinned QtKeychain/AWS SDK builds. The S3
 wire parser links Qt Network there because it uses QHostAddress. macOS is not
@@ -63,6 +96,39 @@ built in CI.
 Ubuntu 26.04 and Debian 13 DEBs, the Fedora 44 RPM and the AppImage, and compiles the curated source
 export on Ubuntu 24.04. With a release tag, `collect` verifies and assembles the
 public asset set. See [releases](release.md).
+
+### Sanitizers job runtime
+
+Measured on the four-vCPU hosted runner on 2026-10-19 (Ubuntu 26.04 container,
+clang 21.1.8, distro Qt 6.10.2):
+
+| Run | Caches | Qt build | App build | CTest (23 tests) | Job |
+| --- | --- | ---: | ---: | ---: | ---: |
+| [39267375812](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/39267375812) attempt 1, PR #107 | none | 7:35 | 9:42 | 70.5 s, passed | 23:10 |
+| [39267375812](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/39267375812) attempt 2, PR #107 | SDK, QtCore | cached | 4:42 | 65.3 s, passed | 7:33 |
+| [39266994848](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/39266994848) attempt 3, #76 reverted | SDK, QtCore, ccache | cached | 0:46 | 27.5 s, 6 failed | 2:49 |
+
+Package installation takes about 1:15 of every run, and a cold SDK build 2:40 to
+3:05. The two uncached application builds differ by five minutes on the same
+source, which is runner variance. Pull requests don't save a compiler cache, so
+until a `nightly` push has saved one, PR runs take the second row's time; after
+that, the third row's (about 3:30 with a passing suite).
+
+Caches: the instrumented QtCore is 29 MiB compressed, the SDK prefix 4 MiB and the
+compiler cache 97 MiB. The QtCore key is
+`qt-asan-core-26.04-qt<distro Qt package version>-clang<version>-<recipe hash>`, so a
+new distro Qt or clang package, or an edit to the recipe, rebuilds it once (about
+7:35). Runner image updates don't change it, since the job runs in its own
+container.
+
+The run with #76 reverted (attempt 2 of
+[39266994848](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/39266994848),
+throwaway branch since deleted) failed `settings_contract`, `operations_contract`,
+`recording_model_contract`, `storage_contract_integration`,
+`config_reload_integration` and `storage_locations_integration`, each with
+`stack-use-after-scope` read by `QJsonValueRef::toObject()` from
+`Settings::validate` in `'ref.tmp' (line 158)`. Attempt 1 of that run failed only
+because `download.qt.io` didn't resolve once; the recipe now retries downloads.
 
 ## Speed measures
 

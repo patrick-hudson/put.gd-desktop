@@ -2,7 +2,8 @@
 """Select CI jobs from a pull request's changed paths.
 
 The contracts job always runs. `build` selects the Linux test matrix and the
-portable compiles; `packages` selects the native/AppImage package builds.
+portable compiles; `packages` selects the native/AppImage package builds;
+`sanitizers` selects the clang ASan/UBSan core contract job.
 Any path not explicitly known to be build-neutral selects `build`, so a new
 directory is tested by default. Push, schedule, dispatch and called runs
 select everything.
@@ -33,6 +34,13 @@ PACKAGING_FILES = frozenset({'CMakeLists.txt', 'CMakePresets.json', 'LICENSE',
                              'docs/build.md', 'docs/proton-drive.md'})
 
 
+# The core and application libraries, their C++ tests and the build definitions
+# that compile them. The clang ASan/UBSan job runs only for these.
+SANITIZER_PREFIXES = ('src/core/', 'src/app/', 'tests/unit/', 'tests/integration/',
+                      'tests/fixtures/', 'cmake/', 'tools/ci/')
+SANITIZER_FILES = frozenset({'CMakeLists.txt', 'CMakePresets.json', '.github/workflows/ci.yml'})
+
+
 def _documentation(path):
     return path in DOCUMENTATION_FILES or path.startswith(DOCUMENTATION_PREFIXES)
 
@@ -48,11 +56,19 @@ def _packaging(path):
     return path in PACKAGING_FILES or path.startswith(PACKAGING_PREFIXES)
 
 
+def _sanitized(path):
+    if path in SANITIZER_FILES:
+        return True
+    # Python suites under tests/unit run in the contracts job, not CTest.
+    return path.startswith(SANITIZER_PREFIXES) and not (path.startswith('tests/') and path.endswith('.py'))
+
+
 def select(paths):
     paths = sorted(set(paths))
     packages = any(_packaging(path) for path in paths)
     build = packages or any(not _documentation(path) and not _contract_only(path) for path in paths)
-    return {'build': build, 'packages': packages, 'paths': paths}
+    sanitizers = any(_sanitized(path) for path in paths)
+    return {'build': build, 'packages': packages, 'sanitizers': sanitizers, 'paths': paths}
 
 
 def changed_paths(root, base, head):
@@ -71,17 +87,19 @@ def main():
     if args.event == 'pull_request':
         result = select(changed_paths(args.root, args.base, args.head))
     else:
-        result = {'build': True, 'packages': True, 'paths': None}
+        result = {'build': True, 'packages': True, 'sanitizers': True, 'paths': None}
     result['event'] = args.event
     if os.environ.get('GITHUB_OUTPUT'):
         with open(os.environ['GITHUB_OUTPUT'], 'a') as stream:
             stream.write(f"build={str(result['build']).lower()}\n")
             stream.write(f"packages={str(result['packages']).lower()}\n")
+            stream.write(f"sanitizers={str(result['sanitizers']).lower()}\n")
     if os.environ.get('GITHUB_STEP_SUMMARY'):
         with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as stream:
             stream.write('| Job group | Selected |\n| --- | --- |\n| contracts | yes |\n')
             stream.write(f"| linux, portable | {'yes' if result['build'] else 'no'} |\n")
             stream.write(f"| packages | {'yes' if result['packages'] else 'no'} |\n")
+            stream.write(f"| sanitizers | {'yes' if result['sanitizers'] else 'no'} |\n")
     print(json.dumps(result, indent=2))
 
 
