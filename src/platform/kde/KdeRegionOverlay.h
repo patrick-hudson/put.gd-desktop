@@ -12,6 +12,8 @@ public:
  explicit KdeRegionOverlay(QList<CaptureFrame>,QObject* parent=nullptr);
  ~KdeRegionOverlay() override;
  void start();void cancel(Error={"cancelled","Region selection cancelled",{}});
+ // Completes the selection with a logical rectangle, as a drag would (agent control).
+ void select(const QRectF& logical);
 signals:
  void selected(const QRectF&);void cancelled(const putgd::Error&);
 private:

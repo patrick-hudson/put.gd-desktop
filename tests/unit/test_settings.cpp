@@ -311,6 +311,49 @@ private slots:
         QCOMPARE(putgd::Settings::fromValidated(bound).actions.value("record").shortcut, QStringLiteral("Ctrl+Shift+9"));
         QCOMPARE(putgd::Settings::fromValidated(bound).actions.value("region").shortcut, QStringLiteral("Ctrl+Shift+1"));
     }
+    // validate() once read each action through a reference into a destroyed
+    // temporary object, and the Debian 13 resident crashed saving this document
+    // on its worker thread. Debug builds read the dead object by luck, so
+    // json_ref_lifetime_contract rejects that source pattern itself.
+    void localActionsAndRecordEntriesValidateOnTheWorkerThread() {
+        auto document = putgd::Settings::defaults();
+        auto actions = document["actions"].toObject();
+        for (const auto& name : putgd::Settings::actionNames()) {
+            auto action = actions[name].toObject();
+            action["destination"] = "local";
+            actions[name] = action;
+        }
+        document["actions"] = actions;
+        document["captureDefaults"] = QJsonObject{{"destination", "local"}, {"profileId", QJsonValue::Null}, {"publicationMode", "default"}};
+        auto archive = document["archive"].toObject();
+        archive["keepUploads"] = true;
+        document["archive"] = archive;
+        QTemporaryDir dir;
+        putgd::SettingsService service(dir.filePath("config.json"));
+        bool saved = false;
+        service.saveAsync(document, {}, [&](putgd::Result result) { QVERIFY(result); saved = true; });
+        QTRY_VERIFY(saved);
+        QCOMPARE(service.snapshot().actions.value("record").destination, QStringLiteral("local"));
+        auto withRecord = [&](const QJsonValue& record) {
+            auto candidate = document;
+            auto routes = candidate["actions"].toObject();
+            routes["record"] = record;
+            candidate["actions"] = routes;
+            return putgd::Settings::validate(candidate);
+        };
+        QVERIFY(!withRecord(QJsonObject{{"shortcut", "Ctrl+Shift+7"}}));
+        QVERIFY(!withRecord(QJsonObject{{"destination", "default"}, {"profileId", QJsonValue::Null}, {"shortcut", ""}}));
+        QVERIFY(!withRecord(QJsonObject{{"destination", "upload"}, {"profileId", QJsonValue::Null}, {"shortcut", ""}, {"publicationMode", "private"}}));
+        for (const auto& invalid : {QJsonValue("local"), QJsonValue(QJsonObject{{"shortcut", 7}}),
+                 QJsonValue(QJsonObject{{"destination", "local"}, {"shortcut", ""}}),
+                 QJsonValue(QJsonObject{{"destination", "default"}, {"profileId", "missing"}, {"shortcut", ""}})}) {
+            const auto error = withRecord(invalid);
+            QCOMPARE(error.code, QStringLiteral("config_invalid"));
+            QCOMPARE(error.details["path"].toString(), QStringLiteral("/actions/record"));
+        }
+        const auto badKey = withRecord(QJsonObject{{"shortcut", "Ctrl+Shift+Nope"}});
+        QCOMPARE(badKey.details["path"].toString(), QStringLiteral("/actions/record/shortcut"));
+    }
 };
 QTEST_GUILESS_MAIN(SettingsContract)
 #include "test_settings.moc"

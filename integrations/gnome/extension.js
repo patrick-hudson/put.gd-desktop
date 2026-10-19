@@ -37,6 +37,9 @@ const XML = `<node><interface name="${IFACE}">
 <method name="WriteCopy"><arg type="s" direction="in"/><arg type="t" direction="in"/><arg type="s" direction="in"/><arg type="s" direction="out"/></method>
 <method name="CommitCopy"><arg type="s" direction="in"/><arg type="s" direction="out"/></method>
 <method name="Bind"><arg type="s" direction="in"/><arg type="s" direction="out"/></method>
+<method name="SelectArea"><arg type="s" direction="in"/><arg type="s" direction="out"/></method>
+<method name="ShowRecordingFrame"><arg type="s" direction="in"/><arg type="s" direction="out"/></method>
+<method name="HideRecordingFrame"><arg type="s" direction="out"/></method>
 <signal name="Action"><arg type="s"/><arg type="s"/></signal>
 <signal name="ClipboardChanged"><arg type="t"/></signal>
 <signal name="CapabilitiesChanged"/>
@@ -68,6 +71,96 @@ function limitsFrom(json) {
     'bridge_protocol', 'Invalid supported image MIME list');
     return value;
 }
+// The recording helper's control bar, a frameless Qt window the Shell places.
+const RECORDING_BAR_TITLE = 'put.gd recording controls';
+const RECORDING_STATES = ['ready', 'recording', 'paused'];
+const RECORDING_KINDS = ['region', 'monitor', 'desktop'];
+function overlaps(a, b) {
+    return a[0] < b[0] + b[2] && b[0] < a[0] + a[2] && a[1] < b[1] + b[3] && b[1] < a[1] + a[3];
+}
+function contains(area, r) {
+    return r[0] >= area[0] && r[1] >= area[1] && r[0] + r[2] <= area[0] + area[2] && r[1] + r[3] <= area[1] + area[3];
+}
+// Rectangles covering `rects` minus `hole`, all [x, y, width, height].
+function subtract(rects, hole) {
+    const result = [];
+    for (const r of rects) {
+        if (!overlaps(r, hole)) {
+            result.push(r);
+            continue;
+        }
+        const top = Math.max(r[1], hole[1]), bottom = Math.min(r[1] + r[3], hole[1] + hole[3]);
+        result.push([r[0], r[1], r[2], top - r[1]], [r[0], bottom, r[2], r[1] + r[3] - bottom],
+            [r[0], top, Math.max(r[0], hole[0]) - r[0], bottom - top],
+            [Math.min(r[0] + r[2], hole[0] + hole[2]), top, r[0] + r[2] - Math.min(r[0] + r[2], hole[0] + hole[2]), bottom - top]);
+    }
+    return result.filter(r => r[2] > 0 && r[3] > 0);
+}
+// Where the control bar goes: below the recorded rectangle, else above it, in
+// the work area holding its centre; else at the top of another monitor's work
+// area; else inside the rectangle's bottom-right corner (it is then recorded).
+function barPlacement(rect, size, areas, gap = 10) {
+    const [x, y, w, h] = rect, [bw, bh] = size;
+    const centre = [x + w / 2, y + h / 2];
+    const home = areas.find(a => centre[0] >= a[0] && centre[0] < a[0] + a[2] && centre[1] >= a[1] && centre[1] < a[1] + a[3]) ?? areas[0];
+    const candidates = [];
+    if (home) {
+        const left = Math.max(home[0], Math.min(x, home[0] + home[2] - bw));
+        candidates.push([left, y + h + gap, bw, bh], [left, y - gap - bh, bw, bh]);
+    }
+    for (const area of areas) {
+        if (area !== home)
+            candidates.push([area[0] + Math.round((area[2] - bw) / 2), area[1] + gap, bw, bh]);
+    }
+    const chosen = candidates.find(c => areas.some(a => contains(a, c)) && !overlaps(c, rect));
+    if (chosen)
+        return {rect: chosen, outside: true};
+    const inside = [x + w - bw - gap, y + h - bh - gap, bw, bh];
+    return {rect: inside, outside: !overlaps(inside, rect)};
+}
+
+// The ready ring just outside the recorded rectangle and, while recording, dim
+// strips over everything else except the bar. Plain non-reactive Shell actors:
+// input passes through them and none overlaps the recorded pixels, so the area
+// stream never contains them.
+class RecordingFrame {
+    constructor() {
+        this._actors = [];
+    }
+    show(rect, kind, dimmed, bar) {
+        this.destroy();
+        const add = (r, color) => {
+            if (r[2] <= 0 || r[3] <= 0)
+                return;
+            const actor = new St.Widget({reactive: false, can_focus: false, track_hover: false,
+                x: r[0], y: r[1], width: r[2], height: r[3], style: `background-color: ${color};`});
+            Main.uiGroup.add_child(actor);
+            this._actors.push(actor);
+        };
+        const [x, y, w, h] = rect;
+        if (dimmed) {
+            let strips = subtract([[0, 0, global.stage.width, global.stage.height]], rect);
+            if (bar)
+                strips = subtract(strips, bar);
+            for (const strip of strips)
+                add(strip, 'rgba(0, 0, 0, 0.43)');
+        }
+        if (kind === 'desktop')
+            return;
+        // A 3 px white ring with a dark hairline next to the rectangle, as on X11.
+        const t = 3;
+        for (const r of [[x - t, y - t, w + 2 * t, t], [x - t, y + h, w + 2 * t, t], [x - t, y, t, h], [x + w, y, t, h]])
+            add(r, 'rgba(255, 255, 255, 0.92)');
+        for (const r of [[x - 1, y - 1, w + 2, 1], [x - 1, y + h, w + 2, 1], [x - 1, y, 1, h], [x + w, y, 1, h]])
+            add(r, 'rgba(0, 0, 0, 0.78)');
+    }
+    destroy() {
+        for (const actor of this._actors)
+            actor.destroy();
+        this._actors = [];
+    }
+}
+
 function bytesOf(stream) {
     stream.close(null);
     return stream.steal_as_bytes().toArray();
@@ -427,6 +520,7 @@ export default class PutgdExtension extends Extension {
             if (Main.sessionMode.isLocked) {
                 for (const id of this._requests.keys())
                     this._drop(id, 'helper_unavailable', 'GNOME session locked');
+                this._hideRecordingFrame();
             }
         });
         this._acceleratorSignal = global.display.connect('accelerator-activated', (_display, id) => {
@@ -438,6 +532,7 @@ export default class PutgdExtension extends Extension {
             Gio.BusNameWatcherFlags.NONE, null, () => {
                 for (const id of this._requests.keys())
                     this._drop(id, 'helper_unavailable', 'Resident application disconnected');
+                this._hideRecordingFrame();
                 this._unbind();
                 this._uiProcess = 0;
                 this._uiProcessOwner = null;
@@ -457,6 +552,7 @@ export default class PutgdExtension extends Extension {
         this._trayTooltip = null;
         for (const id of this._requests.keys())
             this._drop(id, 'helper_unavailable', 'GNOME extension disabled');
+        this._hideRecordingFrame();
         this._unbind();
         if (this._ownerSignal)
             this._selection.disconnect(this._ownerSignal);
@@ -585,7 +681,8 @@ export default class PutgdExtension extends Extension {
 
     HelloAsync(_args, invocation) {
         this._run(invocation, () => ({version: 1, shellMajor: Number(Config.PACKAGE_VERSION.split('.')[0]),
-            extensionVersion: this.metadata.version, clipboardRevision: this._revision, uiProcessVersion: 1}));
+            extensionVersion: this.metadata.version, clipboardRevision: this._revision, uiProcessVersion: 1,
+            recordingVersion: 1}));
     }
 
     InvalidateCopyAsync(_args, invocation) {
@@ -911,6 +1008,121 @@ export default class PutgdExtension extends Extension {
             request.parts = null;
             return {clipboardRevision: this._revision};
         });
+    }
+
+    // Screen recording: the resident asks for a rectangle before the helper
+    // starts the Mutter stream, so the region is chosen with the same selector
+    // as screenshots. Release(id) cancels it.
+    SelectAreaAsync([id], invocation) {
+        this._run(invocation, async sender => {
+            check(!this._selector, 'busy_selecting', 'Another GNOME region selection is active');
+            const request = this._new(id, sender);
+            request.action = 'select';
+            request.stage = 'region-select';
+            const selector = new RegionSelector();
+            this._selector = request.selector = selector;
+            const selected = await selector.selectAsync();
+            request.selector = null;
+            this._selector = null;
+            this._alive(request);
+            check(selected, 'cancelled', 'GNOME region selection cancelled');
+            this._finish(id);
+            return {version: 1, requestId: id, rect: rectangle(selected)};
+        });
+    }
+
+    _finish(id) {
+        const request = this._requests.get(id);
+        if (request?.timer)
+            GLib.source_remove(request.timer);
+        this._requests.delete(id);
+    }
+
+    _parentPid(pid) {
+        try {
+            const [, bytes] = GLib.file_get_contents(`/proc/${pid}/stat`);
+            const text = new TextDecoder().decode(bytes);
+            // "pid (comm) state ppid ...": comm may hold spaces and parentheses.
+            return Number(text.slice(text.lastIndexOf(')') + 2).split(' ')[1]);
+        } catch {
+            return 0;
+        }
+    }
+
+    // Only a control bar owned by a direct child of the authenticated resident.
+    _recordingBar(sender, pid) {
+        const resident = this._clientPid(sender);
+        const bars = global.get_window_actors().map(actor => actor.meta_window).filter(window =>
+            window && window.get_title() === RECORDING_BAR_TITLE && (!pid || window.get_pid() === pid) &&
+            this._parentPid(window.get_pid()) === resident);
+        return bars.length === 1 ? bars[0] : null;
+    }
+
+    async _placeRecordingBar(sender, pid, rect) {
+        let window = this._recordingBar(sender, pid);
+        // Qt maps the bar a frame after the helper shows it.
+        for (let waited = 0; !window && waited < 2000; waited += 50) {
+            await new Promise(resolve => GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
+                resolve();
+                return GLib.SOURCE_REMOVE;
+            }));
+            check(this._enabled, 'helper_unavailable', 'GNOME extension disabled');
+            window = this._recordingBar(sender, pid);
+        }
+        if (!window)
+            return {placed: false, outside: false};
+        const pause = ms => new Promise(resolve => GLib.timeout_add(GLib.PRIORITY_DEFAULT, ms, () => {
+            resolve();
+            return GLib.SOURCE_REMOVE;
+        }));
+        // Mutter places a new window when it is first shown and would undo an
+        // earlier move: wait until it is shown, then confirm the position stays.
+        for (let waited = 0; window.is_hidden() && waited < 1000; waited += 50)
+            await pause(50);
+        const frame = window.get_frame_rect();
+        const areas = Main.layoutManager.monitors.map((_monitor, index) => rectangle(Main.layoutManager.getWorkAreaForMonitor(index)));
+        const target = barPlacement(rect, [frame.width, frame.height], areas);
+        if (!window.is_above())
+            window.make_above();
+        let actual = null;
+        for (let attempt = 0; attempt < 5; attempt++) {
+            window.move_frame(true, target.rect[0], target.rect[1]);
+            await pause(100);
+            check(this._enabled, 'helper_unavailable', 'GNOME extension disabled');
+            actual = rectangle(window.get_frame_rect());
+            if (actual[0] === target.rect[0] && actual[1] === target.rect[1])
+                break;
+        }
+        return {placed: true, outside: !overlaps(actual, rect), rect: actual};
+    }
+
+    ShowRecordingFrameAsync([json], invocation) {
+        this._run(invocation, async sender => {
+            check(json.length <= 4096, 'bridge_protocol', 'Recording frame exceeds the control-message limit');
+            const frame = JSON.parse(json);
+            const rect = frame.rect;
+            check(Array.isArray(rect) && rect.length === 4 && rect.every(Number.isSafeInteger) && rect[2] > 0 && rect[3] > 0 &&
+                RECORDING_STATES.includes(frame.state) && RECORDING_KINDS.includes(frame.kind) &&
+                (frame.pid === undefined || (Number.isSafeInteger(frame.pid) && frame.pid >= 0)),
+            'bridge_protocol', 'Invalid recording frame');
+            const bar = await this._placeRecordingBar(sender, frame.pid || 0, rect);
+            check(this._enabled && !Main.sessionMode.isLocked, 'helper_unavailable', 'GNOME user session is unavailable');
+            this._recordingFrame ??= new RecordingFrame();
+            this._recordingFrame.show(rect, frame.kind, frame.state !== 'ready', bar.placed ? bar.rect : null);
+            return {version: 1, bar};
+        });
+    }
+
+    HideRecordingFrameAsync(_args, invocation) {
+        this._run(invocation, () => {
+            this._hideRecordingFrame();
+            return {};
+        });
+    }
+
+    _hideRecordingFrame() {
+        this._recordingFrame?.destroy();
+        this._recordingFrame = null;
     }
 
     _unbind() {

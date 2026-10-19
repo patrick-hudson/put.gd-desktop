@@ -33,6 +33,28 @@ public:
     virtual void setEdit(const QString&, const RecordingEdit&, const RecordingConfig&, const QJsonObject& limits) { Q_UNUSED(limits); }
     // Releases helper/staging ownership for the id without an upload.
     virtual void discard(const QString& id) = 0;
+    // The process that owns the session's windows (the control bar), or 0.
+    virtual qint64 processId(const QString&) const { return 0; }
+};
+// Presentation the helper cannot do itself where the compositor keeps clients
+// from placing their own surfaces. On GNOME the put.gd Shell extension runs the
+// region selector, draws the ready ring and outside dimming as Shell actors and
+// moves the helper's control bar out of the recorded area. Unset elsewhere,
+// where the helper selects and places everything (X11, KDE layer-shell).
+class RecordingShell {
+public:
+    using Reply = std::function<void(Error, QJsonObject)>;
+    virtual ~RecordingShell() = default;
+    // True when a recording region can be chosen through this shell now.
+    virtual bool selectsRegions() const = 0;
+    // Replies {rect: [x, y, w, h]} in logical desktop pixels, or cancelled.
+    virtual void selectRegion(Reply) = 0;
+    // Closes an open selector; its pending selectRegion reply reports cancelled.
+    virtual void cancelSelection() = 0;
+    // {rect, kind, state: ready|recording|paused, pid}: ring, dimming (recording
+    // and paused) and bar placement. Replies {bar: {placed, outside, rect}}.
+    virtual void showFrame(const QJsonObject&, Reply) = 0;
+    virtual void hideFrame() = 0;
 };
 class UnavailableRecordingBackend final : public RecordingBackend {
 public:

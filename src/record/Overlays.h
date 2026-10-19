@@ -16,6 +16,15 @@ class QPushButton;
 class QTimer;
 
 namespace putgd::record {
+// How the helper's own surfaces reach the screen. X11 windows bypass the window
+// manager and use root pixels; KDE Wayland places layer-shell surfaces at
+// logical positions; elsewhere on Wayland the compositor (or the desktop shell,
+// through the resident) decides, and the helper shows only the bar.
+enum class SurfaceMode { X11, LayerShell, Compositor };
+SurfaceMode surfaceMode();
+// The window title the GNOME Shell extension uses to find and place the bar.
+inline constexpr const char* controlBarTitle = "put.gd recording controls";
+
 // Drag-to-select over every screen. Reports the selection in X11 root pixels;
 // Escape or a right click cancels. Surfaces are released before reporting.
 class SelectionOverlay final : public QObject {
@@ -25,6 +34,8 @@ public:
     ~SelectionOverlay() override;
     void start();
     void cancel(Error error = {"cancelled", "Region selection cancelled", {}});
+    // Completes the selection with root pixels, as a drag release would.
+    void complete(const QRect& rootRect);
 signals:
     void selected(const QRect& rootRect);
     void cancelled(const putgd::Error&);
@@ -43,8 +54,10 @@ private:
 
 // The ready bounds (a ring just outside the recorded rectangle) and, while
 // recording, four dim strips covering everything outside it. Every window is
-// transparent for input, bypasses the window manager and stays on top; none
-// of them overlaps the recorded pixels, so the capture never sees them.
+// transparent for input, bypasses the window manager (X11) or is an overlay
+// layer surface (KDE Wayland) and stays on top; none of them overlaps the
+// recorded pixels, so the capture never sees them. Rectangles are X11 root
+// pixels or, on Wayland, logical desktop pixels.
 class BoundsOverlay final : public QObject {
     Q_OBJECT
 public:
@@ -55,7 +68,7 @@ public:
     void hideAll();
     QRect rect() const { return rect_; }
 private:
-    QWidget* passive(const QRect& geometry, const QColor& color);
+    void add(QList<QWidget*>& into, const QRect& geometry, const QColor& color);
     QRect rect_;
     QList<QWidget*> ring_, dim_;
     bool dimmed_ = false;
@@ -71,6 +84,10 @@ public:
     explicit ControlBar(const Options&, const RecordingConfig&, QWidget* parent = nullptr);
     // Positions the bar around rootRect; returns false when it had to sit inside it.
     bool placeAround(const QRect& rootRect, const QRect& desktop);
+    // KDE Wayland: makes the bar an overlay layer surface below or above the
+    // logical rectangle, else on another screen, else inside its corner. Call
+    // before the first show; returns whether it stays outside the rectangle.
+    bool placeOnLayer(const QRect& logical);
     void setState(const QString& state);  // ready | recording | paused | stopping
     void setRetained(qint64 us);
     RecordingConfig config() const { return config_; }

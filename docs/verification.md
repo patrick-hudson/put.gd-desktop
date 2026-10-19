@@ -67,6 +67,20 @@ controls disabled, followed Default capture output live, and unchecking saved an
 explicit exception; `ui.viewState` and MCP `get_view_state` reported the same
 state. GNOME, KDE, Wayland and memory were not tested.
 
+## Wayland recording regions and system audio — 2026-10-18
+
+The [Wayland region receipt](evidence/2026-10-18-wayland-recording-region.md)
+covers the follow-up on `claude/wayland-recording-region`: region selection
+before the stream (KDE layer-shell selector, GNOME Shell extension), ring,
+dimming and bar placement with `overlayPlacement`, and the synthetic A/V-sync
+check. Verified with a moving pattern and each clip's motion score on the
+physical Debian Plasma 6.3 and Fedora GNOME 50 Wayland desktops, the
+Ubuntu 26.04 GNOME, Kubuntu 26.04 Plasma 6.6 and Fedora 44 GNOME KVM guests,
+and system audio through the speaker and headphone ports on the physical
+Kubuntu, Debian and Fedora desktops (headphone route not measurable on
+Fedora, where WirePlumber moves the default sink). Windows, microphone
+capture and listening tests with real headphones remain uncovered.
+
 ## Screen recording — 2026-10-18
 
 The [issue 50 receipt](evidence/2026-10-18-issue50-screen-recording.md) records
@@ -83,8 +97,8 @@ acquisition) on pull request #68:
   KWin/Mutter native streams reaching `ready` with no input on the physical
   Debian Plasma and Fedora GNOME desktops, clips carrying the pattern.
 
-Windows, microphone capture, the Wayland guests on the final commit and AMD
-GPU export remain uncovered.
+Windows, microphone capture and AMD GPU export remain uncovered; the Wayland
+guests were rerun by the follow-up above.
 
 ## Resident PNG readers — 2026-10-17
 

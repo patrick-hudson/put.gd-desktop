@@ -75,9 +75,9 @@ Channels and assets are in `docs/release.md`; CI coverage is in `docs/ci.md`.
 Record what was actually built/tested and any blocked acceptance gates. Commit explicit
 owned paths, preserving unrelated pre-existing changes. Do not add OCR features.
 Screen recording (#50) is user-approved and ships in the DEB, RPM and AppImage
-(X11 capture, picker-free or portal Wayland capture, private review, export,
-explicit upload); the Wayland drag selection, A/V sync, Windows and the open
-items in `docs/plans/2026-10-17-2230-feat-screen-recording-plan.md` remain.
+(X11 and Wayland capture with region selection, system audio, private review,
+export, explicit upload); Windows and the open items in
+`docs/plans/2026-10-17-2230-feat-screen-recording-plan.md` remain.
 Follow that plan and `docs/recording.md`; finalized files enter the shared
 pipeline only through the explicit Upload action.
 The user-approved Edit & upload image editor (#51) is the still-image editing feature; its

@@ -109,6 +109,7 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   if(!fields(p,{"id"})||!string(p,"id")){reply(invalid(),{});return;}
   operations_.recordingCommand(method.mid(10),p,reply);return;
  }
+ if(method=="recording.select") {if(!fields(p,{"id","rect"})||!string(p,"id")||!p["rect"].isArray()||p["rect"].toArray().size()!=4){reply(invalid(),{});return;}operations_.recordingCommand("select",p,reply);return;}
  if(method=="recording.overlay") {if(!fields(p,{"id","visible"})||!string(p,"id")||!p["visible"].isBool()){reply(invalid(),{});return;}operations_.recordingCommand("overlay",p,reply);return;}
  if(method=="recording.edit") {if(!fields(p,{"id","revision","commands"})||!string(p,"id")||!p["revision"].isDouble()||!p["commands"].isArray()||p["commands"].toArray().size()>100){reply(invalid(),{});return;}operations_.recordingCommand("edit",p,reply);return;}
  if(method=="recording.preview") {if(!fields(p,{"id","time"},{"maxEdge"})||!string(p,"id")||!p["time"].isDouble()||(p.contains("maxEdge")&&!p["maxEdge"].isDouble())){reply(invalid(),{});return;}operations_.recordingCommand("preview",p,reply);return;}

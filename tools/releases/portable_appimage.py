@@ -139,6 +139,35 @@ def deployment_qmake(qt: Path, output: Path) -> Path:
     return binary
 
 
+# linuxdeploy's Qt plugin deploys only xcb unless told otherwise. The resident
+# starts its image worker (`putgd-ui --image-job`, src/core/ImageJob.cpp) on
+# offscreen, as do putgd-record and the editor job without a display; Qt aborts
+# a process whose requested platform plugin is absent.
+EXTRA_PLATFORM_PLUGINS = ("libqwayland-generic.so", "libqwayland-egl.so", "libqoffscreen.so")
+
+
+def audit_platforms(appdir: Path, inventory: dict) -> dict:
+    """Start the image worker the way the resident does, from the image alone."""
+    platforms = appdir / "usr/plugins/platforms"
+    missing = [name for name in ("libqxcb.so", *EXTRA_PLATFORM_PLUGINS) if not (platforms / name).is_file()]
+    if missing:
+        raise ValueError("Qt platform plugins missing from the image: " + ", ".join(missing))
+    environment = {key: value for key, value in os.environ.items()
+                   if key not in ("DISPLAY", "WAYLAND_DISPLAY") and not key.startswith("QT_")}
+    environment.update(LD_LIBRARY_PATH=str(appdir / "usr/lib") + ":" + str(appdir / inventory["privateLibraryDirectory"]),
+                       QT_QPA_PLATFORM="offscreen")
+    # Its control channel is a pipe pair. A worker whose platform initialised
+    # sees the input close before any request and exits with status 3.
+    worker = subprocess.run([str(appdir / "usr/bin/putgd-ui"), "--image-job"], input="", env=environment,
+                            capture_output=True, text=True, timeout=30)
+    if worker.returncode != 3:
+        lines = worker.stderr.strip().splitlines()
+        raise ValueError("Image worker did not start on the offscreen platform: " +
+                         (lines[0] if lines else "exit status " + str(worker.returncode)))
+    return {"platformPlugins": sorted(path.name for path in platforms.glob("*.so")),
+            "imageWorkerStartedOffscreen": True}
+
+
 def refresh_runtime_manifest(appdir: Path) -> None:
     path = appdir / "usr/share/putgd/aws-runtime-manifest.json"
     manifest = json.loads(path.read_text())
@@ -422,7 +451,7 @@ def main() -> int:
     shutil.copy2(desktop, appdir / "usr/share/applications/putgd.desktop")
     deployment_tool = deployment_qmake(qt, output)
     environment = dict(os.environ, APPIMAGE_EXTRACT_AND_RUN="1", QMAKE=str(deployment_tool),
-                       ARCH="x86_64", EXTRA_PLATFORM_PLUGINS="libqwayland-generic.so;libqwayland-egl.so",
+                       ARCH="x86_64", EXTRA_PLATFORM_PLUGINS=";".join(EXTRA_PLATFORM_PLUGINS),
                        LD_LIBRARY_PATH=":".join((str(qt / "lib"), str(dependency_prefix / "lib"),
                                                   str(appdir / inventory["privateLibraryDirectory"]),
                                                   os.environ.get("LD_LIBRARY_PATH", ""))))
@@ -471,6 +500,7 @@ def main() -> int:
     distro_licenses = system_library_licenses(appdir, qt, media_origins)
     refresh_runtime_manifest(appdir)
     deployed = audit_deployed(appdir, inventory)
+    deployed["qtPlatforms"] = audit_platforms(appdir, inventory)
     proton = audit_proton(appdir, required=args.require_proton,
                           expected_manifest=inventory.get("proton", {}).get("manifest"))
     if proton:
