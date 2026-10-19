@@ -17,7 +17,10 @@ if ! readelf -d build/release/putgd-record | grep -q 'libavcodec\.so\.61'; then
 fi
 stage="$PWD/build/appimage-stage"
 if [ -e "$stage" ]; then echo 'AppImage staging directory must be new' >&2; exit 1; fi
-DESTDIR="$stage" cmake --install build/release
+# FFmpeg's libraries carry no RUNPATH, so their own dependencies (libswresample
+# under libavcodec) resolve from the prefix only through the loader path while
+# the install step checks each executable's identity.
+LD_LIBRARY_PATH="$PWD/build/appimage-deps/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" DESTDIR="$stage" cmake --install build/release
 version=$(python3 -c 'import json; print(json.load(open("build/release/build-identity/build-info.json"))["version"])')
 python3 tools/releases/portable_appimage.py --stage "$stage" --output-dir "$PWD/build/appimage-output" \
   --require-proton --proton-manifest build/dependencies/proton-runtime/manifest.json \
