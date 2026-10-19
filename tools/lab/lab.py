@@ -13,6 +13,7 @@ import re
 import shlex
 import signal
 import socket
+import struct
 import subprocess
 import sys
 import time
@@ -23,6 +24,7 @@ SCENARIOS = ('region', 'window', 'desktop', 'clipboard-text', 'clipboard-image',
              'region-cancel-escape', 'region-cancel-right-click', 'region-cancel-zero-area')
 sys.path.insert(0, str(HERE))
 import overlay_cleanup
+import rfb
 
 class LabError(RuntimeError):
     pass
@@ -39,9 +41,10 @@ def lifecycle_operation(function):
     return locked
 
 
-def cleanup_overlay(run, *, evidence_manifest=None, dry_run=False):
+def cleanup_overlay(run, *, evidence_manifest=None, dry_run=False, images_root=None):
     try:
-        return overlay_cleanup.cleanup(run, evidence_manifest=evidence_manifest, dry_run=dry_run)
+        return overlay_cleanup.cleanup(run, evidence_manifest=evidence_manifest, dry_run=dry_run,
+                                       images_root=images_root)
     except overlay_cleanup.CleanupError as error:
         raise LabError(str(error)) from error
 
@@ -158,22 +161,142 @@ def uefi_firmware(profile):
     raise LabError('UEFI firmware unavailable; install edk2-ovmf (Fedora) or ovmf (Debian/Ubuntu)')
 
 
-def qemu_command(profile, run, overlay, ssh_port, vnc_display, acceleration, firmware=None):
+MAX_HEADS = 4
+# QEMU's virtio-gpu default scanout size; extra heads start at this size unless a layout says otherwise.
+DEFAULT_HEAD_SIZE = (1280, 800)
+MULTIHEAD_VIDEO = ('virtio-vga', 'virtio-gpu-pci')
+HEAD_GEOMETRY = re.compile(r'([0-9]{3,4})x([0-9]{3,4})([+-][0-9]{1,5})([+-][0-9]{1,5})')
+
+
+def parse_layout(value):
+    """Parse `WxH+X+Y,...` (one entry per head, in head order; X/Y may be negative)."""
+    parts = value.split(',') if isinstance(value, str) else list(value)
+    layout = []
+    for part in parts:
+        match = HEAD_GEOMETRY.fullmatch(str(part).strip())
+        if not match:
+            raise LabError('Head layout entries must look like 1920x1080+0+0 or 1280x1024-1280+0')
+        width, height, x, y = (int(group) for group in match.groups())
+        if not (640 <= width <= 5120 and 480 <= height <= 2880):
+            raise LabError('Head sizes must be between 640x480 and 5120x2880')
+        layout.append({'width': width, 'height': height, 'x': x, 'y': y})
+    if not 1 <= len(layout) <= MAX_HEADS:
+        raise LabError(f'A head layout has 1 to {MAX_HEADS} entries')
+    for index, first in enumerate(layout):
+        for second in layout[index + 1:]:
+            if (first['x'] < second['x'] + second['width'] and second['x'] < first['x'] + first['width'] and
+                    first['y'] < second['y'] + second['height'] and second['y'] < first['y'] + first['height']):
+                raise LabError('Head layout rectangles overlap')
+    return layout
+
+
+def format_layout(layout):
+    return ','.join(f"{head['width']}x{head['height']}{head['x']:+d}{head['y']:+d}" for head in layout)
+
+
+def head_plan(profile, heads=None, layout=None):
+    """Resolve the head count and optional layout from launch options, then the profile."""
+    if layout is None and profile.get('head_layout') is not None:
+        layout = profile['head_layout']
+    layout = parse_layout(layout) if layout is not None else None
+    count = heads if heads is not None else len(layout) if layout else profile.get('display_heads', 1)
+    if not isinstance(count, int) or not 1 <= count <= MAX_HEADS:
+        raise LabError(f'Heads must be 1 to {MAX_HEADS}')
+    if layout is not None and len(layout) != count:
+        raise LabError('The head layout needs one entry per head')
+    if count > 1 and profile['video'] not in MULTIHEAD_VIDEO:
+        raise LabError('Multiple heads need a virtio-gpu video device (virtio-vga or virtio-gpu-pci)')
+    return count, layout
+
+
+def qemu_command(profile, run, overlay, ssh_port, vnc_display, acceleration, firmware=None, heads=1):
     args = ['qemu-system-x86_64', '-machine', 'q35,accel=' + acceleration,
             '-cpu', 'host' if acceleration == 'kvm' else 'max']
     if firmware is not None:
         # Read-only shared code image plus this run's private, writable NVRAM copy.
         args += ['-drive', f"if=pflash,format={firmware['format']},readonly=on,file={firmware['code']}",
                  '-drive', f"if=pflash,format={firmware['format']},file={firmware['vars']}"]
+    video = profile['video'] + ',id=video0' + (f',max_outputs={heads}' if heads > 1 else '')
     args += ['-smp', str(profile['cpus']), '-m', str(profile['memory_mib']),
-            '-device', profile['video'] + ',id=video0', '-device', 'usb-ehci', '-device', 'usb-tablet',
-            '-drive', f'file={overlay},format=qcow2,if=virtio',
+            '-device', video, '-device', 'usb-ehci', '-device', 'usb-tablet']
+    # Each extra head gets its own tablet bound to that head's console, so a VNC
+    # client on head N sends coordinates relative to head N. The unbound tablet
+    # keeps receiving QMP input that names no head.
+    for head in range(heads if heads > 1 else 0):
+        args += ['-device', f'usb-tablet,id=tablet{head},display=video0,head={head},serial=putgd-head{head}']
+    args += ['-drive', f'file={overlay},format=qcow2,if=virtio',
             '-netdev', f'user,id=net0,hostfwd=tcp:127.0.0.1:{ssh_port}-:22',
             '-device', 'virtio-net-pci,netdev=net0',
-            '-qmp', f'unix:{run}/qmp.sock,server=on,wait=off',
-            '-vnc', f'127.0.0.1:{vnc_display}', '-display', 'none',
-            '-daemonize', '-pidfile', str(run / 'qemu.pid')]
+            '-qmp', f'unix:{run}/qmp.sock,server=on,wait=off']
+    if heads == 1:
+        args += ['-vnc', f'127.0.0.1:{vnc_display}']
+    else:
+        # QEMU's VNC server shows one head per listener, on consecutive displays.
+        for head in range(heads):
+            args += ['-vnc', f'127.0.0.1:{vnc_display + head},id=head{head},display=video0,head={head}']
+    args += ['-display', 'none', '-daemonize', '-pidfile', str(run / 'qemu.pid')]
     return args
+
+
+def head_ports(vnc_display, heads):
+    return [{'head': head, 'port': 5900 + vnc_display + head, 'display': f'127.0.0.1:{5900 + vnc_display + head}'}
+            for head in range(heads)]
+
+
+def request_head_size(port, width, height, timeout=10):
+    """Enable one virtio-gpu head at a preferred size with an RFB SetDesktopSize request.
+
+    virtio-gpu reports only head 0 as connected until a display client sends
+    size information for a head. QEMU's VNC server forwards a client's
+    SetDesktopSize to the device, which hot-plugs that head into the guest
+    with the requested size as its preferred mode.
+    """
+    client = rfb.RFB(port, timeout=timeout)
+    try:
+        # Raw plus ExtendedDesktopSize, so QEMU reports the request's outcome.
+        client.sock.sendall(struct.pack('>BxHii', 2, 2, 0, -308))
+        client.sock.sendall(struct.pack('>BxHHBxIHHHHI', 251, width, height, 1, 0, 0, 0, width, height, 0))
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            kind = client._read(1)[0]
+            if kind == 0:
+                client._read(1)
+                for _ in range(struct.unpack('>H', client._read(2))[0]):
+                    x, y, w, h, encoding = struct.unpack('>HHHHi', client._read(12))
+                    if encoding == -308:
+                        screens = client._read(4)[0]
+                        client._read(16 * screens)
+                        # x is the reason (1: this client's request), y the status;
+                        # QEMU answers 4 when it forwarded the request to the device.
+                        if x == 1:
+                            if y not in (0, 4):
+                                raise LabError(f'QEMU refused head size on port {port} (status {y})')
+                            return {'port': port, 'width': width, 'height': height, 'status': y}
+                    elif encoding == 0:
+                        client._read(w * h * 4)
+                    elif encoding != -223:
+                        raise LabError('Unexpected RFB encoding while sizing a head')
+            elif kind == 1:
+                client._read(3)
+                client._read(6 * struct.unpack('>H', client._read(2))[0])
+            elif kind == 3:
+                client._read(3)
+                client._read(struct.unpack('>I', client._read(4))[0])
+            elif kind != 2:
+                raise LabError('Unexpected RFB message while sizing a head')
+        raise LabError(f'No SetDesktopSize answer on port {port}')
+    finally:
+        client.close()
+
+
+def enable_heads(vnc_display, heads, layout=None):
+    sizes = [(head['width'], head['height']) for head in layout] if layout else [DEFAULT_HEAD_SIZE] * heads
+    try:
+        return [request_head_size(5900 + vnc_display + head, *sizes[head]) for head in range(heads)]
+    except (RuntimeError, OSError, struct.error) as error:
+        if isinstance(error, LabError):
+            raise
+        raise LabError(f'Could not size the guest heads over VNC: {error}') from error
 
 
 def validate_readiness(profile, actual, acceleration):
@@ -370,7 +493,7 @@ export XDG_DATA_HOME=$HOME/putgd-lab/data
 
 
 @lifecycle_operation
-def _launch_machine(args, profile, golden, run, golden_sha256, golden_identity, firmware=None):
+def _launch_machine(args, profile, golden, run, golden_sha256, golden_identity, firmware=None, heads=1, layout=None):
     current = golden.stat()
     if (current.st_dev, current.st_ino, current.st_size, current.st_mtime_ns) != golden_identity:
         raise LabError('Golden changed before launch')
@@ -398,9 +521,13 @@ def _launch_machine(args, profile, golden, run, golden_sha256, golden_identity, 
             'known_hosts': str(known_hosts), 'overlay': str(overlay)}
     if firmware is not None:
         info['firmware'] = firmware
+    if heads > 1 or layout:
+        info['heads'] = head_ports(args.vnc_display, heads)
+    if layout:
+        info['head_layout'] = format_layout(layout)
     write_json(run / 'state.json', info)
     result = command(qemu_command(profile, run, overlay, args.ssh_port,
-                                  args.vnc_display, args.acceleration, firmware), timeout=15, check=False)
+                                  args.vnc_display, args.acceleration, firmware, heads), timeout=15, check=False)
     (run / 'qemu.log').write_text(result.stderr)
     if result.returncode:
         raise LabError('QEMU startup failed; private qemu.log preserved')
@@ -423,12 +550,17 @@ def launch(args):
     if pinned.returncode or not pinned.stdout.strip():
         raise LabError(f'{endpoint} is missing from --known-hosts; see docs/vm-lab.md for authenticated port remapping')
     firmware = uefi_firmware(profile)
+    heads, layout = head_plan(profile, getattr(args, 'heads', None), getattr(args, 'layout', None))
     run = Path(args.run).resolve()
     before = golden.stat()
     golden_identity = (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns)
     golden_sha256 = hash_file(golden)
-    info = _launch_machine(args, profile, golden, run, golden_sha256, golden_identity, firmware)
+    info = _launch_machine(args, profile, golden, run, golden_sha256, golden_identity, firmware, heads, layout)
     try:
+        if heads > 1 or layout:
+            # Before the guest's driver probes, so it boots with every head connected.
+            info['head_requests'] = enable_heads(args.vnc_display, heads, layout)
+            write_json(run / 'state.json', info)
         deadline = time.monotonic() + args.timeout
         while True:
             if not Path(f"/proc/{info['pid']}").exists():
@@ -446,8 +578,11 @@ def launch(args):
             features = qmp.execute('query-commands')
             acceleration_state = qmp.execute('query-kvm')
             write_json(run / 'qmp-features.json', {'version': qmp.version, 'commands': features, 'kvm': acceleration_state})
-        return {'run': str(run), 'id': info['id'], 'display': f'127.0.0.1:{5900 + args.vnc_display}',
-                'status': 'booted-not-accepted'}
+        result = {'run': str(run), 'id': info['id'], 'display': f'127.0.0.1:{5900 + args.vnc_display}',
+                  'status': 'booted-not-accepted'}
+        if 'heads' in info:
+            result['heads'] = info['heads']
+        return result
     except BaseException:
         reset(run)
         raise
@@ -487,9 +622,12 @@ def reset(run):
     return {'status': 'stopped', 'evidence': str(run)}
 
 
-def input_events(run, events):
+def input_events(run, events, head=None):
+    arguments = {'events': events}
+    if head is not None:
+        arguments.update(device='video0', head=head)
     with QMP(Path(run) / 'qmp.sock') as qmp:
-        qmp.execute('input-send-event', {'events': events})
+        qmp.execute('input-send-event', arguments)
 
 
 def key(run, keys):
@@ -524,6 +662,218 @@ def screenshot(run, name='witness', head=0):
     with QMP(Path(run) / 'qmp.sock') as qmp:
         qmp.execute('screendump', {'filename': str(path), 'device': 'video0', 'head': head})
     return {'path': str(path), 'sha256': hash_file(path)}
+
+
+XRANDR_OUTPUT = re.compile(r'(\S+) (connected|disconnected)( primary)?(?: ([0-9]+)x([0-9]+)([+-][0-9]+)([+-][0-9]+))?')
+XRANDR_MONITOR = re.compile(r'\s*[0-9]+: [+]?[*]?(\S+) [0-9]+/[0-9]+x[0-9]+/[0-9]+[+-][0-9]+[+-][0-9]+\s+(.*)')
+
+
+def parse_xrandr(query, monitors):
+    """Outputs in connector order plus the RandR monitors, from `xrandr --query` and `--listmonitors`."""
+    outputs = []
+    for line in query.splitlines():
+        if line[:1].isspace():
+            if outputs and line.split():
+                outputs[-1]['modes'].append(line.split()[0])
+            continue
+        match = XRANDR_OUTPUT.match(line)
+        if not match:
+            continue
+        name, state, primary, width, height, x, y = match.groups()
+        output = {'name': name, 'connected': state == 'connected', 'enabled': width is not None,
+                  'primary': bool(primary), 'modes': []}
+        if width is not None:
+            output.update(width=int(width), height=int(height), x=int(x), y=int(y))
+        outputs.append(output)
+    listed = []
+    for line in monitors.splitlines():
+        match = XRANDR_MONITOR.match(line)
+        if match:
+            listed.append({'name': match[1], 'outputs': match[2].split()})
+    return {'outputs': outputs, 'monitors': listed}
+
+
+def parse_kscreen(document):
+    outputs = []
+    for value in sorted(document.get('outputs', []), key=lambda output: output.get('name', '')):
+        output = {'name': value['name'], 'connected': bool(value.get('connected')),
+                  'enabled': bool(value.get('enabled')), 'primary': value.get('priority') == 1,
+                  # kscreen lists the preferred mode first; keep the first mode of each size.
+                  'modes': {}}
+        for mode in value.get('modes', []):
+            output['modes'].setdefault(mode['name'].split('@')[0], mode['id'])
+        if output['enabled']:
+            output.update(width=value['size']['width'], height=value['size']['height'],
+                          x=value['pos']['x'], y=value['pos']['y'])
+        outputs.append(output)
+    return {'outputs': outputs}
+
+
+def verify_outputs(observed, heads, layout=None):
+    """Require `heads` real, enabled outputs (not RandR monitors split from one output)."""
+    outputs = observed['outputs'][:heads]
+    errors = []
+    if len(outputs) < heads or not all(output['connected'] and output['enabled'] for output in outputs):
+        errors.append(f'expected {heads} connected, enabled outputs')
+    enabled = [output for output in observed['outputs'] if output['enabled']]
+    if len(enabled) != heads:
+        errors.append(f'{len(enabled)} outputs enabled, expected {heads}')
+    if 'monitors' in observed:
+        # A real output is its own RandR monitor; `xrandr --setmonitor` splits are not.
+        names = sorted(output['name'] for output in enabled)
+        if sorted(monitor['name'] for monitor in observed['monitors']) != names or any(
+                monitor['outputs'] != [monitor['name']] for monitor in observed['monitors']):
+            errors.append('RandR monitors do not match the real outputs one to one')
+    if layout and not errors:
+        # X11, Mutter and KWin place the whole desktop at 0,0, so compare the arrangement
+        # relative to each side's top-left corner. Head 0 must be the primary output.
+        spec_x, spec_y = min(head['x'] for head in layout), min(head['y'] for head in layout)
+        real_x, real_y = min(output['x'] for output in outputs), min(output['y'] for output in outputs)
+        for index, (head, output) in enumerate(zip(layout, outputs)):
+            wanted = (head['width'], head['height'], head['x'] - spec_x, head['y'] - spec_y)
+            actual = (output['width'], output['height'], output['x'] - real_x, output['y'] - real_y)
+            if wanted != actual:
+                errors.append(f'head {index} is {actual}, expected {wanted}')
+        if not outputs[0]['primary']:
+            errors.append('head 0 is not the primary output')
+    return {'ok': not errors, 'errors': errors,
+            'outputs': [{key: output[key] for key in ('name', 'enabled', 'primary', 'width', 'height', 'x', 'y')
+                         if key in output} for output in observed['outputs']]}
+
+
+MUTTER_STATE = r'''
+import json, sys
+from gi.repository import Gio, GLib
+bus = Gio.bus_get_sync(Gio.BusType.SESSION)
+def call(method, arguments=None):
+    return bus.call_sync('org.gnome.Mutter.DisplayConfig', '/org/gnome/Mutter/DisplayConfig',
+                         'org.gnome.Mutter.DisplayConfig', method, arguments, None, 0, 10000, None).unpack()
+serial, monitors, logical, properties = call('GetCurrentState')
+placed = {}
+for x, y, scale, transform, primary, members, _ in logical:
+    for connector, *_ in members:
+        placed[connector] = (x, y, primary)
+outputs = []
+for (connector, *_), modes, _ in sorted(monitors, key=lambda monitor: monitor[0][0]):
+    current = [mode for mode in modes if mode[6].get('is-current')]
+    output = {'name': connector, 'connected': True, 'enabled': connector in placed and bool(current),
+              'primary': placed.get(connector, (0, 0, False))[2],
+              'modes': {f'{mode[1]}x{mode[2]}': mode[0] for mode in sorted(modes, key=lambda mode: mode[3])}}
+    if output['enabled']:
+        output.update(width=current[0][1], height=current[0][2], x=placed[connector][0], y=placed[connector][1])
+    outputs.append(output)
+wanted = json.loads(sys.argv[1]) if len(sys.argv) > 1 else None
+if wanted:
+    config = [(head['x'], head['y'], 1.0, 0, index == 0, [(head['name'], head['mode'], {})])
+              for index, head in enumerate(wanted)]
+    call('ApplyMonitorsConfig', GLib.Variant('(uua(iiduba(ssa{sv}))a{sv})', (serial, 1, config, {})))
+print(json.dumps({'outputs': outputs}))
+'''
+
+
+def guest_outputs(run, backend):
+    if backend == 'xrandr':
+        text = guest_session(run, 'xrandr --query\nprintf "\\n@@\\n"\nxrandr --listmonitors\n')
+        query, monitors = text.split('\n@@\n', 1)
+        return parse_xrandr(query, monitors)
+    if backend == 'kscreen':
+        return parse_kscreen(json.loads(guest_session(run, 'kscreen-doctor -j\n')))
+    return json.loads(guest_session(run, 'python3 -c ' + shlex.quote(MUTTER_STATE) + '\n'))
+
+
+def layout_backend(profile):
+    if profile['session'] == 'x11':
+        return 'xrandr'
+    return 'kscreen' if profile['desktop'] == 'KDE' else 'mutter'
+
+
+def map_tablets_x11(run, outputs):
+    """Bind each head's QEMU tablet to that head's output, so VNC input lands on the right screen."""
+    pairs = ' '.join(f'{head}:{shlex.quote(output["name"])}' for head, output in enumerate(outputs))
+    return guest_session(run, f'''command -v xinput >/dev/null || {{ echo unavailable; exit 0; }}
+for id in $(xinput list --id-only); do
+ node=$(xinput list-props "$id" 2>/dev/null | sed -n 's/.*Device Node ([0-9]*):[[:space:]]*"\\(.*\\)"/\\1/p')
+ [ -n "$node" ] || continue
+ # The USB device above the event node carries QEMU's per-head serial.
+ path=$(readlink -f "/sys/class/input/${{node##*/}}/device")
+ while [ "$path" != /sys ] && [ "$path" != / ] && [ ! -f "$path/serial" ]; do path=${{path%/*}}; done
+ serial=$(cat "$path/serial" 2>/dev/null || true)
+ for pair in {pairs}; do
+  if [ "$serial" = "putgd-head${{pair%%:*}}" ]; then
+   xinput map-to-output "$id" "${{pair#*:}}"
+   echo "mapped $id ${{pair#*:}}"
+  fi
+ done
+done
+''').split()[2::3]
+
+
+def layout(run, spec=None, settle=30):
+    """Size, arrange and verify a multi-head guest's outputs in its native session."""
+    run = Path(run)
+    info = state(run)
+    profile = load_profile(info['profile'])
+    heads = info.get('heads') or head_ports(info['vnc_display'], 1)
+    wanted = parse_layout(spec) if spec else parse_layout(info['head_layout']) if info.get('head_layout') else None
+    if wanted and len(wanted) != len(heads):
+        raise LabError(f'This run has {len(heads)} heads; the layout names {len(wanted)}')
+    if wanted:
+        enable_heads(info['vnc_display'], len(heads), wanted)
+    backend = layout_backend(profile)
+    deadline = time.monotonic() + settle
+    attempts = 0
+    while True:
+        observed = guest_outputs(run, backend)
+        result = verify_outputs(observed, len(heads), wanted)
+        if result['ok'] or time.monotonic() >= deadline:
+            break
+        names = [output['name'] for output in observed['outputs'][:len(heads)]]
+        if wanted and len(names) == len(heads) and all(output['connected'] for output in observed['outputs'][:len(heads)]):
+            attempts += 1
+            apply_layout(run, backend, observed, wanted)
+        time.sleep(2)
+    if result['ok'] and backend == 'xrandr':
+        result['tablets'] = map_tablets_x11(run, observed['outputs'][:len(heads)])
+    # Independent of the guest: each head's QMP screendump must have that head's size.
+    result['screendumps'] = []
+    for index, head in enumerate(heads):
+        width, height, _ = ppm(screenshot(run, 'layout', index)['path'])
+        result['screendumps'].append({'head': index, 'width': width, 'height': height})
+        if wanted and (width, height) != (wanted[index]['width'], wanted[index]['height']):
+            result['ok'] = False
+            result['errors'].append(f'head {index} screendump is {width}x{height}')
+    result.update(backend=backend, heads=heads, layout=format_layout(wanted) if wanted else None, attempts=attempts)
+    write_json(run / 'layout.json', result)
+    return result
+
+
+def apply_layout(run, backend, observed, wanted):
+    outputs = observed['outputs'][:len(wanted)]
+    left, top = min(head['x'] for head in wanted), min(head['y'] for head in wanted)
+    if backend == 'xrandr':
+        arguments = ['xrandr']
+        for index, (head, output) in enumerate(zip(wanted, outputs)):
+            arguments += ['--output', output['name'], '--mode', f"{head['width']}x{head['height']}",
+                          '--pos', f"{head['x'] - left}x{head['y'] - top}"] + (['--primary'] if index == 0 else [])
+        guest_session(run, shlex.join(arguments) + '\n')
+    elif backend == 'kscreen':
+        arguments = ['kscreen-doctor']
+        for index, (head, output) in enumerate(zip(wanted, outputs)):
+            mode = output['modes'].get(f"{head['width']}x{head['height']}")
+            if mode is None:
+                raise LabError(f"{output['name']} offers no {head['width']}x{head['height']} mode")
+            prefix = f"output.{output['name']}."
+            arguments += [prefix + 'enable', prefix + f'mode.{mode}',
+                          prefix + f"position.{head['x'] - left},{head['y'] - top}", prefix + f'priority.{index + 1}']
+        guest_session(run, shlex.join(arguments) + '\n')
+    else:
+        config = []
+        for head, output in zip(wanted, outputs):
+            mode = output['modes'].get(f"{head['width']}x{head['height']}")
+            if mode is None:
+                raise LabError(f"{output['name']} offers no {head['width']}x{head['height']} mode")
+            config.append({'name': output['name'], 'mode': mode, 'x': head['x'] - left, 'y': head['y'] - top})
+        guest_session(run, 'python3 -c ' + shlex.quote(MUTTER_STATE) + ' ' + shlex.quote(json.dumps(config)) + '\n')
 
 
 def collect(run):
@@ -1183,12 +1533,15 @@ def main():
     launch_parser.add_argument('--vnc-display', type=int, default=20)
     launch_parser.add_argument('--acceleration', choices=['kvm', 'tcg'], default='kvm')
     launch_parser.add_argument('--timeout', type=int, default=180)
-    for name in ('reset', 'cleanup', 'collect', 'screenshot', 'key', 'input', 'install', 'start', 'run', 'cli'):
+    launch_parser.add_argument('--heads', type=int, help=f'Virtual monitors (1-{MAX_HEADS}); overrides the profile')
+    launch_parser.add_argument('--layout', help='Per-head WxH+X+Y list in head order, e.g. 2560x1440+0+0,1920x1080-1920+0')
+    for name in ('reset', 'cleanup', 'collect', 'screenshot', 'key', 'input', 'install', 'start', 'run', 'cli', 'layout'):
         child = sub.add_parser(name)
         child.add_argument('--run', required=True)
         if name == 'cleanup':
             child.add_argument('--evidence-manifest', help='Verified completion manifest for a custom or reviewed failed run')
             child.add_argument('--dry-run', action='store_true', help='Validate retirement without removing the disk')
+            child.add_argument('--images-root', help="Absolute work/lab-images holding the run's golden, when it is not this checkout's")
         if name == 'cli':
             child.add_argument('--method', required=True)
             child.add_argument('--params', default='{}', help='Production JSON parameters (credential references only)')
@@ -1198,6 +1551,10 @@ def main():
             child.add_argument('keys', nargs='+')
         if name == 'input':
             child.add_argument('events', help='JSON QMP input-send-event events array')
+            child.add_argument('--head', type=int, help="Send to this head's tablet (multi-head runs)")
+        if name == 'layout':
+            child.add_argument('--layout', help="WxH+X+Y list in head order; defaults to the run's launch layout")
+            child.add_argument('--settle', type=int, default=30, help='Seconds to wait for the guest to report the outputs')
         if name == 'install':
             package = child.add_mutually_exclusive_group(required=True)
             package.add_argument('--deb', help='Distro package for apt profiles')
@@ -1224,7 +1581,8 @@ def main():
         elif args.action == 'reset':
             value = reset(args.run)
         elif args.action == 'cleanup':
-            value = cleanup_overlay(args.run, evidence_manifest=args.evidence_manifest, dry_run=args.dry_run)
+            value = cleanup_overlay(args.run, evidence_manifest=args.evidence_manifest, dry_run=args.dry_run,
+                                    images_root=args.images_root)
         elif args.action == 'collect':
             value = collect(args.run)
         elif args.action == 'screenshot':
@@ -1233,8 +1591,10 @@ def main():
             key(args.run, args.keys)
             value = {'status': 'input-sent'}
         elif args.action == 'input':
-            input_events(args.run, json.loads(args.events))
+            input_events(args.run, json.loads(args.events), args.head)
             value = {'status': 'input-sent'}
+        elif args.action == 'layout':
+            value = layout(args.run, args.layout, args.settle)
         elif args.action == 'cli':
             value = cli(args.run, args.method, json.loads(args.params))
         elif args.action == 'install':

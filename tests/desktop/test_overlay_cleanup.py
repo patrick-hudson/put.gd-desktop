@@ -141,6 +141,42 @@ class OverlayCleanup(unittest.TestCase):
             cleanup.cleanup(self.run)
         self.assertTrue((self.run / 'disk.qcow2').exists())
 
+    def test_scratch_checkout_run_needs_an_explicit_validated_images_root(self):
+        # A lab.py copy outside the main tree keeps its runs beside itself,
+        # while the golden stays in the main tree's work/lab-images.
+        main = self.root / 'main'
+        golden = main / 'work/lab-images/golden/disk.qcow2'
+        golden.parent.mkdir(parents=True)
+        self.qemu('create', '-f', 'qcow2', golden, '1M')
+        (self.run / 'disk.qcow2').unlink()
+        self.qemu('create', '-f', 'qcow2', '-F', 'qcow2', '-b', golden, self.run / 'disk.qcow2')
+        state = json.loads((self.run / 'state.json').read_text())
+        self.write(self.run / 'state.json', {**state, 'golden': str(golden)})
+        with self.assertRaisesRegex(cleanup.CleanupError, 'outside its canonical'):
+            cleanup.cleanup(self.run, dry_run=True)
+        alias = self.root / 'images-alias'
+        alias.symlink_to(main / 'work/lab-images')
+        wrong = main / 'work/other-images'
+        wrong.mkdir()
+        for root, message in (('main/work/lab-images', 'absolute'), (wrong, 'work/lab-images'),
+                              (alias, 'Symlink'), (main / 'work/lab-images/golden', 'work/lab-images')):
+            with self.subTest(root=root):
+                with self.assertRaisesRegex(cleanup.CleanupError, message):
+                    cleanup.cleanup(self.run, dry_run=True, images_root=root)
+        # The main tree's runs are inventoried too: a child there keeps the overlay.
+        child = main / 'work/lab-runs/dependent/disk.qcow2'
+        child.parent.mkdir(parents=True)
+        self.qemu('create', '-f', 'qcow2', '-F', 'qcow2', '-b', self.run / 'disk.qcow2', child)
+        with self.assertRaisesRegex(cleanup.CleanupError, 'depend'):
+            cleanup.cleanup(self.run, images_root=main / 'work/lab-images')
+        self.assertTrue((self.run / 'disk.qcow2').exists())
+        child.unlink()
+        receipt = cleanup.cleanup(self.run, images_root=main / 'work/lab-images')
+        self.assertEqual(receipt['status'], 'completed')
+        self.assertEqual(receipt['base'], str(golden))
+        self.assertFalse((self.run / 'disk.qcow2').exists())
+        self.assertTrue(golden.exists())
+
     def test_backing_dependency_with_img_extension_is_not_missed(self):
         child = self.base.parent / 'dependent.img'
         self.qemu('create', '-f', 'qcow2', '-F', 'qcow2', '-b', self.run / 'disk.qcow2', child)

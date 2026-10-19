@@ -627,6 +627,173 @@ class LabContracts(unittest.TestCase):
                 for name, data in produced.items():
                     self.assertEqual((evidence / name).read_bytes(), data)
 
+    def test_multi_head_launch_adds_one_output_tablet_and_vnc_listener_per_head(self):
+        profile = lab.load_profile('cinnamon-x11')
+        single = lab.qemu_command(profile, Path('/tmp/run'), Path('/tmp/run/disk.qcow2'), 22001, 60, 'kvm')
+        self.assertEqual(single, lab.qemu_command(profile, Path('/tmp/run'), Path('/tmp/run/disk.qcow2'),
+                                                  22001, 60, 'kvm', None, 1))
+        self.assertEqual(single.count('-vnc'), 1)
+        self.assertIn('127.0.0.1:60', single)
+        command = lab.qemu_command(profile, Path('/tmp/run'), Path('/tmp/run/disk.qcow2'), 22001, 60, 'kvm', None, 4)
+        self.assertIn('virtio-vga,id=video0,max_outputs=4', command)
+        listeners = [command[index + 1] for index, value in enumerate(command) if value == '-vnc']
+        self.assertEqual(listeners, [f'127.0.0.1:{60 + head},id=head{head},display=video0,head={head}' for head in range(4)])
+        tablets = [value for value in command if value.startswith('usb-tablet')]
+        # The unbound tablet keeps QMP input without a head working.
+        self.assertEqual(tablets, ['usb-tablet'] + [
+            f'usb-tablet,id=tablet{head},display=video0,head={head},serial=putgd-head{head}' for head in range(4)])
+        self.assertEqual([port['port'] for port in lab.head_ports(60, 4)], [5960, 5961, 5962, 5963])
+
+    def test_head_plan_validates_counts_layouts_and_video_devices(self):
+        profile = lab.load_profile('kde-wayland')
+        self.assertEqual(lab.head_plan(profile), (1, None))
+        self.assertEqual(lab.head_plan(profile, 3), (3, None))
+        count, layout = lab.head_plan(profile, layout='2560x1440+0+0,1920x1080-1920+0')
+        self.assertEqual(count, 2)
+        self.assertEqual(layout[1], {'width': 1920, 'height': 1080, 'x': -1920, 'y': 0})
+        self.assertEqual(lab.format_layout(layout), '2560x1440+0+0,1920x1080-1920+0')
+        self.assertEqual(lab.head_plan({**profile, 'head_layout': ['1280x800+0+0', '1280x800+1380+0']}), (2, [
+            {'width': 1280, 'height': 800, 'x': 0, 'y': 0}, {'width': 1280, 'height': 800, 'x': 1380, 'y': 0}]))
+        for heads, spec, message in ((5, None, 'Heads must be 1 to 4'), (0, None, 'Heads must be 1 to 4'),
+                                     (3, '1280x800+0+0,1280x800+1280+0', 'one entry per head'),
+                                     (None, '1280x800+0+0,1280x800+640+0', 'overlap'),
+                                     (None, '1280x800+0+0,100x100+1280+0', 'between'),
+                                     (None, '1280x800@0,0', 'look like')):
+            with self.subTest(heads=heads, spec=spec):
+                with self.assertRaisesRegex(lab.LabError, message):
+                    lab.head_plan(profile, heads, spec)
+        with self.assertRaisesRegex(lab.LabError, 'virtio-gpu'):
+            lab.head_plan({**profile, 'video': 'qxl-vga'}, 2)
+        self.assertEqual(lab.head_plan({**profile, 'video': 'qxl-vga'}, 1), (1, None))
+
+    def test_head_size_request_uses_set_desktop_size_and_checks_qemu_status(self):
+        def serve(status):
+            server = socket.socket()
+            server.bind(('127.0.0.1', 0))
+            server.listen(1)
+            received = []
+            def peer():
+                connection, _ = server.accept()
+                with connection:
+                    def read(count):
+                        data = b''
+                        while len(data) < count:
+                            data += connection.recv(count - len(data))
+                        return data
+                    connection.sendall(b'RFB 003.008\n')
+                    read(12)
+                    connection.sendall(b'\x01\x01')
+                    read(1)
+                    connection.sendall(b'\0\0\0\0')
+                    read(1)
+                    connection.sendall(lab.struct.pack('>HH16xI', 640, 480, 4) + b'QEMU')
+                    read(20)  # SetPixelFormat
+                    read(8)   # raw-only SetEncodings from the shared RFB client
+                    received.append(read(12))
+                    received.append(read(24))
+                    # An unrelated server-initiated resize first, then the answer.
+                    for reason, answer in ((0, 0), (1, status)):
+                        connection.sendall(lab.struct.pack('>BxHHHHHi', 0, 1, reason, answer, 1920, 1080, -308) +
+                                           b'\x01\0\0\0' + bytes(16))
+            thread = threading.Thread(target=peer)
+            thread.start()
+            return server, thread, received
+        server, thread, received = serve(4)
+        self.assertEqual(lab.request_head_size(server.getsockname()[1], 1920, 1080, timeout=3)['status'], 4)
+        thread.join(3)
+        server.close()
+        self.assertEqual(received[0], lab.struct.pack('>BxHii', 2, 2, 0, -308))
+        self.assertEqual(received[1][:8], lab.struct.pack('>BxHHBx', 251, 1920, 1080, 1))
+        self.assertEqual(lab.struct.unpack('>IHHHHI', received[1][8:]), (0, 0, 0, 1920, 1080, 0))
+        server, thread, _ = serve(3)
+        with self.assertRaisesRegex(lab.LabError, 'refused head size'):
+            lab.enable_heads(server.getsockname()[1] - 5900, 1)
+        thread.join(3)
+        server.close()
+
+    def test_multi_head_launch_records_every_head_port_in_run_state(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            golden = root / 'golden.qcow2'
+            golden.write_bytes(b'sealed test identity')
+            trusted = root / 'known_hosts'
+            trusted.write_text('[127.0.0.1]:22260 ssh-ed25519 AAAA\n')
+            run = root / 'runs' / 'cinnamon-heads'
+            args = SimpleNamespace(profile='cinnamon-x11', golden=str(golden), run=str(run), acceleration='kvm',
+                                   ssh_port=22260, vnc_display=60, known_hosts=str(trusted),
+                                   bootstrap_key=str(root / 'identity'))
+            launched = []
+            def fake_command(arguments, **kwargs):
+                if arguments[0] == 'qemu-system-x86_64':
+                    launched.append(arguments)
+                    (run / 'qemu.pid').write_text('4242\n')
+                    return SimpleNamespace(returncode=0, stderr='')
+                if arguments[0] == 'qemu-img':
+                    Path(arguments[-1]).write_bytes(b'overlay')
+                elif arguments[0] == 'ssh-keygen':
+                    Path(arguments[-1]).write_bytes(b'private')
+                return SimpleNamespace(returncode=0, stderr='', stdout='')
+            identity = golden.stat()
+            layout = lab.parse_layout('1920x1080+0+0,1280x1024-1280+0')
+            with patch.object(lab, 'command', side_effect=fake_command):
+                info = lab._launch_machine(args, lab.load_profile('cinnamon-x11'), golden, run, 'f' * 64,
+                                           (identity.st_dev, identity.st_ino, identity.st_size, identity.st_mtime_ns),
+                                           None, 2, layout)
+            recorded = json.loads((run / 'state.json').read_text())
+            self.assertEqual(recorded['heads'], info['heads'])
+            self.assertEqual([head['display'] for head in recorded['heads']], ['127.0.0.1:5960', '127.0.0.1:5961'])
+            self.assertEqual(recorded['head_layout'], '1920x1080+0+0,1280x1024-1280+0')
+            self.assertIn('virtio-vga,id=video0,max_outputs=2', launched[0])
+
+    def test_outputs_must_be_real_heads_in_the_requested_arrangement(self):
+        query = '''Screen 0: minimum 320 x 200, current 3200 x 1080, maximum 8192 x 8192
+Virtual-1 connected primary 1920x1080+1280+0 (normal left inverted right x axis y axis) 487mm x 274mm
+   1920x1080     75.00*+  60.00
+   1280x1024     60.02
+Virtual-2 connected 1280x1024+0+0 (normal left inverted right x axis y axis) 325mm x 260mm
+   1280x1024     75.00*+
+Virtual-3 disconnected (normal left inverted right x axis y axis)
+'''
+        monitors = '''Monitors: 2
+ 0: +*Virtual-1 1920/487x1080/274+1280+0  Virtual-1
+ 1: +Virtual-2 1280/325x1024/260+0+0  Virtual-2
+'''
+        observed = lab.parse_xrandr(query, monitors)
+        self.assertEqual([output['name'] for output in observed['outputs']], ['Virtual-1', 'Virtual-2', 'Virtual-3'])
+        self.assertEqual(observed['outputs'][0]['modes'], ['1920x1080', '1280x1024'])
+        layout = lab.parse_layout('1920x1080+0+0,1280x1024-1280+0')
+        # X11 places the desktop at 0,0: the arrangement, sizes and primary head are what must match.
+        self.assertTrue(lab.verify_outputs(observed, 2, layout)['ok'])
+        self.assertFalse(lab.verify_outputs(observed, 2, lab.parse_layout('1920x1080+0+0,1280x1024+1920+0'))['ok'])
+        self.assertFalse(lab.verify_outputs(observed, 3)['ok'])
+        demoted = lab.parse_xrandr(query.replace(' primary', ''), monitors)
+        self.assertIn('head 0 is not the primary output', lab.verify_outputs(demoted, 2, layout)['errors'])
+        # One output split into two RandR monitors (xrandr --setmonitor) is not two heads.
+        split_query = query.replace('Virtual-2 connected 1280x1024+0+0', 'Virtual-2 connected')
+        split = lab.parse_xrandr(split_query, '''Monitors: 2
+ 0: +*left 960/243x1080/274+0+0  Virtual-1
+ 1: +right 960/244x1080/274+960+0  none
+''')
+        result = lab.verify_outputs(split, 2)
+        self.assertFalse(result['ok'])
+        self.assertTrue(any('RandR monitors' in error or 'enabled' in error for error in result['errors']))
+
+    def test_kscreen_outputs_follow_connector_order_and_priority(self):
+        document = {'outputs': [
+            {'id': 2, 'name': 'Virtual-2', 'connected': True, 'enabled': True, 'priority': 2,
+             'pos': {'x': -1280, 'y': 0}, 'size': {'width': 1280, 'height': 1024},
+             'modes': [{'id': '7', 'name': '1280x1024@75'}]},
+            {'id': 1, 'name': 'Virtual-1', 'connected': True, 'enabled': True, 'priority': 1,
+             'pos': {'x': 0, 'y': 0}, 'size': {'width': 1920, 'height': 1080},
+             'modes': [{'id': '3', 'name': '1920x1080@75'}, {'id': '9', 'name': '1920x1080@50'}]}]}
+        observed = lab.parse_kscreen(document)
+        self.assertEqual([output['name'] for output in observed['outputs']], ['Virtual-1', 'Virtual-2'])
+        self.assertEqual(observed['outputs'][1]['modes'], {'1280x1024': '7'})
+        self.assertEqual(observed['outputs'][0]['modes'], {'1920x1080': '3'})
+        result = lab.verify_outputs(observed, 2, lab.parse_layout('1920x1080+0+0,1280x1024-1280+0'))
+        self.assertTrue(result['ok'], result['errors'])
+        self.assertEqual(result['outputs'][1]['x'], -1280)
+
     def test_qmp_handles_unsolicited_events_without_losing_command_reply(self):
         with tempfile.TemporaryDirectory() as directory:
             path = str(Path(directory) / 'qmp.sock')
