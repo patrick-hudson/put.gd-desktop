@@ -27,7 +27,7 @@ against nightly `9042776`. Both ran from the image with nothing installed.
   (`capture_target`), and an external window was captured.
 - Not covered:
   - The editor's separate `putgd-ui --edit-image` process is not refused on
-    GNOME. This is independent of native windows and left as a follow-up.
+    GNOME. This is independent of native windows and tracked in #103.
   - Recorder windows were not opened.
   - KWin 6.6 Wayland was not run.
 

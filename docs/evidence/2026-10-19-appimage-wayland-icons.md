@@ -113,7 +113,7 @@ invoked through `action.invoke` with each window focused:
 | Settings | `putgd-ui` (views helper, native Wayland) | refused, `capture_target` "Focus an external application window before capture" ([frame](appimage-wayland-icons/f44-refused-settings.png)) |
 | History | the same `putgd-ui` | refused, `capture_target` ([frame](appimage-wayland-icons/f44-refused-history.png)) |
 | external `gst-launch-1.0 … waylandsink` window | not put.gd | captured, 640x400 PNG saved locally ([capture](appimage-wayland-icons/f44-control-external-window-captured.png)) |
-| editor (`putgd-ui --edit-image`) | a second `putgd-ui`, child of the resident | **captured** ([capture](appimage-wayland-icons/f44-editor-window-captured.png)) |
+| editor (`putgd-ui --edit-image`) | a second `putgd-ui`, child of the resident | **captured**, #103 ([capture](appimage-wayland-icons/f44-editor-window-captured.png)) |
 
 Mutter reports the native views' client PID, so the extension's PID comparison
 still refuses Settings and History. No change to `integrations/gnome` was needed
@@ -126,14 +126,14 @@ corrected afterwards.
 
 ## Not covered and follow-ups
 
-- **GNOME editor window is not refused.** The extension compares the focused
+- **GNOME editor window is not refused (#103).** The extension compares the focused
   window's PID with the resident's and the views helper's (`SetUiProcess`). The
   editor runs in a separate `putgd-ui --edit-image` process, so a window capture
   of it succeeds. This does not depend on #81: under XWayland the editor's PID
   differed in the same way. KWin refuses the editor through its `putgd-ui`
   desktop file name. Refusing windows whose process is a direct child of the
   resident (the check the extension already applies to the recording bar)
-  would close the gap. That is a separate change.
+  would close the gap. That is a separate change, tracked in #103.
 - **Recorder windows** (`putgd-record`) were not opened; their entry was checked
   only for content and removal.
 - **Plasma's task manager** was not checked separately; it already showed the
