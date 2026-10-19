@@ -83,43 +83,115 @@ console before pinning. The sudo rule grants `lab` only `rpm-ostree`, `bootc`,
 
 ## Running a disposable overlay
 
-`tools/lab/lab.py` cannot launch this guest yet: it has no UEFI/pflash option
-and no `aurora` profile, and Aurora's `install` path (apt) does not apply.
-Until a profile exists, run QEMU by hand on `f44` from a fresh run directory:
+`tools/lab/lab.py` runs this guest through the `aurora-kde-wayland` profile
+(`tools/lab/profiles/aurora-kde-wayland.yaml`: KDE, Wayland, `plasmashell`,
+guest user `lab`, `virtio-vga`, 6144 MiB, 2 vCPUs, the `kde-wayland` fixture
+hotkeys). Two profile keys differ from the package-based profiles:
+
+- `"firmware": "uefi"`: `launch` adds the host's read-only `OVMF_CODE_4M` image
+  and a private per-run copy of `OVMF_VARS_4M` as the two pflash drives. It
+  looks for the pair under `/usr/share/edk2/ovmf/*.qcow2` (Fedora `edk2-ovmf`)
+  and then `/usr/share/OVMF/*_4M.fd` (Debian/Ubuntu `ovmf`), refuses to launch
+  when neither host pair exists, and records the code path, the template path,
+  both SHA-256 values and the run's `vars.qcow2` (or `vars.fd`) under
+  `firmware` in `state.json`. Profiles without the key keep their BIOS command.
+- `"install": "appimage"`: `install --appimage FILE` replaces the apt path. It
+  copies the file to the guest home (`/var/home/lab`), `chmod +x`, compares the
+  guest's SHA-256 with the host file, extracts the bundled `usr/bin/putgd*`
+  binaries (`--appimage-extract` into `~/putgd-lab/appimage`) and hashes them,
+  runs `--version-json`, and writes `package.json` with `format: appimage`,
+  `installedPath`, `version` and the `installedBinarySha256` map keyed like a
+  package (`/usr/bin/putgd`). `verify_running_app` compares the resident's
+  mounted executable against that map, as for a package. The install also
+  writes `~/putgd-lab/bin/putgd-launcher` (runs the AppImage, so AppRun
+  registers the KWin permission entry) and `~/putgd-lab/bin/putgd-cli` (the
+  extracted CLI with the image's libraries); `guest_session` prepends that
+  directory to `PATH` only for `appimage` profiles. `--deb` on this profile and
+  `--appimage` on a package profile are rejected.
+
+Run the commands on `f44` from a checkout that contains this runner. The lab
+roots (`work/lab-runs`, `work/lab-images`, the lifecycle lock) are resolved
+from the checkout, so a scratch tree needs the `overlay_cleanup.ROOT`
+override described in [the remote-lab notes](vm-lab.md#retire-completed-overlays)
+or the canonical checkout itself. The golden's `known_hosts` pins
+`[127.0.0.1]:22426`; the bootstrap directory's pins `[127.0.0.1]:22425`, the
+port the hand-run `aurora-r1` guest used. Check that the chosen SSH and VNC
+ports are free on the builder first.
 
 ```sh
 set -eu
+cd ~/work/put.gd
 g=~/work/put.gd/work/lab-images/aurora-stable-44.20260908.1-v3-492c3f8945d1
 r=~/work/put.gd/work/lab-runs/aurora-$(python3 -c 'import uuid; print(uuid.uuid4().hex[:8])')
-test ! -e "$r"; mkdir -m 700 -p "$r"; cd "$r"
-qemu-img create -q -f qcow2 -b "$g/image.qcow2" -F qcow2 disk.qcow2
-cp /usr/share/edk2/ovmf/OVMF_VARS_4M.qcow2 vars.qcow2
-cp "$g/known_hosts" known_hosts
-qemu-system-x86_64 -machine q35,accel=kvm -cpu host -smp 3 -m 8192 \
-  -drive if=pflash,format=qcow2,readonly=on,file=/usr/share/edk2/ovmf/OVMF_CODE_4M.qcow2 \
-  -drive if=pflash,format=qcow2,file="$r/vars.qcow2" \
-  -device virtio-vga,id=video0 -device usb-ehci -device usb-tablet \
-  -drive file="$r/disk.qcow2",format=qcow2,if=virtio \
-  -netdev user,id=net0,hostfwd=tcp:127.0.0.1:22425-:22 -device virtio-net-pci,netdev=net0 \
-  -qmp "unix:$r/qmp.sock,server=on,wait=off" -vnc 127.0.0.1:25 -display none \
-  -daemonize -pidfile "$r/qemu.pid"
+test ! -e "$r"
+python3 tools/diagnostics/check_socket_paths.py --socket "$r/qmp.sock"
+python3 tools/lab/lab.py launch --profile aurora-kde-wayland \
+  --golden "$g/image.qcow2" --run "$r" \
+  --bootstrap-key ~/work/put.gd/work/lab-bootstrap-f44/aurora/identity \
+  --known-hosts "$g/known_hosts" --ssh-port 22426 --vnc-display 26 --timeout 420
+python3 tools/lab/lab.py install --run "$r" \
+  --appimage ~/work/put.gd/work/aurora-lab/appimage-9042776/putgd-0.1.1-dev.419+g9042776eb70e-x86_64.AppImage
+python3 tools/lab/lab.py start --run "$r"
+python3 tools/lab/lab.py cli --run "$r" --method capabilities
+python3 tools/lab/lab.py screenshot --run "$r"
 ```
 
-A fresh `OVMF_VARS_4M.qcow2` boots the installed disk through the removable
-`EFI/BOOT` path; the provisioning copy `aurora-lab/prov-a1/vars.qcow2` also
-works. Check that `5925` and `22425` are free on the builder first, and pick
-other numbers (and matching `known_hosts` endpoints) for a second guest. SSH as
-`lab@127.0.0.1 -p 22425` with the bootstrap key and the golden's `known_hosts`.
-Expose the guest on the wall with a workstation tunnel to remote `5925`
-following [remote VM displays](remote-vm-displays.md); the 2026-10-19 run used
-workstation port `5981` (`putgd-vm-aurora-a1.service`) and the tile
-"Aurora stable VM prov-a1 (f44)". `tools/lab/rfb.py` through that port
-provides screenshots, clicks and typing. Typing through QEMU VNC drops Shift on
-punctuation (`&&` arrives as `77`, `|` as `\`): use `;` and `tee` plus Ctrl+D.
+`start` runs `putgd-launcher --background` in the autologged Plasma session,
+waits for `putgd-cli capabilities` and checks the running `putgd` against the
+install receipt. `cli`, `key`, `input` and `screenshot` then work as on any
+profile. The `run` scenarios still need `putgd-desktop-fixture` in the guest;
+the AppImage does not ship it and Aurora has no package to install it from, so
+only smoke and CLI checks run on this guest until a fixture build for Fedora 44
+userland is provided separately. The guest is busy for about a minute after
+SSH answers while Plasma finishes its autologin; `start` waits for the CLI.
 
-Retire an overlay only after exporting evidence; the guarded `lab.py cleanup`
-does not know these runs, so remove `disk.qcow2` by hand after confirming the
-QEMU process is gone and nothing else references it.
+Expose the guest on the wall with a workstation tunnel to remote `5926`
+following [remote VM displays](remote-vm-displays.md), with its own unit and
+tile per run. `tools/lab/rfb.py` through that port provides screenshots, clicks
+and typing. Typing through QEMU VNC drops Shift on punctuation (`&&` arrives
+as `77`, `|` as `\`): use `;` and `tee` plus Ctrl+D.
+
+Retire the overlay with the guarded cleanup after exporting evidence. A
+smoke-only run has no passed scenario journal, so it needs the explicit
+completion manifest described in [vm-lab.md](vm-lab.md#retire-completed-overlays):
+
+```sh
+python3 tools/lab/lab.py reset --run "$r"
+python3 tools/lab/lab.py cleanup --run "$r" --evidence-manifest "$manifest" --dry-run
+python3 tools/lab/lab.py cleanup --run "$r" --evidence-manifest "$manifest"
+```
+
+Cleanup removes only `disk.qcow2`; `vars.qcow2` (a qcow2 image without a
+backing file, which the dependency inventory accepts), keys, logs and witnesses
+stay with the run. The hand-run `aurora-r1` overlay has no `state.json` and
+stays outside the guarded cleanup.
+
+### Runner round trip, 2026-10-19
+
+The first runner-driven round trip ran on `f44` from this branch (scratch tree
+`~/work/put.gd-aurora` with the lab roots pointed at `~/work/put.gd`), while the
+hand-run `aurora-r1` guest kept its ports. Private receipts, the QMP witness
+and wall screenshots are in the workstation's
+`work/aurora-lab/2026-10-19-aurora-runner-rn4f2a9c/` and on the builder under
+`~/work/put.gd/work/aurora-lab/runner-rn4f2a9c/`.
+
+| Item | Value |
+| --- | --- |
+| Run | `work/lab-runs/aurora-rn4f2a9c`, id `14d2ccc6-6f78-4b92-a0b1-71c5cca9fe89`, SSH `22426`, VNC `5926`, KVM, QEMU 10.2.2 |
+| Golden | v3, SHA-256 `6a2fb407830f95228bb06f4d20d7cd0bd1aec8ed937ef59430e50eb608b62c2d` |
+| Firmware | `/usr/share/edk2/ovmf/OVMF_CODE_4M.qcow2` (`cc2b32e9…`) read-only; private `vars.qcow2` copied from `OVMF_VARS_4M.qcow2` (`035317bb…`) |
+| `install --appimage` | `putgd-0.1.1-dev.419+g9042776eb70e-x86_64.AppImage` from nightly CI run 39201599215 (`release-appimage`), SHA-256 `1be3fbdcd8502d7c3fe58c8faaeed95e7aeab4def6c1df6e60dbf07d1c8ebec7`, `--version-json` `0.1.1-dev.419+g9042776eb70e` at commit `9042776`; bundled `usr/bin/putgd` `9c300c04…` |
+| `start` | resident pid 2270 running the bundled `putgd` (`9c300c04…` = receipt), `source: kde-wayland` |
+| `cli --method capabilities` | `source.adapter` `kde-wayland`; desktop, region and window capture `compositor-native` through `org.kde.KWin.ScreenShot2` v5, permission entry matches the executable |
+| `screenshot` | `witness-head0.ppm`, SHA-256 `fb9ed9d2a9efe14c8b11256aa54fa7c521fb69d71723d887a36b85b702649305`, 1280x800 |
+| `collect` | kernel `7.1.8-200.fc44`, `plasma-workspace-6.7.4`, `qt6-qtbase-6.11.2`, no `putgd` package (expected) |
+| Wall | workstation `5982` to remote `5926` (`putgd-vm-aurora-rn4f2a9c.service`), tile "Aurora 44 KDE VM aurora-rn4f2a9c (f44)", VNC connected |
+| Retirement | `reset` stopped the owned QEMU; guarded `cleanup --evidence-manifest` (explicit completion manifest, 18 hashed files) completed at 06:12:58Z and removed only `disk.qcow2`; `vars.qcow2`, keys, witness and receipts remain; tunnel stopped and tile removed |
+
+The first `start` on a fresh profile opens the dashboard on the Settings page
+(no capture output is configured); the tray icon is present. The host
+contracts (`python3 tools/ci/contracts.py lab`, all `tests/desktop` suites)
+passed on `f44` from the same tree.
 
 ## AppImage results, 2026-10-19
 
@@ -155,9 +227,9 @@ or v2, unlock the session on the wall before capture tests.
 
 ## Follow-ups
 
-- Add a `tools/lab/lab.py` UEFI option and an `aurora-kde-wayland` profile so
-  `launch`, `screenshot`, `key`, `input` and guarded `cleanup` work; `install`
-  needs an AppImage/Flatpak path instead of apt.
+- Provide `putgd-desktop-fixture` for this guest (a Fedora 44 userland build
+  or a bundled copy) so the `run` scenarios, not only smoke/CLI checks, can
+  execute on Aurora; add a Flatpak install path beside `--appimage`.
 - Copy the v3 golden to Debian and S3 to satisfy the two-copies rule, or decide
   with Patrick that it is a rebuildable evaluation image.
 - Exercise the Flatpak on this guest once it is implemented.

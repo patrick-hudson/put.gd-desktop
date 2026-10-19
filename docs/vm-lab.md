@@ -274,6 +274,13 @@ python3 tools/lab/lab.py install --run "$lab_run" --deb "$lab_deb"
 python3 tools/lab/lab.py run --run "$lab_run" --scenario region --keep
 ```
 
+`install` takes `--deb` for package profiles or `--appimage` for profiles with
+`"install": "appimage"`; it rejects the other kind. `start --run RUN` starts the
+installed resident in the native session with the same `putgd-launcher
+--background` command the scenarios use, waits for the production CLI to
+answer, and checks the running executable against the install receipt; use it
+for smoke and `cli` checks on guests without the lab fixture.
+
 `run` stops the VM on pass, mismatch, timeout or crash and preserves the private run
 directory. After a successful scenario exports its hashed evidence bundle and
 finished journal event, it automatically retires the stopped, unreferenced overlay.
@@ -505,9 +512,14 @@ so a fresh boot reaches the native desktop.
 
 Aurora (Universal Blue, Fedora Atomic KDE) is an image-based evaluation guest
 for AppImage and Flatpak testing. It needs UEFI firmware, has no package
-manager and uses plasmalogin instead of SDDM; its goldens on `f44`, their
-provisioning and the hand-run QEMU overlay recipe are in
-[Aurora VM](aurora-vm.md). The runner has no UEFI option or Aurora profile yet.
+manager and uses plasmalogin instead of SDDM. The `aurora-kde-wayland` profile
+sets `"firmware": "uefi"` (the runner adds the host's read-only
+`OVMF_CODE_4M` image and a private per-run copy of `OVMF_VARS_4M`, found under
+`/usr/share/edk2/ovmf` on Fedora or `/usr/share/OVMF` on Debian, and records
+both in `state.json`) and `"install": "appimage"` (`install --appimage` instead
+of `--deb`). Its goldens on `f44`, their provisioning and the runner commands
+are in [Aurora VM](aurora-vm.md). BIOS profiles have no `firmware` key and
+their QEMU command is unchanged.
 
 `bootstrap-guest.sh` supports apt-based guests and Fedora's dnf. Run it inside
 the guest with only the lab public key. It restores SSH file labels on SELinux
