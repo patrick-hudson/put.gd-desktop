@@ -266,6 +266,20 @@ class ReleaseCollection(unittest.TestCase):
                     self.run_collection()
                 self.assertFalse(self.output.exists())
 
+    def test_source_build_with_optional_helpers_accepted(self):
+        path = self.inputs / 'release-native-ubuntu24.04/source-build-results.json'
+        programs = self.source_result['identityMatchedPrograms'] + ['putgd-kde-region', 'putgd-record']
+        path.write_text(json.dumps({**self.source_result, 'identityMatchedPrograms': programs}))
+        self.assertEqual(self.run_collection(), self.release)
+
+    def test_source_build_with_unknown_program_rejected(self):
+        path = self.inputs / 'release-native-ubuntu24.04/source-build-results.json'
+        programs = self.source_result['identityMatchedPrograms'] + ['putgd-unknown']
+        path.write_text(json.dumps({**self.source_result, 'identityMatchedPrograms': programs}))
+        with self.assertRaisesRegex(ValueError, 'successful production build'):
+            self.run_collection()
+        self.assertFalse(self.output.exists())
+
     def test_appimage_staging_preserves_flat_consumer_paths(self):
         build = self.root / 'build/appimage-staging'
         packages = build / 'appimage-output'
