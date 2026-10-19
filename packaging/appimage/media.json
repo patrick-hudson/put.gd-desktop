@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "purpose": "Screen recording runtime inside the AppImage: putgd-record's GStreamer capture plugins and its private FFmpeg export libraries (docs/recording.md, packaging/appimage/README.md). Host GPU encoders come first; the bundled x264/x265 are the fallback. The image is a GPL-2.0-or-later combined work; its corresponding source is the release's appimage-media-source asset (tools/releases/appimage_media_sources.py).",
+  "purpose": "Screen recording runtime inside the AppImage: putgd-record's GStreamer capture plugins and its private FFmpeg export libraries (docs/recording.md, packaging/appimage/README.md). Host GPU encoders come first; the bundled x264/x265 are the fallback. The demuxers and decoders beyond the working clip's Matroska/H.264/AAC, and the MJPEG and PCM encoders, serve only the lab diagnostics (--motion, --preview, --av-marker, --av-sync) on exported MP4, WebM and GIF copies. The image is a GPL-2.0-or-later combined work; its corresponding source is the release's appimage-media-source asset (tools/releases/appimage_media_sources.py).",
   "gstreamer": {
     "plugins": [
       "coreelements",
@@ -86,12 +86,12 @@
       "--enable-libx264",
       "--enable-libx265",
       "--enable-protocol=file",
-      "--enable-demuxer=matroska",
+      "--enable-demuxer=matroska,mov,gif",
       "--enable-muxer=mp4,webm,gif,webp,matroska",
-      "--enable-decoder=h264,aac",
-      "--enable-parser=h264,aac,vp9,opus",
+      "--enable-decoder=h264,aac,libvpx_vp9,opus,gif,mjpeg,pcm_s16le",
+      "--enable-parser=h264,aac,vp9,opus,gif,mjpeg",
       "--enable-bsfs",
-      "--enable-encoder=h264_vaapi,hevc_vaapi,h264_nvenc,hevc_nvenc,libx264,libx265,libvpx_vp9,gif,libwebp_anim,aac,libopus",
+      "--enable-encoder=h264_vaapi,hevc_vaapi,h264_nvenc,hevc_nvenc,libx264,libx265,libvpx_vp9,gif,libwebp_anim,aac,libopus,mjpeg,pcm_s16le",
       "--enable-filter=buffer,buffersink,abuffer,abuffersink,null,anull,trim,atrim,setpts,asetpts,format,aformat,aresample,scale,crop,avgblur,drawbox,split,overlay,fps,palettegen,paletteuse"
     ]
   }
