@@ -127,6 +127,20 @@ launcher process in future quiet-family measurements; never hide FUSE from RSS.
 
 ## Runtime behavior
 
+On Wayland sessions the views, the editor and the KDE region helper are native
+Wayland clients, as with the DEB/RPM; set `QT_QPA_PLATFORM=xcb` to use XWayland
+instead. KWin draws their frames; on GNOME, Qt draws adwaita frames for the
+views and bradient for the editor, which clears the desktop identity before it
+starts (as in the DEB/RPM). The region helper sets LayerShellQt's overlay role
+per window and needs the Wayland platform, so KDE region capture works only
+natively. Before the image carried `xdg-shell` it answered `region_unavailable`.
+A Wayland compositor takes a window's icon from the desktop entry named by its
+app ID (`putgd-ui`), not from the window, and Qt 6.8 has no
+`xdg-toplevel-icon` support. Without a host entry for the image, KWin's title
+bar and GNOME's overview show a generic icon for those windows; the DEB/RPM
+install `putgd-ui.desktop`. Acceptance:
+[2026-10-19 native Wayland](../../docs/evidence/2026-10-19-appimage-native-wayland.md).
+
 The application AppRun is installed after deployment, so generic deployment
 hooks cannot override its host-tool environment or force unavailable GTK2 themes.
 AppRun resolves sibling helpers inside the mounted image. Login startup writes
