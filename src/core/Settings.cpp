@@ -154,7 +154,8 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
     auto validatedActions = actionNames();
     if (hasRecord) validatedActions.append(recordingActionName());
     for (const auto& name : validatedActions) {
-        const auto value = doc["actions"].toObject()[name];
+        // A copy: operator[] on the temporary object would return a reference into it.
+        const QJsonValue value = doc["actions"].toObject().value(name);
         const auto action = value.toObject();
         // A shortcut-only record entry follows the region route.
         const bool inheritedRecord = name == recordingActionName() && value.isObject() && keys(action, {"shortcut"});
