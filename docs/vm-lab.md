@@ -503,6 +503,12 @@ install each new baseline into a fresh, absent 32 GiB qcow2 path and create the
 automatic login in that disposable guest
 so a fresh boot reaches the native desktop.
 
+Aurora (Universal Blue, Fedora Atomic KDE) is an image-based evaluation guest
+for AppImage and Flatpak testing. It needs UEFI firmware, has no package
+manager and uses plasmalogin instead of SDDM; its goldens on `f44`, their
+provisioning and the hand-run QEMU overlay recipe are in
+[Aurora VM](aurora-vm.md). The runner has no UEFI option or Aurora profile yet.
+
 `bootstrap-guest.sh` supports apt-based guests and Fedora's dnf. Run it inside
 the guest with only the lab public key. It restores SSH file labels on SELinux
 guests and enables their SSH firewall service when Firewalld is running. Its

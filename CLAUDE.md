@@ -17,6 +17,7 @@ instruction file. Use the existing documentation below; this file is an index.
 | Golden image locations (Fedora, Debian, S3), verified copies, restore and standard guest login | [docs/remote-golden-images.md](docs/remote-golden-images.md) |
 | Linux VM lifecycle, provisioning and login inputs | [docs/vm-lab.md](docs/vm-lab.md) |
 | Windows VM bases and independent test copies | [docs/windows-vm-lab.md](docs/windows-vm-lab.md) |
+| Aurora (Universal Blue) VM layer for AppImage/Flatpak testing | [docs/aurora-vm.md](docs/aurora-vm.md) |
 | Lab capacity checks | [docs/lab-storage.md](docs/lab-storage.md) |
 | Evidence preservation and retirement | [docs/evidence-retention.md](docs/evidence-retention.md) |
 | Optional MCP helper and integration suite | [docs/mcp.md](docs/mcp.md) |

@@ -57,6 +57,10 @@ That is not a permanent integrity guarantee, so recheck the hash before use.
 
 The sealed Windows bundles are listed in [Windows lab](windows-vm-lab.md#base-storage-and-restore).
 
+The Aurora evaluation goldens (`aurora-stable-44.20260908.1-*`) exist only on
+Fedora `f44` and are described in [Aurora VM](aurora-vm.md); they do not yet
+have Debian or S3 copies.
+
 ## Use a host copy in place
 
 On Fedora or Debian, pass the inventory's final `image.qcow2` path to the runner's
