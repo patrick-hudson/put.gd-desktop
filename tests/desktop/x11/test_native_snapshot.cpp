@@ -3,7 +3,9 @@
 #include <QTest>
 #include <QCoreApplication>
 #include <QJsonArray>
+#include <QProcess>
 #include <cstring>
+#include <unistd.h>
 class NativeSnapshotTests final:public QObject {
  Q_OBJECT
 private slots:
@@ -17,6 +19,23 @@ private slots:
   xcb_change_property(connection,XCB_PROP_MODE_REPLACE,root,active,XCB_ATOM_WINDOW,32,1,&second);sync();QVERIFY(native.unchanged(frozen,error));
   const uint32_t position=20;xcb_configure_window(connection,first,XCB_CONFIG_WINDOW_X,&position);sync();QVERIFY(!native.unchanged(frozen,error));QCOMPARE(error.code,QString("capture_target"));
   xcb_destroy_window(connection,first);xcb_destroy_window(connection,second);xcb_delete_property(connection,root,active);xcb_disconnect(connection);
+ }
+ void residentChildWindowRejectedWithoutRegistration(){
+  // The Cinnamon core resident excludes itself, its views helper and its capture
+  // helper by PID. The unregistered editor is refused because the resident started it.
+  QProcess editor;editor.start("sleep",{"30"});QVERIFY(editor.waitForStarted());
+  QProcess finished;finished.start("true",{});QVERIFY(finished.waitForStarted());const auto gone=uint32_t(finished.processId());QVERIFY(finished.waitForFinished());
+  auto* connection=xcb_connect(nullptr,nullptr);QVERIFY(!xcb_connection_has_error(connection));const auto* screen=xcb_setup_roots_iterator(xcb_get_setup(connection)).data;const auto root=screen->root;
+  const auto active=putgd::x11::internAtom(connection,"_NET_ACTIVE_WINDOW"),pid=putgd::x11::internAtom(connection,"_NET_WM_PID");
+  const auto window=xcb_generate_id(connection);const uint32_t values[]{1};xcb_create_window(connection,screen->root_depth,window,root,10,10,50,40,0,XCB_WINDOW_CLASS_INPUT_OUTPUT,screen->root_visual,XCB_CW_OVERRIDE_REDIRECT,values);xcb_map_window(connection,window);
+  auto own=[&](uint32_t owner){xcb_change_property(connection,XCB_PROP_MODE_REPLACE,window,pid,XCB_ATOM_CARDINAL,32,1,&owner);xcb_flush(connection);auto response=putgd::x11::reply(xcb_get_input_focus_reply(connection,xcb_get_input_focus(connection),nullptr));QVERIFY(response);};
+  xcb_change_property(connection,XCB_PROP_MODE_REPLACE,root,active,XCB_ATOM_WINDOW,32,1,&window);own(uint32_t(editor.processId()));
+  const QSet<qint64> excluded{QCoreApplication::applicationPid(),editor.processId()+1};
+  putgd::X11NativeSnapshot native;QVERIFY(native.available());putgd::Error error;native.freeze("window",excluded,error);QCOMPARE(error.code,QString("capture_target"));
+  // A process this one didn't start, and a PID with no /proc entry, stay external.
+  own(uint32_t(getppid()));error={};auto frozen=native.freeze("window",excluded,error);QVERIFY2(!error,qPrintable(error.code));QCOMPARE(frozen["window"].toString(),QString::number(window));
+  own(gone);error={};frozen=native.freeze("window",excluded,error);QVERIFY2(!error,qPrintable(error.code));QCOMPARE(frozen["window"].toString(),QString::number(window));
+  xcb_destroy_window(connection,window);xcb_delete_property(connection,root,active);xcb_disconnect(connection);editor.kill();editor.waitForFinished();
  }
  void scalePropertyChangeRejectsFrozenNativeLayout(){
   auto* connection=xcb_connect(nullptr,nullptr);QVERIFY(!xcb_connection_has_error(connection));const auto root=xcb_setup_roots_iterator(xcb_get_setup(connection)).data->root;const auto property=putgd::x11::internAtom(connection,"RESOURCE_MANAGER");
