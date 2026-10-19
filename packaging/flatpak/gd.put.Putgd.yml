@@ -1,0 +1,155 @@
+# Experimental Flatpak manifest for the #14 feasibility spike. It is not a
+# release input: the release jobs, assets and checksums do not use it.
+# Findings, permissions and the measured per-desktop result: docs/flatpak.md.
+#
+# Build from a clean commit (the putgd module clones committed HEAD of ../..):
+#   flatpak-builder --user --install --force-clean --repo=repo build \
+#     packaging/flatpak/gd.put.Putgd.yml
+#
+# The app ID is provisional; Patrick chooses the final one before publication.
+id: gd.put.Putgd
+runtime: org.kde.Platform
+runtime-version: '6.11'
+sdk: org.kde.Sdk
+command: putgd-launcher
+finish-args:
+  # Display. X11 only where there is no Wayland socket (Cinnamon, Plasma X11).
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  # Uploads.
+  - --share=network
+  # Recording: system audio (pulsesrc monitor) and compositor PipeWire nodes
+  # for the dialog-free KWin and Mutter paths; the portal path needs neither.
+  - --socket=pulseaudio
+  - --filesystem=xdg-run/pipewire-0
+  # CLI and MCP from the host reach the resident's private socket here.
+  - --filesystem=xdg-run/putgd:create
+  # Tray.
+  - --talk-name=org.kde.StatusNotifierWatcher
+  # KDE: shortcuts through KGlobalAccel.
+  - --talk-name=org.kde.kglobalaccel
+  # GNOME: the putgd@put.gd Shell extension. org.gnome.Shell is the current
+  # bridge address and exposes all of Shell's own methods to the sandbox; the
+  # proposed extension change in docs/flatpak.md replaces it with a name on a
+  # dedicated connection.
+  - --own-name=org.putgd.App.Gnome50
+  - --talk-name=org.gnome.Shell
+  # GNOME recording without the portal picker (mutter-screencast).
+  - --talk-name=org.gnome.Mutter.ScreenCast
+  # Cinnamon: Muffin's screenshot service for post-selection capture.
+  - --talk-name=org.Cinnamon
+  # Notifications.
+  - --talk-name=org.freedesktop.Notifications
+modules:
+  # The official AWS SDK at the commit pinned in cmake/dependency-lock.json,
+  # built as docs/build.md describes. putgd copies its runtime into
+  # lib/putgd; the staging prefix is removed afterwards.
+  - name: aws-sdk-cpp
+    buildsystem: simple
+    build-commands:
+      - python3 putgd-verify/verify_dependencies.py . --lock putgd-verify/dependency-lock.json
+      - >-
+        cmake -S . -B _build -G Ninja -DCMAKE_BUILD_TYPE=Release
+        -DCMAKE_INSTALL_PREFIX=/app/aws-sdk -DCMAKE_INSTALL_LIBDIR=lib
+        -DBUILD_ONLY=s3 -DBUILD_SHARED_LIBS=ON -DENABLE_TESTING=OFF
+        -DAUTORUN_UNIT_TESTS=OFF -DENABLE_UNITY_BUILD=ON -DUSE_OPENSSL=ON
+      - cmake --build _build --parallel "${FLATPAK_BUILDER_N_JOBS}"
+      - cmake --install _build
+      # putgd's packaging reads the pinned source's license files.
+      - find . -path ./_build -prune -o -name LICENSE -print | while read -r f; do install -Dm644 "$f" "/app/aws-sdk/source/$f"; done
+    cleanup:
+      - /aws-sdk
+    sources:
+      - type: git
+        url: https://github.com/aws/aws-sdk-cpp.git
+        tag: 1.11.907
+        commit: a9f0ffcc276664b475230206fa554841ad5bc3de
+      - type: file
+        path: ../../tools/verify_dependencies.py
+        dest: putgd-verify
+      - type: file
+        path: ../../cmake/dependency-lock.json
+        dest: putgd-verify
+
+  # KDE region selection and Edit & upload use per-window layer surfaces; the
+  # KDE runtime does not ship LayerShellQt.
+  - name: layer-shell-qt
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DBUILD_TESTING=OFF
+    cleanup:
+      - /include
+      - /lib/cmake
+    sources:
+      - type: git
+        url: https://invent.kde.org/plasma/layer-shell-qt.git
+        tag: v6.6.7
+        commit: 4edaa5eb76ecd669614b31345b698ea815bf381b
+
+  # Credential storage. libsecret switches to its file backend with the
+  # Secret portal inside a sandbox.
+  - name: qtkeychain
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DBUILD_WITH_QT6=ON
+      - -DBUILD_TRANSLATIONS=OFF
+      - -DBUILD_TEST_APPLICATION=OFF
+      - -DLIBSECRET_SUPPORT=ON
+    cleanup:
+      - /include
+      - /lib/cmake
+      - /mkspecs
+    sources:
+      - type: git
+        url: https://github.com/frankosterfeld/qtkeychain.git
+        tag: 0.15.0
+        commit: ad7344c45a86a4f66cbafc4b081b5f7b876cb0b7
+
+  # X11 recording uses ximagesrc, which the freedesktop runtime omits. Only that
+  # plugin is built, against the runtime's GStreamer 1.26.11.
+  - name: gst-plugins-good-ximagesrc
+    buildsystem: meson
+    config-opts:
+      - -Dauto_features=disabled
+      - -Dximagesrc=enabled
+      - -Dximagesrc-xshm=enabled
+      - -Dximagesrc-xfixes=enabled
+      - -Dximagesrc-xdamage=enabled
+      - -Dximagesrc-navigation=enabled
+      - -Ddoc=disabled
+      - -Dexamples=disabled
+      - -Dtests=disabled
+      - -Dnls=disabled
+    sources:
+      - type: archive
+        url: https://gstreamer.freedesktop.org/src/gst-plugins-good/gst-plugins-good-1.26.11.tar.xz
+        sha256: 001deb0876d5d743cd3448abf74a27adec3fd850012fcb1b00994861bd6c1145
+
+  - name: putgd
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DBUILD_TESTING=OFF
+      - -DCMAKE_PREFIX_PATH=/app/aws-sdk
+      - -DPUTGD_AWS_RUNTIME_DIR=/app/aws-sdk/lib
+      - -DPUTGD_AWS_SOURCE_DIR=/app/aws-sdk/source
+    post-install:
+      # Flatpak exports only files named after the app ID. KWin looks up a
+      # sandboxed Wayland client's desktop entry by this ID, so the exported
+      # entry also carries the screencast grant that putgd-record.desktop
+      # gives native installs. ScreenShot2 cannot be granted this way.
+      - >-
+        sed -e 's|^Exec=.*|Exec=putgd-launcher|' -e 's|^Icon=.*|Icon=gd.put.Putgd|'
+        /app/share/applications/putgd.desktop > /app/share/applications/gd.put.Putgd.desktop
+      - echo 'X-KDE-Wayland-Interfaces=zkde_screencast_unstable_v1' >> /app/share/applications/gd.put.Putgd.desktop
+      - install -Dm644 /app/share/icons/hicolor/scalable/apps/putgd.svg /app/share/icons/hicolor/scalable/apps/gd.put.Putgd.svg
+      # The Shell extension is a host component; keep a copy for manual install.
+      - install -d /app/share/putgd/gnome-extension
+      - cp -a /app/share/gnome-shell/extensions/putgd@put.gd/. /app/share/putgd/gnome-extension/
+    sources:
+      - type: git
+        path: ../..
