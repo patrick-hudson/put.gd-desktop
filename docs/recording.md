@@ -227,7 +227,10 @@ The control bar shows a state dot (green ready, red recording, amber paused),
 a green Record button before capture and a red Stop button during it,
 the retained time, the target, a system-audio checkbox and a format/codec
 choice (editable only before Record; GIF/WebP disable audio), and Record,
-Pause/Resume, Stop and Cancel. Its actions run in the helper and are reported
+Pause/Resume, Stop and Cancel. From Record on the checkbox is locked but still
+shows whether the clip records system audio: ticked with the redesign theme's
+check on a muted fill, or empty, with a tooltip saying which (#120; before,
+the locked box was drawn empty either way). Its actions run in the helper and are reported
 to the resident as events (`started`, `paused`, `resumed`, `stopped` with
 reason `user`, `cancelled`, `configChanged`), which the service applies to the
 same state machine the CLI drives; `recording.overlay` hides or shows the bar
@@ -538,6 +541,18 @@ slice threads on every core. Audio is trimmed with `atrim` in seconds on the
 same clip timeline as the video (it starts at the first video frame; a gap
 before the first sample becomes silence, see "Timestamps and A/V sync") and
 encoded as AAC (MP4) or Opus (WebM). MP4 output is written with `faststart`.
+
+Opus packets are 20 ms. The last one carries the end trim as Matroska
+`DiscardPadding`, which `ffprobe` shows as `Skip Samples` side data, and
+every packet decodes. FFmpeg 8.0.x (Kubuntu 26.04 ships 8.0.1) logs
+`[opus] Error parsing Opus packet header.` once at the end of every Matroska
+or WebM Opus stream. That includes files written by the `ffmpeg` CLI and
+ones without padding. The message comes from the demuxer's Opus parser, which
+checks the empty flush buffer at EOF, and the decoded audio is unchanged. It
+came in with FFmpeg commit 37155d68ec and was fixed in 8.1 by 618fc15e65,
+not backported to 8.0. FFmpeg 7.1 (Debian 13) and 8.1 (Fedora 44) print
+nothing (#119). `export_av_sync_contract` decodes every audio packet of WebM
+exports with the native and libopus decoders.
 
 On the workstation (i9-9880H, UHD 630, Quadro T2000, 60 s 2238×1318 clip
 with audio, `putgd-record --export`): H.264 and H.265 on NVENC export at
