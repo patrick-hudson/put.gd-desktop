@@ -19,6 +19,7 @@ extern "C" {
 #include <libavutil/hwcontext.h>
 #include <libavutil/opt.h>
 #include <libavutil/pixdesc.h>
+#include <libavutil/samplefmt.h>
 #include <libswscale/swscale.h>
 }
 
@@ -461,15 +462,37 @@ Error exportClip(const ExportRequest& request, ExportResult& result, const std::
         if (audioInput.audioIndex < 0) return {"recording_export_failed", "The clip audio disappeared", {}};
         Input& input = audioInput;
         const auto audioTimeBase = input.format->streams[input.audioIndex]->time_base;
-        const auto audioOrigin = streamOrigin(input.format->streams[input.audioIndex]);
+        // The clip timeline starts at the first video frame, as the video trim
+        // does. Audio usually starts later (the capture opens the sink monitor
+        // after the stream), and that gap is part of the sync: the retained
+        // audio is cut from the same instants and silence fills the time before
+        // its first sample (#86; rebasing it to its own start played it early).
+        const auto videoStream = input.format->streams[input.videoIndex];
+        const auto originUs = av_rescale_q(streamOrigin(videoStream), videoStream->time_base, microseconds);
+        const auto audioStartUs = av_rescale_q(streamOrigin(input.format->streams[input.audioIndex]), audioTimeBase, microseconds);
+        const auto startUs = originUs + request.edit.trimStart, endUs = originUs + trimEnd;
+        const auto end = av_rescale_q(endUs, microseconds, audioTimeBase);
         // atrim's *_pts options count samples; seconds (microsecond precision) match the video trim.
-        const auto originUs = av_rescale_q(audioOrigin, audioTimeBase, microseconds);
-        const auto end = audioOrigin + av_rescale_q(trimEnd, microseconds, audioTimeBase);
-        const auto description = QStringLiteral("[in]atrim=start=%1:end=%2,asetpts=PTS-STARTPTS,aformat=sample_fmts=%3:sample_rates=48000:channel_layouts=stereo[out]").arg(seconds(originUs + request.edit.trimStart), seconds(originUs + trimEnd)).arg(av_get_sample_fmt_name(audio.context->sample_fmt));
+        const auto description = QStringLiteral("[in]atrim=start=%1:end=%2,asetpts=PTS-STARTPTS,aformat=sample_fmts=%3:sample_rates=48000:channel_layouts=stereo[out]").arg(seconds(startUs), seconds(endUs)).arg(av_get_sample_fmt_name(audio.context->sample_fmt));
         AudioGraph audioGraph;
         if (auto e = audioGraph.build(description, input.audio, audioTimeBase, (audio.context->codec->capabilities & AV_CODEC_CAP_VARIABLE_FRAME_SIZE) ? 0 : audio.context->frame_size)) return e;
         avcodec_flush_buffers(input.audio);
         FramePtr frame(av_frame_alloc()), filtered(av_frame_alloc());
+        if (const qint64 leadUs = std::min<qint64>(audioStartUs, endUs) - startUs; leadUs > 0 && input.audio->sample_rate > 0) {
+            // One silent frame at the trim start; asetpts then rebases on it, so the first real sample lands at leadUs.
+            FramePtr silence(av_frame_alloc());
+            silence->format = input.audio->sample_fmt;
+            silence->sample_rate = input.audio->sample_rate;
+            silence->nb_samples = int(av_rescale(leadUs, input.audio->sample_rate, 1000000));
+            silence->pts = av_rescale_q(startUs, microseconds, audioTimeBase);
+            int rc = av_channel_layout_copy(&silence->ch_layout, &input.audio->ch_layout);
+            if (rc >= 0 && silence->nb_samples > 0 && (rc = av_frame_get_buffer(silence.get(), 0)) >= 0) {
+                av_samples_set_silence(silence->extended_data, 0, silence->nb_samples, silence->ch_layout.nb_channels, AVSampleFormat(silence->format));
+                rc = av_buffersrc_add_frame_flags(audioGraph.source, silence.get(), 0);
+            }
+            if (rc < 0) return fail("recording_export_failed", "Cannot pad the start of the clip audio", rc);
+            debugLog(QStringLiteral("export audio lead %1 us of silence").arg(leadUs));
+        }
         qint64 samples = 0;
         auto drain = [&]() -> Error {
             for (;;) {
