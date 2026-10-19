@@ -439,9 +439,13 @@ print('PASS recording bar placement prefers below, above, another monitor, then 
     const {extension} = fixture();
     const overlap = (a, b) => a[0] < b[0] + b[2] && b[0] < a[0] + a[2] && a[1] < b[1] + b[3] && b[1] < a[1] + a[3];
     let moved = null, above = false, parent = residentPid;
+    // The first move is undone once, as Mutter's initial placement does; the extension re-applies it.
+    let hidden = 2, undo = 1;
     const bar = {get_title: () => 'put.gd recording controls', get_pid: () => helperPid,
         get_frame_rect: () => ({x: moved ? moved[0] : 700, y: moved ? moved[1] : 400, width: 400, height: 40}),
-        is_above: () => above, make_above() {above = true;}, move_frame(_user, x, y) {moved = [x, y];}};
+        is_hidden: () => hidden-- > 0, is_above: () => above, make_above() {above = true;},
+        move_frame(_user, x, y) {moved = undo-- > 0 ? [700, 400] : [x, y];}};
+    const settle = async promise => {for (let i = 0; i < 20; i++) {await flush(); tick(50); tick(100);} return promise;};
     context.GLib.file_get_contents = () => [true, new TextEncoder().encode(`${helperPid} (putgd record) S ${parent} 1 1 0`)];
     context.global.get_window_actors = () => [{meta_window: bar}];
     context.global.stage = {width: 1920, height: 1080};
@@ -449,10 +453,10 @@ print('PASS recording bar placement prefers below, above, another monitor, then 
     const before = context.Main.uiGroup.get_children().length;
     const area = [600, 300, 640, 360];
     const frame = state => JSON.stringify({rect: area, kind: 'region', state, pid: helperPid});
-    assert.deepEqual(await bridge(extension, 'ShowRecordingFrameAsync', [frame('ready')]), {version: 1, bar: {placed: true, outside: true, rect: [600, 670, 400, 40]}});
+    assert.deepEqual(await settle(bridge(extension, 'ShowRecordingFrameAsync', [frame('ready')])), {version: 1, bar: {placed: true, outside: true, rect: [600, 670, 400, 40]}});
     assert.equal(above, true);
     assert.equal(context.Main.uiGroup.get_children().length - before, 8);
-    await bridge(extension, 'ShowRecordingFrameAsync', [frame('recording')]);
+    await settle(bridge(extension, 'ShowRecordingFrameAsync', [frame('recording')]));
     const actors = context.Main.uiGroup.get_children().slice(before);
     // Ring (8) and dim strips (7: the bar is cut out of the bottom strip).
     assert.equal(actors.length, 15);

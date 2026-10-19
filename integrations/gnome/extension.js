@@ -1071,13 +1071,28 @@ export default class PutgdExtension extends Extension {
         }
         if (!window)
             return {placed: false, outside: false};
+        const pause = ms => new Promise(resolve => GLib.timeout_add(GLib.PRIORITY_DEFAULT, ms, () => {
+            resolve();
+            return GLib.SOURCE_REMOVE;
+        }));
+        // Mutter places a new window when it is first shown and would undo an
+        // earlier move: wait until it is shown, then confirm the position stays.
+        for (let waited = 0; window.is_hidden() && waited < 1000; waited += 50)
+            await pause(50);
         const frame = window.get_frame_rect();
         const areas = Main.layoutManager.monitors.map((_monitor, index) => rectangle(Main.layoutManager.getWorkAreaForMonitor(index)));
         const target = barPlacement(rect, [frame.width, frame.height], areas);
         if (!window.is_above())
             window.make_above();
-        window.move_frame(true, target.rect[0], target.rect[1]);
-        const actual = rectangle(window.get_frame_rect());
+        let actual = null;
+        for (let attempt = 0; attempt < 5; attempt++) {
+            window.move_frame(true, target.rect[0], target.rect[1]);
+            await pause(100);
+            check(this._enabled, 'helper_unavailable', 'GNOME extension disabled');
+            actual = rectangle(window.get_frame_rect());
+            if (actual[0] === target.rect[0] && actual[1] === target.rect[1])
+                break;
+        }
         return {placed: true, outside: !overlaps(actual, rect), rect: actual};
     }
 
