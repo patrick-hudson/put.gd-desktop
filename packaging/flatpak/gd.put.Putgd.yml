@@ -2,9 +2,10 @@
 # release input: the release jobs, assets and checksums do not use it.
 # Findings, permissions and the measured per-desktop result: docs/flatpak.md.
 #
-# Build from a clean commit (the putgd module clones committed HEAD of ../..):
+# Build from a clean clone, outside it (the putgd module copies ../.., and its
+# Git metadata gives the build identity):
 #   flatpak-builder --user --install --force-clean --repo=repo build \
-#     packaging/flatpak/gd.put.Putgd.yml
+#     put.gd/packaging/flatpak/gd.put.Putgd.yml
 #
 # The app ID is provisional; Patrick chooses the final one before publication.
 id: gd.put.Putgd
@@ -151,5 +152,11 @@ modules:
       - install -d /app/share/putgd/gnome-extension
       - cp -a /app/share/gnome-shell/extensions/putgd@put.gd/. /app/share/putgd/gnome-extension/
     sources:
-      - type: git
+      - type: dir
         path: ../..
+        skip:
+          - build
+          - work
+          - repo
+          - .flatpak-builder
+          - .claude
