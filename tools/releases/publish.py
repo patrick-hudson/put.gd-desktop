@@ -173,7 +173,7 @@ def run_provenance():
 def publish_nightly(args, release, listed):
     """Publish one automated nightly, retaining exact run and byte evidence."""
     if set(listed) | {'SHA256SUMS'} != public_inventory(args.tag):
-        raise ValueError('Collected nightly inventory must contain all thirteen public assets')
+        raise ValueError('Collected nightly inventory must contain all fourteen public assets')
     producer = run_provenance()
     api = GitHub(producer['repository'])
     expected = {**listed, 'SHA256SUMS': sha256(args.directory / 'SHA256SUMS')}
@@ -253,7 +253,7 @@ def main():
             raise ValueError('Duplicate collected release checksum')
         listed[name] = digest
     if set(listed) | {'SHA256SUMS'} != public_inventory(args.tag):
-        raise ValueError('Collected release inventory must include all thirteen public assets, including Proton and AppImage media sources')
+        raise ValueError('Collected release inventory must include all fourteen public assets, including Proton and AppImage media sources')
     if args.nightly:
         publish_nightly(args, release, listed)
         return

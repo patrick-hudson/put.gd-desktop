@@ -7,7 +7,7 @@ through the Actions API.
 | Workflow | Runs on | Does |
 | --- | --- | --- |
 | `ci.yml` | every pull request, pushes to `nightly`, manual runs; called by nightly and release | contracts, Linux tests, Windows compile, packages |
-| `package.yml` | called by `ci.yml` | three native packages, AppImage, and with a tag the collected `release-assets` |
+| `package.yml` | called by `ci.yml` | four native packages, AppImage, and with a tag the collected `release-assets` |
 | `nightly.yml` | 05:23 UTC daily and manual | skip unchanged source, or tag, test, package and publish a nightly |
 | `release.yml` | pushes to `main` and manual | cut a candidate (or stable on request), test, package and stage a draft |
 
@@ -59,8 +59,8 @@ using the official Qt installation and pinned QtKeychain/AWS SDK builds. The S3
 wire parser links Qt Network there because it uses QHostAddress. macOS is not
 built in CI.
 
-**packages** calls `package.yml`. It builds and audits the Ubuntu 24.04 and
-26.04 DEBs, the Fedora 44 RPM and the AppImage, and compiles the curated source
+**packages** calls `package.yml`. It builds and audits the Ubuntu 24.04,
+Ubuntu 26.04 and Debian 13 DEBs, the Fedora 44 RPM and the AppImage, and compiles the curated source
 export on Ubuntu 24.04. With a release tag, `collect` verifies and assembles the
 public asset set. See [releases](release.md).
 

@@ -7,6 +7,7 @@ for local bulk artifacts and [verification](../verification.md) for limitations.
 | Topic | Starting point |
 | --- | --- |
 | Screen recording in every package (issue #50 packaging) | [Installed DEB/RPM and AppImage runs, AppImage size and memory](2026-10-18-recording-packaging.md) |
+| Debian 13 release DEB (issue #85) | [CI build and audit, unchanged Ubuntu/Fedora packages, d69 install, recording and uninstall](2026-10-19-debian13-deb.md) |
 | AppImage native Wayland windows (Qt xdg-shell, decorations) | [Builder check, d69/f44/k72 desktop acceptance](2026-10-19-appimage-native-wayland.md) |
 | AppImage screen recording on Wayland after native windows (nightly `9042776`) | [d69/f44 Wayland and k72 X11 runs, placement, native windows, motion vs frozen controls](2026-10-19-appimage-recording-wayland.md) |
 | Settings save crash on Debian 13 (dangling `QJsonValueRef`) | [Suites, source contract and Debian Plasma before/after](2026-10-19-settings-validate-uaf.md) |

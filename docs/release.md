@@ -27,7 +27,7 @@ with every commit on `nightly`; for example `v0.1.1-nightly.312`, titled
 "put.gd 0.1.1 nightly 312". The tag, base, full commit, tree and count must match
 the clean source. Nightlies before 2026-10-18 used `vBASE-dev.COUNT.UTC+gSHORT`.
 Nightlies never replace GitHub's Latest stable release. Every channel publishes
-all thirteen individual downloads listed below, including both raw DEBs, the RPM,
+all fourteen individual downloads listed below, including the three raw DEBs, the RPM,
 the exact compiled curated source archive and the AppImage's media source.
 
 ### Nightly
@@ -142,6 +142,7 @@ and nightly coverage classes continue to apply.
 | --- | --- | --- |
 | Ubuntu 24.04 / Mint 22.3 DEB | pinned Ubuntu 24.04 container | distro Qt 6.4.2 minimum API |
 | Ubuntu 26.04 / Kubuntu DEB | pinned Ubuntu 26.04 container | distro Qt and LayerShellQt |
+| Debian 13 DEB | pinned Debian 13 container | distro Qt 6.8, LayerShellQt and FFmpeg 7.1 |
 | Fedora 44 RPM | pinned Fedora 44 container | distro Qt and LayerShellQt |
 | x86_64 AppImage | Ubuntu 24.04, official Qt 6.8.3, locked ECM/LayerShellQt | dynamically bundled Qt/plugins |
 
@@ -154,8 +155,10 @@ substitute a newer-glibc build or omit KDE region support to produce an asset.
 Screen recording ships in every installer. The DEBs and the RPM depend on the
 distro's GStreamer plugin packages and link the distro FFmpeg; the RPM also
 recommends `gstreamer1-plugin-openh264` and `openh264`, Cisco's library that
-replaces Fedora's `noopenh264` placeholder. The Ubuntu DEBs require FFmpeg
-sonames that Debian 13 does not ship (see the
+replaces Fedora's `noopenh264` placeholder. Each DEB therefore installs only
+on the release it was built for: the Ubuntu 24.04 and 26.04 DEBs need
+`libavcodec60` and `libavcodec62`, which Debian 13 does not ship, so Debian 13
+has its own DEB built against its `libavcodec61` (issue #85; see the
 [acceptance matrix](acceptance-matrix.md#screen-recording-rows)).
 
 The AppImage builds `putgd-record` against a pinned FFmpeg configured with
@@ -199,11 +202,11 @@ native support claim.
 ## GitHub downloads and source
 
 The GitHub Release page publishes each installer as an individual download:
-Ubuntu 24.04 and 26.04 DEBs, the Fedora 44 RPM, and the x86_64 AppImage. It also
+Ubuntu 24.04, Ubuntu 26.04 and Debian 13 DEBs, the Fedora 44 RPM, and the x86_64 AppImage. It also
 publishes `putgd-VERSION-source.tar.gz`, the AppImage's
 `putgd-VERSION-appimage-media-source.tar.gz`, the GNOME extension ZIP, full build
 receipts, the Proton source catalog and two source transport parts, and
-`SHA256SUMS`. `putgd-VERSION-release.zip` contains the nine smaller underlying
+`SHA256SUMS`. `putgd-VERSION-release.zip` contains the ten smaller underlying
 files and an inner checksum list. The two large source parts stay separate; the
 outer checksum list covers them and the combined ZIP. ZIP timestamps and modes are fixed from the source commit,
 so repeating collection preserves the bytes needed to resume a draft. Extract the
@@ -271,16 +274,16 @@ change. Its receipt explicitly records desktop acceptance pending after assembly
 
 ## GitHub build and publication
 
-`.github/workflows/package.yml` builds and audits the three native packages and
+`.github/workflows/package.yml` builds and audits the four native packages and
 the AppImage. CI calls it on pull requests that touch packaging, CMake, Proton
 or CI inputs, on every push to `nightly`, and from the nightly and release runs
 with an exact tag. Builders are ABI-separated, keep read-only permissions and
 use the normal presets rather than an alternate build system.
 
-With a tag, the `collect` job requires the three native assets and the AppImage
+With a tag, the `collect` job requires the four native assets and the AppImage
 from one clean tagged commit/tree/count/version. It recalculates each artifact's
 SHA256 against its build receipt and assigns distro-specific filenames so the
-two DEBs cannot overwrite each other. It uploads the verified set as the
+three DEBs cannot overwrite each other. It uploads the verified set as the
 `release-assets` artifact. Only the nightly `publish` job and the release
 `draft` job write releases. Both run after every CI and package job in the same
 run passed, and both record that run in the release notes and their receipt.

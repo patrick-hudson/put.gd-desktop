@@ -1,7 +1,7 @@
 # Build
 
 Linux baseline: GCC 13, CMake 3.24+, Ninja, Qt 6.4.2+, QtKeychain 0.14.2+.
-Install normal distribution development packages (Ubuntu/Mint):
+Install normal distribution development packages (Ubuntu/Mint/Debian 13):
 
 ```sh
 sudo apt-get update
@@ -86,6 +86,12 @@ cmake --build --preset release
 ctest --preset release
 (umask 022; cpack --config build/release/CPackConfig.cmake -G DEB -B build/release/packages-fresh)
 ```
+
+Build each DEB on the release it targets. `dpkg-shlibdeps` writes the
+build host's FFmpeg sonames into `Depends`, so an Ubuntu-built DEB cannot
+install on Debian 13 and the reverse. The release matrix builds Ubuntu 24.04,
+Ubuntu 26.04 and Debian 13 DEBs in their own containers
+([release.md](release.md#formats-and-build-environments)).
 
 Choose an absent output directory for each package attempt. CPack can otherwise
 reuse staging directories created under a permissive host umask. Inspect the

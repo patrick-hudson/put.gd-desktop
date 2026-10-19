@@ -111,7 +111,7 @@ class Workflows(unittest.TestCase):
     def test_packages_build_every_format_and_collect_only_tagged_runs(self):
         packages = workflow('package.yml')
         self.assertIn('  workflow_call:\n', packages)
-        for text in ('name: ubuntu24.04', 'name: ubuntu26.04', 'name: fedora44',
+        for text in ('name: ubuntu24.04', 'name: ubuntu26.04', 'name: debian13', 'name: fedora44',
                      'python3 tools/releases/native.py', 'bash tools/releases/build-appimage.sh',
                      'python3 tools/releases/check_source_build.py', "if: matrix.name == 'ubuntu24.04'"):
             self.assertIn(text, packages)

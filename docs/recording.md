@@ -523,17 +523,17 @@ than all of them.
 
 | Package | Live H.264, in preference order | Export H.264 | Setup |
 | --- | --- | --- | --- |
-| DEB (Ubuntu 24.04 / Mint 22.3, Ubuntu 26.04 / Kubuntu) | `vah264lpenc`/`vah264enc` (plugins-bad, or plugins-extra on 26.04), `vaapih264enc` (Recommends `gstreamer1.0-vaapi`), `x264enc` (Recommends `gstreamer1.0-plugins-ugly`), `openh264enc` (plugins-bad, a Depends) | `h264_nvenc`, `h264_vaapi`, `libx264`, `libopenh264` | none: plugins-bad always brings `openh264enc` and `voaacenc` |
+| DEB (Ubuntu 24.04 / Mint 22.3, Ubuntu 26.04 / Kubuntu, Debian 13) | `vah264lpenc`/`vah264enc` (plugins-bad, or plugins-extra on 26.04), `vaapih264enc` (Recommends `gstreamer1.0-vaapi`), `x264enc` (Recommends `gstreamer1.0-plugins-ugly`), `openh264enc` (plugins-bad, a Depends) | `h264_nvenc`, `h264_vaapi`, `libx264`, `libopenh264` | none: plugins-bad always brings `openh264enc` and `voaacenc` |
 | RPM (Fedora 44) | `vah264*enc` (stock Intel and AMD drivers have no H.264 encode; RPM Fusion's do), `openh264enc` (Recommends `gstreamer1-plugin-openh264`) | `h264_nvenc`, `h264_vaapi`, `libopenh264` | Fedora Workstation ships `libopenh264` as the `noopenh264` placeholder until Cisco's `openh264` replaces it: `sudo dnf install openh264 gstreamer1-plugin-openh264`. The RPM recommends both, so a default `dnf install` brings them when the `fedora-cisco-openh264` repository is on (Fedora's default); if it was turned off, run `sudo dnf config-manager setopt fedora-cisco-openh264.enabled=1` first |
 | AppImage | `vah264lpenc`/`vah264enc`, `vaapih264enc` through the host's VA-API driver, then the bundled `x264enc` | `h264_nvenc`, `h264_vaapi` through the host's driver, then the bundled `libx264`; H.265 `hevc_nvenc`, `hevc_vaapi`, then the bundled `libx265` | none: the bundled x264/x265 cover hosts whose driver cannot encode |
 
 On Fedora with the placeholder the probe reports `h264_encoder_unusable`
 (`openh264enc`: "Could not initialize supporting library"), FFmpeg's
 `libopenh264` decoder and encoder fail to open, and the hint names the
-command above. A Debian 13 install uses a DEB built on Debian with
-`tools/releases/native.py`: the Ubuntu DEBs link FFmpeg 6.1 (24.04) or 8.0
-(26.04), and Debian 13 ships 7.1, so neither installs there now that the
-helper is packaged.
+command above. Debian 13 has its own release DEB
+(`putgd-VERSION-debian13-x86_64.deb`), built against Debian's FFmpeg 7.1: the
+Ubuntu DEBs link FFmpeg 6.1 (24.04) or 8.0 (26.04), so neither installs there
+now that the helper is packaged.
 
 ### AppImage runtime
 
