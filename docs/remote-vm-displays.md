@@ -82,8 +82,9 @@ machine: the wall draws them as one card with the screens side by side, ordered 
 {"name": "Cinnamon VM RUN_ID - 2 heads", "port": 5991, "group": "RUN_ID", "head": 1}
 ```
 
-Each screen keeps its own **Enable KB + Mouse** toggle, and enabling one head's input turns it
-off on the card's other heads. **Expand** shows the whole card. Local QEMU processes need no
+A card has one **Enable KB + Mouse** toggle, which gates every head of that machine: enabling
+it turns input on for all heads, and disabling turns it off for all. Cards start view-only, and
+a head's connect or reconnect returns its machine to view-only. **Expand** shows the whole card. Local QEMU processes need no
 entries: the wall finds every `-vnc` listener of a process and groups them by its `head=`
 option. Entries without `group` and the physical-desktop tiles are drawn as before.
 
