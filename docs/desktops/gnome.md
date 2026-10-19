@@ -84,6 +84,18 @@ The helper exports `org.putgd.Gnome50` at `/org/gnome/Shell/Extensions/Putgd` on
 
 Shell hotkeys freeze their external window actor/frame or clipboard revision inside the compositor callback, then dispatch a prepared UUID ticket to the adapter. GUI/CLI requests freeze through Prepare before journal work yields. Protocol version 1 uses opaque UUID request IDs, frozen preparation tickets, one-time acquisition, explicit cancellation/release, bounded PNG/MIME bytes, and at most 64 KiB decoded bytes per base64 chunk. Metadata includes exact byte lengths and each capture frame's identity, logical/native rectangles, density, and orientation. The adapter validates metadata before decoding on a worker. Clipboard revisions come from CLIPBOARD owner changes without reading payloads. Result transfer checks a frozen CLIPBOARD revision and copy epoch at ownership commit, so changed owners or newer invocations return `copy_suppressed`. Missing endpoints, incompatible protocol/Shell versions, stale tickets, vanished external targets, changed monitor layouts, unsupported offers, oversized offers, cancellation, and transfer deadlines produce distinct actionable results.
 
+Window capture refuses put.gd's own windows with `capture_target` before any
+layout work. A focused window is put.gd's when Mutter's client PID is the
+authenticated resident's, the views helper's registered through
+`SetUiProcess`, or that of any other process whose parent (from
+`/proc/PID/stat`) is the resident. The last rule covers the Edit & upload
+editor (`putgd-ui --edit-image`) and the recording helper, which never register
+(#103). The resident starts no external application: links and folders are
+opened by the views helper through the desktop, so they are never the
+resident's direct children. A sandboxed resident needs the app-ID
+rule described in [Flatpak](../flatpak.md), change 2, because its PIDs are not
+host PIDs; these native PID rules stay for native callers.
+
 Recording protocol 1 (`recordingVersion: 1` in `Hello`) serves screen
 recording, which must not show its own surfaces on GNOME. `SelectArea(id)`
 runs the same St selector as a region screenshot and answers only the

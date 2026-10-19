@@ -715,9 +715,7 @@ export default class PutgdExtension extends Extension {
         // before display metadata retrieval or native-app acceptance yields.
         if (action === 'window') {
             const window = global.display.focus_window;
-            const ownPid = this._clientPid(sender);
-            const uiPid = this._uiProcessOwner === sender ? this._uiProcess : 0;
-            check(window && window.get_pid() !== ownPid && (!uiPid || window.get_pid() !== uiPid),
+            check(window && !this._residentWindow(window, sender),
                 'capture_target', 'Focus an external application window before capture');
             const actor = window.get_compositor_private();
             check(actor && !window.minimized, 'capture_target', 'Focused external window is unavailable');
@@ -760,6 +758,16 @@ export default class PutgdExtension extends Extension {
 
     PrepareAsync([id, action], invocation) {
         this._run(invocation, sender => this._prepare(id, action, sender));
+    }
+
+    // The resident, its registered views helper, and every other process it
+    // started directly (the Edit & upload editor, the recording helper) own
+    // put.gd's windows. Mutter's PID comes from the Wayland socket.
+    _residentWindow(window, sender) {
+        const pid = window.get_pid();
+        const resident = this._clientPid(sender);
+        const uiPid = this._uiProcessOwner === sender ? this._uiProcess : 0;
+        return pid === resident || (uiPid > 0 && pid === uiPid) || (pid > 0 && this._parentPid(pid) === resident);
     }
 
     _clientPid(sender) {
