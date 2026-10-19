@@ -8,6 +8,7 @@
 #include <QDBusContext>
 #include <QElapsedTimer>
 #include <QFileInfo>
+#include <QProcess>
 #include <QtTest>
 #include <QClipboard>
 #include <QGuiApplication>
@@ -28,6 +29,7 @@
 #include <xcb/xcb_keysyms.h>
 #include <xcb/xcb.h>
 #include <xcb/xtest.h>
+#include <unistd.h>
 using namespace putgd;
 class RegionPaintProbe final:public QObject {
 public:
@@ -400,6 +402,25 @@ private slots:
   capture.setUiProcess(helperPid);QVERIFY(capture.unchanged(frozen,error));QVERIFY(!error);
   capture.setUiProcess(helperPid+1);error={};capture.freeze("window",error);QVERIFY(!error);
   capture.setUiProcess(0);xcb_delete_property(c,root,active);
+ }
+ void residentChildWindowRejectedWithoutRegistration() {
+  // The Edit & upload editor never registers; this process stands in for the
+  // resident that started it, so the window of its unregistered child is refused.
+  QProcess editor;editor.start("sleep",{"30"});QVERIFY(editor.waitForStarted());
+  QProcess finished;finished.start("true",{});QVERIFY(finished.waitForStarted());const auto gone=uint32_t(finished.processId());QVERIFY(finished.waitForFinished());
+  X11DesktopFixture desktop;QVERIFY(desktop.window);
+  auto* c=desktop.connection;const auto root=xcb_setup_roots_iterator(xcb_get_setup(c)).data->root;
+  auto atom=[&](const char* name){auto* value=xcb_intern_atom_reply(c,xcb_intern_atom(c,0,strlen(name),name),nullptr);const auto result=value?value->atom:xcb_atom_t(0);free(value);return result;};
+  const auto active=atom("_NET_ACTIVE_WINDOW"),pidAtom=atom("_NET_WM_PID");
+  auto own=[&](uint32_t pid){xcb_change_property(c,XCB_PROP_MODE_REPLACE,desktop.window,pidAtom,XCB_ATOM_CARDINAL,32,1,&pid);desktop.inputFocus();};
+  xcb_change_property(c,XCB_PROP_MODE_REPLACE,root,active,XCB_ATOM_WINDOW,32,1,&desktop.window);
+  own(uint32_t(editor.processId()));
+  X11Capture capture;Error error;capture.freeze("window",error);QCOMPARE(error.code,QString("capture_target"));
+  capture.setUiProcess(424242);error={};capture.freeze("window",error);QCOMPARE(error.code,QString("capture_target"));capture.setUiProcess(0);
+  // A process this one didn't start, and a PID with no /proc entry, stay external.
+  own(uint32_t(getppid()));error={};auto frozen=capture.freeze("window",error);QVERIFY2(!error,qPrintable(error.message));QCOMPARE(frozen.window,desktop.window);
+  own(gone);error={};frozen=capture.freeze("window",error);QVERIFY2(!error,qPrintable(error.message));QCOMPARE(frozen.window,desktop.window);
+  xcb_delete_property(c,root,active);editor.kill();editor.waitForFinished();
  }
  void activeWindowFrozenAndMovedTargetRejected() {
   auto* c=xcb_connect(nullptr,nullptr);auto* screen=xcb_setup_roots_iterator(xcb_get_setup(c)).data;auto root=screen->root;

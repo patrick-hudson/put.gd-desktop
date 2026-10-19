@@ -44,6 +44,19 @@ class Selection(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertSelects([path], True, True)
 
+    def test_core_app_and_their_tests_select_the_sanitizer_job(self):
+        for path in ('src/core/Settings.cpp', 'src/app/OperationService.cpp', 'tests/unit/test_settings.cpp',
+                     'tests/integration/test_storage_locations.cpp', 'tests/fixtures/U2Fixtures.h',
+                     'CMakeLists.txt', 'CMakePresets.json', 'cmake/Proton.cmake', '.github/workflows/ci.yml',
+                     'tools/ci/sdk_cache.py'):
+            with self.subTest(path=path):
+                self.assertTrue(changes.select([path])['sanitizers'])
+        for path in ('src/ui/SettingsWindow.cpp', 'src/storage/s3/S3Driver.cpp', 'tests/gui/test_settings.cpp',
+                     'tests/unit/test_portable_appimage.py', 'packaging/appimage/AppRun',
+                     '.github/workflows/package.yml', 'docs/ci.md'):
+            with self.subTest(path=path):
+                self.assertFalse(changes.select([path])['sanitizers'])
+
     def test_mixed_change_takes_the_union(self):
         self.assertSelects(['docs/ci.md', 'src/main.cpp'], True, False)
         self.assertSelects(['docs/ci.md', 'packaging/appimage/AppRun'], True, True)

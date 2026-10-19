@@ -77,6 +77,28 @@ class Workflows(unittest.TestCase):
         self.assertNotIn('sdk-source.sh', linux)
         self.assertIn("github.event_name != 'pull_request'", linux.split('Save compiler cache', 1)[1])
 
+    def test_sanitizer_job_tests_against_instrumented_qtcore_outside_the_required_summary(self):
+        ci = workflow('ci.yml')
+        sanitizers = job(ci, 'sanitizers')
+        for text in ("if: needs.changes.outputs.sanitizers == 'true'", 'container: ubuntu:26.04',
+                     'clang libclang-rt-dev llvm', 'bash tools/ci/provision-qt-asan.sh build/qt-asan',
+                     'cmake --preset clang-asan', 'ctest --preset clang-asan',
+                     'LD_LIBRARY_PATH="$PWD/build/qt-asan/lib"', 'runuser -u putgd-ci',
+                     'python3 tools/ci/ctest_preflight.py --build build/clang-asan'):
+            self.assertIn(text, sanitizers)
+        self.assertIn("github.event_name != 'pull_request'", sanitizers.split('Save compiler cache', 1)[1])
+        self.assertNotIn('sanitizers', job(ci, 'ci'))
+        presets = json.loads((ROOT / 'CMakePresets.json').read_text())
+        configure = {preset['name']: preset for preset in presets['configurePresets']}
+        self.assertEqual(configure['asan']['cacheVariables'], {'PUTGD_SANITIZER': 'address-undefined'})
+        self.assertEqual(configure['clang-asan']['inherits'], 'asan')
+        self.assertEqual(configure['clang-asan']['cacheVariables']['CMAKE_CXX_COMPILER'], 'clang++')
+        test = {preset['name']: preset for preset in presets['testPresets']}['clang-asan']
+        self.assertIn('halt_on_error=1', test['environment']['UBSAN_OPTIONS'])
+        for name in ('settings_contract', 'operations_contract', 'history_contract',
+                     'storage_locations_integration'):
+            self.assertRegex(name, test['filter']['include']['name'])
+
     def test_linux_tests_reuse_earlier_durations_per_distribution(self):
         linux = job(workflow('ci.yml'), 'linux')
         restore, rest = linux.split('- name: Restore test durations', 1)[1].split('- name: Test\n', 1)
