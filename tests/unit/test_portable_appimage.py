@@ -175,12 +175,23 @@ class DeploymentRejectionTest(unittest.TestCase):
         inside = str(self.app / "usr/lib/gstreamer-1.0")
         good = {"gstreamer": {"available": True, "version": "1.24.2", "elements": {"ximagesrc": "1.24.2"},
                               "pluginDirectories": [inside]},
-                "ffmpeg": {"h264Decoder": {"usable": True, "name": "h264"}}, "formats": ["webm", "gif", "webp"]}
+                "ffmpeg": {"h264Decoder": {"usable": True, "name": "h264"}}, "formats": ["mp4", "webm", "gif", "webp"],
+                "exportEncoders": {"h264": ["libx264"], "h265": ["libx265"], "vp9": ["libvpx-vp9"]}}
+        good["gstreamer"]["usableH264Encoders"] = ["x264enc"]
         self.assertEqual(portable.audit_media(self.app, media, json.dumps(good))["pluginDirectories"], [inside])
         leaked = json.loads(json.dumps(good))
         leaked["gstreamer"]["pluginDirectories"].append("/usr/lib/x86_64-linux-gnu/gstreamer-1.0")
         with self.assertRaisesRegex(ValueError, "outside the image"):
             portable.audit_media(self.app, media, json.dumps(leaked))
+        # Without a GPU the bundled x264/x265 must be what works.
+        no_fallback = json.loads(json.dumps(good))
+        no_fallback["exportEncoders"]["h265"] = []
+        with self.assertRaisesRegex(ValueError, "libx264/libx265"):
+            portable.audit_media(self.app, media, json.dumps(no_fallback))
+        no_live = json.loads(json.dumps(good))
+        no_live["gstreamer"]["usableH264Encoders"] = []
+        with self.assertRaisesRegex(ValueError, "x264enc"):
+            portable.audit_media(self.app, media, json.dumps(no_live))
         missing = json.loads(json.dumps(good))
         missing["gstreamer"]["elements"]["ximagesrc"] = None
         with self.assertRaisesRegex(ValueError, "elements missing"):

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "purpose": "Screen recording runtime inside the AppImage: putgd-record's GStreamer capture plugins and its private FFmpeg export libraries (docs/recording.md, packaging/appimage/README.md).",
+  "purpose": "Screen recording runtime inside the AppImage: putgd-record's GStreamer capture plugins and its private FFmpeg export libraries (docs/recording.md, packaging/appimage/README.md). Host GPU encoders come first; the bundled x264/x265 are the fallback. The image is a GPL-2.0-or-later combined work; its corresponding source is the release's appimage-media-source asset (tools/releases/appimage_media_sources.py).",
   "gstreamer": {
     "plugins": [
       "coreelements",
@@ -18,6 +18,7 @@
       "videoparsersbad",
       "va",
       "vaapi",
+      "x264",
       "voaacenc"
     ],
     "requiredElements": [
@@ -30,7 +31,8 @@
       "matroskamux",
       "h264parse",
       "aacparse",
-      "voaacenc"
+      "voaacenc",
+      "x264enc"
     ]
   },
   "hostLibraries": [
@@ -47,8 +49,15 @@
     "libva.so.2",
     "libva-drm.so.2"
   ],
+  "gplLibraries": [
+    "libx264.so.*",
+    "libx265.so.*"
+  ],
+  "gplSourcePackages": [
+    "gst-plugins-ugly1.0"
+  ],
   "ffmpeg": {
-    "license": "LGPL-2.1-or-later",
+    "license": "GPL-2.0-or-later",
     "configure": [
       "--enable-shared",
       "--disable-static",
@@ -61,6 +70,7 @@
       "--disable-everything",
       "--disable-network",
       "--disable-xlib",
+      "--enable-gpl",
       "--enable-pthreads",
       "--enable-avcodec",
       "--enable-avformat",
@@ -73,13 +83,15 @@
       "--enable-libvpx",
       "--enable-libwebp",
       "--enable-libopus",
+      "--enable-libx264",
+      "--enable-libx265",
       "--enable-protocol=file",
       "--enable-demuxer=matroska",
       "--enable-muxer=mp4,webm,gif,webp,matroska",
       "--enable-decoder=h264,aac",
       "--enable-parser=h264,aac,vp9,opus",
       "--enable-bsfs",
-      "--enable-encoder=h264_vaapi,hevc_vaapi,h264_nvenc,hevc_nvenc,libvpx_vp9,gif,libwebp_anim,aac,libopus",
+      "--enable-encoder=h264_vaapi,hevc_vaapi,h264_nvenc,hevc_nvenc,libx264,libx265,libvpx_vp9,gif,libwebp_anim,aac,libopus",
       "--enable-filter=buffer,buffersink,abuffer,abuffersink,null,anull,trim,atrim,setpts,asetpts,format,aformat,aresample,scale,crop,avgblur,drawbox,split,overlay,fps,palettegen,paletteuse"
     ]
   }

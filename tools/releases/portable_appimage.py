@@ -226,6 +226,63 @@ def stage_host_fallbacks(appdir: Path, media: dict) -> list[str]:
     return copied
 
 
+def gpl_components(appdir: Path, media: dict) -> list[dict]:
+    """The bundled GPL libraries and the plugin linking them, with their distro packages.
+
+    The release publishes these source packages (appimage_media_sources.py)."""
+    cache = subprocess.run(["/sbin/ldconfig", "-p"], check=True, text=True, capture_output=True).stdout
+    origins = {}
+    for line in cache.splitlines():
+        if " => " in line and "x86-64" in line:
+            origins.setdefault(line.split()[0], Path(line.split(" => ", 1)[1].strip()))
+    plugin_dir = pkg_config_variable("gstreamer-1.0", "pluginsdir")
+    files = [(path, origins.get(path.name), False) for pattern in media["gplLibraries"]
+             for path in sorted((appdir / "usr/lib").glob(pattern))]
+    # The one bundled plugin that links a GPL library (x264enc).
+    files.append((media_layout(appdir)["plugins"] / "libgstx264.so", plugin_dir / "libgstx264.so", True))
+    components, seen = [], set()
+    for path, origin, plugin in files:
+        if origin is None or not path.is_file():
+            raise ValueError("Cannot identify the distro origin of " + path.name)
+        owner = subprocess.run(["dpkg-query", "-S", str(origin.resolve())], text=True, capture_output=True)
+        if owner.returncode:
+            owner = subprocess.run(["dpkg-query", "-S", str(origin)], check=True, text=True, capture_output=True)
+        package = owner.stdout.split(": ", 1)[0].split(":", 1)[0]
+        fields = subprocess.run(["dpkg-query", "-W", "-f", "${Version}\t${source:Package}\t${source:Version}", package],
+                                check=True, text=True, capture_output=True).stdout.split("\t")
+        record = {"file": path.name, "binaryPackage": package, "binaryVersion": fields[0],
+                  "sourcePackage": fields[1], "sourceVersion": fields[2]}
+        if plugin and record["sourcePackage"] not in media["gplSourcePackages"]:
+            raise ValueError("Unexpected source package for " + path.name + ": " + record["sourcePackage"])
+        key = (record["sourcePackage"], record["sourceVersion"])
+        record["publishSource"] = key not in seen
+        seen.add(key)
+        components.append(record)
+    if not any(item["file"].startswith("libx264.so") for item in components) or not any(item["file"].startswith("libx265.so") for item in components):
+        raise ValueError("The image must bundle libx264 and libx265")
+    return components
+
+
+def write_gpl_notice(appdir: Path, components: list[dict], ffmpeg: dict, version: str) -> Path:
+    """State the image's GPL terms and where its corresponding source is."""
+    lines = ["put.gd AppImage " + version, "",
+             "This image bundles GPL-licensed codec libraries for screen recording, so the image as a",
+             "whole is distributed under the GNU General Public License, version 2 or later",
+             "(usr/share/doc/putgd/bundled-licenses/ffmpeg/COPYING.GPLv2). put.gd's own code stays",
+             "MIT licensed; every bundled component keeps its own license, listed under",
+             "usr/share/doc/putgd/bundled-licenses.", "",
+             "Corresponding source: the release asset putgd-" + version + "-appimage-media-source.tar.gz",
+             "(FFmpeg, x264, x265 and the GStreamer plugin linking x264) and putgd-" + version + "-source.tar.gz",
+             "(put.gd), published with this image on the project's GitHub release.", "",
+             "FFmpeg " + ffmpeg["release"] + " (" + ffmpeg["repository"] + " commit " + ffmpeg["commit"] + "),",
+             "configured as recorded in packaging/appimage/media.json.", ""]
+    lines += ["%s %s (Ubuntu source package %s %s)" % (item["binaryPackage"], item["binaryVersion"],
+              item["sourcePackage"], item["sourceVersion"]) for item in components]
+    notice = appdir / "usr/share/doc/putgd/APPIMAGE-GPL-NOTICE.txt"
+    notice.write_text("\n".join(lines) + "\n")
+    return notice
+
+
 def audit_media(appdir: Path, media: dict, probe: str) -> dict:
     """Require the relocated helper to see only image plugins and the pinned FFmpeg."""
     capabilities = json.loads(probe)
@@ -242,9 +299,16 @@ def audit_media(appdir: Path, media: dict, probe: str) -> dict:
     ffmpeg = capabilities.get("ffmpeg", {})
     if not ffmpeg.get("h264Decoder", {}).get("usable"):
         raise ValueError("Bundled FFmpeg cannot open its H.264 decoder")
-    for name in ("webm", "gif", "webp"):
+    for name in ("mp4", "webm", "gif", "webp"):
         if name not in capabilities.get("formats", []):
             raise ValueError("Bundled FFmpeg cannot export " + name)
+    # Without a GPU (the builder), the bundled fallbacks must be what works:
+    # x264 for live capture, libx264 and libx265 for MP4 export.
+    exportable = capabilities.get("exportEncoders", {})
+    if "libx264" not in exportable.get("h264", []) or "libx265" not in exportable.get("h265", []):
+        raise ValueError("Bundled libx264/libx265 export encoders do not open")
+    if "x264enc" not in gst.get("usableH264Encoders", []):
+        raise ValueError("Bundled x264enc does not encode")
     library = appdir / "usr/lib"
     bundled_host = sorted(path.name for pattern in media["hostLibraries"] for path in library.glob(pattern))
     if bundled_host:
@@ -253,7 +317,8 @@ def audit_media(appdir: Path, media: dict, probe: str) -> dict:
             "elements": {name: gst["elements"][name] for name in media["gstreamer"]["requiredElements"]},
             "ffmpeg": {key: ffmpeg.get(key) for key in ("avcodec", "avformat", "avfilter", "avutil")},
             "h264Decoder": ffmpeg["h264Decoder"]["name"], "formats": capabilities.get("formats"),
-            "exportEncoders": capabilities.get("exportEncoders"),
+            "codecs": capabilities.get("codecs"), "exportEncoders": exportable,
+            "usableH264Encoders": gst.get("usableH264Encoders"),
             "hostLibraries": media["hostLibraries"], "hostLibrariesBundled": False}
 
 
@@ -397,6 +462,8 @@ def main() -> int:
     subprocess.run([str(executables["linuxdeploy-x86_64.AppImage"]), "--appdir", str(appdir),
                     "--library", str(layer), *excludes], check=True, env=environment)
     fallbacks = stage_host_fallbacks(appdir, media)
+    gpl = gpl_components(appdir, media)
+    write_gpl_notice(appdir, gpl, lock["buildInputs"]["ffmpeg"], args.version)
     # linuxdeploy may wrap custom launchers after each pass. Install ours last:
     # its environment and KDE supervision are the application runtime contract.
     shutil.copy2(ROOT / "packaging/appimage/AppRun", appdir / "AppRun")
@@ -422,7 +489,8 @@ def main() -> int:
                             "bytes": target.stat().st_size, "mode": "0755"},
                "postDeploymentAudit": deployed,
                "recordingRuntime": {"media": media, "hostFallbackLibraries": fallbacks,
-                                    "ffmpeg": lock["buildInputs"]["ffmpeg"]},
+                                    "ffmpeg": lock["buildInputs"]["ffmpeg"], "gplComponents": gpl,
+                                    "license": "GPL-2.0-or-later combined work"},
                "bundledSourceLicenses": licenses, "distroLicensePackages": distro_licenses,
                "inventory": [{"path": str(path.relative_to(appdir)), "sha256": digest(path),
                               "bytes": path.stat().st_size} for path in sorted(files)],

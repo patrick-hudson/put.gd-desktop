@@ -110,7 +110,8 @@ QJsonObject probeMedia() {
     // Fedora's placeholder and a registered h264_vaapi may lack a driver profile.
     QJsonObject exportFailures;
     auto usable = [&](const QJsonArray& names) { return QJsonArray::fromStringList(usableExportEncoders(strings(names), exportFailures)); };
-    result["exportEncoders"] = QJsonObject{{"h264", usable(list({"h264_nvenc", "libx264", "h264_vaapi", "libopenh264"}))}, {"h265", usable(list({"hevc_nvenc", "libx265", "hevc_vaapi"}))}, {"vp9", usable(list({"libvpx-vp9"}))}};
+    // In the export's preference order: the machine's GPU encoders, then the software ones.
+    result["exportEncoders"] = QJsonObject{{"h264", usable(list({"h264_nvenc", "h264_vaapi", "libx264", "libopenh264"}))}, {"h265", usable(list({"hevc_nvenc", "hevc_vaapi", "libx265"}))}, {"vp9", usable(list({"libvpx-vp9"}))}};
     ff["encoderFailures"] = exportFailures;
     QString decoderName, decoderFailure;
     const bool decoderOk = h264DecoderUsable(decoderName, decoderFailure);
