@@ -4,6 +4,19 @@ The adapter requires the Qt `xcb` backend, RandR, XFixes, and a resident process
 
 Window capture freezes `_NET_ACTIVE_WINDOW` and the framed target rectangle before journal work can change focus. The frame is captured from visible desktop pixels; overlapping windows appear in the image. A disappeared, unmapped, moved, resized, or app-owned target produces an actionable target error. There is no hidden-window reconstruction. Frame extents follow [EWMH](https://specifications.freedesktop.org/wm/latest/ar01s05.html).
 
+Window capture refuses put.gd's own windows with `capture_target`, in the
+resident, before layout work. A focused window is put.gd's when it is one of the
+resident's own Qt windows, or its `_NET_WM_PID` is the resident's, the registered
+views helper's, the capture helper's (Cinnamon core route), or that of any other
+process whose parent (from `/proc/PID/stat`) is the resident. The last rule
+covers the Edit & upload editor (`putgd-ui --edit-image`) and the recording
+helper, which never register (#103), and matches the GNOME extension's rule. The
+same rules run on Plasma X11, which uses this adapter. `_NET_WM_PID` is set by the
+client: put.gd's Qt windows set it truthfully, and a client that lies about it
+can only get its own window refused. The [X11 editor refusal
+receipt](../evidence/2026-10-19-x11-editor-refusal.md) records the physical
+Kubuntu Plasma X11 run.
+
 Region selection appears over the live desktop. Windows, animation and video keep
 updating before and during the drag. Drag with the left button; Escape or the right
 button cancels. Monitor identity, geometry, scale and rotation are fixed when the

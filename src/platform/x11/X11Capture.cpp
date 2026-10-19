@@ -1,5 +1,6 @@
 #include "X11Capture.h"
 #include "X11Reply.h"
+#include "X11WindowOwner.h"
 #include <QGuiApplication>
 #include <QScreen>
 #include <QWindow>
@@ -72,11 +73,9 @@ X11Target X11Capture::freeze(const QString& action,Error& error) {
   if(!active||active->format!=32||xcb_get_property_value_length(active.get())!=4){error=targetError();return target;}
   memcpy(&target.window,xcb_get_property_value(active.get()),4);if(!target.window||target.window==root_){error=targetError();return target;}
   for(auto* window:QGuiApplication::allWindows())if(window->winId()==target.window){error={"capture_target","Focus an external window before invoking window capture",{}};return target;}
-  if(uiProcess_){
-   const auto pid=reply(xcb_get_property_reply(connection_,xcb_get_property(connection_,0,target.window,atom("_NET_WM_PID"),XCB_ATOM_CARDINAL,0,1),nullptr));
-   uint32_t owner=0;if(pid&&pid->format==32&&xcb_get_property_value_length(pid.get())==4)memcpy(&owner,xcb_get_property_value(pid.get()),4);
-   if(owner&&qint64(owner)==uiProcess_){error={"capture_target","Focus an external window before invoking window capture",{}};return target;}
-  }
+  const auto pid=reply(xcb_get_property_reply(connection_,xcb_get_property(connection_,0,target.window,atom("_NET_WM_PID"),XCB_ATOM_CARDINAL,0,1),nullptr));
+  uint32_t owner=0;if(pid&&pid->format==32&&xcb_get_property_value_length(pid.get())==4)memcpy(&owner,xcb_get_property_value(pid.get()),4);
+  if(owner&&((uiProcess_&&qint64(owner)==uiProcess_)||x11::startedByResident(owner))){error={"capture_target","Focus an external window before invoking window capture",{}};return target;}
   target.nativeWindowRect=windowRect(target.window,error);if(error)return target;
   target.logicalSelection={};
   for(const auto& f:target.layout){const QRect intersection=f.nativeRect.intersected(target.nativeWindowRect);if(intersection.isEmpty())continue;
