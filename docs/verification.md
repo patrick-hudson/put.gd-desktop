@@ -9,6 +9,26 @@ missing profiles, and run physical-hardware release gates on physical machines.
 This requirement is separate from the historical results below; missing new
 rows and current-candidate evidence remain gates.
 
+## GNOME editor window refusal — 2026-10-19
+
+The [GNOME editor refusal receipt](evidence/2026-10-19-gnome-editor-refusal.md)
+records #104 (issue #103), from pull request CI merge `3a9438c`. The Fedora 44
+RPM (sha256 `ba4d1774…`) and the AppImage (sha256 `3a4cae53…`) both ran with
+the RPM's Shell extension, version 2, loaded.
+
+- On Fedora 44 GNOME 50 Wayland, window capture of the Edit & upload editor
+  was refused (`capture_target`) from both builds. The editor was the only
+  put.gd window. In both builds its `putgd-ui --edit-image` process was a
+  direct child of the resident.
+- Settings and History were still refused, and an external window was still
+  captured.
+- The GJS ownership contract adds the editor case. It fails against nightly's
+  extension.
+- Not covered:
+  - recorder windows;
+  - the X11 adapters, which still don't refuse the editor;
+  - the Flatpak app-ID rule (#83 change 2).
+
 ## AppImage Wayland window icons — 2026-10-19
 
 The [Wayland window icon receipt](evidence/2026-10-19-appimage-wayland-icons.md)
