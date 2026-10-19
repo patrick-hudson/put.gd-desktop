@@ -65,6 +65,8 @@ Methods and parameters:
 | `history.list` | optional limit, offset, search, category, mime, profileId, uploadStatus, localStatus, remoteStatus, from, to |
 | `history.detail`, `history.copyLink`, `history.copyImage` | history `id` |
 | `history.clear`, `cache.clear` | empty object |
+| `logs.clear` | empty object; deletes every persistent log file and starts a new one ([diagnostics.md](diagnostics.md#retention)) |
+| `diagnostics.bundle` | optional `operation`, `since` (`1m`–`365d`, default `7d`), `includeNames`, absolute `output`; or the CLI flags `--operation`, `--since`, `--include-names`, `--output`. Saves a redacted diagnostics package locally ([diagnostics.md](diagnostics.md#diagnostics-package)) |
 | `delete.prepare` | `ids` array of confirmed history IDs |
 | `delete.confirm` | identical ordered `ids`, exact returned `acknowledgement` |
 | `delete.inspect`, `.retry`, `.cancel` | deletion-operation `id` |
@@ -149,6 +151,14 @@ that exact tag. Every other build, including local and CI development builds, gi
 `none` and an empty `url`, and the rail shows its version as plain text. The mapping
 reads only the compiled identity and never the network, so a candidate's link opens
 only after its draft release is published.
+
+`diagnostics.result.logging` reports the persistent log without reading it: its
+`directory`, `files`, `bytes`, `oldestRecord`, `degraded` and `degradedReason`,
+`droppedRecords`, `retention`, `rotationBytes`, `debugLogging` and
+`debugLoggingExpiresAt`; `loggingDegraded` repeats the flag.
+`diagnostics.result.uncleanExit` reports whether this start found the previous
+resident's running marker, with the last and recent records. See
+[diagnostics.md](diagnostics.md#diagnostics-fields).
 
 `diagnostics.result.memory` contains `allocatorReclamationSupported`,
 `allocatorReclamationPending`, `allocatorReclamationCount` and

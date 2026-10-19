@@ -1,5 +1,6 @@
 #pragma once
 #include "UiControl.h"
+#include "core/Log.h"
 #include <QHash>
 #include <QProcess>
 #include <QTimer>
@@ -46,6 +47,7 @@ private:
  QHash<QString,Activation> activations_;
  QHash<QString,CommandReply> commands_;QTimer commandDeadline_;
  QJsonObject state_,lastExit_;
+ HelperOutput output_{"putgd-ui",logUi()};
  qsizetype stateBytes_=0;
  quint64 processGeneration_=0,invalidationGeneration_=0,sentInvalidation_=0;
  QString invalidationSequence_,closeSequence_;

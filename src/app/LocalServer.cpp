@@ -1,12 +1,14 @@
 #include "LocalServer.h"
 #include "RecordingBackend.h"
 #include "core/BuildInfo.h"
+#include "core/Log.h"
 #include <QUuid>
 #include <QDir>
 #include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonParseError>
 #include <QPointer>
+#include <QRegularExpression>
 #include <QStandardPaths>
 #include <QTimer>
 #include <cmath>
@@ -21,6 +23,13 @@ constexpr qsizetype maximumRequest=1024*1024;
 Error invalid() {return {"invalid_request","Invalid request fields or parameter types",{}};}
 bool fields(const QJsonObject& object,const QStringList& required,const QStringList& optional={}) {for(auto it=object.begin();it!=object.end();++it)if(!required.contains(it.key())&&!optional.contains(it.key()))return false;for(const auto& key:required)if(!object.contains(key))return false;return true;}
 bool string(const QJsonObject& object,const QString& key,int max=256) {return object[key].isString()&&!object[key].toString().isEmpty()&&object[key].toString().size()<=max;}
+// Protocol rejections are logged with the method name only, never parameters.
+void logRejection(const QString& method,const Error& error) {
+ static const QStringList codes{"invalid_request","invalid_json","request_too_large","unsupported_version","wrong_session","unknown_method"};
+ if(!codes.contains(error.code))return;
+ static const QRegularExpression name("^[A-Za-z][A-Za-z0-9._]{0,63}$");
+ logging::warning(logIpc(),"Session request rejected",{{"method",name.match(method).hasMatch()?method:QStringLiteral("<invalid>")},{"code",error.code}});
+}
 }
 LocalServer::LocalServer(SettingsService& settings,OperationService& operations,HistoryService& history,QObject* parent):QObject(parent),residentEpoch_(QUuid::createUuid().toString(QUuid::WithoutBraces)),settings_(settings),operations_(operations),history_(history) {connect(&server_,&LocalIpcServer::newConnection,this,&LocalServer::accept);}
 QString LocalServer::defaultRuntimeDirectory() {const auto runtime=QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation);return runtime.isEmpty()?QString{}:QDir(runtime).filePath("putgd");}
@@ -53,6 +62,8 @@ int LocalServer::replyDeadlineMs(const QString& method) {
  constexpr int base=15000;
  if(method=="recording.stop")return recording::helperStopMs+base;
  if(QStringList{"recording.capabilities","recording.prepare","recording.select","recording.start","recording.pause","recording.resume","recording.raise","recording.overlay","recording.preview"}.contains(method))return recording::helperCommandMs+base;
+ // Reading the logs and compressing up to 20 MiB stays well inside this.
+ if(method=="diagnostics.bundle")return 45000;
  return base;
 }
 QJsonObject LocalServer::response(const QString& requestId,const Error& error,const QJsonObject& result) {return {{"schemaVersion",1},{"requestId",requestId},{"ok",!error},{"result",error?QJsonObject{}:result},{"error",error.toJson()}};}
@@ -65,7 +76,7 @@ void LocalServer::accept() {
   connect(socket,&LocalIpcConnection::readyRead,this,[this,socket,deadline] {
    if(socket->property("handled").toBool())return;
    auto bytes=socket->property("bytes").toByteArray();bytes+=socket->readAll();
-   auto send=[socket](QString id,Error e,QJsonObject result) {socket->sendAndClose(QJsonDocument(response(id,e,result)).toJson(QJsonDocument::Compact)+'\n');};
+   auto send=[socket](QString id,Error e,QJsonObject result) {logRejection({},e);socket->sendAndClose(QJsonDocument(response(id,e,result)).toJson(QJsonDocument::Compact)+'\n');};
    if(bytes.size()>maximumRequest) {socket->setProperty("bytes",QByteArray{});socket->setProperty("handled",true);socket->stopReading();deadline->stop();send({}, {"request_too_large","Request exceeds 1 MiB",{}},{});return;}
    if(!bytes.contains('\n')) {socket->setProperty("bytes",bytes);return;}
    socket->setProperty("bytes",QByteArray{});
@@ -78,6 +89,7 @@ void LocalServer::accept() {
  }
 }
 void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
+ reply=[reply=std::move(reply),method=request["method"].toString().left(64)](Error error,QJsonObject result){if(error)logRejection(method,error);reply(std::move(error),std::move(result));};
  if(!fields(request,{"schemaVersion","requestId","session","method","params"})||!string(request,"requestId",128)||!string(request,"method",64)||!request["params"].isObject()||!request["session"].isString()) {reply(invalid(),{});return;}
  if(!request["schemaVersion"].isDouble()||request["schemaVersion"].toDouble()!=1) {reply({"unsupported_version","Request schemaVersion must be 1",{}},{});return;}
  if(request["session"].toString()!=socketPath()) {reply({"wrong_session","Request targets a different resident session",{}},{});return;}
@@ -175,6 +187,12 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   if(!setup_) {reply({"setup_unavailable","This resident has no setup service",{}},{});return;}
   setup_->inspect(p["id"].toString(),std::move(reply));return;
  }
+ // A diagnostics package, saved locally only (#74 §3, docs/diagnostics.md).
+ if(method=="diagnostics.bundle") {
+  BundleRequest bundle;if(auto error=DiagnosticsBundles::parse(p,bundle)){reply(error,{});return;}
+  if(!bundles_){reply({"diagnostics_unavailable","This resident cannot create diagnostics packages",{}},{});return;}
+  bundles_->create(bundle,std::move(reply));return;
+ }
  if(method=="settings.save") {
   if(!fields(p,{"document","expectedRevision"})||!p["document"].isObject()||!p["expectedRevision"].isString()) {reply(invalid(),{});return;}
   QPointer<LocalServer> guarded(this);settings_.saveAsync(p["document"].toObject(),p["expectedRevision"].toString(),[guarded,reply](Result result) {if(guarded)reply(result.error,{{"document",guarded->settings_.document()},{"metadata",guarded->settings_.metadata()}});});return;
@@ -204,6 +222,8 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  else if(method=="diagnostics")reply({},operations_.diagnostics());
  else if(method=="history.clear")history_.clear(reply);
  else if(method=="cache.clear")operations_.cleanup(reply);
+ // Removes every persistent log file and starts a new one (#74).
+ else if(method=="logs.clear")operations_.background([](Error& error){return logging::clear(error);},reply);
  else reply({"unknown_method","Unknown session method",{}},{});
 }
 }

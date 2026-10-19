@@ -1,6 +1,7 @@
 #pragma once
 #include "HistoryService.h"
 #include "LocalIpc.h"
+#include "DiagnosticsBundle.h"
 #include "SetupService.h"
 #include <QPointer>
 #include <QSet>
@@ -13,6 +14,7 @@ public:
  QString socketPath() const {return server_.fullServerName();}
  QString residentEpoch() const {return residentEpoch_;}
  void setSetupService(SetupService* service) {setup_=service;}
+ void setDiagnosticsBundles(DiagnosticsBundles* bundles) {bundles_=bundles;}
  void setUiDiagnostics(std::function<QJsonObject()> callback) {uiDiagnostics_=std::move(callback);}
  void setUiQuit(std::function<void()> callback) {uiQuit_=std::move(callback);}
  void setUiViewState(std::function<QJsonObject()> callback) {uiViewState_=std::move(callback);}
@@ -32,6 +34,7 @@ private:
  std::function<QJsonObject()> uiDiagnostics_,uiViewState_;
  std::function<void()> uiQuit_;
  QPointer<SetupService> setup_;
+ QPointer<DiagnosticsBundles> bundles_;
  const QString residentEpoch_;
  SettingsService& settings_;
  OperationService& operations_;

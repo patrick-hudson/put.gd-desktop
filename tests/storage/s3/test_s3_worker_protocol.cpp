@@ -298,13 +298,16 @@ private slots:
     }
     void safeTransportDetailsRoundTripButRejectUnboundedInput() {
         Error original{"s3_transport_unknown", "S3 request failed", {{"httpStatus", -1}, {"serviceCode", "Unclassified"},
-            {"sdkErrorType", 99}, {"curlCode", 7}, {"sdkRetryable", true}, {"requestStage", "name_head"}, {"elapsedMs", 4}}};
+            {"sdkErrorType", 99}, {"curlCode", 7}, {"sdkRetryable", true}, {"requestStage", "name_head"}, {"elapsedMs", 4},
+            {"requestId", "SYNTHREQ0123ABCD"}, {"extendedRequestId", "synthetic+Extended/Id2="}}};
         Error decoded;
         QVERIFY(wire::decode(wire::encode(original), decoded));
         QCOMPARE(decoded.details, original.details);
         const QList<QPair<QString,QJsonValue>> invalid{{"sdkErrorType", "99"}, {"sdkErrorType", 65536},
             {"curlCode", "7, private SDK message"}, {"curlCode", -2}, {"curlCode", 1000}, {"curlCode", 7.5},
-            {"sdkRetryable", 1}, {"elapsedMs", -1}, {"elapsedMs", 86400001}, {"requestStage", "raw endpoint/header"}};
+            {"sdkRetryable", 1}, {"elapsedMs", -1}, {"elapsedMs", 86400001}, {"requestStage", "raw endpoint/header"},
+            {"requestId", ""}, {"requestId", "id with spaces"}, {"requestId", QString(129, 'A')}, {"requestId", 42},
+            {"extendedRequestId", "Authorization: synthetic"}, {"extendedRequestId", QString(257, 'A')}};
         for (const auto& item : invalid) {
             auto changed = original; changed.details[item.first] = item.second;
             QVERIFY(!wire::decode(wire::encode(changed), decoded));

@@ -25,4 +25,5 @@ instruction file. Use the existing documentation below; this file is an index.
 | Screen recording contract, plan and decision record | [docs/recording.md](docs/recording.md), [plan](docs/plans/2026-10-17-2230-feat-screen-recording-plan.md) |
 | UI process boundaries and state contracts | [Protocol](docs/ui-process-protocol.md), [state](docs/ui-process-state.md) |
 | Configuration and credential references | [Configuration](docs/configuration.md), [credentials](docs/credentials.md) |
+| Persistent logs, retention, unclean exits and diagnostics packages | [docs/diagnostics.md](docs/diagnostics.md) |
 | README artwork, screenshot crops and their evidence sources | [docs/readme/sources.md](docs/readme/sources.md) |

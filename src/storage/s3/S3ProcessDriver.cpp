@@ -2,11 +2,13 @@
 #include "S3WorkerProtocol.h"
 #include "app/UiControl.h"
 #include "core/BuildInfo.h"
+#include "core/Log.h"
 #include <QCoreApplication>
 #include <QDir>
 #include <QElapsedTimer>
 #include <QJsonDocument>
 #include <QProcess>
+#include <QProcessEnvironment>
 #include <QUuid>
 #include <mutex>
 namespace putgd {
@@ -53,12 +55,16 @@ public:
   control_=std::make_unique<UiControl>(*process_);
   QObject::connect(control_.get(),&UiControl::failed,process_.get(),[this](Error){failed_=true;});
   QObject::connect(process_.get(),&QProcess::readyReadStandardError,process_.get(),[this]{
-   while(process_->bytesAvailable()>0&&process_->readChannel()==QProcess::StandardError)process_->read(16384);
-   auto discarded=process_->readAllStandardError();stderrBytes_+=discarded.size();if(stderrBytes_>1024*1024)failed_=true;
+   // AWS SDK warnings and errors arrive here; the resident log redacts them.
+   const auto bytes=process_->readAllStandardError();stderrBytes_+=bytes.size();output_.append(bytes);if(stderrBytes_>1024*1024)failed_=true;
   });
   QObject::connect(control_.get(),&UiControl::frame,process_.get(),[this](const QString& type,const QString& sequence,const QJsonObject& value){receive(type,sequence,value);});
+  auto environment=QProcessEnvironment::systemEnvironment();
+  environment.insert("PUTGD_AWS_LOG_LEVEL",logging::debug()?"info":"warn");environment.insert("QT_FORCE_STDERR_LOGGING","1");
+  process_->setProcessEnvironment(environment);
   process_->start(helperPath(),{});
-  if(!process_->waitForStarted(10000)){failed_=true;resetProcess();return false;}
+  if(!process_->waitForStarted(10000)){output_.failedToStart(process_->errorString());failed_=true;resetProcess();return false;}
+  output_.started(process_->processId(),{{"generation",qint64(generation_)}});
   auto boot=envelope();boot["build"]=build();boot["contract"]=QString::fromUtf8(PUTGD_S3_BUILD_ID);boot["safeDelete"]=bool(PUTGD_SDK_CURL_TRANSPORT);boot["modulePath"]=path_;
   if(control_->send("bootstrap",boot).isEmpty())failed_=true;
   QElapsedTimer clock;clock.start();
@@ -190,7 +196,12 @@ private:
  void resetProcess(){
   if(pending_){std::lock_guard lock(pending_->mutex);pending_->closed=true;}pending_.reset();
   if(control_)control_->stop();
-  if(process_&&process_->state()!=QProcess::NotRunning){process_->closeWriteChannel();process_->terminate();if(!process_->waitForFinished(1000)){process_->kill();process_->waitForFinished(2000);}}
+  bool requested=false;
+  if(process_&&process_->state()!=QProcess::NotRunning){requested=true;process_->closeWriteChannel();process_->terminate();if(!process_->waitForFinished(1000)){process_->kill();process_->waitForFinished(2000);}}
+  if(process_&&output_.pid()>0) {
+   output_.append(process_->readAllStandardError());
+   output_.finished(process_->exitCode(),process_->exitStatus(),requested);
+  }
   control_.reset();process_.reset();ready_=false;stderrBytes_=0;
  }
  QString path_,nonce_,pendingRpc_,activeMethod_;QElapsedTimer activity_,checkpointDeadline_,exitDeadline_;quint64 generation_=0,rpc_=0;CredentialLookup credentials_;ReadinessCheck readiness_;
@@ -198,6 +209,7 @@ private:
  S3ProcessLimits limits_;Destination destination_;DurableCheckpoint checkpoint_;QJsonObject reply_;
  std::function<void(const UploadProgress&)> progress_;qint64 uploadBytes_=0;
  bool ready_=false,activated_=false,activationAcknowledged_=false,terminal_=false,failed_=false,cancelSent_=false,checkpointException_=false;qint64 stderrBytes_=0;
+ HelperOutput output_{"putgd-s3-worker",logS3(),true};
 };
 }
 S3Driver* createS3ProcessDriver(const QString& path,CredentialLookup credentials,ReadinessCheck readiness,Error& error,S3ProcessLimits limits){

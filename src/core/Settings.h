@@ -54,6 +54,11 @@ struct Settings {
     int recentActivityLimit = 100;
     qint64 previewCacheBytes = 268435456LL;
     int historyRetentionDays = 0; // zero means no automatic expiry
+    // Persistent log retention (#74); omitted keys use these defaults.
+    int logDays = 14;
+    qint64 logBytes = 52428800LL;
+    // Opt-in debug logging; the resident turns it off again after 24 hours.
+    bool debugLogging = false;
     QString uploadClipboardBehavior = "each_link";
     bool notifications = true;
     bool launchAtLogin = false;

@@ -23,6 +23,7 @@
 #include <QFile>
 #include <QHostAddress>
 #include <QJsonDocument>
+#include <QRegularExpression>
 #include <QTemporaryDir>
 #include <QUuid>
 #include <condition_variable>
@@ -67,6 +68,25 @@ QString requestGuidance(const QString& name, int status, const QString& stage, i
     if (status < 200) return "S3 could not be reached reliably. Check the endpoint, network, proxy and TLS settings; any uncertain upload or cleanup remains recorded.";
     return QString("S3 rejected the request (HTTP %1). Check the bucket, region, endpoint and access permissions.").arg(status);
 }
+// S3's x-amz-request-id and x-amz-id-2 identify a failed request to AWS support.
+// They carry no secret; anything outside their alphabet is dropped.
+QString requestIdentifier(const QString& value, qsizetype maximum) {
+    static const QRegularExpression pattern(QStringLiteral("\\A[A-Za-z0-9+/=._-]+\\z"));
+    const auto text = value.trimmed();
+    return !text.isEmpty() && text.size() <= maximum && pattern.match(text).hasMatch() ? text : QString();
+}
+template<class E> QString responseHeader(const E& error, const char* name) {
+    for (const auto& header : error.GetResponseHeaders())
+        if (qt(header.first).compare(QLatin1String(name), Qt::CaseInsensitive) == 0) return qt(header.second);
+    return {};
+}
+template<class E> void addRequestIds(const E& error, QJsonObject& details) {
+    auto requestId = requestIdentifier(qt(error.GetRequestId()), 128);
+    if (requestId.isEmpty()) requestId = requestIdentifier(responseHeader(error, "x-amz-request-id"), 128);
+    const auto extended = requestIdentifier(responseHeader(error, "x-amz-id-2"), 256);
+    if (!requestId.isEmpty()) details["requestId"] = requestId;
+    if (!extended.isEmpty()) details["extendedRequestId"] = extended;
+}
 template<class E> Error wireError(const E& error, const char* stage, qint64 elapsedMs) {
     const auto name = qt(error.GetExceptionName());
     const int status = int(error.GetResponseCode());
@@ -87,11 +107,12 @@ template<class E> Error wireError(const E& error, const char* stage, qint64 elap
     if(code=="s3_retention_blocked")message="S3 blocked deletion because of Object Lock, retention or a legal hold. Review the object's protection settings with the bucket administrator; put.gd does not bypass them.";
     else if(code=="s3_mfa_required")message="S3 requires MFA for this deletion. Ask the bucket administrator to use the required MFA-authorized workflow; put.gd does not bypass it.";
     else if(code=="precondition_changed")message="The S3 object changed while the request was running. Refresh its state before retrying; put.gd will not overwrite or delete an unchecked replacement.";
-    return {code, message,
-            {{"httpStatus", status}, {"sdkErrorType", int(error.GetErrorType())},
+    QJsonObject details{{"httpStatus", status}, {"sdkErrorType", int(error.GetErrorType())},
              {"curlCode", curlCode},
              {"sdkRetryable", error.ShouldRetry()}, {"requestStage", QString::fromLatin1(stage)},
-             {"elapsedMs", qMin(elapsedMs, qint64(86400000))}, {"serviceCode", QStringList{"AccessControlListNotSupported", "AccessDenied", "InvalidAccessKeyId", "SignatureDoesNotMatch", "ExpiredToken", "PreconditionFailed", "ConditionalRequestConflict", "InvalidRequest", "ObjectLocked", "SlowDown", "RequestTimeout", "InternalError", "ServiceUnavailable", "InvalidToken", "TokenRefreshRequired", "RequestTimeTooSkewed", "RequestExpired", "NoSuchBucket", "InvalidBucketName", "AuthorizationHeaderMalformed", "PermanentRedirect"}.contains(name) ? name : QString("Unclassified")}}};
+             {"elapsedMs", qMin(elapsedMs, qint64(86400000))}, {"serviceCode", QStringList{"AccessControlListNotSupported", "AccessDenied", "InvalidAccessKeyId", "SignatureDoesNotMatch", "ExpiredToken", "PreconditionFailed", "ConditionalRequestConflict", "InvalidRequest", "ObjectLocked", "SlowDown", "RequestTimeout", "InternalError", "ServiceUnavailable", "InvalidToken", "TokenRefreshRequired", "RequestTimeTooSkewed", "RequestExpired", "NoSuchBucket", "InvalidBucketName", "AuthorizationHeaderMalformed", "PermanentRedirect"}.contains(name) ? name : QString("Unclassified")}};
+    addRequestIds(error, details);
+    return {code, message, details};
 }
 template<class E> bool absent(const E& error) { return int(error.GetResponseCode()) == 404; }
 template<class E> bool ambiguous(const E& error) {

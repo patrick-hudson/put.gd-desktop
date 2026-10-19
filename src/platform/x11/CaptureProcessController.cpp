@@ -67,12 +67,12 @@ CaptureProcessController::Ticket CaptureProcessController::prepare(const QJsonOb
  if(fd<0||::fstat(fd,&s)||!privateRegular(s)){if(fd>=0)::close(fd);fail(unavailable("capture_io"));return ticket;}::close(fd);device_=QString::number(qulonglong(s.st_dev));inode_=QString::number(qulonglong(s.st_ino));
  if(!artifact_.acquire(path_,device_,inode_)){fail(unavailable("capture_io"));return ticket;}
  auto* child=new QProcess(this);process_=child;child->setProcessChannelMode(QProcess::SeparateChannels);child->setReadChannel(QProcess::StandardOutput);control_=new CaptureControl(*child,child);
- connect(child,&QProcess::readyReadStandardError,this,[child]{while(!child->readAllStandardError().isEmpty()){};});
  const auto epoch=generation_;
+ connect(child,&QProcess::readyReadStandardError,this,[this,child,epoch]{const auto bytes=child->readAllStandardError();if(process_==child&&generation_==epoch)output_.append(bytes);});
  connect(control_,&CaptureControl::frame,this,[this,child,epoch](const QString& type,const QJsonObject& payload){if(process_==child&&generation_==epoch)receive(type,payload);});
  connect(control_,&CaptureControl::failed,this,[this,child,epoch](Error error){if(process_==child&&generation_==epoch)fail(std::move(error));});
- connect(child,&QProcess::started,this,[this,child,epoch,frozen]{if(process_!=child||generation_!=epoch)return;launchPid_=process_->processId();launchStartTicks_=processStartTicks(launchPid_);control_->send("bootstrap",{{"build",build()},{"nonce",nonce_},{"generation",QString::number(generation_)},{"target",frozen},{"cursor",QJsonObject{{"id",QString::number(requestedCursor_)},{"cache",!cursorFingerprint_.isEmpty()&&cursorCache_.supported()}}},{"path",path_},{"device",device_},{"inode",inode_},{"limits",QJsonObject{{"imagePixels",limits_.imagePixels},{"imageBytes",limits_.imageBytes},{"maxFileBytes",limits_.maxFileBytes}}}});});
- connect(child,&QProcess::errorOccurred,this,[this,child,epoch](QProcess::ProcessError error){if(process_!=child||generation_!=epoch)return;if(error==QProcess::FailedToStart){if(!failure_)failure_=unavailable("capture_start_failed");exited(-1,QProcess::CrashExit);}});
+ connect(child,&QProcess::started,this,[this,child,epoch,frozen]{if(process_!=child||generation_!=epoch)return;launchPid_=process_->processId();launchStartTicks_=processStartTicks(launchPid_);output_.started(launchPid_,{{"generation",QString::number(generation_)}});control_->send("bootstrap",{{"build",build()},{"nonce",nonce_},{"generation",QString::number(generation_)},{"target",frozen},{"cursor",QJsonObject{{"id",QString::number(requestedCursor_)},{"cache",!cursorFingerprint_.isEmpty()&&cursorCache_.supported()}}},{"path",path_},{"device",device_},{"inode",inode_},{"limits",QJsonObject{{"imagePixels",limits_.imagePixels},{"imageBytes",limits_.imageBytes},{"maxFileBytes",limits_.maxFileBytes}}}});});
+ connect(child,&QProcess::errorOccurred,this,[this,child,epoch](QProcess::ProcessError error){if(process_!=child||generation_!=epoch)return;if(error==QProcess::FailedToStart){output_.failedToStart(child->errorString());if(!failure_)failure_=unavailable("capture_start_failed");exited(-1,QProcess::CrashExit);}});
  connect(child,qOverload<int,QProcess::ExitStatus>(&QProcess::finished),this,[this,child,epoch](int code,QProcess::ExitStatus status){if(process_==child&&generation_==epoch)exited(code,status);});deadline_.start(10000);child->start(helperPath_,{});return ticket;
 }
 void CaptureProcessController::begin(const Ticket& ticket,std::function<void(PayloadResult)> callback){
@@ -189,6 +189,7 @@ void CaptureProcessController::decode(QJsonObject descriptor){
 void CaptureProcessController::exited(int code,QProcess::ExitStatus status){
  if(!busy()||exited_)return;
  exited_=true;deadline_.stop();stopDeadline_.stop();lastExit_={{"generation",QString::number(generation_)},{"processId",launchPid_},{"startTicks",launchStartTicks_},{"code",code},{"status",status==QProcess::NormalExit?"normal":"crash"}};
+ if(output_.pid()>0){if(process_)output_.append(process_->readAllStandardError());output_.finished(code,status,cancelling_);}
  if(control_)control_->stop();
  control_=nullptr;
  if(!failure_&&(!accepted_||code!=0||status!=QProcess::NormalExit))failure_=unavailable("capture_crashed");

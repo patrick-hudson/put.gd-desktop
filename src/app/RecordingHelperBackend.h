@@ -1,6 +1,7 @@
 #pragma once
 #include "RecordingBackend.h"
 #include "UiControl.h"
+#include "core/Log.h"
 #include <QHash>
 #include <QObject>
 #include <QPointer>
@@ -61,5 +62,7 @@ private:
     QProcess* probe_ = nullptr;
     QTimer probeDeadline_;
     QList<std::function<void()>> probeWaiters_;
+    // Helper stderr and exits go to the resident log, bounded per generation.
+    HelperOutput output_{"putgd-record", logRecording()}, probeOutput_{"putgd-record --capabilities", logRecording(), true};
 };
 }

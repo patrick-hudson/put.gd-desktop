@@ -55,7 +55,10 @@ void KdeRegionProcess::start(const QList<CaptureFrame>& frames,std::function<voi
  auto* child=new QProcess(this); process_=child;
  child->setProcessChannelMode(QProcess::SeparateChannels); child->setReadChannel(QProcess::StandardOutput);
  control_=new CaptureControl(*child,child); const auto epoch=generation_;
- connect(child,&QProcess::readyReadStandardError,this,[child]{while(!child->readAllStandardError().isEmpty()) {} });
+ connect(child,&QProcess::readyReadStandardError,this,[this,child,epoch]{
+  const auto bytes=child->readAllStandardError();
+  if(process_==child && generation_==epoch) output_.append(bytes);
+ });
  connect(control_,&CaptureControl::frame,this,[this,child,epoch](const QString& type,const QJsonObject& payload){
   if(process_==child && generation_==epoch) receive(type,payload);
  });
@@ -65,13 +68,14 @@ void KdeRegionProcess::start(const QList<CaptureFrame>& frames,std::function<voi
  connect(child,&QProcess::started,this,[this,child,epoch,layout]{
   if(process_!=child || generation_!=epoch) return;
   launchPid_=child->processId(); launchStartTicks_=processStartTicks(launchPid_);
+  output_.started(launchPid_,{{"generation",QString::number(generation_)}});
   if(launchStartTicks_.isEmpty()) { fail(unavailable("capture_start_failed")); return; }
   if(!control_->send("bootstrap",{{"build",build()},{"nonce",nonce_},
      {"generation",QString::number(generation_)},{"layout",layout}})) fail(unavailable("capture_protocol"));
  });
  connect(child,&QProcess::errorOccurred,this,[this,child,epoch](QProcess::ProcessError error){
   if(process_!=child || generation_!=epoch) return;
-  if(error==QProcess::FailedToStart) { failure_=unavailable("capture_start_failed"); finish(-1,QProcess::CrashExit); }
+  if(error==QProcess::FailedToStart) { output_.failedToStart(child->errorString()); failure_=unavailable("capture_start_failed"); finish(-1,QProcess::CrashExit); }
  });
  connect(child,qOverload<int,QProcess::ExitStatus>(&QProcess::finished),this,[this,child,epoch](int code,QProcess::ExitStatus status){
   if(process_==child && generation_==epoch) finish(code,status);
@@ -145,6 +149,7 @@ void KdeRegionProcess::finish(int code,QProcess::ExitStatus status) {
  lastExit_={{"generation",QString::number(generation_)},{"code",code},
             {"status",status==QProcess::NormalExit?"normal":"crash"},
             {"processId",launchPid_},{"startTicks",launchStartTicks_},{"teardownCertified",teardownCertified_}};
+ if(output_.pid()>0) { output_.append(process_->readAllStandardError()); output_.finished(code,status,cancelling_); }
  if(!failure_ && (status!=QProcess::NormalExit || code!=0 || !resultReceived_ || !accepted_))
   failure_=unavailable(status==QProcess::CrashExit?"capture_crashed":"capture_protocol");
  if(control_) control_->stop();

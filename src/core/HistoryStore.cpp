@@ -244,6 +244,13 @@ QJsonArray HistoryStore::recent(int limit,Error* error) const {
  QHash<QString,QJsonObject> statuses;if(auto e=readRemoteStates(db_,ids,statuses)){if(error)*error=e;return {};}
  for(auto& op:operations){hydrateRemote(op,statuses);result.append(op.publicJson());}return result;
 }
+QList<Operation> HistoryStore::operationsSince(const QString& from,const QStringList& states,int limit,Error* error) const {
+ QList<Operation> result;if(error_) {if(error)*error=error_;return result;}
+ QSqlQuery q(db_);q.prepare("SELECT data FROM operations WHERE json_extract(data,'$.created')>=? ORDER BY json_extract(data,'$.created') DESC,id");q.addBindValue(from);
+ if(!q.exec()){if(error)*error=sqlError();return result;}
+ while(result.size()<limit&&q.next()){auto op=Operation::fromJson(decode(q.value(0)));if(!states.contains(op.state))continue;relocate(op);result.append(std::move(op));}
+ return result;
+}
 Error HistoryStore::expireBefore(const QString& timestamp) {
  if(error_)return error_;
  if(!db_.transaction())return sqlError();

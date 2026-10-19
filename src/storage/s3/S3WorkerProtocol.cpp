@@ -124,6 +124,9 @@ bool errorDetails(const QJsonObject& details) {
     if (details.contains("itemIndex") && !integer(details["itemIndex"], 0, 9999)) return false;
     if (details.contains("offset") && !integer(details["offset"], 0, maximumFrameBytes)) return false;
     if (details.contains("path") && !text(details["path"], 1, 4096)) return false;
+    static const QRegularExpression requestId(QStringLiteral("\\A[A-Za-z0-9+/=._-]{1,256}\\z"));
+    if (details.contains("requestId") && !(text(details["requestId"], 1, 128) && requestId.match(details["requestId"].toString()).hasMatch())) return false;
+    if (details.contains("extendedRequestId") && !(text(details["extendedRequestId"], 1, 256) && requestId.match(details["extendedRequestId"].toString()).hasMatch())) return false;
     return !details.contains("observedRevision") || text(details["observedRevision"], 1, 256);
 }
 }

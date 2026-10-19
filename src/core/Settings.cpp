@@ -221,14 +221,21 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
         if (!integer(limits[key], 1, maximum)) return invalid("/limits/" + key, "Resource limits must be positive bounded integers.");
     }
     const auto retention = doc["retention"].toObject();
-    if (!doc["retention"].isObject() || !keys(retention, {"failedArtifactDays", "recentActivityLimit", "previewCacheBytes", "historyRetentionDays"}) ||
+    QStringList retentionKeys{"failedArtifactDays", "recentActivityLimit", "previewCacheBytes", "historyRetentionDays"};
+    for (const auto* optional : {"logDays", "logBytes"})
+        if (retention.contains(optional)) retentionKeys.append(optional);
+    if (!doc["retention"].isObject() || !keys(retention, retentionKeys) ||
         !integer(retention["failedArtifactDays"], 0, 36500) || !integer(retention["recentActivityLimit"], 1, 10000) ||
         !integer(retention["previewCacheBytes"], 0, 1099511627776LL) ||
         !(retention["historyRetentionDays"].isNull() || integer(retention["historyRetentionDays"], 1, 36500)))
         return invalid("/retention", "Retention limits are invalid; null history retention means no automatic expiry.");
+    if (retention.contains("logDays") && !integer(retention["logDays"], 1, 365))
+        return invalid("/retention/logDays", "Log retention is 1 to 365 days.");
+    if (retention.contains("logBytes") && !integer(retention["logBytes"], 1048576, 1073741824))
+        return invalid("/retention/logBytes", "Log storage is 1 MiB to 1 GiB.");
     const auto preferences = doc["preferences"].toObject();
     QStringList preferenceKeys{"notifications", "launchAtLogin"};
-    for (const auto* optional : {"uploadClipboardBehavior", "unlockCredentialsAtStartup", "editorRecentColors"})
+    for (const auto* optional : {"uploadClipboardBehavior", "unlockCredentialsAtStartup", "editorRecentColors", "diagnostics"})
         if (preferences.contains(optional)) preferenceKeys.append(optional);
     if (!doc["preferences"].isObject() || !keys(preferences, preferenceKeys) ||
         !preferences["notifications"].isBool() || !preferences["launchAtLogin"].isBool())
@@ -242,6 +249,9 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
             valid = valid && color.isString() && QRegularExpression("^#[0-9a-f]{6}$").match(color.toString()).hasMatch();
         if (!valid) return invalid("/preferences/editorRecentColors", "Recent editor colors are up to 6 lowercase #rrggbb values.");
     }
+    if (preferences.contains("diagnostics") && (!preferences["diagnostics"].isObject() || !keys(preferences["diagnostics"].toObject(), {"debugLogging"}) ||
+        !preferences["diagnostics"].toObject()["debugLogging"].isBool()))
+        return invalid("/preferences/diagnostics", "Diagnostics preferences hold only debugLogging, true or false.");
     if (preferences.contains("uploadClipboardBehavior") && !choice(preferences["uploadClipboardBehavior"], {"each_link", "list"}))
         return invalid("/preferences/uploadClipboardBehavior", "Choose each_link or list for upload clipboard behavior.");
     return {};
@@ -306,6 +316,9 @@ Settings Settings::fromValidated(const QJsonObject& original) {
     settings.recentActivityLimit = retention["recentActivityLimit"].toInt();
     settings.previewCacheBytes = retention["previewCacheBytes"].toInteger();
     settings.historyRetentionDays = retention["historyRetentionDays"].toInt();
+    settings.logDays = retention["logDays"].toInt(14);
+    settings.logBytes = retention["logBytes"].toInteger(52428800LL);
+    settings.debugLogging = doc["preferences"].toObject()["diagnostics"].toObject()["debugLogging"].toBool();
     settings.uploadClipboardBehavior = doc["preferences"].toObject()["uploadClipboardBehavior"].toString("each_link");
     settings.notifications = doc["preferences"].toObject()["notifications"].toBool();
     settings.launchAtLogin = doc["preferences"].toObject()["launchAtLogin"].toBool();
