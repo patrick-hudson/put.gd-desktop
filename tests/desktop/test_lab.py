@@ -176,6 +176,7 @@ class LabContracts(unittest.TestCase):
                 with self.subTest(failed_stage=failed_stage):
                     receipt.write_text(json.dumps({'installedBinarySha256': {
                         '/usr/bin/putgd': 'a' * 64}}))
+                    (Path(directory) / 'state.json').write_text(json.dumps({'profile': 'cinnamon-x11'}))
                     with patch('sys.argv', ['lab.py', 'install', '--run', directory,
                                            '--deb', '/tmp/synthetic-new-package.deb']), \
                             patch.object(lab, 'put', side_effect=lab.LabError('upload failed')
@@ -280,6 +281,135 @@ class LabContracts(unittest.TestCase):
         self.assertNotIn('base.qcow2', joined)
         self.assertIn('-daemonize', command)
         self.assertIn('/tmp/run/qemu.pid', command)
+
+    def test_bios_profiles_keep_their_qemu_command_and_uefi_adds_private_pflash(self):
+        for name in ('cinnamon-x11', 'gnome-wayland', 'kde-wayland', 'fedora-gnome-wayland'):
+            profile = lab.load_profile(name)
+            self.assertIsNone(lab.uefi_firmware(profile))
+            command = lab.qemu_command(profile, Path('/tmp/run'), Path('/tmp/run/disk.qcow2'), 22001, 9, 'kvm')
+            self.assertNotIn('pflash', ' '.join(command))
+            self.assertEqual(command, lab.qemu_command(profile, Path('/tmp/run'), Path('/tmp/run/disk.qcow2'),
+                                                       22001, 9, 'kvm', None))
+        aurora = lab.load_profile('aurora-kde-wayland')
+        self.assertEqual(aurora['firmware'], 'uefi')
+        self.assertEqual(aurora['install'], 'appimage')
+        firmware = {'type': 'uefi', 'code': '/usr/share/edk2/ovmf/OVMF_CODE_4M.qcow2', 'format': 'qcow2',
+                    'vars_template': '/usr/share/edk2/ovmf/OVMF_VARS_4M.qcow2', 'vars': '/tmp/run/vars.qcow2'}
+        command = lab.qemu_command(aurora, Path('/tmp/run'), Path('/tmp/run/disk.qcow2'), 22426, 26, 'kvm', firmware)
+        self.assertIn('if=pflash,format=qcow2,readonly=on,file=/usr/share/edk2/ovmf/OVMF_CODE_4M.qcow2', command)
+        self.assertIn('if=pflash,format=qcow2,file=/tmp/run/vars.qcow2', command)
+        # The shared code image is never opened writable; only the run's copy is.
+        self.assertNotIn('if=pflash,format=qcow2,file=/usr/share/edk2/ovmf/OVMF_VARS_4M.qcow2', command)
+        self.assertIn('-daemonize', command)
+        with patch.object(lab, 'UEFI_FIRMWARE', ()):
+            with self.assertRaisesRegex(lab.LabError, 'UEFI firmware unavailable'):
+                lab.uefi_firmware(aurora)
+        with self.assertRaisesRegex(lab.LabError, 'firmware'):
+            lab.uefi_firmware({**aurora, 'firmware': 'coreboot'})
+
+    def test_uefi_launch_records_a_private_nvram_copy_in_run_state(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            golden = root / 'golden.qcow2'
+            golden.write_bytes(b'sealed test identity')
+            code, template = root / 'OVMF_CODE_4M.qcow2', root / 'OVMF_VARS_4M.qcow2'
+            code.write_bytes(b'shared firmware code')
+            template.write_bytes(b'pristine nvram template')
+            trusted = root / 'known_hosts'
+            trusted.write_text('[127.0.0.1]:22426 ssh-ed25519 AAAA\n')
+            run = root / 'runs' / 'aurora-test'
+            args = SimpleNamespace(profile='aurora-kde-wayland', golden=str(golden), run=str(run),
+                acceleration='kvm', ssh_port=22426, vnc_display=26, known_hosts=str(trusted),
+                bootstrap_key=str(root / 'identity'))
+            launched = []
+            original = lab.command
+            def fake_command(arguments, **kwargs):
+                if arguments[0] == 'qemu-system-x86_64':
+                    launched.append(arguments)
+                    (run / 'qemu.pid').write_text('4242\n')
+                    return SimpleNamespace(returncode=0, stderr='')
+                if arguments[0] == 'qemu-img':
+                    Path(arguments[-1]).write_bytes(b'overlay')
+                    return SimpleNamespace(returncode=0, stderr='', stdout='')
+                if arguments[0] == 'ssh-keygen' and '-t' in arguments:
+                    Path(arguments[-1]).write_bytes(b'private')
+                    Path(str(arguments[-1]) + '.pub').write_text('ssh-ed25519 AAAA test\n')
+                    return SimpleNamespace(returncode=0, stderr='', stdout='')
+                return original(arguments, **kwargs)
+            firmware = {'type': 'uefi', 'code': str(code), 'vars_template': str(template), 'format': 'qcow2'}
+            golden_stat = golden.stat()
+            identity = (golden_stat.st_dev, golden_stat.st_ino, golden_stat.st_size, golden_stat.st_mtime_ns)
+            with patch.object(lab, 'command', side_effect=fake_command):
+                info = lab._launch_machine(args, lab.load_profile('aurora-kde-wayland'), golden, run,
+                                           'f' * 64, identity, firmware)
+            vars_copy = run / 'vars.qcow2'
+            self.assertEqual(vars_copy.read_bytes(), b'pristine nvram template')
+            self.assertEqual(template.read_bytes(), b'pristine nvram template')
+            self.assertEqual(vars_copy.stat().st_mode & 0o777, 0o600)
+            recorded = json.loads((run / 'state.json').read_text())['firmware']
+            self.assertEqual(recorded['vars'], str(vars_copy))
+            self.assertEqual(recorded['code'], str(code))
+            self.assertEqual(recorded['code_sha256'], hashlib.sha256(b'shared firmware code').hexdigest())
+            self.assertEqual(recorded['vars_template_sha256'], hashlib.sha256(b'pristine nvram template').hexdigest())
+            self.assertEqual(info['firmware'], recorded)
+            joined = ' '.join(launched[0])
+            self.assertIn(f'if=pflash,format=qcow2,readonly=on,file={code}', joined)
+            self.assertIn(f'if=pflash,format=qcow2,file={vars_copy}', joined)
+
+    def test_install_dispatches_by_profile_and_appimage_receipt_feeds_running_app_check(self):
+        with tempfile.TemporaryDirectory() as directory:
+            run = Path(directory)
+            (run / 'state.json').write_text(json.dumps({'profile': 'aurora-kde-wayland'}))
+            with patch.object(lab, 'put'), patch.object(lab, 'ssh'), patch.object(lab, 'install_package') as package:
+                with self.assertRaisesRegex(lab.LabError, 'AppImage'):
+                    lab.install(run, deb='/tmp/synthetic.deb')
+                package.assert_not_called()
+            (run / 'state.json').write_text(json.dumps({'profile': 'kde-wayland'}))
+            with patch.object(lab, 'install_appimage') as appimage:
+                with self.assertRaisesRegex(lab.LabError, 'distro package'):
+                    lab.install(run, appimage='/tmp/putgd-x86_64.AppImage')
+                appimage.assert_not_called()
+            self.assertFalse((run / 'package.json').exists())
+            # The AppImage path copies to the guest home, verifies bytes, extracts
+            # the bundled binaries and records the identity it reports.
+            (run / 'state.json').write_text(json.dumps({'profile': 'aurora-kde-wayland'}))
+            image = run / 'putgd-0.1.1-dev.419+gtest-x86_64.AppImage'
+            image.write_bytes(b'synthetic appimage bytes')
+            inner = hashlib.sha256(b'inner resident').hexdigest()
+            report = {'home': '/var/home/lab', 'version': {'version': '0.1.1-dev.419+gtest'},
+                      'binaries': {'/var/home/lab/putgd-lab/appimage/squashfs-root/usr/bin/putgd': inner,
+                                   '/var/home/lab/putgd-lab/appimage/squashfs-root/usr/bin/putgd-cli': 'b' * 64}}
+            uploads, scripts = [], []
+            with patch.object(lab, 'put', side_effect=lambda _run, local, remote: uploads.append((local, remote))), \
+                 patch.object(lab, 'ssh', side_effect=lambda _run, script, **k: scripts.append(script) or json.dumps(report)):
+                value = lab.install(run, appimage=str(image))
+            self.assertEqual(value['format'], 'appimage')
+            self.assertEqual(uploads, [(str(image), image.name)])
+            script = scripts[0]
+            self.assertIn(hashlib.sha256(b'synthetic appimage bytes').hexdigest(), script)
+            self.assertIn('--appimage-extract', script)
+            self.assertIn('--version-json', script)
+            self.assertIn('putgd-lab/bin/putgd-launcher', script)
+            self.assertIn('putgd-lab/bin/putgd-cli', script)
+            receipt = json.loads((run / 'package.json').read_text())
+            self.assertEqual(receipt['installedBinarySha256'], {'/usr/bin/putgd': inner, '/usr/bin/putgd-cli': 'b' * 64})
+            self.assertEqual(receipt['installedPath'], '/var/home/lab/' + image.name)
+            self.assertEqual(receipt['version']['version'], '0.1.1-dev.419+gtest')
+            with patch.object(lab, 'ssh', return_value=json.dumps([{'pid': 7, 'startTicks': 1, 'sha256': inner}])):
+                self.assertEqual(lab.verify_running_app(run)['sha256'], inner)
+            # A guest copy with different bytes fails before any receipt exists.
+            with patch.object(lab, 'put'), patch.object(lab, 'ssh', side_effect=lab.LabError('ssh failed (exit 65)')):
+                with self.assertRaises(lab.LabError):
+                    lab.install(run, appimage=str(image))
+            self.assertFalse((run / 'package.json').exists())
+
+    def test_appimage_profiles_put_shims_on_path_and_package_profiles_do_not(self):
+        for profile, expected in (('aurora-kde-wayland', True), ('kde-wayland', False)):
+            scripts = []
+            with patch.object(lab, 'state', return_value={'guest_user': 'lab', 'profile': profile}), \
+                 patch.object(lab, 'ssh', side_effect=lambda _run, script, *a, **k: scripts.append(script) or ''):
+                lab.guest_session('run', 'putgd-cli capabilities {}\n')
+            self.assertEqual('putgd-lab/bin:$PATH' in scripts[0], expected, profile)
 
     def test_wayland_readiness_rejects_xwayland_and_tcg_cannot_certify_performance(self):
         profile = {'session': 'wayland', 'qt_platform': 'wayland', 'desktop': 'GNOME'}

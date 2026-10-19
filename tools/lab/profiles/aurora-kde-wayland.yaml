@@ -1,0 +1,50 @@
+{
+  "name": "aurora-kde-wayland",
+  "desktop": "KDE",
+  "session": "wayland",
+  "qt_platform": "wayland",
+  "session_process": "plasmashell",
+  "image": "aurora-stable",
+  "firmware": "uefi",
+  "install": "appimage",
+  "memory_mib": 6144,
+  "cpus": 2,
+  "video": "virtio-vga",
+  "display_heads": 1,
+  "guest_user": "lab",
+  "status": "evaluation-appimage-flatpak",
+  "fixture_hotkeys": {
+    "region": {
+      "shortcut": "Ctrl+Shift+F9",
+      "keys": [
+        "ctrl",
+        "shift",
+        "f9"
+      ]
+    },
+    "window": {
+      "shortcut": "Ctrl+Shift+F10",
+      "keys": [
+        "ctrl",
+        "shift",
+        "f10"
+      ]
+    },
+    "desktop": {
+      "shortcut": "Ctrl+Shift+F11",
+      "keys": [
+        "ctrl",
+        "shift",
+        "f11"
+      ]
+    },
+    "clipboard": {
+      "shortcut": "Ctrl+Shift+F12",
+      "keys": [
+        "ctrl",
+        "shift",
+        "f12"
+      ]
+    }
+  }
+}

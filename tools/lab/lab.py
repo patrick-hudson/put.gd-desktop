@@ -134,10 +134,38 @@ class QMP:
         self.close()
 
 
-def qemu_command(profile, run, overlay, ssh_port, vnc_display, acceleration):
+# Host OVMF locations, searched in order. Both pflash files of a pair must come
+# from the same package build, so a pair is accepted only when both exist.
+UEFI_FIRMWARE = (
+    {'code': '/usr/share/edk2/ovmf/OVMF_CODE_4M.qcow2', 'vars': '/usr/share/edk2/ovmf/OVMF_VARS_4M.qcow2',
+     'format': 'qcow2'},  # Fedora edk2-ovmf
+    {'code': '/usr/share/OVMF/OVMF_CODE_4M.fd', 'vars': '/usr/share/OVMF/OVMF_VARS_4M.fd',
+     'format': 'raw'},  # Debian/Ubuntu ovmf
+)
+
+
+def uefi_firmware(profile):
+    """Resolve the host OVMF pair for a `firmware: uefi` profile; None for BIOS profiles."""
+    kind = profile.get('firmware', 'bios')
+    if kind == 'bios':
+        return None
+    if kind != 'uefi':
+        raise LabError('Profile firmware must be "bios" or "uefi"')
+    for candidate in UEFI_FIRMWARE:
+        if Path(candidate['code']).is_file() and Path(candidate['vars']).is_file():
+            return {'type': 'uefi', 'code': candidate['code'], 'vars_template': candidate['vars'],
+                    'format': candidate['format']}
+    raise LabError('UEFI firmware unavailable; install edk2-ovmf (Fedora) or ovmf (Debian/Ubuntu)')
+
+
+def qemu_command(profile, run, overlay, ssh_port, vnc_display, acceleration, firmware=None):
     args = ['qemu-system-x86_64', '-machine', 'q35,accel=' + acceleration,
-            '-cpu', 'host' if acceleration == 'kvm' else 'max',
-            '-smp', str(profile['cpus']), '-m', str(profile['memory_mib']),
+            '-cpu', 'host' if acceleration == 'kvm' else 'max']
+    if firmware is not None:
+        # Read-only shared code image plus this run's private, writable NVRAM copy.
+        args += ['-drive', f"if=pflash,format={firmware['format']},readonly=on,file={firmware['code']}",
+                 '-drive', f"if=pflash,format={firmware['format']},file={firmware['vars']}"]
+    args += ['-smp', str(profile['cpus']), '-m', str(profile['memory_mib']),
             '-device', profile['video'] + ',id=video0', '-device', 'usb-ehci', '-device', 'usb-tablet',
             '-drive', f'file={overlay},format=qcow2,if=virtio',
             '-netdev', f'user,id=net0,hostfwd=tcp:127.0.0.1:{ssh_port}-:22',
@@ -301,6 +329,22 @@ case "${WAYLAND_DISPLAY:-}" in ""|/*) ;; *) export WAYLAND_DISPLAY="$XDG_RUNTIME
 """
 
 
+def install_format(profile):
+    value = profile.get('install', 'deb')
+    if value not in ('deb', 'appimage'):
+        raise LabError('Profile install must be "deb" or "appimage"')
+    return value
+
+
+def appimage_path_prefix(profile):
+    # `install --appimage` writes putgd-launcher/putgd-cli shims there, so the
+    # same session commands drive the AppImage and a distro package. Package
+    # profiles keep their unchanged PATH.
+    if install_format(profile) != 'appimage':
+        return ''
+    return 'export PATH="$HOME/putgd-lab/bin:$PATH"\n'
+
+
 def guest_session(run, body):
     # Discover the real desktop session's environment, not SSH's empty DISPLAY.
     info = state(run)
@@ -318,7 +362,7 @@ for name in DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS XDG_SESSION_TYPE XDG_CUR
 done
 export QT_QPA_PLATFORM={shlex.quote(profile["qt_platform"])}
 export XDG_RUNTIME_DIR=/run/user/$(id -u)
-{native_display_prefix()}export XDG_CONFIG_HOME=$HOME/putgd-lab/config
+{appimage_path_prefix(profile)}{native_display_prefix()}export XDG_CONFIG_HOME=$HOME/putgd-lab/config
 export XDG_DATA_HOME=$HOME/putgd-lab/data
 {body}
 '''
@@ -326,7 +370,7 @@ export XDG_DATA_HOME=$HOME/putgd-lab/data
 
 
 @lifecycle_operation
-def _launch_machine(args, profile, golden, run, golden_sha256, golden_identity):
+def _launch_machine(args, profile, golden, run, golden_sha256, golden_identity, firmware=None):
     current = golden.stat()
     if (current.st_dev, current.st_ino, current.st_size, current.st_mtime_ns) != golden_identity:
         raise LabError('Golden changed before launch')
@@ -334,6 +378,15 @@ def _launch_machine(args, profile, golden, run, golden_sha256, golden_identity):
     os.chmod(run, 0o700)
     overlay = run / 'disk.qcow2'
     command(['qemu-img', 'create', '-f', 'qcow2', '-F', 'qcow2', '-b', golden, overlay])
+    if firmware is not None:
+        # The shared OVMF code image stays read-only; UEFI variables live in a
+        # private copy that cleanup preserves with the rest of the run's state.
+        vars_copy = run / ('vars.qcow2' if firmware['format'] == 'qcow2' else 'vars.fd')
+        shutil.copyfile(firmware['vars_template'], vars_copy)
+        os.chmod(vars_copy, 0o600)
+        firmware = {**firmware, 'vars': str(vars_copy),
+                    'code_sha256': hash_file(firmware['code']),
+                    'vars_template_sha256': hash_file(firmware['vars_template'])}
     command(['ssh-keygen', '-q', '-t', 'ed25519', '-N', '', '-f', run / 'identity'])
     known_hosts = run / 'known_hosts'
     known_hosts.write_bytes(Path(args.known_hosts).read_bytes())
@@ -343,9 +396,11 @@ def _launch_machine(args, profile, golden, run, golden_sha256, golden_identity):
             'golden': str(golden), 'golden_sha256': golden_sha256,
             'bootstrap_key': str(Path(args.bootstrap_key).resolve()),
             'known_hosts': str(known_hosts), 'overlay': str(overlay)}
+    if firmware is not None:
+        info['firmware'] = firmware
     write_json(run / 'state.json', info)
     result = command(qemu_command(profile, run, overlay, args.ssh_port,
-                                  args.vnc_display, args.acceleration), timeout=15, check=False)
+                                  args.vnc_display, args.acceleration, firmware), timeout=15, check=False)
     (run / 'qemu.log').write_text(result.stderr)
     if result.returncode:
         raise LabError('QEMU startup failed; private qemu.log preserved')
@@ -367,11 +422,12 @@ def launch(args):
     pinned = command(['ssh-keygen', '-F', endpoint, '-f', args.known_hosts], check=False)
     if pinned.returncode or not pinned.stdout.strip():
         raise LabError(f'{endpoint} is missing from --known-hosts; see docs/vm-lab.md for authenticated port remapping')
+    firmware = uefi_firmware(profile)
     run = Path(args.run).resolve()
     before = golden.stat()
     golden_identity = (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns)
     golden_sha256 = hash_file(golden)
-    info = _launch_machine(args, profile, golden, run, golden_sha256, golden_identity)
+    info = _launch_machine(args, profile, golden, run, golden_sha256, golden_identity, firmware)
     try:
         deadline = time.monotonic() + args.timeout
         while True:
@@ -1018,6 +1074,104 @@ def verify_installed_binaries(run, deb):
     return expected
 
 
+def install_package(run, deb):
+    put(run, str(Path(deb).resolve()), '/tmp/putgd-lab.deb')
+    ssh(run, 'sudo -n apt-get update\nsudo -n apt-get install --reinstall -y /tmp/putgd-lab.deb\n', timeout=180)
+    installed = verify_installed_binaries(run, deb)
+    return {'sha256': hash_file(deb), 'filename': Path(deb).name, 'installedBinarySha256': installed}
+
+
+APPIMAGE_SHIMS = {
+    # AppRun registers the KWin permission entry for the mounted resident and
+    # forwards every argument to the bundled putgd-launcher.
+    'putgd-launcher': '#!/bin/sh\nexec "$HOME/{name}" "$@"\n',
+    # The CLI has no AppRun route; run the extracted copy with the image's own
+    # libraries, exactly as AppRun does for the resident.
+    'putgd-cli': '#!/bin/sh\nroot="$HOME/putgd-lab/appimage/squashfs-root"\n'
+                 'export LD_LIBRARY_PATH="$root/usr/lib:$root/usr/lib/putgd${{LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}}"\n'
+                 'export QT_PLUGIN_PATH="$root/usr/plugins:$root/usr/lib/qt6/plugins${{QT_PLUGIN_PATH:+:$QT_PLUGIN_PATH}}"\n'
+                 'exec "$root/usr/bin/putgd-cli" "$@"\n',
+}
+
+
+def install_appimage(run, appimage):
+    """Place the AppImage in the guest home, verify its bytes and record the bundled binaries.
+
+    Image-based guests (Aurora) have no package manager: the AppImage is the
+    installed artifact. The receipt keeps the package layout (`/usr/bin/putgd`
+    keys) because the resident runs from the image's usr/bin and
+    verify_running_app hashes that executable.
+    """
+    source = Path(appimage).resolve()
+    name = source.name
+    if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._+-]*\.AppImage', name):
+        raise LabError('AppImage filename must be a plain name ending in .AppImage')
+    expected_sha256 = hash_file(source)
+    quoted = shlex.quote(name)
+    put(run, str(source), name)  # relative to the guest home (/var/home/lab on Aurora)
+    shims = ''.join(
+        f'printf %s {shlex.quote(body.format(name=name))} > ~/putgd-lab/bin/{shim}\nchmod 755 ~/putgd-lab/bin/{shim}\n'
+        for shim, body in APPIMAGE_SHIMS.items())
+    script = ('set -eu\ncd ~\n'
+              f'chmod +x {quoted}\n'
+              f'actual=$(sha256sum {quoted} | cut -d" " -f1)\n'
+              f'[ "$actual" = {expected_sha256} ] || exit 65\n'
+              'mkdir -p ~/putgd-lab/bin\nrm -rf ~/putgd-lab/appimage\nmkdir -p ~/putgd-lab/appimage\n'
+              f'(cd ~/putgd-lab/appimage && "$HOME/"{quoted} --appimage-extract >/dev/null)\n'
+              + shims +
+              'printf \'{"home":"%s","version":\' "$HOME"\n'
+              f'"$HOME/"{quoted} --version-json\n'
+              'printf \',"binaries":\'\n'
+              'sha256sum ~/putgd-lab/appimage/squashfs-root/usr/bin/putgd* | python3 -c '
+              '\'import json,sys; print(json.dumps(dict(line.split()[::-1] for line in sys.stdin.read().splitlines())), end="")\'\n'
+              'printf \'}\\n\'\n')
+    report = json.loads(ssh(run, script, timeout=300))
+    installed = {}
+    for path, digest in report['binaries'].items():
+        binary = Path(path).name
+        if not binary.startswith('putgd') or not re.fullmatch(r'[0-9a-f]{64}', digest):
+            raise LabError('Unexpected bundled binary inventory')
+        installed['/usr/bin/' + binary] = digest
+    if '/usr/bin/putgd' not in installed:
+        raise LabError('AppImage has no putgd application binary')
+    version = report['version']
+    if not isinstance(version, dict) or not version.get('version'):
+        raise LabError('AppImage --version-json did not report an identity')
+    return {'sha256': expected_sha256, 'filename': name, 'format': 'appimage',
+            'installedPath': report['home'] + '/' + name, 'version': version,
+            'installedBinarySha256': installed}
+
+
+def install(run, deb=None, appimage=None):
+    # A failed new install must not certify the previous package.
+    (Path(run) / 'package.json').unlink(missing_ok=True)
+    wanted = install_format(load_profile(state(run)['profile']))
+    if appimage is not None and wanted != 'appimage':
+        raise LabError('This profile installs a distro package; pass --deb')
+    if deb is not None and wanted != 'deb':
+        raise LabError('This profile installs an AppImage; pass --appimage')
+    receipt = install_appimage(run, appimage) if appimage is not None else install_package(run, deb)
+    write_json(Path(run) / 'package.json', receipt)
+    return {'status': 'installed', 'format': receipt.get('format', 'deb'), 'sha256': receipt['sha256']}
+
+
+def start(run, timeout=30):
+    """Start the installed resident in the native session and prove it is the verified build."""
+    guest_session(run, 'mkdir -p ~/putgd-lab\nnohup putgd-launcher --background > ~/putgd-lab/app.log 2>&1 < /dev/null &\n')
+    deadline = time.monotonic() + timeout
+    while True:
+        try:
+            capabilities = cli(run, 'capabilities')
+            break
+        except (LabError, ValueError, subprocess.TimeoutExpired):
+            if time.monotonic() >= deadline:
+                raise LabError('Resident did not answer the production CLI in time')
+            time.sleep(1)
+    resident = verify_running_app(run)
+    return {'status': 'started', 'resident': resident,
+            'source': capabilities.get('source', {}).get('adapter')}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='action', required=True)
@@ -1029,7 +1183,7 @@ def main():
     launch_parser.add_argument('--vnc-display', type=int, default=20)
     launch_parser.add_argument('--acceleration', choices=['kvm', 'tcg'], default='kvm')
     launch_parser.add_argument('--timeout', type=int, default=180)
-    for name in ('reset', 'cleanup', 'collect', 'screenshot', 'key', 'input', 'install', 'run', 'cli'):
+    for name in ('reset', 'cleanup', 'collect', 'screenshot', 'key', 'input', 'install', 'start', 'run', 'cli'):
         child = sub.add_parser(name)
         child.add_argument('--run', required=True)
         if name == 'cleanup':
@@ -1045,7 +1199,11 @@ def main():
         if name == 'input':
             child.add_argument('events', help='JSON QMP input-send-event events array')
         if name == 'install':
-            child.add_argument('--deb', required=True)
+            package = child.add_mutually_exclusive_group(required=True)
+            package.add_argument('--deb', help='Distro package for apt profiles')
+            package.add_argument('--appimage', help='AppImage for image-based guests (profile install: appimage)')
+        if name == 'start':
+            child.add_argument('--timeout', type=int, default=30)
         if name == 'run':
             child.add_argument('--timeout', type=int, default=45)
             child.add_argument('--keep', action='store_true')
@@ -1080,13 +1238,9 @@ def main():
         elif args.action == 'cli':
             value = cli(args.run, args.method, json.loads(args.params))
         elif args.action == 'install':
-            # A failed new install must not certify the previous package.
-            (Path(args.run) / 'package.json').unlink(missing_ok=True)
-            put(args.run, str(Path(args.deb).resolve()), '/tmp/putgd-lab.deb')
-            ssh(args.run, 'sudo -n apt-get update\nsudo -n apt-get install --reinstall -y /tmp/putgd-lab.deb\n', timeout=180)
-            installed = verify_installed_binaries(args.run, args.deb)
-            write_json(Path(args.run) / 'package.json', {'sha256': hash_file(args.deb), 'filename': Path(args.deb).name, 'installedBinarySha256': installed})
-            value = {'status': 'installed'}
+            value = install(args.run, deb=args.deb, appimage=args.appimage)
+        elif args.action == 'start':
+            value = start(args.run, timeout=args.timeout)
         else:
             value = fixture_run(args)
         print(json.dumps(value))

@@ -74,6 +74,22 @@ class OverlayCleanup(unittest.TestCase):
         self.assertEqual(cleanup.cleanup(self.run), receipt)
         self.assertTrue(self.base.exists())
 
+    def test_uefi_run_retires_only_its_disk_and_keeps_private_nvram(self):
+        # UEFI runs carry a private OVMF variables copy, itself a qcow2 image
+        # without a backing file; it is firmware state, not a disposable disk.
+        nvram = self.run / 'vars.qcow2'
+        self.qemu('create', '-f', 'qcow2', nvram, '540K')
+        state = json.loads((self.run / 'state.json').read_text())
+        state['firmware'] = {'type': 'uefi', 'format': 'qcow2', 'vars': str(nvram),
+                             'code': '/usr/share/edk2/ovmf/OVMF_CODE_4M.qcow2'}
+        self.write(self.run / 'state.json', state)
+        before = nvram.read_bytes()
+        receipt = cleanup.cleanup(self.run)
+        self.assertEqual(receipt['status'], 'completed')
+        self.assertFalse((self.run / 'disk.qcow2').exists())
+        self.assertEqual(nvram.read_bytes(), before)
+        self.assertTrue(self.base.exists())
+
     def test_dry_run_does_not_write_or_delete(self):
         before = set(self.run.rglob('*'))
         self.assertEqual(cleanup.cleanup(self.run, dry_run=True)['status'], 'dry-run')
