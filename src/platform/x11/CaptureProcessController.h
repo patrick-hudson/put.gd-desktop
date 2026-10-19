@@ -1,5 +1,6 @@
 #pragma once
 #include "app/OperationService.h"
+#include "core/Log.h"
 #include "CaptureControl.h"
 #include "CaptureArtifactLease.h"
 #include "CaptureCursorCache.h"
@@ -55,6 +56,7 @@ private:
  std::weak_ptr<Preparation> preparation_;
  QTimer deadline_,stopDeadline_;QThread* decoder_=nullptr;
  PayloadResult result_;Error failure_;QJsonObject lastExit_;
+ HelperOutput output_{"putgd-capture",logCapture()};
  bool prepared_=false,beginRequested_=false,begun_=false,region_=false,previewed_=false;
  bool ready_=false,resultReceived_=false,accepted_=false,exited_=false,cancelling_=false,closing_=false;
 };

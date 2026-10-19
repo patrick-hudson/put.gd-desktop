@@ -4,6 +4,7 @@
 #include <QProcess>
 #include <QTimer>
 #include <functional>
+#include "core/Log.h"
 
 namespace putgd {
 // Owns one geometry-only helper. No callback can authorize capture before its
@@ -32,6 +33,7 @@ private:
  QTimer deadline_,stopDeadline_;
  std::function<void(QRectF,Error)> reply_;
  Error failure_; QJsonObject lastExit_;
+ HelperOutput output_{"putgd-kde-region",logCapture()};
  bool ready_=false,begun_=false,resultReceived_=false,accepted_=false,cancelling_=false,terminal_=false,teardownCertified_=false,cleanupRequired_=false,closing_=false;
 };
 }

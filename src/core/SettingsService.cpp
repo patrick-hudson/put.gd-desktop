@@ -1,4 +1,5 @@
 #include "SettingsService.h"
+#include "Log.h"
 #include <QCryptographicHash>
 #include <QDir>
 #include <QFile>
@@ -117,8 +118,15 @@ QJsonObject SettingsService::metadata() const {
         {"validation", QJsonObject{{"ok", !lastError_}, {"error", lastError_.toJson()}}}};
 }
 
+// The JSON pointer and message only: a rejected value never reaches the log.
+static void logRejected(const Error& error,const char* stage) {
+    // A stale expected revision or a busy lock is an ordinary retry, not a rejection.
+    if(error.code=="config_conflict"||error.code=="config_busy")return;
+    logging::warning(logSettings(),"Configuration rejected",{{"stage",stage},{"code",error.code},{"pointer",error.details["path"]},{"message",error.message.left(512)}});
+}
 Result SettingsService::acceptLoaded(const QJsonObject& candidate,const QString& revision,const Error& error,quint64 sequence) {
     if(sequence<appliedSequence_)return {error,false};
+    if(error&&(error.code!=lastError_.code||error.details!=lastError_.details||revision!=observedRevision_))logRejected(error,"load");
     appliedSequence_=sequence;observedRevision_=revision;
     bool changed=false;
     if(!error&&revision!=acceptedRevision_) {settings_=Settings::fromValidated(candidate);acceptedRevision_=revision;changed=true;}
@@ -129,7 +137,7 @@ Result SettingsService::reload() {
     return acceptLoaded(loaded.candidate,loaded.revision,loaded.error,++sequence_);
 }
 Result SettingsService::save(const QJsonObject& candidate,const QString& expectedRevision) {
-    std::lock_guard guard(ioMutex_);if(auto error=writeCandidate(path_,validator_,credentialValidator_,candidate,expectedRevision))return {error};return reload();
+    std::lock_guard guard(ioMutex_);if(auto error=writeCandidate(path_,validator_,credentialValidator_,candidate,expectedRevision)){logRejected(error,"save");return {error};}return reload();
 }
 Result SettingsService::patch(const QJsonObject& patchObject, const QString& expectedRevision) {
     return save(overlay(document(), patchObject), expectedRevision);
@@ -145,6 +153,7 @@ void SettingsService::asyncLoad(const QJsonObject& candidate,const QString& expe
         const auto sequence=++guarded->sequence_;
         QMetaObject::invokeMethod(guarded,[guarded,loaded,error,sequence,callback] {
             if(!guarded)return;
+            if(error)logRejected(error,"save");
             const auto result=error?Result{error}:guarded->acceptLoaded(loaded.candidate,loaded.revision,loaded.error,sequence);
             if(callback)callback(result);
         },Qt::QueuedConnection);

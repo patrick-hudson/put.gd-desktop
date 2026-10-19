@@ -1,9 +1,12 @@
 #include "ui/VisualStyle.h"
 #include "core/AllocatorPolicy.h"
 #include "core/BuildInfo.h"
+#include "core/Log.h"
+#include "core/RunMarker.h"
 #include "storage/s3/S3Provider.h"
 #include "storage/proton/ProtonProvider.h"
 #include "app/LocalServer.h"
+#include "app/LogService.h"
 #include "app/LoginStartup.h"
 #include "app/UiProcessController.h"
 #include "app/RecordingHelperBackend.h"
@@ -19,6 +22,7 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QSaveFile>
+#include <QSysInfo>
 #include <QJsonDocument>
 #include "app/LocalIpc.h"
 #include <QUuid>
@@ -30,6 +34,11 @@
 #include <cstring>
 #if defined(Q_OS_LINUX) && defined(__GLIBC__)
 #include <malloc.h>
+#endif
+#ifdef Q_OS_LINUX
+#include <QDBusConnection>
+#include <QDBusConnectionInterface>
+#include <QDBusReply>
 #endif
 #ifdef PUTGD_NATIVE_X11
 #include "platform/x11/X11SourceAdapter.h"
@@ -197,6 +206,15 @@ int main(int argc,char* argv[]) {
  putgd::HistoryService history(operations);
  putgd::LocalServer server(settings,operations,history);
  const auto listening=server.listen();if(!listening) {launcherError(listening.error.code);if(listening.error.code=="session_running"){const int retry=activateResident(view,backgroundOnly);return retry>=0?retry:1;}return 1;}
+ // This process now owns the session: open its persistent log (#74) and the
+ // running marker. Helpers inherit QT_FORCE_STDERR_LOGGING, so their Qt
+ // warnings reach the stderr pipe the resident collects instead of the journal.
+ qputenv("QT_FORCE_STDERR_LOGGING","1");
+ const auto stateRoot=putgd::logging::stateRoot();
+ putgd::logging::open(stateRoot+"/logs",{settings.snapshot().logDays,settings.snapshot().logBytes},"putgd");
+ putgd::RunMarker::begin(stateRoot,putgd::buildVersion());
+ putgd::LogService logService(settings,stateRoot);logService.apply();
+ QObject::connect(&app,&QCoreApplication::aboutToQuit,&logService,[]{putgd::logging::info(putgd::logApp(),"Resident stopping");});
 #ifdef PUTGD_NATIVE_X11
  if(coreNative) {
   const auto bind=[&] {coreNative->bindShortcuts(bindings());};
@@ -310,6 +328,29 @@ int main(int argc,char* argv[]) {
   QObject::connect(&startupRecovery,&QTimer::timeout,&tray,[&]{if(!tray.available())showInitialView();});
   startupRecovery.start(10000);
  }
+ {
+  QJsonObject startup{{"build",QJsonDocument::fromJson(putgd::buildManifestJson()).object()},{"os",QSysInfo::prettyProductName()},
+   {"kernel",QSysInfo::kernelVersion()},{"architecture",QSysInfo::currentCpuArchitecture()},{"desktop",qEnvironmentVariable("XDG_CURRENT_DESKTOP")},
+   {"sessionType",qEnvironmentVariable("XDG_SESSION_TYPE")},{"qtRuntime",qVersion()},{"qtCompiled",QT_VERSION_STR},
+   {"platform",coreResident||gnomeCoreResident||kdeCoreResident?QStringLiteral("none"):QGuiApplication::platformName()},
+   {"resident",coreResident?"x11-core":gnomeCoreResident?"gnome-core":kdeCoreResident?"kde-core":"graphical"},
+   {"trayAvailable",tray.available()},{"locations",locations.report},{"capabilities",source->capabilities()}};
+  putgd::logging::info(putgd::logApp(),"Resident started",startup);
+#ifdef Q_OS_LINUX
+  // The session bus may be slow to answer; ask off the session thread.
+  operations.background([](putgd::Error&){
+   auto bus=QDBusConnection::sessionBus();
+   if(!bus.isConnected())return QJsonObject{{"sessionBus",false}};
+   const auto running=bus.interface()->isServiceRegistered("org.freedesktop.portal.Desktop");
+   const QDBusReply<QStringList> activatable=bus.interface()->call("ListActivatableNames");
+   return QJsonObject{{"sessionBus",true},{"portalRunning",running.isValid()&&running.value()},{"portalActivatable",activatable.isValid()&&activatable.value().contains("org.freedesktop.portal.Desktop")}};
+  },[](putgd::Error,QJsonObject portal){putgd::logging::info(putgd::logApp(),"Desktop portal availability",portal);});
+#endif
+ }
  QObject::connect(&app,&QCoreApplication::aboutToQuit,&operations,[&]{proton->shutdown();operations.shutdown();});
- return app.exec();
+ const int status=app.exec();
+ putgd::logging::info(putgd::logApp(),"Resident stopped",{{"exitCode",status}});
+ putgd::RunMarker::end();
+ putgd::logging::close();
+ return status;
 }

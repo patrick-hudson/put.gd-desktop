@@ -59,8 +59,9 @@ void RecordingHelperBackend::refreshCapabilities(std::function<void()> done) {
     auto* process = new QProcess(this);
     probe_ = process;
     process->setProcessChannelMode(QProcess::SeparateChannels);
-    connect(process, &QProcess::readyReadStandardError, this, [process] { while (!process->readAllStandardError().isEmpty()) {} });
-    connect(process, &QProcess::errorOccurred, this, [this, process](QProcess::ProcessError error) { if (probe_ == process && error == QProcess::FailedToStart) finishProbe(); });
+    connect(process, &QProcess::readyReadStandardError, this, [this, process] { const auto bytes = process->readAllStandardError(); if (probe_ == process) probeOutput_.append(bytes); });
+    connect(process, &QProcess::started, this, [this, process] { if (probe_ == process) probeOutput_.started(process->processId()); });
+    connect(process, &QProcess::errorOccurred, this, [this, process](QProcess::ProcessError error) { if (probe_ == process && error == QProcess::FailedToStart) { probeOutput_.failedToStart(process->errorString()); finishProbe(); } });
     connect(process, qOverload<int, QProcess::ExitStatus>(&QProcess::finished), this, [this, process](int, QProcess::ExitStatus) { if (probe_ == process) finishProbe(); });
     probeDeadline_.start(startupMs_);
     process->start(helperPath_, {"--capabilities"}, QIODevice::ReadOnly);
@@ -75,6 +76,13 @@ void RecordingHelperBackend::finishProbe() {
         const auto document = QJsonDocument::fromJson(output.left(probeLimit));
         if (process->exitStatus() == QProcess::NormalExit && process->exitCode() == 0 && output.size() <= probeLimit && document.isObject() && validCapabilities(document.object())) result = document.object();
         else if (process->exitStatus() == QProcess::NormalExit && process->exitCode() == 0) result = unavailable("recording_probe_invalid");
+        if (probeOutput_.pid() > 0) {
+            const bool running = process->state() != QProcess::NotRunning;
+            if (running) { process->kill(); process->waitForFinished(1000); }
+            probeOutput_.append(process->readAllStandardError());
+            probeOutput_.finished(process->exitCode(), process->exitStatus(), running);
+        }
+        if (result["reason"].isString()) logging::warning(logRecording(), "Screen recording is unavailable", {{"reason", result["reason"]}});
         process->deleteLater();
     }
     cached_ = result;
@@ -101,7 +109,7 @@ void RecordingHelperBackend::prepare(const QString& id, const RecordingTarget& t
     const auto generation = child->generation;
     connect(process, &QProcess::readyReadStandardError, this, [this, process, generation] {
         process->setReadChannel(QProcess::StandardError);
-        while (process->bytesAvailable() > 0) { const auto discarded = process->read(16384); if (child_ && child_->generation == generation) child_->stderrBytes += discarded.size(); }
+        while (process->bytesAvailable() > 0) { const auto bytes = process->read(16384); if (child_ && child_->generation == generation) { child_->stderrBytes += bytes.size(); output_.append(bytes); } }
         process->setReadChannel(QProcess::StandardOutput);
         if (child_ && child_->generation == generation && child_->stderrBytes > 1024 * 1024) failChild(generation, helperError("recording_helper_protocol", "The recording helper flooded its diagnostics"));
     });
@@ -109,11 +117,12 @@ void RecordingHelperBackend::prepare(const QString& id, const RecordingTarget& t
     connect(child->control, &UiControl::failed, this, [this, generation](Error) { failChild(generation, helperError("recording_helper_protocol", "The recording helper broke its control protocol")); });
     connect(process, &QProcess::started, this, [this, generation] {
         if (!child_ || child_->generation != generation) return;
+        output_.started(child_->process->processId(), {{"generation", QString::number(generation)}, {"operationId", child_->id}});
         auto frame = envelope();
         frame["build"] = build();
         if (child_->control->send("bootstrap", frame).isEmpty()) failChild(generation, helperError("recording_helper_protocol", "Cannot bootstrap the recording helper"));
     });
-    connect(process, &QProcess::errorOccurred, this, [this, generation](QProcess::ProcessError error) { if (error == QProcess::FailedToStart) { if (child_ && child_->generation == generation && !child_->exited) { child_->exited = true; failChild(generation, helperError("recording_helper_start_failed", "The recording helper could not be started")); } } });
+    connect(process, &QProcess::errorOccurred, this, [this, generation](QProcess::ProcessError error) { if (error == QProcess::FailedToStart) { if (child_ && child_->generation == generation && !child_->exited) { child_->exited = true; output_.failedToStart(child_->process->errorString()); failChild(generation, helperError("recording_helper_start_failed", "The recording helper could not be started")); } } });
     connect(process, qOverload<int, QProcess::ExitStatus>(&QProcess::finished), this, [this, generation](int code, QProcess::ExitStatus status) { exited(generation, code, status); });
     child_ = std::move(child);
     // A sentinel request waits for `ready`; the helper's prepare result then answers the caller.
@@ -201,6 +210,8 @@ void RecordingHelperBackend::exited(quint64 generation, int code, QProcess::Exit
     startup_.stop();
     stopDeadline_.stop();
     lastExit_ = {{"generation", QString::number(generation)}, {"processId", child_->process ? child_->process->processId() : 0}, {"code", code}, {"status", status == QProcess::NormalExit ? "normal" : "crash"}};
+    if (child_->process) output_.append(child_->process->readAllStandardError());
+    output_.finished(code, status, child_->shuttingDown);
     if (child_->control) child_->control->stop();
     const bool clean = child_->shuttingDown && status == QProcess::NormalExit && code == 0;
     if (!clean) {

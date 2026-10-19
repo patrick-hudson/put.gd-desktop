@@ -137,7 +137,7 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                             'preview_editor', 'save_editor_copy', 'submit_editor', 'cancel_editor',
                             'raise_editor', 'get_recording_capabilities', 'prepare_recording', 'control_recording',
                             'get_recording', 'select_recording_region', 'set_recording_overlay', 'edit_recording', 'preview_recording',
-                            'save_recording_copy', 'upload_recording'}
+                            'save_recording_copy', 'upload_recording', 'clear_logs'}
                 self.assertEqual({tool.name for tool in discovered}, expected)
                 for tool in discovered:
                     self.assertEqual(tool.inputSchema['type'], 'object')
@@ -186,6 +186,7 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('delete_history_uploads', {'ids': ['synthetic-entry'], 'acknowledgement': 'synthetic-effect'}, 'delete.confirm', {'ids': ['synthetic-entry'], 'acknowledgement': 'synthetic-effect'}),
                     ('patch_configuration', {'patch': {'captureDefaults': {'destination': 'local', 'profileId': None, 'publicationMode': 'default'}, 'actions': {'clipboard': {'destination': 'default', 'profileId': None}}}, 'expected_revision': 'synthetic-revision'}, 'settings.patch', {'patch': {'captureDefaults': {'destination': 'local', 'profileId': None, 'publicationMode': 'default'}, 'actions': {'clipboard': {'destination': 'default', 'profileId': None}}}, 'expectedRevision': 'synthetic-revision'}),
                     ('reload_configuration', {}, 'settings.reload', {}),
+                    ('clear_logs', {}, 'logs.clear', {}),
                     ('get_view_state', {}, 'ui.viewState', {}),
                     ('perform_action', {'action': 'edit'}, 'action.invoke', {'action': 'edit'}),
                     ('open_editor', {}, 'editor.open', {'source': 'region'}),

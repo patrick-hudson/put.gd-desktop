@@ -831,6 +831,20 @@
               "type": "null"
             }
           ]
+        },
+        "logDays": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 365,
+          "default": 14,
+          "description": "Days to keep persistent log files (docs/diagnostics.md). Omitted means 14."
+        },
+        "logBytes": {
+          "type": "integer",
+          "minimum": 1048576,
+          "maximum": 1073741824,
+          "default": 52428800,
+          "description": "Total bytes of persistent log files; the oldest files go first. Omitted means 50 MiB."
         }
       }
     },
@@ -869,6 +883,18 @@
             "pattern": "^#[0-9a-f]{6}$"
           },
           "description": "Custom colors recently picked in the editor, most recent first. Written by put.gd."
+        },
+        "diagnostics": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["debugLogging"],
+          "properties": {
+            "debugLogging": {
+              "type": "boolean",
+              "default": false,
+              "description": "Keep debug records in the persistent log. put.gd turns this off again 24 hours after it was turned on. AWS SDK trace logging is never enabled."
+            }
+          }
         }
       }
     },

@@ -94,10 +94,13 @@ the last accepted in-memory settings and the bad file so it can be corrected.
 | `retention.recentActivityLimit` | 100 visible recent entries; does not prune history |
 | `retention.previewCacheBytes` | 256 MiB; zero disables retained previews |
 | `retention.historyRetentionDays` | `null` means no automatic record expiry |
+| `retention.logDays` | Optional, default 14 (1–365): days to keep persistent log files ([diagnostics.md](diagnostics.md#retention)) |
+| `retention.logBytes` | Optional, default 50 MiB (1 MiB–1 GiB): total size of persistent log files; the oldest go first |
 | `preferences.uploadClipboardBehavior` | `each_link` (default, including when absent in older configurations) copies every successful upload link individually; `list` copies an ordered list once overlapping uploads settle |
 | `preferences.notifications`, `launchAtLogin` | `true`, `false` |
 | `preferences.unlockCredentialsAtStartup` | Optional, default `true`: read saved keychain S3 credentials once when put.gd starts. A locked keyring shows its own unlock prompt then; uploads and shortcuts never unlock |
 | `preferences.editorRecentColors` | Optional, written by put.gd: up to 6 lowercase `#rrggbb` custom editor colors, most recent first |
+| `preferences.diagnostics.debugLogging` | Optional, default `false`: keep debug records in the persistent log. put.gd sets it back to `false` 24 hours after it was turned on ([diagnostics.md](diagnostics.md#debug-logging)) |
 
 Local saving and uploading are independent outputs. An upload route with a configured
 profile uploads; `archive.keepUploads: true` also saves a local copy before publication.

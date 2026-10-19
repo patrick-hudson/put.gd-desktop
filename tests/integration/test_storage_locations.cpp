@@ -227,7 +227,7 @@ private slots:
   QProcessEnvironment environment;
   for(const auto& key:{"PATH","HOME","LANG","LD_LIBRARY_PATH","ASAN_OPTIONS","UBSAN_OPTIONS","TSAN_OPTIONS","LSAN_OPTIONS"})if(qEnvironmentVariableIsSet(key))environment.insert(key,qEnvironmentVariable(key));
   environment.insert("QT_QPA_PLATFORM","offscreen");environment.insert("XDG_CONFIG_HOME",d.filePath("c"));environment.insert("XDG_DATA_HOME",d.filePath("d"));
-  environment.insert("XDG_CACHE_HOME",d.filePath("k"));environment.insert("XDG_RUNTIME_DIR",runtime);environment.insert("DBUS_SESSION_BUS_ADDRESS","unix:path="+d.filePath("no-bus"));
+  environment.insert("XDG_CACHE_HOME",d.filePath("k"));environment.insert("XDG_STATE_HOME",d.filePath("s"));environment.insert("XDG_RUNTIME_DIR",runtime);environment.insert("DBUS_SESSION_BUS_ADDRESS","unix:path="+d.filePath("no-bus"));
   auto request=[&](const QString& method) {
    QProcess cli;cli.setProcessEnvironment(environment);cli.start(PUTGD_CLI_PATH,{"--socket",socket,method});
    if(!cli.waitForFinished(5000))return QJsonObject{};
@@ -248,8 +248,16 @@ private slots:
    QCOMPARE(locations["config"].toObject(),(QJsonObject{{"path",d.filePath("c/putgd")},{"state","migrated"}}));QCOMPARE(locations["data"].toObject(),(QJsonObject{{"path",d.filePath("d/putgd")},{"state","migrated"}}));
    QCOMPARE(settings["metadata"].toObject()["path"].toString(),d.filePath("c/putgd/config.json"));
    QCOMPARE(history["total"].toInt(),2);
+   // #74: the resident's log and running marker live under XDG_STATE_HOME.
+   QCOMPARE(diagnostics["logging"].toObject()["directory"].toString(),d.filePath("s/putgd/logs"));QVERIFY(!diagnostics["loggingDegraded"].toBool());
+   QVERIFY(!diagnostics["uncleanExit"].toObject()["detected"].toBool());QVERIFY(QFileInfo::exists(d.filePath("s/putgd/running.json")));
   });
   if(QTest::currentTestFailed())return;
+  {
+   QByteArray logs;for(const auto& name:QDir(d.filePath("s/putgd/logs")).entryList({"putgd-*.jsonl"})){QFile file(d.filePath("s/putgd/logs/"+name));QVERIFY(file.open(QIODevice::ReadOnly));logs+=file.readAll();}
+   QVERIFY(logs.contains("\"Resident started\""));QVERIFY(logs.contains("\"Resident stopped\""));
+   QVERIFY2(!QFileInfo::exists(d.filePath("s/putgd/running.json")),"a clean quit removes the running marker");
+  }
   QVERIFY(!QFileInfo::exists(legacyConfig(d.path())));QVERIFY(!QFileInfo::exists(legacyData(d.path())));
   // An earlier version started afterwards recreates its own tree; the resident
   // keeps using the moved roots, leaves that tree alone and names it.
