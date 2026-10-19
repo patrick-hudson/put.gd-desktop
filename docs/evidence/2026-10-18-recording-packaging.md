@@ -137,6 +137,10 @@ The corresponding-source asset adds 18,418,513 bytes to each release.
   - With the lab profile's `QT_QPA_PLATFORM=wayland` forced, the recorder's window aborted (`d69/appimage-ci-qpa-wayland-forced`).
   - On GNOME without `DISPLAY` in the environment it aborted (`f44/appimage-7aa1aff-no-display-env`).
   - A desktop launch has neither problem and passed.
+
+  The recordings were repeated with nightly `9042776` (#75, #77 and #81), with native
+  recorder windows on Plasma and GNOME Wayland:
+  [2026-10-19 Wayland recording](2026-10-19-appimage-recording-wayland.md).
 - **CLI timeout on long exports.** `putgd-cli` gave up after 15 s while `saveCopy` was still exporting under load. Fixed separately in pull request #79.
 - **Overlap with another session.** An early local AppImage run on Kubuntu overlapped another session's test on the same desktop (`k72/appimage-local`). It was repeated with CI AppImages.
 - **Not run:**
