@@ -4,6 +4,12 @@
 #include <memory>
 
 namespace putgd {
+namespace recording {
+// The production helper's reply deadlines (RecordingHelperBackend). A session
+// client waits past them (LocalServer::replyDeadlineMs), so the resident's own
+// answer, recording_helper_timeout included, always reaches the caller.
+inline constexpr int helperStartupMs = 10000, helperCommandMs = 15000, helperStopMs = 2 * helperCommandMs, helperPrepareMs = 600000, helperExportMs = 600000;
+}
 // The resident's view of a recording backend. The production backend
 // supervises the transient putgd-record helper; tests inject a fake. Replies
 // and events may arrive on any thread; RecordingService marshals them.

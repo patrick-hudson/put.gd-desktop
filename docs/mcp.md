@@ -29,7 +29,9 @@ Configure an MCP client to launch the helper with stdio, for example:
 `--socket /absolute/path/session.sock` selects an explicit same-user session endpoint;
 otherwise the CLI uses `$XDG_RUNTIME_DIR/putgd/session.sock`. Paths containing spaces
 are single argument-vector elements. `--timeout` sets the CLI process deadline in
-seconds (default 20). A deadline terminates the client process, not a resident operation:
+seconds (default 60). The CLI bounds its own wait for each method (at most 51 s, for
+`recording.stop`; see [cli.md](cli.md)), so keep `--timeout` above that or slow
+recording commands report `cli_timeout`. A deadline terminates the client process, not a resident operation:
 a sent action may already have been accepted. Inspect activity through the CLI before
 invoking another action; do not infer rollback from a transport error. The helper never
 starts the resident or retries a mutation automatically.
@@ -74,11 +76,11 @@ such as `session_unavailable` and `config_conflict` retain their original envelo
 | `get_recording_capabilities` | recording.capabilities | Recording support, formats/codecs, audio, limits, active ID; no capture or prompt |
 | `prepare_recording` | target, format, codec?, fps?, system_audio, max_edge? → recording.prepare | Durable intent, ready bounds/overlay and any OS consent; captures nothing yet |
 | `control_recording` | id, command start/pause/resume/stop/cancel/raise → recording.<command> | Acknowledged state changes; stop always opens private review, cancel uploads nothing |
-| `get_recording` / `set_recording_overlay` | id → recording.inspect / id, visible → recording.overlay | State, edit revision, progress / overlay visibility |
+| `get_recording` / `set_recording_overlay` | id → recording.inspect / id, visible → recording.overlay | State, edit revision, progress, `lastExport` / overlay visibility |
 | `edit_recording` | id, revision, commands → recording.edit | Atomic trim and timed blur/solid masks in microseconds and canvas pixels |
 | `preview_recording` | id, time_us, max_edge → recording.preview | One frame with trim/masks applied as an MCP image plus metadata |
-| `save_recording_copy` | id, path, overwrite → recording.saveCopy | Exports the reviewed result to a file; no upload |
-| `upload_recording` | id, revision → recording.upload | The only publishing action; sends the validated export through the configured output |
+| `save_recording_copy` | id, path, overwrite → recording.saveCopy | Exports the reviewed result to a file; no upload. Returns `exporting` when the export starts; poll `get_recording` until `reviewing` and read `lastExport` |
+| `upload_recording` | id, revision → recording.upload | The only publishing action; sends the validated export through the configured output. Returns `exporting` and the `operationId` when the export starts; a failed export returns the session to `reviewing` with `lastExport.error`, otherwise `get_operation` follows the upload |
 
 Upload retry delegates to the shared operation service: completed uploads are not repeated,
 unknown publication reconciles its original identity, and terminal uploads can instead copy
@@ -133,7 +135,8 @@ PUTGD_CLI="$PWD/build/dev/putgd-cli" uv run --project tools/mcp --locked \
 This separate suite uses an official SDK stdio client, the production CLI, synthetic
 Unix-session responses and temporary malformed/timeout peers. It checks discovery,
 request IDs, methods/parameters, structured errors, explicit deletion acknowledgement,
-spaces in paths, metadata-only inspection, and expected-revision conflict forwarding.
+spaces in paths, metadata-only inspection, expected-revision conflict forwarding, and
+a slow `recording.stop` (answered after 16 s) outlasting the CLI's ordinary wait.
 It does not prove real compositor, GUI, provider network effects, public links or native
 clipboard behavior. The C++ service suites separately verify resident business behavior.
 

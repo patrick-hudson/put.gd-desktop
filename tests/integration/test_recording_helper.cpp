@@ -51,7 +51,7 @@ private slots:
   const auto stopped=h.rec("stop",{{"id",id}});QVERIFY2(!stopped.error,qPrintable(stopped.error.message));QCOMPARE(stopped.result["state"].toString(),QString("reviewing"));QCOMPARE(stopped.result["durationUs"].toDouble(),12000000.0);
   const auto preview=h.rec("preview",{{"id",id},{"time",2000000}});QVERIFY2(!preview.error,qPrintable(preview.error.message));QVERIFY(preview.result["png"].isString());QCOMPARE(preview.result["timeUs"].toDouble(),2000000.0);
   QVERIFY(!h.rec("edit",{{"id",id},{"revision",1},{"commands",QJsonArray{QJsonObject{{"op","setTrim"},{"start",1000000},{"end",7000000}}}}}).error);
-  const auto uploaded=h.rec("upload",{{"id",id},{"revision",2}});QVERIFY2(!uploaded.error,qPrintable(uploaded.error.message));QCOMPARE(uploaded.result["state"].toString(),QString("submitted"));QCOMPARE(uploaded.result["bytes"].toDouble(),2060.0);
+  const auto uploaded=h.rec("upload",{{"id",id},{"revision",2}});QVERIFY2(!uploaded.error,qPrintable(uploaded.error.message));QCOMPARE(uploaded.result["state"].toString(),QString("exporting"));
   HistoryStore journal(h.operations->databasePath());QTRY_COMPARE(journal.operation(id).state,QString("completed"));
   const auto item=journal.operation(id).items.first();QCOMPARE(item.artifact.mime,QString("video/mp4"));QCOMPARE(item.artifact.bytes,qint64(2060));QCOMPARE(item.local.status,QString("saved"));
   // Discard asked the helper to shut down; it must exit normally.
@@ -92,8 +92,10 @@ private slots:
   Harness h;QTRY_VERIFY(h.operations->ready());qputenv("PUTGD_TEST_RECORD_MODE","slow-export");
   const auto id=h.prepare();QVERIFY(!id.isEmpty());QTRY_COMPARE(h.state(id),QString("ready"));
   QVERIFY(!h.rec("start",{{"id",id}}).error);QCOMPARE(h.rec("stop",{{"id",id}}).result["state"].toString(),QString("reviewing"));
-  QCOMPARE(h.rec("upload",{{"id",id},{"revision",1}}).error.code,QString("recording_helper_timeout"));
-  QCOMPARE(h.state(id),QString("reviewing"));
+  // The upload is accepted when its export starts; the helper's missed deadline is its outcome.
+  QCOMPARE(h.rec("upload",{{"id",id},{"revision",1}}).result["state"].toString(),QString("exporting"));
+  QTRY_COMPARE(h.state(id),QString("reviewing"));
+  const auto last=h.rec("inspect",{{"id",id}}).result["lastExport"].toObject();QCOMPARE(last["status"].toString(),QString("failed"));QCOMPARE(last["error"].toObject()["code"].toString(),QString("recording_helper_timeout"));
   HistoryStore journal(h.operations->databasePath());QCOMPARE(journal.operation(id).state,QString("recording"));QVERIFY(journal.operation(id).items.isEmpty());
   QCOMPARE(h.rec("cancel",{{"id",id}}).result["state"].toString(),QString("cancelled"));
   QTRY_VERIFY(!h.backend->diagnostics()["active"].toBool());

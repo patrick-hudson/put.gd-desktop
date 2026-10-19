@@ -4,6 +4,7 @@
 #include <QDir>
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <QProcess>
 using namespace putgd;using namespace putgd::test;
 
 namespace {
@@ -79,7 +80,10 @@ private slots:
   // Local copies export without uploading and keep the review open.
   const auto copyPath=h.dir.filePath("copy.mp4");
   QCOMPARE(h.rec("saveCopy",{{"id",id},{"path",h.dir.filePath("copy.mkv")}}).error.code,QString("invalid_request"));
-  const auto saved=h.rec("saveCopy",{{"id",id},{"path",copyPath}});QVERIFY2(!saved.error,qPrintable(saved.error.message));QCOMPARE(saved.result["state"].toString(),QString("reviewing"));
+  const auto saved=h.rec("saveCopy",{{"id",id},{"path",copyPath}});QVERIFY2(!saved.error,qPrintable(saved.error.message));QCOMPARE(saved.result["state"].toString(),QString("exporting"));QCOMPARE(saved.result["pending"].toString(),QString("saveCopy"));
+  QTRY_COMPARE(h.state(id),QString("reviewing"));
+  {const auto last=h.rec("inspect",{{"id",id}}).result["lastExport"].toObject();QCOMPARE(last["command"].toString(),QString("saveCopy"));QCOMPARE(last["status"].toString(),QString("saved"));QCOMPARE(last["path"].toString(),copyPath);
+   QCOMPARE(last["revision"].toDouble(),2.0);QCOMPARE(last["bytes"].toDouble(),double(h.backend->exportBytes.size()));QCOMPARE(last["durationUs"].toDouble(),6000000.0);}
   {QFile copy(copyPath);QVERIFY(copy.open(QIODevice::ReadOnly));QCOMPARE(copy.readAll(),h.backend->exportBytes);}
   QCOMPARE(h.backend->exports,1);QCOMPARE(h.backend->lastEdit.trimStart,qint64(2000000));QCOMPARE(*h.backend->lastEdit.trimEnd,qint64(8000000));QCOMPARE(h.backend->lastEdit.masks.size(),1);QVERIFY(h.backend->lastConfig.audio.system);QCOMPARE(h.backend->lastConfig.fps,24);
   QCOMPARE(h.rec("saveCopy",{{"id",id},{"path",copyPath}}).error.code,QString("file_exists"));
@@ -87,8 +91,8 @@ private slots:
   {HistoryStore journal(h.operations->databasePath());QCOMPARE(journal.operation(id).state,QString("recording"));QCOMPARE(journal.operation(id).items.size(),0);}
   // Only Upload at the reviewed revision admits bytes.
   QCOMPARE(h.rec("upload",{{"id",id},{"revision",1}}).error.code,QString("recording_stale"));
-  const auto uploaded=h.rec("upload",{{"id",id},{"revision",2}});QVERIFY2(!uploaded.error,qPrintable(uploaded.error.message));QCOMPARE(uploaded.result["state"].toString(),QString("submitted"));QCOMPARE(uploaded.result["mime"].toString(),QString("video/mp4"));
-  QCOMPARE(h.backend->exports,3);QCOMPARE(h.backend->discards,1);
+  const auto uploaded=h.rec("upload",{{"id",id},{"revision",2}});QVERIFY2(!uploaded.error,qPrintable(uploaded.error.message));QCOMPARE(uploaded.result["state"].toString(),QString("exporting"));QCOMPARE(uploaded.result["pending"].toString(),QString("upload"));QCOMPARE(uploaded.result["operationId"].toString(),id);
+  QTRY_COMPARE(h.backend->discards,1);QCOMPARE(h.backend->exports,3);
   QCOMPARE(h.rec("inspect",{{"id",id}}).error.code,QString("recording_unavailable"));
   HistoryStore journal(h.operations->databasePath());QTRY_COMPARE(journal.operation(id).state,QString("completed"));QTRY_COMPARE(h.operations->diagnostics()["activeOperations"].toInt(),0);
   const auto op=journal.operation(id);QCOMPARE(op.items.size(),1);const auto item=op.items.first();
@@ -116,8 +120,9 @@ private slots:
   // An export failure keeps the review open and the original unpublished.
   h.backend->failStart=false;h.backend->failExport=true;id=h.prepareReady();QVERIFY(!id.isEmpty());
   QVERIFY(!h.rec("start",{{"id",id}}).error);QCOMPARE(h.rec("stop",{{"id",id}}).result["state"].toString(),QString("reviewing"));
-  QCOMPARE(h.rec("upload",{{"id",id},{"revision",1}}).error.code,QString("recording_export_failed"));
-  QCOMPARE(h.rec("inspect",{{"id",id}}).result["state"].toString(),QString("reviewing"));QCOMPARE(journal.operation(id).state,QString("recording"));QVERIFY(journal.operation(id).items.isEmpty());
+  QVERIFY(!h.rec("upload",{{"id",id},{"revision",1}}).error);
+  QTRY_COMPARE(h.state(id),QString("reviewing"));
+  {const auto last=h.rec("inspect",{{"id",id}}).result["lastExport"].toObject();QCOMPARE(last["command"].toString(),QString("upload"));QCOMPARE(last["status"].toString(),QString("failed"));QCOMPARE(last["error"].toObject()["code"].toString(),QString("recording_export_failed"));}QCOMPARE(journal.operation(id).state,QString("recording"));QVERIFY(journal.operation(id).items.isEmpty());
   h.backend->failExport=false;QVERIFY(!h.rec("upload",{{"id",id},{"revision",1}}).error);QTRY_COMPARE(journal.operation(id).state,QString("completed"));
   QCOMPARE(h.provider->uploads.load(),0);
  }
@@ -137,8 +142,8 @@ private slots:
   QCOMPARE(h.rec("upload",{{"id",id},{"revision",1}}).error.code,QString("recording_animation_too_long"));
   QCOMPARE(h.backend->exports,0);
   QVERIFY(!h.rec("edit",{{"id",id},{"revision",1},{"commands",QJsonArray{QJsonObject{{"op","setTrim"},{"start",1000000},{"end",5000000}}}}}).error);
-  const auto uploaded=h.rec("upload",{{"id",id},{"revision",2}});QVERIFY2(!uploaded.error,qPrintable(uploaded.error.message));QCOMPARE(uploaded.result["mime"].toString(),QString("image/gif"));
-  HistoryStore journal(h.operations->databasePath());QTRY_COMPARE(journal.operation(id).state,QString("completed"));
+  const auto uploaded=h.rec("upload",{{"id",id},{"revision",2}});QVERIFY2(!uploaded.error,qPrintable(uploaded.error.message));QCOMPARE(uploaded.result["state"].toString(),QString("exporting"));
+  HistoryStore journal(h.operations->databasePath());QTRY_COMPARE(journal.operation(id).state,QString("completed"));QCOMPARE(journal.operation(id).items.first().artifact.mime,QString("image/gif"));
   QCOMPARE(journal.operation(id).items.first().artifact.category,QString("images"));QVERIFY(journal.operation(id).items.first().artifact.name.endsWith(".gif"));
   // A helper failure event ends the session as failed.
   const auto second=h.prepareReady();QVERIFY(!second.isEmpty());QVERIFY(!h.rec("start",{{"id",second}}).error);
@@ -264,7 +269,73 @@ private slots:
   // Trimmed to the limit, the upload goes through.
   const qint64 revision=qint64(h.rec("inspect",{{"id",id}}).result["edit"].toObject()["revision"].toDouble());
   const auto edited=h.rec("edit",{{"id",id},{"revision",double(revision)},{"commands",QJsonArray{QJsonObject{{"op","setTrim"},{"start",0},{"end",4000000}}}}});QVERIFY2(!edited.error,qPrintable(edited.error.message));
-  const auto uploaded=h.rec("upload",{{"id",id},{"revision",double(revision+1)}});QVERIFY2(!uploaded.error,qPrintable(uploaded.error.message));QCOMPARE(uploaded.result["mime"].toString(),QString("image/gif"));
+  const auto uploaded=h.rec("upload",{{"id",id},{"revision",double(revision+1)}});QVERIFY2(!uploaded.error,qPrintable(uploaded.error.message));
+  HistoryStore journal(h.operations->databasePath());QTRY_COMPARE(journal.operation(id).state,QString("completed"));QCOMPARE(journal.operation(id).items.first().artifact.mime,QString("image/gif"));
+ }
+ // An export can outlast any client wait (the helper allows 600 s, the CLI 15 s):
+ // saveCopy and upload answer once it starts, so the production CLI reports the
+ // accepted export instead of transport_failed, and inspect carries the outcome.
+ void slowExportsAnswerAtOnceAndReportThroughInspect(){
+  Harness h;QTRY_VERIFY(h.operations->ready());HistoryStore journal(h.operations->databasePath());
+  QVERIFY(h.server->listen(h.dir.filePath("runtime")));QVERIFY(h.server->socketPath().toUtf8().size()<=107);
+  auto cli=[&](const QString& method,const QJsonObject& params){
+   QProcess client;client.start(PUTGD_CLI_PATH,{"--socket",h.server->socketPath(),method,QString::fromUtf8(QJsonDocument(params).toJson(QJsonDocument::Compact))});
+   [&]{QTRY_COMPARE_WITH_TIMEOUT(client.state(),QProcess::NotRunning,10000);}();
+   const auto response=QJsonDocument::fromJson(client.readAllStandardOutput()).object();
+   return std::pair{client.exitCode(),response};
+  };
+  h.backend->deferExports=true;
+  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QCOMPARE(h.rec("stop",{{"id",id}}).result["state"].toString(),QString("reviewing"));
+  QVERIFY(h.rec("inspect",{{"id",id}}).result["lastExport"].isNull());
+  // The copy is acknowledged while the export is still running.
+  const auto copyPath=h.dir.filePath("slow-copy.mp4");
+  const auto [savedExit,saved]=cli("recording.saveCopy",{{"id",id},{"path",copyPath}});
+  QVERIFY2(saved["ok"].toBool(),QJsonDocument(saved).toJson().constData());QCOMPARE(savedExit,0);
+  QCOMPARE(saved["result"].toObject()["state"].toString(),QString("exporting"));QCOMPARE(saved["result"].toObject()["lastExport"].toObject()["status"].toString(),QString("exporting"));
+  QCOMPARE(h.backend->pendingExports.size(),1);QVERIFY(!QFileInfo::exists(copyPath));
+  auto inspected=h.rec("inspect",{{"id",id}}).result;QCOMPARE(inspected["state"].toString(),QString("exporting"));QCOMPARE(inspected["pending"].toString(),QString("saveCopy"));
+  QCOMPARE(inspected["lastExport"].toObject()["path"].toString(),copyPath);QCOMPARE(inspected["lastExport"].toObject()["revision"].toDouble(),1.0);
+  QCOMPARE(call(*h.server,"operation.inspect",{{"id",id}}).result["phase"].toString(),QString("exporting"));
+  // Progress is visible meanwhile, and the review is locked until the export ends.
+  h.backend->sink({{"id",id},{"event","progress"},{"exportFraction",0.5}});
+  QTRY_COMPARE(h.rec("inspect",{{"id",id}}).result["progress"].toObject()["exportFraction"].toDouble(),0.5);
+  QCOMPARE(h.rec("saveCopy",{{"id",id},{"path",h.dir.filePath("second.mp4")}}).error.code,QString("recording_state"));
+  QCOMPARE(h.rec("upload",{{"id",id},{"revision",1}}).error.code,QString("recording_state"));
+  QCOMPARE(h.rec("edit",{{"id",id},{"revision",1},{"commands",QJsonArray{QJsonObject{{"op","resetTrim"}}}}}).error.code,QString("recording_state"));
+  h.backend->pendingExports.takeFirst()();
+  QTRY_COMPARE(h.state(id),QString("reviewing"));
+  inspected=h.rec("inspect",{{"id",id}}).result;QVERIFY(inspected["pending"].isNull());QCOMPARE(inspected["lastExport"].toObject()["status"].toString(),QString("saved"));QCOMPARE(inspected["lastExport"].toObject()["bytes"].toDouble(),double(h.backend->exportBytes.size()));
+  {QFile copy(copyPath);QVERIFY(copy.open(QIODevice::ReadOnly));QCOMPARE(copy.readAll(),h.backend->exportBytes);}
+  // A failed slow export is reported the same way and writes nothing.
+  const auto failedPath=h.dir.filePath("failed-copy.mp4");h.backend->failExport=true;
+  QCOMPARE(h.rec("saveCopy",{{"id",id},{"path",failedPath}}).result["state"].toString(),QString("exporting"));
+  h.backend->pendingExports.takeFirst()();QTRY_COMPARE(h.state(id),QString("reviewing"));
+  inspected=h.rec("inspect",{{"id",id}}).result;QCOMPARE(inspected["lastExport"].toObject()["status"].toString(),QString("failed"));QCOMPARE(inspected["lastExport"].toObject()["error"].toObject()["code"].toString(),QString("recording_export_failed"));
+  QVERIFY(!QFileInfo::exists(failedPath));h.backend->failExport=false;
+  // Upload: acknowledged at the start of its export; the operation then carries the outcome.
+  const auto [uploadExit,uploaded]=cli("recording.upload",{{"id",id},{"revision",1}});
+  QVERIFY2(uploaded["ok"].toBool(),QJsonDocument(uploaded).toJson().constData());QCOMPARE(uploadExit,0);
+  QCOMPARE(uploaded["result"].toObject()["state"].toString(),QString("exporting"));QCOMPARE(uploaded["result"].toObject()["pending"].toString(),QString("upload"));QCOMPARE(uploaded["result"].toObject()["operationId"].toString(),id);
+  QCOMPARE(h.backend->pendingExports.size(),1);QCOMPARE(call(*h.server,"operation.inspect",{{"id",id}}).result["phase"].toString(),QString("encoding"));
+  QCOMPARE(journal.operation(id).state,QString("recording"));QVERIFY(journal.operation(id).items.isEmpty());
+  h.backend->pendingExports.takeFirst()();
+  QTRY_COMPARE(journal.operation(id).state,QString("completed"));QCOMPARE(journal.operation(id).items.size(),1);
+  QCOMPARE(h.rec("inspect",{{"id",id}}).error.code,QString("recording_unavailable"));
+  // Cancelling during a slow export discards it: the late result admits nothing.
+  const auto second=h.prepareReady();QVERIFY(!second.isEmpty());QVERIFY(!h.rec("start",{{"id",second}}).error);QVERIFY(!h.rec("stop",{{"id",second}}).error);
+  QCOMPARE(h.rec("upload",{{"id",second},{"revision",1}}).result["state"].toString(),QString("exporting"));
+  QCOMPARE(h.rec("cancel",{{"id",second}}).result["state"].toString(),QString("cancelled"));
+  h.backend->pendingExports.takeFirst()();QTRY_COMPARE(journal.operation(second).state,QString("cancelled"));QVERIFY(journal.operation(second).items.isEmpty());
+  QTRY_COMPARE(h.operations->diagnostics()["activeOperations"].toInt(),0);QCOMPARE(h.provider->uploads.load(),0);
+ }
+ // The CLI waits past every deadline the resident itself waits on, so the
+ // resident's answer (recording_helper_timeout included) always reaches it.
+ void clientWaitsOutlastHelperDeadlines(){
+  QVERIFY(LocalServer::replyDeadlineMs("recording.stop")>recording::helperStopMs);
+  for(const auto* method:{"recording.capabilities","recording.prepare","recording.start","recording.pause","recording.resume","recording.raise","recording.overlay","recording.preview"})
+   QVERIFY2(LocalServer::replyDeadlineMs(method)>recording::helperCommandMs,method);
+  // Exports answer when they start, so they keep the ordinary wait.
+  for(const auto* method:{"recording.saveCopy","recording.upload","recording.inspect","capabilities"})QCOMPARE(LocalServer::replyDeadlineMs(method),15000);
  }
  // The activity window's Cancel is operation.cancel: for a recording it must end
  // the session (capture or review), not only mark the journal record.

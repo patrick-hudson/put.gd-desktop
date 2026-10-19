@@ -3,6 +3,7 @@
 #include "core/BuildInfo.h"
 #include <QCoreApplication>
 #include <QCommandLineParser>
+#include <QDeadlineTimer>
 #include <QJsonDocument>
 #include <QLocalSocket>
 #include <QUuid>
@@ -25,6 +26,7 @@ int main(int argc,char** argv) {
  if(!socket.waitForConnected(3000))return error("session_unavailable","Start the resident put.gd app in this user session");
  QJsonObject request{{"schemaVersion",1},{"requestId",id},{"session",path},{"method",args[0]},{"params",params.object()}};
  socket.write(QJsonDocument(request).toJson(QJsonDocument::Compact)+'\n');if(!socket.waitForBytesWritten(3000))return error("transport_failed","Cannot send request to resident session");
- QByteArray reply;while(!reply.contains('\n')) {if(!socket.waitForReadyRead(15000))return error("transport_failed","Resident session did not return a bounded response");reply+=socket.readAll();if(reply.size()>16*1024*1024)return error("response_too_large","Resident response exceeds 16 MiB");}
+ QDeadlineTimer deadline(putgd::LocalServer::replyDeadlineMs(args[0]));
+ QByteArray reply;while(!reply.contains('\n')) {if(!socket.waitForReadyRead(int(deadline.remainingTime())))return error("transport_failed","Resident session did not return a bounded response");reply+=socket.readAll();if(reply.size()>16*1024*1024)return error("response_too_large","Resident response exceeds 16 MiB");}
  auto response=QJsonDocument::fromJson(reply,&parseError);if(parseError.error!=QJsonParseError::NoError||!response.isObject()||response.object()["schemaVersion"]!=1||response.object()["requestId"]!=id||!response.object()["ok"].isBool())return error("invalid_response","Resident response does not match request schema and ID");output(response.object());return response.object()["ok"].toBool()?0:1;
 }

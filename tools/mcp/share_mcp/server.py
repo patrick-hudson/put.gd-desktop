@@ -53,6 +53,9 @@ RECORDING_FORMATS = {'mp4', 'webm', 'gif', 'webp'}
 RECORDING_CODECS = {'h264', 'h265', 'vp9'}
 RECORDING_CONTROLS = {'start', 'pause', 'resume', 'stop', 'cancel', 'raise'}
 RECORDING_EDIT_OPS = {'setTrim', 'resetTrim', 'addMask', 'updateMask', 'removeMask'}
+# A backstop above the CLI's own bounded wait, whose longest case is 3 s to connect,
+# 3 s to send and 45 s for recording.stop (LocalServer::replyDeadlineMs).
+CLI_TIMEOUT = 60
 
 
 def safe_recording_target(target: Any) -> bool:
@@ -106,7 +109,7 @@ class StrictFastMCP(FastMCP):
 
 class CliAdapter:
     def __init__(self, cli: str = 'putgd-cli', socket: str | None = None,
-                 timeout: float = 20):
+                 timeout: float = CLI_TIMEOUT):
         if not math.isfinite(timeout) or timeout <= 0:
             raise ValueError('CLI timeout must be finite and positive')
         self.cli, self.socket, self.timeout = cli, socket, timeout
@@ -164,6 +167,7 @@ def create_server(adapter: CliAdapter) -> FastMCP:
         'Capture region & edit (the edit action) opens a visible editor; use edit_image/preview_editor, then submit_editor or cancel_editor. '
         'Use redact, never blur, for private information. '
         'Screen recording: prepare_recording, control_recording start/pause/resume/stop, then review with edit_recording/preview_recording; only upload_recording publishes. '
+        'save_recording_copy and upload_recording return once the export starts; poll get_recording until state leaves exporting. '
         'Supply only non-secret configuration and credential references.'))
     read = ToolAnnotations(readOnlyHint=True, destructiveHint=False, openWorldHint=False)
     effect = ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=True)
@@ -296,7 +300,7 @@ def create_server(adapter: CliAdapter) -> FastMCP:
 
     @server.tool(annotations=read)
     async def get_recording(id: str) -> Json:
-        """Read the session: state, pending command, target, config, canvas, retained durationUs, trim/masks with their revision, helper progress and any error."""
+        """Read the session: state, pending command, target, config, canvas, retained durationUs, trim/masks with their revision, helper progress (exportFraction while exporting), lastExport (the latest copy/upload export: status exporting|saved|failed, revision, path, bytes, error) and any error. An ended session is recording_unavailable; get_operation has its outcome."""
         return await adapter.call('recording.inspect', {'id': id}) if identifier(id) else invalid()
 
     @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
@@ -332,7 +336,7 @@ def create_server(adapter: CliAdapter) -> FastMCP:
 
     @server.tool(annotations=effect)
     async def save_recording_copy(id: str, path: str, overwrite: bool = False) -> Json:
-        """Export the reviewed result (trim and masks applied) to an absolute path with the format's extension, without uploading; refuses an existing file unless overwrite is true."""
+        """Export the reviewed result (trim and masks applied) to an absolute path with the format's extension, without uploading; refuses an existing file unless overwrite is true. Returns once the export starts (state exporting); poll get_recording until state is reviewing, then lastExport.status is saved (path, bytes) or failed (error). Exports can take minutes."""
         if not identifier(id) or not identifier(path, 4096) or not path.startswith('/') or type(overwrite) is not bool:
             return invalid()
         params: Json = {'id': id, 'path': path}
@@ -342,7 +346,7 @@ def create_server(adapter: CliAdapter) -> FastMCP:
 
     @server.tool(annotations=effect)
     async def upload_recording(id: str, revision: int) -> Json:
-        """The only action that publishes: export the result at the reviewed revision, validate it and send it through the configured destination (may publish a public link and copy it). Inspect the returned operationId afterwards. Never falls back to the unedited clip."""
+        """The only action that publishes: export the result at the reviewed revision, validate it and send it through the configured destination (may publish a public link and copy it). Returns once the export starts (state exporting, with operationId); exports can take minutes. If get_recording shows reviewing again, lastExport.error says why and nothing was uploaded; once the session is handed to the upload it is recording_unavailable and get_operation on operationId has the outcome. Never falls back to the unedited clip."""
         if not identifier(id) or type(revision) is not int or revision < 1:
             return invalid()
         return await adapter.call('recording.upload', {'id': id, 'revision': revision})
@@ -436,7 +440,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description='Local stdio MCP adapter for the production put.gd CLI')
     parser.add_argument('--cli', default='putgd-cli')
     parser.add_argument('--socket')
-    parser.add_argument('--timeout', type=float, default=20)
+    parser.add_argument('--timeout', type=float, default=CLI_TIMEOUT)
     args = parser.parse_args()
     try:
         adapter = CliAdapter(args.cli, args.socket, args.timeout)

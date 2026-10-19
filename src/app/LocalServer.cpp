@@ -1,4 +1,5 @@
 #include "LocalServer.h"
+#include "RecordingBackend.h"
 #include "core/BuildInfo.h"
 #include <QUuid>
 #include <QDir>
@@ -44,6 +45,15 @@ Result LocalServer::listen(const QString& supplied) {
  }
  if(!server_.listen(path))return {{"session_unavailable","Cannot listen on user session socket",{}},false};
  return {{},true};
+}
+// Most methods answer at once. Recording commands that wait on the helper are
+// answered only after it, so their wait outlasts its deadline; exports reply
+// when they start (see RecordingService::exportTo) and need no longer wait.
+int LocalServer::replyDeadlineMs(const QString& method) {
+ constexpr int base=15000;
+ if(method=="recording.stop")return recording::helperStopMs+base;
+ if(QStringList{"recording.capabilities","recording.prepare","recording.start","recording.pause","recording.resume","recording.raise","recording.overlay","recording.preview"}.contains(method))return recording::helperCommandMs+base;
+ return base;
 }
 QJsonObject LocalServer::response(const QString& requestId,const Error& error,const QJsonObject& result) {return {{"schemaVersion",1},{"requestId",requestId},{"ok",!error},{"result",error?QJsonObject{}:result},{"error",error.toJson()}};}
 void LocalServer::accept() {

@@ -75,7 +75,8 @@ QJsonObject RecordingService::publicJson(const Session& s) const {
     const auto retained = s.state == "reviewing" || s.state == "exporting" ? s.edit.exportDuration(s.duration) : 0;
     QJsonObject o{{"recordingId", s.op.id}, {"operationId", s.op.id}, {"state", s.state}, {"pending", s.pending.isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(s.pending)},
         {"target", s.target.toJson()}, {"config", s.config.toJson()}, {"canvas", sizeJson(s.canvas)}, {"durationUs", double(s.duration)},
-        {"retainedUs", double(retained)}, {"edit", s.edit.toJson()}, {"progress", s.progress}, {"exports", s.exports}, {"error", s.op.error.toJson()}};
+        {"retainedUs", double(retained)}, {"edit", s.edit.toJson()}, {"progress", s.progress}, {"exports", s.exports},
+        {"lastExport", s.lastExport.isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(s.lastExport)}, {"error", s.op.error.toJson()}};
     if (!s.canvas.isEmpty()) o["outputSize"] = sizeJson(recording::outputSize(s.canvas, s.config.maxEdge));
     if (s.overlayExcluded) o["overlayExcluded"] = *s.overlayExcluded;
     return o;
@@ -202,14 +203,15 @@ void RecordingService::handleEvent(const QJsonObject& event) {
     } else if ((kind == "uploadRequested" || kind == "saveCopyRequested") && s.state == "reviewing") {
         QJsonObject params{{"id", s.op.id}, {"revision", event["revision"]}};
         if (kind == "saveCopyRequested") { params["path"] = event["path"]; params["overwrite"] = true; }
-        exportTo(kind == "uploadRequested" ? "upload" : "saveCopy", params, [this](Error error, QJsonObject) {
-            // The helper learns the outcome from its own export command; a refused
-            // request (stale revision, budget) is pushed back as the current edit and
-            // the review window, closed by Upload, is reopened with the reason.
+        // The helper learns the outcome from its own export command; a refused
+        // request (stale revision, budget) or a failed export is pushed back as the
+        // current edit and the review window, closed by Upload, is reopened with the reason.
+        auto refused = [this](Error error, QJsonObject) {
             if (!error || !session_) return;
             backend_->setEdit(session_->op.id, session_->edit, session_->config, limitsJson(*session_));
             backend_->control(session_->op.id, "raise", {{"error", error.message}}, [](Error, QJsonObject) {});
-        });
+        };
+        exportTo(kind == "uploadRequested" ? "upload" : "saveCopy", params, refused, refused);
     }
 }
 void RecordingService::command(const QString& command, const QJsonObject& params, JsonReply reply) {
@@ -351,7 +353,7 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
     if (command == "saveCopy" || command == "upload") { exportTo(command, params, reply); return; }
     reply({"unknown_method", "Unknown recording command", {}}, {});
 }
-void RecordingService::exportTo(const QString& command, const QJsonObject& params, JsonReply reply) {
+void RecordingService::exportTo(const QString& command, const QJsonObject& params, JsonReply reply, JsonReply done) {
     auto& s = *session_;
     const auto settings = s.op.settings;
     QString destination;
@@ -370,22 +372,40 @@ void RecordingService::exportTo(const QString& command, const QJsonObject& param
     const auto output = s.staging + QStringLiteral("/export-%1.%2").arg(++s.exports).arg(s.config.extension());
     const auto edit = s.edit;
     const auto config = s.config;
+    const auto generation = s.generation;
+    s.lastExport = {{"command", command}, {"status", "exporting"}, {"revision", double(edit.revision)}};
+    if (command == "saveCopy") s.lastExport["path"] = destination;
     transition(s, "exporting", command == "upload" ? QStringLiteral("encoding") : QString());
     s.pending = command;
-    backend_->exportClip(s.op.id, edit, config, output, marshal(s.generation, [this, command, destination, overwrite, output, edit, config, reply](Error error, QJsonObject result) {
+    // An export may take minutes (the helper allows 600 s), longer than a client
+    // waits, so the request is answered once it starts, like prepare. Callers
+    // poll inspect: `lastExport` and the operation carry the outcome.
+    reply({}, publicJson(s));
+    if (!session_ || session_->generation != generation) return;
+    backend_->exportClip(s.op.id, edit, config, output, marshal(generation, [this, command, destination, overwrite, output, edit, config, done](Error error, QJsonObject result) {
         auto& s = *session_;
         const auto maximum = s.op.settings.limits.maxFileBytes;
         const QFileInfo file(output);
+        auto failed = [&](const Error& cause) {
+            QFile::remove(output);
+            s.lastExport["status"] = "failed";
+            s.lastExport["error"] = cause.toJson();
+            transition(s, "reviewing");
+            if (done) done(cause, {});
+        };
         if (!error && (!file.isFile() || file.size() < 1)) error = {"recording_export_failed", "The export produced no file", {}};
         if (!error && file.size() > maximum) error = {"input_excessive", "The export exceeds the file size limit", {{"bytes", double(file.size())}, {"limit", double(maximum)}}};
-        if (error) { QFile::remove(output); transition(s, "reviewing"); reply(error, {}); return; }
+        if (error) { failed(error); return; }
         if (command == "saveCopy") {
             if (overwrite && QFileInfo::exists(destination)) QFile::remove(destination);
-            if (!QFile::copy(output, destination)) { QFile::remove(output); transition(s, "reviewing"); reply({"local_save_failed", "Cannot write the copy", {{"path", destination}}}, {}); return; }
+            if (!QFile::copy(output, destination)) { failed({"local_save_failed", "Cannot write the copy", {{"path", destination}}}); return; }
             QFile::setPermissions(destination, QFile::ReadOwner | QFile::WriteOwner);
             QFile::remove(output);
+            s.lastExport["status"] = "saved";
+            s.lastExport["bytes"] = double(file.size());
+            s.lastExport["durationUs"] = result.value("durationUs");
             transition(s, "reviewing");
-            reply({}, {{"recordingId", s.op.id}, {"operationId", s.op.id}, {"path", destination}, {"bytes", double(file.size())}, {"durationUs", result["durationUs"]}, {"revision", double(edit.revision)}, {"state", s.state}});
+            if (done) done({}, publicJson(s));
             return;
         }
         // Explicit Upload: these exact validated bytes become the operation's only artifact.
@@ -402,7 +422,7 @@ void RecordingService::exportTo(const QString& command, const QJsonObject& param
         const auto staging = finished.staging;
         host_.admit(op, std::move(payload), [staging] { QDir(staging).removeRecursively(); });
         emit changed(op.id);
-        reply({}, {{"recordingId", op.id}, {"operationId", op.id}, {"state", "submitted"}, {"bytes", double(file.size())}, {"durationUs", result["durationUs"]}, {"mime", config.mime()}, {"revision", double(edit.revision)}});
+        if (done) done({}, {{"recordingId", op.id}, {"operationId", op.id}, {"state", "submitted"}, {"bytes", double(file.size())}, {"durationUs", result["durationUs"]}, {"mime", config.mime()}, {"revision", double(edit.revision)}});
     }));
 }
 }

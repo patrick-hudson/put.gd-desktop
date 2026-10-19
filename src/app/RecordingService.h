@@ -58,6 +58,8 @@ private:
         qint64 duration = 0;
         RecordingEdit edit;
         QJsonObject progress;
+        // The latest saveCopy/upload export: {command, status, revision, path?, bytes?, durationUs?, error?}.
+        QJsonObject lastExport;
         std::optional<bool> overlayExcluded;
         QString staging;
         int exports = 0;
@@ -72,7 +74,9 @@ private:
     void handleEvent(const QJsonObject&);
     void prepareSession(const QJsonObject& params, JsonReply);
     void commandSession(const QString& command, const QJsonObject& params, JsonReply);
-    void exportTo(const QString& command, const QJsonObject& params, JsonReply);
+    // `reply` answers once the export starts (or is refused); `done`, when
+    // given, runs with the export's outcome.
+    void exportTo(const QString& command, const QJsonObject& params, JsonReply reply, JsonReply done = {});
     RecordingBackend::Reply marshal(quint64 generation, std::function<void(Error, QJsonObject)>);
     QString stagingRoot_;
     Host host_;
