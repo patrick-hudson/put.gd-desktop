@@ -202,7 +202,15 @@ private slots:
   connect(&operations,&OperationService::changed,this,[&](const QString& id){if(!ids.isEmpty()&&id==ids.first()&&journal.operation(id).state=="completed")firstSettled=true;});
   for(int i=0;i<2;++i){QString id;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});QTRY_VERIFY(!id.isEmpty());QTRY_COMPARE(source.reads,i+1);ids.append(id);}
   QTRY_COMPARE(provider->completions.size(),1);provider->completions.takeFirst()();QTRY_VERIFY(firstSettled);QCOMPARE(source.copies,0);
-  bool replied=false;Error copyError;operations.copyResult(ids[0],[&](Error e,QJsonObject){copyError=e;replied=true;});QTRY_VERIFY(replied);QVERIFY2(!copyError,qPrintable(copyError.code));
+  // The upload worker journals `completed` (and a coalesced observation may
+  // report it) before finish() hands the member to its list. Until then the
+  // service still owns the operation and refuses without side effects, so ask
+  // the service itself rather than treating the journal state as settled.
+  // QTRY_VERIFY evaluates its expression again after the loop; latch acceptance
+  // so exactly one request reaches the service.
+  bool replied=false,accepted=false;Error copyError;
+  auto requestCopy=[&]{if(!accepted){replied=false;copyError={};operations.copyResult(ids[0],[&](Error e,QJsonObject){copyError=e;replied=true;});accepted=!replied||copyError.code!="operation_busy";}return accepted;};
+  QTRY_VERIFY(requestCopy());QTRY_VERIFY(replied);QVERIFY2(!copyError,qPrintable(copyError.code));
   const auto firstUrl=journal.operation(ids[0]).items.first().receipt.directUrl;QCOMPARE(source.copied.text,firstUrl);
   QTRY_COMPARE(provider->completions.size(),1);provider->completions.takeFirst()();QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
   QCOMPARE(source.copies,1);QCOMPARE(source.copied.text,firstUrl);QCOMPARE(journal.operation(ids[0]).copyStatus,QString("copied"));QCOMPARE(journal.operation(ids[1]).copyStatus,QString("suppressed"));QCOMPARE(provider->uploads.load(),2);
