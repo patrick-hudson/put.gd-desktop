@@ -125,9 +125,10 @@ GstPadProbeReturn RecordingPipeline::stampFrame(GstPad* pad, GstPadProbeInfo* in
     GstBuffer* buffer = GST_PAD_PROBE_INFO_BUFFER(info);
     const gint64 running = runningNow(pad);
     if (!buffer || running < 0) return GST_PAD_PROBE_OK;
-    const auto frame = pipewireFrameTime(GST_BUFFER_PTS_IS_VALID(buffer) ? gint64(GST_BUFFER_PTS(buffer)) : -1, monotonicNow(), running, clock->previous);
+    auto frame = pipewireFrameTime(GST_BUFFER_PTS_IS_VALID(buffer) ? gint64(GST_BUFFER_PTS(buffer)) : -1, monotonicNow(), running, clock->previous);
     if (frame.ageNs < 0) ++clock->arrival;
     else clock->age.add(frame.ageNs);
+    if (clock->arrivalOnly) frame = pipewireFrameTime(-1, 0, running, clock->previous);
     clock->previous = frame.running;
     buffer = gst_buffer_make_writable(buffer);
     GST_PAD_PROBE_INFO_DATA(info) = buffer;
@@ -164,6 +165,7 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
     video_.offset = 0; video_.firstPassed = -1; video_.lastPassed = -1; video_.step = frameDurationNs_; video_.dropped = false; video_.lateness = {};
     audio_.offset = 0; audio_.firstPassed = -1; audio_.lastPassed = -1; audio_.step = 20 * GST_MSECOND; audio_.dropped = false; audio_.lateness = {};
     frameClock_ = {};
+    frameClock_.arrivalOnly = qEnvironmentVariable("PUTGD_RECORD_PIPEWIRE_TIMESTAMPS") == "arrival";
     clockName_.clear();
     if (!frameSource.isEmpty()) {
         // Compositor frame times are CLOCK_MONOTONIC, which is what the system
