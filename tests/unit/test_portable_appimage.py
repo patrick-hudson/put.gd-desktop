@@ -145,5 +145,53 @@ class DeploymentRejectionTest(unittest.TestCase):
                 self.run_audit(dependencies=library + " => /usr/lib/" + library + " (0x1234)\n")
 
 
+class PlatformAuditTest(unittest.TestCase):
+    """The image worker's start contract, with a synthetic putgd-ui script."""
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory(prefix="pgplatform-")
+        self.addCleanup(self.directory.cleanup)
+        self.app = Path(self.directory.name)
+        (self.app / "usr/bin").mkdir(parents=True)
+        self.platforms = self.app / "usr/plugins/platforms"
+        self.platforms.mkdir(parents=True)
+        for name in ("libqxcb.so", *portable.EXTRA_PLATFORM_PLUGINS):
+            (self.platforms / name).write_bytes(b"\x7fELFsynthetic")
+        self.inventory = {"privateLibraryDirectory": "usr/lib/putgd"}
+        self.worker("""[ "$1" = --image-job ] && [ "$QT_QPA_PLATFORM" = offscreen ] || exit 9
+[ -z "${DISPLAY-}" ] && [ -z "${WAYLAND_DISPLAY-}" ] && [ -z "${QT_PLUGIN_PATH-}" ] || exit 8
+[ -p /dev/stdin ] && [ -p /dev/stdout ] || exit 2
+cat >/dev/null
+exit 3
+""")
+
+    def worker(self, body):
+        path = self.app / "usr/bin/putgd-ui"
+        path.write_text("#!/bin/sh\n" + body)
+        path.chmod(0o755)
+
+    def audit(self):
+        with patch.dict(os.environ, {"DISPLAY": ":99", "WAYLAND_DISPLAY": "wayland-9",
+                                     "QT_PLUGIN_PATH": "/usr/lib/qt6/plugins"}):
+            return portable.audit_platforms(self.app, self.inventory)
+
+    def test_offscreen_is_deployed_for_the_image_worker(self):
+        self.assertIn("libqoffscreen.so", portable.EXTRA_PLATFORM_PLUGINS)
+        result = self.audit()
+        self.assertTrue(result["imageWorkerStartedOffscreen"])
+        self.assertIn("libqoffscreen.so", result["platformPlugins"])
+
+    def test_missing_platform_plugin_is_rejected(self):
+        (self.platforms / "libqoffscreen.so").unlink()
+        with self.assertRaisesRegex(ValueError, "missing from the image: libqoffscreen.so"):
+            self.audit()
+
+    def test_aborting_worker_is_rejected_with_its_qt_message(self):
+        self.worker("""printf '%s\\n' 'qt.qpa.plugin: Could not find the Qt platform plugin "offscreen" in ""' >&2
+kill -ABRT $$
+""")
+        with self.assertRaisesRegex(ValueError, 'Could not find the Qt platform plugin "offscreen"'):
+            self.audit()
+
+
 if __name__ == "__main__":
     unittest.main()
