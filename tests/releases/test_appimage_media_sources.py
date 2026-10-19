@@ -11,6 +11,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'tools/releases'))
+import quiet_git  # noqa: E402,F401  (disables git background maintenance, #99)
 import appimage_media_sources as media  # noqa: E402
 
 

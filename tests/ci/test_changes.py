@@ -3,10 +3,13 @@ import importlib.util
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / 'tests/releases'))
+import quiet_git  # noqa: E402,F401  (disables git background maintenance, #99)
 spec = importlib.util.spec_from_file_location('ci_changes', ROOT / 'tools/ci/changes.py')
 changes = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(changes)

@@ -200,7 +200,7 @@ never relabel a prior binary with the current HEAD or source114 results. Stable
 and candidate publication follows exact-asset acceptance. Nightlies use a separate
 automated build/package class and do not establish current desktop certification.
 Retain curated logs/parameters without credentials or private login/payload data.
-Flatpak is deferred to issue #14.
+Flatpak is deferred to issue [#83](https://github.com/patrick-hudson/put.gd-desktop/issues/83): it needs no host helper, and only Plasma Wayland loses direct screenshots (see `docs/flatpak.md`).
 
 `nightly` is the default branch and trunk; `main` is the release branch. Branch
 from `nightly` and target it with every pull request. Promotion to `main` is a

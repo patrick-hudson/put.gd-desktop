@@ -10,6 +10,7 @@ import unittest
 
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / 'tools/releases'))
+import quiet_git  # noqa: F401  (disables git background maintenance, #99)
 import verify_tag
 
 BASE = '0.1.1'

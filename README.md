@@ -257,7 +257,7 @@ Details, every method and error code: [CLI](docs/cli.md) Â· [MCP](docs/mcp.md) Â
 
 Screen recording uses GStreamer `ximagesrc` on X11. On Wayland it takes a PipeWire stream straight from KWin or Mutter where it can, and otherwise through the ScreenCast portal with restore tokens, so the picker shows once per target kind. Window capture on Plasma includes the frame, matching KWin's own geometry.
 
-Windows compiles in CI as future-platform evidence; macOS is not built. Flatpak needs a host capture companion and is tracked in [#14](https://github.com/patrick-hudson/put.gd-desktop/issues/14). The required lab matrix is Mint, Ubuntu, Kubuntu, Fedora and Debian across Cinnamon, GNOME and KDE on real X11 and Wayland sessions, on physical machines where the gate demands it: [acceptance matrix](docs/acceptance-matrix.md).
+Windows compiles in CI as future-platform evidence; macOS is not built. Flatpak needs no host helper: it keeps every capture feature except direct screenshots on Plasma Wayland (the Screenshot portal stands in), tracked in [#83](https://github.com/patrick-hudson/put.gd-desktop/issues/83) and [docs/flatpak.md](docs/flatpak.md). The required lab matrix is Mint, Ubuntu, Kubuntu, Fedora and Debian across Cinnamon, GNOME and KDE on real X11 and Wayland sessions, on physical machines where the gate demands it: [acceptance matrix](docs/acceptance-matrix.md).
 
 ## <img src="docs/readme/icons/build.svg" width="28" height="28" align="absmiddle" alt=""> Build from source
 

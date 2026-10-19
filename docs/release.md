@@ -2,8 +2,8 @@
 
 Release builds use C++20, Qt 6, the pinned official AWS SDK, CMake presets, Ninja
 and native packaging tools. The application is MIT licensed. The first public
-track is a prerelease. Flatpak is separate work in GitHub issue #14; its selected
-host capture companion must preserve the current hotkey workflow.
+track is a prerelease. Flatpak is separate work in GitHub issue [#83](https://github.com/patrick-hudson/put.gd-desktop/issues/83) and needs no host
+helper; only Plasma Wayland loses direct screenshots (see `docs/flatpak.md`).
 
 ## Branches and channels
 
