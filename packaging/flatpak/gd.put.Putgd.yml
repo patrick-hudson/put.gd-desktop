@@ -30,8 +30,11 @@ finish-args:
   # The default local archive (Documents/put.gd). Anywhere else outside the
   # sandbox's home is a throwaway tmpfs inside the sandbox.
   - --filesystem=xdg-documents/put.gd:create
-  # Tray.
+  # Tray. The resident's own item owns org.kde.StatusNotifierItem.putgd_<uuid>;
+  # without this name no icon appears (Plasma, Cinnamon). Drop it once the item
+  # registers by object path or under the app ID (docs/flatpak.md, change 3).
   - --talk-name=org.kde.StatusNotifierWatcher
+  - --own-name=org.kde.StatusNotifierItem.*
   # KDE: shortcuts through KGlobalAccel, which follows the keyboard layout.
   - --talk-name=org.kde.kglobalaccel
   - --talk-name=org.kde.keyboard
@@ -43,7 +46,9 @@ finish-args:
   - --talk-name=org.gnome.Shell
   # GNOME recording without the portal picker (mutter-screencast).
   - --talk-name=org.gnome.Mutter.ScreenCast
-  # Cinnamon: Muffin's screenshot service for post-selection capture.
+  # Cinnamon: Muffin's screenshot service for post-selection region capture.
+  # It writes into a path the sandbox chooses; until that path is shared with
+  # the host (docs/flatpak.md, change 5) region capture times out.
   - --talk-name=org.Cinnamon
   # Notifications.
   - --talk-name=org.freedesktop.Notifications
@@ -146,14 +151,15 @@ modules:
         -DPUTGD_AWS_RUNTIME_DIR=/app/aws-sdk/lib -DPUTGD_AWS_SOURCE_DIR=/app/aws-sdk/source
         && cmake --build /tmp/putgd-build --parallel "${FLATPAK_BUILDER_N_JOBS}"
         && cmake --install /tmp/putgd-build
-      # Flatpak exports only files named after the app ID. KWin looks up a
-      # sandboxed Wayland client's desktop entry by this ID, so the exported
-      # entry also carries the screencast grant that putgd-record.desktop
-      # gives native installs. ScreenShot2 cannot be granted this way.
+      # Flatpak exports only files named after the app ID. The X-KDE-* grants
+      # are removed: a sandbox cannot use ScreenShot2 at all, and KWin's screen
+      # cast grant must come from a user-installed entry, because Flatpak
+      # 1.18.4 and its backports (GHSA-v64f-hrwr-j4vh) drop such keys from
+      # exports and an app must not grant itself the protocol on hosts that
+      # still lack that fix. See docs/flatpak.md.
       - >-
-        sed -e 's|^Exec=.*|Exec=putgd-launcher|' -e 's|^Icon=.*|Icon=gd.put.Putgd|'
+        sed -e 's|^Exec=.*|Exec=putgd-launcher|' -e 's|^Icon=.*|Icon=gd.put.Putgd|' -e '/^X-KDE-/d'
         /app/share/applications/putgd.desktop > /app/share/applications/gd.put.Putgd.desktop
-      - echo 'X-KDE-Wayland-Interfaces=zkde_screencast_unstable_v1' >> /app/share/applications/gd.put.Putgd.desktop
       - install -Dm644 /app/share/icons/hicolor/scalable/apps/putgd.svg /app/share/icons/hicolor/scalable/apps/gd.put.Putgd.svg
       # The Shell extension is a host component; keep a copy for manual install.
       - install -d /app/share/putgd/gnome-extension
