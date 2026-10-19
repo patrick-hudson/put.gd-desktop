@@ -380,6 +380,43 @@ discard close the stream (`Session.Close`, `Session.Stop` or the protocol's
 demarshalling; the three paths are exercised on the Fedora GNOME and Debian
 KDE desktops.
 
+### Timestamps and A/V sync
+
+`pipewiresrc` frames carry the compositor's own frame time in their PipeWire
+header (CLOCK_MONOTONIC: Mutter's paint time, KWin's previous output
+presentation). As a live `GstBaseSrc` it shifts every one of them by the first
+frame's arrival delay and waits on the clock for faster frames, so before
+#86 the whole video track was late by whatever the first frame waited (0 to
+90 ms on Plasma, different every recording). The helper now uses a private
+`pipewiresrc` subclass without those sync times, runs the pipeline on the
+monotonic system clock (pulsesrc slaves to it) and stamps each frame when it
+reaches the pipeline, as `ximagesrc` stamps a frame when it reads it. Arrival
+rather than the header time is deliberate: KWin's header time runs about 40 ms
+ahead of the frame, and recordings stamped with it played the sound 35–48 ms
+late on Plasma 6.3, while arrival times agree with the X11 path; Mutter's
+frames arrive about 8 ms after their header time, so both agree there.
+
+The working clip's audio starts after its first video frame (the sink monitor
+opens after the stream: 20–110 ms on Wayland, 0 on X11). Export cuts audio
+from the same clip-timeline instants as video and fills any time before the
+first sample with silence; before #86 it rebased audio to its own first
+sample, which played every Wayland MP4 or WebM that much early (the −53 ms of
+the issue). Measured with `--av-marker`/`--av-sync` through the built-in
+speakers, the exported files now read −9 to +7 ms (KDE screencast and portal
+on Debian 13 Plasma 6.3, Mutter screen cast and portal on Fedora 44 GNOME 50)
+against −12 to −18 ms on Kubuntu 26.04 X11, all with GStreamer's `playbin`
+as the player. `ffplay` reads 4–43 ms later on the same captures because
+it ignores the audio server's latency, and it doesn't play on GNOME Wayland.
+The raw numbers per path are in
+[the receipt](evidence/2026-10-19-wayland-av-sync.md).
+
+Lab A/B runs: `PUTGD_RECORD_PIPEWIRE_TIMESTAMPS=compositor` maps each frame's
+header time instead of stamping its arrival, and `=legacy` restores the
+pipeline before #86 (`pipewiresrc do-timestamp=true` on its own stream clock).
+With `PUTGD_RECORD_DEBUG_LOG` set, stopping logs the pipeline clock, the
+lateness of video and audio at their encoders and the age of the compositor
+frame times (min/mean/max).
+
 ### Wayland selection, bounds and bar
 
 A `region` without a rectangle (the tray, the dashboard's Record screen and
@@ -497,7 +534,9 @@ AMD's `radeonsi` and Intel's `iHD` share this path, with no B-frames. An
 encoder that does not open (no driver, no entry point, as HEVC on a UHD 630)
 is skipped for the next candidate, so other machines keep the CPU path. HEVC
 in MP4 is tagged `hvc1` for Apple players. The working clip is decoded with frame and
-slice threads on every core. Audio is trimmed with `atrim` in seconds and
+slice threads on every core. Audio is trimmed with `atrim` in seconds on the
+same clip timeline as the video (it starts at the first video frame; a gap
+before the first sample becomes silence, see "Timestamps and A/V sync") and
 encoded as AAC (MP4) or Opus (WebM). MP4 output is written with `faststart`.
 
 On the workstation (i9-9880H, UHD 630, Quadro T2000, 60 s 2238×1318 clip

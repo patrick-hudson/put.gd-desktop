@@ -9,6 +9,28 @@ missing profiles, and run physical-hardware release gates on physical machines.
 This requirement is separate from the historical results below; missing new
 rows and current-candidate evidence remain gates.
 
+## Wayland recording A/V sync — 2026-10-19
+
+The [A/V sync receipt](evidence/2026-10-19-wayland-av-sync.md) records #86 on
+`claude/wayland-av-sync`, final build `0500748` (scratch builds on each desktop's
+builder), measured with the `--av-marker`/`--av-sync` check through the built-in
+speakers with a GStreamer player on every desktop.
+
+- Cause: the export rebased audio to its own first sample, though a Wayland
+  working clip's audio starts 20–110 ms after its video, so MP4/WebM played the
+  sound that much early. PipeWire video was also anchored to the first frame's
+  arrival delay (0–90 ms per run on KWin).
+- Exported MP4 medians, before → after: d69 Plasma 6.3 `kde-screencast` −86.7 /
+  −25.3 → −8.7 / +4.7 ms (ffplay +18.7), d69 portal −112.7 → +7.3, f44 GNOME 50
+  `mutter-screencast` −92.7 → +3.3 / −6.0, f44 portal (window) −54.0 → −4.7.
+  k72 Kubuntu 26.04 X11 is unchanged at −12.0 / −18.0 (ffplay +7.3). Working
+  clips and exports now agree within 0.7 ms.
+- `test_export_av_sync`: MP4 and WebM keep a 110 ms audio start (nightly's
+  exporter: −110 ms); silent MP4, GIF and WebP carry no audio, and their frames
+  match nightly's exporter.
+- Not covered: headphone or Bluetooth sinks, multi-monitor, the AppImage build,
+  and ffplay on GNOME Wayland (it doesn't play there).
+
 ## X11 editor window refusal — 2026-10-19
 
 The [X11 editor refusal receipt](evidence/2026-10-19-x11-editor-refusal.md)
