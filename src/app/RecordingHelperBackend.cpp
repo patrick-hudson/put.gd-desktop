@@ -219,6 +219,7 @@ void RecordingHelperBackend::exited(quint64 generation, int code, QProcess::Exit
 }
 void RecordingHelperBackend::control(const QString& id, const QString& command, const QJsonObject& params, Reply reply) {
     if (!child_ || child_->id != id) { reply(helperError("recording_helper_closed", "No recording helper owns this session"), {}); return; }
+    // stop finalizes the file; recording::helperStopMs is this doubled deadline.
     send(command, params, command == "stop" ? 2 * commandMs_ : commandMs_, std::move(reply));
 }
 void RecordingHelperBackend::preview(const QString& id, const RecordingEdit& edit, const RecordingConfig& config, qint64 timeUs, int maxEdge, Reply reply) {

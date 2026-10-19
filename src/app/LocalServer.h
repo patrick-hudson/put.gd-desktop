@@ -19,6 +19,8 @@ public:
  static QString defaultRuntimeDirectory();
  static QString defaultSocketPath();
  static QJsonObject response(const QString& requestId,const Error&,const QJsonObject&);
+ // How long a client waits for this method's reply.
+ static int replyDeadlineMs(const QString& method);
  void dispatch(const QJsonObject&,JsonReply);
  void setUiActivation(std::function<void(const QString&,std::function<void(Error)>)> callback) {uiActivation_=std::move(callback); }
 private:

@@ -14,7 +14,7 @@ import zlib
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
-from share_mcp.server import CliAdapter, create_server
+from share_mcp.server import CLI_TIMEOUT, CliAdapter, create_server
 
 
 def synthetic_png() -> bytes:
@@ -64,6 +64,11 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
         result = await CliAdapter('/does/not/exist').call('capabilities', {})
         self.assertEqual(result['error']['code'], 'cli_unavailable')
 
+    def test_default_deadline_outlasts_the_cli(self):
+        # The CLI's longest bounded wait: 3 s to connect, 3 s to send, 45 s for recording.stop.
+        self.assertGreater(CLI_TIMEOUT, 3 + 3 + 45)
+        self.assertEqual(CliAdapter().timeout, CLI_TIMEOUT)
+
 
 class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
@@ -86,6 +91,8 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
         request = json.loads(await reader.readline())
         self.calls.append(request)
         method = request['method']
+        if method == 'recording.stop' and request['params'].get('id') == 'slow-stop':
+            await asyncio.sleep(16)
         result = {'operationId': 'synthetic-operation', 'method': method, 'params': request['params']}
         if method == 'settings.get':
             result = {'document': {'actions': {'clipboard': {'destination': 'upload'}}},
@@ -108,6 +115,13 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
         await writer.drain()
         writer.close()
         await writer.wait_closed()
+
+    async def test_slow_recording_stop_reaches_the_caller(self):
+        # The resident answers stop only after the helper, whose deadline is 30 s: the
+        # production CLI must wait past its ordinary 15 s, and the adapter past the CLI.
+        reply = await CliAdapter(self.cli, self.socket).call('recording.stop', {'id': 'slow-stop'})
+        self.assertTrue(reply['ok'], reply)
+        self.assertEqual(reply['result']['method'], 'recording.stop')
 
     async def test_official_sdk_discovery_and_cli_parity(self):
         parameters = StdioServerParameters(command=sys.executable, args=[

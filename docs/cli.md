@@ -28,6 +28,18 @@ Active `operation.inspect` and `operation.recent` results also expose an operati
 optional `bytesTotal`. A missing total means percentage is unknown. These are
 transient observations, not confirmed publication or final result evidence.
 
+The CLI waits 3 s to connect, 3 s to send and then a bounded time for the whole
+reply, at most 16 MiB: 15 s for most methods. Screen-recording commands that the
+resident answers only after the recording helper wait 15 s past the helper's own
+deadline, so its `recording_helper_timeout` still arrives: 45 s for
+`recording.stop` and 30 s for `recording.capabilities`, `prepare`, `select`,
+`start`, `pause`, `resume`, `raise`, `overlay` and `preview`. Work that can take longer
+replies when it starts: `recording.prepare` with `state: preparing`, and
+`recording.saveCopy` and `recording.upload` with `state: exporting`; poll
+`recording.inspect` (see [recording.md](recording.md#exports)). A missed wait is
+`transport_failed`; the resident may still finish the request, so inspect before
+retrying.
+
 Examples:
 
 ```sh

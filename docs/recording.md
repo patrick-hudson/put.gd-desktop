@@ -81,12 +81,36 @@ All methods go through `putgd-cli` unchanged. `id` is the recording ID.
 | `recording.select` | `{id, rect: [x, y, w, h]}` | completes an open region selector with that rectangle as a drag would (X11 root pixels, logical desktop pixels on Wayland); `recording_state` when no selector is open |
 | `recording.start` / `pause` / `resume` / `stop` | `{id}` | acknowledged once the backend reached the state; a duplicate of the in-flight command returns the current state, a different one is `recording_busy`; `stop` returns `durationUs` and enters `reviewing` |
 | `recording.cancel` | `{id}` | discards the clip; the operation ends `cancelled` |
-| `recording.inspect` | `{id}` | state, pending command, `selecting`, target, config, canvas, `durationUs`, `retainedUs`, edit, progress, `overlayExcluded`, `overlayPlacement`, error |
+| `recording.inspect` | `{id}` | state, pending command, `selecting`, target, config, canvas, `durationUs`, `retainedUs`, edit, progress (`exportFraction` while exporting), `overlayExcluded`, `overlayPlacement`, `lastExport`, error; an ended session is `recording_unavailable` and its operation holds the outcome |
 | `recording.raise` / `recording.overlay` | `{id}` / `{id, visible}` | overlay control; the recording indicator stays visible |
 | `recording.edit` | `{id, revision, commands[1–100]}` | atomic `setTrim {start, end\|null}`, `resetTrim`, `addMask {mask}`, `updateMask {maskId, mask}`, `removeMask {maskId}` |
 | `recording.preview` | `{id, time, maxEdge? 64–1600}` | one PNG frame (base64 `png`) at clip time with current trim/masks, plus `retained`, `outputTimeUs`, `revision`; returned only to the requesting client |
-| `recording.saveCopy` | `{id, path, overwrite?}` | exports to an absolute path with the format's extension; no upload |
-| `recording.upload` | `{id, revision}` | the only publishing action; returns `state: submitted` and the linked `operationId` |
+| `recording.saveCopy` | `{id, path, overwrite?}` | exports to an absolute path with the format's extension; no upload. Replies once the export starts with `state: exporting`; poll `inspect` until `reviewing`, then `lastExport.status` is `saved` or `failed` |
+| `recording.upload` | `{id, revision}` | the only publishing action. Replies once the export starts with `state: exporting` and the linked `operationId`; see "Exports" below |
+
+### Exports
+
+An export can run for minutes: the helper allows 600 s, and a 60 s GIF or a
+long H.265 clip on a busy machine takes well over the CLI's 15 s wait. So
+`saveCopy` and `upload` check the request first (state, path and `overwrite`,
+the revision, the animation limits) and refuse it at once, or reply as soon as
+the export starts, like `prepare`. The reply is the session as `inspect` shows
+it: `state: exporting`, `pending: saveCopy|upload`. Edits, previews and other
+exports are refused with `recording_state` until the export ends; `cancel` still
+works and discards it. While it runs, `progress.exportFraction` reports how far
+it got, and `operation.inspect` reports phase `exporting` (copy) or `encoding`
+(upload).
+
+`lastExport` is the session's latest export: `{command, status, revision}`, plus
+`path` for a copy. `status` is `exporting`, then `saved` (with `bytes` and
+`durationUs`) or `failed` (with `error`, for example `recording_export_failed`,
+`input_excessive` or `local_save_failed`). A failed export writes nothing and
+returns the session to `reviewing`. For a copy, poll `recording.inspect` until
+`state` is `reviewing` again. For an upload, `reviewing` with
+`lastExport.status: failed` means nothing was uploaded. A successful upload export
+hands the bytes to the pipeline and ends the session: `recording.inspect` then
+answers `recording_unavailable`, and `operation.inspect` on the `operationId`
+follows the upload to `completed` or `failed`.
 
 Codec rules: MP4 takes `h264` (default) or `h265`; WebM takes `vp9`; GIF and
 WebP take none. `audio.system` is the computer's playback and is refused for
@@ -127,9 +151,14 @@ child's pipes, mirroring the capture and editor helpers:
 - `command {requestId, command, params}` → `commandResult {requestId, ok, result}`
   or `{..., ok: false, code, message, details}`; commands are `capabilities`,
   `prepare`, `start`, `pause`, `resume`, `stop`, `cancel`, `raise`, `overlay`,
-  `preview` and `export`. Deadlines: 15 s per command, 30 s for `stop`, 600 s for
+  `preview` and `export`. Deadlines (`recording::helper*Ms` in
+  `src/app/RecordingBackend.h`): 15 s per command, 30 s for `stop`, 600 s for
   `prepare` (a hands-on drag selection or OS consent), 600 s for `export`; a missed deadline is
-  `recording_helper_timeout` and leaves the session where it was.
+  `recording_helper_timeout` and leaves the session where it was. The session
+  methods that wait on a command reply only after the helper answers, so
+  `putgd-cli` waits 15 s past the helper's deadline for them (45 s for `stop`,
+  30 s for the others; `LocalServer::replyDeadlineMs`). `prepare` and the exports
+  reply when they start.
 - `event {event: progress|stopped|failed, ...}` from the helper is forwarded to
   the service with the session ID; an unexpected exit fails the session with
   `recording_helper_crashed` (or `recording_helper_exited`) and never uploads.
@@ -585,15 +614,21 @@ and no host-matched library was bundled; the receipt records the result under
   restart interruption, a fake desktop shell selecting a region and framing
   the bar (`overlayPlacement`), cancelling and driving a shell selection
   without ever starting the helper, and the helper's `selecting` event with
-  `recording.select`.
+  `recording.select`. Its slow-export case holds the fake export open while the
+  production `putgd-cli` runs `saveCopy` and `upload`: both answer `exporting`
+  at once, `inspect` shows progress, the lock on edits and `lastExport`, and a
+  cancel during the export admits nothing. It also checks that the CLI's wait
+  for every method that waits on the helper outlasts that helper's deadline.
 - `recording_helper_integration` (`tests/integration/test_recording_helper.cpp`):
   the helper supervisor against a fixture helper (probe caching, lifecycle,
   progress and helper-initiated stop events, crash, silence, wrong build,
   export timeout, broken probes, missing helper) and, when built, the product
   `putgd-record`: its probe JSON, the identity handshake, the explicit
   `capture_not_implemented` refusal and its normal exit.
-- `tests/integration/test_mcp.py`: tool → method forwarding parity and the
-  preview image route against the synthetic peer.
+- `tests/integration/test_mcp.py`: tool → method forwarding parity, the
+  preview image route against the synthetic peer, a `recording.stop` that the
+  peer answers after 16 s still reaching the caller through the production CLI,
+  and the adapter's default deadline staying above the CLI's longest wait.
 - `gnome_ui_ownership_contract` (`tests/desktop/test_gnome_ownership.mjs`,
   GNOME hosts only): `SelectArea` answering and `Release` cancelling, bar
   placement order, dim strips cut around the area and the bar, and refusing

@@ -55,7 +55,7 @@ private:
     quint64 generation_ = 0;
     QTimer startup_, stopDeadline_;
     // prepare covers a hands-on drag selection and OS consent; the overlay stays visible and Escape cancels.
-    int startupMs_ = 10000, commandMs_ = 15000, prepareMs_ = 600000, exportMs_ = 600000;
+    int startupMs_ = recording::helperStartupMs, commandMs_ = recording::helperCommandMs, prepareMs_ = recording::helperPrepareMs, exportMs_ = recording::helperExportMs;
     QJsonObject cached_, lastExit_;
     qint64 cachedAt_ = 0;
     QProcess* probe_ = nullptr;
