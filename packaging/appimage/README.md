@@ -145,12 +145,13 @@ to every window in the image.
 The post-deployment audit runs the relocated `putgd-record --capabilities`
 with `APPDIR` set and no display. It fails unless GStreamer initialises, every
 `requiredElements` entry loads, every plugin comes from `usr/lib/gstreamer-1.0`,
-FFmpeg's H.264 decoder opens, WebM, GIF and WebP export are available and no
-host-matched library was bundled. The receipt keeps the result under
-`postDeploymentAudit.recording` and the media list, fallbacks and FFmpeg pin
-under `recordingRuntime`. A build without a GPU (CI) has no H.264 encoder, so
-MP4 export is absent there by design; it appears on hosts whose driver encodes
-H.264.
+FFmpeg's H.264 decoder opens, MP4, WebM, GIF and WebP export are available,
+the bundled `x264enc` encodes, the bundled libx264 and libx265 open, and no
+host-matched library was bundled. A builder without a GPU (CI) has only those
+fallbacks, so the audit proves them; the host's VA-API and NVENC encoders are
+exercised on the lab desktops. The receipt keeps the result under
+`postDeploymentAudit.recording` and the media list, fallbacks, FFmpeg pin and
+GPL components under `recordingRuntime`.
 
 The recording runtime grew the image from 98,929,144 bytes (nightly 317) to
 112,736,760 bytes (`7aa1aff`): 10.5 MB for GStreamer, FFmpeg and the plugins,
