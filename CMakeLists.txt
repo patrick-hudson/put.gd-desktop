@@ -778,6 +778,10 @@ if(BUILD_TESTING)
   target_link_libraries(test_settings PRIVATE putgd_core Qt6::Test)
   add_test(NAME settings_contract COMMAND test_settings)
   set_tests_properties(settings_contract PROPERTIES TIMEOUT 30)
+  add_test(NAME json_ref_lifetime_contract COMMAND "${CMAKE_COMMAND}"
+    "-DREPO_ROOT=${CMAKE_CURRENT_SOURCE_DIR}"
+    -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/json_ref_lifetime_contract.cmake")
+  set_tests_properties(json_ref_lifetime_contract PROPERTIES TIMEOUT 30)
 endif()
 
 if(BUILD_TESTING)
