@@ -89,7 +89,14 @@ def system_library_licenses(appdir: Path, qt: Path, extra_origins: dict[str, Pat
             continue  # Exact pinned upstream notices are already installed.
         source = origins.get(name)
         if source is None:
-            raise ValueError("Cannot identify deployed system library: " + name)
+            # Private distro libraries outside the linker cache, such as
+            # libpulsecommon under pulseaudio/, are found by their owning package.
+            owners = subprocess.run(["dpkg-query", "-S", "*/" + name], text=True, capture_output=True).stdout
+            paths = {line.split(": ", 1)[1].strip() for line in owners.splitlines()
+                     if ": " in line and line.split(": ", 1)[1].strip().endswith("/" + name)}
+            if len(paths) != 1:
+                raise ValueError("Cannot identify deployed system library: " + name)
+            source = Path(paths.pop())
         owner = subprocess.run(["dpkg-query", "-S", str(source)], text=True, capture_output=True)
         if owner.returncode:
             owner = subprocess.run(["dpkg-query", "-S", str(source.resolve())], text=True, capture_output=True)

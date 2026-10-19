@@ -12,4 +12,6 @@ namespace putgd::record {
 QMap<QString, QString> bundledGStreamerEnvironment(const QString& appDir, const QString& executable, const QString& cacheDir);
 // Applies bundledGStreamerEnvironment for this process; call before GStreamer initialises.
 void useBundledGStreamer();
+// Whether this process is the helper inside a mounted AppImage (the test above).
+bool runsFromAppImage();
 }

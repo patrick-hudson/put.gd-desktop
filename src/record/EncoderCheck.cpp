@@ -1,7 +1,7 @@
 #include "EncoderCheck.h"
+#include "BundledRuntime.h"
 #include <QElapsedTimer>
 #include <QFile>
-#include <QProcessEnvironment>
 #include <dlfcn.h>
 #include <gst/gst.h>
 extern "C" {
@@ -163,8 +163,7 @@ bool h264DecoderUsable(QString& decoder, QString& failure) {
     return true;
 }
 QString h264Hint(const QString& reason) {
-    const auto env = QProcessEnvironment::systemEnvironment();
-    if (!env.value("APPIMAGE").isEmpty())
+    if (runsFromAppImage())
         return QStringLiteral("The AppImage encodes H.264 with your graphics driver (VA-API or NVIDIA NVENC) and none accepted it here; "
                               "install your GPU's VA-API driver with H.264 encoding, or use the put.gd DEB or RPM package.");
     const auto id = osRelease("ID");
