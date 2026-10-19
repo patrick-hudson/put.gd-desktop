@@ -257,7 +257,7 @@ backend.
 
 | Event | Meaning |
 | --- | --- |
-| `progress {durationUs, bytes, paused, encoder, audioEncoder}` / `{exportFraction}` | retained time and file size while recording; export progress |
+| `progress {durationUs, bytes, paused, encoder, audioEncoder}` / `{exportFraction}` | retained time and file size while recording (once a second); export progress (at most ten a second, so a fast GPU export stays inside the control channel's frame rate) |
 | `selecting {selector: x11\|kde-layer-shell}` | the helper's region selector is open; `recording.select` can complete it |
 | `started`, `paused`, `resumed` | the bar's Record / Pause / Resume |
 | `stopped {durationUs, canvas, reason: user\|budget}` | the clip is finalized and under review |
