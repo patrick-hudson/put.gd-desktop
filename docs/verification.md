@@ -9,6 +9,28 @@ missing profiles, and run physical-hardware release gates on physical machines.
 This requirement is separate from the historical results below; missing new
 rows and current-candidate evidence remain gates.
 
+## AppImage Wayland window icons — 2026-10-19
+
+The [Wayland window icon receipt](evidence/2026-10-19-appimage-wayland-icons.md)
+records #101 (issue #88): candidate CI AppImage `930d228`, sha256 `98bba655…`,
+against nightly `9042776`. Both ran from the image with nothing installed.
+
+- In a Wayland session AppRun writes `putgd-ui.desktop` and
+  `putgd-record.desktop` while the image runs. On Debian 13 Plasma 6.3.6
+  Wayland, KWin's title bar and task switcher then showed the put.gd icon. On
+  Fedora 44 GNOME 50 Wayland, the overview and dash showed it. The baseline
+  showed generic icons on both.
+- Both desktops: no entry was left after a normal quit, and the next launch
+  removed the entries of a SIGKILLed launch.
+- With the put.gd Shell extension (temporary user copy) on GNOME, window
+  capture of the native Settings and History windows was refused
+  (`capture_target`), and an external window was captured.
+- Not covered:
+  - The editor's separate `putgd-ui --edit-image` process is not refused on
+    GNOME. This is independent of native windows and left as a follow-up.
+  - Recorder windows were not opened.
+  - KWin 6.6 Wayland was not run.
+
 ## AppImage screen recording on Wayland — 2026-10-19
 
 The [Wayland AppImage recording receipt](evidence/2026-10-19-appimage-recording-wayland.md)
