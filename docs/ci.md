@@ -83,8 +83,10 @@ public asset set. See [releases](release.md).
   Branch runs save a cache; pull requests restore the newest `nightly` cache and
   do not save. The build-identity source changes every commit and is always
   recompiled. Package builders compile from scratch.
-- **Parallel builds.** Application and SDK builds use every runner CPU. CTest
-  keeps `--parallel 2`; tests share Xvfb, D-Bus and socket-path resources.
+- **Parallel builds.** Application and SDK builds use every runner CPU.
+- **Parallel tests, longest first.** CTest runs eight tests at once and restores
+  the previous run's durations, so the longest tests start first. See
+  [hosted CTest schedule](#hosted-ctest-schedule).
 - **One contracts job.** Python suites that previously ran in eight jobs run once.
 
 Cache hits are dependency reuse, never application acceptance evidence.
@@ -95,7 +97,8 @@ are outside every cache.
 
 Use normal presets. To reproduce the hosted test schedule locally, select a new
 short private TMPDIR, then run `tools/ci/ctest_preflight.py` and
-`ctest --preset dev --parallel 2 --output-junit PATH`. Retain the exact command,
+`ctest --preset dev --parallel 8 --resource-spec-file tools/ci/ctest-resources.json
+--output-junit PATH`. Retain the exact command,
 registered tests, environment/version identity, JUnit and LastTest.log for each
 attempt. Preserve failures before retrying; never fix a long path by weakening
 socket checks or silently excluding a test.
@@ -122,6 +125,114 @@ The collision-policy fixture waits for a terminal operation with an explicit
 on the local release work run. The no-PUT, exact 32-HEAD, no-copy and final
 `collision_exhausted` assertions remain unchanged; this is a test synchronization
 bound, not a relaxed production timeout or memory benchmark.
+
+## Hosted CTest schedule
+
+Issue [#62](https://github.com/patrick-hudson/put.gd-desktop/issues/62) cut
+hosted Linux CTest from about five minutes to about 80 seconds on each
+distro. No test was removed, split or weakened, and every timing assertion above
+is unchanged; two tests gained missing synchronization waits (below). Socket
+preflight, the `putgd-ci` user and JUnit retention are as before.
+
+- **Durations.** Each distro restores the newest
+  `Testing/Temporary/CTestCostData.txt` before CTest and saves it afterwards,
+  failed runs included. CTest then starts earlier failures first and the rest
+  longest first. Same-repository pull requests save entries too and restore
+  their own newest one before the newest `nightly` one. A new test has no
+  duration until it has run once.
+- **Slots.** CTest runs eight tests at once on the four-vCPU runner.
+  About three quarters of the suite is waiting: profiled locally eight at a
+  time, the 72 tests used about 234 CPU seconds in about 900 summed seconds;
+  `gui_tray` used 3 s of CPU in a 69 s run.
+- **CPU pool.** CPU is the one resource every test shares. With eight slots and
+  no limit, the CPU-bound medium tests ran together once the long idle ones
+  finished: on 24.04 `s3_delete_integration` took 22 s instead of 8 s and
+  `collision_policy_integration` 18 s instead of 9 s, closer to the explicit
+  15-second collision bound. Seven CPU-bound tests (`collision_policy_integration`,
+  `edit_operations_integration`, `editor_contract`, `history_contract`,
+  `s3_delete_integration`, `s3_integration`, `version_contract`) declare
+  `RESOURCE_GROUPS "cpu:1"`, and `tools/ci/ctest-resources.json` gives the
+  runner three `cpu` slots, so at most three of them run at once while idle
+  tests use the other slots. Without a resource spec, as in a plain local
+  `ctest`, the property has no effect.
+- **Shared resources.** The audit found one: Xvfb display numbers. Concurrent
+  `xvfb-run -a` calls that start from the same display race for the X server's
+  per-display lock, and the loser sleeps two seconds per attempt;
+  `x11_native_snapshot` once spent 6.25 s starting Xvfb for a 4 ms test. Each
+  Xvfb test now starts its search at its own display (`putgd_xvfb_display`, 200
+  upwards) and `-a` still moves past displays that other processes hold.
+  Nothing else is shared between tests: buses come from `dbus-run-session`;
+  sockets, configuration, data and lock files live in per-test temporary
+  directories or `XDG_*` overrides; S3 fixtures bind port 0; process scans match
+  only the test's own children; Proton account locks use per-test references;
+  `version_contract` builds under its own `Testing/version-contract-*` root. No
+  `RESOURCE_LOCK` is needed. A new test that uses a fixed path, port, display or
+  bus name must declare one; a new CPU-bound test should join the `cpu` group.
+- **Races the schedule exposed.** `native_shortcut_rejection_integration`
+  pressed Ctrl+1 as soon as the synthetic watcher received
+  `RegisterStatusNotifierItem`. The resident marks its tray available only after
+  that call's reply and a follow-up `IsStatusNotifierHostRegistered` query, and
+  it drops failure notifications while the tray is unavailable; the 2 s
+  duplicate-feedback guard then hides a retry. When the resident's D-Bus replies
+  lagged behind the X key event, no notification ever arrived. It failed once at
+  twelve slots and once at eight. The test now also waits for the resident's own
+  `trayAvailable` diagnostic, as `native_background_startup_integration`
+  already does. Pinned to four local cores beside eight busy loops, the old test
+  failed 15 of 80 runs and the new one 0 of 120. In `gui_history_view`,
+  `uploadProgressRendersBeforeCompletionDuringDelayedRecentReplies` checked the
+  "Reading the clipboard" subtitle once, right after the row turned active; the
+  `acquiring` state can reach the model one update later. The check now retries
+  like its neighbours; the acquisition stays held open, so no later state can
+  satisfy it. Under the same load it failed 21 of 40 runs before and 0 of 80
+  after. It failed once in local suite runs and never on hosted runners.
+- **Floor.** `native_background_startup_integration` takes about 70 s: nine data
+  rows in one process, each waiting for a product startup bound. It starts first
+  and bounds the wall time.
+
+CTest wall time ("Total Test time (real)") in seconds, all 72 tests unless noted:
+
+| Run | Commit | Slots | Durations | 24.04 | 26.04 |
+| --- | --- | ---: | --- | ---: | ---: |
+| [39165764037](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/39165764037), push to `nightly` (before, with #69) | `70722c3` | 2 | none | 311.90 | 308.66 |
+| [39174290324](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/39174290324), push to `nightly` (before, 73 tests) | `4d3b6d5` | 2 | none | 313.69 | 308.37 |
+| [39167182473](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/39167182473), PR #70 | `65caac1` | 8 | none | 99.96 | 105.24 |
+| [39168198731](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/39168198731), own Xvfb displays | `4142fae` | 8 | restored | 87.59 | 76.32 |
+| [39169471820](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/39169471820), trial | `1ae2fc5` | 12 | restored | 71.15, 1 failed | 70.69 |
+| [39170267410](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/39170267410) attempt 1 | `904dcda` | 8 | restored | 81.77 | 75.89 |
+| [39170267410](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/39170267410) attempt 2 | `904dcda` | 8 | restored | 76.35 | 96.43, 1 failed |
+| [39172087415](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/39172087415) attempts 1–4, tray race fixed | `68aa356` | 8 | restored | 78.28–84.26, 4 passed | 77.79–83.61, 4 passed |
+| [39175234634](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/39175234634) attempts 1–4, CPU pool, 73 tests | `54a0a95` | 8 | restored | 77.61–85.43, 4 passed | 77.84–85.45, 4 passed |
+
+Every hosted run from `68aa356` on passed: 16 job runs on the two distros.
+The Test step fell from 296–314 s at two slots to 78–86 s, and warm Linux jobs took
+3:51 to 6:14 instead of about eight minutes; package installation accounts for
+most of the spread. At eight slots the CPU pool left the wall time unchanged
+(77.6–85.5 s against 77.8–84.3 s without it), because the long idle tests still
+hold every slot for the first 55 s, but it shortened the CPU-bound tests:
+`collision_policy_integration` averaged 9.9 s instead of 11.6 s. Twelve slots
+reached the 70 s floor before the tray race was fixed; with the pool they are
+the next step to try.
+
+### What grew since the 57-test baseline
+
+Between run 38292139041 (2026-10-12, 57 tests, 159 s wall) and nightly push
+39161438843 (2026-10-18, 72 tests, 295 s wall), the summed Ubuntu 24.04 test
+time rose from 313.8 s to 585.7 s. With `--parallel 2` the wall time was half
+the summed time. The growth arrived with new tests and new cases in existing
+binaries:
+
+| Source | Added seconds |
+| --- | ---: |
+| 16 new tests, chiefly `native_background_startup_integration` (69.1 s), `edit_operations_integration` (8.1 s), `proton_transport` (6.9 s), `recording_helper_integration` (5.2 s) and `proton_contract` (4.4 s) | 101.5 |
+| `gui_tray`: 8 to 28 test functions, 23.5 s of explicit waits | 46.9 |
+| `gui_settings`: 41 to 52 test functions | 41.6 |
+| `gui_application`: 8 to 25 test functions | 24.0 |
+| `operations_contract`: 41 to 72 test functions | 16.8 |
+| `gui_history_view`: 9 to 23 test functions | 9.4 |
+| `s3_worker_supervision`, `native_tray_integration`, `s3_integration` and smaller changes | 32.4 |
+| `gui_operations_view` folded into other views | -0.8 |
+
+Ubuntu 26.04 matches within a few seconds (340.2 s to 614.6 s summed).
 
 ## Proton Linux runtime
 
@@ -150,8 +261,9 @@ saved. Wall time runs from the trigger to the last job.
 
 Warm Linux test jobs took about eight minutes. Of that, 1:17 to 2:03 is
 package installation, under 30 seconds is the ccache build, and about five
-minutes is CTest. CTest is now the critical path; issue
-[#62](https://github.com/patrick-hudson/put.gd-desktop/issues/62) tracks it.
+minutes is CTest. Issue
+[#62](https://github.com/patrick-hudson/put.gd-desktop/issues/62) cut that to
+under 90 seconds; see [hosted CTest schedule](#hosted-ctest-schedule).
 
 | Linux 24.04 step | Cold | Warm |
 | --- | ---: | ---: |
