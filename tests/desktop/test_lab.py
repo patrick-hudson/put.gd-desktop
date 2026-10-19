@@ -778,17 +778,18 @@ Virtual-3 disconnected (normal left inverted right x axis y axis)
         self.assertFalse(result['ok'])
         self.assertTrue(any('RandR monitors' in error or 'enabled' in error for error in result['errors']))
 
-    def test_kscreen_outputs_keep_kwin_coordinates_and_priority(self):
+    def test_kscreen_outputs_follow_connector_order_and_priority(self):
         document = {'outputs': [
             {'id': 2, 'name': 'Virtual-2', 'connected': True, 'enabled': True, 'priority': 2,
              'pos': {'x': -1280, 'y': 0}, 'size': {'width': 1280, 'height': 1024},
              'modes': [{'id': '7', 'name': '1280x1024@75'}]},
             {'id': 1, 'name': 'Virtual-1', 'connected': True, 'enabled': True, 'priority': 1,
              'pos': {'x': 0, 'y': 0}, 'size': {'width': 1920, 'height': 1080},
-             'modes': [{'id': '3', 'name': '1920x1080@75'}]}]}
+             'modes': [{'id': '3', 'name': '1920x1080@75'}, {'id': '9', 'name': '1920x1080@50'}]}]}
         observed = lab.parse_kscreen(document)
         self.assertEqual([output['name'] for output in observed['outputs']], ['Virtual-1', 'Virtual-2'])
         self.assertEqual(observed['outputs'][1]['modes'], {'1280x1024': '7'})
+        self.assertEqual(observed['outputs'][0]['modes'], {'1920x1080': '3'})
         result = lab.verify_outputs(observed, 2, lab.parse_layout('1920x1080+0+0,1280x1024-1280+0'))
         self.assertTrue(result['ok'], result['errors'])
         self.assertEqual(result['outputs'][1]['x'], -1280)

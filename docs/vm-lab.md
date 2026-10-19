@@ -371,15 +371,20 @@ python3 tools/lab/lab.py layout --run "$lab_run"
   reports exactly N enabled outputs in the requested arrangement, each X11 RandR monitor is
   its own output, and each head's QMP `screendump` has the head's size. Results go to
   `layout.json` in the run directory.
-- **Origins:** the X11 root window and Mutter's layout always start at 0,0, so there a
+- **Origins:** X11, Mutter and KWin all place the desktop's top-left corner at 0,0, so a
   negative origin becomes the same arrangement shifted, with head 0 still primary (for
-  example a monitor left of the primary). KWin keeps the requested coordinates. Mutter also
-  rejects gaps between monitors; X11 and KWin accept them.
+  example a monitor left of the primary). Mutter also rejects gaps between monitors; X11
+  and KWin keep them.
 - **Input per head:** each head has its own `usb-tablet` bound to that head's console, with
   serial `putgd-headN`, so a VNC client on head N sends head-relative coordinates. On X11,
   `layout` maps each tablet to its output with `xinput map-to-output`. `input --run RUN
   --head N 'JSON_EVENTS'` sends QMP input through head N's tablet. QMP input without
   `--head` still goes to the unbound tablet, which spans the whole desktop.
+  Wayland guests can't map them yet: KWin and Mutter scale every QEMU tablet over the whole
+  desktop, KWin ignores `outputName` and `calibrationMatrix` for them (and stores one setting
+  for all three identically named tablets), and a udev calibration rule needs guest root.
+  There, pointer input on a multi-head guest lands at the head-relative position scaled to
+  the whole desktop; keyboard input is unaffected.
 - **Screenshots:** `screenshot --run RUN --head N` saves head N's frame.
 
 ## Retire completed overlays

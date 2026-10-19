@@ -697,7 +697,10 @@ def parse_kscreen(document):
     for value in sorted(document.get('outputs', []), key=lambda output: output.get('name', '')):
         output = {'name': value['name'], 'connected': bool(value.get('connected')),
                   'enabled': bool(value.get('enabled')), 'primary': value.get('priority') == 1,
-                  'modes': {mode['name'].split('@')[0]: mode['id'] for mode in value.get('modes', [])}}
+                  # kscreen lists the preferred mode first; keep the first mode of each size.
+                  'modes': {}}
+        for mode in value.get('modes', []):
+            output['modes'].setdefault(mode['name'].split('@')[0], mode['id'])
         if output['enabled']:
             output.update(width=value['size']['width'], height=value['size']['height'],
                           x=value['pos']['x'], y=value['pos']['y'])
@@ -721,7 +724,7 @@ def verify_outputs(observed, heads, layout=None):
                 monitor['outputs'] != [monitor['name']] for monitor in observed['monitors']):
             errors.append('RandR monitors do not match the real outputs one to one')
     if layout and not errors:
-        # X11 and Mutter place the whole desktop at 0,0, so compare the arrangement
+        # X11, Mutter and KWin place the whole desktop at 0,0, so compare the arrangement
         # relative to each side's top-left corner. Head 0 must be the primary output.
         spec_x, spec_y = min(head['x'] for head in layout), min(head['y'] for head in layout)
         real_x, real_y = min(output['x'] for output in outputs), min(output['y'] for output in outputs)
@@ -859,9 +862,8 @@ def apply_layout(run, backend, observed, wanted):
             if mode is None:
                 raise LabError(f"{output['name']} offers no {head['width']}x{head['height']} mode")
             prefix = f"output.{output['name']}."
-            # KWin keeps the requested coordinates, including a negative origin.
             arguments += [prefix + 'enable', prefix + f'mode.{mode}',
-                          prefix + f"position.{head['x']},{head['y']}", prefix + f'priority.{index + 1}']
+                          prefix + f"position.{head['x'] - left},{head['y'] - top}", prefix + f'priority.{index + 1}']
         guest_session(run, shlex.join(arguments) + '\n')
     else:
         config = []
