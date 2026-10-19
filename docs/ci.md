@@ -97,6 +97,39 @@ Ubuntu 26.04 and Debian 13 DEBs, the Fedora 44 RPM and the AppImage, and compile
 export on Ubuntu 24.04. With a release tag, `collect` verifies and assembles the
 public asset set. See [releases](release.md).
 
+### Sanitizers job runtime
+
+Measured on the four-vCPU hosted runner on 2026-10-19 (Ubuntu 26.04 container,
+clang 21.1.8, distro Qt 6.10.2):
+
+| Run | Caches | Qt build | App build | CTest (23 tests) | Job |
+| --- | --- | ---: | ---: | ---: | ---: |
+| [39267375812](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/39267375812) attempt 1, PR #107 | none | 7:35 | 9:42 | 70.5 s, passed | 23:10 |
+| [39267375812](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/39267375812) attempt 2, PR #107 | SDK, QtCore | cached | 4:42 | 65.3 s, passed | 7:33 |
+| [39266994848](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/39266994848) attempt 3, #76 reverted | SDK, QtCore, ccache | cached | 0:46 | 27.5 s, 6 failed | 2:49 |
+
+Package installation takes about 1:15 of every run, and a cold SDK build 2:40 to
+3:05. The two uncached application builds differ by five minutes on the same
+source, which is runner variance. Pull requests don't save a compiler cache, so
+until a `nightly` push has saved one, PR runs take the second row's time; after
+that, the third row's (about 3:30 with a passing suite).
+
+Caches: the instrumented QtCore is 29 MiB compressed, the SDK prefix 4 MiB and the
+compiler cache 97 MiB. The QtCore key is
+`qt-asan-core-26.04-qt<distro Qt package version>-clang<version>-<recipe hash>`, so a
+new distro Qt or clang package, or an edit to the recipe, rebuilds it once (about
+7:35). Runner image updates don't change it, since the job runs in its own
+container.
+
+The run with #76 reverted (attempt 2 of
+[39266994848](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/39266994848),
+throwaway branch since deleted) failed `settings_contract`, `operations_contract`,
+`recording_model_contract`, `storage_contract_integration`,
+`config_reload_integration` and `storage_locations_integration`, each with
+`stack-use-after-scope` read by `QJsonValueRef::toObject()` from
+`Settings::validate` in `'ref.tmp' (line 158)`. Attempt 1 of that run failed only
+because `download.qt.io` didn't resolve once; the recipe now retries downloads.
+
 ## Speed measures
 
 - **SDK prefix caches.** Each builder restores an exact installed SDK prefix.

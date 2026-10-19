@@ -21,7 +21,7 @@ case "$distro" in
 esac
 archive="$work/qtbase-everywhere-src-$version.tar.xz"
 mkdir -p "$work"
-curl --fail --silent --show-error --location --output "$archive" \
+curl --fail --silent --show-error --location --retry 5 --retry-delay 10 --retry-all-errors --output "$archive" \
   "https://download.qt.io/archive/qt/${version%.*}/$version/submodules/qtbase-everywhere-src-$version.tar.xz"
 echo "$sha256  $archive" | sha256sum --check --strict
 tar -xf "$archive" -C "$work"
