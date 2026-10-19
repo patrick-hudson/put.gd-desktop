@@ -1,4 +1,5 @@
 #include "core/BuildInfo.h"
+#include "core/ReleaseLink.h"
 #include "fixtures/U2Fixtures.h"
 #include <QFile>
 #include <QProcess>
@@ -30,7 +31,7 @@ private slots:
   SettingsService settings(directory.filePath("config.json"));Source source;
   OperationService operations(directory.filePath("data"),settings,providers,source);
   const auto diagnostics=operations.diagnostics();QCOMPARE(diagnostics["schemaVersion"].toInt(),1);
-  QCOMPARE(diagnostics["build"].toObject(),manifest);QCOMPARE(source.reads,0);QCOMPARE(source.copies,0);
+  QCOMPARE(diagnostics["build"].toObject(),manifest);QCOMPARE(diagnostics["release"].toObject(),releaseLink(manifest).toJson());QCOMPARE(diagnostics["release"].toObject()["version"].toString(),QString::fromLatin1(buildVersion()));QCOMPARE(source.reads,0);QCOMPARE(source.copies,0);
  }
 };
 QTEST_GUILESS_MAIN(VersionContract)

@@ -60,7 +60,8 @@ add_library(putgd_core STATIC src/core/Settings.cpp src/core/SettingsService.cpp
   src/platform/Geometry.cpp
   src/core/ClipboardPayload.cpp src/core/ArtifactStore.cpp src/core/ImageJob.cpp src/core/LocalArchive.cpp
   src/core/UploadNaming.cpp src/core/StorageReceipt.cpp src/core/StorageProvider.cpp
-  src/core/Operation.cpp src/core/HistoryStore.cpp src/core/SanitizedPng.cpp src/core/EditorJob.cpp src/core/RecordingModel.cpp)
+  src/core/Operation.cpp src/core/HistoryStore.cpp src/core/SanitizedPng.cpp src/core/EditorJob.cpp src/core/RecordingModel.cpp
+  src/core/ReleaseLink.cpp)
 set_target_properties(putgd_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(putgd_core PUBLIC src)
 target_link_libraries(putgd_core PUBLIC putgd_build_options putgd_build_identity Qt6::Core Qt6::Gui Qt6::Sql PRIVATE putgd_ui_control)
@@ -588,6 +589,9 @@ if(BUILD_TESTING)
   set_tests_properties(gui_tray PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
   add_test(NAME gui_version COMMAND test_gui_version)
   set_tests_properties(gui_version PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
+  add_executable(test_release_link tests/unit/test_release_link.cpp)
+  target_link_libraries(test_release_link PRIVATE putgd_core Qt6::Test)
+  add_test(NAME release_link_contract COMMAND test_release_link)
   add_executable(test_geometry tests/unit/test_geometry.cpp)
   target_link_libraries(test_geometry PRIVATE putgd_core Qt6::Test)
   add_test(NAME geometry_contract COMMAND test_geometry)
