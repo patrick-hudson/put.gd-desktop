@@ -84,6 +84,24 @@ The helper exports `org.putgd.Gnome50` at `/org/gnome/Shell/Extensions/Putgd` on
 
 Shell hotkeys freeze their external window actor/frame or clipboard revision inside the compositor callback, then dispatch a prepared UUID ticket to the adapter. GUI/CLI requests freeze through Prepare before journal work yields. Protocol version 1 uses opaque UUID request IDs, frozen preparation tickets, one-time acquisition, explicit cancellation/release, bounded PNG/MIME bytes, and at most 64 KiB decoded bytes per base64 chunk. Metadata includes exact byte lengths and each capture frame's identity, logical/native rectangles, density, and orientation. The adapter validates metadata before decoding on a worker. Clipboard revisions come from CLIPBOARD owner changes without reading payloads. Result transfer checks a frozen CLIPBOARD revision and copy epoch at ownership commit, so changed owners or newer invocations return `copy_suppressed`. Missing endpoints, incompatible protocol/Shell versions, stale tickets, vanished external targets, changed monitor layouts, unsupported offers, oversized offers, cancellation, and transfer deadlines produce distinct actionable results.
 
+Recording protocol 1 (`recordingVersion: 1` in `Hello`) serves screen
+recording, which must not show its own surfaces on GNOME. `SelectArea(id)`
+runs the same St selector as a region screenshot and answers only the
+logical rectangle (no capture); `Release(id)` cancels it. `ShowRecordingFrame`
+takes `{rect, kind, state: ready|recording|paused, pid}` and draws the ready
+ring and, while recording or paused, dim strips as non-reactive Shell actors
+outside the rectangle, and moves the recording helper's control bar (window
+title `put.gd recording controls`) out of the rectangle with
+`move_frame`/`make_above`. The bar is accepted only when its process's parent
+(from `/proc/PID/stat`) is the authenticated resident, so a request cannot move
+another application's window. `HideRecordingFrame` removes the actors; a
+disable, a lock or the resident leaving the bus does the same. Mutter offers
+no per-window screencast exclusion: a recording of a whole monitor with no
+other monitor to hold the bar contains it, which the resident reports as
+`overlayPlacement: inside`. Details are in `docs/recording.md`, "Wayland
+selection, bounds and bar". The synthetic `gnome_ui_ownership_contract` covers
+these methods; it is not graphical acceptance.
+
 ## UI ownership recovery test
 
 When the final UI process exits, the adapter clears its registered PID. If that

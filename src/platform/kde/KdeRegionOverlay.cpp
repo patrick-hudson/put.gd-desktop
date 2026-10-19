@@ -57,6 +57,7 @@ void KdeRegionOverlay::start(){
  }
 #endif
 }
+void KdeRegionOverlay::select(const QRectF& logical){if(finished_||logical.isEmpty())return;press(logical.topLeft());release(logical.bottomRight());}
 void KdeRegionOverlay::press(QPointF p){if(finished_)return;anchor_=QPointF(qRound(p.x()),qRound(p.y()));dragging_=true;selection_=QRectF(anchor_,QSizeF{});}
 void KdeRegionOverlay::move(QPointF p){if(!dragging_||finished_)return;const QPointF endpoint(qRound(p.x()),qRound(p.y()));selection_=QRectF(anchor_,endpoint).normalized();for(auto* surface:surfaces_)surface->update();}
 void KdeRegionOverlay::release(QPointF p){if(!dragging_||finished_)return;move(p);if(selection_.width()<1||selection_.height()<1){cancel();return;}

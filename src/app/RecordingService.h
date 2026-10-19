@@ -32,11 +32,14 @@ public:
     RecordingService(QString stagingRoot, Host, QObject* parent = nullptr);
     ~RecordingService() override;
     void setBackend(std::unique_ptr<RecordingBackend>);
+    // The desktop shell that selects regions and frames the recording where the
+    // helper cannot (GNOME); not owned, and it must outlive the service.
+    void setShell(RecordingShell* shell) { shell_ = shell; }
     QJsonObject capabilities() const;
     bool active() const { return session_.has_value(); }
     QString activeId() const { return session_ ? session_->op.id : QString{}; }
     // capabilities | prepare | start | pause | resume | stop | cancel | inspect |
-    // raise | overlay | edit | preview | saveCopy | upload
+    // select | raise | overlay | edit | preview | saveCopy | upload
     void command(const QString& command, const QJsonObject& params, JsonReply);
     // The tray and shortcut entry: with no session, prepare a dragged region with
     // the default configuration; otherwise "open" raises the session's window and
@@ -59,6 +62,15 @@ private:
         RecordingEdit edit;
         QJsonObject progress;
         std::optional<bool> overlayExcluded;
+        // outside | inside | hidden | compositor: where the control bar ended up.
+        QString overlayPlacement;
+        // "helper" or "shell" while a region selection is open; `selection`
+        // numbers the shell selector so a superseded reply is ignored.
+        QString selector;
+        quint64 selection = 0;
+        // The logical rectangle the stream records, and whether the shell draws its frame.
+        QRect recorded;
+        bool shellFrame = false;
         QString staging;
         int exports = 0;
         quint64 generation = 0;
@@ -71,12 +83,19 @@ private:
     void cancelActive(JsonReply);
     void handleEvent(const QJsonObject&);
     void prepareSession(const QJsonObject& params, JsonReply);
+    // After the durable intent: a shell selection when needed, then the backend.
+    void beginPrepare(quint64 generation);
+    void prepareBackend(quint64 generation);
+    void prepared(Error, const QJsonObject& result);
+    QJsonObject shellFrame(const Session&, const QString& state) const;
+    void closeShell(Session&);
     void commandSession(const QString& command, const QJsonObject& params, JsonReply);
     void exportTo(const QString& command, const QJsonObject& params, JsonReply);
     RecordingBackend::Reply marshal(quint64 generation, std::function<void(Error, QJsonObject)>);
     QString stagingRoot_;
     Host host_;
     std::unique_ptr<RecordingBackend> backend_;
+    RecordingShell* shell_ = nullptr;
     std::optional<Session> session_;
     quint64 generation_ = 0;
     bool stopping_ = false;

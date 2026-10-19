@@ -189,6 +189,11 @@ int main(int argc,char* argv[]) {
  operations.setLocations(locations.report);
  // The recording helper is probed lazily; a missing binary reports recording_helper_missing.
  operations.setRecordingBackend(std::make_unique<putgd::RecordingHelperBackend>());
+#ifdef PUTGD_NATIVE_GNOME
+ // GNOME keeps clients from placing their own windows: the Shell extension
+ // selects recording regions, frames them and moves the control bar.
+ if(gnome)operations.recording().setShell(gnome);
+#endif
  putgd::HistoryService history(operations);
  putgd::LocalServer server(settings,operations,history);
  const auto listening=server.listen();if(!listening) {launcherError(listening.error.code);if(listening.error.code=="session_running"){const int retry=activateResident(view,backgroundOnly);return retry>=0?retry:1;}return 1;}

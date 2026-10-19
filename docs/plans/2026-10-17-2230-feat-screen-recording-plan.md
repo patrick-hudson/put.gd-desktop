@@ -4,7 +4,7 @@ type: feat
 date: 2026-10-17
 issue: https://github.com/patrick-hudson/put.gd-desktop/issues/50
 execution: code
-status: design approved 2026-10-17; slices 1-3.3 implemented (contract, helper, X11 capture/export, overlays, review window); Cinnamon desktop verified; tray entry, dashboard button, global shortcut toggle, tray feedback, review playback, NVENC-first export and portal (Wayland) acquisition added 2026-10-18; picker-free Wayland (portal restore tokens, KWin screencast protocol, Mutter screen cast service) verified on the Debian Plasma and Fedora GNOME desktops 2026-10-18
+status: design approved 2026-10-17; slices 1-3.3 implemented (contract, helper, X11 capture/export, overlays, review window); Cinnamon desktop verified; tray entry, dashboard button, global shortcut toggle, tray feedback, review playback, NVENC-first export and portal (Wayland) acquisition added 2026-10-18; picker-free Wayland (portal restore tokens, KWin screencast protocol, Mutter screen cast service) verified on the Debian Plasma and Fedora GNOME desktops 2026-10-18; Wayland region selection before the stream (KDE layer-shell selector, GNOME Shell extension), ready ring, dimming and bar placement on Wayland, and the synthetic A/V-sync check added 2026-10-18
 ---
 
 # Screen recording
@@ -281,5 +281,16 @@ builder, local build only as fallback.
    FFmpeg 6.1) ran region, cross-monitor region, monitor and window sessions
    with all four formats through the CLI; receipts in
    `work/verification/2026-10-18-recording-cinnamon/`.
-4. System audio: captured and exported for MP4 (AAC) on the Plasma desktop;
-   speaker/headphone and synthetic A/V-sync checks pending.
+4. System audio: captured and exported for MP4 (AAC) on the Plasma desktop.
+   The synthetic marker check (`putgd-record --av-marker` / `--av-sync`) ran
+   on the physical Kubuntu desktop through the speaker and headphone ports of
+   the built-in card: −4 ms and +8 ms, 14/14 flashes paired with their tone
+   bursts, no drift over 14 s
+   (`docs/evidence/2026-10-18-wayland-recording-region.md`). No headphones
+   are plugged in at the lab, so the headphone route proves capture, not
+   listening.
+6. Wayland: regions are chosen before the stream with the KDE layer-shell
+   selector (in the helper) or the GNOME Shell extension (through the
+   resident); ring, dimming and bar placement per compositor, reported as
+   `overlayPlacement`; `recording.select` drives an open selector. Window
+   capture stays on the portal.

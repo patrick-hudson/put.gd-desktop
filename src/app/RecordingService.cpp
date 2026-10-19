@@ -21,6 +21,16 @@ bool integer(const QJsonValue& value, qint64 min, qint64 max, qint64* out) {
     return true;
 }
 QJsonValue sizeJson(const QSize& size) { return size.isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(QJsonArray{size.width(), size.height()}); }
+QJsonArray rectJson(const QRect& r) { return {r.x(), r.y(), r.width(), r.height()}; }
+// [x, y, width, height] in integers with a positive size.
+bool rectFrom(const QJsonValue& value, QRect& out) {
+    const auto array = value.toArray();
+    if (!value.isArray() || array.size() != 4) return false;
+    qint64 v[4];
+    for (int i = 0; i < 4; ++i) if (!integer(array[i], i < 2 ? -(1LL << 20) : 1, 1LL << 20, &v[i])) return false;
+    out = QRect(int(v[0]), int(v[1]), int(v[2]), int(v[3]));
+    return true;
+}
 }
 
 QJsonObject UnavailableRecordingBackend::capabilities() const {
@@ -54,7 +64,7 @@ void RecordingService::discardStaging(const QString& root) {
 void RecordingService::shutdown() {
     if (stopping_) return;
     stopping_ = true;
-    if (session_ && backend_) { backend_->control(session_->op.id, "cancel", {}, [](Error, QJsonObject) {}); backend_->discard(session_->op.id); }
+    if (session_ && backend_) { closeShell(*session_); backend_->control(session_->op.id, "cancel", {}, [](Error, QJsonObject) {}); backend_->discard(session_->op.id); }
     session_.reset();
 }
 QJsonObject RecordingService::capabilities() const {
@@ -68,7 +78,7 @@ QJsonObject RecordingService::capabilities() const {
     result["editCommands"] = QJsonArray{"setTrim", "resetTrim", "addMask", "updateMask", "removeMask"};
     result["limits"] = QJsonObject{{"animationMaxUs", double(limit.animationMaxUs)}, {"animationMaxEdge", limit.animationMaxEdge},
         {"maxFileBytes", double(settings.limits.maxFileBytes)}, {"maxMasks", recording::maximumMasks}};
-    result["commands"] = QJsonArray{"prepare", "start", "pause", "resume", "stop", "cancel", "inspect", "raise", "overlay", "edit", "preview", "saveCopy", "upload"};
+    result["commands"] = QJsonArray{"prepare", "start", "pause", "resume", "stop", "cancel", "inspect", "select", "raise", "overlay", "edit", "preview", "saveCopy", "upload"};
     return result;
 }
 QJsonObject RecordingService::publicJson(const Session& s) const {
@@ -78,6 +88,8 @@ QJsonObject RecordingService::publicJson(const Session& s) const {
         {"retainedUs", double(retained)}, {"edit", s.edit.toJson()}, {"progress", s.progress}, {"exports", s.exports}, {"error", s.op.error.toJson()}};
     if (!s.canvas.isEmpty()) o["outputSize"] = sizeJson(recording::outputSize(s.canvas, s.config.maxEdge));
     if (s.overlayExcluded) o["overlayExcluded"] = *s.overlayExcluded;
+    if (!s.overlayPlacement.isEmpty()) o["overlayPlacement"] = s.overlayPlacement;
+    o["selecting"] = !s.selector.isEmpty();
     return o;
 }
 void RecordingService::invoke(const QString& mode, JsonReply reply) {
@@ -95,6 +107,9 @@ void RecordingService::transition(Session& s, const QString& state, const QStrin
     s.state = state;
     s.pending.clear();
     s.op.phase = phase.isEmpty() ? state : phase;
+    // The shell's ring stays through start; dimming covers recording, pause and the stop.
+    if (s.shellFrame && shell_ && (state == "recording" || state == "paused")) shell_->showFrame(shellFrame(s, state), [](Error, QJsonObject) {});
+    else if (s.shellFrame && state != "ready" && state != "starting" && state != "stopping") closeShell(s);
     host_.observe(s.op);
     emit changed(s.op.id);
 }
@@ -111,8 +126,17 @@ RecordingBackend::Reply RecordingService::marshal(quint64 generation, std::funct
         else QMetaObject::invokeMethod(guard, std::move(deliver), Qt::QueuedConnection);
     };
 }
+QJsonObject RecordingService::shellFrame(const Session& s, const QString& state) const {
+    return {{"rect", rectJson(s.recorded)}, {"kind", s.target.kind}, {"state", state}, {"pid", double(backend_->processId(s.op.id))}};
+}
+void RecordingService::closeShell(Session& s) {
+    if (!shell_) return;
+    if (s.selector == "shell") { ++s.selection; s.selector.clear(); shell_->cancelSelection(); }
+    if (s.shellFrame) { s.shellFrame = false; shell_->hideFrame(); }
+}
 void RecordingService::fail(Error error) {
     if (!session_) return;
+    closeShell(*session_);
     auto s = std::move(*session_);
     session_.reset();
     backend_->discard(s.op.id);
@@ -128,6 +152,7 @@ void RecordingService::fail(Error error) {
     emit changed(s.op.id);
 }
 void RecordingService::cancelActive(JsonReply reply) {
+    closeShell(*session_);
     auto s = std::move(*session_);
     session_.reset();
     backend_->control(s.op.id, "cancel", {}, [](Error, QJsonObject) {});
@@ -161,6 +186,11 @@ void RecordingService::handleEvent(const QJsonObject& event) {
         s.edit = {};
         if (event["canvas"].isArray() && event["canvas"].toArray().size() == 2) s.canvas = QSize(event["canvas"].toArray()[0].toInt(), event["canvas"].toArray()[1].toInt()); recording::clampAnimationSize(s.config, s.canvas, limits(s.op.settings));
         transition(s, "reviewing");
+    } else if (kind == "selecting" && s.state == "preparing") {
+        // The helper's own selector is open (X11, KDE): recording.select can drive it.
+        s.selector = "helper";
+        host_.observe(s.op);
+        emit changed(s.op.id);
     } else if (kind == "failed") {
         auto error = event["error"].toObject();
         fail({error["code"].toString("recording_failed"), error["message"].toString("The recording helper failed"), error["details"].toObject()});
@@ -262,18 +292,67 @@ void RecordingService::prepareSession(const QJsonObject& params, JsonReply reply
             guard->host_.observe(s.op);
             emit guard->changed(s.op.id);
             reply({}, guard->publicJson(s));
-            guard->backend_->prepare(s.op.id, s.target, s.config, s.staging, guard->marshal(generation, [guard](Error error, QJsonObject result) {
-                auto& s = *guard->session_;
-                if (s.state != "preparing") return;
-                if (error) { guard->fail(error); return; }
-                if (result["canvas"].isArray() && result["canvas"].toArray().size() == 2) s.canvas = QSize(result["canvas"].toArray()[0].toInt(), result["canvas"].toArray()[1].toInt()); recording::clampAnimationSize(s.config, s.canvas, limits(s.op.settings));
-                // A dragged region reports its bounds; the overlay says whether it stayed outside them.
-                if (s.target.kind == "region" && result["rect"].isArray() && result["rect"].toArray().size() == 4) { const auto r = result["rect"].toArray(); s.target.rect = QRect(r[0].toInt(), r[1].toInt(), r[2].toInt(), r[3].toInt()); }
-                if (result["overlayExcluded"].isBool()) s.overlayExcluded = result["overlayExcluded"].toBool();
-                guard->transition(s, "ready");
-            }));
+            guard->beginPrepare(generation);
         });
     }
+}
+void RecordingService::beginPrepare(quint64 generation) {
+    auto& s = *session_;
+    // A region without a rectangle is chosen by the shell where the helper
+    // cannot show a selector (GNOME); the helper then streams just that area.
+    if (s.target.kind == "region" && s.target.rect.isEmpty() && shell_ && shell_->selectsRegions()) {
+        s.selector = "shell";
+        const auto token = ++s.selection;
+        host_.observe(s.op);
+        emit changed(s.op.id);
+        shell_->selectRegion(marshal(generation, [this, token](Error error, QJsonObject result) {
+            auto& s = *session_;
+            if (s.state != "preparing" || s.selector != "shell" || s.selection != token) return;
+            s.selector.clear();
+            QRect rect;
+            if (!error && !rectFrom(result["rect"], rect)) error = {"capture_geometry", "The desktop shell returned an invalid selection", {}};
+            if (error) { fail(error.code == "cancelled" ? Error{"cancelled", "Region selection cancelled; nothing was recorded", {}} : error); return; }
+            s.target.rect = rect;
+            prepareBackend(s.generation);
+        }));
+        return;
+    }
+    prepareBackend(generation);
+}
+void RecordingService::prepareBackend(quint64 generation) {
+    auto& s = *session_;
+    backend_->prepare(s.op.id, s.target, s.config, s.staging, marshal(generation, [this](Error error, QJsonObject result) { prepared(error, result); }));
+}
+void RecordingService::prepared(Error error, const QJsonObject& result) {
+    auto& s = *session_;
+    if (s.state != "preparing") return;
+    s.selector.clear();
+    if (error) { fail(error); return; }
+    if (result["canvas"].isArray() && result["canvas"].toArray().size() == 2) s.canvas = QSize(result["canvas"].toArray()[0].toInt(), result["canvas"].toArray()[1].toInt()); recording::clampAnimationSize(s.config, s.canvas, limits(s.op.settings));
+    // A dragged region reports its bounds; the overlay says whether it stayed outside them.
+    QRect rect;
+    const bool hasRect = rectFrom(result["rect"], rect);
+    if (s.target.kind == "region" && hasRect) s.target.rect = rect;
+    if (hasRect) s.recorded = rect;
+    if (result["overlayExcluded"].isBool()) s.overlayExcluded = result["overlayExcluded"].toBool();
+    if (result["overlayPlacement"].isString()) s.overlayPlacement = result["overlayPlacement"].toString();
+    // The helper could not place its bar (no layer shell): the shell frames the
+    // area and moves the bar; overlayExcluded follows where the bar really went.
+    if (s.overlayPlacement == "compositor" && shell_ && hasRect && s.target.kind != "window" && backend_->processId(s.op.id) > 0) {
+        s.shellFrame = true;
+        shell_->showFrame(shellFrame(s, "ready"), marshal(s.generation, [this](Error error, QJsonObject result) {
+            auto& s = *session_;
+            if (s.state != "preparing") return;
+            const auto bar = result["bar"].toObject();
+            if (!error && bar["placed"].toBool()) {
+                s.overlayExcluded = bar["outside"].toBool();
+                s.overlayPlacement = bar["outside"].toBool() ? QStringLiteral("outside") : QStringLiteral("inside");
+            }
+            transition(s, "ready");
+        }));
+        return;
+    }
+    transition(s, "ready");
 }
 void RecordingService::commandSession(const QString& command, const QJsonObject& params, JsonReply reply) {
     if (!session_) { reply({"recording_unavailable", "No recording is active", {}}, {}); return; }
@@ -283,6 +362,25 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
     if (command == "inspect") { reply({}, publicJson(s)); return; }
     if (auto error = recording::checkTransition(s.state, command)) { reply(error, {}); return; }
     if (command == "cancel") { cancelActive(reply); return; }
+    if (command == "select") {
+        // Drives the open selector as a drag would: the rectangle is the region.
+        QRect rect;
+        if (!rectFrom(params["rect"], rect)) { reply(invalid("select takes rect [x, y, width, height] with a positive size"), {}); return; }
+        if (s.selector.isEmpty()) { reply({"recording_state", "No region selection is open", {{"state", s.state}}}, {}); return; }
+        if (s.selector == "shell") {
+            ++s.selection;
+            s.selector.clear();
+            if (shell_) shell_->cancelSelection();
+            s.target.rect = rect;
+            prepareBackend(s.generation);
+            host_.observe(s.op);
+            emit changed(s.op.id);
+            reply({}, publicJson(s));
+            return;
+        }
+        backend_->control(s.op.id, "select", {{"rect", rectJson(rect)}}, marshal(s.generation, [this, reply](Error error, QJsonObject) { reply(error, error ? QJsonObject{} : publicJson(*session_)); }));
+        return;
+    }
     if (command == "raise" || command == "overlay") {
         QJsonObject forwarded;
         if (command == "overlay") forwarded["visible"] = params["visible"].toBool(true);
