@@ -1,0 +1,56 @@
+{
+ "userAgent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:158.0) Gecko/20100101 Firefox/158.0",
+ "files": {
+  "lab-d69-kde.webm": {
+   "decodeAudioData": {
+    "ok": true,
+    "length": 800448,
+    "duration": 16.676,
+    "channels": 2,
+    "sampleRate": 48000
+   },
+   "playback": {
+    "why": "ended",
+    "ended": true,
+    "error": null,
+    "currentTime": 16.7,
+    "duration": 16.7,
+    "decodedAudioBytes": null
+   }
+  },
+  "f44-gnome-resident.webm": {
+   "decodeAudioData": {
+    "ok": true,
+    "length": 316335,
+    "duration": 6.5903125,
+    "channels": 2,
+    "sampleRate": 48000
+   },
+   "playback": {
+    "why": "ended",
+    "ended": true,
+    "error": null,
+    "currentTime": 6.6,
+    "duration": 6.6,
+    "decodedAudioBytes": null
+   }
+  },
+  "ref-cli.webm": {
+   "decodeAudioData": {
+    "ok": true,
+    "length": 48120,
+    "duration": 1.0025,
+    "channels": 2,
+    "sampleRate": 48000
+   },
+   "playback": {
+    "why": "ended",
+    "ended": true,
+    "error": null,
+    "currentTime": 1.01,
+    "duration": 1.01,
+    "decodedAudioBytes": null
+   }
+  }
+ }
+}

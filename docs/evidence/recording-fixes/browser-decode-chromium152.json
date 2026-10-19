@@ -1,0 +1,56 @@
+{
+ "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Claude/2.42304.2 Chrome/152.0.7977.149 Safari/537.36",
+ "files": {
+  "lab-d69-kde.webm": {
+   "decodeAudioData": {
+    "ok": true,
+    "length": 800448,
+    "duration": 16.676,
+    "channels": 2,
+    "sampleRate": 48000
+   },
+   "playback": {
+    "why": "ended",
+    "ended": true,
+    "error": null,
+    "currentTime": 16.7,
+    "duration": 16.7,
+    "decodedAudioBytes": 256571
+   }
+  },
+  "f44-gnome-resident.webm": {
+   "decodeAudioData": {
+    "ok": true,
+    "length": 316336,
+    "duration": 6.590333333333334,
+    "channels": 2,
+    "sampleRate": 48000
+   },
+   "playback": {
+    "why": "ended",
+    "ended": true,
+    "error": null,
+    "currentTime": 6.6,
+    "duration": 6.6,
+    "decodedAudioBytes": 990
+   }
+  },
+  "ref-cli.webm": {
+   "decodeAudioData": {
+    "ok": true,
+    "length": 48120,
+    "duration": 1.0025,
+    "channels": 2,
+    "sampleRate": 48000
+   },
+   "playback": {
+    "why": "ended",
+    "ended": true,
+    "error": null,
+    "currentTime": 1.01,
+    "duration": 1.01,
+    "decodedAudioBytes": 13964
+   }
+  }
+ }
+}
