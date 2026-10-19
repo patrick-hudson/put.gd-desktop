@@ -265,7 +265,15 @@ void RecordingService::prepareSession(const QJsonObject& params, JsonReply reply
         config.remove("target");
         if (auto error = recording::parseConfig(config, s.config)) { reply(error, {}); return; }
         const auto caps = backend_->capabilities();
-        if (!caps["available"].toBool()) { reply({"recording_unavailable", "Screen recording is not available on this installation", {{"reason", caps["reason"].toString()}}}, {}); return; }
+        if (!caps["available"].toBool()) {
+            // The helper's probe says what to install when it knows (no usable H.264 encoder).
+            const auto message = caps["message"].toString();
+            const auto hint = caps["hint"].toString();
+            QJsonObject details{{"reason", caps["reason"].toString()}};
+            if (!hint.isEmpty()) details["hint"] = hint;
+            reply({"recording_unavailable", message.isEmpty() ? QStringLiteral("Screen recording is not available on this installation") : hint.isEmpty() ? message : message + ' ' + hint, details}, {});
+            return;
+        }
         if (!caps["targets"].toArray().contains(s.target.kind)) { reply({"recording_unsupported", "This target kind is not supported here", {{"kind", s.target.kind}}}, {}); return; }
         if (!caps["formats"].toArray().contains(s.config.format)) { reply({"recording_unsupported", "This output format is not supported here", {{"format", s.config.format}}}, {}); return; }
         if (!s.config.codec.isEmpty() && !caps["codecs"].toObject()[s.config.format].toArray().contains(s.config.codec)) { reply({"recording_unsupported", "This codec is not supported here", {{"codec", s.config.codec}}}, {}); return; }

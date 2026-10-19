@@ -18,6 +18,14 @@ the user authorizes dependency/tool setup and testing with passwordless
 `sudo -n`; preserve existing projects and desktop work. Keep the SSH private key
 on the workstation. Verify host capacity, KVM and display access before VM runs;
 host preference does not change the required guest versions.
+
+The three physical desktops serve one session at a time. Before any GUI work on
+one, take its lock with `python3 tools/lab/desktop_lock.py acquire`, heartbeat it,
+and release it only after its cleanup check passes. Never wait for another
+session's reply while holding a lock: notify with a deadline, and silence means go.
+SSH builds and VMs on the builders are shared; heavy work stays off the workstation.
+The full rules, including one coordinator per session family, are in
+`docs/remote-builders.md` under "Sharing the lab between concurrent sessions".
 Linux goldens and Windows bases are not kept on the workstation. They live on the
 Fedora and Debian builders and in a private S3 bucket. Find, copy and restore
 them using `docs/remote-golden-images.md`, and expose
@@ -74,9 +82,12 @@ Channels and assets are in `docs/release.md`; CI coverage is in `docs/ci.md`.
 
 Record what was actually built/tested and any blocked acceptance gates. Commit explicit
 owned paths, preserving unrelated pre-existing changes. Do not add OCR features.
-Screen recording (#50) is user-approved and in progress: follow
-`docs/plans/2026-10-17-2230-feat-screen-recording-plan.md` and `docs/recording.md`;
-its finalized files enter the shared pipeline only through the explicit Upload action.
+Screen recording (#50) is user-approved and ships in the DEB, RPM and AppImage
+(X11 and Wayland capture with region selection, system audio, private review,
+export, explicit upload); Windows and the open items in
+`docs/plans/2026-10-17-2230-feat-screen-recording-plan.md` remain.
+Follow that plan and `docs/recording.md`; finalized files enter the shared
+pipeline only through the explicit Upload action.
 The user-approved Edit & upload image editor (#51) is the still-image editing feature; its
 contract, privacy boundaries and agent control are in `docs/image-editor.md`.
 New windows reuse the redesign theme and IconArt glyphs, and every interactive

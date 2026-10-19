@@ -21,7 +21,16 @@ and Qt Wayland development headers. The image also carries Qt's offscreen platfo
 the resident runs image decoding and previews in `putgd-ui --image-job` on it, and
 Qt aborts that worker when the plugin is absent. After deployment the builder
 starts the worker from the AppDir on offscreen and rejects an image where it does
-not start. Do not force a different platform theme or
+not start. It carries Qt's Wayland client plugins too, which linuxdeploy deploys
+only for Qt Wayland Compositor applications: the `xdg-shell` shell integration,
+the `bradient` and `adwaita` decorations and the EGL client buffer integration,
+the set that Debian's and Fedora's qt6-wayland packages ship. Qt's Wayland
+platform does not start without a shell integration (LayerShellQt's is applied
+per window, never as the default), so without them every window fell back to
+XWayland, and a forced `QT_QPA_PLATFORM=wayland` aborted. The builder then starts
+the same worker on Wayland under a private headless weston (install `weston` on
+the builder) and rejects an image whose worker does not start with `xdg-shell`.
+Do not force a different platform theme or
 replace native folder dialogs. The builder rejects a missing GTK3 theme plugin. Qt's standard `qt.conf`
 deployment paths select only the SQLite SQL driver, preserving all other plugin
 directories and leaving the original official SDK untouched. MySQL/Mimer and
@@ -55,6 +64,23 @@ cmake --build build/qtkeychain --parallel 2
 cmake --install build/qtkeychain
 ```
 
+The screen recorder `putgd-record` links a pinned upstream FFmpeg (`ffmpeg` in
+`tools.lock.json`, 7.1.5) that `tools/releases/provision-appimage.py` builds into
+the same dependency prefix with FFmpeg's own `configure`, using exactly the
+options in `media.json` (`--enable-gpl` with libx264 and libx265, nothing
+non-free, no programs, only the demuxer, decoders, encoders, muxers and
+filters the export uses). It needs `nasm libva-dev libvpx-dev libwebp-dev
+libopus-dev libffmpeg-nvenc-dev libx264-dev libx265-dev` from Ubuntu 24.04. The
+GStreamer plugins come from the builder's own `gstreamer1.0-plugins-base`,
+`-good`, `-bad`, `-ugly` (`x264enc`), `gstreamer1.0-pipewire`,
+`gstreamer1.0-pulseaudio` and `gstreamer1.0-vaapi` packages. The FFmpeg source
+checkout under `build/dependencies/appimage/ffmpeg` is passed as a
+`--license-source`, so its COPYING.GPLv2, COPYING.LGPLv2.1 and LICENSE.md travel
+with the image. After assembly, `build-appimage.sh` runs
+`appimage_media_sources.py`, which needs `deb-src` entries for Ubuntu 24.04 (the
+CI job adds them) to fetch the bundled GPL source packages for the
+corresponding-source asset.
+
 Use the pinned SDK provisioning instructions in `docs/build.md`; build the SDK
 with the same distro compiler and OpenSSL/curl, with `USE_OPENSSL=ON`. The
 application's release preset accepts `CMAKE_PREFIX_PATH` containing this SDK,
@@ -66,6 +92,8 @@ cmake --build --preset release
 ```
 
 `putgd-kde-region` must exist: omitting it breaks native KDE region capture.
+`putgd-record` must exist and link `libavcodec.so.61` from the dependency
+prefix; `build-appimage.sh` refuses a helper linked against the distro FFmpeg.
 After the release build, use CMake's `DESTDIR` install into a new staging root.
 Do not reuse stale staging contents.
 
@@ -95,6 +123,55 @@ actual desktop behavior separately.
 It records desktop acceptance as pending: assembly is not compositor evidence.
 Only upload the image and receipt after package-specific acceptance passes.
 
+## Screen recording runtime
+
+`portable_appimage.py` deploys the GStreamer plugins listed in `media.json`
+and `gst-plugin-scanner` with linuxdeploy (so their dependencies land in
+`usr/lib`), then moves them to `usr/lib/gstreamer-1.0/` and
+`usr/libexec/gstreamer-1.0/` with RPATHs pointing at `usr/lib`. Libraries that
+must match the host are excluded from every linuxdeploy pass (`hostLibraries`:
+libva, libpipewire, the NVIDIA encode libraries, OpenH264); libva and
+libva-drm are also kept in `usr/lib/putgd-host-fallback/`, which AppRun adds to
+the library path only when the host's linker cache has no `libva.so.2`.
+`putgd-record` confines GStreamer to the image itself when it runs from the
+mount (see [recording](../../docs/recording.md), "AppImage runtime"); nothing
+else in the image or on the host inherits those variables.
+
+On Plasma, AppRun writes a second temporary private entry beside the
+ScreenShot2 one: `putgd-record-appimage-XXXXXXXX.desktop`, `Exec` naming the
+mounted `putgd-record` and `X-KDE-Wayland-Interfaces=zkde_screencast_unstable_v1`,
+so KWin offers its screencast protocol to the recorder; the same cleanup
+removes both entries.
+
+On Wayland the recorder's windows behave like the image's other windows (see
+"Runtime behavior"): the control bar and the review window are native Wayland
+clients, and on Plasma the helper's region selector, ring and dimming are
+LayerShellQt overlay surfaces. Frames still come from KWin's or Mutter's
+stream. The AppImage recordings in the
+[packaging receipt](../../docs/evidence/2026-10-18-recording-packaging.md)
+ran before the image carried `xdg-shell`, with those windows on XWayland.
+
+The post-deployment audit runs the relocated `putgd-record --capabilities`
+with `APPDIR` set and no display. It fails unless GStreamer initialises, every
+`requiredElements` entry loads, every plugin comes from `usr/lib/gstreamer-1.0`,
+FFmpeg's H.264 decoder opens, MP4, WebM, GIF and WebP export are available,
+the bundled `x264enc` encodes, the bundled libx264 and libx265 open, and no
+host-matched library was bundled. A builder without a GPU (CI) has only those
+fallbacks, so the audit proves them; the host's VA-API and NVENC encoders are
+exercised on the lab desktops. The receipt keeps the result under
+`postDeploymentAudit.recording` and the media list, fallbacks, FFmpeg pin and
+GPL components under `recordingRuntime`.
+
+The recording runtime grew the image from 98,929,144 bytes (nightly 317) to
+112,736,760 bytes (`7aa1aff`): 10.5 MB for GStreamer, FFmpeg and the plugins,
+and 3.3 MB for x264/x265. Each release also carries the 18.4 MB
+corresponding-source asset. The idle family on the Debian 13 Plasma/Wayland
+desktop measured 111.7 MiB RSS / 76.1 MiB PSS for nightly 317 and
+112.3 / 76.7 MiB for this image (resident, `putgd-ui`, AppRun and runtime; the
+resident itself 29.0 and 29.3 MiB). While recording, the image's helper peaks
+at 110-131 MiB, against 141-153 MiB for the distro packages' helpers, whose
+FFmpeg carries every codec.
+
 ## Compression and memory
 
 The pinned appimagetool uses zstd with 16 KiB SquashFS blocks through its standard
@@ -117,6 +194,20 @@ pins the package bytes, commands, observer and results. Include every mount and
 launcher process in future quiet-family measurements; never hide FUSE from RSS.
 
 ## Runtime behavior
+
+On Wayland sessions the views, the editor and the KDE region helper are native
+Wayland clients, as with the DEB/RPM; set `QT_QPA_PLATFORM=xcb` to use XWayland
+instead. KWin draws their frames; on GNOME, Qt draws adwaita frames for the
+views and bradient for the editor, which clears the desktop identity before it
+starts (as in the DEB/RPM). The region helper sets LayerShellQt's overlay role
+per window and needs the Wayland platform, so KDE region capture works only
+natively. Before the image carried `xdg-shell` it answered `region_unavailable`.
+A Wayland compositor takes a window's icon from the desktop entry named by its
+app ID (`putgd-ui`), not from the window, and Qt 6.8 has no
+`xdg-toplevel-icon` support. Without a host entry for the image, KWin's title
+bar and GNOME's overview show a generic icon for those windows; the DEB/RPM
+install `putgd-ui.desktop`. Acceptance:
+[2026-10-19 native Wayland](../../docs/evidence/2026-10-19-appimage-native-wayland.md).
 
 The application AppRun is installed after deployment, so generic deployment
 hooks cannot override its host-tool environment or force unavailable GTK2 themes.

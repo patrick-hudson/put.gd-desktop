@@ -115,6 +115,13 @@ private slots:
   const auto caps=h.rec("capabilities");QVERIFY2(!caps.error,qPrintable(caps.error.message));
   QCOMPARE(caps.result["schemaVersion"].toInt(),1);QVERIFY(caps.result["available"].isBool());QVERIFY(caps.result["available"].toBool()||caps.result["reason"].isString());
   QVERIFY(caps.result["gstreamer"].isObject());QVERIFY(caps.result["ffmpeg"].isObject());QVERIFY(caps.result["formats"].isArray());QVERIFY(caps.result["liveCapture"].isObject());
+  // Usable encoders come from real start attempts and are a subset of the registered ones.
+  const auto gst=caps.result["gstreamer"].toObject();
+  if(gst["available"].toBool()){QVERIFY(gst["usableH264Encoders"].isArray());for(const auto& name:gst["usableH264Encoders"].toArray())QVERIFY(gst["liveH264Encoders"].toArray().contains(name));
+   QCOMPARE(caps.result["liveCapture"].toObject()["encoder"].toBool(),!gst["usableH264Encoders"].toArray().isEmpty());}
+  QVERIFY(caps.result["ffmpeg"].toObject()["h264Decoder"].isObject());
+  const auto reason=caps.result["reason"].toString();
+  if(reason=="live_encoder_missing"||reason=="h264_encoder_unusable"||reason=="h264_decoder_unusable"){QVERIFY(!caps.result["message"].toString().isEmpty());QVERIFY(!caps.result["hint"].toString().isEmpty());}
   qInfo().noquote()<<QJsonDocument(QJsonObject{{"reason",caps.result["reason"]},{"session",caps.result["session"]},{"formats",caps.result["formats"]},{"liveCapture",caps.result["liveCapture"]}}).toJson(QJsonDocument::Compact);
   // Without a display the service refuses to prepare; the helper itself still
   // completes the identity handshake either way.

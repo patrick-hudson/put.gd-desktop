@@ -174,7 +174,9 @@ QString baseVideoGraph(const ExportRequest& request, AVRational timeBase, qint64
         if (mask.kind == "solid") graph += QStringLiteral(",drawbox=x=%1:y=%2:w=%3:h=%4:color=black@1:t=fill:%5").arg(r.x()).arg(r.y()).arg(r.width()).arg(r.height()).arg(when);
         else {
             const int radius = std::clamp(mask.strength, 2, std::max(2, std::min(r.width(), r.height()) / 2 - 1));
-            graph += QStringLiteral("[v%1];[v%1]split[v%1a][v%1b];[v%1b]crop=w=%2:h=%3:x=%4:y=%5,boxblur=luma_radius=%6:luma_power=2:chroma_radius=%6:chroma_power=2[m%1];[v%1a][m%1]overlay=x=%4:y=%5:%7").arg(label).arg(r.width()).arg(r.height()).arg(r.x()).arg(r.y()).arg(radius).arg(when);
+            // Two box passes, as the preview draws them. FFmpeg's boxblur is GPL
+            // only; avgblur is LGPL, so the AppImage's own FFmpeg has it too.
+            graph +=QStringLiteral("[v%1];[v%1]split[v%1a][v%1b];[v%1b]crop=w=%2:h=%3:x=%4:y=%5,avgblur=sizeX=%6,avgblur=sizeX=%6[m%1];[v%1a][m%1]overlay=x=%4:y=%5:%7").arg(label).arg(r.width()).arg(r.height()).arg(r.x()).arg(r.y()).arg(radius).arg(when);
             ++label;
         }
     }
@@ -511,7 +513,7 @@ Error exportClip(const ExportRequest& request, ExportResult& result, const std::
 
 namespace {
 void boxBlur(QImage& image, const QRect& rect, int radius) {
-    // Two passes of a separable box filter inside rect, close to boxblur power=2.
+    // Two passes of a separable box filter inside rect, as the export applies avgblur twice.
     // Prefix sums make each output pixel one subtraction per channel, so the
     // cost no longer grows with the radius; only the rect is copied.
     const int w = rect.width(), h = rect.height();

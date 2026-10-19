@@ -12,7 +12,9 @@ class FakeRecordingBackend final:public RecordingBackend {
 public:
  Event sink;QStringList log;QString staging;bool failStart=false,failExport=false,available=true,deferExports=false;QList<std::function<void()>> pendingExports;int exports=0,previews=0,discards=0,cancels=0;qint64 durationUs=12000000;
  QByteArray exportBytes=QByteArray("\0\0\0\x18" "ftypisom",12)+QByteArray(4096,'r');RecordingEdit lastEdit;RecordingConfig lastConfig;qint64 lastPreviewTime=-1;
- QJsonObject capabilities() const override {return {{"available",available},{"reason",available?QString():QString("fake_off")},{"targets",QJsonArray{"monitor","desktop","region","window"}},{"formats",QJsonArray{"mp4","webm","gif","webp"}},{"codecs",QJsonObject{{"mp4",QJsonArray{"h264","h265"}},{"webm",QJsonArray{"vp9"}}}},{"audio",QJsonObject{{"system",true},{"microphone",false}}},{"overlayExclusion",QJsonObject{{"region",true}}}};}
+ QJsonObject unavailableDetails; // merged into capabilities when unavailable (message, hint)
+ QJsonObject capabilities() const override {auto caps=baseCapabilities();if(!available)for(auto it=unavailableDetails.begin();it!=unavailableDetails.end();++it)caps[it.key()]=it.value();return caps;}
+ QJsonObject baseCapabilities() const {return {{"available",available},{"reason",available?QString():QString("fake_off")},{"targets",QJsonArray{"monitor","desktop","region","window"}},{"formats",QJsonArray{"mp4","webm","gif","webp"}},{"codecs",QJsonObject{{"mp4",QJsonArray{"h264","h265"}},{"webm",QJsonArray{"vp9"}}}},{"audio",QJsonObject{{"system",true},{"microphone",false}}},{"overlayExclusion",QJsonObject{{"region",true}}}};}
  void setEventSink(Event e) override {sink=std::move(e);}
  // placement: the overlayPlacement the helper reports ("compositor" asks the resident's shell); deferPrepare keeps the reply for the test.
  QString placement;qint64 pid=0;bool deferPrepare=false;Reply pendingPrepare;RecordingTarget lastTarget;

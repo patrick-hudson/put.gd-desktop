@@ -31,6 +31,16 @@ Choose **Capture region & edit** from the rail or tray, or assign it a key in **
 
 **Upload** (Ctrl+Enter) sends only the edited image to the output shown at the bottom of the window, with the usual local copy, history and link copying. Plain Enter never uploads. **Save a copy…** writes the same edited PNG to a file. **Cancel** or closing the window discards the edit: nothing is saved or uploaded. Inputs above 24 megapixels are refused; output is PNG. An edit interrupted by quitting put.gd is listed as interrupted and is never uploaded automatically.
 
+## Record the screen
+
+Choose **Record screen** on the rail, **Capture Screen Recording** in the tray, or assign the record shortcut in **Settings → Shortcuts**. Drag the area to record on X11, Plasma and GNOME (GNOME needs the put.gd Shell extension for this); other Wayland desktops ask once which screen or window to share. The floating bar chooses MP4, WebM, GIF or WebP and system audio, then records, pauses and stops. Stop always opens a private review: trim, add blur or solid covers for part of the clip, play it back, **Save copy…**, **Discard** or **Upload**. Nothing is saved or uploaded until you choose one. See [screen recording](recording.md) for the details.
+
+Recording needs an H.264 encoder. When none works, put.gd says so and what to install instead of starting:
+
+- **Ubuntu, Kubuntu, Mint and Debian packages** bring one with their GStreamer dependencies.
+- **Fedora**: Fedora installs a placeholder OpenH264 library. Replace it with Cisco's: `sudo dnf install openh264 gstreamer1-plugin-openh264`. If the `fedora-cisco-openh264` repository was turned off, first run `sudo dnf config-manager setopt fedora-cisco-openh264.enabled=1`.
+- **AppImage**: it carries its own recorder. It encodes with your graphics driver where it can (VA-API or NVIDIA) and otherwise with its bundled x264 and x265, so it needs no setup.
+
 ## Destinations and credentials
 
 Use **Add destination** to configure S3 or Proton Drive. Valid non-secret fields save automatically. Removing a destination removes it from settings and clears affected output references; original receipts, local files, and remote objects remain. Review the default and exceptions after removal.

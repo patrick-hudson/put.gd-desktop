@@ -19,6 +19,7 @@ def expected_members(version):
         'putgd-' + version + '-ubuntu26.04-x86_64.deb',
         'putgd-' + version + '-fedora44-x86_64.rpm',
         'putgd-' + version + '-x86_64.AppImage',
+        'putgd-' + version + '-appimage-media-source.tar.gz',
         'putgd-' + version + '-source.tar.gz',
         'putgd-gnome50-' + version + '.zip', 'release-builds.json', 'proton-source-catalog.json',
     ]

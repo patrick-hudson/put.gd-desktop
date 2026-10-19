@@ -28,7 +28,8 @@ def package_metadata(package: Path, kind: str) -> dict:
         return {"format": "DEB", "name": command(["dpkg-deb", "-f", str(package), "Package"]),
                 "version": command(["dpkg-deb", "-f", str(package), "Version"]),
                 "architecture": command(["dpkg-deb", "-f", str(package), "Architecture"]),
-                "requires": command(["dpkg-deb", "-f", str(package), "Depends"])}
+                "requires": command(["dpkg-deb", "-f", str(package), "Depends"]),
+                "recommends": command(["dpkg-deb", "-f", str(package), "Recommends"])}
     listing = command(["rpm", "-qp", "--qf",
                        "[%{FILENAMES}\t%{FILEMODES:octal}\t%{FILEUSERNAME}\t%{FILEGROUPNAME}\n]", str(package)])
     for line in listing.splitlines():
@@ -46,7 +47,8 @@ def package_metadata(package: Path, kind: str) -> dict:
             "version": command(["rpm", "-qp", "--qf", "%{VERSION}", str(package)]),
             "release": command(["rpm", "-qp", "--qf", "%{RELEASE}", str(package)]),
             "architecture": command(["rpm", "-qp", "--qf", "%{ARCH}", str(package)]),
-            "requires": requires, "provides": provides}
+            "requires": requires, "provides": provides,
+            "recommends": command(["rpm", "-qp", "--recommends", str(package)]).splitlines()}
 
 
 def extract_package(package: Path, kind: str, root: Path):

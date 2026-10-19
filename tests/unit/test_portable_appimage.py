@@ -61,6 +61,36 @@ exit 7
         self.assertEqual(existing.read_text(), "user entry\n")
         self.assertEqual(list(applications.glob("putgd-appimage-*.desktop")), [])
 
+    def test_kde_registers_mounted_recorder_for_screencast_and_cleans_it(self):
+        self.write(self.app / "usr/bin/putgd-record", "#!/bin/sh\nexit 0\n")
+        self.write(self.app / "usr/bin/putgd-launcher", """#!/bin/sh
+for entry in "$XDG_DATA_HOME"/applications/putgd-record-appimage-*.desktop; do
+    cat "$entry" > "$PG_TEST_RECEIPT"
+    stat -c '%a' "$entry" >> "$PG_TEST_RECEIPT"
+done
+exit 0
+""")
+        completed = subprocess.run([str(APP_RUN)], env=self.env)
+        self.assertEqual(completed.returncode, 0)
+        receipt = self.receipt.read_text()
+        self.assertIn('Exec="' + str(self.app / "usr/bin/putgd-record") + '"', receipt)
+        self.assertIn("X-KDE-Wayland-Interfaces=zkde_screencast_unstable_v1", receipt)
+        self.assertNotIn("ScreenShot2", receipt)
+        self.assertTrue(receipt.endswith("600\n"))
+        self.assertEqual(list((self.data / "applications").glob("putgd-*appimage-*.desktop")), [])
+
+    def test_bundled_libva_is_used_only_without_a_host_copy(self):
+        (self.app / "usr/lib/putgd-host-fallback").mkdir(parents=True)
+        self.env["XDG_CURRENT_DESKTOP"] = "GNOME"
+        self.write(self.app / "usr/bin/putgd-launcher", "#!/bin/sh\nprintf '%s\\n' \"$LD_LIBRARY_PATH\" > \"$PG_TEST_RECEIPT\"\n")
+        fallback = str(self.app / "usr/lib/putgd-host-fallback")
+        for cache, expected in (("\tlibva.so.2 (libc6,x86-64) => /usr/lib/x86_64-linux-gnu/libva.so.2\n", False),
+                                ("\tlibva-drm.so.2 (libc6,x86-64) => /usr/lib/x86_64-linux-gnu/libva-drm.so.2\n", True)):
+            with self.subTest(cache=cache):
+                self.write(self.root / "bin/ldconfig", "#!/bin/sh\nprintf '" + cache.replace("\\", "\\\\") + "'\n")
+                self.assertEqual(subprocess.run([str(APP_RUN)], env=self.env).returncode, 0)
+                self.assertEqual(fallback in self.receipt.read_text(), expected)
+
     def test_termination_stops_exact_child_and_cleans_permission(self):
         self.write(self.app / "usr/bin/putgd-launcher", """#!/bin/sh
 trap 'exit 0' TERM
@@ -139,6 +169,37 @@ class DeploymentRejectionTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Unresolved"):
             self.run_audit(dependencies="libmissing.so => not found\n")
 
+    def test_recording_probe_must_stay_inside_the_image(self):
+        media = {"gstreamer": {"requiredElements": ["ximagesrc"]}, "hostLibraries": ["libva.so.*"]}
+        (self.app / "usr/lib/gstreamer-1.0").mkdir(parents=True)
+        inside = str(self.app / "usr/lib/gstreamer-1.0")
+        good = {"gstreamer": {"available": True, "version": "1.24.2", "elements": {"ximagesrc": "1.24.2"},
+                              "pluginDirectories": [inside]},
+                "ffmpeg": {"h264Decoder": {"usable": True, "name": "h264"}}, "formats": ["mp4", "webm", "gif", "webp"],
+                "exportEncoders": {"h264": ["libx264"], "h265": ["libx265"], "vp9": ["libvpx-vp9"]}}
+        good["gstreamer"]["usableH264Encoders"] = ["x264enc"]
+        self.assertEqual(portable.audit_media(self.app, media, json.dumps(good))["pluginDirectories"], [inside])
+        leaked = json.loads(json.dumps(good))
+        leaked["gstreamer"]["pluginDirectories"].append("/usr/lib/x86_64-linux-gnu/gstreamer-1.0")
+        with self.assertRaisesRegex(ValueError, "outside the image"):
+            portable.audit_media(self.app, media, json.dumps(leaked))
+        # Without a GPU the bundled x264/x265 must be what works.
+        no_fallback = json.loads(json.dumps(good))
+        no_fallback["exportEncoders"]["h265"] = []
+        with self.assertRaisesRegex(ValueError, "libx264/libx265"):
+            portable.audit_media(self.app, media, json.dumps(no_fallback))
+        no_live = json.loads(json.dumps(good))
+        no_live["gstreamer"]["usableH264Encoders"] = []
+        with self.assertRaisesRegex(ValueError, "x264enc"):
+            portable.audit_media(self.app, media, json.dumps(no_live))
+        missing = json.loads(json.dumps(good))
+        missing["gstreamer"]["elements"]["ximagesrc"] = None
+        with self.assertRaisesRegex(ValueError, "elements missing"):
+            portable.audit_media(self.app, media, json.dumps(missing))
+        (self.app / "usr/lib/libva.so.2").write_bytes(b"\x7fELFsynthetic")
+        with self.assertRaisesRegex(ValueError, "Host-provided libraries were bundled"):
+            portable.audit_media(self.app, media, json.dumps(good))
+
     def test_host_qt_or_aws_dependency_is_rejected(self):
         for library in ("libQt6Core.so.6", "libaws-cpp-sdk-core.so"):
             with self.subTest(library=library), self.assertRaisesRegex(ValueError, "outside AppDir"):
@@ -191,6 +252,108 @@ kill -ABRT $$
 """)
         with self.assertRaisesRegex(ValueError, 'Could not find the Qt platform plugin "offscreen"'):
             self.audit()
+
+
+class WaylandAuditTest(unittest.TestCase):
+    """The Wayland start contract, with a synthetic compositor and putgd-ui; not desktop acceptance."""
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory(prefix="pgwayland-")
+        self.addCleanup(self.directory.cleanup)
+        self.root = Path(self.directory.name)
+        self.app = self.root / "AppDir"
+        (self.app / "usr/bin").mkdir(parents=True)
+        self.plugins = self.app / "usr/plugins"
+        for name in ("wayland-shell-integration/liblayer-shell.so", *portable.WAYLAND_CLIENT_PLUGINS):
+            (self.plugins / name).parent.mkdir(parents=True, exist_ok=True)
+            (self.plugins / name).write_bytes(b"\x7fELFsynthetic")
+        self.inventory = {"privateLibraryDirectory": "usr/lib/putgd"}
+        self.receipt = self.root / "compositor-pid"
+        # Like weston: create the named socket in the private runtime directory, run until TERM.
+        self.compositor = self.script("compositor", """for argument; do
+    case $argument in --socket=*) socket=${argument#--socket=} ;; esac
+done
+printf '%s\\n' "$$" > "$PG_COMPOSITOR_PID"
+trap 'exit 0' TERM
+: > "$XDG_RUNTIME_DIR/$socket"
+while :; do sleep 0.05; done
+""")
+        self.worker("""[ "$1" = --image-job ] && [ "$QT_QPA_PLATFORM" = wayland ] || exit 9
+[ -e "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ] && [ "$XDG_SESSION_TYPE" = wayland ] || exit 8
+[ -z "${DISPLAY-}" ] && [ -z "${QT_PLUGIN_PATH-}" ] || exit 7
+[ -p /dev/stdin ] && [ -p /dev/stdout ] || exit 2
+printf '%s\\n' "qt.qpa.wayland: Using the 'xdg-shell' shell integration" >&2
+cat >/dev/null
+exit 3
+""")
+
+    def script(self, name, body):
+        path = self.root / name
+        path.write_text("#!/bin/sh\n" + body)
+        path.chmod(0o755)
+        return path
+
+    def worker(self, body):
+        path = self.app / "usr/bin/putgd-ui"
+        path.write_text("#!/bin/sh\n" + body)
+        path.chmod(0o755)
+
+    def audit(self, compositor=None):
+        with patch.dict(os.environ, {"DISPLAY": ":99", "WAYLAND_DISPLAY": "wayland-9",
+                                     "QT_PLUGIN_PATH": "/usr/lib/qt6/plugins",
+                                     "PG_COMPOSITOR_PID": str(self.receipt)}):
+            return portable.audit_wayland(self.app, self.inventory,
+                                          compositor or (str(self.compositor), "--socket={socket}"))
+
+    def assert_compositor_stopped(self):
+        pid = int(self.receipt.read_text())
+        with self.assertRaises(ProcessLookupError):
+            os.kill(pid, 0)
+
+    def test_distro_client_plugin_set_is_deployed(self):
+        self.assertEqual(set(portable.WAYLAND_CLIENT_PLUGINS), {
+            "wayland-shell-integration/libxdg-shell.so", "wayland-decoration-client/libbradient.so",
+            "wayland-decoration-client/libadwaita.so",
+            "wayland-graphics-integration-client/libqt-plugin-wayland-egl.so"})
+        self.assertEqual(portable.HEADLESS_COMPOSITOR[0], "weston")
+
+    def test_worker_starts_with_xdg_shell_and_compositor_is_stopped(self):
+        result = self.audit()
+        self.assertTrue(result["imageWorkerStartedOnWayland"])
+        self.assertEqual(result["waylandShellIntegration"], "xdg-shell")
+        self.assertIn("wayland-shell-integration/libxdg-shell.so", result["waylandClientPlugins"])
+        self.assert_compositor_stopped()
+
+    def test_missing_shell_integration_is_rejected(self):
+        (self.plugins / "wayland-shell-integration/libxdg-shell.so").unlink()
+        with self.assertRaisesRegex(ValueError, "missing from the image: wayland-shell-integration/libxdg-shell.so"):
+            self.audit()
+
+    def test_aborting_worker_is_rejected_with_its_qt_message(self):
+        self.worker("""printf '%s\\n' 'qt.qpa.wayland: No shell integration named "xdg-shell" found' \\
+    'qt.qpa.wayland: Loading shell integration failed.' \\
+    'qt.qpa.plugin: Could not load the Qt platform plugin "wayland" in "" even though it was found.' >&2
+kill -ABRT $$
+""")
+        with self.assertRaisesRegex(ValueError, "Loading shell integration failed"):
+            self.audit()
+        self.assert_compositor_stopped()
+
+    def test_other_shell_integration_is_rejected(self):
+        self.worker("""printf '%s\\n' "qt.qpa.wayland: Using the 'wl-shell' shell integration" >&2
+cat >/dev/null
+exit 3
+""")
+        with self.assertRaisesRegex(ValueError, "with xdg-shell"):
+            self.audit()
+
+    def test_compositor_that_exits_is_rejected_with_its_message(self):
+        failing = self.script("failing", "printf '%s\\n' $$ > \"$PG_COMPOSITOR_PID\"; echo 'fatal: no backend' >&2; exit 1\n")
+        with self.assertRaisesRegex(ValueError, "compositor did not start: fatal: no backend"):
+            self.audit((str(failing),))
+
+    def test_missing_compositor_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "requires " + str(self.root / "absent")):
+            self.audit((str(self.root / "absent"), "--socket={socket}"))
 
 
 if __name__ == "__main__":
