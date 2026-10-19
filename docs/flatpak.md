@@ -203,10 +203,13 @@ So a sandboxed client can consume KWin's PipeWire node with the manifest's
 `--filesystem=xdg-run/pipewire-0`. The restore token lives in the app's own data
 (`~/.var/app/gd.put.Putgd/data/putgd/putgd-record/`).
 
-Defect found on the way, reported to the recording session: `putgd-record`
-segfaults in `libwayland-client` when a `kde-screencast` recording is shut down
-(Debian 20:24:13, kernel log; Kubuntu guest 20:41:33, DrKonqi). The clip is
-already saved by then; portal runs did not crash. A native build was not tried.
+Defect found on the way: `putgd-record` segfaulted in `libwayland-client` when a
+`kde-screencast` recording was shut down (Debian 20:24:13, kernel log; Kubuntu
+guest 20:41:33, DrKonqi), after the clip was saved; portal runs did not crash.
+The recording session traced it to a use-after-free in `KdeScreencast::close()`
+(the stream's `close` request is its destructor, and the proxy was then
+destroyed again), present in native builds since PR #68, and fixed it in
+PR #77 (`daf0792`), verified in the Kubuntu guest.
 
 ### Other Plasma Wayland facts
 
@@ -370,7 +373,14 @@ the grabs. This is a test-input detail, not an app behavior.
 - **Codecs.** In the sandbox the helper found `vah264lpenc`/`vah264enc` (the
   Intel VA driver extension) and `x264enc`, plus FFmpeg `libx264`, `libx265`,
   `h264_vaapi` and `libvpx-vp9` from codecs-extra. On Fedora that is more than
-  the native RPM gets (stock Fedora has only OpenH264).
+  the native RPM gets (stock Fedora has only OpenH264). It is also the order
+  Patrick chose for the AppImage on 2026-10-19 (host VA-API/NVENC first, then
+  x264/x265), with one difference: the Flatpak bundle contains no codec. x264,
+  x265 and the full FFmpeg come from the separately distributed
+  `org.freedesktop.Platform.codecs-extra` extension and VA drivers from the GL
+  and VAAPI extensions, which Flatpak installed automatically with the runtime.
+  NVENC would need Flatpak's NVIDIA GL extension matching the host driver; no
+  builder has an NVIDIA GPU, so it was not tested.
 - **Host faults.** `flatpak run` failed with "bwrap: Can't find source path
   /run/user/1000/doc/by-app/gd.put.Putgd" on Kubuntu `.72` (the document
   portal's FUSE mount had been gone since boot) and on Fedora `.70` (gone after a
@@ -472,8 +482,8 @@ the KDE region helper and the GNOME extension, and this spike only touches
    fine because they stay inside the same sandbox.
 9. **MCP.** `tools/mcp` takes `--cli PATH`; document a wrapper that runs
    `flatpak run --command=putgd-cli gd.put.Putgd "$@"`.
-10. **Recording helper teardown.** Fix the `libwayland-client` segfault when a
-    `kde-screencast` session ends (reported to the recording session).
+10. **Recording helper teardown.** The `libwayland-client` segfault when a
+    `kde-screencast` session ends is fixed in PR #77 (`daf0792`).
 
 ## Proposed rewrite of #14
 
@@ -576,7 +586,6 @@ is included. DEB, RPM and AppImage keep their current behavior.
   the manifest has no metainfo file yet.
 - **The proposed changes 1 to 10** are described, not implemented, so the
   Plasma Wayland portal capture design (change 6) has no measured behavior.
-- **The `kde-screencast` teardown crash** was not checked with a native build.
 - **Patched Flatpak on every host.** Only Debian has the export filter; the
   Fedora and Kubuntu results were on unfiltered Flatpak.
 
