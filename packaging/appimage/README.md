@@ -21,7 +21,16 @@ and Qt Wayland development headers. The image also carries Qt's offscreen platfo
 the resident runs image decoding and previews in `putgd-ui --image-job` on it, and
 Qt aborts that worker when the plugin is absent. After deployment the builder
 starts the worker from the AppDir on offscreen and rejects an image where it does
-not start. Do not force a different platform theme or
+not start. It carries Qt's Wayland client plugins too, which linuxdeploy deploys
+only for Qt Wayland Compositor applications: the `xdg-shell` shell integration,
+the `bradient` and `adwaita` decorations and the EGL client buffer integration,
+the set that Debian's and Fedora's qt6-wayland packages ship. Qt's Wayland
+platform does not start without a shell integration (LayerShellQt's is applied
+per window, never as the default), so without them every window fell back to
+XWayland, and a forced `QT_QPA_PLATFORM=wayland` aborted. The builder then starts
+the same worker on Wayland under a private headless weston (install `weston` on
+the builder) and rejects an image whose worker does not start with `xdg-shell`.
+Do not force a different platform theme or
 replace native folder dialogs. The builder rejects a missing GTK3 theme plugin. Qt's standard `qt.conf`
 deployment paths select only the SQLite SQL driver, preserving all other plugin
 directories and leaving the original official SDK untouched. MySQL/Mimer and
