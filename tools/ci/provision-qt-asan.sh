@@ -5,7 +5,8 @@
 # that #76 fixed was read only by exported QtCore functions and passed both
 # GCC and clang ASan. The application still compiles against the distro
 # headers; the tests load this library in place of the distro one through
-# LD_LIBRARY_PATH, so distro QtGui, QtSql and QtTest bind to it.
+# LD_LIBRARY_PATH, so distro QtGui, QtSql and QtTest bind to it. It is a CI-only
+# test library: no package, AppImage or release build uses it.
 set -euo pipefail
 version=6.10.2
 sha256=aeb78d29291a2b5fd53cb55950f8f5065b4978c25fb1d77f627d695ab9adf21e
@@ -14,7 +15,9 @@ work=build/qt-asan-source
 distro="$(dpkg-query -W -f '${Version}' libqt6core6t64)"
 case "$distro" in
   "$version"+*|"$version"-*) ;;
-  *) echo "Distro QtCore is $distro, but this recipe pins $version; update both together." >&2; exit 1 ;;
+  *) echo "::error::Distro QtCore is $distro, but this recipe pins qtbase $version." \
+       "The application compiles against the distro headers, so they must match exactly;" \
+       "update version and sha256 here together." >&2; exit 1 ;;
 esac
 archive="$work/qtbase-everywhere-src-$version.tar.xz"
 mkdir -p "$work"

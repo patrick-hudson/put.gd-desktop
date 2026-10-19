@@ -80,8 +80,12 @@ absolute install paths so the distro plugins still load) and caches it. The
 application still compiles against the distro headers; the tests run with
 `LD_LIBRARY_PATH` pointing at the instrumented `libQt6Core.so.6`, and distro QtGui,
 QtSql, QtTest and the plugins bind to it. When Ubuntu 26.04 moves to another Qt
-release the recipe stops with a version mismatch; update its version and SHA-256
-together. `json_ref_lifetime_contract` still rejects the #76 pattern in source.
+release the recipe stops with a version mismatch and fails the job; update its
+version and SHA-256 together. The cache key names the distro Qt version, the clang
+version and the recipe's hash, so any of them changing rebuilds QtCore. The
+instrumented QtCore is a CI-only test library: no package, AppImage or release build
+uses it, and release builds stay on distro Qt. `json_ref_lifetime_contract` still
+rejects the #76 pattern in source.
 
 **portable** compiles the shared production code on Windows with tests disabled,
 using the official Qt installation and pinned QtKeychain/AWS SDK builds. The S3
