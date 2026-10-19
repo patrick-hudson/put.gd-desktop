@@ -487,7 +487,8 @@ the KDE region helper and the GNOME extension, and this spike only touches
 
 ## Proposed rewrite of #14
 
-This is a proposal for Patrick; the issue itself has not been edited.
+Patrick approved this rewrite on 2026-10-19, and #14 now carries it (title
+"feat: publish a Flatpak without a host helper").
 
 **Title:** feat: publish a Flatpak without a host helper
 
