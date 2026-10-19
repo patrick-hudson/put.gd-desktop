@@ -48,10 +48,10 @@ gint64 monotonicNow() {
 }
 // pipewiresrc as a live GstBaseSrc: with a header PTS on every frame, base
 // class sync adds one constant to all of them so that the first frame equals
-// its arrival time, which bakes that first frame's queueing delay (tens of ms
-// while the pipeline starts) into the whole video track. This private subclass
-// only drops the sync times; frames keep the compositor's PTS and
-// stampFrame maps each one to running time. Empty when pipewiresrc is missing.
+// its arrival time, which bakes that first frame's delay (0-90 ms measured on
+// KWin) into the whole video track, and then waits on the clock for frames that
+// arrive sooner than the first did. This private subclass only drops the sync
+// times; stampFrame stamps each frame itself. Empty when pipewiresrc is missing.
 void noSyncTimes(GstBaseSrc*, GstBuffer*, GstClockTime* start, GstClockTime* end) { *start = *end = GST_CLOCK_TIME_NONE; }
 void frameClockSourceInit(gpointer klass, gpointer) { GST_BASE_SRC_CLASS(klass)->get_times = noSyncTimes; }
 QString frameClockSource() {
@@ -128,7 +128,10 @@ GstPadProbeReturn RecordingPipeline::stampFrame(GstPad* pad, GstPadProbeInfo* in
     auto frame = pipewireFrameTime(GST_BUFFER_PTS_IS_VALID(buffer) ? gint64(GST_BUFFER_PTS(buffer)) : -1, monotonicNow(), running, clock->previous);
     if (frame.ageNs < 0) ++clock->arrival;
     else clock->age.add(frame.ageNs);
-    if (clock->arrivalOnly) frame = pipewireFrameTime(-1, 0, running, clock->previous);
+    // Arrival is the default: KWin's header time is the output's previous
+    // presentation, ~40 ms before the frame arrives, and recordings stamped with
+    // it played the sound late (+35..+48 ms) where arrival times matched X11.
+    if (!clock->compositorTimes) frame = pipewireFrameTime(-1, 0, running, clock->previous);
     clock->previous = frame.running;
     buffer = gst_buffer_make_writable(buffer);
     GST_PAD_PROBE_INFO_DATA(info) = buffer;
@@ -140,8 +143,9 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
     const QSize encoded = options.crop.isValid() ? options.crop.size() : options.rect.size();
     const int kbps = bitrateKbps(encoded, options.fps);
     QString description;
-    // PUTGD_RECORD_PIPEWIRE_TIMESTAMPS=legacy restores the first-frame-anchored
-    // timestamps of releases before #86 for A/B lab runs.
+    // Lab A/B runs: PUTGD_RECORD_PIPEWIRE_TIMESTAMPS=legacy restores the
+    // first-frame-anchored timestamps of releases before #86, =compositor maps
+    // each frame's header time instead of stamping its arrival.
     const QString frameSource = options.pipewireNode && qEnvironmentVariable("PUTGD_RECORD_PIPEWIRE_TIMESTAMPS") != "legacy" ? frameClockSource() : QString();
     if (options.pipewireNode) {
         // The stream arrives at the compositor's pace; videorate holds the
@@ -165,12 +169,12 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
     video_.offset = 0; video_.firstPassed = -1; video_.lastPassed = -1; video_.step = frameDurationNs_; video_.dropped = false; video_.lateness = {};
     audio_.offset = 0; audio_.firstPassed = -1; audio_.lastPassed = -1; audio_.step = 20 * GST_MSECOND; audio_.dropped = false; audio_.lateness = {};
     frameClock_ = {};
-    frameClock_.arrivalOnly = qEnvironmentVariable("PUTGD_RECORD_PIPEWIRE_TIMESTAMPS") == "arrival";
+    frameClock_.compositorTimes = qEnvironmentVariable("PUTGD_RECORD_PIPEWIRE_TIMESTAMPS") == "compositor";
     clockName_.clear();
     if (!frameSource.isEmpty()) {
-        // Compositor frame times are CLOCK_MONOTONIC, which is what the system
-        // clock reads; pulsesrc then slaves to it rather than providing the
-        // clock (pipewiresrc would offer its own stream clock otherwise).
+        // The monotonic system clock is the compositors' frame clock, so frame
+        // ages read directly; pulsesrc slaves to it rather than providing the
+        // clock (pipewiresrc would otherwise offer its own stream clock).
         GstClock* system = gst_system_clock_obtain();
         gst_pipeline_use_clock(GST_PIPELINE(pipeline), system);
         gst_object_unref(system);

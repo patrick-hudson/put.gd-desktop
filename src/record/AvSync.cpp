@@ -156,9 +156,10 @@ Error measureAvSync(const QString& clip, QJsonObject& result) {
     return {};
 }
 
-Error writeAvMarker(const QString& path, int seconds) {
+Error writeAvMarker(const QString& path, int seconds, int audioDelayMs) {
     constexpr int fps = 30, rate = 48000, width = 1280, height = 720, chunk = 1024;
     if (seconds < 2 || seconds > 600) return failed("invalid_request", "The marker lasts 2 to 600 seconds");
+    if (audioDelayMs < 0 || audioDelayMs >= 1000) return failed("invalid_request", "The audio delay is 0 to 999 ms");
     AVFormatContext* out = nullptr;
     if (avformat_alloc_output_context2(&out, nullptr, "matroska", QFile::encodeName(path).constData()) < 0 || !out) return failed("av_marker_io", "Cannot create the marker file");
     struct Closer { AVFormatContext*& f; ~Closer() { if (f && !(f->oformat->flags & AVFMT_NOFILE)) avio_closep(&f->pb); avformat_free_context(f); } } closer{out};
@@ -201,7 +202,7 @@ Error writeAvMarker(const QString& path, int seconds) {
         return {};
     };
     // Interleave by time: one video frame, then the audio up to its end.
-    qint64 samples = 0;
+    qint64 samples = qint64(audioDelayMs) * rate / 1000;
     for (int index = 0; index < seconds * fps; ++index) {
         const bool flash = index % fps < fps / 10;
         av_frame_unref(frame);

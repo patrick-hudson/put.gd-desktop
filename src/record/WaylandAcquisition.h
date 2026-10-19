@@ -12,7 +12,9 @@ QString pipewireSocket(const QProcessEnvironment& env);
 
 // A screen-cast frame's PipeWire header PTS is the compositor's own frame time
 // in CLOCK_MONOTONIC nanoseconds (Mutter: when it painted the frame; KWin: the
-// output's last presentation). Converts it to pipeline running time from a
+// output's last presentation). The recorder stamps frames on arrival and uses
+// this for the frame age in its lab log and for the `compositor` lab mode.
+// Converts it to pipeline running time from a
 // reading of both clocks taken together: running = runningNow - (monotonicNow
 // - framePts). A missing time, one from the future, or one older than
 // kMaxFrameAgeNs (KWin's presentation time goes stale on an idle output)

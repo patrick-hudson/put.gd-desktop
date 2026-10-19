@@ -16,5 +16,7 @@ Error measureAvSync(const QString& clip, QJsonObject& result);
 // Writes the marker clip (Matroska, MJPEG 1280x720 at 30 fps and 48 kHz PCM):
 // black frames with a white flash and a 1 kHz tone burst, both 100 ms long,
 // at the start of every second. Only encoders every FFmpeg build has.
-Error writeAvMarker(const QString& path, int seconds);
+// audioDelayMs starts the audio stream that much later, as a capture's
+// working clip does, with the bursts still on the whole seconds (tests).
+Error writeAvMarker(const QString& path, int seconds, int audioDelayMs = 0);
 }

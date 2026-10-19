@@ -17,8 +17,8 @@ namespace putgd::record {
 // working clip. Pause drops buffers and rebases timestamps on the encoder
 // queues, so the clip timeline excludes paused time; the retained duration
 // is the last rebased video timestamp plus one frame. A PipeWire stream runs
-// on the monotonic system clock and each frame keeps the compositor's own
-// frame time (see pipewireFrameTime), so video and audio share one time base.
+// on the monotonic system clock and each frame is stamped when it reaches the
+// pipeline, as ximagesrc stamps a frame when it reads it (#86).
 class RecordingPipeline final : public QObject {
     Q_OBJECT
 public:
@@ -58,7 +58,7 @@ private:
     // Lab statistics for PUTGD_RECORD_DEBUG_LOG, written on streaming threads and read after teardown.
     struct Spread { gint64 count = 0, min = 0, max = 0, sum = 0; void add(gint64); QString text() const; };
     struct Rebase { std::atomic<gint64> offset{0}; std::atomic<gint64> firstPassed{-1}; std::atomic<gint64> lastPassed{-1}; std::atomic<gint64> step{0}; std::atomic_bool dropped{false}; Spread lateness; };
-    struct FrameClock { gint64 previous = -1, arrival = 0; bool arrivalOnly = false; Spread age; };
+    struct FrameClock { gint64 previous = -1, arrival = 0; bool compositorTimes = false; Spread age; };
     static GstPadProbeReturn probe(GstPad*, GstPadProbeInfo*, gpointer);
     static GstPadProbeReturn stampFrame(GstPad*, GstPadProbeInfo*, gpointer);
     bool launch(const Options&, const QString& encoder, const QString& audioEncoder, QString& failure);
