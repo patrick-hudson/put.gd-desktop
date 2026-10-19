@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Provision pinned AppImage dependencies with their upstream CMake builds."""
+"""Provision pinned AppImage dependencies with their upstream builds (CMake, FFmpeg configure)."""
 import argparse
 import json
+import os
 from pathlib import Path
 import subprocess
 
@@ -55,6 +56,20 @@ def main():
             run('cmake', '--build', str(build), '--parallel', '2')
             run('cmake', '--install', str(build))
         records.append({'name': name, 'commit': item['commit'], 'source': str(source)})
+    # putgd-record's export libraries: the pinned upstream FFmpeg, configured
+    # LGPL-only with the components packaging/appimage/media.json lists.
+    item = lock['ffmpeg']
+    source = sources / 'ffmpeg'
+    checkout(item, source)
+    configure = json.loads((root / 'packaging/appimage/media.json').read_text())['ffmpeg']['configure']
+    if not args.skip_build:
+        build = root / 'build/appimage-ffmpeg'
+        build.mkdir(parents=True, exist_ok=False)
+        subprocess.run([str(source / 'configure'), '--prefix=' + str(prefix), '--libdir=' + str(prefix / 'lib'), *configure],
+                       check=True, cwd=build)
+        run('make', '-C', str(build), '-j' + str(os.cpu_count() or 2))
+        run('make', '-C', str(build), 'install')
+    records.append({'name': 'ffmpeg', 'commit': item['commit'], 'source': str(source), 'configure': configure})
     for item in lock['qtLicenseSources']:
         name = item['repository'].rsplit('/', 1)[1].removesuffix('.git')
         source = sources / name

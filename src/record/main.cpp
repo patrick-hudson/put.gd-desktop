@@ -4,6 +4,7 @@
 // live GStreamer capture, the private working clip, frame previews and the
 // FFmpeg export; only control metadata crosses the pipes.
 #include "MediaProbe.h"
+#include "BundledRuntime.h"
 #include "ClipExporter.h"
 #include "DebugLog.h"
 #include "AvSync.h"
@@ -33,6 +34,7 @@ int main(int argc, char** argv) {
     if (argc == 2 && (std::strcmp(argv[1], "--version") == 0 || std::strcmp(argv[1], "-v") == 0)) { std::printf("putgd-record %s\n", buildVersion()); return 0; }
     const rlimit noCore{0, 0};
     ::setrlimit(RLIMIT_CORE, &noCore);
+    record::useBundledGStreamer();
     if (argc == 2 && std::strcmp(argv[1], "--capabilities") == 0) {
         QCoreApplication app(argc, argv);
         const auto json = QJsonDocument(record::probeMedia()).toJson(QJsonDocument::Compact);

@@ -1,6 +1,8 @@
 # Screen recording
 
-Status: **slices 1 to 3.3 of the [recording plan](plans/2026-10-17-2230-feat-screen-recording-plan.md)**.
+Status: **slices 1 to 7 of the [recording plan](plans/2026-10-17-2230-feat-screen-recording-plan.md)**,
+with the open items listed in its slice status. Recording ships in the DEB,
+RPM and AppImage; see "Packages and codecs".
 The contract below is implemented and tested against a fake backend and the
 real helper. On **X11 sessions** the `putgd-record` helper records monitors, the
 desktop, regions and windows through `ximagesrc`, pauses and resumes on one
@@ -143,14 +145,15 @@ inventory (`ximagesrc`, `pipewiresrc`, `pulsesrc`, the H.264 encoders in
 preference order, muxers, `webpenc` animation support), the FFmpeg library
 versions with encoders, muxers and filters, the derived `formats`/`codecs`
 the export side can produce, `liveCapture {source, encoder, audio}` and the
-honest `available`/`reason` pair. Encoder presence is registry/library
-presence, not hardware proof: stock Fedora's FFmpeg lists `h264_vaapi` and
-`hevc_vaapi` while its free Intel driver has no H.264/HEVC encode profiles, so
-the capture slice must select encoders by a real negotiation attempt and
-report the one actually used. CMake builds the helper only when
-`gstreamer-1.0 >= 1.24` and FFmpeg libraries `>= 6.1` are found
-(`PUTGD_RECORDING`, default on; off for the AppImage); a resident without the
-sibling binary reports `recording_helper_missing`.
+honest `available`/`reason` pair. Registry presence is not proof (stock
+Fedora's FFmpeg lists `h264_vaapi` while its free Intel driver has no H.264
+encode profile, and its `openh264enc` loads a placeholder library), so the
+probe tries the H.264 path for real; see "Packages and codecs". The live
+pipeline still starts encoders in order and reports the one actually used.
+CMake builds the helper only when `gstreamer-1.0 >= 1.24` and FFmpeg
+libraries `>= 6.1` are found (`PUTGD_RECORDING`, default on, also for the
+AppImage, which builds it against its own pinned FFmpeg); a resident without
+the sibling binary reports `recording_helper_missing`.
 
 ## Overlay (X11)
 
@@ -409,7 +412,8 @@ Progress events carry `durationUs`, `bytes`, `paused` and the encoder names.
 
 Export runs in the helper with the FFmpeg libraries on the working clip:
 `trim` in stream ticks, `setpts` rebase, RGB conversion, per-mask
-`crop→boxblur→overlay` or `drawbox` enabled on `gte(t,a)*lt(t,b)` in output
+`crop→avgblur→avgblur→overlay` (two box passes, as the preview draws them;
+`boxblur` is GPL-only in FFmpeg) or `drawbox` enabled on `gte(t,a)*lt(t,b)` in output
 time, optional `scale` to `maxEdge`, `fps` (at most 15 for animations), then
 the first encoder that opens from a preference list: MP4/H.264 tries
 `h264_nvenc` (NVIDIA GPU, system-memory frames), then `h264_vaapi` (Intel
@@ -465,6 +469,93 @@ half a period and prints JSON with every offset (`offsetsMs`, audio minus
 video, positive when the sound is late), `medianMs` and `spreadMs`; the
 marker itself measures 0 ms. None is read by the resident and none carries
 frames.
+
+## Packages and codecs
+
+Recording keeps an H.264 working clip, so capture needs a working H.264
+encoder and every preview and export needs FFmpeg's H.264 decoder.
+`recording.capabilities` tests both instead of trusting the registry: each
+registered live encoder encodes two synthetic 320×240 frames through
+`h264parse`, each export encoder opens on a 320×240 frame (VA-API ones on a VA
+device and frame pool, as the export does; NVENC only by its driver libraries
+being loadable, because opening it initialises CUDA and wakes a sleeping GPU),
+and the H.264 decoder opens. The results are `gstreamer.usableH264Encoders`
+with `gstreamer.encoderFailures`, `exportEncoders` (openable ones only, which
+also decide `formats` and `codecs`) with `ffmpeg.encoderFailures`, and
+`ffmpeg.h264Decoder {name, usable, failure}`. Without a usable encoder or
+decoder the reason is `live_encoder_missing` (none registered),
+`h264_encoder_unusable` (installed, none works) or `h264_decoder_unusable`,
+and the probe adds `message` and a distribution-specific `hint`.
+`recording.prepare` then refuses with `recording_unavailable`, whose message
+is the two together and whose details carry `reason` and `hint`; the dashboard
+shows that message in a warning dialog and the tray as its failure notification. The checks add
+a few tens of milliseconds to a probe; a fresh GStreamer registry costs more
+than all of them.
+
+| Package | Live H.264, in preference order | Export H.264 | Setup |
+| --- | --- | --- | --- |
+| DEB (Ubuntu 24.04 / Mint 22.3, Ubuntu 26.04 / Kubuntu) | `vah264lpenc`/`vah264enc` (plugins-bad, or plugins-extra on 26.04), `vaapih264enc` (Recommends `gstreamer1.0-vaapi`), `x264enc` (Recommends `gstreamer1.0-plugins-ugly`), `openh264enc` (plugins-bad, a Depends) | `h264_nvenc`, `h264_vaapi`, `libx264`, `libopenh264` | none: plugins-bad always brings `openh264enc` and `voaacenc` |
+| RPM (Fedora 44) | `vah264*enc` (stock Intel and AMD drivers have no H.264 encode; RPM Fusion's do), `openh264enc` (Recommends `gstreamer1-plugin-openh264`) | `h264_nvenc`, `h264_vaapi`, `libopenh264` | Fedora Workstation ships `libopenh264` as the `noopenh264` placeholder until Cisco's `openh264` replaces it: `sudo dnf install openh264 gstreamer1-plugin-openh264`. The RPM recommends both, so a default `dnf install` brings them when the `fedora-cisco-openh264` repository is on (Fedora's default); if it was turned off, run `sudo dnf config-manager setopt fedora-cisco-openh264.enabled=1` first |
+| AppImage | `vah264lpenc`/`vah264enc`, `vaapih264enc` through the host's VA-API driver, then the bundled `x264enc` | `h264_nvenc`, `h264_vaapi` through the host's driver, then the bundled `libx264`; H.265 `hevc_nvenc`, `hevc_vaapi`, then the bundled `libx265` | none: the bundled x264/x265 cover hosts whose driver cannot encode |
+
+On Fedora with the placeholder the probe reports `h264_encoder_unusable`
+(`openh264enc`: "Could not initialize supporting library"), FFmpeg's
+`libopenh264` decoder and encoder fail to open, and the hint names the
+command above. A Debian 13 install uses a DEB built on Debian with
+`tools/releases/native.py`: the Ubuntu DEBs link FFmpeg 6.1 (24.04) or 8.0
+(26.04), and Debian 13 ships 7.1, so neither installs there now that the
+helper is packaged.
+
+### AppImage runtime
+
+The AppImage builds `putgd-record` against a pinned upstream FFmpeg
+(`packaging/appimage/tools.lock.json`) configured with `--enable-gpl` and
+exactly the demuxer, decoders, encoders, muxers and filters the export uses
+(`packaging/appimage/media.json`): the native H.264 and AAC decoders,
+`h264_nvenc`, `h264_vaapi`, `libx264`, `hevc_nvenc`, `hevc_vaapi`, `libx265`,
+`libvpx-vp9`, `gif`, `libwebp_anim`, `aac` and `libopus`. The encoder order
+puts the machine first: the host's GPU encoders (NVENC, VA-API) are tried by
+actually opening or starting them, and the bundled x264 (live and MP4) and
+x265 (H.265 export) are used only when none of them works; the encoder used
+is reported as for the other packages. Live H.265 does not exist, so only
+FFmpeg's `libx265` is bundled, not GStreamer's `x265enc`. With x264, x265 and a
+GPL FFmpeg inside, the image is a GPL-2.0-or-later combined work:
+`usr/share/doc/putgd/APPIMAGE-GPL-NOTICE.txt` says so and names the bundled
+versions, the licence texts are under `usr/share/doc/putgd/bundled-licenses`,
+and every release publishes the corresponding source as
+`putgd-VERSION-appimage-media-source.tar.gz` (see [releases](release.md)).
+GStreamer comes from the Ubuntu 24.04 builder: the core libraries, the plugins
+the live pipeline uses (`coreelements`, `videotestsrc` for the probe,
+`videoconvertscale`, `videorate`, `videocrop`, `audioconvert`, `audioresample`,
+`ximagesrc`, `pipewire`, `pulseaudio`, `matroska`, `audioparsers`,
+`videoparsersbad`, `va`, `vaapi`, `x264`, `voaacenc`) and `gst-plugin-scanner`
+under `usr/libexec/gstreamer-1.0/`. VA-API (`libva*`), PipeWire's client
+library, the NVIDIA libraries and any OpenH264 stay the host's: libva must
+match the host's VA drivers and libpipewire its daemon and modules. On a host
+without libva, AppRun adds the bundled copy in `usr/lib/putgd-host-fallback/`
+so the helper still starts. (A host OpenH264 cannot be used: the image's
+GStreamer and FFmpeg were built against Ubuntu 24.04's `libopenh264.so.7`,
+while Fedora 44 ships `.so.8`.)
+
+When `putgd-record` runs from the mounted image (`APPDIR` contains the
+executable), it confines its own GStreamer before initialising it
+(`src/record/BundledRuntime.cpp`): `GST_PLUGIN_SYSTEM_PATH` is the image's
+plugin directory, `GST_PLUGIN_PATH` is emptied, `GST_PLUGIN_SCANNER` is the
+image's scanner and `GST_REGISTRY` is
+`$XDG_CACHE_HOME/putgd/gstreamer-1.0-appimage-registry.bin`, rebuilt once per
+mount. Only the helper sets these, so host programs started by put.gd (the
+browser behind a notification) keep the host's GStreamer. On Plasma, AppRun
+writes a second temporary private entry next to the ScreenShot2 one,
+`putgd-record-appimage-XXXXXXXX.desktop` with `Exec` naming the mounted
+`putgd-record` and `X-KDE-Wayland-Interfaces=zkde_screencast_unstable_v1`,
+so KWin offers its screencast protocol to the helper; both entries are removed
+on exit. The assembly audit runs the relocated helper's probe and fails unless
+every required element loads from the image's plugin directory only, the
+H.264 decoder opens, all four formats export, the bundled `x264enc`,
+`libx264` and `libx265` work (the builder has no GPU, so they are what must)
+and no host-matched library was bundled; the receipt records the result under
+`postDeploymentAudit.recording` and the bundled GPL packages under
+`recordingRuntime.gplComponents`.
 
 ## Agent and MCP control
 

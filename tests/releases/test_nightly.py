@@ -247,7 +247,7 @@ class PublicNightly(unittest.TestCase):
     def test_only_complete_verified_public_nightly_skips(self):
         receipt = nightly.published_nightly(self.api, self.tag, self.release)
         self.assertEqual(receipt['releaseId'], 66)
-        self.assertEqual(len(receipt['assetSha256']), 12)
+        self.assertEqual(len(receipt['assetSha256']), 13)
         self.api.release_list[0]['draft'] = True
         self.assertIsNone(nightly.published_nightly(self.api, self.tag, self.release))
         self.api.release_list = []

@@ -33,6 +33,32 @@ XWayland or `QT_QPA_PLATFORM=xcb` inside a Wayland session does not establish a
 native GNOME/X11 or KDE/X11 result. Verify the actual login session/compositor
 and Qt platform, along with the OS and desktop versions, in the evidence.
 
+## Screen recording rows
+
+Recording ([recording](recording.md)) is accepted per package format, because
+each format brings its own media stack: the DEBs and the RPM use the distro's
+GStreamer and FFmpeg, while the AppImage carries its own and uses only the host's
+VA-API, PipeWire and GPU drivers. Each row installs the exact package (or runs
+the exact AppImage) and records a moving pattern through the production CLI:
+prepare, start, pause, resume, stop, edit (trim and a timed blur), preview,
+save copy and Upload to an isolated local destination, for MP4, WebM, GIF and
+WebP. It keeps screenshots of the ready, recording and review states, the
+capabilities JSON, the installed identity, and each clip's motion score next
+to a static control from the same desktop.
+
+| Package | Desktop/session | Placement | What the row must show |
+| --- | --- | --- | --- |
+| Ubuntu 24.04 DEB | Mint 22.3 Cinnamon/X11 | Cinnamon VM on a builder, or physical Mint | `ximagesrc` capture with the distro encoders |
+| Ubuntu 26.04 DEB | Kubuntu 26.04 Plasma/X11 | physical `.72` | `ximagesrc` capture; VA-API live encoding |
+| Ubuntu 26.04 DEB | Ubuntu 26.04 GNOME/Wayland, Kubuntu 26.04 Plasma/Wayland | VMs on a builder | Mutter and KWin native streams from the installed helper; the portal path |
+| Debian 13 DEB built on Debian (`native.py`) | Debian 13 Plasma/Wayland | physical `.69` | `kde-screencast` from the installed `putgd-record.desktop`; the portal path |
+| Fedora 44 RPM | Fedora 44 GNOME/Wayland | physical `.70` | `mutter-screencast` and the portal; a stock install pulling Cisco's OpenH264 through the RPM's Recommends; the actionable `h264_encoder_unusable` message with the `noopenh264` placeholder |
+| AppImage | the Kubuntu, Debian and Fedora physical desktops above | physical | every plugin loaded from the image; the host GPU encoder used where it works and the bundled x264 where it does not (stock Fedora); AppRun's KWin entry giving `kde-screencast` on Plasma/Wayland and removed on exit |
+
+No release DEB installs on Debian 13: the Ubuntu 24.04 and 26.04 DEBs require
+FFmpeg 6.1 and 8.0 sonames (`libavcodec60`, `libavcodec62`) and Debian 13 ships
+7.1. Debian rows therefore use a DEB built on Debian until a Debian asset exists.
+
 ## Choose physical hardware or a VM for each gate
 
 Prefer Patrick's [Fedora and Debian build servers](remote-builders.md), including

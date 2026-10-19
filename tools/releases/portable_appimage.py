@@ -17,6 +17,9 @@ from audit_proton import audit_proton
 
 ROOT = Path(__file__).resolve().parents[2]
 LOCK = ROOT / "packaging/appimage/tools.lock.json"
+MEDIA = ROOT / "packaging/appimage/media.json"
+# The pinned FFmpeg build (media.json) installs these; their notices come from its source.
+FFMPEG_LIBRARIES = ("libavcodec", "libavformat", "libavfilter", "libavutil", "libswscale", "libswresample")
 
 
 def tools(directory: Path) -> tuple[dict, dict[str, Path]]:
@@ -59,8 +62,11 @@ def copy_licenses(sources: list[Path], destination: Path) -> list[str]:
     return sorted(copied)
 
 
-def system_library_licenses(appdir: Path, qt: Path) -> list[str]:
-    """Retain the distro copyright/license notice for each deployed system ELF."""
+def system_library_licenses(appdir: Path, qt: Path, extra_origins: dict[str, Path] | None = None) -> list[str]:
+    """Retain the distro copyright/license notice for each deployed system ELF.
+
+    `extra_origins` names files that are not in the linker cache, such as the
+    GStreamer plugins and scanner, by their original distro path."""
     qt_names = {path.name for path in qt.rglob("*") if path.is_file()}
     cache = subprocess.run(["/sbin/ldconfig", "-p"], check=True, text=True,
                            capture_output=True).stdout
@@ -71,6 +77,7 @@ def system_library_licenses(appdir: Path, qt: Path) -> list[str]:
             original = Path(source.strip())
             origins.setdefault(name.split()[0], original)
             origins.setdefault(original.resolve().name, original)
+    origins.update(extra_origins or {})
     copied = set()
     for path in appdir.rglob("*"):
         if not path.is_file():
@@ -80,11 +87,18 @@ def system_library_licenses(appdir: Path, qt: Path) -> list[str]:
                 continue
         name = path.name
         if name in qt_names or name.startswith(("putgd", "libputgd", "libaws", "libs2n",
-                                                  "libqt6keychain", "libLayerShellQt", "liblayer-shell")):
+                                                  "libqt6keychain", "libLayerShellQt", "liblayer-shell", *FFMPEG_LIBRARIES)):
             continue  # Exact pinned upstream notices are already installed.
         source = origins.get(name)
         if source is None:
-            raise ValueError("Cannot identify deployed system library: " + name)
+            # Private distro libraries outside the linker cache, such as
+            # libpulsecommon under pulseaudio/, are found by their owning package.
+            owners = subprocess.run(["dpkg-query", "-S", "*/" + name], text=True, capture_output=True).stdout
+            paths = {line.split(": ", 1)[1].strip() for line in owners.splitlines()
+                     if ": " in line and line.split(": ", 1)[1].strip().endswith("/" + name)}
+            if len(paths) != 1:
+                raise ValueError("Cannot identify deployed system library: " + name)
+            source = Path(paths.pop())
         owner = subprocess.run(["dpkg-query", "-S", str(source)], text=True, capture_output=True)
         if owner.returncode:
             owner = subprocess.run(["dpkg-query", "-S", str(source.resolve())], text=True, capture_output=True)
@@ -234,6 +248,176 @@ def refresh_runtime_manifest(appdir: Path) -> None:
 
 
 
+def pkg_config_variable(module: str, variable: str) -> Path:
+    value = subprocess.run(["pkg-config", "--variable=" + variable, module], check=True,
+                           text=True, capture_output=True).stdout.strip()
+    if not value:
+        raise ValueError("pkg-config has no " + variable + " for " + module)
+    return Path(value)
+
+
+def media_layout(appdir: Path) -> dict[str, Path]:
+    """Where putgd-record (BundledRuntime) and AppRun expect the recording runtime."""
+    return {"plugins": appdir / "usr/lib/gstreamer-1.0",
+            "scanner": appdir / "usr/libexec/gstreamer-1.0/gst-plugin-scanner",
+            "fallback": appdir / "usr/lib/putgd-host-fallback"}
+
+
+def media_sources(appdir: Path, media: dict) -> tuple[list[Path], Path]:
+    """The builder's GStreamer plugins and scanner that putgd-record uses."""
+    if not (appdir / "usr/bin/putgd-record").is_file():
+        raise ValueError("The AppImage requires putgd-record; configure with GStreamer and the pinned FFmpeg")
+    plugin_source = pkg_config_variable("gstreamer-1.0", "pluginsdir")
+    plugins = [plugin_source / ("libgst" + name + ".so") for name in media["gstreamer"]["plugins"]]
+    for path in plugins:
+        if not path.is_file():
+            raise ValueError("GStreamer plugin missing on the builder: " + path.name)
+    scanner = pkg_config_variable("gstreamer-1.0", "pluginscannerdir") / "gst-plugin-scanner"
+    if not scanner.is_file():
+        raise ValueError("gst-plugin-scanner missing on the builder")
+    return plugins, scanner
+
+
+def relocate_media(appdir: Path, plugins: list[Path], scanner: Path) -> dict[str, Path]:
+    """Move what linuxdeploy deployed into usr/lib and usr/bin to where AppRun
+    points GStreamer, and keep their RPATH on the image's usr/lib.
+
+    Returns each moved file's distro origin for the license notices."""
+    layout = media_layout(appdir)
+    layout["plugins"].mkdir(parents=True)
+    layout["scanner"].parent.mkdir(parents=True)
+    origins = {}
+    for source in plugins:
+        deployed = appdir / "usr/lib" / source.name
+        if not deployed.is_file():
+            raise ValueError("linuxdeploy did not deploy GStreamer plugin " + source.name)
+        deployed.replace(layout["plugins"] / source.name)
+        subprocess.run(["patchelf", "--set-rpath", "$ORIGIN/..", str(layout["plugins"] / source.name)], check=True)
+        origins[source.name] = source
+    deployed = appdir / "usr/bin" / scanner.name
+    if not deployed.is_file():
+        raise ValueError("linuxdeploy did not deploy gst-plugin-scanner")
+    deployed.replace(layout["scanner"])
+    subprocess.run(["patchelf", "--set-rpath", "$ORIGIN/../../lib", str(layout["scanner"])], check=True)
+    origins[scanner.name] = scanner
+    return origins
+
+
+def stage_host_fallbacks(appdir: Path, media: dict) -> list[str]:
+    """Bundle the host-preferred libraries AppRun adds only when the host lacks them.
+
+    libva must match the host's VA drivers, so the image normally uses the
+    host's copy; the fallback only lets putgd-record load on a host without it."""
+    cache = subprocess.run(["/sbin/ldconfig", "-p"], check=True, text=True, capture_output=True).stdout
+    fallback = media_layout(appdir)["fallback"]
+    fallback.mkdir(parents=True)
+    copied = []
+    for soname in media["hostFallbackLibraries"]:
+        paths = [line.split(" => ", 1)[1].strip() for line in cache.splitlines()
+                 if " => " in line and line.split()[0] == soname and "x86-64" in line]
+        if not paths:
+            raise ValueError("Host fallback library missing on the builder: " + soname)
+        shutil.copy2(Path(paths[0]).resolve(), fallback / soname)
+        copied.append(soname)
+    return copied
+
+
+def gpl_components(appdir: Path, media: dict) -> list[dict]:
+    """The bundled GPL libraries and the plugin linking them, with their distro packages.
+
+    The release publishes these source packages (appimage_media_sources.py)."""
+    cache = subprocess.run(["/sbin/ldconfig", "-p"], check=True, text=True, capture_output=True).stdout
+    origins = {}
+    for line in cache.splitlines():
+        if " => " in line and "x86-64" in line:
+            origins.setdefault(line.split()[0], Path(line.split(" => ", 1)[1].strip()))
+    plugin_dir = pkg_config_variable("gstreamer-1.0", "pluginsdir")
+    files = [(path, origins.get(path.name), False) for pattern in media["gplLibraries"]
+             for path in sorted((appdir / "usr/lib").glob(pattern))]
+    # The one bundled plugin that links a GPL library (x264enc).
+    files.append((media_layout(appdir)["plugins"] / "libgstx264.so", plugin_dir / "libgstx264.so", True))
+    components, seen = [], set()
+    for path, origin, plugin in files:
+        if origin is None or not path.is_file():
+            raise ValueError("Cannot identify the distro origin of " + path.name)
+        owner = subprocess.run(["dpkg-query", "-S", str(origin.resolve())], text=True, capture_output=True)
+        if owner.returncode:
+            owner = subprocess.run(["dpkg-query", "-S", str(origin)], check=True, text=True, capture_output=True)
+        package = owner.stdout.split(": ", 1)[0].split(":", 1)[0]
+        fields = subprocess.run(["dpkg-query", "-W", "-f", "${Version}\t${source:Package}\t${source:Version}", package],
+                                check=True, text=True, capture_output=True).stdout.split("\t")
+        record = {"file": path.name, "binaryPackage": package, "binaryVersion": fields[0],
+                  "sourcePackage": fields[1], "sourceVersion": fields[2]}
+        if plugin and record["sourcePackage"] not in media["gplSourcePackages"]:
+            raise ValueError("Unexpected source package for " + path.name + ": " + record["sourcePackage"])
+        key = (record["sourcePackage"], record["sourceVersion"])
+        record["publishSource"] = key not in seen
+        seen.add(key)
+        components.append(record)
+    if not any(item["file"].startswith("libx264.so") for item in components) or not any(item["file"].startswith("libx265.so") for item in components):
+        raise ValueError("The image must bundle libx264 and libx265")
+    return components
+
+
+def write_gpl_notice(appdir: Path, components: list[dict], ffmpeg: dict, version: str) -> Path:
+    """State the image's GPL terms and where its corresponding source is."""
+    lines = ["put.gd AppImage " + version, "",
+             "This image bundles GPL-licensed codec libraries for screen recording, so the image as a",
+             "whole is distributed under the GNU General Public License, version 2 or later",
+             "(usr/share/doc/putgd/bundled-licenses/ffmpeg/COPYING.GPLv2). put.gd's own code stays",
+             "MIT licensed; every bundled component keeps its own license, listed under",
+             "usr/share/doc/putgd/bundled-licenses.", "",
+             "Corresponding source: the release asset putgd-" + version + "-appimage-media-source.tar.gz",
+             "(FFmpeg, x264, x265 and the GStreamer plugin linking x264) and putgd-" + version + "-source.tar.gz",
+             "(put.gd), published with this image on the project's GitHub release.", "",
+             "FFmpeg " + ffmpeg["release"] + " (" + ffmpeg["repository"] + " commit " + ffmpeg["commit"] + "),",
+             "configured as recorded in packaging/appimage/media.json.", ""]
+    lines += ["%s %s (Ubuntu source package %s %s)" % (item["binaryPackage"], item["binaryVersion"],
+              item["sourcePackage"], item["sourceVersion"]) for item in components]
+    notice = appdir / "usr/share/doc/putgd/APPIMAGE-GPL-NOTICE.txt"
+    notice.write_text("\n".join(lines) + "\n")
+    return notice
+
+
+def audit_media(appdir: Path, media: dict, probe: str) -> dict:
+    """Require the relocated helper to see only image plugins and the pinned FFmpeg."""
+    capabilities = json.loads(probe)
+    gst = capabilities.get("gstreamer", {})
+    if not gst.get("available"):
+        raise ValueError("Bundled GStreamer did not initialise: " + str(gst.get("error")))
+    missing = [name for name in media["gstreamer"]["requiredElements"] if not gst.get("elements", {}).get(name)]
+    if missing:
+        raise ValueError("Bundled GStreamer elements missing: " + ", ".join(missing))
+    plugins = media_layout(appdir)["plugins"].resolve()
+    outside = [directory for directory in gst.get("pluginDirectories", []) if Path(directory).resolve() != plugins]
+    if outside:
+        raise ValueError("GStreamer loaded plugins from outside the image: " + ", ".join(outside))
+    ffmpeg = capabilities.get("ffmpeg", {})
+    if not ffmpeg.get("h264Decoder", {}).get("usable"):
+        raise ValueError("Bundled FFmpeg cannot open its H.264 decoder")
+    for name in ("mp4", "webm", "gif", "webp"):
+        if name not in capabilities.get("formats", []):
+            raise ValueError("Bundled FFmpeg cannot export " + name)
+    # Without a GPU (the builder), the bundled fallbacks must be what works:
+    # x264 for live capture, libx264 and libx265 for MP4 export.
+    exportable = capabilities.get("exportEncoders", {})
+    if "libx264" not in exportable.get("h264", []) or "libx265" not in exportable.get("h265", []):
+        raise ValueError("Bundled libx264/libx265 export encoders do not open")
+    if "x264enc" not in gst.get("usableH264Encoders", []):
+        raise ValueError("Bundled x264enc does not encode")
+    library = appdir / "usr/lib"
+    bundled_host = sorted(path.name for pattern in media["hostLibraries"] for path in library.glob(pattern))
+    if bundled_host:
+        raise ValueError("Host-provided libraries were bundled: " + ", ".join(bundled_host))
+    return {"gstreamer": gst.get("version"), "pluginDirectories": gst.get("pluginDirectories"),
+            "elements": {name: gst["elements"][name] for name in media["gstreamer"]["requiredElements"]},
+            "ffmpeg": {key: ffmpeg.get(key) for key in ("avcodec", "avformat", "avfilter", "avutil")},
+            "h264Decoder": ffmpeg["h264Decoder"]["name"], "formats": capabilities.get("formats"),
+            "codecs": capabilities.get("codecs"), "exportEncoders": exportable,
+            "usableH264Encoders": gst.get("usableH264Encoders"),
+            "hostLibraries": media["hostLibraries"], "hostLibrariesBundled": False}
+
+
 def audit_deployed(appdir: Path, inventory: dict) -> dict:
     """Check actual relocated helpers and dynamic dependencies without SDK paths."""
     environment = dict(os.environ, LD_LIBRARY_PATH=str(appdir / "usr/lib") + ":" +
@@ -248,6 +432,18 @@ def audit_deployed(appdir: Path, inventory: dict) -> dict:
         if json.loads(result.stdout) != inventory["manifest"]:
             raise ValueError("Post-deployment executable identity mismatch: " + name)
         identities.append(name)
+    media_audit = None
+    if "putgd-record" in inventory["programs"]:
+        # As mounted: APPDIR makes the helper confine GStreamer to the image
+        # (src/record/BundledRuntime.cpp); no display, so nothing is captured.
+        media = json.loads(MEDIA.read_text())
+        with tempfile.TemporaryDirectory(prefix="pgmedia-") as cache:
+            probe_environment = {key: value for key, value in environment.items()
+                                 if key not in ("DISPLAY", "WAYLAND_DISPLAY", "XDG_SESSION_TYPE") and not key.startswith("GST_")}
+            probe_environment.update(APPDIR=str(appdir), XDG_CACHE_HOME=cache)
+            probe = subprocess.run([str(appdir / "usr/bin/putgd-record"), "--capabilities"], check=True,
+                                   env=probe_environment, capture_output=True, text=True, timeout=60).stdout
+        media_audit = audit_media(appdir, media, probe)
     checked = 0
     for path in appdir.rglob("*"):
         if not path.is_file() or path.is_symlink():
@@ -263,14 +459,17 @@ def audit_deployed(appdir: Path, inventory: dict) -> dict:
             if "=>" not in line:
                 continue
             library, target = line.split("=>", 1)
-            if library.strip().startswith(("libQt6", "libaws", "libs2n", "libqt6keychain", "libLayerShellQt")):
+            if library.strip().startswith(("libQt6", "libaws", "libs2n", "libqt6keychain", "libLayerShellQt", "libgst", *FFMPEG_LIBRARIES)):
                 resolved = Path(target.strip().split()[0]).resolve()
                 if not resolved.is_relative_to(appdir):
                     raise ValueError("Bundled dependency resolves outside AppDir: " + library.strip())
         checked += 1
-    return {"identityMatchedPrograms": identities, "resolvedElfFiles": checked,
-            "bundledDependenciesResolvedInsideImage": True,
-            "checkedDependencyPrefixes": ["libQt6", "libaws", "libs2n", "libqt6keychain", "libLayerShellQt"]}
+    result = {"identityMatchedPrograms": identities, "resolvedElfFiles": checked,
+              "bundledDependenciesResolvedInsideImage": True,
+              "checkedDependencyPrefixes": ["libQt6", "libaws", "libs2n", "libqt6keychain", "libLayerShellQt", "libgst", *FFMPEG_LIBRARIES]}
+    if media_audit:
+        result["recording"] = media_audit
+    return result
 
 
 def main() -> int:
@@ -330,39 +529,52 @@ def main() -> int:
                                       check=True, env=environment, text=True, capture_output=True).stdout.strip()
     if selected_plugins != str(output / "qt-deployment/plugins"):
         raise ValueError("Qt deployment plugin-path override was not applied")
+    # Screen recording: putgd-record's plugins and scanner join the first pass so
+    # their dependencies resolve with the executables'. Host-matched libraries
+    # (VA-API, PipeWire, GPU encoders) are never bundled.
+    media = json.loads(MEDIA.read_text())
+    media_plugins, media_scanner = media_sources(appdir, media)
+    excludes = [argument for pattern in media["hostLibraries"] for argument in ("--exclude-library", pattern)]
     argv = [str(executables["linuxdeploy-x86_64.AppImage"]), "--appdir", str(appdir),
             "--desktop-file", str(desktop), "--icon-file", str(ROOT / "packaging/linux/putgd.svg"),
-            "--plugin", "qt", "--custom-apprun", str(ROOT / "packaging/appimage/AppRun")]
+            "--plugin", "qt", "--custom-apprun", str(ROOT / "packaging/appimage/AppRun"), *excludes]
     for name in inventory["programs"]:
         if name != "putgd-launcher":
             argv += ["--executable", str(appdir / "usr/bin" / name)]
     module = next(appdir.glob("usr/lib*/**/putgd/" + inventory["runtimeModule"]["file"]))
     argv += ["--library", str(module)]
+    for path in media_plugins:
+        argv += ["--library", str(path)]
+    argv += ["--executable", str(media_scanner)]
     subprocess.run(argv, check=True, env=environment)
+    media_origins = relocate_media(appdir, media_plugins, media_scanner)
     # Deploy the native theme explicitly, including its ordinary shared-library
     # dependencies; do not replace GTK dialogs with Qt-only fallback dialogs.
     theme = appdir / "usr/plugins/platformthemes/libqgtk3.so"
     theme.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(gtk, theme)
     subprocess.run([str(executables["linuxdeploy-x86_64.AppImage"]), "--appdir", str(appdir),
-                    "--library", str(theme)], check=True, env=environment)
+                    "--library", str(theme), *excludes], check=True, env=environment)
     layer = appdir / "usr/plugins/wayland-shell-integration/liblayer-shell.so"
     layer.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(layer_plugins[0], layer)
     subprocess.run([str(executables["linuxdeploy-x86_64.AppImage"]), "--appdir", str(appdir),
-                    "--library", str(layer)], check=True, env=environment)
+                    "--library", str(layer), *excludes], check=True, env=environment)
     wayland = []
     for name in WAYLAND_CLIENT_PLUGINS:
         wayland += ["--library", str(appdir / "usr/plugins" / name)]
         (appdir / "usr/plugins" / name).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(qt / "plugins" / name, appdir / "usr/plugins" / name)
-    subprocess.run([str(executables["linuxdeploy-x86_64.AppImage"]), "--appdir", str(appdir), *wayland],
+    subprocess.run([str(executables["linuxdeploy-x86_64.AppImage"]), "--appdir", str(appdir), *wayland, *excludes],
                    check=True, env=environment)
+    fallbacks = stage_host_fallbacks(appdir, media)
+    gpl = gpl_components(appdir, media)
+    write_gpl_notice(appdir, gpl, lock["buildInputs"]["ffmpeg"], args.version)
     # linuxdeploy may wrap custom launchers after each pass. Install ours last:
     # its environment and KDE supervision are the application runtime contract.
     shutil.copy2(ROOT / "packaging/appimage/AppRun", appdir / "AppRun")
     (appdir / "AppRun").chmod(0o755)
-    distro_licenses = system_library_licenses(appdir, qt)
+    distro_licenses = system_library_licenses(appdir, qt, media_origins)
     refresh_runtime_manifest(appdir)
     deployed = audit_deployed(appdir, inventory)
     deployed["qtPlatforms"] = audit_platforms(appdir, inventory)
@@ -384,6 +596,9 @@ def main() -> int:
                "artifact": {"file": target.name, "sha256": digest(target),
                             "bytes": target.stat().st_size, "mode": "0755"},
                "postDeploymentAudit": deployed,
+               "recordingRuntime": {"media": media, "hostFallbackLibraries": fallbacks,
+                                    "ffmpeg": lock["buildInputs"]["ffmpeg"], "gplComponents": gpl,
+                                    "license": "GPL-2.0-or-later combined work"},
                "bundledSourceLicenses": licenses, "distroLicensePackages": distro_licenses,
                "inventory": [{"path": str(path.relative_to(appdir)), "sha256": digest(path),
                               "bytes": path.stat().st_size} for path in sorted(files)],

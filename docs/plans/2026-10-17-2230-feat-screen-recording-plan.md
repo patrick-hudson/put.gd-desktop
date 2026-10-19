@@ -4,7 +4,7 @@ type: feat
 date: 2026-10-17
 issue: https://github.com/patrick-hudson/put.gd-desktop/issues/50
 execution: code
-status: design approved 2026-10-17; slices 1-3.3 implemented (contract, helper, X11 capture/export, overlays, review window); Cinnamon desktop verified; tray entry, dashboard button, global shortcut toggle, tray feedback, review playback, NVENC-first export and portal (Wayland) acquisition added 2026-10-18; picker-free Wayland (portal restore tokens, KWin screencast protocol, Mutter screen cast service) verified on the Debian Plasma and Fedora GNOME desktops 2026-10-18; Wayland region selection before the stream (KDE layer-shell selector, GNOME Shell extension), ready ring, dimming and bar placement on Wayland, and the synthetic A/V-sync check added 2026-10-18
+status: design approved 2026-10-17; slices 1-7 implemented, each with the open items listed under "Slice status"; X11 capture, review and export verified on Cinnamon and Plasma/X11; picker-free Wayland (portal restore tokens, KWin screencast protocol, Mutter screen cast service) verified on the Debian Plasma and Fedora GNOME desktops 2026-10-18; Wayland region selection before the stream (KDE layer-shell selector, GNOME Shell extension), ready ring, dimming and bar placement on Wayland, and the synthetic A/V-sync check added 2026-10-18; recording ships in the DEB, RPM and AppImage (x264/x265 fallback in the AppImage, 2026-10-19) and was exercised from installed packages and the AppImage on the physical Kubuntu, Debian and Fedora desktops
 ---
 
 # Screen recording
@@ -269,7 +269,8 @@ builder, local build only as fallback.
 2. Helper skeleton: implemented. `putgd-record` (GStreamer + FFmpeg linked,
    `--capabilities` probe, UiControl handshake and command/event framing) and
    `RecordingHelperBackend` in the resident; capture commands are refused as
-   `capture_not_implemented`. AppImage builds without the helper for now.
+   `capture_not_implemented`. The AppImage carries the helper since slice 7's
+   packaging.
 3. X11 slice: 3.1 (capture, pause/resume, preview, export, upload through the
    CLI) implemented and exercised on the Kubuntu Plasma X11 desktop for all
    four formats; 3.2 (drag selection, ready ring, dimming, control bar with
@@ -281,16 +282,40 @@ builder, local build only as fallback.
    FFmpeg 6.1) ran region, cross-monitor region, monitor and window sessions
    with all four formats through the CLI; receipts in
    `work/verification/2026-10-18-recording-cinnamon/`.
-4. System audio: captured and exported for MP4 (AAC) on the Plasma desktop.
-   The synthetic marker check (`putgd-record --av-marker` / `--av-sync`) ran
+4. System audio: captured and exported for MP4 (AAC) and WebM (Opus) on the
+   Plasma and GNOME desktops. The synthetic marker check (`putgd-record --av-marker` / `--av-sync`) ran
    on the physical Kubuntu desktop through the speaker and headphone ports of
    the built-in card: −4 ms and +8 ms, 14/14 flashes paired with their tone
    bursts, no drift over 14 s
    (`docs/evidence/2026-10-18-wayland-recording-region.md`). No headphones
    are plugged in at the lab, so the headphone route proves capture, not
    listening.
-6. Wayland: regions are chosen before the stream with the KDE layer-shell
-   selector (in the helper) or the GNOME Shell extension (through the
-   resident); ring, dimming and bar placement per compositor, reported as
-   `overlayPlacement`; `recording.select` drives an open selector. Window
-   capture stays on the portal.
+5. Multi-monitor: on X11 the combined desktop, cross-monitor regions and
+   window capture are implemented and were run on the Mint workstation's three
+   mixed monitors. On Wayland a `desktop` target streams one output (KWin and
+   Mutter share one output per stream); a combined multi-output Wayland
+   desktop is not implemented.
+6. Wayland: implemented and verified on the physical Debian Plasma and Fedora
+   GNOME desktops: the ScreenCast portal with restore tokens, KWin's
+   screencast protocol and Mutter's screen cast service (picker-free). Regions
+   are chosen before the stream with the KDE layer-shell selector (in the
+   helper) or the GNOME Shell extension (through the resident); ring, dimming
+   and bar placement per compositor, reported as `overlayPlacement`;
+   `recording.select` drives an open selector. Window capture stays on the
+   portal.
+7. H.265/VP9 export: implemented (GPU first, then libx265 / libvpx-vp9).
+   Fedora's OpenH264 path: the probe now starts each live encoder and opens the
+   export encoders and the H.264 decoder, so Fedora's `noopenh264`
+   placeholder reports `h264_encoder_unusable` with the install command, which
+   the dashboard and tray show; the RPM recommends `gstreamer1-plugin-openh264`
+   and `openh264`. Packaging (2026-10-18, pull request #75): recording ships in
+   the DEB, RPM and AppImage. The AppImage carries a pinned GPL FFmpeg and the
+   Ubuntu 24.04 GStreamer plugins with x264 and x265 as fallbacks after the
+   host's VA-API/NVENC encoders (Patrick's decision, 2026-10-19), publishes
+   their corresponding source with each release, and AppRun registers the
+   mounted helper with KWin. Installed-package and AppImage recordings
+   (record, review, export, upload, motion-scored) were run on the physical
+   Kubuntu, Debian and Fedora desktops; see
+   `docs/evidence/2026-10-18-recording-packaging.md` for what passed and what
+   stayed blocked. Not done: full MCP end-to-end on each desktop and browser
+   playback of real share URLs.
