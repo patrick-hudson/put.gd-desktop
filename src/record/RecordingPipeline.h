@@ -12,11 +12,13 @@
 
 namespace putgd::record {
 // One live GStreamer capture: ximagesrc (root rectangle or window) or
-// pipewiresrc (a portal ScreenCast stream, optionally cropped) → H.264
+// pipewiresrc (a PipeWire screen-cast stream, optionally cropped) → H.264
 // (first encoder that negotiates) [+ pulsesrc monitor → AAC] → Matroska
 // working clip. Pause drops buffers and rebases timestamps on the encoder
 // queues, so the clip timeline excludes paused time; the retained duration
-// is the last rebased video timestamp plus one frame.
+// is the last rebased video timestamp plus one frame. A PipeWire stream runs
+// on the monotonic system clock and each frame keeps the compositor's own
+// frame time (see pipewireFrameTime), so video and audio share one time base.
 class RecordingPipeline final : public QObject {
     Q_OBJECT
 public:
@@ -53,8 +55,12 @@ signals:
     void failed(putgd::Error);
     void budgetReached();
 private:
-    struct Rebase { std::atomic<gint64> offset{0}; std::atomic<gint64> firstPassed{-1}; std::atomic<gint64> lastPassed{-1}; std::atomic<gint64> step{0}; std::atomic_bool dropped{false}; };
+    // Lab statistics for PUTGD_RECORD_DEBUG_LOG, written on streaming threads and read after teardown.
+    struct Spread { gint64 count = 0, min = 0, max = 0, sum = 0; void add(gint64); QString text() const; };
+    struct Rebase { std::atomic<gint64> offset{0}; std::atomic<gint64> firstPassed{-1}; std::atomic<gint64> lastPassed{-1}; std::atomic<gint64> step{0}; std::atomic_bool dropped{false}; Spread lateness; };
+    struct FrameClock { gint64 previous = -1, arrival = 0; Spread age; };
     static GstPadProbeReturn probe(GstPad*, GstPadProbeInfo*, gpointer);
+    static GstPadProbeReturn stampFrame(GstPad*, GstPadProbeInfo*, gpointer);
     bool launch(const Options&, const QString& encoder, const QString& audioEncoder, QString& failure);
     void poll();
     void tearDown();
@@ -62,6 +68,8 @@ private:
     QTimer bus_, progress_;
     std::atomic_bool paused_{false};
     Rebase video_, audio_;
+    FrameClock frameClock_;
+    QString clockName_;
     gint64 frameDurationNs_ = 0;
     QString encoder_, audioEncoder_, output_;
     qint64 budget_ = 0;
