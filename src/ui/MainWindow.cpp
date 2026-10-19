@@ -72,13 +72,14 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  pages_=new QStackedWidget;pages_->setObjectName("mainPages");layout->addWidget(pages_,1);settings_=new SettingsWindow(session_,pages_);history_=new HistoryWindow(session_,pages_);pages_->addWidget(history_);pages_->addWidget(settings_->destinationsPage());pages_->addWidget(settings_);
  connect(navigation_,&QListWidget::currentRowChanged,pages_,&QStackedWidget::setCurrentIndex);connect(navigation_,&QListWidget::currentRowChanged,this,[this](int row){if(row==1)settings_->activateDestinations();emit viewStateChanged();});connect(settings_,&SettingsWindow::viewStateChanged,this,&MainWindow::viewStateChanged);connect(history_,&HistoryWindow::viewStateChanged,this,&MainWindow::viewStateChanged);connect(settings_,&SettingsWindow::actionRequested,this,&MainWindow::actionRequested);connect(history_,&HistoryWindow::editRequested,this,&MainWindow::editRequested);connect(history_,&HistoryWindow::chooseImageRequested,this,&MainWindow::chooseImageToEdit);connect(settings_,&SettingsWindow::quitRequested,this,&MainWindow::quitRequested);
  // The running build, from the resident identity About also shows. Release and
- // clean commit builds link to their GitHub page; others are plain text.
- version_=new QLabel;version_->setObjectName("appVersion");version_->setTextFormat(Qt::PlainText);version_->setTextInteractionFlags(Qt::TextSelectableByMouse);VisualStyle::role(version_,"version");railBox->addSpacing(6);railBox->addWidget(version_);
+ // clean commit builds link to their GitHub page; others are plain text, which
+ // may wrap after "+" because a dirty development version is wider than the rail.
+ version_=new QLabel;version_->setObjectName("appVersion");version_->setTextFormat(Qt::PlainText);version_->setWordWrap(true);VisualStyle::role(version_,"version");railBox->addSpacing(6);railBox->addWidget(version_);
  versionLink_=new QPushButton;versionLink_->setObjectName("appVersionLink");VisualStyle::role(versionLink_,"version");versionLink_->setCursor(Qt::PointingHandCursor);railBox->addWidget(versionLink_,0,Qt::AlignLeft);
  connect(versionLink_,&QPushButton::clicked,this,[this]{if(const auto url=releaseLink(session_.build()).url;url.isValid())QDesktopServices::openUrl(url);});
  auto updateVersion=[this]{
   const auto link=releaseLink(session_.build());const auto name="put.gd version "+link.version;const auto page=link.kind=="commit"?"Open this build's source commit on GitHub":"Open the v"+link.version+" release on GitHub";
-  version_->setText(link.version);version_->setAccessibleName(name);version_->setToolTip(name);version_->setVisible(!link.version.isEmpty()&&link.url.isEmpty());
+  auto wrapped=link.version;wrapped.replace("+",QString("+")+QChar(0x200B));version_->setText(wrapped);version_->setAccessibleName(name);version_->setToolTip(name);version_->setVisible(!link.version.isEmpty()&&link.url.isEmpty());
   versionLink_->setText(link.version);versionLink_->setAccessibleName(name);versionLink_->setAccessibleDescription(page);versionLink_->setToolTip(page);versionLink_->setVisible(!link.url.isEmpty());
  };
  connect(&session_,&UiSession::statusChanged,this,updateVersion);updateVersion();
