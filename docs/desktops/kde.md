@@ -38,6 +38,13 @@ The screen-recording helper has its own entry, `putgd-record.desktop`, whose
 `Exec` names the helper binary and whose `X-KDE-Wayland-Interfaces` lists
 `zkde_screencast_unstable_v1`; KWin advertises its screencast protocol only to
 executables matched that way (see `docs/recording.md`, "Wayland acquisition").
+The helper also links the layer-shell region selector: a recording of a
+region without a rectangle shows the same `KdeRegionOverlay` as a region
+screenshot before any stream exists, and the ready ring, dimming and control
+bar are overlay layer surfaces placed outside the recorded rectangle. KWin 6.6
+and later leave every window of the client that requested a screencast stream
+out of that stream, which also keeps the bar out of monitor recordings; KWin
+6.3 (Debian 13) does not.
 A desktop entry naming a different build executable does not grant permission.
 Restart the resident application after installing/updating its entry. Do not
 set `KWIN_SCREENSHOT_NO_PERMISSION_CHECKS` or other permission bypasses.

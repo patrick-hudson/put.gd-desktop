@@ -233,6 +233,9 @@ void RecordingHelperBackend::setEdit(const QString& id, const RecordingEdit& edi
     if (!child_ || child_->id != id || !child_->ready || child_->shuttingDown) return;
     send("setEdit", {{"edit", edit.toJson()}, {"config", config.toJson()}, {"limits", limits}}, commandMs_, [](Error, QJsonObject) {});
 }
+qint64 RecordingHelperBackend::processId(const QString& id) const {
+    return child_ && child_->id == id && !child_->exited && child_->process ? child_->process->processId() : 0;
+}
 void RecordingHelperBackend::discard(const QString& id) {
     if (!child_ || child_->id != id || child_->shuttingDown) return;
     child_->shuttingDown = true;

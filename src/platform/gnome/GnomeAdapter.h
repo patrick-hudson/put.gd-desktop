@@ -6,7 +6,8 @@
 #include <QPointer>
 #include <QTimer>
 namespace putgd {
-class GnomeAdapter final:public QObject,public SourceAdapter {
+// Also the recording shell: the extension's selector, frame actors and bar placement.
+class GnomeAdapter final:public QObject,public SourceAdapter,public RecordingShell {
  Q_OBJECT
 public:
  explicit GnomeAdapter(QObject* parent=nullptr);
@@ -22,6 +23,11 @@ public:
  void bindShortcuts(const QHash<QString,QString>&);
  void setUiProcess(qint64) override;
  void invalidateCopyEligibility() override;
+ bool selectsRegions()const override;
+ void selectRegion(RecordingShell::Reply) override;
+ void cancelSelection() override;
+ void showFrame(const QJsonObject&,RecordingShell::Reply) override;
+ void hideFrame() override;
 signals:
  void actionRequested(const QString&);
  void capabilitiesChanged();
@@ -55,6 +61,7 @@ private:
  QHash<QString,QStringList> hotkeyPrepared_;
  QHash<QString,std::shared_ptr<Transfer>> transfers_;
  QStringList prepared_;
+ QString recordingSelection_;
  QList<QThread*> workers_;
  std::optional<quint64> lastCopyRevision_;
  // Image types the transient image job can decode, listed once for clipboard imports.

@@ -31,7 +31,10 @@ if (!loaded)
 const source = new TextDecoder('utf-8', {fatal: true}).decode(contents)
     .replace(/^import .*;$/gm, '')
     .replace('class TrayTooltipCompanion', 'globalThis.TrayTooltipCompanion = class TrayTooltipCompanion')
-    .replace('export default class PutgdExtension', 'globalThis.PutgdExtension = class PutgdExtension');
+    .replace('export default class PutgdExtension', 'globalThis.PutgdExtension = class PutgdExtension')
+    .replace('function barPlacement(', 'globalThis.barPlacement = barPlacement; function barPlacement(')
+    .replace('function subtract(', 'globalThis.subtract = subtract; function subtract(')
+    .replaceAll('const selector = new RegionSelector();', 'const selector = new (globalThis.RegionSelectorFixture ?? RegionSelector)();');
 const resident = ':1.50';
 const residentPid = 1000;
 const helperPid = 2000;
@@ -399,3 +402,74 @@ assert.equal(context.Main.uiGroup.get_children()[0].text, 'put.gd — Working\nS
 retry.companion.disable(); retry.actor.destroy();
 assert.equal(timers.size, 0); assert.equal(subscriptions.size, 0); assert.equal(watches.size, 0);
 print('PASS each recoverable failure episode receives a fresh bounded retry budget');
+
+// Screen recording on GNOME. Synthetic Shell objects prove the selector request,
+// the bar's ownership check and placement and the frame actors; this is not
+// graphical acceptance and proves nothing about the Mutter stream's pixels.
+const pendingSelectors = [];
+globalThis.RegionSelectorFixture = class {
+    selectAsync() {return new Promise(resolve => {this.resolve = resolve; pendingSelectors.push(this);});}
+    cancel() {this.resolve(null);}
+};
+{
+    const {extension} = fixture();
+    const selectId = id();
+    const chosen = bridge(extension, 'SelectAreaAsync', [selectId]); await flush();
+    assert.equal(pendingSelectors.length, 1);
+    pendingSelectors.shift().resolve({x: 40, y: 50, width: 640, height: 360});
+    assert.deepEqual(await chosen, {version: 1, requestId: selectId, rect: [40, 50, 640, 360]});
+    assert.equal(extension._requests.size, 0); assert.equal(extension._selector, null);
+    const cancelId = id();
+    const cancelled = bridge(extension, 'SelectAreaAsync', [cancelId]); await flush();
+    assert.equal((await bridge(extension, 'SelectAreaAsync', [id()])).error.code, 'busy_selecting');
+    assert.deepEqual(await bridge(extension, 'ReleaseAsync', [cancelId]), {});
+    assert.equal((await cancelled).error.code, 'cancelled');
+    assert.equal(extension._requests.size, 0); assert.equal(extension._selector, null); assert.equal(timers.size, 0);
+    print('PASS recording selection answers the rectangle and Release cancels it');
+}
+const work = [[0, 32, 1920, 1048]];
+assert.deepEqual(globalThis.barPlacement([100, 100, 640, 360], [400, 40], work), {rect: [100, 470, 400, 40], outside: true});
+assert.deepEqual(globalThis.barPlacement([100, 600, 640, 470], [400, 40], work), {rect: [100, 550, 400, 40], outside: true});
+assert.deepEqual(globalThis.barPlacement([1700, 100, 200, 200], [400, 40], work), {rect: [1520, 310, 400, 40], outside: true});
+assert.deepEqual(globalThis.barPlacement([0, 0, 1920, 1080], [400, 40], [...work, [1920, 0, 1280, 1024]]), {rect: [2360, 10, 400, 40], outside: true});
+assert.deepEqual(globalThis.barPlacement([0, 0, 1920, 1080], [400, 40], work), {rect: [1510, 1030, 400, 40], outside: false});
+assert.deepEqual(globalThis.subtract([[0, 0, 100, 100]], [20, 30, 50, 40]), [[0, 0, 100, 30], [0, 70, 100, 30], [0, 30, 20, 40], [70, 30, 30, 40]]);
+print('PASS recording bar placement prefers below, above, another monitor, then inside');
+{
+    const {extension} = fixture();
+    const overlap = (a, b) => a[0] < b[0] + b[2] && b[0] < a[0] + a[2] && a[1] < b[1] + b[3] && b[1] < a[1] + a[3];
+    let moved = null, above = false, parent = residentPid;
+    // The first move is undone once, as Mutter's initial placement does; the extension re-applies it.
+    let hidden = 2, undo = 1;
+    const bar = {get_title: () => 'put.gd recording controls', get_pid: () => helperPid,
+        get_frame_rect: () => ({x: moved ? moved[0] : 700, y: moved ? moved[1] : 400, width: 400, height: 40}),
+        is_hidden: () => hidden-- > 0, is_above: () => above, make_above() {above = true;},
+        move_frame(_user, x, y) {moved = undo-- > 0 ? [700, 400] : [x, y];}};
+    const settle = async promise => {for (let i = 0; i < 20; i++) {await flush(); tick(50); tick(100);} return promise;};
+    context.GLib.file_get_contents = () => [true, new TextEncoder().encode(`${helperPid} (putgd record) S ${parent} 1 1 0`)];
+    context.global.get_window_actors = () => [{meta_window: bar}];
+    context.global.stage = {width: 1920, height: 1080};
+    context.Main.layoutManager = {monitors: [{x: 0, y: 0, width: 1920, height: 1080}], getWorkAreaForMonitor: () => ({x: 0, y: 32, width: 1920, height: 1048})};
+    const before = context.Main.uiGroup.get_children().length;
+    const area = [600, 300, 640, 360];
+    const frame = state => JSON.stringify({rect: area, kind: 'region', state, pid: helperPid});
+    assert.deepEqual(await settle(bridge(extension, 'ShowRecordingFrameAsync', [frame('ready')])), {version: 1, bar: {placed: true, outside: true, rect: [600, 670, 400, 40]}});
+    assert.equal(above, true);
+    assert.equal(context.Main.uiGroup.get_children().length - before, 8);
+    await settle(bridge(extension, 'ShowRecordingFrameAsync', [frame('recording')]));
+    const actors = context.Main.uiGroup.get_children().slice(before);
+    // Ring (8) and dim strips (7: the bar is cut out of the bottom strip).
+    assert.equal(actors.length, 15);
+    assert.equal(actors.every(a => a.reactive === false && !overlap([a.x, a.y, a.width, a.height], area) &&
+        !overlap([a.x, a.y, a.width, a.height], [600, 670, 400, 40])), true);
+    // A bar whose process is not the resident's child is never moved.
+    parent = 4321; moved = null;
+    const foreign = bridge(extension, 'ShowRecordingFrameAsync', [frame('ready')]);
+    for (let i = 0; i < 41; i++) {await flush(); tick(50);}
+    assert.deepEqual((await foreign).bar, {placed: false, outside: false}); assert.equal(moved, null);
+    assert.equal((await bridge(extension, 'ShowRecordingFrameAsync', [JSON.stringify({rect: [0, 0, 0, 10], kind: 'region', state: 'ready'})])).error.code, 'bridge_protocol');
+    assert.equal((await bridge(extension, 'ShowRecordingFrameAsync', [JSON.stringify({rect: area, kind: 'region', state: 'exporting'})])).error.code, 'bridge_protocol');
+    assert.deepEqual(await bridge(extension, 'HideRecordingFrameAsync', []), {});
+    assert.equal(context.Main.uiGroup.get_children().length, before); assert.equal(timers.size, 0);
+    print('PASS recording frame places only the resident child\'s bar and keeps every actor outside the area');
+}

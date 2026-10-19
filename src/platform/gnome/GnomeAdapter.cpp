@@ -15,6 +15,7 @@
 #include <QUuid>
 #include <cmath>
 #include <limits>
+#include <utility>
 namespace putgd {
 namespace {
 const QString service="org.gnome.Shell",client="org.putgd.App.Gnome50",path="/org/gnome/Shell/Extensions/Putgd",interface="org.putgd.Gnome50";
@@ -121,7 +122,7 @@ QJsonObject GnomeAdapter::capabilities()const{
  auto window=capture;if(uiProcessError_){window["available"]=false;window["error"]=uiProcessError_.toJson();}
  auto clipboard=QJsonObject{{"available",ready_},{"types",QJsonArray{"files","image","text"}},{"import","bounded-mutter-selection"},{"result","st-clipboard-only"}};
  if(!ready_)clipboard["error"]=helperError_.toJson();
- return {{"adapter","gnome-wayland"},{"helper",QJsonObject{{"available",ready_},{"uuid","putgd@put.gd"},{"protocol",gnome::protocolVersion},{"shellMajor",helper_["shellMajor"]},{"extensionVersion",helper_["extensionVersion"]},{"error",helperError_.toJson()}}},{"capture",QJsonObject{{"region",capture},{"window",window},{"desktop",capture}}},{"clipboard",clipboard},{"shortcuts",QJsonObject{{"available",ready_},{"bindings",bindings_}}}};
+ return {{"adapter","gnome-wayland"},{"helper",QJsonObject{{"available",ready_},{"uuid","putgd@put.gd"},{"protocol",gnome::protocolVersion},{"shellMajor",helper_["shellMajor"]},{"extensionVersion",helper_["extensionVersion"]},{"recordingVersion",helper_["recordingVersion"].toInt()},{"error",helperError_.toJson()}}},{"capture",QJsonObject{{"region",capture},{"window",window},{"desktop",capture}}},{"clipboard",clipboard},{"shortcuts",QJsonObject{{"available",ready_},{"bindings",bindings_}}}};
 }
 SourceAdapter::PreparedAcquisition GnomeAdapter::prepareAcquisition(const QString& action){
  QPointer<GnomeAdapter> guard(this);const bool hotkey=!hotkeyPrepared_[action].isEmpty();const auto id=hotkey?hotkeyPrepared_[action].takeFirst():uuid();Error error;
@@ -179,6 +180,25 @@ void GnomeAdapter::decode(const std::shared_ptr<Transfer>& transfer){
  auto result=std::make_shared<PayloadResult>();auto* worker=QThread::create([transfer,result]{*result=gnome::decodeTransfer(transfer->metadata,transfer->bytes,transfer->id,transfer->limits);});workers_.append(worker);
  connect(worker,&QThread::finished,this,[this,worker,transfer,result]{workers_.removeOne(worker);worker->deleteLater();if(!transfers_.remove(transfer->id))return;auto reply=std::move(transfer->reply);if(transfer->generation!=generation_)reply({{},{"cancelled","GNOME acquisition cancelled",{}}});else reply(std::move(*result));});worker->start();
 }
+// Recording protocol 1 adds SelectArea, ShowRecordingFrame and HideRecordingFrame.
+bool GnomeAdapter::selectsRegions()const{return ready_&&helper_["recordingVersion"].toInt()>=1;}
+void GnomeAdapter::selectRegion(RecordingShell::Reply reply){
+ if(!selectsRegions()){reply({"region_unavailable","Recording a region on GNOME needs the put.gd Shell extension with recording support",{}},{});return;}
+ const auto id=uuid();recordingSelection_=id;
+ // The user drags at their own pace; the extension's request deadline (120 s) ends it first.
+ call("SelectArea",{id},[this,id,reply](Error error,QJsonObject result){
+  if(recordingSelection_==id)recordingSelection_.clear();
+  if(!error&&(result["requestId"].toString()!=id||!result["rect"].isArray()||result["rect"].toArray().size()!=4))error={"bridge_protocol","GNOME helper returned an invalid selection",{}};
+  reply(error,error?QJsonObject{}:QJsonObject{{"rect",result["rect"]}});
+ },125000);
+}
+void GnomeAdapter::cancelSelection(){if(recordingSelection_.isEmpty())return;const auto id=std::exchange(recordingSelection_,QString{});release(id);}
+void GnomeAdapter::showFrame(const QJsonObject& frame,RecordingShell::Reply reply){
+ if(!selectsRegions()){reply({"helper_incompatible","Update the GNOME extension to frame recordings",{}},{});return;}
+ // The extension waits up to two seconds for the bar window to map before placing it.
+ call("ShowRecordingFrame",{json(frame)},std::move(reply),4000);
+}
+void GnomeAdapter::hideFrame(){if(selectsRegions())call("HideRecordingFrame",{},[](Error,QJsonObject){});}
 void GnomeAdapter::release(const QString& id){if(!owner_.isEmpty()&&!stopping_)call("Release",{id},[](Error,QJsonObject){});}
 void GnomeAdapter::cancelAll(const QString& code,const QString& message){
  ++generation_;const auto hotkeys=std::move(hotkeyPrepared_);hotkeyPrepared_.clear();for(const auto& tickets:hotkeys)for(const auto& id:tickets)release(id);
