@@ -15,6 +15,7 @@ import zipfile
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'tools/releases'))
+import quiet_git  # noqa: F401  (disables git background maintenance, #99)
 import collect
 import proton_sources
 from stage_artifacts import stage

@@ -279,7 +279,7 @@ def main():
                      'DEB/RPM use distro Qt. AppImage dynamically bundles Qt 6.8.3 and requires glibc 2.39 or newer. '
                      'Its screen recorder bundles x264, x265 and a GPL FFmpeg, so the AppImage is a GPL-2.0-or-later combined work; '
                      'their corresponding source is the appimage-media-source tarball. '
-                     'GNOME 50 requires the included host extension. Flatpak is tracked in issue #14.\n\n'
+                     'GNOME 50 requires the included host extension. Flatpak needs no host helper, except that Plasma Wayland loses direct screenshots; it is tracked in issue #83 (docs/flatpak.md).\n\n'
                      'Proton corresponding source accompanies the packages in two transport parts and proton-source-catalog.json. '
                      'Verify SHA256SUMS, concatenate part1 then part2, and unpack the resulting tar.gz. '
                      'The combined ZIP includes the catalog; download the two source parts separately.\n\n'

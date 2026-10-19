@@ -9,6 +9,7 @@ import tempfile
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'tools/releases'))
+import quiet_git  # noqa: F401  (disables git background maintenance, #99)
 import source_archive
 
 
