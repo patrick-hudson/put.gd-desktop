@@ -173,7 +173,7 @@ def run_provenance():
 def publish_nightly(args, release, listed):
     """Publish one automated nightly, retaining exact run and byte evidence."""
     if set(listed) | {'SHA256SUMS'} != public_inventory(args.tag):
-        raise ValueError('Collected nightly inventory must contain all twelve public assets')
+        raise ValueError('Collected nightly inventory must contain all thirteen public assets')
     producer = run_provenance()
     api = GitHub(producer['repository'])
     expected = {**listed, 'SHA256SUMS': sha256(args.directory / 'SHA256SUMS')}
@@ -197,6 +197,8 @@ def publish_nightly(args, release, listed):
             'Individual DEBs, RPM, AppImage, source tarball, GNOME ZIP, release-builds.json, '
             'combined ZIP and SHA256SUMS are available separately. DEB/RPM use distro Qt. '
             'AppImage bundles dynamically linked Qt 6.8.3 and requires glibc 2.39 or newer. '
+            'Its screen recorder bundles x264, x265 and a GPL FFmpeg, so the AppImage is a GPL-2.0-or-later '
+            'combined work; their corresponding source is the appimage-media-source tarball. '
             'GNOME 50 requires the included host extension.\n\n'
             'Proton corresponding source is delivered as two separate transport parts plus '
             'proton-source-catalog.json. Verify SHA256SUMS, concatenate part1 then part2, '
@@ -251,7 +253,7 @@ def main():
             raise ValueError('Duplicate collected release checksum')
         listed[name] = digest
     if set(listed) | {'SHA256SUMS'} != public_inventory(args.tag):
-        raise ValueError('Collected release inventory must include all twelve public assets, including Proton sources')
+        raise ValueError('Collected release inventory must include all thirteen public assets, including Proton and AppImage media sources')
     if args.nightly:
         publish_nightly(args, release, listed)
         return
@@ -275,6 +277,8 @@ def main():
     notes = args.directory / 'release-notes.md'
     notes.write_text('Linux x86_64 ' + kind + ' with individual Ubuntu DEBs, a Fedora RPM, an AppImage, a buildable source tarball and a combined ZIP.\n\n'
                      'DEB/RPM use distro Qt. AppImage dynamically bundles Qt 6.8.3 and requires glibc 2.39 or newer. '
+                     'Its screen recorder bundles x264, x265 and a GPL FFmpeg, so the AppImage is a GPL-2.0-or-later combined work; '
+                     'their corresponding source is the appimage-media-source tarball. '
                      'GNOME 50 requires the included host extension. Flatpak is tracked in issue #14.\n\n'
                      'Proton corresponding source accompanies the packages in two transport parts and proton-source-catalog.json. '
                      'Verify SHA256SUMS, concatenate part1 then part2, and unpack the resulting tar.gz. '

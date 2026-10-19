@@ -34,3 +34,8 @@ python3 tools/releases/portable_appimage.py --stage "$stage" --output-dir "$PWD/
   --license-source build/dependencies/appimage/qtkeychain \
   --license-source build/dependencies/appimage/layershell \
   --license-source build/dependencies/appimage/ffmpeg
+# The image is a GPL-2.0-or-later combined work (bundled x264/x265 and a GPL
+# FFmpeg); its corresponding source is a release asset of its own.
+python3 tools/releases/appimage_media_sources.py --receipt build/appimage-output/appimage-build.json \
+  --ffmpeg-source build/dependencies/appimage/ffmpeg --output-dir build/appimage-output \
+  --timestamp "$(git show -s --format=%ct HEAD)"
