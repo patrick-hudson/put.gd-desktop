@@ -6,7 +6,7 @@ through the Actions API.
 
 | Workflow | Runs on | Does |
 | --- | --- | --- |
-| `ci.yml` | every pull request, pushes to `nightly`, manual runs; called by nightly and release | contracts, Linux tests, Windows compile, packages |
+| `ci.yml` | every pull request, pushes to `nightly`, manual runs; called by nightly and release | contracts, Linux tests, clang ASan/UBSan core tests, Windows compile, packages |
 | `package.yml` | called by `ci.yml` | four native packages, AppImage, and with a tag the collected `release-assets` |
 | `nightly.yml` | 05:23 UTC daily and manual | skip unchanged source, or tag, test, package and publish a nightly |
 | `release.yml` | pushes to `main` and manual | cut a candidate (or stable on request), test, package and stage a draft |
@@ -28,8 +28,13 @@ schedule, manual runs and release callers always select everything.
 | `packaging/`, `tools/releases/`, `tools/proton/`, `tools/ci/`, `cmake/`, `integrations/`, `.github/workflows/`, root CMake files, `LICENSE`, `THIRD_PARTY_NOTICES.md`, `.gitignore`, `docs/build.md`, `docs/proton-drive.md` | yes | yes | yes |
 
 Unknown paths select the build by default. The last row lists every input to the
-package builders and the curated source archive. `tests/ci/test_changes.py` pins
-these rules.
+package builders and the curated source archive.
+
+The **sanitizers** job is selected separately: by `src/core/`, `src/app/`, the C++
+sources under `tests/unit/`, `tests/integration/` and `tests/fixtures/`, and by
+`cmake/`, `tools/ci/`, `CMakeLists.txt`, `CMakePresets.json` and `ci.yml`. UI,
+platform, storage and packaging changes don't select it. `tests/ci/test_changes.py`
+pins these rules.
 
 ## Jobs
 
@@ -53,6 +58,30 @@ registered CTest suite as an unprivileged user, with private temporary paths and
 saved socket preflight, JUnit, test logs and build identity. Hosted Xvfb and
 offscreen contracts do not establish compositor support or physical memory
 acceptance. The Release-preset compile happens in the package builders, not here.
+
+**sanitizers** builds the `clang-asan` preset (the `asan` preset's
+`-fsanitize=address,undefined`, compiled with clang) in an Ubuntu 26.04 container and
+runs the core contracts and short unit tests the `clang-asan` test preset selects:
+settings, operations, history, storage locations, payload, archive, upload naming,
+recording model, storage, config reload, local IPC and the small parser and
+platform-model tests. The test preset makes every UBSan report fatal; any ASan
+report already is. The job is not in the required `CI` summary yet (issue
+[#90](https://github.com/patrick-hudson/put.gd-desktop/issues/90)); add it there once
+it has run green on `nightly` for a while.
+
+Distro Qt is not instrumented, so ASan can't check loads made inside it. The bug
+[#76](https://github.com/patrick-hudson/put.gd-desktop/pull/76) fixed kept a
+`QJsonValueRef` to a destroyed temporary `QJsonObject`, and only exported QtCore
+functions read through it. It passed both GCC and clang ASan against distro Qt; both
+compilers do poison the temporary, but no instrumented code read it. The job
+therefore builds QtCore itself with ASan (`tools/ci/provision-qt-asan.sh`: the
+pinned qtbase archive matching the distro version, Core only, the distro's
+absolute install paths so the distro plugins still load) and caches it. The
+application still compiles against the distro headers; the tests run with
+`LD_LIBRARY_PATH` pointing at the instrumented `libQt6Core.so.6`, and distro QtGui,
+QtSql, QtTest and the plugins bind to it. When Ubuntu 26.04 moves to another Qt
+release the recipe stops with a version mismatch; update its version and SHA-256
+together. `json_ref_lifetime_contract` still rejects the #76 pattern in source.
 
 **portable** compiles the shared production code on Windows with tests disabled,
 using the official Qt installation and pinned QtKeychain/AWS SDK builds. The S3

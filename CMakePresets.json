@@ -10,18 +10,24 @@
     {"name": "dev", "inherits": "base", "cacheVariables": {"CMAKE_BUILD_TYPE": "Debug"}},
     {"name": "release", "inherits": "base", "cacheVariables": {"CMAKE_BUILD_TYPE": "Release"}},
     {"name": "asan", "inherits": "dev", "cacheVariables": {"PUTGD_SANITIZER": "address-undefined"}},
+    {"name": "clang-asan", "inherits": "asan", "cacheVariables": {"CMAKE_C_COMPILER": "clang", "CMAKE_CXX_COMPILER": "clang++"}},
     {"name": "tsan", "inherits": "dev", "cacheVariables": {"PUTGD_SANITIZER": "thread"}}
   ],
   "buildPresets": [
     {"name": "dev", "configurePreset": "dev", "jobs": 2},
     {"name": "release", "configurePreset": "release", "jobs": 2},
     {"name": "asan", "configurePreset": "asan", "jobs": 2},
+    {"name": "clang-asan", "configurePreset": "clang-asan", "jobs": 2},
     {"name": "tsan", "configurePreset": "tsan", "jobs": 2}
   ],
   "testPresets": [
     {"name": "dev", "configurePreset": "dev", "output": {"outputOnFailure": true}},
     {"name": "release", "configurePreset": "release", "output": {"outputOnFailure": true}},
     {"name": "asan", "configurePreset": "asan", "output": {"outputOnFailure": true}},
+    {"name": "clang-asan", "configurePreset": "clang-asan", "output": {"outputOnFailure": true},
+     "filter": {"include": {"name": "^((settings|operations|history|payload|archive|upload_naming|recording_model|login_startup|local_ipc|ip_address|geometry|build|portal_streams|wayland_acquisition|record_runtime)_contract|(storage_locations|storage_contract|config_reload)_integration|public_url|native_session_guards|kde_shortcut_normalization|kde_keyboard_map|kde_region_control)$"}},
+     "environment": {"ASAN_OPTIONS": "detect_stack_use_after_return=1:strict_init_order=1:abort_on_error=0",
+                     "UBSAN_OPTIONS": "print_stacktrace=1:halt_on_error=1"}},
     {"name": "tsan", "configurePreset": "tsan", "output": {"outputOnFailure": true}}
   ]
 }

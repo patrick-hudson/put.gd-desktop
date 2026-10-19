@@ -25,6 +25,7 @@ jobs:
     outputs:
       build: ${{ steps.select.outputs.build }}
       packages: ${{ steps.select.outputs.packages }}
+      sanitizers: ${{ steps.select.outputs.sanitizers }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -195,6 +196,124 @@ jobs:
             build/dev/build-identity/build-info.json
             build/ci-sdk-environment.json
             build/sdk-cache.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  sanitizers:
+    # Not in the required `CI` summary until it has proven stable (#90).
+    name: sanitizers (clang ASan/UBSan)
+    needs: changes
+    if: needs.changes.outputs.sanitizers == 'true'
+    runs-on: ubuntu-24.04
+    container: ubuntu:26.04
+    env:
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
+    steps:
+      - name: Install distro dependencies
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential clang libclang-rt-dev llvm ccache git ca-certificates curl passwd util-linux python3 cmake ninja-build pkg-config qt6-base-dev qt6-base-dev-tools libqt6sql6-sqlite qt6-wayland-dev qtkeychain-qt6-dev liblayershellqtinterface-dev libxcb1-dev libxcb-keysyms1-dev libxcb-util-dev libxcb-image0-dev libxcb-randr0-dev libxcb-xfixes0-dev libxcb-damage0-dev libxcb-shape0-dev libxcb-xtest0-dev xvfb xauth dbus-daemon libxcursor-dev libxkbcommon-dev libxkbcommon-x11-dev libcurl4-openssl-dev libssl-dev zlib1g-dev libwayland-dev wayland-protocols libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libavcodec-dev libavformat-dev libavfilter-dev libavutil-dev libswscale-dev libswresample-dev
+          useradd --create-home --shell /bin/bash putgd-ci
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.release_tag || github.sha }}
+      - name: Trust container checkout for build identity
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          echo "CCACHE_DIR=$GITHUB_WORKSPACE/build/ccache" >> "$GITHUB_ENV"
+          echo "CCACHE_BASEDIR=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+      - name: Identify exact dependency cache environment
+        id: sdk-key
+        run: python3 tools/ci/sdk_cache.py key --contract tools/ci/provision-linux-sdk.sh
+      - name: Restore verified dependency prefix
+        id: sdk-cache
+        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: |
+            build/sdk
+            build/sdk-cache.json
+          key: ${{ steps.sdk-key.outputs.key }}
+      - name: Verify restored dependency prefix
+        if: steps.sdk-cache.outputs.cache-hit == 'true'
+        run: python3 tools/ci/sdk_cache.py verify --key '${{ steps.sdk-key.outputs.key }}'
+      - name: Provision pinned AWS SDK
+        if: steps.sdk-cache.outputs.cache-hit != 'true'
+        run: |
+          PUTGD_SDK_JOBS="$(nproc)" bash tools/ci/provision-linux-sdk.sh
+          python3 tools/ci/sdk_cache.py seal --key '${{ steps.sdk-key.outputs.key }}'
+      - name: Save verified dependency prefix
+        if: steps.sdk-cache.outputs.cache-hit != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: |
+            build/sdk
+            build/sdk-cache.json
+          key: ${{ steps.sdk-key.outputs.key }}
+      - name: Identify instrumented QtCore
+        id: qt-key
+        run: |
+          recipe="$(sha256sum tools/ci/provision-qt-asan.sh | cut -c1-16)"
+          toolchain="$( (clang++ --version | head -n 1; dpkg-query -W -f '${Version}' libqt6core6t64) | sha256sum | cut -c1-16)"
+          echo "key=qt-asan-core-26.04-$recipe-$toolchain" >> "$GITHUB_OUTPUT"
+      - name: Restore instrumented QtCore
+        id: qt-cache
+        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: build/qt-asan
+          key: ${{ steps.qt-key.outputs.key }}
+      - name: Build instrumented QtCore
+        if: steps.qt-cache.outputs.cache-hit != 'true'
+        run: bash tools/ci/provision-qt-asan.sh build/qt-asan
+      - name: Save instrumented QtCore
+        if: steps.qt-cache.outputs.cache-hit != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: build/qt-asan
+          key: ${{ steps.qt-key.outputs.key }}
+      - name: Restore compiler cache
+        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: build/ccache
+          key: ccache-clang-asan-26.04-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: ccache-clang-asan-26.04-
+      - name: Build
+        id: build
+        run: |
+          ccache --zero-stats
+          cmake --preset clang-asan \
+            -DPUTGD_AWS_SOURCE_DIR="$PWD/build/sdk/share/putgd-ci/aws-sdk-source-licenses" \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+          cmake --build --preset clang-asan --parallel "$(nproc)"
+          ccache --show-stats
+      - name: Save compiler cache
+        # Pull requests restore the nightly branch cache; only branch runs save one.
+        if: always() && steps.build.outcome == 'success' && github.event_name != 'pull_request'
+        uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: build/ccache
+          key: ccache-clang-asan-26.04-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Test core contracts under ASan/UBSan
+        # The test preset selects the core contracts and short unit tests and
+        # makes every ASan or UBSan report fatal.
+        run: |
+          test_tmp="$(mktemp -d /tmp/pgci.XXXXXX)"
+          python3 tools/ci/ctest_preflight.py --build build/clang-asan --tmp "$test_tmp" --user putgd-ci
+          chown -R putgd-ci:putgd-ci build/clang-asan "$test_tmp"
+          runuser -u putgd-ci -- sh -ec 'exec env TMPDIR="$1" LD_LIBRARY_PATH="$PWD/build/qt-asan/lib" ASAN_SYMBOLIZER_PATH="$(command -v llvm-symbolizer)" ctest --preset clang-asan --parallel 4 --output-junit "$2"' _ "$test_tmp" "$PWD/build/clang-asan/ctest-results.xml"
+      - name: Preserve structured test reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ctest-clang-asan
+          path: |
+            build/clang-asan/ctest-results.xml
+            build/clang-asan/registered-tests.json
+            build/clang-asan/Testing/Temporary/LastTest.log
+            build/clang-asan/Testing/Temporary/LastTestsFailed.log
+            build/clang-asan/build-identity/build-info.json
+            build/qt-asan/BUILD
           if-no-files-found: warn
           retention-days: 30
 
