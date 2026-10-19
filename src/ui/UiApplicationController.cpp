@@ -128,7 +128,8 @@ void UiApplicationController::receive(const QString& type,const QString& sequenc
   // Agent control of an open view; unknown commands are refused, not ignored.
   const auto name=payload["command"].toString();const auto params=payload["params"].toObject();
   Error error;QJsonObject result;
-  if(name!="moveDestination")error={"ui_command_unknown","This window does not support that command.",{}};
+  if(payload["version"]!=1)error={"ui_command_unsupported","This window does not support that command version.",{{"version",payload["version"]}}};
+  else if(name!="moveDestination")error={"ui_command_unknown","This window does not support that command.",{}};
   else if(!main_||!main_->isVisible()||closing_)error={"ui_view_closed","Open Settings before driving it.",{}};
   else error=main_->settings()->moveSelectedDestination(params["direction"].toString()=="up"?-1:1,params["profileId"].toString(),result);
   control_.send("commandResult",{{"replyTo",sequence},{"error",error.toJson()},{"result",result}});return;

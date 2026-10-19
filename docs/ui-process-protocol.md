@@ -85,8 +85,12 @@ native compositor evidence is a separate gate.
 
 ## View commands
 
-`ui.moveDestination` reaches the helper as a `command` frame with `command` and
-`params`. The resident sends it only to a ready helper. It never starts one, and
+`ui.moveDestination` reaches the helper as a `command` frame with `version: 1`,
+`command` and `params`. The resident sends it only to a ready helper, and bootstrap
+already rejects a helper whose build differs from the resident's. A helper refuses
+any other command `version` with `ui_command_unsupported`, and an older helper
+without command support drops the frame, so the command fails with
+`ui_command_timeout`; neither changes settings. It never starts one, and
 without a helper it answers `ui_view_closed`. At most eight commands are outstanding;
 each answer is a `commandResult` with `replyTo`, an error object and a `result`
 object. The helper refuses unknown commands (`ui_command_unknown`) and answers

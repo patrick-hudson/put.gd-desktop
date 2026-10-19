@@ -30,14 +30,15 @@ private slots:
   QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"),[](auto,auto){return Error{};});auto document=Settings::developmentTemplate();auto profiles=document["profiles"].toArray();auto other=profiles.first().toObject();other["id"]="synthetic-alternate";other["label"]="Synthetic alternate";other["credentials"]=QJsonObject{{"mode","keychain"},{"reference","putgd/synthetic-alternate"}};profiles.append(other);document["profiles"]=profiles;QVERIFY(settings.save(document,{}));
   CredentialStore secrets;UiSessionFixture fixture(settings,secrets);ControlDevice device;UiControl control(device);UiApplicationController controller(fixture.session,control,{});
   auto result=[&]{return device.last("commandResult")["payload"].toObject();};
-  device.send("command",{{"command","moveDestination"},{"params",QJsonObject{{"direction","down"}}}});QCOMPARE(result()["error"].toObject()["code"].toString(),QString("ui_view_closed"));QCOMPARE(result()["replyTo"].toString(),QString::number(device.sequence));
+  device.send("command",{{"version",1},{"command","moveDestination"},{"params",QJsonObject{{"direction","down"}}}});QCOMPARE(result()["error"].toObject()["code"].toString(),QString("ui_view_closed"));QCOMPARE(result()["replyTo"].toString(),QString::number(device.sequence));
   device.send("activate",{{"view","destinations"}});QVERIFY(!device.last("shown").isEmpty());
-  device.send("command",{{"command","explode"},{"params",QJsonObject{}}});QCOMPARE(result()["error"].toObject()["code"].toString(),QString("ui_command_unknown"));
-  device.send("command",{{"command","moveDestination"},{"params",QJsonObject{{"direction","up"},{"profileId","synthetic-alternate"}}}});
+  device.send("command",{{"version",1},{"command","explode"},{"params",QJsonObject{}}});QCOMPARE(result()["error"].toObject()["code"].toString(),QString("ui_command_unknown"));
+  device.send("command",{{"version",2},{"command","moveDestination"},{"params",QJsonObject{{"direction","up"}}}});QCOMPARE(result()["error"].toObject()["code"].toString(),QString("ui_command_unsupported"));QCOMPARE(settings.document()["profiles"].toArray().first().toObject()["id"].toString(),QString("development-s3"));
+  device.send("command",{{"version",1},{"command","moveDestination"},{"params",QJsonObject{{"direction","up"},{"profileId","synthetic-alternate"}}}});
   QCOMPARE(result()["replyTo"].toString(),QString::number(device.sequence));QVERIFY2(result()["error"].toObject()["code"].toString().isEmpty(),qPrintable(result()["error"].toObject()["code"].toString()));
   QCOMPARE(result()["result"].toObject()["order"].toArray(),QJsonArray({"synthetic-alternate","development-s3"}));QCOMPARE(result()["result"].toObject()["selected"].toString(),QString("synthetic-alternate"));
   QTRY_COMPARE(settings.document()["profiles"].toArray().first().toObject()["id"].toString(),QString("synthetic-alternate"));
-  device.send("command",{{"command","moveDestination"},{"params",QJsonObject{{"direction","up"}}}});QCOMPARE(result()["error"].toObject()["code"].toString(),QString("destination_move_invalid"));
+  device.send("command",{{"version",1},{"command","moveDestination"},{"params",QJsonObject{{"direction","up"}}}});QCOMPARE(result()["error"].toObject()["code"].toString(),QString("destination_move_invalid"));
  }
  void shortcutRecordingRequiresMatchingResidentAcknowledgement(){
   QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);
