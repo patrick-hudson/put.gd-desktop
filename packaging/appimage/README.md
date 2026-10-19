@@ -17,7 +17,11 @@ runtime. The builder checks all tools before executing them.
 
 Provision Qt 6.8.3 with the existing pinned install-qt-action in GitHub Actions.
 Include its native GTK3 platform theme, Wayland platforms, SQL SQLite plugin,
-and Qt Wayland development headers. Do not force a different platform theme or
+and Qt Wayland development headers. The image also carries Qt's offscreen platform:
+the resident runs image decoding and previews in `putgd-ui --image-job` on it, and
+Qt aborts that worker when the plugin is absent. After deployment the builder
+starts the worker from the AppDir on offscreen and rejects an image where it does
+not start. Do not force a different platform theme or
 replace native folder dialogs. The builder rejects a missing GTK3 theme plugin. Qt's standard `qt.conf`
 deployment paths select only the SQLite SQL driver, preserving all other plugin
 directories and leaving the original official SDK untouched. MySQL/Mimer and

@@ -173,6 +173,13 @@ PUTGD_APP="$PWD/build/dev/putgd" PUTGD_CLI="$PWD/build/dev/putgd-cli" \
   -s tests/integration -p test_config_schema.py -v
 ```
 
+`json_ref_lifetime_contract` scans `src/` and `tests/` for an `auto` variable that
+keeps the `QJsonValueRef` returned by `operator[]` on a temporary from
+`toObject()`, `toArray()`, `object()` or `array()`. `Settings::validate` had this
+defect and crashed the Debian 13 resident on `settings.save`. GCC's ASan does not
+poison full-expression temporaries, so the asan preset passed with the defect in
+place. Read through `.value(key)` or `.at(index)`, or convert in the same expression.
+
 Repeat the affected sanitizer contracts with
 `payload_contract|archive_contract|upload_naming_contract|settings_contract|operations_contract|gui_settings|gui_history_view|collision_policy_integration`
 as the CTest `-R` expression, using the ASan/UBSan settings in [build.md](build.md)

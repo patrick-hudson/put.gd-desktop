@@ -300,8 +300,15 @@ def create_server(adapter: CliAdapter) -> FastMCP:
 
     @server.tool(annotations=read)
     async def get_recording(id: str) -> Json:
-        """Read the session: state, pending command, target, config, canvas, retained durationUs, trim/masks with their revision, helper progress (exportFraction while exporting), lastExport (the latest copy/upload export: status exporting|saved|failed, revision, path, bytes, error) and any error. An ended session is recording_unavailable; get_operation has its outcome."""
+        """Read the session: state, pending command, whether a region selector is open (selecting), target, config, canvas, retained durationUs, trim/masks with their revision, helper progress (exportFraction while exporting), where the control bar went (overlayExcluded, overlayPlacement), lastExport (the latest copy/upload export: status exporting|saved|failed, revision, path, bytes, error) and any error. An ended session is recording_unavailable; get_operation has its outcome."""
         return await adapter.call('recording.inspect', {'id': id}) if identifier(id) else invalid()
+
+    @server.tool(annotations=effect)
+    async def select_recording_region(id: str, rect: list[int]) -> Json:
+        """Complete the open region selector of a preparing recording (get_recording shows selecting: true; the tray, shortcut and dashboard open one) with rect [x, y, width, height], exactly as a drag would: X11 root pixels, logical desktop pixels on Wayland. The session then reaches ready; nothing is captured until control_recording start. Cancel it with control_recording cancel."""
+        if not identifier(id) or not (isinstance(rect, list) and len(rect) == 4 and all(type(value) is int for value in rect)) or rect[2] < 1 or rect[3] < 1:
+            return invalid()
+        return await adapter.call('recording.select', {'id': id, 'rect': rect})
 
     @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
     async def set_recording_overlay(id: str, visible: bool) -> Json:

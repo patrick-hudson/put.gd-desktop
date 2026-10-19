@@ -32,8 +32,8 @@ The CLI waits 3 s to connect, 3 s to send and then a bounded time for the whole
 reply, at most 16 MiB: 15 s for most methods. Screen-recording commands that the
 resident answers only after the recording helper wait 15 s past the helper's own
 deadline, so its `recording_helper_timeout` still arrives: 45 s for
-`recording.stop` and 30 s for `recording.capabilities`, `prepare`, `start`,
-`pause`, `resume`, `raise`, `overlay` and `preview`. Work that can take longer
+`recording.stop` and 30 s for `recording.capabilities`, `prepare`, `select`,
+`start`, `pause`, `resume`, `raise`, `overlay` and `preview`. Work that can take longer
 replies when it starts: `recording.prepare` with `state: preparing`, and
 `recording.saveCopy` and `recording.upload` with `state: exporting`; poll
 `recording.inspect` (see [recording.md](recording.md#exports)). A missed wait is

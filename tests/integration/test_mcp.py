@@ -136,7 +136,7 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                             'patch_configuration', 'open_editor', 'get_editor', 'edit_image',
                             'preview_editor', 'save_editor_copy', 'submit_editor', 'cancel_editor',
                             'raise_editor', 'get_recording_capabilities', 'prepare_recording', 'control_recording',
-                            'get_recording', 'set_recording_overlay', 'edit_recording', 'preview_recording',
+                            'get_recording', 'select_recording_region', 'set_recording_overlay', 'edit_recording', 'preview_recording',
                             'save_recording_copy', 'upload_recording'}
                 self.assertEqual({tool.name for tool in discovered}, expected)
                 for tool in discovered:
@@ -218,6 +218,7 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('control_recording', {'id': 'synthetic-operation', 'command': 'cancel'}, 'recording.cancel', {'id': 'synthetic-operation'}),
                     ('control_recording', {'id': 'synthetic-operation', 'command': 'raise'}, 'recording.raise', {'id': 'synthetic-operation'}),
                     ('get_recording', {'id': 'synthetic-operation'}, 'recording.inspect', {'id': 'synthetic-operation'}),
+                    ('select_recording_region', {'id': 'synthetic-operation', 'rect': [40, 50, 640, 360]}, 'recording.select', {'id': 'synthetic-operation', 'rect': [40, 50, 640, 360]}),
                     ('set_recording_overlay', {'id': 'synthetic-operation', 'visible': False}, 'recording.overlay', {'id': 'synthetic-operation', 'visible': False}),
                     ('edit_recording', {'id': 'synthetic-operation', 'revision': 1, 'commands': [
                         {'op': 'setTrim', 'start': 10000000, 'end': 30000000},
@@ -262,6 +263,8 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                                    ('prepare_recording', {'target': {'kind': 'desktop'}, 'format': 'mkv'}),
                                    ('prepare_recording', {'target': {'kind': 'desktop'}, 'format': 'mp4', 'fps': 0}),
                                    ('control_recording', {'id': 'synthetic-operation', 'command': 'explode'}),
+                                   ('select_recording_region', {'id': 'synthetic-operation', 'rect': [1, 2, 0, 4]}),
+                                   ('select_recording_region', {'id': 'synthetic-operation', 'rect': [1, 2, 3]}),
                                    ('edit_recording', {'id': 'synthetic-operation', 'revision': 0, 'commands': [{'op': 'resetTrim'}]}),
                                    ('edit_recording', {'id': 'synthetic-operation', 'revision': 1, 'commands': [{'op': 'crop'}]}),
                                    ('save_recording_copy', {'id': 'synthetic-operation', 'path': 'relative.mp4'}),

@@ -15,6 +15,16 @@ Call call(LocalServer& server,const QString& method,const QJsonObject& params){
  return outcome;
 }
 QJsonObject region(){return {{"kind","region"},{"rect",QJsonArray{100,100,1280,720}}};}
+// A desktop shell like the GNOME extension: selections wait for the test to answer them.
+struct FakeShell final:RecordingShell {
+ bool selects=true,failFrames=false;QList<Reply> selections;int cancels=0,hides=0;QList<QJsonObject> frames;
+ QJsonObject bar{{"placed",true},{"outside",true},{"rect",QJsonArray{50,430,400,40}}};
+ bool selectsRegions() const override {return selects;}
+ void selectRegion(Reply reply) override {selections.append(std::move(reply));}
+ void cancelSelection() override {++cancels;if(!selections.isEmpty()){auto reply=selections.takeLast();reply({"cancelled","GNOME region selection cancelled",{}},{});}}
+ void showFrame(const QJsonObject& frame,Reply reply) override {frames.append(frame);if(failFrames)reply({"helper_incompatible","no frame support",{}},{});else reply({},{{"bar",bar}});}
+ void hideFrame() override {++hides;}
+};
 struct Harness {
  QTemporaryDir dir;ProviderRegistry registry;std::shared_ptr<OpaqueProvider> provider=std::make_shared<OpaqueProvider>();SettingsService settings;Source source;std::unique_ptr<OperationService> operations;std::unique_ptr<HistoryService> history;std::unique_ptr<LocalServer> server;FakeRecordingBackend* backend=nullptr;
  explicit Harness(bool local=true):settings(dir.filePath("config.json"),[this](auto id,auto value){return registry.validate(id,value);}){
@@ -332,7 +342,7 @@ private slots:
  // resident's answer (recording_helper_timeout included) always reaches it.
  void clientWaitsOutlastHelperDeadlines(){
   QVERIFY(LocalServer::replyDeadlineMs("recording.stop")>recording::helperStopMs);
-  for(const auto* method:{"recording.capabilities","recording.prepare","recording.start","recording.pause","recording.resume","recording.raise","recording.overlay","recording.preview"})
+  for(const auto* method:{"recording.capabilities","recording.prepare","recording.select","recording.start","recording.pause","recording.resume","recording.raise","recording.overlay","recording.preview"})
    QVERIFY2(LocalServer::replyDeadlineMs(method)>recording::helperCommandMs,method);
   // Exports answer when they start, so they keep the ordinary wait.
   for(const auto* method:{"recording.saveCopy","recording.upload","recording.inspect","capabilities"})QCOMPARE(LocalServer::replyDeadlineMs(method),15000);
@@ -347,6 +357,66 @@ private slots:
   QString state;for(int i=0;i<200&&state!="cancelled";++i){state=call(*h.server,"operation.inspect",{{"id",id}}).result["state"].toString();if(state!="cancelled")QTest::qWait(10);}QCOMPARE(state,QString("cancelled"));QCOMPARE(h.backend->discards,1);
   QVERIFY(h.operations->activeObservations().isEmpty());
  }
+ // GNOME: the Shell selects the rectangle before the helper starts a stream,
+ // draws the ring and dimming, and moves the bar; overlayExcluded follows it.
+ void shellSelectsRegionsAndFramesTheBar(){
+  Harness h;QTRY_VERIFY(h.operations->ready());FakeShell shell;h.operations->recording().setShell(&shell);
+  h.backend->placement="compositor";h.backend->pid=4242;
+  const auto prepared=h.rec("prepare",{{"target",QJsonObject{{"kind","region"}}},{"format","mp4"}});QVERIFY2(!prepared.error,qPrintable(prepared.error.message));const auto id=prepared.result["recordingId"].toString();
+  QTRY_COMPARE(shell.selections.size(),1);QVERIFY(!h.backend->log.contains("prepare"));
+  auto inspected=h.rec("inspect",{{"id",id}}).result;QCOMPARE(inspected["state"].toString(),QString("preparing"));QVERIFY(inspected["selecting"].toBool());
+  shell.selections.takeFirst()({},{{"rect",QJsonArray{50,60,640,360}}});
+  QTRY_COMPARE(h.state(id),QString("ready"));
+  QCOMPARE(h.backend->lastTarget.rect,QRect(50,60,640,360));
+  inspected=h.rec("inspect",{{"id",id}}).result;QVERIFY(!inspected["selecting"].toBool());QVERIFY(inspected["overlayExcluded"].toBool());QCOMPARE(inspected["overlayPlacement"].toString(),QString("outside"));
+  QCOMPARE(inspected["target"].toObject()["rect"].toArray(),QJsonArray({50,60,640,360}));
+  QCOMPARE(shell.frames.size(),1);QCOMPARE(shell.frames[0]["state"].toString(),QString("ready"));QCOMPARE(shell.frames[0]["rect"].toArray(),QJsonArray({50,60,640,360}));QCOMPARE(shell.frames[0]["pid"].toInt(),4242);QCOMPARE(shell.frames[0]["kind"].toString(),QString("region"));
+  QVERIFY(!h.rec("start",{{"id",id}}).error);QCOMPARE(shell.frames.last()["state"].toString(),QString("recording"));
+  QVERIFY(!h.rec("pause",{{"id",id}}).error);QCOMPARE(shell.frames.last()["state"].toString(),QString("paused"));QCOMPARE(shell.hides,0);
+  QCOMPARE(h.rec("stop",{{"id",id}}).result["state"].toString(),QString("reviewing"));QCOMPARE(shell.hides,1);
+  QVERIFY(!h.rec("cancel",{{"id",id}}).error);QCOMPARE(shell.hides,1);
+  // A bar the Shell could not place (an older extension) stays reported as possibly recorded.
+  shell.failFrames=true;
+  const auto second=h.prepareReady({{"target",QJsonObject{{"kind","monitor"}}}});QVERIFY(!second.isEmpty());
+  inspected=h.rec("inspect",{{"id",second}}).result;QVERIFY(!inspected["overlayExcluded"].toBool());QCOMPARE(inspected["overlayPlacement"].toString(),QString("compositor"));
+  QVERIFY(!h.rec("cancel",{{"id",second}}).error);QCOMPARE(shell.hides,2);
+ }
+ void cancellingAShellSelectionLeavesNoSession(){
+  Harness h;QTRY_VERIFY(h.operations->ready());HistoryStore journal(h.operations->databasePath());FakeShell shell;h.operations->recording().setShell(&shell);
+  const QJsonObject dragged{{"target",QJsonObject{{"kind","region"}}},{"format","mp4"}};
+  // Escape in the Shell selector: the operation ends cancelled and no helper ever started.
+  auto id=h.rec("prepare",dragged).result["recordingId"].toString();QTRY_COMPARE(shell.selections.size(),1);
+  shell.selections.takeFirst()({"cancelled","GNOME region selection cancelled",{}},{});
+  QTRY_COMPARE(journal.operation(id).state,QString("cancelled"));QVERIFY(!h.backend->log.contains("prepare"));QTRY_COMPARE(h.operations->diagnostics()["activeOperations"].toInt(),0);
+  QVERIFY(h.rec("capabilities").result["active"].isNull());
+  // recording.cancel closes the open selector.
+  id=h.rec("prepare",dragged).result["recordingId"].toString();QTRY_COMPARE(shell.selections.size(),1);
+  QVERIFY(!h.rec("cancel",{{"id",id}}).error);QCOMPARE(shell.cancels,1);QTRY_COMPARE(journal.operation(id).state,QString("cancelled"));QVERIFY(!h.backend->log.contains("prepare"));
+  // recording.select drives the selector like a drag; the superseded selector reply is ignored.
+  id=h.rec("prepare",dragged).result["recordingId"].toString();QTRY_COMPARE(shell.selections.size(),1);
+  QCOMPARE(h.rec("select",{{"id",id},{"rect",QJsonArray{1,2,0,5}}}).error.code,QString("invalid_request"));
+  QCOMPARE(call(*h.server,"recording.select",{{"id",id}}).error.code,QString("invalid_request"));
+  const auto selected=h.rec("select",{{"id",id},{"rect",QJsonArray{20,30,800,450}}});QVERIFY2(!selected.error,qPrintable(selected.error.message));QCOMPARE(shell.cancels,2);
+  QTRY_COMPARE(h.state(id),QString("ready"));QCOMPARE(h.backend->lastTarget.rect,QRect(20,30,800,450));
+  QCOMPARE(h.rec("select",{{"id",id},{"rect",QJsonArray{20,30,800,450}}}).error.code,QString("recording_state"));
+  QVERIFY(!h.rec("cancel",{{"id",id}}).error);
+  // A shell without recording support leaves the region to the helper.
+  shell.selects=false;id=h.prepareReady({{"target",QJsonObject{{"kind","region"}}}});QVERIFY(!id.isEmpty());QCOMPARE(shell.selections.size(),0);
+  QVERIFY(!h.rec("cancel",{{"id",id}}).error);
+ }
+ // X11 and KDE: the helper's own selector reports `selecting`; select forwards the rectangle.
+ void helperSelectionIsDrivenThroughSelect(){
+  Harness h;QTRY_VERIFY(h.operations->ready());h.backend->deferPrepare=true;
+  const auto id=h.rec("prepare",{{"target",QJsonObject{{"kind","region"}}},{"format","mp4"}}).result["recordingId"].toString();QTRY_VERIFY(h.backend->log.contains("prepare"));
+  QCOMPARE(h.rec("select",{{"id",id},{"rect",QJsonArray{10,10,300,200}}}).error.code,QString("recording_state"));
+  h.backend->sink({{"id",id},{"event","selecting"},{"selector","kde-layer-shell"}});
+  QTRY_VERIFY(h.rec("inspect",{{"id",id}}).result["selecting"].toBool());
+  QVERIFY(!h.rec("select",{{"id",id},{"rect",QJsonArray{10,10,300,200}}}).error);
+  QCOMPARE(h.backend->log.last(),QString("select"));QCOMPARE(h.backend->lastControlParams["rect"].toArray(),QJsonArray({10,10,300,200}));
+  h.backend->pendingPrepare({},{});QTRY_COMPARE(h.state(id),QString("ready"));QVERIFY(!h.rec("inspect",{{"id",id}}).result["selecting"].toBool());
+  QVERIFY(!h.rec("cancel",{{"id",id}}).error);
+ }
 };
+
 QTEST_GUILESS_MAIN(RecordingServiceContract)
 #include "test_recording_service.moc"

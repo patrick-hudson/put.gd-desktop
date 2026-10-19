@@ -14,10 +14,41 @@
 #include <QPushButton>
 #include <QScreen>
 #include <QTimer>
+#include <QWindow>
 #include <algorithm>
+#ifdef PUTGD_RECORD_LAYER_SHELL
+#include <LayerShellQt/Window>
+#endif
 
 namespace putgd::record {
+SurfaceMode surfaceMode() {
+    static const SurfaceMode mode = [] {
+        if (!QGuiApplication::platformName().startsWith("wayland")) return SurfaceMode::X11;
+#ifdef PUTGD_RECORD_LAYER_SHELL
+        // KWin implements wlr-layer-shell; the same selector serves KDE screenshots.
+        if (qEnvironmentVariable("XDG_CURRENT_DESKTOP").contains("KDE", Qt::CaseInsensitive)) return SurfaceMode::LayerShell;
+#endif
+        return SurfaceMode::Compositor;
+    }();
+    return mode;
+}
 namespace {
+#ifdef PUTGD_RECORD_LAYER_SHELL
+// An overlay layer surface at a logical desktop position on `screen`; panels'
+// exclusive zones are ignored so the margins are relative to the output.
+void toLayer(QWidget* widget, QScreen* screen, const QRect& logical, bool keyboard) {
+    widget->setScreen(screen);
+    widget->setGeometry(logical);
+    widget->winId();
+    auto* layer = LayerShellQt::Window::get(widget->windowHandle());
+    layer->setScope(QStringLiteral("putgd-record"));
+    layer->setLayer(LayerShellQt::Window::LayerOverlay);
+    layer->setAnchors(LayerShellQt::Window::Anchors(LayerShellQt::Window::AnchorTop) | LayerShellQt::Window::AnchorLeft);
+    layer->setExclusiveZone(-1);
+    layer->setKeyboardInteractivity(keyboard ? LayerShellQt::Window::KeyboardInteractivityOnDemand : LayerShellQt::Window::KeyboardInteractivityNone);
+    layer->setMargins(QMargins(logical.x() - screen->geometry().x(), logical.y() - screen->geometry().y(), 0, 0));
+}
+#endif
 constexpr Qt::WindowFlags passiveFlags = Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::X11BypassWindowManagerHint | Qt::WindowDoesNotAcceptFocus | Qt::WindowTransparentForInput;
 // X11 root pixels from Qt's logical screen coordinates.
 QRect toRoot(const QRectF& logical) {
@@ -139,6 +170,11 @@ void SelectionOverlay::release(QPointF point) {
     finish();
     emit selected(root);
 }
+void SelectionOverlay::complete(const QRect& root) {
+    if (finished_) return;
+    finish();
+    emit selected(root);
+}
 void SelectionOverlay::finish() { finished_ = true; for (auto* s : surfaces_) { s->releaseKeyboard(); s->releaseMouse(); s->hide(); } }
 void SelectionOverlay::cancel(Error error) { if (finished_) return; finish(); emit cancelled(error); }
 
@@ -164,10 +200,26 @@ private:
     QColor color_;
 };
 }
-QWidget* BoundsOverlay::passive(const QRect& root, const QColor& color) {
+void BoundsOverlay::add(QList<QWidget*>& into, const QRect& rect, const QColor& color) {
+    if (rect.width() < 1 || rect.height() < 1) return;
+#ifdef PUTGD_RECORD_LAYER_SHELL
+    if (surfaceMode() == SurfaceMode::LayerShell) {
+        // Layer surfaces live on one output: split strips that cross a seam.
+        for (QScreen* screen : QGuiApplication::screens()) {
+            const QRect piece = rect.intersected(screen->geometry());
+            if (piece.isEmpty()) continue;
+            auto* w = new PassiveSurface(color);
+            toLayer(w, screen, piece, false);
+            into.append(w);
+            w->show();
+        }
+        return;
+    }
+#endif
     auto* w = new PassiveSurface(color);
-    w->setGeometry(fromRoot(root).toAlignedRect());
-    return w;
+    w->setGeometry(fromRoot(rect).toAlignedRect());
+    into.append(w);
+    w->show();
 }
 void BoundsOverlay::showBounds(const QRect& root) {
     hideAll();
@@ -176,11 +228,11 @@ void BoundsOverlay::showBounds(const QRect& root) {
     const QRect outer = root.adjusted(-thickness, -thickness, thickness, thickness);
     const QList<QRect> edges{QRect(outer.left(), outer.top(), outer.width(), thickness), QRect(outer.left(), root.bottom() + 1, outer.width(), thickness),
         QRect(outer.left(), root.top(), thickness, root.height()), QRect(root.right() + 1, root.top(), thickness, root.height())};
-    for (const auto& edge : edges) { auto* w = passive(edge, QColor(255, 255, 255, 235)); ring_.append(w); w->show(); }
+    for (const auto& edge : edges) add(ring_, edge, QColor(255, 255, 255, 235));
     // A dark hairline inside the white ring keeps it visible over light content.
     const QRect inner = root.adjusted(-1, -1, 1, 1);
     const QList<QRect> lines{QRect(inner.left(), inner.top(), inner.width(), 1), QRect(inner.left(), root.bottom() + 1, inner.width(), 1), QRect(inner.left(), root.top(), 1, root.height()), QRect(root.right() + 1, root.top(), 1, root.height())};
-    for (const auto& line : lines) { auto* w = passive(line, QColor(0, 0, 0, 200)); ring_.append(w); w->show(); }
+    for (const auto& line : lines) add(ring_, line, QColor(0, 0, 0, 200));
     if (dimmed_) setDimmed(true);
 }
 void BoundsOverlay::setDimmed(bool dimmed) {
@@ -189,10 +241,10 @@ void BoundsOverlay::setDimmed(bool dimmed) {
     dim_.clear();
     if (!dimmed || rect_.isEmpty()) return;
     QRect desktop;
-    for (QScreen* screen : QGuiApplication::screens()) desktop |= toRoot(screen->geometry());
+    for (QScreen* screen : QGuiApplication::screens()) desktop |= surfaceMode() == SurfaceMode::X11 ? toRoot(screen->geometry()) : screen->geometry();
     const QList<QRect> strips{QRect(desktop.left(), desktop.top(), desktop.width(), rect_.top() - desktop.top()), QRect(desktop.left(), rect_.bottom() + 1, desktop.width(), desktop.bottom() - rect_.bottom()),
         QRect(desktop.left(), rect_.top(), rect_.left() - desktop.left(), rect_.height()), QRect(rect_.right() + 1, rect_.top(), desktop.right() - rect_.right(), rect_.height())};
-    for (const auto& strip : strips) { if (strip.width() < 1 || strip.height() < 1) continue; auto* w = passive(strip, QColor(0, 0, 0, 110)); dim_.append(w); w->show(); }
+    for (const auto& strip : strips) add(dim_, strip, QColor(0, 0, 0, 110));
 }
 void BoundsOverlay::hideAll() {
     for (auto* w : ring_ + dim_) delete w;
@@ -203,6 +255,7 @@ void BoundsOverlay::hideAll() {
 
 ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QWidget* parent) : QWidget(parent, Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::X11BypassWindowManagerHint), config_(config), options_(options) {
     setObjectName("putgd-record-bar");
+    setWindowTitle(QString::fromLatin1(controlBarTitle));
     setAttribute(Qt::WA_ShowWithoutActivating);
     setStyleSheet(barStyle);
     auto* layout = new QHBoxLayout(this);
@@ -281,6 +334,33 @@ bool ControlBar::placeAround(const QRect& root, const QRect& desktop) {
     else { chosen = QRect(QPoint(int(logical.right()) - size.width() - gap, int(logical.bottom()) - size.height() - gap), size); outside = false; }
     setGeometry(chosen);
     return outside;
+}
+bool ControlBar::placeOnLayer(const QRect& logical) {
+    adjustSize();
+    const QSize size = sizeHint().expandedTo(this->size());
+    const int gap = 10;
+    QScreen* home = QGuiApplication::screenAt(logical.center());
+    if (!home) home = QGuiApplication::primaryScreen();
+    QList<QPair<QScreen*, QRect>> candidates;
+    if (home) {
+        const QRect area = home->geometry();
+        const int left = std::max(area.left(), std::min(logical.left(), area.left() + area.width() - size.width()));
+        candidates.append({home, QRect(QPoint(left, logical.bottom() + 1 + gap), size)});
+        candidates.append({home, QRect(QPoint(left, logical.top() - gap - size.height()), size)});
+    }
+    for (QScreen* screen : QGuiApplication::screens())
+        if (screen != home) candidates.append({screen, QRect(QPoint(screen->geometry().center().x() - size.width() / 2, screen->geometry().top() + gap), size)});
+    QScreen* screen = home;
+    QRect chosen(QPoint(logical.right() - size.width() - gap, logical.bottom() - size.height() - gap), size);
+    for (const auto& [candidateScreen, rect] : candidates) {
+        if (candidateScreen && candidateScreen->geometry().contains(rect) && !rect.intersects(logical)) { screen = candidateScreen; chosen = rect; break; }
+    }
+#ifdef PUTGD_RECORD_LAYER_SHELL
+    if (screen) toLayer(this, screen, chosen, true);
+#else
+    setGeometry(chosen);
+#endif
+    return !chosen.intersects(logical);
 }
 void ControlBar::keyPressEvent(QKeyEvent* e) {
     if (e->key() == Qt::Key_Escape) { if (state_ == "ready") emit cancelRequested(); return; }

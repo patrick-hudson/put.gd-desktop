@@ -96,7 +96,7 @@ struct KdeScreencast::Impl {
         wl_display_flush(display);
     }
     ~Impl() {
-        if (stream) zkde_screencast_stream_unstable_v1_destroy(stream);
+        if (stream) zkde_screencast_stream_unstable_v1_close(stream);
         for (auto* output : outputs) { if (output->xdg) zxdg_output_v1_destroy(output->xdg); if (output->native) wl_output_destroy(output->native); delete output; }
         if (screencast) zkde_screencast_unstable_v1_destroy(screencast);
         if (manager) zxdg_output_manager_v1_destroy(manager);
@@ -145,7 +145,9 @@ void KdeScreencast::streamRegion(const QRect& logical, Done done) {
 }
 
 void KdeScreencast::close() {
-    if (d_->stream) { zkde_screencast_stream_unstable_v1_close(d_->stream); zkde_screencast_stream_unstable_v1_destroy(d_->stream); d_->stream = nullptr; if (d_->display) wl_display_flush(d_->display); debugLog("kde screencast: stream closed"); }
+    // `close` is the protocol's destructor request: it ends the stream and frees
+    // the proxy, so the proxy must not be destroyed a second time.
+    if (d_->stream) { zkde_screencast_stream_unstable_v1_close(d_->stream); d_->stream = nullptr; if (d_->display) wl_display_flush(d_->display); debugLog("kde screencast: stream closed"); }
     if (auto done = std::exchange(d_->done, {})) done({"cancelled", "Screen cast cancelled", {}}, {});
 }
 }

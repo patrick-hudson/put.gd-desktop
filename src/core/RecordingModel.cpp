@@ -88,6 +88,8 @@ Error checkTransition(const QString& state, const QString& command) {
         {"resume", {"paused"}},
         {"stop", {"recording", "paused"}},
         {"cancel", {"preparing", "ready", "starting", "recording", "paused", "stopping", "reviewing", "exporting"}},
+        // Completes an open region selection with a rectangle, as a drag would.
+        {"select", {"preparing"}},
         {"edit", {"reviewing"}},
         {"preview", {"reviewing"}},
         {"saveCopy", {"reviewing"}},
