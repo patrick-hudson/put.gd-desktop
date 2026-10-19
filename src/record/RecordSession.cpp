@@ -457,10 +457,11 @@ void RecordSession::finishPrepare(Reply reply) {
 void RecordSession::start(Reply reply) {
     if (starting_) { reply({"recording_state", "Recording is already starting", {}}, {}); return; }
     if (pipeline_.running() || recorded_) { reply({"recording_state", "The session already recorded", {}}, {}); return; }
-    if (!bar_ || barHidden_ || !bar_->handleWhileRecording() || !bar_->isVisible()) { begin(std::move(reply)); return; }
-    // The ready bar sits inside the area: shrink it to its handle and give the
-    // X server and any compositor a moment to repaint, so the first frame
-    // never shows the full bar.
+    if (!bar_ || !bar_->handleWhileRecording()) { begin(std::move(reply)); return; }
+    // The ready bar sits inside the area: shrink it to its handle (a hidden bar
+    // stays hidden) and give the X server or compositor a moment to repaint, so
+    // the first frame never shows the full bar. KWin applies even a hide from
+    // just before Record a frame later.
     starting_ = true;
     bar_->setState("recording");
     QPointer<RecordSession> guard(this);

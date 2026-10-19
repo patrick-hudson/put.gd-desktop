@@ -208,9 +208,10 @@ its screen edge.
 When nothing outside fits (a full single monitor, or a `desktop` target) the
 ready bar sits in the rectangle's bottom-right corner, where it is not yet
 recorded, and from Record on it collapses to a **handle**: the state dot and
-Stop (Resume while paused), about 90×30 px, 10 px in from the corner of the
-monitor. Record shrinks it first and starts capture 150 ms later, so the first
-frame never shows the full bar. The handle is in the clip; `overlayPlacement`
+Stop (Resume while paused), 88×35 px (168×35 with Resume), 10 px in from
+the corner of the monitor. Record shrinks it first, or applies a hide from
+`recording.overlay`, and starts capture 150 ms later, so the first frame never
+shows the full bar. The handle is in the clip; `overlayPlacement`
 is `handle` and `overlayExcluded` false. For a clip without it, hide the bar
 with `recording.overlay {visible: false}` (CLI `recording.overlay`, MCP
 `set_recording_overlay`), which keeps it hidden through state changes until
