@@ -340,6 +340,48 @@ Input uses QMP `input-send-event` objects. Query output capabilities are stored 
 exports only whitelisted package/kernel versions and production sanitized diagnostics.
 Private app/QEMU logs stay private; review them before including any diagnostic bundle.
 
+## Multi-head guests
+
+A guest can have up to four virtual monitors. Set `display_heads` (1-4) in a profile, or pass
+`--heads N` to `launch`. `--layout` (or a profile `head_layout` list) gives each head's size and
+place in head order, as `WxH+X+Y` entries that may use negative origins and gaps:
+
+```sh
+python3 tools/lab/lab.py launch --profile cinnamon-x11 --golden GOLDEN --run "$lab_run" \
+  --bootstrap-key KEY --known-hosts KNOWN_HOSTS --vnc-display 60 \
+  --layout 1920x1080+0+0,1280x1024-1280+0
+python3 tools/lab/lab.py layout --run "$lab_run"
+```
+
+- **QEMU:** the profile's `virtio-vga` (or `virtio-gpu-pci`) device gets `max_outputs=N`
+  and id `video0`. Each head has its own loopback VNC listener on consecutive displays:
+  `--vnc-display 60` with three heads listens on 5960, 5961 and 5962. A single-head launch
+  keeps its exact previous command line.
+- **Connected heads:** virtio-gpu reports only head 0 as connected until a display client
+  sends size information for a head. Right after QEMU starts, `launch` sends each head an RFB
+  SetDesktopSize request (the layout's size, or 1280x800), so the guest boots with N connected
+  heads and that size as each head's preferred mode. Without it a second output stays off, as
+  #108 found, and `xrandr --setmonitor` splits of one output are not a substitute.
+- **Run metadata:** `state.json` and the `launch` result list every head's port under
+  `heads`, plus `head_layout` and the QEMU answer to each size request.
+- **Layout and verification:** `layout --run RUN [--layout SPEC]` re-sends the head sizes,
+  arranges the outputs in the native session and verifies them. It uses `xrandr` on X11,
+  `kscreen-doctor` on Plasma and Mutter's DisplayConfig D-Bus API on GNOME, with head N on
+  connector `Virtual-(N+1)` and head 0 as the primary output. It passes only when the guest
+  reports exactly N enabled outputs in the requested arrangement, each X11 RandR monitor is
+  its own output, and each head's QMP `screendump` has the head's size. Results go to
+  `layout.json` in the run directory.
+- **Origins:** the X11 root window and Mutter's layout always start at 0,0, so there a
+  negative origin becomes the same arrangement shifted, with head 0 still primary (for
+  example a monitor left of the primary). KWin keeps the requested coordinates. Mutter also
+  rejects gaps between monitors; X11 and KWin accept them.
+- **Input per head:** each head has its own `usb-tablet` bound to that head's console, with
+  serial `putgd-headN`, so a VNC client on head N sends head-relative coordinates. On X11,
+  `layout` maps each tablet to its output with `xinput map-to-output`. `input --run RUN
+  --head N 'JSON_EVENTS'` sends QMP input through head N's tablet. QMP input without
+  `--head` still goes to the unbound tablet, which spans the whole desktop.
+- **Screenshots:** `screenshot --run RUN --head N` saves head N's frame.
+
 ## Retire completed overlays
 
 Run lifecycle commands on the actual QEMU host. A sandbox with a filtered process
