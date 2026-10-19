@@ -117,14 +117,15 @@ configuration and data folders in use with any earlier layout left behind
 configuration separately to diagnose a settings error.
 
 `diagnostics.result.build` is the compiled build identity, and
-`diagnostics.result.release` is the GitHub page the main window's rail links its
+`diagnostics.result.release` is the GitHub release the main window's rail links its
 version to: `version` (the full `build.version`), `kind` and `url`. Stable, candidate
 and nightly versions (`stable`, `candidate`, `nightly`) give
 `https://github.com/patrick-hudson/put.gd-desktop/releases/tag/vVERSION`, the tag
-`tools/releases` cuts. A clean development build gives its source commit (`commit`).
-Dirty or unknown builds give `none` and an empty `url`. The mapping reads only the
-compiled identity and never the network, so a candidate's link opens only after its
-draft release is published.
+`tools/releases` cuts; the build system gives those versions only to clean builds of
+that exact tag. Every other build, including local and CI development builds, gives
+`none` and an empty `url`, and the rail shows its version as plain text. The mapping
+reads only the compiled identity and never the network, so a candidate's link opens
+only after its draft release is published.
 
 `diagnostics.result.memory` contains `allocatorReclamationSupported`,
 `allocatorReclamationPending`, `allocatorReclamationCount` and

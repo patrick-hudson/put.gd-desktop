@@ -520,11 +520,11 @@ private slots:
   auto apply=[&](const QString& version,bool dirty){auto injected=build;injected["version"]=version;injected["dirty"]=dirty;injected["gitCommit"]="528fe444b0cb0123456789abcdef0123456789ab";auto data=snapshot;data["build"]=injected;fixture.session.applySnapshot(data);};
   apply("0.1.1-nightly.430",false);QTRY_VERIFY(link->isVisible());QVERIFY(!label->isVisible());QCOMPARE(link->text(),QString("0.1.1-nightly.430"));QCOMPARE(link->accessibleName(),QString("put.gd version 0.1.1-nightly.430"));QVERIFY(link->focusPolicy()&Qt::TabFocus);
   link->setFocus();QTest::keyClick(link,Qt::Key_Space);QTRY_COMPARE(openedUrls_.size(),1);QCOMPARE(openedUrls_.first(),QUrl("https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v0.1.1-nightly.430"));
-  const QString clean="0.1.1-dev.430+g528fe444b0cb";apply(clean,false);QTRY_COMPARE(link->text(),clean);QVERIFY(link->isVisible());QVERIFY2(link->sizeHint().width()<=rail->contentsRect().width()-28,"A clean development version fits on one line");
-  link->click();QTRY_COMPARE(openedUrls_.size(),2);QCOMPARE(openedUrls_.last(),QUrl("https://github.com/patrick-hudson/put.gd-desktop/commit/528fe444b0cb0123456789abcdef0123456789ab"));
+  // A development build has no GitHub release, even when its commit is pushed: plain text.
+  const QString clean="0.1.1-dev.430+g528fe444b0cb";apply(clean,false);QTRY_VERIFY(label->isVisible());QVERIFY(!link->isVisible());QCOMPARE(label->text().remove(QChar(0x200B)),clean);QVERIFY2(label->heightForWidth(label->width())<=label->fontMetrics().lineSpacing()+2,"A clean development version fits on one line");
   // Dirty development builds have no public page: the full string stays readable, unlinked, wrapping after "+" if needed.
   const QString dirty="0.1.1-dev.430+g528fe444b0cb.dirty";apply(dirty,true);QTRY_VERIFY(label->isVisible());QVERIFY(!link->isVisible());QCOMPARE(label->text().remove(QChar(0x200B)),dirty);QCOMPARE(label->accessibleName(),"put.gd version "+dirty);
-  QVERIFY2(label->width()<=rail->contentsRect().width()-28&&label->height()>=label->heightForWidth(label->width()),"The longest development version fits in the rail");QCOMPARE(openedUrls_.size(),2);
+  QVERIFY2(label->width()<=rail->contentsRect().width()-28&&label->height()>=label->heightForWidth(label->width()),"The longest development version fits in the rail");QCOMPARE(openedUrls_.size(),1);
  }
 };
 QTEST_MAIN(SettingsGui)
