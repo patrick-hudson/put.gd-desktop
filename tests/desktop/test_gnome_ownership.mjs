@@ -99,6 +99,41 @@ await helper.extension._prepare(afterExit, 'window', resident);
 assert.equal(helper.extension._requests.get(afterExit).window.get_pid(), helperPid);
 print('PASS helper exit clears exclusion');
 
+// The Edit & upload editor (`putgd-ui --edit-image`) never registers through
+// SetUiProcess: the resident started it, so its parent PID identifies it.
+const editorPid = 2500;
+const parents = new Map([[helperPid, residentPid], [editorPid, residentPid], [3000, 1]]);
+GLib.file_get_contents = path => {
+    const pid = Number(path.split('/')[2]);
+    if (!parents.has(pid))
+        throw new Error('No such process');
+    return [true, new TextEncoder().encode(`${pid} (putgd-ui (edit)) S ${parents.get(pid)} 1 1 0`)];
+};
+for (const registered of [helperPid, 0]) {
+    const editor = fixture();
+    assert.deepEqual(await register(editor.extension, registered), {});
+    context.global.display.focus_window = focused(editorPid);
+    await assert.rejects(editor.extension._prepare(id(), 'window', resident), e => e.bridgeCode === 'capture_target');
+    assert.equal(editor.layouts(), 0);
+}
+print('PASS resident-started editor PID rejection before layout, with and without a views helper');
+{
+    const views = fixture();
+    assert.deepEqual(await register(views.extension, helperPid), {});
+    context.global.display.focus_window = focused(helperPid);
+    await assert.rejects(views.extension._prepare(id(), 'window', resident), e => e.bridgeCode === 'capture_target');
+    const outside = id();
+    context.global.display.focus_window = focused(3000);
+    await views.extension._prepare(outside, 'window', resident);
+    assert.equal(views.extension._requests.get(outside).window.get_pid(), 3000);
+    const vanished = id();
+    context.global.display.focus_window = focused(3999);
+    await views.extension._prepare(vanished, 'window', resident);
+    assert.equal(views.extension._requests.get(vanished).window.get_pid(), 3999);
+}
+delete GLib.file_get_contents;
+print('PASS views helper still refused; external and unreadable processes are captured');
+
 const external = focused(3000);
 context.global.display.focus_window = external;
 let releaseLayout;

@@ -68,9 +68,10 @@ The screen recorder `putgd-record` links a pinned upstream FFmpeg (`ffmpeg` in
 `tools.lock.json`, 7.1.5) that `tools/releases/provision-appimage.py` builds into
 the same dependency prefix with FFmpeg's own `configure`, using exactly the
 options in `media.json` (`--enable-gpl` with libx264 and libx265, nothing
-non-free, no programs, only the demuxer, decoders, encoders, muxers and
-filters the export uses). It needs `nasm libva-dev libvpx-dev libwebp-dev
-libopus-dev libffmpeg-nvenc-dev libx264-dev libx265-dev` from Ubuntu 24.04. The
+non-free, no programs, only the demuxers, decoders, encoders, muxers and
+filters the export and the lab diagnostics use). It needs `nasm libva-dev
+libvpx-dev libwebp-dev libopus-dev libffmpeg-nvenc-dev libx264-dev libx265-dev`
+from Ubuntu 24.04. The
 GStreamer plugins come from the builder's own `gstreamer1.0-plugins-base`,
 `-good`, `-bad`, `-ugly` (`x264enc`), `gstreamer1.0-pipewire`,
 `gstreamer1.0-pulseaudio` and `gstreamer1.0-vaapi` packages. The FFmpeg source
@@ -161,8 +162,20 @@ GNOME 50 Wayland and the Kubuntu Plasma X11 control:
 - every clip scored far above a frozen-pattern control in MP4, WebM, GIF and WebP.
 
 The image's own `putgd-record` diagnostics (`--motion`, `--preview`,
-`--av-sync`, `--av-marker`) read only its Matroska working clips, so score saved
-copies with a distro build (issue #92).
+`--av-sync`, `--av-marker`) read its working clips and saved MP4 (H.264), WebM
+and GIF copies; run them from the extracted image with `APPDIR` set
+([recording](../../docs/recording.md), "Lab diagnostics"). H.265 MP4 and WebP
+copies still need a distro build (and Pillow for WebP motion). The components
+they need are the `mov` and `gif` demuxers, the Opus, GIF, MJPEG and PCM
+decoders, libvpx's VP9 decoder through FFmpeg's `libvpx_vp9` wrapper, and the
+MJPEG and PCM encoders. They added 303,104 bytes to the FFmpeg libraries'
+SquashFS (zstd, 16 KiB blocks) and 7 s to FFmpeg's build at `-j3`; FFmpeg's own
+VP9 decoder would have added 1.14 MiB, and its HEVC decoder another 0.34 MiB.
+After assembly, `build-appimage.sh` extracts the image and runs
+`tools/releases/appimage_diagnostics.py`, which fails the build unless the
+helper's marker clip and its MP4, WebM and GIF exports each pass `--motion`
+and `--preview`, and the ones with sound `--av-sync` (written to
+`appimage-diagnostics.json` next to the receipt).
 
 The post-deployment audit runs the relocated `putgd-record --capabilities`
 with `APPDIR` set and no display. It fails unless GStreamer initialises, every

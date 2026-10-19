@@ -34,6 +34,16 @@ python3 tools/releases/portable_appimage.py --stage "$stage" --output-dir "$PWD/
   --license-source build/dependencies/appimage/qtkeychain \
   --license-source build/dependencies/appimage/layershell \
   --license-source build/dependencies/appimage/ffmpeg
+# The image's own putgd-record must run the lab diagnostics (docs/recording.md)
+# on every export format: headless, on the extracted image, nothing captured.
+images=("$PWD"/build/appimage-output/*.AppImage)
+if [ "${#images[@]}" -ne 1 ] || [ ! -f "${images[0]}" ]; then echo 'Expected one built AppImage' >&2; exit 1; fi
+diagnostics="$PWD/build/appimage-diagnostics"
+mkdir "$diagnostics"
+(cd "$diagnostics" && "${images[0]}" --appimage-extract > /dev/null)
+python3 tools/releases/appimage_diagnostics.py --appdir "$diagnostics/squashfs-root" \
+  --output build/appimage-output/appimage-diagnostics.json
+rm -rf "$diagnostics"
 # The image is a GPL-2.0-or-later combined work (bundled x264/x265 and a GPL
 # FFmpeg); its corresponding source is a release asset of its own.
 python3 tools/releases/appimage_media_sources.py --receipt build/appimage-output/appimage-build.json \
