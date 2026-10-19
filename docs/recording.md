@@ -412,19 +412,19 @@ and the H.264 decoder opens. The results are `gstreamer.usableH264Encoders`
 with `gstreamer.encoderFailures`, `exportEncoders` (openable ones only, which
 also decide `formats` and `codecs`) with `ffmpeg.encoderFailures`, and
 `ffmpeg.h264Decoder {name, usable, failure}`. Without a usable encoder or
-decoder the reason is `live_encoder_missing` (none installed),
+decoder the reason is `live_encoder_missing` (none registered),
 `h264_encoder_unusable` (installed, none works) or `h264_decoder_unusable`,
 and the probe adds `message` and a distribution-specific `hint`.
 `recording.prepare` then refuses with `recording_unavailable`, whose message
-is the two together and whose details carry `reason` and `hint`; the tray and
-the dashboard show that message as the failure notification. The checks add
+is the two together and whose details carry `reason` and `hint`; the dashboard
+shows that message in a warning dialog and the tray as its failure notification. The checks add
 a few tens of milliseconds to a probe; a fresh GStreamer registry costs more
 than all of them.
 
 | Package | Live H.264, in preference order | Export H.264 | Setup |
 | --- | --- | --- | --- |
 | DEB (Ubuntu 24.04 / Mint 22.3, Ubuntu 26.04 / Kubuntu) | `vah264lpenc`/`vah264enc` (plugins-bad, or plugins-extra on 26.04), `vaapih264enc` (Recommends `gstreamer1.0-vaapi`), `x264enc` (Recommends `gstreamer1.0-plugins-ugly`), `openh264enc` (plugins-bad, a Depends) | `h264_nvenc`, `h264_vaapi`, `libx264`, `libopenh264` | none: plugins-bad always brings `openh264enc` and `voaacenc` |
-| RPM (Fedora 44) | `vah264*enc` (stock Intel and AMD drivers have no H.264 encode; RPM Fusion's do), `openh264enc` (Recommends `gstreamer1-plugin-openh264`) | `h264_nvenc`, `h264_vaapi`, `libopenh264` | Fedora's `libopenh264` is the `noopenh264` placeholder until Cisco's `openh264` replaces it: `sudo dnf install openh264 gstreamer1-plugin-openh264`. The RPM recommends both, so a default `dnf install` brings them when the `fedora-cisco-openh264` repository is on (Fedora's default); if it was turned off, run `sudo dnf config-manager setopt fedora-cisco-openh264.enabled=1` first |
+| RPM (Fedora 44) | `vah264*enc` (stock Intel and AMD drivers have no H.264 encode; RPM Fusion's do), `openh264enc` (Recommends `gstreamer1-plugin-openh264`) | `h264_nvenc`, `h264_vaapi`, `libopenh264` | Fedora Workstation ships `libopenh264` as the `noopenh264` placeholder until Cisco's `openh264` replaces it: `sudo dnf install openh264 gstreamer1-plugin-openh264`. The RPM recommends both, so a default `dnf install` brings them when the `fedora-cisco-openh264` repository is on (Fedora's default); if it was turned off, run `sudo dnf config-manager setopt fedora-cisco-openh264.enabled=1` first |
 | AppImage | `vah264lpenc`/`vah264enc`, `vaapih264enc` through the host's VA-API driver | `h264_nvenc`, `h264_vaapi` through the host's NVIDIA or VA-API driver | a GPU driver that encodes H.264 (Intel `iHD` with encode, NVIDIA's driver, or Mesa with H.264 enabled); otherwise the DEB or RPM |
 
 On Fedora with the placeholder the probe reports `h264_encoder_unusable`

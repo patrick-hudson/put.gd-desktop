@@ -9,6 +9,33 @@ missing profiles, and run physical-hardware release gates on physical machines.
 This requirement is separate from the historical results below; missing new
 rows and current-candidate evidence remain gates.
 
+## Screen recording packages — 2026-10-18
+
+The [recording packaging receipt](evidence/2026-10-18-recording-packaging.md)
+records pull request #75 (`9462fe7`, `8385daf` and later documentation commits):
+
+- Pull request CI (contracts, Linux suites, Windows build, three native
+  packages, the AppImage with its new recording audit) on `8385daf`; recording
+  and release contracts on the workstation; the full dev suite is in the pull
+  request.
+- Installed packages on physical desktops: the Ubuntu 26.04 DEB on Kubuntu
+  Plasma/X11 and the Fedora 44 RPM on GNOME/Wayland (Mutter and the portal) each
+  recorded, reviewed, exported MP4, WebM, GIF and WebP and uploaded to a local
+  destination; every clip carries the moving pattern. The Fedora `noopenh264`
+  placeholder produced the actionable dialog on the dashboard. Stock Fedora
+  containers pull Cisco's OpenH264 through the RPM's Recommends.
+- The CI AppImage on Kubuntu Plasma/X11 and Debian Plasma/Wayland (KWin's
+  screencast protocol through AppRun's temporary entry) did the same with its
+  bundled runtime; on stock Fedora it refused with its own hint. It is
+  10.5 MB larger, and its idle family is within 0.5 MiB of nightly 317.
+
+Blocked or not run: the Debian-built DEB's recording flow (a pre-existing
+`Settings::validate` crash on Debian; only capabilities and KWin authorization
+ran), the Ubuntu 24.04 DEB on Mint, the Ubuntu 26.04 Wayland VMs, AMD/NVIDIA
+GPU encoding from the AppImage, A/V sync, MCP end to end and browser playback.
+The AppImage encoder policy (no bundled software H.264 encoder) awaits
+Patrick's decision.
+
 ## Single-name configuration and data folders — 2026-10-18
 
 The [issue 56 receipt](evidence/2026-10-18-issue56-storage-locations.md) records
