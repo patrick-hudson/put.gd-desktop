@@ -18,6 +18,8 @@ from audit_proton import audit_proton
 ROOT = Path(__file__).resolve().parents[2]
 LOCK = ROOT / "packaging/appimage/tools.lock.json"
 MEDIA = ROOT / "packaging/appimage/media.json"
+# AppRun names this icon in the host entries it writes for the windows' app IDs.
+WINDOW_ICON = "usr/share/icons/hicolor/scalable/apps/putgd.svg"
 # The pinned FFmpeg build (media.json) installs these; their notices come from its source.
 FFMPEG_LIBRARIES = ("libavcodec", "libavformat", "libavfilter", "libavutil", "libswscale", "libswresample")
 
@@ -418,6 +420,16 @@ def audit_media(appdir: Path, media: dict, probe: str) -> dict:
             "hostLibraries": media["hostLibraries"], "hostLibrariesBundled": False}
 
 
+def audit_window_icon(appdir: Path) -> str:
+    """Reject an image without the icon AppRun's Wayland window entries name."""
+    icon = appdir / WINDOW_ICON
+    if not icon.is_file():
+        raise ValueError("AppRun's window icon is missing from the image: " + WINDOW_ICON)
+    if WINDOW_ICON not in (ROOT / "packaging/appimage/AppRun").read_text():
+        raise ValueError("AppRun does not name the audited window icon")
+    return WINDOW_ICON
+
+
 def audit_deployed(appdir: Path, inventory: dict) -> dict:
     """Check actual relocated helpers and dynamic dependencies without SDK paths."""
     environment = dict(os.environ, LD_LIBRARY_PATH=str(appdir / "usr/lib") + ":" +
@@ -579,6 +591,7 @@ def main() -> int:
     deployed = audit_deployed(appdir, inventory)
     deployed["qtPlatforms"] = audit_platforms(appdir, inventory)
     deployed["qtWayland"] = audit_wayland(appdir, inventory)
+    deployed["windowIcon"] = audit_window_icon(appdir)
     proton = audit_proton(appdir, required=args.require_proton,
                           expected_manifest=inventory.get("proton", {}).get("manifest"))
     if proton:
