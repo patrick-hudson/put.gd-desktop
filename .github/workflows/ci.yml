@@ -109,6 +109,7 @@ jobs:
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           echo "CCACHE_DIR=$GITHUB_WORKSPACE/build/ccache" >> "$GITHUB_ENV"
           echo "CCACHE_BASEDIR=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+          echo "CCACHE_MAXSIZE=1G" >> "$GITHUB_ENV"
       - name: Identify exact dependency cache environment
         id: sdk-key
         run: python3 tools/ci/sdk_cache.py key --contract tools/ci/provision-linux-sdk.sh
@@ -147,15 +148,22 @@ jobs:
       - name: Build
         id: build
         run: |
+          echo "CCACHE_BUILD_START=$(date +%s)" >> "$GITHUB_ENV"
           ccache --zero-stats
           cmake --preset dev -DPUTGD_BUNDLE_PROTON=ON \
             -DPUTGD_AWS_SOURCE_DIR="$PWD/build/sdk/share/putgd-ci/aws-sdk-source-licenses" \
             -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
           cmake --build --preset dev --parallel "$(nproc)"
           ccache --show-stats
+      - name: Keep only this build's compiler cache entries
+        # Entries this build neither hit nor stored would only grow the saved cache.
+        run: |
+          ccache --evict-older-than "$(( $(date +%s) - CCACHE_BUILD_START + 60 ))s"
+          ccache --show-stats
       - name: Save compiler cache
-        # Pull requests restore the nightly branch cache; only branch runs save one.
-        if: always() && steps.build.outcome == 'success' && github.event_name != 'pull_request'
+        # Only nightly pushes save; pull requests and other runs restore the newest
+        # nightly cache. The prune-caches job deletes the entry this one supersedes.
+        if: github.event_name == 'push' && github.ref == 'refs/heads/nightly'
         uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
         with:
           path: build/ccache
@@ -224,6 +232,7 @@ jobs:
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           echo "CCACHE_DIR=$GITHUB_WORKSPACE/build/ccache" >> "$GITHUB_ENV"
           echo "CCACHE_BASEDIR=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+          echo "CCACHE_MAXSIZE=400M" >> "$GITHUB_ENV"
       - name: Identify exact dependency cache environment
         id: sdk-key
         run: python3 tools/ci/sdk_cache.py key --contract tools/ci/provision-linux-sdk.sh
@@ -284,15 +293,22 @@ jobs:
       - name: Build
         id: build
         run: |
+          echo "CCACHE_BUILD_START=$(date +%s)" >> "$GITHUB_ENV"
           ccache --zero-stats
           cmake --preset clang-asan \
             -DPUTGD_AWS_SOURCE_DIR="$PWD/build/sdk/share/putgd-ci/aws-sdk-source-licenses" \
             -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
           cmake --build --preset clang-asan --parallel "$(nproc)"
           ccache --show-stats
+      - name: Keep only this build's compiler cache entries
+        # Entries this build neither hit nor stored would only grow the saved cache.
+        run: |
+          ccache --evict-older-than "$(( $(date +%s) - CCACHE_BUILD_START + 60 ))s"
+          ccache --show-stats
       - name: Save compiler cache
-        # Pull requests restore the nightly branch cache; only branch runs save one.
-        if: always() && steps.build.outcome == 'success' && github.event_name != 'pull_request'
+        # Only nightly pushes save; pull requests and other runs restore the newest
+        # nightly cache. The prune-caches job deletes the entry this one supersedes.
+        if: github.event_name == 'push' && github.ref == 'refs/heads/nightly'
         uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
         with:
           path: build/ccache
@@ -319,6 +335,26 @@ jobs:
             build/qt-asan/BUILD
           if-no-files-found: warn
           retention-days: 30
+
+  caches:
+    # Deletes the caches this push superseded and those of closed pull requests and
+    # deleted branches (docs/ci.md, "Cache budget"). Not part of the `CI` summary.
+    name: prune caches
+    needs: [linux, sanitizers]
+    if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/nightly' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: write  # delete caches
+      contents: read
+      pull-requests: read  # list open pull requests
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Delete superseded caches
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tools/ci/cache_prune.py --repo "$GITHUB_REPOSITORY"
 
   portable:
     name: portable (${{ matrix.os }})

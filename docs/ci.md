@@ -6,7 +6,7 @@ through the Actions API.
 
 | Workflow | Runs on | Does |
 | --- | --- | --- |
-| `ci.yml` | every pull request, pushes to `nightly`, manual runs; called by nightly and release | contracts, Linux tests, clang ASan/UBSan core tests, Windows compile, packages |
+| `ci.yml` | every pull request, pushes to `nightly`, manual runs; called by nightly and release | contracts, Linux tests, clang ASan/UBSan core tests, Windows compile, packages; on `nightly` pushes, cache pruning |
 | `package.yml` | called by `ci.yml` | four native packages, AppImage, and with a tag the collected `release-assets` |
 | `nightly.yml` | 05:23 UTC daily and manual | skip unchanged source, or tag, test, package and publish a nightly |
 | `release.yml` | pushes to `main` and manual | cut a candidate (or stable on request), test, package and stage a draft |
@@ -145,10 +145,11 @@ because `download.qt.io` didn't resolve once; the recipe now retries downloads.
   needs no clone. Package builders still clone and verify the pinned SDK source
   and all submodules every run, because packages ship those licenses and the
   source export rebuilds against that tree.
-- **ccache for the Linux test builds.** Compiler outputs are cached per distro.
-  Branch runs save a cache; pull requests restore the newest `nightly` cache and
-  do not save. The build-identity source changes every commit and is always
-  recompiled. Package builders compile from scratch.
+- **ccache for the Linux test and sanitizer builds.** Compiler outputs are cached
+  per job. Only pushes to `nightly` save one, trimmed to the entries that build
+  used; every other run restores the newest `nightly` cache and does not save.
+  See [cache budget](#cache-budget). The build-identity source changes every
+  commit and is always recompiled. Package builders compile from scratch.
 - **Parallel builds.** Application and SDK builds use every runner CPU.
 - **Parallel tests, longest first.** CTest runs eight tests at once and restores
   the previous run's durations, so the longest tests start first. See
@@ -158,6 +159,57 @@ because `download.qt.io` didn't resolve once; the recipe now retries downloads.
 Cache hits are dependency reuse, never application acceptance evidence.
 Application binaries, build identities, test results, credentials and VM runs
 are outside every cache.
+
+## Cache budget
+
+The repository's Actions cache limit is 10 GB; past it, GitHub evicts the least
+recently used entries, which can be a warm QtCore or SDK prefix. On 2026-10-19 the
+cache held 9.78 GB in 101 entries and passed the limit (10.62 GB) when #107's
+`nightly` push saved. 9.0 GB of it was 22 `ccache-linux-*` entries of 350 to 435 MB:
+every `nightly` push, including runs cancelled by the next push, saved a new
+`ccache-linux-<distro>-<run>-<attempt>` entry, although a prefix restore only ever
+reads the newest one on a ref. Three rules keep the total bounded:
+
+- **One saver per compiler cache.** Only a push to `nightly` saves ccache; pull
+  requests, manual runs and the nightly and release callers restore the newest
+  `nightly` entry. A cancelled run doesn't save.
+- **Trimmed and capped.** The build step records its start time, and afterwards
+  `ccache --evict-older-than` drops every entry the build neither hit nor stored,
+  so the saved cache is one build's working set, not every object since the first
+  save. A ccache hit refreshes the entry's time, so the working set survives.
+  `CCACHE_MAXSIZE` caps each job in case the working set grows.
+- **Pruning after every `nightly` push.** The `prune caches` job in `ci.yml` runs
+  `tools/ci/cache_prune.py` after the Linux and sanitizer jobs, with the run's
+  `GITHUB_TOKEN` (`actions: write`, `pull-requests: read`; the nightly and release
+  callers grant them, and the job runs only on `nightly` pushes). It deletes, by id:
+  every entry of a rolling family (`ccache-*` and `ctest-cost-*` by
+  `<run>-<attempt>` suffix, `qt-asan-core-<distro>-`) older than the newest on the
+  same ref, and every cache of a closed pull request or deleted branch. Merging a
+  pull request pushes to `nightly`, so its caches go with the next run. Exact-key
+  caches (SDK prefixes, the Qt installer's) are left to GitHub's seven-day idle
+  eviction. `--dry-run` lists the deletions without making them. The job is not
+  in the required `CI` summary.
+
+Budget per job, measured 2026-10-19 (compressed archive sizes; the ceiling is
+`CCACHE_MAXSIZE`, which bounds what a working set can grow to):
+
+| Cache | Saved by | Entries kept | Size | Ceiling |
+| --- | --- | ---: | ---: | ---: |
+| `ccache-linux-24.04-*` | `nightly` push | 1 | 405 MB | 1 GB |
+| `ccache-linux-26.04-*` | `nightly` push | 1 | 435 MB | 1 GB |
+| `ccache-clang-asan-26.04-*` | `nightly` push | 1 | 102 MB | 400 MB |
+| `qt-asan-core-26.04-*` | first miss on a ref | 1 per ref | 31 MB | recipe-bound |
+| `install-qt-action-*` (Windows, AppImage) | first miss | 1 each | 650 MB | Qt version |
+| `putgd-sdk-v1-*` (9 environments) | first miss on a ref | 1 per environment | about 60 MB | dependency lock |
+| `ctest-cost-linux-*` | every non-fork run | 1 per ref | under 2 kB | |
+
+Steady state after a `nightly` push is about 1.7 GB (the ccache sizes above
+still include objects from earlier commits, so the trimmed caches will be
+somewhat smaller). Between a push's saves and its prune job, three superseded
+ccache entries add about 0.94 GB. With every ccache at its ceiling the steady
+state would be 3.1 GB and the peak 5.5 GB. Open pull requests add only small
+SDK, QtCore and CTest entries until they close. Hit rates don't change: runs
+already restored only the newest `nightly` entry, and that is the one kept.
 
 ## Reproduce and investigate
 

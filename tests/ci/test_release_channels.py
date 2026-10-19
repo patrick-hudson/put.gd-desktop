@@ -20,6 +20,17 @@ def job(text, name):
     return match[1]
 
 
+def assertCompilerCacheIsTrimmedAndSavedOnlyByNightlyPushes(test, text):
+    test.assertRegex(text, r'echo "CCACHE_MAXSIZE=\d+[MG]" >> "\$GITHUB_ENV"')
+    build, rest = text.split('        id: build\n', 1)[1].split("- name: Keep only this build's compiler cache entries", 1)
+    test.assertIn('echo "CCACHE_BUILD_START=$(date +%s)" >> "$GITHUB_ENV"', build)
+    trim, save = rest.split('- name: Save compiler cache', 1)
+    test.assertIn('ccache --evict-older-than "$(( $(date +%s) - CCACHE_BUILD_START + 60 ))s"', trim)
+    save = save.split('\n      - ', 1)[0]
+    test.assertIn("if: github.event_name == 'push' && github.ref == 'refs/heads/nightly'\n", save)
+    test.assertIn('actions/cache/save@', save)
+
+
 class Workflows(unittest.TestCase):
     def test_exactly_four_workflows_and_no_tag_or_cross_workflow_triggers(self):
         self.assertEqual(sorted(path.name for path in WORKFLOWS.glob('*.yml')),
@@ -75,7 +86,7 @@ class Workflows(unittest.TestCase):
             self.assertIn(text, linux)
         self.assertNotIn('--preset release', linux)
         self.assertNotIn('sdk-source.sh', linux)
-        self.assertIn("github.event_name != 'pull_request'", linux.split('Save compiler cache', 1)[1])
+        assertCompilerCacheIsTrimmedAndSavedOnlyByNightlyPushes(self, linux)
 
     def test_sanitizer_job_tests_against_instrumented_qtcore_outside_the_required_summary(self):
         ci = workflow('ci.yml')
@@ -86,7 +97,7 @@ class Workflows(unittest.TestCase):
                      'LD_LIBRARY_PATH="$PWD/build/qt-asan/lib"', 'runuser -u putgd-ci',
                      'python3 tools/ci/ctest_preflight.py --build build/clang-asan'):
             self.assertIn(text, sanitizers)
-        self.assertIn("github.event_name != 'pull_request'", sanitizers.split('Save compiler cache', 1)[1])
+        assertCompilerCacheIsTrimmedAndSavedOnlyByNightlyPushes(self, sanitizers)
         self.assertNotIn('sanitizers', job(ci, 'ci'))
         presets = json.loads((ROOT / 'CMakePresets.json').read_text())
         configure = {preset['name']: preset for preset in presets['configurePresets']}
@@ -98,6 +109,23 @@ class Workflows(unittest.TestCase):
         for name in ('settings_contract', 'operations_contract', 'history_contract',
                      'storage_locations_integration'):
             self.assertRegex(name, test['filter']['include']['name'])
+
+    def test_nightly_pushes_prune_superseded_caches_outside_the_required_summary(self):
+        ci = workflow('ci.yml')
+        prune = job(ci, 'caches')
+        self.assertIn('needs: [linux, sanitizers]', prune)
+        self.assertIn("if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/nightly' }}", prune)
+        self.assertIn('actions: write', prune)
+        self.assertIn('pull-requests: read', prune)
+        self.assertIn('python3 tools/ci/cache_prune.py --repo "$GITHUB_REPOSITORY"', prune)
+        self.assertNotIn('caches', job(ci, 'ci'))
+        # A called workflow's job may not request more than its caller grants.
+        for name in ('nightly.yml', 'release.yml'):
+            caller = job(workflow(name), 'ci')
+            with self.subTest(workflow=name):
+                self.assertIn('actions: write', caller)
+                self.assertIn('pull-requests: read', caller)
+        self.assertEqual(ci.count('actions: write'), 1)
 
     def test_linux_tests_reuse_earlier_durations_per_distribution(self):
         linux = job(workflow('ci.yml'), 'linux')
