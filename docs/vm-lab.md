@@ -433,6 +433,14 @@ with the region scenario, so the resident and the clipboard fixture are live:
 | `tools/lab/mcp_editor_e2e.py EVIDENCE` | Official MCP client through `putgd-mcp` and the target's production `putgd-cli` (a small wrapper running it over pinned SSH): all editor tools, preview image, save copy, submit and cancel. |
 | `tools/lab/guest_reboot.py RUN` | Reboot through the session manager when a session-loaded integration such as the GNOME extension must reload; verifies the boot time changed. |
 
+On the `fedora-gnome-wayland` golden the session manager ignores that reboot
+request and the `lab` account may run only `dnf` through `sudo`. After
+installing the RPM in a run's overlay, `sync` in the guest and reset the
+disposable VM through its QMP socket (`system_reset`); GDM auto-logs `lab`
+in and the new Shell loads `putgd@put.gd` (seen ACTIVE on 2026-10-18), so the
+capture scenarios bind their shortcuts without a new golden. Never reset a
+golden; only a run's own overlay.
+
 `tools/lab/physical.py HOSTCFG.json install DEB|RPM|SCENARIO|script DRIVER` runs the
 same runner and drivers on a physical desktop. `SCENARIO` is any `lab.py run
 --scenario` name, such as `region` or `window`. It swaps the runner's shell,
