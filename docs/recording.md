@@ -82,7 +82,7 @@ All methods go through `putgd-cli` unchanged. `id` is the recording ID.
 | `recording.start` / `pause` / `resume` / `stop` | `{id}` | acknowledged once the backend reached the state; a duplicate of the in-flight command returns the current state, a different one is `recording_busy`; `stop` returns `durationUs` and enters `reviewing` |
 | `recording.cancel` | `{id}` | discards the clip; the operation ends `cancelled` |
 | `recording.inspect` | `{id}` | state, pending command, `selecting`, target, config, canvas, `durationUs`, `retainedUs`, edit, progress (`exportFraction` while exporting), `overlayExcluded`, `overlayPlacement`, `lastExport`, error; an ended session is `recording_unavailable` and its operation holds the outcome |
-| `recording.raise` / `recording.overlay` | `{id}` / `{id, visible}` | overlay control; the recording indicator stays visible |
+| `recording.raise` / `recording.overlay` | `{id}` / `{id, visible}` | overlay control; a hidden bar stays hidden through state changes until `raise` (a full-screen clip without the handle); the recording indicator stays visible |
 | `recording.edit` | `{id, revision, commands[1–100]}` | atomic `setTrim {start, end\|null}`, `resetTrim`, `addMask {mask}`, `updateMask {maskId, mask}`, `removeMask {maskId}` |
 | `recording.preview` | `{id, time, maxEdge? 64–1600}` | one PNG frame (base64 `png`) at clip time with current trim/masks, plus `retained`, `outputTimeUs`, `revision`; returned only to the requesting client |
 | `recording.saveCopy` | `{id, path, overwrite?}` | exports to an absolute path with the format's extension; no upload. Replies once the export starts with `state: exporting`; poll `inspect` until `reviewing`, then `lastExport.status` is `saved` or `failed` |
@@ -189,13 +189,39 @@ the sibling binary reports `recording_helper_missing`.
 `prepare` for a region without a rect shows a translucent drag surface on every
 screen ("Drag to choose the area to record. Esc cancels."); release keeps the
 bounds and nothing records yet. The ready state draws a 3 px white ring with a
-dark hairline just outside the recorded rectangle (never over its pixels) and
-places the control bar below it, above it, or, when neither fits, inside its
-bottom-right corner (`overlayExcluded: false`, also for monitor and desktop
-targets). While recording, four translucent strips dim everything outside the
+dark hairline just outside the recorded rectangle (never over its pixels).
+While recording, four translucent strips dim everything outside the
 rectangle; ring and strips are transparent for input, bypass the window
 manager and stay on top, so the desktop inside and outside stays usable and
 the capture never sees them.
+
+`ximagesrc` records every visible pixel of the area, so the control bar is
+placed where it is not recorded (`src/record/BarPlacement.cpp`, shared with
+the KDE layer-shell path): below the rectangle, else above it (both on the
+monitor holding most of it), else at the top or bottom centre of another
+monitor, so a full-monitor region or a monitor target on a multi-monitor
+desktop gets the bar on another monitor (`overlayPlacement: outside`). The
+decision uses the bar's widest state, and the bar is placed again whenever
+its size changes (ready, recording, paused, stopping), so it never runs past
+its screen edge.
+
+When nothing outside fits (a full single monitor, or a `desktop` target) the
+ready bar sits in the rectangle's bottom-right corner, where it is not yet
+recorded, and from Record on it collapses to a **handle**: the state dot and
+Stop (Resume while paused), 88×35 px (168×35 with Resume), 10 px in from
+the corner of the monitor. Record shrinks it first, or applies a hide from
+`recording.overlay`, and starts capture 150 ms later, so the first frame never
+shows the full bar. The handle is in the clip; `overlayPlacement`
+is `handle` and `overlayExcluded` false. For a clip without it, hide the bar
+with `recording.overlay {visible: false}` (CLI `recording.overlay`, MCP
+`set_recording_overlay`), which keeps it hidden through state changes until
+`recording.raise`, and stop with the recording shortcut, the tray,
+`putgd-cli` or MCP.
+
+The bar can be dragged by its background (not its buttons). A bar placed
+outside the rectangle cannot be dragged into it; a handle can go anywhere on
+its monitor. After a drag the bar keeps its spot, anchored by its right edge,
+when its size changes.
 
 The control bar shows a state dot (green ready, red recording, amber paused),
 a green Record button before capture and a red Stop button during it,
@@ -384,9 +410,11 @@ the **dimming** of everything else while recording or paused and the
 
 - KDE: the ring and the dim strips are input-transparent overlay layer
   surfaces (split per output), and the bar is an overlay layer surface placed
-  below the rectangle, else above it, else at the top of another output, else
-  inside its bottom-right corner. A rectangle's stream contains none of them
-  unless the bar had to sit inside. KWin 6.6 and later also leave every
+  by the X11 rules: below the rectangle, else above it, else at the top or
+  bottom of another output, else inside its bottom-right corner, where it
+  collapses to the handle from Record on, and placed again on its output when
+  its size changes. A rectangle's stream contains none of them unless the
+  bar had to sit inside. KWin 6.6 and later also leave every
   window of the client that requested a `zkde_screencast` stream out of that
   stream, so on those versions the bar is excluded even from monitor
   recordings (`kdeScreencast.hidesRequester`, from the KWin version on
@@ -397,18 +425,27 @@ the **dimming** of everything else while recording or paused and the
   for the bar as non-reactive actors outside the area, and moves the helper's
   bar window (title `put.gd recording controls`, accepted only when its
   process is a direct child of the authenticated resident) below or above
-  the area, onto another monitor, or, failing all, inside the corner.
+  the area, onto another monitor, or, failing all, inside the corner. The
+  extension follows the bar window's size changes and places it again with
+  that first decision, so a widened bar stays on its monitor. A bar left
+  inside makes the resident report `handle` and send the helper
+  `overlay {handle: true}`: from Record on the bar is the dot-and-Stop handle,
+  which the extension keeps in the corner.
   `HideRecordingFrame` removes everything when the clip is under review or
   the session ends; disabling the extension, locking or the resident leaving
   the bus does too. Mutter has no per-window screencast exclusion, so a whole
-  single-monitor recording on GNOME contains the bar.
+  single-monitor recording on GNOME contains the handle (or nothing, after
+  `recording.overlay {visible: false}`).
 - A `window` stream (portal) carries only that window: `overlayExcluded` is
   true and no ring is drawn.
 
-`overlayPlacement` reports where the bar went: `outside`, `inside` (it is in
-the clip), `hidden` (KWin 6.6 leaves it out of its own stream) or
-`compositor` (nobody could place it; it may be in the clip); `overlayExcluded`
-is true only for `outside` and `hidden`.
+`overlayPlacement` reports where the bar went: `outside`, `handle` (no room
+outside: X11, KDE and the GNOME Shell keep it in the area's corner and it
+shrinks to the dot-and-Stop handle while recording, so the handle is in the
+clip), `hidden` (KWin 6.6 leaves it out of its own stream) or `compositor`
+(nobody could place it; it may be in the clip). Releases before #108 also
+reported `inside` for a full bar left in the clip. `overlayExcluded` is true
+only for `outside` and `hidden`.
 
 ## Capture and export engine (X11)
 

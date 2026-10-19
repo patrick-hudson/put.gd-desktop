@@ -386,11 +386,18 @@ private slots:
   QVERIFY(!h.rec("pause",{{"id",id}}).error);QCOMPARE(shell.frames.last()["state"].toString(),QString("paused"));QCOMPARE(shell.hides,0);
   QCOMPARE(h.rec("stop",{{"id",id}}).result["state"].toString(),QString("reviewing"));QCOMPARE(shell.hides,1);
   QVERIFY(!h.rec("cancel",{{"id",id}}).error);QCOMPARE(shell.hides,1);
+  // No room outside (a single monitor): the Shell keeps the bar in the corner and
+  // the helper is told to shrink it to its handle from Record on.
+  shell.bar=QJsonObject{{"placed",true},{"outside",false},{"rect",QJsonArray{1510,1030,400,40}}};
+  const auto full=h.prepareReady({{"target",QJsonObject{{"kind","monitor"}}}});QVERIFY(!full.isEmpty());
+  inspected=h.rec("inspect",{{"id",full}}).result;QVERIFY(!inspected["overlayExcluded"].toBool());QCOMPARE(inspected["overlayPlacement"].toString(),QString("handle"));
+  QVERIFY(h.backend->log.contains("overlay"));QCOMPARE(h.backend->lastControlParams,QJsonObject({{"handle",true}}));
+  QVERIFY(!h.rec("cancel",{{"id",full}}).error);QCOMPARE(shell.hides,2);
   // A bar the Shell could not place (an older extension) stays reported as possibly recorded.
   shell.failFrames=true;
   const auto second=h.prepareReady({{"target",QJsonObject{{"kind","monitor"}}}});QVERIFY(!second.isEmpty());
   inspected=h.rec("inspect",{{"id",second}}).result;QVERIFY(!inspected["overlayExcluded"].toBool());QCOMPARE(inspected["overlayPlacement"].toString(),QString("compositor"));
-  QVERIFY(!h.rec("cancel",{{"id",second}}).error);QCOMPARE(shell.hides,2);
+  QVERIFY(!h.rec("cancel",{{"id",second}}).error);QCOMPARE(shell.hides,3);
  }
  void cancellingAShellSelectionLeavesNoSession(){
   Harness h;QTRY_VERIFY(h.operations->ready());HistoryStore journal(h.operations->databasePath());FakeShell shell;h.operations->recording().setShell(&shell);

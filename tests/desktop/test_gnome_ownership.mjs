@@ -468,6 +468,10 @@ assert.deepEqual(globalThis.barPlacement([100, 600, 640, 470], [400, 40], work),
 assert.deepEqual(globalThis.barPlacement([1700, 100, 200, 200], [400, 40], work), {rect: [1520, 310, 400, 40], outside: true});
 assert.deepEqual(globalThis.barPlacement([0, 0, 1920, 1080], [400, 40], [...work, [1920, 0, 1280, 1024]]), {rect: [2360, 10, 400, 40], outside: true});
 assert.deepEqual(globalThis.barPlacement([0, 0, 1920, 1080], [400, 40], work), {rect: [1510, 1030, 400, 40], outside: false});
+// Issue #108: a monitor stacked below takes the bar, and an inside decision keeps the corner when the bar shrinks.
+assert.deepEqual(globalThis.barPlacement([0, 0, 1920, 1080], [400, 40], [[0, 0, 1920, 1080], [0, 1080, 1920, 1080]]), {rect: [0, 1090, 400, 40], outside: true});
+assert.deepEqual(globalThis.barPlacement([0, 0, 1920, 1040], [90, 30], work, false), {rect: [1820, 1000, 90, 30], outside: false});
+assert.deepEqual(globalThis.barPlacement([0, 32, 1920, 1048], [90, 30], work), {rect: [1820, 1040, 90, 30], outside: false});
 assert.deepEqual(globalThis.subtract([[0, 0, 100, 100]], [20, 30, 50, 40]), [[0, 0, 100, 30], [0, 70, 100, 30], [0, 30, 20, 40], [70, 30, 30, 40]]);
 print('PASS recording bar placement prefers below, above, another monitor, then inside');
 {
@@ -476,10 +480,13 @@ print('PASS recording bar placement prefers below, above, another monitor, then 
     let moved = null, above = false, parent = residentPid;
     // The first move is undone once, as Mutter's initial placement does; the extension re-applies it.
     let hidden = 2, undo = 1;
+    let size = [400, 40], resized = null, disconnected = 0;
     const bar = {get_title: () => 'put.gd recording controls', get_pid: () => helperPid,
-        get_frame_rect: () => ({x: moved ? moved[0] : 700, y: moved ? moved[1] : 400, width: 400, height: 40}),
+        get_frame_rect: () => ({x: moved ? moved[0] : 700, y: moved ? moved[1] : 400, width: size[0], height: size[1]}),
         is_hidden: () => hidden-- > 0, is_above: () => above, make_above() {above = true;},
-        move_frame(_user, x, y) {moved = undo-- > 0 ? [700, 400] : [x, y];}};
+        move_frame(_user, x, y) {moved = undo-- > 0 ? [700, 400] : [x, y];},
+        connect(signal, handler) {assert.equal(signal, 'size-changed'); resized = handler; return 7;},
+        disconnect(id) {disconnected = id;}};
     const settle = async promise => {for (let i = 0; i < 20; i++) {await flush(); tick(50); tick(100);} return promise;};
     context.GLib.file_get_contents = () => [true, new TextEncoder().encode(`${helperPid} (putgd record) S ${parent} 1 1 0`)];
     context.global.get_window_actors = () => [{meta_window: bar}];
@@ -497,6 +504,21 @@ print('PASS recording bar placement prefers below, above, another monitor, then 
     assert.equal(actors.length, 15);
     assert.equal(actors.every(a => a.reactive === false && !overlap([a.x, a.y, a.width, a.height], area) &&
         !overlap([a.x, a.y, a.width, a.height], [600, 670, 400, 40])), true);
+    // Record widens the bar: the Shell places it again from its right edge's monitor, still below the area.
+    size = [700, 40]; resized();
+    assert.deepEqual(moved, [600, 670]);
+    size = [1400, 40]; resized();
+    assert.deepEqual(moved, [520, 670]);
+    assert.equal(context.Main.uiGroup.get_children().slice(before).every(a => !overlap([a.x, a.y, a.width, a.height], [520, 670, 1400, 40])), true);
+    size = [400, 40];
+    // A whole monitor: the bar stays in the corner, and its handle goes to the corner too.
+    const whole = [0, 32, 1920, 1048];
+    const full = state => JSON.stringify({rect: whole, kind: 'monitor', state, pid: helperPid});
+    assert.deepEqual((await settle(bridge(extension, 'ShowRecordingFrameAsync', [full('ready')]))).bar, {placed: true, outside: false, rect: [1510, 1030, 400, 40]});
+    size = [90, 30]; resized();
+    assert.deepEqual(moved, [1820, 1040]);
+    assert.deepEqual((await settle(bridge(extension, 'ShowRecordingFrameAsync', [full('recording')]))).bar, {placed: true, outside: false, rect: [1820, 1040, 90, 30]});
+    size = [400, 40];
     // A bar whose process is not the resident's child is never moved.
     parent = 4321; moved = null;
     const foreign = bridge(extension, 'ShowRecordingFrameAsync', [frame('ready')]);
@@ -506,5 +528,6 @@ print('PASS recording bar placement prefers below, above, another monitor, then 
     assert.equal((await bridge(extension, 'ShowRecordingFrameAsync', [JSON.stringify({rect: area, kind: 'region', state: 'exporting'})])).error.code, 'bridge_protocol');
     assert.deepEqual(await bridge(extension, 'HideRecordingFrameAsync', []), {});
     assert.equal(context.Main.uiGroup.get_children().length, before); assert.equal(timers.size, 0);
-    print('PASS recording frame places only the resident child\'s bar and keeps every actor outside the area');
+    assert.equal(disconnected, 7); assert.equal(extension._barFollow, null);
+    print('PASS recording frame places only the resident child\'s bar, follows its size and keeps every actor outside the area');
 }

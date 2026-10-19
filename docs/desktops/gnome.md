@@ -111,8 +111,10 @@ title `put.gd recording controls`) out of the rectangle with
 another application's window. `HideRecordingFrame` removes the actors; a
 disable, a lock or the resident leaving the bus does the same. Mutter offers
 no per-window screencast exclusion: a recording of a whole monitor with no
-other monitor to hold the bar contains it, which the resident reports as
-`overlayPlacement: inside`. Details are in `docs/recording.md`, "Wayland
+other monitor to hold the bar contains it. The resident then reports
+`overlayPlacement: handle` and has the helper shrink the bar to its dot-and-Stop
+handle from Record on; the extension follows the bar's size changes and keeps
+it in the corner (or, for a bar outside, on its monitor). Details are in `docs/recording.md`, "Wayland
 selection, bounds and bar". The synthetic `gnome_ui_ownership_contract` covers
 these methods; it is not graphical acceptance.
 

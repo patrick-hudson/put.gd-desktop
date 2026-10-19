@@ -355,8 +355,12 @@ void RecordingService::prepared(Error error, const QJsonObject& result) {
             if (s.state != "preparing") return;
             const auto bar = result["bar"].toObject();
             if (!error && bar["placed"].toBool()) {
-                s.overlayExcluded = bar["outside"].toBool();
-                s.overlayPlacement = bar["outside"].toBool() ? QStringLiteral("outside") : QStringLiteral("inside");
+                // With no room outside, the Shell keeps the bar in the corner and
+                // the helper shrinks it to its handle from Record on.
+                const bool outside = bar["outside"].toBool();
+                s.overlayExcluded = outside;
+                s.overlayPlacement = outside ? QStringLiteral("outside") : QStringLiteral("handle");
+                if (!outside) backend_->control(s.op.id, "overlay", {{"handle", true}}, [](Error, QJsonObject) {});
             }
             transition(s, "ready");
         }));

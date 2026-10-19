@@ -76,7 +76,7 @@ such as `session_unavailable` and `config_conflict` retain their original envelo
 | `get_recording_capabilities` | recording.capabilities | Recording support, formats/codecs, audio, limits, active ID; no capture or prompt |
 | `prepare_recording` | target, format, codec?, fps?, system_audio, max_edge? → recording.prepare | Durable intent, ready bounds/overlay and any OS consent; captures nothing yet |
 | `control_recording` | id, command start/pause/resume/stop/cancel/raise → recording.<command> | Acknowledged state changes; stop always opens private review, cancel uploads nothing |
-| `get_recording` / `set_recording_overlay` | id → recording.inspect / id, visible → recording.overlay | State, `selecting`, edit revision, progress, `lastExport`, bar placement / overlay visibility |
+| `get_recording` / `set_recording_overlay` | id → recording.inspect / id, visible → recording.overlay | State, `selecting`, edit revision, progress, `lastExport`, bar placement (`overlayPlacement`) / overlay visibility; a hidden bar stays hidden through state changes until `recording.raise`, which keeps it out of a full-screen clip |
 | `select_recording_region` | id, rect → recording.select | Completes an open region selector (tray, shortcut, dashboard) with a rectangle, as a drag would |
 | `edit_recording` | id, revision, commands → recording.edit | Atomic trim and timed blur/solid masks in microseconds and canvas pixels |
 | `preview_recording` | id, time_us, max_edge → recording.preview | One frame with trim/masks applied as an MCP image plus metadata |

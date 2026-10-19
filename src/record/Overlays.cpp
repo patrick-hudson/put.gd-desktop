@@ -1,4 +1,5 @@
 #include "Overlays.h"
+#include "BarPlacement.h"
 #include "ui/SelectionOutline.h"
 #include <QApplication>
 #include <QCheckBox>
@@ -16,6 +17,7 @@
 #include <QTimer>
 #include <QWindow>
 #include <algorithm>
+#include <utility>
 #ifdef PUTGD_RECORD_LAYER_SHELL
 #include <LayerShellQt/Window>
 #endif
@@ -70,6 +72,24 @@ QRectF fromRoot(const QRect& root) {
         }
     }
     return root;
+}
+// Qt logical rectangle of root pixels that may span screens with different
+// scales: each screen's piece is mapped on its own.
+QRect fromRootSpan(const QRect& root) {
+    QRectF span;
+    for (QScreen* screen : QGuiApplication::screens()) {
+        const qreal dpr = screen->devicePixelRatio();
+        const QRectF native(QPointF(screen->geometry().topLeft()) * dpr, QSizeF(screen->geometry().size()) * dpr);
+        const QRectF piece = QRectF(root).intersected(native);
+        if (piece.isEmpty()) continue;
+        span |= QRectF(QPointF(screen->geometry().topLeft()) + (piece.topLeft() - native.topLeft()) / dpr, piece.size() / dpr);
+    }
+    return span.isEmpty() ? fromRoot(root).toAlignedRect() : span.toAlignedRect();
+}
+QList<QRect> screenRects() {
+    QList<QRect> rects;
+    for (QScreen* screen : QGuiApplication::screens()) rects.append(screen->geometry());
+    return rects;
 }
 const char* const barStyle = R"QSS(
 QWidget#putgd-record-bar { background: #15171c; border: 1px solid #3a4150; border-radius: 10px; }
@@ -300,67 +320,120 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
 }
 void ControlBar::refresh() {
     const bool ready = state_ == "ready", recording = state_ == "recording", paused = state_ == "paused";
+    const bool handle = handle_ && !ready;
     dot_->setStyleSheet(QStringLiteral("background: %1; border-radius: 6px;").arg(recording ? "#e53935" : paused ? "#f9a825" : ready ? "#4caf50" : "#9e9e9e"));
     audio_->setEnabled(ready && options_.audioSupported && !config_.silent());
     audio_->setChecked(config_.audio.system && !config_.silent());
     audio_->setToolTip(config_.silent() ? QStringLiteral("GIF and WebP are silent") : QStringLiteral("Include the sound the computer plays"));
     format_->setEnabled(ready);
+    for (auto* w : std::initializer_list<QWidget*>{time_, target_, audio_, format_, cancel_}) w->setVisible(!handle);
     record_->setVisible(ready);
-    pause_->setVisible(recording);
+    pause_->setVisible(recording && !handle);
     resume_->setVisible(paused);
     stop_->setVisible(recording || paused);
     stop_->setEnabled(state_ != "stopping");
     cancel_->setEnabled(state_ != "stopping");
+    layout()->setContentsMargins(handle ? QMargins(8, 4, 8, 4) : QMargins(12, 8, 12, 8));
     adjustSize();
+    reposition();
 }
 void ControlBar::setState(const QString& state) { state_ = state; refresh(); }
 void ControlBar::setRetained(qint64 us) {
     const qint64 tenths = us / 100000;
     time_->setText(QStringLiteral("%1:%2.%3").arg(tenths / 600).arg((tenths / 10) % 60, 2, 10, QChar('0')).arg(tenths % 10));
 }
-bool ControlBar::placeAround(const QRect& root, const QRect& desktop) {
-    adjustSize();
-    const QRectF logical = fromRoot(root);
-    const QSize size = sizeHint().expandedTo(this->size());
-    const int gap = 10;
-    auto fits = [&](const QRect& candidate) { return fromRoot(desktop).toAlignedRect().contains(candidate); };
-    QRect below(QPoint(int(logical.left()), int(logical.bottom()) + gap), size), above(QPoint(int(logical.left()), int(logical.top()) - gap - size.height()), size);
-    below.moveLeft(std::max(int(fromRoot(desktop).left()), std::min(below.left(), int(fromRoot(desktop).right()) - size.width())));
-    above.moveLeft(below.left());
-    QRect chosen;
-    bool outside = true;
-    if (fits(below)) chosen = below;
-    else if (fits(above)) chosen = above;
-    else { chosen = QRect(QPoint(int(logical.right()) - size.width() - gap, int(logical.bottom()) - size.height() - gap), size); outside = false; }
-    setGeometry(chosen);
-    return outside;
+QSize ControlBar::widestSize() {
+    const QString state = state_;
+    const bool handle = handle_;
+    const Placed placed = std::exchange(placed_, Placed::None);
+    handle_ = false;
+    QSize widest;
+    for (const char* each : {"ready", "recording", "paused", "stopping"}) { state_ = QString::fromLatin1(each); refresh(); widest = widest.expandedTo(size()); }
+    state_ = state;
+    handle_ = handle;
+    refresh();
+    placed_ = placed;
+    return widest;
+}
+bool ControlBar::placeAround(const QRect& root) {
+    recorded_ = fromRootSpan(root);
+    outside_ = placeBar(widestSize(), recorded_, screenRects()).outside;
+    placed_ = Placed::Root;
+    dragged_ = false;
+    reposition();
+    return outside_;
 }
 bool ControlBar::placeOnLayer(const QRect& logical) {
-    adjustSize();
-    const QSize size = sizeHint().expandedTo(this->size());
-    const int gap = 10;
-    QScreen* home = QGuiApplication::screenAt(logical.center());
-    if (!home) home = QGuiApplication::primaryScreen();
-    QList<QPair<QScreen*, QRect>> candidates;
-    if (home) {
-        const QRect area = home->geometry();
-        const int left = std::max(area.left(), std::min(logical.left(), area.left() + area.width() - size.width()));
-        candidates.append({home, QRect(QPoint(left, logical.bottom() + 1 + gap), size)});
-        candidates.append({home, QRect(QPoint(left, logical.top() - gap - size.height()), size)});
-    }
-    for (QScreen* screen : QGuiApplication::screens())
-        if (screen != home) candidates.append({screen, QRect(QPoint(screen->geometry().center().x() - size.width() / 2, screen->geometry().top() + gap), size)});
-    QScreen* screen = home;
-    QRect chosen(QPoint(logical.right() - size.width() - gap, logical.bottom() - size.height() - gap), size);
-    for (const auto& [candidateScreen, rect] : candidates) {
-        if (candidateScreen && candidateScreen->geometry().contains(rect) && !rect.intersects(logical)) { screen = candidateScreen; chosen = rect; break; }
-    }
+    recorded_ = logical;
+    outside_ = placeBar(widestSize(), recorded_, screenRects()).outside;
 #ifdef PUTGD_RECORD_LAYER_SHELL
-    if (screen) toLayer(this, screen, chosen, true);
+    placed_ = Placed::Layer;
 #else
-    setGeometry(chosen);
+    placed_ = Placed::Root;
 #endif
-    return !chosen.intersects(logical);
+    dragged_ = false;
+    reposition();
+    return outside_;
+}
+void ControlBar::reposition() {
+    if (placed_ == Placed::None) return;
+    const QList<QRect> screens = screenRects();
+    if (dragged_ && screen_ >= 0 && screen_ < screens.size()) {
+        // Keep the user's spot, anchored by its right edge, on the same screen.
+        const QRect kept = clampToScreen(QRect(QPoint(spot_.right() + 1 - width(), spot_.top()), size()), screens[screen_]);
+        if (!outside_ || !kept.intersects(recorded_)) { apply(kept, screen_); return; }
+        dragged_ = false;
+    }
+    // A bar that had to sit inside stays in the corner even when its handle
+    // would fit outside, so what prepare reported stays true.
+    const BarSpot spot = placeBar(size(), recorded_, screens, outside_);
+    apply(spot.rect, spot.screen);
+}
+void ControlBar::apply(const QRect& logical, int screen) {
+    spot_ = logical;
+    screen_ = screen;
+#ifdef PUTGD_RECORD_LAYER_SHELL
+    if (placed_ == Placed::Layer) {
+        const auto screens = QGuiApplication::screens();
+        // A layer surface stays on the output it was created for.
+        if (layerScreen_ >= 0 && layerScreen_ < screens.size() && screen != layerScreen_) {
+            screen_ = layerScreen_;
+            spot_ = clampToScreen(logical, screens[layerScreen_]->geometry());
+        }
+        if (screen_ < 0 || screen_ >= screens.size()) return;
+        layerScreen_ = screen_;
+        toLayer(this, screens[screen_], spot_, true);
+        return;
+    }
+#endif
+    setGeometry(spot_);
+}
+void ControlBar::mousePressEvent(QMouseEvent* e) {
+    // X11 bars bypass the window manager, so the bar moves itself.
+    if (e->button() == Qt::LeftButton && placed_ == Placed::Root && surfaceMode() == SurfaceMode::X11) {
+        dragging_ = true;
+        dragOffset_ = e->globalPosition().toPoint() - spot_.topLeft();
+        e->accept();
+        return;
+    }
+    QWidget::mousePressEvent(e);
+}
+void ControlBar::mouseMoveEvent(QMouseEvent* e) {
+    if (!dragging_) { QWidget::mouseMoveEvent(e); return; }
+    const QPoint global = e->globalPosition().toPoint();
+    const QList<QRect> screens = screenRects();
+    int screen = -1;
+    for (int i = 0; i < screens.size(); ++i) if (screens[i].contains(global)) screen = i;
+    if (screen < 0) return;
+    const QRect rect = clampToScreen(QRect(global - dragOffset_, size()), screens[screen]);
+    // A bar that stays out of the clip cannot be dragged into it.
+    if (outside_ && rect.intersects(recorded_)) return;
+    dragged_ = true;
+    apply(rect, screen);
+}
+void ControlBar::mouseReleaseEvent(QMouseEvent* e) {
+    if (dragging_ && e->button() == Qt::LeftButton) { dragging_ = false; return; }
+    QWidget::mouseReleaseEvent(e);
 }
 void ControlBar::keyPressEvent(QKeyEvent* e) {
     if (e->key() == Qt::Key_Escape) { if (state_ == "ready") emit cancelRequested(); return; }

@@ -41,6 +41,8 @@ QStringList available(const QStringList& names) {
     for (const auto& name : names) if (GstElementFactory* f = gst_element_factory_find(name.toUtf8().constData())) { gst_object_unref(f); result.append(name); }
     return result;
 }
+// How long a bar collapsing to its handle gets to leave the screen before capture.
+constexpr int handleSettleMs = 150;
 QRect desktopRoot() {
     QRect desktop;
     for (QScreen* screen : QGuiApplication::screens()) {
@@ -99,6 +101,7 @@ QString RecordSession::targetLabel() const {
 void RecordSession::showBar(const QString& state) {
     if (!bar_) return;
     bar_->setState(state);
+    if (barHidden_) return;
     bar_->show();
     bar_->raise();
 }
@@ -127,12 +130,20 @@ void RecordSession::command(const QString& command, const QJsonObject& params, R
         return;
     }
     if (command == "raise") {
+        barHidden_ = false;
         if (bar_) { bar_->show(); bar_->raise(); }
         if (review_) review_->reopen(params["error"].toString());
         reply({}, {});
         return;
     }
-    if (command == "overlay") { if (bar_) bar_->setVisible(params["visible"].toBool(true)); reply({}, {{"visible", bar_ ? bar_->isVisible() : false}}); return; }
+    if (command == "overlay") {
+        // {visible} hides or shows the bar; {handle} (from the resident, when the
+        // GNOME Shell had to leave the bar inside the area) collapses it from Record on.
+        if (params["handle"].isBool() && bar_) bar_->setHandleWhileRecording(params["handle"].toBool());
+        if (params.contains("visible")) { barHidden_ = !params["visible"].toBool(true); if (bar_) bar_->setVisible(!barHidden_); }
+        reply({}, {{"visible", bar_ ? bar_->isVisible() : false}});
+        return;
+    }
     if (command == "preview") { preview(params, std::move(reply)); return; }
     if (command == "export") { exportClip(params, std::move(reply)); return; }
     reply({"unknown_method", "Unknown recording helper command", {}}, {});
@@ -416,9 +427,13 @@ void RecordSession::finishPrepare(Reply reply) {
     });
     connect(bar_, &ControlBar::cancelRequested, this, [guard] { if (!guard) return; guard->cancelLocal(); emit guard->event({{"event", "cancelled"}}); });
     if (!portalTarget_) {
-        overlayExcluded_ = bar_->placeAround(target_.kind == "desktop" ? QRect() : resolved_.rect, desktopRoot());
-        if (target_.kind == "desktop" || target_.kind == "monitor") overlayExcluded_ = false;
-        overlayPlacement_ = overlayExcluded_ ? QStringLiteral("outside") : QStringLiteral("inside");
+        // ximagesrc records every visible pixel of the area, so the bar goes
+        // below or above it, or onto another monitor. With nowhere outside
+        // (a full single monitor, the whole desktop) it shrinks to a handle
+        // inside the clip from Record on.
+        overlayExcluded_ = bar_->placeAround(target_.kind == "desktop" ? desktopRoot() : resolved_.rect);
+        bar_->setHandleWhileRecording(!overlayExcluded_);
+        overlayPlacement_ = overlayExcluded_ ? QStringLiteral("outside") : QStringLiteral("handle");
     } else if (target_.kind == "window") {
         // A window stream carries only that window's pixels, never the bar.
         overlayExcluded_ = true;
@@ -429,7 +444,8 @@ void RecordSession::finishPrepare(Reply reply) {
         const bool outside = bar_->placeOnLayer(resolved_.rect);
         const bool hidden = resolved_.layout["acquisition"].toString() == "kde-screencast" && capabilities_["kdeScreencast"].toObject()["hidesRequester"].toBool();
         overlayExcluded_ = outside || hidden;
-        overlayPlacement_ = outside ? QStringLiteral("outside") : hidden ? QStringLiteral("hidden") : QStringLiteral("inside");
+        bar_->setHandleWhileRecording(!overlayExcluded_);
+        overlayPlacement_ = outside ? QStringLiteral("outside") : hidden ? QStringLiteral("hidden") : QStringLiteral("handle");
     } else {
         // The compositor places the bar; the resident's shell may move it outside.
         overlayExcluded_ = false;
@@ -439,7 +455,24 @@ void RecordSession::finishPrepare(Reply reply) {
     reply({}, {{"canvas", sizeJson(resolved_.canvas)}, {"rect", rectJson(resolved_.rect)}, {"window", double(resolved_.window)}, {"overlayExcluded", overlayExcluded_}, {"overlayPlacement", overlayPlacement_}});
 }
 void RecordSession::start(Reply reply) {
+    if (starting_) { reply({"recording_state", "Recording is already starting", {}}, {}); return; }
     if (pipeline_.running() || recorded_) { reply({"recording_state", "The session already recorded", {}}, {}); return; }
+    if (!bar_ || !bar_->handleWhileRecording()) { begin(std::move(reply)); return; }
+    // The ready bar sits inside the area: shrink it to its handle (a hidden bar
+    // stays hidden) and give the X server or compositor a moment to repaint, so
+    // the first frame never shows the full bar. KWin applies even a hide from
+    // just before Record a frame later.
+    starting_ = true;
+    bar_->setState("recording");
+    QPointer<RecordSession> guard(this);
+    QTimer::singleShot(handleSettleMs, this, [guard, reply = std::move(reply)]() mutable {
+        if (!guard) return;
+        guard->starting_ = false;
+        if (guard->cancelled_) { reply({"cancelled", "Recording cancelled before it started", {}}, {}); return; }
+        guard->begin(std::move(reply));
+    });
+}
+void RecordSession::begin(Reply reply) {
     RecordingPipeline::Options options;
     options.rect = resolved_.rect;
     options.window = resolved_.window;
@@ -451,8 +484,8 @@ void RecordSession::start(Reply reply) {
     options.budgetBytes = config_.budgetBytes;
     options.encoders = available(videoEncoders);
     options.audioEncoders = available(audioEncoders);
-    if (options.encoders.isEmpty()) { reply({"recording_unsupported", "No H.264 encoder is installed", {}}, {}); return; }
-    if (auto e = pipeline_.start(options)) { reply(e, {}); return; }
+    if (options.encoders.isEmpty()) { showBar("ready"); reply({"recording_unsupported", "No H.264 encoder is installed", {}}, {}); return; }
+    if (auto e = pipeline_.start(options)) { showBar("ready"); reply(e, {}); return; }
     bounds_.setDimmed(true);
     showBar("recording");
     progress_.start();
