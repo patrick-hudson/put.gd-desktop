@@ -27,10 +27,14 @@ finish-args:
   - --filesystem=xdg-run/pipewire-0
   # CLI and MCP from the host reach the resident's private socket here.
   - --filesystem=xdg-run/putgd:create
+  # The default local archive (Documents/put.gd). Anywhere else outside the
+  # sandbox's home is a throwaway tmpfs inside the sandbox.
+  - --filesystem=xdg-documents/put.gd:create
   # Tray.
   - --talk-name=org.kde.StatusNotifierWatcher
-  # KDE: shortcuts through KGlobalAccel.
+  # KDE: shortcuts through KGlobalAccel, which follows the keyboard layout.
   - --talk-name=org.kde.kglobalaccel
+  - --talk-name=org.kde.keyboard
   # GNOME: the putgd@put.gd Shell extension. org.gnome.Shell is the current
   # bridge address and exposes all of Shell's own methods to the sandbox; the
   # proposed extension change in docs/flatpak.md replaces it with a name on a
@@ -131,14 +135,16 @@ modules:
         sha256: 001deb0876d5d743cd3448abf74a27adec3fd850012fcb1b00994861bd6c1145
 
   - name: putgd
-    buildsystem: cmake-ninja
-    config-opts:
-      - -DCMAKE_BUILD_TYPE=Release
-      - -DBUILD_TESTING=OFF
-      - -DCMAKE_PREFIX_PATH=/app/aws-sdk
-      - -DPUTGD_AWS_RUNTIME_DIR=/app/aws-sdk/lib
-      - -DPUTGD_AWS_SOURCE_DIR=/app/aws-sdk/source
-    post-install:
+    buildsystem: simple
+    build-commands:
+      # Configure outside the checkout: a build directory inside it would make
+      # the Git status, and so the build identity, dirty.
+      - >-
+        cmake -S . -B /tmp/putgd-build -G Ninja -DCMAKE_INSTALL_PREFIX=/app
+        -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DCMAKE_PREFIX_PATH=/app/aws-sdk
+        -DPUTGD_AWS_RUNTIME_DIR=/app/aws-sdk/lib -DPUTGD_AWS_SOURCE_DIR=/app/aws-sdk/source
+      - cmake --build /tmp/putgd-build --parallel "${FLATPAK_BUILDER_N_JOBS}"
+      - cmake --install /tmp/putgd-build
       # Flatpak exports only files named after the app ID. KWin looks up a
       # sandboxed Wayland client's desktop entry by this ID, so the exported
       # entry also carries the screencast grant that putgd-record.desktop
