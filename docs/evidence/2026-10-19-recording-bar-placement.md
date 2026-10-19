@@ -192,9 +192,10 @@ a hashed completion manifest in `rb108-evidence/`.
 - A physical multi-monitor X11 desktop (Cinnamon or Plasma). The lab has none
   besides Patrick's workstation, which these runs don't use. The Cinnamon
   guest's split RandR monitors exercise the same placement code but not two
-  real outputs. `tools/lab/lab.py` has no per-head VNC display yet: a second
-  `-vnc ...,display=video0,head=1` with a client that sends SetDesktopSize
-  would bring up the second virtio-gpu scanout.
+  real outputs. virtio-gpu connects only head 0 until a UI sends size
+  information; the multi-head lab work (issue #111) sends an RFB
+  SetDesktopSize per head at launch, which gives two real xrandr outputs, and
+  will re-check this case on that guest.
 - Multi-monitor GNOME and KDE Wayland placement (all lab Wayland desktops have
   one monitor). The extension and layer-shell rules for another monitor are
   covered by `gnome_ui_ownership_contract` and `bar_placement_contract`.
