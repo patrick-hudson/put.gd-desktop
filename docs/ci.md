@@ -184,7 +184,8 @@ reads the newest one on a ref. Three rules keep the total bounded:
   callers grant them, and the job runs only on `nightly` pushes). It deletes, by id:
   every entry of a rolling family (`ccache-*` and `ctest-cost-*` by
   `<run>-<attempt>` suffix, `qt-asan-core-<distro>-`) older than the newest on the
-  same ref, and every cache of a closed pull request or deleted branch. Merging a
+  same ref, and every cache of a closed pull request or deleted branch. On `main`,
+  `nightly` and `v*` tags it deletes only those superseded entries. Merging a
   pull request pushes to `nightly`, so its caches go with the next run. Exact-key
   caches (SDK prefixes, the Qt installer's) are left to GitHub's seven-day idle
   eviction. `--dry-run` lists the deletions without making them. The job is not

@@ -5,7 +5,8 @@ Rolling caches (`ccache-linux-24.04-<run>-<attempt>`, the CTest durations and
 the instrumented QtCore) are restored by key prefix, and a prefix restore takes
 the newest entry on the run's ref (or on nightly). Every older entry of the same
 family on the same ref is therefore never read again. Caches saved by closed
-pull requests and deleted branches are unreachable too. Exact-key caches
+pull requests and deleted branches are unreachable too. On main, nightly and
+v* tags only superseded family entries are ever deleted. Exact-key caches
 (SDK prefixes, the Qt installer's) are left for GitHub's seven-day idle
 eviction. See docs/ci.md, "Cache budget".
 """
@@ -16,6 +17,8 @@ import subprocess
 import sys
 
 TRUNK = 'nightly'
+# Caches on these refs are deleted only when a newer entry of the same family exists there.
+PROTECTED = re.compile(r'^refs/heads/(?:main|nightly)$|^refs/tags/v')
 # Group 1 is the family; entries of one family on one ref supersede each other.
 FAMILIES = (
     re.compile(r'^((?:ccache|ctest-cost)-.+-)\d+-\d+$'),
@@ -41,12 +44,13 @@ def plan(caches, open_pulls, branches):
     for cache in sorted(caches, key=lambda c: (c['created_at'], c['id']), reverse=True):
         ref = cache['ref']
         pull = re.fullmatch(r'refs/pull/(\d+)/merge', ref)
-        if pull and int(pull[1]) not in open_pulls:
-            doomed.append((cache, 'closed pull request'))
-            continue
-        if ref.startswith('refs/heads/') and ref[len('refs/heads/'):] not in branches:
-            doomed.append((cache, 'deleted branch'))
-            continue
+        if not PROTECTED.match(ref):
+            if pull and int(pull[1]) not in open_pulls:
+                doomed.append((cache, 'closed pull request'))
+                continue
+            if ref.startswith('refs/heads/') and ref[len('refs/heads/'):] not in branches:
+                doomed.append((cache, 'deleted branch'))
+                continue
         name = family(cache['key'])
         if name is None:
             continue

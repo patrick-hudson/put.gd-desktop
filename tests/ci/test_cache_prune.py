@@ -62,6 +62,15 @@ class Plan(unittest.TestCase):
             ('ccache-linux-24.04-1-1', 'refs/heads/gone'): 'deleted branch',
         })
 
+    def test_main_nightly_and_release_tags_lose_only_superseded_family_entries(self):
+        for ref in (NIGHTLY, 'refs/heads/main', 'refs/tags/v0.1.1', 'refs/tags/v0.1.1-rc.1'):
+            caches = [cache(SDK, ref, hour=1), cache(QT, ref, hour=1), cache('ccache-linux-24.04-1-1', ref, hour=1),
+                      cache('ccache-linux-24.04-2-1', ref, hour=2), cache('ccache-linux-26.04-1-1', ref, hour=1)]
+            with self.subTest(ref=ref):
+                # Neither branch nor tag listings, nor open pull requests, can make these unreachable.
+                self.assertEqual(deleted(caches, branches=('nightly',)), {
+                    ('ccache-linux-24.04-1-1', ref): 'superseded by ccache-linux-24.04-2-1'})
+
     def test_a_branch_listing_without_the_trunk_deletes_nothing(self):
         with self.assertRaises(ValueError):
             cache_prune.plan([cache('ccache-linux-24.04-1-1')], set(), set())
