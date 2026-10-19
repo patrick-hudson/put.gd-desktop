@@ -21,6 +21,11 @@ bool integer(const QJsonValue& value, qint64 min, qint64 max, qint64* out) {
     return true;
 }
 QJsonValue sizeJson(const QSize& size) { return size.isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(QJsonArray{size.width(), size.height()}); }
+// Keeps the previous canvas when the helper reports none or a malformed one.
+void updateCanvas(QSize& canvas, const QJsonValue& value) {
+    const auto array = value.toArray();
+    if (value.isArray() && array.size() == 2) canvas = QSize(array[0].toInt(), array[1].toInt());
+}
 QJsonArray rectJson(const QRect& r) { return {r.x(), r.y(), r.width(), r.height()}; }
 // [x, y, width, height] in integers with a positive size.
 bool rectFrom(const QJsonValue& value, QRect& out) {
@@ -185,7 +190,8 @@ void RecordingService::handleEvent(const QJsonObject& event) {
         if (!integer(event["durationUs"], 1, recording::maximumClipUs, &duration)) { fail({"recording_failed", "The recording ended without a usable clip", {}}); return; }
         s.duration = duration;
         s.edit = {};
-        if (event["canvas"].isArray() && event["canvas"].toArray().size() == 2) s.canvas = QSize(event["canvas"].toArray()[0].toInt(), event["canvas"].toArray()[1].toInt()); recording::clampAnimationSize(s.config, s.canvas, limits(s.op.settings));
+        updateCanvas(s.canvas, event["canvas"]);
+        recording::clampAnimationSize(s.config, s.canvas, limits(s.op.settings));
         transition(s, "reviewing");
     } else if (kind == "selecting" && s.state == "preparing") {
         // The helper's own selector is open (X11, KDE): recording.select can drive it.
@@ -338,7 +344,8 @@ void RecordingService::prepared(Error error, const QJsonObject& result) {
     if (s.state != "preparing") return;
     s.selector.clear();
     if (error) { fail(error); return; }
-    if (result["canvas"].isArray() && result["canvas"].toArray().size() == 2) s.canvas = QSize(result["canvas"].toArray()[0].toInt(), result["canvas"].toArray()[1].toInt()); recording::clampAnimationSize(s.config, s.canvas, limits(s.op.settings));
+    updateCanvas(s.canvas, result["canvas"]);
+    recording::clampAnimationSize(s.config, s.canvas, limits(s.op.settings));
     // A dragged region reports its bounds; the overlay says whether it stayed outside them.
     QRect rect;
     const bool hasRect = rectFrom(result["rect"], rect);
@@ -426,7 +433,8 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
                 if (!integer(result["durationUs"], 1, recording::maximumClipUs, &duration)) { fail({"recording_failed", "The recording ended without a usable clip", {}}); reply({"recording_failed", "The recording ended without a usable clip", {}}, {}); return; }
                 s.duration = duration;
                 s.edit = {};
-                if (result["canvas"].isArray() && result["canvas"].toArray().size() == 2) s.canvas = QSize(result["canvas"].toArray()[0].toInt(), result["canvas"].toArray()[1].toInt()); recording::clampAnimationSize(s.config, s.canvas, limits(s.op.settings));
+                updateCanvas(s.canvas, result["canvas"]);
+                recording::clampAnimationSize(s.config, s.canvas, limits(s.op.settings));
                 transition(s, "reviewing");
             }
             reply({}, publicJson(s));

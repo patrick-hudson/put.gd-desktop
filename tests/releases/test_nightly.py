@@ -13,6 +13,7 @@ from urllib.parse import unquote
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'tools/releases'))
+import quiet_git  # noqa: F401  (disables git background maintenance, #99)
 import nightly
 import github_api
 import release_tag
