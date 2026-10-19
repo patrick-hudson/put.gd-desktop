@@ -27,8 +27,8 @@ finish-args:
   - --filesystem=xdg-run/pipewire-0
   # CLI and MCP from the host reach the resident's private socket here.
   - --filesystem=xdg-run/putgd:create
-  # The default local archive (Documents/put.gd). Anywhere else outside the
-  # sandbox's home is a throwaway tmpfs inside the sandbox.
+  # The default local archive (Documents/put.gd). Other host folders are not
+  # visible; a chosen folder needs the FileChooser portal (docs/flatpak.md).
   - --filesystem=xdg-documents/put.gd:create
   # Tray. The resident's own item owns org.kde.StatusNotifierItem.putgd_<uuid>;
   # without this name no icon appears (Plasma, Cinnamon). Drop it once the item

@@ -6,8 +6,9 @@ nothing here is a release input. The experimental manifest is
 [Issue #14](https://github.com/patrick-hudson/put.gd-desktop/issues/14) plans a
 separately installed host "capture companion". This spike asked whether a
 Flatpak can ship without any new host helper, recording included, and what each
-desktop loses if it does. Every claim below comes from a run on a real desktop
-or from the cited upstream source; gates that were not run are listed at the end.
+desktop loses if it does. Every claim below comes from a run (on a physical
+desktop, a lab guest or a nested GNOME Shell, as labeled) or from the cited
+upstream source; gates that were not run are listed at the end.
 
 ## Answer
 
@@ -20,12 +21,16 @@ No new host binary is needed on any desktop. What each desktop keeps:
   hands Muffin a file path inside the sandbox and times out; moving that file to
   a path the host and the sandbox share fixes it.
 - **GNOME 50**: everything, through the existing `putgd@put.gd` Shell extension,
-  which every format already needs. The extension needs two changes before a
-  Flatpak can use it safely (see [GNOME](#gnome-50-wayland)).
+  which every format already needs. Measured in a nested GNOME Shell: captures,
+  Shell shortcuts and the unfocused clipboard work from the sandbox, but put.gd's
+  own window is not refused, and the bridge currently needs talk access to all of
+  `org.gnome.Shell`. Two extension changes fix both (see
+  [GNOME](#gnome-50-wayland)).
 - **Plasma Wayland**: no direct screenshots. KWin authorizes ScreenShot2 by the
   caller's executable, and a sandboxed caller always looks like
-  `xdg-dbus-proxy` to KWin. Clipboard, shortcuts, tray, region overlay and
-  recording through the ScreenCast portal all work. Screenshots have to come from
+  `xdg-dbus-proxy` to KWin. Clipboard, shortcuts, the tray (with a name
+  permission), the region overlay and recording through the ScreenCast portal
+  all work. Screenshots have to come from
   the Screenshot portal (full screen only, a one-time permission dialog on
   Plasma 6.6, and a stray file in `~/Pictures` per capture) or from a single
   frame of a screen cast. Silent screen casts need a desktop entry on the host
@@ -54,6 +59,15 @@ not built (`PUTGD_BUNDLE_PROTON=OFF`); bundling its runtime is a separate task.
 because a build directory inside the copy made the Git status dirty. A plain
 `type: git` source defaults to `master`, which this repository doesn't have.
 
+The measurements used the build above. The committed manifest differs in two
+places, both from the results: it grants the tray name
+`org.kde.StatusNotifierItem.*` (measured as an override), and its exported entry
+no longer carries the `X-KDE-*` keys (see [Screen casts](#screen-casts-and-recording)).
+That manifest (`b67bfae`) was built again on Kubuntu `.72` with flatpak-builder
+1.4.8: build succeeded, exported entry without `X-KDE-*` keys, metadata with the
+tray name, bundle `5e2af00eb542…`. It was not installed or re-measured. Later
+commits on the branch change only comments in the manifest.
+
 ## Where it ran
 
 | Desktop | Host | Session | Portals and Flatpak |
@@ -61,7 +75,7 @@ because a build directory inside the copy made the Git status dirty. A plain
 | Plasma 6.3.6 Wayland | Debian 13 `.69`, physical | KWin 6.3.6, Qt 6.8.2, PipeWire 1.4.2 | flatpak 1.16.6-1~deb13u3, xdg-desktop-portal 1.20.3, portal-kde 6.3.5 |
 | Plasma 6.6.6 Wayland | Kubuntu 26.04.1 guest `fpk-kw-0b0a5599` on `.69` (golden `kde-provisioned-20261016`, `49fcacff…`), KVM | KWin 6.6.6 | flatpak 1.16.6-1, xdg-desktop-portal 1.21.1, portal-kde 6.6.6 |
 | Plasma 6.6 X11 | Kubuntu 26.04.1 `.72`, physical | kwin_x11 6.6.4, Qt 6.10.2 | flatpak 1.16.6-1, xdg-desktop-portal 1.21.1, portal-kde 6.6.6 |
-| GNOME 50 Wayland | Fedora 44 `.70`, physical | gnome-shell / Mutter 50.0, PipeWire 1.6.9 | flatpak 1.17.6, xdg-desktop-portal 1.21.1, portal-gnome 50.0 |
+| GNOME 50 Wayland | Fedora 44 `.70`, physical session; bridge in a nested `gnome-shell --devkit` on the same desktop | gnome-shell / Mutter 50.0, PipeWire 1.6.9; nested: gnome-shell 50.0 with Mutter 50.6 (pulled in by `mutter-devkit`, reverted afterwards) | flatpak 1.17.6, xdg-desktop-portal 1.21.1, portal-gnome 50.0 |
 | Cinnamon 6.6.4 X11 | Mint 22.3 guest `fpk-cin-4309db74` on `.69` (golden `cinnamon-x11`, `4a21566d…`), KVM | Muffin, Qt from the runtime | flatpak 1.14.6, xdg-desktop-portal 1.20.0, portal-xapp 1.1.3, gnome-keyring 46.1 |
 
 The resident ran as `flatpak run --user gd.put.Putgd --background` in each
@@ -77,23 +91,23 @@ visible difference. `missing`: not available in the sandbox without a change.
 
 | Check | Cinnamon X11 | Plasma X11 | GNOME 50 | Plasma 6.3 Wayland | Plasma 6.6 Wayland |
 | --- | --- | --- | --- | --- | --- |
-| Region capture | missing: Muffin path times out | works (500×300 exact) | | missing | missing |
-| Window capture | works (900×592 with frame) | works (1400×828 with frame) | | missing | missing |
-| Desktop capture | works (1280×800) | works (1920×1080) | | missing | missing |
-| Own-window refusal | works | works | | n/a | n/a |
-| Shortcuts | works (XGrabKey) | works (XGrabKey) | | works (KGlobalAccel) | works (KGlobalAccel) |
-| Clipboard import, unfocused | works | works | | works (wlr-data-control v2) | works (ext-data-control v1) |
-| Copy result, unfocused | works (GTK reader) | works (owner verified) | | works (native paste) | works |
-| Tray | degrades: needs a name permission | works | | degrades: needs a name permission | degrades: same |
-| Notifications | works | not checked | | works | works |
-| Recording, dialog-free | works (`ximagesrc`, x264, motion 1.213) | works (`ximagesrc`, VA H.264, motion 0.372) | | needs host entry (motion 0.290) | needs host entry on patched Flatpak (motion 0.094) |
-| Recording, portal | n/a | n/a | | works, picker once, then restore token | |
-| Screenshot portal, `interactive=false` | n/a | n/a | | silent | one-time dialog, then silent |
-| Credentials (Secret portal) | not run (guest has no login keyring) | not run | | works, no prompt | |
-| Start at login | missing (Background portal works) | missing (portal not run here) | | missing (Background portal works) | missing (Background portal works) |
-| Local copies in Documents/put.gd | works | works | | works | works |
-| CLI from the host | works | works | | works | works |
-| S3 request from the sandbox | not run | not run | | works (403 for a fake key) | |
+| Region capture | missing: Muffin path times out | works (500×300 exact) | not run | missing | missing |
+| Window capture | works (900×592 with frame) | works (1400×828 with frame) | works (nested) | missing | missing |
+| Desktop capture | works (1280×800) | works (1920×1080) | works (nested, 1280×800) | missing | missing |
+| Own-window refusal | works | works | missing: captured put.gd's own window | n/a | n/a |
+| Shortcuts | works (XGrabKey) | works (XGrabKey) | works (Shell binding, nested) | works (KGlobalAccel) | works (KGlobalAccel) |
+| Clipboard import, unfocused | works | works | works (nested) | works (wlr-data-control v2) | works (ext-data-control v1) |
+| Copy result, unfocused | works (GTK reader) | works (owner verified) | works (`copied`; no independent paste) | works (native paste) | works (Klipper read it) |
+| Tray | degrades: needs a name permission | works | degrades: needs a name permission | degrades: needs a name permission | degrades: same |
+| Notifications | works | not checked | not checked | works | not checked |
+| Recording, dialog-free | works (`ximagesrc`, x264, motion 1.213) | works (`ximagesrc`, VA H.264, motion 0.372) | works (Mutter, VA H.264, motion 0.264) | needs host entry (motion 0.290) | needs host entry on patched Flatpak (motion 0.094) |
+| Recording, portal | n/a | n/a | works, one Share click, then restore token | works, picker once, then restore token | not run |
+| Screenshot portal, `interactive=false` | n/a | n/a | refused while unfocused (not needed) | silent | one-time dialog, then silent |
+| Credentials (Secret portal) | not run (guest has no login keyring) | not run | reaches gnome-keyring (unlock prompt, cancelled) | works, no prompt | not run |
+| Start at login | missing (Background portal works) | missing (portal not run here) | missing (Background portal works) | missing (Background portal works) | missing (Background portal works) |
+| Local copies in Documents/put.gd | works | works | works | works | works |
+| CLI from the host | works | works | works | works | works |
+| S3 request from the sandbox | not run | not run | not run | works (403 for a fake key) | not run |
 
 ## Plasma Wayland
 
@@ -220,11 +234,66 @@ already saved by then; portal runs did not crash. A native build was not tried.
 
 ## GNOME 50 Wayland
 
-(filled in below)
+Fedora's GNOME session had no put.gd extension installed when this ran (the
+session's baseline, after the other recording sessions had removed theirs), and
+GNOME 50 loads a locally installed extension only at login
+(`ReloadExtension` "is deprecated and does not work"; only extensions.gnome.org
+installs load at runtime). Instead of logging Patrick's session out twice, the
+bridge was tested in a nested `gnome-shell --devkit` (a "Mutter Development
+Kit" window on the same desktop) with private XDG config, data and runtime
+directories and its own session bus, loading `putgd@put.gd` from the spike
+checkout. The physical session itself was used for everything that doesn't need
+the extension.
+
+In the physical session, without the extension:
+
+- The resident owns `org.putgd.App.Gnome50` (the bus lists `xdg-dbus-proxy` as
+  the owner process) and reports every capture as `helper_unavailable`, as a
+  native install without the extension does.
+- The tray icon appears through the AppIndicator extension with the
+  `org.kde.StatusNotifierItem.*` name allowed.
+- **Recording through Mutter's screen cast** (`--talk-name=org.gnome.Mutter.ScreenCast`)
+  works without a dialog: 1920×1080, 8.57 s, `vah264lpenc`, motion 0.264. The
+  Flatpak's Intel VA extension encodes H.264 on this Skylake GPU; Fedora's own
+  free driver cannot, so the native RPM falls back to OpenH264.
+- With Mutter's name hidden by an override, the **ScreenCast portal** shows
+  GNOME's "Share Screen" dialog with the monitor preselected and "Remember this
+  selection" ticked; one Share click recorded (motion 0.292), and the next
+  recording was ready in 1 s without a dialog (motion 0.284).
+- The **Screenshot portal** with `interactive: false` failed (response 2): the
+  frontend tried to show its one-time permission dialog and GNOME refused with
+  "Only the focused app is allowed to show a system access dialog". A background
+  resident cannot obtain that permission; GNOME capture goes through the
+  extension anyway.
+- The **Background portal** wrote and removed the autostart entry without a
+  dialog. Fedora's permission store already had `background: yes` for the app,
+  written by the portal's background-app monitor while windowless probes ran.
+- **Credentials**: storing a fake key made GNOME show "Authentication required:
+  the login keyring did not get unlocked when you logged into your computer".
+  The sandbox's request reached gnome-keyring through the Secret portal; the
+  keyring is locked because this session logs in automatically. The prompt was
+  cancelled without typing anything.
+
+In the nested Shell, with the extension loaded:
+
+- The resident found the extension through `org.gnome.Shell`: protocol 1,
+  Shell 50, all three captures available, clipboard through Mutter's selection,
+  the three shortcuts bound by Shell.
+- Desktop capture from the CLI and from Ctrl+Shift+3 pressed over VNC both
+  completed (1280×800, the nested output).
+- Clipboard: a text source set inside the nested session was imported without
+  focus, saved, and copied back (`copied`; read back from the saved file, not by
+  an independent paste).
+- **Own-window refusal is broken.** With put.gd's own window focused, window
+  capture completed and returned put.gd's window (1280×768) instead of
+  `capture_target`. This is change 2 below: the extension compares Mutter's host
+  PID with the proxy's PID and with a namespace PID from `SetUiProcess`.
+- Running the bridge needed `--talk-name=org.gnome.Shell`, which is change 1.
 
 ## Cinnamon and Plasma on X11
 
-On Kubuntu's Plasma X11 session, with no extra permission beyond the manifest:
+On Kubuntu's Plasma X11 session (the tray-name override was set but is not used
+by the Qt tray there):
 
 - The X11 adapter is chosen. Grabbed shortcuts fired: window (1400×828 including
   the frame), region (exactly the dragged 500×300) and desktop (1920×1080).
@@ -280,7 +349,8 @@ the grabs. This is a test-input detail, not an app behavior.
   (`RequestBackground`, `autostart: true`,
   `commandline: ["putgd-launcher", "--background"]`) wrote a correct host entry,
   `Exec=flatpak run --command=putgd-launcher gd.put.Putgd --background`, without
-  a dialog on Plasma 6.3 and 6.6, and `autostart: false` removed it.
+  a dialog on Plasma 6.3, Plasma 6.6, GNOME 50 and Cinnamon, and
+  `autostart: false` removed it. No login was done to see it start.
 - **CLI and MCP.** The resident's socket stays at
   `$XDG_RUNTIME_DIR/putgd/session.sock`; `--filesystem=xdg-run/putgd:create`
   makes it the same path inside and outside. The server does no peer-credential
@@ -288,8 +358,9 @@ the grabs. This is a test-input detail, not an app behavior.
   helper resolves `putgd-cli` on `PATH` or takes `--cli PATH`; with a Flatpak
   it needs a one-line wrapper that runs `flatpak run --command=putgd-cli gd.put.Putgd "$@"`.
 - **Local copies.** `--filesystem=xdg-documents/put.gd:create` lets the default
-  archive land in the host's `~/Documents/put.gd`. Without it the resident would
-  write into the sandbox's tmpfs home and lose the files when it exits. A user
+  archive land in the host's `~/Documents/put.gd`. Without it the host's
+  `~/Documents` is not visible in the sandbox; what the archive does then was
+  not tested. A user
   who picks another folder needs the FileChooser portal path, not done here.
   The `:create` flag creates the folder on every launch, even if local copies
   are off.
@@ -300,9 +371,16 @@ the grabs. This is a test-input detail, not an app behavior.
   Intel VA driver extension) and `x264enc`, plus FFmpeg `libx264`, `libx265`,
   `h264_vaapi` and `libvpx-vp9` from codecs-extra. On Fedora that is more than
   the native RPM gets (stock Fedora has only OpenH264).
-- **Host faults.** On Kubuntu `.72` the document portal's FUSE mount had been gone
-  since boot, so every `flatpak run` failed until `xdg-document-portal` was
-  restarted. A Flatpak release note should say how to recover.
+- **Host faults.** `flatpak run` failed with "bwrap: Can't find source path
+  /run/user/1000/doc/by-app/gd.put.Putgd" on Kubuntu `.72` (the document
+  portal's FUSE mount had been gone since boot) and on Fedora `.70` (gone after a
+  GDM re-login, while the service still showed as running). Restarting the user
+  service `xdg-document-portal` fixed both. A Flatpak release note should say how
+  to recover.
+- **Leftover on Debian.** The Secret portal keeps a per-app key in KWallet's
+  `xdg-desktop-portal` folder (entry `gd.put.Putgd`). Removing it needs a new
+  KWallet access grant, so it was left; it is unused now that the app and its
+  keyring file are uninstalled.
 - **Session restart.** After installing Flatpak on a running Plasma session, its
   `XDG_DATA_DIRS` lacks Flatpak's export directory until the next login, so KWin
   and the portals don't see the app's entry yet.
@@ -319,7 +397,7 @@ the grabs. This is a test-input detail, not an app behavior.
 | `--filesystem=xdg-run/putgd:create` | host CLI/MCP | |
 | `--filesystem=xdg-documents/put.gd:create` | default local archive | |
 | `--talk-name=org.kde.StatusNotifierWatcher` | tray | plus the name below |
-| `--own-name=org.kde.StatusNotifierItem.*` (tested as an override, not yet in the manifest) | the custom tray item | or register the item under the app ID |
+| `--own-name=org.kde.StatusNotifierItem.*` | the custom tray item | measured as an override; drop after change 3 |
 | `--talk-name=org.kde.kglobalaccel`, `org.kde.keyboard` | KDE shortcuts | |
 | `--own-name=org.putgd.App.Gnome50`, `--talk-name=org.gnome.Shell` | GNOME extension bridge | `org.gnome.Shell` must go, see GNOME |
 | `--talk-name=org.gnome.Mutter.ScreenCast` | GNOME recording without the picker | |
@@ -470,4 +548,50 @@ is included. DEB, RPM and AppImage keep their current behavior.
 
 ## Gates not run
 
-(filled in below)
+- **Live S3.** No synthetic upload, link copy or deletion. Credentials can only
+  be entered in the GUI, and only a visibly fake key was used (403 on Debian).
+- **Memory.** No family-memory measurement of the Flatpak on any desktop.
+- **Lifecycle.** Only bundle installs. No install or update from a repository,
+  no update across builds, and no check that uninstall leaves nothing behind
+  beyond the manual cleanup below.
+- **Start at login** was not confirmed by logging out and in; only the portal's
+  host entry was checked.
+- **GNOME in the real session.** The bridge (captures, shortcuts, clipboard,
+  own-window refusal) ran in a nested Shell, not in the logged-in session,
+  because GNOME needs a re-login to load a local extension. GNOME region
+  capture and the tray tooltip companion were not run; no independent paste
+  witnessed the GNOME clipboard result; notifications were not checked.
+- **Plasma 6.6 Wayland on hardware.** Only the Kubuntu guest ran Plasma 6.6
+  Wayland (Debian's hardware desktop is 6.3). The 6.6 guest did not run the
+  ScreenCast portal path, credentials or an S3 request.
+- **Plasma X11.** Background portal, credentials and notifications were not run.
+- **Cinnamon.** Only a guest, not physical Mint; credentials could not be tested
+  (no login keyring in the guest); the region fix was not tried.
+- **Ubuntu GNOME, GNOME on X11.** Not run.
+- **Multiple monitors and fractional scaling.** Not run anywhere.
+- **MCP.** Only the CLI was driven from the host; the MCP helper with a
+  wrapper was not run.
+- **Proton** in the Flatpak (its bundled runtime is not built).
+- **Flathub tooling** (`flatpak-builder-lint`, AppStream metadata) was not run;
+  the manifest has no metainfo file yet.
+- **The proposed changes 1 to 10** are described, not implemented, so the
+  Plasma Wayland portal capture design (change 6) has no measured behavior.
+- **The `kde-screencast` teardown crash** was not checked with a native build.
+- **Patched Flatpak on every host.** Only Debian has the export filter; the
+  Fedora and Kubuntu results were on unfiltered Flatpak.
+
+## Cleanup
+
+All three builders: the spike app was uninstalled with its data, its
+overrides and portal permissions were reset, and the `~/Documents/put.gd` and
+`~/.config/autostart` folders that the test runs created (birth times checked)
+were removed. The `flatpak` package (Debian, Kubuntu), `flatpak-builder`
+(Fedora, Kubuntu), the per-user KDE 6.11 runtime, SDK (Fedora, Kubuntu) and
+extensions, `wl-clipboard` and `libkf6service-dev` (Debian) stay installed for
+the later Flatpak work; `flatpak uninstall --user --unused` removes the
+runtimes. On Fedora, `mutter-devkit` was installed for the nested Shell and the
+transaction was undone (Mutter back to 50.0). The temporary host entry on Debian
+was removed and its desktop-entry index rebuilt with Plasma's environment. Both
+guests' overlays were retired with completion manifests (`fpk-kw-0b0a5599`,
+`fpk-cin-4309db74`); their run records and evidence are kept, and their wall
+tiles and tunnels were removed.
