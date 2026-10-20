@@ -167,6 +167,20 @@ private slots:
         bad["extra"] = true;
         QCOMPARE(validateUiState({{"schemaVersion", 1}, {"appearance", bad}}).code, QString("ui_state_invalid"));
     }
+    // #198: the resident resolves the same setting for putgd-record without
+    // switching its own scheme.
+    void resolverLeavesTheActiveSchemeAlone() {
+        Appearance resolver(nullptr, Appearance::Role::Resolver);
+        QSignalSpy changes(&resolver, &Appearance::changed);
+        resolver.setPreference("light");
+        QCOMPARE(resolver.scheme(), Theme::Scheme::Light);
+        QCOMPARE(Theme::scheme(), Theme::Scheme::Dark);
+        QCOMPARE(changes.count(), 1);
+        resolver.setPreference("dark");
+        QCOMPARE(resolver.scheme(), Theme::Scheme::Dark);
+        QCOMPARE(changes.count(), 2);
+        QCOMPARE(Theme::scheme(), Theme::Scheme::Dark);
+    }
     void panelToneRules_data() {
         QTest::addColumn<QString>("desktop");
         QTest::addColumn<QString>("plasmarc");

@@ -43,6 +43,9 @@ private slots:
   const auto id=h.prepare();QVERIFY(!id.isEmpty());
   QTRY_COMPARE(h.state(id),QString("ready"));QVERIFY(h.backend->diagnostics()["active"].toBool());QVERIFY(h.backend->diagnostics()["processId"].toDouble()>0);
   QCOMPARE(h.rec("inspect",{{"id",id}}).result["canvas"].toArray(),QJsonArray({1280,720}));
+  // #198: a scheme change reaches the running helper as an appearance frame,
+  // and the protocol carries on (the bootstrap already carried the scheme).
+  h.backend->setAppearance("light");h.backend->setAppearance("dark");
   QCOMPARE(h.rec("start",{{"id",id}}).result["state"].toString(),QString("recording"));
   QTRY_COMPARE(h.rec("inspect",{{"id",id}}).result["progress"].toObject()["bytes"].toDouble(),4321.0);
   QCOMPARE(h.rec("pause",{{"id",id}}).result["state"].toString(),QString("paused"));

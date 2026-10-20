@@ -1,10 +1,13 @@
 #include "record/BarPlacement.h"
 #include "record/Overlays.h"
+#include "ui/Theme.h"
 #include <QApplication>
 #include <QCheckBox>
 #include <QJsonArray>
 #include <QPushButton>
 #include <QRandomGenerator>
+#include <QRegularExpression>
+#include <QScopeGuard>
 #include <QScreen>
 #include <QStyleOptionButton>
 #include <QtTest>
@@ -169,6 +172,68 @@ private slots:
             // A light fill behind a dark tick, against an empty dark box.
             QVERIFY2(tickedMean - emptyMean > 40, qPrintable(QStringLiteral("%1: mean %2 vs %3").arg(state).arg(tickedMean).arg(emptyMean)));
             QVERIFY2(tickedDarkest < 70, qPrintable(QStringLiteral("%1: no tick, darkest %2 (empty %3)").arg(state).arg(tickedDarkest).arg(emptyDarkest)));
+        }
+    }
+    // #198: the bar uses the interface's scheme, from the same tokens, and a
+    // scheme change restyles a bar that is already open.
+    void barFollowsTheScheme() {
+        using putgd::Theme::Scheme;
+        const auto restore = qScopeGuard([] { putgd::Theme::setScheme(Scheme::Dark); });
+        ControlBar bar(barOptions(), putgd::RecordingConfig{});
+        for (const auto scheme : {Scheme::Light, Scheme::Dark, Scheme::Light}) {
+            putgd::Theme::setScheme(scheme);
+            const auto& p = putgd::Theme::palette(scheme);
+            QVERIFY2(!QRegularExpression("%[A-Za-z_]+%").match(bar.styleSheet()).hasMatch(), "a placeholder was left unreplaced");
+            QVERIFY(bar.styleSheet().contains(p.bg.name()));
+            QCOMPARE(bar.palette().color(QPalette::Window), p.bg);
+            QCOMPARE(bar.property("themeScheme").toString(), putgd::Theme::name(scheme));
+            // Painted: most of the bar is the scheme's background.
+            const QImage image = bar.grab().toImage();
+            int matching = 0;
+            for (int y = 0; y < image.height(); ++y)
+                for (int x = 0; x < image.width(); ++x) {
+                    const QColor c = image.pixelColor(x, y);
+                    if (std::abs(c.red() - p.bg.red()) + std::abs(c.green() - p.bg.green()) + std::abs(c.blue() - p.bg.blue()) < 12) ++matching;
+                }
+            QVERIFY2(matching * 3 > image.width() * image.height(), qPrintable(QStringLiteral("%1: %2 of %3 pixels are bg").arg(putgd::Theme::name(scheme)).arg(matching).arg(image.width() * image.height())));
+        }
+    }
+    // Over any content: the text reads on the bar, and the bar's outline
+    // (3:1 against black and white) shows where it ends, in both schemes.
+    void barReadsOverAnyContent() {
+        for (const auto scheme : {putgd::Theme::Scheme::Dark, putgd::Theme::Scheme::Light}) {
+            const auto& p = putgd::Theme::palette(scheme);
+            QVERIFY(putgd::Theme::contrast(p.text, p.bg) >= 4.5);
+            QVERIFY(putgd::Theme::contrast(p.text, p.surfaceRaised) >= 4.5);
+            QVERIFY(putgd::Theme::contrast(p.textMuted, p.bg) >= 4.5);
+            QVERIFY(putgd::Theme::contrast(p.textDisabled, Qt::black) >= 3.0);
+            QVERIFY(putgd::Theme::contrast(p.textDisabled, Qt::white) >= 3.0);
+            // Record and Stop keep white on green and red.
+            QVERIFY(putgd::Theme::contrast(Qt::white, QColor("#2e7d32")) >= 4.5);
+            QVERIFY(putgd::Theme::contrast(Qt::white, QColor("#c62828")) >= 4.5);
+        }
+    }
+    // The light System audio box: a dark accent fill with a light tick, against
+    // an empty light box, before Record and locked.
+    void lightAudioBoxShowsTheRecordedSound() {
+        const auto restore = qScopeGuard([] { putgd::Theme::setScheme(putgd::Theme::Scheme::Dark); });
+        putgd::Theme::setScheme(putgd::Theme::Scheme::Light);
+        auto barWith = [](bool sound) { putgd::RecordingConfig config; config.audio.system = sound; return std::make_unique<ControlBar>(barOptions(), config); };
+        const auto withSound = barWith(true), silent = barWith(false);
+        auto* on = withSound->findChild<QCheckBox*>();
+        auto* off = silent->findChild<QCheckBox*>();
+        QVERIFY(on && off);
+        auto brightest = [](const QImage& image) { int value = 0; for (int y = 2; y < image.height() - 2; ++y) for (int x = 2; x < image.width() - 2; ++x) value = std::max(value, qGray(image.pixel(x, y))); return value; };
+        for (const char* state : {"ready", "recording", "paused", "stopping"}) {
+            withSound->setState(QString::fromLatin1(state));
+            silent->setState(QString::fromLatin1(state));
+            const QImage ticked = audioIndicator(on), empty = audioIndicator(off);
+            const auto [tickedDarkest, tickedMean] = greyLevels(ticked);
+            const auto [emptyDarkest, emptyMean] = greyLevels(empty);
+            Q_UNUSED(tickedDarkest);
+            Q_UNUSED(emptyDarkest);
+            QVERIFY2(emptyMean - tickedMean > 40, qPrintable(QStringLiteral("%1: mean %2 vs %3").arg(state).arg(tickedMean).arg(emptyMean)));
+            QVERIFY2(brightest(ticked) > 200, qPrintable(QStringLiteral("%1: no light tick, brightest %2").arg(state).arg(brightest(ticked))));
         }
     }
     // The real bar, on the offscreen platform's screens (three monitors or one, from ctest).

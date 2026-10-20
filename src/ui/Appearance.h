@@ -17,7 +17,11 @@ namespace putgd {
 class Appearance final:public QObject {
  Q_OBJECT
 public:
- explicit Appearance(QObject* parent=nullptr);
+ // Which process applies the result: the interface switches the active Theme
+ // scheme; the resident only resolves it for putgd-record (#198), whose
+ // overlays it passes on, and keeps its own styling.
+ enum class Role {Interface,Resolver};
+ explicit Appearance(QObject* parent=nullptr,Role role=Role::Interface);
  // "system", "dark" or "light"; anything else reads as "system".
  void setPreference(const QString&);
  QString preference()const{return preference_;}
@@ -38,7 +42,9 @@ private:
  void readPortal();
  void readKde();
  void evaluate();
+ Role role_;
  QString preference_="system",desktop_,source_;
+ Theme::Scheme resolved_=Theme::Scheme::Dark;
  Inputs inputs_;
  QFileSystemWatcher watcher_;QTimer debounce_;
  class PortalSettings* portal_=nullptr;

@@ -23,8 +23,56 @@
 #include <QToolButton>
 #include <QVBoxLayout>
 #include <QWheelEvent>
+#include <QDir>
+#include <QImage>
+#include <QTemporaryDir>
+#include <functional>
+#include <memory>
 namespace putgd::VisualStyle {
 namespace {
+// Indicator glyphs painted from the tokens, at 1x and @2x, so they change with
+// the scheme. They live in a private temporary folder for this process.
+void paintIndicators(const QString& folder, const Theme::Palette& p)
+{
+    auto save = [&](const QString& name, QSize size, const std::function<void(QPainter&)>& draw) {
+        for (int scale : {1, 2}) {
+            QImage image(size * scale, QImage::Format_ARGB32_Premultiplied);
+            image.fill(Qt::transparent);
+            QPainter painter(&image);
+            painter.setRenderHint(QPainter::Antialiasing);
+            painter.scale(scale, scale);
+            draw(painter);
+            painter.end();
+            image.save(folder + "/" + name + (scale == 2 ? "@2x.png" : ".png"), "PNG");
+        }
+    };
+    auto stroke = [](QPainter& painter, const QColor& color, qreal width, const QPainterPath& path) {
+        painter.setPen(QPen(color, width, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+        painter.setBrush(Qt::NoBrush);
+        painter.drawPath(path);
+    };
+    save("check", {17, 17}, [&](QPainter& painter) {
+        QPainterPath tick;
+        tick.moveTo(4, 8.5); tick.lineTo(7, 11.5); tick.lineTo(13, 5.5);
+        stroke(painter, p.onAccent, 1.8, tick);
+    });
+    save("chevron", {12, 12}, [&](QPainter& painter) {
+        QPainterPath chevron;
+        chevron.moveTo(2, 4); chevron.lineTo(6, 8); chevron.lineTo(10, 4);
+        stroke(painter, p.textSecondary, 1.7, chevron);
+    });
+    for (const bool checked : {false, true}) {
+        save(checked ? "radio-checked" : "radio", {18, 18}, [&](QPainter& painter) {
+            painter.setPen(QPen(p.borderStrong, 1));
+            painter.setBrush(p.surfaceRaised);
+            painter.drawEllipse(QPointF(9, 9), 8, 8);
+            if (!checked) return;
+            painter.setPen(Qt::NoPen);
+            painter.setBrush(p.accent);
+            painter.drawEllipse(QPointF(9, 9), 4, 4);
+        });
+    }
+}
 // Fit the name column when the viewport changes, never while dragging a section.
 // Stretch mode would steal the drag distance from the first column instead.
 class ColumnSizer final:public QObject {
@@ -237,4 +285,16 @@ QWidget* header(const QString& title,const QString& subtitle,QWidget* parent){au
 QFrame* card(const QString& title,const QString& subtitle,QWidget* parent){auto* frame=new QFrame(parent);role(frame,"card");auto* layout=new QVBoxLayout(frame);layout->setContentsMargins(16,14,16,14);layout->setSpacing(10);auto* heading=new QLabel(title,frame);role(heading,"sectionTitle");layout->addWidget(heading);if(!subtitle.isEmpty()){auto* description=new QLabel(subtitle,frame);description->setWordWrap(true);role(description,"subtitle");layout->addWidget(description);}return frame;}
 void styleForm(QFormLayout* form){form->setContentsMargins(0,0,0,0);form->setHorizontalSpacing(16);form->setVerticalSpacing(8);form->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);form->setRowWrapPolicy(QFormLayout::WrapLongRows);form->setLabelAlignment(Qt::AlignLeft|Qt::AlignVCenter);}
 void decorateView(QAbstractItemView* view,const QList<int>& columns){view->setItemDelegate(new StateDelegate(columns,view));view->setAlternatingRowColors(true);view->setIconSize(QSize(22,22));view->setTextElideMode(Qt::ElideMiddle);}
+QString indicators(Theme::Scheme scheme){
+    static std::unique_ptr<QTemporaryDir> folder;
+    static QHash<int, QString> painted;
+    if (const auto found = painted.constFind(int(scheme)); found != painted.cend()) return *found;
+    if (!folder) folder = std::make_unique<QTemporaryDir>(QDir::tempPath() + "/putgd-theme-XXXXXX");
+    if (!folder->isValid()) return {};
+    const auto path = folder->filePath(Theme::name(scheme));
+    QDir().mkpath(path);
+    paintIndicators(path, Theme::palette(scheme));
+    painted.insert(int(scheme), path);
+    return path;
+}
 }

@@ -141,6 +141,10 @@ private:
     QComboBox* format_ = nullptr;
     QPushButton *record_ = nullptr, *pause_ = nullptr, *resume_ = nullptr, *stop_ = nullptr, *cancel_ = nullptr;
 };
+// #198: the helper's windows in the interface's scheme. A stylesheet template
+// with %token% placeholders (and %INDICATORS% for the painted tick) becomes the
+// root's stylesheet, with a matching palette, and again on every scheme change.
+void applyTheme(QWidget& root, const QString& qssTemplate);
 QString formatLabel(const QString& format, const QString& codec);
 // Why to pick this output; shown as the combo item tooltip and in the review status.
 QString formatHint(const QString& format, const QString& codec);
