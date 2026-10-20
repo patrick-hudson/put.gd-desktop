@@ -159,6 +159,7 @@ test('name and ownership failures retain safe service recovery codes', async () 
         [new RateLimitedError('synthetic-private-provider-detail'), 'rate_limited'],
         [new ValidationError('synthetic-private-provider-detail', 2011), 'permission_denied'],
         [new ValidationError('synthetic-private-provider-detail', 200002), 'quota_exceeded'],
+        [new ValidationError('synthetic-private-provider-detail', 200003), 'destination_file_too_large_for_plan'],
         [Object.assign(new ServerError('synthetic-private-provider-detail'), { statusCode: 401 }), 'authentication_required'],
     ] as const;
     for (const [error, code] of cases) {
@@ -182,6 +183,7 @@ test('quota and rate limiting after upload dispatch retain uncertainty and recov
     try {
         for (const [error, code] of [
             [new ValidationError('synthetic-private-provider-detail', 200002), 'quota_exceeded'],
+            [new ValidationError('synthetic-private-provider-detail', 200003), 'destination_file_too_large_for_plan'],
             [new RateLimitedError('synthetic-private-provider-detail'), 'rate_limited'],
         ] as const) {
             const stub = context(); let dispatched = 0;
@@ -263,6 +265,14 @@ test('sharing preserves protection options and expired inspection never creates 
     stub.request.options.action = 'inspect'; stub.expire();
     const expired = await share(stub.ctx, stub.request);
     expect(expired.status).toBe('private'); expect(expired.receipt.directUrl).toBe(''); expect(stub.mutations()).toBe(1);
+});
+test('a file over the plan limit is not reported as a full drive', () => {
+    const result = serviceFailure(new ValidationError('synthetic-private-provider-detail', 200003));
+    expect(result.code).toBe('destination_file_too_large_for_plan');
+    expect(result.message).toContain('Proton plan');
+    expect(result.message).not.toContain('capacity');
+    expect(JSON.stringify(result)).not.toContain('synthetic-private-provider-detail');
+    expect(serviceFailure(new ValidationError('synthetic-private-provider-detail', 200001)).code).toBe('quota_exceeded');
 });
 test('service classification accepts typed account errors and never trusts raw exception properties', () => {
     for (const [httpCode, code] of [[401, 'authentication_required'], [403, 'permission_denied'], [429, 'rate_limited']] as const) {
