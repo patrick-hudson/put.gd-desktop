@@ -986,7 +986,7 @@ QJsonObject OperationService::diagnostics() const {
 #endif
  const auto build=QJsonDocument::fromJson(buildManifestJson()).object();
  const auto logStatus=logging::status();
- return {{"schemaVersion",1},{"build",build},{"release",releaseLink(build).toJson()},{"backend","Qt"},{"qtVersion",QT_VERSION_STR},{"activeOperations",active_.size()},{"uploadSlots",uploadSlots_.diagnostics()},{"journalReady",ready_},{"artifactCleanup",QJsonObject{{"running",cleanupInProgress_},{"automatic",automaticCleanup_},{"intervalMs",cleanupSchedule_.intervalMs},{"last",lastCleanup_.isEmpty()?QJsonValue(QJsonValue::Null):QJsonValue(lastCleanup_)}}},{"capabilities",capabilities()},{"storage",providers_.diagnostics()},{"locations",locations_},
+ return {{"schemaVersion",1},{"build",build},{"release",releaseLink(build).toJson()},{"backend","Qt"},{"qtVersion",QT_VERSION_STR},{"activeOperations",active_.size()},{"uploadSlots",uploadSlots_.diagnostics()},{"journalReady",ready_},{"artifactCleanup",QJsonObject{{"running",cleanupInProgress_},{"automatic",automaticCleanup_},{"intervalMs",cleanupSchedule_.intervalMs},{"last",lastCleanup_.isEmpty()?QJsonValue(QJsonValue::Null):QJsonValue(lastCleanup_)},{"incompleteUploadNotice",lastIncompleteNotice_.isEmpty()?QJsonValue(QJsonValue::Null):QJsonValue(lastIncompleteNotice_)}}},{"capabilities",capabilities()},{"storage",providers_.diagnostics()},{"locations",locations_},
   {"logging",logStatus},{"loggingDegraded",logStatus["degraded"].toBool()},{"uncleanExit",RunMarker::report()},
   {"memory",QJsonObject{{"allocatorReclamationSupported",reclaimSupported},{"allocatorReclamationPending",heapReclamationPending_},{"allocatorReclamationCount",qint64(heapReclamationCount_)},{"lastAllocatorReclamationUsec",lastHeapReclamationUsec_}}}};
 }
@@ -1002,15 +1002,28 @@ void OperationService::abandonUploads(HistoryStore& store,Operation& op,QJsonObj
   }
   auto fields=itemFields(op,item);
   if(!error) {
-   item.uploadJournal={};item.error.details.remove("incompleteUpload");item.error.details.remove("abortError");
+   item.uploadJournal={};for(const auto* key:{"incompleteUpload","abortError","incompleteUploadReported"})item.error.details.remove(key);
    outcome["abortedUploads"]=outcome["abortedUploads"].toInt()+1;
    logging::info(providerLog(op.destination.providerId),"Incomplete upload aborted",fields);
   } else {
    // The journal stays, so the next cleanup tries again; the artifact still goes.
-   item.error.details["incompleteUpload"]=true;item.error.details["abortError"]=error.toJson();
+   // The user hears of each kept upload once (#226): the flag is saved with the item,
+   // so neither the hourly pass nor a restart repeats the notice for it.
+   const bool reported=item.error.details.value("incompleteUploadReported").toBool();
+   item.error.details["incompleteUpload"]=true;item.error.details["abortError"]=error.toJson();item.error.details["incompleteUploadReported"]=true;
    auto kept=outcome["incompleteUploads"].toArray();
-   if(kept.size()<100)kept.append(QJsonObject{{"operationId",op.id},{"itemId",item.artifact.id},{"error",error.toJson()}});
+   if(kept.size()<100)kept.append(QJsonObject{{"operationId",op.id},{"itemId",item.artifact.id},{"error",error.toJson()},{"reported",reported}});
    outcome["incompleteUploads"]=kept;
+   if(!reported) {
+    auto notice=outcome["incompleteUploadNotice"].toObject();
+    const auto add=[&](const char* key,const QString& value){auto values=notice[key].toArray();if(!value.isEmpty()&&!values.contains(value))values.append(value);notice[key]=values;};
+    notice["count"]=notice["count"].toInt()+1;
+    // The upload's whole size: at most this much is stored in its parts.
+    notice["bytes"]=notice["bytes"].toDouble()+item.uploadJournal.value("bytes").toDouble(double(item.artifact.bytes));
+    add("providers",op.destination.providerId);add("profiles",op.destination.profileId);add("buckets",op.destination.settings.value("bucket").toString());
+    if(!notice.contains("error"))notice["error"]=error.toJson();
+    outcome["incompleteUploadNotice"]=notice;
+   }
    fields["error"]=logging::errorFields(error);
    logging::warning(providerLog(op.destination.providerId),"Incomplete upload kept",fields);
   }
@@ -1034,12 +1047,39 @@ void OperationService::startCleanup(bool automatic,JsonReply reply) {
  CleanupPass pass{automatic,settings_.snapshot().failedArtifactDays,cleanupSchedule_.batch,clock_(),active_.keys(),cleanupStop_};
  background([this,pass](Error& e){return cleanArtifacts(pass,e);},[this,automatic,reply=std::move(reply)](Error e,QJsonObject result){
   if(e)logging::warning(logOperation(),"Artifact cleanup failed",{{"trigger",automatic?"automatic":"manual"},{"error",logging::errorFields(e)}});
+  else announceIncompleteUploads(result,automatic);
   finishCleanup(result);
   if(reply)reply(e,result);
   // More expired operations than one pass takes: the next pass follows shortly.
   if(automatic&&!e&&result["more"].toBool()&&!stopping_)QTimer::singleShot(cleanupSchedule_.followUpMs,this,&OperationService::cleanupExpired);
   auto pending=std::exchange(afterCleanup_,{});for(const auto& next:pending)next();
  });
+}
+void OperationService::announceIncompleteUploads(QJsonObject& outcome,bool automatic) {
+ auto notice=outcome.value("incompleteUploadNotice").toObject();if(notice.isEmpty())return;
+ const auto snapshot=settings_.snapshot();
+ QStringList labels,buckets;
+ for(const auto& id:notice["profiles"].toArray()){const auto label=snapshot.profiles.value(id.toString()).value("label").toString();if(!label.isEmpty()&&!labels.contains(label))labels<<label;}
+ for(const auto& bucket:notice["buckets"].toArray())buckets<<bucket.toString();
+ const int count=notice["count"].toInt();const auto bytes=qint64(notice["bytes"].toDouble());
+ const auto uploads=count==1?QStringLiteral("an incomplete upload"):QStringLiteral("%1 incomplete uploads").arg(count);
+ const auto where=buckets.size()==1?QStringLiteral(" in bucket %1").arg(buckets[0]):buckets.size()>1?QStringLiteral(" in %1 buckets (%2)").arg(buckets.size()).arg(buckets.join(", "))
+  :labels.isEmpty()?QString{}:QStringLiteral(" at %1").arg(labels.join(", "));
+ const auto size=bytes>0?QStringLiteral(" (up to %1 of stored parts)").arg(ArtifactStore::sizeText(bytes)):QString{};
+ auto reason=notice.value("error").toObject().value("message").toString();if(!reason.isEmpty()&&!reason.endsWith('.'))reason+='.';
+ const auto hint=notice.value("providers").toArray().contains("s3")
+  ?QStringLiteral("Allow s3:AbortMultipartUpload for put.gd's access key, or add a lifecycle rule to the bucket that aborts incomplete multipart uploads after a few days.")
+  :QStringLiteral("Check that put.gd's account may cancel uploads at the destination.");
+ notice["hint"]=hint;notice["labels"]=QJsonArray::fromStringList(labels);notice["notified"]=automatic;notice["at"]=outcome["finished"];
+ // S3's own words for a refused abort already name the permission and the lifecycle rule.
+ const auto advice=reason.contains("AbortMultipartUpload")?reason
+  :(reason.isEmpty()?QString{}:reason+' ')+(count==1?QStringLiteral("Its"):QStringLiteral("Their"))+QStringLiteral(" parts keep using storage. ")+hint;
+ notice["message"]=QStringLiteral("%1 could not cancel %2%3%4. %5 put.gd tries again at each cleanup.")
+  .arg(automatic?QStringLiteral("Automatic cleanup"):QStringLiteral("Cleanup"),uploads,where,size,advice);
+ outcome["incompleteUploadNotice"]=notice;lastIncompleteNotice_=notice;
+ logging::warning(logOperation(),"Incomplete uploads left at the destination",{{"trigger",automatic?"automatic":"manual"},{"count",count},{"bytes",double(bytes)},{"providers",notice["providers"]}});
+ // A manual pass answers its caller (the History window says it); only an automatic one notifies.
+ if(automatic)emit incompleteUploadsKept(notice);
 }
 void OperationService::finishCleanup(const QJsonObject& outcome) {
  cleanupInProgress_=false;automaticCleanup_=false;cleanupStop_.reset();

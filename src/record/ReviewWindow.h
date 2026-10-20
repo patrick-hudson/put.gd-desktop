@@ -67,6 +67,8 @@ public:
     void setConfig(const RecordingConfig&);
     void setExporting(bool exporting, const QString& label);
     void showError(const QString& message);
+    // A standing banner above the frame (why the recording stopped); empty hides it.
+    void setNotice(const QString& text);
     // Upload closes the window; a refused export brings it back with the reason.
     void reopen(const QString& error);
     // The resident's animation limits, for a warning before an export is refused.
@@ -96,7 +98,7 @@ private:
     RecordingEdit edit_;
     FrameView* view_ = nullptr;
     QSlider* scrubber_ = nullptr;
-    QLabel *time_ = nullptr, *retained_ = nullptr, *status_ = nullptr, *maskTimes_ = nullptr;
+    QLabel *notice_ = nullptr, *time_ = nullptr, *retained_ = nullptr, *status_ = nullptr, *maskTimes_ = nullptr;
     QPushButton* play_ = nullptr;
     QComboBox* speed_ = nullptr;
     QThread* playThread_ = nullptr;

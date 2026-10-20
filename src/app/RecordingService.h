@@ -53,6 +53,8 @@ public:
     static constexpr qint64 minimumBudgetBytes = 64LL * 1024 * 1024;
 signals:
     void changed(const QString& operationId);
+    // The capture ended itself on its byte budget (#225); `stop` is recording.inspect's stopDetails.
+    void budgetStopped(const QString& operationId, const QJsonObject& stop);
 private:
     struct Session {
         Operation op;
@@ -78,6 +80,10 @@ private:
         QString staging;
         // Why the helper ended the capture: user, or budget when the disk/file cap ran out.
         QString stopReason;
+        // Which bound set the budget at prepare (disk_space or max_file_bytes), and after
+        // a budget stop {reason, message, hint, budgetBytes, maxFileBytes, durationUs, freeBytes?, ...}.
+        QString budgetLimit;
+        QJsonObject stopDetails;
         int exports = 0;
         quint64 generation = 0;
     };
@@ -88,6 +94,7 @@ private:
     void fail(Error);
     void cancelActive(JsonReply);
     void handleEvent(const QJsonObject&);
+    void stoppedOnBudget(Session&);
     void prepareSession(const QJsonObject& params, JsonReply);
     // After the durable intent: a shell selection when needed, then the backend.
     void beginPrepare(quint64 generation);

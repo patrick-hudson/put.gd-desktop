@@ -6,6 +6,7 @@
 #include <QJsonDocument>
 #include <QProcess>
 #include <QScopeGuard>
+#include <QSignalSpy>
 using namespace putgd;using namespace putgd::test;
 
 namespace {
@@ -200,11 +201,32 @@ private slots:
   ArtifactStore::setDiskForTesting(2360406016LL,32*gib);
   id=h.prepareReady();QVERIFY(!id.isEmpty());QCOMPARE(h.backend->lastConfig.budgetBytes,(2360406016LL-reserve)/3);QVERIFY(h.backend->lastConfig.budgetBytes>200*mib);
   QVERIFY(!h.rec("start",{{"id",id}}).error);QTRY_COMPARE(h.state(id),QString("recording"));
+  QSignalSpy budgetStops(&h.operations->recording(),&RecordingService::budgetStopped);
   h.backend->sink({{"id",id},{"event","stopped"},{"reason","budget"},{"durationUs",3000000.0},{"canvas",QJsonArray{1280,720}}});
   QTRY_COMPARE(h.state(id),QString("reviewing"));
   // The caller's stop arrives after the helper's own: acknowledged with the reason.
   const auto stopped=h.rec("stop",{{"id",id}});QVERIFY2(!stopped.error,qPrintable(stopped.error.message));
   QCOMPARE(stopped.result["state"].toString(),QString("reviewing"));QCOMPARE(stopped.result["stopReason"].toString(),QString("budget"));
+  // #225: the disk set this budget, so the stop says the disk ran out, with its figures,
+  // in recording.inspect, the review window's notice and the tray's signal.
+  auto stop=h.rec("inspect",{{"id",id}}).result["stopDetails"].toObject();
+  QCOMPARE(stop["reason"].toString(),QString("disk_space"));QCOMPARE(stop["freeBytes"].toInteger(),2360406016LL);QCOMPARE(stop["reserveBytes"].toInteger(),reserve);
+  QCOMPARE(stop["budgetBytes"].toInteger(),(2360406016LL-reserve)/3);QCOMPARE(stop["durationUs"].toInteger(),3000000LL);
+  QVERIFY2(stop["message"].toString().startsWith("Recording stopped at 0:03: the disk ran out of room. "+ArtifactStore::sizeText(2360406016LL)+" is free")&&stop["message"].toString().contains("free up space before recording again"),qPrintable(stop["message"].toString()));
+  QVERIFY(h.backend->log.contains("notice"));QCOMPARE(h.backend->lastControlParams["text"].toString(),stop["message"].toString());
+  QCOMPARE(budgetStops.size(),1);QCOMPARE(budgetStops[0][0].toString(),id);QCOMPARE(budgetStops[0][1].toJsonObject(),stop);
+  QVERIFY(!h.rec("cancel",{{"id",id}}).error);QTRY_VERIFY(h.operations->recordingActiveId().isEmpty());
+  // With room on the disk, the Largest file limit set the budget: the stop names it and the setting.
+  ArtifactStore::setDiskForTesting(400*gib,1000*gib);
+  auto doc=configuration(h.dir.path(),true);auto limits=doc["limits"].toObject();limits["maxFileBytes"]=double(gib);doc["limits"]=limits;QVERIFY(h.settings.save(doc,h.settings.revision()));
+  id=h.prepareReady();QVERIFY(!id.isEmpty());const auto maxFile=h.settings.snapshot().limits.maxFileBytes;QCOMPARE(maxFile,gib);QCOMPARE(h.backend->lastConfig.budgetBytes,gib-gib/10);
+  QVERIFY(!h.rec("start",{{"id",id}}).error);QTRY_COMPARE(h.state(id),QString("recording"));
+  h.backend->sink({{"id",id},{"event","stopped"},{"reason","budget"},{"durationUs",65000000.0},{"canvas",QJsonArray{1280,720}}});
+  QTRY_COMPARE(h.state(id),QString("reviewing"));
+  stop=h.rec("inspect",{{"id",id}}).result["stopDetails"].toObject();
+  QCOMPARE(stop["reason"].toString(),QString("max_file_bytes"));QCOMPARE(stop["maxFileBytes"].toInteger(),maxFile);QVERIFY(!stop.contains("freeBytes"));
+  QVERIFY2(stop["message"].toString().startsWith("Recording stopped at 1:05: it reached the Largest file limit (")&&stop["message"].toString().contains("raise Largest file in Settings > Uploads"),qPrintable(stop["message"].toString()));
+  QCOMPARE(budgetStops.size(),2);
   QVERIFY(!h.rec("cancel",{{"id",id}}).error);
  }
  void controlBarEventsDriveTheSession(){

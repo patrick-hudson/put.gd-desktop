@@ -485,9 +485,14 @@ skipped or failed upload still answers successfully with `path`, plus
   only with `copyLink`.
 - **Sharing:** on S3 the link is the object's public URL: on a public-read bucket
   anyone with the link can download the package. On Proton Drive the share link
-  expires after 7 days.
+  expires after 7 days: Proton reported a link created at 17:48:43Z expiring
+  7 days later, and the link opened without a Proton session (checked live
+  on 2026-10-20, [evidence](evidence/2026-10-20-round10-proton/README.md)).
 - **History:** the upload is an ordinary history entry (operation action
-  `diagnostics`), deletable from the destination like any upload. Later packages
+  `diagnostics`). On S3 it can be deleted from the destination like any upload.
+  Proton refuses remote deletion (`unsupported_capability`), as for every
+  Proton upload; use **Revoke link** to end URL access, and delete the file in
+  Proton Drive if needed. Later packages
   leave a successfully uploaded package out, its operation and its log records;
   one whose upload failed stays in, like any failure.
 
@@ -567,8 +572,14 @@ the same action.
 **Show in folder** is the session method `diagnostics.reveal` with an absolute `path`
 (MCP `show_diagnostics_package`). It asks the file manager to select the package
 through `org.freedesktop.FileManager1.ShowItems`; when nothing answers, it opens the
-folder with `gio open`. It accepts only put.gd's own `putgd-diagnostics-*.zip` names
-(`invalid_request`) of files that still exist (`diagnostics_package_missing`).
+folder with `gio open`. It accepts put.gd's own `putgd-diagnostics-*.zip` names, and
+any other path `diagnostics.bundle` saved a package to in this resident, such as an
+`output` of `/tmp/out/my-report.zip` (#223); anything else is `invalid_request`. The file
+must still exist (`diagnostics_package_missing`). The notification's button always
+carries the path the resident just saved, so it works for every saved name. When the
+reveal is refused, for example because the package was moved, the resident logs
+`Show in folder refused` and posts **put.gd — Show in folder** with the reason instead
+of doing nothing.
 
 Agents drive the same controls in an open window: `ui.diagnostics` (MCP
 `settings_diagnostics`) and `ui.historySaveDiagnostics` (MCP

@@ -150,13 +150,21 @@ TrayController::TrayController(OperationService& operations,
                                std::function<void()> quit, QObject* parent)
  : QObject(parent), operations_(operations), openView_(std::move(openView)),
    quit_(std::move(quit)) {
+ // A recording that ended itself on its byte budget says why (#225).
+ connect(&operations_.recording(),&RecordingService::budgetStopped,this,[this](const QString&,const QJsonObject& stop) {
+  if(available())notifyMessage("put.gd — recording stopped",stop["message"].toString(),true);
+ });
+ // Uploads an automatic cleanup could not abort, once for each (#226).
+ connect(&operations_,&OperationService::incompleteUploadsKept,this,[this](const QJsonObject& notice) {
+  if(available())notifyMessage("put.gd — incomplete uploads left",notice["message"].toString(),true);
+ });
 #ifdef Q_OS_LINUX
  if (!qobject_cast<QApplication*>(QCoreApplication::instance())) {
   native_ = std::make_unique<NativeTray>(this);
   connect(native_.get(), &NativeTray::notificationActivated,this,&TrayController::openNotificationLink);
   connect(native_.get(), &NativeTray::notificationAction,this,[this](const QString& key,const QString& value) {
    if(key=="save-diagnostics")saveDiagnostics(value);
-   else if(key=="show-in-folder")revealPackage(value);
+   else if(key=="show-in-folder")showSavedPackage(value);
   });
   connect(native_.get(), &NativeTray::availabilityResolved, this, &TrayController::availabilityResolved);
   connect(native_.get(), &NativeTray::actionActivated, this, [this](const QString& action) {
@@ -492,10 +500,16 @@ void TrayController::notifyDiagnosticsSaved(const QJsonObject& result) {
  else if(!uploadError.isEmpty()){const auto reason=failureReason(uploadError);uploaded=" Not uploaded"+(reason.isEmpty()?QString("."):": "+reason+".");}
  notifyMessage("put.gd — diagnostics saved",file.fileName()+" ("+ByteSize::summary(result["bytes"].toInteger())+") in "+QDir::toNativeSeparators(file.absolutePath())+"."+uploaded,false,{},{},file.absoluteFilePath());
 }
-Error TrayController::revealPackage(const QString& path) {
+// The button carries the path put.gd itself just saved, whatever its name (#223).
+void TrayController::showSavedPackage(const QString& path) {
+ const auto error=revealPackage(path,true);if(!error)return;
+ qWarning("Show in folder refused: %s",qPrintable(error.code));
+ notifyMessage("put.gd — Show in folder",error.message,true);
+}
+Error TrayController::revealPackage(const QString& path,bool savedHere) {
  static const QRegularExpression name("^putgd-diagnostics-[0-9]{8}-[0-9]{6}Z(-[0-9]+)?\\.zip$");
  const QFileInfo file(path);
- if(!QDir::isAbsolutePath(path)||!name.match(file.fileName()).hasMatch())return {"invalid_request","Show in folder takes the absolute path of a saved put.gd diagnostics package",{}};
+ if(!QDir::isAbsolutePath(path)||(!savedHere&&!name.match(file.fileName()).hasMatch()))return {"invalid_request","Show in folder takes the absolute path of a saved put.gd diagnostics package",{}};
  if(!file.isFile()||file.isSymLink())return {"diagnostics_package_missing","The diagnostics package is no longer there",{{"path",path}}};
 #ifdef Q_OS_LINUX
  // The file manager selects the package; without one, open its folder instead.

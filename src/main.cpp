@@ -345,7 +345,7 @@ int main(int argc,char* argv[]) {
  server.setUiCommand([&](const QString& name,const QJsonObject& params,putgd::JsonReply reply){ui.command(name,params,std::move(reply));});
  // Save diagnostics for a failed upload from its notification, into the folder Settings last chose (#122).
  tray.setDiagnosticsSaver([&](const QString& id,putgd::JsonReply reply){putgd::BundleRequest request;request.operationId=id;const auto folder=operations.settingsSnapshot().document["preferences"].toObject()["diagnostics"].toObject()["packageFolder"].toString();if(QFileInfo(folder).isDir())request.output=folder;bundles.create(request,std::move(reply));});
- server.setDiagnosticsNotifications([&](const QJsonObject& result){tray.notifyDiagnosticsSaved(result);},&putgd::TrayController::revealPackage);
+ server.setDiagnosticsNotifications([&](const QJsonObject& result){tray.notifyDiagnosticsSaved(result);},[&](const QString& path){return putgd::TrayController::revealPackage(path,bundles.saved(path));});
  const auto fullDiagnostics=[&]{auto diagnostics=operations.diagnostics();diagnostics["loginStartup"]=loginStatus;diagnostics["shortcuts"]=source->capabilities()["shortcuts"];diagnostics["ui"]=ui.status();diagnostics["trayAvailable"]=tray.available();diagnostics["trayTint"]=tray.trayTint();return diagnostics;};
  server.setUiDiagnostics(fullDiagnostics);
  bundles.setDiagnostics(fullDiagnostics);

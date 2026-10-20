@@ -613,6 +613,31 @@ private slots:
   QTRY_COMPARE(notifications.values.size(),4);QVERIFY2(notifications.values[3]["body"].toString().endsWith(". Uploaded to Synthetic S3; link copied."),qPrintable(notifications.values[3]["body"].toString()));
   controller.notifyDiagnosticsSaved({{"path",package},{"bytes",2048},{"uploadError",QJsonObject{{"code","s3_permission_denied"},{"message","S3 denied the request (HTTP 403)."}}}});
   QTRY_COMPARE(notifications.values.size(),5);QVERIFY2(notifications.values[4]["body"].toString().endsWith(". Not uploaded: access denied by the destination."),qPrintable(notifications.values[4]["body"].toString()));
+  // #223: a package saved under a name the caller chose opens from its button too;
+  // diagnostics.reveal keeps the name check for paths this resident did not save.
+  QVERIFY(QDir().mkpath(directory.filePath("out")));const auto custom=directory.filePath("out/putgd-diagnostics-r9.zip");{QFile file(custom);QVERIFY(file.open(QIODevice::WriteOnly));file.write("PK");}
+  QCOMPARE(TrayController::revealPackage(custom).code,QString("invalid_request"));
+  controller.notifyDiagnosticsSaved({{"path",custom},{"bytes",2048}});QTRY_COMPARE(notifications.values.size(),6);
+  QCOMPARE(notifications.values[5]["actions"].toStringList(),QStringList({"show-in-folder","Show in folder"}));
+  emit notifications.ActionInvoked(6,"show-in-folder");QTRY_COMPARE(files.shown.size(),2);QCOMPARE(files.shown[1],QStringList{QUrl::fromLocalFile(custom).toString(QUrl::FullyEncoded)});
+  QVERIFY(!TrayController::revealPackage(custom,true));QTRY_COMPARE(files.shown.size(),3);
+  // A package removed before the click says so instead of doing nothing.
+  controller.notifyDiagnosticsSaved({{"path",custom},{"bytes",2048}});QTRY_COMPARE(notifications.values.size(),7);QVERIFY(QFile::remove(custom));
+  emit notifications.ActionInvoked(7,"show-in-folder");QTRY_COMPARE(notifications.values.size(),8);
+  QCOMPARE(notifications.values[7]["summary"].toString(),QString("put.gd — Show in folder"));QCOMPARE(notifications.values[7]["body"].toString(),QString("The diagnostics package is no longer there"));
+  QTest::qWait(50);QCOMPARE(files.shown.size(),3);QCOMPARE(opened().size(),1);
+ }
+ void selfStoppedRecordingAndKeptUploadsAreAnnounced() {
+  // #225 and #226: what ended a recording, and uploads cleanup left behind, reach the user.
+  QTemporaryDir directory;ProviderRegistry providers;SettingsService settings(directory.filePath("config.json"));QVERIFY(settings.save(configuration(directory.path(),true),{}));Source source;
+  OperationService operations(directory.filePath("data"),settings,providers,source);QTRY_VERIFY(operations.ready());
+  TrayController controller(operations,[](const QString&){},[]{});QTRY_VERIFY(controller.available());const auto before=notifications.values.size();
+  emit operations.recording().budgetStopped("synthetic",{{"reason","disk_space"},{"message","Recording stopped at 0:03: the disk ran out of room."}});
+  QTRY_COMPARE(notifications.values.size(),before+1);QCOMPARE(notifications.values.last()["summary"].toString(),QString("put.gd — recording stopped"));
+  QCOMPARE(notifications.values.last()["body"].toString(),QString("Recording stopped at 0:03: the disk ran out of room."));
+  emit operations.incompleteUploadsKept({{"count",2},{"message","Automatic cleanup could not cancel 2 incomplete uploads in bucket synthetic."}});
+  QTRY_COMPARE(notifications.values.size(),before+2);QCOMPARE(notifications.values.last()["summary"].toString(),QString("put.gd — incomplete uploads left"));
+  QCOMPARE(notifications.values.last()["body"].toString(),QString("Automatic cleanup could not cancel 2 incomplete uploads in bucket synthetic."));
  }
  void coreControllerRoutesAllFourActionsWithoutViews() {
   QTemporaryDir directory; QVERIFY(directory.isValid()); ProviderRegistry providers;

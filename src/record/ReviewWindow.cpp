@@ -29,6 +29,7 @@ QWidget#putgd-review { background: %bg%; color: %text%; }
 QLabel { color: %text%; }
 QLabel#muted { color: %textMuted%; }
 QLabel#status { color: %warning%; }
+QLabel#notice { background: %warningSurface%; color: %text%; border: 1px solid %warning%; border-radius: 6px; padding: 8px 10px; }
 QPushButton { background: %surfaceRaised%; color: %text%; border: 1px solid %borderStrong%; border-radius: 6px; padding: 5px 12px; }
 QPushButton:hover { background: %selected%; }
 QPushButton:disabled { color: %textMuted%; background: %surface%; border-color: %border%; }
@@ -150,6 +151,14 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     auto* root = new QVBoxLayout(this);
     root->setContentsMargins(14, 12, 14, 12);
     root->setSpacing(8);
+    // Why the capture ended when it stopped itself (#225); hidden otherwise.
+    notice_ = new QLabel(this);
+    notice_->setObjectName("notice");
+    notice_->setWordWrap(true);
+    notice_->setTextFormat(Qt::PlainText);
+    notice_->setAccessibleName("Why the recording stopped");
+    notice_->hide();
+    root->addWidget(notice_);
     view_ = new FrameView(this);
     view_->setCanvas(options.canvas);
     root->addWidget(view_, 1);
@@ -325,6 +334,10 @@ void ReviewWindow::setExporting(bool exporting, const QString& label) {
     status_->setText(label);
 }
 void ReviewWindow::showError(const QString& message) { status_->setText(message); }
+void ReviewWindow::setNotice(const QString& text) {
+    notice_->setText(text);
+    notice_->setVisible(!text.isEmpty());
+}
 void ReviewWindow::reopen(const QString& error) {
     closing_ = false;
     show();

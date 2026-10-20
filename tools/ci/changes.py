@@ -18,7 +18,7 @@ import subprocess
 # Prose read by people and agents only. Packaged or exported docs are listed in
 # PACKAGING_FILES below because they reach the curated source archive.
 DOCUMENTATION_PREFIXES = ('docs/',)
-DOCUMENTATION_FILES = frozenset({'README.md', 'AGENTS.md', 'CLAUDE.md'})
+DOCUMENTATION_FILES = frozenset({'README.md', 'AGENTS.md', 'CLAUDE.md', 'CHANGELOG.md'})
 
 # Python and lab inputs that no compiled target, CTest registration or package
 # reads. The contracts job runs their suites on every pull request.
