@@ -1,5 +1,6 @@
 #include "core/ClipboardPayload.h"
 #include "core/ArtifactStore.h"
+#include <QDir>
 #include <QTemporaryDir>
 #include <QMimeData>
 #include <QFile>
@@ -44,6 +45,40 @@ private slots:
   const auto path=store.preview(artifact,4096,32*16);QVERIFY(!path.isEmpty());
   const QImage preview(path);QCOMPARE(preview.size(),QSize(256,128));
   QCOMPARE(preview.pixelColor(10,10),QColor(Qt::blue));
+ }
+ void destinationMaximumAndFreeDiskAreCheckedBeforeCopying() {
+  QTemporaryDir d;
+  auto write=[&](const QString& name,qint64 size){QFile f(d.filePath(name));if(!f.open(QIODevice::WriteOnly))return QString();f.write(QByteArray(size,'s'));return f.fileName();};
+  ClipboardPayload p;p.kind="files";p.files={write("small.bin",10),write("large.bin",30)};
+  ArtifactStore store(d.filePath("spool"));
+  auto result=store.acquire("operation",p,ResourceLimits{},"clipboard",Settings::fromValidated(Settings::defaults()),{},20);
+  QCOMPARE(result.error.code,QString("destination_object_too_large"));QCOMPARE(result.error.details["itemIndex"].toInt(),1);
+  QVERIFY(result.error.message.contains("large.bin"));QVERIFY(result.artifacts.isEmpty());
+  QVERIFY(QDir(d.filePath("spool")).entryList(QDir::AllEntries|QDir::Hidden|QDir::NoDotAndDotDot).isEmpty());
+  // The reserve follows journald's SystemKeepFree: min(15%, 4 GiB), at least 1 GiB.
+  constexpr qint64 gib=1LL<<30;
+  QCOMPARE(ArtifactStore::reserveFor(100*gib),4*gib);QCOMPARE(ArtifactStore::reserveFor(20*gib),3*gib);
+  QCOMPARE(ArtifactStore::reserveFor(4*gib),gib);QCOMPARE(ArtifactStore::reserveFor(-1),gib);
+  // Free space must hold the whole batch plus the reserve, in every limit mode.
+  ArtifactStore::setDiskForTesting(gib+39,4*gib);
+  result=store.acquire("operation",p,ResourceLimits{});
+  QCOMPARE(result.error.code,QString("disk_space_insufficient"));QCOMPARE(result.error.details["requiredBytes"].toInteger(),40LL);
+  QCOMPARE(result.error.details["reserveBytes"].toInteger(),gib);QVERIFY(result.error.message.contains("kept free for the system"));
+  QVERIFY(QDir(d.filePath("spool")).entryList(QDir::AllEntries|QDir::Hidden|QDir::NoDotAndDotDot).isEmpty());
+  ArtifactStore::setDiskForTesting(gib+40,4*gib);
+  result=store.acquire("operation",p,ResourceLimits{});QVERIFY2(!result.error,qPrintable(result.error.message));QCOMPARE(result.artifacts.size(),2);
+  // Bytes held by an import in flight are not free for a concurrent one.
+  {ArtifactStore::DiskBudget seen;const auto held=ArtifactStore::reserveDisk(d.filePath("spool"),30,&seen);QVERIFY(held);
+   QVERIFY(!ArtifactStore::reserveDisk(d.filePath("spool"),11,&seen));QCOMPARE(seen.reservedBytes,30LL);
+   result=store.acquire("concurrent",p,ResourceLimits{});QCOMPARE(result.error.code,QString("disk_space_insufficient"));}
+  // No bytes stay reserved once an import has finished.
+  QCOMPARE(ArtifactStore::diskBudget(d.filePath("spool")).reservedBytes,0LL);
+  QCOMPARE(ArtifactStore::diskBudget(d.filePath("spool")).available(),40LL);
+  ArtifactStore::setDiskForTesting(-1,-1);
+  const auto real=ArtifactStore::diskBudget(d.filePath("spool"));QVERIFY(real.freeBytes>0&&real.totalBytes>0&&real.reserveBytes>=gib);
+  // Each budget names the limit that refused the file.
+  ResourceLimits small;small.maxFileBytes=20;
+  result=store.acquire("other",p,small);QCOMPARE(result.error.code,QString("input_excessive"));QVERIFY(result.error.message.contains("Largest file"));
  }
  void batchAcquisitionIsAtomic() {
   QTemporaryDir d; QFile f(d.filePath("ok.txt")); QVERIFY(f.open(QIODevice::WriteOnly)); f.write("synthetic"); f.close();

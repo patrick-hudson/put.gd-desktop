@@ -20,10 +20,10 @@ public:
     QProcess process;
     QTemporaryDir directory;
     CredentialStore credentials;
-    S3Provider provider{credentials};
+    S3Provider provider;
     QString endpoint;
     Destination destination;
-    S3Fixture() {
+    explicit S3Fixture(S3UploadPolicy policy = {}) : provider(credentials, policy) {
         process.start("python3", {S3_FIXTURE_PATH});
         if (!process.waitForStarted() || !process.waitForReadyRead()) qFatal("fixture failed to start");
         endpoint = "http://127.0.0.1:" + QString::fromUtf8(process.readLine()).trimmed();

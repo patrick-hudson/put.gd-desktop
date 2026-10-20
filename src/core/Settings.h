@@ -22,6 +22,10 @@ struct ArchiveSettings {
     QHash<QString, QString> folders;
 };
 struct ResourceLimits {
+    // "No limit" for the artifact byte limits: put.gd applies none of its own up
+    // to the configuration's 1 TiB ceiling; free disk space and the destination's
+    // maximum object size still apply at import.
+    static constexpr qint64 unlimitedBytes = 1099511627776LL;
     int maxFiles = 100;
     int pendingOperations = 8;
     int concurrentUploads = 1;
@@ -70,6 +74,13 @@ struct Settings {
     QStringList editorRecentColors;
 
     static QJsonObject defaults();
+    // maxFileBytes, maxBatchBytes and pendingArtifactBytes: each a byte count, "auto"
+    // or null (no limit). Memory does not grow with file size (imports copy in 1 MiB
+    // chunks and uploads stream), so "auto" sets no byte limit of put.gd's own; the
+    // destination's maximum object size and the free-disk reserve bound every import.
+    static QStringList artifactByteLimitKeys();
+    // The resolved artifact byte limits, null for no limit.
+    QJsonObject effectiveArtifactLimits() const;
     static QJsonObject developmentTemplate();
     static Error validate(const QJsonObject&, const ProfileValidator& = {}, const CredentialValidator& = {});
     static QJsonObject effectiveAction(const QJsonObject&, const QString&);

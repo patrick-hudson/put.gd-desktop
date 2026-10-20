@@ -13,6 +13,9 @@ struct ProviderCapabilities {
  int maximumNameBytes=255;
  QString deletionEffect;
  bool sharing=false,privateUploads=false;
+ // Largest object the provider accepts in one upload; zero when it reports no
+ // fixed limit (a server may still refuse a file for quota or plan reasons).
+ qint64 maximumObjectBytes=0;
  QJsonObject toJson() const;
 };
 struct NameCheck {
@@ -39,6 +42,12 @@ struct UploadRequest {
  std::shared_ptr<std::atomic_bool> cancellation;
  std::function<void(const UploadProgress&)> progress={};
  std::optional<int> requestTimeoutMs={}; // Attempt budget; accepted destination identity stays unchanged.
+ // Opaque adapter-owned journal of a resumable upload (for example an S3
+ // multipart upload ID), last acknowledged through `checkpoint`. Empty starts fresh.
+ QJsonObject resume={};
+ // A resumable upload awaits this durable acknowledgement before it relies on
+ // remote state it created; an empty journal means none remains to resume or abort.
+ std::function<void(const QJsonObject&,std::function<void(Error)>)> checkpoint={};
 };
 struct UploadResult { QString status; StorageReceipt receipt; Error error; }; // uploaded, collision, failed, unknown
 struct StatResult { QString status; StorageReceipt receipt; Error error; }; // own, foreign, missing, unknown

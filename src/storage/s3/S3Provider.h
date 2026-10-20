@@ -1,11 +1,13 @@
 #pragma once
 #include "core/StorageProvider.h"
+#include "S3Multipart.h"
 #include "secrets/CredentialStore.h"
 namespace putgd {
 class S3Provider final : public StorageProvider {
 public:
  bool reportsUploadProgress() const override {return true;}
-    explicit S3Provider(CredentialStore&);
+    // The upload policy is a constructor seam for tests; production uses the defaults.
+    explicit S3Provider(CredentialStore&, S3UploadPolicy = {});
     ~S3Provider() override;
     QJsonObject diagnostics() const override;
     bool reconcilesDeleteProgress() const override { return true; }

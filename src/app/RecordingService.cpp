@@ -287,6 +287,13 @@ void RecordingService::prepareSession(const QJsonObject& params, JsonReply reply
         if (auto error = host_.accept(s.op)) { reply(error, {}); return; }
         // Stop before the admitted file limit, leaving room for finalization.
         s.config.budgetBytes = std::max<qint64>(1024 * 1024, s.op.settings.limits.maxFileBytes - std::max<qint64>(s.op.settings.limits.maxFileBytes / 10, 64LL * 1024 * 1024));
+        // With "auto" or "No limit", free disk space is the real bound: keep the
+        // system reserve free and leave room for the export and its upload copy.
+        if (QDir().mkpath(stagingRoot_)) {
+            const auto disk = ArtifactStore::diskBudget(stagingRoot_);
+            if (disk.freeBytes >= 0)
+                s.config.budgetBytes = std::min(s.config.budgetBytes, std::max<qint64>(1024 * 1024, disk.available() / 3));
+        }
         s.op.state = "recording";
         s.op.phase = "preparing";
         s.staging = stagingRoot_ + "/" + s.op.id;

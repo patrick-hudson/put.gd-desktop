@@ -743,19 +743,31 @@
           "maximum": 32
         },
         "maxFileBytes": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 1099511627776
+          "oneOf": [
+            {"type": "integer", "minimum": 1, "maximum": 1099511627776},
+            {"const": "auto"},
+            {"type": "null"}
+          ],
+          "default": "auto",
+          "description": "Largest imported file. Bytes, \"auto\" (no byte limit of put.gd's own) or null for no limit. The destination's maximum object size and free disk space, less a system reserve of min(15% of the filesystem, 4 GiB) and at least 1 GiB, always apply. A saved 2147483648 (the former default) reads as \"auto\"."
         },
         "maxBatchBytes": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 1099511627776
+          "oneOf": [
+            {"type": "integer", "minimum": 1, "maximum": 1099511627776},
+            {"const": "auto"},
+            {"type": "null"}
+          ],
+          "default": "auto",
+          "description": "Largest combined batch. Bytes, \"auto\" (no byte limit of put.gd's own) or null for no limit. The destination's maximum object size and free disk space, less a system reserve of min(15% of the filesystem, 4 GiB) and at least 1 GiB, always apply. A saved 2147483648 (the former default) reads as \"auto\"."
         },
         "pendingArtifactBytes": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 1099511627776
+          "oneOf": [
+            {"type": "integer", "minimum": 1, "maximum": 1099511627776},
+            {"const": "auto"},
+            {"type": "null"}
+          ],
+          "default": "auto",
+          "description": "Most acquired content waiting on disk. Bytes, \"auto\" (no byte limit of put.gd's own) or null for no limit. The destination's maximum object size and free disk space, less a system reserve of min(15% of the filesystem, 4 GiB) and at least 1 GiB, always apply. A saved 2147483648 (the former default) reads as \"auto\"."
         },
         "clipboardTextBytes": {
           "type": "integer",

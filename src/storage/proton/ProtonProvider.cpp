@@ -51,6 +51,10 @@ std::optional<int> ProtonProvider::retryRequestTimeout(const Destination& accept
 }
 ProviderCapabilities ProtonProvider::capabilities(const Destination&) const {
  ProviderCapabilities caps;caps.conditionalCreate=true;caps.stat=true;caps.urls=true;caps.maximumNameBytes=255;caps.sharing=true;caps.privateUploads=true;
+ // The pinned Drive SDK (0.22.2) streams 4 MiB encrypted blocks and sets no file
+ // size limit of its own. Proton enforces plan limits server-side (error 200003,
+ // MAX_FILE_SIZE_FOR_FREE_USER, reported as quota_exceeded), so none is declared.
+ caps.maximumObjectBytes=0;
  caps.deletionEffect="Safe remote deletion is unavailable: Proton does not expose an atomic revision-guarded file deletion. Revoke share links separately.";return caps;
 }
 QString ProtonProvider::defaultPublicationMode(const Destination& destination) const {return destination.settings["shareByDefault"].toBool(true)?"share":"private";}
