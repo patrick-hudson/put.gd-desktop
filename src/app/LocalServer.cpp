@@ -62,8 +62,10 @@ int LocalServer::replyDeadlineMs(const QString& method) {
  constexpr int base=15000;
  if(method=="recording.stop")return recording::helperStopMs+base;
  if(QStringList{"recording.capabilities","recording.prepare","recording.select","recording.start","recording.pause","recording.resume","recording.raise","recording.overlay","recording.preview"}.contains(method))return recording::helperCommandMs+base;
- // Reading the logs and compressing up to 20 MiB stays well inside this.
- if(method=="diagnostics.bundle")return 45000;
+ // Reading the logs and compressing up to 20 MiB stays well inside 45 s; an
+ // upload adds the destination test and the upload itself (#123).
+ if(method=="diagnostics.bundle")return 600000;
+ if(method=="diagnostics.uploadTarget")return 300000;
  return base;
 }
 QJsonObject LocalServer::response(const QString& requestId,const Error& error,const QJsonObject& result) {return {{"schemaVersion",1},{"requestId",requestId},{"ok",!error},{"result",error?QJsonObject{}:result},{"error",error.toJson()}};}
@@ -187,7 +189,8 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   if(!setup_) {reply({"setup_unavailable","This resident has no setup service",{}},{});return;}
   setup_->inspect(p["id"].toString(),std::move(reply));return;
  }
- // A diagnostics package, saved locally only (#74 §3, docs/diagnostics.md).
+ // A diagnostics package, always saved locally first, then optionally
+ // uploaded to a working destination (#74 §3, #123, docs/diagnostics.md).
  // notify (#122): after saving, the resident posts "diagnostics saved" with Show in folder.
  if(method=="diagnostics.bundle") {
   auto params=p;const auto notify=params.take("notify");
@@ -217,6 +220,12 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   if(!fields(p,{"id"})||!string(p,"id",128)){reply(invalid(),{});return;}
   if(!uiCommand_){reply({"ui_unavailable","This resident has no graphical interface",{}},{});return;}
   uiCommand_("historySaveDiagnostics",p,std::move(reply));return;
+ }
+ // Where a package would upload and whether that destination works now.
+ if(method=="diagnostics.uploadTarget") {
+  if(!fields(p,{},{"profileId"})||(p.contains("profileId")&&!string(p,"profileId",64))){reply(invalid(),{});return;}
+  if(!bundles_){reply({"diagnostics_unavailable","This resident cannot create diagnostics packages",{}},{});return;}
+  bundles_->uploadTarget(p["profileId"].toString(),std::move(reply));return;
  }
  if(method=="settings.save") {
   if(!fields(p,{"document","expectedRevision"})||!p["document"].isObject()||!p["expectedRevision"].isString()) {reply(invalid(),{});return;}

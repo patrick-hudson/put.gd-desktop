@@ -251,6 +251,15 @@ QList<Operation> HistoryStore::operationsSince(const QString& from,const QString
  while(result.size()<limit&&q.next()){auto op=Operation::fromJson(decode(q.value(0)));if(!states.contains(op.state))continue;relocate(op);result.append(std::move(op));}
  return result;
 }
+std::optional<Operation> HistoryStore::lastUpload(const QString& profileId,Error* error) const {
+ if(error_) {if(error)*error=error_;return {};}
+ QSqlQuery q(db_);
+ q.prepare("SELECT data FROM operations WHERE json_extract(data,'$.destination.profileId')=? AND json_extract(data,'$.state') IN ('completed','partial','failed') ORDER BY json_extract(data,'$.created') DESC,id LIMIT 1");
+ q.addBindValue(profileId);
+ if(!q.exec()){if(error)*error=sqlError();return {};}
+ if(!q.next())return {};
+ auto op=Operation::fromJson(decode(q.value(0)));relocate(op);return op;
+}
 Error HistoryStore::expireBefore(const QString& timestamp) {
  if(error_)return error_;
  if(!db_.transaction())return sqlError();

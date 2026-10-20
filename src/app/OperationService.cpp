@@ -36,6 +36,12 @@ bool terminalUpload(const QString& s) {return s=="uploaded"||s=="skipped"||s=="c
 const QLoggingCategory& providerLog(const QString& provider) {return provider=="s3"?logS3():provider=="proton-drive"?logProton():logOperation();}
 qint64 artifactBytes(const Operation& op) {qint64 total=0;for(const auto& item:op.items)total+=item.artifact.bytes;return total;}
 QJsonObject itemFields(const Operation& op,const OperationItem& item) {return {{"operationId",op.id},{"itemId",item.artifact.id},{"provider",op.destination.providerId}};}
+// A diagnostics upload (#123) has no action route: it goes to the destination
+// it was accepted for and asks for a link.
+ActionSettings routeOf(const Operation& op) {
+ if(op.action==OperationService::diagnosticsAction)return {"upload",op.destination.profileId,{},"share"};
+ return op.settings.actions.value(op.action);
+}
 }
 QJsonObject UnavailableSource::capabilities() const {return {{"region",false},{"window",false},{"desktop",false},{"clipboardImport",QJsonArray{}},{"clipboardResult",QJsonArray{}},{"shortcuts",false},{"reason","native_adapter_unavailable"}};}
 void UnavailableSource::acquire(const QString&,const ResourceLimits&,std::function<void(PayloadResult)> cb) {cb({{},unsupported()});}
@@ -246,6 +252,31 @@ void OperationService::invoke(const QString& action,JsonReply reply,const QJsonO
   });
  });
 }
+void OperationService::uploadDiagnostics(const QString& path,const QString& profileId,JsonReply accepted,std::function<void(const Operation&)> finished) {
+ if(!ready_) {accepted(startupError_?startupError_:Error{"initializing","Journal recovery is in progress",{}},{});return;}
+ auto snapshot=settings_.snapshot();
+ if(!snapshot.profiles.contains(profileId)){accepted({"profile_not_found","No destination has this ID",{{"profileId",profileId}}},{});return;}
+ if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads) {accepted({"queue_full","Pending operation limit reached",{}},{});return;}
+ // This operation's own settings: the package keeps its file name in history,
+ // is never archived a second time, and a name clash never overwrites.
+ auto document=snapshot.document;
+ auto archive=document["archive"].toObject();archive["keepUploads"]=false;document["archive"]=archive;
+ auto naming=document["naming"].toObject();naming["mode"]="original";naming["collisionPolicy"]="rename";document["naming"]=naming;
+ const auto profile=snapshot.profiles.value(profileId);
+ Operation op;op.id=uuid();op.action=diagnosticsAction;op.settings=Settings::fromValidated(document);op.settingsRevision=settings_.revision();
+ op.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);op.clipboardRevision=source_.clipboardRevision();
+ op.destination={profile["provider"].toString(),profileId,settings_.revision(),profile["settings"].toObject(),profile["credentials"].toObject()};
+ auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(op.id,flag);
+ if(finished)finishWatchers_.insert(op.id,std::move(finished));
+ const auto database=databasePath();
+ background([database,op](Error& e) {HistoryStore store(database);e=store.saveOperation(op);return op.publicJson();},[this,op,flag,path,accepted](Error e,QJsonObject result) mutable {
+  if(e) {finishWatchers_.remove(op.id);releaseActive(op.id);accepted(e,{});return;}
+  observe(op.publicJson());accepted({},{{"operationId",op.id},{"operation",result}});emit changed(op.id);emit observationsChanged();
+  logging::info(logOperation(),"Operation accepted",{{"operationId",op.id},{"action",op.action},{"output","upload"},{"provider",op.destination.providerId},{"profileId",op.destination.profileId}});
+  ClipboardPayload payload;payload.kind="files";payload.files={path};
+  op.state="acquiring";enqueue({op,std::move(payload),true,flag,{}});
+ });
+}
 void OperationService::enqueue(Job job) {
 #ifdef __GLIBC__
  if(job.acquire)heapReclamationPending_=true;
@@ -380,19 +411,24 @@ Operation OperationService::run(Job job) {
  }
  // Archive every acquired item before any item in this batch is published.
  op.phase="saving_local";
- const auto route=op.settings.actions.value(op.action);
+ const auto route=routeOf(op);
  const bool local=route.destination=="local"||route.profileId.isEmpty();
  for(auto& item:op.items) if((local||op.settings.archive.keepUploads)&&item.local.status!="saved") {item.phase="saving_local";observe(op.publicJson());item.local=LocalArchive::save(item.artifact,op.settings.archive);item.phase="stored";if(!saveItem(item))return op;}
  if(local) {for(auto& item:op.items) item.uploadStatus="local_only";op.state="completed";for(const auto& item:op.items) if(item.local.status!="saved")op.state="failed";save();return op;}
  auto provider=providers_.find(op.destination.providerId);if(!provider) {op.error={"provider_unavailable","Restore access to the original destination",{}};op.state="failed";save();return op;}
  const auto capabilities=provider->capabilities(op.destination);
- auto publicationMode=op.settings.actions.value(op.action).publicationMode;
+ auto publicationMode=routeOf(op).publicationMode;
  if(publicationMode=="default")publicationMode=provider->defaultPublicationMode(op.destination);
  if(publicationMode=="private"&&!capabilities.privateUploads){op.error={"unsupported_capability","This provider cannot perform a private upload",{}};op.state="failed";save();return op;}
  if(!capabilities.conditionalCreate||(op.settings.collisionPolicy=="overwrite"&&!capabilities.conditionalReplace)) {op.error={"unsupported_capability","Provider cannot enforce this collision policy",{}};op.state="failed";save();return op;}
  bool needsNames=job.acquire;for(const auto& item:op.items)if(!terminalUpload(item.uploadStatus)&&item.candidate.isEmpty())needsNames=true;
  if(needsNames) {QList<Artifact> list;for(const auto& item:op.items)list.append(item.artifact);auto names=UploadNaming::batch(list,op.settings.namingMode,op.settings.collisionPolicy,capabilities.maximumNameBytes);QJsonArray chosen;
-  for(int i=0;i<op.items.size();++i) {if(!op.items[i].candidate.isEmpty())continue;op.items[i].candidate=names[i].name;if(names[i].status!="pending")op.items[i].uploadStatus=names[i].status;chosen.append(QJsonObject{{"itemId",op.items[i].artifact.id},{"name",names[i].name},{"status",names[i].status}});}
+  for(int i=0;i<op.items.size();++i) {
+   if(!op.items[i].candidate.isEmpty())continue;
+   // A diagnostics package ignores naming templates: an unguessable name.
+   if(op.action==diagnosticsAction)names[i]={"putgd-diagnostics-"+uuid()+".zip","pending"};
+   op.items[i].candidate=names[i].name;if(names[i].status!="pending")op.items[i].uploadStatus=names[i].status;chosen.append(QJsonObject{{"itemId",op.items[i].artifact.id},{"name",names[i].name},{"status",names[i].status}});
+  }
   logging::info(logOperation(),"Upload names chosen",{{"operationId",op.id},{"namingMode",op.settings.namingMode},{"collisionPolicy",op.settings.collisionPolicy},{"names",chosen}});
   if(!save())return op;
  }
@@ -494,7 +530,9 @@ Operation OperationService::run(Job job) {
   if(!item.receipt.directUrl.isEmpty())continue;
   op.phase="sharing";item.phase="sharing";if(!saveItem(item))return op;
   const auto shareId=uuid();
-  QJsonObject doc{{"id",shareId},{"historyId",item.artifact.id},{"action","create"},{"state","running"},{"status","pending"},{"receipt",item.receipt.toJson()},{"progress",QJsonObject{}},{"options",item.shareIntentOptions}};
+  // A diagnostics package's share link expires (#123).
+  const auto options=op.action==diagnosticsAction&&item.shareIntentOptions.isEmpty()?QJsonObject{{"expirationDays",diagnosticsShareDays}}:item.shareIntentOptions;
+  QJsonObject doc{{"id",shareId},{"historyId",item.artifact.id},{"action","create"},{"state","running"},{"status","pending"},{"receipt",item.receipt.toJson()},{"progress",QJsonObject{}},{"options",options}};
   if(item.shareStatus=="unknown")doc["action"]="inspect";
   if(auto e=store.saveSharing(doc)){item.error=e;op.state="partial";saveItem(item);return op;}
   const auto path=root_+"/history.sqlite";
@@ -528,6 +566,8 @@ void OperationService::releaseActive(const QString& id) {
 }
 void OperationService::finish(Operation op,JsonReply reply) {
  clipboardImports_.remove(op.id);pumpCopies();
+ // Its link is copied only when asked for (diagnostics.bundle copyLink).
+ if(op.action==diagnosticsAction&&op.copyStatus=="pending")op.copyStatus="suppressed";
  if(editingId_==op.id){if(editor_)editor_->cancel();editor_.reset();editingId_.clear();}
  op.phase=op.state;
  if(selectingId_==op.id&&!preparedOwners_.contains(op.id))selectingId_.clear();
@@ -545,8 +585,9 @@ void OperationService::finish(Operation op,JsonReply reply) {
    if(!failures.isEmpty())fields["itemErrors"]=failures;
    logging::write(logOperation(),op.state=="completed"||op.state=="cancelled"?QtInfoMsg:QtWarningMsg,"Operation finished",fields);
   }
+  if(!Operation::activeState(op.state))if(auto watcher=finishWatchers_.take(id))watcher(op);
   if(uploadCopies_.contains(id)){finishUploadCopies(op,reply);return;}
-  if(op.cancelled||op.state=="failed"||op.state=="interrupted") {emit resultReady(op.id);releaseActive(op.id);if(reply)reply({},op.publicJson());return;}
+  if(op.cancelled||op.state=="failed"||op.state=="interrupted"||op.action==diagnosticsAction) {emit resultReady(op.id);releaseActive(op.id);if(reply)reply({},op.publicJson());return;}
   performCopy(op,false,[this,id=op.id,reply](Error error,QJsonObject result) {releaseActive(id);if(reply)reply(error,result);});
  });
 }
@@ -569,7 +610,7 @@ void OperationService::retry(const QString& id,JsonReply reply) {
  if(active_.contains(id)) {reply({"operation_busy","Operation is already active",{}},{});return;}
  auto reserved=std::make_shared<std::atomic_bool>(false);active_.insert(id,reserved);const auto path=databasePath();background([path,id](Error& e) {HistoryStore store(path);return store.operation(id,&e).toJson();},[this,reply,id,reserved,path](Error e,QJsonObject doc) {
   if(e) {active_.remove(id);reply(e,{});return;}auto op=Operation::fromJson(doc);if(op.items.isEmpty()) {active_.remove(id);reply({"artifact_missing","No acquired artifacts; invoke a new action",{}},{});return;}
-  auto provider=providers_.find(op.destination.providerId);const bool sharing=provider&&provider->capabilities(op.destination).sharing;auto mode=op.settings.actions.value(op.action).publicationMode;if(mode=="default"&&provider)mode=provider->defaultPublicationMode(op.destination);
+  auto provider=providers_.find(op.destination.providerId);const bool sharing=provider&&provider->capabilities(op.destination).sharing;auto mode=routeOf(op).publicationMode;if(mode=="default"&&provider)mode=provider->defaultPublicationMode(op.destination);
   bool pending=false;for(const auto& i:op.items)if(!terminalUpload(i.uploadStatus)||(sharing&&i.uploadStatus=="uploaded"&&(i.shareStatus=="unknown"||(i.shareStatus=="private"&&i.shareIntent=="create")||(mode=="share"&&(i.shareStatus=="not_requested"||(i.shareStatus=="failed"&&i.shareIntent=="create"))))))pending=true;
   if(!pending) {active_.remove(id);performCopy(op,true,reply);return;}
   if(provider)if(auto timeout=provider->retryRequestTimeout(op.destination,settings_.snapshot().profiles.value(op.destination.profileId)))op.requestTimeoutMs=std::max(op.requestTimeoutMs.value_or(0),*timeout);

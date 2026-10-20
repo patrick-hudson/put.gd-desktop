@@ -66,7 +66,8 @@ Methods and parameters:
 | `history.detail`, `history.copyLink`, `history.copyImage` | history `id` |
 | `history.clear`, `cache.clear` | empty object |
 | `logs.clear` | empty object; deletes every persistent log file and starts a new one ([diagnostics.md](diagnostics.md#retention)) |
-| `diagnostics.bundle` | optional `operation`, `since` (`1m`–`365d`, default `7d`), `includeNames`, absolute `output`, `preview`, `notify`; or the CLI flags `--operation`, `--since`, `--include-names`, `--output`. Saves a redacted diagnostics package locally; `preview` only reports what it would hold ([diagnostics.md](diagnostics.md#diagnostics-package)) |
+| `diagnostics.bundle` | optional `operation`, `since` (`1m`–`365d`, default `7d`), `includeNames`, absolute `output`, `preview`, `notify`, `upload` with optional `profileId` and `copyLink`; or the CLI flags `--operation`, `--since`, `--include-names`, `--output`, `--upload`, `--profile ID`, `--copy-link`. Saves a redacted diagnostics package locally; `preview` only reports what it would hold (it takes no upload options); with `upload` it then sends the package to a working destination and returns `link`, or `uploadError` saying why it was skipped or failed ([diagnostics.md](diagnostics.md#uploading-a-package)). Waits up to 10 minutes |
+| `diagnostics.uploadTarget` | optional `profileId`; where a package would upload and whether that destination works now: `available`, `profileId`, `label`, `provider`, `publicLink`, `warning`, `shareExpirationDays`, or `reason` and `message`. Runs Test connection ([diagnostics.md](diagnostics.md#uploading-a-package)) |
 | `diagnostics.reveal` | absolute `path` of a saved `putgd-diagnostics-*.zip`; Show in folder ([diagnostics.md](diagnostics.md#settings-and-notifications)) |
 | `delete.prepare` | `ids` array of confirmed history IDs |
 | `delete.confirm` | identical ordered `ids`, exact returned `acknowledgement` |

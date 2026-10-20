@@ -114,7 +114,9 @@ class CliAdapter:
             raise ValueError('CLI timeout must be finite and positive')
         self.cli, self.socket, self.timeout = cli, socket, timeout
 
-    async def call(self, method: str, params: Json) -> Json:
+    async def call(self, method: str, params: Json, timeout: float | None = None) -> Json:
+        # A longer deadline for methods whose resident reply waits on the network.
+        timeout = max(self.timeout, timeout or 0)
         request_id = str(uuid4())
         try:
             encoded = json.dumps(params, ensure_ascii=False, allow_nan=False, separators=(',', ':'))
@@ -130,7 +132,7 @@ class CliAdapter:
         except OSError:
             return failure('cli_unavailable', 'Cannot launch the configured production CLI', request_id)
         try:
-            stdout, _ = await asyncio.wait_for(process.communicate(), self.timeout)
+            stdout, _ = await asyncio.wait_for(process.communicate(), timeout)
         except TimeoutError:
             if process.returncode is None:
                 process.kill()
@@ -434,8 +436,10 @@ def create_server(adapter: CliAdapter) -> FastMCP:
     @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
     async def create_diagnostics_bundle(operation_id: str | None = None, since: str | None = None,
                                         include_names: bool = False, output: str | None = None,
-                                        preview: bool = False, notify: bool = False) -> Json:
-        """Save a diagnostics package (.zip) locally for a maintainer: manifest with SHA-256s, environment, diagnostics, redacted configuration, failed/partial/interrupted operations with HTTP/provider codes and S3 request IDs, and log records, at most 20 MiB. operation_id packages one operation and the log around it; otherwise since (1m-365d, default 7d) picks failures and logs. File names, object keys and URLs are hashed unless include_names; credentials, tokens, signed URLs, file bytes, clipboard and the raw history database are never included. output is an absolute .zip path (never overwritten) or folder; the default <archive>/diagnostics keeps only the newest 10 packages for 30 days. Nothing is uploaded. Returns path, bytes, sha256 and counts. preview returns the files, redaction, operations, log record count and folder without writing anything; notify makes the resident show a "diagnostics saved" notification with Show in folder."""
+                                        preview: bool = False, notify: bool = False,
+                                        upload: bool = False, profile_id: str | None = None,
+                                        copy_link: bool = False) -> Json:
+        """Save a diagnostics package (.zip) locally for a maintainer: manifest with SHA-256s, environment, diagnostics, redacted configuration, failed/partial/interrupted operations with HTTP/provider codes and S3 request IDs, and log records, at most 20 MiB. operation_id packages one operation and the log around it; otherwise since (1m-365d, default 7d) picks failures and logs. File names, object keys and URLs are hashed unless include_names; credentials, tokens, signed URLs, file bytes, clipboard and the raw history database are never included. output is an absolute .zip path (never overwritten) or folder; the default <archive>/diagnostics keeps only the newest 10 packages for 30 days. The local copy is always saved first. preview returns the files, redaction, operations, log record count and folder without writing or uploading anything; notify makes the resident show a "diagnostics saved" notification with Show in folder. upload then sends the saved package to a working destination (profile_id, default the capture destination; skipped with uploadError when its last upload failed with a credential or configuration error or Test connection fails) as putgd-diagnostics-<uuid>.zip, recorded in history as a diagnostics upload; on a public-read bucket anyone with the link can download it, and a Proton Drive link expires after 7 days. copy_link also copies the link. Returns path, bytes, sha256, counts, and with upload: upload (destination, warning, operationId, historyId), link or uploadError."""
         if operation_id is not None and not identifier(operation_id, 128):
             return invalid()
         if since is not None and not (isinstance(since, str) and 2 <= len(since) <= 8):
@@ -443,6 +447,11 @@ def create_server(adapter: CliAdapter) -> FastMCP:
         if type(include_names) is not bool or (output is not None and (not identifier(output, 4096) or not output.startswith('/'))):
             return invalid()
         if type(preview) is not bool or type(notify) is not bool or (preview and notify):
+            return invalid()
+        if type(upload) is not bool or type(copy_link) is not bool or (profile_id is not None and not identifier(profile_id, 64)):
+            return invalid()
+        # A preview writes and uploads nothing.
+        if (profile_id is not None or copy_link) and not upload or (preview and upload):
             return invalid()
         params: Json = {}
         if operation_id is not None:
@@ -457,7 +466,21 @@ def create_server(adapter: CliAdapter) -> FastMCP:
             params['preview'] = True
         if notify:
             params['notify'] = True
-        return await adapter.call('diagnostics.bundle', params)
+        if upload:
+            params['upload'] = True
+            if profile_id is not None:
+                params['profileId'] = profile_id
+            if copy_link:
+                params['copyLink'] = True
+        # The CLI waits up to 600 s for a package that is uploaded.
+        return await adapter.call('diagnostics.bundle', params, timeout=630 if upload else None)
+
+    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=True))
+    async def get_diagnostics_upload_target(profile_id: str | None = None) -> Json:
+        """Where a diagnostics package would upload (profile_id, default the capture destination) and whether that destination works now: its last upload did not fail with a credential or configuration error and Test connection passes (S3 Test connection writes and removes a small test object). Returns available, profileId, label, provider, publicLink, warning and shareExpirationDays (Proton), or available false with reason and message. Settings' diagnostics dialog uses this to offer "Also upload and copy a link"."""
+        if profile_id is not None and not identifier(profile_id, 64):
+            return invalid()
+        return await adapter.call('diagnostics.uploadTarget', {} if profile_id is None else {'profileId': profile_id}, timeout=330)
 
     @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
     async def show_diagnostics_package(path: str) -> Json:

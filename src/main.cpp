@@ -244,7 +244,7 @@ int main(int argc,char* argv[]) {
  };
  QJsonObject loginStatus;
  putgd::SetupService setup(settings,credentials,tester);
- setup.setProviderSetup([&](const QString& kind,const putgd::Destination& destination,const QJsonObject& input,putgd::JsonReply reply,std::function<void(QJsonObject)> event){
+ const auto providerSetup=[&](const QString& kind,const putgd::Destination& destination,const QJsonObject& input,putgd::JsonReply reply,std::function<void(QJsonObject)> event){
   if(kind=="testDestination"&&destination.providerId=="s3"){
    const QJsonObject profile{{"provider",destination.providerId},{"settings",destination.settings},{"credentials",destination.credentialReference}};
    tester(destination.profileId,profile,[reply=std::move(reply)](putgd::Error error){reply(error,{});});return;
@@ -252,8 +252,22 @@ int main(int argc,char* argv[]) {
   if(destination.providerId!="proton-drive"){reply({"setup_unsupported","This provider has no account setup",{}},{});return;}
   const auto method=kind=="connectAccount"?QString("connect"):kind=="storeSharePassword"?QString("storeSharePassword"):kind;
   operations.background([proton,method,destination,input,event](putgd::Error& error){return proton->setup(method,destination,input,error,event);},std::move(reply));
- });
+ };
+ setup.setProviderSetup(providerSetup);
  server.setSetupService(&setup);
+ // A diagnostics package uploads only to a destination whose Test connection
+ // passes now, with the credentials already loaded (#123).
+ // A Test connection that passes in Settings clears an earlier failed upload's block.
+ QObject::connect(&setup,&putgd::SetupService::changed,&bundles,[&setup,&bundles](const QString& id){
+  setup.inspect(id,[&bundles](putgd::Error error,QJsonObject job){
+   if(!error&&job["kind"]=="testDestination"&&job["state"]=="completed")bundles.destinationTested(job["profileId"].toString());
+  });
+ });
+ bundles.setDestinationTest([&settings,providerSetup](const QString& profileId,std::function<void(putgd::Error)> done){
+  const auto profile=settings.snapshot().profiles.value(profileId);
+  const putgd::Destination destination{profile["provider"].toString(),profileId,settings.revision(),profile["settings"].toObject(),profile["credentials"].toObject()};
+  providerSetup("testDestination",destination,{},[done](putgd::Error error,QJsonObject){done(error);},[](QJsonObject){});
+ });
  // After the tray settles, read saved S3 credentials once so uploads work
  // without a manual Unlock; a locked keyring shows its own prompt here.
  QTimer::singleShot(3000,&setup,[&setup]{setup.unlockSavedCredentials();});

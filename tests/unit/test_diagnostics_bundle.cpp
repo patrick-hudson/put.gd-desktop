@@ -173,7 +173,7 @@ private slots:
   BundleRequest request;QVERIFY(!DiagnosticsBundles::parse({},request));QCOMPARE(request.sinceMs,7LL*86400000);
   QVERIFY(!DiagnosticsBundles::parse({{"operation","x"},{"since","24h"},{"includeNames",true},{"output","/tmp/a.zip"}},request));
   QCOMPARE(request.sinceMs,24LL*3600000);QVERIFY(request.includeNames);
-  for(const auto& params:QList<QJsonObject>{{{"since","0d"}},{{"since","366d"}},{{"since","7"}},{{"since",7}},{{"output","relative.zip"}},{{"includeNames","yes"}},{{"operation",""}},{{"extra",1}}})
+  for(const auto& params:QList<QJsonObject>{{{"since","0d"}},{{"since","366d"}},{{"since","7"}},{{"since",7}},{{"output","relative.zip"}},{{"includeNames","yes"}},{{"operation",""}},{{"extra",1}},{{"profileId","x"}},{{"copyLink",true}},{{"upload",1}}})
    QCOMPARE(DiagnosticsBundles::parse(params,request).code,QString("invalid_request"));
  }
  void cliFlagsBecomeParameters() {
@@ -191,8 +191,12 @@ private slots:
   QTRY_COMPARE_WITH_TIMEOUT(client.state(),QProcess::NotRunning,10000);QCOMPARE(client.exitCode(),0);
   QCOMPARE(received["method"].toString(),QString("diagnostics.bundle"));
   QCOMPARE(received["params"].toObject(),(QJsonObject{{"operation","synthetic-op"},{"since","24h"},{"includeNames",true},{"output",QDir(d.path()).absoluteFilePath("relative.zip")}}));
+  // --upload [--profile ID] [--copy-link] (#123).
+  received={};client.start(PUTGD_CLI_PATH,{"--socket",server.fullServerName(),"diagnostics.bundle","--upload","--profile","synthetic-s3","--copy-link"});
+  QTRY_COMPARE_WITH_TIMEOUT(client.state(),QProcess::NotRunning,10000);QCOMPARE(client.exitCode(),0);
+  QCOMPARE(received["params"].toObject(),(QJsonObject{{"upload",true},{"profileId","synthetic-s3"},{"copyLink",true}}));
   // The flags belong to diagnostics.bundle alone, and never with a JSON object.
-  for(const auto& args:QList<QStringList>{{"diagnostics","--since","1d"},{"diagnostics.bundle","{}","--since","1d"}}) {
+  for(const auto& args:QList<QStringList>{{"diagnostics","--since","1d"},{"diagnostics.bundle","{}","--since","1d"},{"diagnostics.bundle","--profile","x"},{"diagnostics.bundle","--copy-link"}}) {
    received={};client.start(PUTGD_CLI_PATH,QStringList{"--socket",server.fullServerName()}+args);
    QTRY_COMPARE_WITH_TIMEOUT(client.state(),QProcess::NotRunning,10000);QCOMPARE(client.exitCode(),1);
    QCOMPARE(QJsonDocument::fromJson(client.readAllStandardOutput()).object()["error"].toObject()["code"].toString(),QString("invalid_request"));QVERIFY(received.isEmpty());
