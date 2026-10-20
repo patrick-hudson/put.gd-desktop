@@ -294,8 +294,14 @@ absolute GitHub release download URL, so the updater fetches that exact asset
 however it reached the `.zsync`. The AppImage receipt records the update
 information and the `.zsync`'s URL, size and SHA-256 under `update`. Read an
 image's value with `./putgd-VERSION-x86_64.AppImage --appimage-updateinformation`.
-Assembly details and the lab check are in
-[AppImage assembly](../packaging/appimage/README.md#update-information).
+Assembly details are in
+[AppImage assembly](../packaging/appimage/README.md#update-information); the lab
+update from one build to the next is recorded in
+[AppImage zsync updates](evidence/2026-10-20-appimage-zsync-293/README.md).
+On Fedora, appimageupdatetool needs
+`SSL_CERT_FILE=/etc/pki/tls/certs/ca-bundle.crt` (#297). Gear Lever,
+AppImageLauncher and autostart after an update are still to be checked (#295),
+as is the first live update through the site permalink (#296).
 
 ## GitHub downloads and source
 
