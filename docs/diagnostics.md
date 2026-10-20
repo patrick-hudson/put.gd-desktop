@@ -69,6 +69,33 @@ Records at the default level:
   truncated` when a generation passes its bound, and `Helper exited` (exit code),
   `Helper crashed` (the signal Qt reports) or `Helper stopped by put.gd`. The S3
   worker's normal start and exit are debug records, since each request has one.
+  Before put.gd kills a helper itself it writes `Killing helper` (warning) with
+  `reason`, the deadline or error code: `ui_start_timeout`, `ui_show_timeout`,
+  `ui_close_timeout`, `ui_stop_timeout`, `ui_protocol` and the other `ui_*` codes
+  for `putgd-ui`, which also gets `phase`, `pendingViews`, `activations` and, for a
+  deadline, `deadline` and `deadlineMs`; for `putgd-record`, `recording_stop_timeout`,
+  `recording_probe_timeout` or the error that ended the session, with its
+  `operationId`. The exit record is then `Helper killed by put.gd` with
+  `supervisorKill` `true` and the same `reason`. A SIGKILL put.gd didn't send is
+  `Helper killed from outside put.gd` (error, `supervisorKill` `false`): another
+  process, such as an OOM killer or a window manager's force quit, ended it. A crash
+  never ends in SIGKILL.
+- **Encoder banners:** the settings and version lines x265, FFmpeg's encoders and
+  OpenH264 print as `putgd-record` opens them (and every line those libraries print
+  during the capability probe) are debug records, not warnings. A helper that printed
+  any gets one `Encoder banner lines logged at debug level` record with the count.
+- **Recordings:** `Recording step` (`from`, `state`, `elapsedMs` since the session was
+  accepted), `Recording selector open` (`helper` or `shell`), `Recording helper
+  command timed out` (`command`, `timeoutMs`), and `Recording failed` (warning) or
+  `Recording cancelled` with the error, the `step` that ended it (a timeout names its
+  own: `ready` for the helper's start, or the command), the state, any open selector
+  and `elapsedMs`. A timeout's error `details` carry the same `step` and `timeoutMs`.
+- **Notifications:** `Notification shown` (`putgd.ui`) for each toast, with a
+  `notificationId` counted from 1 in each resident, a `summary` code (the error code
+  for a failure, `operation_completed`, `operation_failed`, `recording_budget_stopped`,
+  `diagnostics_saved` and so on), the `title` and the text as `notificationText`,
+  which a package hashes unless `includeNames` is set. `Tray tooltip changed` is a
+  debug record with the tooltip's `title` and `activity` lines.
 - **Settings:** `Configuration rejected` with the stage (`load` or `save`), error
   code, JSON pointer and message. The rejected value is never written.
 - **IPC:** `Session request rejected` with the method name and code for
@@ -447,7 +474,7 @@ On top of the log's own redaction, which applies again:
 - Known folders become placeholders in both modes: `<config>`, `<data>`, `<state>`,
   `<runtime>`, `<archive>` and `<home>`.
 - Without `includeNames`, each file name, upload name, object key, URL, bucket,
-  endpoint, label and Proton ID becomes `<kind:hash>` (names, keys and paths keep
+  endpoint, label, notification text and Proton ID becomes `<kind:hash>` (names, keys and paths keep
   their extension, as in `<name:3f2a9c1b7d0e.png>`), and so does the rest of any path
   below `<home>` or `<archive>`. The hash is an HMAC with a key made for that package
   and never stored, so one value has the same token throughout a package, which lets
