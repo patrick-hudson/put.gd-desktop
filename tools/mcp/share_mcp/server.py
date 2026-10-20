@@ -436,18 +436,22 @@ def create_server(adapter: CliAdapter) -> FastMCP:
     @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
     async def create_diagnostics_bundle(operation_id: str | None = None, since: str | None = None,
                                         include_names: bool = False, output: str | None = None,
+                                        preview: bool = False, notify: bool = False,
                                         upload: bool = False, profile_id: str | None = None,
                                         copy_link: bool = False) -> Json:
-        """Save a diagnostics package (.zip) locally for a maintainer: manifest with SHA-256s, environment, diagnostics, redacted configuration, failed/partial/interrupted operations with HTTP/provider codes and S3 request IDs, coredumpctl stack traces where available, and log records, at most 20 MiB. operation_id packages one operation and the log around it; otherwise since (1m-365d, default 7d) picks failures and logs. File names, object keys and URLs are hashed unless include_names; credentials, tokens, signed URLs, file bytes, clipboard and the raw history database are never included. output is an absolute .zip path (never overwritten) or folder; the default <archive>/diagnostics keeps only the newest 10 packages for 30 days. The local copy is always saved first. upload then sends it to a working destination (profile_id, default the capture destination; skipped with uploadError when its last upload failed with a credential or configuration error or Test connection fails) as putgd-diagnostics-<uuid>.zip, recorded in history as a diagnostics upload; on a public-read bucket anyone with the link can download it, and a Proton Drive link expires after 7 days. copy_link also copies the link. Returns path, bytes, sha256, counts, and with upload: upload (destination, warning, operationId, historyId), link or uploadError."""
+        """Save a diagnostics package (.zip) locally for a maintainer: manifest with SHA-256s, environment, diagnostics, redacted configuration, failed/partial/interrupted operations with HTTP/provider codes and S3 request IDs, and log records, at most 20 MiB. operation_id packages one operation and the log around it; otherwise since (1m-365d, default 7d) picks failures and logs. File names, object keys and URLs are hashed unless include_names; credentials, tokens, signed URLs, file bytes, clipboard and the raw history database are never included. output is an absolute .zip path (never overwritten) or folder; the default <archive>/diagnostics keeps only the newest 10 packages for 30 days. The local copy is always saved first. preview returns the files, redaction, operations, log record count and folder without writing or uploading anything; notify makes the resident show a "diagnostics saved" notification with Show in folder. upload then sends the saved package to a working destination (profile_id, default the capture destination; skipped with uploadError when its last upload failed with a credential or configuration error or Test connection fails) as putgd-diagnostics-<uuid>.zip, recorded in history as a diagnostics upload; on a public-read bucket anyone with the link can download it, and a Proton Drive link expires after 7 days. copy_link also copies the link. Returns path, bytes, sha256, counts, and with upload: upload (destination, warning, operationId, historyId), link or uploadError."""
         if operation_id is not None and not identifier(operation_id, 128):
             return invalid()
         if since is not None and not (isinstance(since, str) and 2 <= len(since) <= 8):
             return invalid()
         if type(include_names) is not bool or (output is not None and (not identifier(output, 4096) or not output.startswith('/'))):
             return invalid()
+        if type(preview) is not bool or type(notify) is not bool or (preview and notify):
+            return invalid()
         if type(upload) is not bool or type(copy_link) is not bool or (profile_id is not None and not identifier(profile_id, 64)):
             return invalid()
-        if (profile_id is not None or copy_link) and not upload:
+        # A preview writes and uploads nothing.
+        if (profile_id is not None or copy_link) and not upload or (preview and upload):
             return invalid()
         params: Json = {}
         if operation_id is not None:
@@ -458,6 +462,10 @@ def create_server(adapter: CliAdapter) -> FastMCP:
             params['includeNames'] = True
         if output is not None:
             params['output'] = output
+        if preview:
+            params['preview'] = True
+        if notify:
+            params['notify'] = True
         if upload:
             params['upload'] = True
             if profile_id is not None:
@@ -473,6 +481,13 @@ def create_server(adapter: CliAdapter) -> FastMCP:
         if profile_id is not None and not identifier(profile_id, 64):
             return invalid()
         return await adapter.call('diagnostics.uploadTarget', {} if profile_id is None else {'profileId': profile_id}, timeout=330)
+
+    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
+    async def show_diagnostics_package(path: str) -> Json:
+        """Show in folder: open the file manager with a saved diagnostics package selected (org.freedesktop.FileManager1.ShowItems), or its folder when no file manager answers. path is the absolute path create_diagnostics_bundle returned; only put.gd's own putgd-diagnostics-*.zip names are accepted."""
+        if not identifier(path, 4096) or not path.startswith('/'):
+            return invalid()
+        return await adapter.call('diagnostics.reveal', {'path': path})
 
     @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, openWorldHint=False))
     async def clear_logs() -> Json:
@@ -505,6 +520,32 @@ def create_server(adapter: CliAdapter) -> FastMCP:
         if profile_id is not None:
             params['profileId'] = profile_id
         return await adapter.call('ui.moveDestination', params)
+
+    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, openWorldHint=False))
+    async def settings_diagnostics(action: str, enabled: bool | None = None, include_names: bool | None = None,
+                                   folder: str | None = None, operation_id: str | None = None) -> Json:
+        """Drive Settings → General → Diagnostics in the open Settings window as a user does. action: inspect (debug logging and when it ends, log folder size/files/oldest record, logging degraded, last unclean exit, package dialog state); setDebugLogging with enabled; clearLogs (deletes every log file, without the confirmation dialog); openPackage (Create diagnostics package…, optional operation_id and include_names; answers with the preview); setPackage (include_names and/or an existing absolute folder, which Settings remembers); savePackage (saves locally, nothing is uploaded; returns the path); showInFolder; closePackage. Every answer carries the group's state."""
+        actions = {'inspect', 'setDebugLogging', 'clearLogs', 'openPackage', 'setPackage', 'savePackage', 'showInFolder', 'closePackage'}
+        if action not in actions or (enabled is not None and type(enabled) is not bool) or (include_names is not None and type(include_names) is not bool):
+            return invalid()
+        if (folder is not None and (not identifier(folder, 4096) or not folder.startswith('/'))) or (operation_id is not None and not identifier(operation_id, 128)):
+            return invalid()
+        if (action == 'setDebugLogging') != (enabled is not None):
+            return invalid()
+        if (folder is not None and action != 'setPackage') or (operation_id is not None and action != 'openPackage'):
+            return invalid()
+        if include_names is not None and action not in {'openPackage', 'setPackage'}:
+            return invalid()
+        params: Json = {'action': action}
+        for key, value in (('enabled', enabled), ('includeNames', include_names), ('folder', folder), ('operation', operation_id)):
+            if value is not None:
+                params[key] = value
+        return await adapter.call('ui.diagnostics', params)
+
+    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
+    async def history_save_diagnostics(id: str) -> Json:
+        """Drive the open History window: select the failed upload with this operation ID (or a file's history ID) on the page shown and click Save diagnostics for this upload. Saves a package for that one operation locally (nothing is uploaded), shows the "diagnostics saved" notification and returns its path."""
+        return await adapter.call('ui.historySaveDiagnostics', {'id': id}) if identifier(id, 128) else invalid()
 
     return server
 

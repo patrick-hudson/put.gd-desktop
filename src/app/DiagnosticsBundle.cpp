@@ -157,8 +157,8 @@ QJsonValue PackageRedactor::json(const QJsonValue& value,const QString& key) con
 DiagnosticsBundles::DiagnosticsBundles(OperationService& operations,QString stateRoot,QObject* parent):QObject(parent),operations_(operations),stateRoot_(std::move(stateRoot)) {}
 QString DiagnosticsBundles::defaultFolder(const Settings& settings) {return QDir(settings.archive.root).filePath("diagnostics");}
 Error DiagnosticsBundles::parse(const QJsonObject& params,BundleRequest& request) {
- const Error invalid{"invalid_request","diagnostics.bundle takes operation (an ID), since (1m to 365d, such as 7d or 24h), includeNames, output (an absolute .zip path or folder), and upload with profileId and copyLink",{}};
- for(auto it=params.begin();it!=params.end();++it)if(!QStringList{"operation","since","includeNames","output","upload","profileId","copyLink"}.contains(it.key()))return invalid;
+ const Error invalid{"invalid_request","diagnostics.bundle takes operation (an ID), since (1m to 365d, such as 7d or 24h), includeNames, output (an absolute .zip path or folder), preview, and upload with profileId and copyLink",{}};
+ for(auto it=params.begin();it!=params.end();++it)if(!QStringList{"operation","since","includeNames","output","preview","upload","profileId","copyLink"}.contains(it.key()))return invalid;
  if(params.contains("upload")){if(!params["upload"].isBool())return invalid;request.upload=params["upload"].toBool();}
  if(params.contains("copyLink")){if(!params["copyLink"].isBool()||!request.upload)return invalid;request.copyLink=params["copyLink"].toBool();}
  if(params.contains("profileId")){const auto id=params["profileId"].toString();if(!params["profileId"].isString()||id.isEmpty()||id.size()>64||!request.upload)return invalid;request.profileId=id;}
@@ -170,7 +170,10 @@ Error DiagnosticsBundles::parse(const QJsonObject& params,BundleRequest& request
   request.sinceMs=match.captured(1).toLongLong()*unit;if(request.sinceMs>maximumSinceMs)return invalid;
  }
  if(params.contains("includeNames")){if(!params["includeNames"].isBool())return invalid;request.includeNames=params["includeNames"].toBool();}
+ if(params.contains("preview")){if(!params["preview"].isBool())return invalid;request.preview=params["preview"].toBool();}
  if(params.contains("output")) {const auto path=params["output"].toString();if(!params["output"].isString()||path.isEmpty()||path.size()>4096||!QDir::isAbsolutePath(path))return invalid;request.output=QDir::cleanPath(path);}
+ // A preview writes nothing, so it uploads nothing either.
+ if(request.preview&&(params.contains("upload")||params.contains("copyLink")||params.contains("profileId")))return invalid;
  return {};
 }
 void DiagnosticsBundles::create(const BundleRequest& request,JsonReply reply) {
@@ -192,12 +195,12 @@ void DiagnosticsBundles::create(const BundleRequest& request,JsonReply reply) {
  const auto runtime=qEnvironmentVariable("XDG_RUNTIME_DIR");if(!runtime.isEmpty())context.roots.insert(runtime,"<runtime>");
  context.roots.insert(snapshot.archive.root,"<archive>");
  running_=true;QPointer<DiagnosticsBundles> guarded(this);
- operations_.background([context,request](Error& error){return build(context,request,error);},[guarded,reply,request](Error error,QJsonObject result){
+ operations_.background([context,request](Error& error){return build(context,request,error);},[guarded,reply,request,preview=request.preview](Error error,QJsonObject result){
   if(guarded)guarded->running_=false;
-  if(error)logging::warning(logApp(),"Diagnostics package failed",{{"error",logging::errorFields(error)}});
-  else logging::info(logApp(),"Diagnostics package saved",{{"path",result["path"]},{"bytes",result["bytes"]},{"redaction",result["redaction"]},{"operations",result["operations"]},{"logRecords",result["logRecords"]}});
+  if(!preview&&error)logging::warning(logApp(),"Diagnostics package failed",{{"error",logging::errorFields(error)}});
+  else if(!preview)logging::info(logApp(),"Diagnostics package saved",{{"path",result["path"]},{"bytes",result["bytes"]},{"redaction",result["redaction"]},{"operations",result["operations"]},{"logRecords",result["logRecords"]}});
   // The local copy exists first; an upload that fails or is skipped never changes it.
-  if(error||!request.upload||!guarded){reply(error,result);return;}
+  if(error||preview||!request.upload||!guarded){reply(error,result);return;}
   guarded->upload(result,request,reply);
  });
 }
@@ -425,6 +428,17 @@ QJsonObject DiagnosticsBundles::build(const Context& context,const BundleRequest
   {"redaction",request.includeNames?"names":"hashed"},{"scope",scope},{"files",manifestFiles},{"operations",operationList.size()},
   {"logs",QJsonObject{{"records",selected.size()},{"eligibleRecords",eligible},{"droppedRecords",dropped},{"sourceFiles",files.size()}}},
   {"maximumBytes",maximumBytes}};
+ // A preview (the Settings dialog) shows what the package would hold and where it
+ // would go, from the same selection, and writes nothing.
+ if(request.preview) {
+  QJsonArray names;names.append("manifest.json");for(const auto& entry:entries)names.append(entry.first);
+  QJsonArray summaries;for(const auto& value:operationList){const auto op=value.toObject();summaries.append(QJsonObject{{"id",op["id"]},{"action",op["action"]},{"state",op["state"]},{"created",op["created"]},{"items",op["items"].toArray().size()}});}
+  const QFileInfo output(request.output);
+  const auto folder=request.output.isEmpty()?context.defaultFolder:output.isDir()?output.absoluteFilePath():output.absolutePath();
+  return {{"preview",true},{"files",names},{"redaction",request.includeNames?"names":"hashed"},{"scope",scope},{"operations",operationList.size()},
+   {"operationList",summaries},{"logRecords",selected.size()},{"droppedLogRecords",dropped},{"folder",folder},{"defaultFolder",request.output.isEmpty()},
+   {"maximumBytes",maximumBytes}};
+ }
  ZipWriter zip(now);zip.add("manifest.json",QJsonDocument(manifest).toJson(QJsonDocument::Indented));
  for(const auto& [path,bytes]:entries)zip.add(path,bytes);
  const auto archiveBytes=zip.finish();

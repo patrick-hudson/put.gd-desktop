@@ -1,5 +1,6 @@
 #pragma once
 #include "UiSession.h"
+#include <functional>
 #include "core/Settings.h"
 #include "RetainedWindow.h"
 #include <QHash>
@@ -8,7 +9,8 @@
 #include <QMap>
 #include <QPointer>
 #include <QSet>
-class QAction;class QToolButton;class QTabWidget;class QListWidget;class QSpinBox;class QDoubleSpinBox;class QTimer;class QComboBox;class QLineEdit;class QCheckBox;class QLabel;class QPushButton;class QPlainTextEdit;
+#include <QPixmap>
+class QAction;class QToolButton;class QTabWidget;class QListWidget;class QSpinBox;class QDoubleSpinBox;class QTimer;class QComboBox;class QLineEdit;class QCheckBox;class QLabel;class QPushButton;class QPlainTextEdit;class QDialog;
 namespace putgd {
 class ShortcutEditor;
 class SettingsWindow final:public RetainedWindow {
@@ -28,6 +30,16 @@ public:
  void activateDestinations(bool forceRefresh=false);
  // Moves the selected (or the given) destination one place; saves right away.
  Error moveSelectedDestination(int delta,const QString& profileId,QJsonObject& result);
+ // General → Diagnostics (#122): debug logging, Clear logs, the log and unclean-exit
+ // status and Create diagnostics package. diagnosticsCommand drives them for agents
+ // (ui.diagnostics); see docs/diagnostics.md.
+ void diagnosticsCommand(const QJsonObject& params,std::function<void(Error,QJsonObject)> reply);
+ QJsonObject diagnosticsState()const;
+ void openDiagnosticsPackage(const QString& operationId={});
+ // The two lines a destination row shows, as painted (elided, never wrapped).
+ QStringList destinationRowLines(int row)const;
+ // The image a drag of that row carries, and its hot spot (#133).
+ QPixmap destinationDragImage(int row,QPoint* hotSpot=nullptr)const;
 signals:
  void viewStateChanged();
  void actionRequested(const QString&);
@@ -54,6 +66,9 @@ private:
  QWidget *linksPanel_=nullptr,*connectionPanel_=nullptr;QPushButton* defaultButton_=nullptr;
  QLabel* credentialHint_=nullptr;
  QLabel *configPath_=nullptr,*endpointHint_=nullptr,*linkExample_=nullptr,*destinationStatus_=nullptr;
+ void refreshLoggingStatus();void clearLogs(std::function<void(Error,QJsonObject)> done);void choosePackageFolder(const QString& folder);
+ QCheckBox* debugLogging_=nullptr;QLabel *debugLoggingStatus_=nullptr,*logSummary_=nullptr,*loggingWarning_=nullptr,*uncleanExit_=nullptr;QPushButton* clearLogs_=nullptr;
+ QPointer<QDialog> packageDialog_;
  void updateProtonAccountDisplay();bool applyProtonAccountResult(const QString&,const QJsonObject&);
  void beginSetup(const QString&,const QJsonObject& input={});void pollSetup();void updateSetupButton();void configurationChanged();
  void setupFeedback(const QString&,bool success=false);

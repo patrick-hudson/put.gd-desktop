@@ -9,6 +9,7 @@ struct BundleRequest {
  qint64 sinceMs=7LL*24*60*60*1000;
  bool includeNames=false;
  QString output; // absolute .zip path or existing folder; empty means the default folder
+ bool preview=false; // report what the package would hold; write nothing
  // After saving locally, upload to a working destination (#123): profileId, or
  // the default capture destination; copyLink also puts the link on the clipboard.
  bool upload=false,copyLink=false;

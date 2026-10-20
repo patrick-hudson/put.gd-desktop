@@ -138,8 +138,9 @@ kept. It runs when the resident starts, after each rotation, when the settings c
 and once a day.
 
 **Clear logs** is the `logs.clear` session method (`putgd-cli logs.clear`, MCP
-`clear_logs`). It deletes every log file, starts a new one with a `Logs cleared`
-record and returns `removedFiles` and `removedBytes`. A Settings button is #122.
+`clear_logs`) and the **Clear logs…** button in Settings → General → Diagnostics,
+which asks first. It deletes every log file, starts a new one with a `Logs cleared`
+record and returns `removedFiles` and `removedBytes`.
 
 ## Diagnostics fields
 
@@ -173,8 +174,10 @@ backtraces are #74 §5, tracked in #124.
 ## Diagnostics package
 
 One `.zip` a user can send to a maintainer, who can then work out what happened.
-It is created through the session method `diagnostics.bundle` (CLI and MCP; the
-Settings button and failure-notification triggers are #122). It is always saved
+It is created through the session method `diagnostics.bundle` (CLI and MCP), the
+**Create diagnostics package…** dialog in Settings, or **Save diagnostics for this
+upload** on a failure notification or a failed History row (see
+[Settings and notifications](#settings-and-notifications)). It is always saved
 locally first; it can then be uploaded to a working destination (see "Uploading a
 package" below).
 
@@ -184,8 +187,18 @@ putgd-cli diagnostics.bundle [--operation ID] [--since 7d] [--include-names] [--
 
 The flags map to the JSON parameters `operation`, `since`, `includeNames`,
 `output`, `upload`, `profileId` and `copyLink`; MCP `create_diagnostics_bundle`
-takes `operation_id`, `since`, `include_names`, `output`, `upload`, `profile_id`
-and `copy_link`.
+takes `operation_id`, `since`, `include_names`, `output`, `preview`, `notify`,
+`upload`, `profile_id` and `copy_link`. Two more JSON parameters:
+
+- **`preview`:** `true` returns what the package would hold and writes nothing:
+  `files`, `redaction`, `scope` (`from`, `to`, and `operationId` or `since`),
+  `operations` (a count) and `operationList` (each one's `id`, `action`, `state`,
+  `created` and item count), `logRecords`, `droppedLogRecords`, the `folder` it would
+  be saved in and `defaultFolder`. The Settings dialog shows this before saving.
+- **`notify`:** `true` makes the resident post a **diagnostics saved** notification
+  with **Show in folder** after saving. Not together with `preview`.
+
+A preview writes nothing, so it takes none of `upload`, `profileId` and `copyLink`.
 
 - **`operation`:** package that one operation, with the log records from ten minutes
   before it was accepted to ten minutes after its last record. `since` is ignored.
@@ -302,9 +315,48 @@ deletes the packages beyond the newest 10 and any older than 30 days, matching o
 its own `putgd-diagnostics-*.zip` names. A package saved anywhere else is never
 deleted, and other files in the folder are left alone.
 
+## Settings and notifications
+
+**Settings → General → Diagnostics** (#122) shows:
+
+- **Debug logging**, the `preferences.diagnostics.debugLogging` checkbox. Under it,
+  when it turns itself off (`diagnostics.logging.debugLoggingExpiresAt`).
+- **Logs**: the file count, folder size and oldest record from
+  `diagnostics.logging`, with the retention limits, and **Clear logs…**.
+- A warning while `loggingDegraded` is true, with the reason and the dropped record
+  count. Uploads and captures carry on regardless.
+- **Last unclean exit**: `diagnostics.uncleanExit.last`, the version, when it started,
+  and whether a signal (such as a logout) or an unknown cause (a crash, a forced kill
+  or a power loss) ended it.
+- **Create diagnostics package…**, a dialog that shows a `preview` first: what the
+  package covers, its files with the upload and log record counts, the failed uploads
+  included, the redaction and the folder. **Include file names** sets `includeNames`
+  (off each time the dialog opens). **Choose folder…** saves the folder in
+  `preferences.diagnostics.packageFolder`, so later packages go there; **Use default**
+  clears it. **Save package** calls `diagnostics.bundle` with `notify`, then shows the
+  file and **Show in folder**. A space under the options is kept for #123's optional
+  upload (wiring tracked in #158).
+
+A failed, partial or interrupted operation's notification has a **Save diagnostics
+for this upload** button, and so do failed History rows (in the inspector and the row
+menu). Each builds a package for that one operation, in the remembered folder or the
+default one. The resident then posts **put.gd — diagnostics saved** with the file name,
+size and folder, and a **Show in folder** button. Notification buttons need the
+desktop's notification server to support actions (GNOME, Plasma and Cinnamon do). put.gd
+asks for a 10-second notification; once Cinnamon has expired it, use the History row
+instead.
+
+**Show in folder** is the session method `diagnostics.reveal` with an absolute `path`
+(MCP `show_diagnostics_package`). It asks the file manager to select the package
+through `org.freedesktop.FileManager1.ShowItems`; when nothing answers, it opens the
+folder with `gio open`. It accepts only put.gd's own `putgd-diagnostics-*.zip` names
+(`invalid_request`) of files that still exist (`diagnostics_package_missing`).
+
+Agents drive the same controls in an open window: `ui.diagnostics` (MCP
+`settings_diagnostics`) and `ui.historySaveDiagnostics` (MCP
+`history_save_diagnostics`); see [cli.md](cli.md) and [mcp.md](mcp.md).
+
 ## Not yet available
 
-The Settings controls (debug logging, Clear logs, Create diagnostics package) and the
-failure-notification triggers with **Show in folder**, and the dialog's "Also upload
-and copy a link" checkbox, are #122; crash backtraces and kept debug symbols are #124;
-Windows is #125.
+Wiring the upload into the **Create diagnostics package…** dialog ("Also upload and
+copy a link") is #158; crash backtraces and kept debug symbols are #124; Windows is #125.

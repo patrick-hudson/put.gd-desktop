@@ -191,10 +191,35 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  }
  // A diagnostics package, always saved locally first, then optionally
  // uploaded to a working destination (#74 §3, #123, docs/diagnostics.md).
+ // notify (#122): after saving, the resident posts "diagnostics saved" with Show in folder.
  if(method=="diagnostics.bundle") {
-  BundleRequest bundle;if(auto error=DiagnosticsBundles::parse(p,bundle)){reply(error,{});return;}
+  auto params=p;const auto notify=params.take("notify");
+  BundleRequest bundle;if(auto error=DiagnosticsBundles::parse(params,bundle)){reply(error,{});return;}
+  if(!(notify.isUndefined()||notify.isBool())||(notify.toBool()&&bundle.preview)){reply(invalid(),{});return;}
   if(!bundles_){reply({"diagnostics_unavailable","This resident cannot create diagnostics packages",{}},{});return;}
-  bundles_->create(bundle,std::move(reply));return;
+  if(!notify.toBool()){bundles_->create(bundle,std::move(reply));return;}
+  QPointer<LocalServer> guarded(this);
+  bundles_->create(bundle,[guarded,reply=std::move(reply)](Error error,QJsonObject result){if(!error&&guarded&&guarded->diagnosticsSaved_)guarded->diagnosticsSaved_(result);reply(error,result);});return;
+ }
+ // Show in folder for a saved package: the file manager selects it (#122).
+ if(method=="diagnostics.reveal") {
+  if(!fields(p,{"path"})||!string(p,"path",4096)){reply(invalid(),{});return;}
+  if(!revealPackage_){reply({"ui_unavailable","This resident cannot open a file manager",{}},{});return;}
+  const auto error=revealPackage_(p["path"].toString());reply(error,error?QJsonObject{}:QJsonObject{{"revealed",p["path"]}});return;
+ }
+ // Drives the open Settings window's Diagnostics group and package dialog, and the
+ // History window's Save diagnostics row action, the way a user does (#122).
+ if(method=="ui.diagnostics") {
+  static const QStringList actions{"inspect","setDebugLogging","clearLogs","openPackage","setPackage","savePackage","showInFolder","closePackage"};
+  if(!fields(p,{"action"},{"enabled","includeNames","folder","operation"})||!actions.contains(p["action"].toString())||(p.contains("enabled")&&!p["enabled"].isBool())||(p.contains("includeNames")&&!p["includeNames"].isBool())
+     ||(p.contains("folder")&&(!string(p,"folder",4096)||!QDir::isAbsolutePath(p["folder"].toString())))||(p.contains("operation")&&!string(p,"operation",128))){reply(invalid(),{});return;}
+  if(!uiCommand_){reply({"ui_unavailable","This resident has no graphical interface",{}},{});return;}
+  uiCommand_("diagnostics",p,std::move(reply));return;
+ }
+ if(method=="ui.historySaveDiagnostics") {
+  if(!fields(p,{"id"})||!string(p,"id",128)){reply(invalid(),{});return;}
+  if(!uiCommand_){reply({"ui_unavailable","This resident has no graphical interface",{}},{});return;}
+  uiCommand_("historySaveDiagnostics",p,std::move(reply));return;
  }
  // Where a package would upload and whether that destination works now.
  if(method=="diagnostics.uploadTarget") {

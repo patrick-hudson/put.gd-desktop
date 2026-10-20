@@ -6,7 +6,9 @@ for local bulk artifacts and [verification](../verification.md) for limitations.
 
 | Topic | Starting point |
 | --- | --- |
+| AppImage recording on Plasma 6.6 Wayland (issue #137) | [Cause (pipewiresrc `min-buffers` vs KWin's 2-4 buffers on PipeWire 1.5.81+), headless reproducer matrix, k72 Plasma 6.6 Wayland `kde-screencast`/portal, d69/f44/m74 and DEB/RPM regressions with A/V and motion](2026-10-20-appimage-plasma66-137.md) |
 | Screen recording acceptance sweep (issue #87) | [AppImage A/V on k72/d69/f44 incl. pause/resume, #81 native windows, packaged GNOME extension, MCP on three desktops, Ubuntu 26.04 GNOME/Plasma guests, two-head Wayland guests, physical Plasma 6.6 Wayland on k72, share URLs in Firefox/Chromium](2026-10-19-recording-acceptance-87.md) |
+| Settings diagnostics controls and destination drag (issues #122, #133, #134, #135) | [m74 Cinnamon failed upload → Save diagnostics → Show in folder; f44 GNOME 50, d69 Plasma 6.3 and k72 Plasma 6.6 Wayland drags, elided long names, package dialog](2026-10-20-settings-diagnostics.md) |
 | Destination reorder in Settings (issue #59) | [Suites and Cinnamon X11 guest: native drag, drop line, Alt+Down, ⋯ menu, `ui.moveDestination`, `settings.reorderProfiles`, restart](2026-10-19-destination-reorder.md) |
 | Recording bar audio box and WebM Opus decode (issues #120, #119) | [f44 GNOME, d69 KWin 6.3 Wayland and k72 X11 bar frames with sound on/off; FFmpeg 8.0 parser cause, decode test, Firefox and Chromium](2026-10-19-recording-fixes-119-120.md) |
 | Wayland recording A/V sync (issue #86) | [d69 KWin/portal, f44 Mutter/portal and k72 X11: working clip vs export offsets, timestamp A/B, before/after](2026-10-19-wayland-av-sync.md) |

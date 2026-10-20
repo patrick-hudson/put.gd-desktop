@@ -89,7 +89,10 @@ private slots:
   BundleRequest r;
   QVERIFY(!DiagnosticsBundles::parse({{"upload",true},{"profileId","test"},{"copyLink",true}},r));
   QVERIFY(r.upload&&r.copyLink);QCOMPARE(r.profileId,QString("test"));
-  for(const auto& params:{QJsonObject{{"profileId","test"}},QJsonObject{{"copyLink",true}},QJsonObject{{"upload","yes"}},QJsonObject{{"upload",true},{"profileId",""}}}) {
+  // A preview writes nothing, so it takes no upload options.
+  for(const auto& params:{QJsonObject{{"profileId","test"}},QJsonObject{{"copyLink",true}},QJsonObject{{"upload","yes"}},QJsonObject{{"upload",true},{"profileId",""}},
+                          QJsonObject{{"preview",true},{"upload",true}},QJsonObject{{"preview",true},{"upload",false}},
+                          QJsonObject{{"preview",true},{"upload",true},{"copyLink",true}},QJsonObject{{"preview",true},{"upload",true},{"profileId","test"}}}) {
    BundleRequest rejected;QCOMPARE(DiagnosticsBundles::parse(params,rejected).code,QString("invalid_request"));
   }
   QCOMPARE(DiagnosticsBundles::defaultUploadProfile(settings_->snapshot()),QString("test"));
