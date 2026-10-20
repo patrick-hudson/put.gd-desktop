@@ -129,8 +129,10 @@ export function shareOutcome(proof: JsonObject, action: string, directUrl: strin
     }
     if (ownership !== 'own') return { status: ownership === 'foreign' || ownership === 'missing' ? 'changed' : 'unknown',
         receipt: { ...proof, directUrl: '' }, linkAvailable: false, progress: { schemaVersion: 1 }, error: {} };
+    // The service's confirmed expiry, kept after it passes so the app can say the link expired (#253).
+    const expiresAt = expirationTime && action !== 'revoke' ? { expiresAt: expirationTime.toISOString() } : {};
     return { status: directUrl ? 'shared' : action === 'revoke' ? 'revoked' : 'private',
-        receipt: { ...proof, directUrl }, linkAvailable: !!directUrl, progress: { schemaVersion: 1 }, error: {} };
+        receipt: { ...proof, directUrl }, linkAvailable: !!directUrl, ...expiresAt, progress: { schemaVersion: 1 }, error: {} };
 }
 export function connectAction(loggedIn: boolean, referenceExists: boolean): 'inspect' | 'authenticate' | 'new_reference_required' {
     return loggedIn ? 'inspect' : referenceExists ? 'new_reference_required' : 'authenticate';

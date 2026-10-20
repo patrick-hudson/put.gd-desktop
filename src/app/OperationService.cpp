@@ -662,11 +662,12 @@ Operation OperationService::run(Job job) {
   };
   ShareRequest request{shareId,doc["action"].toString(),item.receipt,doc["options"].toObject(),doc["progress"].toObject(),job.cancelled};
   auto result=storageRequest<ShareResult>([&](auto cb){provider->share(request,checkpoint,cb);});
-  if(!shareResultMatchesReceipt(result,item.receipt)){result.status="unknown";result.receipt=item.receipt;result.receipt.directUrl.clear();result.error={"share_identity_changed","Sharing returned a different publication identity",{}};}
+  if(!shareResultMatchesReceipt(result,item.receipt)){result.status="unknown";result.receipt=item.receipt;result.receipt.directUrl.clear();result.expiresAt.clear();result.error={"share_identity_changed","Sharing returned a different publication identity",{}};}
   if(result.status!="shared")result.receipt.directUrl.clear();
   item.receipt=result.receipt;item.shareStatus=result.status;item.phase=result.status;item.error=result.error;
   {auto fields=itemFields(op,item);fields["action"]=request.action;fields["status"]=result.status;if(result.error)fields["error"]=logging::errorFields(result.error);logging::write(providerLog(op.destination.providerId),result.status=="shared"||result.status=="private"?QtInfoMsg:QtWarningMsg,"Sharing finished",fields);}
   doc["state"]="completed";doc["status"]=result.status;doc["receipt"]=result.receipt.toJson();doc["progress"]=result.progress;doc["error"]=result.error.toJson();
+  if(!result.expiresAt.isEmpty())doc["expiresAt"]=result.expiresAt;
   if(auto e=store.saveSharing(doc)){
    item.error=e;op.state="partial";
    QPointer<OperationService> owner(this);QMetaObject::invokeMethod(this,[owner,doc,e]{if(owner)emit owner->sharingStopped(doc,e);},Qt::QueuedConnection);

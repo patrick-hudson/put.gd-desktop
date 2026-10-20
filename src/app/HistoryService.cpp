@@ -99,8 +99,9 @@ void HistoryService::runSharing(QJsonObject doc,std::shared_ptr<std::atomic_bool
   ShareRequest request{doc["id"].toString(),doc["action"].toString(),receipt,doc["options"].toObject(),{},cancelled};
   auto result=awaitProvider<ShareResult>([&](auto cb){provider->share(request,checkpoint,cb);});
   if(!shareResultMatchesReceipt(result,receipt)){
-   result.status="unknown";result.receipt=receipt;result.error={"share_identity_changed","Sharing did not confirm the recorded publication identity",{}};
+   result.status="unknown";result.receipt=receipt;result.expiresAt.clear();result.error={"share_identity_changed","Sharing did not confirm the recorded publication identity",{}};
   }
+  if(!result.expiresAt.isEmpty())doc["expiresAt"]=result.expiresAt;
   if(result.status!="shared")result.receipt.directUrl.clear();
   doc["state"]="completed";doc["status"]=result.status;doc["receipt"]=result.receipt.toJson();doc["progress"]=result.progress;doc["error"]=result.error.toJson();e=store.saveSharing(doc);return doc;
  },[this,id](Error e,QJsonObject doc){

@@ -5,7 +5,9 @@ import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { MemberRole, NodeType, RevisionState, NodeWithSameNameExistsValidationError, RateLimitedError, ServerError, ValidationError, type NodeEntity } from '@protontech/drive-sdk';
 import { checkName, createFolder, destinationFolder, inspectAccount, stat, upload, share, serviceFailure } from './runtime';
-import { makeReceipt, type JsonObject } from './protocol';
+import { ProtocolError, makeReceipt, type JsonObject } from './protocol';
+import { saveToKeychain } from './account';
+import { Credentials } from './upstream/cli/src/credentials/credentials';
 import { AccountApiError, ApiClient } from 'proton-drive-sdk-account';
 
 type Context = Parameters<typeof inspectAccount>[0];
@@ -398,4 +400,22 @@ test('pinned SDK honors Retry-After before recovery and cancellation stops repea
     } as any, 'https://synthetic.invalid', 'en');
     await expect(limited.get('drive/v2/synthetic', cancellation.signal)).rejects.toThrow('Request aborted');
     expect(attempts).toBe(1);
+});
+
+test('a refused keychain session write reports keychain_unavailable without provider detail (#252)', async () => {
+    const refused = () => Promise.reject(new Error('Object does not exist at path "/org/freedesktop/secrets/collection/login"'));
+    // The official credentials object saves once both the key password and the session exist, as Connect does.
+    const credentials = new Credentials({ load: async () => null, remove: async () => {},
+        save: () => saveToKeychain(refused) }, { debug() {}, info() {}, warn() {}, error() {} } as any);
+    await credentials.setUserKeyPassword('synthetic-key-password');
+    const error = await credentials.setSessionInfo({ uid: 'synthetic-uid', accessToken: 'synthetic', refreshToken: 'synthetic' }).catch(e => e);
+    expect(error).toBeInstanceOf(ProtocolError);
+    for (const fallback of ['operation_failed', 'operation_unknown']) {
+        const result = serviceFailure(error, fallback);
+        expect(result.code).toBe('keychain_unavailable');
+        expect(JSON.stringify(result)).not.toContain('/org/freedesktop');
+    }
+    let saved = 0;
+    await saveToKeychain(async () => { ++saved; });
+    expect(saved).toBe(1);
 });

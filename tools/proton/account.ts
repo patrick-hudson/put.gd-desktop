@@ -30,6 +30,13 @@ export async function privateDataDirectory(): Promise<string> {
     return input;
 }
 export function createCryptoCache(): ProtonDriveCryptoCache { return new RequestCryptoCache(); }
+// A refused session write (no default keyring collection, or a locked one) is a
+// keychain failure, not a generic operation failure (#252). libsecret stores
+// through the Secret Service 'default' alias; the provider decides its target.
+export async function saveToKeychain(save: () => Promise<void>): Promise<void> {
+    try { await save(); }
+    catch { throw new ProtocolError('keychain_unavailable'); }
+}
 export async function initialize(request: JsonObject) {
     const dataDir = await privateDataDirectory();
     configureCredentialsReference(request.destination.credentials.reference);
@@ -46,7 +53,7 @@ export async function initialize(request: JsonObject) {
             accountReferenceExists = raw !== null;
             return parseStoredSnapshot(raw);
         },
-        save: snapshot => store.save(snapshot), remove: () => store.remove(),
+        save: snapshot => saveToKeychain(() => store.save(snapshot)), remove: () => store.remove(),
     }, logger);
     const requirementFailure = () => { throw new ProtocolError('unsupported_request'); };
     const apiClient = new ApiClient({ baseUrl: 'drive-api.proton.me', appVersion: APP_VERSION, credentials, logger,

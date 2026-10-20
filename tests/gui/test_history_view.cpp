@@ -1,3 +1,5 @@
+#include <QDateTime>
+#include <QLocale>
 #include "ui/HistoryModel.h"
 #include "ui/HistoryWindow.h"
 #include "ui/RedesignTheme.h"
@@ -40,7 +42,7 @@ public:int paints=0;QRegion region;
 // paused. Reopening its view may inspect the job, but must never call share again.
 class PendingSharingProvider final:public StorageProvider {
 public:
- OpaqueProvider storage;std::atomic_int mutations{0},inspections{0};std::atomic_bool entered{false},released{false};QString outcome="shared";
+ OpaqueProvider storage;std::atomic_int mutations{0},inspections{0};std::atomic_bool entered{false},released{false};QString outcome="shared",expiresAt;
  ProviderCapabilities capabilities(const Destination& d)const override{auto c=storage.capabilities(d);c.sharing=true;c.privateUploads=true;return c;}
  QString defaultPublicationMode(const Destination&)const override{return "private";}
  QString serializationKey(const Destination& d,const QJsonObject& ref,const QString& name)const override{return storage.serializationKey(d,ref,name);}
@@ -51,13 +53,13 @@ public:
  void reconcile(const UploadRequest& request,std::function<void(StatResult)> reply)override{storage.reconcile(request,std::move(reply));}
  void remove(const DeleteRequest& request,DurableCheckpoint checkpoint,std::function<void(DeleteResult)> reply)override{storage.remove(request,std::move(checkpoint),std::move(reply));}
  void share(const ShareRequest& request,DurableCheckpoint checkpoint,std::function<void(ShareResult)> reply)override{
-  if(request.action=="inspect"){++inspections;auto receipt=request.receipt;receipt.directUrl=outcome=="shared"?"https://example.invalid/shared#synthetic-key":QString{};reply({outcome,receipt,{}, {}});return;}
+  if(request.action=="inspect"){++inspections;auto receipt=request.receipt;receipt.directUrl=outcome=="shared"?"https://example.invalid/shared#synthetic-key":QString{};reply({outcome,receipt,{}, {},expiresAt});return;}
   const QJsonObject progress{{"schemaVersion",1},{"phase","recorded-intent"}};
   checkpoint(progress,[this,request,progress,reply](Error error){
    if(error){reply({"failed",request.receipt,progress,error});return;}++mutations;entered.store(true);
    while(!released.load()&&!request.cancellation->load())std::this_thread::sleep_for(std::chrono::milliseconds(1));
    auto receipt=request.receipt;receipt.directUrl=outcome=="shared"?"https://example.invalid/shared#synthetic-key":QString{};
-   reply({outcome,receipt,progress,outcome=="shared"?Error{}:Error{"synthetic_share_failed","Synthetic sharing failure",{}}});
+   reply({outcome,receipt,progress,outcome=="shared"?Error{}:Error{"synthetic_share_failed","Synthetic sharing failure",{}},expiresAt});
   });
  }
 };
@@ -152,6 +154,19 @@ private slots:
   QTRY_VERIFY(status->text().contains("Link: "+outcome));if(outcome=="failed")QVERIFY(status->text().contains("Synthetic sharing failure"));
   QTRY_VERIFY(reopened.findChild<QLabel*>("historySummary")->text().contains(outcome=="shared"?"Shared link":"Sharing failed"));QVERIFY(status->text().contains("Link: "+outcome));
   QCOMPARE(provider->mutations.load(),1);QCOMPARE(provider->storage.uploads.load(),1);QCOMPARE(source.reads,1);QCOMPARE(source.copies,0);
+ }
+ void linkRowShowsTheConfirmedExpiry(){
+  // History's link row says when the link expires, and that it expired once it has (#253).
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<PendingSharingProvider>();provider->released.store(true);const auto future=QDateTime::currentDateTimeUtc().addDays(7);provider->expiresAt=future.toString(Qt::ISODateWithMs);registry.add("opaque",provider);
+  SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));Source source;source.payload=textPayload();
+  OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());operations.invoke("clipboard",[](Error e,QJsonObject){QVERIFY(!e);});QTRY_COMPARE(provider->storage.uploads.load(),1);QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);auto drain=qScopeGuard([&]{operations.shutdown();});HistoryWindow window(fixture.session);window.show();
+  auto* table=window.findChild<QListView*>("historyList");QTRY_COMPARE(table->model()->rowCount(),1);selectRow(table,0);auto* create=window.findChild<QPushButton*>("shareHistoryLink");auto* inspect=window.findChild<QPushButton*>("inspectHistoryLink");auto* copy=window.findChild<QPushButton*>("copyHistoryLink");auto* expiry=window.findChild<QLabel*>("historyLinkExpiry");QVERIFY(expiry);
+  QTRY_VERIFY(create->isVisible()&&create->isEnabled());QVERIFY(expiry->isHidden());
+  create->click();QTRY_COMPARE(expiry->text(),"Link expires on "+QLocale().toString(future.toLocalTime(),QLocale::ShortFormat));QVERIFY(expiry->isVisible());QTRY_VERIFY(copy->isEnabled());
+  const auto past=QDateTime::currentDateTimeUtc().addSecs(-60);provider->expiresAt=past.toString(Qt::ISODateWithMs);provider->outcome="private";
+  QTRY_VERIFY(inspect->isEnabled());inspect->click();QTRY_COMPARE(expiry->text(),"Link expired on "+QLocale().toString(past.toLocalTime(),QLocale::ShortFormat));QVERIFY(expiry->isVisible());QVERIFY(!copy->isEnabled());
+  QCOMPARE(provider->mutations.load(),1);QCOMPARE(provider->inspections.load(),1);QCOMPARE(provider->storage.uploads.load(),1);
  }
  void stoppedSharingJournalCanBeInspectedAfterStorageRecovers(){
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<PendingSharingProvider>();registry.add("opaque",provider);

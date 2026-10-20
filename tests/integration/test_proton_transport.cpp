@@ -59,6 +59,14 @@ private slots:
   ShareRequest req;req.id="synthetic-share";req.action="create";req.receipt.destination=d;ShareResult sharing;
   provider.share(req,[](const QJsonObject&,auto ack){ack({});},[&](ShareResult r){sharing=r;});QCOMPARE(sharing.status,status);QCOMPARE(sharing.error.code,error);QCOMPARE(provider.diagnostics()["activeHelpers"].toInt(),0);
  }
+ void confirmedLinkExpiryReachesTheShareResult(){
+  // The helper's confirmed expiry is kept as UTC ISO 8601; anything unparsable is dropped (#253).
+  for(const auto& [fixture,expected]:QList<std::pair<QString,QString>>{{"share-expiry","2026-10-27T17:48:40.000Z"},{"share-expiry-invalid",""}}){
+   ProtonProvider provider;ShareRequest req;req.id="synthetic-share";req.action="inspect";req.receipt.destination=destination(fixture);ShareResult sharing;
+   provider.share(req,[](const QJsonObject&,auto ack){ack({});},[&](ShareResult r){sharing=r;});
+   QCOMPARE(sharing.status,QString("shared"));QCOMPARE(sharing.expiresAt,expected);
+  }
+ }
  void planFileLimitIsNotAFullDrive(){
   // Proton error 200003 arrives as its own code with the file's size and plan guidance (#147).
   ProtonProvider provider;UploadRequest req;req.destination=destination("plan-limit");req.condition="absent";req.candidate="synthetic.txt";req.publicationId="synthetic";req.artifact.bytes=3LL*1024*1024*1024;

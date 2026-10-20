@@ -106,6 +106,25 @@ test('only active unexpired SDK URL access is usable', () => {
     }
     expect(shareOutcome(proof, 'inspect', url, 'own', new Date(NaN), 1000).status).toBe('unknown');
 });
+test('the confirmed link expiry is returned, including after it passes (#253)', () => {
+    const proof = makeReceipt(request, 'file-node', 'file-revision');
+    const url = 'https://synthetic.invalid/shared#intact-capability';
+    const expiry = new Date('2026-10-27T17:48:40Z');
+    for (const action of ['create', 'inspect']) {
+        const active = shareOutcome(proof, action, url, 'own', expiry, expiry.getTime() - 1);
+        expect(active.status).toBe('shared');
+        expect(active.expiresAt).toBe('2026-10-27T17:48:40.000Z');
+        const expired = shareOutcome(proof, action, url, 'own', expiry, expiry.getTime());
+        expect(expired.status).toBe('private');
+        expect(expired.receipt.directUrl).toBe('');
+        expect(expired.expiresAt).toBe('2026-10-27T17:48:40.000Z');
+    }
+    expect('expiresAt' in shareOutcome(proof, 'create', url, 'own')).toBe(false);
+    expect('expiresAt' in shareOutcome(proof, 'revoke', '', 'own', expiry, 0)).toBe(false);
+    for (const ownership of ['foreign', 'missing', 'unknown'])
+        expect('expiresAt' in shareOutcome(proof, 'inspect', url, ownership, expiry, 0)).toBe(false);
+    expect('expiresAt' in shareOutcome(proof, 'inspect', url, 'own', new Date(NaN), 0)).toBe(false);
+});
 test('sanitized errors never copy provider exception text', () => {
     const result = failure('https://secret.invalid/private-name?token=secret');
     expect(result).toEqual({ code: 'operation_failed', message: 'The Proton operation could not be completed.', details: {} });
