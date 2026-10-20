@@ -228,6 +228,40 @@ function sharingContext() {
         denyAfter: () => { deniedAfter = true; }, failSharing: (error: Error) => { sharingError = error; },
         expire: () => { expiration = new Date(Date.now() - 1000); } };
 }
+test('a plan-limit refusal settles as failed only when the name is still free afterwards', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'putgd-plan-'));
+    const path = join(directory, 'synthetic.bin'), data = Buffer.alloc(32, 112);
+    await writeFile(path, data, { mode: 0o600 });
+    try {
+        // Free name: neither a completed file nor a draft holds it, so nothing was created (#201).
+        // Taken name (a draft the SDK could not delete, or a racing file) or a failed query stays unknown.
+        for (const [available, expected] of [['photo.png', 'failed'], ['photo (1).png', 'unknown'], [undefined, 'unknown']] as const) {
+            const stub = context();
+            (stub.ctx.sdk as any).getFileUploader = async () => ({
+                uploadFromStream: async () => ({ completion: async () => { throw new ValidationError('synthetic-private-provider-detail', 200003); } }),
+            });
+            (stub.ctx.sdk as any).getAvailableName = async (...args: unknown[]) => {
+                stub.calls.push({ method: 'available', args });
+                if (available === undefined) throw new Error('Synthetic denied name lookup');
+                return available;
+            };
+            const result = await upload(stub.ctx, { ...statRequest(), method: 'upload', condition: 'absent',
+                artifact: { path, bytes: data.length, mime: 'application/octet-stream', sha256: createHash('sha256').update(data).digest('hex') } });
+            expect(result.status).toBe(expected);
+            expect(result.error.code).toBe('destination_file_too_large_for_plan');
+            expect(stub.calls.filter(call => call.method === 'available').map(call => call.args)).toEqual([['folder', 'photo.png']]);
+            expect(JSON.stringify(result)).not.toContain('synthetic-private-provider-detail');
+        }
+        // Other refusals never consult the name: a full drive can still hold a draft.
+        const stub = context(); let consulted = 0;
+        (stub.ctx.sdk as any).getFileUploader = async () => { throw new ValidationError('synthetic-private-provider-detail', 200002); };
+        (stub.ctx.sdk as any).getAvailableName = async () => { ++consulted; return 'photo.png'; };
+        const result = await upload(stub.ctx, { ...statRequest(), method: 'upload', condition: 'absent',
+            artifact: { path, bytes: data.length, mime: 'application/octet-stream', sha256: createHash('sha256').update(data).digest('hex') } });
+        expect(result.status).toBe('unknown'); expect(result.error.code).toBe('quota_exceeded'); expect(consulted).toBe(0);
+    } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
 test('changed revision blocks sharing before mutation and suppresses a raced link after mutation', async () => {
     for (const when of ['before', 'after']) {
         const stub = sharingContext();

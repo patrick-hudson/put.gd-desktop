@@ -131,6 +131,12 @@ async function reconcile(ctx: Context, request: JsonObject) {
         return status('own', { receipt: makeReceipt(request, node.uid, node.activeRevision.uid) });
     } catch (error) { return status('unknown', { error: serviceFailure(error, 'operation_unknown', ctx.auth.isLoggedIn()) }); }
 }
+// The hashed availability query counts completed files and unfinished drafts, so a free
+// name proves neither exists. Any doubt, including a failed query, keeps the outcome unknown.
+async function nameStillFree(ctx: Context, folderUid: string, candidate: string): Promise<boolean> {
+    try { return await ctx.sdk.getAvailableName(folderUid, candidate) === candidate; }
+    catch { return false; }
+}
 export async function upload(ctx: Context, request: JsonObject): Promise<JsonObject> {
     if (request.condition !== 'absent') throw new ProtocolError('unsupported_condition');
     const artifact = object(request.artifact);
@@ -167,7 +173,12 @@ export async function upload(ctx: Context, request: JsonObject): Promise<JsonObj
             return status('uploaded', { receipt: makeReceipt(request, completed.nodeUid, completed.nodeRevisionUid) });
         } catch (error) {
             if (error instanceof NodeWithSameNameExistsValidationError) return status('collision', { error: error.isUnfinishedUpload ? failure('upload_draft_conflict') : {} });
-            return status('unknown', { error: deadlineExpired ? deadlineError() : serviceFailure(error, 'operation_unknown', ctx.auth.isLoggedIn()) });
+            if (deadlineExpired) return status('unknown', { error: deadlineError() });
+            const refused = serviceFailure(error, 'operation_unknown', ctx.auth.isLoggedIn());
+            // A plan-limit refusal settles as failed only when the name is still free afterwards (#201).
+            if (refused.code === 'destination_file_too_large_for_plan' && await nameStillFree(ctx, folder.uid, request.candidate))
+                return status('failed', { error: refused });
+            return status('unknown', { error: refused });
         }
     } finally { try { await uploadProgress.finish(); } finally { await file.close(); } }
 }

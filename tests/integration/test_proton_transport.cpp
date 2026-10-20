@@ -67,6 +67,14 @@ private slots:
   QVERIFY2(r.error.message.contains("3.0 GiB")&&r.error.message.contains("Proton plan"),qPrintable(r.error.message));
   QCOMPARE(r.error.details["bytes"].toDouble(),double(3LL*1024*1024*1024));QVERIFY(!r.error.message.contains("capacity"));
  }
+ void planFileLimitWithNothingCreatedSettlesAsFailed(){
+  // The helper settles 200003 as failed once the name is still free afterwards (#201); the size guidance stays.
+  ProtonProvider provider;UploadRequest req;req.destination=destination("plan-limit-settled");req.condition="absent";req.candidate="synthetic.txt";req.publicationId="synthetic";req.artifact.bytes=3LL*1024*1024*1024;
+  UploadResult r;provider.upload(req,[&](UploadResult value){r=value;});
+  QCOMPARE(r.status,QString("failed"));QCOMPARE(r.error.code,QString("destination_file_too_large_for_plan"));
+  QVERIFY2(r.error.message.contains("3.0 GiB")&&r.error.message.contains("Proton plan"),qPrintable(r.error.message));
+  QCOMPARE(r.error.details["bytes"].toDouble(),double(3LL*1024*1024*1024));QCOMPARE(provider.diagnostics()["activeHelpers"].toInt(),0);
+ }
  void progressFramesPrecedeCompletion(){
   ProtonProvider provider;QList<UploadProgress> reports;const auto r=upload(provider,destination("progress"),[&](const UploadProgress& value){reports.append(value);});
   QCOMPARE(r.status,QString("failed"));QCOMPARE(r.error.code,QString("authentication_required"));QCOMPARE(reports.size(),4);QCOMPARE(reports[0].phase,QString("preparing"));QVERIFY(!reports[0].bytesTransferred);QCOMPARE(reports[1].bytesTransferred.value(),1048576);QCOMPARE(reports[2].bytesTransferred.value(),524288);QVERIFY(!reports[2].bytesTotal);QCOMPARE(reports[3].phase,QString("finalizing"));
