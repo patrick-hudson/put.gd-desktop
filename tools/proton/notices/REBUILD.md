@@ -22,11 +22,13 @@ file against the catalog's SHA-256 before compiling. The catalog pins a reposito
 commit as another source of those same files. The overlay returns the connected
 account email from existing SDK metadata (issue #40) and reports Proton error
 200003, a file over the plan's size limit, as `destination_file_too_large_for_plan`
-rather than `quota_exceeded` (issue #147); SDK, crypto, Bun and dependency inputs
-remain unchanged. The #40 helper reproduced exactly from the original source packet
+rather than `quota_exceeded` (issue #147), settling it as failed when the
+file's name is still free afterwards (issue #201); SDK, crypto, Bun and
+dependency inputs remain unchanged. The #40 helper reproduced exactly from the original source packet
 plus its two files. The #147 helper was rebuilt by `provision_runtime.py` from the
 pinned sources plus these three files, on a host that reproduced the #40 helper's
-hash exactly from its own files.
+hash exactly from its own files. The #201 helper was rebuilt the same way, on
+a host that reproduced the #147 helper's hash exactly from unchanged sources.
 The application source archive and original source packets must travel together.
 
 The helper source archive contains build-source, patched public SDK/account
