@@ -133,6 +133,8 @@ QJsonObject ProtonProvider::call(const QString& method,const Destination& destin
  QElapsedTimer elapsed;elapsed.start();QByteArray pending;QJsonObject final;bool gotResult=false,gotAuth=false;ProtonOutputBudget outputBudget;
  const int timeout=method=="connect"?600000:params["requestTimeoutMs"].toInt(destination.settings["requestTimeoutMs"].toInt(120000));
  const auto consume=[&]{
+  // The first violation decides the outcome; output left after a kill is not parsed.
+  if(error)return;
   process.readAllStandardError();process.setReadChannel(QProcess::StandardOutput);auto chunk=process.read(ProtonOutputBudget::MaximumBurstBytes+1);pending+=chunk;
   if(pending.size()>ProtonOutputBudget::MaximumBurstBytes||!outputBudget.consume(chunk.size(),elapsed.elapsed())){error={"proton_protocol","Helper response exceeded its bound",{}};return;}
   while(pending.contains('\n')){
