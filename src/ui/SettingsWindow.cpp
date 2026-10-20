@@ -446,8 +446,8 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  // Updates (#293): the daily check, its channel and the last result. The
  // resident runs the check; this page shows it and starts Check now.
  auto* updatesForm=section(general,"Updates","One small request a day to app.put.gd, with nothing that identifies you. Nothing installs without you.");
- checkUpdates_=new QCheckBox("Check for updates once a day");checkUpdates_->setObjectName("checkForUpdates");setting(updatesForm,"Updates",checkUpdates_,"/preferences/updates/check");
- updateChannel_=choices(this,"updateChannel",{});updateChannel_->addItem("This build's channel","build");updateChannel_->addItem("Stable","stable");updateChannel_->addItem("Nightly","nightly");setting(updatesForm,"Channel",updateChannel_,"/preferences/updates/channel");
+ updatesForm_=updatesForm;checkUpdates_=new QCheckBox("Check for updates once a day");checkUpdates_->setObjectName("checkForUpdates");updateRows_.append(setting(updatesForm,"Updates",checkUpdates_,"/preferences/updates/check"));
+ updateChannel_=choices(this,"updateChannel",{});updateChannel_->addItem("This build's channel","build");updateChannel_->addItem("Stable","stable");updateChannel_->addItem("Nightly","nightly");updateRows_.append(setting(updatesForm,"Channel",updateChannel_,"/preferences/updates/channel"));
  auto* updateRow=new QWidget;auto* updateLayout=new QHBoxLayout(updateRow);updateLayout->setContentsMargins(0,0,0,0);updateLayout->setSpacing(8);
  updateStatus_=new QLabel;updateStatus_->setObjectName("updateStatus");updateStatus_->setWordWrap(true);updateStatus_->setAccessibleName("Update status");updateLayout->addWidget(updateStatus_,1);
  checkNow_=new QPushButton("Check now");checkNow_->setObjectName("checkForUpdatesNow");updateLayout->addWidget(checkNow_,0,Qt::AlignTop);
@@ -794,7 +794,9 @@ Error SettingsWindow::moveDestination(int from,int to){
 void SettingsWindow::refreshUpdateStatus(){
  const auto update=settings_.diagnostics()["update"].toObject();const auto build=update["build"].toObject();const auto result=update["result"].toObject();
  const bool supported=update["supported"].toBool();
- checkUpdates_->setEnabled(supported||update.isEmpty());updateChannel_->setEnabled(supported||update.isEmpty());checkNow_->setEnabled(supported&&!update["checking"].toBool());
+ // A build that never checks has nothing to choose: only the reason shows.
+ for(auto* row:updateRows_)updatesForm_->setRowVisible(row,supported||update.isEmpty());
+ checkNow_->setVisible(supported||update.isEmpty());checkNow_->setEnabled(supported&&!update["checking"].toBool());
  const bool available=supported&&result["updateAvailable"].toBool();
  updateActionsRow_->setVisible(available);
  if(update.isEmpty()){VisualStyle::feedback(updateStatus_,"Not available yet.");return;}
