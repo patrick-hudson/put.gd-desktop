@@ -222,6 +222,22 @@ without coverage credit and retried for at most two consecutive seconds. A
 persistently idle tray while CLI work remains active fails this same bound.
 Privacy, identity, icon color and malformed accounting failures stop immediately;
 the rejected SNI text is redacted from failure evidence.
+
+Icon colours are checked against the tint set for the panel the resident sees
+(#229). put.gd tints its tray icon for the panel, not the app theme
+(`Theme::trayTints`, #60): dark panels get idle `#9BBCFF`, upload `#62D69B` with
+a `#2B5D43` unfilled remainder, and error `#FFB4AB`; light panels get `#2759B8`,
+`#146C42` with `#092F1D`, and `#B4312A`. At setup the runner reads the panel
+tone the way `PanelTone` does, in the resident's own environment: the KDE
+configuration cascade (`plasmarc`, `kdeglobals`, the Plasma style's `colors`),
+Cinnamon's `org.cinnamon.theme`, or GNOME's dark top bar. It then waits until
+put.gd's own report (`ui.snapshot` `diagnostics.trayTint`) agrees, and saves
+both in `panel-tone.json`. Every read, the error pulse included, is checked
+against that one set. The resident and the reader get the desktop session's
+`XDG_CONFIG_DIRS` and `XDG_DATA_DIRS`: Plasma lists `~/.config/kdedefaults`
+there, and without it a Breeze Dark panel reads as Plasma's light default.
+`TRAY_TINTS` in `tray_progress.py` mirrors `Theme.cpp`; the contracts read the
+C++ table and `PanelTone`'s rule rows back, so the two can't drift.
 Expected error overlays are scoped to the runner's original local-save failure
 ID or explicit `proton_account_busy` failures on original concurrent/retry IDs.
 Independent terminal CLI items must prove the expected failure before red is
@@ -300,12 +316,16 @@ both operations completed, and the tooltip never named a file, path or link.
 
 Notes on the runs:
 
-- **Light panels:** `check_tooltip` knows only the dark-panel tray tints. On d69's
-  light panel, put.gd correctly drew `#2759B8` idle, `#146C42` active and `#092F1D` dim.
-  The first attempt failed on the icon colour, not the tooltip
-  ([attempt 1](evidence/tray-batch-207/observations-d69-plasma-attempt1-dark-tint-check.jsonl)).
-  The kept run renamed those three exact colours to their dark twins before the check.
-  #229 tracks making the check panel-aware.
+- **Tray tints on d69:** the d69 resident drew the light-panel set (`#2759B8` idle,
+  `#146C42` active, `#092F1D` dim), and the first attempt failed on the icon colour
+  ([attempt 1](evidence/tray-batch-207/observations-d69-plasma-attempt1-dark-tint-check.jsonl)),
+  because `check_tooltip` then knew only the dark set. The kept run renamed those
+  three colours to their dark twins before the check. d69's panel was in fact dark
+  (Breeze Dark from `~/.config/kdedefaults`, unchanged since 2026-10-16): this
+  run's driver gave the resident no `XDG_CONFIG_DIRS`, so put.gd fell back to
+  Plasma's light default. #229 made the check panel-aware and passes the session's
+  directories to the resident; replaying these 228 reads against the light set
+  passes all of them ([#229 evidence](evidence/2026-10-20-tray-tints-229/README.md)).
 - **Clipboard:** the batch needs the desktop clipboard. On d69, Klipper keeps the
   synthetic file list and the loopback link list in its history. Klipper can only clear
   all of its history, so the entries were left and only the current contents were cleared.
