@@ -17,6 +17,7 @@
 #include <QtTest>
 #include <QProcess>
 #include <QProcessEnvironment>
+#include <QDir>
 #include <QFile>
 #include <QElapsedTimer>
 #include <QTimer>
@@ -375,7 +376,8 @@ private slots:
   QTRY_COMPARE(qdbus_cast<WireTooltip>(properties()["ToolTip"]).title,qdbus_cast<WireTooltip>(idle["ToolTip"]).title);
   QCOMPARE(qdbus_cast<WireImages>(properties()["IconPixmap"]).first().bytes,idleIcon);
   logging::flush();QList<QJsonObject> records;
-  for(const auto& path:logging::files()){QFile file(path);QVERIFY(file.open(QIODevice::ReadOnly));for(const auto& line:file.readAll().split('\n'))if(!line.isEmpty())records.append(QJsonDocument::fromJson(line).object());}
+  const QDir logs(directory.filePath("logs"));
+  for(const auto& name:logs.entryList({"putgd-*.jsonl"},QDir::Files,QDir::Name)){QFile file(logs.filePath(name));QVERIFY(file.open(QIODevice::ReadOnly));for(const auto& line:file.readAll().split('\n'))if(!line.isEmpty())records.append(QJsonDocument::fromJson(line).object());}
   bool toast=false,progress=false,idleAgain=false;
   for(const auto& record:records) {
    const auto fields=record["fields"].toObject();
