@@ -226,8 +226,11 @@ files and an inner checksum list. The two large source parts and the debug asset
 stay separate; the outer checksum list covers them and the combined ZIP.
 
 The debug asset holds every build's split debug files (the four distro packages
-and the AppImage) by GNU build ID, `.build-id/<2 hex>/<rest>.debug`, plus a
-`manifest.json` naming each build's programs and build IDs. Maintainers use it to
+and the AppImage) by GNU build ID, `.build-id/<2 hex>/<rest>.debug`, the DWARF
+each build's programs share in `.dwz/<label>.debug`, and a `manifest.json`
+naming each build's programs, build IDs and shared file. It is about 213 MB
+([diagnostics.md](diagnostics.md#kept-debug-symbols)). The jobs that write it
+install `dwz`. Maintainers use it to
 symbolize crash records ([diagnostics.md](diagnostics.md)); users never need it, and
 the packages they install stay stripped. The repository is public, so the symbols
 reveal nothing the source does not. ZIP timestamps and modes are fixed from the source commit,
