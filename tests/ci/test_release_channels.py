@@ -88,6 +88,15 @@ class Workflows(unittest.TestCase):
                      'for mode in kwin mutter', 'kwin min-buffers=8'):
             self.assertIn(text, check)
 
+    def test_debug_asset_jobs_install_dwz(self):
+        # debug_symbols.write() shares each build's DWARF with dwz (#162).
+        package = workflow('package.yml')
+        for name, writer in (('debug-symbols', 'tools/releases/debug_symbols.py dry-run'), ('collect', 'tools/releases/collect.py')):
+            text = job(package, name)
+            self.assertIn('sudo apt-get install -y --no-install-recommends dwz', text)
+            self.assertLess(text.index('dwz'), text.index(writer))
+        self.assertIn('qemu-utils dwz', job(workflow('ci.yml'), 'contracts'))
+
     def test_contracts_run_every_group_and_lint_workflows(self):
         contracts = job(workflow('ci.yml'), 'contracts')
         for group in ('release', 'proton', 'lab', 'observer', 'evidence'):

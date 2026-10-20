@@ -42,10 +42,10 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ inputs.release_tag || github.sha }}
-      - name: Install QEMU disk utilities for lab contracts
+      - name: Install QEMU disk utilities and dwz for the contracts
         run: |
           sudo apt-get update
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends qemu-utils
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends qemu-utils dwz
       - name: Release, packaging and CI tool contracts
         if: always()
         run: python3 tools/ci/contracts.py release
