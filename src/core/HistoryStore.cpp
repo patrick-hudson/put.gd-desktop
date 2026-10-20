@@ -22,7 +22,7 @@ QString publicationIdentity(const StorageReceipt& receipt,const ProviderRegistry
 QJsonObject publicRecord(QJsonObject data) {
  if(data.contains("shareReceipt"))data["receipt"]=data.take("shareReceipt");
  // A link past its confirmed expiry no longer opens, so it is not offered for copying (#253).
- const auto expires=QDateTime::fromString(data["shareExpiresAt"].toString(),Qt::ISODateWithMs);
+ const auto expires=QDateTime::fromString(data.value("shareExpiresAt").toString(),Qt::ISODateWithMs);
  data["linkAvailable"]=OperationItem::fromJson(data).linkAvailable()&&!(expires.isValid()&&expires<=QDateTime::currentDateTimeUtc());
  return data;
 }

@@ -196,7 +196,7 @@ void ProtonProvider::share(const ShareRequest& req,DurableCheckpoint checkpoint,
  auto receipt=r.contains("receipt")?StorageReceipt::fromJson(r["receipt"].toObject()):req.receipt;
  if(e)receipt.directUrl.clear();
  ShareResult result{e?(uncertain?"unknown":"failed"):r["status"].toString("unknown"),receipt,r["progress"].toObject(),e?e:parseError(r["error"].toObject())};
- const auto expires=QDateTime::fromString(r["expiresAt"].toString(),Qt::ISODateWithMs);
+ const auto expires=QDateTime::fromString(r.value("expiresAt").toString(),Qt::ISODateWithMs);
  if(!e&&expires.isValid())result.expiresAt=expires.toUTC().toString(Qt::ISODateWithMs);
  reply(result);
 }
