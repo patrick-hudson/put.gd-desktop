@@ -388,6 +388,20 @@ private slots:
  void captureDestinationPopupFitsAllThreeChoices(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});auto doc=Settings::developmentTemplate();auto profiles=doc["profiles"].toArray();auto second=profiles.first().toObject();second["id"]="synthetic-second";second["label"]="Second destination";profiles.append(second);doc["profiles"]=profiles;QVERIFY(service.save(doc,{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.resize(1060,680);window.navigate("settings");window.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(1);window.show();auto* combo=window.findChild<QComboBox*>("defaultCaptureDestination");QVERIFY(combo);QCOMPARE(combo->count(),3);combo->showPopup();auto* view=combo->view();QTRY_VERIFY(view->isVisible());for(int i=0;i<combo->count();++i)QVERIFY2(view->viewport()->rect().contains(view->visualRect(combo->model()->index(i,0))),"Capture Destination choice is clipped");QCOMPARE(view->verticalScrollBar()->maximum(),0);combo->hidePopup();
  }
+ // #145: Backblaze B2's S3 API lacks conditional writes, so the S3 picker no longer offers it.
+ // A saved B2 endpoint still loads, as "Other S3-compatible", and says why uploads fail.
+ void s3ServicePickerOmitsBackblazeAndExplainsSavedB2Endpoint(){
+  QTemporaryDir dir;CredentialStore secrets;ProviderRegistry registry;registry.add("s3",std::make_shared<S3Provider>(secrets));SettingsService service(dir.filePath("config.json"),[&](auto id,auto values){return registry.validate(id,values);});
+  auto doc=Settings::developmentTemplate();auto profiles=doc["profiles"].toArray();auto profile=profiles.first().toObject();auto settings=profile["settings"].toObject();
+  settings["endpoint"]="https://s3.us-west-004.backblazeb2.com";settings["region"]="us-west-004";profile["settings"]=settings;profiles[0]=profile;doc["profiles"]=profiles;QVERIFY(service.save(doc,{}));
+  UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();
+  auto* picker=window.findChild<QComboBox*>("s3Service");QVERIFY(picker);
+  QStringList items;for(int i=0;i<picker->count();++i)items<<picker->itemText(i);
+  QCOMPARE(items,QStringList({"Amazon S3","Cloudflare R2","Other S3-compatible"}));
+  QTRY_COMPARE(picker->currentText(),QString("Other S3-compatible"));
+  bool explained=false;for(auto* label:window.findChildren<QLabel*>())if(label->text().startsWith("Endpoint: https://s3.us-west-004.backblazeb2.com")&&label->text().contains("lacks the conditional writes"))explained=true;
+  QVERIFY(explained);QCOMPARE(service.document()["profiles"].toArray()[0].toObject()["settings"].toObject()["endpoint"].toString(),QString("https://s3.us-west-004.backblazeb2.com"));
+ }
  void redesignedLongDropdownScrollsWithinItsVisibleItemLimit(){
   VisualStyle::apply(*qApp);QWidget root;auto* layout=new QVBoxLayout(&root);auto* combo=VisualStyle::choiceBox(&root);
   combo->setMaxVisibleItems(7);for(int i=0;i<60;++i)combo->addItem(QString("Option %1").arg(i+1));
