@@ -120,6 +120,7 @@ void RecordingHelperBackend::prepare(const QString& id, const RecordingTarget& t
         output_.started(child_->process->processId(), {{"generation", QString::number(generation)}, {"operationId", child_->id}});
         auto frame = envelope();
         frame["build"] = build();
+        frame["appearance"] = QJsonObject{{"scheme", scheme_}};
         if (child_->control->send("bootstrap", frame).isEmpty()) failChild(generation, helperError("recording_helper_protocol", "Cannot bootstrap the recording helper"));
     });
     connect(process, &QProcess::errorOccurred, this, [this, generation](QProcess::ProcessError error) { if (error == QProcess::FailedToStart) { if (child_ && child_->generation == generation && !child_->exited) { child_->exited = true; output_.failedToStart(child_->process->errorString()); failChild(generation, helperError("recording_helper_start_failed", "The recording helper could not be started")); } } });
@@ -131,6 +132,15 @@ void RecordingHelperBackend::prepare(const QString& id, const RecordingTarget& t
     child_->outstanding.insert("prepare", {[this, params, userReply](Error error, QJsonObject) { if (error) { userReply(error, {}); return; } send("prepare", params, prepareMs_, userReply); }});
     startup_.start(startupMs_);
     process->start(helperPath_, {});
+}
+void RecordingHelperBackend::setAppearance(const QString& scheme) {
+    const QString value = scheme == "light" ? QStringLiteral("light") : QStringLiteral("dark");
+    if (value == scheme_) return;
+    scheme_ = value;
+    if (!child_ || !child_->ready || child_->shuttingDown || child_->exited) return;
+    auto frame = envelope();
+    frame["scheme"] = scheme_;
+    if (child_->control->send("appearance", frame).isEmpty()) failChild(child_->generation, helperError("recording_helper_protocol", "Cannot send the appearance to the recording helper"));
 }
 void RecordingHelperBackend::send(const QString& command, const QJsonObject& params, int timeoutMs, Reply reply) {
     if (!child_ || !child_->ready || child_->shuttingDown || child_->exited) { reply(helperError("recording_helper_closed", "The recording helper is not running"), {}); return; }

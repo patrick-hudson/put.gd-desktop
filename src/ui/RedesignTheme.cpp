@@ -1,23 +1,16 @@
 #include "RedesignTheme.h"
+#include "VisualStyle.h"
 
 #include <QComboBox>
 #include <QCoreApplication>
-#include <QDir>
 #include <QEvent>
 #include <QFile>
 #include <QFont>
 #include <QFontDatabase>
-#include <QHash>
-#include <QImage>
-#include <QPainter>
-#include <QPainterPath>
 #include <QPalette>
 #include <QPointer>
 #include <QResource>
-#include <QTemporaryDir>
 #include <QWidget>
-#include <functional>
-#include <memory>
 
 // Q_INIT_RESOURCE must be outside putgd's namespace.
 static void initializeRedesignResources()
@@ -47,49 +40,6 @@ const Fonts& fonts()
 {
     static const Fonts result;
     return result;
-}
-// Indicator glyphs painted from the tokens, at 1x and @2x, so they change with
-// the scheme. They live in a private temporary folder for this process.
-void paintIndicators(const QString& folder, const Theme::Palette& p)
-{
-    auto save = [&](const QString& name, QSize size, const std::function<void(QPainter&)>& draw) {
-        for (int scale : {1, 2}) {
-            QImage image(size * scale, QImage::Format_ARGB32_Premultiplied);
-            image.fill(Qt::transparent);
-            QPainter painter(&image);
-            painter.setRenderHint(QPainter::Antialiasing);
-            painter.scale(scale, scale);
-            draw(painter);
-            painter.end();
-            image.save(folder + "/" + name + (scale == 2 ? "@2x.png" : ".png"), "PNG");
-        }
-    };
-    auto stroke = [](QPainter& painter, const QColor& color, qreal width, const QPainterPath& path) {
-        painter.setPen(QPen(color, width, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
-        painter.setBrush(Qt::NoBrush);
-        painter.drawPath(path);
-    };
-    save("check", {17, 17}, [&](QPainter& painter) {
-        QPainterPath tick;
-        tick.moveTo(4, 8.5); tick.lineTo(7, 11.5); tick.lineTo(13, 5.5);
-        stroke(painter, p.onAccent, 1.8, tick);
-    });
-    save("chevron", {12, 12}, [&](QPainter& painter) {
-        QPainterPath chevron;
-        chevron.moveTo(2, 4); chevron.lineTo(6, 8); chevron.lineTo(10, 4);
-        stroke(painter, p.textSecondary, 1.7, chevron);
-    });
-    for (const bool checked : {false, true}) {
-        save(checked ? "radio-checked" : "radio", {18, 18}, [&](QPainter& painter) {
-            painter.setPen(QPen(p.borderStrong, 1));
-            painter.setBrush(p.surfaceRaised);
-            painter.drawEllipse(QPointF(9, 9), 8, 8);
-            if (!checked) return;
-            painter.setPen(Qt::NoPen);
-            painter.setBrush(p.accent);
-            painter.drawEllipse(QPointF(9, 9), 4, 4);
-        });
-    }
 }
 struct Root {
     QPointer<QWidget> widget;
@@ -150,16 +100,8 @@ QString monoFontFamily() { return fonts().mono; }
 
 QString indicators(Theme::Scheme scheme)
 {
-    static std::unique_ptr<QTemporaryDir> folder;
-    static QHash<int, QString> painted;
-    if (const auto found = painted.constFind(int(scheme)); found != painted.cend()) return *found;
-    if (!folder) folder = std::make_unique<QTemporaryDir>(QDir::tempPath() + "/putgd-theme-XXXXXX");
-    if (!folder->isValid()) return QStringLiteral(":/redesign");
-    const auto path = folder->filePath(Theme::name(scheme));
-    QDir().mkpath(path);
-    paintIndicators(path, Theme::palette(scheme));
-    painted.insert(int(scheme), path);
-    return path;
+    const auto folder = VisualStyle::indicators(scheme);
+    return folder.isEmpty() ? QStringLiteral(":/redesign") : folder;
 }
 
 void apply(QWidget& root, const QString& extraTemplate)

@@ -1,4 +1,5 @@
 #pragma once
+#include "Theme.h"
 #include <QColor>
 #include <QIcon>
 #include <QList>
@@ -13,6 +14,10 @@ QComboBox* choiceBox(QWidget* parent);
 QIcon icon(const QString& name);
 // A glyph in a fixed colour: tray tints, glyphs drawn on the accent.
 QIcon icon(const QString& name,const QColor& color,int percent=-1);
+// Folder of the check, radio and chevron indicator images painted from the
+// scheme's tokens (1x and @2x) in a private temporary folder for this process,
+// for stylesheets' image urls; empty when it cannot be written.
+QString indicators(Theme::Scheme);
 QWidget* header(const QString& title,const QString& subtitle,QWidget* parent);
 QFrame* card(const QString& title,const QString& subtitle,QWidget* parent);
 void styleForm(QFormLayout*);

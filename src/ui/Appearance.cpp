@@ -22,6 +22,8 @@ QString iniValue(const QString& text,const QString& group,const QString& key){
 bool lightColour(const QColor& colour){return Theme::contrast(colour,Qt::black)>Theme::contrast(colour,Qt::white);}
 int qtScheme(){
 #if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
+ // A Cinnamon, GNOME or KDE core resident has no GUI application and no hints.
+ if(!qobject_cast<QGuiApplication*>(QCoreApplication::instance()))return 0;
  const auto scheme=QGuiApplication::styleHints()->colorScheme();
  return scheme==Qt::ColorScheme::Light?1:scheme==Qt::ColorScheme::Dark?2:0;
 #else
@@ -44,12 +46,12 @@ std::pair<QString,QString> Appearance::decide(const Inputs& in){
  }
  return {{},"unknown"};
 }
-Appearance::Appearance(QObject* parent):QObject(parent){
+Appearance::Appearance(QObject* parent,Role role):QObject(parent),role_(role){
  inputs_.kde=qEnvironmentVariable("XDG_CURRENT_DESKTOP").split(':').contains("KDE",Qt::CaseInsensitive);
  debounce_.setSingleShot(true);debounce_.setInterval(200);
  connect(&debounce_,&QTimer::timeout,this,[this]{readKde();evaluate();});
 #if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
- connect(QGuiApplication::styleHints(),&QStyleHints::colorSchemeChanged,this,[this]{inputs_.qt=qtScheme();evaluate();});
+ if(qobject_cast<QGuiApplication*>(QCoreApplication::instance()))connect(QGuiApplication::styleHints(),&QStyleHints::colorSchemeChanged,this,[this]{inputs_.qt=qtScheme();evaluate();});
 #endif
 #ifdef Q_OS_LINUX
  portal_=new PortalSettings(this);
@@ -94,7 +96,9 @@ void Appearance::evaluate(){
  const auto [desktop,source]=decide(inputs_);
  const bool desktopChanged=desktop!=desktop_||source!=source_;
  desktop_=desktop;source_=source;
- const bool schemeChanged=Theme::setScheme(scheme());
+ const auto next=scheme();
+ const bool resolvedChanged=std::exchange(resolved_,next)!=next;
+ const bool schemeChanged=role_==Role::Interface?Theme::setScheme(next):resolvedChanged;
  if(desktopChanged||schemeChanged)emit changed();
 }
 }

@@ -13,6 +13,7 @@
 #include "app/UiControl.h"
 #include "core/BuildInfo.h"
 #include "ui/StdioDevice.h"
+#include "ui/Theme.h"
 #include <QApplication>
 #include <QBuffer>
 #include <QImage>
@@ -212,6 +213,8 @@ int main(int argc, char** argv) {
         if (type == "bootstrap") {
             if (ready || payload["role"].toString() != "record" || !payload["nonce"].isString() || !payload["generation"].isString() || !payload["build"].isObject()) { app.exit(3); return; }
             envelope = {{"role", "record"}, {"nonce", payload["nonce"]}, {"generation", payload["generation"]}};
+            // #198: the interface's resolved scheme; the overlays follow it.
+            Theme::setScheme(payload["appearance"].toObject()["scheme"].toString() == "light" ? Theme::Scheme::Light : Theme::Scheme::Dark);
             ready = true;
             auto frame = envelope;
             frame["build"] = build;
@@ -220,6 +223,12 @@ int main(int argc, char** argv) {
         }
         if (!ready || payload["role"] != envelope["role"] || payload["nonce"] != envelope["nonce"] || payload["generation"] != envelope["generation"]) { app.exit(3); return; }
         if (type == "shutdown") { QTimer::singleShot(0, &app, &QCoreApplication::quit); return; }
+        if (type == "appearance") {
+            const auto scheme = payload["scheme"].toString();
+            if (scheme != "dark" && scheme != "light") { app.exit(3); return; }
+            Theme::setScheme(scheme == "light" ? Theme::Scheme::Light : Theme::Scheme::Dark);
+            return;
+        }
         if (type != "command" || !payload["requestId"].isString() || !payload["command"].isString() || !payload["params"].isObject()) { app.exit(3); return; }
         const auto requestId = payload["requestId"].toString(), command = payload["command"].toString();
         if (command == "capabilities") { result(requestId, record::probeMedia()); return; }
