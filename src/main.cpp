@@ -240,6 +240,8 @@ int main(int argc,char* argv[]) {
 #endif
  putgd::LogService logService(settings,stateRoot);logService.apply();
  putgd::DiagnosticsBundles bundles(operations,stateRoot);server.setDiagnosticsBundles(&bundles);
+ // The daily update check runs putgd-cli as a child (#293); this process never loads TLS for it.
+ putgd::UpdateService updates(settings,stateRoot,QDir(QCoreApplication::applicationDirPath()).filePath("putgd-cli"));server.setUpdateService(&updates);
  QJsonObject portalStatus;
  QObject::connect(&app,&QCoreApplication::aboutToQuit,&logService,[]{putgd::logging::info(putgd::logApp(),"Resident stopping");});
 #ifdef PUTGD_NATIVE_X11
@@ -354,7 +356,7 @@ int main(int argc,char* argv[]) {
  // Save diagnostics for a failed upload from its notification, into the folder Settings last chose (#122).
  tray.setDiagnosticsSaver([&](const QString& id,putgd::JsonReply reply){putgd::BundleRequest request;request.operationId=id;const auto folder=operations.settingsSnapshot().document["preferences"].toObject()["diagnostics"].toObject()["packageFolder"].toString();if(QFileInfo(folder).isDir())request.output=folder;bundles.create(request,std::move(reply));});
  server.setDiagnosticsNotifications([&](const QJsonObject& result){tray.notifyDiagnosticsSaved(result);},[&](const QString& path){return putgd::TrayController::revealPackage(path,bundles.saved(path));});
- const auto fullDiagnostics=[&]{auto diagnostics=operations.diagnostics();diagnostics["loginStartup"]=loginStatus;diagnostics["shortcuts"]=source->capabilities()["shortcuts"];diagnostics["ui"]=ui.status();diagnostics["trayAvailable"]=tray.available();diagnostics["trayTint"]=tray.trayTint();return diagnostics;};
+ const auto fullDiagnostics=[&]{auto diagnostics=operations.diagnostics();diagnostics["loginStartup"]=loginStatus;diagnostics["shortcuts"]=source->capabilities()["shortcuts"];diagnostics["ui"]=ui.status();diagnostics["trayAvailable"]=tray.available();diagnostics["trayTint"]=tray.trayTint();diagnostics["update"]=updates.status();return diagnostics;};
  server.setUiDiagnostics(fullDiagnostics);
  bundles.setDiagnostics(fullDiagnostics);
  // environment.json's session-side facts: no pixels, only geometry scale.
@@ -370,6 +372,10 @@ int main(int argc,char* argv[]) {
  QObject::connect(&operations,&putgd::OperationService::changed,&ui,&putgd::UiProcessController::invalidate);
  QObject::connect(&history,&putgd::HistoryService::changed,&ui,&putgd::UiProcessController::invalidate);
  QObject::connect(&setup,&putgd::SetupService::changed,&ui,&putgd::UiProcessController::invalidate);
+ QObject::connect(&updates,&putgd::UpdateService::changed,&ui,&putgd::UiProcessController::invalidate);
+ QObject::connect(&updates,&putgd::UpdateService::changed,&tray,[&]{tray.setUpdateStatus(updates.status());});
+ QObject::connect(&updates,&putgd::UpdateService::updateAvailable,&tray,&putgd::TrayController::notifyUpdate);
+ updates.start();tray.setUpdateStatus(updates.status());
  const auto loginMutex=std::make_shared<std::mutex>();
  const auto loginGeneration=std::make_shared<std::atomic_ullong>(0);
  const auto configureLogin=[&] {

@@ -10,6 +10,7 @@
 #include <functional>
 #include <memory>
 
+class QAction;
 class QMenu;
 class QSystemTrayIcon;
 
@@ -45,6 +46,12 @@ public:
  void saveDiagnostics(const QString& operationId);
  // "Diagnostics package saved" with a Show in folder button.
  void notifyDiagnosticsSaved(const QJsonObject& bundleResult);
+ // The update check's state (#293): a stable update shows a menu entry that
+ // opens Settings; nightly updates show only in Settings.
+ void setUpdateStatus(const QJsonObject& status);
+ // "put.gd X is available", once per version; main wires UpdateService to it.
+ void notifyUpdate(const QJsonObject& result);
+ QString updateLabel() const {return updateLabel_;}
  // The panel tone the tray tint follows, and which input decided it (#60).
  QJsonObject trayTint()const;
  // Opens the file manager with a saved package selected (FileManager1.ShowItems),
@@ -92,5 +99,7 @@ private:
  std::unique_ptr<NativeTray> native_;
 #endif
  std::unique_ptr<QMenu> menu_;
+ QAction* updateAction_ = nullptr;
+ QString updateLabel_;
 };
 }

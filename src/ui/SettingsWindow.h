@@ -24,6 +24,8 @@ public:
  Error actionSaveError()const;bool hasCredentialInputs()const;
  QString autosaveText()const;
  void showCaptureSettings();
+ // General → Updates (#293), scrolled into view.
+ void showUpdates();
  QWidget* destinationsPage()const{return destinationPage_;}
  void clearCredentialInputs();
  void refreshDiagnostics();
@@ -70,6 +72,8 @@ private:
  QLabel* credentialHint_=nullptr;
  QLabel *configPath_=nullptr,*endpointHint_=nullptr,*linkExample_=nullptr,*destinationStatus_=nullptr;
  void refreshEffectiveLimits();void updateLimitHints();QHash<QString,QLabel*> limitHints_;QJsonObject effectiveLimits_;
+ void refreshUpdateStatus();void checkForUpdates(std::function<void(Error,QJsonObject)> done);
+ QCheckBox* checkUpdates_=nullptr;QComboBox* updateChannel_=nullptr;QLabel* updateStatus_=nullptr;QPushButton *checkNow_=nullptr,*downloadUpdate_=nullptr,*releaseNotes_=nullptr;QWidget* updateActionsRow_=nullptr;
  void refreshLoggingStatus();void clearLogs(std::function<void(Error,QJsonObject)> done);void choosePackageFolder(const QString& folder);
  QCheckBox* debugLogging_=nullptr;QLabel *debugLoggingStatus_=nullptr,*logSummary_=nullptr,*loggingWarning_=nullptr,*uncleanExit_=nullptr;QPushButton* clearLogs_=nullptr;
  QPointer<QDialog> packageDialog_;

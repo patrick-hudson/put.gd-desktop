@@ -90,6 +90,7 @@ def main():
     parser.add_argument("--require-kde", action="store_true")
     parser.add_argument("--require-proton", action="store_true")
     parser.add_argument("--proton-manifest", type=Path, help="Expected provisioned Proton runtime manifest")
+    parser.add_argument("--package-target", help="Expected PUTGD_PACKAGE_TARGET, such as debian13 (#293)")
     args = parser.parse_args()
     build = args.build.resolve()
     output = args.output.resolve()
@@ -116,7 +117,8 @@ def main():
         extract_package(package, args.format, extracted)
         proton_expected = json.loads(args.proton_manifest.read_text()) if args.proton_manifest else None
         result = audit_tree(extracted, expected, require_kde=args.require_kde,
-                            require_proton=args.require_proton, expected_proton_manifest=proton_expected)
+                            require_proton=args.require_proton, expected_proton_manifest=proton_expected,
+                            package_target=args.package_target)
         package_digest = sha256(package)
         result["package"] = {**metadata, "file": package.name, "sha256": package_digest, "size": package.stat().st_size}
         (output / "native-audit.json").write_text(json.dumps(result, indent=2) + "\n")

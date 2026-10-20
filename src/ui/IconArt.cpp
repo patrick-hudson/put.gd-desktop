@@ -2,6 +2,7 @@
 #include "Theme.h"
 #include <QPainter>
 #include <QPainterPath>
+#include <QTransform>
 
 namespace putgd::IconArt {
 namespace {
@@ -53,6 +54,9 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
  auto rounded=[&](qreal x,qreal y,qreal w,qreal h,qreal radius=2){p.drawRoundedRect(QRectF(x,y,w,h),radius,radius);};
  if(name=="upload") {
   p.fillPath(tray(),secondary);p.fillPath(arrow(),color);
+ } else if(name=="download") {
+  // The upload arrow turned to point into the tray (#293).
+  p.fillPath(tray(),secondary);p.fillPath(QTransform(1,0,0,-1,0,18).map(arrow()),color);
  } else if(name=="region"||name=="capture") {
   line(secondary,4);QPainterPath corners;
   corners.moveTo(8,3);corners.lineTo(3,3);corners.lineTo(3,8);

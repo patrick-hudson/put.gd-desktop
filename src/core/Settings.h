@@ -72,6 +72,10 @@ struct Settings {
     // Read saved keychain credentials once when the resident starts; the
     // desktop keyring may show its own unlock prompt. Uploads never unlock.
     bool unlockCredentialsAtStartup = true;
+    // preferences.updates (#293): a daily check for a newer version, on the
+    // feed of this build's channel ("build") or a chosen one.
+    bool checkForUpdates = true;
+    QString updateChannel = "build";
     // Most recent first; custom colors picked in the editor.
     static constexpr int maximumRecentColors = 6;
     QStringList editorRecentColors;

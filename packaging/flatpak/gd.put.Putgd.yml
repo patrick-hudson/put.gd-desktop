@@ -148,7 +148,7 @@ modules:
       - >-
         cmake -S . -B /tmp/putgd-build -G Ninja -DCMAKE_INSTALL_PREFIX=/app
         -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DCMAKE_PREFIX_PATH=/app/aws-sdk
-        -DPUTGD_AWS_RUNTIME_DIR=/app/aws-sdk/lib -DPUTGD_AWS_SOURCE_DIR=/app/aws-sdk/source
+        -DPUTGD_AWS_RUNTIME_DIR=/app/aws-sdk/lib -DPUTGD_AWS_SOURCE_DIR=/app/aws-sdk/source -DPUTGD_PACKAGE_TARGET=flatpak
         && cmake --build /tmp/putgd-build --parallel "${FLATPAK_BUILDER_N_JOBS}"
         && cmake --install /tmp/putgd-build
       # Flatpak exports only files named after the app ID. The X-KDE-* grants

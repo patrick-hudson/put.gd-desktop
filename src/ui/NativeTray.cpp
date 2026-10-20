@@ -89,9 +89,12 @@ constexpr Entry entries[] {
  {"", "", 0}, {"Settings and setup", "settings", 0}, {"Upload history", "history", 0},
  {"Recent activity", "activity", 0}, {"", "", 0}, {"About put.gd", "about", 0}, {"Quit", "quit", 0},
  {"Edit Image", "", 0}, {"From clipboard", "edit-clipboard", 13}, {"From file…", "edit-file", 13},
- {"Capture Screen Recording", "record", 0}
+ {"Capture Screen Recording", "record", 0},
+ // Hidden until a stable update is available; its label names the version (#293).
+ {"Update available", "update", 0}
 };
-constexpr int rootOrder[] {1, 5, 2, 3, 16, 13, 4, 6, 7, 8, 9, 10, 11, 12};
+constexpr int updateId = 17;
+constexpr int rootOrder[] {1, 5, 2, 3, 16, 13, 4, 6, 7, 8, 9, 17, 10, 11, 12};
 constexpr int entryCount = sizeof(entries) / sizeof(entries[0]);
 QList<int> childrenOf(int id) {
  QList<int> result;
@@ -105,24 +108,25 @@ bool validNames(const QStringList& names) {
  for (const auto& name : names) if (name.size() > 128) return false;
  return true;
 }
-QVariantMap menuProperties(int id, const QStringList& names = {}) {
+QVariantMap menuProperties(int id, const QStringList& names = {}, const QString& update = {}) {
  QVariantMap props;
  if (id == 0 || !childrenOf(id).isEmpty()) props.insert("children-display", "submenu");
  if (id != 0) {
   const auto& e = entries[id-1];
   if (!*e.label) props.insert("type", "separator");
-  else props.insert("label", QString::fromUtf8(e.label));
+  else props.insert("label", id == updateId && !update.isEmpty() ? update : QString::fromUtf8(e.label));
+  if (id == updateId && update.isEmpty()) props.insert("visible", false);
  }
  if (!names.isEmpty()) for (auto it = props.begin(); it != props.end();) {
   if (!names.contains(it.key())) it = props.erase(it); else ++it;
  }
  return props;
 }
-NativeLayout menuLayout(int id, int depth, const QStringList& names) {
- NativeLayout result{id, menuProperties(id, names), {}};
+NativeLayout menuLayout(int id, int depth, const QStringList& names, const QString& update) {
+ NativeLayout result{id, menuProperties(id, names, update), {}};
  // depth -1 expands every level; 0 returns this item alone.
  if (depth != 0) for (int child : childrenOf(id))
-  result.children.append(QDBusVariant(QVariant::fromValue(menuLayout(child, depth < 0 ? depth : depth - 1, names))));
+  result.children.append(QDBusVariant(QVariant::fromValue(menuLayout(child, depth < 0 ? depth : depth - 1, names, update))));
  return result;
 }
 NativeImages brandIcon(const QColor& color=Theme::trayTints(false).idle,int percent=-1) {
@@ -160,6 +164,11 @@ public:
  void dispatch(const QString& action);
  void setActivity(const QColor& color,const QString& description,int percent);
  void notify(const QString& title, const QString& message, bool warning, const QUrl& link, const QList<NotificationAction>& actions);
+ // The update entry's label, empty while it is hidden, and the layout revision
+ // that changes with it.
+ const QString& updateLabel() const { return updateLabel_; }
+ uint menuRevision() const { return menuRevision_; }
+ void setUpdateLabel(const QString& label);
 private slots:
  void hostChanged();
  void notificationActivated(uint id, const QString& action);
@@ -179,6 +188,8 @@ private:
  quint64 notificationGeneration_ = 0;
  QString notificationServer_; // GetServerInformation's name, empty until it answers
  QSet<uint> residentNotifications_; // sent resident (#151): put.gd closes them once used
+ QString updateLabel_;
+ uint menuRevision_ = 1;
  void closeNotification(uint id);
  std::unique_ptr<TrayExport> item_, menu_;
  NativeImages icons_;
@@ -482,19 +493,19 @@ bool TrayExport::handleMessage(const QDBusMessage& m, const QDBusConnection& bus
   const int id = args.at(0).toInt(), depth = args.at(1).toInt();
   const auto names = qdbus_cast<QStringList>(args.at(2));
   if (!knownId(id) || depth < -1 || !validNames(names)) return error();
-  return reply({uint(1), QVariant::fromValue(menuLayout(id, depth, names))});
+  return reply({owner_->menuRevision(), QVariant::fromValue(menuLayout(id, depth, names, owner_->updateLabel()))});
  }
  if (member == "GetGroupProperties" && sig == "aias") {
   auto ids = qdbus_cast<QList<int>>(args.at(0)); const auto names = qdbus_cast<QStringList>(args.at(1));
   if (ids.size() > 64 || !validNames(names)) return error();
   if (ids.isEmpty()) for (int id = 0; id <= entryCount; ++id) ids.append(id);
   NativePropertyList values;
-  for (int id : ids) if (knownId(id)) values.append({id, menuProperties(id, names)});
+  for (int id : ids) if (knownId(id)) values.append({id, menuProperties(id, names, owner_->updateLabel())});
   return reply({QVariant::fromValue(values)});
  }
  if (member == "GetProperty" && sig == "is") {
   int id = args.at(0).toInt(); if (!knownId(id)) return error();
-  const auto name = args.at(1).toString(); if (name.size() > 128) return error(); auto props = menuProperties(id);
+  const auto name = args.at(1).toString(); if (name.size() > 128) return error(); auto props = menuProperties(id, {}, owner_->updateLabel());
   // Defaults are omitted from layouts but must resolve for explicit queries.
   const QVariantMap defaults{{"type", "standard"}, {"label", ""}, {"enabled", true}, {"visible", true},
    {"icon-name", ""}, {"icon-data", QByteArray{}}, {"shortcut", QVariant::fromValue(QList<QStringList>{})},
@@ -539,6 +550,14 @@ NativeTray::~NativeTray() = default;
 bool NativeTray::available() const { return d_->available(); }
 bool NativeTray::availabilityKnown() const { return d_->availabilityKnown(); }
 void NativeTray::setActivity(const QColor& color,const QString& description,int percent) {d_->setActivity(color,description,percent);}
+void NativeTray::setUpdateLabel(const QString& label) {d_->setUpdateLabel(label);}
+void NativeTrayPrivate::setUpdateLabel(const QString& label) {
+ if (label == updateLabel_) return;
+ updateLabel_ = label; ++menuRevision_;
+ // Hosts re-read the layout on LayoutUpdated(revision, parent 0).
+ auto signal = QDBusMessage::createSignal("/Menu", menuInterface, "LayoutUpdated");
+ signal.setArguments({menuRevision_, 0}); bus_.send(signal);
+}
 void NativeTray::notify(const QString& title, const QString& message, bool warning, const QUrl& link, const QList<NotificationAction>& actions) { d_->notify(title, message, warning, link, actions); }
 }
 #include "NativeTray.moc"

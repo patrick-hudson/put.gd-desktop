@@ -176,6 +176,7 @@ TrayController::TrayController(OperationService& operations,
    else if (action == "history") showHistory();
    else if (action == "activity") showActivity();
    else if (action == "about") showAbout();
+   else if (action == "update") showSettings();
    else if (action == "quit") { const auto quit = quit_; quit(); }
   });
  } else
@@ -212,6 +213,9 @@ TrayController::TrayController(OperationService& operations,
  auto* activity = menu_->addAction("Recent activity");
  activity->setData("activity");
  connect(activity, &QAction::triggered, this, &TrayController::showActivity);
+ updateAction_ = menu_->addAction("Update available");
+ updateAction_->setData("update");updateAction_->setVisible(false);
+ connect(updateAction_, &QAction::triggered, this, &TrayController::showSettings);
  menu_->addSeparator();
  connect(menu_->addAction("About put.gd"), &QAction::triggered, this, &TrayController::showAbout);
  connect(menu_->addAction("Quit"), &QAction::triggered, this, [this] {
@@ -485,6 +489,20 @@ void TrayController::notifyMessage(const QString& code, const QString& title, co
  else
 #endif
  if (tray_) tray_->showMessage(title, message, warning ? QSystemTrayIcon::Warning : QSystemTrayIcon::Information);
+}
+void TrayController::setUpdateStatus(const QJsonObject& status) {
+ const auto result=status["result"].toObject();
+ const auto label=status["notifies"].toBool()&&result["updateAvailable"].toBool()?"Update available: "+result["latest"].toString():QString();
+ if(label==updateLabel_)return;
+ updateLabel_=label;
+#ifdef Q_OS_LINUX
+ if(native_)native_->setUpdateLabel(label);
+#endif
+ if(updateAction_){updateAction_->setText(label);updateAction_->setVisible(!label.isEmpty());}
+}
+void TrayController::notifyUpdate(const QJsonObject& result) {
+ if(!available())return;
+ notifyMessage("update_available","put.gd — update available","put.gd "+result["latest"].toString()+" is available. Settings → Updates has the download.",false,QUrl(result["notesUrl"].toString()));
 }
 void TrayController::notifyFailure(const Error& error) {
  if(error)flashError();

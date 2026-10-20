@@ -68,6 +68,8 @@ int LocalServer::replyDeadlineMs(const QString& method) {
  if(method=="diagnostics.bundle")return diagnosticsBundleReplyMs;
  if(method=="diagnostics.uploadTarget")return diagnosticsUploadTargetReplyMs;
  if(method=="history.preview")return historyPreviewReplyMs;
+ // The checker child has 40 s of its own (#293).
+ if(method=="update.check")return UpdateService::childTimeoutMs+base;
  return base;
 }
 QJsonObject LocalServer::response(const QString& requestId,const Error& error,const QJsonObject& result) {return {{"schemaVersion",1},{"requestId",requestId},{"ok",!error},{"result",error?QJsonObject{}:result},{"error",error.toJson()}};}
@@ -267,6 +269,9 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  else if(method=="settings.reload") {QPointer<LocalServer> guarded(this);settings_.reloadAsync([guarded,reply](Result result) {if(guarded)reply(result.error,guarded->settings_.metadata());});}
  else if(method=="capabilities")reply({},operations_.capabilities());
  else if(method=="diagnostics")reply({},operations_.diagnostics());
+ // The daily update check (#293): its state, and a check now.
+ else if(method=="update.status"){if(updates_)reply({},updates_->status());else reply({"update_check_unavailable","This resident does not check for updates",{}},{});}
+ else if(method=="update.check"){if(updates_)updates_->check(reply);else reply({"update_check_unavailable","This resident does not check for updates",{}},{});}
  else if(method=="history.clear")history_.clear(reply);
  else if(method=="cache.clear")operations_.cleanup(reply);
  // Removes every persistent log file and starts a new one (#74).
