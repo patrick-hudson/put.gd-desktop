@@ -1,0 +1,1 @@
+{"t": 297061.44, "title": "put.gd \u2014 Working", "tooltip": "Accepted", "registered": true, "hostRegistered": true, "probePid": 1548076, "cli": [{"phase": "preparing", "running": 0, "waiting": 0, "done": 0, "failed": 0, "batchTransferred": 0, "batchTotal": 0}], "check": {"matched": false, "fatal": "SNI icon does not have the required idle/active brand color"}}
