@@ -56,15 +56,23 @@ def previous_tag(root, tag):
     nightly's history and the result doesn't depend on tags pushed later.
     """
     identity = parse_tag(tag)
-    wanted = 'nightly' if identity.channel == 'nightly' else 'stable'
-    commit = git(root, 'rev-parse', tag + '^{commit}')
+    return _latest(root, tag, 'nightly' if identity.channel == 'nightly' else 'stable')
+
+
+def previous_stable(root, ref):
+    """Return the newest stable tag reachable from ref (a promotion's base), or None."""
+    return _latest(root, ref, 'stable')
+
+
+def _latest(root, ref, wanted):
+    commit = git(root, 'rev-parse', ref + '^{commit}')
     found = []
     for name in git(root, 'tag', '--merged', commit, '--list', 'v*').splitlines():
         try:
             other = parse_tag(name)
         except ValueError:
             continue
-        if name == tag or other.channel != wanted:
+        if name == ref or other.channel != wanted:
             continue
         if git(root, 'rev-parse', name + '^{commit}') == commit:
             continue
@@ -111,6 +119,22 @@ def classify(title, labels=()):
         if word in _AREAS:
             return _AREAS[word]
     return _KINDS.get(kind, 'other')
+
+
+def change_type(title, labels=()):
+    """Keep a Changelog type: Added for features, Fixed for fixes, else Changed.
+
+    Labels win over the title, as in classify(); an area prefix such as
+    `feat(s3):` still counts as an addition here.
+    """
+    for label in labels:
+        if label.lower() == 'bug':
+            return 'Fixed'
+        if label.lower() == 'enhancement':
+            return 'Added'
+    match = _PREFIX.fullmatch(title)
+    kind = _KINDS.get(match[1].strip().lower()) if match else None
+    return {'features': 'Added', 'fixes': 'Fixed'}.get(kind, 'Changed')
 
 
 def lookup_pulls(repository, numbers, chunk=50):
@@ -177,7 +201,7 @@ def entries(pulls, metadata):
             closes = sorted({int(ref) for ref in _REF.findall(tail)})
             labels = []
         result.append({'number': number, 'title': display_title(trimmed), 'group': classify(title, labels),
-                       'closes': closes})
+                       'type': change_type(title, labels), 'closes': closes})
     return result
 
 
@@ -214,6 +238,44 @@ def render(tag, previous, items, server, repository, *, fold):
         refs = ', '.join(link(item['number'], 'pull') for item in sorted(folded, key=lambda item: item['number']))
         lines += [f'Also {len(folded)} {_series(kinds)} changes: {refs}.', '']
     return '\n'.join(lines + [compare]) + '\n'
+
+
+KEEP_A_CHANGELOG_TYPES = ('Added', 'Fixed', 'Changed')
+
+
+def version_section(version, date, previous, items, server, repository):
+    """Return (section, link) for CHANGELOG.md in Keep a Changelog 1.1 style.
+
+    The same entries as the release notes, by change type instead of area;
+    documentation, lab and test changes are folded into one line.
+    """
+    base = f'{server}/{repository}'
+
+    def link(number, kind):
+        return f'[#{number}]({base}/{kind}/{number})'
+
+    lines = [f'## [{version}] - {date}', '']
+    folded = [item for item in items if item['group'] in FOLDED]
+    for name in KEEP_A_CHANGELOG_TYPES:
+        listed = sorted((item for item in items if item['type'] == name and item not in folded),
+                        key=lambda item: item['number'])
+        if not listed:
+            continue
+        lines += [f'### {name}', '']
+        for item in listed:
+            line = f"- {item['title']} ({link(item['number'], 'pull')})"
+            if item['closes']:
+                line += ', closes ' + ', '.join(link(number, 'issues') for number in item['closes'])
+            lines.append(line)
+        lines.append('')
+    if folded:
+        kinds = [word for key, word in FOLDED.items() if any(item['group'] == key for item in folded)]
+        refs = ', '.join(link(item['number'], 'pull') for item in sorted(folded, key=lambda item: item['number']))
+        lines += [f'Also {len(folded)} {_series(kinds)} changes: {refs}.', '']
+    if not items:
+        lines += ['No pull requests were merged.', '']
+    target = f'{base}/compare/{previous}...v{version}' if previous else f'{base}/releases/tag/v{version}'
+    return '\n'.join(lines), f'[{version}]: {target}'
 
 
 def _series(words):
