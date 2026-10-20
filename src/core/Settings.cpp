@@ -5,13 +5,7 @@
 #include <QKeySequence>
 #include <QRegularExpression>
 #include <QStandardPaths>
-#include <atomic>
 #include <cmath>
-#ifdef Q_OS_WIN
-#include <windows.h>
-#elif defined(Q_OS_UNIX)
-#include <unistd.h>
-#endif
 
 namespace putgd {
 namespace {
@@ -47,41 +41,13 @@ constexpr qint64 formerArtifactDefault = 2147483648LL; // 2 GiB, saved explicitl
 bool byteLimit(const QJsonValue& value) {
     return value.isNull() || value == QJsonValue(QStringLiteral("auto")) || integer(value, 1, ResourceLimits::unlimitedBytes);
 }
-std::atomic<qint64> memoryOverride{-1};
-qint64 systemMemory() {
-#ifdef Q_OS_WIN
-    MEMORYSTATUSEX status{};
-    status.dwLength = sizeof(status);
-    return GlobalMemoryStatusEx(&status) ? qint64(status.ullTotalPhys) : 0;
-#elif defined(Q_OS_UNIX)
-    const long pages = sysconf(_SC_PHYS_PAGES), size = sysconf(_SC_PAGESIZE);
-    return pages > 0 && size > 0 ? qint64(pages) * size : 0;
-#else
-    return 0;
-#endif
-}
 }
 
 QStringList Settings::artifactByteLimitKeys() { return {"maxFileBytes", "maxBatchBytes", "pendingArtifactBytes"}; }
-qint64 Settings::automaticArtifactBytes(qint64 memory) {
-    constexpr qint64 gib = 1LL << 30;
-    if (memory <= 0) return formerArtifactDefault;
-    // Total memory excludes firmware and kernel reservations; count installed GiB.
-    const qint64 installed = (memory + gib - 1) / gib * gib;
-    return installed > 16 * gib ? ResourceLimits::unlimitedBytes : installed / 4;
-}
-qint64 Settings::physicalMemoryBytes() {
-    const auto override = memoryOverride.load();
-    if (override >= 0) return override;
-    static const qint64 total = systemMemory();
-    return total;
-}
-void Settings::setPhysicalMemoryForTesting(qint64 bytes) { memoryOverride.store(bytes); }
 QJsonObject Settings::effectiveArtifactLimits() const {
     auto value = [](qint64 bytes) { return bytes >= ResourceLimits::unlimitedBytes ? QJsonValue(QJsonValue::Null) : QJsonValue(double(bytes)); };
     return {{"maxFileBytes", value(limits.maxFileBytes)}, {"maxBatchBytes", value(limits.maxBatchBytes)},
-            {"pendingArtifactBytes", value(limits.pendingArtifactBytes)}, {"physicalMemoryBytes", double(physicalMemoryBytes())},
-            {"auto", value(automaticArtifactBytes(physicalMemoryBytes()))}};
+            {"pendingArtifactBytes", value(limits.pendingArtifactBytes)}};
 }
 
 QStringList Settings::actionNames() { return {"region", "window", "desktop", "clipboard", "edit"}; }
@@ -92,7 +58,7 @@ QStringList Settings::invocableActionNames() { return actionNames() << recording
 QJsonObject Settings::normalized(const QJsonObject& original) {
     auto doc = original;
     // Before "auto" existed every configuration saved the 2 GiB default
-    // explicitly; that exact value now follows this computer's memory.
+    // explicitly; that exact value now means "auto".
     if (doc["limits"].isObject()) {
         auto limits = doc["limits"].toObject();
         bool migrated = false;
@@ -360,8 +326,7 @@ Settings Settings::fromValidated(const QJsonObject& original) {
     settings.limits.concurrentUploads = limits["concurrentUploads"].toInt();
     auto artifactLimit = [&](const char* key) {
         const auto value = limits[QLatin1String(key)];
-        return value.isNull() ? ResourceLimits::unlimitedBytes
-             : value.isString() ? automaticArtifactBytes(physicalMemoryBytes()) : value.toInteger();
+        return value.isNull() || value.isString() ? ResourceLimits::unlimitedBytes : value.toInteger();
     };
     settings.limits.maxFileBytes = artifactLimit("maxFileBytes");
     settings.limits.maxBatchBytes = artifactLimit("maxBatchBytes");

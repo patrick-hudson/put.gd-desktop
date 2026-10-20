@@ -123,6 +123,8 @@ public:
  // The active configuration/data roots and any retained earlier layout (#56).
  void setLocations(QJsonObject locations) {locations_=std::move(locations);}
  QString databasePath() const {return root_+"/history.sqlite";}
+ // Free space, system reserve and in-flight imports on the upload store's filesystem.
+ QJsonObject artifactDisk() const {return ArtifactStore::diskBudget(root_+"/artifacts").toJson();}
  ProviderRegistry& providers() {return providers_;}
  // Shared services run SQL, encoding, and file/network work on workers.
  void background(std::function<QJsonObject(Error&)>,JsonReply);

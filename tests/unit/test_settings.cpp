@@ -69,31 +69,22 @@ private slots:
         QCOMPARE(putgd::Settings::fromValidated(document).limits.pendingImageBytes,qint64(67108864));
         QCOMPARE(putgd::Settings::fromValidated(document).document["limits"].toObject(),limits);
     }
-    void artifactByteLimitsFollowMemoryOrAcceptNoLimit() {
+    void artifactByteLimitsDefaultToAutoAndAcceptNoLimit() {
         constexpr qint64 gib = 1LL << 30;
         using putgd::Settings;
         using putgd::ResourceLimits;
-        // Installed memory counts in whole GiB: MemTotal is a little below the module size.
-        QCOMPARE(Settings::automaticArtifactBytes(8 * gib), 2 * gib);
-        QCOMPARE(Settings::automaticArtifactBytes(8 * gib - 300LL * 1024 * 1024), 2 * gib);
-        QCOMPARE(Settings::automaticArtifactBytes(16 * gib - 500LL * 1024 * 1024), 4 * gib);
-        QCOMPARE(Settings::automaticArtifactBytes(16 * gib), 4 * gib);
-        QCOMPARE(Settings::automaticArtifactBytes(16 * gib + 1), ResourceLimits::unlimitedBytes);
-        QCOMPARE(Settings::automaticArtifactBytes(31 * gib + 400LL * 1024 * 1024), ResourceLimits::unlimitedBytes);
-        QCOMPARE(Settings::automaticArtifactBytes(0), 2 * gib);
+        // "auto" sets no byte limit of put.gd's own on any computer: memory does not
+        // grow with file size, and free disk and the destination bound every import.
         auto document = Settings::defaults();
         for (const auto& key : Settings::artifactByteLimitKeys()) QCOMPARE(document["limits"].toObject()[key], QJsonValue("auto"));
         QVERIFY(!Settings::validate(document));
-        Settings::setPhysicalMemoryForTesting(8 * gib);
-        QCOMPARE(Settings::fromValidated(document).limits.maxFileBytes, 2 * gib);
-        QCOMPARE(Settings::fromValidated(document).effectiveArtifactLimits()["auto"].toInteger(), 2 * gib);
-        Settings::setPhysicalMemoryForTesting(32 * gib);
         auto resolved = Settings::fromValidated(document);
         QCOMPARE(resolved.limits.maxFileBytes, ResourceLimits::unlimitedBytes);
         QCOMPARE(resolved.limits.maxBatchBytes, ResourceLimits::unlimitedBytes);
         QCOMPARE(resolved.limits.pendingArtifactBytes, ResourceLimits::unlimitedBytes);
-        QVERIFY(resolved.effectiveArtifactLimits()["maxFileBytes"].isNull());
-        QCOMPARE(resolved.effectiveArtifactLimits()["physicalMemoryBytes"].toInteger(), 32 * gib);
+        const auto effective = resolved.effectiveArtifactLimits();
+        QCOMPARE(effective.keys(), QStringList({"maxBatchBytes", "maxFileBytes", "pendingArtifactBytes"}));
+        for (const auto& key : Settings::artifactByteLimitKeys()) QVERIFY(effective[key].isNull());
         // Null is No limit, a byte count stays fixed, and the old 2 GiB default reads as auto.
         auto limits = document["limits"].toObject();
         limits["maxFileBytes"] = QJsonValue::Null;
@@ -101,11 +92,11 @@ private slots:
         limits["pendingArtifactBytes"] = 2147483648.0;
         document["limits"] = limits;
         QVERIFY(!Settings::validate(document));
-        Settings::setPhysicalMemoryForTesting(8 * gib);
         resolved = Settings::fromValidated(document);
         QCOMPARE(resolved.limits.maxFileBytes, ResourceLimits::unlimitedBytes);
         QCOMPARE(resolved.limits.maxBatchBytes, 3 * gib);
-        QCOMPARE(resolved.limits.pendingArtifactBytes, 2 * gib);
+        QCOMPARE(resolved.limits.pendingArtifactBytes, ResourceLimits::unlimitedBytes);
+        QCOMPARE(resolved.effectiveArtifactLimits()["maxBatchBytes"].toInteger(), 3 * gib);
         QVERIFY(resolved.document["limits"].toObject()["maxFileBytes"].isNull());
         QCOMPARE(resolved.document["limits"].toObject()["pendingArtifactBytes"], QJsonValue("auto"));
         QCOMPARE(resolved.document["limits"].toObject()["maxBatchBytes"].toInteger(), 3 * gib);
@@ -116,8 +107,6 @@ private slots:
             QCOMPARE(error.code, QStringLiteral("config_invalid"));
             QCOMPARE(error.details["path"].toString(), QStringLiteral("/limits/maxFileBytes"));
         }
-        Settings::setPhysicalMemoryForTesting(-1);
-        QVERIFY(Settings::physicalMemoryBytes() > 0);
     }
     void existingConfigWithTheFormerDefaultLoadsAsAuto() {
         QTemporaryDir directory;

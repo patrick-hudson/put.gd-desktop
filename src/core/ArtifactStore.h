@@ -3,6 +3,7 @@
 #include <QJsonObject>
 #include <QDateTime>
 #include <QList>
+#include <memory>
 namespace putgd {
 struct Artifact {
  QString id,path,name,mime,category,sha256;
@@ -22,11 +23,23 @@ public:
  Acquisition acquire(const QString& operationId,const ClipboardPayload&,const ResourceLimits&,
                      const QString& action="clipboard",const Settings& = Settings::fromValidated(Settings::defaults()),
                      const QDateTime& actionTime = {},qint64 maximumObjectBytes=0);
- // Free bytes under the artifact root; tests may substitute a value (negative: real).
- qint64 availableBytes() const;
- static void setAvailableBytesForTesting(qint64);
- // Space left free after an import, for the history database, logs and previews.
- static constexpr qint64 reservedFreeBytes=256LL*1024*1024;
+ // The disk under the artifact root. The reserve follows journald's SystemKeepFree
+ // rule, min(15% of the filesystem, 4 GiB) and never under 1 GiB, so imports and
+ // recordings never take /home down to where the desktop and logging fail. It
+ // applies whatever the byte limits say. `reserved` counts other imports in flight.
+ struct DiskBudget {
+  qint64 freeBytes=-1,totalBytes=-1,reserveBytes=0,reservedBytes=0;
+  qint64 available() const {return freeBytes<0?-1:qMax<qint64>(0,freeBytes-reserveBytes-reservedBytes);}
+  QJsonObject toJson() const;
+ };
+ static qint64 reserveFor(qint64 filesystemBytes);
+ static DiskBudget diskBudget(const QString& path);
+ // Atomically checks that `bytes` fit beside the reserve and every other import in
+ // flight on the same filesystem, and holds them until the returned token is released.
+ // Null when they don't fit; `seen` then reports the budget that refused them.
+ static std::shared_ptr<void> reserveDisk(const QString& path,qint64 bytes,DiskBudget* seen=nullptr);
+ // Tests may substitute the filesystem's free and total bytes (negative: real).
+ static void setDiskForTesting(qint64 freeBytes,qint64 totalBytes);
  Error verify(const Artifact&) const;
  Acquisition recover(const QString& operationId) const;
  void discardIncomplete();

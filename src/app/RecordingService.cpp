@@ -5,7 +5,6 @@
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QMetaObject>
-#include <QStorageInfo>
 #include <QThread>
 #include <algorithm>
 #include <cmath>
@@ -288,12 +287,12 @@ void RecordingService::prepareSession(const QJsonObject& params, JsonReply reply
         if (auto error = host_.accept(s.op)) { reply(error, {}); return; }
         // Stop before the admitted file limit, leaving room for finalization.
         s.config.budgetBytes = std::max<qint64>(1024 * 1024, s.op.settings.limits.maxFileBytes - std::max<qint64>(s.op.settings.limits.maxFileBytes / 10, 64LL * 1024 * 1024));
-        // With "auto" on a large-memory computer, or "No limit", free disk space is
-        // the real bound: keep room for the export and its copy into the upload store.
+        // With "auto" or "No limit", free disk space is the real bound: keep the
+        // system reserve free and leave room for the export and its upload copy.
         if (QDir().mkpath(stagingRoot_)) {
-            QStorageInfo volume(stagingRoot_);
-            if (volume.isValid() && volume.bytesAvailable() > 0)
-                s.config.budgetBytes = std::min(s.config.budgetBytes, std::max<qint64>(1024 * 1024, (volume.bytesAvailable() - 512LL * 1024 * 1024) / 3));
+            const auto disk = ArtifactStore::diskBudget(stagingRoot_);
+            if (disk.freeBytes >= 0)
+                s.config.budgetBytes = std::min(s.config.budgetBytes, std::max<qint64>(1024 * 1024, disk.available() / 3));
         }
         s.op.state = "recording";
         s.op.phase = "preparing";
