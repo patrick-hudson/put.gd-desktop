@@ -136,7 +136,7 @@ Error measureAvSync(const QString& clip, QJsonObject& result) {
     for (size_t i = 1; i < flashes.size(); ++i) gaps.push_back(flashes[i] - flashes[i - 1]);
     std::nth_element(gaps.begin(), gaps.begin() + gaps.size() / 2, gaps.end());
     const double period = gaps[gaps.size() / 2];
-    QJsonArray offsets;
+    QJsonArray offsets, pairTimes;
     std::vector<double> values;
     for (const double flash : flashes) {
         const auto nearest = std::min_element(bursts.begin(), bursts.end(), [flash](double a, double b) { return std::abs(a - flash) < std::abs(b - flash); });
@@ -144,13 +144,14 @@ Error measureAvSync(const QString& clip, QJsonObject& result) {
         const double ms = (*nearest - flash) * 1000.0;
         values.push_back(ms);
         offsets.append(std::round(ms * 10) / 10);
+        pairTimes.append(std::round(flash * 1000) / 1000);
     }
     if (values.empty()) return failed("av_sync_unpaired", "No flash has a tone burst within half a period");
     auto sorted = values;
     std::sort(sorted.begin(), sorted.end());
     const double median = sorted[sorted.size() / 2];
     result = {{"flashes", int(flashes.size())}, {"bursts", int(bursts.size())}, {"pairs", int(values.size())}, {"periodMs", std::round(period * 10000) / 10},
-        {"offsetsMs", offsets}, {"medianMs", std::round(median * 10) / 10}, {"minMs", std::round(sorted.front() * 10) / 10}, {"maxMs", std::round(sorted.back() * 10) / 10},
+        {"offsetsMs", offsets}, {"pairTimesS", pairTimes}, {"medianMs", std::round(median * 10) / 10}, {"minMs", std::round(sorted.front() * 10) / 10}, {"maxMs", std::round(sorted.back() * 10) / 10},
         {"spreadMs", std::round((sorted.back() - sorted.front()) * 10) / 10}, {"videoFrames", int(luma.size())}, {"audioSeconds", std::round(audioSeconds * 100) / 100},
         {"peak", std::round(peak * 1000) / 1000}};
     return {};

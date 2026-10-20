@@ -10,7 +10,8 @@ namespace putgd::record {
 // rising edges of the 2 ms RMS envelope, both in container time. Each flash is
 // paired with the nearest burst within half a period; the offsets (audio minus
 // video, positive when the sound is late) are the clip's A/V sync.
-// Result: {flashes, bursts, pairs, offsetsMs[], medianMs, minMs, maxMs,
+// Result: {flashes, bursts, pairs, offsetsMs[], pairTimesS[] (each pair's flash
+// in container time), medianMs, minMs, maxMs,
 // spreadMs, videoFrames, audioSeconds, peak}.
 Error measureAvSync(const QString& clip, QJsonObject& result);
 // Writes the marker clip (Matroska, MJPEG 1280x720 at 30 fps and 48 kHz PCM):

@@ -11,7 +11,7 @@
 
 namespace putgd::record {
 namespace {
-struct ProbeContext { RecordingPipeline* owner; std::atomic_bool* paused; void* rebase; };
+struct ProbeContext { const PauseTimeline* timeline; void* rebase; bool audio; };
 QString shellQuote(const QString& value) { QString s = value; s.replace('\\', "\\\\").replace('"', "\\\""); return '"' + s + '"'; }
 int bitrateKbps(const QSize& size, int fps) {
     // About 0.1 bit per pixel per frame, bounded for tiny and huge canvases.
@@ -32,15 +32,15 @@ QString audioDescription(const QString& name) {
     if (name == "avenc_aac" || name == "fdkaacenc" || name == "voaacenc") return name + " bitrate=128000";
     return name;
 }
-// The pad's element's running time now, or -1 before it has a clock.
-gint64 runningNow(GstPad* pad) {
-    GstElement* element = GST_ELEMENT(GST_PAD_PARENT(pad));
+// The element's running time now, or -1 before it has a clock.
+gint64 runningNow(GstElement* element) {
     GstClock* clock = element ? gst_element_get_clock(element) : nullptr;
     if (!clock) return -1;
     const gint64 now = gint64(gst_clock_get_time(clock)) - gint64(gst_element_get_base_time(element));
     gst_object_unref(clock);
     return now;
 }
+gint64 runningNow(GstPad* pad) { return runningNow(GST_ELEMENT(GST_PAD_PARENT(pad))); }
 gint64 monotonicNow() {
     timespec now{};
     clock_gettime(CLOCK_MONOTONIC, &now);
@@ -98,21 +98,20 @@ GstPadProbeReturn RecordingPipeline::probe(GstPad* pad, GstPadProbeInfo* info, g
     GstBuffer* buffer = GST_PAD_PROBE_INFO_BUFFER(info);
     if (!buffer || !GST_BUFFER_PTS_IS_VALID(buffer)) return GST_PAD_PROBE_OK;
     const gint64 pts = gint64(GST_BUFFER_PTS(buffer));
-    if (context->paused->load()) { rebase->dropped.store(true); return GST_PAD_PROBE_DROP; }
+    // What was captured while paused is dropped and what follows moves back by
+    // the paused time, the same for both tracks. Video frames are instants; an
+    // audio buffer reaching into a pause is dropped whole, and the export fills
+    // the hole that leaves with silence.
+    const gint64 duration = context->audio && GST_BUFFER_DURATION_IS_VALID(buffer) ? gint64(GST_BUFFER_DURATION(buffer)) : 0;
+    const auto mapped = context->timeline->map(pts, duration);
+    if (!mapped) return GST_PAD_PROBE_DROP;
     if (const gint64 now = runningNow(pad); now >= 0) rebase->lateness.add(now - pts);
-    const gint64 last = rebase->lastPassed.load();
-    if (rebase->dropped.exchange(false) && last >= 0) {
-        // Buffers dropped while paused leave a gap; fold it into the offset so the
-        // clip timeline continues one step after the last retained buffer.
-        const gint64 expected = last + rebase->step.load();
-        const gint64 rebased = pts - rebase->offset.load();
-        if (rebased > expected) rebase->offset.fetch_add(rebased - expected);
-    }
+    const gint64 offset = pts - *mapped;
     buffer = gst_buffer_make_writable(buffer);
     GST_PAD_PROBE_INFO_DATA(info) = buffer;
-    const gint64 shifted = std::max<gint64>(0, pts - rebase->offset.load());
+    const gint64 shifted = std::max<gint64>(0, *mapped);
     GST_BUFFER_PTS(buffer) = GstClockTime(shifted);
-    if (GST_BUFFER_DTS_IS_VALID(buffer)) GST_BUFFER_DTS(buffer) = GstClockTime(std::max<gint64>(0, gint64(GST_BUFFER_DTS(buffer)) - rebase->offset.load()));
+    if (GST_BUFFER_DTS_IS_VALID(buffer)) GST_BUFFER_DTS(buffer) = GstClockTime(std::max<gint64>(0, gint64(GST_BUFFER_DTS(buffer)) - offset));
     // Encoders may carry a constant timestamp offset (the VA encoders add an
     // hour); durations are measured from the first retained buffer.
     if (rebase->firstPassed.load() < 0) rebase->firstPassed.store(shifted);
@@ -166,8 +165,9 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
     GError* error = nullptr;
     GstElement* pipeline = gst_parse_launch(description.toUtf8().constData(), &error);
     if (!pipeline || error) { failure = error ? QString::fromUtf8(error->message) : QStringLiteral("parse failed"); if (error) g_error_free(error); if (pipeline) gst_object_unref(pipeline); return false; }
-    video_.offset = 0; video_.firstPassed = -1; video_.lastPassed = -1; video_.step = frameDurationNs_; video_.dropped = false; video_.lateness = {};
-    audio_.offset = 0; audio_.firstPassed = -1; audio_.lastPassed = -1; audio_.step = 20 * GST_MSECOND; audio_.dropped = false; audio_.lateness = {};
+    video_.firstPassed = -1; video_.lastPassed = -1; video_.lateness = {};
+    audio_.firstPassed = -1; audio_.lastPassed = -1; audio_.lateness = {};
+    timeline_.reset();
     frameClock_ = {};
     frameClock_.compositorTimes = qEnvironmentVariable("PUTGD_RECORD_PIPEWIRE_TIMESTAMPS") == "compositor";
     clockName_.clear();
@@ -189,7 +189,7 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
         GstElement* queue = gst_bin_get_by_name(GST_BIN(pipeline), element);
         if (!queue) return false;
         GstPad* pad = gst_element_get_static_pad(queue, "sink");
-        auto* context = new ProbeContext{this, &paused_, &rebase};
+        auto* context = new ProbeContext{&timeline_, &rebase, &rebase == &audio_};
         gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, &RecordingPipeline::probe, context, [](gpointer data) { delete static_cast<ProbeContext*>(data); });
         gst_object_unref(pad);
         gst_object_unref(queue);
@@ -249,7 +249,6 @@ Error RecordingPipeline::start(const Options& options) {
     output_ = options.output;
     budget_ = options.budgetBytes;
     budgetSignalled_ = false;
-    paused_ = false;
     stopping_ = false;
     QStringList failures;
     QString audioEncoder = options.audio && !options.audioEncoders.isEmpty() ? options.audioEncoders.first() : QString();
@@ -261,14 +260,15 @@ Error RecordingPipeline::start(const Options& options) {
     }
     return {"recording_start_failed", "No H.264 encoder could start the capture", {{"attempts", QJsonArray::fromStringList(failures)}}};
 }
+gint64 RecordingPipeline::runningTime() const { return pipeline_ ? runningNow(pipeline_) : -1; }
 Error RecordingPipeline::pause() {
     if (!pipeline_ || stopping_) return {"recording_state", "Nothing is recording", {}};
-    paused_ = true;
+    timeline_.pause(std::max<gint64>(0, runningTime()));
     return {};
 }
 Error RecordingPipeline::resume() {
     if (!pipeline_ || stopping_) return {"recording_state", "Nothing is recording", {}};
-    paused_ = false;
+    timeline_.resume(std::max<gint64>(0, runningTime()));
     return {};
 }
 qint64 RecordingPipeline::retainedUs() const {
@@ -277,17 +277,48 @@ qint64 RecordingPipeline::retainedUs() const {
 }
 qint64 RecordingPipeline::fileBytes() const { return QFileInfo(output_).size(); }
 QJsonObject RecordingPipeline::status() const {
-    return {{"durationUs", double(retainedUs())}, {"bytes", double(fileBytes())}, {"paused", paused_.load()}, {"encoder", encoder_}, {"audioEncoder", audioEncoder_}};
+    return {{"durationUs", double(retainedUs())}, {"bytes", double(fileBytes())}, {"paused", timeline_.paused()}, {"encoder", encoder_}, {"audioEncoder", audioEncoder_}};
 }
 void RecordingPipeline::stop(std::function<void(Error, qint64)> done) {
     if (!pipeline_) { done({"recording_state", "Nothing is recording", {}}, 0); return; }
     if (stopping_) { done({"recording_busy", "Already stopping", {}}, 0); return; }
     stopping_ = true;
-    paused_ = false;
     stopCallback_ = std::move(done);
-    gst_element_send_event(pipeline_, gst_event_new_eos());
-    // The bus poll completes on EOS; a stalled drain is bounded here.
-    QTimer::singleShot(10000, this, [this] { if (stopping_ && stopCallback_) { const auto retained = retainedUs(); tearDown(); auto callback = std::move(stopCallback_); stopCallback_ = {}; callback({"recording_stop_timeout", "The capture did not drain in time", {}}, retained); } });
+    // A recording stopped while paused stays paused: nothing after the pause is kept.
+    // EOS enters each branch at the element after its source, never through the
+    // sources (#129): a source takes its streaming lock for EOS, and pulsesrc holds
+    // that lock while it waits for audio, so a sink monitor that stopped delivering
+    // (a suspended null sink in a VM) blocked Stop on the main thread for good. The
+    // audio branch goes first, so the muxer stops waiting for it and a full video
+    // queue drains; a worker thread sends both, so no wait reaches the main thread.
+    QList<GstPad*> entries;
+    for (const char* name : {"asrc", "src"}) {
+        GstElement* source = gst_bin_get_by_name(GST_BIN(pipeline_), name);
+        GstPad* pad = source ? gst_element_get_static_pad(source, "src") : nullptr;
+        if (GstPad* peer = pad ? gst_pad_get_peer(pad) : nullptr) entries.append(peer);
+        if (pad) gst_object_unref(pad);
+        if (source) gst_object_unref(source);
+    }
+    drain_ = std::thread([entries] {
+        for (GstPad* pad : entries) {
+            gst_pad_send_event(pad, gst_event_new_eos());
+            gst_object_unref(pad);
+        }
+    });
+    // The bus poll completes on EOS. A drain that stalls anyway is bounded: the
+    // capture stops and keeps what reached the file, whose Matroska index is
+    // then missing but whose clusters decode.
+    const quint64 generation = ++stops_;
+    QTimer::singleShot(stopDrainMs, this, [this, generation] {
+        if (generation != stops_ || !stopping_ || !stopCallback_) return;
+        const auto retained = retainedUs();
+        tearDown();
+        const bool kept = retained > 0 && fileBytes() > 0;
+        debugLog(kept ? QStringLiteral("stop: drain timed out; keeping the clip as written") : QStringLiteral("stop: drain timed out with nothing written"));
+        auto callback = std::move(stopCallback_);
+        stopCallback_ = {};
+        callback(kept ? Error{} : Error{"recording_stop_timeout", "The capture did not drain in time", {}}, retained);
+    });
 }
 void RecordingPipeline::cancel() {
     tearDown();
@@ -326,6 +357,8 @@ void RecordingPipeline::tearDown() {
     bus_.stop();
     if (!pipeline_) return;
     gst_element_set_state(pipeline_, GST_STATE_NULL);
+    // Flushing in NULL ends any EOS send still waiting on a branch.
+    if (drain_.joinable()) drain_.join();
     gst_object_unref(pipeline_);
     pipeline_ = nullptr;
     // Lateness: running time at the encoder minus the buffer's time; age: how
