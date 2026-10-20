@@ -13,12 +13,21 @@ const QStringList filterKeys{"search","category","mime","profileId","uploadStatu
 bool fields(const QJsonValue& value,const QStringList& allowed){if(!value.isObject())return false;const auto object=value.toObject();for(auto it=object.begin();it!=object.end();++it)if(!allowed.contains(it.key()))return false;return true;}
 bool scalars(const QJsonValue& value,const QStringList& allowed,bool strings=false){if(!fields(value,allowed))return false;const auto object=value.toObject();for(auto v:object)if(strings?!v.isString():(v.isArray()||v.isObject()||v.isUndefined()))return false;return true;}
 bool stringArray(const QJsonValue& value,int maximum=1000);
-// Recent editor colors (a short string list) and the diagnostics object (#74, #122)
-// are the only non-scalar preferences.
+// Recent editor colors (a short string list), the diagnostics object (#74, #122)
+// and the appearance object (#60) are the only non-scalar preferences.
+bool appearanceDraft(const QJsonValue& value){
+ if(!fields(value,{"theme","accent","overrides"}))return false;
+ const auto appearance=value.toObject();const auto overrides=appearance["overrides"];
+ if(!appearance["theme"].isString()||!(appearance["accent"].isUndefined()||appearance["accent"].isNull()||appearance["accent"].isString()))return false;
+ if(overrides.isUndefined())return true;
+ if(!fields(overrides,{"dark","light"}))return false;
+ for(const auto& scheme:overrides.toObject())if(!scalars(scheme,QStringList(scheme.toObject().keys()),true)||scheme.toObject().size()>64)return false;
+ return true;
+}
 bool preferencesDraft(const QJsonValue& value){
- auto object=value.toObject();const auto colors=object.take("editorRecentColors");const auto diagnostics=object.take("diagnostics");
+ auto object=value.toObject();const auto colors=object.take("editorRecentColors");const auto diagnostics=object.take("diagnostics");const auto appearance=object.take("appearance");
  return value.isObject()&&scalars(object,{"notifications","launchAtLogin","uploadClipboardBehavior","unlockCredentialsAtStartup"})&&(colors.isUndefined()||stringArray(colors,6))
-  &&(diagnostics.isUndefined()||scalars(diagnostics,{"debugLogging","packageFolder"}));
+  &&(diagnostics.isUndefined()||scalars(diagnostics,{"debugLogging","packageFolder"}))&&(appearance.isUndefined()||appearanceDraft(appearance));
 }
 bool stringArray(const QJsonValue& value,int maximum){if(!value.isArray()||value.toArray().size()>maximum)return false;for(auto v:value.toArray())if(!v.isString())return false;return true;}
 bool geometry(const QJsonValue& v){if(!v.isArray()||v.toArray().size()!=4)return false;for(auto n:v.toArray())if(!n.isDouble()||std::floor(n.toDouble())!=n.toDouble()||std::abs(n.toDouble())>2147483647)return false;return v.toArray()[2].toInt()>0&&v.toArray()[3].toInt()>0;}
