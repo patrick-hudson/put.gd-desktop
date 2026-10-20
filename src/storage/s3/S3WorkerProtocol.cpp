@@ -1,6 +1,7 @@
 #include "S3WorkerProtocol.h"
 #include "IpAddress.h"
 #include "PublicUrl.h"
+#include "S3Multipart.h"
 #include <QDir>
 #include <QJsonDocument>
 #include <QRegularExpression>
@@ -98,6 +99,20 @@ bool reference(const QJsonObject& object, bool receipt) {
            integer(object["schemaVersion"], 1, 1) && text(object["key"], 1, 1024) &&
            (!object.contains("versionId") || text(object["versionId"], 0, 4096));
 }
+// A multipart journal: the plan alone, or the plan plus the created upload's
+// identity. The driver re-checks the plan against S3's part rules before use.
+bool resumeJournal(const QJsonObject& object) {
+    if (object.isEmpty()) return true;
+    if (!keys(object, {"schemaVersion", "partBytes"}, {"uploadId", "key", "bytes", "sha256", "phase"}) ||
+        !integer(object["schemaVersion"], 1, 1) || !integer(object["partBytes"], 1, s3MaximumPartBytes)) return false;
+    const bool created = object.contains("uploadId");
+    if (created != object.contains("key") || created != object.contains("bytes") || created != object.contains("sha256") ||
+        created != object.contains("phase")) return false;
+    static const QRegularExpression uploadId(QStringLiteral("\\A[A-Za-z0-9+/=._~-]{1,1024}\\z"));
+    return !created || (text(object["uploadId"], 1, 1024) && uploadId.match(object["uploadId"].toString()).hasMatch() &&
+                        text(object["key"], 1, 1024) && integer(object["bytes"], 0, maximumArtifactBytes) &&
+                        hash(object["sha256"]) && choice(object["phase"], {"parts", "completing"}));
+}
 bool deleteStatus(const QJsonValue& value) {
     return choice(value, {"removed", "missing", "changed", "failed", "unknown", "hidden_version_retained", "unsupported_safe_removal"});
 }
@@ -114,13 +129,17 @@ bool errorDetails(const QJsonObject& details) {
     if (details.contains("httpStatus") && !integer(details["httpStatus"], -1, 599)) return false;
     if (details.contains("serviceCode") && !choice(details["serviceCode"], {"AccessControlListNotSupported", "AccessDenied", "InvalidAccessKeyId",
             "SignatureDoesNotMatch", "ExpiredToken", "PreconditionFailed", "ConditionalRequestConflict", "InvalidRequest", "ObjectLocked",
-            "SlowDown", "RequestTimeout", "InternalError", "ServiceUnavailable", "InvalidToken", "TokenRefreshRequired", "RequestTimeTooSkewed", "RequestExpired", "NoSuchBucket", "InvalidBucketName", "AuthorizationHeaderMalformed", "PermanentRedirect", "Unclassified"})) return false;
+            "SlowDown", "RequestTimeout", "InternalError", "ServiceUnavailable", "InvalidToken", "TokenRefreshRequired", "RequestTimeTooSkewed", "RequestExpired", "NoSuchBucket", "InvalidBucketName", "AuthorizationHeaderMalformed", "PermanentRedirect",
+            "NoSuchUpload", "EntityTooLarge", "EntityTooSmall", "InvalidPart", "InvalidPartOrder", "BadDigest", "XAmzContentSHA256Mismatch", "NotImplemented", "Unclassified"})) return false;
     if (details.contains("sdkErrorType") && !integer(details["sdkErrorType"], -1, 65535)) return false;
     if (details.contains("curlCode") && !integer(details["curlCode"], -1, 999)) return false;
     if (details.contains("sdkRetryable") && !details["sdkRetryable"].isBool()) return false;
     if (details.contains("elapsedMs") && !integer(details["elapsedMs"], 0, 86400000)) return false;
     if (details.contains("requestStage") && !choice(details["requestStage"], {"name_head", "object_head", "current_head", "upload_put",
+            "upload_create", "upload_part", "upload_list_parts", "upload_complete", "upload_abort",
             "delete_versioning", "delete_current_head", "delete_marker", "delete_version", "delete_object"})) return false;
+    if (details.contains("partNumber") && !integer(details["partNumber"], 1, s3MaximumParts)) return false;
+    if (details.contains("incompleteUpload") && !details["incompleteUpload"].isBool()) return false;
     if (details.contains("itemIndex") && !integer(details["itemIndex"], 0, 9999)) return false;
     if (details.contains("offset") && !integer(details["offset"], 0, maximumFrameBytes)) return false;
     if (details.contains("path") && !text(details["path"], 1, 4096)) return false;
@@ -132,9 +151,11 @@ bool errorDetails(const QJsonObject& details) {
 }
 
 QJsonObject encode(const UploadRequest& request) {
-    return {{"destination", request.destination.toJson()}, {"artifact", request.artifact.toJson()},
+    QJsonObject value{{"destination", request.destination.toJson()}, {"artifact", request.artifact.toJson()},
             {"candidate", request.candidate}, {"publicationId", request.publicationId}, {"condition", request.condition},
             {"objectReference", request.objectReference}, {"concurrencyToken", request.concurrencyToken}};
+    if (!request.resume.isEmpty()) value["resume"] = request.resume;
+    return value;
 }
 QJsonObject encode(const DeleteRequest& request) {
     return {{"id", request.id}, {"receipt", request.receipt.toJson()}, {"progress", request.progress}};
@@ -217,7 +238,8 @@ bool decode(const QJsonObject& object, Credentials& credentials) {
 }
 bool decode(const QJsonObject& object, UploadRequest& request) {
     UploadRequest value;
-    if (!bounded(object) || !keys(object, {"destination", "artifact", "candidate", "publicationId", "condition", "objectReference", "concurrencyToken"}) ||
+    if (!bounded(object) || !keys(object, {"destination", "artifact", "candidate", "publicationId", "condition", "objectReference", "concurrencyToken"}, {"resume"}) ||
+        (object.contains("resume") && (!object["resume"].isObject() || object["resume"].toObject().isEmpty() || !resumeJournal(object["resume"].toObject()))) ||
         !object["destination"].isObject() || !decode(object["destination"].toObject(), value.destination) ||
         !object["artifact"].isObject() || !decode(object["artifact"].toObject(), value.artifact) ||
         !text(object["candidate"], 1, 1024) || !text(object["publicationId"], 1, 4096) ||
@@ -228,6 +250,7 @@ bool decode(const QJsonObject& object, UploadRequest& request) {
     value.condition = object["condition"].toString();
     value.objectReference = object["objectReference"].toObject();
     value.concurrencyToken = object["concurrencyToken"].toString();
+    value.resume = object["resume"].toObject();
     // The driver owns the write precondition and persisted-key agreement.
     // Typed unsupported values reach its existing non-destructive rejection.
     request = std::move(value);
@@ -235,7 +258,8 @@ bool decode(const QJsonObject& object, UploadRequest& request) {
 }
 bool decodeReconcileRequest(const QJsonObject& object, UploadRequest& request) {
     UploadRequest value;
-    if (!bounded(object) || !keys(object, {"destination", "artifact", "candidate", "publicationId", "condition", "objectReference", "concurrencyToken"}) ||
+    if (!bounded(object) || !keys(object, {"destination", "artifact", "candidate", "publicationId", "condition", "objectReference", "concurrencyToken"}, {"resume"}) ||
+        (object.contains("resume") && !object["resume"].isObject()) ||
         !object["destination"].isObject() || !decode(object["destination"].toObject(), value.destination) ||
         !object["artifact"].isObject() || !object["objectReference"].isObject() ||
         !text(object["publicationId"], 1, maximumFrameBytes) || !object["candidate"].isString() ||
@@ -370,8 +394,15 @@ bool decodeTestDestinationResult(const QJsonObject& object) {
     StorageReceipt receipt;
     if (!object["receipt"].isObject() || !decode(object["receipt"].toObject(), receipt)) return false;
     if (keys(object, {"uploadStatus", "receipt"})) return true;
-    return keys(object, {"uploadStatus", "receipt", "publicReachable", "cleanupStatus", "cleanupProgress"}) &&
-           object["publicReachable"].isBool() && deleteStatus(object["cleanupStatus"]) &&
-           object["cleanupProgress"].isObject();
+    if (!keys(object, {"uploadStatus", "receipt", "publicReachable", "cleanupStatus", "cleanupProgress"}, {"multipart"}) ||
+        !object["publicReachable"].isBool() || !deleteStatus(object["cleanupStatus"]) || !object["cleanupProgress"].isObject()) return false;
+    if (!object.contains("multipart")) return true;
+    // The multipart permission probe: created, listed and aborted, or the stage S3 refused.
+    const auto probe = object["multipart"].toObject();
+    return object["multipart"].isObject() && keys(probe, {"status"}, {"stage", "abort"}) &&
+           choice(probe["status"], {"ok", "denied", "failed", "unknown"}) &&
+           (probe["status"] == QJsonValue("ok")) == !probe.contains("stage") &&
+           (!probe.contains("stage") || choice(probe["stage"], {"upload_create", "upload_list_parts", "upload_abort"})) &&
+           (!probe.contains("abort") || choice(probe["abort"], {"aborted", "failed", "unknown"}));
 }
 }

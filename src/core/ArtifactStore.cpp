@@ -15,10 +15,24 @@
 #include <QJsonDocument>
 #include <QSet>
 #include <QSaveFile>
+#include <QStorageInfo>
 #include <QUuid>
+#include <atomic>
+#include <cmath>
 #include <utility>
 namespace putgd {
-namespace { QString category(const QString& mime) { if(mime.startsWith("image/")) return "images"; if(mime.startsWith("video/")) return "videos"; if(mime.startsWith("text/")) return "text"; return "other"; } }
+namespace {
+QString category(const QString& mime) { if(mime.startsWith("image/")) return "images"; if(mime.startsWith("video/")) return "videos"; if(mime.startsWith("text/")) return "text"; return "other"; }
+std::atomic<qint64> availableOverride{-1};
+QString size(qint64 bytes) {
+ constexpr double mib=1024.0*1024,gib=mib*1024,tib=gib*1024;
+ if(bytes>=tib)return QString::number(bytes/tib,'f',1)+" TiB";
+ if(bytes>=gib)return QString::number(bytes/gib,'f',1)+" GiB";
+ return QString::number(qMax(1.0,std::ceil(bytes/mib)),'f',0)+" MiB";
+}
+}
+qint64 ArtifactStore::availableBytes() const {const auto override=availableOverride.load();if(override>=0)return override;QStorageInfo volume(root_);volume.refresh();return volume.isValid()?volume.bytesAvailable():-1;}
+void ArtifactStore::setAvailableBytesForTesting(qint64 bytes) {availableOverride.store(bytes);}
 QJsonObject Artifact::toJson() const {return {{"id",id},{"path",path},{"name",name},{"mime",mime},{"category",category},{"bytes",double(bytes)},{"sha256",sha256},{"originalFile",originalFile},{"previewPath",previewPath},{"namingPrepared",namingPrepared}};}
 Artifact Artifact::fromJson(const QJsonObject& o) {return {o["id"].toString(),o["path"].toString(),o["name"].toString(),o["mime"].toString(),o["category"].toString(),o["sha256"].toString(),qint64(o["bytes"].toDouble()),o["originalFile"].toBool(),o["previewPath"].toString(),o["namingPrepared"].toBool()};}
 ArtifactStore::ArtifactStore(QString root):root_(std::move(root)) {QDir().mkpath(root_); QFile::setPermissions(root_,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner);}
@@ -88,7 +102,7 @@ void ArtifactStore::discardIncomplete() {
 
 Error ArtifactStore::verify(const Artifact& a) const {QFile f(a.path); if(!f.open(QIODevice::ReadOnly)) return {"artifact_missing","Retained artifact unavailable",{}}; QCryptographicHash hash(QCryptographicHash::Sha256); if(!hash.addData(&f)||f.size()!=a.bytes||QString::fromLatin1(hash.result().toHex())!=a.sha256) return {"artifact_changed","Retained artifact identity changed",{}}; return {};}
 Acquisition ArtifactStore::acquire(const QString& op,const ClipboardPayload& p,const ResourceLimits& limits,
-                                   const QString& action,const Settings& settings,const QDateTime& actionTime) {
+                                   const QString& action,const Settings& settings,const QDateTime& actionTime,qint64 maximumObjectBytes) {
  Acquisition result; const QString staging=root_+"/."+op+"-"+QUuid::createUuid().toString(QUuid::WithoutBraces), target=root_+"/"+op;
  if(!QDir().mkpath(staging)) {result.error={"artifact_io","Cannot create private artifact storage",{}}; return result;}
  QFile::setPermissions(staging,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner);
@@ -97,6 +111,22 @@ Acquisition ArtifactStore::acquire(const QString& op,const ClipboardPayload& p,c
  if(count<1 || count>limits.maxFiles) {fail("input_excessive","Invalid batch size",0); return result;}
  qint64 total=0,existing=bytes();
  const auto acquiredAt=actionTime.isValid()?actionTime.toLocalTime():QDateTime::currentDateTime();
+ // Reject what the destination can never take, or what the disk cannot hold,
+ // before copying anything. Sizes are rechecked while streaming below.
+ qint64 required=p.kind=="text"||p.kind=="png"?p.bytes.size():p.kind=="image"?qMin<qint64>(p.image.sizeInBytes(),limits.imageBytes):0;
+ if(p.kind=="files"||p.kind=="recording")for(int i=0;i<count;++i){
+  const QFileInfo source(p.files[i]);if(!source.isFile())continue;
+  if(maximumObjectBytes>0&&source.size()>maximumObjectBytes){
+   result.error={"destination_object_too_large",QStringLiteral("%1 is %2; this destination accepts files of at most %3.").arg(source.fileName().left(255),size(source.size()),size(maximumObjectBytes)),{{"itemIndex",i},{"bytes",double(source.size())},{"maximumObjectBytes",double(maximumObjectBytes)}}};
+   QDir(staging).removeRecursively();return result;
+  }
+  required+=source.size();
+ }
+ const auto available=availableBytes();
+ if(available>=0&&required>available-reservedFreeBytes){
+  result.error={"disk_space_insufficient",QStringLiteral("Not enough free disk space to import: it needs %1 and %2 is free in put.gd's data folder, which keeps %3 spare. Free some space and try again.").arg(size(required),size(qMax<qint64>(0,available)),size(reservedFreeBytes)),{{"requiredBytes",double(required)},{"availableBytes",double(qMax<qint64>(0,available))}}};
+  QDir(staging).removeRecursively();return result;
+ }
  for(int i=0;i<count;++i) {
   Artifact a; a.id=QUuid::createUuid().toString(QUuid::WithoutBraces); a.path=staging+"/"+a.id;
   QFile input; QByteArray encoded;
@@ -120,7 +150,10 @@ Acquisition ArtifactStore::acquire(const QString& op,const ClipboardPayload& p,c
   if(named.error) {fail(named.error.code,named.error.message,i);return result;}
   a.name=named.name;a.namingPrepared=true;
   const qint64 expected=input.isOpen()?input.size():encoded.size();
-  if(expected>limits.maxFileBytes||expected>limits.maxBatchBytes-total||expected>limits.pendingArtifactBytes-existing-total) {fail("input_excessive","Artifact budget exceeded",i); return result;}
+  if(maximumObjectBytes>0&&expected>maximumObjectBytes) {fail("destination_object_too_large",QStringLiteral("This item is %1; this destination accepts files of at most %2.").arg(size(expected),size(maximumObjectBytes)),i); return result;}
+  if(expected>limits.maxFileBytes) {fail("input_excessive",QStringLiteral("Artifact budget exceeded: this file is %1 and the Largest file limit is %2").arg(size(expected),size(limits.maxFileBytes)),i); return result;}
+  if(expected>limits.maxBatchBytes-total) {fail("input_excessive",QStringLiteral("Artifact budget exceeded: this batch is over the Largest batch limit of %1").arg(size(limits.maxBatchBytes)),i); return result;}
+  if(expected>limits.pendingArtifactBytes-existing-total) {fail("input_excessive",QStringLiteral("Artifact budget exceeded: waiting uploads would pass the Waiting uploads limit of %1").arg(size(limits.pendingArtifactBytes)),i); return result;}
   QSaveFile output(a.path); output.setDirectWriteFallback(false); if(!output.open(QIODevice::WriteOnly)) {fail("artifact_io","Cannot store artifact",i); return result;}
   output.setPermissions(QFile::ReadOwner|QFile::WriteOwner); QCryptographicHash hash(QCryptographicHash::Sha256);
   while(input.isOpen()?!input.atEnd():!encoded.isEmpty()) {

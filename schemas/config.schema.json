@@ -743,19 +743,31 @@
           "maximum": 32
         },
         "maxFileBytes": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 1099511627776
+          "oneOf": [
+            {"type": "integer", "minimum": 1, "maximum": 1099511627776},
+            {"const": "auto"},
+            {"type": "null"}
+          ],
+          "default": "auto",
+          "description": "Largest imported file. Bytes, \"auto\" (no limit above 16 GiB of installed memory, otherwise a quarter of it; resolved when settings load) or null for no limit. Free disk space and the destination's maximum object size still apply. A saved 2147483648 (the former default) reads as \"auto\"."
         },
         "maxBatchBytes": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 1099511627776
+          "oneOf": [
+            {"type": "integer", "minimum": 1, "maximum": 1099511627776},
+            {"const": "auto"},
+            {"type": "null"}
+          ],
+          "default": "auto",
+          "description": "Largest combined batch. Bytes, \"auto\" (no limit above 16 GiB of installed memory, otherwise a quarter of it; resolved when settings load) or null for no limit. Free disk space and the destination's maximum object size still apply. A saved 2147483648 (the former default) reads as \"auto\"."
         },
         "pendingArtifactBytes": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 1099511627776
+          "oneOf": [
+            {"type": "integer", "minimum": 1, "maximum": 1099511627776},
+            {"const": "auto"},
+            {"type": "null"}
+          ],
+          "default": "auto",
+          "description": "Most acquired content waiting on disk. Bytes, \"auto\" (no limit above 16 GiB of installed memory, otherwise a quarter of it; resolved when settings load) or null for no limit. Free disk space and the destination's maximum object size still apply. A saved 2147483648 (the former default) reads as \"auto\"."
         },
         "clipboardTextBytes": {
           "type": "integer",

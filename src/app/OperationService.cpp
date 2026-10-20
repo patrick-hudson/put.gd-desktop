@@ -371,7 +371,10 @@ Operation OperationService::run(Job job) {
   return true;
  };
  if(job.cancelled->load()){job.payload={};job.payloadLease.reset();op.cancelled=true;op.state="cancelled";save();return op;}
- if(job.acquire) {op.phase="preparing";if(!save())return op;std::lock_guard acquisitionGuard(acquisitionMutex_);auto acquired=artifacts.acquire(op.id,job.payload,op.settings.limits,op.action,op.settings,QDateTime::fromString(op.created,Qt::ISODateWithMs));
+ if(job.acquire) {op.phase="preparing";if(!save())return op;
+  // An upload route rejects files its destination can never store before copying them.
+  qint64 objectLimit=0;{const auto output=op.settings.actions.value(op.action);if(output.destination!="local"&&!output.profileId.isEmpty())if(auto destination=providers_.find(op.destination.providerId))objectLimit=destination->capabilities(op.destination).maximumObjectBytes;}
+  std::lock_guard acquisitionGuard(acquisitionMutex_);auto acquired=artifacts.acquire(op.id,job.payload,op.settings.limits,op.action,op.settings,QDateTime::fromString(op.created,Qt::ISODateWithMs),objectLimit);
   job.payload={};job.payloadLease.reset(); // Retry/upload ownership now belongs to the immutable disk artifact.
   if(acquired.error) {op.error=acquired.error;op.state="failed";save();logging::warning(logOperation(),"Acquisition failed",{{"operationId",op.id},{"error",logging::errorFields(op.error)}});return op;}
   for(const auto& a:acquired.artifacts) {OperationItem item;item.phase="stored";item.artifact=a;item.artifact.previewPath=artifacts.preview(a,op.settings.previewCacheBytes,op.settings.limits.imagePixels);item.publicationId=uuid();op.items.append(item);}op.state="stored";if(!save())return op;
@@ -428,7 +431,7 @@ Operation OperationService::run(Job job) {
   if(item.uploadStatus=="unknown") {
    op.phase="reconciling";item.phase="reconciling";observe(op.publicJson());
    auto stat=storageRequest<StatResult>([&](auto cb) {auto request=item.uploadRequest(op.destination,op.requestTimeoutMs);request.cancellation=job.cancelled;provider->reconcile(request,cb);});
-   if(stat.status=="own"&&!stat.receipt.validate()&&stat.receipt.publicationId==item.publicationId&&stat.receipt.destination.toJson()==op.destination.toJson()) {item.receipt=stat.receipt;item.uploadStatus="uploaded";item.error={};if(!saveItem(item))return op;continue;}
+   if(stat.status=="own"&&!stat.receipt.validate()&&stat.receipt.publicationId==item.publicationId&&stat.receipt.destination.toJson()==op.destination.toJson()) {item.receipt=stat.receipt;item.uploadStatus="uploaded";item.error={};item.uploadJournal={};if(!saveItem(item))return op;continue;}
    {auto fields=itemFields(op,item);fields["status"]=stat.status;if(stat.error)fields["error"]=logging::errorFields(stat.error);logging::write(providerLog(op.destination.providerId),stat.status=="own"||stat.status=="missing"?QtInfoMsg:QtWarningMsg,"Uncertain upload reconciled",fields);}
    if(stat.status!="missing") {item.phase="unknown";item.error=stat.error?stat.error:Error{"publication_unknown","Resolve ambiguous publication before uploading again",{}};if(!saveItem(item))return op;continue;}
    item.uploadStatus="stored";if(auto error=artifacts.verify(item.artifact)) {item.uploadStatus="failed";item.error=error;if(!saveItem(item))return op;continue;}if(!saveItem(item))return op;
@@ -442,6 +445,11 @@ Operation OperationService::run(Job job) {
    QElapsedTimer attemptClock;attemptClock.start();
    auto uploaded=awaitProvider<UploadResult>([&](auto cb) {
     auto request=item.uploadRequest(op.destination,op.requestTimeoutMs);request.cancellation=job.cancelled;
+    // A resumable (multipart) upload journals its remote upload before relying on it.
+    // This worker waits on the provider meanwhile, so the item is not touched concurrently.
+    request.checkpoint=[this,path=databasePath(),&op,&item](const QJsonObject& journal,std::function<void(Error)> ack){
+     item.uploadJournal=journal;HistoryStore durable(path);ack(durable.checkpointOperation(op,{item.artifact.id},&providers_));
+    };
     request.progress=[owner,progress,activity,artifactId](const UploadProgress& value){
      if(!value.valid())return;
      std::lock_guard lock(progress->mutex);if(progress->closed||!owner)return;progress->latest=value;activity->set(value.phase!="preparing");
@@ -462,14 +470,14 @@ Operation OperationService::run(Job job) {
    item.error=uploaded.error;
    if(uploaded.status=="uploaded") {
     auto e=uploaded.receipt.validate();if(!e&&(uploaded.receipt.publicationId!=item.publicationId||uploaded.receipt.destination.toJson()!=op.destination.toJson()))e={"receipt_invalid","Receipt does not match the accepted publication identity",{}};
-    if(e) {item.uploadStatus="unknown";item.error=e;}else {item.receipt=uploaded.receipt;item.uploadStatus="uploaded";item.error={};}if(!saveItem(item))return op;break;
+    if(e) {item.uploadStatus="unknown";item.error=e;}else {item.receipt=uploaded.receipt;item.uploadStatus="uploaded";item.error={};item.uploadJournal={};}if(!saveItem(item))return op;break;
    }
    if(uploaded.status=="unknown") {item.uploadStatus="unknown";if(!saveItem(item))return op;break;}
    if(uploaded.status!="collision") {item.uploadStatus="failed";if(!saveItem(item))return op;break;}
    // Reconcile our publication before changing any proposed target after a race.
    op.phase="reconciling";item.phase="reconciling";observe(op.publicJson());
    auto stat=storageRequest<StatResult>([&](auto cb) {auto request=item.uploadRequest(op.destination,op.requestTimeoutMs);request.cancellation=job.cancelled;provider->reconcile(request,cb);});
-   if(stat.status=="own"&&!stat.receipt.validate()&&stat.receipt.publicationId==item.publicationId&&stat.receipt.destination.toJson()==op.destination.toJson()) {item.receipt=stat.receipt;item.uploadStatus="uploaded";item.error={};if(!saveItem(item))return op;break;}
+   if(stat.status=="own"&&!stat.receipt.validate()&&stat.receipt.publicationId==item.publicationId&&stat.receipt.destination.toJson()==op.destination.toJson()) {item.receipt=stat.receipt;item.uploadStatus="uploaded";item.error={};item.uploadJournal={};if(!saveItem(item))return op;break;}
    const bool unpublishedDraft=stat.status=="missing"&&uploaded.error.code=="upload_draft_conflict";
    if(stat.status!="foreign"&&!unpublishedDraft) {item.uploadStatus="unknown";item.phase="unknown";item.error=stat.error?stat.error:Error{"publication_unknown","Collision publication could not be reconciled",{}};if(!saveItem(item))return op;break;}
    if(op.settings.collisionPolicy=="skip") {item.uploadStatus="skipped";if(!saveItem(item))return op;break;}

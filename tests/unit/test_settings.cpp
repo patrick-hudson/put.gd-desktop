@@ -69,6 +69,72 @@ private slots:
         QCOMPARE(putgd::Settings::fromValidated(document).limits.pendingImageBytes,qint64(67108864));
         QCOMPARE(putgd::Settings::fromValidated(document).document["limits"].toObject(),limits);
     }
+    void artifactByteLimitsFollowMemoryOrAcceptNoLimit() {
+        constexpr qint64 gib = 1LL << 30;
+        using putgd::Settings;
+        using putgd::ResourceLimits;
+        // Installed memory counts in whole GiB: MemTotal is a little below the module size.
+        QCOMPARE(Settings::automaticArtifactBytes(8 * gib), 2 * gib);
+        QCOMPARE(Settings::automaticArtifactBytes(8 * gib - 300LL * 1024 * 1024), 2 * gib);
+        QCOMPARE(Settings::automaticArtifactBytes(16 * gib - 500LL * 1024 * 1024), 4 * gib);
+        QCOMPARE(Settings::automaticArtifactBytes(16 * gib), 4 * gib);
+        QCOMPARE(Settings::automaticArtifactBytes(16 * gib + 1), ResourceLimits::unlimitedBytes);
+        QCOMPARE(Settings::automaticArtifactBytes(31 * gib + 400LL * 1024 * 1024), ResourceLimits::unlimitedBytes);
+        QCOMPARE(Settings::automaticArtifactBytes(0), 2 * gib);
+        auto document = Settings::defaults();
+        for (const auto& key : Settings::artifactByteLimitKeys()) QCOMPARE(document["limits"].toObject()[key], QJsonValue("auto"));
+        QVERIFY(!Settings::validate(document));
+        Settings::setPhysicalMemoryForTesting(8 * gib);
+        QCOMPARE(Settings::fromValidated(document).limits.maxFileBytes, 2 * gib);
+        QCOMPARE(Settings::fromValidated(document).effectiveArtifactLimits()["auto"].toInteger(), 2 * gib);
+        Settings::setPhysicalMemoryForTesting(32 * gib);
+        auto resolved = Settings::fromValidated(document);
+        QCOMPARE(resolved.limits.maxFileBytes, ResourceLimits::unlimitedBytes);
+        QCOMPARE(resolved.limits.maxBatchBytes, ResourceLimits::unlimitedBytes);
+        QCOMPARE(resolved.limits.pendingArtifactBytes, ResourceLimits::unlimitedBytes);
+        QVERIFY(resolved.effectiveArtifactLimits()["maxFileBytes"].isNull());
+        QCOMPARE(resolved.effectiveArtifactLimits()["physicalMemoryBytes"].toInteger(), 32 * gib);
+        // Null is No limit, a byte count stays fixed, and the old 2 GiB default reads as auto.
+        auto limits = document["limits"].toObject();
+        limits["maxFileBytes"] = QJsonValue::Null;
+        limits["maxBatchBytes"] = 3221225472.0;
+        limits["pendingArtifactBytes"] = 2147483648.0;
+        document["limits"] = limits;
+        QVERIFY(!Settings::validate(document));
+        Settings::setPhysicalMemoryForTesting(8 * gib);
+        resolved = Settings::fromValidated(document);
+        QCOMPARE(resolved.limits.maxFileBytes, ResourceLimits::unlimitedBytes);
+        QCOMPARE(resolved.limits.maxBatchBytes, 3 * gib);
+        QCOMPARE(resolved.limits.pendingArtifactBytes, 2 * gib);
+        QVERIFY(resolved.document["limits"].toObject()["maxFileBytes"].isNull());
+        QCOMPARE(resolved.document["limits"].toObject()["pendingArtifactBytes"], QJsonValue("auto"));
+        QCOMPARE(resolved.document["limits"].toObject()["maxBatchBytes"].toInteger(), 3 * gib);
+        for (const auto& value : {QJsonValue("Auto"), QJsonValue("none"), QJsonValue(0), QJsonValue(-1), QJsonValue(1.5), QJsonValue(1099511627777.0), QJsonValue(true)}) {
+            limits["maxFileBytes"] = value;
+            document["limits"] = limits;
+            const auto error = Settings::validate(document);
+            QCOMPARE(error.code, QStringLiteral("config_invalid"));
+            QCOMPARE(error.details["path"].toString(), QStringLiteral("/limits/maxFileBytes"));
+        }
+        Settings::setPhysicalMemoryForTesting(-1);
+        QVERIFY(Settings::physicalMemoryBytes() > 0);
+    }
+    void existingConfigWithTheFormerDefaultLoadsAsAuto() {
+        QTemporaryDir directory;
+        const auto path = directory.filePath("config.json");
+        auto legacy = putgd::Settings::defaults();
+        auto limits = legacy["limits"].toObject();
+        for (const auto& key : putgd::Settings::artifactByteLimitKeys()) limits[key] = 2147483648.0;
+        legacy["limits"] = limits;
+        replace(path, QJsonDocument(legacy).toJson());
+        putgd::SettingsService service(path);
+        QVERIFY(!service.reload().error);
+        for (const auto& key : putgd::Settings::artifactByteLimitKeys()) QCOMPARE(service.document()["limits"].toObject()[key], QJsonValue("auto"));
+        // The next save writes the migrated value.
+        QVERIFY(!service.patch({{"retention", QJsonObject{{"recentActivityLimit", 50}}}}, service.metadata()["observedRevision"].toString()).error);
+        const auto saved = QJsonDocument::fromJson(read(path)).object();
+        QCOMPARE(saved["limits"].toObject()["maxFileBytes"], QJsonValue("auto"));
+    }
     void filenameTemplatesAreOptionalAndLegacyChoicesRemainUnchanged() {
         auto document = putgd::Settings::defaults();
         QCOMPARE(document["naming"].toObject()["mode"].toString(), QString("original"));

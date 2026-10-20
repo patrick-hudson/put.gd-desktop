@@ -101,12 +101,22 @@ adapters are implemented and registered; current unsupported capabilities are ex
 For a configuration walkthrough, inspect `capabilities`, `settings.get`, and
 `diagnostics` before invoking an action. `settings.get` returns the accepted JSON at
 `result.document` and file state at `result.metadata`: `path`, `acceptedRevision`,
-`observedRevision`, `validation`, and watcher status. Use `observedRevision` as the
-patch's `expectedRevision` and reread after a successful patch or conflict:
+`observedRevision`, `validation`, and watcher status. `result.effectiveLimits` holds
+the resolved `maxFileBytes`, `maxBatchBytes` and `pendingArtifactBytes` (`null` for no
+limit), the `auto` value for this computer and its `physicalMemoryBytes`. Use
+`observedRevision` as the patch's `expectedRevision` and reread after a successful
+patch or conflict:
 
 ```sh
 putgd-cli settings.patch '{"patch":{"retention":{"recentActivityLimit":77}},"expectedRevision":"RETURNED-OBSERVED-REVISION"}'
 putgd-cli settings.get
+```
+
+The three artifact byte limits take a byte count, `"auto"` (from this computer's
+memory) or `null` (No limit); see [configuration](configuration.md):
+
+```sh
+putgd-cli settings.patch '{"patch":{"limits":{"maxFileBytes":null,"maxBatchBytes":null,"pendingArtifactBytes":"auto"}},"expectedRevision":"RETURNED-OBSERVED-REVISION"}'
 ```
 
 `settings.reorderProfiles` changes only the order of the `profiles` array, which is

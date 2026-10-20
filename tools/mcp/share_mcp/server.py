@@ -459,7 +459,7 @@ def create_server(adapter: CliAdapter) -> FastMCP:
 
     @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
     async def patch_configuration(patch: Json, expected_revision: str) -> Json:
-        """Patch non-secret settings with expected file revision; conflicts require reread/rebase. Null is explicit."""
+        """Patch non-secret settings with expected file revision; conflicts require reread/rebase. Null is explicit. limits.maxFileBytes, maxBatchBytes and pendingArtifactBytes take a byte count, "auto" (from this computer's memory) or null (no limit); inspect shows the resolved values under configuration.result.effectiveLimits."""
         allowed = {'schemaVersion', 'actions', 'captureDefaults', 'profiles', 'archive', 'naming', 'limits', 'retention', 'preferences'}
         if (not isinstance(patch, dict) or set(patch) - allowed or not safe_patch(patch) or
             not isinstance(expected_revision, str) or len(expected_revision) > 256):

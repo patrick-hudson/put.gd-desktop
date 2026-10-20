@@ -30,6 +30,7 @@ Error unexpected() {
 }
 struct S3Provider::State {
     CredentialStore& credentials;
+    S3UploadPolicy policy;
     std::shared_ptr<S3Module> module = S3Module::acquire();
     S3Driver* driver = nullptr; // Only the permanent module worker accesses this.
     std::atomic_bool retainedDriver = false;
@@ -38,7 +39,7 @@ struct S3Provider::State {
     std::condition_variable drained;
     int queued = 0;
     bool closing = false;
-    explicit State(CredentialStore& store) : credentials(store) {}
+    State(CredentialStore& store, S3UploadPolicy uploads) : credentials(store), policy(uploads) {}
     ~State() {
         {
             std::unique_lock lock(mutex);
@@ -113,7 +114,7 @@ struct S3Provider::State {
         }
     }
 };
-S3Provider::S3Provider(CredentialStore& credentials) : state_(std::make_unique<State>(credentials)) {}
+S3Provider::S3Provider(CredentialStore& credentials, S3UploadPolicy policy) : state_(std::make_unique<State>(credentials, policy)) {}
 S3Provider::~S3Provider() = default;
 QJsonObject S3Provider::diagnostics() const {
     // Resource snapshots never block the GUI during SDK shutdown or thread joins.
@@ -124,8 +125,11 @@ QJsonObject S3Provider::diagnostics() const {
 }
 ProviderCapabilities S3Provider::capabilities(const Destination& destination) const {
     const auto prefix = destination.settings["objectPrefix"].toString().toUtf8().size();
-    return {true, true, s3SafeDeleteTransport, true, true, s3SafeDeleteTransport, true, int(qMax(1, 1024 - prefix - (prefix ? 1 : 0))),
+    ProviderCapabilities result{true, true, s3SafeDeleteTransport, true, true, s3SafeDeleteTransport, true, int(qMax(1, 1024 - prefix - (prefix ? 1 : 0))),
             "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes"};
+    // Larger files upload in parts; S3 itself stores objects of at most 5 TiB.
+    result.maximumObjectBytes = s3MaximumObjectBytes;
+    return result;
 }
 QString S3Provider::serializationKey(const Destination& destination, const QJsonObject& object, const QString& candidate) const {
     return destination.settings["endpoint"].toString() + "/" + destination.settings["bucket"].toString() + "/" +
@@ -187,7 +191,13 @@ void S3Provider::reconcile(const UploadRequest& request, std::function<void(Stat
 }
 void S3Provider::upload(const UploadRequest& request, std::function<void(UploadResult)> reply) {
     reply = once(std::move(reply));
-    state_->run(*this, request.destination, request.cancellation, [request, reply](S3Driver& driver) {
+    auto planned = request;
+    // A new large upload starts as a multipart plan. An existing journal keeps
+    // its own part size: its uploaded parts were cut with it.
+    if (planned.resume.isEmpty())
+        if (const auto part = s3PartBytes(request.artifact.bytes, state_->policy))
+            planned.resume = {{"schemaVersion", 1}, {"partBytes", double(part)}};
+    state_->run(*this, request.destination, request.cancellation, [request = std::move(planned), reply](S3Driver& driver) {
         driver.upload(request, reply);
     }, [reply](Error error) { reply({error.code == "s3_transport_unknown" ? "unknown" : "failed", {}, error}); });
 }

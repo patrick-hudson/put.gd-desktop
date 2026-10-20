@@ -17,9 +17,16 @@ struct Acquisition { QList<Artifact> artifacts; Error error; };
 class ArtifactStore {
 public:
  explicit ArtifactStore(QString root);
+ // maximumObjectBytes is the destination's per-file limit (zero: none). Both it and
+ // free disk space are checked before any byte is copied.
  Acquisition acquire(const QString& operationId,const ClipboardPayload&,const ResourceLimits&,
                      const QString& action="clipboard",const Settings& = Settings::fromValidated(Settings::defaults()),
-                     const QDateTime& actionTime = {});
+                     const QDateTime& actionTime = {},qint64 maximumObjectBytes=0);
+ // Free bytes under the artifact root; tests may substitute a value (negative: real).
+ qint64 availableBytes() const;
+ static void setAvailableBytesForTesting(qint64);
+ // Space left free after an import, for the history database, logs and previews.
+ static constexpr qint64 reservedFreeBytes=256LL*1024*1024;
  Error verify(const Artifact&) const;
  Acquisition recover(const QString& operationId) const;
  void discardIncomplete();

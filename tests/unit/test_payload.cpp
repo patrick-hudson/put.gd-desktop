@@ -1,5 +1,6 @@
 #include "core/ClipboardPayload.h"
 #include "core/ArtifactStore.h"
+#include <QDir>
 #include <QTemporaryDir>
 #include <QMimeData>
 #include <QFile>
@@ -44,6 +45,29 @@ private slots:
   const auto path=store.preview(artifact,4096,32*16);QVERIFY(!path.isEmpty());
   const QImage preview(path);QCOMPARE(preview.size(),QSize(256,128));
   QCOMPARE(preview.pixelColor(10,10),QColor(Qt::blue));
+ }
+ void destinationMaximumAndFreeDiskAreCheckedBeforeCopying() {
+  QTemporaryDir d;
+  auto write=[&](const QString& name,qint64 size){QFile f(d.filePath(name));if(!f.open(QIODevice::WriteOnly))return QString();f.write(QByteArray(size,'s'));return f.fileName();};
+  ClipboardPayload p;p.kind="files";p.files={write("small.bin",10),write("large.bin",30)};
+  ArtifactStore store(d.filePath("spool"));
+  auto result=store.acquire("operation",p,ResourceLimits{},"clipboard",Settings::fromValidated(Settings::defaults()),{},20);
+  QCOMPARE(result.error.code,QString("destination_object_too_large"));QCOMPARE(result.error.details["itemIndex"].toInt(),1);
+  QVERIFY(result.error.message.contains("large.bin"));QVERIFY(result.artifacts.isEmpty());
+  QVERIFY(QDir(d.filePath("spool")).entryList(QDir::AllEntries|QDir::Hidden|QDir::NoDotAndDotDot).isEmpty());
+  // Free space must hold the whole batch plus the spare reserve.
+  ArtifactStore::setAvailableBytesForTesting(ArtifactStore::reservedFreeBytes+39);
+  result=store.acquire("operation",p,ResourceLimits{});
+  QCOMPARE(result.error.code,QString("disk_space_insufficient"));QCOMPARE(result.error.details["requiredBytes"].toInteger(),40LL);
+  QVERIFY(result.error.message.contains("free"));
+  QVERIFY(QDir(d.filePath("spool")).entryList(QDir::AllEntries|QDir::Hidden|QDir::NoDotAndDotDot).isEmpty());
+  ArtifactStore::setAvailableBytesForTesting(ArtifactStore::reservedFreeBytes+40);
+  result=store.acquire("operation",p,ResourceLimits{});QVERIFY2(!result.error,qPrintable(result.error.message));QCOMPARE(result.artifacts.size(),2);
+  ArtifactStore::setAvailableBytesForTesting(-1);
+  QVERIFY(store.availableBytes()>0);
+  // Each budget names the limit that refused the file.
+  ResourceLimits small;small.maxFileBytes=20;
+  result=store.acquire("other",p,small);QCOMPARE(result.error.code,QString("input_excessive"));QVERIFY(result.error.message.contains("Largest file"));
  }
  void batchAcquisitionIsAtomic() {
   QTemporaryDir d; QFile f(d.filePath("ok.txt")); QVERIFY(f.open(QIODevice::WriteOnly)); f.write("synthetic"); f.close();
