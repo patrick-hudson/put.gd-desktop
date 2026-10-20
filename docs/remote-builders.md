@@ -98,48 +98,14 @@ Each tile's VNC server runs in the host's desktop session as user `patrick`
 | d69 Plasma Wayland | `/usr/local/bin/w0vncserver`, TigerVNC `v1.16.2` (`b555312d`) built from source in `~/work/bootstrap` (CMake Release, `ENABLE_WAYLAND=ON`, no viewer) | user `w0vncserver.service` (Wayland + KDE only, `WantedBy=plasma-workspace-wayland.target`) plus the `localhost.conf` drop-in that binds it to loopback | `127.0.0.1:5900` |
 | k72 Plasma X11 | `X0tigervnc` (Ubuntu's `tigervnc-scraping-server` 1.15) on the X display | user `patrick-vnc.service`, started by the `patrick-vnc` autostart entry only in an X11 session | `127.0.0.1:5900` |
 | m74 Cinnamon X11 (added 2026-10-20) | `X0tigervnc` (Mint's `tigervnc-scraping-server`) on the physical `:0` display | user `putgd-native-vnc.service` | `127.0.0.1:5900` |
-| k72 Plasma Wayland (added 2026-10-20, #87; default session) | `/usr/local/bin/w0vncserver`, TigerVNC `v1.16.2` (`b555312d`) built in `~/work/bootstrap-w0vnc` like d69's | user `w0vncserver.service` (Wayland + KDE only, `WantedBy=plasma-workspace-wayland.target`), run under `systemd-inhibit --what=idle:sleep --mode=block` by the `10-inhibit-sleep.conf` drop-in; `wall-vnc-watchdog.service` restarts it when its stream stops | `127.0.0.1:5900` |
+| k72 Plasma Wayland (added 2026-10-20, #87; default session) | `/usr/local/bin/w0vncserver`, TigerVNC `v1.16.2` (`b555312d`) built in `~/work/bootstrap-w0vnc` like d69's | user `w0vncserver.service` (Wayland + KDE only, `WantedBy=plasma-workspace-wayland.target`), run under `systemd-inhibit --what=idle:sleep --mode=block` by the `10-inhibit-sleep.conf` drop-in | `127.0.0.1:5900` |
 
 Every lab desktop must stay awake: the wall VNC unit (or a sibling) holds a
 `systemd-inhibit --what=idle:sleep --mode=block` inhibitor. On 2026-10-20 k72's new
 Plasma Wayland session had none, idle-suspended after about 15 minutes, and
 dropped off the network ("No route to host"). Keep `putgd` out of the inhibitor's
 `--who` label, because `desktop_lock.py` flags any process matching `putgd` as a
-leftover. That suspend never resumed: k72 came back only after a power cycle at
-02:08Z.
-
-A Wayland tile can also freeze while its server keeps running, so the wall shows
-the same frame, with a stuck panel clock, until someone notices.
-`w0vncserver` 1.16.2 reads KWin's PipeWire screencast stream and doesn't notice
-when that stream stops: a disconnect is only logged at debug level, the portal's
-`Closed` signal isn't handled and frames flagged corrupted are dropped silently.
-On k72 on 2026-10-20 the i915 GPU hung in `kwin_wayland` at 02:16:07Z
-(`GPU HANG: ecode 9:1:85dffffb`, "Resetting rcs0 for preemption time out").
-KWin reset its GL context and the stream feeding the tile stopped. The Skylake
-HD 530 had hung the same way three times under Xorg (2026-10-17 07:35Z and
-08:13Z, 2026-10-19 02:32Z), so expect it again; the hang is #89. Check for it with
-`journalctl -b -k | grep 'GPU HANG'` and
-`journalctl -b | grep 'graphics reset attributable'`.
-To tell a frozen tile from a quiet desktop, compare two RFB grabs a minute
-apart: the panel clock changes every minute.
-
-k72 runs `tools/lab/wall_vnc_watchdog.py` beside its server as the user unit
-`tools/lab/wall-vnc-watchdog.service` (script copied to
-`~/.local/bin/wall-vnc-watchdog`; Wayland + KDE only and
-`WantedBy=plasma-workspace-wayland.target`, like `w0vncserver.service`). It
-holds one shared, view-only RFB connection to `127.0.0.1:5900` and asks for an
-incremental update at most every 10 seconds. It restarts `w0vncserver.service`
-when no update has arrived for 5 minutes, or within about 10 seconds of the
-journal reporting a GPU hang or KWin GL reset. Restarts are rate-limited to one
-per 5 minutes, doubling up to 30 minutes while frames don't come back.
-`systemctl --user restart` keeps the `10-inhibit-sleep.conf` wrapper, so the
-inhibitor survives. The new server opens a new portal session from the restore
-token, so no prompt appears. Its log is `journalctl --user -u wall-vnc-watchdog`.
-A full-screen static window that hides the clock for more than 5 minutes causes
-one harmless restart. Both triggers were tested on k72 on 2026-10-20: a labelled
-synthetic `GPU HANG: ` journal line, and a `SIGSTOP`ped server. Each restart
-brought live frames back. Installing the watchdog on d69 and checking it after a
-k72 re-login are #164.
+leftover.
 
 All use `-SecurityTypes=None`, so they must stay on loopback. The servers keep
 their portal restore token under `~/.local/state/tigervnc`
@@ -150,21 +116,6 @@ k72's default session is Plasma Wayland (`Session=plasma.desktop` in SDDM's
 autologin, `/etc/sddm.conf`). Switch it to `plasmax11.desktop` only when a check
 needs KDE/X11, then switch it back. Each switch restarts `sddm` and logs
 Patrick out, so the coordinator checks for his apps first.
-
-k72 has two outputs. HDMI-A-1 is forced on with the headless EDID
-(`drm.edid_firmware=HDMI-A-1:edid/patrick-headless.bin`). Since the 2026-10-20
-power cycle, Patrick's own monitor is also on HDMI-A-2, a hotplug-detected
-output with the same EDID. Extended, the two outputs made a 3342x1080 workspace,
-and the tile streamed both of them. At Patrick's direction, HDMI-A-2 now mirrors
-HDMI-A-1 (`kscreen-doctor output.HDMI-A-2.mirror.HDMI-A-1`), so the tile is one
-1920x1080 desktop. KWin stores the mirror in `~/.config/kwinoutputconfig.json`
-as the two-output setup's `replicationSource`, so it applies whenever both
-outputs are connected. It hasn't been tested across a power cycle yet. The
-previous file is at `~/putgd-lab/k72wall/kwinoutputconfig.json.before-mirror`.
-Because Patrick's screen shows the same desktop, a capture may leave k72 only
-after you've checked on the host that your own test window fills the captured
-area. Check frame liveness by comparing hashes on k72; don't copy frames off the
-host.
 
 Keep graphical tests visible there throughout the run. Capture screenshots or
 short recordings of the initial desktop, decisive actions, results, failures and
