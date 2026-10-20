@@ -75,6 +75,10 @@ public:
  // Such uploads become active only upon uploading/finalizing; telemetry remains optional.
  virtual bool reportsUploadProgress() const { return false; }
  virtual bool reconcilesDeleteProgress() const { return false; }
+ // How many requests the provider runs at once for one destination. One means the
+ // destination takes a single request at a time (Proton locks its account), so an
+ // operation holds it for all of its provider work; more lets uploads overlap.
+ virtual int maximumConcurrentRequests(const Destination&) const { return 1; }
  // Providers may adopt longer execution budgets on explicit retry, without changing destination identity.
  virtual std::optional<int> retryRequestTimeout(const Destination&,const QJsonObject&) const { return {}; }
  virtual QString defaultPublicationMode(const Destination&) const { return "share"; }

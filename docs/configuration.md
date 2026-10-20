@@ -86,7 +86,7 @@ the last accepted in-memory settings and the bad file so it can be corrected.
 | `naming.collisionPolicy` | `rename` by default; `skip` or explicit `overwrite` |
 | `limits.maxFiles` | 100; maximum clipboard batch file count |
 | `limits.pendingOperations` | 8 |
-| `limits.concurrentUploads` | 1 |
+| `limits.concurrentUploads` | 3 for new configurations (1–32): files transferring at once across every operation. A batch's files overlap, a new action starts while an earlier upload continues, and a free slot goes to the operation holding the fewest. A multipart file holds one slot for its whole transfer. Providers that take one request at a time per account (Proton Drive) stay sequential for that account. Existing configurations keep their saved value (the former default, 1, uploads one file at a time) |
 | `limits.maxFileBytes`, `maxBatchBytes`, `pendingArtifactBytes` | `"auto"` each. A byte count (1 byte to 1 TiB), `"auto"` or `null`. `"auto"` is resolved from total physical memory whenever settings load: no limit above 16 GiB of installed memory, otherwise a quarter of it (an 8 GiB computer keeps 2 GiB). `null` is "No limit": put.gd applies none of its own (internally the 1 TiB ceiling). Every import is still bounded by free disk space in the data folder (256 MiB kept spare) and by the destination's maximum object size (5 TiB for S3), both checked before copying. A saved value of exactly 2147483648, the default before `"auto"` existed, reads as `"auto"`; to keep 2 GiB exactly as a fixed limit, choose a different value such as 2047 MiB. `settings.get` reports the resolved values under `effectiveLimits` |
 | `limits.clipboardTextBytes` | 16 MiB UTF-8 |
 | `limits.imagePixels`, `imageBytes` | 100 million pixels and 512 MiB |

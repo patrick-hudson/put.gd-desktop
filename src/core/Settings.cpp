@@ -146,7 +146,7 @@ QJsonObject Settings::defaults() {
             {"imageTemplate", initial.imageTemplate},
             {"textTemplate", initial.textTemplate},
             {"recordingTemplate", initial.recordingTemplate}}},
-        {"limits", QJsonObject{{"maxFiles", 100}, {"pendingOperations", 8}, {"concurrentUploads", 1},
+        {"limits", QJsonObject{{"maxFiles", 100}, {"pendingOperations", 8}, {"concurrentUploads", initial.limits.concurrentUploads},
             {"maxFileBytes", "auto"}, {"maxBatchBytes", "auto"}, {"pendingArtifactBytes", "auto"},
             {"pendingImageBytes", initial.limits.pendingImageBytes},
             {"recordingAnimationSeconds", initial.limits.recordingAnimationSeconds},

@@ -23,7 +23,7 @@ public:
     S3Provider provider;
     QString endpoint;
     Destination destination;
-    explicit S3Fixture(S3UploadPolicy policy = {}) : provider(credentials, policy) {
+    explicit S3Fixture(S3UploadPolicy policy = {}, int lanes = 0) : provider(credentials, policy, lanes) {
         process.start("python3", {S3_FIXTURE_PATH});
         if (!process.waitForStarted() || !process.waitForReadyRead()) qFatal("fixture failed to start");
         endpoint = "http://127.0.0.1:" + QString::fromUtf8(process.readLine()).trimmed();
