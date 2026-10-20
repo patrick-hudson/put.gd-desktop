@@ -147,9 +147,12 @@ when saving output, so an unavailable archive folder does not prevent accepting 
 configuration or block a requested upload.
 
 The service watches both the file and parent directory, debounces notifications for 75 ms,
-and re-arms after atomic replacements. If watching fails, it rescans every two seconds.
+and re-arms after atomic replacements. If watching fails, it rescans every two seconds;
+that includes a fresh install whose configuration folder does not exist yet.
 Content SHA-256 revisions deduplicate accepted changes. Metadata distinguishes the
 accepted revision from observed file bytes and reports validation/watch status.
+A rescan reports a status change, which refreshes every open view, only when it
+accepted new settings or the metadata changed; an identical rescan is silent (#234).
 In CLI `settings.get`, these fields are under `result.metadata`, while
 `result.document` is the accepted configuration. When external bytes are invalid,
 `metadata.validation.ok` is false and its error identifies the failing JSON path;
