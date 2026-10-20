@@ -119,6 +119,11 @@ def audit_tree(root: Path, expected_manifest=None, *, require_kde=False, require
         # The test-only crash trigger (#124) is compiled out of every release build.
         if b"PUTGD_TEST_CRASH" in path.read_bytes():
             raise ValueError(f"Release binary contains the test-only crash trigger: {name}")
+        # The crash handler's exported pthread_create gives every thread an
+        # alternate signal stack, so worker stack overflows are recorded (#156).
+        if name != "putgd-cli" and not re.search(r"^\s*\d+:\s+\S+\s+\d+\s+FUNC\s+GLOBAL\s+\S+\s+\d+\s+pthread_create(@|\s|$)",
+                                                  command(["readelf", "--dyn-syms", "-W", str(path)]), re.M):
+            raise ValueError(f"Release binary does not export the crash handler's pthread_create: {name}")
         identity = json.loads(command([str(path), "--version-json"], env=env))
         if identity != result["manifest"]:
             raise ValueError(f"Compiled build manifest mismatch: {name}")

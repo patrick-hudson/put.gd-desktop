@@ -7,10 +7,12 @@
 #include <cstring>
 #include <mutex>
 #include <thread>
+#include <dlfcn.h>
 #include <elf.h>
 #include <fcntl.h>
 #include <link.h>
 #include <pthread.h>
+#include <sys/mman.h>
 #include <sys/syscall.h>
 #include <time.h>
 #include <ucontext.h>
@@ -43,7 +45,8 @@ struct sigaction previous[NSIG];
 char processName[64]="putgd";
 char versionText[128]="";
 std::uintptr_t pageSize=4096;
-alignas(16) char alternateStack[64*1024];
+constexpr std::size_t alternateStackBytes=64*1024;
+alignas(16) char alternateStack[alternateStackBytes];
 
 // ---- Async-signal-safe output -------------------------------------------
 struct Line {
@@ -273,6 +276,41 @@ void handler(int signal,siginfo_t* info,void* context) {
  if(!info||info->si_code<=0||signal==SIGABRT)::raise(signal);
  errno=saved;
 }
+// ---- Alternate stacks for the other threads (#156) ------------------------
+// sigaltstack is per thread and a new thread starts without one, so a stack
+// overflow on a worker left the handler no stack to run on. pthread_create
+// below (exported from every executable that links this library) wraps each
+// thread's start routine, and the thread maps its own alternate stack, with a
+// guard page below it, before running it. QThread, std::thread and the helper
+// threads of Qt, GStreamer or the AWS SDK all start there. The pages stay
+// untouched unless the thread crashes; the mapping goes when the thread ends.
+using CreateThread=int(*)(pthread_t*,const pthread_attr_t*,void*(*)(void*),void*);
+std::atomic<CreateThread> nextCreateThread{nullptr};
+struct ThreadStart {void*(*routine)(void*);void* argument;};
+struct ThreadStack {
+ void* mapping=nullptr;std::size_t bytes=0;
+ ~ThreadStack() {
+  if(!mapping)return;
+  stack_t disabled{};disabled.ss_flags=SS_DISABLE;::sigaltstack(&disabled,nullptr);
+  ::munmap(mapping,bytes);
+ }
+};
+thread_local ThreadStack threadStack;
+void giveThreadAStack() {
+ stack_t existing{};
+ if(!enabled.load()||::sigaltstack(nullptr,&existing)!=0||!(existing.ss_flags&SS_DISABLE))return;
+ const std::size_t bytes=pageSize+alternateStackBytes;
+ void* mapping=::mmap(nullptr,bytes,PROT_READ|PROT_WRITE,MAP_PRIVATE|MAP_ANONYMOUS|MAP_NORESERVE|MAP_STACK,-1,0);
+ if(mapping==MAP_FAILED)return;
+ stack_t stack{};stack.ss_sp=static_cast<char*>(mapping)+pageSize;stack.ss_size=alternateStackBytes;
+ if(::mprotect(mapping,pageSize,PROT_NONE)!=0||::sigaltstack(&stack,nullptr)!=0){::munmap(mapping,bytes);return;}
+ threadStack.mapping=mapping;threadStack.bytes=bytes;
+}
+void* startWithStack(void* boxed) {
+ const ThreadStart start=*static_cast<ThreadStart*>(boxed);std::free(boxed);
+ giveThreadAStack();
+ return start.routine(start.argument);
+}
 void warmUp() {
  // Load and bind the unwinder now, so the handler never resolves a symbol.
  Frames frames;_Unwind_Backtrace(unwind,&frames);
@@ -294,7 +332,7 @@ void install() {
  warmUp();
  stack_t existing{};
  if(::sigaltstack(nullptr,&existing)==0&&(existing.ss_flags&SS_DISABLE)) {
-  stack_t stack{};stack.ss_sp=alternateStack;stack.ss_size=sizeof alternateStack;stack.ss_flags=0;::sigaltstack(&stack,nullptr);
+  stack_t stack{};stack.ss_sp=alternateStack;stack.ss_size=alternateStackBytes;stack.ss_flags=0;::sigaltstack(&stack,nullptr);
  }
  struct sigaction action{};action.sa_sigaction=handler;action.sa_flags=SA_SIGINFO|SA_ONSTACK;
  sigemptyset(&action.sa_mask);for(const int signal:signals)sigaddset(&action.sa_mask,signal);
@@ -305,13 +343,19 @@ void install() {
  enabled.store(true);
 #ifdef PUTGD_CRASH_TRIGGER
  if(const char* request=std::getenv("PUTGD_TEST_CRASH")) {
-  // <process>:<kind>[:<delay ms>]
+  // <process>:<kind>[:<delay ms>[:worker]]
   const char* colon=std::strchr(request,':');
   if(colon&&std::size_t(colon-request)==std::strlen(processName)&&std::strncmp(request,processName,std::size_t(colon-request))==0) {
    const char* kind=colon+1;const char* delayText=std::strchr(kind,':');
    const auto kindLength=std::size_t((delayText?delayText:kind+std::strlen(kind))-kind);
    std::strncpy(triggerKind,kind,kindLength<sizeof triggerKind-1?kindLength:sizeof triggerKind-1);
    const long delay=delayText?std::strtol(delayText+1,nullptr,10):0;
+   const char* threadText=delayText?std::strchr(delayText+1,':'):nullptr;
+   if(threadText&&std::strcmp(threadText+1,"worker")==0) {
+    // On a thread of its own, started like any other worker.
+    std::thread([delay]{timespec pause{delay/1000,(delay%1000)*1000*1000};::nanosleep(&pause,nullptr);crashNow(triggerKind);}).detach();
+    return;
+   }
    if(delay<=0)crashNow(triggerKind);
    // Crash on the main thread's stack, wherever it is, after the delay.
    mainThread=::pthread_self();
@@ -324,6 +368,20 @@ void install() {
 // Installed before main in every executable that links the object library.
 [[gnu::constructor]] void installAtStartup() {install();}
 }
+}
+extern "C" int pthread_create(pthread_t* thread,const pthread_attr_t* attributes,void*(*routine)(void*),void* argument) {
+ using namespace putgd::crash;
+ auto create=nextCreateThread.load();
+ if(!create){create=reinterpret_cast<CreateThread>(::dlsym(RTLD_NEXT,"pthread_create"));nextCreateThread.store(create);}
+ if(!create)return EAGAIN;
+ auto* start=enabled.load()?static_cast<ThreadStart*>(std::malloc(sizeof(ThreadStart))):nullptr;
+ if(!start)return create(thread,attributes,routine,argument);
+ *start={routine,argument};
+ const int result=create(thread,attributes,startWithStack,start);
+ if(result!=0)std::free(start);
+ return result;
+}
+namespace putgd::crash {
 bool installed() {return enabled.load();}
 void setOutput(int fd) {output.store(fd>=0?fd:STDERR_FILENO);}
 void refreshModules() {
@@ -348,9 +406,17 @@ volatile int zero=0;
 [[gnu::noinline]] void crashIll() {__builtin_trap();}
 [[gnu::noinline]] void crashFpe() {volatile int value=1;value=value/zero;asm volatile("");::raise(SIGFPE);}
 [[gnu::noinline]] void crashBus() {::raise(SIGBUS);asm volatile("");}
+volatile int stopRecursion=0;
+// Recurses until the thread's stack runs into its guard page.
+[[gnu::noinline]] int crashOverflow(int depth) {
+ volatile char frame[1024];frame[0]=char(depth);
+ if(stopRecursion)return frame[0];
+ return crashOverflow(depth+1)+frame[0];
+}
 }
 void crashNow(const char* kind) {
  if(std::strcmp(kind,"abort")==0)std::abort();
+ if(std::strcmp(kind,"overflow")==0)crashOverflow(0);
  if(std::strcmp(kind,"ill")==0)crashIll();
  if(std::strcmp(kind,"fpe")==0)crashFpe();
  if(std::strcmp(kind,"bus")==0)crashBus();
