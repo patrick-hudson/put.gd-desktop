@@ -216,6 +216,8 @@ private slots:
    // A video stored before posters whose file is gone.
    Operation video;video.id="synthetic-video-op";video.created="2020-01-01T00:00:00.000Z";video.state="completed";video.settings=settings.snapshot();OperationItem gone;gone.artifact.id=videoId;gone.artifact.path=d.filePath("data/artifacts/synthetic-video-op/"+videoId);gone.artifact.name="recording.mp4";gone.artifact.mime="video/mp4";gone.artifact.category="videos";gone.artifact.bytes=4096;gone.uploadStatus="uploaded";video.items.append(gone);QVERIFY(!ledger.saveOperation(video));}
   HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);QStringList asked;fixture.client.beforeDispatch=[&](const QString& method,const QJsonObject& params){if(method=="history.preview")asked.append(params["id"].toString());};
+  // Settings status changes reload History several times a second here, as
+  // resident changes do during an upload: the wait must survive reloads.
   HistoryWindow window(fixture.session);window.resize(1000,700);window.show();auto* table=window.findChild<QListView*>("historyList");QTRY_COMPARE(table->model()->rowCount(),2);auto* preview=window.findChild<QLabel*>("historyPreview");
   QCOMPARE(table->model()->index(0,0).data(HistoryModel::RecordRole).toJsonObject()["id"].toString(),imageId);
   // Passing over the video on the way to the image asks only for the image.
