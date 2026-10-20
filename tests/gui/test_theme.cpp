@@ -7,6 +7,9 @@
 #include <QApplication>
 #include <QComboBox>
 #include <QFile>
+#include <QTemporaryDir>
+#include <QFileInfo>
+#include <QDir>
 #include <QJsonArray>
 #include <QLabel>
 #include <QPushButton>
@@ -169,28 +172,57 @@ private slots:
         QTest::addColumn<QString>("plasmarc");
         QTest::addColumn<QString>("kdeglobals");
         QTest::addColumn<QString>("cinnamon");
+        QTest::addColumn<QString>("styleColors");
         QTest::addColumn<bool>("light");
         QTest::addColumn<QString>("source");
-        QTest::newRow("GNOME: dark top bar") << "GNOME" << "" << "" << "" << false << "gnome-shell";
-        QTest::newRow("Ubuntu GNOME") << "ubuntu:GNOME" << "" << "" << "" << false << "gnome-shell";
-        QTest::newRow("Plasma: Breeze Dark style") << "KDE" << "[Theme]\nname=breeze-dark\n" << "[Colors:Header]\nBackgroundNormal=222,224,226\n" << "" << false << "plasmarc";
-        QTest::newRow("Plasma: light header") << "KDE" << "" << "[Colors:Header]\nBackgroundNormal=222,224,226\n[Colors:Window]\nBackgroundNormal=32,35,38\n" << "" << true << "kdeglobals";
-        QTest::newRow("Plasma: dark window") << "KDE" << "" << "[Colors:Window]\nBackgroundNormal=32,35,38\n" << "" << false << "kdeglobals";
-        QTest::newRow("Plasma: untouched") << "KDE" << "" << "" << "" << true << "kde-default";
-        QTest::newRow("Cinnamon: Mint-Y-Dark-Aqua") << "X-Cinnamon" << "" << "" << "Mint-Y-Dark-Aqua" << false << "cinnamon-theme";
-        QTest::newRow("Cinnamon: Mint-Y-Aqua") << "X-Cinnamon" << "" << "" << "Mint-Y-Aqua" << true << "cinnamon-theme";
-        QTest::newRow("unknown desktop") << "XFCE" << "" << "" << "" << false << "default";
+        QTest::newRow("GNOME: dark top bar") << "GNOME" << "" << "" << "" << "" << false << "gnome-shell";
+        QTest::newRow("Ubuntu GNOME") << "ubuntu:GNOME" << "" << "" << "" << "" << false << "gnome-shell";
+        QTest::newRow("Plasma: Breeze Dark style") << "KDE" << "[Theme]\nname=breeze-dark\n" << "[Colors:Header]\nBackgroundNormal=222,224,226\n" << "" << "" << false << "plasmarc";
+        QTest::newRow("Plasma: light header") << "KDE" << "" << "[Colors:Header]\nBackgroundNormal=222,224,226\n[Colors:Window]\nBackgroundNormal=32,35,38\n" << "" << "" << true << "kdeglobals";
+        QTest::newRow("Plasma: dark window") << "KDE" << "" << "[Colors:Window]\nBackgroundNormal=32,35,38\n" << "" << "" << false << "kdeglobals";
+        QTest::newRow("Plasma: untouched") << "KDE" << "" << "" << "" << "" << true << "kde-default";
+        QTest::newRow("Cinnamon: Mint-Y-Dark-Aqua") << "X-Cinnamon" << "" << "" << "Mint-Y-Dark-Aqua" << "" << false << "cinnamon-theme";
+        QTest::newRow("Cinnamon: Mint-Y-Aqua") << "X-Cinnamon" << "" << "" << "Mint-Y-Aqua" << "" << true << "cinnamon-theme";
+        // Kubuntu's default style (k72) and Breeze Dark from kdedefaults (d69) ship
+        // dark window colours, whatever the light colour scheme says.
+        QTest::newRow("Plasma: Kubuntu style colours") << "KDE" << "[Theme]\nname=kubuntu\n" << "[Colors:Header]\nBackgroundNormal=222,224,226\n" << "" << "[Colors:Window]\nBackgroundNormal=32,35,38\n" << false << "plasma-style";
+        QTest::newRow("Plasma: Breeze Light style colours") << "KDE" << "[Theme]\nname=breeze-light\n" << "" << "" << "[Colors:Window]\nBackgroundNormal=239,240,241\n" << true << "plasma-style";
+        QTest::newRow("unknown desktop") << "XFCE" << "" << "" << "" << "" << false << "default";
     }
     void panelToneRules() {
         QFETCH(QString, desktop);
         QFETCH(QString, plasmarc);
         QFETCH(QString, kdeglobals);
         QFETCH(QString, cinnamon);
+        QFETCH(QString, styleColors);
         QFETCH(bool, light);
         QFETCH(QString, source);
-        const auto [isLight, decidedBy] = PanelTone::decide({desktop, plasmarc, kdeglobals, cinnamon});
+        const auto [isLight, decidedBy] = PanelTone::decide({desktop, plasmarc, kdeglobals, cinnamon, styleColors});
         QCOMPARE(isLight, light);
         QCOMPARE(decidedBy, source);
+    }
+    // The real lookup: the style comes from ~/.config/kdedefaults (as on d69) and
+    // its colours file from XDG_DATA_DIRS, while the colour scheme stays light.
+    void panelToneReadsKdeCascadeAndStyleColours() {
+        QTemporaryDir config, data;
+        QVERIFY(config.isValid() && data.isValid());
+        auto write = [](const QString& path, const QByteArray& text) { QDir().mkpath(QFileInfo(path).absolutePath()); QFile file(path); return file.open(QIODevice::WriteOnly) && file.write(text) == text.size(); };
+        QVERIFY(write(config.filePath("kdedefaults/plasmarc"), "[Theme]\nname=breeze-dark\n"));
+        QVERIFY(write(config.filePath("kdeglobals"), "[Colors:Header]\nBackgroundNormal=222,224,226\n"));
+        QVERIFY(write(data.filePath("plasma/desktoptheme/breeze-dark/colors"), "[Colors:Window]\nBackgroundNormal=32,35,38\n"));
+        const QByteArray saved[] = {qgetenv("XDG_CONFIG_HOME"), qgetenv("XDG_DATA_DIRS"), qgetenv("XDG_CURRENT_DESKTOP"), qgetenv("XDG_DATA_HOME")};
+        auto restore = qScopeGuard([&] {
+            const char* names[] = {"XDG_CONFIG_HOME", "XDG_DATA_DIRS", "XDG_CURRENT_DESKTOP", "XDG_DATA_HOME"};
+            for (int i = 0; i < 4; ++i) saved[i].isNull() ? qunsetenv(names[i]) : qputenv(names[i], saved[i]);
+        });
+        qputenv("XDG_CONFIG_HOME", config.path().toLocal8Bit());
+        qputenv("XDG_DATA_HOME", config.filePath("data").toLocal8Bit());
+        qputenv("XDG_DATA_DIRS", data.path().toLocal8Bit());
+        qputenv("XDG_CURRENT_DESKTOP", "KDE");
+        QCOMPARE(PanelTone::plasmaStyle(), QString("breeze-dark"));
+        PanelTone tone;
+        QVERIFY(!tone.light());
+        QCOMPARE(tone.source(), QString("plasma-style"));
     }
 };
 

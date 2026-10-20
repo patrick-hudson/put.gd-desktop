@@ -31,12 +31,27 @@ std::optional<bool> lightColour(const QString& value){
  return Theme::contrast(colour,Qt::black)>Theme::contrast(colour,Qt::white);
 }
 QString readSmall(const QString& path){QFile file(path);return file.open(QIODevice::ReadOnly)&&file.size()<(1<<20)?QString::fromUtf8(file.readAll()):QString();}
+// KDE reads ~/.config, then ~/.config/kdedefaults (written by the global theme),
+// then XDG_CONFIG_DIRS, and the first file that sets a key wins.
+QStringList cascade(const QString& name){
+ const auto user=QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation);
+ QStringList files{user+"/"+name,user+"/kdedefaults/"+name};
+ for(const auto& path:QStandardPaths::locateAll(QStandardPaths::GenericConfigLocation,name))if(!files.contains(path))files.append(path);
+ return files;
+}
+// The first file in the cascade whose [group] sets key, whole, so decide() reads it.
+QString firstSetting(const QString& name,const QString& group,const QString& key){
+ for(const auto& path:cascade(name)){const auto text=readSmall(path);if(!iniValue(text,group,key).isEmpty())return text;}
+ return {};
+}
 QStringList desktops(){return qEnvironmentVariable("XDG_CURRENT_DESKTOP").toLower().split(':',Qt::SkipEmptyParts);}
 }
 std::pair<bool,QString> PanelTone::decide(const Inputs& in){
  const auto names=in.desktop.toLower().split(':',Qt::SkipEmptyParts);
  if(names.contains("kde")){
   const auto style=iniValue(in.plasmarc,"Theme","name").toLower();
+  // A style with its own colours draws panels in its window colour.
+  if(const auto tone=lightColour(iniValue(in.styleColors,"Colors:Window","BackgroundNormal")))return {*tone,"plasma-style"};
   if(style.contains("dark"))return {false,"plasmarc"};
   if(style.contains("light"))return {true,"plasmarc"};
   // The default Plasma style draws panels in the colour scheme's header
@@ -73,8 +88,10 @@ void PanelTone::refresh(){
  Inputs in;in.desktop=qEnvironmentVariable("XDG_CURRENT_DESKTOP");
  const auto names=desktops();
  if(names.contains("kde")){
-  const auto config=QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation);
-  in.plasmarc=readSmall(config+"/plasmarc");in.kdeglobals=readSmall(config+"/kdeglobals");
+  in.plasmarc=firstSetting("plasmarc","Theme","name");
+  in.kdeglobals=firstSetting("kdeglobals","Colors:Header","BackgroundNormal");
+  if(in.kdeglobals.isEmpty())in.kdeglobals=firstSetting("kdeglobals","Colors:Window","BackgroundNormal");
+  in.styleColors=readSmall(QStandardPaths::locate(QStandardPaths::GenericDataLocation,"plasma/desktoptheme/"+plasmaStyle()+"/colors"));
  }
  if(!names.contains("x-cinnamon")&&!names.contains("cinnamon")){settle(in);return;}
  auto* process=new QProcess(this);process->setProcessChannelMode(QProcess::SeparateChannels);process->setStandardErrorFile(QProcess::nullDevice());
@@ -84,6 +101,10 @@ void PanelTone::refresh(){
  connect(process,&QProcess::errorOccurred,this,[this,process,in](QProcess::ProcessError error){if(error==QProcess::FailedToStart){process->deleteLater();settle(in);}});
  QTimer::singleShot(3000,process,[process]{if(process->state()!=QProcess::NotRunning)process->kill();});
  process->start("gsettings",{"get","org.cinnamon.theme","name"});
+}
+QString PanelTone::plasmaStyle(){
+ const auto name=iniValue(firstSetting("plasmarc","Theme","name"),"Theme","name");
+ return name.isEmpty()||name.contains('/')||name.contains("..")?QStringLiteral("default"):name;
 }
 void PanelTone::settle(const Inputs& in){
  const auto [light,source]=decide(in);

@@ -70,8 +70,11 @@ void Appearance::readPortal(){
 }
 void Appearance::readKde(){
  if(!inputs_.kde)return;
- QFile file(QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation)+"/kdeglobals");
- inputs_.kdeglobals=file.open(QIODevice::ReadOnly)&&file.size()<(1<<20)?QString::fromUtf8(file.readAll()):QString();
+ // The first kdeglobals in KDE's cascade that sets the window colour.
+ const auto user=QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation);
+ QStringList files{user+"/kdeglobals",user+"/kdedefaults/kdeglobals"};files+=QStandardPaths::locateAll(QStandardPaths::GenericConfigLocation,"kdeglobals");
+ inputs_.kdeglobals.clear();
+ for(const auto& path:files){QFile file(path);const auto text=file.open(QIODevice::ReadOnly)&&file.size()<(1<<20)?QString::fromUtf8(file.readAll()):QString();if(!iniValue(text,"Colors:Window","BackgroundNormal").isEmpty()){inputs_.kdeglobals=text;break;}}
 }
 void Appearance::setPreference(const QString& preference){
  const auto value=preference=="dark"||preference=="light"?preference:QStringLiteral("system");
