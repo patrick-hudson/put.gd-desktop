@@ -281,6 +281,24 @@ class TrayProgressContracts(unittest.TestCase):
         rows = tray.correlated_records([row, current], [current])
         self.assertTrue(tray.check_tooltip(observation('Uploading: 1 MiB of 4 MiB (25%)'), rows, 's3', 42)['counter'])
 
+    def test_concurrent_batch_row_matches_combined_production_counters(self):
+        mib = 1024**2
+        def item(status, phase, sent=None, total=4*mib):
+            value = {'uploadStatus': status, 'phase': phase, 'artifact': {'id': status + phase, 'bytes': total}}
+            if sent is not None:
+                value['uploadProgress'] = {'phase': 'uploading', 'bytesTransferred': sent, 'bytesTotal': total}
+            return value
+        op = {'id': 'batch', 'state': 'running', 'phase': 'uploading', 'created': '2026-10-20T06:00:00Z',
+              'items': [item('uploading', 'uploading', 3*mib), item('uploading', 'uploading', mib), item('pending', 'queued')]}
+        records = tray.records_from([op])
+        self.assertEqual((records[0]['running'], records[0]['waiting'], records[0]['batchTransferred']), (2, 1, 4*mib))
+        self.assertTrue(tray.check_tooltip(observation('Uploading: 4 MiB of 8 MiB (50%) · 2 uploading, 1 waiting'),
+                                           records, 's3', 42)['counter'])
+        for wrong in ('Uploading: 4 MiB of 8 MiB (50%) · 3 uploading', 'Uploading: 6 MiB of 8 MiB (75%) · 2 uploading, 1 waiting',
+                      'Uploading: 4 MiB of 9 MiB (44%) · 2 uploading, 1 waiting'):
+            with self.subTest(wrong=wrong), self.assertRaises(tray.TrayProgressError):
+                tray.check_tooltip(observation(wrong), records, 's3', 42)
+
     def test_idle_during_active_work_is_a_mismatch(self):
         idle = observation('', color='#9bbcff', title=tray.IDLE)
         with self.assertRaises(tray.TrayProgressError):
