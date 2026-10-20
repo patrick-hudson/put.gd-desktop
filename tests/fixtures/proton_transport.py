@@ -39,6 +39,11 @@ elif case == 'flood':
 elif case == 'after-result':
     print(json.dumps({'ok': False, 'error': {'code': 'authentication_required', 'message': 'Synthetic', 'details': {}}}), flush=True)
     print(json.dumps({'event': 'progress', 'phase': 'uploading', 'bytesTransferred': 1}), flush=True)
+if case == 'plan-limit':
+    # The helper's mapping of Proton error 200003 (MAX_FILE_SIZE_FOR_FREE_USER), #147.
+    print(json.dumps({'ok': False, 'error': {'code': 'destination_file_too_large_for_plan',
+        'message': 'This file is larger than your Proton plan allows for a single file.', 'details': {}}}), flush=True)
+    sys.exit(0)
 if case == 'timeout':
     time.sleep(3)
 elif case == 'malformed':

@@ -139,6 +139,7 @@ export function failure(code: string): JsonObject {
     const messages: Record<string, string> = {
         permission_denied: 'Proton denied access. Check this account and folder permissions before retrying.',
         quota_exceeded: 'Proton reports a storage or sharing limit. Check account capacity and limits before retrying.',
+        destination_file_too_large_for_plan: 'This file is larger than your Proton plan allows for a single file. Upload a smaller file, or upgrade the Proton plan, then Retry.',
         rate_limited: 'Proton limited requests. Wait before explicitly inspecting or retrying the saved operation.',
         invalid_request: 'The Proton request is invalid.', unsupported_request: 'The Proton request is unsupported.',
         invalid_destination: 'The Proton destination is invalid.', keychain_required: 'A private keychain reference is required.',
