@@ -62,6 +62,7 @@ such as `session_unavailable` and `config_conflict` retain their original envelo
 | `cancel_operation` | id; kind operation/delete; optional item_id | Requests cancellation; sent remote mutations cannot be rolled back. With item_id (an operation item's `artifact.id`), only that file stops and the batch continues |
 | `list_history` | optional pagination/filters → history.list | Offline local metadata |
 | `get_history_entry` | id → history.detail | Original receipt/local-copy/deletion state |
+| `make_history_preview` | id → history.preview | Makes a missing image preview or video poster (never made, failed or cleaned up) from the retained file or an unchanged local copy; returns `previewPath` and `state` `ready`/`made`, or why there is none ([recording.md](recording.md#previews-made-on-selection)) |
 | `copy_history_link` | id → history.copyLink | Writes stored direct URL to clipboard |
 | `delete_history_uploads` | nonempty ids; optional acknowledgement | Omitted acknowledgement prepares effects; exact returned acknowledgement confirms remote deletion |
 | `reload_configuration` | settings.reload | Validates/reloads existing file; no source/provider activity |

@@ -92,7 +92,7 @@ the last accepted in-memory settings and the bad file so it can be corrected.
 | `limits.imagePixels`, `imageBytes` | 100 million pixels and 512 MiB |
 | `retention.failedArtifactDays` | 7; zero disables age expiry, not the pending-byte budget. When cleanup retires a failed item's artifact, it first aborts the item's incomplete multipart upload, best effort (see [s3.md](s3.md)) |
 | `retention.recentActivityLimit` | 100 visible recent entries; does not prune history |
-| `retention.previewCacheBytes` | 256 MiB, image previews and video posters together; zero disables retained previews |
+| `retention.previewCacheBytes` | 256 MiB, image previews and video posters together; zero disables retained previews and History's previews made on selection (`history.preview`) |
 | `retention.historyRetentionDays` | `null` means no automatic record expiry |
 | `retention.logDays` | Optional, default 14 (1–365): days to keep persistent log files ([diagnostics.md](diagnostics.md#retention)) |
 | `retention.logBytes` | Optional, default 50 MiB (1 MiB–1 GiB): total size of persistent log files; the oldest go first |

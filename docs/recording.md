@@ -679,13 +679,16 @@ MP4, WebM, Matroska, QuickTime, AVI and Ogg files shared from the clipboard or
 a file manager. The list draws a play glyph and the length over it, so a still
 is never mistaken for a screenshot; the inspector shows it larger, with the
 length beside the size. GIF and WebP recordings are images and keep the image
-preview (their first frame, through the image job); animated WebP needs Qt's
-WebP image plugin, which only some desktops install (#189).
+preview (their first frame, through the image job). Animated WebP reads
+through Qt's WebP image plugin, which Debian, Ubuntu and Fedora package apart
+from Qt GUI, so the DEB requires `qt6-image-formats-plugins` and the RPM
+`qt6-qtimageformats` (#189); the AppImage bundles `libqwebp.so` from the
+pinned Qt and the Flatpak's KDE runtime carries it.
 
 The poster is made after the operation ends, so a slow or failing decode
 never delays the upload, the copied link or the copied result. The resident
-queues one operation at a time and, for each video item without a preview,
-runs `putgd-record --poster MAX_PIXELS` (`PosterJob`, `src/core/PosterJob.*`):
+queues one item at a time and, for each video item without a preview, runs
+`putgd-record --poster MAX_PIXELS` (`PosterJob`, `src/core/PosterJob.*`):
 
 - the resident opens the stored artifact itself (`O_NOFOLLOW`, regular files
   only) and hands that descriptor over as the child's standard input; the
@@ -710,9 +713,38 @@ owner-only, `retention.previewCacheBytes`, cleared by cleanup), are recorded
 as the item's `previewPath` and reach `history.list`, `history.detail`, CLI
 `inspect` and MCP like image previews. A missing helper or codec, or a corrupt,
 truncated past its first frame or oversized file, leaves "Preview unavailable"
-and a `Video preview` log record with the failure; the AppImage's FFmpeg has
-no H.265 decoder, so H.265 MP4 files have no poster there. Videos stored
-before this change keep no poster (#190).
+and a `No preview` log record with the failure; the AppImage's FFmpeg has
+no H.265 decoder, so H.265 MP4 files have no poster there.
+
+### Previews made on selection
+
+A video stored before posters existed, one whose poster failed and one whose
+poster cleanup removed get their poster when History selects them (#190). So
+does an image whose preview was never made or was removed, such as a WebP
+recording stored before the WebP plugin was installed. History waits 400 ms
+for the selection to settle, shows "Making a preview…" and sends
+`history.preview {id}`, one request at a time. The resident:
+
+- answers `ready` at once when the item's preview file exists;
+- makes it from the retained artifact, or else from the local copy when that
+  is still the same file (regular, not a symlink, the artifact's size and
+  SHA-256, checked within 10 s), through the same poster queue: a selection
+  goes ahead of after-operation posters, at most 3 wait, and one that waited
+  20 s is refused as `preview_busy`, so the reply comes within 45 s
+  (`historyPreviewReplyMs`);
+- records the preview on the item, as an after-operation poster is, and
+  answers `made` with `previewPath` and `source` (`artifact` or `local`).
+
+Every failure is soft: the inspector keeps "Preview unavailable" and no
+status message appears. The refusals are `preview_source_missing` (neither
+file is left), `preview_source_changed` (the local copy differs),
+`preview_unsupported` (not an image or video), `previews_disabled`
+(`retention.previewCacheBytes` is 0), `operation_active`, `preview_busy` and
+the decoder's own errors (`poster_failed`, `poster_timeout`,
+`input_excessive`, `poster_helper_missing`, `preview_failed`). A selection
+that failed is not decoded again until the resident restarts; History does
+not ask again in that window. The CLI (`putgd-cli history.preview
+'{"id":"..."}'`) and MCP (`make_history_preview`) make the same request.
 
 Measured on d69 (Debian 13, FFmpeg 7.1, i5-6500T, load 1.2), three runs each
 with identical results, through the same limits:
