@@ -9,15 +9,32 @@ and a light scheme (#60 phase 1). `preferences.appearance.theme` picks one:
 | `dark` | Always the dark scheme |
 | `light` | Always the light scheme |
 
-Change it in Settings → General → Appearance, or with `putgd-cli` /
+Change it in Settings → General → Appearance (it applies as soon as you pick it), or with `putgd-cli` /
 MCP `patch_configuration`:
 
 ```json
 {"preferences": {"appearance": {"theme": "light"}}}
 ```
 
-A change applies at once to every open window, without a restart: the
-interface process follows each accepted settings revision.
+A change applies at once to every open window, without a restart. A theme
+picked in Settings applies in the same event, before the resident has accepted
+it, and saves straight away (no autosave delay); a refused or discarded save
+puts the accepted theme back, and the draft keeps the pick for Retry saving.
+CLI and MCP patches apply through the accepted revision, as before (#237).
+
+The switch replaces no stylesheet. Qt re-polishes every widget, several times
+over, when the application stylesheet changes: 1.3 to 1.5 s with History and
+Settings open. So the application and redesign stylesheets are set once and
+hold both schemes' rules, each scoped to the `themeScheme` property that
+every widget carries (`VisualStyle::schemeScoped`, `VisualStyle::followScheme`).
+A switch sets the palettes and re-polishes only the visible widgets; a widget
+hidden at the switch catches up just before it is shown. A pick repaints every
+open window in 38 ms on d69 Plasma Wayland (Qt 6.8.2), 39 ms on f44 GNOME
+Wayland (Qt 6.11.2) and 64 ms on m74 Cinnamon X11 (Qt 6.4.2; #260), measured
+with `putgd-bench-theme-switch`; see
+[the evidence](evidence/2026-10-20-ui-polish-233-237-238-239/README.md).
+Stylesheet `palette(role)` references are not an alternative: Qt resolves them
+when it builds a rule, so they keep the old colours after a palette change.
 
 ## Following the desktop
 
@@ -54,7 +71,7 @@ and `iconSecondary`. The redesign stylesheet, the application stylesheet and
 the editor's additions are templates with `%token%` placeholders; custom
 painting (History rows, the editor canvas, drag images) reads the tokens when
 it paints; IconArt glyphs set through `VisualStyle::icon(name)` redraw in the
-new scheme; the check, radio and chevron indicator images are painted from the
+new scheme; the check, radio, chevron and spin box step (#233) images are painted from the
 tokens into a private temporary folder. The two former dark sets (the
 redesign's and the settings stylesheet's near-copies such as `#111318` for
 `#111317`) are now one, the redesign's.

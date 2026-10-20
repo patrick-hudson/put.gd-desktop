@@ -82,7 +82,7 @@ Methods and parameters:
 | `capabilities`, `diagnostics` | empty object |
 | `ui.quit` | empty object; explicitly exit the resident application |
 | `ui.moveDestination` | `direction` up/down, optional `profileId`; drives the open Settings window |
-| `ui.diagnostics` | `action` (`inspect`, `setDebugLogging`, `clearLogs`, `openPackage`, `setPackage`, `savePackage`, `showInFolder`, `closePackage`), with `enabled`, `includeNames`, absolute `folder`, `upload` or `operation` where they apply; drives Settings → General → Diagnostics |
+| `ui.diagnostics` | `action` (`inspect`, `setDebugLogging`, `clearLogs`, `openPackage`, `setPackage`, `savePackage`, `showInFolder`, `closePackage`), with `enabled`, `includeNames`, absolute `folder`, `upload` or `operation` where they apply; drives Settings → Advanced → Diagnostics |
 | `ui.historySaveDiagnostics` | operation or history `id`; clicks **Save diagnostics for this upload** on that failed History row |
 
 Editor methods, command shapes and error codes are specified in
@@ -146,7 +146,7 @@ selected and saves through the window's revision-checked autosave. The reply giv
 Settings window it returns `ui_view_closed`; at the top or bottom of the list it
 returns `destination_move_invalid`.
 
-`ui.diagnostics` drives Settings → General → Diagnostics in the open window
+`ui.diagnostics` drives Settings → Advanced → Diagnostics in the open window
 ([diagnostics.md](diagnostics.md#settings-and-notifications)). Every reply is the
 group's state: `debugLogging` (`enabled`, `expiresAt`), `logs` (`files`, `bytes`,
 `oldestRecord`), `loggingDegraded`, `uncleanExit`, the displayed texts, and `package`
