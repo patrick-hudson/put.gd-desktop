@@ -4,7 +4,7 @@
   "distributionReady": false,
   "published": true,
   "distributionRequirement": "Deliver every listed artifact and this catalog beside the binary packages; retain corresponding-source availability. Public release URLs must be added to the release receipt at P4.",
-  "helperSha256": "aa85c66357346cdb0426edb2d7976a78b80c821ef64a316023e7cad8e3f3e17c",
+  "helperSha256": "e93b3b520d20a19e37569c7a97a1680f47bc43fcb5acaf6a5d69fa660e0a34b0",
   "sourcePins": {
     "sdk": "8ffae007b0fbb8bcef53514719d6f093bb32dcf9",
     "crypto": "956a713c0823b365cc512018974eb4fcba47c9dd",
@@ -105,9 +105,9 @@
     "baseSourceArtifact": "putgd-proton-helper-rebuild.tar.gz",
     "baseSourceArtifactSha256": "5f6060a5b744db2d69ac858c310c667d1ea1fea3918c438bce1f172fb2012b96",
     "repository": "https://github.com/patrick-hudson/put.gd-desktop",
-    "sourceCommit": "18c39a15fe2be862ce621b20e025df93aa89cc8f",
+    "sourceCommit": "692a93265208bc6e7b5d4800e5259fa663db97d9",
     "delivery": "Included in the current put.gd application source archive alongside these six unchanged original packets. Apply the listed files before rebuilding the current helper.",
-    "reason": "Return the connected account email from existing SDK root metadata (#40), and report Proton error 200003 as destination_file_too_large_for_plan instead of quota_exceeded (#147), settling it and quota refusals as failed when the name is still free afterwards (#201). No SDK, crypto, Bun or dependency source changes.",
+    "reason": "Return the connected account email from existing SDK root metadata (#40), and report Proton error 200003 as destination_file_too_large_for_plan instead of quota_exceeded (#147), settling it and quota refusals as failed when the name is still free afterwards (#201). Report a refused keychain session write as keychain_unavailable (#252) and return the confirmed link expiry from share create and inspect (#253). No SDK, crypto, Bun or dependency source changes.",
     "files": [
       {
         "source": "tools/proton/runtime.ts",
@@ -117,12 +117,22 @@
       {
         "source": "tools/proton/runtime.test.ts",
         "destination": "build-source/runtime.test.ts",
-        "sha256": "95ca5727e45d835b549b6267a4bd6ee3ce4d758249191ce96cc12699f8afa578"
+        "sha256": "bb88413cb8ec35b995cd29971e43e5ac113861047f43ffbb3f9655e99c09e63f"
       },
       {
         "source": "tools/proton/protocol.ts",
         "destination": "build-source/protocol.ts",
-        "sha256": "05e483a68554ab1b02943134755b9cbce27e8a9d2e06fb1495faf82201fd151b"
+        "sha256": "25cca19b3baea0d77ffaf27e2a230f43ef33885f256dd373b89092e5a0d1c5ec"
+      },
+      {
+        "source": "tools/proton/protocol.test.ts",
+        "destination": "build-source/protocol.test.ts",
+        "sha256": "4871074adc4d26e8e48cc2ad51fd6bd8fc00b90b190bcc2e65fdae9ca740c4f8"
+      },
+      {
+        "source": "tools/proton/account.ts",
+        "destination": "build-source/account.ts",
+        "sha256": "4e2209a305ff23ccc870511585fbdf93fafd192ebb575dc116c00de01ff16a01"
       }
     ],
     "exactHelperRebuildVerified": true

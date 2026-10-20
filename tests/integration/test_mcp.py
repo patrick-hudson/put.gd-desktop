@@ -199,6 +199,7 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                 cases = [
                     ('get_operation', {'id': 'synthetic-operation'}, 'operation.inspect', {'id': 'synthetic-operation'}),
                     ('get_operation', {'id': 'synthetic-delete', 'kind': 'delete'}, 'delete.inspect', {'id': 'synthetic-delete'}),
+                    ('get_operation', {'id': 'synthetic-share', 'kind': 'share'}, 'share.inspect', {'id': 'synthetic-share'}),
                     ('retry_operation', {'id': 'synthetic-operation'}, 'operation.retry', {'id': 'synthetic-operation'}),
                     ('cancel_operation', {'id': 'synthetic-operation'}, 'operation.cancel', {'id': 'synthetic-operation'}),
                     ('retry_operation', {'id': 'synthetic-operation', 'stage': 'local_save'}, 'operation.retryLocalSave', {'id': 'synthetic-operation'}),

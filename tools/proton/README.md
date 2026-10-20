@@ -52,6 +52,8 @@ An existing configured root is checked during account inspection and Connect.
 Connect inspects an existing valid session; an occupied invalid session reference
 requires a new reference. Browser authentication never replaces a prior account
 snapshot in place.
+The session is stored through the Secret Service `default` alias. A refused
+write, during Connect or a token refresh, reports `keychain_unavailable`.
 
 Upload accepts only `condition:"absent"`, plus `candidate`, `publicationId`,
 and `artifact:{path,name,mime,bytes,sha256}`. It hashes and streams the same open
@@ -91,6 +93,8 @@ After SDK sharing/inspection, ownership is checked again through fresh server
 reads. Changed or unknown ownership suppresses the returned URL; there is no
 rollback touching other member shares. Expired URL access returns private with
 `linkAvailable:false`. Only active, unexpired URL access is returned as usable.
+Create and inspect results carry the service-confirmed `expiresAt` (ISO 8601 UTC)
+when the link has an expiry, also after it has passed.
 Results contain `progress:{schemaVersion:1}`. Password storage accepts
 `options:{reference,password}` through stdin and never overwrites a different
 existing value. Sharing loads its immutable password reference from keychain.

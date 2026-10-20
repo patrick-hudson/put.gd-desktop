@@ -1,3 +1,4 @@
+#include <QDateTime>
 #include <QScopeGuard>
 #include "storage/proton/ProtonProvider.h"
 #include "core/HistoryStore.h"
@@ -15,7 +16,7 @@ class SharingFixture final:public StorageProvider {
 public:
  putgd::test::OpaqueProvider storage;std::atomic_int shares{0},inspections{0};bool privateDefault=false,loseShareReply=false,inspectPrivate=false,changedShareIdentity=false,protonSettings=false,draftConflict=false,explicitDraft=true,reconciliationFails=false;QString reservedCandidate;std::atomic_int draftCollisions{0};
  std::function<void(const UploadRequest&,std::function<void(StatResult)>)> reconciliationHook;QMutex captureMutex;QList<UploadRequest> capturedUploads,capturedReconciliations;
- std::function<void(const ShareRequest&)> beforeCompletion;QList<QJsonObject> createOptions;
+ std::function<void(const ShareRequest&)> beforeCompletion;QList<QJsonObject> createOptions;QString expiresAt;
  ProviderCapabilities capabilities(const Destination& d)const override{auto c=storage.capabilities(d);c.sharing=true;c.privateUploads=true;return c;}
  QString defaultPublicationMode(const Destination&)const override{return privateDefault?"private":"share";}
  QString serializationKey(const Destination& d,const QJsonObject& o,const QString& n)const override{return storage.serializationKey(d,o,n);}
@@ -27,7 +28,7 @@ public:
  void reconcile(const UploadRequest& r,std::function<void(StatResult)> cb)override{{QMutexLocker lock(&captureMutex);capturedReconciliations.append(r);}if(reconciliationHook){reconciliationHook(r,cb);return;}if(reconciliationFails&&draftCollisions.load()>0){cb({"unknown",{}, {"proton_request_timeout","Synthetic reconciliation deadline",{{"reason","deadline"},{"timeoutMs",2000},{"method","reconcile"}}}});return;}storage.reconcile(r,cb);}
  void remove(const DeleteRequest& r,DurableCheckpoint d,std::function<void(DeleteResult)> cb)override{storage.remove(r,d,cb);}
  void share(const ShareRequest& r,DurableCheckpoint durable,std::function<void(ShareResult)> cb)override{
-  const auto complete=[this,r,cb](Error e){if(e){cb({"failed",r.receipt,{},e});return;}auto receipt=r.receipt;if(r.action=="inspect"){++inspections;receipt.directUrl=inspectPrivate?QString{}:QString("https://example.invalid/recorded#secret");cb({inspectPrivate?"private":"shared",receipt,{}, {}});return;}++shares;if(r.action=="create")createOptions.append(r.options);if(r.action=="create")receipt.directUrl="https://example.invalid/recorded#secret";else receipt.directUrl.clear();if(changedShareIdentity)receipt.concurrencyToken="different-revision";if(beforeCompletion)beforeCompletion(r);cb({loseShareReply?"unknown":r.action=="create"?"shared":"revoked",receipt,{}, {}});};
+  const auto complete=[this,r,cb](Error e){if(e){cb({"failed",r.receipt,{},e});return;}auto receipt=r.receipt;if(r.action=="inspect"){++inspections;receipt.directUrl=inspectPrivate?QString{}:QString("https://example.invalid/recorded#secret");cb({inspectPrivate?"private":"shared",receipt,{}, {},expiresAt});return;}++shares;if(r.action=="create")createOptions.append(r.options);if(r.action=="create")receipt.directUrl="https://example.invalid/recorded#secret";else receipt.directUrl.clear();if(changedShareIdentity)receipt.concurrencyToken="different-revision";if(beforeCompletion)beforeCompletion(r);cb({loseShareReply?"unknown":r.action=="create"?"shared":"revoked",receipt,{}, {},r.action=="create"?expiresAt:QString{}});};
   if(r.action=="inspect")complete({});else durable({{"schemaVersion",1},{"phase","intent"}},complete);
  }
 };
@@ -85,6 +86,26 @@ private slots:
   QString id;operations.invoke("clipboard",[&](Error e,QJsonObject d){QVERIFY(!e);id=d["operationId"].toString();});QTRY_VERIFY(!id.isEmpty());QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);HistoryStore store(operations.databasePath());const auto item=store.operation(id).items.first();QCOMPARE(item.shareStatus,QString("shared"));
   provider->inspectPrivate=true;QString inspectId;history.changeSharing(item.artifact.id,"inspect",{},[&](Error e,QJsonObject d){QVERIFY(!e);inspectId=d["shareOperationId"].toString();});QTRY_VERIFY(!inspectId.isEmpty());QTRY_COMPARE(store.sharing(inspectId)["status"].toString(),QString("private"));QVERIFY(store.operation(id).items.first().shareIntent.isEmpty());
   bool retried=false;operations.retry(id,[&](Error e,QJsonObject){QVERIFY(!e);retried=true;});QTRY_VERIFY(retried);QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);QCOMPARE(provider->shares.load(),1);QCOMPARE(provider->storage.uploads.load(),1);QVERIFY(!store.detail(item.artifact.id)["linkAvailable"].toBool());
+ }
+ void confirmedLinkExpiryIsKeptAndExpiredLinkIsNeverRecreated() {
+  // The confirmed expiry reaches the share state, history.detail and share.inspect;
+  // once it passes the link is reported expired and is not offered or recreated (#253).
+  QTemporaryDir tmp;ProviderRegistry registry;auto provider=std::make_shared<SharingFixture>();const auto future=QDateTime::currentDateTimeUtc().addDays(7).toString(Qt::ISODateWithMs);provider->expiresAt=future;registry.add("opaque",provider);
+  SettingsService settings(tmp.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});QVERIFY(settings.save(putgd::test::configuration(tmp.path()),{}));putgd::test::Source source;source.payload=putgd::test::textPayload();OperationService operations(tmp.filePath("data"),settings,registry,source);HistoryService history(operations);QTRY_VERIFY(operations.ready());
+  QString id;operations.invoke("clipboard",[&](Error e,QJsonObject d){QVERIFY(!e);id=d["operationId"].toString();});QTRY_VERIFY(!id.isEmpty());QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);HistoryStore store(operations.databasePath());const auto item=store.operation(id).items.first();
+  auto detail=store.detail(item.artifact.id);QCOMPARE(detail["shareStatus"].toString(),QString("shared"));QCOMPARE(detail["shareExpiresAt"].toString(),future);QVERIFY(detail["linkAvailable"].toBool());
+  QJsonObject created;history.inspectSharing(detail["shareOperationId"].toString(),[&](Error e,QJsonObject d){QVERIFY(!e);created=d;});QTRY_VERIFY(!created.isEmpty());QCOMPARE(created["expiresAt"].toString(),future);
+  const auto past=QDateTime::currentDateTimeUtc().addSecs(-60).toString(Qt::ISODateWithMs);provider->expiresAt=past;provider->inspectPrivate=true;
+  QString inspectId;history.changeSharing(item.artifact.id,"inspect",{},[&](Error e,QJsonObject d){QVERIFY(!e);inspectId=d["shareOperationId"].toString();});QTRY_VERIFY(!inspectId.isEmpty());QTRY_COMPARE(store.sharing(inspectId)["status"].toString(),QString("private"));
+  QJsonObject inspected;history.inspectSharing(inspectId,[&](Error e,QJsonObject d){QVERIFY(!e);inspected=d;});QTRY_VERIFY(!inspected.isEmpty());QCOMPARE(inspected["expiresAt"].toString(),past);
+  detail=store.detail(item.artifact.id);QCOMPARE(detail["shareExpiresAt"].toString(),past);QVERIFY(!detail["linkAvailable"].toBool());
+  bool retried=false;operations.retry(id,[&](Error e,QJsonObject){QVERIFY(!e);retried=true;});QTRY_VERIFY(retried);QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);QCOMPARE(provider->shares.load(),1);QCOMPARE(provider->inspections.load(),1);QCOMPARE(provider->storage.uploads.load(),1);
+  // A link whose recorded expiry passed on this clock is not offered, even before anyone inspects it.
+  auto shared=store.sharing(detail["shareOperationId"].toString());shared["id"]="synthetic-clock-expired";shared["action"]="inspect";shared["status"]="shared";shared["expiresAt"]=past;auto receipt=shared["receipt"].toObject();receipt["directUrl"]="https://example.invalid/recorded#secret";shared["receipt"]=receipt;QVERIFY(!store.saveSharing(shared));
+  detail=store.detail(item.artifact.id);QCOMPARE(detail["shareStatus"].toString(),QString("shared"));QVERIFY(!detail["linkAvailable"].toBool());
+  // An uncertain result keeps the last confirmed expiry; a revocation clears it.
+  shared["id"]="synthetic-uncertain";shared["status"]="unknown";shared.remove("expiresAt");QVERIFY(!store.saveSharing(shared));QCOMPARE(store.detail(item.artifact.id)["shareExpiresAt"].toString(),past);
+  shared["id"]="synthetic-revoked";shared["action"]="revoke";shared["status"]="revoked";QVERIFY(!store.saveSharing(shared));QVERIFY(!store.detail(item.artifact.id).contains("shareExpiresAt"));
  }
  void retryPreservesExplicitLinkProtectionOptions() {
   QTemporaryDir tmp;ProviderRegistry registry;auto provider=std::make_shared<SharingFixture>();provider->privateDefault=true;registry.add("opaque",provider);

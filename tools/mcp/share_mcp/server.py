@@ -362,8 +362,8 @@ def create_server(adapter: CliAdapter) -> FastMCP:
 
     @server.tool(annotations=read)
     async def get_operation(id: str, kind: str = 'operation') -> Json:
-        """Inspect upload or separately persisted deletion operation; does not fetch remote content."""
-        if not identifier(id) or kind not in {'operation', 'delete'}:
+        """Inspect upload, separately persisted deletion or sharing (kind share: a shareOperationId; its status and the confirmed link expiresAt) operation; does not fetch remote content."""
+        if not identifier(id) or kind not in {'operation', 'delete', 'share'}:
             return invalid()
         return await adapter.call(kind + '.inspect', {'id': id})
 

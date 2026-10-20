@@ -75,7 +75,11 @@ struct ShareRequest {
  QJsonObject options,progress; // non-secret options and opaque driver progress
  std::shared_ptr<std::atomic_bool> cancellation;
 };
-struct ShareResult { QString status; StorageReceipt receipt; QJsonObject progress; Error error; };
+struct ShareResult {
+ QString status; StorageReceipt receipt; QJsonObject progress; Error error;
+ // The provider-confirmed link expiry (ISO 8601 UTC), also once it has passed; empty when none.
+ QString expiresAt={};
+};
 bool shareResultMatchesReceipt(const ShareResult&,const StorageReceipt&);
 class StorageProvider {
 public:

@@ -1,4 +1,5 @@
 #include "HistoryStore.h"
+#include <QDateTime>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -20,7 +21,9 @@ QString publicationIdentity(const StorageReceipt& receipt,const ProviderRegistry
 }
 QJsonObject publicRecord(QJsonObject data) {
  if(data.contains("shareReceipt"))data["receipt"]=data.take("shareReceipt");
- data["linkAvailable"]=OperationItem::fromJson(data).linkAvailable();
+ // A link past its confirmed expiry no longer opens, so it is not offered for copying (#253).
+ const auto expires=QDateTime::fromString(data.value("shareExpiresAt").toString(),Qt::ISODateWithMs);
+ data["linkAvailable"]=OperationItem::fromJson(data).linkAvailable()&&!(expires.isValid()&&expires<=QDateTime::currentDateTimeUtc());
  return data;
 }
 // The journal's own layout: <root>/artifacts/<operation>/<item> and
@@ -32,7 +35,7 @@ QString artifactPath(const QString& root,const QString& operation,const QString&
 QString previewPath(const QString& root,const QString& item) {return root+"/artifacts/../previews/"+item+".png";}
 QJsonObject remoteFields(const QJsonObject& data) {
  QJsonObject remote;
- for(const auto& key:QStringList{"remoteStatus","remoteError","deleteOperationId","deleteProgress","supersededBy","shareStatus","shareIntent","shareIntentOptions","shareReceipt","shareOperationId","shareProgress"})
+ for(const auto& key:QStringList{"remoteStatus","remoteError","deleteOperationId","deleteProgress","supersededBy","shareStatus","shareIntent","shareIntentOptions","shareReceipt","shareOperationId","shareProgress","shareExpiresAt"})
   if(data.contains(key))remote[key]=data[key];
  return remote;
 }
@@ -63,7 +66,7 @@ bool persistRemote(QSqlDatabase db,const QString& id,const QJsonObject& remote) 
  // Merge only top-level ledger fields. JSON merge-patch would remove nested
  // null settings, changing an immutable destination or credential reference.
  q.prepare("SELECT data FROM history WHERE id=?");q.addBindValue(id);if(!q.exec())return false;if(!q.next())return true;
- auto data=decode(q.value(0));for(const auto& key:QStringList{"remoteStatus","remoteError","deleteOperationId","deleteProgress","supersededBy","shareStatus","shareIntent","shareIntentOptions","shareReceipt","shareOperationId","shareProgress"})data.remove(key);
+ auto data=decode(q.value(0));for(const auto& key:QStringList{"remoteStatus","remoteError","deleteOperationId","deleteProgress","supersededBy","shareStatus","shareIntent","shareIntentOptions","shareReceipt","shareOperationId","shareProgress","shareExpiresAt"})data.remove(key);
  for(auto it=remote.begin();it!=remote.end();++it)data[it.key()]=it.value();
  q.prepare("UPDATE history SET remote_status=?,data=? WHERE id=?");q.addBindValue(remote["remoteStatus"].toString());q.addBindValue(encode(data));q.addBindValue(id);return q.exec();
 }
@@ -317,6 +320,8 @@ Error HistoryStore::saveSharing(const QJsonObject& doc) {
  if(doc["action"]=="create"){intent="create";remote["shareIntentOptions"]=doc["options"].toObject();}
  if(doc["action"]=="revoke"||doc["status"]=="shared"||doc["status"]=="revoked"||doc["status"]=="changed")intent.clear();
  if(intent.isEmpty())remote["shareIntentOptions"]=QJsonObject{};
+ // A confirmed result replaces the recorded link expiry; an uncertain one keeps the last confirmed value.
+ if(QStringList{"shared","private","revoked","changed"}.contains(doc["status"].toString())){if(doc["expiresAt"].isString())remote["shareExpiresAt"]=doc["expiresAt"];else remote.remove("shareExpiresAt");}
  remote["shareIntent"]=intent;remote["shareStatus"]=doc["status"];remote["shareReceipt"]=doc["receipt"];remote["shareOperationId"]=id;remote["shareProgress"]=doc["progress"];
  q.prepare("INSERT INTO sharing_operations VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data");q.addBindValue(id);q.addBindValue(historyId);q.addBindValue(encode(doc));
  if(!q.exec()||!persistRemote(db_,historyId,remote)||!db_.commit()){db_.rollback();return sqlError();}return {};

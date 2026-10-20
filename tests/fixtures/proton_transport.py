@@ -49,6 +49,13 @@ if case == 'plan-limit-settled':
     print(json.dumps({'ok': True, 'result': {'status': 'failed', 'error': {'code': 'destination_file_too_large_for_plan',
         'message': 'This file is larger than your Proton plan allows for a single file.', 'details': {}}}}), flush=True)
     sys.exit(0)
+if case.startswith('share-expiry'):
+    # A confirmed share result with the service's link expiry (#253).
+    receipt = dict(request['receipt'], directUrl='https://example.invalid/share#synthetic')
+    expires = {'share-expiry': '2026-10-27T17:48:40.000Z', 'share-expiry-invalid': 'next week'}[case]
+    print(json.dumps({'ok': True, 'result': {'status': 'shared', 'receipt': receipt, 'linkAvailable': True,
+        'expiresAt': expires, 'progress': {'schemaVersion': 1}, 'error': {}}}), flush=True)
+    sys.exit(0)
 if case == 'timeout':
     time.sleep(3)
 elif case == 'malformed':

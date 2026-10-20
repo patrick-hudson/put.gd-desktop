@@ -2,6 +2,7 @@
 #include "ProtonProvider.h"
 #include <QCoreApplication>
 #include <QCryptographicHash>
+#include <QDateTime>
 #include <QDir>
 #include <QFile>
 #include <QJsonDocument>
@@ -194,7 +195,10 @@ void ProtonProvider::share(const ShareRequest& req,DurableCheckpoint checkpoint,
  auto options=req.options;options["action"]=req.action;Error e;bool uncertain=false;auto r=call("share",req.receipt.destination,{{"receipt",req.receipt.toJson()},{"options",options}},e,req.cancellation,{},&uncertain);
  auto receipt=r.contains("receipt")?StorageReceipt::fromJson(r["receipt"].toObject()):req.receipt;
  if(e)receipt.directUrl.clear();
- reply({e?(uncertain?"unknown":"failed"):r["status"].toString("unknown"),receipt,r["progress"].toObject(),e?e:parseError(r["error"].toObject())});
+ ShareResult result{e?(uncertain?"unknown":"failed"):r["status"].toString("unknown"),receipt,r["progress"].toObject(),e?e:parseError(r["error"].toObject())};
+ const auto expires=QDateTime::fromString(r.value("expiresAt").toString(),Qt::ISODateWithMs);
+ if(!e&&expires.isValid())result.expiresAt=expires.toUTC().toString(Qt::ISODateWithMs);
+ reply(result);
 }
 QJsonObject ProtonProvider::setup(const QString& method,const Destination& d,const QJsonObject& input,Error& e,SetupEvent event){
  if(method!="testDestination")return call(method,d,{{"options",input}},e,{},std::move(event));
