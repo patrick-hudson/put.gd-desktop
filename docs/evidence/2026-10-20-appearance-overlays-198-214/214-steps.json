@@ -1,0 +1,194 @@
+[
+ {
+  "baseline": "after-start",
+  "host": "f44",
+  "sequence": "dark-first",
+  "step": "open-dark",
+  "windowShareChanged": 0.0,
+  "scheme": "dark"
+ },
+ {
+  "baseline": "after-start",
+  "host": "f44",
+  "sequence": "light-first",
+  "step": "open-light",
+  "windowShareChanged": 0.0,
+  "scheme": "light"
+ },
+ {
+  "baseline": "after-start",
+  "host": "f44",
+  "sequence": "light-then-dark",
+  "step": "open-light",
+  "windowShareChanged": 0.0,
+  "scheme": "light"
+ },
+ {
+  "baseline": "after-start",
+  "host": "f44",
+  "sequence": "light-then-dark",
+  "step": "switch-dark",
+  "windowShareChanged": 0.938,
+  "scheme": "dark"
+ },
+ {
+  "baseline": "after-start",
+  "host": "f44",
+  "sequence": "dark-then-light",
+  "step": "open-dark",
+  "windowShareChanged": 0.939,
+  "scheme": "dark"
+ },
+ {
+  "baseline": "after-start",
+  "host": "f44",
+  "sequence": "dark-then-light",
+  "step": "switch-light",
+  "windowShareChanged": 0.012,
+  "scheme": "light"
+ },
+ {
+  "baseline": "after-start",
+  "host": "k72",
+  "sequence": "dark-first",
+  "step": "open-dark",
+  "windowShareChanged": 0.999,
+  "scheme": "dark"
+ },
+ {
+  "baseline": "after-start",
+  "host": "k72",
+  "sequence": "light-first",
+  "step": "open-light",
+  "windowShareChanged": 0.0,
+  "scheme": "light"
+ },
+ {
+  "baseline": "after-start",
+  "host": "k72",
+  "sequence": "light-then-dark",
+  "step": "open-light",
+  "windowShareChanged": 0.0,
+  "scheme": "light"
+ },
+ {
+  "baseline": "after-start",
+  "host": "k72",
+  "sequence": "light-then-dark",
+  "step": "switch-dark",
+  "windowShareChanged": 0.999,
+  "scheme": "dark"
+ },
+ {
+  "baseline": "after-start",
+  "host": "k72",
+  "sequence": "dark-then-light",
+  "step": "open-dark",
+  "windowShareChanged": 0.0,
+  "scheme": "dark"
+ },
+ {
+  "baseline": "after-start",
+  "host": "k72",
+  "sequence": "dark-then-light",
+  "step": "switch-light",
+  "windowShareChanged": 0.999,
+  "scheme": "light"
+ },
+ {
+  "baseline": "before-start",
+  "host": "f44",
+  "sequence": "dark-first",
+  "step": "open-dark",
+  "windowShareChanged": 0.968,
+  "scheme": "dark"
+ },
+ {
+  "baseline": "before-start",
+  "host": "f44",
+  "sequence": "light-first",
+  "step": "open-light",
+  "windowShareChanged": 0.963,
+  "scheme": "light"
+ },
+ {
+  "baseline": "before-start",
+  "host": "f44",
+  "sequence": "light-then-dark",
+  "step": "open-light",
+  "windowShareChanged": 0.963,
+  "scheme": "light"
+ },
+ {
+  "baseline": "before-start",
+  "host": "f44",
+  "sequence": "light-then-dark",
+  "step": "switch-dark",
+  "windowShareChanged": 0.968,
+  "scheme": "dark"
+ },
+ {
+  "baseline": "before-start",
+  "host": "f44",
+  "sequence": "dark-then-light",
+  "step": "open-dark",
+  "windowShareChanged": 0.968,
+  "scheme": "dark"
+ },
+ {
+  "baseline": "before-start",
+  "host": "f44",
+  "sequence": "dark-then-light",
+  "step": "switch-light",
+  "windowShareChanged": 0.963,
+  "scheme": "light"
+ },
+ {
+  "baseline": "before-start",
+  "host": "k72",
+  "sequence": "dark-first",
+  "step": "open-dark",
+  "windowShareChanged": 0.999,
+  "scheme": "dark"
+ },
+ {
+  "baseline": "before-start",
+  "host": "k72",
+  "sequence": "light-first",
+  "step": "open-light",
+  "windowShareChanged": 0.996,
+  "scheme": "light"
+ },
+ {
+  "baseline": "before-start",
+  "host": "k72",
+  "sequence": "light-then-dark",
+  "step": "open-light",
+  "windowShareChanged": 0.996,
+  "scheme": "light"
+ },
+ {
+  "baseline": "before-start",
+  "host": "k72",
+  "sequence": "light-then-dark",
+  "step": "switch-dark",
+  "windowShareChanged": 0.999,
+  "scheme": "dark"
+ },
+ {
+  "baseline": "before-start",
+  "host": "k72",
+  "sequence": "dark-then-light",
+  "step": "open-dark",
+  "windowShareChanged": 0.999,
+  "scheme": "dark"
+ },
+ {
+  "baseline": "before-start",
+  "host": "k72",
+  "sequence": "dark-then-light",
+  "step": "switch-light",
+  "windowShareChanged": 0.995,
+  "scheme": "light"
+ }
+]

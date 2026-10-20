@@ -145,7 +145,7 @@ backend. It launches one `putgd-record` process per recording session from the
 resident's own directory and speaks the private UiControl framing over the
 child's pipes, mirroring the capture and editor helpers:
 
-- `bootstrap {role: record, nonce, generation, build}` → `ready` echoing the
+- `bootstrap {role: record, nonce, generation, build, appearance {scheme}}` → `ready` echoing the
   envelope and the helper's build manifest; a mismatch is `recording_incompatible`,
   silence past the startup deadline (10 s) is `recording_helper_start_timeout`.
 - `command {requestId, command, params}` → `commandResult {requestId, ok, result}`
@@ -162,6 +162,10 @@ child's pipes, mirroring the capture and editor helpers:
 - `event {event: progress|stopped|failed, ...}` from the helper is forwarded to
   the service with the session ID; an unexpected exit fails the session with
   `recording_helper_crashed` (or `recording_helper_exited`) and never uploads.
+- `appearance {scheme: dark|light}` from the resident whenever the resolved
+  interface scheme changes while the helper runs; the bar, review window and
+  selector restyle at once (#198, [appearance](appearance.md#recording-overlays)).
+  Any other value ends the helper as a protocol error.
 - `shutdown` after upload, cancel or failure; the helper must exit normally
   within 2 s or it is killed. Only control metadata crosses the pipes: frames,
   audio and files stay in the helper and its private staging.
@@ -187,7 +191,8 @@ the sibling binary reports `recording_helper_missing`.
 ## Overlay (X11)
 
 `prepare` for a region without a rect shows a translucent drag surface on every
-screen ("Drag to choose the area to record. Esc cancels."); release keeps the
+screen ("Drag to choose the area to record. Esc cancels.", on a label in the
+interface's scheme, as is the size shown while dragging); release keeps the
 bounds and nothing records yet. The ready state draws a 3 px white ring with a
 dark hairline just outside the recorded rectangle (never over its pixels).
 While recording, four translucent strips dim everything outside the

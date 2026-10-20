@@ -67,8 +67,24 @@ and `selected` in both schemes, the accent (focus rings) and icon colour meet
 Colours that are not theme colours stay fixed: the brand mark, user content
 (screenshots, annotation colours, redaction black), the custom-colour
 rainbow swatch, the on-screen region selection ring and the scrim behind a
-video poster's play glyph. The recording overlays and control bar
-(`putgd-record`) keep their own dark styling (#198).
+video poster's play glyph.
+
+## Recording overlays
+
+`putgd-record`'s windows use the same scheme and tokens (#198). The resident
+resolves `preferences.appearance.theme` against the desktop with the same
+`Appearance` code as `putgd-ui` (it does not restyle itself) and passes the
+scheme in the helper's bootstrap frame; a change while a recording is
+prepared, running or under review reaches the open helper as an `appearance`
+frame and restyles it live (see [recording](recording.md)).
+
+| Element | Colours |
+| --- | --- |
+| Control bar | `bg` fill, `text`, `surfaceRaised` controls, `accent` check box with a tick painted from `onAccent`; its outline is `textDisabled`, which meets 3:1 against both black and white in either scheme, so the bar's edge shows over any content |
+| Record and Stop buttons, state dot | fixed green and red (white text, 4.5:1 or better), the same in both schemes |
+| Region selector hint and size label | the scheme's `bg` label with `text`, outlined like the bar, so it reads over any content |
+| Review window | the window tokens; Upload is the primary (`accent`) button |
+| Selection ring, dimming, review frame surround, mask outlines | fixed: they sit on the desktop or the recording |
 
 ## Tray icon
 
