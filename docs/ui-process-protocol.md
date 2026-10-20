@@ -29,7 +29,7 @@ Transient Qt strings/JSON are released normally; this is not a cryptographic wip
 | `ui.quit` | `{}` | `quitting:true`, then explicit resident shutdown |
 | `ui.snapshot` | `{}` | build manifest, resident epoch, readiness, settings document/metadata and diagnostics |
 | `ui.moveDestination` | `direction` up/down, optional `profileId` | the open Settings window's new `order`, `selected` ID and `saving`, after the helper's `commandResult` |
-| `ui.viewState` | `{}` | helper `state`; with a Settings checkpoint, `settings.section` and the derived `settings.captureRouting` only (see [state](ui-process-state.md)) |
+| `ui.viewState` | `{}` | helper `state`; with a Settings checkpoint, `settings.section` and the derived `settings.captureRouting` only, and the derived `appearance` (see [state](ui-process-state.md)) |
 | `settings.save` | `document`, `expectedRevision` | authoritative document and metadata |
 | `setup.storeCredentials` | `profileId`, `expectedRevision`, `credentials` | `setupId` |
 | `setup.unlockCredentials` | `profileId`, `expectedRevision` | `setupId` |
