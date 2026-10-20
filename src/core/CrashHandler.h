@@ -14,7 +14,9 @@ namespace putgd::crash {
 // beyond the faulting address and PC, no memory, no variables.
 //
 // Each thread gets its own alternate stack when it starts (pthread_create is
-// wrapped, #156), so a stack overflow on a worker thread is recorded too.
+// wrapped, #156), so a stack overflow on a worker thread is recorded too. The
+// handler installs from the executable's .preinit_array, before any shared
+// library's constructor, so this covers threads those constructors start (#211).
 //
 // Disabled in ASan/TSan builds (the sanitizers own these signals) and when
 // PUTGD_CRASH_HANDLER=0 is set.

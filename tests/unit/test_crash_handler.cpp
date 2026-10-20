@@ -24,6 +24,9 @@
 #include <fcntl.h>
 #include <unistd.h>
 using namespace putgd;
+// tests/fixtures/crash_early_library.cpp, linked so its constructor runs before ours (#211).
+extern "C" void putgd_test_early_thread_stack(long long* bytes,int* enabled);
+extern "C" void putgd_test_overflow_early_thread();
 // The built-in crash handler (#124). The test runs itself as a child that
 // crashes on purpose, then checks the record, the exit and the symbols.
 namespace {
@@ -68,6 +71,12 @@ int child(int argc,char** argv) {
   if(!library)::_exit(3);
   reinterpret_cast<void(*)()>(::dlsym(library,"putgd_test_overflow_in_module_thread"))();
   return 6;
+ }
+ // A thread a linked library started from its constructor, before main (#211).
+ if(std::strcmp(kind,"overflow-early")==0)putgd_test_overflow_early_thread();
+ if(std::strcmp(kind,"early-thread-stack")==0) {
+  long long bytes=0;int enabled=0;putgd_test_early_thread_stack(&bytes,&enabled);
+  std::printf("%lld %d\n",bytes,enabled);return 0;
  }
  // Whether a new thread has an alternate stack: "<bytes> <enabled>".
  if(std::strcmp(kind,"thread-stack")==0) {
@@ -209,6 +218,13 @@ private slots:
   }
   // A library's own thread, the way Qt, GStreamer or the AWS SDK start them.
   verifyOverflowRecord("overflow-module",PUTGD_CRASH_MODULE,"overflowInModule",true);
+ }
+ // The handler installs from .preinit_array, before any library constructor,
+ // so a thread a library starts from its constructor has a stack too (#211).
+ void threadFromALibraryConstructorIsRecorded() {
+  const auto stack=runChild({"early-thread-stack"});
+  QCOMPARE(stack.code,0);QCOMPARE(stack.stdoutText.trimmed(),QByteArray("65536 1"));
+  verifyOverflowRecord("overflow-early",PUTGD_CRASH_EARLY_LIBRARY,"overflowInEarlyThread",true);
  }
  // The stack is 64 KiB of untouched pages per thread, removed when it ends.
  void threadStacksAreSmallAndReleased() {
