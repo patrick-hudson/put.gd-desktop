@@ -27,9 +27,8 @@ with every commit on `nightly`; for example `v0.1.1-nightly.312`, titled
 "put.gd 0.1.1 nightly 312". The tag, base, full commit, tree and count must match
 the clean source. Nightlies before 2026-10-18 used `vBASE-dev.COUNT.UTC+gSHORT`.
 Nightlies never replace GitHub's Latest stable release. Every channel publishes
-all fifteen individual downloads listed below, including the three raw DEBs, the RPM,
-the exact compiled curated source archive, the AppImage's media source and the
-debug symbols.
+all fourteen individual downloads listed below, including the three raw DEBs, the RPM,
+the exact compiled curated source archive and the AppImage's media source.
 
 ### Nightly
 
@@ -206,18 +205,10 @@ The GitHub Release page publishes each installer as an individual download:
 Ubuntu 24.04, Ubuntu 26.04 and Debian 13 DEBs, the Fedora 44 RPM, and the x86_64 AppImage. It also
 publishes `putgd-VERSION-source.tar.gz`, the AppImage's
 `putgd-VERSION-appimage-media-source.tar.gz`, the GNOME extension ZIP, full build
-receipts, the Proton source catalog and two source transport parts,
-`putgd-VERSION-debug-x86_64.tar.zst`, and `SHA256SUMS`.
-`putgd-VERSION-release.zip` contains the ten smaller underlying
-files and an inner checksum list. The two large source parts and the debug asset
-stay separate; the outer checksum list covers them and the combined ZIP.
-
-The debug asset holds every build's split debug files (the four distro packages
-and the AppImage) by GNU build ID, `.build-id/<2 hex>/<rest>.debug`, plus a
-`manifest.json` naming each build's programs and build IDs. Maintainers use it to
-symbolize crash records ([diagnostics.md](diagnostics.md)); users never need it, and
-the packages they install stay stripped. The repository is public, so the symbols
-reveal nothing the source does not. ZIP timestamps and modes are fixed from the source commit,
+receipts, the Proton source catalog and two source transport parts, and
+`SHA256SUMS`. `putgd-VERSION-release.zip` contains the ten smaller underlying
+files and an inner checksum list. The two large source parts stay separate; the
+outer checksum list covers them and the combined ZIP. ZIP timestamps and modes are fixed from the source commit,
 so repeating collection preserves the bytes needed to resume a draft. Extract the
 combined ZIP into a new directory; its inner checksum list covers the contents,
 while the separately downloaded outer list also covers the ZIP itself. Actions artifact ZIPs are the internal build handoff;
@@ -289,15 +280,8 @@ or CI inputs, on every push to `nightly`, and from the nightly and release runs
 with an exact tag. Builders are ABI-separated, keep read-only permissions and
 use the normal presets rather than an alternate build system.
 
-Each package job also stages its build's split debug files with
-`tools/releases/debug_symbols.py stage`, which checks every `.debug` file against
-the build ID of the binary the package installs. Without a tag, the
-`debug-symbols` job assembles the debug asset from those files exactly as the
-release would, as the `debug-symbols-dry-run` artifact.
-
 With a tag, the `collect` job requires the four native assets and the AppImage
-from one clean tagged commit/tree/count/version, and the debug files staged by
-all five builds from that identity. It recalculates each artifact's
+from one clean tagged commit/tree/count/version. It recalculates each artifact's
 SHA256 against its build receipt and assigns distro-specific filenames so the
 three DEBs cannot overwrite each other. It uploads the verified set as the
 `release-assets` artifact. Only the nightly `publish` job and the release
