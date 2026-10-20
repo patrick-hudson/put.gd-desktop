@@ -96,6 +96,8 @@ DEB pause A/V, two rounds:
 | 2 | MP4 | −8.7 / −8.7 | +0.8 | −1.0 |
 | 2 | WebM | −18.3 / −18.5 | +0.8 | −0.2 |
 
+![k72 region frames](recording-closeout/k72-plasma66-26.04-deb-region-formats.png)
+
 **No k72 monitor frames are kept.** Once a recording started, Plasma's panel
 showed above the cover along the bottom edge of the monitor frames. The cover
 had passed `precheck` at 100%, and the frames still passed the 50% gate. Every
@@ -129,9 +131,19 @@ one frame, and the two pairs before the pause fell on either side of that split.
 The driver now folds whole-frame slips to the clip's common phase before taking
 the step.
 
-### d69 Plasma 6.3 portal, monitor target
+### d69 Plasma 6.3 portal, monitor target: pending
 
-(See below; filled in from the d69 slot.)
+The run started at 07:10:53Z on a quiet d69 (load 0.00), with the cover up and
+a 99.99% precheck. The KDE portal picker opened for the first `prepare`, but
+nobody was at the desktop to approve it. The run was stopped cleanly at
+07:12Z, and nothing was recorded. It needs one approval (screen HDMI-A-1,
+"Allow restoring") while the same driver runs:
+
+```sh
+python3 record_run.py --run RUN --build pre=…134a9bec08b3…AppImage --build post=…cc4568f248ce…AppImage \
+  --analyzer EXTRACTED_cc4568f --video marker --target monitor --format mp4 webm --rounds 3 \
+  --output HDMI-A-1 --prepare-timeout 1500 --frames
+```
 
 ## #165: the lab cover pinned to a named output
 
@@ -155,6 +167,10 @@ the window full screen on that output at its size.
 - **Install:** `tools/lab/wall_vnc_watchdog.py` was installed on d69 as `~/.local/bin/wall-vnc-watchdog` (sha256 `4ae8e5ed…`, the same file as k72's), with the user unit `wall-vnc-watchdog.service` enabled under `plasma-workspace-wayland.target`.
 - **Trigger test:** a labelled synthetic journal line (`wall-vnc-watchdog-selftest`, "SYNTHETIC … A graphics reset attributable …") at 05:43:01Z was held for the 5-minute grace after the unit started. It restarted `w0vncserver.service` at 05:47:51Z (PID 25432 → 1397526). The RFB frame hashes changed afterwards (05:48:02Z and 05:49:04Z), and no prompt appeared.
 - **Journal visibility:** d69's `patrick` user isn't in `adm` or `systemd-journal`, so the kernel's `GPU HANG` line is invisible to the unit. KWin's own "graphics reset attributable to the current GL context" line is in the user journal, and the watchdog matches it; checked against the real 2026-10-19 06:44Z hang. On k72 the user is in `adm`, so the watchdog sees both.
+![d69 wall watchdog recovery](recording-closeout/d69-wall-watchdog-recovery-164.png)
+
+- **Stale trigger, 07:20–07:26Z, with the updated watchdog:** with the cover up and a 99.99% precheck, w0vncserver (PID 1397526) was stopped with SIGSTOP at 07:20:54Z. The watchdog restarted it after 300 s without updates (07:25:47Z, PID 1446729), and frames were back at 07:26:07Z. All four tile frames are 100% cover at every edge.
+- **Survived reset:** the labelled synthetic line again at 07:13:02Z, now with the stream live. The updated watchdog dropped it as survived and did not restart.
 - **k72 re-login check:** still pending. Patrick's apps were open on k72, and k72 is now out for a hardware check.
 - **Redundant restart:** the k72 hang above exposed one. A second hang logged 3 s after a restart forced another restart when the grace ended (06:10:30Z), though the new stream was live. PR #183 drops a reset that the stream survives by 30 s.
 

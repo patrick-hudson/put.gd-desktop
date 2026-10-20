@@ -31,11 +31,12 @@ cover, and frames kept only at least half cover (`tools/lab/cover_player.py`,
   +6.7 ms, pause step within +0.8 ms, export within ±1.0 ms.
 - **#166, f44 GNOME portal (window):** pre-#143 `134a9be` lost about 10 ms at
   every pause (−9.2 to −10.5 ms) and in every export. #143 `cc4568f` held
-  within ±1.0 ms. The d69 portal (monitor) result is in the receipt.
+  within ±1.0 ms. The d69 portal (monitor) run is pending one picker approval.
 - **#165:** the cover goes to the named output (two-output GNOME guest, nested
   two-output KWin), and the player refuses without `--output`.
-- **#164:** the wall watchdog runs on d69; a synthetic KWin reset line
-  restarted its server. The k72 re-login and power-cycle checks are pending.
+- **#164:** the wall watchdog runs on d69. It restarted a stopped server
+  after 300 s and brought the tile back, and it ignores a reset the stream
+  survives. The k72 re-login and power-cycle checks are pending Patrick's OK.
 - **#89:** GPU-first encoder order kept. Seven Skylake hangs were all in the
   compositor's render engine, and only three, in two events, overlapped a
   VA-API encode ([recording.md](recording.md)).
