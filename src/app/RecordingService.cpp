@@ -559,18 +559,22 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
         return;
     }
     if (command == "review") {
-        // The window's controls, as a user works them (#283). Edits it proposes
-        // reach this service as edit events before the helper's answer, so the
-        // reply's edit is the one they produced (or the unchanged one they were
-        // refused against).
+        // The window's controls, as a user works them (#283). An edit a control
+        // proposes arrives as an event before the helper's answer; events are
+        // handled queued, so the answer queues behind it and its edit is the one
+        // the proposal produced (or the unchanged one it was refused against).
         auto forwarded = params;
         forwarded.remove("id");
         if (s.state == "exporting" && forwarded["action"].toString() != "inspect") { reply({"recording_state", "The review controls are disabled while an export runs", {{"state", s.state}}}, {}); return; }
-        backend_->control(s.op.id, "review", forwarded, marshal(s.generation, [this, reply](Error error, QJsonObject result) {
+        const auto generation = s.generation;
+        backend_->control(s.op.id, "review", forwarded, marshal(generation, [this, reply, generation](Error error, QJsonObject result) {
             if (error) { reply(error, {}); return; }
-            result["state"] = session_->state;
-            result["edit"] = session_->edit.toJson();
-            reply({}, result);
+            QMetaObject::invokeMethod(this, [this, reply, generation, result]() mutable {
+                if (!session_ || session_->generation != generation) { reply({"recording_unavailable", "The recording ended", {}}, {}); return; }
+                result["state"] = session_->state;
+                result["edit"] = session_->edit.toJson();
+                reply({}, result);
+            }, Qt::QueuedConnection);
         }));
         return;
     }
