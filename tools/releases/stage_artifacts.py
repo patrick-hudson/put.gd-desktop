@@ -20,6 +20,8 @@ def stage(build, output, kind):
                      build / 'release/build-identity/build-info.json']
         selected += list(packages.glob('*.AppImage'))
         selected += [packages / 'appimage-media-source.json'] + list(packages.glob('*-appimage-media-source.tar.gz'))
+    # Split debug files by build ID and their manifest (#124, debug_symbols.py).
+    selected += sorted((build / 'debug-symbols').glob('debug-symbols-*'))
     # Partial failed-build evidence may be uploaded; the collector still requires
     # all successful receipts and exact bytes before it can stage a release.
     for source in selected:

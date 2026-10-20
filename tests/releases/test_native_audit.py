@@ -97,6 +97,13 @@ class NativeInventoryTests(unittest.TestCase):
             result = audit.audit_tree(self.root, self.manifest)
         self.assertEqual(set(result["compiledIdentities"]), set(audit.PROGRAMS) - {"putgd-launcher"})
 
+    def test_test_only_crash_trigger_rejected(self):
+        # Development builds read PUTGD_TEST_CRASH (#124); release builds never contain it.
+        self.write("usr/bin/putgd-ui", "binary PUTGD_TEST_CRASH", 0o755)
+        with patch.object(audit, "command", side_effect=self.commands):
+            with self.assertRaisesRegex(ValueError, "test-only crash trigger: putgd-ui"):
+                audit.audit_tree(self.root, self.manifest)
+
     def test_mixed_helper_manifest_rejected(self):
         def commands(argv, *, env=None):
             if Path(argv[0]).name == "putgd-ui" and argv[1] == "--version-json":

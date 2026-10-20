@@ -61,6 +61,7 @@ class DiagnosticsBundleContract final:public QObject {
   settings["profiles"]=profiles;context.settings=settings;
   context.diagnostics=operations_->diagnostics();
   context.environment={{"platform","offscreen"},{"trayAvailable",false},{"screens",QJsonArray{QJsonObject{{"scale",1.5}}}}};
+  context.coredumpctl="-";
   return context;
  }
  QJsonObject build(DiagnosticsBundles::Context context,BundleRequest request,Error& error) {return DiagnosticsBundles::build(context,request,error);}
@@ -94,6 +95,38 @@ private slots:
   QVERIFY(bytes.size()<60000);
   QCOMPARE(ZipWriter::crc32("123456789"),0xcbf43926u);
  }
+ // systemd-coredump's text traces for put.gd executables (#124 option B):
+ // modules and frames only, never the command line, host or core file.
+ void coredumpTracesWithoutCommandLines() {
+  const auto script=dir_.filePath("fake-coredumpctl");
+  QFile file(script);QVERIFY(file.open(QIODevice::WriteOnly));
+  file.write("#!/bin/sh\nfor a in \"$@\"; do case \"$a\" in\n"
+   "list) echo '[{\"time\":1760000000000000,\"pid\":4242,\"uid\":1000,\"gid\":1000,\"sig\":11,\"corefile\":\"present\",\"exe\":\"/usr/bin/putgd-ui\",\"size\":1},"
+   "{\"time\":1760000001000000,\"pid\":7,\"sig\":6,\"corefile\":\"present\",\"exe\":\"/usr/bin/firefox\"}]'; exit 0;;\n"
+   "info) printf '%s\\n' '           PID: 4242 (putgd-ui)' '  Command Line: putgd-ui --edit-image /tmp/synthetic-private-name.png' "
+   "'      Hostname: synthetic-private-host' '       Message: Process 4242 (putgd-ui) dumped core.' '' "
+   "'                Module libQt6Core.so.6 with build-id 0123456789abcdef0123456789abcdef01234567' "
+   "'                Stack trace of thread 4242:' '                #0  0x00007f0000001234 raise (libc.so.6 + 0x1234)' "
+   "'                #1  0x000055d000005678 n/a (/usr/bin/putgd-ui + 0x5678)'; exit 0;;\n"
+   "esac; done\nexit 2\n");
+  file.close();QVERIFY(file.setPermissions(QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner));
+  PackageRedactor redactor(false);
+  const auto report=DiagnosticsBundles::coredumps(script,QDateTime::currentDateTimeUtc().addDays(-7),redactor);
+  QVERIFY(report["available"].toBool());
+  const auto entries=report["entries"].toArray();QCOMPARE(entries.size(),1);
+  const auto entry=entries[0].toObject();
+  QCOMPARE(entry["pid"].toInteger(),4242);QCOMPARE(entry["signal"].toInt(),11);QCOMPARE(entry["executable"].toString(),QString("/usr/bin/putgd-ui"));
+  const auto stack=entry["stack"].toString();
+  QVERIFY2(stack.contains("#0  0x00007f0000001234 raise")&&stack.contains("build-id 0123456789abcdef0123456789abcdef01234567"),qPrintable(stack));
+  for(const auto* hidden:{"Command Line","synthetic-private-host","synthetic-private-name","Hostname"})QVERIFY2(!QJsonDocument(report).toJson().contains(hidden),hidden);
+  // In a package; and no coredumpctl at all is reported, not an error.
+  auto context=this->context();context.coredumpctl=script;
+  Error error;BundleRequest request;request.output=dir_.filePath("coredump-package.zip");
+  const auto result=build(context,request,error);QVERIFY2(!error,qPrintable(error.message));
+  const auto packaged=QJsonDocument::fromJson(unzip(result["path"].toString())["coredumps.json"].toString().toUtf8()).object();
+  QCOMPARE(packaged["entries"].toArray().size(),1);QVERIFY(packaged.contains("since"));
+  QCOMPARE(DiagnosticsBundles::coredumps(dir_.filePath("missing-coredumpctl"),QDateTime::currentDateTimeUtc(),redactor)["available"].toBool(),false);
+ }
  void packageHoldsTheFailedOperationWithoutPrivateData() {
   Error error;BundleRequest request;request.operationId=failedId_;
   const auto result=build(context(),request,error);QVERIFY2(!error,qPrintable(error.message));
@@ -101,7 +134,7 @@ private slots:
   QVERIFY(result["path"].toString().startsWith(dir_.filePath("archive/diagnostics/putgd-diagnostics-")));
   QCOMPARE(QFileInfo(result["path"].toString()).permissions()&(QFile::ReadGroup|QFile::ReadOther),QFile::Permissions{});
   const auto files=unzip(result["path"].toString());
-  QCOMPARE(QStringList(files.keys()),(QStringList{"config.redacted.json","diagnostics.json","environment.json","logs/putgd.jsonl","manifest.json","operations.json"}));
+  QCOMPARE(QStringList(files.keys()),(QStringList{"config.redacted.json","coredumps.json","diagnostics.json","environment.json","logs/putgd.jsonl","manifest.json","operations.json"}));
   QByteArray everything;for(auto it=files.begin();it!=files.end();++it)everything+=it.value().toString().toUtf8();
   for(const auto& canary:canaries)QVERIFY2(!everything.contains(canary.toUtf8()),qPrintable(canary));
   for(const auto& name:names)QVERIFY2(!everything.contains(name.toUtf8()),qPrintable(name));

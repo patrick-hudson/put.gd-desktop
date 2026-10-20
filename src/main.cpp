@@ -38,6 +38,7 @@
 #include <malloc.h>
 #endif
 #ifdef Q_OS_LINUX
+#include "core/CrashHandler.h"
 #include <QDBusConnection>
 #include <QDBusConnectionInterface>
 #include <QDBusReply>
@@ -215,6 +216,13 @@ int main(int argc,char* argv[]) {
  const auto stateRoot=putgd::logging::stateRoot();
  putgd::logging::open(stateRoot+"/logs",{settings.snapshot().logDays,settings.snapshot().logBytes},"putgd");
  putgd::RunMarker::begin(stateRoot,putgd::buildVersion());
+ // The crash handler (#124) writes this resident's record to running.crash;
+ // the next start turns it into a log record. Modules loaded after startup
+ // (the S3 module, Qt plugins) join its map once the session has settled.
+#ifdef Q_OS_LINUX
+ putgd::crash::setOutput(putgd::RunMarker::crashOutput());
+ QTimer::singleShot(15000,&app,[]{putgd::crash::refreshModules();});
+#endif
  putgd::LogService logService(settings,stateRoot);logService.apply();
  putgd::DiagnosticsBundles bundles(operations,stateRoot);server.setDiagnosticsBundles(&bundles);
  QJsonObject portalStatus;
@@ -365,6 +373,9 @@ int main(int argc,char* argv[]) {
  QObject::connect(&app,&QCoreApplication::aboutToQuit,&operations,[&]{proton->shutdown();operations.shutdown();});
  const int status=app.exec();
  putgd::logging::info(putgd::logApp(),"Resident stopped",{{"exitCode",status}});
+#ifdef Q_OS_LINUX
+ putgd::crash::setOutput(-1);
+#endif
  putgd::RunMarker::end();
  putgd::logging::close();
  return status;

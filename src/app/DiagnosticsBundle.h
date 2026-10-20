@@ -54,7 +54,16 @@ public:
   QHash<QString,QString> roots; // path -> placeholder
   QJsonObject settings,diagnostics,environment;
   QDateTime now=QDateTime::currentDateTimeUtc();
+  // coredumpctl to ask for systemd-coredump's stack traces; empty finds it on
+  // PATH, "-" skips it (tests).
+  QString coredumpctl;
  };
+ static constexpr int maximumCoredumps=5;
+ static constexpr qsizetype coredumpTextBytes=32*1024;
+ // systemd-coredump's text stack traces for put.gd executables since `from`
+ // (#124 option B): {available, reason?, entries[{time, pid, signal,
+ // executable, storage, stack}]}. Never the core file itself.
+ static QJsonObject coredumps(const QString& coredumpctl,const QDateTime& from,const PackageRedactor&);
  DiagnosticsBundles(OperationService&,QString stateRoot,QObject* parent=nullptr);
  // The full diagnostics document (helpers' lastExit included) and the parts of
  // environment.json only the session thread knows (screens, tray, portal).

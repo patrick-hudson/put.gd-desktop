@@ -1,4 +1,5 @@
 #include "Log.h"
+#include "CrashRecord.h"
 #include <QCoreApplication>
 #include <QDateTime>
 #include <QDir>
@@ -371,7 +372,7 @@ QJsonValue redact(const QJsonValue& value) {
 }
 HelperOutput::HelperOutput(QString process,const QLoggingCategory& category,bool quiet):process_(std::move(process)),category_(category),quiet_(quiet) {}
 void HelperOutput::started(qint64 pid,const QJsonObject& fields) {
- pid_=pid;logged_=suppressed_=0;partial_.clear();++generation_;
+ pid_=pid;logged_=suppressed_=0;partial_.clear();crash_.clear();++generation_;
  auto values=fields;values["helper"]=process_;values["pid"]=pid;
  logging::write(category_,quiet_?QtDebugMsg:QtInfoMsg,"Helper started",values);
 }
@@ -383,6 +384,11 @@ void HelperOutput::append(const QByteArray& bytes) {
 void HelperOutput::line(QByteArray text) {
  if(text.endsWith('\r'))text.chop(1);
  if(text.trimmed().isEmpty())return;
+ if(crash::isRecordLine(text)) {
+  if(crash_.size()+text.size()<crashBytes)crash_+=text+'\n';
+  if(text.startsWith("putgd-crash\tend"))crashRecord();
+  return;
+ }
  if(logged_>=generationBytes){suppressed_+=text.size()+1;return;}
  if(text.size()>lineBytes)text.truncate(lineBytes);
  logged_+=text.size()+1;
@@ -398,8 +404,13 @@ void HelperOutput::line(QByteArray text) {
  }
  logging::write(category_,type,message,fields,process_,pid_);
 }
+void HelperOutput::crashRecord() {
+ const auto record=crash::parseRecord(crash_);crash_.clear();
+ if(!record.isEmpty())logging::write(category_,QtCriticalMsg,"Helper crash record",{{"helper",process_},{"crash",record}},process_,pid_);
+}
 void HelperOutput::finished(int code,QProcess::ExitStatus status,bool requested) {
  if(!partial_.isEmpty()){line(partial_);partial_.clear();}
+ if(!crash_.isEmpty())crashRecord(); // cut short: keep what arrived
  if(suppressed_>0)logging::write(category_,QtWarningMsg,"Helper output truncated",{{"suppressedBytes",suppressed_},{"keptBytes",logged_}},process_,pid_);
  QJsonObject fields{{"helper",process_},{"pid",pid_},{"requested",requested}};
  QtMsgType type=QtInfoMsg;QString message;
