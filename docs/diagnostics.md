@@ -279,7 +279,7 @@ deleted, and other files in the folder are left alone.
   `preferences.diagnostics.packageFolder`, so later packages go there; **Use default**
   clears it. **Save package** calls `diagnostics.bundle` with `notify`, then shows the
   file and **Show in folder**. A space under the options is kept for #123's optional
-  upload.
+  upload (wiring tracked in #158).
 
 A failed, partial or interrupted operation's notification has a **Save diagnostics
 for this upload** button, and so do failed History rows (in the inspector and the row
