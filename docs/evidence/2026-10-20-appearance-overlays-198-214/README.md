@@ -1,7 +1,8 @@
 # Recording overlays follow the appearance (#198), and the missing Settings frames (#214)
 
-Taken 2026-10-20 15:22–15:50Z in the physical desktop sessions of f44 (GNOME 50.0 Wayland,
-Qt 6.11) and k72 (Plasma 6.6.6 Wayland, KWin 6.6.6, Qt 6.10), from scratch lab builds of
+Taken 2026-10-20 15:22–16:02Z in the physical desktop sessions of f44 (GNOME 50.0 Wayland,
+Qt 6.11), k72 (Plasma 6.6.6 Wayland, KWin 6.6.6, Qt 6.10) and m74 (Cinnamon X11, Qt 6.4.2; see
+its section for the build used there), from scratch lab builds of
 `claude/record-overlay-theme-198` (code PR #224, source `b998ffa`) in
 `/home/patrick/work/put.gd-r9appear`. Each run used a private resident (private config, data,
 cache, state and runtime folders, the session's Wayland display and bus, `PIPEWIRE_RUNTIME_DIR`
@@ -26,6 +27,26 @@ f44 (GNOME, no Shell extension installed, `overlayPlacement: compositor`): the c
 the session's windows (0% cover at precheck), so no frame was kept. Measured on the host instead:
 the bar's band was 31% the light `bg` token (`#F5F6F8`) with Light and 30% the dark `bg`
 (`#111317`) after the live switch to Dark, and `recording.cancel` answered.
+
+### Cinnamon X11: selector, bar and review window
+
+![Selector, bar and review window, Light and Dark, m74](198-m74-cinnamon.png)
+
+m74 (Linux Mint 22.3, Cinnamon 6.6 X11, Qt 6.4.2) at 16:00–16:02Z, from #224's CI AppImage
+(`putgd-0.1.1-dev.657+gaa0101ed85bb-x86_64.AppImage`, the PR's merge commit `aa0101e`; SHA-256
+`081f06def96010ca…` on both ends), extracted into the scratch tree and run as `AppRun --background`
+with its `putgd-cli`. m74 has no GStreamer/FFmpeg development packages, and installing them would
+have upgraded Mesa, libdrm and GLib on the desktop host, so no local build. Same cover and private
+resident as k72: `recording.prepare` for a region without a rectangle opened the X11 selector
+(frame in Light, then Dark live), `recording.select` the same rectangle, the bar in Light and
+Dark, then 2.5 s recorded of the cover only, `recording.stop`, and the review window in Light and
+Dark (live), then `recording.cancel`. Every kept crop's edges were 100% cover (or the cover under
+the selector's dimming); content check on the host: at least 97% of each crop is cover or theme
+token colours. Files: `m74-cinnamon-selector-hint-*.png` (cut from the gated selector frames),
+`m74-cinnamon-bar-*.png`, `m74-cinnamon-review-*.png`.
+
+The review window's Blur spin box buttons are unstyled in both schemes, as they were before; that
+is #233.
 
 Found on the lab and fixed in #224: the first live switch ended the helper with
 `recording_helper_protocol`, because `UiControl`'s frame-type allowlist didn't know `appearance`.
@@ -66,6 +87,8 @@ in put.gd or the VNC tile: the probe measured against the wrong frame. The lab n
 k72: the temporary `~/.local/share/applications/putgd-r9a-record.desktop` was removed and
 `kbuildsycoca6 --noincremental` run; private run folders removed; lock released verified-clean at
 15:45Z. f44: private run folders removed; lock released at 15:50Z with storage-cleanup's resident
-(started on that desktop during the slot) named as not ours. A `plasmashell --version` run over SSH
+(started on that desktop during the slot) named as not ours. m74: private run folder (with the
+2.5 s clip in its private data) removed; lock released verified-clean at 16:02Z; the extracted
+AppImage stays in the scratch tree until #224 merges. A `plasmashell --version` run over SSH
 on k72 aborted without a display (core dump, DrKonqi launcher found no crash metadata, no dialog);
 the session's own plasmashell was untouched.
