@@ -192,6 +192,8 @@ class Driver:
         self.env.update(XDG_CONFIG_HOME=str(self.run / 'config'), XDG_DATA_HOME=str(self.run / 'data'),
                         XDG_CACHE_HOME=str(self.run / 'cache'), XDG_STATE_HOME=str(self.run / 'state'),
                         PUTGD_RECORD_KEEP_WORKING=str(self.run / 'working'))
+        # Lab diagnostics such as PUTGD_RECORD_DEBUG_LOG pass through to the resident and its helper.
+        self.env.update({k: v for k, v in os.environ.items() if k.startswith('PUTGD_RECORD_') and k != 'PUTGD_RECORD_KEEP_WORKING'})
         self.real_data = None
         if args.real_data_home:
             # An AppImage's KWin screencast entry only works in the user's own data directory. put.gd's data
@@ -289,6 +291,8 @@ class Driver:
             command += ['--pattern']
         if a.output:
             command += ['--output', a.output]
+        if a.video_size:
+            command += ['--video-size', a.video_size]
         if a.audio_device:
             command += ['--audio-device', a.audio_device]
         self.cover = subprocess.Popen(command, env=dict(self.env, GTK_USE_PORTAL='0', NO_AT_BRIDGE='1'),
@@ -386,6 +390,8 @@ class Driver:
         copy = self.run / 'out' / ('%s.%s' % (name, fmt))
         try:
             result['acquisition'] = caps.get('acquisition')
+            # The first usable live encoder is the one the recording uses.
+            result['liveEncoders'] = (caps.get('gstreamer') or {}).get('usableH264Encoders')
             target = {'kind': a.target}
             if a.identity:
                 target['identity'] = a.identity
@@ -407,9 +413,15 @@ class Driver:
                 time.sleep(a.pause_for)
                 self.cli(build, 'recording.resume', {'id': rid})
             time.sleep(a.after)
-            stopped = self.cli(build, 'recording.stop', {'id': rid}, timeout=60)
-            result.update(load=os.getloadavg()[0], durationUs=stopped.get('durationUs'), encoder=stopped.get('encoder'),
-                          audioEncoder=stopped.get('audioEncoder'))
+            try:
+                stopped = self.cli(build, 'recording.stop', {'id': rid}, timeout=60)
+            except RunError as error:
+                # The recorder ends a clip itself when its byte budget is spent (low disk); keep and measure it.
+                stopped = self.cli(build, 'recording.inspect', {'id': rid})
+                if stopped.get('state') != 'reviewing':
+                    raise
+                result['stoppedEarly'] = str(error)
+            result.update(load=os.getloadavg()[0], durationUs=stopped.get('durationUs'))
             self.cli(build, 'recording.saveCopy', {'id': rid, 'path': str(copy), 'overwrite': True})
             done = self.wait_state(build, rid, ('reviewing',), 600)
             result['export'] = (done.get('lastExport') or {}).get('status')
@@ -478,8 +490,8 @@ class Driver:
                             log('failed: %s' % error)
                         report['rounds'].append(entry)
                         out.write_text(json.dumps(report, indent=1) + '\n')
-                        summary = {k: entry.get(k) for k in ('build', 'format', 'round', 'acquisition', 'encoder',
-                                                             'captureStepMs', 'exportMinusWorkingMs', 'error', 'load')}
+                        summary = {k: entry.get(k) for k in ('build', 'format', 'round', 'acquisition', 'liveEncoders',
+                                                             'captureStepMs', 'exportMinusWorkingMs', 'stoppedEarly', 'error', 'load')}
                         summary['motion'] = [c.get('motion') for c in entry.get('clips', {}).values()]
                         summary['medianMs'] = [c.get('medianMs') for c in entry.get('clips', {}).values()]
                         log(json.dumps(summary))
@@ -514,6 +526,7 @@ def main(argv=None):
     parser.add_argument('--format', nargs='+', choices=('mp4', 'webm', 'gif', 'webp'), default=['mp4'])
     parser.add_argument('--rounds', type=int, default=3)
     parser.add_argument('--output')
+    parser.add_argument('--video-size', help="the video's size on the cover (cover_player's default 1280x720); keep it under half the output")
     parser.add_argument('--audio-device')
     parser.add_argument('--vnc-port', type=int, default=5900, help='0 skips the precheck: disposable lab guests only')
     parser.add_argument('--lead', type=float, default=2)
