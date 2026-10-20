@@ -44,7 +44,7 @@ QString HistoryModel::failureLabel(const QJsonObject& r){
  if(r["uploadStatus"]=="local_only")return "Local save failed";
  if(!storedNothing(r))return "Upload failed";
  const auto action=r["operation"].toObject()["action"].toString();
- return action=="edit"?"Edit failed":action=="clipboard"?"Import failed":"Capture failed";
+ return action=="edit"?"Edit failed":action=="clipboard"?"Upload failed":"Capture failed";
 }
 QString HistoryModel::statusText(const QJsonObject& r){
  const auto op=r["operation"].toObject();const auto state=op["state"].toString();const auto phase=op["phase"].toString();

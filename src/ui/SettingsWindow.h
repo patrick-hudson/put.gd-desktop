@@ -30,8 +30,8 @@ public:
  void activateDestinations(bool forceRefresh=false);
  // Moves the selected (or the given) destination one place; saves right away.
  Error moveSelectedDestination(int delta,const QString& profileId,QJsonObject& result);
- // General → Diagnostics (#122): debug logging, Clear logs, the log and unclean-exit
- // status and Create diagnostics package. diagnosticsCommand drives them for agents
+ // Advanced → Diagnostics (#122; on General until #238): debug logging, Clear
+ // logs, the log and unclean-exit status and Create diagnostics package. diagnosticsCommand drives them for agents
  // (ui.diagnostics); see docs/diagnostics.md.
  void diagnosticsCommand(const QJsonObject& params,std::function<void(Error,QJsonObject)> reply);
  QJsonObject diagnosticsState()const;
@@ -44,6 +44,9 @@ signals:
  void viewStateChanged();
  void actionRequested(const QString&);
  void quitRequested();
+ // #237: the theme picked in Appearance, shown before the resident accepts it;
+ // empty when the accepted setting applies again (a refused or discarded save).
+ void appearancePreview(const QString& theme);
 protected:
  void closeEvent(QCloseEvent*) override;
  bool eventFilter(QObject*,QEvent*)override;
@@ -74,6 +77,7 @@ private:
  void beginSetup(const QString&,const QJsonObject& input={});void pollSetup();void updateSetupButton();void configurationChanged();
  void setupFeedback(const QString&,bool success=false);
  void populate();QJsonObject profileEditorState()const;void applyProfileEditor(const QJsonObject&);QJsonObject editedProfile()const;
+ void endAppearancePreview();
  void refresh(bool preserveDrafts=false);void refreshMetadata();void dirty();void save();void addS3Profile(const QString& defaultLabel="S3 destination");void resetDraft(bool reloadFile);QJsonObject candidate() const;bool selectedDestinationChanged()const;void loadProfile();void storeProfile();void rebuildProfiles(int selected,const QString& defaultProfile={});void status(const Error&);
  void switchProvider();void importDevelopmentProfile();
  QStringList profileOrder()const;void applyProfileOrder(const QStringList&);Error moveDestination(int from,int to);void restoreReorderBaseline();
@@ -90,7 +94,7 @@ private:
  QJsonArray setupJobs_;QTimer* setupTimer_=nullptr;bool setupPollActive_=false,testAccepting_=false,saving_=false,resetting_=false;
  QJsonArray profileEditors_;int setupAccepting_=0;
  QString baseRevision_;
- QJsonObject draft_,savingDocument_;QString observed_;bool loading_=false,dirty_=false,conflict_=false,initialProfile_=false;int profileIndex_=-1;
+ QJsonObject draft_,savingDocument_;QString observed_;bool loading_=false,appearancePreviewed_=false,dirty_=false,conflict_=false,initialProfile_=false;int profileIndex_=-1;
  QLabel *status_,*metadata_,*capabilities_;QPushButton *quit_;
  ShortcutEditor* shortcuts_;QHash<QString,QComboBox*> actionProfiles_;QHash<QString,QLineEdit*> folders_,s3_,numbers_,templates_;
  QComboBox *providerType_=nullptr,*protonFolder_=nullptr;QSpinBox* protonExpiration_=nullptr;QDoubleSpinBox* protonTimeout_=nullptr;

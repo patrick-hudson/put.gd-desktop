@@ -41,6 +41,7 @@
 #include <memory>
 #include <QStyle>
 #include <QAbstractSpinBox>
+#include <utility>
 #include <QTabBar>
 #include <QWheelEvent>
 #include <QRegularExpression>
@@ -65,7 +66,10 @@ void addProtonFolder(QComboBox* combo,const QString& uid,const QString& name){
  combo->setItemData(combo->count()-1,name,protonFolderNameRole);
 }
 QString title(const QString& s){return s.left(1).toUpper()+s.mid(1);}
-QString actionLabel(const QString& action){static const QHash<QString,QString> labels{{"region","Region capture"},{"window","Window capture"},{"desktop","Desktop capture"},{"clipboard","Clipboard import"},{"edit","Region capture & edit"}};return labels.value(action);}
+// Settings tabs, in order: General, Capture, Shortcuts, Advanced.
+constexpr int advancedTab=3;
+const QString themePath=QStringLiteral("/preferences/appearance/theme");
+QString actionLabel(const QString& action){static const QHash<QString,QString> labels{{"region","Region capture"},{"window","Window capture"},{"desktop","Desktop capture"},{"clipboard","Clipboard upload"},{"edit","Region capture & edit"}};return labels.value(action);}
 QString sharingLabel(const QString& mode){return mode=="share"?QString("Share and copy a link"):mode=="private"?QString("Keep private, copy nothing"):QString("Use destination default");}
 QComboBox* choices(QWidget* parent,const QString& name,const QStringList& values){auto* c=VisualStyle::choiceBox(parent);c->setObjectName(name);c->setAccessibleName(name);c->addItems(values);return c;}
 QLineEdit* input(QWidget* parent,const QString& name){auto* e=new QLineEdit(parent);e->setObjectName(name);e->setAccessibleName(name);return e;}
@@ -352,13 +356,13 @@ QString settingHelp(const QString& path,const QString& objectName){
   {"lowSpeedTimeSeconds","The number of seconds a transfer may remain below the minimum transfer rate before it is considered stalled. The default is 30 seconds. It works with Minimum transfer and does not cap an upload's total duration."}};
  static const QHash<QString,QString> numberHelp{
   {"pendingImageBytes","Maximum total decoded image bytes retained by jobs waiting for or undergoing encoding. The default is 64 MiB. An acquisition that cannot fit fails with image_memory_limit; it is not silently deferred or changed. The limit is released after disk persistence or queued cancellation. This bounds source payloads, not total app RSS, compositor frames, encoding workspace or the current native clipboard representation."},
-  {"maxFiles","The maximum number of files accepted from one clipboard action. The default is 100. A batch above this limit is rejected before importing its files. This is a per-action limit and does not restrict the total number of history entries."},
+  {"maxFiles","The maximum number of files accepted from one clipboard action. The default is 100. A batch above this limit is rejected before uploading its files. This is a per-action limit and does not restrict the total number of history entries."},
   {"pendingOperations","The maximum number of queued operations waiting for processing, in addition to those currently running. The default is 8. When the queue is full, a new action is rejected rather than accumulating more pending work."},
   {"concurrentUploads","How many files upload at the same time, across every capture and batch. The default is 3. A new capture starts while a large or slow upload continues, and a large file uses one upload however long it takes. Each S3 upload runs in its own small worker process (about 40 MB); Proton Drive uploads one file at a time per account whatever this is set to. Higher values help many small files more than one large one."},
-  {"maxFileBytes","The largest individual imported file, in GiB. Auto, the default, sets no size limit of put.gd's own: uploads stream from disk, so memory does not grow with file size. Whatever this is set to, a file larger than the destination accepts (5 TiB for S3) or than the free disk space allows is rejected before importing; put.gd always keeps 5% of the disk, up to 4 GiB and at least 1 GiB, free for the system. No limit (an empty field) also sets none. Fractional GiB values are accepted when they represent a whole number of bytes."},
+  {"maxFileBytes","The largest individual uploaded file, in GiB. Auto, the default, sets no size limit of put.gd's own: uploads stream from disk, so memory does not grow with file size. Whatever this is set to, a file larger than the destination accepts (5 TiB for S3) or than the free disk space allows is rejected before uploading; put.gd always keeps 5% of the disk, up to 4 GiB and at least 1 GiB, free for the system. No limit (an empty field) also sets none. Fractional GiB values are accepted when they represent a whole number of bytes."},
   {"maxBatchBytes","The maximum combined size of one clipboard file batch, in GiB. Auto, the default, and No limit (an empty field) set none of put.gd's own; free disk space still bounds every batch. This applies to the whole batch in addition to the individual file-size limit."},
-  {"pendingArtifactBytes","The maximum acquired content waiting in the pending artifact store on disk, in GiB. Auto, the default, and No limit (an empty field) set none of put.gd's own: free disk space is the bound, keeping 5% of the disk (up to 4 GiB, at least 1 GiB) free for the system. New imports are rejected when they would exceed this limit. This is a disk-content ceiling, not memory allocated at startup."},
-  {"clipboardTextBytes","The largest text payload accepted from the clipboard, in MiB. The default is 16 MiB. Larger text is rejected before importing. One MiB equals 1,048,576 bytes; this limit does not apply to ordinary file uploads."},
+  {"pendingArtifactBytes","The maximum acquired content waiting in the pending artifact store on disk, in GiB. Auto, the default, and No limit (an empty field) set none of put.gd's own: free disk space is the bound, keeping 5% of the disk (up to 4 GiB, at least 1 GiB) free for the system. New uploads are rejected when they would exceed this limit. This is a disk-content ceiling, not memory allocated at startup."},
+  {"clipboardTextBytes","The largest text payload accepted from the clipboard, in MiB. The default is 16 MiB. Larger text is rejected before uploading. One MiB equals 1,048,576 bytes; this limit does not apply to ordinary file uploads."},
   {"imagePixels","The largest image, shown in megapixels (one million pixels), calculated as width × height. The default is 100 megapixels. This protects against oversized decoded images independently of their encoded file size."},
   {"imageBytes","The maximum accepted image payload size, in MiB. The default is 512 MiB. It works alongside the image-pixel limit; an image must satisfy both limits. One MiB equals 1,048,576 bytes. This is a ceiling, not a persistent allocation."},
   {"failedArtifactDays","How many days failed or interrupted local artifacts are kept for explicit retry before cleanup may remove them. The default is 7 days. Set 0 to disable age-based removal of failed artifacts. This controls local retry content and does not delete remote objects."},
@@ -374,12 +378,12 @@ QString settingHelp(const QString& path,const QString& objectName){
   {"logSummary","put.gd keeps a log of what it did in its state folder, at most 14 days and 50 MiB by default (Advanced settings in the configuration file). Clear logs deletes every log file and starts a new one; uploads, history, settings and saved diagnostics packages stay."},
   {"uncleanExit","When put.gd starts and finds it didn't shut down cleanly last time, it records why: a signal such as a logout, or an unknown cause such as a crash, a forced kill or a power loss. The newest one is shown here and included in diagnostics packages."},
   {"uploadClipboardBehavior","Copy each link writes successful upload links individually. Copy a list writes one newline-separated list in submission order after overlapping uploads finish. Copying something yourself pauses automatic copies; links stay available in History. Applies to new operations."},
-  {"keepUploads","Save a local copy of captures and clipboard imports, independently of the upload destination. With a destination enabled, do both; with no destination, save locally only. If both are off, the action fails before capturing. Local-copy failures are reported separately from upload results."},
+  {"keepUploads","Save a local copy of captures and clipboard uploads, independently of the upload destination. With a destination enabled, do both; with no destination, save locally only. If both are off, the action fails before capturing. Local-copy failures are reported separately from upload results."},
   {"root","Absolute default folder for captures, clipboard results and optional upload copies. Defaults to put.gd under Documents, or your home folder if unavailable. A category folder overrides it; existing files receive unique names."},
   {"destination","Choose a destination for this action or turn uploads off. Local copies are controlled independently in General. Applies to new captures, without changing accepted jobs."},
   {"profileId","Choose a saved destination for uploads, or No destination to turn uploads off. Local copies are controlled independently in General. If neither output is enabled, the action fails before capturing. Changing this does not move earlier uploads or alter accepted jobs."},
   {"publicationMode","Use the destination default, create a share link, or keep uploads private. Private mode creates no share link and leaves the clipboard unchanged; existing member or folder permissions still apply. Unsupported modes are rejected before uploading."},
-  {"mode","Keep original names preserves imported names. Random names uses a UUID and extension. Custom template renames imports too. Generated captures use their templates unless Random names is selected. Names remain fixed on retry."},
+  {"mode","Keep original names preserves the names of copied files. Random names uses a UUID and extension. Custom template renames copied and uploaded files too. Generated captures use their templates unless Random names is selected. Names remain fixed on retry."},
   {"collisionPolicy","For remote duplicates, add a unique suffix (default), skip the file, or replace the checked object where safely supported. Replacement may change content served by an existing link. Local files always preserve existing files and add a suffix."},
   {"label","Display name used in destination selectors. Renaming it does not rename a bucket, change credentials or move uploaded files."},
   {"aclMode","Follow bucket policy sends no ACL header (default). Public read requests an object ACL and requires compatible bucket settings and permission. This does not change a bucket policy or guarantee public access."},
@@ -400,7 +404,7 @@ QString settingHelp(const QString& path,const QString& objectName){
  if(s3Help.contains(key))return s3Help.value(key);
  if(numberHelp.contains(key))return numberHelp.value(key);
  if(path.startsWith("/archive/folders/"))return "Optional absolute folder for "+key+" content. Leave empty to use the default output folder. Applies to local captures and optional upload copies; existing files are preserved with unique names.";
- if(path.startsWith("/naming/")&&key.endsWith("Template"))return "Names "+QString(objectName=="fileTemplate"?"imported files when Custom template is selected":objectName=="captureTemplate"?"screen captures":objectName=="imageTemplate"?"clipboard images":"clipboard text")+". Tokens: {name} is the source stem, {ext} its extension without a dot, {yyyy}, {MM}, {dd}, {HH}, {mm}, {ss} use local action time, and {uuid} is unique per item. Include a dot before {ext}; paths and unknown tokens are rejected. Existing history and accepted jobs are unchanged.";
+ if(path.startsWith("/naming/")&&key.endsWith("Template"))return "Names "+QString(objectName=="fileTemplate"?"copied and uploaded files when Custom template is selected":objectName=="captureTemplate"?"screen captures":objectName=="imageTemplate"?"clipboard images":"clipboard text")+". Tokens: {name} is the source stem, {ext} its extension without a dot, {yyyy}, {MM}, {dd}, {HH}, {mm}, {ss} use local action time, and {uuid} is unique per item. Include a dot before {ext}; paths and unknown tokens are rejected. Existing history and accepted jobs are unchanged.";
  if(objectName=="credentialMode")return descriptions.value(objectName);
  return descriptions.value(key,descriptions.value(objectName));
 }
@@ -431,25 +435,13 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  uploadClipboard_=choices(this,"uploadClipboardBehavior",{});uploadClipboard_->addItem("Copy each link as it finishes","each_link");uploadClipboard_->addItem("Copy a list when uploads finish","list");setting(preferences,"After uploading",uploadClipboard_,"/preferences/uploadClipboardBehavior");
  auto* look=section(general,"Appearance","Colours of these windows. The tray icon follows your panel's colour either way.");
  appearance_=choices(this,"appearanceTheme",{});appearance_->addItem("Match the desktop","system");appearance_->addItem("Dark","dark");appearance_->addItem("Light","light");setting(look,"Theme",appearance_,"/preferences/appearance/theme");
- auto* files=section(general,"Local copies","Save captures and clipboard imports locally, with or without uploading to a destination.");
+ auto* files=section(general,"Local copies","Save captures and clipboard uploads locally, with or without uploading to a destination.");
  keep_=new QCheckBox("Keep a local copy");keep_->setObjectName("keepUploadCopies");setting(files,"Local copies",keep_,"/archive/keepUploads");
  root_=input(this,"archiveRoot");auto* rootRow=setting(files,"Save to",root_,"/archive/root");
  auto browse=[this](QLineEdit* field){const auto path=QFileDialog::getExistingDirectory(this,"Choose output folder",field->text());if(!path.isEmpty()){field->setText(path);queueEdit(field);}};
  auto* chooseRoot=new QPushButton("Choose folder…");chooseRoot->setAccessibleName("Choose default output folder");qobject_cast<QVBoxLayout*>(rootRow->layout())->addWidget(chooseRoot,0,Qt::AlignLeft);connect(chooseRoot,&QPushButton::clicked,this,[=,this]{browse(root_);});
  for(const auto& category:QStringList{"images","videos","text","other"}){auto* field=folders_[category]=input(this,"folder"+title(category));field->setPlaceholderText("Use default folder");auto* row=setting(files,title(category),field,"/archive/folders/"+category);auto* button=new QPushButton("Browse…");button->setAccessibleName("Choose "+category+" folder");qobject_cast<QHBoxLayout*>(row->layout()->itemAt(0)->layout())->addWidget(button);connect(button,&QPushButton::clicked,this,[=,this]{browse(field);});}
- // Diagnostics (#122): what the persistent log holds and the package a maintainer needs.
- auto* diagnosticsForm=section(general,"Diagnostics","Logs and diagnostics packages stay on this computer. A package is a redacted .zip you can send to a maintainer.");
- debugLogging_=new QCheckBox("Keep detailed debug logs for 24 hours");debugLogging_->setObjectName("debugLogging");auto* debugRow=setting(diagnosticsForm,"Debug logging",debugLogging_,"/preferences/diagnostics/debugLogging");
- debugLoggingStatus_=new QLabel;debugLoggingStatus_->setObjectName("debugLoggingStatus");debugLoggingStatus_->setWordWrap(true);VisualStyle::role(debugLoggingStatus_,"muted");qobject_cast<QVBoxLayout*>(debugRow->layout())->addWidget(debugLoggingStatus_);
- auto* logsRow=new QWidget;auto* logsLayout=new QHBoxLayout(logsRow);logsLayout->setContentsMargins(0,0,0,0);logsLayout->setSpacing(8);logSummary_=new QLabel;logSummary_->setObjectName("logSummary");logSummary_->setWordWrap(true);logSummary_->setAccessibleName("Log folder size, file count and oldest record");logsLayout->addWidget(logSummary_,1);
- clearLogs_=new QPushButton("Clear logs…");clearLogs_->setObjectName("clearLogs");logsLayout->addWidget(clearLogs_,0,Qt::AlignTop);
- diagnosticsForm->addRow(VisualStyle::settingLabel("Logs",settingHelp({},"logSummary"),logSummary_,this),logsRow);
- loggingWarning_=new QLabel;loggingWarning_->setObjectName("loggingDegraded");loggingWarning_->setWordWrap(true);VisualStyle::role(loggingWarning_,"warning");loggingWarning_->hide();diagnosticsForm->addRow(loggingWarning_);
- uncleanExit_=new QLabel;uncleanExit_->setObjectName("uncleanExit");uncleanExit_->setWordWrap(true);uncleanExit_->setAccessibleName("Last unclean exit");diagnosticsForm->addRow(VisualStyle::settingLabel("Last unclean exit",settingHelp({},"uncleanExit"),uncleanExit_,this),uncleanExit_);
- auto* createPackage=new QPushButton(VisualStyle::icon("save"),"Create diagnostics package…");createPackage->setObjectName("createDiagnosticsPackage");createPackage->setToolTip("Preview and save a redacted .zip of recent failures, settings and logs. Nothing is uploaded.");diagnosticsForm->addRow(createPackage);
- connect(clearLogs_,&QPushButton::clicked,this,[this]{if(QMessageBox::question(this,"Clear logs","Delete every put.gd log file? Uploads, history, settings and saved diagnostics packages stay.")!=QMessageBox::Yes)return;clearLogs({});});
- connect(createPackage,&QPushButton::clicked,this,[this]{openDiagnosticsPackage();});
- auto* captureDefaults=section(capture,"Default capture output","Choose where captures and clipboard imports upload. Local copies are controlled separately in General → Local copies.");
+ auto* captureDefaults=section(capture,"Default capture output","Choose where captures and clipboard uploads go. Local copies are controlled separately in General → Local copies.");
  captureProfile_=choices(this,"defaultCaptureDestination",{});setting(captureDefaults,"Destination",captureProfile_,{},"Local copies are independent of this destination.");
  captureSharing_=choices(this,"defaultCaptureSharing",{});for(const auto& mode:QStringList{"default","share","private"})captureSharing_->addItem(sharingLabel(mode),mode);setting(captureDefaults,"Sharing",captureSharing_,{});
  captureOutputNotice_=new QLabel;captureOutputNotice_->setObjectName("captureOutputNotice");captureOutputNotice_->setWordWrap(true);captureDefaults->addRow(captureOutputNotice_);
@@ -469,7 +461,7 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  for(auto* combo:{captureProfile_,captureSharing_})connect(combo,&QComboBox::currentIndexChanged,this,[this,combo]{if(!loading_)queueCaptureEdit(combo);});
  auto* namingForm=section(capture,"File names");naming_=choices(this,"namingMode",{});naming_->addItem("Keep original names","original");naming_->addItem("Random names","generated");naming_->addItem("Custom template","template");setting(namingForm,"Naming",naming_,"/naming/mode");
  collision_=choices(this,"collisionPolicy",{"rename","skip","overwrite"});for(int i=0;i<collision_->count();++i)collision_->setItemData(i,collision_->itemText(i));collision_->setItemText(0,"Add a unique suffix");collision_->setItemText(1,"Skip duplicate names");collision_->setItemText(2,"Replace the checked object");setting(namingForm,"When a name exists",collision_,"/naming/collisionPolicy");
- for(const auto& key:QStringList{"fileTemplate","captureTemplate","imageTemplate","textTemplate"}){templates_[key]=input(this,key);setting(namingForm,key=="fileTemplate"?"Imported files":key=="captureTemplate"?"Screen captures":key=="imageTemplate"?"Clipboard images":"Clipboard text",templates_[key],"/naming/"+key);}
+ for(const auto& key:QStringList{"fileTemplate","captureTemplate","imageTemplate","textTemplate"}){templates_[key]=input(this,key);setting(namingForm,key=="fileTemplate"?"Copied & uploaded files":key=="captureTemplate"?"Screen captures":key=="imageTemplate"?"Clipboard images":"Clipboard text",templates_[key],"/naming/"+key);}
  auto* shortcutForm=section(shortcutsPage,"Global shortcuts","Click Record shortcut, press a combination, then release all keys. Escape cancels; Backspace clears.");shortcuts_=new ShortcutEditor(this);shortcutForm->addRow(shortcuts_);shortcuts_->findChild<QToolButton*>("shortcutDetailsToggle")->hide();shortcuts_->setRecordingControl([session=&settings_,editor=shortcuts_](bool active,std::function<void(Error)> reply){session->setShortcutRecording(active,editor,std::move(reply));});
  for(const auto& action:Settings::invocableActionNames()){auto* edit=shortcuts_->findChild<QLineEdit*>("shortcut"+title(action));bind(edit,"/actions/"+action+"/shortcut");}
  auto* intro=new QHBoxLayout;auto* introText=new QLabel("Defaults work for almost everyone. Changed values are marked so you can find them later.");introText->setWordWrap(true);VisualStyle::role(introText,"muted");intro->addWidget(introText,1);auto* resetAll=new QPushButton("Reset all to defaults");resetAll->setObjectName("resetAdvancedDefaults");intro->addWidget(resetAll);advancedPage->addLayout(intro);
@@ -487,7 +479,22 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  auto* memory=section(right,"Memory and cache");number(memory,"pendingImageBytes","Memory for queued images","MiB");number(memory,"previewCacheBytes","Thumbnail cache","MiB");
  auto* retention=section(right,"History");number(retention,"historyRetentionDays","Keep history for","days");numbers_["historyRetentionDays"]->setPlaceholderText("Forever");number(retention,"failedArtifactDays","Keep failed uploads for","days");number(retention,"recentActivityLimit","Items in recent list",{});
  connect(resetAll,&QPushButton::clicked,this,[this]{if(QMessageBox::question(this,"Reset advanced settings","Reset upload, image, memory, cache and history limits to their defaults?")!=QMessageBox::Yes)return;for(auto* field:numbers_){field->setText(field->property("defaultText").toString());queueEdit(field);}});
+ // Diagnostics (#122): what the persistent log holds and the package a maintainer needs.
+ // Advanced, above Config file (#238); Reset all to defaults leaves it alone.
+ auto* diagnosticsForm=section(right,"Diagnostics","Logs and diagnostics packages stay on this computer. A package is a redacted .zip you can send to a maintainer.");
+ debugLogging_=new QCheckBox("Keep detailed debug logs for 24 hours");debugLogging_->setObjectName("debugLogging");auto* debugRow=setting(diagnosticsForm,"Debug logging",debugLogging_,"/preferences/diagnostics/debugLogging");
+ debugLoggingStatus_=new QLabel;debugLoggingStatus_->setObjectName("debugLoggingStatus");debugLoggingStatus_->setWordWrap(true);VisualStyle::role(debugLoggingStatus_,"muted");qobject_cast<QVBoxLayout*>(debugRow->layout())->addWidget(debugLoggingStatus_);
+ auto* logsRow=new QWidget;auto* logsLayout=new QHBoxLayout(logsRow);logsLayout->setContentsMargins(0,0,0,0);logsLayout->setSpacing(8);logSummary_=new QLabel;logSummary_->setObjectName("logSummary");logSummary_->setWordWrap(true);logSummary_->setAccessibleName("Log folder size, file count and oldest record");logsLayout->addWidget(logSummary_,1);
+ clearLogs_=new QPushButton("Clear logs…");clearLogs_->setObjectName("clearLogs");logsLayout->addWidget(clearLogs_,0,Qt::AlignTop);
+ diagnosticsForm->addRow(VisualStyle::settingLabel("Logs",settingHelp({},"logSummary"),logSummary_,this),logsRow);
+ loggingWarning_=new QLabel;loggingWarning_->setObjectName("loggingDegraded");loggingWarning_->setWordWrap(true);VisualStyle::role(loggingWarning_,"warning");loggingWarning_->hide();diagnosticsForm->addRow(loggingWarning_);
+ uncleanExit_=new QLabel;uncleanExit_->setObjectName("uncleanExit");uncleanExit_->setWordWrap(true);uncleanExit_->setAccessibleName("Last unclean exit");diagnosticsForm->addRow(VisualStyle::settingLabel("Last unclean exit",settingHelp({},"uncleanExit"),uncleanExit_,this),uncleanExit_);
+ auto* createPackage=new QPushButton(VisualStyle::icon("save"),"Create diagnostics package…");createPackage->setObjectName("createDiagnosticsPackage");createPackage->setToolTip("Preview and save a redacted .zip of recent failures, settings and logs. Nothing is uploaded.");diagnosticsForm->addRow(createPackage);
+ connect(clearLogs_,&QPushButton::clicked,this,[this]{if(QMessageBox::question(this,"Clear logs","Delete every put.gd log file? Uploads, history, settings and saved diagnostics packages stay.")!=QMessageBox::Yes)return;clearLogs({});});
+ connect(createPackage,&QPushButton::clicked,this,[this]{openDiagnosticsPackage();});
  auto* config=section(right,"Config file");configPath_=new QLabel;configPath_->setWordWrap(true);configPath_->setTextInteractionFlags(Qt::TextSelectableByMouse);configPath_->setProperty("visualRole","mono");config->addRow(configPath_);auto* configActions=new QHBoxLayout;auto* editor=new QPushButton("Open in editor");auto* reload=new QPushButton("Reload from file");reload->setObjectName("reloadSettings");configActions->addWidget(editor);configActions->addWidget(reload);config->addRow(configActions);connect(editor,&QPushButton::clicked,this,[this]{QDesktopServices::openUrl(QUrl::fromLocalFile(settings_.path()));});connect(reload,&QPushButton::clicked,this,[this]{resetDraft(true);});
+ // Cards keep their own height; the shorter column ends in space.
+ left->addStretch();right->addStretch();
  auto* diagnostics=section(advancedPage,"Desktop support details");capabilities_=new QLabel;capabilities_->setAccessibleName("Desktop support diagnostics");capabilities_->setWordWrap(true);capabilities_->setTextInteractionFlags(Qt::TextSelectableByMouse);VisualStyle::role(capabilities_,"mono");diagnostics->addRow(capabilities_);metadata_=new QLabel;metadata_->setObjectName("settingsMetadata");metadata_->setWordWrap(true);metadata_->setTextInteractionFlags(Qt::TextSelectableByMouse);VisualStyle::role(metadata_,"muted");diagnostics->addRow(metadata_);auto* diagnose=new QPushButton("Refresh diagnostics");auto* copyDiagnostics=new QPushButton("Copy diagnostics");auto* diagnosticActions=new QHBoxLayout;diagnosticActions->addWidget(diagnose);diagnosticActions->addWidget(copyDiagnostics);diagnosticActions->addStretch();diagnostics->addRow(diagnosticActions);connect(diagnose,&QPushButton::clicked,this,[this]{settings_.refreshSnapshot();});connect(copyDiagnostics,&QPushButton::clicked,this,[this]{qApp->clipboard()->setText(capabilities_->text()+"\n"+metadata_->text());});
  destinationPage_=new QWidget(this);destinationPage_->setObjectName("destinationsPage");destinationPage_->installEventFilter(this);auto* destinationLayout=new QHBoxLayout(destinationPage_);destinationLayout->setContentsMargins(0,0,0,0);destinationLayout->setSpacing(0);
  auto* rail=new QWidget;rail->setObjectName("destinationRail");rail->setFixedWidth(230);auto* railLayout=new QVBoxLayout(rail);railLayout->setContentsMargins(16,24,16,16);auto* railTitle=new QLabel("DESTINATIONS");VisualStyle::role(railTitle,"eyebrow");railLayout->addWidget(railTitle);auto* destinationList=new DestinationList;destinationList_=destinationList;destinationList_->setObjectName("destinationList");destinationList_->setAccessibleName("Destinations");destinationList_->setWordWrap(false);destinationList_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);railLayout->addWidget(destinationList_,1);auto* add=new QPushButton("+ Add destination");add->setObjectName("addS3Destination");railLayout->addWidget(add);destinationLayout->addWidget(rail);
@@ -543,6 +550,16 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  for(auto* edit:{access_,secret_,token_,protonPassword_})connect(edit,&QLineEdit::textChanged,this,&SettingsWindow::viewStateChanged);
  for(auto* combo:findChildren<QComboBox*>())if(combo!=profile_&&!combo->property("configPath").toString().isEmpty())connect(combo,&QComboBox::currentIndexChanged,this,[this,combo]{queueEdit(combo);});
  for(auto* check:findChildren<QCheckBox*>())if(!check->property("configPath").toString().isEmpty())connect(check,&QCheckBox::toggled,this,[this,check]{queueEdit(check);});
+ // #237: a picked theme applies at once and saves without the autosave delay,
+ // so the resident passes it to putgd-record straight away too.
+ connect(appearance_,&QComboBox::currentIndexChanged,this,[this]{
+  if(loading_||resetting_)return;
+  appearancePreviewed_=true;emit appearancePreview(appearance_->currentData().toString());
+  if(pendingEdits_.contains(themePath)){if(saving_)autosave_->start();else save();}
+  // Nothing to save, or saving is blocked until Retry saving or Reload: the
+  // accepted theme stays.
+  if(!saving_&&(!pendingEdits_.contains(themePath)||autosaveBlocked_||conflict_))endAppearancePreview();
+ });
  for(auto* spin:findChildren<QAbstractSpinBox*>())connect(spin,&QAbstractSpinBox::editingFinished,this,[this,spin]{queueEdit(spin);});
  connect(&settings_,&UiSession::accepted,this,[this]{configurationChanged();refreshEffectiveLimits();});connect(&settings_,&UiSession::statusChanged,this,[this]{configurationChanged();refreshDiagnostics();});connect(tabs_,&QTabWidget::currentChanged,this,&SettingsWindow::viewStateChanged);
  setupTimer_=new QTimer(this);setupTimer_->setInterval(500);connect(setupTimer_,&QTimer::timeout,this,&SettingsWindow::pollSetup);
@@ -641,6 +658,7 @@ void SettingsWindow::addS3Profile(const QString& defaultLabel){
 void SettingsWindow::resetDraft(bool reloadFile){
  if(resetting_||saving_||setupAccepting_)return;
  autosave_->stop();pendingEdits_.clear();pendingEditSerials_.clear();editControls_.clear();clearCredentialInputs();resetting_=true;setEnabled(false);destinationPage_->setEnabled(false);emit viewStateChanged();
+ endAppearancePreview();
  const auto finish=[g=QPointer<SettingsWindow>(this),reloadFile](Error error){
   if(!g)return;
   g->resetting_=false;g->setEnabled(true);g->destinationPage_->setEnabled(true);
@@ -815,10 +833,10 @@ void SettingsWindow::diagnosticsCommand(const QJsonObject& params,std::function<
  if(action=="setDebugLogging"){
   if(!params["enabled"].isBool()){reply({"invalid_request","setDebugLogging takes enabled, true or false.",{}},{});return;}
   // The checkbox autosaves like any setting; inspect shows when the resident accepted it.
-  tabs_->setCurrentIndex(0);debugLogging_->setChecked(params["enabled"].toBool());flushAutosave();refreshLoggingStatus();reply({},diagnosticsState());return;
+  tabs_->setCurrentIndex(advancedTab);debugLogging_->setChecked(params["enabled"].toBool());flushAutosave();refreshLoggingStatus();reply({},diagnosticsState());return;
  }
- if(action=="clearLogs"){tabs_->setCurrentIndex(0);clearLogs(withState);return;}
- if(action=="openPackage"){tabs_->setCurrentIndex(0);openDiagnosticsPackage(params["operation"].toString());dialog=static_cast<DiagnosticsPackageDialog*>(packageDialog_.data());if(params.contains("includeNames"))dialog->setIncludeNames(params["includeNames"].toBool());dialog->whenPreviewed([withState](Error error,QJsonObject){withState(error,{});});return;}
+ if(action=="clearLogs"){tabs_->setCurrentIndex(advancedTab);clearLogs(withState);return;}
+ if(action=="openPackage"){tabs_->setCurrentIndex(advancedTab);openDiagnosticsPackage(params["operation"].toString());dialog=static_cast<DiagnosticsPackageDialog*>(packageDialog_.data());if(params.contains("includeNames"))dialog->setIncludeNames(params["includeNames"].toBool());dialog->whenPreviewed([withState](Error error,QJsonObject){withState(error,{});});return;}
  if(!open){reply({"diagnostics_dialog_closed","Open Create diagnostics package first (action openPackage).",{}},{});return;}
  if(action=="setPackage"){
   if(params.contains("folder"))if(auto error=dialog->setFolder(params["folder"].toString(),true)){reply(error,{});return;}
@@ -955,7 +973,7 @@ void SettingsWindow::save(){
  if(autosaveBlocked_||conflict_||saving_||resetting_||setupAccepting_||!setupJobs_.isEmpty())return;
  if(pendingEdits_.isEmpty())return;
  storeProfile();auto doc=settings_.document().isEmpty()?Settings::defaults():settings_.document();for(auto it=pendingEdits_.begin();it!=pendingEdits_.end();++it)doc=replacePath(doc,it.key().split('/',Qt::SkipEmptyParts),0,it.value()).toObject();
- if(doc==settings_.document()){pendingEdits_.clear();pendingEditSerials_.clear();editControls_.clear();dirty_=candidate()!=settings_.document();emit viewStateChanged();return;}
+ if(doc==settings_.document()){pendingEdits_.clear();pendingEditSerials_.clear();editControls_.clear();dirty_=candidate()!=settings_.document();endAppearancePreview();emit viewStateChanged();return;}
  saving_=true;savingDocument_=doc;submittedEditSerials_=pendingEditSerials_;emit viewStateChanged();
  settings_.saveAsync(doc,observed_,[g=QPointer<SettingsWindow>(this)](Result result){
   if(!g)return;
@@ -963,13 +981,20 @@ void SettingsWindow::save(){
   g->saving_=false;g->autosaveBlocked_=false;for(auto* button:g->retryAutosave_)button->hide();g->baseRevision_=g->settings_.revision();g->observed_=g->settings_.metadata()["observedRevision"].toString();if(!g->settings_.document()["profiles"].toArray().isEmpty())g->initialProfile_=false;g->draft_=g->candidate();
   for(auto it=g->submittedEditSerials_.cbegin();it!=g->submittedEditSerials_.cend();++it)if(g->pendingEdits_.contains(it.key())&&g->pendingEditSerials_.value(it.key())==it.value()){g->pendingEdits_.remove(it.key());g->pendingEditSerials_.remove(it.key());g->inlineError(g->editControls_.take(it.key()),{});}
   g->submittedEditSerials_.clear();g->dirty_=g->candidate()!=g->settings_.document();if(!g->pendingEdits_.contains("/profiles"))g->reorderBaseline_.clear();
+  if(!g->pendingEdits_.contains(themePath))g->endAppearancePreview();
   if(!g->pendingEdits_.isEmpty())g->autosave_->start();
   else if(!g->dirty_){g->status_->clear();g->destinationStatus_->clear();}
   g->refreshMetadata();g->refreshDestinationList();g->refreshCredentialHint();emit g->viewStateChanged();
  });
 }
+void SettingsWindow::endAppearancePreview(){
+ if(!std::exchange(appearancePreviewed_,false))return;
+ emit appearancePreview({});
+}
 void SettingsWindow::autosaveFailure(const Error& error){
  saving_=false;submittedEditSerials_.clear();autosaveBlocked_=true;autosave_->stop();if(error.code=="config_conflict")conflict_=true;
+ // The theme shown goes back to the accepted one; the draft keeps the pick for Retry saving.
+ endAppearancePreview();
  // A conflicting reorder is not kept: the list goes back to the saved order.
  const bool reordered=conflict_&&!reorderBaseline_.isEmpty();if(reordered)restoreReorderBaseline();
  auto message=error;message.message+=" Your edits remain in this draft. "+QString(reordered?"The previous destination order is restored. ":"")+QString(conflict_?"Reload from file to resolve the conflict.":"Use Retry saving when ready; the request will not repeat automatically.");status(message);
@@ -977,7 +1002,7 @@ void SettingsWindow::autosaveFailure(const Error& error){
  emit viewStateChanged();
 }
 void SettingsWindow::persistNextEdit(){
- if(pendingEdits_.isEmpty()){saving_=false;submittedEditSerials_.clear();dirty_=candidate()!=settings_.document();emit viewStateChanged();return;}
+ if(pendingEdits_.isEmpty()){saving_=false;submittedEditSerials_.clear();dirty_=candidate()!=settings_.document();endAppearancePreview();emit viewStateChanged();return;}
  const auto path=pendingEdits_.firstKey();const auto value=pendingEdits_.take(path);const auto serial=pendingEditSerials_.take(path);const QPointer<QWidget> control=editControls_.take(path);const auto accepted=settings_.document().isEmpty()?Settings::defaults():settings_.document();const auto doc=replacePath(accepted,path.split('/',Qt::SkipEmptyParts),0,value).toObject();
  if(doc==accepted){inlineError(control,{});persistNextEdit();return;}
  savingDocument_=doc;submittedEditSerials_={{path,serial}};

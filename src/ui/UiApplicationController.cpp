@@ -26,10 +26,9 @@ UiApplicationController::UiApplicationController(UiSession& session,UiControl& c
  // CLI/MCP patches arrive through the same accepted revisions.
  // The view state reports the appearance, so every change reaches a checkpoint.
  connect(&appearance_,&Appearance::changed,this,[this]{dirtyCheckpoint_=true;checkpointDelay_.start();});
- const auto followSetting=[this]{appearance_.setPreference(session_.document()["preferences"].toObject()["appearance"].toObject()["theme"].toString("system"));};
- followSetting();
- connect(&session_,&UiSession::accepted,this,followSetting);
- connect(&session_,&UiSession::statusChanged,this,followSetting);
+ followAppearance();
+ connect(&session_,&UiSession::accepted,this,&UiApplicationController::followAppearance);
+ connect(&session_,&UiSession::statusChanged,this,&UiApplicationController::followAppearance);
  session_.setShortcutRecordingHandler([this](bool active,std::function<void(Error)> reply){
   if(exiting_){reply({"ui_stopping","The interface is closing.",{}});return;}
   const auto sequence=control_.send("shortcutRecording",{{"active",active}});
@@ -71,6 +70,8 @@ QWidget* UiApplicationController::view(const QString& name){
    // ui.viewState carries the appearance in use (#60).
    dirtyCheckpoint_=true;checkpointDelay_.start();
    connect(main_.get(),&MainWindow::quitRequested,this,&UiApplicationController::requestQuit);
+   // #237: Settings shows a picked theme at once; its save follows.
+   connect(main_->settings(),&SettingsWindow::appearancePreview,this,[this](const QString& theme){themePreview_=theme;followAppearance();});
    connect(main_.get(),&MainWindow::actionRequested,this,&UiApplicationController::requestAction);
    connect(main_.get(),&MainWindow::editRequested,this,&UiApplicationController::requestEdit);
   }
@@ -83,6 +84,11 @@ QWidget* UiApplicationController::view(const QString& name){
   return about_.get();
  }
  return nullptr;
+}
+void UiApplicationController::followAppearance(){
+ const auto accepted=session_.document()["preferences"].toObject()["appearance"].toObject()["theme"].toString("system");
+ // Settings ends the preview once its save settles: accepted, refused or discarded.
+ appearance_.setPreference(themePreview_.isEmpty()?accepted:themePreview_);
 }
 QJsonObject UiApplicationController::snapshot()const{
  auto state=saved_;state["schemaVersion"]=1;state["appearance"]=appearance_.state();

@@ -7,9 +7,10 @@
 class QWidget;
 
 namespace putgd::RedesignTheme {
-// Apply to a main window and its descendants. The root keeps following the
-// active Theme scheme: a switch re-applies its palette and stylesheet (plus
-// the optional extra stylesheet template, with the same %token% placeholders).
+// Apply to a main window and its descendants, with the optional extra
+// stylesheet template (same %token% placeholders). The stylesheet holds both
+// schemes (VisualStyle::schemeScoped), so the root follows the active Theme
+// scheme: a switch sets its palette and re-polishes its visible widgets.
 void apply(QWidget& root, const QString& extraTemplate = {});
 QString uiFontFamily();
 QString monoFontFamily();
