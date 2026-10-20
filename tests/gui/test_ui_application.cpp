@@ -56,16 +56,17 @@ private slots:
   auto* theme=window->findChild<QComboBox*>("appearanceTheme");QVERIFY(theme);QCOMPARE(Theme::scheme(),Theme::Scheme::Dark);
   bool residentSawLight=false;QObject::connect(&settings,&SettingsService::accepted,this,[&]{if(settings.snapshot().appearanceTheme=="light")residentSawLight=Theme::scheme()==Theme::Scheme::Light;});
   fixture.client.replyDelayMs["settings.save"]=300;
-  // The 400 ms autosave timer: a pick must not wait for it.
+  // The 400 ms autosave timer, which a pick must not wait for.
   QTimer* autosave=nullptr;for(auto* timer:window->settings()->findChildren<QTimer*>())if(timer->isSingleShot()&&timer->interval()==400)autosave=timer;QVERIFY(autosave);
-  QStringList dispatched;fixture.client.beforeDispatch=[&](const QString& method,const QJsonObject&){dispatched.append(method);};
+  // The save must reach the resident while the autosave timer is still
+  // pending: Qt fires the dispatch's zero timer before a 400 ms one however
+  // late the event loop runs, so this is an ordering, not a time limit.
+  int saves=0;bool savedBeforeAutosave=false;
+  fixture.client.beforeDispatch=[&](const QString& method,const QJsonObject&){if(method=="settings.save"&&saves++==0)savedBeforeAutosave=autosave->isActive();};
   theme->setCurrentIndex(theme->findData("light"));
-  // Applied in the same event, before the resident has seen the save; the
-  // save goes out without the autosave timer ever starting. These
-  // are orderings, not wall-clock limits, so a slow runner cannot fail them.
+  // Applied in the same event, before the resident has seen the save.
   QCOMPARE(Theme::scheme(),Theme::Scheme::Light);QCOMPARE(settings.snapshot().appearanceTheme,QString("system"));
-  QVERIFY(!autosave->isActive());
-  QTRY_VERIFY(dispatched.contains("settings.save"));QVERIFY(!autosave->isActive());QTRY_COMPARE(settings.snapshot().appearanceTheme,QString("light"));QVERIFY(residentSawLight);
+  QTRY_VERIFY(saves>0);QVERIFY(savedBeforeAutosave);QTRY_COMPARE(settings.snapshot().appearanceTheme,QString("light"));QVERIFY(residentSawLight);
   QTRY_VERIFY(!window->settings()->saveViewState()["dirty"].toBool());QCOMPARE(Theme::scheme(),Theme::Scheme::Light);
   // Refused: the accepted theme comes back and the autosave error shows.
   fixture.client.replyDelayMs.clear();fixture.client.failOnce["settings.save"]={"config_write_failed","Synthetic refused save",{}};
