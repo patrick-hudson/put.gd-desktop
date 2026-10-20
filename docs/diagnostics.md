@@ -174,16 +174,18 @@ backtraces are #74 §5, tracked in #124.
 
 One `.zip` a user can send to a maintainer, who can then work out what happened.
 It is created through the session method `diagnostics.bundle` (CLI and MCP; the
-Settings button and failure-notification triggers are #122) and saved locally only;
-nothing is uploaded (#123 tracks the optional upload).
+Settings button and failure-notification triggers are #122). It is always saved
+locally first; it can then be uploaded to a working destination (see "Uploading a
+package" below).
 
 ```sh
-putgd-cli diagnostics.bundle [--operation ID] [--since 7d] [--include-names] [--output PATH]
+putgd-cli diagnostics.bundle [--operation ID] [--since 7d] [--include-names] [--output PATH] [--upload [--profile ID] [--copy-link]]
 ```
 
-The flags map to the JSON parameters `operation`, `since`, `includeNames` and
-`output`; MCP `create_diagnostics_bundle` takes `operation_id`, `since`,
-`include_names` and `output`.
+The flags map to the JSON parameters `operation`, `since`, `includeNames`,
+`output`, `upload`, `profileId` and `copyLink`; MCP `create_diagnostics_bundle`
+takes `operation_id`, `since`, `include_names`, `output`, `upload`, `profile_id`
+and `copy_link`.
 
 - **`operation`:** package that one operation, with the log records from ten minutes
   before it was accepted to ten minutes after its last record. `since` is ignored.
@@ -241,6 +243,58 @@ On top of the log's own redaction, which applies again:
 limit, the default-folder rules and that synthetic secrets, clipboard text, credential
 references and names stay out of a hashed package.
 
+### Uploading a package
+
+With `upload` (#123), the saved package is then sent to a destination so the
+user can pass on a link instead of a file. The local copy is never affected: a
+skipped or failed upload still answers successfully with `path`, plus
+`uploadError` saying why.
+
+- **Which destination:** `profileId`, or the default capture destination (the
+  region capture's upload destination, else the first action that uploads).
+- **"Working" check:** the destination's most recent finished upload must not have
+  failed with a credential or configuration error (a `credential_*` or `config_*`
+  code, an authentication or permission denial, a missing or invalid bucket, a
+  region mismatch, Proton setup or account errors) with the destination's current
+  settings and credential reference, unless a Test connection has passed since
+  (changing the settings, or entering new credentials and pressing Test connection,
+  clears it), and its **Test connection**
+  must pass now with the credentials already loaded. An S3 Test connection writes
+  and removes a small test object, as in Settings. A passing check is reused for 10
+  minutes while the settings revision stays the same, so the dialog's check and the
+  upload test the destination once.
+- **Upload:** through the normal operation pipeline as one item of an internal
+  `diagnostics` operation, named `putgd-diagnostics-<uuid>.zip` (a random UUID, not
+  the operation's) whatever the naming templates say. A name clash renames, never
+  overwrites. The package is not archived a second time, and its link is copied
+  only with `copyLink`.
+- **Sharing:** on S3 the link is the object's public URL: on a public-read bucket
+  anyone with the link can download the package. On Proton Drive the share link
+  expires after 7 days.
+- **History:** the upload is an ordinary history entry (operation action
+  `diagnostics`), deletable from the destination like any upload. Later packages
+  leave a successfully uploaded package out, its operation and its log records;
+  one whose upload failed stays in, like any failure.
+
+The reply adds `upload` (`profileId`, `label`, `provider`, `publicLink`,
+`warning`, `shareExpirationDays` for Proton, `operationId`, `historyId`, `name`,
+`state`), and `link` (with `linkCopied` when asked), or `uploadError`:
+
+| Code | Meaning |
+| --- | --- |
+| `diagnostics_no_destination` | No action uploads anywhere; the package is local only |
+| `diagnostics_destination_failing` | The last upload to this destination failed with a credential or configuration error (`details.lastError`, `details.operationId`); fix it in Settings first |
+| `diagnostics_destination_unavailable` | Test connection failed (`details.error`) |
+| `diagnostics_link_unavailable` | Uploaded, but the destination gives it no link (an S3 profile without a public URL) |
+| a provider code | The upload itself failed, such as `s3_permission_denied`; `details.operationId` names the operation |
+
+`diagnostics.uploadTarget` (`putgd-cli diagnostics.uploadTarget '{"profileId":"..."}'`,
+MCP `get_diagnostics_upload_target`) runs the same check without a package and
+answers `{available: true, profileId, label, provider, publicLink, warning,
+shareExpirationDays?}` or `{available: false, reason, message}`. Settings' dialog
+(#122) uses it to show "Also upload and copy a link", checked when a working
+destination exists and hidden otherwise, with the warning beside it.
+
 ### The default folder
 
 `<archive root>/diagnostics/` belongs to put.gd. After saving a package there, put.gd
@@ -251,6 +305,6 @@ deleted, and other files in the folder are left alone.
 ## Not yet available
 
 The Settings controls (debug logging, Clear logs, Create diagnostics package) and the
-failure-notification triggers with **Show in folder** are #122; uploading a package
-and copying its link is #123; crash backtraces and kept debug symbols are #124;
+failure-notification triggers with **Show in folder**, and the dialog's "Also upload
+and copy a link" checkbox, are #122; crash backtraces and kept debug symbols are #124;
 Windows is #125.

@@ -17,7 +17,9 @@ int main(int argc,char** argv) {
  QCommandLineParser parser;parser.setApplicationDescription("JSON client for the resident put.gd session");parser.addHelpOption();parser.addVersionOption();parser.addOption({"socket","Session socket path","path"});parser.addOption({"request-id","Correlation ID","id"});
  // diagnostics.bundle options (#74); the same fields as its JSON parameters.
  parser.addOption({"operation","diagnostics.bundle: package one operation","id"});parser.addOption({"since","diagnostics.bundle: failures and logs from this long ago (1m to 365d, default 7d)","duration"});
- parser.addOption({"include-names","diagnostics.bundle: keep file names, object keys and URLs instead of hashes"});parser.addOption({"output","diagnostics.bundle: a .zip path or an existing folder (default: <archive>/diagnostics)","path"});parser.addPositionalArgument("method","Versioned session method");parser.addPositionalArgument("params","JSON parameter object (default {})","[params]");parser.process(app);
+ parser.addOption({"include-names","diagnostics.bundle: keep file names, object keys and URLs instead of hashes"});parser.addOption({"output","diagnostics.bundle: a .zip path or an existing folder (default: <archive>/diagnostics)","path"});
+ parser.addOption({"upload","diagnostics.bundle: also upload the saved package to a working destination and return its link"});parser.addOption({"profile","diagnostics.bundle --upload: the destination (default: the capture destination)","id"});
+ parser.addOption({"copy-link","diagnostics.bundle --upload: also copy the link to the clipboard"});parser.addPositionalArgument("method","Versioned session method");parser.addPositionalArgument("params","JSON parameter object (default {})","[params]");parser.process(app);
  const auto args=parser.positionalArguments();const auto id=parser.isSet("request-id")?parser.value("request-id"):QUuid::createUuid().toString(QUuid::WithoutBraces);
  auto output=[](const QJsonObject& result) {const auto bytes=QJsonDocument(result).toJson(QJsonDocument::Compact)+'\n';std::fwrite(bytes.constData(),1,bytes.size(),stdout);};
  auto error=[&](QString code,QString message) {output(putgd::LocalServer::response(id,{code,message,{}},{}));return 1;};
@@ -26,13 +28,17 @@ int main(int argc,char** argv) {
  if(args[0]=="setup.revealCredentialSecret")return error("credentials_require_settings","View credentials through Settings.");
  const auto bytes=args.size()==2?args[1].toUtf8():QByteArray("{}");if(bytes.size()>1024*1024)return error("request_too_large","Request exceeds 1 MiB");
  QJsonParseError parseError;auto params=QJsonDocument::fromJson(bytes,&parseError);if(parseError.error!=QJsonParseError::NoError||!params.isObject())return error("invalid_json","Parameters must be a JSON object");
- const bool bundleOptions=parser.isSet("operation")||parser.isSet("since")||parser.isSet("include-names")||parser.isSet("output");
+ const bool bundleOptions=parser.isSet("operation")||parser.isSet("since")||parser.isSet("include-names")||parser.isSet("output")||parser.isSet("upload")||parser.isSet("profile")||parser.isSet("copy-link");
  if(bundleOptions) {
-  if(args[0]!="diagnostics.bundle"||args.size()==2)return error("invalid_request","--operation, --since, --include-names and --output belong to diagnostics.bundle without a JSON parameter object");
+  if(args[0]!="diagnostics.bundle"||args.size()==2)return error("invalid_request","--operation, --since, --include-names, --output, --upload, --profile and --copy-link belong to diagnostics.bundle without a JSON parameter object");
+  if((parser.isSet("profile")||parser.isSet("copy-link"))&&!parser.isSet("upload"))return error("invalid_request","--profile and --copy-link need --upload");
   QJsonObject options;
   if(parser.isSet("operation"))options["operation"]=parser.value("operation");
   if(parser.isSet("since"))options["since"]=parser.value("since");
   if(parser.isSet("include-names"))options["includeNames"]=true;
+  if(parser.isSet("upload"))options["upload"]=true;
+  if(parser.isSet("profile"))options["profileId"]=parser.value("profile");
+  if(parser.isSet("copy-link"))options["copyLink"]=true;
   // The resident has its own working folder: send an absolute path.
   if(parser.isSet("output"))options["output"]=QDir::cleanPath(QDir::current().absoluteFilePath(parser.value("output")));
   params=QJsonDocument(options);
