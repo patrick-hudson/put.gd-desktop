@@ -485,9 +485,14 @@ skipped or failed upload still answers successfully with `path`, plus
   only with `copyLink`.
 - **Sharing:** on S3 the link is the object's public URL: on a public-read bucket
   anyone with the link can download the package. On Proton Drive the share link
-  expires after 7 days.
+  expires after 7 days: Proton reported a link created at 17:48:43Z expiring
+  7 days later, and the link opened without a Proton session (checked live
+  on 2026-10-20, [evidence](evidence/2026-10-20-round10-proton/README.md)).
 - **History:** the upload is an ordinary history entry (operation action
-  `diagnostics`), deletable from the destination like any upload. Later packages
+  `diagnostics`). On S3 it can be deleted from the destination like any upload.
+  Proton refuses remote deletion (`unsupported_capability`), as for every
+  Proton upload; use **Revoke link** to end URL access, and delete the file in
+  Proton Drive if needed. Later packages
   leave a successfully uploaded package out, its operation and its log records;
   one whose upload failed stays in, like any failure.
 
