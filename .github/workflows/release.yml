@@ -3,6 +3,8 @@ name: Release
 # release candidate vBASE-rc.N. Run manually with channel=stable on a candidate
 # commit to cut vBASE. Both stage a GitHub draft only; publication stays manual
 # after exact-asset acceptance (tools/releases/publish.py --publish --acceptance).
+# Nothing here is public, so the put.gd-site notification that nightly.yml
+# sends after publishing is not sent from this run (issue #178).
 on:
   push:
     branches: [main]
