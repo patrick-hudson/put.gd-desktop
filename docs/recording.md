@@ -679,8 +679,10 @@ default, while KWin's screen casts (Plasma 6.3 to 6.6, portal and
 1.5.81 and later refuse ranges that don't overlap, and every start failed with
 `error alloc buffers: Invalid argument` on Plasma 6.6 with PipeWire 1.6 (#137).
 The recorder sets `min-buffers=1` on the source, which newer plugins use by default,
-so the compositor picks the count (KWin 3, Mutter 16). The distro packages are
-unaffected either way. `tests/desktop/pipewire/run_buffers.sh` reproduces the
+so the compositor picks the count (3 or 4 with KWin, 16 with Mutter). That also
+covers the distro packages whose own plugin still asks for 8: Debian 13's comes
+from PipeWire 1.4.2. Fedora 44's and Ubuntu 26.04's plugins already default to 1.
+`tests/desktop/pipewire/run_buffers.sh` reproduces the
 negotiation with a private PipeWire daemon, a KWin- or Mutter-like source and
 any plugin directory, no desktop session needed.
 
