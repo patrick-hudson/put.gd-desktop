@@ -5,6 +5,7 @@
 #include "S3ErrorDiagnostics.h"
 #include "S3Multipart.h"
 #include <QElapsedTimer>
+#include <atomic>
 #include <aws/core/auth/AWSCredentials.h>
 #include <aws/core/http/HttpClientFactory.h>
 #include <aws/core/http/HttpClient.h>
@@ -484,6 +485,7 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
         std::array<qint64, s3MaximumPartLanes> sending{}; // bytes read of each lane's part in flight
         Error error;           // the first error that ends this attempt
         bool vanished = false; // S3 no longer has the upload
+        std::atomic_bool ended{false}; // error is set: parts in flight stop (#203)
     } lanes;
     auto progress = [&] { // lanes.mutex held
         qint64 total = completed;
@@ -514,6 +516,12 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
             // S3 rejects a part whose bytes differ from this digest (BadDigest).
             put.SetContentMD5(aws(QString::fromLatin1(digest.toBase64())));
             put.SetBody(body);
+            // Cancel, or another lane's error, cuts a part in flight instead of
+            // letting it run to the end of its transfer (#203). A cut part never
+            // published anything: it is simply sent again on Retry.
+            put.SetContinueRequestHandler([&](const Aws::Http::HttpRequest*) {
+                return !stopped(request.cancellation) && !lanes.ended.load();
+            });
             put.SetRequestSignedHandler([&](const Aws::Http::HttpRequest&) {
                 std::lock_guard lock(lanes.mutex);
                 lanes.sending[lane] = 0;
@@ -544,6 +552,9 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
                 }
                 return {true, outcome.GetResult().GetETag(), {}};
             }
+            // A part cut on cancel or by another lane's error reports that, not its transport error.
+            if (stopped(request.cancellation)) return {false, {}, cancelled()};
+            if (lanes.ended.load()) return {};
             last = partError(outcome.GetError(), "upload_part", timer.elapsed(), number);
             // The upload vanished (aborted elsewhere, or a lifecycle rule): start again on retry.
             if (int(outcome.GetError().GetResponseCode()) == 404) return {false, {}, last, true};
@@ -569,6 +580,7 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
                 // Another lane's error ends the attempt; this part is sent again on retry.
                 lanes.error = sent.error ? sent.error : Error{"s3_multipart_invalid", "A multipart part ended without a result", {}};
                 lanes.vanished = sent.vanished;
+                lanes.ended = true;
             }
         }
         lanes.busy[lane] = false;
@@ -593,7 +605,10 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
                     threads[lane] = std::thread(sendParts, lane);
                     lanes.busy[lane] = true;
                 } catch (...) {
-                    if (lane == 0 && !lanes.error) lanes.error = {"s3_multipart_invalid", "The multipart upload could not start sending parts", {}};
+                    if (lane == 0 && !lanes.error) {
+                        lanes.error = {"s3_multipart_invalid", "The multipart upload could not start sending parts", {}};
+                        lanes.ended = true;
+                    }
                 }
             }
             if (std::none_of(lanes.busy.begin(), lanes.busy.end(), [](bool busy) { return busy; })) break;

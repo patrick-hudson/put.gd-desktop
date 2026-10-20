@@ -82,6 +82,19 @@ Aws::Utils::Logging::LogLevel sdkLevel(SdkRuntime::LogLevel level) {
 }
 #if defined(PUTGD_SDK_CURL_TRANSPORT)
 thread_local bool destructiveRequest = false;
+// The request on this thread whose continue handler can cut it (#203).
+thread_local const Aws::Http::HttpRequest* continuableRequest = nullptr;
+// The SDK asks a request's continue handler only while body bytes move, so a part
+// whose body is sent and whose reply is slow would run to its timeout. libcurl's
+// progress callback also runs about once a second while a transfer waits.
+int continueProgress(void* data, curl_off_t, curl_off_t, curl_off_t, curl_off_t) {
+    const auto* request = static_cast<const Aws::Http::HttpRequest*>(data);
+    try {
+        return request && request->GetContinueRequestHandler() && !request->GetContinueRequestHandler()(request) ? 1 : 0;
+    } catch (...) {
+        return 0;
+    }
+}
 // libcurl can transparently replay an empty-body DELETE when a reused connection
 // loses its response. That bypasses the SDK retry strategy and is unsafe for S3
 // marker creation. Use the SDK's supported per-handle customization, preserving
@@ -107,9 +120,17 @@ public:
         Aws::Utils::RateLimits::RateLimiterInterface* write = nullptr) const override {
         struct RequestScope {
             bool previous = destructiveRequest;
-            explicit RequestScope(bool destructive) { destructiveRequest = destructive; }
-            ~RequestScope() { destructiveRequest = previous; }
-        } scope(request->GetMethod() == Aws::Http::HttpMethod::HTTP_DELETE);
+            const Aws::Http::HttpRequest* previousContinuable = continuableRequest;
+            RequestScope(bool destructive, const Aws::Http::HttpRequest* continuable) {
+                destructiveRequest = destructive;
+                continuableRequest = continuable;
+            }
+            ~RequestScope() {
+                destructiveRequest = previous;
+                continuableRequest = previousContinuable;
+            }
+        } scope(request->GetMethod() == Aws::Http::HttpMethod::HTTP_DELETE,
+                request->GetContinueRequestHandler() && !request->IsEventStreamRequest() ? request.get() : nullptr);
         return Aws::Http::CurlHttpClient::MakeRequest(request, read, write);
     }
 protected:
@@ -124,6 +145,12 @@ protected:
         if (destructiveRequest) {
             curl_easy_setopt(handle, CURLOPT_FRESH_CONNECT, 1L);
             curl_easy_setopt(handle, CURLOPT_FORBID_REUSE, 1L);
+        }
+        // The handle is reset when it returns to the pool, so this stays per request.
+        if (continuableRequest) {
+            curl_easy_setopt(handle, CURLOPT_NOPROGRESS, 0L);
+            curl_easy_setopt(handle, CURLOPT_XFERINFOFUNCTION, continueProgress);
+            curl_easy_setopt(handle, CURLOPT_XFERINFODATA, const_cast<Aws::Http::HttpRequest*>(continuableRequest));
         }
     }
 private:
