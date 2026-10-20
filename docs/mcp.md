@@ -56,7 +56,7 @@ such as `session_unavailable` and `config_conflict` retain their original envelo
 | `inspect` | capabilities, diagnostics, settings.get | Local metadata only; accepted non-secret config/path/revisions/status and redacted backend diagnostics |
 | `get_view_state` | ui.viewState | Settings → Capture as last checkpointed: default output and each action's destination, sharing, resolved mode, inheritance and enabled controls; the appearance in use (theme setting, desktop preference and source, scheme, token values) |
 | `perform_action` | action region/window/desktop/clipboard/edit/record → action.invoke | Acquires source; configured local save or public upload; may write clipboard result. `record` prepares a dragged-region recording (or raises the active one); drive it with the recording tools |
-| `get_operation` | id; kind operation/delete | operation.inspect or delete.inspect; local state |
+| `get_operation` | id; kind operation/delete/share | operation.inspect, delete.inspect or share.inspect (a `shareOperationId`: sharing status and confirmed link `expiresAt`); local state |
 | `retry_operation` | id; stage upload/local_save/delete | operation.retry, operation.retryLocalSave, delete.retry; explicit stage effects |
 | `copy_result` | id → operation.copy | Copies retained result/receipt; no upload |
 | `cancel_operation` | id; kind operation/delete; optional item_id | Requests cancellation; sent remote mutations cannot be rolled back. With item_id (an operation item's `artifact.id`), only that file stops and the batch continues |

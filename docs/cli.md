@@ -219,7 +219,9 @@ Other allocators report unsupported and keep the existing cleanup behavior.
 
 Proton link management uses `history.share`, `history.revokeLink` and
 `history.inspectLink` with an exact history `id`. They return `shareOperationId`;
-read `share.inspect` with that ID until its durable outcome is known. Revoke
+read `share.inspect` with that ID until its durable outcome is known. A confirmed
+link expiry appears as `expiresAt` there and as `shareExpiresAt` in
+`history.detail`, also after it has passed. Revoke
 removes URL access only. See [Proton Drive](proton-drive.md). Account setup and
 password entry belong in Settings; the CLI rejects `setup.storeSharePassword`
 so passwords are never passed as process arguments.

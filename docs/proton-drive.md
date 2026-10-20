@@ -28,6 +28,14 @@ name; uploads use the ID. Queries show Loading folders while working and preserv
 the known account email and selection, including when switching destinations.
 Existing configurations without a name keep working. Account setup never uploads a file.
 
+Connect stores the session in the secret service's default collection (the
+Secret Service `default` alias). A secret service without one refuses the write,
+for example gnome-keyring with no login keyring and no prompt to create a default
+one. Connect then fails with "The private keychain is unavailable."
+(`keychain_unavailable`), and token refreshes report the same error. Create or
+unlock a default keyring, then connect again. KWallet and KeePassXC secret
+services were not tested; see [the round-11 evidence](evidence/2026-10-20-round11-proton/README.md).
+
 Use **Test connection** to check that the saved account and selected upload folder
 are still accessible. A successful check satisfies the current session's
 untested-destination warning when choosing **Make default**. This check is
@@ -58,6 +66,11 @@ configuration and receipts contain only its reference. Use no link password
 clears that reference for future links. Password entry is excluded from retained
 UI state and CLI arguments. Old receipts keep their original account, folder,
 credential and sharing settings when destinations are edited.
+
+History shows a link's expiry as Proton confirmed it, "Link expires on …".
+Once it passes, the row says "Link expired on …" and Copy link and Open in
+browser are off. `history.detail` carries the expiry as `shareExpiresAt` and
+`share.inspect` as `expiresAt`. Inspecting an expired link never recreates it.
 
 The Proton destination's Advanced link settings include **Request deadline** in
 seconds (default 120; range 1–86,400, or 24 hours). It is saved as `requestTimeoutMs` in that
