@@ -747,7 +747,10 @@ poster cleanup removed get their poster when History selects them (#190). So
 does an image whose preview was never made or was removed, such as a WebP
 recording stored before the WebP plugin was installed. History waits 400 ms
 for the selection to settle, shows "Making a preview…" and sends
-`history.preview {id}`, one request at a time. The resident:
+`history.preview {id}`, one request at a time. History reloads the selected
+item whenever the resident reports a change; the preview it already shows
+stays until a reload brings a different preview file, so the inspector never
+flashes empty (#285). The resident:
 
 - answers `ready` at once when the item's preview file exists;
 - makes it from the retained artifact, or else from the local copy when that
