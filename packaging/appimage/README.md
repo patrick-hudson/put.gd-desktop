@@ -138,6 +138,15 @@ the library path only when the host's linker cache has no `libva.so.2`.
 mount (see [recording](../../docs/recording.md), "AppImage runtime"); nothing
 else in the image or on the host inherits those variables.
 
+The bundled `pipewire` plugin is the builder's (Ubuntu 24.04, PipeWire 1.0.5),
+while libpipewire and the daemon are the host's, often newer, so the recorder
+doesn't rely on the plugin's defaults for negotiation. This plugin asks for at least
+8 buffers, KWin offers 2-4, and PipeWire 1.5.81 and later refuse to link
+ranges that don't overlap, so the recorder sets `min-buffers=1` (#137;
+`tests/desktop/pipewire/run_buffers.sh` checks a plugin against a host's
+PipeWire without a desktop). A plugin from a newer PipeWire is not a drop-in
+replacement: PipeWire 1.6's imports functions that libpipewire 1.0 lacks.
+
 On Plasma, AppRun writes a second temporary private entry beside the
 ScreenShot2 one: `putgd-record-appimage-XXXXXXXX.desktop`, `Exec` naming the
 mounted `putgd-record` and `X-KDE-Wayland-Interfaces=zkde_screencast_unstable_v1`,
