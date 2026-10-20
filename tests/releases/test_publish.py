@@ -431,9 +431,14 @@ class NightlyPublicationTest(unittest.TestCase):
         argv = ['publish.py', '--tag', self.tag, '--directory', str(self.directory), '--nightly', *extra]
         with patch.object(sys, 'argv', argv), patch.dict(os.environ, self.environment, clear=True), \
              patch.object(publish, 'verify', return_value=self.release), \
+             patch.object(publish.changelog, 'section', side_effect=self.changes), \
              patch.object(subprocess, 'check_output', side_effect=self.output), \
              patch.object(subprocess, 'run', side_effect=self.command):
             publish.main()
+
+    def changes(self, root, tag, repository, server):
+        self.assertEqual((tag, repository, server), (self.tag, 'fixture/putgd', 'https://github.com'))
+        return f'## Changes since fixture-previous\n\n- Synthetic change in {tag}\n'
 
     def test_cli_publishes_all_fifteen_verified_assets_as_nightly_prerelease(self):
         self.invoke()
@@ -459,6 +464,9 @@ class NightlyPublicationTest(unittest.TestCase):
         self.assertEqual(self.commands[0][self.commands[0].index('--title') + 1], 'put.gd 0.1.1 nightly 42')
         for text in ('Nightly 42 of 0.1.1', 'a' * 40, 'actions/runs/77', 'graphical', 'memory', 'S3'):
             self.assertIn(text, notes)
+        # The changes follow the one-line summary, before the coverage and asset notes.
+        self.assertLess(notes.index('Nightly 42 of 0.1.1'), notes.index('## Changes since fixture-previous'))
+        self.assertLess(notes.index('Synthetic change in ' + self.tag), notes.index('Automated coverage'))
 
 
     def test_missing_or_invalid_run_identity_blocks_before_mutation(self):
@@ -615,6 +623,7 @@ class NightlyPublicationTest(unittest.TestCase):
                 argv = ['publish.py', '--tag', tag, '--directory', str(self.directory)]
                 with patch.object(sys, 'argv', argv), patch.dict(os.environ, self.environment, clear=True), \
                      patch.object(publish, 'verify', return_value=release), \
+                     patch.object(publish.changelog, 'section', side_effect=self.changes), \
                      patch.object(subprocess, 'check_output', side_effect=self.output), \
                      patch.object(subprocess, 'run', side_effect=self.command):
                     publish.main()
@@ -627,6 +636,7 @@ class NightlyPublicationTest(unittest.TestCase):
                 notes = (self.directory / 'release-notes.md').read_text()
                 self.assertIn('actions/runs/77', notes)
                 self.assertIn('release candidate' if channel == 'candidate' else 'x86_64 release', notes)
+                self.assertLess(notes.index('Synthetic change in ' + tag), notes.index('DEB/RPM use distro Qt'))
 
     def test_nightly_cannot_use_acceptance_mode_to_bypass_producer_verification(self):
         argv = ['publish.py', '--tag', self.tag, '--directory', str(self.directory),

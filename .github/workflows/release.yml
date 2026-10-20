@@ -65,6 +65,8 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: write  # stage the draft release
+      pull-requests: read  # labels for the release notes' changes section
+      issues: read  # the issues each listed pull request closes
     env:
       GH_TOKEN: ${{ github.token }}
       TAG: ${{ needs.tag.outputs.tag }}
