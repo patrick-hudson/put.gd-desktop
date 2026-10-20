@@ -18,7 +18,7 @@ the desktop session's display, bus and session type from the session process
 4. measures the working clip and the saved copy: `--motion` always; with the
    marker and sound, `--av-sync`, split at the pause with `pairTimesS` into the
    capture step (last two pairs before the pause against the first three after
-   it, less the nearest whole 33.3 ms frame; `rawCaptureStepMs` keeps it) and
+   it, with whole 33.3 ms frame slips folded out; `rawCaptureStepMs` keeps them) and
    the export's shift after the pause (`exportMinusWorkingMs`);
 5. with --frames, keeps one frame of each saved copy only if `check-frame`
    finds it at least half cover colour; otherwise the frame is deleted
@@ -47,6 +47,7 @@ up to --prepare-timeout.
 import argparse
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -106,9 +107,22 @@ def whole_frames_removed(ms):
     return ms - FRAME_MS * round(ms / FRAME_MS)
 
 
+def fold_frames(offsets):
+    """Offsets moved by whole 33.3 ms frames next to the clip's common phase (their circular mean).
+
+    The 30 fps marker and capture slip by exactly one frame at random pairs, so a
+    clip's offsets are often split between two values one frame apart; taking a
+    median across that split invents a half-frame step."""
+    if not offsets:
+        return []
+    angles = [2 * math.pi * o / FRAME_MS for o in offsets]
+    phase = math.atan2(sum(map(math.sin, angles)), sum(map(math.cos, angles))) * FRAME_MS / (2 * math.pi)
+    return [o - FRAME_MS * round((o - phase) / FRAME_MS) for o in offsets]
+
+
 def capture_step(times, offsets, pause_s, raw=False):
-    """The working clip's change at the pause, less the nearest whole frame unless raw; None without two pairs before and three after."""
-    before, after = split_at_pause(times, offsets, pause_s)
+    """The working clip's change at the pause, with whole frames folded out unless raw; None without two pairs before and three after."""
+    before, after = split_at_pause(times, offsets if raw else fold_frames(offsets), pause_s)
     if len(before) < 2 or len(after) < 3:
         return None
     step = statistics.median(after[:3]) - statistics.median(before[-2:])
@@ -170,11 +184,13 @@ class Driver:
     def __init__(self, args):
         self.args = args
         self.run = Path(args.run).resolve()
-        for name in ('config', 'data', 'working', 'out', 'frames', 'logs'):
+        for name in ('config', 'data', 'cache', 'state', 'working', 'out', 'frames', 'logs'):
             (self.run / name).mkdir(parents=True, exist_ok=True)
         os.chmod(self.run, 0o700)
         self.env, self.desktop = session_environment()
+        # Every put.gd directory is private to the run: config, data, logs (state) and the AppImage's GStreamer registry (cache).
         self.env.update(XDG_CONFIG_HOME=str(self.run / 'config'), XDG_DATA_HOME=str(self.run / 'data'),
+                        XDG_CACHE_HOME=str(self.run / 'cache'), XDG_STATE_HOME=str(self.run / 'state'),
                         PUTGD_RECORD_KEEP_WORKING=str(self.run / 'working'))
         self.real_data = None
         if args.real_data_home:
