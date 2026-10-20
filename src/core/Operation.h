@@ -14,6 +14,9 @@ struct OperationItem {
  QJsonObject shareIntentOptions; // non-secret options of that original intent
  Error error;
  QString phase;std::optional<UploadProgress> uploadProgress;
+ // The provider's last acknowledged resumable-upload journal (UploadRequest::resume).
+ // Durable but private: never part of publicJson().
+ QJsonObject uploadJournal;
  QJsonObject toJson() const;
  static OperationItem fromJson(const QJsonObject&);
  UploadRequest uploadRequest(const Destination&,std::optional<int> requestTimeoutMs={}) const;

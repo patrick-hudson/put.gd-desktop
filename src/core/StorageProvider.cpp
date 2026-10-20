@@ -32,7 +32,7 @@ bool shareResultMatchesReceipt(const ShareResult& result,const StorageReceipt& o
   &&result.receipt.publicationId==original.publicationId&&QStringList{"shared","revoked","private","changed","unknown","failed"}.contains(result.status);
 }
 
-QJsonObject ProviderCapabilities::toJson() const {return {{"conditionalCreate",conditionalCreate},{"conditionalReplace",conditionalReplace},{"conditionalDelete",conditionalDelete},{"versionAddressing",versionAddressing},{"stat",stat},{"delete",remove},{"urls",urls},{"maximumNameBytes",maximumNameBytes},{"deletionEffect",deletionEffect},{"sharing",sharing},{"privateUploads",privateUploads}};}
+QJsonObject ProviderCapabilities::toJson() const {return {{"conditionalCreate",conditionalCreate},{"conditionalReplace",conditionalReplace},{"conditionalDelete",conditionalDelete},{"versionAddressing",versionAddressing},{"stat",stat},{"delete",remove},{"urls",urls},{"maximumNameBytes",maximumNameBytes},{"maximumObjectBytes",maximumObjectBytes>0?QJsonValue(double(maximumObjectBytes)):QJsonValue(QJsonValue::Null)},{"deletionEffect",deletionEffect},{"sharing",sharing},{"privateUploads",privateUploads}};}
 void ProviderRegistry::add(const QString& id,std::shared_ptr<StorageProvider> p) {providers_.insert(id,std::move(p));}
 std::shared_ptr<StorageProvider> ProviderRegistry::find(const QString& id) const {return providers_.value(id);}
 Error ProviderRegistry::validate(const QString& id,const QJsonObject& s) const {auto p=find(id); return p?p->validateSettings(s):Error{"provider_unavailable","No validator registered for this provider",{}};}

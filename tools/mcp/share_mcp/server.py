@@ -381,11 +381,11 @@ def create_server(adapter: CliAdapter) -> FastMCP:
         return await adapter.call('operation.copy', {'id': id}) if identifier(id) else invalid()
 
     @server.tool(annotations=effect)
-    async def cancel_operation(id: str, kind: str = 'operation') -> Json:
-        """Cancel operation/delete work; already sent remote mutations cannot be rolled back."""
-        if not identifier(id) or kind not in {'operation', 'delete'}:
+    async def cancel_operation(id: str, kind: str = 'operation', item_id: str | None = None) -> Json:
+        """Cancel operation/delete work; already sent remote mutations cannot be rolled back. With item_id (an operation item's artifact.id), cancel only that file of an active upload batch; the other files continue and Retry uploads the cancelled one."""
+        if not identifier(id) or kind not in {'operation', 'delete'} or (item_id is not None and (kind != 'operation' or not identifier(item_id))):
             return invalid()
-        return await adapter.call(kind + '.cancel', {'id': id})
+        return await adapter.call(kind + '.cancel', {'id': id} if item_id is None else {'id': id, 'itemId': item_id})
 
     @server.tool(annotations=read)
     async def list_history(limit: int | None = None, offset: int | None = None,
@@ -496,7 +496,7 @@ def create_server(adapter: CliAdapter) -> FastMCP:
 
     @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
     async def patch_configuration(patch: Json, expected_revision: str) -> Json:
-        """Patch non-secret settings with expected file revision; conflicts require reread/rebase. Null is explicit."""
+        """Patch non-secret settings with expected file revision; conflicts require reread/rebase. Null is explicit. limits.maxFileBytes, maxBatchBytes and pendingArtifactBytes take a byte count, "auto" or null (no byte limit of put.gd's own; free disk and the destination's maximum still apply); inspect shows the resolved values and disk figures under configuration.result.effectiveLimits."""
         allowed = {'schemaVersion', 'actions', 'captureDefaults', 'profiles', 'archive', 'naming', 'limits', 'retention', 'preferences'}
         if (not isinstance(patch, dict) or set(patch) - allowed or not safe_patch(patch) or
             not isinstance(expected_revision, str) or len(expected_revision) > 256):

@@ -51,7 +51,15 @@ QString HistoryModel::statusText(const QJsonObject& r){
   if(state=="editing"||phase=="editing")return "Editing · Upload or cancel in the editor window";
   if(op["action"]=="edit"&&(state=="acquiring"||phase=="acquiring"))return "Choose what to edit… · Press Esc to cancel";
   if(state=="acquiring"||phase=="acquiring")return op["action"]=="region"?"Selecting a region… · Press Esc to cancel":op["action"]=="clipboard"?"Reading the clipboard…":"Selecting a capture…";
-  if(phase=="uploading"){const auto progress=aggregateProgress(op);if(progress.total>0)return QString("Uploading · %1%").arg(progress.percent());if(progress.known)return "Uploading · "+ByteSize::summary(progress.sent)+" transferred";return "Uploading…";}
+  if(phase=="uploading"){
+   // Batch files upload side by side (#28): say how many run, wait, finished or stopped.
+   QString files;const auto items=op["items"].toArray();
+   if(items.size()>1){int running=0,waiting=0,done=0,failed=0,cancelled=0;
+    for(const auto& value:items){const auto item=value.toObject();const auto status=item["uploadStatus"].toString(),itemPhase=item["phase"].toString();
+     if(status=="cancelled")++cancelled;else if(status=="failed"||status=="unknown")++failed;else if(QStringList{"uploaded","skipped","conflict"}.contains(status))++done;else if(itemPhase=="queued")++waiting;else if(status=="uploading")++running;}
+    QStringList parts;if(running)parts<<QString("%1 uploading").arg(running);if(waiting)parts<<QString("%1 waiting").arg(waiting);if(done)parts<<QString("%1 done").arg(done);if(failed)parts<<QString("%1 failed").arg(failed);if(cancelled)parts<<QString("%1 cancelled").arg(cancelled);
+    if(!parts.isEmpty())files=" · "+parts.join(", ");}
+   const auto progress=aggregateProgress(op);if(progress.total>0)return QString("Uploading · %1%").arg(progress.percent())+files;if(progress.known)return "Uploading · "+ByteSize::summary(progress.sent)+" transferred"+files;return "Uploading…"+files;}
   if(phase=="saving_local")return "Saving locally…";
   if(phase=="queued")return "Waiting to upload…";
   return "Preparing capture…";

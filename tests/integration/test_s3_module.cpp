@@ -215,7 +215,8 @@ private slots:
 #endif
     }
     void callbackAdmissionKeepsDriverUntilSuccessorDrains() {
-        test::S3Fixture fixture;
+        // One lane: the shared permanent module worker runs every job in order.
+        test::S3Fixture fixture({}, 1);
         auto module = S3Module::acquire();
         QCOMPARE(module->liveDriverCount(), 0);
         struct Observations {
@@ -272,8 +273,8 @@ private slots:
         QCOMPARE(fixture.events("HEAD").size(), 2);
     }
     void concurrentProvidersAndPermanentWorker() {
-        test::S3Fixture fixture;
-        auto other = std::make_unique<S3Provider>(fixture.credentials);
+        test::S3Fixture fixture({}, 1);
+        auto other = std::make_unique<S3Provider>(fixture.credentials, S3UploadPolicy{}, 1);
         std::atomic_int callbacks = 0;
         std::atomic_int failures = 0;
         std::mutex mutex;
@@ -309,7 +310,7 @@ private slots:
     }
     void boundedQueueDrainsExactlyOnce() {
         test::S3Fixture fixture;
-        auto provider = std::make_unique<S3Provider>(fixture.credentials);
+        auto provider = std::make_unique<S3Provider>(fixture.credentials, S3UploadPolicy{}, 1);
         auto module = S3Module::acquire();
         std::promise<void> blocked;
         auto started = blocked.get_future();

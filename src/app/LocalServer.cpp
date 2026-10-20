@@ -146,6 +146,7 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  if(method=="recording.saveCopy") {if(!fields(p,{"id","path"},{"overwrite"})||!string(p,"id")||!string(p,"path",4096)||(p.contains("overwrite")&&!p["overwrite"].isBool())){reply(invalid(),{});return;}operations_.recordingCommand("saveCopy",p,reply);return;}
  if(method=="recording.upload") {if(!fields(p,{"id","revision"})||!string(p,"id")||!p["revision"].isDouble()){reply(invalid(),{});return;}operations_.recordingCommand("upload",p,reply);return;}
  if(method=="operation.recent") {if(!p.isEmpty())reply(invalid(),{});else operations_.recent(reply);return;}
+ if(method=="operation.cancel"&&p.contains("itemId")) {if(!fields(p,{"id","itemId"})||!string(p,"id")||!string(p,"itemId")) {reply(invalid(),{});return;}operations_.cancel(p["id"].toString(),reply,p["itemId"].toString());return;}
  if(method.startsWith("operation.")) {if(!fields(p,{"id"})||!string(p,"id")) {reply(invalid(),{});return;}const auto id=p["id"].toString();if(method=="operation.inspect")operations_.inspect(id,reply);else if(method=="operation.cancel")operations_.cancel(id,reply);else if(method=="operation.retry")operations_.retry(id,reply);else if(method=="operation.copy")operations_.copyResult(id,reply);else if(method=="operation.retryLocalSave")operations_.retryLocalSave(id,reply);else reply({"unknown_method","Unknown operation method",{}},{});return;}
  if(method=="history.share"||method=="history.revokeLink"||method=="history.inspectLink") {
   if(!fields(p,{"id"})||!string(p,"id")){reply(invalid(),{});return;}
@@ -249,7 +250,8 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  if(!p.isEmpty()) {reply(invalid(),{});return;}
  if(method=="ui.snapshot")reply({},{{"build",QJsonDocument::fromJson(buildManifestJson()).object()},{"residentEpoch",residentEpoch_},{"operationsReady",operations_.ready()},{"settings",QJsonObject{{"document",settings_.document()},{"metadata",settings_.metadata()}}},{"diagnostics",uiDiagnostics_?uiDiagnostics_():operations_.diagnostics()}});
  else if(method=="ui.viewState"){if(uiViewState_)reply({},uiViewState_());else reply({"ui_unavailable","This resident has no interface view state",{}},{});}
- else if(method=="settings.get")reply({},{{"document",settings_.document()},{"metadata",settings_.metadata()}});
+ // effectiveLimits: the resolved byte limits (null for none) and the disk that bounds imports.
+ else if(method=="settings.get"){auto limits=settings_.snapshot().effectiveArtifactLimits();limits["disk"]=operations_.artifactDisk();reply({},{{"document",settings_.document()},{"metadata",settings_.metadata()},{"effectiveLimits",limits}});}
  else if(method=="settings.developmentTemplate")reply({},{{"document",Settings::developmentTemplate()},{"explicitImportRequired",true}});
  else if(method=="settings.reload") {QPointer<LocalServer> guarded(this);settings_.reloadAsync([guarded,reply](Result result) {if(guarded)reply(result.error,guarded->settings_.metadata());});}
  else if(method=="capabilities")reply({},operations_.capabilities());

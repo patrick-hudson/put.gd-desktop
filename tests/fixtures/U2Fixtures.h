@@ -12,14 +12,14 @@
 namespace putgd::test {
 class Source final:public SourceAdapter {
 public:
- quint64 revision=0;ClipboardPayload payload;int reads=0,copies=0;CopyPayload copied;bool defer=false;QList<std::function<void(PayloadResult)>> acquisitions;
+ quint64 revision=0;ClipboardPayload payload;int reads=0,copies=0;CopyPayload copied;QStringList copiedTexts;bool defer=false;QList<std::function<void(PayloadResult)>> acquisitions;
  std::optional<quint64> copiedRevision;
  quint64 clipboardRevision() const override {return revision;}
  std::optional<quint64> lastCopyRevision() const override {return copiedRevision;}
  QJsonObject capabilities() const override {return {{"region",true},{"clipboardImport",QJsonArray{"files","image","text"}},{"clipboardResult",QJsonArray{"files","image","text"}}};}
  void acquire(const QString&,const ResourceLimits&,std::function<void(PayloadResult)> cb) override {++reads;if(defer)acquisitions.append(cb);else cb({payload,{}});}
  void cancelAcquisition() override {if(!acquisitions.isEmpty()) {auto cb=acquisitions.takeFirst();cb({{}, {"source_cancelled","Selection cancelled",{}}});}}
- void copy(const CopyPayload& p,std::function<void(Error)> cb) override {++copies;copied=p;++revision;copiedRevision=revision;cb({});}
+ void copy(const CopyPayload& p,std::function<void(Error)> cb) override {++copies;copied=p;copiedTexts.append(p.text);++revision;copiedRevision=revision;cb({});}
 };
 class OpaqueProvider final:public StorageProvider {
 public:
@@ -27,18 +27,25 @@ public:
  std::function<void()> capabilitiesGate;
  bool prepareUploads=false,deferChecks=false;QList<std::function<void()>> checkCompletions;
  bool deferUploads=false;QList<std::function<void()>> completions;QList<UploadRequest> requests;
+ // Resumable uploads: journal before an uncertain end, and record each journal received.
+ qint64 maximumObjectBytes=0;bool journalThenUnknown=false;QList<QJsonObject> resumes;
+ // Concurrent uploads (#28): requests the destination accepts at once, and names that fail.
+ int concurrency=1;QSet<QString> failCandidates;
+ int maximumConcurrentRequests(const Destination&) const override {return concurrency;}
  QHash<QString,QString> deletionResults;std::function<void(const DeleteRequest&)> checkpointObserver;
  static QString fileId(const QString& candidate) {return "opaque:α/%?#:"+QString::fromLatin1(QCryptographicHash::hash(candidate.toUtf8(),QCryptographicHash::Sha256).toHex());}
  bool reportsUploadProgress() const override {return prepareUploads;}
- ProviderCapabilities capabilities(const Destination&) const override {if(capabilitiesGate)capabilitiesGate();return {true,true,true,true,true,allowDelete,true,255,"Remove only the recorded opaque file revision"};}
+ ProviderCapabilities capabilities(const Destination&) const override {if(capabilitiesGate)capabilitiesGate();ProviderCapabilities c{true,true,true,true,true,allowDelete,true,255,"Remove only the recorded opaque file revision"};c.maximumObjectBytes=maximumObjectBytes;return c;}
  QString serializationKey(const Destination& d,const QJsonObject& ref,const QString& name) const override {return d.settings["workspace"].toString()+":"+(ref.isEmpty()?fileId(name):ref["fileId"].toString());}
  Error validateSettings(const QJsonObject& s) const override {if(s.size()!=1||!s["workspace"].isString())return {"config_invalid","A workspace is required",{}};return {};}
  void checkName(const Destination&,const QString& name,std::function<void(NameCheck)> cb) override {++checks;QMutexLocker lock(&mutex);auto id=fileId(name);auto found=objects.value(id);NameCheck r{objects.contains(id)?"present":"absent",{{"format",1},{"fileId",id}},found.concurrencyToken,{}};lock.unlock();if(deferChecks)QMetaObject::invokeMethod(dispatcher,[this,cb,r]{checkCompletions.append([cb,r]{cb(r);});},Qt::QueuedConnection);else cb(r);}
  void upload(const UploadRequest& request,std::function<void(UploadResult)> cb) override {
   ++uploads;
+  {QMutexLocker lock(&mutex);resumes.append(request.resume);}
+  if(journalThenUnknown&&request.checkpoint){request.checkpoint({{"schemaVersion",1},{"upload","opaque-resumable"}},[cb](Error e){cb({"unknown",{},e?e:Error{"fixture_interrupted","Synthetic interruption",{}}});});return;}
   if(prepareUploads&&request.progress)request.progress({"preparing",0,request.artifact.bytes});
   auto complete=[this,request,cb] {
-   if(failUpload) {cb({"failed",{}, {"fixture_failed","Synthetic failure",{}}});return;}
+   if(failUpload||failCandidates.contains(request.candidate)) {cb({"failed",{}, {"fixture_failed","Synthetic failure",{}}});return;}
    QMutexLocker lock(&mutex);const auto id=request.objectReference["fileId"].toString();const auto existing=objects.value(id);
    if((request.condition=="absent"&&objects.contains(id))||(request.condition=="match"&&existing.concurrencyToken!=request.concurrencyToken)) {lock.unlock();cb({"collision",{}, {"precondition_changed","Synthetic collision",{}}});return;}
    StorageReceipt r;r.destination=request.destination;r.publicationId=request.publicationId;r.objectReference={{"format",1},{"fileId",id},{"revisionId","opaque-version!"+request.publicationId}};r.concurrencyToken="opaque-token!"+request.publicationId;r.directUrl="https://example.invalid/direct?file="+request.publicationId+"#unrelated";objects.insert(id,r);lock.unlock();cb({loseReply?"unknown":"uploaded",r,{}});

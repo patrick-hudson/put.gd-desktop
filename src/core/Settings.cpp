@@ -37,6 +37,17 @@ bool identifier(const QJsonValue& value) {
 bool folder(const QJsonValue& value, bool nullable) {
     return (nullable && value.isNull()) || (text(value, 1) && QDir::isAbsolutePath(value.toString()));
 }
+constexpr qint64 formerArtifactDefault = 2147483648LL; // 2 GiB, saved explicitly before "auto" existed
+bool byteLimit(const QJsonValue& value) {
+    return value.isNull() || value == QJsonValue(QStringLiteral("auto")) || integer(value, 1, ResourceLimits::unlimitedBytes);
+}
+}
+
+QStringList Settings::artifactByteLimitKeys() { return {"maxFileBytes", "maxBatchBytes", "pendingArtifactBytes"}; }
+QJsonObject Settings::effectiveArtifactLimits() const {
+    auto value = [](qint64 bytes) { return bytes >= ResourceLimits::unlimitedBytes ? QJsonValue(QJsonValue::Null) : QJsonValue(double(bytes)); };
+    return {{"maxFileBytes", value(limits.maxFileBytes)}, {"maxBatchBytes", value(limits.maxBatchBytes)},
+            {"pendingArtifactBytes", value(limits.pendingArtifactBytes)}};
 }
 
 QStringList Settings::actionNames() { return {"region", "window", "desktop", "clipboard", "edit"}; }
@@ -44,7 +55,17 @@ QStringList Settings::requiredActionNames() { return {"region", "window", "deskt
 QString Settings::recordingActionName() { return QStringLiteral("record"); }
 QStringList Settings::invocableActionNames() { return actionNames() << recordingActionName(); }
 
-QJsonObject Settings::normalized(const QJsonObject& doc) {
+QJsonObject Settings::normalized(const QJsonObject& original) {
+    auto doc = original;
+    // Before "auto" existed every configuration saved the 2 GiB default
+    // explicitly; that exact value now means "auto".
+    if (doc["limits"].isObject()) {
+        auto limits = doc["limits"].toObject();
+        bool migrated = false;
+        for (const auto& key : artifactByteLimitKeys())
+            if (limits.value(key).isDouble() && limits.value(key).toDouble() == double(formerArtifactDefault)) { limits[key] = QStringLiteral("auto"); migrated = true; }
+        if (migrated) doc["limits"] = limits;
+    }
     auto actions = doc["actions"].toObject();
     if (!doc["actions"].isObject() || !actions["region"].isObject()) return doc;
     // Edit & upload and screen recording were added after schema 1 shipped.
@@ -91,8 +112,8 @@ QJsonObject Settings::defaults() {
             {"imageTemplate", initial.imageTemplate},
             {"textTemplate", initial.textTemplate},
             {"recordingTemplate", initial.recordingTemplate}}},
-        {"limits", QJsonObject{{"maxFiles", 100}, {"pendingOperations", 8}, {"concurrentUploads", 1},
-            {"maxFileBytes", 2147483648.0}, {"maxBatchBytes", 2147483648.0}, {"pendingArtifactBytes", 2147483648.0},
+        {"limits", QJsonObject{{"maxFiles", 100}, {"pendingOperations", 8}, {"concurrentUploads", initial.limits.concurrentUploads},
+            {"maxFileBytes", "auto"}, {"maxBatchBytes", "auto"}, {"pendingArtifactBytes", "auto"},
             {"pendingImageBytes", initial.limits.pendingImageBytes},
             {"recordingAnimationSeconds", initial.limits.recordingAnimationSeconds},
             {"recordingAnimationEdge", initial.limits.recordingAnimationEdge},
@@ -218,6 +239,10 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
         if (key == "pendingOperations") maximum = 1024;
         if (key == "concurrentUploads") maximum = 32;
         if (key == "imagePixels") maximum = 1000000000;
+        if (artifactByteLimitKeys().contains(key)) {
+            if (!byteLimit(limits[key])) return invalid("/limits/" + key, "File, batch and waiting-upload limits are a positive byte count up to 1 TiB, \"auto\" or null for no limit.");
+            continue;
+        }
         if (!integer(limits[key], 1, maximum)) return invalid("/limits/" + key, "Resource limits must be positive bounded integers.");
     }
     const auto retention = doc["retention"].toObject();
@@ -299,9 +324,13 @@ Settings Settings::fromValidated(const QJsonObject& original) {
     settings.limits.maxFiles = limits["maxFiles"].toInt();
     settings.limits.pendingOperations = limits["pendingOperations"].toInt();
     settings.limits.concurrentUploads = limits["concurrentUploads"].toInt();
-    settings.limits.maxFileBytes = limits["maxFileBytes"].toInteger();
-    settings.limits.maxBatchBytes = limits["maxBatchBytes"].toInteger();
-    settings.limits.pendingArtifactBytes = limits["pendingArtifactBytes"].toInteger();
+    auto artifactLimit = [&](const char* key) {
+        const auto value = limits[QLatin1String(key)];
+        return value.isNull() || value.isString() ? ResourceLimits::unlimitedBytes : value.toInteger();
+    };
+    settings.limits.maxFileBytes = artifactLimit("maxFileBytes");
+    settings.limits.maxBatchBytes = artifactLimit("maxBatchBytes");
+    settings.limits.pendingArtifactBytes = artifactLimit("pendingArtifactBytes");
     settings.limits.pendingImageBytes = limits["pendingImageBytes"].toInteger(settings.limits.pendingImageBytes);
     settings.limits.recordingAnimationSeconds = limits["recordingAnimationSeconds"].toInteger(settings.limits.recordingAnimationSeconds);
     settings.limits.recordingAnimationEdge = limits["recordingAnimationEdge"].toInt(settings.limits.recordingAnimationEdge);
