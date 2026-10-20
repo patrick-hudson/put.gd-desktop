@@ -411,6 +411,11 @@ def create_server(adapter: CliAdapter) -> FastMCP:
         """Read stored original receipt, local-copy status and independent remote-deletion status."""
         return await adapter.call('history.detail', {'id': id}) if identifier(id) else invalid()
 
+    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
+    async def make_history_preview(id: str) -> Json:
+        """Make a missing image/video preview (never made, failed or cleaned up) from the retained file or verified local copy; returns previewPath and state ready/made, or why there is none."""
+        return await adapter.call('history.preview', {'id': id}) if identifier(id) else invalid()
+
     @server.tool(annotations=effect)
     async def copy_history_link(id: str) -> Json:
         """Write the stored direct URL to clipboard; no upload or target reconstruction."""

@@ -9,6 +9,8 @@ public:
  ~HistoryService() override;
  void list(const HistoryQuery&,JsonReply);
  void detail(const QString&,JsonReply);
+ // Makes the item's missing image or video preview (#190); see OperationService::makePreview.
+ void preview(const QString&,JsonReply);
  void clear(JsonReply);
  void copyImage(const QString&,JsonReply);
  void copyLink(const QString&,JsonReply);

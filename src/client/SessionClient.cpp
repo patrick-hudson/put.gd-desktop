@@ -99,6 +99,7 @@ SessionClient::RequestId SessionClient::request(const QString& method, const QJs
 int SessionClient::deadlineMs(const QString& method) {
     if (method == "diagnostics.bundle") return diagnosticsBundleReplyMs + transportMarginMilliseconds;
     if (method == "diagnostics.uploadTarget") return diagnosticsUploadTargetReplyMs + transportMarginMilliseconds;
+    if (method == "history.preview") return historyPreviewReplyMs + transportMarginMilliseconds;
     return deadlineMilliseconds;
 }
 

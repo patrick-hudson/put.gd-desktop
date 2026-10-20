@@ -1,4 +1,5 @@
 #include "OperationService.h"
+#include "client/SessionClient.h"
 #include "core/BuildInfo.h"
 #include "core/Log.h"
 #include "core/RunMarker.h"
@@ -44,6 +45,28 @@ QJsonObject itemFields(const Operation& op,const OperationItem& item) {return {{
 ActionSettings routeOf(const Operation& op) {
  if(op.action==OperationService::diagnosticsAction)return {"upload",op.destination.profileId,{},"share"};
  return op.settings.actions.value(op.action);
+}
+// On-demand previews (#190) answer within historyPreviewReplyMs: at most this
+// long queued, then a local copy check and a decode of up to 10 s each.
+constexpr qsizetype maximumQueuedPreviews=3;
+constexpr qint64 maximumPreviewWaitMs=20000;
+constexpr int maximumPreviewVerifyMs=10000;
+static_assert(maximumPreviewWaitMs+maximumPreviewVerifyMs+10000<historyPreviewReplyMs);
+// A local copy stands in for a cleaned-up artifact only while it is the same
+// file: a regular file with the artifact's size and SHA-256.
+Error sameFile(const Artifact& copy,const std::shared_ptr<std::atomic_bool>& cancelled,int deadlineMs) {
+ const Error missing{"preview_source_missing","Neither the stored file nor a local copy is available",{}};
+ const QFileInfo info(copy.path);if(!info.isFile()||info.isSymLink()||info.size()!=copy.bytes||copy.sha256.isEmpty())return missing;
+ QFile file(copy.path);if(!file.open(QIODevice::ReadOnly))return missing;
+ QCryptographicHash hash(QCryptographicHash::Sha256);QByteArray chunk(1<<20,Qt::Uninitialized);QElapsedTimer clock;clock.start();
+ for(;;) {
+  if(cancelled->load())return {"cancelled","Preview cancelled",{}};
+  if(clock.elapsed()>deadlineMs)return {"preview_timeout","The local copy took too long to check",{}};
+  const auto read=file.read(chunk.data(),chunk.size());if(read<0)return missing;if(read==0)break;
+  hash.addData(QByteArrayView(chunk.constData(),read));
+ }
+ if(QString::fromLatin1(hash.result().toHex())!=copy.sha256)return {"preview_source_changed","The local copy is no longer the stored file",{}};
+ return {};
 }
 }
 QJsonObject UnavailableSource::capabilities() const {return {{"region",false},{"window",false},{"desktop",false},{"clipboardImport",QJsonArray{}},{"clipboardResult",QJsonArray{}},{"shortcuts",false},{"reason","native_adapter_unavailable"}};}
@@ -692,37 +715,94 @@ void OperationService::finish(Operation op,JsonReply reply) {
 }
 
 void OperationService::queuePosters(const Operation& op) {
- if(op.settings.previewCacheBytes<=0||posterQueue_.contains(op.id))return;
- bool wanted=false;for(const auto& item:op.items)if(item.artifact.category=="videos"&&item.artifact.previewPath.isEmpty())wanted=true;
- if(wanted){posterQueue_.enqueue(op.id);pumpPosters();}
+ if(op.settings.previewCacheBytes<=0)return;
+ for(const auto& item:op.items) {
+  if(item.artifact.category!="videos"||!item.artifact.previewPath.isEmpty())continue;
+  if(std::any_of(posterQueue_.cbegin(),posterQueue_.cend(),[&](const PosterTask& task){return task.itemId==item.artifact.id;}))continue;
+  PosterTask task;task.operationId=op.id;task.itemId=item.artifact.id;task.budget=op.settings.previewCacheBytes;task.maximumPixels=op.settings.limits.imagePixels;task.waiting.start();
+  posterQueue_.append(std::move(task));
+ }
+ pumpPosters();
+}
+void OperationService::makePreview(const QString& id,JsonReply reply) {
+ if(!ready_){reply({"initializing","Wait for resident journal recovery",{}},{});return;}
+ if(stopping_){reply({"cancelled","The resident is stopping",{}},{});return;}
+ const auto snapshot=settings_.snapshot();
+ if(snapshot.previewCacheBytes<=0){reply({"previews_disabled","Previews are turned off (retention.previewCacheBytes is 0)",{}},{});return;}
+ if(const auto failed=previewFailures_.find(id);failed!=previewFailures_.end()){reply(failed.value(),{});return;}
+ // Asked for again (or already queued after its operation): answer both when it is made.
+ for(auto& task:posterQueue_)if(task.itemId==id&&task.onDemand){task.replies.append(std::move(reply));return;}
+ const auto onDemand=std::count_if(posterQueue_.cbegin(),posterQueue_.cend(),[](const PosterTask& task){return task.onDemand;});
+ if(onDemand>=maximumQueuedPreviews){reply({"preview_busy","Other previews are being made; select the item again shortly",{}},{});return;}
+ PosterTask task;task.itemId=id;task.onDemand=true;task.budget=snapshot.previewCacheBytes;task.maximumPixels=snapshot.limits.imagePixels;task.waiting.start();task.replies.append(std::move(reply));
+ // Ahead of after-operation posters, behind earlier selections; an
+ // after-operation task for the same item becomes this one.
+ posterQueue_.removeIf([&](const PosterTask& queued){return queued.itemId==id;});
+ const auto position=std::find_if(posterQueue_.begin(),posterQueue_.end(),[](const PosterTask& queued){return !queued.onDemand;});
+ posterQueue_.insert(position,std::move(task));
+ pumpPosters();
 }
 void OperationService::pumpPosters() {
  if(posterRunning_||posterQueue_.isEmpty()||stopping_)return;
- posterRunning_=true;const auto id=posterQueue_.dequeue();const auto path=databasePath(),root=root_;const auto cancelled=posterCancel_;
- background([path,root,id,cancelled](Error& e) {
+ auto task=posterQueue_.takeFirst();
+ // The reply deadline counts from the request: a selection that waited this
+ // long behind other previews is answered instead of decoded.
+ if(task.onDemand&&task.waiting.elapsed()>maximumPreviewWaitMs){settlePreview(task,{"preview_busy","Other previews are being made; select the item again shortly",{}},{});pumpPosters();return;}
+ posterRunning_=true;const auto path=databasePath(),root=root_;const auto cancelled=posterCancel_;
+ background([path,root,task,cancelled](Error& e) {
+  QElapsedTimer clock;clock.start();
   HistoryStore store(path);e=store.error();if(e)return QJsonObject{};
-  auto op=store.operation(id,&e);if(e)return QJsonObject{};
-  ArtifactStore artifacts(root+"/artifacts");QHash<QString,QString> made;QJsonArray failures;QElapsedTimer clock;clock.start();
-  for(const auto& item:op.items) {
-   if(item.artifact.category!="videos"||!item.artifact.previewPath.isEmpty()||cancelled->load())continue;
-   Error failure;const auto preview=artifacts.poster(item.artifact,op.settings.previewCacheBytes,op.settings.limits.imagePixels,cancelled,&failure);
-   if(preview.isEmpty())failures.append(QJsonObject{{"itemId",item.artifact.id},{"error",logging::errorFields(failure)}});else made.insert(item.artifact.id,preview);
+  auto operationId=task.operationId;
+  if(operationId.isEmpty()){const auto record=store.detail(task.itemId,&e);if(e)return QJsonObject{};operationId=record["operationId"].toString();}
+  auto op=store.operation(operationId,&e);if(e){if(e.code=="operation_not_found")e={"preview_source_missing","The stored file is no longer available",{}};return QJsonObject{};}
+  const auto found=std::find_if(op.items.cbegin(),op.items.cend(),[&](const OperationItem& item){return item.artifact.id==task.itemId;});
+  if(found==op.items.cend()){e={"history_not_found","History record not found",{}};return QJsonObject{};}
+  const auto& item=*found;const auto category=item.artifact.category;
+  if(category!="videos"&&category!="images"){e={"preview_unsupported","Previews are made for images and videos only",{}};return QJsonObject{};}
+  QJsonObject result{{"id",task.itemId},{"operationId",operationId}};
+  if(!item.artifact.previewPath.isEmpty()&&QFileInfo(item.artifact.previewPath).isFile()){result["state"]="ready";result["previewPath"]=item.artifact.previewPath;return result;}
+  if(Operation::activeState(op.state)){e={"operation_active","The preview is made when the operation finishes",{}};return QJsonObject{};}
+  // The retained artifact, or else the local copy when it is still the same file.
+  Artifact source=item.artifact;QString from;
+  const QFileInfo stored(source.path);
+  if(stored.isFile()&&!stored.isSymLink()&&stored.size()==source.bytes)from="artifact";
+  else if(item.local.status=="saved"&&!item.local.path.isEmpty()) {
+   source.path=item.local.path;
+   if(auto mismatch=sameFile(source,cancelled,maximumPreviewVerifyMs)){e=mismatch;return QJsonObject{};}
+   from="local";
   }
-  QJsonObject result{{"made",made.size()},{"elapsedMs",double(clock.elapsed())},{"failures",failures}};
-  if(made.isEmpty())return result;
+  if(from.isEmpty()){e={"preview_source_missing","Neither the stored file nor a local copy is available",{}};return QJsonObject{};}
+  ArtifactStore artifacts(root+"/artifacts");Error failure;QString made;
+  if(category=="videos")made=artifacts.poster(source,task.budget,task.maximumPixels,cancelled,&failure);
+  else if(!cancelled->load()){made=artifacts.preview(source,task.budget,task.maximumPixels);if(made.isEmpty())failure={"preview_failed","The image preview could not be made",{}};}
+  else failure={"cancelled","Preview cancelled",{}};
+  if(made.isEmpty()){e=failure;return QJsonObject{};}
+  result["state"]="made";result["previewPath"]=made;result["source"]=from;result["elapsedMs"]=double(clock.elapsed());
   // Another action may have written the operation while the helper decoded,
-  // and a retry may be running it again: add only the previews to a fresh read.
-  auto fresh=store.operation(id,&e);if(e||Operation::activeState(fresh.state))return QJsonObject{};
-  QSet<QString> changed;for(auto& item:fresh.items)if(made.contains(item.artifact.id)&&item.artifact.previewPath.isEmpty()){item.artifact.previewPath=made.value(item.artifact.id);changed.insert(item.artifact.id);}
+  // and a retry may be running it again: add only the preview to a fresh read.
+  auto fresh=store.operation(operationId,&e);if(e||Operation::activeState(fresh.state)){e={};result["stored"]=false;return result;}
+  QSet<QString> changed;for(auto& entry:fresh.items)if(entry.artifact.id==task.itemId&&entry.artifact.previewPath!=made){entry.artifact.previewPath=made;changed.insert(entry.artifact.id);}
   if(!changed.isEmpty())e=store.checkpointOperation(fresh,changed);
-  result["stored"]=changed.size();return result;
- },[this,id](Error e,QJsonObject result) {
-  posterRunning_=false;
-  if(e)logging::warning(logHistory(),"Cannot record the video preview",{{"operationId",id},{"error",logging::errorFields(e)}});
-  else if(!result.isEmpty())logging::info(logHistory(),"Video preview",{{"operationId",id},{"made",result["made"]},{"elapsedMs",result["elapsedMs"]},{"failures",result["failures"]}});
-  if(!e&&result["stored"].toInt()>0)emit changed(id);
-  pumpPosters();
+  result["stored"]=!e;return e?QJsonObject{}:result;
+ },[this,task](Error e,QJsonObject result) {
+  posterRunning_=false;settlePreview(task,e,result);pumpPosters();
  });
+}
+void OperationService::settlePreview(const PosterTask& task,Error e,QJsonObject result) {
+ QJsonObject fields{{"itemId",task.itemId},{"onDemand",task.onDemand},{"waitedMs",double(task.waiting.elapsed())}};
+ if(!task.operationId.isEmpty())fields["operationId"]=task.operationId;
+ if(e) {
+  // A selection that failed is retried only after a restart. An
+  // after-operation failure gets one more try when History selects the item,
+  // and the transient refusals are never remembered.
+  if(task.onDemand&&!QStringList{"cancelled","preview_busy","operation_active","initializing"}.contains(e.code)){if(previewFailures_.size()>=4096)previewFailures_.clear();previewFailures_.insert(task.itemId,e);}
+  fields["error"]=logging::errorFields(e);logging::info(logHistory(),"No preview",fields);
+ } else {
+  for(const auto& key:{"operationId","state","source","elapsedMs","stored"})if(result.contains(key))fields[key]=result[key];
+  logging::info(logHistory(),"Preview",fields);
+  if(result["state"]=="made")emit changed(result["operationId"].toString());
+ }
+ for(const auto& reply:task.replies)reply(e,e?QJsonObject{}:result);
 }
 void OperationService::recent(JsonReply reply) {const auto path=databasePath();const int limit=settings_.snapshot().recentActivityLimit;background([path,limit](Error& e) {HistoryStore store(path);return QJsonObject{{"operations",store.recent(limit,&e)}};},[this,reply](Error e,QJsonObject data){auto values=data["operations"].toArray();for(qsizetype i=0;i<values.size();++i)values[i]=currentObservation(values[i].toObject());data["operations"]=values;reply(e,data);});}
 void OperationService::inspect(const QString& id,JsonReply reply) {const auto path=databasePath();background([path,id](Error& e) {HistoryStore store(path);return store.operation(id,&e).publicJson();},[this,reply](Error e,QJsonObject data){reply(e,currentObservation(data));});}

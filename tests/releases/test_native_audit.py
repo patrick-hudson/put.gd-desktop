@@ -9,6 +9,7 @@ from unittest.mock import patch
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "tools/releases"))
 import audit_native as audit
+import native
 
 class NativeInventoryTests(unittest.TestCase):
     def setUp(self):
@@ -146,6 +147,26 @@ class NativeInventoryTests(unittest.TestCase):
         with patch.object(audit, "command", side_effect=commands):
             with self.assertRaisesRegex(ValueError, r"transitive \$ORIGIN RPATH"):
                 audit.audit_tree(self.root, self.manifest)
+
+class RuntimePackageTests(unittest.TestCase):
+    """Qt image plugins the distros package apart from Qt GUI (#189)."""
+    def test_deb_and_rpm_require_the_webp_plugin_package(self):
+        native.require_runtime_packages({"format": "DEB", "requires": "libqt6sql6-sqlite, qt6-qpa-plugins, qt6-wayland, "
+                                         "qt6-image-formats-plugins, libc6 (>= 2.38) | libc6-alt"})
+        native.require_runtime_packages({"format": "RPM", "requires": ["qt6-qtbase-gui", "qt6-qtimageformats", "libc.so.6()(64bit)"]})
+
+    def test_missing_plugin_package_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "DEB does not require qt6-image-formats-plugins"):
+            native.require_runtime_packages({"format": "DEB", "requires": "qt6-qpa-plugins, qt6-image-formats-plugins-extra"})
+        with self.assertRaisesRegex(ValueError, "RPM does not require qt6-qtimageformats"):
+            native.require_runtime_packages({"format": "RPM", "requires": ["qt6-qtbase-gui"]})
+
+    def test_package_configuration_declares_them(self):
+        text = (REPO / "packaging/linux/CMakeLists.txt").read_text()
+        for names in native.RUNTIME_PACKAGES.values():
+            for name in names:
+                self.assertRegex(text, r"CPACK_(DEBIAN_PACKAGE_DEPENDS|RPM_PACKAGE_REQUIRES) \"[^\"]*\b" + name + r"\b")
+
 
 if __name__ == "__main__":
     unittest.main()

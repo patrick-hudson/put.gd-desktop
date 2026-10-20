@@ -4,6 +4,7 @@
 #include "RecordingService.h"
 #include "core/SettingsService.h"
 #include "UploadSlots.h"
+#include <QElapsedTimer>
 #include <QObject>
 #include <QQueue>
 #include <QThread>
@@ -117,6 +118,11 @@ public:
  void copyResult(const QString& id,JsonReply);
  void copyHistoryImage(const QString& id,JsonReply);
  void copyHistoryUrl(const QString& url,JsonReply,quint64 ticket=0);
+ // A history item's missing preview (#190): an image's or a video's that was
+ // never made, failed or was removed by cleanup, made from the retained
+ // artifact or a verified local copy through the one-at-a-time poster queue.
+ // Answers with the preview path, or why there is none.
+ void makePreview(const QString& historyId,JsonReply);
  quint64 invalidateCopyEligibility();
  void cleanup(JsonReply);
  // Applies retention.failedArtifactDays without the user (#202): a minute after
@@ -194,11 +200,18 @@ private:
  void scheduleHeapReclamation();
  Operation run(Job);
  void finish(Operation,JsonReply={});
- // #112: video poster frames, made one operation at a time after it ends, so
- // a slow or failing decode never delays its upload, link or copied result.
+ // #112: video poster frames, made one item at a time after its operation
+ // ends, so a slow or failing decode never delays its upload, link or copied
+ // result. #190: a preview History asks for on selection goes ahead of those
+ // and answers when it is made.
+ struct PosterTask {QString operationId,itemId;bool onDemand=false;qint64 budget=0,maximumPixels=0;QElapsedTimer waiting;QList<JsonReply> replies;};
  void queuePosters(const Operation&);
  void pumpPosters();
- QQueue<QString> posterQueue_;bool posterRunning_=false;
+ void settlePreview(const PosterTask&,Error,QJsonObject);
+ QList<PosterTask> posterQueue_;bool posterRunning_=false;
+ // Items whose preview could not be made in this run: selecting one again
+ // answers at once instead of decoding the same file again.
+ QHash<QString,Error> previewFailures_;
  std::shared_ptr<std::atomic_bool> posterCancel_=std::make_shared<std::atomic_bool>(false);
  void releaseActive(const QString&);
  void performCopy(Operation,bool explicitCopy,JsonReply,quint64 ticket=0);
