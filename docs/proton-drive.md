@@ -38,8 +38,14 @@ Proton enforces each plan's per-file size limit on the server; the pinned SDK se
 none of its own, so import does not reject large files. A file over the limit fails
 with `destination_file_too_large_for_plan` (service error 200003), naming the file's
 size and the plan limit, rather than `quota_exceeded`, which means the drive or a
-sharing limit is full. Like other refusals after the upload was dispatched, the item
-stays unknown until Retry reconciles it.
+sharing limit is full. After either refusal the helper asks Proton whether the file's
+name is still free in the folder. Unfinished drafts hold their names too, so a free
+name means nothing was created and the item fails; Retry then uploads again without
+reconciling. A taken name or a failed check leaves the item unknown until Retry
+reconciles it. On a free 5 GiB plan, tested live on 2026-10-20, Proton refused every
+oversized file at draft creation with the storage quota (`quota_exceeded`, service
+error 200002) before any per-file limit, from 5.5 GiB to 100 TiB, so 200003 was not
+observed; see [the round-10 evidence](evidence/2026-10-20-round10-proton/README.md).
 
 Sharing is the destination default. Clear that choice for private uploads, or
 use Settings → Capture → Per-action exceptions to override publication per action. Private upload
@@ -120,7 +126,13 @@ revision-guarded deletion. The app rejects deletion of a recorded Proton file;
 use link revocation or manage deletion in Proton. The helper never empties Trash.
 
 All helper operations for the same keychain reference serialize across put.gd
-processes, including token refresh. Helper requests use bounded stdin/stdout;
+processes, including token refresh. Each helper loads its own copy of the session,
+and Proton rotates the refresh token when it is used. If two helpers refreshed
+the same session, the one holding the stale token would be refused and the
+official account code would sign the account out and remove it from the
+keychain. Live, three parallel helpers finished three uploads 1.7–2.7 times
+faster than one at a time, so concurrent Proton uploads remain a tracked design
+item (#176) that needs refresh coordinated across helpers first. Helper requests use bounded stdin/stdout;
 passwords and sessions never use argv. Each helper request keeps at most 64
 SDK crypto-key entries in memory to avoid repeated parent-key decryption. Entity
 metadata stays uncached, so identity/revision checks still read from the service.
