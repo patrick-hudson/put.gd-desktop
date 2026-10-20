@@ -1,4 +1,4 @@
-# History preview blanking on reloads (nightly flake, #222 follow-up)
+# History preview blanking on reloads (nightly flake, #285)
 
 `history-preview-reload-blank.png` explains the fix for the nightly CI failure in
 `HistoryGui::missingPreviewIsMadeOnSelection` (linux 26.04, run 39496330154).
