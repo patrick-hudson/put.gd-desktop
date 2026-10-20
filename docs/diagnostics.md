@@ -152,7 +152,7 @@ kept. It runs when the resident starts, after each rotation, when the settings c
 and once a day.
 
 **Clear logs** is the `logs.clear` session method (`putgd-cli logs.clear`, MCP
-`clear_logs`) and the **Clear logs…** button in Settings → General → Diagnostics,
+`clear_logs`) and the **Clear logs…** button in Settings → Advanced → Diagnostics,
 which asks first. It deletes every log file, starts a new one with a `Logs cleared`
 record and returns `removedFiles` and `removedBytes`.
 
@@ -518,7 +518,7 @@ deleted, and other files in the folder are left alone.
 
 ## Settings and notifications
 
-**Settings → General → Diagnostics** (#122) shows:
+**Settings → Advanced → Diagnostics** (#122; on General until #238, now directly above Config file) shows:
 
 - **Debug logging**, the `preferences.diagnostics.debugLogging` checkbox. Under it,
   when it turns itself off (`diagnostics.logging.debugLoggingExpiresAt`).

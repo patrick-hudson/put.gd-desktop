@@ -66,7 +66,7 @@ Stored units/types are unchanged. `*` means each `region`, `window`, `desktop`, 
 | Category folders — `archive.folders.{images,videos,text,other}` | absolute strings or null, null | General / Local copies |
 | Naming — `naming.mode` | enum, original | Capture / File names |
 | Duplicates — `naming.collisionPolicy` | enum, rename | Capture / When a name exists |
-| Imported file template — `naming.fileTemplate` | optional string, {name}.{ext} | Capture / Imported files |
+| Imported file template — `naming.fileTemplate` | optional string, {name}.{ext} | Capture / Copied & uploaded files |
 | Screenshot template — `naming.captureTemplate` | optional string, Screen-Capture-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext} | Capture / Screen captures |
 | Clipboard image template — `naming.imageTemplate` | optional string, Image-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext} | Capture / Clipboard images |
 | Clipboard text template — `naming.textTemplate` | optional string, Text-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext} | Capture / Clipboard text |
@@ -136,7 +136,7 @@ The resident returns only a four-character access-key ID prefix after explicit c
 
 Fixed the reported “Proton settings have missing or unsupported fields” error when entering an S3 bucket after switching a saved Proton destination. A rejected incomplete provider conversion had left Proton accepted, while later child-field patches were projected onto it. Edits now include the complete selected profile whenever its provider/identity differs from the accepted profile. Validation remains authoritative; a valid replacement is saved atomically and invalid drafts leave the original provider untouched. Bucket feedback now explains empty, malformed and out-of-range names without changing provider validation rules.
 
-Wheel events over the Settings tab bar are ignored; explicit tab clicks and keyboard navigation remain available. The rail now labels Capture region / Capture window / Capture desktop / Import clipboard, provides a keyboard-accessible information dialog, and shows per-action tooltips/accessible descriptions based on saved local, private or shared output settings. The footer summarizes mixed routes accurately.
+Wheel events over the Settings tab bar are ignored; explicit tab clicks and keyboard navigation remain available. The rail now labels Capture region / Capture window / Capture desktop / Upload clipboard (Import clipboard until #239), provides a keyboard-accessible information dialog, and shows per-action tooltips/accessible descriptions based on saved local, private or shared output settings. The footer summarizes mixed routes accurately.
 
 The three targeted regressions were observed failing before the changes and passing afterward. Full affected Settings and helper-lifecycle checks pass. Source review for this increment was a targeted manual review because the checkout already contains the wider, unmerged experiment; no shipping or full desktop/memory acceptance is implied. Feedback logs and updated synthetic renders are preserved in the local review directory.
 
