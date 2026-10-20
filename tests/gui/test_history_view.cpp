@@ -180,6 +180,23 @@ private slots:
 
  }
 
+ // #112: a video's poster shows a play glyph and its length, in the list and
+ // in the inspector, and the length comes from the poster the helper wrote.
+ void videoPosterCarriesPlayGlyphAndLength() {
+  QCOMPARE(HistoryModel::duration(0),QString());QCOMPARE(HistoryModel::duration(400),QString("0:01"));QCOMPARE(HistoryModel::duration(65000),QString("1:05"));QCOMPARE(HistoryModel::duration(3723000),QString("1:02:03"));
+  QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());
+  const auto posterPath=d.filePath("synthetic-poster.png");QImage poster(256,144,QImage::Format_RGB32);poster.fill(QColor("#f0f0f0"));poster.setText(HistoryModel::durationKey,"65000");QVERIFY(poster.save(posterPath));
+  {HistoryStore ledger(operations.databasePath());Operation op;op.id="synthetic-video-inspector";op.created="2020-01-01T00:00:00.000Z";op.state="completed";op.settings=settings.snapshot();OperationItem item;item.artifact.id="synthetic-video-item";item.artifact.name="recording.mp4";item.artifact.mime="video/mp4";item.artifact.category="videos";item.artifact.previewPath=posterPath;item.artifact.bytes=1572864;item.uploadStatus="local_only";op.items.append(item);QVERIFY(!ledger.saveOperation(op));}
+  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);window.resize(1000,700);window.show();auto* table=window.findChild<QListView*>("historyList");QTRY_COMPARE(table->model()->rowCount(),1);
+  const auto index=table->model()->index(0,0);QTRY_VERIFY(!qvariant_cast<QImage>(index.data(HistoryModel::ThumbnailRole)).isNull());QCOMPARE(qvariant_cast<QImage>(index.data(HistoryModel::ThumbnailRole)).text(HistoryModel::durationKey),QString("65000"));
+  // The list row draws the scrim-backed glyph over the light poster.
+  // The light poster gets a scrim-backed glyph: mid-grey pixels no plain poster or dark row has.
+  // Only inside the poster's own pixels (a uniform 240 grey), never in the row's text.
+  auto scrim=[](const QImage& image){QRect poster;for(int y=0;y<image.height();++y)for(int x=0;x<image.width();++x)if(qGray(image.pixel(x,y))==240)poster|=QRect(x,y,1,1);
+   for(int y=poster.top();y<=poster.bottom();++y)for(int x=poster.left();x<=poster.right();++x){const int g=qGray(image.pixel(x,y));if(g>70&&g<130)return true;}return false;};
+  QTest::qWait(50);QVERIFY(scrim(table->grab(table->visualRect(index)).toImage()));
+  selectRow(table,0);auto* preview=window.findChild<QLabel*>("historyPreview");QTRY_VERIFY(!preview->pixmap().isNull());QTRY_VERIFY(window.findChild<QLabel*>("historySummary")->text().contains("1:05"));QVERIFY(scrim(preview->pixmap().toImage()));
+ }
  void openingHistoryDuringInitializationRefreshesWhenReady() {
   QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));QVERIFY(QDir().mkpath(d.filePath("data")));
   {HistoryStore ledger(d.filePath("data/history.sqlite"));Operation op;op.id="synthetic-startup";op.created="2020-01-01T00:00:00.000Z";op.state="completed";op.settings=settings.snapshot();OperationItem item;item.artifact.id="startup-item";item.artifact.name="startup.txt";item.uploadStatus="local_only";op.items.append(item);QVERIFY(!ledger.saveOperation(op));}

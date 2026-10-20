@@ -3,6 +3,7 @@
 #include <QJsonObject>
 #include <QDateTime>
 #include <QList>
+#include <atomic>
 #include <memory>
 namespace putgd {
 struct Artifact {
@@ -45,8 +46,16 @@ public:
  void discardIncomplete();
  Error remove(const QString& operationId);
  QString preview(const Artifact&,qint64 budget,qint64 maximumPixels);
+ // A video's poster frame (#112) in the same cache, budget and naming as image
+ // previews. It decodes a whole process away and takes up to the job deadline,
+ // so it runs after the operation ends, never on the upload or result path.
+ QString poster(const Artifact&,qint64 budget,qint64 maximumPixels,std::shared_ptr<std::atomic_bool> cancelled={},Error* failure=nullptr);
+ // Tests may substitute the poster helper (empty: putgd-record beside the app).
+ static void setPosterHelperForTesting(const QString& path);
  void clearPreviews();
  qint64 bytes() const;
-private: QString root_;
+private:
+ QString cache(const QString& id,const QByteArray& png,qint64 budget);
+ QString root_;
 };
 }
