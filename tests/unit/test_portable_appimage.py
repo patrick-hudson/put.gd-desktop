@@ -4,6 +4,7 @@ import os
 import importlib.util
 import json
 import sys
+import re
 from pathlib import Path
 import signal
 import subprocess
@@ -161,22 +162,30 @@ while :; do sleep 0.05; done
         icon = self.mount_windowed_helpers()
         self.env.update(XDG_CURRENT_DESKTOP="GNOME", WAYLAND_DISPLAY="wayland-0",
                         APPIMAGE=str(self.root / "put.gd $1.AppImage"))
+        # Each section starts with its own marker line: the entries' owner key
+        # ends in a start time, which can end in the digits of a file mode.
         self.write(self.app / "usr/bin/putgd-launcher", """#!/bin/sh
 for id in putgd-ui putgd-record; do
+    printf '@@%s\\n' "$id" >> "$PG_TEST_RECEIPT"
     cat "$XDG_DATA_HOME/applications/$id.desktop" >> "$PG_TEST_RECEIPT"
-    stat -c '%a' "$XDG_DATA_HOME/applications/$id.desktop" >> "$PG_TEST_RECEIPT"
+    stat -c 'mode=%a' "$XDG_DATA_HOME/applications/$id.desktop" >> "$PG_TEST_RECEIPT"
 done
+printf '@@listing\\n' >> "$PG_TEST_RECEIPT"
 ls -A "$XDG_DATA_HOME/applications" >> "$PG_TEST_RECEIPT"
 printf 'parent=%s\\n' "$PPID" >> "$PG_TEST_RECEIPT"
 exit 0
 """)
         process = subprocess.Popen([str(APP_RUN)], env=self.env)
         self.assertEqual(process.wait(timeout=10), 0)
-        receipt = self.receipt.read_text()
-        ui, record, listing = receipt.split("600\n")[0], receipt.split("600\n")[1], receipt.split("600\n")[2]
+        sections = re.split(r"^@@(\S+)\n", self.receipt.read_text(), flags=re.MULTILINE)
+        self.assertEqual(sections[0], "")
+        sections = dict(zip(sections[1::2], sections[2::2]))
+        self.assertEqual(list(sections), ["putgd-ui", "putgd-record", "listing"])
+        listing = sections["listing"]
         self.assertIn("parent=%d" % process.pid, listing)
-        for entry, app_id, name in ((ui, "putgd-ui", "put.gd"), (record, "putgd-record", "put.gd screen recorder")):
-            lines = entry.splitlines()
+        for app_id, name in (("putgd-ui", "put.gd"), ("putgd-record", "put.gd screen recorder")):
+            lines = sections[app_id].splitlines()
+            self.assertEqual(lines[-1], "mode=600")
             self.assertEqual(lines[0], "[Desktop Entry]")
             self.assertIn("Name=" + name, lines)
             self.assertIn("Icon=" + str(icon), lines)

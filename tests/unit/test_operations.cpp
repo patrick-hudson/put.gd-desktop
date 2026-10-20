@@ -1083,18 +1083,23 @@ private slots:
   SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});auto doc=configuration(d.path());auto limits=doc["limits"].toObject();limits["concurrentUploads"]=2;doc["limits"]=limits;QVERIFY(settings.save(doc,{}));
   Source source;source.payload.kind="files";for(int i=0;i<3;++i)source.payload.files.append(fixture(d.path(),QString("batch-%1.txt").arg(i),QByteArray("synthetic batch ")+QByteArray::number(i)));
   OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());HistoryStore journal(operations.databasePath());
-  auto drain=qScopeGuard([&]{provider->deferUploads=false;for(auto complete:provider->completions)complete();provider->completions.clear();});
+  // A failed check must not leave a later upload waiting forever: complete what arrives until the operation ends.
+  auto drain=qScopeGuard([&]{provider->deferUploads=false;QElapsedTimer clock;clock.start();
+   do{while(!provider->completions.isEmpty())provider->completions.takeFirst()();QTest::qWait(10);}while(operations.diagnostics()["activeOperations"].toInt()>0&&clock.elapsed()<10000);});
+  // The overlapping files reach the provider in either order: complete each by name.
+  auto pending=[&]{QStringList names;for(const auto& request:provider->requests)names.append(request.candidate);return names;};
+  auto finish=[&](const QString& name){const auto index=pending().indexOf(name);QVERIFY2(index>=0,qPrintable(name));provider->requests.removeAt(index);provider->completions.takeAt(index)();};
   QString id;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});
   // Two files transfer at once; the third waits for a slot.
   QTRY_COMPARE(provider->completions.size(),2);QTest::qWait(150);QCOMPARE(provider->completions.size(),2);
-  QCOMPARE(provider->requests[0].candidate,QString("batch-0.txt"));QCOMPARE(provider->requests[1].candidate,QString("batch-1.txt"));
+  {auto names=pending();names.sort();QCOMPARE(names,(QStringList{"batch-0.txt","batch-1.txt"}));}
   QTRY_VERIFY(operations.activeObservations().size()==1);
   {const auto items=operations.activeObservations()[0].toObject()["items"].toArray();QCOMPARE(items[2].toObject()["phase"].toString(),QString("queued"));}
   // The second file finishes first: its link waits for the first file.
-  provider->completions.takeAt(1)();QTRY_COMPARE(provider->completions.size(),2);QCOMPARE(provider->requests[2].candidate,QString("batch-2.txt"));
+  finish("batch-1.txt");QTRY_COMPARE(provider->completions.size(),2);QVERIFY(pending().contains("batch-2.txt"));
   QTest::qWait(100);QCOMPARE(source.copies,0);
-  provider->completions.takeFirst()();QTRY_COMPARE(source.copiedTexts.size(),2);
-  provider->completions.takeFirst()();QTRY_COMPARE(journal.operation(id).copyStatus,QString("copied"));
+  finish("batch-0.txt");QTRY_COMPARE(source.copiedTexts.size(),2);
+  finish("batch-2.txt");QTRY_COMPARE(journal.operation(id).copyStatus,QString("copied"));
   const auto op=journal.operation(id);QCOMPARE(op.state,QString("completed"));QStringList expected;for(const auto& item:op.items)expected.append(item.receipt.directUrl);
   QCOMPARE(source.copiedTexts,expected);
  }

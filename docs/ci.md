@@ -8,7 +8,7 @@ through the Actions API.
 | --- | --- | --- |
 | `ci.yml` | every pull request, pushes to `nightly`, manual runs; called by nightly and release | contracts, Linux tests, clang ASan/UBSan core tests, Windows compile, packages; on `nightly` pushes, cache pruning |
 | `package.yml` | called by `ci.yml` | four native packages, AppImage, and with a tag the collected `release-assets` |
-| `nightly.yml` | 05:23 UTC daily and manual | skip unchanged source, or tag, test, package and publish a nightly |
+| `nightly.yml` | 05:23 UTC daily and manual | skip unchanged source, or tag, test, package and publish a nightly, then notify put.gd-site |
 | `release.yml` | pushes to `main` and manual | cut a candidate (or stable on request), test, package and stage a draft |
 
 The single required status check is the `CI` job. It fails when any job the
@@ -101,6 +101,35 @@ built in CI.
 Ubuntu 26.04 and Debian 13 DEBs, the Fedora 44 RPM and the AppImage, and compiles the curated source
 export on Ubuntu 24.04. With a release tag, `collect` verifies and assembles the
 public asset set. See [releases](release.md).
+
+## Notifying put.gd-site
+
+The download site ([patrick-hudson/put.gd-site](https://github.com/patrick-hudson/put.gd-site))
+builds its links from this repository's releases. Its deploy workflow
+(`.github/workflows/deploy.yml` there) runs every six hours, and also on a
+`repository_dispatch` of type `release-published`, when it regenerates
+`releases.json` within about a minute.
+
+`nightly.yml`'s `publish` job sends that event after `publish.py --nightly` has
+published the prerelease. The `Notify put.gd-site` step posts
+`repos/patrick-hudson/put.gd-site/dispatches` with the payload `tag` (the nightly
+tag) and `prerelease: true`.
+
+- The workflow token cannot dispatch to another repository, so the step uses the
+  `SITE_DISPATCH_TOKEN` repository secret: a fine-grained personal access token
+  for `patrick-hudson/put.gd-site` only, with Contents: read and write. Store it
+  under Settings, Secrets and variables, Actions.
+- Without the secret, the step logs that it isn't notifying the site and exits 0.
+- A failed dispatch is a warning, not a failure. The release is already public,
+  and rerunning `publish` would stop at the already-published check. The site
+  catches up on its schedule, or when its deploy workflow is run by hand:
+  `gh workflow run deploy.yml -R patrick-hudson/put.gd-site`.
+
+`release.yml` only stages drafts and sends nothing. A candidate or stable release
+is published by hand with `publish.py --publish`, which sends the same event with
+the operator's own `gh` login (see [releases](release.md#candidate-and-stable)).
+`tests/ci/test_release_channels.py` pins the nightly step and forbids every other
+`/dispatches` call in the workflows: workflows never start one another.
 
 ### Sanitizers job runtime
 

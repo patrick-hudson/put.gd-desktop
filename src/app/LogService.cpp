@@ -6,7 +6,7 @@
 #include <climits>
 namespace putgd {
 LogService::LogService(SettingsService& settings,QString stateRoot,QObject* parent):QObject(parent),settings_(settings),statePath_(stateRoot+"/debug-logging.json"),daily_(this),expiry_(this) {
- daily_.setInterval(24*60*60*1000);connect(&daily_,&QTimer::timeout,this,[]{logging::cleanup();});daily_.start();
+ daily_.setInterval(cleanupIntervalMs);connect(&daily_,&QTimer::timeout,this,[]{logging::cleanup();});daily_.start();
  expiry_.setSingleShot(true);connect(&expiry_,&QTimer::timeout,this,&LogService::expire);
  connect(&settings_,&SettingsService::accepted,this,&LogService::apply);
 }
