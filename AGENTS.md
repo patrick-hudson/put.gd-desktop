@@ -72,6 +72,12 @@ and integration trunk. Never push to `nightly` or `main` directly; rulesets requ
 a pull request and the `CI` check. CI selects jobs from the changed paths, and the
 `CI` summary is the only required check; a cancelled or skipped-by-failure job is
 not a pass. Leave `project(putgd VERSION ...)` alone in feature pull requests.
+Keep documentation out of code pull requests: changes to `docs/`, `README.md`,
+`AGENTS.md` and `CLAUDE.md` go in a separate documentation-only pull request,
+which CI checks with `contracts` alone. A doc edit pushed to a code pull request
+re-runs its whole build. Open the documentation pull request alongside its code
+pull request, link the two, and merge it after the code. `docs/build.md` and
+`docs/proton-drive.md` are package inputs and select every job anyway.
 Promote to `main` only through `tools/releases/promote.py --open` (a `release: vX.Y.Z`
 pull request from `nightly`, merged with a merge commit); its merge cuts the next
 candidate draft. Stable and candidate publication stay manual after exact-asset
