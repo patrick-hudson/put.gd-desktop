@@ -40,6 +40,16 @@ repainted. Raw results are in [timing/](timing/).
 | d69 Debian 13 | 6.8.2 | 1744 / 1807 ms | 38 / 38 ms | 1312 ms | 20 ms |
 | f44 Fedora 44 | 6.11.2 | 1711 / 1746 ms | 38 / 39 ms | 1294 ms | 20 ms |
 
+The same runs on the physical desktop sessions: the session's own display,
+private XDG directories, no session bus, under a desktop lock, with only the
+synthetic put.gd window on screen. Raw results are `timing/*-session-*.json`.
+
+| Desktop | Qt platform | Before (median / max) | After (median / max) |
+| --- | --- | --- | --- |
+| m74 Cinnamon X11 | xcb, Qt 6.4.2 | 1670 / 1696 ms | 64 / 67 ms |
+| f44 GNOME 50 Wayland | wayland, Qt 6.11.2 | 1731 / 1793 ms | 39 / 44 ms |
+| d69 Plasma 6.3 Wayland | wayland, Qt 6.8.2 | 1723 / 1776 ms | 38 / 39 ms |
+
 The time went to two places:
 
 - **Waiting, about 400 ms.** The theme applied only after the 400 ms
@@ -76,10 +86,8 @@ card, File names). A switched render matches a fresh one except for a
 Nightly shows those same three differences.
 
 m74's 65 ms is above the 50 ms target. The remaining 45 ms is Qt 6.4's own
-re-polish of the 113 visible widgets on a 35 W i5-6500T; the follow-up issue
-linked from the PR tracks it. These numbers come from Xvfb on each builder's
-CPU and Qt. The restyle is in-process work, and a compositor adds at most
-its presentation frame.
+re-polish of the 113 visible widgets on a 35 W i5-6500T, and the physical
+Cinnamon session measures the same (64 ms). Follow-up #260 tracks it.
 
 ## #238 Diagnostics on Advanced
 

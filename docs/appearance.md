@@ -29,8 +29,9 @@ hold both schemes' rules, each scoped to the `themeScheme` property that
 every widget carries (`VisualStyle::schemeScoped`, `VisualStyle::followScheme`).
 A switch sets the palettes and re-polishes only the visible widgets; a widget
 hidden at the switch catches up just before it is shown. A pick repaints every
-open window in 38 ms on d69 (Qt 6.8.2) and f44 (Qt 6.11.2) and 65 ms on m74
-(Qt 6.4.2), measured with `putgd-bench-theme-switch`; see
+open window in 38 ms on d69 Plasma Wayland (Qt 6.8.2), 39 ms on f44 GNOME
+Wayland (Qt 6.11.2) and 64 ms on m74 Cinnamon X11 (Qt 6.4.2; #260), measured
+with `putgd-bench-theme-switch`; see
 [the evidence](evidence/2026-10-20-ui-polish-233-237-238-239/README.md).
 Stylesheet `palette(role)` references are not an alternative: Qt resolves them
 when it builds a rule, so they keep the old colours after a palette change.
