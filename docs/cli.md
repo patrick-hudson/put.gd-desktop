@@ -66,7 +66,8 @@ Methods and parameters:
 | `history.detail`, `history.copyLink`, `history.copyImage` | history `id` |
 | `history.clear`, `cache.clear` | empty object |
 | `logs.clear` | empty object; deletes every persistent log file and starts a new one ([diagnostics.md](diagnostics.md#retention)) |
-| `diagnostics.bundle` | optional `operation`, `since` (`1m`–`365d`, default `7d`), `includeNames`, absolute `output`; or the CLI flags `--operation`, `--since`, `--include-names`, `--output`. Saves a redacted diagnostics package locally ([diagnostics.md](diagnostics.md#diagnostics-package)) |
+| `diagnostics.bundle` | optional `operation`, `since` (`1m`–`365d`, default `7d`), `includeNames`, absolute `output`, `preview`, `notify`; or the CLI flags `--operation`, `--since`, `--include-names`, `--output`. Saves a redacted diagnostics package locally; `preview` only reports what it would hold ([diagnostics.md](diagnostics.md#diagnostics-package)) |
+| `diagnostics.reveal` | absolute `path` of a saved `putgd-diagnostics-*.zip`; Show in folder ([diagnostics.md](diagnostics.md#settings-and-notifications)) |
 | `delete.prepare` | `ids` array of confirmed history IDs |
 | `delete.confirm` | identical ordered `ids`, exact returned `acknowledgement` |
 | `delete.inspect`, `.retry`, `.cancel` | deletion-operation `id` |
@@ -79,6 +80,8 @@ Methods and parameters:
 | `capabilities`, `diagnostics` | empty object |
 | `ui.quit` | empty object; explicitly exit the resident application |
 | `ui.moveDestination` | `direction` up/down, optional `profileId`; drives the open Settings window |
+| `ui.diagnostics` | `action` (`inspect`, `setDebugLogging`, `clearLogs`, `openPackage`, `setPackage`, `savePackage`, `showInFolder`, `closePackage`), with `enabled`, `includeNames`, absolute `folder` or `operation` where they apply; drives Settings → General → Diagnostics |
+| `ui.historySaveDiagnostics` | operation or history `id`; clicks **Save diagnostics for this upload** on that failed History row |
 
 Editor methods, command shapes and error codes are specified in
 [image-editor.md](image-editor.md). Nothing is uploaded until `editor.submit` or the
@@ -129,6 +132,28 @@ selected and saves through the window's revision-checked autosave. The reply giv
 `order`, `selected` and `saving`; confirm the save with `settings.get`. Without an open
 Settings window it returns `ui_view_closed`; at the top or bottom of the list it
 returns `destination_move_invalid`.
+
+`ui.diagnostics` drives Settings → General → Diagnostics in the open window
+([diagnostics.md](diagnostics.md#settings-and-notifications)). Every reply is the
+group's state: `debugLogging` (`enabled`, `expiresAt`), `logs` (`files`, `bytes`,
+`oldestRecord`), `loggingDegraded`, `uncleanExit`, the displayed texts, and `package`
+(the dialog: `open`, `includeNames`, `folder`, `preview`, `saved`, `error`), plus
+`result` for `clearLogs` and `showInFolder`. `setDebugLogging` takes `enabled` and
+saves like the checkbox. `clearLogs` deletes the logs without the button's
+confirmation. `openPackage` opens **Create diagnostics package…** (optional
+`operation`, `includeNames`) and answers with its preview; `setPackage` changes
+`includeNames` or the `folder` (an existing folder, which Settings remembers);
+`savePackage` saves and answers with `package.saved` (`path`, `bytes`, `sha256` …);
+`showInFolder` reveals it; `closePackage` closes the dialog. Without an open
+dialog the package actions return `diagnostics_dialog_closed`.
+
+`ui.historySaveDiagnostics` selects the History row of that operation (or of a file's
+history ID) on the page shown and clicks **Save diagnostics for this upload**,
+answering with the saved package. It returns `history_row_not_found` when the row
+isn't on that page and `diagnostics_row_not_failed` for a row that didn't fail. Both
+methods need the window open (`ui_view_closed`) and finish within the window's
+10-second command deadline; a slower save answers `ui_command_timeout`, after which
+`ui.diagnostics` `inspect` shows the outcome.
 
 A successful `settings.get` envelope can still report
 `result.metadata.validation.ok: false` for invalid on-disk bytes; `result.document`
