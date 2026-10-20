@@ -205,7 +205,7 @@ new thread maps a 64 KiB alternate stack with a guard page below it
 (`MAP_NORESERVE`, untouched unless the thread crashes) before running the routine,
 and unmaps it when the thread ends. A stack overflow on any thread is therefore
 recorded, from that thread. Threads that start before the handler installs itself
-(in another library's constructor) have none. With `PUTGD_CRASH_HANDLER=0`, or in
+(in another library's constructor) have none (#211). With `PUTGD_CRASH_HANDLER=0`, or in
 sanitizer builds, `pthread_create` passes straight through. The native package
 audit rejects a crash-handled program that doesn't export it.
 
