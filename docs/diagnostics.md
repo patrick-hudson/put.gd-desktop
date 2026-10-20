@@ -54,7 +54,11 @@ Records at the default level:
   `Upload names chosen` (each item's name and naming status), `Upload attempt` (attempt
   number, name, bytes, MIME type), `Upload finished`, `Upload name collision` or
   `Upload failed` (status, elapsed time, whether the outcome is uncertain and the
-  error), `Uncertain upload reconciled`, `Name check failed`, `Sharing finished`, and
+  error), `Multipart upload completed` (part count, bytes, attempt, elapsed time and
+  the completion's `requestId`/`extendedRequestId`), `Uncertain upload reconciled`,
+  `Name check failed`, `Incomplete upload aborted` or `Incomplete upload kept` (an
+  artifact cleanup's abort of a failed item's multipart upload, with the error when S3
+  refused it), `Sharing finished`, and
   `Operation finished` (state, duration since acceptance, bytes, per-status item counts
   and every item error).
 - **Provider errors:** the error's `code`, `message` and `details`. S3 details carry
@@ -89,6 +93,16 @@ it was turned on in `$XDG_STATE_HOME/putgd/debug-logging.json` and turns it off
 24 hours later, patching the setting back to `false`; a restart does not extend it.
 `diagnostics.logging.debugLoggingExpiresAt` shows when it ends. `QT_LOGGING_RULES`
 still overrides individual categories for developers.
+
+With debug logging on, an S3 multipart upload adds one `Multipart part uploaded`
+record per successful part request (`putgd.s3`): `partNumber`, `bytes`, `attempt`,
+`elapsedMs`, the `lane` that sent it and how many `lanes` the upload had then, and
+S3's `requestId` and `extendedRequestId`, so a slow or retried upload can be traced
+part by part with AWS support. These records carry numbers and request IDs only:
+never the file name, object key, bucket, endpoint, upload ID or a signed URL, so they
+need no hashing in a diagnostics package. The worker sends them in batches of at most
+64; past 256 queued records it counts them in an `Upload diagnostics dropped` record
+rather than slowing the upload.
 
 ## Redaction
 

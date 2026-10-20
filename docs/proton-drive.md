@@ -34,6 +34,13 @@ untested-destination warning when choosing **Make default**. This check is
 read-only: it does not verify upload permission, file transfer, or share-link
 creation. Its result states those limits explicitly.
 
+Proton enforces each plan's per-file size limit on the server; the pinned SDK sets
+none of its own, so import does not reject large files. A file over the limit fails
+with `destination_file_too_large_for_plan` (service error 200003), naming the file's
+size and the plan limit, rather than `quota_exceeded`, which means the drive or a
+sharing limit is full. Like other refusals after the upload was dispatched, the item
+stays unknown until Retry reconciles it.
+
 Sharing is the destination default. Clear that choice for private uploads, or
 use Settings → Capture → Per-action exceptions to override publication per action. Private upload
 creates no public link and leaves the clipboard unchanged. Existing folder and
