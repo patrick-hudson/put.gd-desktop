@@ -10,7 +10,7 @@ coverage; it does not establish that any row has passed.
 
 | Distribution | Desktop/session baseline | Preferred execution placement |
 | --- | --- | --- |
-| Linux Mint | Cinnamon/X11 | Fresh VM on a capable build server; physical Mint for gates requiring physical Cinnamon; local VM fallback when needed |
+| Linux Mint | Cinnamon/X11 | Physical Mint 22.3 Cinnamon/X11 server `.74` (m74) for gates requiring physical Cinnamon; fresh VM on a capable build server for other versions; local VM fallback when needed |
 | Ubuntu | GNOME/Wayland, with GNOME/X11 coverage on a release that supplies it | Builder-hosted VM of the required Ubuntu version, or an appropriate physical Ubuntu machine |
 | Kubuntu | KDE/Plasma Wayland, with KDE/X11 coverage on a release that supplies it | Builder-hosted VM of the required Kubuntu version, or an appropriate physical Kubuntu machine |
 | Fedora | GNOME/Wayland on the existing Fedora 44 server; other declared variants need their matching session/profile | Direct Fedora server desktop when its version matches the gate; VM for missing variants/versions |
@@ -53,7 +53,7 @@ to a static control from the same desktop.
 
 | Package | Desktop/session | Placement | What the row must show |
 | --- | --- | --- | --- |
-| Ubuntu 24.04 DEB | Mint 22.3 Cinnamon/X11 | Cinnamon VM on a builder, or physical Mint | `ximagesrc` capture with the distro encoders |
+| Ubuntu 24.04 DEB | Mint 22.3 Cinnamon/X11 | physical `.74` (m74), or a Cinnamon VM on a builder | `ximagesrc` capture with the distro encoders |
 | Ubuntu 26.04 DEB | Kubuntu 26.04 Plasma/X11 | physical `.72` | `ximagesrc` capture; VA-API live encoding |
 | Ubuntu 26.04 DEB | Ubuntu 26.04 GNOME/Wayland, Kubuntu 26.04 Plasma/Wayland | VMs on a builder | Mutter and KWin native streams from the installed helper; the portal path |
 | Debian 13 DEB (`putgd-VERSION-debian13-x86_64.deb`) | Debian 13 Plasma/Wayland | physical `.69` | `kde-screencast` from the installed `putgd-record.desktop`; the portal path |

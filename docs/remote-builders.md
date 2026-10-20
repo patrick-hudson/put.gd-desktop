@@ -1,6 +1,6 @@
 # Preferred build and graphical test servers
 
-Patrick's three physical Linux servers are the preferred project build, VM and
+Patrick's four physical Linux servers are the preferred project build, VM and
 acceptance hosts. Choose a host by required tools/profile and available
 capacity; use workstation-local VMs when the servers are unavailable or cannot
 run the required profile. Record the reason for each fallback. Work under
@@ -11,8 +11,9 @@ run the required profile. Record the reason for each fallback. Work under
 | Fedora 44 Workstation | `patrick@192.168.68.70` | GNOME on Wayland | `127.0.0.1:5970` | `putgd-fedora-vnc.service` |
 | Debian 13 | `patrick@192.168.68.69` | KDE Plasma on Wayland | `127.0.0.1:5979` | `putgd-debian-vnc.service` |
 | Kubuntu 26.04.1 LTS | `patrick@192.168.68.72` | KDE Plasma 6.6.6 on X11 | `127.0.0.1:5972` | `putgd-kubuntu-vnc.service` |
+| Linux Mint 22.3 | `patrick@192.168.68.74` | Cinnamon 6.6.4 on X11 | `127.0.0.1:5974` | `putgd-mint-vnc.service` |
 
-The user authorizes full root access on these three machines through passwordless
+The user authorizes full root access on these four machines through passwordless
 sudo: install normal distro dependencies, configure build tools, compile and run
 tests using `sudo -n COMMAND` (or `sudo -n -i`). `sudo -n id -u` must report `0`.
 Do not apply this remote authorization to the workstation or unrelated machines.
@@ -42,7 +43,7 @@ VM for other required guest profiles. Preserve the release matrix's exact versio
 
 ## Pinned SSH access
 
-Connect from the main workstation on the LAN. All three hosts accept
+Connect from the main workstation on the LAN. All four hosts accept
 `/home/patrick/.ssh/awskey_110724`. Keep that private key on the workstation:
 never copy it into a server, VM, source export, image or evidence packet. Use
 the existing host pins; do not replace them or disable host-key verification.
@@ -65,12 +66,19 @@ ssh -i /home/patrick/.ssh/awskey_110724 -o IdentitiesOnly=yes \
   -o StrictHostKeyChecking=yes \
   -o UserKnownHostsFile=/home/patrick/work/put.gd/work/remote-builders/k72/known_hosts \
   patrick@192.168.68.72
+
+# Linux Mint
+ssh -i /home/patrick/.ssh/awskey_110724 -o IdentitiesOnly=yes \
+  -o StrictHostKeyChecking=yes \
+  -o UserKnownHostsFile=/home/patrick/work/put.gd/work/remote-builders/m74/known_hosts \
+  patrick@192.168.68.74
 ```
 
 For unattended commands, also use `-o BatchMode=yes` and a bounded connection
 timeout. A missing pin or mismatch requires verified identity recovery, not
 trust-on-first-use. Local bootstrap notes and tunnel units live privately under
-`work/remote-builders/f44/`, `work/remote-builders/d69/` and `work/remote-builders/k72/`.
+`work/remote-builders/f44/`, `work/remote-builders/d69/`, `work/remote-builders/k72/` and
+`work/remote-builders/m74/`.
 
 ## Visual results are required
 
@@ -89,6 +97,7 @@ Each tile's VNC server runs in the host's desktop session as user `patrick`
 | f44 GNOME Wayland | `w0vncserver` from Fedora's `tigervnc-wayland-server` 1.16.2 | user `putgd-gnome-vnc.service` (`WantedBy=graphical-session.target`) | `127.0.0.1:5901` |
 | d69 Plasma Wayland | `/usr/local/bin/w0vncserver`, TigerVNC `v1.16.2` (`b555312d`) built from source in `~/work/bootstrap` (CMake Release, `ENABLE_WAYLAND=ON`, no viewer) | user `w0vncserver.service` (Wayland + KDE only, `WantedBy=plasma-workspace-wayland.target`) plus the `localhost.conf` drop-in that binds it to loopback | `127.0.0.1:5900` |
 | k72 Plasma X11 | `X0tigervnc` (Ubuntu's `tigervnc-scraping-server` 1.15) on the X display | user `patrick-vnc.service`, started by the `patrick-vnc` autostart entry only in an X11 session | `127.0.0.1:5900` |
+| m74 Cinnamon X11 (added 2026-10-20) | `X0tigervnc` (Mint's `tigervnc-scraping-server`) on the physical `:0` display | user `putgd-native-vnc.service` | `127.0.0.1:5900` |
 | k72 Plasma Wayland (added 2026-10-20, #87) | `/usr/local/bin/w0vncserver`, TigerVNC `v1.16.2` (`b555312d`) built in `~/work/bootstrap-w0vnc` like d69's | user `w0vncserver.service` (Wayland + KDE only, `WantedBy=plasma-workspace-wayland.target`) | `127.0.0.1:5900` |
 
 All use `-SecurityTypes=None`, so they must stay on loopback. The servers keep
@@ -134,14 +143,14 @@ waiting for the lock, over a probe process left behind by a finished test.
 ### Shared and exclusive resources
 
 - **The physical desktops are exclusive.** f44 (Fedora 44 GNOME Wayland, `.70`),
-  d69 (Debian 13 Plasma Wayland, `.69`) and k72 (Kubuntu 26.04 Plasma X11, `.72`)
-  each serve one session at a time, under a lock from `tools/lab/desktop_lock.py`.
+  d69 (Debian 13 Plasma Wayland, `.69`), k72 (Kubuntu 26.04 Plasma X11, `.72`) and
+  m74 (Linux Mint 22.3 Cinnamon X11, `.74`) each serve one session at a time, under a lock from `tools/lab/desktop_lock.py`.
   You need the lock for anything that runs in the desktop session, draws on it,
   sends it input, captures or records it, or logs it out. That includes installing
   a package, extension or desktop entry the session loads.
 - **SSH builds, tests and VMs on the builders are shared.** Run builds with
   `nice -n 10` and a bounded `-j`. Check `uptime` before you start another heavy
-  job on a host whose load is already above its core count; k72 has four cores.
+  job on a host whose load is already above its core count; k72 and m74 have four cores.
 - **Recording, capture-latency and memory slots need a quiet host.** While someone
   holds a desktop for that work, don't start new heavy SSH jobs on that host
   (builds, flatpak-builder, full ctest). Jobs already running may finish. The
@@ -381,3 +390,23 @@ distro packages and the verified official AWS SDK 1.11.907 dependency lock.
 Exact source/tool versions, build outcome and access/display evidence are retained
 privately in `work/remote-builders/k72/`. This setup did not perform a fresh reboot,
 guest boot, graphical put.gd acceptance or a memory campaign.
+
+## Linux Mint host preflight, 2026-10-20
+
+Patrick added m74 (`192.168.68.74`) on 2026-10-20 as a build, VM and graphical
+acceptance host, the lab's physical Mint Cinnamon desktop. Its host key
+(ED25519 `SHA256:MlmnM8ur0e3UvkVJ4HHFr55bVK8rA3FzJ4uYzWKwks8`) was accepted at
+Patrick's explicit direction and pinned in `work/remote-builders/m74/known_hosts`.
+Pinned SSH and `sudo -n id -u` passed. It runs Linux Mint 22.3 with Cinnamon 6.6.4
+on X11 (kernel 6.14.0-37), with LightDM autologin into Cinnamon. The machine has an
+Intel i5-6500T (four logical CPUs, Intel HD 530 graphics, `/dev/dri/renderD128`),
+31 GiB RAM and about 207 GiB free. `/dev/kvm` is group `kvm` and patrick is in
+`kvm` and `libvirt`; `qemu-system-x86_64` is installed. It runs headless with an
+EDID firmware override (`drm.edid_firmware=HDMI-A-1:edid/putgd-headless-1080p.bin`,
+1920x1080), so the physical `:0` session keeps a monitor. The wall tile is
+`X0tigervnc` on `:0` (user `putgd-native-vnc.service`, `127.0.0.1:5900`), reached
+through the workstation's `putgd-mint-vnc.service` on `127.0.0.1:5974`. A separate
+`Xtigervnc :1` virtual desktop (`remote-vnc.service`, `127.0.0.1:5901`) is not the
+physical session and isn't acceptance evidence for physical Cinnamon. This
+establishes access, KVM and display, not guest boot or acceptance readiness.
+

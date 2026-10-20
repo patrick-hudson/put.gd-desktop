@@ -9,7 +9,7 @@ Use the pinned hosts in [remote builders](remote-builders.md).
    listens on remote loopback. `--vnc-display 20` means TCP `5920`; use the actual
    run's port. Check existing processes/ports on the builder and workstation.
 2. Pick a distinct free workstation port and service name per VM/run. Keep
-   physical desktop ports `5970`, `5979` and `5972` reserved. This Fedora example maps
+   physical desktop ports `5970`, `5979`, `5972` and `5974` reserved. This Fedora example maps
    workstation `5981` to remote `5920`; replace `RUN_ID` and ports before use:
 
    ```sh
@@ -24,7 +24,7 @@ Use the pinned hosts in [remote builders](remote-builders.md).
    ```
 
    For Debian substitute `.69` and the `d69/known_hosts` pin; for Kubuntu use
-   `.72` and `k72/known_hosts`. Allocate a different unit/port for each guest.
+   `.72` and `k72/known_hosts`; for Linux Mint use `.74` and `m74/known_hosts`. Allocate a different unit/port for each guest.
    Local bind success does not establish remote VM readiness.
 3. Inspect the running wall service's `Environment` and `ExecStart` for its
    actual configuration. The current workstation default is
