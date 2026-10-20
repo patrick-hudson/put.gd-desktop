@@ -1,5 +1,6 @@
 #include "UiProcessController.h"
 #include "core/BuildInfo.h"
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QPointer>
 #include <utility>
@@ -16,11 +17,11 @@ UiProcessController::UiProcessController(QString socket,QString epoch,QString he
  startup_.setSingleShot(true);startup_.setInterval(10000);
  stopDeadline_.setSingleShot(true);stopDeadline_.setInterval(2000);
  closeDeadline_.setSingleShot(true);closeDeadline_.setInterval(10000);
- connect(&closeDeadline_,&QTimer::timeout,this,[this]{fail(unavailable("ui_close_timeout"));});
+ connect(&closeDeadline_,&QTimer::timeout,this,[this]{fail(unavailable("ui_close_timeout"),"close");});
  activationDeadline_.setSingleShot(true);activationDeadline_.setInterval(12000);
- connect(&startup_,&QTimer::timeout,this,[this]{fail(unavailable("ui_start_timeout"));});
- connect(&activationDeadline_,&QTimer::timeout,this,[this]{fail(unavailable("ui_show_timeout"));});
- connect(&stopDeadline_,&QTimer::timeout,this,[this]{if(process_)process_->kill();else completeShutdown();});
+ connect(&startup_,&QTimer::timeout,this,[this]{fail(unavailable("ui_start_timeout"),"startup");});
+ connect(&activationDeadline_,&QTimer::timeout,this,[this]{fail(unavailable("ui_show_timeout"),"activation");});
+ connect(&stopDeadline_,&QTimer::timeout,this,[this]{if(process_)killHelper("ui_stop_timeout",{{"deadline","stop"},{"deadlineMs",stopDeadline_.interval()}});else completeShutdown();});
  commandDeadline_.setSingleShot(true);commandDeadline_.setInterval(10000);
  connect(&commandDeadline_,&QTimer::timeout,this,[this]{failCommands({"ui_command_timeout","The window did not answer in time. Check it before retrying.",{{"outcomeUnknown",true}}});});
  // A helper that exits cannot answer the commands it was sent.
@@ -70,7 +71,7 @@ void UiProcessController::launch(){
  child->setReadChannel(QProcess::StandardOutput);
  control_=new UiControl(*child,child);
  connect(control_,&UiControl::frame,this,&UiProcessController::receive);
- connect(control_,&UiControl::failed,this,&UiProcessController::fail);
+ connect(control_,&UiControl::failed,this,[this](Error error){fail(std::move(error));});
  connect(child,&QProcess::readyReadStandardError,this,[this,child,generation]{
   // Only toolkit diagnostics use stderr; the protocol and any credential input
   // travel on the private pipes. The log redacts and bounds what arrives.
@@ -230,12 +231,18 @@ void UiProcessController::failActivations(Error error){
  for(auto& callbacks:pending)for(auto& reply:callbacks)if(reply)reply(error);
  for(auto& activation:active)for(auto& reply:activation.replies)if(reply)reply(error);
 }
-void UiProcessController::fail(Error error){
+void UiProcessController::fail(Error error,const QString& deadline){
  if(phase_==Phase::Failed||stopping_)return;
+ const QString failedFrom=QString::fromLatin1(phaseName());
+ const int deadlineMs=deadline=="startup"?startup_.interval():deadline=="activation"?activationDeadline_.interval():deadline=="close"?closeDeadline_.interval():0;
  restoreShortcuts();
  phase_=Phase::Failed;startup_.stop();activationDeadline_.stop();closeDeadline_.stop();
  if(control_)control_->stop();
- if(process_&&process_->state()!=QProcess::NotRunning)process_->kill();
+ if(process_&&process_->state()!=QProcess::NotRunning) {
+  QJsonObject context{{"code",error.code},{"phase",failedFrom}};
+  if(!deadline.isEmpty()){context["deadline"]=deadline;context["deadlineMs"]=deadlineMs;}
+  killHelper(error.code,context);
+ }
  QPointer<UiProcessController> guard(this);failActivations(error);
  if(!guard)return;
  failCommands(error);
@@ -281,16 +288,31 @@ void UiProcessController::shutdown(std::function<void()> done){
  if(!guard)return;
  if(!process_){completeShutdown();return;}
  if(process_->state()==QProcess::Running&&control_)control_->send("shutdown");
- else process_->kill();
+ else killHelper("ui_stopping");
  stopDeadline_.start();
 }
 void UiProcessController::completeShutdown(){
  phase_=Phase::Stopped;auto callback=std::exchange(stopped_,{});if(callback)callback();
 }
+const char* UiProcessController::phaseName()const{
+ switch(phase_){case Phase::Stopped:break;case Phase::Starting:return "starting";case Phase::Ready:return "ready";case Phase::Closing:return "closing";case Phase::Stopping:return "stopping";case Phase::Failed:return "failed";}
+ return "stopped";
+}
+void UiProcessController::killHelper(const QString& reason,QJsonObject context){
+ // Logged before the kill (#250): which views were waiting, so a deadline kill
+ // can be matched to what the user asked for.
+ if(!context.contains("phase"))context["phase"]=QString::fromLatin1(phaseName());
+ QJsonArray pending,activations;
+ for(auto it=pending_.begin();it!=pending_.end();++it)pending.append(it.key());
+ for(const auto& activation:activations_)activations.append(activation.view);
+ context["pendingViews"]=pending;context["activations"]=activations;
+ if(!commands_.isEmpty())context["commands"]=int(commands_.size());
+ if(!closeSequence_.isEmpty())context["closeConfirmed"]=closeConfirmed_;
+ output_.killing(reason,context);
+ process_->kill();
+}
 QJsonObject UiProcessController::status()const{
- const char* state="stopped";
- switch(phase_){case Phase::Stopped:break;case Phase::Starting:state="starting";break;case Phase::Ready:state="ready";break;case Phase::Closing:state="closing";break;case Phase::Stopping:state="stopping";break;case Phase::Failed:state="failed";break;}
- return {{"state",state},{"pid",process_?process_->processId():0},{"checkpointBytes",stateBytes_},{"lastExit",lastExit_}};
+ return {{"state",phaseName()},{"pid",process_?process_->processId():0},{"checkpointBytes",stateBytes_},{"lastExit",lastExit_}};
 }
 QJsonObject UiProcessController::viewState()const{
  // Only the derived capture-routing and appearance presentations leave the

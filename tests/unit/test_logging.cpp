@@ -203,6 +203,53 @@ private slots:
   for(const auto& line:lines) {truncated=truncated||line["message"]=="Helper output truncated";if(line["message"]=="Helper crashed"){crashed=true;QCOMPARE(line["fields"].toObject()["signal"].toInt(),11);QCOMPARE(line["level"].toString(),QString("error"));}}
   QVERIFY(truncated);QVERIFY(crashed);
  }
+ void helperKillsSayWhoKilled() {
+  // #250: a supervisor kill logs its reason first and its exit says so; an
+  // unrequested SIGKILL came from outside put.gd, not from a crash.
+  QTemporaryDir dir;logging::open(dir.path());
+  HelperOutput output("putgd-test-helper",logUi());
+  output.started(4243);
+  output.killing("ui_show_timeout",{{"deadline","activation"},{"phase","ready"},{"activations",QJsonArray{"settings"}}});
+  QCOMPARE(output.killReason(),QString("ui_show_timeout"));
+  output.finished(SIGKILL,QProcess::CrashExit,true);
+  QVERIFY(output.killReason().isEmpty());
+  output.started(4244);output.finished(SIGKILL,QProcess::CrashExit,false);
+  output.started(4245);output.finished(SIGSEGV,QProcess::CrashExit,false);
+  logging::flush();
+  const auto lines=records(readLogs(dir.path()));QStringList messages;for(const auto& line:lines)messages.append(line["message"].toString());
+  QCOMPARE(messages,(QStringList{"Helper started","Killing helper","Helper killed by put.gd","Helper started","Helper killed from outside put.gd","Helper started","Helper crashed"}));
+  const auto reason=lines[1];QCOMPARE(reason["level"].toString(),QString("warning"));
+  QCOMPARE(reason["fields"].toObject()["reason"].toString(),QString("ui_show_timeout"));QCOMPARE(reason["fields"].toObject()["deadline"].toString(),QString("activation"));
+  QCOMPARE(reason["fields"].toObject()["activations"].toArray(),QJsonArray{"settings"});QCOMPARE(reason["fields"].toObject()["pid"].toInteger(),4243);
+  const auto killed=lines[2]["fields"].toObject();QCOMPARE(lines[2]["level"].toString(),QString("warning"));
+  QVERIFY(killed["supervisorKill"].toBool());QCOMPARE(killed["reason"].toString(),QString("ui_show_timeout"));QCOMPARE(killed["signal"].toInt(),int(SIGKILL));
+  QCOMPARE(lines[4]["level"].toString(),QString("error"));QCOMPARE(lines[4]["fields"].toObject()["supervisorKill"].toBool(true),false);
+  QVERIFY(!lines[6]["fields"].toObject().contains("supervisorKill"));
+  logging::close();
+ }
+ void encoderBannersStayOutOfTheWarningStream() {
+  QTemporaryDir dir;logging::open(dir.path());
+  HelperOutput record("putgd-record",logRecording()),probe("putgd-record --capabilities",logRecording(),true);
+  record.started(5001);
+  record.append("x265 [info]: HEVC encoder version 3.5+1-f0c1022b6\nx265 [info]: Thread pool created using 16 threads\n");
+  record.append("[libx264 @ 0x653db2d61800] using cpu capabilities: MMX2 SSE2Fast\n[libvpx-vp9 @ 0x653db2d61800] v1.14.0\nencoded 0 frames\n");
+  record.append("x265 [warning]: Source height < 720p; disabling lookahead-slices\nsynthetic real warning\n");
+  record.finished(0,QProcess::NormalExit,true);
+  probe.started(5002);
+  probe.append("[hevc_vaapi @ 0x653db2d61800] No usable encoding entrypoint found\n[OpenH264] this = 0x0x7f38640e6d20, Error:CWelsH264SVCEncoder::EncodeFrame()\nsynthetic probe warning\n");
+  probe.finished(0,QProcess::NormalExit);
+  logging::flush();
+  const auto lines=records(readLogs(dir.path()));QStringList warnings;qint64 summary=-1;
+  for(const auto& line:lines) {
+   if(line["level"]=="warning")warnings.append(line["message"].toString());
+   if(line["message"]=="Encoder banner lines logged at debug level"&&line["process"]=="putgd-record"){QCOMPARE(line["level"].toString(),QString("info"));summary=line["fields"].toObject()["lines"].toInteger();}
+  }
+  // Only lines that are not known banners keep their warning level; the
+  // recording's own x265 warning is not a banner, a probe's would be.
+  QCOMPARE(warnings,(QStringList{"x265 [warning]: Source height < 720p; disabling lookahead-slices","synthetic real warning","synthetic probe warning"}));
+  QCOMPARE(summary,5);
+  logging::close();
+ }
  void awsTraceCannotBeSelected() {
   QCOMPARE(SdkRuntime::logLevel(nullptr),SdkRuntime::LogLevel::Warn);
   QCOMPARE(SdkRuntime::logLevel("warn"),SdkRuntime::LogLevel::Warn);

@@ -1,6 +1,7 @@
 #pragma once
 #include "RecordingBackend.h"
 #include "core/Operation.h"
+#include <QElapsedTimer>
 #include <QObject>
 #include <QPointer>
 #include <functional>
@@ -86,6 +87,8 @@ private:
         QJsonObject stopDetails;
         int exports = 0;
         quint64 generation = 0;
+        // Since the session was accepted: the log's step timings (#250).
+        QElapsedTimer clock;
     };
     QJsonObject publicJson(const Session&) const;
     // The phase defaults to the state; Upload's export reports as `encoding`.

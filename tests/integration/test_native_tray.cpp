@@ -1,6 +1,8 @@
 #include "ui/NativeTray.h"
 #include "ui/TrayController.h"
 #include "fixtures/U2Fixtures.h"
+#include "core/Log.h"
+#include <QJsonDocument>
 #include <QDBusArgument>
 #include <QDBusContext>
 #include <QDBusConnectionInterface>
@@ -15,6 +17,7 @@
 #include <QtTest>
 #include <QProcess>
 #include <QProcessEnvironment>
+#include <QDir>
 #include <QFile>
 #include <QElapsedTimer>
 #include <QTimer>
@@ -329,6 +332,9 @@ private slots:
  }
  void coreControllerExportsLiveUploadStatusAndReturnsIdle() {
   QTemporaryDir directory;ProviderRegistry providers;
+  // #250: toasts at info and tooltip changes at debug reach the log.
+  logging::open(directory.filePath("logs"));logging::setDebug(true);
+  auto closeLog=qScopeGuard([]{logging::setDebug(false);logging::close();});
   auto provider=std::make_shared<OpaqueProvider>();provider->deferUploads=true;provider->dispatcher=this;providers.add("opaque",provider);
   SettingsService settings(directory.filePath("config.json"),[&](auto id,auto value){return providers.validate(id,value);});QVERIFY(settings.save(configuration(directory.path()),{}));
   Source source;source.defer=true;source.payload.kind="text";source.payload.bytes=QByteArray(4*1024*1024,'x');
@@ -369,6 +375,23 @@ private slots:
   provider->completions.takeFirst()();
   QTRY_COMPARE(qdbus_cast<WireTooltip>(properties()["ToolTip"]).title,qdbus_cast<WireTooltip>(idle["ToolTip"]).title);
   QCOMPARE(qdbus_cast<WireImages>(properties()["IconPixmap"]).first().bytes,idleIcon);
+  logging::flush();QList<QJsonObject> records;
+  const QDir logs(directory.filePath("logs"));
+  for(const auto& name:logs.entryList({"putgd-*.jsonl"},QDir::Files,QDir::Name)){QFile file(logs.filePath(name));QVERIFY(file.open(QIODevice::ReadOnly));for(const auto& line:file.readAll().split('\n'))if(!line.isEmpty())records.append(QJsonDocument::fromJson(line).object());}
+  bool toast=false,progress=false,idleAgain=false;
+  for(const auto& record:records) {
+   const auto fields=record["fields"].toObject();
+   if(record["message"]=="Notification shown"&&fields["summary"]=="fixture_failed") {
+    toast=true;QCOMPARE(record["level"].toString(),QString("info"));QCOMPARE(record["category"].toString(),QString("putgd.ui"));
+    QCOMPARE(fields["notificationText"].toString(),QString("Synthetic error"));QVERIFY(fields["notificationId"].toInteger()>0);QVERIFY(fields["warning"].toBool());
+   }
+   if(record["message"]=="Tray tooltip changed") {
+    QCOMPARE(record["level"].toString(),QString("debug"));
+    progress=progress||fields["activity"].toString().contains("2 MiB of 4 MiB");
+    idleAgain=idleAgain||(fields["activity"].toString().isEmpty()&&fields["title"]=="put.gd — Share and local capture");
+   }
+  }
+  QVERIFY(toast);QVERIFY(progress);QVERIFY(idleAgain);
  }
  void activitySignalsChangeOnlyTheAffectedPropertiesAndSurviveHostRestart() {
   NativeTray tray;QTRY_VERIFY(tray.available());ActivitySignalPeer observer;
