@@ -255,18 +255,25 @@ private slots:
   }
   QTRY_COMPARE(provider->completions.size(),1);QCOMPARE(source.revision,quint64(0));QCOMPARE(source.copies,0);
   if(userChanged){++source.revision;source.copied.text="synthetic user edit";}
+  // The uploads share one name and its object lock, which any queued operation may take
+  // first: complete whichever upload is pending and follow the operation it belongs to.
+  QMap<QString,QString> linkOf;QString last;
   for(int i=0;i<count;++i) {
-   QTRY_COMPARE(provider->completions.size(),1);provider->completions.takeFirst()();
-   QTRY_COMPARE(journal.operation(ids[i]).state,QString("completed"));
+   QTRY_COMPARE(provider->completions.size(),1);
+   QString id;for(const auto& candidate:ids)if(provider->requests.last().artifact.path.contains(candidate))id=candidate;
+   QVERIFY(!id.isEmpty());QVERIFY(!linkOf.contains(id));provider->completions.takeFirst()();
+   QTRY_COMPARE(journal.operation(id).state,QString("completed"));
    if(mode=="each_link"&&!userChanged)QTRY_COMPARE(source.copies,i+1);
    else if(i<count-1)QCOMPARE(source.copies,0);
-   const auto op=journal.operation(ids[i]);QCOMPARE(op.items.size(),1);QCOMPARE(op.items[0].uploadStatus,QString("uploaded"));QVERIFY(op.items[0].linkAvailable());
-   urls.append(op.items[0].receipt.directUrl);
-   if(mode=="each_link"&&!userChanged)QCOMPARE(source.copied.text,urls.last());
+   const auto op=journal.operation(id);QCOMPARE(op.items.size(),1);QCOMPARE(op.items[0].uploadStatus,QString("uploaded"));QVERIFY(op.items[0].linkAvailable());
+   last=linkOf[id]=op.items[0].receipt.directUrl;
+   if(mode=="each_link"&&!userChanged)QCOMPARE(source.copied.text,last);
   }
+  // A list holds the links in invocation order, whatever order the uploads finished in.
+  for(const auto& id:ids)urls.append(linkOf.value(id));
   QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
   QCOMPARE(source.copies,userChanged?0:(mode=="list"?1:count));QCOMPARE(provider->uploads.load(),count);
-  QCOMPARE(source.copied.text,userChanged?QString("synthetic user edit"):(mode=="list"?urls.join('\n'):urls.last()));
+  QCOMPARE(source.copied.text,userChanged?QString("synthetic user edit"):(mode=="list"?urls.join('\n'):last));
   for(const auto& id:ids)QCOMPARE(journal.operation(id).copyStatus,QString(userChanged?"suppressed":"copied"));
   bool replied=false;operations.copyResult(ids.first(),[&](Error e,QJsonObject){QVERIFY(!e);replied=true;});QTRY_VERIFY(replied);
   QCOMPARE(journal.operation(ids.first()).copyStatus,QString("copied"));QCOMPARE(source.copied.text,urls.first());QCOMPARE(provider->uploads.load(),count);
