@@ -130,7 +130,7 @@ Every image below is the current nightly build (`0.1.1-dev.343+gac92b2158535`) o
 <td align="center"><sub><b>Edit &amp; upload</b> — rectangle, highlight, redaction, arrow and text on a photo. Redact removes the pixels from the upload; nothing is sent until Upload.</sub></td>
 </tr>
 <tr>
-<td width="50%"><img src="docs/readme/review-plasma.png" alt="Review recording window with playback, trim, blur and solid masks, and output format"></td>
+<td width="50%"><img src="docs/readme/review-plasma.png" alt="Review recording window: the video with a blur and a solid cover, one timeline with trim handles and mask lanes, icon tools and the Upload row"></td>
 <td width="50%"><img src="docs/readme/destinations-plasma.png" alt="Destinations: an S3 bucket with region, endpoint, link domain and access policy"></td>
 </tr>
 <tr>

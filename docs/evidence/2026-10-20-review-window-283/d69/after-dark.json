@@ -1,0 +1,395 @@
+{
+ "host": "debian",
+ "desktop": "plasmashell",
+ "session": "wayland",
+ "build": "/home/patrick/work/put.gd-r283/build/dev",
+ "label": "after",
+ "scheme": "dark",
+ "shots": [
+  {
+   "name": "after-dark-empty",
+   "client": [
+    41,
+    68,
+    960,
+    600
+   ],
+   "check": {
+    "ownFraction": 0.8741,
+    "magentaFraction": 0.0,
+    "magentaBox": null,
+    "edgeBackground": {
+     "top": 1.0,
+     "bottom": 1.0,
+     "left": 1.0,
+     "right": 1.0
+    }
+   },
+   "kept": true
+  },
+  {
+   "name": "after-dark-masks",
+   "client": [
+    41,
+    68,
+    960,
+    600
+   ],
+   "check": {
+    "ownFraction": 0.8647,
+    "magentaFraction": 0.0,
+    "magentaBox": null,
+    "edgeBackground": {
+     "top": 1.0,
+     "bottom": 1.0,
+     "left": 1.0,
+     "right": 1.0
+    }
+   },
+   "kept": true
+  },
+  {
+   "name": "after-dark-selected",
+   "client": [
+    41,
+    68,
+    960,
+    600
+   ],
+   "check": {
+    "ownFraction": 0.8668,
+    "magentaFraction": 0.0,
+    "magentaBox": null,
+    "edgeBackground": {
+     "top": 1.0,
+     "bottom": 1.0,
+     "left": 1.0,
+     "right": 1.0
+    }
+   },
+   "kept": true
+  }
+ ],
+ "version": "putgd-cli 0.1.1-dev.unknown",
+ "cover": {
+  "placed": {
+   "monitorIndex": 0,
+   "ok": true,
+   "output": [
+    "HDMI-A-1"
+   ],
+   "rect": [
+    0,
+    0,
+    1920,
+    1080
+   ],
+   "state": "covered"
+  },
+  "precheck": {
+   "check": "precheck",
+   "fraction": 0.9999,
+   "framebuffer": [
+    1920,
+    1080
+   ],
+   "minFraction": 0.98,
+   "ok": true,
+   "output": [
+    "HDMI-A-1"
+   ],
+   "rect": [
+    0,
+    0,
+    1920,
+    1080
+   ]
+  },
+  "region": [
+   324,
+   184,
+   1272,
+   712
+  ]
+ },
+ "acquisition": null,
+ "durationUs": 6733333,
+ "inspectEmpty": {
+  "armed": null,
+  "edit": {
+   "masks": [],
+   "revision": 1,
+   "trimEnd": null,
+   "trimStart": 0
+  },
+  "exporting": false,
+  "format": {
+   "codec": "h264",
+   "format": "mp4"
+  },
+  "maskControls": {
+   "list": false,
+   "remove": false,
+   "strength": false,
+   "times": false
+  },
+  "masks": [],
+  "minimumSize": [
+   432,
+   305
+  ],
+  "notice": null,
+  "playheadUs": 0,
+  "playing": false,
+  "revision": 1,
+  "scheme": "dark",
+  "selectedMaskId": null,
+  "size": [
+   960,
+   600
+  ],
+  "speed": 1,
+  "state": "reviewing",
+  "status": "No audio",
+  "timeline": {
+   "lanes": 0,
+   "rect": [
+    47,
+    490,
+    732,
+    28
+   ]
+  },
+  "trim": {
+   "end": 6733333,
+   "start": 0
+  },
+  "video": {
+   "rect": [
+    56,
+    8,
+    848,
+    475
+   ],
+   "share": 0.6993055555555555
+  },
+  "visible": true
+ },
+ "inspectMasks": {
+  "armed": null,
+  "edit": {
+   "masks": [
+    {
+     "end": 4000000,
+     "id": "520c0e15-8fe4-4c07-af6c-126a6037fbc5",
+     "kind": "blur",
+     "rect": [
+      380,
+      205,
+      260,
+      310
+     ],
+     "start": 0,
+     "strength": 16
+    },
+    {
+     "end": 5500000,
+     "id": "ce1076f8-0224-463b-b556-6ce16384e840",
+     "kind": "solid",
+     "rect": [
+      660,
+      250,
+      240,
+      140
+     ],
+     "start": 0
+    }
+   ],
+   "revision": 2,
+   "trimEnd": null,
+   "trimStart": 0
+  },
+  "exporting": false,
+  "format": {
+   "codec": "h264",
+   "format": "mp4"
+  },
+  "maskControls": {
+   "list": true,
+   "remove": true,
+   "strength": false,
+   "times": true
+  },
+  "masks": [
+   {
+    "id": "520c0e15-8fe4-4c07-af6c-126a6037fbc5",
+    "kind": "blur",
+    "timeline": [
+     55,
+     503,
+     425,
+     5
+    ]
+   },
+   {
+    "id": "ce1076f8-0224-463b-b556-6ce16384e840",
+    "kind": "solid",
+    "timeline": [
+     55,
+     510,
+     584,
+     5
+    ]
+   }
+  ],
+  "minimumSize": [
+   589,
+   311
+  ],
+  "notice": null,
+  "playheadUs": 0,
+  "playing": false,
+  "revision": 2,
+  "scheme": "dark",
+  "selectedMaskId": "ce1076f8-0224-463b-b556-6ce16384e840",
+  "size": [
+   960,
+   600
+  ],
+  "speed": 1,
+  "state": "reviewing",
+  "status": "No audio",
+  "timeline": {
+   "lanes": 2,
+   "rect": [
+    47,
+    483,
+    732,
+    37
+   ]
+  },
+  "trim": {
+   "end": 6733333,
+   "start": 0
+  },
+  "video": {
+   "rect": [
+    61,
+    8,
+    837,
+    469
+   ],
+   "share": 0.681515625
+  },
+  "visible": true
+ },
+ "inspectSelected": {
+  "armed": null,
+  "edit": {
+   "masks": [
+    {
+     "end": 4000000,
+     "id": "520c0e15-8fe4-4c07-af6c-126a6037fbc5",
+     "kind": "blur",
+     "rect": [
+      380,
+      205,
+      260,
+      310
+     ],
+     "start": 0,
+     "strength": 16
+    },
+    {
+     "end": 5500000,
+     "id": "ce1076f8-0224-463b-b556-6ce16384e840",
+     "kind": "solid",
+     "rect": [
+      660,
+      250,
+      240,
+      140
+     ],
+     "start": 0
+    }
+   ],
+   "revision": 2,
+   "trimEnd": null,
+   "trimStart": 0
+  },
+  "exporting": false,
+  "format": {
+   "codec": "h264",
+   "format": "mp4"
+  },
+  "maskControls": {
+   "list": true,
+   "remove": true,
+   "strength": true,
+   "times": true
+  },
+  "masks": [
+   {
+    "id": "520c0e15-8fe4-4c07-af6c-126a6037fbc5",
+    "kind": "blur",
+    "timeline": [
+     55,
+     503,
+     425,
+     5
+    ]
+   },
+   {
+    "id": "ce1076f8-0224-463b-b556-6ce16384e840",
+    "kind": "solid",
+    "timeline": [
+     55,
+     510,
+     584,
+     5
+    ]
+   }
+  ],
+  "minimumSize": [
+   692,
+   311
+  ],
+  "notice": null,
+  "playheadUs": 2500000,
+  "playing": false,
+  "revision": 2,
+  "scheme": "dark",
+  "selectedMaskId": "520c0e15-8fe4-4c07-af6c-126a6037fbc5",
+  "size": [
+   960,
+   600
+  ],
+  "speed": 1,
+  "state": "reviewing",
+  "status": "No audio",
+  "timeline": {
+   "lanes": 2,
+   "rect": [
+    47,
+    483,
+    732,
+    37
+   ]
+  },
+  "trim": {
+   "end": 6733333,
+   "start": 0
+  },
+  "video": {
+   "rect": [
+    61,
+    8,
+    837,
+    469
+   ],
+   "share": 0.681515625
+  },
+  "visible": true
+ },
+ "load": 2.041015625
+}

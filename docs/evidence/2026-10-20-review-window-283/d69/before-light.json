@@ -1,0 +1,135 @@
+{
+ "host": "debian",
+ "desktop": "plasmashell",
+ "session": "wayland",
+ "build": "/home/patrick/work/put.gd-r283-before/build/dev",
+ "label": "before",
+ "scheme": "light",
+ "shots": [
+  {
+   "name": "before-light-empty",
+   "client": [
+    41,
+    68,
+    900,
+    700
+   ],
+   "check": {
+    "ownFraction": 0.948,
+    "magentaFraction": 0.0,
+    "magentaBox": null,
+    "edgeBackground": {
+     "top": 1.0,
+     "bottom": 1.0,
+     "left": 1.0,
+     "right": 1.0
+    }
+   },
+   "kept": true,
+   "measured": {
+    "frameView": [
+     14,
+     12,
+     872,
+     224
+    ],
+    "video": [
+     251,
+     12,
+     398,
+     224
+    ],
+    "videoShare": 0.1415,
+    "window": [
+     900,
+     700
+    ]
+   }
+  },
+  {
+   "name": "before-light-masks",
+   "client": [
+    41,
+    68,
+    900,
+    700
+   ],
+   "check": {
+    "ownFraction": 0.943,
+    "magentaFraction": 0.0,
+    "magentaBox": null,
+    "edgeBackground": {
+     "top": 1.0,
+     "bottom": 1.0,
+     "left": 1.0,
+     "right": 1.0
+    }
+   },
+   "kept": true,
+   "measured": {
+    "frameView": [
+     14,
+     12,
+     872,
+     224
+    ],
+    "video": [
+     251,
+     12,
+     398,
+     224
+    ],
+    "videoShare": 0.1415,
+    "window": [
+     900,
+     700
+    ]
+   }
+  }
+ ],
+ "version": "putgd-cli 0.1.1-dev.unknown",
+ "cover": {
+  "placed": {
+   "monitorIndex": 0,
+   "ok": true,
+   "output": [
+    "HDMI-A-1"
+   ],
+   "rect": [
+    0,
+    0,
+    1920,
+    1080
+   ],
+   "state": "covered"
+  },
+  "precheck": {
+   "check": "precheck",
+   "fraction": 0.9999,
+   "framebuffer": [
+    1920,
+    1080
+   ],
+   "minFraction": 0.98,
+   "ok": true,
+   "output": [
+    "HDMI-A-1"
+   ],
+   "rect": [
+    0,
+    0,
+    1920,
+    1080
+   ]
+  },
+  "region": [
+   324,
+   184,
+   1272,
+   712
+  ]
+ },
+ "acquisition": null,
+ "durationUs": 6699999,
+ "load": 2.26611328125
+}

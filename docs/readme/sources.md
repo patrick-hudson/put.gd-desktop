@@ -49,7 +49,7 @@ local-only capture, the edited photo, or a six-second local recording.
 | `settings-gnome.png` | Settings › General | Fedora VNC frame, crop `298, 90, 1622, 1016` |
 | `settings-plasma.png` | Settings › General | Debian VNC frame, crop `298, 64, 1620, 972` |
 | `capture-plasma.png`, `shortcuts-plasma.png`, `destinations-plasma.png`, `history-plasma.png` | Settings › Capture, Settings › Shortcuts, Destinations, History (gallery, edited photo selected) | Debian VNC frames, same crop |
-| `review-plasma.png` | Review recording window after a six-second monitor recording through KWin's screencast stream | Debian VNC frame, crop `508, 150, 1412, 876` |
+| `review-plasma.png` | Review recording window (#283 layout) with a blur and a solid cover, after a 6.5 s region recording of a lab test card through KWin's screencast stream; replaced 2026-10-20 from a scratch build of PR #290 | Debian VNC frame, the window's client area (960×600), from [the #283 evidence](../evidence/2026-10-20-review-window-283/README.md) |
 | `editor-gnome.png` | Edit & upload with rectangle, highlight, redaction, arrow and text applied through `editor.apply` | Fedora VNC frame, crop `288, 54, 1632, 1052` |
 | `tray-cinnamon.png`, `tray-gnome.png`, `tray-plasma.png` | The tray context menu | guest frame crop `1055, 425, 1280, 800`; Fedora crop `1560, 33, 1860, 560`; Debian crop `1540, 680, 1920, 1080` |
 | `tray-trio.png` | the three tray crops side by side, 420 px tall, 16 px gaps, 12 px rounded corners | generated |
