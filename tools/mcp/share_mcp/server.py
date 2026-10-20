@@ -302,7 +302,7 @@ def create_server(adapter: CliAdapter) -> FastMCP:
 
     @server.tool(annotations=read)
     async def get_recording(id: str) -> Json:
-        """Read the session: state, pending command, whether a region selector is open (selecting), target, config, canvas, retained durationUs, trim/masks with their revision, helper progress (exportFraction while exporting), where the control bar went (overlayExcluded, overlayPlacement), lastExport (the latest copy/upload export: status exporting|saved|failed, revision, path, bytes, error) and any error. An ended session is recording_unavailable; get_operation has its outcome."""
+        """Read the session: state, pending command, whether a region selector is open (selecting), target, config, canvas, retained durationUs, trim/masks with their revision, helper progress (exportFraction while exporting), where the control bar went (overlayExcluded, overlayPlacement), lastExport (the latest copy/upload export: status exporting|saved|failed, revision, path, bytes, error), stopReason (budget when the recording stopped itself) with stopDetails (reason disk_space|max_file_bytes, message, hint, budgetBytes, maxFileBytes, durationUs, and freeBytes/reserveBytes/availableBytes for the disk) and any error. An ended session is recording_unavailable; get_operation has its outcome."""
         return await adapter.call('recording.inspect', {'id': id}) if identifier(id) else invalid()
 
     @server.tool(annotations=effect)
@@ -489,7 +489,7 @@ def create_server(adapter: CliAdapter) -> FastMCP:
 
     @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
     async def show_diagnostics_package(path: str) -> Json:
-        """Show in folder: open the file manager with a saved diagnostics package selected (org.freedesktop.FileManager1.ShowItems), or its folder when no file manager answers. path is the absolute path create_diagnostics_bundle returned; only put.gd's own putgd-diagnostics-*.zip names are accepted."""
+        """Show in folder: open the file manager with a saved diagnostics package selected (org.freedesktop.FileManager1.ShowItems), or its folder when no file manager answers. path is the absolute path create_diagnostics_bundle returned; put.gd's own putgd-diagnostics-*.zip names are accepted, and any other path a diagnostics package was saved to by this resident."""
         if not identifier(path, 4096) or not path.startswith('/'):
             return invalid()
         return await adapter.call('diagnostics.reveal', {'path': path})

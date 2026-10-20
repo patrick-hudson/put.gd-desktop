@@ -1,6 +1,8 @@
 #pragma once
 #include "OperationService.h"
 #include <QDateTime>
+#include <QDir>
+#include <QSet>
 #include <QRegularExpression>
 namespace putgd {
 // What `diagnostics.bundle` asked for (#74 §3).
@@ -94,6 +96,9 @@ public:
  void uploadTarget(const QString& profileId,JsonReply);
  static Error parse(const QJsonObject& params,BundleRequest&);
  void create(const BundleRequest&,JsonReply);
+ // Whether create saved a package at this absolute path in this resident, so
+ // Show in folder accepts it under any name (#223).
+ bool saved(const QString& path) const {return saved_.contains(QDir::cleanPath(path));}
  static QString defaultFolder(const Settings&);
  // Worker-thread work; no session state. Tests call it directly.
  static QJsonObject build(const Context&,const BundleRequest&,Error&);
@@ -110,5 +115,6 @@ private:
  QHash<QString,Check> checked_;
  QHash<QString,QDateTime> tested_;
  bool running_=false;
+ QSet<QString> saved_;
 };
 }

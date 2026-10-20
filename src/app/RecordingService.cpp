@@ -1,4 +1,5 @@
 #include "RecordingService.h"
+#include "core/Log.h"
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
@@ -38,6 +39,11 @@ Error diskSpaceError(const ArtifactStore::DiskBudget& disk) {
             {{"freeBytes", double(disk.freeBytes)}, {"reserveBytes", double(disk.reserveBytes)}, {"reservedBytes", double(disk.reservedBytes)},
              {"availableBytes", double(disk.available())}, {"requiredBytes", double(3 * RecordingService::minimumBudgetBytes)},
              {"shortfallBytes", double(shortfall)}, {"hint", "Free up space in put.gd's data folder, then record again"}}};
+}
+QString clockText(qint64 us) {
+    const qint64 seconds = us / 1000000;
+    return seconds >= 3600 ? QStringLiteral("%1:%2:%3").arg(seconds / 3600).arg(seconds / 60 % 60, 2, 10, QChar('0')).arg(seconds % 60, 2, 10, QChar('0'))
+                           : QStringLiteral("%1:%2").arg(seconds / 60).arg(seconds % 60, 2, 10, QChar('0'));
 }
 QJsonArray rectJson(const QRect& r) { return {r.x(), r.y(), r.width(), r.height()}; }
 // [x, y, width, height] in integers with a positive size.
@@ -110,7 +116,40 @@ QJsonObject RecordingService::publicJson(const Session& s) const {
     if (!s.overlayPlacement.isEmpty()) o["overlayPlacement"] = s.overlayPlacement;
     o["selecting"] = !s.selector.isEmpty();
     if (!s.stopReason.isEmpty()) o["stopReason"] = s.stopReason;
+    if (!s.stopDetails.isEmpty()) o["stopDetails"] = s.stopDetails;
     return o;
+}
+// The helper ended the capture on its byte budget (#225): say which bound ran
+// out, with the figures and what to do, in the review window, the tray and
+// recording.inspect. The clip recorded so far stays for review.
+void RecordingService::stoppedOnBudget(Session& s) {
+    const auto maxFile = s.op.settings.limits.maxFileBytes;
+    auto disk = ArtifactStore::diskBudget(stagingRoot_);
+    // A disk that filled up during the capture ends it on the disk, whatever the prepare-time bound was.
+    const bool diskFull = s.budgetLimit == "disk_space" || (disk.freeBytes >= 0 && disk.available() < 2 * minimumBudgetBytes);
+    QJsonObject details{{"reason", diskFull ? "disk_space" : "max_file_bytes"}, {"budgetBytes", double(s.config.budgetBytes)}, {"maxFileBytes", double(maxFile)},
+        {"durationUs", double(s.duration)}};
+    const auto at = clockText(s.duration), budget = ArtifactStore::sizeText(s.config.budgetBytes);
+    if (diskFull) {
+        if (disk.freeBytes >= 0) {
+            details["freeBytes"] = double(disk.freeBytes);
+            details["reserveBytes"] = double(disk.reserveBytes + disk.reservedBytes);
+            details["availableBytes"] = double(disk.available());
+        }
+        details["hint"] = "Free up space in put.gd's data folder before the next recording";
+        details["message"] = disk.freeBytes >= 0
+            ? QStringLiteral("Recording stopped at %1: the disk ran out of room. %2 is free and put.gd keeps %3 free for the system, so the recording stopped at %4 to leave room for its export and upload. The clip so far is kept for review; free up space before recording again.")
+                  .arg(at, ArtifactStore::sizeText(disk.freeBytes), ArtifactStore::sizeText(disk.reserveBytes + disk.reservedBytes), budget)
+            : QStringLiteral("Recording stopped at %1: the disk ran out of room at %2. The clip so far is kept for review; free up space before recording again.").arg(at, budget);
+    } else {
+        details["hint"] = "Raise Largest file in Settings > Uploads to record longer";
+        details["message"] = QStringLiteral("Recording stopped at %1: it reached the Largest file limit (%2; recording stops at %3 to leave room to finish the file). The clip so far is kept for review; raise Largest file in Settings > Uploads to record longer.")
+                                 .arg(at, ArtifactStore::sizeText(maxFile), budget);
+    }
+    s.stopDetails = details;
+    logging::warning(logRecording(), "Recording stopped on its budget", {{"operationId", s.op.id}, {"stop", details}});
+    backend_->control(s.op.id, "notice", {{"text", details["message"]}}, [](Error, QJsonObject) {});
+    emit budgetStopped(s.op.id, details);
 }
 void RecordingService::invoke(const QString& mode, JsonReply reply) {
     QString step = "raise";
@@ -207,6 +246,7 @@ void RecordingService::handleEvent(const QJsonObject& event) {
         s.stopReason = event["reason"].toString();
         updateCanvas(s.canvas, event["canvas"]);
         recording::clampAnimationSize(s.config, s.canvas, limits(s.op.settings));
+        if (s.stopReason == "budget") stoppedOnBudget(s);
         transition(s, "reviewing");
     } else if (kind == "selecting" && s.state == "preparing") {
         // The helper's own selector is open (X11, KDE): recording.select can drive it.
@@ -312,7 +352,11 @@ void RecordingService::prepareSession(const QJsonObject& params, JsonReply reply
         if (auto error = host_.accept(s.op)) { reply(error, {}); return; }
         // Stop before the admitted file limit, leaving room for finalization.
         s.config.budgetBytes = std::max<qint64>(1024 * 1024, s.op.settings.limits.maxFileBytes - std::max<qint64>(s.op.settings.limits.maxFileBytes / 10, 64LL * 1024 * 1024));
-        if (disk) s.config.budgetBytes = std::min(s.config.budgetBytes, disk->available() / 3);
+        s.budgetLimit = "max_file_bytes";
+        if (disk && disk->available() / 3 < s.config.budgetBytes) {
+            s.config.budgetBytes = disk->available() / 3;
+            s.budgetLimit = "disk_space";
+        }
         s.op.state = "recording";
         s.op.phase = "preparing";
         s.staging = stagingRoot_ + "/" + s.op.id;
