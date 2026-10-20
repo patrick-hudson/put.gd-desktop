@@ -3,6 +3,7 @@
 #include "core/RunMarker.h"
 #include "storage/s3/SdkRuntime.h"
 #include "fixtures/U2Fixtures.h"
+#include <QCoreApplication>
 #include <QDir>
 #include <QElapsedTimer>
 #include <QFile>
@@ -105,7 +106,10 @@ private slots:
  void debugLoggingIsOptInAndRulesStillApply() {
   QTemporaryDir dir;logging::open(dir.path());
   logging::debug(logOperation(),"hidden");
+  // The distro rule (see main) hides qDebug until debug logging is on.
+  QVERIFY(!QLoggingCategory::defaultCategory()->isDebugEnabled());
   logging::setDebug(true,QDateTime::currentDateTimeUtc().addSecs(60));
+  QVERIFY(QLoggingCategory::defaultCategory()->isDebugEnabled());
   logging::debug(logOperation(),"shown");qDebug("qt debug shown");
   QVERIFY(!logging::status()["debugLoggingExpiresAt"].isNull());
   logging::setDebug(false);
@@ -287,5 +291,18 @@ private slots:
   operations.shutdown();
  }
 };
-QTEST_GUILESS_MAIN(LoggingContract)
+// Every host runs this suite as if its distro disabled debug output the way
+// Fedora's /usr/share/qt6/qtlogging.ini does (*.debug=false, #191): Qt reads
+// the user's QtProject/qtlogging.ini with the same low precedence.
+int main(int argc,char** argv) {
+ QTemporaryDir config;
+ if(!config.isValid()||!QDir().mkpath(config.filePath("QtProject")))return 2;
+ {QFile rules(config.filePath("QtProject/qtlogging.ini"));if(!rules.open(QIODevice::WriteOnly))return 2;rules.write("[Rules]\n*.debug=false\n");}
+ qputenv("XDG_CONFIG_HOME",config.path().toLocal8Bit());
+ qunsetenv("QT_LOGGING_RULES");qunsetenv("QT_LOGGING_CONF");
+ QCoreApplication app(argc,argv);
+ LoggingContract test;
+ QTEST_SET_MAIN_SOURCE_PATH
+ return QTest::qExec(&test,argc,argv);
+}
 #include "test_logging.moc"
