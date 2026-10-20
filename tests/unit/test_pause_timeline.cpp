@@ -7,7 +7,8 @@ constexpr std::int64_t ms = 1'000'000;
 }
 
 // #130: pause/resume drops and shifts both tracks by the same paused time, so
-// the audio-minus-video offset after a resume is the one before it.
+// the audio-minus-video offset after a resume is the one before it. #129: the
+// audio guard keeps a runaway device clock from blocking the muxer.
 class PauseTimelineContract : public QObject {
     Q_OBJECT
 private slots:
@@ -73,6 +74,28 @@ private slots:
         timeline.reset();
         QVERIFY(!timeline.paused());
         QCOMPARE(timeline.map(2000 * ms, 0), std::optional<std::int64_t>(2000 * ms));
+    }
+    // #129: pulsesrc on a suspended null sink stamped audio ~2^32 segments ahead.
+    void audioStampedInTheFutureIsReanchoredToItsArrival() {
+        AudioClockGuard guard;
+        // Normal capture: a few ms behind the running time, untouched.
+        QCOMPARE(guard.apply(995 * ms, 10 * ms, 1000 * ms), 995 * ms);
+        QCOMPARE(guard.corrections(), 0);
+        const std::int64_t runaway = std::int64_t(4294967295) * 10 * ms;
+        QCOMPARE(guard.apply(runaway, 10 * ms, 2000 * ms), 1990 * ms);
+        QCOMPARE(guard.corrections(), 1);
+        // The buffers after it keep their spacing from the re-anchored one.
+        QCOMPARE(guard.apply(runaway + 10 * ms, 10 * ms, 2011 * ms), 2000 * ms);
+        QCOMPARE(guard.apply(runaway + 20 * ms, 10 * ms, 2019 * ms), 2010 * ms);
+        QCOMPARE(guard.corrections(), 1);
+        // Timestamps that come back to normal drop the correction again.
+        QCOMPARE(guard.apply(2025 * ms, 10 * ms, 2030 * ms), 2025 * ms);
+        QCOMPARE(guard.correction(), std::int64_t(0));
+        // Up to a second ahead is left alone (a clock that runs slightly fast).
+        QCOMPARE(guard.apply(2900 * ms, 10 * ms, 2100 * ms), 2900 * ms);
+        // Before the pipeline has a clock nothing is decided.
+        guard.reset();
+        QCOMPARE(guard.apply(runaway, 10 * ms, -1), runaway);
     }
 };
 QTEST_GUILESS_MAIN(PauseTimelineContract)

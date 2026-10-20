@@ -532,17 +532,23 @@ audio. A recording stopped while paused keeps nothing after the pause. The
 retained duration is measured from the first retained frame because some
 encoders carry a constant timestamp offset.
 
-Stop sends EOS into each branch at the element after its source, audio first,
-from a worker thread, and the clip is finished when the muxer's EOS reaches
-the bus. Before #129 the EOS went through the pipeline to the sources, and a
-source takes its streaming lock for it; `pulsesrc` holds that lock while it
-waits for audio and has no way to be woken, so when the sink monitor stopped
-delivering (the suspended `auto_null` sink of a VM without a sound card)
-Stop blocked the helper's main thread until the resident gave up with
-`recording_helper_timeout`. If a drain still doesn't finish within 10 s the
-capture stops anyway and keeps what reached the file (its Matroska index is
-missing; the clusters decode); `recording_stop_timeout` is left for a drain
-that wrote nothing. The helper stops on its own and reports `stopped` with reason
+Stop ends the clip at once: from that running time on nothing is kept, however
+long the drain takes. It then sends EOS into each branch at the element after
+its source, each from its own worker thread, and the clip is finished when the
+muxer's EOS reaches the bus. Before #129 the EOS went through the pipeline to
+the sources, and a source takes its streaming lock for it; `pulsesrc` holds
+that lock while its thread waits, for audio or for room in the audio queue.
+On a VM without a sound card the monitor of the suspended `auto_null` sink
+sometimes stamps its buffers about 2³² ring-buffer segments (~497 days) in the
+future: the muxer never takes them, the audio queue reads as full, the audio
+thread blocks, and Stop blocked the helper's main thread until the resident gave
+up with `recording_helper_timeout` (2 of 5 stops in the lab's Kubuntu 26.04
+guest). The encoder probe now re-anchors audio stamped more than a second ahead
+of the running time to its arrival and keeps that correction for the buffers
+after it (`AudioClockGuard`; `PUTGD_RECORD_DEBUG_LOG` counts the corrections).
+If a drain still doesn't finish within 10 s the capture stops anyway and keeps
+what reached the file (its Matroska index is missing; the clusters decode);
+`recording_stop_timeout` is left for a drain that wrote nothing. The helper stops on its own and reports `stopped` with reason
 `budget` when the working clip nears `limits.maxFileBytes` minus a reserve.
 Progress events carry `durationUs`, `bytes`, `paused` and the encoder names.
 

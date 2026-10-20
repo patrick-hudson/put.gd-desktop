@@ -31,4 +31,24 @@ private:
     std::vector<std::pair<std::int64_t, std::int64_t>> closed_;
     std::int64_t open_ = -1;
 };
+
+// Keeps audio timestamps from running away. pulsesrc on the monitor of a
+// suspended null sink (a VM without a sound card) can stamp its buffers about
+// 2^32 ring-buffer segments in the future (#129). The muxer then never takes
+// them, the audio queue reads as full, and the audio branch blocks for good.
+// A buffer stamped more than kFutureNs ahead of the pipeline's running time is
+// re-anchored to its arrival (running time minus its duration), and the same
+// correction carries over to the buffers after it; a correction that would put
+// later buffers more than kBehindNs in the past is dropped again.
+class AudioClockGuard {
+public:
+    static constexpr std::int64_t kFutureNs = 1'000'000'000, kBehindNs = 5'000'000'000;
+    std::int64_t apply(std::int64_t pts, std::int64_t duration, std::int64_t runningNow);
+    std::int64_t correction() const { return correction_; }
+    int corrections() const { return corrections_; }
+    void reset() { correction_ = 0; corrections_ = 0; }
+private:
+    std::int64_t correction_ = 0;
+    int corrections_ = 0;
+};
 }

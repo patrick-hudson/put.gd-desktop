@@ -11,6 +11,7 @@
 #include <functional>
 #include <gst/gst.h>
 #include <thread>
+#include <vector>
 
 namespace putgd::record {
 // One live GStreamer capture: ximagesrc (root rectangle or window) or
@@ -63,7 +64,7 @@ signals:
 private:
     // Lab statistics for PUTGD_RECORD_DEBUG_LOG, written on streaming threads and read after teardown.
     struct Spread { gint64 count = 0, min = 0, max = 0, sum = 0; void add(gint64); QString text() const; };
-    struct Rebase { std::atomic<gint64> firstPassed{-1}; std::atomic<gint64> lastPassed{-1}; Spread lateness; };
+    struct Rebase { std::atomic<gint64> firstPassed{-1}; std::atomic<gint64> lastPassed{-1}; Spread lateness; AudioClockGuard clock; };
     struct FrameClock { gint64 previous = -1, arrival = 0; bool compositorTimes = false; Spread age; };
     static GstPadProbeReturn probe(GstPad*, GstPadProbeInfo*, gpointer);
     static GstPadProbeReturn stampFrame(GstPad*, GstPadProbeInfo*, gpointer);
@@ -76,8 +77,8 @@ private:
     QTimer bus_, progress_;
     PauseTimeline timeline_;
     Rebase video_, audio_;
-    // Sends EOS into the branches on stop; joined at teardown.
-    std::thread drain_;
+    // Send EOS into the branches on stop, one per branch; joined at teardown.
+    std::vector<std::thread> drains_;
     quint64 stops_ = 0;
     FrameClock frameClock_;
     QString clockName_;

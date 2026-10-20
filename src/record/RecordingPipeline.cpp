@@ -97,7 +97,10 @@ GstPadProbeReturn RecordingPipeline::probe(GstPad* pad, GstPadProbeInfo* info, g
     auto* rebase = static_cast<Rebase*>(context->rebase);
     GstBuffer* buffer = GST_PAD_PROBE_INFO_BUFFER(info);
     if (!buffer || !GST_BUFFER_PTS_IS_VALID(buffer)) return GST_PAD_PROBE_OK;
-    const gint64 pts = gint64(GST_BUFFER_PTS(buffer));
+    const gint64 now = runningNow(pad);
+    gint64 pts = gint64(GST_BUFFER_PTS(buffer));
+    // Only the audio branch stamps with a device clock that can run away (#129).
+    if (context->audio) pts = rebase->clock.apply(pts, GST_BUFFER_DURATION_IS_VALID(buffer) ? gint64(GST_BUFFER_DURATION(buffer)) : 0, now);
     // What was captured while paused is dropped and what follows moves back by
     // the paused time, the same for both tracks. Video frames are instants; an
     // audio buffer reaching into a pause is dropped whole, and the export fills
@@ -105,8 +108,8 @@ GstPadProbeReturn RecordingPipeline::probe(GstPad* pad, GstPadProbeInfo* info, g
     const gint64 duration = context->audio && GST_BUFFER_DURATION_IS_VALID(buffer) ? gint64(GST_BUFFER_DURATION(buffer)) : 0;
     const auto mapped = context->timeline->map(pts, duration);
     if (!mapped) return GST_PAD_PROBE_DROP;
-    if (const gint64 now = runningNow(pad); now >= 0) rebase->lateness.add(now - pts);
-    const gint64 offset = pts - *mapped;
+    if (now >= 0) rebase->lateness.add(now - pts);
+    const gint64 offset = gint64(GST_BUFFER_PTS(buffer)) - *mapped;
     buffer = gst_buffer_make_writable(buffer);
     GST_PAD_PROBE_INFO_DATA(info) = buffer;
     const gint64 shifted = std::max<gint64>(0, *mapped);
@@ -165,8 +168,8 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
     GError* error = nullptr;
     GstElement* pipeline = gst_parse_launch(description.toUtf8().constData(), &error);
     if (!pipeline || error) { failure = error ? QString::fromUtf8(error->message) : QStringLiteral("parse failed"); if (error) g_error_free(error); if (pipeline) gst_object_unref(pipeline); return false; }
-    video_.firstPassed = -1; video_.lastPassed = -1; video_.lateness = {};
-    audio_.firstPassed = -1; audio_.lastPassed = -1; audio_.lateness = {};
+    video_.firstPassed = -1; video_.lastPassed = -1; video_.lateness = {}; video_.clock.reset();
+    audio_.firstPassed = -1; audio_.lastPassed = -1; audio_.lateness = {}; audio_.clock.reset();
     timeline_.reset();
     frameClock_ = {};
     frameClock_.compositorTimes = qEnvironmentVariable("PUTGD_RECORD_PIPEWIRE_TIMESTAMPS") == "compositor";
@@ -284,13 +287,17 @@ void RecordingPipeline::stop(std::function<void(Error, qint64)> done) {
     if (stopping_) { done({"recording_busy", "Already stopping", {}}, 0); return; }
     stopping_ = true;
     stopCallback_ = std::move(done);
-    // A recording stopped while paused stays paused: nothing after the pause is kept.
+    // Stop ends the clip now: nothing captured after it is kept, however long the
+    // drain takes (a recording stopped while paused already keeps nothing after the pause).
+    timeline_.pause(std::max<gint64>(0, runningTime()));
     // EOS enters each branch at the element after its source, never through the
     // sources (#129): a source takes its streaming lock for EOS, and pulsesrc holds
-    // that lock while it waits for audio, so a sink monitor that stopped delivering
-    // (a suspended null sink in a VM) blocked Stop on the main thread for good. The
-    // audio branch goes first, so the muxer stops waiting for it and a full video
-    // queue drains; a worker thread sends both, so no wait reaches the main thread.
+    // that lock while its thread waits, for audio or for room in a full audio queue,
+    // so a sink monitor that stopped delivering or ran its timestamps away (a
+    // suspended null sink in a VM) blocked Stop on the main thread for good. Each
+    // branch gets its own thread: a branch whose thread is stuck downstream gets its
+    // EOS once the other branch's EOS lets the muxer drain it, and no wait reaches
+    // the main thread.
     QList<GstPad*> entries;
     for (const char* name : {"asrc", "src"}) {
         GstElement* source = gst_bin_get_by_name(GST_BIN(pipeline_), name);
@@ -299,12 +306,7 @@ void RecordingPipeline::stop(std::function<void(Error, qint64)> done) {
         if (pad) gst_object_unref(pad);
         if (source) gst_object_unref(source);
     }
-    drain_ = std::thread([entries] {
-        for (GstPad* pad : entries) {
-            gst_pad_send_event(pad, gst_event_new_eos());
-            gst_object_unref(pad);
-        }
-    });
+    for (GstPad* pad : entries) drains_.emplace_back([pad] { gst_pad_send_event(pad, gst_event_new_eos()); gst_object_unref(pad); });
     // The bus poll completes on EOS. A drain that stalls anyway is bounded: the
     // capture stops and keeps what reached the file, whose Matroska index is
     // then missing but whose clusters decode.
@@ -358,13 +360,14 @@ void RecordingPipeline::tearDown() {
     if (!pipeline_) return;
     gst_element_set_state(pipeline_, GST_STATE_NULL);
     // Flushing in NULL ends any EOS send still waiting on a branch.
-    if (drain_.joinable()) drain_.join();
+    for (auto& drain : drains_) if (drain.joinable()) drain.join();
+    drains_.clear();
     gst_object_unref(pipeline_);
     pipeline_ = nullptr;
     // Lateness: running time at the encoder minus the buffer's time; age: how
     // old a compositor frame time was when the frame reached the source pad.
-    debugLog(QStringLiteral("timestamps: clock %1, video lateness %2, audio lateness %3, frame age %4, arrival-stamped frames %5")
-                 .arg(clockName_, video_.lateness.text(), audio_.lateness.text(), frameClock_.age.text()).arg(frameClock_.arrival));
+    debugLog(QStringLiteral("timestamps: clock %1, video lateness %2, audio lateness %3, frame age %4, arrival-stamped frames %5, audio re-anchored %6 times")
+                 .arg(clockName_, video_.lateness.text(), audio_.lateness.text(), frameClock_.age.text()).arg(frameClock_.arrival).arg(audio_.clock.corrections()));
     stopping_ = false;
 }
 }

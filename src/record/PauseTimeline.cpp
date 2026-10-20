@@ -32,6 +32,17 @@ std::optional<std::int64_t> PauseTimeline::map(std::int64_t pts, std::int64_t du
     }
     return pts - shift;
 }
+std::int64_t AudioClockGuard::apply(std::int64_t pts, std::int64_t duration, std::int64_t runningNow) {
+    if (runningNow < 0) return pts - correction_;
+    std::int64_t corrected = pts - correction_;
+    if (correction_ && corrected < runningNow - kBehindNs) { correction_ = 0; corrected = pts; }
+    if (corrected > runningNow + kFutureNs) {
+        correction_ = pts - std::max<std::int64_t>(0, runningNow - std::max<std::int64_t>(0, duration));
+        corrected = pts - correction_;
+        ++corrections_;
+    }
+    return corrected;
+}
 std::int64_t PauseTimeline::pausedTotal() const {
     std::lock_guard lock(mutex_);
     std::int64_t total = 0;
