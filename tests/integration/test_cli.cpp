@@ -17,6 +17,13 @@ private slots:
   QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config/config.json"));Source source;OperationService operations(d.filePath("data"),settings,registry,source);HistoryService history(operations);LocalServer server(settings,operations,history);QTRY_VERIFY(operations.ready());
   for(const auto& params:QList<QJsonObject>{QJsonObject{{"id","missing"}},QJsonObject{{"id","missing"},{"path","/synthetic/untrusted.png"}},QJsonObject{{"id",QJsonArray{}}}}){bool done=false;Error error;server.dispatch({{"schemaVersion",1},{"requestId","image"},{"session",server.socketPath()},{"method","history.copyImage"},{"params",params}},[&](Error e,QJsonObject){error=e;done=true;});QTRY_VERIFY(done);QCOMPARE(error.code,params.size()==1&&params["id"].isString()?QString("history_not_found"):QString("invalid_request"));}QCOMPARE(source.copies,0);QCOMPARE(source.reads,0);
  }
+ // #190: history.preview takes exactly one history ID and waits for the
+ // decode: the CLI and History give it longer than other history methods.
+ void historyPreviewEndpointAcceptsOnlyJournalId(){
+  QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config/config.json"));Source source;OperationService operations(d.filePath("data"),settings,registry,source);HistoryService history(operations);LocalServer server(settings,operations,history);QTRY_VERIFY(operations.ready());
+  for(const auto& params:QList<QJsonObject>{QJsonObject{{"id","missing"}},QJsonObject{{"id","missing"},{"path","/synthetic/untrusted.mp4"}},QJsonObject{{"id",QJsonArray{}}},QJsonObject{}}){bool done=false;Error error;server.dispatch({{"schemaVersion",1},{"requestId","preview"},{"session",server.socketPath()},{"method","history.preview"},{"params",params}},[&](Error e,QJsonObject){error=e;done=true;});QTRY_VERIFY(done);QCOMPARE(error.code,params.size()==1&&params["id"].isString()?QString("history_not_found"):QString("invalid_request"));}
+  QCOMPARE(LocalServer::replyDeadlineMs("history.preview"),historyPreviewReplyMs);QCOMPARE(LocalServer::replyDeadlineMs("history.detail"),15000);
+ }
  void credentialEntryIsRejectedBeforeConnecting() {
   QTemporaryDir d;QLocalServer server;server.setSocketOptions(QLocalServer::UserAccessOption);QVERIFY(server.listen(d.filePath("session.sock")));int connections=0;
   connect(&server,&QLocalServer::newConnection,this,[&]{++connections;auto* socket=server.nextPendingConnection();socket->setParent(&server);socket->disconnectFromServer();});

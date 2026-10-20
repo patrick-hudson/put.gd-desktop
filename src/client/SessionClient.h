@@ -8,6 +8,9 @@ namespace putgd {
 // The resident answers these only after a destination test or an upload (#123);
 // LocalServer::replyDeadlineMs gives them the same time.
 inline constexpr int diagnosticsBundleReplyMs = 600000, diagnosticsUploadTargetReplyMs = 300000;
+// history.preview answers once a missing preview is made (#190), after at most
+// a short wait behind other previews and one bounded decode.
+inline constexpr int historyPreviewReplyMs = 45000;
 class SessionClient : public QObject {
     Q_OBJECT
 public:

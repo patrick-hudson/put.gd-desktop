@@ -18,6 +18,8 @@ public:
  qint64 total()const{return total_;}const UiHistoryQuery& query()const{return query_;}
  void setShowCancelled(bool);bool showCancelled()const{return showCancelled_;}int hiddenCancelled()const{return hiddenCancelled_;}
  void releaseThumbnails();
+ // Reads a preview again once it has been made (#190) at a path whose earlier read failed.
+ void reloadThumbnail(const QString& path);
  // A video poster's length (#112): the PNG text key the helper writes, and m:ss.
  static constexpr const char* durationKey="putgd-duration-ms";
  static QString duration(qint64 milliseconds);

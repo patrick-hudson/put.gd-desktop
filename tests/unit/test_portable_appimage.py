@@ -365,6 +365,10 @@ class PlatformAuditTest(unittest.TestCase):
         self.platforms.mkdir(parents=True)
         for name in ("libqxcb.so", *portable.EXTRA_PLATFORM_PLUGINS):
             (self.platforms / name).write_bytes(b"\x7fELFsynthetic")
+        self.formats = self.app / "usr/plugins/imageformats"
+        self.formats.mkdir(parents=True)
+        for name in portable.IMAGE_FORMAT_PLUGINS:
+            (self.formats / name).write_bytes(b"\x7fELFsynthetic")
         self.inventory = {"privateLibraryDirectory": "usr/lib/putgd"}
         self.worker("""[ "$1" = --image-job ] && [ "$QT_QPA_PLATFORM" = offscreen ] || exit 9
 [ -z "${DISPLAY-}" ] && [ -z "${WAYLAND_DISPLAY-}" ] && [ -z "${QT_PLUGIN_PATH-}" ] || exit 8
@@ -388,6 +392,12 @@ exit 3
         result = self.audit()
         self.assertTrue(result["imageWorkerStartedOffscreen"])
         self.assertIn("libqoffscreen.so", result["platformPlugins"])
+
+    def test_webp_plugin_is_required_for_history_previews(self):
+        self.assertIn("libqwebp.so", self.audit()["imageFormatPlugins"])
+        (self.formats / "libqwebp.so").unlink()
+        with self.assertRaisesRegex(ValueError, "image format plugins missing from the image: libqwebp.so"):
+            self.audit()
 
     def test_missing_platform_plugin_is_rejected(self):
         (self.platforms / "libqoffscreen.so").unlink()

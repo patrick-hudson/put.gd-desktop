@@ -27,6 +27,9 @@
 #include <QSqlDatabase>
 #include <QSqlQuery>
 #include <QUuid>
+#include <QBuffer>
+#include <QCryptographicHash>
+#include <QDir>
 using namespace putgd;using namespace putgd::test;
 class HistoryPaintObserver final:public QObject {
 public:int paints=0;QRegion region;
@@ -196,6 +199,31 @@ private slots:
    for(int y=poster.top();y<=poster.bottom();++y)for(int x=poster.left();x<=poster.right();++x){const int g=qGray(image.pixel(x,y));if(g>70&&g<130)return true;}return false;};
   QTest::qWait(50);QVERIFY(scrim(table->grab(table->visualRect(index)).toImage()));
   selectRow(table,0);auto* preview=window.findChild<QLabel*>("historyPreview");QTRY_VERIFY(!preview->pixmap().isNull());QTRY_VERIFY(window.findChild<QLabel*>("historySummary")->text().contains("1:05"));QVERIFY(scrim(preview->pixmap().toImage()));
+ }
+ // #190: a selected image or video whose preview is missing is asked for
+ // once the selection settles; what the resident makes shows in the inspector
+ // and the list. One with nothing retained keeps "Preview unavailable" and is
+ // not asked for again.
+ void missingPreviewIsMadeOnSelection() {
+  QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());
+  QImage capture(320,180,QImage::Format_RGB32);capture.fill(QColor("#2a7fd4"));QByteArray png;{QBuffer buffer(&png);buffer.open(QIODevice::WriteOnly);QVERIFY(capture.save(&buffer,"PNG"));}
+  const auto imageId=QUuid::createUuid().toString(QUuid::WithoutBraces),videoId=QUuid::createUuid().toString(QUuid::WithoutBraces);
+  const auto artifact=d.filePath("data/artifacts/synthetic-image-op/"+imageId);QVERIFY(QDir().mkpath(QFileInfo(artifact).path()));{QFile file(artifact);QVERIFY(file.open(QIODevice::WriteOnly));QCOMPARE(file.write(png),png.size());}
+  const auto cleaned=d.filePath("data/previews/"+imageId+".png");
+  {HistoryStore ledger(operations.databasePath());
+   // A stored capture whose preview cleanup removed.
+   Operation image;image.id="synthetic-image-op";image.created="2020-01-02T00:00:00.000Z";image.state="completed";image.settings=settings.snapshot();OperationItem stored;stored.artifact.id=imageId;stored.artifact.path=artifact;stored.artifact.name="capture.png";stored.artifact.mime="image/png";stored.artifact.category="images";stored.artifact.bytes=png.size();stored.artifact.sha256=QString::fromLatin1(QCryptographicHash::hash(png,QCryptographicHash::Sha256).toHex());stored.artifact.previewPath=cleaned;stored.uploadStatus="local_only";image.items.append(stored);QVERIFY(!ledger.saveOperation(image));
+   // A video stored before posters whose file is gone.
+   Operation video;video.id="synthetic-video-op";video.created="2020-01-01T00:00:00.000Z";video.state="completed";video.settings=settings.snapshot();OperationItem gone;gone.artifact.id=videoId;gone.artifact.path=d.filePath("data/artifacts/synthetic-video-op/"+videoId);gone.artifact.name="recording.mp4";gone.artifact.mime="video/mp4";gone.artifact.category="videos";gone.artifact.bytes=4096;gone.uploadStatus="uploaded";video.items.append(gone);QVERIFY(!ledger.saveOperation(video));}
+  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);QStringList asked;fixture.client.beforeDispatch=[&](const QString& method,const QJsonObject& params){if(method=="history.preview")asked.append(params["id"].toString());};
+  HistoryWindow window(fixture.session);window.resize(1000,700);window.show();auto* table=window.findChild<QListView*>("historyList");QTRY_COMPARE(table->model()->rowCount(),2);auto* preview=window.findChild<QLabel*>("historyPreview");
+  QCOMPARE(table->model()->index(0,0).data(HistoryModel::RecordRole).toJsonObject()["id"].toString(),imageId);
+  // Passing over the video on the way to the image asks only for the image.
+  selectRow(table,1);QTest::qWait(100);selectRow(table,0);QTRY_VERIFY(!preview->pixmap().isNull());QCOMPARE(asked,QStringList{imageId});
+  QVERIFY(QFileInfo(cleaned).isFile());QTRY_VERIFY(!qvariant_cast<QImage>(table->model()->index(0,0).data(HistoryModel::ThumbnailRole)).isNull());
+  QCOMPARE(preview->pixmap().toImage().pixelColor(preview->pixmap().width()/2,preview->pixmap().height()/2),QColor("#2a7fd4"));
+  selectRow(table,1);QTRY_COMPARE(asked.size(),2);QCOMPARE(asked.last(),videoId);QTRY_COMPARE(preview->text(),QString("Preview unavailable"));QVERIFY(preview->pixmap().isNull());
+  selectRow(table,0);QTRY_VERIFY(!preview->pixmap().isNull());selectRow(table,1);QTRY_COMPARE(preview->text(),QString("Preview unavailable"));QTest::qWait(600);QCOMPARE(asked.size(),2);
  }
  void openingHistoryDuringInitializationRefreshesWhenReady() {
   QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));QVERIFY(QDir().mkpath(d.filePath("data")));

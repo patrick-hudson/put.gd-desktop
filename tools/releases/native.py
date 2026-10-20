@@ -51,6 +51,21 @@ def package_metadata(package: Path, kind: str) -> dict:
             "recommends": command(["rpm", "-qp", "--recommends", str(package)]).splitlines()}
 
 
+# Qt loads image plugins by name, so neither dpkg-shlibdeps nor RPM's
+# dependency generator sees them: History reads WebP recordings and images
+# through the WebP plugin (#189), which the distros package apart from Qt GUI.
+RUNTIME_PACKAGES = {"DEB": ("qt6-image-formats-plugins",), "RPM": ("qt6-qtimageformats",)}
+
+
+def require_runtime_packages(metadata: dict) -> None:
+    requires = metadata["requires"]
+    entries = requires.split(",") if isinstance(requires, str) else requires
+    names = {alternative.split()[0] for entry in entries for alternative in entry.split("|") if alternative.strip()}
+    missing = [name for name in RUNTIME_PACKAGES[metadata["format"]] if name not in names]
+    if missing:
+        raise ValueError(metadata["format"] + " does not require " + ", ".join(missing))
+
+
 def extract_package(package: Path, kind: str, root: Path):
     root.mkdir(mode=0o755)
     if kind == "DEB":
@@ -94,6 +109,7 @@ def main():
             raise ValueError(f"Expected one native package, found {len(packages)}")
         package = packages[0]
         metadata = package_metadata(package, args.format)
+        require_runtime_packages(metadata)
         if metadata["name"] != "putgd" or metadata["version"] != expected["packageVersion"]:
             raise ValueError("Native package name/version differs from compiled build manifest")
         extracted = output / "extracted"

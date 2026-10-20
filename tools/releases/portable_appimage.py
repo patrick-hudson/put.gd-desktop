@@ -150,12 +150,21 @@ def deployment_qmake(qt: Path, output: Path) -> Path:
 EXTRA_PLATFORM_PLUGINS = ("libqwayland-generic.so", "libqwayland-egl.so", "libqoffscreen.so")
 
 
+# The image worker decodes History's GIF and WebP previews (#189) with these;
+# the aqt Qt's qtimageformats module carries WebP with its own libwebp.
+IMAGE_FORMAT_PLUGINS = ("libqgif.so", "libqjpeg.so", "libqwebp.so")
+
+
 def audit_platforms(appdir: Path, inventory: dict) -> dict:
     """Start the image worker the way the resident does, from the image alone."""
     platforms = appdir / "usr/plugins/platforms"
     missing = [name for name in ("libqxcb.so", *EXTRA_PLATFORM_PLUGINS) if not (platforms / name).is_file()]
     if missing:
         raise ValueError("Qt platform plugins missing from the image: " + ", ".join(missing))
+    formats = appdir / "usr/plugins/imageformats"
+    missing = [name for name in IMAGE_FORMAT_PLUGINS if not (formats / name).is_file()]
+    if missing:
+        raise ValueError("Qt image format plugins missing from the image: " + ", ".join(missing))
     environment = {key: value for key, value in os.environ.items()
                    if key not in ("DISPLAY", "WAYLAND_DISPLAY") and not key.startswith("QT_")}
     environment.update(LD_LIBRARY_PATH=str(appdir / "usr/lib") + ":" + str(appdir / inventory["privateLibraryDirectory"]),
@@ -169,6 +178,7 @@ def audit_platforms(appdir: Path, inventory: dict) -> dict:
         raise ValueError("Image worker did not start on the offscreen platform: " +
                          (lines[0] if lines else "exit status " + str(worker.returncode)))
     return {"platformPlugins": sorted(path.name for path in platforms.glob("*.so")),
+            "imageFormatPlugins": sorted(path.name for path in formats.glob("*.so")),
             "imageWorkerStartedOffscreen": True}
 
 

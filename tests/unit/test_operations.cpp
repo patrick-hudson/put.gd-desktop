@@ -337,6 +337,64 @@ private slots:
   QCOMPARE(journal.detail(op.items[0].artifact.id)["previewPath"].toString(),preview);QCOMPARE(op.state,QString("completed"));QCOMPARE(op.items[0].uploadStatus,QString("uploaded"));QCOMPARE(source.copies,1);QTRY_VERIFY(changes.count(id)>before);
 #endif
  }
+ // #190: a video whose poster was never made, failed or was cleaned up gets
+ // one when History asks: from the retained artifact, else from a local copy
+ // that is still the same file. A refused item is answered from memory.
+ void missingPreviewsAreMadeOnDemand(){
+#ifndef PUTGD_POSTER_FIXTURE
+  QSKIP("The poster helper fixture is Linux-only");
+#else
+  qputenv("PUTGD_TEST_POSTER_MODE","fail");ArtifactStore::setPosterHelperForTesting(QStringLiteral(PUTGD_POSTER_FIXTURE));auto restore=qScopeGuard([]{qunsetenv("PUTGD_TEST_POSTER_MODE");ArtifactStore::setPosterHelperForTesting({});});
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});
+  auto doc=configuration(d.path());auto archive=doc["archive"].toObject();archive["keepUploads"]=true;doc["archive"]=archive;QVERIFY(settings.save(doc,{}));
+  Source source;source.payload.kind="files";source.payload.files={fixture(d.path(),"clip.mp4",QByteArray("\0\0\0\x18" "ftypisom\0\0\x02\0isomiso2",24)+QByteArray(4096,'\x11'))};
+  OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());QStringList changes;connect(&operations,&OperationService::changed,this,[&](const QString& id){changes.append(id);});
+  QString id;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});QTRY_VERIFY(!id.isEmpty());
+  HistoryStore journal(operations.databasePath());QTRY_COMPARE(journal.operation(id).state,QString("completed"));
+  auto op=journal.operation(id);const auto item=op.items[0].artifact.id;QCOMPARE(op.items[0].local.status,QString("saved"));
+  // The poster made after the operation failed; it is not remembered as refused.
+  QTest::qWait(1000);QVERIFY(journal.operation(id).items[0].artifact.previewPath.isEmpty());qunsetenv("PUTGD_TEST_POSTER_MODE");
+  auto ask=[&](const QString& historyId){Error error;QJsonObject result;bool done=false;operations.makePreview(historyId,[&](Error e,QJsonObject r){error=e;result=r;done=true;});[&]{QTRY_VERIFY_WITH_TIMEOUT(done,15000);}();return std::pair{error,result};};
+  auto [error,result]=ask(item);QVERIFY2(!error,qPrintable(error.code));
+  QCOMPARE(result["state"].toString(),QString("made"));QCOMPARE(result["source"].toString(),QString("artifact"));QCOMPARE(result["operationId"].toString(),id);
+  const auto preview=result["previewPath"].toString();QVERIFY(QFileInfo(preview).isFile());QCOMPARE(QFileInfo(preview).fileName(),item+".png");
+  QCOMPARE(journal.operation(id).items[0].artifact.previewPath,preview);QCOMPARE(journal.detail(item)["previewPath"].toString(),preview);QVERIFY(changes.contains(id));
+  QCOMPARE(QImage(preview).text("putgd-duration-ms"),QString("4200"));
+  std::tie(error,result)=ask(item);QVERIFY(!error);QCOMPARE(result["state"].toString(),QString("ready"));QCOMPARE(result["previewPath"].toString(),preview);
+  // Cleanup removed the preview and the artifact: the local copy stands in.
+  QVERIFY(QFile::remove(preview));QVERIFY(QFile::remove(op.items[0].artifact.path));
+  std::tie(error,result)=ask(item);QVERIFY2(!error,qPrintable(error.code));QCOMPARE(result["state"].toString(),QString("made"));QCOMPARE(result["source"].toString(),QString("local"));QVERIFY(QFileInfo(preview).isFile());
+  // A local copy that is no longer the stored file is refused, and the refusal is remembered.
+  QVERIFY(QFile::remove(preview));QFile local(op.items[0].local.path);QVERIFY(local.open(QIODevice::ReadWrite));QVERIFY(local.seek(100));QVERIFY(local.write("x",1)==1);local.close();
+  std::tie(error,result)=ask(item);QCOMPARE(error.code,QString("preview_source_changed"));QVERIFY(!QFileInfo(preview).exists());
+  QVERIFY(QFile::remove(op.items[0].local.path));std::tie(error,result)=ask(item);QCOMPARE(error.code,QString("preview_source_changed"));
+  std::tie(error,result)=ask("missing-history-id");QCOMPARE(error.code,QString("history_not_found"));
+  doc=settings.document();auto retention=doc["retention"].toObject();retention["previewCacheBytes"]=0;doc["retention"]=retention;QVERIFY(settings.save(doc,settings.revision()));
+  std::tie(error,result)=ask(item);QCOMPARE(error.code,QString("previews_disabled"));
+#endif
+ }
+ // Preview requests answer in History's reply deadline: several selections
+ // queue ahead of after-operation posters, and more are refused as busy.
+ void onDemandPreviewsAreBounded(){
+#ifndef PUTGD_POSTER_FIXTURE
+  QSKIP("The poster helper fixture is Linux-only");
+#else
+  qputenv("PUTGD_TEST_POSTER_MODE","fail");ArtifactStore::setPosterHelperForTesting(QStringLiteral(PUTGD_POSTER_FIXTURE));auto restore=qScopeGuard([]{qunsetenv("PUTGD_TEST_POSTER_MODE");ArtifactStore::setPosterHelperForTesting({});});
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});QVERIFY(settings.save(configuration(d.path()),{}));
+  Source source;source.payload.kind="files";for(int i=0;i<5;++i)source.payload.files.append(fixture(d.path(),QString("clip-%1.mp4").arg(i),QByteArray("\0\0\0\x18" "ftypisom\0\0\x02\0isomiso2",24)+QByteArray(4096+i,'\x11')));
+  OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());
+  QString id;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});QTRY_VERIFY(!id.isEmpty());
+  HistoryStore journal(operations.databasePath());QTRY_COMPARE(journal.operation(id).state,QString("completed"));QTest::qWait(1500);
+  const auto items=journal.operation(id).items;QCOMPARE(items.size(),5);qputenv("PUTGD_TEST_POSTER_MODE","slow");
+  QHash<QString,QString> outcomes;for(const auto& item:items){const auto historyId=item.artifact.id;operations.makePreview(historyId,[&,historyId](Error e,QJsonObject r){outcomes[historyId]=e?e.code:r["state"].toString();});}
+  // The same selection again shares the first request's answer.
+  operations.makePreview(items[1].artifact.id,[&](Error e,QJsonObject r){outcomes["again"]=e?e.code:r["state"].toString();});
+  QTRY_VERIFY_WITH_TIMEOUT(outcomes.size()==6,25000);
+  // One decodes while three wait; a fifth would wait past the deadline.
+  for(int i=0;i<4;++i)QCOMPARE(outcomes.value(items[i].artifact.id),QString("made"));QCOMPARE(outcomes.value("again"),QString("made"));
+  QCOMPARE(outcomes.value(items[4].artifact.id),QString("preview_busy"));
+#endif
+ }
  void inactiveCancellationNormalizesPhaseWithoutChangingItemOutcome(){
   QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));Source source;OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());HistoryStore journal(operations.databasePath());
   Operation prior;prior.id="synthetic-inactive";prior.state="partial";prior.phase="uploading";prior.settings=settings.snapshot();OperationItem item;item.artifact.id="synthetic-inactive-item";item.uploadStatus="unknown";item.phase="uploading";prior.items.append(item);QVERIFY(!journal.saveOperation(prior));
