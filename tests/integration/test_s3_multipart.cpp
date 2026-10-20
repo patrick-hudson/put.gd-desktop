@@ -44,6 +44,13 @@ int count(S3Fixture& f, const QString& method, const QString& query) {
     for (auto event : f.events(method)) matches += event.toObject()["path"].toString().contains(query);
     return matches;
 }
+// One rule per part that holds its reply for `seconds` (the fixture reads the body first).
+QJsonArray slowParts(int count, double seconds) {
+    QJsonArray rules;
+    for (int number = 1; number <= count; ++number)
+        rules.append(QJsonObject{{"method", "PUT"}, {"query", QString("partNumber=%1&").arg(number)}, {"delay", seconds}});
+    return rules;
+}
 // An upload left running while the test drives the fixture.
 struct Pending {
     std::shared_ptr<std::promise<UploadResult>> promise = std::make_shared<std::promise<UploadResult>>();
@@ -447,6 +454,84 @@ private slots:
         QVERIFY(journal.last().isEmpty());
         // Lanes stop at the first error: no part goes out twice, and none after the last.
         for (int number = 1; number <= 6; ++number) QVERIFY(parts(f, QString::number(number)).size() <= 1);
+    }
+    // #203: Cancel, or one lane's failure, cuts the parts in flight instead of waiting
+    // for their replies. Every part reply here waits 8 s, longer than the bound.
+    void cancelCutsPartsInFlight() {
+        S3Fixture f(policy);
+        f.destination.settings["lowSpeedTimeSeconds"] = 30;
+        f.destination.settings["requestTimeoutMs"] = 30000;
+        auto request = f.request("inflight.bin", synthetic(16 * mib));
+        f.reset({{"rules", slowParts(4, 8.0)}});
+        request.extraLanes = [](int wanted) { return wanted; };
+        request.cancellation = std::make_shared<std::atomic_bool>(false);
+        Journal journal;
+        journal.attach(request);
+        auto pending = start(f, request);
+        QTRY_VERIFY_WITH_TIMEOUT(parts(f).size() == 4, 8000);
+        QElapsedTimer clock;
+        clock.start();
+        request.cancellation->store(true);
+        QTRY_VERIFY_WITH_TIMEOUT(pending->ready(), 20000);
+        const auto elapsed = clock.elapsed();
+        qInfo("cancel with 4 parts in flight: %lld ms", elapsed);
+        const auto result = pending->future.get();
+        QCOMPARE(result.status, QString("failed"));
+        QCOMPARE(result.error.code, QString("cancelled"));
+        QVERIFY2(elapsed < 4000, qPrintable(QString::number(elapsed)));
+        QCOMPARE(count(f, "DELETE", "uploadId="), 1);
+        QVERIFY(f.state()["uploads"].toObject().isEmpty());
+        QVERIFY(journal.last().isEmpty());
+    }
+    void failedLaneCutsThePartsInFlight() {
+        S3Fixture f(policy);
+        f.destination.settings["lowSpeedTimeSeconds"] = 30;
+        f.destination.settings["requestTimeoutMs"] = 30000;
+        auto request = f.request("lanecut.bin", synthetic(16 * mib));
+        auto rules = slowParts(4, 8.0);
+        rules[1] = QJsonObject{{"method", "PUT"}, {"query", "partNumber=2&"}, {"delay", 0.5}, {"status", 403}};
+        f.reset({{"rules", rules}});
+        request.extraLanes = [](int wanted) { return wanted; };
+        QElapsedTimer clock;
+        clock.start();
+        const auto result = f.upload(request);
+        qInfo("one lane refused, three in flight: %lld ms", clock.elapsed());
+        QCOMPARE(result.status, QString("failed"));
+        QCOMPARE(result.error.code, QString("s3_permission_denied"));
+        QCOMPARE(result.error.details["partNumber"].toInt(), 2);
+        QVERIFY2(clock.elapsed() < 5000, qPrintable(QString::number(clock.elapsed())));
+        QCOMPARE(count(f, "DELETE", "uploadId="), 1);
+    }
+    // A part cut mid-send published nothing: the item fails, never unknown, and Retry
+    // finishes the same upload (here its abort was refused, so the journal stays).
+    void cutPartIsSentAgainOnRetry() {
+        S3Fixture f(policy);
+        f.destination.settings["lowSpeedTimeSeconds"] = 30;
+        f.destination.settings["requestTimeoutMs"] = 30000;
+        auto request = f.request("resend.bin", synthetic(16 * mib));
+        auto rules = slowParts(4, 3.0);
+        rules.append(QJsonObject{{"method", "DELETE"}, {"query", "uploadId="}, {"status", 403}});
+        f.reset({{"rules", rules}});
+        request.extraLanes = [](int wanted) { return wanted; };
+        request.cancellation = std::make_shared<std::atomic_bool>(false);
+        Journal journal;
+        journal.attach(request);
+        auto pending = start(f, request);
+        QTRY_VERIFY_WITH_TIMEOUT(parts(f).size() == 4, 8000);
+        request.cancellation->store(true);
+        QTRY_VERIFY_WITH_TIMEOUT(pending->ready(), 20000);
+        const auto cancelled = pending->future.get();
+        QCOMPARE(cancelled.status, QString("failed"));
+        QCOMPARE(cancelled.error.code, QString("cancelled"));
+        QVERIFY(cancelled.error.details["incompleteUpload"].toBool());
+        QVERIFY(!journal.last()["uploadId"].toString().isEmpty());
+        auto retry = request;
+        retry.resume = journal.last();
+        retry.cancellation = std::make_shared<std::atomic_bool>(false);
+        const auto result = f.upload(retry);
+        QVERIFY2(result.status == "uploaded", qPrintable(result.error.code + ": " + result.error.message));
+        const auto stored = f.state()["objects"].toObject()["prefix é/resend.bin"].toArray().last().toObject();
+        QCOMPARE(stored["blob"].toString(), request.artifact.sha256);
     }
     void retiredUploadIsAbortedOrReportsTheDenial() {
         S3Fixture f(policy);

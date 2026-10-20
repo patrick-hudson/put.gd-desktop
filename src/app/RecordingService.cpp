@@ -26,6 +26,19 @@ void updateCanvas(QSize& canvas, const QJsonValue& value) {
     const auto array = value.toArray();
     if (value.isArray() && array.size() == 2) canvas = QSize(array[0].toInt(), array[1].toInt());
 }
+// The recording, its export and its upload copy each take a third of the space
+// above the reserve; one minute of a busy 1080p screen fits this budget.
+Error diskSpaceError(const ArtifactStore::DiskBudget& disk) {
+    const qint64 needed = disk.reserveBytes + disk.reservedBytes + 3 * RecordingService::minimumBudgetBytes;
+    const qint64 shortfall = std::max<qint64>(1, needed - disk.freeBytes);
+    return {"disk_space_insufficient",
+            QStringLiteral("Not enough free disk space to record: %1 is free, put.gd keeps %2 free for the system, and a recording needs %3 more. Free up at least %4 and try again.")
+                .arg(ArtifactStore::sizeText(disk.freeBytes), ArtifactStore::sizeText(disk.reserveBytes + disk.reservedBytes),
+                     ArtifactStore::sizeText(3 * RecordingService::minimumBudgetBytes), ArtifactStore::sizeText(shortfall)),
+            {{"freeBytes", double(disk.freeBytes)}, {"reserveBytes", double(disk.reserveBytes)}, {"reservedBytes", double(disk.reservedBytes)},
+             {"availableBytes", double(disk.available())}, {"requiredBytes", double(3 * RecordingService::minimumBudgetBytes)},
+             {"shortfallBytes", double(shortfall)}, {"hint", "Free up space in put.gd's data folder, then record again"}}};
+}
 QJsonArray rectJson(const QRect& r) { return {r.x(), r.y(), r.width(), r.height()}; }
 // [x, y, width, height] in integers with a positive size.
 bool rectFrom(const QJsonValue& value, QRect& out) {
@@ -96,6 +109,7 @@ QJsonObject RecordingService::publicJson(const Session& s) const {
     if (s.overlayExcluded) o["overlayExcluded"] = *s.overlayExcluded;
     if (!s.overlayPlacement.isEmpty()) o["overlayPlacement"] = s.overlayPlacement;
     o["selecting"] = !s.selector.isEmpty();
+    if (!s.stopReason.isEmpty()) o["stopReason"] = s.stopReason;
     return o;
 }
 void RecordingService::invoke(const QString& mode, JsonReply reply) {
@@ -190,6 +204,7 @@ void RecordingService::handleEvent(const QJsonObject& event) {
         if (!integer(event["durationUs"], 1, recording::maximumClipUs, &duration)) { fail({"recording_failed", "The recording ended without a usable clip", {}}); return; }
         s.duration = duration;
         s.edit = {};
+        s.stopReason = event["reason"].toString();
         updateCanvas(s.canvas, event["canvas"]);
         recording::clampAnimationSize(s.config, s.canvas, limits(s.op.settings));
         transition(s, "reviewing");
@@ -284,16 +299,20 @@ void RecordingService::prepareSession(const QJsonObject& params, JsonReply reply
         if (!caps["formats"].toArray().contains(s.config.format)) { reply({"recording_unsupported", "This output format is not supported here", {{"format", s.config.format}}}, {}); return; }
         if (!s.config.codec.isEmpty() && !caps["codecs"].toObject()[s.config.format].toArray().contains(s.config.codec)) { reply({"recording_unsupported", "This codec is not supported here", {{"codec", s.config.codec}}}, {}); return; }
         if (s.config.audio.system && !caps["audio"].toObject()["system"].toBool()) { reply({"recording_unsupported", "System audio capture is not supported here", {{"field", "audio.system"}}}, {}); return; }
+        // With "auto" or "No limit", free disk space is the real bound: keep the
+        // system reserve free and leave room for the export and its upload copy.
+        // A disk that can't fund a minimum budget refuses here, before anything is
+        // accepted, rather than starting a recording that ends itself (#213).
+        std::optional<ArtifactStore::DiskBudget> disk;
+        if (QDir().mkpath(stagingRoot_)) {
+            disk = ArtifactStore::diskBudget(stagingRoot_);
+            if (disk->freeBytes < 0) disk.reset();
+        }
+        if (disk && disk->available() / 3 < minimumBudgetBytes) { reply(diskSpaceError(*disk), {}); return; }
         if (auto error = host_.accept(s.op)) { reply(error, {}); return; }
         // Stop before the admitted file limit, leaving room for finalization.
         s.config.budgetBytes = std::max<qint64>(1024 * 1024, s.op.settings.limits.maxFileBytes - std::max<qint64>(s.op.settings.limits.maxFileBytes / 10, 64LL * 1024 * 1024));
-        // With "auto" or "No limit", free disk space is the real bound: keep the
-        // system reserve free and leave room for the export and its upload copy.
-        if (QDir().mkpath(stagingRoot_)) {
-            const auto disk = ArtifactStore::diskBudget(stagingRoot_);
-            if (disk.freeBytes >= 0)
-                s.config.budgetBytes = std::min(s.config.budgetBytes, std::max<qint64>(1024 * 1024, disk.available() / 3));
-        }
+        if (disk) s.config.budgetBytes = std::min(s.config.budgetBytes, disk->available() / 3);
         s.op.state = "recording";
         s.op.phase = "preparing";
         s.staging = stagingRoot_ + "/" + s.op.id;
@@ -395,6 +414,9 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
     if (id != session_->op.id) { reply({"recording_unavailable", "No active recording has this ID", {{"recordingId", id}}}, {}); return; }
     auto& s = *session_;
     if (command == "inspect") { reply({}, publicJson(s)); return; }
+    // A stop after the recording already stopped itself (its budget, #213) is
+    // acknowledged like a duplicate stop, with the review state and the reason.
+    if (command == "stop" && s.state == "reviewing") { reply({}, publicJson(s)); return; }
     if (auto error = recording::checkTransition(s.state, command)) { reply(error, {}); return; }
     if (command == "cancel") { cancelActive(reply); return; }
     if (command == "select") {

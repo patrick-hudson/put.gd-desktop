@@ -24,9 +24,11 @@ public:
  Acquisition acquire(const QString& operationId,const ClipboardPayload&,const ResourceLimits&,
                      const QString& action="clipboard",const Settings& = Settings::fromValidated(Settings::defaults()),
                      const QDateTime& actionTime = {},qint64 maximumObjectBytes=0);
- // The disk under the artifact root. The reserve follows journald's SystemKeepFree
- // rule, min(15% of the filesystem, 4 GiB) and never under 1 GiB, so imports and
- // recordings never take /home down to where the desktop and logging fail. It
+ // The disk under the artifact root. The reserve is min(5% of the filesystem, 4 GiB)
+ // and never under 1 GiB: GNOME warns of low space at 5% free, and 1 GiB keeps logs,
+ // the session and updates working on a small disk, so imports and recordings never
+ // take /home down to where the desktop fails (#213; 15% refused most of a small
+ // VM's free space, and every write here is bounded and refused up front). It
  // applies whatever the byte limits say. `reserved` counts other imports in flight.
  struct DiskBudget {
   qint64 freeBytes=-1,totalBytes=-1,reserveBytes=0,reservedBytes=0;
@@ -34,6 +36,8 @@ public:
   QJsonObject toJson() const;
  };
  static qint64 reserveFor(qint64 filesystemBytes);
+ // A byte count as the disk messages print it (MiB, GiB or TiB).
+ static QString sizeText(qint64 bytes);
  static DiskBudget diskBudget(const QString& path);
  // Atomically checks that `bytes` fit beside the reserve and every other import in
  // flight on the same filesystem, and holds them until the returned token is released.

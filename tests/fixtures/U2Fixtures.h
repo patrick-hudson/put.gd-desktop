@@ -30,8 +30,8 @@ public:
  // Resumable uploads: journal before an uncertain end, and record each journal received.
  qint64 maximumObjectBytes=0;bool journalThenUnknown=false,journalThenFail=false;QList<QJsonObject> resumes;
  // Retired journals (#146): each one abandoned, and the error to answer with.
- QList<QJsonObject> abandoned;Error abandonError;
- void abandonUpload(const Destination&,const QJsonObject& journal,std::function<void(Error)> cb) override {Error error;{QMutexLocker lock(&mutex);abandoned.append(journal);error=abandonError;}cb(error);}
+ QList<QJsonObject> abandoned;Error abandonError;std::function<void()> beforeAbandon;
+ void abandonUpload(const Destination&,const QJsonObject& journal,std::function<void(Error)> cb) override {if(beforeAbandon)beforeAbandon();Error error;{QMutexLocker lock(&mutex);abandoned.append(journal);error=abandonError;}cb(error);}
  // Concurrent uploads (#28): requests the destination accepts at once, and names that fail.
  int concurrency=1;QSet<QString> failCandidates;
  int maximumConcurrentRequests(const Destination&) const override {return concurrency;}
