@@ -123,6 +123,15 @@ class Changelog(unittest.TestCase):
         self.assertEqual([repository for repository, _ in seen], [REPO])
         return text, seen[0][1]
 
+    def test_change_types_follow_labels_then_the_title_kind(self):
+        # CHANGELOG.md (#217) sorts by Keep a Changelog type, not by area.
+        self.assertEqual(changelog.change_type('feat(s3): abort retired multipart uploads'), 'Added')
+        self.assertEqual(changelog.change_type('fix: upload the clipboard again'), 'Fixed')
+        self.assertEqual(changelog.change_type('History: keep the selection'), 'Changed')
+        self.assertEqual(changelog.change_type('History: keep the selection', ['bug']), 'Fixed')
+        self.assertEqual(changelog.change_type('fix: x', ['enhancement']), 'Added')
+        self.assertEqual(changelog.previous_stable(self.root, 'nightly'), 'v0.1.0')
+
     def test_nightly_lists_pull_requests_since_the_previous_nightly(self):
         text, looked_up = self.section('v0.1.1-nightly.12')
         self.assertEqual(looked_up, [4, 5, 6, 7, 8])

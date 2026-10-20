@@ -21,7 +21,7 @@ class Selection(unittest.TestCase):
         self.assertEqual((result['build'], result['packages']), (build, packages), paths)
 
     def test_documentation_runs_contracts_only(self):
-        self.assertSelects(['docs/ci.md', 'README.md', 'AGENTS.md', 'CLAUDE.md',
+        self.assertSelects(['docs/ci.md', 'README.md', 'AGENTS.md', 'CLAUDE.md', 'CHANGELOG.md',
                             'docs/evidence/live-s3-memory/source114/manifest.json'], False, False)
 
     def test_python_lab_and_release_tests_run_contracts_only(self):
