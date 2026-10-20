@@ -35,7 +35,8 @@ preference from, in order:
    dark). GNOME's "default" and Cinnamon's portal (which reports no
    preference) are decided here: on f44 `Adwaita` is light, on m74
    `Mint-Y-Aqua` is light and `Mint-Y-Dark-Aqua` dark.
-4. Plasma's `~/.config/kdeglobals` window colour, when the portal is missing.
+4. Plasma's `kdeglobals` window colour (first in KDE's configuration cascade),
+   when the portal is missing.
 
 When nothing says, put.gd stays dark. The portal is read once at start (at
 most 300 ms, so the first window has the right colours) and then through its
@@ -76,19 +77,27 @@ panel (or the reverse) keeps a visible icon. The resident
 (`src/ui/PanelTone.*`) decides the panel tone from:
 
 - GNOME (and Ubuntu's GNOME): the top bar is dark in both schemes.
-- Plasma: the Plasma style named in `plasmarc` (`breeze-dark` dark,
-  `breeze-light` light); otherwise the colour scheme's header colour in
-  `kdeglobals` (window colour without a header group); otherwise Breeze's
-  light panel.
+- Plasma: the Plasma style named in `plasmarc`, read through KDE's whole
+  configuration cascade (`~/.config`, then `~/.config/kdedefaults`, where a
+  global theme writes its choice, then `XDG_CONFIG_DIRS`, where a distribution
+  sets its default). A style that ships its own `colors` file
+  (`plasma/desktoptheme/NAME/colors`, such as Breeze Dark or Kubuntu's style)
+  decides with its window colour; otherwise a name with `dark` or `light`;
+  otherwise the colour scheme's header colour in `kdeglobals` (window colour
+  without a header group); otherwise Breeze's light panel. Debian 13's Plasma
+  (Breeze Dark from the global theme) and Kubuntu 26.04 (the Kubuntu style)
+  both draw dark panels while their colour scheme is light.
 - Cinnamon: the desktop theme `org.cinnamon.theme name` (a name containing
   "dark" is dark).
 - Anything else: dark, the tint put.gd always used.
 
 It re-reads them when `~/.config` changes on Plasma and on the portal's
-`SettingChanged`. Dark panels get `#9BBCFF` (idle), `#62D69B` (uploading),
+`SettingChanged`. The resident's own session environment matters: it needs the
+session's `XDG_CONFIG_DIRS` and `XDG_DATA_DIRS`. Dark panels get `#9BBCFF` (idle), `#62D69B` (uploading),
 `#F3C66F` (encoding) and `#FFB4AB` (error); light panels `#2759B8`,
 `#146C42`, `#8A5300` and `#B4312A`, each at least 3:1 on typical panels. The
-menu glyphs use the same tint. `putgd-cli diagnostics` reports the choice as
+menu glyphs use the same tint. The resident's full diagnostics (`ui.snapshot`
+`diagnostics`, and diagnostics packages) report the choice as
 `trayTint {panel, source, color}`.
 
 ## View state
@@ -108,3 +117,8 @@ The interface reports the appearance in use in its checkpoint, and
 `appearance.accent` (null) and `appearance.overrides` (`{"dark": {},
 "light": {}}`) are reserved in the schema for a custom accent and per-token
 overrides, and must keep those values until then (#197).
+
+## Evidence
+
+Screenshots from GNOME, Plasma and Cinnamon are in
+[evidence/2026-10-20-appearance-60](evidence/2026-10-20-appearance-60/README.md).
