@@ -1,0 +1,51 @@
+run	result	ms	load	fsync_delay_ms	failure
+1	pass	3424	1.32	47	
+2	fail	3218	1.61	233	FAIL!  : UiApplicationTest::pickedThemeAppliesBeforeTheSaveAndRevertsWhenRefused() QTestLib: This test case check ("(settings.snapshot().appearanceTheme) == (QS
+3	pass	3913	1.80	123	
+4	pass	3761	1.80	95	
+5	fail	3434	1.98	293	FAIL!  : UiApplicationTest::pickedThemeAppliesBeforeTheSaveAndRevertsWhenRefused() QTestLib: This test case check ("(settings.snapshot().appearanceTheme) == (QS
+6	pass	3757	2.22	108	
+7	fail	3670	2.37	352	FAIL!  : UiApplicationTest::pickedThemeAppliesBeforeTheSaveAndRevertsWhenRefused() QTestLib: This test case check ("(settings.snapshot().appearanceTheme) == (QS
+8	fail	3581	2.37	326	FAIL!  : UiApplicationTest::pickedThemeAppliesBeforeTheSaveAndRevertsWhenRefused() QTestLib: This test case check ("(settings.snapshot().appearanceTheme) == (QS
+9	fail	3226	2.58	245	FAIL!  : UiApplicationTest::pickedThemeAppliesBeforeTheSaveAndRevertsWhenRefused() QTestLib: This test case check ("(settings.snapshot().appearanceTheme) == (QS
+10	pass	3751	2.77	102	
+11	pass	3717	2.77	99	
+12	fail	3148	2.87	202	FAIL!  : UiApplicationTest::pickedThemeAppliesBeforeTheSaveAndRevertsWhenRefused() QTestLib: This test case check ("(settings.snapshot().appearanceTheme) == (QS
+13	fail	3471	3.12	224	FAIL!  : UiApplicationTest::pickedThemeAppliesBeforeTheSaveAndRevertsWhenRefused() QTestLib: This test case check ("(settings.snapshot().appearanceTheme) == (QS
+14	fail	3752	3.43	259	FAIL!  : UiApplicationTest::pickedThemeAppliesBeforeTheSaveAndRevertsWhenRefused() QTestLib: This test case check ("(settings.snapshot().appearanceTheme) == (QS
+15	pass	3913	3.43	56	
+16	pass	3724	3.72	37	
+17	fail	3904	3.90	316	FAIL!  : UiApplicationTest::pickedThemeAppliesBeforeTheSaveAndRevertsWhenRefused() QTestLib: This test case check ("(settings.snapshot().appearanceTheme) == (QS
+18	fail	3649	3.99	248	FAIL!  : UiApplicationTest::pickedThemeAppliesBeforeTheSaveAndRevertsWhenRefused() QTestLib: This test case check ("(settings.snapshot().appearanceTheme) == (QS
+19	fail	4001	3.99	355	FAIL!  : UiApplicationTest::pickedThemeAppliesBeforeTheSaveAndRevertsWhenRefused() QTestLib: This test case check ("(settings.snapshot().appearanceTheme) == (QS
+20	fail	3092	4.15	203	FAIL!  : UiApplicationTest::pickedThemeAppliesBeforeTheSaveAndRevertsWhenRefused() QTestLib: This test case check ("(settings.snapshot().appearanceTheme) == (QS
+21	fail	3449	4.22	293	FAIL!  : UiApplicationTest::pickedThemeAppliesBeforeTheSaveAndRevertsWhenRefused() QTestLib: This test case check ("(settings.snapshot().appearanceTheme) == (QS
+22	pass	3461	4.22	60	
+23	fail	2916	4.20	162	FAIL!  : UiApplicationTest::pickedThemeAppliesBeforeTheSaveAndRevertsWhenRefused() QTestLib: This test case check ("(settings.snapshot().appearanceTheme) == (QS
+24	pass	3235	4.18	22	
+25	fail	3361	4.18	276	FAIL!  : UiApplicationTest::pickedThemeAppliesBeforeTheSaveAndRevertsWhenRefused() QTestLib: This test case check ("(settings.snapshot().appearanceTheme) == (QS
+26	pass	3357	4.25	25	
+27	fail	3365	4.39	193	FAIL!  : UiApplicationTest::pickedThemeAppliesBeforeTheSaveAndRevertsWhenRefused() QTestLib: This test case check ("(settings.snapshot().appearanceTheme) == (QS
+28	pass	3709	4.39	21	
+29	fail	3826	4.52	302	FAIL!  : UiApplicationTest::pickedThemeAppliesBeforeTheSaveAndRevertsWhenRefused() QTestLib: This test case check ("(settings.snapshot().appearanceTheme) == (QS
+30	fail	3718	4.64	301	FAIL!  : UiApplicationTest::pickedThemeAppliesBeforeTheSaveAndRevertsWhenRefused() QTestLib: This test case check ("(settings.snapshot().appearanceTheme) == (QS
+31	pass	3874	4.59	57	
+32	fail	3278	4.59	147	FAIL!  : UiApplicationTest::pickedThemeAppliesBeforeTheSaveAndRevertsWhenRefused() QTestLib: This test case check ("(settings.snapshot().appearanceTheme) == (QS
+33	fail	3379	4.62	182	FAIL!  : UiApplicationTest::pickedThemeAppliesBeforeTheSaveAndRevertsWhenRefused() QTestLib: This test case check ("(settings.snapshot().appearanceTheme) == (QS
+34	fail	3117	4.65	153	FAIL!  : UiApplicationTest::pickedThemeAppliesBeforeTheSaveAndRevertsWhenRefused() QTestLib: This test case check ("(settings.snapshot().appearanceTheme) == (QS
+35	fail	3819	4.65	381	FAIL!  : UiApplicationTest::pickedThemeAppliesBeforeTheSaveAndRevertsWhenRefused() QTestLib: This test case check ("(settings.snapshot().appearanceTheme) == (QS
+36	fail	3574	4.60	319	FAIL!  : UiApplicationTest::pickedThemeAppliesBeforeTheSaveAndRevertsWhenRefused() QTestLib: This test case check ("(settings.snapshot().appearanceTheme) == (QS
+37	fail	2864	4.63	143	FAIL!  : UiApplicationTest::pickedThemeAppliesBeforeTheSaveAndRevertsWhenRefused() QTestLib: This test case check ("(settings.snapshot().appearanceTheme) == (QS
+38	fail	3695	4.63	305	FAIL!  : UiApplicationTest::pickedThemeAppliesBeforeTheSaveAndRevertsWhenRefused() QTestLib: This test case check ("(settings.snapshot().appearanceTheme) == (QS
+39	pass	3657	4.82	4	
+40	fail	4180	4.92	386	FAIL!  : UiApplicationTest::pickedThemeAppliesBeforeTheSaveAndRevertsWhenRefused() QTestLib: This test case check ("(settings.snapshot().appearanceTheme) == (QS
+41	fail	3493	5.00	217	FAIL!  : UiApplicationTest::pickedThemeAppliesBeforeTheSaveAndRevertsWhenRefused() QTestLib: This test case check ("(settings.snapshot().appearanceTheme) == (QS
+42	fail	3361	5.00	270	FAIL!  : UiApplicationTest::pickedThemeAppliesBeforeTheSaveAndRevertsWhenRefused() QTestLib: This test case check ("(settings.snapshot().appearanceTheme) == (QS
+43	fail	3803	5.00	389	FAIL!  : UiApplicationTest::pickedThemeAppliesBeforeTheSaveAndRevertsWhenRefused() QTestLib: This test case check ("(settings.snapshot().appearanceTheme) == (QS
+44	fail	3568	5.00	333	FAIL!  : UiApplicationTest::pickedThemeAppliesBeforeTheSaveAndRevertsWhenRefused() QTestLib: This test case check ("(settings.snapshot().appearanceTheme) == (QS
+45	fail	3187	5.00	198	FAIL!  : UiApplicationTest::pickedThemeAppliesBeforeTheSaveAndRevertsWhenRefused() QTestLib: This test case check ("(settings.snapshot().appearanceTheme) == (QS
+46	fail	3762	5.00	275	FAIL!  : UiApplicationTest::pickedThemeAppliesBeforeTheSaveAndRevertsWhenRefused() QTestLib: This test case check ("(settings.snapshot().appearanceTheme) == (QS
+47	fail	3664	5.00	251	FAIL!  : UiApplicationTest::pickedThemeAppliesBeforeTheSaveAndRevertsWhenRefused() QTestLib: This test case check ("(settings.snapshot().appearanceTheme) == (QS
+48	fail	3921	5.00	333	FAIL!  : UiApplicationTest::pickedThemeAppliesBeforeTheSaveAndRevertsWhenRefused() QTestLib: This test case check ("(settings.snapshot().appearanceTheme) == (QS
+49	fail	3244	5.00	184	FAIL!  : UiApplicationTest::pickedThemeAppliesBeforeTheSaveAndRevertsWhenRefused() QTestLib: This test case check ("(settings.snapshot().appearanceTheme) == (QS
+50	pass	3639	5.08	13	
