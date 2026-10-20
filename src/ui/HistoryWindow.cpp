@@ -226,7 +226,8 @@ void HistoryWindow::requestPreview(){
  const auto id=currentDetail_["id"].toString();if(!isVisible()||!previewRequestId_.isEmpty()||!previewMissing(currentDetail_))return;
  previewRequestId_=id;preview_->setText("Making a preview…");
  session_.request("history.preview",{{"id",id}},this,[g=QPointer<HistoryWindow>(this),id](Error e,QJsonObject result){
-  if(!g)return;g->previewRequestId_.clear();const bool current=g->currentDetail_["id"]==id;
+  if(!g)return;
+  g->previewRequestId_.clear();const bool current=g->currentDetail_["id"]==id;
   if(e){
    // Fail-soft: no status message. A refused item is not asked for again in
    // this window; a busy queue or a running upload may change.
