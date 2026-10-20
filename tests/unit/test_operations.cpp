@@ -1142,6 +1142,8 @@ private slots:
   Source source;source.payload=textPayload();OperationService ops(d.filePath("data"),settings,registry,source);QTRY_VERIFY(ops.ready());
   QString id;ops.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});
   HistoryStore store(ops.databasePath());QTRY_VERIFY(QStringList({"partial","failed"}).contains(store.operation(id).state));QCOMPARE(store.operation(id).items[0].uploadStatus,QString("failed"));
+  // The journal says partial before the service releases the operation; cleanup skips active ones.
+  QTRY_COMPARE(ops.diagnostics()["activeOperations"].toInt(),0);
   auto op=store.operation(id);QCOMPARE(op.items[0].uploadJournal["uploadId"].toString(),QString("opaque-upload"));
   // A failed item keeps its artifact for Retry until failedArtifactDays pass.
   QJsonObject result;bool cleaned=false;ops.cleanup([&](Error e,QJsonObject r){QVERIFY(!e);result=r;cleaned=true;});QTRY_VERIFY(cleaned);
