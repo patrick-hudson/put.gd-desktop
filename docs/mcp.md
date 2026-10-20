@@ -89,6 +89,7 @@ such as `session_unavailable` and `config_conflict` retain their original envelo
 | `select_recording_region` | id, rect → recording.select | Completes an open region selector (tray, shortcut, dashboard) with a rectangle, as a drag would |
 | `edit_recording` | id, revision, commands → recording.edit | Atomic trim and timed blur/solid masks in microseconds and canvas pixels |
 | `preview_recording` | id, time_us, max_edge → recording.preview | One frame with trim/masks applied as an MCP image plus metadata |
+| `drive_recording_review` | id, action, time_us?, speed?, kind?, rect?, mask_id?, strength?, format?, codec? → recording.review | Works the open review window's controls as a user does (seek, play/pause, speed, trim in/out at the playhead, add/select/retime/remove masks, blur strength, output format) and inspects it (playhead, selection, contextual mask controls, the video's share of the window); edits go through the resident like the window's own |
 | `save_recording_copy` | id, path, overwrite → recording.saveCopy | Exports the reviewed result to a file; no upload. Returns `exporting` when the export starts; poll `get_recording` until `reviewing` and read `lastExport` |
 | `upload_recording` | id, revision → recording.upload | The only publishing action; sends the validated export through the configured output. Returns `exporting` and the `operationId` when the export starts; a failed export returns the session to `reviewing` with `lastExport.error`, otherwise `get_operation` follows the upload |
 
