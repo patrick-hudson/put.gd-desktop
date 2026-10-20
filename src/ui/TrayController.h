@@ -29,9 +29,14 @@ public:
  void showHistory();
  void showActivity();
  void notifyFailure(const Error&);
- // Completion toast text: the operation's own error when it failed outright,
- // otherwise the clipboard outcome.
+ // Completion toast text: the operation's own error when it failed before any
+ // item; for a failed or partial upload, the failure in plain words, whether a
+ // local copy was kept and what was copied (#152).
  static QString completionMessage(const QJsonObject& operation,bool hasLink);
+ // A provider or operation error as a short lower-case phrase.
+ static QString failureReason(const QJsonObject& error);
+ // The tooltip's activity lines for OperationService::activeObservations().
+ static QString describeActivity(const QJsonArray& observations);
  void invokeShortcut(const QString&);
  // Builds a diagnostics package for one operation (#122); main wires it to
  // DiagnosticsBundles. Failure notifications offer it when it is set.

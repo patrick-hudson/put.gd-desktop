@@ -78,10 +78,52 @@ private slots:
  void failedOperationsWithoutItemsShowTheirError() {
   const QJsonObject tooLarge{{"state","failed"},{"copyStatus","no_result"},{"items",QJsonArray{}},{"error",QJsonObject{{"code","edit_input_too_large"},{"message","This image is too large to edit; use a smaller copy"}}}};
   QCOMPARE(TrayController::completionMessage(tooLarge,false),QString("This image is too large to edit; use a smaller copy"));
-  const QJsonObject partial{{"state","partial"},{"copyStatus","copied"},{"items",QJsonArray{QJsonObject{}}},{"error",QJsonObject{{"code","upload_failed"},{"message","One item failed"}}}};
-  QCOMPARE(TrayController::completionMessage(partial,false),QString("Clipboard: copied. Open recent activity for per-item results."));
-  const QJsonObject done{{"state","completed"},{"copyStatus","copied"},{"items",QJsonArray{QJsonObject{}}},{"error",QJsonObject{}}};
-  QCOMPARE(TrayController::completionMessage(done,true),QString("Clipboard: copied. Click to open in browser."));
+  const QJsonObject done{{"state","completed"},{"copyStatus","copied"},{"items",QJsonArray{QJsonObject{{"uploadStatus","uploaded"}}}},{"error",QJsonObject{}}};
+  QCOMPARE(TrayController::completionMessage(done,true),QString("Uploaded. Link copied to the clipboard. Click to open in browser."));
+  QCOMPARE(TrayController::completionMessage(QJsonObject{{"state","completed"},{"copyStatus","no_result"},{"items",QJsonArray{QJsonObject{{"uploadStatus","uploaded"}},QJsonObject{{"uploadStatus","uploaded"}}}}},false),QString("2 files uploaded."));
+ }
+ // #152: a failed or partial upload names the failure in plain words, never a raw copyStatus code.
+ void failedUploadsNameTheFailure() {
+  const QJsonObject denied{{"code","s3_permission_denied"},{"message","S3 denied the request (HTTP 403)."}};
+  const QJsonObject saved{{"status","saved"}};
+  // The m74 case: an editor upload to a destination that rejects it, local copy kept.
+  const QJsonObject partial{{"state","partial"},{"copyStatus","no_result"},{"error",QJsonObject{}},
+   {"items",QJsonArray{QJsonObject{{"uploadStatus","failed"},{"error",denied},{"local",saved}}}}};
+  const auto text=TrayController::completionMessage(partial,false);
+  QCOMPARE(text,QString("Upload failed: access denied by the destination. A local copy was saved."));
+  QVERIFY(!text.contains("no_result"));QVERIFY(!text.contains("Clipboard:"));
+  // Without a local copy, and with a failure the map doesn't know: the provider's own words.
+  const QJsonObject failed{{"state","failed"},{"copyStatus","no_result"},{"error",QJsonObject{}},
+   {"items",QJsonArray{QJsonObject{{"uploadStatus","failed"},{"error",QJsonObject{{"code","fixture_failed"},{"message","Synthetic upload failure."}}}}}}};
+  QCOMPARE(TrayController::completionMessage(failed,false),QString("Upload failed: synthetic upload failure."));
+  // A batch: how many made it, why the rest didn't, what was copied.
+  const QJsonObject batch{{"state","partial"},{"copyStatus","copied"},{"error",QJsonObject{}},
+   {"items",QJsonArray{QJsonObject{{"uploadStatus","uploaded"}},QJsonObject{{"uploadStatus","failed"},{"error",QJsonObject{{"code","s3_transport_unknown"},{"message","x"}}},{"local",saved}},QJsonObject{{"uploadStatus","uploaded"}}}}};
+  QCOMPARE(TrayController::completionMessage(batch,false),QString("2 of 3 files uploaded. 1 failed: the destination could not be reached. A local copy was saved. Link copied to the clipboard."));
+  // The operation's own error when no item carries one.
+  const QJsonObject interrupted{{"state","interrupted"},{"copyStatus","pending"},{"error",QJsonObject{{"code","s3_authentication_failed"},{"message","x"}}},{"items",QJsonArray{QJsonObject{{"uploadStatus","pending"}}}}};
+  QCOMPARE(TrayController::completionMessage(interrupted,false),QString("Upload interrupted: the destination did not accept the saved credentials."));
+  for(const auto& [code,phrase]:std::initializer_list<std::pair<const char*,const char*>>{{"s3_bucket_not_found","the bucket does not exist"},{"credential_setup_required","the destination needs to be set up again in Settings"},
+      {"s3_object_too_large","the file is larger than the destination accepts"},{"proton_request_timeout","the destination could not be reached"},{"s3_region_mismatch","the bucket is in a different region than the destination's settings"}})
+   QCOMPARE(TrayController::failureReason(QJsonObject{{"code",code},{"message","Raw"}}),QString(phrase));
+  QCOMPARE(TrayController::failureReason({}),QString());
+ }
+ // #175: several files of one operation transferring at once read like History's active row.
+ void tooltipSummarizesConcurrentFiles() {
+  auto item=[](const char* status,const char* phase,qint64 sent,qint64 total){
+   QJsonObject value{{"uploadStatus",status},{"phase",phase},{"artifact",QJsonObject{{"bytes",double(total)}}}};
+   if(sent>=0)value["uploadProgress"]=QJsonObject{{"phase","uploading"},{"bytesTransferred",double(sent)},{"bytesTotal",double(total)}};
+   return value;
+  };
+  constexpr qint64 mib=1024*1024;
+  const QJsonObject batch{{"id","a"},{"action","clipboard"},{"state","uploading"},{"phase","uploading"},{"created","2026-10-20T06:00:00.000Z"},
+   {"items",QJsonArray{item("uploading","uploading",4*mib,8*mib),item("uploading","uploading",2*mib,8*mib),item("pending","queued",-1,8*mib),
+                       item("pending","queued",-1,8*mib),item("pending","queued",-1,8*mib),item("uploaded","completed",8*mib,8*mib)}}};
+  QCOMPARE(TrayController::describeActivity({batch}),QString("Uploading: 14 MiB of 24 MiB (58%) · 2 uploading, 3 waiting, 1 done"));
+  // One file transferring still names it.
+  const QJsonObject single{{"id","b"},{"action","clipboard"},{"state","uploading"},{"phase","uploading"},{"created","2026-10-20T06:00:00.000Z"},
+   {"items",QJsonArray{item("uploading","uploading",3*mib,4*mib),item("pending","queued",-1,4*mib)}}};
+  QCOMPARE(TrayController::describeActivity({single}),QString("Uploading file 1/2: 3 MiB of 4 MiB (75%)"));
  }
 
  void fastUploadsDoNotFlashTheIcon() {

@@ -84,6 +84,9 @@ def displayed_interval(text):
 
 SIZE = r'(?:<0\.01|[0-9]+(?:\.[0-9]{1,2})?) (?:MiB|GiB)'
 COUNTER = re.compile(r'^(.+?): (' + SIZE + r')(?: of (' + SIZE + r')(?: \(([0-9]+)%\))?| transferred · Source size: (' + SIZE + r')(?: · Estimated ([0-9]+)%)?)$')
+# Several files of one operation transferring at once (#175): combined bytes and counts.
+BATCH = re.compile(r'^(.+?)(?:: (' + SIZE + r') of (' + SIZE + r') \(([0-9]+)%\)|: (' + SIZE + r') transferred)? · ([0-9]+) uploading'
+                   r'(?:, ([0-9]+) waiting)?(?:, ([0-9]+) done)?(?:, ([0-9]+) failed)?$')
 
 
 def check_tooltip(snapshot, records, provider, pid, *, error_pulse=False):
@@ -131,6 +134,25 @@ def check_tooltip(snapshot, records, provider, pid, *, error_pulse=False):
         if overflow:
             observed(any(record.get('activeCount') == int(overflow[1]) + 3 for record in records),
                     'Tray overflow count differs from observed active operations')
+            continue
+        batch = BATCH.fullmatch(line)
+        if batch:
+            observed(batch[1] in labels, 'Tray phase has no matching production observation')
+            phase = labels[batch[1]]
+            result['phases'].append(phase)
+            counts = tuple(int(batch[index] or 0) for index in (6, 7, 8, 9))
+            applicable = [record for record in records if record['phase'] == phase and record.get('rowIndex', 0) == row_index
+                          and (record.get('running'), record.get('waiting'), record.get('done'), record.get('failed')) == counts]
+            observed(counts[0] > 1 and applicable, 'Tray batch row has no matching production observation')
+            sent = batch[2] or batch[5]
+            if sent:
+                lower, upper = displayed_interval(sent)
+                low = max(lower, min(record['batchTransferred'] for record in applicable))
+                high = min(upper, max(record['batchTransferred'] for record in applicable))
+                observed(low <= high, 'Tray batch bytes lie outside production observations')
+                observed(not batch[3] or any(byte_summary(record['batchTotal']) == batch[3] for record in applicable),
+                         'Tray batch total differs from production observations')
+                result['counter'] = True
             continue
         match = COUNTER.fullmatch(line)
         prefix = match[1] if match else line.split(' · Source size: ', 1)[0]
@@ -190,7 +212,16 @@ def records_from(operations):
                      next((i for i, item in enumerate(items) if item.get('phase') == phase), 0))
         item = items[index] if items else {}
         progress = item.get('uploadProgress') or {}
-        records.append({'operationId': op['id'], 'artifactId': item.get('artifact', {}).get('id'),
+        counts = {'running': 0, 'waiting': 0, 'done': 0, 'failed': 0, 'batchTransferred': 0, 'batchTotal': 0}
+        for each in items:
+            status = each.get('uploadStatus')
+            key = ('failed' if status in ('failed', 'unknown') else 'done' if status in ('uploaded', 'skipped', 'conflict')
+                   else 'waiting' if each.get('phase') == 'queued' else 'running' if status == 'uploading' else None)
+            if key:
+                counts[key] += 1
+            counts['batchTransferred'] += (each.get('uploadProgress') or {}).get('bytesTransferred', 0)
+            counts['batchTotal'] += (each.get('uploadProgress') or {}).get('bytesTotal', 0)
+        records.append({**counts, 'operationId': op['id'], 'artifactId': item.get('artifact', {}).get('id'),
                         'state': op['state'], 'phase': phase, 'fileIndex': index + 1, 'fileCount': len(items),
                         'sourceBytes': item.get('artifact', {}).get('bytes', 0),
                         'activeCount': len(active), 'rowIndex': row_index, **{key: progress[key] for key in
