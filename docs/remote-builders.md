@@ -98,7 +98,14 @@ Each tile's VNC server runs in the host's desktop session as user `patrick`
 | d69 Plasma Wayland | `/usr/local/bin/w0vncserver`, TigerVNC `v1.16.2` (`b555312d`) built from source in `~/work/bootstrap` (CMake Release, `ENABLE_WAYLAND=ON`, no viewer) | user `w0vncserver.service` (Wayland + KDE only, `WantedBy=plasma-workspace-wayland.target`) plus the `localhost.conf` drop-in that binds it to loopback | `127.0.0.1:5900` |
 | k72 Plasma X11 | `X0tigervnc` (Ubuntu's `tigervnc-scraping-server` 1.15) on the X display | user `patrick-vnc.service`, started by the `patrick-vnc` autostart entry only in an X11 session | `127.0.0.1:5900` |
 | m74 Cinnamon X11 (added 2026-10-20) | `X0tigervnc` (Mint's `tigervnc-scraping-server`) on the physical `:0` display | user `putgd-native-vnc.service` | `127.0.0.1:5900` |
-| k72 Plasma Wayland (added 2026-10-20, #87) | `/usr/local/bin/w0vncserver`, TigerVNC `v1.16.2` (`b555312d`) built in `~/work/bootstrap-w0vnc` like d69's | user `w0vncserver.service` (Wayland + KDE only, `WantedBy=plasma-workspace-wayland.target`) | `127.0.0.1:5900` |
+| k72 Plasma Wayland (added 2026-10-20, #87; default session) | `/usr/local/bin/w0vncserver`, TigerVNC `v1.16.2` (`b555312d`) built in `~/work/bootstrap-w0vnc` like d69's | user `w0vncserver.service` (Wayland + KDE only, `WantedBy=plasma-workspace-wayland.target`), run under `systemd-inhibit --what=idle:sleep --mode=block` by the `10-inhibit-sleep.conf` drop-in | `127.0.0.1:5900` |
+
+Every lab desktop must stay awake: the wall VNC unit (or a sibling) holds a
+`systemd-inhibit --what=idle:sleep --mode=block` inhibitor. On 2026-10-20 k72's new
+Plasma Wayland session had none, idle-suspended after about 15 minutes, and
+dropped off the network ("No route to host"). Keep `putgd` out of the inhibitor's
+`--who` label, because `desktop_lock.py` flags any process matching `putgd` as a
+leftover.
 
 All use `-SecurityTypes=None`, so they must stay on loopback. The servers keep
 their portal restore token under `~/.local/state/tigervnc`
