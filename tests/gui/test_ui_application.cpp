@@ -15,6 +15,7 @@
 #include <QScrollBar>
 #include <QStyledItemDelegate>
 #include <QtTest>
+#include <QTimer>
 using namespace putgd;using namespace putgd::test;
 class ControlDevice:public QIODevice {
 public:
@@ -55,10 +56,16 @@ private slots:
   auto* theme=window->findChild<QComboBox*>("appearanceTheme");QVERIFY(theme);QCOMPARE(Theme::scheme(),Theme::Scheme::Dark);
   bool residentSawLight=false;QObject::connect(&settings,&SettingsService::accepted,this,[&]{if(settings.snapshot().appearanceTheme=="light")residentSawLight=Theme::scheme()==Theme::Scheme::Light;});
   fixture.client.replyDelayMs["settings.save"]=300;
+  // The 400 ms autosave timer: a pick must not wait for it.
+  QTimer* autosave=nullptr;for(auto* timer:window->settings()->findChildren<QTimer*>())if(timer->isSingleShot()&&timer->interval()==400)autosave=timer;QVERIFY(autosave);
+  QStringList dispatched;fixture.client.beforeDispatch=[&](const QString& method,const QJsonObject&){dispatched.append(method);};
   theme->setCurrentIndex(theme->findData("light"));
-  // Applied in the same event, with no autosave delay before the save starts.
-  QCOMPARE(Theme::scheme(),Theme::Scheme::Light);QVERIFY(settings.snapshot().appearanceTheme!="light"||residentSawLight);
-  QTRY_COMPARE_WITH_TIMEOUT(settings.snapshot().appearanceTheme,QString("light"),250);QVERIFY(residentSawLight);
+  // Applied in the same event, before the resident has seen the save; the
+  // save goes out without the autosave timer ever starting. These
+  // are orderings, not wall-clock limits, so a slow runner cannot fail them.
+  QCOMPARE(Theme::scheme(),Theme::Scheme::Light);QCOMPARE(settings.snapshot().appearanceTheme,QString("system"));
+  QVERIFY(!autosave->isActive());
+  QTRY_VERIFY(dispatched.contains("settings.save"));QVERIFY(!autosave->isActive());QTRY_COMPARE(settings.snapshot().appearanceTheme,QString("light"));QVERIFY(residentSawLight);
   QTRY_VERIFY(!window->settings()->saveViewState()["dirty"].toBool());QCOMPARE(Theme::scheme(),Theme::Scheme::Light);
   // Refused: the accepted theme comes back and the autosave error shows.
   fixture.client.replyDelayMs.clear();fixture.client.failOnce["settings.save"]={"config_write_failed","Synthetic refused save",{}};
