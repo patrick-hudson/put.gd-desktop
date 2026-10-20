@@ -24,11 +24,12 @@ UiApplicationController::UiApplicationController(UiSession& session,UiControl& c
  });
  // #60: the setting picks the scheme and "system" follows the desktop live;
  // CLI/MCP patches arrive through the same accepted revisions.
+ // The view state reports the appearance, so every change reaches a checkpoint.
+ connect(&appearance_,&Appearance::changed,this,[this]{dirtyCheckpoint_=true;checkpointDelay_.start();});
  const auto followSetting=[this]{appearance_.setPreference(session_.document()["preferences"].toObject()["appearance"].toObject()["theme"].toString("system"));};
  followSetting();
  connect(&session_,&UiSession::accepted,this,followSetting);
  connect(&session_,&UiSession::statusChanged,this,followSetting);
- connect(&appearance_,&Appearance::changed,this,[this]{dirtyCheckpoint_=true;checkpointDelay_.start();});
  session_.setShortcutRecordingHandler([this](bool active,std::function<void(Error)> reply){
   if(exiting_){reply({"ui_stopping","The interface is closing.",{}});return;}
   const auto sequence=control_.send("shortcutRecording",{{"active",active}});
@@ -66,6 +67,9 @@ QWidget* UiApplicationController::view(const QString& name){
    if(saved_.contains("history")&&!main_->history()->restoreViewState(saved_["history"].toObject()))notify({"ui_state_invalid","Saved history state could not be restored.",{}});
    if(saved_.contains("main"))main_->restoreViewState(saved_["main"].toObject());
    main_->installEventFilter(this);connect(main_.get(),&MainWindow::viewStateChanged,this,[this]{dirtyCheckpoint_=true;checkpointDelay_.start();});
+   // A Wayland window may never report a move: checkpoint once it exists, so
+   // ui.viewState carries the appearance in use (#60).
+   dirtyCheckpoint_=true;checkpointDelay_.start();
    connect(main_.get(),&MainWindow::quitRequested,this,&UiApplicationController::requestQuit);
    connect(main_.get(),&MainWindow::actionRequested,this,&UiApplicationController::requestAction);
    connect(main_.get(),&MainWindow::editRequested,this,&UiApplicationController::requestEdit);

@@ -37,6 +37,8 @@ private slots:
   QCOMPARE(Theme::scheme(),Theme::Scheme::Dark);
   auto preferences=document["preferences"].toObject();preferences["appearance"]=QJsonObject{{"theme","light"}};document["preferences"]=preferences;QVERIFY(settings.save(document,settings.revision()));
   fixture.session.invalidate();QTRY_COMPARE(Theme::scheme(),Theme::Scheme::Light);
+  // The switch reaches a checkpoint, so ui.viewState reports it.
+  QTRY_VERIFY(device.last("checkpoint")["payload"].toObject()["state"].toObject()["appearance"].toObject()["scheme"]==QString("light"));
   preferences["appearance"]=QJsonObject{{"theme","system"}};document["preferences"]=preferences;QVERIFY(settings.save(document,settings.revision()));
   fixture.session.invalidate();QTRY_COMPARE(Theme::scheme(),Theme::Scheme::Dark);
  }
