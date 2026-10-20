@@ -5,6 +5,7 @@
 // FFmpeg export; only control metadata crosses the pipes.
 #include "MediaProbe.h"
 #include "BundledRuntime.h"
+#include "Poster.h"
 #include "ClipExporter.h"
 #include "DebugLog.h"
 #include "AvSync.h"
@@ -13,6 +14,7 @@
 #include "core/BuildInfo.h"
 #include "ui/StdioDevice.h"
 #include <QApplication>
+#include <QBuffer>
 #include <QImage>
 #include <QCoreApplication>
 #include <atomic>
@@ -26,6 +28,9 @@
 #include <cmath>
 #include <cstring>
 #include <sys/resource.h>
+extern "C" {
+#include <libavutil/log.h>
+}
 
 using namespace putgd;
 
@@ -41,6 +46,25 @@ int main(int argc, char** argv) {
         std::fwrite(json.constData(), 1, size_t(json.size()), stdout);
         std::fputc('\n', stdout);
         return 0;
+    }
+    if (argc == 3 && std::strcmp(argv[1], "--poster") == 0) {
+        // History's poster frame for a finished video (#112). The resident opens
+        // the stored file and passes it as standard input; the PNG (long edge at
+        // most 256 px, duration in a text chunk) goes to standard output. The
+        // resident bounds time, memory and output size and kills a late job.
+        QCoreApplication app(argc, argv);
+        av_log_set_level(AV_LOG_QUIET);
+        bool ok = false;
+        const qint64 maxPixels = QByteArray(argv[2]).toLongLong(&ok);
+        if (!ok || maxPixels < 1) return 2;
+        record::Poster poster;
+        if (const auto error = record::renderPoster(QStringLiteral("/proc/self/fd/0"), 256, maxPixels, poster)) return error.code == "input_excessive" ? 3 : 1;
+        poster.image.setText(QStringLiteral("putgd-duration-ms"), QString::number(poster.durationUs / 1000));
+        QByteArray png;
+        QBuffer buffer(&png);
+        buffer.open(QIODevice::WriteOnly);
+        if (!poster.image.save(&buffer, "PNG")) return 4;
+        return std::fwrite(png.constData(), 1, size_t(png.size()), stdout) == size_t(png.size()) && std::fflush(stdout) == 0 ? 0 : 4;
     }
     if (argc == 5 && std::strcmp(argv[1], "--preview") == 0) {
         // Lab diagnostic: render one preview frame of a working clip to a PNG.

@@ -106,7 +106,7 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
  });
 }
 OperationService::~OperationService() {shutdown();}
-void OperationService::shutdown() {if(stopping_)return;stopping_=true;heapReclamationTimer_.stop();observationTimer_.stop();for(auto flag:active_) flag->store(true);{std::lock_guard lock(itemCancelsMutex_);for(const auto& items:itemCancels_)for(const auto& flag:items)flag->store(true);}uploadSlots_.close();if(recording_)recording_->shutdown();if(editor_)editor_->cancel();invalidateCopyEligibility();source_.cancelAcquisition();for(auto* thread:threads_) {thread->wait();delete thread;}threads_.clear();}
+void OperationService::shutdown() {if(stopping_)return;stopping_=true;posterCancel_->store(true);heapReclamationTimer_.stop();observationTimer_.stop();for(auto flag:active_) flag->store(true);{std::lock_guard lock(itemCancelsMutex_);for(const auto& items:itemCancels_)for(const auto& flag:items)flag->store(true);}uploadSlots_.close();if(recording_)recording_->shutdown();if(editor_)editor_->cancel();invalidateCopyEligibility();source_.cancelAcquisition();for(auto* thread:threads_) {thread->wait();delete thread;}threads_.clear();}
 bool OperationService::heapReclamationIdle() const {
  return !stopping_&&threads_.isEmpty()&&queue_.isEmpty()&&running_==0&&active_.isEmpty()&&copies_.isEmpty()&&!currentCopy_&&selectingId_.isEmpty()&&payloadBytes_->load()==0&&!(recording_&&recording_->active());
 }
@@ -671,6 +671,7 @@ void OperationService::finish(Operation op,JsonReply reply) {
    if(!failures.isEmpty())fields["itemErrors"]=failures;
    logging::write(logOperation(),op.state=="completed"||op.state=="cancelled"?QtInfoMsg:QtWarningMsg,"Operation finished",fields);
   }
+  if(!Operation::activeState(op.state))queuePosters(op);
   if(!Operation::activeState(op.state))if(auto watcher=finishWatchers_.take(id))watcher(op);
   if(uploadCopies_.contains(id)){finishUploadCopies(op,reply);return;}
   if(op.cancelled||op.state=="failed"||op.state=="interrupted"||op.action==diagnosticsAction) {emit resultReady(op.id);releaseActive(op.id);if(reply)reply({},op.publicJson());return;}
@@ -678,6 +679,39 @@ void OperationService::finish(Operation op,JsonReply reply) {
  });
 }
 
+void OperationService::queuePosters(const Operation& op) {
+ if(op.settings.previewCacheBytes<=0||posterQueue_.contains(op.id))return;
+ bool wanted=false;for(const auto& item:op.items)if(item.artifact.category=="videos"&&item.artifact.previewPath.isEmpty())wanted=true;
+ if(wanted){posterQueue_.enqueue(op.id);pumpPosters();}
+}
+void OperationService::pumpPosters() {
+ if(posterRunning_||posterQueue_.isEmpty()||stopping_)return;
+ posterRunning_=true;const auto id=posterQueue_.dequeue();const auto path=databasePath(),root=root_;const auto cancelled=posterCancel_;
+ background([path,root,id,cancelled](Error& e) {
+  HistoryStore store(path);e=store.error();if(e)return QJsonObject{};
+  auto op=store.operation(id,&e);if(e)return QJsonObject{};
+  ArtifactStore artifacts(root+"/artifacts");QHash<QString,QString> made;QJsonArray failures;QElapsedTimer clock;clock.start();
+  for(const auto& item:op.items) {
+   if(item.artifact.category!="videos"||!item.artifact.previewPath.isEmpty()||cancelled->load())continue;
+   Error failure;const auto preview=artifacts.poster(item.artifact,op.settings.previewCacheBytes,op.settings.limits.imagePixels,cancelled,&failure);
+   if(preview.isEmpty())failures.append(QJsonObject{{"itemId",item.artifact.id},{"error",logging::errorFields(failure)}});else made.insert(item.artifact.id,preview);
+  }
+  QJsonObject result{{"made",made.size()},{"elapsedMs",double(clock.elapsed())},{"failures",failures}};
+  if(made.isEmpty())return result;
+  // Another action may have written the operation while the helper decoded,
+  // and a retry may be running it again: add only the previews to a fresh read.
+  auto fresh=store.operation(id,&e);if(e||Operation::activeState(fresh.state))return QJsonObject{};
+  QSet<QString> changed;for(auto& item:fresh.items)if(made.contains(item.artifact.id)&&item.artifact.previewPath.isEmpty()){item.artifact.previewPath=made.value(item.artifact.id);changed.insert(item.artifact.id);}
+  if(!changed.isEmpty())e=store.checkpointOperation(fresh,changed);
+  result["stored"]=changed.size();return result;
+ },[this,id](Error e,QJsonObject result) {
+  posterRunning_=false;
+  if(e)logging::warning(logHistory(),"Cannot record the video preview",{{"operationId",id},{"error",logging::errorFields(e)}});
+  else if(!result.isEmpty())logging::info(logHistory(),"Video preview",{{"operationId",id},{"made",result["made"]},{"elapsedMs",result["elapsedMs"]},{"failures",result["failures"]}});
+  if(!e&&result["stored"].toInt()>0)emit changed(id);
+  pumpPosters();
+ });
+}
 void OperationService::recent(JsonReply reply) {const auto path=databasePath();const int limit=settings_.snapshot().recentActivityLimit;background([path,limit](Error& e) {HistoryStore store(path);return QJsonObject{{"operations",store.recent(limit,&e)}};},[this,reply](Error e,QJsonObject data){auto values=data["operations"].toArray();for(qsizetype i=0;i<values.size();++i)values[i]=currentObservation(values[i].toObject());data["operations"]=values;reply(e,data);});}
 void OperationService::inspect(const QString& id,JsonReply reply) {const auto path=databasePath();background([path,id](Error& e) {HistoryStore store(path);return store.operation(id,&e).publicJson();},[this,reply](Error e,QJsonObject data){reply(e,currentObservation(data));});}
 void OperationService::cancel(const QString& id,JsonReply reply,const QString& itemId) {

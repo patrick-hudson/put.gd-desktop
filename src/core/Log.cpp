@@ -322,8 +322,10 @@ void setRetention(Retention retention) {if(const auto writer=current())writer->s
 void setDebug(bool enabled,const QDateTime& expiresAt) {
  debugEnabled=enabled;
  {std::lock_guard lock(stateMutex);debugExpiry=enabled&&expiresAt.isValid()?expiresAt.toUTC().toString(Qt::ISODateWithMs):QString();}
- // QT_LOGGING_RULES is applied after these rules, so developers keep control.
- QLoggingCategory::setFilterRules(enabled?QStringLiteral("putgd.*.debug=true"):QString());
+ // put.gd's categories and qDebug ("default"). These rules beat a distro's
+ // qtlogging.ini (Fedora's has *.debug=false, #191); QT_LOGGING_RULES is
+ // applied after them, so developers keep control.
+ QLoggingCategory::setFilterRules(enabled?QStringLiteral("putgd.*.debug=true\ndefault.debug=true"):QString());
 }
 bool debug() {return debugEnabled;}
 void write(const QLoggingCategory& category,QtMsgType type,const QString& message,const QJsonObject& fields) {

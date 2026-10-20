@@ -31,4 +31,7 @@ inline QColor link() { return Theme::current().link; }
 inline QColor success() { return Theme::current().success; }
 inline QColor warning() { return Theme::current().warning; }
 inline QColor danger() { return Theme::current().danger; }
+// Over user media (a video poster's glyph and length, #112): fixed, see Theme.
+inline QColor mediaScrim() { return Theme::mediaScrim(); }
+inline QColor onMedia() { return Theme::onMedia(); }
 }

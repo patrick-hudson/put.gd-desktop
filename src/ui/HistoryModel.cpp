@@ -33,6 +33,7 @@ bool localSaveFailed(const QJsonObject& r){
 bool active(const QJsonObject& r){return Operation::activeState(r["operation"].toObject()["state"].toString());}
 }
 QString HistoryModel::fileSize(qint64 bytes){if(bytes<1024)return QString("%1 B").arg(bytes);if(bytes<1024*1024)return QString("%1 KiB").arg(QString::number(double(bytes)/1024,'f',bytes<10*1024?1:0));return ByteSize::summary(bytes);}
+QString HistoryModel::duration(qint64 ms){if(ms<=0)return {};const qint64 s=(ms+999)/1000;return s>=3600?QString("%1:%2:%3").arg(s/3600).arg(s/60%60,2,10,QChar('0')).arg(s%60,2,10,QChar('0')):QString("%1:%2").arg(s/60).arg(s%60,2,10,QChar('0'));}
 HistoryModel::HistoryModel(UiSession& history,QObject* parent):QAbstractListModel(parent),history_(history){}
 int HistoryModel::rowCount(const QModelIndex& parent)const{return parent.isValid()?0:rows_.size();}
 QJsonObject HistoryModel::record(int row)const{return row>=0&&row<rows_.size()?rows_.at(row):QJsonObject{};}
@@ -134,7 +135,7 @@ void HistoryModel::loadThumbnail(const QString& path)const{if(thumbnailRequested
 void HistoryModel::nextThumbnail()const{
  if(thumbnailLoading_||thumbnailQueue_.isEmpty())return;
  thumbnailLoading_=true;const auto path=thumbnailQueue_.takeFirst();const auto generation=thumbnailGeneration_;auto image=std::make_shared<QImage>();
- history_.background([path,image](Error&){QFileInfo file(path);if(!file.isFile()||file.size()>8*1024*1024)return QJsonObject{};QImageReader reader(path);const auto s=reader.size();if(!s.isValid()||qint64(s.width())*s.height()>16000000)return QJsonObject{};reader.setScaledSize(s.scaled(360,220,Qt::KeepAspectRatio));*image=reader.read();return QJsonObject{};},const_cast<HistoryModel*>(this),[g=QPointer<HistoryModel>(const_cast<HistoryModel*>(this)),path,generation,image](Error,QJsonObject){if(!g)return;g->thumbnailLoading_=false;if(generation==g->thumbnailGeneration_){g->thumbnailRequested_.remove(path);g->thumbnails_.insert(path,new QImage(*image),qMax(1,int(image->sizeInBytes()/1024)));for(int row=0;row<g->rowCount();++row)if(g->record(row)["previewPath"]==path)emit g->dataChanged(g->index(row),g->index(row),{ThumbnailRole});}g->nextThumbnail();});
+ history_.background([path,image](Error&){QFileInfo file(path);if(!file.isFile()||file.size()>8*1024*1024)return QJsonObject{};QImageReader reader(path);const auto s=reader.size();if(!s.isValid()||qint64(s.width())*s.height()>16000000)return QJsonObject{};reader.setScaledSize(s.scaled(360,220,Qt::KeepAspectRatio));const auto length=reader.text(durationKey);*image=reader.read();if(!length.isEmpty())image->setText(durationKey,length);return QJsonObject{};},const_cast<HistoryModel*>(this),[g=QPointer<HistoryModel>(const_cast<HistoryModel*>(this)),path,generation,image](Error,QJsonObject){if(!g)return;g->thumbnailLoading_=false;if(generation==g->thumbnailGeneration_){g->thumbnailRequested_.remove(path);g->thumbnails_.insert(path,new QImage(*image),qMax(1,int(image->sizeInBytes()/1024)));for(int row=0;row<g->rowCount();++row)if(g->record(row)["previewPath"]==path)emit g->dataChanged(g->index(row),g->index(row),{ThumbnailRole});}g->nextThumbnail();});
 }
 void HistoryModel::releaseThumbnails(){++thumbnailGeneration_;thumbnailQueue_.clear();thumbnailRequested_.clear();thumbnails_.clear();}
 }

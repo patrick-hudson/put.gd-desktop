@@ -53,6 +53,20 @@ public:
  QSize sizeHint()const override{const auto row=layout()?layout()->totalSizeHint():QSize();return {row.width(),std::max(row.height(),QPushButton::sizeHint().height())};}
  QSize minimumSizeHint()const override{return sizeHint();}
 };
+// A video's poster carries a play glyph and its length, so a still is never
+// mistaken for a screenshot (#112).
+bool video(const QJsonObject& record){return record["category"]=="videos"||record["mime"].toString().startsWith("video/");}
+void paintVideoBadge(QPainter& p,const QRect& picture,const QString& length){
+ using namespace RedesignTheme;p.save();p.setRenderHint(QPainter::Antialiasing);p.setPen(Qt::NoPen);p.setBrush(mediaScrim());
+ const int size=qBound(18,qMin(picture.width(),picture.height())*2/5,48);const QRect circle(picture.center()-QPoint(size/2,size/2),QSize(size,size));
+ p.drawEllipse(circle);VisualStyle::icon("play",onMedia()).paint(&p,circle.adjusted(size/4+size/16,size/4,-size/4+size/16,-size/4));
+ if(!length.isEmpty()&&picture.height()>=40){
+  auto font=p.font();font.setPixelSize(qBound(10,size/3,13));font.setBold(true);p.setFont(font);const QFontMetrics metrics(font);
+  const QSize pill(metrics.horizontalAdvance(length)+10,metrics.height()+2);const QRect box(picture.bottomRight()-QPoint(pill.width()+3,pill.height()+3),pill);
+  p.setBrush(mediaScrim());p.drawRoundedRect(box,4,4);p.setPen(onMedia());p.drawText(box,Qt::AlignCenter,length);
+ }
+ p.restore();
+}
 class HistoryDelegate final:public QStyledItemDelegate {
 public:
  explicit HistoryDelegate(QListView* view):QStyledItemDelegate(view),view_(view){}
@@ -69,7 +83,7 @@ public:
   auto r=outer.adjusted(6,heading(i)+3,-6,-3);const bool chosen=option.state&QStyle::State_Selected;const bool failed=i.data(HistoryModel::FailedRole).toBool();
   p->setPen(QPen(chosen?accent():(failed?danger():border()),chosen?1.5:1));p->setBrush(chosen?selected():(grid()?surface():bg()));p->drawRoundedRect(r,9,9);
   QRect thumb=grid()?QRect(r.left()+1,r.top()+1,r.width()-2,145):QRect(r.left()+12,r.top()+15,74,56);p->setPen(Qt::NoPen);p->setBrush(surfaceRaised());p->drawRoundedRect(thumb,6,6);
-  const auto image=qvariant_cast<QImage>(i.data(HistoryModel::ThumbnailRole));if(!image.isNull()){const auto scaled=image.scaled(thumb.size(),Qt::KeepAspectRatio,Qt::SmoothTransformation);p->drawImage(QPoint(thumb.center().x()-scaled.width()/2,thumb.center().y()-scaled.height()/2),scaled);}else{const auto category=i.data(HistoryModel::RecordRole).toJsonObject()["category"].toString();VisualStyle::icon(category).paint(p,QRect(thumb.center()-QPoint(14,14),QSize(28,28)));}
+  const auto image=qvariant_cast<QImage>(i.data(HistoryModel::ThumbnailRole));if(!image.isNull()){const auto scaled=image.scaled(thumb.size(),Qt::KeepAspectRatio,Qt::SmoothTransformation);const QPoint origin(thumb.center().x()-scaled.width()/2,thumb.center().y()-scaled.height()/2);p->drawImage(origin,scaled);if(video(i.data(HistoryModel::RecordRole).toJsonObject()))paintVideoBadge(*p,QRect(origin,scaled.size()),HistoryModel::duration(image.text(HistoryModel::durationKey).toLongLong()));}else{const auto category=i.data(HistoryModel::RecordRole).toJsonObject()["category"].toString();VisualStyle::icon(category).paint(p,QRect(thumb.center()-QPoint(14,14),QSize(28,28)));}
   const auto action=i.data(HistoryModel::PrimaryActionRole).toString();const auto primaryBounds=primaryRect(outer,i);const auto moreBounds=menuRect(outer,i);
   const int left=grid()?r.left()+14:thumb.right()+16;const int top=grid()?r.top()+158:r.top()+17;const int right=grid()?r.right()-14:r.right()-14;const int textWidth=qMax(20,right-left);
   const int titleWidth=grid()?textWidth:qMax(20,primaryBounds.left()-left-10);auto f=option.font;f.setBold(true);p->setFont(f);p->setPen(text());p->drawText(QRect(left,top,titleWidth,24),Qt::AlignVCenter,QFontMetrics(f).elidedText(i.data().toString(),Qt::ElideRight,titleWidth));
@@ -195,9 +209,9 @@ void HistoryWindow::startPreview(){
  const auto path=std::exchange(pendingPreviewPath_,{});const auto original=currentDetail_["local"].toObject()["status"]=="saved"?currentDetail_["local"].toObject()["path"].toString():QString{};const auto seq=selectionRequest_;previewLoading_=true;auto image=std::make_shared<QImage>();previewCancelled_=std::make_shared<std::atomic_bool>(false);auto cancelled=previewCancelled_;
  session_.background([path,original,image,cancelled](Error&){
   if(cancelled->load())return QJsonObject{};
-  QFileInfo f(path);if(!f.isFile()||f.size()>8*1024*1024)return QJsonObject{};QImageReader reader(path);auto s=reader.size();if(!s.isValid()||qint64(s.width())*s.height()>16000000)return QJsonObject{};reader.setScaledSize(s.scaled(900,540,Qt::KeepAspectRatio));*image=reader.read();
+  QFileInfo f(path);if(!f.isFile()||f.size()>8*1024*1024)return QJsonObject{};QImageReader reader(path);auto s=reader.size();if(!s.isValid()||qint64(s.width())*s.height()>16000000)return QJsonObject{};reader.setScaledSize(s.scaled(900,540,Qt::KeepAspectRatio));const auto length=reader.text(HistoryModel::durationKey);*image=reader.read();if(!length.isEmpty())image->setText(HistoryModel::durationKey,length);
   QJsonObject metadata;if(!original.isEmpty()&&QFileInfo(original).isFile()&&QFileInfo(original).size()<=32*1024*1024){QImageReader originalReader(original);const auto size=originalReader.size();if(size.isValid()){metadata["width"]=size.width();metadata["height"]=size.height();}}return metadata;
- },this,[g=QPointer<HistoryWindow>(this),seq,image](Error,QJsonObject metadata){if(!g)return;g->previewLoading_=false;if(g->isVisible()&&seq==g->selectionRequest_){if(!image->isNull())g->preview_->setPixmap(QPixmap::fromImage(*image).scaled(g->preview_->contentsRect().size(),Qt::KeepAspectRatio,Qt::SmoothTransformation));if(metadata["width"].toInt()>0){g->pixelDimensions_=QString("%1×%2").arg(metadata["width"].toInt()).arg(metadata["height"].toInt());g->updateSummary();}}g->startPreview();});
+ },this,[g=QPointer<HistoryWindow>(this),seq,image](Error,QJsonObject metadata){if(!g)return;g->previewLoading_=false;if(g->isVisible()&&seq==g->selectionRequest_){if(!image->isNull()){auto pixmap=QPixmap::fromImage(*image).scaled(g->preview_->contentsRect().size(),Qt::KeepAspectRatio,Qt::SmoothTransformation);const auto length=HistoryModel::duration(image->text(HistoryModel::durationKey).toLongLong());if(video(g->currentDetail_)){QPainter painter(&pixmap);paintVideoBadge(painter,QRect(QPoint(0,0),pixmap.deviceIndependentSize().toSize()),length);if(!length.isEmpty()){g->pixelDimensions_=length;g->updateSummary();}}g->preview_->setPixmap(pixmap);}if(metadata["width"].toInt()>0){g->pixelDimensions_=QString("%1×%2").arg(metadata["width"].toInt()).arg(metadata["height"].toInt());g->updateSummary();}}g->startPreview();});
 }
 void HistoryWindow::releasePreview(){if(previewCancelled_)previewCancelled_->store(true);pendingPreviewPath_.clear();++selectionRequest_;preview_->clear();model_->releaseThumbnails();}
 void HistoryWindow::hideEvent(QHideEvent* event){releasePreview();RetainedWindow::hideEvent(event);}
