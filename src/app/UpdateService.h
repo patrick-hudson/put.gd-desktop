@@ -61,7 +61,7 @@ private:
  QDateTime startedAt_,attemptedAt_,checkedAt_,nextAt_;
  qint64 startupDelayMs_=0,jitter_=0;
  QJsonObject result_,error_;
- QString notifiedVersion_;
+ QString notifiedVersion_,attemptedChannel_;
  std::function<QDateTime()> clock_;
  std::function<qint64(qint64,qint64)> random_;
 };

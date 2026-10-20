@@ -29,7 +29,7 @@ void UpdateService::start() {
  if(file.open(QIODevice::ReadOnly)&&file.size()<maximumOutput) {
   const auto state=QJsonDocument::fromJson(file.readAll()).object();
   if(state["schemaVersion"]==1) {
-   attemptedAt_=parseTime(state["attemptedAt"]);checkedAt_=parseTime(state["checkedAt"]);
+   attemptedAt_=parseTime(state["attemptedAt"]);checkedAt_=parseTime(state["checkedAt"]);attemptedChannel_=state["attemptedChannel"].toString();
    result_=state["result"].toObject();error_=state["error"].toObject();notifiedVersion_=state["notifiedVersion"].toString();
    // A clock that went backwards must not postpone the next check for days.
    if(attemptedAt_>now())attemptedAt_={};
@@ -42,8 +42,9 @@ void UpdateService::schedule() {
  // Settings can change before start(); start() schedules then.
  if(!startedAt_.isValid()||!enabled())return;
  const auto earliest=startedAt_.addMSecs(startupDelayMs_);
- // A result for another channel says nothing about this one: check soon.
- auto due=attemptedAt_.isValid()&&result_["channel"]==channel()?attemptedAt_.addMSecs(intervalMs+jitter_):earliest;
+ // A day after the last attempt on this channel, whether it worked or not; an
+ // attempt on another channel says nothing about this one, so check soon.
+ auto due=attemptedAt_.isValid()&&attemptedChannel_==channel()?attemptedAt_.addMSecs(intervalMs+jitter_):earliest;
  if(due<earliest)due=earliest;
  nextAt_=due;
  timer_.start(int(qBound(qint64(0),now().msecsTo(due),qint64(INT_MAX))));
@@ -85,7 +86,7 @@ void UpdateService::run(bool manual) {
  emit changed();
 }
 void UpdateService::finished(bool manual,const QByteArray& output,const Error& failure) {
- manualRunning_=false;attemptedAt_=now();jitter_=random(-jitterMs,jitterMs);
+ manualRunning_=false;attemptedAt_=now();attemptedChannel_=channel();jitter_=random(-jitterMs,jitterMs);
  const auto reply=QJsonDocument::fromJson(output.trimmed()).object();
  Error error=failure;QJsonObject result;
  if(reply["schemaVersion"]==1&&reply["ok"]==true&&reply["result"].isObject()&&reply["result"].toObject()["channel"]==channel()){error={};result=reply["result"].toObject();}
@@ -109,7 +110,7 @@ void UpdateService::finished(bool manual,const QByteArray& output,const Error& f
  for(const auto& reply:replies){if(error)reply(error,{});else reply({},status());}
 }
 void UpdateService::save() {
- const auto bytes=QJsonDocument(QJsonObject{{"schemaVersion",1},{"attemptedAt",isoTime(attemptedAt_)},{"checkedAt",isoTime(checkedAt_)},{"result",result_},
+ const auto bytes=QJsonDocument(QJsonObject{{"schemaVersion",1},{"attemptedAt",isoTime(attemptedAt_)},{"attemptedChannel",attemptedChannel_},{"checkedAt",isoTime(checkedAt_)},{"result",result_},
   {"error",error_.isEmpty()?QJsonValue():QJsonValue(error_)},{"notifiedVersion",notifiedVersion_}}).toJson(QJsonDocument::Compact);
  QSaveFile state(statePath_);state.setDirectWriteFallback(false);
  if(!state.open(QIODevice::WriteOnly)||!state.setPermissions(QFile::ReadOwner|QFile::WriteOwner)||state.write(bytes)!=bytes.size()||!state.commit())

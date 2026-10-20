@@ -57,7 +57,7 @@ private slots:
   // 5 minutes after start, at the earliest.
   QCOMPARE(updates.status()["nextCheckAt"].toString(),now.addSecs(5*60).toString(Qt::ISODate));
   QFile state(dir.filePath("update-check.json"));QVERIFY(state.open(QIODevice::WriteOnly));
-  state.write(QJsonDocument(QJsonObject{{"schemaVersion",1},{"attemptedAt",now.addSecs(-3600).toString(Qt::ISODate)},{"result",QJsonObject{{"channel","stable"}}}}).toJson());state.close();
+  state.write(QJsonDocument(QJsonObject{{"schemaVersion",1},{"attemptedAt",now.addSecs(-3600).toString(Qt::ISODate)},{"attemptedChannel","stable"}}).toJson());state.close();
   UpdateService restarted(settings,dir.path(),"/bin/false");restarted.setBuild(build("0.1.0"));restarted.setClock([this]{return now;});
   restarted.setRandom([](qint64 low,qint64){return low;});restarted.start();
   // 24 hours after the last attempt, minus the 2-hour jitter chosen here.
@@ -103,6 +103,15 @@ private slots:
   const auto saved=QJsonDocument::fromJson([&]{QFile f(dir.filePath("update-check.json"));f.open(QIODevice::ReadOnly);return f.readAll();}()).object();
   QCOMPARE(saved["notifiedVersion"].toString(),QString("0.1.1"));
  }
+ void unreachableFeedWaitsADay(){
+  // No result has ever arrived: the scheduled check must not repeat at once.
+  SettingsService settings(dir.filePath("config.json"));configure(settings);
+  answer({{"schemaVersion",1},{"ok",false},{"result",QJsonObject{}},{"error",QJsonObject{{"code","update_feed_unavailable"},{"message","Cannot read the update feed"},{"details",QJsonObject{}}}}},1);
+  auto updates=service(settings,build("0.1.0"));updates->start();QTRY_COMPARE(calls().size(),1);QTRY_VERIFY(!updates->status()["checking"].toBool());
+  QTest::qWait(300);QCOMPARE(calls().size(),1);
+  QCOMPARE(updates->status()["nextCheckAt"].toString(),now.addMSecs(UpdateService::intervalMs).toString(Qt::ISODate));
+  QVERIFY(updates->status()["result"].isNull());QCOMPARE(updates->status()["error"].toObject()["code"].toString(),QString("update_feed_unavailable"));
+ }
  void failedCheckKeepsTheLastResult(){
   SettingsService settings(dir.filePath("config.json"));configure(settings);answer(available("stable","0.1.1"));
   auto updates=service(settings,build("0.1.0"));updates->start();QTRY_COMPARE(calls().size(),1);QTRY_VERIFY(!updates->status()["checking"].toBool());
@@ -111,6 +120,8 @@ private slots:
   QTRY_VERIFY(replied);QCOMPARE(error.code,QString("update_feed_unavailable"));
   const auto status=updates->status();QCOMPARE(status["result"].toObject()["latest"].toString(),QString("0.1.1"));
   QCOMPARE(status["error"].toObject()["code"].toString(),QString("update_feed_unavailable"));
+  // A failure waits a day like a success; it never retries in a loop.
+  QCOMPARE(updates->status()["nextCheckAt"].toString(),now.addMSecs(UpdateService::intervalMs).toString(Qt::ISODate));
   // A child that prints nothing usable is a failure too.
   answer({},3);replied=false;updates->check([&](Error e,QJsonObject){error=e;replied=true;});QTRY_VERIFY(replied);QCOMPARE(error.code,QString("update_check_failed"));
  }
