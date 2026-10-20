@@ -436,6 +436,13 @@ if(PUTGD_RECORDING AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
       set_tests_properties(bar_placement_contract PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen:configfile=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/offscreen-three-monitors.json;PUTGD_TEST_SCREENS=3")
       add_test(NAME bar_placement_single_monitor_contract COMMAND test_bar_placement)
       set_tests_properties(bar_placement_single_monitor_contract PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen:configfile=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/offscreen-one-monitor.json;PUTGD_TEST_SCREENS=1")
+      # #264: the helper's window icon and desktop file name, and the entry it names.
+      add_executable(test_record_identity tests/unit/test_record_identity.cpp)
+      target_include_directories(test_record_identity PRIVATE src)
+      target_compile_definitions(test_record_identity PRIVATE PUTGD_RECORD_DESKTOP_ENTRY="${CMAKE_BINARY_DIR}/packaging/linux/putgd-record.desktop")
+      target_link_libraries(test_record_identity PRIVATE putgd_visual Qt6::Test)
+      add_test(NAME record_identity_contract COMMAND test_record_identity)
+      set_tests_properties(record_identity_contract PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
     endif()
   else()
     message(STATUS "putgd-record not built: GStreamer >= 1.24 and FFmpeg >= 6.1 development libraries are required; screen recording reports recording_helper_missing")
@@ -701,6 +708,12 @@ if(BUILD_TESTING)
   target_link_libraries(test_gui_theme PRIVATE putgd_ui putgd_tray Qt6::Test)
   add_test(NAME gui_theme COMMAND test_gui_theme)
   set_tests_properties(gui_theme PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
+  # #251: the shell running ctest may carry the user's session bus, desktop
+  # name and platform theme. Without them the desktop's colour scheme (portal,
+  # kdeglobals, Qt's own hint) cannot decide these results; CI has none either.
+  set(putgd_no_desktop_scheme "DBUS_SESSION_BUS_ADDRESS=set:unix:path=/nonexistent/putgd-test-no-session-bus"
+    "XDG_CURRENT_DESKTOP=unset:" "QT_QPA_PLATFORMTHEME=unset:")
+  set_tests_properties(gui_theme gui_application PROPERTIES ENVIRONMENT_MODIFICATION "${putgd_no_desktop_scheme}")
   add_executable(test_gui_tray tests/gui/test_tray.cpp)
   target_include_directories(test_gui_tray PRIVATE tests)
   target_link_libraries(test_gui_tray PRIVATE putgd_tray Qt6::Test)
