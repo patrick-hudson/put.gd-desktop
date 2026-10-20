@@ -1,0 +1,783 @@
+{
+ "schemaVersion": 1,
+ "scenario": "r283-review-e2e",
+ "ok": true,
+ "checks": {
+  "reviewToolsDiscovered": {
+   "ok": true,
+   "detail": [
+    "cancel_editor",
+    "cancel_operation",
+    "clear_logs",
+    "control_recording",
+    "copy_history_link",
+    "copy_result",
+    "create_diagnostics_bundle",
+    "delete_history_uploads",
+    "drive_recording_review",
+    "edit_image",
+    "edit_recording",
+    "get_diagnostics_upload_target",
+    "get_editor",
+    "get_history_entry",
+    "get_operation",
+    "get_recording",
+    "get_recording_capabilities",
+    "get_view_state",
+    "history_save_diagnostics",
+    "inspect",
+    "list_history",
+    "make_history_preview",
+    "move_destination",
+    "open_editor",
+    "patch_configuration",
+    "perform_action",
+    "prepare_recording",
+    "preview_editor",
+    "preview_recording",
+    "raise_editor",
+    "reload_configuration",
+    "reorder_destinations",
+    "retry_operation",
+    "save_editor_copy",
+    "save_recording_copy",
+    "select_recording_region",
+    "set_recording_overlay",
+    "settings_diagnostics",
+    "show_diagnostics_package",
+    "submit_editor",
+    "upload_recording"
+   ]
+  },
+  "recordedLongEnough": {
+   "ok": true,
+   "detail": 9566666
+  },
+  "reviewWindowOpen": {
+   "ok": true,
+   "detail": [
+    960,
+    600
+   ]
+  },
+  "noMaskControlsWithoutMasks": {
+   "ok": true,
+   "detail": {
+    "list": false,
+    "remove": false,
+    "strength": false,
+    "times": false
+   }
+  },
+  "setInTrims": {
+   "ok": true,
+   "detail": {
+    "masks": [],
+    "revision": 2,
+    "trimEnd": null,
+    "trimStart": 1000000
+   }
+  },
+  "setOutTrims": {
+   "ok": true,
+   "detail": {
+    "masks": [],
+    "revision": 3,
+    "trimEnd": 7000000,
+    "trimStart": 1000000
+   }
+  },
+  "twoMasks": {
+   "ok": true,
+   "detail": [
+    {
+     "end": 7000000,
+     "id": "9ca036eb-6362-40a9-829f-da4a95c1bff7",
+     "kind": "blur",
+     "rect": [
+      380,
+      205,
+      260,
+      310
+     ],
+     "start": 1500000,
+     "strength": 16
+    },
+    {
+     "end": 7000000,
+     "id": "34cfa58d-ec1d-4360-a844-bc862d911684",
+     "kind": "solid",
+     "rect": [
+      660,
+      250,
+      240,
+      140
+     ],
+     "start": 1500000
+    }
+   ]
+  },
+  "masksStartAtPlayhead": {
+   "ok": true,
+   "detail": [
+    {
+     "end": 7000000,
+     "id": "9ca036eb-6362-40a9-829f-da4a95c1bff7",
+     "kind": "blur",
+     "rect": [
+      380,
+      205,
+      260,
+      310
+     ],
+     "start": 1500000,
+     "strength": 16
+    },
+    {
+     "end": 7000000,
+     "id": "34cfa58d-ec1d-4360-a844-bc862d911684",
+     "kind": "solid",
+     "rect": [
+      660,
+      250,
+      240,
+      140
+     ],
+     "start": 1500000
+    }
+   ]
+  },
+  "newMaskSelectedWithContextualControls": {
+   "ok": true,
+   "detail": [
+    "34cfa58d-ec1d-4360-a844-bc862d911684",
+    {
+     "list": true,
+     "remove": true,
+     "strength": false,
+     "times": true
+    }
+   ]
+  },
+  "timelineLanes": {
+   "ok": true,
+   "detail": {
+    "lanes": 2,
+    "rect": [
+     47,
+     489,
+     732,
+     30
+    ]
+   }
+  },
+  "blurShowsStrength": {
+   "ok": true,
+   "detail": {
+    "list": true,
+    "remove": true,
+    "strength": true,
+    "times": true
+   }
+  },
+  "strengthApplied": {
+   "ok": true,
+   "detail": {
+    "masks": [
+     {
+      "end": 7000000,
+      "id": "9ca036eb-6362-40a9-829f-da4a95c1bff7",
+      "kind": "blur",
+      "rect": [
+       380,
+       205,
+       260,
+       310
+      ],
+      "start": 1500000,
+      "strength": 24
+     },
+     {
+      "end": 7000000,
+      "id": "34cfa58d-ec1d-4360-a844-bc862d911684",
+      "kind": "solid",
+      "rect": [
+       660,
+       250,
+       240,
+       140
+      ],
+      "start": 1500000
+     }
+    ],
+    "revision": 6,
+    "trimEnd": 7000000,
+    "trimStart": 1000000
+   }
+  },
+  "maskOutAtPlayhead": {
+   "ok": true,
+   "detail": {
+    "masks": [
+     {
+      "end": 5000000,
+      "id": "9ca036eb-6362-40a9-829f-da4a95c1bff7",
+      "kind": "blur",
+      "rect": [
+       380,
+       205,
+       260,
+       310
+      ],
+      "start": 1500000,
+      "strength": 24
+     },
+     {
+      "end": 7000000,
+      "id": "34cfa58d-ec1d-4360-a844-bc862d911684",
+      "kind": "solid",
+      "rect": [
+       660,
+       250,
+       240,
+       140
+      ],
+      "start": 1500000
+     }
+    ],
+    "revision": 7,
+    "trimEnd": 7000000,
+    "trimStart": 1000000
+   }
+  },
+  "copySaved": {
+   "ok": true,
+   "detail": {
+    "bytes": 210696,
+    "command": "saveCopy",
+    "durationUs": 6000000,
+    "path": "/home/patrick/putgd-lab/r283/e2e/out/e2e-copy.mp4",
+    "revision": 7,
+    "status": "saved"
+   }
+  },
+  "copyIsTrimmed": {
+   "ok": true,
+   "detail": 6000000
+  },
+  "uploadCompleted": {
+   "ok": true,
+   "detail": "completed"
+  },
+  "uploadHasLink": {
+   "ok": true,
+   "detail": [
+    {
+     "artifact": {
+      "bytes": 210696,
+      "category": "videos",
+      "id": "d52d5483-aeaf-41a7-9eba-143f2ccfc2aa",
+      "mime": "video/mp4",
+      "name": "Screen-Recording-2026-10-20-17-22-10.mp4",
+      "namingPrepared": true,
+      "originalFile": false,
+      "previewPath": "/home/patrick/putgd-lab/r283/runs/e2e/d/putgd/artifacts/../previews/d52d5483-aeaf-41a7-9eba-143f2ccfc2aa.png",
+      "sha256": "7afb0e64cd5ee0f02953ad91bfc8522515990fc3c2189e8335d6227d4273756d"
+     },
+     "candidate": "Screen-Recording-2026-10-20-17-22-10.mp4",
+     "concurrencyToken": "",
+     "condition": "absent",
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "local": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "path": "",
+      "status": "disabled"
+     },
+     "objectReference": {
+      "key": "r283/Screen-Recording-2026-10-20-17-22-10.mp4",
+      "schemaVersion": 1
+     },
+     "phase": "uploaded",
+     "publicationId": "0efc569e-9e42-4572-bfec-9264e898a8b4",
+     "receipt": {
+      "concurrencyToken": "\"cb5e528a68bc50d7d9388f282b46749c\"",
+      "destination": {
+       "credentials": {
+        "mode": "session",
+        "reference": null
+       },
+       "profileId": "r283-fixture",
+       "profileRevision": "ad5dbf507454b782a4b56b43627bd6de5058e6006603b35c7f3bb3edafab4fcf",
+       "providerId": "s3",
+       "settings": {
+        "aclMode": "public-read",
+        "addressing": "path",
+        "bucket": "fixture",
+        "connectTimeoutMs": 5000,
+        "endpoint": "http://127.0.0.1:44895",
+        "lowSpeedBytesPerSecond": 1,
+        "lowSpeedTimeSeconds": 120,
+        "objectPrefix": "r283/",
+        "publicUrlBase": "http://127.0.0.1:44895/fixture",
+        "region": "us-east-1",
+        "requestTimeoutMs": 120000,
+        "storageClass": "STANDARD"
+       }
+      },
+      "directUrl": "http://127.0.0.1:44895/fixture/r283/Screen-Recording-2026-10-20-17-22-10.mp4",
+      "objectReference": {
+       "bytes": 210696,
+       "key": "r283/Screen-Recording-2026-10-20-17-22-10.mp4",
+       "schemaVersion": 1,
+       "sha256": "7afb0e64cd5ee0f02953ad91bfc8522515990fc3c2189e8335d6227d4273756d",
+       "versionId": ""
+      },
+      "publicationId": "0efc569e-9e42-4572-bfec-9264e898a8b4",
+      "schemaVersion": 1
+     },
+     "remoteStatus": "not_requested",
+     "shareIntent": "",
+     "shareIntentOptions": {},
+     "shareStatus": "not_requested",
+     "uploadProgress": {
+      "bytesTotal": 210696,
+      "bytesTransferred": 210696,
+      "phase": "finalizing"
+     },
+     "uploadStatus": "uploaded"
+    }
+   ]
+  }
+ },
+ "calls": [
+  {
+   "tool": "prepare_recording",
+   "args": {
+    "target": {
+     "kind": "region",
+     "rect": [
+      324,
+      184,
+      1272,
+      712
+     ]
+    },
+    "format": "mp4",
+    "fps": 30
+   },
+   "ok": true,
+   "ms": 351,
+   "error": null
+  },
+  {
+   "tool": "get_recording",
+   "args": {
+    "id": "c542434a-4f3f-45f6-afa3-acd3520a97b7"
+   },
+   "ok": true,
+   "ms": 365,
+   "error": null
+  },
+  {
+   "tool": "get_recording",
+   "args": {
+    "id": "c542434a-4f3f-45f6-afa3-acd3520a97b7"
+   },
+   "ok": true,
+   "ms": 338,
+   "error": null
+  },
+  {
+   "tool": "control_recording",
+   "args": {
+    "id": "c542434a-4f3f-45f6-afa3-acd3520a97b7",
+    "command": "start"
+   },
+   "ok": true,
+   "ms": 558,
+   "error": null
+  },
+  {
+   "tool": "control_recording",
+   "args": {
+    "id": "c542434a-4f3f-45f6-afa3-acd3520a97b7",
+    "command": "stop"
+   },
+   "ok": true,
+   "ms": 457,
+   "error": null
+  },
+  {
+   "tool": "get_recording",
+   "args": {
+    "id": "c542434a-4f3f-45f6-afa3-acd3520a97b7"
+   },
+   "ok": true,
+   "ms": 342,
+   "error": null
+  },
+  {
+   "tool": "drive_recording_review",
+   "args": {
+    "id": "c542434a-4f3f-45f6-afa3-acd3520a97b7",
+    "action": "inspect"
+   },
+   "ok": true,
+   "ms": 336,
+   "error": null
+  },
+  {
+   "tool": "drive_recording_review",
+   "args": {
+    "id": "c542434a-4f3f-45f6-afa3-acd3520a97b7",
+    "action": "seek",
+    "time_us": 1000000
+   },
+   "ok": true,
+   "ms": 327,
+   "error": null
+  },
+  {
+   "tool": "drive_recording_review",
+   "args": {
+    "id": "c542434a-4f3f-45f6-afa3-acd3520a97b7",
+    "action": "setIn"
+   },
+   "ok": true,
+   "ms": 344,
+   "error": null
+  },
+  {
+   "tool": "drive_recording_review",
+   "args": {
+    "id": "c542434a-4f3f-45f6-afa3-acd3520a97b7",
+    "action": "seek",
+    "time_us": 7000000
+   },
+   "ok": true,
+   "ms": 317,
+   "error": null
+  },
+  {
+   "tool": "drive_recording_review",
+   "args": {
+    "id": "c542434a-4f3f-45f6-afa3-acd3520a97b7",
+    "action": "setOut"
+   },
+   "ok": true,
+   "ms": 334,
+   "error": null
+  },
+  {
+   "tool": "drive_recording_review",
+   "args": {
+    "id": "c542434a-4f3f-45f6-afa3-acd3520a97b7",
+    "action": "seek",
+    "time_us": 1500000
+   },
+   "ok": true,
+   "ms": 331,
+   "error": null
+  },
+  {
+   "tool": "drive_recording_review",
+   "args": {
+    "id": "c542434a-4f3f-45f6-afa3-acd3520a97b7",
+    "action": "addMask",
+    "kind": "blur",
+    "rect": [
+     380,
+     205,
+     260,
+     310
+    ]
+   },
+   "ok": true,
+   "ms": 335,
+   "error": null
+  },
+  {
+   "tool": "drive_recording_review",
+   "args": {
+    "id": "c542434a-4f3f-45f6-afa3-acd3520a97b7",
+    "action": "addMask",
+    "kind": "solid",
+    "rect": [
+     660,
+     250,
+     240,
+     140
+    ]
+   },
+   "ok": true,
+   "ms": 345,
+   "error": null
+  },
+  {
+   "tool": "drive_recording_review",
+   "args": {
+    "id": "c542434a-4f3f-45f6-afa3-acd3520a97b7",
+    "action": "selectMask",
+    "mask_id": "9ca036eb-6362-40a9-829f-da4a95c1bff7"
+   },
+   "ok": true,
+   "ms": 369,
+   "error": null
+  },
+  {
+   "tool": "drive_recording_review",
+   "args": {
+    "id": "c542434a-4f3f-45f6-afa3-acd3520a97b7",
+    "action": "strength",
+    "strength": 24
+   },
+   "ok": true,
+   "ms": 330,
+   "error": null
+  },
+  {
+   "tool": "drive_recording_review",
+   "args": {
+    "id": "c542434a-4f3f-45f6-afa3-acd3520a97b7",
+    "action": "seek",
+    "time_us": 5000000
+   },
+   "ok": true,
+   "ms": 361,
+   "error": null
+  },
+  {
+   "tool": "drive_recording_review",
+   "args": {
+    "id": "c542434a-4f3f-45f6-afa3-acd3520a97b7",
+    "action": "setMaskOut"
+   },
+   "ok": true,
+   "ms": 382,
+   "error": null
+  },
+  {
+   "tool": "save_recording_copy",
+   "args": {
+    "id": "c542434a-4f3f-45f6-afa3-acd3520a97b7",
+    "path": "/home/patrick/putgd-lab/r283/e2e/out/e2e-copy.mp4",
+    "overwrite": true
+   },
+   "ok": true,
+   "ms": 326,
+   "error": null
+  },
+  {
+   "tool": "get_recording",
+   "args": {
+    "id": "c542434a-4f3f-45f6-afa3-acd3520a97b7"
+   },
+   "ok": true,
+   "ms": 342,
+   "error": null
+  },
+  {
+   "tool": "get_recording",
+   "args": {
+    "id": "c542434a-4f3f-45f6-afa3-acd3520a97b7"
+   },
+   "ok": true,
+   "ms": 342,
+   "error": null
+  },
+  {
+   "tool": "get_recording",
+   "args": {
+    "id": "c542434a-4f3f-45f6-afa3-acd3520a97b7"
+   },
+   "ok": true,
+   "ms": 342,
+   "error": null
+  },
+  {
+   "tool": "get_recording",
+   "args": {
+    "id": "c542434a-4f3f-45f6-afa3-acd3520a97b7"
+   },
+   "ok": true,
+   "ms": 337,
+   "error": null
+  },
+  {
+   "tool": "upload_recording",
+   "args": {
+    "id": "c542434a-4f3f-45f6-afa3-acd3520a97b7",
+    "revision": 7
+   },
+   "ok": true,
+   "ms": 320,
+   "error": null
+  },
+  {
+   "tool": "get_operation",
+   "args": {
+    "id": "c542434a-4f3f-45f6-afa3-acd3520a97b7"
+   },
+   "ok": true,
+   "ms": 363,
+   "error": null
+  },
+  {
+   "tool": "get_operation",
+   "args": {
+    "id": "c542434a-4f3f-45f6-afa3-acd3520a97b7"
+   },
+   "ok": true,
+   "ms": 332,
+   "error": null
+  },
+  {
+   "tool": "get_operation",
+   "args": {
+    "id": "c542434a-4f3f-45f6-afa3-acd3520a97b7"
+   },
+   "ok": true,
+   "ms": 315,
+   "error": null
+  }
+ ],
+ "durationUs": 9566666,
+ "inspectEmpty": {
+  "visible": true,
+  "size": [
+   960,
+   600
+  ],
+  "video": {
+   "rect": [
+    56,
+    8,
+    848,
+    475
+   ],
+   "share": 0.6993055555555555
+  },
+  "maskControls": {
+   "list": false,
+   "remove": false,
+   "strength": false,
+   "times": false
+  },
+  "timeline": {
+   "lanes": 0,
+   "rect": [
+    47,
+    490,
+    732,
+    28
+   ]
+  },
+  "scheme": "dark"
+ },
+ "inspectEdited": {
+  "video": {
+   "rect": [
+    61,
+    8,
+    837,
+    469
+   ],
+   "share": 0.681515625
+  },
+  "maskControls": {
+   "list": true,
+   "remove": true,
+   "strength": true,
+   "times": true
+  },
+  "timeline": {
+   "lanes": 2,
+   "rect": [
+    47,
+    483,
+    732,
+    37
+   ]
+  },
+  "selectedMaskId": "9ca036eb-6362-40a9-829f-da4a95c1bff7",
+  "playheadUs": 5000000,
+  "trim": {
+   "end": 7000000,
+   "start": 1000000
+  }
+ },
+ "edit": {
+  "masks": [
+   {
+    "end": 5000000,
+    "id": "9ca036eb-6362-40a9-829f-da4a95c1bff7",
+    "kind": "blur",
+    "rect": [
+     380,
+     205,
+     260,
+     310
+    ],
+    "start": 1500000,
+    "strength": 24
+   },
+   {
+    "end": 7000000,
+    "id": "34cfa58d-ec1d-4360-a844-bc862d911684",
+    "kind": "solid",
+    "rect": [
+     660,
+     250,
+     240,
+     140
+    ],
+    "start": 1500000
+   }
+  ],
+  "revision": 7,
+  "trimEnd": 7000000,
+  "trimStart": 1000000
+ },
+ "copy": {
+  "bytes": 210696,
+  "command": "saveCopy",
+  "durationUs": 6000000,
+  "path": "/home/patrick/putgd-lab/r283/e2e/out/e2e-copy.mp4",
+  "revision": 7,
+  "status": "saved"
+ },
+ "copyMotion": "motion=18.323 compared=7 samples=8 durationMs=6000 size=1272x712",
+ "upload": {
+  "state": "completed",
+  "items": [
+   {
+    "uploadStatus": "uploaded",
+    "artifact": {
+     "bytes": 210696,
+     "category": "videos",
+     "id": "d52d5483-aeaf-41a7-9eba-143f2ccfc2aa",
+     "mime": "video/mp4",
+     "name": "Screen-Recording-2026-10-20-17-22-10.mp4",
+     "namingPrepared": true,
+     "originalFile": false,
+     "previewPath": "/home/patrick/putgd-lab/r283/runs/e2e/d/putgd/artifacts/../previews/d52d5483-aeaf-41a7-9eba-143f2ccfc2aa.png",
+     "sha256": "7afb0e64cd5ee0f02953ad91bfc8522515990fc3c2189e8335d6227d4273756d"
+    },
+    "objectReference": {
+     "key": "r283/Screen-Recording-2026-10-20-17-22-10.mp4",
+     "schemaVersion": 1
+    },
+    "directUrl": "http://127.0.0.1:44895/fixture/r283/Screen-Recording-2026-10-20-17-22-10.mp4"
+   }
+  ]
+ },
+ "uploadedMotion": "7afb0e64cd5ee0f0\nmotion=18.323 compared=7 samples=8 durationMs=6000 size=1272x712"
+}

@@ -6,6 +6,7 @@ for local bulk artifacts and [verification](../verification.md) for limitations.
 
 | Topic | Starting point |
 | --- | --- |
+| Review window: the video first, one timeline, contextual mask tools (issue #283) | [d69 Plasma Wayland and m74 Cinnamon X11 before/after in both schemes (video 28.9 % → 70.0 % of the window), MCP end to end with `drive_recording_review`, upload to the S3 fixture, motion 18.3 vs 0.875](2026-10-20-review-window-283/README.md) |
 | Review window icon, rail after a theme switch, theme tests and the session bus (issues #264, #261, #251) | [Cinnamon panel button before/after with and without a desktop entry, `_NET_WM_ICON` added; rail fresh vs switched (2 px → identical); gui tests under a light-portal bus before/after](2026-10-20-quick-knockouts-264-261-251/README.md) |
 | Spin boxes, instant theme switch, Diagnostics on Advanced, upload wording (issues #233, #237, #238, #239) | [Spin box chevrons in both schemes, pick-to-repaint timing before/after on m74/d69/f44 (1921 → 65 ms, 1744 → 38 ms, 1711 → 38 ms), Settings tabs and rail/File names before/after](2026-10-20-ui-polish-233-237-238-239/README.md) |
 | Recording closeout (issues #87, #166, #165, #164, #89) | [Mint 24.04 DEB on physical Cinnamon, two-output Ubuntu 26.04 GNOME guest, k72 Plasma 6.6 DEB and AppImage, portal pause A/V before/after, the pinned lab cover, d69 wall watchdog, GPU hang table](2026-10-20-recording-closeout.md) |

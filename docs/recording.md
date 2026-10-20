@@ -85,6 +85,7 @@ All methods go through `putgd-cli` unchanged. `id` is the recording ID.
 | `recording.raise` / `recording.overlay` | `{id}` / `{id, visible}` | overlay control; a hidden bar stays hidden through state changes until `raise` (a full-screen clip without the handle); the recording indicator stays visible |
 | `recording.edit` | `{id, revision, commands[1–100]}` | atomic `setTrim {start, end\|null}`, `resetTrim`, `addMask {mask}`, `updateMask {maskId, mask}`, `removeMask {maskId}` |
 | `recording.preview` | `{id, time, maxEdge? 64–1600}` | one PNG frame (base64 `png`) at clip time with current trim/masks, plus `retained`, `outputTimeUs`, `revision`; returned only to the requesting client |
+| `recording.review` | `{id, action, time?, speed?, kind?, rect?, maskId?, strength?, format?, codec?}` | works one review-window control as a user does and answers with the window's state and the resident's edit (see [Review window](#review-window)); `reviewing` only, `inspect` also while `exporting` |
 | `recording.saveCopy` | `{id, path, overwrite?}` | exports to an absolute path with the format's extension; no upload. Replies once the export starts with `state: exporting`; poll `inspect` until `reviewing`, then `lastExport.status` is `saved` or `failed` |
 | `recording.upload` | `{id, revision}` | the only publishing action. Replies once the export starts with `state: exporting` and the linked `operationId`; see "Exports" below |
 
@@ -152,7 +153,7 @@ child's pipes, mirroring the capture and editor helpers:
 - `command {requestId, command, params}` → `commandResult {requestId, ok, result}`
   or `{..., ok: false, code, message, details}`; commands are `capabilities`,
   `prepare`, `start`, `pause`, `resume`, `stop`, `cancel`, `raise`, `overlay`,
-  `preview` and `export`. Deadlines (`recording::helper*Ms` in
+  `preview`, `export` and `review` (the review window's controls, #283). Deadlines (`recording::helper*Ms` in
   `src/app/RecordingBackend.h`): 15 s per command, 30 s for `stop`, 600 s for
   `prepare` (a hands-on drag selection or OS consent), 600 s for `export`; a missed deadline is
   `recording_helper_timeout` and leaves the session where it was. The session
@@ -262,21 +263,56 @@ edits.
 ## Review window
 
 Every Stop (from the bar, the CLI, or the byte budget) opens the helper's
-private review window: the frame at the scrubber position with the masks
-active at that time drawn over it, "Trim start here" / "Trim end here" /
-"Reset trim" and the retained interval, a mask list with "Add blur" / "Add
-solid cover" (then drag on the frame), "Remove", "Mask starts here" / "Mask
-ends here" and the blur strength, an output format choice (GIF/WebP drop
-audio; the capture rate cannot change), and Save copy… / Discard / Upload.
+private review window. Since #283 the video takes the window and the tools sit
+in three compact rows under it (960×600 by default, which fits a 1366×768
+desktop, also with large text; the frame scales with the window):
+
+- **The frame** at the playhead, with the masks active at that time drawn over
+  it.
+- **One timeline** with Play/Pause and the time: the whole clip with the
+  retained interval between two trim handles, each mask's time span as a bar in
+  a lane under it (overlapping masks take separate lanes, up to four), and the
+  playhead. Click or drag to scrub; drag a trim handle, or a selected mask's
+  end, to retime it; click a bar to select that mask. Arrows step 0.1 s (1 s
+  with Shift), Home and End go to the kept interval's ends.
+- **A tool row** of IconArt buttons with tooltips and accessible names:
+  speed (0.5×, 1×, 2×, 4×), set trim start / end at the playhead, reset trim,
+  the kept interval, Add blur / Add solid cover (then drag on the frame).
+  The mask controls are contextual: the mask list appears once masks exist;
+  the selected mask's start/end at the playhead and Remove appear when one is
+  selected, and the blur strength only for a selected blur. A mask just added
+  becomes the selection; clicking the frame outside every mask clears it.
+- **The action row**: the output format (GIF/WebP drop audio; the capture rate
+  cannot change), the status, Save copy… / Discard / Upload (primary).
+
+Keys: Space plays and pauses, I and O set the trim start and end at the
+playhead, Shift+I and Shift+O the selected mask's start and end, Delete removes
+the selected mask, Escape drops a blur or cover not placed yet.
+
 Previews are rendered in the helper by the same `previewFrame` the CLI and
 MCP preview use, so timing and placement agree with the export. While a mask
 is being dragged the pending area is drawn as a dashed rubber band. Play /
-Pause (Space) plays the retained interval silently from the scrubber at the
-chosen speed (0.5×, 1×, 2×, 4×): frames are decoded in order on a worker by
-`FrameSequence`, masks applied as the export renders them, and shown at their
-clip time; frames that fall behind the clock are decoded but not drawn, so a
-large clip keeps pace with dropped frames. Scrubbing or any edit control
-pauses playback; the audio track is not previewed (the export keeps it).
+Pause plays the retained interval silently from the playhead at the chosen
+speed: frames are decoded in order on a worker by `FrameSequence`, masks
+applied as the export renders them, and shown at their clip time; frames that
+fall behind the clock are decoded but not drawn, so a large clip keeps pace
+with dropped frames. Scrubbing or any edit control pauses playback; the audio
+track is not previewed (the export keeps it).
+
+`recording.review {id, action, ...}` (MCP `drive_recording_review`) works the
+window's controls as a user does, one action per call, in `reviewing` (and
+`inspect` while `exporting`): `inspect`, `seek {time}`, `play`, `pause`,
+`speed {speed}`, `setIn`, `setOut`, `resetTrim`, `addMask {kind, rect}` (from
+the playhead to the trim end, as Add blur/cover and a drag), `selectMask
+{maskId|null}`, `setMaskIn`, `setMaskOut`, `strength {strength}`, `removeMask`
+and `format {format, codec}`. A refused action answers `invalid_request` with
+the message the window shows. The answer is the window's state after the
+action (`visible`, `size`, `playheadUs`, `playing`, `speed`, `trim`, `masks`
+with their timeline bars, `selectedMaskId`, `armed`, `maskControls {list,
+times, strength, remove}`, `status`, `notice`, `video {rect, share}`,
+`timeline {rect, lanes}`, `scheme`) plus the resident's `state` and `edit`: an
+edit a control proposes reaches the resident as an `edit` event first, and the
+resident reads the window again after pushing the result back.
 
 The window never owns the edit: each change is proposed to the resident as an
 `edit {revision, commands}` event, the resident applies it to the authoritative
@@ -898,6 +934,7 @@ and no host-matched library was bundled; the receipt records the result under
 | `set_recording_overlay` | `recording.overlay` |
 | `edit_recording` | `recording.edit` |
 | `preview_recording` (MCP image) | `recording.preview` |
+| `drive_recording_review` | `recording.review` |
 | `save_recording_copy` | `recording.saveCopy` |
 | `upload_recording` | `recording.upload` |
 
