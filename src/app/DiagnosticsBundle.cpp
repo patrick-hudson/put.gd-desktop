@@ -21,7 +21,7 @@
 #include <algorithm>
 namespace putgd {
 namespace {
-const QStringList nameKeys{"name","candidate","fileName","folderName","label"};
+const QStringList nameKeys{"name","candidate","fileName","folderName","label","notificationText"};
 const QStringList urlKeys{"url","directUrl","publicUrl","publicUrlBase","link","shareUrl"};
 const QStringList objectKeys{"key","objectKey","objectPrefix"};
 const QStringList idKeys{"accountRootUid","folderUid","shareUid","linkUid","volumeId","nodeUid"};

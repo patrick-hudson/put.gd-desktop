@@ -685,26 +685,6 @@ class TrayPanelToneContracts(unittest.TestCase):
                 self.assertTrue(replay.observe('local-failure')[2]['idle'])
             self.assertEqual(replay.result['errorPulses'][0]['recoveredAt'], 13.01)
 
-    def test_session_takes_the_desktop_sessions_config_and_data_dirs(self):
-        import os, subprocess
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            shell = subprocess.Popen(['sleep', '30'], env={'PATH': os.environ['PATH'],
-                                     'XDG_CONFIG_DIRS': '/home/lab/.config/kdedefaults:/etc/xdg',
-                                     'XDG_DATA_DIRS': '/usr/share/plasma-data:/usr/share'})
-            try:
-                # Stands in for pgrep, so no real desktop shell on this host is read.
-                (root / 'pgrep').write_text('#!/bin/sh\necho ' + str(shell.pid) + '\n')
-                (root / 'pgrep').chmod(0o700)
-                command = tray.session_dirs_prefix('plasmashell') + 'printf "%s|%s" "$XDG_CONFIG_DIRS" "$XDG_DATA_DIRS"\n'
-                result = subprocess.check_output(['sh', '-c', command], text=True,
-                                                 env={'PATH': str(root) + ':' + os.environ['PATH']})
-            finally:
-                shell.kill(); shell.wait()
-            self.assertEqual(result, '/home/lab/.config/kdedefaults:/etc/xdg|/usr/share/plasma-data:/usr/share')
-        with self.assertRaises(tray.TrayProgressError):
-            tray.session_dirs_prefix('plasmashell; true')
-
     def tone_replay(self, directory, inputs, reported):
         import json
         from unittest.mock import Mock

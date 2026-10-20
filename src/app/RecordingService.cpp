@@ -163,6 +163,7 @@ void RecordingService::invoke(const QString& mode, JsonReply reply) {
     });
 }
 void RecordingService::transition(Session& s, const QString& state, const QString& phase) {
+    logging::info(logRecording(), "Recording step", {{"operationId", s.op.id}, {"from", s.state}, {"state", state}, {"elapsedMs", s.clock.isValid() ? s.clock.elapsed() : -1}});
     s.state = state;
     s.pending.clear();
     s.op.phase = phase.isEmpty() ? state : phase;
@@ -203,6 +204,11 @@ void RecordingService::fail(Error error) {
     // A user cancellation reported by the helper (Escape during selection,
     // Cancel on the bar) ends as cancelled, not as a failure.
     const bool cancelled = error.code == "cancelled" || error.code == "source_cancelled";
+    // Which step ended it and how long in (#250): a timeout names its step,
+    // otherwise the state the session was in.
+    logging::write(logRecording(), cancelled ? QtInfoMsg : QtWarningMsg, cancelled ? "Recording cancelled" : "Recording failed",
+        {{"operationId", s.op.id}, {"error", logging::errorFields(error)}, {"step", error.details["step"].toString(s.state)}, {"state", s.state}, {"phase", s.op.phase},
+         {"selector", s.selector}, {"elapsedMs", s.clock.isValid() ? s.clock.elapsed() : -1}});
     s.op.error = error;
     s.op.cancelled = cancelled;
     s.op.state = cancelled ? "cancelled" : "failed";
@@ -251,6 +257,7 @@ void RecordingService::handleEvent(const QJsonObject& event) {
     } else if (kind == "selecting" && s.state == "preparing") {
         // The helper's own selector is open (X11, KDE): recording.select can drive it.
         s.selector = "helper";
+        logging::info(logRecording(), "Recording selector open", {{"operationId", s.op.id}, {"selector", s.selector}, {"elapsedMs", s.clock.elapsed()}});
         host_.observe(s.op);
         emit changed(s.op.id);
     } else if (kind == "failed") {
@@ -368,6 +375,7 @@ void RecordingService::prepareSession(const QJsonObject& params, JsonReply reply
             return;
         }
         s.generation = ++generation_;
+        s.clock.start();
         session_ = s;
         const auto generation = s.generation;
         QPointer<RecordingService> guard(this);
@@ -395,6 +403,7 @@ void RecordingService::beginPrepare(quint64 generation) {
     }
     if (rectless && shell_ && shell_->selectsRegions()) {
         s.selector = "shell";
+        logging::info(logRecording(), "Recording selector open", {{"operationId", s.op.id}, {"selector", s.selector}, {"elapsedMs", s.clock.elapsed()}});
         const auto token = ++s.selection;
         host_.observe(s.op);
         emit changed(s.op.id);
@@ -419,8 +428,9 @@ void RecordingService::prepareBackend(quint64 generation) {
 void RecordingService::prepared(Error error, const QJsonObject& result) {
     auto& s = *session_;
     if (s.state != "preparing") return;
-    s.selector.clear();
+    // fail() logs whether a selector was still open.
     if (error) { fail(error); return; }
+    s.selector.clear();
     updateCanvas(s.canvas, result["canvas"]);
     recording::clampAnimationSize(s.config, s.canvas, limits(s.op.settings));
     // A dragged region reports its bounds; the overlay says whether it stayed outside them.

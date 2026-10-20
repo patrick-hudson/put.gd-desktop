@@ -31,7 +31,11 @@ private:
  struct Activation {QString view;QList<Reply> replies;};
  void launch();void flushActivations();void sendInvalidation();
  void receive(const QString& type,const QString& sequence,const QJsonObject& payload);
- void fail(Error);void failActivations(Error);void failCommands(const Error&);void finished(QProcess*,quint64,int,QProcess::ExitStatus);
+ // `deadline` names the timer that expired, if one did; it goes in the log
+ // record written before the kill, not in the error callers see.
+ void fail(Error,const QString& deadline={});void failActivations(Error);
+ void killHelper(const QString& reason,QJsonObject context={});const char* phaseName()const;
+ void failCommands(const Error&);void finished(QProcess*,quint64,int,QProcess::ExitStatus);
  void updateShortcutRecording();void restoreShortcuts();
  Error storeState(const QJsonObject&);void completeShutdown();
  struct RecordingRequest {QString sequence;bool active;};

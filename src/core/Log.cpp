@@ -16,6 +16,7 @@
 #include <thread>
 #ifdef Q_OS_UNIX
 #include <cerrno>
+#include <csignal>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -372,9 +373,21 @@ QJsonValue redact(const QJsonValue& value) {
  return value;
 }
 }
+namespace {
+// Settings and version lines encoder libraries print as the recording helper
+// opens them (#250): not faults, so they stay out of the warning stream. A
+// quiet helper (the capability probe) tries encoders that may be missing, so
+// every line those libraries print there is a banner too.
+bool encoderBanner(const QByteArray& text,bool quiet) {
+ static const QRegularExpression banner(R"(^x265 \[info\]: |^encoded \d+ frames|^\[(libx264|libx265|libvpx[\w-]*|libaom[\w-]*|libsvtav1|libopenh264) @ 0x[0-9a-f]+\] (using cpu capabilities|profile |v\d|Neither bitrate nor constrained quality))");
+ static const QRegularExpression library(R"(^(x265 \[\w+\]: |\[OpenH264\] |\[[\w-]+ @ 0x[0-9a-f]+\] ))");
+ const auto line=QString::fromUtf8(text);
+ return banner.match(line).hasMatch()||(quiet&&library.match(line).hasMatch());
+}
+}
 HelperOutput::HelperOutput(QString process,const QLoggingCategory& category,bool quiet):process_(std::move(process)),category_(category),quiet_(quiet) {}
 void HelperOutput::started(qint64 pid,const QJsonObject& fields) {
- pid_=pid;logged_=suppressed_=0;partial_.clear();crash_.clear();++generation_;
+ pid_=pid;logged_=suppressed_=banners_=0;partial_.clear();crash_.clear();killReason_.clear();++generation_;
  auto values=fields;values["helper"]=process_;values["pid"]=pid;
  logging::write(category_,quiet_?QtDebugMsg:QtInfoMsg,"Helper started",values);
 }
@@ -391,10 +404,16 @@ void HelperOutput::line(QByteArray text) {
   if(text.startsWith("putgd-crash\tend"))crashRecord();
   return;
  }
+ QtMsgType type=QtWarningMsg;
+ if(encoderBanner(text,quiet_)) {
+  // Counted for the exit summary; written only while debug logging is on.
+  ++banners_;type=QtDebugMsg;
+  if(!category_.isEnabled(QtDebugMsg))return;
+ }
  if(logged_>=generationBytes){suppressed_+=text.size()+1;return;}
  if(text.size()>lineBytes)text.truncate(lineBytes);
  logged_+=text.size()+1;
- QtMsgType type=QtWarningMsg;QJsonObject fields{{"stream","stderr"}};auto message=QString::fromUtf8(text);
+ QJsonObject fields{{"stream","stderr"}};auto message=QString::fromUtf8(text);
  // The S3 worker's AWS SDK bridge: "putgd-aws<TAB>E|W|I<TAB>tag<TAB>message".
  if(text.startsWith("putgd-aws\t")) {
   const auto parts=text.split('\t');
@@ -414,15 +433,33 @@ void HelperOutput::finished(int code,QProcess::ExitStatus status,bool requested)
  if(!partial_.isEmpty()){line(partial_);partial_.clear();}
  if(!crash_.isEmpty())crashRecord(); // cut short: keep what arrived
  if(suppressed_>0)logging::write(category_,QtWarningMsg,"Helper output truncated",{{"suppressedBytes",suppressed_},{"keptBytes",logged_}},process_,pid_);
+ if(banners_>0)logging::write(category_,quiet_?QtDebugMsg:QtInfoMsg,"Encoder banner lines logged at debug level",{{"lines",banners_}},process_,pid_);
  QJsonObject fields{{"helper",process_},{"pid",pid_},{"requested",requested}};
+ // A supervisor kill names the reason its "Killing helper" record gave.
+ const bool supervised=!killReason_.isEmpty();
+ if(supervised){fields["supervisorKill"]=true;fields["reason"]=killReason_;}
  QtMsgType type=QtInfoMsg;QString message;
  if(status==QProcess::NormalExit){fields["exitCode"]=code;type=code==0?(quiet_?QtDebugMsg:QtInfoMsg):QtWarningMsg;message="Helper exited";}
- else{fields["signal"]=code;type=requested?QtWarningMsg:QtCriticalMsg;message=requested?"Helper stopped by put.gd":"Helper crashed";}
+ else {
+  fields["signal"]=code;
+  if(supervised){type=QtWarningMsg;message="Helper killed by put.gd";}
+  else if(requested){type=QtWarningMsg;message="Helper stopped by put.gd";}
+  // Nothing in put.gd sends SIGKILL without asking for the exit, and a crash
+  // never ends in it: another process (an OOM killer, a window manager's
+  // force quit, a user) killed this helper.
+  else if(code==SIGKILL){type=QtCriticalMsg;message="Helper killed from outside put.gd";fields["supervisorKill"]=false;}
+  else {type=QtCriticalMsg;message="Helper crashed";}
+ }
  logging::write(category_,type,message,fields);
- suppressed_=0;logged_=0;pid_=0;
+ suppressed_=0;logged_=0;banners_=0;pid_=0;killReason_.clear();
+}
+void HelperOutput::killing(const QString& reason,const QJsonObject& fields) {
+ auto values=fields;values["helper"]=process_;values["pid"]=pid_;values["reason"]=reason;
+ logging::write(category_,QtWarningMsg,"Killing helper",values);
+ killReason_=reason;
 }
 void HelperOutput::failedToStart(const QString& reason) {
  logging::write(category_,QtCriticalMsg,"Helper failed to start",{{"helper",process_},{"reason",reason.left(256)}});
- pid_=0;partial_.clear();
+ pid_=0;partial_.clear();killReason_.clear();
 }
 }

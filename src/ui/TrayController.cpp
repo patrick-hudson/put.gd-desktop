@@ -2,6 +2,7 @@
 #include "VisualStyle.h"
 #include "Theme.h"
 #include "ByteSize.h"
+#include "core/Log.h"
 #ifdef Q_OS_LINUX
 #include "NativeTray.h"
 #endif
@@ -152,11 +153,11 @@ TrayController::TrayController(OperationService& operations,
    quit_(std::move(quit)) {
  // A recording that ended itself on its byte budget says why (#225).
  connect(&operations_.recording(),&RecordingService::budgetStopped,this,[this](const QString&,const QJsonObject& stop) {
-  if(available())notifyMessage("put.gd — recording stopped",stop["message"].toString(),true);
+  if(available())notifyMessage("recording_budget_stopped","put.gd — recording stopped",stop["message"].toString(),true);
  });
  // Uploads an automatic cleanup could not abort, once for each (#226).
  connect(&operations_,&OperationService::incompleteUploadsKept,this,[this](const QJsonObject& notice) {
-  if(available())notifyMessage("put.gd — incomplete uploads left",notice["message"].toString(),true);
+  if(available())notifyMessage("incomplete_uploads_kept","put.gd — incomplete uploads left",notice["message"].toString(),true);
  });
 #ifdef Q_OS_LINUX
  if (!qobject_cast<QApplication*>(QCoreApplication::instance())) {
@@ -279,7 +280,7 @@ TrayController::TrayController(OperationService& operations,
    // A failed upload offers a diagnostics package for just that operation (#122).
    const auto diagnostics=state!="completed"&&guard->saveDiagnostics_?operation["id"].toString():QString{};
    if (QStringList{"completed", "partial", "failed", "interrupted"}.contains(state))
-    guard->notifyMessage("put.gd — " + state,completionMessage(operation,!link.isEmpty()),state != "completed",link,diagnostics);
+    guard->notifyMessage("operation_" + state,"put.gd — " + state,completionMessage(operation,!link.isEmpty()),state != "completed",link,diagnostics);
   });
  });
 }
@@ -424,6 +425,8 @@ void TrayController::refreshActivity() {
   if(color!=iconColor_||percent!=iconPercent_)tray_->setIcon(VisualStyle::icon("tray",color,percent));
   if(text!=activityText_)tray_->setToolTip(text.isEmpty()?idleTooltip:QString("put.gd — Working\n")+text);
  }
+ // The tooltip's title and activity lines as the tray now shows them (#250).
+ if(text!=activityText_)logging::debug(logUi(),"Tray tooltip changed",{{"title",text.isEmpty()?idleTooltip:QString("put.gd — Working")},{"activity",text}});
  iconColor_=color;iconPercent_=percent;activityText_=text;
 }
 void TrayController::flashError() {
@@ -465,8 +468,13 @@ void TrayController::openNotificationLink(const QUrl& link) {
  QProcess::startDetached("gio",{"open",link.toString(QUrl::FullyEncoded)});
 }
 #endif
-void TrayController::notifyMessage(const QString& title, const QString& message, bool warning,const QUrl& link,const QString& diagnosticsOperation,const QString& revealPath) {
+void TrayController::notifyMessage(const QString& code, const QString& title, const QString& message, bool warning,const QUrl& link,const QString& diagnosticsOperation,const QString& revealPath) {
  Q_UNUSED(link);Q_UNUSED(diagnosticsOperation);Q_UNUSED(revealPath);
+ // Each toast, so "a toast appeared" can be matched to its cause (#250). The
+ // text can name files: diagnostics packages hash it unless --include-names.
+ QJsonObject fields{{"notificationId",qint64(++notifications_)},{"summary",code},{"title",title},{"notificationText",message},{"warning",warning}};
+ if(!diagnosticsOperation.isEmpty())fields["operationId"]=diagnosticsOperation;
+ logging::info(logUi(),"Notification shown",fields);
 #ifdef Q_OS_LINUX
  if (native_) {
   QList<NotificationAction> actions;
@@ -480,13 +488,13 @@ void TrayController::notifyMessage(const QString& title, const QString& message,
 }
 void TrayController::notifyFailure(const Error& error) {
  if(error)flashError();
- if (error && available()) notifyMessage("put.gd", error.message, true);
+ if (error && available()) notifyMessage(error.code,"put.gd", error.message, true);
 }
 void TrayController::saveDiagnostics(const QString& operationId) {
  if(!saveDiagnostics_||operationId.isEmpty())return;
  saveDiagnostics_(operationId,[guard=QPointer<TrayController>(this)](Error error,QJsonObject result) {
   if(!guard)return;
-  if(error)guard->notifyMessage("put.gd — diagnostics not saved",error.message,true);
+  if(error)guard->notifyMessage("diagnostics_not_saved","put.gd — diagnostics not saved",error.message,true);
   else guard->notifyDiagnosticsSaved(result);
  });
 }
@@ -498,13 +506,13 @@ void TrayController::notifyDiagnosticsSaved(const QJsonObject& result) {
  if(result.contains("link"))uploaded=" Uploaded to "+result["upload"].toObject()["label"].toString()+(result["linkCopied"].toBool()?"; link copied.":".");
  else if(uploadError["code"]=="diagnostics_link_unavailable")uploaded=" Uploaded to "+result["upload"].toObject()["label"].toString()+", which gives it no link.";
  else if(!uploadError.isEmpty()){const auto reason=failureReason(uploadError);uploaded=" Not uploaded"+(reason.isEmpty()?QString("."):": "+reason+".");}
- notifyMessage("put.gd — diagnostics saved",file.fileName()+" ("+ByteSize::summary(result["bytes"].toInteger())+") in "+QDir::toNativeSeparators(file.absolutePath())+"."+uploaded,false,{},{},file.absoluteFilePath());
+ notifyMessage("diagnostics_saved","put.gd — diagnostics saved",file.fileName()+" ("+ByteSize::summary(result["bytes"].toInteger())+") in "+QDir::toNativeSeparators(file.absolutePath())+"."+uploaded,false,{},{},file.absoluteFilePath());
 }
 // The button carries the path put.gd itself just saved, whatever its name (#223).
 void TrayController::showSavedPackage(const QString& path) {
  const auto error=revealPackage(path,true);if(!error)return;
  qWarning("Show in folder refused: %s",qPrintable(error.code));
- notifyMessage("put.gd — Show in folder",error.message,true);
+ notifyMessage("show_in_folder_refused","put.gd — Show in folder",error.message,true);
 }
 Error TrayController::revealPackage(const QString& path,bool savedHere) {
  static const QRegularExpression name("^putgd-diagnostics-[0-9]{8}-[0-9]{6}Z(-[0-9]+)?\\.zip$");
