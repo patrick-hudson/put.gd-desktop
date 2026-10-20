@@ -227,6 +227,30 @@ def publish_nightly(args, release, listed):
     (args.directory / 'publication.json').write_text(json.dumps(receipt, indent=2) + '\n')
 
 
+SITE_REPOSITORY = 'patrick-hudson/put.gd-site'
+
+
+def notify_site(tag):
+    """Tell the download site a release is public; its six-hour schedule is the backstop.
+
+    Manual publication runs with the operator's own gh login, which can reach the
+    site repository. Nightlies are published with the workflow token, which cannot,
+    so nightly.yml sends this event itself after publish.py --nightly returns.
+    """
+    prerelease = 'true' if parse_tag(tag).prerelease else 'false'
+    command = ['gh', 'api', f'repos/{SITE_REPOSITORY}/dispatches', '-f', 'event_type=release-published',
+               '-f', f'client_payload[tag]={tag}', '-F', f'client_payload[prerelease]={prerelease}']
+    try:
+        subprocess.run(command, check=True)
+    except (subprocess.CalledProcessError, OSError) as error:
+        print(f'Warning: could not notify {SITE_REPOSITORY} of {tag}: {error}. '
+              'Its deploy refreshes within six hours, or run its deploy workflow by hand.',
+              file=sys.stderr, flush=True)
+        return False
+    print(f'Notified {SITE_REPOSITORY} of {tag}; its deploy refreshes the download links.', flush=True)
+    return True
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--tag', required=True)
@@ -269,9 +293,14 @@ def main():
             raise ValueError('Acceptance must match every exact collected asset')
         verified = verify_remote_draft(args.tag, args.directory, listed, release['gitCommit'])
         subprocess.run(['gh', 'release', 'edit', args.tag, '--draft=false'], check=True)
-        (args.directory / 'publication.json').write_text(json.dumps({
-            'schemaVersion': 1, 'tag': args.tag, 'gitCommit': release['gitCommit'],
-            'verifiedRemoteDraft': verified, 'published': True}, indent=2) + '\n')
+        receipt = {'schemaVersion': 1, 'tag': args.tag, 'gitCommit': release['gitCommit'],
+                   'verifiedRemoteDraft': verified, 'published': True}
+        publication = args.directory / 'publication.json'
+        # The receipt records the publication before the site is told about it:
+        # a failed notification never turns a published release into a failed run.
+        publication.write_text(json.dumps(receipt, indent=2) + '\n')
+        receipt['siteNotified'] = notify_site(args.tag)
+        publication.write_text(json.dumps(receipt, indent=2) + '\n')
         return
     # Staging runs only after CI, packaging and collection passed in this same run.
     producer = run_provenance()
