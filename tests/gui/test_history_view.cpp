@@ -29,6 +29,7 @@
 #include <QSqlDatabase>
 #include <QSqlQuery>
 #include <QUuid>
+#include <QElapsedTimer>
 #include <QBuffer>
 #include <QCryptographicHash>
 #include <QDir>
@@ -240,6 +241,9 @@ private slots:
   // Passing over the video on the way to the image asks only for the image.
   selectRow(table,1);QTest::qWait(100);selectRow(table,0);QTRY_VERIFY(!preview->pixmap().isNull());QCOMPARE(asked,QStringList{imageId});
   QVERIFY(QFileInfo(cleaned).isFile());QTRY_VERIFY(!qvariant_cast<QImage>(table->model()->index(0,0).data(HistoryModel::ThumbnailRole)).isNull());
+  // Reloads of the selection (every 150 ms here) keep the shown preview: it
+  // never blanks or flashes "Preview unavailable" while they run.
+  int blank=0;QElapsedTimer watched;watched.start();while(watched.elapsed()<800){if(preview->pixmap().isNull())++blank;QTest::qWait(5);}QCOMPARE(blank,0);
   QCOMPARE(preview->pixmap().toImage().pixelColor(preview->pixmap().width()/2,preview->pixmap().height()/2),QColor("#2a7fd4"));
   selectRow(table,1);QTRY_COMPARE(asked.size(),2);QCOMPARE(asked.last(),videoId);QTRY_COMPARE(preview->text(),QString("Preview unavailable"));QVERIFY(preview->pixmap().isNull());
   selectRow(table,0);QTRY_VERIFY(!preview->pixmap().isNull());selectRow(table,1);QTRY_COMPARE(preview->text(),QString("Preview unavailable"));QTest::qWait(600);QCOMPARE(asked.size(),2);
