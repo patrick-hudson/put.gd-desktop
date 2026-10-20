@@ -9,6 +9,40 @@ missing profiles, and run physical-hardware release gates on physical machines.
 This requirement is separate from the historical results below; missing new
 rows and current-candidate evidence remain gates.
 
+## Recording closeout (#87, #166, #165, #164, #89) — 2026-10-20
+
+The [closeout receipt](evidence/2026-10-20-recording-closeout.md) finishes #87's
+lab-reachable items on nightly `9c035bf` and re-measures #166. Every capture
+used the lab cover pinned to a named output, a VNC precheck of at least 98%
+cover, and frames kept only at least half cover (`tools/lab/cover_player.py`,
+`tools/lab/record_run.py`, #165).
+
+- **Ubuntu 24.04 DEB on physical Mint 22.3 Cinnamon X11 (m74):** monitor and
+  region recordings in all four formats, motion 27–39 against a frozen control
+  of 0.000. A/V with `vah264lpenc`: medians −17.7 to +10 ms, pause step within
+  ±0.9 ms, export within ±1.0 ms.
+- **Ubuntu 26.04.1 GNOME 50.1 Wayland, two outputs (VM on f44):** monitor and
+  region on both outputs in all four formats through Mutter. The guest's full
+  disk capped monitor clips at about 2.7 s (#213).
+- **Physical Plasma 6.6 Wayland (k72):** after a first attempt stopped by two
+  i915 GPU hangs in `kwin_wayland` (load 5–7), a quiet redo recorded the 26.04
+  DEB (monitor and region) and the AppImage (monitor) in all four formats via
+  `kde-screencast` and `vah264lpenc`, with no hang. A/V: medians −18.5 to
+  +6.7 ms, pause step within +0.8 ms, export within ±1.0 ms.
+- **#166, f44 GNOME portal (window):** pre-#143 `134a9be` lost about 10 ms at
+  every pause (−9.2 to −10.5 ms) and in every export. #143 `cc4568f` held
+  within ±1.0 ms. The d69 portal (monitor) run is pending one picker approval.
+- **#165:** the cover goes to the named output (two-output GNOME guest, nested
+  two-output KWin), and the player refuses without `--output`.
+- **#164:** the wall watchdog runs on d69. It restarted a stopped server
+  after 300 s and brought the tile back, and it ignores a reset the stream
+  survives. The k72 re-login and power-cycle checks are pending Patrick's OK.
+- **#89:** GPU-first encoder order kept. Seven Skylake hangs were all in the
+  compositor's render engine, and only three, in two events, overlapped a
+  VA-API encode ([recording.md](recording.md)).
+- Blocked or moved: AMD and NVIDIA encode (#138), the headphone and Bluetooth
+  listening test (#212).
+
 ## Screen recording acceptance sweep (#87) — 2026-10-19
 
 The [#87 acceptance receipt](evidence/2026-10-19-recording-acceptance-87.md)
