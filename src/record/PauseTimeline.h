@@ -14,6 +14,11 @@ namespace putgd::record {
 // by up to a frame and by the audio buffer size between the two.
 class PauseTimeline {
 public:
+    // With a frame rate, a closed interval lasts a whole number of frames (the
+    // nearest to the paused time), so frames after it stay on the frame grid
+    // the export's fps filter samples; off the grid they moved by up to half a
+    // frame there while the audio did not.
+    void setFrameRate(int fps) { std::lock_guard lock(mutex_); fps_ = fps; }
     // Opens an interval at `running`; ignored while one is open.
     void pause(std::int64_t running);
     // Closes the open interval at `running` (at least where it opened).
@@ -30,6 +35,7 @@ private:
     mutable std::mutex mutex_;
     std::vector<std::pair<std::int64_t, std::int64_t>> closed_;
     std::int64_t open_ = -1;
+    int fps_ = 0;
 };
 
 // Keeps audio timestamps from running away. pulsesrc on the monitor of a

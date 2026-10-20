@@ -9,7 +9,12 @@ void PauseTimeline::pause(std::int64_t running) {
 void PauseTimeline::resume(std::int64_t running) {
     std::lock_guard lock(mutex_);
     if (open_ < 0) return;
-    closed_.emplace_back(open_, std::max(open_, running));
+    std::int64_t length = std::max<std::int64_t>(0, running - open_);
+    if (fps_ > 0) {
+        const std::int64_t frames = (length * fps_ + 500'000'000) / 1'000'000'000;
+        length = frames * 1'000'000'000 / fps_;
+    }
+    closed_.emplace_back(open_, open_ + length);
     open_ = -1;
 }
 void PauseTimeline::reset() {

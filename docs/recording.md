@@ -524,7 +524,10 @@ Resume record one interval of pipeline running time that both branches share
 is dropped (an audio buffer reaching into it is dropped whole), and everything
 after it moves back by the paused time, the same for both tracks, so the
 working clip's timeline excludes paused time and the audio-minus-video offset
-after a resume is the one before it. Before #130 each branch measured its own
+after a resume is the one before it. The interval lasts a whole number of frames (the
+nearest to the paused time), so frames after it stay on the frame grid that
+the export's `fps` filter samples; off the grid they moved by up to half a
+frame in the export while the audio didn't. Before #130 each branch measured its own
 gap from its first buffer after the resume and continued one step after its
 last kept buffer (a frame for video, a fixed 20 ms for 10 ms audio buffers),
 which stepped the offset by −16 to +30 ms and left a 10 ms hole in the

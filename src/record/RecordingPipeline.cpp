@@ -171,6 +171,7 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
     video_.firstPassed = -1; video_.lastPassed = -1; video_.lateness = {}; video_.clock.reset();
     audio_.firstPassed = -1; audio_.lastPassed = -1; audio_.lateness = {}; audio_.clock.reset();
     timeline_.reset();
+    timeline_.setFrameRate(options.fps);
     frameClock_ = {};
     frameClock_.compositorTimes = qEnvironmentVariable("PUTGD_RECORD_PIPEWIRE_TIMESTAMPS") == "compositor";
     clockName_.clear();

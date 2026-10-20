@@ -75,6 +75,22 @@ private slots:
         QVERIFY(!timeline.paused());
         QCOMPARE(timeline.map(2000 * ms, 0), std::optional<std::int64_t>(2000 * ms));
     }
+    void withAFrameRatePausesLastWholeFrames() {
+        PauseTimeline timeline;
+        timeline.setFrameRate(30);
+        // 3.010 s paused is 90.3 frames: the interval lasts 90 frames, exactly 3 s.
+        timeline.pause(1000 * ms);
+        timeline.resume(4010 * ms);
+        QCOMPARE(timeline.pausedTotal(), 3000 * ms);
+        // A frame on the 30 fps grid after the resume lands on the same grid.
+        const std::int64_t frame = 1'000'000'000 / 30;
+        const std::int64_t after = 4000 * ms + 4 * frame;
+        QCOMPARE(*timeline.map(after, 0), 1000 * ms + 4 * frame);
+        // A pause shorter than half a frame removes nothing.
+        timeline.pause(6000 * ms);
+        timeline.resume(6010 * ms);
+        QCOMPARE(timeline.pausedTotal(), 3000 * ms);
+    }
     // #129: pulsesrc on a suspended null sink stamped audio ~2^32 segments ahead.
     void audioStampedInTheFutureIsReanchoredToItsArrival() {
         AudioClockGuard guard;
