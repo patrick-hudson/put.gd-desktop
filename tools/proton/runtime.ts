@@ -175,8 +175,8 @@ export async function upload(ctx: Context, request: JsonObject): Promise<JsonObj
             if (error instanceof NodeWithSameNameExistsValidationError) return status('collision', { error: error.isUnfinishedUpload ? failure('upload_draft_conflict') : {} });
             if (deadlineExpired) return status('unknown', { error: deadlineError() });
             const refused = serviceFailure(error, 'operation_unknown', ctx.auth.isLoggedIn());
-            // A plan-limit refusal settles as failed only when the name is still free afterwards (#201).
-            if (refused.code === 'destination_file_too_large_for_plan' && await nameStillFree(ctx, folder.uid, request.candidate))
+            // A plan or quota refusal settles as failed only when the name is still free afterwards (#201).
+            if (['destination_file_too_large_for_plan', 'quota_exceeded'].includes(refused.code) && await nameStillFree(ctx, folder.uid, request.candidate))
                 return status('failed', { error: refused });
             return status('unknown', { error: refused });
         }
