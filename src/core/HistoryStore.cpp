@@ -260,6 +260,13 @@ std::optional<Operation> HistoryStore::lastUpload(const QString& profileId,Error
  if(!q.next())return {};
  auto op=Operation::fromJson(decode(q.value(0)));relocate(op);return op;
 }
+QStringList HistoryStore::journaledOperations(Error* error) const {
+ QStringList result;if(error_) {if(error)*error=error_;return result;}
+ QSqlQuery q(db_);
+ if(!q.exec("SELECT id FROM operations WHERE EXISTS(SELECT 1 FROM json_each(operations.data,'$.items') AS item WHERE json_extract(item.value,'$.uploadJournal.uploadId') IS NOT NULL)")) {if(error)*error=sqlError();return result;}
+ while(q.next())result.append(q.value(0).toString());
+ return result;
+}
 Error HistoryStore::expireBefore(const QString& timestamp) {
  if(error_)return error_;
  if(!db_.transaction())return sqlError();

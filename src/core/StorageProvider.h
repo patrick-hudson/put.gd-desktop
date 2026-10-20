@@ -48,6 +48,15 @@ struct UploadRequest {
  // A resumable upload awaits this durable acknowledgement before it relies on
  // remote state it created; an empty journal means none remains to resume or abort.
  std::function<void(const QJsonObject&,std::function<void(Error)>)> checkpoint={};
+ // How many extra requests a resumable upload may run beside its own right now:
+ // upload slots other files leave idle (#174). The adapter polls it with the most
+ // it could use; the answer can drop to zero at any time, and the upload then lets
+ // its requests in flight finish and starts no more beyond it.
+ std::function<int(int wanted)> extraLanes={};
+ // Informational per-request records for diagnostics (#148): bounded fields only,
+ // never names, object keys, URLs, credentials or payload. "event" is "part" (one
+ // successful part request, kept with debug logging) or "complete".
+ std::function<void(const QJsonObject&)> trace={};
 };
 struct UploadResult { QString status; StorageReceipt receipt; Error error; }; // uploaded, collision, failed, unknown
 struct StatResult { QString status; StorageReceipt receipt; Error error; }; // own, foreign, missing, unknown
@@ -96,6 +105,10 @@ public:
  virtual void stat(const StorageReceipt&,std::function<void(StatResult)>)=0;
  virtual void reconcile(const UploadRequest&,std::function<void(StatResult)>)=0;
  virtual void remove(const DeleteRequest&,DurableCheckpoint,std::function<void(DeleteResult)>)=0;
+ // Removes the remote state a failed upload's journal (UploadRequest::resume) still
+ // holds, such as an S3 multipart upload's parts, once no Retry can resume it (#146).
+ // Best effort; an empty error means nothing of it remains.
+ virtual void abandonUpload(const Destination&,const QJsonObject& /*journal*/,std::function<void(Error)> reply) {reply({});}
 };
 class ProviderRegistry {
 public:

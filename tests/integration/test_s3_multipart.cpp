@@ -1,5 +1,10 @@
 #include "fixtures/S3Fixture.h"
+#include "fixtures/U2Fixtures.h"
+#include "core/Log.h"
+#include <QDir>
 #include <QRandomGenerator>
+#include <QRegularExpression>
+#include <QScopeGuard>
 #include <algorithm>
 #include <mutex>
 using namespace putgd::test;
@@ -38,6 +43,33 @@ int count(S3Fixture& f, const QString& method, const QString& query) {
     int matches = 0;
     for (auto event : f.events(method)) matches += event.toObject()["path"].toString().contains(query);
     return matches;
+}
+// An upload left running while the test drives the fixture.
+struct Pending {
+    std::shared_ptr<std::promise<UploadResult>> promise = std::make_shared<std::promise<UploadResult>>();
+    std::future<UploadResult> future = promise->get_future();
+    bool ready() const { return future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready; }
+};
+std::unique_ptr<Pending> start(S3Fixture& f, const UploadRequest& request) {
+    auto pending = std::make_unique<Pending>();
+    f.provider.upload(request, [promise = pending->promise](UploadResult result) { promise->set_value(std::move(result)); });
+    return pending;
+}
+struct Traces {
+    std::mutex mutex;
+    QList<QJsonObject> records;
+    void attach(UploadRequest& request) {
+        request.trace = [this](const QJsonObject& record) { std::lock_guard lock(mutex); records.append(record); };
+    }
+    QList<QJsonObject> all() { std::lock_guard lock(mutex); return records; }
+};
+QByteArray readLogs(const QString& directory) {
+    QByteArray bytes;
+    for (const auto& name : QDir(directory).entryList({"putgd-*.jsonl"}, QDir::Files, QDir::Name)) {
+        QFile file(directory + "/" + name);
+        if (file.open(QIODevice::ReadOnly)) bytes += file.readAll();
+    }
+    return bytes;
 }
 }
 class S3MultipartTest : public QObject {
@@ -314,6 +346,194 @@ private slots:
         QCOMPARE(abort["key"].toString(), QString("prefix é/old name.bin"));
         QCOMPARE(count(f, "POST", "uploads"), 1);
         QVERIFY(f.state()["uploads"].toObject().isEmpty());
+    }
+    void idleSlotsSendPartsInParallel() {
+        S3Fixture f(policy);
+        auto request = f.request("lanes.bin", synthetic(16 * mib));
+        // Part 1 waits at a barrier: with one lane, nothing else could go out.
+        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "PUT"}, {"query", "partNumber=1&"}, {"barrier", "first"}}}}});
+        request.extraLanes = [](int wanted) { return wanted; };
+        Journal journal;
+        journal.attach(request);
+        Traces traces;
+        traces.attach(request);
+        auto pending = start(f, request);
+        QTRY_VERIFY_WITH_TIMEOUT(parts(f, "2").size() == 1 && parts(f, "3").size() == 1 && parts(f, "4").size() == 1, 8000);
+        QVERIFY(!pending->ready());
+        f.control("/__release", {{"barrier", "first"}}, true);
+        QTRY_VERIFY_WITH_TIMEOUT(pending->ready(), 15000);
+        const auto result = pending->future.get();
+        QVERIFY2(result.status == "uploaded", qPrintable(result.error.code + ": " + result.error.message));
+        QCOMPARE(parts(f).size(), 4);
+        // The fixture refuses a completion whose parts are out of order (InvalidPart).
+        QVERIFY(result.receipt.concurrencyToken.endsWith("-4\""));
+        const auto stored = f.state()["objects"].toObject()["prefix é/lanes.bin"].toArray().last().toObject();
+        QCOMPARE(stored["blob"].toString(), request.artifact.sha256);
+        QCOMPARE(journal.all().size(), 3);
+        QVERIFY(journal.last().isEmpty());
+        // One record per part with S3's request IDs, then the completion's (#148).
+        const auto records = traces.all();
+        QCOMPARE(records.size(), 5);
+        QSet<int> numbers, lanes;
+        for (const auto& record : records.mid(0, 4)) {
+            QCOMPARE(record["event"].toString(), QString("part"));
+            const int number = record["partNumber"].toInt();
+            numbers.insert(number);
+            lanes.insert(record["lane"].toInt());
+            QCOMPARE(record["bytes"].toInteger(), number == 4 ? mib : 5 * mib);
+            QCOMPARE(record["attempt"].toInt(), 1);
+            QCOMPARE(record["requestId"].toString(), QString("SYNTHPART%1").arg(number, 4, 10, QChar('0')));
+            QCOMPARE(record["extendedRequestId"].toString(), QString("synthetic+Part/Id2%1=").arg(number));
+            QVERIFY(record.contains("elapsedMs"));
+        }
+        QCOMPARE(numbers, (QSet<int>{1, 2, 3, 4}));
+        QCOMPARE(lanes.size(), 4);
+        QCOMPARE(records[4]["event"].toString(), QString("complete"));
+        QCOMPARE(records[4]["parts"].toInt(), 4);
+        QCOMPARE(records[4]["requestId"].toString(), QString("SYNTHDONE0001"));
+        QCOMPARE(records[4]["extendedRequestId"].toString(), QString("synthetic+Complete/Id2="));
+        // Nothing that names the object, its upload or the destination.
+        for (const auto& record : records) {
+            const auto text = QJsonDocument(record).toJson(QJsonDocument::Compact);
+            for (const auto& value : {QByteArray("lanes.bin"), QByteArray("prefix"), QByteArray("synthetic-upload-"), QByteArray("isolated-fixture"), f.endpoint.toUtf8()})
+                QVERIFY2(!text.contains(value), text.constData());
+        }
+    }
+    void reclaimedSlotsStopFurtherParts() {
+        S3Fixture f(policy);
+        auto request = f.request("handback.bin", synthetic(16 * mib));
+        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "PUT"}, {"query", "partNumber=1&"}, {"barrier", "held"}},
+                                      QJsonObject{{"method", "PUT"}, {"query", "partNumber=2&"}, {"delay", 1.0}}}}});
+        std::atomic_int lent{1};
+        request.extraLanes = [&lent](int wanted) { return qMin(wanted, lent.load()); };
+        auto pending = start(f, request);
+        QTRY_VERIFY_WITH_TIMEOUT(parts(f, "2").size() == 1, 8000);
+        // Another file takes the slot back: the borrowed lane finishes part 2 and stops.
+        lent = 0;
+        QTest::qWait(2000);
+        QVERIFY(parts(f, "3").isEmpty());
+        QVERIFY(!pending->ready());
+        f.control("/__release", {{"barrier", "held"}}, true);
+        QTRY_VERIFY_WITH_TIMEOUT(pending->ready(), 15000);
+        const auto result = pending->future.get();
+        QVERIFY2(result.status == "uploaded", qPrintable(result.error.code + ": " + result.error.message));
+        for (const auto* number : {"1", "2", "3", "4"}) QCOMPARE(parts(f, number).size(), 1);
+    }
+    void failedLaneStopsTheOthersAndAborts() {
+        S3Fixture f(policy);
+        auto request = f.request("lanefail.bin", synthetic(26 * mib));
+        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "PUT"}, {"query", "partNumber=2&"}, {"status", 403}}}}});
+        request.extraLanes = [](int wanted) { return wanted; };
+        Journal journal;
+        journal.attach(request);
+        const auto result = f.upload(request);
+        QCOMPARE(result.status, QString("failed"));
+        QCOMPARE(result.error.code, QString("s3_permission_denied"));
+        QCOMPARE(result.error.details["partNumber"].toInt(), 2);
+        QCOMPARE(count(f, "DELETE", "uploadId="), 1);
+        QVERIFY(f.state()["uploads"].toObject().isEmpty());
+        QVERIFY(journal.last().isEmpty());
+        // Lanes stop at the first error: no part goes out twice, and none after the last.
+        for (int number = 1; number <= 6; ++number) QVERIFY(parts(f, QString::number(number)).size() <= 1);
+    }
+    void retiredUploadIsAbortedOrReportsTheDenial() {
+        S3Fixture f(policy);
+        auto request = f.request("retired.bin", synthetic(11 * mib));
+        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "PUT"}, {"query", "partNumber=2"}, {"status", 403}},
+                                      QJsonObject{{"method", "DELETE"}, {"query", "uploadId="}, {"status", 403}}}}});
+        Journal journal;
+        journal.attach(request);
+        QCOMPARE(f.upload(request).status, QString("failed"));
+        const auto saved = journal.last();
+        QVERIFY(!saved["uploadId"].toString().isEmpty());
+        QCOMPARE(f.state()["uploads"].toObject().size(), 1);
+        auto abandon = [&](const QJsonObject& value) { return f.await<Error>([&](auto cb) { f.provider.abandonUpload(f.destination, value, cb); }); };
+        // A denial names the permission and leaves the upload.
+        f.control("/__rules", {{"rules", QJsonArray{QJsonObject{{"method", "DELETE"}, {"query", "uploadId="}, {"status", 403}}}}}, true);
+        const auto denied = abandon(saved);
+        QCOMPARE(denied.code, QString("s3_permission_denied"));
+        QCOMPARE(denied.details["requestStage"].toString(), QString("upload_abort"));
+        QCOMPARE(denied.details["requestId"].toString(), QString("SYNTHREQ0123ABCD"));
+        QVERIFY(denied.message.contains("s3:AbortMultipartUpload"));
+        QCOMPARE(f.state()["uploads"].toObject().size(), 1);
+        // Granted, S3 keeps no part; an upload already gone counts as aborted too.
+        f.control("/__rules", {{"rules", QJsonArray{}}}, true);
+        const auto aborted = abandon(saved);
+        QVERIFY2(!aborted, qPrintable(aborted.code));
+        QVERIFY(f.state()["uploads"].toObject().isEmpty());
+        QVERIFY(!abandon(saved));
+        // A journal outside this destination's prefix is refused without a request.
+        f.control("/__clear_events", {}, true);
+        auto foreign = saved;
+        foreign["key"] = "elsewhere/retired.bin";
+        QCOMPARE(abandon(foreign).code, QString("s3_multipart_invalid"));
+        QVERIFY(f.events("DELETE").isEmpty());
+        // A plan without a created upload has nothing to abort.
+        QVERIFY(!abandon({{"schemaVersion", 1}, {"partBytes", double(5 * mib)}}));
+    }
+    void debugLogRecordsPartsWithoutSecretsOrNames() {
+        QTemporaryDir dir;
+        logging::open(dir.filePath("logs"));
+        logging::setDebug(true);
+        auto closeLog = qScopeGuard([] { logging::setDebug(false); logging::close(); });
+        S3Fixture f(policy);
+        f.reset();
+        ProviderRegistry registry;
+        registry.add("s3", std::shared_ptr<StorageProvider>(&f.provider, [](StorageProvider*) {}));
+        auto document = configuration(dir.path());
+        document["profiles"] = QJsonArray{QJsonObject{{"id", f.destination.profileId}, {"label", "Synthetic fixture"}, {"provider", "s3"},
+            {"settings", f.destination.settings}, {"credentials", QJsonObject{{"mode", "session"}, {"reference", QJsonValue::Null}}}}};
+        auto actions = document["actions"].toObject();
+        for (const auto& action : Settings::actionNames()) {
+            auto route = actions[action].toObject();
+            route["profileId"] = f.destination.profileId;
+            actions[action] = route;
+        }
+        document["actions"] = actions;
+        SettingsService settings(dir.filePath("config.json"), [&registry](const auto& id, const auto& value) { return registry.validate(id, value); });
+        QVERIFY(settings.save(document, {}));
+        Source source;
+        source.payload.kind = "files";
+        source.payload.files = {fixture(dir.path(), "private-name-canary.bin", synthetic(11 * mib, 148))};
+        OperationService operations(dir.filePath("data"), settings, registry, source);
+        QTRY_VERIFY(operations.ready());
+        QString id;
+        operations.invoke("clipboard", [&](Error error, QJsonObject result) { QVERIFY(!error); id = result["operationId"].toString(); });
+        QTRY_VERIFY_WITH_TIMEOUT(!id.isEmpty() && HistoryStore(operations.databasePath()).operation(id).state == "completed", 30000);
+        operations.shutdown();
+        logging::flush();
+        const auto bytes = readLogs(dir.filePath("logs"));
+        QList<QJsonObject> partRecords, completions;
+        for (const auto& line : bytes.split('\n')) {
+            const auto record = QJsonDocument::fromJson(line).object();
+            if (record["operationId"] != id) continue;
+            if (record["message"] == "Multipart part uploaded") partRecords.append(record);
+            if (record["message"] == "Multipart upload completed") completions.append(record);
+        }
+        QCOMPARE(partRecords.size(), 3);
+        for (const auto& record : partRecords) {
+            QCOMPARE(record["level"].toString(), QString("debug"));
+            const auto fields = record["fields"].toObject();
+            QVERIFY(fields["partNumber"].toInt() >= 1);
+            QVERIFY(fields["bytes"].toInteger() > 0);
+            QCOMPARE(fields["attempt"].toInt(), 1);
+            QVERIFY(fields["requestId"].toString().startsWith("SYNTHPART"));
+            QVERIFY(fields["extendedRequestId"].toString().startsWith("synthetic+Part/"));
+        }
+        QCOMPARE(completions.size(), 1);
+        QCOMPARE(completions[0]["level"].toString(), QString("info"));
+        QCOMPARE(completions[0]["fields"].toObject()["requestId"].toString(), QString("SYNTHDONE0001"));
+        // Part records never name the file, its key, the upload or the endpoint.
+        for (const auto& record : partRecords + completions) {
+            const auto text = QJsonDocument(record).toJson(QJsonDocument::Compact);
+            for (const auto& value : {QByteArray("private-name-canary"), QByteArray("prefix"), QByteArray("synthetic-upload-"), QByteArray("isolated-fixture"), f.endpoint.toUtf8()})
+                QVERIFY2(!text.contains(value), text.constData());
+        }
+        // No secret, signature or signed URL reaches the log at all.
+        QVERIFY(!bytes.contains("putgd-synthetic-secret-not-a-real-key"));
+        QVERIFY(!bytes.contains("Credential=PUTGD_SYNTHETIC_ACCESS"));
+        QVERIFY(!QRegularExpression("(?i)signature=[0-9a-f]{16}").match(QString::fromUtf8(bytes)).hasMatch());
+        QVERIFY(!QRegularExpression("(?i)x-amz-(signature|credential|security-token)=[^&\\s\"<]+").match(QString::fromUtf8(bytes)).hasMatch());
     }
     void testConnectionProvesMultipartPermissions_data() {
         QTest::addColumn<QString>("method");
