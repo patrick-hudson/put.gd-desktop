@@ -33,6 +33,15 @@ public:
  // otherwise the clipboard outcome.
  static QString completionMessage(const QJsonObject& operation,bool hasLink);
  void invokeShortcut(const QString&);
+ // Builds a diagnostics package for one operation (#122); main wires it to
+ // DiagnosticsBundles. Failure notifications offer it when it is set.
+ void setDiagnosticsSaver(std::function<void(const QString& operationId,JsonReply)> saver) {saveDiagnostics_=std::move(saver);}
+ void saveDiagnostics(const QString& operationId);
+ // "Diagnostics package saved" with a Show in folder button.
+ void notifyDiagnosticsSaved(const QJsonObject& bundleResult);
+ // Opens the file manager with a saved package selected (FileManager1.ShowItems),
+ // or its folder when no file manager answers. Only put.gd's own package names.
+ static Error revealPackage(const QString& path);
 
 signals:
  void availabilityResolved();
@@ -44,7 +53,8 @@ private:
 #endif
  QString lastShortcutError_;
  QElapsedTimer shortcutFeedbackClock_;
- void notifyMessage(const QString&, const QString&, bool warning, const QUrl& link = {});
+ void notifyMessage(const QString&, const QString&, bool warning, const QUrl& link = {}, const QString& diagnosticsOperation = {}, const QString& revealPath = {});
+ std::function<void(const QString&,JsonReply)> saveDiagnostics_;
  void refreshActivity();
  void flashError();
  QTimer errorFlashTimer_,errorRecoveryTimer_,uploadRevealTimer_,uploadCompleteTimer_;

@@ -19,11 +19,20 @@
 #include <QUuid>
 #include <atomic>
 #include <cmath>
+#include <mutex>
 #include <utility>
 namespace putgd {
 namespace {
 QString category(const QString& mime) { if(mime.startsWith("image/")) return "images"; if(mime.startsWith("video/")) return "videos"; if(mime.startsWith("text/")) return "text"; return "other"; }
-std::atomic<qint64> availableOverride{-1};
+std::atomic<qint64> freeOverride{-1},totalOverride{-1};
+// Bytes of imports in progress per filesystem, so concurrent imports (#28) and a
+// recording's budget never both count the same free space.
+std::mutex reservationsMutex;QHash<QString,qint64> reservations;
+QString filesystem(const QString& path){QStorageInfo volume(path);return volume.isValid()?volume.rootPath():QStringLiteral("/");}
+struct Reservation {
+ QString key;qint64 bytes=0;
+ ~Reservation(){if(bytes<=0)return;std::lock_guard lock(reservationsMutex);if((reservations[key]-=bytes)<=0)reservations.remove(key);}
+};
 QString size(qint64 bytes) {
  constexpr double mib=1024.0*1024,gib=mib*1024,tib=gib*1024;
  if(bytes>=tib)return QString::number(bytes/tib,'f',1)+" TiB";
@@ -31,8 +40,25 @@ QString size(qint64 bytes) {
  return QString::number(qMax(1.0,std::ceil(bytes/mib)),'f',0)+" MiB";
 }
 }
-qint64 ArtifactStore::availableBytes() const {const auto override=availableOverride.load();if(override>=0)return override;QStorageInfo volume(root_);volume.refresh();return volume.isValid()?volume.bytesAvailable():-1;}
-void ArtifactStore::setAvailableBytesForTesting(qint64 bytes) {availableOverride.store(bytes);}
+QJsonObject ArtifactStore::DiskBudget::toJson() const {return {{"freeBytes",double(freeBytes)},{"totalBytes",double(totalBytes)},{"reserveBytes",double(reserveBytes)},{"reservedBytes",double(reservedBytes)},{"availableBytes",double(available())}};}
+qint64 ArtifactStore::reserveFor(qint64 total) {constexpr qint64 gib=1LL<<30;return qMax(gib,qMin(total>0?total*15/100:0,4*gib));}
+ArtifactStore::DiskBudget ArtifactStore::diskBudget(const QString& path) {
+ DiskBudget budget;QStorageInfo volume(path);volume.refresh();
+ budget.freeBytes=freeOverride.load()>=0?freeOverride.load():volume.isValid()?volume.bytesAvailable():-1;
+ budget.totalBytes=totalOverride.load()>=0?totalOverride.load():volume.isValid()?volume.bytesTotal():-1;
+ budget.reserveBytes=reserveFor(budget.totalBytes);
+ std::lock_guard lock(reservationsMutex);budget.reservedBytes=reservations.value(filesystem(path));
+ return budget;
+}
+std::shared_ptr<void> ArtifactStore::reserveDisk(const QString& path,qint64 bytes,DiskBudget* seen) {
+ const auto key=filesystem(path);auto budget=diskBudget(path);
+ std::lock_guard lock(reservationsMutex);budget.reservedBytes=reservations.value(key);
+ if(seen)*seen=budget;
+ if(budget.freeBytes>=0&&bytes>budget.available())return {};
+ reservations[key]+=bytes;
+ auto hold=std::make_shared<Reservation>();hold->key=key;hold->bytes=bytes;return hold;
+}
+void ArtifactStore::setDiskForTesting(qint64 freeBytes,qint64 totalBytes) {freeOverride.store(freeBytes);totalOverride.store(totalBytes);}
 QJsonObject Artifact::toJson() const {return {{"id",id},{"path",path},{"name",name},{"mime",mime},{"category",category},{"bytes",double(bytes)},{"sha256",sha256},{"originalFile",originalFile},{"previewPath",previewPath},{"namingPrepared",namingPrepared}};}
 Artifact Artifact::fromJson(const QJsonObject& o) {return {o["id"].toString(),o["path"].toString(),o["name"].toString(),o["mime"].toString(),o["category"].toString(),o["sha256"].toString(),qint64(o["bytes"].toDouble()),o["originalFile"].toBool(),o["previewPath"].toString(),o["namingPrepared"].toBool()};}
 ArtifactStore::ArtifactStore(QString root):root_(std::move(root)) {QDir().mkpath(root_); QFile::setPermissions(root_,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner);}
@@ -122,10 +148,14 @@ Acquisition ArtifactStore::acquire(const QString& op,const ClipboardPayload& p,c
   }
   required+=source.size();
  }
- const auto available=availableBytes();
- if(available>=0&&required>available-reservedFreeBytes){
-  result.error={"disk_space_insufficient",QStringLiteral("Not enough free disk space to import: it needs %1 and %2 is free in put.gd's data folder, which keeps %3 spare. Free some space and try again.").arg(size(required),size(qMax<qint64>(0,available)),size(reservedFreeBytes)),{{"requiredBytes",double(required)},{"availableBytes",double(qMax<qint64>(0,available))}}};
-  QDir(staging).removeRecursively();return result;
+ // Check and reserve in one step, so a concurrent import sees these bytes as taken.
+ DiskBudget budget;const auto hold=reserveDisk(root_,required,&budget);
+ {
+  if(!hold){
+   result.error={"disk_space_insufficient",QStringLiteral("Not enough free disk space to import: it needs %1, and %2 can be used in put.gd's data folder (%3 free, with %4 kept free for the system).").arg(size(required),size(budget.available()),size(budget.freeBytes),size(budget.reserveBytes)),
+    {{"requiredBytes",double(required)},{"availableBytes",double(budget.available())},{"freeBytes",double(budget.freeBytes)},{"reserveBytes",double(budget.reserveBytes)}}};
+   QDir(staging).removeRecursively();return result;
+  }
  }
  for(int i=0;i<count;++i) {
   Artifact a; a.id=QUuid::createUuid().toString(QUuid::WithoutBraces); a.path=staging+"/"+a.id;

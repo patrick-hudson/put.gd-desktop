@@ -17,7 +17,9 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'tools/releases'))
 import quiet_git  # noqa: F401  (disables git background maintenance, #99)
 import collect
+import debug_symbols
 import proton_sources
+from debug_fixture import build_tree
 from stage_artifacts import stage
 from source_archive import create_archive
 
@@ -104,7 +106,19 @@ class ReleaseCollection(unittest.TestCase):
                               'identityMatchedPrograms': ['putgd', 'putgd-cli', 'putgd-ui', 'putgd-capture', 'putgd-s3-worker']}
         (directory / 'source-build-results.json').write_text(json.dumps(self.source_result))
         proton_sources.prepare(self.proton_catalog, self.inputs / 'proton-sources', bundle)
+        self.stage_debug_symbols(identity)
         self.output = self.root / 'build/output'
+
+    def stage_debug_symbols(self, identity):
+        # Each package job stages its split debug files beside its package (#124).
+        for index, label in enumerate(debug_symbols.LABELS):
+            directory = self.inputs / debug_symbols._artifact(label)
+            for name in ('debug-symbols-' + label + '.tar', 'debug-symbols-' + label + '.json'):
+                (directory / name).unlink(missing_ok=True)
+            tree = self.root / 'build/debug-trees' / label
+            shutil.rmtree(tree, ignore_errors=True)
+            build_tree(tree / 'build', tree / 'installed', identity, format(index + 10, 'x'))
+            debug_symbols.stage(tree / 'build', tree / 'installed', directory, label)
 
     def git_show_commit_time(self):
         return subprocess.check_output(['git', '-C', str(self.root), 'show', '-s', '--format=%ct',
@@ -124,7 +138,8 @@ class ReleaseCollection(unittest.TestCase):
         self.assertIn('putgd-0.1.1-rc.1-fedora44-x86_64.rpm', files)
         self.assertIn('putgd-0.1.1-rc.1-x86_64.AppImage', files)
         self.assertIn('putgd-0.1.1-rc.1-appimage-media-source.tar.gz', files)
-        self.assertEqual(len(lines), 13)
+        self.assertEqual(len(lines), 14)
+        self.assertIn('putgd-0.1.1-rc.1-debug-x86_64.tar.zst', files)
         self.assertEqual((self.output / 'putgd-0.1.1-rc.1-source.tar.gz').read_bytes(),
                          (self.inputs / 'release-native-ubuntu24.04' / self.source_receipt['artifact']['file']).read_bytes())
         combined = self.output / 'putgd-0.1.1-rc.1-release.zip'
@@ -134,7 +149,7 @@ class ReleaseCollection(unittest.TestCase):
         expected_time = (utc.year, utc.month, utc.day, utc.hour, utc.minute, utc.second - utc.second % 2)
         with zipfile.ZipFile(combined) as archive:
             self.assertTrue(all(item.date_time == expected_time for item in archive.infolist()))
-            underlying = files - {combined.name, 'SHA256SUMS', *proton_sources.PART_NAMES}
+            underlying = files - {combined.name, 'SHA256SUMS', *proton_sources.PART_NAMES, 'putgd-0.1.1-rc.1-debug-x86_64.tar.zst'}
             self.assertEqual(set(archive.namelist()), underlying | {'SHA256SUMS'})
             for line in archive.read('SHA256SUMS').decode().splitlines():
                 digest, name = line.split('  ', 1)
@@ -194,6 +209,20 @@ class ReleaseCollection(unittest.TestCase):
         with zipfile.ZipFile(self.output / 'putgd-0.1.1-rc.1-release.zip') as archive:
             self.assertIn(proton_sources.CATALOG_NAME, archive.namelist())
             self.assertTrue(set(proton_sources.PART_NAMES).isdisjoint(archive.namelist()))
+
+    def test_missing_or_mismatched_debug_symbols_rejected_before_output(self):
+        directory = self.inputs / 'release-native-fedora44'
+        (directory / 'debug-symbols-fedora44.json').rename(directory / 'kept.json')
+        with self.assertRaisesRegex(ValueError, 'not staged for this build: fedora44'):
+            self.run_collection()
+        self.assertFalse(self.output.exists())
+        (directory / 'kept.json').rename(directory / 'debug-symbols-fedora44.json')
+        manifest = json.loads((directory / 'debug-symbols-fedora44.json').read_text())
+        manifest['build']['gitCommit'] = 'f' * 40
+        (directory / 'debug-symbols-fedora44.json').write_text(json.dumps(manifest))
+        with self.assertRaisesRegex(ValueError, 'different source identity: fedora44'):
+            self.run_collection()
+        self.assertFalse(self.output.exists())
 
     def test_corrupt_source_transport_rejected_before_output(self):
         path = self.inputs / 'proton-sources' / proton_sources.PART_NAMES[0]
@@ -351,13 +380,14 @@ class ReleaseCollection(unittest.TestCase):
         receipt = json.loads(receipt_path.read_text())
         receipt['build'].update(version=version, packageVersion=self.release['packageVersion'])
         receipt_path.write_text(json.dumps(receipt))
+        self.stage_debug_symbols(receipt['build'])
         directory = self.inputs / 'release-native-ubuntu24.04'
         archive = directory / ('putgd-' + version + '-source.tar.gz')
         self.source_receipt = create_archive(self.root, archive, receipt['build'])
         (directory / 'source-archive.json').write_text(json.dumps(self.source_receipt))
         return tag, archive
 
-    def test_nightly_cli_preserves_all_fourteen_raw_assets_and_exact_compiled_source(self):
+    def test_nightly_cli_preserves_all_fifteen_raw_assets_and_exact_compiled_source(self):
         tag, source = self.nightly_inputs()
         (self.inputs / 'credentials.txt').write_text('synthetic excluded fixture')
         argv = ['collect.py', '--tag', tag, '--root', str(self.root),
@@ -367,10 +397,11 @@ class ReleaseCollection(unittest.TestCase):
             collect.main()
         files = {path.name for path in self.output.iterdir()}
         from release_bundle import expected_members
+        debug_name = debug_symbols.asset_name(self.release['version'])
         expected = set(expected_members(self.release['version']) +
-                       ['putgd-' + self.release['version'] + '-release.zip', 'SHA256SUMS', *proton_sources.PART_NAMES])
+                       ['putgd-' + self.release['version'] + '-release.zip', 'SHA256SUMS', *proton_sources.PART_NAMES, debug_name])
         self.assertEqual(files, expected)
-        self.assertEqual(len(files), 14)
+        self.assertEqual(len(files), 15)
         self.assertEqual((self.output / source.name).read_bytes(), source.read_bytes())
         builds = json.loads((self.output / 'release-builds.json').read_text())
         self.assertEqual(builds['release']['channel'], 'nightly')
@@ -378,8 +409,9 @@ class ReleaseCollection(unittest.TestCase):
         self.assertEqual(builds['receipts']['sourceBuild']['compiledBuild']['sourceProvenance'], 'supplied')
         self.assertNotEqual(builds['receipts']['sourceBuild']['compiledBuild']['version'], self.release['version'])
         with zipfile.ZipFile(self.output / ('putgd-' + self.release['version'] + '-release.zip')) as archive:
-            for name in expected - {'SHA256SUMS', 'putgd-' + self.release['version'] + '-release.zip', *proton_sources.PART_NAMES}:
+            for name in expected - {'SHA256SUMS', 'putgd-' + self.release['version'] + '-release.zip', *proton_sources.PART_NAMES, debug_name}:
                 self.assertEqual(archive.read(name), (self.output / name).read_bytes())
+            self.assertNotIn(debug_name, archive.namelist())
             self.assertNotIn('credentials.txt', archive.namelist())
         for line in (self.output / 'SHA256SUMS').read_text().splitlines():
             digest, name = line.split('  ', 1)

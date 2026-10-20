@@ -151,7 +151,8 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
         // The stream arrives at the compositor's pace; videorate holds the
         // configured frame rate, and a region is cropped out of the shared
         // monitor (crop values are stream-relative).
-        description = QStringLiteral("%1 name=src %2path=%3 %4keepalive-time=1000 resend-last=true ! videorate ! video/x-raw,framerate=%5/1 ! videoconvert n-threads=2").arg(frameSource.isEmpty() ? QStringLiteral("pipewiresrc") : frameSource, options.pipewireFd >= 0 ? QStringLiteral("fd=%1 ").arg(options.pipewireFd) : QString()).arg(options.pipewireNode).arg(frameSource.isEmpty() ? QStringLiteral("do-timestamp=true ") : QString()).arg(options.fps);
+        description = pipewireSourceDescription(frameSource.isEmpty() ? QStringLiteral("pipewiresrc") : frameSource, options.pipewireNode, options.pipewireFd, frameSource.isEmpty())
+            + QStringLiteral(" ! videorate ! video/x-raw,framerate=%1/1 ! videoconvert n-threads=2").arg(options.fps);
         if (options.crop.isValid()) description += QStringLiteral(" ! videocrop left=%1 top=%2 right=%3 bottom=%4").arg(options.crop.x()).arg(options.crop.y()).arg(std::max(0, options.rect.width() - options.crop.x() - options.crop.width())).arg(std::max(0, options.rect.height() - options.crop.y() - options.crop.height()));
     } else if (options.window) description = QStringLiteral("ximagesrc name=src xid=%1 use-damage=false show-pointer=true ! video/x-raw,framerate=%2/1 ! videoconvert n-threads=2").arg(options.window).arg(options.fps);
     else description = QStringLiteral("ximagesrc name=src use-damage=false show-pointer=true startx=%1 starty=%2 endx=%3 endy=%4 ! video/x-raw,framerate=%5/1 ! videoconvert n-threads=2").arg(options.rect.x()).arg(options.rect.y()).arg(options.rect.x() + options.rect.width() - 1).arg(options.rect.y() + options.rect.height() - 1).arg(options.fps);

@@ -31,6 +31,44 @@ else()
 endif()
 
 find_package(Threads REQUIRED)
+# Release builds keep debug information, split out of each product binary into
+# <file>.debug before anything hashes or installs it (#124, docs/diagnostics.md).
+# AUTO splits Release builds; ON also splits other build types (a development
+# build with the crash trigger, to rehearse symbolization); OFF never splits.
+set(PUTGD_SPLIT_DEBUG "AUTO" CACHE STRING "Split debug information into <binary>.debug: AUTO (Release), ON or OFF")
+set_property(CACHE PUTGD_SPLIT_DEBUG PROPERTY STRINGS AUTO ON OFF)
+set(putgd_split_debug OFF)
+if(NOT MSVC AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND (PUTGD_SPLIT_DEBUG STREQUAL "ON" OR (PUTGD_SPLIT_DEBUG STREQUAL "AUTO" AND CMAKE_BUILD_TYPE STREQUAL "Release")))
+  find_program(PUTGD_OBJCOPY NAMES objcopy REQUIRED)
+  target_compile_options(putgd_build_options INTERFACE -g)
+  set(putgd_split_debug ON)
+elseif(NOT PUTGD_SPLIT_DEBUG MATCHES "^(AUTO|ON|OFF)$")
+  message(FATAL_ERROR "PUTGD_SPLIT_DEBUG must be AUTO, ON or OFF")
+endif()
+# The built-in crash handler (#124): every product executable links this object
+# library, which installs the handler before main. Sanitizer builds compile it
+# disabled; the test-only crash trigger exists only in development builds.
+if(CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo|MinSizeRel)$" OR NOT PUTGD_RELEASE_TAG STREQUAL "")
+  set(putgd_crash_trigger_default OFF)
+else()
+  set(putgd_crash_trigger_default ON)
+endif()
+option(PUTGD_CRASH_TRIGGER "Development builds: PUTGD_TEST_CRASH crashes a chosen executable on purpose" ${putgd_crash_trigger_default})
+if(PUTGD_CRASH_TRIGGER AND (CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo|MinSizeRel)$" OR NOT PUTGD_RELEASE_TAG STREQUAL ""))
+  message(FATAL_ERROR "The test-only crash trigger is never compiled into release builds")
+endif()
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  add_library(putgd_crash OBJECT src/core/CrashHandler.cpp)
+  set_target_properties(putgd_crash PROPERTIES POSITION_INDEPENDENT_CODE ON)
+  target_include_directories(putgd_crash PUBLIC src)
+  target_link_libraries(putgd_crash PUBLIC putgd_build_options putgd_build_identity Threads::Threads)
+  if(NOT PUTGD_SANITIZER STREQUAL "")
+    target_compile_definitions(putgd_crash PUBLIC PUTGD_CRASH_SANITIZED=1)
+  endif()
+  if(PUTGD_CRASH_TRIGGER)
+    target_compile_definitions(putgd_crash PUBLIC PUTGD_CRASH_TRIGGER=1)
+  endif()
+endif()
 add_library(putgd_s3_runtime STATIC src/storage/s3/SdkRuntime.cpp src/storage/s3/TlsCompatibility.cpp)
 set_target_properties(putgd_s3_runtime PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(putgd_s3_runtime PUBLIC src)
@@ -57,7 +95,7 @@ endif()
 
 
 # The persistent log (#74): Qt Core only, so every helper supervisor can link it.
-add_library(putgd_log STATIC src/core/Log.cpp src/core/RunMarker.cpp)
+add_library(putgd_log STATIC src/core/Log.cpp src/core/RunMarker.cpp src/core/CrashRecord.cpp)
 set_target_properties(putgd_log PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(putgd_log PUBLIC src)
 target_link_libraries(putgd_log PUBLIC Qt6::Core putgd_build_options)
@@ -376,6 +414,26 @@ if(PUTGD_RECORDING AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
   endif()
 endif()
 
+# Each product binary gets the crash handler and, in Release builds, its debug
+# information moved to <file>.debug with a .gnu_debuglink back to it. This runs
+# at link time, before the install step hashes the S3 module or the AppImage
+# inventories its files; tools/releases/debug_symbols.py collects the .debug
+# files by GNU build ID for the release's debug asset.
+foreach(product putgd putgd-ui putgd-capture putgd-kde-region putgd-record putgd-s3-worker putgd-cli putgd_s3_module)
+  if(NOT TARGET ${product})
+    continue()
+  endif()
+  if(TARGET putgd_crash AND NOT product MATCHES "^(putgd-cli|putgd_s3_module)$")
+    target_link_libraries(${product} PRIVATE putgd_crash)
+  endif()
+  if(putgd_split_debug)
+    add_custom_command(TARGET ${product} POST_BUILD
+      COMMAND "${PUTGD_OBJCOPY}" --only-keep-debug --compress-debug-sections=zlib "$<TARGET_FILE:${product}>" "$<TARGET_FILE:${product}>.debug"
+      COMMAND "${PUTGD_OBJCOPY}" --strip-debug "--add-gnu-debuglink=$<TARGET_FILE:${product}>.debug" "$<TARGET_FILE:${product}>"
+      VERBATIM)
+  endif()
+endforeach()
+
 add_subdirectory(packaging/linux)
 
 option(PUTGD_PHYSICAL_BENCHMARKS "Build opt-in physical desktop benchmark drivers" OFF)
@@ -693,6 +751,8 @@ if(BUILD_TESTING)
   target_link_libraries(s3_upload_probe PRIVATE putgd_s3 putgd_app)
   add_executable(operations_upload_probe EXCLUDE_FROM_ALL tests/performance/operations_upload_probe.cpp)
   target_link_libraries(operations_upload_probe PRIVATE putgd_s3 putgd_app)
+  add_executable(s3_live_probe EXCLUDE_FROM_ALL tests/performance/s3_live_probe.cpp)
+  target_link_libraries(s3_live_probe PRIVATE putgd_s3 putgd_app)
   add_executable(test_public_url tests/unit/test_public_url.cpp)
   target_link_libraries(test_public_url PRIVATE putgd_s3 Qt6::Test)
   add_test(NAME public_url COMMAND test_public_url)
@@ -831,6 +891,19 @@ if(BUILD_TESTING)
   add_test(NAME logging_contract COMMAND test_logging)
   set_tests_properties(logging_contract PROPERTIES TIMEOUT 120)
   # Diagnostics packages: contents, redaction, size limit and the default folder (#74 §3).
+  if(TARGET putgd_crash)
+    add_library(test_crash_module MODULE tests/fixtures/crash_module.cpp)
+    add_executable(test_crash_handler tests/unit/test_crash_handler.cpp)
+    target_include_directories(test_crash_handler PRIVATE src tests)
+    target_link_libraries(test_crash_handler PRIVATE putgd_crash putgd_log Qt6::Test ${CMAKE_DL_LIBS})
+    target_compile_definitions(test_crash_handler PRIVATE PUTGD_CRASH_MODULE="$<TARGET_FILE:test_crash_module>")
+    add_dependencies(test_crash_handler test_crash_module)
+    add_test(NAME crash_handler_contract COMMAND test_crash_handler)
+  endif()
+  add_executable(test_diagnostics_upload tests/unit/test_diagnostics_upload.cpp)
+  target_include_directories(test_diagnostics_upload PRIVATE src tests)
+  target_link_libraries(test_diagnostics_upload PRIVATE putgd_app Qt6::Test)
+  add_test(NAME diagnostics_upload_contract COMMAND test_diagnostics_upload)
   add_executable(test_diagnostics_bundle tests/unit/test_diagnostics_bundle.cpp)
   target_include_directories(test_diagnostics_bundle PRIVATE src tests)
   target_link_libraries(test_diagnostics_bundle PRIVATE putgd_app Qt6::Network Qt6::Test)

@@ -62,8 +62,10 @@ int LocalServer::replyDeadlineMs(const QString& method) {
  constexpr int base=15000;
  if(method=="recording.stop")return recording::helperStopMs+base;
  if(QStringList{"recording.capabilities","recording.prepare","recording.select","recording.start","recording.pause","recording.resume","recording.raise","recording.overlay","recording.preview"}.contains(method))return recording::helperCommandMs+base;
- // Reading the logs and compressing up to 20 MiB stays well inside this.
- if(method=="diagnostics.bundle")return 45000;
+ // Reading the logs and compressing up to 20 MiB stays well inside 45 s; an
+ // upload adds the destination test and the upload itself (#123).
+ if(method=="diagnostics.bundle")return 600000;
+ if(method=="diagnostics.uploadTarget")return 300000;
  return base;
 }
 QJsonObject LocalServer::response(const QString& requestId,const Error& error,const QJsonObject& result) {return {{"schemaVersion",1},{"requestId",requestId},{"ok",!error},{"result",error?QJsonObject{}:result},{"error",error.toJson()}};}
@@ -188,11 +190,43 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   if(!setup_) {reply({"setup_unavailable","This resident has no setup service",{}},{});return;}
   setup_->inspect(p["id"].toString(),std::move(reply));return;
  }
- // A diagnostics package, saved locally only (#74 §3, docs/diagnostics.md).
+ // A diagnostics package, always saved locally first, then optionally
+ // uploaded to a working destination (#74 §3, #123, docs/diagnostics.md).
+ // notify (#122): after saving, the resident posts "diagnostics saved" with Show in folder.
  if(method=="diagnostics.bundle") {
-  BundleRequest bundle;if(auto error=DiagnosticsBundles::parse(p,bundle)){reply(error,{});return;}
+  auto params=p;const auto notify=params.take("notify");
+  BundleRequest bundle;if(auto error=DiagnosticsBundles::parse(params,bundle)){reply(error,{});return;}
+  if(!(notify.isUndefined()||notify.isBool())||(notify.toBool()&&bundle.preview)){reply(invalid(),{});return;}
   if(!bundles_){reply({"diagnostics_unavailable","This resident cannot create diagnostics packages",{}},{});return;}
-  bundles_->create(bundle,std::move(reply));return;
+  if(!notify.toBool()){bundles_->create(bundle,std::move(reply));return;}
+  QPointer<LocalServer> guarded(this);
+  bundles_->create(bundle,[guarded,reply=std::move(reply)](Error error,QJsonObject result){if(!error&&guarded&&guarded->diagnosticsSaved_)guarded->diagnosticsSaved_(result);reply(error,result);});return;
+ }
+ // Show in folder for a saved package: the file manager selects it (#122).
+ if(method=="diagnostics.reveal") {
+  if(!fields(p,{"path"})||!string(p,"path",4096)){reply(invalid(),{});return;}
+  if(!revealPackage_){reply({"ui_unavailable","This resident cannot open a file manager",{}},{});return;}
+  const auto error=revealPackage_(p["path"].toString());reply(error,error?QJsonObject{}:QJsonObject{{"revealed",p["path"]}});return;
+ }
+ // Drives the open Settings window's Diagnostics group and package dialog, and the
+ // History window's Save diagnostics row action, the way a user does (#122).
+ if(method=="ui.diagnostics") {
+  static const QStringList actions{"inspect","setDebugLogging","clearLogs","openPackage","setPackage","savePackage","showInFolder","closePackage"};
+  if(!fields(p,{"action"},{"enabled","includeNames","folder","operation"})||!actions.contains(p["action"].toString())||(p.contains("enabled")&&!p["enabled"].isBool())||(p.contains("includeNames")&&!p["includeNames"].isBool())
+     ||(p.contains("folder")&&(!string(p,"folder",4096)||!QDir::isAbsolutePath(p["folder"].toString())))||(p.contains("operation")&&!string(p,"operation",128))){reply(invalid(),{});return;}
+  if(!uiCommand_){reply({"ui_unavailable","This resident has no graphical interface",{}},{});return;}
+  uiCommand_("diagnostics",p,std::move(reply));return;
+ }
+ if(method=="ui.historySaveDiagnostics") {
+  if(!fields(p,{"id"})||!string(p,"id",128)){reply(invalid(),{});return;}
+  if(!uiCommand_){reply({"ui_unavailable","This resident has no graphical interface",{}},{});return;}
+  uiCommand_("historySaveDiagnostics",p,std::move(reply));return;
+ }
+ // Where a package would upload and whether that destination works now.
+ if(method=="diagnostics.uploadTarget") {
+  if(!fields(p,{},{"profileId"})||(p.contains("profileId")&&!string(p,"profileId",64))){reply(invalid(),{});return;}
+  if(!bundles_){reply({"diagnostics_unavailable","This resident cannot create diagnostics packages",{}},{});return;}
+  bundles_->uploadTarget(p["profileId"].toString(),std::move(reply));return;
  }
  if(method=="settings.save") {
   if(!fields(p,{"document","expectedRevision"})||!p["document"].isObject()||!p["expectedRevision"].isString()) {reply(invalid(),{});return;}
@@ -216,8 +250,8 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  if(!p.isEmpty()) {reply(invalid(),{});return;}
  if(method=="ui.snapshot")reply({},{{"build",QJsonDocument::fromJson(buildManifestJson()).object()},{"residentEpoch",residentEpoch_},{"operationsReady",operations_.ready()},{"settings",QJsonObject{{"document",settings_.document()},{"metadata",settings_.metadata()}}},{"diagnostics",uiDiagnostics_?uiDiagnostics_():operations_.diagnostics()}});
  else if(method=="ui.viewState"){if(uiViewState_)reply({},uiViewState_());else reply({"ui_unavailable","This resident has no interface view state",{}},{});}
- // effectiveLimits resolves "auto" and null (no limit) for this computer's memory.
- else if(method=="settings.get")reply({},{{"document",settings_.document()},{"metadata",settings_.metadata()},{"effectiveLimits",settings_.snapshot().effectiveArtifactLimits()}});
+ // effectiveLimits: the resolved byte limits (null for none) and the disk that bounds imports.
+ else if(method=="settings.get"){auto limits=settings_.snapshot().effectiveArtifactLimits();limits["disk"]=operations_.artifactDisk();reply({},{{"document",settings_.document()},{"metadata",settings_.metadata()},{"effectiveLimits",limits}});}
  else if(method=="settings.developmentTemplate")reply({},{{"document",Settings::developmentTemplate()},{"explicitImportRequired",true}});
  else if(method=="settings.reload") {QPointer<LocalServer> guarded(this);settings_.reloadAsync([guarded,reply](Result result) {if(guarded)reply(result.error,guarded->settings_.metadata());});}
  else if(method=="capabilities")reply({},operations_.capabilities());

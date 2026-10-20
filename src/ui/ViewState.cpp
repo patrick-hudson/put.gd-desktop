@@ -13,10 +13,12 @@ const QStringList filterKeys{"search","category","mime","profileId","uploadStatu
 bool fields(const QJsonValue& value,const QStringList& allowed){if(!value.isObject())return false;const auto object=value.toObject();for(auto it=object.begin();it!=object.end();++it)if(!allowed.contains(it.key()))return false;return true;}
 bool scalars(const QJsonValue& value,const QStringList& allowed,bool strings=false){if(!fields(value,allowed))return false;const auto object=value.toObject();for(auto v:object)if(strings?!v.isString():(v.isArray()||v.isObject()||v.isUndefined()))return false;return true;}
 bool stringArray(const QJsonValue& value,int maximum=1000);
-// Recent editor colors are the only non-scalar preference: a short string list.
+// Recent editor colors (a short string list) and the diagnostics object (#74, #122)
+// are the only non-scalar preferences.
 bool preferencesDraft(const QJsonValue& value){
- auto object=value.toObject();const auto colors=object.take("editorRecentColors");
- return value.isObject()&&scalars(object,{"notifications","launchAtLogin","uploadClipboardBehavior","unlockCredentialsAtStartup"})&&(colors.isUndefined()||stringArray(colors,6));
+ auto object=value.toObject();const auto colors=object.take("editorRecentColors");const auto diagnostics=object.take("diagnostics");
+ return value.isObject()&&scalars(object,{"notifications","launchAtLogin","uploadClipboardBehavior","unlockCredentialsAtStartup"})&&(colors.isUndefined()||stringArray(colors,6))
+  &&(diagnostics.isUndefined()||scalars(diagnostics,{"debugLogging","packageFolder"}));
 }
 bool stringArray(const QJsonValue& value,int maximum){if(!value.isArray()||value.toArray().size()>maximum)return false;for(auto v:value.toArray())if(!v.isString())return false;return true;}
 bool geometry(const QJsonValue& v){if(!v.isArray()||v.toArray().size()!=4)return false;for(auto n:v.toArray())if(!n.isDouble()||std::floor(n.toDouble())!=n.toDouble()||std::abs(n.toDouble())>2147483647)return false;return v.toArray()[2].toInt()>0&&v.toArray()[3].toInt()>0;}

@@ -116,6 +116,9 @@ def audit_tree(root: Path, expected_manifest=None, *, require_kde=False, require
         if name == "putgd-launcher":
             continue
         path = root / "usr/bin" / name
+        # The test-only crash trigger (#124) is compiled out of every release build.
+        if b"PUTGD_TEST_CRASH" in path.read_bytes():
+            raise ValueError(f"Release binary contains the test-only crash trigger: {name}")
         identity = json.loads(command([str(path), "--version-json"], env=env))
         if identity != result["manifest"]:
             raise ValueError(f"Compiled build manifest mismatch: {name}")

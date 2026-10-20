@@ -97,6 +97,11 @@ jobs:
           cmake --preset release -DBUILD_TESTING=OFF -DPUTGD_LAB_FIXTURE=OFF -DPUTGD_PHYSICAL_BENCHMARKS=OFF -DPUTGD_RELEASE_TAG="$RELEASE_TAG" -DPUTGD_BUNDLE_PROTON=ON -DCMAKE_INSTALL_PREFIX=/usr
           cmake --build --preset release --parallel "$(nproc)"
           python3 tools/releases/native.py --build build/release --format "$FORMAT" --output "$PWD/build/release-packages" --proton-manifest build/dependencies/proton-runtime/manifest.json --require-proton $KDE_REQUIREMENT
+      - name: Stage split debug symbols by build ID
+        # Each packaged binary's .debug file, checked against the package's build IDs (#124).
+        env:
+          LABEL: ${{ matrix.name }}
+        run: python3 tools/releases/debug_symbols.py stage --build build/release --installed build/release-packages/extracted --label "$LABEL" --output build/debug-symbols
       - name: Compile the curated source export with standard presets
         if: matrix.name == 'ubuntu24.04'
         run: |
@@ -182,6 +187,8 @@ jobs:
         run: sudo apt-get install -y --no-install-recommends weston
       - name: Build and audit AppImage
         run: PUTGD_BUILD_JOBS="$(nproc)" bash tools/releases/build-appimage.sh
+      - name: Stage split debug symbols by build ID
+        run: python3 tools/releases/debug_symbols.py stage --build build/release --installed build/appimage-stage --label appimage --output build/debug-symbols
       - name: Stage flat AppImage artifact evidence
         if: always()
         run: python3 tools/releases/stage_artifacts.py --kind appimage
@@ -192,6 +199,30 @@ jobs:
           path: build/release-artifact/
           if-no-files-found: warn
           retention-days: 30
+
+  debug-symbols:
+    # Without a release tag, assemble the release's debug asset from the same
+    # staged files collect.py uses, so every pull request rehearses it (#124).
+    if: inputs.release_tag == ''
+    needs: [native, appimage]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.sha }}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: release-*
+          path: build/downloaded
+      - name: Assemble the development debug asset
+        run: python3 tools/releases/debug_symbols.py dry-run --inputs build/downloaded --output build/debug-asset
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: debug-symbols-dry-run
+          path: build/debug-asset/
+          if-no-files-found: error
+          retention-days: 7
 
   collect:
     if: inputs.release_tag != ''

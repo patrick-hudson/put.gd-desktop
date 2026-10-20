@@ -385,10 +385,10 @@ class NightlyPublicationTest(unittest.TestCase):
              patch.object(subprocess, 'run', side_effect=self.command):
             publish.main()
 
-    def test_cli_publishes_all_fourteen_verified_assets_as_nightly_prerelease(self):
+    def test_cli_publishes_all_fifteen_verified_assets_as_nightly_prerelease(self):
         self.invoke()
         self.assertEqual(self.remote_files, self.files)
-        self.assertEqual(len(self.remote_files), 14)
+        self.assertEqual(len(self.remote_files), 15)
         self.assertFalse(self.metadata['draft'])
         self.assertTrue(self.metadata['prerelease'])
         self.assertIn('--latest=false', self.commands[0])
@@ -503,7 +503,7 @@ class NightlyPublicationTest(unittest.TestCase):
     def test_positive_inventory_is_required_before_any_remote_mutation(self):
         checksums = (self.directory / 'SHA256SUMS').read_text().splitlines()
         (self.directory / 'SHA256SUMS').write_text('\n'.join(checksums[:-1]) + '\n')
-        with self.assertRaisesRegex(ValueError, 'all fourteen'):
+        with self.assertRaisesRegex(ValueError, 'all fifteen'):
             self.invoke()
         self.assertEqual(self.commands, [])
 

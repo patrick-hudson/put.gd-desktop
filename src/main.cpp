@@ -38,6 +38,7 @@
 #include <malloc.h>
 #endif
 #ifdef Q_OS_LINUX
+#include "core/CrashHandler.h"
 #include <QDBusConnection>
 #include <QDBusConnectionInterface>
 #include <QDBusReply>
@@ -215,6 +216,13 @@ int main(int argc,char* argv[]) {
  const auto stateRoot=putgd::logging::stateRoot();
  putgd::logging::open(stateRoot+"/logs",{settings.snapshot().logDays,settings.snapshot().logBytes},"putgd");
  putgd::RunMarker::begin(stateRoot,putgd::buildVersion());
+ // The crash handler (#124) writes this resident's record to running.crash;
+ // the next start turns it into a log record. Modules loaded after startup
+ // (the S3 module, Qt plugins) join its map once the session has settled.
+#ifdef Q_OS_LINUX
+ putgd::crash::setOutput(putgd::RunMarker::crashOutput());
+ QTimer::singleShot(15000,&app,[]{putgd::crash::refreshModules();});
+#endif
  putgd::LogService logService(settings,stateRoot);logService.apply();
  putgd::DiagnosticsBundles bundles(operations,stateRoot);server.setDiagnosticsBundles(&bundles);
  QJsonObject portalStatus;
@@ -244,7 +252,7 @@ int main(int argc,char* argv[]) {
  };
  QJsonObject loginStatus;
  putgd::SetupService setup(settings,credentials,tester);
- setup.setProviderSetup([&](const QString& kind,const putgd::Destination& destination,const QJsonObject& input,putgd::JsonReply reply,std::function<void(QJsonObject)> event){
+ const auto providerSetup=[&](const QString& kind,const putgd::Destination& destination,const QJsonObject& input,putgd::JsonReply reply,std::function<void(QJsonObject)> event){
   if(kind=="testDestination"&&destination.providerId=="s3"){
    const QJsonObject profile{{"provider",destination.providerId},{"settings",destination.settings},{"credentials",destination.credentialReference}};
    tester(destination.profileId,profile,[reply=std::move(reply)](putgd::Error error){reply(error,{});});return;
@@ -252,8 +260,22 @@ int main(int argc,char* argv[]) {
   if(destination.providerId!="proton-drive"){reply({"setup_unsupported","This provider has no account setup",{}},{});return;}
   const auto method=kind=="connectAccount"?QString("connect"):kind=="storeSharePassword"?QString("storeSharePassword"):kind;
   operations.background([proton,method,destination,input,event](putgd::Error& error){return proton->setup(method,destination,input,error,event);},std::move(reply));
- });
+ };
+ setup.setProviderSetup(providerSetup);
  server.setSetupService(&setup);
+ // A diagnostics package uploads only to a destination whose Test connection
+ // passes now, with the credentials already loaded (#123).
+ // A Test connection that passes in Settings clears an earlier failed upload's block.
+ QObject::connect(&setup,&putgd::SetupService::changed,&bundles,[&setup,&bundles](const QString& id){
+  setup.inspect(id,[&bundles](putgd::Error error,QJsonObject job){
+   if(!error&&job["kind"]=="testDestination"&&job["state"]=="completed")bundles.destinationTested(job["profileId"].toString());
+  });
+ });
+ bundles.setDestinationTest([&settings,providerSetup](const QString& profileId,std::function<void(putgd::Error)> done){
+  const auto profile=settings.snapshot().profiles.value(profileId);
+  const putgd::Destination destination{profile["provider"].toString(),profileId,settings.revision(),profile["settings"].toObject(),profile["credentials"].toObject()};
+  providerSetup("testDestination",destination,{},[done](putgd::Error error,QJsonObject){done(error);},[](QJsonObject){});
+ });
  // After the tray settles, read saved S3 credentials once so uploads work
  // without a manual Unlock; a locked keyring shows its own prompt here.
  QTimer::singleShot(3000,&setup,[&setup]{setup.unlockSavedCredentials();});
@@ -308,6 +330,9 @@ int main(int argc,char* argv[]) {
  server.setUiActivation([&](const QString& requested,std::function<void(putgd::Error)> reply){startupRecovery.stop();ui.activate(requested,std::move(reply));});
  server.setUiViewState([&]{return ui.viewState();});
  server.setUiCommand([&](const QString& name,const QJsonObject& params,putgd::JsonReply reply){ui.command(name,params,std::move(reply));});
+ // Save diagnostics for a failed upload from its notification, into the folder Settings last chose (#122).
+ tray.setDiagnosticsSaver([&](const QString& id,putgd::JsonReply reply){putgd::BundleRequest request;request.operationId=id;const auto folder=operations.settingsSnapshot().document["preferences"].toObject()["diagnostics"].toObject()["packageFolder"].toString();if(QFileInfo(folder).isDir())request.output=folder;bundles.create(request,std::move(reply));});
+ server.setDiagnosticsNotifications([&](const QJsonObject& result){tray.notifyDiagnosticsSaved(result);},&putgd::TrayController::revealPackage);
  const auto fullDiagnostics=[&]{auto diagnostics=operations.diagnostics();diagnostics["loginStartup"]=loginStatus;diagnostics["shortcuts"]=source->capabilities()["shortcuts"];diagnostics["ui"]=ui.status();diagnostics["trayAvailable"]=tray.available();return diagnostics;};
  server.setUiDiagnostics(fullDiagnostics);
  bundles.setDiagnostics(fullDiagnostics);
@@ -365,6 +390,9 @@ int main(int argc,char* argv[]) {
  QObject::connect(&app,&QCoreApplication::aboutToQuit,&operations,[&]{proton->shutdown();operations.shutdown();});
  const int status=app.exec();
  putgd::logging::info(putgd::logApp(),"Resident stopped",{{"exitCode",status}});
+#ifdef Q_OS_LINUX
+ putgd::crash::setOutput(-1);
+#endif
  putgd::RunMarker::end();
  putgd::logging::close();
  return status;

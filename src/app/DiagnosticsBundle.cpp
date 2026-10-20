@@ -10,8 +10,12 @@
 #include <QLocale>
 #include <QMessageAuthenticationCode>
 #include <QPointer>
+#include <QProcess>
+#include <QStandardPaths>
 #include <QRandomGenerator>
+#include <QRegularExpression>
 #include <QSaveFile>
+#include <QSet>
 #include <QStorageInfo>
 #include <QSysInfo>
 #include <algorithm>
@@ -155,8 +159,11 @@ QJsonValue PackageRedactor::json(const QJsonValue& value,const QString& key) con
 DiagnosticsBundles::DiagnosticsBundles(OperationService& operations,QString stateRoot,QObject* parent):QObject(parent),operations_(operations),stateRoot_(std::move(stateRoot)) {}
 QString DiagnosticsBundles::defaultFolder(const Settings& settings) {return QDir(settings.archive.root).filePath("diagnostics");}
 Error DiagnosticsBundles::parse(const QJsonObject& params,BundleRequest& request) {
- const Error invalid{"invalid_request","diagnostics.bundle takes operation (an ID), since (1m to 365d, such as 7d or 24h), includeNames and output (an absolute .zip path or folder)",{}};
- for(auto it=params.begin();it!=params.end();++it)if(!QStringList{"operation","since","includeNames","output"}.contains(it.key()))return invalid;
+ const Error invalid{"invalid_request","diagnostics.bundle takes operation (an ID), since (1m to 365d, such as 7d or 24h), includeNames, output (an absolute .zip path or folder), preview, and upload with profileId and copyLink",{}};
+ for(auto it=params.begin();it!=params.end();++it)if(!QStringList{"operation","since","includeNames","output","preview","upload","profileId","copyLink"}.contains(it.key()))return invalid;
+ if(params.contains("upload")){if(!params["upload"].isBool())return invalid;request.upload=params["upload"].toBool();}
+ if(params.contains("copyLink")){if(!params["copyLink"].isBool()||!request.upload)return invalid;request.copyLink=params["copyLink"].toBool();}
+ if(params.contains("profileId")){const auto id=params["profileId"].toString();if(!params["profileId"].isString()||id.isEmpty()||id.size()>64||!request.upload)return invalid;request.profileId=id;}
  if(params.contains("operation")) {const auto id=params["operation"].toString();if(!params["operation"].isString()||id.isEmpty()||id.size()>128)return invalid;request.operationId=id;}
  if(params.contains("since")) {
   static const QRegularExpression pattern("^([1-9][0-9]{0,5})([mhd])$");
@@ -165,7 +172,10 @@ Error DiagnosticsBundles::parse(const QJsonObject& params,BundleRequest& request
   request.sinceMs=match.captured(1).toLongLong()*unit;if(request.sinceMs>maximumSinceMs)return invalid;
  }
  if(params.contains("includeNames")){if(!params["includeNames"].isBool())return invalid;request.includeNames=params["includeNames"].toBool();}
+ if(params.contains("preview")){if(!params["preview"].isBool())return invalid;request.preview=params["preview"].toBool();}
  if(params.contains("output")) {const auto path=params["output"].toString();if(!params["output"].isString()||path.isEmpty()||path.size()>4096||!QDir::isAbsolutePath(path))return invalid;request.output=QDir::cleanPath(path);}
+ // A preview writes nothing, so it uploads nothing either.
+ if(request.preview&&(params.contains("upload")||params.contains("copyLink")||params.contains("profileId")))return invalid;
  return {};
 }
 void DiagnosticsBundles::create(const BundleRequest& request,JsonReply reply) {
@@ -187,12 +197,162 @@ void DiagnosticsBundles::create(const BundleRequest& request,JsonReply reply) {
  const auto runtime=qEnvironmentVariable("XDG_RUNTIME_DIR");if(!runtime.isEmpty())context.roots.insert(runtime,"<runtime>");
  context.roots.insert(snapshot.archive.root,"<archive>");
  running_=true;QPointer<DiagnosticsBundles> guarded(this);
- operations_.background([context,request](Error& error){return build(context,request,error);},[guarded,reply](Error error,QJsonObject result){
+ operations_.background([context,request](Error& error){return build(context,request,error);},[guarded,reply,request,preview=request.preview](Error error,QJsonObject result){
   if(guarded)guarded->running_=false;
-  if(error)logging::warning(logApp(),"Diagnostics package failed",{{"error",logging::errorFields(error)}});
-  else logging::info(logApp(),"Diagnostics package saved",{{"path",result["path"]},{"bytes",result["bytes"]},{"redaction",result["redaction"]},{"operations",result["operations"]},{"logRecords",result["logRecords"]}});
-  reply(error,result);
+  if(!preview&&error)logging::warning(logApp(),"Diagnostics package failed",{{"error",logging::errorFields(error)}});
+  else if(!preview)logging::info(logApp(),"Diagnostics package saved",{{"path",result["path"]},{"bytes",result["bytes"]},{"redaction",result["redaction"]},{"operations",result["operations"]},{"logRecords",result["logRecords"]}});
+  // The local copy exists first; an upload that fails or is skipped never changes it.
+  if(error||preview||!request.upload||!guarded){reply(error,result);return;}
+  guarded->upload(result,request,reply);
  });
+}
+QString DiagnosticsBundles::defaultUploadProfile(const Settings& settings) {
+ for(const auto& action:QStringList{"region","window","desktop","clipboard","edit",Settings::recordingActionName()}) {
+  const auto route=settings.actions.value(action);
+  if(route.destination=="upload"&&settings.profiles.contains(route.profileId))return route.profileId;
+ }
+ return {};
+}
+bool DiagnosticsBundles::credentialOrConfigurationError(const Error& error) {
+ static const QRegularExpression pattern("^(credential|config)_|auth|permission_denied|access_denied|mfa_required|bucket_not_found|bucket_invalid|"
+  "region_mismatch|settings_invalid|acl_incompatible|setup_required|account_changed|folder_unavailable|destination_unavailable|"
+  "keychain_unavailable|provider_unavailable|unsupported_capability");
+ return !error.code.isEmpty()&&pattern.match(error.code).hasMatch();
+}
+void DiagnosticsBundles::destinationTested(const QString& profileId) {tested_.insert(profileId,QDateTime::currentDateTimeUtc());}
+void DiagnosticsBundles::check(const QString& profileId,std::function<void(Error,QJsonObject)> done) {
+ const auto snapshot=operations_.settingsSnapshot();const auto revision=operations_.settingsRevision();
+ const auto profile=snapshot.profiles.value(profileId);
+ if(profile.isEmpty()){done({"profile_not_found","No destination has this ID",{{"profileId",profileId}}},{});return;}
+ const auto provider=profile["provider"].toString();const bool proton=provider=="proton-drive";
+ QJsonObject target{{"profileId",profileId},{"label",profile["label"].toString()},{"provider",provider},{"publicLink",true},
+  {"warning",proton?QStringLiteral("Anyone with the link can download this package until the link expires in %1 days.").arg(OperationService::diagnosticsShareDays)
+   :QStringLiteral("On a public-read bucket, anyone with the link can download this package. Delete it from History when it is no longer needed.")}};
+ if(proton)target["shareExpirationDays"]=OperationService::diagnosticsShareDays;
+ const auto database=operations_.databasePath();QPointer<DiagnosticsBundles> guarded(this);
+ const auto settings=profile["settings"].toObject();const auto credentials=profile["credentials"].toObject();
+ operations_.background([database,profileId,settings,credentials](Error& error){
+  HistoryStore store(database);const auto last=store.lastUpload(profileId,&error);
+  // A failure under different settings or credentials says nothing about them now.
+  if(error||!last||last->destination.settings!=settings||last->destination.credentialReference!=credentials)return QJsonObject{};
+  // The newest upload to this destination: an item or operation error, if any.
+  Error failure=last->error;for(const auto& item:last->items)if(item.uploadStatus=="failed"&&item.error)failure=item.error;
+  return QJsonObject{{"operationId",last->id},{"state",last->state},{"created",last->created},{"error",failure.toJson()}};
+ },[guarded,profileId,revision,target,done](Error error,QJsonObject last) {
+  if(!guarded)return;
+  if(error){done(error,{});return;}
+  const auto lastError=last["error"].toObject();
+  const auto tested=guarded->tested_.value(profileId);const auto failedAt=QDateTime::fromString(last["created"].toString(),Qt::ISODateWithMs);
+  const bool testedSince=tested.isValid()&&failedAt.isValid()&&tested>failedAt;
+  if(!testedSince&&QStringList{"failed","partial"}.contains(last["state"].toString())&&credentialOrConfigurationError({lastError["code"].toString(),{},{}})) {
+   done({"diagnostics_destination_failing","The last upload to this destination failed with a credential or configuration error, so the package was not uploaded. Fix the destination in Settings, then upload it.",
+    {{"profileId",profileId},{"operationId",last["operationId"]},{"lastError",lastError["code"]}}},target);return;
+  }
+  const auto previous=guarded->checked_.value(profileId);
+  if(previous.revision==revision&&previous.at.isValid()&&previous.at.msecsTo(QDateTime::currentDateTimeUtc())<checkReuseMs){done({},target);return;}
+  if(!guarded->destinationTest_){done({"diagnostics_upload_unavailable","This resident cannot test destinations",{}},target);return;}
+  auto* owner=guarded.data();
+  guarded->destinationTest_(profileId,[owner,guarded,profileId,revision,target,done](Error tested) {
+   // A provider test may answer on its worker thread; continue on the session thread.
+   QMetaObject::invokeMethod(owner,[guarded,profileId,revision,target,done,tested] {
+    if(!guarded)return;
+    if(tested){guarded->checked_.remove(profileId);done({"diagnostics_destination_unavailable","Test connection failed for this destination, so the package was not uploaded",{{"profileId",profileId},{"error",tested.toJson()}}},target);return;}
+    guarded->checked_.insert(profileId,{revision,QDateTime::currentDateTimeUtc()});guarded->destinationTested(profileId);
+    done({},target);
+   },Qt::QueuedConnection);
+  });
+ });
+}
+void DiagnosticsBundles::uploadTarget(const QString& requested,JsonReply reply) {
+ const auto profileId=requested.isEmpty()?defaultUploadProfile(operations_.settingsSnapshot()):requested;
+ if(profileId.isEmpty()){reply({},{{"available",false},{"reason","diagnostics_no_destination"},{"message","No upload destination is set up"}});return;}
+ check(profileId,[reply,profileId](Error error,QJsonObject target) {
+  if(error.code=="profile_not_found"){reply(error,{});return;}
+  if(error){target["profileId"]=profileId;target["available"]=false;target["reason"]=error.code;target["message"]=error.message;target["details"]=error.details;reply({},target);return;}
+  target["available"]=true;reply({},target);
+ });
+}
+void DiagnosticsBundles::upload(QJsonObject result,const BundleRequest& request,JsonReply reply) {
+ const auto profileId=request.profileId.isEmpty()?defaultUploadProfile(operations_.settingsSnapshot()):request.profileId;
+ // A skipped or failed upload is part of a successful reply: the package is saved.
+ auto settle=[reply](QJsonObject result,const Error& error) {
+  if(error){result["uploadError"]=error.toJson();logging::warning(logApp(),"Diagnostics package not uploaded",{{"error",logging::errorFields(error)}});}
+  reply({},result);
+ };
+ if(profileId.isEmpty()){settle(result,{"diagnostics_no_destination","No upload destination is set up, so the package was saved locally only",{}});return;}
+ QPointer<DiagnosticsBundles> guarded(this);
+ const auto path=result["path"].toString();const bool copyLink=request.copyLink;
+ check(profileId,[guarded,result,settle,profileId,path,copyLink](Error error,QJsonObject target) mutable {
+  if(!guarded)return;
+  if(error){settle(result,error);return;}
+  result["upload"]=target;
+  guarded->operations_.uploadDiagnostics(path,profileId,[result,settle](Error accepted,QJsonObject) mutable {
+   if(accepted)settle(result,accepted);
+  },[guarded,result,settle,copyLink](const Operation& op) mutable {
+   if(!guarded)return;
+   auto upload=result["upload"].toObject();upload["operationId"]=op.id;upload["state"]=op.state;
+   const auto item=op.items.value(0);
+   if(!item.candidate.isEmpty())upload["name"]=item.candidate;
+   if(item.artifact.id.size())upload["historyId"]=item.artifact.id;
+   result["upload"]=upload;
+   if(op.state!="completed"||item.uploadStatus!="uploaded") {
+    auto error=item.error?item.error:op.error?op.error:Error{"diagnostics_upload_failed","The package was not uploaded",{}};
+    error.details["operationId"]=op.id;settle(result,error);return;
+   }
+   if(!item.linkAvailable()){settle(result,{"diagnostics_link_unavailable","The package was uploaded, but this destination gives it no link",{{"operationId",op.id}}});return;}
+   result["link"]=item.receipt.directUrl;
+   logging::info(logApp(),"Diagnostics package uploaded",{{"operationId",op.id},{"provider",op.destination.providerId},{"profileId",op.destination.profileId}});
+   if(!copyLink){settle(result,{});return;}
+   guarded->operations_.copyHistoryUrl(item.receipt.directUrl,[result,settle](Error copied,QJsonObject) mutable {
+    result["linkCopied"]=!copied;if(copied)result["copyError"]=copied.toJson();settle(result,{});
+   });
+  });
+ });
+}
+QJsonObject DiagnosticsBundles::coredumps(const QString& configured,const QDateTime& from,const PackageRedactor& redactor) {
+ if(configured=="-")return {{"available",false},{"reason","skipped"},{"entries",QJsonArray{}}};
+ const auto program=configured.isEmpty()?QStandardPaths::findExecutable("coredumpctl"):configured;
+ if(program.isEmpty())return {{"available",false},{"reason","coredumpctl_missing"},{"entries",QJsonArray{}}};
+ auto run=[&](const QStringList& arguments,QByteArray& output) {
+  QProcess process;process.setProcessChannelMode(QProcess::SeparateChannels);
+  auto environment=QProcessEnvironment::systemEnvironment();environment.insert("SYSTEMD_COLORS","0");environment.insert("SYSTEMD_PAGER","");
+  process.setProcessEnvironment(environment);
+  process.start(program,QStringList{"--no-pager","--no-legend"}+arguments);
+  if(!process.waitForFinished(10000)){process.kill();process.waitForFinished(1000);return -1;}
+  output=process.readAllStandardOutput().left(1024*1024);
+  return process.exitStatus()==QProcess::NormalExit?process.exitCode():-1;
+ };
+ QByteArray listing;
+ const int status=run({"--json=short","--since=@"+QString::number(from.toSecsSinceEpoch()),"list"},listing);
+ QJsonParseError parse{};const auto document=QJsonDocument::fromJson(listing,&parse);
+ // coredumpctl exits 1 with nothing on stdout when no dump matches.
+ if(status==1&&listing.trimmed().isEmpty())return {{"available",true},{"entries",QJsonArray{}}};
+ if(status!=0||parse.error!=QJsonParseError::NoError||!document.isArray())return {{"available",false},{"reason","coredumpctl_failed"},{"entries",QJsonArray{}}};
+ static const QStringList products{"putgd","putgd-ui","putgd-capture","putgd-kde-region","putgd-record","putgd-s3-worker","putgd-cli"};
+ QList<QJsonObject> matches;
+ for(const auto& value:document.array()) {
+  const auto dump=value.toObject();
+  if(products.contains(QFileInfo(dump["exe"].toString()).fileName()))matches.append(dump);
+ }
+ std::sort(matches.begin(),matches.end(),[](const QJsonObject& a,const QJsonObject& b){return a["time"].toDouble()>b["time"].toDouble();});
+ QJsonArray entries;
+ for(const auto& dump:matches.mid(0,maximumCoredumps)) {
+  const auto pid=qint64(dump["pid"].toDouble());const auto time=qint64(dump["time"].toDouble());
+  QByteArray info;run({"--since=@"+QString::number(time/1000000),"info","COREDUMP_PID="+QString::number(pid)},info);
+  // Only the modules and stack traces systemd printed: the command line,
+  // environment, host and unit lines stay out.
+  QStringList stack;bool inside=false;
+  for(const auto& raw:QString::fromUtf8(info).split('\n')) {
+   const auto line=raw.trimmed();
+   if(line.startsWith("Module ")||line.startsWith("Stack trace of thread"))inside=true;
+   if(inside&&!line.isEmpty())stack.append(line.startsWith("#")||line.startsWith("Module ")||line.startsWith("Stack trace")||line.startsWith("ELF object")?line:QString());
+  }
+  stack.removeAll(QString());
+  auto text=stack.join('\n');if(text.size()>coredumpTextBytes)text=text.left(coredumpTextBytes)+"\n<truncated>";
+  entries.append(QJsonObject{{"time",iso(QDateTime::fromMSecsSinceEpoch(time/1000))},{"pid",pid},{"signal",dump["sig"].toInt()},
+   {"executable",redactor.text(dump["exe"].toString())},{"storage",dump["corefile"].toString().left(32)},{"stack",redactor.text(text)}});
+ }
+ return {{"available",true},{"entries",entries}};
 }
 int DiagnosticsBundles::prune(const QString& folder,const QDateTime& now) {
  QDir dir(folder);QFileInfoList packages;
@@ -226,6 +386,15 @@ QJsonObject DiagnosticsBundles::build(const Context& context,const BundleRequest
  }else {
   Error query;operations=store.operationsSince(iso(from),{"failed","partial","interrupted"},maximumOperations,&query);if(query){error=query;return {};}
  }
+ // An uploaded earlier package stays out of later ones, its log records too;
+ // one whose upload failed is kept, like any failure (#123).
+ QSet<QByteArray> uploadedPackages;
+ {
+  Error query;
+  for(const auto& op:store.operationsSince(iso(from),{"completed"},100000,&query))
+   if(op.action==OperationService::diagnosticsAction&&op.id!=request.operationId)uploadedPackages.insert("\"operationId\":\""+op.id.toUtf8()+"\"");
+ }
+ const auto uploadedPackage=[&uploadedPackages](const QByteArray& line){for(const auto& needle:uploadedPackages)if(line.contains(needle))return true;return false;};
  for(const auto& op:operations)for(const auto& item:op.items) {
   redactor.literal("name",item.artifact.name);redactor.literal("path",item.artifact.path);redactor.literal("path",item.artifact.previewPath);
   redactor.literal("name",item.candidate);redactor.literal("key",item.objectReference["key"].toString());
@@ -262,11 +431,13 @@ QJsonObject DiagnosticsBundles::build(const Context& context,const BundleRequest
  const auto environmentBytes=compact(redactor.json(environment));
  const auto diagnosticsBytes=compact(redactor.json(context.diagnostics));
  const auto configBytes=compact(configRedacted);
+ auto coredumpReport=coredumps(context.coredumpctl,from,redactor);coredumpReport["since"]=iso(from);
+ const auto coredumpBytes=compact(coredumpReport);
  // Count upload attempts from the window's records before choosing lines.
  struct Line {QString time;QByteArray bytes;};QList<Line> selected;qint64 used=0,dropped=0,eligible=0;
- const qint64 fixedBytes=environmentBytes.size()+diagnosticsBytes.size()+configBytes.size()+256*1024;
+ const qint64 fixedBytes=environmentBytes.size()+diagnosticsBytes.size()+configBytes.size()+coredumpBytes.size()+256*1024;
  for(const auto& name:files) for(const auto& raw:contents.value(name).split('\n')) {
-  if(raw.isEmpty())continue;
+  if(raw.isEmpty()||uploadedPackage(raw))continue;
   const auto object=QJsonDocument::fromJson(raw).object();const auto time=object["time"].toString();
   if(time.isEmpty()||time<fromText||time>toText)continue;
   if(object["message"]=="Upload attempt")attempts[object["itemId"].toString()]+=1;
@@ -283,7 +454,7 @@ QJsonObject DiagnosticsBundles::build(const Context& context,const BundleRequest
  for(const auto& name:files) {
   const auto lines=contents.value(name).split('\n');
   for(auto it=lines.crbegin();it!=lines.crend();++it) {
-   if(it->isEmpty())continue;
+   if(it->isEmpty()||uploadedPackage(*it))continue;
    const auto object=QJsonDocument::fromJson(*it).object();const auto time=object["time"].toString();
    if(time.isEmpty()||time<fromText||time>toText)continue;
    ++eligible;
@@ -298,7 +469,7 @@ QJsonObject DiagnosticsBundles::build(const Context& context,const BundleRequest
  std::reverse(selected.begin(),selected.end());
  QByteArray logBytes;for(const auto& line:selected)logBytes+=line.bytes;
  QList<QPair<QString,QByteArray>> entries{{"environment.json",environmentBytes},{"diagnostics.json",diagnosticsBytes},{"config.redacted.json",configBytes},
-  {"operations.json",operationsBytes},{"logs/putgd.jsonl",logBytes}};
+  {"operations.json",operationsBytes},{"coredumps.json",coredumpBytes},{"logs/putgd.jsonl",logBytes}};
  QJsonArray manifestFiles;for(const auto& [path,bytes]:entries)manifestFiles.append(QJsonObject{{"path",path},{"bytes",bytes.size()},{"sha256",sha256(bytes)}});
  QJsonObject scope{{"from",fromText},{"to",toText}};
  if(!request.operationId.isEmpty())scope["operationId"]=request.operationId;else scope["since"]=QString::number(request.sinceMs/60000)+"m";
@@ -306,6 +477,17 @@ QJsonObject DiagnosticsBundles::build(const Context& context,const BundleRequest
   {"redaction",request.includeNames?"names":"hashed"},{"scope",scope},{"files",manifestFiles},{"operations",operationList.size()},
   {"logs",QJsonObject{{"records",selected.size()},{"eligibleRecords",eligible},{"droppedRecords",dropped},{"sourceFiles",files.size()}}},
   {"maximumBytes",maximumBytes}};
+ // A preview (the Settings dialog) shows what the package would hold and where it
+ // would go, from the same selection, and writes nothing.
+ if(request.preview) {
+  QJsonArray names;names.append("manifest.json");for(const auto& entry:entries)names.append(entry.first);
+  QJsonArray summaries;for(const auto& value:operationList){const auto op=value.toObject();summaries.append(QJsonObject{{"id",op["id"]},{"action",op["action"]},{"state",op["state"]},{"created",op["created"]},{"items",op["items"].toArray().size()}});}
+  const QFileInfo output(request.output);
+  const auto folder=request.output.isEmpty()?context.defaultFolder:output.isDir()?output.absoluteFilePath():output.absolutePath();
+  return {{"preview",true},{"files",names},{"redaction",request.includeNames?"names":"hashed"},{"scope",scope},{"operations",operationList.size()},
+   {"operationList",summaries},{"logRecords",selected.size()},{"droppedLogRecords",dropped},{"folder",folder},{"defaultFolder",request.output.isEmpty()},
+   {"maximumBytes",maximumBytes}};
+ }
  ZipWriter zip(now);zip.add("manifest.json",QJsonDocument(manifest).toJson(QJsonDocument::Indented));
  for(const auto& [path,bytes]:entries)zip.add(path,bytes);
  const auto archiveBytes=zip.finish();

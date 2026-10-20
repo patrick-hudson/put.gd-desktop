@@ -75,15 +75,12 @@ struct Settings {
     QStringList editorRecentColors;
 
     static QJsonObject defaults();
-    // maxFileBytes, maxBatchBytes and pendingArtifactBytes: each a byte count,
-    // "auto" (from physical memory, resolved when settings load) or null (no limit).
+    // maxFileBytes, maxBatchBytes and pendingArtifactBytes: each a byte count, "auto"
+    // or null (no limit). Memory does not grow with file size (imports copy in 1 MiB
+    // chunks and uploads stream), so "auto" sets no byte limit of put.gd's own; the
+    // destination's maximum object size and the free-disk reserve bound every import.
     static QStringList artifactByteLimitKeys();
-    // "auto": no limit above 16 GiB of installed memory, otherwise a quarter of it.
-    static qint64 automaticArtifactBytes(qint64 physicalMemoryBytes);
-    // Total physical memory, read once; zero if unknown. Tests may override it.
-    static qint64 physicalMemoryBytes();
-    static void setPhysicalMemoryForTesting(qint64 bytes);
-    // The resolved artifact byte limits (null for no limit) and the memory they came from.
+    // The resolved artifact byte limits, null for no limit.
     QJsonObject effectiveArtifactLimits() const;
     static QJsonObject developmentTemplate();
     static Error validate(const QJsonObject&, const ProfileValidator& = {}, const CredentialValidator& = {});

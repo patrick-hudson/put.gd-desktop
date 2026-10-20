@@ -749,7 +749,7 @@
             {"type": "null"}
           ],
           "default": "auto",
-          "description": "Largest imported file. Bytes, \"auto\" (no limit above 16 GiB of installed memory, otherwise a quarter of it; resolved when settings load) or null for no limit. Free disk space and the destination's maximum object size still apply. A saved 2147483648 (the former default) reads as \"auto\"."
+          "description": "Largest imported file. Bytes, \"auto\" (no byte limit of put.gd's own) or null for no limit. The destination's maximum object size and free disk space, less a system reserve of min(15% of the filesystem, 4 GiB) and at least 1 GiB, always apply. A saved 2147483648 (the former default) reads as \"auto\"."
         },
         "maxBatchBytes": {
           "oneOf": [
@@ -758,7 +758,7 @@
             {"type": "null"}
           ],
           "default": "auto",
-          "description": "Largest combined batch. Bytes, \"auto\" (no limit above 16 GiB of installed memory, otherwise a quarter of it; resolved when settings load) or null for no limit. Free disk space and the destination's maximum object size still apply. A saved 2147483648 (the former default) reads as \"auto\"."
+          "description": "Largest combined batch. Bytes, \"auto\" (no byte limit of put.gd's own) or null for no limit. The destination's maximum object size and free disk space, less a system reserve of min(15% of the filesystem, 4 GiB) and at least 1 GiB, always apply. A saved 2147483648 (the former default) reads as \"auto\"."
         },
         "pendingArtifactBytes": {
           "oneOf": [
@@ -767,7 +767,7 @@
             {"type": "null"}
           ],
           "default": "auto",
-          "description": "Most acquired content waiting on disk. Bytes, \"auto\" (no limit above 16 GiB of installed memory, otherwise a quarter of it; resolved when settings load) or null for no limit. Free disk space and the destination's maximum object size still apply. A saved 2147483648 (the former default) reads as \"auto\"."
+          "description": "Most acquired content waiting on disk. Bytes, \"auto\" (no byte limit of put.gd's own) or null for no limit. The destination's maximum object size and free disk space, less a system reserve of min(15% of the filesystem, 4 GiB) and at least 1 GiB, always apply. A saved 2147483648 (the former default) reads as \"auto\"."
         },
         "clipboardTextBytes": {
           "type": "integer",
@@ -905,6 +905,12 @@
               "type": "boolean",
               "default": false,
               "description": "Keep debug records in the persistent log. put.gd turns this off again 24 hours after it was turned on. AWS SDK trace logging is never enabled."
+            },
+            "packageFolder": {
+              "type": ["string", "null"],
+              "minLength": 1,
+              "pattern": "^/",
+              "description": "The folder Settings → Create diagnostics package last saved to. Omitted or null means <archive root>/diagnostics. Written by put.gd."
             }
           }
         }
