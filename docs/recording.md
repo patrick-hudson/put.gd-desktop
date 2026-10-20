@@ -714,6 +714,20 @@ so the helper still starts. (A host OpenH264 cannot be used: the image's
 GStreamer and FFmpeg were built against Ubuntu 24.04's `libopenh264.so.7`,
 while Fedora 44 ships `.so.8`.)
 
+The image's `pipewire` plugin therefore comes from PipeWire 1.0.5 and talks to
+whatever daemon the host runs. Its `pipewiresrc` asks for at least 8 buffers by
+default, while KWin's screen casts (Plasma 6.3 to 6.6, portal and
+`kde-screencast` alike) offer 2-4. PipeWire up to 1.4 linked the two anyway;
+1.5.81 and later refuse ranges that don't overlap, and every start failed with
+`error alloc buffers: Invalid argument` on Plasma 6.6 with PipeWire 1.6 (#137).
+The recorder sets `min-buffers=1` on the source, which newer plugins use by default,
+so the compositor picks the count (3 or 4 with KWin, 16 with Mutter). That also
+covers the distro packages whose own plugin still asks for 8: Debian 13's comes
+from PipeWire 1.4.2. Fedora 44's and Ubuntu 26.04's plugins already default to 1.
+`tests/desktop/pipewire/run_buffers.sh` reproduces the
+negotiation with a private PipeWire daemon, a KWin- or Mutter-like source and
+any plugin directory, no desktop session needed.
+
 When `putgd-record` runs from the mounted image (`APPDIR` contains the
 executable), it confines its own GStreamer before initialising it
 (`src/record/BundledRuntime.cpp`): `GST_PLUGIN_SYSTEM_PATH` is the image's

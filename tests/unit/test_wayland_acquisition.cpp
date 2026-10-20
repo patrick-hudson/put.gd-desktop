@@ -27,6 +27,15 @@ private slots:
         QFile named(runtime.filePath("pipewire-1")); QVERIFY(named.open(QIODevice::WriteOnly)); named.close();
         QCOMPARE(pipewireSocket(env), runtime.filePath("pipewire-1"));
     }
+    // #137: the source leaves the buffer count to the compositor. KWin offers
+    // 2-4 buffers; the AppImage's PipeWire 1.0 plugin asked for 8 or more by
+    // default, and PipeWire 1.5.81+ refuses to link ranges that don't overlap.
+    void letsTheCompositorChooseTheBufferCount() {
+        QCOMPARE(pipewireSourceDescription("putgdpipewiresrc", 42, -1, false),
+                 QStringLiteral("putgdpipewiresrc name=src path=42 min-buffers=1 keepalive-time=1000 resend-last=true"));
+        QCOMPARE(pipewireSourceDescription("pipewiresrc", 7, 31, true),
+                 QStringLiteral("pipewiresrc name=src fd=31 path=7 min-buffers=1 do-timestamp=true keepalive-time=1000 resend-last=true"));
+    }
     // #86: a frame keeps the compositor's time, mapped through one reading of
     // both clocks, instead of the time it reached the pipeline.
     void mapsCompositorFrameTimesToRunningTime() {
