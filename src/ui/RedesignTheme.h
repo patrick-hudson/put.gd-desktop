@@ -25,4 +25,8 @@ inline QColor link() { return QColor("#8DBBFF"); }
 inline QColor success() { return QColor("#4CC38A"); }
 inline QColor warning() { return QColor("#E5A443"); }
 inline QColor danger() { return QColor("#F07A6A"); }
+// Drawn over user media (a video poster's play glyph and length): the same in
+// every theme, because the picture under it is not themed.
+inline QColor mediaScrim() { return QColor(0, 0, 0, 150); }
+inline QColor onMedia() { return QColor("#FFFFFF"); }
 }

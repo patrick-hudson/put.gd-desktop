@@ -314,6 +314,29 @@ private slots:
   request.progress({"uploading",999999,{}});provider->requests.last().progress({"uploading",7,{}});replied=false;operations.inspect(id,[&](Error e,QJsonObject r){QVERIFY(!e);inspected=r;replied=true;});QTRY_VERIFY(replied);
   QCOMPARE(inspected["items"].toArray()[0].toObject()["uploadProgress"].toObject()["bytesTransferred"].toInteger(),7);
  }
+ // #112: a video's poster is made after its operation ends. The upload and the
+ // copied link never wait for it, a later poster reaches the history record
+ // and the change signal, and a failed one leaves the record as it was.
+ void videoPostersFollowTheResultWithoutDelayingIt_data(){QTest::addColumn<QByteArray>("mode");QTest::newRow("slow")<<QByteArray("slow");QTest::newRow("failed")<<QByteArray("fail");}
+ void videoPostersFollowTheResultWithoutDelayingIt(){
+#ifndef PUTGD_POSTER_FIXTURE
+  QSKIP("The poster helper fixture is Linux-only");
+#else
+  QFETCH(QByteArray,mode);qputenv("PUTGD_TEST_POSTER_MODE",mode);ArtifactStore::setPosterHelperForTesting(QStringLiteral(PUTGD_POSTER_FIXTURE));auto restore=qScopeGuard([]{qunsetenv("PUTGD_TEST_POSTER_MODE");ArtifactStore::setPosterHelperForTesting({});});
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});QVERIFY(settings.save(configuration(d.path()),{}));
+  Source source;source.payload.kind="files";source.payload.files={fixture(d.path(),"clip.mp4",QByteArray("\0\0\0\x18" "ftypisom\0\0\x02\0isomiso2",24)+QByteArray(4096,'\x11'))};
+  OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());QStringList changes;connect(&operations,&OperationService::changed,this,[&](const QString& id){changes.append(id);});
+  QString id;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});QTRY_VERIFY(!id.isEmpty());
+  HistoryStore journal(operations.databasePath());QTRY_COMPARE(journal.operation(id).state,QString("completed"));QTRY_COMPARE(source.copies,1);
+  auto op=journal.operation(id);QCOMPARE(op.items.size(),1);QCOMPARE(op.items[0].artifact.category,QString("videos"));QCOMPARE(op.items[0].uploadStatus,QString("uploaded"));
+  // The fixture takes 2 s, so the link was copied before any poster existed.
+  QVERIFY(op.items[0].artifact.previewPath.isEmpty());
+  if(mode=="fail"){QTest::qWait(1500);QVERIFY(journal.operation(id).items[0].artifact.previewPath.isEmpty());QVERIFY(journal.detail(op.items[0].artifact.id)["previewPath"].toString().isEmpty());QCOMPARE(journal.operation(id).state,QString("completed"));return;}
+  const auto before=changes.count(id);QTRY_VERIFY_WITH_TIMEOUT(!journal.operation(id).items[0].artifact.previewPath.isEmpty(),10000);
+  op=journal.operation(id);const auto preview=op.items[0].artifact.previewPath;QCOMPARE(QFileInfo(preview).fileName(),op.items[0].artifact.id+".png");QVERIFY(QFileInfo(preview).isFile());
+  QCOMPARE(journal.detail(op.items[0].artifact.id)["previewPath"].toString(),preview);QCOMPARE(op.state,QString("completed"));QCOMPARE(op.items[0].uploadStatus,QString("uploaded"));QCOMPARE(source.copies,1);QTRY_VERIFY(changes.count(id)>before);
+#endif
+ }
  void inactiveCancellationNormalizesPhaseWithoutChangingItemOutcome(){
   QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));Source source;OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());HistoryStore journal(operations.databasePath());
   Operation prior;prior.id="synthetic-inactive";prior.state="partial";prior.phase="uploading";prior.settings=settings.snapshot();OperationItem item;item.artifact.id="synthetic-inactive-item";item.uploadStatus="unknown";item.phase="uploading";prior.items.append(item);QVERIFY(!journal.saveOperation(prior));
