@@ -286,7 +286,9 @@ for this upload** button, and so do failed History rows (in the inspector and th
 menu). Each builds a package for that one operation, in the remembered folder or the
 default one. The resident then posts **put.gd — diagnostics saved** with the file name,
 size and folder, and a **Show in folder** button. Notification buttons need the
-desktop's notification server to support actions (GNOME, Plasma and Cinnamon do).
+desktop's notification server to support actions (GNOME, Plasma and Cinnamon do). put.gd
+asks for a 10-second notification; once Cinnamon has expired it, use the History row
+instead.
 
 **Show in folder** is the session method `diagnostics.reveal` with an absolute `path`
 (MCP `show_diagnostics_package`). It asks the file manager to select the package
