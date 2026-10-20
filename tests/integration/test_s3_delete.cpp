@@ -315,6 +315,52 @@ private slots:
         QCOMPARE(f.remove(uploaded.receipt, result.progress).status, QString("changed"));
         QCOMPARE(f.events("DELETE").size(), 1);
     }
+    // Cloudflare R2 (#145): a version ID on every write, no versioning, 501 for versionId.
+    void versionlessBucketChecksAndRemovesLikeUnversioned() {
+        S3Fixture f;
+        f.reset({{"versionless", true}});
+        const auto uploaded = f.upload(f.request());
+        QCOMPARE(uploaded.status, QString("uploaded"));
+        QVERIFY(!uploaded.receipt.objectReference["versionId"].toString().isEmpty());
+        // History checks the recorded identity before deleting; the receipt stays as recorded.
+        const auto stat = f.await<StatResult>([&](auto cb) { f.provider.stat(uploaded.receipt, cb); });
+        QCOMPARE(stat.status, QString("own"));
+        QCOMPARE(stat.receipt.objectReference, uploaded.receipt.objectReference);
+        QCOMPARE(stat.receipt.concurrencyToken, uploaded.receipt.concurrencyToken);
+        QStringList phases;
+        QJsonObject journal;
+        const auto removed = f.remove(uploaded.receipt, {}, [&](auto progress, auto ack) {
+            phases.append(progress["phase"].toString());
+            journal = progress;
+            ack({});
+        });
+        QCOMPARE(removed.status, QString("removed"));
+        QCOMPARE(phases, QStringList({"object_intent", "done"}));
+        QVERIFY(journal["versionless"].toBool());
+        QCOMPARE(journal["target"].toObject(), uploaded.receipt.toJson());
+        const auto deletes = f.events("DELETE");
+        QCOMPARE(deletes.size(), 1);
+        QVERIFY(!deletes[0].toObject()["path"].toString().contains("versionId"));
+        QCOMPARE(deletes[0].toObject()["headers"].toObject()["if-match"].toString(), uploaded.receipt.concurrencyToken);
+        QVERIFY(f.state()["objects"].toObject()["prefix é/a b.txt"].toArray().isEmpty());
+        // A retry from that journal stays unversioned and finds the object gone.
+        QCOMPARE(f.remove(uploaded.receipt, journal).status, QString("removed"));
+        QCOMPARE(f.events("DELETE").size(), 1);
+    }
+    void notImplementedVersionOnVersionedBucketNeverDeletes() {
+        S3Fixture f;
+        f.reset({{"versioning", "Enabled"}});
+        const auto uploaded = f.upload(f.request());
+        auto configuration = rules({{{"method", "HEAD"}, {"query", "versionId"}, {"status", 501}, {"code", "NotImplemented"}}});
+        configuration["objects"] = f.state()["objects"];
+        configuration["versioning"] = "Enabled";
+        f.reset(configuration);
+        const auto result = f.remove(uploaded.receipt);
+        QCOMPARE(result.status, QString("unknown"));
+        QCOMPARE(result.error.code, QString("s3_unsupported_request"));
+        QVERIFY(!result.progress.contains("versionless"));
+        QCOMPARE(f.events("DELETE").size(), 0);
+    }
 };
 QTEST_GUILESS_MAIN(S3DeleteTest)
 #include "test_s3_delete.moc"

@@ -67,6 +67,8 @@ QString requestGuidance(const QString& name, int status, const QString& stage, i
     if (name == "EntityTooLarge") return "The storage service rejected the file size. Check its object and part size limits; Amazon S3 accepts objects up to 5 TiB.";
     if (name == "EntityTooSmall" || name == "InvalidPart" || name == "InvalidPartOrder") return "The storage service rejected the uploaded parts. It may not support S3 multipart uploads of 5 MiB or larger parts; check its multipart limits.";
     if (name == "BadDigest" || name == "XAmzContentSHA256Mismatch") return "The storage service received different bytes than put.gd sent. Retry the upload; if it continues, check proxies or network equipment that change request bodies.";
+    if ((name == "NotImplemented" || status == 501) && (stage == "upload_put" || stage == "upload_complete"))
+        return "The storage service does not support conditional writes (If-None-Match and If-Match), which put.gd uses so an upload never replaces another file. Use a storage service or endpoint that implements S3 conditional writes.";
     if (name == "NotImplemented" || status == 501) return "The storage service does not support a request put.gd needs, such as conditional multipart completion. Check that the endpoint implements S3 conditional writes for multipart uploads.";
     if (status == 403) {
         if (stage == "upload_put") return "S3 denied the upload. Check s3:PutObject in IAM and the bucket policy. Request public read also needs s3:PutObjectAcl and bucket settings that permit public ACLs.";
@@ -247,6 +249,22 @@ StatResult inspect(Client& client, const StorageReceipt& expected, bool current 
     return {"own", receipt(expected.destination, key, expected.publicationId,
                             metadata(result, "putgd-sha256"), result.GetContentLength(),
                             qt(result.GetETag()), qt(result.GetVersionId())), {}};
+}
+// Cloudflare R2 (#145) returns a version ID on every write but implements no versioning:
+// a request naming a version gets 501, and the bucket reports no versioning status. A
+// bucket whose versioning was never enabled holds one object per key, so a receipt from
+// it is checked and removed like an unversioned one.
+bool versionless(Client& client, const StorageReceipt& expected, const StatResult& found) {
+    const auto version = expected.objectReference["versionId"].toString();
+    if (found.status != "unknown" || found.error.details["httpStatus"].toInt() != 501 || version.isEmpty() || version == "null") return false;
+    Aws::S3::Model::GetBucketVersioningRequest request;
+    request.SetBucket(aws(expected.destination.settings["bucket"].toString()));
+    const auto outcome = client.GetBucketVersioning(request);
+    return outcome.IsSuccess() && outcome.GetResult().GetStatus() == Aws::S3::Model::BucketVersioningStatus::NOT_SET;
+}
+StorageReceipt withoutVersion(StorageReceipt receipt) {
+    receipt.objectReference.remove("versionId");
+    return receipt;
 }
 Error checkpoint(const DurableCheckpoint& save, const QJsonObject& progress) {
     std::mutex mutex;
@@ -828,7 +846,13 @@ void NetworkS3Driver::stat(const StorageReceipt& expected, std::function<void(St
         reply({"unknown", {}, accessError()});
         return;
     }
-    reply(inspect(*client, expected));
+    auto found = inspect(*client, expected);
+    if (versionless(*client, expected, found)) {
+        found = inspect(*client, withoutVersion(expected), true);
+        // The recorded ID names the only object the key can hold; keep the receipt as recorded.
+        if (found.status == "own") found.receipt.objectReference["versionId"] = expected.objectReference["versionId"];
+    }
+    reply(found);
 }
 void NetworkS3Driver::reconcile(const UploadRequest& request, std::function<void(StatResult)> reply) {
     if (auto error = state_->readiness(request.destination)) {
@@ -1003,16 +1027,17 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
         finish("failed", error);
         return;
     }
-    const auto& expected = request.receipt;
+    // A journal that found a versionless bucket (see versionless()) continues unversioned.
+    auto expected = progress.value("versionless").toBool() ? withoutVersion(request.receipt) : request.receipt;
     const auto& destination = expected.destination;
     const auto key = expected.objectReference["key"].toString();
-    const auto version = expected.objectReference["versionId"].toString();
+    auto version = expected.objectReference["versionId"].toString();
     if (key.isEmpty() || expected.publicationId.isEmpty() || expected.concurrencyToken.isEmpty() ||
         expected.objectReference["schemaVersion"].toInt() != 1) {
         finish("failed", {"s3_receipt_invalid", "Recorded identity and object token are required", {}});
         return;
     }
-    const auto target = expected.toJson();
+    const auto target = request.receipt.toJson();
     if (progress.contains("target") && progress["target"].toObject() != target) {
         finish("changed", {"delete_target_changed", "Deletion journal does not match the original target", {}});
         return;
@@ -1024,7 +1049,7 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
         return;
     }
     auto phase = progress.value("phase").toString();
-    const bool immutable = !version.isEmpty() && version != "null";
+    bool immutable = !version.isEmpty() && version != "null";
     const bool objectPhase = phase.startsWith("object_");
     const bool immutablePhase = phase.startsWith("marker_") || phase.startsWith("version_");
     if ((objectPhase && immutable) || (immutablePhase && !immutable) ||
@@ -1046,6 +1071,13 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
         return;
     }
     auto identity = inspect(*client, expected);
+    if (phase.isEmpty() && immutable && versionless(*client, expected, identity)) {
+        progress["versionless"] = true;
+        expected = withoutVersion(expected);
+        version.clear();
+        immutable = false;
+        identity = inspect(*client, expected);
+    }
     if (identity.status == "foreign") {
         finish("changed");
         return;

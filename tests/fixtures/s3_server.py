@@ -6,7 +6,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 lock = threading.RLock()
 barriers = {}
-state = {'events': [], 'objects': {}, 'versioning': '', 'rules': [], 'sequence': 0, 'uploads': {}}
+state = {'events': [], 'objects': {}, 'versioning': '', 'versionless': False, 'rules': [], 'sequence': 0, 'uploads': {}}
 # Large bodies (multipart parts and the objects they complete) stay out of the
 # JSON state so /__state remains bounded; events and versions record their digest.
 blobs = {}
@@ -65,7 +65,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.handle_wire(body)
             if self.path == '/__reset':
                 blobs.clear()
-                state.update({'events': [], 'objects': {}, 'versioning': '', 'rules': [], 'sequence': 0, 'uploads': {}})
+                state.update({'events': [], 'objects': {}, 'versioning': '', 'versionless': False, 'rules': [], 'sequence': 0, 'uploads': {}})
                 state.update(json.loads(body))
                 state['sequence'] = max([state['sequence']] + [int(v['version']) for versions in state['objects'].values() for v in versions if v['version'].isdigit()])
                 self.respond(200, b'{}')
@@ -126,6 +126,9 @@ class Handler(BaseHTTPRequestHandler):
                 self.respond(307, headers={'Location': self.path}); return
             if rule and rule.get('status'):
                 self.error(rule['status'], rule.get('code', 'AccessDenied')); return
+            # Like Cloudflare R2 (#145): writes return a version ID, but versions cannot be addressed.
+            if state['versionless'] and 'versionId' in query:
+                self.error(501, 'NotImplemented'); return
             versions = state['objects'].setdefault(key, []) if key else []
             if rule and rule.get('competitor'):
                 versions.append({'version': 'competitor', 'body': base64.b64encode(b'competitor').decode(), 'metadata': {}, 'etag': '"competitor"', 'marker': False})
@@ -161,6 +164,7 @@ class Handler(BaseHTTPRequestHandler):
                 versions.append(value)
                 headers = {'ETag': value['etag']}
                 if version: headers['x-amz-version-id'] = version
+                elif state['versionless']: headers['x-amz-version-id'] = uuid.uuid4().hex
             else:
                 if self.headers.get('if-match') and (not selected or selected.get('marker') or selected['etag'] != self.headers['if-match']):
                     self.error(412, 'PreconditionFailed'); return
@@ -241,7 +245,7 @@ class Handler(BaseHTTPRequestHandler):
         if state['versioning'] != 'Enabled': versions[:] = [v for v in versions if v['version'] != version]
         versions.append(value)
         del uploads[upload_id]
-        headers = {'x-amz-version-id': version} if version else {}
+        headers = {'x-amz-version-id': version} if version else ({'x-amz-version-id': uuid.uuid4().hex} if state['versionless'] else {})
         headers.update({'x-amz-request-id': 'SYNTHDONE0001', 'x-amz-id-2': 'synthetic+Complete/Id2='})
         return xml_reply(self, 'CompleteMultipartUploadResult', '<Key>' + key + '</Key><ETag>' + value['etag'].replace('"', '&quot;') + '</ETag>', headers)
 
