@@ -8,6 +8,9 @@ inline constexpr qint64 s3MinimumPartBytes = 5LL * 1024 * 1024;
 inline constexpr qint64 s3MaximumPartBytes = 5LL * 1024 * 1024 * 1024;
 inline constexpr qint64 s3MaximumParts = 10000;
 inline constexpr qint64 s3MaximumObjectBytes = 5LL * 1024 * 1024 * 1024 * 1024;
+// One multipart upload sends at most this many parts at once: its own upload slot
+// plus idle slots the resident lends it (#174).
+inline constexpr int s3MaximumPartLanes = 4;
 // Files above the threshold upload in parts streamed from the retained artifact;
 // smaller files keep one PutObject. Production uses these defaults. Tests may lower
 // both, but the worker still refuses parts below S3's 5 MiB minimum.

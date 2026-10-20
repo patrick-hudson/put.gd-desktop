@@ -1,4 +1,5 @@
 #include "NativeTray.h"
+#include <QSet>
 #include "IconArt.h"
 #include "Theme.h"
 #include <QCoreApplication>
@@ -165,6 +166,7 @@ private slots:
  void notificationClosed(uint id, uint reason);
 private:
  void setOwner(const QString& owner);
+ void queryNotificationServer();
  void queryHost();
  void registerItem();
  void updateAvailability();
@@ -175,6 +177,9 @@ private:
  QHash<uint,QUrl> notificationLinks_;
  QHash<uint,QHash<QString,QString>> notificationActions_;
  quint64 notificationGeneration_ = 0;
+ QString notificationServer_; // GetServerInformation's name, empty until it answers
+ QSet<uint> residentNotifications_; // sent resident (#151): put.gd closes them once used
+ void closeNotification(uint id);
  std::unique_ptr<TrayExport> item_, menu_;
  NativeImages icons_;
  QColor color_ = Theme::trayTints(false).idle;
@@ -207,11 +212,13 @@ NativeTrayPrivate::NativeTrayPrivate(NativeTray* owner, QDBusConnection bus)
    notificationWatcher_(notificationService,bus_,QDBusServiceWatcher::WatchForOwnerChange,this), icons_(brandIcon()) {
  registerWireTypes();
  connect(&notificationWatcher_,&QDBusServiceWatcher::serviceOwnerChanged,this,[this](const QString&,const QString& oldOwner,const QString&) {
+  notificationServer_.clear();queryNotificationServer();
   if(oldOwner.isEmpty())return;
   ++notificationGeneration_;notificationLinks_.clear();notificationActions_.clear();
  });
  bus_.connect(notificationService,notificationPath,notificationService,"ActionInvoked",this,SLOT(notificationActivated(uint,QString)));
  bus_.connect(notificationService,notificationPath,notificationService,"NotificationClosed",this,SLOT(notificationClosed(uint,uint)));
+ queryNotificationServer();
  auto resolveUnavailable = [this] {
   ownerKnown_ = hostKnown_ = registrationSettled_ = true;
   updateAvailability();
@@ -310,26 +317,56 @@ void NativeTrayPrivate::dispatch(const QString& action) {
   if (guard) emit guard->actionActivated(action);
  });
 }
+void NativeTrayPrivate::queryNotificationServer() {
+ if(!bus_.isConnected())return;
+ auto call=QDBusMessage::createMethodCall(notificationService,notificationPath,notificationService,"GetServerInformation");
+ auto* pending=new QDBusPendingCallWatcher(bus_.asyncCall(call,callTimeoutMs),this);
+ connect(pending,&QDBusPendingCallWatcher::finished,this,[this](QDBusPendingCallWatcher* p) {
+  const QDBusPendingReply<QString,QString,QString,QString> result=*p;p->deleteLater();
+  if(!result.isError())notificationServer_=result.argumentAt<0>();
+ });
+}
+int NativeTray::notificationTimeoutMs(const QString& server,bool actions) {
+ // GNOME Shell and Plasma keep a notification, buttons and all, in their lists once
+ // the popup goes. Elsewhere (Cinnamon, #151, and servers not yet known) a
+ // notification with buttons stays until it is used or dismissed.
+ if(!actions||server=="gnome-shell"||server=="Plasma")return 10000;
+ return 0;
+}
 void NativeTrayPrivate::notify(const QString& title, const QString& message, bool warning, const QUrl& link, const QList<NotificationAction>& actions) {
  if (!available_ || notificationsInFlight_ >= 8) return;
  auto call = QDBusMessage::createMethodCall(notificationService, notificationPath, notificationService, "Notify");
- const QVariantMap hints{{"urgency", QVariant::fromValue(static_cast<uchar>(warning ? 2 : 1))}, {"desktop-entry", "putgd"}};
+ QVariantMap hints{{"urgency", QVariant::fromValue(static_cast<uchar>(warning ? 2 : 1))}, {"desktop-entry", "putgd"}};
  QStringList names=link.isEmpty()?QStringList{}:QStringList{"default","Open in browser"};
  QHash<QString,QString> values;
  for(const auto& action:actions)if(action.key!="default"){names<<action.key<<action.label;values.insert(action.key,action.value);}
- call.setArguments({QString("put.gd"), uint(0), QString("putgd"), title.left(512), message.left(4096), names, hints, 10000});
+ const int timeout=NativeTray::notificationTimeoutMs(notificationServer_,!values.isEmpty());
+ // Cinnamon removes an app's non-resident notifications as soon as one of its
+ // windows takes focus, buttons and all; a resident one stays until used (#151).
+ const bool resident=timeout==0;
+ if(resident)hints.insert("resident",true);
+ call.setArguments({QString("put.gd"), uint(0), QString("putgd"), title.left(512), message.left(4096), names, hints, timeout});
  ++notificationsInFlight_;
  const auto generation=notificationGeneration_;
  auto* pending = new QDBusPendingCallWatcher(bus_.asyncCall(call, callTimeoutMs), this);
- connect(pending, &QDBusPendingCallWatcher::finished, this, [this,generation,link,values](QDBusPendingCallWatcher* p) {
+ connect(pending, &QDBusPendingCallWatcher::finished, this, [this,generation,link,values,resident](QDBusPendingCallWatcher* p) {
   const QDBusPendingReply<uint> result=*p;
   --notificationsInFlight_; p->deleteLater();
   if(generation!=notificationGeneration_||result.isError())return;
   if(!link.isEmpty())notificationLinks_.insert(result.value(),link);
   if(!values.isEmpty())notificationActions_.insert(result.value(),values);
+  if(resident)residentNotifications_.insert(result.value());
  });
 }
+// A resident notification isn't removed by its server when used; put.gd closes it.
+void NativeTrayPrivate::closeNotification(uint id) {
+ if(!residentNotifications_.remove(id))return;
+ auto call=QDBusMessage::createMethodCall(notificationService,notificationPath,notificationService,"CloseNotification");
+ call<<id;bus_.asyncCall(call,callTimeoutMs);
+}
 void NativeTrayPrivate::notificationActivated(uint id,const QString& action) {
+ // A button or a click on the body uses a resident notification up.
+ closeNotification(id);
  if(action!="default"&&notificationActions_.value(id).contains(action)) {
   const auto value=notificationActions_.take(id).value(action);notificationLinks_.remove(id);
   QTimer::singleShot(0,q_,[guard=QPointer<NativeTray>(q_),action,value] {
@@ -343,7 +380,7 @@ void NativeTrayPrivate::notificationActivated(uint id,const QString& action) {
   if(guard)emit guard->notificationActivated(link);
  });
 }
-void NativeTrayPrivate::notificationClosed(uint id,uint) {notificationLinks_.remove(id);notificationActions_.remove(id);}
+void NativeTrayPrivate::notificationClosed(uint id,uint) {notificationLinks_.remove(id);notificationActions_.remove(id);residentNotifications_.remove(id);}
 void NativeTrayPrivate::setActivity(const QColor& color,const QString& description,int percent) {
  percent=qBound(-1,percent,100);
  const bool iconChanged=color!=color_||percent!=percent_;

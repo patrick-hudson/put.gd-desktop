@@ -66,6 +66,7 @@ private:
  QWidget *linksPanel_=nullptr,*connectionPanel_=nullptr;QPushButton* defaultButton_=nullptr;
  QLabel* credentialHint_=nullptr;
  QLabel *configPath_=nullptr,*endpointHint_=nullptr,*linkExample_=nullptr,*destinationStatus_=nullptr;
+ void refreshEffectiveLimits();void updateLimitHints();QHash<QString,QLabel*> limitHints_;QJsonObject effectiveLimits_;
  void refreshLoggingStatus();void clearLogs(std::function<void(Error,QJsonObject)> done);void choosePackageFolder(const QString& folder);
  QCheckBox* debugLogging_=nullptr;QLabel *debugLoggingStatus_=nullptr,*logSummary_=nullptr,*loggingWarning_=nullptr,*uncleanExit_=nullptr;QPushButton* clearLogs_=nullptr;
  QPointer<QDialog> packageDialog_;

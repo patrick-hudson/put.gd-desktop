@@ -3,8 +3,9 @@
 // production S3Provider and putgd-s3-worker and reports one JSON line per run:
 // outcome, wall time, throughput, the worker's peak resident memory and part counts.
 //
-//   s3_upload_probe ENDPOINT BUCKET FILE MODE [THRESHOLD_BYTES]
+//   s3_upload_probe ENDPOINT BUCKET FILE MODE [THRESHOLD_BYTES [EXTRA_LANES]]
 //   MODE: upload | single | cancel | interrupt | collision | probe
+//   EXTRA_LANES: idle upload slots lent to a multipart upload (0-3, default 0, #174)
 #include "storage/s3/S3Provider.h"
 #include <QCoreApplication>
 #include <QCryptographicHash>
@@ -75,10 +76,11 @@ template<class T, class F> T await(F start) {
 int main(int argc, char** argv) {
     QCoreApplication app(argc, argv);
     const auto args = app.arguments();
-    if (args.size() < 5) { qCritical("usage: s3_upload_probe ENDPOINT BUCKET FILE MODE [THRESHOLD_BYTES]"); return 2; }
+    if (args.size() < 5) { qCritical("usage: s3_upload_probe ENDPOINT BUCKET FILE MODE [THRESHOLD_BYTES [EXTRA_LANES]]"); return 2; }
     const auto mode = args[4];
     S3UploadPolicy policy;
-    if (args.size() > 5) policy.multipartThresholdBytes = args[5].toLongLong();
+    if (args.size() > 5 && args[5].toLongLong() > 0) policy.multipartThresholdBytes = args[5].toLongLong();
+    const int extraLanes = args.size() > 6 ? qBound(0, args[6].toInt(), s3MaximumPartLanes - 1) : 0;
     if (mode == "single") policy.multipartThresholdBytes = s3MaximumObjectBytes;
     CredentialStore credentials;
     S3Provider provider(credentials, policy);
@@ -117,6 +119,15 @@ int main(int argc, char** argv) {
     std::mutex mutex;
     QList<QJsonObject> journal;
     request.checkpoint = [&](const QJsonObject& value, std::function<void(Error)> ack) { { std::lock_guard lock(mutex); journal.append(value); } ack({}); };
+    request.extraLanes = [extraLanes](int wanted) { return qMin(wanted, extraLanes); };
+    // Part records (#148): the most lanes any part saw, and the slowest part.
+    std::atomic_int widest{0};
+    std::atomic<qint64> slowestPartMs{0};
+    request.trace = [&](const QJsonObject& record) {
+        if (record["event"] != "part") return;
+        widest = qMax(widest.load(), record["lanes"].toInt());
+        slowestPartMs = qMax(slowestPartMs.load(), record["elapsedMs"].toInteger());
+    };
     std::atomic<qint64> sent{0};
     std::atomic_bool stopped{false};
     Sampler sampler;
@@ -139,7 +150,8 @@ int main(int argc, char** argv) {
                      {"workerPeakRssKiB", peak.rssKiB}, {"workerPeakHwmKiB", peak.hwmKiB}, {"workers", peak.pids.size()},
                      {"partBytes", double(s3PartBytes(artifact.bytes, policy))}, {"journals", journal.size()},
                      {"lastJournalPhase", journal.isEmpty() ? QString() : journal.last()["phase"].toString()},
-                     {"incompleteUpload", result.error.details["incompleteUpload"].toBool()}};
+                     {"incompleteUpload", result.error.details["incompleteUpload"].toBool()},
+                     {"extraLanes", extraLanes}, {"widestLanes", widest.load()}, {"slowestPartMs", slowestPartMs.load()}};
     if (mode == "interrupt" && !journal.isEmpty() && !journal.last().isEmpty()) {
         // Retry with the journal, as History's Retry would after a crash.
         request.resume = journal.last();

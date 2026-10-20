@@ -6,7 +6,8 @@
 // alive at once, and the peak resident memory of this process plus its workers.
 //
 //   operations_upload_probe ENDPOINT BUCKET CONCURRENCY GROUP [GROUP...]
-//   GROUP: comma-separated absolute file paths, started 200 ms after the previous group
+//   GROUP: comma-separated absolute file paths, started 200 ms after the previous group,
+//          or PUTGD_PROBE_GROUP_GAP_MS after it when that is set
 #include "app/OperationService.h"
 #include "storage/s3/S3Provider.h"
 #include <QCoreApplication>
@@ -111,8 +112,9 @@ int main(int argc, char** argv) {
     QObject::connect(&operations, &OperationService::resultReady, &app, [&](const QString&) { ++finished; });
     QObject::connect(&operations, &OperationService::initialized, &app, [&] {
         clock.start();
+        const int gap = qEnvironmentVariableIsSet("PUTGD_PROBE_GROUP_GAP_MS") ? qEnvironmentVariableIntValue("PUTGD_PROBE_GROUP_GAP_MS") : 200;
         for (int group = 4; group < args.size(); ++group)
-            QTimer::singleShot((group - 4) * 200, &app, [&, group] {
+            QTimer::singleShot((group - 4) * gap, &app, [&, group] {
                 source.next = args[group].split(',');
                 operations.invoke("clipboard", [&](Error error, QJsonObject result) {
                     if (error) qCritical("invoke: %s", qPrintable(error.code));

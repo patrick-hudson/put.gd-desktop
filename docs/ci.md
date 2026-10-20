@@ -6,7 +6,7 @@ through the Actions API.
 
 | Workflow | Runs on | Does |
 | --- | --- | --- |
-| `ci.yml` | every pull request, pushes to `nightly`, manual runs; called by nightly and release | contracts, Linux tests, clang ASan/UBSan core tests, Windows compile, packages; on `nightly` pushes, cache pruning |
+| `ci.yml` | every pull request, pushes to `nightly`, manual runs; called by nightly and release | contracts, Linux tests, clang ASan/UBSan core tests, Windows compile, packages, the AppImage's pipewiresrc on PipeWire 1.6; on `nightly` pushes, cache pruning |
 | `package.yml` | called by `ci.yml` | four native packages, AppImage, and with a tag the collected `release-assets` |
 | `nightly.yml` | 05:23 UTC daily and manual | skip unchanged source, or tag, test, package and publish a nightly, then notify put.gd-site |
 | `release.yml` | pushes to `main` and manual | cut a candidate (or stable on request), test, package and stage a draft |
@@ -38,8 +38,12 @@ its own pull request (see `AGENTS.md`): a documentation-only pull request runs
 The **sanitizers** job is selected separately: by `src/core/`, `src/app/`, the C++
 sources under `tests/unit/`, `tests/integration/` and `tests/fixtures/`, and by
 `cmake/`, `tools/ci/`, `CMakeLists.txt`, `CMakePresets.json` and `ci.yml`. UI,
-platform, storage and packaging changes don't select it. `tests/ci/test_changes.py`
-pins these rules.
+platform, storage and packaging changes don't select it.
+
+The **pipewire** job is selected by every packaging row above, by `src/record/` and
+by `tests/desktop/pipewire/`. That directory's scripts are read by this job alone,
+so a change to them doesn't select `linux` and `portable`.
+`tests/ci/test_changes.py` pins these rules.
 
 ## Jobs
 
@@ -101,6 +105,28 @@ built in CI.
 Ubuntu 26.04 and Debian 13 DEBs, the Fedora 44 RPM and the AppImage, and compiles the curated source
 export on Ubuntu 24.04. With a release tag, `collect` verifies and assembles the
 public asset set. See [releases](release.md).
+
+**pipewire** checks the AppImage's bundled GStreamer `pipewiresrc` against a PipeWire
+1.6 daemon (issue #144). The AppImage bundles Ubuntu 24.04's PipeWire 1.0.5 plugin,
+while hosts run their own daemon, and PipeWire 1.5.81 and later refuse a link whose
+buffer-count ranges don't overlap. That mismatch broke recording on Plasma 6.6 (#137)
+and nothing in CI could see it, since the runners have PipeWire 1.0.5. The job runs
+`tests/desktop/pipewire/ci_check.sh` in a pinned `ubuntu:26.04` container. It:
+
+- compiles the branch's own `pipewireSourceDescription()` (`recorder_properties.cpp`)
+  to get the properties the recorder sets, such as `min-buffers=1`;
+- links the image's `pipewiresrc`, with those properties, to `run_buffers.sh`'s
+  KWin-like (2-4 buffers) and Mutter-like sources on a private daemon with no
+  session manager, devices or D-Bus, and requires frames at the sink;
+- requires a control with `min-buffers=8` to be refused, so a daemon that doesn't
+  enforce the rule can't pass silently.
+
+It takes the AppImage from this run's `packages` job when that ran. Otherwise only
+`src/record` or the check changed, so it downloads the latest nightly's AppImage and
+checks it against that release's `SHA256SUMS`. It takes about two minutes, most of
+it installing the container's packages. A branch that drops `min-buffers=1` fails
+it with the #137 error, `error alloc buffers: Invalid argument (-22)`. The job is
+part of the required `CI` summary when selected.
 
 ## Notifying put.gd-site
 

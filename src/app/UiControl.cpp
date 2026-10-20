@@ -10,7 +10,9 @@ bool knownType(const QString& type){
   // Image editor helper: progress, agent commands and their results.
   "editing","finalizing","command","commandResult",
   // Recording helper: unsolicited progress/stop/failure notifications.
-  "event"};
+  "event",
+  // S3 worker: idle upload slots a multipart upload may borrow.
+  "lanes"};
  return types.contains(type);
 }
 }

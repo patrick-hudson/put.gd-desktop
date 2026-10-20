@@ -38,6 +38,7 @@
 #include <QRadioButton>
 #include <QInputDialog>
 #include <QMessageBox>
+#include <memory>
 #include <QStyle>
 #include <QAbstractSpinBox>
 #include <QTabBar>
@@ -172,8 +173,8 @@ QString operationLine(const QJsonObject& op){
  return actions.value(op["action"].toString(),op["action"].toString())+" · "+op["state"].toString()+" · "+localTime(op["created"].toString())+(items>1?QString(" · %1 files").arg(items):QString{});
 }
 // Create diagnostics package (#122): previews what diagnostics.bundle would save,
-// where, and with which redaction, then saves it locally. Nothing is uploaded; the
-// extras slot is where #123's optional upload goes.
+// where, and with which redaction, then saves it locally. When a working upload
+// destination exists it can also upload the saved package and copy a link (#123, #158).
 class DiagnosticsPackageDialog final:public QDialog {
 public:
  using Reply=std::function<void(Error,QJsonObject)>;
@@ -182,7 +183,7 @@ public:
   setObjectName("diagnosticsPackageDialog");setWindowTitle("Create diagnostics package");setAccessibleName("Create diagnostics package");setModal(true);setMinimumWidth(560);
   auto* layout=new QVBoxLayout(this);layout->setContentsMargins(24,20,24,18);layout->setSpacing(14);
   auto* heading=new QLabel("Create diagnostics package",this);VisualStyle::role(heading,"sectionTitle");layout->addWidget(heading);
-  auto* intro=new QLabel("A .zip a maintainer can use to work out what went wrong. It is saved on this computer only; nothing is uploaded.",this);intro->setWordWrap(true);VisualStyle::role(intro,"muted");layout->addWidget(intro);
+  auto* intro=new QLabel("A .zip a maintainer can use to work out what went wrong. It is always saved on this computer; nothing is uploaded unless you choose to below.",this);intro->setWordWrap(true);VisualStyle::role(intro,"muted");layout->addWidget(intro);
   auto* form=new QFormLayout;VisualStyle::styleForm(form);form->setVerticalSpacing(12);layout->addLayout(form);
   auto label=[this](const char* name){auto* l=new QLabel(this);l->setObjectName(name);l->setWordWrap(true);l->setTextFormat(Qt::PlainText);l->setTextInteractionFlags(Qt::TextSelectableByMouse);return l;};
   scope_=label("packageScope");form->addRow("Covers",scope_);
@@ -197,13 +198,17 @@ public:
   auto* choose=new QPushButton("Choose folder…",this);choose->setObjectName("choosePackageFolder");whereLayout->addWidget(choose);
   useDefault_=new QPushButton("Use default",this);useDefault_->setObjectName("defaultPackageFolder");useDefault_->setToolTip("Save to <archive root>/diagnostics, where put.gd keeps the newest 10 packages for 30 days.");whereLayout->addWidget(useDefault_);
   form->addRow("Save to",where);
-  // Reserved for #123 (Also upload and copy a link).
-  auto* extras=new QWidget(this);extras->setObjectName("diagnosticsPackageExtras");auto* extrasLayout=new QVBoxLayout(extras);extrasLayout->setContentsMargins(0,0,0,0);layout->addWidget(extras);
+  // Also upload and copy a link (#123): offered only once diagnostics.uploadTarget
+  // says the destination works; until then, or instead, a line says why not.
+  auto* extras=new QWidget(this);extras->setObjectName("diagnosticsPackageExtras");auto* extrasLayout=new QVBoxLayout(extras);extrasLayout->setContentsMargins(0,0,0,0);extrasLayout->setSpacing(4);layout->addWidget(extras);
+  upload_=new QCheckBox("Also upload and copy a link",this);upload_->setObjectName("uploadPackage");upload_->setAccessibleName("Also upload and copy a link");upload_->hide();extrasLayout->addWidget(upload_);
+  uploadNote_=label("packageUploadNote");VisualStyle::role(uploadNote_,"muted");extrasLayout->addWidget(uploadNote_);
   result_=label("packageResult");VisualStyle::role(result_,"status");result_->hide();layout->addWidget(result_);
   auto* buttons=new QHBoxLayout;show_=new QPushButton("Show in folder",this);show_->setObjectName("showPackageInFolder");show_->hide();buttons->addWidget(show_);buttons->addStretch();
   close_=new QPushButton("Cancel",this);close_->setObjectName("closePackage");buttons->addWidget(close_);
   save_=new QPushButton("Save package",this);save_->setObjectName("savePackage");VisualStyle::role(save_,"primary");save_->setDefault(true);buttons->addWidget(save_);layout->addLayout(buttons);
   connect(includeNames_,&QCheckBox::toggled,this,[this]{refreshPreview();});
+  connect(upload_,&QCheckBox::toggled,this,[this]{if(saved_.isEmpty()&&!saving_)save_->setText(saveLabel());});
   connect(choose,&QPushButton::clicked,this,[this]{const auto path=QFileDialog::getExistingDirectory(this,"Save diagnostics packages to",folder_->text());if(!path.isEmpty())setFolder(path,true);});
   connect(useDefault_,&QPushButton::clicked,this,[this]{setFolder({},true);});
   connect(close_,&QPushButton::clicked,this,&QDialog::reject);
@@ -211,17 +216,42 @@ public:
   connect(show_,&QPushButton::clicked,this,[this]{reveal({});});
  }
  // Each opening starts with names hashed, the privacy default.
- void setScope(const QString& operation,const QString& folder){operation_=operation;custom_=QFileInfo(folder).isDir()?folder:QString{};{const QSignalBlocker block(includeNames_);includeNames_->setChecked(false);}saved_={};error_={};result_->hide();show_->hide();save_->setText("Save package");close_->setText("Cancel");refreshPreview();}
+ void setScope(const QString& operation,const QString& folder){operation_=operation;custom_=QFileInfo(folder).isDir()?folder:QString{};{const QSignalBlocker block(includeNames_);includeNames_->setChecked(false);}saved_={};error_={};result_->hide();show_->hide();close_->setText("Cancel");checkUploadTarget();save_->setText(saveLabel());refreshPreview();}
  void setIncludeNames(bool include){if(includeNames_->isChecked()!=include)includeNames_->setChecked(include);}
  Error setFolder(const QString& folder,bool remember){
   if(!folder.isEmpty()&&!QFileInfo(folder).isDir())return {"diagnostics_output_unavailable","Choose an existing folder.",{{"path",folder}}};
   custom_=folder;if(remember&&folderChosen)folderChosen(folder);refreshPreview();return {};
  }
+ // Ticks Also upload and copy a link; only a destination that passed the check can.
+ Error setUpload(bool upload){
+  if(upload&&!uploadAvailable())return checkingTarget_?Error{"diagnostics_upload_checking","Still checking the upload destination; inspect until uploadTarget.checking is false.",{}}
+   :Error{"diagnostics_upload_unavailable",target_["message"].toString("No working upload destination."),{{"reason",target_["reason"]}}};
+  upload_->setChecked(upload);return {};
+ }
+ bool uploading()const{return uploadAvailable()&&upload_->isChecked();}
  // Answers once the preview that is current when it arrives has come back.
  void whenPreviewed(Reply reply){if(!previewing_)reply(error_,state());else previewReplies_.append(std::move(reply));}
  QJsonObject params(bool preview)const{
   QJsonObject p{{"includeNames",includeNames_->isChecked()}};if(!operation_.isEmpty())p["operation"]=operation_;if(!custom_.isEmpty())p["output"]=custom_;
-  if(preview)p["preview"]=true;else p["notify"]=true;return p;
+  if(preview)p["preview"]=true;else p["notify"]=true;
+  if(!preview&&uploading()){p["upload"]=true;p["copyLink"]=true;p["profileId"]=target_["profileId"].toString();}
+  return p;
+ }
+ // Where the package would upload, and whether that destination works now. The
+ // check can take minutes (a Test connection); the dialog stays usable meanwhile.
+ void checkUploadTarget(){
+  const auto sequence=++targetSequence_;checkingTarget_=true;target_={};
+  upload_->hide();uploadNote_->setText("Checking the upload destination…");uploadNote_->show();
+  session_.request("diagnostics.uploadTarget",{},this,[this,sequence](Error error,QJsonObject target){
+   if(sequence!=targetSequence_)return;
+   checkingTarget_=false;target_=error?QJsonObject{{"available",false},{"reason",error.code},{"message",error.message}}:target;
+   if(uploadAvailable()&&saved_.isEmpty()&&!saving_){
+    {const QSignalBlocker block(upload_);upload_->setChecked(true);}upload_->setText("Also upload to "+target_["label"].toString()+" and copy a link");upload_->show();
+    uploadNote_->setText(target_["warning"].toString());
+   } else if(!uploadAvailable()){upload_->hide();uploadNote_->setText("Upload unavailable: "+unavailableReason());}
+   if(saved_.isEmpty()&&!saving_)save_->setText(saveLabel());
+   fit();
+  });
  }
  void refreshPreview(){
   const auto sequence=++previewSequence_;previewing_=true;save_->setEnabled(false);
@@ -234,11 +264,22 @@ public:
  }
  void save(Reply reply){
   if(saving_||previewing_||!saved_.isEmpty()){if(reply)reply({"diagnostics_busy",saving_?"The package is being saved.":previewing_?"The preview is still loading.":"This package is already saved.",{}},state());return;}
-  saving_=true;save_->setEnabled(false);save_->setText("Saving…");
+  saving_=true;save_->setEnabled(false);uploadRequested_=uploading();upload_->setEnabled(false);save_->setText(uploadRequested_?"Saving and uploading…":"Saving…");
   session_.request("diagnostics.bundle",params(false),this,[this,reply](Error error,QJsonObject saved){
-   saving_=false;error_=error;
-   if(error){save_->setText("Save package");save_->setEnabled(true);VisualStyle::feedback(result_,error.message,true);result_->show();}
-   else {saved_=saved;save_->setText("Saved");close_->setText("Close");show_->show();VisualStyle::success(result_,"Saved "+QFileInfo(saved["path"].toString()).fileName()+" ("+ByteSize::summary(saved["bytes"].toInteger())+") in "+QDir::toNativeSeparators(QFileInfo(saved["path"].toString()).absolutePath())+".");result_->show();}
+   saving_=false;error_=error;upload_->setEnabled(true);
+   if(error){save_->setText(saveLabel());save_->setEnabled(true);VisualStyle::feedback(result_,error.message,true);result_->show();}
+   else {
+    saved_=saved;save_->setText("Saved");close_->setText("Close");show_->show();
+    auto text="Saved "+QFileInfo(saved["path"].toString()).fileName()+" ("+ByteSize::summary(saved["bytes"].toInteger())+") in "+QDir::toNativeSeparators(QFileInfo(saved["path"].toString()).absolutePath())+".";
+    // The local copy is kept whatever happens to the upload.
+    const auto uploadError=saved["uploadError"].toObject();
+    if(uploadError["code"]=="diagnostics_link_unavailable")text+="\nUploaded to "+saved["upload"].toObject()["label"].toString()+", but this destination gives it no link.";
+    // The diagnostics_* messages already say the package wasn't uploaded; a provider's doesn't.
+    else if(!uploadError.isEmpty())text+="\n"+(uploadError["code"].toString().startsWith("diagnostics_")?QString{}:QString("Not uploaded: "))+uploadError["message"].toString()+(uploadError["message"].toString().endsWith('.')?"":".")+" The saved package is kept.";
+    else if(saved.contains("link"))text+="\nUploaded to "+saved["upload"].toObject()["label"].toString()+(saved["linkCopied"].toBool()?". Link copied: ":". Link (not copied): ")+saved["link"].toString();
+    if(uploadError.isEmpty()||uploadError["code"]=="diagnostics_link_unavailable")VisualStyle::success(result_,text);else VisualStyle::feedback(result_,text,true);
+    result_->setTextInteractionFlags(Qt::TextSelectableByMouse);result_->show();
+   }
    fit();if(reply)reply(error,state());
   });
  }
@@ -255,6 +296,7 @@ public:
   QJsonObject state{{"open",isVisible()},{"includeNames",includeNames_->isChecked()},{"folder",folder_->text()},{"defaultFolder",custom_.isEmpty()},{"previewing",previewing_},{"saving",saving_},
    {"scope",scope_->text()},{"contents",contents_->text()},{"operations",operations_->text()},{"redaction",redaction_->text()},{"preview",preview_}};
   if(!operation_.isEmpty())state["operation"]=operation_;
+  auto target=target_;target["checking"]=checkingTarget_;state["uploadTarget"]=target;state["upload"]=saving_?uploadRequested_:uploading();
   if(!saved_.isEmpty())state["saved"]=saved_;
   if(error_)state["error"]=error_.toJson();
   return state;
@@ -280,8 +322,20 @@ private:
   folder_->setText(QDir::toNativeSeparators(preview_["folder"].toString()));
   save_->setEnabled(saved_.isEmpty()&&!saving_);fit();
  }
+ bool uploadAvailable()const{return !checkingTarget_&&target_["available"].toBool();}
+ // Why the package can't be uploaded now, as the dialog says it before saving.
+ QString unavailableReason()const{
+  const auto reason=target_["reason"].toString();const auto label=target_["label"].toString();
+  auto sentence=[](QString text){text=text.trimmed();return text.isEmpty()||text.endsWith('.')?text:text+".";};
+  if(reason=="diagnostics_no_destination")return "no upload destination is set up.";
+  if(reason=="diagnostics_destination_failing")return "the last upload to "+label+" failed with a credential or configuration error. Fix the destination in Settings, then try again.";
+  if(reason=="diagnostics_destination_unavailable"){const auto detail=target_["details"].toObject()["error"].toObject()["message"].toString();return "Test connection to "+label+" failed"+(detail.isEmpty()?QString("."):": "+sentence(detail));}
+  return sentence(target_["message"].toString("no working upload destination"));
+ }
+ QString saveLabel()const{return uploading()?"Save and upload":"Save package";}
  UiSession& session_;
  QLabel *scope_,*contents_,*operations_,*redaction_,*folder_,*result_;QCheckBox* includeNames_;QPushButton *useDefault_,*show_,*close_,*save_;
+ QCheckBox* upload_;QLabel* uploadNote_;QJsonObject target_;bool checkingTarget_=false,uploadRequested_=false;quint64 targetSequence_=0;
  QString operation_,custom_;QJsonObject preview_,saved_;Error error_;bool previewing_=false,saving_=false;quint64 previewSequence_=0;QList<Reply> previewReplies_;
 };
 QString settingHelp(const QString& path,const QString& objectName){
@@ -424,7 +478,10 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  auto number=[&](QFormLayout* form,const QString& key,const QString& name,const QString& unit){auto* edit=numbers_[key]=input(this,key);QWidget* editor=edit;if(key=="historyRetentionDays"){auto* combo=choices(this,"historyRetentionChoice",{});combo->setEditable(true);combo->setInsertPolicy(QComboBox::NoInsert);combo->addItem("Forever",QString{});combo->addItem("30 days","30");combo->addItem("90 days","90");combo->addItem("1 year","365");combo->setLineEdit(edit);editor=combo;connect(combo,&QComboBox::activated,this,[this,combo,edit](int index){edit->setText(combo->itemData(index).toString());queueEdit(edit);});}
   // File, batch and waiting-upload sizes: Auto follows this computer's memory, an empty field is No limit.
   else if(Settings::artifactByteLimitKeys().contains(key)){auto* combo=choices(this,key+"Choice",{});combo->setEditable(true);combo->setInsertPolicy(QComboBox::NoInsert);combo->addItem("Auto","Auto");combo->addItem("No limit",QString{});combo->setLineEdit(edit);edit->setPlaceholderText("No limit");editor=combo;connect(combo,&QComboBox::activated,this,[this,combo,edit](int index){edit->setText(combo->itemData(index).toString());queueEdit(edit);});}
-  const bool retention=defaults["retention"].toObject().contains(key);auto* wrap=setting(form,name,editor,QString(retention?"/retention/":"/limits/")+key,{},unit);if(editor!=edit){errors_[edit]=errors_[editor];bind(edit,QString(retention?"/retention/":"/limits/")+key);}const QJsonValue value=retention?defaults["retention"].toObject()[key]:defaults["limits"].toObject()[key];const qint64 factor=displayUnit(key);const auto text=value.isNull()?QString{}:value.isString()?QStringLiteral("Auto"):ByteSize::exact(value.toInteger(),factor);edit->setProperty("defaultText",text);auto* reset=new QPushButton("Reset");reset->setAccessibleName("Reset "+name+" to default");auto* state=new QLabel("Default");VisualStyle::role(state,"muted");auto* row=qobject_cast<QHBoxLayout*>(wrap->layout()->itemAt(0)->layout());row->addWidget(state);row->addWidget(reset);auto update=[=,this]{const bool changed=edit->text()!=text;state->setVisible(!changed);reset->setVisible(changed);wrap->setProperty("changed",changed);wrap->style()->unpolish(wrap);wrap->style()->polish(wrap);};connect(edit,&QLineEdit::textChanged,this,update);connect(reset,&QPushButton::clicked,this,[=,this]{edit->setText(text);queueEdit(edit);});update();};
+  const bool retention=defaults["retention"].toObject().contains(key);auto* wrap=setting(form,name,editor,QString(retention?"/retention/":"/limits/")+key,{},unit);if(editor!=edit){errors_[edit]=errors_[editor];bind(edit,QString(retention?"/retention/":"/limits/")+key);}const QJsonValue value=retention?defaults["retention"].toObject()[key]:defaults["limits"].toObject()[key];const qint64 factor=displayUnit(key);const auto text=value.isNull()?QString{}:value.isString()?QStringLiteral("Auto"):ByteSize::exact(value.toInteger(),factor);edit->setProperty("defaultText",text);auto* reset=new QPushButton("Reset");reset->setAccessibleName("Reset "+name+" to default");auto* state=new QLabel("Default");VisualStyle::role(state,"muted");auto* row=qobject_cast<QHBoxLayout*>(wrap->layout()->itemAt(0)->layout());
+  // What Auto resolves to on this computer (#149), from settings.get effectiveLimits.
+  if(Settings::artifactByteLimitKeys().contains(key)){auto* resolved=limitHints_[key]=new QLabel;resolved->setObjectName(key+"Resolved");VisualStyle::role(resolved,"muted");resolved->hide();row->addWidget(resolved);connect(edit,&QLineEdit::textChanged,this,[this]{updateLimitHints();});}
+  row->addWidget(state);row->addWidget(reset);auto update=[=,this]{const bool changed=edit->text()!=text;state->setVisible(!changed);reset->setVisible(changed);wrap->setProperty("changed",changed);wrap->style()->unpolish(wrap);wrap->style()->polish(wrap);};connect(edit,&QLineEdit::textChanged,this,update);connect(reset,&QPushButton::clicked,this,[=,this]{edit->setText(text);queueEdit(edit);});update();};
  auto* uploads=section(left,"Uploads");number(uploads,"concurrentUploads","Uploads at once",{});number(uploads,"maxFileBytes","Largest file","GiB");number(uploads,"maxBatchBytes","Largest batch","GiB");number(uploads,"pendingArtifactBytes","Waiting uploads","GiB");number(uploads,"maxFiles","Files in a batch",{});number(uploads,"pendingOperations","Waiting operations",{});
  auto* images=section(left,"Images and clipboard");number(images,"imageBytes","Largest image","MiB");number(images,"imagePixels","Largest image size","megapixels");number(images,"clipboardTextBytes","Clipboard text limit","MiB");
  auto* memory=section(right,"Memory and cache");number(memory,"pendingImageBytes","Memory for queued images","MiB");number(memory,"previewCacheBytes","Thumbnail cache","MiB");
@@ -487,10 +544,10 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  for(auto* combo:findChildren<QComboBox*>())if(combo!=profile_&&!combo->property("configPath").toString().isEmpty())connect(combo,&QComboBox::currentIndexChanged,this,[this,combo]{queueEdit(combo);});
  for(auto* check:findChildren<QCheckBox*>())if(!check->property("configPath").toString().isEmpty())connect(check,&QCheckBox::toggled,this,[this,check]{queueEdit(check);});
  for(auto* spin:findChildren<QAbstractSpinBox*>())connect(spin,&QAbstractSpinBox::editingFinished,this,[this,spin]{queueEdit(spin);});
- connect(&settings_,&UiSession::accepted,this,[this]{configurationChanged();});connect(&settings_,&UiSession::statusChanged,this,[this]{configurationChanged();refreshDiagnostics();});connect(tabs_,&QTabWidget::currentChanged,this,&SettingsWindow::viewStateChanged);
+ connect(&settings_,&UiSession::accepted,this,[this]{configurationChanged();refreshEffectiveLimits();});connect(&settings_,&UiSession::statusChanged,this,[this]{configurationChanged();refreshDiagnostics();});connect(tabs_,&QTabWidget::currentChanged,this,&SettingsWindow::viewStateChanged);
  setupTimer_=new QTimer(this);setupTimer_->setInterval(500);connect(setupTimer_,&QTimer::timeout,this,&SettingsWindow::pollSetup);
  for(auto* label:findChildren<QLabel*>())label->setTextFormat(Qt::PlainText);
- refresh();refreshDiagnostics();refreshDestinationList();updateProviderVisibility_();
+ refresh();refreshDiagnostics();refreshDestinationList();updateProviderVisibility_();refreshEffectiveLimits();
 }
 SettingsWindow::~SettingsWindow(){
  for(auto* child:findChildren<QObject*>())disconnect(child,nullptr,this,nullptr);
@@ -548,6 +605,22 @@ void SettingsWindow::populate(){
  naming_->setCurrentIndex(naming_->findData(draft_["naming"].toObject()["mode"].toString()));const auto effective=Settings::fromValidated(draft_);const QHash<QString,QString> formats{{"fileTemplate",effective.fileTemplate},{"captureTemplate",effective.captureTemplate},{"imageTemplate",effective.imageTemplate},{"textTemplate",effective.textTemplate}};for(auto it=templates_.begin();it!=templates_.end();++it)it.value()->setText(formats.value(it.key()));collision_->setCurrentIndex(collision_->findData(draft_["naming"].toObject()["collisionPolicy"].toString()));auto prefs=draft_["preferences"].toObject();uploadClipboard_->setCurrentIndex(uploadClipboard_->findData(effective.uploadClipboardBehavior));appearance_->setCurrentIndex(appearance_->findData(effective.appearanceTheme));notifications_->setChecked(prefs["notifications"].toBool());login_->setChecked(prefs["launchAtLogin"].toBool());debugLogging_->setChecked(prefs["diagnostics"].toObject()["debugLogging"].toBool());unlockAtStartup_->setChecked(effective.unlockCredentialsAtStartup);
  for(auto it=numbers_.begin();it!=numbers_.end();++it){QJsonValue value=draft_["limits"].toObject().contains(it.key())?draft_["limits"].toObject().value(it.key()):draft_["retention"].toObject().value(it.key());if(it.key()=="pendingImageBytes"&&value.isUndefined())value=effective.limits.pendingImageBytes;it.value()->setText(value.isNull()?QString{}:value.isString()?QStringLiteral("Auto"):ByteSize::exact(value.toInteger(),displayUnit(it.key())));}
  updateCaptureInheritance();loading_=false;
+}
+void SettingsWindow::refreshEffectiveLimits(){
+ settings_.request("settings.get",{},this,[this](Error error,QJsonObject data){if(error)return;effectiveLimits_=data["effectiveLimits"].toObject();updateLimitHints();});
+}
+// "· no limit (keeps 4 GiB free)" beside a field set to Auto: none of put.gd's own,
+// with the free-disk reserve that bounds every import.
+void SettingsWindow::updateLimitHints(){
+ const auto disk=effectiveLimits_["disk"].toObject();const auto reserve=disk["reserveBytes"].toInteger(-1);
+ for(auto it=limitHints_.begin();it!=limitHints_.end();++it){
+  const bool automatic=numbers_.value(it.key())->text().trimmed().compare("auto",Qt::CaseInsensitive)==0;const auto value=effectiveLimits_.value(it.key());
+  QString text;
+  if(automatic&&value.isNull())text="· no limit"+(reserve>0?" (keeps "+ByteSize::summary(reserve)+" free)":QString{});
+  else if(automatic&&value.isDouble())text="· "+ByteSize::summary(value.toInteger());
+  it.value()->setText(text);it.value()->setVisible(!text.isEmpty());
+  it.value()->setToolTip(text.isEmpty()?QString{}:QString("On this computer, Auto sets no size limit of put.gd's own. Each upload still needs room on the disk: put.gd keeps %1 free (15% of the disk, between 1 and 4 GiB), and the destination's own maximum object size applies.").arg(ByteSize::summary(qMax<qint64>(reserve,0))));
+ }
 }
 void SettingsWindow::addS3Profile(const QString& defaultLabel){
  storeProfile();draft_=candidate();auto profiles=draft_["profiles"].toArray();if(profiles.size()>=32){status({"profile_limit","At most 32 destinations are supported",{}});return;}
@@ -750,9 +823,18 @@ void SettingsWindow::diagnosticsCommand(const QJsonObject& params,std::function<
  if(action=="setPackage"){
   if(params.contains("folder"))if(auto error=dialog->setFolder(params["folder"].toString(),true)){reply(error,{});return;}
   if(params.contains("includeNames"))dialog->setIncludeNames(params["includeNames"].toBool());
+  if(params.contains("upload"))if(auto error=dialog->setUpload(params["upload"].toBool())){reply(error,diagnosticsState());return;}
   dialog->whenPreviewed([withState](Error error,QJsonObject){withState(error,{});});return;
  }
- if(action=="savePackage"){dialog->save([withState](Error error,QJsonObject){withState(error,{});});return;}
+ if(action=="savePackage"){
+  // An upload can take minutes: answer once it starts; inspect shows saving until it ends.
+  if(dialog->uploading()){
+   auto answered=std::make_shared<bool>(false);
+   dialog->save([answered,withState](Error error,QJsonObject){if(std::exchange(*answered,true))return;withState(error,{});});
+   if(!std::exchange(*answered,true))reply({},diagnosticsState());return;
+  }
+  dialog->save([withState](Error error,QJsonObject){withState(error,{});});return;
+ }
  if(action=="showInFolder"){dialog->reveal(withState);return;}
  if(action=="closePackage"){dialog->reject();reply({},diagnosticsState());return;}
  reply({"invalid_request","Unknown diagnostics action.",{}},{});

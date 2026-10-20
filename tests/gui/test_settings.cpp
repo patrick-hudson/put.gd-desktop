@@ -12,6 +12,8 @@
 #include "fixtures/UiSessionFixture.h"
 #include "app/DiagnosticsBundle.h"
 #include "core/Log.h"
+#include "core/ArtifactStore.h"
+#include <QJsonDocument>
 #include <QDialog>
 #include <QDir>
 #include "storage/s3/S3Provider.h"
@@ -187,6 +189,69 @@ private slots:
   auto [savedAgain,savedState]=command({{"action","savePackage"}});QVERIFY2(!savedAgain,qPrintable(savedAgain.message));QVERIFY(QFileInfo(savedState["package"].toObject()["saved"].toObject()["path"].toString()).isFile());
   command({{"action","closePackage"}});
   QVERIFY(!validateUiState({{"schemaVersion",1},{"settings",settings->saveViewState()}}));
+ }
+ // #158: Also upload and copy a link, offered once diagnostics.uploadTarget says the
+ // destination works; the check never blocks the dialog and a broken one says why.
+ void diagnosticsPackageOffersAWorkingUpload(){
+  QTemporaryDir dir;logging::open(dir.filePath("state/logs"),{},"putgd-test");auto closeLog=qScopeGuard([]{logging::close();});
+  logging::info(logApp(),"Synthetic diagnostics record");logging::flush();
+  ProviderRegistry providers;auto provider=std::make_shared<test::OpaqueProvider>();providers.add("opaque",provider);
+  SettingsService service(dir.filePath("config.json"),[&](auto id,auto value){return providers.validate(id,value);});QVERIFY(service.save(test::configuration(dir.path()),{}));
+  test::Source source;OperationService operations(dir.filePath("data"),service,providers,source);QTRY_VERIFY(operations.ready());HistoryService history(operations);
+  UiSessionFixture fixture(service,operations,history);
+  DiagnosticsBundles bundles(operations,dir.filePath("state"));fixture.server.setDiagnosticsBundles(&bundles);
+  Error testResult{"s3_authentication_failed","Synthetic authentication failure",{}};bool holdTest=false;std::function<void(Error)> heldTest;int tests=0;
+  bundles.setDestinationTest([&](const QString& profileId,std::function<void(Error)> done){QCOMPARE(profileId,QString("test"));++tests;if(holdTest)heldTest=done;else done(testResult);});
+  MainWindow window(fixture.session);window.navigate("settings");window.show();fixture.session.refreshSnapshot();auto* settings=window.settings();
+  auto command=[&](const QJsonObject& params)->std::pair<Error,QJsonObject>{bool done=false;Error error{"test_timeout","No answer",{}};QJsonObject result;settings->diagnosticsCommand(params,[&](Error e,QJsonObject r){error=e;result=r;done=true;});if(!QTest::qWaitFor([&]{return done;},15000))qWarning("diagnostics command timed out");return {error,result};};
+  auto package=[&]{return settings->diagnosticsState()["package"].toObject();};
+  // A destination that fails Test connection: no checkbox, the reason instead.
+  auto [opened,openState]=command({{"action","openPackage"}});QVERIFY2(!opened,qPrintable(opened.message));
+  auto* dialog=settings->findChild<QDialog*>("diagnosticsPackageDialog");auto* upload=dialog->findChild<QCheckBox*>("uploadPackage");auto* note=dialog->findChild<QLabel*>("packageUploadNote");
+  QVERIFY(upload&&note);QVERIFY(dialog->findChild<QWidget*>("diagnosticsPackageExtras")->isAncestorOf(upload));
+  QTRY_VERIFY(!package()["uploadTarget"].toObject()["checking"].toBool());
+  QCOMPARE(package()["uploadTarget"].toObject()["reason"].toString(),QString("diagnostics_destination_unavailable"));
+  QVERIFY(!upload->isVisibleTo(dialog));QCOMPARE(note->text(),QString("Upload unavailable: Test connection to Synthetic opaque provider failed: Synthetic authentication failure."));
+  QCOMPARE(command({{"action","setPackage"},{"upload",true}}).first.code,QString("diagnostics_upload_unavailable"));
+  QCOMPARE(dialog->findChild<QPushButton*>("savePackage")->text(),QString("Save package"));
+  command({{"action","closePackage"}});
+  // A slow check: the preview loads and a local save works meanwhile.
+  holdTest=true;testResult={};
+  command({{"action","openPackage"}});QVERIFY(package()["uploadTarget"].toObject()["checking"].toBool());QVERIFY(note->text().startsWith("Checking"));
+  QCOMPARE(command({{"action","setPackage"},{"upload",true}}).first.code,QString("diagnostics_upload_checking"));
+  auto [local,localState]=command({{"action","savePackage"}});QVERIFY2(!local,qPrintable(local.message));
+  QVERIFY(localState["package"].toObject()["saved"].toObject()["path"].toString().endsWith(".zip"));QVERIFY(!localState["package"].toObject()["saved"].toObject().contains("upload"));
+  command({{"action","closePackage"}});QTRY_VERIFY(heldTest);std::exchange(heldTest,{})({});holdTest=false;
+  // A working destination: checked by default, named, with its warning; the upload links and copies.
+  const int uploadsBefore=provider->uploads.load();
+  command({{"action","openPackage"}});QTRY_VERIFY(package()["uploadTarget"].toObject()["available"].toBool());
+  QVERIFY(upload->isVisibleTo(dialog));QVERIFY(upload->isChecked());QVERIFY2(upload->text().contains("Synthetic opaque provider"),qPrintable(upload->text()));
+  QVERIFY(note->text().contains("anyone with the link"));QCOMPARE(dialog->findChild<QPushButton*>("savePackage")->text(),QString("Save and upload"));QVERIFY(package()["upload"].toBool());
+  auto [started,startedState]=command({{"action","savePackage"}});QVERIFY2(!started,qPrintable(started.message));
+  QTRY_VERIFY_WITH_TIMEOUT(package().contains("saved"),20000);
+  const auto saved=package()["saved"].toObject();QVERIFY2(saved["link"].toString().startsWith("https://"),QJsonDocument(saved).toJson().constData());
+  QVERIFY(saved["linkCopied"].toBool());QCOMPARE(source.copied.text,saved["link"].toString());QCOMPARE(provider->uploads.load(),uploadsBefore+1);QVERIFY(QFileInfo(saved["path"].toString()).isFile());
+  auto* result=dialog->findChild<QLabel*>("packageResult");QVERIFY2(result->text().contains("Uploaded to Synthetic opaque provider. Link copied: https://"),qPrintable(result->text()));
+  command({{"action","closePackage"}});
+  // An agent can leave it unticked: the package stays local.
+  command({{"action","openPackage"}});QTRY_VERIFY(package()["uploadTarget"].toObject()["available"].toBool());
+  auto [cleared,clearedState]=command({{"action","setPackage"},{"upload",false}});QVERIFY(!cleared);QVERIFY(!clearedState["package"].toObject()["upload"].toBool());
+  auto [plain,plainState]=command({{"action","savePackage"}});QVERIFY(!plain);QVERIFY(!plainState["package"].toObject()["saved"].toObject().contains("link"));QCOMPARE(provider->uploads.load(),uploadsBefore+1);
+  command({{"action","closePackage"}});
+  operations.shutdown();
+ }
+ // #149: what Auto resolves to, from settings.get effectiveLimits.
+ void autoLimitsShowWhatTheyResolveTo(){
+  constexpr qint64 gib=1LL<<30;ArtifactStore::setDiskForTesting(60*gib,100*gib);auto resetDisk=qScopeGuard([]{ArtifactStore::setDiskForTesting(-1,-1);});
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(Settings::developmentTemplate(),{}));
+  CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.show();
+  auto* file=window.findChild<QLabel*>("maxFileBytesResolved");auto* batch=window.findChild<QLabel*>("maxBatchBytesResolved");auto* waiting=window.findChild<QLabel*>("pendingArtifactBytesResolved");
+  QVERIFY(file&&batch&&waiting);
+  QTRY_COMPARE(file->text(),QString("· no limit (keeps 4 GiB free)"));QCOMPARE(batch->text(),file->text());QCOMPARE(waiting->text(),file->text());
+  QVERIFY(file->toolTip().contains("keeps 4 GiB free"));
+  // A typed size or No limit is its own answer.
+  auto* edit=window.findChild<QLineEdit*>("maxFileBytes");edit->setText("2");QVERIFY(file->text().isEmpty());QVERIFY(!file->isVisibleTo(window.settings()));
+  edit->setText("auto");QCOMPARE(file->text(),QString("· no limit (keeps 4 GiB free)"));
  }
  void conflictingReorderRestoresThePreviousOrder(){
   QTemporaryDir dir;const auto path=dir.filePath("config.json");SettingsService service(path,[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));

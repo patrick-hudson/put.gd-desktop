@@ -532,8 +532,17 @@ Operation OperationService::run(Job job) {
    auto progress=std::make_shared<ProgressState>();QPointer<OperationService> owner(this);
    {auto fields=itemFields(op,item);fields["attempt"]=attempts+1;fields["name"]=item.candidate;fields["byteCount"]=item.artifact.bytes;fields["mime"]=item.artifact.mime;logging::info(providerLog(op.destination.providerId),"Upload attempt",fields);}
    QElapsedTimer attemptClock;attemptClock.start();
+   // Idle slots this file may borrow for extra multipart parts (#174), returned when it ends.
+   struct Loan{UploadSlots& pool;quint64 id=0;~Loan(){if(id)pool.closeLoan(id);}} loan{uploadSlots_};
    auto uploaded=awaitProvider<UploadResult>([&](auto cb) {
     auto request=item.uploadRequest(op.destination,op.requestTimeoutMs);request.cancellation=cancel;
+    if(parallel)request.extraLanes=[&loan,this](int wanted){return uploadSlots_.lend(loan.id,wanted);};
+    // Per-part records are debug-only; a multipart completion is kept at info (#148).
+    request.trace=[fields=itemFields(op,item),log=&providerLog(op.destination.providerId)](const QJsonObject& record){
+     const bool complete=record["event"]=="complete";if(!complete&&!logging::debug())return;
+     auto values=fields;for(auto it=record.begin();it!=record.end();++it)if(it.key()!="event")values[it.key()]=it.value();
+     logging::write(*log,complete?QtInfoMsg:QtDebugMsg,complete?QStringLiteral("Multipart upload completed"):QStringLiteral("Multipart part uploaded"),values);
+    };
     // A resumable (multipart) upload journals its remote upload before relying on it.
     // This worker waits on the provider meanwhile, so the item is not touched concurrently.
     request.checkpoint=[&item,&persist,index](const QJsonObject& journal,std::function<void(Error)> ack){item.uploadJournal=journal;ack(persist(item,index));};
@@ -896,5 +905,63 @@ QJsonObject OperationService::diagnostics() const {
   {"logging",logStatus},{"loggingDegraded",logStatus["degraded"].toBool()},{"uncleanExit",RunMarker::report()},
   {"memory",QJsonObject{{"allocatorReclamationSupported",reclaimSupported},{"allocatorReclamationPending",heapReclamationPending_},{"allocatorReclamationCount",qint64(heapReclamationCount_)},{"lastAllocatorReclamationUsec",lastHeapReclamationUsec_}}}};
 }
-void OperationService::cleanup(JsonReply reply) {if(cleanupInProgress_){reply({"cleanup_busy","Wait for artifact cleanup to finish",{}},{});return;}cleanupInProgress_=true;const auto snapshot=settings_.snapshot();const auto path=databasePath(),root=root_;const auto activeIds=active_.keys();background([snapshot,path,root,activeIds](Error& e) {HistoryStore store(path);ArtifactStore artifacts(root+"/artifacts");e=store.error();if(e)return QJsonObject{};int removed=0;QDir dir(root+"/artifacts");for(const auto& name:dir.entryList(QDir::Dirs|QDir::NoDotAndDotDot)) {if(activeIds.contains(name))continue;Error error;auto op=store.operation(name,&error);if(error)continue;bool successful=true;for(const auto& item:op.items)if(item.uploadStatus=="unknown"||item.uploadStatus=="uploading")successful=false;const bool finished=op.state=="completed"||op.state=="partial"||op.state=="failed"||op.state=="cancelled"||op.state=="interrupted";bool uploaded=true;for(const auto& item:op.items)if(!terminalUpload(item.uploadStatus))uploaded=false;bool archivePending=false;for(const auto& item:op.items)if(item.local.status=="failed")archivePending=true;const auto date=QDateTime::fromString(op.created,Qt::ISODateWithMs);if(finished&&successful&&((uploaded&&!archivePending)||(snapshot.failedArtifactDays>0&&date.daysTo(QDateTime::currentDateTimeUtc())>=snapshot.failedArtifactDays))) {if(auto error=artifacts.remove(name)) {e=error;break;}++removed;}}artifacts.clearPreviews();return QJsonObject{{"removedOperations",removed}};},[this,reply=std::move(reply)](Error e,QJsonObject result){cleanupInProgress_=false;reply(e,result);});}
+void OperationService::abandonUploads(HistoryStore& store,Operation& op,QJsonObject& outcome) {
+ QSet<QString> changed;
+ for(auto& item:op.items) {
+  if(item.uploadJournal["uploadId"].toString().isEmpty()||item.uploadStatus=="uploaded")continue;
+  auto provider=providers_.find(op.destination.providerId);
+  Error error=provider?Error{}:Error{"provider_unavailable","Restore access to the original destination",{}};
+  if(provider) {
+   auto lock=objectLock(op.destination,item.objectReference,item.candidate);std::unique_lock guard(*lock);
+   error=storageRequest<Error>([&](auto cb) {provider->abandonUpload(op.destination,item.uploadJournal,cb);});
+  }
+  auto fields=itemFields(op,item);
+  if(!error) {
+   item.uploadJournal={};item.error.details.remove("incompleteUpload");item.error.details.remove("abortError");
+   outcome["abortedUploads"]=outcome["abortedUploads"].toInt()+1;
+   logging::info(providerLog(op.destination.providerId),"Incomplete upload aborted",fields);
+  } else {
+   // The journal stays, so the next cleanup tries again; the artifact still goes.
+   item.error.details["incompleteUpload"]=true;item.error.details["abortError"]=error.toJson();
+   auto kept=outcome["incompleteUploads"].toArray();
+   if(kept.size()<100)kept.append(QJsonObject{{"operationId",op.id},{"itemId",item.artifact.id},{"error",error.toJson()}});
+   outcome["incompleteUploads"]=kept;
+   fields["error"]=logging::errorFields(error);
+   logging::warning(providerLog(op.destination.providerId),"Incomplete upload kept",fields);
+  }
+  changed.insert(item.artifact.id);
+ }
+ if(!changed.isEmpty())if(auto error=store.checkpointOperation(op,changed,&providers_))logging::warning(logOperation(),"Upload journal not saved",{{"operationId",op.id},{"error",logging::errorFields(error)}});
+}
+void OperationService::cleanup(JsonReply reply) {
+ if(cleanupInProgress_){reply({"cleanup_busy","Wait for artifact cleanup to finish",{}},{});return;}
+ cleanupInProgress_=true;const auto snapshot=settings_.snapshot();const auto path=databasePath(),root=root_;const auto activeIds=active_.keys();
+ // Retry is refused while cleanup runs and active operations are skipped, so no
+ // upload aborted here is one a Retry is about to resume (#146).
+ background([this,snapshot,path,root,activeIds](Error& e) {
+  HistoryStore store(path);ArtifactStore artifacts(root+"/artifacts");e=store.error();if(e)return QJsonObject{};
+  int removed=0;QJsonObject outcome{{"abortedUploads",0},{"incompleteUploads",QJsonArray{}}};QSet<QString> visited;
+  QDir dir(root+"/artifacts");
+  for(const auto& name:dir.entryList(QDir::Dirs|QDir::NoDotAndDotDot)) {
+   if(activeIds.contains(name))continue;
+   Error error;auto op=store.operation(name,&error);if(error)continue;
+   bool successful=true;for(const auto& item:op.items)if(item.uploadStatus=="unknown"||item.uploadStatus=="uploading")successful=false;
+   const bool finished=op.state=="completed"||op.state=="partial"||op.state=="failed"||op.state=="cancelled"||op.state=="interrupted";
+   bool uploaded=true;for(const auto& item:op.items)if(!terminalUpload(item.uploadStatus))uploaded=false;
+   bool archivePending=false;for(const auto& item:op.items)if(item.local.status=="failed")archivePending=true;
+   const auto date=QDateTime::fromString(op.created,Qt::ISODateWithMs);
+   if(finished&&successful&&((uploaded&&!archivePending)||(snapshot.failedArtifactDays>0&&date.daysTo(QDateTime::currentDateTimeUtc())>=snapshot.failedArtifactDays))) {
+    // Without its artifact no Retry can resume the upload: abort it first, best effort.
+    abandonUploads(store,op,outcome);visited.insert(name);
+    if(auto error=artifacts.remove(name)) {e=error;break;}++removed;
+   }
+  }
+  // An abort refused earlier is tried again on every cleanup after its artifact went.
+  if(!e)for(const auto& id:store.journaledOperations()) {
+   if(activeIds.contains(id)||visited.contains(id)||QFileInfo::exists(root+"/artifacts/"+id))continue;
+   Error error;auto op=store.operation(id,&error);if(!error)abandonUploads(store,op,outcome);
+  }
+  artifacts.clearPreviews();outcome["removedOperations"]=removed;return outcome;
+ },[this,reply=std::move(reply)](Error e,QJsonObject result){cleanupInProgress_=false;reply(e,result);});
+}
 }
