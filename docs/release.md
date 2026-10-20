@@ -90,14 +90,41 @@ Preview a section from a local checkout with
 
 ![The changes section for the range v0.1.1-nightly.588 to the current nightly: grouped entries with PR and closing-issue links; on the right, the same range as candidate notes with documentation, lab and test changes folded into one line](evidence/release-changelog-188/changes-section-annotated.png)
 
+### CHANGELOG.md
+
+`CHANGELOG.md` at the repository root is the curated history of stable versions,
+in [Keep a Changelog 1.1](https://keepachangelog.com/en/1.1.0/) style (#217).
+`tools/releases/promote.py` writes each version's section from the same data as
+the release notes: the pull requests merged since the previous stable tag, with
+their labels and closing issues. Entries are grouped by change type instead of
+area. `bug` and `enhancement` labels win; otherwise a `feat:` or `fix:` title
+(any scope) gives Added or Fixed, and everything else is Changed. Documentation,
+lab and test pull requests fold into one line. The heading is
+`## [X.Y.Z] - <promotion date>`, with a link reference to the compare view from
+the previous stable tag (or the release itself for the first one).
+
+`nightly` takes changes only through pull requests, so `promote.py --open` first
+pushes `changelog/vX.Y.Z` (one commit on `origin/nightly` that adds the section,
+built without touching the working tree) and opens a `changelog: vX.Y.Z` pull
+request into `nightly`. Curate the entries there and merge it; the promotion pull
+request, opened next, shows the same section as its change list and carries the
+file once that pull request is in `nightly`. A rerun after that opens only the
+promotion. `CHANGELOG.md` is prose, so CI runs `contracts` alone for it.
+`tests/releases/test_promote.py` covers the section, the file update and the
+pull request order.
+
+![A rendered CHANGELOG.md excerpt from a promote.py dry run on nightly: the Keep a Changelog header, the 0.1.1 section, Added, Fixed and Changed entries with PR and issue links, and the folded documentation, lab and test line](evidence/2026-10-20-changelog-md-217/217-changelog-excerpt.png)
+
 ### Candidate and stable
 
 Agents releasing a version follow [the release runbook](release-runbook.md),
 which adds the version checks, acceptance recording and confirmation points.
 
 1. Run `python3 tools/releases/promote.py` to preview, then `--open` to create
-   the pull request from `nightly` into `main` titled `release: vBASE`. Merge it
-   with a merge commit once `CI` passes, so every `nightly` commit keeps its SHA.
+   the `changelog: vBASE` pull request into `nightly` (see [CHANGELOG.md](#changelogmd))
+   and the pull request from `nightly` into `main` titled `release: vBASE`. Merge
+   the changelog pull request first. Merge the promotion with a merge commit once
+   `CI` passes, so every `nightly` commit keeps its SHA.
 2. The push to `main` starts `.github/workflows/release.yml`. It tags the next
    `vBASE-rc.N`, or reuses the candidate already on that commit when rerun. It
    runs full CI and packaging on the tag and stages a verified draft prerelease.
