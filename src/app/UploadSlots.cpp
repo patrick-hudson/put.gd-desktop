@@ -9,7 +9,8 @@ void UploadSlots::setCapacity(int capacity) {
     changed_.notify_all();
 }
 bool UploadSlots::next(const Waiter& candidate) const {
-    if (active_ >= capacity_) return false;
+    // Lent slots never keep a waiter out.
+    if (active_ - lent_ >= capacity_) return false;
     for (const auto& other : waiting_) {
         const auto mine = held_.value(candidate.operation), theirs = held_.value(other.operation);
         if (theirs < mine || (theirs == mine && other.sequence < candidate.sequence)) return false;
@@ -33,7 +34,14 @@ bool UploadSlots::acquire(const QString& operation, const std::function<bool()>&
         }
         if (next(self)) {
             leave();
-            ++active_;
+            if (active_ >= capacity_) {
+                // Take a slot back from the largest loan; its borrower sees it on the next poll.
+                auto largest = loans_.begin();
+                for (auto it = loans_.begin(); it != loans_.end(); ++it)
+                    if (it.value() > largest.value()) largest = it;
+                --largest.value();
+                --lent_;
+            } else ++active_;
             ++held_[operation];
             lock.unlock();
             changed_.notify_all();
@@ -50,6 +58,40 @@ void UploadSlots::release(const QString& operation) {
     }
     changed_.notify_all();
 }
+int UploadSlots::lend(quint64& loan, int wanted) {
+    int held = 0;
+    bool returned = false;
+    {
+        std::lock_guard lock(mutex_);
+        if (closed_) return 0;
+        if (!loan) loan = ++loanSequence_;
+        auto& granted = loans_[loan];
+        wanted = qMax(0, wanted);
+        while (granted > 0 && (granted > wanted || active_ > capacity_)) {
+            --granted;
+            --lent_;
+            --active_;
+            returned = true;
+        }
+        while (granted < wanted && active_ < capacity_ && waiting_.isEmpty()) {
+            ++granted;
+            ++lent_;
+            ++active_;
+        }
+        held = granted;
+    }
+    if (returned) changed_.notify_all();
+    return held;
+}
+void UploadSlots::closeLoan(quint64 loan) {
+    {
+        std::lock_guard lock(mutex_);
+        const auto granted = loans_.take(loan);
+        active_ -= granted;
+        lent_ -= granted;
+    }
+    changed_.notify_all();
+}
 void UploadSlots::wake() { changed_.notify_all(); }
 void UploadSlots::close() {
     {
@@ -60,7 +102,8 @@ void UploadSlots::close() {
 }
 QJsonObject UploadSlots::diagnostics() const {
     std::lock_guard lock(mutex_);
-    return {{"capacity", capacity_}, {"active", active_}, {"waiting", int(waiting_.size())}, {"operations", int(held_.size())}};
+    return {{"capacity", capacity_}, {"active", active_}, {"waiting", int(waiting_.size())}, {"operations", int(held_.size())},
+            {"lent", lent_}};
 }
 bool DestinationLease::acquire(const std::function<bool()>& stop) {
     std::unique_lock lock(mutex_);

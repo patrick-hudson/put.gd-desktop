@@ -377,6 +377,9 @@ bool validateRequest(const QString& method, const QJsonObject& object) {
         return decode(object, request);
     }
     Destination destination;
+    if (method == QStringLiteral("abandon"))
+        return keys(object, {"destination", "journal"}) && object["destination"].isObject() && decode(object["destination"].toObject(), destination) &&
+               object["journal"].isObject() && object["journal"].toObject().contains("uploadId") && resumeJournal(object["journal"].toObject());
     if (method == QStringLiteral("testDestination"))
         return keys(object, {"destination"}) && object["destination"].isObject() && decode(object["destination"].toObject(), destination);
     if (method == QStringLiteral("checkName")) {
@@ -385,6 +388,21 @@ bool validateRequest(const QString& method, const QJsonObject& object) {
         return text(QJsonValue(objectKey(destination, object["candidate"].toString())), 1, 1024);
     }
     return false;
+}
+bool decodeUploadTrace(const QJsonObject& record) {
+    static const QRegularExpression requestId(QStringLiteral("\\A[A-Za-z0-9+/=._-]+\\z"));
+    auto id = [](const QJsonValue& value, qsizetype maximum) { return text(value, 1, maximum) && requestId.match(value.toString()).hasMatch(); };
+    if (!bounded(record) || (record.contains("requestId") && !id(record["requestId"], 128)) ||
+        (record.contains("extendedRequestId") && !id(record["extendedRequestId"], 256)) ||
+        !integer(record["bytes"], 0, maximumArtifactBytes) || !integer(record["attempt"], 1, 3) ||
+        !integer(record["elapsedMs"], 0, std::numeric_limits<int>::max())) return false;
+    if (record["event"] == QJsonValue("part"))
+        return keys(record, {"event", "partNumber", "bytes", "attempt", "elapsedMs", "lane", "lanes"}, {"requestId", "extendedRequestId"}) &&
+               integer(record["partNumber"], 1, s3MaximumParts) && integer(record["lane"], 0, s3MaximumPartLanes - 1) &&
+               integer(record["lanes"], 1, s3MaximumPartLanes);
+    return record["event"] == QJsonValue("complete") &&
+           keys(record, {"event", "parts", "bytes", "attempt", "elapsedMs"}, {"requestId", "extendedRequestId"}) &&
+           integer(record["parts"], 1, s3MaximumParts);
 }
 bool decodeTestDestinationResult(const QJsonObject& object) {
     if (!bounded(object)) return false;

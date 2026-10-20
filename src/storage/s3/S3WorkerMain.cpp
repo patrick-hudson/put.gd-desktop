@@ -1,9 +1,11 @@
 #include "S3Module.h"
 #include "S3WorkerProtocol.h"
+#include "S3Multipart.h"
 #include "app/UiControl.h"
 #include "ui/StdioDevice.h"
 #include "core/BuildInfo.h"
 #include <QCoreApplication>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QMetaObject>
 #include <QTimer>
@@ -28,7 +30,7 @@ public:
    if(!active_||terminal_||failed_||pendingKind_=="checkpoint")return;
    auto object=envelope();object["kind"]="alive";object["data"]=QJsonObject{};if(control_.send("observed",object).isEmpty())fail();
   });
-  progressTimer_.setInterval(250);QObject::connect(&progressTimer_,&QTimer::timeout,&app_,[this]{flushProgress();});
+  progressTimer_.setInterval(250);QObject::connect(&progressTimer_,&QTimer::timeout,&app_,[this]{flushTraces();flushProgress();});
   deadline_.setSingleShot(true);deadline_.start(10000);QObject::connect(&deadline_,&QTimer::timeout,&app_,[this]{fail();});
  }
  ~Worker(){abortExchange();module_.reset();}
@@ -69,12 +71,24 @@ private:
   // its ordering without waiting on an informational consumer acknowledgement.
   progressInFlight_.append(sequence);
  }
+ // Part and completion records (#148) go out in bounded batches; past the queue
+ // bound they are counted, never allowed to slow the upload.
+ void flushTraces(){
+  for(;;){
+   if(failed_||!active_||terminal_)return;
+   QJsonArray records;qint64 dropped=0;
+   {std::lock_guard lock(progressMutex_);while(!traces_.isEmpty()&&records.size()<64)records.append(traces_.takeFirst());dropped=droppedTraces_;droppedTraces_=0;}
+   if(records.isEmpty()&&!dropped)return;
+   auto object=envelope();object["kind"]="uploadTrace";object["data"]=QJsonObject{{"records",records},{"dropped",dropped}};
+   if(control_.send("observed",object).isEmpty()){fail();return;}
+  }
+ }
  void finish(QJsonObject result,bool terminal){
   // Only the child event-loop owner joins the module's original SDK worker.
   {std::lock_guard lock(progressMutex_);progressClosed_=true;}
   module_.reset();deadline_.stop();heartbeat_.stop();progressTimer_.stop();
   if(failed_){control_.stop();app_.exit(3);return;}
-  if(terminal){flushProgress(true);if(failed_)return;terminal_=true;auto object=envelope();object["kind"]="result";object["data"]=result;if(control_.send("checkpoint",object).isEmpty()){fail();return;}deadline_.start(10000);return;}
+  if(terminal){flushTraces();if(failed_)return;flushProgress(true);if(failed_)return;terminal_=true;auto object=envelope();object["kind"]="result";object["data"]=result;if(control_.send("checkpoint",object).isEmpty()){fail();return;}deadline_.start(10000);return;}
   QTimer::singleShot(0,&app_,[this]{app_.exit(0);});
  }
  void stopPrepared(){
@@ -127,6 +141,10 @@ private:
    if(!pending){fail();return;}
    pendingKind_.clear();pendingRpc_.clear();{std::lock_guard lock(pending->mutex);if(pending->complete){fail();return;}pending->reply=object["data"].toObject();pending->complete=true;pending->changed.notify_all();}return;
   }
+  if(type=="lanes"&&active_&&!terminal_&&object.size()==4&&object["lanes"].isDouble()){
+   const auto lanes=object["lanes"].toDouble(-1);if(lanes<0||lanes>=s3MaximumPartLanes||lanes!=int(lanes)){fail();return;}
+   extraLanes_->store(int(lanes));return;
+  }
   if(type!="activate"||!ready_||active_||object.size()!=5||!object["method"].isString()||!object["request"].isObject()||!s3wire::validateRequest(object["method"].toString(),object["request"].toObject())){fail();return;}
   active_=true;heartbeat_.start();if(object["method"]=="upload")progressTimer_.start();
   auto acknowledged=envelope();acknowledged["kind"]="activated";acknowledged["data"]=QJsonObject{{"method",object["method"].toString()}};
@@ -137,9 +155,11 @@ private:
    auto checkpoint=[this](const QJsonObject& progress,std::function<void(Error)> ack){auto data=exchange("checkpoint",{{"progress",progress}});Error error;if(data.size()!=1||!data["error"].isObject()||!s3wire::decode(data["error"].toObject(),error))error=uncertain();ack(error);};
    try{
     if(method=="checkName"){Destination destination;s3wire::decode(request["destination"].toObject(),destination);driver_->checkName(destination,request["candidate"].toString(),[&](NameCheck value){if(!delivered){result=s3wire::encode(value);delivered=true;}});}
-    else if(method=="upload"||method=="reconcile"){UploadRequest value;if(method=="reconcile")s3wire::decodeReconcileRequest(request,value);else s3wire::decode(request,value);value.cancellation=cancellation_;if(method=="upload")value.checkpoint=checkpoint;if(method=="upload")value.progress=[this](const UploadProgress& progress){if(!progress.valid())return;std::lock_guard lock(progressMutex_);if(!progressClosed_)latestProgress_=progress;};if(method=="upload")driver_->upload(value,[&](UploadResult reply){if(!delivered){result=s3wire::encode(reply);delivered=true;}});else driver_->reconcile(value,[&](StatResult reply){if(!delivered){result=s3wire::encode(reply);delivered=true;}});}
+    else if(method=="upload"||method=="reconcile"){UploadRequest value;if(method=="reconcile")s3wire::decodeReconcileRequest(request,value);else s3wire::decode(request,value);value.cancellation=cancellation_;if(method=="upload")value.checkpoint=checkpoint;if(method=="upload")value.progress=[this](const UploadProgress& progress){if(!progress.valid())return;std::lock_guard lock(progressMutex_);if(!progressClosed_)latestProgress_=progress;};
+     if(method=="upload"){value.extraLanes=[lanes=extraLanes_](int wanted){return qMin(wanted,lanes->load());};value.trace=[this](const QJsonObject& record){std::lock_guard lock(progressMutex_);if(progressClosed_)return;if(traces_.size()<256)traces_.append(record);else ++droppedTraces_;};}if(method=="upload")driver_->upload(value,[&](UploadResult reply){if(!delivered){result=s3wire::encode(reply);delivered=true;}});else driver_->reconcile(value,[&](StatResult reply){if(!delivered){result=s3wire::encode(reply);delivered=true;}});}
     else if(method=="stat"){StorageReceipt value;s3wire::decodeReceiptRequest(request,value);driver_->stat(value,[&](StatResult reply){if(!delivered){result=s3wire::encode(reply);delivered=true;}});}
     else if(method=="remove"){DeleteRequest value;s3wire::decode(request,value);value.cancellation=cancellation_;driver_->remove(value,checkpoint,[&](DeleteResult reply){if(!delivered){result=s3wire::encode(reply);delivered=true;}});}
+    else if(method=="abandon"){Destination destination;s3wire::decode(request["destination"].toObject(),destination);driver_->abandon(destination,request["journal"].toObject(),[&](Error error){if(!delivered){result={{"error",s3wire::encode(error)}};delivered=true;}});}
     else if(method=="testDestination"){Destination destination;s3wire::decode(request["destination"].toObject(),destination);driver_->testDestination(destination,checkpoint,[&](QJsonObject value,Error error){if(!delivered){result={{"result",value},{"error",s3wire::encode(error)}};delivered=true;}});}
    }catch(...){delivered=false;}
    module->destroyDriver(driver_);driver_=nullptr;
@@ -149,6 +169,7 @@ private:
  QCoreApplication& app_;UiControl control_;QTimer deadline_,heartbeat_,progressTimer_;QJsonObject build_;QString nonce_,generation_,pendingKind_,pendingRpc_;
  std::shared_ptr<S3Module> module_;S3Driver* driver_=nullptr;std::shared_ptr<std::atomic_bool> cancellation_=std::make_shared<std::atomic_bool>(false);
  std::mutex progressMutex_;std::optional<UploadProgress> latestProgress_;QStringList progressInFlight_;bool progressClosed_=false;
+ QList<QJsonObject> traces_;qint64 droppedTraces_=0;std::shared_ptr<std::atomic_int> extraLanes_=std::make_shared<std::atomic_int>(0);
  std::mutex exchangeMutex_;std::shared_ptr<Exchange> pending_;quint64 rpc_=0;bool aborted_=false;
  bool bootstrapped_=false,ready_=false,active_=false,failed_=false,cleaning_=false,terminal_=false;
 };

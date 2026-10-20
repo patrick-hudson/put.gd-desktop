@@ -158,6 +158,9 @@ private:
  };
  void storageActivityDelta(int);
  template<class T,class Start> T storageRequest(Start);
+ // Aborts the remote uploads failed items' journals still hold once their artifacts
+ // retire (#146); counts them in `outcome` and records refusals on the items.
+ void abandonUploads(HistoryStore&,Operation&,QJsonObject& outcome);
  struct Job {Operation op;ClipboardPayload payload;bool acquire=false;std::shared_ptr<std::atomic_bool> cancelled;std::shared_ptr<qint64> payloadLease;};
  void observe(const QJsonObject&);
  QJsonObject currentObservation(QJsonObject) const;

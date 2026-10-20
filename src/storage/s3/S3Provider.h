@@ -25,6 +25,7 @@ public:
     void stat(const StorageReceipt&, std::function<void(StatResult)>) override;
     void reconcile(const UploadRequest&, std::function<void(StatResult)>) override;
     void remove(const DeleteRequest&, DurableCheckpoint, std::function<void(DeleteResult)>) override;
+    void abandonUpload(const Destination&, const QJsonObject& journal, std::function<void(Error)>) override;
     // Explicit setup operation, synthetic bytes only; public GET has no AWS credentials.
     void testDestination(const Destination&, DurableCheckpoint, std::function<void(QJsonObject, Error)>);
 private:

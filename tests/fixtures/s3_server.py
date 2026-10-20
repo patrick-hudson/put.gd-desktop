@@ -207,7 +207,9 @@ class Handler(BaseHTTPRequestHandler):
                 self.connection.shutdown(socket.SHUT_RDWR)
                 self.connection.close()
                 return
-            return self.respond(200, headers={'ETag': upload['parts'][number]['etag']})
+            # Real S3 identifies every response, successful or not, with these two headers.
+            return self.respond(200, headers={'ETag': upload['parts'][number]['etag'], 'x-amz-request-id': 'SYNTHPART' + number.zfill(4),
+                                              'x-amz-id-2': 'synthetic+Part/Id2' + number + '='})
         if self.command == 'GET':
             marker = int(query.get('part-number-marker', ['0'])[0])
             limit = int(query.get('max-parts', ['1000'])[0])
@@ -240,6 +242,7 @@ class Handler(BaseHTTPRequestHandler):
         versions.append(value)
         del uploads[upload_id]
         headers = {'x-amz-version-id': version} if version else {}
+        headers.update({'x-amz-request-id': 'SYNTHDONE0001', 'x-amz-id-2': 'synthetic+Complete/Id2='})
         return xml_reply(self, 'CompleteMultipartUploadResult', '<Key>' + key + '</Key><ETag>' + value['etag'].replace('"', '&quot;') + '</ETag>', headers)
 
 server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)

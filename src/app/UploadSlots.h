@@ -9,10 +9,11 @@
 #include <mutex>
 namespace putgd {
 // Bounded upload slots shared by every operation (#28). One slot carries one file's
-// transfer; a multipart upload's parts run in order inside its slot, so a huge file
-// holds one slot however long it takes. A free slot goes to the waiting operation
-// that holds the fewest slots, then to the earliest request, so a large batch never
-// starves a newer action. Workers block here; the session thread never does.
+// transfer, so a huge file holds one slot however long it takes. A free slot goes to
+// the waiting operation that holds the fewest slots, then to the earliest request, so
+// a large batch never starves a newer action. Slots nobody waits for can be lent to a
+// running multipart upload for extra parallel parts (#174); a waiter takes a lent
+// slot back at once. Workers block here; the session thread never does.
 class UploadSlots {
 public:
     // Session thread: the user's "Uploads at once" setting. Raising it wakes waiters.
@@ -21,6 +22,13 @@ public:
     // a slot, once `stop` returns true (checked at least every 100 ms) or after close().
     bool acquire(const QString& operation, const std::function<bool()>& stop);
     void release(const QString& operation);
+    // Lends idle slots to one running transfer, up to `wanted`. A loan grows only
+    // while nobody waits; it shrinks when a waiter reclaims a slot or capacity drops.
+    // `loan` starts at zero and names the loan after the first call. Returns the
+    // slots it holds now. The borrower lets requests in flight finish, so a reclaimed
+    // slot can still carry one part for a moment.
+    int lend(quint64& loan, int wanted);
+    void closeLoan(quint64 loan);
     // Re-evaluate waiters now, after a cancellation flag changed.
     void wake();
     void close();
@@ -32,8 +40,9 @@ private:
     std::condition_variable changed_;
     QList<Waiter> waiting_;
     QHash<QString, int> held_;
-    int capacity_ = 1, active_ = 0;
-    quint64 sequence_ = 0;
+    QHash<quint64, int> loans_; // slots each loan holds; counted in active_ and lent_
+    int capacity_ = 1, active_ = 0, lent_ = 0;
+    quint64 sequence_ = 0, loanSequence_ = 0;
     bool closed_ = false;
 };
 // One operation at a time for a destination that takes one request at a time,
