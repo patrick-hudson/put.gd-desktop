@@ -749,6 +749,8 @@ if(BUILD_TESTING)
   # Opt-in local-server measurement driver; see tests/performance/s3_upload_probe.cpp.
   add_executable(s3_upload_probe EXCLUDE_FROM_ALL tests/performance/s3_upload_probe.cpp)
   target_link_libraries(s3_upload_probe PRIVATE putgd_s3 putgd_app)
+  add_executable(s3_live_probe EXCLUDE_FROM_ALL tests/performance/s3_live_probe.cpp)
+  target_link_libraries(s3_live_probe PRIVATE putgd_s3 putgd_app)
   add_executable(test_public_url tests/unit/test_public_url.cpp)
   target_link_libraries(test_public_url PRIVATE putgd_s3 Qt6::Test)
   add_test(NAME public_url COMMAND test_public_url)
