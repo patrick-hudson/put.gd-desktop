@@ -49,6 +49,8 @@ public:
     // Abandoned exports never survive their resident.
     static void discardStaging(const QString& root);
     static RecordingLimits limits(const Settings&);
+    // The smallest budget a recording starts with; prepare refuses below it (#213).
+    static constexpr qint64 minimumBudgetBytes = 64LL * 1024 * 1024;
 signals:
     void changed(const QString& operationId);
 private:
@@ -74,6 +76,8 @@ private:
         QRect recorded;
         bool shellFrame = false;
         QString staging;
+        // Why the helper ended the capture: user, or budget when the disk/file cap ran out.
+        QString stopReason;
         int exports = 0;
         quint64 generation = 0;
     };

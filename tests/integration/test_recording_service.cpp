@@ -5,6 +5,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QProcess>
+#include <QScopeGuard>
 using namespace putgd;using namespace putgd::test;
 
 namespace {
@@ -171,6 +172,40 @@ private slots:
   const auto second=h.prepareReady();QVERIFY(!second.isEmpty());QVERIFY(!h.rec("start",{{"id",second}}).error);
   h.backend->sink({{"id",second},{"event","failed"},{"error",QJsonObject{{"code","recording_source_lost"},{"message","Synthetic source vanished"}}}});
   QTRY_COMPARE(journal.operation(second).state,QString("failed"));QCOMPARE(journal.operation(second).error.code,QString("recording_source_lost"));QCOMPARE(h.backend->exports,1);
+ }
+ // #213: a disk that can't fund a minimum budget refuses prepare with its figures,
+ // before any operation is accepted; a budget stop answers a later stop.
+ void lowDiskRefusesPrepareAndBudgetStopAnswersStop(){
+  Harness h;QTRY_VERIFY(h.operations->ready());
+  constexpr qint64 gib=1LL<<30,mib=1LL<<20;auto resetDisk=qScopeGuard([]{ArtifactStore::setDiskForTesting(-1,-1);});
+  // The lab guest's figures: 2.36 GB free under a 4 GiB reserve (a 100 GiB disk).
+  ArtifactStore::setDiskForTesting(2360406016LL,100*gib);
+  auto refused=h.rec("prepare",{{"target",region()},{"format","mp4"}});
+  QCOMPARE(refused.error.code,QString("disk_space_insufficient"));
+  QCOMPARE(refused.error.details["freeBytes"].toInteger(),2360406016LL);QCOMPARE(refused.error.details["reserveBytes"].toInteger(),4*gib);
+  QCOMPARE(refused.error.details["availableBytes"].toInteger(),0LL);QCOMPARE(refused.error.details["requiredBytes"].toInteger(),3*RecordingService::minimumBudgetBytes);
+  QCOMPARE(refused.error.details["shortfallBytes"].toInteger(),4*gib+3*RecordingService::minimumBudgetBytes-2360406016LL);
+  QVERIFY2(refused.error.message.contains("Not enough free disk space to record")&&refused.error.message.contains("Free up at least"),qPrintable(refused.error.message));
+  QVERIFY(!h.backend->log.contains("prepare"));QVERIFY(h.operations->activeObservations().isEmpty());QVERIFY(h.operations->recordingActiveId().isEmpty());
+  // The tray's record action reports the same refusal.
+  Error invoked;bool answered=false;h.operations->invoke("record",[&](Error e,QJsonObject){invoked=e;answered=true;});QTRY_VERIFY(answered);QCOMPARE(invoked.code,QString("disk_space_insufficient"));
+  // One byte short of three minimum budgets above the reserve still refuses; exactly enough records.
+  const qint64 reserve=ArtifactStore::reserveFor(32*gib);QCOMPARE(reserve,qint64(32*gib/20));
+  ArtifactStore::setDiskForTesting(reserve+3*RecordingService::minimumBudgetBytes-3,32*gib);
+  QCOMPARE(h.rec("prepare",{{"target",region()},{"format","mp4"}}).error.code,QString("disk_space_insufficient"));
+  ArtifactStore::setDiskForTesting(reserve+3*RecordingService::minimumBudgetBytes,32*gib);
+  auto id=h.prepareReady();QVERIFY(!id.isEmpty());QCOMPARE(h.backend->lastConfig.budgetBytes,RecordingService::minimumBudgetBytes);
+  QVERIFY(!h.rec("cancel",{{"id",id}}).error);QTRY_VERIFY(h.operations->recordingActiveId().isEmpty());
+  // The same 2.36 GB on a 32 GiB disk (a 1.6 GiB reserve) gets a budget that lasts.
+  ArtifactStore::setDiskForTesting(2360406016LL,32*gib);
+  id=h.prepareReady();QVERIFY(!id.isEmpty());QCOMPARE(h.backend->lastConfig.budgetBytes,(2360406016LL-reserve)/3);QVERIFY(h.backend->lastConfig.budgetBytes>200*mib);
+  QVERIFY(!h.rec("start",{{"id",id}}).error);QTRY_COMPARE(h.state(id),QString("recording"));
+  h.backend->sink({{"id",id},{"event","stopped"},{"reason","budget"},{"durationUs",3000000.0},{"canvas",QJsonArray{1280,720}}});
+  QTRY_COMPARE(h.state(id),QString("reviewing"));
+  // The caller's stop arrives after the helper's own: acknowledged with the reason.
+  const auto stopped=h.rec("stop",{{"id",id}});QVERIFY2(!stopped.error,qPrintable(stopped.error.message));
+  QCOMPARE(stopped.result["state"].toString(),QString("reviewing"));QCOMPARE(stopped.result["stopReason"].toString(),QString("budget"));
+  QVERIFY(!h.rec("cancel",{{"id",id}}).error);
  }
  void controlBarEventsDriveTheSession(){
   Harness h;QTRY_VERIFY(h.operations->ready());HistoryStore journal(h.operations->databasePath());
