@@ -314,6 +314,29 @@ private slots:
   request.progress({"uploading",999999,{}});provider->requests.last().progress({"uploading",7,{}});replied=false;operations.inspect(id,[&](Error e,QJsonObject r){QVERIFY(!e);inspected=r;replied=true;});QTRY_VERIFY(replied);
   QCOMPARE(inspected["items"].toArray()[0].toObject()["uploadProgress"].toObject()["bytesTransferred"].toInteger(),7);
  }
+ // #112: a video's poster is made after its operation ends. The upload and the
+ // copied link never wait for it, a later poster reaches the history record
+ // and the change signal, and a failed one leaves the record as it was.
+ void videoPostersFollowTheResultWithoutDelayingIt_data(){QTest::addColumn<QByteArray>("mode");QTest::newRow("slow")<<QByteArray("slow");QTest::newRow("failed")<<QByteArray("fail");}
+ void videoPostersFollowTheResultWithoutDelayingIt(){
+#ifndef PUTGD_POSTER_FIXTURE
+  QSKIP("The poster helper fixture is Linux-only");
+#else
+  QFETCH(QByteArray,mode);qputenv("PUTGD_TEST_POSTER_MODE",mode);ArtifactStore::setPosterHelperForTesting(QStringLiteral(PUTGD_POSTER_FIXTURE));auto restore=qScopeGuard([]{qunsetenv("PUTGD_TEST_POSTER_MODE");ArtifactStore::setPosterHelperForTesting({});});
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});QVERIFY(settings.save(configuration(d.path()),{}));
+  Source source;source.payload.kind="files";source.payload.files={fixture(d.path(),"clip.mp4",QByteArray("\0\0\0\x18" "ftypisom\0\0\x02\0isomiso2",24)+QByteArray(4096,'\x11'))};
+  OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());QStringList changes;connect(&operations,&OperationService::changed,this,[&](const QString& id){changes.append(id);});
+  QString id;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});QTRY_VERIFY(!id.isEmpty());
+  HistoryStore journal(operations.databasePath());QTRY_COMPARE(journal.operation(id).state,QString("completed"));QTRY_COMPARE(source.copies,1);
+  auto op=journal.operation(id);QCOMPARE(op.items.size(),1);QCOMPARE(op.items[0].artifact.category,QString("videos"));QCOMPARE(op.items[0].uploadStatus,QString("uploaded"));
+  // The fixture takes 2 s, so the link was copied before any poster existed.
+  QVERIFY(op.items[0].artifact.previewPath.isEmpty());
+  if(mode=="fail"){QTest::qWait(1500);QVERIFY(journal.operation(id).items[0].artifact.previewPath.isEmpty());QVERIFY(journal.detail(op.items[0].artifact.id)["previewPath"].toString().isEmpty());QCOMPARE(journal.operation(id).state,QString("completed"));return;}
+  const auto before=changes.count(id);QTRY_VERIFY_WITH_TIMEOUT(!journal.operation(id).items[0].artifact.previewPath.isEmpty(),10000);
+  op=journal.operation(id);const auto preview=op.items[0].artifact.previewPath;QCOMPARE(QFileInfo(preview).fileName(),op.items[0].artifact.id+".png");QVERIFY(QFileInfo(preview).isFile());
+  QCOMPARE(journal.detail(op.items[0].artifact.id)["previewPath"].toString(),preview);QCOMPARE(op.state,QString("completed"));QCOMPARE(op.items[0].uploadStatus,QString("uploaded"));QCOMPARE(source.copies,1);QTRY_VERIFY(changes.count(id)>before);
+#endif
+ }
  void inactiveCancellationNormalizesPhaseWithoutChangingItemOutcome(){
   QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));Source source;OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());HistoryStore journal(operations.databasePath());
   Operation prior;prior.id="synthetic-inactive";prior.state="partial";prior.phase="uploading";prior.settings=settings.snapshot();OperationItem item;item.artifact.id="synthetic-inactive-item";item.uploadStatus="unknown";item.phase="uploading";prior.items.append(item);QVERIFY(!journal.saveOperation(prior));
@@ -1013,6 +1036,70 @@ private slots:
   std::thread raised([&]{admitted=pool.acquire("other",never);});
   QTRY_COMPARE(pool.diagnostics()["waiting"].toInt(),1);pool.setCapacity(3);raised.join();QVERIFY(admitted);
   pool.close();QVERIFY(!pool.acquire("late",never));
+ }
+ void idleSlotsAreLentAndTakenBack() {
+  UploadSlots pool;pool.setCapacity(4);const auto never=[]{return false;};
+  QVERIFY(pool.acquire("large",never));
+  // Nobody waits: the large upload borrows up to what it asks for.
+  quint64 loan=0;QCOMPARE(pool.lend(loan,2),2);QVERIFY(loan!=0);QCOMPARE(pool.lend(loan,3),3);QCOMPARE(pool.lend(loan,5),3);
+  QCOMPARE(pool.diagnostics()["active"].toInt(),4);QCOMPARE(pool.diagnostics()["lent"].toInt(),3);
+  // A new action never waits behind lent slots: it takes one back at once.
+  QElapsedTimer clock;clock.start();QVERIFY(pool.acquire("small",never));QVERIFY(clock.elapsed()<100);
+  QCOMPARE(pool.diagnostics()["active"].toInt(),4);QCOMPARE(pool.lend(loan,3),2);
+  // While anyone waits, a loan never grows.
+  QVERIFY(pool.acquire("small",never));QVERIFY(pool.acquire("small",never));QCOMPARE(pool.lend(loan,3),0);
+  std::atomic_bool admitted=false;std::thread waiter([&]{admitted=pool.acquire("waiting",never);});
+  QTRY_COMPARE(pool.diagnostics()["waiting"].toInt(),1);pool.release("small");QTRY_VERIFY(admitted.load());waiter.join();QCOMPARE(pool.lend(loan,3),0);
+  // Freed slots are lent again; a lower capacity takes them back; closing returns the rest.
+  pool.release("small");pool.release("small");pool.release("waiting");QCOMPARE(pool.lend(loan,3),3);
+  pool.setCapacity(2);QCOMPARE(pool.lend(loan,3),1);QCOMPARE(pool.diagnostics()["active"].toInt(),2);
+  pool.closeLoan(loan);QCOMPARE(pool.diagnostics()["active"].toInt(),1);QCOMPARE(pool.diagnostics()["lent"].toInt(),0);
+  pool.release("large");QCOMPARE(pool.diagnostics()["active"].toInt(),0);
+ }
+ void largeUploadBorrowsIdleSlotsUntilAnotherActionWaits() {
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;provider->concurrency=8;registry.add("opaque",provider);
+  SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));
+  // Distinct names: two uploads to one name would wait on its object lock, not on a slot.
+  Source source;source.payload.kind="files";source.payload.files={fixture(d.path(),"large.bin","synthetic large file")};
+  OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());
+  auto drain=qScopeGuard([&]{provider->deferUploads=false;QElapsedTimer clock;clock.start();
+   do{while(!provider->completions.isEmpty())provider->completions.takeFirst()();QTest::qWait(10);}while(operations.diagnostics()["activeOperations"].toInt()>0&&clock.elapsed()<10000);});
+  operations.invoke("clipboard",[&](Error e,QJsonObject){QVERIFY(!e);});QTRY_COMPARE(provider->completions.size(),1);
+  // Three uploads at once by default: the only transfer may borrow the two idle slots.
+  QVERIFY(provider->requests[0].extraLanes);QCOMPARE(provider->requests[0].extraLanes(3),2);
+  // A second action starts at once, taking a lent slot back.
+  source.payload.files={fixture(d.path(),"small.txt","synthetic small file")};
+  QElapsedTimer clock;clock.start();operations.invoke("clipboard",[&](Error e,QJsonObject){QVERIFY(!e);});
+  QTRY_COMPARE(provider->completions.size(),2);QVERIFY2(clock.elapsed()<2000,qPrintable(QString::number(clock.elapsed())));
+  QCOMPARE(provider->requests[0].extraLanes(3),1);
+  provider->completions.takeAt(1)();QTRY_COMPARE(provider->requests[0].extraLanes(3),2);
+  provider->completions.takeFirst()();QTRY_COMPARE(operations.diagnostics()["uploadSlots"].toObject()["active"].toInt(),0);
+  QCOMPARE(operations.diagnostics()["uploadSlots"].toObject()["lent"].toInt(),0);
+ }
+ void retiredUploadJournalsAreAbortedBestEffort() {
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->journalThenFail=true;registry.add("opaque",provider);
+  SettingsService settings(d.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});QVERIFY(settings.save(configuration(d.path()),{}));
+  Source source;source.payload=textPayload();OperationService ops(d.filePath("data"),settings,registry,source);QTRY_VERIFY(ops.ready());
+  QString id;ops.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});
+  HistoryStore store(ops.databasePath());QTRY_VERIFY(QStringList({"partial","failed"}).contains(store.operation(id).state));QCOMPARE(store.operation(id).items[0].uploadStatus,QString("failed"));
+  auto op=store.operation(id);QCOMPARE(op.items[0].uploadJournal["uploadId"].toString(),QString("opaque-upload"));
+  // A failed item keeps its artifact for Retry until failedArtifactDays pass.
+  QJsonObject result;bool cleaned=false;ops.cleanup([&](Error e,QJsonObject r){QVERIFY(!e);result=r;cleaned=true;});QTRY_VERIFY(cleaned);
+  QCOMPARE(result["removedOperations"].toInt(),0);QVERIFY(provider->abandoned.isEmpty());
+  op.created="2000-01-01T00:00:00.000Z";QVERIFY(!store.saveOperation(op));const auto spool=op.items[0].artifact.path;
+  // A refused abort is reported and recorded, and the artifact still goes.
+  provider->abandonError={"fixture_denied","Synthetic abort denial",{{"requestStage","upload_abort"}}};
+  cleaned=false;ops.cleanup([&](Error e,QJsonObject r){QVERIFY(!e);result=r;cleaned=true;});QTRY_VERIFY(cleaned);
+  QCOMPARE(result["removedOperations"].toInt(),1);QCOMPARE(result["abortedUploads"].toInt(),0);QVERIFY(!QFile::exists(spool));
+  QCOMPARE(provider->abandoned.size(),1);QCOMPARE(provider->abandoned[0]["uploadId"].toString(),QString("opaque-upload"));
+  const auto kept=result["incompleteUploads"].toArray();QCOMPARE(kept.size(),1);
+  QCOMPARE(kept[0].toObject()["operationId"].toString(),id);QCOMPARE(kept[0].toObject()["error"].toObject()["code"].toString(),QString("fixture_denied"));
+  op=store.operation(id);QVERIFY(op.items[0].error.details["incompleteUpload"].toBool());QCOMPARE(op.items[0].uploadJournal["uploadId"].toString(),QString("opaque-upload"));
+  // The next cleanup tries again, and a success clears the journal for good.
+  provider->abandonError={};cleaned=false;ops.cleanup([&](Error e,QJsonObject r){QVERIFY(!e);result=r;cleaned=true;});QTRY_VERIFY(cleaned);
+  QCOMPARE(result["removedOperations"].toInt(),0);QCOMPARE(result["abortedUploads"].toInt(),1);QVERIFY(result["incompleteUploads"].toArray().isEmpty());
+  op=store.operation(id);QVERIFY(op.items[0].uploadJournal.isEmpty());QVERIFY(!op.items[0].error.details.contains("incompleteUpload"));
+  cleaned=false;ops.cleanup([&](Error e,QJsonObject r){QVERIFY(!e);result=r;cleaned=true;});QTRY_VERIFY(cleaned);QCOMPARE(provider->abandoned.size(),2);
  }
  void concurrentBatchIsBoundedAndCopiesInSourceOrder() {
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;provider->concurrency=8;registry.add("opaque",provider);

@@ -10,6 +10,7 @@
 #include <QImageReader>
 #include "ImageFormat.h"
 #include "ImageJob.h"
+#include "PosterJob.h"
 #include <QRegularExpression>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -25,6 +26,7 @@ namespace putgd {
 namespace {
 QString category(const QString& mime) { if(mime.startsWith("image/")) return "images"; if(mime.startsWith("video/")) return "videos"; if(mime.startsWith("text/")) return "text"; return "other"; }
 std::atomic<qint64> freeOverride{-1},totalOverride{-1};
+std::mutex posterHelperMutex;QString posterHelper;
 // Bytes of imports in progress per filesystem, so concurrent imports (#28) and a
 // recording's budget never both count the same free space.
 std::mutex reservationsMutex;QHash<QString,qint64> reservations;
@@ -102,10 +104,25 @@ QString ArtifactStore::preview(const Artifact& artifact,qint64 budget,qint64 max
   // or plugin caches to a Core resident. Retained upload bytes are unchanged.
   input.close();Error error;png=ImageJob().preview(artifact.path,maxPixels,budget,error);if(error||png.isEmpty())return {};
  }
+ return cache(artifact.id,png,budget);
+}
+void ArtifactStore::setPosterHelperForTesting(const QString& path) {std::lock_guard lock(posterHelperMutex);posterHelper=path;}
+QString ArtifactStore::poster(const Artifact& artifact,qint64 budget,qint64 maxPixels,std::shared_ptr<std::atomic_bool> cancelled,Error* failure) {
+ if(budget<=0||artifact.category!="videos"||QUuid(artifact.id).isNull())return {};
+ QString helper;{std::lock_guard lock(posterHelperMutex);helper=posterHelper;}
+ // A codec or helper this package lacks, or a corrupt, truncated or oversized
+ // file, leaves no preview: History then says "Preview unavailable".
+ Error error;const auto png=PosterJob(helper).render(artifact.path,maxPixels,budget,error,std::move(cancelled));
+ const auto path=error||png.isEmpty()?QString{}:cache(artifact.id,png,budget);
+ if(failure)*failure=error?error:path.isEmpty()?Error{"artifact_io","Cannot store the video preview",{}}:Error{};
+ return path;
+}
+// Least recently written previews go first until the new one fits the budget.
+QString ArtifactStore::cache(const QString& id,const QByteArray& png,qint64 budget) {
  QDir cache(root_+"/../previews");if(!QDir().mkpath(cache.path()))return {};QFile::setPermissions(cache.path(),QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner);
  qint64 used=0;const auto files=cache.entryInfoList(QDir::Files,QDir::Time|QDir::Reversed);for(const auto& file:files)if(file.suffix()=="png"&&!QUuid(file.completeBaseName()).isNull())used+=file.size();
  for(const auto& file:files)if(used+png.size()>budget&&file.suffix()=="png"&&!QUuid(file.completeBaseName()).isNull()) {if(QFile::remove(file.absoluteFilePath()))used-=file.size();}
- const auto path=cache.filePath(artifact.id+".png");QSaveFile output(path);output.setDirectWriteFallback(false);if(!output.open(QIODevice::WriteOnly)||!output.setPermissions(QFile::ReadOwner|QFile::WriteOwner)||output.write(png)!=png.size()||!output.commit())return {};return path;
+ const auto path=cache.filePath(id+".png");QSaveFile output(path);output.setDirectWriteFallback(false);if(!output.open(QIODevice::WriteOnly)||!output.setPermissions(QFile::ReadOwner|QFile::WriteOwner)||output.write(png)!=png.size()||!output.commit())return {};return path;
 }
 
 Acquisition ArtifactStore::recover(const QString& operationId) const {

@@ -28,7 +28,10 @@ public:
  bool prepareUploads=false,deferChecks=false;QList<std::function<void()>> checkCompletions;
  bool deferUploads=false;QList<std::function<void()>> completions;QList<UploadRequest> requests;
  // Resumable uploads: journal before an uncertain end, and record each journal received.
- qint64 maximumObjectBytes=0;bool journalThenUnknown=false;QList<QJsonObject> resumes;
+ qint64 maximumObjectBytes=0;bool journalThenUnknown=false,journalThenFail=false;QList<QJsonObject> resumes;
+ // Retired journals (#146): each one abandoned, and the error to answer with.
+ QList<QJsonObject> abandoned;Error abandonError;
+ void abandonUpload(const Destination&,const QJsonObject& journal,std::function<void(Error)> cb) override {Error error;{QMutexLocker lock(&mutex);abandoned.append(journal);error=abandonError;}cb(error);}
  // Concurrent uploads (#28): requests the destination accepts at once, and names that fail.
  int concurrency=1;QSet<QString> failCandidates;
  int maximumConcurrentRequests(const Destination&) const override {return concurrency;}
@@ -42,6 +45,7 @@ public:
  void upload(const UploadRequest& request,std::function<void(UploadResult)> cb) override {
   ++uploads;
   {QMutexLocker lock(&mutex);resumes.append(request.resume);}
+  if(journalThenFail&&request.checkpoint){request.checkpoint({{"schemaVersion",1},{"uploadId","opaque-upload"}},[cb](Error e){cb({"failed",{},e?e:Error{"fixture_failed","Synthetic failure",{}}});});return;}
   if(journalThenUnknown&&request.checkpoint){request.checkpoint({{"schemaVersion",1},{"upload","opaque-resumable"}},[cb](Error e){cb({"unknown",{},e?e:Error{"fixture_interrupted","Synthetic interruption",{}}});});return;}
   if(prepareUploads&&request.progress)request.progress({"preparing",0,request.artifact.bytes});
   auto complete=[this,request,cb] {

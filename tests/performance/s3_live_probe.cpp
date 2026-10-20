@@ -9,6 +9,9 @@
 // in the resident: Test connection (with its multipart probe), a small multipart upload,
 // a cancellation at a third, a killed worker then Retry (resume), a large upload, and the
 // deletion of every uploaded object. Output is one JSON line per step, without secrets.
+// With SMALL set to --abandon-only (#146), it only interrupts INTERRUPT's upload, marks the
+// item failed and its operation past retention, and lets artifact cleanup abort the
+// retained multipart upload; nothing is published, so nothing needs deleting.
 #include "app/HistoryService.h"
 #include "storage/s3/S3Provider.h"
 #include <QCoreApplication>
@@ -183,6 +186,28 @@ int main(int argc, char** argv) {
         for (const auto& item : inspect(id)["items"].toArray())
             if (item.toObject()["uploadStatus"] == "uploaded") uploaded.append(item.toObject()["artifact"].toObject()["id"].toString());
     };
+    if (args.value(6) == "--abandon-only") {
+        const auto id = run("workerKilledAtThird", args[8], [&](const QString&) { for (auto pid : workers()) ::kill(pid_t(pid), SIGKILL); });
+        sampling = false;
+        sampler->wait();
+        // Stand in for an attempt whose own abort was refused: a failed item that still
+        // journals its upload, older than retention.failedArtifactDays.
+        Operation op;
+        {
+            HistoryStore store(operations.databasePath());
+            op = store.operation(id);
+            if (op.items.isEmpty() || op.items[0].uploadJournal["uploadId"].toString().isEmpty()) { report({{"step", "abandon"}, {"ok", false}, {"reason", "no journal"}}); return 1; }
+            op.items[0].uploadStatus = "failed";
+            op.created = "2000-01-01T00:00:00.000Z";
+            if (store.saveOperation(op)) { report({{"step", "abandon"}, {"ok", false}, {"reason", "journal write"}}); return 1; }
+        }
+        const auto [error, result] = call([&](JsonReply reply) { operations.cleanup(reply); }, 300000);
+        const auto after = HistoryStore(operations.databasePath()).operation(id);
+        report({{"step", "cleanupAbortsRetainedUpload"}, {"error", error.code}, {"removedOperations", result["removedOperations"]},
+              {"abortedUploads", result["abortedUploads"]}, {"incompleteUploads", result["incompleteUploads"].toArray().size()},
+              {"journalCleared", after.items.value(0).uploadJournal.isEmpty()}, {"artifactRemoved", !QFileInfo::exists(op.items[0].artifact.path)}});
+        return error || result["abortedUploads"].toInt() != 1 ? 1 : 0;
+    }
     remember(run("smallMultipart", args[6], {}));
     remember(run("cancelAtThird", args[7], [&](const QString& id) { operations.cancel(id, [](Error, QJsonObject) {}); }));
     const auto interrupted = run("workerKilledAtThird", args[8], [&](const QString&) { for (auto pid : workers()) ::kill(pid_t(pid), SIGKILL); });

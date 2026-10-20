@@ -672,6 +672,60 @@ image: the helper writes a marker clip, exports it to MP4, WebM and GIF, and
 `--motion`, `--preview` and, for the clips with sound, `--av-sync` must read
 every copy.
 
+## History poster frames
+
+History shows a still for every stored video (#112): screen recordings and
+MP4, WebM, Matroska, QuickTime, AVI and Ogg files shared from the clipboard or
+a file manager. The list draws a play glyph and the length over it, so a still
+is never mistaken for a screenshot; the inspector shows it larger, with the
+length beside the size. GIF and WebP recordings are images and keep the image
+preview (their first frame, through the image job); animated WebP needs Qt's
+WebP image plugin, which only some desktops install (#189).
+
+The poster is made after the operation ends, so a slow or failing decode
+never delays the upload, the copied link or the copied result. The resident
+queues one operation at a time and, for each video item without a preview,
+runs `putgd-record --poster MAX_PIXELS` (`PosterJob`, `src/core/PosterJob.*`):
+
+- the resident opens the stored artifact itself (`O_NOFOLLOW`, regular files
+  only) and hands that descriptor over as the child's standard input; the
+  child reads only it, through `/proc/self/fd/0`;
+- the child runs at nice 10 with 2 GiB of address space (none under
+  sanitizers), 21 s of CPU time, 64 file descriptors, no core file and a
+  zero file-size limit, and is killed at the 10 s deadline or on shutdown;
+- FFmpeg may use only the `file` protocol and the MP4/QuickTime,
+  Matroska/WebM, AVI and Ogg demuxers, so a crafted file can't make it open a
+  playlist, a URL or another file; frames over `limits.imagePixels` are
+  refused before decoding (`max_pixels` also bounds every later frame);
+- the PNG on standard output (long edge 256 px, the length in the
+  `putgd-duration-ms` text chunk) is capped at 2 MiB and checked for the PNG
+  signature and size before it is cached.
+
+The poster comes from the file as stored, so blur and cover masks baked into
+an export are in it (`poster_contract` checks a covered quarter). The frame is
+1 s in (half-way into shorter clips); when that frame is flat (black, a fade
+or a solid fill) the helper tries 25% and 50% in, then the first decodable
+frame. Posters share the image previews' cache (`<data>/previews/ID.png`,
+owner-only, `retention.previewCacheBytes`, cleared by cleanup), are recorded
+as the item's `previewPath` and reach `history.list`, `history.detail`, CLI
+`inspect` and MCP like image previews. A missing helper or codec, or a corrupt,
+truncated past its first frame or oversized file, leaves "Preview unavailable"
+and a `Video preview` log record with the failure; the AppImage's FFmpeg has
+no H.265 decoder, so H.265 MP4 files have no poster there. Videos stored
+before this change keep no poster (#190).
+
+Measured on d69 (Debian 13, FFmpeg 7.1, i5-6500T, load 1.2), three runs each
+with identical results, through the same limits:
+
+| Clip | Wall | Peak RSS | Peak address space |
+| --- | --- | --- | --- |
+| 1080p, 60 s, H.264 (x264 ultrafast) | 0.17 s | 78 MiB | 515 MiB |
+| 1440p, 20 s, VP9 (libvpx realtime) | 0.29 s | 100 MiB | 509 MiB |
+| 2160p, 20 s, H.265 (x265 ultrafast) | 0.62 s | 186 MiB | 570 MiB |
+
+A 720p recording's poster took about 0.25 s on f44, most of it process
+start-up. The PNG is 12 KiB for these clips.
+
 ## Packages and codecs
 
 Recording keeps an H.264 working clip, so capture needs a working H.264

@@ -23,6 +23,9 @@ public:
  void setActivity(const QColor& color, const QString& description, int percent = -1);
  void notify(const QString& title, const QString& message, bool warning = false, const QUrl& link = {},
              const QList<NotificationAction>& actions = {});
+ // expire_timeout for a notification on this server (GetServerInformation name):
+ // 10 s, or 0 (until used or dismissed) for buttons the server would otherwise lose.
+ static int notificationTimeoutMs(const QString& server, bool actions);
 signals:
  void notificationActivated(const QUrl& link);
  void notificationAction(const QString& key, const QString& value);

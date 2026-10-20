@@ -266,6 +266,16 @@ void S3Provider::remove(const DeleteRequest& request, DurableCheckpoint save, st
         reply({uncertain ? "unknown" : "failed", uncertain ? QJsonObject{} : request.progress, error});
     });
 }
+void S3Provider::abandonUpload(const Destination& destination, const QJsonObject& journal, std::function<void(Error)> reply) {
+    reply = once(std::move(reply));
+    if (journal["uploadId"].toString().isEmpty()) {
+        reply({});
+        return;
+    }
+    state_->run(*this, destination, {}, [destination, journal, reply](S3Driver& driver) {
+        driver.abandon(destination, journal, reply);
+    }, reply);
+}
 void S3Provider::testDestination(const Destination& destination, DurableCheckpoint save, std::function<void(QJsonObject, Error)> reply) {
     reply = once(std::move(reply));
     state_->run(*this, destination, {}, [destination, save, reply](S3Driver& driver) {

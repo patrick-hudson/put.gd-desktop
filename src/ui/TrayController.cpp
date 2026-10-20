@@ -77,10 +77,38 @@ QString phaseLabel(const QJsonObject& operation) {
  auto text=phase;text.replace('_',' ');
  return text.isEmpty()?QString("Preparing"):text.left(1).toUpper()+text.mid(1);
 }
+struct TransferCounts {
+ int running=0,waiting=0,done=0,failed=0;qint64 sent=0,total=0;bool known=false;
+ void add(const QJsonArray& items) {
+  for(const auto& value:items) {
+   const auto item=value.toObject();const auto status=item["uploadStatus"].toString();
+   if(status=="failed"||status=="unknown")++failed;else if(QStringList{"uploaded","skipped","conflict"}.contains(status))++done;
+   else if(item["phase"]=="queued")++waiting;else if(status=="uploading")++running;
+   const auto progress=UploadProgress::fromJson(item["uploadProgress"].toObject());
+   if(progress&&progress->bytesTransferred){sent+=*progress->bytesTransferred;known=true;}
+   if(progress&&progress->bytesTotal)total+=*progress->bytesTotal;
+  }
+ }
+ // ": 12 MiB of 40 MiB (30%) · 2 uploading, 3 waiting, 1 done"
+ QString summary() const {
+  QString text;
+  if(total>0)text=": "+ByteSize::summary(sent)+" of "+ByteSize::summary(total)+QString(" (%1%)").arg(qBound(0,int(100.0*sent/total),100));
+  else if(known)text=": "+ByteSize::summary(sent)+" transferred";
+  QStringList parts{QString("%1 uploading").arg(running)};
+  if(waiting)parts<<QString("%1 waiting").arg(waiting);
+  if(done)parts<<QString("%1 done").arg(done);
+  if(failed)parts<<QString("%1 failed").arg(failed);
+  return text+" · "+parts.join(", ");
+ }
+};
 QString activityLine(const QJsonObject& operation) {
  const auto phase=operation["phase"].toString(operation["state"].toString());
  auto text=phaseLabel(operation);const auto items=operation["items"].toArray();
  if(phase=="uploading"||phase=="finalizing"||phase=="preparing") {
+  // Several files transferring at once (#28, #175): the count and the combined
+  // bytes, the way History's active row reads.
+  TransferCounts counts;counts.add(items);
+  if(counts.running>1)return text+counts.summary();
   for(qsizetype index=0;index<items.size();++index) {
    const auto item=items[index].toObject();if(item["uploadStatus"]!="uploading")continue;
    if(items.size()>1)text+=QString(" file %1/%2").arg(index+1).arg(items.size());
@@ -237,10 +265,67 @@ TrayController::TrayController(OperationService& operations,
  });
 }
 
+QString TrayController::describeActivity(const QJsonArray& observations) {return activityText(observations);}
+// What went wrong, in plain words, from an operation or item error code (#152).
+QString TrayController::failureReason(const QJsonObject& error) {
+ const auto code=error["code"].toString();
+ auto has=[&](std::initializer_list<const char*> parts){for(const auto* part:parts)if(code.contains(QLatin1String(part)))return true;return false;};
+ if(code=="diagnostics_no_destination")return "no upload destination is set up";
+ if(code=="diagnostics_destination_failing")return "the last upload to the destination failed with a credential or configuration error";
+ if(code=="diagnostics_destination_unavailable")return "Test connection to the destination failed";
+ if(has({"permission_denied","access_denied","multipart_permission"}))return "access denied by the destination";
+ if(has({"authentication_failed","credentials_invalid","credential_invalid"}))return "the destination did not accept the saved credentials";
+ if(has({"setup_required","account_changed"}))return "the destination needs to be set up again in Settings";
+ if(has({"credential_store_unavailable","keychain_unavailable"}))return "the saved credentials could not be read from the keyring";
+ if(has({"mfa_required"}))return "the destination requires multi-factor authentication";
+ if(has({"bucket_not_found"}))return "the bucket does not exist";
+ if(has({"region_mismatch"}))return "the bucket is in a different region than the destination's settings";
+ if(has({"acl_incompatible"}))return "the bucket does not accept the destination's access setting";
+ if(has({"object_too_large"}))return "the file is larger than the destination accepts";
+ if(has({"folder_unavailable"}))return "the destination folder is not available";
+ if(has({"timeout","transport"}))return "the destination could not be reached";
+ auto message=error["message"].toString().trimmed();
+ while(message.endsWith('.'))message.chop(1);
+ if(message.isEmpty())return {};
+ return message.left(1).toLower()+message.mid(1);
+}
 QString TrayController::completionMessage(const QJsonObject& operation,bool hasLink) {
- const auto error=operation["error"].toObject();
- if(operation["items"].toArray().isEmpty()&&meaningfulError(error)&&!error["message"].toString().isEmpty())return error["message"].toString();
- return "Clipboard: " + operation["copyStatus"].toString() + (hasLink?". Click to open in browser.":". Open recent activity for per-item results.");
+ const auto error=operation["error"].toObject();const auto items=operation["items"].toArray();const auto state=operation["state"].toString();
+ if(items.isEmpty()&&meaningfulError(error)&&!error["message"].toString().isEmpty())return error["message"].toString();
+ const auto copy=operation["copyStatus"].toString();
+ bool localOnly=!items.isEmpty();
+ for(const auto& value:items)localOnly=localOnly&&value.toObject()["uploadStatus"]=="local_only";
+ const QString copied=copy=="copied"?(localOnly?"Result copied to the clipboard.":"Link copied to the clipboard."):copy=="failed"?(localOnly?"Could not copy the result.":"Could not copy the link."):QString{};
+ if(!QStringList{"failed","partial","interrupted"}.contains(state)) {
+  if(localOnly)return "Saved locally"+(copy=="copied"?QString("; copied to the clipboard."):copy=="failed"?QString("; could not copy the result."):QString("."));
+  QStringList parts{items.size()>1?QString("%1 files uploaded.").arg(items.size()):QString("Uploaded.")};
+  if(!copied.isEmpty())parts.append(copied);
+  if(hasLink)parts.append("Click to open in browser.");
+  return parts.join(' ');
+ }
+ // Failed or partial: the first item error names the failure; the operation's own
+ // error covers a failure before any item.
+ int failed=0,uploaded=0,savedLocally=0;QJsonObject itemError;bool localFailed=false;
+ for(const auto& value:items) {
+  const auto item=value.toObject();const auto status=item["uploadStatus"].toString();
+  if(status=="uploaded"){++uploaded;continue;}
+  const auto local=item["local"].toObject();
+  if(local["status"]=="saved")++savedLocally;
+  if(status=="failed"||meaningfulError(item["error"].toObject())) {
+   ++failed;if(itemError.isEmpty()&&meaningfulError(item["error"].toObject()))itemError=item["error"].toObject();
+  } else if(meaningfulError(local["error"].toObject())) {
+   ++failed;localFailed=true;if(itemError.isEmpty())itemError=local["error"].toObject();
+  }
+ }
+ const auto cause=failureReason(!itemError.isEmpty()?itemError:meaningfulError(error)?error:QJsonObject{});
+ const auto what=localFailed&&!uploaded&&failed==1?QString("Local save failed"):state=="interrupted"?QString("Upload interrupted"):QString("Upload failed");
+ QString text;
+ if(items.size()>1)text=QString("%1 of %2 files uploaded. ").arg(uploaded).arg(items.size())+QString("%1 failed").arg(items.size()-uploaded)+(cause.isEmpty()?".":": "+cause+".");
+ else text=what+(cause.isEmpty()?".":": "+cause+".");
+ if(savedLocally)text+=savedLocally==1?" A local copy was saved.":QString(" %1 local copies were saved.").arg(savedLocally);
+ if(!copied.isEmpty())text+=" "+copied;
+ if(hasLink)text+=" Click to open in browser.";
+ return text;
 }
 
 TrayController::~TrayController() {
@@ -379,7 +464,13 @@ void TrayController::saveDiagnostics(const QString& operationId) {
 }
 void TrayController::notifyDiagnosticsSaved(const QJsonObject& result) {
  const QFileInfo file(result["path"].toString());if(file.fileName().isEmpty())return;
- notifyMessage("put.gd — diagnostics saved",file.fileName()+" ("+ByteSize::summary(result["bytes"].toInteger())+") in "+QDir::toNativeSeparators(file.absolutePath())+". Nothing was uploaded.",false,{},{},file.absoluteFilePath());
+ // With diagnostics.bundle upload (#123, #158) it also says where the package went.
+ QString uploaded=" Nothing was uploaded.";
+ const auto uploadError=result["uploadError"].toObject();
+ if(result.contains("link"))uploaded=" Uploaded to "+result["upload"].toObject()["label"].toString()+(result["linkCopied"].toBool()?"; link copied.":".");
+ else if(uploadError["code"]=="diagnostics_link_unavailable")uploaded=" Uploaded to "+result["upload"].toObject()["label"].toString()+", which gives it no link.";
+ else if(!uploadError.isEmpty()){const auto reason=failureReason(uploadError);uploaded=" Not uploaded"+(reason.isEmpty()?QString("."):": "+reason+".");}
+ notifyMessage("put.gd — diagnostics saved",file.fileName()+" ("+ByteSize::summary(result["bytes"].toInteger())+") in "+QDir::toNativeSeparators(file.absolutePath())+"."+uploaded,false,{},{},file.absoluteFilePath());
 }
 Error TrayController::revealPackage(const QString& path) {
  static const QRegularExpression name("^putgd-diagnostics-[0-9]{8}-[0-9]{6}Z(-[0-9]+)?\\.zip$");

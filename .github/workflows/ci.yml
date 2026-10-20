@@ -26,6 +26,7 @@ jobs:
       build: ${{ steps.select.outputs.build }}
       packages: ${{ steps.select.outputs.packages }}
       sanitizers: ${{ steps.select.outputs.sanitizers }}
+      pipewire: ${{ steps.select.outputs.pipewire }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -41,10 +42,10 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ inputs.release_tag || github.sha }}
-      - name: Install QEMU disk utilities for lab contracts
+      - name: Install QEMU disk utilities and dwz for the contracts
         run: |
           sudo apt-get update
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends qemu-utils
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends qemu-utils dwz
       - name: Release, packaging and CI tool contracts
         if: always()
         run: python3 tools/ci/contracts.py release
@@ -444,10 +445,51 @@ jobs:
     with:
       release_tag: ${{ inputs.release_tag || '' }}
 
+  pipewire:
+    # The AppImage bundles Ubuntu 24.04's pipewiresrc; hosts run PipeWire 1.6,
+    # which refuses buffer ranges that don't overlap (#137). Link that plugin,
+    # with the recorder's properties, to KWin- and Mutter-like screen casts on
+    # Ubuntu 26.04's daemon (#144). Uses this run's AppImage when packages
+    # ran, otherwise the latest nightly's: then only src/record or the check
+    # changed, and the bundled plugin is the one nightly ships.
+    needs: [changes, packages]
+    if: ${{ always() && needs.changes.outputs.pipewire == 'true' && (needs.packages.result == 'success' || needs.packages.result == 'skipped') }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.release_tag || github.sha }}
+      - name: This run's AppImage
+        if: needs.packages.result == 'success'
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: release-appimage
+          path: build/pipewire
+      - name: The latest nightly's AppImage
+        if: needs.packages.result == 'skipped'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=30" --jq '[.[] | select(.draft == false and (.tag_name | test("-nightly[.]")))][0].tag_name')
+          echo "Nightly $tag"
+          gh release download "$tag" --repo "$GITHUB_REPOSITORY" --dir build/pipewire --pattern '*-x86_64.AppImage' --pattern SHA256SUMS
+          (cd build/pipewire && grep -- '-x86_64[.]AppImage$' SHA256SUMS | sha256sum --check --strict)
+      - name: Extract the AppImage
+        run: |
+          image=$(find "$PWD/build/pipewire" -maxdepth 1 -name '*-x86_64.AppImage' | head -n 1)
+          test -n "$image"
+          chmod +x "$image"
+          (cd build/pipewire && "$image" --appimage-extract > /dev/null)
+      - name: Link pipewiresrc on Ubuntu 26.04's PipeWire
+        run: |
+          docker run --rm --volume "$PWD:/src:ro" --workdir /src \
+            ubuntu:26.04@sha256:f144425ff09be612d6d9ad965196e9cdc23dae1f42110a8a11a3e9a8198759f7 \
+            bash tests/desktop/pipewire/ci_check.sh --install build/pipewire/squashfs-root
+
   ci:
     name: CI
     if: always()
-    needs: [changes, contracts, linux, portable, packages]
+    needs: [changes, contracts, linux, portable, packages, pipewire]
     runs-on: ubuntu-24.04
     steps:
       - name: Require every selected job
@@ -461,7 +503,8 @@ jobs:
           expected = {'changes': 'success', 'contracts': 'success',
                       'linux': 'success' if selected.get('build') == 'true' else 'skipped',
                       'portable': 'success' if selected.get('build') == 'true' else 'skipped',
-                      'packages': 'success' if selected.get('packages') == 'true' else 'skipped'}
+                      'packages': 'success' if selected.get('packages') == 'true' else 'skipped',
+                      'pipewire': 'success' if selected.get('pipewire') == 'true' else 'skipped'}
           failed = False
           for job, want in expected.items():
               got = needs[job]['result']

@@ -1,5 +1,6 @@
 #include "LocalServer.h"
 #include "RecordingBackend.h"
+#include "client/SessionClient.h"
 #include "core/BuildInfo.h"
 #include "core/Log.h"
 #include <QUuid>
@@ -64,8 +65,8 @@ int LocalServer::replyDeadlineMs(const QString& method) {
  if(QStringList{"recording.capabilities","recording.prepare","recording.select","recording.start","recording.pause","recording.resume","recording.raise","recording.overlay","recording.preview"}.contains(method))return recording::helperCommandMs+base;
  // Reading the logs and compressing up to 20 MiB stays well inside 45 s; an
  // upload adds the destination test and the upload itself (#123).
- if(method=="diagnostics.bundle")return 600000;
- if(method=="diagnostics.uploadTarget")return 300000;
+ if(method=="diagnostics.bundle")return diagnosticsBundleReplyMs;
+ if(method=="diagnostics.uploadTarget")return diagnosticsUploadTargetReplyMs;
  return base;
 }
 QJsonObject LocalServer::response(const QString& requestId,const Error& error,const QJsonObject& result) {return {{"schemaVersion",1},{"requestId",requestId},{"ok",!error},{"result",error?QJsonObject{}:result},{"error",error.toJson()}};}
@@ -212,7 +213,7 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  // History window's Save diagnostics row action, the way a user does (#122).
  if(method=="ui.diagnostics") {
   static const QStringList actions{"inspect","setDebugLogging","clearLogs","openPackage","setPackage","savePackage","showInFolder","closePackage"};
-  if(!fields(p,{"action"},{"enabled","includeNames","folder","operation"})||!actions.contains(p["action"].toString())||(p.contains("enabled")&&!p["enabled"].isBool())||(p.contains("includeNames")&&!p["includeNames"].isBool())
+  if(!fields(p,{"action"},{"enabled","includeNames","folder","operation","upload"})||!actions.contains(p["action"].toString())||(p.contains("enabled")&&!p["enabled"].isBool())||(p.contains("includeNames")&&!p["includeNames"].isBool())||(p.contains("upload")&&!p["upload"].isBool())
      ||(p.contains("folder")&&(!string(p,"folder",4096)||!QDir::isAbsolutePath(p["folder"].toString())))||(p.contains("operation")&&!string(p,"operation",128))){reply(invalid(),{});return;}
   if(!uiCommand_){reply({"ui_unavailable","This resident has no graphical interface",{}},{});return;}
   uiCommand_("diagnostics",p,std::move(reply));return;

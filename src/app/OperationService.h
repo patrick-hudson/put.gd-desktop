@@ -158,6 +158,9 @@ private:
  };
  void storageActivityDelta(int);
  template<class T,class Start> T storageRequest(Start);
+ // Aborts the remote uploads failed items' journals still hold once their artifacts
+ // retire (#146); counts them in `outcome` and records refusals on the items.
+ void abandonUploads(HistoryStore&,Operation&,QJsonObject& outcome);
  struct Job {Operation op;ClipboardPayload payload;bool acquire=false;std::shared_ptr<std::atomic_bool> cancelled;std::shared_ptr<qint64> payloadLease;};
  void observe(const QJsonObject&);
  QJsonObject currentObservation(QJsonObject) const;
@@ -168,6 +171,12 @@ private:
  void scheduleHeapReclamation();
  Operation run(Job);
  void finish(Operation,JsonReply={});
+ // #112: video poster frames, made one operation at a time after it ends, so
+ // a slow or failing decode never delays its upload, link or copied result.
+ void queuePosters(const Operation&);
+ void pumpPosters();
+ QQueue<QString> posterQueue_;bool posterRunning_=false;
+ std::shared_ptr<std::atomic_bool> posterCancel_=std::make_shared<std::atomic_bool>(false);
  void releaseActive(const QString&);
  void performCopy(Operation,bool explicitCopy,JsonReply,quint64 ticket=0);
  void deliverCopy(const CopyPayload&,std::function<void(Error)>,std::function<bool()> eligible={},bool upload=false);

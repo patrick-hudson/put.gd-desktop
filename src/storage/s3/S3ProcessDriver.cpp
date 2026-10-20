@@ -81,7 +81,9 @@ public:
   // A multipart journal is acknowledged by the caller's durable store. Callers
   // without one (synthetic tests) still get abort on cancel and final failure.
   DurableCheckpoint journal=request.checkpoint?DurableCheckpoint(request.checkpoint):DurableCheckpoint([](const QJsonObject&,std::function<void(Error)> ack){ack({});});
+  lanes_=request.extraLanes;trace_=request.trace;
   QJsonObject result;auto error=run("upload",s3wire::encode(request),request.destination,request.cancellation,std::move(journal),result,request.progress);
+  lanes_={};trace_={};
   UploadResult value;if(error||!s3wire::decode(result,value))value={noEffects(error)?"failed":"unknown",{},error?error:uncertain()};callback(std::move(value));
  }
  void stat(const StorageReceipt& receipt,std::function<void(StatResult)> callback)override{
@@ -95,6 +97,10 @@ public:
  void remove(const DeleteRequest& request,DurableCheckpoint checkpoint,std::function<void(DeleteResult)> callback)override{
   QJsonObject result;auto error=run("remove",s3wire::encode(request),request.receipt.destination,request.cancellation,std::move(checkpoint),result);
   DeleteResult value;if(error||!s3wire::decode(result,value))value={noEffects(error)?"failed":"unknown",noEffects(error)?request.progress:QJsonObject{},error?error:uncertain()};callback(std::move(value));
+ }
+ void abandon(const Destination& destination,const QJsonObject& journal,std::function<void(Error)> callback)override{
+  QJsonObject result;auto error=run("abandon",{{"destination",destination.toJson()},{"journal",journal}},destination,{},{},result);
+  Error value;if(!error&&(result.size()!=1||!result["error"].isObject()||!s3wire::decode(result["error"].toObject(),value)))error=uncertain();callback(error?error:value);
  }
  void testDestination(const Destination& destination,DurableCheckpoint checkpoint,std::function<void(QJsonObject,Error)> callback)override{
   QJsonObject result;auto error=run("testDestination",{{"destination",destination.toJson()}},destination,{},std::move(checkpoint),result);
@@ -119,6 +125,16 @@ private:
     activity_.restart();
     if(progress_)try{progress_(*progress);}catch(...){}
     answer("uploadProgress",sequence,{});activity_.restart();return;
+   }
+   // Per-request diagnostics (#148), batched by the worker; informational only.
+   if(object["kind"]=="uploadTrace"&&activationAcknowledged_&&activeMethod_=="upload"){
+    const auto data=object["data"].toObject();
+    if(data.size()!=2||!data["records"].isArray()||data["records"].toArray().size()>64||!data["dropped"].isDouble()||data["dropped"].toInteger()<0){failed_=true;return;}
+    for(const auto& value:data["records"].toArray())if(!value.isObject()||!s3wire::decodeUploadTrace(value.toObject())){failed_=true;return;}
+    activity_.restart();
+    if(trace_)for(const auto& value:data["records"].toArray())try{trace_(value.toObject());}catch(...){}
+    if(const auto dropped=data["dropped"].toInteger())logging::debug(logS3(),"Upload diagnostics dropped",{{"records",dropped}});
+    return;
    }
    failed_=true;return;
   }
@@ -168,7 +184,7 @@ private:
   // A multipart upload makes up to three attempts per part plus its create,
   // listing, completion and abort calls; each part is bounded like one PUT.
   const auto resume=request["resume"].toObject();const qint64 parts=method=="upload"?qBound<qint64>(0LL,s3PartCount(request["artifact"].toObject()["bytes"].toInteger(),qBound<qint64>(0LL,resume["partBytes"].toInteger(),s3MaximumPartBytes)),s3MaximumParts):0;
-  const qint64 calls=method=="testDestination"?20:method=="remove"?8:method=="upload"?6+parts*3+(parts?16:0):1;
+  const qint64 calls=method=="testDestination"?20:method=="remove"?8:method=="abandon"?3:method=="upload"?6+parts*3+(parts?16:0):1;
   const auto settings=destination.settings;
   const auto timeout=[&](const char* key){return qBound<qint64>(1LL,settings[key].toInteger(),2147483647LL);};
   const qint64 perCall=qMax<qint64>(timeout("requestTimeoutMs"),timeout("connectTimeoutMs")+timeout("lowSpeedTimeSeconds")*1000)+1000;
@@ -181,9 +197,15 @@ private:
   QElapsedTimer cancelDeadline;
   const qint64 totalBudget=calls*perCall+hashBudget+checkpoints*300000+60000;
   QElapsedTimer workDeadline;workDeadline.start();activity_.start();
+  // A multipart upload learns how many idle upload slots it may borrow (#174).
+  QElapsedTimer lanesPoll;lanesPoll.start();int lentLanes=0;const bool borrows=lanes_&&parts>1;
   activated_=true;if(control_->send("activate",activate).isEmpty())failed_=true;
   while(process_->state()!=QProcess::NotRunning&&!failed_){
    flushAck();
+   if(borrows&&activationAcknowledged_&&!terminal_&&lanesPoll.elapsed()>=100){
+    lanesPoll.restart();int lent=0;try{lent=qBound(0,lanes_(s3MaximumPartLanes-1),s3MaximumPartLanes-1);}catch(...){}
+    if(lent!=lentLanes){auto value=envelope();value["lanes"]=lent;if(control_->send("lanes",value).isEmpty())failed_=true;lentLanes=lent;}
+   }
    if(cancellation&&cancellation->load()&&!cancelSent_){auto cancel=envelope();cancel["cancel"]=true;if(control_->send("shutdown",cancel).isEmpty())failed_=true;cancelSent_=true;cancelDeadline.start();}
    process_->waitForReadyRead(20);
    if((!activationAcknowledged_&&workDeadline.elapsed()>10000)||
@@ -215,6 +237,7 @@ private:
  std::unique_ptr<QProcess> process_;std::unique_ptr<UiControl> control_;std::shared_ptr<Ack> pending_;
  S3ProcessLimits limits_;Destination destination_;DurableCheckpoint checkpoint_;QJsonObject reply_;
  std::function<void(const UploadProgress&)> progress_;qint64 uploadBytes_=0;
+ std::function<int(int)> lanes_;std::function<void(const QJsonObject&)> trace_;
  bool ready_=false,activated_=false,activationAcknowledged_=false,terminal_=false,failed_=false,cancelSent_=false,checkpointException_=false;qint64 stderrBytes_=0;
  HelperOutput output_{"putgd-s3-worker",logS3(),true};
 };
