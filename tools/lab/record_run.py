@@ -406,7 +406,11 @@ class Driver:
             time.sleep(a.lead)
             self.cli(build, 'recording.start', {'id': rid})
             started = time.monotonic()
-            time.sleep(a.pause_at)
+            time.sleep(0.5)
+            # Where the control bar went once recording: outside the recorded pixels, or a handle inside them.
+            placed = self.cli(build, 'recording.inspect', {'id': rid})
+            result['overlay'] = {'excluded': placed.get('overlayExcluded'), 'placement': placed.get('overlayPlacement')}
+            time.sleep(max(0, a.pause_at - 0.5))
             if a.pause_for > 0:
                 self.cli(build, 'recording.pause', {'id': rid})
                 result['pauseClipS'] = round(time.monotonic() - started, 3)
