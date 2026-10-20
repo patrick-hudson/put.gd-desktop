@@ -1,5 +1,7 @@
 #include "app/UiProcessController.h"
 #include <QtTest>
+#include <QJsonArray>
+#include <QJsonDocument>
 using namespace putgd;
 class UiProcessTest:public QObject {
  Q_OBJECT
@@ -41,8 +43,28 @@ private slots:
   controller.activate("settings",[&](Error e){QVERIFY(!e);shown=true;});QTRY_VERIFY(shown);QTRY_COMPARE(controller.status()["pid"].toInteger(),qint64(0));QCOMPARE(failures.size(),1);QCOMPARE(controller.status()["lastExit"].toObject()["code"].toInt(),77);
  }
  void stalledActivationFailsBeforeTheClientsDeadline(){
+  QTemporaryDir logs;QVERIFY(logs.isValid());logging::open(logs.path());
   qputenv("PUTGD_TEST_UI_MODE","stall");UiProcessController controller("/unused","epoch",helper(),valid);bool replied=false;Error error;QElapsedTimer elapsed;elapsed.start();
   controller.activate("settings",[&](Error e){error=e;replied=true;});QTRY_VERIFY_WITH_TIMEOUT(replied,14500);QCOMPARE(error.code,QString("ui_show_timeout"));QVERIFY(elapsed.elapsed()<15000);
+  // #250: the kill's reason is logged before it, and the exit says put.gd killed it.
+  QTRY_COMPARE(controller.status()["pid"].toInteger(),qint64(0));logging::flush();
+  QList<QJsonObject> lines;
+  for(const auto& name:QDir(logs.path()).entryList({"putgd-*.jsonl"},QDir::Files,QDir::Name)){QFile file(logs.filePath(name));QVERIFY(file.open(QIODevice::ReadOnly));for(const auto& line:file.readAll().split('\n'))if(!line.isEmpty())lines.append(QJsonDocument::fromJson(line).object());}
+  logging::close();
+  qsizetype reason=-1,exit=-1;
+  for(qsizetype index=0;index<lines.size();++index){
+   if(lines[index]["message"]=="Killing helper"&&reason<0)reason=index;
+   if(lines[index]["message"]=="Helper killed by put.gd")exit=index;
+   QVERIFY2(lines[index]["message"]!="Helper crashed"&&lines[index]["message"]!="Helper killed from outside put.gd",qPrintable(lines[index]["message"].toString()));
+  }
+  QVERIFY(reason>=0);QVERIFY(exit>reason);
+  const auto why=lines[reason]["fields"].toObject();QCOMPARE(lines[reason]["level"].toString(),QString("warning"));
+  QCOMPARE(why["reason"].toString(),QString("ui_show_timeout"));QCOMPARE(why["code"].toString(),QString("ui_show_timeout"));
+  QCOMPARE(why["deadline"].toString(),QString("activation"));QCOMPARE(why["deadlineMs"].toInt(),12000);
+  // The stalling fixture never acknowledges: the view waits as a sent activation.
+  QCOMPARE(why["phase"].toString(),QString("ready"));QCOMPARE(why["activations"].toArray(),QJsonArray{"settings"});QCOMPARE(why["pendingViews"].toArray(),QJsonArray{});
+  const auto killed=lines[exit]["fields"].toObject();
+  QVERIFY(killed["supervisorKill"].toBool());QVERIFY(killed["requested"].toBool());QCOMPARE(killed["reason"].toString(),QString("ui_show_timeout"));QCOMPARE(killed["helper"].toString(),QString("putgd-ui"));
  }
  void missingHelperFailsWithoutRestarting(){
   UiProcessController controller("/unused","epoch","/does-not-exist/putgd-ui",valid);bool replied=false;Error error;

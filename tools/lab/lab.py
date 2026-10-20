@@ -476,10 +476,14 @@ def guest_session(run, body):
     process = profile['session_process']
     if process not in ('cinnamon', 'gnome-shell', 'plasmashell'):
         raise LabError('Unsupported native desktop session process')
+    # PanelTone needs the session's XDG_CONFIG_DIRS and XDG_DATA_DIRS too
+    # (docs/appearance.md): Plasma lists ~/.config/kdedefaults in the first and
+    # finds the Plasma style's colors file through the second. Without them a
+    # Breeze Dark panel reads as Plasma's light default (#229, #243).
     script = f'''set -eu
 pid=$(pgrep -u {shlex.quote(user)} -x {shlex.quote(process)} | head -n 1)
 [ -n "$pid" ]
-for name in DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS XDG_SESSION_TYPE XDG_CURRENT_DESKTOP WAYLAND_DISPLAY; do
+for name in DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS XDG_SESSION_TYPE XDG_CURRENT_DESKTOP WAYLAND_DISPLAY XDG_CONFIG_DIRS XDG_DATA_DIRS; do
  value=$(tr '\\0' '\\n' < /proc/$pid/environ | sed -n "s/^$name=//p")
  [ -z "$value" ] || export "$name=$value"
 done

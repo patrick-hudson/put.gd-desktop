@@ -134,6 +134,9 @@ explicit activation can start one replacement. There is no automatic restart loo
 Startup has a 10-second deadline. The oldest pending view request has a 12-second
 end-to-end acknowledgement deadline, including startup or a helper closing and
 relaunching, so the resident replies before the existing 15-second clients expire.
+When a deadline or a protocol failure makes the resident kill the helper, it logs
+why first (`Killing helper`, with the deadline, phase and the views still waiting),
+and the exit record says put.gd killed it; see diagnostics.md.
 A build mismatch explicitly asks the user to restart after pending work finishes;
 repeatedly reopening a newly installed helper cannot upgrade the live resident.
 The bounded `lastExit` diagnostic records only the last helper generation, exit

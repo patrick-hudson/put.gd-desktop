@@ -64,7 +64,9 @@ private:
  QElapsedTimer shortcutFeedbackClock_;
  // The Show in folder button: a refusal is logged and said, never silent.
  void showSavedPackage(const QString& path);
- void notifyMessage(const QString&, const QString&, bool warning, const QUrl& link = {}, const QString& diagnosticsOperation = {}, const QString& revealPath = {});
+ // `code` names the notification in the log, which records each one (#250).
+ void notifyMessage(const QString& code, const QString& title, const QString& message, bool warning, const QUrl& link = {}, const QString& diagnosticsOperation = {}, const QString& revealPath = {});
+ quint64 notifications_ = 0;
  std::function<void(const QString&,JsonReply)> saveDiagnostics_;
  void refreshActivity();
  void flashError();

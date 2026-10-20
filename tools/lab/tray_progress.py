@@ -430,15 +430,6 @@ def native_display_prefix():
     return lab.native_display_prefix()
 
 
-def session_dirs_prefix(process):
-    """Export the desktop session's XDG_CONFIG_DIRS and XDG_DATA_DIRS, as autostart gives them."""
-    require(process in ('cinnamon', 'gnome-shell', 'plasmashell'), 'Unsupported native desktop session process')
-    return ('session_pid=$(pgrep -u "$(id -u)" -x ' + process + ' | head -n 1)\n'
-            'for name in XDG_CONFIG_DIRS XDG_DATA_DIRS; do\n'
-            ' value=$(tr \'\\0\' \'\\n\' < /proc/$session_pid/environ | sed -n "s/^$name=//p")\n'
-            ' [ -z "$value" ] || export "$name=$value"\n'
-            'done\n')
-
 class Replay:
     # setup() replaces this with the set for the panel the resident sees.
     tints = TRAY_TINTS['dark']
@@ -481,11 +472,9 @@ class Replay:
     def session(self, body):
         # Preserve a relative Wayland socket before switching the app's private
         # runtime root. The real desktop's bus and display remain in use.
+        # lab.guest_session also exports the session's XDG_CONFIG_DIRS and
+        # XDG_DATA_DIRS, which PanelTone reads (#229, #243).
         prefix = native_display_prefix()
-        # PanelTone reads the session's XDG_CONFIG_DIRS and XDG_DATA_DIRS (Plasma
-        # puts ~/.config/kdedefaults there); without them a Breeze Dark panel
-        # reads as Plasma's light default (#229).
-        prefix += session_dirs_prefix(self.profile['session_process'])
         prefix += '\n'.join('export ' + name + '=' + shlex.quote(self.guest + suffix) for name, suffix in
                            [('XDG_CONFIG_HOME', '/c'), ('XDG_DATA_HOME', '/d'), ('XDG_RUNTIME_DIR', '/r')]) + '\n'
         return lab.guest_session(self.run, prefix + body)

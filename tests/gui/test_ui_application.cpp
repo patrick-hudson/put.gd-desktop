@@ -3,6 +3,7 @@
 #include "ui/MainWindow.h"
 #include "ui/AboutWindow.h"
 #include "ui/Theme.h"
+#include "ui/VisualStyle.h"
 #include <QScopeGuard>
 #include "fixtures/UiSessionFixture.h"
 #include <QApplication>
@@ -44,6 +45,36 @@ private slots:
   QTRY_VERIFY(device.last("checkpoint")["payload"].toObject()["state"].toObject()["appearance"].toObject()["scheme"]==QString("light"));
   preferences["appearance"]=QJsonObject{{"theme","system"}};document["preferences"]=preferences;QVERIFY(settings.save(document,settings.revision()));
   fixture.session.invalidate();QTRY_COMPARE(Theme::scheme(),Theme::Scheme::Dark);
+ }
+ // #261: a window switched into a scheme lays its rail out exactly like a
+ // window opened in that scheme (the capture buttons sat 2 px lower).
+ void switchedRailMatchesAFreshWindow_data(){QTest::addColumn<int>("from");QTest::addColumn<int>("to");QTest::newRow("dark-to-light")<<int(Theme::Scheme::Dark)<<int(Theme::Scheme::Light);QTest::newRow("light-to-dark")<<int(Theme::Scheme::Light)<<int(Theme::Scheme::Dark);}
+ void switchedRailMatchesAFreshWindow(){
+  QFETCH(int,from);QFETCH(int,to);
+  // As putgd-ui starts: the application style first, then the window's own.
+  VisualStyle::apply(*qobject_cast<QApplication*>(QCoreApplication::instance()));
+  auto restore=qScopeGuard([]{Theme::setScheme(Theme::Scheme::Dark);});
+  QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);
+  const auto layout=[](MainWindow& window){
+   QStringList rows;auto* rail=window.findChild<QWidget*>("mainRail");if(!rail)return rows;
+   for(auto* child:rail->findChildren<QWidget*>())if(child->isVisible()){
+    const auto r=QRect(child->mapTo(rail,QPoint(0,0)),child->size());
+    rows<<QStringLiteral("%1 %2 %3,%4 %5x%6 font %7").arg(QLatin1String(child->metaObject()->className()),child->objectName()).arg(r.x()).arg(r.y()).arg(r.width()).arg(r.height()).arg(child->font().toString());
+   }
+   return rows;
+  };
+  // The heading's help button holds the focus, as in putgd-ui: its focus
+  // border must not change its height.
+  const auto focusHelp=[](MainWindow& window){if(auto* help=window.findChild<QWidget*>("captureActionsHeadingHelp"))help->setFocus();};
+  Theme::setScheme(Theme::Scheme(to));
+  MainWindow fresh(fixture.session);fresh.resize(1320,880);fresh.show();QVERIFY(QTest::qWaitForWindowExposed(&fresh));focusHelp(fresh);QTest::qWait(50);
+  const auto expected=layout(fresh);fresh.hide();QVERIFY(!expected.isEmpty());
+  Theme::setScheme(Theme::Scheme(from));
+  MainWindow switched(fixture.session);switched.resize(1320,880);switched.show();QVERIFY(QTest::qWaitForWindowExposed(&switched));focusHelp(switched);QTest::qWait(50);
+  Theme::setScheme(Theme::Scheme(to));QTest::qWait(50);
+  const auto actual=layout(switched);
+  for(int i=0;i<qMax(actual.size(),expected.size());++i)if(actual.value(i)!=expected.value(i))qWarning("rail %d: fresh [%s] switched [%s]",i,qPrintable(expected.value(i)),qPrintable(actual.value(i)));
+  QCOMPARE(actual,expected);
  }
  // #237: a theme picked in Settings applies at once, before the resident
  // accepts the save; a refused save puts the accepted theme back.

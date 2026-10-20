@@ -71,6 +71,8 @@ QJsonValue redact(const QJsonValue&);
 }
 // Collects one helper generation's stderr and its exit into the resident log,
 // bounded per generation. AWS SDK lines from the S3 worker keep their level.
+// Known encoder banners (x265, FFmpeg codec, OpenH264) are debug records, with
+// one count at exit.
 // A crash record (putgd-crash lines, #124) becomes one "Helper crash record"
 // with its own bound, so earlier output never crowds it out.
 class HelperOutput {
@@ -81,14 +83,22 @@ public:
  HelperOutput(QString process,const QLoggingCategory& category,bool quiet=false);
  void started(qint64 pid,const QJsonObject& fields={});
  void append(const QByteArray&);
+ // Call just before put.gd kills the helper: logs why at warning level (the
+ // deadline or error code and the caller's context), and the exit record then
+ // says it was a supervisor kill rather than a crash.
+ void killing(const QString& reason,const QJsonObject& fields={});
  // `requested` marks an exit put.gd asked for (stop, terminate after failure).
+ // An unrequested SIGKILL is recorded as coming from outside put.gd.
  void finished(int code,QProcess::ExitStatus,bool requested=false);
  void failedToStart(const QString& reason);
  qint64 pid() const {return pid_;}
+ // The reason given to killing() for this generation, empty if none.
+ const QString& killReason() const {return killReason_;}
 private:
  void line(QByteArray);
  void crashRecord();
  QString process_;const QLoggingCategory& category_;bool quiet_;
- qint64 pid_=0,logged_=0,suppressed_=0;quint64 generation_=0;QByteArray partial_,crash_;
+ qint64 pid_=0,logged_=0,suppressed_=0,banners_=0;quint64 generation_=0;QByteArray partial_,crash_;
+ QString killReason_;
 };
 }

@@ -9,6 +9,7 @@
 #include "ClipExporter.h"
 #include "DebugLog.h"
 #include "AvSync.h"
+#include "AppIdentity.h"
 #include "RecordSession.h"
 #include "app/UiControl.h"
 #include "core/BuildInfo.h"
@@ -176,6 +177,7 @@ int main(int argc, char** argv) {
     QCoreApplication::setOrganizationName("putgd");
     QCoreApplication::setApplicationName("putgd-record");
     QCoreApplication::setApplicationVersion(buildVersion());
+    record::applyIdentity(app);
     GError* gstError = nullptr;
     if (!gst_init_check(nullptr, nullptr, &gstError)) { if (gstError) g_error_free(gstError); return 6; }
     StdioDevice pipes(handles.input(), handles.output());

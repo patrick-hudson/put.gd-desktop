@@ -6,5 +6,6 @@ Exec=@CMAKE_INSTALL_FULL_BINDIR@/putgd-record
 Icon=putgd
 Terminal=false
 NoDisplay=true
+StartupWMClass=putgd-record
 Categories=Utility;
 X-KDE-Wayland-Interfaces=zkde_screencast_unstable_v1

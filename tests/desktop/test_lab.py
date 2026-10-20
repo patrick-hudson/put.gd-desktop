@@ -39,6 +39,39 @@ class LabContracts(unittest.TestCase):
         self.assertLess(script.index('export XDG_RUNTIME_DIR=/run/user/'), script.index(lab.native_display_prefix()))
         self.assertLess(script.index(lab.native_display_prefix()), script.index('putgd-launcher --background'))
 
+    def test_guest_session_takes_the_desktop_sessions_config_and_data_dirs(self):
+        # #243: PanelTone reads XDG_CONFIG_DIRS (Plasma's ~/.config/kdedefaults)
+        # and XDG_DATA_DIRS (the Plasma style's colors file); a resident started
+        # through guest_session must see the desktop shell's values, not SSH's.
+        import os, subprocess
+        session = {'PATH': os.environ['PATH'], 'XDG_SESSION_TYPE': 'x11', 'DISPLAY': ':7',
+                   'XDG_CONFIG_DIRS': '/home/lab/.config/kdedefaults:/etc/xdg',
+                   'XDG_DATA_DIRS': '/usr/share/plasma-data:/usr/share'}
+        scripts = []
+        with patch.object(lab, 'state', return_value={'guest_user': 'lab', 'profile': 'plasma-x11'}), \
+             patch.object(lab, 'load_profile', return_value={'session_process': 'plasmashell', 'qt_platform': 'xcb'}), \
+             patch.object(lab, 'ssh', side_effect=lambda _run, script, *a, **k: scripts.append(script) or ''):
+            lab.guest_session('run', 'printf "%s|%s|%s" "$XDG_CONFIG_DIRS" "$XDG_DATA_DIRS" "$DISPLAY"\n')
+        for shell_values in (session, {key: value for key, value in session.items() if not key.startswith('XDG_') or key == 'XDG_SESSION_TYPE'}):
+            with self.subTest(set=sorted(shell_values)), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                shell = subprocess.Popen(['sleep', '30'], env=shell_values)
+                try:
+                    # Stands in for pgrep, so no real desktop shell on this host is read.
+                    (root / 'pgrep').write_text('#!/bin/sh\necho ' + str(shell.pid) + '\n')
+                    (root / 'pgrep').chmod(0o700)
+                    # The SSH login's own values, which the session's must replace.
+                    result = subprocess.check_output(['sh', '-c', scripts[0]], text=True,
+                                                     env={'PATH': str(root) + ':' + os.environ['PATH'], 'HOME': directory,
+                                                          'XDG_CONFIG_DIRS': '/etc/xdg', 'XDG_DATA_DIRS': '/ssh/share'})
+                finally:
+                    shell.kill(); shell.wait()
+                if 'XDG_CONFIG_DIRS' in shell_values:
+                    self.assertEqual(result, '/home/lab/.config/kdedefaults:/etc/xdg|/usr/share/plasma-data:/usr/share|:7')
+                else:
+                    # Unset in the session: the login's values stay, as before.
+                    self.assertEqual(result, '/etc/xdg|/ssh/share|:7')
+
     def test_tablet_ticks_preserve_pixel_targets_for_native_rounding(self):
         # Actual KWin fullscreen probe: old ticks 15372/17421 delivered
         # 600.46875/680.5078125, so Qt selected 81 instead of 80 pixels.

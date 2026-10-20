@@ -126,7 +126,9 @@ panel (or the reverse) keeps a visible icon. The resident
 
 It re-reads them when `~/.config` changes on Plasma and on the portal's
 `SettingChanged`. The resident's own session environment matters: it needs the
-session's `XDG_CONFIG_DIRS` and `XDG_DATA_DIRS`. Dark panels get `#9BBCFF` (idle), `#62D69B` (uploading),
+session's `XDG_CONFIG_DIRS` and `XDG_DATA_DIRS`. Lab tools that start it over SSH
+through `tools/lab/lab.py`'s `guest_session` take both from the desktop shell's
+environment (#243). Dark panels get `#9BBCFF` (idle), `#62D69B` (uploading),
 `#F3C66F` (encoding) and `#FFB4AB` (error); light panels `#2759B8`,
 `#146C42`, `#8A5300` and `#B4312A`, each at least 3:1 on typical panels. The
 menu glyphs use the same tint. The resident's full diagnostics (`ui.snapshot`

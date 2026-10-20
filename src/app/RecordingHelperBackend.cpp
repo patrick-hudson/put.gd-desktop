@@ -27,9 +27,24 @@ RecordingHelperBackend::RecordingHelperBackend(QString helperPath, QObject* pare
     startup_.setSingleShot(true);
     stopDeadline_.setSingleShot(true);
     probeDeadline_.setSingleShot(true);
-    connect(&startup_, &QTimer::timeout, this, [this] { if (child_) failChild(child_->generation, helperError(child_->ready ? "recording_helper_timeout" : "recording_helper_start_timeout", "The recording helper did not answer in time")); });
-    connect(&stopDeadline_, &QTimer::timeout, this, [this] { if (child_ && child_->process && child_->process->state() != QProcess::NotRunning) child_->process->kill(); });
-    connect(&probeDeadline_, &QTimer::timeout, this, [this] { if (probe_) probe_->kill(); });
+    connect(&startup_, &QTimer::timeout, this, [this] {
+        if (!child_) return;
+        // The step that timed out: the helper's ready frame after bootstrap (#250).
+        auto error = helperError(child_->ready ? "recording_helper_timeout" : "recording_helper_start_timeout", "The recording helper did not answer in time");
+        error.details = {{"step", child_->ready ? "command" : "ready"}, {"timeoutMs", startupMs_}};
+        failChild(child_->generation, error);
+    });
+    connect(&stopDeadline_, &QTimer::timeout, this, [this] {
+        if (!child_ || !child_->process || child_->process->state() == QProcess::NotRunning) return;
+        // A failure kill already said why; a shutdown that ran out of time says so here.
+        if (output_.killReason().isEmpty()) output_.killing("recording_stop_timeout", {{"operationId", child_->id}, {"deadline", "stop"}, {"deadlineMs", stopDeadline_.interval()}, {"ready", child_->ready}});
+        child_->process->kill();
+    });
+    connect(&probeDeadline_, &QTimer::timeout, this, [this] {
+        if (!probe_) return;
+        probeOutput_.killing("recording_probe_timeout", {{"deadline", "probe"}, {"deadlineMs", probeDeadline_.interval()}});
+        probe_->kill();
+    });
 }
 RecordingHelperBackend::~RecordingHelperBackend() {
     startup_.stop();
@@ -153,13 +168,17 @@ void RecordingHelperBackend::send(const QString& command, const QJsonObject& par
     child_->outstanding.insert(requestId, {std::move(reply)});
     if (child_->control->send("command", frame).isEmpty()) { failChild(generation, helperError("recording_helper_protocol", "Cannot send a command to the recording helper")); return; }
     QPointer<RecordingHelperBackend> guard(this);
-    QTimer::singleShot(timeoutMs, this, [guard, generation, requestId, command] {
+    QTimer::singleShot(timeoutMs, this, [guard, generation, requestId, command, timeoutMs] {
         if (!guard || !guard->child_ || guard->child_->generation != generation) return;
         auto found = guard->child_->outstanding.find(requestId);
         if (found == guard->child_->outstanding.end()) return;
         auto reply = std::move(found->reply);
         guard->child_->outstanding.erase(found);
-        reply(helperError("recording_helper_timeout", QStringLiteral("The recording helper did not answer %1 in time").arg(command)), {});
+        // The step that timed out, for the log and the operation's error (#250).
+        logging::warning(logRecording(), "Recording helper command timed out", {{"operationId", guard->child_->id}, {"command", command}, {"timeoutMs", timeoutMs}});
+        auto error = helperError("recording_helper_timeout", QStringLiteral("The recording helper did not answer %1 in time").arg(command));
+        error.details = {{"step", command}, {"timeoutMs", timeoutMs}};
+        reply(error, {});
     });
 }
 void RecordingHelperBackend::receive(quint64 generation, const QString& type, const QJsonObject& payload) {
@@ -208,7 +227,11 @@ void RecordingHelperBackend::failChild(quint64 generation, const Error& error) {
     const bool notify = !child_->shuttingDown;
     child_->shuttingDown = true;
     if (child_->control) child_->control->stop();
-    if (child_->process && child_->process->state() != QProcess::NotRunning) { child_->process->kill(); stopDeadline_.start(2000); }
+    if (child_->process && child_->process->state() != QProcess::NotRunning) {
+        output_.killing(error.code, {{"operationId", child_->id}, {"error", logging::errorFields(error)}, {"ready", child_->ready}, {"outstanding", int(outstanding.size())}});
+        child_->process->kill();
+        stopDeadline_.start(2000);
+    }
     const auto id = child_->id;
     QPointer<RecordingHelperBackend> guard(this);
     for (auto& pending : outstanding) { if (!guard) return; pending.reply(error, {}); }
