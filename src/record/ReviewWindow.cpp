@@ -36,6 +36,17 @@ QPushButton#upload { background: %accent%; border-color: %accent%; color: %onAcc
 QPushButton#upload:hover { background: %accentHover%; border-color: %accentHover%; }
 QPushButton#upload:disabled { background: %selected%; color: %textMuted%; border-color: %borderStrong%; }
 QSpinBox, QListWidget { background: %surfaceRaised%; color: %text%; border: 1px solid %borderStrong%; border-radius: 6px; padding: 2px 6px; }
+QSpinBox { padding-right: 22px; }
+QSpinBox:disabled { color: %textMuted%; background: %surface%; border-color: %border%; }
+QSpinBox::up-button, QSpinBox::down-button { subcontrol-origin: border; width: 20px; border: none; border-left: 1px solid %border%; background: transparent; }
+QSpinBox::up-button { subcontrol-position: top right; border-top-right-radius: 6px; }
+QSpinBox::down-button { subcontrol-position: bottom right; border-bottom-right-radius: 6px; }
+QSpinBox::up-button:hover, QSpinBox::down-button:hover { background: %selected%; }
+QSpinBox::up-button:pressed, QSpinBox::down-button:pressed { background: %borderStrong%; }
+QSpinBox::up-arrow { image: url(%INDICATORS%/spin-up.png); width: 10px; height: 10px; }
+QSpinBox::down-arrow { image: url(%INDICATORS%/spin-down.png); width: 10px; height: 10px; }
+QSpinBox::up-arrow:disabled, QSpinBox::up-arrow:off { image: url(%INDICATORS%/spin-up-off.png); }
+QSpinBox::down-arrow:disabled, QSpinBox::down-arrow:off { image: url(%INDICATORS%/spin-down-off.png); }
 QListWidget::item:selected { background: %selected%; color: %text%; }
 QCheckBox { color: %text%; spacing: 6px; }
 QCheckBox:disabled { color: %textMuted%; }

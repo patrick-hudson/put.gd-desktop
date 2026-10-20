@@ -10,6 +10,7 @@
 #include <QPalette>
 #include <QPointer>
 #include <QResource>
+#include <QApplication>
 #include <QWidget>
 
 // Q_INIT_RESOURCE must be outside putgd's namespace.
@@ -43,20 +44,15 @@ const Fonts& fonts()
 }
 struct Root {
     QPointer<QWidget> widget;
-    QString extra;
 };
 QList<Root>& roots()
 {
     static QList<Root> list;
     return list;
 }
-void style(QWidget& root, const QString& extra)
+void setPalette(QWidget& root)
 {
-    const auto scheme = Theme::scheme();
     const auto& p = Theme::current();
-    QFont font(uiFontFamily());
-    font.setPixelSize(14);
-    root.setFont(font);
     auto palette = root.palette();
     palette.setColor(QPalette::Window, p.bg);
     palette.setColor(QPalette::WindowText, p.text);
@@ -72,16 +68,26 @@ void style(QWidget& root, const QString& extra)
     palette.setColor(QPalette::Disabled, QPalette::Text, p.textMuted);
     palette.setColor(QPalette::Disabled, QPalette::ButtonText, p.textMuted);
     root.setPalette(palette);
+}
+void style(QWidget& root, const QString& extra)
+{
+    QFont font(uiFontFamily());
+    font.setPixelSize(14);
+    root.setFont(font);
+    setPalette(root);
     root.setProperty("redesignRoot", true);
-    root.setProperty("themeScheme", Theme::name(scheme));
     root.setAttribute(Qt::WA_StyledBackground, true);
     QFile file(QStringLiteral(":/redesign/redesign.qss"));
     if (!file.open(QIODevice::ReadOnly)) return;
-    auto stylesheet = Theme::stylesheet(QString::fromUtf8(file.readAll()) + extra, scheme);
-    stylesheet.replace(QStringLiteral("%UI_FONT%"), uiFontFamily());
-    stylesheet.replace(QStringLiteral("%MONO_FONT%"), monoFontFamily());
-    stylesheet.replace(QStringLiteral("%INDICATORS%"), indicators(scheme));
-    root.setStyleSheet(stylesheet);
+    const auto qss = QString::fromUtf8(file.readAll()) + extra;
+    // Both schemes, set once: a switch re-polishes the marked widgets (#237).
+    root.setStyleSheet(VisualStyle::schemeScoped([&qss](Theme::Scheme scheme) {
+        auto stylesheet = Theme::stylesheet(qss, scheme);
+        stylesheet.replace(QStringLiteral("%UI_FONT%"), uiFontFamily());
+        stylesheet.replace(QStringLiteral("%MONO_FONT%"), monoFontFamily());
+        stylesheet.replace(QStringLiteral("%INDICATORS%"), indicators(scheme));
+        return stylesheet;
+    }));
     // Existing popup containers can retain the application theme's menu
     // delegate and margins. Refresh both after applying the scoped theme.
     for (auto* combo : root.findChildren<QComboBox*>()) {
@@ -108,10 +114,11 @@ void apply(QWidget& root, const QString& extraTemplate)
 {
     auto& list = roots();
     list.removeIf([&](const Root& entry) { return !entry.widget || entry.widget == &root; });
-    list.append({&root, extraTemplate});
+    list.append({&root});
+    // A switch sets each root's palette; the marked widgets re-polish after.
     static const bool following = [] {
-        QObject::connect(&Theme::Notifier::instance(), &Theme::Notifier::changed, [] {
-            for (const auto& entry : roots()) if (entry.widget) style(*entry.widget, entry.extra);
+        VisualStyle::followScheme(*qApp, [] {
+            for (const auto& entry : roots()) if (entry.widget) setPalette(*entry.widget);
         });
         return true;
     }();

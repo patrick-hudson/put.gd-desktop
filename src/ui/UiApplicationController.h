@@ -29,6 +29,9 @@ private:
  UiSession& session_;UiControl& control_;QJsonObject saved_;
  // The colour scheme in use: the appearance setting, or the desktop's (#60).
  Appearance appearance_;
+ // A theme picked in Settings and shown before the resident accepts it (#237).
+ QString themePreview_;
+ void followAppearance();
  std::unique_ptr<MainWindow> main_;
  std::unique_ptr<AboutWindow> about_;
  struct RecordingRequest {bool active;std::function<void(Error)> reply;};

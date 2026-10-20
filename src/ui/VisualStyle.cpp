@@ -26,6 +26,8 @@
 #include <QDir>
 #include <QImage>
 #include <QTemporaryDir>
+#include <QRegularExpression>
+#include <utility>
 #include <functional>
 #include <memory>
 namespace putgd::VisualStyle {
@@ -61,6 +63,17 @@ void paintIndicators(const QString& folder, const Theme::Palette& p)
         chevron.moveTo(2, 4); chevron.lineTo(6, 8); chevron.lineTo(10, 4);
         stroke(painter, p.textSecondary, 1.7, chevron);
     });
+    // Spin box steps (#233): up and down, and dimmed at a limit or disabled.
+    for (const bool up : {true, false}) {
+        for (const bool off : {false, true}) {
+            save(QString("spin-%1%2").arg(up ? "up" : "down", off ? "-off" : ""), {10, 10}, [&](QPainter& painter) {
+                QPainterPath chevron;
+                if (up) { chevron.moveTo(2, 6.5); chevron.lineTo(5, 3.5); chevron.lineTo(8, 6.5); }
+                else { chevron.moveTo(2, 3.5); chevron.lineTo(5, 6.5); chevron.lineTo(8, 3.5); }
+                stroke(painter, off ? p.textDisabled : p.textSecondary, 1.5, chevron);
+            });
+        }
+    }
     for (const bool checked : {false, true}) {
         save(checked ? "radio-checked" : "radio", {18, 18}, [&](QPainter& painter) {
             painter.setPen(QPen(p.borderStrong, 1));
@@ -221,21 +234,71 @@ const char* const applicationStyle=R"QSS(
  QToolTip { color: %text%; background: %surfaceRaised%; border: 1px solid %accent%; padding: 7px; }
  QSplitter::handle { background: %surfaceRaised%; }
  )QSS";
-void style(QApplication& app){
+void setPalette(QApplication& app){
  const auto& p=Theme::current();QPalette palette=app.palette();
  palette.setColor(QPalette::Window,p.bg);palette.setColor(QPalette::WindowText,p.text);palette.setColor(QPalette::Base,p.surfaceRaised);palette.setColor(QPalette::AlternateBase,p.surface);
  palette.setColor(QPalette::Text,p.text);palette.setColor(QPalette::Button,p.surfaceRaised);palette.setColor(QPalette::ButtonText,p.text);palette.setColor(QPalette::Highlight,p.accent);
  palette.setColor(QPalette::HighlightedText,p.onAccent);palette.setColor(QPalette::PlaceholderText,p.textMuted);palette.setColor(QPalette::Link,p.link);palette.setColor(QPalette::ToolTipBase,p.surfaceRaised);palette.setColor(QPalette::ToolTipText,p.text);
  palette.setColor(QPalette::Disabled,QPalette::Text,p.textDisabled);palette.setColor(QPalette::Disabled,QPalette::ButtonText,p.textDisabled);palette.setColor(QPalette::Disabled,QPalette::WindowText,p.textDisabled);
- app.setPalette(palette);app.setStyleSheet(Theme::stylesheet(QString::fromUtf8(applicationStyle),Theme::scheme()));
+ app.setPalette(palette);
 }
+const char* const schemeProperty="themeScheme";
+void repolish(QWidget* widget){widget->setProperty(schemeProperty,Theme::name(Theme::scheme()));widget->style()->unpolish(widget);widget->style()->polish(widget);widget->update();}
+bool stale(const QWidget* widget){return widget->property(schemeProperty).toString()!=Theme::name(Theme::scheme());}
+QList<std::function<void()>>& beforeRepolish(){static QList<std::function<void()>> hooks;return hooks;}
+// Marks each widget with the active scheme before Qt first polishes it, and
+// brings a widget hidden during a switch up to date before it is shown.
+class SchemeMarker final:public QObject {
+public:using QObject::QObject;
+protected:
+ bool eventFilter(QObject* object,QEvent* event)override{
+  if((event->type()==QEvent::Polish||event->type()==QEvent::Show)&&object->isWidgetType()){
+   auto* widget=static_cast<QWidget*>(object);
+   if(event->type()==QEvent::Polish)widget->setProperty(schemeProperty,Theme::name(Theme::scheme()));
+   else if(stale(widget))repolish(widget);
+  }
+  return QObject::eventFilter(object,event);
+ }
+};
+}
+QString schemeScoped(const std::function<QString(Theme::Scheme)>& render){
+ QString result;
+ static const QRegularExpression comments(QStringLiteral("/\\*.*?\\*/"),QRegularExpression::DotMatchesEverythingOption);
+ for(const auto scheme:{Theme::Scheme::Dark,Theme::Scheme::Light}){
+  const auto mark=QStringLiteral("[%1=\"%2\"]").arg(QLatin1String(schemeProperty),Theme::name(scheme));
+  for(const auto& rule:render(scheme).remove(comments).split('}',Qt::SkipEmptyParts)){
+   const auto open=rule.indexOf('{');if(open<0)continue;
+   QStringList selectors;
+   for(auto selector:rule.left(open).split(',')){
+    selector=selector.simplified();if(selector.isEmpty())continue;
+    // The mark goes on the element the rule styles: the last compound,
+    // before any pseudo-state or sub-control.
+    const auto last=qMax(selector.lastIndexOf(' '),selector.lastIndexOf('>'))+1;
+    const auto pseudo=selector.indexOf(':',last);
+    selectors.append(pseudo<0?selector+mark:selector.left(pseudo)+mark+selector.mid(pseudo));
+   }
+   if(!selectors.isEmpty())result+=selectors.join(", ")+" {"+rule.mid(open+1)+"}\n";
+  }
+ }
+ return result;
+}
+void followScheme(QApplication& app,std::function<void()> beforeRepolishHook){
+ static bool following=false;
+ if(beforeRepolishHook)beforeRepolish().append(std::move(beforeRepolishHook));
+ if(std::exchange(following,true))return;
+ app.installEventFilter(new SchemeMarker(&app));
+ for(auto* widget:QApplication::allWidgets())widget->setProperty(schemeProperty,Theme::name(Theme::scheme()));
+ QObject::connect(&Theme::Notifier::instance(),&Theme::Notifier::changed,&app,[]{
+  for(const auto& hook:beforeRepolish())hook();
+  for(auto* widget:QApplication::allWidgets())if(widget->isVisible()&&stale(widget))repolish(widget);
+ });
 }
 void apply(QApplication& app){
  if(app.property("putgdVisualStyle").toBool())return;
  app.setProperty("putgdVisualStyle",true);
- style(app);
+ setPalette(app);app.setStyleSheet(schemeScoped([](Theme::Scheme scheme){return Theme::stylesheet(QString::fromUtf8(applicationStyle),scheme);}));
  // A scheme switch restyles every open window and dialog without a restart.
- QObject::connect(&Theme::Notifier::instance(),&Theme::Notifier::changed,&app,[&app]{style(app);});
+ followScheme(app,[&app]{setPalette(app);});
 }
 namespace {
 // Renders IconArt glyphs in the scheme active when Qt asks for a pixmap, so an

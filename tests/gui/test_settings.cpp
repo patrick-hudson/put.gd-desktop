@@ -138,7 +138,7 @@ private slots:
   }
  }
  void diagnosticsGroupShowsLogsAndSavesPackages(){
-  // #122: Settings → General → Diagnostics, its package dialog and the ui.diagnostics command.
+  // #122: Settings → Advanced → Diagnostics (#238), its package dialog and the ui.diagnostics command.
   QTemporaryDir dir;logging::open(dir.filePath("state/logs"),{},"putgd-test");auto closeLog=qScopeGuard([]{logging::close();});
   for(int i=0;i<3;++i)logging::info(logApp(),"Synthetic diagnostics record");
   logging::flush();
@@ -151,6 +151,13 @@ private slots:
   fixture.server.setUiDiagnostics([&]{auto data=fixture.operations().diagnostics();data["uncleanExit"]=unclean;if(degrade){auto logging=data["logging"].toObject();logging["degraded"]=true;logging["degradedReason"]="disk_full";logging["droppedRecords"]=12;data["logging"]=logging;data["loggingDegraded"]=true;}return data;});
   MainWindow window(fixture.session);window.navigate("settings");window.show();fixture.session.refreshSnapshot();
   auto* settings=window.settings();auto* summary=window.findChild<QLabel*>("logSummary");QVERIFY(summary);
+  // #238: the whole card is on Advanced, directly above Config file; General has none of it.
+  auto* tabs=window.findChild<QTabWidget*>("settingsTabs");
+  for(const auto* name:{"debugLogging","logSummary","clearLogs","createDiagnosticsPackage","uncleanExit"}){auto* control=window.findChild<QWidget*>(name);QVERIFY2(control&&tabs->widget(3)->isAncestorOf(control),name);QVERIFY2(!tabs->widget(0)->isAncestorOf(control),name);}
+  auto cardOf=[](QWidget* w){while(w&&w->property("visualRole")!="card")w=w->parentWidget();return w;};
+  auto* diagnosticsCard=cardOf(window.findChild<QWidget*>("debugLogging"));auto* configCard=cardOf(window.findChild<QPushButton*>("reloadSettings"));QVERIFY(diagnosticsCard&&configCard&&diagnosticsCard!=configCard);
+  int diagnosticsAt=-1,configAt=-1;for(auto* layout:diagnosticsCard->parentWidget()->findChildren<QBoxLayout*>()){const int a=layout->indexOf(diagnosticsCard),b=layout->indexOf(configCard);if(a>=0&&b>=0){diagnosticsAt=a;configAt=b;}}
+  QCOMPARE(configAt,diagnosticsAt+1);tabs->setCurrentIndex(3);
   QTRY_VERIFY2(summary->text().contains("files")||summary->text().contains("1 file"),qPrintable(summary->text()));QVERIFY(summary->text().contains("oldest record"));
   QTRY_VERIFY(window.findChild<QLabel*>("uncleanExit")->text().contains("0.1.1-synthetic"));QVERIFY(window.findChild<QLabel*>("uncleanExit")->text().contains("stopped unexpectedly"));
   auto* degraded=window.findChild<QLabel*>("loggingDegraded");QVERIFY(degraded->isHidden());
@@ -288,7 +295,7 @@ private slots:
   doc["captureDefaults"]=QJsonObject{{"destination","upload"},{"profileId","development-s3"},{"publicationMode","default"}};auto actions=doc["actions"].toObject();for(const auto& name:Settings::actionNames()){auto action=actions[name].toObject();action["destination"]="default";action["profileId"]=QJsonValue::Null;actions[name]=action;}doc["actions"]=actions;QVERIFY(service.save(doc,{}));
   CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(1);window.show();
   auto* exceptions=window.findChild<QToolButton*>("captureExceptionsToggle");QVERIFY(!exceptions->isChecked());exceptions->click();
-  const QHash<QString,QString> labels{{"region","Region capture"},{"window","Window capture"},{"desktop","Desktop capture"},{"clipboard","Clipboard import"},{"edit","Region capture & edit"}};
+  const QHash<QString,QString> labels{{"region","Region capture"},{"window","Window capture"},{"desktop","Desktop capture"},{"clipboard","Clipboard upload"},{"edit","Region capture & edit"}};
   auto title=[](const QString& name){return name.left(1).toUpper()+name.mid(1);};
   auto routing=[&]{const auto state=window.settings()->saveViewState();[&]{QVERIFY(!validateUiState({{"schemaVersion",1},{"settings",state}}));}();return state["captureRouting"].toObject();};
   auto expectInherited=[&](const QString& profileId,const QString& destination,const QString& sharing,const QString& effective,const QString& status){
@@ -473,7 +480,7 @@ private slots:
   QVERIFY(drop({QUrl::fromLocalFile(png)}));QCOMPARE(requests,QStringList({"file|"+QFileInfo(png).absoluteFilePath()}));QCOMPARE(actions,0);
  }
  void captureRailExplainsActionAndCurrentSavedOutputWithoutInvokingIt(){
-  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(configuration(dir.path(),true),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);int invoked=0;connect(&window,&MainWindow::actionRequested,this,[&](auto){++invoked;});const QHash<QString,QString> labels{{"region","Capture region"},{"window","Capture window"},{"desktop","Capture desktop"},{"clipboard","Import clipboard"},{"edit","Capture region & edit"}};for(const auto& action:Settings::actionNames()){QPushButton* button=nullptr;for(auto* candidate:window.findChildren<QPushButton*>("captureRailButton"))if(candidate->property("captureAction")==action)button=candidate;QVERIFY(button);QCOMPARE(button->accessibleName(),labels.value(action));QVERIFY(button->toolTip().contains("Save locally"));QVERIFY(button->accessibleDescription().contains("clipboard",Qt::CaseInsensitive));}auto* help=window.findChild<QToolButton*>("captureActionsHeadingHelp");QVERIFY(help);help->click();auto* dialog=window.findChild<QMessageBox*>("settingHelpDialog");QVERIFY(dialog);QVERIFY(dialog->informativeText().contains("focused external app window"));dialog->close();
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(configuration(dir.path(),true),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);int invoked=0;connect(&window,&MainWindow::actionRequested,this,[&](auto){++invoked;});const QHash<QString,QString> labels{{"region","Capture region"},{"window","Capture window"},{"desktop","Capture desktop"},{"clipboard","Upload clipboard"},{"edit","Capture region & edit"}};for(const auto& action:Settings::actionNames()){QPushButton* button=nullptr;for(auto* candidate:window.findChildren<QPushButton*>("captureRailButton"))if(candidate->property("captureAction")==action)button=candidate;QVERIFY(button);QCOMPARE(button->accessibleName(),labels.value(action));QVERIFY(button->toolTip().contains("Save locally"));QVERIFY(button->accessibleDescription().contains("clipboard",Qt::CaseInsensitive));}auto* help=window.findChild<QToolButton*>("captureActionsHeadingHelp");QVERIFY(help);help->click();auto* dialog=window.findChild<QMessageBox*>("settingHelpDialog");QVERIFY(dialog);QVERIFY(dialog->informativeText().contains("focused external app window"));dialog->close();
   {QWidget host;QLineEdit control(&host);auto* row=VisualStyle::settingLabel("Screen region & edit shortcut","help",&control,&host);QLabel* caption=nullptr;for(auto* label:row->findChildren<QLabel*>())if(label->buddy()==&control)caption=label;QVERIFY(caption);QCOMPARE(caption->text(),QString("Screen region && edit shortcut"));QCOMPARE(control.accessibleName(),QString("Screen region & edit shortcut"));}
   auto doc=service.document();auto protonSettings=ProtonProvider::defaults();protonSettings["shareByDefault"]=false;doc["profiles"]=QJsonArray{QJsonObject{{"id","synthetic-proton"},{"label","Synthetic Drive"},{"provider","proton-drive"},{"settings",protonSettings},{"credentials",QJsonObject{{"mode","keychain"},{"reference","putgd/synthetic-drive"}}}}};auto actions=doc["actions"].toObject();auto region=actions["region"].toObject();region["destination"]="upload";region["profileId"]="synthetic-proton";actions["region"]=region;doc["actions"]=actions;QVERIFY(service.save(doc,service.revision()));QPushButton* capture=nullptr;for(auto* button:window.findChildren<QPushButton*>("captureRailButton"))if(button->property("captureAction")=="region")capture=button;QVERIFY(capture);QTRY_VERIFY(capture->accessibleDescription().contains("Upload privately"));QVERIFY(capture->accessibleDescription().contains("clipboard is left unchanged"));region["publicationMode"]="share";actions["region"]=region;doc["actions"]=actions;QVERIFY(service.save(doc,service.revision()));QTRY_VERIFY(capture->accessibleDescription().contains("copy its share link"));QCOMPARE(invoked,0);
  }
@@ -492,7 +499,10 @@ private slots:
  }
  void resetOneAndResetAllUseRealDefaults(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));auto doc=configuration(dir.path(),true);auto limits=doc["limits"].toObject();limits["concurrentUploads"]=4;doc["limits"]=limits;QVERIFY(service.save(doc,{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.show();window.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(3);QPushButton* reset=nullptr;for(auto* button:window.findChildren<QPushButton*>())if(button->accessibleName()=="Reset Uploads at once to default")reset=button;QVERIFY(reset);QVERIFY(reset->isVisible());reset->click();QTRY_COMPARE(service.document()["limits"].toObject()["concurrentUploads"].toInt(),3);window.findChild<QLineEdit*>("maxFiles")->setText("25");QTRY_COMPARE(service.document()["limits"].toObject()["maxFiles"].toInt(),25);
+  // #238: Diagnostics now shares the tab; Reset all to defaults still resets only the limits.
+  auto* debug=window.findChild<QCheckBox*>("debugLogging");debug->setChecked(true);QTRY_VERIFY(service.snapshot().debugLogging);
   QTimer::singleShot(0,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* dialog=qobject_cast<QMessageBox*>(widget))dialog->button(QMessageBox::Yes)->click();});window.findChild<QPushButton*>("resetAdvancedDefaults")->click();QTRY_COMPARE(service.document()["limits"].toObject()["maxFiles"].toInt(),100);
+  QTest::qWait(500);QVERIFY(debug->isChecked());QVERIFY(service.snapshot().debugLogging);
  }
  void externalEditsPreserveInvalidDraftAndReloadRecovers(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));QVERIFY(service.save(configuration(dir.path(),true),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);auto* number=window.findChild<QLineEdit*>("maxFiles");number->setText("invalid");QTRY_VERIFY(number->property("invalid").toBool());auto external=service.document();auto prefs=external["preferences"].toObject();prefs["notifications"]=false;external["preferences"]=prefs;QVERIFY(service.save(external,service.revision()));QTRY_VERIFY(window.settings()->saveViewState()["conflict"].toBool());QCOMPARE(number->text(),QString("invalid"));window.findChild<QPushButton*>("reloadSettings")->click();QTRY_COMPARE(number->text(),QString("100"));QVERIFY(!window.settings()->saveViewState()["conflict"].toBool());QVERIFY(!window.findChild<QCheckBox*>("notifications")->isChecked());
@@ -518,6 +528,20 @@ private slots:
   const auto state=window.settings()->saveViewState();QVERIFY(state["draft"].toObject()["preferences"].toObject().contains("appearance"));QVERIFY(!validateUiState({{"schemaVersion",1},{"settings",state}}));
   auto doc=service.document();auto preferences=doc["preferences"].toObject();preferences["appearance"]=QJsonObject{{"theme","dark"}};doc["preferences"]=preferences;QVERIFY(service.save(doc,service.revision()));
   fixture.session.invalidate();QTRY_COMPARE(theme->currentData().toString(),QString("dark"));
+ }
+ // #239: the clipboard action says upload, like the tray; ids and keys stay.
+ void clipboardActionSaysUpload(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(Settings::developmentTemplate(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);
+  QPushButton* clipboard=nullptr;for(auto* button:window.findChildren<QPushButton*>("captureRailButton"))if(button->property("captureAction")=="clipboard")clipboard=button;
+  QVERIFY(clipboard);QCOMPARE(clipboard->accessibleName(),QString("Upload clipboard"));QVERIFY(clipboard->accessibleDescription().startsWith("Upload copied local files"));QVERIFY(clipboard->accessibleDescription().contains("uploaded as text"));
+  auto* railHelp=window.findChild<QToolButton*>("captureActionsHeadingHelp");QVERIFY(railHelp);QVERIFY(railHelp->toolTip().contains("Upload clipboard: upload copied local files"));QVERIFY(!railHelp->toolTip().contains("mport"));
+  auto* fileTemplate=window.findChild<QLineEdit*>("fileTemplate");QCOMPARE(fileTemplate->accessibleName(),QString("Copied & uploaded files"));QVERIFY(fileTemplate->toolTip().startsWith("Names copied and uploaded files when Custom template is selected"));
+  QCOMPARE(fileTemplate->property("configPath").toString(),QString("/naming/fileTemplate"));
+  // The size limits' help sits on their Auto / No limit choice.
+  auto help=[&](const QString& key){auto* choice=window.findChild<QWidget*>(key+"Choice");return (choice?choice:window.findChild<QWidget*>(key))->toolTip();};
+  for(const auto* name:{"maxFiles","maxFileBytes","pendingArtifactBytes","clipboardTextBytes"}){const auto text=help(name);QVERIFY2(!text.isEmpty(),name);QVERIFY2(!text.contains("mport"),qPrintable(text));}
+  QVERIFY(help("maxFileBytes").startsWith("The largest individual uploaded file"));QVERIFY(help("clipboardTextBytes").contains("rejected before uploading"));
+  QVERIFY(window.findChild<QWidget*>("useDefaultClipboard"));QCOMPARE(window.findChild<QCheckBox*>("useDefaultClipboard")->accessibleName(),QString("Clipboard upload: use default output"));
  }
  void newDestinationIsDraftUntilValidAndCannotBecomeDefaultWithEmptyBucket(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();QVERIFY(!window.findChild<QPushButton*>("makeDefaultDestination")->isEnabled());window.findChild<QLineEdit*>("s3Bucket")->setText("a");QTest::qWait(600);QVERIFY(service.revision().isEmpty());QVERIFY(window.findChild<QLineEdit*>("s3Bucket")->property("invalid").toBool());

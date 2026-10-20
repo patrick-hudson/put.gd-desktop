@@ -15,6 +15,8 @@
 #include <QPushButton>
 #include <QRegularExpression>
 #include <QScopeGuard>
+#include <QSpinBox>
+#include <QStyleOptionSpinBox>
 #include <QVBoxLayout>
 #include <QtTest>
 
@@ -72,6 +74,7 @@ private slots:
     void stylesheetsUseOnlyTokens() {
         QWidget probe;
         RedesignTheme::apply(probe);
+        probe.show();
         for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
             Theme::setScheme(scheme);
             const auto qss = probe.styleSheet();
@@ -80,9 +83,82 @@ private slots:
             QVERIFY(qApp->styleSheet().contains(Theme::current().accent.name()));
             QVERIFY(!QRegularExpression("%[A-Za-z_]+%").match(qApp->styleSheet()).hasMatch());
             // The painted indicator images exist for this scheme.
-            for (const auto* name : {"check", "check@2x", "radio", "radio-checked", "chevron"})
+            for (const auto* name : {"check", "check@2x", "radio", "radio-checked", "chevron", "spin-up", "spin-down", "spin-up-off", "spin-down-off", "spin-up@2x"})
                 QVERIFY2(QFile::exists(RedesignTheme::indicators(scheme) + "/" + name + ".png"), name);
         }
+    }
+    // #233: spin box steps are token chevrons on the themed field, in both
+    // schemes, not Fusion's default sub-controls.
+    void spinBoxStepsUseTokenChevrons() {
+        QWidget window;
+        auto* layout = new QVBoxLayout(&window);
+        auto* spin = new QSpinBox(&window);
+        spin->setRange(0, 100);
+        spin->setValue(50);
+        spin->setMinimumWidth(120);
+        layout->addWidget(spin);
+        RedesignTheme::apply(window);
+        window.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&window));
+        for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
+            Theme::setScheme(scheme);
+            const auto& p = Theme::palette(scheme);
+            QStyleOptionSpinBox option;
+            option.initFrom(spin);
+            option.subControls = QStyle::SC_SpinBoxUp | QStyle::SC_SpinBoxDown | QStyle::SC_SpinBoxFrame | QStyle::SC_SpinBoxEditField;
+            const auto shot = spin->grab().toImage();
+            for (const auto control : {QStyle::SC_SpinBoxUp, QStyle::SC_SpinBoxDown}) {
+                const auto box = spin->style()->subControlRect(QStyle::CC_SpinBox, &option, control, spin) & shot.rect();
+                QVERIFY2(!box.isEmpty(), "no step button");
+                int chevron = 0, field = 0;
+                for (int y = box.top(); y <= box.bottom(); ++y)
+                    for (int x = box.left(); x <= box.right(); ++x) {
+                        const auto c = shot.pixelColor(x, y);
+                        const auto near = [&](const QColor& t, int d) { return std::abs(c.red() - t.red()) + std::abs(c.green() - t.green()) + std::abs(c.blue() - t.blue()) < d; };
+                        if (near(p.textSecondary, 90)) ++chevron;
+                        if (near(p.surfaceRaised, 12)) ++field;
+                    }
+                QVERIFY2(chevron >= 4, qPrintable(Theme::name(scheme) + ": no chevron in a step button"));
+                // The button shows the field behind it, not a bevel of its own.
+                QVERIFY2(field * 2 > box.width() * box.height(), qPrintable(Theme::name(scheme) + ": step button is not on the field colour"));
+            }
+        }
+    }
+    // #237: a switch never replaces the application stylesheet (Qt would
+    // re-polish every widget); windows carry the scheme instead, and a hidden
+    // window restyles when it is next shown.
+    void schemeSwitchKeepsTheApplicationStylesheet() {
+        QWidget plain;
+        auto* label = new QLabel("Synthetic", &plain);
+        label->setProperty("visualRole", "status");
+        new QVBoxLayout(&plain);
+        plain.layout()->addWidget(label);
+        plain.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&plain));
+        QWidget hidden;
+        RedesignTheme::apply(hidden);
+        hidden.resize(80, 60);
+        const auto sheet = qApp->styleSheet();
+        const auto rootSheet = hidden.styleSheet();
+        QCOMPARE(plain.property("themeScheme").toString(), QString("dark"));
+        const auto pixel = [&] { return plain.grab().toImage().pixelColor(label->geometry().center().x(), label->geometry().top() + 4); };
+        QCOMPARE(pixel(), Theme::palette(Theme::Scheme::Dark).surface);
+        QVERIFY(Theme::setScheme(Theme::Scheme::Light));
+        QCOMPARE(qApp->styleSheet(), sheet);
+        QCOMPARE(plain.property("themeScheme").toString(), QString("light"));
+        // The application rules for the new scheme apply to the open window.
+        QCOMPARE(pixel(), Theme::palette(Theme::Scheme::Light).surface);
+        // Neither stylesheet changes; the hidden window catches up when shown.
+        QCOMPARE(hidden.styleSheet(), rootSheet);
+        QVERIFY(rootSheet.contains(Theme::palette(Theme::Scheme::Dark).bg.name()) && rootSheet.contains(Theme::palette(Theme::Scheme::Light).bg.name()));
+        hidden.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&hidden));
+        QCOMPARE(hidden.property("themeScheme").toString(), QString("light"));
+        QCOMPARE(hidden.grab().toImage().pixelColor(4, 4), Theme::palette(Theme::Scheme::Light).bg);
+        // A window opened later is marked with the active scheme.
+        QWidget later;
+        later.show();
+        QCOMPARE(later.property("themeScheme").toString(), QString("light"));
     }
     void schemeSwitchRestylesOpenWindowsLive() {
         QWidget window;

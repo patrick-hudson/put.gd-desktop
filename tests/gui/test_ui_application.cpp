@@ -6,6 +6,8 @@
 #include <QScopeGuard>
 #include "fixtures/UiSessionFixture.h"
 #include <QApplication>
+#include <QComboBox>
+#include <QLabel>
 #include <QJsonDocument>
 #include <QLineEdit>
 #include <QListWidget>
@@ -41,6 +43,30 @@ private slots:
   QTRY_VERIFY(device.last("checkpoint")["payload"].toObject()["state"].toObject()["appearance"].toObject()["scheme"]==QString("light"));
   preferences["appearance"]=QJsonObject{{"theme","system"}};document["preferences"]=preferences;QVERIFY(settings.save(document,settings.revision()));
   fixture.session.invalidate();QTRY_COMPARE(Theme::scheme(),Theme::Scheme::Dark);
+ }
+ // #237: a theme picked in Settings applies at once, before the resident
+ // accepts the save; a refused save puts the accepted theme back.
+ void pickedThemeAppliesBeforeTheSaveAndRevertsWhenRefused(){
+  QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(settings.save(Settings::developmentTemplate(),{}));
+  CredentialStore secrets;UiSessionFixture fixture(settings,secrets);ControlDevice device;UiControl control(device);UiApplicationController controller(fixture.session,control,{});
+  auto restore=qScopeGuard([]{Theme::setScheme(Theme::Scheme::Dark);});
+  device.send("activate",{{"view","settings"}});QVERIFY(!device.last("shown").isEmpty());
+  MainWindow* window=nullptr;for(auto* widget:QApplication::topLevelWidgets())if(auto* main=qobject_cast<MainWindow*>(widget))window=main;QVERIFY(window);
+  auto* theme=window->findChild<QComboBox*>("appearanceTheme");QVERIFY(theme);QCOMPARE(Theme::scheme(),Theme::Scheme::Dark);
+  bool residentSawLight=false;QObject::connect(&settings,&SettingsService::accepted,this,[&]{if(settings.snapshot().appearanceTheme=="light")residentSawLight=Theme::scheme()==Theme::Scheme::Light;});
+  fixture.client.replyDelayMs["settings.save"]=300;
+  theme->setCurrentIndex(theme->findData("light"));
+  // Applied in the same event, with no autosave delay before the save starts.
+  QCOMPARE(Theme::scheme(),Theme::Scheme::Light);QVERIFY(settings.snapshot().appearanceTheme!="light"||residentSawLight);
+  QTRY_COMPARE_WITH_TIMEOUT(settings.snapshot().appearanceTheme,QString("light"),250);QVERIFY(residentSawLight);
+  QTRY_VERIFY(!window->settings()->saveViewState()["dirty"].toBool());QCOMPARE(Theme::scheme(),Theme::Scheme::Light);
+  // Refused: the accepted theme comes back and the autosave error shows.
+  fixture.client.replyDelayMs.clear();fixture.client.failOnce["settings.save"]={"config_write_failed","Synthetic refused save",{}};
+  theme->setCurrentIndex(theme->findData("dark"));QCOMPARE(Theme::scheme(),Theme::Scheme::Dark);
+  QTRY_COMPARE(Theme::scheme(),Theme::Scheme::Light);QTRY_VERIFY(window->findChild<QLabel*>("settingsStatus")->text().contains("Synthetic refused save"));
+  QCOMPARE(settings.snapshot().appearanceTheme,QString("light"));QVERIFY(window->settings()->saveViewState()["autosaveBlocked"].toBool());
+  // Retry saving applies the kept pick through the accepted revision.
+  window->findChild<QPushButton*>("retryAutosave")->click();QTRY_COMPARE(settings.snapshot().appearanceTheme,QString("dark"));QTRY_COMPARE(Theme::scheme(),Theme::Scheme::Dark);
  }
  void moveDestinationCommandDrivesTheOpenSettingsWindow(){
   QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"),[](auto,auto){return Error{};});auto document=Settings::developmentTemplate();auto profiles=document["profiles"].toArray();auto other=profiles.first().toObject();other["id"]="synthetic-alternate";other["label"]="Synthetic alternate";other["credentials"]=QJsonObject{{"mode","keychain"},{"reference","putgd/synthetic-alternate"}};profiles.append(other);document["profiles"]=profiles;QVERIFY(settings.save(document,{}));
