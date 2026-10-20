@@ -1,0 +1,10 @@
+[  0.03s] settings.get effectiveLimits.disk {"freeBytes": 2360262656, "reserveBytes": 1675087872, "availableBytes": 685174784}
+[  0.03s] $ putgd-cli recording.prepare {"target":{"kind":"desktop"},"format":"mp4"}
+[  0.97s]   {"recordingId": "f6e2cbb6-b454-4b9b-b9e7-1f857ef9dffb", "state": "preparing"}
+[  1.46s]   inspect: state ready, config.budgetBytes 228390229
+[  1.46s] $ putgd-cli recording.start {"id":...}
+[  1.71s]   {"state": "recording"}
+[  1.74s]   inspect: state recording, bytes 524288, durationUs 0
+[ 21.77s]   still recording after 20 s
+[ 21.77s] $ putgd-cli recording.stop {"id":...}   # the caller still thinks it is recording
+[ 21.85s]   {"state": "reviewing", "stopReason": null, "durationUs": 20145342}

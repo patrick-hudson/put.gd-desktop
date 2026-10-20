@@ -130,12 +130,19 @@ int main(int argc, char** argv) {
     };
     std::atomic<qint64> sent{0};
     std::atomic_bool stopped{false};
+    // Wall time from the cancellation to the provider's result (#203).
+    QElapsedTimer cancelClock;
+    std::atomic<qint64> cancelledAtBytes{0};
     Sampler sampler;
     request.progress = [&](const UploadProgress& value) {
         if (value.bytesTransferred) sent = *value.bytesTransferred;
         // cancel: stop after a third; interrupt: kill the worker there instead, as a crash would.
         if ((mode == "cancel" || mode == "interrupt") && value.phase == "uploading" && *value.bytesTransferred > artifact.bytes / 3 && !stopped.exchange(true)) {
-            if (mode == "cancel") request.cancellation->store(true);
+            if (mode == "cancel") {
+                cancelledAtBytes = *value.bytesTransferred;
+                cancelClock.start();
+                request.cancellation->store(true);
+            }
             else for (auto pid : sampler.pids()) ::kill(pid_t(pid), SIGKILL);
         }
     };
@@ -152,6 +159,10 @@ int main(int argc, char** argv) {
                      {"lastJournalPhase", journal.isEmpty() ? QString() : journal.last()["phase"].toString()},
                      {"incompleteUpload", result.error.details["incompleteUpload"].toBool()},
                      {"extraLanes", extraLanes}, {"widestLanes", widest.load()}, {"slowestPartMs", slowestPartMs.load()}};
+    if (mode == "cancel" && cancelClock.isValid()) {
+        line["cancelLatencyMs"] = cancelClock.elapsed();
+        line["cancelledAtBytes"] = double(cancelledAtBytes.load());
+    }
     if (mode == "interrupt" && !journal.isEmpty() && !journal.last().isEmpty()) {
         // Retry with the journal, as History's Retry would after a crash.
         request.resume = journal.last();

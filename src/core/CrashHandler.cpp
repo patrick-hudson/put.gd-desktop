@@ -322,11 +322,30 @@ char triggerKind[16]="";
 pthread_t mainThread;
 void onTrigger(int) {crashNow(triggerKind);}
 #endif
-bool environmentDisabled() {const char* value=std::getenv("PUTGD_CRASH_HANDLER");return value&&std::strcmp(value,"0")==0;}
+// The arguments and environment ld.so passes to .preinit_array functions. They
+// run before libc's own initializer, so getenv() and program_invocation_short_name
+// may not be set up yet; these are.
+char** startupArguments=nullptr;
+char** startupEnvironment=nullptr;
+const char* environmentValue(const char* name) {
+ if(!startupEnvironment)return std::getenv(name);
+ const auto length=std::strlen(name);
+ for(char** entry=startupEnvironment;*entry;++entry)if(std::strncmp(*entry,name,length)==0&&(*entry)[length]=='=')return *entry+length+1;
+ return nullptr;
+}
+bool environmentDisabled() {const char* value=environmentValue("PUTGD_CRASH_HANDLER");return value&&std::strcmp(value,"0")==0;}
+void setProcessName() {
+ const char* name=program_invocation_short_name;
+ if((!name||!*name)&&startupArguments&&startupArguments[0]) {
+  name=startupArguments[0];
+  for(const char* at=name;*at;++at)if(*at=='/'&&at[1])name=at+1;
+ }
+ if(name&&*name){std::strncpy(processName,name,sizeof processName-1);processName[sizeof processName-1]=0;}
+}
 void install() {
  if(environmentDisabled())return;
  if(const auto page=::sysconf(_SC_PAGESIZE);page>0)pageSize=std::uintptr_t(page);
- if(program_invocation_short_name&&*program_invocation_short_name){std::strncpy(processName,program_invocation_short_name,sizeof processName-1);processName[sizeof processName-1]=0;}
+ setProcessName();
  std::strncpy(versionText,putgd::buildVersion(),sizeof versionText-1);
  refreshModules();
  warmUp();
@@ -342,7 +361,7 @@ void install() {
  }
  enabled.store(true);
 #ifdef PUTGD_CRASH_TRIGGER
- if(const char* request=std::getenv("PUTGD_TEST_CRASH")) {
+ if(const char* request=environmentValue("PUTGD_TEST_CRASH")) {
   // <process>:<kind>[:<delay ms>[:worker]]
   const char* colon=std::strchr(request,':');
   if(colon&&std::size_t(colon-request)==std::strlen(processName)&&std::strncmp(request,processName,std::size_t(colon-request))==0) {
@@ -365,8 +384,15 @@ void install() {
  }
 #endif
 }
-// Installed before main in every executable that links the object library.
-[[gnu::constructor]] void installAtStartup() {install();}
+// Installed from the executable's .preinit_array, which ld.so runs before the
+// constructors of every shared library (#211): a thread a library starts from
+// its constructor already gets an alternate stack from pthread_create below.
+// An ordinary constructor would run only after the libraries' constructors.
+void installBeforeLibraries(int,char** arguments,char** environment) {
+ startupArguments=arguments;startupEnvironment=environment;
+ install();
+}
+[[gnu::used,gnu::section(".preinit_array")]] void(*installEntry)(int,char**,char**)=installBeforeLibraries;
 }
 }
 extern "C" int pthread_create(pthread_t* thread,const pthread_attr_t* attributes,void*(*routine)(void*),void* argument) {

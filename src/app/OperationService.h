@@ -119,6 +119,16 @@ public:
  void copyHistoryUrl(const QString& url,JsonReply,quint64 ticket=0);
  quint64 invalidateCopyEligibility();
  void cleanup(JsonReply);
+ // Applies retention.failedArtifactDays without the user (#202): a minute after
+ // journal recovery and then hourly. A pass removes at most `batch` expired
+ // operations' artifacts (aborting their retained uploads, #146), and follows up a
+ // minute later when more remain. A Retry or a manual cleanup that arrives stops the
+ // pass at the next operation and runs once it ends; shutdown stops it too.
+ void cleanupExpired();
+ struct CleanupSchedule {int startupDelayMs=60*1000,intervalMs=60*60*1000,followUpMs=60*1000,batch=50;};
+ // Tests substitute the schedule (before ready) and the clock retention compares against.
+ void setCleanupScheduleForTesting(CleanupSchedule schedule) {cleanupSchedule_=schedule;cleanupTimer_.setInterval(schedule.intervalMs);}
+ void setClockForTesting(std::function<QDateTime()> clock) {clock_=std::move(clock);}
  void shutdown();
  QJsonObject capabilities() const;
  QJsonObject diagnostics() const;
@@ -161,6 +171,19 @@ private:
  // Aborts the remote uploads failed items' journals still hold once their artifacts
  // retire (#146); counts them in `outcome` and records refusals on the items.
  void abandonUploads(HistoryStore&,Operation&,QJsonObject& outcome);
+ // One cleanup pass, run on a worker. A manual pass also retires finished uploads
+ // and clears the preview cache; an automatic one applies only the retention age.
+ struct CleanupPass {bool automatic=false;int failedArtifactDays=0,batch=0;QDateTime now;QStringList activeIds;std::shared_ptr<std::atomic_bool> stop;};
+ QJsonObject cleanArtifacts(const CleanupPass&,Error&);
+ void startCleanup(bool automatic,JsonReply);
+ void finishCleanup(const QJsonObject& outcome);
+ QTimer cleanupTimer_;
+ std::function<QDateTime()> clock_=[]{return QDateTime::currentDateTimeUtc();};
+ bool automaticCleanup_=false;CleanupSchedule cleanupSchedule_;
+ std::shared_ptr<std::atomic_bool> cleanupStop_;
+ // Retry and manual cleanup requests that arrived during an automatic pass.
+ QList<std::function<void()>> afterCleanup_;
+ QJsonObject lastCleanup_;
  struct Job {Operation op;ClipboardPayload payload;bool acquire=false;std::shared_ptr<std::atomic_bool> cancelled;std::shared_ptr<qint64> payloadLease;};
  void observe(const QJsonObject&);
  QJsonObject currentObservation(QJsonObject) const;

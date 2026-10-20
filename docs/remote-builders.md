@@ -203,6 +203,22 @@ tools for that are `tools/lab/cover_player.py` and `tools/lab/record_run.py`
   skips the precheck, in disposable guests only. See the script's docstring for
   the options.
 
+Two traps when you drive a private resident in a desktop session (#214, #198):
+
+- A private config without a settings revision makes the resident open
+  Settings by itself at start, `--background` or not. Take any baseline frame
+  before the resident starts (or give the config a revision first, with one
+  `settings.patch`, and restart it); a baseline taken after start already holds
+  the window, and a step that leaves its colours unchanged then looks missing.
+- A private `XDG_RUNTIME_DIR` hides the session's PipeWire socket, so
+  `putgd-record` falls back to the portal and its picker on Plasma. Export
+  `PIPEWIRE_RUNTIME_DIR=/run/user/$(id -u)` next to it. A lab build of
+  `putgd-record` also needs an application entry with
+  `X-KDE-Wayland-Interfaces=zkde_screencast_unstable_v1` and its `Exec` path
+  (remove it afterwards and run `kbuildsycoca6`). On f44 the full-screen cover
+  stayed behind the session's windows (0% cover); crop strictly inside your own
+  window there and check every crop edge is its background token.
+
 Keep graphical tests visible there throughout the run. Capture screenshots or
 short recordings of the initial desktop, decisive actions, results, failures and
 completion. Save the visual files with the host, session/compositor/version, exact

@@ -59,7 +59,8 @@ With the fix, the same failure is sent with `resident: true` and `expire_timeout
   `ActionInvoked`. put.gd saved the package and called `CloseNotification` (reason 3).
 - The "diagnostics saved" notification that followed stayed in Cinnamon's list (no
   `NotificationClosed`) after its popup hid and after put.gd took focus again.
-- Its **Show in folder** button in Cinnamon's applet list wasn't clicked (see follow-ups).
+- Its **Show in folder** button in Cinnamon's applet list was clicked in round 9 and works
+  ([#206, below](#206-show-in-folder-from-cinnamons-applet-list-m74)).
 
 The [#151 figure](ui-followups-r8/151-buttons-before-after-m74.png) sets the two traces
 side by side. Its "before" trace comes from this branch before the resident hint was
@@ -112,6 +113,37 @@ Cinnamon's tooltip background, verified on the host
 
 `gui_tray` checks the strings, including that a single transferring file is still named
 ("Uploading file 1/2: 3 MiB of 4 MiB (75%)").
+
+## #206: Show in folder from Cinnamon's applet list (m74)
+
+Round 9, 2026-10-20 15:35–15:40Z. m74 (Linux Mint 22.3, Cinnamon 6.6.4, X11), a dev build
+of nightly `87e6900` plus #220. The run used a private profile under `/tmp/r9l` (config, data,
+state, cache, runtime and archive) on the real display and session bus.
+`putgd-cli diagnostics.bundle '{"notify":true,"output":".../putgd-diagnostics-20261020-153844Z.zip"}'`
+sent the "diagnostics saved" notification with `resident: true`, `expire_timeout` 0 and one
+action, `show-in-folder`.
+
+- The popup hid after Cinnamon's 4 s. The entry stayed in the notification applet's list,
+  the only entry there.
+- A real pointer click (xdotool) opened the applet. Cinnamon's `org.Cinnamon.Eval`
+  ([applet_inspect.js](cinnamon-applet-206/applet_inspect.js), read-only, describing only put.gd's
+  entries) gave the menu and button positions. A second click on **Show in folder** came 23 s
+  after `Notify`.
+- `dbus-monitor` showed `ActionInvoked 18 "show-in-folder"`, then put.gd's `CloseNotification 18`,
+  then `NotificationClosed 18` reason 3. FileManager1 (owned by `nemo-desktop`) started
+  `/usr/bin/nemo /tmp/r9l/out/putgd-diagnostics-20261020-153844Z.zip`, which opened the folder
+  with the package selected.
+- The picture is Cinnamon's own `ScreenshotArea` of the menu rectangle only
+  ([screenshot_area.py](cinnamon-applet-206/screenshot_area.py)). On the host it was 84% the menu
+  background `#222226`, and Eval showed the list held only this entry. The Nemo window wasn't
+  captured, because its sidebar shows the host's own places.
+
+![Cinnamon's applet list with the put.gd entry and its Show in folder button, and the D-Bus trace of the click](cinnamon-applet-206/206-applet-list-button.png)
+
+One more finding: the first attempt saved the package as `putgd-diagnostics-r9.zip`. The
+same click then closed the notification but opened nothing, because Show in folder accepts
+only the default `putgd-diagnostics-YYYYMMDD-HHMMSSZ.zip` names and drops the refusal silently
+(#223).
 
 ## Cleanup
 

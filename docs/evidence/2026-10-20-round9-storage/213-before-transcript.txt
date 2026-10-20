@@ -1,0 +1,11 @@
+[  0.06s] settings.get effectiveLimits.disk {"freeBytes": 2360258560, "reserveBytes": 4294967296, "availableBytes": 0}
+[  0.06s] $ putgd-cli recording.prepare {"target":{"kind":"desktop"},"format":"mp4"}
+[  0.13s]   {"recordingId": "59e47f95-8afd-4474-b381-c1319eda2471", "state": "preparing"}
+[  0.76s]   inspect: state ready, config.budgetBytes 1048576
+[  0.76s] $ putgd-cli recording.start {"id":...}
+[  1.10s]   {"state": "recording"}
+[  1.13s]   inspect: state recording, bytes 0, durationUs 0
+[  1.46s]   inspect: state reviewing, bytes 0, durationUs 215091
+[  1.46s]   recording ended itself 0.4 s after start
+[  1.46s] $ putgd-cli recording.stop {"id":...}   # the caller still thinks it is recording
+[  1.49s]   ERROR {"code": "recording_state", "message": "Cannot stop a recording that is reviewing", "details": {"command": "stop", "state": "reviewing"}}

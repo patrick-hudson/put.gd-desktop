@@ -33,6 +33,10 @@ public:
     void discard(const QString& id) override;
     qint64 processId(const QString& id) const override;
     QJsonObject diagnostics() const;
+    // The resolved interface scheme, "dark" or "light" (#198): the helper's
+    // overlays, control bar and review window use its tokens. It goes in the
+    // bootstrap frame, and a running helper gets an `appearance` frame.
+    void setAppearance(const QString& scheme);
 private:
     struct Outstanding { Reply reply; };
     struct Child {
@@ -50,7 +54,7 @@ private:
     void exited(quint64 generation, int code, QProcess::ExitStatus);
     void finishProbe();
     QJsonObject envelope() const;
-    QString helperPath_;
+    QString helperPath_, scheme_ = QStringLiteral("dark");
     Event sink_;
     std::unique_ptr<Child> child_;
     quint64 generation_ = 0;

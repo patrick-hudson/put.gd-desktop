@@ -22,27 +22,32 @@
 
 namespace putgd::record {
 namespace {
+// The review window in the interface's scheme (#198). The frame view's
+// surround and the mask outlines sit on the recording and stay fixed.
 const char* const reviewStyle = R"QSS(
-QWidget#putgd-review { background: #15171c; color: #e6e8ee; }
-QLabel { color: #e6e8ee; }
-QLabel#muted { color: #9aa3b5; }
-QLabel#status { color: #f0b429; }
-QPushButton { background: #2a2f3a; color: #e6e8ee; border: 1px solid #3a4150; border-radius: 6px; padding: 5px 12px; }
-QPushButton:hover { background: #343a47; }
-QPushButton:disabled { color: #6f7685; background: #1c1f26; }
-QPushButton#upload { background: #2e7d32; border-color: #43a047; color: white; font-weight: 600; }
-QSpinBox, QListWidget { background: #22262f; color: #e6e8ee; border: 1px solid #3a4150; border-radius: 6px; padding: 2px 6px; }
-QCheckBox { color: #e6e8ee; spacing: 6px; }
-QCheckBox:disabled { color: #6f7685; }
-QCheckBox::indicator { width: 14px; height: 14px; border: 1px solid #9bbcff; border-radius: 3px; background: #22262f; }
-QCheckBox::indicator:checked { background: #9bbcff; }
-QCheckBox::indicator:disabled { border-color: #3a4150; background: #1c1f26; }
-QComboBox { background: #22262f; color: #e6e8ee; border: 1px solid #3a4150; border-radius: 6px; padding: 2px 8px; }
-QComboBox:disabled { color: #6f7685; }
+QWidget#putgd-review { background: %bg%; color: %text%; }
+QLabel { color: %text%; }
+QLabel#muted { color: %textMuted%; }
+QLabel#status { color: %warning%; }
+QPushButton { background: %surfaceRaised%; color: %text%; border: 1px solid %borderStrong%; border-radius: 6px; padding: 5px 12px; }
+QPushButton:hover { background: %selected%; }
+QPushButton:disabled { color: %textMuted%; background: %surface%; border-color: %border%; }
+QPushButton#upload { background: %accent%; border-color: %accent%; color: %onAccent%; font-weight: 600; }
+QPushButton#upload:hover { background: %accentHover%; border-color: %accentHover%; }
+QPushButton#upload:disabled { background: %selected%; color: %textMuted%; border-color: %borderStrong%; }
+QSpinBox, QListWidget { background: %surfaceRaised%; color: %text%; border: 1px solid %borderStrong%; border-radius: 6px; padding: 2px 6px; }
+QListWidget::item:selected { background: %selected%; color: %text%; }
+QCheckBox { color: %text%; spacing: 6px; }
+QCheckBox:disabled { color: %textMuted%; }
+QCheckBox::indicator { width: 14px; height: 14px; border: 1px solid %accent%; border-radius: 3px; background: %surfaceRaised%; }
+QCheckBox::indicator:checked { image: url(%INDICATORS%/check.png); background: %accent%; }
+QCheckBox::indicator:disabled { border-color: %border%; background: %surface%; }
+QComboBox { background: %surfaceRaised%; color: %text%; border: 1px solid %borderStrong%; border-radius: 6px; padding: 2px 8px; }
+QComboBox:disabled { color: %textMuted%; }
 QComboBox::drop-down { border: none; width: 18px; }
-QComboBox QAbstractItemView { background: #22262f; color: #e6e8ee; border: 1px solid #3a4150; selection-background-color: #3a4150; selection-color: #ffffff; outline: none; }
-QSlider::groove:horizontal { height: 6px; background: #2a2f3a; border-radius: 3px; }
-QSlider::handle:horizontal { width: 14px; margin: -5px 0; background: #9bbcff; border-radius: 7px; }
+QComboBox QAbstractItemView { background: %surfaceRaised%; color: %text%; border: 1px solid %borderStrong%; selection-background-color: %selected%; selection-color: %text%; outline: none; }
+QSlider::groove:horizontal { height: 6px; background: %borderStrong%; border-radius: 3px; }
+QSlider::handle:horizontal { width: 14px; margin: -5px 0; background: %accent%; border-radius: 7px; }
 )QSS";
 constexpr int handleSize = 8;
 }
@@ -140,7 +145,7 @@ void FrameView::mouseReleaseEvent(QMouseEvent* e) {
 ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config, QWidget* parent) : QWidget(parent, Qt::Window), options_(options), config_(config), frameTimer_(this) {
     setObjectName("putgd-review");
     setWindowTitle("Review recording");
-    setStyleSheet(reviewStyle);
+    applyTheme(*this, QString::fromLatin1(reviewStyle));
     setAttribute(Qt::WA_DeleteOnClose, false);
     auto* root = new QVBoxLayout(this);
     root->setContentsMargins(14, 12, 14, 12);

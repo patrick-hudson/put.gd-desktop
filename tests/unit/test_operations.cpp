@@ -9,6 +9,8 @@
 #include <QElapsedTimer>
 #include <QProcess>
 #include <QProcessEnvironment>
+#include <QSemaphore>
+#include <atomic>
 #ifdef Q_OS_UNIX
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -1100,6 +1102,50 @@ private slots:
   QCOMPARE(result["removedOperations"].toInt(),0);QCOMPARE(result["abortedUploads"].toInt(),1);QVERIFY(result["incompleteUploads"].toArray().isEmpty());
   op=store.operation(id);QVERIFY(op.items[0].uploadJournal.isEmpty());QVERIFY(!op.items[0].error.details.contains("incompleteUpload"));
   cleaned=false;ops.cleanup([&](Error e,QJsonObject r){QVERIFY(!e);result=r;cleaned=true;});QTRY_VERIFY(cleaned);QCOMPARE(provider->abandoned.size(),2);
+ }
+ // #202: retention applies without the user, on the resident's own clock.
+ void automaticCleanupAppliesRetentionWithoutTheUser() {
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->journalThenFail=true;registry.add("opaque",provider);
+  SettingsService settings(d.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});QVERIFY(settings.save(configuration(d.path()),{}));
+  QCOMPARE(settings.snapshot().failedArtifactDays,7);
+  Source source;source.payload=textPayload();OperationService ops(d.filePath("data"),settings,registry,source);
+  auto now=QDateTime::currentDateTimeUtc();ops.setClockForTesting([&]{return now;});ops.setCleanupScheduleForTesting({0,60*60*1000,60*1000,50});
+  const auto last=[&]{return ops.diagnostics()["artifactCleanup"].toObject()["last"].toObject();};
+  const auto passAt=[&](const QDateTime& at){return last()["finished"].toString()==at.toString(Qt::ISODateWithMs)&&!ops.diagnostics()["artifactCleanup"].toObject()["running"].toBool();};
+  // A pass runs after journal recovery (a minute later by default), with nobody asking.
+  QTRY_VERIFY(ops.ready());QTRY_VERIFY(passAt(now));QCOMPARE(last()["trigger"].toString(),QString("automatic"));QCOMPARE(last()["removedOperations"].toInt(),0);
+  QCOMPARE(ops.diagnostics()["artifactCleanup"].toObject()["intervalMs"].toInt(),60*60*1000);
+  QStringList ids;
+  for(int i=0;i<4;++i){QString id;ops.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});QTRY_VERIFY(!id.isEmpty());
+   QTRY_VERIFY(([&]{HistoryStore store(ops.databasePath());return QStringList({"partial","failed"}).contains(store.operation(id).state);})());QTRY_VERIFY(ops.activeObservations().isEmpty());ids<<id;}
+  HistoryStore store(ops.databasePath());QStringList spools;for(const auto& id:ids)spools<<store.operation(id).items[0].artifact.path;
+  // A preview the user's cache holds is left to Clean artifacts.
+  const auto preview=d.filePath("data/previews/"+QUuid::createUuid().toString(QUuid::WithoutBraces)+".png");QVERIFY(QDir().mkpath(QFileInfo(preview).path()));
+  {QFile file(preview);QVERIFY(file.open(QIODevice::WriteOnly));file.write("png");}
+  // Six days on, every failed artifact stays for Retry.
+  now=now.addDays(6);ops.cleanupExpired();QTRY_VERIFY(passAt(now));
+  QCOMPARE(last()["removedOperations"].toInt(),0);QVERIFY(provider->abandoned.isEmpty());for(const auto& spool:spools)QVERIFY(QFile::exists(spool));
+  // Past retention a pass takes at most its batch, aborting each retained upload (#146).
+  ops.setCleanupScheduleForTesting({0,60*60*1000,60*60*1000,1});now=now.addDays(2);ops.cleanupExpired();QTRY_VERIFY(passAt(now));
+  QCOMPARE(last()["removedOperations"].toInt(),1);QCOMPARE(last()["abortedUploads"].toInt(),1);QVERIFY(last()["more"].toBool());QCOMPARE(provider->abandoned.size(),1);
+  QCOMPARE(int(std::count_if(spools.begin(),spools.end(),[](const QString& path){return !QFile::exists(path);})),1);QVERIFY(QFile::exists(preview));
+  // A Retry during a pass stops it at the next operation and runs once it ends,
+  // and a manual cleanup waits for it too instead of failing.
+  ops.setCleanupScheduleForTesting({0,60*60*1000,60*60*1000,50});
+  QSemaphore entered,release;std::atomic_bool block{true};provider->beforeAbandon=[&]{if(block.exchange(false)){entered.release();release.acquire();}};
+  auto unblock=qScopeGuard([&]{release.release();});
+  now=now.addSecs(60);ops.cleanupExpired();QVERIFY(entered.tryAcquire(1,10000));
+  QStringList remaining;for(int i=0;i<ids.size();++i)if(QFile::exists(spools[i]))remaining<<ids[i];QCOMPARE(remaining.size(),3);std::sort(remaining.begin(),remaining.end());
+  const auto retried=remaining.last();Error retryError;bool retryAnswered=false,manualAnswered=false;QJsonObject manual;
+  ops.retry(retried,[&](Error e,QJsonObject){retryError=e;retryAnswered=true;});
+  ops.cleanup([&](Error e,QJsonObject r){QVERIFY(!e);manual=r;manualAnswered=true;});
+  QTest::qWait(100);QVERIFY(!retryAnswered);QVERIFY(!manualAnswered);
+  release.release();unblock.dismiss();
+  QTRY_VERIFY(retryAnswered);QVERIFY2(!retryError,qPrintable(retryError.message));QTRY_VERIFY(manualAnswered);
+  // The pass ended after the operation it was on; the Retry kept its own artifact.
+  QCOMPARE(QFile::exists(spools[ids.indexOf(remaining.first())]),false);QVERIFY(QFile::exists(spools[ids.indexOf(retried)]));
+  QCOMPARE(manual["trigger"].toString(),QString("manual"));QVERIFY(!QFile::exists(preview));
+  QTRY_VERIFY(ops.activeObservations().isEmpty());ops.shutdown();provider->beforeAbandon={};
  }
  void concurrentBatchIsBoundedAndCopiesInSourceOrder() {
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;provider->concurrency=8;registry.add("opaque",provider);

@@ -9,8 +9,9 @@ bool knownType(const QString& type){
  static const QStringList types{"bootstrap","ready","incompatible","activate","shown","activationFailed","invalidated","observed","checkpoint","checkpointAccepted","checkpointRejected","closeRequested","closeAccepted","closeRejected","closeCancel","closeCancelled","closeConfirmed","shutdown","focusChanged","shortcutRecording","shortcutRecordingChanged",
   // Image editor helper: progress, agent commands and their results.
   "editing","finalizing","command","commandResult",
-  // Recording helper: unsolicited progress/stop/failure notifications.
-  "event",
+  // Recording helper: unsolicited progress/stop/failure notifications, and
+  // the interface scheme its overlays follow while it runs (#198).
+  "event","appearance",
   // S3 worker: idle upload slots a multipart upload may borrow.
   "lanes"};
  return types.contains(type);

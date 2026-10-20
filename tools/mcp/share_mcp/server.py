@@ -273,7 +273,7 @@ def create_server(adapter: CliAdapter) -> FastMCP:
     @server.tool(annotations=effect)
     async def prepare_recording(target: Json, format: str, codec: str | None = None, fps: int | None = None,
                                 system_audio: bool = False, max_edge: int | None = None) -> Json:
-        """Create one recording session in the ready state: target {kind: monitor|desktop|region|window, identity?, rect?: [x,y,w,h]}, format mp4|webm|gif|webp, optional codec (mp4: h264|h265, webm: vp9), fps 1-60, system_audio (MP4/WebM only; the computer's playback, never a microphone) and max_edge to downscale the output. Shows the ready bounds/controls and may ask the user for OS consent; nothing is captured until control_recording start. Returns recordingId = operationId; poll get_recording until state is ready."""
+        """Create one recording session in the ready state: target {kind: monitor|desktop|region|window, identity?, rect?: [x,y,w,h]}, format mp4|webm|gif|webp, optional codec (mp4: h264|h265, webm: vp9), fps 1-60, system_audio (MP4/WebM only; the computer's playback, never a microphone) and max_edge to downscale the output. Shows the ready bounds/controls and may ask the user for OS consent; nothing is captured until control_recording start. Returns recordingId = operationId; poll get_recording until state is ready. Refused with disk_space_insufficient (details freeBytes, reserveBytes, requiredBytes, shortfallBytes) when the disk can't hold a recording that lasts; nothing is accepted then."""
         if not safe_recording_target(target) or format not in RECORDING_FORMATS:
             return invalid()
         if codec is not None and codec not in RECORDING_CODECS:

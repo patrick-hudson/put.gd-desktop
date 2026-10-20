@@ -14,6 +14,7 @@ import sys
 import tempfile
 import time
 
+import changelog
 from collect import sha256
 from verify_tag import verify
 from github_api import GitHub
@@ -170,6 +171,19 @@ def run_provenance():
             'url': f'{server}/{repository}/actions/runs/{run_id}'}
 
 
+def changes_section(tag, producer):
+    """List the pull requests merged since the previous release, or say why they can't be.
+
+    A missing or shallow history must not stop a verified release from being staged.
+    """
+    server = os.environ.get('GITHUB_SERVER_URL', 'https://github.com')
+    try:
+        return changelog.section(Path.cwd(), tag, producer['repository'], server) + '\n'
+    except (subprocess.CalledProcessError, OSError, ValueError) as error:
+        print(f'Warning: could not list the changes in {tag}: {error}', file=sys.stderr, flush=True)
+        return '## Changes\n\nThe changes could not be listed from this checkout; see the commit history.\n\n'
+
+
 def publish_nightly(args, release, listed):
     """Publish one automated nightly, retaining exact run and byte evidence."""
     if set(listed) | {'SHA256SUMS'} != public_inventory(args.tag):
@@ -190,6 +204,7 @@ def publish_nightly(args, release, listed):
         identity = parse_tag(args.tag)
         notes.write_text(f'Nightly {identity.count} of {identity.base_version}: a build-tested development '
             f'release of commit {release["gitCommit"]}.\n\n'
+            + changes_section(args.tag, producer) +
             'Automated coverage: Linux test suites, Windows/macOS portable compilation, '
             'Ubuntu 24.04/26.04 DEB and Fedora 44 RPM audits, AppImage packaging, '
             'and production compilation of the exact curated source tarball. '
@@ -307,6 +322,7 @@ def main():
     kind = 'release candidate' if release['channel'] == 'candidate' else 'release'
     notes = args.directory / 'release-notes.md'
     notes.write_text('Linux x86_64 ' + kind + ' with individual Ubuntu DEBs, a Fedora RPM, an AppImage, a buildable source tarball and a combined ZIP.\n\n'
+                     + changes_section(args.tag, producer) +
                      'DEB/RPM use distro Qt. AppImage dynamically bundles Qt 6.8.3 and requires glibc 2.39 or newer. '
                      'Its screen recorder bundles x264, x265 and a GPL FFmpeg, so the AppImage is a GPL-2.0-or-later combined work; '
                      'their corresponding source is the appimage-media-source tarball. '

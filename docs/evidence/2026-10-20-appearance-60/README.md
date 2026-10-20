@@ -25,7 +25,9 @@ Annotations were added afterwards with Pillow.
 
 On f44 and k72 (Wayland) the Settings view didn't show in the frames when opened, or switched to, in
 Dark; the window stayed up and reported the scheme. That is #214. m74 (X11) captured it natively,
-including a live switch with the window left open.
+including a live switch with the window left open. #214 turned out to be the method, not put.gd: the
+private config had no settings revision, so the resident opened Settings at start and the baseline
+already held it ([evidence](../2026-10-20-appearance-overlays-198-214/README.md)).
 
 | File | Shows |
 | --- | --- |

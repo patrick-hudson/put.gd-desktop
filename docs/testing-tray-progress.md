@@ -269,6 +269,52 @@ observations. Preserve its full output, record the corrected command, and use
 a new output/root/destination marker before retrying. Do not alter a frozen
 memory harness or relax a gate to get a pass.
 
+## Concurrent batch row on physical trays (#207)
+
+When several files of one operation transfer at once, the tooltip gets a batch row
+(#175), such as "Uploading: 20 MiB of 20 MiB (100%) · 3 uploading, 1 waiting, 2 done".
+`check_tooltip` validates that row with `BATCH` and `records_from`. The row was checked
+on two physical desktops on 2026-10-20 (round 9), with a dev build of nightly `87e6900`
+plus #220 and a private profile under `/tmp/r9*`: config, data, state, cache,
+runtime and archive. Without its own `archive.root` the profile would archive into
+`~/Documents/put.gd`. The destination was the offline S3 fixture
+(`tests/fixtures/s3_server.py`) on loopback, with its synthetic keys in session mode,
+stored over the resident's socket because the CLI refuses raw keys. One six-file
+clipboard batch (`text/uri-list`, 4 MiB synthetic files) ran with
+`limits.concurrentUploads` 3. The fixture held each PUT 12 s longer than the previous
+one, so files finished one at a time. About every 0.45 s the driver
+([r9lab.py](evidence/tray-batch-207/r9lab.py)) read `operation.recent`, the real
+StatusNotifier item through `putgd-tray-probe`, then `operation.recent` again, and
+applied `check_tooltip` and `correlated_records` from `tray_progress.py` unchanged.
+
+| Host | Tray host | Reads | Matched | Batch rows seen on the panel |
+| --- | --- | --- | --- | --- |
+| m74, Linux Mint 22.3, Cinnamon 6.6.4, X11 | xapp StatusNotifierWatcher | 238 | 233 | 3 uploading, 1 waiting → …, 1 done → …, 2 done → 3 uploading, 3 done → 2 uploading, 4 done |
+| d69, Debian 13, Plasma 6.3, Wayland, light panel | Plasma | 228 | 224 | the same five rows |
+
+Every mismatch was a single read that straddled a file or phase change, and the next
+read matched. That is within the runner's 2 s batching grace. No fatal check failed,
+both operations completed, and the tooltip never named a file, path or link.
+
+![Each host's SNI tooltip over time beside production's counts, with the batch rows boxed](evidence/tray-batch-207/207-tray-batch-rows.png)
+
+Notes on the runs:
+
+- **Light panels:** `check_tooltip` knows only the dark-panel tray tints. On d69's
+  light panel, put.gd correctly drew `#2759B8` idle, `#146C42` active and `#092F1D` dim.
+  The first attempt failed on the icon colour, not the tooltip
+  ([attempt 1](evidence/tray-batch-207/observations-d69-plasma-attempt1-dark-tint-check.jsonl)).
+  The kept run renamed those three exact colours to their dark twins before the check.
+  #229 tracks making the check panel-aware.
+- **Clipboard:** the batch needs the desktop clipboard. On d69, Klipper keeps the
+  synthetic file list and the loopback link list in its history. Klipper can only clear
+  all of its history, so the entries were left and only the current contents were cleared.
+- **Notifications** were off on d69. On m74, put.gd closed its own "completed"
+  notification when it quit.
+- The observation logs are [m74](evidence/tray-batch-207/observations-m74-cinnamon.jsonl)
+  and [d69](evidence/tray-batch-207/observations-d69-plasma.jsonl).
+  Each line has the SNI title and tooltip, production's rows and the check result.
+
 ## Native host restart, cleanup and evidence
 
 The replay restarts the **resident app**. Native tray-host restart is a separate

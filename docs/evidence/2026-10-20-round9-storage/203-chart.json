@@ -1,0 +1,11 @@
+{"title": "#203: time from Cancel to the upload's result",
+ "subtitle": "d69 (Debian 13), loopback; nightly 87e6900 vs this branch; bar = median of 3 runs, dots = each run",
+ "rows": [
+  {"label": "moto, 2 MiB/s uplink, 1 lane", "before": [7881, 7899, 7810], "after": [180, 79, 78]},
+  {"label": "moto, 2 MiB/s uplink, 4 lanes", "before": [19971, 25582, 24292], "after": [667, 89, 845]},
+  {"label": "moto, 8 MiB/s uplink, 1 lane", "before": [1852, 1859, 1837], "after": [92, 42, 54]},
+  {"label": "moto, 8 MiB/s uplink, 4 lanes", "before": [4859, 5693, 5086], "after": [113, 166, 247]},
+  {"label": "fixture, 4 part replies held 8 s", "before": [8134, 8201, 8192], "after": [404, 405, 404]},
+  {"label": "fixture, 1 lane refused, 3 in flight*", "before": [8436, 8510, 8399], "after": [1791, 1818, 1801]}
+ ],
+ "note": "160 MiB file, 16 MiB parts, cancelled after a third; moto 5.1.1 behind a shared-rate proxy. | *Timed from the upload's start, including the refused part's 0.5 s delay. Cancelled runs end failed/cancelled, the refused one s3_permission_denied; every upload was aborted (no incompleteUpload)."}

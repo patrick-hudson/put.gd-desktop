@@ -1,0 +1,22 @@
+PASS   : S3MultipartTest::initTestCase()
+QINFO  : S3MultipartTest::cancelCutsPartsInFlight() cancel with 4 parts in flight: 8134 ms
+FAIL!  : S3MultipartTest::cancelCutsPartsInFlight() Compared values are not the same
+QINFO  : S3MultipartTest::failedLaneCutsThePartsInFlight() one lane refused, three in flight: 8436 ms
+FAIL!  : S3MultipartTest::failedLaneCutsThePartsInFlight() 'clock.elapsed() < 5000' returned FALSE. (8436)
+PASS   : S3MultipartTest::cleanupTestCase()
+Totals: 2 passed, 2 failed, 0 skipped, 0 blacklisted, 18289ms
+PASS   : S3MultipartTest::initTestCase()
+QINFO  : S3MultipartTest::cancelCutsPartsInFlight() cancel with 4 parts in flight: 8201 ms
+FAIL!  : S3MultipartTest::cancelCutsPartsInFlight() Compared values are not the same
+QINFO  : S3MultipartTest::failedLaneCutsThePartsInFlight() one lane refused, three in flight: 8510 ms
+FAIL!  : S3MultipartTest::failedLaneCutsThePartsInFlight() 'clock.elapsed() < 5000' returned FALSE. (8510)
+PASS   : S3MultipartTest::cleanupTestCase()
+Totals: 2 passed, 2 failed, 0 skipped, 0 blacklisted, 18134ms
+PASS   : S3MultipartTest::initTestCase()
+QINFO  : S3MultipartTest::cancelCutsPartsInFlight() cancel with 4 parts in flight: 8192 ms
+FAIL!  : S3MultipartTest::cancelCutsPartsInFlight() Compared values are not the same
+QINFO  : S3MultipartTest::failedLaneCutsThePartsInFlight() one lane refused, three in flight: 8399 ms
+FAIL!  : S3MultipartTest::failedLaneCutsThePartsInFlight() 'clock.elapsed() < 5000' returned FALSE. (8399)
+PASS   : S3MultipartTest::cleanupTestCase()
+Totals: 2 passed, 2 failed, 0 skipped, 0 blacklisted, 18010ms
+

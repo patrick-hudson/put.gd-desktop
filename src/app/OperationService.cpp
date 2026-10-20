@@ -73,6 +73,8 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
  host.finish=[this](Operation op){finish(op);};
  recording_=std::make_unique<RecordingService>(root_+"/recording",std::move(host),this);
  connect(recording_.get(),&RecordingService::changed,this,[this](const QString& id){emit changed(id);emit observationsChanged();});
+ cleanupTimer_.setInterval(cleanupSchedule_.intervalMs);
+ connect(&cleanupTimer_,&QTimer::timeout,this,&OperationService::cleanupExpired);
  heapReclamationTimer_.setSingleShot(true);
  connect(&heapReclamationTimer_,&QTimer::timeout,this,[this] {
   if(!heapReclamationPending_||!heapReclamationIdle())return;
@@ -103,10 +105,11 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
   if(ready_) {heapReclamationPending_=true;scheduleHeapReclamation();}
 #endif
   emit initialized();
+  if(ready_) {cleanupTimer_.start();QTimer::singleShot(cleanupSchedule_.startupDelayMs,this,&OperationService::cleanupExpired);}
  });
 }
 OperationService::~OperationService() {shutdown();}
-void OperationService::shutdown() {if(stopping_)return;stopping_=true;posterCancel_->store(true);heapReclamationTimer_.stop();observationTimer_.stop();for(auto flag:active_) flag->store(true);{std::lock_guard lock(itemCancelsMutex_);for(const auto& items:itemCancels_)for(const auto& flag:items)flag->store(true);}uploadSlots_.close();if(recording_)recording_->shutdown();if(editor_)editor_->cancel();invalidateCopyEligibility();source_.cancelAcquisition();for(auto* thread:threads_) {thread->wait();delete thread;}threads_.clear();}
+void OperationService::shutdown() {if(stopping_)return;stopping_=true;posterCancel_->store(true);cleanupTimer_.stop();if(cleanupStop_)cleanupStop_->store(true);heapReclamationTimer_.stop();observationTimer_.stop();for(auto flag:active_) flag->store(true);{std::lock_guard lock(itemCancelsMutex_);for(const auto& items:itemCancels_)for(const auto& flag:items)flag->store(true);}uploadSlots_.close();if(recording_)recording_->shutdown();if(editor_)editor_->cancel();invalidateCopyEligibility();source_.cancelAcquisition();for(auto* thread:threads_) {thread->wait();delete thread;}threads_.clear();}
 bool OperationService::heapReclamationIdle() const {
  return !stopping_&&threads_.isEmpty()&&queue_.isEmpty()&&running_==0&&active_.isEmpty()&&copies_.isEmpty()&&!currentCopy_&&selectingId_.isEmpty()&&payloadBytes_->load()==0&&!(recording_&&recording_->active());
 }
@@ -740,6 +743,7 @@ void OperationService::cancel(const QString& id,JsonReply reply,const QString& i
  const auto path=databasePath();background([path,id](Error& e) {HistoryStore store(path);auto op=store.operation(id,&e);if(e)return QJsonObject{};op.cancelled=true;op.state="cancelled";op.phase="cancelled";for(auto& item:op.items)item.phase=item.uploadStatus;e=store.saveOperation(op);return op.publicJson();},reply);
 }
 void OperationService::retry(const QString& id,JsonReply reply) {
+ if(cleanupInProgress_&&automaticCleanup_){cleanupStop_->store(true);afterCleanup_.append([this,id,reply]{retry(id,reply);});return;}
  if(cleanupInProgress_){reply({"cleanup_busy","Wait for artifact cleanup to finish",{}},{});return;}
  if(!ready_) {reply(startupError_?startupError_:Error{"initializing","Journal recovery is in progress",{}},{});return;}
  const auto limits=settings_.snapshot().limits;if(active_.size()>=limits.pendingOperations+limits.concurrentUploads) {reply({"queue_full","Pending operation limit reached",{}},{});return;}
@@ -759,6 +763,7 @@ void OperationService::retry(const QString& id,JsonReply reply) {
  });
 }
 void OperationService::retryLocalSave(const QString& id,JsonReply reply) {
+ if(cleanupInProgress_&&automaticCleanup_){cleanupStop_->store(true);afterCleanup_.append([this,id,reply]{retryLocalSave(id,reply);});return;}
  if(cleanupInProgress_){reply({"cleanup_busy","Wait for artifact cleanup to finish",{}},{});return;}
  if(!ready_){reply(startupError_?startupError_:Error{"initializing","Journal recovery is in progress",{}},{});return;}
  const auto limits=settings_.snapshot().limits;
@@ -901,7 +906,7 @@ QJsonObject OperationService::diagnostics() const {
 #endif
  const auto build=QJsonDocument::fromJson(buildManifestJson()).object();
  const auto logStatus=logging::status();
- return {{"schemaVersion",1},{"build",build},{"release",releaseLink(build).toJson()},{"backend","Qt"},{"qtVersion",QT_VERSION_STR},{"activeOperations",active_.size()},{"uploadSlots",uploadSlots_.diagnostics()},{"journalReady",ready_},{"capabilities",capabilities()},{"storage",providers_.diagnostics()},{"locations",locations_},
+ return {{"schemaVersion",1},{"build",build},{"release",releaseLink(build).toJson()},{"backend","Qt"},{"qtVersion",QT_VERSION_STR},{"activeOperations",active_.size()},{"uploadSlots",uploadSlots_.diagnostics()},{"journalReady",ready_},{"artifactCleanup",QJsonObject{{"running",cleanupInProgress_},{"automatic",automaticCleanup_},{"intervalMs",cleanupSchedule_.intervalMs},{"last",lastCleanup_.isEmpty()?QJsonValue(QJsonValue::Null):QJsonValue(lastCleanup_)}}},{"capabilities",capabilities()},{"storage",providers_.diagnostics()},{"locations",locations_},
   {"logging",logStatus},{"loggingDegraded",logStatus["degraded"].toBool()},{"uncleanExit",RunMarker::report()},
   {"memory",QJsonObject{{"allocatorReclamationSupported",reclaimSupported},{"allocatorReclamationPending",heapReclamationPending_},{"allocatorReclamationCount",qint64(heapReclamationCount_)},{"lastAllocatorReclamationUsec",lastHeapReclamationUsec_}}}};
 }
@@ -934,34 +939,71 @@ void OperationService::abandonUploads(HistoryStore& store,Operation& op,QJsonObj
  if(!changed.isEmpty())if(auto error=store.checkpointOperation(op,changed,&providers_))logging::warning(logOperation(),"Upload journal not saved",{{"operationId",op.id},{"error",logging::errorFields(error)}});
 }
 void OperationService::cleanup(JsonReply reply) {
+ if(cleanupInProgress_&&automaticCleanup_){cleanupStop_->store(true);afterCleanup_.append([this,reply]{cleanup(reply);});return;}
  if(cleanupInProgress_){reply({"cleanup_busy","Wait for artifact cleanup to finish",{}},{});return;}
- cleanupInProgress_=true;const auto snapshot=settings_.snapshot();const auto path=databasePath(),root=root_;const auto activeIds=active_.keys();
- // Retry is refused while cleanup runs and active operations are skipped, so no
- // upload aborted here is one a Retry is about to resume (#146).
- background([this,snapshot,path,root,activeIds](Error& e) {
-  HistoryStore store(path);ArtifactStore artifacts(root+"/artifacts");e=store.error();if(e)return QJsonObject{};
-  int removed=0;QJsonObject outcome{{"abortedUploads",0},{"incompleteUploads",QJsonArray{}}};QSet<QString> visited;
-  QDir dir(root+"/artifacts");
-  for(const auto& name:dir.entryList(QDir::Dirs|QDir::NoDotAndDotDot)) {
-   if(activeIds.contains(name))continue;
-   Error error;auto op=store.operation(name,&error);if(error)continue;
-   bool successful=true;for(const auto& item:op.items)if(item.uploadStatus=="unknown"||item.uploadStatus=="uploading")successful=false;
-   const bool finished=op.state=="completed"||op.state=="partial"||op.state=="failed"||op.state=="cancelled"||op.state=="interrupted";
-   bool uploaded=true;for(const auto& item:op.items)if(!terminalUpload(item.uploadStatus))uploaded=false;
-   bool archivePending=false;for(const auto& item:op.items)if(item.local.status=="failed")archivePending=true;
-   const auto date=QDateTime::fromString(op.created,Qt::ISODateWithMs);
-   if(finished&&successful&&((uploaded&&!archivePending)||(snapshot.failedArtifactDays>0&&date.daysTo(QDateTime::currentDateTimeUtc())>=snapshot.failedArtifactDays))) {
-    // Without its artifact no Retry can resume the upload: abort it first, best effort.
-    abandonUploads(store,op,outcome);visited.insert(name);
-    if(auto error=artifacts.remove(name)) {e=error;break;}++removed;
-   }
+ startCleanup(false,std::move(reply));
+}
+void OperationService::cleanupExpired() {
+ if(!ready_||stopping_||cleanupInProgress_)return;
+ startCleanup(true,{});
+}
+void OperationService::startCleanup(bool automatic,JsonReply reply) {
+ cleanupInProgress_=true;automaticCleanup_=automatic;cleanupStop_=std::make_shared<std::atomic_bool>(false);
+ // Retry is refused or waits while cleanup runs, and active operations are skipped,
+ // so no upload aborted here is one a Retry is about to resume (#146).
+ CleanupPass pass{automatic,settings_.snapshot().failedArtifactDays,cleanupSchedule_.batch,clock_(),active_.keys(),cleanupStop_};
+ background([this,pass](Error& e){return cleanArtifacts(pass,e);},[this,automatic,reply=std::move(reply)](Error e,QJsonObject result){
+  if(e)logging::warning(logOperation(),"Artifact cleanup failed",{{"trigger",automatic?"automatic":"manual"},{"error",logging::errorFields(e)}});
+  finishCleanup(result);
+  if(reply)reply(e,result);
+  // More expired operations than one pass takes: the next pass follows shortly.
+  if(automatic&&!e&&result["more"].toBool()&&!stopping_)QTimer::singleShot(cleanupSchedule_.followUpMs,this,&OperationService::cleanupExpired);
+  auto pending=std::exchange(afterCleanup_,{});for(const auto& next:pending)next();
+ });
+}
+void OperationService::finishCleanup(const QJsonObject& outcome) {
+ cleanupInProgress_=false;automaticCleanup_=false;cleanupStop_.reset();
+ if(!outcome.isEmpty())lastCleanup_=outcome;
+}
+QJsonObject OperationService::cleanArtifacts(const CleanupPass& pass,Error& e) {
+ QElapsedTimer elapsed;elapsed.start();
+ const auto trigger=pass.automatic?QStringLiteral("automatic"):QStringLiteral("manual");
+ HistoryStore store(databasePath());ArtifactStore artifacts(root_+"/artifacts");e=store.error();if(e)return QJsonObject{};
+ int removed=0;QJsonObject outcome{{"trigger",trigger},{"abortedUploads",0},{"incompleteUploads",QJsonArray{}}};QSet<QString> visited;
+ const auto stopped=[&]{if(!pass.stop||!pass.stop->load())return false;outcome["stopped"]=true;return true;};
+ QDir dir(root_+"/artifacts");
+ for(const auto& name:dir.entryList(QDir::Dirs|QDir::NoDotAndDotDot)) {
+  if(stopped())break;
+  if(pass.automatic&&removed>=pass.batch) {outcome["more"]=true;break;}
+  if(pass.activeIds.contains(name))continue;
+  Error error;auto op=store.operation(name,&error);if(error)continue;
+  bool successful=true;for(const auto& item:op.items)if(item.uploadStatus=="unknown"||item.uploadStatus=="uploading")successful=false;
+  const bool finished=op.state=="completed"||op.state=="partial"||op.state=="failed"||op.state=="cancelled"||op.state=="interrupted";
+  bool uploaded=true;for(const auto& item:op.items)if(!terminalUpload(item.uploadStatus))uploaded=false;
+  bool archivePending=false;for(const auto& item:op.items)if(item.local.status=="failed")archivePending=true;
+  const auto date=QDateTime::fromString(op.created,Qt::ISODateWithMs);
+  const qint64 age=date.isValid()?date.daysTo(pass.now):-1;
+  const bool expired=pass.failedArtifactDays>0&&age>=pass.failedArtifactDays;
+  if(finished&&successful&&((!pass.automatic&&uploaded&&!archivePending)||expired)) {
+   // Without its artifact no Retry can resume the upload: abort it first, best effort.
+   abandonUploads(store,op,outcome);visited.insert(name);
+   if(auto error=artifacts.remove(name)) {e=error;break;}++removed;
+   logging::info(logOperation(),expired?"Expired artifacts removed":"Artifacts removed",{{"operationId",op.id},{"trigger",trigger},{"state",op.state},{"items",op.items.size()},{"ageDays",age},{"failedArtifactDays",pass.failedArtifactDays}});
   }
-  // An abort refused earlier is tried again on every cleanup after its artifact went.
-  if(!e)for(const auto& id:store.journaledOperations()) {
-   if(activeIds.contains(id)||visited.contains(id)||QFileInfo::exists(root+"/artifacts/"+id))continue;
-   Error error;auto op=store.operation(id,&error);if(!error)abandonUploads(store,op,outcome);
-  }
-  artifacts.clearPreviews();outcome["removedOperations"]=removed;return outcome;
- },[this,reply=std::move(reply)](Error e,QJsonObject result){cleanupInProgress_=false;reply(e,result);});
+ }
+ // An abort refused earlier is tried again on every cleanup after its artifact went.
+ if(!e)for(const auto& id:store.journaledOperations()) {
+  if(stopped())break;
+  if(pass.activeIds.contains(id)||visited.contains(id)||QFileInfo::exists(root_+"/artifacts/"+id))continue;
+  Error error;auto op=store.operation(id,&error);if(!error)abandonUploads(store,op,outcome);
+ }
+ if(!pass.automatic)artifacts.clearPreviews();
+ outcome["removedOperations"]=removed;outcome["finished"]=pass.now.toString(Qt::ISODateWithMs);outcome["elapsedMs"]=elapsed.elapsed();
+ const int incomplete=outcome["incompleteUploads"].toArray().size();
+ // An automatic pass that found nothing to do stays out of the log.
+ if(!pass.automatic||removed>0||outcome["abortedUploads"].toInt()>0||incomplete>0)
+  logging::info(logOperation(),"Artifact cleanup finished",{{"trigger",trigger},{"removedOperations",removed},{"abortedUploads",outcome["abortedUploads"].toInt()},{"incompleteUploads",incomplete},
+   {"more",outcome["more"].toBool()},{"stopped",outcome["stopped"].toBool()},{"elapsedMs",outcome["elapsedMs"].toInteger()}});
+ return outcome;
 }
 }

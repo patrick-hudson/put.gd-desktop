@@ -13,6 +13,7 @@
 #include "app/RecordingHelperBackend.h"
 #include "app/SetupService.h"
 #include "app/StorageLocations.h"
+#include "ui/Appearance.h"
 #include "ui/ResidentTheme.h"
 #include "ui/ViewState.h"
 #include "ui/TrayController.h"
@@ -200,7 +201,19 @@ int main(int argc,char* argv[]) {
  putgd::OperationService operations(dataRoot,settings,providers,*source);
  operations.setLocations(locations.report);
  // The recording helper is probed lazily; a missing binary reports recording_helper_missing.
- operations.setRecordingBackend(std::make_unique<putgd::RecordingHelperBackend>());
+ auto recordingBackend=std::make_unique<putgd::RecordingHelperBackend>();
+ // #198: putgd-record's overlays use the interface's resolved scheme. The
+ // resident resolves the setting against the desktop the way putgd-ui does,
+ // without restyling itself, and passes the result to each helper.
+ putgd::Appearance appearance(nullptr,putgd::Appearance::Role::Resolver);
+ {
+  auto* backend=recordingBackend.get();
+  const auto follow=[&appearance,&settings,backend]{appearance.setPreference(settings.snapshot().appearanceTheme);backend->setAppearance(putgd::Theme::name(appearance.scheme()));};
+  follow();
+  QObject::connect(&settings,&putgd::SettingsService::accepted,&appearance,follow);
+  QObject::connect(&appearance,&putgd::Appearance::changed,&appearance,follow);
+ }
+ operations.setRecordingBackend(std::move(recordingBackend));
 #ifdef PUTGD_NATIVE_GNOME
  // GNOME keeps clients from placing their own windows: the Shell extension
  // selects recording regions, frames them and moves the control bar.

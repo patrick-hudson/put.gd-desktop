@@ -56,11 +56,15 @@ int main(int argc, char** argv) {
         if (type == "bootstrap") {
             envelope = {{"role", "record"}, {"nonce", payload["nonce"]}, {"generation", payload["generation"]}};
             if (mode == "silent") return;
+            // #198: the resident always passes the resolved scheme.
+            const auto scheme = payload["appearance"].toObject()["scheme"].toString();
+            if (scheme != "dark" && scheme != "light") { app.exit(3); return; }
             auto ready = envelope;
             ready["build"] = mode == "wrong-build" ? QJsonObject{{"version", "0.0.0-other"}} : payload["build"];
             control.send("ready", ready);
             return;
         }
+        if (type == "appearance") return;
         if (type == "shutdown") { QTimer::singleShot(0, &app, [&] { app.exit(mode == "exit-dirty" ? 7 : 0); }); return; }
         if (type != "command") { app.exit(3); return; }
         const auto requestId = payload["requestId"].toString(), command = payload["command"].toString();
