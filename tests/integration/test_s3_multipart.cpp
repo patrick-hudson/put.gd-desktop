@@ -210,6 +210,27 @@ private slots:
         QCOMPARE(f.state()["objects"].toObject()["prefix é/race.bin"].toArray().last().toObject()["etag"].toString(), QString("\"competitor\""));
         QVERIFY(journal.last().isEmpty());
     }
+    // Backblaze B2 (#145) answers 501 to conditional writes; the guidance names them.
+    void unsupportedConditionalWritesSayWhy_data() {
+        QTest::addColumn<qint64>("bytes");
+        QTest::addColumn<QString>("method");
+        QTest::addColumn<QString>("query");
+        QTest::addColumn<QString>("stage");
+        QTest::newRow("single") << qint64(1024) << QString("PUT") << QString() << QString("upload_put");
+        QTest::newRow("multipart") << qint64(7 * mib) << QString("POST") << QString("uploadId=") << QString("upload_complete");
+    }
+    void unsupportedConditionalWritesSayWhy() {
+        QFETCH(qint64, bytes); QFETCH(QString, method); QFETCH(QString, query); QFETCH(QString, stage);
+        S3Fixture f(policy);
+        auto request = f.request("unsupported.bin", synthetic(bytes));
+        f.reset({{"rules", QJsonArray{QJsonObject{{"method", method}, {"query", query}, {"status", 501}, {"code", "NotImplemented"}}}}});
+        const auto result = f.upload(request);
+        QCOMPARE(result.status, QString("failed"));
+        QCOMPARE(result.error.code, QString("s3_unsupported_request"));
+        QCOMPARE(result.error.details["requestStage"].toString(), stage);
+        QVERIFY(result.error.message.contains("conditional writes (If-None-Match and If-Match)"));
+        QVERIFY(f.state()["uploads"].toObject().isEmpty());
+    }
     void transientPartIsSentAgainUnderItsNumber() {
         S3Fixture f(policy);
         auto request = f.request("retry.bin", synthetic(11 * mib));
