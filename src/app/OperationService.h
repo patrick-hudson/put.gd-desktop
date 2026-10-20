@@ -92,12 +92,23 @@ public:
  RecordingService& recording() {return *recording_;}
  // Tests may run a fixture helper; production always uses the sibling putgd-ui.
  void setEditorHelper(QString path) {editorHelper_=std::move(path);}
+ // The internal action of a diagnostics package upload (#123), outside the
+ // sharing actions: recorded in history and deletable like any upload.
+ static constexpr const char* diagnosticsAction="diagnostics";
+ static constexpr int diagnosticsShareDays=7;
+ // Uploads one finished diagnostics package to a destination through the
+ // normal pipeline as putgd-diagnostics-<uuid>.zip: no naming template, no
+ // local archive copy, never an overwrite, a link requested (expiring after
+ // diagnosticsShareDays where the provider makes share links). `accepted`
+ // answers when the operation is durable; `finished` gets its terminal state.
+ void uploadDiagnostics(const QString& path,const QString& profileId,JsonReply accepted,std::function<void(const Operation&)> finished);
  void inspect(const QString& id,JsonReply);
  void recent(JsonReply);
  // Session-thread snapshot of bounded live observations; no SQL or provider IO.
  QJsonArray activeObservations() const;
  bool storageActive() const {return storageRequests_>0;}
  Settings settingsSnapshot() const {return settings_.snapshot();}
+ QString settingsRevision() const {return settings_.revision();}
  void cancel(const QString& id,JsonReply);
  void retry(const QString& id,JsonReply);
  void retryLocalSave(const QString& id,JsonReply);
@@ -187,6 +198,7 @@ private:
  QQueue<Job> queue_;
  std::shared_ptr<std::atomic<qint64>> payloadBytes_=std::make_shared<std::atomic<qint64>>(0);
  QHash<QString,std::shared_ptr<std::atomic_bool>> active_;
+ QHash<QString,std::function<void(const Operation&)>> finishWatchers_;
  QHash<QString,std::weak_ptr<std::mutex>> locks_;
  std::mutex locksMutex_;
  QTimer heapReclamationTimer_,observationTimer_;
