@@ -86,7 +86,7 @@ the last accepted in-memory settings and the bad file so it can be corrected.
 | `naming.collisionPolicy` | `rename` by default; `skip` or explicit `overwrite` |
 | `limits.maxFiles` | 100; maximum clipboard batch file count |
 | `limits.pendingOperations` | 8 |
-| `limits.concurrentUploads` | 1 |
+| `limits.concurrentUploads` | 3 for new configurations (1–32): files transferring at once across every operation. A batch's files overlap, a new action starts while an earlier upload continues, and a free slot goes to the operation holding the fewest. A multipart file holds one slot for its whole transfer. Providers that take one request at a time per account (Proton Drive) stay sequential for that account. Existing configurations keep their saved value (the former default, 1, uploads one file at a time) |
 | `limits.maxFileBytes`, `maxBatchBytes`, `pendingArtifactBytes` | 2 GiB each |
 | `limits.clipboardTextBytes` | 16 MiB UTF-8 |
 | `limits.imagePixels`, `imageBytes` | 100 million pixels and 512 MiB |

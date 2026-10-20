@@ -59,7 +59,7 @@ such as `session_unavailable` and `config_conflict` retain their original envelo
 | `get_operation` | id; kind operation/delete | operation.inspect or delete.inspect; local state |
 | `retry_operation` | id; stage upload/local_save/delete | operation.retry, operation.retryLocalSave, delete.retry; explicit stage effects |
 | `copy_result` | id → operation.copy | Copies retained result/receipt; no upload |
-| `cancel_operation` | id; kind operation/delete | Requests cancellation; sent remote mutations cannot be rolled back |
+| `cancel_operation` | id; kind operation/delete; optional item_id | Requests cancellation; sent remote mutations cannot be rolled back. With item_id (an operation item's `artifact.id`), only that file stops and the batch continues |
 | `list_history` | optional pagination/filters → history.list | Offline local metadata |
 | `get_history_entry` | id → history.detail | Original receipt/local-copy/deletion state |
 | `copy_history_link` | id → history.copyLink | Writes stored direct URL to clipboard |
