@@ -1,0 +1,221 @@
+--- tests/performance/s3_upload_probe.cpp
++++ tests/performance/s3_compat_upload_probe.cpp
+@@ -1,9 +1,10 @@
+-// Opt-in S3 upload probe for a local S3-compatible server (MinIO, moto) with the
+-// synthetic fixture credentials: never point it at a real account. It drives the
++// Round 11 (#145) scratch variant of s3_upload_probe for live S3-compatible providers:
++// credentials and destination settings arrive only on stdin as
++// {"accessKey","secretKey","settings":{...}}; nothing secret is printed. It drives the
+ // production S3Provider and putgd-s3-worker and reports one JSON line per run:
+ // outcome, wall time, throughput, the worker's peak resident memory and part counts.
+ //
+-//   s3_upload_probe ENDPOINT BUCKET FILE MODE [THRESHOLD_BYTES [EXTRA_LANES]]
++//   s3_compat_upload_probe FILE MODE [THRESHOLD_BYTES [EXTRA_LANES]] < input.json
+ //   MODE: upload | single | cancel | interrupt | collision | probe
+ //   EXTRA_LANES: idle upload slots lent to a multipart upload (0-3, default 0, #174)
+ #include "storage/s3/S3Provider.h"
+@@ -14,6 +15,7 @@
+ #include <QFile>
+ #include <QFileInfo>
+ #include <QJsonDocument>
++#include <QMimeDatabase>
+ #include <QThread>
+ #include <QUuid>
+ #include <atomic>
+@@ -75,37 +77,50 @@
+ }
+ int main(int argc, char** argv) {
+     QCoreApplication app(argc, argv);
+-    const auto args = app.arguments();
+-    if (args.size() < 5) { qCritical("usage: s3_upload_probe ENDPOINT BUCKET FILE MODE [THRESHOLD_BYTES [EXTRA_LANES]]"); return 2; }
++    auto args = app.arguments();
++    if (args.size() < 3) { qCritical("usage: s3_compat_upload_probe FILE MODE [THRESHOLD_BYTES [EXTRA_LANES]] < input.json"); return 2; }
++    args.insert(1, QString());
++    args.insert(1, QString());
+     const auto mode = args[4];
++    QJsonObject input;
++    {
++        QFile in;
++        if (!in.open(stdin, QIODevice::ReadOnly)) return 2;
++        auto raw = in.read(8192);
++        input = QJsonDocument::fromJson(raw).object();
++        raw.fill('\0');
++    }
+     S3UploadPolicy policy;
+     if (args.size() > 5 && args[5].toLongLong() > 0) policy.multipartThresholdBytes = args[5].toLongLong();
+     const int extraLanes = args.size() > 6 ? qBound(0, args[6].toInt(), s3MaximumPartLanes - 1) : 0;
+     if (mode == "single") policy.multipartThresholdBytes = s3MaximumObjectBytes;
+     CredentialStore credentials;
+     S3Provider provider(credentials, policy);
+-    Destination destination{"s3", "probe", "probe-revision",
+-        {{"bucket", args[2]}, {"region", "us-east-1"}, {"endpoint", args[1]}, {"objectPrefix", "putgd-probe"},
++    QJsonObject settings{{"objectPrefix", "putgd-probe"},
+          {"storageClass", "STANDARD"}, {"aclMode", "omit"}, {"publicUrlBase", QJsonValue::Null}, {"addressing", "path"},
+-         {"connectTimeoutMs", 5000}, {"requestTimeoutMs", 600000}, {"lowSpeedBytesPerSecond", 1}, {"lowSpeedTimeSeconds", 30}},
+-        {{"mode", "session"}, {"reference", QJsonValue::Null}}};
+-    // The offline fixture's synthetic pair, also the local server's root user.
+-    credentials.setSession("probe", {"PUTGD_SYNTHETIC_ACCESS", "putgd-synthetic-secret-not-a-real-key", {}});
++         {"connectTimeoutMs", 10000}, {"requestTimeoutMs", 600000}, {"lowSpeedBytesPerSecond", 1}, {"lowSpeedTimeSeconds", 60}};
++    const auto overrides = input["settings"].toObject();
++    for (auto it = overrides.begin(); it != overrides.end(); ++it) settings[it.key()] = it.value();
++    Destination destination{"s3", "probe", "probe-revision", settings, {{"mode", "session"}, {"reference", QJsonValue::Null}}};
++    if (auto error = provider.validateSettings(destination.settings)) { printf("{\"error\":\"settings %s\"}\n", qPrintable(error.code)); return 2; }
++    credentials.setSession("probe", {input["accessKey"].toString(), input["secretKey"].toString(), {}});
++    input = {};
+     if (mode == "probe") {
+         const auto [result, error] = await<std::pair<QJsonObject, Error>>([&](auto done) {
+             provider.testDestination(destination, [](const QJsonObject&, std::function<void(Error)> ack) { ack({}); },
+                                      [done](QJsonObject value, Error e) { done({value, e}); });
+         });
+         printf("%s\n", QJsonDocument(QJsonObject{{"mode", mode}, {"multipart", result["multipart"]}, {"uploadStatus", result["uploadStatus"]},
+-                                                 {"errorCode", error.code}}).toJson(QJsonDocument::Compact).constData());
++                                                 {"publicReachable", result["publicReachable"]}, {"cleanupStatus", result["cleanupStatus"]},
++                                                 {"errorCode", error.code}, {"errorDetails", error.details}, {"cleanupProgress", result["cleanupProgress"]}, {"directUrl", result["receipt"].toObject()["directUrl"]}, {"stage", error.details["requestStage"]}, {"httpStatus", error.details["httpStatus"]}, {"serviceCode", error.details["serviceCode"]}}).toJson(QJsonDocument::Compact).constData());
+         return 0;
+     }
+     Artifact artifact;
+     artifact.id = "probe-item";
+     artifact.path = QFileInfo(args[3]).absoluteFilePath();
+     artifact.name = QFileInfo(args[3]).fileName();
+-    artifact.mime = "application/octet-stream";
+-    artifact.category = "other";
++    artifact.mime = QMimeDatabase().mimeTypeForFile(args[3]).name();
++    artifact.category = artifact.mime.startsWith("image/") ? "images" : "other";
+     QFile file(artifact.path);
+     if (!file.open(QIODevice::ReadOnly)) return 2;
+     artifact.bytes = file.size();
+@@ -177,23 +192,8 @@
+         line["resumeWorkerPeakRssKiB"] = sampler.stop().rssKiB;
+     }
+     if (mode == "collision" && result.status == "uploaded") {
+-        // A second upload to the same key must not replace the first. moto enforces
+-        // If-None-Match on completion only over a single-request object, so the
+-        // probe first replaces the key's object with a small single PUT.
+-        S3Provider single(credentials, {s3MaximumObjectBytes, s3MinimumPartBytes});
+-        auto small = request;
+-        QFile marker(QDir::temp().filePath("putgd-probe-marker.txt"));
+-        if (marker.open(QIODevice::WriteOnly)) { marker.write("putgd probe marker\n"); marker.close(); }
+-        small.artifact.path = marker.fileName();
+-        small.artifact.bytes = marker.size();
+-        small.artifact.sha256 = QString::fromLatin1(QCryptographicHash::hash(QByteArray("putgd probe marker\n"), QCryptographicHash::Sha256).toHex());
+-        small.condition = "match";
+-        small.concurrencyToken = result.receipt.concurrencyToken;
+-        small.resume = {};
+-        small.checkpoint = {};
+-        small.cancellation = std::make_shared<std::atomic_bool>(false);
+-        const auto replaced = await<UploadResult>([&](auto done) { single.upload(small, done); });
+-        line["markerStatus"] = replaced.status;
++        // Live providers enforce If-None-Match on the publishing request, so the second
++        // upload to the same key goes straight at it.
+         auto again = request;
+         again.publicationId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+         again.resume = {};
+@@ -201,8 +201,10 @@
+         const auto second = await<UploadResult>([&](auto done) { provider.upload(again, done); });
+         line["secondStatus"] = second.status;
+         line["secondErrorCode"] = second.error.code;
++        line["secondDetails"] = QJsonObject{{"httpStatus", second.error.details["httpStatus"]}, {"serviceCode", second.error.details["serviceCode"]}, {"requestStage", second.error.details["requestStage"]}};
+     }
+-    if (result.status == "uploaded") line["etag"] = result.receipt.concurrencyToken;
++    if (result.status == "uploaded") { line["etag"] = result.receipt.concurrencyToken; line["directUrl"] = result.receipt.directUrl; line["key"] = result.receipt.objectReference["key"]; }
++    if (!result.error.code.isEmpty()) line["errorDetails"] = QJsonObject{{"httpStatus", result.error.details["httpStatus"]}, {"serviceCode", result.error.details["serviceCode"]}, {"requestStage", result.error.details["requestStage"]}};
+     line["probeHwmKiB"] = statusField("/proc/self/status", "VmHWM:");
+     printf("%s\n", QJsonDocument(line).toJson(QJsonDocument::Compact).constData());
+     return 0;
+--- tests/performance/s3_live_probe.cpp
++++ tests/performance/s3_compat_live_probe.cpp
+@@ -1,4 +1,5 @@
+-// Opt-in live S3 acceptance probe for multipart uploads (#57, #145). Synthetic files only,
++// Round 11 (#145) scratch variant: stdin may also carry "settings" overrides
++// (publicUrlBase, aclMode, storageClass, addressing). Opt-in live S3 acceptance probe for multipart uploads (#57, #145). Synthetic files only,
+ // into an isolated prefix the owner approved; every object it creates is removed again
+ // through put.gd's own history deletion, and the receipts are printed.
+ //
+@@ -86,12 +87,14 @@
+     const auto args = app.arguments();
+     if (args.size() != 10) { qCritical("usage: s3_live_probe BUCKET REGION ENDPOINT PREFIX DATA_DIR SMALL CANCEL INTERRUPT BIG < credentials.json"); return 2; }
+     CredentialStore credentials;
++    QJsonObject overrides;
+     {
+         // Bounded stdin; the buffer is overwritten before it is released.
+         QFile input;
+         if (!input.open(stdin, QIODevice::ReadOnly)) return 2;
+-        auto raw = input.read(4096);
++        auto raw = input.read(8192);
+         const auto value = QJsonDocument::fromJson(raw).object();
++        overrides = value["settings"].toObject();
+         raw.fill('\0');
+         if (!value["accessKey"].isString() || !value["secretKey"].isString() || value["accessKey"].toString().isEmpty() || value["secretKey"].toString().isEmpty()) {
+             report({{"step", "credentials"}, {"ok", false}});
+@@ -99,9 +102,10 @@
+         }
+         credentials.setSession("live57", {value["accessKey"].toString(), value["secretKey"].toString(), {}});
+     }
+-    const QJsonObject s3{{"bucket", args[1]}, {"region", args[2]}, {"endpoint", args[3]}, {"objectPrefix", args[4]},
++    QJsonObject s3{{"bucket", args[1]}, {"region", args[2]}, {"endpoint", args[3]}, {"objectPrefix", args[4]},
+                          {"storageClass", "STANDARD"}, {"aclMode", "omit"}, {"publicUrlBase", QJsonValue::Null}, {"addressing", "path"},
+                          {"connectTimeoutMs", 10000}, {"requestTimeoutMs", 600000}, {"lowSpeedBytesPerSecond", 1}, {"lowSpeedTimeSeconds", 60}};
++    for (auto it = overrides.begin(); it != overrides.end(); ++it) s3[it.key()] = it.value();
+     auto provider = std::make_shared<S3Provider>(credentials);
+     ProviderRegistry registry;
+     registry.add("s3", provider);
+@@ -132,7 +136,7 @@
+     archive["root"] = root + "/archive";
+     document["archive"] = archive;
+     SettingsService settings(root + "/config.json", [&](const QString& id, const QJsonObject& value) { return registry.validate(id, value); });
+-    if (!settings.save(document, {})) { report({{"step", "settings"}, {"ok", false}}); return 2; }
++    if (args.value(6) != "--delete-existing" && !settings.save(document, {})) { report({{"step", "settings"}, {"ok", false}}); return 2; }
+     Files source;
+     OperationService operations(root + "/data", settings, registry, source);
+     HistoryService history(operations);
+@@ -208,6 +212,42 @@
+               {"journalCleared", after.items.value(0).uploadJournal.isEmpty()}, {"artifactRemoved", !QFileInfo::exists(op.items[0].artifact.path)}});
+         return error || result["abortedUploads"].toInt() != 1 ? 1 : 0;
+     }
++    if (args.value(6) == "--delete-existing") {
++        // Round 11: delete what an earlier run left in this data directory, through History.
++        sampling = false;
++        sampler->wait();
++        HistoryQuery query;
++        query.limit = 50;
++        query.uploadStatus = "uploaded";
++        const auto [listError, page] = call([&](JsonReply reply) { history.list(query, reply); });
++        QJsonArray before;
++        for (const auto& value : page["records"].toArray()) {
++            const auto record = value.toObject();
++            before.append(QJsonObject{{"id", record["id"]}, {"remoteStatus", record["remoteStatus"]}});
++            if (record["remoteStatus"].toString() != "removed") uploaded.append(record["id"].toString());
++        }
++        report({{"step", "existing"}, {"error", listError.code}, {"items", before}});
++        if (args[7] != "-") {
++            // Retry the earlier deletion, as History's Retry button does.
++            const auto [retryError, accepted] = call([&](JsonReply reply) { history.retryDelete(args[7], reply); });
++            QJsonObject finished;
++            spin([&] {
++                finished = call([&](JsonReply reply) { history.inspectDelete(args[7], reply); }).second;
++                return !QStringList{"accepted", "running"}.contains(finished["state"].toString());
++            }, 600000);
++            QJsonArray receipts;
++            for (const auto& value : finished["items"].toArray()) {
++                const auto item = value.toObject();
++                receipts.append(QJsonObject{{"historyId", item["historyId"].toString(item["id"].toString())}, {"status", item["status"]},
++                                            {"key", item["receipt"].toObject()["objectReference"].toObject()["key"]},
++                                            {"versionId", item["receipt"].toObject()["objectReference"].toObject()["versionId"]},
++                                            {"versionless", item["progress"].toObject()["versionless"]}, {"phase", item["progress"].toObject()["phase"]},
++                                            {"error", item["error"].toObject()["code"]}});
++            }
++            report({{"step", "deleteRetried"}, {"error", retryError.code}, {"deleteOperationId", args[7]}, {"state", finished["state"]}, {"items", receipts}});
++            return 0;
++        }
++    } else {
+     remember(run("smallMultipart", args[6], {}));
+     remember(run("cancelAtThird", args[7], [&](const QString& id) { operations.cancel(id, [](Error, QJsonObject) {}); }));
+     const auto interrupted = run("workerKilledAtThird", args[8], [&](const QString&) { for (auto pid : workers()) ::kill(pid_t(pid), SIGKILL); });
+@@ -224,6 +264,7 @@
+     remember(run("largeMultipart", args[9], {}));
+     sampling = false;
+     sampler->wait();
++    }
+     // Remove every uploaded object through put.gd's history deletion and keep its receipts.
+     const auto [prepareError, preview] = call([&](JsonReply reply) { history.prepareDelete(uploaded, reply); });
+     report({{"step", "deletePrepare"}, {"error", prepareError.code}, {"targets", preview["targets"].toArray().size()}});

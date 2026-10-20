@@ -212,6 +212,10 @@ Null derives an object URL from endpoint/bucket/addressing. `addressing` is path
 virtual or auto; virtual rejects dotted buckets and literal IP endpoints, and auto
 uses virtual only for an AWS host with an undotted bucket. Path mode is required for
 the development dotted bucket. Validation performs no network or secret-store IO.
+For S3-compatible services, the endpoint must support conditional writes. Cloudflare
+R2 works with its account endpoint, region `auto`, ACL omit and the bucket's r2.dev
+or custom domain as `publicUrlBase`. Backblaze B2 lacks conditional writes, so Test
+connection fails there. See [S3-compatible services](s3.md#s3-compatible-services).
 
 `connectTimeoutMs` bounds connection setup. `requestTimeoutMs` maps to the SDK whole
 Curl-request timeout (`httpRequestTimeoutMs`). `lowSpeedBytesPerSecond` maps to the
