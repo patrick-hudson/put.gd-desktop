@@ -242,6 +242,13 @@ private slots:
   server.dispatch({{"schemaVersion",1},{"requestId","bundle"},{"session",server.socketPath()},{"method","diagnostics.bundle"},{"params",QJsonObject{{"since","1d"},{"output",out.path()}}}},
    [&](Error e,QJsonObject r){error=e;result=r;done=true;});
   QTRY_VERIFY_WITH_TIMEOUT(done,30000);QVERIFY2(!error,qPrintable(error.message));QVERIFY(QFile::exists(result["path"].toString()));QVERIFY(result["operations"].toInt()>=1);
+  // #223: the resident remembers what it saved, so Show in folder takes a package
+  // under any name it wrote, and still nothing else.
+  QVERIFY(bundles.saved(result["path"].toString()));const auto custom=out.filePath("putgd-diagnostics-r9.zip");done=false;
+  server.dispatch({{"schemaVersion",1},{"requestId","custom"},{"session",server.socketPath()},{"method","diagnostics.bundle"},{"params",QJsonObject{{"since","1d"},{"output",custom}}}},
+   [&](Error e,QJsonObject r){error=e;result=r;done=true;});
+  QTRY_VERIFY_WITH_TIMEOUT(done,30000);QVERIFY2(!error,qPrintable(error.message));QCOMPARE(result["path"].toString(),custom);
+  QVERIFY(bundles.saved(custom));QVERIFY(bundles.saved(out.path()+"/./putgd-diagnostics-r9.zip"));QVERIFY(!bundles.saved(out.filePath("other.zip")));
   done=false;server.dispatch({{"schemaVersion",1},{"requestId","bad"},{"session",server.socketPath()},{"method","diagnostics.bundle"},{"params",QJsonObject{{"since","forever"}}}},[&](Error e,QJsonObject){error=e;done=true;});
   QTRY_VERIFY(done);QCOMPARE(error.code,QString("invalid_request"));
  }

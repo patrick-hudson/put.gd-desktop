@@ -199,6 +199,7 @@ void DiagnosticsBundles::create(const BundleRequest& request,JsonReply reply) {
  running_=true;QPointer<DiagnosticsBundles> guarded(this);
  operations_.background([context,request](Error& error){return build(context,request,error);},[guarded,reply,request,preview=request.preview](Error error,QJsonObject result){
   if(guarded)guarded->running_=false;
+  if(guarded&&!preview&&!error)guarded->saved_.insert(QDir::cleanPath(result["path"].toString()));
   if(!preview&&error)logging::warning(logApp(),"Diagnostics package failed",{{"error",logging::errorFields(error)}});
   else if(!preview)logging::info(logApp(),"Diagnostics package saved",{{"path",result["path"]},{"bytes",result["bytes"]},{"redaction",result["redaction"]},{"operations",result["operations"]},{"logRecords",result["logRecords"]}});
   // The local copy exists first; an upload that fails or is skipped never changes it.

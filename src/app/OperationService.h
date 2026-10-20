@@ -162,6 +162,9 @@ signals:
  // A terminal/copy result is durably observable; progress never emits this.
  void resultReady(const QString& id);
  void sharingStopped(const QJsonObject& document,const putgd::Error& error);
+ // An automatic cleanup kept uploads the destination refused to abort that the user
+ // has not heard of yet (#226): {count, bytes, buckets, labels, providers, error, hint, message}.
+ void incompleteUploadsKept(const QJsonObject& notice);
 private:
  // Scoped provider calls count requests, independently of queue/encoding/journal work.
  class StorageActivity {
@@ -183,6 +186,9 @@ private:
  QJsonObject cleanArtifacts(const CleanupPass&,Error&);
  void startCleanup(bool automatic,JsonReply);
  void finishCleanup(const QJsonObject& outcome);
+ // Words the pass's newly kept uploads for the user, the log and diagnostics (#226).
+ void announceIncompleteUploads(QJsonObject& outcome,bool automatic);
+ QJsonObject lastIncompleteNotice_;
  QTimer cleanupTimer_;
  std::function<QDateTime()> clock_=[]{return QDateTime::currentDateTimeUtc();};
  bool automaticCleanup_=false;CleanupSchedule cleanupSchedule_;

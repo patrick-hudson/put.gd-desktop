@@ -48,8 +48,9 @@ public:
  // The panel tone the tray tint follows, and which input decided it (#60).
  QJsonObject trayTint()const;
  // Opens the file manager with a saved package selected (FileManager1.ShowItems),
- // or its folder when no file manager answers. Only put.gd's own package names.
- static Error revealPackage(const QString& path);
+ // or its folder when no file manager answers. Only put.gd's own package names,
+ // unless savedHere: diagnostics.bundle wrote that path in this resident (#223).
+ static Error revealPackage(const QString& path,bool savedHere=false);
 
 signals:
  void availabilityResolved();
@@ -61,6 +62,8 @@ private:
 #endif
  QString lastShortcutError_;
  QElapsedTimer shortcutFeedbackClock_;
+ // The Show in folder button: a refusal is logged and said, never silent.
+ void showSavedPackage(const QString& path);
  void notifyMessage(const QString&, const QString&, bool warning, const QUrl& link = {}, const QString& diagnosticsOperation = {}, const QString& revealPath = {});
  std::function<void(const QString&,JsonReply)> saveDiagnostics_;
  void refreshActivity();

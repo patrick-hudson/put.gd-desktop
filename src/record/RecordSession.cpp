@@ -136,6 +136,12 @@ void RecordSession::command(const QString& command, const QJsonObject& params, R
         reply({}, {});
         return;
     }
+    if (command == "notice") {
+        // The resident's account of a stop the helper made itself (#225).
+        if (review_) review_->setNotice(params["text"].toString().left(1000));
+        reply({}, {});
+        return;
+    }
     if (command == "overlay") {
         // {visible} hides or shows the bar; {handle} (from the resident, when the
         // GNOME Shell had to leave the bar inside the area) collapses it from Record on.

@@ -1155,11 +1155,35 @@ private slots:
   const auto kept=result["incompleteUploads"].toArray();QCOMPARE(kept.size(),1);
   QCOMPARE(kept[0].toObject()["operationId"].toString(),id);QCOMPARE(kept[0].toObject()["error"].toObject()["code"].toString(),QString("fixture_denied"));
   op=store.operation(id);QVERIFY(op.items[0].error.details["incompleteUpload"].toBool());QCOMPARE(op.items[0].uploadJournal["uploadId"].toString(),QString("opaque-upload"));
+  // #226: the pass words what it left for the user once; the item remembers it was told.
+  QSignalSpy kept226(&ops,&OperationService::incompleteUploadsKept);
+  QVERIFY(!kept[0].toObject()["reported"].toBool());QVERIFY(op.items[0].error.details["incompleteUploadReported"].toBool());
+  auto notice=result["incompleteUploadNotice"].toObject();QCOMPARE(notice["count"].toInt(),1);QCOMPARE(notice["bytes"].toInteger(),op.items[0].artifact.bytes);QVERIFY(!notice["notified"].toBool());
+  QCOMPARE(notice["message"].toString(),QString("Cleanup could not cancel an incomplete upload at Synthetic opaque provider (up to %1 of stored parts). Synthetic abort denial. Its parts keep using storage. Check that put.gd's account may cancel uploads at the destination. put.gd tries again at each cleanup.").arg(ArtifactStore::sizeText(op.items[0].artifact.bytes)));
+  QCOMPARE(ops.diagnostics()["artifactCleanup"].toObject()["incompleteUploadNotice"].toObject(),notice);
+  // Refused again on the next passes, manual or automatic, it is listed but not announced again.
+  cleaned=false;ops.cleanup([&](Error e,QJsonObject r){QVERIFY(!e);result=r;cleaned=true;});QTRY_VERIFY(cleaned);
+  QCOMPARE(result["incompleteUploads"].toArray().size(),1);QVERIFY(result["incompleteUploads"].toArray()[0].toObject()["reported"].toBool());QVERIFY(!result.contains("incompleteUploadNotice"));
+  auto now=QDateTime::currentDateTimeUtc();ops.setClockForTesting([&]{return now;});
+  const auto last=[&]{return ops.diagnostics()["artifactCleanup"].toObject()["last"].toObject();};
+  const auto automaticPass=[&]{now=now.addSecs(1);ops.cleanupExpired();};
+  const auto passed=[&]{return last()["finished"].toString()==now.toString(Qt::ISODateWithMs)&&!ops.diagnostics()["artifactCleanup"].toObject()["running"].toBool();};
+  automaticPass();QTRY_VERIFY(passed());QVERIFY(!last().contains("incompleteUploadNotice"));QCOMPARE(kept226.size(),0);
+  // A newly expired upload refused on an automatic pass notifies once; the hourly passes after it don't.
+  QString second;ops.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);second=r["operationId"].toString();});
+  QTRY_VERIFY(!second.isEmpty()&&QStringList({"partial","failed"}).contains(store.operation(second).state));QTRY_COMPARE(ops.diagnostics()["activeOperations"].toInt(),0);
+  now=now.addDays(8);automaticPass();QTRY_VERIFY(passed());QCOMPARE(last()["removedOperations"].toInt(),1);
+  QCOMPARE(kept226.size(),1);notice=kept226[0][0].toJsonObject();QCOMPARE(notice["count"].toInt(),1);QVERIFY(notice["notified"].toBool());
+  QVERIFY2(notice["message"].toString().startsWith("Automatic cleanup could not cancel an incomplete upload at Synthetic opaque provider"),qPrintable(notice["message"].toString()));
+  QVERIFY(store.operation(second).items[0].error.details["incompleteUploadReported"].toBool());
+  automaticPass();QTRY_VERIFY(passed());QVERIFY(!last().contains("incompleteUploadNotice"));QCOMPARE(kept226.size(),1);
+  QCOMPARE(ops.diagnostics()["artifactCleanup"].toObject()["incompleteUploadNotice"].toObject(),notice);
   // The next cleanup tries again, and a success clears the journal for good.
   provider->abandonError={};cleaned=false;ops.cleanup([&](Error e,QJsonObject r){QVERIFY(!e);result=r;cleaned=true;});QTRY_VERIFY(cleaned);
-  QCOMPARE(result["removedOperations"].toInt(),0);QCOMPARE(result["abortedUploads"].toInt(),1);QVERIFY(result["incompleteUploads"].toArray().isEmpty());
-  op=store.operation(id);QVERIFY(op.items[0].uploadJournal.isEmpty());QVERIFY(!op.items[0].error.details.contains("incompleteUpload"));
-  cleaned=false;ops.cleanup([&](Error e,QJsonObject r){QVERIFY(!e);result=r;cleaned=true;});QTRY_VERIFY(cleaned);QCOMPARE(provider->abandoned.size(),2);
+  QCOMPARE(result["removedOperations"].toInt(),0);QCOMPARE(result["abortedUploads"].toInt(),2);QVERIFY(result["incompleteUploads"].toArray().isEmpty());
+  op=store.operation(id);QVERIFY(op.items[0].uploadJournal.isEmpty());QVERIFY(!op.items[0].error.details.contains("incompleteUpload"));QVERIFY(!op.items[0].error.details.contains("incompleteUploadReported"));
+  const auto attempts=provider->abandoned.size();
+  cleaned=false;ops.cleanup([&](Error e,QJsonObject r){QVERIFY(!e);result=r;cleaned=true;});QTRY_VERIFY(cleaned);QCOMPARE(provider->abandoned.size(),attempts);
  }
  // #202: retention applies without the user, on the resident's own clock.
  void automaticCleanupAppliesRetentionWithoutTheUser() {
