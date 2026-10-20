@@ -24,6 +24,8 @@ public:
  void setUiProcess(qint64) override;
  void invalidateCopyEligibility() override;
  bool selectsRegions()const override;
+ // The loaded extension is older than the packaged one: a log-out loads it.
+ bool outdated()const;
  void selectRegion(RecordingShell::Reply) override;
  void cancelSelection() override;
  void showFrame(const QJsonObject&,RecordingShell::Reply) override;
@@ -36,6 +38,8 @@ private slots:
  void helperClipboardChanged(qulonglong revision);
  void helperChanged();
 private:
+ // Why a region cannot be recorded through the Shell right now.
+ Error recordingShellError()const;
  using Reply=std::function<void(Error,QJsonObject)>;
  struct Transfer {QString id;ResourceLimits limits;QJsonObject metadata;QByteArray bytes;std::function<void(PayloadResult)> reply;quint64 generation=0;};
  void discover();

@@ -260,8 +260,9 @@ void RecordSession::select(Reply reply) {
     }
 #endif
     // GNOME's selector lives in the Shell extension: the resident asks it for the
-    // rectangle before the helper starts. Without one there is no honest region.
-    reply({"region_unavailable", "This desktop has no region selector for recordings; pass target.rect, or enable the put.gd GNOME Shell extension", {}}, {});
+    // rectangle before the helper starts, and says itself why it cannot (#131).
+    // Without one there is no honest region.
+    reply({"region_unavailable", "This desktop has no region selector for recordings; pass target.rect", {}}, {});
 }
 void RecordSession::completeSelection(const QJsonObject& params, Reply reply) {
     const auto r = params["rect"].toArray();

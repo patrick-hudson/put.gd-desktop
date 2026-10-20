@@ -316,7 +316,9 @@ void RecordingService::beginPrepare(quint64 generation) {
     auto& s = *session_;
     // A region without a rectangle is chosen by the shell where the helper
     // cannot show a selector (GNOME); the helper then streams just that area.
-    if (s.target.kind == "region" && s.target.rect.isEmpty() && shell_ && shell_->selectsRegions()) {
+    // A shell that cannot select says why (extension disabled, or updated and
+    // still loaded in its old version, #131) instead of the helper's generic refusal.
+    if (s.target.kind == "region" && s.target.rect.isEmpty() && shell_) {
         s.selector = "shell";
         const auto token = ++s.selection;
         host_.observe(s.op);
