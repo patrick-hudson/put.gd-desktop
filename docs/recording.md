@@ -81,7 +81,7 @@ All methods go through `putgd-cli` unchanged. `id` is the recording ID.
 | `recording.select` | `{id, rect: [x, y, w, h]}` | completes an open region selector with that rectangle as a drag would (X11 root pixels, logical desktop pixels on Wayland); `recording_state` when no selector is open |
 | `recording.start` / `pause` / `resume` / `stop` | `{id}` | acknowledged once the backend reached the state; a duplicate of the in-flight command returns the current state, a different one is `recording_busy`; `stop` returns `durationUs` and enters `reviewing`. A `stop` that arrives after the helper stopped on its own (its budget) answers with the `reviewing` state, like a duplicate stop |
 | `recording.cancel` | `{id}` | discards the clip; the operation ends `cancelled` |
-| `recording.inspect` | `{id}` | state, pending command, `selecting`, target, config, canvas, `durationUs`, `retainedUs`, edit, progress (`exportFraction` while exporting), `overlayExcluded`, `overlayPlacement`, `lastExport`, `stopReason` (`user` or `budget`) once the capture stopped, error; an ended session is `recording_unavailable` and its operation holds the outcome |
+| `recording.inspect` | `{id}` | state, pending command, `selecting`, target, config, canvas, `durationUs`, `retainedUs`, edit, progress (`exportFraction` while exporting), `overlayExcluded`, `overlayPlacement`, `lastExport`, `stopReason` (`user` or `budget`) once the capture stopped, and after a budget stop `stopDetails` (`reason` `disk_space` or `max_file_bytes`, `message`, `hint`, `budgetBytes`, `maxFileBytes`, `durationUs`, and for the disk `freeBytes`, `reserveBytes`, `availableBytes`; see [Capture and export engine](#capture-and-export-engine-x11)), error; an ended session is `recording_unavailable` and its operation holds the outcome |
 | `recording.raise` / `recording.overlay` | `{id}` / `{id, visible}` | overlay control; a hidden bar stays hidden through state changes until `raise` (a full-screen clip without the handle); the recording indicator stays visible |
 | `recording.edit` | `{id, revision, commands[1–100]}` | atomic `setTrim {start, end\|null}`, `resetTrim`, `addMask {mask}`, `updateMask {maskId, mask}`, `removeMask {maskId}` |
 | `recording.preview` | `{id, time, maxEdge? 64–1600}` | one PNG frame (base64 `png`) at clip time with current trim/masks, plus `retained`, `outputTimeUs`, `revision`; returned only to the requesting client |
@@ -327,7 +327,7 @@ backend.
 | `progress {durationUs, bytes, paused, encoder, audioEncoder}` / `{exportFraction}` | retained time and file size while recording (once a second); export progress (at most ten a second, so a fast GPU export stays inside the control channel's frame rate) |
 | `selecting {selector: x11\|kde-layer-shell}` | the helper's region selector is open; `recording.select` can complete it |
 | `started`, `paused`, `resumed` | the bar's Record / Pause / Resume |
-| `stopped {durationUs, canvas, reason: user\|budget}` | the clip is finalized and under review |
+| `stopped {durationUs, canvas, reason: user\|budget}` | the clip is finalized and under review; after `budget` the resident sends the helper `notice {text}`, which the review window shows as its banner |
 | `cancelled` | Cancel on the bar, Discard in the review, the window closed |
 | `configChanged {config}` | format/codec/audio changed on the bar (ready) or the format changed in review |
 | `edit {revision, commands}` | a review-window proposal at the revision it displayed |
@@ -591,6 +591,18 @@ same message, when that third would be under 64 MiB, about a minute of a busy
 1080p screen, instead of starting a recording that ends itself within seconds
 (#213).
 Progress events carry `durationUs`, `bytes`, `paused` and the encoder names.
+
+When the helper stops a capture on its budget, the resident says why (#225). The
+reason is `max_file_bytes` when the Largest file limit set the budget, and `disk_space`
+when free disk set it or the disk has less than two minimum budgets left after the
+capture. The review window shows a banner above the frame, the tray posts
+**put.gd — recording stopped** with the same words, and `recording.inspect` returns
+them as `stopDetails`, for example: "Recording stopped at 1:42: it reached the Largest
+file limit (2 MiB; recording stops at 1 MiB to leave room to finish the file). The clip
+so far is kept for review; raise Largest file in Settings > Uploads to record longer."
+A disk stop gives the free space and the reserve and asks to free up space before the
+next recording. Either way the clip recorded so far stays in review, ready to trim,
+save or upload. The resident logs `Recording stopped on its budget` with the figures.
 
 Export runs in the helper with the FFmpeg libraries on the working clip:
 `trim` in stream ticks, `setpts` rebase, RGB conversion, per-mask
