@@ -413,6 +413,12 @@ it ignores the audio server's latency, and it doesn't play on GNOME Wayland.
 The raw numbers per path are in
 [the receipt](evidence/2026-10-19-wayland-av-sync.md).
 
+Across a pause the offset now holds: after a resume the working clip moves by
+at most 0.6 ms and the export by at most 1.7 ms relative to the working clip
+(f44 Mutter and d69 KWin, MP4 and WebM), where nightly `134a9be` stepped the
+capture by up to 17 ms and moved every export 10 ms earlier
+([receipt](evidence/2026-10-20-recording-reliability.md); portal paths: #166).
+
 Lab A/B runs: `PUTGD_RECORD_PIPEWIRE_TIMESTAMPS=compositor` maps each frame's
 header time instead of stamping its arrival, and `=legacy` restores the
 pipeline before #86 (`pipewiresrc do-timestamp=true` on its own stream clock).
