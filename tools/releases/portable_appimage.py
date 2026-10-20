@@ -632,13 +632,14 @@ def main() -> int:
     subprocess.run([str(executables["appimagetool-x86_64.AppImage"]), "--runtime-file",
                     str(executables["runtime-x86_64"]), "--mksquashfs-opt=-b",
                     "--mksquashfs-opt=16384", *(("-u", update[0]) if update else ()), str(appdir), str(target)],
-                   check=True, env=environment)
+                   check=True, env=environment, cwd=output)
     target.chmod(0o755)
     if appimage_update.read_update_information(target) != (update[0] if update else ""):
         raise ValueError("AppImage update information differs from the requested value")
     zsync = output / appimage_update.zsync_name(target.name)
-    # appimagetool may write its own .zsync with a relative URL; ours names the
-    # image's absolute release URL, so it works behind the site's redirect.
+    # With -u, appimagetool runs its bundled zsyncmake in its working directory,
+    # naming the image by a relative URL. Ours names the image's absolute release
+    # URL, so it works behind the site's redirect.
     zsync.unlink(missing_ok=True)
     if update:
         subprocess.run([str(executables["zsyncmake"]), "-u", update[1], "-o", str(zsync), target.name],
