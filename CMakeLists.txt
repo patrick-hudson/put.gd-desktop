@@ -591,7 +591,7 @@ if(BUILD_TESTING)
       set_tests_properties(image_job_integration PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 120)
       # #112: video posters through the transient putgd-record helper.
       add_executable(test_poster_helper_fixture tests/fixtures/poster_helper_fixture.cpp)
-      target_link_libraries(test_poster_helper_fixture PRIVATE Qt6::Gui)
+      target_link_libraries(test_poster_helper_fixture PRIVATE putgd_build_options Qt6::Gui)
       add_executable(test_poster_job tests/integration/test_poster_job.cpp)
       target_link_libraries(test_poster_job PRIVATE putgd_core Qt6::Test)
       target_compile_definitions(test_poster_job PRIVATE PUTGD_POSTER_FIXTURE="$<TARGET_FILE:test_poster_helper_fixture>")
