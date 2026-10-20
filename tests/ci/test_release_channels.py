@@ -59,8 +59,9 @@ class Workflows(unittest.TestCase):
         summary = job(ci, 'ci')
         self.assertIn('name: CI', summary)
         self.assertIn('if: always()', summary)
-        self.assertIn('needs: [changes, contracts, linux, portable, packages]', summary)
+        self.assertIn('needs: [changes, contracts, linux, portable, packages, pipewire]', summary)
         self.assertIn("'packages': 'success' if selected.get('packages') == 'true' else 'skipped'", summary)
+        self.assertIn("'pipewire': 'success' if selected.get('pipewire') == 'true' else 'skipped'", summary)
 
     def test_path_selection_gates_only_the_heavy_jobs(self):
         ci = workflow('ci.yml')
@@ -69,6 +70,23 @@ class Workflows(unittest.TestCase):
         for name in ('linux', 'portable'):
             self.assertIn("if: needs.changes.outputs.build == 'true'", job(ci, name))
         self.assertIn("if: needs.changes.outputs.packages == 'true'", job(ci, 'packages'))
+
+    def test_pipewire_check_links_the_appimage_plugin_on_a_pipewire_16_container(self):
+        pipewire = job(workflow('ci.yml'), 'pipewire')
+        self.assertIn('needs: [changes, packages]', pipewire)
+        self.assertIn("needs.changes.outputs.pipewire == 'true'", pipewire)
+        # This run's AppImage when packages ran; otherwise a checksum-verified nightly's.
+        self.assertIn("if: needs.packages.result == 'success'\n        uses: actions/download-artifact@", pipewire)
+        self.assertIn('name: release-appimage', pipewire)
+        self.assertIn("if: needs.packages.result == 'skipped'", pipewire)
+        self.assertIn('sha256sum --check --strict', pipewire)
+        self.assertIn('--appimage-extract', pipewire)
+        self.assertRegex(pipewire, r'ubuntu:26\.04@sha256:[0-9a-f]{64}')
+        self.assertIn('bash tests/desktop/pipewire/ci_check.sh --install build/pipewire/squashfs-root', pipewire)
+        check = (ROOT / 'tests/desktop/pipewire/ci_check.sh').read_text()
+        for text in ('1.5.81', 'recorder_properties.cpp', 'src/record/WaylandAcquisition.cpp',
+                     'for mode in kwin mutter', 'kwin min-buffers=8'):
+            self.assertIn(text, check)
 
     def test_contracts_run_every_group_and_lint_workflows(self):
         contracts = job(workflow('ci.yml'), 'contracts')
