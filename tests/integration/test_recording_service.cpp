@@ -367,7 +367,10 @@ private slots:
   const auto cancelled=call(*h.server,"operation.cancel",{{"id",id}});QVERIFY2(!cancelled.error,qPrintable(cancelled.error.message));QVERIFY(cancelled.result["cancellationRequested"].toBool());
   QTRY_COMPARE(h.rec("inspect",{{"id",id}}).error.code,QString("recording_unavailable"));
   QString state;for(int i=0;i<200&&state!="cancelled";++i){state=call(*h.server,"operation.inspect",{{"id",id}}).result["state"].toString();if(state!="cancelled")QTest::qWait(10);}QCOMPARE(state,QString("cancelled"));QCOMPARE(h.backend->discards,1);
-  QVERIFY(h.operations->activeObservations().isEmpty());
+  // The journal answers "cancelled" once the background save lands; the live
+  // observation is cleared by that save's completion, queued to this thread.
+  // The bounded wait still fails if the observation never ends.
+  QTRY_VERIFY(h.operations->activeObservations().isEmpty());
  }
  // GNOME: the Shell selects the rectangle before the helper starts a stream,
  // draws the ring and dimming, and moves the bar; overlayExcluded follows it.
