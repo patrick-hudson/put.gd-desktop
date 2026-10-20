@@ -19,6 +19,7 @@
 #include <QElapsedTimer>
 #include <QTimer>
 #include <QScopeGuard>
+#include <QRegularExpression>
 #include <csignal>
 #include <sys/types.h>
 #include "fixtures/X11DesktopFixture.h"
@@ -91,6 +92,14 @@ signals:
  void NotificationClosed(uint id, uint reason);
 };
 
+class FileManagerPeer final : public QObject {
+ Q_OBJECT
+ Q_CLASSINFO("D-Bus Interface", "org.freedesktop.FileManager1")
+public:
+ QList<QStringList> shown;
+public slots:
+ void ShowItems(const QStringList& uris, const QString&) {shown.append(uris);}
+};
 class ActivitySignalPeer final:public QObject {
  Q_OBJECT
 public:int icons=0,tooltips=0;
@@ -523,6 +532,43 @@ private slots:
   emit notifications.ActionInvoked(2,"default");QTRY_COMPARE(opened(),links.mid(0,2));
   emit notifications.NotificationClosed(3,2);emit notifications.ActionInvoked(3,"default");QTest::qWait(50);QCOMPARE(opened(),links.mid(0,2));
   QVERIFY(!QCoreApplication::instance()->inherits("QGuiApplication"));
+ }
+ void failedUploadOffersDiagnosticsAndShowInFolder() {
+  // #122: the failure toast saves a package for that operation; the saved toast shows it in the file manager.
+  QTemporaryDir directory;QVERIFY(directory.isValid());const auto output=directory.filePath("opened-folders");
+  QFile opener(directory.filePath("gio"));QVERIFY(opener.open(QIODevice::WriteOnly));
+  opener.write(("#!/bin/sh\n[ \"$#\" -eq 2 ] && [ \"$1\" = open ] || exit 1\nprintf '%s\\n' \"$2\" >> '"+output+"'\n").toUtf8());opener.close();
+  QVERIFY(opener.setPermissions(QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner));
+  const auto previousPath=qgetenv("PATH");auto restorePath=qScopeGuard([&]{qputenv("PATH",previousPath);});qputenv("PATH",directory.path().toUtf8()+":"+previousPath);
+  auto opened=[&]{QFile file(output);if(!file.open(QIODevice::ReadOnly))return QStringList{};return QString::fromUtf8(file.readAll()).split('\n',Qt::SkipEmptyParts);};
+  ProviderRegistry providers;auto provider=std::make_shared<OpaqueProvider>();provider->failUpload=true;providers.add("opaque",provider);
+  SettingsService settings(directory.filePath("config.json"),[&](auto id,auto value){return providers.validate(id,value);});QVERIFY(settings.save(configuration(directory.path()),{}));
+  Source source;source.payload=textPayload();OperationService operations(directory.filePath("data"),settings,providers,source);QTRY_VERIFY(operations.ready());
+  TrayController controller(operations,[](const QString&){},[]{});QTRY_VERIFY(controller.available());
+  const auto package=directory.filePath("putgd-diagnostics-20261020-010203Z.zip");{QFile file(package);QVERIFY(file.open(QIODevice::WriteOnly));file.write("PK");}
+  QStringList requested;controller.setDiagnosticsSaver([&](const QString& id,JsonReply reply){requested.append(id);reply({},{{"path",package},{"bytes",2048}});});
+  QString id;operations.invoke("clipboard",[&](Error error,QJsonObject value){QVERIFY(!error);id=value["operationId"].toString();});
+  QTRY_COMPARE(notifications.values.size(),1);QVERIFY2(QRegularExpression("put.gd — (failed|partial)").match(notifications.values[0]["summary"].toString()).hasMatch(),qPrintable(notifications.values[0]["summary"].toString()+" / "+notifications.values[0]["body"].toString()));
+  QCOMPARE(notifications.values[0]["actions"].toStringList(),QStringList({"save-diagnostics","Save diagnostics for this upload"}));
+  emit notifications.ActionInvoked(1,"default");QTest::qWait(50);QVERIFY(requested.isEmpty());
+  emit notifications.ActionInvoked(1,"save-diagnostics");QTRY_COMPARE(requested,QStringList{id});
+  QTRY_COMPARE(notifications.values.size(),2);QCOMPARE(notifications.values[1]["summary"].toString(),QString("put.gd — diagnostics saved"));
+  QVERIFY(notifications.values[1]["body"].toString().contains("putgd-diagnostics-20261020-010203Z.zip"));QVERIFY(notifications.values[1]["body"].toString().contains("Nothing was uploaded"));
+  QCOMPARE(notifications.values[1]["actions"].toStringList(),QStringList({"show-in-folder","Show in folder"}));
+  // The action is spent once used.
+  emit notifications.ActionInvoked(1,"save-diagnostics");QTest::qWait(50);QCOMPARE(requested.size(),1);
+  // Without a file manager on the bus, Show in folder opens the package's folder.
+  emit notifications.ActionInvoked(2,"show-in-folder");QTRY_COMPARE(opened(),QStringList{QUrl::fromLocalFile(directory.path()).toString(QUrl::FullyEncoded)});
+  // With one, the package is selected.
+  FileManagerPeer files;QVERIFY(peer.registerObject("/org/freedesktop/FileManager1",&files,QDBusConnection::ExportAllSlots));QVERIFY(peer.registerService("org.freedesktop.FileManager1"));
+  auto unregister=qScopeGuard([&]{peer.unregisterService("org.freedesktop.FileManager1");peer.unregisterObject("/org/freedesktop/FileManager1");});
+  QVERIFY(!TrayController::revealPackage(package));QTRY_COMPARE(files.shown.size(),1);QCOMPARE(files.shown[0],QStringList{QUrl::fromLocalFile(package).toString(QUrl::FullyEncoded)});QTest::qWait(50);QCOMPARE(opened().size(),1);
+  QCOMPARE(TrayController::revealPackage(directory.filePath("other.zip")).code,QString("invalid_request"));
+  QCOMPARE(TrayController::revealPackage("relative/putgd-diagnostics-20261020-010203Z.zip").code,QString("invalid_request"));
+  QCOMPARE(TrayController::revealPackage(directory.filePath("putgd-diagnostics-20261020-010204Z.zip")).code,QString("diagnostics_package_missing"));
+  // A failed save says so instead.
+  controller.setDiagnosticsSaver([&](const QString&,JsonReply reply){reply({"diagnostics_output_unavailable","Synthetic folder failure",{}},{});});
+  controller.saveDiagnostics(id);QTRY_COMPARE(notifications.values.size(),3);QCOMPARE(notifications.values[2]["body"].toString(),QString("Synthetic folder failure"));QVERIFY(notifications.values[2]["actions"].toStringList().isEmpty());
  }
  void coreControllerRoutesAllFourActionsWithoutViews() {
   QTemporaryDir directory; QVERIFY(directory.isValid()); ProviderRegistry providers;

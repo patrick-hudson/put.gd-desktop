@@ -2,6 +2,8 @@
 #include "ui/HistoryWindow.h"
 #include "ui/RedesignTheme.h"
 #include "fixtures/UiSessionFixture.h"
+#include "app/DiagnosticsBundle.h"
+#include <QFileInfo>
 #include <QLayout>
 #include <QListView>
 #include <QComboBox>
@@ -212,6 +214,26 @@ private slots:
  }
  void failedAutomaticCopyCanRetryTheFullResultWithoutAnotherUpload(){
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));HistoryCopyFailureSource source;OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);window.show();QString id;operations.invoke("clipboard",[&](Error e,QJsonObject value){QVERIFY(!e);id=value["operationId"].toString();});QTRY_COMPARE(source.copies,1);QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);auto* list=window.findChild<QListView*>("historyList");auto* model=qobject_cast<HistoryModel*>(list->model());QTRY_COMPARE(model->rowCount(),1);selectRow(list,0);QTRY_VERIFY(window.findChild<QLabel*>("historyOutcome")->text().contains("Could not copy"));QVERIFY(!model->data(model->index(0)).toString().contains(id));QVERIFY(!model->data(model->index(0),Qt::ToolTipRole).toString().contains(id));QVERIFY(!window.findChild<QLabel*>("historySummary")->text().contains(id));QVERIFY(!window.findChild<QPlainTextEdit*>("historyDetails")->isVisible());source.fail=false;QVERIFY(rowMenuAction(list,"Copy result"));QTRY_COMPARE(source.copies,2);QTRY_VERIFY(model->data(model->index(0),HistoryModel::SubtitleRole).toString().contains("Link copied"));QCOMPARE(provider->uploads.load(),1);QCOMPARE(source.reads,1);QVERIFY(rowMenuAction(list,"Copy details"));QTRY_VERIFY(QApplication::clipboard()->text().contains(id));QVERIFY(!QApplication::clipboard()->text().contains("synthetic source content"));
+ }
+ void failedUploadSavesDiagnosticsForThatOperation(){
+  // #122: a failed row offers Save diagnostics for this upload, for that one operation.
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->failUpload=true;registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});
+  auto config=configuration(d.path());QTemporaryDir out;auto preferences=config["preferences"].toObject();preferences["diagnostics"]=QJsonObject{{"debugLogging",false},{"packageFolder",out.path()}};config["preferences"]=preferences;QVERIFY(settings.save(config,{}));
+  Source source;source.payload=textPayload();OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);
+  DiagnosticsBundles bundles(operations,d.filePath("state"));fixture.server.setDiagnosticsBundles(&bundles);QJsonArray notified;fixture.server.setDiagnosticsNotifications([&](const QJsonObject& saved){notified.append(saved);},[](const QString&){return Error{};});
+  HistoryWindow window(fixture.session);window.show();auto* list=window.findChild<QListView*>("historyList");
+  QString id;operations.invoke("clipboard",[&](Error e,QJsonObject value){QVERIFY(!e);id=value["operationId"].toString();});QTRY_COMPARE(provider->uploads.load(),1);QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+  QTRY_COMPARE(list->model()->rowCount(),1);QTRY_VERIFY(list->model()->data(list->model()->index(0,0),HistoryModel::FailedRole).toBool());selectRow(list,0);
+  auto* save=window.findChild<QPushButton*>("saveHistoryDiagnostics");QVERIFY(save);QTRY_VERIFY(save->isVisible());QCOMPARE(save->text(),QString("Save diagnostics for this upload"));
+  save->click();QTRY_COMPARE(notified.size(),1);
+  const auto path=notified[0].toObject()["path"].toString();QCOMPARE(QFileInfo(path).absolutePath(),QFileInfo(out.path()).absoluteFilePath());QVERIFY(QFileInfo(path).isFile());QCOMPARE(notified[0].toObject()["operations"].toInt(),1);
+  // The UI-driving path (ui.historySaveDiagnostics) selects the row by operation ID.
+  bool done=false;Error error;QJsonObject result;
+  fixture.server.setUiCommand([&](const QString& name,const QJsonObject& params,JsonReply reply){QCOMPARE(name,QString("historySaveDiagnostics"));window.saveDiagnosticsFor(params["id"].toString(),std::move(reply));});
+  QTest::qWait(1100); // a second package in the same second gets a -2 suffix; either is fine
+  fixture.server.dispatch({{"schemaVersion",1},{"requestId","ui"},{"session",fixture.server.socketPath()},{"method","ui.historySaveDiagnostics"},{"params",QJsonObject{{"id",id}}}},[&](Error e,QJsonObject r){error=e;result=r;done=true;});
+  QTRY_VERIFY_WITH_TIMEOUT(done,15000);QVERIFY2(!error,qPrintable(error.message));QVERIFY(QFileInfo(result["path"].toString()).isFile());QCOMPARE(notified.size(),2);
+  done=false;window.saveDiagnosticsFor("missing-operation",[&](Error e,QJsonObject){error=e;done=true;});QVERIFY(done);QCOMPARE(error.code,QString("history_row_not_found"));
  }
  void localSaveRetryUsesRetainedArtifactWithoutRecaptureOrUpload(){
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});auto config=configuration(d.path());const auto blocked=d.filePath("blocked-archive");QVERIFY(!putgd::test::fixture(d.path(),"blocked-archive","synthetic blocker").isEmpty());auto archive=config["archive"].toObject();archive["root"]=blocked;archive["keepUploads"]=true;config["archive"]=archive;QVERIFY(settings.save(config,{}));Source source;source.payload=textPayload();OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);window.show();QString id;operations.invoke("clipboard",[&](Error e,QJsonObject value){QVERIFY(!e);id=value["operationId"].toString();});QTRY_COMPARE(provider->uploads.load(),1);QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);auto* list=window.findChild<QListView*>("historyList");QTRY_COMPARE(list->model()->rowCount(),1);selectRow(list,0);QTRY_VERIFY(window.findChild<QLabel*>("historySummary")->text().contains("Local save failed"));QVERIFY(QFile::remove(blocked));QVERIFY(QDir().mkpath(blocked));QVERIFY(rowMenuAction(list,"Retry local save"));QTRY_VERIFY(window.findChild<QLabel*>("historySummary")->text().contains("Saved locally"));HistoryStore ledger(operations.databasePath());QVERIFY(QFileInfo::exists(ledger.operation(id).items.first().local.path));QCOMPARE(source.reads,1);QCOMPARE(provider->uploads.load(),1);

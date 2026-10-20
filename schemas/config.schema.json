@@ -905,6 +905,12 @@
               "type": "boolean",
               "default": false,
               "description": "Keep debug records in the persistent log. put.gd turns this off again 24 hours after it was turned on. AWS SDK trace logging is never enabled."
+            },
+            "packageFolder": {
+              "type": ["string", "null"],
+              "minLength": 1,
+              "pattern": "^/",
+              "description": "The folder Settings → Create diagnostics package last saved to. Omitted or null means <archive root>/diagnostics. Written by put.gd."
             }
           }
         }

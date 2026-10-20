@@ -308,9 +308,14 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
             valid = valid && color.isString() && QRegularExpression("^#[0-9a-f]{6}$").match(color.toString()).hasMatch();
         if (!valid) return invalid("/preferences/editorRecentColors", "Recent editor colors are up to 6 lowercase #rrggbb values.");
     }
-    if (preferences.contains("diagnostics") && (!preferences["diagnostics"].isObject() || !keys(preferences["diagnostics"].toObject(), {"debugLogging"}) ||
-        !preferences["diagnostics"].toObject()["debugLogging"].isBool()))
-        return invalid("/preferences/diagnostics", "Diagnostics preferences hold only debugLogging, true or false.");
+    if (preferences.contains("diagnostics")) {
+        // debugLogging, and the folder Create diagnostics package last saved to (#122).
+        const auto diagnostics = preferences["diagnostics"].toObject();
+        const bool hasFolder = diagnostics.contains("packageFolder");
+        if (!preferences["diagnostics"].isObject() || !keys(diagnostics, hasFolder ? QStringList{"debugLogging", "packageFolder"} : QStringList{"debugLogging"}) ||
+            !diagnostics["debugLogging"].isBool() || (hasFolder && !folder(diagnostics["packageFolder"], true)))
+            return invalid("/preferences/diagnostics", "Diagnostics preferences hold debugLogging (true or false) and an optional absolute packageFolder.");
+    }
     if (preferences.contains("uploadClipboardBehavior") && !choice(preferences["uploadClipboardBehavior"], {"each_link", "list"}))
         return invalid("/preferences/uploadClipboardBehavior", "Choose each_link or list for upload clipboard behavior.");
     return {};

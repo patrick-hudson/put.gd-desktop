@@ -51,6 +51,15 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
             ('reorder_destinations', {'order': ['a' * 65], 'expected_revision': 'r'}),
             ('move_destination', {'direction': 'left'}),
             ('move_destination', {'direction': 'up', 'profile_id': ''}),
+            ('settings_diagnostics', {'action': 'shell'}),
+            ('settings_diagnostics', {'action': 'setDebugLogging'}),
+            ('settings_diagnostics', {'action': 'inspect', 'enabled': True}),
+            ('settings_diagnostics', {'action': 'setPackage', 'folder': 'relative'}),
+            ('settings_diagnostics', {'action': 'savePackage', 'folder': '/synthetic'}),
+            ('settings_diagnostics', {'action': 'clearLogs', 'operation_id': 'synthetic-operation'}),
+            ('history_save_diagnostics', {'id': ''}),
+            ('show_diagnostics_package', {'path': 'relative.zip'}),
+            ('create_diagnostics_bundle', {'preview': True, 'notify': True}),
         ]:
             result = await server.call_tool(name, args)
             self.assertIn('invalid_request', str(result), name)
@@ -142,7 +151,8 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                             'raise_editor', 'get_recording_capabilities', 'prepare_recording', 'control_recording',
                             'get_recording', 'select_recording_region', 'set_recording_overlay', 'edit_recording', 'preview_recording',
                             'save_recording_copy', 'upload_recording', 'reorder_destinations', 'move_destination',
-                            'clear_logs', 'create_diagnostics_bundle'}
+                            'clear_logs', 'create_diagnostics_bundle', 'get_diagnostics_upload_target', 'show_diagnostics_package',
+                            'settings_diagnostics', 'history_save_diagnostics'}
                 self.assertEqual({tool.name for tool in discovered}, expected)
                 for tool in discovered:
                     self.assertEqual(tool.inputSchema['type'], 'object')
@@ -156,6 +166,10 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('perform_action', {'action': 17}),
                     ('create_diagnostics_bundle', {'output': 'relative.zip'}),
                     ('create_diagnostics_bundle', {'include_names': 'yes'}),
+                    ('create_diagnostics_bundle', {'profile_id': 'synthetic-s3'}),
+                    ('create_diagnostics_bundle', {'copy_link': True}),
+                    ('create_diagnostics_bundle', {'upload': 'yes'}),
+                    ('create_diagnostics_bundle', {'preview': True, 'upload': True}),
                     ('list_history', {'limit': True}),
                     ('delete_history_uploads', {'ids': ['synthetic-entry'], 'acknowledgement': False}),
                 ]:
@@ -200,6 +214,20 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('create_diagnostics_bundle', {}, 'diagnostics.bundle', {}),
                     ('create_diagnostics_bundle', {'operation_id': 'synthetic-operation', 'since': '24h', 'include_names': True, 'output': '/synthetic dir/package.zip'},
                      'diagnostics.bundle', {'operation': 'synthetic-operation', 'since': '24h', 'includeNames': True, 'output': '/synthetic dir/package.zip'}),
+                    ('create_diagnostics_bundle', {'preview': True}, 'diagnostics.bundle', {'preview': True}),
+                    ('create_diagnostics_bundle', {'operation_id': 'synthetic-operation', 'notify': True}, 'diagnostics.bundle', {'operation': 'synthetic-operation', 'notify': True}),
+                    ('show_diagnostics_package', {'path': '/synthetic dir/putgd-diagnostics-20261020-010203Z.zip'}, 'diagnostics.reveal', {'path': '/synthetic dir/putgd-diagnostics-20261020-010203Z.zip'}),
+                    ('settings_diagnostics', {'action': 'inspect'}, 'ui.diagnostics', {'action': 'inspect'}),
+                    ('settings_diagnostics', {'action': 'setDebugLogging', 'enabled': False}, 'ui.diagnostics', {'action': 'setDebugLogging', 'enabled': False}),
+                    ('settings_diagnostics', {'action': 'openPackage', 'operation_id': 'synthetic-operation', 'include_names': True}, 'ui.diagnostics', {'action': 'openPackage', 'operation': 'synthetic-operation', 'includeNames': True}),
+                    ('settings_diagnostics', {'action': 'setPackage', 'folder': '/synthetic dir'}, 'ui.diagnostics', {'action': 'setPackage', 'folder': '/synthetic dir'}),
+                    ('settings_diagnostics', {'action': 'savePackage'}, 'ui.diagnostics', {'action': 'savePackage'}),
+                    ('history_save_diagnostics', {'id': 'synthetic-operation'}, 'ui.historySaveDiagnostics', {'id': 'synthetic-operation'}),
+                    ('create_diagnostics_bundle', {'upload': True}, 'diagnostics.bundle', {'upload': True}),
+                    ('create_diagnostics_bundle', {'upload': True, 'profile_id': 'synthetic-s3', 'copy_link': True},
+                     'diagnostics.bundle', {'upload': True, 'profileId': 'synthetic-s3', 'copyLink': True}),
+                    ('get_diagnostics_upload_target', {}, 'diagnostics.uploadTarget', {}),
+                    ('get_diagnostics_upload_target', {'profile_id': 'synthetic-s3'}, 'diagnostics.uploadTarget', {'profileId': 'synthetic-s3'}),
                     ('get_view_state', {}, 'ui.viewState', {}),
                     ('perform_action', {'action': 'edit'}, 'action.invoke', {'action': 'edit'}),
                     ('open_editor', {}, 'editor.open', {'source': 'region'}),
