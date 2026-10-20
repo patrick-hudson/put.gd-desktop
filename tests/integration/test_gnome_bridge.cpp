@@ -89,7 +89,8 @@ class GnomeHelperFixture final:public QObject {
  QString copyId_,copyMime_;QByteArray copyBytes_;qulonglong copySize_=0;
  static QString json(const QJsonObject& value){return QString::fromUtf8(QJsonDocument(value).toJson(QJsonDocument::Compact));}
 public slots:
- QString Hello(){++hellos_;return json({{"version",1},{"shellMajor",50},{"uiProcessVersion",1},{"clipboardRevision",1}});}
+ // PUTGD_TEST_EXTENSION_VERSION plays an older extension still loaded after an upgrade (#131).
+ QString Hello(){++hellos_;return json({{"version",1},{"shellMajor",50},{"uiProcessVersion",1},{"clipboardRevision",1},{"extensionVersion",qEnvironmentVariableIntValue("PUTGD_TEST_EXTENSION_VERSION")?qEnvironmentVariableIntValue("PUTGD_TEST_EXTENSION_VERSION"):putgd::gnome::extensionVersion}});}
  QString SetUiProcess(uint pid){
   registrations_.append(int(pid));
   if(pid==failPid_&&failures_){--failures_;return json({{"error",QJsonObject{{"code","helper_unavailable"},{"message","Synthetic registration failure"},{"details",QJsonObject{}}}}});}
@@ -137,7 +138,10 @@ private:
   return QDBusConnection::sessionBus().call(request,QDBus::Block,2000);
  }
  QJsonObject state(){return QJsonDocument::fromJson(control("State").arguments().value(0).toString().toUtf8()).object();}
- bool startFixture(){
+ bool startFixture(int extensionVersion=0){
+  auto environment=QProcessEnvironment::systemEnvironment();
+  if(extensionVersion)environment.insert("PUTGD_TEST_EXTENSION_VERSION",QString::number(extensionVersion));else environment.remove("PUTGD_TEST_EXTENSION_VERSION");
+  fixture_.setProcessEnvironment(environment);
   fixture_.start(QCoreApplication::applicationFilePath(),{"--gnome-helper-fixture"});
   if(!fixture_.waitForStarted(3000)||!fixture_.waitForReadyRead(3000))return false;
   return fixture_.readLine()=="ready\n";
@@ -238,6 +242,20 @@ private slots:
   QCOMPARE(control("FailRegistration",{uint(0),uint(1)}).type(),QDBusMessage::ReplyMessage);source.setUiProcess(0);QVERIFY(!windowAvailable(source));
   source.setUiProcess(5678);QVERIFY(windowAvailable(source));QTest::qWait(3300);
   QCOMPARE(state()["currentPid"].toInt(),5678);QCOMPARE(state()["registrations"].toArray(),(QJsonArray{0,1234,0,5678}));
+ }
+ void outdatedExtensionAsksForALogOut(){
+  // The package was upgraded while version 1 (no recording protocol) stays loaded.
+  stopFixture();QVERIFY(startFixture(1));
+  GnomeAdapter source;QTRY_VERIFY(helperAvailable(source));
+  const auto helper=source.capabilities()["helper"].toObject();
+  QVERIFY(helper["outdated"].toBool());QCOMPARE(helper["packagedExtensionVersion"].toInt(),putgd::gnome::extensionVersion);
+  QVERIFY(!source.selectsRegions());
+  Error error;bool done=false;source.selectRegion([&](Error value,QJsonObject){error=value;done=true;});QVERIFY(done);
+  QCOMPARE(error.code,QString("helper_outdated"));QVERIFY2(error.message.contains("log out and back in"),qPrintable(error.message));
+  // Screenshots keep working with the loaded extension.
+  QVERIFY(source.capabilities()["capture"].toObject()["region"].toObject()["available"].toBool());
+  QCOMPARE(source.regionError().code,QString("helper_outdated"));
+  stopFixture();QTRY_VERIFY(!helperAvailable(source));QVERIFY(startFixture());QTRY_VERIFY(helperAvailable(source));QVERIFY(!source.capabilities()["helper"].toObject()["outdated"].toBool());
  }
  void ownerReplacementRegistersLatestPid(){
   GnomeAdapter source;QTRY_VERIFY(windowAvailable(source));source.setUiProcess(1234);

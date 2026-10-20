@@ -16,6 +16,7 @@ import subprocess
 from github_api import GitHub, full_sha, remote_tag_commit, tag_exists
 from release_bundle import expected_members
 from proton_sources import PART_NAMES
+from debug_symbols import asset_name as debug_asset_name
 from release_identity import parse_tag
 from verify_tag import verify
 
@@ -72,7 +73,8 @@ def ensure_tag(api, root, tag, source_sha):
 
 def public_inventory(tag):
     identity = parse_tag(tag)
-    return set(expected_members(identity.version) + ['putgd-' + identity.version + '-release.zip', 'SHA256SUMS', *PART_NAMES])
+    return set(expected_members(identity.version) + ['putgd-' + identity.version + '-release.zip', 'SHA256SUMS', *PART_NAMES,
+                                                      debug_asset_name(identity.version)])
 
 
 def published_nightly(api, tag, release):

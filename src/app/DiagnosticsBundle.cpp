@@ -10,6 +10,8 @@
 #include <QLocale>
 #include <QMessageAuthenticationCode>
 #include <QPointer>
+#include <QProcess>
+#include <QStandardPaths>
 #include <QRandomGenerator>
 #include <QRegularExpression>
 #include <QSaveFile>
@@ -307,6 +309,51 @@ void DiagnosticsBundles::upload(QJsonObject result,const BundleRequest& request,
   });
  });
 }
+QJsonObject DiagnosticsBundles::coredumps(const QString& configured,const QDateTime& from,const PackageRedactor& redactor) {
+ if(configured=="-")return {{"available",false},{"reason","skipped"},{"entries",QJsonArray{}}};
+ const auto program=configured.isEmpty()?QStandardPaths::findExecutable("coredumpctl"):configured;
+ if(program.isEmpty())return {{"available",false},{"reason","coredumpctl_missing"},{"entries",QJsonArray{}}};
+ auto run=[&](const QStringList& arguments,QByteArray& output) {
+  QProcess process;process.setProcessChannelMode(QProcess::SeparateChannels);
+  auto environment=QProcessEnvironment::systemEnvironment();environment.insert("SYSTEMD_COLORS","0");environment.insert("SYSTEMD_PAGER","");
+  process.setProcessEnvironment(environment);
+  process.start(program,QStringList{"--no-pager","--no-legend"}+arguments);
+  if(!process.waitForFinished(10000)){process.kill();process.waitForFinished(1000);return -1;}
+  output=process.readAllStandardOutput().left(1024*1024);
+  return process.exitStatus()==QProcess::NormalExit?process.exitCode():-1;
+ };
+ QByteArray listing;
+ const int status=run({"--json=short","--since=@"+QString::number(from.toSecsSinceEpoch()),"list"},listing);
+ QJsonParseError parse{};const auto document=QJsonDocument::fromJson(listing,&parse);
+ // coredumpctl exits 1 with nothing on stdout when no dump matches.
+ if(status==1&&listing.trimmed().isEmpty())return {{"available",true},{"entries",QJsonArray{}}};
+ if(status!=0||parse.error!=QJsonParseError::NoError||!document.isArray())return {{"available",false},{"reason","coredumpctl_failed"},{"entries",QJsonArray{}}};
+ static const QStringList products{"putgd","putgd-ui","putgd-capture","putgd-kde-region","putgd-record","putgd-s3-worker","putgd-cli"};
+ QList<QJsonObject> matches;
+ for(const auto& value:document.array()) {
+  const auto dump=value.toObject();
+  if(products.contains(QFileInfo(dump["exe"].toString()).fileName()))matches.append(dump);
+ }
+ std::sort(matches.begin(),matches.end(),[](const QJsonObject& a,const QJsonObject& b){return a["time"].toDouble()>b["time"].toDouble();});
+ QJsonArray entries;
+ for(const auto& dump:matches.mid(0,maximumCoredumps)) {
+  const auto pid=qint64(dump["pid"].toDouble());const auto time=qint64(dump["time"].toDouble());
+  QByteArray info;run({"--since=@"+QString::number(time/1000000),"info","COREDUMP_PID="+QString::number(pid)},info);
+  // Only the modules and stack traces systemd printed: the command line,
+  // environment, host and unit lines stay out.
+  QStringList stack;bool inside=false;
+  for(const auto& raw:QString::fromUtf8(info).split('\n')) {
+   const auto line=raw.trimmed();
+   if(line.startsWith("Module ")||line.startsWith("Stack trace of thread"))inside=true;
+   if(inside&&!line.isEmpty())stack.append(line.startsWith("#")||line.startsWith("Module ")||line.startsWith("Stack trace")||line.startsWith("ELF object")?line:QString());
+  }
+  stack.removeAll(QString());
+  auto text=stack.join('\n');if(text.size()>coredumpTextBytes)text=text.left(coredumpTextBytes)+"\n<truncated>";
+  entries.append(QJsonObject{{"time",iso(QDateTime::fromMSecsSinceEpoch(time/1000))},{"pid",pid},{"signal",dump["sig"].toInt()},
+   {"executable",redactor.text(dump["exe"].toString())},{"storage",dump["corefile"].toString().left(32)},{"stack",redactor.text(text)}});
+ }
+ return {{"available",true},{"entries",entries}};
+}
 int DiagnosticsBundles::prune(const QString& folder,const QDateTime& now) {
  QDir dir(folder);QFileInfoList packages;
  for(const auto& info:dir.entryInfoList({"putgd-diagnostics-*.zip"},QDir::Files,QDir::Time))if(packageName().match(info.fileName()).hasMatch())packages.append(info);
@@ -384,9 +431,11 @@ QJsonObject DiagnosticsBundles::build(const Context& context,const BundleRequest
  const auto environmentBytes=compact(redactor.json(environment));
  const auto diagnosticsBytes=compact(redactor.json(context.diagnostics));
  const auto configBytes=compact(configRedacted);
+ auto coredumpReport=coredumps(context.coredumpctl,from,redactor);coredumpReport["since"]=iso(from);
+ const auto coredumpBytes=compact(coredumpReport);
  // Count upload attempts from the window's records before choosing lines.
  struct Line {QString time;QByteArray bytes;};QList<Line> selected;qint64 used=0,dropped=0,eligible=0;
- const qint64 fixedBytes=environmentBytes.size()+diagnosticsBytes.size()+configBytes.size()+256*1024;
+ const qint64 fixedBytes=environmentBytes.size()+diagnosticsBytes.size()+configBytes.size()+coredumpBytes.size()+256*1024;
  for(const auto& name:files) for(const auto& raw:contents.value(name).split('\n')) {
   if(raw.isEmpty()||uploadedPackage(raw))continue;
   const auto object=QJsonDocument::fromJson(raw).object();const auto time=object["time"].toString();
@@ -420,7 +469,7 @@ QJsonObject DiagnosticsBundles::build(const Context& context,const BundleRequest
  std::reverse(selected.begin(),selected.end());
  QByteArray logBytes;for(const auto& line:selected)logBytes+=line.bytes;
  QList<QPair<QString,QByteArray>> entries{{"environment.json",environmentBytes},{"diagnostics.json",diagnosticsBytes},{"config.redacted.json",configBytes},
-  {"operations.json",operationsBytes},{"logs/putgd.jsonl",logBytes}};
+  {"operations.json",operationsBytes},{"coredumps.json",coredumpBytes},{"logs/putgd.jsonl",logBytes}};
  QJsonArray manifestFiles;for(const auto& [path,bytes]:entries)manifestFiles.append(QJsonObject{{"path",path},{"bytes",bytes.size()},{"sha256",sha256(bytes)}});
  QJsonObject scope{{"from",fromText},{"to",toText}};
  if(!request.operationId.isEmpty())scope["operationId"]=request.operationId;else scope["since"]=QString::number(request.sinceMs/60000)+"m";

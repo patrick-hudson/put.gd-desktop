@@ -17,9 +17,10 @@ Call call(LocalServer& server,const QString& method,const QJsonObject& params){
 QJsonObject region(){return {{"kind","region"},{"rect",QJsonArray{100,100,1280,720}}};}
 // A desktop shell like the GNOME extension: selections wait for the test to answer them.
 struct FakeShell final:RecordingShell {
- bool selects=true,failFrames=false;QList<Reply> selections;int cancels=0,hides=0;QList<QJsonObject> frames;
+ bool selects=true,failFrames=false;QList<Reply> selections;int cancels=0,hides=0;QList<QJsonObject> frames;Error unavailable;
  QJsonObject bar{{"placed",true},{"outside",true},{"rect",QJsonArray{50,430,400,40}}};
  bool selectsRegions() const override {return selects;}
+ Error regionError() const override {return selects?Error{}:unavailable;}
  void selectRegion(Reply reply) override {selections.append(std::move(reply));}
  void cancelSelection() override {++cancels;if(!selections.isEmpty()){auto reply=selections.takeLast();reply({"cancelled","GNOME region selection cancelled",{}},{});}}
  void showFrame(const QJsonObject& frame,Reply reply) override {frames.append(frame);if(failFrames)reply({"helper_incompatible","no frame support",{}},{});else reply({},{{"bar",bar}});}
@@ -421,6 +422,11 @@ private slots:
   // A shell without recording support leaves the region to the helper.
   shell.selects=false;id=h.prepareReady({{"target",QJsonObject{{"kind","region"}}}});QVERIFY(!id.isEmpty());QCOMPARE(shell.selections.size(),0);
   QVERIFY(!h.rec("cancel",{{"id",id}}).error);
+  // #131: one that knows why (an older extension still loaded) says so; no helper starts.
+  shell.unavailable={"helper_outdated","The put.gd GNOME Shell extension was updated; log out and back in to load the new version",{}};
+  h.backend->log.clear();id=h.rec("prepare",dragged).result["recordingId"].toString();QVERIFY(!id.isEmpty());
+  QTRY_COMPARE(journal.operation(id).state,QString("failed"));QCOMPARE(journal.operation(id).error.code,QString("helper_outdated"));
+  QVERIFY(!h.backend->log.contains("prepare"));QCOMPARE(shell.selections.size(),0);
  }
  // X11 and KDE: the helper's own selector reports `selecting`; select forwards the rectangle.
  void helperSelectionIsDrivenThroughSelect(){

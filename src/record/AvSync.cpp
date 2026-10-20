@@ -136,7 +136,7 @@ Error measureAvSync(const QString& clip, QJsonObject& result) {
     for (size_t i = 1; i < flashes.size(); ++i) gaps.push_back(flashes[i] - flashes[i - 1]);
     std::nth_element(gaps.begin(), gaps.begin() + gaps.size() / 2, gaps.end());
     const double period = gaps[gaps.size() / 2];
-    QJsonArray offsets;
+    QJsonArray offsets, pairTimes;
     std::vector<double> values;
     for (const double flash : flashes) {
         const auto nearest = std::min_element(bursts.begin(), bursts.end(), [flash](double a, double b) { return std::abs(a - flash) < std::abs(b - flash); });
@@ -144,22 +144,24 @@ Error measureAvSync(const QString& clip, QJsonObject& result) {
         const double ms = (*nearest - flash) * 1000.0;
         values.push_back(ms);
         offsets.append(std::round(ms * 10) / 10);
+        pairTimes.append(std::round(flash * 1000) / 1000);
     }
     if (values.empty()) return failed("av_sync_unpaired", "No flash has a tone burst within half a period");
     auto sorted = values;
     std::sort(sorted.begin(), sorted.end());
     const double median = sorted[sorted.size() / 2];
     result = {{"flashes", int(flashes.size())}, {"bursts", int(bursts.size())}, {"pairs", int(values.size())}, {"periodMs", std::round(period * 10000) / 10},
-        {"offsetsMs", offsets}, {"medianMs", std::round(median * 10) / 10}, {"minMs", std::round(sorted.front() * 10) / 10}, {"maxMs", std::round(sorted.back() * 10) / 10},
+        {"offsetsMs", offsets}, {"pairTimesS", pairTimes}, {"medianMs", std::round(median * 10) / 10}, {"minMs", std::round(sorted.front() * 10) / 10}, {"maxMs", std::round(sorted.back() * 10) / 10},
         {"spreadMs", std::round((sorted.back() - sorted.front()) * 10) / 10}, {"videoFrames", int(luma.size())}, {"audioSeconds", std::round(audioSeconds * 100) / 100},
         {"peak", std::round(peak * 1000) / 1000}};
     return {};
 }
 
-Error writeAvMarker(const QString& path, int seconds, int audioDelayMs) {
+Error writeAvMarker(const QString& path, int seconds, int audioDelayMs, int audioGapAtMs, int audioGapMs) {
     constexpr int fps = 30, rate = 48000, width = 1280, height = 720, chunk = 1024;
     if (seconds < 2 || seconds > 600) return failed("invalid_request", "The marker lasts 2 to 600 seconds");
     if (audioDelayMs < 0 || audioDelayMs >= 1000) return failed("invalid_request", "The audio delay is 0 to 999 ms");
+    if (audioGapMs < 0 || audioGapMs >= 1000) return failed("invalid_request", "The audio gap is 0 to 999 ms");
     AVFormatContext* out = nullptr;
     if (avformat_alloc_output_context2(&out, nullptr, "matroska", QFile::encodeName(path).constData()) < 0 || !out) return failed("av_marker_io", "Cannot create the marker file");
     struct Closer { AVFormatContext*& f; ~Closer() { if (f && !(f->oformat->flags & AVFMT_NOFILE)) avio_closep(&f->pb); avformat_free_context(f); } } closer{out};
@@ -203,6 +205,7 @@ Error writeAvMarker(const QString& path, int seconds, int audioDelayMs) {
     };
     // Interleave by time: one video frame, then the audio up to its end.
     qint64 samples = qint64(audioDelayMs) * rate / 1000;
+    const qint64 gapStart = audioGapAtMs >= 0 && audioGapMs > 0 ? qint64(audioGapAtMs) * rate / 1000 : -1, gapEnd = gapStart + qint64(audioGapMs) * rate / 1000;
     for (int index = 0; index < seconds * fps; ++index) {
         const bool flash = index % fps < fps / 10;
         av_frame_unref(frame);
@@ -214,7 +217,8 @@ Error writeAvMarker(const QString& path, int seconds, int audioDelayMs) {
         if (auto e = encode(video, videoStream, frame)) return e;
         const qint64 until = qint64(index + 1) * rate / fps;
         while (samples < until) {
-            const int count = int(std::min<qint64>(chunk, until - samples));
+            if (gapStart >= 0 && samples >= gapStart && samples < gapEnd) { samples = gapEnd; continue; }
+            const int count = int(std::min<qint64>({chunk, until - samples, gapStart > samples ? gapStart - samples : chunk}));
             av_frame_unref(frame);
             frame->format = AV_SAMPLE_FMT_S16; frame->sample_rate = rate; frame->nb_samples = count;
             AVChannelLayout stereo = AV_CHANNEL_LAYOUT_STEREO; av_channel_layout_copy(&frame->ch_layout, &stereo);

@@ -110,6 +110,15 @@ DEB and `putgd-bench-capture` exists in the build directory. These options defau
 off for normal distribution packages. Record them with the test parameters so a
 future agent does not mistake a production-only package for a lab-ready artifact.
 
+Release builds compile with `-g` and split each product binary's debug information
+into `<binary>.debug` beside it in the build tree (`PUTGD_SPLIT_DEBUG`: `AUTO`, the
+default, splits Release builds; `ON` also splits Debug builds; `OFF` never splits;
+it needs `objcopy`). Packages install only the stripped binaries; the release
+publishes the `.debug` files by build ID (see [diagnostics.md](diagnostics.md)).
+Development builds also get the test-only crash trigger (`PUTGD_CRASH_TRIGGER`,
+`PUTGD_TEST_CRASH=<process>:<kind>[:<delay ms>]`); a Release build or one with
+`PUTGD_RELEASE_TAG` refuses it.
+
 Use `release`, `asan`, or `tsan` in place of `dev` for application presets. ASan/UBSan
 and TSan are separate builds. The SDK is currently built in Release; sanitizer evidence
 applies to application code, not an instrumented dependency. Set `-DBUILD_TESTING=OFF`

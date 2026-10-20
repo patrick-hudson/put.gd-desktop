@@ -57,7 +57,9 @@ private:
 // transparent for input, bypasses the window manager (X11) or is an overlay
 // layer surface (KDE Wayland) and stays on top; none of them overlaps the
 // recorded pixels, so the capture never sees them. Rectangles are X11 root
-// pixels or, on Wayland, logical desktop pixels.
+// pixels or, on Wayland, logical desktop pixels. On KDE Wayland the strips
+// exist, clear, from the ready ring on, so they map before the control bar
+// and stay below it (#127).
 class BoundsOverlay final : public QObject {
     Q_OBJECT
 public:
@@ -69,6 +71,9 @@ public:
     QRect rect() const { return rect_; }
 private:
     void add(QList<QWidget*>& into, const QRect& geometry, const QColor& color);
+    // Four strips around rect_ in `color`, replacing any.
+    void addDim(const QColor& color);
+    static inline const QColor dimColor{0, 0, 0, 110};
     QRect rect_;
     QList<QWidget*> ring_, dim_;
     bool dimmed_ = false;

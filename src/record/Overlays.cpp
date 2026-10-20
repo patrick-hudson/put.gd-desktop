@@ -211,6 +211,7 @@ public:
         setAttribute(Qt::WA_ShowWithoutActivating);
         setAttribute(Qt::WA_NoSystemBackground);
     }
+    void setColor(const QColor& color) { if (color_ == color) return; color_ = color; update(); }
 protected:
     void paintEvent(QPaintEvent*) override {
         QPainter painter(this);
@@ -254,18 +255,30 @@ void BoundsOverlay::showBounds(const QRect& root) {
     const QRect inner = root.adjusted(-1, -1, 1, 1);
     const QList<QRect> lines{QRect(inner.left(), inner.top(), inner.width(), 1), QRect(inner.left(), root.bottom() + 1, inner.width(), 1), QRect(inner.left(), root.top(), 1, root.height()), QRect(root.right() + 1, root.top(), 1, root.height())};
     for (const auto& line : lines) add(ring_, line, QColor(0, 0, 0, 200));
-    if (dimmed_) setDimmed(true);
+    // KWin stacks overlay layer surfaces in the order they map, and raise() does
+    // not reorder them: strips mapped at Record would cover the bar (#127). On
+    // the layer shell they are mapped now, clear, before the bar, and Record
+    // only darkens them.
+    if (dimmed_ || surfaceMode() == SurfaceMode::LayerShell) addDim(dimmed_ ? dimColor : Qt::transparent);
 }
-void BoundsOverlay::setDimmed(bool dimmed) {
-    dimmed_ = dimmed;
+void BoundsOverlay::addDim(const QColor& color) {
     for (auto* w : dim_) delete w;
     dim_.clear();
-    if (!dimmed || rect_.isEmpty()) return;
+    if (rect_.isEmpty()) return;
     QRect desktop;
     for (QScreen* screen : QGuiApplication::screens()) desktop |= surfaceMode() == SurfaceMode::X11 ? toRoot(screen->geometry()) : screen->geometry();
     const QList<QRect> strips{QRect(desktop.left(), desktop.top(), desktop.width(), rect_.top() - desktop.top()), QRect(desktop.left(), rect_.bottom() + 1, desktop.width(), desktop.bottom() - rect_.bottom()),
         QRect(desktop.left(), rect_.top(), rect_.left() - desktop.left(), rect_.height()), QRect(rect_.right() + 1, rect_.top(), desktop.right() - rect_.right(), rect_.height())};
-    for (const auto& strip : strips) add(dim_, strip, QColor(0, 0, 0, 110));
+    for (const auto& strip : strips) add(dim_, strip, color);
+}
+void BoundsOverlay::setDimmed(bool dimmed) {
+    dimmed_ = dimmed;
+    if (surfaceMode() == SurfaceMode::LayerShell && !dim_.isEmpty()) {
+        for (auto* w : dim_) static_cast<PassiveSurface*>(w)->setColor(dimmed ? dimColor : QColor(Qt::transparent));
+        return;
+    }
+    if (dimmed) addDim(dimColor);
+    else { for (auto* w : dim_) delete w; dim_.clear(); }
 }
 void BoundsOverlay::hideAll() {
     for (auto* w : ring_ + dim_) delete w;
