@@ -6,6 +6,7 @@ for local bulk artifacts and [verification](../verification.md) for limitations.
 
 | Topic | Starting point |
 | --- | --- |
+| CI PipeWire 1.6 check, worker-thread stack overflows, debug asset size (issues #144, #156, #162) | [f44 container before/after for the `pipewire` job, f44 worker overflow before/after, size of each packing option and a symbolized release record](2026-10-20-ci-reliability-round8.md) |
 | Debug logging and Fedora's `qtlogging.ini` (issue #191) | [f44 before/after under `*.debug=false`, Debian runs with the suite's simulated rule](2026-10-20-logging-fedora-191.md) |
 | Recording Stop, pause/resume A/V, bar above the dim, outdated GNOME extension (issues #129, #130, #127, #131) | [Headless Stop reproducer and Kubuntu/GNOME guests, f44 Mutter and d69 KWin pause A/V before/after, d69 bar-over-dim frames](2026-10-20-recording-reliability.md) |
 | AppImage recording on Plasma 6.6 Wayland (issue #137) | [Cause (pipewiresrc `min-buffers` vs KWin's 2-4 buffers on PipeWire 1.5.81+), headless reproducer matrix, k72 Plasma 6.6 Wayland `kde-screencast`/portal, d69/f44/m74 and DEB/RPM regressions with A/V and motion](2026-10-20-appimage-plasma66-137.md) |

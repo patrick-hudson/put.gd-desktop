@@ -195,8 +195,19 @@ Afterwards the handler restores the signal's previous disposition and lets it
 happen, so the process still dies by that signal: the exit status, a core dump,
 systemd-coredump and any handler installed earlier behave as before. The handler
 records only the first crashing thread; a crash on another thread meanwhile waits
-up to two seconds for it. Only the main thread has the alternate stack, so a stack
-overflow on another thread is not recorded (option B below still sees it; #156).
+up to two seconds for it.
+
+`sigaltstack` is per thread, and a new thread starts without one. The crash library
+therefore defines `pthread_create`, and each executable exports it
+(`--export-dynamic-symbol`), so Qt, libstdc++, GStreamer, the AWS SDK and put.gd's
+own code all start their threads through it (#156). It wraps the start routine: the
+new thread maps a 64 KiB alternate stack with a guard page below it
+(`MAP_NORESERVE`, untouched unless the thread crashes) before running the routine,
+and unmaps it when the thread ends. A stack overflow on any thread is therefore
+recorded, from that thread. Threads that start before the handler installs itself
+(in another library's constructor) have none (#211). With `PUTGD_CRASH_HANDLER=0`, or in
+sanitizer builds, `pthread_create` passes straight through. The native package
+audit rejects a crash-handled program that doesn't export it.
 
 - **The resident** writes its record to `$XDG_STATE_HOME/putgd/running.crash`,
   opened (0600, `O_NOFOLLOW`) when it starts. The next start reads it beside the
@@ -237,20 +248,25 @@ afterwards. Qt installs none outside its test library.
 
 Development builds (`PUTGD_CRASH_TRIGGER`, on unless the build type is a release
 type or `PUTGD_RELEASE_TAG` is set) read
-`PUTGD_TEST_CRASH=<process>:<segv|abort|ill|fpe|bus>[:<delay ms>]`: the executable
-of that name crashes on its main thread after the delay. Helpers inherit the
-resident's environment, so one variable crashes the resident or a chosen helper:
+`PUTGD_TEST_CRASH=<process>:<segv|abort|ill|fpe|bus|overflow>[:<delay ms>[:worker]]`:
+the executable of that name crashes after the delay, on its main thread or, with
+`worker`, on a thread of its own. `overflow` recurses until the stack runs out.
+Helpers inherit the resident's environment, so one variable crashes the resident
+or a chosen helper:
 
 ```sh
-PUTGD_TEST_CRASH=putgd:segv:5000 ./build/dev/putgd        # the resident, 5 s in
-PUTGD_TEST_CRASH=putgd-ui:abort:2000 ./build/dev/putgd    # the UI helper, 2 s after it starts
+PUTGD_TEST_CRASH=putgd:segv:5000 ./build/dev/putgd               # the resident, 5 s in
+PUTGD_TEST_CRASH=putgd-ui:abort:2000 ./build/dev/putgd           # the UI helper, 2 s after it starts
+PUTGD_TEST_CRASH=putgd-record:overflow:1000:worker ./build/dev/putgd   # a stack overflow on a recorder thread
 ```
 
 Configuring a release build with the trigger fails, and the native package audit
 (`tools/releases/audit_native.py`) rejects any packaged binary that contains
 `PUTGD_TEST_CRASH`. `tests/unit/test_crash_handler.cpp` crashes a child process
 with each path (file, stderr, a library loaded later, the trigger) and symbolizes
-its frames.
+its frames. It also overflows the main thread, a `std::thread`, a `QThread` and a
+thread that a dlopen'd library starts, and checks that every thread gets its
+64 KiB stack and gives it back.
 
 ### systemd-coredump (option B)
 
@@ -281,6 +297,16 @@ a debuginfod cache (`.build-id/<2 hex>/<rest>.debug`) with a `manifest.json` tha
 names each build's programs and build IDs. Pull requests build the same asset as
 the `debug-symbols-dry-run` artifact. See [release.md](release.md).
 
+The builds split with zlib-compressed debug sections, which keeps the staged files
+and the jobs' artifacts small, but leaves a compressor nothing to find. The asset
+is about half that size, around 213 MB instead of 433 MB for five builds (#162).
+`debug_symbols.py` decompresses the sections and runs `dwz` on each build's files.
+The DWARF its programs share moves into `.dwz/<label>.debug`, which each file's
+`.gnu_debugaltlink` names relative to itself (`../../.dwz/<label>.debug`). Then
+`zstd -19 --long=27` compresses the whole tar. That window still unpacks with
+plain `tar --zstd -xf`. Keep the extracted tree together: a `.debug` file read
+without its `.dwz` file is missing the shared types and some names.
+
 ## Symbolizing a crash record (maintainers)
 
 1. Get the records: the package itself, a log file, `running.crash`, or helper
@@ -308,8 +334,9 @@ the `debug-symbols-dry-run` artifact. See [release.md](release.md).
    python3 tools/diagnostics/symbolize_crash.py putgd-diagnostics-20261020-101500Z.zip --debug-dir debug
    ```
 
-   By hand, each frame is one lookup in the module's debug file. Frame 0 is the
-   faulting instruction; the others are return addresses, so look up `offset - 1`:
+   By hand, each frame is one lookup in the module's debug file, which finds the
+   build's shared `.dwz` file by its relative link. Frame 0 is the faulting
+   instruction; the others are return addresses, so look up `offset - 1`:
 
    ```sh
    eu-addr2line -f -C -i -e debug/.build-id/3c/4f...e1.debug 0x3fa2b
