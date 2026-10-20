@@ -11,6 +11,14 @@
 #include <QPointer>
 #include <QSystemTrayIcon>
 #include <QProcess>
+#include <QDir>
+#include <QFileInfo>
+#include <QRegularExpression>
+#ifdef Q_OS_LINUX
+#include <QDBusConnection>
+#include <QDBusMessage>
+#include <QDBusPendingCallWatcher>
+#endif
 #include <utility>
 #include <algorithm>
 
@@ -117,6 +125,10 @@ TrayController::TrayController(OperationService& operations,
  if (!qobject_cast<QApplication*>(QCoreApplication::instance())) {
   native_ = std::make_unique<NativeTray>(this);
   connect(native_.get(), &NativeTray::notificationActivated,this,&TrayController::openNotificationLink);
+  connect(native_.get(), &NativeTray::notificationAction,this,[this](const QString& key,const QString& value) {
+   if(key=="save-diagnostics")saveDiagnostics(value);
+   else if(key=="show-in-folder")revealPackage(value);
+  });
   connect(native_.get(), &NativeTray::availabilityResolved, this, &TrayController::availabilityResolved);
   connect(native_.get(), &NativeTray::actionActivated, this, [this](const QString& action) {
    if (Settings::invocableActionNames().contains(action)) invokeAction(action);
@@ -217,8 +229,10 @@ TrayController::TrayController(OperationService& operations,
     if(item.linkAvailable())link=QUrl(item.receipt.directUrl);
    }
 #endif
+   // A failed upload offers a diagnostics package for just that operation (#122).
+   const auto diagnostics=state!="completed"&&guard->saveDiagnostics_?operation["id"].toString():QString{};
    if (QStringList{"completed", "partial", "failed", "interrupted"}.contains(state))
-    guard->notifyMessage("put.gd — " + state,completionMessage(operation,!link.isEmpty()),state != "completed",link);
+    guard->notifyMessage("put.gd — " + state,completionMessage(operation,!link.isEmpty()),state != "completed",link,diagnostics);
   });
  });
 }
@@ -338,10 +352,15 @@ void TrayController::openNotificationLink(const QUrl& link) {
  QProcess::startDetached("gio",{"open",link.toString(QUrl::FullyEncoded)});
 }
 #endif
-void TrayController::notifyMessage(const QString& title, const QString& message, bool warning,const QUrl& link) {
- Q_UNUSED(link);
+void TrayController::notifyMessage(const QString& title, const QString& message, bool warning,const QUrl& link,const QString& diagnosticsOperation,const QString& revealPath) {
+ Q_UNUSED(link);Q_UNUSED(diagnosticsOperation);Q_UNUSED(revealPath);
 #ifdef Q_OS_LINUX
- if (native_) native_->notify(title, message, warning,link);
+ if (native_) {
+  QList<NotificationAction> actions;
+  if(!diagnosticsOperation.isEmpty())actions.append({"save-diagnostics","Save diagnostics for this upload",diagnosticsOperation});
+  if(!revealPath.isEmpty())actions.append({"show-in-folder","Show in folder",revealPath});
+  native_->notify(title, message, warning,link,actions);
+ }
  else
 #endif
  if (tray_) tray_->showMessage(title, message, warning ? QSystemTrayIcon::Warning : QSystemTrayIcon::Information);
@@ -349,5 +368,37 @@ void TrayController::notifyMessage(const QString& title, const QString& message,
 void TrayController::notifyFailure(const Error& error) {
  if(error)flashError();
  if (error && available()) notifyMessage("put.gd", error.message, true);
+}
+void TrayController::saveDiagnostics(const QString& operationId) {
+ if(!saveDiagnostics_||operationId.isEmpty())return;
+ saveDiagnostics_(operationId,[guard=QPointer<TrayController>(this)](Error error,QJsonObject result) {
+  if(!guard)return;
+  if(error)guard->notifyMessage("put.gd — diagnostics not saved",error.message,true);
+  else guard->notifyDiagnosticsSaved(result);
+ });
+}
+void TrayController::notifyDiagnosticsSaved(const QJsonObject& result) {
+ const QFileInfo file(result["path"].toString());if(file.fileName().isEmpty())return;
+ notifyMessage("put.gd — diagnostics saved",file.fileName()+" ("+ByteSize::summary(result["bytes"].toInteger())+") in "+QDir::toNativeSeparators(file.absolutePath())+". Nothing was uploaded.",false,{},{},file.absoluteFilePath());
+}
+Error TrayController::revealPackage(const QString& path) {
+ static const QRegularExpression name("^putgd-diagnostics-[0-9]{8}-[0-9]{6}Z(-[0-9]+)?\\.zip$");
+ const QFileInfo file(path);
+ if(!QDir::isAbsolutePath(path)||!name.match(file.fileName()).hasMatch())return {"invalid_request","Show in folder takes the absolute path of a saved put.gd diagnostics package",{}};
+ if(!file.isFile()||file.isSymLink())return {"diagnostics_package_missing","The diagnostics package is no longer there",{{"path",path}}};
+#ifdef Q_OS_LINUX
+ // The file manager selects the package; without one, open its folder instead.
+ auto call=QDBusMessage::createMethodCall("org.freedesktop.FileManager1","/org/freedesktop/FileManager1","org.freedesktop.FileManager1","ShowItems");
+ call.setArguments({QStringList{QUrl::fromLocalFile(file.absoluteFilePath()).toString(QUrl::FullyEncoded)},QString{}});
+ const auto folder=file.absolutePath();
+ auto* watcher=new QDBusPendingCallWatcher(QDBusConnection::sessionBus().asyncCall(call,5000));
+ QObject::connect(watcher,&QDBusPendingCallWatcher::finished,[watcher,folder] {
+  if(watcher->isError()){qWarning("FileManager1.ShowItems failed: %s; opening the folder",qPrintable(watcher->error().name()));QProcess::startDetached("gio",{"open",QUrl::fromLocalFile(folder).toString(QUrl::FullyEncoded)});}
+  watcher->deleteLater();
+ });
+ return {};
+#else
+ return {"diagnostics_reveal_unsupported","Show in folder is not supported on this platform",{}};
+#endif
 }
 }

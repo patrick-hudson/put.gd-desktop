@@ -157,7 +157,7 @@ public:
  QVariantMap properties(bool menu) const;
  void dispatch(const QString& action);
  void setActivity(const QColor& color,const QString& description,int percent);
- void notify(const QString& title, const QString& message, bool warning, const QUrl& link);
+ void notify(const QString& title, const QString& message, bool warning, const QUrl& link, const QList<NotificationAction>& actions);
 private slots:
  void hostChanged();
  void notificationActivated(uint id, const QString& action);
@@ -172,6 +172,7 @@ private:
  QString service_, owner_, registeredOwner_;
  QDBusServiceWatcher watcher_, notificationWatcher_;
  QHash<uint,QUrl> notificationLinks_;
+ QHash<uint,QHash<QString,QString>> notificationActions_;
  quint64 notificationGeneration_ = 0;
  std::unique_ptr<TrayExport> item_, menu_;
  NativeImages icons_;
@@ -206,7 +207,7 @@ NativeTrayPrivate::NativeTrayPrivate(NativeTray* owner, QDBusConnection bus)
  registerWireTypes();
  connect(&notificationWatcher_,&QDBusServiceWatcher::serviceOwnerChanged,this,[this](const QString&,const QString& oldOwner,const QString&) {
   if(oldOwner.isEmpty())return;
-  ++notificationGeneration_;notificationLinks_.clear();
+  ++notificationGeneration_;notificationLinks_.clear();notificationActions_.clear();
  });
  bus_.connect(notificationService,notificationPath,notificationService,"ActionInvoked",this,SLOT(notificationActivated(uint,QString)));
  bus_.connect(notificationService,notificationPath,notificationService,"NotificationClosed",this,SLOT(notificationClosed(uint,uint)));
@@ -308,28 +309,40 @@ void NativeTrayPrivate::dispatch(const QString& action) {
   if (guard) emit guard->actionActivated(action);
  });
 }
-void NativeTrayPrivate::notify(const QString& title, const QString& message, bool warning, const QUrl& link) {
+void NativeTrayPrivate::notify(const QString& title, const QString& message, bool warning, const QUrl& link, const QList<NotificationAction>& actions) {
  if (!available_ || notificationsInFlight_ >= 8) return;
  auto call = QDBusMessage::createMethodCall(notificationService, notificationPath, notificationService, "Notify");
  const QVariantMap hints{{"urgency", QVariant::fromValue(static_cast<uchar>(warning ? 2 : 1))}, {"desktop-entry", "putgd"}};
- call.setArguments({QString("put.gd"), uint(0), QString("putgd"), title.left(512), message.left(4096), link.isEmpty()?QStringList{}:QStringList{"default","Open in browser"}, hints, 10000});
+ QStringList names=link.isEmpty()?QStringList{}:QStringList{"default","Open in browser"};
+ QHash<QString,QString> values;
+ for(const auto& action:actions)if(action.key!="default"){names<<action.key<<action.label;values.insert(action.key,action.value);}
+ call.setArguments({QString("put.gd"), uint(0), QString("putgd"), title.left(512), message.left(4096), names, hints, 10000});
  ++notificationsInFlight_;
  const auto generation=notificationGeneration_;
  auto* pending = new QDBusPendingCallWatcher(bus_.asyncCall(call, callTimeoutMs), this);
- connect(pending, &QDBusPendingCallWatcher::finished, this, [this,generation,link](QDBusPendingCallWatcher* p) {
+ connect(pending, &QDBusPendingCallWatcher::finished, this, [this,generation,link,values](QDBusPendingCallWatcher* p) {
   const QDBusPendingReply<uint> result=*p;
   --notificationsInFlight_; p->deleteLater();
-  if(generation==notificationGeneration_&&!result.isError()&&!link.isEmpty())notificationLinks_.insert(result.value(),link);
+  if(generation!=notificationGeneration_||result.isError())return;
+  if(!link.isEmpty())notificationLinks_.insert(result.value(),link);
+  if(!values.isEmpty())notificationActions_.insert(result.value(),values);
  });
 }
 void NativeTrayPrivate::notificationActivated(uint id,const QString& action) {
+ if(action!="default"&&notificationActions_.value(id).contains(action)) {
+  const auto value=notificationActions_.take(id).value(action);notificationLinks_.remove(id);
+  QTimer::singleShot(0,q_,[guard=QPointer<NativeTray>(q_),action,value] {
+   if(guard)emit guard->notificationAction(action,value);
+  });
+  return;
+ }
  if(action!="default"||!notificationLinks_.contains(id))return;
- const auto link=notificationLinks_.take(id);
+ const auto link=notificationLinks_.take(id);notificationActions_.remove(id);
  QTimer::singleShot(0,q_,[guard=QPointer<NativeTray>(q_),link] {
   if(guard)emit guard->notificationActivated(link);
  });
 }
-void NativeTrayPrivate::notificationClosed(uint id,uint) {notificationLinks_.remove(id);}
+void NativeTrayPrivate::notificationClosed(uint id,uint) {notificationLinks_.remove(id);notificationActions_.remove(id);}
 void NativeTrayPrivate::setActivity(const QColor& color,const QString& description,int percent) {
  percent=qBound(-1,percent,100);
  const bool iconChanged=color!=color_||percent!=percent_;
@@ -488,6 +501,6 @@ NativeTray::~NativeTray() = default;
 bool NativeTray::available() const { return d_->available(); }
 bool NativeTray::availabilityKnown() const { return d_->availabilityKnown(); }
 void NativeTray::setActivity(const QColor& color,const QString& description,int percent) {d_->setActivity(color,description,percent);}
-void NativeTray::notify(const QString& title, const QString& message, bool warning, const QUrl& link) { d_->notify(title, message, warning, link); }
+void NativeTray::notify(const QString& title, const QString& message, bool warning, const QUrl& link, const QList<NotificationAction>& actions) { d_->notify(title, message, warning, link, actions); }
 }
 #include "NativeTray.moc"
