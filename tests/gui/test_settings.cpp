@@ -116,6 +116,11 @@ private slots:
   QVERIFY(2*metrics.lineSpacing()<rect.height()-20);
   QCOMPARE(window.settings()->destinationRowLines(1),QStringList({"Synthetic alternate","Ready to test"}));
   QCOMPARE(list->item(0)->toolTip().section('\n',0,0),first["label"].toString());
+  // Pressing another row selects it without rebuilding the rows, so the view keeps the
+  // pressed row and a drag can start from it (found natively on GNOME Wayland, #135).
+  auto* third=list->item(2);third->setData(Qt::UserRole+42,"same row object");QTest::mousePress(list->viewport(),Qt::LeftButton,{},list->visualItemRect(third).center());
+  QCOMPARE(list->currentRow(),2);QCOMPARE(list->item(2)->data(Qt::UserRole+42).toString(),QString("same row object"));QCOMPARE(window.findChild<QLineEdit*>("destinationId")->text(),QString("synthetic-third"));
+  QTest::mouseRelease(list->viewport(),Qt::LeftButton,{},list->visualItemRect(third).center());
   QCOMPARE(list->item(0)->text().section('\n',0,0),first["label"].toString());
   // #133: the drag image is a slim label beside the pointer, never over the drop line's
   // start cap, wherever the row is grabbed.
@@ -160,6 +165,8 @@ private slots:
   QVERIFY(dialog->findChild<QWidget*>("diagnosticsPackageExtras"));
   QCOMPARE(QDir::fromNativeSeparators(dialog->findChild<QLabel*>("packageFolder")->text()),QDir(dir.filePath("archive")).filePath("diagnostics"));
   QVERIFY(dialog->findChild<QLabel*>("packageRedaction")->text().contains("replaced by hashes"));
+  // Wrapped labels get their full height once the preview has filled them (no clipped lines).
+  for(const auto* name:{"packageScope","packageContents","packageOperations","packageRedaction"}){auto* label=dialog->findChild<QLabel*>(name);QTRY_VERIFY2(label->height()>=label->heightForWidth(label->width()),name);}
   dialog->findChild<QCheckBox*>("includeFileNames")->setChecked(true);QTRY_VERIFY(dialog->findChild<QLabel*>("packageRedaction")->text().contains("kept as they are"));
   QTRY_COMPARE(settings->diagnosticsState()["package"].toObject()["preview"].toObject()["redaction"].toString(),QString("names"));
   QVERIFY(!QFileInfo::exists(dir.filePath("archive/diagnostics")));

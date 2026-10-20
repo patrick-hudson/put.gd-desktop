@@ -239,12 +239,17 @@ public:
    saving_=false;error_=error;
    if(error){save_->setText("Save package");save_->setEnabled(true);VisualStyle::feedback(result_,error.message,true);result_->show();}
    else {saved_=saved;save_->setText("Saved");close_->setText("Close");show_->show();VisualStyle::success(result_,"Saved "+QFileInfo(saved["path"].toString()).fileName()+" ("+ByteSize::summary(saved["bytes"].toInteger())+") in "+QDir::toNativeSeparators(QFileInfo(saved["path"].toString()).absolutePath())+".");result_->show();}
-   if(reply)reply(error,state());
+   fit();if(reply)reply(error,state());
   });
  }
  void reveal(Reply reply){
   if(saved_.isEmpty()){if(reply)reply({"diagnostics_not_saved","Save the package first.",{}},state());return;}
   session_.request("diagnostics.reveal",{{"path",saved_["path"]}},this,[this,reply](Error error,QJsonObject result){if(error){VisualStyle::feedback(result_,error.message,true);result_->show();}if(reply)reply(error,result);});
+ }
+ // Wrapped labels change height with their text; grow so none is clipped.
+ void fit(){
+  layout()->activate();const int needed=layout()->hasHeightForWidth()?layout()->totalHeightForWidth(width()):layout()->totalSizeHint().height();
+  setMinimumHeight(needed);if(height()<needed)resize(width(),needed);
  }
  QJsonObject state()const{
   QJsonObject state{{"open",isVisible()},{"includeNames",includeNames_->isChecked()},{"folder",folder_->text()},{"defaultFolder",custom_.isEmpty()},{"previewing",previewing_},{"saving",saving_},
@@ -258,7 +263,7 @@ private:
  void showPreview(){
   useDefault_->setVisible(!custom_.isEmpty());
   if(preview_.isEmpty()){
-   scope_->setText(error_?error_.message:QString{});contents_->clear();operations_->clear();folder_->setText(custom_);return;
+   scope_->setText(error_?error_.message:QString{});contents_->clear();operations_->clear();folder_->setText(custom_);fit();return;
   }
   const auto scope=preview_["scope"].toObject();const int count=preview_["operations"].toInt(),records=preview_["logRecords"].toInt();
   scope_->setText(scope.contains("operationId")?QString("This upload, with the log from ten minutes before it to ten minutes after its last record."):
@@ -273,7 +278,7 @@ private:
   if(list.size()>5)lines.append(QString("and %1 more").arg(list.size()-5));
   operations_->setText(lines.isEmpty()?QString("No failed uploads in this period; the log is still included."):lines.join('\n'));
   folder_->setText(QDir::toNativeSeparators(preview_["folder"].toString()));
-  save_->setEnabled(saved_.isEmpty()&&!saving_);
+  save_->setEnabled(saved_.isEmpty()&&!saving_);fit();
  }
  UiSession& session_;
  QLabel *scope_,*contents_,*operations_,*redaction_,*folder_,*result_;QCheckBox* includeNames_;QPushButton *useDefault_,*show_,*close_,*save_;
@@ -906,8 +911,11 @@ void SettingsWindow::refreshCredentialHint(){
 }
 void SettingsWindow::refreshDestinationList(const QJsonObject& document){
  if(!destinationList_)return;
- const QSignalBlocker block(destinationList_);destinationList_->clear();const auto doc=document.isEmpty()?candidate():document;const auto profiles=doc["profiles"].toArray();const auto actions=doc["actions"].toObject();bool selectedDefault=false;
- for(const auto& value:profiles){const auto profile=value.toObject();bool isDefault=true;if(doc.contains("captureDefaults")){const auto capture=doc["captureDefaults"].toObject();isDefault=capture["destination"]=="upload"&&capture["profileId"]==profile["id"];}else for(const auto& action:Settings::actionNames())if(actions[action].toObject()["profileId"]!=profile["id"]||actions[action].toObject()["destination"]!="upload")isDefault=false;const auto s=profile["settings"].toObject();const bool proton=profile["provider"]=="proton-drive";QString state=proton?(s["accountRootUid"].toString().isEmpty()?"Signed out":s["folderUid"].toString().isEmpty()?"Choose a folder":"Connected"):(s["bucket"].toString().isEmpty()?"Needs a bucket":testedDestinations_.value(profile["id"].toString())==profile?"Connection tested":"Ready to test");if(isDefault)state="Default · "+state;auto* item=new QListWidgetItem(VisualStyle::icon(proton?"files":"destinations"),profile["label"].toString()+"\n"+state,destinationList_);item->setSizeHint(QSize(0,76));item->setToolTip(profile["label"].toString()+"\n"+state);if(profile["id"]==profileId_->text()){selectedDefault=isDefault;defaultButton_->setText(isDefault?"Default":"Make default");}}
+ const QSignalBlocker block(destinationList_);const auto doc=document.isEmpty()?candidate():document;const auto profiles=doc["profiles"].toArray();
+ // Rows are updated in place: rebuilding them here, which runs when a press changes the
+ // selection, would drop the view's pressed row, so the drag that follows never starts.
+ while(destinationList_->count()>profiles.size())delete destinationList_->takeItem(destinationList_->count()-1);int row=0;const auto actions=doc["actions"].toObject();bool selectedDefault=false;
+ for(const auto& value:profiles){const auto profile=value.toObject();bool isDefault=true;if(doc.contains("captureDefaults")){const auto capture=doc["captureDefaults"].toObject();isDefault=capture["destination"]=="upload"&&capture["profileId"]==profile["id"];}else for(const auto& action:Settings::actionNames())if(actions[action].toObject()["profileId"]!=profile["id"]||actions[action].toObject()["destination"]!="upload")isDefault=false;const auto s=profile["settings"].toObject();const bool proton=profile["provider"]=="proton-drive";QString state=proton?(s["accountRootUid"].toString().isEmpty()?"Signed out":s["folderUid"].toString().isEmpty()?"Choose a folder":"Connected"):(s["bucket"].toString().isEmpty()?"Needs a bucket":testedDestinations_.value(profile["id"].toString())==profile?"Connection tested":"Ready to test");if(isDefault)state="Default · "+state;auto* item=row<destinationList_->count()?destinationList_->item(row):new QListWidgetItem(destinationList_);++row;item->setIcon(VisualStyle::icon(proton?"files":"destinations"));item->setText(profile["label"].toString()+"\n"+state);item->setSizeHint(QSize(0,76));item->setToolTip(profile["label"].toString()+"\n"+state);if(profile["id"]==profileId_->text()){selectedDefault=isDefault;defaultButton_->setText(isDefault?"Default":"Make default");}}
  destinationList_->setCurrentRow(profileIndex_);const bool has=profileIndex_>=0;if(moveUp_){moveUp_->setEnabled(profileIndex_>0);moveDown_->setEnabled(has&&profileIndex_<int(profiles.size())-1);}defaultButton_->setEnabled(has&&!selectedDefault&&!(providerType_->currentData()=="s3"&&s3_["bucket"]->text().isEmpty()));
 }
 QJsonObject SettingsWindow::profileEditorState()const{
