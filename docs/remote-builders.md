@@ -10,7 +10,7 @@ run the required profile. Record the reason for each fallback. Work under
 | --- | --- | --- | --- | --- |
 | Fedora 44 Workstation | `patrick@192.168.68.70` | GNOME on Wayland | `127.0.0.1:5970` | `putgd-fedora-vnc.service` |
 | Debian 13 | `patrick@192.168.68.69` | KDE Plasma on Wayland | `127.0.0.1:5979` | `putgd-debian-vnc.service` |
-| Kubuntu 26.04.1 LTS | `patrick@192.168.68.72` | KDE Plasma 6.6.6 on X11 | `127.0.0.1:5972` | `putgd-kubuntu-vnc.service` |
+| Kubuntu 26.04.1 LTS | `patrick@192.168.68.72` | KDE Plasma 6.6.6 on Wayland (default since 2026-10-20; X11 session on request) | `127.0.0.1:5972` | `putgd-kubuntu-vnc.service` |
 | Linux Mint 22.3 | `patrick@192.168.68.74` | Cinnamon 6.6.4 on X11 | `127.0.0.1:5974` | `putgd-mint-vnc.service` |
 
 The user authorizes full root access on these four machines through passwordless
@@ -104,10 +104,11 @@ All use `-SecurityTypes=None`, so they must stay on loopback. The servers keep
 their portal restore token under `~/.local/state/tigervnc`
 (`-RememberDisplayChoice=Always`); the first start in a new session asks for the
 desktop's screen-sharing consent once. On k72 the two servers share port 5900,
-one per session type, so the wall tile works in either login; switching k72's
-session means changing SDDM's autologin `Session=` in `/etc/sddm.conf`
-(`plasmax11.desktop` or `plasma.desktop`) and restarting `sddm`, which logs
-Patrick out, so it needs his OK.
+one per session type, so the wall tile works in either login. Since 2026-10-20
+k72's default session is Plasma Wayland (`Session=plasma.desktop` in SDDM's
+autologin, `/etc/sddm.conf`). Switch it to `plasmax11.desktop` only when a check
+needs KDE/X11, then switch it back. Each switch restarts `sddm` and logs
+Patrick out, so the coordinator checks for his apps first.
 
 Keep graphical tests visible there throughout the run. Capture screenshots or
 short recordings of the initial desktop, decisive actions, results, failures and
@@ -143,7 +144,7 @@ waiting for the lock, over a probe process left behind by a finished test.
 ### Shared and exclusive resources
 
 - **The physical desktops are exclusive.** f44 (Fedora 44 GNOME Wayland, `.70`),
-  d69 (Debian 13 Plasma Wayland, `.69`), k72 (Kubuntu 26.04 Plasma X11, `.72`) and
+  d69 (Debian 13 Plasma Wayland, `.69`), k72 (Kubuntu 26.04 Plasma Wayland, `.72`) and
   m74 (Linux Mint 22.3 Cinnamon X11, `.74`) each serve one session at a time, under a lock from `tools/lab/desktop_lock.py`.
   You need the lock for anything that runs in the desktop session, draws on it,
   sends it input, captures or records it, or logs it out. That includes installing
