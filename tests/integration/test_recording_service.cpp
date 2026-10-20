@@ -257,9 +257,11 @@ private slots:
   const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);
   QCOMPARE(h.rec("review",{{"id",id},{"action","inspect"}}).error.code,QString("recording_state"));QVERIFY(!h.backend->log.contains("review"));
   QCOMPARE(h.rec("stop",{{"id",id}}).result["state"].toString(),QString("reviewing"));
-  h.backend->onReview=[&](const QJsonObject& params){if(params["action"].toString()=="setIn")h.backend->sink({{"id",id},{"event","edit"},{"revision",1},{"commands",QJsonArray{QJsonObject{{"op","setTrim"},{"start",3000000},{"end",QJsonValue(QJsonValue::Null)}}}}});};
+  QList<QJsonObject> reviews;
+  h.backend->onReview=[&](const QJsonObject& params){reviews.append(params);if(params["action"].toString()=="setIn")h.backend->sink({{"id",id},{"event","edit"},{"revision",1},{"commands",QJsonArray{QJsonObject{{"op","setTrim"},{"start",3000000},{"end",QJsonValue(QJsonValue::Null)}}}}});};
   const auto seek=h.rec("review",{{"id",id},{"action","seek"},{"time",3000000}});QVERIFY2(!seek.error,qPrintable(seek.error.message));
-  QCOMPARE(h.backend->lastControlParams,QJsonObject({{"action","seek"},{"time",3000000}}));QCOMPARE(seek.result["playheadUs"].toDouble(),3000000.0);QCOMPARE(seek.result["edit"].toObject()["revision"].toDouble(),1.0);
+  // The action, then the window read again after the resident pushed its edit.
+  QCOMPARE(reviews,QList<QJsonObject>({QJsonObject{{"action","seek"},{"time",3000000}},QJsonObject{{"action","inspect"}}}));QCOMPARE(seek.result["playheadUs"].toDouble(),3000000.0);QCOMPARE(seek.result["edit"].toObject()["revision"].toDouble(),1.0);
   const auto in=h.rec("review",{{"id",id},{"action","setIn"}});QVERIFY2(!in.error,qPrintable(in.error.message));
   QCOMPARE(in.result["state"].toString(),QString("reviewing"));QCOMPARE(in.result["edit"].toObject()["trimStart"].toDouble(),3000000.0);QCOMPARE(in.result["edit"].toObject()["revision"].toDouble(),2.0);
   QCOMPARE(h.backend->pushedEdit.trimStart,qint64(3000000));
@@ -268,7 +270,8 @@ private slots:
   QCOMPARE(h.rec("saveCopy",{{"id",id},{"path",h.dir.filePath("review-driven.mp4")}}).result["state"].toString(),QString("exporting"));
   const int before=h.backend->log.count("review");
   QCOMPARE(h.rec("review",{{"id",id},{"action","setOut"}}).error.code,QString("recording_state"));QCOMPARE(h.backend->log.count("review"),before);
-  QCOMPARE(h.rec("review",{{"id",id},{"action","inspect"}}).result["state"].toString(),QString("exporting"));
+  reviews.clear();
+  QCOMPARE(h.rec("review",{{"id",id},{"action","inspect"}}).result["state"].toString(),QString("exporting"));QCOMPARE(reviews.size(),1);
   h.backend->pendingExports.takeFirst()();QTRY_COMPARE(h.state(id),QString("reviewing"));
   QVERIFY(!h.rec("cancel",{{"id",id}}).error);
  }

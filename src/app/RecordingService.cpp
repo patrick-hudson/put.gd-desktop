@@ -561,19 +561,26 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
     if (command == "review") {
         // The window's controls, as a user works them (#283). An edit a control
         // proposes arrives as an event before the helper's answer; events are
-        // handled queued, so the answer queues behind it and its edit is the one
-        // the proposal produced (or the unchanged one it was refused against).
+        // handled queued, so the answer queues behind it. The resident then has
+        // applied the proposal (or refused it) and pushed the result to the
+        // window, so the window is read once more: the reply's window state and
+        // edit are the ones after the action.
         auto forwarded = params;
         forwarded.remove("id");
-        if (s.state == "exporting" && forwarded["action"].toString() != "inspect") { reply({"recording_state", "The review controls are disabled while an export runs", {{"state", s.state}}}, {}); return; }
+        const bool inspect = forwarded["action"].toString() == "inspect";
+        if (s.state == "exporting" && !inspect) { reply({"recording_state", "The review controls are disabled while an export runs", {{"state", s.state}}}, {}); return; }
         const auto generation = s.generation;
-        backend_->control(s.op.id, "review", forwarded, marshal(generation, [this, reply, generation](Error error, QJsonObject result) {
+        auto answer = [this, reply, generation](Error error, QJsonObject result) {
             if (error) { reply(error, {}); return; }
-            QMetaObject::invokeMethod(this, [this, reply, generation, result]() mutable {
-                if (!session_ || session_->generation != generation) { reply({"recording_unavailable", "The recording ended", {}}, {}); return; }
-                result["state"] = session_->state;
-                result["edit"] = session_->edit.toJson();
-                reply({}, result);
+            result["state"] = session_->state;
+            result["edit"] = session_->edit.toJson();
+            reply({}, result);
+        };
+        backend_->control(s.op.id, "review", forwarded, marshal(generation, [this, answer, generation, inspect](Error error, QJsonObject result) {
+            if (error || inspect) { answer(error, result); return; }
+            QMetaObject::invokeMethod(this, [this, answer, generation] {
+                if (!session_ || session_->generation != generation) { answer({"recording_unavailable", "The recording ended", {}}, {}); return; }
+                backend_->control(session_->op.id, "review", {{"action", "inspect"}}, marshal(generation, answer));
             }, Qt::QueuedConnection);
         }));
         return;
