@@ -127,10 +127,15 @@ static void logRejected(const Error& error,const char* stage) {
 Result SettingsService::acceptLoaded(const QJsonObject& candidate,const QString& revision,const Error& error,quint64 sequence) {
     if(sequence<appliedSequence_)return {error,false};
     if(error&&(error.code!=lastError_.code||error.details!=lastError_.details||revision!=observedRevision_))logRejected(error,"load");
+    const auto before=metadata();
     appliedSequence_=sequence;observedRevision_=revision;
     bool changed=false;
     if(!error&&revision!=acceptedRevision_) {settings_=Settings::fromValidated(candidate);acceptedRevision_=revision;changed=true;}
-    lastError_=error;armWatcher();if(changed)emit accepted(acceptedRevision_);emit statusChanged();return {error,changed};
+    lastError_=error;armWatcher();if(changed)emit accepted(acceptedRevision_);
+    // An unchanged rescan (the fallback timer, or a watcher event for a
+    // neighbouring file) is not news: each emission refreshes every open view (#234).
+    if(changed||metadata()!=before)emit statusChanged();
+    return {error,changed};
 }
 Result SettingsService::reload() {
     std::lock_guard guard(ioMutex_);auto loaded=loadValidated(path_,validator_,credentialValidator_);

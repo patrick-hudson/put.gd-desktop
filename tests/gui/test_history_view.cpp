@@ -30,6 +30,7 @@
 #include <QBuffer>
 #include <QCryptographicHash>
 #include <QDir>
+#include <QSignalSpy>
 using namespace putgd;using namespace putgd::test;
 class HistoryPaintObserver final:public QObject {
 public:int paints=0;QRegion region;
@@ -216,8 +217,9 @@ private slots:
    // A video stored before posters whose file is gone.
    Operation video;video.id="synthetic-video-op";video.created="2020-01-01T00:00:00.000Z";video.state="completed";video.settings=settings.snapshot();OperationItem gone;gone.artifact.id=videoId;gone.artifact.path=d.filePath("data/artifacts/synthetic-video-op/"+videoId);gone.artifact.name="recording.mp4";gone.artifact.mime="video/mp4";gone.artifact.category="videos";gone.artifact.bytes=4096;gone.uploadStatus="uploaded";video.items.append(gone);QVERIFY(!ledger.saveOperation(video));}
   HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);QStringList asked;fixture.client.beforeDispatch=[&](const QString& method,const QJsonObject& params){if(method=="history.preview")asked.append(params["id"].toString());};
-  // Settings status changes reload History several times a second here, as
-  // resident changes do during an upload: the wait must survive reloads.
+  // Resident changes reload History several times a second during an upload:
+  // the wait must survive reloads of the same selection.
+  QTimer reloads;QObject::connect(&reloads,&QTimer::timeout,&fixture.session,&UiSession::invalidate);reloads.start(150);
   HistoryWindow window(fixture.session);window.resize(1000,700);window.show();auto* table=window.findChild<QListView*>("historyList");QTRY_COMPARE(table->model()->rowCount(),2);auto* preview=window.findChild<QLabel*>("historyPreview");
   QCOMPARE(table->model()->index(0,0).data(HistoryModel::RecordRole).toJsonObject()["id"].toString(),imageId);
   // Passing over the video on the way to the image asks only for the image.
@@ -226,6 +228,18 @@ private slots:
   QCOMPARE(preview->pixmap().toImage().pixelColor(preview->pixmap().width()/2,preview->pixmap().height()/2),QColor("#2a7fd4"));
   selectRow(table,1);QTRY_COMPARE(asked.size(),2);QCOMPARE(asked.last(),videoId);QTRY_COMPARE(preview->text(),QString("Preview unavailable"));QVERIFY(preview->pixmap().isNull());
   selectRow(table,0);QTRY_VERIFY(!preview->pixmap().isNull());selectRow(table,1);QTRY_COMPARE(preview->text(),QString("Preview unavailable"));QTest::qWait(600);QCOMPARE(asked.size(),2);
+ }
+ // An idle History window with an unchanged configuration does not reload
+ // (#234). Here the journal lives inside the watched configuration folder, so
+ // every History read touches it; unchanged rescans must stay silent.
+ void idleHistoryDoesNotReload() {
+  QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());
+  {HistoryStore ledger(operations.databasePath());Operation op;op.id="synthetic-idle";op.created="2020-01-01T00:00:00.000Z";op.state="completed";op.settings=settings.snapshot();OperationItem item;item.artifact.id="idle-item";item.artifact.name="idle.txt";item.uploadStatus="local_only";op.items.append(item);QVERIFY(!ledger.saveOperation(op));}
+  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);QHash<QString,int> calls;fixture.client.beforeDispatch=[&](const QString& method,const QJsonObject&){++calls[method];};
+  HistoryWindow window(fixture.session);window.resize(1000,700);window.show();auto* table=window.findChild<QListView*>("historyList");QTRY_COMPARE(table->model()->rowCount(),1);selectRow(table,0);QTRY_VERIFY(calls.value("history.detail")>0);QTest::qWait(500);
+  QSignalSpy status(&settings,&SettingsService::statusChanged);const auto before=calls;QTest::qWait(3000);
+  QCOMPARE(status.count(),0);
+  for(const auto* method:{"ui.snapshot","history.list","operation.recent","history.detail"})QVERIFY2(calls.value(method)==before.value(method),qPrintable(QString("%1: %2 calls while idle").arg(method).arg(calls.value(method)-before.value(method))));
  }
  void openingHistoryDuringInitializationRefreshesWhenReady() {
   QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));QVERIFY(QDir().mkpath(d.filePath("data")));
