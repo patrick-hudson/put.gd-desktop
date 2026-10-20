@@ -95,7 +95,7 @@ Each tile's VNC server runs in the host's desktop session as user `patrick`
 | Host | Server | Unit | Listens |
 | --- | --- | --- | --- |
 | f44 GNOME Wayland | `w0vncserver` from Fedora's `tigervnc-wayland-server` 1.16.2 | user `putgd-gnome-vnc.service` (`WantedBy=graphical-session.target`) | `127.0.0.1:5901` |
-| d69 Plasma Wayland | `/usr/local/bin/w0vncserver`, TigerVNC `v1.16.2` (`b555312d`) built from source in `~/work/bootstrap` (CMake Release, `ENABLE_WAYLAND=ON`, no viewer) | user `w0vncserver.service` (Wayland + KDE only, `WantedBy=plasma-workspace-wayland.target`) plus the `localhost.conf` drop-in that binds it to loopback | `127.0.0.1:5900` |
+| d69 Plasma Wayland | `/usr/local/bin/w0vncserver`, TigerVNC `v1.16.2` (`b555312d`) built from source in `~/work/bootstrap` (CMake Release, `ENABLE_WAYLAND=ON`, no viewer) | user `w0vncserver.service` (Wayland + KDE only, `WantedBy=plasma-workspace-wayland.target`) plus the `localhost.conf` drop-in that binds it to loopback; `wall-vnc-watchdog.service` (since 2026-10-20, #164) restarts it when its stream stops | `127.0.0.1:5900` |
 | k72 Plasma X11 | `X0tigervnc` (Ubuntu's `tigervnc-scraping-server` 1.15) on the X display | user `patrick-vnc.service`, started by the `patrick-vnc` autostart entry only in an X11 session | `127.0.0.1:5900` |
 | m74 Cinnamon X11 (added 2026-10-20) | `X0tigervnc` (Mint's `tigervnc-scraping-server`) on the physical `:0` display | user `putgd-native-vnc.service` | `127.0.0.1:5900` |
 | k72 Plasma Wayland (added 2026-10-20, #87; default session) | `/usr/local/bin/w0vncserver`, TigerVNC `v1.16.2` (`b555312d`) built in `~/work/bootstrap-w0vnc` like d69's | user `w0vncserver.service` (Wayland + KDE only, `WantedBy=plasma-workspace-wayland.target`), run under `systemd-inhibit --what=idle:sleep --mode=block` by the `10-inhibit-sleep.conf` drop-in; `wall-vnc-watchdog.service` restarts it when its stream stops | `127.0.0.1:5900` |
@@ -123,7 +123,7 @@ HD 530 had hung the same way three times under Xorg (2026-10-17 07:35Z and
 To tell a frozen tile from a quiet desktop, compare two RFB grabs a minute
 apart: the panel clock changes every minute.
 
-k72 runs `tools/lab/wall_vnc_watchdog.py` beside its server as the user unit
+k72 and d69 run `tools/lab/wall_vnc_watchdog.py` beside their servers as the user unit
 `tools/lab/wall-vnc-watchdog.service` (script copied to
 `~/.local/bin/wall-vnc-watchdog`; Wayland + KDE only and
 `WantedBy=plasma-workspace-wayland.target`, like `w0vncserver.service`). It
@@ -138,8 +138,19 @@ token, so no prompt appears. Its log is `journalctl --user -u wall-vnc-watchdog`
 A full-screen static window that hides the clock for more than 5 minutes causes
 one harmless restart. Both triggers were tested on k72 on 2026-10-20: a labelled
 synthetic `GPU HANG: ` journal line, and a `SIGSTOP`ped server. Each restart
-brought live frames back. Installing the watchdog on d69 and checking it after a
-k72 re-login are #164.
+brought live frames back. On d69 a labelled synthetic KWin reset line restarted
+the server after the unit's 5-minute start grace, and frames came back
+([receipt](evidence/2026-10-20-recording-closeout.md#164-wall-vnc-watchdog-on-d69)).
+d69's `patrick` user isn't in `adm`, so the kernel's `GPU HANG` line is
+invisible to the unit there. KWin's own "graphics reset attributable" line is in
+the user journal, and the unit matches it. On k72 the user is in `adm` and
+the unit sees both lines.
+A reset that the new stream survives (updates still arriving 30 s after the
+line) no longer forces a second restart. On k72 at 06:05Z a second hang, logged
+3 s after a restart, did that at 06:10:30Z.
+Checking the watchdog and the HDMI-A-2 mirror after a k72 re-login and a power
+cycle is still #164, pending Patrick's OK and k72's return from its hardware
+check.
 
 All use `-SecurityTypes=None`, so they must stay on loopback. The servers keep
 their portal restore token under `~/.local/state/tigervnc`
@@ -165,6 +176,32 @@ Because Patrick's screen shows the same desktop, a capture may leave k72 only
 after you've checked on the host that your own test window fills the captured
 area. Check frame liveness by comparing hashes on k72; don't copy frames off the
 host.
+
+Every lab desktop carries the host user's own windows, so a recording or frame
+may leave a builder only once the lab's own window is shown to fill it. The
+tools for that are `tools/lab/cover_player.py` and `tools/lab/record_run.py`
+(#165):
+
+- `cover_player.py play --output NAME [--pattern | --media MARKER.mkv]` opens a
+  magenta window full screen on that output, with a scrolling pattern or the
+  looped A/V marker at 1280x720 in its middle. It prints `covered` only after
+  GTK sees the window full screen on that output at its size. Without
+  `--output` it refuses on a desktop with more than one distinct output
+  (mirrored outputs count once). `cover_player.py outputs` lists them.
+- `cover_player.py precheck --port 5900` (5901 on f44) reads one frame from the
+  host's loopback VNC tile, in memory, and fails unless the output is at least
+  98% cover colour. Run it before recording anything.
+- `cover_player.py check-frame FRAME [--crop OUT]` deletes a saved frame unopened
+  when it is under half cover colour, and `--crop` keeps only the covered
+  output.
+- `record_run.py` runs a whole check on the host: cover, precheck, each build's
+  resident with private config/data/cache/state, `putgd-cli` recordings
+  (monitor, region or window; any format; optional pause), `--motion`,
+  `--av-sync` split at the pause, one gated frame per copy (`--frames`), and
+  the kernel's GPU hangs for the run. A region must straddle the video's edge
+  (for example `--rect 0,0,960,540`) to pass the frame gate. `--vnc-port 0`
+  skips the precheck, in disposable guests only. See the script's docstring for
+  the options.
 
 Keep graphical tests visible there throughout the run. Capture screenshots or
 short recordings of the initial desktop, decisive actions, results, failures and

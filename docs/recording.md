@@ -417,7 +417,7 @@ Across a pause the offset now holds: after a resume the working clip moves by
 at most 0.6 ms and the export by at most 1.7 ms relative to the working clip
 (f44 Mutter and d69 KWin, MP4 and WebM), where nightly `134a9be` stepped the
 capture by up to 17 ms and moved every export 10 ms earlier
-([receipt](evidence/2026-10-20-recording-reliability.md); portal paths: #166).
+([receipt](evidence/2026-10-20-recording-reliability.md); portal paths: [closeout](evidence/2026-10-20-recording-closeout.md#166-pauseresume-av-on-the-portal-paths)).
 
 Lab A/B runs: `PUTGD_RECORD_PIPEWIRE_TIMESTAMPS=compositor` maps each frame's
 header time instead of stamping its arrival, and `=legacy` restores the
@@ -540,6 +540,25 @@ which stepped the offset by −16 to +30 ms and left a 10 ms hole in the
 audio. A recording stopped while paused keeps nothing after the pause. The
 retained duration is measured from the first retained frame because some
 encoders carry a constant timestamp offset.
+
+**Encoder order and the Skylake GPU hangs (#89).** The order stays GPU first.
+The lab's Intel HD 530 hosts logged seven i915 hangs between 2026-10-17 and
+2026-10-20: six on k72 and one on d69. All of them were `Resetting rcs0 for
+preemption time out` with `ecode 9:1:85dffffb`, in the compositor's
+context (Xorg or `kwin_wayland`) on the render engine. The video engine that
+`vah264lpenc` uses (`vcs0`) never reset. Four of the seven came with no
+VA-API encode running. One happened during a CPU GIF export, one at idle with
+builds running, and two before any recording work. The other three, in two
+events, overlapped a `vah264lpenc` recording at host load 5–9. m74 (the same GPU, Mint X11)
+recorded with `vah264lpenc` without a hang, and k72 was taken out of the
+lab for a hardware check on 2026-10-20. A software encoder first would cost
+every Intel/AMD/NVIDIA user CPU time to work around one host's render-engine
+fault, so the order is unchanged. The encoder actually used stays in
+`recording.capabilities` (`gstreamer.usableH264Encoders`, the first is used)
+and in `recording.inspect` progress. If a GPU's encoder fails at
+`prepare`, the probe moves on to the next one. Kernel versions, drivers and
+the per-host table are in
+[the closeout receipt](evidence/2026-10-20-recording-closeout.md#89-gpu-first-encoder-order-kept).
 
 Stop ends the clip at once: from that running time on nothing is kept, however
 long the drain takes. It then sends EOS into each branch at the element after
