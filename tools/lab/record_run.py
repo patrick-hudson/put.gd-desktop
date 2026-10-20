@@ -138,6 +138,20 @@ def export_shift(working, exported, pause_s):
     return round(statistics.median(after_e) - statistics.median(after_w), 1)
 
 
+def frame_edges(target, rect, output):
+    """Which sides of a recorded frame sit on an output edge, where a desktop panel could show."""
+    if target != 'region' or not rect or not output:
+        return ['top', 'bottom', 'left', 'right']
+    x, y, w, h = rect
+    ox, oy, ow, oh = output
+    found = []
+    if y <= oy: found.append('top')
+    if y + h >= oy + oh: found.append('bottom')
+    if x <= ox: found.append('left')
+    if x + w >= ox + ow: found.append('right')
+    return found
+
+
 def sha256(path):
     digest = hashlib.sha256()
     with open(path, 'rb') as stream:
@@ -260,8 +274,13 @@ class Driver:
         elif self.helper('--preview', clip, int((duration_us or 0) / 2), frame).returncode != 0 or not frame.is_file():
             return {'ok': False, 'reason': 'no frame decoded'}
         checked = subprocess.run([sys.executable, str(HERE / 'cover_player.py'), 'check-frame', str(frame),
-                                  '--min-fraction', '0.5'], capture_output=True, text=True)
+                                  '--min-fraction', '0.5', '--edges', ','.join(self.output_edges()) or 'none'],
+                                 capture_output=True, text=True)
         return json.loads(checked.stdout or '{"ok": false}')
+
+    def output_edges(self):
+        """The recorded area's edges that lie on the cover's output edges (all of them for a monitor or window)."""
+        return frame_edges(self.args.target, self.args.rect, self.cover_rect)
 
     def wait_state(self, build, rid, wanted, timeout):
         started = time.monotonic()

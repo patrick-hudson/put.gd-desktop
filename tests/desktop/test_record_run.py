@@ -64,5 +64,17 @@ class ExportShift(unittest.TestCase):
         self.assertIsNone(driver.export_shift(working, working, 8.0))
 
 
+class Edges(unittest.TestCase):
+    def test_monitor_and_window_frames_check_every_edge(self):
+        self.assertEqual(driver.frame_edges('monitor', None, [0, 0, 1920, 1080]), ['top', 'bottom', 'left', 'right'])
+        self.assertEqual(driver.frame_edges('window', None, [0, 0, 1920, 1080]), ['top', 'bottom', 'left', 'right'])
+
+    def test_a_region_checks_only_the_sides_on_the_output_edge(self):
+        self.assertEqual(driver.frame_edges('region', [0, 0, 960, 540], [0, 0, 1920, 1080]), ['top', 'left'])
+        self.assertEqual(driver.frame_edges('region', [1280, 0, 640, 400], [1280, 0, 1280, 800]), ['top', 'left'])
+        self.assertEqual(driver.frame_edges('region', [960, 540, 960, 540], [0, 0, 1920, 1080]), ['bottom', 'right'])
+        self.assertEqual(driver.frame_edges('region', [100, 100, 200, 200], [0, 0, 1920, 1080]), [])
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -112,7 +112,7 @@ class CheckFrame(unittest.TestCase):
     def test_covered_frame_is_kept_with_its_hash(self):
         frame = self.dir / 'covered.ppm'
         frame.write_bytes(ppm(40, 20, lambda x, y: MAGENTA if x < 30 else GREY))
-        code, report = self.run_check(frame, '--min-fraction', '0.7')
+        code, report = self.run_check(frame, '--min-fraction', '0.7', '--edges', 'left')
         self.assertEqual(code, 0)
         self.assertTrue(frame.exists())
         self.assertEqual(report['kept'], str(frame))
@@ -131,11 +131,34 @@ class CheckFrame(unittest.TestCase):
     def test_crop_outside_the_frame_fails_closed(self):
         frame = self.dir / 'small.ppm'
         frame.write_bytes(ppm(20, 10, lambda x, y: MAGENTA))
-        code, report = self.run_check(frame, '--rect', '10,0,20,10', '--min-fraction', '0.4', '--crop', self.dir / 'c.png')
+        code, report = self.run_check(frame, '--rect', '10,0,20,10', '--min-fraction', '0.4', '--edges', 'none',
+                                      '--crop', self.dir / 'c.png')
         self.assertEqual(code, cover_player.EXIT_UNCOVERED)
         self.assertFalse(frame.exists())
         self.assertFalse((self.dir / 'c.png').exists())
         self.assertEqual(report['reason'], 'crop_outside_frame')
+
+    def test_an_uncovered_edge_strip_is_deleted_even_when_most_is_covered(self):
+        # Plasma 6.6: the panel along the bottom edge, under 5% of the frame.
+        frame = self.dir / 'panel.ppm'
+        frame.write_bytes(ppm(100, 50, lambda x, y: GREY if y >= 48 else MAGENTA))
+        code, report = self.run_check(frame)
+        self.assertEqual(code, cover_player.EXIT_UNCOVERED)
+        self.assertEqual(report['reason'], 'uncovered_edge')
+        self.assertEqual(report['edges']['bottom'], 0.0)
+        self.assertFalse(frame.exists())
+
+    def test_edges_inside_the_output_can_be_skipped(self):
+        # A region whose right and bottom sides are inside the output show the pattern there.
+        frame = self.dir / 'region.ppm'
+        pattern = lambda x, y: GREY if x >= 60 and y >= 25 else MAGENTA
+        frame.write_bytes(ppm(100, 50, pattern))
+        code, _ = self.run_check(frame)
+        self.assertEqual(code, cover_player.EXIT_UNCOVERED)
+        frame.write_bytes(ppm(100, 50, pattern))
+        code, report = self.run_check(frame, '--edges', 'top,left')
+        self.assertEqual(code, 0)
+        self.assertEqual(sorted(report['edges']), ['left', 'top'])
 
     def test_unreadable_frame_is_deleted(self):
         frame = self.dir / 'broken.ppm'

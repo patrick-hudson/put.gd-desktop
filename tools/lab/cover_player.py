@@ -30,10 +30,14 @@ recordings showed the host user's desktop (#165). This tool replaces it:
       only, and checks that the chosen output's rectangle is the cover colour.
       Exits 3 when it isn't: run it after `covered` and before recording.
   cover_player.py check-frame IMAGE [--rect X,Y,W,H] [--min-fraction 0.5]
-                       [--crop OUT.png]
+                       [--edges top,bottom,left,right] [--crop OUT.png]
       Measures the cover colour's share of a saved frame (PPM, or anything
-      ffmpeg reads, such as a PNG or a frame extracted from a clip). Below the
-      threshold the file is deleted unopened and the command exits 3; with
+      ffmpeg reads, such as a PNG or a frame extracted from a clip), and of a
+      strip along each of --edges (4% deep, at least 90% each): desktop
+      panels sit on output edges, and on Plasma 6.6 the panel came back above
+      the full-screen cover once a recording started, covering under 5% of the
+      frame. Below either threshold the file is deleted unopened and the
+      command exits 3; with
       --crop a passing frame is cropped to the rectangle and the original
       deleted, so only the covered output can leave the host.
 
@@ -181,6 +185,23 @@ def coverage(width, height, pixels, layout, rect=None, color=MAGENTA, tolerance=
     return hit / total if total else 0.0
 
 
+EDGES = ('top', 'bottom', 'left', 'right')
+
+
+def edge_strips(rect, depth=0.04):
+    """Thin strips along each side of rect: where desktop panels and docks live."""
+    x, y, w, h = rect
+    t, s = max(2, int(h * depth)), max(2, int(w * depth))
+    return {'top': [x, y, w, t], 'bottom': [x, y + h - t, w, t], 'left': [x, y, s, h], 'right': [x + w - s, y, s, h]}
+
+
+def parse_edges(text):
+    edges = () if text in ('', 'none') else tuple(text.split(','))
+    if any(edge not in EDGES for edge in edges):
+        raise argparse.ArgumentTypeError('edges are a comma list of top, bottom, left, right, or none')
+    return edges
+
+
 def read_frame(path):
     """(width, height, rgb bytes) of a binary PPM, or of the first frame ffmpeg (else Pillow) decodes from any other file."""
     data = Path(path).read_bytes()
@@ -235,10 +256,13 @@ def check_frame(args):
         path.unlink(missing_ok=True)
         emit(ok=False, reason='unreadable: ' + type(error).__name__, deleted=True)
         return EXIT_UNCOVERED
-    if fraction < args.min_fraction:
+    edge_fractions = {edge: round(coverage(width, height, pixels, 'rgb', strip, args.color, args.tolerance), 4)
+                      for edge, strip in edge_strips(rect, args.edge_depth).items() if edge in args.edges}
+    thin = [edge for edge, value in edge_fractions.items() if value < args.edge_min]
+    if fraction < args.min_fraction or thin:
         path.unlink()
-        emit(ok=False, reason='uncovered', fraction=round(fraction, 4), minFraction=args.min_fraction,
-             rect=rect, size=[width, height], deleted=True)
+        emit(ok=False, reason='uncovered' if fraction < args.min_fraction else 'uncovered_edge', fraction=round(fraction, 4),
+             minFraction=args.min_fraction, edges=edge_fractions, rect=rect, size=[width, height], deleted=True)
         return EXIT_UNCOVERED
     kept = path
     if args.crop:
@@ -251,8 +275,8 @@ def check_frame(args):
         write_png_crop(kept, width, pixels, rect)
         if kept.resolve() != path.resolve():
             path.unlink()
-    emit(ok=True, fraction=round(fraction, 4), minFraction=args.min_fraction, rect=rect, size=[width, height],
-         kept=str(kept), sha256=hashlib.sha256(kept.read_bytes()).hexdigest())
+    emit(ok=True, fraction=round(fraction, 4), minFraction=args.min_fraction, edges=edge_fractions, rect=rect,
+         size=[width, height], kept=str(kept), sha256=hashlib.sha256(kept.read_bytes()).hexdigest())
     return 0
 
 
@@ -463,6 +487,10 @@ def main(argv=None):
     f.add_argument('--color', type=parse_color, default=MAGENTA)
     f.add_argument('--tolerance', type=int, default=40)
     f.add_argument('--min-fraction', type=float, default=0.5)
+    f.add_argument('--edges', type=parse_edges, default=EDGES,
+                   help='frame edges that lie on an output edge and must be cover colour (default all; none for a region inside)')
+    f.add_argument('--edge-min', type=float, default=0.9)
+    f.add_argument('--edge-depth', type=float, default=0.04)
     f.add_argument('--crop')
     args = parser.parse_args(argv)
     if args.command == 'outputs':
