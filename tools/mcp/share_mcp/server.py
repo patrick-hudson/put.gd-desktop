@@ -53,6 +53,10 @@ RECORDING_FORMATS = {'mp4', 'webm', 'gif', 'webp'}
 RECORDING_CODECS = {'h264', 'h265', 'vp9'}
 RECORDING_CONTROLS = {'start', 'pause', 'resume', 'stop', 'cancel', 'raise'}
 RECORDING_EDIT_OPS = {'setTrim', 'resetTrim', 'addMask', 'updateMask', 'removeMask'}
+# The review window's controls (#283), one per drive_recording_review call.
+REVIEW_ACTIONS = {'inspect', 'seek', 'play', 'pause', 'speed', 'setIn', 'setOut', 'resetTrim', 'addMask', 'selectMask',
+                  'setMaskIn', 'setMaskOut', 'strength', 'removeMask', 'format'}
+REVIEW_SPEEDS = {0.5, 1, 2, 4}
 # A backstop above the CLI's own bounded wait, whose longest case is 3 s to connect,
 # 3 s to send and 45 s for recording.stop (LocalServer::replyDeadlineMs).
 CLI_TIMEOUT = 60
@@ -168,7 +172,7 @@ def create_server(adapter: CliAdapter) -> FastMCP:
         'Deletion requires exact history IDs and acknowledgement of their original destination/effect. '
         'Capture region & edit (the edit action) opens a visible editor; use edit_image/preview_editor, then submit_editor or cancel_editor. '
         'Use redact, never blur, for private information. '
-        'Screen recording: prepare_recording, control_recording start/pause/resume/stop, then review with edit_recording/preview_recording; only upload_recording publishes. '
+        'Screen recording: prepare_recording, control_recording start/pause/resume/stop, then review with edit_recording/preview_recording, or work the review window itself with drive_recording_review; only upload_recording publishes. '
         'save_recording_copy and upload_recording return once the export starts; poll get_recording until state leaves exporting. '
         'Supply only non-secret configuration and credential references.'))
     read = ToolAnnotations(readOnlyHint=True, destructiveHint=False, openWorldHint=False)
@@ -325,6 +329,50 @@ def create_server(adapter: CliAdapter) -> FastMCP:
         if not identifier(id) or type(revision) is not int or revision < 1 or not safe_recording_commands(commands):
             return invalid()
         return await adapter.call('recording.edit', {'id': id, 'revision': revision, 'commands': commands})
+
+    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
+    async def drive_recording_review(id: str, action: str, time_us: int | None = None, speed: float | None = None,
+                                     kind: str | None = None, rect: list[int] | None = None, mask_id: str | None = None,
+                                     strength: int | None = None, format: str | None = None, codec: str | None = None) -> Json:
+        """Work the open Review recording window's controls as a user does, one action per call: inspect (playhead, playing, speed, trim, masks with their timeline bars, selectedMaskId, which contextual mask controls show, status, size, the video's rect and share of the window), seek {time_us}, play, pause, speed {0.5|1|2|4}, setIn / setOut (trim start/end at the playhead, keys I/O), resetTrim, addMask {kind blur|solid, rect [x,y,w,h] canvas pixels; starts at the playhead, runs to the trim end}, selectMask {mask_id, or none to clear}, setMaskIn / setMaskOut (the selected mask's start/end at the playhead, Shift+I/O), strength {2-64, selected blur}, removeMask (selected, Delete) and format {format, codec}. Edits go through the resident like the window's own; the reply is the window state plus the resident's edit after it. Uploads nothing; use upload_recording."""
+        if not identifier(id) or action not in REVIEW_ACTIONS:
+            return invalid()
+        params: Json = {'id': id, 'action': action}
+        if time_us is not None:
+            if type(time_us) is not int or time_us < 0:
+                return invalid()
+            params['time'] = time_us
+        if speed is not None:
+            if type(speed) not in (int, float) or speed not in REVIEW_SPEEDS:
+                return invalid()
+            params['speed'] = speed
+        if kind is not None:
+            if kind not in {'blur', 'solid'}:
+                return invalid()
+            params['kind'] = kind
+        if rect is not None:
+            if not (isinstance(rect, list) and len(rect) == 4 and all(type(value) is int and value >= 0 for value in rect)):
+                return invalid()
+            params['rect'] = rect
+        if mask_id is not None:
+            if not identifier(mask_id):
+                return invalid()
+            params['maskId'] = mask_id
+        elif action == 'selectMask':
+            params['maskId'] = None
+        if strength is not None:
+            if type(strength) is not int or not 2 <= strength <= 64:
+                return invalid()
+            params['strength'] = strength
+        if format is not None:
+            if format not in RECORDING_FORMATS or (codec is not None and (not isinstance(codec, str) or len(codec) > 8)):
+                return invalid()
+            params['format'] = format
+            params['codec'] = codec or ''
+        required = {'seek': 'time', 'speed': 'speed', 'addMask': 'rect', 'strength': 'strength', 'format': 'format'}
+        if action in required and required[action] not in params or (action == 'addMask' and 'kind' not in params):
+            return invalid()
+        return await adapter.call('recording.review', params)
 
     @server.tool(annotations=read, structured_output=False)
     async def preview_recording(id: str, time_us: int, max_edge: int = 1024) -> list[Any]:

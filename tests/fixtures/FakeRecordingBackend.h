@@ -26,8 +26,11 @@ public:
   reply({},result);
  }
  qint64 processId(const QString&) const override {return pid;}
+ // review: the window's answer; onReview may first emit what the window proposes (an edit event), as the helper does.
+ std::function<void(const QJsonObject&)> onReview;
  void control(const QString&,const QString& command,const QJsonObject& params,Reply reply) override {
   log<<command;lastControlParams=params;
+  if(command=="review"){if(onReview)onReview(params);reply({},{{"action",params["action"]},{"playheadUs",3000000.0},{"visible",true}});return;}
   if(command=="cancel"){++cancels;reply({},{});return;}
   if(command=="start"&&failStart){reply({"recording_start_failed","Synthetic source refused",{}},{});return;}
   if(command=="stop"){reply({},{{"durationUs",double(durationUs)},{"canvas",QJsonArray{1280,720}}});return;}

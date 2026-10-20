@@ -102,7 +102,7 @@ QJsonObject RecordingService::capabilities() const {
     result["editCommands"] = QJsonArray{"setTrim", "resetTrim", "addMask", "updateMask", "removeMask"};
     result["limits"] = QJsonObject{{"animationMaxUs", double(limit.animationMaxUs)}, {"animationMaxEdge", limit.animationMaxEdge},
         {"maxFileBytes", double(settings.limits.maxFileBytes)}, {"maxMasks", recording::maximumMasks}};
-    result["commands"] = QJsonArray{"prepare", "start", "pause", "resume", "stop", "cancel", "inspect", "select", "raise", "overlay", "edit", "preview", "saveCopy", "upload"};
+    result["commands"] = QJsonArray{"prepare", "start", "pause", "resume", "stop", "cancel", "inspect", "select", "raise", "overlay", "edit", "preview", "review", "saveCopy", "upload"};
     return result;
 }
 QJsonObject RecordingService::publicJson(const Session& s) const {
@@ -554,6 +554,22 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
             result["retained"] = retained;
             result["outputTimeUs"] = retained ? QJsonValue(double(time - edit.trimStart)) : QJsonValue(QJsonValue::Null);
             result["revision"] = double(edit.revision);
+            reply({}, result);
+        }));
+        return;
+    }
+    if (command == "review") {
+        // The window's controls, as a user works them (#283). Edits it proposes
+        // reach this service as edit events before the helper's answer, so the
+        // reply's edit is the one they produced (or the unchanged one they were
+        // refused against).
+        auto forwarded = params;
+        forwarded.remove("id");
+        if (s.state == "exporting" && forwarded["action"].toString() != "inspect") { reply({"recording_state", "The review controls are disabled while an export runs", {{"state", s.state}}}, {}); return; }
+        backend_->control(s.op.id, "review", forwarded, marshal(s.generation, [this, reply](Error error, QJsonObject result) {
+            if (error) { reply(error, {}); return; }
+            result["state"] = session_->state;
+            result["edit"] = session_->edit.toJson();
             reply({}, result);
         }));
         return;

@@ -140,6 +140,20 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
   fill(color);rounded(7,3,9,6,1);rounded(6,13,12,8,1.5);
  } else if(name=="play") {
   fill(color);QPainterPath play;play.moveTo(8,4.5);play.lineTo(20,12);play.lineTo(8,19.5);play.closeSubpath();p.drawPath(play);
+ } else if(name=="pause") {
+  fill(color);rounded(6,4.5,4,15,1.2);rounded(14,4.5,4,15,1.2);
+ } else if(name=="trim-in"||name=="trim-out"||name=="mask-in"||name=="mask-out") {
+  // A bracket at the playhead: on the clip track (trim) or on a mask's span.
+  if(name.endsWith("-out")){p.translate(24,0);p.scale(-1,1);}
+  fill(secondary);if(name.startsWith("trim"))rounded(9,10.5,13,3,1.5);else rounded(10,7,11,10,2);
+  line(color,2.5);QPainterPath bracket;bracket.moveTo(10,3.5);bracket.lineTo(5.5,3.5);bracket.lineTo(5.5,20.5);bracket.lineTo(10,20.5);p.drawPath(bracket);
+ } else if(name=="trim-reset") {
+  fill(secondary);rounded(6,10.5,12,3,1.5);
+  line(color,2.5);QPainterPath brackets;brackets.moveTo(7,3.5);brackets.lineTo(3,3.5);brackets.lineTo(3,20.5);brackets.lineTo(7,20.5);
+  brackets.moveTo(17,3.5);brackets.lineTo(21,3.5);brackets.lineTo(21,20.5);brackets.lineTo(17,20.5);p.drawPath(brackets);
+ } else if(name=="remove") {
+  fill(secondary);QPainterPath bin;bin.moveTo(5.5,8);bin.lineTo(18.5,8);bin.lineTo(17.2,21);bin.quadTo(17,22,16,22);bin.lineTo(8,22);bin.quadTo(7,22,6.8,21);bin.closeSubpath();p.drawPath(bin);
+  fill(color);rounded(3,5,18,2.5,1);rounded(9,2,6,3.5,1);line(color,1.6);p.drawLine(QPointF(10,11),QPointF(10.4,19));p.drawLine(QPointF(14,11),QPointF(13.6,19));
  } else if(name=="activity") {
   fill(secondary);rounded(2,2,20,20,4);line(color);QPainterPath pulse;
   pulse.moveTo(4,13);pulse.lineTo(7,13);pulse.lineTo(10,6);pulse.lineTo(14,19);pulse.lineTo(17,11);pulse.lineTo(20,11);p.drawPath(pulse);
