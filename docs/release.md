@@ -56,6 +56,40 @@ Nightly notes state automated coverage: Linux test suites, Windows portable
 compilation, package audits and the extracted-source production build. They are
 development releases, not new graphical, memory or live-S3 certification.
 
+### Changes in the release notes
+
+Every release's notes start with a "Changes since <previous tag>" section,
+written by `tools/releases/changelog.py` when `publish.py` stages the release.
+It lists the pull requests whose merge commits are in `<previous>..<tag>`:
+
+- **Nightly:** since the previous nightly tag reachable from this one.
+- **Candidate and stable:** since the previous stable tag, so a candidate lists
+  everything the version adds. Documentation, lab and test pull requests are
+  folded into one "Also N documentation, lab and test changes" line.
+- The promotion (`release: vX.Y.Z`, head `nightly`) and back-merge pull requests
+  (head `main`) aren't listed themselves; the pull requests they carry are.
+- With no earlier tag of that kind, the section is "Changes in <tag>" and lists
+  the whole history.
+
+Entries are grouped as Features, Fixes, Recording, Uploads, Packaging and
+releases, Other changes, Documentation, Lab, and Tests and CI. A pull request's
+labels decide its group (`bug`, `enhancement`, `documentation`, or a group name
+such as `recording`); otherwise its title prefix does (`feat:`, `fix:`,
+`feat(s3):`, `docs:`, `lab:`, `test:`, `ci:`, `Recording:`, `AppImage:`...).
+Unrecognised prefixes go under Other changes. Each entry links its pull request
+and the issues it closes. The labels and closing issues come from one GitHub
+GraphQL query per 50 pull requests, which is why the `publish` and `draft` jobs
+have `pull-requests: read` and `issues: read`. If that query fails, the issue
+numbers a title ends with, such as `(#146 #148)`, stand in, and publication
+continues. If the history itself can't be read, the section says so instead.
+
+Preview a section from a local checkout with
+`python3 tools/releases/changelog.py --tag vX.Y.Z-nightly.N --repository patrick-hudson/put.gd-desktop`
+(add `--offline` to skip the GitHub query). The fixture history in
+`tests/releases/test_changelog.py` covers the ranges, grouping and folding.
+
+![The changes section for the range v0.1.1-nightly.588 to the current nightly: grouped entries with PR and closing-issue links; on the right, the same range as candidate notes with documentation, lab and test changes folded into one line](evidence/release-changelog-188/changes-section-annotated.png)
+
 ### Candidate and stable
 
 Agents releasing a version follow [the release runbook](release-runbook.md),
