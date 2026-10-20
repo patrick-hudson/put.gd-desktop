@@ -39,7 +39,8 @@ class Workflows(unittest.TestCase):
             text = path.read_text()
             with self.subTest(workflow=path.name):
                 self.assertNotIn('tags:', text)
-                self.assertNotIn('/dispatches', text)
+                # Workflows never start each other; the only dispatch goes to the site repository.
+                self.assertNotIn('/dispatches', text.replace('repos/patrick-hudson/put.gd-site/dispatches', ''))
                 self.assertNotIn('gh workflow run', text)
 
     def test_every_action_is_pinned_to_a_full_commit(self):
@@ -194,6 +195,14 @@ class Workflows(unittest.TestCase):
         self.assertIn('needs: [plan, ci]', publish)
         self.assertIn("if: needs.plan.outputs.skip == 'false'", publish)
         self.assertIn('publish.py --tag "$TAG" --directory build/publish --nightly', publish)
+        notify = publish.split('- name: Notify put.gd-site\n', 1)[1].split('      - name:', 1)[0]
+        self.assertIn('SITE_DISPATCH_TOKEN: ${{ secrets.SITE_DISPATCH_TOKEN }}', notify)
+        self.assertIn('if [ -z "$SITE_DISPATCH_TOKEN" ]', notify)
+        self.assertIn('gh api repos/patrick-hudson/put.gd-site/dispatches', notify)
+        self.assertIn('-f event_type=release-published', notify)
+        self.assertIn('-f "client_payload[tag]=$TAG"', notify)
+        self.assertIn('-F "client_payload[prerelease]=true"', notify)
+        self.assertNotIn('/dispatches', workflow('release.yml'))
         self.assertIn('contents: write', job(nightly, 'plan'))
         self.assertIn('contents: read', ci)
 

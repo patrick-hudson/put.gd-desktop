@@ -74,6 +74,28 @@ jobs:
       - name: Summarize
         run: |
           echo "Published nightly [\`$TAG\`]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$TAG)." >> "$GITHUB_STEP_SUMMARY"
+      - name: Notify put.gd-site
+        # The site rebuilds its download links on this event; without it the
+        # site's deploy refreshes on its own six-hour schedule. The workflow
+        # token cannot dispatch to another repository: SITE_DISPATCH_TOKEN is a
+        # fine-grained PAT for patrick-hudson/put.gd-site with Contents: read
+        # and write. `if:` cannot read secrets, so the shell checks the value.
+        env:
+          SITE_DISPATCH_TOKEN: ${{ secrets.SITE_DISPATCH_TOKEN }}
+        run: |
+          if [ -z "$SITE_DISPATCH_TOKEN" ]; then
+            echo "SITE_DISPATCH_TOKEN is not set: not notifying patrick-hudson/put.gd-site; its deploy refreshes within six hours."
+            exit 0
+          fi
+          if GH_TOKEN="$SITE_DISPATCH_TOKEN" gh api repos/patrick-hudson/put.gd-site/dispatches \
+              -f event_type=release-published \
+              -f "client_payload[tag]=$TAG" \
+              -F "client_payload[prerelease]=true"; then
+            echo "Sent release-published for $TAG to patrick-hudson/put.gd-site."
+            echo "Notified put.gd-site, which refreshes its download links." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning::Could not notify patrick-hudson/put.gd-site of $TAG; its deploy refreshes within six hours."
+          fi
       - name: Retain final publication evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
