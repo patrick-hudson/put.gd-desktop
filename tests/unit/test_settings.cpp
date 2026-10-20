@@ -307,6 +307,33 @@ private slots:
         QCOMPARE(service.document(), doc);
         QVERIFY(service.metadata()["watching"].toBool());
     }
+    // With no configuration folder to watch, the 2 s fallback rescans; an unchanged
+    // rescan must not report a status change, or every open view reloads (#234).
+    void unchangedRescansStaySilent() {
+        QTemporaryDir dir;
+        const auto parent = dir.filePath("not-yet-created");
+        putgd::SettingsService service(parent + "/config.json");
+        QSignalSpy status(&service, &putgd::SettingsService::statusChanged);
+        QVERIFY(!service.metadata()["watching"].toBool());
+        QTest::qWait(4500);
+        QCOMPARE(status.count(), 0);
+        QCOMPARE(service.reload().error.code, QStringLiteral("config_missing"));
+        QCOMPARE(status.count(), 0);
+        // A real change still reports: the folder and file appear.
+        QVERIFY(QDir().mkpath(parent));
+        replace(parent + "/config.json", QJsonDocument(putgd::SettingsService::defaults()).toJson());
+        QTRY_VERIFY_WITH_TIMEOUT(status.count() >= 1, 5000);
+        const auto settled = status.count();
+        QVERIFY(service.metadata()["watching"].toBool());
+        QTest::qWait(500);
+        QCOMPARE(status.count(), settled);
+        // So does a rejected edit, once, and its repair.
+        replace(parent + "/config.json", "{");
+        QTRY_COMPARE_WITH_TIMEOUT(service.metadata()["validation"].toObject()["ok"].toBool(), false, 5000);
+        QCOMPARE(status.count(), settled + 1);
+        QCOMPARE(service.reload().error.code, QStringLiteral("config_invalid"));
+        QCOMPARE(status.count(), settled + 1);
+    }
     void ownWritesDoNotCauseRepeatedAcceptance() {
         QTemporaryDir dir;
         putgd::SettingsService service(dir.filePath("config.json"));
