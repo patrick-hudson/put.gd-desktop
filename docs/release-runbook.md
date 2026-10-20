@@ -54,10 +54,14 @@ python3 tools/releases/promote.py
 python3 tools/releases/promote.py --open
 ```
 
-The first command previews the title and change list; the second opens the
-`release: vX.Y.Z` pull request into `main`. Wait for its `CI` check. Fix a failure
-with an ordinary pull request into `nightly`; the promotion pull request picks it
-up. Ask the user to merge it with a merge commit.
+The first command previews the title, the change list and the version's
+`CHANGELOG.md` section. The second opens two pull requests: `changelog: vX.Y.Z`
+into `nightly`, which adds that section, then the `release: vX.Y.Z` pull request
+into `main`. Show the user the changelog pull request so they can curate its
+entries, and ask them to merge it (an ordinary merge into `nightly`). Then wait for
+the promotion's `CI` check; it now includes `CHANGELOG.md`. Fix a failure with an
+ordinary pull request into `nightly`; the promotion pull request picks it up. Ask
+the user to merge the promotion with a merge commit.
 
 ## 3. Check the candidate draft
 
