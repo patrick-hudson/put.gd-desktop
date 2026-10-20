@@ -31,6 +31,14 @@ disable it and remove only that owned user copy before testing the package.
 After upgrading an enabled extension, log out of GNOME and log back in before
 verifying the new version. Replacing the installed files or checking their hashes
 alone does not establish which code the current Shell session has loaded.
+The resident compares the `extensionVersion` the loaded extension reports in
+`Hello` with the packaged `metadata.json` version (compiled in from
+`integrations/gnome/metadata.json`). While an older one is loaded,
+`capabilities` reports `helper.outdated: true` with `extensionVersion` and
+`packagedExtensionVersion`, screenshots keep working, and a region recording
+is refused with `helper_outdated`: "The put.gd GNOME Shell extension was
+updated; log out and back in to load the new version" (#131). Bump
+`metadata.json`'s `version` whenever the extension's D-Bus interface changes.
 
 For a standalone helper installation, install the release's matching GNOME ZIP
 with `gnome-extensions install /absolute/path/to/putgd-gnome50-VERSION.zip`, then

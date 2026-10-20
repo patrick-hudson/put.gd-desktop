@@ -439,6 +439,13 @@ share was ever opened.
   its St selector, then launches the helper with it; `RecordArea` streams
   that area. Without the extension (or with an older one) a rectless region
   is refused with `region_unavailable` instead of recording the whole monitor.
+  GNOME Shell runs the extension it loaded at login until the user logs out,
+  so after a package upgrade the old one stays loaded. When the loaded
+  `extensionVersion` (from `Hello`) is below the packaged `metadata.json`
+  version, the resident refuses with `helper_outdated`, "The put.gd GNOME
+  Shell extension was updated; log out and back in to load the new version",
+  rather than asking for an extension that is already enabled (#131), and
+  `capabilities` reports `helper.outdated` with both versions.
 - Elsewhere on Wayland a region needs `target.rect`.
 
 `recording.select {id, rect}` (MCP `select_recording_region`) completes an
@@ -449,7 +456,10 @@ the **dimming** of everything else while recording or paused and the
 **control bar** follow the X11 rules where the compositor allows them:
 
 - KDE: the ring and the dim strips are input-transparent overlay layer
-  surfaces (split per output), and the bar is an overlay layer surface placed
+  surfaces (split per output). KWin stacks overlay surfaces in the order they
+  map and `raise()` doesn't reorder them, so the strips are created clear
+  with the ready ring, before the bar, and Record only darkens them; strips
+  mapped at Record covered the bar until #127. The bar is an overlay layer surface placed
   by the X11 rules: below the rectangle, else above it, else at the top or
   bottom of another output, else inside its bottom-right corner, where it
   collapses to the handle from Record on, and placed again on its output when
@@ -508,11 +518,31 @@ at constant QP 24 because Intel's iHD driver refuses CBR and VBR for it
 to fail on Mint 22.3 and Ubuntu 26.04); on the workstation it captures 720p
 at half the CPU of `x264enc veryfast`. Pause drops raw frames and samples on the
 encoders' sink pads (never encoded buffers, which would leave P-frames with
-missing references that strict decoders such as OpenH264 refuse) and folds
-the gap into a timestamp offset, so the working clip's timeline excludes
-paused time for video and audio alike; the retained duration is measured from
-the first retained frame because some encoders carry a constant timestamp
-offset. The helper stops on its own and reports `stopped` with reason
+missing references that strict decoders such as OpenH264 refuse). Pause and
+Resume record one interval of pipeline running time that both branches share
+(`src/record/PauseTimeline.cpp`): a frame or audio buffer captured inside it
+is dropped (an audio buffer reaching into it is dropped whole), and everything
+after it moves back by the paused time, the same for both tracks, so the
+working clip's timeline excludes paused time and the audio-minus-video offset
+after a resume is the one before it. Before #130 each branch measured its own
+gap from its first buffer after the resume and continued one step after its
+last kept buffer (a frame for video, a fixed 20 ms for 10 ms audio buffers),
+which stepped the offset by −16 to +30 ms and left a 10 ms hole in the
+audio. A recording stopped while paused keeps nothing after the pause. The
+retained duration is measured from the first retained frame because some
+encoders carry a constant timestamp offset.
+
+Stop sends EOS into each branch at the element after its source, audio first,
+from a worker thread, and the clip is finished when the muxer's EOS reaches
+the bus. Before #129 the EOS went through the pipeline to the sources, and a
+source takes its streaming lock for it; `pulsesrc` holds that lock while it
+waits for audio and has no way to be woken, so when the sink monitor stopped
+delivering (the suspended `auto_null` sink of a VM without a sound card)
+Stop blocked the helper's main thread until the resident gave up with
+`recording_helper_timeout`. If a drain still doesn't finish within 10 s the
+capture stops anyway and keeps what reached the file (its Matroska index is
+missing; the clusters decode); `recording_stop_timeout` is left for a drain
+that wrote nothing. The helper stops on its own and reports `stopped` with reason
 `budget` when the working clip nears `limits.maxFileBytes` minus a reserve.
 Progress events carry `durationUs`, `bytes`, `paused` and the encoder names.
 
@@ -539,8 +569,11 @@ is skipped for the next candidate, so other machines keep the CPU path. HEVC
 in MP4 is tagged `hvc1` for Apple players. The working clip is decoded with frame and
 slice threads on every core. Audio is trimmed with `atrim` in seconds on the
 same clip timeline as the video (it starts at the first video frame; a gap
-before the first sample becomes silence, see "Timestamps and A/V sync") and
-encoded as AAC (MP4) or Opus (WebM). MP4 output is written with `faststart`.
+before the first sample becomes silence, see "Timestamps and A/V sync"),
+turned from the clip's timestamps into contiguous samples by `aresample`
+(`async=1`, 1 ms hard compensation), so a hole in the clip's audio (such as
+a pause leaves) becomes silence and an overlap is cut instead of later audio
+moving earlier (#130), and encoded as AAC (MP4) or Opus (WebM). MP4 output is written with `faststart`.
 
 Opus packets are 20 ms. The last one carries the end trim as Matroska
 `DiscardPadding`, which `ffprobe` shows as `Skip Samples` side data, and
