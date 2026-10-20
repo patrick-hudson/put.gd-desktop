@@ -119,8 +119,8 @@ by one frame.
 
 k72 stopped answering on the network at about 01:56Z, roughly 10 minutes after
 this slot was released clean (Plasma Wayland up, wall VNC active, load about 1).
-Two other sessions' builds were running there at the time. It was not rebooted
-by any session and needs a physical look.
+It had idle-suspended. It was back at 02:08Z, and the coordinator fixed the
+suspend.
 
 Hosts: k72 Kubuntu 26.04.1, Plasma 6.6.6 Wayland, kernel 7.0.0-38, PipeWire
 1.6.2; d69 Debian 13, Plasma 6.3, PipeWire 1.4.2; f44 Fedora 44, GNOME Shell
@@ -147,7 +147,7 @@ plugin comes from PipeWire 1.4.2, which still defaults to `min-buffers=8`, so th
 recorder now negotiates KWin's count there instead of a clamped 8. On a newer
 daemon the DEB would have hit #137 too. Fedora's (1.6.9) and Ubuntu 26.04's
 (1.6.2) plugins already default to 1, so the property changes nothing for them.
-The Ubuntu 26.04 DEB wasn't re-run, because k72 was offline. The Ubuntu 24.04
+The Ubuntu 26.04 DEB wasn't re-run, because k72 was suspended at the time. The Ubuntu 24.04
 DEB records X11 through `ximagesrc` on Mint, which doesn't use the PipeWire
 source.
 
