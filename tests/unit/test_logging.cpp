@@ -138,6 +138,23 @@ private slots:
   QCOMPARE(cleared["removedFiles"].toInt(),int(files.size()));
   const auto after=records(readLogs(dir.path()));QCOMPARE(after.size(),1);QCOMPARE(after[0]["message"].toString(),QString("Logs cleared"));
  }
+ // The resident cleans up once a day as well as at startup and rotation: a
+ // log that ages past logDays while it runs is removed without either.
+ void dailyCleanupEnforcesRetention() {
+  QTemporaryDir dir;const auto logs=dir.filePath("logs");logging::open(logs);
+  SettingsService settings(dir.filePath("config.json"));QVERIFY(settings.save(Settings::defaults(),{}));
+  LogService service(settings,dir.path());service.apply();
+  QCOMPARE(service.cleanupInterval(),LogService::cleanupIntervalMs);QCOMPARE(LogService::cleanupIntervalMs,24*60*60*1000);
+  // Aged past the default 14 days after the cleanups that open and apply queue have run.
+  logging::flush();
+  const auto old=logs+"/putgd-20200101T000000000Z-1-1.jsonl";QFile stale(old);QVERIFY(stale.open(QIODevice::WriteOnly));stale.write("{}\n");stale.flush();
+  stale.setFileTime(QDateTime::currentDateTimeUtc().addDays(-15),QFileDevice::FileModificationTime);stale.close();
+  logging::info(logApp(),"Still running");logging::flush();QTest::qWait(100);
+  QVERIFY(QFile::exists(old));
+  service.setCleanupInterval(20);
+  QTRY_VERIFY(!QFile::exists(old));
+  QVERIFY(!logging::files().isEmpty());
+ }
  void failedWritesDegradeWithoutBlocking() {
   QTemporaryDir dir;QFile blocker(dir.filePath("not-a-folder"));QVERIFY(blocker.open(QIODevice::WriteOnly));blocker.close();
   logging::open(dir.filePath("not-a-folder/logs"));
