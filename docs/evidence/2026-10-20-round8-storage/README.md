@@ -19,6 +19,17 @@ them. Crop and highlight boxes were added afterwards.
 - `pr-146-cleanup-incomplete-upload.png`: **Clean retry artifacts and previews…**
   reports the multipart upload S3 refused to abort.
 
+## #148 log excerpt (`pr-148-part-request-ids.png`)
+
+This is a rendering of four real records from the persistent JSON Lines log. They
+were written during `S3MultipartTest::debugLogRecordsPartsWithoutSecretsOrNames`:
+an 11 MiB upload through the production OperationService, S3 worker and logging,
+with debug logging on, to the offline fixture. That test passed in the same run,
+and the log held no secret, credential or `Signature=` value. Operation and item
+IDs are shortened in the picture. The request IDs are the fixture's synthetic
+`x-amz-request-id` and `x-amz-id-2` values. Part 3 was sent on a borrowed lane
+(`lane=1`, `lanes=3`), before part 2 finished.
+
 ## #174 measurement (`pr-174-borrowed-lanes.png`)
 
 The run took a quiet d69 slot at 06:49–06:56Z under the desktop lock, with 1-min
