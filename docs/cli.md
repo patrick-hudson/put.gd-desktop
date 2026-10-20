@@ -61,7 +61,7 @@ Methods and parameters:
 | `editor.preview` | `id`, optional `maxEdge` 64–1600; base64 sanitized PNG |
 | `editor.saveCopy` | `id`, absolute `.png` `path`, optional `overwrite` |
 | `operation.recent` | empty object; configured recent-activity bound |
-| `operation.inspect`, `.cancel`, `.retry`, `.copy`, `.retryLocalSave` | `id` |
+| `operation.inspect`, `.cancel`, `.retry`, `.copy`, `.retryLocalSave` | `id`; `.cancel` also takes an optional `itemId` (an item's `artifact.id`) to cancel one file of an active batch while the others continue. That item ends `cancelled` and the next Retry uploads it |
 | `history.list` | optional limit, offset, search, category, mime, profileId, uploadStatus, localStatus, remoteStatus, from, to |
 | `history.detail`, `history.copyLink`, `history.copyImage` | history `id` |
 | `history.clear`, `cache.clear` | empty object |
