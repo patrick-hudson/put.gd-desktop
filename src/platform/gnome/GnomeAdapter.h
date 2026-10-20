@@ -24,6 +24,7 @@ public:
  void setUiProcess(qint64) override;
  void invalidateCopyEligibility() override;
  bool selectsRegions()const override;
+ Error regionError()const override;
  // The loaded extension is older than the packaged one: a log-out loads it.
  bool outdated()const;
  void selectRegion(RecordingShell::Reply) override;

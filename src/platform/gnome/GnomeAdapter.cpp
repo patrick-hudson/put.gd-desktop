@@ -189,6 +189,7 @@ Error GnomeAdapter::recordingShellError()const{
  if(!ready_)return {"region_unavailable","Recording a region on GNOME needs the put.gd Shell extension; enable putgd@put.gd",{{"helper",helperError_.toJson()}}};
  return {"region_unavailable","Recording a region on GNOME needs the put.gd Shell extension with recording support",{}};
 }
+Error GnomeAdapter::regionError()const{return selectsRegions()?Error{}:recordingShellError();}
 void GnomeAdapter::selectRegion(RecordingShell::Reply reply){
  if(!selectsRegions()){reply(recordingShellError(),{});return;}
  const auto id=uuid();recordingSelection_=id;

@@ -254,7 +254,8 @@ private slots:
   QCOMPARE(error.code,QString("helper_outdated"));QVERIFY2(error.message.contains("log out and back in"),qPrintable(error.message));
   // Screenshots keep working with the loaded extension.
   QVERIFY(source.capabilities()["capture"].toObject()["region"].toObject()["available"].toBool());
-  stopFixture();QVERIFY(startFixture());QTRY_VERIFY(helperAvailable(source));QVERIFY(!source.capabilities()["helper"].toObject()["outdated"].toBool());
+  QCOMPARE(source.regionError().code,QString("helper_outdated"));
+  stopFixture();QTRY_VERIFY(!helperAvailable(source));QVERIFY(startFixture());QTRY_VERIFY(helperAvailable(source));QVERIFY(!source.capabilities()["helper"].toObject()["outdated"].toBool());
  }
  void ownerReplacementRegistersLatestPid(){
   GnomeAdapter source;QTRY_VERIFY(windowAvailable(source));source.setUiProcess(1234);
