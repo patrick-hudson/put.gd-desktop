@@ -31,12 +31,14 @@ void recordDecoderErrors(void* avcl, int level, const char* format, va_list args
 // monitor opens after the screen stream; 20-110 ms on the lab desktops). Every
 // export with sound must keep that gap rather than rebase the audio to its own
 // first sample; silent exports (GIF, WebP, audio off) never read the audio.
+// #130: a pause can leave a hole in the working clip's audio timestamps; the
+// export fills it with silence instead of pulling the later audio earlier.
 // #119: every Opus packet of a WebM export, the end-trimmed last one included,
 // decodes without error and the decoded audio lasts as long as the export.
 class ExportAvSync : public QObject {
     Q_OBJECT
     QTemporaryDir dir_;
-    QString clip_;
+    QString clip_, gapped_;
     static double median(const QString& path) {
         QJsonObject sync;
         const auto error = measureAvSync(path, sync);
@@ -96,9 +98,9 @@ class ExportAvSync : public QObject {
         return failure.isEmpty() ? samples : -1;
     }
     // Exports the clip; false with a skip reason when this FFmpeg lacks the format's encoders.
-    bool exportClip(const QString& name, const QString& format, const QString& codec, bool audio, qint64 trimStart, QString* skip) {
+    bool exportClip(const QString& name, const QString& format, const QString& codec, bool audio, qint64 trimStart, QString* skip, const QString& input = {}) {
         ExportRequest request;
-        request.input = clip_;
+        request.input = input.isEmpty() ? clip_ : input;
         request.output = dir_.filePath(name);
         request.durationUs = 4'000'000;
         request.canvas = {1280, 720};
@@ -124,6 +126,10 @@ private slots:
         QVERIFY(!writeAvMarker(clip_, 4, 110));
         // The marker itself is in sync in container time, with audio starting 110 ms in.
         QVERIFY(std::abs(median(clip_)) <= 1.0);
+        // The same with 60 ms of audio missing at 0.5 s, before three of the bursts.
+        gapped_ = dir_.filePath("gapped.mkv");
+        QVERIFY(!writeAvMarker(gapped_, 4, 110, 500, 60));
+        QVERIFY(std::abs(median(gapped_)) <= 1.0);
     }
     void exportsWithSoundKeepTheAudioStart_data() {
         QTest::addColumn<QString>("format");
@@ -144,6 +150,24 @@ private slots:
         if (!skip.isEmpty()) QSKIP(qPrintable(skip));
         QVERIFY(exported);
         // Within half a frame at 30 fps; before the fix this read -110 ms.
+        const double offset = median(dir_.filePath(name));
+        QVERIFY2(std::abs(offset) <= 17.0, qPrintable(QString::number(offset)));
+    }
+    void exportsKeepAnAudioGap_data() {
+        QTest::addColumn<QString>("format");
+        QTest::addColumn<QString>("codec");
+        QTest::newRow("mp4") << "mp4" << "h264";
+        QTest::newRow("webm") << "webm" << "vp9";
+    }
+    void exportsKeepAnAudioGap() {
+        QFETCH(QString, format);
+        QFETCH(QString, codec);
+        const auto name = QStringLiteral("gapped.%1").arg(format);
+        QString skip;
+        const bool exported = exportClip(name, format, codec, true, 0, &skip, gapped_);
+        if (!skip.isEmpty()) QSKIP(qPrintable(skip));
+        QVERIFY(exported);
+        // Before the fix the bursts after the hole read -60 ms.
         const double offset = median(dir_.filePath(name));
         QVERIFY2(std::abs(offset) <= 17.0, qPrintable(QString::number(offset)));
     }
