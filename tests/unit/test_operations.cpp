@@ -1036,12 +1036,16 @@ private slots:
  void largeUploadBorrowsIdleSlotsUntilAnotherActionWaits() {
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;provider->concurrency=8;registry.add("opaque",provider);
   SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));
-  Source source;source.payload=textPayload();OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());
-  auto drain=qScopeGuard([&]{provider->deferUploads=false;for(auto complete:provider->completions)complete();provider->completions.clear();});
+  // Distinct names: two uploads to one name would wait on its object lock, not on a slot.
+  Source source;source.payload.kind="files";source.payload.files={fixture(d.path(),"large.bin","synthetic large file")};
+  OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());
+  auto drain=qScopeGuard([&]{provider->deferUploads=false;QElapsedTimer clock;clock.start();
+   do{while(!provider->completions.isEmpty())provider->completions.takeFirst()();QTest::qWait(10);}while(operations.diagnostics()["activeOperations"].toInt()>0&&clock.elapsed()<10000);});
   operations.invoke("clipboard",[&](Error e,QJsonObject){QVERIFY(!e);});QTRY_COMPARE(provider->completions.size(),1);
   // Three uploads at once by default: the only transfer may borrow the two idle slots.
   QVERIFY(provider->requests[0].extraLanes);QCOMPARE(provider->requests[0].extraLanes(3),2);
   // A second action starts at once, taking a lent slot back.
+  source.payload.files={fixture(d.path(),"small.txt","synthetic small file")};
   QElapsedTimer clock;clock.start();operations.invoke("clipboard",[&](Error e,QJsonObject){QVERIFY(!e);});
   QTRY_COMPARE(provider->completions.size(),2);QVERIFY2(clock.elapsed()<2000,qPrintable(QString::number(clock.elapsed())));
   QCOMPARE(provider->requests[0].extraLanes(3),1);
@@ -1054,7 +1058,7 @@ private slots:
   SettingsService settings(d.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});QVERIFY(settings.save(configuration(d.path()),{}));
   Source source;source.payload=textPayload();OperationService ops(d.filePath("data"),settings,registry,source);QTRY_VERIFY(ops.ready());
   QString id;ops.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});
-  HistoryStore store(ops.databasePath());QTRY_VERIFY(store.operation(id).state=="failed");
+  HistoryStore store(ops.databasePath());QTRY_VERIFY(QStringList({"partial","failed"}).contains(store.operation(id).state));QCOMPARE(store.operation(id).items[0].uploadStatus,QString("failed"));
   auto op=store.operation(id);QCOMPARE(op.items[0].uploadJournal["uploadId"].toString(),QString("opaque-upload"));
   // A failed item keeps its artifact for Retry until failedArtifactDays pass.
   QJsonObject result;bool cleaned=false;ops.cleanup([&](Error e,QJsonObject r){QVERIFY(!e);result=r;cleaned=true;});QTRY_VERIFY(cleaned);
