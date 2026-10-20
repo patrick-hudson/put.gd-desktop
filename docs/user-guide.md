@@ -67,7 +67,7 @@ General contains notifications and launch at login. Advanced contains upload/ima
 
 ## History and recovery
 
-History combines current operations and persistent file receipts in list or gallery view. Search local stored names, expand filters for dates/content/destination/upload/local/remote status, and select a file to inspect its retained result. Browsing does not list or download cloud files. Previews use bounded retained images; missing previews use a type fallback. The default 50-artifact page can split a large batch across pages.
+History combines current operations and persistent file receipts in list or gallery view. Search local stored names, expand filters for dates/content/destination/upload/local/remote status, and select a file to inspect its retained result. Browsing does not list or download cloud files. Previews use bounded retained images; videos show a still with a play glyph and their length, made after the upload finishes (see [screen recording](recording.md#history-poster-frames)); missing previews use a type fallback. The default 50-artifact page can split a large batch across pages.
 
 S3 progress uses body bytes and a matching total. Proton displays encrypted transfer bytes separately from source size because overhead and retries make a percentage misleading. Counters can go backward during retries. A complete counter can still be finalizing; the confirmed receipt establishes completion.
 
