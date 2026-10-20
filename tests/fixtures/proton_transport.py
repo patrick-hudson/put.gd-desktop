@@ -44,6 +44,11 @@ if case == 'plan-limit':
     print(json.dumps({'ok': False, 'error': {'code': 'destination_file_too_large_for_plan',
         'message': 'This file is larger than your Proton plan allows for a single file.', 'details': {}}}), flush=True)
     sys.exit(0)
+if case == 'plan-limit-settled':
+    # The helper proved the name still free after 200003: nothing was created (#201).
+    print(json.dumps({'ok': True, 'result': {'status': 'failed', 'error': {'code': 'destination_file_too_large_for_plan',
+        'message': 'This file is larger than your Proton plan allows for a single file.', 'details': {}}}}), flush=True)
+    sys.exit(0)
 if case == 'timeout':
     time.sleep(3)
 elif case == 'malformed':
