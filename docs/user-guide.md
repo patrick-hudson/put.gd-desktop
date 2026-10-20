@@ -63,7 +63,7 @@ Accepted external changes refresh a clean form. A dirty draft instead reports th
 
 **Settings → Shortcuts** records one combination per action. Press Record, enter a chord, then release all keys. Escape cancels and Clear removes the assignment. Moving focus or closing also cancels recording. Global shortcuts are paused during recording so an existing chord cannot trigger a capture. Accepted changes save automatically. Each row reports actual binding, conflicts, and unsupported keys; configured text alone does not prove a binding. CLI callers use Qt PortableText such as `Ctrl+1`.
 
-General contains notifications and launch at login. Advanced contains upload/image limits, queued-image memory, thumbnail cache and retention controls, plus desktop diagnostics. Blank history retention means forever. Each setting has keyboard-accessible help. Tray, notifications, launch at login, capture, clipboard and shortcuts depend on the actual desktop support reported there.
+General contains notifications, launch at login and Appearance (Match the desktop, Dark or Light; see [appearance](appearance.md)). Advanced contains upload/image limits, queued-image memory, thumbnail cache and retention controls, plus desktop diagnostics. Blank history retention means forever. Each setting has keyboard-accessible help. Tray, notifications, launch at login, capture, clipboard and shortcuts depend on the actual desktop support reported there.
 
 ## History and recovery
 
