@@ -190,7 +190,10 @@ The last 10 records are kept in `unclean-exits.json`. `diagnostics.uncleanExit` 
 
 Every put.gd executable (`putgd`, `putgd-ui`, `putgd-capture`, `putgd-kde-region`,
 `putgd-record` and `putgd-s3-worker`) links a small crash handler (#124,
-`src/core/CrashHandler.cpp`) that installs itself before `main`. For SIGSEGV,
+`src/core/CrashHandler.cpp`) that installs itself before `main`, from the
+executable's `.preinit_array`. ld.so runs that before any shared library's
+constructor, so the handler is in place before any other code in the process
+runs (#211). For SIGSEGV,
 SIGBUS, SIGILL, SIGFPE and SIGABRT it runs on an alternate signal stack, walks the
 crashing thread's stack with `_Unwind_Backtrace` (called once at startup, so
 nothing is loaded or allocated while crashing) and writes, with `write(2)` only:
@@ -218,8 +221,11 @@ own code all start their threads through it (#156). It wraps the start routine: 
 new thread maps a 64 KiB alternate stack with a guard page below it
 (`MAP_NORESERVE`, untouched unless the thread crashes) before running the routine,
 and unmaps it when the thread ends. A stack overflow on any thread is therefore
-recorded, from that thread. Threads that start before the handler installs itself
-(in another library's constructor) have none (#211). With `PUTGD_CRASH_HANDLER=0`, or in
+recorded, from that thread, including a thread a library starts from its own
+constructor before `main` (#211). At that point libc may not have set up `getenv` or
+`program_invocation_short_name` yet, so the handler reads `PUTGD_CRASH_HANDLER`,
+`PUTGD_TEST_CRASH` and its process name from the arguments and environment that
+ld.so passes to `.preinit_array` functions. With `PUTGD_CRASH_HANDLER=0`, or in
 sanitizer builds, `pthread_create` passes straight through. The native package
 audit rejects a crash-handled program that doesn't export it.
 
@@ -280,7 +286,12 @@ Configuring a release build with the trigger fails, and the native package audit
 with each path (file, stderr, a library loaded later, the trigger) and symbolizes
 its frames. It also overflows the main thread, a `std::thread`, a `QThread` and a
 thread that a dlopen'd library starts, and checks that every thread gets its
-64 KiB stack and gives it back.
+64 KiB stack and gives it back. A linked fixture library
+(`tests/fixtures/crash_early_library.cpp`) starts a thread from its constructor,
+before the executable's own constructors; the test checks that the thread has its
+stack and that overflowing it gives a complete record (#211):
+
+![Before: with the handler installed from a constructor, the library constructor's thread has no alternate stack and its overflow leaves an empty record. After: installed from .preinit_array, the test passes and the record is complete, from that thread, symbolized to overflowInEarlyThread](evidence/crash-early-threads-211/crash-early-thread-before-after.png)
 
 ### systemd-coredump (option B)
 
