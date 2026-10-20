@@ -121,3 +121,29 @@ in History reads "Upload failed". Action id `clipboard`,
 On m74 (Qt 6.4.2) all seven `gui_*` suites pass: `gui_editor_window`,
 `gui_application`, `gui_theme`, `gui_tray`, `gui_version`, `gui_settings` and
 `gui_history_view`. On d69 (Qt 6.8.2) all `gui_*` suites pass too.
+
+## Test flake on nightly (PR #272)
+
+![Theme-pick test, 50 runs each with slow fsync and CPU load](272-test-stress.png)
+
+Nightly `c2037cc` failed `gui_application` →
+`pickedThemeAppliesBeforeTheSaveAndRevertsWhenRefused`. The test gave the
+resident 250 ms to accept the save, as a stand-in for "no autosave delay",
+and the CI runner took 358 ms. On m74 the old test kept passing under four
+pinned CPU hogs and even with a 10% CPU quota. The time goes to the
+resident's config write, whose fsync is instant on m74's tmpfs `/tmp` but
+slow on a CI disk. A scratch `LD_PRELOAD` shim that delays `fsync` and
+`fdatasync` reproduces the CI failure exactly.
+
+The test now checks orderings instead. The theme is applied while the
+resident still holds the old value, and the save reaches the resident while
+the 400 ms autosave timer is still pending. Qt fires the dispatch's zero
+timer first however late the event loop runs. After that it waits with the
+default QTRY timeout. A pick that waited for autosave still fails it. The
+refusal and Retry saving checks are unchanged.
+
+Stress on m74: 50 runs of each binary, each run with a random 0–400 ms fsync
+delay and four CPU hogs pinned to the test's core, host load 1.3–5.4. Before:
+15 passed and 35 failed; every run with a delay of 143 ms or more failed,
+because a save does several fsyncs. After: 50 of 50 passed, with delays up to
+389 ms. Per-run data is in [test-stress/](test-stress/).
