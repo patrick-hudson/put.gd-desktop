@@ -127,12 +127,16 @@ void UiApplicationController::receive(const QString& type,const QString& sequenc
  if(type=="command"){
   // Agent control of an open view; unknown commands are refused, not ignored.
   const auto name=payload["command"].toString();const auto params=payload["params"].toObject();
+  auto answer=[guard=QPointer<UiApplicationController>(this),sequence](Error error,QJsonObject result){if(guard&&!guard->exiting_)guard->control_.send("commandResult",{{"replyTo",sequence},{"error",error.toJson()},{"result",result}});};
   Error error;QJsonObject result;
   if(payload["version"]!=1)error={"ui_command_unsupported","This window does not support that command version.",{{"version",payload["version"]}}};
-  else if(name!="moveDestination")error={"ui_command_unknown","This window does not support that command.",{}};
-  else if(!main_||!main_->isVisible()||closing_)error={"ui_view_closed","Open Settings before driving it.",{}};
+  else if(!QStringList{"moveDestination","diagnostics","historySaveDiagnostics"}.contains(name))error={"ui_command_unknown","This window does not support that command.",{}};
+  else if(!main_||!main_->isVisible()||closing_)error={"ui_view_closed",name=="historySaveDiagnostics"?"Open History before driving it.":"Open Settings before driving it.",{}};
+  // These finish asynchronously (a session request) and answer through `answer`.
+  else if(name=="diagnostics"){main_->settings()->diagnosticsCommand(params,answer);return;}
+  else if(name=="historySaveDiagnostics"){main_->history()->saveDiagnosticsFor(params["id"].toString(),answer);return;}
   else error=main_->settings()->moveSelectedDestination(params["direction"].toString()=="up"?-1:1,params["profileId"].toString(),result);
-  control_.send("commandResult",{{"replyTo",sequence},{"error",error.toJson()},{"result",result}});return;
+  answer(error,result);return;
  }
  if(type=="invalidated"){
   QPointer<UiApplicationController> guard(this);

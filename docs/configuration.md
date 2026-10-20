@@ -101,6 +101,7 @@ the last accepted in-memory settings and the bad file so it can be corrected.
 | `preferences.unlockCredentialsAtStartup` | Optional, default `true`: read saved keychain S3 credentials once when put.gd starts. A locked keyring shows its own unlock prompt then; uploads and shortcuts never unlock |
 | `preferences.editorRecentColors` | Optional, written by put.gd: up to 6 lowercase `#rrggbb` custom editor colors, most recent first |
 | `preferences.diagnostics.debugLogging` | Optional, default `false`: keep debug records in the persistent log. put.gd sets it back to `false` 24 hours after it was turned on ([diagnostics.md](diagnostics.md#debug-logging)) |
+| `preferences.diagnostics.packageFolder` | Optional absolute folder, or `null`: where **Create diagnostics package** and **Save diagnostics for this upload** save packages. Settings writes it when you choose a folder; omitted or `null` means `<archive root>/diagnostics/` ([diagnostics.md](diagnostics.md#diagnostics-package)) |
 
 Local saving and uploading are independent outputs. An upload route with a configured
 profile uploads; `archive.keepUploads: true` also saves a local copy before publication.

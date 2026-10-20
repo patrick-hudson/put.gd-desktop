@@ -30,6 +30,11 @@ schedule, manual runs and release callers always select everything.
 Unknown paths select the build by default. The last row lists every input to the
 package builders and the curated source archive.
 
+A pull request selects the union of its rows, so a documentation edit pushed to a
+code pull request re-runs that pull request's whole build. Keep documentation in
+its own pull request (see `AGENTS.md`): a documentation-only pull request runs
+`contracts` alone, unless it touches `docs/build.md` or `docs/proton-drive.md`.
+
 The **sanitizers** job is selected separately: by `src/core/`, `src/app/`, the C++
 sources under `tests/unit/`, `tests/integration/` and `tests/fixtures/`, and by
 `cmake/`, `tools/ci/`, `CMakeLists.txt`, `CMakePresets.json` and `ci.yml`. UI,

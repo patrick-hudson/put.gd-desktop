@@ -9,6 +9,7 @@ struct BundleRequest {
  qint64 sinceMs=7LL*24*60*60*1000;
  bool includeNames=false;
  QString output; // absolute .zip path or existing folder; empty means the default folder
+ bool preview=false; // report what the package would hold; write nothing
 };
 // Replaces names, object keys, URLs and private paths in a diagnostics package
 // with stable per-package hashes (the same value always gets the same token in

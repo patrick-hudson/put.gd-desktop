@@ -48,8 +48,14 @@
 #include <QDropEvent>
 #include <QKeyEvent>
 #include <QPainter>
+#include <QStyledItemDelegate>
 #include <QMouseEvent>
 #include "RedesignTheme.h"
+#include <QFileInfo>
+#include <QDir>
+#include <QLocale>
+#include <QDateTime>
+#include <QDialog>
 namespace putgd {
 namespace {
 constexpr int protonFolderNameRole=Qt::UserRole+1;
@@ -69,19 +75,56 @@ QJsonObject s3Profile(const QString& id){
 }
 // Drag and drop only proposes a move; the window reorders its draft and rebuilds
 // the rows, so Qt never moves or removes items itself.
+// Rows are a fixed height with two lines, the label and its state (Default ·
+// Ready to test). Each line is elided instead of wrapped, so a long label can
+// never push the state out of its row (#134).
+class DestinationRowDelegate final:public QStyledItemDelegate {
+public:
+ using QStyledItemDelegate::QStyledItemDelegate;
+ QStyleOptionViewItem shown(const QStyleOptionViewItem& base,const QModelIndex& index)const{auto option=base;initStyleOption(&option,index);return option;}
+protected:
+ void initStyleOption(QStyleOptionViewItem* option,const QModelIndex& index)const override{
+  QStyledItemDelegate::initStyleOption(option,index);
+  // displayText() has already turned the label/state newline into a line separator.
+  auto lines=option->text.split(QChar::LineSeparator);if(lines.size()<2)return;
+  option->features&=~QStyleOptionViewItem::WrapText;
+  const auto* style=option->widget?option->widget->style():QApplication::style();
+  const int width=qMax(16,style->subElementRect(QStyle::SE_ItemViewItemText,option,option->widget).width()-4);
+  for(auto& line:lines)line=option->fontMetrics.elidedText(line,Qt::ElideRight,width);
+  option->text=lines.join(QChar::LineSeparator);
+ }
+};
 class DestinationList final:public QListWidget {
 public:
  std::function<void(int from,int to)> moveRequested;
- DestinationList(){setDragEnabled(true);setAcceptDrops(true);setDragDropMode(QAbstractItemView::InternalMove);setDefaultDropAction(Qt::MoveAction);setDropIndicatorShown(false);}
+ DestinationList(){setDragEnabled(true);setAcceptDrops(true);setDragDropMode(QAbstractItemView::InternalMove);setDefaultDropAction(Qt::MoveAction);setDropIndicatorShown(false);setItemDelegate(new DestinationRowDelegate(this));setTextElideMode(Qt::ElideRight);}
+ // The displayed lines of a row: the label and its state, each elided to one line.
+ QStringList shownLines(int row)const{
+  QStyleOptionViewItem option;initViewItemOption(&option);option.rect=visualItemRect(item(row));
+  return static_cast<DestinationRowDelegate*>(itemDelegate())->shown(option,model()->index(row,0)).text.split(QChar::LineSeparator);
+ }
+ // A slim, slightly translucent label beside and below the pointer, so the drop
+ // line within half a row of it stays visible (#133).
+ static QPixmap dragImage(const QListWidgetItem& item,const QFont& font,qreal ratio){
+  const QFontMetrics metrics(font);const auto label=item.text().section('\n',0,0);
+  const int height=metrics.height()+16,width=qMin(220,8+16+8+metrics.horizontalAdvance(label)+12);
+  QPixmap image(QSize(width,height)*ratio);image.setDevicePixelRatio(ratio);image.fill(Qt::transparent);
+  QPainter painter(&image);painter.setRenderHint(QPainter::Antialiasing);painter.setOpacity(0.86);
+  painter.setPen(QPen(RedesignTheme::accent(),1));painter.setBrush(RedesignTheme::surfaceRaised());painter.drawRoundedRect(QRectF(0.5,0.5,width-1,height-1),7,7);
+  item.icon().paint(&painter,QRect(8,(height-16)/2,16,16));
+  painter.setFont(font);painter.setPen(RedesignTheme::text());
+  painter.drawText(QRect(32,0,width-32-8,height),Qt::AlignVCenter|Qt::AlignLeft,metrics.elidedText(label,Qt::ElideRight,width-32-8));
+  return image;
+ }
+ static constexpr QPoint dragOffset{14,12};
 protected:
  void startDrag(Qt::DropActions)override{
   auto* item=currentItem();if(!item)return;dragRow_=row(item);
   auto* drag=new QDrag(this);drag->setMimeData(model()->mimeData(selectedIndexes()));
-  const auto rect=visualItemRect(item);drag->setPixmap(viewport()->grab(rect));drag->setHotSpot(rect.contains(press_)?press_-rect.topLeft():QPoint(rect.width()/2,rect.height()/2));
+  drag->setPixmap(dragImage(*item,font(),devicePixelRatioF()));drag->setHotSpot(-dragOffset);
   drag->exec(Qt::MoveAction);
   dragRow_=-1;setGap(-1);
  }
- void mousePressEvent(QMouseEvent* event)override{press_=event->position().toPoint();QListWidget::mousePressEvent(event);}
  void dragEnterEvent(QDragEnterEvent* event)override{if(event->source()!=this){event->ignore();return;}QListWidget::dragEnterEvent(event);event->acceptProposedAction();}
  void dragMoveEvent(QDragMoveEvent* event)override{
   if(event->source()!=this){event->ignore();return;}
@@ -120,7 +163,126 @@ private:
   const auto rect=visualRect(index);return point.y()<rect.center().y()?index.row():index.row()+1;
  }
  void setGap(int gap){if(gap_==gap)return;gap_=gap;viewport()->update();}
- int dragRow_=-1,gap_=-1;QPoint press_;
+ int dragRow_=-1,gap_=-1;
+};
+QString localTime(const QString& iso){const auto time=QDateTime::fromString(iso,Qt::ISODateWithMs);return time.isValid()?QLocale().toString(time.toLocalTime(),QLocale::ShortFormat):iso;}
+QString operationLine(const QJsonObject& op){
+ static const QHash<QString,QString> actions{{"region","Region capture"},{"window","Window capture"},{"desktop","Desktop capture"},{"clipboard","Clipboard upload"},{"edit","Edited capture"},{"record","Screen recording"},{"file","File upload"}};
+ const int items=op["items"].toInt();
+ return actions.value(op["action"].toString(),op["action"].toString())+" · "+op["state"].toString()+" · "+localTime(op["created"].toString())+(items>1?QString(" · %1 files").arg(items):QString{});
+}
+// Create diagnostics package (#122): previews what diagnostics.bundle would save,
+// where, and with which redaction, then saves it locally. Nothing is uploaded; the
+// extras slot is where #123's optional upload goes.
+class DiagnosticsPackageDialog final:public QDialog {
+public:
+ using Reply=std::function<void(Error,QJsonObject)>;
+ std::function<void(const QString&)> folderChosen; // an empty folder means the default
+ DiagnosticsPackageDialog(UiSession& session,QWidget* parent):QDialog(parent),session_(session){
+  setObjectName("diagnosticsPackageDialog");setWindowTitle("Create diagnostics package");setAccessibleName("Create diagnostics package");setModal(true);setMinimumWidth(560);
+  auto* layout=new QVBoxLayout(this);layout->setContentsMargins(24,20,24,18);layout->setSpacing(14);
+  auto* heading=new QLabel("Create diagnostics package",this);VisualStyle::role(heading,"sectionTitle");layout->addWidget(heading);
+  auto* intro=new QLabel("A .zip a maintainer can use to work out what went wrong. It is saved on this computer only; nothing is uploaded.",this);intro->setWordWrap(true);VisualStyle::role(intro,"muted");layout->addWidget(intro);
+  auto* form=new QFormLayout;VisualStyle::styleForm(form);form->setVerticalSpacing(12);layout->addLayout(form);
+  auto label=[this](const char* name){auto* l=new QLabel(this);l->setObjectName(name);l->setWordWrap(true);l->setTextFormat(Qt::PlainText);l->setTextInteractionFlags(Qt::TextSelectableByMouse);return l;};
+  scope_=label("packageScope");form->addRow("Covers",scope_);
+  contents_=label("packageContents");form->addRow("Contains",contents_);
+  operations_=label("packageOperations");form->addRow("Uploads",operations_);
+  auto* names=new QWidget(this);auto* namesLayout=new QVBoxLayout(names);namesLayout->setContentsMargins(0,0,0,0);namesLayout->setSpacing(4);
+  includeNames_=new QCheckBox("Include file names",this);includeNames_->setObjectName("includeFileNames");includeNames_->setAccessibleName("Include file names");namesLayout->addWidget(includeNames_);
+  redaction_=label("packageRedaction");VisualStyle::role(redaction_,"muted");namesLayout->addWidget(redaction_);form->addRow("Names",names);
+  auto* never=new QLabel("Credentials, tokens, signed links, file contents, screenshots and clipboard text are never included.",this);never->setWordWrap(true);VisualStyle::role(never,"muted");form->addRow("Never",never);
+  auto* where=new QWidget(this);auto* whereLayout=new QHBoxLayout(where);whereLayout->setContentsMargins(0,0,0,0);whereLayout->setSpacing(8);
+  folder_=label("packageFolder");VisualStyle::role(folder_,"mono");whereLayout->addWidget(folder_,1);
+  auto* choose=new QPushButton("Choose folder…",this);choose->setObjectName("choosePackageFolder");whereLayout->addWidget(choose);
+  useDefault_=new QPushButton("Use default",this);useDefault_->setObjectName("defaultPackageFolder");useDefault_->setToolTip("Save to <archive root>/diagnostics, where put.gd keeps the newest 10 packages for 30 days.");whereLayout->addWidget(useDefault_);
+  form->addRow("Save to",where);
+  // Reserved for #123 (Also upload and copy a link).
+  auto* extras=new QWidget(this);extras->setObjectName("diagnosticsPackageExtras");auto* extrasLayout=new QVBoxLayout(extras);extrasLayout->setContentsMargins(0,0,0,0);layout->addWidget(extras);
+  result_=label("packageResult");VisualStyle::role(result_,"status");result_->hide();layout->addWidget(result_);
+  auto* buttons=new QHBoxLayout;show_=new QPushButton("Show in folder",this);show_->setObjectName("showPackageInFolder");show_->hide();buttons->addWidget(show_);buttons->addStretch();
+  close_=new QPushButton("Cancel",this);close_->setObjectName("closePackage");buttons->addWidget(close_);
+  save_=new QPushButton("Save package",this);save_->setObjectName("savePackage");VisualStyle::role(save_,"primary");save_->setDefault(true);buttons->addWidget(save_);layout->addLayout(buttons);
+  connect(includeNames_,&QCheckBox::toggled,this,[this]{refreshPreview();});
+  connect(choose,&QPushButton::clicked,this,[this]{const auto path=QFileDialog::getExistingDirectory(this,"Save diagnostics packages to",folder_->text());if(!path.isEmpty())setFolder(path,true);});
+  connect(useDefault_,&QPushButton::clicked,this,[this]{setFolder({},true);});
+  connect(close_,&QPushButton::clicked,this,&QDialog::reject);
+  connect(save_,&QPushButton::clicked,this,[this]{save({});});
+  connect(show_,&QPushButton::clicked,this,[this]{reveal({});});
+ }
+ // Each opening starts with names hashed, the privacy default.
+ void setScope(const QString& operation,const QString& folder){operation_=operation;custom_=QFileInfo(folder).isDir()?folder:QString{};{const QSignalBlocker block(includeNames_);includeNames_->setChecked(false);}saved_={};error_={};result_->hide();show_->hide();save_->setText("Save package");close_->setText("Cancel");refreshPreview();}
+ void setIncludeNames(bool include){if(includeNames_->isChecked()!=include)includeNames_->setChecked(include);}
+ Error setFolder(const QString& folder,bool remember){
+  if(!folder.isEmpty()&&!QFileInfo(folder).isDir())return {"diagnostics_output_unavailable","Choose an existing folder.",{{"path",folder}}};
+  custom_=folder;if(remember&&folderChosen)folderChosen(folder);refreshPreview();return {};
+ }
+ // Answers once the preview that is current when it arrives has come back.
+ void whenPreviewed(Reply reply){if(!previewing_)reply(error_,state());else previewReplies_.append(std::move(reply));}
+ QJsonObject params(bool preview)const{
+  QJsonObject p{{"includeNames",includeNames_->isChecked()}};if(!operation_.isEmpty())p["operation"]=operation_;if(!custom_.isEmpty())p["output"]=custom_;
+  if(preview)p["preview"]=true;else p["notify"]=true;return p;
+ }
+ void refreshPreview(){
+  const auto sequence=++previewSequence_;previewing_=true;save_->setEnabled(false);
+  redaction_->setText(includeNames_->isChecked()?"File names, object keys, links, buckets and labels are kept as they are.":"File names, object keys, links, buckets and labels are replaced by hashes; the same name gets the same hash throughout the package.");
+  session_.request("diagnostics.bundle",params(true),this,[this,sequence](Error error,QJsonObject preview){
+   if(sequence!=previewSequence_)return;
+   previewing_=false;error_=error;preview_=error?QJsonObject{}:preview;showPreview();
+   const auto replies=std::exchange(previewReplies_,{});for(const auto& reply:replies)reply(error_,state());
+  });
+ }
+ void save(Reply reply){
+  if(saving_||previewing_||!saved_.isEmpty()){if(reply)reply({"diagnostics_busy",saving_?"The package is being saved.":previewing_?"The preview is still loading.":"This package is already saved.",{}},state());return;}
+  saving_=true;save_->setEnabled(false);save_->setText("Saving…");
+  session_.request("diagnostics.bundle",params(false),this,[this,reply](Error error,QJsonObject saved){
+   saving_=false;error_=error;
+   if(error){save_->setText("Save package");save_->setEnabled(true);VisualStyle::feedback(result_,error.message,true);result_->show();}
+   else {saved_=saved;save_->setText("Saved");close_->setText("Close");show_->show();VisualStyle::success(result_,"Saved "+QFileInfo(saved["path"].toString()).fileName()+" ("+ByteSize::summary(saved["bytes"].toInteger())+") in "+QDir::toNativeSeparators(QFileInfo(saved["path"].toString()).absolutePath())+".");result_->show();}
+   fit();if(reply)reply(error,state());
+  });
+ }
+ void reveal(Reply reply){
+  if(saved_.isEmpty()){if(reply)reply({"diagnostics_not_saved","Save the package first.",{}},state());return;}
+  session_.request("diagnostics.reveal",{{"path",saved_["path"]}},this,[this,reply](Error error,QJsonObject result){if(error){VisualStyle::feedback(result_,error.message,true);result_->show();}if(reply)reply(error,result);});
+ }
+ // Wrapped labels change height with their text; grow so none is clipped.
+ void fit(){
+  layout()->activate();const int needed=layout()->hasHeightForWidth()?layout()->totalHeightForWidth(width()):layout()->totalSizeHint().height();
+  setMinimumHeight(needed);if(height()<needed)resize(width(),needed);
+ }
+ QJsonObject state()const{
+  QJsonObject state{{"open",isVisible()},{"includeNames",includeNames_->isChecked()},{"folder",folder_->text()},{"defaultFolder",custom_.isEmpty()},{"previewing",previewing_},{"saving",saving_},
+   {"scope",scope_->text()},{"contents",contents_->text()},{"operations",operations_->text()},{"redaction",redaction_->text()},{"preview",preview_}};
+  if(!operation_.isEmpty())state["operation"]=operation_;
+  if(!saved_.isEmpty())state["saved"]=saved_;
+  if(error_)state["error"]=error_.toJson();
+  return state;
+ }
+private:
+ void showPreview(){
+  useDefault_->setVisible(!custom_.isEmpty());
+  if(preview_.isEmpty()){
+   scope_->setText(error_?error_.message:QString{});contents_->clear();operations_->clear();folder_->setText(custom_);fit();return;
+  }
+  const auto scope=preview_["scope"].toObject();const int count=preview_["operations"].toInt(),records=preview_["logRecords"].toInt();
+  scope_->setText(scope.contains("operationId")?QString("This upload, with the log from ten minutes before it to ten minutes after its last record."):
+   QString("Failed, partial and interrupted uploads since %1, and the log from then on.").arg(localTime(scope["from"].toString())));
+  QStringList files;
+  const QHash<QString,QString> about{{"manifest.json","contents and checksums"},{"environment.json","system, desktop and Qt versions"},{"diagnostics.json","put.gd's current state"},
+   {"config.redacted.json","settings without credentials"},{"coredumps.json","system crash reports, stack traces only"},{"operations.json",(count==1?QString("1 upload"):QString("%1 uploads").arg(count))},{"logs/putgd.jsonl",QString("%1 log records").arg(records)+(preview_["droppedLogRecords"].toInt()?QString(", %1 older ones left out to stay under 20 MiB").arg(preview_["droppedLogRecords"].toInt()):QString{})}};
+  for(const auto& name:preview_["files"].toArray())files.append(name.toString()+": "+about.value(name.toString()));
+  contents_->setText(files.join('\n'));
+  QStringList lines;const auto list=preview_["operationList"].toArray();
+  for(int i=0;i<list.size()&&i<5;++i)lines.append(operationLine(list[i].toObject()));
+  if(list.size()>5)lines.append(QString("and %1 more").arg(list.size()-5));
+  operations_->setText(lines.isEmpty()?QString("No failed uploads in this period; the log is still included."):lines.join('\n'));
+  folder_->setText(QDir::toNativeSeparators(preview_["folder"].toString()));
+  save_->setEnabled(saved_.isEmpty()&&!saving_);fit();
+ }
+ UiSession& session_;
+ QLabel *scope_,*contents_,*operations_,*redaction_,*folder_,*result_;QCheckBox* includeNames_;QPushButton *useDefault_,*show_,*close_,*save_;
+ QString operation_,custom_;QJsonObject preview_,saved_;Error error_;bool previewing_=false,saving_=false;quint64 previewSequence_=0;QList<Reply> previewReplies_;
 };
 QString settingHelp(const QString& path,const QString& objectName){
  static const QHash<QString,QString> s3Help{
@@ -153,6 +315,9 @@ QString settingHelp(const QString& path,const QString& objectName){
   {"unlockCredentialsAtStartup","Reads saved destination credentials from the desktop keyring once when put.gd starts, so uploads work without pressing Unlock. If the keyring is locked, the desktop shows its own unlock prompt then. Uploads and shortcuts never unlock the keyring."},
   {"launchAtLogin","Starts put.gd when you sign in. Disabled by default. The desktop startup entry is updated after persistence; another app copy is not started."},
   {"notifications","Shows desktop notifications for operation results when supported. Enabled by default. Disabling notifications leaves results available in History."},
+  {"debugLogging","Adds detailed debug records to put.gd's log on this computer, for a maintainer working out a problem. It turns itself off 24 hours after you turn it on; restarting doesn't extend it. Credentials, tokens and file contents are never logged."},
+  {"logSummary","put.gd keeps a log of what it did in its state folder, at most 14 days and 50 MiB by default (Advanced settings in the configuration file). Clear logs deletes every log file and starts a new one; uploads, history, settings and saved diagnostics packages stay."},
+  {"uncleanExit","When put.gd starts and finds it didn't shut down cleanly last time, it records why: a signal such as a logout, or an unknown cause such as a crash, a forced kill or a power loss. The newest one is shown here and included in diagnostics packages."},
   {"uploadClipboardBehavior","Copy each link writes successful upload links individually. Copy a list writes one newline-separated list in submission order after overlapping uploads finish. Copying something yourself pauses automatic copies; links stay available in History. Applies to new operations."},
   {"keepUploads","Save a local copy of captures and clipboard imports, independently of the upload destination. With a destination enabled, do both; with no destination, save locally only. If both are off, the action fails before capturing. Local-copy failures are reported separately from upload results."},
   {"root","Absolute default folder for captures, clipboard results and optional upload copies. Defaults to put.gd under Documents, or your home folder if unavailable. A category folder overrides it; existing files receive unique names."},
@@ -215,6 +380,18 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  auto browse=[this](QLineEdit* field){const auto path=QFileDialog::getExistingDirectory(this,"Choose output folder",field->text());if(!path.isEmpty()){field->setText(path);queueEdit(field);}};
  auto* chooseRoot=new QPushButton("Choose folder…");chooseRoot->setAccessibleName("Choose default output folder");qobject_cast<QVBoxLayout*>(rootRow->layout())->addWidget(chooseRoot,0,Qt::AlignLeft);connect(chooseRoot,&QPushButton::clicked,this,[=,this]{browse(root_);});
  for(const auto& category:QStringList{"images","videos","text","other"}){auto* field=folders_[category]=input(this,"folder"+title(category));field->setPlaceholderText("Use default folder");auto* row=setting(files,title(category),field,"/archive/folders/"+category);auto* button=new QPushButton("Browse…");button->setAccessibleName("Choose "+category+" folder");qobject_cast<QHBoxLayout*>(row->layout()->itemAt(0)->layout())->addWidget(button);connect(button,&QPushButton::clicked,this,[=,this]{browse(field);});}
+ // Diagnostics (#122): what the persistent log holds and the package a maintainer needs.
+ auto* diagnosticsForm=section(general,"Diagnostics","Logs and diagnostics packages stay on this computer. A package is a redacted .zip you can send to a maintainer.");
+ debugLogging_=new QCheckBox("Keep detailed debug logs for 24 hours");debugLogging_->setObjectName("debugLogging");auto* debugRow=setting(diagnosticsForm,"Debug logging",debugLogging_,"/preferences/diagnostics/debugLogging");
+ debugLoggingStatus_=new QLabel;debugLoggingStatus_->setObjectName("debugLoggingStatus");debugLoggingStatus_->setWordWrap(true);VisualStyle::role(debugLoggingStatus_,"muted");qobject_cast<QVBoxLayout*>(debugRow->layout())->addWidget(debugLoggingStatus_);
+ auto* logsRow=new QWidget;auto* logsLayout=new QHBoxLayout(logsRow);logsLayout->setContentsMargins(0,0,0,0);logsLayout->setSpacing(8);logSummary_=new QLabel;logSummary_->setObjectName("logSummary");logSummary_->setWordWrap(true);logSummary_->setAccessibleName("Log folder size, file count and oldest record");logsLayout->addWidget(logSummary_,1);
+ clearLogs_=new QPushButton("Clear logs…");clearLogs_->setObjectName("clearLogs");logsLayout->addWidget(clearLogs_,0,Qt::AlignTop);
+ diagnosticsForm->addRow(VisualStyle::settingLabel("Logs",settingHelp({},"logSummary"),logSummary_,this),logsRow);
+ loggingWarning_=new QLabel;loggingWarning_->setObjectName("loggingDegraded");loggingWarning_->setWordWrap(true);VisualStyle::role(loggingWarning_,"warning");loggingWarning_->hide();diagnosticsForm->addRow(loggingWarning_);
+ uncleanExit_=new QLabel;uncleanExit_->setObjectName("uncleanExit");uncleanExit_->setWordWrap(true);uncleanExit_->setAccessibleName("Last unclean exit");diagnosticsForm->addRow(VisualStyle::settingLabel("Last unclean exit",settingHelp({},"uncleanExit"),uncleanExit_,this),uncleanExit_);
+ auto* createPackage=new QPushButton(VisualStyle::icon("save"),"Create diagnostics package…");createPackage->setObjectName("createDiagnosticsPackage");createPackage->setToolTip("Preview and save a redacted .zip of recent failures, settings and logs. Nothing is uploaded.");diagnosticsForm->addRow(createPackage);
+ connect(clearLogs_,&QPushButton::clicked,this,[this]{if(QMessageBox::question(this,"Clear logs","Delete every put.gd log file? Uploads, history, settings and saved diagnostics packages stay.")!=QMessageBox::Yes)return;clearLogs({});});
+ connect(createPackage,&QPushButton::clicked,this,[this]{openDiagnosticsPackage();});
  auto* captureDefaults=section(capture,"Default capture output","Choose where captures and clipboard imports upload. Local copies are controlled separately in General → Local copies.");
  captureProfile_=choices(this,"defaultCaptureDestination",{});setting(captureDefaults,"Destination",captureProfile_,{},"Local copies are independent of this destination.");
  captureSharing_=choices(this,"defaultCaptureSharing",{});for(const auto& mode:QStringList{"default","share","private"})captureSharing_->addItem(sharingLabel(mode),mode);setting(captureDefaults,"Sharing",captureSharing_,{});
@@ -248,9 +425,9 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  auto* retention=section(right,"History");number(retention,"historyRetentionDays","Keep history for","days");numbers_["historyRetentionDays"]->setPlaceholderText("Forever");number(retention,"failedArtifactDays","Keep failed uploads for","days");number(retention,"recentActivityLimit","Items in recent list",{});
  connect(resetAll,&QPushButton::clicked,this,[this]{if(QMessageBox::question(this,"Reset advanced settings","Reset upload, image, memory, cache and history limits to their defaults?")!=QMessageBox::Yes)return;for(auto* field:numbers_){field->setText(field->property("defaultText").toString());queueEdit(field);}});
  auto* config=section(right,"Config file");configPath_=new QLabel;configPath_->setWordWrap(true);configPath_->setTextInteractionFlags(Qt::TextSelectableByMouse);configPath_->setProperty("visualRole","mono");config->addRow(configPath_);auto* configActions=new QHBoxLayout;auto* editor=new QPushButton("Open in editor");auto* reload=new QPushButton("Reload from file");reload->setObjectName("reloadSettings");configActions->addWidget(editor);configActions->addWidget(reload);config->addRow(configActions);connect(editor,&QPushButton::clicked,this,[this]{QDesktopServices::openUrl(QUrl::fromLocalFile(settings_.path()));});connect(reload,&QPushButton::clicked,this,[this]{resetDraft(true);});
- auto* diagnostics=section(advancedPage,"Diagnostics");capabilities_=new QLabel;capabilities_->setAccessibleName("Desktop support diagnostics");capabilities_->setWordWrap(true);capabilities_->setTextInteractionFlags(Qt::TextSelectableByMouse);VisualStyle::role(capabilities_,"mono");diagnostics->addRow(capabilities_);metadata_=new QLabel;metadata_->setObjectName("settingsMetadata");metadata_->setWordWrap(true);metadata_->setTextInteractionFlags(Qt::TextSelectableByMouse);VisualStyle::role(metadata_,"muted");diagnostics->addRow(metadata_);auto* diagnose=new QPushButton("Refresh diagnostics");auto* copyDiagnostics=new QPushButton("Copy diagnostics");auto* diagnosticActions=new QHBoxLayout;diagnosticActions->addWidget(diagnose);diagnosticActions->addWidget(copyDiagnostics);diagnosticActions->addStretch();diagnostics->addRow(diagnosticActions);connect(diagnose,&QPushButton::clicked,this,[this]{settings_.refreshSnapshot();});connect(copyDiagnostics,&QPushButton::clicked,this,[this]{qApp->clipboard()->setText(capabilities_->text()+"\n"+metadata_->text());});
+ auto* diagnostics=section(advancedPage,"Desktop support details");capabilities_=new QLabel;capabilities_->setAccessibleName("Desktop support diagnostics");capabilities_->setWordWrap(true);capabilities_->setTextInteractionFlags(Qt::TextSelectableByMouse);VisualStyle::role(capabilities_,"mono");diagnostics->addRow(capabilities_);metadata_=new QLabel;metadata_->setObjectName("settingsMetadata");metadata_->setWordWrap(true);metadata_->setTextInteractionFlags(Qt::TextSelectableByMouse);VisualStyle::role(metadata_,"muted");diagnostics->addRow(metadata_);auto* diagnose=new QPushButton("Refresh diagnostics");auto* copyDiagnostics=new QPushButton("Copy diagnostics");auto* diagnosticActions=new QHBoxLayout;diagnosticActions->addWidget(diagnose);diagnosticActions->addWidget(copyDiagnostics);diagnosticActions->addStretch();diagnostics->addRow(diagnosticActions);connect(diagnose,&QPushButton::clicked,this,[this]{settings_.refreshSnapshot();});connect(copyDiagnostics,&QPushButton::clicked,this,[this]{qApp->clipboard()->setText(capabilities_->text()+"\n"+metadata_->text());});
  destinationPage_=new QWidget(this);destinationPage_->setObjectName("destinationsPage");destinationPage_->installEventFilter(this);auto* destinationLayout=new QHBoxLayout(destinationPage_);destinationLayout->setContentsMargins(0,0,0,0);destinationLayout->setSpacing(0);
- auto* rail=new QWidget;rail->setObjectName("destinationRail");rail->setFixedWidth(230);auto* railLayout=new QVBoxLayout(rail);railLayout->setContentsMargins(16,24,16,16);auto* railTitle=new QLabel("DESTINATIONS");VisualStyle::role(railTitle,"eyebrow");railLayout->addWidget(railTitle);auto* destinationList=new DestinationList;destinationList_=destinationList;destinationList_->setObjectName("destinationList");destinationList_->setAccessibleName("Destinations");destinationList_->setWordWrap(true);destinationList_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);railLayout->addWidget(destinationList_,1);auto* add=new QPushButton("+ Add destination");add->setObjectName("addS3Destination");railLayout->addWidget(add);destinationLayout->addWidget(rail);
+ auto* rail=new QWidget;rail->setObjectName("destinationRail");rail->setFixedWidth(230);auto* railLayout=new QVBoxLayout(rail);railLayout->setContentsMargins(16,24,16,16);auto* railTitle=new QLabel("DESTINATIONS");VisualStyle::role(railTitle,"eyebrow");railLayout->addWidget(railTitle);auto* destinationList=new DestinationList;destinationList_=destinationList;destinationList_->setObjectName("destinationList");destinationList_->setAccessibleName("Destinations");destinationList_->setWordWrap(false);destinationList_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);railLayout->addWidget(destinationList_,1);auto* add=new QPushButton("+ Add destination");add->setObjectName("addS3Destination");railLayout->addWidget(add);destinationLayout->addWidget(rail);
  auto* destinationBody=new QWidget;auto* pageLayout=new QVBoxLayout(destinationBody);pageLayout->setContentsMargins(24,24,20,24);pageLayout->setSpacing(18);pageLayout->setAlignment(Qt::AlignTop);auto* destinationScroll=new QScrollArea;destinationScroll->setObjectName("destinationScroll");destinationScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);destinationScroll->setWidgetResizable(true);destinationScroll->setFrameShape(QFrame::NoFrame);destinationScroll->setWidget(destinationBody);destinationLayout->addWidget(destinationScroll,1);
  profile_=choices(this,"destinationProfile",{});profile_->hide();profileId_=input(this,"destinationId");profileId_->hide();providerJson_=new QPlainTextEdit(this);providerJson_->setObjectName("providerSettingsJson");providerJson_->hide();
  auto* titleRow=new QHBoxLayout;profileLabel_=input(this,"destinationLabel");profileLabel_->setProperty("visualRole","editableTitle");profileLabel_->setPlaceholderText("Destination name");profileLabel_->setAccessibleName("Destination name");bind(profileLabel_,"/profiles/{profile}/label");titleRow->addWidget(profileLabel_,1);titleRow->addWidget(VisualStyle::helpButton("Destination name",settingHelp("/profiles/{profile}/label",{}),profileLabel_,this));auto* test=new QPushButton("Test connection");test->setObjectName("testDestination");titleRow->addWidget(test);defaultButton_=new QPushButton("Make default");defaultButton_->setObjectName("makeDefaultDestination");titleRow->addWidget(defaultButton_);auto* more=new QPushButton("⋯");more->setAccessibleName("Destination actions");titleRow->addWidget(more);pageLayout->addLayout(titleRow);
@@ -334,7 +511,7 @@ void SettingsWindow::status(const Error& error){
  if(e.code=="config_missing"&&settings_.revision().isEmpty()){VisualStyle::feedback(status_,"Changes save automatically when valid.");return;}
  VisualStyle::feedback(status_,e?e.code+": "+e.message+" "+e.details["path"].toString():"Done.",bool(e));
 }
-void SettingsWindow::refreshDiagnostics(){auto data=settings_.diagnostics();quit_->setVisible(data["trayAvailable"].isBool()&&!data["trayAvailable"].toBool());capabilities_->setText(QString::fromUtf8(QJsonDocument(data).toJson(QJsonDocument::Indented)));shortcuts_->setStatus(data["shortcuts"].toObject());}
+void SettingsWindow::refreshDiagnostics(){refreshLoggingStatus();auto data=settings_.diagnostics();quit_->setVisible(data["trayAvailable"].isBool()&&!data["trayAvailable"].toBool());capabilities_->setText(QString::fromUtf8(QJsonDocument(data).toJson(QJsonDocument::Indented)));shortcuts_->setStatus(data["shortcuts"].toObject());}
 void SettingsWindow::refresh(bool preserveDrafts){
  if(preserveDrafts)rememberCredentialInputs();else{clearCredentialInputs();profileEditors_={};provisionalProfile_={};}
  autosaveBlocked_=false;for(auto* button:retryAutosave_)button->hide();reorderBaseline_.clear();
@@ -362,7 +539,7 @@ void SettingsWindow::populate(){
  captureProfile_->setCurrentIndex(captureProfile_->findData(base["destination"]=="local"?QString{}:base["profileId"].toString()));captureSharing_->setCurrentIndex(captureSharing_->findData(base["publicationMode"].toString("default")));
  bool exceptions=false;for(auto* inherit:useCaptureDefault_)exceptions|=!inherit->isChecked();captureExceptions_->setChecked(exceptions);
  shortcuts_->setActions(actions);auto archive=draft_["archive"].toObject();root_->setText(archive["root"].toString());keep_->setChecked(archive["keepUploads"].toBool());for(auto it=folders_.begin();it!=folders_.end();++it)it.value()->setText(archive["folders"].toObject()[it.key()].toString());
- naming_->setCurrentIndex(naming_->findData(draft_["naming"].toObject()["mode"].toString()));const auto effective=Settings::fromValidated(draft_);const QHash<QString,QString> formats{{"fileTemplate",effective.fileTemplate},{"captureTemplate",effective.captureTemplate},{"imageTemplate",effective.imageTemplate},{"textTemplate",effective.textTemplate}};for(auto it=templates_.begin();it!=templates_.end();++it)it.value()->setText(formats.value(it.key()));collision_->setCurrentIndex(collision_->findData(draft_["naming"].toObject()["collisionPolicy"].toString()));auto prefs=draft_["preferences"].toObject();uploadClipboard_->setCurrentIndex(uploadClipboard_->findData(effective.uploadClipboardBehavior));notifications_->setChecked(prefs["notifications"].toBool());login_->setChecked(prefs["launchAtLogin"].toBool());unlockAtStartup_->setChecked(effective.unlockCredentialsAtStartup);
+ naming_->setCurrentIndex(naming_->findData(draft_["naming"].toObject()["mode"].toString()));const auto effective=Settings::fromValidated(draft_);const QHash<QString,QString> formats{{"fileTemplate",effective.fileTemplate},{"captureTemplate",effective.captureTemplate},{"imageTemplate",effective.imageTemplate},{"textTemplate",effective.textTemplate}};for(auto it=templates_.begin();it!=templates_.end();++it)it.value()->setText(formats.value(it.key()));collision_->setCurrentIndex(collision_->findData(draft_["naming"].toObject()["collisionPolicy"].toString()));auto prefs=draft_["preferences"].toObject();uploadClipboard_->setCurrentIndex(uploadClipboard_->findData(effective.uploadClipboardBehavior));notifications_->setChecked(prefs["notifications"].toBool());login_->setChecked(prefs["launchAtLogin"].toBool());debugLogging_->setChecked(prefs["diagnostics"].toObject()["debugLogging"].toBool());unlockAtStartup_->setChecked(effective.unlockCredentialsAtStartup);
  for(auto it=numbers_.begin();it!=numbers_.end();++it){QJsonValue value=draft_["limits"].toObject().contains(it.key())?draft_["limits"].toObject().value(it.key()):draft_["retention"].toObject().value(it.key());if(it.key()=="pendingImageBytes"&&value.isUndefined())value=effective.limits.pendingImageBytes;it.value()->setText(value.isNull()?QString{}:ByteSize::exact(value.toInteger(),displayUnit(it.key())));}
  updateCaptureInheritance();loading_=false;
 }
@@ -433,6 +610,8 @@ QJsonObject SettingsWindow::candidate() const {
  for(auto it=templates_.begin();it!=templates_.end();++it)if(naming.contains(it.key())||it.value()->text()!=defaultTemplates.value(it.key()))naming[it.key()]=it.value()->text();
  doc["naming"]=naming;auto preferences=doc["preferences"].toObject();preferences["notifications"]=notifications_->isChecked();preferences["launchAtLogin"]=login_->isChecked();if(preferences.contains("unlockCredentialsAtStartup")||!unlockAtStartup_->isChecked())preferences["unlockCredentialsAtStartup"]=unlockAtStartup_->isChecked();
  if(preferences.contains("uploadClipboardBehavior")||uploadClipboard_->currentData()!="each_link")preferences["uploadClipboardBehavior"]=uploadClipboard_->currentData().toString();
+ // debugLogging is always written with the object; packageFolder stays as the draft holds it.
+ if(preferences.contains("diagnostics")||debugLogging_->isChecked()){auto diagnostics=preferences["diagnostics"].toObject();diagnostics["debugLogging"]=debugLogging_->isChecked();preferences["diagnostics"]=diagnostics;}
  doc["preferences"]=preferences;auto limits=doc["limits"].toObject(),retention=doc["retention"].toObject();
  for(auto it=numbers_.begin();it!=numbers_.end();++it){
   bool ok=false;const auto n=it.value()->text().toLongLong(&ok);QJsonValue value=displayUnit(it.key())!=1?ByteSize::fromDecimal(it.value()->text(),displayUnit(it.key())):(ok?QJsonValue(n):QJsonValue(it.value()->text()));
@@ -485,6 +664,92 @@ Error SettingsWindow::moveDestination(int from,int to){
  if(saving_)autosave_->start();else save();
  emit viewStateChanged();return {};
 }
+void SettingsWindow::refreshLoggingStatus(){
+ const auto data=settings_.diagnostics();const auto logging=data["logging"].toObject();
+ const auto expires=logging["debugLoggingExpiresAt"].toString();
+ debugLoggingStatus_->setText(logging["debugLogging"].toBool()&&!expires.isEmpty()?"On. Turns itself off at "+localTime(expires)+".":debugLogging_->isChecked()?QString("On. Turns itself off 24 hours after it was turned on."):QString("Off. Turn it on to record detailed logs for a maintainer; it turns itself off after 24 hours."));
+ if(!logging["available"].toBool(true)||logging.isEmpty())logSummary_->setText(logging.isEmpty()?QString("Log status is not available yet."):"The log folder is not available: "+logging["directory"].toString());
+ else{
+  const int files=logging["files"].toInt();const auto oldest=logging["oldestRecord"].toString();const auto retention=logging["retention"].toObject();
+  logSummary_->setText((files==1?QString("1 file"):QString("%1 files").arg(files))+" · "+ByteSize::summary(logging["bytes"].toInteger())+(oldest.isEmpty()?QString{}:" · oldest record "+localTime(oldest))+
+   (retention.isEmpty()?QString{}:QString(" · kept %1 days, up to %2").arg(retention["days"].toInt()).arg(ByteSize::summary(retention["bytes"].toInteger()))));
+ }
+ logSummary_->setToolTip(logging["directory"].toString());
+ const bool degraded=data["loggingDegraded"].toBool()||logging["degraded"].toBool();
+ static const QHash<QString,QString> reasons{{"unavailable","the log folder can't be used"},{"write_failed","writing to it failed"},{"disk_full","the disk is full"},{"queue_full","records arrived faster than they could be written"}};
+ const auto dropped=logging["droppedRecords"].toInteger();
+ loggingWarning_->setText(degraded?"Logging is degraded: "+reasons.value(logging["degradedReason"].toString(),logging["degradedReason"].toString("unknown reason"))+(dropped?QString(". %1 records were dropped").arg(dropped):QString{})+". Uploads and captures are not affected.":QString{});
+ loggingWarning_->setVisible(degraded);
+ const auto unclean=data["uncleanExit"].toObject();const auto last=unclean["last"].toObject();
+ if(last.isEmpty())uncleanExit_->setText(unclean.isEmpty()?QString("Not available yet."):QString("None recorded."));
+ else{
+  const auto version=last["previousVersion"].toString();const auto when=localTime(last["previousStart"].toString());
+  const auto cause=last["cause"]=="signal"?QString("ended by signal %1 (for example a logout)").arg(last["signal"].toInt()):QString("stopped unexpectedly: a crash, a forced kill or a power loss");
+  uncleanExit_->setText("put.gd"+(version.isEmpty()?QString{}:" "+version)+" started "+when+" and "+cause+". Found at the next start, "+localTime(last["detectedAt"].toString())+(unclean["detected"].toBool()?" (this start).":"."));
+  VisualStyle::role(uncleanExit_,last["cause"]=="signal"?"muted":"warning");
+ }
+}
+void SettingsWindow::clearLogs(std::function<void(Error,QJsonObject)> done){
+ clearLogs_->setEnabled(false);
+ settings_.request("logs.clear",{},this,[g=QPointer<SettingsWindow>(this),done](Error error,QJsonObject result){
+  if(g){
+   g->clearLogs_->setEnabled(true);
+   if(error)g->status(error);else VisualStyle::feedback(g->status_,QString("Logs cleared: %1 files, %2 removed.").arg(result["removedFiles"].toInt()).arg(ByteSize::summary(result["removedBytes"].toInteger())));
+   // The log's new figures come with the next snapshot.
+   g->settings_.refreshSnapshot([g,done,error,result](Error){if(g)g->refreshLoggingStatus();if(done)done(error,result);});return;
+  }
+  if(done)done(error,result);
+ });
+}
+// The dialog remembers a chosen folder in preferences.diagnostics.packageFolder; an
+// empty folder clears it, so packages go to <archive root>/diagnostics again.
+void SettingsWindow::choosePackageFolder(const QString& folder){
+ auto preferences=draft_["preferences"].toObject();auto diagnostics=preferences["diagnostics"].toObject();
+ diagnostics["debugLogging"]=debugLogging_->isChecked();diagnostics["packageFolder"]=folder.isEmpty()?QJsonValue(QJsonValue::Null):QJsonValue(folder);
+ preferences["diagnostics"]=diagnostics;draft_["preferences"]=preferences;queueEdit(debugLogging_,"/preferences/diagnostics");
+}
+void SettingsWindow::openDiagnosticsPackage(const QString& operationId){
+ auto* dialog=static_cast<DiagnosticsPackageDialog*>(packageDialog_.data());
+ if(!dialog){dialog=new DiagnosticsPackageDialog(settings_,this);dialog->folderChosen=[this](const QString& folder){choosePackageFolder(folder);};packageDialog_=dialog;}
+ dialog->setScope(operationId,candidate()["preferences"].toObject()["diagnostics"].toObject()["packageFolder"].toString());
+ dialog->open();dialog->raise();dialog->activateWindow();
+}
+QJsonObject SettingsWindow::diagnosticsState()const{
+ const auto logging=settings_.diagnostics()["logging"].toObject();
+ QJsonObject state{{"debugLogging",QJsonObject{{"enabled",debugLogging_->isChecked()},{"expiresAt",logging["debugLoggingExpiresAt"]},{"text",debugLoggingStatus_->text()}}},
+  {"logs",QJsonObject{{"files",logging["files"]},{"bytes",logging["bytes"]},{"oldestRecord",logging["oldestRecord"]},{"text",logSummary_->text()}}},
+  {"loggingDegraded",QJsonObject{{"degraded",loggingWarning_->isVisible()||settings_.diagnostics()["loggingDegraded"].toBool()},{"text",loggingWarning_->text()}}},
+  {"uncleanExit",QJsonObject{{"last",settings_.diagnostics()["uncleanExit"].toObject()["last"]},{"text",uncleanExit_->text()}}},
+  {"autosave",autosaveText()}};
+ auto* dialog=static_cast<DiagnosticsPackageDialog*>(packageDialog_.data());
+ state["package"]=dialog&&dialog->isVisible()?dialog->state():QJsonObject{{"open",false}};
+ return state;
+}
+void SettingsWindow::diagnosticsCommand(const QJsonObject& params,std::function<void(Error,QJsonObject)> reply){
+ const auto action=params["action"].toString();
+ auto* dialog=static_cast<DiagnosticsPackageDialog*>(packageDialog_.data());const bool open=dialog&&dialog->isVisible();
+ auto withState=[g=QPointer<SettingsWindow>(this),reply](Error error,QJsonObject result){if(!g){reply(error,result);return;}auto state=g->diagnosticsState();if(!result.isEmpty())state["result"]=result;reply(error,state);};
+ if(action=="inspect"){reply({},diagnosticsState());return;}
+ if(action=="setDebugLogging"){
+  if(!params["enabled"].isBool()){reply({"invalid_request","setDebugLogging takes enabled, true or false.",{}},{});return;}
+  // The checkbox autosaves like any setting; inspect shows when the resident accepted it.
+  tabs_->setCurrentIndex(0);debugLogging_->setChecked(params["enabled"].toBool());flushAutosave();refreshLoggingStatus();reply({},diagnosticsState());return;
+ }
+ if(action=="clearLogs"){tabs_->setCurrentIndex(0);clearLogs(withState);return;}
+ if(action=="openPackage"){tabs_->setCurrentIndex(0);openDiagnosticsPackage(params["operation"].toString());dialog=static_cast<DiagnosticsPackageDialog*>(packageDialog_.data());if(params.contains("includeNames"))dialog->setIncludeNames(params["includeNames"].toBool());dialog->whenPreviewed([withState](Error error,QJsonObject){withState(error,{});});return;}
+ if(!open){reply({"diagnostics_dialog_closed","Open Create diagnostics package first (action openPackage).",{}},{});return;}
+ if(action=="setPackage"){
+  if(params.contains("folder"))if(auto error=dialog->setFolder(params["folder"].toString(),true)){reply(error,{});return;}
+  if(params.contains("includeNames"))dialog->setIncludeNames(params["includeNames"].toBool());
+  dialog->whenPreviewed([withState](Error error,QJsonObject){withState(error,{});});return;
+ }
+ if(action=="savePackage"){dialog->save([withState](Error error,QJsonObject){withState(error,{});});return;}
+ if(action=="showInFolder"){dialog->reveal(withState);return;}
+ if(action=="closePackage"){dialog->reject();reply({},diagnosticsState());return;}
+ reply({"invalid_request","Unknown diagnostics action.",{}},{});
+}
+QPixmap SettingsWindow::destinationDragImage(int row,QPoint* hotSpot)const{if(hotSpot)*hotSpot=-DestinationList::dragOffset;return row>=0&&row<destinationList_->count()?DestinationList::dragImage(*destinationList_->item(row),destinationList_->font(),destinationList_->devicePixelRatioF()):QPixmap{};}
+QStringList SettingsWindow::destinationRowLines(int row)const{return row>=0&&row<destinationList_->count()?static_cast<DestinationList*>(destinationList_)->shownLines(row):QStringList{};}
 Error SettingsWindow::moveSelectedDestination(int delta,const QString& profileId,QJsonObject& result){
  if(!profileId.isEmpty()){const int index=profileOrder().indexOf(profileId);if(index<0)return {"profile_not_found","No destination has that ID.",{{"profileId",profileId}}};if(index!=profile_->currentIndex())profile_->setCurrentIndex(index);}
  const int from=profile_->currentIndex();if(from<0)return {"destination_not_selected","Select a destination first.",{}};
@@ -646,8 +911,11 @@ void SettingsWindow::refreshCredentialHint(){
 }
 void SettingsWindow::refreshDestinationList(const QJsonObject& document){
  if(!destinationList_)return;
- const QSignalBlocker block(destinationList_);destinationList_->clear();const auto doc=document.isEmpty()?candidate():document;const auto profiles=doc["profiles"].toArray();const auto actions=doc["actions"].toObject();bool selectedDefault=false;
- for(const auto& value:profiles){const auto profile=value.toObject();bool isDefault=true;if(doc.contains("captureDefaults")){const auto capture=doc["captureDefaults"].toObject();isDefault=capture["destination"]=="upload"&&capture["profileId"]==profile["id"];}else for(const auto& action:Settings::actionNames())if(actions[action].toObject()["profileId"]!=profile["id"]||actions[action].toObject()["destination"]!="upload")isDefault=false;const auto s=profile["settings"].toObject();const bool proton=profile["provider"]=="proton-drive";QString state=proton?(s["accountRootUid"].toString().isEmpty()?"Signed out":s["folderUid"].toString().isEmpty()?"Choose a folder":"Connected"):(s["bucket"].toString().isEmpty()?"Needs a bucket":testedDestinations_.value(profile["id"].toString())==profile?"Connection tested":"Ready to test");if(isDefault)state="Default · "+state;auto* item=new QListWidgetItem(VisualStyle::icon(proton?"files":"destinations"),profile["label"].toString()+"\n"+state,destinationList_);item->setSizeHint(QSize(0,76));if(profile["id"]==profileId_->text()){selectedDefault=isDefault;defaultButton_->setText(isDefault?"Default":"Make default");}}
+ const QSignalBlocker block(destinationList_);const auto doc=document.isEmpty()?candidate():document;const auto profiles=doc["profiles"].toArray();
+ // Rows are updated in place: rebuilding them here, which runs when a press changes the
+ // selection, would drop the view's pressed row, so the drag that follows never starts.
+ while(destinationList_->count()>profiles.size())delete destinationList_->takeItem(destinationList_->count()-1);int row=0;const auto actions=doc["actions"].toObject();bool selectedDefault=false;
+ for(const auto& value:profiles){const auto profile=value.toObject();bool isDefault=true;if(doc.contains("captureDefaults")){const auto capture=doc["captureDefaults"].toObject();isDefault=capture["destination"]=="upload"&&capture["profileId"]==profile["id"];}else for(const auto& action:Settings::actionNames())if(actions[action].toObject()["profileId"]!=profile["id"]||actions[action].toObject()["destination"]!="upload")isDefault=false;const auto s=profile["settings"].toObject();const bool proton=profile["provider"]=="proton-drive";QString state=proton?(s["accountRootUid"].toString().isEmpty()?"Signed out":s["folderUid"].toString().isEmpty()?"Choose a folder":"Connected"):(s["bucket"].toString().isEmpty()?"Needs a bucket":testedDestinations_.value(profile["id"].toString())==profile?"Connection tested":"Ready to test");if(isDefault)state="Default · "+state;auto* item=row<destinationList_->count()?destinationList_->item(row):new QListWidgetItem(destinationList_);++row;item->setIcon(VisualStyle::icon(proton?"files":"destinations"));item->setText(profile["label"].toString()+"\n"+state);item->setSizeHint(QSize(0,76));item->setToolTip(profile["label"].toString()+"\n"+state);if(profile["id"]==profileId_->text()){selectedDefault=isDefault;defaultButton_->setText(isDefault?"Default":"Make default");}}
  destinationList_->setCurrentRow(profileIndex_);const bool has=profileIndex_>=0;if(moveUp_){moveUp_->setEnabled(profileIndex_>0);moveDown_->setEnabled(has&&profileIndex_<int(profiles.size())-1);}defaultButton_->setEnabled(has&&!selectedDefault&&!(providerType_->currentData()=="s3"&&s3_["bucket"]->text().isEmpty()));
 }
 QJsonObject SettingsWindow::profileEditorState()const{

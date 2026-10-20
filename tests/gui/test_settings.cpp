@@ -10,6 +10,10 @@
 #include "ui/ShortcutEditor.h"
 #include "ui/ViewState.h"
 #include "fixtures/UiSessionFixture.h"
+#include "app/DiagnosticsBundle.h"
+#include "core/Log.h"
+#include <QDialog>
+#include <QDir>
 #include "storage/s3/S3Provider.h"
 #include "storage/proton/ProtonProvider.h"
 #include <QMimeData>
@@ -96,6 +100,93 @@ private slots:
   UiSessionFixture restartedFixture(restarted,secrets);MainWindow reopened(restartedFixture.session);reopened.navigate("destinations");
   QCOMPARE(rowLabels(reopened.findChild<QListWidget*>("destinationList")),QStringList({"put.gd development destination","Synthetic third","Edited alternate"}));
   QVERIFY(!validateUiState({{"schemaVersion",1},{"settings",window.settings()->saveViewState()}}));
+ }
+ void longDestinationLabelKeepsItsStateLine(){
+  // #134: a label that would wrap is elided to one line; Default · state stays in the row.
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});auto doc=threeDestinations();auto profiles=doc["profiles"].toArray();
+  auto first=profiles[0].toObject();first["label"]="put.gd development destination with a synthetic name long enough to wrap twice";profiles[0]=first;doc["profiles"]=profiles;QVERIFY(service.save(doc,{}));
+  CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.resize(1100,760);window.navigate("destinations");window.show();
+  auto* list=window.findChild<QListWidget*>("destinationList");QVERIFY(list);QVERIFY(!list->wordWrap());
+  const auto lines=window.settings()->destinationRowLines(0);QCOMPARE(lines.size(),2);
+  QVERIFY2(lines[0].endsWith(QChar(0x2026)),qPrintable(lines[0]));QVERIFY(first["label"].toString().startsWith(lines[0].chopped(1)));
+  QVERIFY2(lines[1].startsWith("Default"),qPrintable(lines[1]));QVERIFY(lines[1].contains("Ready to test")||lines[1].endsWith(QChar(0x2026)));
+  // Both lines fit the row: one line each, inside its fixed height.
+  const QFontMetrics metrics(list->font());const auto rect=list->visualItemRect(list->item(0));
+  for(const auto& line:lines)QVERIFY2(metrics.horizontalAdvance(line)<rect.width(),qPrintable(line));
+  QVERIFY(2*metrics.lineSpacing()<rect.height()-20);
+  QCOMPARE(window.settings()->destinationRowLines(1),QStringList({"Synthetic alternate","Ready to test"}));
+  QCOMPARE(list->item(0)->toolTip().section('\n',0,0),first["label"].toString());
+  // Pressing another row selects it without rebuilding the rows, so the view keeps the
+  // pressed row and a drag can start from it (found natively on GNOME Wayland, #135).
+  auto* third=list->item(2);third->setData(Qt::UserRole+42,"same row object");QTest::mousePress(list->viewport(),Qt::LeftButton,{},list->visualItemRect(third).center());
+  QCOMPARE(list->currentRow(),2);QCOMPARE(list->item(2)->data(Qt::UserRole+42).toString(),QString("same row object"));QCOMPARE(window.findChild<QLineEdit*>("destinationId")->text(),QString("synthetic-third"));
+  QTest::mouseRelease(list->viewport(),Qt::LeftButton,{},list->visualItemRect(third).center());
+  QCOMPARE(list->item(0)->text().section('\n',0,0),first["label"].toString());
+  // #133: the drag image is a slim label beside the pointer, never over the drop line's
+  // start cap, wherever the row is grabbed.
+  QPoint hotSpot;const auto image=window.settings()->destinationDragImage(1,&hotSpot);QVERIFY(!image.isNull());
+  const QSize logical=(QSizeF(image.size())/image.devicePixelRatio()).toSize();
+  QVERIFY2(logical.height()<rect.height()/2,qPrintable(QString::number(logical.height())));QVERIFY(hotSpot.x()<0&&hotSpot.y()<0);
+  const auto row=list->visualItemRect(list->item(1));
+  for(int y=row.top();y<=row.bottom();y+=4)for(int x=row.left();x<=row.right();x+=8){
+   const QPoint pointer(x,y);const QRect drawn(pointer-hotSpot,logical);
+   const int gap=y<row.center().y()?row.top():row.bottom()+1;
+   QVERIFY2(!drawn.contains(QPoint(row.left()+5,gap)),qPrintable(QString("%1,%2").arg(x).arg(y)));
+   QVERIFY(drawn.top()>pointer.y());
+  }
+ }
+ void diagnosticsGroupShowsLogsAndSavesPackages(){
+  // #122: Settings → General → Diagnostics, its package dialog and the ui.diagnostics command.
+  QTemporaryDir dir;logging::open(dir.filePath("state/logs"),{},"putgd-test");auto closeLog=qScopeGuard([]{logging::close();});
+  for(int i=0;i<3;++i)logging::info(logApp(),"Synthetic diagnostics record");
+  logging::flush();
+  SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});auto doc=Settings::developmentTemplate();auto archive=doc["archive"].toObject();archive["root"]=dir.filePath("archive");doc["archive"]=archive;QVERIFY(service.save(doc,{}));
+  CredentialStore secrets;UiSessionFixture fixture(service,secrets);
+  DiagnosticsBundles bundles(fixture.operations(),dir.filePath("state"));fixture.server.setDiagnosticsBundles(&bundles);
+  QJsonArray notified;QStringList revealed;fixture.server.setDiagnosticsNotifications([&](const QJsonObject& saved){notified.append(saved);},[&](const QString& path){revealed.append(path);return Error{};});
+  const QJsonObject unclean{{"detected",false},{"last",QJsonObject{{"cause","unknown"},{"previousVersion","0.1.1-synthetic"},{"previousStart","2026-10-19T23:10:00.000Z"},{"detectedAt","2026-10-19T23:15:00.000Z"}}}};
+  bool degrade=false;
+  fixture.server.setUiDiagnostics([&]{auto data=fixture.operations().diagnostics();data["uncleanExit"]=unclean;if(degrade){auto logging=data["logging"].toObject();logging["degraded"]=true;logging["degradedReason"]="disk_full";logging["droppedRecords"]=12;data["logging"]=logging;data["loggingDegraded"]=true;}return data;});
+  MainWindow window(fixture.session);window.navigate("settings");window.show();fixture.session.refreshSnapshot();
+  auto* settings=window.settings();auto* summary=window.findChild<QLabel*>("logSummary");QVERIFY(summary);
+  QTRY_VERIFY2(summary->text().contains("files")||summary->text().contains("1 file"),qPrintable(summary->text()));QVERIFY(summary->text().contains("oldest record"));
+  QTRY_VERIFY(window.findChild<QLabel*>("uncleanExit")->text().contains("0.1.1-synthetic"));QVERIFY(window.findChild<QLabel*>("uncleanExit")->text().contains("stopped unexpectedly"));
+  auto* degraded=window.findChild<QLabel*>("loggingDegraded");QVERIFY(degraded->isHidden());
+  degrade=true;fixture.session.refreshSnapshot();QTRY_VERIFY(degraded->isVisibleTo(settings));QVERIFY(degraded->text().contains("disk is full"));QVERIFY(degraded->text().contains("12 records"));degrade=false;
+  // Debug logging is a setting: it saves like the others and keeps packageFolder beside it.
+  auto* debug=window.findChild<QCheckBox*>("debugLogging");QVERIFY(debug);QVERIFY(!debug->isChecked());debug->setChecked(true);
+  QTRY_VERIFY(service.snapshot().debugLogging);QVERIFY(window.findChild<QLabel*>("debugLoggingStatus")->text().startsWith("On."));
+  // Clear logs through the UI command (the button asks first).
+  auto command=[&](const QJsonObject& params)->std::pair<Error,QJsonObject>{bool done=false;Error error{"test_timeout","No answer",{}};QJsonObject result;settings->diagnosticsCommand(params,[&](Error e,QJsonObject r){error=e;result=r;done=true;});if(!QTest::qWaitFor([&]{return done;},15000))qWarning("diagnostics command timed out");return {error,result};};
+  auto [cleared,clearState]=command({{"action","clearLogs"}});QVERIFY2(!cleared,qPrintable(cleared.message));QVERIFY(clearState["result"].toObject()["removedFiles"].toInt()>=1);
+  // The dialog previews the package and writes nothing until Save.
+  window.findChild<QPushButton*>("createDiagnosticsPackage")->click();auto* dialog=settings->findChild<QDialog*>("diagnosticsPackageDialog");QVERIFY(dialog);QTRY_VERIFY(dialog->isVisible());
+  auto* contents=dialog->findChild<QLabel*>("packageContents");QTRY_VERIFY2(contents->text().contains("logs/putgd.jsonl"),qPrintable(contents->text()));QVERIFY(contents->text().contains("manifest.json"));
+  QVERIFY(dialog->findChild<QWidget*>("diagnosticsPackageExtras"));
+  QCOMPARE(QDir::fromNativeSeparators(dialog->findChild<QLabel*>("packageFolder")->text()),QDir(dir.filePath("archive")).filePath("diagnostics"));
+  QVERIFY(dialog->findChild<QLabel*>("packageRedaction")->text().contains("replaced by hashes"));
+  // Wrapped labels get their full height once the preview has filled them (no clipped lines).
+  for(const auto* name:{"packageScope","packageContents","packageOperations","packageRedaction"}){auto* label=dialog->findChild<QLabel*>(name);QTRY_VERIFY2(label->height()>=label->heightForWidth(label->width()),name);}
+  dialog->findChild<QCheckBox*>("includeFileNames")->setChecked(true);QTRY_VERIFY(dialog->findChild<QLabel*>("packageRedaction")->text().contains("kept as they are"));
+  QTRY_COMPARE(settings->diagnosticsState()["package"].toObject()["preview"].toObject()["redaction"].toString(),QString("names"));
+  QVERIFY(!QFileInfo::exists(dir.filePath("archive/diagnostics")));
+  // A chosen folder is remembered in preferences.diagnostics.packageFolder.
+  QTemporaryDir out;auto [moved,movedState]=command({{"action","setPackage"},{"folder",out.path()}});QVERIFY2(!moved,qPrintable(moved.message));
+  QCOMPARE(movedState["package"].toObject()["preview"].toObject()["folder"].toString(),out.path());
+  QTRY_COMPARE(service.document()["preferences"].toObject()["diagnostics"].toObject()["packageFolder"].toString(),out.path());QVERIFY(service.snapshot().debugLogging);
+  QCOMPARE(command({{"action","setPackage"},{"folder",dir.filePath("missing")}}).first.code,QString("diagnostics_output_unavailable"));
+  dialog->findChild<QPushButton*>("savePackage")->click();auto* result=dialog->findChild<QLabel*>("packageResult");QTRY_VERIFY(result->isVisibleTo(dialog));QVERIFY2(result->text().startsWith("Saved putgd-diagnostics-"),qPrintable(result->text()));
+  QCOMPARE(notified.size(),1);const auto path=notified[0].toObject()["path"].toString();QCOMPARE(QFileInfo(path).absolutePath(),QFileInfo(out.path()).absoluteFilePath());QCOMPARE(notified[0].toObject()["redaction"].toString(),QString("names"));
+  auto* show=dialog->findChild<QPushButton*>("showPackageInFolder");QVERIFY(show->isVisibleTo(dialog));show->click();QTRY_COMPARE(revealed,QStringList{path});
+  QCOMPARE(command({{"action","savePackage"}}).first.code,QString("diagnostics_busy"));
+  QCOMPARE(command({{"action","closePackage"}}).second["package"].toObject()["open"].toBool(),false);QVERIFY(!dialog->isVisible());
+  QCOMPARE(command({{"action","savePackage"}}).first.code,QString("diagnostics_dialog_closed"));
+  // Reopened, it starts from the remembered folder with names hashed again.
+  auto [reopened,openState]=command({{"action","openPackage"}});QVERIFY(!reopened);const auto package=openState["package"].toObject();
+  QVERIFY(package["open"].toBool());QCOMPARE(package["folder"].toString(),QDir::toNativeSeparators(out.path()));QCOMPARE(package["preview"].toObject()["redaction"].toString(),QString("hashed"));
+  auto [savedAgain,savedState]=command({{"action","savePackage"}});QVERIFY2(!savedAgain,qPrintable(savedAgain.message));QVERIFY(QFileInfo(savedState["package"].toObject()["saved"].toObject()["path"].toString()).isFile());
+  command({{"action","closePackage"}});
+  QVERIFY(!validateUiState({{"schemaVersion",1},{"settings",settings->saveViewState()}}));
  }
  void conflictingReorderRestoresThePreviousOrder(){
   QTemporaryDir dir;const auto path=dir.filePath("config.json");SettingsService service(path,[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));
