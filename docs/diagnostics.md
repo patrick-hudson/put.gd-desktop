@@ -455,8 +455,7 @@ The reply adds `upload` (`profileId`, `label`, `provider`, `publicLink`,
 MCP `get_diagnostics_upload_target`) runs the same check without a package and
 answers `{available: true, profileId, label, provider, publicLink, warning,
 shareExpirationDays?}` or `{available: false, reason, message}`. Settings' dialog
-(#122) uses it to show "Also upload and copy a link", checked when a working
-destination exists and hidden otherwise, with the warning beside it.
+uses it to offer the upload (see below).
 
 ### The default folder
 
@@ -484,17 +483,34 @@ deleted, and other files in the folder are left alone.
   (off each time the dialog opens). **Choose folder…** saves the folder in
   `preferences.diagnostics.packageFolder`, so later packages go there; **Use default**
   clears it. **Save package** calls `diagnostics.bundle` with `notify`, then shows the
-  file and **Show in folder**. A space under the options is kept for #123's optional
-  upload (wiring tracked in #158).
+  file and **Show in folder**.
+- **Also upload to <destination> and copy a link** (#158). Opening the dialog calls
+  `diagnostics.uploadTarget` for the default destination in the background (it can
+  take minutes: a Test connection); the preview and **Save package** don't wait for
+  it. While it runs, a line under the options says it is checking. When the
+  destination works, the checkbox appears, ticked, with the sharing `warning` under
+  it, and the button reads **Save and upload**: the save adds `upload`, `copyLink`
+  and that `profileId`. Afterwards the dialog shows the link and whether it was
+  copied, or why it wasn't uploaded, and the saved file stays either way. When the
+  destination doesn't work, the checkbox stays hidden and the line says why: no
+  upload destination, the last upload failed with a credential or configuration
+  error, or Test connection failed (with the destination's own message).
 
 A failed, partial or interrupted operation's notification has a **Save diagnostics
 for this upload** button, and so do failed History rows (in the inspector and the row
 menu). Each builds a package for that one operation, in the remembered folder or the
 default one. The resident then posts **put.gd — diagnostics saved** with the file name,
-size and folder, and a **Show in folder** button. Notification buttons need the
-desktop's notification server to support actions (GNOME, Plasma and Cinnamon do). put.gd
-asks for a 10-second notification; once Cinnamon has expired it, use the History row
-instead.
+size and folder, and a **Show in folder** button; after an upload from the dialog it
+also says where the package went, or why it wasn't uploaded. Notification buttons
+need the desktop's notification server to support actions (GNOME, Plasma and
+Cinnamon do). Plain notifications ask for 10 seconds. On GNOME Shell and Plasma a
+notification with buttons does too: both keep it, buttons and all, in their
+notification lists after the popup. Elsewhere, including Cinnamon, it is sent with
+the `resident` hint and `expire_timeout` 0 (#151): Cinnamon otherwise removes an
+app's notifications as soon as one of its windows takes focus, and with them the
+buttons. put.gd closes a resident notification itself once a button or its body is
+clicked. The server is identified by `GetServerInformation`. The History row offers
+the same action.
 
 **Show in folder** is the session method `diagnostics.reveal` with an absolute `path`
 (MCP `show_diagnostics_package`). It asks the file manager to select the package
