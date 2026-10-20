@@ -54,8 +54,8 @@ to a static control from the same desktop.
 | Package | Desktop/session | Placement | What the row must show |
 | --- | --- | --- | --- |
 | Ubuntu 24.04 DEB | Mint 22.3 Cinnamon/X11 | physical `.74` (m74), or a Cinnamon VM on a builder | `ximagesrc` capture with the distro encoders |
-| Ubuntu 26.04 DEB | Kubuntu 26.04 Plasma/X11 | physical `.72` | `ximagesrc` capture; VA-API live encoding |
-| Ubuntu 26.04 DEB | Ubuntu 26.04 GNOME/Wayland, Kubuntu 26.04 Plasma/Wayland | VMs on a builder | Mutter and KWin native streams from the installed helper; the portal path |
+| Ubuntu 26.04 DEB | Kubuntu 26.04 Plasma/X11 | physical `.72` switched to its Plasma X11 session for the check, or a Kubuntu 26.04 X11 VM | `ximagesrc` capture; VA-API live encoding |
+| Ubuntu 26.04 DEB | Ubuntu 26.04 GNOME/Wayland, Kubuntu 26.04 Plasma/Wayland | physical `.72` (Plasma 6.6 Wayland, its default session) for Plasma; VMs on a builder for GNOME | Mutter and KWin native streams from the installed helper; the portal path |
 | Debian 13 DEB (`putgd-VERSION-debian13-x86_64.deb`) | Debian 13 Plasma/Wayland | physical `.69` | `kde-screencast` from the installed `putgd-record.desktop`; the portal path |
 | Fedora 44 RPM | Fedora 44 GNOME/Wayland | physical `.70` | `mutter-screencast` and the portal; a stock install pulling Cisco's OpenH264 through the RPM's Recommends; the actionable `h264_encoder_unusable` message with the `noopenh264` placeholder |
 | AppImage | the Kubuntu, Debian and Fedora physical desktops above | physical | every plugin loaded from the image; the host GPU encoder used where it works and the bundled x264 where it does not (stock Fedora); AppRun's KWin entry giving `kde-screencast` on Plasma/Wayland and removed on exit |
