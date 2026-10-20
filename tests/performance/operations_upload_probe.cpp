@@ -120,26 +120,28 @@ int main(int argc, char** argv) {
                 });
             });
     });
+    qint64 elapsed = 0;
     QTimer poll;
     QObject::connect(&poll, &QTimer::timeout, &app, [&] {
         if (finished < args.size() - 4 || operations.diagnostics()["activeOperations"].toInt() != 0) return;
         poll.stop();
-        const auto elapsed = clock.elapsed();
+        elapsed = clock.elapsed();
         running = false;
         sampler->wait();
-        QJsonArray groups;
-        int pending = ids.size();
+        // Replies arrive after this timer slot returns: keep their state alive.
+        auto groups = std::make_shared<QJsonArray>();
+        auto pending = std::make_shared<int>(ids.size());
         for (const auto& id : ids)
-            operations.inspect(id, [&, id](Error, QJsonObject op) {
+            operations.inspect(id, [&, id, groups, pending](Error, QJsonObject op) {
                 QJsonArray files;
                 for (const auto& value : op["items"].toArray()) {
                     const auto item = value.toObject();
                     files.append(QJsonObject{{"name", item["candidate"]}, {"bytes", item["artifact"].toObject()["bytes"]}, {"status", item["uploadStatus"]}});
                 }
-                groups.append(QJsonObject{{"state", op["state"]}, {"files", files}, {"created", op["created"]}});
-                if (--pending) return;
+                groups->append(QJsonObject{{"state", op["state"]}, {"files", files}, {"created", op["created"]}});
+                if (--*pending) return;
                 std::lock_guard lock(mutex);
-                printf("%s\n", QJsonDocument(QJsonObject{{"concurrency", args[3].toInt()}, {"elapsedMs", elapsed}, {"operations", groups},
+                printf("%s\n", QJsonDocument(QJsonObject{{"concurrency", args[3].toInt()}, {"elapsedMs", elapsed}, {"operations", *groups},
                                                          {"mostWorkersAtOnce", mostWorkers}, {"peakWorkersRssKiB", peakWorkerKiB},
                                                          {"peakTotalRssKiB", peakTotalKiB}}).toJson(QJsonDocument::Compact).constData());
                 app.quit();
