@@ -187,7 +187,7 @@ def changes_section(tag, producer):
 def publish_nightly(args, release, listed):
     """Publish one automated nightly, retaining exact run and byte evidence."""
     if set(listed) | {'SHA256SUMS'} != public_inventory(args.tag):
-        raise ValueError('Collected nightly inventory must contain all fifteen public assets')
+        raise ValueError('Collected nightly inventory must contain all sixteen public assets')
     producer = run_provenance()
     api = GitHub(producer['repository'])
     expected = {**listed, 'SHA256SUMS': sha256(args.directory / 'SHA256SUMS')}
@@ -214,6 +214,8 @@ def publish_nightly(args, release, listed):
             'AppImage bundles dynamically linked Qt 6.8.3 and requires glibc 2.39 or newer. '
             'Its screen recorder bundles x264, x265 and a GPL FFmpeg, so the AppImage is a GPL-2.0-or-later '
             'combined work; their corresponding source is the appimage-media-source tarball. '
+            'The AppImage carries zsync update information for the nightly channel, so AppImageUpdate, '
+            'Gear Lever and AppImageLauncher can update it with the .zsync asset. '
             'GNOME 50 requires the included host extension.\n\n'
             'Proton corresponding source is delivered as two separate transport parts plus '
             'proton-source-catalog.json. Verify SHA256SUMS, concatenate part1 then part2, '
@@ -294,7 +296,7 @@ def main():
             raise ValueError('Duplicate collected release checksum')
         listed[name] = digest
     if set(listed) | {'SHA256SUMS'} != public_inventory(args.tag):
-        raise ValueError('Collected release inventory must include all fifteen public assets, including Proton and AppImage media sources and debug symbols')
+        raise ValueError('Collected release inventory must include all sixteen public assets, including Proton and AppImage media sources and debug symbols')
     if args.nightly:
         publish_nightly(args, release, listed)
         return
@@ -326,6 +328,8 @@ def main():
                      'DEB/RPM use distro Qt. AppImage dynamically bundles Qt 6.8.3 and requires glibc 2.39 or newer. '
                      'Its screen recorder bundles x264, x265 and a GPL FFmpeg, so the AppImage is a GPL-2.0-or-later combined work; '
                      'their corresponding source is the appimage-media-source tarball. '
+                     'The AppImage carries zsync update information for the stable channel, so AppImageUpdate, '
+                     'Gear Lever and AppImageLauncher can update it with the .zsync asset. '
                      'GNOME 50 requires the included host extension. Flatpak needs no host helper, except that Plasma Wayland loses direct screenshots; it is tracked in issue #83 (docs/flatpak.md).\n\n'
                      'Proton corresponding source accompanies the packages in two transport parts and proton-source-catalog.json. '
                      'Verify SHA256SUMS, concatenate part1 then part2, and unpack the resulting tar.gz. '

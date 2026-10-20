@@ -14,6 +14,8 @@ import urllib.request
 
 from audit_native import sha256 as digest
 from audit_proton import audit_proton
+import appimage_update
+from release_identity import parse_tag
 
 ROOT = Path(__file__).resolve().parents[2]
 LOCK = ROOT / "packaging/appimage/tools.lock.json"
@@ -44,6 +46,19 @@ def tools(directory: Path) -> tuple[dict, dict[str, Path]]:
                 temporary.unlink(missing_ok=True)
         path.chmod(0o755 if item.get("executable", True) else 0o644)
         result[item["name"]] = path.resolve()
+    # zsyncmake is the static zsync 0.6.2 inside the pinned appimagetool, checked
+    # against its own digest. (zsync2's zsyncmake2 drops a trailing partial block.)
+    bundled = lock["zsyncmake"]
+    path = directory / "zsyncmake"
+    if not path.exists():
+        with tempfile.TemporaryDirectory(dir=directory) as temporary:
+            subprocess.run([str(result[bundled["bundledIn"]]), "--appimage-extract", bundled["path"]],
+                           check=True, cwd=temporary, stdout=subprocess.DEVNULL)
+            shutil.copyfile(Path(temporary) / "squashfs-root" / bundled["path"], path)
+    if digest(path) != bundled["sha256"]:
+        raise ValueError("Bundled zsyncmake digest mismatch")
+    path.chmod(0o755)
+    result["zsyncmake"] = path.resolve()
     return lock, result
 
 
@@ -506,6 +521,10 @@ def main() -> int:
     parser.add_argument("--version", required=True)
     parser.add_argument("--require-proton", action="store_true")
     parser.add_argument("--proton-manifest", type=Path, help="Expected provisioned Proton runtime manifest")
+    parser.add_argument("--release-tag", help="Embed this release's update information and write its .zsync")
+    parser.add_argument("--repository", default=os.environ.get("GITHUB_REPOSITORY") or appimage_update.REPOSITORY,
+                        help="GitHub OWNER/NAME whose release serves the image")
+    parser.add_argument("--update-origin", help="Lab only: point the update information and .zsync at this server")
     args = parser.parse_args()
     # Check the native install's identity, modes, runtime receipts and absence of
     # test/private files before deployment changes ELF RPATHs and bundles Qt.
@@ -515,6 +534,8 @@ def main() -> int:
                                    expected_proton_manifest=proton_expected)
     if inventory["manifest"]["version"] != args.version:
         raise ValueError("Requested AppImage version differs from installed build")
+    if args.release_tag and parse_tag(args.release_tag).version != args.version:
+        raise ValueError("Release tag differs from the AppImage version")
     output = args.output_dir.resolve()
     output.mkdir(parents=True, exist_ok=False)
     appdir = output / "AppDir"
@@ -607,17 +628,31 @@ def main() -> int:
     if proton:
         deployed["proton"] = proton
     target = output / ("putgd-" + args.version + "-x86_64.AppImage")
+    update = appimage_update.targets(target.name, args.release_tag, args.repository, args.update_origin)
     subprocess.run([str(executables["appimagetool-x86_64.AppImage"]), "--runtime-file",
                     str(executables["runtime-x86_64"]), "--mksquashfs-opt=-b",
-                    "--mksquashfs-opt=16384", str(appdir), str(target)],
+                    "--mksquashfs-opt=16384", *(("-u", update[0]) if update else ()), str(appdir), str(target)],
                    check=True, env=environment)
     target.chmod(0o755)
+    if appimage_update.read_update_information(target) != (update[0] if update else ""):
+        raise ValueError("AppImage update information differs from the requested value")
+    zsync = output / appimage_update.zsync_name(target.name)
+    # appimagetool may write its own .zsync with a relative URL; ours names the
+    # image's absolute release URL, so it works behind the site's redirect.
+    zsync.unlink(missing_ok=True)
+    if update:
+        subprocess.run([str(executables["zsyncmake"]), "-u", update[1], "-o", str(zsync), target.name],
+                       check=True, cwd=output, stdout=subprocess.DEVNULL)
+        appimage_update.verify_zsync(zsync, target, target.name, update[1])
     files = [path for path in appdir.rglob("*") if path.is_file()]
     receipt = {"schemaVersion": 1, "format": "AppImage", "architecture": "x86_64",
                "build": inventory["manifest"], "toolLock": lock,
                "compression": {"codec": "zstd", "squashfsBlockBytes": 16384},
                "artifact": {"file": target.name, "sha256": digest(target),
                             "bytes": target.stat().st_size, "mode": "0755"},
+               "update": {"information": update[0],
+                          "zsync": {"file": zsync.name, "url": update[1], "sha256": digest(zsync),
+                                    "bytes": zsync.stat().st_size}} if update else None,
                "postDeploymentAudit": deployed,
                "recordingRuntime": {"media": media, "hostFallbackLibraries": fallbacks,
                                     "ffmpeg": lock["buildInputs"]["ffmpeg"], "gplComponents": gpl,

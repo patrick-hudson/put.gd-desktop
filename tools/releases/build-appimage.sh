@@ -22,10 +22,20 @@ if [ -e "$stage" ]; then echo 'AppImage staging directory must be new' >&2; exit
 # the install step checks each executable's identity.
 LD_LIBRARY_PATH="$PWD/build/appimage-deps/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" DESTDIR="$stage" cmake --install build/release
 version=$(python3 -c 'import json; print(json.load(open("build/release/build-identity/build-info.json"))["version"])')
+# Tagged builds embed their channel's update information and write the
+# matching .zsync (tools/releases/appimage_update.py); untagged builds embed
+# nothing. PUTGD_APPIMAGE_UPDATE_ORIGIN is for lab update tests only: it points
+# both at a local server, and collect.py rejects such an image.
+update=()
+if [ -n "${PUTGD_APPIMAGE_UPDATE_ORIGIN:-}" ]; then
+  update=(--update-origin "$PUTGD_APPIMAGE_UPDATE_ORIGIN")
+elif [ -n "$release_tag" ]; then
+  update=(--release-tag "$release_tag")
+fi
 python3 tools/releases/portable_appimage.py --stage "$stage" --output-dir "$PWD/build/appimage-output" \
   --require-proton --proton-manifest build/dependencies/proton-runtime/manifest.json \
   --tools-dir "$PWD/build/appimage-tools" --qt-root "$QT_ROOT_DIR" \
-  --dependency-prefix "$PWD/build/appimage-deps" --version "$version" \
+  --dependency-prefix "$PWD/build/appimage-deps" --version "$version" "${update[@]}" \
   --license-source build/dependencies/appimage/qtbase \
   --license-source build/dependencies/appimage/qtwayland \
   --license-source build/dependencies/appimage/qtdeclarative \

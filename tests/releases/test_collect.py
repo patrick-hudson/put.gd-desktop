@@ -16,9 +16,11 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'tools/releases'))
 import quiet_git  # noqa: F401  (disables git background maintenance, #99)
+import appimage_update
 import collect
 import debug_symbols
 import proton_sources
+from appimage_fixture import make_appimage, make_zsync
 from debug_fixture import build_tree
 from stage_artifacts import stage
 from source_archive import create_archive
@@ -94,6 +96,7 @@ class ReleaseCollection(unittest.TestCase):
             'appImage': {'version': identity['version'], 'sha256': image_sha}, 'file': media.name,
             'sha256': hashlib.sha256(media.read_bytes()).hexdigest(), 'bytes': media.stat().st_size, 'ffmpegCommit': 'f' * 40,
             'ubuntuSources': [{'sourcePackage': 'x264', 'sourceVersion': '2:0.164'}]}))
+        self.write_appimage('v0.1.1-rc.1')
         directory = self.inputs / 'release-native-ubuntu24.04'
         archive = directory / ('putgd-' + identity['version'] + '-source.tar.gz')
         self.source_receipt = create_archive(self.root, archive, identity)
@@ -108,6 +111,30 @@ class ReleaseCollection(unittest.TestCase):
         proton_sources.prepare(self.proton_catalog, self.inputs / 'proton-sources', bundle)
         self.stage_debug_symbols(identity)
         self.output = self.root / 'build/output'
+
+    def write_appimage(self, tag, information=None, repository=appimage_update.REPOSITORY):
+        """The image embeds tag's update information; its .zsync names the release URL (#293)."""
+        directory = self.inputs / 'release-appimage'
+        path = directory / 'synthetic.AppImage'
+        make_appimage(path, appimage_update.update_information(tag) if information is None else information,
+                      b'byte-integrity fixture, not an AppImage' * 100)
+        name = 'putgd-' + tag[1:] + '-x86_64.AppImage'
+        url = appimage_update.asset_url(repository, tag, name)
+        zsync = directory / 'synthetic.AppImage.zsync'
+        make_zsync(zsync, path, name, url)
+        receipt_path = directory / 'appimage-build.json'
+        receipt = json.loads(receipt_path.read_text())
+        receipt['artifact'] = {'file': path.name, 'sha256': hashlib.sha256(path.read_bytes()).hexdigest(),
+                               'bytes': path.stat().st_size}
+        receipt['update'] = {'information': appimage_update.update_information(tag),
+            'zsync': {'file': zsync.name, 'url': url, 'sha256': hashlib.sha256(zsync.read_bytes()).hexdigest(),
+                      'bytes': zsync.stat().st_size}}
+        receipt_path.write_text(json.dumps(receipt))
+        media_path = directory / 'appimage-media-source.json'
+        media = json.loads(media_path.read_text())
+        media['appImage']['sha256'] = receipt['artifact']['sha256']
+        media_path.write_text(json.dumps(media))
+        return receipt_path, zsync
 
     def stage_debug_symbols(self, identity):
         # Each package job stages its split debug files beside its package (#124).
@@ -138,7 +165,8 @@ class ReleaseCollection(unittest.TestCase):
         self.assertIn('putgd-0.1.1-rc.1-fedora44-x86_64.rpm', files)
         self.assertIn('putgd-0.1.1-rc.1-x86_64.AppImage', files)
         self.assertIn('putgd-0.1.1-rc.1-appimage-media-source.tar.gz', files)
-        self.assertEqual(len(lines), 14)
+        self.assertIn('putgd-0.1.1-rc.1-x86_64.AppImage.zsync', files)
+        self.assertEqual(len(lines), 15)
         self.assertIn('putgd-0.1.1-rc.1-debug-x86_64.tar.zst', files)
         self.assertEqual((self.output / 'putgd-0.1.1-rc.1-source.tar.gz').read_bytes(),
                          (self.inputs / 'release-native-ubuntu24.04' / self.source_receipt['artifact']['file']).read_bytes())
@@ -318,11 +346,12 @@ class ReleaseCollection(unittest.TestCase):
         packages.mkdir(parents=True)
         (packages / 'appimage-build.json').write_bytes(b'receipt')
         (packages / 'sample.AppImage').write_bytes(b'image')
+        (packages / 'sample.AppImage.zsync').write_bytes(b'zsync')
         (packages / 'AppDir').mkdir()
         (packages / 'AppDir/internal.txt').write_bytes(b'excluded')
         output = build / 'artifact'
         stage(build, output, 'appimage')
-        self.assertEqual({p.name for p in output.iterdir()}, {'appimage-build.json', 'sample.AppImage'})
+        self.assertEqual({p.name for p in output.iterdir()}, {'appimage-build.json', 'sample.AppImage', 'sample.AppImage.zsync'})
         self.assertEqual((output / 'sample.AppImage').read_bytes(), b'image')
 
     def test_corrupt_bytes_rejected_before_output(self):
@@ -342,6 +371,42 @@ class ReleaseCollection(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'identity'):
             self.run_collection()
         self.assertFalse(self.output.exists())
+
+    def test_appimage_update_information_and_zsync_bind_release_before_output(self):
+        # A lab or development image, another channel, another repository or a
+        # .zsync for other bytes never reaches a release (#293).
+        cases = [('update information', dict(information='zsync|http://127.0.0.1:8765/appimage.zsync')),
+                 ('update information', dict(information='')),
+                 ('update information', dict(information='zsync|https://app.put.gd/dl/nightly/appimage.zsync')),
+                 ('another release URL', dict(repository='someone/fork'))]
+        for message, change in cases:
+            self.write_appimage('v0.1.1-rc.1', **change)
+            with self.assertRaisesRegex(ValueError, message):
+                self.run_collection()
+            self.assertFalse(self.output.exists())
+        receipt_path, zsync = self.write_appimage('v0.1.1-rc.1')
+        image = zsync.with_name('synthetic.AppImage')
+        make_zsync(zsync, image, 'putgd-0.1.1-rc.1-x86_64.AppImage', json.loads(receipt_path.read_text())['update']['zsync']['url'],
+                   length=image.stat().st_size // 2048 * 2048)
+        receipt = json.loads(receipt_path.read_text())
+        receipt['update']['zsync'].update(sha256=hashlib.sha256(zsync.read_bytes()).hexdigest(), bytes=zsync.stat().st_size)
+        receipt_path.write_text(json.dumps(receipt))
+        with self.assertRaisesRegex(ValueError, 'other image bytes'):
+            self.run_collection()
+        zsync.write_bytes(b'tampered')
+        with self.assertRaisesRegex(ValueError, '.zsync bytes'):
+            self.run_collection()
+        zsync.unlink()
+        with self.assertRaisesRegex(ValueError, 'missing'):
+            self.run_collection()
+        receipt['update'] = None
+        receipt_path.write_text(json.dumps(receipt))
+        with self.assertRaisesRegex(ValueError, 'update information'):
+            self.run_collection()
+        self.assertFalse(self.output.exists())
+        self.write_appimage('v0.1.1-rc.1')
+        self.run_collection()
+        self.assertEqual((self.output / 'putgd-0.1.1-rc.1-x86_64.AppImage.zsync').read_bytes(), zsync.read_bytes())
 
     def test_missing_or_foreign_debian_package_rejected_before_output(self):
         directory = self.inputs / 'release-native-debian13'
@@ -380,6 +445,7 @@ class ReleaseCollection(unittest.TestCase):
         receipt = json.loads(receipt_path.read_text())
         receipt['build'].update(version=version, packageVersion=self.release['packageVersion'])
         receipt_path.write_text(json.dumps(receipt))
+        self.write_appimage(tag)
         self.stage_debug_symbols(receipt['build'])
         directory = self.inputs / 'release-native-ubuntu24.04'
         archive = directory / ('putgd-' + version + '-source.tar.gz')
@@ -387,7 +453,7 @@ class ReleaseCollection(unittest.TestCase):
         (directory / 'source-archive.json').write_text(json.dumps(self.source_receipt))
         return tag, archive
 
-    def test_nightly_cli_preserves_all_fifteen_raw_assets_and_exact_compiled_source(self):
+    def test_nightly_cli_preserves_all_sixteen_raw_assets_and_exact_compiled_source(self):
         tag, source = self.nightly_inputs()
         (self.inputs / 'credentials.txt').write_text('synthetic excluded fixture')
         argv = ['collect.py', '--tag', tag, '--root', str(self.root),
@@ -401,7 +467,9 @@ class ReleaseCollection(unittest.TestCase):
         expected = set(expected_members(self.release['version']) +
                        ['putgd-' + self.release['version'] + '-release.zip', 'SHA256SUMS', *proton_sources.PART_NAMES, debug_name])
         self.assertEqual(files, expected)
-        self.assertEqual(len(files), 15)
+        self.assertEqual(len(files), 16)
+        self.assertEqual(appimage_update.read_update_information(self.output / ('putgd-' + self.release['version'] + '-x86_64.AppImage')),
+                         'zsync|https://app.put.gd/dl/nightly/appimage.zsync')
         self.assertEqual((self.output / source.name).read_bytes(), source.read_bytes())
         builds = json.loads((self.output / 'release-builds.json').read_text())
         self.assertEqual(builds['release']['channel'], 'nightly')

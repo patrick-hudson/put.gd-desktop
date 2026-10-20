@@ -28,6 +28,7 @@ class Bundle(unittest.TestCase):
             'putgd-0.1.1-rc.1-debian13-x86_64.deb',
             'putgd-0.1.1-rc.1-fedora44-x86_64.rpm',
             'putgd-0.1.1-rc.1-x86_64.AppImage',
+            'putgd-0.1.1-rc.1-x86_64.AppImage.zsync',
             'putgd-0.1.1-rc.1-appimage-media-source.tar.gz',
             'putgd-0.1.1-rc.1-source.tar.gz',
             'putgd-gnome50-0.1.1-rc.1.zip', 'release-builds.json', 'proton-source-catalog.json',
