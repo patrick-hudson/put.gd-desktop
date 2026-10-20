@@ -1,11 +1,13 @@
 #include "VisualStyle.h"
 #include "IconArt.h"
+#include "Theme.h"
 #include <QApplication>
 #include <QAbstractItemView>
 #include <QFrame>
 #include <QComboBox>
 #include <QStyleOptionComboBox>
 #include <QHash>
+#include <QIconEngine>
 #include <QHeaderView>
 #include <QResizeEvent>
 #include <QFormLayout>
@@ -66,10 +68,10 @@ public:StateDelegate(QList<int> columns,QObject* parent):QStyledItemDelegate(par
   // A local-save cell can contain a path; keep that evidence as ordinary text.
   if(value.contains(' ')||value.contains('/')){QStyledItemDelegate::paint(painter,option,index);return;}
   QStyleOptionViewItem base(option);initStyleOption(&base,index);base.text.clear();base.widget->style()->drawControl(QStyle::CE_ItemViewItem,&base,painter,base.widget);
-  QColor foreground("#cbd0dc"),background("#2b303b");
-  if(QStringList{"completed","uploaded","copied","saved","removed"}.contains(value)){foreground=QColor("#9bbcff");background=QColor("#243452");}
-  else if(QStringList{"failed","denied","interrupted"}.contains(value)){foreground=QColor("#ffb4ab");background=QColor("#4d2b2f");}
-  else if(QStringList{"partial","uncertain","pending","running","accepted","superseded","version_retained"}.contains(value)){foreground=QColor("#f4d39a");background=QColor("#403727");}
+  const auto& p=Theme::current();QColor foreground=p.textSecondary,background=p.surfaceRaised;
+  if(QStringList{"completed","uploaded","copied","saved","removed"}.contains(value)){foreground=p.success;background=p.successSurface;}
+  else if(QStringList{"failed","denied","interrupted"}.contains(value)){foreground=p.danger;background=p.dangerSurface;}
+  else if(QStringList{"partial","uncertain","pending","running","accepted","superseded","version_retained"}.contains(value)){foreground=p.warning;background=p.warningSurface;}
   value.replace('_',' ');value=value.left(1).toUpper()+value.mid(1);
   painter->save();painter->setRenderHint(QPainter::Antialiasing);auto bounds=option.rect.adjusted(8,5,-8,-5);bounds.setWidth(qMin(bounds.width(),option.fontMetrics.horizontalAdvance(value)+22));painter->setPen(Qt::NoPen);painter->setBrush(background);painter->drawRoundedRect(bounds,5,5);painter->setPen(foreground);painter->drawText(bounds.adjusted(10,0,-8,0),Qt::AlignVCenter|Qt::AlignLeft,option.fontMetrics.elidedText(value,Qt::ElideRight,qMax(0,bounds.width()-18)));painter->restore();
  }
@@ -100,79 +102,122 @@ QWidget* settingLabel(const QString& title,const QString& description,QWidget* c
 QWidget* settingRow(const QString& title,const QString& description,QWidget* control,QWidget* parent){
  control->setAccessibleName(title);auto* row=new QWidget(parent);auto* layout=new QHBoxLayout(row);layout->setContentsMargins(0,0,0,0);layout->setSpacing(6);layout->addWidget(control);layout->addWidget(helpButton(title,description,control,row));layout->addStretch();return row;
 }
-void apply(QApplication& app){
- if(app.property("putgdVisualStyle").toBool())return;
- app.setProperty("putgdVisualStyle",true);
- QPalette palette=app.palette();palette.setColor(QPalette::Window,QColor("#111318"));palette.setColor(QPalette::WindowText,QColor("#f2f3f7"));palette.setColor(QPalette::Base,QColor("#151820"));palette.setColor(QPalette::AlternateBase,QColor("#222630"));palette.setColor(QPalette::Text,QColor("#f2f3f7"));palette.setColor(QPalette::Button,QColor("#2b303b"));palette.setColor(QPalette::ButtonText,QColor("#f2f3f7"));palette.setColor(QPalette::Highlight,QColor("#9bbcff"));palette.setColor(QPalette::HighlightedText,QColor("#14233d"));palette.setColor(QPalette::PlaceholderText,QColor("#abb1bf"));palette.setColor(QPalette::Disabled,QPalette::Text,QColor("#737b8c"));palette.setColor(QPalette::Disabled,QPalette::ButtonText,QColor("#737b8c"));app.setPalette(palette);
- app.setStyleSheet(QStringLiteral(R"QSS(
- QWidget#putgdWindow { background: #111318; color: #f2f3f7; }
- QWidget { color: #f2f3f7; font-size: 13px; }
+namespace {
+// The application stylesheet, in the shared Theme tokens (#60).
+const char* const applicationStyle=R"QSS(
+ QWidget#putgdWindow { background: %bg%; color: %text%; }
+ QWidget { color: %text%; font-size: 13px; }
  QLabel { background: transparent; }
- QLabel[visualRole="eyebrow"] { color: #9bbcff; font-size: 11px; font-weight: 600; }
+ QLabel[visualRole="eyebrow"] { color: %accent%; font-size: 11px; font-weight: 600; }
  QLabel[visualRole="title"] { font-size: 24px; font-weight: 600; }
- QLabel[visualRole="subtitle"] { color: #abb1bf; font-size: 13px; }
+ QLabel[visualRole="subtitle"] { color: %textMuted%; font-size: 13px; }
  QLabel[visualRole="sectionTitle"] { font-size: 15px; font-weight: 600; }
- QLabel[visualRole="status"] { color: #cbd0dc; background: #1b1e25; border: 1px solid #383f4d; border-radius: 6px; padding: 8px 10px; }
- QLabel[visualRole="status"][feedbackTone="success"] { color: #d8e5ff; background: #243452; border-color: #7e9acc; font-weight: 600; }
- QLabel[visualRole="status"][feedbackTone="error"] { color: #ffb4ab; background: #38252b; border-color: #805054; }
- QLabel[visualRole="binding"] { color: #abb1bf; font-size: 12px; }
- QLabel[visualRole="binding"][bindingTone="active"] { color: #9bbcff; }
- QLabel[visualRole="binding"][bindingTone="warning"] { color: #f4d39a; }
- QLabel[visualRole="binding"][bindingTone="error"] { color: #ffb4ab; }
- QLabel[visualRole="muted"] { color: #abb1bf; }
- QFrame[visualRole="card"] { background: #1b1e25; border: 1px solid #303644; border-radius: 8px; }
+ QLabel[visualRole="status"] { color: %textSecondary%; background: %surface%; border: 1px solid %border%; border-radius: 6px; padding: 8px 10px; }
+ QLabel[visualRole="status"][feedbackTone="success"] { color: %success%; background: %successSurface%; border-color: %success%; font-weight: 600; }
+ QLabel[visualRole="status"][feedbackTone="error"] { color: %danger%; background: %dangerSurface%; border-color: %danger%; }
+ QLabel[visualRole="binding"] { color: %textMuted%; font-size: 12px; }
+ QLabel[visualRole="binding"][bindingTone="active"] { color: %accent%; }
+ QLabel[visualRole="binding"][bindingTone="warning"] { color: %warning%; }
+ QLabel[visualRole="binding"][bindingTone="error"] { color: %danger%; }
+ QLabel[visualRole="muted"] { color: %textMuted%; }
+ QFrame[visualRole="card"] { background: %surface%; border: 1px solid %border%; border-radius: 8px; }
  QFrame[visualRole="card"] > QWidget { background: transparent; }
  QScrollArea, QStackedWidget { background: transparent; border: none; }
  QScrollArea > QWidget > QWidget { background: transparent; }
- QListWidget#settingsNavigation { background: #181b22; border: 1px solid #303644; border-radius: 8px; padding: 6px; outline: none; }
+ QListWidget#settingsNavigation { background: %surface%; border: 1px solid %border%; border-radius: 8px; padding: 6px; outline: none; }
  QListWidget#settingsNavigation::item { padding: 10px 8px; border: 2px solid transparent; border-radius: 7px; margin-bottom: 3px; }
- QListWidget#settingsNavigation::item:selected { background: #293d60; color: #c9dbff; }
- QListWidget#settingsNavigation::item:hover { background: #262d3b; }
- QListWidget#settingsNavigation:focus::item:selected { border: 2px solid #9bbcff; }
- QLineEdit, QComboBox, QPlainTextEdit { background: #151820; border: 1px solid #454e60; border-radius: 6px; padding: 6px 8px; selection-background-color: #9bbcff; selection-color: #14233d; }
- QLineEdit:focus, QComboBox:focus, QPlainTextEdit:focus { border: 1px solid #9bbcff; background: #1e2739; }
- QLineEdit:disabled, QComboBox:disabled, QPlainTextEdit:disabled { color: #737b8c; border-color: #303644; background: #1b1e25; }
+ QListWidget#settingsNavigation::item:selected { background: %selected%; color: %text%; }
+ QListWidget#settingsNavigation::item:hover { background: %surfaceRaised%; }
+ QListWidget#settingsNavigation:focus::item:selected { border: 2px solid %accent%; }
+ QLineEdit, QComboBox, QPlainTextEdit { background: %surfaceRaised%; border: 1px solid %borderStrong%; border-radius: 6px; padding: 6px 8px; selection-background-color: %accent%; selection-color: %onAccent%; }
+ QLineEdit:focus, QComboBox:focus, QPlainTextEdit:focus { border: 1px solid %accent%; background: %surfaceRaised%; }
+ QLineEdit:disabled, QComboBox:disabled, QPlainTextEdit:disabled { color: %textDisabled%; border-color: %border%; background: %surface%; }
  QComboBox { padding-right: 26px; }
  QComboBox QLineEdit { background: transparent; border: none; padding: 0; }
  QComboBox::drop-down { border: none; width: 24px; }
  QComboBox::down-arrow { image: none; }
- QComboBox QAbstractItemView { background: #202530; border: 1px solid #687ea4; selection-background-color: #314970; selection-color: #f2f3f7; }
- QPushButton, QToolButton { background: #2b303b; border: 1px solid #454e60; border-radius: 6px; padding: 6px 11px; font-weight: 500; }
- QPushButton:hover, QToolButton:hover { background: #394458; border-color: #7e9acc; }
- QPushButton:pressed, QToolButton:pressed { background: #23324b; }
- QPushButton:focus, QToolButton:focus { border: 2px solid #9bbcff; padding: 5px 10px; }
- QPushButton:disabled, QToolButton:disabled { color: #737b8c; background: #202530; border-color: #303644; }
+ QComboBox QAbstractItemView { background: %surfaceRaised%; border: 1px solid %borderStrong%; selection-background-color: %selected%; selection-color: %text%; }
+ QPushButton, QToolButton { background: %surfaceRaised%; border: 1px solid %borderStrong%; border-radius: 6px; padding: 6px 11px; font-weight: 500; }
+ QPushButton:hover, QToolButton:hover { background: %selected%; border-color: %accent%; }
+ QPushButton:pressed, QToolButton:pressed { background: %selected%; }
+ QPushButton:focus, QToolButton:focus { border: 2px solid %accent%; padding: 5px 10px; }
+ QPushButton:disabled, QToolButton:disabled { color: %textDisabled%; background: %surfaceRaised%; border-color: %border%; }
  QToolButton[visualRole="info"] { background: transparent; border: 1px solid transparent; padding: 0; }
- QToolButton[visualRole="info"]:hover { background: #293d60; border-color: #687ea4; }
- QToolButton[visualRole="info"]:focus { border: 2px solid #9bbcff; padding: 0; }
- QPushButton[visualRole="primary"] { background: #9bbcff; color: #14233d; border-color: #9bbcff; font-weight: 600; }
- QPushButton[visualRole="primary"]:hover { background: #b5ceff; }
- QPushButton[visualRole="primary"]:focus { border: 2px solid #f2f3f7; }
- QPushButton[visualRole="primary"]:disabled { background: #364357; color: #8996ad; border-color: #454e60; }
- QPushButton[visualRole="danger"] { color: #ffb4ab; background: #38252b; border-color: #805054; }
+ QToolButton[visualRole="info"]:hover { background: %selected%; border-color: %borderStrong%; }
+ QToolButton[visualRole="info"]:focus { border: 2px solid %accent%; padding: 0; }
+ QPushButton[visualRole="primary"] { background: %accent%; color: %onAccent%; border-color: %accent%; font-weight: 600; }
+ QPushButton[visualRole="primary"]:hover { background: %accentHover%; }
+ QPushButton[visualRole="primary"]:focus { border: 2px solid %text%; }
+ QPushButton[visualRole="primary"]:disabled { background: %selected%; color: %textMuted%; border-color: %borderStrong%; }
+ QPushButton[visualRole="danger"] { color: %danger%; background: %dangerSurface%; border-color: %danger%; }
  QCheckBox { spacing: 8px; padding: 3px 0; }
- QCheckBox::indicator { width: 18px; height: 18px; border: 1px solid #65738c; border-radius: 4px; background: #151820; }
- QCheckBox::indicator:checked { background: #9bbcff; border: 4px solid #415d92; }
- QCheckBox::indicator:focus { border: 2px solid #f2f3f7; }
- QTableView, QTreeView { background: #1b1e25; alternate-background-color: #222630; border: 1px solid #383f4d; border-radius: 8px; gridline-color: #303644; selection-background-color: #314970; selection-color: #f2f3f7; outline: none; }
- QTableView::item, QTreeView::item { padding: 6px; border-bottom: 1px solid #303644; }
- QTableView::item:focus, QTreeView::item:focus { border: 1px solid #9bbcff; }
- QHeaderView { background: #181b22; }
- QHeaderView::section { background: #262d3b; color: #cbd0dc; border: none; border-bottom: 1px solid #454e60; padding: 8px 9px; font-weight: 600; }
- QTableCornerButton::section { background: #262d3b; border: none; }
- QScrollBar:vertical { width: 10px; background: #161920; margin: 2px; }
- QScrollBar:horizontal { height: 10px; background: #161920; margin: 2px; }
- QScrollBar::handle { background: #515e76; border-radius: 4px; min-height: 28px; min-width: 28px; }
+ QCheckBox::indicator { width: 18px; height: 18px; border: 1px solid %borderStrong%; border-radius: 4px; background: %surfaceRaised%; }
+ QCheckBox::indicator:checked { background: %accent%; border: 4px solid %selected%; }
+ QCheckBox::indicator:focus { border: 2px solid %accent%; }
+ QTableView, QTreeView { background: %surface%; alternate-background-color: %surface%; border: 1px solid %border%; border-radius: 8px; gridline-color: %border%; selection-background-color: %selected%; selection-color: %text%; outline: none; }
+ QTableView::item, QTreeView::item { padding: 6px; border-bottom: 1px solid %border%; }
+ QTableView::item:focus, QTreeView::item:focus { border: 1px solid %accent%; }
+ QHeaderView { background: %surface%; }
+ QHeaderView::section { background: %surfaceRaised%; color: %textSecondary%; border: none; border-bottom: 1px solid %borderStrong%; padding: 8px 9px; font-weight: 600; }
+ QTableCornerButton::section { background: %surfaceRaised%; border: none; }
+ QScrollBar:vertical { width: 10px; background: %bg%; margin: 2px; }
+ QScrollBar:horizontal { height: 10px; background: %bg%; margin: 2px; }
+ QScrollBar::handle { background: %borderStrong%; border-radius: 4px; min-height: 28px; min-width: 28px; }
  QScrollBar::add-line, QScrollBar::sub-line { width: 0; height: 0; }
  QScrollBar::add-page, QScrollBar::sub-page { background: transparent; }
- QMenu, QMessageBox { background: #1b1e25; }
- QMenu { border: 1px solid #454e60; padding: 6px; }
+ QMenu, QMessageBox { background: %surface%; }
+ QMenu { border: 1px solid %borderStrong%; padding: 6px; }
  QMenu::item { padding: 10px 24px; border-radius: 5px; }
- QMenu::item:selected { background: #314970; }
- QMenu::separator { height: 1px; background: #454e60; margin: 5px 10px; }
- QToolTip { color: #f2f3f7; background: #26344d; border: 1px solid #7e9acc; padding: 7px; }
- QSplitter::handle { background: #26344d; }
- )QSS"));
+ QMenu::item:selected { background: %selected%; }
+ QMenu::separator { height: 1px; background: %borderStrong%; margin: 5px 10px; }
+ QToolTip { color: %text%; background: %surfaceRaised%; border: 1px solid %accent%; padding: 7px; }
+ QSplitter::handle { background: %surfaceRaised%; }
+ )QSS";
+void style(QApplication& app){
+ const auto& p=Theme::current();QPalette palette=app.palette();
+ palette.setColor(QPalette::Window,p.bg);palette.setColor(QPalette::WindowText,p.text);palette.setColor(QPalette::Base,p.surfaceRaised);palette.setColor(QPalette::AlternateBase,p.surface);
+ palette.setColor(QPalette::Text,p.text);palette.setColor(QPalette::Button,p.surfaceRaised);palette.setColor(QPalette::ButtonText,p.text);palette.setColor(QPalette::Highlight,p.accent);
+ palette.setColor(QPalette::HighlightedText,p.onAccent);palette.setColor(QPalette::PlaceholderText,p.textMuted);palette.setColor(QPalette::Link,p.link);palette.setColor(QPalette::ToolTipBase,p.surfaceRaised);palette.setColor(QPalette::ToolTipText,p.text);
+ palette.setColor(QPalette::Disabled,QPalette::Text,p.textDisabled);palette.setColor(QPalette::Disabled,QPalette::ButtonText,p.textDisabled);palette.setColor(QPalette::Disabled,QPalette::WindowText,p.textDisabled);
+ app.setPalette(palette);app.setStyleSheet(Theme::stylesheet(QString::fromUtf8(applicationStyle),Theme::scheme()));
+}
+}
+void apply(QApplication& app){
+ if(app.property("putgdVisualStyle").toBool())return;
+ app.setProperty("putgdVisualStyle",true);
+ style(app);
+ // A scheme switch restyles every open window and dialog without a restart.
+ QObject::connect(&Theme::Notifier::instance(),&Theme::Notifier::changed,&app,[&app]{style(app);});
+}
+namespace {
+// Renders IconArt glyphs in the scheme active when Qt asks for a pixmap, so an
+// icon set once on a button follows later scheme switches.
+class ThemedIcon final:public QIconEngine {
+public:
+ explicit ThemedIcon(QString name):name_(std::move(name)){}
+ QIconEngine* clone()const override{return new ThemedIcon(name_);}
+ QString key()const override{return QStringLiteral("putgd-themed");}
+ QSize actualSize(const QSize& size,QIcon::Mode,QIcon::State)override{const int side=qMin(size.width(),size.height());return {side,side};}
+ QPixmap pixmap(const QSize& size,QIcon::Mode mode,QIcon::State state)override{return scaledPixmap(size,mode,state,1.0);}
+ QPixmap scaledPixmap(const QSize& size,QIcon::Mode mode,QIcon::State,qreal scale)override{
+  const int side=qMax(1,qRound(qMin(size.width(),size.height())*scale));
+  const auto& p=Theme::current();const bool disabled=mode==QIcon::Disabled;
+  const auto key=QStringLiteral("%1/%2/%3/%4").arg(name_,Theme::name(Theme::scheme())).arg(int(disabled)).arg(side);
+  static QHash<QString,QPixmap> cache;if(const auto found=cache.constFind(key);found!=cache.cend())return *found;
+  const auto art=IconArt::symbol(name_,disabled?p.textDisabled:p.icon,qMax(1,(side+23)/24),disabled?p.textDisabled.darker(150):p.iconSecondary);
+  auto pixmap=QPixmap::fromImage(art.scaled(side,side,Qt::KeepAspectRatio,Qt::SmoothTransformation));pixmap.setDevicePixelRatio(scale);
+  if(cache.size()>512)cache.clear();cache.insert(key,pixmap);return pixmap;
+ }
+ void paint(QPainter* painter,const QRect& rect,QIcon::Mode mode,QIcon::State state)override{
+  const qreal scale=painter->device()?painter->device()->devicePixelRatioF():1.0;painter->drawPixmap(rect,scaledPixmap(rect.size(),mode,state,scale));
+ }
+private:QString name_;
+};
+}
+QIcon icon(const QString& name){
+ // The brand mark keeps its own colours in every scheme.
+ if(name=="brand")return icon(name,Theme::brandAccent());
+ return QIcon(new ThemedIcon(name));
 }
 QIcon icon(const QString& name,const QColor& color,int percent){
  static QHash<QString,QIcon> cache;const auto key=name+color.name(QColor::HexArgb);

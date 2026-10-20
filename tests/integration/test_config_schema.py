@@ -46,6 +46,20 @@ class ConfigurationSchema(unittest.TestCase):
         for mode in ('latest', True, None, 42):
             self.assertFalse(validator.is_valid(legacy | {'uploadClipboardBehavior': mode}))
 
+    def test_appearance_theme_and_reserved_custom_colours(self):
+        # #60: theme now; accent and overrides keep their shape for phase 2.
+        schema = json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text())
+        validator = Draft202012Validator(schema['properties']['preferences'])
+        legacy = {'notifications': True, 'launchAtLogin': False}
+        for theme in ('system', 'dark', 'light'):
+            self.assertTrue(validator.is_valid(legacy | {'appearance': {'theme': theme}}))
+        full = {'theme': 'system', 'accent': None, 'overrides': {'dark': {}, 'light': {}}}
+        self.assertTrue(validator.is_valid(legacy | {'appearance': full}))
+        for appearance in ({}, {'theme': 'auto'}, {'theme': 'dark', 'accent': '#123456'},
+                           {'theme': 'dark', 'overrides': {'dark': {'accent': '#123456'}, 'light': {}}},
+                           {'theme': 'dark', 'overrides': {'dark': {}}}, {'theme': 'dark', 'colour': 'red'}):
+            self.assertFalse(validator.is_valid(legacy | {'appearance': appearance}), appearance)
+
     def test_optional_proton_folder_name_keeps_legacy_settings_valid(self):
         schema = json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text())
         validator = Draft202012Validator(schema['$defs']['protonSettings'])

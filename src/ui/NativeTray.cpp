@@ -1,5 +1,6 @@
 #include "NativeTray.h"
 #include "IconArt.h"
+#include "Theme.h"
 #include <QCoreApplication>
 #include <QHash>
 #include <QImage>
@@ -123,7 +124,7 @@ NativeLayout menuLayout(int id, int depth, const QStringList& names) {
   result.children.append(QDBusVariant(QVariant::fromValue(menuLayout(child, depth < 0 ? depth : depth - 1, names))));
  return result;
 }
-NativeImages brandIcon(const QColor& color=QColor("#9bbcff"),int percent=-1) {
+NativeImages brandIcon(const QColor& color=Theme::trayTints(false).idle,int percent=-1) {
  NativeImages result;
  for (int scale : {1, 2, 3}) {
   const auto image=IconArt::liftTray(color,percent,scale);
@@ -176,7 +177,7 @@ private:
  quint64 notificationGeneration_ = 0;
  std::unique_ptr<TrayExport> item_, menu_;
  NativeImages icons_;
- QColor color_ = QColor("#9bbcff");
+ QColor color_ = Theme::trayTints(false).idle;
  int percent_ = -1;
  QString activityText_;
  QTimer retry_;

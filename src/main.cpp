@@ -333,7 +333,7 @@ int main(int argc,char* argv[]) {
  // Save diagnostics for a failed upload from its notification, into the folder Settings last chose (#122).
  tray.setDiagnosticsSaver([&](const QString& id,putgd::JsonReply reply){putgd::BundleRequest request;request.operationId=id;const auto folder=operations.settingsSnapshot().document["preferences"].toObject()["diagnostics"].toObject()["packageFolder"].toString();if(QFileInfo(folder).isDir())request.output=folder;bundles.create(request,std::move(reply));});
  server.setDiagnosticsNotifications([&](const QJsonObject& result){tray.notifyDiagnosticsSaved(result);},&putgd::TrayController::revealPackage);
- const auto fullDiagnostics=[&]{auto diagnostics=operations.diagnostics();diagnostics["loginStartup"]=loginStatus;diagnostics["shortcuts"]=source->capabilities()["shortcuts"];diagnostics["ui"]=ui.status();diagnostics["trayAvailable"]=tray.available();return diagnostics;};
+ const auto fullDiagnostics=[&]{auto diagnostics=operations.diagnostics();diagnostics["loginStartup"]=loginStatus;diagnostics["shortcuts"]=source->capabilities()["shortcuts"];diagnostics["ui"]=ui.status();diagnostics["trayAvailable"]=tray.available();diagnostics["trayTint"]=tray.trayTint();return diagnostics;};
  server.setUiDiagnostics(fullDiagnostics);
  bundles.setDiagnostics(fullDiagnostics);
  // environment.json's session-side facts: no pixels, only geometry scale.

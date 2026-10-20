@@ -1,4 +1,5 @@
 #include "EditorCanvas.h"
+#include "ui/Theme.h"
 #include <QApplication>
 #include <QFontMetrics>
 #include <QKeyEvent>
@@ -16,7 +17,11 @@ namespace putgd::editor {
 namespace {
 constexpr double minimumZoom=0.02,maximumZoom=32.0;
 constexpr int handlePixels=9;
-const QColor canvasBackground("#111317"),accent("#6EA8FE"),dim(17,19,23,170);
+// The scheme's colours at paint time (#60): the canvas behind the image, the
+// accent for crop and selection, and the dimmed area outside a crop.
+QColor canvasBackground(){return Theme::current().bg;}
+QColor accent(){return Theme::current().accent;}
+QColor dim(){auto colour=Theme::current().bg;colour.setAlpha(170);return colour;}
 double distanceToSegment(const QPointF& p,const QPointF& a,const QPointF& b){
  const QPointF ab=b-a;const double length=QPointF::dotProduct(ab,ab);
  if(length<=0)return QLineF(p,a).length();
@@ -211,7 +216,7 @@ void EditorCanvas::documentChanged(){
 }
 
 void EditorCanvas::paintEvent(QPaintEvent*){
- QPainter painter(this);painter.fillRect(rect(),canvasBackground);
+ QPainter painter(this);painter.fillRect(rect(),canvasBackground());
  const auto bounds=visibleBounds();const auto target=toWidget(bounds);
  // Paint only the visible source rectangle; never allocate a scaled full frame.
  const QRectF visible=target.intersected(QRectF(rect()));
@@ -230,22 +235,22 @@ void EditorCanvas::paintEvent(QPaintEvent*){
  painter.restore();
  if(tool_==Tool::Crop){
   const auto crop=toWidget(cropDraft_);QPainterPath outside;outside.addRect(target);outside.addRect(crop);
-  painter.fillPath(outside,dim);
-  painter.setPen(QPen(accent,2));painter.setBrush(Qt::NoBrush);painter.drawRect(crop);
-  painter.setPen(QPen(QColor(255,255,255,90),1,Qt::DashLine));
+  painter.fillPath(outside,dim());
+  painter.setPen(QPen(accent(),2));painter.setBrush(Qt::NoBrush);painter.drawRect(crop);
+  painter.setPen(QPen([]{auto colour=Theme::onMedia();colour.setAlpha(90);return colour;}(),1,Qt::DashLine));
   for(int i=1;i<3;++i){painter.drawLine(QPointF(crop.left()+crop.width()*i/3,crop.top()),QPointF(crop.left()+crop.width()*i/3,crop.bottom()));painter.drawLine(QPointF(crop.left(),crop.top()+crop.height()*i/3),QPointF(crop.right(),crop.top()+crop.height()*i/3));}
  }
- auto handles=[&](const QList<QPointF>& points){painter.setPen(QPen(accent,1.5));painter.setBrush(canvasBackground);for(const auto& point:points)painter.drawRect(QRectF(point-QPointF(4,4),QSizeF(8,8)));};
+ auto handles=[&](const QList<QPointF>& points){painter.setPen(QPen(accent(),1.5));painter.setBrush(canvasBackground());for(const auto& point:points)painter.drawRect(QRectF(point-QPointF(4,4),QSizeF(8,8)));};
  if(tool_==Tool::Crop){const auto r=toWidget(cropDraft_);handles({r.topLeft(),QPointF(r.center().x(),r.top()),r.topRight(),QPointF(r.right(),r.center().y()),r.bottomRight(),QPointF(r.center().x(),r.bottom()),r.bottomLeft(),QPointF(r.left(),r.center().y())});}
  else if(const auto* shape=doc_.find(selected_)){
   if(shape->kind==Shape::Kind::Arrow)handles({toWidget(QPointF(shape->from)),toWidget(QPointF(shape->to))});
   else{
-   const auto r=toWidget(shape->rect);painter.setPen(QPen(accent,1,Qt::DashLine));painter.setBrush(Qt::NoBrush);painter.drawRect(r.adjusted(-2,-2,2,2));
+   const auto r=toWidget(shape->rect);painter.setPen(QPen(accent(),1,Qt::DashLine));painter.setBrush(Qt::NoBrush);painter.drawRect(r.adjusted(-2,-2,2,2));
    if(shape->kind==Shape::Kind::Text)handles({r.topLeft(),r.topRight(),r.bottomRight(),r.bottomLeft()});
    else handles({r.topLeft(),QPointF(r.center().x(),r.top()),r.topRight(),QPointF(r.right(),r.center().y()),r.bottomRight(),QPointF(r.center().x(),r.bottom()),r.bottomLeft(),QPointF(r.left(),r.center().y())});
   }
  }
- if(hasFocus()){painter.setPen(QPen(accent,2));painter.setBrush(Qt::NoBrush);painter.drawRect(QRectF(rect()).adjusted(1,1,-1,-1));}
+ if(hasFocus()){painter.setPen(QPen(accent(),2));painter.setBrush(Qt::NoBrush);painter.drawRect(QRectF(rect()).adjusted(1,1,-1,-1));}
 }
 
 void EditorCanvas::mousePressEvent(QMouseEvent* event){

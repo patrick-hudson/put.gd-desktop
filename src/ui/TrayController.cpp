@@ -1,5 +1,6 @@
 #include "TrayController.h"
 #include "VisualStyle.h"
+#include "Theme.h"
 #include "ByteSize.h"
 #ifdef Q_OS_LINUX
 #include "NativeTray.h"
@@ -143,13 +144,15 @@ TrayController::TrayController(OperationService& operations,
  } else
 #endif
  {
- tray_ = new QSystemTrayIcon(VisualStyle::icon("tray"), this);
+ tray_ = new QSystemTrayIcon(VisualStyle::icon("tray",Theme::trayTints(panel_.light()).idle), this);
  menu_ = std::make_unique<QMenu>();
  tray_->setToolTip(idleTooltip);
  // Capture entries first, in the order people reach for them; QAction text
  // treats a single & as a mnemonic marker, so && shows one &.
  const auto capture = [this](const QString& action, const QString& label) {
-  connect(menu_->addAction(VisualStyle::icon(action), label), &QAction::triggered, this, [this, action] { invokeAction(action); });
+  auto* entry = menu_->addAction(label);
+  entry->setData(action);
+  connect(entry, &QAction::triggered, this, [this, action] { invokeAction(action); });
  };
  capture("region", "Capture Region");
  capture("edit", "Capture Region && Edit");
@@ -157,23 +160,28 @@ TrayController::TrayController(OperationService& operations,
  capture("desktop", "Capture Desktop");
  capture("record", "Capture Screen Recording");
  // Other editor sources stay one level down so the menu does not grow.
- auto* editImage = menu_->addMenu(VisualStyle::icon("edit"), "Edit Image");
+ auto* editImage = menu_->addMenu("Edit Image");
+ editImage->menuAction()->setData("edit");
  connect(editImage->addAction("From clipboard"), &QAction::triggered, this, [this] { invokeAction("edit", false, {{"source", "clipboard"}}); });
  connect(editImage->addAction("From file…"), &QAction::triggered, this, [this] { showView("editFile"); });
  capture("clipboard", "Upload Clipboard");
  menu_->addSeparator();
- connect(menu_->addAction(VisualStyle::icon("preferences"), "Settings and setup"),
-         &QAction::triggered, this, &TrayController::showSettings);
- connect(menu_->addAction(VisualStyle::icon("history"), "Upload history"),
-         &QAction::triggered, this, &TrayController::showHistory);
- connect(menu_->addAction(VisualStyle::icon("activity"), "Recent activity"),
-         &QAction::triggered, this, &TrayController::showActivity);
+ auto* preferences = menu_->addAction("Settings and setup");
+ preferences->setData("preferences");
+ connect(preferences, &QAction::triggered, this, &TrayController::showSettings);
+ auto* history = menu_->addAction("Upload history");
+ history->setData("history");
+ connect(history, &QAction::triggered, this, &TrayController::showHistory);
+ auto* activity = menu_->addAction("Recent activity");
+ activity->setData("activity");
+ connect(activity, &QAction::triggered, this, &TrayController::showActivity);
  menu_->addSeparator();
  connect(menu_->addAction("About put.gd"), &QAction::triggered, this, &TrayController::showAbout);
  connect(menu_->addAction("Quit"), &QAction::triggered, this, [this] {
   const auto quit = quit_;
   quit();
  });
+ retintMenu();
  tray_->setContextMenu(menu_.get());
  connect(tray_, &QSystemTrayIcon::activated, this, [this](auto reason) {
   if (reason == QSystemTrayIcon::Trigger || reason == QSystemTrayIcon::DoubleClick)
@@ -204,6 +212,9 @@ TrayController::TrayController(OperationService& operations,
  connect(&errorRecoveryTimer_,&QTimer::timeout,this,[this] {
   errorFlashTimer_.stop();errorRed_=false;refreshActivity();
  });
+ // The panel's colour, not the app theme, picks the tint (#60): re-tint the
+ // icon and its menu glyphs when the desktop switches.
+ connect(&panel_,&PanelTone::changed,this,[this]{iconColor_=QColor();retintMenu();refreshActivity();});
  connect(&operations_,&OperationService::operationError,this,&TrayController::flashError);
  connect(&operations_,&OperationService::storageActivityChanged,this,&TrayController::refreshActivity);
  connect(&operations_, &OperationService::observationsChanged, this, &TrayController::refreshActivity);
@@ -257,6 +268,14 @@ bool TrayController::availabilityKnown() const { return !native_ || native_->ava
 bool TrayController::available() const { return QSystemTrayIcon::isSystemTrayAvailable(); }
 bool TrayController::availabilityKnown() const { return true; }
 #endif
+void TrayController::retintMenu() {
+ if(!menu_)return;
+ const auto tint=Theme::trayTints(panel_.light()).idle;
+ for(auto* action:menu_->actions())if(!action->data().toString().isEmpty())action->setIcon(VisualStyle::icon(action->data().toString(),tint));
+}
+QJsonObject TrayController::trayTint()const {
+ return {{"panel",panel_.light()?"light":"dark"},{"source",panel_.source()},{"color",Theme::trayTints(panel_.light()).idle.name()}};
+}
 void TrayController::refreshActivity() {
  const auto observations=operations_.activeObservations();
  QSet<QString> activeIds;bool encoding=false;
@@ -294,8 +313,9 @@ void TrayController::refreshActivity() {
  const auto text=uploadCompleted_?QString("Upload complete"):
                  uploadVisible_&&!working?QString("Finishing upload"):activityText(observations);
  // Amber covers encoding and saving after Upload until storage traffic reveals the green fill.
- const auto color=errorFlashTimer_.isActive()?QColor(errorRed_?"#ffb4ab":"#9bbcff"):
-                  QColor(uploadVisible_?"#62d69b":encoding?"#f3c66f":"#9bbcff");
+ const auto& tints=Theme::trayTints(panel_.light());
+ const auto color=errorFlashTimer_.isActive()?(errorRed_?tints.error:tints.idle):
+                  uploadVisible_?tints.upload:encoding?tints.encoding:tints.idle;
  int percent=-1;
  if(uploadVisible_&&!errorFlashTimer_.isActive()) {
   if(uploadCompleted_)percent=100;

@@ -6,13 +6,5 @@
         <file alias="fonts/IBMPlexMono-Regular.ttf">fonts/IBMPlexMono-Regular.ttf</file>
         <file alias="fonts/OFL-sans.txt">fonts/OFL-sans.txt</file>
         <file alias="fonts/OFL-mono.txt">fonts/OFL-mono.txt</file>
-        <file alias="radio.png">redesign-icons/radio.png</file>
-        <file alias="radio@2x.png">redesign-icons/radio@2x.png</file>
-        <file alias="radio-checked.png">redesign-icons/radio-checked.png</file>
-        <file alias="radio-checked@2x.png">redesign-icons/radio-checked@2x.png</file>
-        <file alias="check.png">redesign-icons/check.png</file>
-        <file alias="check@2x.png">redesign-icons/check@2x.png</file>
-        <file alias="chevron.png">redesign-icons/chevron.png</file>
-        <file alias="chevron@2x.png">redesign-icons/chevron@2x.png</file>
 </qresource>
 </RCC>

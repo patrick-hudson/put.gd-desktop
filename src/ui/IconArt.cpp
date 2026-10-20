@@ -1,4 +1,5 @@
 #include "IconArt.h"
+#include "Theme.h"
 #include <QPainter>
 #include <QPainterPath>
 
@@ -31,22 +32,22 @@ QImage liftTray(const QColor& color,int percent,int scale) {
   p.save();const auto fill=qBound(0,percent,100)/100.0;
   p.setClipRect(QRectF(0,23-21*fill,24,21*fill));p.fillPath(shape,color);p.restore();
  }
- p.setPen(QPen(QColor("#182126"),0.65,Qt::SolidLine,Qt::RoundCap,Qt::RoundJoin));
+ p.setPen(QPen(Theme::trayOutline(),0.65,Qt::SolidLine,Qt::RoundCap,Qt::RoundJoin));
  p.setBrush(Qt::NoBrush);p.drawPath(shape);
  return image;
 }
 QImage liftApp(const QColor& color,int scale) {
  auto image=canvas(scale);QPainter p(&image);p.setRenderHint(QPainter::Antialiasing);
- p.setPen(Qt::NoPen);p.setBrush(QColor("#1b1e25"));p.drawRoundedRect(QRectF(0,0,24,24),5,5);
+ p.setPen(Qt::NoPen);p.setBrush(Theme::brandTile());p.drawRoundedRect(QRectF(0,0,24,24),5,5);
  p.translate(2.4,2);p.scale(0.8,0.8);
  p.fillPath(tray(),color.darker(190));p.fillPath(arrow(),color);
  return image;
 }
-QImage symbol(const QString& name,const QColor& color,int scale) {
+QImage symbol(const QString& name,const QColor& color,int scale,const QColor& secondaryColor) {
  if(name=="brand")return liftApp(color,scale);
  if(name=="tray")return liftTray(color,-1,scale);
  auto image=canvas(scale);QPainter p(&image);p.setRenderHint(QPainter::Antialiasing);
- const auto secondary=color.darker(190);
+ const auto secondary=secondaryColor.isValid()?secondaryColor:color.darker(190);
  auto fill=[&](const QColor& c){p.setPen(Qt::NoPen);p.setBrush(c);};
  auto line=[&](const QColor& c,qreal width=2){p.setBrush(Qt::NoBrush);p.setPen(QPen(c,width,Qt::SolidLine,Qt::RoundCap,Qt::RoundJoin));};
  auto rounded=[&](qreal x,qreal y,qreal w,qreal h,qreal radius=2){p.drawRoundedRect(QRectF(x,y,w,h),radius,radius);};

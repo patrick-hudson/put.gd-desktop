@@ -22,6 +22,13 @@ UiApplicationController::UiApplicationController(UiSession& session,UiControl& c
   control_.send("shortcutRecording",{{"active",false}});
   finishShortcutRecordingRequests({"shortcut_recording_timeout","Global shortcuts could not be paused. Try recording again.",{}});
  });
+ // #60: the setting picks the scheme and "system" follows the desktop live;
+ // CLI/MCP patches arrive through the same accepted revisions.
+ const auto followSetting=[this]{appearance_.setPreference(session_.document()["preferences"].toObject()["appearance"].toObject()["theme"].toString("system"));};
+ followSetting();
+ connect(&session_,&UiSession::accepted,this,followSetting);
+ connect(&session_,&UiSession::statusChanged,this,followSetting);
+ connect(&appearance_,&Appearance::changed,this,[this]{dirtyCheckpoint_=true;checkpointDelay_.start();});
  session_.setShortcutRecordingHandler([this](bool active,std::function<void(Error)> reply){
   if(exiting_){reply({"ui_stopping","The interface is closing.",{}});return;}
   const auto sequence=control_.send("shortcutRecording",{{"active",active}});
@@ -74,7 +81,7 @@ QWidget* UiApplicationController::view(const QString& name){
  return nullptr;
 }
 QJsonObject UiApplicationController::snapshot()const{
- auto state=saved_;state["schemaVersion"]=1;
+ auto state=saved_;state["schemaVersion"]=1;state["appearance"]=appearance_.state();
  if(main_){state["settings"]=main_->settings()->saveViewState();state["history"]=main_->history()->saveViewState();state["main"]=main_->saveViewState();}
  return state;
 }

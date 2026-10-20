@@ -2,6 +2,8 @@
 #include "ui/SettingsWindow.h"
 #include "ui/MainWindow.h"
 #include "ui/AboutWindow.h"
+#include "ui/Theme.h"
+#include <QScopeGuard>
 #include "fixtures/UiSessionFixture.h"
 #include <QApplication>
 #include <QJsonDocument>
@@ -26,6 +28,18 @@ public:
 class UiApplicationTest:public QObject {
  Q_OBJECT
 private slots:
+ // #60: the appearance setting, saved here or patched by the CLI/MCP, switches
+ // the scheme of the running interface without a restart.
+ void appearanceSettingAppliesLive(){
+  QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"),[](auto,auto){return Error{};});auto document=Settings::developmentTemplate();QVERIFY(settings.save(document,{}));
+  CredentialStore secrets;UiSessionFixture fixture(settings,secrets);ControlDevice device;UiControl control(device);UiApplicationController controller(fixture.session,control,{});
+  auto restore=qScopeGuard([]{Theme::setScheme(Theme::Scheme::Dark);});
+  QCOMPARE(Theme::scheme(),Theme::Scheme::Dark);
+  auto preferences=document["preferences"].toObject();preferences["appearance"]=QJsonObject{{"theme","light"}};document["preferences"]=preferences;QVERIFY(settings.save(document,settings.revision()));
+  fixture.session.invalidate();QTRY_COMPARE(Theme::scheme(),Theme::Scheme::Light);
+  preferences["appearance"]=QJsonObject{{"theme","system"}};document["preferences"]=preferences;QVERIFY(settings.save(document,settings.revision()));
+  fixture.session.invalidate();QTRY_COMPARE(Theme::scheme(),Theme::Scheme::Dark);
+ }
  void moveDestinationCommandDrivesTheOpenSettingsWindow(){
   QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"),[](auto,auto){return Error{};});auto document=Settings::developmentTemplate();auto profiles=document["profiles"].toArray();auto other=profiles.first().toObject();other["id"]="synthetic-alternate";other["label"]="Synthetic alternate";other["credentials"]=QJsonObject{{"mode","keychain"},{"reference","putgd/synthetic-alternate"}};profiles.append(other);document["profiles"]=profiles;QVERIFY(settings.save(document,{}));
   CredentialStore secrets;UiSessionFixture fixture(settings,secrets);ControlDevice device;UiControl control(device);UiApplicationController controller(fixture.session,control,{});
@@ -117,7 +131,9 @@ private slots:
   device.send("activate",{{"view","about"}});AboutWindow* about=nullptr;for(auto* widget:QApplication::topLevelWidgets())if(auto* candidate=dynamic_cast<AboutWindow*>(widget))about=candidate;QVERIFY(about);
   device.writeLimit=0;about->move(25,25);QTest::qWait(350);about->close();QCOMPARE(failures.size(),0);QCOMPARE(exits,0);QVERIFY(!about->isEnabled());
   device.writeLimit=16*1024*1024;emit device.bytesWritten(0);const auto checkpoint=device.last("checkpoint");QVERIFY(!checkpoint.isEmpty());QVERIFY(device.last("closeRequested").isEmpty());
-  device.send("checkpointAccepted",{{"replyTo",checkpoint["sequence"]}});const auto request=device.last("closeRequested");QVERIFY(!request.isEmpty());QCOMPARE(failures.size(),0);QCOMPARE(request["payload"].toObject()["state"],state);
+  device.send("checkpointAccepted",{{"replyTo",checkpoint["sequence"]}});const auto request=device.last("closeRequested");QVERIFY(!request.isEmpty());QCOMPARE(failures.size(),0);
+  // The checkpoint also reports the appearance in use (#60); the rest is the saved state.
+  auto sent=request["payload"].toObject()["state"].toObject();QCOMPARE(sent.take("appearance").toObject()["theme"].toString(),QString("system"));QCOMPARE(sent,state);
   device.send("closeAccepted",{{"replyTo",request["sequence"]}});QCOMPARE(exits,1);
  }
  void aboutDismissalAlsoClosesTheHelper(){

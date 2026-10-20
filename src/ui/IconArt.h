@@ -8,5 +8,6 @@ namespace putgd::IconArt {
 // A negative percentage means a solid status glyph; 0..100 fills bottom to top.
 QImage liftTray(const QColor& color, int percent = -1, int scale = 1);
 QImage liftApp(const QColor& color, int scale = 1);
-QImage symbol(const QString& name, const QColor& color, int scale = 1);
+// secondary: the glyph's second tone; invalid means a darker shade of color.
+QImage symbol(const QString& name, const QColor& color, int scale = 1, const QColor& secondary = {});
 }

@@ -65,6 +65,8 @@ struct Settings {
     // Opt-in debug logging; the resident turns it off again after 24 hours.
     bool debugLogging = false;
     QString uploadClipboardBehavior = "each_link";
+    // preferences.appearance.theme (#60): system, dark or light.
+    QString appearanceTheme = "system";
     bool notifications = true;
     bool launchAtLogin = false;
     // Read saved keychain credentials once when the resident starts; the
