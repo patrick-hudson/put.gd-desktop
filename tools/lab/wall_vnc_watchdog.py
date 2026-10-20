@@ -114,18 +114,27 @@ class UpdateReader:
 class Watchdog:
     """Decides when the stream is stale; time, restarts and the reset signal are injected."""
 
+    # A stream that still delivers frames this long after a logged reset survived it.
+    SURVIVED = 30
+
     def __init__(self, stale, grace, max_backoff, now):
         self.stale, self.grace, self.max_backoff, self.now = stale, grace, max_backoff, now
         self.started = self.last_update = now()
         self.failed_restarts = 0
         self.reset_pending = False
+        self.reset_at = None
 
     def reset_logged(self):
         self.reset_pending = True
+        self.reset_at = self.now()
 
     def updated(self):
         self.last_update = self.now()
         self.failed_restarts = 0
+        if self.reset_pending and self.last_update - self.reset_at >= self.SURVIVED:
+            # k72, 2026-10-20: a second hang logged 3 s after a restart, while the new stream kept running,
+            # cost a needless restart when the grace period ended.
+            self.reset_pending = False
 
     def wait_after_restart(self):
         return min(self.grace * 2 ** max(self.failed_restarts - 1, 0), self.max_backoff)

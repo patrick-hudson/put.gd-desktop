@@ -44,6 +44,25 @@ class Decisions(unittest.TestCase):
         self.dog.restarted()
         self.assertIsNone(self.dog.reason())
 
+    def test_a_reset_the_stream_survives_is_dropped(self):
+        self.dog.restarted()
+        self.clock.now += 3
+        self.dog.reset_logged()
+        for _ in range(6):
+            self.clock.now += 10
+            self.dog.updated()
+        self.clock.now += 60
+        self.assertIsNone(self.dog.reason())
+
+    def test_a_reset_with_frames_only_just_after_it_still_restarts(self):
+        self.dog.restarted()
+        self.clock.now += 3
+        self.dog.reset_logged()
+        self.clock.now += 5
+        self.dog.updated()  # frames in flight when the stream died
+        self.clock.now += 60
+        self.assertIn('GPU hang', self.dog.reason())
+
     def test_failed_restarts_back_off_and_an_update_clears_them(self):
         waits = []
         for _ in range(7):
