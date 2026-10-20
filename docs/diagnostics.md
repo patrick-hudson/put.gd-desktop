@@ -25,7 +25,9 @@ Only the resident opens log files. Helpers (`putgd-ui`, `putgd-capture`,
 keep their existing restrictions and write nothing to disk: the resident reads their
 stderr and records it, bounded to 64 KiB per helper generation and 2 KiB per line,
 then records how each one exited. The resident sets `QT_FORCE_STDERR_LOGGING=1` for
-itself and its helpers, so their Qt warnings reach that pipe instead of the journal.
+itself and its helpers, so their Qt warnings reach that pipe instead of the journal. The Backblaze B2 worker
+(`putgd-b2-worker`, #282) also writes nothing to disk; its stderr is read and discarded,
+and its outcome is recorded with the upload or deletion that started it.
 
 ## Records
 
@@ -216,7 +218,7 @@ The last 10 records are kept in `unclean-exits.json`. `diagnostics.uncleanExit` 
 ## Crash records
 
 Every put.gd executable (`putgd`, `putgd-ui`, `putgd-capture`, `putgd-kde-region`,
-`putgd-record` and `putgd-s3-worker`) links a small crash handler (#124,
+`putgd-record`, `putgd-s3-worker` and `putgd-b2-worker`) links a small crash handler (#124,
 `src/core/CrashHandler.cpp`) that installs itself before `main`, from the
 executable's `.preinit_array`. ld.so runs that before any shared library's
 constructor, so the handler is in place before any other code in the process

@@ -3,7 +3,8 @@
 Implement `StorageProvider` and register it in `ProviderRegistry`. Settings validation
 must be pure and must not read source content, unlock secrets or contact the network.
 No profile is accepted without its registered validator. The production registry has
-no test provider. S3 implementation belongs exclusively under `src/storage/s3/`.
+no test provider. S3 implementation belongs exclusively under `src/storage/s3/`, and
+Backblaze B2's under `src/storage/b2/` ([b2.md](b2.md)).
 
 All network methods complete through a callback exactly once, including cancellation,
 permission failure, timeout and ambiguous outcomes. Callbacks may run on provider
@@ -24,7 +25,7 @@ may be retained with the final result. Providers without progress remain valid.
 Providers with reliable upload-phase reporting override `reportsUploadProgress()`
 to return true. The tray then waits for `uploading` or `finalizing` before turning
 green, remaining blue through provider setup and `preparing`. Other providers keep
-request-boundary activity tracking. S3 and Proton declare phase reporting.
+request-boundary activity tracking. S3, Backblaze B2 and Proton declare phase reporting.
 
 Capabilities explicitly describe conditional create/replace/delete, version addressing,
 stat, removal, URL availability, naming byte limits and deletion effects. Unsupported

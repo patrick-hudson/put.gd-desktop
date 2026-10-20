@@ -43,7 +43,7 @@ Recording needs an H.264 encoder. When none works, put.gd says so and what to in
 
 ## Destinations and credentials
 
-Use **Add destination** to configure S3 or Proton Drive. Valid non-secret fields save automatically. Removing a destination removes it from settings and clears affected output references; original receipts, local files, and remote objects remain. Review the default and exceptions after removal.
+Use **Add destination** to configure S3, Backblaze B2 or Proton Drive. Valid non-secret fields save automatically. Removing a destination removes it from settings and clears affected output references; original receipts, local files, and remote objects remain. Review the default and exceptions after removal.
 
 To change the order of destinations, drag one up or down the list; a line shows where it will land. From the keyboard, select a destination and press Alt+Up or Alt+Down, or use **Move up** / **Move down** in its ⋯ menu. The new order saves right away and is also the order of the Destination dropdowns. It changes nothing else: the default, per-action exceptions and history stay with the same destinations, and unsaved edits stay with the destination you were editing. If the settings file changed elsewhere, the previous order comes back and Settings asks you to reload.
 

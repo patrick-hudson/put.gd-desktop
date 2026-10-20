@@ -71,7 +71,7 @@ MP4 (H.264/H.265), WebM (VP9), GIF and animated WebP. Pause and resume on one ti
 <td width="50%" valign="top">
 
 ### <img src="docs/readme/icons/storage.svg" width="32" height="32" align="absmiddle" alt=""> Your storage, your links
-Any S3-compatible bucket with your own link domain, or Proton Drive through the official SDK. Public-read or private, chosen per destination and per action. Collision policy, naming templates and a Test connection that uploads, verifies the public link and cleans up after itself.
+Any S3-compatible bucket with your own link domain, Backblaze B2 through its native API, or Proton Drive through the official SDK. Public-read or private, chosen per destination and per action. Collision policy, naming templates and a Test connection that uploads, verifies the public link and cleans up after itself.
 
 </td>
 </tr>
@@ -355,8 +355,10 @@ flowchart LR
     tray --> helpers["putgd-capture · putgd-kde-region<br/>putgd-record<br/>on-demand helpers"]
     tray --> s3w["putgd-s3-worker<br/>AWS SDK, loaded on first use"]
     tray --> pro["Proton helper<br/>official Drive SDK"]
+    tray --> b2w["putgd-b2-worker<br/>B2 native API"]
   end
   s3w --> s3[("S3-compatible bucket")]
+  b2w --> b2[("Backblaze B2")]
   pro --> pd[("Proton Drive")]
   classDef core fill:#1a2436,stroke:#9bbcff,color:#f4f6fb,stroke-width:2px;
   class tray core;
@@ -378,7 +380,7 @@ One resident owns the journal, settings, history, hotkeys and the tray. Windows,
 | --- | --- |
 | Using it | [User guide](docs/user-guide.md) · [Configuration](docs/configuration.md) · [Credentials](docs/credentials.md) · [Troubleshooting](docs/troubleshooting.md) · [Errors](docs/errors.md) |
 | Automating it | [CLI](docs/cli.md) · [MCP helper](docs/mcp.md) · [Image editor](docs/image-editor.md) · [Screen recording](docs/recording.md) |
-| Storage | [S3](docs/s3.md) · [Proton Drive](docs/proton-drive.md) · [Provider contract](docs/storage-providers.md) |
+| Storage | [S3](docs/s3.md) · [Backblaze B2](docs/b2.md) · [Proton Drive](docs/proton-drive.md) · [Provider contract](docs/storage-providers.md) |
 | Desktops | [Cinnamon / X11](docs/desktops/cinnamon.md) · [GNOME 50](docs/desktops/gnome.md) · [KDE Plasma](docs/desktops/kde.md) · [Acceptance matrix](docs/acceptance-matrix.md) |
 | Building and shipping | [Build](docs/build.md) · [Versioning](docs/versioning.md) · [CI](docs/ci.md) · [Releases](docs/release.md) · [Verification](docs/verification.md) |
 | Internals | [Architecture](docs/architecture.md) · [Memory strategy](docs/memory-strategy.md) · [Design](docs/design.md) · [UI process protocol](docs/ui-process-protocol.md) |
