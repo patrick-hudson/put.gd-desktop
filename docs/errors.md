@@ -10,6 +10,7 @@ filenames, history URLs, authorization values or credential references.
 | `source_unsupported` | Inspect native support and choose an available source |
 | `busy_selecting` | Finish or cancel that interactive selection |
 | `queue_full`, `input_excessive` | Finish queued work or adjust documented resource limits |
+| `disk_space_insufficient` | Free up space in put.gd's data folder and try again (the details give `freeBytes`, `reserveBytes` and what was needed; a recording also gives `shortfallBytes`): an import needs its bytes, and a recording three 64 MiB budgets, above the system reserve. Nothing was accepted |
 | `source_unavailable` | Fix the reported item index; invoke again; nothing was published |
 | `archive_failed` | Fix the original local folder, then retry local save; upload is independent |
 | `artifact_missing`, `artifact_changed` | Restore access or invoke a new action; mutable local copies are not retry sources |

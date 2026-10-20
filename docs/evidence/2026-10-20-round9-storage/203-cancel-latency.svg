@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="688" viewBox="0 0 1100 688" font-family="Libre Franklin, Helvetica, Arial, sans-serif">
+<rect width="1100" height="688" fill="#ffffff"/>
+<text x="24" y="40" font-size="24" font-weight="700" fill="#1f2328">#203: time from Cancel to the upload's result</text>
+<text x="24" y="68" font-size="15" fill="#59636e">d69 (Debian 13), loopback; nightly 87e6900 vs this branch; bar = median of 3 runs, dots = each run</text>
+<line x1="330.0" y1="100" x2="330.0" y2="578" stroke="#d8dee4" stroke-width="1"/>
+<text x="330.0" y="600" font-size="13" fill="#59636e" text-anchor="middle">0 s</text>
+<line x1="453.1" y1="100" x2="453.1" y2="578" stroke="#d8dee4" stroke-width="1"/>
+<text x="453.1" y="600" font-size="13" fill="#59636e" text-anchor="middle">5 s</text>
+<line x1="576.1" y1="100" x2="576.1" y2="578" stroke="#d8dee4" stroke-width="1"/>
+<text x="576.1" y="600" font-size="13" fill="#59636e" text-anchor="middle">10 s</text>
+<line x1="699.2" y1="100" x2="699.2" y2="578" stroke="#d8dee4" stroke-width="1"/>
+<text x="699.2" y="600" font-size="13" fill="#59636e" text-anchor="middle">15 s</text>
+<line x1="822.2" y1="100" x2="822.2" y2="578" stroke="#d8dee4" stroke-width="1"/>
+<text x="822.2" y="600" font-size="13" fill="#59636e" text-anchor="middle">20 s</text>
+<line x1="945.3" y1="100" x2="945.3" y2="578" stroke="#d8dee4" stroke-width="1"/>
+<text x="945.3" y="600" font-size="13" fill="#59636e" text-anchor="middle">25 s</text>
+<text x="314" y="144" font-size="15" fill="#1f2328" text-anchor="end">moto, 2 MiB/s uplink, 1 lane</text>
+<rect x="330" y="118" width="194.0" height="24" fill="#b4553a" rx="2"/>
+<circle cx="524.0" cy="130" r="3.5" fill="#ffffff" stroke="#1f2328" stroke-width="1.2"/>
+<circle cx="524.4" cy="130" r="3.5" fill="#ffffff" stroke="#1f2328" stroke-width="1.2"/>
+<circle cx="522.2" cy="130" r="3.5" fill="#ffffff" stroke="#1f2328" stroke-width="1.2"/>
+<text x="538.4" y="136" font-size="14" font-weight="700" fill="#b4553a">before 7.88 s</text>
+<rect x="330" y="148" width="2.0" height="24" fill="#2f6f8f" rx="2"/>
+<circle cx="334.4" cy="160" r="3.5" fill="#ffffff" stroke="#1f2328" stroke-width="1.2"/>
+<circle cx="331.9" cy="160" r="3.5" fill="#ffffff" stroke="#1f2328" stroke-width="1.2"/>
+<circle cx="331.9" cy="160" r="3.5" fill="#ffffff" stroke="#1f2328" stroke-width="1.2"/>
+<text x="348.4" y="166" font-size="14" font-weight="700" fill="#2f6f8f">after 0.08 s</text>
+<text x="314" y="222" font-size="15" fill="#1f2328" text-anchor="end">moto, 2 MiB/s uplink, 4 lanes</text>
+<rect x="330" y="196" width="597.9" height="24" fill="#b4553a" rx="2"/>
+<circle cx="821.5" cy="208" r="3.5" fill="#ffffff" stroke="#1f2328" stroke-width="1.2"/>
+<circle cx="959.6" cy="208" r="3.5" fill="#ffffff" stroke="#1f2328" stroke-width="1.2"/>
+<circle cx="927.9" cy="208" r="3.5" fill="#ffffff" stroke="#1f2328" stroke-width="1.2"/>
+<text x="973.6" y="214" font-size="14" font-weight="700" fill="#b4553a">before 24.3 s</text>
+<rect x="330" y="226" width="16.4" height="24" fill="#2f6f8f" rx="2"/>
+<circle cx="346.4" cy="238" r="3.5" fill="#ffffff" stroke="#1f2328" stroke-width="1.2"/>
+<circle cx="332.2" cy="238" r="3.5" fill="#ffffff" stroke="#1f2328" stroke-width="1.2"/>
+<circle cx="350.8" cy="238" r="3.5" fill="#ffffff" stroke="#1f2328" stroke-width="1.2"/>
+<text x="364.8" y="244" font-size="14" font-weight="700" fill="#2f6f8f">after 0.67 s</text>
+<text x="314" y="300" font-size="15" fill="#1f2328" text-anchor="end">moto, 8 MiB/s uplink, 1 lane</text>
+<rect x="330" y="274" width="45.6" height="24" fill="#b4553a" rx="2"/>
+<circle cx="375.6" cy="286" r="3.5" fill="#ffffff" stroke="#1f2328" stroke-width="1.2"/>
+<circle cx="375.8" cy="286" r="3.5" fill="#ffffff" stroke="#1f2328" stroke-width="1.2"/>
+<circle cx="375.2" cy="286" r="3.5" fill="#ffffff" stroke="#1f2328" stroke-width="1.2"/>
+<text x="389.8" y="292" font-size="14" font-weight="700" fill="#b4553a">before 1.85 s</text>
+<rect x="330" y="304" width="2.0" height="24" fill="#2f6f8f" rx="2"/>
+<circle cx="332.3" cy="316" r="3.5" fill="#ffffff" stroke="#1f2328" stroke-width="1.2"/>
+<circle cx="331.0" cy="316" r="3.5" fill="#ffffff" stroke="#1f2328" stroke-width="1.2"/>
+<circle cx="331.3" cy="316" r="3.5" fill="#ffffff" stroke="#1f2328" stroke-width="1.2"/>
+<text x="346.3" y="322" font-size="14" font-weight="700" fill="#2f6f8f">after 0.05 s</text>
+<text x="314" y="378" font-size="15" fill="#1f2328" text-anchor="end">moto, 8 MiB/s uplink, 4 lanes</text>
+<rect x="330" y="352" width="125.2" height="24" fill="#b4553a" rx="2"/>
+<circle cx="449.6" cy="364" r="3.5" fill="#ffffff" stroke="#1f2328" stroke-width="1.2"/>
+<circle cx="470.1" cy="364" r="3.5" fill="#ffffff" stroke="#1f2328" stroke-width="1.2"/>
+<circle cx="455.2" cy="364" r="3.5" fill="#ffffff" stroke="#1f2328" stroke-width="1.2"/>
+<text x="484.1" y="370" font-size="14" font-weight="700" fill="#b4553a">before 5.09 s</text>
+<rect x="330" y="382" width="4.1" height="24" fill="#2f6f8f" rx="2"/>
+<circle cx="332.8" cy="394" r="3.5" fill="#ffffff" stroke="#1f2328" stroke-width="1.2"/>
+<circle cx="334.1" cy="394" r="3.5" fill="#ffffff" stroke="#1f2328" stroke-width="1.2"/>
+<circle cx="336.1" cy="394" r="3.5" fill="#ffffff" stroke="#1f2328" stroke-width="1.2"/>
+<text x="350.1" y="400" font-size="14" font-weight="700" fill="#2f6f8f">after 0.17 s</text>
+<text x="314" y="456" font-size="15" fill="#1f2328" text-anchor="end">fixture, 4 part replies held 8 s</text>
+<rect x="330" y="430" width="201.6" height="24" fill="#b4553a" rx="2"/>
+<circle cx="530.2" cy="442" r="3.5" fill="#ffffff" stroke="#1f2328" stroke-width="1.2"/>
+<circle cx="531.8" cy="442" r="3.5" fill="#ffffff" stroke="#1f2328" stroke-width="1.2"/>
+<circle cx="531.6" cy="442" r="3.5" fill="#ffffff" stroke="#1f2328" stroke-width="1.2"/>
+<text x="545.8" y="448" font-size="14" font-weight="700" fill="#b4553a">before 8.19 s</text>
+<rect x="330" y="460" width="9.9" height="24" fill="#2f6f8f" rx="2"/>
+<circle cx="339.9" cy="472" r="3.5" fill="#ffffff" stroke="#1f2328" stroke-width="1.2"/>
+<circle cx="340.0" cy="472" r="3.5" fill="#ffffff" stroke="#1f2328" stroke-width="1.2"/>
+<circle cx="339.9" cy="472" r="3.5" fill="#ffffff" stroke="#1f2328" stroke-width="1.2"/>
+<text x="354.0" y="478" font-size="14" font-weight="700" fill="#2f6f8f">after 0.40 s</text>
+<text x="314" y="534" font-size="15" fill="#1f2328" text-anchor="end">fixture, 1 lane refused, 3 in flight*</text>
+<rect x="330" y="508" width="207.6" height="24" fill="#b4553a" rx="2"/>
+<circle cx="537.6" cy="520" r="3.5" fill="#ffffff" stroke="#1f2328" stroke-width="1.2"/>
+<circle cx="539.4" cy="520" r="3.5" fill="#ffffff" stroke="#1f2328" stroke-width="1.2"/>
+<circle cx="536.7" cy="520" r="3.5" fill="#ffffff" stroke="#1f2328" stroke-width="1.2"/>
+<text x="553.4" y="526" font-size="14" font-weight="700" fill="#b4553a">before 8.44 s</text>
+<rect x="330" y="538" width="44.3" height="24" fill="#2f6f8f" rx="2"/>
+<circle cx="374.1" cy="550" r="3.5" fill="#ffffff" stroke="#1f2328" stroke-width="1.2"/>
+<circle cx="374.7" cy="550" r="3.5" fill="#ffffff" stroke="#1f2328" stroke-width="1.2"/>
+<circle cx="374.3" cy="550" r="3.5" fill="#ffffff" stroke="#1f2328" stroke-width="1.2"/>
+<text x="388.7" y="556" font-size="14" font-weight="700" fill="#2f6f8f">after 1.80 s</text>
+<text x="24" y="630" font-size="13" fill="#59636e">160 MiB file, 16 MiB parts, cancelled after a third; moto 5.1.1 behind a shared-rate proxy.</text>
+<text x="24" y="649" font-size="13" fill="#59636e">*Timed from the upload's start, including the refused part's 0.5 s delay. Cancelled runs end failed/cancelled, the refused one s3_permission_denied; every upload was aborted (no incompleteUpload).</text>
+</svg>
