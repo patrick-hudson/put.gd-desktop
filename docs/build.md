@@ -93,6 +93,14 @@ install on Debian 13 and the reverse. The release matrix builds Ubuntu 24.04,
 Ubuntu 26.04 and Debian 13 DEBs in their own containers
 ([release.md](release.md#formats-and-build-environments)).
 
+Qt loads plugins by name, so neither `dpkg-shlibdeps` nor RPM's dependency
+generator sees them. `packaging/linux/CMakeLists.txt` names them: the platform
+and SQLite plugins, Qt Wayland, and Qt's image formats (`qt6-image-formats-plugins`,
+`qt6-qtimageformats`), whose WebP plugin reads History's WebP previews (#189).
+`tools/releases/native.py` refuses a DEB or RPM that does not require the
+image formats package, and `tools/releases/portable_appimage.py` refuses an
+AppImage without `libqgif.so`, `libqjpeg.so` and `libqwebp.so`.
+
 Choose an absent output directory for each package attempt. CPack can otherwise
 reuse staging directories created under a permissive host umask. Inspect the
 actual DEB directory ownership/modes and executable hashes before installation;
