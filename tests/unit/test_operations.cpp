@@ -1159,7 +1159,7 @@ private slots:
   QSignalSpy kept226(&ops,&OperationService::incompleteUploadsKept);
   QVERIFY(!kept[0].toObject()["reported"].toBool());QVERIFY(op.items[0].error.details["incompleteUploadReported"].toBool());
   auto notice=result["incompleteUploadNotice"].toObject();QCOMPARE(notice["count"].toInt(),1);QCOMPARE(notice["bytes"].toInteger(),op.items[0].artifact.bytes);QVERIFY(!notice["notified"].toBool());
-  QCOMPARE(notice["message"].toString(),QString("Cleanup could not cancel an incomplete upload at Synthetic opaque provider (up to %1 of stored parts), so its parts keep using storage. Synthetic abort denial. Check that put.gd's account may cancel uploads at the destination. put.gd tries again at each cleanup.").arg(ArtifactStore::sizeText(op.items[0].artifact.bytes)));
+  QCOMPARE(notice["message"].toString(),QString("Cleanup could not cancel an incomplete upload at Synthetic opaque provider (up to %1 of stored parts). Synthetic abort denial. Its parts keep using storage. Check that put.gd's account may cancel uploads at the destination. put.gd tries again at each cleanup.").arg(ArtifactStore::sizeText(op.items[0].artifact.bytes)));
   QCOMPARE(ops.diagnostics()["artifactCleanup"].toObject()["incompleteUploadNotice"].toObject(),notice);
   // Refused again on the next passes, manual or automatic, it is listed but not announced again.
   cleaned=false;ops.cleanup([&](Error e,QJsonObject r){QVERIFY(!e);result=r;cleaned=true;});QTRY_VERIFY(cleaned);

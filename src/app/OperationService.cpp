@@ -1071,8 +1071,11 @@ void OperationService::announceIncompleteUploads(QJsonObject& outcome,bool autom
   ?QStringLiteral("Allow s3:AbortMultipartUpload for put.gd's access key, or add a lifecycle rule to the bucket that aborts incomplete multipart uploads after a few days.")
   :QStringLiteral("Check that put.gd's account may cancel uploads at the destination.");
  notice["hint"]=hint;notice["labels"]=QJsonArray::fromStringList(labels);notice["notified"]=automatic;notice["at"]=outcome["finished"];
- notice["message"]=QStringLiteral("%1 could not cancel %2%3%4, so %5 parts keep using storage.%6 %7 put.gd tries again at each cleanup.")
-  .arg(automatic?QStringLiteral("Automatic cleanup"):QStringLiteral("Cleanup"),uploads,where,size,count==1?QStringLiteral("its"):QStringLiteral("their"),reason.isEmpty()?QString{}:" "+reason,hint);
+ // S3's own words for a refused abort already name the permission and the lifecycle rule.
+ const auto advice=reason.contains("AbortMultipartUpload")?reason
+  :(reason.isEmpty()?QString{}:reason+' ')+(count==1?QStringLiteral("Its"):QStringLiteral("Their"))+QStringLiteral(" parts keep using storage. ")+hint;
+ notice["message"]=QStringLiteral("%1 could not cancel %2%3%4. %5 put.gd tries again at each cleanup.")
+  .arg(automatic?QStringLiteral("Automatic cleanup"):QStringLiteral("Cleanup"),uploads,where,size,advice);
  outcome["incompleteUploadNotice"]=notice;lastIncompleteNotice_=notice;
  logging::warning(logOperation(),"Incomplete uploads left at the destination",{{"trigger",automatic?"automatic":"manual"},{"count",count},{"bytes",double(bytes)},{"providers",notice["providers"]}});
  // A manual pass answers its caller (the History window says it); only an automatic one notifies.
