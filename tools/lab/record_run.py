@@ -299,13 +299,17 @@ class Driver:
             raise RunError('cover not placed: %s' % json.dumps(state))
         self.cover_rect = state['rect']
         time.sleep(1.5)
-        precheck = [sys.executable, str(HERE / 'cover_player.py'), 'precheck', '--port', str(a.vnc_port)]
-        if a.output:
-            precheck += ['--output', a.output]
-        checked = subprocess.run(precheck, env=self.env, capture_output=True, text=True, timeout=60)
-        report = json.loads(checked.stdout or '{}')
-        if checked.returncode != 0:
-            raise RunError('cover precheck failed, nothing recorded: %s' % json.dumps(report))
+        if a.vnc_port == 0:
+            # A disposable lab guest shows no one's windows and has no loopback tile; the frame gate still applies.
+            report = {'skipped': 'no loopback VNC tile (disposable guest)'}
+        else:
+            precheck = [sys.executable, str(HERE / 'cover_player.py'), 'precheck', '--port', str(a.vnc_port)]
+            if a.output:
+                precheck += ['--output', a.output]
+            checked = subprocess.run(precheck, env=self.env, capture_output=True, text=True, timeout=60)
+            report = json.loads(checked.stdout or '{}')
+            if checked.returncode != 0:
+                raise RunError('cover precheck failed, nothing recorded: %s' % json.dumps(report))
         if a.video != 'still':
             self.cover.stdin.write('media\n'); self.cover.stdin.flush()
             playing = self.cover_line(30)
@@ -511,7 +515,7 @@ def main(argv=None):
     parser.add_argument('--rounds', type=int, default=3)
     parser.add_argument('--output')
     parser.add_argument('--audio-device')
-    parser.add_argument('--vnc-port', type=int, default=5900)
+    parser.add_argument('--vnc-port', type=int, default=5900, help='0 skips the precheck: disposable lab guests only')
     parser.add_argument('--lead', type=float, default=2)
     parser.add_argument('--pause-at', type=float, default=8)
     parser.add_argument('--pause-for', type=float, default=3)
