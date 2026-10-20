@@ -82,7 +82,7 @@ such as `session_unavailable` and `config_conflict` retain their original envelo
 | `submit_editor` | id → editor.submit | Sends only the sanitized result through the configured output |
 | `cancel_editor` / `raise_editor` | id → editor.cancel / editor.raise | Discard without upload / bring the window forward |
 | `get_recording_capabilities` | recording.capabilities | Recording support, formats/codecs, audio, limits, active ID; no capture or prompt |
-| `prepare_recording` | target, format, codec?, fps?, system_audio, max_edge? → recording.prepare | Durable intent, ready bounds/overlay and any OS consent; captures nothing yet |
+| `prepare_recording` | target, format, codec?, fps?, system_audio, max_edge? → recording.prepare | Durable intent, ready bounds/overlay and any OS consent; captures nothing yet. `disk_space_insufficient` when the disk can't hold a recording that lasts (#213) |
 | `control_recording` | id, command start/pause/resume/stop/cancel/raise → recording.<command> | Acknowledged state changes; stop always opens private review, cancel uploads nothing |
 | `get_recording` / `set_recording_overlay` | id → recording.inspect / id, visible → recording.overlay | State, `selecting`, edit revision, progress, `lastExport`, bar placement (`overlayPlacement`) / overlay visibility; a hidden bar stays hidden through state changes until `recording.raise`, which keeps it out of a full-screen clip |
 | `select_recording_region` | id, rect → recording.select | Completes an open region selector (tray, shortcut, dashboard) with a rectangle, as a drag would |

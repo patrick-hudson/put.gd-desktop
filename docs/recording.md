@@ -77,11 +77,11 @@ All methods go through `putgd-cli` unchanged. `id` is the recording ID.
 | Method | Params | Result / effect |
 | --- | --- | --- |
 | `recording.capabilities` | | availability and reason, target kinds, formats, codecs per format, audio sources, `active` recording ID, limits, `timeUnit`; no capture, no prompt |
-| `recording.prepare` | `target {kind: monitor\|desktop\|region\|window, identity?, rect?}`, `format mp4\|webm\|gif\|webp`, `codec?`, `fps? (1–60)`, `audio? {system?, microphone?}`, `maxEdge?` | durable intent, then ready bounds/controls and any OS consent; replies at once with `state: preparing`; poll `inspect` for `ready`. A region without `rect` opens the desktop's selector (Escape cancels; `inspect` shows `selecting: true`); the chosen bounds appear in `inspect` as `target.rect`, and `overlayExcluded` / `overlayPlacement` say whether the control bar stayed out of the recorded pixels |
+| `recording.prepare` | `target {kind: monitor\|desktop\|region\|window, identity?, rect?}`, `format mp4\|webm\|gif\|webp`, `codec?`, `fps? (1–60)`, `audio? {system?, microphone?}`, `maxEdge?` | durable intent, then ready bounds/controls and any OS consent; replies at once with `state: preparing`; poll `inspect` for `ready`. A region without `rect` opens the desktop's selector (Escape cancels; `inspect` shows `selecting: true`); the chosen bounds appear in `inspect` as `target.rect`, and `overlayExcluded` / `overlayPlacement` say whether the control bar stayed out of the recorded pixels. Refused with `disk_space_insufficient` (details `freeBytes`, `reserveBytes`, `availableBytes`, `requiredBytes`, `shortfallBytes`, `hint`) before anything is accepted when free disk above the reserve can't hold three 64 MiB budgets (#213) |
 | `recording.select` | `{id, rect: [x, y, w, h]}` | completes an open region selector with that rectangle as a drag would (X11 root pixels, logical desktop pixels on Wayland); `recording_state` when no selector is open |
-| `recording.start` / `pause` / `resume` / `stop` | `{id}` | acknowledged once the backend reached the state; a duplicate of the in-flight command returns the current state, a different one is `recording_busy`; `stop` returns `durationUs` and enters `reviewing` |
+| `recording.start` / `pause` / `resume` / `stop` | `{id}` | acknowledged once the backend reached the state; a duplicate of the in-flight command returns the current state, a different one is `recording_busy`; `stop` returns `durationUs` and enters `reviewing`. A `stop` that arrives after the helper stopped on its own (its budget) answers with the `reviewing` state, like a duplicate stop |
 | `recording.cancel` | `{id}` | discards the clip; the operation ends `cancelled` |
-| `recording.inspect` | `{id}` | state, pending command, `selecting`, target, config, canvas, `durationUs`, `retainedUs`, edit, progress (`exportFraction` while exporting), `overlayExcluded`, `overlayPlacement`, `lastExport`, error; an ended session is `recording_unavailable` and its operation holds the outcome |
+| `recording.inspect` | `{id}` | state, pending command, `selecting`, target, config, canvas, `durationUs`, `retainedUs`, edit, progress (`exportFraction` while exporting), `overlayExcluded`, `overlayPlacement`, `lastExport`, `stopReason` (`user` or `budget`) once the capture stopped, error; an ended session is `recording_unavailable` and its operation holds the outcome |
 | `recording.raise` / `recording.overlay` | `{id}` / `{id, visible}` | overlay control; a hidden bar stays hidden through state changes until `raise` (a full-screen clip without the handle); the recording indicator stays visible |
 | `recording.edit` | `{id, revision, commands[1–100]}` | atomic `setTrim {start, end\|null}`, `resetTrim`, `addMask {mask}`, `updateMask {maskId, mask}`, `removeMask {maskId}` |
 | `recording.preview` | `{id, time, maxEdge? 64–1600}` | one PNG frame (base64 `png`) at clip time with current trim/masks, plus `retained`, `outputTimeUs`, `revision`; returned only to the requesting client |
@@ -116,6 +116,7 @@ Codec rules: MP4 takes `h264` (default) or `h265`; WebM takes `vp9`; GIF and
 WebP take none. `audio.system` is the computer's playback and is refused for
 GIF/WebP (`invalid_request`); `audio.microphone` is reserved and refused
 (`recording_unsupported`). Errors: `recording_unavailable`,
+`disk_space_insufficient`,
 `recording_unsupported`, `recording_active`, `recording_state`,
 `recording_busy`, `recording_stale`, `recording_mask_unknown`,
 `region_unavailable` (a Wayland desktop without a region selector),
@@ -577,7 +578,13 @@ after it (`AudioClockGuard`; `PUTGD_RECORD_DEBUG_LOG` counts the corrections).
 If a drain still doesn't finish within 10 s the capture stops anyway and keeps
 what reached the file (its Matroska index is missing; the clusters decode);
 `recording_stop_timeout` is left for a drain that wrote nothing. The helper stops on its own and reports `stopped` with reason
-`budget` when the working clip nears `limits.maxFileBytes` minus a reserve.
+`budget` when the working clip nears its budget: `limits.maxFileBytes` minus a
+reserve, and at most a third of the free disk above the system reserve (the
+recording, its export and its upload copy each need room). `recording.prepare`
+refuses with `disk_space_insufficient`, and the tray's Record action shows the
+same message, when that third would be under 64 MiB, about a minute of a busy
+1080p screen, instead of starting a recording that ends itself within seconds
+(#213).
 Progress events carry `durationUs`, `bytes`, `paused` and the encoder names.
 
 Export runs in the helper with the FFmpeg libraries on the working clip:
