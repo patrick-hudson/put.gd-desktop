@@ -447,7 +447,9 @@ void HelperOutput::finished(int code,QProcess::ExitStatus status,bool requested)
   // Nothing in put.gd sends SIGKILL without asking for the exit, and a crash
   // never ends in it: another process (an OOM killer, a window manager's
   // force quit, a user) killed this helper.
+#ifdef Q_OS_UNIX
   else if(code==SIGKILL){type=QtCriticalMsg;message="Helper killed from outside put.gd";fields["supervisorKill"]=false;}
+#endif
   else {type=QtCriticalMsg;message="Helper crashed";}
  }
  logging::write(category_,type,message,fields);
