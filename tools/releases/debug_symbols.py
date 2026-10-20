@@ -32,9 +32,9 @@ import tarfile
 import tempfile
 
 PRODUCTS = ('putgd', 'putgd-cli', 'putgd-ui', 'putgd-capture', 'putgd-kde-region', 'putgd-record',
-            'putgd-s3-worker', 'libputgd-s3.so')
+            'putgd-s3-worker', 'putgd-b2-worker', 'libputgd-s3.so')
 # Built on every Linux packaging job; the others depend on the desktop libraries present.
-REQUIRED = ('putgd', 'putgd-cli', 'putgd-ui', 'putgd-capture', 'putgd-s3-worker', 'libputgd-s3.so')
+REQUIRED = ('putgd', 'putgd-cli', 'putgd-ui', 'putgd-capture', 'putgd-s3-worker', 'putgd-b2-worker', 'libputgd-s3.so')
 # Package matrix names in .github/workflows/package.yml, plus the AppImage.
 LABELS = ('ubuntu24.04', 'ubuntu26.04', 'debian13', 'fedora44', 'appimage')
 ARCHITECTURE = 'x86_64'

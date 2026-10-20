@@ -75,7 +75,7 @@ def check_build(receipt_path, sdk_prefix, sdk_source, output, *, bundle_proton=F
                 or manifest['version'] != receipt['localBuild']['version']):
             raise ValueError('Extracted source compiled identity differs from supplied provenance')
         verified = []
-        for name in ('putgd', 'putgd-cli', 'putgd-ui', 'putgd-capture', 'putgd-s3-worker', 'putgd-kde-region', 'putgd-record'):
+        for name in ('putgd', 'putgd-cli', 'putgd-ui', 'putgd-capture', 'putgd-s3-worker', 'putgd-b2-worker', 'putgd-kde-region', 'putgd-record'):
             program = build / name
             if name == 'putgd-kde-region' and not program.exists():
                 continue  # Minimum-Qt Cinnamon builder does not declare this optional target.

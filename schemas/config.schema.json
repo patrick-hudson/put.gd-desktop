@@ -529,6 +529,22 @@
                 }
               }
             }
+          },
+          {
+            "if": {
+              "properties": {
+                "provider": {
+                  "const": "backblaze-b2"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "settings": {
+                  "$ref": "#/$defs/b2Settings"
+                }
+              }
+            }
           }
         ]
       }
@@ -1072,6 +1088,74 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 2147483647
+        }
+      }
+    },
+    "b2Settings": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Backblaze B2 native API destination (#282). The provider validator is authoritative.",
+      "required": [
+        "apiUrl",
+        "bucket",
+        "objectPrefix",
+        "linkMode",
+        "linkValidityDays",
+        "publicUrlBase",
+        "connectTimeoutMs",
+        "requestTimeoutMs"
+      ],
+      "properties": {
+        "apiUrl": {
+          "type": "string",
+          "format": "uri",
+          "maxLength": 2048,
+          "default": "https://api.backblazeb2.com",
+          "description": "B2 authorization endpoint: HTTPS, or literal-loopback HTTP for local fixtures."
+        },
+        "bucket": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9-]{6,63}$",
+          "description": "Existing B2 bucket name; names starting with b2- are reserved."
+        },
+        "objectPrefix": {
+          "type": "string",
+          "maxLength": 900
+        },
+        "linkMode": {
+          "enum": [
+            "public",
+            "authorized"
+          ],
+          "default": "public",
+          "description": "public: the friendly URL of an allPublic bucket. authorized: a download-authorization token for exactly the file name."
+        },
+        "linkValidityDays": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 7,
+          "default": 7
+        },
+        "publicUrlBase": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uri",
+          "maxLength": 2048,
+          "description": "Optional link domain, for public buckets only."
+        },
+        "connectTimeoutMs": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 120000,
+          "default": 10000
+        },
+        "requestTimeoutMs": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 3600000,
+          "default": 600000
         }
       }
     },

@@ -103,7 +103,7 @@ class ReleaseCollection(unittest.TestCase):
                     'packageVersion': identity['baseVersion'] + '~dev.' + str(identity['commitCount']) + '+g' + identity['gitCommit'][:12]}
         self.source_result = {'passed': True, 'compiledBuild': compiled,
                               'rebuiltProton': {'sha256': catalog['helperSha256'], 'bundledSha256': catalog['helperSha256']},
-                              'identityMatchedPrograms': ['putgd', 'putgd-cli', 'putgd-ui', 'putgd-capture', 'putgd-s3-worker']}
+                              'identityMatchedPrograms': ['putgd', 'putgd-cli', 'putgd-ui', 'putgd-capture', 'putgd-s3-worker', 'putgd-b2-worker']}
         (directory / 'source-build-results.json').write_text(json.dumps(self.source_result))
         proton_sources.prepare(self.proton_catalog, self.inputs / 'proton-sources', bundle)
         self.stage_debug_symbols(identity)
