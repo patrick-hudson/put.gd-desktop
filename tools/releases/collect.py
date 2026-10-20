@@ -10,6 +10,7 @@ from audit_native import PROGRAMS, sha256
 from verify_tag import verify
 import proton_sources
 import appimage_media_sources
+import debug_symbols
 from release_bundle import create_gnome_zip, create_release_bundle
 
 # Package matrix names in .github/workflows/package.yml, each built on its own distro.
@@ -119,9 +120,15 @@ def collect(root, inputs, output, tag):
         selected.append((source_directory / name, name))
     receipts['protonSource'] = {'helperSha256': catalog['helperSha256'],
         'sourceCatalogSha256': catalog_sha, 'delivery': catalog['delivery']}
+    # Every build's split debug files, checked against its packaged binaries'
+    # build IDs when it was staged (#124).
+    debug = debug_symbols.prepare({label: inputs / debug_symbols._artifact(label) for label in debug_symbols.LABELS},
+                                  lambda build: identity_matches(build, release))
     output.mkdir(parents=True, exist_ok=False)
     for path, name in selected:
         shutil.copy2(path, output / name)
+    receipts['debugSymbols'] = debug_symbols.write(debug, output, release['version'], timestamp)
+    debug_name = receipts['debugSymbols']['file']
     # GNOME integration is a host extension, including for AppImage users.
     extension = output / ('putgd-gnome50-' + release['version'] + '.zip')
     create_gnome_zip(root, extension, timestamp)
@@ -130,7 +137,7 @@ def collect(root, inputs, output, tag):
     combined = output / ('putgd-' + release['version'] + '-release.zip')
     create_release_bundle(output, combined, release['version'], timestamp, member_names)
     (output / 'SHA256SUMS').write_text(''.join(sha256(output / name) + '  ' + name + '\n'
-        for name in sorted([*member_names, *proton_sources.PART_NAMES, combined.name])), encoding='ascii')
+        for name in sorted([*member_names, *proton_sources.PART_NAMES, combined.name, debug_name])), encoding='ascii')
     return release
 
 

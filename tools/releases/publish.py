@@ -173,7 +173,7 @@ def run_provenance():
 def publish_nightly(args, release, listed):
     """Publish one automated nightly, retaining exact run and byte evidence."""
     if set(listed) | {'SHA256SUMS'} != public_inventory(args.tag):
-        raise ValueError('Collected nightly inventory must contain all fourteen public assets')
+        raise ValueError('Collected nightly inventory must contain all fifteen public assets')
     producer = run_provenance()
     api = GitHub(producer['repository'])
     expected = {**listed, 'SHA256SUMS': sha256(args.directory / 'SHA256SUMS')}
@@ -204,6 +204,8 @@ def publish_nightly(args, release, listed):
             'proton-source-catalog.json. Verify SHA256SUMS, concatenate part1 then part2, '
             'and unpack the resulting tar.gz. The combined ZIP includes the catalog; '
             'download the two source parts separately.\n\n'
+            'The debug tar.zst holds every build\'s split debug files by GNU build ID, for symbolizing '
+            'crash records (docs/diagnostics.md); it is not part of the combined ZIP.\n\n'
             + 'Built, tested and packaged by ' + producer['url'] + '\n\n'
             + 'Channel/source and automated producer evidence:\n\n```json\n'
             + json.dumps(receipt, indent=2) + '\n```\n')
@@ -253,7 +255,7 @@ def main():
             raise ValueError('Duplicate collected release checksum')
         listed[name] = digest
     if set(listed) | {'SHA256SUMS'} != public_inventory(args.tag):
-        raise ValueError('Collected release inventory must include all fourteen public assets, including Proton and AppImage media sources')
+        raise ValueError('Collected release inventory must include all fifteen public assets, including Proton and AppImage media sources and debug symbols')
     if args.nightly:
         publish_nightly(args, release, listed)
         return
@@ -283,6 +285,8 @@ def main():
                      'Proton corresponding source accompanies the packages in two transport parts and proton-source-catalog.json. '
                      'Verify SHA256SUMS, concatenate part1 then part2, and unpack the resulting tar.gz. '
                      'The combined ZIP includes the catalog; download the two source parts separately.\n\n'
+                     'The debug tar.zst holds every build\'s split debug files by GNU build ID, for symbolizing crash records '
+                     '(docs/diagnostics.md); it is not part of the combined ZIP.\n\n'
                      'Compiled source identities, dependency inventories, licenses and SHA256 checksums accompany the builds. '
                      'Package-specific acceptance is recorded before this draft is published.\n\n'
                      'Built, tested and packaged by ' + producer['url'] + '\n')
