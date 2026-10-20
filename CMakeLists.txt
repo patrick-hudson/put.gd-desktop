@@ -940,10 +940,14 @@ if(BUILD_TESTING)
   # Diagnostics packages: contents, redaction, size limit and the default folder (#74 §3).
   if(TARGET putgd_crash)
     add_library(test_crash_module MODULE tests/fixtures/crash_module.cpp)
+    # Linked, so its constructor starts a thread before the executable's own run (#211).
+    add_library(test_crash_early_library SHARED tests/fixtures/crash_early_library.cpp)
+    target_link_libraries(test_crash_early_library PRIVATE Threads::Threads)
     add_executable(test_crash_handler tests/unit/test_crash_handler.cpp)
     target_include_directories(test_crash_handler PRIVATE src tests)
-    target_link_libraries(test_crash_handler PRIVATE putgd_crash putgd_log Qt6::Test ${CMAKE_DL_LIBS})
-    target_compile_definitions(test_crash_handler PRIVATE PUTGD_CRASH_MODULE="$<TARGET_FILE:test_crash_module>")
+    target_link_libraries(test_crash_handler PRIVATE putgd_crash putgd_log test_crash_early_library Qt6::Test ${CMAKE_DL_LIBS})
+    target_compile_definitions(test_crash_handler PRIVATE PUTGD_CRASH_MODULE="$<TARGET_FILE:test_crash_module>"
+                               PUTGD_CRASH_EARLY_LIBRARY="$<TARGET_FILE:test_crash_early_library>")
     add_dependencies(test_crash_handler test_crash_module)
     add_test(NAME crash_handler_contract COMMAND test_crash_handler)
   endif()
