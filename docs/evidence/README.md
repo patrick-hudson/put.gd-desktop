@@ -6,6 +6,7 @@ for local bulk artifacts and [verification](../verification.md) for limitations.
 
 | Topic | Starting point |
 | --- | --- |
+| Screen recording acceptance sweep (issue #87) | [AppImage A/V on k72/d69/f44 incl. pause/resume, #81 native windows, packaged GNOME extension, MCP on three desktops, Ubuntu 26.04 GNOME/Plasma guests, two-head Wayland guests, physical Plasma 6.6 Wayland on k72, share URLs in Firefox/Chromium](2026-10-19-recording-acceptance-87.md) |
 | Destination reorder in Settings (issue #59) | [Suites and Cinnamon X11 guest: native drag, drop line, Alt+Down, ⋯ menu, `ui.moveDestination`, `settings.reorderProfiles`, restart](2026-10-19-destination-reorder.md) |
 | Recording bar audio box and WebM Opus decode (issues #120, #119) | [f44 GNOME, d69 KWin 6.3 Wayland and k72 X11 bar frames with sound on/off; FFmpeg 8.0 parser cause, decode test, Firefox and Chromium](2026-10-19-recording-fixes-119-120.md) |
 | Wayland recording A/V sync (issue #86) | [d69 KWin/portal, f44 Mutter/portal and k72 X11: working clip vs export offsets, timestamp A/B, before/after](2026-10-19-wayland-av-sync.md) |
