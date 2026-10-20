@@ -473,7 +473,10 @@ Error exportClip(const ExportRequest& request, ExportResult& result, const std::
         const auto startUs = originUs + request.edit.trimStart, endUs = originUs + trimEnd;
         const auto end = av_rescale_q(endUs, microseconds, audioTimeBase);
         // atrim's *_pts options count samples; seconds (microsecond precision) match the video trim.
-        const auto description = QStringLiteral("[in]atrim=start=%1:end=%2,asetpts=PTS-STARTPTS,aformat=sample_fmts=%3:sample_rates=48000:channel_layouts=stereo[out]").arg(seconds(startUs), seconds(endUs)).arg(av_get_sample_fmt_name(audio.context->sample_fmt));
+        // The encoder numbers its frames by samples, so aresample turns the clip's
+        // timestamps into samples first: a hole (audio dropped around a pause) becomes
+        // silence and an overlap is cut, so later audio keeps its place (#130).
+        const auto description = QStringLiteral("[in]atrim=start=%1:end=%2,asetpts=PTS-STARTPTS,aresample=async=1:min_hard_comp=0.001:first_pts=0,aformat=sample_fmts=%3:sample_rates=48000:channel_layouts=stereo[out]").arg(seconds(startUs), seconds(endUs)).arg(av_get_sample_fmt_name(audio.context->sample_fmt));
         AudioGraph audioGraph;
         if (auto e = audioGraph.build(description, input.audio, audioTimeBase, (audio.context->codec->capabilities & AV_CODEC_CAP_VARIABLE_FRAME_SIZE) ? 0 : audio.context->frame_size)) return e;
         avcodec_flush_buffers(input.audio);

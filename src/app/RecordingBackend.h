@@ -53,6 +53,9 @@ public:
     virtual ~RecordingShell() = default;
     // True when a recording region can be chosen through this shell now.
     virtual bool selectsRegions() const = 0;
+    // When it cannot, why, if the shell knows (an extension that is off, or an
+    // older one still loaded after an upgrade); empty leaves the region to the helper.
+    virtual Error regionError() const { return {}; }
     // Replies {rect: [x, y, w, h]} in logical desktop pixels, or cancelled.
     virtual void selectRegion(Reply) = 0;
     // Closes an open selector; its pending selectRegion reply reports cancelled.

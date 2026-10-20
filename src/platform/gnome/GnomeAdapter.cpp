@@ -122,7 +122,7 @@ QJsonObject GnomeAdapter::capabilities()const{
  auto window=capture;if(uiProcessError_){window["available"]=false;window["error"]=uiProcessError_.toJson();}
  auto clipboard=QJsonObject{{"available",ready_},{"types",QJsonArray{"files","image","text"}},{"import","bounded-mutter-selection"},{"result","st-clipboard-only"}};
  if(!ready_)clipboard["error"]=helperError_.toJson();
- return {{"adapter","gnome-wayland"},{"helper",QJsonObject{{"available",ready_},{"uuid","putgd@put.gd"},{"protocol",gnome::protocolVersion},{"shellMajor",helper_["shellMajor"]},{"extensionVersion",helper_["extensionVersion"]},{"recordingVersion",helper_["recordingVersion"].toInt()},{"error",helperError_.toJson()}}},{"capture",QJsonObject{{"region",capture},{"window",window},{"desktop",capture}}},{"clipboard",clipboard},{"shortcuts",QJsonObject{{"available",ready_},{"bindings",bindings_}}}};
+ return {{"adapter","gnome-wayland"},{"helper",QJsonObject{{"available",ready_},{"uuid","putgd@put.gd"},{"protocol",gnome::protocolVersion},{"shellMajor",helper_["shellMajor"]},{"extensionVersion",helper_["extensionVersion"]},{"packagedExtensionVersion",gnome::extensionVersion},{"outdated",outdated()},{"recordingVersion",helper_["recordingVersion"].toInt()},{"error",helperError_.toJson()}}},{"capture",QJsonObject{{"region",capture},{"window",window},{"desktop",capture}}},{"clipboard",clipboard},{"shortcuts",QJsonObject{{"available",ready_},{"bindings",bindings_}}}};
 }
 SourceAdapter::PreparedAcquisition GnomeAdapter::prepareAcquisition(const QString& action){
  QPointer<GnomeAdapter> guard(this);const bool hotkey=!hotkeyPrepared_[action].isEmpty();const auto id=hotkey?hotkeyPrepared_[action].takeFirst():uuid();Error error;
@@ -182,8 +182,16 @@ void GnomeAdapter::decode(const std::shared_ptr<Transfer>& transfer){
 }
 // Recording protocol 1 adds SelectArea, ShowRecordingFrame and HideRecordingFrame.
 bool GnomeAdapter::selectsRegions()const{return ready_&&helper_["recordingVersion"].toInt()>=1;}
+// An extension older than the packaged one is still the one loaded at login (#131).
+bool GnomeAdapter::outdated()const{return ready_&&helper_["extensionVersion"].toInt()<gnome::extensionVersion;}
+Error GnomeAdapter::recordingShellError()const{
+ if(outdated())return {"helper_outdated","The put.gd GNOME Shell extension was updated; log out and back in to load the new version",{{"loaded",helper_["extensionVersion"].toInt()},{"packaged",gnome::extensionVersion}}};
+ if(!ready_)return {"region_unavailable","Recording a region on GNOME needs the put.gd Shell extension; enable putgd@put.gd",{{"helper",helperError_.toJson()}}};
+ return {"region_unavailable","Recording a region on GNOME needs the put.gd Shell extension with recording support",{}};
+}
+Error GnomeAdapter::regionError()const{return selectsRegions()?Error{}:recordingShellError();}
 void GnomeAdapter::selectRegion(RecordingShell::Reply reply){
- if(!selectsRegions()){reply({"region_unavailable","Recording a region on GNOME needs the put.gd Shell extension with recording support",{}},{});return;}
+ if(!selectsRegions()){reply(recordingShellError(),{});return;}
  const auto id=uuid();recordingSelection_=id;
  // The user drags at their own pace; the extension's request deadline (120 s) ends it first.
  call("SelectArea",{id},[this,id,reply](Error error,QJsonObject result){
@@ -194,7 +202,7 @@ void GnomeAdapter::selectRegion(RecordingShell::Reply reply){
 }
 void GnomeAdapter::cancelSelection(){if(recordingSelection_.isEmpty())return;const auto id=std::exchange(recordingSelection_,QString{});release(id);}
 void GnomeAdapter::showFrame(const QJsonObject& frame,RecordingShell::Reply reply){
- if(!selectsRegions()){reply({"helper_incompatible","Update the GNOME extension to frame recordings",{}},{});return;}
+ if(!selectsRegions()){reply(outdated()?recordingShellError():Error{"helper_incompatible","Update the GNOME extension to frame recordings",{}},{});return;}
  // The extension waits up to two seconds for the bar window to map before placing it.
  call("ShowRecordingFrame",{json(frame)},std::move(reply),4000);
 }
