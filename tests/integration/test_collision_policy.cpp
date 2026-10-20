@@ -301,7 +301,12 @@ private slots:
         ProviderRegistry registry;
         registry.add("s3", std::make_shared<S3Provider>(f.credentials));
         SettingsService settings(f.directory.filePath("config.json"), [&](auto id, auto value) { return registry.validate(id, value); });
-        QVERIFY(settings.save(configuration(f, "rename", true), {}));
+        // One upload at a time: cancelling stops the file still waiting for its slot.
+        auto document = configuration(f, "rename", true);
+        auto limits = document["limits"].toObject();
+        limits["concurrentUploads"] = 1;
+        document["limits"] = limits;
+        QVERIFY(settings.save(document, {}));
         Source source;
         source.payload.kind = "files";
         source.payload.files = {putgd::test::fixture(f.directory.path(), "a.txt", "a synthetic"), putgd::test::fixture(f.directory.path(), "b.txt", "b synthetic")};

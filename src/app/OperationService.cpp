@@ -501,7 +501,10 @@ Operation OperationService::run(Job job) {
     request.progress=[owner,progress,activity,&op,&itemsMutex,index](const UploadProgress& value){
      if(!value.valid())return;
      std::lock_guard lock(progress->mutex);if(progress->closed||!owner)return;progress->latest=value;activity->set(value.phase!="preparing");
-     std::lock_guard items(itemsMutex);op.items[index].phase=value.phase;op.items[index].uploadProgress=value;owner->observe(op.publicJson());
+     std::lock_guard items(itemsMutex);op.items[index].phase=value.phase;op.items[index].uploadProgress=value;
+     // The operation shows the furthest phase any of its files has reached.
+     bool transferring=value.phase!="preparing";for(qsizetype other=0;other<op.items.size()&&!transferring;++other)transferring=other!=index&&QStringList{"uploading","finalizing"}.contains(op.items[other].phase);
+     op.phase=transferring&&value.phase=="preparing"?QStringLiteral("uploading"):value.phase;owner->observe(op.publicJson());
     };
     provider->upload(request,cb);
    });
@@ -546,8 +549,11 @@ Operation OperationService::run(Job job) {
   if(terminalUpload(item.uploadStatus)||item.uploadStatus=="failed") {settled(index);continue;}
   if(job.cancelled->load()) {op.cancelled=true;break;}
   const auto cancel=itemCancellation(op.id,item.artifact.id);
-  item.phase="queued";show(item,index);
-  if(!uploadSlots_.acquire(op.id,[&job,cancel]{return job.cancelled->load()||cancel->load();})) {
+  // Waiting for a slot: the operation reads as queued until one of its files transfers.
+  {std::lock_guard lock(itemsMutex);item.phase="queued";op.items[index]=item;bool transferring=false;for(const auto& other:op.items)transferring=transferring||QStringList{"uploading","finalizing","preparing"}.contains(other.phase);if(!transferring)op.phase="queued";observe(op.publicJson());}
+  const bool admitted=uploadSlots_.acquire(op.id,[&job,cancel]{return job.cancelled->load()||cancel->load();});
+  {std::lock_guard lock(itemsMutex);op.phase="uploading";}
+  if(!admitted) {
    if(job.cancelled->load()) {op.cancelled=true;break;}
    item.uploadStatus="cancelled";item.phase="cancelled";item.error={"cancelled","Upload cancelled before it started; Retry uploads this file",{}};commit(item,index);settled(index);continue;
   }

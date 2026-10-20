@@ -100,7 +100,7 @@ struct S3Provider::State {
         Lane* lane = nullptr;
         {
             std::unique_lock lock(mutex);
-            if (closing || queued >= 64) {
+            if (closing || queued >= 32) {
                 lock.unlock();
                 fail(busy());
                 return;
