@@ -15,6 +15,9 @@ struct OperationService::UploadCopy {
  quint64 epoch=0,revision=0;
  QMap<int,QString> links;
  QSet<QString> seen;
+ // each_link batches copy in source order: a ready link waits in `held` until
+ // every earlier file has settled (uploaded, failed, skipped or cancelled).
+ QMap<int,QString> held;QSet<int> settled;int cursor=0;
  std::shared_ptr<std::atomic_bool> cancellation;
  std::shared_ptr<UploadCopyGroup> group;
  int pending=0;
@@ -83,9 +86,24 @@ void OperationService::uploadLinkReady(const QString& id,const QString& item,int
  if(!state||state->seen.contains(item)||url.isEmpty())return;
  state->seen.insert(item);state->links.insert(index,url);
  if(state->group)return;
+ state->held.insert(index,item);flushUploadLinks(state);
+}
+void OperationService::uploadItemSettled(const QString& id,int index) {
+ const auto state=uploadCopies_.value(id);
+ if(!state||state->group)return;
+ state->settled.insert(index);flushUploadLinks(state);
+}
+void OperationService::flushUploadLinks(const std::shared_ptr<UploadCopy>& state) {
+ for(;;) {
+  if(state->held.contains(state->cursor)) {const auto item=state->held.take(state->cursor);queueLinkCopy(state,item,state->cursor);++state->cursor;}
+  else if(state->settled.contains(state->cursor))++state->cursor;
+  else break;
+ }
+}
+void OperationService::queueLinkCopy(const std::shared_ptr<UploadCopy>& state,const QString& item,int index) {
  ++state->pending;
  auto payload=std::make_shared<CopyPayload>();payload->kind="text";
- const auto path=databasePath();
+ const auto path=databasePath();const auto id=state->operation.id;
  queueCopy([payload]{return *payload;},[this,state,index](Error error) {
   --state->pending;
   if(!error)state->copied=true;
@@ -114,6 +132,8 @@ void OperationService::finishUploadCopies(Operation op,JsonReply reply) {
  const auto state=uploadCopies_.value(op.id);
  if(!state)return;
  refreshUploadLinks(*state,op);state->reply=std::move(reply);
+ // Every file has settled now; release any link still waiting for an earlier one.
+ for(int index=0;index<op.items.size();++index)state->settled.insert(index);
  // Final receipts also cover reconciliation/retry paths which made no new PUT.
  for(int index=0;index<op.items.size();++index) {
   const auto& item=op.items[index];
@@ -121,7 +141,7 @@ void OperationService::finishUploadCopies(Operation op,JsonReply reply) {
  }
  state->finished=true;
  if(state->group){--state->group->pending;settleUploadGroup(state->group);}
- else recordUploadCopy(state);
+ else {flushUploadLinks(state);recordUploadCopy(state);}
 }
 void OperationService::settleUploadGroup(const std::shared_ptr<UploadCopyGroup>& group) {
  if(group->pending!=0)return;

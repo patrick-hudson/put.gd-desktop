@@ -28,7 +28,8 @@ struct ResourceLimits {
     static constexpr qint64 unlimitedBytes = 1099511627776LL;
     int maxFiles = 100;
     int pendingOperations = 8;
-    int concurrentUploads = 1;
+    // Files transferring at once across every operation (#28); a multipart file uses one.
+    int concurrentUploads = 3;
     qint64 maxFileBytes = 2147483648LL;
     qint64 maxBatchBytes = 2147483648LL;
     qint64 pendingArtifactBytes = 2147483648LL;

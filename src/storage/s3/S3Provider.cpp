@@ -4,6 +4,7 @@
 #include "IpAddress.h"
 #include <condition_variable>
 #include <mutex>
+#include <vector>
 namespace putgd {
 namespace {
 constexpr bool s3SafeDeleteTransport = PUTGD_SDK_CURL_TRANSPORT;
@@ -31,15 +32,25 @@ Error unexpected() {
 struct S3Provider::State {
     CredentialStore& credentials;
     S3UploadPolicy policy;
-    std::shared_ptr<S3Module> module = S3Module::acquire();
-    S3Driver* driver = nullptr; // Only the permanent module worker accesses this.
-    std::atomic_bool retainedDriver = false;
+    // One dispatch lane: its own module worker thread and driver. Calls on
+    // different lanes run in parallel; each lane stays FIFO.
+    struct Lane {
+        std::shared_ptr<S3Module> module;
+        S3Driver* driver = nullptr; // Only this lane's module worker accesses it.
+        bool retained = false;      // Guarded by State::mutex, for diagnostics.
+        int queued = 0;             // Guarded by State::mutex.
+    };
+    const int maximumLanes;
+    std::vector<std::unique_ptr<Lane>> lanes; // Guarded by mutex; lanes are added, never removed.
     std::atomic_int queuedSnapshot = 0;
     std::mutex mutex;
     std::condition_variable drained;
     int queued = 0;
     bool closing = false;
-    State(CredentialStore& store, S3UploadPolicy uploads) : credentials(store), policy(uploads) {}
+    State(CredentialStore& store, S3UploadPolicy uploads, int laneLimit) : credentials(store), policy(uploads), maximumLanes(laneLimit) {
+        lanes.push_back(std::make_unique<Lane>());
+        lanes.front()->module = S3Module::acquire();
+    }
     ~State() {
         {
             std::unique_lock lock(mutex);
@@ -47,30 +58,46 @@ struct S3Provider::State {
             drained.wait(lock, [this] { return queued == 0; });
         }
         // Destroy clients and the last SDK owner on the same worker that made them.
-        if (driver) module->destroyDriver(driver);
+        for (const auto& lane : lanes)
+            if (lane->driver) lane->module->destroyDriver(lane->driver);
     }
-    void complete(bool releaseIdleDriver = true) {
+    void complete(Lane& lane, bool releaseIdleDriver = true) {
         bool release = false;
         {
             std::lock_guard lock(mutex);
-            release = releaseIdleDriver && queued == 1 && driver;
+            release = releaseIdleDriver && lane.queued == 1 && lane.driver;
         }
         if (release) {
             // Keep this job counted until SDK shutdown finishes on its owner.
             // New admissions need not wait: their work is FIFO-queued behind
             // this cleanup and cannot access the driver until it returns.
-            module->destroyDriver(driver);
-            driver = nullptr;
-            retainedDriver.store(false);
+            lane.module->destroyDriver(lane.driver);
+            lane.driver = nullptr;
+            std::lock_guard lock(mutex);
+            lane.retained = false;
         }
         std::lock_guard lock(mutex);
+        --lane.queued;
         --queued;
         queuedSnapshot.store(queued);
         drained.notify_all();
     }
+    // An idle lane first, then a new lane up to the limit, then the shortest queue.
+    Lane& select() {
+        Lane* best = nullptr;
+        for (const auto& lane : lanes)
+            if (!best || lane->queued < best->queued) best = lane.get();
+        if (best->queued > 0 && int(lanes.size()) < maximumLanes) {
+            lanes.push_back(std::make_unique<Lane>());
+            lanes.back()->module = std::make_shared<S3Module>();
+            best = lanes.back().get();
+        }
+        return *best;
+    }
     template<class Work, class Fail>
     void run(S3Provider& owner, const Destination& destination,
              const std::shared_ptr<std::atomic_bool>& cancellation, Work work, Fail fail) {
+        Lane* lane = nullptr;
         {
             std::unique_lock lock(mutex);
             if (closing || queued >= 32) {
@@ -78,23 +105,30 @@ struct S3Provider::State {
                 fail(busy());
                 return;
             }
+            try { lane = &select(); }
+            catch (...) {
+                lock.unlock();
+                fail({"s3_module_unavailable", "S3 support could not start; retry or reinstall this build of put.gd", {}});
+                return;
+            }
+            ++lane->queued;
             ++queued;
             queuedSnapshot.store(queued);
         }
         try {
-            module->post([this, &owner, destination, cancellation, work = std::move(work), fail] {
-                struct Completion { State& state; ~Completion() { state.complete(); } } completion{*this};
+            lane->module->post([this, lane, &owner, destination, cancellation, work = std::move(work), fail] {
+                struct Completion { State& state; Lane& lane; ~Completion() { state.complete(lane); } } completion{*this, *lane};
                 try {
                     if (auto error = owner.readiness(destination)) fail(error);
                     else if (stopped(cancellation)) fail(cancelled());
                     else {
                         Error error;
-                        if (!driver) driver = module->createDriver(
+                        if (!lane->driver) lane->driver = lane->module->createDriver(
                             [this](const QString& profile, const QJsonObject& reference) {
                                 return credentials.cached(profile, reference);
                             }, [&owner](const Destination& value) { return owner.readiness(value); }, error);
-                        retainedDriver.store(driver != nullptr);
-                        if (driver) work(*driver);
+                        { std::lock_guard lock(mutex); lane->retained = lane->driver != nullptr; }
+                        if (lane->driver) work(*lane->driver);
                         else fail(error);
                     }
                 } catch (...) {
@@ -109,19 +143,38 @@ struct S3Provider::State {
             // admission mutex: another provider's callback can re-enter us.
             // Rare allocation failures may retain an idle driver until the next
             // accepted job or provider destruction, without losing admission.
-            complete(false);
+            complete(*lane, false);
             fail({"s3_module_unavailable", "S3 support could not start; retry or reinstall this build of put.gd", {}});
         }
     }
 };
-S3Provider::S3Provider(CredentialStore& credentials, S3UploadPolicy policy) : state_(std::make_unique<State>(credentials, policy)) {}
+int S3Provider::maximumLanes() {
+#if defined(Q_OS_LINUX)
+    return 32;
+#else
+    return 1;
+#endif
+}
+S3Provider::S3Provider(CredentialStore& credentials, S3UploadPolicy policy, int lanes)
+    : state_(std::make_unique<State>(credentials, policy, lanes > 0 ? qMin(lanes, maximumLanes()) : maximumLanes())) {}
 S3Provider::~S3Provider() = default;
+int S3Provider::maximumConcurrentRequests(const Destination&) const { return state_->maximumLanes; }
 QJsonObject S3Provider::diagnostics() const {
-    // Resource snapshots never block the GUI during SDK shutdown or thread joins.
-    return {{"queuedRequests", state_->queuedSnapshot.load()},
-            {"retainedDrivers", state_->retainedDriver.load() ? 1 : 0},
-            {"moduleLiveDrivers", state_->module->liveDriverCount()},
-            {"workerStarted", state_->module->workerStarted()}};
+    // Resource snapshots never block the GUI during SDK shutdown or thread joins:
+    // the mutex guards only counters and the lane list, never driver teardown.
+    int retained = 0, live = 0, lanes = 0;
+    bool started = false;
+    {
+        std::lock_guard lock(state_->mutex);
+        lanes = int(state_->lanes.size());
+        for (const auto& lane : state_->lanes) {
+            retained += lane->retained ? 1 : 0;
+            live += lane->module->liveDriverCount();
+            started = started || lane->module->workerStarted();
+        }
+    }
+    return {{"queuedRequests", state_->queuedSnapshot.load()}, {"retainedDrivers", retained},
+            {"moduleLiveDrivers", live}, {"workerStarted", started}, {"lanes", lanes}};
 }
 ProviderCapabilities S3Provider::capabilities(const Destination& destination) const {
     const auto prefix = destination.settings["objectPrefix"].toString().toUtf8().size();

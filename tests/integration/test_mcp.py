@@ -172,6 +172,8 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('create_diagnostics_bundle', {'preview': True, 'upload': True}),
                     ('list_history', {'limit': True}),
                     ('delete_history_uploads', {'ids': ['synthetic-entry'], 'acknowledgement': False}),
+                    ('cancel_operation', {'id': 'synthetic-delete', 'kind': 'delete', 'item_id': 'synthetic-item'}),
+                    ('cancel_operation', {'id': 'synthetic-operation', 'item_id': ''}),
                 ]:
                     rejected = await session.call_tool(name, args)
                     self.assertTrue(rejected.isError or (
@@ -199,6 +201,8 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('retry_operation', {'id': 'synthetic-operation', 'stage': 'local_save'}, 'operation.retryLocalSave', {'id': 'synthetic-operation'}),
                     ('retry_operation', {'id': 'synthetic-delete', 'stage': 'delete'}, 'delete.retry', {'id': 'synthetic-delete'}),
                     ('cancel_operation', {'id': 'synthetic-delete', 'kind': 'delete'}, 'delete.cancel', {'id': 'synthetic-delete'}),
+                    ('cancel_operation', {'id': 'synthetic-operation', 'item_id': 'synthetic-item'}, 'operation.cancel', {'id': 'synthetic-operation', 'itemId': 'synthetic-item'}),
+                    ('patch_configuration', {'patch': {'limits': {'maxFileBytes': None, 'pendingArtifactBytes': 'auto', 'concurrentUploads': 4}}, 'expected_revision': 'synthetic-revision'}, 'settings.patch', {'patch': {'limits': {'maxFileBytes': None, 'pendingArtifactBytes': 'auto', 'concurrentUploads': 4}}, 'expectedRevision': 'synthetic-revision'}),
                     ('copy_result', {'id': 'synthetic-operation'}, 'operation.copy', {'id': 'synthetic-operation'}),
                     ('get_history_entry', {'id': 'synthetic-entry'}, 'history.detail', {'id': 'synthetic-entry'}),
                     ('copy_history_link', {'id': 'synthetic-entry'}, 'history.copyLink', {'id': 'synthetic-entry'}),

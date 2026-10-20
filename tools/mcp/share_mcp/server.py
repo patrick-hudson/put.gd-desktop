@@ -381,11 +381,11 @@ def create_server(adapter: CliAdapter) -> FastMCP:
         return await adapter.call('operation.copy', {'id': id}) if identifier(id) else invalid()
 
     @server.tool(annotations=effect)
-    async def cancel_operation(id: str, kind: str = 'operation') -> Json:
-        """Cancel operation/delete work; already sent remote mutations cannot be rolled back."""
-        if not identifier(id) or kind not in {'operation', 'delete'}:
+    async def cancel_operation(id: str, kind: str = 'operation', item_id: str | None = None) -> Json:
+        """Cancel operation/delete work; already sent remote mutations cannot be rolled back. With item_id (an operation item's artifact.id), cancel only that file of an active upload batch; the other files continue and Retry uploads the cancelled one."""
+        if not identifier(id) or kind not in {'operation', 'delete'} or (item_id is not None and (kind != 'operation' or not identifier(item_id))):
             return invalid()
-        return await adapter.call(kind + '.cancel', {'id': id})
+        return await adapter.call(kind + '.cancel', {'id': id} if item_id is None else {'id': id, 'itemId': item_id})
 
     @server.tool(annotations=read)
     async def list_history(limit: int | None = None, offset: int | None = None,

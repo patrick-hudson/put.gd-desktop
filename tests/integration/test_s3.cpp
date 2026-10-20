@@ -275,7 +275,8 @@ private slots:
         QCOMPARE(f.events().size(), 1);
     }
     void queuedCancellationAndSlowEventLoop() {
-        S3Fixture f;
+        // One lane: the second call queues behind the first.
+        S3Fixture f({}, 1);
         auto first = f.request("slow.txt");
         auto second = f.request("cancelled.txt");
         second.cancellation = std::make_shared<std::atomic_bool>(false);
@@ -295,7 +296,8 @@ private slots:
         QCOMPARE(f.events("PUT").size(), 1);
     }
     void queuedCredentialRevocationPreservesInFlightClient() {
-        S3Fixture f;
+        // One lane: the second call queues behind the first.
+        S3Fixture f({}, 1);
         auto first = f.request("in-flight.txt");
         auto queued = f.request("queued.txt");
         f.reset({{"rules", QJsonArray{QJsonObject{{"method", "PUT"}, {"barrier", "credential-change"}}}}});
@@ -312,6 +314,29 @@ private slots:
         QCOMPARE(secondCode, QString("credential_setup_required"));
         QCOMPARE(f.events("PUT").size(), 1);
         QVERIFY(f.events("PUT")[0].toObject()["signatureValid"].toBool());
+    }
+    void lanesRunUploadsInParallel() {
+        S3Fixture f;
+        QVERIFY(f.provider.maximumConcurrentRequests(f.destination) > 1);
+        auto blocked = f.request("blocked.txt");
+        auto free = f.request("free.txt");
+        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "PUT"}, {"key", "prefix é/blocked.txt"}, {"barrier", "lane"}}}}});
+        std::atomic_bool blockedDone{false}, freeDone{false};
+        QString blockedStatus, freeStatus;
+        f.provider.upload(blocked, [&](auto result) { blockedStatus = result.status; blockedDone = true; });
+        QTRY_COMPARE(f.events("PUT").size(), 1);
+        // A second upload completes on another lane while the first is still in flight.
+        f.provider.upload(free, [&](auto result) { freeStatus = result.status; freeDone = true; });
+        QTRY_VERIFY_WITH_TIMEOUT(freeDone.load(), 15000);
+        QCOMPARE(freeStatus, QString("uploaded"));
+        QVERIFY(!blockedDone.load());
+        QCOMPARE(f.provider.diagnostics()["lanes"].toInt(), 2);
+        f.control("/__release", {{"barrier", "lane"}}, true);
+        QTRY_VERIFY_WITH_TIMEOUT(blockedDone.load(), 15000);
+        QCOMPARE(blockedStatus, QString("uploaded"));
+        // An idle provider reuses its lanes; their drivers are released once idle.
+        QTRY_COMPARE(f.provider.diagnostics()["queuedRequests"].toInt(), 0);
+        QCOMPARE(f.provider.diagnostics()["retainedDrivers"].toInt(), 0);
     }
     void providerDestructionDrainsSentRequestBeforeRuntime() {
         S3Fixture f;

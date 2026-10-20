@@ -20,6 +20,9 @@
 #include <QPointer>
 #include <QTimer>
 #include <QUuid>
+#include <chrono>
+#include <thread>
+#include <vector>
 #ifdef Q_OS_UNIX
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -53,6 +56,8 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
   for(const auto& id:ids)emit changed(id);
   if(!ids.isEmpty())emit observationsChanged();
  });
+ uploadSlots_.setCapacity(settings_.snapshot().limits.concurrentUploads);
+ connect(&settings_,&SettingsService::accepted,this,[this]{uploadSlots_.setCapacity(settings_.snapshot().limits.concurrentUploads);pump();});
  RecordingService::Host host;
  host.settings=[this]{return settings_.snapshot();};
  host.accept=[this](Operation& op){return acceptRecording(op);};
@@ -101,7 +106,7 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
  });
 }
 OperationService::~OperationService() {shutdown();}
-void OperationService::shutdown() {if(stopping_)return;stopping_=true;heapReclamationTimer_.stop();observationTimer_.stop();for(auto flag:active_) flag->store(true);if(recording_)recording_->shutdown();if(editor_)editor_->cancel();invalidateCopyEligibility();source_.cancelAcquisition();for(auto* thread:threads_) {thread->wait();delete thread;}threads_.clear();}
+void OperationService::shutdown() {if(stopping_)return;stopping_=true;heapReclamationTimer_.stop();observationTimer_.stop();for(auto flag:active_) flag->store(true);{std::lock_guard lock(itemCancelsMutex_);for(const auto& items:itemCancels_)for(const auto& flag:items)flag->store(true);}uploadSlots_.close();if(recording_)recording_->shutdown();if(editor_)editor_->cancel();invalidateCopyEligibility();source_.cancelAcquisition();for(auto* thread:threads_) {thread->wait();delete thread;}threads_.clear();}
 bool OperationService::heapReclamationIdle() const {
  return !stopping_&&threads_.isEmpty()&&queue_.isEmpty()&&running_==0&&active_.isEmpty()&&copies_.isEmpty()&&!currentCopy_&&selectingId_.isEmpty()&&payloadBytes_->load()==0&&!(recording_&&recording_->active());
 }
@@ -129,6 +134,21 @@ std::shared_ptr<std::mutex> OperationService::objectLock(const Destination& d,co
  }
  return lock;
 }
+std::shared_ptr<DestinationLease> OperationService::destinationLease(const Destination& d) {
+ // Proton serializes per account, so the credential reference names the destination.
+ const auto key=d.providerId+"\n"+QString::fromUtf8(QJsonDocument(d.credentialReference).toJson(QJsonDocument::Compact));
+ std::lock_guard guard(locksMutex_);
+ for(auto it=leases_.begin();it!=leases_.end();) {if(it.value().expired())it=leases_.erase(it);else ++it;}
+ auto lease=leases_.value(key).lock();
+ if(!lease){lease=std::make_shared<DestinationLease>();leases_.insert(key,lease);}
+ return lease;
+}
+std::shared_ptr<std::atomic_bool> OperationService::itemCancellation(const QString& operation,const QString& item) {
+ std::lock_guard lock(itemCancelsMutex_);auto& flag=itemCancels_[operation][item];
+ if(!flag)flag=std::make_shared<std::atomic_bool>(false);
+ return flag;
+}
+void OperationService::forgetItemCancellations(const QString& operation) {std::lock_guard lock(itemCancelsMutex_);itemCancels_.remove(operation);}
 void OperationService::storageActivityDelta(int delta) {
  QPointer<OperationService> owner(this);
  QMetaObject::invokeMethod(this,[owner,delta] {
@@ -405,7 +425,11 @@ Operation OperationService::run(Job job) {
  if(job.acquire) {op.phase="preparing";if(!save())return op;
   // An upload route rejects files its destination can never store before copying them.
   qint64 objectLimit=0;{const auto output=op.settings.actions.value(op.action);if(output.destination!="local"&&!output.profileId.isEmpty())if(auto destination=providers_.find(op.destination.providerId))objectLimit=destination->capabilities(op.destination).maximumObjectBytes;}
-  std::lock_guard acquisitionGuard(acquisitionMutex_);auto acquired=artifacts.acquire(op.id,job.payload,op.settings.limits,op.action,op.settings,QDateTime::fromString(op.created,Qt::ISODateWithMs),objectLimit);
+  // A fixed waiting-uploads budget is checked against bytes already stored, so such
+  // imports run one at a time. Without one, free disk is the only bound and its
+  // reservation is atomic: a new action's import never waits behind a large copy.
+  std::unique_lock acquisitionGuard(acquisitionMutex_,std::defer_lock);if(op.settings.limits.pendingArtifactBytes<ResourceLimits::unlimitedBytes)acquisitionGuard.lock();
+  auto acquired=artifacts.acquire(op.id,job.payload,op.settings.limits,op.action,op.settings,QDateTime::fromString(op.created,Qt::ISODateWithMs),objectLimit);
   job.payload={};job.payloadLease.reset(); // Retry/upload ownership now belongs to the immutable disk artifact.
   if(acquired.error) {op.error=acquired.error;op.state="failed";save();logging::warning(logOperation(),"Acquisition failed",{{"operationId",op.id},{"error",logging::errorFields(op.error)}});return op;}
   for(const auto& a:acquired.artifacts) {OperationItem item;item.phase="stored";item.artifact=a;item.artifact.previewPath=artifacts.preview(a,op.settings.previewCacheBytes,op.settings.limits.imagePixels);item.publicationId=uuid();op.items.append(item);}op.state="stored";if(!save())return op;
@@ -435,6 +459,15 @@ Operation OperationService::run(Job job) {
   logging::info(logOperation(),"Upload names chosen",{{"operationId",op.id},{"namingMode",op.settings.namingMode},{"collisionPolicy",op.settings.collisionPolicy},{"names",chosen}});
   if(!save())return op;
  }
+ // A provider that takes one request at a time (Proton locks its account) is leased
+ // to this operation for all of its provider work, preflight to sharing.
+ const bool parallel=provider->maximumConcurrentRequests(op.destination)>1;
+ struct Lease{std::shared_ptr<DestinationLease> held;~Lease(){if(held)held->release();}} lease;
+ if(!parallel) {
+  const auto destination=destinationLease(op.destination);op.phase="queued";observe(op.publicJson());
+  if(!destination->acquire([&job]{return job.cancelled->load();})){op.cancelled=true;op.state="cancelled";save();return op;}
+  lease.held=destination;
+ }
  op.state="running";op.phase="preflight";if(!save())return op;
  // Check all pending names before the first PUT, including opaque references that
  // may identify one target despite differing proposed display names.
@@ -460,36 +493,58 @@ Operation OperationService::run(Job job) {
  }
  for(const auto& group:targets) if(group.size()>1) {if(op.settings.collisionPolicy=="overwrite") {for(int i:group)op.items[i].uploadStatus="conflict";}else if(op.settings.collisionPolicy=="skip") {for(int n=1;n<group.size();++n)op.items[group[n]].uploadStatus="skipped";}else {for(int n=1;n<group.size();++n) {auto& item=op.items[group[n]];item.uploadStatus="failed";item.error={"name_alias_conflict","Provider candidates resolve to one target",{}};}}}
  if(!save())return op;
- for(auto& item:op.items) {
-  if(job.cancelled->load()) {op.cancelled=true;break;}
-  if(terminalUpload(item.uploadStatus)||item.uploadStatus=="failed")continue;
+ // Files upload in parallel up to "Uploads at once", shared fairly by every
+ // operation (#28). Each file holds one slot for its whole transfer, so a large
+ // multipart upload keeps one slot and never starves the others. Workers own a
+ // local copy of their item; `op` changes only under itemsMutex, and every save
+ // writes the whole operation from there, so a checkpoint never mixes item states.
+ std::mutex itemsMutex;std::atomic_bool persisted=true;
+ std::function<Error(const OperationItem&,int)> persist=[&](const OperationItem& item,int index)->Error {
+  std::lock_guard lock(itemsMutex);op.items[index]=item;HistoryStore durable(databasePath());return durable.checkpointOperation(op,{item.artifact.id},&providers_);
+ };
+ auto show=[&](const OperationItem& item,int index){std::lock_guard lock(itemsMutex);op.items[index]=item;observe(op.publicJson());};
+ auto commit=[&](const OperationItem& item,int index)->bool {
+  if(auto e=persist(item,index)){std::lock_guard lock(itemsMutex);op.error=e;op.state="failed";persisted=false;return false;}
+  {std::lock_guard lock(itemsMutex);observe(op.publicJson());}
+  if(item.linkAvailable()) {
+   QPointer<OperationService> owner(this);
+   QMetaObject::invokeMethod(this,[owner,id=op.id,itemId=item.artifact.id,index,url=item.receipt.directUrl]{if(owner&&!owner->stopping_)owner->uploadLinkReady(id,itemId,index,url);},Qt::QueuedConnection);
+  }
+  return true;
+ };
+ auto settled=[&](int index){QPointer<OperationService> owner(this);QMetaObject::invokeMethod(this,[owner,id=op.id,index]{if(owner&&!owner->stopping_)owner->uploadItemSettled(id,index);},Qt::QueuedConnection);};
+ auto transfer=[&](int index,const std::shared_ptr<std::atomic_bool>& cancel) {
+  OperationItem item;{std::lock_guard lock(itemsMutex);item=op.items[index];}
+  ArtifactStore artifacts(root_+"/artifacts");
   auto lock=objectLock(op.destination,item.objectReference,item.candidate);std::unique_lock guard(*lock);
   if(item.uploadStatus=="unknown") {
-   op.phase="reconciling";item.phase="reconciling";observe(op.publicJson());
-   auto stat=storageRequest<StatResult>([&](auto cb) {auto request=item.uploadRequest(op.destination,op.requestTimeoutMs);request.cancellation=job.cancelled;provider->reconcile(request,cb);});
-   if(stat.status=="own"&&!stat.receipt.validate()&&stat.receipt.publicationId==item.publicationId&&stat.receipt.destination.toJson()==op.destination.toJson()) {item.receipt=stat.receipt;item.uploadStatus="uploaded";item.error={};item.uploadJournal={};if(!saveItem(item))return op;continue;}
+   item.phase="reconciling";show(item,index);
+   auto stat=storageRequest<StatResult>([&](auto cb) {auto request=item.uploadRequest(op.destination,op.requestTimeoutMs);request.cancellation=cancel;provider->reconcile(request,cb);});
+   if(stat.status=="own"&&!stat.receipt.validate()&&stat.receipt.publicationId==item.publicationId&&stat.receipt.destination.toJson()==op.destination.toJson()) {item.receipt=stat.receipt;item.uploadStatus="uploaded";item.error={};item.uploadJournal={};if(!commit(item,index))return;return;}
    {auto fields=itemFields(op,item);fields["status"]=stat.status;if(stat.error)fields["error"]=logging::errorFields(stat.error);logging::write(providerLog(op.destination.providerId),stat.status=="own"||stat.status=="missing"?QtInfoMsg:QtWarningMsg,"Uncertain upload reconciled",fields);}
-   if(stat.status!="missing") {item.phase="unknown";item.error=stat.error?stat.error:Error{"publication_unknown","Resolve ambiguous publication before uploading again",{}};if(!saveItem(item))return op;continue;}
-   item.uploadStatus="stored";if(auto error=artifacts.verify(item.artifact)) {item.uploadStatus="failed";item.error=error;if(!saveItem(item))return op;continue;}if(!saveItem(item))return op;
+   if(stat.status!="missing") {item.phase="unknown";item.error=stat.error?stat.error:Error{"publication_unknown","Resolve ambiguous publication before uploading again",{}};if(!commit(item,index))return;return;}
+   item.uploadStatus="stored";if(auto error=artifacts.verify(item.artifact)) {item.uploadStatus="failed";item.error=error;commit(item,index);return;}if(!commit(item,index))return;
   }
   for(int attempts=0;attempts<32;++attempts) {
-   item.uploadStatus="uploading";item.phase="uploading";item.uploadProgress.reset();op.phase="uploading";if(!saveItem(item))return op;
-   struct ProgressState{std::mutex mutex;bool closed=false;std::optional<UploadProgress> latest;QJsonObject document;};
+   item.uploadStatus="uploading";item.phase="uploading";item.uploadProgress.reset();if(!commit(item,index))return;
+   struct ProgressState{std::mutex mutex;bool closed=false;std::optional<UploadProgress> latest;};
    auto activity=std::make_shared<StorageActivity>(*this,!provider->reportsUploadProgress());
-   auto progress=std::make_shared<ProgressState>();progress->document=op.publicJson();const auto artifactId=item.artifact.id;QPointer<OperationService> owner(this);
+   auto progress=std::make_shared<ProgressState>();QPointer<OperationService> owner(this);
    {auto fields=itemFields(op,item);fields["attempt"]=attempts+1;fields["name"]=item.candidate;fields["byteCount"]=item.artifact.bytes;fields["mime"]=item.artifact.mime;logging::info(providerLog(op.destination.providerId),"Upload attempt",fields);}
    QElapsedTimer attemptClock;attemptClock.start();
    auto uploaded=awaitProvider<UploadResult>([&](auto cb) {
-    auto request=item.uploadRequest(op.destination,op.requestTimeoutMs);request.cancellation=job.cancelled;
+    auto request=item.uploadRequest(op.destination,op.requestTimeoutMs);request.cancellation=cancel;
     // A resumable (multipart) upload journals its remote upload before relying on it.
     // This worker waits on the provider meanwhile, so the item is not touched concurrently.
-    request.checkpoint=[this,path=databasePath(),&op,&item](const QJsonObject& journal,std::function<void(Error)> ack){
-     item.uploadJournal=journal;HistoryStore durable(path);ack(durable.checkpointOperation(op,{item.artifact.id},&providers_));
-    };
-    request.progress=[owner,progress,activity,artifactId](const UploadProgress& value){
+    request.checkpoint=[&item,&persist,index](const QJsonObject& journal,std::function<void(Error)> ack){item.uploadJournal=journal;ack(persist(item,index));};
+    // Overlapping items each update their own entry of the shared live operation.
+    request.progress=[owner,progress,activity,&op,&itemsMutex,index](const UploadProgress& value){
      if(!value.valid())return;
      std::lock_guard lock(progress->mutex);if(progress->closed||!owner)return;progress->latest=value;activity->set(value.phase!="preparing");
-     progress->document["phase"]=value.phase;auto items=progress->document["items"].toArray();for(qsizetype i=0;i<items.size();++i){auto observed=items[i].toObject();if(observed["artifact"].toObject()["id"].toString()==artifactId){observed["phase"]=value.phase;observed["uploadProgress"]=value.toJson();items[i]=observed;break;}}progress->document["items"]=items;owner->observe(progress->document);
+     std::lock_guard items(itemsMutex);op.items[index].phase=value.phase;op.items[index].uploadProgress=value;
+     // The operation shows the furthest phase any of its files has reached.
+     bool transferring=value.phase!="preparing";for(qsizetype other=0;other<op.items.size()&&!transferring;++other)transferring=other!=index&&QStringList{"uploading","finalizing"}.contains(op.items[other].phase);
+     op.phase=transferring&&value.phase=="preparing"?QStringLiteral("uploading"):value.phase;owner->observe(op.publicJson());
     };
     provider->upload(request,cb);
    });
@@ -506,25 +561,48 @@ Operation OperationService::run(Job job) {
    item.error=uploaded.error;
    if(uploaded.status=="uploaded") {
     auto e=uploaded.receipt.validate();if(!e&&(uploaded.receipt.publicationId!=item.publicationId||uploaded.receipt.destination.toJson()!=op.destination.toJson()))e={"receipt_invalid","Receipt does not match the accepted publication identity",{}};
-    if(e) {item.uploadStatus="unknown";item.error=e;}else {item.receipt=uploaded.receipt;item.uploadStatus="uploaded";item.error={};item.uploadJournal={};}if(!saveItem(item))return op;break;
+    if(e) {item.uploadStatus="unknown";item.error=e;}else {item.receipt=uploaded.receipt;item.uploadStatus="uploaded";item.error={};item.uploadJournal={};}if(!commit(item,index))return;break;
    }
-   if(uploaded.status=="unknown") {item.uploadStatus="unknown";if(!saveItem(item))return op;break;}
-   if(uploaded.status!="collision") {item.uploadStatus="failed";if(!saveItem(item))return op;break;}
+   if(uploaded.status=="unknown") {item.uploadStatus="unknown";if(!commit(item,index))return;break;}
+   // Cancelling one file leaves it pending for Retry; the rest of the batch continues.
+   if(uploaded.status=="failed"&&cancel->load()&&!job.cancelled->load()) {item.uploadStatus="cancelled";item.phase="cancelled";item.error={"cancelled","Upload cancelled; Retry uploads this file again",{}};commit(item,index);break;}
+   if(uploaded.status!="collision") {item.uploadStatus="failed";if(!commit(item,index))return;break;}
    // Reconcile our publication before changing any proposed target after a race.
-   op.phase="reconciling";item.phase="reconciling";observe(op.publicJson());
-   auto stat=storageRequest<StatResult>([&](auto cb) {auto request=item.uploadRequest(op.destination,op.requestTimeoutMs);request.cancellation=job.cancelled;provider->reconcile(request,cb);});
-   if(stat.status=="own"&&!stat.receipt.validate()&&stat.receipt.publicationId==item.publicationId&&stat.receipt.destination.toJson()==op.destination.toJson()) {item.receipt=stat.receipt;item.uploadStatus="uploaded";item.error={};item.uploadJournal={};if(!saveItem(item))return op;break;}
+   item.phase="reconciling";show(item,index);
+   auto stat=storageRequest<StatResult>([&](auto cb) {auto request=item.uploadRequest(op.destination,op.requestTimeoutMs);request.cancellation=cancel;provider->reconcile(request,cb);});
+   if(stat.status=="own"&&!stat.receipt.validate()&&stat.receipt.publicationId==item.publicationId&&stat.receipt.destination.toJson()==op.destination.toJson()) {item.receipt=stat.receipt;item.uploadStatus="uploaded";item.error={};item.uploadJournal={};if(!commit(item,index))return;break;}
    const bool unpublishedDraft=stat.status=="missing"&&uploaded.error.code=="upload_draft_conflict";
-   if(stat.status!="foreign"&&!unpublishedDraft) {item.uploadStatus="unknown";item.phase="unknown";item.error=stat.error?stat.error:Error{"publication_unknown","Collision publication could not be reconciled",{}};if(!saveItem(item))return op;break;}
-   if(op.settings.collisionPolicy=="skip") {item.uploadStatus="skipped";if(!saveItem(item))return op;break;}
-   if(op.settings.collisionPolicy!="rename") {item.uploadStatus="failed";item.error={"precondition_changed","Original replacement precondition changed",{}};if(!saveItem(item))return op;break;}
-   item.candidate=UploadNaming::renamedCandidate(item.candidate,capabilities.maximumNameBytes);item.objectReference={};item.concurrencyToken={};item.condition="absent";item.uploadStatus="stored";item.phase="preflight";op.phase="preflight";if(!saveItem(item))return op;
+   if(stat.status!="foreign"&&!unpublishedDraft) {item.uploadStatus="unknown";item.phase="unknown";item.error=stat.error?stat.error:Error{"publication_unknown","Collision publication could not be reconciled",{}};if(!commit(item,index))return;break;}
+   if(op.settings.collisionPolicy=="skip") {item.uploadStatus="skipped";if(!commit(item,index))return;break;}
+   if(op.settings.collisionPolicy!="rename") {item.uploadStatus="failed";item.error={"precondition_changed","Original replacement precondition changed",{}};if(!commit(item,index))return;break;}
+   item.candidate=UploadNaming::renamedCandidate(item.candidate,capabilities.maximumNameBytes);item.objectReference={};item.concurrencyToken={};item.condition="absent";item.uploadStatus="stored";item.phase="preflight";if(!commit(item,index))return;
    auto check=storageRequest<NameCheck>([&](auto cb) {provider->checkName(op.destination,item.candidate,cb);});
-   if(check.status!="absent"||check.error||check.objectReference.isEmpty()) {item.uploadStatus="failed";item.error={"existence_unknown","Renamed candidate could not be reserved",{}};if(!saveItem(item))return op;break;}item.objectReference=check.objectReference;if(!saveItem(item))return op;
+   if(check.status!="absent"||check.error||check.objectReference.isEmpty()) {item.uploadStatus="failed";item.error={"existence_unknown","Renamed candidate could not be reserved",{}};if(!commit(item,index))return;break;}item.objectReference=check.objectReference;if(!commit(item,index))return;
    guard.unlock();lock=objectLock(op.destination,item.objectReference,item.candidate);guard=std::unique_lock<std::mutex>(*lock);
-   if(attempts==31) {item.uploadStatus="failed";item.error={"collision_exhausted","Collision search exhausted",{}};saveItem(item);}
+   if(attempts==31) {item.uploadStatus="failed";item.error={"collision_exhausted","Collision search exhausted",{}};commit(item,index);}
   }
+ };
+ op.phase="uploading";
+ std::vector<std::thread> workers;
+ for(int index=0;index<op.items.size()&&persisted;++index) {
+  OperationItem item;{std::lock_guard lock(itemsMutex);item=op.items[index];}
+  if(terminalUpload(item.uploadStatus)||item.uploadStatus=="failed") {settled(index);continue;}
+  if(job.cancelled->load()) {op.cancelled=true;break;}
+  const auto cancel=itemCancellation(op.id,item.artifact.id);
+  // Waiting for a slot: the operation reads as queued until one of its files transfers.
+  {std::lock_guard lock(itemsMutex);item.phase="queued";op.items[index]=item;bool transferring=false;for(const auto& other:op.items)transferring=transferring||QStringList{"uploading","finalizing","preparing"}.contains(other.phase);if(!transferring)op.phase="queued";observe(op.publicJson());}
+  const bool admitted=uploadSlots_.acquire(op.id,[&job,cancel]{return job.cancelled->load()||cancel->load();});
+  {std::lock_guard lock(itemsMutex);op.phase="uploading";}
+  if(!admitted) {
+   if(job.cancelled->load()) {op.cancelled=true;break;}
+   item.uploadStatus="cancelled";item.phase="cancelled";item.error={"cancelled","Upload cancelled before it started; Retry uploads this file",{}};commit(item,index);settled(index);continue;
+  }
+  if(!parallel) {transfer(index,cancel);uploadSlots_.release(op.id);settled(index);continue;}
+  workers.emplace_back([&,index,cancel]{transfer(index,cancel);uploadSlots_.release(op.id);settled(index);});
  }
+ for(auto& worker:workers)worker.join();
+ forgetItemCancellations(op.id);
+ if(!persisted)return op;
  // Persist the uploaded receipt before the separate sharing mutation. Sharing
  // failure leaves an uploaded file and resumes only the link step on explicit retry.
  for(auto& item:op.items) {
@@ -563,7 +641,7 @@ Operation OperationService::run(Job job) {
   if(!saveItem(item))return op;
  }
  op.cancelled=op.cancelled||job.cancelled->load();
- op.state=op.cancelled?"cancelled":"completed";for(const auto& item:op.items) if(item.uploadStatus=="failed"||item.uploadStatus=="unknown"||item.shareStatus=="failed"||item.shareStatus=="unknown"||item.shareStatus=="changed"||item.shareIntent=="create")op.state=op.cancelled?"cancelled":"partial";
+ op.state=op.cancelled?"cancelled":"completed";for(const auto& item:op.items) if(item.uploadStatus=="failed"||item.uploadStatus=="unknown"||item.uploadStatus=="cancelled"||item.shareStatus=="failed"||item.shareStatus=="unknown"||item.shareStatus=="changed"||item.shareIntent=="create")op.state=op.cancelled?"cancelled":"partial";
  op.phase=op.state;save();return op;
 }
 void OperationService::releaseActive(const QString& id) {
@@ -602,11 +680,18 @@ void OperationService::finish(Operation op,JsonReply reply) {
 
 void OperationService::recent(JsonReply reply) {const auto path=databasePath();const int limit=settings_.snapshot().recentActivityLimit;background([path,limit](Error& e) {HistoryStore store(path);return QJsonObject{{"operations",store.recent(limit,&e)}};},[this,reply](Error e,QJsonObject data){auto values=data["operations"].toArray();for(qsizetype i=0;i<values.size();++i)values[i]=currentObservation(values[i].toObject());data["operations"]=values;reply(e,data);});}
 void OperationService::inspect(const QString& id,JsonReply reply) {const auto path=databasePath();background([path,id](Error& e) {HistoryStore store(path);return store.operation(id,&e).publicJson();},[this,reply](Error e,QJsonObject data){reply(e,currentObservation(data));});}
-void OperationService::cancel(const QString& id,JsonReply reply) {
+void OperationService::cancel(const QString& id,JsonReply reply,const QString& itemId) {
+ if(!itemId.isEmpty()) {
+  // One file of an active batch: waiting stops at once, a running transfer is
+  // cancelled like an operation's, and the other files continue.
+  if(!active_.contains(id)){reply({"operation_inactive","Only an active operation's files can be cancelled one at a time",{}},{});return;}
+  itemCancellation(id,itemId)->store(true);uploadSlots_.wake();
+  reply({},{{"operationId",id},{"itemId",itemId},{"cancellationRequested",true},{"effect","Only this file stops; already sent network requests cannot be rolled back"}});return;
+ }
  // A recording session lives in the recording service, not the upload queue:
  // cancelling its operation ends the capture or review and discards the clip.
  if(recording_&&recording_->activeId()==id){recording_->command("cancel",{{"id",id}},[reply,id](Error error,QJsonObject){reply(error,error?QJsonObject{}:QJsonObject{{"operationId",id},{"cancellationRequested",true},{"effect","The recording and its working clip are discarded"}});});return;}
- if(active_.contains(id)) {active_[id]->store(true);interruptUploadCopy(id);if(selectingId_==id)source_.cancelAcquisition();if(editingId_==id&&editor_)editor_->cancel();
+ if(active_.contains(id)) {active_[id]->store(true);{std::lock_guard lock(itemCancelsMutex_);for(const auto& flag:itemCancels_.value(id))flag->store(true);}uploadSlots_.wake();interruptUploadCopy(id);if(selectingId_==id)source_.cancelAcquisition();if(editingId_==id&&editor_)editor_->cancel();
   for(int index=0;index<queue_.size();++index)if(queue_[index].op.id==id){auto job=queue_.takeAt(index);job.payload={};job.payloadLease.reset();job.op.cancelled=true;job.op.state="cancelled";finish(job.op);break;}
   reply({},{{"operationId",id},{"cancellationRequested",true},{"effect","Already sent network requests cannot be rolled back"}});return;}
  const auto path=databasePath();background([path,id](Error& e) {HistoryStore store(path);auto op=store.operation(id,&e);if(e)return QJsonObject{};op.cancelled=true;op.state="cancelled";op.phase="cancelled";for(auto& item:op.items)item.phase=item.uploadStatus;e=store.saveOperation(op);return op.publicJson();},reply);
@@ -773,7 +858,7 @@ QJsonObject OperationService::diagnostics() const {
 #endif
  const auto build=QJsonDocument::fromJson(buildManifestJson()).object();
  const auto logStatus=logging::status();
- return {{"schemaVersion",1},{"build",build},{"release",releaseLink(build).toJson()},{"backend","Qt"},{"qtVersion",QT_VERSION_STR},{"activeOperations",active_.size()},{"journalReady",ready_},{"capabilities",capabilities()},{"storage",providers_.diagnostics()},{"locations",locations_},
+ return {{"schemaVersion",1},{"build",build},{"release",releaseLink(build).toJson()},{"backend","Qt"},{"qtVersion",QT_VERSION_STR},{"activeOperations",active_.size()},{"uploadSlots",uploadSlots_.diagnostics()},{"journalReady",ready_},{"capabilities",capabilities()},{"storage",providers_.diagnostics()},{"locations",locations_},
   {"logging",logStatus},{"loggingDegraded",logStatus["degraded"].toBool()},{"uncleanExit",RunMarker::report()},
   {"memory",QJsonObject{{"allocatorReclamationSupported",reclaimSupported},{"allocatorReclamationPending",heapReclamationPending_},{"allocatorReclamationCount",qint64(heapReclamationCount_)},{"lastAllocatorReclamationUsec",lastHeapReclamationUsec_}}}};
 }

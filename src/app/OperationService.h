@@ -3,6 +3,7 @@
 #include "core/EditorJob.h"
 #include "RecordingService.h"
 #include "core/SettingsService.h"
+#include "UploadSlots.h"
 #include <QObject>
 #include <QQueue>
 #include <QThread>
@@ -109,7 +110,8 @@ public:
  bool storageActive() const {return storageRequests_>0;}
  Settings settingsSnapshot() const {return settings_.snapshot();}
  QString settingsRevision() const {return settings_.revision();}
- void cancel(const QString& id,JsonReply);
+ // With an item ID, cancels only that file's upload; the batch's other files continue.
+ void cancel(const QString& id,JsonReply,const QString& itemId={});
  void retry(const QString& id,JsonReply);
  void retryLocalSave(const QString& id,JsonReply);
  void copyResult(const QString& id,JsonReply);
@@ -129,6 +131,9 @@ public:
  // Shared services run SQL, encoding, and file/network work on workers.
  void background(std::function<QJsonObject(Error&)>,JsonReply);
  std::shared_ptr<std::mutex> objectLock(const Destination&,const QJsonObject&,const QString& candidate);
+ // A provider that takes one request at a time for a destination (its credential
+ // reference) is leased to one operation's provider work at a time.
+ std::shared_ptr<DestinationLease> destinationLease(const Destination&);
  bool ready() const {return ready_;}
 signals:
  void initialized();
@@ -176,6 +181,10 @@ private:
  void startEditing(Operation,std::shared_ptr<std::atomic_bool>,ClipboardPayload);
  QString editorDestination(const Operation&) const;
  void abandonUploadCopies(const QString&);
+ // A batch item finished its upload stage, with or without a link (each_link ordering).
+ void uploadItemSettled(const QString&,int);
+ void flushUploadLinks(const std::shared_ptr<UploadCopy>&);
+ void queueLinkCopy(const std::shared_ptr<UploadCopy>&,const QString& item,int index);
  bool detachCompletedUploadCopies(const QString&,JsonReply&);
  void uploadLinkReady(const QString&,const QString&,int,const QString&);
  void finishUploadCopies(Operation,JsonReply);
@@ -202,7 +211,14 @@ private:
  QHash<QString,std::shared_ptr<std::atomic_bool>> active_;
  QHash<QString,std::function<void(const Operation&)>> finishWatchers_;
  QHash<QString,std::weak_ptr<std::mutex>> locks_;
+ QHash<QString,std::weak_ptr<DestinationLease>> leases_;
  std::mutex locksMutex_;
+ // Upload slots shared by every operation, and each active item's own cancellation.
+ UploadSlots uploadSlots_;
+ std::shared_ptr<std::atomic_bool> itemCancellation(const QString& operation,const QString& item);
+ void forgetItemCancellations(const QString& operation);
+ mutable std::mutex itemCancelsMutex_;QHash<QString,QHash<QString,std::shared_ptr<std::atomic_bool>>> itemCancels_;
+
  QTimer heapReclamationTimer_,observationTimer_;
  mutable std::mutex observationsMutex_;QHash<QString,QJsonObject> observations_;QSet<QString> observationsDirty_;bool observationScheduled_=false;
  bool heapReclamationPending_=false;

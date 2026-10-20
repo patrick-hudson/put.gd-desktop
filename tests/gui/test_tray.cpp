@@ -113,7 +113,7 @@ private slots:
  }
 
  void concurrentTransferFillUsesSourceByteWeights() {
-  QTemporaryDir directory;ProviderRegistry providers;auto provider=std::make_shared<OpaqueProvider>();provider->deferUploads=true;provider->dispatcher=this;providers.add("opaque",provider);
+  QTemporaryDir directory;ProviderRegistry providers;auto provider=std::make_shared<OpaqueProvider>();provider->concurrency=8;provider->deferUploads=true;provider->dispatcher=this;providers.add("opaque",provider);
   SettingsService settings(directory.filePath("config.json"),[&](auto id,auto value){return providers.validate(id,value);});
   auto document=configuration(directory.path());auto limits=document["limits"].toObject();limits["concurrentUploads"]=2;document["limits"]=limits;
   auto naming=document["naming"].toObject();naming["mode"]="generated";document["naming"]=naming;QVERIFY(settings.save(document,{}));
@@ -231,7 +231,9 @@ private slots:
  void preparingAndQueuedOperationsStayBlueBeforeStorageDispatch() {
   QTemporaryDir directory;ProviderRegistry providers;auto provider=std::make_shared<OpaqueProvider>();providers.add("opaque",provider);
   SettingsService settings(directory.filePath("config.json"),[&](auto id,auto value){return providers.validate(id,value);});
-  QVERIFY(settings.save(configuration(directory.path()),{}));Source source;source.payload=textPayload();
+  // One upload at a time: the second action queues behind the first.
+  auto document=configuration(directory.path());auto limits=document["limits"].toObject();limits["concurrentUploads"]=1;document["limits"]=limits;
+  QVERIFY(settings.save(document,{}));Source source;source.payload=textPayload();
   OperationService operations(directory.filePath("data"),settings,providers,source);QTRY_VERIFY(operations.ready());
   TrayController controller(operations,[](const QString&){QFAIL("Queue status must not open a view");},[]{});
   auto* tray=controller.findChild<QSystemTrayIcon*>();const auto blue=tray->icon().pixmap(24,24).toImage();
@@ -295,7 +297,7 @@ private slots:
 
  void multipleProgressUpdatesUseOneBatchAndBoundedRows() {
   QTemporaryDir directory;ProviderRegistry providers;
-  auto provider=std::make_shared<OpaqueProvider>();provider->deferUploads=true;provider->dispatcher=this;providers.add("opaque",provider);
+  auto provider=std::make_shared<OpaqueProvider>();provider->concurrency=8;provider->deferUploads=true;provider->dispatcher=this;providers.add("opaque",provider);
   SettingsService settings(directory.filePath("config.json"),[&](auto id,auto value){return providers.validate(id,value);});
   auto document=configuration(directory.path());auto limits=document["limits"].toObject();limits["concurrentUploads"]=4;document["limits"]=limits;
   auto naming=document["naming"].toObject();naming["mode"]="generated";document["naming"]=naming;
@@ -383,7 +385,7 @@ private slots:
  void errorRecoveryResumesAnotherActiveStorageRequest() {
   QFETCH(bool,storageFailure);
   QTemporaryDir directory;ProviderRegistry providers;
-  auto provider=std::make_shared<OpaqueProvider>();provider->deferUploads=true;provider->dispatcher=this;providers.add("opaque",provider);
+  auto provider=std::make_shared<OpaqueProvider>();provider->concurrency=8;provider->deferUploads=true;provider->dispatcher=this;providers.add("opaque",provider);
   SettingsService settings(directory.filePath("config.json"),[&](auto id,auto value){return providers.validate(id,value);});
   auto document=configuration(directory.path());auto limits=document["limits"].toObject();limits["concurrentUploads"]=2;document["limits"]=limits;
   auto naming=document["naming"].toObject();naming["mode"]="generated";document["naming"]=naming;
