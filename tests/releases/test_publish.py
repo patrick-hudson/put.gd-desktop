@@ -89,13 +89,63 @@ class RemoteDraftTest(unittest.TestCase):
         with patch.object(sys, 'argv', argv), patch.object(publish, 'verify', return_value=release), patch.object(publish, 'verify_remote_draft', return_value={'releaseId': 42}) as remote, patch.object(publish.subprocess, 'run') as mutate:
             publish.main()
             remote.assert_called_once_with('v0.1.1-rc.1', self.directory, self.listed, 'a' * 40)
-            mutate.assert_called_once_with(['gh', 'release', 'edit', 'v0.1.1-rc.1', '--draft=false'], check=True)
-        self.assertTrue(json.loads((self.directory / 'publication.json').read_text())['published'])
+            self.assertEqual(mutate.call_args_list, [
+                call(['gh', 'release', 'edit', 'v0.1.1-rc.1', '--draft=false'], check=True),
+                call(['gh', 'api', 'repos/patrick-hudson/put.gd-site/dispatches', '-f', 'event_type=release-published',
+                      '-f', 'client_payload[tag]=v0.1.1-rc.1', '-F', 'client_payload[prerelease]=true'], check=True)])
+        receipt = json.loads((self.directory / 'publication.json').read_text())
+        self.assertEqual((receipt['published'], receipt['siteNotified']), (True, True))
         with patch.object(sys, 'argv', argv), patch.object(publish, 'verify', return_value=release), patch.object(publish, 'verify_remote_draft', side_effect=ValueError('remote bytes differ')), patch.object(publish.subprocess, 'run') as mutate:
             with self.assertRaisesRegex(ValueError, 'remote bytes differ'):
                 publish.main()
             mutate.assert_not_called()
 
+
+    def test_site_notification_follows_publication_and_never_fails_it(self):
+        for tag, prerelease in [('v0.1.1-rc.1', 'true'), ('v0.1.1', 'false')]:
+            release = {'gitCommit': 'a' * 40}
+            for name in publish.public_inventory(tag) - {'SHA256SUMS'}:
+                (self.directory / name).write_bytes(('synthetic ' + name).encode())
+            (self.directory / 'release-builds.json').write_text(json.dumps({'release': release}))
+            listed = {name: publish.sha256(self.directory / name)
+                      for name in publish.public_inventory(tag) - {'SHA256SUMS'}}
+            (self.directory / 'SHA256SUMS').write_text(''.join(d + '  ' + n + '\n' for n, d in sorted(listed.items())))
+            acceptance = self.directory / 'acceptance.json'
+            acceptance.write_text(json.dumps({'tag': tag, 'gitCommit': 'a' * 40, 'status': 'passed', 'assetSha256': listed}))
+            argv = ['publish.py', '--tag', tag, '--directory', str(self.directory), '--publish', '--acceptance', str(acceptance)]
+            edit = ['gh', 'release', 'edit', tag, '--draft=false']
+            dispatch = ['gh', 'api', 'repos/patrick-hudson/put.gd-site/dispatches', '-f', 'event_type=release-published',
+                        '-f', 'client_payload[tag]=' + tag, '-F', 'client_payload[prerelease]=' + prerelease]
+            receipts = []
+
+            def run(command, **kwargs):
+                if command == dispatch:
+                    receipts.append(json.loads((self.directory / 'publication.json').read_text()))
+                    raise subprocess.CalledProcessError(1, command)
+                return subprocess.CompletedProcess(command, 0)
+
+            with self.subTest(tag=tag, outcome='dispatch fails'), patch.object(sys, 'argv', argv), \
+                 patch.object(publish, 'verify', return_value=release), \
+                 patch.object(publish, 'verify_remote_draft', return_value={'releaseId': 42}), \
+                 patch.object(publish.subprocess, 'run', side_effect=run) as mutate, \
+                 patch.object(sys, 'stderr', io.StringIO()) as stderr:
+                publish.main()
+                self.assertEqual([c.args[0] for c in mutate.call_args_list], [edit, dispatch])
+                self.assertIn('could not notify patrick-hudson/put.gd-site', stderr.getvalue())
+            # The receipt already said published when the notification was attempted.
+            self.assertEqual([r['published'] for r in receipts], [True])
+            receipt = json.loads((self.directory / 'publication.json').read_text())
+            self.assertEqual((receipt['published'], receipt['siteNotified']), (True, False))
+
+            (self.directory / 'publication.json').unlink()
+            with self.subTest(tag=tag, outcome='publication fails'), patch.object(sys, 'argv', argv), \
+                 patch.object(publish, 'verify', return_value=release), \
+                 patch.object(publish, 'verify_remote_draft', return_value={'releaseId': 42}), \
+                 patch.object(publish.subprocess, 'run', side_effect=subprocess.CalledProcessError(1, edit)) as mutate:
+                with self.assertRaises(subprocess.CalledProcessError):
+                    publish.main()
+                self.assertEqual([c.args[0] for c in mutate.call_args_list], [edit])
+            self.assertFalse((self.directory / 'publication.json').exists())
 
     def test_candidate_and_stable_incomplete_inventory_block_public_mutation(self):
         for tag in ('v0.1.1-rc.1', 'v0.1.1'):
