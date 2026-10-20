@@ -113,7 +113,9 @@ int main(int argc, char** argv) {
                                   [&](QJsonObject value, Error e) { result = value; error = e; done = true; });
         spin([&] { return done; }, 300000);
         report({{"step", "testConnection"}, {"uploadStatus", result["uploadStatus"]}, {"cleanupStatus", result["cleanupStatus"]},
-              {"multipart", result["multipart"]}, {"publicReachable", result["publicReachable"]}, {"errorCode", error.code}});
+              {"multipart", result["multipart"]}, {"publicReachable", result["publicReachable"]}, {"errorCode", error.code},
+              {"stage", error.details["requestStage"]}, {"httpStatus", error.details["httpStatus"]}, {"serviceCode", error.details["serviceCode"]}});
+        if (args.value(6) == "--test-only") return error ? 1 : 0;
     }
     const QString root = QDir(args[5]).absolutePath();
     auto document = Settings::defaults();
