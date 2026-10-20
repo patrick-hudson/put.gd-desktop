@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pause/resume A/V runs on a physical desktop, with builds interleaved round by round (stdlib only).
+"""Recording runs on a physical desktop: pause/resume A/V and format/motion sweeps, builds interleaved (stdlib only).
 
 Run it on the host from a plain SSH shell, holding the desktop's lock. It reads
 the desktop session's display, bus and session type from the session process
@@ -8,38 +8,49 @@ the desktop session's display, bus and session type from the session process
 1. opens `cover_player.py play` (magenta, pinned to --output) and fails closed
    unless the player confirms its placement and `cover_player.py precheck`
    finds the output's rectangle covered on the host's loopback VNC tile;
-2. starts the looped `--av-marker` clip in the middle of the cover;
-3. per round and build: starts that build's resident with private config and
-   data directories under --run, records the target (`recording.prepare`,
-   `start`, `pause`, `resume`, `stop`, `saveCopy`, then `cancel`) and quits it;
-4. measures the working clip and the saved copy with --analyzer's
-   `putgd-record --av-sync`, splits the offsets at the pause with `pairTimesS`
-   and reports the capture step (last two pairs before the pause against the
-   first three after it, whole 33.3 ms frames removed) and the export's shift
-   after the pause (`exportMinusWorkingMs`).
+2. starts --video in the middle of the cover: the looped `--av-marker` clip
+   (`marker`), a scrolling pattern (`pattern`), or nothing (`still`, the
+   frozen control for motion scores);
+3. per round, format and build: starts that build's resident with private
+   config and data directories under --run, records the target
+   (`recording.prepare`, `start`, optional `pause`/`resume`, `stop`, `saveCopy`,
+   then `cancel`) and quits it;
+4. measures the working clip and the saved copy: `--motion` always; with the
+   marker and sound, `--av-sync`, split at the pause with `pairTimesS` into the
+   capture step (last two pairs before the pause against the first three after
+   it, less the nearest whole 33.3 ms frame; `rawCaptureStepMs` keeps it) and
+   the export's shift after the pause (`exportMinusWorkingMs`);
+5. with --frames, keeps one frame of each saved copy only if `check-frame`
+   finds it at least half cover colour; otherwise the frame is deleted
+   unopened and so are that recording's clips. A region must therefore
+   straddle the video's edge (for example 0,0,960,540 on 1920x1080).
 
-A clip with fewer than --min-pairs flash/burst pairs didn't show the marker,
-so it is deleted unopened. Clips stay on the host; results.json holds numbers,
-identities, host load and the kernel's GPU hang count for the run.
+A marker clip with fewer than --min-pairs flash/burst pairs didn't show the
+marker, so it is deleted unopened. Clips stay on the host; results.json holds
+numbers, identities, host load and the kernel's GPU hang count for the run.
 
-  av_pause_run.py --run DIR --build LABEL=PATH [--build LABEL=PATH ...] --analyzer APPDIR
-                  [--target monitor|window] [--identity NAME] [--format mp4|webm]
-                  [--rounds 3] [--output NAME] [--vnc-port 5900] [--lead 2]
-                  [--pause-at 8] [--pause-for 3] [--after 8] [--prepare-timeout 120]
+  record_run.py --run DIR --build LABEL=PATH [--build ...] --analyzer APPDIR
+                [--video marker|pattern|still] [--target monitor|region|window]
+                [--rect X,Y,W,H] [--identity NAME] [--format mp4 ...] [--rounds 3]
+                [--output NAME] [--vnc-port 5900] [--lead 2] [--pause-at 8]
+                [--pause-for 3] [--after 8] [--prepare-timeout 120] [--frames]
 
 PATH is an AppImage (extracted once under DIR for its putgd-cli) or a directory
 holding `putgd` and `putgd-cli` (an installed package: /usr/bin). APPDIR is an
-extracted AppImage whose putgd-record reports `pairTimesS` (#143 or later). The
-same data directory serves every build, so one portal approval with restoring
-allowed covers the whole run. When `prepare` waits for a portal picker, the
-driver says so and keeps waiting up to --prepare-timeout.
+extracted AppImage whose putgd-record reports `pairTimesS` (#143 or later).
+--pause-for 0 records without a pause. --real-data-home lets an AppImage use
+KWin's screencast protocol (its entry must be in the user's own data dir). The same data directory serves every
+build, so one portal approval with restoring allowed covers the whole run.
+When `prepare` waits for a portal picker, the driver says so and keeps waiting
+up to --prepare-timeout.
 """
 import argparse
 import hashlib
 import json
 import os
 from pathlib import Path
-import shutil
+import re
+import selectors
 import signal
 import statistics
 import subprocess
@@ -48,6 +59,7 @@ import time
 
 HERE = Path(__file__).resolve().parent
 FRAME_MS = 1000 / 30
+ANIMATIONS = ('gif', 'webp')
 SESSION_VARIABLES = ('DISPLAY', 'XAUTHORITY', 'DBUS_SESSION_BUS_ADDRESS', 'XDG_SESSION_TYPE', 'XDG_CURRENT_DESKTOP',
                      'WAYLAND_DISPLAY', 'XDG_SESSION_DESKTOP', 'DESKTOP_SESSION', 'KDE_FULL_SESSION', 'KDE_SESSION_VERSION')
 
@@ -120,6 +132,22 @@ def sha256(path):
     return digest.hexdigest()
 
 
+def pillow_motion(path, samples=8):
+    """Mean absolute frame difference across an animated image (the analyzer's FFmpeg has no animated WebP decoder)."""
+    from PIL import Image, ImageChops, ImageStat
+    image = Image.open(path)
+    count = getattr(image, 'n_frames', 1)
+    if count < 2:
+        return 0.0
+    picks = sorted({round(i * (count - 1) / (samples - 1)) for i in range(samples)})
+    frames = []
+    for index in picks:
+        image.seek(index)
+        frames.append(image.convert('L').copy())
+    diffs = [statistics.mean(ImageStat.Stat(ImageChops.difference(a, b)).mean) for a, b in zip(frames, frames[1:])]
+    return round(statistics.mean(diffs), 3)
+
+
 class Build:
     def __init__(self, label, path, run):
         self.label, self.path = label, Path(path).resolve()
@@ -134,7 +162,7 @@ class Build:
         else:
             self.launcher = [str(self.path / 'putgd'), '--background']
             self.cli = str(self.path / 'putgd-cli')
-            version = subprocess.run([str(self.path / 'putgd'), '--version'], capture_output=True, text=True).stdout.strip()
+            version = subprocess.run([str(self.path / 'putgd-record'), '--version'], capture_output=True, text=True).stdout.strip()
             self.identity = {'kind': 'installed', 'dir': str(self.path), 'version': version}
 
 
@@ -142,16 +170,25 @@ class Driver:
     def __init__(self, args):
         self.args = args
         self.run = Path(args.run).resolve()
-        for name in ('config', 'data', 'working', 'out', 'logs'):
+        for name in ('config', 'data', 'working', 'out', 'frames', 'logs'):
             (self.run / name).mkdir(parents=True, exist_ok=True)
         os.chmod(self.run, 0o700)
         self.env, self.desktop = session_environment()
         self.env.update(XDG_CONFIG_HOME=str(self.run / 'config'), XDG_DATA_HOME=str(self.run / 'data'),
                         PUTGD_RECORD_KEEP_WORKING=str(self.run / 'working'))
+        self.real_data = None
+        if args.real_data_home:
+            # An AppImage's KWin screencast entry only works in the user's own data directory. put.gd's data
+            # there is moved into the run afterwards, so it must not exist yet.
+            self.real_data = Path(os.environ['HOME']) / '.local/share/putgd'
+            if self.real_data.exists():
+                raise RunError('%s exists; --real-data-home would mix with it' % self.real_data)
+            del self.env['XDG_DATA_HOME']
         self.socket = Path(self.env['XDG_RUNTIME_DIR']) / 'putgd' / 'session.sock'
         self.analyzer = Path(args.analyzer).resolve()
         self.cover = None
         self.resident = None
+        self.cover_rect = None
 
     # -- helpers -------------------------------------------------------------
     def cli(self, build, method, params=None, timeout=60):
@@ -166,24 +203,58 @@ class Driver:
             raise RunError('%s failed: %s %s' % (method, error.get('code'), error.get('message')))
         return reply.get('result') or {}
 
-    def analyze(self, clip):
+    def helper(self, *arguments, timeout=300):
         env = dict(os.environ, APPDIR=str(self.analyzer))
-        result = subprocess.run([str(self.analyzer / 'usr/bin/putgd-record'), '--av-sync', str(clip)], env=env,
-                                capture_output=True, text=True, timeout=300)
+        return subprocess.run([str(self.analyzer / 'usr/bin/putgd-record'), *map(str, arguments)], env=env,
+                              capture_output=True, text=True, timeout=timeout)
+
+    def av_sync(self, clip):
+        result = self.helper('--av-sync', clip)
         try:
             return json.loads(result.stdout)
         except ValueError:
             return {'error': (result.stdout + result.stderr).strip()[-300:]}
 
+    def motion(self, clip):
+        result = self.helper('--motion', clip, 8)
+        found = re.search(r'^motion=([0-9.]+)', result.stdout, re.M)
+        if found:
+            return float(found.group(1))
+        if True:
+            if clip.suffix == '.webp':
+                try:
+                    return pillow_motion(clip)
+                except Exception as error:  # Pillow missing or unreadable file
+                    return 'error: ' + type(error).__name__
+            return 'error: ' + (result.stdout + result.stderr).strip()[-200:]
+
+    def keep_frame(self, clip, name, duration_us):
+        """One frame from the middle of a saved copy, kept only if check-frame finds it half cover colour."""
+        frame = self.run / 'frames' / (name + '.png')
+        if clip.suffix == '.webp':
+            try:
+                from PIL import Image
+                image = Image.open(clip)
+                image.seek(getattr(image, 'n_frames', 1) // 2)
+                image.convert('RGB').save(frame)
+            except Exception as error:
+                return {'ok': False, 'reason': 'no frame: ' + type(error).__name__}
+        elif self.helper('--preview', clip, int((duration_us or 0) / 2), frame).returncode != 0 or not frame.is_file():
+            return {'ok': False, 'reason': 'no frame decoded'}
+        checked = subprocess.run([sys.executable, str(HERE / 'cover_player.py'), 'check-frame', str(frame),
+                                  '--min-fraction', '0.5'], capture_output=True, text=True)
+        return json.loads(checked.stdout or '{"ok": false}')
+
     def wait_state(self, build, rid, wanted, timeout):
-        deadline, said = time.monotonic() + timeout, False
-        while time.monotonic() < deadline:
+        started = time.monotonic()
+        said = False
+        while time.monotonic() - started < timeout:
             info = self.cli(build, 'recording.inspect', {'id': rid})
-            if info.get('error'):
+            if (info.get('error') or {}).get('code'):
                 raise RunError('recording error: %s' % json.dumps(info['error']))
             if info.get('state') in wanted:
                 return info
-            if not said and info.get('state') == 'preparing' and time.monotonic() > deadline - timeout + 5:
+            if not said and info.get('state') == 'preparing' and time.monotonic() - started > 5:
                 log('prepare is waiting (a portal picker may be open on the desktop)')
                 said = True
             time.sleep(0.25)
@@ -191,37 +262,42 @@ class Driver:
 
     # -- cover ---------------------------------------------------------------
     def open_cover(self):
-        marker = self.run / 'marker.mkv'
-        if not marker.is_file():
-            env = dict(os.environ, APPDIR=str(self.analyzer))
-            subprocess.run([str(self.analyzer / 'usr/bin/putgd-record'), '--av-marker', str(marker), '60'], env=env,
-                           check=True, capture_output=True, timeout=300)
-        command = [sys.executable, str(HERE / 'cover_player.py'), 'play', '--media', str(marker)]
-        if self.args.output:
-            command += ['--output', self.args.output]
-        if self.args.audio_device:
-            command += ['--audio-device', self.args.audio_device]
-        self.cover = subprocess.Popen(command, env=self.env, stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True,
+        a = self.args
+        command = [sys.executable, str(HERE / 'cover_player.py'), 'play']
+        if a.video == 'marker':
+            marker = self.run / 'marker.mkv'
+            if not marker.is_file():
+                self.helper('--av-marker', marker, 60).check_returncode()
+            command += ['--media', str(marker)]
+        elif a.video == 'pattern':
+            command += ['--pattern']
+        if a.output:
+            command += ['--output', a.output]
+        if a.audio_device:
+            command += ['--audio-device', a.audio_device]
+        self.cover = subprocess.Popen(command, env=dict(self.env, GTK_USE_PORTAL='0', NO_AT_BRIDGE='1'),
+                                      stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True,
                                       stderr=open(self.run / 'logs' / 'cover.log', 'a'), start_new_session=True)
         state = self.cover_line(20)
         if not state.get('ok') or state.get('state') != 'covered':
             raise RunError('cover not placed: %s' % json.dumps(state))
+        self.cover_rect = state['rect']
         time.sleep(1.5)
-        precheck = [sys.executable, str(HERE / 'cover_player.py'), 'precheck', '--port', str(self.args.vnc_port)]
-        if self.args.output:
-            precheck += ['--output', self.args.output]
+        precheck = [sys.executable, str(HERE / 'cover_player.py'), 'precheck', '--port', str(a.vnc_port)]
+        if a.output:
+            precheck += ['--output', a.output]
         checked = subprocess.run(precheck, env=self.env, capture_output=True, text=True, timeout=60)
         report = json.loads(checked.stdout or '{}')
         if checked.returncode != 0:
             raise RunError('cover precheck failed, nothing recorded: %s' % json.dumps(report))
-        self.cover.stdin.write('media\n'); self.cover.stdin.flush()
-        playing = self.cover_line(20)
-        if playing.get('state') != 'playing':
-            raise RunError('marker not playing: %s' % json.dumps(playing))
-        return {'placed': state, 'precheck': report}
+        if a.video != 'still':
+            self.cover.stdin.write('media\n'); self.cover.stdin.flush()
+            playing = self.cover_line(30)
+            if playing.get('state') != 'playing':
+                raise RunError('video not playing: %s' % json.dumps(playing))
+        return {'placed': state, 'precheck': report, 'video': a.video}
 
     def cover_line(self, timeout):
-        import selectors
         selector = selectors.DefaultSelector()
         selector.register(self.cover.stdout, selectors.EVENT_READ)
         if not selector.select(timeout):
@@ -248,10 +324,20 @@ class Driver:
         deadline = time.monotonic() + 60
         while time.monotonic() < deadline:
             try:
-                return self.cli(build, 'recording.capabilities', timeout=40)
+                caps = self.cli(build, 'recording.capabilities', timeout=40)
+                break
             except (RunError, subprocess.TimeoutExpired):
                 time.sleep(0.5)
-        raise RunError('resident did not answer')
+        else:
+            raise RunError('resident did not answer')
+        # A fresh configuration has no output; keep local copies inside the run, never in the user's Documents.
+        settings = self.cli(build, 'settings.get')
+        archive = (settings.get('document') or {}).get('archive') or {}
+        root = str(self.run / 'archive')
+        if not archive.get('keepUploads') or archive.get('root') != root:
+            self.cli(build, 'settings.patch', {'patch': {'archive': {'keepUploads': True, 'root': root}},
+                                               'expectedRevision': (settings.get('metadata') or {}).get('observedRevision')})
+        return caps
 
     def stop_resident(self, build):
         if self.resident is None:
@@ -270,55 +356,75 @@ class Driver:
             time.sleep(0.2)
         self.resident = None
 
-    # -- one round -----------------------------------------------------------
-    def record(self, build, number):
+    # -- one recording -------------------------------------------------------
+    def record(self, build, number, fmt):
         a = self.args
-        result = {'build': build.label, 'round': number, 'started': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}
+        name = '%s-%s-%d' % (build.label, fmt, number)
+        result = {'build': build.label, 'round': number, 'format': fmt,
+                  'started': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}
         caps = self.start_resident(build)
+        copy = self.run / 'out' / ('%s.%s' % (name, fmt))
         try:
             result['acquisition'] = caps.get('acquisition')
             target = {'kind': a.target}
             if a.identity:
                 target['identity'] = a.identity
-            prepared = self.cli(build, 'recording.prepare', {'target': target, 'format': a.format, 'fps': 30,
-                                                              'audio': {'system': True}})
-            rid = prepared['id']
-            self.wait_state(build, rid, ('ready',), a.prepare_timeout)
+            if a.rect:
+                target['rect'] = a.rect
+            sound = fmt not in ANIMATIONS
+            prepared = self.cli(build, 'recording.prepare', {'target': target, 'format': fmt, 'fps': 30,
+                                                              'audio': {'system': sound}})
+            rid = prepared['recordingId']
+            ready = self.wait_state(build, rid, ('ready',), a.prepare_timeout)
+            result['canvas'] = ready.get('canvas')
             time.sleep(a.lead)
             self.cli(build, 'recording.start', {'id': rid})
             started = time.monotonic()
             time.sleep(a.pause_at)
-            self.cli(build, 'recording.pause', {'id': rid})
-            paused = time.monotonic()
-            time.sleep(a.pause_for)
-            self.cli(build, 'recording.resume', {'id': rid})
+            if a.pause_for > 0:
+                self.cli(build, 'recording.pause', {'id': rid})
+                result['pauseClipS'] = round(time.monotonic() - started, 3)
+                time.sleep(a.pause_for)
+                self.cli(build, 'recording.resume', {'id': rid})
             time.sleep(a.after)
             stopped = self.cli(build, 'recording.stop', {'id': rid}, timeout=60)
             result.update(load=os.getloadavg()[0], durationUs=stopped.get('durationUs'), encoder=stopped.get('encoder'),
-                          audioEncoder=stopped.get('audioEncoder'), pauseClipS=round(paused - started, 3))
-            copy = self.run / 'out' / ('%s-%d.%s' % (build.label, number, a.format))
+                          audioEncoder=stopped.get('audioEncoder'))
             self.cli(build, 'recording.saveCopy', {'id': rid, 'path': str(copy), 'overwrite': True})
-            done = self.wait_state(build, rid, ('reviewing',), 300)
+            done = self.wait_state(build, rid, ('reviewing',), 600)
             result['export'] = (done.get('lastExport') or {}).get('status')
             self.cli(build, 'recording.cancel', {'id': rid})
         finally:
             self.stop_resident(build)
         working = self.run / 'working' / (rid + '.mkv')
         result['clips'] = {}
-        for name, clip in (('working', working), ('export', copy)):
-            measured = self.analyze(clip) if clip.is_file() else {'error': 'missing'}
-            if measured.get('pairs', 0) < a.min_pairs:
-                clip.unlink(missing_ok=True)  # no marker: the clip may show something else
-                measured['destroyed'] = True
-            result['clips'][name] = {k: measured.get(k) for k in ('pairs', 'medianMs', 'spreadMs', 'offsetsMs', 'pairTimesS',
-                                                                 'error', 'destroyed') if k in measured}
-            result['clips'][name]['file'] = clip.name
+        for kind, clip in (('working', working), ('export', copy)):
+            entry = {'file': clip.name}
+            if not clip.is_file():
+                entry['error'] = 'missing'
+            else:
+                entry.update(bytes=clip.stat().st_size, motion=self.motion(clip))
+                if a.video == 'marker' and sound:
+                    measured = self.av_sync(clip)
+                    entry.update({k: measured[k] for k in ('pairs', 'medianMs', 'spreadMs', 'offsetsMs', 'pairTimesS', 'error')
+                                  if k in measured})
+                    if measured.get('pairs', 0) < a.min_pairs:
+                        clip.unlink()  # no marker: the clip may show something else
+                        entry['destroyed'] = True
+            result['clips'][kind] = entry
         w, e = result['clips']['working'], result['clips']['export']
-        if w.get('pairTimesS'):
+        if 'pauseClipS' in result and w.get('pairTimesS'):
             result['captureStepMs'] = capture_step(w['pairTimesS'], w['offsetsMs'], result['pauseClipS'])
             result['rawCaptureStepMs'] = capture_step(w['pairTimesS'], w['offsetsMs'], result['pauseClipS'], raw=True)
-        if w.get('pairTimesS') and e.get('pairTimesS'):
-            result['exportMinusWorkingMs'] = export_shift(w, e, result['pauseClipS'])
+            if e.get('pairTimesS'):
+                result['exportMinusWorkingMs'] = export_shift(w, e, result['pauseClipS'])
+        if a.frames and copy.is_file():
+            result['frame'] = self.keep_frame(copy, name, result.get('durationUs'))
+            if not result['frame'].get('ok'):
+                # The cover didn't fill the recording: its clips may show something else.
+                for kind, clip in (('working', working), ('export', copy)):
+                    clip.unlink(missing_ok=True)
+                    result['clips'][kind]['destroyed'] = True
         return result
 
     def gpu_hangs(self, since):
@@ -331,32 +437,49 @@ class Driver:
         since = time.strftime('%Y-%m-%d %H:%M:%S')
         builds = [Build(*spec.split('=', 1), self.run) for spec in a.build]
         report = {'host': os.uname().nodename, 'kernel': os.uname().release, 'desktop': self.desktop,
-                  'session': self.env.get('XDG_SESSION_TYPE'), 'target': a.target, 'format': a.format,
-                  'timing': {'lead': a.lead, 'pauseAt': a.pause_at, 'pauseFor': a.pause_for, 'after': a.after},
+                  'session': self.env.get('XDG_SESSION_TYPE'), 'target': a.target, 'rect': a.rect, 'formats': a.format,
+                  'video': a.video, 'timing': {'lead': a.lead, 'pauseAt': a.pause_at, 'pauseFor': a.pause_for, 'after': a.after},
                   'builds': {b.label: b.identity for b in builds}, 'analyzer': str(self.analyzer), 'rounds': []}
         out = self.run / 'results.json'
         try:
+            # A resident's first start with a fresh configuration can open a window; let that happen before the cover is up.
+            for build in builds:
+                self.start_resident(build)
+                self.stop_resident(build)
             report['cover'] = self.open_cover()
             for number in range(1, a.rounds + 1):
-                for build in builds:
-                    log('round %d %s' % (number, build.label))
-                    try:
-                        entry = self.record(build, number)
-                    except (RunError, subprocess.TimeoutExpired) as error:
-                        entry = {'build': build.label, 'round': number, 'error': str(error)}
-                        log('failed: %s' % error)
-                    report['rounds'].append(entry)
-                    out.write_text(json.dumps(report, indent=1) + '\n')
-                    log(json.dumps({k: entry.get(k) for k in ('build', 'round', 'acquisition', 'encoder', 'captureStepMs',
-                                                               'exportMinusWorkingMs', 'error', 'load')}))
+                for fmt in a.format:
+                    for build in builds:
+                        log('round %d %s %s' % (number, fmt, build.label))
+                        try:
+                            entry = self.record(build, number, fmt)
+                        except (RunError, subprocess.TimeoutExpired) as error:
+                            entry = {'build': build.label, 'round': number, 'format': fmt, 'error': str(error)}
+                            log('failed: %s' % error)
+                        report['rounds'].append(entry)
+                        out.write_text(json.dumps(report, indent=1) + '\n')
+                        summary = {k: entry.get(k) for k in ('build', 'format', 'round', 'acquisition', 'encoder',
+                                                             'captureStepMs', 'exportMinusWorkingMs', 'error', 'load')}
+                        summary['motion'] = [c.get('motion') for c in entry.get('clips', {}).values()]
+                        summary['medianMs'] = [c.get('medianMs') for c in entry.get('clips', {}).values()]
+                        log(json.dumps(summary))
         except RunError as error:
             report['error'] = str(error)
             log('stopped: %s' % error)
         finally:
             self.close_cover()
+            if self.real_data is not None and self.real_data.exists():
+                self.real_data.rename(self.run / 'real-data-putgd')
             report['gpuHangs'] = self.gpu_hangs(since)
             out.write_text(json.dumps(report, indent=1) + '\n')
         return 1 if report.get('error') else 0
+
+
+def parse_rect(text):
+    parts = [int(p) for p in text.split(',')]
+    if len(parts) != 4:
+        raise argparse.ArgumentTypeError('rectangle must be X,Y,W,H')
+    return parts
 
 
 def main(argv=None):
@@ -364,9 +487,11 @@ def main(argv=None):
     parser.add_argument('--run', required=True)
     parser.add_argument('--build', action='append', required=True, help='LABEL=APPIMAGE or LABEL=BINDIR')
     parser.add_argument('--analyzer', required=True, help='extracted AppImage with a putgd-record that reports pairTimesS')
-    parser.add_argument('--target', choices=('monitor', 'window'), default='monitor')
+    parser.add_argument('--video', choices=('marker', 'pattern', 'still'), default='marker')
+    parser.add_argument('--target', choices=('monitor', 'region', 'window'), default='monitor')
+    parser.add_argument('--rect', type=parse_rect)
     parser.add_argument('--identity')
-    parser.add_argument('--format', choices=('mp4', 'webm'), default='mp4')
+    parser.add_argument('--format', nargs='+', choices=('mp4', 'webm', 'gif', 'webp'), default=['mp4'])
     parser.add_argument('--rounds', type=int, default=3)
     parser.add_argument('--output')
     parser.add_argument('--audio-device')
@@ -377,6 +502,9 @@ def main(argv=None):
     parser.add_argument('--after', type=float, default=8)
     parser.add_argument('--prepare-timeout', type=float, default=120)
     parser.add_argument('--min-pairs', type=int, default=8)
+    parser.add_argument('--frames', action='store_true', help='keep one cover-checked frame of each saved copy')
+    parser.add_argument('--real-data-home', action='store_true',
+                        help="use the user's data directory (an AppImage's KWin screencast entry); moved into --run afterwards")
     return Driver(parser.parse_args(argv)).main()
 
 

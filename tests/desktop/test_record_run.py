@@ -1,10 +1,10 @@
-"""Pause A/V driver contracts: the split at the pause and the step/shift arithmetic; no desktop or build is used."""
+"""Recording run driver contracts: the split at the pause and the step/shift arithmetic; no desktop or build is used."""
 from pathlib import Path
 import sys
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'tools' / 'lab'))
-import av_pause_run as driver
+import record_run as driver
 
 TIMES = [0.5 + i for i in range(16)]  # flashes once a second; the pause sits at 8.0 s of clip time
 

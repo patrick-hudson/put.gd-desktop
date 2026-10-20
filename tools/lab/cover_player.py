@@ -48,6 +48,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 
@@ -181,7 +182,7 @@ def coverage(width, height, pixels, layout, rect=None, color=MAGENTA, tolerance=
 
 
 def read_frame(path):
-    """(width, height, rgb bytes) of a binary PPM, or of the first frame ffmpeg decodes from any other file."""
+    """(width, height, rgb bytes) of a binary PPM, or of the first frame ffmpeg (else Pillow) decodes from any other file."""
     data = Path(path).read_bytes()
     if data.startswith(b'P6'):
         fields, pos = [], 2
@@ -199,6 +200,10 @@ def read_frame(path):
         if maxval != 255:
             raise ValueError('only 8-bit PPM frames are supported')
         return width, height, data[pos + 1:pos + 1 + width * height * 3]
+    if shutil.which('ffmpeg') is None:
+        from PIL import Image  # hosts without FFmpeg (m74) have Pillow
+        image = Image.open(path).convert('RGB')
+        return image.width, image.height, image.tobytes()
     probe = subprocess.run(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height',
                             '-of', 'csv=p=0', str(path)], capture_output=True, text=True, check=True)
     width, height = (int(v) for v in probe.stdout.split(',')[:2])
