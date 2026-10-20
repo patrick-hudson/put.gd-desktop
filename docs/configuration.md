@@ -214,8 +214,15 @@ uses virtual only for an AWS host with an undotted bucket. Path mode is required
 the development dotted bucket. Validation performs no network or secret-store IO.
 For S3-compatible services, the endpoint must support conditional writes. Cloudflare
 R2 works with its account endpoint, region `auto`, ACL omit and the bucket's r2.dev
-or custom domain as `publicUrlBase`. Backblaze B2 lacks conditional writes, so Test
-connection fails there. See [S3-compatible services](s3.md#s3-compatible-services).
+or custom domain as `publicUrlBase`. Backblaze B2's S3 API lacks conditional writes,
+so Test connection fails there; use the `backblaze-b2` provider instead. See
+[S3-compatible services](s3.md#s3-compatible-services).
+
+`backblaze-b2` profiles (#282) hold exactly `apiUrl`, `bucket`, `objectPrefix`,
+`linkMode` (`public` or `authorized`), `linkValidityDays` (1–7), `publicUrlBase`
+(null or HTTPS, public links only), `connectTimeoutMs` and `requestTimeoutMs`.
+Credentials are a keychain or session reference to the application key ID and key.
+See [Backblaze B2](b2.md).
 
 `connectTimeoutMs` bounds connection setup. `requestTimeoutMs` maps to the SDK whole
 Curl-request timeout (`httpRequestTimeoutMs`). `lowSpeedBytesPerSecond` maps to the
