@@ -293,11 +293,13 @@ QJsonObject UiProcessController::status()const{
  return {{"state",state},{"pid",process_?process_->processId():0},{"checkpointBytes",stateBytes_},{"lastExit",lastExit_}};
 }
 QJsonObject UiProcessController::viewState()const{
- // Only the derived capture-routing presentation leaves the last accepted
- // checkpoint; drafts and destination editors stay with the helper.
+ // Only the derived capture-routing and appearance presentations leave the
+ // last accepted checkpoint; drafts and destination editors stay with the helper.
  QJsonObject result{{"state",status()["state"]}};
  const auto settings=state_["settings"].toObject();
  if(settings.contains("captureRouting"))result["settings"]=QJsonObject{{"section",settings["section"]},{"captureRouting",settings["captureRouting"]}};
+ // The appearance in use (#60): setting, desktop preference, scheme and tokens.
+ if(state_.contains("appearance"))result["appearance"]=state_["appearance"];
  return result;
 }
 }

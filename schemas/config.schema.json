@@ -896,6 +896,34 @@
           },
           "description": "Custom colors recently picked in the editor, most recent first. Written by put.gd."
         },
+        "appearance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["theme"],
+          "description": "The settings and history windows' colours. Omitted means {\"theme\": \"system\"}.",
+          "properties": {
+            "theme": {
+              "enum": ["system", "dark", "light"],
+              "default": "system",
+              "description": "system follows the desktop's light or dark preference live; dark and light fix the scheme. The tray icon follows the panel's colour either way."
+            },
+            "accent": {
+              "type": "null",
+              "default": null,
+              "description": "Reserved for a custom accent colour (phase 2 of #60). null is the built-in accent."
+            },
+            "overrides": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["dark", "light"],
+              "description": "Reserved for per-colour overrides of each scheme (phase 2 of #60). Both stay empty until then.",
+              "properties": {
+                "dark": {"type": "object", "maxProperties": 0},
+                "light": {"type": "object", "maxProperties": 0}
+              }
+            }
+          }
+        },
         "diagnostics": {
           "type": "object",
           "additionalProperties": false,

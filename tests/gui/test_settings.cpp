@@ -507,6 +507,18 @@ private slots:
  void perActionLocalOutputAndClipboardDeliveryRemainIndependent(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});auto doc=Settings::developmentTemplate();auto archive=doc["archive"].toObject();archive["keepUploads"]=true;doc["archive"]=archive;QVERIFY(service.save(doc,{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);auto* clipboard=window.findChild<QComboBox*>("uploadClipboardBehavior");clipboard->setCurrentIndex(clipboard->findData("list"));window.findChild<QCheckBox*>("useDefaultRegion")->setChecked(false);auto* destination=window.findChild<QComboBox*>("profileRegion");destination->setCurrentIndex(0);QTRY_COMPARE(service.document()["preferences"].toObject()["uploadClipboardBehavior"].toString(),QString("list"));QTRY_COMPARE(service.snapshot().actions["region"].destination,QString("local"));QCOMPARE(service.snapshot().actions["desktop"].destination,QString("upload"));QVERIFY(service.snapshot().archive.keepUploads);
  }
+ // #60: General → Appearance saves preferences.appearance.theme; an untouched
+ // config keeps no appearance object.
+ void appearanceThemeIsSavedAndReloaded(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(Settings::developmentTemplate(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);
+  auto* theme=window.findChild<QComboBox*>("appearanceTheme");QVERIFY(theme);QCOMPARE(theme->currentData().toString(),QString("system"));QCOMPARE(theme->count(),3);
+  window.findChild<QCheckBox*>("notifications")->setChecked(false);QTRY_VERIFY(!service.document()["preferences"].toObject()["notifications"].toBool());QVERIFY(!service.document()["preferences"].toObject().contains("appearance"));
+  theme->setCurrentIndex(theme->findData("light"));QTRY_COMPARE(service.document()["preferences"].toObject()["appearance"].toObject()["theme"].toString(),QString("light"));QCOMPARE(service.snapshot().appearanceTheme,QString("light"));
+  // A draft carrying the appearance object still checkpoints (view-state allow-list).
+  const auto state=window.settings()->saveViewState();QVERIFY(state["draft"].toObject()["preferences"].toObject().contains("appearance"));QVERIFY(!validateUiState({{"schemaVersion",1},{"settings",state}}));
+  auto doc=service.document();auto preferences=doc["preferences"].toObject();preferences["appearance"]=QJsonObject{{"theme","dark"}};doc["preferences"]=preferences;QVERIFY(service.save(doc,service.revision()));
+  fixture.session.invalidate();QTRY_COMPARE(theme->currentData().toString(),QString("dark"));
+ }
  void newDestinationIsDraftUntilValidAndCannotBecomeDefaultWithEmptyBucket(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();QVERIFY(!window.findChild<QPushButton*>("makeDefaultDestination")->isEnabled());window.findChild<QLineEdit*>("s3Bucket")->setText("a");QTest::qWait(600);QVERIFY(service.revision().isEmpty());QVERIFY(window.findChild<QLineEdit*>("s3Bucket")->property("invalid").toBool());
  }

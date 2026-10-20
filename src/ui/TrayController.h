@@ -1,5 +1,6 @@
 #pragma once
 #include "app/OperationService.h"
+#include "PanelTone.h"
 #include <QObject>
 #include <QElapsedTimer>
 #include <QColor>
@@ -44,6 +45,8 @@ public:
  void saveDiagnostics(const QString& operationId);
  // "Diagnostics package saved" with a Show in folder button.
  void notifyDiagnosticsSaved(const QJsonObject& bundleResult);
+ // The panel tone the tray tint follows, and which input decided it (#60).
+ QJsonObject trayTint()const;
  // Opens the file manager with a saved package selected (FileManager1.ShowItems),
  // or its folder when no file manager answers. Only put.gd's own package names.
  static Error revealPackage(const QString& path);
@@ -67,7 +70,10 @@ private:
  bool uploadVisible_=false,uploadCompleted_=false;
  int pendingUploadFinishes_=0;
  bool errorRed_=false;
- QColor iconColor_=QColor("#9bbcff");
+ // Unset until the first refresh, which tints for the panel.
+ QColor iconColor_;
+ PanelTone panel_;
+ void retintMenu();
  int iconPercent_=-1;
  QString activityText_;
  QSet<QString> activeUploads_;

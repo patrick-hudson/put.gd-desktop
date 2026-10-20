@@ -37,6 +37,19 @@ private slots:
         QJsonArray seven;for(int i=0;i<7;++i)seven.append(QString("#00000%1").arg(i));preferences["editorRecentColors"]=seven;doc["preferences"]=preferences;QVERIFY(putgd::Settings::validate(doc,validator));
         preferences.remove("editorRecentColors");preferences["unlockCredentialsAtStartup"]="yes";doc["preferences"]=preferences;QVERIFY(putgd::Settings::validate(doc,validator));
     }
+    // #60: an older config without appearance loads as "system"; the accent and
+    // overrides keep their shape but stay at the built-in values until phase 2.
+    void appearanceThemeIsOptionalAndCustomColoursAreReserved() {
+        auto doc=putgd::Settings::developmentTemplate();auto validator=[](const QString&,const QJsonObject&){return putgd::Error{};};
+        QVERIFY(!doc["preferences"].toObject().contains("appearance"));QCOMPARE(putgd::Settings::fromValidated(doc).appearanceTheme,QString("system"));
+        auto preferences=doc["preferences"].toObject();
+        for(const auto* theme:{"system","dark","light"}){preferences["appearance"]=QJsonObject{{"theme",theme}};doc["preferences"]=preferences;QVERIFY(!putgd::Settings::validate(doc,validator));QCOMPARE(putgd::Settings::fromValidated(doc).appearanceTheme,QString(theme));}
+        preferences["appearance"]=QJsonObject{{"theme","light"},{"accent",QJsonValue::Null},{"overrides",QJsonObject{{"dark",QJsonObject{}},{"light",QJsonObject{}}}}};doc["preferences"]=preferences;QVERIFY(!putgd::Settings::validate(doc,validator));
+        const QList<QJsonObject> invalid{{},{{"theme","auto"}},{{"theme",true}},{{"theme","dark"},{"accent","#123456"}},{{"theme","dark"},{"overrides",QJsonObject{{"dark",QJsonObject{{"accent","#123456"}}},{"light",QJsonObject{}}}}},
+            {{"theme","dark"},{"overrides",QJsonObject{{"dark",QJsonObject{}}}}},{{"theme","dark"},{"colour","red"}}};
+        for(const auto& appearance:invalid){preferences["appearance"]=appearance;doc["preferences"]=preferences;const auto error=putgd::Settings::validate(doc,validator);QCOMPARE(error.code,QString("config_invalid"));QCOMPARE(error.details["path"].toString(),QString("/preferences/appearance"));}
+        preferences["appearance"]="dark";doc["preferences"]=preferences;QVERIFY(putgd::Settings::validate(doc,validator));
+    }
     void captureDefaultFollowsFutureChangesWithoutChangingExplicitExceptions() {
         auto doc=putgd::Settings::developmentTemplate();
         doc["captureDefaults"]=QJsonObject{{"destination","upload"},{"profileId","development-s3"},{"publicationMode","private"}};

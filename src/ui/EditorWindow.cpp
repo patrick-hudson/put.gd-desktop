@@ -1,4 +1,5 @@
 #include "EditorWindow.h"
+#include "Theme.h"
 #include "RedesignTheme.h"
 #include "VisualStyle.h"
 #include "core/Settings.h"
@@ -27,26 +28,27 @@
 namespace putgd {
 using editor::Tool;
 namespace {
-const QString iconColor("#9bbcff");
-// Scoped additions to the redesign theme for the editor's compact controls.
+// Scoped additions to the redesign theme for the editor's compact controls,
+// in the Theme tokens (#60). The custom-colour swatch's rainbow shows colours
+// to pick from, so it stays the same in every scheme.
 const char* editorStyle=R"QSS(
-QWidget#editorToolbar, QWidget#editorOptions, QWidget#editorFooter { background: #181B21; }
-QWidget#editorToolbar { border-bottom: 1px solid #2A2F38; }
-QWidget#editorOptions { border-bottom: 1px solid #2A2F38; }
-QWidget#editorFooter { border-top: 1px solid #2A2F38; }
+QWidget#editorToolbar, QWidget#editorOptions, QWidget#editorFooter { background: %surface%; }
+QWidget#editorToolbar { border-bottom: 1px solid %border%; }
+QWidget#editorOptions { border-bottom: 1px solid %border%; }
+QWidget#editorFooter { border-top: 1px solid %border%; }
 QToolButton[visualRole="tool"] { padding: 4px 8px; min-width: 30px; }
-QToolButton[visualRole="tool"]:checked { background: #232838; border-color: #6EA8FE; }
-QToolButton[visualRole="swatch"] { min-width: 18px; max-width: 18px; min-height: 18px; max-height: 18px; padding: 0; border-radius: 10px; border: 2px solid #343A45; }
-QToolButton[visualRole="swatch"]:checked { border: 2px solid #E7E9EE; }
-QToolButton[visualRole="swatch"]:focus { border: 2px solid #6EA8FE; padding: 0; }
-QToolButton[visualRole="customSwatch"] { min-width: 18px; max-width: 18px; min-height: 18px; max-height: 18px; padding: 0; border-radius: 10px; border: 2px solid #343A45;
+QToolButton[visualRole="tool"]:checked { background: %selected%; border-color: %accent%; }
+QToolButton[visualRole="swatch"] { min-width: 18px; max-width: 18px; min-height: 18px; max-height: 18px; padding: 0; border-radius: 10px; border: 2px solid %borderStrong%; }
+QToolButton[visualRole="swatch"]:checked { border: 2px solid %text%; }
+QToolButton[visualRole="swatch"]:focus { border: 2px solid %accent%; padding: 0; }
+QToolButton[visualRole="customSwatch"] { min-width: 18px; max-width: 18px; min-height: 18px; max-height: 18px; padding: 0; border-radius: 10px; border: 2px solid %borderStrong%;
  background: qconicalgradient(cx:0.5, cy:0.5, angle:0, stop:0 #ef4444, stop:0.17 #f59e0b, stop:0.33 #facc15, stop:0.5 #22c55e, stop:0.67 #3b82f6, stop:0.83 #a855f7, stop:1 #ef4444); }
-QToolButton[visualRole="customSwatch"]:hover, QToolButton[visualRole="customSwatch"]:focus { border: 2px solid #6EA8FE; }
-QFrame[visualRole="toolSeparator"] { background: #2A2F38; border: none; min-width: 1px; max-width: 1px; margin: 4px 6px; }
-QSlider::groove:horizontal { height: 4px; background: #343A45; border-radius: 2px; }
-QSlider::sub-page:horizontal { background: #6EA8FE; border-radius: 2px; }
-QSlider::handle:horizontal { background: #E7E9EE; width: 14px; margin: -6px 0; border-radius: 7px; }
-QLineEdit#annotationText { background: #20242C; border: 2px solid #6EA8FE; border-radius: 6px; padding: 2px 6px; }
+QToolButton[visualRole="customSwatch"]:hover, QToolButton[visualRole="customSwatch"]:focus { border: 2px solid %accent%; }
+QFrame[visualRole="toolSeparator"] { background: %border%; border: none; min-width: 1px; max-width: 1px; margin: 4px 6px; }
+QSlider::groove:horizontal { height: 4px; background: %borderStrong%; border-radius: 2px; }
+QSlider::sub-page:horizontal { background: %accent%; border-radius: 2px; }
+QSlider::handle:horizontal { background: %text%; width: 14px; margin: -6px 0; border-radius: 7px; }
+QLineEdit#annotationText { background: %surfaceRaised%; border: 2px solid %accent%; border-radius: 6px; padding: 2px 6px; }
 )QSS";
 QFrame* separator(QWidget* parent){auto* line=new QFrame(parent);VisualStyle::role(line,"toolSeparator");return line;}
 QWidget* row(QWidget* parent,QHBoxLayout*& layout){auto* widget=new QWidget(parent);layout=new QHBoxLayout(widget);layout->setContentsMargins(0,0,0,0);layout->setSpacing(6);return widget;}
@@ -64,7 +66,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  const Entry entries[]={{Tool::Select,"select","Select and move","V"},{Tool::Redact,"redact","Redact — opaque black box","X"},{Tool::Blur,"blur","Blur — visual effect only","B"},{Tool::Crop,"crop","Crop","C"},
   {Tool::Arrow,"annotate-arrow","Arrow","A"},{Tool::Rectangle,"rectangle","Rectangle","R"},{Tool::Highlight,"highlight","Highlight","H"},{Tool::Text,"text","Text","T"}};
  for(const auto& entry:entries){
-  auto* button=new QToolButton(toolbar);button->setCheckable(true);button->setIcon(VisualStyle::icon(entry.icon,iconColor));button->setIconSize(QSize(20,20));
+  auto* button=new QToolButton(toolbar);button->setCheckable(true);button->setIcon(VisualStyle::icon(entry.icon));button->setIconSize(QSize(20,20));
   const auto label=QString::fromUtf8(entry.label);button->setToolTip(QString("%1 (%2)").arg(label,entry.key));button->setAccessibleName(label);
   VisualStyle::role(button,"tool");tools_->addButton(button,int(entry.tool));toolButtons_.insert(int(entry.tool),button);tools->addWidget(button);
   auto* shortcut=new QShortcut(QKeySequence(QString::fromLatin1(entry.key)),this);shortcut->setContext(Qt::WindowShortcut);
@@ -72,7 +74,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
   if(entry.tool==Tool::Crop)tools->addWidget(separator(toolbar));
  }
  tools->addWidget(separator(toolbar));
- auto toolButton=[&](const char* icon,const QString& tip){auto* button=new QToolButton(toolbar);button->setIcon(VisualStyle::icon(icon,iconColor));button->setIconSize(QSize(20,20));button->setToolTip(tip);button->setAccessibleName(tip);VisualStyle::role(button,"tool");tools->addWidget(button);return button;};
+ auto toolButton=[&](const char* icon,const QString& tip){auto* button=new QToolButton(toolbar);button->setIcon(VisualStyle::icon(icon));button->setIconSize(QSize(20,20));button->setToolTip(tip);button->setAccessibleName(tip);VisualStyle::role(button,"tool");tools->addWidget(button);return button;};
  undo_=toolButton("undo","Undo (Ctrl+Z)");redo_=toolButton("redo","Redo (Ctrl+Shift+Z)");
  tools->addWidget(separator(toolbar));
  auto* fit=toolButton("zoom-fit","Fit to window (Ctrl+0)");auto* actual=toolButton("zoom-actual","Actual size, 100% (Ctrl+1)");
@@ -123,12 +125,14 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  auto* actions=new QHBoxLayout(footer);actions->setContentsMargins(12,10,12,10);actions->setSpacing(8);
  message_=new QLabel(footer);message_->hide();actions->addWidget(message_,1);
  actions->addStretch(1);
- save_=new QPushButton("Save a copy…",footer);save_->setIcon(VisualStyle::icon("save",iconColor));save_->setToolTip("Save the edited image to a file (Ctrl+S)");actions->addWidget(save_);
+ save_=new QPushButton("Save a copy…",footer);save_->setIcon(VisualStyle::icon("save"));save_->setToolTip("Save the edited image to a file (Ctrl+S)");actions->addWidget(save_);
  cancel_=new QPushButton("Cancel",footer);cancel_->setToolTip("Discard this edit without uploading");actions->addWidget(cancel_);
- upload_=new QPushButton("Upload",footer);upload_->setIcon(VisualStyle::icon("upload","#111317"));VisualStyle::role(upload_,"primary");upload_->setToolTip("Upload the edited image (Ctrl+Enter)");upload_->setAutoDefault(false);actions->addWidget(upload_);
+ upload_=new QPushButton("Upload",footer);upload_->setIcon(VisualStyle::icon("upload",Theme::current().onAccent));VisualStyle::role(upload_,"primary");upload_->setToolTip("Upload the edited image (Ctrl+Enter)");upload_->setAutoDefault(false);actions->addWidget(upload_);
  root->addWidget(footer);
 
- RedesignTheme::apply(*this);setStyleSheet(styleSheet()+QString::fromLatin1(editorStyle));
+ RedesignTheme::apply(*this,QString::fromLatin1(editorStyle));
+ // The upload glyph sits on the accent, so it takes the scheme's on-accent colour.
+ connect(&Theme::Notifier::instance(),&Theme::Notifier::changed,this,[this]{upload_->setIcon(VisualStyle::icon("upload",Theme::current().onAccent));});
  // Every option row is still visible here. Reserve the tallest height so tool and
  // selection changes never resize, refit and shift the canvas under the pointer.
  options->ensurePolished();options->setFixedHeight(options->sizeHint().height());

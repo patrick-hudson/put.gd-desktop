@@ -111,8 +111,12 @@ HistoryWindow::HistoryWindow(UiSession& session,QWidget* parent):RetainedWindow(
  // are child widgets, like the rail buttons, so the chevron matches the theme.
  auto* editImage=new RowButton(this);editImage->setObjectName("historyEditImage");editImage->setAccessibleName("Edit image");editImage->setToolTip("Edit the clipboard image or an image file, then upload it");
  auto* editRow=new QHBoxLayout(editImage);editRow->setContentsMargins(13,0,11,0);editRow->setSpacing(6);
- auto* editIcon=new QLabel(editImage);editIcon->setPixmap(VisualStyle::icon("edit").pixmap(16,16));auto* editText=new QLabel("Edit image",editImage);editText->setObjectName("historyEditText");
- auto* editChevron=new QLabel(editImage);editChevron->setObjectName("historyEditChevron");editChevron->setPixmap(VisualStyle::icon("chevron-down",RedesignTheme::textSecondary()).pixmap(12,12));
+ auto* editIcon=new QLabel(editImage);auto* editText=new QLabel("Edit image",editImage);editText->setObjectName("historyEditText");
+ auto* editChevron=new QLabel(editImage);editChevron->setObjectName("historyEditChevron");
+ // Pixmaps keep the colours they were drawn in: redraw them, and the summary's
+ // HTML colours, when the scheme switches (#60).
+ const auto paintGlyphs=[editIcon,editChevron]{editIcon->setPixmap(VisualStyle::icon("edit").pixmap(16,16));editChevron->setPixmap(VisualStyle::icon("chevron-down",RedesignTheme::textSecondary()).pixmap(12,12));};
+ paintGlyphs();connect(&Theme::Notifier::instance(),&Theme::Notifier::changed,this,[this,paintGlyphs]{paintGlyphs();updateSummary();});
  for(auto* label:{editIcon,editText,editChevron}){label->setAttribute(Qt::WA_TransparentForMouseEvents);editRow->addWidget(label);}
  editRow->insertSpacing(2,2);
  auto* editSources=new QMenu(editImage);editSources->setObjectName("historyEditSources");

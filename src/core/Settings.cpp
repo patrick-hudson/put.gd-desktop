@@ -260,7 +260,7 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
         return invalid("/retention/logBytes", "Log storage is 1 MiB to 1 GiB.");
     const auto preferences = doc["preferences"].toObject();
     QStringList preferenceKeys{"notifications", "launchAtLogin"};
-    for (const auto* optional : {"uploadClipboardBehavior", "unlockCredentialsAtStartup", "editorRecentColors", "diagnostics"})
+    for (const auto* optional : {"uploadClipboardBehavior", "unlockCredentialsAtStartup", "editorRecentColors", "diagnostics", "appearance"})
         if (preferences.contains(optional)) preferenceKeys.append(optional);
     if (!doc["preferences"].isObject() || !keys(preferences, preferenceKeys) ||
         !preferences["notifications"].isBool() || !preferences["launchAtLogin"].isBool())
@@ -281,6 +281,20 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
         if (!preferences["diagnostics"].isObject() || !keys(diagnostics, hasFolder ? QStringList{"debugLogging", "packageFolder"} : QStringList{"debugLogging"}) ||
             !diagnostics["debugLogging"].isBool() || (hasFolder && !folder(diagnostics["packageFolder"], true)))
             return invalid("/preferences/diagnostics", "Diagnostics preferences hold debugLogging (true or false) and an optional absolute packageFolder.");
+    }
+    if (preferences.contains("appearance")) {
+        // #60: the theme now; the accent and per-scheme overrides keep their
+        // place for phase 2 and must stay at their built-in values until then.
+        const auto appearance = preferences["appearance"].toObject();
+        QStringList appearanceKeys{"theme"};
+        for (const auto* optional : {"accent", "overrides"}) if (appearance.contains(optional)) appearanceKeys.append(optional);
+        const auto overrides = appearance["overrides"].toObject();
+        const bool overridesEmpty = !appearance.contains("overrides") ||
+            (appearance["overrides"].isObject() && keys(overrides, {"dark", "light"}) && overrides["dark"].isObject() && overrides["light"].isObject() &&
+             overrides["dark"].toObject().isEmpty() && overrides["light"].toObject().isEmpty());
+        if (!preferences["appearance"].isObject() || !keys(appearance, appearanceKeys) || !choice(appearance["theme"], {"system", "dark", "light"}) ||
+            (appearance.contains("accent") && !appearance["accent"].isNull()) || !overridesEmpty)
+            return invalid("/preferences/appearance", "Appearance holds theme (system, dark or light); accent is null and overrides are {\"dark\": {}, \"light\": {}} until custom colours are supported.");
     }
     if (preferences.contains("uploadClipboardBehavior") && !choice(preferences["uploadClipboardBehavior"], {"each_link", "list"}))
         return invalid("/preferences/uploadClipboardBehavior", "Choose each_link or list for upload clipboard behavior.");
@@ -354,6 +368,7 @@ Settings Settings::fromValidated(const QJsonObject& original) {
     settings.logBytes = retention["logBytes"].toInteger(52428800LL);
     settings.debugLogging = doc["preferences"].toObject()["diagnostics"].toObject()["debugLogging"].toBool();
     settings.uploadClipboardBehavior = doc["preferences"].toObject()["uploadClipboardBehavior"].toString("each_link");
+    settings.appearanceTheme = doc["preferences"].toObject()["appearance"].toObject()["theme"].toString("system");
     settings.notifications = doc["preferences"].toObject()["notifications"].toBool();
     settings.launchAtLogin = doc["preferences"].toObject()["launchAtLogin"].toBool();
     settings.unlockCredentialsAtStartup = doc["preferences"].toObject()["unlockCredentialsAtStartup"].toBool(true);
