@@ -78,7 +78,8 @@ QStringList SetupService::unlockSavedCredentials() {
  if(!snapshot.unlockCredentialsAtStartup||!settings_.metadata()["validation"].toObject()["ok"].toBool())return started;
  for(auto it=snapshot.profiles.cbegin();it!=snapshot.profiles.cend();++it){
   const auto reference=it.value()["credentials"].toObject();
-  if(it.value()["provider"]!="s3"||reference["mode"]!="keychain"||credentials_.cached(it.key(),reference))continue;
+  // Destinations whose keys live in put.gd's credential store: S3 and Backblaze B2 (#282).
+  if((it.value()["provider"]!="s3"&&it.value()["provider"]!="backblaze-b2")||reference["mode"]!="keychain"||credentials_.cached(it.key(),reference))continue;
   start("unlockCredentials",it.key(),settings_.revision(),{},[&](Error error,QJsonObject result){if(!error)started.append(result["setupId"].toString());});
  }
  return started;
@@ -106,7 +107,7 @@ void SetupService::revealCredentialSecret(const QString& profileId,const QString
  const auto profiles=settings_.snapshot().profiles;
  if(!profiles.contains(profileId)){reply({"profile_not_found","Save the destination before showing credentials",{}},{});return;}
  const auto profile=profiles[profileId];
- if(profile["provider"]!="s3"){reply({"setup_unsupported","This destination has no S3 secret access key",{}},{});return;}
+ if(profile["provider"]!="s3"&&profile["provider"]!="backblaze-b2"){reply({"setup_unsupported","This destination has no stored secret key",{}},{});return;}
  const auto cached=credentials_.cached(profileId,profile["credentials"].toObject());
  if(!cached){reply({"credential_setup_required","Unlock saved credentials first, or enter credentials for this session",{}},{});return;}
  reply({},{{"secretKey",cached->secretKey}});

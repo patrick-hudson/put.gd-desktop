@@ -52,7 +52,7 @@ if '--build' not in sys.argv:
     (build / 'build-identity').mkdir(parents=True)
     manifest = %r
     (build / 'build-identity/build-info.json').write_text(json.dumps(manifest))
-    for name in ('putgd', 'putgd-cli', 'putgd-ui', 'putgd-capture', 'putgd-s3-worker'):
+    for name in ('putgd', 'putgd-cli', 'putgd-ui', 'putgd-capture', 'putgd-s3-worker', 'putgd-b2-worker'):
         program = build / name
         program.write_text('#!/usr/bin/env python3\\nimport json\\nprint(json.dumps(' + repr(manifest) + '))\\n')
         program.chmod(0o755)

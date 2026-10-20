@@ -18,6 +18,8 @@
 #include <QDir>
 #include "storage/s3/S3Provider.h"
 #include "storage/proton/ProtonProvider.h"
+#include "storage/b2/B2Provider.h"
+#include <QSpinBox>
 #include <QMimeData>
 #include <QDropEvent>
 #include <QUrl>
@@ -401,6 +403,30 @@ private slots:
   QTRY_COMPARE(picker->currentText(),QString("Other S3-compatible"));
   bool explained=false;for(auto* label:window.findChildren<QLabel*>())if(label->text().startsWith("Endpoint: https://s3.us-west-004.backblazeb2.com")&&label->text().contains("lacks the conditional writes"))explained=true;
   QVERIFY(explained);QCOMPARE(service.document()["profiles"].toArray()[0].toObject()["settings"].toObject()["endpoint"].toString(),QString("https://s3.us-west-004.backblazeb2.com"));
+ }
+ // #282: a Backblaze B2 destination edits its own fields and saves settings the B2 provider accepts.
+ void backblazeDestinationUsesItsOwnFieldsAndSavesValidSettings(){
+  QTemporaryDir dir;CredentialStore secrets;ProviderRegistry registry;registry.add("s3",std::make_shared<S3Provider>(secrets));registry.add("backblaze-b2",std::make_shared<B2Provider>(secrets));
+  SettingsService service(dir.filePath("config.json"),[&](auto id,auto values){return registry.validate(id,values);},nullptr,[&](auto id,auto reference){return registry.validateCredentials(id,reference);});
+  QVERIFY(service.save(Settings::developmentTemplate(),{}));
+  UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();
+  auto* provider=window.findChild<QComboBox*>("storageProvider");provider->setCurrentIndex(provider->findData("backblaze-b2"));
+  auto* bucket=window.findChild<QLineEdit*>("s3Bucket");QTRY_VERIFY(bucket->isVisible());
+  for(const auto* name:{"s3Service","s3RegionChoices","s3AclMode"})QVERIFY2(!window.findChild<QComboBox*>(name)->isVisible(),name);
+  QVERIFY(window.findChild<QComboBox*>("b2LinkMode")->isVisible());QVERIFY(!window.findChild<QSpinBox*>("b2LinkDays")->isVisible());
+  QVERIFY(!window.findChild<QLineEdit*>("credentialSessionToken")->isVisible());
+  QCOMPARE(window.findChild<QLineEdit*>("credentialAccessKey")->accessibleName(),QString("Application key ID"));
+  QCOMPARE(window.findChild<QLineEdit*>("credentialSecretKey")->accessibleName(),QString("Application key"));
+  bucket->setText("putgd-test-bucket");QMetaObject::invokeMethod(bucket,"editingFinished");
+  const auto saved=[&]{return service.document()["profiles"].toArray()[0].toObject();};
+  QTRY_COMPARE(saved()["provider"].toString(),QString("backblaze-b2"));
+  auto expected=b2::defaults();expected["bucket"]="putgd-test-bucket";
+  QTRY_COMPARE(saved()["settings"].toObject(),expected);
+  QCOMPARE(saved()["credentials"].toObject()["reference"].toString(),QString("putgd/b2/development-s3"));
+  auto* mode=window.findChild<QComboBox*>("b2LinkMode");mode->setCurrentIndex(mode->findData("authorized"));emit mode->activated(mode->currentIndex());
+  QTRY_COMPARE(saved()["settings"].toObject()["linkMode"].toString(),QString("authorized"));
+  QTRY_VERIFY(window.findChild<QSpinBox*>("b2LinkDays")->isVisible());QVERIFY(!window.findChild<QLineEdit*>("s3PublicUrlBase")->isVisible());
+  QVERIFY(saved()["settings"].toObject()["publicUrlBase"].isNull());QCOMPARE(saved()["settings"].toObject()["linkValidityDays"].toInt(),7);
  }
  void redesignedLongDropdownScrollsWithinItsVisibleItemLimit(){
   VisualStyle::apply(*qApp);QWidget root;auto* layout=new QVBoxLayout(&root);auto* combo=VisualStyle::choiceBox(&root);

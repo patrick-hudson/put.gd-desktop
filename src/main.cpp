@@ -4,6 +4,7 @@
 #include "core/Log.h"
 #include "core/RunMarker.h"
 #include "storage/s3/S3Provider.h"
+#include "storage/b2/B2Provider.h"
 #include "storage/proton/ProtonProvider.h"
 #include "app/LocalServer.h"
 #include "app/DiagnosticsBundle.h"
@@ -173,6 +174,7 @@ int main(int argc,char* argv[]) {
  putgd::ProviderRegistry providers;
  auto s3=std::make_shared<putgd::S3Provider>(credentials);providers.add("s3",s3);
  auto proton=std::make_shared<putgd::ProtonProvider>();providers.add("proton-drive",proton);
+ auto b2=std::make_shared<putgd::B2Provider>(credentials);providers.add("backblaze-b2",b2);
  putgd::SettingsService settings(locations.configPath(),[&providers](const auto& id,const auto& value) {return providers.validate(id,value);},nullptr,[&providers](const auto& id,const auto& value){return providers.validateCredentials(id,value);});
  std::unique_ptr<putgd::SourceAdapter> source;
  std::function<void()> bindSource;
@@ -252,21 +254,27 @@ int main(int argc,char* argv[]) {
 #endif
  if(bindSource){bindSource();QObject::connect(&settings,&putgd::SettingsService::accepted,&app,bindSource);}
  auto tester=[&](const QString& profileId,const QJsonObject& profile,std::function<void(putgd::Error)> reply) {
-  if(profile["provider"]!="s3"){reply({"test_unsupported","This provider has no destination test",{}});return;}
-  const putgd::Destination destination{"s3",profileId,settings.revision(),profile["settings"].toObject(),profile["credentials"].toObject()};
+  const auto provider=profile["provider"].toString();
+  if(provider!="s3"&&provider!="backblaze-b2"){reply({"test_unsupported","This provider has no destination test",{}});return;}
+  const putgd::Destination destination{provider,profileId,settings.revision(),profile["settings"].toObject(),profile["credentials"].toObject()};
   const auto path=dataRoot+"/destination-tests/"+QUuid::createUuid().toString(QUuid::WithoutBraces)+".json";
   auto checkpoint=[path](const QJsonObject& data,std::function<void(putgd::Error)> ack){ack(checkpointFile(path,data));};
-  s3->testDestination(destination,checkpoint,[path,reply](QJsonObject result,putgd::Error error){
+  auto finished=[path,reply](QJsonObject result,putgd::Error error){
    auto journalError=checkpointFile(path,{{"schemaVersion",1},{"phase","finished"},{"result",result},{"error",error.toJson()}});
    if(!error&&journalError)error=journalError;
    if(!error&&(!result["publicReachable"].toBool()||!QStringList{"removed","missing"}.contains(result["cleanupStatus"].toString())))error={"destination_test_incomplete","Destination test publication or cleanup needs attention; its recorded target is retained",{}};
    reply(error);
-  });
+  };
+  if(provider=="s3"){s3->testDestination(destination,checkpoint,finished);return;}
+  // The B2 helper call blocks; it runs on an operations worker, never this thread (#282).
+  operations.background([b2,destination,checkpoint](putgd::Error& error){
+   QJsonObject out;b2->testDestination(destination,checkpoint,[&](QJsonObject result,putgd::Error e){out=result;error=e;});return out;
+  },[finished](putgd::Error error,QJsonObject result){finished(result,error);});
  };
  QJsonObject loginStatus;
  putgd::SetupService setup(settings,credentials,tester);
  const auto providerSetup=[&](const QString& kind,const putgd::Destination& destination,const QJsonObject& input,putgd::JsonReply reply,std::function<void(QJsonObject)> event){
-  if(kind=="testDestination"&&destination.providerId=="s3"){
+  if(kind=="testDestination"&&(destination.providerId=="s3"||destination.providerId=="backblaze-b2")){
    const QJsonObject profile{{"provider",destination.providerId},{"settings",destination.settings},{"credentials",destination.credentialReference}};
    tester(destination.profileId,profile,[reply=std::move(reply)](putgd::Error error){reply(error,{});});return;
   }

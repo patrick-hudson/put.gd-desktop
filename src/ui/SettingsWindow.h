@@ -98,6 +98,7 @@ private:
  QLabel *status_,*metadata_,*capabilities_;QPushButton *quit_;
  ShortcutEditor* shortcuts_;QHash<QString,QComboBox*> actionProfiles_;QHash<QString,QLineEdit*> folders_,s3_,numbers_,templates_;
  QComboBox *providerType_=nullptr,*protonFolder_=nullptr;QSpinBox* protonExpiration_=nullptr;QDoubleSpinBox* protonTimeout_=nullptr;
+ QComboBox* b2LinkMode_=nullptr;QSpinBox* b2LinkDays_=nullptr;
  QCheckBox* protonShare_=nullptr;QLineEdit* protonPassword_=nullptr;
  QWidget* protonPanel_=nullptr;QLabel *protonAccount_=nullptr,*protonFolderStatus_=nullptr;
  QHash<QString,QComboBox*> publicationModes_;

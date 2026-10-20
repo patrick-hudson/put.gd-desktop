@@ -7,6 +7,8 @@ namespace putgd {
 namespace {
 const QStringList s3Keys{"bucket","region","endpoint","objectPrefix","storageClass","aclMode","publicUrlBase","addressing","connectTimeoutMs","requestTimeoutMs","lowSpeedBytesPerSecond","lowSpeedTimeSeconds"};
 const QStringList protonKeys{"accountRootUid","folderUid","folderName","shareByDefault","linkExpirationDays","sharePasswordReference","requestTimeoutMs"};
+const QStringList b2Keys{"apiUrl","bucket","objectPrefix","linkMode","linkValidityDays","publicUrlBase","connectTimeoutMs","requestTimeoutMs"};
+const QStringList& providerKeys(const QString& provider){return provider=="s3"?s3Keys:provider=="backblaze-b2"?b2Keys:protonKeys;}
 const QStringList limitKeys{"maxFiles","pendingOperations","concurrentUploads","maxFileBytes","maxBatchBytes","pendingArtifactBytes","pendingImageBytes","clipboardTextBytes","imagePixels","imageBytes","recordingAnimationSeconds","recordingAnimationEdge"};
 const QStringList retentionKeys{"failedArtifactDays","recentActivityLimit","previewCacheBytes","historyRetentionDays"};
 const QStringList filterKeys{"search","category","mime","profileId","uploadStatus","localStatus","remoteStatus","from","to"};
@@ -47,8 +49,8 @@ bool rawS3(const QString& text){
 bool safeProfile(const QJsonValue& value){
  if(!fields(value,{"id","label","provider","settings","credentials"}))return false;
  const auto profile=value.toObject();const auto provider=profile["provider"].toString();
- return profile["id"].isString()&&profile["label"].isString()&&QStringList{"s3","proton-drive"}.contains(provider)
-  &&scalars(profile["settings"],provider=="s3"?s3Keys:protonKeys)&&scalars(profile["credentials"],{"mode","reference"});
+ return profile["id"].isString()&&profile["label"].isString()&&QStringList{"s3","proton-drive","backblaze-b2"}.contains(provider)
+  &&scalars(profile["settings"],providerKeys(provider))&&scalars(profile["credentials"],{"mode","reference"});
 }
 bool safeDocument(const QJsonValue& value){
  if(!fields(value,{"schemaVersion","actions","profiles","archive","naming","limits","retention","preferences","captureDefaults"}))return false;
@@ -81,12 +83,12 @@ bool profileEditor(const QJsonValue& value,bool includeProviders=true){
  if(!scalars(editor["s3"],s3Keys,true)||!rawS3(editor["providerJson"].toString()))return false;
  if(editor.contains("proton")&&!protonEditor(editor["proton"]))return false;
  if(!editor.contains("providers"))return true;
- if(!fields(editor["providers"],{"s3","proton-drive"}))return false;
+ if(!fields(editor["providers"],{"s3","proton-drive","backblaze-b2"}))return false;
  const auto providers=editor["providers"].toObject();
  for(auto it=providers.begin();it!=providers.end();++it){
   if(!fields(it.value(),{"settings","credentials","editor"}))return false;
   const auto retained=it.value().toObject();
-  if(!scalars(retained["settings"],it.key()=="s3"?s3Keys:protonKeys)||!scalars(retained["credentials"],{"mode","reference"})
+  if(!scalars(retained["settings"],providerKeys(it.key()))||!scalars(retained["credentials"],{"mode","reference"})
      ||!retained["editor"].isObject()||!profileEditor(retained["editor"],false))return false;
  }
  return true;

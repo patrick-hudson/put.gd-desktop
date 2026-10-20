@@ -1068,8 +1068,11 @@ void OperationService::announceIncompleteUploads(QJsonObject& outcome,bool autom
   :labels.isEmpty()?QString{}:QStringLiteral(" at %1").arg(labels.join(", "));
  const auto size=bytes>0?QStringLiteral(" (up to %1 of stored parts)").arg(ArtifactStore::sizeText(bytes)):QString{};
  auto reason=notice.value("error").toObject().value("message").toString();if(!reason.isEmpty()&&!reason.endsWith('.'))reason+='.';
- const auto hint=notice.value("providers").toArray().contains("s3")
+ const auto providers=notice.value("providers").toArray();
+ const auto hint=providers.contains("s3")
   ?QStringLiteral("Allow s3:AbortMultipartUpload for put.gd's access key, or add a lifecycle rule to the bucket that aborts incomplete multipart uploads after a few days.")
+  :providers.contains("backblaze-b2")
+  ?QStringLiteral("Give put.gd's B2 application key writeFiles, or cancel the unfinished large file in the Backblaze web console.")
   :QStringLiteral("Check that put.gd's account may cancel uploads at the destination.");
  notice["hint"]=hint;notice["labels"]=QJsonArray::fromStringList(labels);notice["notified"]=automatic;notice["at"]=outcome["finished"];
  // S3's own words for a refused abort already name the permission and the lifecycle rule.
