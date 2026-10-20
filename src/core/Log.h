@@ -71,10 +71,13 @@ QJsonValue redact(const QJsonValue&);
 }
 // Collects one helper generation's stderr and its exit into the resident log,
 // bounded per generation. AWS SDK lines from the S3 worker keep their level.
+// A crash record (putgd-crash lines, #124) becomes one "Helper crash record"
+// with its own bound, so earlier output never crowds it out.
 class HelperOutput {
 public:
  static constexpr qint64 generationBytes=64*1024;
  static constexpr qsizetype lineBytes=2048;
+ static constexpr qsizetype crashBytes=64*1024;
  HelperOutput(QString process,const QLoggingCategory& category,bool quiet=false);
  void started(qint64 pid,const QJsonObject& fields={});
  void append(const QByteArray&);
@@ -84,7 +87,8 @@ public:
  qint64 pid() const {return pid_;}
 private:
  void line(QByteArray);
+ void crashRecord();
  QString process_;const QLoggingCategory& category_;bool quiet_;
- qint64 pid_=0,logged_=0,suppressed_=0;quint64 generation_=0;QByteArray partial_;
+ qint64 pid_=0,logged_=0,suppressed_=0;quint64 generation_=0;QByteArray partial_,crash_;
 };
 }

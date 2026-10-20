@@ -59,7 +59,7 @@ class DiagnosticsUploadContract final:public QObject {
  DiagnosticsBundles::Context context() const {
   DiagnosticsBundles::Context context;
   context.databasePath=operations_->databasePath();context.logsDirectory=dir_.filePath("state/logs");context.defaultFolder=folder();context.home=dir_.path();
-  context.settings=settings_->document();
+  context.settings=settings_->document();context.coredumpctl="-";
   return context;
  }
  // One member of a package, read with Python's zipfile.

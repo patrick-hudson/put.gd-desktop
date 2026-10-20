@@ -1,5 +1,6 @@
 #include "RunMarker.h"
 #include "Log.h"
+#include "CrashRecord.h"
 #include <QCoreApplication>
 #include <QDateTime>
 #include <QDir>
@@ -11,6 +12,7 @@
 #ifdef Q_OS_UNIX
 #include <csignal>
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <signal.h>
 #include <unistd.h>
 #endif
@@ -19,6 +21,7 @@ namespace {
 std::mutex mutex;
 QString root;
 QJsonObject current;
+int crashFd=-1;
 #ifdef Q_OS_UNIX
 volatile sig_atomic_t signalFd=-1;
 // Async-signal-safe: one write of the decimal signal number, then the default action.
@@ -52,28 +55,37 @@ bool residentAlive(qint64 pid) {
 void RunMarker::begin(const QString& stateRoot,const QString& version) {
  std::lock_guard lock(mutex);
  root=stateRoot;QDir().mkpath(root);QFile::setPermissions(root,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner);
- const auto marker=root+"/running.json",note=root+"/running.signal",history=root+"/unclean-exits.json";
+ const auto marker=root+"/running.json",note=root+"/running.signal",crashNote=root+"/running.crash",history=root+"/unclean-exits.json";
  QJsonArray recent=QJsonDocument::fromJson(readBounded(history,256*1024)).array();
  current={{"detected",false},{"last",QJsonValue()}};
  const auto previous=QJsonDocument::fromJson(readBounded(marker,64*1024)).object();
  if(QFile::exists(marker)&&!residentAlive(previous["pid"].toInteger())) {
   bool numeric=false;const int number=QString::fromLatin1(readBounded(note,64)).split('\n').first().trimmed().toInt(&numeric);
   const auto boot=bootId();
+  const auto crash=crash::parseRecord(readBounded(crashNote,256*1024));
+  const bool crashed=!crash.isEmpty()&&crash["pid"].toInteger()==previous["pid"].toInteger();
   QJsonObject record{{"detectedAt",QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs)},
    {"previousPid",previous["pid"]},{"previousStart",previous["started"]},{"previousVersion",previous["version"]},
-   {"sameBoot",!boot.isEmpty()&&previous["bootId"].toString()==boot},{"cause",numeric&&number>0?"signal":"unknown"}};
-  if(numeric&&number>0)record["signal"]=number;
+   {"sameBoot",!boot.isEmpty()&&previous["bootId"].toString()==boot},{"cause",crashed?"crash":numeric&&number>0?"signal":"unknown"}};
+  if(crashed){record["signal"]=crash["signal"];record["crash"]=crash;}
+  else if(numeric&&number>0)record["signal"]=number;
   recent.prepend(record);while(recent.size()>retainedRecords)recent.removeLast();
   savePrivate(history,QJsonDocument(recent).toJson(QJsonDocument::Compact));
   current={{"detected",true},{"last",record}};
   // A logout's SIGTERM is expected; anything else ended without a clean shutdown.
-  logging::write(logApp(),numeric&&number>0?QtInfoMsg:QtWarningMsg,
+  if(crashed)logging::write(logApp(),QtCriticalMsg,"The previous resident crashed",record);
+  else logging::write(logApp(),numeric&&number>0?QtInfoMsg:QtWarningMsg,
    numeric&&number>0?"The previous resident was ended by a signal":"The previous resident did not shut down cleanly",record);
  }
  current["recent"]=recent;
  savePrivate(marker,QJsonDocument(QJsonObject{{"pid",QCoreApplication::applicationPid()},{"started",QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs)},
   {"version",version},{"bootId",bootId()}}).toJson(QJsonDocument::Compact));
 #ifdef Q_OS_UNIX
+ // Opened now, so the crash handler only ever calls write(2).
+ const auto crashPath=QFile::encodeName(crashNote);
+ if(crashFd>=0)::close(crashFd);
+ crashFd=::open(crashPath.constData(),O_WRONLY|O_CREAT|O_TRUNC|O_CLOEXEC|O_NOFOLLOW,0600);
+ if(crashFd>=0)::fchmod(crashFd,0600); // an existing file keeps its mode otherwise
  const auto path=QFile::encodeName(note);
  signalFd=::open(path.constData(),O_WRONLY|O_CREAT|O_TRUNC|O_CLOEXEC|O_NOFOLLOW,0600);
  struct sigaction action{};action.sa_handler=noteSignal;sigemptyset(&action.sa_mask);
@@ -93,10 +105,12 @@ void RunMarker::end() {
   if(::sigaction(number,nullptr,&existing)==0&&existing.sa_handler==noteSignal)::signal(number,SIG_DFL);
  }
  const int fd=signalFd;signalFd=-1;if(fd>=0)::close(fd);
+ if(crashFd>=0){::close(crashFd);crashFd=-1;}
 #endif
- QFile::remove(root+"/running.json");QFile::remove(root+"/running.signal");
+ QFile::remove(root+"/running.json");QFile::remove(root+"/running.signal");QFile::remove(root+"/running.crash");
  root.clear();
 }
+int RunMarker::crashOutput() {std::lock_guard lock(mutex);return crashFd;}
 QJsonObject RunMarker::report() {
  std::lock_guard lock(mutex);
  return current.isEmpty()?QJsonObject{{"detected",false},{"last",QJsonValue()},{"recent",QJsonArray{}}}:current;

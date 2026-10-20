@@ -270,7 +270,7 @@ private:
    QString("Failed, partial and interrupted uploads since %1, and the log from then on.").arg(localTime(scope["from"].toString())));
   QStringList files;
   const QHash<QString,QString> about{{"manifest.json","contents and checksums"},{"environment.json","system, desktop and Qt versions"},{"diagnostics.json","put.gd's current state"},
-   {"config.redacted.json","settings without credentials"},{"operations.json",(count==1?QString("1 upload"):QString("%1 uploads").arg(count))},{"logs/putgd.jsonl",QString("%1 log records").arg(records)+(preview_["droppedLogRecords"].toInt()?QString(", %1 older ones left out to stay under 20 MiB").arg(preview_["droppedLogRecords"].toInt()):QString{})}};
+   {"config.redacted.json","settings without credentials"},{"coredumps.json","system crash reports, stack traces only"},{"operations.json",(count==1?QString("1 upload"):QString("%1 uploads").arg(count))},{"logs/putgd.jsonl",QString("%1 log records").arg(records)+(preview_["droppedLogRecords"].toInt()?QString(", %1 older ones left out to stay under 20 MiB").arg(preview_["droppedLogRecords"].toInt()):QString{})}};
   for(const auto& name:preview_["files"].toArray())files.append(name.toString()+": "+about.value(name.toString()));
   contents_->setText(files.join('\n'));
   QStringList lines;const auto list=preview_["operationList"].toArray();
