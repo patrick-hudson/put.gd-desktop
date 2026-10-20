@@ -1,5 +1,6 @@
 #include "fixtures/U2Fixtures.h"
 #include "app/LocalServer.h"
+#include "client/SessionClient.h"
 #include <QLocalSocket>
 #include <QLocalServer>
 #include <QTimer>
