@@ -72,10 +72,17 @@ private slots:
   QCOMPARE(r.status,QString("failed"));QCOMPARE(r.error.code,QString("authentication_required"));QCOMPARE(reports.size(),4);QCOMPARE(reports[0].phase,QString("preparing"));QVERIFY(!reports[0].bytesTransferred);QCOMPARE(reports[1].bytesTransferred.value(),1048576);QCOMPARE(reports[2].bytesTransferred.value(),524288);QVERIFY(!reports[2].bytesTotal);QCOMPARE(reports[3].phase,QString("finalizing"));
  }
  void invalidOrUnboundedProgressIsUnknown_data(){
-  QTest::addColumn<QString>("fixture");for(const auto& name:QStringList{"bad-progress-negative","bad-progress-fraction","bad-progress-too-large","bad-progress-extra","bad-progress-total","bad-progress-phase","flood","after-result"})QTest::newRow(qPrintable(name))<<name;
+  QTest::addColumn<QString>("fixture");QTest::addColumn<int>("timeoutMs");QTest::addColumn<QString>("message");
+  for(const auto& name:QStringList{"bad-progress-negative","bad-progress-fraction","bad-progress-too-large","bad-progress-extra","bad-progress-total","bad-progress-phase"})QTest::newRow(qPrintable(name))<<name<<1000<<"Unexpected or invalid upload progress";
+  // The flood trips the output budget on byte count alone (2.8 MB against a 2 MiB burst
+  // and 1 KiB/s refill), however slowly it is read. Parsing 40000 lines can outlast a
+  // 1 s deadline on a loaded runner, so give this row a deadline it cannot reach (#236).
+  QTest::newRow("flood")<<"flood"<<120000<<"Helper response exceeded its bound";
+  QTest::newRow("after-result")<<"after-result"<<1000<<"Unexpected or invalid upload progress";
  }
  void invalidOrUnboundedProgressIsUnknown(){
-  QFETCH(QString,fixture);ProtonProvider provider;const auto r=upload(provider,destination(fixture));QCOMPARE(r.status,QString("unknown"));QCOMPARE(r.error.code,QString("proton_protocol"));
+  QFETCH(QString,fixture);QFETCH(int,timeoutMs);QFETCH(QString,message);ProtonProvider provider;auto d=destination(fixture);d.settings["requestTimeoutMs"]=timeoutMs;
+  const auto r=upload(provider,d);QCOMPARE(r.status,QString("unknown"));QCOMPARE(r.error.code,QString("proton_protocol"));QCOMPARE(r.error.message,message);
  }
  void cancellationAfterProgressIsDistinctFromDeadline(){
   ProtonProvider provider;UploadRequest request;request.destination=destination("cancel-progress");request.condition="absent";request.cancellation=std::make_shared<std::atomic_bool>(false);request.progress=[flag=request.cancellation](const UploadProgress&){flag->store(true);};UploadResult result;
