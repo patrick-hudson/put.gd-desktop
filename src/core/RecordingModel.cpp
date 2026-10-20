@@ -92,6 +92,8 @@ Error checkTransition(const QString& state, const QString& command) {
         {"select", {"preparing"}},
         {"edit", {"reviewing"}},
         {"preview", {"reviewing"}},
+        // Drives the review window's controls (#283); inspect also while exporting.
+        {"review", {"reviewing", "exporting"}},
         {"saveCopy", {"reviewing"}},
         {"upload", {"reviewing"}},
         {"inspect", states()},

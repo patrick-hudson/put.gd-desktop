@@ -90,6 +90,7 @@ int main(int argc, char** argv) {
             return;
         }
         if (QStringList{"pause", "resume", "cancel", "raise", "overlay", "notice"}.contains(command)) { result(requestId, {}); return; }
+        if (command == "review") { result(requestId, {{"action", params["action"]}, {"visible", true}}); return; }
         auto frame = envelope;
         frame["requestId"] = requestId;
         frame["ok"] = false;

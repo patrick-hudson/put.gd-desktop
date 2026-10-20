@@ -3,6 +3,7 @@
 #include <QImage>
 #include <QJsonArray>
 #include <QJsonObject>
+#include <QPointer>
 #include <QRect>
 #include <QTimer>
 #include <QWidget>
@@ -12,11 +13,11 @@
 
 class QComboBox;
 class QLabel;
-class QListWidget;
 class QPushButton;
-class QSlider;
+class QShortcut;
 class QSpinBox;
 class QThread;
+class QToolButton;
 
 namespace putgd::record {
 // Paints the preview frame scaled to fit and lets the user create, select,
@@ -28,7 +29,11 @@ public:
     void setFrame(const QImage&, qint64 timeUs);
     void setCanvas(const QSize& canvas) { canvas_ = canvas; update(); }
     void setMasks(const QList<RecordingMask>& masks, const QString& selected);
-    void armCreate(const QString& kind) { armed_ = kind; setCursor(Qt::CrossCursor); }
+    void armCreate(const QString& kind) { armed_ = kind; setCursor(Qt::CrossCursor); update(); }
+    void disarm() { armed_.clear(); unsetCursor(); update(); }
+    const QString& armed() const { return armed_; }
+    // Where the frame is drawn, in this widget's coordinates.
+    QRect imageRect() const;
     QSize sizeHint() const override { return {640, 360}; }
 signals:
     void maskCreated(const QString& kind, const QRect& rect);
@@ -40,7 +45,6 @@ protected:
     void mouseMoveEvent(QMouseEvent*) override;
     void mouseReleaseEvent(QMouseEvent*) override;
 private:
-    QRect imageRect() const;
     QPointF toCanvas(const QPointF&) const;
     QRectF toView(const QRect&) const;
     QImage frame_;
@@ -51,6 +55,73 @@ private:
     enum class Drag { None, Create, Move, Resize } drag_ = Drag::None;
     QPointF anchor_, current_;
     QRect original_;
+};
+
+// #283: the one timeline under the frame. The track is the whole clip with the
+// retained interval between two trim handles; each mask's time span is a bar
+// in a lane below it. Dragging the track scrubs, dragging a handle or a
+// selected mask's edge retimes it, and a click on a bar selects that mask.
+// It only shows and proposes: the window turns its signals into edits.
+class ReviewTimeline final : public QWidget {
+    Q_OBJECT
+public:
+    explicit ReviewTimeline(QWidget* parent = nullptr);
+    void setDuration(qint64 us);
+    void setTrim(qint64 start, qint64 end);
+    void setMasks(const QList<RecordingMask>& masks, const QString& selected);
+    void setPlayhead(qint64 us);
+    qint64 playhead() const { return playhead_; }
+    qint64 duration() const { return duration_; }
+    // Lanes in use (masks that overlap in time take separate lanes, up to four).
+    int lanes() const { return lanes_; }
+    // Geometry for tests and the review session method: the track, a time's x
+    // and the bar of a mask.
+    QRect trackRect() const;
+    int xFor(qint64 us) const;
+    QRect maskRect(const QString& id) const;
+    QSize sizeHint() const override;
+    QSize minimumSizeHint() const override;
+signals:
+    void scrubbed(qint64 us);
+    void scrubStarted();
+    void trimChanged(qint64 start, qint64 end);
+    void maskRetimed(const QString& id, qint64 start, qint64 end);
+    void maskSelected(const QString& id);
+protected:
+    void paintEvent(QPaintEvent*) override;
+    void mousePressEvent(QMouseEvent*) override;
+    void mouseMoveEvent(QMouseEvent*) override;
+    void mouseReleaseEvent(QMouseEvent*) override;
+    void keyPressEvent(QKeyEvent*) override;
+private:
+    enum class Drag { None, Scrub, TrimStart, TrimEnd, MaskStart, MaskEnd };
+    qint64 timeAt(qreal x) const;
+    void layoutLanes();
+    QRect laneRect(int lane) const;
+    void seek(qint64 us);
+    qint64 duration_ = 1, playhead_ = 0, trimStart_ = 0, trimEnd_ = 1;
+    QList<RecordingMask> masks_;
+    QList<int> lane_;
+    int lanes_ = 0;
+    QString selected_;
+    Drag drag_ = Drag::None;
+    qint64 dragStart_ = 0, dragEnd_ = 0;
+};
+
+// A one-line label that elides instead of widening the window; the full text
+// is its tooltip.
+class ElidedLabel final : public QWidget {
+public:
+    explicit ElidedLabel(QWidget* parent = nullptr);
+    void setText(const QString&);
+    QString text() const { return text_; }
+    void clear() { setText({}); }
+    QSize sizeHint() const override;
+    QSize minimumSizeHint() const override;
+protected:
+    void paintEvent(QPaintEvent*) override;
+private:
+    QString text_;
 };
 
 // The private review: scrub, trim, timed masks, then Upload or Save copy.
@@ -73,6 +144,16 @@ public:
     void reopen(const QString& error);
     // The resident's animation limits, for a warning before an export is refused.
     void setLimits(qint64 animationMaxUs, int animationMaxEdge);
+    // #283: the review session method (recording.review) drives the window as a
+    // user does: {action: inspect|seek|play|pause|speed|setIn|setOut|resetTrim|
+    // addMask|selectMask|setMaskIn|setMaskOut|strength|removeMask|format, ...}.
+    // Edits are proposed exactly as the controls propose them; the answer is the
+    // window's state (inspect) after the action, or an error.
+    struct DriveResult { QString code, message; QJsonObject state; };
+    DriveResult drive(const QJsonObject& params);
+    QJsonObject inspect() const;
+    // The default size that fits a 1366×768 desktop with its panel and title bar.
+    static QSize defaultSize() { return {960, 600}; }
 signals:
     void editProposed(quint64 revision, const QJsonArray& commands);
     void configChanged(const RecordingConfig&);
@@ -90,24 +171,44 @@ private:
     void stopPlayback();
     void refreshMaskList();
     void refreshLabels();
+    void refreshTimeline();
     void propose(const QJsonArray& commands);
+    void selectMask(const QString& id);
+    void armMask(const QString& kind);
+    void disarm();
+    void addMaskAt(const QString& kind, const QRect& rect);
+    // Trim and mask in/out at the playhead (the toolbar, I/O and Shift+I/O);
+    // the refusal shown in the status, or empty when proposed.
+    QString setTrimAt(bool start);
+    QString setMaskAt(bool start);
+    void setStrength(int value);
+    void removeSelected();
+    qint64 playhead() const;
+    void seek(qint64 us);
     RecordingMask* selectedMask();
+    const RecordingMask* selectedMask() const;
     QString timeText(qint64 us) const;
     Options options_;
     RecordingConfig config_;
     RecordingEdit edit_;
     FrameView* view_ = nullptr;
-    QSlider* scrubber_ = nullptr;
-    QLabel *notice_ = nullptr, *time_ = nullptr, *retained_ = nullptr, *status_ = nullptr, *maskTimes_ = nullptr;
-    QPushButton* play_ = nullptr;
+    ReviewTimeline* timeline_ = nullptr;
+    QLabel *notice_ = nullptr, *time_ = nullptr, *retained_ = nullptr, *strengthLabel_ = nullptr;
+    ElidedLabel* status_ = nullptr;
+    QToolButton* play_ = nullptr;
     QComboBox* speed_ = nullptr;
-    QThread* playThread_ = nullptr;
+    // The worker deletes itself when it finishes; the guard forgets it then, so
+    // closing the window after a preview ended never waits on a freed thread.
+    QPointer<QThread> playThread_;
     std::shared_ptr<std::atomic_bool> playStop_;
     bool playing_ = false;
-    QPushButton *trimStart_ = nullptr, *trimEnd_ = nullptr, *resetTrim_ = nullptr, *addBlur_ = nullptr, *addSolid_ = nullptr, *removeMask_ = nullptr, *maskStart_ = nullptr, *maskEnd_ = nullptr, *upload_ = nullptr, *save_ = nullptr, *cancel_ = nullptr;
+    QToolButton *trimStart_ = nullptr, *trimEnd_ = nullptr, *resetTrim_ = nullptr, *addBlur_ = nullptr, *addSolid_ = nullptr, *removeMask_ = nullptr, *maskStart_ = nullptr, *maskEnd_ = nullptr;
+    QPushButton *upload_ = nullptr, *save_ = nullptr, *cancel_ = nullptr;
+    QWidget *maskTools_ = nullptr;
+    QShortcut* escape_ = nullptr;
     QSpinBox* strength_ = nullptr;
     QComboBox* format_ = nullptr;
-    QListWidget* masks_ = nullptr;
+    QComboBox* masks_ = nullptr;
     QString selectedMask_;
     QTimer frameTimer_;
     bool exporting_ = false, closing_ = false;

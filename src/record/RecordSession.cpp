@@ -150,6 +150,14 @@ void RecordSession::command(const QString& command, const QJsonObject& params, R
         reply({}, {{"visible", bar_ ? bar_->isVisible() : false}});
         return;
     }
+    if (command == "review") {
+        // #283: recording.review drives the review window as a user does.
+        if (!review_) { reply({"recording_state", "The review window is not open", {}}, {}); return; }
+        const auto result = review_->drive(params);
+        if (!result.code.isEmpty()) reply({result.code, result.message, {}}, {});
+        else reply({}, result.state);
+        return;
+    }
     if (command == "preview") { preview(params, std::move(reply)); return; }
     if (command == "export") { exportClip(params, std::move(reply)); return; }
     reply({"unknown_method", "Unknown recording helper command", {}}, {});

@@ -249,6 +249,32 @@ private slots:
   h.backend->sink({{"id",id},{"event","cancelled"}});
   QTRY_COMPARE(journal.operation(id).state,QString("cancelled"));QCOMPARE(h.backend->exports,0);QTRY_COMPARE(h.operations->diagnostics()["activeOperations"].toInt(),0);
  }
+ // #283: recording.review works the window's controls; the edit a control
+ // proposes reaches the resident before the window answers, so the reply
+ // carries the edit it produced. While exporting only inspect is allowed.
+ void reviewSessionMethodDrivesTheWindow(){
+  Harness h;QTRY_VERIFY(h.operations->ready());
+  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);
+  QCOMPARE(h.rec("review",{{"id",id},{"action","inspect"}}).error.code,QString("recording_state"));QVERIFY(!h.backend->log.contains("review"));
+  QCOMPARE(h.rec("stop",{{"id",id}}).result["state"].toString(),QString("reviewing"));
+  QList<QJsonObject> reviews;
+  h.backend->onReview=[&](const QJsonObject& params){reviews.append(params);if(params["action"].toString()=="setIn")h.backend->sink({{"id",id},{"event","edit"},{"revision",1},{"commands",QJsonArray{QJsonObject{{"op","setTrim"},{"start",3000000},{"end",QJsonValue(QJsonValue::Null)}}}}});};
+  const auto seek=h.rec("review",{{"id",id},{"action","seek"},{"time",3000000}});QVERIFY2(!seek.error,qPrintable(seek.error.message));
+  // The action, then the window read again after the resident pushed its edit.
+  QCOMPARE(reviews,QList<QJsonObject>({QJsonObject{{"action","seek"},{"time",3000000}},QJsonObject{{"action","inspect"}}}));QCOMPARE(seek.result["playheadUs"].toDouble(),3000000.0);QCOMPARE(seek.result["edit"].toObject()["revision"].toDouble(),1.0);
+  const auto in=h.rec("review",{{"id",id},{"action","setIn"}});QVERIFY2(!in.error,qPrintable(in.error.message));
+  QCOMPARE(in.result["state"].toString(),QString("reviewing"));QCOMPARE(in.result["edit"].toObject()["trimStart"].toDouble(),3000000.0);QCOMPARE(in.result["edit"].toObject()["revision"].toDouble(),2.0);
+  QCOMPARE(h.backend->pushedEdit.trimStart,qint64(3000000));
+  QCOMPARE(h.rec("inspect",{{"id",id}}).result["retainedUs"].toDouble(),9000000.0);
+  h.backend->deferExports=true;
+  QCOMPARE(h.rec("saveCopy",{{"id",id},{"path",h.dir.filePath("review-driven.mp4")}}).result["state"].toString(),QString("exporting"));
+  const int before=h.backend->log.count("review");
+  QCOMPARE(h.rec("review",{{"id",id},{"action","setOut"}}).error.code,QString("recording_state"));QCOMPARE(h.backend->log.count("review"),before);
+  reviews.clear();
+  QCOMPARE(h.rec("review",{{"id",id},{"action","inspect"}}).result["state"].toString(),QString("exporting"));QCOMPARE(reviews.size(),1);
+  h.backend->pendingExports.takeFirst()();QTRY_COMPARE(h.state(id),QString("reviewing"));
+  QVERIFY(!h.rec("cancel",{{"id",id}}).error);
+ }
  void reviewWindowEventsRoundTripThroughTheResident(){
   Harness h;QTRY_VERIFY(h.operations->ready());HistoryStore journal(h.operations->databasePath());
   const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QCOMPARE(h.rec("stop",{{"id",id}}).result["state"].toString(),QString("reviewing"));
@@ -289,7 +315,9 @@ private slots:
    {"recording.edit",{{"id","x"},{"commands",QJsonArray{}}}},{"recording.edit",{{"id","x"},{"revision","1"},{"commands",QJsonArray{}}}},
    {"recording.preview",{{"id","x"}}},{"recording.preview",{{"id","x"},{"time","0"}}},
    {"recording.saveCopy",{{"id","x"}}},{"recording.saveCopy",{{"id","x"},{"path","/p.mp4"},{"overwrite","no"}}},
-   {"recording.upload",{{"id","x"}}},{"recording.upload",{{"id","x"},{"revision",true}}}};
+   {"recording.upload",{{"id","x"}}},{"recording.upload",{{"id","x"},{"revision",true}}},
+   {"recording.review",{{"id","x"}}},{"recording.review",{{"id","x"},{"action","upload"}}},{"recording.review",{{"id","x"},{"action","seek"},{"time","1"}}},
+   {"recording.review",{{"id","x"},{"action","addMask"},{"kind","blur"},{"rect",QJsonArray{1,2}}}},{"recording.review",{{"id","x"},{"action","inspect"},{"extra",1}}}};
   for(const auto& [method,params]:bad){const auto outcome=call(*h.server,method,params);QCOMPARE(outcome.error.code,QString("invalid_request"));}
   QVERIFY(h.backend->log.isEmpty());
   QJsonArray many;for(int i=0;i<101;++i)many.append(QJsonObject{{"op","resetTrim"}});
@@ -411,7 +439,7 @@ private slots:
  // resident's answer (recording_helper_timeout included) always reaches it.
  void clientWaitsOutlastHelperDeadlines(){
   QVERIFY(LocalServer::replyDeadlineMs("recording.stop")>recording::helperStopMs);
-  for(const auto* method:{"recording.capabilities","recording.prepare","recording.select","recording.start","recording.pause","recording.resume","recording.raise","recording.overlay","recording.preview"})
+  for(const auto* method:{"recording.capabilities","recording.prepare","recording.select","recording.start","recording.pause","recording.resume","recording.raise","recording.overlay","recording.preview","recording.review"})
    QVERIFY2(LocalServer::replyDeadlineMs(method)>recording::helperCommandMs,method);
   // Exports answer when they start, so they keep the ordinary wait.
   for(const auto* method:{"recording.saveCopy","recording.upload","recording.inspect","capabilities"})QCOMPARE(LocalServer::replyDeadlineMs(method),15000);

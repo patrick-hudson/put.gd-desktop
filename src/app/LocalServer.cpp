@@ -62,7 +62,7 @@ Result LocalServer::listen(const QString& supplied) {
 int LocalServer::replyDeadlineMs(const QString& method) {
  constexpr int base=15000;
  if(method=="recording.stop")return recording::helperStopMs+base;
- if(QStringList{"recording.capabilities","recording.prepare","recording.select","recording.start","recording.pause","recording.resume","recording.raise","recording.overlay","recording.preview"}.contains(method))return recording::helperCommandMs+base;
+ if(QStringList{"recording.capabilities","recording.prepare","recording.select","recording.start","recording.pause","recording.resume","recording.raise","recording.overlay","recording.preview","recording.review"}.contains(method))return recording::helperCommandMs+base;
  // Reading the logs and compressing up to 20 MiB stays well inside 45 s; an
  // upload adds the destination test and the upload itself (#123).
  if(method=="diagnostics.bundle")return diagnosticsBundleReplyMs;
@@ -145,6 +145,15 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  if(method=="recording.overlay") {if(!fields(p,{"id","visible"})||!string(p,"id")||!p["visible"].isBool()){reply(invalid(),{});return;}operations_.recordingCommand("overlay",p,reply);return;}
  if(method=="recording.edit") {if(!fields(p,{"id","revision","commands"})||!string(p,"id")||!p["revision"].isDouble()||!p["commands"].isArray()||p["commands"].toArray().size()>100){reply(invalid(),{});return;}operations_.recordingCommand("edit",p,reply);return;}
  if(method=="recording.preview") {if(!fields(p,{"id","time"},{"maxEdge"})||!string(p,"id")||!p["time"].isDouble()||(p.contains("maxEdge")&&!p["maxEdge"].isDouble())){reply(invalid(),{});return;}operations_.recordingCommand("preview",p,reply);return;}
+ if(method=="recording.review") {
+  // #283: one review-window control per call; the helper checks the values.
+  static const QStringList actions{"inspect","seek","play","pause","speed","setIn","setOut","resetTrim","addMask","selectMask","setMaskIn","setMaskOut","strength","removeMask","format"};
+  if(!fields(p,{"id","action"},{"time","speed","kind","rect","maskId","strength","format","codec"})||!string(p,"id")||!string(p,"action",32)||!actions.contains(p["action"].toString())
+     ||(p.contains("time")&&!p["time"].isDouble())||(p.contains("speed")&&!p["speed"].isDouble())||(p.contains("kind")&&!string(p,"kind",8))
+     ||(p.contains("rect")&&(!p["rect"].isArray()||p["rect"].toArray().size()!=4))||(p.contains("maskId")&&!p["maskId"].isNull()&&!string(p,"maskId"))
+     ||(p.contains("strength")&&!p["strength"].isDouble())||(p.contains("format")&&!string(p,"format",8))||(p.contains("codec")&&!p["codec"].isString())){reply(invalid(),{});return;}
+  operations_.recordingCommand("review",p,reply);return;
+ }
  if(method=="recording.saveCopy") {if(!fields(p,{"id","path"},{"overwrite"})||!string(p,"id")||!string(p,"path",4096)||(p.contains("overwrite")&&!p["overwrite"].isBool())){reply(invalid(),{});return;}operations_.recordingCommand("saveCopy",p,reply);return;}
  if(method=="recording.upload") {if(!fields(p,{"id","revision"})||!string(p,"id")||!p["revision"].isDouble()){reply(invalid(),{});return;}operations_.recordingCommand("upload",p,reply);return;}
  if(method=="operation.recent") {if(!p.isEmpty())reply(invalid(),{});else operations_.recent(reply);return;}

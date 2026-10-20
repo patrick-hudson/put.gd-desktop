@@ -152,7 +152,7 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                             'patch_configuration', 'open_editor', 'get_editor', 'edit_image',
                             'preview_editor', 'save_editor_copy', 'submit_editor', 'cancel_editor',
                             'raise_editor', 'get_recording_capabilities', 'prepare_recording', 'control_recording',
-                            'get_recording', 'select_recording_region', 'set_recording_overlay', 'edit_recording', 'preview_recording',
+                            'get_recording', 'select_recording_region', 'set_recording_overlay', 'edit_recording', 'preview_recording', 'drive_recording_review',
                             'save_recording_copy', 'upload_recording', 'reorder_destinations', 'move_destination',
                             'clear_logs', 'create_diagnostics_bundle', 'get_diagnostics_upload_target', 'show_diagnostics_package',
                             'settings_diagnostics', 'history_save_diagnostics'}
@@ -283,6 +283,16 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('save_recording_copy', {'id': 'synthetic-operation', 'path': '/synthetic/clip.mp4'}, 'recording.saveCopy', {'id': 'synthetic-operation', 'path': '/synthetic/clip.mp4'}),
                     ('save_recording_copy', {'id': 'synthetic-operation', 'path': '/synthetic/clip.mp4', 'overwrite': True}, 'recording.saveCopy', {'id': 'synthetic-operation', 'path': '/synthetic/clip.mp4', 'overwrite': True}),
                     ('upload_recording', {'id': 'synthetic-operation', 'revision': 2}, 'recording.upload', {'id': 'synthetic-operation', 'revision': 2}),
+                    ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'inspect'}, 'recording.review', {'id': 'synthetic-operation', 'action': 'inspect'}),
+                    ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'seek', 'time_us': 2500000}, 'recording.review', {'id': 'synthetic-operation', 'action': 'seek', 'time': 2500000}),
+                    ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'setIn'}, 'recording.review', {'id': 'synthetic-operation', 'action': 'setIn'}),
+                    ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'speed', 'speed': 0.5}, 'recording.review', {'id': 'synthetic-operation', 'action': 'speed', 'speed': 0.5}),
+                    ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'addMask', 'kind': 'solid', 'rect': [10, 20, 300, 80]},
+                     'recording.review', {'id': 'synthetic-operation', 'action': 'addMask', 'kind': 'solid', 'rect': [10, 20, 300, 80]}),
+                    ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'selectMask', 'mask_id': 'synthetic-mask'}, 'recording.review', {'id': 'synthetic-operation', 'action': 'selectMask', 'maskId': 'synthetic-mask'}),
+                    ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'selectMask'}, 'recording.review', {'id': 'synthetic-operation', 'action': 'selectMask', 'maskId': None}),
+                    ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'strength', 'strength': 24}, 'recording.review', {'id': 'synthetic-operation', 'action': 'strength', 'strength': 24}),
+                    ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'format', 'format': 'webm', 'codec': 'vp9'}, 'recording.review', {'id': 'synthetic-operation', 'action': 'format', 'format': 'webm', 'codec': 'vp9'}),
                 ]
                 for name, args, method, params in cases:
                     await call(name, args)
@@ -320,7 +330,13 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                                    ('edit_recording', {'id': 'synthetic-operation', 'revision': 0, 'commands': [{'op': 'resetTrim'}]}),
                                    ('edit_recording', {'id': 'synthetic-operation', 'revision': 1, 'commands': [{'op': 'crop'}]}),
                                    ('save_recording_copy', {'id': 'synthetic-operation', 'path': 'relative.mp4'}),
-                                   ('upload_recording', {'id': 'synthetic-operation', 'revision': 0})]:
+                                   ('upload_recording', {'id': 'synthetic-operation', 'revision': 0}),
+                                   ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'upload'}),
+                                   ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'seek'}),
+                                   ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'speed', 'speed': 3}),
+                                   ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'addMask', 'kind': 'blur'}),
+                                   ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'addMask', 'kind': 'pixelate', 'rect': [0, 0, 4, 4]}),
+                                   ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'strength', 'strength': 99})]:
                     before = len(self.calls)
                     self.assertEqual((await call(name, args))['error']['code'], 'invalid_request', name)
                     self.assertEqual(len(self.calls), before, 'Invalid recording arguments must issue no IPC')
