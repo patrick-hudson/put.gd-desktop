@@ -225,6 +225,38 @@ Sync holds within each segment, but the resume steps the working clip by −16 t
 on every desktop and in both formats. One export ended at +55.3 ms. Filed as
 #130.
 
+## 9. Physical Plasma 6.6 Wayland (k72)
+
+Patrick approved logging k72's X11 session out for this ("Yes, log it out") and,
+in this session, installing a Wayland VNC server for its wall tile. Setup:
+TigerVNC `v1.16.2` (`b555312d`, the same source and options as d69's), built on
+k72 with `ENABLE_WAYLAND=ON` (nine `-dev` packages, none from KWin, Plasma, Xorg,
+Mesa, PipeWire or the portals), installed as `/usr/local/bin/w0vncserver` and run
+by a user unit that starts only in a KDE Wayland session on `127.0.0.1:5900`
+(see [remote builders](../remote-builders.md)). SDDM's autologin was switched
+from `plasmax11.desktop` to `plasma.desktop` and back from a backup, and KDE's
+Remote Control consent was approved once with restoring allowed. The wall tile
+showed the Wayland session, and again X11 (`X0tigervnc`) afterwards.
+
+Host: Kubuntu 26.04.1, Plasma 6.6.6 Wayland, kernel 7.0.0-38, Intel HD 530
+(i915), PipeWire 1.6.2, load 0.1–1.
+
+- **The AppImage can't record there** (`8e568fd`; `5ac6bbc` the same way):
+  prepare and `ready` worked, but every start failed with
+  `recording_start_failed`, because the image's `pipewiresrc` reported "error alloc
+  buffers: Invalid argument" before any encoder ran. This happened on
+  `kde-screencast` (4 of 4) and the portal (1 of 1). #137.
+- **The Ubuntu 26.04 DEB `8e568fd`** (installed for the slot, then removed) on the
+  same session:
+  - Regions (KWin's layer-shell selector dragged, then `recording.select`) and the
+    monitor in all four formats, saved and uploaded: motion 25.2–56.7 against a
+    frozen control of 0.016–0.051, `vah264lpenc` live, region `outside`, monitor
+    `hidden` (KWin 6.6 hides the requesting window from the stream).
+  - MCP end to end: 20/20.
+  - A/V, exported medians: MP4 +0.7 and −15.3 ms, WebM +9.5 ms. A pause run went
+    from +8.0 to −5.3 ms in the export (+8.0 → +5.0 in the working clip), the
+    same ~10 ms export step as #130.
+
 ## Also seen
 
 - **Stop hang** (`recording_helper_timeout`, no `timestamps:` line after `command
@@ -244,12 +276,6 @@ on every desktop and in both formats. One export ended at +55.3 ms. Filed as
   machine.
 - A listening test with real headphones, and Bluetooth or other sinks: all
   measurements used the built-in speakers' sink monitor.
-- A physical Plasma 6.6 Wayland session: Patrick approved switching k72 from X11
-  for it, but k72's wall tile is an X11-only server (`X0tigervnc` on `:0`), so the
-  session would not be visible on the wall. He chose to set up a Wayland VNC
-  server there first (TigerVNC `w0vncserver`, as on d69); that setup is pending,
-  and the guest rows above stay the Plasma 6.6 Wayland evidence until then.
-
 ## Lab changes, undone
 
 - f44: RPM `putgd` and Chromium (`chromium`, `chromium-common`,
@@ -260,6 +286,11 @@ on every desktop and in both formats. One export ended at +55.3 ms. Filed as
   while the image ran. The real-data runs created `~/.local/share/putgd` (only
   this campaign's synthetic artifacts); it was moved to
   `~/putgd-lab/acc87/realdata-local-share-putgd`.
+- k72: `w0vncserver` and its user unit stay installed (Patrick's request);
+  `/etc/sddm.conf` restored (backup kept as `/etc/sddm.conf.acc87-backup`); the
+  DEB removed; the real-data runs' `~/.local/share/putgd` moved to
+  `~/putgd-lab/acc87/realdata-local-share-putgd-k72w`. Plasma's session restore
+  reopened Patrick's windows after each login.
 - Guests: every overlay retired through `lab.py cleanup` with a completion
   manifest; the goldens re-hashed to their inventory values (`563730cc…`, `49fcacff…`; see
   [remote golden images](../remote-golden-images.md)).

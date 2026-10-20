@@ -39,11 +39,14 @@ static control, saved frames and recorded identities.
 - **Pause/resume A/V:** sync holds within each segment, but a resume steps it by
   −27 to +30 ms, and the export moves the post-resume part ~10 ms earlier.
 - Follow-ups: #129 (Stop hangs with a null audio sink, seen in VM guests), #130
-  (pause/resume A/V step), #131 (stale-extension message after an upgrade).
+  (pause/resume A/V step), #131 (stale-extension message after an upgrade), #137
+  (AppImage can't record on Plasma 6.6 Wayland).
 - Blocked: AMD/NVIDIA encoding, physical Mint Cinnamon, a headphone listening
   test and Bluetooth/other sinks.
-- Pending: a physical Plasma 6.6 Wayland run on k72, which first needs a
-  Wayland VNC server for its wall tile (see [remote builders](remote-builders.md)).
+- **Physical Plasma 6.6.6 Wayland (k72):** the Ubuntu 26.04 DEB recorded regions
+  and monitors in all four formats (motion 25–57), passed MCP 20/20 and read
+  −15 to +10 ms A/V; the AppImage can't start a recording there (#137). The k72
+  wall tile now has a Wayland VNC server too.
 
 ## Wayland recording A/V sync — 2026-10-19
 
