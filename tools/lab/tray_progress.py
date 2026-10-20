@@ -9,6 +9,7 @@ import argparse
 from decimal import Decimal
 from urllib.parse import urlsplit
 import importlib.util
+import inspect
 import json
 import os
 from pathlib import Path
@@ -27,6 +28,15 @@ TERMINAL = {'completed', 'partial', 'failed', 'cancelled', 'interrupted'}
 IDLE = 'put.gd — Share and local capture'
 LABELS = {'preflight': 'Checking destination', 'saving_local': 'Saving local copy',
           'sharing': 'Creating share link', 'reconciling': 'Checking previous upload'}
+# Theme::trayTints (src/ui/Theme.cpp): the panel the icon sits on, not the app
+# theme, picks the set (#60). uploadDim is IconArt's unfilled remainder of the
+# progress fill, upload.darker(230).
+TRAY_TINTS = {
+    'dark': {'idle': '#9bbcff', 'upload': '#62d69b', 'uploadDim': '#2b5d43',
+             'encoding': '#f3c66f', 'error': '#ffb4ab'},
+    'light': {'idle': '#2759b8', 'upload': '#146c42', 'uploadDim': '#092f1d',
+              'encoding': '#8a5300', 'error': '#b4312a'},
+}
 
 
 class TrayProgressError(RuntimeError):
@@ -89,7 +99,117 @@ BATCH = re.compile(r'^(.+?)(?:: (' + SIZE + r') of (' + SIZE + r') \(([0-9]+)%\)
                    r'(?:, ([0-9]+) waiting)?(?:, ([0-9]+) done)?(?:, ([0-9]+) failed)?$')
 
 
-def check_tooltip(snapshot, records, provider, pid, *, error_pulse=False):
+def ini_value(text, group, key):
+    """One key of one [group] in a KDE configuration file (PanelTone.cpp iniValue)."""
+    inside = False
+    for raw in text.split('\n'):
+        line = raw.strip()
+        if line.startswith('['):
+            inside = line == '[' + group + ']'
+            continue
+        if inside and line.startswith(key + '='):
+            return line[len(key) + 1:].strip()
+    return ''
+
+
+def light_colour(value):
+    """KDE "r,g,b": light when black text contrasts more than white (PanelTone.cpp)."""
+    parts = value.split(',')
+    if len(parts) < 3:
+        return None
+    try:
+        rgb = [int(part.strip()) for part in parts[:3]]
+    except ValueError:
+        return None
+    if any(c < 0 or c > 255 for c in rgb):
+        return None
+    channel = lambda c: c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+    lum = sum(w * channel(c / 255) for w, c in zip((0.2126, 0.7152, 0.0722), rgb))
+    return (lum + 0.05) / 0.05 > 1.05 / (lum + 0.05)
+
+
+def panel_tone(inputs):
+    """PanelTone::decide: (light, source) from what the resident's environment reads."""
+    names = [name for name in inputs.get('desktop', '').lower().split(':') if name]
+    if 'kde' in names:
+        style = ini_value(inputs.get('plasmarc', ''), 'Theme', 'name').lower()
+        tone = light_colour(ini_value(inputs.get('styleColors', ''), 'Colors:Window', 'BackgroundNormal'))
+        if tone is not None:
+            return tone, 'plasma-style'
+        if 'dark' in style:
+            return False, 'plasmarc'
+        if 'light' in style:
+            return True, 'plasmarc'
+        for group in ('Colors:Header', 'Colors:Window'):
+            tone = light_colour(ini_value(inputs.get('kdeglobals', ''), group, 'BackgroundNormal'))
+            if tone is not None:
+                return tone, 'kdeglobals'
+        return True, 'kde-default'
+    if 'x-cinnamon' in names or 'cinnamon' in names:
+        theme = inputs.get('cinnamonTheme', '').lower()
+        return (False, 'default') if not theme else ('dark' not in theme, 'cinnamon-theme')
+    if any(name in names for name in ('gnome', 'ubuntu', 'unity', 'pantheon')):
+        return False, 'gnome-shell'
+    return False, 'default'
+
+
+# Runs in the resident's own environment (Replay.session), so it reads the
+# configuration cascade put.gd's PanelTone::refresh reads: XDG_CONFIG_HOME, its
+# kdedefaults, then XDG_CONFIG_DIRS, first file that sets the key; the Plasma
+# style's colors from the data dirs; Cinnamon's theme through gsettings.
+PANEL_READER = inspect.getsource(ini_value) + r'''
+import json, os, subprocess
+home = os.path.expanduser('~')
+def base(var, default):
+    value = os.environ.get(var, '')
+    return value if value.startswith('/') else os.path.join(home, default)
+def dirs(var, default):
+    return [d for d in (os.environ.get(var) or default).split(':') if d.startswith('/')]
+config, config_dirs = base('XDG_CONFIG_HOME', '.config'), dirs('XDG_CONFIG_DIRS', '/etc/xdg')
+data_dirs = [base('XDG_DATA_HOME', '.local/share')] + dirs('XDG_DATA_DIRS', '/usr/local/share:/usr/share')
+def small(path):
+    try:
+        if os.path.isfile(path) and os.path.getsize(path) < (1 << 20):
+            with open(path, 'rb') as stream:
+                return stream.read().decode('utf-8', 'replace')
+    except OSError:
+        pass
+    return ''
+def cascade(name):
+    files = [config + '/' + name, config + '/kdedefaults/' + name]
+    for path in [d + '/' + name for d in [config] + config_dirs]:
+        if os.path.isfile(path) and path not in files:
+            files.append(path)
+    return files
+def first(name, group, key):
+    for path in cascade(name):
+        text = small(path)
+        if ini_value(text, group, key):
+            return text
+    return ''
+desktop = os.environ.get('XDG_CURRENT_DESKTOP', '')
+names = [name for name in desktop.lower().split(':') if name]
+inputs = {'desktop': desktop}
+if 'kde' in names:
+    inputs['plasmarc'] = first('plasmarc', 'Theme', 'name')
+    inputs['kdeglobals'] = first('kdeglobals', 'Colors:Header', 'BackgroundNormal') or \
+        first('kdeglobals', 'Colors:Window', 'BackgroundNormal')
+    style = ini_value(inputs['plasmarc'], 'Theme', 'name')
+    style = 'default' if not style or '/' in style or '..' in style else style
+    inputs['plasmaStyle'] = style
+    inputs['styleColors'] = next((small(p) for p in (d + '/plasma/desktoptheme/' + style + '/colors' for d in data_dirs)
+                                  if os.path.isfile(p)), '')
+if 'x-cinnamon' in names or 'cinnamon' in names:
+    try:
+        out = subprocess.run(['gsettings', 'get', 'org.cinnamon.theme', 'name'], capture_output=True, timeout=3).stdout
+        inputs['cinnamonTheme'] = out[:512].decode('utf-8', 'replace').strip().replace("'", '')
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+print(json.dumps(inputs))
+'''
+
+
+def check_tooltip(snapshot, records, provider, pid, *, error_pulse=False, tints=TRAY_TINTS['dark']):
     """Compare SNI bytes/phase with recent independent production CLI observations.
 
     The resident batches observations, and CLI and DBus calls are not atomic.
@@ -106,8 +226,8 @@ def check_tooltip(snapshot, records, provider, pid, *, error_pulse=False):
     idle = snapshot.get('title') == IDLE
     require(idle or snapshot.get('title') == 'put.gd — Working', 'Unexpected tray title')
     icons = snapshot.get('icons', [])
-    colors = ((('#9bbcff',), ('#ffb4ab',)) if error_pulse else
-              (('#9bbcff',),) if idle else (('#9bbcff',), ('#62d69b', '#2b5d43')))
+    colors = (((tints['idle'],), (tints['error'],)) if error_pulse else
+              ((tints['idle'],),) if idle else ((tints['idle'],), (tints['upload'], tints['uploadDim'])))
     present = [family[0] for family in colors if icons and
                all(any(icon.get('opaqueColors', {}).get(color, 0) > 0 for color in family) for icon in icons)]
     require(len(present) == 1,
@@ -118,15 +238,15 @@ def check_tooltip(snapshot, records, provider, pid, *, error_pulse=False):
         return {'idle': not error_pulse, 'storageActive': False, 'counter': False, 'phases': [],
                 **({'errorColor': present[0]} if error_pulse else {})}
     if text == 'Upload complete':
-        observed(not records and present == ['#62d69b'], 'Completion fill must be green with no remaining work')
-        require(all(icon.get('opaqueColors', {}).get('#62d69b', 0) > 0 and
-                    not icon.get('opaqueColors', {}).get('#2b5d43', 0) for icon in icons),
+        observed(not records and present == [tints['upload']], 'Completion fill must be green with no remaining work')
+        require(all(icon.get('opaqueColors', {}).get(tints['upload'], 0) > 0 and
+                    not icon.get('opaqueColors', {}).get(tints['uploadDim'], 0) for icon in icons),
                 'Completion frame must be fully bright green')
         return {'idle': False, 'storageActive': False, 'counter': False, 'phases': []}
     observed(text, 'Working tray has no activity text')
     labels = {LABELS.get(record['phase'], record['phase'].replace('_', ' ').capitalize()): record['phase']
               for record in records}
-    result = {'idle': False, 'storageActive': present[0] == '#62d69b', 'counter': False, 'phases': []}
+    result = {'idle': False, 'storageActive': present[0] == tints['upload'], 'counter': False, 'phases': []}
     if error_pulse:
         result['errorColor'] = present[0]
     for row_index, line in enumerate(text.splitlines()):
@@ -309,7 +429,20 @@ def private_settings(path, profile_id, provider, marker):
 def native_display_prefix():
     return lab.native_display_prefix()
 
+
+def session_dirs_prefix(process):
+    """Export the desktop session's XDG_CONFIG_DIRS and XDG_DATA_DIRS, as autostart gives them."""
+    require(process in ('cinnamon', 'gnome-shell', 'plasmashell'), 'Unsupported native desktop session process')
+    return ('session_pid=$(pgrep -u "$(id -u)" -x ' + process + ' | head -n 1)\n'
+            'for name in XDG_CONFIG_DIRS XDG_DATA_DIRS; do\n'
+            ' value=$(tr \'\\0\' \'\\n\' < /proc/$session_pid/environ | sed -n "s/^$name=//p")\n'
+            ' [ -z "$value" ] || export "$name=$value"\n'
+            'done\n')
+
 class Replay:
+    # setup() replaces this with the set for the panel the resident sees.
+    tints = TRAY_TINTS['dark']
+
     def __init__(self, args):
         self.args = args
         self.run = Path(args.run).resolve(strict=True)
@@ -349,6 +482,10 @@ class Replay:
         # Preserve a relative Wayland socket before switching the app's private
         # runtime root. The real desktop's bus and display remain in use.
         prefix = native_display_prefix()
+        # PanelTone reads the session's XDG_CONFIG_DIRS and XDG_DATA_DIRS (Plasma
+        # puts ~/.config/kdedefaults there); without them a Breeze Dark panel
+        # reads as Plasma's light default (#229).
+        prefix += session_dirs_prefix(self.profile['session_process'])
         prefix += '\n'.join('export ' + name + '=' + shlex.quote(self.guest + suffix) for name, suffix in
                            [('XDG_CONFIG_HOME', '/c'), ('XDG_DATA_HOME', '/d'), ('XDG_RUNTIME_DIR', '/r')]) + '\n'
         return lab.guest_session(self.run, prefix + body)
@@ -435,6 +572,38 @@ class Replay:
         require(snapshot.get('ok'), 'Real tray probe failed: ' + snapshot.get('error', 'unknown'))
         return before['result']['operations'], snapshot, after['result']['operations']
 
+    def read_panel_tone(self):
+        """Pick the tint set from the panel tone the resident's environment gives.
+
+        The lab's private XDG_CONFIG_HOME is part of that environment, so this
+        can differ from the desktop's own panel. put.gd reports its own reading
+        (ui.snapshot diagnostics.trayTint, #60); both must agree before any
+        colour check. A build without that report is checked on the lab's read alone.
+        """
+        inputs = json.loads(self.session("python3 - <<'PY'\n" + PANEL_READER + 'PY\n'))
+        light, source = panel_tone(inputs)
+        tone = {'panel': 'light' if light else 'dark', 'source': source,
+                'desktop': inputs.get('desktop', ''), 'plasmaStyle': inputs.get('plasmaStyle'),
+                'cinnamonTheme': inputs.get('cinnamonTheme')}
+        last = {}
+        def agreed():
+            last['reported'] = self.cli('ui.snapshot').get('diagnostics', {}).get('trayTint')
+            reported = last['reported']
+            if reported is None or (reported.get('panel'), reported.get('source')) == (tone['panel'], tone['source']):
+                return {'reported': reported}
+            return None
+        # PanelTone settles asynchronously (gsettings on Cinnamon, a debounced rescan on Plasma).
+        deadline = time.monotonic() + self.args.timeout
+        while not (found := agreed()):
+            require(time.monotonic() < deadline, 'put.gd reports a ' + json.dumps(last['reported']) +
+                    ' tray panel; the lab reads ' + json.dumps(tone))
+            time.sleep(.1)
+        reported = found['reported']
+        self.tints = TRAY_TINTS[tone['panel']]
+        self.result['panelTone'] = {**tone, 'reportedByApp': reported, 'tints': self.tints}
+        self.save('panel-tone.json', self.result['panelTone'])
+        return self.result['panelTone']
+
     def expect_error(self, ids, kind, required=False):
         # Call only for a runner-created failure or the bounded original-ID
         # Proton busy scenario. A declaration alone never authorizes red.
@@ -485,13 +654,13 @@ class Replay:
         if not pulse or 'failureObservedAt' not in pulse or pulse.get('recoveredAt') is not None:
             return
         color = checked.get('errorColor')
-        if color == '#ffb4ab' and 'redObservedAt' not in pulse:
+        if color == self.tints['error'] and 'redObservedAt' not in pulse:
             pulse['redObservedAt'] = now
             self.witness(label + '-error-red', hover=False)
-        elif color == '#ffb4ab' and 'blueAfterRedObservedAt' in pulse and 'redAfterBlueObservedAt' not in pulse:
+        elif color == self.tints['error'] and 'blueAfterRedObservedAt' in pulse and 'redAfterBlueObservedAt' not in pulse:
             pulse['redAfterBlueObservedAt'] = now
             self.witness(label + '-error-red-returned', hover=False)
-        elif color == '#9bbcff' and 'redObservedAt' in pulse and 'blueAfterRedObservedAt' not in pulse:
+        elif color == self.tints['idle'] and 'redObservedAt' in pulse and 'blueAfterRedObservedAt' not in pulse:
             pulse['blueAfterRedObservedAt'] = now
             self.witness(label + '-error-blue', hover=False)
         if now >= pulse['deadline'] and checked['idle']:
@@ -515,7 +684,7 @@ class Replay:
             # operation trails the resident's pulse clock. Neither grants pulse
             # coverage; green in the established pulse must fail error priority.
             if pulse_active and any(icon.get('opaqueColors', {}).get(color, 0) for icon in snapshot.get('icons', [])
-                                    for color in ('#62d69b', '#2b5d43')):
+                                    for color in (self.tints['upload'], self.tints['uploadDim'])):
                 pulse = self.error_pulse
                 before_failed = {op['id'] for op in before if op['state'] in {'failed', 'partial', 'interrupted'}}
                 bracketed_failure = not set(pulse['failedOperationIds']) <= before_failed
@@ -524,7 +693,7 @@ class Replay:
                 pulse_active = False
                 green_grace = True
             checked = {**check_tooltip(snapshot, recent, self.args.provider, self.pid,
-                                      error_pulse=pulse_active), 'matched': True}
+                                      error_pulse=pulse_active, tints=self.tints), 'matched': True}
             if green_grace:
                 checked.update(idle=False, matched=False, error='Bracketed error color transition')
                 if self.mismatch_since is None:
@@ -693,6 +862,7 @@ PY
                               {'mode': 'generated', 'collisionPolicy': 'rename'},
                     'limits': {'concurrentUploads': 1}, 'retention': {'recentActivityLimit': 100}, 'preferences': {'notifications': False, 'launchAtLogin': False}})
         self.activate_credentials()
+        self.read_panel_tone()
         identity = lab.verify_running_app(self.run)
         self.pid = identity['pid']
         self.result['runningApp'] = identity
@@ -730,7 +900,7 @@ print(json.dumps(results))
         self.sources = json.loads(lab.ssh(self.run, 'python3 - <<\'PY\'\n' + generate + 'PY\n'))
         self.save('synthetic-source-identities.json', self.sources)
         idle = self.snapshot()
-        require(check_tooltip(idle, [], self.args.provider, self.pid)['idle'], 'Initial tray is not idle')
+        require(check_tooltip(idle, [], self.args.provider, self.pid, tints=self.tints)['idle'], 'Initial tray is not idle')
         self.idle_hashes = [icon['sha256'] for icon in idle['icons']]
         self.save('initial-tray.json', idle)
         self.witness('initial-idle')
@@ -932,7 +1102,7 @@ print(json.dumps(results))
         require(all(self.cli('history.detail', {'id': history_id})['receipt'] == old['receipt']
                     for history_id, old in before_restart.items()), 'Restart changed original publication receipts')
         snapshot = self.snapshot()
-        require(check_tooltip(snapshot, [], self.args.provider, self.pid)['idle'] and
+        require(check_tooltip(snapshot, [], self.args.provider, self.pid, tints=self.tints)['idle'] and
                 [icon['sha256'] for icon in snapshot['icons']] == self.idle_hashes, 'Restart did not restore exact idle tray state')
         self.save('restarted-tray.json', snapshot)
         self.witness('restarted-idle')

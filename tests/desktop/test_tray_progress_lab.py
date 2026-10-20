@@ -572,5 +572,165 @@ class TrayProgressContracts(unittest.TestCase):
             self.assertEqual(result, str(root/'native/wayland-0'))
 
 
+def cpp_string(literal):
+    return literal.encode().decode('unicode_escape')
+
+
+class TrayPanelToneContracts(unittest.TestCase):
+    """The lab reads the panel tone and picks tints the way put.gd does (#229)."""
+
+    LIGHT = tray.TRAY_TINTS['light']
+    DARK = tray.TRAY_TINTS['dark']
+
+    def test_tint_table_matches_theme_and_icon_art(self):
+        import colorsys, re
+        source = (ROOT / 'src/ui/Theme.cpp').read_text()
+        for name in ('dark', 'light'):
+            found = re.search(r'static const TrayTints ' + name + r'\{([^}]*)\}', source)
+            self.assertIsNotNone(found, name)
+            idle, upload, encoding, error = [c.lower() for c in re.findall(r'QColor\("(#[0-9A-Fa-f]{6})"\)', found[1])]
+            tints = tray.TRAY_TINTS[name]
+            self.assertEqual((tints['idle'], tints['upload'], tints['encoding'], tints['error']),
+                             (idle, upload, encoding, error))
+            # IconArt::liftTray draws the unfilled remainder as color.darker(230).
+            self.assertIn('p.fillPath(shape,color.darker(230));', (ROOT / 'src/ui/IconArt.cpp').read_text())
+            h, sat, v = colorsys.rgb_to_hsv(*(int(upload[i:i + 2], 16) / 255 for i in (1, 3, 5)))
+            dim = '#' + ''.join('%02x' % round(c * 255) for c in colorsys.hsv_to_rgb(h, sat, v * 100 / 230))
+            self.assertEqual(tints['uploadDim'], dim)
+        self.assertEqual(self.LIGHT['uploadDim'], '#092f1d')
+
+    def test_panel_tone_rules_match_the_cpp_rule_table(self):
+        import re
+        source = (ROOT / 'tests/gui/test_theme.cpp').read_text()
+        body = source[source.index('void panelToneRules_data()'):source.index('void panelToneRules()')]
+        rows = re.findall(r'QTest::newRow\("([^"]*)"\)((?: << "(?:[^"\\]|\\.)*"){5}) << (true|false) << "([a-z-]+)"', body)
+        self.assertGreaterEqual(len(rows), 11)
+        for name, fields, light, source_name in rows:
+            desktop, plasmarc, kdeglobals, cinnamon, style = [cpp_string(v) for v in re.findall(r'"((?:[^"\\]|\\.)*)"', fields)]
+            with self.subTest(name):
+                self.assertEqual(tray.panel_tone({'desktop': desktop, 'plasmarc': plasmarc, 'kdeglobals': kdeglobals,
+                                                  'cinnamonTheme': cinnamon, 'styleColors': style}),
+                                 (light == 'true', source_name))
+
+    def run_reader(self, root, desktop, files, data=()):
+        import os, subprocess, json
+        config, system, share = root / 'config', root / 'etc-xdg', root / 'share'
+        for path, text in list(files) + list(data):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(text)
+        env = {'PATH': os.environ['PATH'], 'HOME': str(root / 'home'), 'XDG_CURRENT_DESKTOP': desktop,
+               'XDG_CONFIG_HOME': str(config), 'XDG_CONFIG_DIRS': str(system),
+               'XDG_DATA_HOME': str(root / 'data-home'), 'XDG_DATA_DIRS': str(share)}
+        return json.loads(subprocess.check_output(['python3', '-I', '-c', tray.PANEL_READER], env=env, text=True))
+
+    def test_reader_follows_the_kde_configuration_cascade(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            # d69: Breeze Dark from kdedefaults wins over a light colour scheme, through the style's colours.
+            inputs = self.run_reader(root / 'd69', 'KDE', [
+                (root / 'd69/config/kdedefaults/plasmarc', '[Theme]\nname=breeze-dark\n'),
+                (root / 'd69/config/kdeglobals', '[Colors:Header]\nBackgroundNormal=222,224,226\n')],
+                [(root / 'd69/share/plasma/desktoptheme/breeze-dark/colors', '[Colors:Window]\nBackgroundNormal=32,35,38\n')])
+            self.assertEqual(inputs['plasmaStyle'], 'breeze-dark')
+            self.assertEqual(tray.panel_tone(inputs), (False, 'plasma-style'))
+            # The lab's private, empty XDG_CONFIG_HOME falls through to XDG_CONFIG_DIRS.
+            inputs = self.run_reader(root / 'private', 'KDE', [
+                (root / 'private/etc-xdg/kdeglobals', '[Colors:Window]\nBackgroundNormal=239,240,241\n')])
+            self.assertEqual(tray.panel_tone(inputs), (True, 'kdeglobals'))
+            # A user file that sets the key shadows the system one.
+            inputs = self.run_reader(root / 'user', 'KDE', [
+                (root / 'user/config/kdeglobals', '[Colors:Header]\nBackgroundNormal=32,35,38\n'),
+                (root / 'user/etc-xdg/kdeglobals', '[Colors:Header]\nBackgroundNormal=239,240,241\n')])
+            self.assertEqual(tray.panel_tone(inputs), (False, 'kdeglobals'))
+            self.assertEqual(tray.panel_tone(self.run_reader(root / 'bare', 'KDE', [])), (True, 'kde-default'))
+            self.assertEqual(tray.panel_tone(self.run_reader(root / 'gnome', 'GNOME', [])), (False, 'gnome-shell'))
+
+    def test_light_panel_validates_against_the_light_tints(self):
+        light = self.LIGHT
+        idle = observation('', color=light['idle'], title=tray.IDLE)
+        self.assertTrue(tray.check_tooltip(idle, [], 's3', 42, tints=light)['idle'])
+        # The #207 failure: a correct light-panel icon checked against the dark set.
+        with self.assertRaisesRegex(tray.TrayProgressError, 'brand color'):
+            tray.check_tooltip(idle, [], 's3', 42)
+        records = [{'id': 'op', 'phase': 'uploading', 'bytesTransferred': 2097152, 'bytesTotal': 4194304, 'bytesEstimated': False}]
+        active = observation('Uploading: 2 MiB of 4 MiB (50%)', color=light['upload'])
+        active['icons'][0]['opaqueColors'][light['uploadDim']] = 60
+        result = tray.check_tooltip(active, records, 's3', 42, tints=light)
+        self.assertTrue(result['storageActive'] and result['counter'])
+        with self.assertRaises(tray.TrayProgressError):
+            tray.check_tooltip(active, records, 's3', 42)
+        dark_on_light = observation('Uploading: 2 MiB of 4 MiB (50%)', color=self.DARK['upload'])
+        with self.assertRaises(tray.TrayProgressError):
+            tray.check_tooltip(dark_on_light, records, 's3', 42, tints=light)
+        self.assertFalse(tray.check_tooltip(observation('Upload complete', color=light['upload']), [], 's3', 42, tints=light)['idle'])
+        with self.assertRaises(tray.TrayProgressError):
+            tray.check_tooltip(active | {'description': 'Upload complete'}, [], 's3', 42, tints=light)
+        red = tray.check_tooltip(observation('', light['error'], tray.IDLE), [], 's3', 42, error_pulse=True, tints=light)
+        self.assertEqual(red['errorColor'], light['error'])
+        with self.assertRaises(tray.TrayProgressError):
+            tray.check_tooltip(observation('', self.DARK['error'], tray.IDLE), [], 's3', 42, error_pulse=True, tints=light)
+
+    def test_light_panel_error_pulse_uses_the_light_red_and_blue(self):
+        from unittest.mock import Mock, patch
+        light = self.LIGHT
+        with tempfile.TemporaryDirectory() as directory:
+            replay = TrayProgressContracts.error_replay(self, directory)
+            replay.tints = light
+            replay.snapshot = Mock(side_effect=[observation('', light[c], tray.IDLE)
+                                                for c in ('error', 'idle', 'error', 'idle', 'idle')])
+            with patch.object(tray.time, 'monotonic', side_effect=[10, 10.31, 10.62, 12.99, 13.01]):
+                self.assertEqual(replay.observe('local-failure')[2]['errorColor'], light['error'])
+                self.assertEqual(replay.observe('local-failure')[2]['errorColor'], light['idle'])
+                replay.observe('local-failure'); replay.observe('local-failure')
+                self.assertTrue(replay.observe('local-failure')[2]['idle'])
+            self.assertEqual(replay.result['errorPulses'][0]['recoveredAt'], 13.01)
+
+    def test_session_takes_the_desktop_sessions_config_and_data_dirs(self):
+        import os, subprocess
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            shell = subprocess.Popen(['sleep', '30'], env={'PATH': os.environ['PATH'],
+                                     'XDG_CONFIG_DIRS': '/home/lab/.config/kdedefaults:/etc/xdg',
+                                     'XDG_DATA_DIRS': '/usr/share/plasma-data:/usr/share'})
+            try:
+                # Stands in for pgrep, so no real desktop shell on this host is read.
+                (root / 'pgrep').write_text('#!/bin/sh\necho ' + str(shell.pid) + '\n')
+                (root / 'pgrep').chmod(0o700)
+                command = tray.session_dirs_prefix('plasmashell') + 'printf "%s|%s" "$XDG_CONFIG_DIRS" "$XDG_DATA_DIRS"\n'
+                result = subprocess.check_output(['sh', '-c', command], text=True,
+                                                 env={'PATH': str(root) + ':' + os.environ['PATH']})
+            finally:
+                shell.kill(); shell.wait()
+            self.assertEqual(result, '/home/lab/.config/kdedefaults:/etc/xdg|/usr/share/plasma-data:/usr/share')
+        with self.assertRaises(tray.TrayProgressError):
+            tray.session_dirs_prefix('plasmashell; true')
+
+    def tone_replay(self, directory, inputs, reported):
+        import json
+        from unittest.mock import Mock
+        replay = object.__new__(tray.Replay)
+        replay.args = SimpleNamespace(timeout=0.3)
+        replay.result = {}; replay.save = Mock(); replay.output = Path(directory)
+        replay.session = Mock(return_value=json.dumps(inputs))
+        replay.cli = Mock(side_effect=lambda method, params=None: {'diagnostics': {'trayTint': reported}}
+                          if method == 'ui.snapshot' else self.fail(method))
+        return replay
+
+    def test_replay_takes_the_tint_set_both_readers_agree_on(self):
+        light_panel = {'desktop': 'KDE', 'plasmarc': '', 'kdeglobals': '', 'styleColors': ''}
+        with tempfile.TemporaryDirectory() as directory:
+            replay = self.tone_replay(directory, light_panel, {'panel': 'light', 'source': 'kde-default', 'color': '#2759b8'})
+            self.assertEqual(replay.read_panel_tone()['panel'], 'light')
+            self.assertIs(replay.tints, self.LIGHT)
+            self.assertEqual(replay.result['panelTone']['reportedByApp']['source'], 'kde-default')
+            dark_panel = {'desktop': 'ubuntu:GNOME'}
+            replay = self.tone_replay(directory, dark_panel, None)
+            self.assertEqual(replay.read_panel_tone()['source'], 'gnome-shell')
+            self.assertIs(replay.tints, self.DARK)
+            replay = self.tone_replay(directory, light_panel, {'panel': 'dark', 'source': 'default', 'color': '#9bbcff'})
+            with self.assertRaisesRegex(tray.TrayProgressError, 'tray panel'):
+                replay.read_panel_tone()
+
+
 if __name__ == '__main__':
     unittest.main()
