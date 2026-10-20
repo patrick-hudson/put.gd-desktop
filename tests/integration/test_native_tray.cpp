@@ -79,7 +79,12 @@ class NotificationPeer final : public QObject {
  Q_CLASSINFO("D-Bus Interface", "org.freedesktop.Notifications")
 public:
  QList<QVariantMap> values;
+ QString server; int serverQueries = 0; QList<uint> closed;
 public slots:
+ void CloseNotification(uint id) { closed.append(id); }
+ QString GetServerInformation(QString& vendor, QString& version, QString& spec) {
+  ++serverQueries; vendor = "Synthetic"; version = "1"; spec = "1.2"; return server;
+ }
  uint Notify(const QString& app, uint replacement, const QString& icon,
              const QString& summary, const QString& body, const QStringList& actions,
              const QVariantMap& hints, int timeout) {
@@ -92,13 +97,19 @@ signals:
  void NotificationClosed(uint id, uint reason);
 };
 
-class FileManagerPeer final : public QObject {
+class FileManagerPeer final : public QObject, protected QDBusContext {
  Q_OBJECT
  Q_CLASSINFO("D-Bus Interface", "org.freedesktop.FileManager1")
 public:
  QList<QStringList> shown;
+ // Answers like a bus with no file manager. Registering it also keeps the private
+ // bus from activating an installed one (Dolphin on Plasma hosts).
+ bool refuse = false;
 public slots:
- void ShowItems(const QStringList& uris, const QString&) {shown.append(uris);}
+ void ShowItems(const QStringList& uris, const QString&) {
+  if (refuse) { sendErrorReply("org.freedesktop.DBus.Error.ServiceUnknown", "Synthetic missing file manager"); return; }
+  shown.append(uris);
+ }
 };
 class ActivitySignalPeer final:public QObject {
  Q_OBJECT
@@ -491,7 +502,30 @@ private slots:
   const auto value = notifications.values.first(); QCOMPARE(value["app"].toString(), QString("put.gd"));
   QCOMPARE(value["summary"].toString(), QString("put.gd — failed")); QCOMPARE(value["timeout"].toInt(), 10000);
   QCOMPARE(value["hints"].toMap()["urgency"].toUInt(), uint(2)); QVERIFY(value["actions"].toStringList().isEmpty());
-  changeHost(false); QTRY_VERIFY(!tray.available()); tray.notify("Hidden", "Unavailable"); QTest::qWait(50); QCOMPARE(notifications.values.size(), 1);
+  // #151: a notification with buttons stays until used or dismissed, except where the
+  // server keeps it, buttons and all, in its list (GNOME Shell, Plasma).
+  tray.notify("put.gd — partial", "Synthetic failure", true, {}, {{"save-diagnostics", "Save diagnostics for this upload", "op"}});
+  QTRY_COMPARE(notifications.values.size(), 2); QCOMPARE(notifications.values[1]["timeout"].toInt(), 0);
+  // Resident, so Cinnamon keeps it when a put.gd window takes focus; put.gd closes it once used.
+  QCOMPARE(notifications.values[1]["hints"].toMap().value("resident").toBool(), true);
+  QVERIFY(!notifications.values.first()["hints"].toMap().contains("resident"));
+  notifications.closed.clear(); emit notifications.ActionInvoked(2, "save-diagnostics"); QTRY_COMPARE(notifications.closed, QList<uint>{2});
+  emit notifications.ActionInvoked(2, "save-diagnostics"); QTest::qWait(50); QCOMPARE(notifications.closed, QList<uint>{2});
+  tray.notify("put.gd — completed", "Synthetic link", false, QUrl("https://example.invalid/a")); QTRY_COMPARE(notifications.values.size(), 3);
+  QCOMPARE(notifications.values[2]["timeout"].toInt(), 10000);
+  for (const auto& [server, timeout] : std::initializer_list<std::pair<QString, int>>{{"Plasma", 10000}, {"gnome-shell", 10000}, {"cinnamon", 0}}) {
+   // A new notification server owner is asked its name again.
+   notifications.server = server; const int queries = notifications.serverQueries;
+   QVERIFY(peer.unregisterService("org.freedesktop.Notifications")); QVERIFY(peer.registerService("org.freedesktop.Notifications"));
+   QTRY_VERIFY(notifications.serverQueries > queries); QTest::qWait(50);
+   const auto sent = notifications.values.size();
+   tray.notify("put.gd — diagnostics saved", "Synthetic package", false, {}, {{"show-in-folder", "Show in folder", "/synthetic.zip"}});
+   QTRY_COMPARE(notifications.values.size(), sent + 1); QCOMPARE(notifications.values.last()["timeout"].toInt(), timeout);
+   QCOMPARE(notifications.values.last()["hints"].toMap().contains("resident"), timeout == 0);
+  }
+  notifications.server.clear();
+  QCOMPARE(NativeTray::notificationTimeoutMs("cinnamon", false), 10000); QCOMPARE(NativeTray::notificationTimeoutMs({}, true), 0);
+  changeHost(false); QTRY_VERIFY(!tray.available()); tray.notify("Hidden", "Unavailable"); QTest::qWait(50); QCOMPARE(notifications.values.size(), 3 + 3);
  }
  void firstNotificationOwnerAppearancePreservesClickTarget() {
   QVERIFY(peer.unregisterService("org.freedesktop.Notifications"));
@@ -550,18 +584,23 @@ private slots:
   QString id;operations.invoke("clipboard",[&](Error error,QJsonObject value){QVERIFY(!error);id=value["operationId"].toString();});
   QTRY_COMPARE(notifications.values.size(),1);QVERIFY2(QRegularExpression("put.gd — (failed|partial)").match(notifications.values[0]["summary"].toString()).hasMatch(),qPrintable(notifications.values[0]["summary"].toString()+" / "+notifications.values[0]["body"].toString()));
   QCOMPARE(notifications.values[0]["actions"].toStringList(),QStringList({"save-diagnostics","Save diagnostics for this upload"}));
-  emit notifications.ActionInvoked(1,"default");QTest::qWait(50);QVERIFY(requested.isEmpty());
-  emit notifications.ActionInvoked(1,"save-diagnostics");QTRY_COMPARE(requested,QStringList{id});
+  // #152: the body names the failure, not a clipboard code; #151: it stays until used.
+  QVERIFY2(notifications.values[0]["body"].toString().startsWith("Upload failed: "),qPrintable(notifications.values[0]["body"].toString()));
+  QVERIFY(!notifications.values[0]["body"].toString().contains("Clipboard:"));QCOMPARE(notifications.values[0]["timeout"].toInt(),0);
+  // A click on the body uses the resident notification up too: put.gd closes it.
+  notifications.closed.clear();emit notifications.ActionInvoked(1,"default");QTest::qWait(50);QVERIFY(requested.isEmpty());QTRY_COMPARE(notifications.closed,QList<uint>{1});
+  emit notifications.ActionInvoked(1,"save-diagnostics");QTRY_COMPARE(requested,QStringList{id});QCOMPARE(notifications.closed,QList<uint>{1});
   QTRY_COMPARE(notifications.values.size(),2);QCOMPARE(notifications.values[1]["summary"].toString(),QString("put.gd — diagnostics saved"));
   QVERIFY(notifications.values[1]["body"].toString().contains("putgd-diagnostics-20261020-010203Z.zip"));QVERIFY(notifications.values[1]["body"].toString().contains("Nothing was uploaded"));
   QCOMPARE(notifications.values[1]["actions"].toStringList(),QStringList({"show-in-folder","Show in folder"}));
   // The action is spent once used.
   emit notifications.ActionInvoked(1,"save-diagnostics");QTest::qWait(50);QCOMPARE(requested.size(),1);
   // Without a file manager on the bus, Show in folder opens the package's folder.
+  FileManagerPeer files;files.refuse=true;QVERIFY(peer.registerObject("/org/freedesktop/FileManager1",&files,QDBusConnection::ExportAllSlots));QVERIFY(peer.registerService("org.freedesktop.FileManager1"));
+  auto unregister=qScopeGuard([&]{peer.unregisterService("org.freedesktop.FileManager1");peer.unregisterObject("/org/freedesktop/FileManager1");});
   emit notifications.ActionInvoked(2,"show-in-folder");QTRY_COMPARE(opened(),QStringList{QUrl::fromLocalFile(directory.path()).toString(QUrl::FullyEncoded)});
   // With one, the package is selected.
-  FileManagerPeer files;QVERIFY(peer.registerObject("/org/freedesktop/FileManager1",&files,QDBusConnection::ExportAllSlots));QVERIFY(peer.registerService("org.freedesktop.FileManager1"));
-  auto unregister=qScopeGuard([&]{peer.unregisterService("org.freedesktop.FileManager1");peer.unregisterObject("/org/freedesktop/FileManager1");});
+  files.refuse=false;
   QVERIFY(!TrayController::revealPackage(package));QTRY_COMPARE(files.shown.size(),1);QCOMPARE(files.shown[0],QStringList{QUrl::fromLocalFile(package).toString(QUrl::FullyEncoded)});QTest::qWait(50);QCOMPARE(opened().size(),1);
   QCOMPARE(TrayController::revealPackage(directory.filePath("other.zip")).code,QString("invalid_request"));
   QCOMPARE(TrayController::revealPackage("relative/putgd-diagnostics-20261020-010203Z.zip").code,QString("invalid_request"));
@@ -569,6 +608,11 @@ private slots:
   // A failed save says so instead.
   controller.setDiagnosticsSaver([&](const QString&,JsonReply reply){reply({"diagnostics_output_unavailable","Synthetic folder failure",{}},{});});
   controller.saveDiagnostics(id);QTRY_COMPARE(notifications.values.size(),3);QCOMPARE(notifications.values[2]["body"].toString(),QString("Synthetic folder failure"));QVERIFY(notifications.values[2]["actions"].toStringList().isEmpty());
+  // A package the dialog also uploaded (#158) says where it went, or why it didn't.
+  controller.notifyDiagnosticsSaved({{"path",package},{"bytes",2048},{"link","https://example.invalid/p.zip"},{"linkCopied",true},{"upload",QJsonObject{{"label","Synthetic S3"}}}});
+  QTRY_COMPARE(notifications.values.size(),4);QVERIFY2(notifications.values[3]["body"].toString().endsWith(". Uploaded to Synthetic S3; link copied."),qPrintable(notifications.values[3]["body"].toString()));
+  controller.notifyDiagnosticsSaved({{"path",package},{"bytes",2048},{"uploadError",QJsonObject{{"code","s3_permission_denied"},{"message","S3 denied the request (HTTP 403)."}}}});
+  QTRY_COMPARE(notifications.values.size(),5);QVERIFY2(notifications.values[4]["body"].toString().endsWith(". Not uploaded: access denied by the destination."),qPrintable(notifications.values[4]["body"].toString()));
  }
  void coreControllerRoutesAllFourActionsWithoutViews() {
   QTemporaryDir directory; QVERIFY(directory.isValid()); ProviderRegistry providers;

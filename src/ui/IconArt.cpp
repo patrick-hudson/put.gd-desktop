@@ -137,6 +137,8 @@ QImage symbol(const QString& name,const QColor& color,int scale) {
  } else if(name=="save") {
   fill(secondary);rounded(3,3,18,18,3);
   fill(color);rounded(7,3,9,6,1);rounded(6,13,12,8,1.5);
+ } else if(name=="play") {
+  fill(color);QPainterPath play;play.moveTo(8,4.5);play.lineTo(20,12);play.lineTo(8,19.5);play.closeSubpath();p.drawPath(play);
  } else if(name=="activity") {
   fill(secondary);rounded(2,2,20,20,4);line(color);QPainterPath pulse;
   pulse.moveTo(4,13);pulse.lineTo(7,13);pulse.lineTo(10,6);pulse.lineTo(14,19);pulse.lineTo(17,11);pulse.lineTo(20,11);p.drawPath(pulse);

@@ -43,6 +43,12 @@ the same run, and publishes the collected assets as a prerelease. A tag, draft
 or failed run alone is not a published nightly, so unchanged source whose last
 attempt failed is retried.
 
+After publishing, the run notifies the download site
+(`patrick-hudson/put.gd-site`), which refreshes its links within about a minute
+instead of at its next six-hourly deploy. The step needs the `SITE_DISPATCH_TOKEN`
+secret and only warns when the notification fails; see
+[Notifying put.gd-site](ci.md#notifying-putgd-site).
+
 `plan` refuses to start once a stable `vBASE` tag exists for the current base.
 Merge the pull request that starts the next version first (see below).
 
@@ -71,6 +77,13 @@ which adds the version checks, acceptance recording and confirmation points.
    gh release download vBASE-rc.N -D build/publish
    python3 tools/releases/publish.py --tag vBASE-rc.N --directory build/publish --publish --acceptance /private/current-package-acceptance.json
    ```
+
+   After the draft goes public, the command notifies `patrick-hudson/put.gd-site`
+   with your `gh` login (a `release-published` dispatch with the tag and whether
+   it is a prerelease), and the receipt's `siteNotified` records whether that
+   worked. A "could not notify" warning doesn't undo the publication: the site
+   catches up on its six-hour schedule, or run its deploy by hand with
+   `gh workflow run deploy.yml -R patrick-hudson/put.gd-site`.
 
    If acceptance fails, fix it on `nightly` and promote again. The next push to
    `main` cuts `rc.N+1`; nothing is retagged.
@@ -213,8 +226,11 @@ files and an inner checksum list. The two large source parts and the debug asset
 stay separate; the outer checksum list covers them and the combined ZIP.
 
 The debug asset holds every build's split debug files (the four distro packages
-and the AppImage) by GNU build ID, `.build-id/<2 hex>/<rest>.debug`, plus a
-`manifest.json` naming each build's programs and build IDs. Maintainers use it to
+and the AppImage) by GNU build ID, `.build-id/<2 hex>/<rest>.debug`, the DWARF
+each build's programs share in `.dwz/<label>.debug`, and a `manifest.json`
+naming each build's programs, build IDs and shared file. It is about 213 MB
+([diagnostics.md](diagnostics.md#kept-debug-symbols)). The jobs that write it
+install `dwz`. Maintainers use it to
 symbolize crash records ([diagnostics.md](diagnostics.md)); users never need it, and
 the packages they install stay stripped. The repository is public, so the symbols
 reveal nothing the source does not. ZIP timestamps and modes are fixed from the source commit,

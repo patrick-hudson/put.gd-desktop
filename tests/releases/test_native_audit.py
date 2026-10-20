@@ -84,6 +84,9 @@ class NativeInventoryTests(unittest.TestCase):
             audit.validate_inventory(self.root, self.manifest, require_kde=True)
 
     def commands(self, argv, *, env=None):
+        if argv[:2] == ["readelf", "--dyn-syms"]:
+            return ("     5: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND pthread_create@GLIBC_2.34 (2)\n"
+                    "    42: 00000000000109ee   180 FUNC    GLOBAL DEFAULT   16 pthread_create")
         if argv[0] == "readelf":
             return " 0x000000000000000f (RPATH) Library rpath: [$ORIGIN]"
         if argv[0] == "ldd":
@@ -102,6 +105,19 @@ class NativeInventoryTests(unittest.TestCase):
         self.write("usr/bin/putgd-ui", "binary PUTGD_TEST_CRASH", 0o755)
         with patch.object(audit, "command", side_effect=self.commands):
             with self.assertRaisesRegex(ValueError, "test-only crash trigger: putgd-ui"):
+                audit.audit_tree(self.root, self.manifest)
+
+    def test_crash_handled_programs_export_their_thread_wrapper(self):
+        # Without it, threads have no alternate signal stack (#156). The CLI has no crash handler.
+        def commands(argv, *, env=None):
+            if argv[:2] == ["readelf", "--dyn-syms"]:
+                if Path(argv[-1]).name == "putgd-cli":
+                    raise AssertionError("putgd-cli has no crash handler")
+                if Path(argv[-1]).name == "putgd-capture":
+                    return "     5: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND pthread_create@GLIBC_2.34 (2)"
+            return self.commands(argv, env=env)
+        with patch.object(audit, "command", side_effect=commands):
+            with self.assertRaisesRegex(ValueError, "export the crash handler's pthread_create: putgd-capture"):
                 audit.audit_tree(self.root, self.manifest)
 
     def test_mixed_helper_manifest_rejected(self):
@@ -124,7 +140,7 @@ class NativeInventoryTests(unittest.TestCase):
 
     def test_transitive_module_rpath_required(self):
         def commands(argv, *, env=None):
-            if argv[0] == "readelf":
+            if argv[:2] == ["readelf", "-d"]:
                 return " 0x000000000000001d (RUNPATH) Library runpath: [$ORIGIN]"
             return self.commands(argv, env=env)
         with patch.object(audit, "command", side_effect=commands):

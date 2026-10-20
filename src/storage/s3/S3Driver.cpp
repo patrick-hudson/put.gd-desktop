@@ -9,6 +9,7 @@
 #include <aws/core/http/HttpClientFactory.h>
 #include <aws/core/http/HttpClient.h>
 #include <aws/core/http/HttpResponse.h>
+#include <algorithm>
 #include <array>
 #include <aws/core/client/DefaultRetryStrategy.h>
 #include <aws/core/utils/memory/stl/AWSStreamFwd.h>
@@ -37,6 +38,7 @@
 #include <fstream>
 #include <map>
 #include <mutex>
+#include <thread>
 namespace putgd {
 namespace {
 Aws::String aws(const QString& value) { return value.toStdString(); }
@@ -102,6 +104,23 @@ template<class E> void addRequestIds(const E& error, QJsonObject& details) {
     const auto extended = requestIdentifier(responseHeader(error, "x-amz-id-2"), 256);
     if (!requestId.isEmpty()) details["requestId"] = requestId;
     if (!extended.isEmpty()) details["extendedRequestId"] = extended;
+}
+// A successful response's IDs (#148): the SDK keeps only x-amz-request-id, so both
+// are read from the response headers once they have all arrived.
+struct ResponseIds { QString request, extended; };
+template<class R> void watchIds(R& request, ResponseIds& ids) {
+    request.SetHeadersReceivedEventHandler([&ids](const Aws::Http::HttpRequest*, Aws::Http::HttpResponse* response) {
+        if (!response) return;
+        if (response->HasHeader("x-amz-request-id")) ids.request = requestIdentifier(qt(response->GetHeader("x-amz-request-id")), 128);
+        if (response->HasHeader("x-amz-id-2")) ids.extended = requestIdentifier(qt(response->GetHeader("x-amz-id-2")), 256);
+    });
+}
+QJsonObject withIds(QJsonObject record, const ResponseIds& ids, const Aws::String& resultId) {
+    auto requestId = requestIdentifier(qt(resultId), 128);
+    if (requestId.isEmpty()) requestId = ids.request;
+    if (!requestId.isEmpty()) record["requestId"] = requestId;
+    if (!ids.extended.isEmpty()) record["extendedRequestId"] = ids.extended;
+    return record;
 }
 template<class E> Error wireError(const E& error, const char* stage, qint64 elapsedMs) {
     const auto name = qt(error.GetExceptionName());
@@ -313,8 +332,26 @@ template<class E> Error partError(const E& error, const char* stage, qint64 elap
     if (part > 0) result.details["partNumber"] = part;
     return result;
 }
+// Aborts a multipart upload so S3 keeps none of its parts. An upload S3 no longer
+// has (completed, aborted, or expired by a lifecycle rule) counts as aborted.
+Error abortMultipart(Client& client, const Aws::String& bucket, const QString& key, const QString& uploadId) {
+    Aws::S3::Model::AbortMultipartUploadRequest cancel;
+    cancel.SetBucket(bucket);
+    cancel.SetKey(aws(key));
+    cancel.SetUploadId(aws(uploadId));
+    Error last;
+    for (int attempt = 0; attempt < 3; ++attempt) {
+        QElapsedTimer timer;
+        timer.start();
+        const auto outcome = client.AbortMultipartUpload(cancel);
+        if (outcome.IsSuccess() || int(outcome.GetError().GetResponseCode()) == 404) return {};
+        last = wireError(outcome.GetError(), "upload_abort", timer.elapsed());
+        if (!ambiguous(outcome.GetError())) break;
+    }
+    return last;
+}
 // Files above the multipart threshold upload in parts streamed from the retained
-// artifact, so memory stays bounded by one read buffer whatever the file size.
+// artifact, so memory stays bounded by one read buffer per lane whatever the file size.
 // Part requests never publish: an uncertain part is simply sent again under the
 // same number. Only CompleteMultipartUpload, sent with the item's create or replace
 // precondition, can publish, and only its uncertainty makes the item unknown.
@@ -336,24 +373,14 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
     QString uploadId;
     // Abort reports whether S3 still holds parts of this upload.
     auto abort = [&](const QString& id, const QString& target) {
-        if (id.isEmpty()) return QStringLiteral("aborted");
-        Aws::S3::Model::AbortMultipartUploadRequest cancel;
-        cancel.SetBucket(bucket);
-        cancel.SetKey(aws(target));
-        cancel.SetUploadId(aws(id));
-        for (int attempt = 0; attempt < 3; ++attempt) {
-            const auto outcome = client.AbortMultipartUpload(cancel);
-            if (outcome.IsSuccess() || int(outcome.GetError().GetResponseCode()) == 404) {
-                save({});
-                return QStringLiteral("aborted");
-            }
-            if (!ambiguous(outcome.GetError())) return QStringLiteral("failed");
-        }
-        return QStringLiteral("unknown");
+        if (id.isEmpty()) return true;
+        if (abortMultipart(client, bucket, target, id)) return false;
+        save({});
+        return true;
     };
     // Ends the attempt without publication: S3 keeps no parts unless abort failed.
     auto fail = [&](Error error, const QString& status = QStringLiteral("failed")) -> UploadResult {
-        if (abort(uploadId, key) != "aborted") {
+        if (!abort(uploadId, key)) {
             error.details["incompleteUpload"] = true;
             error.message += " The incomplete multipart upload could not be removed, so its uploaded parts keep using storage until a bucket lifecycle rule or a later retry removes them.";
         }
@@ -445,17 +472,39 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
     // The upload ID is durable before any part relies on it.
     if (auto error = save(journal)) return fail(error);
     report("uploading", completed);
-    for (int number = 1; number <= parts; ++number) {
-        if (done.count(number)) continue;
+    // Parts go out on one lane, plus one per idle upload slot the resident lends,
+    // up to four (#174). Any order is safe: a part is retried under its own number,
+    // the journal names only the upload, and completion lists parts in number order.
+    // A lane past the lent width finishes its part in flight and starts no other.
+    struct Lanes {
+        std::mutex mutex;
+        std::condition_variable changed;
+        int next = 1, width = 1;
+        std::array<bool, s3MaximumPartLanes> busy{};
+        std::array<qint64, s3MaximumPartLanes> sending{}; // bytes read of each lane's part in flight
+        Error error;           // the first error that ends this attempt
+        bool vanished = false; // S3 no longer has the upload
+    } lanes;
+    auto progress = [&] { // lanes.mutex held
+        qint64 total = completed;
+        for (const auto value : lanes.sending) total += value;
+        report("uploading", qMin(total, bytes));
+    };
+    struct Sent { bool ok = false; Aws::String etag; Error error; bool vanished = false; };
+    auto sendPart = [&](int number, int lane) -> Sent {
         const qint64 offset = qint64(number - 1) * partBytes;
         const qint64 length = qMin(partBytes, bytes - offset);
         const auto digest = partDigest(request.artifact.path, offset, length);
-        if (digest.isEmpty()) return fail({"artifact_invalid", "Retained artifact is unavailable", {}});
+        if (digest.isEmpty()) return {false, {}, {"artifact_invalid", "Retained artifact is unavailable", {}}};
         Error last;
-        for (int attempt = 0; attempt < 3 && !done.count(number); ++attempt) {
-            if (stopped(request.cancellation)) return fail(cancelled());
+        for (int attempt = 1; attempt <= 3; ++attempt) {
+            if (stopped(request.cancellation)) return {false, {}, cancelled()};
+            {
+                std::lock_guard lock(lanes.mutex);
+                if (lanes.error) return {};
+            }
             auto body = Aws::MakeShared<PartStream>("putgd-part", request.artifact.path, offset, length);
-            if (!body->isOpen()) return fail({"artifact_invalid", "Retained artifact is unavailable", {}});
+            if (!body->isOpen()) return {false, {}, {"artifact_invalid", "Retained artifact is unavailable", {}}};
             Aws::S3::Model::UploadPartRequest put;
             put.SetBucket(bucket);
             put.SetKey(aws(key));
@@ -465,31 +514,101 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
             // S3 rejects a part whose bytes differ from this digest (BadDigest).
             put.SetContentMD5(aws(QString::fromLatin1(digest.toBase64())));
             put.SetBody(body);
-            put.SetRequestSignedHandler([&](const Aws::Http::HttpRequest&) { report("uploading", completed); });
+            put.SetRequestSignedHandler([&](const Aws::Http::HttpRequest&) {
+                std::lock_guard lock(lanes.mutex);
+                lanes.sending[lane] = 0;
+                progress();
+            });
             put.SetDataSentEventHandler([&](const Aws::Http::HttpRequest*, long long amount) {
                 if (amount <= 0) return;
                 const auto position = body->rdbuf()->pubseekoff(0, std::ios::cur, std::ios::in);
-                if (position >= 0 && position <= length) report("uploading", completed + qint64(position));
+                if (position < 0 || position > length) return;
+                std::lock_guard lock(lanes.mutex);
+                lanes.sending[lane] = qint64(position);
+                progress();
             });
+            ResponseIds ids;
+            watchIds(put, ids);
             QElapsedTimer timer;
             timer.start();
             const auto outcome = client.UploadPart(put);
             if (outcome.IsSuccess()) {
-                done[number] = outcome.GetResult().GetETag();
-                break;
+                if (request.trace) {
+                    // Diagnostics only (#148): numbers and S3's request IDs, never the key or upload ID.
+                    int width = 1;
+                    { std::lock_guard lock(lanes.mutex); width = lanes.width; }
+                    try {
+                        request.trace(withIds({{"event", "part"}, {"partNumber", number}, {"bytes", double(length)}, {"attempt", attempt},
+                                               {"elapsedMs", timer.elapsed()}, {"lane", lane}, {"lanes", width}}, ids, outcome.GetResult().GetRequestId()));
+                    } catch (...) {}
+                }
+                return {true, outcome.GetResult().GetETag(), {}};
             }
             last = partError(outcome.GetError(), "upload_part", timer.elapsed(), number);
-            if (int(outcome.GetError().GetResponseCode()) == 404) {
-                // The upload vanished (aborted elsewhere, or a lifecycle rule): start again on retry.
-                save({});
-                return {"failed", {}, last};
-            }
-            if (!ambiguous(outcome.GetError())) return fail(last);
+            // The upload vanished (aborted elsewhere, or a lifecycle rule): start again on retry.
+            if (int(outcome.GetError().GetResponseCode()) == 404) return {false, {}, last, true};
+            if (!ambiguous(outcome.GetError())) return {false, {}, last};
         }
-        if (!done.count(number)) return fail(last);
-        completed += length;
-        report("uploading", completed);
+        return {false, {}, last};
+    };
+    auto sendParts = [&](int lane) {
+        std::unique_lock lock(lanes.mutex);
+        for (;;) {
+            while (lanes.next <= parts && done.count(lanes.next)) ++lanes.next;
+            if (lanes.error || lanes.next > parts || lane >= lanes.width) break;
+            const int number = lanes.next++;
+            lock.unlock();
+            const auto sent = sendPart(number, lane);
+            lock.lock();
+            lanes.sending[lane] = 0;
+            if (sent.ok) {
+                done[number] = sent.etag;
+                completed += qMin(partBytes, bytes - qint64(number - 1) * partBytes);
+                progress();
+            } else if (!lanes.error) {
+                // Another lane's error ends the attempt; this part is sent again on retry.
+                lanes.error = sent.error ? sent.error : Error{"s3_multipart_invalid", "A multipart part ended without a result", {}};
+                lanes.vanished = sent.vanished;
+            }
+        }
+        lanes.busy[lane] = false;
+        lanes.changed.notify_all();
+    };
+    std::array<std::thread, s3MaximumPartLanes> threads;
+    {
+        std::unique_lock lock(lanes.mutex);
+        for (;;) {
+            // The lent width comes from the resident without this lock held.
+            lock.unlock();
+            const int width = 1 + (request.extraLanes ? qBound(0, request.extraLanes(qMin(s3MaximumPartLanes - 1, parts - 1)), s3MaximumPartLanes - 1) : 0);
+            lock.lock();
+            lanes.width = width;
+            while (lanes.next <= parts && done.count(lanes.next)) ++lanes.next;
+            const bool more = !lanes.error && lanes.next <= parts;
+            for (int lane = 0; more && lane < width; ++lane) {
+                if (lanes.busy[lane]) continue;
+                // An idle lane's thread has already given up the lock: join it here.
+                if (threads[lane].joinable()) threads[lane].join();
+                try {
+                    threads[lane] = std::thread(sendParts, lane);
+                    lanes.busy[lane] = true;
+                } catch (...) {
+                    if (lane == 0 && !lanes.error) lanes.error = {"s3_multipart_invalid", "The multipart upload could not start sending parts", {}};
+                }
+            }
+            if (std::none_of(lanes.busy.begin(), lanes.busy.end(), [](bool busy) { return busy; })) break;
+            lanes.changed.wait_for(lock, std::chrono::milliseconds(100));
+        }
     }
+    for (auto& thread : threads)
+        if (thread.joinable()) thread.join();
+    if (lanes.error) {
+        if (!lanes.vanished) return fail(lanes.error);
+        save({});
+        return {"failed", {}, lanes.error};
+    }
+    if (int(done.size()) != parts) return fail({"s3_multipart_invalid", "A multipart part ended without a result", {}});
+    report("uploading", completed);
     journal["phase"] = "completing";
     if (auto error = save(journal)) return fail(error);
     report("finalizing", bytes);
@@ -516,11 +635,19 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
     else finish.SetIfMatch(aws(request.concurrencyToken));
     bool uncertain = interruptedCompletion;
     for (int attempt = 0; attempt < 3; ++attempt) {
+        ResponseIds ids;
+        watchIds(finish, ids);
         QElapsedTimer timer;
         timer.start();
         const auto outcome = client.CompleteMultipartUpload(finish);
         if (outcome.IsSuccess()) {
             save({});
+            if (request.trace) {
+                try {
+                    request.trace(withIds({{"event", "complete"}, {"parts", int(done.size())}, {"bytes", double(bytes)}, {"attempt", attempt + 1},
+                                           {"elapsedMs", timer.elapsed()}}, ids, outcome.GetResult().GetRequestId()));
+                } catch (...) {}
+            }
             const auto etag = qt(outcome.GetResult().GetETag());
             // Plain-MD5 part ETags (no SSE-KMS) fix the object's ETag: MD5 of the part MD5s, a dash, the count.
             const auto expectedEtag = QString::fromLatin1(composite.result().toHex()) + "-" + QString::number(done.size());
@@ -631,7 +758,8 @@ struct NetworkS3Driver::State {
         config.httpRequestTimeoutMs = destination.settings["requestTimeoutMs"].toInt();
         config.requestTimeoutMs = destination.settings["lowSpeedTimeSeconds"].toInt() * 1000L;
         config.lowSpeedLimit = destination.settings["lowSpeedBytesPerSecond"].toInt();
-        config.maxConnections = 1;
+        // A multipart upload sends up to four parts at once (#174); other calls use one.
+        config.maxConnections = s3MaximumPartLanes;
         config.retryStrategy = Aws::MakeShared<Aws::Client::DefaultRetryStrategy>("putgd", 0);
         config.executor = Aws::MakeShared<Aws::Utils::Threading::PooledThreadExecutor>("putgd", 1);
         config.useVirtualAddressing = s3VirtualAddressing(destination.settings);
@@ -1090,6 +1218,27 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
         return;
     }
     finish("removed");
+}
+void NetworkS3Driver::abandon(const Destination& destination, const QJsonObject& journal, std::function<void(Error)> reply) {
+    const auto uploadId = journal["uploadId"].toString(), key = journal["key"].toString();
+    if (uploadId.isEmpty()) {
+        reply({});
+        return;
+    }
+    if (auto error = state_->readiness(destination)) {
+        reply(error);
+        return;
+    }
+    if (key.isEmpty() || key.toUtf8().size() > 1024 || !key.startsWith(objectKey(destination, {}))) {
+        reply({"s3_multipart_invalid", "The saved multipart upload does not belong to this destination", {}});
+        return;
+    }
+    auto client = state_->client(destination);
+    if (!client) {
+        reply(accessError());
+        return;
+    }
+    reply(abortMultipart(*client, aws(destination.settings["bucket"].toString()), key, uploadId));
 }
 void NetworkS3Driver::testDestination(const Destination& destination, DurableCheckpoint save, std::function<void(QJsonObject, Error)> reply) {
     // The explicit setup caller owns this asynchronous operation. No captured input.

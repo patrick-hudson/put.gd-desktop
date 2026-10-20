@@ -215,6 +215,8 @@ jobs:
         with:
           pattern: release-*
           path: build/downloaded
+      - name: DWARF deduplication for the debug asset
+        run: sudo apt-get install -y --no-install-recommends dwz
       - name: Assemble the development debug asset
         run: python3 tools/releases/debug_symbols.py dry-run --inputs build/downloaded --output build/debug-asset
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -239,6 +241,8 @@ jobs:
           path: build/downloaded
       - name: Verify Proton corresponding-source delivery
         run: python3 tools/releases/proton_sources.py --catalog tools/proton/notices/SOURCES.json --output build/downloaded/proton-sources
+      - name: DWARF deduplication for the debug asset
+        run: sudo apt-get install -y --no-install-recommends dwz
       - name: Verify and collect exact release assets
         run: python3 tools/releases/collect.py --tag "$RELEASE_TAG" --inputs build/downloaded --output build/publish
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

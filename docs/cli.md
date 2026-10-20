@@ -81,7 +81,7 @@ Methods and parameters:
 | `capabilities`, `diagnostics` | empty object |
 | `ui.quit` | empty object; explicitly exit the resident application |
 | `ui.moveDestination` | `direction` up/down, optional `profileId`; drives the open Settings window |
-| `ui.diagnostics` | `action` (`inspect`, `setDebugLogging`, `clearLogs`, `openPackage`, `setPackage`, `savePackage`, `showInFolder`, `closePackage`), with `enabled`, `includeNames`, absolute `folder` or `operation` where they apply; drives Settings → General → Diagnostics |
+| `ui.diagnostics` | `action` (`inspect`, `setDebugLogging`, `clearLogs`, `openPackage`, `setPackage`, `savePackage`, `showInFolder`, `closePackage`), with `enabled`, `includeNames`, absolute `folder`, `upload` or `operation` where they apply; drives Settings → General → Diagnostics |
 | `ui.historySaveDiagnostics` | operation or history `id`; clicks **Save diagnostics for this upload** on that failed History row |
 
 Editor methods, command shapes and error codes are specified in
@@ -149,13 +149,22 @@ returns `destination_move_invalid`.
 ([diagnostics.md](diagnostics.md#settings-and-notifications)). Every reply is the
 group's state: `debugLogging` (`enabled`, `expiresAt`), `logs` (`files`, `bytes`,
 `oldestRecord`), `loggingDegraded`, `uncleanExit`, the displayed texts, and `package`
-(the dialog: `open`, `includeNames`, `folder`, `preview`, `saved`, `error`), plus
+(the dialog: `open`, `includeNames`, `folder`, `preview`, `uploadTarget`, `upload`,
+`saving`, `saved`, `error`), plus
 `result` for `clearLogs` and `showInFolder`. `setDebugLogging` takes `enabled` and
 saves like the checkbox. `clearLogs` deletes the logs without the button's
 confirmation. `openPackage` opens **Create diagnostics package…** (optional
 `operation`, `includeNames`) and answers with its preview; `setPackage` changes
-`includeNames` or the `folder` (an existing folder, which Settings remembers);
-`savePackage` saves and answers with `package.saved` (`path`, `bytes`, `sha256` …);
+`includeNames`, the `folder` (an existing folder, which Settings remembers) or
+`upload`. `package.uploadTarget` is the dialog's `diagnostics.uploadTarget` answer
+with `checking` (true while the check runs); `upload: true` works only once it is
+`available` (otherwise `diagnostics_upload_checking` or
+`diagnostics_upload_unavailable` with its `reason`), and `package.upload` says
+whether **Also upload and copy a link** is ticked (it starts ticked when available).
+`savePackage` saves and answers with `package.saved` (`path`, `bytes`, `sha256` …,
+plus `link`, `linkCopied` or `uploadError` after an upload). With the upload ticked
+it answers as soon as saving starts; `inspect` shows `package.saving` until
+`package.saved` arrives;
 `showInFolder` reveals it; `closePackage` closes the dialog. Without an open
 dialog the package actions return `diagnostics_dialog_closed`.
 

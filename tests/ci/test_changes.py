@@ -60,6 +60,26 @@ class Selection(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertFalse(changes.select([path])['sanitizers'])
 
+    def test_recorder_sources_and_the_pipewire_check_select_the_pipewire_job(self):
+        for path in ('src/record/WaylandAcquisition.cpp', 'src/record/RecordingPipeline.cpp'):
+            with self.subTest(path=path):
+                self.assertTrue(changes.select([path])['pipewire'])
+                self.assertSelects([path], True, False)
+        # The check's own scripts are read by that job alone.
+        for path in ('tests/desktop/pipewire/run_buffers.sh', 'tests/desktop/pipewire/ci_check.sh',
+                     'tests/desktop/pipewire/recorder_properties.cpp'):
+            with self.subTest(path=path):
+                self.assertTrue(changes.select([path])['pipewire'])
+                self.assertSelects([path], False, False)
+        # Packaging builds a new AppImage, which the job checks.
+        for path in ('packaging/appimage/media.json', 'tools/releases/build-appimage.sh', '.github/workflows/ci.yml'):
+            with self.subTest(path=path):
+                self.assertTrue(changes.select([path])['pipewire'])
+        for path in ('src/core/Settings.cpp', 'src/ui/SettingsWindow.cpp', 'tests/desktop/x11/test_x11.cpp',
+                     'docs/ci.md', 'tools/lab/lab.py'):
+            with self.subTest(path=path):
+                self.assertFalse(changes.select([path])['pipewire'])
+
     def test_mixed_change_takes_the_union(self):
         self.assertSelects(['docs/ci.md', 'src/main.cpp'], True, False)
         self.assertSelects(['docs/ci.md', 'packaging/appimage/AppRun'], True, True)

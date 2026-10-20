@@ -3,6 +3,7 @@
 #include "core/RunMarker.h"
 #include "storage/s3/SdkRuntime.h"
 #include "fixtures/U2Fixtures.h"
+#include <QCoreApplication>
 #include <QDir>
 #include <QElapsedTimer>
 #include <QFile>
@@ -105,7 +106,10 @@ private slots:
  void debugLoggingIsOptInAndRulesStillApply() {
   QTemporaryDir dir;logging::open(dir.path());
   logging::debug(logOperation(),"hidden");
+  // The distro rule (see main) hides qDebug until debug logging is on.
+  QVERIFY(!QLoggingCategory::defaultCategory()->isDebugEnabled());
   logging::setDebug(true,QDateTime::currentDateTimeUtc().addSecs(60));
+  QVERIFY(QLoggingCategory::defaultCategory()->isDebugEnabled());
   logging::debug(logOperation(),"shown");qDebug("qt debug shown");
   QVERIFY(!logging::status()["debugLoggingExpiresAt"].isNull());
   logging::setDebug(false);
@@ -137,6 +141,23 @@ private slots:
   Error error;const auto cleared=logging::clear(error);QVERIFY(!error);
   QCOMPARE(cleared["removedFiles"].toInt(),int(files.size()));
   const auto after=records(readLogs(dir.path()));QCOMPARE(after.size(),1);QCOMPARE(after[0]["message"].toString(),QString("Logs cleared"));
+ }
+ // The resident cleans up once a day as well as at startup and rotation: a
+ // log that ages past logDays while it runs is removed without either.
+ void dailyCleanupEnforcesRetention() {
+  QTemporaryDir dir;const auto logs=dir.filePath("logs");logging::open(logs);
+  SettingsService settings(dir.filePath("config.json"));QVERIFY(settings.save(Settings::defaults(),{}));
+  LogService service(settings,dir.path());service.apply();
+  QCOMPARE(service.cleanupInterval(),LogService::cleanupIntervalMs);QCOMPARE(LogService::cleanupIntervalMs,24*60*60*1000);
+  // Aged past the default 14 days after the cleanups that open and apply queue have run.
+  logging::flush();
+  const auto old=logs+"/putgd-20200101T000000000Z-1-1.jsonl";QFile stale(old);QVERIFY(stale.open(QIODevice::WriteOnly));stale.write("{}\n");stale.flush();
+  stale.setFileTime(QDateTime::currentDateTimeUtc().addDays(-15),QFileDevice::FileModificationTime);stale.close();
+  logging::info(logApp(),"Still running");logging::flush();QTest::qWait(100);
+  QVERIFY(QFile::exists(old));
+  service.setCleanupInterval(20);
+  QTRY_VERIFY(!QFile::exists(old));
+  QVERIFY(!logging::files().isEmpty());
  }
  void failedWritesDegradeWithoutBlocking() {
   QTemporaryDir dir;QFile blocker(dir.filePath("not-a-folder"));QVERIFY(blocker.open(QIODevice::WriteOnly));blocker.close();
@@ -270,5 +291,18 @@ private slots:
   operations.shutdown();
  }
 };
-QTEST_GUILESS_MAIN(LoggingContract)
+// Every host runs this suite as if its distro disabled debug output the way
+// Fedora's /usr/share/qt6/qtlogging.ini does (*.debug=false, #191): Qt reads
+// the user's QtProject/qtlogging.ini with the same low precedence.
+int main(int argc,char** argv) {
+ QTemporaryDir config;
+ if(!config.isValid()||!QDir().mkpath(config.filePath("QtProject")))return 2;
+ {QFile rules(config.filePath("QtProject/qtlogging.ini"));if(!rules.open(QIODevice::WriteOnly))return 2;rules.write("[Rules]\n*.debug=false\n");}
+ qputenv("XDG_CONFIG_HOME",config.path().toLocal8Bit());
+ qunsetenv("QT_LOGGING_RULES");qunsetenv("QT_LOGGING_CONF");
+ QCoreApplication app(argc,argv);
+ LoggingContract test;
+ QTEST_SET_MAIN_SOURCE_PATH
+ return QTest::qExec(&test,argc,argv);
+}
 #include "test_logging.moc"

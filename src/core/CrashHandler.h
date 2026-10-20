@@ -13,6 +13,9 @@ namespace putgd::crash {
 // it opened in advance (setOutput). Nothing else is recorded: no registers
 // beyond the faulting address and PC, no memory, no variables.
 //
+// Each thread gets its own alternate stack when it starts (pthread_create is
+// wrapped, #156), so a stack overflow on a worker thread is recorded too.
+//
 // Disabled in ASan/TSan builds (the sanitizers own these signals) and when
 // PUTGD_CRASH_HANDLER=0 is set.
 constexpr const char* linePrefix="putgd-crash\t";
@@ -26,9 +29,11 @@ void setOutput(int fd);
 // still resolved at crash time from /proc/self/maps.
 void refreshModules();
 #ifdef PUTGD_CRASH_TRIGGER
-// Development builds only: PUTGD_TEST_CRASH=<process>:<segv|abort|ill|fpe|bus>[:<delay ms>]
+// Development builds only: PUTGD_TEST_CRASH=<process>:<segv|abort|ill|fpe|bus|overflow>[:<delay ms>[:worker]]
 // crashes the named executable (putgd, putgd-ui, putgd-capture, putgd-record, ...)
-// on its main thread's stack after the delay. Compiled out of release builds.
+// after the delay: on its main thread's stack, or with `worker` on a thread of
+// its own. `overflow` recurses until the stack runs out. Compiled out of
+// release builds.
 [[noreturn]] void crashNow(const char* kind);
 #endif
 }

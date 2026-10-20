@@ -14,6 +14,8 @@ public:
     virtual void reconcile(const UploadRequest&, std::function<void(StatResult)>) = 0;
     virtual void remove(const DeleteRequest&, DurableCheckpoint, std::function<void(DeleteResult)>) = 0;
     virtual void testDestination(const Destination&, DurableCheckpoint, std::function<void(QJsonObject, Error)>) = 0;
+    // Aborts the multipart upload a retired item's journal names (#146).
+    virtual void abandon(const Destination&, const QJsonObject& journal, std::function<void(Error)>) = 0;
 };
 class NetworkS3Driver final : public S3Driver {
 public:
@@ -25,6 +27,7 @@ public:
     void reconcile(const UploadRequest&, std::function<void(StatResult)>) override;
     void remove(const DeleteRequest&, DurableCheckpoint, std::function<void(DeleteResult)>) override;
     void testDestination(const Destination&, DurableCheckpoint, std::function<void(QJsonObject, Error)>) override;
+    void abandon(const Destination&, const QJsonObject&, std::function<void(Error)>) override;
 private:
     struct State;
     std::unique_ptr<State> state_;

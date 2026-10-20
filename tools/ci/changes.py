@@ -3,7 +3,8 @@
 
 The contracts job always runs. `build` selects the Linux test matrix and the
 portable compiles; `packages` selects the native/AppImage package builds;
-`sanitizers` selects the clang ASan/UBSan core contract job.
+`sanitizers` selects the clang ASan/UBSan core contract job; `pipewire` selects
+the AppImage pipewiresrc check against a PipeWire 1.6 daemon.
 Any path not explicitly known to be build-neutral selects `build`, so a new
 directory is tested by default. Push, schedule, dispatch and called runs
 select everything.
@@ -40,6 +41,13 @@ SANITIZER_PREFIXES = ('src/core/', 'src/app/', 'tests/unit/', 'tests/integration
                       'tests/fixtures/', 'cmake/', 'tools/ci/')
 SANITIZER_FILES = frozenset({'CMakeLists.txt', 'CMakePresets.json', '.github/workflows/ci.yml'})
 
+# The pipewire job links the AppImage's pipewiresrc, with the recorder's
+# properties from src/record, to compositor-like screen casts (#144). Any
+# packaging change selects it too, with that run's own AppImage. Its scripts
+# are read by that job alone, so they don't select `build`.
+PIPEWIRE_CHECK_PREFIXES = ('tests/desktop/pipewire/',)
+PIPEWIRE_PREFIXES = PIPEWIRE_CHECK_PREFIXES + ('src/record/',)
+
 
 def _documentation(path):
     return path in DOCUMENTATION_FILES or path.startswith(DOCUMENTATION_PREFIXES)
@@ -66,9 +74,12 @@ def _sanitized(path):
 def select(paths):
     paths = sorted(set(paths))
     packages = any(_packaging(path) for path in paths)
-    build = packages or any(not _documentation(path) and not _contract_only(path) for path in paths)
+    build = packages or any(not _documentation(path) and not _contract_only(path)
+                            and not path.startswith(PIPEWIRE_CHECK_PREFIXES) for path in paths)
     sanitizers = any(_sanitized(path) for path in paths)
-    return {'build': build, 'packages': packages, 'sanitizers': sanitizers, 'paths': paths}
+    pipewire = packages or any(path.startswith(PIPEWIRE_PREFIXES) for path in paths)
+    return {'build': build, 'packages': packages, 'sanitizers': sanitizers, 'pipewire': pipewire,
+            'paths': paths}
 
 
 def changed_paths(root, base, head):
@@ -87,19 +98,21 @@ def main():
     if args.event == 'pull_request':
         result = select(changed_paths(args.root, args.base, args.head))
     else:
-        result = {'build': True, 'packages': True, 'sanitizers': True, 'paths': None}
+        result = {'build': True, 'packages': True, 'sanitizers': True, 'pipewire': True, 'paths': None}
     result['event'] = args.event
     if os.environ.get('GITHUB_OUTPUT'):
         with open(os.environ['GITHUB_OUTPUT'], 'a') as stream:
             stream.write(f"build={str(result['build']).lower()}\n")
             stream.write(f"packages={str(result['packages']).lower()}\n")
             stream.write(f"sanitizers={str(result['sanitizers']).lower()}\n")
+            stream.write(f"pipewire={str(result['pipewire']).lower()}\n")
     if os.environ.get('GITHUB_STEP_SUMMARY'):
         with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as stream:
             stream.write('| Job group | Selected |\n| --- | --- |\n| contracts | yes |\n')
             stream.write(f"| linux, portable | {'yes' if result['build'] else 'no'} |\n")
             stream.write(f"| packages | {'yes' if result['packages'] else 'no'} |\n")
             stream.write(f"| sanitizers | {'yes' if result['sanitizers'] else 'no'} |\n")
+            stream.write(f"| pipewire | {'yes' if result['pipewire'] else 'no'} |\n")
     print(json.dumps(result, indent=2))
 
 

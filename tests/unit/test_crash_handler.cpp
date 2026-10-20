@@ -13,9 +13,13 @@
 #include <QStandardPaths>
 #include <QTemporaryDir>
 #include <QTest>
+#include <QThread>
 #include <QTimer>
 #include <csignal>
+#include <cstdio>
 #include <cstring>
+#include <memory>
+#include <thread>
 #include <dlfcn.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -35,12 +39,40 @@ volatile std::uintptr_t nowhere=0;
  crashSite();asm volatile("");
 }
 [[gnu::noinline]] void callerOne(const char* kind) {callerTwo(kind);asm volatile("");}
+volatile int stopRecursion=0;
+// Recurses until the thread's stack runs into its guard page (#156).
+[[gnu::noinline]] int overflowSite(int depth) {
+ volatile char frame[1024];frame[0]=char(depth);
+ if(stopRecursion)return frame[0];
+ return overflowSite(depth+1)+frame[0];
+}
+// The alternate stack this thread has: {size, enabled}.
+QPair<qint64,bool> alternateStack() {stack_t stack{};if(::sigaltstack(nullptr,&stack)!=0)return {0,false};return {qint64(stack.ss_size),!(stack.ss_flags&SS_DISABLE)};}
+int mappingCount() {QFile maps("/proc/self/maps");return maps.open(QIODevice::ReadOnly)?int(maps.readAll().count('\n')):-1;}
 int child(int argc,char** argv) {
  const char* kind=argv[2];
  if(argc>3) {const int fd=::open(argv[3],O_WRONLY|O_CREAT|O_TRUNC|O_CLOEXEC,0600);if(fd<0)return 4;crash::setOutput(fd);}
  if(std::strcmp(kind,"wait")==0) {
   // The development trigger crashes this process from its event loop.
   QCoreApplication app(argc,argv);QTimer::singleShot(10000,&app,[]{::_exit(5);});return app.exec();
+ }
+ // Stack overflows on the main thread and on threads started three ways.
+ if(std::strcmp(kind,"overflow-main")==0)overflowSite(0);
+ if(std::strcmp(kind,"overflow-std")==0){std::thread([]{overflowSite(0);}).join();return 6;}
+ if(std::strcmp(kind,"overflow-qthread")==0) {
+  QCoreApplication app(argc,argv);std::unique_ptr<QThread> thread(QThread::create([]{overflowSite(0);}));
+  thread->start();thread->wait();return 6;
+ }
+ if(std::strcmp(kind,"overflow-module")==0) {
+  void* library=::dlopen(PUTGD_CRASH_MODULE,RTLD_NOW|RTLD_LOCAL);
+  if(!library)::_exit(3);
+  reinterpret_cast<void(*)()>(::dlsym(library,"putgd_test_overflow_in_module_thread"))();
+  return 6;
+ }
+ // Whether a new thread has an alternate stack: "<bytes> <enabled>".
+ if(std::strcmp(kind,"thread-stack")==0) {
+  QPair<qint64,bool> stack;std::thread([&stack]{stack=alternateStack();}).join();
+  std::printf("%lld %d\n",static_cast<long long>(stack.first),int(stack.second));return 0;
  }
  callerOne(kind);
  return 0;
@@ -69,6 +101,27 @@ QJsonObject moduleOf(const QJsonObject& record,const QJsonObject& frame) {
 }
 class CrashHandlerTest final:public QObject {
  Q_OBJECT
+ // A stack overflow on <kind>'s thread: a complete record from that thread,
+ // whose top frame is in <file>, and the process still dies by SIGSEGV.
+ void verifyOverflowRecord(const char* kind,const QString& file,const char* function,bool worker) {
+  QTemporaryDir directory;QVERIFY(directory.isValid());
+  const auto path=directory.filePath("running.crash");
+  const auto run=runChild({kind,path});
+  QCOMPARE(run.status,QProcess::CrashExit);QCOMPARE(run.code,SIGSEGV);
+  QFile output(path);QVERIFY(output.open(QIODevice::ReadOnly));const auto text=output.readAll();
+  const auto record=crash::parseRecord(text);
+  QVERIFY2(!record.isEmpty(),kind);
+  QVERIFY2(record["complete"].toBool(),text.right(2000).constData());
+  QCOMPARE(record["signal"].toInt(),SIGSEGV);
+  QCOMPARE(record["thread"].toInteger()!=record["pid"].toInteger(),worker);
+  const auto frames=record["frames"].toArray();
+  QVERIFY2(frames.size()>=16,text.right(2000).constData());
+  const auto top=frames[0].toObject();
+  const auto module=moduleOf(record,top);
+  QCOMPARE(QFileInfo(module["file"].toString()).canonicalFilePath(),QFileInfo(file).canonicalFilePath());
+  const auto name=symbolize(module["file"].toString(),top["offset"].toString());
+  if(!name.isEmpty())QVERIFY2(name.contains(function),qPrintable(name));
+ }
 private slots:
  void initTestCase() {
 #if defined(__SANITIZE_ADDRESS__)||defined(__SANITIZE_THREAD__)||defined(PUTGD_CRASH_SANITIZED)
@@ -142,6 +195,30 @@ private slots:
   const auto run=runChild({"segv"},environment);
   QCOMPARE(run.status,QProcess::CrashExit);QCOMPARE(run.code,SIGSEGV);
   QVERIFY(!run.stderrText.contains("putgd-crash"));
+  // Nor does it give threads an alternate stack.
+  const auto plain=runChild({"thread-stack"},environment);
+  QCOMPARE(plain.code,0);QCOMPARE(plain.stdoutText.trimmed(),QByteArray("0 0"));
+ }
+ // Every thread starts with its own alternate signal stack, so the handler
+ // still runs when a worker's stack overflows (#156).
+ void stackOverflowOnAnyThreadIsRecorded() {
+  const auto self=QCoreApplication::applicationFilePath();
+  for(const auto* kind:{"overflow-main","overflow-std","overflow-qthread"}) {
+   verifyOverflowRecord(kind,self,"overflowSite",std::strcmp(kind,"overflow-main")!=0);
+   if(QTest::currentTestFailed())return;
+  }
+  // A library's own thread, the way Qt, GStreamer or the AWS SDK start them.
+  verifyOverflowRecord("overflow-module",PUTGD_CRASH_MODULE,"overflowInModule",true);
+ }
+ // The stack is 64 KiB of untouched pages per thread, removed when it ends.
+ void threadStacksAreSmallAndReleased() {
+  QPair<qint64,bool> stack;std::thread([&stack]{stack=alternateStack();}).join();
+  QCOMPARE(stack.first,qint64(64*1024));QVERIFY(stack.second);
+  std::unique_ptr<QThread> thread(QThread::create([&stack]{stack=alternateStack();}));thread->start();QVERIFY(thread->wait(10000));
+  QCOMPARE(stack.first,qint64(64*1024));QVERIFY(stack.second);
+  const int before=mappingCount();QVERIFY(before>0);
+  for(int i=0;i<200;++i)std::thread([]{}).join();
+  QVERIFY2(mappingCount()<=before+4,qPrintable(QStringLiteral("%1 -> %2").arg(before).arg(mappingCount())));
  }
  // The development trigger crashes a named process from its main thread.
  void developmentTrigger() {
@@ -155,6 +232,14 @@ private slots:
   const auto record=crash::parseRecord(run.stderrText);
   QCOMPARE(record["signal"].toInt(),SIGSEGV);
   QCOMPARE(record["thread"].toInteger(),record["pid"].toInteger());
+  // With "worker", the trigger overflows a thread of its own.
+  environment.insert("PUTGD_TEST_CRASH",QFileInfo(QCoreApplication::applicationFilePath()).fileName()+":overflow:300:worker");
+  const auto worker=runChild({"wait"},environment);
+  QCOMPARE(worker.status,QProcess::CrashExit);QCOMPARE(worker.code,SIGSEGV);
+  const auto overflow=crash::parseRecord(worker.stderrText);
+  QVERIFY2(overflow["complete"].toBool(),worker.stderrText.right(2000).constData());
+  QCOMPARE(overflow["signal"].toInt(),SIGSEGV);
+  QVERIFY(overflow["thread"].toInteger()!=overflow["pid"].toInteger());
   // Another process name is left alone.
   environment.insert("PUTGD_TEST_CRASH","putgd-not-this-one:segv");
   const auto quiet=runChild({"wait"},environment);

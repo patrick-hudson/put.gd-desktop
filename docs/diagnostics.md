@@ -209,8 +209,19 @@ Afterwards the handler restores the signal's previous disposition and lets it
 happen, so the process still dies by that signal: the exit status, a core dump,
 systemd-coredump and any handler installed earlier behave as before. The handler
 records only the first crashing thread; a crash on another thread meanwhile waits
-up to two seconds for it. Only the main thread has the alternate stack, so a stack
-overflow on another thread is not recorded (option B below still sees it; #156).
+up to two seconds for it.
+
+`sigaltstack` is per thread, and a new thread starts without one. The crash library
+therefore defines `pthread_create`, and each executable exports it
+(`--export-dynamic-symbol`), so Qt, libstdc++, GStreamer, the AWS SDK and put.gd's
+own code all start their threads through it (#156). It wraps the start routine: the
+new thread maps a 64 KiB alternate stack with a guard page below it
+(`MAP_NORESERVE`, untouched unless the thread crashes) before running the routine,
+and unmaps it when the thread ends. A stack overflow on any thread is therefore
+recorded, from that thread. Threads that start before the handler installs itself
+(in another library's constructor) have none (#211). With `PUTGD_CRASH_HANDLER=0`, or in
+sanitizer builds, `pthread_create` passes straight through. The native package
+audit rejects a crash-handled program that doesn't export it.
 
 - **The resident** writes its record to `$XDG_STATE_HOME/putgd/running.crash`,
   opened (0600, `O_NOFOLLOW`) when it starts. The next start reads it beside the
@@ -251,20 +262,25 @@ afterwards. Qt installs none outside its test library.
 
 Development builds (`PUTGD_CRASH_TRIGGER`, on unless the build type is a release
 type or `PUTGD_RELEASE_TAG` is set) read
-`PUTGD_TEST_CRASH=<process>:<segv|abort|ill|fpe|bus>[:<delay ms>]`: the executable
-of that name crashes on its main thread after the delay. Helpers inherit the
-resident's environment, so one variable crashes the resident or a chosen helper:
+`PUTGD_TEST_CRASH=<process>:<segv|abort|ill|fpe|bus|overflow>[:<delay ms>[:worker]]`:
+the executable of that name crashes after the delay, on its main thread or, with
+`worker`, on a thread of its own. `overflow` recurses until the stack runs out.
+Helpers inherit the resident's environment, so one variable crashes the resident
+or a chosen helper:
 
 ```sh
-PUTGD_TEST_CRASH=putgd:segv:5000 ./build/dev/putgd        # the resident, 5 s in
-PUTGD_TEST_CRASH=putgd-ui:abort:2000 ./build/dev/putgd    # the UI helper, 2 s after it starts
+PUTGD_TEST_CRASH=putgd:segv:5000 ./build/dev/putgd               # the resident, 5 s in
+PUTGD_TEST_CRASH=putgd-ui:abort:2000 ./build/dev/putgd           # the UI helper, 2 s after it starts
+PUTGD_TEST_CRASH=putgd-record:overflow:1000:worker ./build/dev/putgd   # a stack overflow on a recorder thread
 ```
 
 Configuring a release build with the trigger fails, and the native package audit
 (`tools/releases/audit_native.py`) rejects any packaged binary that contains
 `PUTGD_TEST_CRASH`. `tests/unit/test_crash_handler.cpp` crashes a child process
 with each path (file, stderr, a library loaded later, the trigger) and symbolizes
-its frames.
+its frames. It also overflows the main thread, a `std::thread`, a `QThread` and a
+thread that a dlopen'd library starts, and checks that every thread gets its
+64 KiB stack and gives it back.
 
 ### systemd-coredump (option B)
 
@@ -295,6 +311,16 @@ a debuginfod cache (`.build-id/<2 hex>/<rest>.debug`) with a `manifest.json` tha
 names each build's programs and build IDs. Pull requests build the same asset as
 the `debug-symbols-dry-run` artifact. See [release.md](release.md).
 
+The builds split with zlib-compressed debug sections, which keeps the staged files
+and the jobs' artifacts small, but leaves a compressor nothing to find. The asset
+is about half that size, around 213 MB instead of 433 MB for five builds (#162).
+`debug_symbols.py` decompresses the sections and runs `dwz` on each build's files.
+The DWARF its programs share moves into `.dwz/<label>.debug`, which each file's
+`.gnu_debugaltlink` names relative to itself (`../../.dwz/<label>.debug`). Then
+`zstd -19 --long=27` compresses the whole tar. That window still unpacks with
+plain `tar --zstd -xf`. Keep the extracted tree together: a `.debug` file read
+without its `.dwz` file is missing the shared types and some names.
+
 ## Symbolizing a crash record (maintainers)
 
 1. Get the records: the package itself, a log file, `running.crash`, or helper
@@ -322,8 +348,9 @@ the `debug-symbols-dry-run` artifact. See [release.md](release.md).
    python3 tools/diagnostics/symbolize_crash.py putgd-diagnostics-20261020-101500Z.zip --debug-dir debug
    ```
 
-   By hand, each frame is one lookup in the module's debug file. Frame 0 is the
-   faulting instruction; the others are return addresses, so look up `offset - 1`:
+   By hand, each frame is one lookup in the module's debug file, which finds the
+   build's shared `.dwz` file by its relative link. Frame 0 is the faulting
+   instruction; the others are return addresses, so look up `offset - 1`:
 
    ```sh
    eu-addr2line -f -C -i -e debug/.build-id/3c/4f...e1.debug 0x3fa2b
@@ -469,8 +496,7 @@ The reply adds `upload` (`profileId`, `label`, `provider`, `publicLink`,
 MCP `get_diagnostics_upload_target`) runs the same check without a package and
 answers `{available: true, profileId, label, provider, publicLink, warning,
 shareExpirationDays?}` or `{available: false, reason, message}`. Settings' dialog
-(#122) uses it to show "Also upload and copy a link", checked when a working
-destination exists and hidden otherwise, with the warning beside it.
+uses it to offer the upload (see below).
 
 ### The default folder
 
@@ -498,17 +524,34 @@ deleted, and other files in the folder are left alone.
   (off each time the dialog opens). **Choose folder…** saves the folder in
   `preferences.diagnostics.packageFolder`, so later packages go there; **Use default**
   clears it. **Save package** calls `diagnostics.bundle` with `notify`, then shows the
-  file and **Show in folder**. A space under the options is kept for #123's optional
-  upload (wiring tracked in #158).
+  file and **Show in folder**.
+- **Also upload to <destination> and copy a link** (#158). Opening the dialog calls
+  `diagnostics.uploadTarget` for the default destination in the background (it can
+  take minutes: a Test connection); the preview and **Save package** don't wait for
+  it. While it runs, a line under the options says it is checking. When the
+  destination works, the checkbox appears, ticked, with the sharing `warning` under
+  it, and the button reads **Save and upload**: the save adds `upload`, `copyLink`
+  and that `profileId`. Afterwards the dialog shows the link and whether it was
+  copied, or why it wasn't uploaded, and the saved file stays either way. When the
+  destination doesn't work, the checkbox stays hidden and the line says why: no
+  upload destination, the last upload failed with a credential or configuration
+  error, or Test connection failed (with the destination's own message).
 
 A failed, partial or interrupted operation's notification has a **Save diagnostics
 for this upload** button, and so do failed History rows (in the inspector and the row
 menu). Each builds a package for that one operation, in the remembered folder or the
 default one. The resident then posts **put.gd — diagnostics saved** with the file name,
-size and folder, and a **Show in folder** button. Notification buttons need the
-desktop's notification server to support actions (GNOME, Plasma and Cinnamon do). put.gd
-asks for a 10-second notification; once Cinnamon has expired it, use the History row
-instead.
+size and folder, and a **Show in folder** button; after an upload from the dialog it
+also says where the package went, or why it wasn't uploaded. Notification buttons
+need the desktop's notification server to support actions (GNOME, Plasma and
+Cinnamon do). Plain notifications ask for 10 seconds. On GNOME Shell and Plasma a
+notification with buttons does too: both keep it, buttons and all, in their
+notification lists after the popup. Elsewhere, including Cinnamon, it is sent with
+the `resident` hint and `expire_timeout` 0 (#151): Cinnamon otherwise removes an
+app's notifications as soon as one of its windows takes focus, and with them the
+buttons. put.gd closes a resident notification itself once a button or its body is
+clicked. The server is identified by `GetServerInformation`. The History row offers
+the same action.
 
 **Show in folder** is the session method `diagnostics.reveal` with an absolute `path`
 (MCP `show_diagnostics_package`). It asks the file manager to select the package

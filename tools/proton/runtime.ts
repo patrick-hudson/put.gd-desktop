@@ -32,7 +32,9 @@ export function serviceFailure(error: unknown, fallback = 'operation_failed', au
     // Public ValidationError codes from the pinned SDK's API error factory.
     if (error instanceof ValidationError) {
         if ([2011, 2026].includes(error.code ?? 0)) return failure('permission_denied');
-        if ([200001, 200002, 200003, 200004, 200100, 200101, 200600, 200601, 200602, 200800].includes(error.code ?? 0))
+        // 200003 (MAX_FILE_SIZE_FOR_FREE_USER) is the plan's per-file limit, not a full drive.
+        if (error.code === 200003) return failure('destination_file_too_large_for_plan');
+        if ([200001, 200002, 200004, 200100, 200101, 200600, 200601, 200602, 200800].includes(error.code ?? 0))
             return failure('quota_exceeded');
     }
     return failure(fallback);

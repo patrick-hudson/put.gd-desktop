@@ -3,6 +3,7 @@ its packaged binaries and merged by GNU build ID into one release asset."""
 import json
 from pathlib import Path
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -93,6 +94,77 @@ class DebugSymbols(unittest.TestCase):
         archive.write_bytes(archive.read_bytes()[:-1] + b'x')
         with self.assertRaisesRegex(ValueError, 'archive bytes differ'):
             debug_symbols.prepare(inputs, lambda build: True)
+
+    @unittest.skipUnless(all(shutil.which(tool) for tool in ('cc', 'objcopy', 'dwz', 'addr2line', 'nm')),
+                         'needs cc, objcopy, dwz, addr2line and nm')
+    def test_asset_shares_each_builds_dwarf_and_still_symbolizes(self):
+        # Two programs of one build with zlib-compressed split debug files, as
+        # the package jobs stage them; the asset decompresses them, moves the
+        # DWARF they share into .dwz/<label>.debug and links it relatively (#162).
+        header = self.root / 'shared.h'
+        header.write_text('\n'.join('struct shape%d { int a%d; long b%d; const char* name%d; double c%d[4]; };' % ((i,) * 5)
+                                    for i in range(40)) + '\n')
+        files, programs = {}, []
+        for index, name in enumerate(('putgd', 'putgd-ui')):
+            source = self.root / (name + '.c')
+            source.write_text('#include "shared.h"\n' + ''.join('struct shape%d s%d;\n' % (i, i) for i in range(40))
+                              + 'int entry_%d(int value) { return value * %d + s3.a3; }\n' % (index, index + 2)
+                              + 'int main(void) { return entry_%d(3); }\n' % index)
+            binary = self.root / name
+            subprocess.run(['cc', '-g', '-O1', '-Wl,--build-id', '-I', str(self.root), '-o', str(binary), str(source)], check=True)
+            debug = self.root / (name + '.debug')
+            subprocess.run(['objcopy', '--only-keep-debug', '--compress-debug-sections=zlib', str(binary), str(debug)], check=True)
+            identifier = debug_symbols.build_id(binary)
+            files['.build-id/' + identifier[:2] + '/' + identifier[2:] + '.debug'] = debug.read_bytes()
+            programs.append({'program': name, 'buildId': identifier, 'binary': binary, 'entry': 'entry_%d' % index})
+        builds = [{'label': 'appimage', 'build': IDENTITY,
+                   'programs': [{'program': entry['program'], 'buildId': entry['buildId']} for entry in programs]}]
+        output = self.root / 'publish'
+        output.mkdir()
+        result = debug_symbols.write({'files': files, 'builds': builds}, output, IDENTITY['version'], 1760000000)
+        manifest, members = debug_symbols.read_asset(output / result['file'])
+        self.assertEqual(manifest['builds'][0]['dwz'], '.dwz/appimage.debug')
+        self.assertIn('.dwz/appimage.debug', members)
+        # The documented maintainer step: extract with plain tar, then look up by build ID.
+        extracted = self.root / 'debug'
+        extracted.mkdir()
+        subprocess.run(['tar', '--zstd', '-xf', str(output / result['file']), '-C', str(extracted)], check=True)
+        for entry in programs:
+            debug = extracted / ('.build-id/' + entry['buildId'][:2] + '/' + entry['buildId'][2:] + '.debug')
+            data = debug.read_bytes()
+            self.assertEqual(debug_symbols.compressed_sections(data), [])
+            _, offset, size = debug_symbols.elf_sections(data)['.gnu_debugaltlink']
+            self.assertEqual(data[offset:data.index(b'\0', offset)], b'../../.dwz/appimage.debug')
+            symbols = subprocess.run(['nm', str(entry['binary'])], check=True, capture_output=True, text=True).stdout
+            address = next(line.split()[0] for line in symbols.splitlines() if line.endswith(' ' + entry['entry']))
+            found = subprocess.run(['addr2line', '-f', '-e', str(debug), '0x' + address], check=True,
+                                   capture_output=True, text=True).stdout.split('\n')
+            self.assertEqual(found[0], entry['entry'])
+            self.assertTrue(found[1].endswith(entry['program'] + '.c:%d' % 42), found)
+        # The same inputs give the same bytes.
+        again = self.root / 'again'
+        again.mkdir()
+        debug_symbols.write({'files': files, 'builds': builds}, again, IDENTITY['version'], 1760000000)
+        self.assertEqual((again / result['file']).read_bytes(), (output / result['file']).read_bytes())
+
+    @unittest.skipUnless(shutil.which('cc') and shutil.which('objcopy'), 'needs a C compiler and objcopy')
+    def test_asset_holds_uncompressed_debug_sections(self):
+        # The builds split with --compress-debug-sections=zlib; the asset
+        # decompresses them so the outer zstd can work across builds (#162).
+        source = self.root / 'program.c'
+        source.write_text('int square(int value) { return value * value; }\nint main(void) { return square(3); }\n')
+        binary, debug = self.root / 'program', self.root / 'program.debug'
+        subprocess.run(['cc', '-g', '-O1', '-Wl,--build-id', '-o', str(binary), str(source)], check=True)
+        subprocess.run(['objcopy', '--only-keep-debug', '--compress-debug-sections=zlib', str(binary), str(debug)], check=True)
+        compressed = debug.read_bytes()
+        self.assertIn('.debug_info', debug_symbols.compressed_sections(compressed))
+        plain = debug_symbols.decompressed(compressed, self.root)
+        self.assertEqual(debug_symbols.compressed_sections(plain), [])
+        self.assertGreater(len(plain), len(compressed))
+        (self.root / 'plain.debug').write_bytes(plain)
+        self.assertEqual(debug_symbols.build_id(self.root / 'plain.debug'), debug_symbols.build_id(binary))
+        # Files without compressed sections pass through unchanged.
+        self.assertIs(debug_symbols.decompressed(plain, self.root), plain)
 
     def test_dry_run_uses_downloaded_package_artifacts(self):
         downloaded = self.root / 'downloaded'

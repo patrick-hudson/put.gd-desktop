@@ -417,6 +417,38 @@ private slots:
         part.details["partNumber"] = 10001;
         QVERIFY(!wire::decode(wire::encode(part), decodedError));
     }
+    void abandonCarriesOnlyACreatedUploadJournal() {
+        const QJsonObject journal{{"schemaVersion", 1}, {"partBytes", 16 * 1024 * 1024}, {"uploadId", "synthetic-upload-1"},
+                                  {"key", "prefix é/a b.txt"}, {"bytes", 70000000}, {"sha256", QString(64, 'a')}, {"phase", "parts"}};
+        QVERIFY(wire::validateRequest("abandon", {{"destination", destination().toJson()}, {"journal", journal}}));
+        // A plan alone names no upload; extra fields and other shapes are refused.
+        QVERIFY(!wire::validateRequest("abandon", {{"destination", destination().toJson()}, {"journal", QJsonObject{{"schemaVersion", 1}, {"partBytes", 16 * 1024 * 1024}}}}));
+        auto extra = journal;
+        extra["abortError"] = QJsonObject{};
+        QVERIFY(!wire::validateRequest("abandon", {{"destination", destination().toJson()}, {"journal", extra}}));
+        QVERIFY(!wire::validateRequest("abandon", {{"journal", journal}}));
+        QVERIFY(!wire::validateRequest("abandon", {{"destination", destination().toJson()}, {"journal", journal}, {"extra", 1}}));
+    }
+    void uploadTraceCarriesNumbersAndRequestIdsOnly() {
+        const QJsonObject part{{"event", "part"}, {"partNumber", 3}, {"bytes", 16 * 1024 * 1024}, {"attempt", 2}, {"elapsedMs", 812},
+                               {"lane", 1}, {"lanes", 4}, {"requestId", "SYNTHPART0003"}, {"extendedRequestId", "synthetic+Part/Id23="}};
+        QVERIFY(wire::decodeUploadTrace(part));
+        const QJsonObject complete{{"event", "complete"}, {"parts", 9}, {"bytes", 150000000}, {"attempt", 1}, {"elapsedMs", 40}};
+        QVERIFY(wire::decodeUploadTrace(complete));
+        // A key, URL or any other field never passes; IDs keep their alphabet and bounds.
+        for (const auto& [field, value] : QList<QPair<QString, QJsonValue>>{{"key", "prefix é/a b.txt"}, {"url", "http://127.0.0.1/x"}, {"uploadId", "synthetic-upload-1"}}) {
+            auto bad = part;
+            bad[field] = value;
+            QVERIFY(!wire::decodeUploadTrace(bad));
+        }
+        for (const auto& [field, value] : QList<QPair<QString, QJsonValue>>{{"requestId", "id with space"}, {"requestId", QString(129, 'a')}, {"extendedRequestId", "a?b=c"},
+                                                                           {"partNumber", 0}, {"partNumber", 10001}, {"attempt", 4}, {"lane", 4}, {"lanes", 5},
+                                                                           {"event", "other"}}) {
+            auto bad = part;
+            bad[field] = value;
+            QVERIFY2(!wire::decodeUploadTrace(bad), qPrintable(field));
+        }
+    }
     void oversizedOpaqueObjectsAreRejected() {
         const auto oversized = QString(wire::maximumFrameBytes, 'x');
         const DeleteRequest remove{"synthetic-delete", receipt(), {{"opaque", oversized}}, {}};

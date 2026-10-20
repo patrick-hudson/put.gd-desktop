@@ -14,6 +14,8 @@ constexpr qsizetype maximumRequest = 1024 * 1024;
 constexpr qsizetype maximumResponse = 16 * 1024 * 1024;
 constexpr qsizetype maximumConcurrent = 64;
 constexpr int deadlineMilliseconds = 15000;
+// Time for the reply to cross the socket after the resident's own deadline.
+constexpr int transportMarginMilliseconds = 15000;
 Error invalidResponse(bool submitted) {
     return {"invalid_response", "Resident response does not match the request protocol",
             submitted ? QJsonObject{{"outcomeUnknown", true}} : QJsonObject{}};
@@ -89,9 +91,15 @@ SessionClient::RequestId SessionClient::request(const QString& method, const QJs
     pending->deadline->setTimerType(Qt::PreciseTimer);
     connect(pending->deadline, &QTimer::timeout, pending,
             [this, id] { transportFailed(id, true); });
-    pending->deadline->start(deadlineMilliseconds);
+    pending->deadline->start(deadlineMs(method));
     QTimer::singleShot(0, pending, [this, id] { start(id); });
     return id;
+}
+
+int SessionClient::deadlineMs(const QString& method) {
+    if (method == "diagnostics.bundle") return diagnosticsBundleReplyMs + transportMarginMilliseconds;
+    if (method == "diagnostics.uploadTarget") return diagnosticsUploadTargetReplyMs + transportMarginMilliseconds;
+    return deadlineMilliseconds;
 }
 
 void SessionClient::start(RequestId id) {
@@ -163,7 +171,7 @@ void SessionClient::transportFailed(RequestId id, bool timedOut) {
     const auto* pending = pending_.value(id);
     if (!pending || pending->complete) return;
     Error error = timedOut
-        ? Error{"client_timeout", "Resident request exceeded its 15 second deadline", {}}
+        ? Error{"client_timeout", "Resident request exceeded its deadline", {}}
         : Error{"client_unavailable", "Cannot exchange a complete response with the resident", {}};
     if (pending->submitted) error.details["outcomeUnknown"] = true;
     finish(id, std::move(error));

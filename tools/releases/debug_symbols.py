@@ -9,13 +9,20 @@ package installs (same GNU build ID), then writes debug-symbols-<label>.tar and
 its manifest. `combine` checks every staged build and writes one tar.zst laid
 out like a debuginfod cache: .build-id/<2 hex>/<rest>.debug, plus manifest.json
 naming each build's programs and build IDs. See docs/diagnostics.md.
+
+The builds keep zlib-compressed debug sections, which keeps the staged files
+and the jobs' artifacts small. The asset decompresses them, moves the DWARF
+each build's programs share into one dwz file per build, and compresses the
+whole tar in one long-window zstd pass: about half the size (#162).
 """
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import hashlib
 import io
 import json
+import os
 from pathlib import Path
 import re
 import shutil
@@ -34,6 +41,10 @@ ARCHITECTURE = 'x86_64'
 BUILD_ID = re.compile(r'[0-9a-f]{16,64}')
 SHT_NOTE = 7
 NT_GNU_BUILD_ID = 3
+SHF_COMPRESSED = 0x800
+# 128 MiB is the window every zstd decoder accepts without --long or
+# --memory, so `tar --zstd -xf` still unpacks the asset.
+ASSET_ZSTD = ('-19', '--long=27')
 
 
 def asset_name(version: str, architecture: str = ARCHITECTURE) -> str:
@@ -45,8 +56,9 @@ def sha256(path: Path) -> str:
         return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
-def elf_sections(data: bytes) -> dict:
-    """{name: (type, offset, size)} for a little-endian ELF64 or ELF32 file."""
+def elf_sections(data: bytes, *, flags: bool = False) -> dict:
+    """{name: (type, offset, size)} for a little-endian ELF64 or ELF32 file,
+    or {name: (type, offset, size, flags)} with flags=True."""
     if data[:4] != b'\x7fELF' or data[5] != 1:
         raise ValueError('Not a little-endian ELF file')
     wide = data[4] == 2
@@ -65,8 +77,28 @@ def elf_sections(data: bytes) -> dict:
     sections = {}
     for header in headers:
         name = table[header[0]:table.index(b'\0', header[0])].decode('ascii', 'replace')
-        sections[name] = (header[1], header[4], header[5])
+        sections[name] = (header[1], header[4], header[5], header[2]) if flags else (header[1], header[4], header[5])
     return sections
+
+
+def compressed_sections(data: bytes) -> list[str]:
+    return sorted(name for name, (_, _, _, value) in elf_sections(data, flags=True).items() if value & SHF_COMPRESSED)
+
+
+def decompressed(data: bytes, temporary: Path) -> bytes:
+    """The debug file with its sections uncompressed (objcopy), or unchanged."""
+    if not compressed_sections(data):
+        return data
+    objcopy = shutil.which('objcopy')
+    if objcopy is None:
+        raise ValueError('objcopy is required to decompress debug sections')
+    source, target = temporary / 'compressed.debug', temporary / 'plain.debug'
+    source.write_bytes(data)
+    subprocess.run([objcopy, '--decompress-debug-sections', str(source), str(target)], check=True)
+    plain = target.read_bytes()
+    if compressed_sections(plain) or build_id(target) != build_id(source):
+        raise ValueError('Debug sections could not be decompressed')
+    return plain
 
 
 def build_id(path: Path) -> str:
@@ -218,10 +250,51 @@ def prepare(inputs: dict, identity_check) -> dict:
     return {'files': merged, 'builds': builds}
 
 
+def deduplicate(root: Path, builds: list) -> dict:
+    """Runs dwz on each build's debug files under root (.build-id layout), moving
+    the DWARF they share into .dwz/<label>.debug. Each file's .gnu_debugaltlink
+    names it relative to the file (../../.dwz/<label>.debug), so an extracted
+    asset resolves it wherever it lies; an absolute /usr/lib/debug path would
+    not. Synthetic files without real DWARF are left alone. {label: path}."""
+    jobs, seen = [], set()
+    for build in builds:
+        names = []
+        for program in build['programs']:
+            identifier = program['buildId']
+            name = '.build-id/' + identifier[:2] + '/' + identifier[2:] + '.debug'
+            if name in seen or not (root / name).is_file():
+                continue
+            seen.add(name)
+            sections = elf_sections((root / name).read_bytes())
+            if '.debug_info' in sections and '.debug_abbrev' in sections:
+                names.append(name)
+        if names:
+            jobs.append((build['label'], names))
+    if not jobs:
+        return {}
+    dwz = shutil.which('dwz')
+    if dwz is None:
+        raise ValueError('dwz is required to write the debug symbol asset')
+    (root / '.dwz').mkdir(exist_ok=True)
+
+    def run(job):
+        label, names = job
+        common = '.dwz/' + label + '.debug'
+        before = {name: build_id(root / name) for name in names}
+        result = subprocess.run([dwz, '-m', common, '-M', '../../' + common, *names], cwd=root,
+                                capture_output=True, text=True)
+        if result.returncode != 0:
+            raise ValueError('dwz failed for ' + label + ': ' + result.stderr.strip()[-500:])
+        if any(build_id(root / name) != identifier for name, identifier in before.items()):
+            raise ValueError('dwz changed a build ID: ' + label)
+        return label, common if (root / common).is_file() else None
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(jobs), os.cpu_count() or 1)) as pool:
+        return {label: common for label, common in pool.map(run, jobs) if common}
+
+
 def write(prepared: dict, output: Path, version: str, timestamp: int) -> dict:
     """Writes putgd-<version>-debug-<arch>.tar.zst into an existing folder."""
-    index = {'schemaVersion': 1, 'version': version, 'architecture': ARCHITECTURE, 'layout': '.build-id/<2 hex>/<rest>.debug',
-             'builds': prepared['builds']}
     target = output / asset_name(version)
     if target.exists():
         raise ValueError('Debug symbol asset already exists')
@@ -229,12 +302,21 @@ def write(prepared: dict, output: Path, version: str, timestamp: int) -> dict:
     if zstd is None:
         raise ValueError('zstd is required to write the debug symbol asset')
     with tempfile.TemporaryDirectory(prefix='pgdbg-') as temporary:
+        root = Path(temporary) / 'tree'
+        for name, data in prepared['files'].items():
+            (root / name).parent.mkdir(parents=True, exist_ok=True)
+            (root / name).write_bytes(decompressed(data, Path(temporary)))
+        common = deduplicate(root, prepared['builds'])
+        index = {'schemaVersion': 1, 'version': version, 'architecture': ARCHITECTURE,
+                 'layout': '.build-id/<2 hex>/<rest>.debug, sharing .dwz/<label>.debug',
+                 'builds': [{**build, **({'dwz': common[build['label']]} if build['label'] in common else {})}
+                            for build in prepared['builds']]}
         plain = Path(temporary) / 'debug.tar'
         with tarfile.open(plain, 'w', format=tarfile.USTAR_FORMAT) as tar:
             _add(tar, 'manifest.json', None, timestamp, (json.dumps(index, indent=2) + '\n').encode())
-            for name in sorted(prepared['files']):
-                _add(tar, name, None, timestamp, prepared['files'][name])
-        subprocess.run([zstd, '-q', '-19', '-T0', '--no-progress', '-o', str(target), str(plain)], check=True)
+            for name in [*sorted(prepared['files']), *sorted(common.values())]:
+                _add(tar, name, root / name, timestamp)
+        subprocess.run([zstd, '-q', *ASSET_ZSTD, '-T0', '--no-progress', '-o', str(target), str(plain)], check=True)
     return {'file': target.name, 'bytes': target.stat().st_size, 'sha256': sha256(target), 'buildIds': len(prepared['files']),
             'builds': [{'label': build['label'], 'programs': build['programs']} for build in prepared['builds']]}
 
