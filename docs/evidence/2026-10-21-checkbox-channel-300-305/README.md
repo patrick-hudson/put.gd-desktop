@@ -1,6 +1,6 @@
 # Checked, disabled indicators and the named update channel
 
-Issues #300 and #305. Code PR CODE_PR on branch `claude/checkbox-channel-300-305`
+Issues #300 and #305. Code PR [#316](https://github.com/patrick-hudson/put.gd-desktop/pull/316) on branch `claude/checkbox-channel-300-305`
 (head `306fdb2`), measured against nightly `d07e9ff`.
 
 ## How the pictures were made
