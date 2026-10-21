@@ -276,11 +276,12 @@ at login therefore runs `/bin/sh <data>/putgd/login/appimage-start.sh --backgrou
 rewritten at every start, so the running image becomes the configured one). At
 login the script starts the newest `putgd-VERSION-x86_64[_md5].AppImage` in the
 configured image's folder, ordered by version (`sort -V`, prereleases before their
-release), that is the user's own file, executable, writable by nobody else, has the
-AppImage magic and prints the same update information as the configured image
-(`--appimage-updateinformation`). Group write counts as private only for the user's
-own group (named after the user, no other members), which umask 002 gives every file
-on Debian, Ubuntu, Mint and Fedora. The folder must pass the same check, or only the
+release), that is a regular file (not a symbolic link), the user's own, executable,
+writable by nobody else, has the AppImage magic and prints the same update information
+as the configured image (`--appimage-updateinformation`). Group write counts as private
+only for the user's own group (named after the user, no other members): umask 002, the
+desktop default on Debian 13, Kubuntu 26.04 and Mint 22.3 (Fedora 44 uses 022), makes
+every downloaded or updated image `775`. The folder must pass the same check, or only the
 configured image is used. The configured image itself only has to be an executable file,
 as the autostart entry required before. Without update information
 (untagged builds) the configured image is the only candidate. Gear Lever replaces

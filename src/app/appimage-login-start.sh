@@ -19,7 +19,8 @@ say() {
 }
 
 # The user's private group: named after the user, with no other members. With
-# umask 002 (Debian, Ubuntu, Mint, Fedora) the user's files are group-writable.
+# umask 002 (the desktop default on Debian 13, Kubuntu 26.04 and Mint 22.3) the
+# user's files are group-writable.
 own_group=
 user=$(id -un 2>/dev/null) && group=$(id -g 2>/dev/null) && entry=$(getent group "$group" 2>/dev/null) &&
     case $entry in
@@ -37,9 +38,10 @@ private() {
     esac
 }
 
-# A private executable file with the AppImage type 2 magic at offset 8.
+# A private executable regular file, not a symbolic link, with the AppImage
+# type 2 magic at offset 8.
 appimage() {
-    [ -f "$1" ] && [ -x "$1" ] && private "$1" || return 1
+    [ -f "$1" ] && [ ! -L "$1" ] && [ -x "$1" ] && private "$1" || return 1
     [ "$(head -c 11 -- "$1" 2>/dev/null | tail -c 3 | od -An -tx1 | tr -d ' \n')" = 414902 ]
 }
 

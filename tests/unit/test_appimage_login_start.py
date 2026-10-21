@@ -155,7 +155,7 @@ class LoginStartTest(unittest.TestCase):
         self.assertStarts(configured, configured)
 
     def test_group_write_is_trusted_only_for_the_users_private_group(self):
-        # umask 002 (Debian, Ubuntu, Mint, Fedora) leaves the user's files and folders 0775.
+        # umask 002 (Debian 13, Kubuntu 26.04, Mint 22.3 desktops) leaves files and folders 0775.
         configured = self.image("putgd-0.1.1-nightly.800-x86_64.AppImage", "0.1.1-nightly.800", mode=0o775)
         new = self.image("putgd-0.1.1-nightly.801-x86_64.AppImage", "0.1.1-nightly.801", mode=0o775)
         self.images.chmod(0o775)
@@ -170,6 +170,34 @@ class LoginStartTest(unittest.TestCase):
         completed, started = self.start(configured)
         self.assertEqual(completed.returncode, 1)
         self.assertIn("missing or not executable", completed.stderr)
+
+    def test_symbolic_link_to_a_newer_image_is_not_started(self):
+        configured = self.image("putgd-0.1.1-nightly.800-x86_64.AppImage", "0.1.1-nightly.800")
+        elsewhere = self.root / "elsewhere"
+        elsewhere.mkdir(mode=0o700)
+        target = self.image("target.AppImage", "0.1.1-nightly.900")
+        moved = elsewhere / "putgd-0.1.1-nightly.900-x86_64.AppImage"
+        target.rename(moved)
+        Path(str(moved) + ".info").write_text(NIGHTLY + "\n")
+        (self.images / moved.name).symlink_to(moved)
+        self.assertStarts(configured, configured)
+
+    def test_group_write_by_a_shared_group_is_not_trusted(self):
+        shared = [gid for gid in os.getgroups() if gid != os.getgid()]
+        if not shared:
+            self.skipTest("the user has no supplementary group to share a file with")
+        configured = self.image("putgd-0.1.1-nightly.800-x86_64.AppImage", "0.1.1-nightly.800")
+        newer = self.image("putgd-0.1.1-nightly.801-x86_64.AppImage", "0.1.1-nightly.801", mode=0o775)
+        os.chown(newer, -1, shared[0])
+        newer.chmod(0o775)
+        self.assertStarts(configured, configured)
+        # The same file in a folder that group can write is not searched either.
+        self.receipt.unlink()
+        os.chown(newer, -1, os.getgid())
+        os.chown(self.images, -1, shared[0])
+        self.images.chmod(0o770)
+        self.addCleanup(os.chown, self.images, -1, os.getgid())
+        self.assertStarts(configured, configured)
 
     def test_folder_others_can_write_is_not_searched(self):
         configured = self.images / "putgd-0.1.1-nightly.800-x86_64.AppImage"
