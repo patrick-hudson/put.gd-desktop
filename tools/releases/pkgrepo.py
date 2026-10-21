@@ -55,6 +55,7 @@ import urllib.request
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from release_identity import parse_tag, parse_version  # noqa: E402
+import appimage_update  # noqa: E402
 import update_feed  # noqa: E402
 
 REPOSITORY = 'patrick-hudson/put.gd-desktop'
@@ -65,6 +66,8 @@ CHANNELS = ('nightly', 'stable')
 SCOPES = {'live': '', 'lab': 'lab/'}
 PACKAGE_ASSET = re.compile(r'^putgd-(?P<version>[0-9][0-9A-Za-z.-]*)-(?P<label>ubuntu24\.04|ubuntu26\.04|debian13|fedora44)'
                            r'-x86_64\.(?P<ext>deb|rpm)$')
+MIRROR_BASE = 'https://pkg.put.gd/'
+MAX_ZSYNC = 16 * 1024 * 1024
 SAFE_NAME = re.compile(r'^[A-Za-z0-9][A-Za-z0-9._+~-]{0,199}$')
 HEX64 = re.compile(r'^[0-9a-f]{64}$')
 IMMUTABLE = 'public, max-age=31536000, immutable'
@@ -77,6 +80,7 @@ CONTENT_TYPES = {
     '.xz': 'application/x-xz', '.zst': 'application/zstd', '.bz2': 'application/x-bzip2', '.xml': 'application/xml',
     '.asc': 'application/pgp-signature', '.gpg': 'application/pgp-signature', '.json': 'application/json',
     '.minisig': 'text/plain; charset=utf-8', '.txt': 'text/plain; charset=utf-8', '.sqlite': 'application/vnd.sqlite3',
+    '.AppImage': 'application/vnd.appimage', '.zsync': 'application/x-zsync',
 }
 
 
@@ -133,6 +137,9 @@ class Config:
     aws_profile: str = 'publish'
     rpm_sign: bool = True
     dnf_keep: int = 3
+    # AppImage mirror (#293 phase 3): the newest few releases per channel keep
+    # their image and .zsync under releases/<tag>/; the .zsync names that copy.
+    appimage_keep: int = 2
     delete_after: int = 3600
     readback_timeout: int = 600
     invalidation_timeout: int = 1200
@@ -301,13 +308,57 @@ def verify_release(release, github, workdir, run=subprocess.run):
                                       'package fields ' + ' '.join(fields.values())]}
     if set(packages) != set(LABELS):
         raise SignerError('Release lacks packages for ' + ', '.join(sorted(set(LABELS) - set(packages))))
+    appimage = None
+    name = appimage_name(identity.version)
+    if name in assets:
+        if name + '.zsync' not in assets:
+            raise SignerError('The AppImage has no .zsync')
+        receipt = builds.get('receipts', {}).get('appimage', {})
+        artifact, control = receipt.get('artifact', {}), receipt.get('update', {}).get('zsync', {})
+        if (artifact.get('file') != name or artifact.get('sha256') != sums[name] or artifact.get('bytes') != assets[name]['size']
+                or control.get('file') != name + '.zsync' or control.get('sha256') != sums[name + '.zsync']):
+            raise SignerError('The AppImage differs from its release-builds.json receipt')
+        image_path, image_digest = fetch(name, MAX_PACKAGE)
+        zsync_path, zsync_digest = fetch(name + '.zsync', MAX_ZSYNC)
+        if image_digest != sums[name] or zsync_digest != sums[name + '.zsync']:
+            raise SignerError('The AppImage or its .zsync differs from SHA256SUMS')
+        appimage = appimage_inputs(tag, image_path, zsync_path, sums, MIRROR_BASE,
+                                   ['SHA256SUMS', 'release-builds.json receipt',
+                                    'GitHub digest' if assets[name].get('digest') else 'GitHub digest absent'])
     return {'tag': tag, 'channel': channel, 'version': identity.version, 'packageVersion': identity.package_version,
             'commit': commit, 'release': release, 'sums': sums, 'sumsPath': sums_path, 'packages': packages,
-            'checks': checks, 'source': 'github'}
+            'appimage': appimage, 'checks': checks, 'source': 'github'}
 
 
-def local_inputs(tag, directory, run=subprocess.run):
-    """Lab inputs: locally built, tagged packages beside their SHA256SUMS."""
+def appimage_name(version):
+    return f'putgd-{version}-x86_64.AppImage'
+
+
+def mirror_url(base, tag, name):
+    """Where the signer serves a release's AppImage: an address that doesn't redirect (#297)."""
+    return base.rstrip('/') + f'/releases/{tag}/{name}'
+
+
+def appimage_inputs(tag, image_path, zsync_path, sums, base, checks):
+    """The AppImage and its .zsync, which must describe exactly these bytes. Its URL is the
+    GitHub asset (releases built before the mirror) or this mirror's copy."""
+    name = image_path.name
+    accepted = (appimage_update.asset_url(REPOSITORY, tag, name), mirror_url(base, tag, name))
+    fields = appimage_update.zsync_header(zsync_path)[0]
+    if fields.get('URL') not in accepted:
+        raise SignerError('The .zsync names neither the release asset nor its mirror copy')
+    try:
+        appimage_update.verify_zsync(zsync_path, image_path, name, fields['URL'])
+    except ValueError as error:
+        raise SignerError(str(error)) from error
+    return {'name': name, 'path': image_path, 'sha256': sums[name], 'size': image_path.stat().st_size,
+            'zsync': {'name': zsync_path.name, 'path': zsync_path, 'sha256': sums[zsync_path.name],
+                      'size': zsync_path.stat().st_size, 'url': fields['URL']},
+            'checks': checks + ['.zsync describes the image at ' + fields['URL']]}
+
+
+def local_inputs(tag, directory, run=subprocess.run, base=MIRROR_BASE + SCOPES['lab']):
+    """Lab inputs: locally built, tagged packages and/or the AppImage with its .zsync, beside their SHA256SUMS."""
     identity = parse_tag(tag)
     if identity.channel != 'nightly':
         raise SignerError('Lab publication takes nightly tags only')
@@ -327,23 +378,32 @@ def local_inputs(tag, directory, run=subprocess.run):
         fields = check_package(path, match['label'], identity.package_version, run)
         packages[match['label']] = {'name': name, 'path': path, 'sha256': digest, 'size': path.stat().st_size,
                                     'checks': ['SHA256SUMS', 'package fields ' + ' '.join(fields.values())]}
-    if set(packages) != set(LABELS):
+    appimage = None
+    name = appimage_name(identity.version)
+    if name in sums:
+        image, zsync = directory / name, directory / (name + '.zsync')
+        for path in (image, zsync):
+            if path.name not in sums or path.is_symlink() or not path.is_file() or sha256_file(path) != sums[path.name]:
+                raise SignerError(path.name + ' differs from SHA256SUMS')
+        appimage = appimage_inputs(tag, image, zsync, sums, base, ['SHA256SUMS'])
+    # An AppImage-only lab release (#293 phase 3) leaves the lab apt/dnf repositories as they are.
+    if (packages or not appimage) and set(packages) != set(LABELS):
         raise SignerError('Lab directory lacks packages for ' + ', '.join(sorted(set(LABELS) - set(packages))))
     published = iso(now_utc())
     release = {'tag_name': tag, 'published_at': published,
                'html_url': f'https://github.com/{REPOSITORY}/releases/tag/{tag}',
                'assets': [{'name': p['name'], 'size': p['size'],
                            'browser_download_url': f'https://github.com/{REPOSITORY}/releases/download/{tag}/{p["name"]}'}
-                          for p in packages.values()]}
+                          for p in list(packages.values()) + ([appimage, appimage['zsync']] if appimage else [])]}
     return {'tag': tag, 'channel': 'nightly', 'version': identity.version, 'packageVersion': identity.package_version,
             'commit': None, 'release': release, 'sums': sums, 'sumsPath': sums_path, 'packages': packages,
-            'checks': ['lab build: SHA256SUMS and package fields only'], 'source': 'lab'}
+            'appimage': appimage, 'checks': ['lab build: SHA256SUMS and package fields only'], 'source': 'lab'}
 
 
 # --- Workspaces ----------------------------------------------------------------------------------------------
 
 def clone_workspace(source, destination):
-    """Copy a workspace; package files are hard links (never modified), everything else is copied."""
+    """Copy a workspace; package files and AppImages are hard links (never modified), everything else is copied."""
     if destination.exists():
         shutil.rmtree(destination)
     if not source.exists():
@@ -351,7 +411,7 @@ def clone_workspace(source, destination):
         return
 
     def copy(src, dst):
-        if src.endswith(('.deb', '.rpm')):
+        if src.endswith(('.deb', '.rpm', '.AppImage')):
             os.link(src, dst)
         else:
             shutil.copy2(src, dst)
@@ -504,7 +564,9 @@ def content_type(key):
 
 def cache_control(key):
     name = key.rsplit('/', 1)[-1]
-    if name.endswith(('.deb', '.rpm')) or ('/repodata/' in key and re.match(r'^[0-9a-f]{64}-', name)):
+    if name.endswith(('.deb', '.rpm', '.AppImage', '.AppImage.zsync')) and '/dl/' not in '/' + key:
+        return IMMUTABLE
+    if ('/repodata/' in key and re.match(r'^[0-9a-f]{64}-', name)):
         return IMMUTABLE
     return SHORT
 
@@ -512,9 +574,10 @@ def cache_control(key):
 def phase(key):
     """Upload order: packages, indexes, signed top-level metadata, per-release files; feeds and receipts last."""
     name = key.rsplit('/', 1)[-1]
-    if name.endswith(('.deb', '.rpm')):
+    if name.endswith(('.deb', '.rpm', '.AppImage')):
         return 0
-    if '/update/' in '/' + key or '/receipts/' in '/' + key:
+    # The channel's .zsync permalink moves with the feed, after the image it names.
+    if '/update/' in '/' + key or '/receipts/' in '/' + key or '/dl/' in '/' + key:
         return 4
     if '/releases/' in '/' + key:
         return 3
@@ -682,21 +745,50 @@ class Signer:
         if inputs is None:
             workspace.export_empty()
             return workspace
-        rpm = inputs['packages']['fedora44']
-        if self.config.rpm_sign and channel == 'nightly':
-            with tempfile.TemporaryDirectory(prefix='rpmsign-', dir=self.config.state) as directory:
-                workspace.include(inputs, self.rpm_signed_copy(rpm, Path(directory), receipt))
-        else:
-            workspace.include(inputs, rpm['path'])
+        if inputs['packages']:
+            rpm = inputs['packages']['fedora44']
+            if self.config.rpm_sign and channel == 'nightly':
+                with tempfile.TemporaryDirectory(prefix='rpmsign-', dir=self.config.state) as directory:
+                    workspace.include(inputs, self.rpm_signed_copy(rpm, Path(directory), receipt))
+            else:
+                workspace.include(inputs, rpm['path'])
+        elif not (workspace.tree / 'apt' / DEB_LABELS[0] / 'dists' / channel / 'Release').exists():
+            # An AppImage-only lab release on a fresh lab scope still gets (empty) signed repositories.
+            workspace.export_empty()
         sums = workspace.tree / 'releases' / inputs['tag'] / 'SHA256SUMS'
         sums.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(inputs['sumsPath'], sums)
+        if inputs.get('appimage'):
+            self.mirror_appimage(workspace, inputs)
         feed = workspace.tree / 'update' / 'v1' / f'{channel}.json'
         feed.parent.mkdir(parents=True, exist_ok=True)
         document = update_feed.feed(channel, inputs['release'], inputs['sums'], iso(now_utc()))
         update_feed.check_feed(document)
         feed.write_text(json.dumps(document, indent=2) + '\n')
         return workspace
+
+    def mirror_appimage(self, workspace, inputs):
+        """The release's AppImage and .zsync under releases/<tag>/, and the channel's .zsync permalink
+        (dl/<channel>/appimage.zsync, served at app.put.gd) naming it; older images beyond appimage_keep go."""
+        appimage = inputs['appimage']
+        release = workspace.tree / 'releases' / inputs['tag']
+        for entry in (appimage, appimage['zsync']):
+            target = release / entry['name']
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if target.exists():
+                target.unlink()
+            try:
+                os.link(entry['path'], target)
+            except OSError:  # the lab's assets may sit on another file system
+                shutil.copy2(entry['path'], target)
+        permalink = workspace.tree / 'dl' / workspace.channel / 'appimage.zsync'
+        permalink.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(appimage['zsync']['path'], permalink)
+        images = sorted((path for path in (workspace.tree / 'releases').glob('v*/putgd-*-x86_64.AppImage')),
+                        key=lambda path: version_key(path.parent.name[1:]), reverse=True)
+        for old in images[self.config.appimage_keep:]:
+            old.unlink()
+            old.with_name(old.name + '.zsync').unlink(missing_ok=True)
 
     def rpm_signed_copy(self, rpm, directory, receipt):
         target = directory / rpm_file_name(rpm['path'], self.run)
@@ -723,6 +815,12 @@ class Signer:
         receipt['inputs'] = [{'label': label, 'name': package['name'], 'sha256': package['sha256'],
                               'size': package['size'], 'checks': package['checks']}
                              for label, package in sorted(inputs['packages'].items())]
+        if inputs.get('appimage'):
+            appimage = inputs['appimage']
+            receipt['inputs'] += [{'label': 'appimage', 'name': appimage['name'], 'sha256': appimage['sha256'],
+                                   'size': appimage['size'], 'checks': appimage['checks']},
+                                  {'label': 'appimage-zsync', 'name': appimage['zsync']['name'], 'sha256': appimage['zsync']['sha256'],
+                                   'size': appimage['zsync']['size'], 'checks': ['SHA256SUMS', 'URL ' + appimage['zsync']['url']]}]
 
     def sign_nightly(self, workspace, inputs, receipt):
         signed = []
@@ -752,16 +850,18 @@ class Signer:
             receipt['signatures'].append({'file': path.relative_to(workspace.tree).as_posix(), 'kind': 'minisign',
                                           'key': 'nightly'})
 
-    def publish(self, scope, workspace, receipt):
+    def publish(self, scope, workspace, receipt, readback=()):
         """Upload, invalidate, read back, then the feed and receipt; swap the workspace in on success."""
         s3, cloudfront = self.clients()
         publisher = Publisher(self.config, scope, workspace.channel, s3, cloudfront, http=self.http)
         changed = publisher.upload(workspace.tree, {0, 1, 2, 3}, receipt)
         publisher.invalidate(changed, receipt)
-        publisher.readback(workspace.tree, readback_files(workspace), receipt)
+        publisher.readback(workspace.tree, readback_files(workspace) + list(readback), receipt)
         feed_keys = publisher.upload(workspace.tree, {4}, receipt)
         feed_distributions = [self.config.distribution] + (self.config.feed_distributions if scope == 'live' else [])
-        publisher.invalidate([key for key in feed_keys if '/update/' in '/' + key], receipt, feed_distributions)
+        # The feed and the .zsync permalink are also served by app.put.gd.
+        publisher.invalidate([key for key in feed_keys if '/update/' in '/' + key or '/dl/' in '/' + key], receipt,
+                             feed_distributions)
         feed = workspace.tree / 'update' / 'v1' / f'{workspace.channel}.json'
         if feed.exists():
             receipt['feed'] = {'key': SCOPES[scope] + f'update/v1/{workspace.channel}.json', 'sha256': sha256_file(feed)}
@@ -797,7 +897,9 @@ class Signer:
             self.record_inputs(receipt, inputs)
             workspace = self.build_next(scope, 'nightly', inputs, receipt)
             self.sign_nightly(workspace, inputs, receipt)
-            publisher = self.publish(scope, workspace, receipt)
+            appimage = inputs.get('appimage')
+            publisher = self.publish(scope, workspace, receipt,
+                                     [f'releases/{inputs["tag"]}/{appimage["zsync"]["name"]}'] if appimage else ())
             self.workspace(scope, 'nightly').write_published(inputs)
             receipt['result'] = 'published'
         except Exception as error:
@@ -994,7 +1096,8 @@ def main(argv=None):
             published = signer.workspace(arguments.scope, 'nightly').published()
             if published and version_key(arguments.tag[1:]) <= version_key(published['version']):
                 raise SignerError('The lab repository already carries ' + published['version'])
-            signer.publish_nightly(arguments.scope, local_inputs(arguments.tag, arguments.assets))
+            signer.publish_nightly(arguments.scope, local_inputs(arguments.tag, arguments.assets,
+                                                                 base=config.base_url + '/' + SCOPES[arguments.scope]))
         elif arguments.command == 'init-stable':
             if signer.workspace('live', 'stable').root.exists():
                 raise SignerError('The stable repositories already exist')

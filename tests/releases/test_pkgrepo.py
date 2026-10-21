@@ -13,6 +13,7 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'tools/releases'))
 import pkgrepo
 import update_feed
+from appimage_fixture import make_appimage, make_zsync
 
 TAG = 'v0.1.1-nightly.600'
 VERSION = '0.1.1-nightly.600'
@@ -50,13 +51,32 @@ class FakeGitHub:
         destination.write_bytes(data)
 
 
-def release_files(tamper=None):
+IMAGE = 'putgd-0.1.1-nightly.600-x86_64.AppImage'
+RELEASE_URL = f'https://github.com/patrick-hudson/put.gd-desktop/releases/download/{TAG}/{IMAGE}'
+MIRROR_URL = f'https://pkg.put.gd/releases/{TAG}/{IMAGE}'
+
+
+def appimage_files(url=RELEASE_URL, payload=b'synthetic squashfs payload'):
+    """An AppImage and the .zsync CI makes for it, naming url."""
+    with tempfile.TemporaryDirectory(prefix='pgimg-') as directory:
+        image, zsync = Path(directory) / IMAGE, Path(directory) / (IMAGE + '.zsync')
+        make_appimage(image, 'zsync|https://app.put.gd/dl/nightly/appimage.zsync', payload)
+        make_zsync(zsync, image, IMAGE, url)
+        return image.read_bytes(), zsync.read_bytes()
+
+
+def release_files(tamper=None, zsync_url=RELEASE_URL):
     files = {asset_name(label): f'{label} package bytes'.encode() for label in LABELS}
-    files['putgd-0.1.1-nightly.600-x86_64.AppImage'] = b'appimage'
+    files[IMAGE], files[IMAGE + '.zsync'] = appimage_files(zsync_url)
     builds = {'release': {'tag': TAG, 'version': VERSION, 'packageVersion': PACKAGE_VERSION, 'gitCommit': COMMIT},
               'receipts': {label: {'package': {'sha256': hashlib.sha256(files[asset_name(label)]).hexdigest(),
                                                'size': len(files[asset_name(label)]),
                                                'format': 'RPM' if label == 'fedora44' else 'DEB'}} for label in LABELS}}
+    builds['receipts']['appimage'] = {
+        'artifact': {'file': IMAGE, 'sha256': hashlib.sha256(files[IMAGE]).hexdigest(), 'bytes': len(files[IMAGE]), 'mode': '0755'},
+        'update': {'information': 'zsync|https://app.put.gd/dl/nightly/appimage.zsync',
+                   'zsync': {'file': IMAGE + '.zsync', 'url': zsync_url, 'sha256': hashlib.sha256(files[IMAGE + '.zsync']).hexdigest(),
+                             'bytes': len(files[IMAGE + '.zsync'])}}}
     if tamper:
         tamper(files, builds)
     files['release-builds.json'] = json.dumps(builds).encode()
@@ -140,6 +160,49 @@ class Verification(unittest.TestCase):
         github = FakeGitHub(release_files())
         with self.assertRaisesRegex(pkgrepo.SignerError, 'expected'):
             pkgrepo.verify_release(github.release(), github, self.work, lying)
+
+    # The AppImage mirror (#293 phase 3).
+    def test_appimage_and_zsync_are_verified_for_the_mirror(self):
+        inputs = self.verify(FakeGitHub(release_files()))
+        appimage = inputs['appimage']
+        self.assertEqual((appimage['name'], appimage['zsync']['name'], appimage['zsync']['url']), (IMAGE, IMAGE + '.zsync', RELEASE_URL))
+        self.assertIn('release-builds.json receipt', appimage['checks'])
+        # After CI points the .zsync at the mirror, that URL is accepted too.
+        self.assertEqual(self.verify(FakeGitHub(release_files(zsync_url=MIRROR_URL)))['appimage']['zsync']['url'], MIRROR_URL)
+
+    def test_appimage_mismatches_refuse_the_release(self):
+        def other_zsync(files, builds):
+            files[IMAGE + '.zsync'] = appimage_files(payload=b'other image')[1]
+            builds['receipts']['appimage']['update']['zsync']['sha256'] = hashlib.sha256(files[IMAGE + '.zsync']).hexdigest()
+
+        def stale_receipt(files, builds):
+            builds['receipts']['appimage']['artifact']['sha256'] = '0' * 64
+
+        def no_zsync(files, builds):
+            del files[IMAGE + '.zsync']
+        cases = {'other bytes': release_files(other_zsync), 'receipt': release_files(stale_receipt), 'missing': release_files(no_zsync),
+                 'foreign URL': release_files(zsync_url='https://evil.example/' + IMAGE)}
+        for name, files in cases.items():
+            with self.subTest(name), self.assertRaises(pkgrepo.SignerError):
+                self.verify(FakeGitHub(files))
+
+    def test_lab_takes_an_appimage_only_release(self):
+        files = release_files(zsync_url=f'https://pkg.put.gd/lab/releases/{TAG}/{IMAGE}')
+        lab = self.work / 'lab'
+        lab.mkdir()
+        for name in (IMAGE, IMAGE + '.zsync'):
+            (lab / name).write_bytes(files[name])
+        (lab / 'SHA256SUMS').write_text(''.join(f'{hashlib.sha256(files[n]).hexdigest()}  {n}\n' for n in (IMAGE, IMAGE + '.zsync')))
+        inputs = pkgrepo.local_inputs(TAG, lab, fake_fields)
+        self.assertEqual(inputs['packages'], {})
+        self.assertEqual(inputs['appimage']['zsync']['url'], f'https://pkg.put.gd/lab/releases/{TAG}/{IMAGE}')
+        self.assertEqual(sorted(a['name'] for a in inputs['release']['assets']), [IMAGE, IMAGE + '.zsync'])
+        # The live mirror's address isn't the lab's.
+        with self.assertRaisesRegex(pkgrepo.SignerError, 'mirror'):
+            pkgrepo.local_inputs(TAG, lab, fake_fields, base='https://pkg.put.gd/')
+        (lab / IMAGE).write_bytes(b'tampered')
+        with self.assertRaisesRegex(pkgrepo.SignerError, 'SHA256SUMS'):
+            pkgrepo.local_inputs(TAG, lab, fake_fields)
 
     def test_drafts_candidates_and_unsafe_names_are_refused(self):
         github = FakeGitHub(release_files())
@@ -279,6 +342,50 @@ class Publishing(unittest.TestCase):
             self.publisher(http=lambda url: b'old').readback(self.tree, ['update/v1/nightly.json'], self.receipt)
 
 
+class AppImageMirror(unittest.TestCase):
+    """The signer's copy of each release's AppImage (#293 phase 3): order, caching and retention."""
+
+    def test_images_upload_first_and_the_channel_zsync_moves_with_the_feed(self):
+        self.assertEqual(pkgrepo.phase(f'releases/{TAG}/{IMAGE}'), 0)
+        self.assertEqual(pkgrepo.phase(f'lab/releases/{TAG}/{IMAGE}.zsync'), 3)
+        self.assertEqual(pkgrepo.phase('dl/nightly/appimage.zsync'), 4)
+        self.assertEqual(pkgrepo.cache_control(f'releases/{TAG}/{IMAGE}'), pkgrepo.IMMUTABLE)
+        self.assertEqual(pkgrepo.cache_control(f'releases/{TAG}/{IMAGE}.zsync'), pkgrepo.IMMUTABLE)
+        self.assertEqual(pkgrepo.cache_control('dl/nightly/appimage.zsync'), pkgrepo.SHORT)
+        self.assertEqual(pkgrepo.content_type(f'releases/{TAG}/{IMAGE}'), 'application/vnd.appimage')
+        self.assertEqual(pkgrepo.content_type('dl/nightly/appimage.zsync'), 'application/x-zsync')
+
+    def test_newest_images_stay_and_sums_are_never_dropped(self):
+        with tempfile.TemporaryDirectory(prefix='pgmirror-') as directory:
+            root = Path(directory)
+            cfg = config(root)
+            signer = pkgrepo.Signer(cfg, github=FakeGitHub({}), clients=(FakeS3(), FakeCloudFront()))
+            workspace = pkgrepo.Workspace(root / 'ws', 'nightly', cfg)
+            for number in (598, 599, 600):
+                tag, version = f'v0.1.1-nightly.{number}', f'0.1.1-nightly.{number}'
+                name = f'putgd-{version}-x86_64.AppImage'
+                source = root / 'in' / tag
+                source.mkdir(parents=True)
+                (source / name).write_bytes(f'image {number}'.encode())
+                (source / (name + '.zsync')).write_bytes(f'zsync {number}'.encode())
+                (workspace.tree / 'releases' / tag).mkdir(parents=True)
+                (workspace.tree / 'releases' / tag / 'SHA256SUMS').write_text('sums\n')
+                inputs = {'tag': tag, 'appimage': {'name': name, 'path': source / name,
+                                                   'zsync': {'name': name + '.zsync', 'path': source / (name + '.zsync')}}}
+                signer.mirror_appimage(workspace, inputs)
+            releases = workspace.tree / 'releases'
+            self.assertEqual(sorted(p.relative_to(releases).as_posix() for p in releases.rglob('*.AppImage*')),
+                             ['v0.1.1-nightly.599/putgd-0.1.1-nightly.599-x86_64.AppImage',
+                              'v0.1.1-nightly.599/putgd-0.1.1-nightly.599-x86_64.AppImage.zsync',
+                              'v0.1.1-nightly.600/putgd-0.1.1-nightly.600-x86_64.AppImage',
+                              'v0.1.1-nightly.600/putgd-0.1.1-nightly.600-x86_64.AppImage.zsync'])
+            self.assertTrue((releases / 'v0.1.1-nightly.598' / 'SHA256SUMS').exists())
+            self.assertEqual((workspace.tree / 'dl' / 'nightly' / 'appimage.zsync').read_bytes(), b'zsync 600')
+            # The image is a hard link of the verified download, not a second copy.
+            self.assertEqual((releases / 'v0.1.1-nightly.600' / 'putgd-0.1.1-nightly.600-x86_64.AppImage').stat().st_ino,
+                             (root / 'in' / 'v0.1.1-nightly.600' / 'putgd-0.1.1-nightly.600-x86_64.AppImage').stat().st_ino)
+
+
 class Metadata(unittest.TestCase):
     def test_stable_suites_are_never_signed_on_the_builder(self):
         self.assertIn('SignWith: ' + 'A' * 40, pkgrepo.distributions_stanza('nightly', 'debian13', 'A' * 40))
@@ -308,7 +415,7 @@ class Metadata(unittest.TestCase):
         update_feed.check_feed(document)
         self.assertEqual(sorted(document['release']['assets']),
                          ['appimage', 'debian13', 'fedora44', 'ubuntu24.04', 'ubuntu26.04'])
-        self.assertNotIn('zsync', document['release']['assets']['appimage'])
+        self.assertEqual(document['release']['assets']['appimage']['zsync'], 'https://app.put.gd/dl/nightly/appimage.zsync')
         broken = json.loads(json.dumps(document))
         broken['release']['assets']['debian13']['zsync'] = 'x'
         with self.assertRaises(ValueError):
@@ -407,6 +514,34 @@ class RealTools(unittest.TestCase):
             inrelease.write_text(inrelease.read_text().replace('amd64', 'amd65', 1))
             self.assertFalse(pkgrepo.verify_gpg(keys / 'putgd-nightly.gpg', inrelease))
             self.assertEqual({entry['kind'] for entry in receipt['signatures']}, {'openpgp', 'minisign', 'rpm'})
+
+    def test_appimage_only_lab_release_gets_signed_repositories_and_the_mirror(self):
+        """#293 phase 3 lab acceptance publishes AppImages only; the lab repositories stay valid."""
+        with tempfile.TemporaryDirectory(prefix='pgtools-') as directory:
+            root = Path(directory)
+            settings, env, assets, fingerprints = tool_fixture(root, VERSION, PACKAGE_VERSION)
+            lab = root / 'lab-appimage'
+            lab.mkdir()
+            files = dict(zip((IMAGE, IMAGE + '.zsync'), appimage_files(f'https://pkg.put.gd/lab/releases/{TAG}/{IMAGE}')))
+            for name, data in files.items():
+                (lab / name).write_bytes(data)
+            (lab / 'SHA256SUMS').write_text(''.join(f'{hashlib.sha256(d).hexdigest()}  {n}\n' for n, d in files.items()))
+            signer = pkgrepo.Signer(settings, github=object(), clients=(None, None))
+            inputs = pkgrepo.local_inputs(TAG, lab)
+            receipt = pkgrepo.new_receipt(inputs, 'lab')
+            signer.record_inputs(receipt, inputs)
+            workspace = signer.build_next('lab', 'nightly', inputs, receipt)
+            signer.sign_nightly(workspace, inputs, receipt)
+            tree = workspace.tree
+            self.assertEqual((tree / f'releases/{TAG}/{IMAGE}').read_bytes(), files[IMAGE])
+            self.assertEqual((tree / 'dl/nightly/appimage.zsync').read_bytes(), files[IMAGE + '.zsync'])
+            self.assertTrue(pkgrepo.verify_gpg(settings.keys / 'putgd-nightly.gpg', tree / 'apt/debian13/dists/nightly/InRelease'))
+            sums = tree / f'releases/{TAG}/SHA256SUMS'
+            self.assertTrue(pkgrepo.verify_minisign(settings.keys / 'putgd-nightly.minisign.pub', sums, sums.with_name('SHA256SUMS.minisig')))
+            feed = json.loads((tree / 'update/v1/nightly.json').read_text())
+            update_feed.check_feed(feed)
+            self.assertEqual(sorted(feed['release']['assets']), ['appimage'])
+            self.assertEqual([entry['label'] for entry in receipt['inputs']], ['appimage', 'appimage-zsync'])
 
 
 if __name__ == '__main__':
