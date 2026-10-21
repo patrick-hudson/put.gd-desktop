@@ -1,5 +1,10 @@
 #include "cli/UpdateCheck.h"
+#include "core/CaBundle.h"
+#include <QFile>
 #include <QJsonDocument>
+#include <QScopeGuard>
+#include <QSslCertificate>
+#include <QSslSocket>
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <QTest>
@@ -77,6 +82,23 @@ private slots:
  void plainHttpElsewhereIsRefusedBeforeConnecting(){
   qputenv("PUTGD_UPDATE_FEED_URL","http://example.com/update/v1/");
   Error error;fetchUpdate(build(),"nightly",error);QCOMPARE(error.code,QString("update_feed_unavailable"));
+ }
+ // #329: the AppImage names the host's bundle; its certificates join Qt's default CAs.
+ void hostCaBundleAddsItsCertificates(){
+#if QT_CONFIG(ssl)
+  const auto original=QSslConfiguration::defaultConfiguration();
+  const auto restore=qScopeGuard([&]{QSslConfiguration::setDefaultConfiguration(original);qunsetenv("PUTGD_CA_BUNDLE");});
+  const auto path=QFINDTESTDATA("../fixtures/ca-bundle-329.pem");QVERIFY(!path.isEmpty());
+  const auto certificate=QSslCertificate::fromPath(path);QCOMPARE(certificate.size(),1);
+  qunsetenv("PUTGD_CA_BUNDLE");QVERIFY(!useHostCaBundle());
+  qputenv("PUTGD_CA_BUNDLE",QFile::encodeName(path+".absent"));QVERIFY(!useHostCaBundle());
+  QVERIFY(!QSslConfiguration::defaultConfiguration().caCertificates().contains(certificate.first()));
+  qputenv("PUTGD_CA_BUNDLE",QFile::encodeName(path));QVERIFY(useHostCaBundle());
+  QVERIFY(QSslConfiguration::defaultConfiguration().caCertificates().contains(certificate.first()));
+  QVERIFY(QSslConfiguration::defaultConfiguration().peerVerifyMode()!=QSslSocket::VerifyNone);
+#else
+  QSKIP("Qt without TLS");
+#endif
  }
 };
 QTEST_GUILESS_MAIN(UpdateCheckTest)
