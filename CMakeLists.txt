@@ -1048,6 +1048,8 @@ if(BUILD_TESTING)
   # Delayed saves, setup polling and shortcut deadlines expand this suite;
   # the complete ASan/UBSan matrix takes longer than the former 60 s budget.
   set_tests_properties(gui_settings PROPERTIES TIMEOUT 120)
+  # Copy image decodes the retained original in the putgd-ui image worker (#284).
+  add_dependencies(test_gui_history_view putgd-ui)
 endif()
 
 if(BUILD_TESTING)

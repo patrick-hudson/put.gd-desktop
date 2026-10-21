@@ -58,6 +58,9 @@ import sys
 
 MAGENTA = (255, 0, 255)
 EXIT_UNCOVERED = 3
+# The 75 % bars (191, 0, 191 at most): the 100 % set's magenta bar is the cover
+# colour itself, so check-frame would count it as cover (#292).
+PATTERN = 'smpte75'
 
 # GTK 4 knows each monitor's connector on Wayland and X11; GTK 3 only knows the
 # model there (on X11 its model is the RandR output name). Run in a child
@@ -419,8 +422,8 @@ def media_pipeline(args, stack, emit, fail):
         raise RuntimeError('GStreamer gtksink is missing (gstreamer1.0-gtk3 / gstreamer1-plugins-good-gtk)')
     width, height = args.video_size
     if args.pattern:
-        description = ('videotestsrc is-live=true pattern=smpte horizontal-speed=6 '
-                       '! video/x-raw,width=%d,height=%d,framerate=30/1 ! videoconvert ! gtksink name=video' % (width, height))
+        description = ('videotestsrc is-live=true pattern=%s horizontal-speed=6 '
+                       '! video/x-raw,width=%d,height=%d,framerate=30/1 ! videoconvert ! gtksink name=video' % (PATTERN, width, height))
     else:
         audio = args.audio_sink + (' device=%s' % args.audio_device if args.audio_device else '')
         description = ('filesrc location="%s" ! matroskademux name=d '
