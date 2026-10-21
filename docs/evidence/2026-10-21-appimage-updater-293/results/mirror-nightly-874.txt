@@ -1,0 +1,36 @@
+=== https://pkg.put.gd/releases/v0.1.1-nightly.874/putgd-0.1.1-nightly.874-x86_64.AppImage (HEAD)
+HTTP/2 200 
+content-type: application/vnd.appimage
+content-length: 115124728
+cache-control: public, max-age=31536000, immutable
+x-cache: Miss from cloudfront
+=== three ranges
+HTTP/2 206 
+content-type: multipart/byteranges; boundary=CloudFront:F104602D039954DAD485D293F526EF63
+parts: 3
+=== .zsync
+HTTP/2 200 
+content-type: application/x-zsync
+cache-control: public, max-age=31536000, immutable
+zsync: 0.6.2
+Filename: putgd-0.1.1-nightly.874-x86_64.AppImage
+MTime: Wed, 21 Oct 2026 22:03:54 +0000
+Blocksize: 4096
+Length: 115124728
+Hash-Lengths: 2,2,5
+URL: https://github.com/patrick-hudson/put.gd-desktop/releases/download/v0.1.1-nightly.874/putgd-0.1.1-nightly.874-x86_64.AppImage
+SHA-1: 65795d86dfd6999574c21ecfeee167a6a76efd24
+=== pkg.put.gd/dl/nightly/appimage.zsync
+HTTP/2 200 
+content-type: application/x-zsync
+cache-control: public, max-age=300
+ae98edc4b5e0f2dbccb7a082f055c79556577585d1c00f5c741d95b7014cf755  -
+ae98edc4b5e0f2dbccb7a082f055c79556577585d1c00f5c741d95b7014cf755  mirror.zsync
+=== GitHub SHA256SUMS lines
+9e3071157f47bb72deea81da3f3d132ea7121be6359f5f69122c1c5d3f959b7e  putgd-0.1.1-nightly.874-x86_64.AppImage
+ae98edc4b5e0f2dbccb7a082f055c79556577585d1c00f5c741d95b7014cf755  putgd-0.1.1-nightly.874-x86_64.AppImage.zsync
+=== mirror image sha256 (full download)
+9e3071157f47bb72deea81da3f3d132ea7121be6359f5f69122c1c5d3f959b7e  -
+=== app.put.gd permalink today (before site#4)
+HTTP/2 302 
+location: https://github.com/patrick-hudson/put.gd-desktop/releases/download/v0.1.1-nightly.874/putgd-0.1.1-nightly.874-x86_64.AppImage.zsync

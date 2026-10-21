@@ -25,7 +25,7 @@ Transient Qt strings/JSON are released normally; this is not a cryptographic wip
 
 | Method | Parameters | Successful result |
 | --- | --- | --- |
-| `ui.show` | `view`: settings/history/activity/about | `shown` only after helper acknowledgement |
+| `ui.show` | `view`: settings/updates/history/activity/about/editFile (`updates` is Settings scrolled to Updates, as the rail's Update available link opens it) | `shown` only after helper acknowledgement |
 | `ui.quit` | `{}` | `quitting:true`, then explicit resident shutdown |
 | `ui.snapshot` | `{}` | build manifest, resident epoch, readiness, settings document/metadata and diagnostics |
 | `ui.moveDestination` | `direction` up/down, optional `profileId` | the open Settings window's new `order`, `selected` ID and `saving`, after the helper's `commandResult` |

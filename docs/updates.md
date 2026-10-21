@@ -139,13 +139,20 @@ installs on its own: not on the daily check, not from a notification.
    until the new one has started once; then put.gd removes it, if it is still the file put.gd
    made. Nothing else in the folder is touched.
 6. **Restart:** **Restart put.gd** (or `update.restart` with `confirm: true`) quits put.gd and
-   starts the new version.
+   starts the new version. Settings then says "Up to date" and, in the Install row, "Updated from
+   OLD to NEW with a zsync update (or from a full download) on DATE". Without a restart, the
+   next start of put.gd, at login for example, runs the new version too.
 
 It refuses, with the reason in Settings, while a recording or an upload runs, when the AppImage's
 folder isn't writable or has no room for another copy, when the file isn't yours, when you watch
 the other channel (switch **Channel** back to this build's), or when an installed update still
 waits for its restart. DEB and RPM installs update through their repository instead; Flatpak
 updates itself.
+
+Accepted on Fedora 44 GNOME, Linux Mint 22.3 Cinnamon, Kubuntu 26.04 Plasma, Debian 13 Plasma and
+Aurora (Fedora Atomic) through all three paths, with tampered files refused and the resident's idle
+memory unchanged within 0.2 MiB:
+[evidence](evidence/2026-10-21-appimage-updater-293/README.md).
 
 **Going back:** if the new version doesn't start, quit put.gd and move the backup over the
 AppImage, for example
