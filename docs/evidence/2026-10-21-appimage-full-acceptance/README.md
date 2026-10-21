@@ -129,7 +129,7 @@ more per frame against a smaller canvas, so their scores are higher.
 - GNOME 50 needs the release's own `putgd@put.gd` extension: it was installed as a user copy and loaded by re-login #1. `capabilities` reported extension 2, the packaged version (not outdated). The tray comes from AppIndicator.
 - C: the window started right after re-login #1, after a 60 s settle (load 1.40), and ended at 0.07. No `libcrypto` is mapped (the RPM build in #303 maps one).
 - Timeline (UTC): extension installed 20:01:35; logout 20:01:43, GDM restart 20:01:55; logout 20:15:00, GDM restart 20:15:06 → put.gd at 20:15:09; tray Quit 20:15:54.
-- After the slot f44 suspended once (about 20:30–20:34Z; systemd-logind `suspend`). The user session's power setting is "nothing", so it came from GDM's side after the restarts. It interrupted only the Aurora VM's run, which carried on.
+- After the slot, GNOME idle-suspended f44 at 20:30:51Z: `sleep-inactive-ac` is 900 s, and the 15 minutes started at re-login #2. It resumed at 20:34:19Z. The coordinator has since turned idle suspend off on f44, for the user session and the GDM greeter. Only the Aurora VM was running then; see Aurora below.
 
 ![f44: Tray icon and menu](pictures/f44-tray-menu.png)
 ![f44: Settings](pictures/f44-settings-window.png)
@@ -194,6 +194,7 @@ more per frame against a smaller canvas, so their scores are higher.
 - All items except **F** pass (#326, glib2 2.88.3). It's an overlay of `aurora-stable-44.20260908.1-v3` (`6a2fb407…`), UEFI: QEMU on f44, 2 vCPU/6 GiB, wall tile via workstation port 5992. Nothing was installed in the guest; FUSE comes from the image (fuse 2 and 3).
 - Check now **works** here (Aurora ships `/etc/ssl/certs/ca-certificates.crt`), and so does appimageupdatetool (exit 1). The region is exactly 980×600 on KWin 6.7.4, so #333 is an older-KWin behaviour.
 - Aurora has no GStreamer `gtksink`, so the cover and pattern came from [lab/gtk_pattern.py](lab/gtk_pattern.py) (GTK 3 + cairo). The guest reached its own QEMU display at `10.0.2.2:5926`.
+- The host suspend (20:30:51–20:34:19Z, see f44) froze the guest with it. C had finished at 20:30:31Z, before the suspend. B's tray and window steps, D–H, J, I and K all ran after the resume, and all passed except F.
 - I: reboot at 20:41:31Z (plasmalogin autologin) → put.gd at 20:42:37Z.
 
 ![Aurora 44 Plasma 6.7.4 Wayland (VM on f44): Tray icon and menu](pictures/aurora-vm-tray-menu.png)
