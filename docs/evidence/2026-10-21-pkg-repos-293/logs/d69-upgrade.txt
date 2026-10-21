@@ -1,0 +1,22 @@
+
+### upgrade through the repository
+Get:5 https://pkg.put.gd/lab/apt/debian13 nightly InRelease [1,804 B]
+Get:6 https://pkg.put.gd/lab/apt/debian13 nightly/main amd64 Packages [738 B]
+putgd:
+  Installed: 0.1.1~nightly.809
+  Candidate: 0.1.1~nightly.810
+  Version table:
+     0.1.1~nightly.810 500
+        500 https://pkg.put.gd/lab/apt/debian13 nightly/main amd64 Packages
+ *** 0.1.1~nightly.809 100
+        100 /var/lib/dpkg/status
+apt upgrade would: Inst putgd [0.1.1~nightly.809] (0.1.1~nightly.810 put.gd:nightly [amd64])
+Processing triggers for desktop-file-utils (0.28-1) ...
+Processing triggers for hicolor-icon-theme (0.18-2) ...
+Processing triggers for gnome-menus (3.36.0-3) ...
+Processing triggers for mailcap (3.74) ...
+rc=0
+0.1.1~nightly.810 install ok installed
+/etc/apt/sources.list.d/putgd.sources present sha256=44471ecb58e01dd5
+conffiles: /etc/apt/sources.list.d/putgd.sources 5c0742f66f1fd5e14be392bf0e480f5a
+-rw-r--r-- 1 root root 1170 Oct 20 21:38 /usr/share/keyrings/putgd-archive-keyring.gpg

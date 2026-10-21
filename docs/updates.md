@@ -33,6 +33,7 @@ Once a day the resident asks app.put.gd for the newest version on its channel:
 | Build | Channel it follows | Notification | Tray menu | Settings and main window |
 | --- | --- | --- | --- | --- |
 | Stable release | stable | once per new version | **Update available: X.Y.Z** | yes |
+| Stable DEB/RPM that updates from put.gd's repository | stable | never: the system updater tells you | yes | yes, with **Open software updates** |
 | Release candidate | stable | once per new version | yes | yes |
 | Nightly | nightly | never | no | yes |
 | Development or source build | none | no check | no | says why |
@@ -80,6 +81,14 @@ Known gap:
 - **Download** and **Release notes:** shown when there is a newer version.
   **Download** opens this installation's package (the same DEB, RPM or AppImage you
   installed) in your browser.
+- **Open software updates:** replaces **Download** on a DEB or RPM install whose
+  repository file from [pkg.put.gd](package-repositories.md) is present and enabled. It
+  opens Update Manager on Cinnamon, Discover on Plasma or GNOME Software on GNOME (else
+  whichever is installed). Below it, **Or in a terminal** shows `sudo apt update && sudo apt upgrade`
+  or `sudo dnf upgrade --refresh` with **Copy**. Delete or disable the repository file
+  and, from the next check (or **Check now**), Settings offers **Download** again. The
+  check child reads the repository file and starts the updater, so the resident's code
+  and idle memory don't change.
 
 When a newer version exists, the main window's rail shows **Update available: X**
 under the version, which opens this section.
@@ -97,11 +106,13 @@ Both keys are optional. Without the object, put.gd checks daily on this build's 
 
 | Interface | What it does |
 | --- | --- |
-| `putgd-cli update.status` | Returns `build` (version, kind, channel, packageTarget, supported, reason), `check`, `channelSetting`, `channel`, `enabled`, `notifies`, `checking`, `attemptedAt`, `checkedAt`, `nextCheckAt`, `result` and `error` |
+| `putgd-cli update.status` | Returns `build` (version, kind, channel, packageTarget, supported, reason), `check`, `channelSetting`, `channel`, `enabled`, `notifies`, `action`, `checking`, `attemptedAt`, `checkedAt`, `nextCheckAt`, `result` and `error`. `action`, from the last check, is `{kind: "software-updates", manager, file, channel, command, updater}` for a repository install, otherwise `{kind: "download", repository: "absent" \| "disabled" \| "other" \| "none"}` |
 | `putgd-cli update.check` | Checks now, even with daily checks off, and returns the same object. A failed check returns its error: `update_feed_unavailable`, `update_feed_invalid`, `update_check_failed` or `update_check_unavailable` |
 | `putgd-cli --update-info` | This build's channel and package target. No resident and no network |
-| `putgd-cli --check-update nightly` | The resident's child mode: one feed request and one JSON line. No resident needed |
-| MCP `get_update_status`, `check_for_updates` | `update.status` and `update.check` |
+| `putgd-cli --check-update nightly` | The resident's child mode: one feed request and one JSON line, whose `action` says how this install updates (it reads the repository file). No resident needed |
+| `putgd-cli --open-software-updates` | The child mode behind `update.openSoftwareUpdates`: reads the repository file again and starts the updater. No resident needed |
+| `putgd-cli update.openSoftwareUpdates` | Opens the system's software updater, as **Open software updates** does. `software_updates_unavailable` when this install doesn't update from put.gd's repository (the details name why) or no updater is installed (the details carry the command) |
+| MCP `get_update_status`, `check_for_updates`, `open_software_updates` | `update.status`, `update.check` and `update.openSoftwareUpdates` |
 | `settings.patch` / MCP `patch_configuration` | `{"preferences": {"updates": {"check": false}}}` and so on |
 
 `PUTGD_UPDATE_FEED_URL` replaces `https://app.put.gd/update/v1/` for tests and the lab.
@@ -109,8 +120,12 @@ It must be `https`, or `http` on a loopback address.
 
 ## Feed contract v1
 
-`https://app.put.gd/update/v1/stable.json` and `nightly.json`, published by the
-put.gd-site deploy. The deploy runs within about a minute of each release.
+`https://app.put.gd/update/v1/stable.json` and `nightly.json` (also at
+`https://pkg.put.gd/update/v1/`), each with a `.minisig`. The package signer publishes
+them after the apt and dnf repositories carry the release, so a DEB or RPM user is never
+told about a version apt or dnf can't fetch yet ([package-repositories.md](package-repositories.md)).
+Until patrick-hudson/put.gd-site#3 is applied, the put.gd-site deploy still publishes
+the app.put.gd copy within about a minute of each release.
 
 ```json
 {
@@ -153,15 +168,19 @@ Two CMake cache variables decide whether a build checks:
   `putgd-cli --update-info`, and the AppImage build checks it too.
 - **`PUTGD_UPDATE_CHECK`:** default `ON`. A distribution that packages put.gd itself sets
   it `OFF`; Settings then says checks were turned off for this build.
+- **`PUTGD_PACKAGE_REPOSITORY_URL`:** default `https://pkg.put.gd`. Tagged DEB and RPM
+  builds add this repository, and the app recognises it in the repository file. Lab builds
+  set `https://pkg.put.gd/lab`.
 
 Only clean tagged builds (stable, candidate or nightly) have a channel. Every other
 build reports `development_build` or `no_package` and never checks.
 
 ## Later phases (#293)
 
-- **Phase 2:** signed apt and dnf repositories at `pkg.put.gd`, which the DEB and RPM
-  add when installed. Settings will then point to your software updater instead of a
-  download.
+- **Phase 2 (done):** signed apt and dnf repositories at `pkg.put.gd`, which the DEB and
+  RPM add when installed; see [package-repositories.md](package-repositories.md).
+  AppStream catalog data in the repositories, so software centres can find put.gd before
+  it's installed, is [#314](https://github.com/patrick-hudson/put.gd-desktop/issues/314).
 - **Phase 3:** the AppImage's own **Install update**. It replaces the file in place after
   checking a minisign signature.
 - **Phase 4:** Flatpak, from its own signed repository, in [#83](https://github.com/patrick-hudson/put.gd-desktop/issues/83).

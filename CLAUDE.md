@@ -10,6 +10,7 @@ instruction file. Use the existing documentation below; this file is an index.
 | Build, dependencies and packaging | [docs/build.md](docs/build.md) |
 | Branches, CI jobs, nightly and release process | [docs/ci.md](docs/ci.md), [docs/release.md](docs/release.md) |
 | Releasing a version (agent runbook) | [docs/release-runbook.md](docs/release-runbook.md) |
+| Signed apt/dnf repositories at pkg.put.gd, the package signer and its keys | [docs/package-repositories.md](docs/package-repositories.md) |
 | Linux distro/session matrix and physical/VM placement | [docs/acceptance-matrix.md](docs/acceptance-matrix.md) |
 | Required verification and recorded acceptance | [docs/verification.md](docs/verification.md) |
 | Remote builders, physical-desktop acceptance, VM displays and golden transfers | [docs/remote-builders.md](docs/remote-builders.md) |

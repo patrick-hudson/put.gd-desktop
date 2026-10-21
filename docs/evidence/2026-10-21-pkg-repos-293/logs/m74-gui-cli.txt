@@ -1,0 +1,12 @@
+{"clicked": [1337, 250]}
+cli ok True mintupdate managed 
+22753 mintUpdate
+left:
+"kind": "download"
+"repository": "absent"
+"kind": "nightly"
+"kind": "download"
+"repository": "absent"
+{"ok": true, "frame": [1920, 1080], "crop": [21, 12, 1393, 997], "edges": {"top": 1.0, "bottom": 1.0, "left": 1.0, "righ
+"code": "software_updates_unavailable"
+-rw-r--r-- 1 root root 2040 Oct 20 21:38 /etc/apt/sources.list.d/putgd.sources

@@ -1,0 +1,28 @@
+{"patch": true}
+{
+ "check": true,
+ "error": {
+  "code": "",
+  "details": {},
+  "message": ""
+ },
+ "latest": "0.1.1-nightly.811",
+ "current": "0.1.1-nightly.810",
+ "notifies": false,
+ "action": {
+  "channel": "nightly",
+  "command": "sudo apt update && sudo apt upgrade",
+  "file": "/etc/apt/sources.list.d/putgd.sources",
+  "kind": "software-updates",
+  "manager": "apt",
+  "repository": "managed",
+  "updater": {
+   "arguments": [],
+   "id": "mintupdate",
+   "name": "Update Manager",
+   "program": "/usr/bin/mintupdate"
+  }
+ }
+}
+{"error": {"code": "", "details": {}, "message": ""}, "ok": true, "requestId": "10577350-1371-472a-a965-d907f36f898d", "result": {"shown": "settings"}, "schemaVersion": 1}
+{"ok": true, "frame": [1920, 1080], "crop": [21, 12, 1393, 997], "edges": {"top": 1.0, "bottom": 1.0, "left": 1.0, "right": 1.0}, "file": "/home/patrick/work/put.gd-pkg293-lab/evidence/m74-p5-settings

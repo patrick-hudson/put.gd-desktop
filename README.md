@@ -191,9 +191,9 @@ sha256sum --check --ignore-missing SHA256SUMS
 </details>
 
 ```bash
-# Debian family
+# Debian family (also adds put.gd's apt repository, so updates arrive with apt)
 sudo apt install ./putgd-*.deb
-# Fedora
+# Fedora (also adds put.gd's dnf repository)
 sudo dnf install ./putgd-*.rpm
 # AppImage
 chmod +x putgd-*.AppImage && ./putgd-*.AppImage
