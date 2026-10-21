@@ -142,7 +142,7 @@ server that answers multi-range requests with 501 (as GitHub's CDN does), and a 
 All three succeeded: zsync2 sends one range per request (9 requests) and resolves a redirect
 when its `HEAD` succeeds ([multipart](results/f44-297/trial-multipart-update.log),
 [501](results/f44-297/trial-github-update.log), [long redirect](results/f44-297/trial-longredirect-update.log)).
-Reporting the two zsync2 problems upstream needs Patrick's OK and hasn't been done.
+Both zsync2 problems (the out-of-bounds CA-bundle search behind the crash, and the redirect `HEAD` without the bundle) are reported upstream as [AppImageCommunity/zsync2#91](https://github.com/AppImageCommunity/zsync2/issues/91); #297 tracks it.
 
 ## Live pre-check 801 to 816
 

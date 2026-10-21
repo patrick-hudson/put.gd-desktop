@@ -131,7 +131,8 @@ three updaters, even if the old file was removed, and put.gd then remembers the 
 
 appimageupdatetool looks for the certificate bundle at Ubuntu's path,
 `/etc/ssl/certs/ca-certificates.crt`, which Fedora doesn't have
-([#297](https://github.com/patrick-hudson/put.gd-desktop/issues/297)). Without it, it prints
+([#297](https://github.com/patrick-hudson/put.gd-desktop/issues/297), upstream
+[zsync2#91](https://github.com/AppImageCommunity/zsync2/issues/91)). Without it, it prints
 `zsync2: Unknown error while checking whether file (null) exists: Bad address` about thirty
 times and crashes. Setting `SSL_CERT_FILE=/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem`
 stops the crash and the update check works, but the update itself still fails with
