@@ -1,0 +1,28 @@
+zsync2: Target file: /home/lab/Applications/putgd-0.1.1-dev.827+gac0c3235e729-x86_64.AppImage
+zsync2: Reading seed file: /home/lab/Applications/putgd-0.1.1-dev.826+g1b4dc59faa1a-x86_64_bc253afd21c8b0ec73fb352ed81e30c1.AppImage
+zsync2: Usable data from seed files: 99.711312%
+zsync2: Renaming temp file
+zsync2: Fetching remaining blocks
+zsync2: Downloading from http://127.0.0.1:8765/putgd-0.1.1-dev.827+gac0c3235e729-x86_64.AppImage
+zsync2: optimized ranges, old requests count 24, new requests count 10
+zsync2: Verifying downloaded file
+zsync2: checksum matches OK
+zsync2: used 114593792 local, fetched 1260024
+total 224476
+drwxrwxr-x  3 lab lab      4096 Oct 21 12:07 .
+drwxr-x--- 22 lab lab      4096 Oct 21 12:07 ..
+-rwxrwxr-x  1 lab lab 114924024 Oct 21 12:07 putgd-0.1.1-dev.826+g1b4dc59faa1a-x86_64_bc253afd21c8b0ec73fb352ed81e30c1.AppImage
+-rwxrwxr-x  1 lab lab 114924024 Oct 21  2026 putgd-0.1.1-dev.827+gac0c3235e729-x86_64.AppImage
+drwxrwxr-x  2 lab lab      4096 Oct 21 12:07 .trash
+appimagekit_6fcdceb32f7025c3aec556559770e613-put.gd.desktop
+appimagekit_c5788d5f6bbab0c3679e18cda61b83da-put.gd.desktop
+mimeinfo.cache
+webapp-OnlineChat4519.desktop
+Name=put.gd (1)
+Name=Delete this AppImage
+Name=Update this AppImage
+Name=put.gd (2)
+Name=Delete this AppImage
+Name=Update this AppImage
+0df5aa4acc29eca257249804a2ba207c833ad770b17a79b6118f1b99e5c7ebfe  /home/lab/Applications/putgd-0.1.1-dev.826+g1b4dc59faa1a-x86_64_bc253afd21c8b0ec73fb352ed81e30c1.AppImage
+32c3e62bff1c1e546639f1d492367d705d25c1ce44a136c1f02186cf0287e7bb  /home/lab/Applications/putgd-0.1.1-dev.827+gac0c3235e729-x86_64.AppImage

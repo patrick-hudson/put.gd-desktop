@@ -1,0 +1,13 @@
+== appimageupdatetool --remove-old: after logout and login  2026-10-21T12:05:00-0500
+login session:  40 1000 lab - - closing no - | 43 1000 lab - - active no - | c1 1000 lab seat0 tty7 closing no - | c3 1000 lab seat0 tty7 closing no - | c5 1000 lab seat0 tty7 closing no - | c7 1000 lab seat0 tty7 active no -
+put.gd running: pid 4924, started Wed Oct 21 12:04:31 2026
+  version:      0.1.1-dev.827+gac0c3235e729
+  APPIMAGE:     /home/lab/Apps/putgd-0.1.1-dev.827+gac0c3235e729-x86_64.AppImage
+autostart:      Exec=/bin/sh "/home/lab/.local/share/putgd/login/appimage-start.sh" --background
+login script:   configured='/home/lab/Apps/putgd-0.1.1-dev.827+gac0c3235e729-x86_64.AppImage'
+                update_information='zsync|http://127.0.0.1:8765/appimage.zsync'
+/home/lab/Applications:
+/home/lab/Apps:
+  putgd-0.1.1-dev.827+gac0c3235e729-x86_64.AppImage
+0::/user.slice/user-1000.slice/session-c7.scope
+   4591 /usr/lib/x86_64-linux-gnu/cinnamon-session-binary --session cinnamon
