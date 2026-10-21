@@ -67,6 +67,16 @@ Records at the default level:
   `httpStatus`, `serviceCode`, `requestStage`, `sdkRetryable`, `curlCode`, `elapsedMs`,
   and the S3 request IDs `requestId` (`x-amz-request-id`) and `extendedRequestId`
   (`x-amz-id-2`). The same IDs are stored with the item's error in history.
+- **Capture failures:** `Capture failed` (warning, `putgd.capture`) with `code`,
+  `reason` and `details`. The same reason and details are the operation's error.
+  `details.stage` says where it failed (`prepare`, `select`, `acquire`, `cinnamon`,
+  `encode`, `resident` or `resident_verify`) and `details.check` names the check, for
+  example `png_size`, `png_trailer`, `png_depth`, `png_dimensions`, `service_call` or
+  `deadline` for Cinnamon's frames and `sha256`, `png_signature`, `reader_size` or
+  `helper_exit` in the resident. Helper failures also carry `action`, `layout` (each
+  output's name, native and logical rectangle and density) and `selection`, and
+  Cinnamon failures the frame, its output and its rectangle. Never pixels, paths or a
+  service's own error text.
 - **Helpers:** `Helper started` (pid, generation), each stderr line, `Helper output
   truncated` when a generation passes its bound, and `Helper exited` (exit code),
   `Helper crashed` (the signal Qt reports) or `Helper stopped by put.gd`. The S3

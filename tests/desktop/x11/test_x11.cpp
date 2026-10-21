@@ -9,6 +9,9 @@
 #include <QElapsedTimer>
 #include <QFileInfo>
 #include <QProcess>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QScopeGuard>
 #include <QtTest>
 #include <QClipboard>
 #include <QGuiApplication>
@@ -42,17 +45,23 @@ class CinnamonScreenshotFixture:public QObject,protected QDBusContext {
  Q_OBJECT
  Q_CLASSINFO("D-Bus Interface","org.Cinnamon")
 public:
- enum Mode {Open,WrongSize,WideDepth,Malformed,ServiceError};
+ enum Mode {Open,WrongSize,WideDepth,Malformed,ServiceError,Slow};
  explicit CinnamonScreenshotFixture(Mode mode=Open):mode(mode){auto bus=QDBusConnection::sessionBus();registered=bus.registerObject("/org/Cinnamon",this,QDBusConnection::ExportAllSlots)&&bus.registerService("org.Cinnamon");}
  ~CinnamonScreenshotFixture(){close();auto bus=QDBusConnection::sessionBus();if(registered)bus.unregisterService("org.Cinnamon");bus.unregisterObject("/org/Cinnamon");}
  void close(){output.reset();}
- Mode mode;bool registered=false;int requests=0;QString path;QRect rectangle;bool cursor=true,flash=true;std::unique_ptr<QFile> output;
+ Mode mode;bool registered=false;int requests=0;QString path;QRect rectangle;QList<QRect> rectangles;bool cursor=true,flash=true;std::unique_ptr<QFile> output;
 public slots:
  void ScreenshotArea(bool includeCursor,int x,int y,int width,int height,bool includeFlash,const QString& filename){
-  ++requests;path=filename;rectangle={x,y,width,height};cursor=includeCursor;flash=includeFlash;
+  ++requests;path=filename;rectangle={x,y,width,height};rectangles.append(rectangle);cursor=includeCursor;flash=includeFlash;
   if(mode==ServiceError){sendErrorReply("org.Cinnamon.SyntheticFailure","arbitrary synthetic payload must stay private");return;}
   output=std::make_unique<QFile>(filename);if(!output->open(QIODevice::WriteOnly))return;
   if(mode==Malformed)output->write("incomplete native image");
+  else if(mode==Slow){
+   // Half the PNG now and the rest later, as a slow writer would.
+   QBuffer png;png.open(QIODevice::WriteOnly);QImage image(width,height,QImage::Format_RGB32);image.fill(Qt::cyan);image.save(&png,"PNG");
+   const auto bytes=png.data();output->write(bytes.left(bytes.size()/2));output->flush();
+   QTimer::singleShot(400,this,[filename,rest=bytes.mid(bytes.size()/2)]{QFile file(filename);if(file.open(QIODevice::Append))file.write(rest);});
+  }
   else{QImage image(width+(mode==WrongSize),height,mode==WideDepth?QImage::Format_RGBA64:QImage::Format_RGB32);image.fill(Qt::cyan);image.save(output.get(),"PNG");}
   output->flush(); // Complete bytes are present while the writer is still open.
  }
@@ -207,9 +216,45 @@ private slots:
    connect(request,&CinnamonRegionCapture::acquired,this,[&](QList<CaptureFrame> frames,Error value){QVERIFY(frames.isEmpty());error=value;done=true;});request->start();QTRY_COMPARE(fixture.requests,1);
    if(mode==CinnamonScreenshotFixture::WideDepth){QFile png(fixture.path);QVERIFY(png.open(QIODevice::ReadOnly));const auto header=png.read(33);QCOMPARE(header.size(),33);QCOMPARE(static_cast<unsigned char>(header[24]),16);}
    fixture.close();QTRY_VERIFY(done);
-   QCOMPARE(error.code,QString(mode==CinnamonScreenshotFixture::WrongSize?"capture_geometry":mode==CinnamonScreenshotFixture::ServiceError?"capture_unavailable":"capture_failed"));QVERIFY(error.details.isEmpty());QVERIFY(!error.message.contains("arbitrary synthetic payload"));}
+   QCOMPARE(error.code,QString(mode==CinnamonScreenshotFixture::WrongSize?"capture_geometry":mode==CinnamonScreenshotFixture::ServiceError?"capture_unavailable":"capture_failed"));QVERIFY(!error.message.contains("arbitrary synthetic payload"));
+   // Each failure names its check and frame geometry; never the service's text or a path (#331).
+   const auto details=QString::fromUtf8(QJsonDocument(error.details).toJson(QJsonDocument::Compact));
+   QCOMPARE(error.details["stage"].toString(),QString("cinnamon"));QCOMPARE(error.details["completion"].toString(),QString("inotify"));
+   QCOMPARE(error.details["check"].toString(),QString(mode==CinnamonScreenshotFixture::WrongSize?"png_dimensions":mode==CinnamonScreenshotFixture::WideDepth?"png_depth":mode==CinnamonScreenshotFixture::Malformed?"png_size":"service_call"));
+   QCOMPARE(error.details["output"].toString(),QString("fixture"));QCOMPARE(error.details["native"].toArray(),(QJsonArray{30,40,10,8}));
+   QVERIFY(!details.contains("arbitrary synthetic payload"));QVERIFY(!details.contains(QFileInfo(fixture.path).absolutePath()));}
   {CinnamonScreenshotFixture fixture;QVERIFY(fixture.registered);ResourceLimits limits;limits.imageBytes=10*8*4-1;auto* request=new CinnamonRegionCapture({native},limits);bool done=false;Error error;
    connect(request,&CinnamonRegionCapture::acquired,this,[&](QList<CaptureFrame>,Error value){error=value;done=true;});request->start();QVERIFY(done);QCOMPARE(error.code,QString("input_excessive"));QCOMPARE(fixture.requests,0);}
+ }
+ // #331: three monitors of mixed sizes (a shorter middle one) at a tenth of
+ // the reported layout. Every monitor is requested at once and decoded.
+ static QList<CaptureFrame> mixedMonitorFrames(){
+  return {{"DP-1-2",QRectF(0,0,256,144),QRect(0,0,256,144),1,0,{}},{"eDP-1",QRectF(256,0,192,108),QRect(256,0,192,108),1,0,{}},{"DP-3",QRectF(448,0,256,144),QRect(448,0,256,144),1,0,{}}};
+ }
+ void cinnamonRegionCaptureDecodesMixedMonitors() {
+  CinnamonScreenshotFixture fixture;QVERIFY(fixture.registered);const auto layout=mixedMonitorFrames();
+  auto* request=new CinnamonRegionCapture(layout,{});QPointer<CinnamonRegionCapture> guard=request;bool done=false;QList<CaptureFrame> frames;Error error;
+  connect(request,&CinnamonRegionCapture::acquired,this,[&](QList<CaptureFrame> captured,Error value){frames=std::move(captured);error=value;done=true;});request->start();
+  QTRY_COMPARE(fixture.requests,3);QCOMPARE(fixture.rectangles,(QList<QRect>{layout[0].nativeRect,layout[1].nativeRect,layout[2].nativeRect}));
+  fixture.close();QTRY_VERIFY(done);QVERIFY2(!error,qPrintable(error.message));QCOMPARE(frames.size(),3);
+  for(int i=0;i<3;++i){QCOMPARE(frames[i].pixels.size(),layout[i].nativeRect.size());QCOMPARE(frames[i].pixels.pixelColor(5,5),QColor(Qt::cyan));}
+  QTRY_VERIFY(guard.isNull());
+ }
+ void cinnamonRegionCaptureWithoutCompletionWatch_data(){QTest::addColumn<int>("mode");QTest::newRow("complete")<<int(CinnamonScreenshotFixture::Open);QTest::newRow("slow-writer")<<int(CinnamonScreenshotFixture::Slow);}
+ void cinnamonRegionCaptureWithoutCompletionWatch() {
+  // inotify instances are a per-user limit every program shares. When none is
+  // left, region capture polls for finished PNGs instead of failing (#331).
+  QFETCH(int,mode);CinnamonScreenshotFixture fixture{CinnamonScreenshotFixture::Mode(mode)};QVERIFY(fixture.registered);const auto layout=mixedMonitorFrames();
+  CinnamonRegionCapture::setWatchErrorForTesting(EMFILE);auto restore=qScopeGuard([]{CinnamonRegionCapture::setWatchErrorForTesting(0);});
+  auto* request=new CinnamonRegionCapture(layout,{});QPointer<CinnamonRegionCapture> guard=request;bool done=false;QList<CaptureFrame> frames;Error error;
+  connect(request,&CinnamonRegionCapture::acquired,this,[&](QList<CaptureFrame> captured,Error value){frames=std::move(captured);error=value;done=true;});
+  QTest::ignoreMessage(QtWarningMsg,"Cinnamon capture completion watch unavailable (EMFILE); polling for finished PNGs");request->start();
+  QTRY_COMPARE(fixture.requests,3);
+  if(mode==CinnamonScreenshotFixture::Slow){QTest::qWait(200);QVERIFY(!done);}
+  // The last writer is still open: complete bytes, not a close, finish polling.
+  QTRY_VERIFY(done);QVERIFY2(!error,qPrintable(error.code+": "+error.message));QCOMPARE(frames.size(),3);
+  for(int i=0;i<3;++i){QCOMPARE(frames[i].pixels.size(),layout[i].nativeRect.size());QCOMPARE(frames[i].pixels.pixelColor(5,5),QColor(Qt::cyan));}
+  fixture.close();QTRY_VERIFY(guard.isNull());
  }
  void encodedImageResultIsServedToNativeClipboardConsumer() {
   QImage expected(17,11,QImage::Format_ARGB32);expected.fill(Qt::yellow);

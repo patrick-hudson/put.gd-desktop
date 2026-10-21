@@ -22,6 +22,18 @@ host_cache() {
 }
 export LD_LIBRARY_PATH="$appdir/usr/lib:$appdir/usr/lib/putgd${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 export QT_PLUGIN_PATH="$appdir/usr/plugins:$appdir/usr/lib/qt6/plugins${QT_PLUGIN_PATH:+:$QT_PLUGIN_PATH}"
+# The bundled OpenSSL, libcurl and Qt look for CA certificates where Debian keeps
+# them; Fedora and Fedora Atomic keep theirs elsewhere (#329). Name the host's own
+# bundle for the image's TLS clients. Nothing is added to what the host trusts.
+unset PUTGD_CA_BUNDLE
+for bundle in ${SSL_CERT_FILE:+"$SSL_CERT_FILE"} /etc/ssl/certs/ca-certificates.crt \
+    /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem /etc/pki/tls/certs/ca-bundle.crt \
+    /etc/ssl/ca-bundle.pem /etc/ssl/cert.pem; do
+    if [ -f "$bundle" ] && [ -r "$bundle" ]; then
+        export PUTGD_CA_BUNDLE="$bundle"
+        break
+    fi
+done
 host_has_library() {
     for tool in ldconfig /sbin/ldconfig /usr/sbin/ldconfig; do
         if command -v "$tool" >/dev/null 2>&1; then

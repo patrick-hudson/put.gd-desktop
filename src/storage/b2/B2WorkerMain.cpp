@@ -11,6 +11,7 @@
 // the resident links none of it.
 #include "B2Common.h"
 #include "core/BuildInfo.h"
+#include "core/CaBundle.h"
 #include "core/StorageProvider.h"
 #include <QCoreApplication>
 #include <QCryptographicHash>
@@ -794,6 +795,7 @@ int main(int argc, char** argv) {
     if (argc != 2 || std::strcmp(argv[1], "--stdio") != 0) return 2;
     QCoreApplication app(argc, argv);
     QCoreApplication::setApplicationName("putgd-b2-worker");
+    putgd::useHostCaBundle();
     bool eof = false;
     auto line = putgd::b2::readLine(eof);
     auto request = QJsonDocument::fromJson(line).object();

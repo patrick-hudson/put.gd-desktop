@@ -1,5 +1,6 @@
 #include "UpdateCheck.h"
 #include "core/BuildInfo.h"
+#include "core/CaBundle.h"
 #include "core/SystemUpdates.h"
 #include "core/Update.h"
 #include <QCoreApplication>
@@ -43,6 +44,7 @@ int runUpdateMode(int argc,char** argv) {
  QCoreApplication app(argc,argv);QCoreApplication::setOrganizationName("putgd");QCoreApplication::setApplicationName("putgd-cli");
  const auto build=update::build(manifest());
  if(!build.supported)return finish({"update_check_unavailable","This build does not check for updates",{{"reason",build.reason}}});
+ useHostCaBundle();
  Error error;const auto result=fetchUpdate(build,QString::fromLocal8Bit(argv[2]),error);
  return finish(error,result);
 }

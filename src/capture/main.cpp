@@ -48,6 +48,16 @@ protected:
 private:qint64 bound_;bool exceeded_=false;
 };
 bool identity(const struct stat& s,const QString& device,const QString& inode){return S_ISREG(s.st_mode)&&s.st_uid==getuid()&&(s.st_mode&0777)==0600&&s.st_nlink==1&&QString::number(qulonglong(s.st_dev))==device&&QString::number(qulonglong(s.st_ino))==inode;}
+QJsonArray rectangle(const QRectF& r){return {r.x(),r.y(),r.width(),r.height()};}
+// Every terminal error names its frames and selection, never pixels or paths.
+QJsonObject geometry(const putgd::X11Target& target,const std::optional<QRectF>& selection){
+ QJsonArray outputs;
+ for(const auto& frame:target.layout)outputs.append(QJsonObject{{"output",frame.identity},{"native",rectangle(frame.nativeRect)},{"logical",rectangle(frame.logicalRect)},{"density",frame.density}});
+ QJsonObject result{{"action",target.action},{"layout",outputs}};
+ if(selection)result["selection"]=rectangle(*selection);
+ if(target.window)result["windowRect"]=rectangle(target.nativeWindowRect);
+ return result;
+}
 bool positive(const QJsonValue& v,qint64 maximum){return v.isDouble()&&v.toInteger()>0&&v.toInteger()<=maximum&&v.toDouble()==v.toInteger();}
 QJsonObject nativeCursorSeed(){
 #if QT_CONFIG(xcb)
@@ -101,16 +111,26 @@ int main(int argc,char** argv){
  quint32 preparedCursor=0;bool cacheCursor=false;
  bool bootstrapped=false,ready=false,begun=false,settled=false,resultSent=false,cancelled=false;
  bool previewed=false,selectionStarted=false,acquisitionQueued=false,acquisitionStarted=false;quint32 previewCursor=0;
- std::optional<putgd::RegionSelectionResult> selection;QThread* encoder=nullptr;
+ std::optional<putgd::RegionSelectionResult> selection;std::optional<QRectF> selectedRect;QThread* encoder=nullptr;
  QTimer deadline;deadline.setSingleShot(true);deadline.start(10000);
  const auto envelope=[&]{return QJsonObject{{"nonce",nonce},{"generation",generation}};};
- const auto finish=[&](const QString& code){if(settled)return;settled=true;deadline.stop();auto message=envelope();message["code"]=code;control.send(code=="cancelled"?"cancelled":"error",message);QTimer::singleShot(0,&app,&QCoreApplication::quit);};
+ const auto finish=[&](const putgd::Error& error){
+  if(settled)return;
+  settled=true;deadline.stop();auto message=envelope();message["code"]=error.code;
+  // The resident keeps the reason and details in its log and the operation's
+  // error, so a diagnostics package can name the check that failed (#331).
+  auto details=error.code=="cancelled"?QJsonObject{}:error.details;
+  if(error.code!="cancelled"){const auto context=geometry(target,selectedRect);for(auto it=context.begin();it!=context.end();++it)if(!details.contains(it.key()))details[it.key()]=it.value();}
+  if(QJsonDocument(details).toJson(QJsonDocument::Compact).size()>putgd::CaptureControl::detailBytes)details=QJsonObject{{"stage",details["stage"]},{"check",details["check"]},{"truncated",true}};
+  message["reason"]=error.code=="cancelled"?QString{}:error.message.left(putgd::CaptureControl::reasonChars);message["details"]=details;
+  control.send(error.code=="cancelled"?"cancelled":"error",message);QTimer::singleShot(0,&app,&QCoreApplication::quit);};
+ const auto stageError=[](const char* code,const char* message,const char* stage,const char* check){return putgd::Error{QString::fromLatin1(code),QString::fromLatin1(message),{{"stage",stage},{"check",check}}};};
  const auto rejectProtocol=[&]{
   // A fatal frame must stop the decoder immediately: another frame may already
   // be buffered in the same read, before the event loop observes app.exit().
   cancelled=true;settled=true;selection.reset();deadline.stop();control.stop();source.cancelAcquisition();app.exit(4);
  };
- QObject::connect(&deadline,&QTimer::timeout,&app,[&]{if(ready){selection.reset();finish("capture_timeout");source.cancelAcquisition();}else app.exit(3);});
+ QObject::connect(&deadline,&QTimer::timeout,&app,[&]{if(ready){selection.reset();finish(stageError("capture_timeout","The capture helper timed out",acquisitionStarted?"acquire":begun?"select":"prepare","helper_deadline"));source.cancelAcquisition();}else app.exit(3);});
  QObject::connect(&pipes,&QIODevice::readChannelFinished,&app,[&]{cancelled=true;settled=true;selection.reset();deadline.stop();control.stop();source.cancelAcquisition();app.exit(3);});
  QObject::connect(&control,&putgd::CaptureControl::failed,&app,[&]{cancelled=true;settled=true;selection.reset();deadline.stop();control.stop();source.cancelAcquisition();app.exit(3);});
  // Selection may finish before durable BEGIN. Retain geometry only until both
@@ -123,25 +143,26 @@ int main(int argc,char** argv){
   QTimer::singleShot(0,&app,[&]{
   acquisitionQueued=false;
   if(!begun||settled||cancelled||acquisitionStarted||(target.action=="region"&&!selection))return;
-  putgd::Error changed;if(!native.unchanged(frozen,changed)){finish(changed.code);return;}
+  putgd::Error changed;if(!native.unchanged(frozen,changed)){finish(changed);return;}
   acquisitionStarted=true;
   auto acquired=[&](putgd::PayloadResult result){
     if(settled||cancelled)return;
-    if(result.error){finish(result.error.code);return;}
-    putgd::Error changed;if(!native.unchanged(frozen,changed)){finish(changed.code);return;}
+    if(result.error){auto error=result.error;if(!error.details.contains("stage"))error.details["stage"]="acquire";finish(error);return;}
+    putgd::Error changed;if(!native.unchanged(frozen,changed)){finish(changed);return;}
     struct Encoded {QString hash; qint64 bytes=0; int width=0,height=0;putgd::Error error;};auto encoded=std::make_shared<Encoded>();
     const auto output=path,dev=device,ino=inode;const auto acceptedLimits=limits;
     encoder=QThread::create([encoded,image=std::move(result.payload.image),output,dev,ino,acceptedLimits]()mutable{
-     auto fail=[&](const char* code){encoded->error={QString::fromLatin1(code),"Capture encoding failed",{}};};
-     const qint64 pixels=qint64(image.width())*image.height();if(image.isNull()||pixels>acceptedLimits.imagePixels||image.sizeInBytes()>acceptedLimits.imageBytes){fail("input_excessive");return;}encoded->width=image.width();encoded->height=image.height();
-     const int fd=::open(QFile::encodeName(output).constData(),O_RDWR|O_CLOEXEC|O_NOFOLLOW);struct stat s{};if(fd<0||::fstat(fd,&s)||!identity(s,dev,ino)||s.st_size!=0){if(fd>=0)::close(fd);fail("capture_io");return;}
-     BoundedFile file(std::min(acceptedLimits.maxFileBytes,pixels*4+pixels*4/1000+encoded->height+65536));if(!file.open(fd,QIODevice::ReadWrite,QFileDevice::AutoCloseHandle)){::close(fd);fail("capture_io");return;}
-     if(!image.save(&file,"PNG")||!file.flush()){fail(file.exceeded()?"input_excessive":"encoding_failed");return;}image={};encoded->bytes=file.size();if(encoded->bytes<45||encoded->bytes>acceptedLimits.maxFileBytes||encoded->bytes>pixels*4+pixels*4/1000+encoded->height+65536){fail("input_excessive");return;}file.seek(0);QCryptographicHash hash(QCryptographicHash::Sha256);if(!hash.addData(&file)){fail("capture_io");return;}encoded->hash=QString::fromLatin1(hash.result().toHex());
+     auto fail=[&](const char* code,const char* check){encoded->error={QString::fromLatin1(code),"Capture encoding failed",{{"stage","encode"},{"check",check},{"width",encoded->width},{"height",encoded->height}}};};
+     encoded->width=image.width();encoded->height=image.height();
+     const qint64 pixels=qint64(image.width())*image.height();if(image.isNull()||pixels>acceptedLimits.imagePixels||image.sizeInBytes()>acceptedLimits.imageBytes){fail("input_excessive","image_limits");return;}
+     const int fd=::open(QFile::encodeName(output).constData(),O_RDWR|O_CLOEXEC|O_NOFOLLOW);struct stat s{};if(fd<0||::fstat(fd,&s)||!identity(s,dev,ino)||s.st_size!=0){if(fd>=0)::close(fd);fail("capture_io","artifact_identity");return;}
+     BoundedFile file(std::min(acceptedLimits.maxFileBytes,pixels*4+pixels*4/1000+encoded->height+65536));if(!file.open(fd,QIODevice::ReadWrite,QFileDevice::AutoCloseHandle)){::close(fd);fail("capture_io","artifact_open");return;}
+     if(!image.save(&file,"PNG")||!file.flush()){fail(file.exceeded()?"input_excessive":"encoding_failed",file.exceeded()?"png_budget":"png_write");return;}image={};encoded->bytes=file.size();if(encoded->bytes<45||encoded->bytes>acceptedLimits.maxFileBytes||encoded->bytes>pixels*4+pixels*4/1000+encoded->height+65536){fail("input_excessive","png_bytes");return;}file.seek(0);QCryptographicHash hash(QCryptographicHash::Sha256);if(!hash.addData(&file)){fail("capture_io","artifact_hash");return;}encoded->hash=QString::fromLatin1(hash.result().toHex());
     });
-    auto* worker=encoder;QObject::connect(worker,&QThread::finished,&app,[&,worker,encoded]{encoder=nullptr;worker->deleteLater();if(settled||cancelled)return;if(encoded->error){finish(encoded->error.code);return;}putgd::Error changed;if(!native.unchanged(frozen,changed)){finish(changed.code);return;}resultSent=true;auto reply=envelope();reply["bytes"]=QString::number(encoded->bytes);reply["sha256"]=encoded->hash;reply["width"]=encoded->width;reply["height"]=encoded->height;control.send("result",reply);deadline.start(10000);});worker->start();
+    auto* worker=encoder;QObject::connect(worker,&QThread::finished,&app,[&,worker,encoded]{encoder=nullptr;worker->deleteLater();if(settled||cancelled)return;if(encoded->error){finish(encoded->error);return;}putgd::Error changed;if(!native.unchanged(frozen,changed)){finish(changed);return;}resultSent=true;auto reply=envelope();reply["bytes"]=QString::number(encoded->bytes);reply["sha256"]=encoded->hash;reply["width"]=encoded->width;reply["height"]=encoded->height;control.send("result",reply);deadline.start(10000);});worker->start();
    };
   if(target.action=="region"){
-   const auto selected=*selection;selection.reset();
+   const auto selected=*selection;selection.reset();selectedRect=selected.rectangle;
    source.acquireSelectedRegionFrozen(target,selected,limits,std::move(acquired));
   }else source.acquireFrozen(target,limits,std::move(acquired));
   });
@@ -151,8 +172,8 @@ int main(int argc,char** argv){
   selectionStarted=true;
   source.selectRegionFrozen(target,limits,[&](putgd::RegionSelectionResult selected){
    if(settled||cancelled)return;
-   if(selected.error){finish(selected.error.code);return;}
-   selection=std::move(selected);
+   if(selected.error){auto error=selected.error;if(!error.details.contains("stage"))error.details["stage"]="select";finish(error);return;}
+   selectedRect=selected.rectangle;selection=std::move(selected);
    // A completed early selection owns no input or surfaces. Bound how long its
    // geometry may await durable authorization; no capture is implicit at expiry.
    if(!begun)deadline.start(10000);
@@ -187,20 +208,20 @@ int main(int argc,char** argv){
     cursor.create();cursor.setCursor(Qt::CrossCursor);
    }
    ready=true;auto reply=envelope();reply["build"]=build;reply["cursor"]=seed;control.send("ready",reply);
-   if(error){finish(error.code);return;}
+   if(error){if(!error.details.contains("stage"))error.details["stage"]="prepare";finish(error);return;}
    // Bootstrap prepares only. Durable acceptance must explicitly authorize begin.
    deadline.start(10000);return;
 
   }
   const bool cursorCommand=type=="begin"||type=="preview";
   if(!ready||settled||payload.size()!=(cursorCommand?3:2)||payload["nonce"]!=nonce||payload["generation"]!=generation){rejectProtocol();return;}
-  if(type=="cancel"){cancelled=true;selection.reset();source.cancelAcquisition();finish("cancelled");return;}
+  if(type=="cancel"){cancelled=true;selection.reset();source.cancelAcquisition();finish({"cancelled",{},{}});return;}
   if(cursorCommand){
    bool cursorOk=false;const auto cursor=payload["cursor"].toString().toULongLong(&cursorOk);
    if(!payload["cursor"].isString()||!cursorOk||cursor>UINT32_MAX||QString::number(cursor)!=payload["cursor"].toString()||(cursor&&target.action!="region")||(preparedCursor&&cursor!=preparedCursor)){rejectProtocol();return;}
    if(type=="preview"){
     if(target.action!="region"||previewed||begun||selectionStarted){rejectProtocol();return;}
-    putgd::Error changed;if(!native.unchanged(frozen,changed)){finish(changed.code);return;}
+    putgd::Error changed;if(!native.unchanged(frozen,changed)){finish(changed);return;}
     previewed=true;previewCursor=quint32(cursor);
     source.setResidentRegionCursor(previewCursor);
     // Authenticated preview authorizes geometry/input only. It never reads a
@@ -209,7 +230,7 @@ int main(int argc,char** argv){
    }
    if(begun||(previewed&&cursor!=previewCursor)){rejectProtocol();return;}
    source.setResidentRegionCursor(quint32(cursor));begun=true;
-   putgd::Error changed;if(!native.unchanged(frozen,changed)){finish(changed.code);return;}
+   putgd::Error changed;if(!native.unchanged(frozen,changed)){finish(changed);return;}
    if(!previewed||selection)deadline.start(120000);
    // Keep the invocation target. BEGIN either starts legacy selection or
    // releases previously selected geometry to the authorized pixel path.
