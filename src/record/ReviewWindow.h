@@ -18,6 +18,7 @@ class QShortcut;
 class QSpinBox;
 class QThread;
 class QToolButton;
+namespace putgd { class FileDialog; }
 
 namespace putgd::record {
 // Paints the preview frame scaled to fit and lets the user create, select,
@@ -146,7 +147,8 @@ public:
     void setLimits(qint64 animationMaxUs, int animationMaxEdge);
     // #283: the review session method (recording.review) drives the window as a
     // user does: {action: inspect|seek|play|pause|speed|setIn|setOut|resetTrim|
-    // addMask|selectMask|setMaskIn|setMaskOut|strength|removeMask|format, ...}.
+    // addMask|selectMask|setMaskIn|setMaskOut|strength|removeMask|format|
+    // saveCopyDialog|closeFileDialog, ...}.
     // Edits are proposed exactly as the controls propose them; the answer is the
     // window's state (inspect) after the action, or an error.
     struct DriveResult { QString code, message; QJsonObject state; };
@@ -162,7 +164,10 @@ signals:
     void cancelRequested();
 protected:
     void closeEvent(QCloseEvent*) override;
+    void hideEvent(QHideEvent*) override;
 private:
+    // Save copy…: the desktop's chooser (#259); false while one is open or exporting.
+    bool chooseCopy();
     void refreshFrame();
     // Silent playback of the retained interval from the scrubber: frames are
     // decoded in order on a worker and shown at their clip time; any scrub or
@@ -204,6 +209,7 @@ private:
     bool playing_ = false;
     QToolButton *trimStart_ = nullptr, *trimEnd_ = nullptr, *resetTrim_ = nullptr, *addBlur_ = nullptr, *addSolid_ = nullptr, *removeMask_ = nullptr, *maskStart_ = nullptr, *maskEnd_ = nullptr;
     QPushButton *upload_ = nullptr, *save_ = nullptr, *cancel_ = nullptr;
+    FileDialog* chooser_ = nullptr;
     QWidget *maskTools_ = nullptr;
     QShortcut* escape_ = nullptr;
     QSpinBox* strength_ = nullptr;

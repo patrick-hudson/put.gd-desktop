@@ -341,9 +341,17 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   target_sources(putgd_appearance PRIVATE src/ui/PortalSettings.cpp)
   target_link_libraries(putgd_appearance PUBLIC Qt6::DBus)
 endif()
+# Open, save and folder dialogs (#259): the desktop's chooser through the XDG
+# portal, or Qt's widget dialog in the Theme tokens. putgd-ui and putgd-record
+# share it; neither loads a desktop platform theme for it.
+add_library(putgd_file_dialog STATIC src/ui/FileDialog.cpp)
+target_link_libraries(putgd_file_dialog PUBLIC putgd_visual)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  target_link_libraries(putgd_file_dialog PUBLIC Qt6::DBus)
+endif()
 add_library(putgd_ui STATIC src/ui/MainWindow.cpp src/ui/RedesignTheme.cpp src/ui/redesign.qrc src/ui/UiSession.cpp src/ui/SettingsWindow.cpp src/ui/ShortcutEditor.cpp
   src/ui/HistoryWindow.cpp src/ui/HistoryModel.cpp)
-target_link_libraries(putgd_ui PUBLIC putgd_core putgd_client putgd_ui_state putgd_visual putgd_appearance PRIVATE putgd_s3_wire)
+target_link_libraries(putgd_ui PUBLIC putgd_core putgd_client putgd_ui_state putgd_visual putgd_appearance putgd_file_dialog PRIVATE putgd_s3_wire)
 # Editing model and canvas for the on-demand editor helper; no storage or IPC.
 add_library(putgd_editor STATIC src/editor/EditDocument.cpp src/editor/EditorCommands.cpp src/editor/EditorCanvas.cpp)
 target_include_directories(putgd_editor PUBLIC src)
@@ -398,7 +406,7 @@ if(PUTGD_RECORDING AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
   if(PUTGD_GST_FOUND AND PUTGD_AV_FOUND)
     add_executable(putgd-record src/record/main.cpp src/record/MediaProbe.cpp src/record/EncoderCheck.cpp src/record/BundledRuntime.cpp src/record/PortalScreenCast.cpp src/record/MutterScreenCast.cpp src/record/WaylandAcquisition.cpp src/record/X11Targets.cpp src/record/RecordingPipeline.cpp src/record/PauseTimeline.cpp src/record/ClipExporter.cpp src/record/Poster.cpp src/record/RecordSession.cpp src/record/Overlays.cpp src/record/record.qrc src/record/BarPlacement.cpp src/record/ReviewWindow.cpp src/record/DebugLog.cpp src/record/AvSync.cpp src/core/RecordingModel.cpp)
     target_include_directories(putgd-record PRIVATE src)
-    target_link_libraries(putgd-record PRIVATE putgd_build_options putgd_build_identity putgd_ui_control putgd_x11_native_snapshot putgd_visual Qt6::Core Qt6::Gui Qt6::Widgets Qt6::DBus PkgConfig::PUTGD_GST PkgConfig::PUTGD_AV PkgConfig::PUTGD_XCB)
+    target_link_libraries(putgd-record PRIVATE putgd_build_options putgd_build_identity putgd_ui_control putgd_x11_native_snapshot putgd_visual putgd_file_dialog Qt6::Core Qt6::Gui Qt6::Widgets Qt6::DBus PkgConfig::PUTGD_GST PkgConfig::PUTGD_AV PkgConfig::PUTGD_XCB)
     if(TARGET putgd_kde)
       # KWin's screencast protocol (vendored XML) for the dialog-free KDE path.
       set(kde_screencast_protocol "${CMAKE_CURRENT_SOURCE_DIR}/src/platform/kde/protocols/zkde-screencast-unstable-v1.xml")
@@ -464,7 +472,7 @@ if(PUTGD_RECORDING AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
       # the controls recording.review drives, on a 1366×768 screen.
       add_executable(test_review_window tests/gui/test_review_window.cpp src/record/ReviewWindow.cpp src/record/Overlays.cpp src/record/BarPlacement.cpp src/record/ClipExporter.cpp src/record/AvSync.cpp src/record/DebugLog.cpp src/record/record.qrc)
       target_include_directories(test_review_window PRIVATE src tests)
-      target_link_libraries(test_review_window PRIVATE putgd_core putgd_build_options putgd_visual Qt6::Widgets Qt6::Test PkgConfig::PUTGD_AV)
+      target_link_libraries(test_review_window PRIVATE putgd_core putgd_build_options putgd_visual putgd_file_dialog Qt6::Widgets Qt6::Test PkgConfig::PUTGD_AV)
       add_test(NAME gui_review_window COMMAND test_review_window)
       set_tests_properties(gui_review_window PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen:configfile=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/offscreen-one-monitor.json" TIMEOUT 60)
       # #264: the helper's window icon and desktop file name, and the entry it names.
@@ -786,6 +794,16 @@ if(BUILD_TESTING)
     putgd_xvfb_display(xvfb)
     add_test(NAME native_background_startup_integration COMMAND dbus-run-session -- ${PUTGD_XVFB_RUN} ${xvfb} $<TARGET_FILE:test_native_tray> backgroundStartupWaitsForLateTray)
     set_tests_properties(native_background_startup_integration PROPERTIES ENVIRONMENT "PUTGD_ISOLATED_STARTUP_TEST=1;QT_QPA_PLATFORM=xcb;XDG_SESSION_TYPE=x11;WAYLAND_DISPLAY=" TIMEOUT 120)
+    # #259: the shared file chooser against a fake XDG portal on the private bus
+    # of dbus-run-session (never the desktop's), and its X11 parent handle.
+    add_executable(test_file_dialog tests/integration/test_file_dialog.cpp)
+    target_include_directories(test_file_dialog PRIVATE src)
+    target_link_libraries(test_file_dialog PRIVATE putgd_file_dialog Qt6::Test Qt6::DBus)
+    add_test(NAME file_dialog_integration COMMAND dbus-run-session -- $<TARGET_FILE:test_file_dialog>)
+    set_tests_properties(file_dialog_integration PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
+    putgd_xvfb_display(xvfb)
+    add_test(NAME file_dialog_x11_parent COMMAND dbus-run-session -- ${PUTGD_XVFB_RUN} ${xvfb} $<TARGET_FILE:test_file_dialog> parentWindowOnX11)
+    set_tests_properties(file_dialog_x11_parent PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=xcb;XDG_SESSION_TYPE=x11;WAYLAND_DISPLAY=" TIMEOUT 30)
     add_executable(test_ui_native_lifecycle tests/integration/test_ui_native_lifecycle.cpp)
     target_include_directories(test_ui_native_lifecycle PRIVATE tests)
     target_link_libraries(test_ui_native_lifecycle PRIVATE putgd_app putgd_ui_control putgd_ui_state putgd_x11 putgd_build_identity Qt6::Test PkgConfig::PUTGD_XCB)

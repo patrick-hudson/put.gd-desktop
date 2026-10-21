@@ -55,8 +55,12 @@ RECORDING_CONTROLS = {'start', 'pause', 'resume', 'stop', 'cancel', 'raise'}
 RECORDING_EDIT_OPS = {'setTrim', 'resetTrim', 'addMask', 'updateMask', 'removeMask'}
 # The review window's controls (#283), one per drive_recording_review call.
 REVIEW_ACTIONS = {'inspect', 'seek', 'play', 'pause', 'speed', 'setIn', 'setOut', 'resetTrim', 'addMask', 'selectMask',
-                  'setMaskIn', 'setMaskOut', 'strength', 'removeMask', 'format'}
+                  'setMaskIn', 'setMaskOut', 'strength', 'removeMask', 'format', 'saveCopyDialog', 'closeFileDialog'}
 REVIEW_SPEEDS = {0.5, 1, 2, 4}
+# The put.gd window's file choosers (#259) and the actions on each.
+FILE_DIALOGS = {'editImage', 'historySaveAs', 'outputFolder', 'diagnosticsFolder'}
+FILE_DIALOG_ACTIONS = {'open', 'inspect', 'cancel'}
+OUTPUT_FOLDER_FIELDS = {'root', 'images', 'videos', 'text', 'other'}
 # A backstop above the CLI's own bounded wait, whose longest case is 3 s to connect,
 # 3 s to send and 45 s for recording.stop (LocalServer::replyDeadlineMs).
 CLI_TIMEOUT = 60
@@ -265,6 +269,13 @@ def create_server(adapter: CliAdapter) -> FastMCP:
         return await adapter.call('editor.cancel', {'id': id}) if identifier(id) else invalid()
 
     @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
+    async def editor_file_dialog(id: str, action: str) -> Json:
+        """Open (action open) the editor's Save a copy… chooser as the button does, read its state (inspect) or close it as a cancel (cancel). It is the desktop's own file chooser through the XDG portal, or the themed fallback dialog; the state shows open, backend portal|fallback, fallbackReason and the last result. A file picked there gets the sanitized PNG; save_editor_copy saves to a path without a dialog."""
+        if not identifier(id) or action not in FILE_DIALOG_ACTIONS:
+            return invalid()
+        return await adapter.call('editor.fileDialog', {'id': id, 'action': action})
+
+    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
     async def raise_editor(id: str) -> Json:
         """Bring the open editor window to the front."""
         return await adapter.call('editor.raise', {'id': id}) if identifier(id) else invalid()
@@ -334,7 +345,7 @@ def create_server(adapter: CliAdapter) -> FastMCP:
     async def drive_recording_review(id: str, action: str, time_us: int | None = None, speed: float | None = None,
                                      kind: str | None = None, rect: list[int] | None = None, mask_id: str | None = None,
                                      strength: int | None = None, format: str | None = None, codec: str | None = None) -> Json:
-        """Work the open Review recording window's controls as a user does, one action per call: inspect (playhead, playing, speed, trim, masks with their timeline bars, selectedMaskId, which contextual mask controls show, status, size, the video's rect and share of the window), seek {time_us}, play, pause, speed {0.5|1|2|4}, setIn / setOut (trim start/end at the playhead, keys I/O), resetTrim, addMask {kind blur|solid, rect [x,y,w,h] canvas pixels; starts at the playhead, runs to the trim end}, selectMask {mask_id, or none to clear}, setMaskIn / setMaskOut (the selected mask's start/end at the playhead, Shift+I/O), strength {2-64, selected blur}, removeMask (selected, Delete) and format {format, codec}. Edits go through the resident like the window's own; the reply is the window state plus the resident's edit after it. Uploads nothing; use upload_recording."""
+        """Work the open Review recording window's controls as a user does, one action per call: inspect (playhead, playing, speed, trim, masks with their timeline bars, selectedMaskId, which contextual mask controls show, status, size, the video's rect and share of the window), seek {time_us}, play, pause, speed {0.5|1|2|4}, setIn / setOut (trim start/end at the playhead, keys I/O), resetTrim, addMask {kind blur|solid, rect [x,y,w,h] canvas pixels; starts at the playhead, runs to the trim end}, selectMask {mask_id, or none to clear}, setMaskIn / setMaskOut (the selected mask's start/end at the playhead, Shift+I/O), strength {2-64, selected blur}, removeMask (selected, Delete), format {format, codec}, saveCopyDialog (opens Save copy… as the button does: the desktop's file chooser through the XDG portal, or the themed fallback dialog; inspect's fileDialog shows open, backend portal|fallback, fallbackReason and the last result, and a file picked there is saved like recording.saveCopy) and closeFileDialog (closes it as a cancel). Edits go through the resident like the window's own; the reply is the window state plus the resident's edit after it. Uploads nothing; use upload_recording."""
         if not identifier(id) or action not in REVIEW_ACTIONS:
             return invalid()
         params: Json = {'id': id, 'action': action}
@@ -611,6 +622,22 @@ def create_server(adapter: CliAdapter) -> FastMCP:
             if value is not None:
                 params[key] = value
         return await adapter.call('ui.diagnostics', params)
+
+    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
+    async def drive_file_dialog(dialog: str, action: str, field: str | None = None, id: str | None = None) -> Json:
+        """Open (action open) a file chooser in the open put.gd window as its button does, read its state (inspect) or close it as a cancel (cancel). dialog: editImage (Edit an image file…), historySaveAs (History → Save as… for the selected file, or the row with history or operation id), outputFolder (Settings → General → Local copies: Choose folder… for field root, or Browse… for images, videos, text or other) or diagnosticsFolder (Choose folder… in an open Create diagnostics package dialog). The chooser is the desktop's own through the XDG portal, or the themed fallback dialog; the reply shows open, backend portal|fallback, parentWindow, fallbackReason and the last result (status chosen|cancelled|failed, path)."""
+        if dialog not in FILE_DIALOGS or action not in FILE_DIALOG_ACTIONS:
+            return invalid()
+        if field is not None and (dialog != 'outputFolder' or field not in OUTPUT_FOLDER_FIELDS):
+            return invalid()
+        if id is not None and (dialog != 'historySaveAs' or not identifier(id, 128)):
+            return invalid()
+        params: Json = {'dialog': dialog, 'action': action}
+        if field is not None:
+            params['field'] = field
+        if id is not None:
+            params['id'] = id
+        return await adapter.call('ui.fileDialog', params)
 
     @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
     async def history_save_diagnostics(id: str) -> Json:

@@ -6,12 +6,18 @@
 #include <functional>
 class QSplitter;class QScrollArea;class QStackedWidget;class QResizeEvent;class QListView;class QLabel;class QPushButton;class QPlainTextEdit;class QTimer;class QLineEdit;class QComboBox;class QProgressBar;class QToolButton;
 namespace putgd {
+class FileDialog;
 class HistoryWindow final:public RetainedWindow {
  Q_OBJECT
 public:HistoryWindow(UiSession&,QWidget* parent=nullptr);void refresh();QJsonObject saveViewState()const;bool restoreViewState(const QJsonObject&);void releasePreview();
  // Selects the failed row for an operation (or a file's history ID) and clicks Save
  // diagnostics for this upload, answering with the saved package (#122).
  void saveDiagnosticsFor(const QString& id,std::function<void(Error,QJsonObject)> reply);
+ // #259: Save as… through the desktop's chooser. ui.fileDialog opens it for the
+ // selected file (or the row with this history or operation ID), reads its
+ // state or cancels it; the reply is the chooser's state.
+ void saveAsDialogCommand(const QString& action,const QString& id,std::function<void(Error,QJsonObject)> reply);
+ FileDialog& saveAsDialog(){return *chooser_;}
 signals:void viewStateChanged();
  // Edit & upload from another source: "clipboard", or "file" with a path.
  void editRequested(const QString& source,const QString& path);void chooseImageRequested();
@@ -28,5 +34,8 @@ private:
  QTimer *sharingTimer_=nullptr,*deletionTimer_=nullptr,*searchTimer_=nullptr,*previewRequestTimer_=nullptr;QString previewRequestId_,previewCandidate_;QSet<QString> previewRefused_;quint64 selectionRequest_=0;std::shared_ptr<std::atomic_bool> previewCancelled_;QString pendingPreviewPath_,pixelDimensions_;
  // The item and preview file the inspector shows now, kept across reloads.
  QString shownItemId_,shownPreviewPath_;
+ FileDialog* chooser_=nullptr;
+ // Runs once the selected file's detail arrives (true) or fails (false).
+ std::function<void(bool)> afterDetail_;
 };
 }

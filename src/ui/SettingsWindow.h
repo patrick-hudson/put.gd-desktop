@@ -12,7 +12,7 @@
 #include <QPixmap>
 class QAction;class QToolButton;class QTabWidget;class QListWidget;class QSpinBox;class QDoubleSpinBox;class QTimer;class QComboBox;class QLineEdit;class QCheckBox;class QLabel;class QPushButton;class QPlainTextEdit;class QDialog;class QFormLayout;
 namespace putgd {
-class ShortcutEditor;
+class ShortcutEditor;class FileDialog;
 class SettingsWindow final:public RetainedWindow {
  Q_OBJECT
 public:
@@ -37,6 +37,10 @@ public:
  // (ui.diagnostics); see docs/diagnostics.md.
  void diagnosticsCommand(const QJsonObject& params,std::function<void(Error,QJsonObject)> reply);
  QJsonObject diagnosticsState()const;
+ // #259: General → Local copies' Choose folder… / Browse… (dialog outputFolder,
+ // field root|images|videos|text|other) and the package dialog's Choose folder…
+ // (diagnosticsFolder): action open|inspect|cancel, answered with the chooser's state.
+ void fileDialogCommand(const QString& dialog,const QString& action,const QString& field,std::function<void(Error,QJsonObject)> reply);
  void openDiagnosticsPackage(const QString& operationId={});
  // The two lines a destination row shows, as painted (elided, never wrapped).
  QStringList destinationRowLines(int row)const;
@@ -55,6 +59,8 @@ protected:
 private:
  template<class T>T findControl(const QString& name)const{auto value=findChild<T>(name);return value?value:destinationPage_->findChild<T>(name);}
  static qint64 displayUnit(const QString&);
+ bool chooseOutputFolder(QLineEdit* field);
+ FileDialog* folderChooser_=nullptr;
  void queueCaptureEdit(QWidget*);void updateCaptureInheritance();
  QString destinationDefaultSharing(const QString& profileId)const;QJsonObject captureRoutingState()const;
  QComboBox *captureProfile_=nullptr,*captureSharing_=nullptr;

@@ -7,6 +7,8 @@
 #include <QAbstractItemView>
 #include <QScrollBar>
 #include "ui/SettingsWindow.h"
+#include "ui/FileDialog.h"
+#include <QFileDialog>
 #include "ui/ShortcutEditor.h"
 #include "ui/ViewState.h"
 #include "fixtures/UiSessionFixture.h"
@@ -250,6 +252,39 @@ private slots:
   operations.shutdown();
  }
  // #149: what Auto resolves to, from settings.get effectiveLimits.
+ void fileDialogsOpenTheSharedChooser(){
+  // #259: Choose folder…, Browse… and Edit an image file… open the shared chooser,
+  // and ui.fileDialog drives them. The fallback is forced: no portal is asked.
+  qputenv("PUTGD_FILE_DIALOG","fallback");auto restore=qScopeGuard([]{qunsetenv("PUTGD_FILE_DIALOG");});
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});auto doc=Settings::developmentTemplate();auto archive=doc["archive"].toObject();archive["root"]=dir.filePath("archive");doc["archive"]=archive;QVERIFY(service.save(doc,{}));
+  CredentialStore secrets;UiSessionFixture fixture(service,secrets);
+  MainWindow window(fixture.session);window.show();fixture.session.refreshSnapshot();
+  fixture.server.setUiCommand([&](const QString& name,const QJsonObject& params,JsonReply reply){QCOMPARE(name,QString("fileDialog"));
+   if(params["dialog"]=="editImage"){if(params["action"]=="open")window.chooseImageToEdit();else if(params["action"]=="cancel")window.editImageDialog().cancel();reply({},window.editImageDialog().state());return;}
+   window.settings()->fileDialogCommand(params["dialog"].toString(),params["action"].toString(),params["field"].toString(),std::move(reply));});
+  auto call=[&](const QJsonObject& params)->std::pair<Error,QJsonObject>{bool done=false;Error error{"test_timeout","No answer",{}};QJsonObject result;
+   fixture.server.dispatch({{"schemaVersion",1},{"requestId","ui"},{"session",fixture.server.socketPath()},{"method","ui.fileDialog"},{"params",params}},[&](Error e,QJsonObject r){error=e;result=r;done=true;});
+   if(!QTest::qWaitFor([&]{return done;},5000))qWarning("ui.fileDialog timed out");return {error,result};};
+  QCOMPARE(call({{"dialog","editImage"},{"action","open"},{"field","root"}}).first.code,QString("invalid_request"));
+  QCOMPARE(call({{"dialog","outputFolder"},{"action","open"},{"field","music"}}).first.code,QString("invalid_request"));
+  QCOMPARE(call({{"dialog","shell"},{"action","open"}}).first.code,QString("invalid_request"));
+  QCOMPARE(call({{"dialog","diagnosticsFolder"},{"action","open"}}).first.code,QString("diagnostics_dialog_closed"));
+  // Browse… for Videos: the chosen folder lands in its field and autosaves.
+  QTemporaryDir videos;QVERIFY(videos.isValid());
+  auto [error,state]=call({{"dialog","outputFolder"},{"action","open"},{"field","videos"}});QVERIFY2(!error,qPrintable(error.message));
+  QVERIFY(state["open"].toBool());QCOMPARE(state["backend"].toString(),QString("fallback"));QCOMPARE(state["mode"].toString(),QString("folder"));QCOMPARE(state["title"].toString(),QString("Choose output folder"));
+  QCOMPARE(call({{"dialog","outputFolder"},{"action","open"},{"field","images"}}).first.code,QString("file_dialog_open"));
+  QFileDialog* chooser=nullptr;QTRY_VERIFY((chooser=window.findChild<QFileDialog*>("putgdFileDialog"))&&chooser->isVisible());
+  QCOMPARE(chooser->fileMode(),QFileDialog::Directory);
+  chooser->setDirectory(videos.path());chooser->selectFile(videos.path());QMetaObject::invokeMethod(chooser,"accept");
+  QTRY_COMPARE(window.findChild<QLineEdit*>("folderVideos")->text(),videos.path());
+  QTRY_COMPARE(service.snapshot().archive.folders.value("videos"),videos.path());
+  QCOMPARE(call({{"dialog","outputFolder"},{"action","inspect"}}).second["last"].toObject()["status"].toString(),QString("chosen"));
+  // Edit an image file…: opened, then cancelled through the command.
+  auto opened=call({{"dialog","editImage"},{"action","open"}});QVERIFY(opened.second["open"].toBool());QCOMPARE(opened.second["mode"].toString(),QString("open"));
+  QTRY_VERIFY((chooser=window.findChild<QFileDialog*>("putgdFileDialog"))&&chooser->isVisible());QCOMPARE(chooser->nameFilters(),QStringList{"Images (*.png *.jpg *.jpeg)"});
+  auto cancelled=call({{"dialog","editImage"},{"action","cancel"}});QVERIFY(!cancelled.second["open"].toBool());QCOMPARE(cancelled.second["last"].toObject()["status"].toString(),QString("cancelled"));
+ }
  void autoLimitsShowWhatTheyResolveTo(){
   constexpr qint64 gib=1LL<<30;ArtifactStore::setDiskForTesting(60*gib,100*gib);auto resetDisk=qScopeGuard([]{ArtifactStore::setDiskForTesting(-1,-1);});
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(Settings::developmentTemplate(),{}));

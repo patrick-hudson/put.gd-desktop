@@ -1,4 +1,5 @@
 #include "HistoryWindow.h"
+#include "FileDialog.h"
 #include "ViewState.h"
 #include "VisualStyle.h"
 #include "RedesignTheme.h"
@@ -10,7 +11,6 @@
 #include <QComboBox>
 #include <QDesktopServices>
 #include <QFile>
-#include <QFileDialog>
 #include <QFileInfo>
 #include <QDateTime>
 #include <QDir>
@@ -116,6 +116,7 @@ private:QListView* view_;
 };
 }
 HistoryWindow::HistoryWindow(UiSession& session,QWidget* parent):RetainedWindow(parent),session_(session){
+ chooser_=new FileDialog(this);
  setObjectName("historyPage");setWindowTitle("put.gd — History");resize(1080,760);auto* layout=new QVBoxLayout(this);layout->setContentsMargins(24,22,24,18);layout->setSpacing(14);
  auto* header=new QHBoxLayout;auto* heading=new QLabel("History",this);VisualStyle::role(heading,"title");header->addWidget(heading);header->addStretch();
  // Edit an image that is not a fresh capture. Icon, label and IconArt chevron
@@ -188,6 +189,7 @@ QString HistoryWindow::destinationLabel(const QJsonObject& r)const{
 }
 void HistoryWindow::selectionChanged(){emit viewStateChanged();const auto rows=table_->selectionModel()->selectedRows();{QSignalBlocker block(items_);items_->clear();if(rows.size()==1){const auto group=model_->record(rows.first().row());for(auto v:group["records"].toArray()){auto r=v.toObject();items_->addItem(r["name"].toString(),r["id"].toString());}const auto itemIndex=items_->findData(selectedItemId_);if(itemIndex>=0)items_->setCurrentIndex(itemIndex);items_->setVisible(items_->count()>1);}}loadSelectedItem();updateInspectorLayout();}
 void HistoryWindow::loadSelectedItem(){
+ if(auto next=std::exchange(afterDetail_,{}))next(false);
  // History reloads the selection whenever the resident reports a change.
  // The item it already shows keeps its preview and size until the reload
  // brings a different preview, so the inspector never flashes empty.
@@ -196,7 +198,7 @@ void HistoryWindow::loadSelectedItem(){
  pendingPreviewPath_.clear();const auto seq=++selectionRequest_;currentDetail_={};details_->clear();summary_->clear();title_->clear();outcome_->clear();link_->clear();linkExpiry_->clear();linkExpiry_->hide();for(auto* b:{copy_,open_,copyImage_,saveAs_,editAgain_})b->setEnabled(false);for(auto* b:{share_,revoke_,inspectLink_,retry_,cancel_,saveDiagnostics_})b->hide();
  const auto rows=table_->selectionModel()->selectedRows();findChild<QPushButton*>("deleteHistoryRemote")->setEnabled(!rows.isEmpty());if(rows.size()!=1)return;const auto group=model_->record(rows.first().row());title_->setText(rows.first().data().toString());outcome_->setText(HistoryModel::statusText(group));VisualStyle::role(outcome_,model_->data(rows.first(),HistoryModel::FailedRole).toBool()?"danger":group["uploadStatus"]=="uploaded"?"success":"muted");retry_->setText(model_->data(rows.first(),HistoryModel::PrimaryActionRole).toString()=="Retry local save"?"Retry local save":"Retry upload");saveDiagnostics_->setVisible(diagnosticsAvailable(rows.first().row()));retry_->setVisible(model_->data(rows.first(),HistoryModel::FailedRole).toBool()&&!model_->data(rows.first(),HistoryModel::ActiveRole).toBool()&&!group["operationId"].toString().isEmpty()&&!HistoryModel::storedNothing(group));cancel_->setVisible(model_->data(rows.first(),HistoryModel::ActiveRole).toBool());
  const auto record=selectedRecord();if(record.isEmpty()){summary_->setText("Capture in progress. File details appear after acquisition.");return;}selectedItemId_=record["id"].toString();if(!deletionTimer_->isActive())deletionId_=record["deleteOperationId"].toString();
- session_.request("history.detail",{{"id",record["id"]}},this,[g=QPointer<HistoryWindow>(this),seq](Error e,QJsonObject data){if(!g||g->selectionRequest_!=seq)return;if(e){VisualStyle::feedback(g->status_,e.message,true);return;}g->currentDetail_=data;g->details_->setPlainText(QString::fromUtf8(QJsonDocument(data).toJson(QJsonDocument::Indented)));g->title_->setText(g->items_->count()>1?data["name"].toString():g->table_->currentIndex().data().toString());g->link_->setText(data["receipt"].toObject()["directUrl"].toString());g->linkExpiry_->setText(linkExpiry(data));g->linkExpiry_->setVisible(!g->linkExpiry_->text().isEmpty());auto local=data["local"].toObject();const auto localPath=local["path"].toString();const bool localAvailable=local["status"]=="saved"&&QFileInfo(localPath).isFile();g->saveAs_->setEnabled(localAvailable);g->copyImage_->setEnabled(localAvailable&&data["mime"].toString().startsWith("image/")&&data["bytes"].toInteger()<=32*1024*1024);g->saveAs_->setToolTip(localAvailable?"Save the retained local original to another file":"A retained local original is needed to save another copy");g->copyImage_->setToolTip(g->copyImage_->isEnabled()?"Copy the retained original image":"A retained local image is needed to copy image bytes");g->editAgain_->setEnabled(editable(data));g->editAgain_->setToolTip(g->editAgain_->isEnabled()?"Open the retained local image in the editor and upload the result as a new item":data["mime"]=="image/png"||data["mime"]=="image/jpeg"?"Edit again needs the local copy. Turn on Keep a local copy in Settings → General for future captures.":"Only PNG and JPEG images can be edited");
+ session_.request("history.detail",{{"id",record["id"]}},this,[g=QPointer<HistoryWindow>(this),seq](Error e,QJsonObject data){if(!g||g->selectionRequest_!=seq)return;if(e){VisualStyle::feedback(g->status_,e.message,true);if(auto next=std::exchange(g->afterDetail_,{}))next(false);return;}g->currentDetail_=data;g->details_->setPlainText(QString::fromUtf8(QJsonDocument(data).toJson(QJsonDocument::Indented)));g->title_->setText(g->items_->count()>1?data["name"].toString():g->table_->currentIndex().data().toString());g->link_->setText(data["receipt"].toObject()["directUrl"].toString());g->linkExpiry_->setText(linkExpiry(data));g->linkExpiry_->setVisible(!g->linkExpiry_->text().isEmpty());auto local=data["local"].toObject();const auto localPath=local["path"].toString();const bool localAvailable=local["status"]=="saved"&&QFileInfo(localPath).isFile();g->saveAs_->setEnabled(localAvailable);g->copyImage_->setEnabled(localAvailable&&data["mime"].toString().startsWith("image/")&&data["bytes"].toInteger()<=32*1024*1024);g->saveAs_->setToolTip(localAvailable?"Save the retained local original to another file":"A retained local original is needed to save another copy");g->copyImage_->setToolTip(g->copyImage_->isEnabled()?"Copy the retained original image":"A retained local image is needed to copy image bytes");g->editAgain_->setEnabled(editable(data));g->editAgain_->setToolTip(g->editAgain_->isEnabled()?"Open the retained local image in the editor and upload the result as a new item":data["mime"]=="image/png"||data["mime"]=="image/jpeg"?"Edit again needs the local copy. Turn on Keep a local copy in Settings → General for future captures.":"Only PNG and JPEG images can be edited");if(auto next=std::exchange(g->afterDetail_,{}))next(true);
  g->updateSummary();
  const bool sharing=data["capabilities"].toObject()["sharing"].toBool();for(auto* b:{g->share_,g->revoke_,g->inspectLink_})b->setVisible(sharing);const auto linkState=data["shareStatus"].toString();const bool stopped=g->sharingStopped_&&g->sharingId_==data["shareOperationId"].toString();const bool busy=g->sharingAccepting_||g->sharingTimer_->isActive()||(linkState=="pending"&&!stopped);g->share_->setEnabled(!busy&&linkState!="pending"&&linkState!="unknown"&&linkState!="changed");g->revoke_->setEnabled(!busy&&data["linkAvailable"].toBool());g->inspectLink_->setEnabled(!busy);const bool localResult=data["uploadStatus"]=="local_only"&&local["status"]=="saved";g->copy_->setText(localResult?"Copy result":"Copy link");g->copy_->setAccessibleName(g->copy_->text());g->copy_->setEnabled(data["linkAvailable"].toBool()||localResult);g->open_->setEnabled(data["linkAvailable"].toBool());
  if(data["superseded"].toBool()||data["remoteStatus"]=="superseded")VisualStyle::feedback(g->status_,"Superseded: this stored link may serve replacement content. Deletion still targets the original receipt.",true);else if(!g->sharingFeedback_.isEmpty())VisualStyle::feedback(g->status_,g->sharingFeedback_,g->sharingFeedbackError_);const auto previewPath=data["previewPath"].toString();
@@ -271,8 +273,31 @@ void HistoryWindow::exportLocal(bool image){
  if(image){const auto record=selectedRecord();if(record.isEmpty())return;session_.request("history.copyImage",{{"id",record["id"]}},this,[g=QPointer<HistoryWindow>(this)](Error e,QJsonObject){if(g)VisualStyle::feedback(g->status_,e?e.message:"Original image copied.",bool(e));});return;}
 
  const auto local=currentDetail_["local"].toObject();const auto path=local["path"].toString();if(local["status"]!="saved"||!QFileInfo(path).isFile())return;
- const auto destination=QFileDialog::getSaveFileName(this,"Save original file as",currentDetail_["name"].toString());if(destination.isEmpty())return;if(QFileInfo(destination).absoluteFilePath()==QFileInfo(path).absoluteFilePath()){VisualStyle::feedback(status_,"This is already the retained local file.");return;}
+ chooser_->open({FileDialog::Mode::Save,"Save original file as",{},currentDetail_["name"].toString(),{}},[this,path](const QString& destination){
+  if(destination.isEmpty())return;if(QFileInfo(destination).absoluteFilePath()==QFileInfo(path).absoluteFilePath()){VisualStyle::feedback(status_,"This is already the retained local file.");return;}
   session_.background([path,destination](Error& e){QFile source(path);QSaveFile target(destination);if(!source.open(QIODevice::ReadOnly)||!target.open(QIODevice::WriteOnly)){e={"file_copy","Could not open the original or selected destination file.",{}};return QJsonObject{};}while(!source.atEnd()){const auto bytes=source.read(1024*1024);if(bytes.isEmpty()&&source.error()!=QFileDevice::NoError){e={"file_copy","Could not read the retained original file.",{}};return QJsonObject{};}if(target.write(bytes)!=bytes.size()){e={"file_copy","Could not write the selected destination file.",{}};return QJsonObject{};}}if(!target.commit())e={"file_copy","Could not finish saving the original file.",{}};return QJsonObject{};},this,[g=QPointer<HistoryWindow>(this)](Error e,QJsonObject){if(g)VisualStyle::feedback(g->status_,e?e.message:"Original file saved.",bool(e));});
+ });
+}
+void HistoryWindow::saveAsDialogCommand(const QString& action,const QString& id,std::function<void(Error,QJsonObject)> reply){
+ if(action=="inspect"){reply({},chooser_->state());return;}
+ if(action=="cancel"){chooser_->cancel();reply({},chooser_->state());return;}
+ if(chooser_->isOpen()){reply({"file_dialog_open","Save as is already open.",{}},chooser_->state());return;}
+ auto click=[this,reply](bool loaded){
+  if(!loaded||!saveAs_->isEnabled()){reply({"history_save_unavailable","Save as needs a selected file with a retained local original.",{}},{});return;}
+  exportLocal(false);reply({},chooser_->state());
+ };
+ if(id.isEmpty()){click(!currentDetail_.isEmpty());return;}
+ for(int row=0;row<model_->rowCount();++row){
+  const auto group=model_->record(row);bool match=group["operationId"]==id;
+  for(const auto& v:group["records"].toArray())match|=v.toObject()["id"]==id;
+  if(!match)continue;
+  const bool selected=table_->selectionModel()->selectedRows()==QModelIndexList{model_->index(row)};
+  if(selected&&!currentDetail_.isEmpty()){click(true);return;}
+  // Selecting starts the detail request; Save as is clicked once it arrives.
+  table_->selectionModel()->select(model_->index(row),QItemSelectionModel::ClearAndSelect|QItemSelectionModel::Rows);table_->setCurrentIndex(model_->index(row));
+  afterDetail_=click;return;
+ }
+ reply({"history_row_not_found","That file is not on the History page shown; search or page to it first.",{{"id",id}}},{});
 }
 void HistoryWindow::changeSharing(const QString& action){
  const auto file=selectedRecord();if(file.isEmpty()||sharingAccepting_||sharingTimer_->isActive())return;

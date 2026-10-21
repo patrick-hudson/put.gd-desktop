@@ -1,4 +1,5 @@
 #include "UiApplicationController.h"
+#include "FileDialog.h"
 #include "SettingsWindow.h"
 #include "HistoryWindow.h"
 #include "MainWindow.h"
@@ -147,8 +148,22 @@ void UiApplicationController::receive(const QString& type,const QString& sequenc
   auto answer=[guard=QPointer<UiApplicationController>(this),sequence](Error error,QJsonObject result){if(guard&&!guard->exiting_)guard->control_.send("commandResult",{{"replyTo",sequence},{"error",error.toJson()},{"result",result}});};
   Error error;QJsonObject result;
   if(payload["version"]!=1)error={"ui_command_unsupported","This window does not support that command version.",{{"version",payload["version"]}}};
-  else if(!QStringList{"moveDestination","diagnostics","historySaveDiagnostics"}.contains(name))error={"ui_command_unknown","This window does not support that command.",{}};
-  else if(!main_||!main_->isVisible()||closing_)error={"ui_view_closed",name=="historySaveDiagnostics"?"Open History before driving it.":"Open Settings before driving it.",{}};
+  else if(!QStringList{"moveDestination","diagnostics","historySaveDiagnostics","fileDialog"}.contains(name))error={"ui_command_unknown","This window does not support that command.",{}};
+  else if(!main_||!main_->isVisible()||closing_)error={"ui_view_closed",name=="historySaveDiagnostics"?"Open History before driving it.":name=="fileDialog"?"Open put.gd's window (History or Settings) before driving it.":"Open Settings before driving it.",{}};
+  // #259: the open, save and folder choosers, as their buttons open them.
+  else if(name=="fileDialog"){
+   const auto dialog=params["dialog"].toString(),action=params["action"].toString();
+   auto withDialog=[answer,dialog](Error e,QJsonObject r){if(!e)r["dialog"]=dialog;answer(e,r);};
+   if(dialog=="editImage"){
+    auto& chooser=main_->editImageDialog();
+    if(action=="open"&&chooser.isOpen()){withDialog({"file_dialog_open","Edit an image file is already open.",{}},{});return;}
+    if(action=="open")main_->chooseImageToEdit();else if(action=="cancel")chooser.cancel();
+    withDialog({},chooser.state());return;
+   }
+   if(dialog=="historySaveAs"){main_->history()->saveAsDialogCommand(action,params["id"].toString(),withDialog);return;}
+   if(action=="open"&&dialog=="outputFolder")main_->navigate("settings");
+   main_->settings()->fileDialogCommand(dialog,action,params["field"].toString(),withDialog);return;
+  }
   // These finish asynchronously (a session request) and answer through `answer`.
   else if(name=="diagnostics"){main_->settings()->diagnosticsCommand(params,answer);return;}
   else if(name=="historySaveDiagnostics"){main_->history()->saveDiagnosticsFor(params["id"].toString(),answer);return;}

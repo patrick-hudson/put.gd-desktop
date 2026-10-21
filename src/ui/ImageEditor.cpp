@@ -1,5 +1,6 @@
 #include "ImageEditor.h"
 #include "EditorWindow.h"
+#include "FileDialog.h"
 #include "app/UiControl.h"
 #include "core/BuildInfo.h"
 #include "editor/EditDocument.h"
@@ -178,6 +179,15 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    const auto png=document->exportPng();QSaveFile file(path);file.setDirectWriteFallback(false);
    if(png.isEmpty()||!file.open(QIODevice::WriteOnly)||file.write(png)!=png.size()||!file.commit())return denied("save_failed","The copy could not be saved");
    return {{"saved",true},{"path",path},{"bytes",double(png.size())},{"sha256",QString::fromLatin1(QCryptographicHash::hash(png,QCryptographicHash::Sha256).toHex())}};
+  }
+  if(name=="fileDialog"){
+   // #259: Save a copy… as the button opens it (the desktop's chooser, or the
+   // themed fallback), its state, or a cancel; editor.saveCopy saves to a path.
+   const auto action=params["action"].toString();
+   if(params.size()!=1||!QStringList{"open","inspect","cancel"}.contains(action))return denied("invalid_request","fileDialog needs action open, inspect or cancel");
+   if(action=="open"){if(!open)return denied("editor_finalizing","The edit was already submitted or discarded");if(window->fileDialog().isOpen())return denied("file_dialog_open","Save a copy is already open");window->saveCopy();}
+   if(action=="cancel")window->fileDialog().cancel();
+   return window->fileDialog().state();
   }
   if(name=="submit"){if(!params.isEmpty())return denied("invalid_request","submit has no parameters");if(!open)return denied("editor_finalizing","The edit was already submitted or discarded");QTimer::singleShot(0,&app,submit);return {{"submitted",true}};}
   if(name=="cancel"){if(!params.isEmpty())return denied("invalid_request","cancel has no parameters");if(!open)return denied("editor_finalizing","The edit was already submitted or discarded");QTimer::singleShot(0,&app,[&]{if(!terminal&&!finalizing){window->setBusy("Discarding…");refuse("edit_cancelled");}});return {{"cancelled",true}};}

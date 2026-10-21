@@ -129,7 +129,7 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   operations_.invoke("edit",reply,p);return;
  }
  // Agent control of the one open editor; the helper validates each command.
- if(QStringList{"editor.inspect","editor.apply","editor.preview","editor.saveCopy","editor.submit","editor.cancel","editor.raise"}.contains(method)) {
+ if(QStringList{"editor.inspect","editor.apply","editor.preview","editor.saveCopy","editor.fileDialog","editor.submit","editor.cancel","editor.raise"}.contains(method)) {
   if(!string(p,"id")){reply(invalid(),{});return;}
   auto params=p;params.remove("id");operations_.editorCommand(p["id"].toString(),method.mid(7),params,reply);return;
  }
@@ -149,7 +149,7 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  if(method=="recording.preview") {if(!fields(p,{"id","time"},{"maxEdge"})||!string(p,"id")||!p["time"].isDouble()||(p.contains("maxEdge")&&!p["maxEdge"].isDouble())){reply(invalid(),{});return;}operations_.recordingCommand("preview",p,reply);return;}
  if(method=="recording.review") {
   // #283: one review-window control per call; the helper checks the values.
-  static const QStringList actions{"inspect","seek","play","pause","speed","setIn","setOut","resetTrim","addMask","selectMask","setMaskIn","setMaskOut","strength","removeMask","format"};
+  static const QStringList actions{"inspect","seek","play","pause","speed","setIn","setOut","resetTrim","addMask","selectMask","setMaskIn","setMaskOut","strength","removeMask","format","saveCopyDialog","closeFileDialog"};
   if(!fields(p,{"id","action"},{"time","speed","kind","rect","maskId","strength","format","codec"})||!string(p,"id")||!string(p,"action",32)||!actions.contains(p["action"].toString())
      ||(p.contains("time")&&!p["time"].isDouble())||(p.contains("speed")&&!p["speed"].isDouble())||(p.contains("kind")&&!string(p,"kind",8))
      ||(p.contains("rect")&&(!p["rect"].isArray()||p["rect"].toArray().size()!=4))||(p.contains("maskId")&&!p["maskId"].isNull()&&!string(p,"maskId"))
@@ -234,6 +234,19 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   if(!fields(p,{"id"})||!string(p,"id",128)){reply(invalid(),{});return;}
   if(!uiCommand_){reply({"ui_unavailable","This resident has no graphical interface",{}},{});return;}
   uiCommand_("historySaveDiagnostics",p,std::move(reply));return;
+ }
+ // #259: open, inspect or cancel a file chooser in the open put.gd window, as its
+ // button opens it: the desktop's own through the XDG portal, or the fallback.
+ if(method=="ui.fileDialog") {
+  static const QStringList dialogs{"editImage","historySaveAs","outputFolder","diagnosticsFolder"};
+  static const QStringList actions{"open","inspect","cancel"};
+  static const QStringList folderFields{"root","images","videos","text","other"};
+  const auto dialog=p["dialog"].toString();
+  if(!fields(p,{"dialog","action"},{"field","id"})||!string(p,"dialog",32)||!dialogs.contains(dialog)||!string(p,"action",16)||!actions.contains(p["action"].toString())
+     ||(p.contains("field")&&(dialog!="outputFolder"||!string(p,"field",16)||!folderFields.contains(p["field"].toString())))
+     ||(p.contains("id")&&(dialog!="historySaveAs"||!string(p,"id",128)))){reply(invalid(),{});return;}
+  if(!uiCommand_){reply({"ui_unavailable","This resident has no graphical interface",{}},{});return;}
+  uiCommand_("fileDialog",p,std::move(reply));return;
  }
  // Where a package would upload and whether that destination works now.
  if(method=="diagnostics.uploadTarget") {

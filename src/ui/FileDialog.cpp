@@ -1,0 +1,299 @@
+#include "FileDialog.h"
+#include "Theme.h"
+#include "VisualStyle.h"
+#include <QAbstractItemView>
+#include <QApplication>
+#include <QFile>
+#include <QFileDialog>
+#include <QGuiApplication>
+#include <QLoggingCategory>
+#include <QPalette>
+#include <QToolButton>
+#include <QUrl>
+#include <QUuid>
+#include <QWidget>
+#ifdef Q_OS_LINUX
+#include <QDBusConnection>
+#include <QDBusMessage>
+#include <QDBusMetaType>
+#include <QDBusObjectPath>
+#include <QDBusPendingCallWatcher>
+#include <QDBusPendingReply>
+#include <QDBusServiceWatcher>
+#include <QDBusVariant>
+#endif
+
+Q_LOGGING_CATEGORY(lcFileDialog,"putgd.filedialog")
+
+namespace putgd {
+namespace {
+const QString portalService=QStringLiteral("org.freedesktop.portal.Desktop");
+const QString portalPath=QStringLiteral("/org/freedesktop/portal/desktop");
+const QString chooserInterface=QStringLiteral("org.freedesktop.portal.FileChooser");
+const QString requestInterface=QStringLiteral("org.freedesktop.portal.Request");
+// Accepting a request is quick once the portal runs; the chooser itself then
+// stays open as long as the person needs. A first use may start the portal.
+int portalCallTimeoutMs=8000;
+QString modeName(FileDialog::Mode mode){return mode==FileDialog::Mode::Save?"save":mode==FileDialog::Mode::Folder?"folder":"open";}
+QJsonValue text(const QString& value){return value.isEmpty()?QJsonValue(QJsonValue::Null):QJsonValue(value);}
+// Qt's widget dialog in the Theme tokens: the generic platform theme gives it
+// Fusion's light palette, which the windows' own stylesheets only partly cover.
+const char* const fallbackStyle=R"QSS(
+ QFileDialog { background: %bg%; color: %text%; }
+ QFileDialog QWidget { color: %text%; }
+ QFileDialog QLabel { color: %text%; background: transparent; }
+ QFileDialog QFrame { background: transparent; }
+ QFileDialog QListView, QFileDialog QTreeView { background: %surface%; alternate-background-color: %surface%; color: %text%; border: 1px solid %border%; border-radius: 6px; selection-background-color: %selected%; selection-color: %text%; outline: none; }
+ QFileDialog QListView::item, QFileDialog QTreeView::item { padding: 3px 4px; border: none; }
+ QFileDialog QListView::item:hover, QFileDialog QTreeView::item:hover { background: %surfaceRaised%; }
+ QFileDialog QListView::item:selected, QFileDialog QTreeView::item:selected { background: %selected%; color: %text%; }
+ QFileDialog QHeaderView { background: %surface%; }
+ QFileDialog QHeaderView::section { background: %surfaceRaised%; color: %textSecondary%; border: none; border-bottom: 1px solid %borderStrong%; padding: 6px 8px; font-weight: 600; }
+ QFileDialog QLineEdit, QFileDialog QComboBox { background: %surfaceRaised%; color: %text%; border: 1px solid %borderStrong%; border-radius: 6px; padding: 5px 8px; selection-background-color: %accent%; selection-color: %onAccent%; }
+ QFileDialog QLineEdit:focus, QFileDialog QComboBox:focus { border: 1px solid %accent%; }
+ QFileDialog QComboBox { padding-right: 24px; }
+ QFileDialog QComboBox::drop-down { border: none; width: 22px; }
+ QFileDialog QComboBox::down-arrow { image: url(%INDICATORS%/chevron.png); width: 12px; height: 12px; }
+ QFileDialog QComboBox QAbstractItemView { background: %surfaceRaised%; color: %text%; border: 1px solid %borderStrong%; selection-background-color: %selected%; selection-color: %text%; }
+ QFileDialog QPushButton { background: %surfaceRaised%; color: %text%; border: 1px solid %borderStrong%; border-radius: 6px; padding: 6px 14px; }
+ QFileDialog QPushButton:hover { background: %selected%; border-color: %accent%; }
+ QFileDialog QPushButton:focus { border: 2px solid %accent%; padding: 5px 13px; }
+ QFileDialog QPushButton:default { background: %accent%; color: %onAccent%; border-color: %accent%; font-weight: 600; }
+ QFileDialog QPushButton:disabled { color: %textDisabled%; background: %surfaceRaised%; border-color: %border%; }
+ QFileDialog QToolButton { background: transparent; border: 1px solid transparent; border-radius: 6px; padding: 3px; }
+ QFileDialog QToolButton:hover, QFileDialog QToolButton:checked { background: %selected%; border-color: %borderStrong%; }
+ QFileDialog QToolButton:disabled { background: transparent; border-color: transparent; }
+ QFileDialog QScrollBar:vertical { width: 10px; background: %bg%; margin: 2px; }
+ QFileDialog QScrollBar:horizontal { height: 10px; background: %bg%; margin: 2px; }
+ QFileDialog QScrollBar::handle { background: %borderStrong%; border-radius: 4px; min-height: 28px; min-width: 28px; }
+ QFileDialog QScrollBar::add-line, QFileDialog QScrollBar::sub-line { width: 0; height: 0; }
+ QFileDialog QScrollBar::add-page, QFileDialog QScrollBar::sub-page { background: transparent; }
+ QFileDialog QMenu { background: %surface%; border: 1px solid %borderStrong%; padding: 4px; }
+ QFileDialog QMenu::item { padding: 6px 20px; border-radius: 4px; }
+ QFileDialog QMenu::item:selected { background: %selected%; }
+ QFileDialog QSplitter::handle { background: transparent; }
+)QSS";
+void styleFallback(QFileDialog* dialog){
+ const auto scheme=Theme::scheme();const auto& p=Theme::current();
+ QPalette palette=dialog->palette();
+ for(const auto group:{QPalette::Active,QPalette::Inactive}){
+  palette.setColor(group,QPalette::Window,p.bg);palette.setColor(group,QPalette::WindowText,p.text);
+  palette.setColor(group,QPalette::Base,p.surface);palette.setColor(group,QPalette::AlternateBase,p.surface);
+  palette.setColor(group,QPalette::Text,p.text);palette.setColor(group,QPalette::Button,p.surfaceRaised);palette.setColor(group,QPalette::ButtonText,p.text);
+  palette.setColor(group,QPalette::Highlight,p.selected);palette.setColor(group,QPalette::HighlightedText,p.text);
+  palette.setColor(group,QPalette::PlaceholderText,p.textMuted);palette.setColor(group,QPalette::Link,p.link);
+  palette.setColor(group,QPalette::ToolTipBase,p.surfaceRaised);palette.setColor(group,QPalette::ToolTipText,p.text);
+  palette.setColor(group,QPalette::Light,p.borderStrong);palette.setColor(group,QPalette::Midlight,p.border);palette.setColor(group,QPalette::Mid,p.border);
+  palette.setColor(group,QPalette::Dark,p.bg);palette.setColor(group,QPalette::Shadow,p.bg);
+ }
+ palette.setColor(QPalette::Disabled,QPalette::Window,p.bg);palette.setColor(QPalette::Disabled,QPalette::Base,p.surface);palette.setColor(QPalette::Disabled,QPalette::Button,p.surfaceRaised);
+ for(const auto role:{QPalette::WindowText,QPalette::Text,QPalette::ButtonText})palette.setColor(QPalette::Disabled,role,p.textDisabled);
+ dialog->setPalette(palette);
+ dialog->setProperty("themeScheme",Theme::name(scheme));
+ auto qss=Theme::stylesheet(QString::fromLatin1(fallbackStyle),scheme);
+ const auto folder=VisualStyle::indicators(scheme);
+ if(folder.isEmpty())qss.replace(QStringLiteral("QFileDialog QComboBox::down-arrow { image: url(%INDICATORS%/chevron.png); width: 12px; height: 12px; }"),QString());
+ dialog->setStyleSheet(qss.replace(QStringLiteral("%INDICATORS%"),folder));
+ // The toolbar's Fusion pixmaps are dark on dark; IconArt glyphs follow the tokens.
+ const QList<std::pair<const char*,const char*>> buttons{{"backButton","back"},{"forwardButton","forward"},{"toParentButton","up"},{"newFolderButton","folder-new"},{"listModeButton","view-list"},{"detailModeButton","view-detail"}};
+ for(const auto& [name,glyph]:buttons)if(auto* button=dialog->findChild<QToolButton*>(name))button->setIcon(VisualStyle::icon(glyph));
+}
+#ifdef Q_OS_LINUX
+QString shortName(const QString& name){return name.startsWith(':')?name.mid(1).replace('.','_'):name;}
+QList<portal::Filter> portalFilters(const QList<FileDialog::Filter>& filters){
+ QList<portal::Filter> result;
+ for(const auto& filter:filters){portal::Filter f{filter.label,{}};for(const auto& pattern:filter.patterns)f.rules.append({0,pattern});result.append(f);}
+ return result;
+}
+#endif
+}
+#ifdef Q_OS_LINUX
+namespace portal {
+QDBusArgument& operator<<(QDBusArgument& a,const FilterRule& r){a.beginStructure();a<<r.type<<r.pattern;a.endStructure();return a;}
+const QDBusArgument& operator>>(const QDBusArgument& a,FilterRule& r){a.beginStructure();a>>r.type>>r.pattern;a.endStructure();return a;}
+QDBusArgument& operator<<(QDBusArgument& a,const Filter& f){a.beginStructure();a<<f.label<<f.rules;a.endStructure();return a;}
+const QDBusArgument& operator>>(const QDBusArgument& a,Filter& f){a.beginStructure();a>>f.label>>f.rules;a.endStructure();return a;}
+void registerTypes(){
+ static const bool registered=[]{qDBusRegisterMetaType<FilterRule>();qDBusRegisterMetaType<QList<FilterRule>>();qDBusRegisterMetaType<Filter>();qDBusRegisterMetaType<QList<Filter>>();return true;}();
+ Q_UNUSED(registered);
+}
+}
+#endif
+
+FileDialog::FileDialog(QWidget* owner):QObject(owner),owner_(owner){}
+FileDialog::~FileDialog(){
+ // The owner is going away: close the chooser without answering it.
+ done_=nullptr;
+ if(phase_==Phase::Portal)abandonPortal();
+ if(fallback_){fallback_->disconnect(this);fallback_->deleteLater();}
+ block(false);
+}
+QFileDialog* FileDialog::fallbackDialog()const{return fallback_.data();}
+void FileDialog::setPortalCallTimeoutMs(int milliseconds){portalCallTimeoutMs=qMax(1,milliseconds);}
+QString FileDialog::parentWindow(const QWidget* owner){
+ if(!owner||QGuiApplication::platformName()!="xcb")return {};
+ const auto* window=owner->window();
+ return window->internalWinId()?QStringLiteral("x11:%1").arg(quint64(window->internalWinId()),0,16):QString{};
+}
+bool FileDialog::open(const Options& options,Done done){
+ if(isOpen()||!owner_)return false;
+ options_=options;done_=std::move(done);backend_.clear();parent_.clear();reason_.clear();handle_.clear();
+#ifdef Q_OS_LINUX
+ if(qEnvironmentVariable("PUTGD_FILE_DIALOG")=="fallback"){openFallback("disabled");return true;}
+ startPortal();
+#else
+ openFallback("no_portal");
+#endif
+ return true;
+}
+void FileDialog::startPortal(){
+#ifdef Q_OS_LINUX
+ auto bus=QDBusConnection::sessionBus();
+ if(!bus.isConnected()){openFallback("no_session_bus");return;}
+ phase_=Phase::Portal;backend_="portal";parent_=parentWindow(owner_);block(true);emit stateChanged();
+ if(options_.mode!=Mode::Folder){requestPortal();return;}
+ // Folders need FileChooser version 3 (its directory option).
+ auto get=QDBusMessage::createMethodCall(portalService,portalPath,"org.freedesktop.DBus.Properties","Get");get<<chooserInterface<<QStringLiteral("version");
+ auto* watcher=new QDBusPendingCallWatcher(bus.asyncCall(get,portalCallTimeoutMs),this);
+ connect(watcher,&QDBusPendingCallWatcher::finished,this,[this,watcher,attempt=attempt_]{
+  watcher->deleteLater();
+  if(attempt!=attempt_)return;
+  const QDBusPendingReply<QDBusVariant> reply=*watcher;
+  if(reply.isError()){openFallback(reply.error().name());return;}
+  if(reply.value().variant().toUInt()<3){openFallback("portal_version");return;}
+  requestPortal();
+ });
+#endif
+}
+void FileDialog::requestPortal(){
+#ifdef Q_OS_LINUX
+ portal::registerTypes();
+ auto bus=QDBusConnection::sessionBus();
+ token_="putgd"+QUuid::createUuid().toString(QUuid::Id128).left(16);
+ // Subscribe before asking, at the handle the portal makes from the token, so
+ // an early Response is not missed (an old portal's reply may name another).
+ const auto expected=portalPath+"/request/"+shortName(bus.baseService())+"/"+token_;
+ subscribe(expected);
+ QVariantMap options{{"handle_token",token_},{"modal",true}};
+ if(options_.mode==Mode::Folder)options["directory"]=true;
+ if(!options_.filters.isEmpty()){const auto filters=portalFilters(options_.filters);options["filters"]=QVariant::fromValue(filters);options["current_filter"]=QVariant::fromValue(filters.first());}
+ if(!options_.folder.isEmpty()){auto folder=QFile::encodeName(options_.folder);folder.append('\0');options["current_folder"]=folder;}
+ if(options_.mode==Mode::Save&&!options_.name.isEmpty())options["current_name"]=options_.name;
+ auto call=QDBusMessage::createMethodCall(portalService,portalPath,chooserInterface,options_.mode==Mode::Save?"SaveFile":"OpenFile");
+ call<<parent_<<options_.title<<options;
+ qCInfo(lcFileDialog).noquote()<<"portal"<<call.member()<<"parent"<<(parent_.isEmpty()?QStringLiteral("none"):parent_);
+ auto* watcher=new QDBusPendingCallWatcher(bus.asyncCall(call,portalCallTimeoutMs),this);
+ connect(watcher,&QDBusPendingCallWatcher::finished,this,[this,watcher,attempt=attempt_,expected]{
+  watcher->deleteLater();
+  const QDBusPendingReply<QDBusObjectPath> reply=*watcher;
+  const auto handle=reply.isError()?QString{}:reply.value().path();
+  // Cancelled or given up on before the portal accepted: the token's handle
+  // was closed then; close one an old portal named differently too.
+  if(attempt!=attempt_){if(!handle.isEmpty()&&handle!=expected)closeRequest(handle);return;}
+  if(reply.isError()){openFallback(reply.error().name());return;}
+  if(handle!=handle_){unsubscribe();subscribe(handle);}
+ });
+ // A portal that goes away while its chooser is open never answers.
+ delete gone_;
+ auto* gone=new QDBusServiceWatcher(portalService,bus,QDBusServiceWatcher::WatchForUnregistration,this);gone_=gone;
+ connect(gone,&QDBusServiceWatcher::serviceUnregistered,this,[this,attempt=attempt_]{if(attempt==attempt_&&phase_==Phase::Portal)openFallback("portal_exited");});
+#endif
+}
+void FileDialog::abandonPortal(){
+ // Every pending portal callback belongs to the attempt this ends.
+ ++attempt_;unsubscribe();
+ if(!handle_.isEmpty())closeRequest(handle_);
+ handle_.clear();
+ if(gone_){gone_->deleteLater();gone_=nullptr;}
+}
+void FileDialog::portalResponse(uint response,const QVariantMap& results){
+ if(phase_!=Phase::Portal)return;
+ ++attempt_;unsubscribe();handle_.clear();
+ if(gone_){gone_->deleteLater();gone_=nullptr;}
+ if(response==1){finish("cancelled",{});return;}
+ if(response!=0){openFallback("portal_failed");return;}
+ const auto uris=results.value("uris").toStringList();
+ const QUrl url(uris.value(0));
+ if(uris.isEmpty()||!url.isLocalFile()){finish("failed",{},"The chosen location is not a local file.");return;}
+ finish("chosen",url.toLocalFile());
+}
+void FileDialog::subscribe(const QString& handle){
+#ifdef Q_OS_LINUX
+ handle_=handle;
+ QDBusConnection::sessionBus().connect(portalService,handle,requestInterface,"Response",this,SLOT(portalResponse(uint,QVariantMap)));
+#else
+ Q_UNUSED(handle);
+#endif
+}
+void FileDialog::unsubscribe(){
+#ifdef Q_OS_LINUX
+ if(!handle_.isEmpty())QDBusConnection::sessionBus().disconnect(portalService,handle_,requestInterface,"Response",this,SLOT(portalResponse(uint,QVariantMap)));
+#endif
+}
+void FileDialog::closeRequest(const QString& handle){
+#ifdef Q_OS_LINUX
+ QDBusConnection::sessionBus().call(QDBusMessage::createMethodCall(portalService,handle,requestInterface,"Close"),QDBus::NoBlock);
+#else
+ Q_UNUSED(handle);
+#endif
+}
+void FileDialog::openFallback(const QString& reason){
+ if(phase_==Phase::Portal)abandonPortal();
+ block(false);
+ if(!owner_){finish("failed",{},"The window closed.");return;}
+ phase_=Phase::Fallback;backend_="fallback";reason_=reason;
+ qCInfo(lcFileDialog).noquote()<<"fallback dialog, reason"<<reason;
+ auto* dialog=new QFileDialog(owner_,options_.title,options_.folder);
+ dialog->setObjectName("putgdFileDialog");dialog->setAttribute(Qt::WA_DeleteOnClose);dialog->setWindowModality(Qt::ApplicationModal);
+ if(options_.mode==Mode::Save){dialog->setAcceptMode(QFileDialog::AcceptSave);dialog->setFileMode(QFileDialog::AnyFile);if(!options_.name.isEmpty())dialog->selectFile(options_.name);}
+ else if(options_.mode==Mode::Folder){dialog->setFileMode(QFileDialog::Directory);dialog->setOption(QFileDialog::ShowDirsOnly);}
+ else dialog->setFileMode(QFileDialog::ExistingFile);
+ QStringList filters;for(const auto& filter:options_.filters)filters.append(QStringLiteral("%1 (%2)").arg(filter.label,filter.patterns.join(' ')));
+ if(!filters.isEmpty())dialog->setNameFilters(filters);
+ theme(dialog);
+ fallback_=dialog;
+ connect(dialog,&QFileDialog::finished,this,[this,dialog](int result){
+  if(fallback_!=dialog)return;
+  fallback_.clear();
+  const auto files=dialog->selectedFiles();
+  if(result==QDialog::Accepted&&!files.isEmpty())finish("chosen",files.first());else finish("cancelled",{});
+ });
+ emit stateChanged();
+ dialog->open();
+}
+void FileDialog::theme(QFileDialog* dialog){
+ styleFallback(dialog);
+ connect(&Theme::Notifier::instance(),&Theme::Notifier::changed,dialog,[dialog]{styleFallback(dialog);});
+}
+void FileDialog::cancel(){
+ if(phase_==Phase::Fallback&&fallback_){fallback_->reject();return;}
+ if(phase_!=Phase::Portal)return;
+ abandonPortal();finish("cancelled",{});
+}
+void FileDialog::finish(const QString& status,const QString& path,const QString& error){
+ block(false);
+ last_={{"status",status},{"backend",text(backend_)},{"mode",modeName(options_.mode)},{"path",text(path)},{"fallbackReason",text(reason_)},{"error",text(error)}};
+ qCInfo(lcFileDialog).noquote()<<"file dialog"<<status<<"via"<<backend_;
+ phase_=Phase::Idle;
+ auto done=std::exchange(done_,nullptr);
+ QPointer<FileDialog> guard(this);
+ emit stateChanged();
+ if(guard&&done)done(path);
+}
+void FileDialog::block(bool on){
+ // Modal like the dialog it replaces: the window takes no input while the
+ // portal's chooser is open. Qt does the same for its own native dialogs: a
+ // modal widget that is never mapped.
+ if(!on){if(blocker_){blocker_->hide();blocker_->deleteLater();blocker_.clear();}return;}
+ if(blocker_||!owner_)return;
+ auto* blocker=new QWidget(owner_->window(),Qt::Dialog);
+ blocker->setObjectName("putgdPortalDialogModal");blocker->setAttribute(Qt::WA_DontShowOnScreen);blocker->setWindowModality(Qt::ApplicationModal);
+ blocker->setWindowTitle(options_.title);blocker->show();blocker_=blocker;
+}
+QJsonObject FileDialog::state()const{
+ const bool open=phase_!=Phase::Idle;
+ return {{"open",open},{"mode",open?QJsonValue(modeName(options_.mode)):QJsonValue(QJsonValue::Null)},{"title",open?text(options_.title):QJsonValue(QJsonValue::Null)},
+  {"backend",open?text(backend_):QJsonValue(QJsonValue::Null)},{"parentWindow",open&&phase_==Phase::Portal?QJsonValue(parent_):QJsonValue(QJsonValue::Null)},
+  {"fallbackReason",open?text(reason_):QJsonValue(QJsonValue::Null)},{"last",last_.isEmpty()?QJsonValue(QJsonValue::Null):QJsonValue(last_)}};
+}
+}

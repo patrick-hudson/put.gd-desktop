@@ -61,6 +61,14 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
             ('settings_diagnostics', {'action': 'setPackage', 'upload': 'yes'}),
             ('history_save_diagnostics', {'id': ''}),
             ('make_history_preview', {'id': ''}),
+            ('drive_file_dialog', {'dialog': 'shell', 'action': 'open'}),
+            ('drive_file_dialog', {'dialog': 'editImage', 'action': 'accept'}),
+            ('drive_file_dialog', {'dialog': 'editImage', 'action': 'open', 'field': 'root'}),
+            ('drive_file_dialog', {'dialog': 'outputFolder', 'action': 'open', 'field': 'music'}),
+            ('drive_file_dialog', {'dialog': 'outputFolder', 'action': 'open', 'id': 'synthetic-operation'}),
+            ('drive_file_dialog', {'dialog': 'historySaveAs', 'action': 'open', 'id': ''}),
+            ('editor_file_dialog', {'id': 'synthetic-operation', 'action': 'accept'}),
+            ('editor_file_dialog', {'id': '', 'action': 'open'}),
             ('show_diagnostics_package', {'path': 'relative.zip'}),
             ('create_diagnostics_bundle', {'preview': True, 'notify': True}),
             ('check_for_updates', {'channel': 'nightly'}),
@@ -159,7 +167,7 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                             'save_recording_copy', 'upload_recording', 'reorder_destinations', 'move_destination',
                             'clear_logs', 'create_diagnostics_bundle', 'get_diagnostics_upload_target', 'show_diagnostics_package',
                             'settings_diagnostics', 'history_save_diagnostics', 'get_update_status', 'check_for_updates',
-                            'open_software_updates'}
+                            'open_software_updates', 'drive_file_dialog', 'editor_file_dialog'}
                 self.assertEqual({tool.name for tool in discovered}, expected)
                 for tool in discovered:
                     self.assertEqual(tool.inputSchema['type'], 'object')
@@ -240,6 +248,10 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('settings_diagnostics', {'action': 'setPackage', 'upload': True}, 'ui.diagnostics', {'action': 'setPackage', 'upload': True}),
                     ('settings_diagnostics', {'action': 'savePackage'}, 'ui.diagnostics', {'action': 'savePackage'}),
                     ('history_save_diagnostics', {'id': 'synthetic-operation'}, 'ui.historySaveDiagnostics', {'id': 'synthetic-operation'}),
+                    ('drive_file_dialog', {'dialog': 'editImage', 'action': 'open'}, 'ui.fileDialog', {'dialog': 'editImage', 'action': 'open'}),
+                    ('drive_file_dialog', {'dialog': 'outputFolder', 'action': 'open', 'field': 'videos'}, 'ui.fileDialog', {'dialog': 'outputFolder', 'action': 'open', 'field': 'videos'}),
+                    ('drive_file_dialog', {'dialog': 'historySaveAs', 'action': 'open', 'id': 'synthetic-entry'}, 'ui.fileDialog', {'dialog': 'historySaveAs', 'action': 'open', 'id': 'synthetic-entry'}),
+                    ('drive_file_dialog', {'dialog': 'diagnosticsFolder', 'action': 'cancel'}, 'ui.fileDialog', {'dialog': 'diagnosticsFolder', 'action': 'cancel'}),
                     ('create_diagnostics_bundle', {'upload': True}, 'diagnostics.bundle', {'upload': True}),
                     ('create_diagnostics_bundle', {'upload': True, 'profile_id': 'synthetic-s3', 'copy_link': True},
                      'diagnostics.bundle', {'upload': True, 'profileId': 'synthetic-s3', 'copyLink': True}),
@@ -263,6 +275,7 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('submit_editor', {'id': 'synthetic-operation'}, 'editor.submit', {'id': 'synthetic-operation'}),
                     ('cancel_editor', {'id': 'synthetic-operation'}, 'editor.cancel', {'id': 'synthetic-operation'}),
                     ('raise_editor', {'id': 'synthetic-operation'}, 'editor.raise', {'id': 'synthetic-operation'}),
+                    ('editor_file_dialog', {'id': 'synthetic-operation', 'action': 'inspect'}, 'editor.fileDialog', {'id': 'synthetic-operation', 'action': 'inspect'}),
                     ('get_recording_capabilities', {}, 'recording.capabilities', {}),
                     ('prepare_recording', {'target': {'kind': 'region', 'rect': [100, 100, 1280, 720]}, 'format': 'mp4', 'system_audio': True, 'fps': 24},
                      'recording.prepare', {'target': {'kind': 'region', 'rect': [100, 100, 1280, 720]}, 'format': 'mp4', 'audio': {'system': True}, 'fps': 24}),
@@ -293,6 +306,7 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'inspect'}, 'recording.review', {'id': 'synthetic-operation', 'action': 'inspect'}),
                     ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'seek', 'time_us': 2500000}, 'recording.review', {'id': 'synthetic-operation', 'action': 'seek', 'time': 2500000}),
                     ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'setIn'}, 'recording.review', {'id': 'synthetic-operation', 'action': 'setIn'}),
+                    ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'saveCopyDialog'}, 'recording.review', {'id': 'synthetic-operation', 'action': 'saveCopyDialog'}),
                     ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'speed', 'speed': 0.5}, 'recording.review', {'id': 'synthetic-operation', 'action': 'speed', 'speed': 0.5}),
                     ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'addMask', 'kind': 'solid', 'rect': [10, 20, 300, 80]},
                      'recording.review', {'id': 'synthetic-operation', 'action': 'addMask', 'kind': 'solid', 'rect': [10, 20, 300, 80]}),
