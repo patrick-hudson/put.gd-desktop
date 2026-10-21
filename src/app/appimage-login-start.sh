@@ -17,12 +17,22 @@ say() {
     printf 'put.gd login start: %s\n' "$*" >&2
 }
 
+# The user's private group: named after the user, with no other members. With
+# umask 002 (Debian, Ubuntu, Mint, Fedora) the user's files are group-writable.
+own_group=
+user=$(id -un 2>/dev/null) && group=$(id -g 2>/dev/null) && entry=$(getent group "$group" 2>/dev/null) &&
+    case $entry in
+        "$user":*:"$group": | "$user":*:"$group":"$user") own_group=$group ;;
+    esac
+
 # Owned by the user and writable by nobody else.
 private() {
     [ -O "$1" ] || return 1
-    mode=$(stat -L -c %a -- "$1" 2>/dev/null) || return 1
-    case $mode in
-        *[2367]? | *[2367]) return 1 ;;
+    set -- $(stat -L -c '%a %g' -- "$1" 2>/dev/null)
+    [ $# -eq 2 ] || return 1
+    case $1 in
+        *[2367]) return 1 ;;
+        *[2367]?) [ "$2" = "$own_group" ] || return 1 ;;
     esac
 }
 

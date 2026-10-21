@@ -278,8 +278,10 @@ login the script starts the newest `putgd-VERSION-x86_64[_md5].AppImage` in the
 configured image's folder, ordered by version (`sort -V`, prereleases before their
 release), that is the user's own file, executable, writable by nobody else, has the
 AppImage magic and prints the same update information as the configured image
-(`--appimage-updateinformation`). The folder must be the user's and writable by
-nobody else, or only the configured image is used. Without update information
+(`--appimage-updateinformation`). Group write counts as private only for the user's
+own group (named after the user, no other members), which umask 002 gives every file
+on Debian, Ubuntu, Mint and Fedora. The folder must pass the same check, or only the
+configured image is used. Without update information
 (untagged builds) the configured image is the only candidate. Gear Lever replaces
 the configured file in place; with no versioned sibling the script starts it
 without probing anything. put.gd touches only its own autostart entry and script,

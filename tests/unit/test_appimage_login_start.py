@@ -5,8 +5,10 @@ Fixture "AppImages" are a small compiled program with the AppImage type 2 magic
 at offset 8. Each answers --appimage-updateinformation and --version from files
 beside it and records a real start; no image is mounted.
 """
+import grp
 import os
 from pathlib import Path
+import pwd
 import shutil
 import subprocess
 import tempfile
@@ -51,6 +53,13 @@ int main(int argc, char** argv) {
     return 0;
 }
 """
+
+
+def private_group():
+    """Whether the primary group is the user's own: same name, no other members."""
+    user = pwd.getpwuid(os.getuid()).pw_name
+    group = grp.getgrgid(os.getgid())
+    return group.gr_name == user and set(group.gr_mem) <= {user}
 
 
 def shell_quoted(value):
@@ -139,17 +148,24 @@ class LoginStartTest(unittest.TestCase):
 
     def test_files_that_are_not_private_appimages_are_not_started(self):
         configured = self.image("putgd-0.1.1-nightly.800-x86_64.AppImage", "0.1.1-nightly.800")
-        self.image("putgd-0.1.1-nightly.900-x86_64.AppImage", "0.1.1-nightly.900", mode=0o775)
         self.image("putgd-0.1.1-nightly.901-x86_64.AppImage", "0.1.1-nightly.901", mode=0o757)
         self.image("putgd-0.1.1-nightly.902-x86_64.AppImage", "0.1.1-nightly.902", magic=False)
         self.image("putgd-0.1.1-nightly.903-x86_64.AppImage", "0.1.1-nightly.903", mode=0o644)
         self.image("putgd-latest-x86_64.AppImage", "0.1.1-nightly.904")
         self.assertStarts(configured, configured)
 
+    def test_group_write_is_trusted_only_for_the_users_private_group(self):
+        # umask 002 (Debian, Ubuntu, Mint, Fedora) leaves the user's files and folders 0775.
+        configured = self.image("putgd-0.1.1-nightly.800-x86_64.AppImage", "0.1.1-nightly.800", mode=0o775)
+        new = self.image("putgd-0.1.1-nightly.801-x86_64.AppImage", "0.1.1-nightly.801", mode=0o775)
+        self.images.chmod(0o775)
+        self.addCleanup(self.images.chmod, 0o700)
+        self.assertStarts(configured, new if private_group() else configured)
+
     def test_folder_others_can_write_is_not_searched(self):
         configured = self.images / "putgd-0.1.1-nightly.800-x86_64.AppImage"
         self.image("putgd-0.1.1-nightly.801-x86_64.AppImage", "0.1.1-nightly.801")
-        self.images.chmod(0o770)
+        self.images.chmod(0o777)
         self.addCleanup(self.images.chmod, 0o700)
         completed, started = self.start(configured)
         self.assertEqual(completed.returncode, 1)
