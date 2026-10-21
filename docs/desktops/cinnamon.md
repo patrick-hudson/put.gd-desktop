@@ -28,9 +28,15 @@ including when trigger keys remain held.
 
 Pixels are acquired after the selection surfaces are removed. On an identified
 Cinnamon/Muffin session, the native compositor screenshot service captures its
-scene into private files. Its D-Bus reply can precede the PNG write, so decoding
-waits for the writer's close event, validates the PNG and accepted geometry, and
-uses a ten-second deadline. Cancellation discards pending results. Other X11
+scene into private files. Its D-Bus reply can precede the PNG write
+(`ScreenshotArea` returns before Cinnamon paints), so decoding waits for the writer's
+close event, validates the PNG and accepted geometry, and uses a ten-second deadline.
+The close event needs an inotify instance, a per-user limit
+(`fs.inotify.max_user_instances`, 128 by default) shared with every program. When
+none is left, the helper polls each file until it ends in a stable PNG IEND trailer
+and logs `Cinnamon capture completion watch unavailable (EMFILE); polling for
+finished PNGs` ([#331](../evidence/2026-10-21-region-inotify-331/README.md)).
+Cancellation discards pending results. Other X11
 sessions use post-selection root capture and require their own compositor
 acceptance; an X11 round trip alone does not prove presentation completed.
 
