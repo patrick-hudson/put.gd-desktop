@@ -1,0 +1,276 @@
+{
+ "notify": {
+  "clicked": [
+   1660,
+   36
+  ],
+  "actionInvoked": [
+   "default"
+  ],
+  "openedUrls": [
+   "2026-10-21T20:41:21Z http://127.0.0.1:42227/fixture/afa/Screen-Capture-2026-10-21-15-41-15.png lib=unset plugins=unset appdir=unset parent=systemd"
+  ],
+  "notifyActions": [
+   "default",
+   "Open in browser"
+  ],
+  "logged": [
+   {
+    "itemId": null,
+    "notificationId": 1,
+    "notificationText": "Uploaded. Link copied to the clipboard. Click to open in browser.",
+    "operationId": null,
+    "summary": "operation_completed",
+    "title": "put.gd \u2014 completed",
+    "warning": false
+   }
+  ]
+ },
+ "open-link": {
+  "id": "ff2aa8cf-ed75-4a1a-a50c-a077dda9f255",
+  "link": "http://127.0.0.1:42227/fixture/afa/Screen-Capture-2026-10-21-15-41-15.png",
+  "reply": {
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   },
+   "ok": true,
+   "requestId": "37071163-7861-4ac7-b384-6f19e1d08654",
+   "result": {
+    "opened": true,
+    "route": "portal"
+   },
+   "schemaVersion": 1
+  },
+  "recorded": [
+   "2026-10-21T20:41:27Z http://127.0.0.1:42227/fixture/afa/Screen-Capture-2026-10-21-15-41-15.png lib=unset plugins=unset appdir=unset parent=systemd"
+  ],
+  "pass": true
+ },
+ "reveal": {
+  "path": "/home/patrick/work/put.gd-326/afa/runs/m74/diagnostics/putgd-diagnostics-20261021-204131Z.zip",
+  "reply": {
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   },
+   "ok": true,
+   "requestId": "098eff96-83e1-43ee-b4c4-49fac998b911",
+   "result": {
+    "revealed": "/home/patrick/work/put.gd-326/afa/runs/m74/diagnostics/putgd-diagnostics-20261021-204131Z.zip"
+   },
+   "schemaVersion": 1
+  },
+  "dbusMembers": [
+   "NameAcquired",
+   "NameLost",
+   "ShowItems"
+  ],
+  "showItemsArgs": [
+   "file:///home/patrick/work/put.gd-326/afa/runs/m74/diagnostics/putgd-diagnostics-20261021-204131Z.zip"
+  ],
+  "logged": [
+   {
+    "category": "putgd.ui",
+    "fields": {
+     "itemId": null,
+     "opened": true,
+     "operationId": null,
+     "route": "portal",
+     "target": "history-link"
+    },
+    "level": "info",
+    "message": "Opened on the host",
+    "pid": 21222,
+    "process": "putgd",
+    "time": "2026-10-21T20:41:27.801Z",
+    "v": 1
+   },
+   {
+    "category": "putgd.ui",
+    "fields": {
+     "itemId": null,
+     "opened": true,
+     "operationId": null,
+     "route": "file-manager",
+     "target": "diagnostics-folder"
+    },
+    "level": "info",
+    "message": "Opened on the host",
+    "pid": 21222,
+    "process": "putgd",
+    "time": "2026-10-21T20:41:31.204Z",
+    "v": 1
+   }
+  ],
+  "fileManagersStarted": {
+   "21551": "nemo"
+  },
+  "closedWith": "pid",
+  "pass": true
+ },
+ "env-check": {
+  "execs": [
+   {
+    "pid": 21546,
+    "program": "/home/patrick/work/put.gd-326/afa/runs/m74/hostbin/coredumpctl",
+    "argv": "\"/home/patrick/work/put.gd-326/afa/runs/m74/hostbin/coredumpctl\", \"--no-pager\", \"--no-legend\", \"--json=short\", \"--since=@1792611691\", \"list\"",
+    "result": 0,
+    "own": false,
+    "imageVariables": []
+   },
+   {
+    "pid": 21547,
+    "program": "/usr/bin/coredumpctl",
+    "argv": "\"/usr/bin/coredumpctl\", \"--no-pager\", \"--no-legend\", \"--json=short\", \"--since=@1792611691\", \"list\"",
+    "result": 0,
+    "own": false,
+    "imageVariables": []
+   },
+   {
+    "pid": 21548,
+    "program": "/usr/bin/date",
+    "argv": "\"date\", \"-u\", \"+%FT%TZ\"",
+    "result": 0,
+    "own": false,
+    "imageVariables": []
+   }
+  ],
+  "hostPrograms": [
+   "/home/patrick/work/put.gd-326/afa/runs/m74/hostbin/coredumpctl",
+   "/usr/bin/coredumpctl",
+   "/usr/bin/date"
+  ],
+  "leaks": [],
+  "pass": true
+ },
+ "host-programs": {
+  "calls": [
+   {
+    "at": "2026-10-21T20:41:10Z",
+    "program": "gsettings",
+    "argv": "get org.cinnamon.theme name",
+    "LD_LIBRARY_PATH": "unset",
+    "QT_PLUGIN_PATH": "unset",
+    "APPDIR": "unset",
+    "PUTGD_HOST_ENVIRONMENT": "unset",
+    "exit": 0,
+    "imageVariables": []
+   },
+   {
+    "at": "2026-10-21T20:41:31Z",
+    "program": "coredumpctl",
+    "argv": "--no-pager --no-legend --json=short --since=@1792611691 list",
+    "LD_LIBRARY_PATH": "unset",
+    "QT_PLUGIN_PATH": "unset",
+    "APPDIR": "unset",
+    "PUTGD_HOST_ENVIRONMENT": "unset",
+    "exit": 0,
+    "imageVariables": []
+   }
+  ],
+  "leaks": [],
+  "failed": [],
+  "pass": true
+ },
+ "handler-off": {
+  "restored": {
+   "https": [
+    "Default application for \u201cx-scheme-handler/https\u201d: firefox.desktop"
+   ],
+   "http": [
+    "Default application for \u201cx-scheme-handler/http\u201d: firefox.desktop"
+   ]
+  },
+  "before": {
+   "https": [
+    "Default application for \u201cx-scheme-handler/https\u201d: firefox.desktop"
+   ],
+   "http": [
+    "Default application for \u201cx-scheme-handler/http\u201d: firefox.desktop"
+   ]
+  },
+  "same": true,
+  "filesMatch": true
+ },
+ "start": {
+  "diagnostics": {
+   "baseVersion": "0.1.1",
+   "commitCount": 851,
+   "dirty": false,
+   "gitCommit": "037cbafecd48c41b557c0110ac27c96840b3ddfa",
+   "gitTree": "90888d03c7aa2561cb0d6db75663985c886bfc06",
+   "packageVersion": "0.1.1~dev.851+g037cbafecd48",
+   "schemaVersion": 1,
+   "sourceProvenance": "git",
+   "version": "0.1.1-dev.851+g037cbafecd48"
+  },
+  "processes": [
+   {
+    "comm": "putgd",
+    "exe": "/tmp/.mount_putgd-nmdLCk/usr/bin/putgd",
+    "QT_QPA_PLATFORM": null
+   },
+   {
+    "comm": "putgd-0.1.1-dev",
+    "exe": "/home/patrick/work/put.gd-326/afa/dl-330/putgd-0.1.1-dev.851+g037cbafecd48-x86_64.AppImage",
+    "QT_QPA_PLATFORM": null
+   }
+  ]
+ },
+ "vmOpenLink": {
+  "openLink:m74": {
+   "id": "ff2aa8cf-ed75-4a1a-a50c-a077dda9f255",
+   "link": "http://127.0.0.1:42227/fixture/afa/Screen-Capture-2026-10-21-15-41-15.png",
+   "reply": {
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    },
+    "ok": true,
+    "requestId": "37071163-7861-4ac7-b384-6f19e1d08654",
+    "result": {
+     "opened": true,
+     "route": "portal"
+    },
+    "schemaVersion": 1
+   },
+   "recorded": [
+    "2026-10-21T20:41:27Z http://127.0.0.1:42227/fixture/afa/Screen-Capture-2026-10-21-15-41-15.png lib=unset plugins=unset appdir=unset parent=systemd"
+   ],
+   "pass": true
+  },
+  "hostPrograms:m74": {
+   "calls": [
+    {
+     "at": "2026-10-21T20:41:10Z",
+     "program": "gsettings",
+     "argv": "get org.cinnamon.theme name",
+     "LD_LIBRARY_PATH": "unset",
+     "QT_PLUGIN_PATH": "unset",
+     "APPDIR": "unset",
+     "PUTGD_HOST_ENVIRONMENT": "unset",
+     "exit": 0,
+     "imageVariables": []
+    },
+    {
+     "at": "2026-10-21T20:41:31Z",
+     "program": "coredumpctl",
+     "argv": "--no-pager --no-legend --json=short --since=@1792611691 list",
+     "LD_LIBRARY_PATH": "unset",
+     "QT_PLUGIN_PATH": "unset",
+     "APPDIR": "unset",
+     "PUTGD_HOST_ENVIRONMENT": "unset",
+     "exit": 0,
+     "imageVariables": []
+    }
+   ],
+   "leaks": [],
+   "failed": [],
+   "pass": true
+  }
+ }
+}
