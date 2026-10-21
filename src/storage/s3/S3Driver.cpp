@@ -4,6 +4,7 @@
 #include "SdkRuntime.h"
 #include "S3ErrorDiagnostics.h"
 #include "S3Multipart.h"
+#include "core/CaBundle.h"
 #include <QElapsedTimer>
 #include <atomic>
 #include <aws/core/auth/AWSCredentials.h>
@@ -43,6 +44,12 @@
 namespace putgd {
 namespace {
 Aws::String aws(const QString& value) { return value.toStdString(); }
+// The AppImage's bundled libcurl looks only for Debian's bundle file; AppRun names
+// the host's own (#329). Other builds keep libcurl's default.
+void useHostCaFile(Aws::Client::ClientConfiguration& config) {
+    const auto bundle = hostCaBundle();
+    if (!bundle.isEmpty()) config.caFile = aws(bundle);
+}
 QString qt(const Aws::String& value) { return QString::fromUtf8(value.data(), int(value.size())); }
 QString objectKey(const Destination& destination, const QString& candidate) {
     auto prefix = destination.settings["objectPrefix"].toString();
@@ -186,6 +193,7 @@ public:
 bool publicFixtureMatches(const StorageReceipt& published, const QByteArray& expected) {
     Aws::Client::ClientConfiguration config(false, "legacy", true);
     config.verifySSL = true;
+    useHostCaFile(config);
     config.followRedirects = Aws::Client::FollowRedirectsPolicy::NEVER;
     config.connectTimeoutMs = published.destination.settings["connectTimeoutMs"].toInt();
     config.httpRequestTimeoutMs = published.destination.settings["requestTimeoutMs"].toInt();
@@ -787,6 +795,7 @@ struct NetworkS3Driver::State {
         config.endpointOverride = aws(destination.settings["endpoint"].toString());
         config.scheme = QUrl(destination.settings["endpoint"].toString()).scheme() == "http" ? Aws::Http::Scheme::HTTP : Aws::Http::Scheme::HTTPS;
         config.verifySSL = true;
+        useHostCaFile(config);
         config.connectTimeoutMs = destination.settings["connectTimeoutMs"].toInt();
         config.httpRequestTimeoutMs = destination.settings["requestTimeoutMs"].toInt();
         config.requestTimeoutMs = destination.settings["lowSpeedTimeSeconds"].toInt() * 1000L;
