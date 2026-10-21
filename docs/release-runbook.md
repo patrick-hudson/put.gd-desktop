@@ -179,6 +179,18 @@ evidence record, then step 5 with the same tag. Confirm the result:
 gh api repos/patrick-hudson/put.gd-desktop/releases/latest --jq .tag_name
 ```
 
+Then sign the stable apt and dnf repositories, which only the user's stable key can do
+([package-repositories.md](package-repositories.md)). Within ten minutes of publication
+the signer on d69 stages the release. Ask the user to run, on the workstation:
+
+```sh
+python3 tools/releases/sign_stable.py --tag vX.Y.Z
+```
+
+gpg-agent and minisign ask for the passphrases, so the user runs it. The signer
+publishes on its next run. Check that `https://pkg.put.gd/update/v1/stable.json`
+names `vX.Y.Z` and that `receipts/vX.Y.Z.json` says `published`.
+
 ## 8. Start the next version
 
 Open a pull request into `nightly` titled `chore(release): start X.Y.Z+1

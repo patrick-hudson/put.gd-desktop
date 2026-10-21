@@ -274,6 +274,14 @@ Minimum-Qt DEB compatibility compilation is separate from GNOME/KDE compositor
 qualification. Windows CI compilation is future-platform evidence, not a
 native support claim.
 
+## Package repositories
+
+Every published nightly and stable release also reaches the signed apt and dnf
+repositories at `pkg.put.gd`. The signer on d69 picks it up within about ten minutes,
+and the update feed follows once the repositories carry it. A stable release needs the
+user's stable key ([release-runbook.md](release-runbook.md) step 7). The layout, keys
+and operation are in [package-repositories.md](package-repositories.md).
+
 ## AppImage updates
 
 Tagged AppImages carry zsync update information, so AppImageUpdate, Gear Lever and
