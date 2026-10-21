@@ -91,6 +91,52 @@ class Coverage(unittest.TestCase):
         self.assertAlmostEqual(cover_player.coverage(w, h, frame, 'rgb', samples=20_000), 0.75, places=1)
 
 
+# Every colour GStreamer's videotestsrc draws for pattern=smpte75 (measured at 1280x720 RGB, GStreamer 1.24-1.26).
+SMPTE75_BARS = [(191, 191, 191), (191, 191, 0), (0, 191, 191), (0, 191, 0), (191, 0, 191), (191, 0, 0), (0, 0, 191)]
+
+
+def render_pattern(pattern, width=320, height=180):
+    """One RGB frame of videotestsrc, or None where GStreamer's Python bindings are missing (the contracts runner)."""
+    try:
+        import gi
+        gi.require_version('Gst', '1.0')
+        from gi.repository import Gst
+    except (ImportError, ValueError):
+        return None
+    Gst.init(None)
+    pipeline = Gst.parse_launch('videotestsrc num-buffers=1 pattern=%s ! video/x-raw,format=RGB,width=%d,height=%d '
+                                '! appsink name=frame' % (pattern, width, height))
+    pipeline.set_state(Gst.State.PLAYING)
+    try:
+        buffer = pipeline.get_by_name('frame').emit('pull-sample').get_buffer()
+        ok, info = buffer.map(Gst.MapFlags.READ)
+        data = bytes(info.data)
+        buffer.unmap(info)
+    finally:
+        pipeline.set_state(Gst.State.NULL)
+    stride = len(data) // height
+    return b''.join(data[y * stride:y * stride + width * 3] for y in range(height))
+
+
+class Pattern(unittest.TestCase):
+    """--pattern must draw no cover-coloured pixel, or check-frame counts the pattern as cover (#292)."""
+
+    def test_the_played_pattern_is_the_75_percent_bar_set(self):
+        self.assertEqual(cover_player.PATTERN, 'smpte75')
+
+    def test_no_bar_is_within_the_cover_tolerance(self):
+        bars = b''.join(bytes(colour) for colour in SMPTE75_BARS)
+        self.assertEqual(cover_player.coverage(len(SMPTE75_BARS), 1, bars, 'rgb'), 0.0)
+
+    def test_a_rendered_frame_has_no_cover_pixels(self):
+        frame = render_pattern(cover_player.PATTERN)
+        if frame is None:
+            self.skipTest('GStreamer Python bindings are not installed')
+        self.assertEqual(cover_player.coverage(320, 180, frame, 'rgb', samples=320 * 180), 0.0)
+        # The 100 % set this replaced: about a seventh of it is the cover colour.
+        self.assertGreater(cover_player.coverage(320, 180, render_pattern('smpte'), 'rgb', samples=320 * 180), 0.1)
+
+
 class CheckFrame(unittest.TestCase):
     def setUp(self):
         self.dir = Path(tempfile.mkdtemp(prefix='cover-'))
