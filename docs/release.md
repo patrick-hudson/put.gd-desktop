@@ -366,6 +366,11 @@ or CI inputs, on every push to `nightly`, and from the nightly and release runs
 with an exact tag. Builders are ABI-separated, keep read-only permissions and
 use the normal presets rather than an alternate build system.
 
+Each package job sets `PUTGD_PACKAGE_TARGET` to its matrix name (`appimage` for the
+AppImage), so the build's update check offers that same package. `native.py
+--package-target` and the AppImage build check it with `putgd-cli --update-info`
+([updates.md](updates.md)).
+
 Each package job also stages its build's split debug files with
 `tools/releases/debug_symbols.py stage`, which checks every `.debug` file against
 the build ID of the binary the package installs. Without a tag, the
