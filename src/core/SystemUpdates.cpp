@@ -102,6 +102,11 @@ bool openSoftwareUpdates(const QJsonObject& action) {
  const auto id=updater["id"].toString();
  const auto known=std::find_if(updaters.cbegin(),updaters.cend(),[&](const Updater& u){return u.id==id;});
  if(known==updaters.cend())return false;
- return QProcess::startDetached(updater["program"].toString(),known->arguments);
+ // The updater outlives the short-lived putgd-cli child that starts it, so it
+ // must not inherit that child's pipes: Discover logs to stderr and died of
+ // SIGPIPE once the resident closed them (k72).
+ QProcess process;process.setProgram(updater["program"].toString());process.setArguments(known->arguments);
+ process.setStandardInputFile(QProcess::nullDevice());process.setStandardOutputFile(QProcess::nullDevice());process.setStandardErrorFile(QProcess::nullDevice());
+ return process.startDetached();
 }
 }
