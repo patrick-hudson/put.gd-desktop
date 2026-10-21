@@ -66,6 +66,71 @@ and Debian 13 ships 7.1, so Debian rows install the release `debian13` DEB, buil
 in a Debian 13 container against `libavcodec61` (issue #85). Before that asset
 existed they used a DEB built on the Debian host.
 
+## AppImage full-acceptance profile
+
+One pass of the exact published AppImage on every desktop below, with every item
+evidenced on every desktop. A failed item is a finding and gets its own issue; the
+pass still reports it as a fail. An item that can't run on a desktop needs a
+written reason, and Patrick decides whether the pass counts as complete. Nothing
+is skipped silently. The first pass is
+[2026-10-21, nightly 842](evidence/2026-10-21-appimage-full-acceptance/README.md).
+
+| Desktop | Placement |
+| --- | --- |
+| Fedora 44 GNOME Wayland | physical `.70` (f44), with the release's own `putgd-gnome50` extension as a user copy |
+| Debian 13 Plasma 6.3 Wayland | physical `.69` (d69) |
+| Kubuntu 26.04 Plasma 6.6 Wayland | physical `.72` (k72) |
+| Linux Mint 22.3 Cinnamon X11 | physical `.74` (m74) |
+| Ubuntu 26.04 GNOME Wayland | VM: an overlay of `gnome-provisioned-20261016` on f44 or d69. Remove that golden's old put.gd DEB first, and install the release's extension. |
+| Aurora (Universal Blue, Fedora Atomic KDE) | VM: an overlay of the `aurora-stable-44.20260908.1-*` golden on f44 ([Aurora VM](aurora-vm.md)) |
+
+Each desktop uses a private profile: `XDG_CONFIG_HOME`, `XDG_STATE_HOME`,
+`XDG_CACHE_HOME` and `XDG_RUNTIME_DIR` of its own. The data home is the user's,
+because AppRun registers KWin's permissions and the Wayland icon entries there.
+Uploads go to the loopback S3 fixture (`tests/fixtures/s3_server.py`) and never to
+a real bucket. Physical desktops need a coordinator lock, a quiet host for the
+memory window and the coordinator's OK for each logout.
+
+- **A. Identity:** the AppImage is downloaded from its GitHub release.
+  - Its SHA-256 matches `SHA256SUMS`, and `--version-json` reports the release tag.
+  - `--appimage-updateinformation` is `zsync|https://app.put.gd/dl/nightly/appimage.zsync` (stable releases: the stable channel).
+  - The image root holds exactly one desktop entry, `putgd.desktop`, without `NoDisplay`.
+  - Record the OS, desktop and compositor versions, the type of the real login session (`loginctl`, not XWayland) and the Qt platform plugin each put.gd process loads.
+- **B. Start:** the AppImage starts from a terminal or the file manager with FUSE, with no extra installs on Aurora.
+  - The resident, `putgd-ui` and `session.sock` are up, and `putgd-ui` uses the native platform on Wayland.
+  - The tray icon is present, and its menu opens with a real click.
+  - The put.gd icon shows in the title bar (where the window decoration draws app icons) and in the task switcher.
+- **C. Idle memory:** after a 180 s idle window, the resident's RSS and PSS are under the 40 MiB budget.
+  - No GTK, KDE platform theme, `libssl` or `libQt6Network` is mapped in the resident.
+- **D. Capture:** region, window and desktop captures each produce a PNG with a history entry.
+  - **Edit & upload:** a blur and a solid redaction, checked in the uploaded pixels, then Upload.
+  - **Save a copy…** opens the desktop's portal chooser (the themed fallback only where no portal FileChooser exists), and the saved file exists.
+  - The link is copied according to the clipboard setting: each link on every desktop, plus the list behaviour on at least one.
+- **E. Recording:** a moving pattern, recorded through the production path: prepare, start, pause, resume, stop.
+  - In the Review window: a trim and a timed blur.
+  - Export MP4, WebM, GIF and WebP, and save one copy through the chooser.
+  - Each clip's motion score is compared with a static control recorded on the same desktop.
+  - Record the live encoder (VA-API or the bundled x264).
+  - On Plasma Wayland, AppRun's KWin entry gives `kde-screencast`, and the entry is removed on exit.
+- **F. Notifications:** the link-ready notification appears, and its default action opens the link (a recorded `x-scheme-handler/https` handler receives it).
+- **G. History:** entries show with previews, including a video poster, and **Copy image** puts the same pixels on the clipboard.
+  - **Delete from destination…** removes the uploaded object from the fixture, and the row shows "Deleted from destination". The local file is kept by design.
+- **H. Settings:** a theme switch (System, Dark, Light) repaints the open window live.
+  - **Updates** shows "This build's channel (nightly)", with a status from the live app.put.gd feed.
+  - **Check now** works, and the nightly channel shows no notification.
+- **I. Start at login:** turn on **Launch at login**, then do a real logout and login. Put.gd must start from the AppImage.
+  - Physical desktops: only with the coordinator's OK, and only after checking that none of Patrick's apps are open.
+  - VMs: through their autologin.
+- **J. Update check:** `appimageupdatetool --check-for-update` against the published zsync gives the correct answer for the feed at that moment. The full N→N+1 update is #296's check.
+- **K. Clean exit and cleanup:** quit from the tray, and nothing of put.gd keeps running.
+  - The AppImage, the `putgd-appimage-*` and icon entries, the autostart entry, the profile and the caches are removed.
+  - VM overlays, tunnels and wall tiles are removed, and locks are released with `--verified-clean`.
+
+Evidence per desktop:
+- a desktops × A–K pass/fail table, with versions, memory numbers, encoders and motion scores;
+- annotated full-desktop pictures of the tray menu, Settings, a capture in the editor, the Review window, the native **Save a copy…** chooser and the link-ready notification;
+- every frame checked before it is kept.
+
 ## Choose physical hardware or a VM for each gate
 
 Prefer Patrick's [Fedora and Debian build servers](remote-builders.md), including

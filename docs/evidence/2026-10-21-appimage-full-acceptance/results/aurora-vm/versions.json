@@ -1,0 +1,48 @@
+{
+ "os": "Aurora (Version: 44.20260908.1)",
+ "osVersionId": "44",
+ "kernel": "7.1.8-200.fc44.x86_64",
+ "host": "aurora-lab",
+ "sessionProcess": "plasmashell",
+ "graphicalSessions": [
+  {
+   "Seat": "seat0",
+   "Service": "plasmalogin-autologin",
+   "Desktop": "KDE",
+   "Leader": "1252",
+   "Type": "wayland",
+   "Class": "user",
+   "State": "active",
+   "Id": "1"
+  }
+ ],
+ "shellSession": "0::/user.slice/user-1000.slice/user@1000.service/session.slice/plasma-plasmashell.service",
+ "envSessionType": "wayland",
+ "currentDesktop": "KDE",
+ "plasmashell": [
+  "plasmashell 6.7.4"
+ ],
+ "kwin_wayland": [
+  "kwin 6.7.4"
+ ],
+ "packages": {
+  "kwin": "6.7.4-2.fc44",
+  "kwin-common": "6.7.4-2.fc44",
+  "plasma-workspace": "6.7.4-2.fc44",
+  "xorg-x11-server-Xwayland": "24.1.13-1.fc44",
+  "qt6-qtbase": "6.11.2-2.fc44",
+  "xdg-desktop-portal": "1.22.1-1.fc44",
+  "xdg-desktop-portal-kde": "6.7.4-1.fc44",
+  "xdg-desktop-portal-gtk": "1.15.3-3.fc44",
+  "pipewire": "1.6.8-1.fc44",
+  "fuse3": "3.18.2-1.fc44"
+ },
+ "gpu": [
+  "00:01.0 VGA compatible controller: Red Hat, Inc. Virtio 1.0 GPU (rev 01)"
+ ],
+ "fuse": {
+  "fusermount": true,
+  "fusermount3": true
+ },
+ "libfuse2": true
+}
