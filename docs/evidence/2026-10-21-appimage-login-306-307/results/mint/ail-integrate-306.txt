@@ -1,0 +1,19 @@
+$ ./putgd-….AppImage --appimage-extract "*.desktop"   # AppDir root of each image
+== putgd-0.1.1-nightly.816-x86_64.AppImage: AppDir root desktop entries
+lrwxrwxrwx 1 lab lab 36 Oct 21 11:33 putgd.desktop -> usr/share/applications/putgd.desktop
+lrwxrwxrwx 1 lab lab 39 Oct 21 11:33 putgd-ui.desktop -> usr/share/applications/putgd-ui.desktop
+== putgd-0.1.1-dev.819+gf74de773badb-x86_64.AppImage: AppDir root desktop entries
+lrwxrwxrwx 1 lab lab 36 Oct 21 11:33 putgd.desktop -> usr/share/applications/putgd.desktop
+
+$ ail-cli integrate putgd-….AppImage   # AppImageLauncher 3.0.0-beta-3
+ail-cli integrate putgd-0.1.1-nightly.816-x86_64.AppImage
+Processing /home/lab/r12/before/putgd-0.1.1-nightly.816-x86_64.AppImage
+Moving AppImage to integration directory
+ERROR: appimage_register_in_system : The AppImage explicitly requested to not be integrated
+Error: Failed to register AppImage in system via libappimage
+ail-cli integrate putgd-0.1.1-dev.819+gf74de773badb-x86_64.AppImage
+Processing /home/lab/r12/after/putgd-0.1.1-dev.819+gf74de773badb-x86_64.AppImage
+Moving AppImage to integration directory
+Extracting usr/share/icons/hicolor/scalable/apps/putgd.svg to "/home/lab/.local/share/icons/hicolor/scalable/apps/appimagekit_09f62833e6a21fcb75f527e140acf56a_putgd.svg"
+$ ls ~/.local/share/applications
+appimagekit_09f62833e6a21fcb75f527e140acf56a-put.gd.desktop

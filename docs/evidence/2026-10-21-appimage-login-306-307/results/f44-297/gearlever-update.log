@@ -1,0 +1,9 @@
+F: Can't find a11y bus: GDBus.Error:org.freedesktop.DBus.Error.Spawn.ExecFailed: Failed to execute program org.a11y.Bus: Permission denied
+(xdg-desktop-portal-gtk:1874378): dbind-WARNING **: 11:26:21.386: AT-SPI: Error retrieving accessibility bus address: org.freedesktop.DBus.Error.Spawn.ExecFailed: Failed to execute program org.a11y.Bus: Permission denied
+fusermount3: failed to access mountpoint /run/user/1000/gvfs: Permission denied
+Do you really want to update this AppImage? (y/N) Downloading update from: StaticFileUpdater
+Status: 10%
+… (one line per percent)
+Status: 100%
+/home/patrick/work/put.gd-r12aiu/glhome/AppImages/put.gd.appimage updated successfully
+A connection to the bus can't be made

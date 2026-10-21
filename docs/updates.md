@@ -104,6 +104,53 @@ In the configuration file this is `preferences.updates`
 
 Both keys are optional. Without the object, put.gd checks daily on this build's channel.
 
+## Updating the AppImage
+
+Tagged AppImages (stable, candidate and nightly) can update themselves through the
+usual AppImage tools; untagged builds can't ([how it works](release.md#appimage-updates)):
+
+- **Gear Lever** (Flatpak): **Update** downloads the new image and replaces the file in
+  place.
+- **AppImageLauncher**: **Integrate and run** moves the image to `~/Applications` and adds a
+  menu entry with **Update this AppImage**. The update is a delta (only the changed parts are
+  downloaded). The new version is written beside the old one, which is kept, and while
+  AppImageLauncher's daemon runs the menu lists both (as **put.gd (1)** and **put.gd (2)**);
+  remove the old one with **Delete this AppImage**.
+  On Linux Mint 22.3, AppImageLauncher 3.0.0-beta-3's own **Update this AppImage** action fails
+  (`libQt5QuickWidgets.so.5: cannot open shared object file`), an upstream bug; running
+  `/opt/appimagelauncher.AppDir/usr/bin/update ~/Applications/putgd-….AppImage` works.
+- **appimageupdatetool** (command line): `appimageupdatetool putgd-….AppImage` writes the new
+  version beside the old one; `--remove-old` deletes the old file afterwards.
+
+**Start at login follows the update.** From an AppImage, launch at login starts the newest put.gd
+AppImage in the same folder as the one you last ran, if it is your own file and carries the same
+update information (the same channel). So the next login starts the new version after any of the
+three updaters, even if the old file was removed, and put.gd then remembers the new file.
+
+### Fedora
+
+appimageupdatetool looks for the certificate bundle at Ubuntu's path,
+`/etc/ssl/certs/ca-certificates.crt`, which Fedora doesn't have
+([#297](https://github.com/patrick-hudson/put.gd-desktop/issues/297)). Without it, it prints
+`zsync2: Unknown error while checking whether file (null) exists: Bad address` about thirty
+times and crashes. Setting `SSL_CERT_FILE=/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem`
+stops the crash and the update check works, but the update itself still fails with
+`zsync_legacy: Other error? -1`: the step that follows GitHub's download redirect doesn't read
+`SSL_CERT_FILE`. Either use **Gear Lever**, which isn't affected (it runs in its own Flatpak
+runtime), or show appimageupdatetool Fedora's bundle at the expected path, without root:
+
+```sh
+APPIMAGE_EXTRACT_AND_RUN=1 bwrap --dev-bind / / --tmpfs /etc/pki/tls/certs \
+  --ro-bind /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem /etc/pki/tls/certs/ca-certificates.crt \
+  ./appimageupdatetool-x86_64.AppImage ~/Applications/putgd-….AppImage
+```
+
+On Fedora `/etc/ssl/certs` is a link to `/etc/pki/tls/certs`, so the bundle appears at
+`/etc/ssl/certs/ca-certificates.crt` for that one command. `APPIMAGE_EXTRACT_AND_RUN=1` is needed
+because FUSE mounts don't work inside `bwrap`. AppImageLauncher's updater uses the same library
+(zsync2) and is expected to behave the same; it wasn't tested on Fedora. Recorded on Fedora 44:
+[AppImage updates on Fedora](evidence/2026-10-21-appimage-login-306-307/README.md#fedora-297).
+
 ## CLI and MCP
 
 | Interface | What it does |

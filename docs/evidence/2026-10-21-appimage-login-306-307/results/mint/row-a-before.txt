@@ -1,0 +1,26 @@
+{"quit": 4924, "running": null}
+Description     None                
+Update Source   StaticFileUpdater   
+Do you really want to integrate this AppImage? (y/N) /home/lab/AppImages/put.gd.appimage was integrated successfully
+/home/lab/AppImages:
+total 112244
+drwxr-xr-x  3 lab lab      4096 Oct 21 12:05 .
+drwxr-x--- 22 lab lab      4096 Oct 21 12:05 ..
+drwxr-xr-x  2 lab lab      4096 Oct 21 12:05 .icons
+-rwxr-xr-x  1 lab lab 114924024 Oct 21 12:05 put.gd.appimage
+
+/home/lab/Downloads:
+total 8
+drwxr-xr-x  2 lab lab 4096 Oct 21 12:05 .
+drwxr-x--- 22 lab lab 4096 Oct 21 12:05 ..
+== A: Gear Lever, N integrated and started  2026-10-21T12:05:34-0500
+login session:  40 1000 lab - - closing no - | 51 1000 lab - - active no - | c1 1000 lab seat0 tty7 closing no - | c3 1000 lab seat0 tty7 closing no - | c5 1000 lab seat0 tty7 closing no - | c7 1000 lab seat0 tty7 active no -
+put.gd running: pid 5449, started Wed Oct 21 12:05:32 2026
+  version:      0.1.1-dev.826+g1b4dc59faa1a
+  APPIMAGE:     /home/lab/AppImages/put.gd.appimage
+autostart:      Exec=/bin/sh "/home/lab/.local/share/putgd/login/appimage-start.sh" --background
+login script:   configured='/home/lab/AppImages/put.gd.appimage'
+                update_information='zsync|http://127.0.0.1:8765/appimage.zsync'
+/home/lab/Applications:
+/home/lab/AppImages:
+  put.gd.appimage

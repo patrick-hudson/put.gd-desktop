@@ -306,26 +306,35 @@ Assembly details are in
 [AppImage assembly](../packaging/appimage/README.md#update-information); the lab
 update from one build to the next is recorded in
 [AppImage zsync updates](evidence/2026-10-20-appimage-zsync-293/README.md).
-On Fedora, appimageupdatetool needs
-`SSL_CERT_FILE=/etc/pki/tls/certs/ca-bundle.crt` (#297).
+On Fedora, appimageupdatetool can't find the certificate bundle; `SSL_CERT_FILE` alone
+isn't enough. The workaround and Gear Lever (unaffected) are in
+[Updating the AppImage](updates.md#fedora) (#297).
 
 Gear Lever and AppImageLauncher both move N to N+1 through a 302, like the site
 permalink's, in a lab Mint 22.3 guest
 ([desktop acceptance](evidence/2026-10-21-updates-acceptance-303/README.md#4-appimage-updates-gear-lever-appimagelauncher-start-at-login-295)).
 
-**Gear Lever** downloads the whole image and replaces the file in place, so start
-at login picks up the new version.
+**Gear Lever** downloads the whole image and replaces the file in place.
+**AppImageLauncher**'s updater and appimageupdatetool do a zsync delta and write the
+new version under the `.zsync`'s file name beside the old one; AppImageLauncher keeps
+the old file, `appimageupdatetool --remove-old` deletes it. Start at login from an
+AppImage runs a script put.gd keeps current, which starts the newest put.gd AppImage
+in that folder with the same update information, so the next login starts the new
+version after all three
+([#307](https://github.com/patrick-hudson/put.gd-desktop/issues/307); the rules are in
+[AppImage assembly](../packaging/appimage/README.md#start-at-login-after-an-update)).
 
-**AppImageLauncher**'s updater does a zsync delta but writes the new version under
-the `.zsync`'s file name and keeps the old one. Start at login then keeps the old
-version until the new file has been launched once. An updater that removes the old
-file leaves nothing to start
-([#307](https://github.com/patrick-hudson/put.gd-desktop/issues/307)).
+The image root holds exactly one desktop entry, `putgd.desktop`, and the build checks
+it, so AppImageLauncher integrates put.gd and offers **Update this AppImage**
+([#306](https://github.com/patrick-hudson/put.gd-desktop/issues/306)). Both are recorded
+in a Mint 22.3 guest with real logouts and logins:
+[AppImage login and integration](evidence/2026-10-21-appimage-login-306-307/README.md).
 
-AppImageLauncher can't integrate the image until its root has a single desktop
-entry ([#306](https://github.com/patrick-hudson/put.gd-desktop/issues/306)).
-
-The first live update through the site permalink is still to come (#296).
+A live delta update from nightly 801 to 816 through the site permalink and GitHub's
+download CDN worked with appimageupdatetool in the Mint guest (95 % of the image reused,
+6.8 MB fetched, SHA-256 equal to 816's `SHA256SUMS` line;
+[pre-check](evidence/2026-10-21-appimage-login-306-307/README.md#live-pre-check-801-to-816)).
+The close-out with two nightlies that carry #307 is #296.
 
 ## GitHub downloads and source
 
