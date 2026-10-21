@@ -12,9 +12,13 @@ A systemd user timer on one lab builder runs `pkgrepo.py run`. Each run:
    reprepro for apt/<label>/dists/<channel>, createrepo_c for
    rpm/fedora/44/x86_64/<channel>;
 4. signs it: nightly here with the builder's nightly key (InRelease,
-   Release.gpg, repomd.xml.asc, SHA256SUMS.minisig, the feed's .minisig);
-   stable is staged unsigned until sign_stable.py on the workstation returns
-   the stable key's signatures, which are checked here before use;
+   Release.gpg, an rpmsign signature on a copy of the RPM, SHA256SUMS.minisig,
+   the feed's .minisig); stable is staged unsigned until sign_stable.py on the
+   workstation returns the stable key's signatures and signed RPM, which are
+   checked here before use. dnf checks the RPM signature (gpgcheck=1); the
+   repodata is unsigned because GNOME Software's dnf5daemon on Fedora 44 can't
+   load a repo with repo_gpgcheck=1 (#293). The receipt maps each GitHub RPM
+   digest to the signed one;
 5. uploads packages, then indexes, then the signed metadata, invalidates what
    changed, reads InRelease and repomd.xml back through the CDN, and only then
    writes the update feed, so the feed never names a version apt or dnf cannot
@@ -127,7 +131,7 @@ class Config:
     base_url: str = 'https://pkg.put.gd'
     repository: str = REPOSITORY
     aws_profile: str = 'publish'
-    rpm_sign: bool = False
+    rpm_sign: bool = True
     dnf_keep: int = 3
     delete_after: int = 3600
     readback_timeout: int = 600
@@ -415,14 +419,14 @@ class Workspace:
         self.run(['createrepo_c', '--quiet', '--update', '--unique-md-filenames', '--checksum', 'sha256',
                   '--no-database', str(self.rpm_dir())], check=True, capture_output=True, text=True)
 
-    def sign_nightly(self):
-        """Detached signatures the builder makes itself; reprepro already wrote InRelease and Release.gpg."""
-        repomd = self.rpm_dir() / 'repodata' / 'repomd.xml'
-        signature = repomd.with_name('repomd.xml.asc')
-        self.run(['gpg', '--batch', '--yes', '--quiet', '--local-user', self.config.nightly_fingerprint, '--armor',
-                  '--detach-sign', '--output', str(signature), str(repomd)], check=True, env=self.env(),
-                 capture_output=True, text=True)
-        return [repomd]
+    def replace_rpm(self, signed):
+        """Put a signed RPM in place of its unsigned build and regenerate the repodata."""
+        target = self.rpm_dir() / 'Packages' / signed.name
+        if not target.exists():
+            raise SignerError('The staged repository has no ' + signed.name)
+        target.unlink()
+        shutil.copy2(signed, target)
+        self.createrepo(None)
 
     def write_published(self, inputs):
         record = {'tag': inputs['tag'], 'version': inputs['version'], 'publishedAt': iso(now_utc())} if inputs else None
@@ -444,6 +448,21 @@ def rpm_file_name(path, run=subprocess.run):
     if not SAFE_NAME.match(name):
         raise SignerError('Unexpected RPM header name: ' + name)
     return name
+
+
+def rpm_digests(path, run=subprocess.run):
+    """Header and payload digests, which signing an RPM leaves unchanged."""
+    result = run(['rpm', '-qp', '--nosignature', '--qf', '%{SHA256HEADER} %{PAYLOADDIGEST}', str(path)],
+                 capture_output=True, text=True, check=True)
+    return result.stdout.split()
+
+
+def verify_rpm(armored_key, path, run=subprocess.run):
+    """True when the RPM carries a valid signature by exactly this key."""
+    with tempfile.TemporaryDirectory(prefix='rpmkeys-') as database:
+        run(['rpmkeys', '--dbpath', database, '--import', str(armored_key)], check=True, capture_output=True, text=True)
+        result = run(['rpmkeys', '--dbpath', database, '--checksig', str(path)], capture_output=True, text=True)
+    return result.returncode == 0 and result.stdout.strip().endswith('digests signatures OK')
 
 
 # --- Signatures ----------------------------------------------------------------------------------------------
@@ -638,8 +657,8 @@ def write_receipt(config, receipt, name):
 
 
 class Signer:
-    def __init__(self, config, github=None, clients=None, run=subprocess.run, log=print):
-        self.config, self.run, self.log = config, run, log
+    def __init__(self, config, github=None, clients=None, run=subprocess.run, log=print, http=None):
+        self.config, self.run, self.log, self.http = config, run, log, http
         self.github = github or GitHub(config.repository)
         self._clients = clients
 
@@ -685,9 +704,17 @@ class Signer:
         self.run(['rpmsign', '--define', '_gpg_name ' + self.config.nightly_fingerprint, '--define',
                   '_gpg_path ' + str(self.config.gnupghome), '--addsign', str(target)], check=True,
                  capture_output=True, text=True, env=dict(os.environ, GNUPGHOME=str(self.config.gnupghome)))
-        receipt['rpm'].append({'asset': rpm['name'], 'githubSha256': rpm['sha256'], 'repoSha256': sha256_file(target),
-                               'signedWith': self.config.nightly_fingerprint})
+        self.check_signed_rpm(rpm, target, self.config.keys / 'putgd-nightly.asc', self.config.nightly_fingerprint, receipt)
         return target
+
+    def check_signed_rpm(self, rpm, signed, armored_key, fingerprint, receipt):
+        """The signed RPM is the GitHub build plus a signature by this channel's key, nothing else."""
+        if rpm_digests(signed, self.run) != rpm_digests(rpm['path'], self.run):
+            raise SignerError('The signed RPM is not the GitHub build: ' + rpm['name'])
+        if not verify_rpm(armored_key, signed, self.run):
+            raise SignerError('The RPM signature does not verify against the channel key: ' + rpm['name'])
+        receipt['rpm'].append({'asset': rpm['name'], 'file': signed.name, 'githubSha256': rpm['sha256'],
+                               'repoSha256': sha256_file(signed), 'signedWith': fingerprint})
 
     def record_inputs(self, receipt, inputs):
         receipt['channel'] = inputs['channel']
@@ -698,7 +725,7 @@ class Signer:
                              for label, package in sorted(inputs['packages'].items())]
 
     def sign_nightly(self, workspace, inputs, receipt):
-        signed = workspace.sign_nightly()
+        signed = []
         for label in DEB_LABELS:
             for name in ('InRelease', 'Release.gpg'):
                 path = workspace.tree / 'apt' / label / 'dists' / workspace.channel / name
@@ -713,12 +740,14 @@ class Signer:
         keyring = self.config.keys / 'putgd-nightly.gpg'
         for path in signed:
             # (signed file, detached signature); InRelease carries its own.
-            pair = {'repomd.xml': (path, path.with_name('repomd.xml.asc')), 'InRelease': (path, None),
-                    'Release.gpg': (path.with_name('Release'), path)}[path.name]
+            pair = {'InRelease': (path, None), 'Release.gpg': (path.with_name('Release'), path)}[path.name]
             if not verify_gpg(keyring, *pair, run=self.run):
                 raise SignerError('A signature does not verify against the nightly key: ' + path.name)
             receipt['signatures'].append({'file': (pair[1] or pair[0]).relative_to(workspace.tree).as_posix(),
                                           'kind': 'openpgp', 'key': self.config.nightly_fingerprint})
+        for entry in receipt['rpm']:
+            receipt['signatures'].append({'file': f'{RPM_LABELS["fedora44"]}/{workspace.channel}/Packages/{entry["file"]}',
+                                          'kind': 'rpm', 'key': entry['signedWith']})
         for path in extra:
             receipt['signatures'].append({'file': path.relative_to(workspace.tree).as_posix(), 'kind': 'minisign',
                                           'key': 'nightly'})
@@ -726,7 +755,7 @@ class Signer:
     def publish(self, scope, workspace, receipt):
         """Upload, invalidate, read back, then the feed and receipt; swap the workspace in on success."""
         s3, cloudfront = self.clients()
-        publisher = Publisher(self.config, scope, workspace.channel, s3, cloudfront)
+        publisher = Publisher(self.config, scope, workspace.channel, s3, cloudfront, http=self.http)
         changed = publisher.upload(workspace.tree, {0, 1, 2, 3}, receipt)
         publisher.invalidate(changed, receipt)
         publisher.readback(workspace.tree, readback_files(workspace), receipt)
@@ -742,6 +771,8 @@ class Signer:
             shutil.rmtree(retired)
         if current.root.exists():
             current.root.rename(retired)
+        # The first stable publication comes from its stage, outside workspaces/.
+        current.root.parent.mkdir(parents=True, exist_ok=True)
         workspace.root.rename(current.root)
         shutil.rmtree(retired, ignore_errors=True)
         publisher.retire(current.tree, receipt)
@@ -794,13 +825,16 @@ class Signer:
             update_feed.check_feed(document)
             feed.write_text(json.dumps(document, indent=2) + '\n')
         to_sign = {'clearsign': [f'apt/{label}/dists/stable/Release' for label in DEB_LABELS],
-                   'detach': [f'{RPM_LABELS["fedora44"]}/stable/repodata/repomd.xml'],
                    'minisign': ['update/v1/stable.json'] + ([f'releases/{inputs["tag"]}/SHA256SUMS'] if inputs else [])}
-        check = {'packages': [f'apt/{label}/dists/stable/main/binary-amd64/Packages' for label in DEB_LABELS],
-                 'primary': [f'{RPM_LABELS["fedora44"]}/stable/repodata/' + path.name
-                             for path in (workspace.rpm_dir() / 'repodata').glob('*-primary.xml*')]}
-        manifest = {'schemaVersion': 1, 'scope': scope, 'tag': inputs['tag'] if inputs else None,
-                    'stableFingerprint': self.config.stable_fingerprint, 'sign': to_sign, 'check': check,
+        check = {'packages': [f'apt/{label}/dists/stable/main/binary-amd64/Packages' for label in DEB_LABELS]}
+        # The workstation downloads this RPM from GitHub itself, signs it and returns it.
+        rpm = None
+        if inputs:
+            package = inputs['packages']['fedora44']
+            rpm = {'asset': package['name'], 'sha256': package['sha256'], 'file': rpm_file_name(package['path'], self.run)}
+            shutil.copy2(package['path'], stage / 'unsigned.rpm')
+        manifest = {'schemaVersion': 2, 'scope': scope, 'tag': inputs['tag'] if inputs else None,
+                    'stableFingerprint': self.config.stable_fingerprint, 'sign': to_sign, 'check': check, 'rpm': rpm,
                     'sha256': {relative: sha256_file(workspace.tree / relative)
                                for group in (to_sign, check) for paths in group.values() for relative in paths},
                     'stagedAt': iso(now_utc())}
@@ -815,8 +849,8 @@ class Signer:
         manifest = json.loads((stage / 'manifest.json').read_text())
         signatures = stage / 'signatures'
         wanted = ([relative + suffix for relative in manifest['sign']['clearsign'] for suffix in ('.InRelease', '.gpg')]
-                  + [relative + '.asc' for relative in manifest['sign']['detach']]
-                  + [relative + '.minisig' for relative in manifest['sign']['minisign']])
+                  + [relative + '.minisig' for relative in manifest['sign']['minisign']]
+                  + ([manifest['rpm']['file']] if manifest['rpm'] else []))
         return all((signatures / name.replace('/', '__')).is_file() for name in wanted)
 
     def publish_stable(self, scope, stage):
@@ -844,12 +878,16 @@ class Signer:
                 shutil.copy2(detached, release.with_name('Release.gpg'))
                 receipt['signatures'] += [{'file': relative.rsplit('/', 1)[0] + '/' + file, 'kind': 'openpgp',
                                            'key': self.config.stable_fingerprint} for file in ('InRelease', 'Release.gpg')]
-            for relative in manifest['sign']['detach']:
-                signature = signatures / (relative.replace('/', '__') + '.asc')
-                if not verify_gpg(keyring, workspace.tree / relative, signature, self.run):
-                    raise SignerError('repomd.xml.asc does not verify against the stable key')
-                shutil.copy2(signature, workspace.tree / (relative + '.asc'))
-                receipt['signatures'].append({'file': relative + '.asc', 'kind': 'openpgp', 'key': self.config.stable_fingerprint})
+            if manifest['rpm']:
+                signed = signatures / manifest['rpm']['file']
+                unsigned = {'name': manifest['rpm']['asset'], 'sha256': manifest['rpm']['sha256'], 'path': stage / 'unsigned.rpm'}
+                if sha256_file(unsigned['path']) != unsigned['sha256']:
+                    raise SignerError('The staged unsigned RPM changed after staging')
+                self.check_signed_rpm(unsigned, signed, self.config.keys / 'putgd-stable.asc',
+                                      self.config.stable_fingerprint, receipt)
+                workspace.replace_rpm(signed)
+                receipt['signatures'].append({'file': f'{RPM_LABELS["fedora44"]}/stable/Packages/{signed.name}',
+                                              'kind': 'rpm', 'key': self.config.stable_fingerprint})
             for relative in manifest['sign']['minisign']:
                 signature = signatures / (relative.replace('/', '__') + '.minisig')
                 if not verify_minisign(public, workspace.tree / relative, signature, self.run):
