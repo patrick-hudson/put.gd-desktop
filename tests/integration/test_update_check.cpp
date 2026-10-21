@@ -43,6 +43,8 @@ private slots:
   Error error;const auto result=fetchUpdate(build(),"nightly",error);
   QVERIFY2(!error,qPrintable(error.message));
   QCOMPARE(result["updateAvailable"].toBool(),true);QCOMPARE(result["latest"].toString(),QString("0.1.1-nightly.590"));QVERIFY(!result["checkedAt"].toString().isEmpty());
+  // The child, not the resident, reads the repository file (#293 phase 2).
+  QVERIFY(QStringList({"software-updates","download"}).contains(result["action"].toObject()["kind"].toString()));
   QCOMPARE(server.requests.size(),1);
   const auto lines=server.requests.first().split('\n');
   QCOMPARE(lines.first().trimmed(),QByteArray("GET /update/v1/nightly.json HTTP/1.1"));

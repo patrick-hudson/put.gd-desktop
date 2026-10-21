@@ -32,17 +32,18 @@ public:
  // Checks now, whatever the schedule or the check setting says, and replies
  // with status(). A failed check replies with its error.
  void check(JsonReply);
- // What updating this installation means here: the system's software
- // updater when the package's repository file is in use, else a download.
+ // What updating this installation means here, as the last check found it:
+ // the system's software updater when the package's repository file is in
+ // use, else a download. The check child reads the file, not the resident.
  QJsonObject action() const;
- // Starts that updater (Update Manager, Discover or GNOME Software).
- void openSoftwareUpdates(JsonReply) const;
+ // Starts that updater (Update Manager, Discover or GNOME Software) through
+ // `putgd-cli --open-software-updates`, which reads the file again.
+ void openSoftwareUpdates(JsonReply);
  // Test seams.
  void setClock(std::function<QDateTime()> clock) {clock_=std::move(clock);}
  void setRandom(std::function<qint64(qint64,qint64)> random) {random_=std::move(random);}
  void setBuild(update::Build build) {build_=std::move(build);}
  void setProgram(QString program,QStringList prefix={}) {program_=std::move(program);prefix_=std::move(prefix);}
- void setSystem(std::function<QJsonObject(const QString&)> actionFor,std::function<bool(const QJsonObject&)> open) {actionFor_=std::move(actionFor);openUpdater_=std::move(open);}
  qint64 nextCheckInMs() const {return timer_.isActive()?timer_.remainingTime():-1;}
 signals:
  void changed();
@@ -72,7 +73,5 @@ private:
  QString notifiedVersion_,attemptedChannel_;
  std::function<QDateTime()> clock_;
  std::function<qint64(qint64,qint64)> random_;
- std::function<QJsonObject(const QString&)> actionFor_;
- std::function<bool(const QJsonObject&)> openUpdater_;
 };
 }
