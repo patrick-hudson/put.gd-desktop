@@ -600,8 +600,9 @@ the same action.
 
 **Show in folder** is the session method `diagnostics.reveal` with an absolute `path`
 (MCP `show_diagnostics_package`). It asks the file manager to select the package
-through `org.freedesktop.FileManager1.ShowItems`; when nothing answers, it opens the
-folder with `gio open`. It accepts put.gd's own `putgd-diagnostics-*.zip` names, and
+through `org.freedesktop.FileManager1.ShowItems`; when nothing answers, it asks the XDG
+portal's `OpenDirectory`, and only then opens the folder with `gio open` (see
+[Opening links and folders on the host](#opening-links-and-folders-on-the-host)). It accepts put.gd's own `putgd-diagnostics-*.zip` names, and
 any other path `diagnostics.bundle` saved a package to in this resident, such as an
 `output` of `/tmp/out/my-report.zip` (#223); anything else is `invalid_request`. The file
 must still exist (`diagnostics_package_missing`). The notification's button always
@@ -614,6 +615,36 @@ Agents drive the same controls in an open window: `ui.diagnostics` (MCP
 `settings_diagnostics`) and `ui.historySaveDiagnostics` (MCP
 `history_save_diagnostics`); see [cli.md](cli.md) and [mcp.md](mcp.md).
 
+
+## Opening links and folders on the host
+
+put.gd opens links and folders over D-Bus first, so it starts no program itself (#326):
+
+- The link-ready notification, History's **Open in browser**, the version link, the
+  update links and Proton sign-in use `org.freedesktop.portal.OpenURI.OpenURI`. The
+  portal picks the browser from the user's own `mimeapps.list`.
+- **Show in folder** uses `org.freedesktop.FileManager1.ShowItems`, then the portal's
+  `OpenDirectory`.
+- Only when the portal is missing, refuses or reports a failure does put.gd run
+  `gio open` (or `xdg-open` on a host without gio). A cancelled or unanswered portal
+  request is not opened a second time.
+- Settings → **Open in editor** runs `gio open` on the config file, since the portal's
+  `OpenFile` can ask which application to use first.
+
+Every host program put.gd starts gets the host's environment, not the one put.gd runs
+with. That covers `gio`/`xdg-open`, the software updater, `gsettings` (Cinnamon's panel
+tone) and `coredumpctl`. In the AppImage, AppRun puts the image's libraries and Qt plugins
+first. Before #326, a host `gio` loaded the image's older GLib and exited 127, so the
+notification's link never opened. AppRun saves the host's values as `PUTGD_HOST_<NAME>`,
+listed in `PUTGD_HOST_ENVIRONMENT`. put.gd restores them, drops anything else under
+`APPDIR`, and removes `APPDIR`, `APPIMAGE`, `ARGV0` and `OWD`. A DEB or RPM build passes
+its environment on unchanged. The log records each open as `Opened on the host` or
+`Could not open on the host`, with its `route` and `fallbackFrom`, never the link.
+
+A lab URL recorder set as the default browser must be in the user's real
+`~/.config/mimeapps.list`: the portal does not read a test resident's private
+`XDG_CONFIG_HOME`. `history.openLink` (MCP `open_history_link`) opens a stored link the
+same way the notification does.
 ## Not yet available
 
 Wiring the upload into the **Create diagnostics package…** dialog ("Also upload and
