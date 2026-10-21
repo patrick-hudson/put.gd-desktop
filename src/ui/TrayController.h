@@ -58,6 +58,8 @@ public:
  // or its folder when no file manager answers. Only put.gd's own package names,
  // unless savedHere: diagnostics.bundle wrote that path in this resident (#223).
  static Error revealPackage(const QString& path,bool savedHere=false);
+ // An http(s) link in the default browser by host::openLink, logged as target (#326).
+ static void openLink(const QUrl& link,const QString& target,std::function<void(const QJsonObject&)> done={});
 
 signals:
  void availabilityResolved();

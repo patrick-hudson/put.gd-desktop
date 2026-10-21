@@ -324,7 +324,15 @@ the persistent `APPIMAGE` path, through the login script above, rather than a
 temporary `/tmp/.mount_*` path.
 KWin authorizes screenshots against the resident executable's canonical path.
 Host permission-cache calls retain the original host library/plugin environment,
-and the child retains the caller's umask. On KDE, AppRun uses `mktemp` with mode 0600 to create a unique NoDisplay host
+and the child retains the caller's umask. AppRun also exports the host's values
+of what it replaces for every host program put.gd itself starts (#326):
+`PUTGD_HOST_ENVIRONMENT` lists the names (`LD_LIBRARY_PATH QT_PLUGIN_PATH`) and
+`PUTGD_HOST_<NAME>` holds each value the host set; a name without one was
+unset. `src/core/HostEnvironment.cpp` restores them, drops any other entry under
+`APPDIR` and the runtime's `APPDIR`/`APPIMAGE`/`ARGV0`/`OWD`, so a host `gio`,
+updater or `coredumpctl` never loads the image's GLib or Qt. Links and folders
+open over D-Bus first (the portal's OpenURI/OpenDirectory, FileManager1), and
+`gio open` or `xdg-open` with that environment only without them. On KDE, AppRun uses `mktemp` with mode 0600 to create a unique NoDisplay host
 permission desktop entry for the current mount, invokes distro `kbuildsycoca6`,
 and removes only that entry on normal exit/termination. Existing user desktop
 entries are never rewritten. The resident applies the same executable and

@@ -1,5 +1,6 @@
 #include "PanelTone.h"
 #include "Theme.h"
+#include "core/HostEnvironment.h"
 #include <QColor>
 #include <QDir>
 #include <QFile>
@@ -100,6 +101,8 @@ void PanelTone::refresh(){
  });
  connect(process,&QProcess::errorOccurred,this,[this,process,in](QProcess::ProcessError error){if(error==QProcess::FailedToStart){process->deleteLater();settle(in);}});
  QTimer::singleShot(3000,process,[process]{if(process->state()!=QProcess::NotRunning)process->kill();});
+ // The host's gsettings, with the host's GLib (#326).
+ process->setProcessEnvironment(host::environment());
  process->start("gsettings",{"get","org.cinnamon.theme","name"});
 }
 QString PanelTone::plasmaStyle(){

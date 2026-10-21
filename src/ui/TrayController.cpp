@@ -3,6 +3,7 @@
 #include "Theme.h"
 #include "ByteSize.h"
 #include "core/Log.h"
+#include "platform/HostOpen.h"
 #ifdef Q_OS_LINUX
 #include "NativeTray.h"
 #endif
@@ -12,15 +13,9 @@
 #include <QMenu>
 #include <QPointer>
 #include <QSystemTrayIcon>
-#include <QProcess>
 #include <QDir>
 #include <QFileInfo>
 #include <QRegularExpression>
-#ifdef Q_OS_LINUX
-#include <QDBusConnection>
-#include <QDBusMessage>
-#include <QDBusPendingCallWatcher>
-#endif
 #include <utility>
 #include <algorithm>
 
@@ -30,6 +25,12 @@ bool meaningfulError(const QJsonObject& error) {
  const auto code=error["code"].toString();return !code.isEmpty()&&code!="copy_suppressed";
 }
 const QString idleTooltip = "put.gd — Share and local capture";
+// Which way a link or folder opened on the host (#326), never the target itself.
+void logOpened(const QString& target,const QJsonObject& result) {
+ auto fields=result;fields["target"]=target;
+ if(result["opened"].toBool())logging::info(logUi(),"Opened on the host",fields);
+ else logging::warning(logUi(),"Could not open on the host",fields);
+}
 int transferPercent(const QJsonObject& item) {
  const auto progress=UploadProgress::fromJson(item["uploadProgress"].toObject());
  const auto sourceBytes=item["artifact"].toObject()["bytes"].toInteger();
@@ -466,10 +467,13 @@ void TrayController::invokeAction(const QString& action, bool fromShortcut, cons
   }
  }, effective);
 }
+void TrayController::openLink(const QUrl& link,const QString& target,std::function<void(const QJsonObject&)> done) {
+ host::openLink(link,[target,done=std::move(done)](const QJsonObject& result){logOpened(target,result);if(done)done(result);});
+}
 #ifdef Q_OS_LINUX
 void TrayController::openNotificationLink(const QUrl& link) {
  if(!link.isValid()||(link.scheme()!="https"&&link.scheme()!="http"))return;
- QProcess::startDetached("gio",{"open",link.toString(QUrl::FullyEncoded)});
+ openLink(link,"notification-link");
 }
 #endif
 void TrayController::notifyMessage(const QString& code, const QString& title, const QString& message, bool warning,const QUrl& link,const QString& diagnosticsOperation,const QString& revealPath) {
@@ -539,15 +543,8 @@ Error TrayController::revealPackage(const QString& path,bool savedHere) {
  if(!QDir::isAbsolutePath(path)||(!savedHere&&!name.match(file.fileName()).hasMatch()))return {"invalid_request","Show in folder takes the absolute path of a saved put.gd diagnostics package",{}};
  if(!file.isFile()||file.isSymLink())return {"diagnostics_package_missing","The diagnostics package is no longer there",{{"path",path}}};
 #ifdef Q_OS_LINUX
- // The file manager selects the package; without one, open its folder instead.
- auto call=QDBusMessage::createMethodCall("org.freedesktop.FileManager1","/org/freedesktop/FileManager1","org.freedesktop.FileManager1","ShowItems");
- call.setArguments({QStringList{QUrl::fromLocalFile(file.absoluteFilePath()).toString(QUrl::FullyEncoded)},QString{}});
- const auto folder=file.absolutePath();
- auto* watcher=new QDBusPendingCallWatcher(QDBusConnection::sessionBus().asyncCall(call,5000));
- QObject::connect(watcher,&QDBusPendingCallWatcher::finished,[watcher,folder] {
-  if(watcher->isError()){qWarning("FileManager1.ShowItems failed: %s; opening the folder",qPrintable(watcher->error().name()));QProcess::startDetached("gio",{"open",QUrl::fromLocalFile(folder).toString(QUrl::FullyEncoded)});}
-  watcher->deleteLater();
- });
+ // The file manager selects the package; without one, the portal or gio opens its folder.
+ host::showInFolder(file.absoluteFilePath(),[](const QJsonObject& result){logOpened("diagnostics-folder",result);});
  return {};
 #else
  return {"diagnostics_reveal_unsupported","Show in folder is not supported on this platform",{}};

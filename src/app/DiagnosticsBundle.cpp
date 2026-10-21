@@ -1,5 +1,6 @@
 #include "DiagnosticsBundle.h"
 #include "core/BuildInfo.h"
+#include "core/HostEnvironment.h"
 #include "core/Log.h"
 #include "core/ZipWriter.h"
 #include <QCryptographicHash>
@@ -318,7 +319,8 @@ QJsonObject DiagnosticsBundles::coredumps(const QString& configured,const QDateT
  if(program.isEmpty())return {{"available",false},{"reason","coredumpctl_missing"},{"entries",QJsonArray{}}};
  auto run=[&](const QStringList& arguments,QByteArray& output) {
   QProcess process;process.setProcessChannelMode(QProcess::SeparateChannels);
-  auto environment=QProcessEnvironment::systemEnvironment();environment.insert("SYSTEMD_COLORS","0");environment.insert("SYSTEMD_PAGER","");
+  // The host's coredumpctl, with the host's libraries (#326).
+  auto environment=host::environment();environment.insert("SYSTEMD_COLORS","0");environment.insert("SYSTEMD_PAGER","");
   process.setProcessEnvironment(environment);
   process.start(program,QStringList{"--no-pager","--no-legend"}+arguments);
   if(!process.waitForFinished(10000)){process.kill();process.waitForFinished(1000);return -1;}

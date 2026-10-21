@@ -374,5 +374,22 @@ private slots:
   HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryModel model(fixture.session);UiHistoryQuery query;query.search="old-image";model.setQuery(query);QTRY_COMPARE(model.rowCount(),1);QCOMPARE(model.record(0)["receipt"].toObject()["directUrl"].toString(),QString("https://example.invalid/original.png"));QVERIFY(!model.linkAvailable(0));
   HistoryWindow window(fixture.session);window.resize(1000,700);window.show();if(window.width()>1000)for(auto* child:window.findChildren<QWidget*>())if(child->minimumSizeHint().width()>200)qInfo()<<child->metaObject()->className()<<child->objectName()<<child->minimumSizeHint();QVERIFY2(window.height()<=700,"History must preserve a 700px logical-pixel height");QVERIFY2(window.width()<=1000,qPrintable(QString("History controls expanded a 1000px window to %1px").arg(window.width())));auto* table=window.findChild<QListView*>("historyList");QVERIFY(table);QTRY_COMPARE(table->model()->rowCount(),1);selectRow(table,0);QTRY_VERIFY(!window.findChild<QPushButton*>("copyHistoryLink")->isEnabled());QTRY_VERIFY(window.findChild<QLabel*>("historySummary")->text().contains("2 GiB"));QCOMPARE(QJsonDocument::fromJson(window.findChild<QPlainTextEdit*>("historyDetails")->toPlainText().toUtf8()).object()["bytes"].toInteger(),qint64(2147483649LL));QCOMPARE(source.reads,0);QCOMPARE(source.copies,0);
  }
+ void openLinkUsesTheResidentOpenerForAvailableLinks() {
+  // #326: history.openLink opens a stored link as the link-ready notification does.
+  QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());
+  {HistoryStore ledger(operations.databasePath());Operation op;op.id="synthetic-links";op.created="2020-01-01T00:00:00.000Z";op.state="completed";op.settings=settings.snapshot();
+   for(const auto& [id,remote]:{std::pair{QString("live-item"),QString("present")},std::pair{QString("removed-item"),QString("removed")}}){OperationItem item;item.artifact.id=id;item.artifact.name=id+".png";item.artifact.bytes=10;item.artifact.mime="image/png";item.artifact.category="images";item.uploadStatus="uploaded";item.remoteStatus=remote;item.receipt.directUrl="https://example.invalid/"+id+".png";op.items.append(item);}
+   QVERIFY(!ledger.saveOperation(op));}
+  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);
+  auto call=[&](const QString& id)->std::pair<Error,QJsonObject>{Error error;QJsonObject result;bool done=false;fixture.server.dispatch({{"schemaVersion",1},{"requestId","open"},{"session",fixture.server.socketPath()},{"method","history.openLink"},{"params",QJsonObject{{"id",id}}}},[&](Error e,QJsonObject r){error=e;result=r;done=true;});if(!QTest::qWaitFor([&]{return done;},5000))return {{"timed_out","history.openLink did not reply",{}},{}};return {error,result};};
+  QCOMPARE(call("live-item").first.code,QString("ui_unavailable"));
+  QList<QUrl> opened;bool opens=true;
+  fixture.server.setLinkOpener([&](const QUrl& link,std::function<void(const QJsonObject&)> done){opened.append(link);done({{"route",opens?"portal":"launcher"},{"opened",opens}});});
+  auto [error,result]=call("live-item");QVERIFY2(!error,qPrintable(error.code));QCOMPARE(result["route"].toString(),QString("portal"));
+  QCOMPARE(opened,QList<QUrl>{QUrl("https://example.invalid/live-item.png")});
+  QCOMPARE(call("removed-item").first.code,QString("link_unavailable"));QCOMPARE(opened.size(),1);
+  opens=false;QCOMPARE(call("live-item").first.code,QString("link_not_opened"));
+  QCOMPARE(call("missing-item").first.code.isEmpty(),false);
+ }
 };QTEST_MAIN(HistoryGui)
 #include "test_history_view.moc"

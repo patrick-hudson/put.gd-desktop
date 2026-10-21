@@ -23,7 +23,7 @@
 #include <QKeySequence>
 #include <QToolButton>
 #include <QStatusBar>
-#include <QDesktopServices>
+#include "platform/HostOpen.h"
 #include "core/ReleaseLink.h"
 namespace putgd {
 MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),session_(session){
@@ -77,7 +77,7 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  // are plain text, which may wrap after "+": a dirty one is wider than the rail.
  version_=new QLabel;version_->setObjectName("appVersion");version_->setTextFormat(Qt::PlainText);version_->setWordWrap(true);VisualStyle::role(version_,"version");railBox->addSpacing(6);railBox->addWidget(version_);
  versionLink_=new QPushButton;versionLink_->setObjectName("appVersionLink");VisualStyle::role(versionLink_,"version");versionLink_->setCursor(Qt::PointingHandCursor);railBox->addWidget(versionLink_,0,Qt::AlignLeft);
- connect(versionLink_,&QPushButton::clicked,this,[this]{if(const auto url=releaseLink(session_.build()).url;url.isValid())QDesktopServices::openUrl(url);});
+ connect(versionLink_,&QPushButton::clicked,this,[this]{if(const auto url=releaseLink(session_.build()).url;url.isValid())host::openLink(url);});
  auto updateVersion=[this]{
   const auto link=releaseLink(session_.build());const auto name="put.gd version "+link.version;const auto page="Open the v"+link.version+" release on GitHub";
   auto wrapped=link.version;wrapped.replace("+",QString("+")+QChar(0x200B));version_->setText(wrapped);version_->setAccessibleName(name);version_->setToolTip(name);version_->setVisible(!link.version.isEmpty()&&link.url.isEmpty());
