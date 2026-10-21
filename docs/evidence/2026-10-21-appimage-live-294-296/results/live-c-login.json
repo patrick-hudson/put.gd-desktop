@@ -1,0 +1,36 @@
+{
+ "label": "live AppImageLauncher (842 -> 847, old kept): after logout and login",
+ "time": "2026-10-21T14:08:01-0500",
+ "sessions": [
+  "102 1000 lab -     -    active  no -",
+  " 97 1000 lab -     -    closing no -",
+  " c1 1000 lab seat0 tty7 closing no -",
+  "c11 1000 lab seat0 tty7 closing no -",
+  "c13 1000 lab seat0 tty7 closing no -",
+  "c15 1000 lab seat0 tty7 closing no -",
+  "c17 1000 lab seat0 tty7 active  no -",
+  " c3 1000 lab seat0 tty7 closing no -",
+  " c5 1000 lab seat0 tty7 closing no -",
+  " c7 1000 lab seat0 tty7 closing no -",
+  " c9 1000 lab seat0 tty7 closing no -"
+ ],
+ "resident": {
+  "pid": 11140,
+  "started": "Wed Oct 21 14:07:33 2026",
+  "APPIMAGE": "/home/lab/Applications/putgd-0.1.1-nightly.847-x86_64.AppImage",
+  "version": "0.1.1-nightly.847"
+ },
+ "autostartExec": "Exec=/bin/sh \"/home/lab/.local/share/putgd/login/appimage-start.sh\" --background",
+ "loginScript": {
+  "configured": "'/home/lab/Applications/putgd-0.1.1-nightly.847-x86_64.AppImage'",
+  "update_information": "'zsync|https://app.put.gd/dl/nightly/appimage.zsync'",
+  "mode": "0o700"
+ },
+ "images": {
+  "/home/lab/Applications": [
+   "putgd-0.1.1-nightly.842-x86_64_5473bf3329fec6e0b37f1cea57a735ae.AppImage",
+   "putgd-0.1.1-nightly.847-x86_64.AppImage"
+  ],
+  "/home/lab/AppImages": []
+ }
+}

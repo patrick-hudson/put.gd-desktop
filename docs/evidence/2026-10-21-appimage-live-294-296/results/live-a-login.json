@@ -1,0 +1,32 @@
+{
+ "label": "live Gear Lever (842 -> 847, in place): after logout and login",
+ "time": "2026-10-21T14:06:18-0500",
+ "sessions": [
+  "92 1000 lab -     -    active  no -",
+  " c1 1000 lab seat0 tty7 closing no -",
+  "c11 1000 lab seat0 tty7 closing no -",
+  "c13 1000 lab seat0 tty7 closing no -",
+  "c15 1000 lab seat0 tty7 active  no -",
+  " c3 1000 lab seat0 tty7 closing no -",
+  " c5 1000 lab seat0 tty7 closing no -",
+  " c7 1000 lab seat0 tty7 closing no -",
+  " c9 1000 lab seat0 tty7 closing no -"
+ ],
+ "resident": {
+  "pid": 9827,
+  "started": "Wed Oct 21 14:05:49 2026",
+  "APPIMAGE": "/home/lab/AppImages/put.gd.appimage",
+  "version": "0.1.1-nightly.847"
+ },
+ "autostartExec": "Exec=/bin/sh \"/home/lab/.local/share/putgd/login/appimage-start.sh\" --background",
+ "loginScript": {
+  "configured": "'/home/lab/AppImages/put.gd.appimage'",
+  "update_information": "'zsync|https://app.put.gd/dl/nightly/appimage.zsync'",
+  "mode": "0o700"
+ },
+ "images": {
+  "/home/lab/AppImages": [
+   "put.gd.appimage"
+  ]
+ }
+}

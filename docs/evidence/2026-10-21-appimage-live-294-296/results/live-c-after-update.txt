@@ -1,0 +1,6 @@
+total 224648
+-rwxrwxr-x 1 lab lab 115018232 Oct 21 14:06 putgd-0.1.1-nightly.842-x86_64_5473bf3329fec6e0b37f1cea57a735ae.AppImage
+-rwxrwxr-x 1 lab lab 115018232 Oct 21  2026 putgd-0.1.1-nightly.847-x86_64.AppImage
+Name=put.gd
+Name=put.gd (1)
+putgd-0.1.1-nightly.847-x86_64.AppImage: OK
