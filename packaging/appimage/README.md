@@ -228,6 +228,34 @@ claim the entire family difference is solely due to compression.
 pins the package bytes, commands, observer and results. Include every mount and
 launcher process in future quiet-family measurements; never hide FUSE from RSS.
 
+## Update information
+
+Tagged images embed `zsync|https://app.put.gd/dl/<channel>/appimage.zsync` with
+`appimagetool -u`, `nightly` for nightly tags and `stable` for candidates and
+stable releases; untagged builds embed nothing ([AppImage updates](../../docs/release.md#appimage-updates)).
+`tools/releases/appimage_update.py` derives both values from the tag.
+After appimagetool, `portable_appimage.py` reads the section back, writes
+`putgd-VERSION-x86_64.AppImage.zsync` with
+`zsyncmake -u https://github.com/OWNER/REPO/releases/download/TAG/putgd-VERSION-x86_64.AppImage`,
+and checks its header (`Filename`, `URL`, `Length`, `SHA-1`) and block count
+against the image. appimagetool's own `.zsync`, which names the image by a
+relative URL, is replaced.
+
+zsyncmake is the static zsync 0.6.2 that the pinned appimagetool 1.9.1 bundles.
+`tools.lock.json` (`zsyncmake`) records its path in that image and its digest;
+the builder extracts it with `--appimage-extract` and checks the digest before
+running it. zsync2's `zsyncmake2` (2.0.0-alpha-1 build 93) is not used: it drops
+a file's trailing partial block, so its `Length` and `SHA-1` describe a
+truncated image (6,000,000 bytes recorded as 5,998,592).
+
+For a lab update test, `PUTGD_APPIMAGE_UPDATE_ORIGIN=http://127.0.0.1:8765` in
+the environment of `tools/releases/build-appimage.sh` points both the update
+information (`ORIGIN/appimage.zsync`) and the `.zsync`'s image URL
+(`ORIGIN/putgd-VERSION-x86_64.AppImage`) at a local server; `collect.py` rejects
+such an image. The recorded check moves one build to the next with
+`appimageupdatetool`:
+[AppImage zsync updates (issue #293)](../../docs/evidence/2026-10-20-appimage-zsync-293/README.md).
+
 ## Runtime behavior
 
 On Wayland sessions the views, the editor and the KDE region helper are native

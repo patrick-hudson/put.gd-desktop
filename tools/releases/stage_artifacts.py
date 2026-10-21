@@ -18,7 +18,7 @@ def stage(build, output, kind):
         packages = build / 'appimage-output'
         selected += [packages / 'appimage-build.json', build / 'appimage-dependencies.json',
                      build / 'release/build-identity/build-info.json']
-        selected += list(packages.glob('*.AppImage'))
+        selected += list(packages.glob('*.AppImage')) + list(packages.glob('*.AppImage.zsync'))
         selected += [packages / 'appimage-media-source.json'] + list(packages.glob('*-appimage-media-source.tar.gz'))
     # Split debug files by build ID and their manifest (#124, debug_symbols.py).
     selected += sorted((build / 'debug-symbols').glob('debug-symbols-*'))

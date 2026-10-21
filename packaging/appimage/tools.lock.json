@@ -41,6 +41,12 @@
       "executable": false
     }
   ],
+  "zsyncmake": {
+    "release": "0.6.2",
+    "bundledIn": "appimagetool-x86_64.AppImage",
+    "path": "usr/bin/zsyncmake",
+    "sha256": "4fa6642a3bca4d1ba038b3eeadc249ab5fabc252a9973bdb86321544f9f7e098"
+  },
   "buildInputs": {
     "distribution": "Ubuntu 24.04",
     "qt": "6.8.3",

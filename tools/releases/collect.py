@@ -2,6 +2,7 @@
 """Collect only byte-verified assets matching one exact tagged source identity."""
 import argparse
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -10,6 +11,7 @@ from audit_native import PROGRAMS, sha256
 from verify_tag import verify
 import proton_sources
 import appimage_media_sources
+import appimage_update
 import debug_symbols
 from release_bundle import create_gnome_zip, create_release_bundle
 
@@ -60,7 +62,24 @@ def verified_source(directory, release):
     return archive, receipt, build
 
 
-def collect(root, inputs, output, tag):
+def verified_zsync(directory, receipt, image, name, release, repository):
+    """The image's update information and .zsync must be exactly this release's."""
+    update = receipt.get('update') or {}
+    information = appimage_update.update_information(release['tag'])
+    if update.get('information') != information or appimage_update.read_update_information(image) != information:
+        raise ValueError('AppImage update information differs from its release channel')
+    zsync = update.get('zsync') or {}
+    path = asset_path(directory, zsync.get('file', ''), '.AppImage.zsync')
+    if sha256(path) != zsync.get('sha256') or path.stat().st_size != zsync.get('bytes'):
+        raise ValueError('AppImage .zsync bytes differ from audited receipt')
+    url = appimage_update.asset_url(repository, release['tag'], name)
+    if zsync.get('url') != url:
+        raise ValueError('AppImage .zsync names another release URL')
+    appimage_update.verify_zsync(path, image, name, url)
+    return path
+
+
+def collect(root, inputs, output, tag, repository=appimage_update.REPOSITORY):
     release = verify(root, tag)
     timestamp = int(subprocess.check_output(['git', '-C', str(root), 'show', '-s', '--format=%ct',
                                              release['gitCommit']], text=True).strip())
@@ -86,7 +105,12 @@ def collect(root, inputs, output, tag):
     image = asset_path(directory, receipt['artifact']['file'], '.AppImage')
     if sha256(image) != receipt['artifact']['sha256'] or image.stat().st_size != receipt['artifact']['bytes']:
         raise ValueError('AppImage bytes differ from audited receipt')
-    selected.append((image, 'putgd-' + release['version'] + '-x86_64.AppImage'))
+    name = 'putgd-' + release['version'] + '-x86_64.AppImage'
+    selected.append((image, name))
+    # AppImageUpdate, Gear Lever and AppImageLauncher read the embedded update
+    # information and this .zsync (#293).
+    zsync = verified_zsync(directory, receipt, image, name, release, repository)
+    selected.append((zsync, appimage_update.zsync_name(name)))
     receipts['appimage'] = receipt
     # The image is a GPL combined work: its codec sources ship beside it.
     media_receipt = json.loads((directory / appimage_media_sources.RECEIPT_NAME).read_text())
@@ -147,8 +171,10 @@ def main():
     parser.add_argument('--inputs', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--root', type=Path, default=Path.cwd())
+    parser.add_argument('--repository', default=os.environ.get('GITHUB_REPOSITORY') or appimage_update.REPOSITORY,
+                        help='GitHub OWNER/NAME whose release serves the assets')
     args = parser.parse_args()
-    print(json.dumps(collect(args.root, args.inputs, args.output, args.tag)))
+    print(json.dumps(collect(args.root, args.inputs, args.output, args.tag, args.repository)))
 
 
 if __name__ == '__main__':
