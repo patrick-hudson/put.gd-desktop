@@ -65,17 +65,19 @@ On Plasma and GNOME the tray's **Update available** entry used to appear only af
 restart. [#311](https://github.com/patrick-hudson/put.gd-desktop/pull/311) fixed that
 ([evidence](evidence/2026-10-21-tray-update-visible-304/README.md)).
 
-Known gap:
-
-- *This build's channel* doesn't say which channel it is
-  ([#305](https://github.com/patrick-hudson/put.gd-desktop/issues/305)).
+*This build's channel* now names the channel it resolves to
+([#305](https://github.com/patrick-hudson/put.gd-desktop/issues/305),
+[evidence](evidence/2026-10-21-checkbox-channel-300-305/README.md)).
 
 ## Settings
 
 **Settings → General → Updates**:
 
 - **Check for updates once a day:** on by default.
-- **Channel:** *This build's channel* (the default), *Stable* or *Nightly*.
+- **Channel:** *This build's channel* (the default), *Stable* or *Nightly*. The first
+  choice names what it resolves to, from the build's channel in `update.status`:
+  *This build's channel (stable)* on a release or candidate, *(nightly)* on a nightly.
+  A build that never checks keeps the plain label and the section says why.
 - **Status:** the last result, when it was checked and when the next check runs, with
   **Check now**.
 - **Download** and **Release notes:** shown when there is a newer version.
