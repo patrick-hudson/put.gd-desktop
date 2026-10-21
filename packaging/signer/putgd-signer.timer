@@ -1,0 +1,10 @@
+[Unit]
+Description=Check for new put.gd releases to publish to pkg.put.gd every ten minutes
+
+[Timer]
+OnCalendar=*:0/10
+RandomizedDelaySec=60
+Persistent=true
+
+[Install]
+WantedBy=timers.target

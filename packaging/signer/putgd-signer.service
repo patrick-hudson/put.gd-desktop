@@ -1,0 +1,25 @@
+# put.gd package signer (#293 phase 2): a systemd user unit on one lab builder.
+# Install: tools/releases/pkgrepo.py documents the layout; docs/release.md has the steps.
+[Unit]
+Description=put.gd package signer: publish new releases to pkg.put.gd
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# Paths only: gpg, minisign and boto3 read the keys and credentials from these files themselves.
+Environment=GNUPGHOME=%h/.local/share/putgd-signer/gnupg
+Environment=AWS_CONFIG_FILE=%h/.config/putgd-signer/aws-config
+Environment=AWS_SHARED_CREDENTIALS_FILE=%h/.config/putgd-signer/aws-credentials
+Environment=AWS_SDK_LOAD_CONFIG=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/usr/bin/python3 -I %h/putgd-signer/src/tools/releases/pkgrepo.py --config %h/.config/putgd-signer/signer.json run
+TimeoutStartSec=2h
+Nice=10
+IOSchedulingClass=idle
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+# gpg-agent keeps its sockets under the runtime directory.
+ReadWritePaths=%h/.local/state/putgd-signer %h/.local/share/putgd-signer/gnupg %t
+UMask=0077
