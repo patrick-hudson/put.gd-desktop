@@ -86,7 +86,9 @@ Known gap:
   opens Update Manager on Cinnamon, Discover on Plasma or GNOME Software on GNOME (else
   whichever is installed). Below it, **Or in a terminal** shows `sudo apt update && sudo apt upgrade`
   or `sudo dnf upgrade --refresh` with **Copy**. Delete or disable the repository file
-  and Settings offers **Download** again.
+  and, from the next check (or **Check now**), Settings offers **Download** again. The
+  check child reads the repository file and starts the updater, so the resident's code
+  and idle memory don't change.
 
 When a newer version exists, the main window's rail shows **Update available: X**
 under the version, which opens this section.
@@ -104,10 +106,11 @@ Both keys are optional. Without the object, put.gd checks daily on this build's 
 
 | Interface | What it does |
 | --- | --- |
-| `putgd-cli update.status` | Returns `build` (version, kind, channel, packageTarget, supported, reason), `check`, `channelSetting`, `channel`, `enabled`, `notifies`, `action`, `checking`, `attemptedAt`, `checkedAt`, `nextCheckAt`, `result` and `error`. `action` is `{kind: "software-updates", manager, file, channel, command, updater}` for a repository install, otherwise `{kind: "download", repository: "absent" \| "disabled" \| "other" \| "none"}` |
+| `putgd-cli update.status` | Returns `build` (version, kind, channel, packageTarget, supported, reason), `check`, `channelSetting`, `channel`, `enabled`, `notifies`, `action`, `checking`, `attemptedAt`, `checkedAt`, `nextCheckAt`, `result` and `error`. `action`, from the last check, is `{kind: "software-updates", manager, file, channel, command, updater}` for a repository install, otherwise `{kind: "download", repository: "absent" \| "disabled" \| "other" \| "none"}` |
 | `putgd-cli update.check` | Checks now, even with daily checks off, and returns the same object. A failed check returns its error: `update_feed_unavailable`, `update_feed_invalid`, `update_check_failed` or `update_check_unavailable` |
 | `putgd-cli --update-info` | This build's channel and package target. No resident and no network |
-| `putgd-cli --check-update nightly` | The resident's child mode: one feed request and one JSON line. No resident needed |
+| `putgd-cli --check-update nightly` | The resident's child mode: one feed request and one JSON line, whose `action` says how this install updates (it reads the repository file). No resident needed |
+| `putgd-cli --open-software-updates` | The child mode behind `update.openSoftwareUpdates`: reads the repository file again and starts the updater. No resident needed |
 | `putgd-cli update.openSoftwareUpdates` | Opens the system's software updater, as **Open software updates** does. `software_updates_unavailable` when this install doesn't update from put.gd's repository (the details name why) or no updater is installed (the details carry the command) |
 | MCP `get_update_status`, `check_for_updates`, `open_software_updates` | `update.status`, `update.check` and `update.openSoftwareUpdates` |
 | `settings.patch` / MCP `patch_configuration` | `{"preferences": {"updates": {"check": false}}}` and so on |
