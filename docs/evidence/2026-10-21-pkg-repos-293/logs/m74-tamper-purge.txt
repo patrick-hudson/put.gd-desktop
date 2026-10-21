@@ -1,0 +1,73 @@
+
+### install putgd-0.1.1-nightly.811-ubuntu24.04-x86_64.deb from the file
+Reading package lists...
+Building dependency tree...
+Reading state information...
+The following NEW packages will be installed:
+  putgd
+debconf: unable to initialize frontend: Dialog
+debconf: (Dialog frontend will not work on a dumb terminal, an emacs shell buffer, or without a controlling terminal.)
+debconf: falling back to frontend: Readline
+debconf: unable to initialize frontend: Readline
+debconf: (This frontend requires a controlling tty.)
+debconf: falling back to frontend: Teletype
+dpkg-preconfigure: unable to re-open stdin: 
+0 upgraded, 1 newly installed, 0 to remove and 10 not upgraded.
+Need to get 0 B/9,840 kB of archives.
+After this operation, 35.9 MB of additional disk space will be used.
+Selecting previously unselected package putgd.
+(Reading database… (Reading database… 5%(Reading database… 10%(Reading database… 15%(Reading database… 20%(Reading database… 25%(Reading database… 30%(Reading database… 35%(Reading database… 40%(Reading database… 45%(Reading database… 50%(Reading database… 55%(Reading database… 60%(Reading database… 65%(Reading database… 70%(Reading database… 75%(Reading database… 80%(Reading database… 85%(Reading database… 90%(Reading database… 95%(Reading database… 100%(Reading database… 498290 files and directories currently installed.)
+Preparing to unpack …/putgd_0.1.1~nightly.811_amd64.deb…
+Unpacking putgd (0.1.1~nightly.811)…
+Setting up putgd (0.1.1~nightly.811)…
+Processing triggers for desktop-file-utils (0.27-2build1)…
+Processing triggers for hicolor-icon-theme (0.17-2)…
+Processing triggers for gnome-menus (3.36.0-1.1ubuntu3)…
+Processing triggers for mate-menus (1.26.1+mint1)…
+Processing triggers for mailcap (3.70+nmu1ubuntu1.24.04.1)…
+rc=0
+0.1.1~nightly.811 install ok installed
+/etc/apt/sources.list.d/putgd.sources present sha256=4ffc66e7888aa1f3
+conffiles: /etc/apt/sources.list.d/putgd.sources d88e0fec650178fc877b444700f4acbb
+-rw-r--r-- 1 root root 1170 Oct 20 21:37 /usr/share/keyrings/putgd-archive-keyring.gpg
+# put.gd nightly packages from pkg.put.gd, added by the putgd package.
+# To stop updates from this repository, delete this file or add "Enabled: no";
+# upgrades leave your change alone and `apt purge putgd` removes the file.
+Types: deb
+URIs: https://pkg.put.gd/lab/apt/ubuntu24.04
+Suites: nightly
+Components: main
+Architectures: amd64
+Signed-By:
+
+### tamper: untouched copy (control)
+Get:1 http://127.0.0.1:18293/apt/ubuntu24.04 nightly InRelease [1,807 B]
+Err:2 http://127.0.0.1:18293/apt/ubuntu24.04 nightly/main amd64 Packages
+  404  File not found [IP: 127.0.0.1 18293]
+Get:2 http://127.0.0.1:18293/apt/ubuntu24.04 nightly/main amd64 Packages [1,056 B]
+apt saw putgd: 1 Packages lists
+
+### tamper: InRelease: signed text changed
+Get:1 http://127.0.0.1:18293/apt/ubuntu24.04 nightly InRelease [1,807 B]
+Err:1 http://127.0.0.1:18293/apt/ubuntu24.04 nightly InRelease
+W: GPG error: http://127.0.0.1:18293/apt/ubuntu24.04 nightly InRelease: The following signatures were invalid: BADSIG A11D38D55536B371 put.gd nightly packages <packages@put.gd>
+E: The repository 'http://127.0.0.1:18293/apt/ubuntu24.04 nightly InRelease' is not signed.
+apt saw putgd: 0 Packages lists
+
+### tamper: Packages changed, InRelease untouched
+Get:1 http://127.0.0.1:18293/apt/ubuntu24.04 nightly InRelease [1,807 B]
+Err:2 http://127.0.0.1:18293/apt/ubuntu24.04 nightly/main amd64 Packages
+  404  File not found [IP: 127.0.0.1 18293]
+Get:2 http://127.0.0.1:18293/apt/ubuntu24.04 nightly/main amd64 Packages [1,056 B]
+Err:2 http://127.0.0.1:18293/apt/ubuntu24.04 nightly/main amd64 Packages
+  File has unexpected size (1086 != 1056). Mirror sync in progress? [IP: 127.0.0.1 18293]
+apt saw putgd: 0 Packages lists
+
+### purge / remove
+Processing triggers for desktop-file-utils (0.27-2build1)…
+(Reading database… (Reading database… 5%(Reading database… 10%(Reading database… 15%(Reading database… 20%(Reading database… 25%(Reading database… 30%(Reading database… 35%(Reading database… 40%(Reading database… 45%(Reading database… 50%(Reading database… 55%(Reading database… 60%(Reading database… 65%(Reading database… 70%(Reading database… 75%(Reading database… 80%(Reading database… 85%(Reading database… 90%(Reading database… 95%(Reading database… 100%(Reading database… 498291 files and directories currently installed.)
+Purging configuration files for putgd (0.1.1~nightly.811)…
+rc=0
+dpkg-query: no packages found matching putgd
+/etc/apt/sources.list.d/putgd.sources ABSENT
+ls: cannot access '/usr/share/keyrings/putgd-archive-keyring.gpg': No such file or directory

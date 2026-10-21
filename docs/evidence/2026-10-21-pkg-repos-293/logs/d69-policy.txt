@@ -1,0 +1,16 @@
+
+### what the system sees
+Get:5 https://pkg.put.gd/lab/apt/debian13 nightly InRelease [1,804 B]
+Get:6 https://pkg.put.gd/lab/apt/debian13 nightly/main amd64 Packages [739 B]
+putgd:
+  Installed: 0.1.1~nightly.810
+  Candidate: 0.1.1~nightly.811
+  Version table:
+     0.1.1~nightly.811 500
+        500 https://pkg.put.gd/lab/apt/debian13 nightly/main amd64 Packages
+ *** 0.1.1~nightly.810 100
+        100 /var/lib/dpkg/status
+putgd/nightly 0.1.1~nightly.811 amd64 [upgradable from: 0.1.1~nightly.810]
+
+### PackageKit
+Normal       putgd-0.1.1~nightly.811.amd64 (put_gd-nightly-main)

@@ -1,0 +1,6 @@
+{"clicked": [1256, 252]}
+{"clicked": [1536, 140]}
+gs: 1870511
+cli ok True gnome-software managed 
+1870511 /usr/bin/gnome-software --mode=updates
+left: 1870511

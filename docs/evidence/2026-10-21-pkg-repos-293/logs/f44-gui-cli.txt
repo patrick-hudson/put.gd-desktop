@@ -1,0 +1,9 @@
+{"clicked": [1256, 290]}
+{"clicked": [1536, 178]}
+{"ok": true, "frame": [1920, 1080], "crop": [263, 60, 1393, 991], "edges": {"top
+cli ok True gnome-software managed 
+{"ok": true, "frame": [1920, 1080], "crop": [263, 60, 1393, 991], "edges": {"top
+{"clicked": [1536, 178]}
+{"error": {"code": "", "details": {}, "message": ""}, "ok": true, "requestId": "d304aa13-8c0a-4b9e-a
+{"stopped": true, "left": ""}
+gs: 1671310 /usr/bin/gnome-software --gapplication-service 1728348 bash -c cd ~/work/put.gd-pkg293-lab; python3 gui293. 1728613 bash -c cd ~/work/put.gd-pkg293-lab; python3 gui293.
