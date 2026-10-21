@@ -157,4 +157,4 @@ python3 tools/releases/sign_stable.py --empty                      # on the work
 
 ## Acceptance (2026-10-21)
 
-Lab-scope evidence is in [evidence/2026-10-21-pkg-repos-293](evidence/2026-10-21-pkg-repos-293/README.md).
+Lab-scope and live evidence (real nightlies 816 → 828 on all four desktops, 2026-10-21) is in [evidence/2026-10-21-pkg-repos-293](evidence/2026-10-21-pkg-repos-293/README.md).

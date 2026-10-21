@@ -1,0 +1,50 @@
+
+### host
+Fedora Linux 44 (Workstation Edition); 6.19.10-300.fc44.x86_64
+2026-10-21T15:55:52Z
+
+### download putgd-0.1.1-nightly.816-fedora44-x86_64.rpm and SHA256SUMS from the GitHub release v0.1.1-nightly.816
+putgd-0.1.1-nightly.816-fedora44-x86_64.rpm: OK
+
+### before
+package putgd is not installed
+ls: cannot access '/etc/yum.repos.d/putgd.repo': No such file or directory
+
+### install from the file
+Warning: skipped OpenPGP checks for 1 package from repository: @commandline
+Complete!
+putgd-0.1.1~nightly.816-1.fc44.x86_64
+
+### repository file
+-rw-r--r--. 1 root root 421 Oct 21 10:55 /etc/yum.repos.d/putgd.repo
+# put.gd nightly packages from pkg.put.gd, added by the putgd package.
+# To stop updates from this repository, delete this file or set enabled=0;
+# upgrades leave your change alone and `dnf remove putgd` removes the file.
+[putgd-nightly]
+name=put.gd (nightly)
+baseurl=https://pkg.put.gd/rpm/fedora/44/x86_64/nightly
+enabled=1
+gpgcheck=1
+repo_gpgcheck=0
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd
+metadata_expire=6h
+
+### key
+-rw-r--r--. 1 root root 1664 Jul  3  2010 /etc/pki/rpm-gpg/RPM-GPG-KEY-putgd
+gpg: directory '/home/patrick/.gnupg' created
+gpg: /home/patrick/.gnupg/trustdb.gpg: trustdb created
+fpr:::::::::4032E28D893BAF66F4AC23D9A11D38D55536B371:
+
+### rpm config files
+/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd
+/etc/yum.repos.d/putgd.repo
+
+### dnf sees the repository
+putgd-nightly                                  put.gd (nightly)
+putgd-0:0.1.1~nightly.801-1.fc44.x86_64
+putgd-0:0.1.1~nightly.816-1.fc44.x86_64
+
+### the app's own check against the live feed (putgd-cli --check-update nightly)
+ok True error 
+current None latest 0.1.1-nightly.816 available False
+action software-updates managed dnf nightly gnome-software | sudo dnf upgrade --refresh

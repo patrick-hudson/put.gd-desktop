@@ -1,0 +1,53 @@
+
+### host
+Linux Mint 22.3; 6.14.0-37-generic
+2026-10-21T15:55:52Z
+
+### download putgd-0.1.1-nightly.816-ubuntu24.04-x86_64.deb and SHA256SUMS from the GitHub release v0.1.1-nightly.816
+putgd-0.1.1-nightly.816-ubuntu24.04-x86_64.deb: OK
+
+### before
+dpkg-query: no packages found matching putgd
+ls: cannot access '/etc/apt/sources.list.d/putgd.sources': No such file or directory
+
+### install from the file
+Processing triggers for mate-menus (1.26.1+mint1)…
+Processing triggers for mailcap (3.70+nmu1ubuntu1.24.04.1)…
+0.1.1~nightly.816 install ok installed
+
+### repository file
+-rw-r--r-- 1 root root 2036 Oct 21 10:21 /etc/apt/sources.list.d/putgd.sources
+# put.gd nightly packages from pkg.put.gd, added by the putgd package.
+# To stop updates from this repository, delete this file or add "Enabled: no";
+# upgrades leave your change alone and `apt purge putgd` removes the file.
+Types: deb
+URIs: https://pkg.put.gd/apt/ubuntu24.04
+Suites: nightly
+Components: main
+Architectures: amd64
+Signed-By:
+
+### keyring
+-rw-r--r-- 1 root root 1170 Oct 21 10:18 /usr/share/keyrings/putgd-archive-keyring.gpg
+gpg: keybox '/home/patrick/.gnupg/pubring.kbx' created
+gpg: /home/patrick/.gnupg/trustdb.gpg: trustdb created
+fpr:::::::::4032E28D893BAF66F4AC23D9A11D38D55536B371:
+
+### conffile
+ /etc/apt/sources.list.d/putgd.sources 73ba1d0f3c11c8bcc65073897fd24a9a
+
+### apt update (lists only) and policy
+Get:7 https://pkg.put.gd/apt/ubuntu24.04 nightly InRelease [1,807 B]
+Get:12 https://pkg.put.gd/apt/ubuntu24.04 nightly/main amd64 Packages [732 B]
+putgd:
+  Installed: 0.1.1~nightly.816
+  Candidate: 0.1.1~nightly.816
+  Version table:
+ *** 0.1.1~nightly.816 500
+        500 https://pkg.put.gd/apt/ubuntu24.04 nightly/main amd64 Packages
+        100 /var/lib/dpkg/status
+
+### the app's own check against the live feed (putgd-cli --check-update nightly)
+ok True error 
+current None latest 0.1.1-nightly.816 available False
+action software-updates managed apt nightly mintupdate | sudo apt update && sudo apt upgrade

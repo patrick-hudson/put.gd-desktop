@@ -1,0 +1,69 @@
+
+### host
+Ubuntu 26.04.1 LTS; 7.0.0-38-generic
+2026-10-21T17:44:18Z
+
+### download putgd-0.1.1-nightly.816-ubuntu26.04-x86_64.deb and SHA256SUMS from the GitHub release v0.1.1-nightly.816
+putgd-0.1.1-nightly.816-ubuntu26.04-x86_64.deb: OK
+
+### before
+dpkg-query: no packages found matching putgd
+ls: cannot access '/etc/apt/sources.list.d/putgd.sources': No such file or directory
+
+### install from the file
+Processing triggers for hicolor-icon-theme (0.18-2build1)…
+Processing triggers for desktop-file-utils (0.28-1build1)…
+0.1.1~nightly.816 install ok installed
+
+### repository file
+-rw-r--r-- 1 root root 2036 Oct 21 10:22 /etc/apt/sources.list.d/putgd.sources
+# put.gd nightly packages from pkg.put.gd, added by the putgd package.
+# To stop updates from this repository, delete this file or add "Enabled: no";
+# upgrades leave your change alone and `apt purge putgd` removes the file.
+Types: deb
+URIs: https://pkg.put.gd/apt/ubuntu26.04
+Suites: nightly
+Components: main
+Architectures: amd64
+Signed-By:
+
+### keyring
+-rw-r--r-- 1 root root 1170 Oct 21 10:18 /usr/share/keyrings/putgd-archive-keyring.gpg
+gpg: keybox '/home/patrick/work/put.gd-pkg293-live/gnupg/pubring.kbx' created
+gpg: /home/patrick/work/put.gd-pkg293-live/gnupg/trustdb.gpg: trustdb created
+fpr:::::::::4032E28D893BAF66F4AC23D9A11D38D55536B371:
+
+### conffile
+ /etc/apt/sources.list.d/putgd.sources 0bddc60435085b83a461f59d1a549517
+
+### apt update (lists only) and policy
+Get:3 https://pkg.put.gd/apt/ubuntu26.04 nightly InRelease [1,807 B]
+Get:6 https://pkg.put.gd/apt/ubuntu26.04 nightly/main amd64 Packages [757 B]
+putgd:
+  Installed: 0.1.1~nightly.816
+  Candidate: 0.1.1~nightly.828
+  Version table:
+     0.1.1~nightly.828 500
+        500 https://pkg.put.gd/apt/ubuntu26.04 nightly/main amd64 Packages
+ *** 0.1.1~nightly.816 100
+        100 /var/lib/dpkg/status
+
+### the app's own check against the live feed (putgd-cli --check-update nightly)
+ok True error 
+current None latest 0.1.1-nightly.828 available True
+action software-updates managed apt nightly plasma-discover | sudo apt update && sudo apt upgrade
+
+### N+1 waiting: what the system sees (2026-10-21T17:44:33Z)
+Hit:3 https://pkg.put.gd/apt/ubuntu26.04 nightly InRelease
+putgd:
+  Installed: 0.1.1~nightly.816
+  Candidate: 0.1.1~nightly.828
+  Version table:
+     0.1.1~nightly.828 500
+        500 https://pkg.put.gd/apt/ubuntu26.04 nightly/main amd64 Packages
+ *** 0.1.1~nightly.816 100
+        100 /var/lib/dpkg/status
+putgd/nightly 0.1.1~nightly.828 amd64 [upgradable from: 0.1.1~nightly.816]
+
+### the app's own check against the live feed
+ok True latest 0.1.1-nightly.828 available True | action software-updates managed plasma-discover

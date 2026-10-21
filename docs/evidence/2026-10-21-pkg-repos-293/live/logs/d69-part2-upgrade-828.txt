@@ -1,0 +1,15 @@
+{"error": {"code": "", "details": {}, "message": ""}, "ok": true, "requestId": "9886636b-9
+{"stopped": true, "left": ""}
+updaters:
+
+### upgrade putgd through pkg.put.gd
+  putgd
+1 upgraded, 0 newly installed, 0 to remove and 68 not upgraded.
+Preparing to unpack .../putgd_0.1.1~nightly.828_amd64.deb ...
+Unpacking putgd (0.1.1~nightly.828) over (0.1.1~nightly.816) ...
+Setting up putgd (0.1.1~nightly.828) ...
+0.1.1~nightly.828 install ok installed
+-rw-r--r-- 1 root root 2033 Oct 21 10:20 /etc/apt/sources.list.d/putgd.sources
+
+### the app afterwards
+ok True latest 0.1.1-nightly.828 available False | action software-updates managed
