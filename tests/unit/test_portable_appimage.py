@@ -114,6 +114,24 @@ exit 0
                 self.assertEqual(subprocess.run([str(APP_RUN)], env=self.env).returncode, 0)
                 self.assertEqual(fallback in self.receipt.read_text(), expected)
 
+    def test_host_ca_bundle_is_named_for_the_image(self):
+        """#329: the first readable host bundle, SSL_CERT_FILE first; never a stale inherited value."""
+        self.env["XDG_CURRENT_DESKTOP"] = "GNOME"
+        self.write(self.app / "usr/bin/putgd-launcher", "#!/bin/sh\nprintf '%s' \"${PUTGD_CA_BUNDLE-unset}\" > \"$PG_TEST_RECEIPT\"\n")
+        chosen = self.root / "chosen bundle.pem"
+        chosen.write_text("synthetic\n")
+        self.env.update(SSL_CERT_FILE=str(chosen), PUTGD_CA_BUNDLE="/stale/inherited.pem")
+        self.assertEqual(subprocess.run([str(APP_RUN)], env=self.env).returncode, 0)
+        self.assertEqual(self.receipt.read_text(), str(chosen))
+        host = ("/etc/ssl/certs/ca-certificates.crt", "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem",
+                "/etc/pki/tls/certs/ca-bundle.crt", "/etc/ssl/ca-bundle.pem", "/etc/ssl/cert.pem")
+        expected = next((path for path in host if os.path.isfile(path) and os.access(path, os.R_OK)), "unset")
+        for missing in (str(self.root / "absent.pem"), str(self.root)):
+            with self.subTest(ssl_cert_file=missing):
+                self.env["SSL_CERT_FILE"] = missing
+                self.assertEqual(subprocess.run([str(APP_RUN)], env=self.env).returncode, 0)
+                self.assertEqual(self.receipt.read_text(), expected)
+
     def test_termination_stops_exact_child_and_cleans_permission(self):
         self.mount_windowed_helpers()
         self.env.update(WAYLAND_DISPLAY="wayland-0")
