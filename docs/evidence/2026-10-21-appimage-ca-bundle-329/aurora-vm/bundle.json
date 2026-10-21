@@ -1,0 +1,8 @@
+{
+ "host": "aurora-lab",
+ "PUTGD_CA_BUNDLE": {
+  "putgd": "/etc/ssl/certs/ca-certificates.crt",
+  "putgd-pr334b.Ap": "(unset)",
+  "putgd-ui": "/etc/ssl/certs/ca-certificates.crt"
+ }
+}
