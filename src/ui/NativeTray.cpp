@@ -28,6 +28,8 @@ struct NativeTooltip { QString icon; NativeImages images; QString title, descrip
 struct NativeLayout { int id = 0; QVariantMap properties; QList<QDBusVariant> children; };
 struct NativeItemProperties { int id = 0; QVariantMap properties; };
 using NativePropertyList = QList<NativeItemProperties>;
+struct NativeItemRemoved { int id = 0; QStringList names; };
+using NativeRemovedList = QList<NativeItemRemoved>;
 struct NativeMenuEvent { int id = 0; QString event; QDBusVariant data; uint timestamp = 0; };
 using NativeEvents = QList<NativeMenuEvent>;
 Q_DECLARE_METATYPE(NativeImage)
@@ -36,6 +38,8 @@ Q_DECLARE_METATYPE(NativeTooltip)
 Q_DECLARE_METATYPE(NativeLayout)
 Q_DECLARE_METATYPE(NativeItemProperties)
 Q_DECLARE_METATYPE(NativePropertyList)
+Q_DECLARE_METATYPE(NativeItemRemoved)
+Q_DECLARE_METATYPE(NativeRemovedList)
 Q_DECLARE_METATYPE(NativeMenuEvent)
 Q_DECLARE_METATYPE(NativeEvents)
 
@@ -62,6 +66,12 @@ QDBusArgument& operator<<(QDBusArgument& a, const NativeItemProperties& x) {
 }
 const QDBusArgument& operator>>(const QDBusArgument& a, NativeItemProperties& x) {
  a.beginStructure(); a >> x.id >> x.properties; a.endStructure(); return a;
+}
+QDBusArgument& operator<<(QDBusArgument& a, const NativeItemRemoved& x) {
+ a.beginStructure(); a << x.id << x.names; a.endStructure(); return a;
+}
+const QDBusArgument& operator>>(const QDBusArgument& a, NativeItemRemoved& x) {
+ a.beginStructure(); a >> x.id >> x.names; a.endStructure(); return a;
 }
 QDBusArgument& operator<<(QDBusArgument& a, const NativeMenuEvent& x) {
  a.beginStructure(); a << x.id << x.event << x.data << x.timestamp; a.endStructure(); return a;
@@ -115,7 +125,9 @@ QVariantMap menuProperties(int id, const QStringList& names = {}, const QString&
   const auto& e = entries[id-1];
   if (!*e.label) props.insert("type", "separator");
   else props.insert("label", id == updateId && !update.isEmpty() ? update : QString::fromUtf8(e.label));
-  if (id == updateId && update.isEmpty()) props.insert("visible", false);
+  // Always explicit: Plasma's and GNOME's hosts update a known item only with the
+  // properties a layout carries, so an omitted default would keep it hidden (#304).
+  if (id == updateId) props.insert("visible", !update.isEmpty());
  }
  if (!names.isEmpty()) for (auto it = props.begin(); it != props.end();) {
   if (!names.contains(it.key())) it = props.erase(it); else ++it;
@@ -147,6 +159,7 @@ void registerWireTypes() {
  qDBusRegisterMetaType<NativeImage>(); qDBusRegisterMetaType<NativeImages>();
  qDBusRegisterMetaType<NativeTooltip>(); qDBusRegisterMetaType<NativeLayout>();
  qDBusRegisterMetaType<NativeItemProperties>(); qDBusRegisterMetaType<NativePropertyList>();
+ qDBusRegisterMetaType<NativeItemRemoved>(); qDBusRegisterMetaType<NativeRemovedList>();
  qDBusRegisterMetaType<NativeMenuEvent>(); qDBusRegisterMetaType<NativeEvents>();
  qDBusRegisterMetaType<QList<int>>(); qDBusRegisterMetaType<QList<QStringList>>();
 }
@@ -554,7 +567,12 @@ void NativeTray::setUpdateLabel(const QString& label) {d_->setUpdateLabel(label)
 void NativeTrayPrivate::setUpdateLabel(const QString& label) {
  if (label == updateLabel_) return;
  updateLabel_ = label; ++menuRevision_;
- // Hosts re-read the layout on LayoutUpdated(revision, parent 0).
+ // Hosts that track item properties get the change directly; the others
+ // re-read the layout on LayoutUpdated(revision, parent 0).
+ auto properties = QDBusMessage::createSignal("/Menu", menuInterface, "ItemsPropertiesUpdated");
+ properties.setArguments({QVariant::fromValue(NativePropertyList{{updateId, menuProperties(updateId, {"label", "visible"}, label)}}),
+                          QVariant::fromValue(NativeRemovedList{})});
+ bus_.send(properties);
  auto signal = QDBusMessage::createSignal("/Menu", menuInterface, "LayoutUpdated");
  signal.setArguments({menuRevision_, 0}); bus_.send(signal);
 }

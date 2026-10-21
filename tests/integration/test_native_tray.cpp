@@ -122,8 +122,12 @@ public slots:void iconChanged(){++icons;}void tooltipChanged(){++tooltips;}
 };
 class LayoutSignalPeer final:public QObject {
  Q_OBJECT
-public:int updates=0;uint revision=0;int parent=-1;
+public:int updates=0;uint revision=0;int parent=-1;int itemUpdates=0;QList<std::pair<int,QVariantMap>> items;
 public slots:void layoutUpdated(uint r,int p){++updates;revision=r;parent=p;}
+ void itemsUpdated(const QDBusMessage& m){
+  ++itemUpdates;items.clear();const auto arg=m.arguments().at(0).value<QDBusArgument>();
+  arg.beginArray();while(!arg.atEnd()){int id=0;QVariantMap props;arg.beginStructure();arg>>id>>props;arg.endStructure();items.append({id,props});}arg.endArray();
+ }
 };
 
 class NativeTrayWire final : public QObject {
@@ -483,6 +487,7 @@ private slots:
   // #293: hidden until a stable update is available, then labelled with it.
   NativeTray tray; QTRY_VERIFY(tray.available()); QSignalSpy actions(&tray, &NativeTray::actionActivated); LayoutSignalPeer observer;
   QVERIFY(client.connect(watcher.registrations.last(), "/Menu", "com.canonical.dbusmenu", "LayoutUpdated", &observer, SLOT(layoutUpdated(uint,int))));
+  QVERIFY(client.connect(watcher.registrations.last(), "/Menu", "com.canonical.dbusmenu", "ItemsPropertiesUpdated", "a(ia{sv})a(ias)", &observer, SLOT(itemsUpdated(QDBusMessage))));
   auto entry = [&] {
    const auto reply = call("/Menu", "com.canonical.dbusmenu", "GetLayout", {0, -1, QStringList{}});
    const auto root = qdbus_cast<WireLayout>(reply.arguments().at(1));
@@ -493,10 +498,16 @@ private slots:
   QCOMPARE(qdbus_cast<QDBusVariant>(call("/Menu", "com.canonical.dbusmenu", "GetProperty", {17, QString("visible")}).arguments().at(0)).variant().toBool(), false);
   tray.setUpdateLabel("Update available: 0.1.2"); QTRY_COMPARE(observer.updates, 1); QCOMPARE(observer.revision, uint(2)); QCOMPARE(observer.parent, 0);
   std::tie(revision, update) = entry();
-  QCOMPARE(revision, uint(2)); QCOMPARE(update.props["label"].toString(), QString("Update available: 0.1.2")); QVERIFY(!update.props.contains("visible"));
+  // #304: visible is sent explicitly, in the layout and as a property change, because
+  // Plasma's and GNOME's hosts apply only the properties they are sent to a known item.
+  QCOMPARE(revision, uint(2)); QCOMPARE(update.props["label"].toString(), QString("Update available: 0.1.2")); QCOMPARE(update.props["visible"].toBool(), true);
+  QTRY_COMPARE(observer.itemUpdates, 1); QCOMPARE(observer.items.size(), 1); QCOMPARE(observer.items.at(0).first, 17);
+  QCOMPARE(observer.items.at(0).second["visible"].toBool(), true); QCOMPARE(observer.items.at(0).second["label"].toString(), QString("Update available: 0.1.2"));
+  QCOMPARE(qdbus_cast<QDBusVariant>(call("/Menu", "com.canonical.dbusmenu", "GetProperty", {17, QString("visible")}).arguments().at(0)).variant().toBool(), true);
   QCOMPARE(click(17).type(), QDBusMessage::ReplyMessage); QTRY_COMPARE(actions.size(), 1); QCOMPARE(actions.at(0).at(0).toString(), QString("update"));
   tray.setUpdateLabel("Update available: 0.1.2"); QTest::qWait(50); QCOMPARE(observer.updates, 1);
   tray.setUpdateLabel({}); QTRY_COMPARE(observer.updates, 2); QCOMPARE(entry().second.props["visible"].toBool(), false);
+  QTRY_COMPARE(observer.itemUpdates, 2); QCOMPARE(observer.items.at(0).second["visible"].toBool(), false);
  }
  void lateHostAndWatcherRestartDoNotDuplicateRegistration() {
   watcher.hostPresent = false; NativeTray tray;
