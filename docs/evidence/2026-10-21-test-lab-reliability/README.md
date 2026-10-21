@@ -76,7 +76,28 @@ to Cinnamon; the `:1` desktop keeps its own notifyd on its private bus. Applied 
 desktop lock at 16:17Z. Details and rollback are in
 [remote-builders](../../remote-builders.md#m74-notifications-belong-to-cinnamon-312-2026-10-21).
 
-Still open for #312's acceptance:
-- a put.gd notification's default action on m74, in a coordinator-granted slot;
-- a `GetServerInformation` check after the next reboot, which the coordinator
-  arranges with Patrick.
+### The default action on Cinnamon (16:44-16:54Z, under a second m74 lock)
+
+![Cinnamon banner, clicked](m74-notification-default-action.png)
+
+The #303 method, repeated with a build of this branch. Only scheduled checks notify,
+and nightly builds never do, so a CI AppImage couldn't show an update notification.
+The build was release preset, `2c53dfb` with a local `v0.1.1` tag (never pushed,
+deleted afterwards), and `PUTGD_PACKAGE_TARGET=ubuntu24.04`. The driver was
+[accept303.py](../2026-10-21-updates-acceptance-303/lab/accept303.py) with its paths,
+temp prefix and URL-recorder names changed for this run, started by
+[lab/run312.sh](lab/run312.sh). It used a private profile, a loopback feed offering
+0.1.2 ([feed-stable.json](../2026-10-21-updates-acceptance-303/lab/feed-stable.json)),
+and a URL recorder as the `https` handler instead of a browser.
+
+- Shared bus before the run: `('cinnamon', 'GNOME', '6.6.9', '1.2')`.
+- The resident's own first check ran at 16:53:16Z (`manual: false`), found 0.1.2, and
+  showed one notification. Cinnamon drew it with no **Open in browser** button.
+- `xdotool` clicked the banner's body; the recorder received
+  `https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v0.1.2` at 16:53:18Z.
+- Afterwards the resident (PID 33960) and the feed server (PID 33911) were stopped by
+  PID. The runtime directory and `~/work/put.gd-r12tl` on m74 were removed, and the
+  lock was released `--verified-clean`.
+
+Still open for #312: a `GetServerInformation` check after m74's next reboot, which
+the coordinator arranges with Patrick.

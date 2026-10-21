@@ -548,5 +548,7 @@ after   shared bus   ('cinnamon', 'GNOME', '6.6.9', '1.2')            owner: cin
 
 To check: `gdbus call --session -d org.freedesktop.Notifications -o /org/freedesktop/Notifications -m org.freedesktop.Notifications.GetServerInformation`
 with `DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus`. Rollback:
-`systemctl --user unmask xfce4-notifyd.service`. Evidence:
+`systemctl --user unmask xfce4-notifyd.service`. With the mask in place, a put.gd
+update notification's default action (a click on the body) opened its link again
+on m74 at 16:53Z. Evidence:
 [2026-10-21-test-lab-reliability](evidence/2026-10-21-test-lab-reliability/README.md).
