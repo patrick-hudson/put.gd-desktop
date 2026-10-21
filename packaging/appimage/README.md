@@ -281,7 +281,8 @@ AppImage magic and prints the same update information as the configured image
 (`--appimage-updateinformation`). Group write counts as private only for the user's
 own group (named after the user, no other members), which umask 002 gives every file
 on Debian, Ubuntu, Mint and Fedora. The folder must pass the same check, or only the
-configured image is used. Without update information
+configured image is used. The configured image itself only has to be an executable file,
+as the autostart entry required before. Without update information
 (untagged builds) the configured image is the only candidate. Gear Lever replaces
 the configured file in place; with no versioned sibling the script starts it
 without probing anything. put.gd touches only its own autostart entry and script,

@@ -8,7 +8,8 @@
 # remove the old one (appimageupdatetool --remove-old). So start the newest
 # put.gd AppImage in the configured image's folder that embeds the same update
 # information. Gear Lever replaces the configured file in place, which needs
-# nothing extra. Only the user's own files in the user's own folder qualify.
+# nothing extra. Only the user's own files in the user's own folder qualify
+# as newer images.
 set -u
 configured=__PUTGD_CONFIGURED__
 update_information=__PUTGD_UPDATE_INFORMATION__
@@ -100,7 +101,9 @@ if [ -n "$update_information" ] && [ -d "$directory" ] && private "$directory"; 
         best_version=$version
     done
 fi
-if appimage "$configured"; then
+# The configured image is the one put.gd last ran from; like the autostart entry
+# before #307, it only has to be an executable file.
+if [ -f "$configured" ] && [ -x "$configured" ]; then
     [ -n "$best" ] || exec "$configured" "$@"
     # Gear Lever's put.gd.appimage carries no version in its name; ask the image.
     version=$(name_version "$configured") ||
@@ -115,5 +118,5 @@ if [ -n "$best" ]; then
     say "$configured is missing; starting $best"
     exec "$best" "$@"
 fi
-say "cannot start $configured: it is missing or not a private AppImage, and no put.gd AppImage with its update information is beside it"
+say "cannot start $configured: it is missing or not executable, and no put.gd AppImage with its update information is beside it"
 exit 1

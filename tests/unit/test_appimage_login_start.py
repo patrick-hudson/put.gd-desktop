@@ -162,6 +162,15 @@ class LoginStartTest(unittest.TestCase):
         self.addCleanup(self.images.chmod, 0o700)
         self.assertStarts(configured, new if private_group() else configured)
 
+    def test_configured_image_only_has_to_be_executable(self):
+        # As before #307: the image put.gd last ran from starts even if others could write it.
+        configured = self.image("putgd-0.1.1-nightly.800-x86_64.AppImage", "0.1.1-nightly.800", mode=0o757)
+        self.assertStarts(configured, configured)
+        configured.chmod(0o644)
+        completed, started = self.start(configured)
+        self.assertEqual(completed.returncode, 1)
+        self.assertIn("missing or not executable", completed.stderr)
+
     def test_folder_others_can_write_is_not_searched(self):
         configured = self.images / "putgd-0.1.1-nightly.800-x86_64.AppImage"
         self.image("putgd-0.1.1-nightly.801-x86_64.AppImage", "0.1.1-nightly.801")
