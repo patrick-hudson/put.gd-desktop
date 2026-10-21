@@ -127,6 +127,7 @@ elseif(PUTGD_REPO_CHANNEL AND PUTGD_PACKAGE_TARGET STREQUAL "fedora44")
   install(FILES "${repo_dir}/keys/putgd-${PUTGD_REPO_CHANNEL}.asc" DESTINATION /etc/pki/rpm-gpg RENAME RPM-GPG-KEY-putgd)
   set(CPACK_RPM_USER_FILELIST "%ghost %config(noreplace) %attr(0644,root,root) /etc/yum.repos.d/putgd.repo")
   set(CPACK_RPM_POST_INSTALL_SCRIPT_FILE "${repo_dir}/rpm-post.sh")
+  set(CPACK_RPM_POST_UNINSTALL_SCRIPT_FILE "${repo_dir}/rpm-postun.sh")
   set(CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION /etc/pki /etc/pki/rpm-gpg /etc/yum.repos.d)
 endif()
 set(CPACK_GENERATOR DEB) # Select -G RPM for a native Fedora build.
