@@ -1,0 +1,38 @@
+# 2026-10-21T19:03:54Z
+$ curl -sS https://app.put.gd/update/v1/nightly.json
+{
+ "channel": "nightly",
+ "generatedAt": "2026-10-21T19:01:35Z",
+ "tag": "v0.1.1-nightly.847",
+ "appimage": {
+  "name": "putgd-0.1.1-nightly.847-x86_64.AppImage",
+  "url": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/v0.1.1-nightly.847/putgd-0.1.1-nightly.847-x86_64.AppImage",
+  "size": 115018232,
+  "sha256": "3f53aff9126d938c2fc6b825b8e1bae521eb345339b0a652c71b4bd9d37b2e1b",
+  "zsync": "https://app.put.gd/dl/nightly/appimage.zsync"
+ }
+}
+
+$ curl -sSI https://app.put.gd/dl/nightly/appimage.zsync
+HTTP/2 302 
+cache-control: no-store
+location: https://github.com/patrick-hudson/put.gd-desktop/releases/download/v0.1.1-nightly.847/putgd-0.1.1-nightly.847-x86_64.AppImage.zsync
+
+$ curl -sSIL https://app.put.gd/dl/nightly/appimage.zsync  (final hop)
+HTTP/2 200 
+content-length: 196903
+
+$ curl -sSI https://app.put.gd/dl/stable/appimage.zsync
+HTTP/2 404 
+No download is published under /dl/stable/appimage.zsync. See https://github.com/patrick-hudson/put.gd-desktop/releases
+
+
+$ curl -sS https://app.put.gd/update/v1/stable.json
+200
+{
+  "schema": 1,
+  "channel": "stable",
+  "generatedAt": "2026-10-21T15:19:34Z",
+  "release": null
+}
+

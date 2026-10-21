@@ -1,0 +1,19 @@
+== nightly 842
+$ grep AppImage SHA256SUMS
+36b5eac723e457b6b16de6ac3cdc365bdf6ca91178dfd9c83db6bb3611d6c2b5  putgd-0.1.1-nightly.842-x86_64.AppImage
+732b2723028bc1a149d67e1a984911109451a14f2c55b46ad0c074b7010c6db6  putgd-0.1.1-nightly.842-x86_64.AppImage.zsync
+$ release-builds.json: AppImage update entries
+  /receipts/appimage/update/information = zsync|https://app.put.gd/dl/nightly/appimage.zsync
+  /receipts/appimage/update/zsync/file = putgd-0.1.1-nightly.842-x86_64.AppImage.zsync
+== nightly 847
+$ grep AppImage SHA256SUMS
+3f53aff9126d938c2fc6b825b8e1bae521eb345339b0a652c71b4bd9d37b2e1b  putgd-0.1.1-nightly.847-x86_64.AppImage
+eaf97ae48a4d40d8f07cde05814bd907dcf2dcaff8fe060e0217498c8840cc55  putgd-0.1.1-nightly.847-x86_64.AppImage.zsync
+$ release-builds.json: AppImage update entries
+  /receipts/appimage/update/information = zsync|https://app.put.gd/dl/nightly/appimage.zsync
+  /receipts/appimage/update/zsync/file = putgd-0.1.1-nightly.847-x86_64.AppImage.zsync
+== nightly 842 image (N)
+zsync|https://app.put.gd/dl/nightly/appimage.zsync
+AppDir root desktop entries: putgd.desktop
+== nightly 847 image (N+1, as updated in ~/Applications)
+zsync|https://app.put.gd/dl/nightly/appimage.zsync

@@ -334,7 +334,10 @@ A live delta update from nightly 801 to 816 through the site permalink and GitHu
 download CDN worked with appimageupdatetool in the Mint guest (95 % of the image reused,
 6.8 MB fetched, SHA-256 equal to 816's `SHA256SUMS` line;
 [pre-check](evidence/2026-10-21-appimage-login-306-307/README.md#live-pre-check-801-to-816)).
-The close-out with two nightlies that carry #307 is #296.
+The live close-out moved nightly 842 to 847 (both with #307) through the permalink with
+appimageupdatetool, Gear Lever and AppImageLauncher in the Mint guest; after each, a real
+logout and login started 847, and the feed and permalinks answered as designed (no stable
+permalink yet): [live update](evidence/2026-10-21-appimage-live-294-296/README.md).
 
 ## GitHub downloads and source
 

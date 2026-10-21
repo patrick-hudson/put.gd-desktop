@@ -1,0 +1,27 @@
+Checking for updates...
+zsync2: Using CA bundle found on system: /etc/ssl/certs/ca-certificates.crt
+... done!
+Starting update...
+
+Updating from generic server via ZSync
+zsync2: Using CA bundle found on system: /etc/ssl/certs/ca-certificates.crt
+
+zsync2: Target file: /home/lab/Apps/putgd-0.1.1-nightly.847-x86_64.AppImage
+zsync2: Reading seed file: /home/lab/Apps/putgd-0.1.1-nightly.842-x86_64.AppImage
+
+zsync2: Usable data from seed files: 99.718671%
+zsync2: Renaming temp file
+zsync2: Fetching remaining blocks
+
+zsync2: Downloading from https://release-assets.githubusercontent.com/github-production-release-asset/1409524888/b56a7f72-d892-4fca-ad56-982e8fee58ae?REDACTED-SIGNED-QUERY
+zsync2: optimized ranges, old requests count 24, new requests count 10
+
+
+zsync2: Verifying downloaded file
+
+zsync2: checksum matches OK
+zsync2: used 114696192 local, fetched 1251832
+
+Validation warning: AppImage not signed
+Removing old AppImage: /home/lab/Apps/putgd-0.1.1-nightly.842-x86_64.AppImage
+Update successful. New file created: /home/lab/Apps/putgd-0.1.1-nightly.847-x86_64.AppImage
