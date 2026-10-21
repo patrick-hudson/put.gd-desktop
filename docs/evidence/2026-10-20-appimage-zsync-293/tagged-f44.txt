@@ -1,0 +1,47 @@
+# Fedora Linux 44 (Workstation Edition), 2026-10-20T23:52:44Z
+
+$ git -C tree describe --tags --exact-match
+v0.1.1-nightly.784
+[exit 0]
+
+$ git -C tree status --short --untracked-files=normal
+[exit 0]
+
+$ ./putgd-0.1.1-nightly.784-x86_64.AppImage --appimage-updateinformation
+zsync|https://app.put.gd/dl/nightly/appimage.zsync
+[exit 0]
+
+$ head -8 putgd-0.1.1-nightly.784-x86_64.AppImage.zsync
+zsync: 0.6.2
+Filename: putgd-0.1.1-nightly.784-x86_64.AppImage
+MTime: Tue, 20 Oct 2026 23:51:57 +0000
+Blocksize: 4096
+Length: 114792952
+Hash-Lengths: 2,2,5
+URL: https://github.com/patrick-hudson/put.gd-desktop/releases/download/v0.1.1-nightly.784/putgd-0.1.1-nightly.784-x86_64.AppImage
+SHA-1: d8a2df55c3256bafbbf9e11fc89d5468f0241b74
+
+$ env SSL_CERT_FILE=/etc/pki/tls/certs/ca-bundle.crt appimageupdatetool --describe out/C/putgd-0.1.1-nightly.784-x86_64.AppImage
+
+Parsing file: out/C/putgd-0.1.1-nightly.784-x86_64.AppImage
+AppImage type: 2
+Raw update information: zsync|https://app.put.gd/dl/nightly/appimage.zsync
+Update information type: Generic ZSync URL
+Assembled ZSync URL: https://app.put.gd/dl/nightly/appimage.zsync
+[exit 0]
+
+$ python3 -c "...json.load(open('appimage-build.json'))['update']..."   # the AppImage receipt
+{
+  "information": "zsync|https://app.put.gd/dl/nightly/appimage.zsync",
+  "zsync": {
+    "file": "putgd-0.1.1-nightly.784-x86_64.AppImage.zsync",
+    "url": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/v0.1.1-nightly.784/putgd-0.1.1-nightly.784-x86_64.AppImage",
+    "sha256": "1fb705aa7b4de2a26d0a7bdd8c70241bbc1d253989c50a031321247e4cf948bd",
+    "bytes": 196518
+  }
+}
+
+$ collect.py checks: verified_zsync(receipt, image, tag v0.1.1-nightly.784)
+accepted putgd-0.1.1-nightly.784-x86_64.AppImage.zsync
+rejected as v0.1.1-rc.1: AppImage update information differs from its release channel
+rejected lab build B: AppImage update information differs from its release channel

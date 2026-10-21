@@ -27,8 +27,8 @@ with every commit on `nightly`; for example `v0.1.1-nightly.312`, titled
 "put.gd 0.1.1 nightly 312". The tag, base, full commit, tree and count must match
 the clean source. Nightlies before 2026-10-18 used `vBASE-dev.COUNT.UTC+gSHORT`.
 Nightlies never replace GitHub's Latest stable release. Every channel publishes
-all fifteen individual downloads listed below, including the three raw DEBs, the RPM,
-the exact compiled curated source archive, the AppImage's media source and the
+all sixteen individual downloads listed below, including the three raw DEBs, the RPM,
+the exact compiled curated source archive, the AppImage's media source and `.zsync`, and the
 debug symbols.
 
 ### Nightly
@@ -274,15 +274,45 @@ Minimum-Qt DEB compatibility compilation is separate from GNOME/KDE compositor
 qualification. Windows CI compilation is future-platform evidence, not a
 native support claim.
 
+## AppImage updates
+
+Tagged AppImages carry zsync update information, so AppImageUpdate, Gear Lever and
+AppImageLauncher can update them (design: issue #293). The runtime's `.upd_info`
+section holds `zsync|https://app.put.gd/dl/<channel>/appimage.zsync`, the
+put.gd-site permalink to the newest `.zsync` of the channel:
+
+| Tag | Channel in the update information |
+| --- | --- |
+| `vBASE-nightly.N` | `nightly` |
+| `vBASE-rc.N`, `vBASE` | `stable` (candidate users follow stable) |
+| none (pull requests, CI pushes, local builds) | nothing is embedded and no `.zsync` is made |
+
+An untagged build carries nothing, so no updater offers to replace a development
+build with a release. Each release publishes `putgd-VERSION-x86_64.AppImage.zsync`,
+made in the AppImage job from the final image bytes. Its `URL` is the image's
+absolute GitHub release download URL, so the updater fetches that exact asset
+however it reached the `.zsync`. The AppImage receipt records the update
+information and the `.zsync`'s URL, size and SHA-256 under `update`. Read an
+image's value with `./putgd-VERSION-x86_64.AppImage --appimage-updateinformation`.
+Assembly details are in
+[AppImage assembly](../packaging/appimage/README.md#update-information); the lab
+update from one build to the next is recorded in
+[AppImage zsync updates](evidence/2026-10-20-appimage-zsync-293/README.md).
+On Fedora, appimageupdatetool needs
+`SSL_CERT_FILE=/etc/pki/tls/certs/ca-bundle.crt` (#297). Gear Lever,
+AppImageLauncher and autostart after an update are still to be checked (#295),
+as is the first live update through the site permalink (#296).
+
 ## GitHub downloads and source
 
 The GitHub Release page publishes each installer as an individual download:
 Ubuntu 24.04, Ubuntu 26.04 and Debian 13 DEBs, the Fedora 44 RPM, and the x86_64 AppImage. It also
 publishes `putgd-VERSION-source.tar.gz`, the AppImage's
-`putgd-VERSION-appimage-media-source.tar.gz`, the GNOME extension ZIP, full build
+`putgd-VERSION-appimage-media-source.tar.gz` and `putgd-VERSION-x86_64.AppImage.zsync`
+(see [AppImage updates](#appimage-updates)), the GNOME extension ZIP, full build
 receipts, the Proton source catalog and two source transport parts,
 `putgd-VERSION-debug-x86_64.tar.zst`, and `SHA256SUMS`.
-`putgd-VERSION-release.zip` contains the ten smaller underlying
+`putgd-VERSION-release.zip` contains the eleven smaller underlying
 files and an inner checksum list. The two large source parts and the debug asset
 stay separate; the outer checksum list covers them and the combined ZIP.
 
@@ -376,7 +406,9 @@ With a tag, the `collect` job requires the four native assets and the AppImage
 from one clean tagged commit/tree/count/version, and the debug files staged by
 all five builds from that identity. It recalculates each artifact's
 SHA256 against its build receipt and assigns distro-specific filenames so the
-three DEBs cannot overwrite each other. It uploads the verified set as the
+three DEBs cannot overwrite each other. The AppImage must embed its tag's update
+information, and its `.zsync` must match the receipt and describe exactly the collected
+image at its release URL ([AppImage updates](#appimage-updates)). It uploads the verified set as the
 `release-assets` artifact. Only the nightly `publish` job and the release
 `draft` job write releases. Both run after every CI and package job in the same
 run passed, and both record that run in the release notes and their receipt.

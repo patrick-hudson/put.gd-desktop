@@ -6,6 +6,7 @@ for local bulk artifacts and [verification](../verification.md) for limitations.
 
 | Topic | Starting point |
 | --- | --- |
+| AppImage zsync update information and `.zsync` asset (issue #293) | [Three CI-equivalent AppImage builds on f44; `appimageupdatetool` moves build A to the next commit's B through a local Range server on Fedora 44 and Ubuntu 24.04 (95.5 % reused, 5.6 of 109.5 MiB fetched, B's exact bytes); tagged nightly readback and `collect.py` binding](2026-10-20-appimage-zsync-293/README.md) |
 | Review window: the video first, one timeline, contextual mask tools (issue #283) | [d69 Plasma Wayland and m74 Cinnamon X11 before/after in both schemes (video 28.9 % → 70.0 % of the window), MCP end to end with `drive_recording_review`, upload to the S3 fixture, motion 18.3 vs 0.875](2026-10-20-review-window-283/README.md) |
 | Review window icon, rail after a theme switch, theme tests and the session bus (issues #264, #261, #251) | [Cinnamon panel button before/after with and without a desktop entry, `_NET_WM_ICON` added; rail fresh vs switched (2 px → identical); gui tests under a light-portal bus before/after](2026-10-20-quick-knockouts-264-261-251/README.md) |
 | Spin boxes, instant theme switch, Diagnostics on Advanced, upload wording (issues #233, #237, #238, #239) | [Spin box chevrons in both schemes, pick-to-repaint timing before/after on m74/d69/f44 (1921 → 65 ms, 1744 → 38 ms, 1711 → 38 ms), Settings tabs and rail/File names before/after](2026-10-20-ui-polish-233-237-238-239/README.md) |
