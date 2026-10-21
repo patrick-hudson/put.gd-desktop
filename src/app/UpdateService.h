@@ -15,7 +15,8 @@ namespace putgd {
 // check waits 5 to 15 minutes after start; later ones follow the last attempt
 // by 24 hours, plus or minus 2, which is kept in update-check.json in the state
 // folder so a restart does not check again early. Stable builds notify once per
-// new version; nightly builds only report it in Settings.
+// new version, unless the system's updater follows put.gd's repository (it
+// notifies itself); nightly builds only report it in Settings.
 class UpdateService final:public QObject {
  Q_OBJECT
 public:
@@ -31,6 +32,13 @@ public:
  // Checks now, whatever the schedule or the check setting says, and replies
  // with status(). A failed check replies with its error.
  void check(JsonReply);
+ // What updating this installation means here, as the last check found it:
+ // the system's software updater when the package's repository file is in
+ // use, else a download. The check child reads the file, not the resident.
+ QJsonObject action() const;
+ // Starts that updater (Update Manager, Discover or GNOME Software) through
+ // `putgd-cli --open-software-updates`, which reads the file again.
+ void openSoftwareUpdates(JsonReply);
  // Test seams.
  void setClock(std::function<QDateTime()> clock) {clock_=std::move(clock);}
  void setRandom(std::function<qint64(qint64,qint64)> random) {random_=std::move(random);}
@@ -43,6 +51,7 @@ signals:
  void updateAvailable(const QJsonObject& result);
 private:
  QString channel() const;
+ bool notifies(const QJsonObject& action) const;
  bool enabled() const;
  void schedule();
  void run(bool manual);

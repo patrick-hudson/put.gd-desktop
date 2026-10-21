@@ -492,7 +492,8 @@ void TrayController::notifyMessage(const QString& code, const QString& title, co
 }
 void TrayController::setUpdateStatus(const QJsonObject& status) {
  const auto result=status["result"].toObject();
- const auto label=status["notifies"].toBool()&&result["updateAvailable"].toBool()?"Update available: "+result["latest"].toString():QString();
+ // Stable only; a repository install keeps the item although put.gd does not notify.
+ const auto label=status["channel"]=="stable"&&result["updateAvailable"].toBool()?"Update available: "+result["latest"].toString():QString();
  if(label==updateLabel_)return;
  updateLabel_=label;
 #ifdef Q_OS_LINUX

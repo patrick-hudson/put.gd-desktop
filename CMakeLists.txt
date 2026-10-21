@@ -108,7 +108,7 @@ add_library(putgd_core STATIC src/core/Settings.cpp src/core/SettingsService.cpp
   src/core/ClipboardPayload.cpp src/core/ArtifactStore.cpp src/core/ImageJob.cpp src/core/PosterJob.cpp src/core/LocalArchive.cpp
   src/core/UploadNaming.cpp src/core/StorageReceipt.cpp src/core/StorageProvider.cpp
   src/core/Operation.cpp src/core/HistoryStore.cpp src/core/SanitizedPng.cpp src/core/EditorJob.cpp src/core/RecordingModel.cpp
-  src/core/ReleaseLink.cpp src/core/Update.cpp src/core/Distribution.cpp src/core/ZipWriter.cpp)
+  src/core/ReleaseLink.cpp src/core/Update.cpp src/core/SystemUpdates.cpp src/core/Distribution.cpp src/core/ZipWriter.cpp)
 set_target_properties(putgd_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
 # Which published package this build becomes, and whether it may check for a
 # newer version once a day (#293). The package jobs set the target; a build
@@ -118,6 +118,12 @@ set(putgd_package_targets ubuntu24.04 ubuntu26.04 debian13 fedora44 appimage fla
 set(PUTGD_PACKAGE_TARGET "" CACHE STRING "Published package this build is for: ${putgd_package_targets}, or empty")
 set_property(CACHE PUTGD_PACKAGE_TARGET PROPERTY STRINGS "" ${putgd_package_targets})
 option(PUTGD_UPDATE_CHECK "Let tagged package builds check app.put.gd once a day for a newer version" ON)
+# Tagged DEB/RPM builds add this signed apt/dnf repository (packaging/linux);
+# the app recognises a system that updates from it. Lab builds point it elsewhere.
+set(PUTGD_PACKAGE_REPOSITORY_URL "https://pkg.put.gd" CACHE STRING "Base URL of the apt/dnf repositories tagged packages add")
+if(NOT PUTGD_PACKAGE_REPOSITORY_URL MATCHES "^https://[a-z0-9.-]+(/[a-z0-9._-]+)*$")
+  message(FATAL_ERROR "PUTGD_PACKAGE_REPOSITORY_URL must be an https URL without a trailing slash")
+endif()
 if(NOT PUTGD_PACKAGE_TARGET STREQUAL "" AND NOT PUTGD_PACKAGE_TARGET IN_LIST putgd_package_targets)
   message(FATAL_ERROR "PUTGD_PACKAGE_TARGET must be one of ${putgd_package_targets}, or empty")
 endif()
@@ -127,7 +133,7 @@ else()
   set(putgd_update_check_built 0)
 endif()
 set_source_files_properties(src/core/Distribution.cpp PROPERTIES COMPILE_DEFINITIONS
-  "PUTGD_PACKAGE_TARGET_NAME=\"${PUTGD_PACKAGE_TARGET}\";PUTGD_UPDATE_CHECK_BUILT=${putgd_update_check_built}")
+  "PUTGD_PACKAGE_TARGET_NAME=\"${PUTGD_PACKAGE_TARGET}\";PUTGD_UPDATE_CHECK_BUILT=${putgd_update_check_built};PUTGD_PACKAGE_REPOSITORY=\"${PUTGD_PACKAGE_REPOSITORY_URL}\"")
 target_include_directories(putgd_core PUBLIC src)
 target_link_libraries(putgd_core PUBLIC putgd_build_options putgd_build_identity putgd_log Qt6::Core Qt6::Gui Qt6::Sql PRIVATE putgd_ui_control)
 
@@ -762,6 +768,9 @@ if(BUILD_TESTING)
   add_executable(test_update_service tests/unit/test_update_service.cpp)
   target_link_libraries(test_update_service PRIVATE putgd_app putgd_s3_runtime Qt6::Test)
   add_test(NAME update_service_schedule COMMAND test_update_service)
+  add_executable(test_system_updates tests/unit/test_system_updates.cpp)
+  target_link_libraries(test_system_updates PRIVATE putgd_core Qt6::Test)
+  add_test(NAME update_system_repository COMMAND test_system_updates)
   add_executable(test_geometry tests/unit/test_geometry.cpp)
   target_link_libraries(test_geometry PRIVATE putgd_core Qt6::Test)
   add_test(NAME geometry_contract COMMAND test_geometry)

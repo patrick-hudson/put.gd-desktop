@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- AppStream metadata: software centres (GNOME Software, Discover) list put.gd
+     as an application, with its updates, instead of a bare package (#293). -->
+<component type="desktop-application">
+  <id>gd.put.Putgd</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>@PUTGD_METAINFO_LICENSE@</project_license>
+  <name>put.gd</name>
+  <summary>Capture and share screen regions and clipboard content</summary>
+  <developer id="gd.put">
+    <name>put.gd</name>
+  </developer>
+  <description>
+    <p>
+      A native Linux sharing app. Hit a hotkey and grab a region, a window, the
+      desktop, the clipboard or a screen recording. The public link is on your
+      clipboard as soon as the upload finishes.
+    </p>
+    <p>
+      put.gd uploads straight to your own S3-compatible bucket or Proton Drive,
+      with no middleman and no telemetry. It runs on GNOME, KDE Plasma and
+      Cinnamon, on Wayland and X11.
+    </p>
+  </description>
+  <launchable type="desktop-id">putgd.desktop</launchable>
+  <icon type="stock">putgd</icon>
+  <categories>
+    <category>Utility</category>
+    <category>Graphics</category>
+  </categories>
+  <url type="homepage">https://app.put.gd/</url>
+  <url type="bugtracker">https://github.com/patrick-hudson/put.gd-desktop/issues</url>
+  <url type="vcs-browser">https://github.com/patrick-hudson/put.gd-desktop</url>
+  <provides>
+    <binary>putgd</binary>
+    <binary>putgd-cli</binary>
+  </provides>
+  <content_rating type="oars-1.1"/>
+@PUTGD_METAINFO_RELEASES@</component>

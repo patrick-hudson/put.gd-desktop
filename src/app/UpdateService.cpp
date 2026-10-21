@@ -49,13 +49,23 @@ void UpdateService::schedule() {
  nextAt_=due;
  timer_.start(int(qBound(qint64(0),now().msecsTo(due),qint64(INT_MAX))));
 }
+QJsonObject UpdateService::action() const {
+ // The check child reads the repository file; the last result carries it.
+ if(!build_.supported||result_["channel"]!=channel())return {};
+ return result_["action"].toObject();
+}
+bool UpdateService::notifies(const QJsonObject& action) const {
+ // A system updater that follows our repository already tells the user.
+ return channel()=="stable"&&action["kind"]!="software-updates";
+}
 QJsonObject UpdateService::status() const {
  const auto snapshot=settings_.snapshot();
  // Only a result for the current channel is shown.
  const bool current=result_["channel"]==channel()&&!channel().isEmpty();
+ const auto offered=action();
  return {{"build",build_.toJson()},{"check",snapshot.checkForUpdates},{"channelSetting",snapshot.updateChannel},{"channel",channel().isEmpty()?QJsonValue():QJsonValue(channel())},
   {"enabled",enabled()},{"supported",build_.supported},{"reason",build_.reason.isEmpty()?QJsonValue():QJsonValue(build_.reason)},
-  {"notifies",channel()=="stable"},{"checking",bool(process_)},{"attemptedAt",isoTime(attemptedAt_)},{"checkedAt",current?isoTime(checkedAt_):QJsonValue()},
+  {"notifies",notifies(offered)},{"action",offered.isEmpty()?QJsonValue():QJsonValue(offered)},{"checking",bool(process_)},{"attemptedAt",isoTime(attemptedAt_)},{"checkedAt",current?isoTime(checkedAt_):QJsonValue()},
   {"nextCheckAt",isoTime(nextAt_)},{"result",current?QJsonValue(result_):QJsonValue()},{"error",error_.isEmpty()?QJsonValue():QJsonValue(error_)}};
 }
 void UpdateService::check(JsonReply reply) {
@@ -63,6 +73,26 @@ void UpdateService::check(JsonReply reply) {
  waiting_.append(std::move(reply));
  if(process_){manualRunning_=true;return;}
  run(true);
+}
+void UpdateService::openSoftwareUpdates(JsonReply reply) {
+ if(!build_.supported){reply({"update_check_unavailable","This build does not check for updates",{{"reason",build_.reason}}},{});return;}
+ // A short-lived child checks the repository file again and starts the updater.
+ auto* process=new QProcess(this);process->setProcessChannelMode(QProcess::SeparateChannels);
+ auto output=std::make_shared<QByteArray>();auto done=std::make_shared<JsonReply>(std::move(reply));
+ connect(process,&QProcess::readyReadStandardOutput,process,[process,output]{*output+=process->readAllStandardOutput();if(output->size()>maximumOutput)process->kill();});
+ connect(process,&QProcess::errorOccurred,this,[process,done](QProcess::ProcessError error){
+  if(error!=QProcess::FailedToStart||!*done)return;
+  std::exchange(*done,{})({"software_updates_failed","Cannot start the update child",{}},{});process->deleteLater();
+ });
+ connect(process,&QProcess::finished,this,[process,output,done]{
+  *output+=process->readAllStandardOutput();process->deleteLater();if(!*done)return;
+  const auto answer=QJsonDocument::fromJson(output->trimmed()).object();const auto e=answer["error"].toObject();
+  if(answer["schemaVersion"]==1&&answer["ok"]==true){
+   logging::info(logApp(),"Opened the software updater",{{"updater",answer["result"].toObject()["opened"]}});
+   std::exchange(*done,{})({},answer["result"].toObject());
+  } else std::exchange(*done,{})({e["code"].toString("software_updates_failed"),e["message"].toString("The software updater could not be started"),e["details"].toObject()},{});
+ });
+ process->start(program_,prefix_+QStringList{"--open-software-updates"},QIODevice::ReadOnly);
 }
 void UpdateService::run(bool manual) {
  if(process_)return;
@@ -101,7 +131,7 @@ void UpdateService::finished(bool manual,const QByteArray& output,const Error& f
   // Stable announces each new version once. A version someone already saw in
   // Settings is not announced again; nightly is never announced.
   if(available&&latest!=notifiedVersion_) {
-   if(!manual&&channel()=="stable"&&settings_.snapshot().notifications)emit updateAvailable(result);
+   if(!manual&&notifies(result["action"].toObject())&&settings_.snapshot().notifications)emit updateAvailable(result);
    if(manual||channel()=="stable")notifiedVersion_=latest;
   }
  }

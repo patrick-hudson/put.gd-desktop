@@ -1,0 +1,11 @@
+# put.gd @PUTGD_REPO_CHANNEL@ packages from pkg.put.gd, added by the putgd package.
+# To stop updates from this repository, delete this file or set enabled=0;
+# upgrades leave your change alone and `dnf remove putgd` removes the file.
+[putgd-@PUTGD_REPO_CHANNEL@]
+name=put.gd (@PUTGD_REPO_CHANNEL@)
+baseurl=@PUTGD_REPO_URL@/rpm/fedora/44/x86_64/@PUTGD_REPO_CHANNEL@
+enabled=1
+gpgcheck=1
+repo_gpgcheck=0
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd
+metadata_expire=6h
