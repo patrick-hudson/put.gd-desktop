@@ -1142,7 +1142,11 @@ QString SettingsWindow::autosaveText()const{
  return {};
 }
 void SettingsWindow::showCaptureSettings(){tabs_->setCurrentIndex(1);}
-void SettingsWindow::showUpdates(){tabs_->setCurrentIndex(0);if(auto* scroll=qobject_cast<QScrollArea*>(tabs_->widget(0)))scroll->ensureWidgetVisible(updateStatus_);}
+void SettingsWindow::showUpdates(){
+ tabs_->setCurrentIndex(0);
+ // The status, then its actions and an install's progress below it (#293 phase 3).
+ if(auto* scroll=qobject_cast<QScrollArea*>(tabs_->widget(0))){scroll->ensureWidgetVisible(updateStatus_);for(auto* row:{updateActionsRow_,installRow_})if(row&&row->isVisible())scroll->ensureWidgetVisible(row);}
+}
 bool SettingsWindow::flushAutosave(){if(autosave_)autosave_->stop();if(!autosaveBlocked_&&!pendingEdits_.isEmpty()&&!conflict_&&(setupAccepting_||!setupJobs_.isEmpty())){const auto waiting=QStringLiteral("Waiting for destination setup to finish before saving your edits.");if(status_->text()!=waiting||status_->property("feedbackTone").toString()!="neutral")VisualStyle::feedback(status_,waiting);return false;}if(!saving_&&!pendingEdits_.isEmpty()&&!conflict_)save();return !saving_;}
 void SettingsWindow::save(){
  if(autosaveBlocked_||conflict_||saving_||resetting_||setupAccepting_||!setupJobs_.isEmpty())return;

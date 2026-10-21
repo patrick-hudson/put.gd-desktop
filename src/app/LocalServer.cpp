@@ -110,7 +110,8 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   return;
  }
  if(method=="ui.show") {
-  if(!fields(p,{"view"})||!QStringList{"settings","history","activity","about","editFile"}.contains(p["view"].toString())){reply(invalid(),{});return;}
+  // updates: Settings scrolled to Updates, as the rail's Update available link opens it (#293).
+  if(!fields(p,{"view"})||!QStringList{"settings","updates","history","activity","about","editFile"}.contains(p["view"].toString())){reply(invalid(),{});return;}
   if(!uiActivation_){reply({"ui_unavailable","This resident has no graphical interface",{}},{});return;}
   const auto view=p["view"].toString();uiActivation_(view,[reply=std::move(reply),view](Error error){reply(error,{{"shown",view}});});return;
  }

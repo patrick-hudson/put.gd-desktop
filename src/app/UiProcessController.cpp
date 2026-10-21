@@ -34,7 +34,7 @@ UiProcessController::~UiProcessController(){
 }
 void UiProcessController::activate(const QString& view,Reply reply){
  if(stopping_){if(reply)reply(unavailable("ui_stopping"));return;}
- if(!QStringList{"settings","history","activity","about","editFile"}.contains(view)){
+ if(!QStringList{"settings","updates","history","activity","about","editFile"}.contains(view)){
   if(reply)reply(unavailable("ui_view"));
   return;
  }
