@@ -4,14 +4,20 @@ A tagged AppImage embeds `zsync|https://app.put.gd/dl/<channel>/appimage.zsync`
 in its runtime's `.upd_info` section: the put.gd-site permalink to the newest
 `.zsync` of its channel. Nightly tags follow `nightly`; candidates and stable
 releases follow `stable`. The `.zsync` is made from the final image bytes and
-names the image by its absolute GitHub release download URL, so AppImageUpdate,
-Gear Lever and AppImageLauncher fetch exactly the asset whose SHA-1 it records,
-whichever redirect served the `.zsync`.
+names the image by its absolute URL on the release signer's mirror,
+`https://pkg.put.gd/releases/<tag>/<name>`, so AppImageUpdate, Gear Lever,
+AppImageLauncher and put.gd's own updater fetch exactly the image whose SHA-1 it
+records, whichever redirect served the `.zsync`. The mirror's URL doesn't
+redirect: zsync2 resolves redirects with a request that ignores the CA bundle,
+which fails on Fedora 44 (#297). The signer (pkgrepo.py) mirrors each release's
+image and `.zsync` before the feed names it.
 
 Untagged CI and development builds embed nothing and have no `.zsync`, so no
 updater offers to replace a development build with a release. A lab origin
 (`--update-origin`) points both URLs at a local server for update tests; the
-collector rejects such an image.
+collector rejects such an image. A lab base (`--update-base`, for example
+https://pkg.put.gd/lab/) gives a tagged lab build the live layout under that
+prefix, as the signer's lab scope publishes it.
 """
 import hashlib
 from pathlib import Path
@@ -22,6 +28,7 @@ from release_identity import parse_tag
 
 REPOSITORY = 'patrick-hudson/put.gd-desktop'
 PERMALINK = 'https://app.put.gd/dl/{}/appimage.zsync'
+MIRROR = 'https://pkg.put.gd/'
 SECTION = '.upd_info'
 # zsync 0.6.2's zsyncmake, as the pinned appimagetool bundles it (tools.lock.json).
 ZSYNC_VERSION = '0.6.2'
@@ -45,11 +52,21 @@ def asset_url(repository, tag, name):
     return 'https://github.com/' + repository + '/releases/download/' + tag + '/' + name
 
 
+def mirror_url(tag, name, base=MIRROR):
+    """The signer's copy of a release's image (#293 phase 3)."""
+    parse_tag(tag)
+    if Path(name).name != name or not name.endswith('.AppImage'):
+        raise ValueError('Invalid AppImage asset name')
+    if not re.fullmatch(r'https://[^\s|?#]+/', base):
+        raise ValueError('Update base must be an https URL ending in /')
+    return base + 'releases/' + tag + '/' + name
+
+
 def zsync_name(image_name):
     return image_name + '.zsync'
 
 
-def targets(name, tag=None, repository=REPOSITORY, origin=None):
+def targets(name, tag=None, repository=REPOSITORY, origin=None, base=None):
     """Return (update information, image URL for the .zsync), or None to embed nothing."""
     if origin:
         if not re.fullmatch(r'https?://[^\s|]+', origin):
@@ -58,7 +75,11 @@ def targets(name, tag=None, repository=REPOSITORY, origin=None):
         return 'zsync|' + origin + '/appimage.zsync', origin + '/' + name
     if not tag:
         return None
-    return update_information(tag), asset_url(repository, tag, name)
+    asset_url(repository, tag, name)  # checks the repository and name
+    if base:
+        url = mirror_url(tag, name, base)
+        return 'zsync|' + base + f'dl/{channel(tag)}/appimage.zsync', url
+    return update_information(tag), mirror_url(tag, name)
 
 
 def read_update_information(path):

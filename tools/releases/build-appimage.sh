@@ -35,6 +35,10 @@ if [ -n "${PUTGD_APPIMAGE_UPDATE_ORIGIN:-}" ]; then
   update=(--update-origin "$PUTGD_APPIMAGE_UPDATE_ORIGIN")
 elif [ -n "$release_tag" ]; then
   update=(--release-tag "$release_tag")
+  # Lab only: a tagged build for the signer's lab scope (#293 phase 3).
+  if [ -n "${PUTGD_APPIMAGE_UPDATE_BASE:-}" ]; then
+    update+=(--update-base "$PUTGD_APPIMAGE_UPDATE_BASE")
+  fi
 fi
 python3 tools/releases/portable_appimage.py --stage "$stage" --output-dir "$PWD/build/appimage-output" \
   --require-proton --proton-manifest build/dependencies/proton-runtime/manifest.json \
