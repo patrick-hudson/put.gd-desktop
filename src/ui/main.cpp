@@ -6,6 +6,7 @@
 #include "VisualStyle.h"
 #include "core/AllocatorPolicy.h"
 #include "core/BuildInfo.h"
+#include "core/HostEnvironment.h"
 #include <QApplication>
 #include <QJsonDocument>
 #include <QTimer>
@@ -28,6 +29,8 @@ int main(int argc,char** argv){
  // built-in generic theme, and derives candidates from the desktop identity, so
  // that identity is cleared as well.
  if(argc==2&&std::strcmp(argv[1],"--edit-image")==0){
+  // A host program it starts gets the desktop's own values (#326).
+  for(const char* name:{"QT_QPA_PLATFORMTHEME","XDG_CURRENT_DESKTOP","XDG_SESSION_DESKTOP","DESKTOP_SESSION","KDE_FULL_SESSION","GNOME_DESKTOP_SESSION_ID"})putgd::host::keep(name);
   qputenv("QT_QPA_PLATFORMTHEME","generic");
   for(const char* name:{"XDG_CURRENT_DESKTOP","XDG_SESSION_DESKTOP","DESKTOP_SESSION","KDE_FULL_SESSION","GNOME_DESKTOP_SESSION_ID"})qunsetenv(name);
   // Previews and exports allocate full-size rasters and PNG buffers. Without a

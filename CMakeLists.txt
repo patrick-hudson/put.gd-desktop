@@ -108,7 +108,8 @@ add_library(putgd_core STATIC src/core/Settings.cpp src/core/SettingsService.cpp
   src/core/ClipboardPayload.cpp src/core/ArtifactStore.cpp src/core/ImageJob.cpp src/core/PosterJob.cpp src/core/LocalArchive.cpp
   src/core/UploadNaming.cpp src/core/StorageReceipt.cpp src/core/StorageProvider.cpp
   src/core/Operation.cpp src/core/HistoryStore.cpp src/core/SanitizedPng.cpp src/core/EditorJob.cpp src/core/RecordingModel.cpp
-  src/core/ReleaseLink.cpp src/core/Update.cpp src/core/SystemUpdates.cpp src/core/Distribution.cpp src/core/ZipWriter.cpp)
+  src/core/ReleaseLink.cpp src/core/Update.cpp src/core/SystemUpdates.cpp src/core/Distribution.cpp src/core/ZipWriter.cpp
+  src/core/HostEnvironment.cpp)
 set_target_properties(putgd_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
 # Which published package this build becomes, and whether it may check for a
 # newer version once a day (#293). The package jobs set the target; a build
@@ -330,8 +331,18 @@ target_link_libraries(putgd_ui_state PUBLIC Qt6::Core putgd_build_options)
 add_library(putgd_visual STATIC src/ui/VisualStyle.cpp src/ui/IconArt.cpp src/ui/Theme.cpp)
 target_include_directories(putgd_visual PUBLIC src)
 target_link_libraries(putgd_visual PUBLIC Qt6::Widgets putgd_build_options)
+# Links and folders opened on the host (#326): the desktop portal and the file
+# manager over D-Bus, else a launcher with the host's environment. The resident
+# and putgd-ui share it.
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  add_library(putgd_host_open STATIC src/platform/HostOpen.cpp)
+  target_link_libraries(putgd_host_open PUBLIC putgd_core Qt6::DBus)
+else()
+  add_library(putgd_host_open STATIC src/platform/HostOpenDesktopServices.cpp)
+  target_link_libraries(putgd_host_open PUBLIC putgd_core)
+endif()
 add_library(putgd_tray STATIC src/ui/TrayController.cpp src/ui/PanelTone.cpp)
-target_link_libraries(putgd_tray PUBLIC putgd_app putgd_visual)
+target_link_libraries(putgd_tray PUBLIC putgd_app putgd_visual putgd_host_open)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   target_sources(putgd_tray PRIVATE src/ui/NativeTray.cpp)
   target_link_libraries(putgd_tray PUBLIC Qt6::DBus)
@@ -357,7 +368,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif()
 add_library(putgd_ui STATIC src/ui/MainWindow.cpp src/ui/RedesignTheme.cpp src/ui/redesign.qrc src/ui/UiSession.cpp src/ui/SettingsWindow.cpp src/ui/ShortcutEditor.cpp
   src/ui/HistoryWindow.cpp src/ui/HistoryModel.cpp)
-target_link_libraries(putgd_ui PUBLIC putgd_core putgd_client putgd_ui_state putgd_visual putgd_appearance putgd_file_dialog PRIVATE putgd_s3_wire)
+target_link_libraries(putgd_ui PUBLIC putgd_core putgd_client putgd_ui_state putgd_visual putgd_appearance putgd_file_dialog PRIVATE putgd_s3_wire putgd_host_open)
 # Editing model and canvas for the on-demand editor helper; no storage or IPC.
 add_library(putgd_editor STATIC src/editor/EditDocument.cpp src/editor/EditorCommands.cpp src/editor/EditorCanvas.cpp)
 target_include_directories(putgd_editor PUBLIC src)
@@ -550,7 +561,9 @@ if(BUILD_TESTING)
     add_executable(test_native_tray tests/integration/test_native_tray.cpp)
     target_include_directories(test_native_tray PRIVATE tests)
     target_link_libraries(test_native_tray PRIVATE putgd_tray Qt6::Test Qt6::DBus)
-    add_test(NAME native_tray_integration COMMAND dbus-run-session -- $<TARGET_FILE:test_native_tray>)
+    # A bus that can activate nothing: links and folders now ask the XDG portal
+    # first (#326), and a real one would open the host's browser or file manager.
+    add_test(NAME native_tray_integration COMMAND dbus-run-session --config-file=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/dbus-session-isolated.conf -- $<TARGET_FILE:test_native_tray>)
     set_tests_properties(native_tray_integration PROPERTIES TIMEOUT 90)
   endif()
   if(TARGET putgd_x11_core)
@@ -782,6 +795,9 @@ if(BUILD_TESTING)
   add_executable(test_update_service tests/unit/test_update_service.cpp)
   target_link_libraries(test_update_service PRIVATE putgd_app putgd_s3_runtime Qt6::Test)
   add_test(NAME update_service_schedule COMMAND test_update_service)
+  add_executable(test_host_environment tests/unit/test_host_environment.cpp)
+  target_link_libraries(test_host_environment PRIVATE putgd_core Qt6::Test)
+  add_test(NAME host_environment_contract COMMAND test_host_environment)
   add_executable(test_system_updates tests/unit/test_system_updates.cpp)
   target_link_libraries(test_system_updates PRIVATE putgd_core Qt6::Test)
   add_test(NAME update_system_repository COMMAND test_system_updates)
@@ -810,6 +826,12 @@ if(BUILD_TESTING)
     putgd_xvfb_display(xvfb)
     add_test(NAME file_dialog_x11_parent COMMAND dbus-run-session --config-file=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/dbus-session-isolated.conf -- ${PUTGD_XVFB_RUN} ${xvfb} $<TARGET_FILE:test_file_dialog> parentWindowOnX11)
     set_tests_properties(file_dialog_x11_parent PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=xcb;XDG_SESSION_TYPE=x11;WAYLAND_DISPLAY=" TIMEOUT 30)
+    # #326: links and folders opened on the host, against a fake portal and file
+    # manager on a bus that can activate nothing, as an AppImage resident would.
+    add_executable(test_host_open tests/integration/test_host_open.cpp)
+    target_link_libraries(test_host_open PRIVATE putgd_host_open Qt6::Test Qt6::DBus)
+    add_test(NAME host_open_integration COMMAND dbus-run-session --config-file=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/dbus-session-isolated.conf -- $<TARGET_FILE:test_host_open>)
+    set_tests_properties(host_open_integration PROPERTIES TIMEOUT 60)
     add_executable(test_ui_native_lifecycle tests/integration/test_ui_native_lifecycle.cpp)
     target_include_directories(test_ui_native_lifecycle PRIVATE tests)
     target_link_libraries(test_ui_native_lifecycle PRIVATE putgd_app putgd_ui_control putgd_ui_state putgd_x11 putgd_build_identity Qt6::Test PkgConfig::PUTGD_XCB)

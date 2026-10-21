@@ -1,6 +1,7 @@
 #include "ui/VisualStyle.h"
 #include "core/AllocatorPolicy.h"
 #include "core/BuildInfo.h"
+#include "core/HostEnvironment.h"
 #include "core/Log.h"
 #include "core/RunMarker.h"
 #include "storage/s3/S3Provider.h"
@@ -227,6 +228,8 @@ int main(int argc,char* argv[]) {
  // This process now owns the session: open its persistent log (#74) and the
  // running marker. Helpers inherit QT_FORCE_STDERR_LOGGING, so their Qt
  // warnings reach the stderr pipe the resident collects instead of the journal.
+ // Host programs it starts get the value it had (#326).
+ putgd::host::keep("QT_FORCE_STDERR_LOGGING");
  qputenv("QT_FORCE_STDERR_LOGGING","1");
  const auto stateRoot=putgd::logging::stateRoot();
  putgd::logging::open(stateRoot+"/logs",{settings.snapshot().logDays,settings.snapshot().logBytes},"putgd");
@@ -355,6 +358,7 @@ int main(int argc,char* argv[]) {
  server.setUiCommand([&](const QString& name,const QJsonObject& params,putgd::JsonReply reply){ui.command(name,params,std::move(reply));});
  // Save diagnostics for a failed upload from its notification, into the folder Settings last chose (#122).
  tray.setDiagnosticsSaver([&](const QString& id,putgd::JsonReply reply){putgd::BundleRequest request;request.operationId=id;const auto folder=operations.settingsSnapshot().document["preferences"].toObject()["diagnostics"].toObject()["packageFolder"].toString();if(QFileInfo(folder).isDir())request.output=folder;bundles.create(request,std::move(reply));});
+ server.setLinkOpener([](const QUrl& link,std::function<void(const QJsonObject&)> done){putgd::TrayController::openLink(link,"history-link",std::move(done));});
  server.setDiagnosticsNotifications([&](const QJsonObject& result){tray.notifyDiagnosticsSaved(result);},[&](const QString& path){return putgd::TrayController::revealPackage(path,bundles.saved(path));});
  const auto fullDiagnostics=[&]{auto diagnostics=operations.diagnostics();diagnostics["loginStartup"]=loginStatus;diagnostics["shortcuts"]=source->capabilities()["shortcuts"];diagnostics["ui"]=ui.status();diagnostics["trayAvailable"]=tray.available();diagnostics["trayTint"]=tray.trayTint();diagnostics["update"]=updates.status();return diagnostics;};
  server.setUiDiagnostics(fullDiagnostics);
