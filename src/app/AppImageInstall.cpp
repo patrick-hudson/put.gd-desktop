@@ -158,9 +158,9 @@ QJsonObject settle(const QString& stateRoot,const QString& runningImage,const QS
  auto state=readState(stateRoot);
  if(state.isEmpty())return state;
  bool changed=false;
- const auto staging=state["staging"].toString();
+ const auto staging=state.value("staging").toString();
  if(!staging.isEmpty()){removeStaging(staging);state["staging"]=QJsonValue();changed=true;}
- const auto installed=state["installed"].toObject();const auto backup=state["backup"].toObject();
+ const auto installed=state.value("installed").toObject();const auto backup=state.value("backup").toObject();
  if(!backup.isEmpty()&&!runningImage.isEmpty()&&installed["image"].toString()==runningImage&&installed["version"].toString()==runningVersion) {
   // The new version has started from the path: the backup has done its job,
   // if it is still the file put.gd made. Anything else there is the user's.

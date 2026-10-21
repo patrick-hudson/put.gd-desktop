@@ -182,7 +182,8 @@ private slots:
   // What the child records on success.
   QVERIFY(appimage::writeState(dir.path(),{{"installed",QJsonObject{{"image",image},{"version","0.1.1"},{"method","download"}}},{"backup",QJsonObject{{"path",dir.filePath(".putgd-update-backup-0.1.0.AppImage")}}}}));
   QTRY_COMPARE(updates->status()["install"].toObject()["state"].toString(),QString("installed"));
-  QCOMPARE(calls(),QStringList{"--install-update stable --method auto --state "+dir.path()});
+  // (The daily check that started with the service runs too.)
+  QVERIFY(calls().contains("--install-update stable --method auto --state "+dir.path()));
   const auto install=updates->status()["install"].toObject();
   QCOMPARE(install["bytes"].toInteger(),40);QCOMPARE(install["method"].toString(),QString("release"));QCOMPARE(install["result"].toObject()["version"].toString(),QString("0.1.1"));
   QCOMPARE(install["restartRequired"].toBool(),true);QCOMPARE(install["backup"].toString(),dir.filePath(".putgd-update-backup-0.1.0.AppImage"));

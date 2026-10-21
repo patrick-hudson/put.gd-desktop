@@ -1,5 +1,6 @@
 #include "UpdateInstall.h"
 #include "UpdateCheck.h"
+#include "Minisign.h"
 #include "app/AppImageInstall.h"
 #include "core/BuildInfo.h"
 #include "core/HostEnvironment.h"
@@ -23,7 +24,7 @@
 #include <cstring>
 namespace putgd {
 namespace {
-constexpr qint64 maximumSumsBytes=1024*1024;
+constexpr qint64 maximumSumsBytes=1024*1024,maximumSignatureBytes=16*1024;
 // No bytes for this long ends a transfer; Qt measures it between reads.
 constexpr int stallTimeoutMs=60000;
 // A zsync tool whose output doesn't grow for this long, or that runs longer, is stopped.
@@ -131,8 +132,8 @@ QJsonObject installUpdate(const update::Build& build,const InstallOptions& optio
  auto image=appimage::inspect(options.image,size,error);if(error)return {};
  auto state=appimage::readState(options.stateRoot);
  // An install that is waiting for its restart is finished first.
- const auto pending=state["installed"].toObject();
- if(!state["backup"].toObject().isEmpty()&&pending["image"]==image.path&&pending["version"]!=build.version){
+ const auto pending=state.value("installed").toObject();
+ if(!state.value("backup").toObject().isEmpty()&&pending["image"]==image.path&&pending["version"]!=build.version){
   error={"update_restart_required","Restart put.gd to finish the update that is already installed",{{"installed",pending["version"]}}};return {};
  }
 
@@ -142,13 +143,26 @@ QJsonObject installUpdate(const update::Build& build,const InstallOptions& optio
  const auto sumsUrl=update::releaseFileUrl(tag,"SHA256SUMS",error);if(error)return {};
  Transfer sumsTransfer;const auto sums=fetch(network,sumsUrl,maximumSumsBytes,nullptr,nullptr,{},sumsTransfer);
  if(!sumsTransfer.ok){error={"update_sums_unavailable","Cannot read the release's SHA256SUMS",transferDetails(sumsUrl,sumsTransfer)};return {};}
+ // The release signer's signature over exactly these bytes, by this build's
+ // channel key: a SHA256SUMS that is unsigned, signed by another key or for
+ // another release is refused.
+ const auto signatureUrl=update::mirrorFileUrl(tag,"SHA256SUMS.minisig",error);if(error)return {};
+ Transfer signatureTransfer;const auto signature=fetch(network,signatureUrl,maximumSignatureBytes,nullptr,nullptr,{},signatureTransfer);
+ if(!signatureTransfer.ok){
+  auto details=transferDetails(signatureUrl,signatureTransfer);details["check"]="missing";
+  error={"update_signature_invalid","The release's SHA256SUMS has no signature; nothing was changed",details};return {};
+ }
+ const auto key=options.publicKey.isEmpty()?minisign::releaseKey(build.channel):options.publicKey;
+ QString trusted;
+ if(auto failed=minisign::verify(sums,signature,key,&trusted)){error=failed;error.message="The release's SHA256SUMS signature isn't valid ("+failed.message.toLower()+"); nothing was changed";return {};}
+ if(trusted!="put.gd "+tag+" "+build.channel){error={"update_signature_invalid","The SHA256SUMS signature is for another release; nothing was changed",{{"check","release"},{"trustedComment",trusted}}};return {};}
  const auto expected=appimage::sumsLine(sums,name);
  if(expected.isEmpty()){error={"update_sums_unavailable","The release's SHA256SUMS doesn't list the AppImage",{{"name",name}}};return {};}
  if(asset.contains("sha256")&&asset["sha256"].toString()!=expected){
   error={"update_verification_failed","The update feed and the release's SHA256SUMS disagree; nothing was changed",{{"feed",asset["sha256"]},{"sums",expected}}};return {};
  }
  QJsonObject result{{"installed",false},{"version",version},{"tag",tag},{"previousVersion",build.version},{"image",image.path},{"sha256",expected},{"method",QJsonValue()},
-  {"zsync",QJsonValue()},{"backup",QJsonValue()}};
+  {"zsync",QJsonValue()},{"backup",QJsonValue()},{"signature",QJsonObject{{"trustedComment",trusted}}}};
  // Already on disk (an earlier install, or another updater, replaced the file):
  // nothing to fetch, only the restart is left.
  if(appimage::sha256(image.path)==expected) {

@@ -1,5 +1,6 @@
 #include "app/AppImageInstall.h"
 #include "cli/UpdateInstall.h"
+#include "fixtures/MinisignFixture.h"
 #include <QCryptographicHash>
 #include <QDir>
 #include <QFile>
@@ -65,6 +66,8 @@ private:
 class UpdateInstallTest:public QObject {
  Q_OBJECT
  QTemporaryDir dir;QString images,tools,state;QByteArray path_;
+ // The release signer's key for these tests.
+ MinisignKey signer_;
  const QByteArray old_=elfImage("800"),next_=elfImage("801 with changes");
  static update::Build build(){
   return update::build(QJsonObject{{"version","0.1.1-nightly.800"},{"gitCommit","528fe444b0cb0123456789abcdef0123456789ab"},{"dirty",false},{"sourceProvenance","git"}},"appimage",true);
@@ -76,7 +79,9 @@ class UpdateInstallTest:public QObject {
   asset["sha256"]=feedSha.isEmpty()?hex(next_):feedSha;
   server.files["/update/v1/nightly.json"]=QJsonDocument(QJsonObject{{"schema",1},{"channel","nightly"},{"release",QJsonObject{{"tag",tag},{"version","0.1.1-nightly.801"},
    {"assets",QJsonObject{{"appimage",asset}}}}}}).toJson();
-  server.files["/release/"+tag.toUtf8()+"/SHA256SUMS"]=(hex(next_)+"  "+name+"\n"+hex("zsync")+"  "+name+".zsync\n").toUtf8();
+  const auto sums=(hex(next_)+"  "+name+"\n"+hex("zsync")+"  "+name+".zsync\n").toUtf8();
+  server.files["/release/"+tag.toUtf8()+"/SHA256SUMS"]=sums;
+  server.files["/mirror/"+tag.toUtf8()+"/SHA256SUMS.minisig"]=signer_.signature(sums,"put.gd "+tag.toUtf8()+" nightly");
   server.files["/release/"+tag.toUtf8()+"/"+name.toUtf8()]=served;
   server.files["/mirror/"+tag.toUtf8()+"/"+name.toUtf8()+".zsync"]="zsync";
   server.files["/mirror/"+tag.toUtf8()+"/"+name.toUtf8()]=served;
@@ -86,10 +91,10 @@ class UpdateInstallTest:public QObject {
  // tool.out under the .zsync's file name in its folder, exits with tool.code.
  void fakeTool(const QByteArray& output,int code) {
   write(tools+"/appimageupdatetool",QString("#!/bin/sh\nprintf '%s\\n' \"$@\" > '%1/tool.args'\nprintf '%s' \"$SSL_CERT_FILE\" > '%1/tool.ca'\n"
-   "seed=$3\ncp '%1/tool.out' \"${seed%/*}/%2\"\nexit %3\n").arg(dir.path(),name).arg(code).toUtf8());
+   "seed=$3\n/bin/cp '%1/tool.out' \"${seed%/*}/%2\"\nexit %3\n").arg(dir.path(),name).arg(code).toUtf8());
   write(dir.filePath("tool.out"),output);
  }
- InstallOptions options(const QString& method="auto") const {InstallOptions o;o.channel="nightly";o.method=method;o.stateRoot=state;o.image=image();o.caBundle="/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem";return o;}
+ InstallOptions options(const QString& method="auto") const {InstallOptions o;o.channel="nightly";o.method=method;o.stateRoot=state;o.image=image();o.caBundle="/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem";o.publicKey=signer_.publicFile();return o;}
  QStringList leftovers() const {return QDir(images).entryList({".putgd-update-*"},QDir::AllEntries|QDir::Hidden|QDir::NoDotAndDotDot);}
 private slots:
  void initTestCase(){path_=qgetenv("PATH");}
@@ -163,15 +168,33 @@ private slots:
   Error error;installUpdate(build(),options("download"),{},error);
   QCOMPARE(error.code,QString("update_verification_failed"));QCOMPARE(error.details["check"].toString(),QString("sha256"));
   QCOMPARE(read(image()),old_);QVERIFY(leftovers().isEmpty());
-  QVERIFY(appimage::readState(state)["staging"].isNull());QVERIFY(appimage::readState(state)["installed"].isUndefined());
+  QVERIFY(appimage::readState(state)["staging"].isNull());QVERIFY(!appimage::readState(state).contains("installed"));
  }
  void aFeedThatDisagreesWithSha256SumsIsRefusedBeforeDownloading(){
   ReleaseServer server;publish(server,next_,hex("another file"));
   Error error;installUpdate(build(),options(),{},error);
   QCOMPARE(error.code,QString("update_verification_failed"));QVERIFY(!server.requested("GET /release/"+tag.toUtf8()+"/"+name.toUtf8()));QCOMPARE(read(image()),old_);
  }
+ // SHA256SUMS counts only with the release signer's signature for this release.
+ void anUnsignedOrForeignSignedSha256SumsIsRefused(){
+  ReleaseServer server;publish(server,next_);const auto signature="/mirror/"+tag.toUtf8()+"/SHA256SUMS.minisig";const auto sums=server.files["/release/"+tag.toUtf8()+"/SHA256SUMS"];
+  const auto refused=[&](const QString& check){
+   Error error;installUpdate(build(),options(),{},error);
+   QCOMPARE(error.code,QString("update_signature_invalid"));QCOMPARE(error.details["check"].toString(),check);
+   QCOMPARE(read(image()),old_);QVERIFY(leftovers().isEmpty());QVERIFY(!server.requested("GET /release/"+tag.toUtf8()+"/"+name.toUtf8()));
+  };
+  server.files.remove(signature);refused("missing");
+  MinisignKey other(QByteArray::fromHex("0102030405060708"));server.files[signature]=other.signature(sums,"put.gd "+tag.toUtf8()+" nightly");refused("signature");
+  MinisignKey otherId(QByteArray::fromHex("1111111111111111"));server.files[signature]=otherId.signature(sums,"put.gd "+tag.toUtf8()+" nightly");refused("keyId");
+  // Signed, but for another release: an older SHA256SUMS replayed.
+  server.files[signature]=signer_.signature(sums,"put.gd v0.1.1-nightly.700 nightly");refused("release");
+  // A SHA256SUMS changed after signing.
+  server.files[signature]=signer_.signature(sums,"put.gd "+tag.toUtf8()+" nightly");
+  server.files["/release/"+tag.toUtf8()+"/SHA256SUMS"]=sums+hex("extra").toUtf8()+"  extra\n";refused("signature");
+ }
  void missingSha256SumsLineIsRefused(){
-  ReleaseServer server;publish(server,next_);server.files["/release/"+tag.toUtf8()+"/SHA256SUMS"]=(hex(next_)+"  other.AppImage\n").toUtf8();
+  ReleaseServer server;publish(server,next_);const auto sums=(hex(next_)+"  other.AppImage\n").toUtf8();
+  server.files["/release/"+tag.toUtf8()+"/SHA256SUMS"]=sums;server.files["/mirror/"+tag.toUtf8()+"/SHA256SUMS.minisig"]=signer_.signature(sums,"put.gd "+tag.toUtf8()+" nightly");
   Error error;installUpdate(build(),options(),{},error);QCOMPARE(error.code,QString("update_sums_unavailable"));QCOMPARE(read(image()),old_);
  }
  void theNewestVersionHasNothingToInstall(){
