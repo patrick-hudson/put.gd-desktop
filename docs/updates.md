@@ -60,10 +60,12 @@ tagged builds on Cinnamon (m74), GNOME with AppIndicator (f44) and Plasma Waylan
 - **Stable:** exactly one notification, which opens the release notes. A restart doesn't announce the version again.
 - **Nightly:** only Settings and the rail show the update.
 
-Known gaps:
+On Plasma and GNOME the tray's **Update available** entry used to appear only after a
+restart. [#311](https://github.com/patrick-hudson/put.gd-desktop/pull/311) fixed that
+([evidence](evidence/2026-10-21-tray-update-visible-304/README.md)).
 
-- On Plasma and GNOME the tray's **Update available** entry appears only after a
-  restart ([#304](https://github.com/patrick-hudson/put.gd-desktop/issues/304)).
+Known gap:
+
 - *This build's channel* doesn't say which channel it is
   ([#305](https://github.com/patrick-hudson/put.gd-desktop/issues/305)).
 
