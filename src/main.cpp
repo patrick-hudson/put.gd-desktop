@@ -352,6 +352,13 @@ int main(int argc,char* argv[]) {
  if(kde)QObject::connect(kde,&putgd::KdeSourceAdapter::actionRequested,&tray,requested);
 #endif
  server.setUiQuit(quitApplication);
+ // An AppImage update install or restart waits for recordings and uploads (#293 phase 3).
+ updates.setBusy([&]()->QString{
+  if(operations.recording().active())return "A recording is running; install the update when it has finished";
+  if(!operations.activeObservations().isEmpty()||operations.storageActive())return "An upload is running; install the update when it has finished";
+  return {};
+ });
+ updates.setQuit(quitApplication);
  QObject::connect(&ui,&putgd::UiProcessController::failure,&tray,&putgd::TrayController::notifyFailure);
  server.setUiActivation([&](const QString& requested,std::function<void(putgd::Error)> reply){startupRecovery.stop();ui.activate(requested,std::move(reply));});
  server.setUiViewState([&]{return ui.viewState();});

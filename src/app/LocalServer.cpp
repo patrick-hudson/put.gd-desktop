@@ -287,6 +287,12 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   QPointer<LocalServer> guarded(this);settings_.saveAsync(Settings::developmentTemplate(),p["expectedRevision"].toString(),[guarded,reply](Result result) {if(guarded)reply(result.error,guarded->settings_.metadata());});return;
  }
  if(method=="settings.validate") {if(!fields(p,{"document"})||!p["document"].isObject()) {reply(invalid(),{});return;}auto error=Settings::validate(p["document"].toObject(),[this](const auto& id,const auto& s) {return operations_.providers().validate(id,s);},[this](const auto& id,const auto& reference){return operations_.providers().validateCredentials(id,reference);});reply(error,{{"valid",!error}});return;}
+ // AppImage installs (#293 phase 3): only with confirm: true.
+ if(method=="update.install"||method=="update.restart") {
+  if(!updates_){reply({"update_check_unavailable","This resident does not check for updates",{}},{});return;}
+  if(method=="update.install")updates_->install(p,reply);else updates_->restart(p,reply);
+  return;
+ }
  if(!p.isEmpty()) {reply(invalid(),{});return;}
  if(method=="ui.snapshot")reply({},{{"build",QJsonDocument::fromJson(buildManifestJson()).object()},{"residentEpoch",residentEpoch_},{"operationsReady",operations_.ready()},{"settings",QJsonObject{{"document",settings_.document()},{"metadata",settings_.metadata()}}},{"diagnostics",uiDiagnostics_?uiDiagnostics_():operations_.diagnostics()}});
  else if(method=="ui.viewState"){if(uiViewState_)reply({},uiViewState_());else reply({"ui_unavailable","This resident has no interface view state",{}},{});}

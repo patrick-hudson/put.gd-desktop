@@ -10,7 +10,7 @@
 #include <QPointer>
 #include <QSet>
 #include <QPixmap>
-class QAction;class QToolButton;class QTabWidget;class QListWidget;class QSpinBox;class QDoubleSpinBox;class QTimer;class QComboBox;class QLineEdit;class QCheckBox;class QLabel;class QPushButton;class QPlainTextEdit;class QDialog;class QFormLayout;
+class QAction;class QToolButton;class QTabWidget;class QListWidget;class QSpinBox;class QDoubleSpinBox;class QTimer;class QComboBox;class QLineEdit;class QCheckBox;class QLabel;class QPushButton;class QPlainTextEdit;class QDialog;class QFormLayout;class QProgressBar;
 namespace putgd {
 class ShortcutEditor;class FileDialog;
 class SettingsWindow final:public RetainedWindow {
@@ -80,6 +80,8 @@ private:
  void refreshEffectiveLimits();void updateLimitHints();QHash<QString,QLabel*> limitHints_;QJsonObject effectiveLimits_;
  void refreshUpdateStatus();void checkForUpdates(std::function<void(Error,QJsonObject)> done);
  QCheckBox* checkUpdates_=nullptr;QComboBox* updateChannel_=nullptr;QLabel* updateStatus_=nullptr;QPushButton *checkNow_=nullptr,*downloadUpdate_=nullptr,*releaseNotes_=nullptr,*openUpdates_=nullptr;QWidget *updateActionsRow_=nullptr,*updateCommandRow_=nullptr;QLineEdit* updateCommand_=nullptr;QFormLayout* updatesForm_=nullptr;QList<QWidget*> updateRows_;
+ // AppImage install (#293 phase 3): Download and install, its progress and Restart.
+ QPushButton *installUpdate_=nullptr,*restartUpdate_=nullptr;QProgressBar* installProgress_=nullptr;QLabel* installStatus_=nullptr;QWidget* installRow_=nullptr;void refreshInstallStatus(const QJsonObject& update,bool available,bool managed);
  void refreshLoggingStatus();void clearLogs(std::function<void(Error,QJsonObject)> done);void choosePackageFolder(const QString& folder);
  QCheckBox* debugLogging_=nullptr;QLabel *debugLoggingStatus_=nullptr,*logSummary_=nullptr,*loggingWarning_=nullptr,*uncleanExit_=nullptr;QPushButton* clearLogs_=nullptr;
  QPointer<QDialog> packageDialog_;

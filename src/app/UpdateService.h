@@ -17,9 +17,18 @@ namespace putgd {
 // folder so a restart does not check again early. Stable builds notify once per
 // new version, unless the system's updater follows put.gd's repository (it
 // notifies itself); nightly builds only report it in Settings.
+//
+// AppImage builds can also install the update (#293 phase 3), only on an
+// explicit request (Settings' Download and install, update.install with
+// confirm). `putgd-cli --install-update CHANNEL` does the download, checks and
+// file swap; the resident keeps its progress lines and, at its next start,
+// removes the backup of the old image once the new version runs from the path.
 class UpdateService final:public QObject {
  Q_OBJECT
 public:
+ // An install may download 115 MB over a slow line; the child stops stalled
+ // transfers itself.
+ static constexpr int installTimeoutMs=60*60*1000;
  static constexpr qint64 intervalMs=24LL*60*60*1000;
  static constexpr qint64 jitterMs=2LL*60*60*1000;
  static constexpr qint64 startupMinimumMs=5LL*60*1000,startupMaximumMs=15LL*60*1000;
@@ -39,11 +48,26 @@ public:
  // Starts that updater (Update Manager, Discover or GNOME Software) through
  // `putgd-cli --open-software-updates`, which reads the file again.
  void openSoftwareUpdates(JsonReply);
+ // update.install {confirm: true, method?: auto|zsync|download}: starts the
+ // install child and replies with status() at once; progress follows in
+ // status()["install"].
+ void install(const QJsonObject& params,JsonReply);
+ // update.restart {confirm: true}: once an installed update waits for a
+ // restart, starts the image again from the host and quits this resident.
+ void restart(const QJsonObject& params,JsonReply);
+ // Why nothing may be installed or restarted now (a recording or an upload is
+ // running), or empty.
+ void setBusy(std::function<QString()> busy) {busy_=std::move(busy);}
+ void setQuit(std::function<void()> quit) {quit_=std::move(quit);}
  // Test seams.
  void setClock(std::function<QDateTime()> clock) {clock_=std::move(clock);}
  void setRandom(std::function<qint64(qint64,qint64)> random) {random_=std::move(random);}
  void setBuild(update::Build build) {build_=std::move(build);}
  void setProgram(QString program,QStringList prefix={}) {program_=std::move(program);prefix_=std::move(prefix);}
+ // The AppImage this resident runs from ($APPIMAGE); empty outside one.
+ void setImage(QString image) {image_=std::move(image);}
+ // Starts the image once this process has exited; true when it started.
+ void setRestarter(std::function<bool(qint64 pid,const QString& image)> restarter) {restarter_=std::move(restarter);}
  qint64 nextCheckInMs() const {return timer_.isActive()?timer_.remainingTime():-1;}
 signals:
  void changed();
@@ -52,6 +76,11 @@ signals:
 private:
  QString channel() const;
  bool notifies(const QJsonObject& action) const;
+ QJsonObject installStatus() const;
+ QString installUnavailable() const;
+ bool restartRequired() const;
+ void installLine(const QByteArray& line);
+ void installFinished(const QByteArray& last,const Error& failure);
  bool enabled() const;
  void schedule();
  void run(bool manual);
@@ -60,7 +89,7 @@ private:
  QDateTime now() const {return clock_?clock_():QDateTime::currentDateTimeUtc();}
  qint64 random(qint64 low,qint64 high) const;
  SettingsService& settings_;
- QString statePath_,program_;
+ QString stateRoot_,statePath_,program_,image_;
  QStringList prefix_;
  update::Build build_;
  QTimer timer_,deadline_;
@@ -73,5 +102,12 @@ private:
  QString notifiedVersion_,attemptedChannel_;
  std::function<QDateTime()> clock_;
  std::function<qint64(qint64,qint64)> random_;
+ // The install child, its live progress and update-install.json as last read.
+ QPointer<QProcess> installer_;
+ QTimer installDeadline_;
+ QJsonObject install_,installState_;
+ std::function<QString()> busy_;
+ std::function<void()> quit_;
+ std::function<bool(qint64,const QString&)> restarter_;
 };
 }

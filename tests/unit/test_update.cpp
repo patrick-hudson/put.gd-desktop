@@ -70,6 +70,24 @@ private slots:
   QCOMPARE(result["notesUrl"].toString(),QString("https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v0.1.1-nightly.590"));
   QCOMPARE(result["downloadUrl"].toString(),QString("https://github.com/patrick-hudson/put.gd-desktop/releases/download/v0.1.1-nightly.590/putgd-0.1.1-nightly.590-debian13-x86_64.deb"));
   QCOMPARE(result["publishedAt"].toString(),QString("2026-10-20T05:55:50Z"));
+  // What an install fetches (#293 phase 3): this build's own asset, with the feed's size and hash.
+  QCOMPARE(result["asset"].toObject(),(QJsonObject{{"name","putgd-0.1.1-nightly.590-debian13-x86_64.deb"},{"size",123},{"sha256",QString(64,'a')}}));
+ }
+ void releaseFilesComeFromTheReleaseOrTheMirror(){
+  for(const char* name:{"PUTGD_UPDATE_RELEASE_URL","PUTGD_UPDATE_MIRROR_URL"})qunsetenv(name);
+  Error error;
+  QCOMPARE(update::releaseFileUrl("v0.1.1-nightly.801","SHA256SUMS",error),QUrl("https://github.com/patrick-hudson/put.gd-desktop/releases/download/v0.1.1-nightly.801/SHA256SUMS"));QVERIFY(!error);
+  QCOMPARE(update::mirrorFileUrl("v0.1.1-nightly.801","putgd-0.1.1-nightly.801-x86_64.AppImage.zsync",error),
+           QUrl("https://pkg.put.gd/releases/v0.1.1-nightly.801/putgd-0.1.1-nightly.801-x86_64.AppImage.zsync"));QVERIFY(!error);
+  // Only release tags and plain file names.
+  for(const auto& [tag,name]:std::initializer_list<std::pair<const char*,const char*>>{{"v0.1.1-nightly.801","../SHA256SUMS"},{"0.1.1","SHA256SUMS"},{"v0.1.1/x","a"},{"v0.1.1",""}}){
+   error={};update::releaseFileUrl(tag,name,error);QVERIFY2(error,name);
+  }
+  qputenv("PUTGD_UPDATE_MIRROR_URL","http://127.0.0.1:9/lab/releases");error={};
+  QCOMPARE(update::mirrorFileUrl("v0.1.1","SHA256SUMS",error),QUrl("http://127.0.0.1:9/lab/releases/v0.1.1/SHA256SUMS"));QVERIFY(!error);
+  qputenv("PUTGD_UPDATE_RELEASE_URL","http://example.com/releases");error={};
+  update::releaseFileUrl("v0.1.1","SHA256SUMS",error);QCOMPARE(error.code,QString("update_download_failed"));
+  for(const char* name:{"PUTGD_UPDATE_RELEASE_URL","PUTGD_UPDATE_MIRROR_URL"})qunsetenv(name);
  }
  void sameOrOlderVersionIsUpToDate(){
   const auto build=update::build(manifest("0.1.1-nightly.590"),"appimage",true);Error error;
@@ -89,6 +107,8 @@ private slots:
   auto entry=release("0.1.1-nightly.590");auto assets=entry["assets"].toObject();
   auto appimage=assets["appimage"].toObject();appimage["url"]="https://evil.example/putgd.AppImage";assets["appimage"]=appimage;entry["assets"]=assets;
   QCOMPARE(update::evaluate(feed("nightly",entry),build,"nightly",error)["downloadUrl"].toString(),QString("https://app.put.gd/dl/nightly/appimage"));QVERIFY(!error);
+  // Nothing to install from a foreign link.
+  QVERIFY(update::evaluate(feed("nightly",entry),build,"nightly",error)["asset"].isNull());
   const auto ubuntu=update::build(manifest("0.1.1-nightly.588"),"ubuntu26.04",true);
   QCOMPARE(update::evaluate(feed("nightly",release("0.1.1-nightly.590")),ubuntu,"nightly",error)["downloadUrl"].toString(),QString("https://app.put.gd/dl/nightly/ubuntu26.04"));QVERIFY(!error);
  }

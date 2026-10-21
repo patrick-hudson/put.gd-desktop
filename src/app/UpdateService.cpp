@@ -1,7 +1,11 @@
 #include "UpdateService.h"
+#include "AppImageInstall.h"
+#include "core/HostEnvironment.h"
 #include "core/BuildInfo.h"
 #include "core/Log.h"
+#include <QCoreApplication>
 #include <QFile>
+#include <QFileInfo>
 #include <QJsonDocument>
 #include <QRandomGenerator>
 #include <QSaveFile>
@@ -13,12 +17,23 @@ constexpr qint64 maximumOutput=64*1024;
 QJsonValue isoTime(const QDateTime& value) {return value.isValid()?QJsonValue(value.toUTC().toString(Qt::ISODate)):QJsonValue();}
 QDateTime parseTime(const QJsonValue& value) {return value.isString()?QDateTime::fromString(value.toString(),Qt::ISODate):QDateTime{};}
 }
-UpdateService::UpdateService(SettingsService& settings,QString stateRoot,QString program,QObject* parent):QObject(parent),settings_(settings),statePath_(stateRoot+"/update-check.json"),program_(std::move(program)),
+UpdateService::UpdateService(SettingsService& settings,QString stateRoot,QString program,QObject* parent):QObject(parent),settings_(settings),stateRoot_(stateRoot),statePath_(stateRoot+"/update-check.json"),program_(std::move(program)),
  build_(update::build(QJsonDocument::fromJson(buildManifestJson()).object())),timer_(this),deadline_(this) {
  timer_.setSingleShot(true);connect(&timer_,&QTimer::timeout,this,[this]{run(false);});
  deadline_.setSingleShot(true);deadline_.setInterval(childTimeoutMs);
  connect(&deadline_,&QTimer::timeout,this,[this]{if(process_){logging::warning(logApp(),"Update check took too long and was stopped");process_->kill();}});
  connect(&settings_,&SettingsService::accepted,this,[this]{schedule();emit changed();});
+ installDeadline_.setSingleShot(true);installDeadline_.setInterval(installTimeoutMs);
+ connect(&installDeadline_,&QTimer::timeout,this,[this]{if(installer_){logging::warning(logApp(),"Update install took too long and was stopped");installer_->kill();}});
+ // AppRun's $APPIMAGE: the file an install replaces and a restart starts.
+ if(const auto image=qEnvironmentVariable("APPIMAGE");!image.isEmpty()&&QFileInfo(image).isAbsolute())image_=QFileInfo(image).canonicalFilePath();
+ restarter_=[](qint64 pid,const QString& image){
+  // A host shell, not a program inside this image's mount, which goes away
+  // with this process; with the host's environment, not the image's (#326).
+  static const QString script=QStringLiteral(
+   "i=0; while kill -0 \"$1\" 2>/dev/null; do i=$((i+1)); [ \"$i\" -gt 150 ] && exit 1; sleep 0.2; done; exec \"$2\"");
+  return host::startDetached("/bin/sh",{"-c",script,"putgd-restart",QString::number(pid),image});
+ };
 }
 qint64 UpdateService::random(qint64 low,qint64 high) const {return random_?random_(low,high):low+qint64(QRandomGenerator::global()->bounded(quint64(high-low+1)));}
 QString UpdateService::channel() const {const auto chosen=settings_.snapshot().updateChannel;return chosen=="stable"||chosen=="nightly"?chosen:build_.channel;}
@@ -35,6 +50,11 @@ void UpdateService::start() {
    if(attemptedAt_>now())attemptedAt_={};
   }
  }
+ // An interrupted install's staging folder goes; once this version runs
+ // from the installed path, so does the old image's backup.
+ installState_=appimage::settle(stateRoot_,image_,build_.version);
+ if(installState_["installed"].toObject()["backupRemoved"].toBool()&&installState_["installed"].toObject()["version"]==build_.version)
+  logging::info(logApp(),"Update finished: the new version started, so the old image's backup was removed",{{"version",build_.version}});
  schedule();
 }
 void UpdateService::schedule() {
@@ -66,7 +86,107 @@ QJsonObject UpdateService::status() const {
  return {{"build",build_.toJson()},{"check",snapshot.checkForUpdates},{"channelSetting",snapshot.updateChannel},{"channel",channel().isEmpty()?QJsonValue():QJsonValue(channel())},
   {"enabled",enabled()},{"supported",build_.supported},{"reason",build_.reason.isEmpty()?QJsonValue():QJsonValue(build_.reason)},
   {"notifies",notifies(offered)},{"action",offered.isEmpty()?QJsonValue():QJsonValue(offered)},{"checking",bool(process_)},{"attemptedAt",isoTime(attemptedAt_)},{"checkedAt",current?isoTime(checkedAt_):QJsonValue()},
-  {"nextCheckAt",isoTime(nextAt_)},{"result",current?QJsonValue(result_):QJsonValue()},{"error",error_.isEmpty()?QJsonValue():QJsonValue(error_)}};
+  {"nextCheckAt",isoTime(nextAt_)},{"result",current?QJsonValue(result_):QJsonValue()},{"error",error_.isEmpty()?QJsonValue():QJsonValue(error_)},
+  {"install",installStatus()}};
+}
+QString UpdateService::installUnavailable() const {
+ if(build_.target!="appimage")return "not_appimage";
+ if(!build_.supported)return build_.reason;
+ if(image_.isEmpty())return "not_running_from_appimage";
+ // The new image must follow the same permalink as this one.
+ if(channel()!=build_.channel)return "other_channel";
+ return {};
+}
+bool UpdateService::restartRequired() const {
+ const auto installed=installState_["installed"].toObject();const auto version=installed["version"].toString();
+ return !image_.isEmpty()&&installed["image"].toString()==image_&&!version.isEmpty()&&version!=build_.version;
+}
+QJsonObject UpdateService::installStatus() const {
+ const auto unavailable=installUnavailable();
+ auto status=install_;
+ if(!status.contains("state"))status["state"]="idle";
+ status["available"]=unavailable.isEmpty();
+ status["reason"]=unavailable.isEmpty()?QJsonValue():QJsonValue(unavailable);
+ status["running"]=bool(installer_);
+ status["image"]=image_.isEmpty()?QJsonValue():QJsonValue(image_);
+ status["restartRequired"]=restartRequired();
+ status["installed"]=installState_["installed"].isObject()?installState_["installed"]:QJsonValue();
+ status["backup"]=installState_["backup"].toObject()["path"].isString()?installState_["backup"].toObject()["path"]:QJsonValue();
+ return status;
+}
+void UpdateService::install(const QJsonObject& params,JsonReply reply) {
+ for(auto it=params.begin();it!=params.end();++it)if(it.key()!="confirm"&&it.key()!="method"){reply({"invalid_request","update.install takes confirm and method",{}},{});return;}
+ // Nothing installs without an explicit yes.
+ if(params["confirm"]!=true){reply({"update_confirm_required","Installing an update needs confirm: true",{}},{});return;}
+ const auto method=params["method"].toString("auto");
+ if(!QStringList{"auto","zsync","download"}.contains(method)||(params.contains("method")&&!params["method"].isString())){reply({"invalid_request","method is auto, zsync or download",{}},{});return;}
+ if(const auto reason=installUnavailable();!reason.isEmpty()){
+  reply({"update_install_unavailable",reason=="other_channel"?QString("Switch the channel back to this build's channel to install its updates"):QString("Only an AppImage installs updates itself"),{{"reason",reason}}},{});return;
+ }
+ if(installer_){reply({"update_install_busy","An update is already being installed",{}},{});return;}
+ if(restartRequired()){reply({"update_restart_required","Restart put.gd to finish the update that is already installed",{{"installed",installState_["installed"].toObject()["version"]}}},{});return;}
+ if(busy_)if(const auto reason=busy_();!reason.isEmpty()){reply({"update_install_busy",reason,{}},{});return;}
+ auto* process=new QProcess(this);installer_=process;process->setProcessChannelMode(QProcess::SeparateChannels);
+ install_={{"state","running"},{"phase","starting"},{"method",method},{"bytes",0},{"total",0},{"startedAt",isoTime(now())}};
+ auto buffer=std::make_shared<QByteArray>();auto last=std::make_shared<QByteArray>();
+ connect(process,&QProcess::readyReadStandardOutput,process,[this,process,buffer,last]{
+  *buffer+=process->readAllStandardOutput();
+  for(qsizetype end;(end=buffer->indexOf('\n'))>=0;) {
+   const auto line=buffer->left(end).trimmed();buffer->remove(0,end+1);
+   // Progress events, then one result line (keys come sorted, so parse it).
+   if(QJsonDocument::fromJson(line).object().contains("schemaVersion"))*last=line;else installLine(line);
+  }
+  if(buffer->size()>maximumOutput)process->kill();
+ });
+ connect(process,&QProcess::errorOccurred,this,[this,process](QProcess::ProcessError error){
+  if(error!=QProcess::FailedToStart||installer_!=process)return;
+  installDeadline_.stop();installer_=nullptr;process->deleteLater();installFinished({},{"update_install_failed","Cannot start the update install",{{"program",program_}}});
+ });
+ connect(process,&QProcess::finished,this,[this,process,buffer,last](int code,QProcess::ExitStatus status){
+  if(installer_!=process)return;
+  installDeadline_.stop();*buffer+=process->readAllStandardOutput();
+  if(const auto line=buffer->trimmed();QJsonDocument::fromJson(line).object().contains("schemaVersion"))*last=line;
+  installer_=nullptr;process->deleteLater();
+  installFinished(status==QProcess::NormalExit&&(code==0||code==1)?*last:QByteArray(),{"update_install_failed","The update install stopped without a result",{}});
+ });
+ logging::info(logApp(),"Installing an update",{{"channel",channel()},{"method",method}});
+ installDeadline_.start();
+ process->start(program_,prefix_+QStringList{"--install-update",channel(),"--method",method,"--state",stateRoot_},QIODevice::ReadOnly);
+ emit changed();
+ reply({},status());
+}
+void UpdateService::installLine(const QByteArray& line) {
+ const auto event=QJsonDocument::fromJson(line).object();
+ if(event["event"]!="progress")return;
+ for(const auto& key:{"phase","method","bytes","total"})install_[key]=event[key];
+ emit changed();
+}
+void UpdateService::installFinished(const QByteArray& last,const Error& failure) {
+ const auto reply=QJsonDocument::fromJson(last).object();
+ Error error=failure;QJsonObject result;
+ if(reply["schemaVersion"]==1&&reply["ok"]==true){error={};result=reply["result"].toObject();}
+ else if(reply["schemaVersion"]==1&&reply["ok"]==false){const auto e=reply["error"].toObject();error={e["code"].toString(),e["message"].toString(),e["details"].toObject()};}
+ installState_=appimage::readState(stateRoot_);
+ install_["finishedAt"]=isoTime(now());
+ if(error) {
+  install_["state"]="failed";install_["error"]=error.toJson();install_.remove("result");
+  logging::warning(logApp(),"Update install failed",{{"code",error.code},{"details",error.details}});
+ } else {
+  install_["state"]="installed";install_["result"]=result;install_.remove("error");install_["phase"]="done";
+  logging::info(logApp(),"Update installed; it starts with the next start of put.gd",{{"version",result["version"]},{"method",result["method"]},{"zsync",result["zsync"]}});
+ }
+ emit changed();
+}
+void UpdateService::restart(const QJsonObject& params,JsonReply reply) {
+ if(params.size()!=1||params["confirm"]!=true){reply({"update_confirm_required","Restarting needs confirm: true",{}},{});return;}
+ if(!restartRequired()){reply({"update_restart_unavailable","No installed update is waiting for a restart",{}},{});return;}
+ if(installer_){reply({"update_install_busy","An update is being installed",{}},{});return;}
+ if(busy_)if(const auto reason=busy_();!reason.isEmpty()){reply({"update_install_busy",reason,{}},{});return;}
+ if(!quit_||!restarter_||!restarter_(QCoreApplication::applicationPid(),image_)){reply({"update_restart_failed","Cannot start put.gd again",{}},{});return;}
+ const auto version=installState_["installed"].toObject()["version"];
+ logging::info(logApp(),"Restarting into the installed update",{{"version",version}});
+ reply({},{{"restarting",true},{"version",version}});
+ QTimer::singleShot(0,this,[quit=quit_]{quit();});
 }
 void UpdateService::check(JsonReply reply) {
  if(!build_.supported){reply({"update_check_unavailable","This build does not check for updates",{{"reason",build_.reason}}},{});return;}

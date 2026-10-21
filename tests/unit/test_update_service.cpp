@@ -1,10 +1,14 @@
 #include "app/UpdateService.h"
+#include "app/AppImageInstall.h"
 #include "core/Log.h"
+#include <QCoreApplication>
 #include <QFile>
+#include <QFileInfo>
 #include <QJsonDocument>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
+#include <sys/stat.h>
 using namespace putgd;
 // Records its arguments, prints the canned reply and exits with the canned code.
 constexpr auto fakeScript=R"sh(printf '%s\n' "$*" >> "$0.calls"; cat "$0.out"; exit "$(cat "$0.code")")sh";
@@ -21,6 +25,11 @@ class UpdateServiceTest:public QObject {
  // The child's reply line, exit code and the arguments of every call.
  void answer(const QJsonObject& reply,int code=0){
   QFile out(fake()+".out");QVERIFY(out.open(QIODevice::WriteOnly));out.write(QJsonDocument(reply).toJson(QJsonDocument::Compact)+"\n");out.close();
+  QFile exit(fake()+".code");QVERIFY(exit.open(QIODevice::WriteOnly));exit.write(QByteArray::number(code));
+ }
+ // Several reply lines: the install child's progress events, then its result.
+ void answerLines(const QList<QJsonObject>& lines,int code=0){
+  QFile out(fake()+".out");QVERIFY(out.open(QIODevice::WriteOnly));for(const auto& line:lines)out.write(QJsonDocument(line).toJson(QJsonDocument::Compact)+"\n");out.close();
   QFile exit(fake()+".code");QVERIFY(exit.open(QIODevice::WriteOnly));exit.write(QByteArray::number(code));
  }
  QStringList calls() const {QFile file(fake()+".calls");if(!file.open(QIODevice::ReadOnly))return {};return QString::fromUtf8(file.readAll()).split('\n',Qt::SkipEmptyParts);}
@@ -149,6 +158,83 @@ private slots:
   QCOMPARE(updates->status()["nextCheckAt"].toString(),now.addMSecs(UpdateService::intervalMs).toString(Qt::ISODate));
   // A child that prints nothing usable is a failure too.
   answer({},3);replied=false;updates->check([&](Error e,QJsonObject){error=e;replied=true;});QTRY_VERIFY(replied);QCOMPARE(error.code,QString("update_check_failed"));
+ }
+ // The in-app AppImage update (#293 phase 3): only with confirm, never while
+ // busy, progress from the child, then a restart into the new version.
+ void installNeedsConfirmAndReportsTheChildsProgress(){
+  SettingsService settings(dir.filePath("config.json"));configure(settings);
+  auto updates=service(settings,build("0.1.0"));const auto image=dir.filePath("putgd.AppImage");updates->setImage(image);updates->start();
+  QCOMPARE(updates->status()["install"].toObject()["available"].toBool(),true);
+  Error error;updates->install({},[&](Error e,QJsonObject){error=e;});QCOMPARE(error.code,QString("update_confirm_required"));
+  error={};updates->install({{"confirm",false}},[&](Error e,QJsonObject){error=e;});QCOMPARE(error.code,QString("update_confirm_required"));
+  error={};updates->install({{"confirm",true},{"method","torrent"}},[&](Error e,QJsonObject){error=e;});QCOMPARE(error.code,QString("invalid_request"));
+  error={};updates->install({{"confirm",true},{"image","/tmp/other"}},[&](Error e,QJsonObject){error=e;});QCOMPARE(error.code,QString("invalid_request"));
+  updates->setBusy([]{return QString("A recording is running; install the update when it has finished");});
+  error={};updates->install({{"confirm",true}},[&](Error e,QJsonObject){error=e;});QCOMPARE(error.code,QString("update_install_busy"));
+  QVERIFY(calls().isEmpty());
+  updates->setBusy({});
+  answerLines({{{"event","progress"},{"phase","download"},{"method","release"},{"bytes",40},{"total",100}},
+   {{"schemaVersion",1},{"ok",true},{"error",QJsonObject{}},{"result",QJsonObject{{"installed",true},{"version","0.1.1"},{"method","download"}}}}});
+  bool replied=false;QJsonObject status;updates->install({{"confirm",true}},[&](Error e,QJsonObject r){QVERIFY(!e);status=r;replied=true;});
+  QVERIFY(replied);QCOMPARE(status["install"].toObject()["state"].toString(),QString("running"));QCOMPARE(status["install"].toObject()["running"].toBool(),true);
+  // A second request while it runs is refused.
+  error={};updates->install({{"confirm",true}},[&](Error e,QJsonObject){error=e;});QCOMPARE(error.code,QString("update_install_busy"));
+  // What the child records on success.
+  QVERIFY(appimage::writeState(dir.path(),{{"installed",QJsonObject{{"image",image},{"version","0.1.1"},{"method","download"}}},{"backup",QJsonObject{{"path",dir.filePath(".putgd-update-backup-0.1.0.AppImage")}}}}));
+  QTRY_COMPARE(updates->status()["install"].toObject()["state"].toString(),QString("installed"));
+  QCOMPARE(calls(),QStringList{"--install-update stable --method auto --state "+dir.path()});
+  const auto install=updates->status()["install"].toObject();
+  QCOMPARE(install["bytes"].toInteger(),40);QCOMPARE(install["method"].toString(),QString("release"));QCOMPARE(install["result"].toObject()["version"].toString(),QString("0.1.1"));
+  QCOMPARE(install["restartRequired"].toBool(),true);QCOMPARE(install["backup"].toString(),dir.filePath(".putgd-update-backup-0.1.0.AppImage"));
+  // Installed and waiting: no second install, and a restart starts the image from the host, then quits.
+  error={};updates->install({{"confirm",true}},[&](Error e,QJsonObject){error=e;});QCOMPARE(error.code,QString("update_restart_required"));
+  qint64 pid=0;QString started;bool quit=false;
+  updates->setRestarter([&](qint64 p,const QString& i){pid=p;started=i;return true;});updates->setQuit([&]{quit=true;});
+  error={};updates->restart({},[&](Error e,QJsonObject){error=e;});QCOMPARE(error.code,QString("update_confirm_required"));QVERIFY(!quit);
+  QJsonObject restarting;updates->restart({{"confirm",true}},[&](Error e,QJsonObject r){QVERIFY(!e);restarting=r;});
+  QCOMPARE(restarting["version"].toString(),QString("0.1.1"));QCOMPARE(pid,QCoreApplication::applicationPid());QCOMPARE(started,image);
+  QTRY_VERIFY(quit);
+ }
+ void aFailedInstallKeepsItsReasonAndNothingWaits(){
+  SettingsService settings(dir.filePath("config.json"));configure(settings);
+  auto updates=service(settings,build("0.1.0"));updates->setImage(dir.filePath("putgd.AppImage"));updates->start();
+  answerLines({{{"schemaVersion",1},{"ok",false},{"result",QJsonObject{}},{"error",QJsonObject{{"code","update_verification_failed"},{"message","The download doesn't match the release's SHA256SUMS; nothing was changed"},{"details",QJsonObject{{"check","sha256"}}}}}}},1);
+  updates->install({{"confirm",true},{"method","download"}},[](Error,QJsonObject){});
+  QTRY_COMPARE(updates->status()["install"].toObject()["state"].toString(),QString("failed"));
+  const auto install=updates->status()["install"].toObject();
+  QCOMPARE(install["error"].toObject()["code"].toString(),QString("update_verification_failed"));QCOMPARE(install["restartRequired"].toBool(),false);
+  Error error;updates->restart({{"confirm",true}},[&](Error e,QJsonObject){error=e;});QCOMPARE(error.code,QString("update_restart_unavailable"));
+  // A child that dies without a result is a failure too.
+  answerLines({},9);updates->install({{"confirm",true}},[](Error,QJsonObject){});
+  QTRY_COMPARE(updates->status()["install"].toObject()["error"].toObject()["code"].toString(),QString("update_install_failed"));
+ }
+ void onlyAnAppImageOnItsOwnChannelInstalls(){
+  SettingsService settings(dir.filePath("config.json"));configure(settings);
+  auto deb=service(settings,build("0.1.0","debian13"));deb->setImage({});deb->start();
+  QCOMPARE(deb->status()["install"].toObject()["reason"].toString(),QString("not_appimage"));
+  Error error;deb->install({{"confirm",true}},[&](Error e,QJsonObject){error=e;});QCOMPARE(error.code,QString("update_install_unavailable"));
+  auto unpacked=service(settings,build("0.1.0"));unpacked->setImage({});unpacked->start();
+  QCOMPARE(unpacked->status()["install"].toObject()["reason"].toString(),QString("not_running_from_appimage"));
+  // A stable image watching nightly would get another channel's image.
+  configure(settings,{{"channel","nightly"}});
+  auto other=service(settings,build("0.1.0"));other->setImage(dir.filePath("putgd.AppImage"));other->start();
+  QCOMPARE(other->status()["install"].toObject()["reason"].toString(),QString("other_channel"));
+  QVERIFY(calls().isEmpty());
+ }
+ void theFirstStartOfTheNewVersionRemovesTheBackup(){
+  SettingsService settings(dir.filePath("config.json"));configure(settings);
+  const auto image=dir.filePath("putgd.AppImage"),backup=dir.filePath(".putgd-update-backup-0.1.0.AppImage");
+  {QFile file(backup);QVERIFY(file.open(QIODevice::WriteOnly));file.write("old image");}
+  struct stat kept{};QCOMPARE(::stat(QFile::encodeName(backup).constData(),&kept),0);
+  QVERIFY(appimage::writeState(dir.path(),{{"installed",QJsonObject{{"image",image},{"version","0.1.1"}}},
+   {"backup",QJsonObject{{"path",backup},{"device",QString::number(quint64(kept.st_dev))},{"inode",QString::number(quint64(kept.st_ino))},{"size",qint64(kept.st_size)},{"mtime",qint64(kept.st_mtim.tv_sec)}}}}));
+  // Still the old version: kept, and a restart is due.
+  auto old=service(settings,build("0.1.0"));old->setImage(image);old->start();
+  QVERIFY(QFileInfo::exists(backup));QCOMPARE(old->status()["install"].toObject()["restartRequired"].toBool(),true);
+  auto updated=service(settings,build("0.1.1"));updated->setImage(image);updated->start();
+  QVERIFY(!QFileInfo::exists(backup));
+  const auto install=updated->status()["install"].toObject();
+  QCOMPARE(install["restartRequired"].toBool(),false);QVERIFY(install["backup"].isNull());QCOMPARE(install["installed"].toObject()["backupRemoved"].toBool(),true);
  }
 };
 QTEST_GUILESS_MAIN(UpdateServiceTest)
