@@ -7,6 +7,9 @@ cd "$root" || exit 2
 export AFA_ROOT=$root
 python3 tool/i326.py handler-off "$name" > "runs/$name/handler-off.json" 2>&1; grep -E '"same"|"filesMatch"' "runs/$name/handler-off.json"
 python3 tool/afa.py quit-tray "$name" > "runs/$name/quit.json" 2>&1
+# Without a tray item (GNOME without an AppIndicator host) quit through the session instead.
+python3 -c "import json;d=json.load(open('runs/$name/quit.json'));raise SystemExit(0 if d.get('allGone') else 1)" 2>/dev/null ||
+    python3 -c "import sys; sys.path.insert(0, 'tool'); import afa; print('ui.quit', afa.quit_resident(afa.Run('$name')))"
 python3 tool/afa.py cleanup "$name" > "runs/$name/cleanup.json" 2>&1
 python3 -c "import json;d=json.load(open('runs/$name/cleanup.json'));print('after', d['after'])"
 if [ -f "input-$name.pid" ]; then

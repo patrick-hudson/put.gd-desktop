@@ -50,8 +50,10 @@ AppImage acceptance driver `afa.py` of the full-acceptance session, plus [`lab/i
 | Kubuntu 26.04 Plasma 6.6 Wayland (k72) | opened, portal | portal | Dolphin, package selected | `coredumpctl`: no image path |
 | Debian 13 Plasma Wayland (d69) | opened, portal | portal | Dolphin, package selected | none started (no `coredumpctl` on the host) |
 | Linux Mint 22.3 Cinnamon X11 (m74) | opened, portal | portal | Nemo, package selected | `gsettings get org.cinnamon.theme name`, `coredumpctl`: no image path |
-| Fedora 44 GNOME 50 Wayland (f44) | pending | pending | pending | pending |
+| Fedora 44 GNOME 50 Wayland (f44) | opened, portal | portal | Files, package selected | `coredumpctl`: no image path |
 | DEB regression, k72 | opened, portal | portal | Dolphin, package selected | `coredumpctl`: the DEB launcher's private SDK path only, as before |
+
+On f44 the banner says the link could not be copied. That is the GNOME clipboard path for an AppImage without the put.gd GNOME Shell extension, unrelated to #326. The click still opens the link.
 
 In every case the recorder logged `lib=unset plugins=unset appdir=unset`. The resident's log has one
 `Opened on the host` record per open, with its `route` (`portal`, `file-manager` or `launcher`) and,
@@ -87,6 +89,10 @@ gio prints `symbol lookup error: /usr/bin/gio: undefined symbol: g_unix_mount_en
 
 ![After: Mint Cinnamon, Show in folder](m74-show-in-folder.png)
 
+![After: Fedora 44 GNOME, the click opens the link](f44-click.png)
+
+![After: Fedora 44 GNOME, Show in folder](f44-show-in-folder.png)
+
 ![DEB regression on Kubuntu: the click opens the link as before](k72deb-click.png)
 
 The pictures are full-desktop frames from each host's loopback VNC (Patrick sanitised the
@@ -95,7 +101,7 @@ builders; VMs are always fine), annotated by [`lab/annotate326.py`](lab/annotate
 
 ## Clean-up
 
-k72, d69 and m74 desktop locks: 20:38–20:45Z, released `--verified-clean`. The DEB was purged on k72
-(`dpkg-query`: no package). The `putgd-lab-input.sock` the agent left on d69 and k72 was removed.
-The VM overlay (`/home/patrick/work/put.gd-326/vm`) is retired after the f44 run; its golden
-was not booted, and its hash `563730cc…342bb` was verified before use.
+Desktop locks: k72, d69 and m74 20:38–20:45Z, f44 20:52–20:54Z, all released `--verified-clean`. The DEB was purged on k72
+(`dpkg-query`: no package). The `putgd-lab-input.sock` the agent left on d69, k72 and f44 was removed (on f44 it replaced an unused socket from an earlier session).
+The VM overlay (`/home/patrick/work/put.gd-326/vm` on d69) was retired after the f44 run. Its golden
+was never booted, and its hash `563730cc…342bb` was verified before use.

@@ -86,6 +86,7 @@ spec = {
     'k72deb': ('DEB regression - Kubuntu 26.04 Plasma 6.6 (k72), #330 ubuntu26.04 package', [1552, 873, 1884, 990], None),
     'd69': ('Debian 13 Plasma Wayland (d69)', [774, 386, 1146, 650], [855, 429, 1615, 1007]),
     'm74': ('Linux Mint 22.3 Cinnamon X11 (m74)', [683, 455, 1237, 618], [50, 50, 850, 632]),
+    'f44': ('Fedora 44 GNOME 50 Wayland (f44)', [774, 424, 1146, 690], [514, 280, 1404, 830]),
 }
 for run, (where, opened, folder) in spec.items():
     full = EV / run / 'full'; nb = notified(run)
