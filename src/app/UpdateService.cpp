@@ -183,7 +183,7 @@ void UpdateService::restart(const QJsonObject& params,JsonReply reply) {
  if(installer_){reply({"update_install_busy","An update is being installed",{}},{});return;}
  if(busy_)if(const auto reason=busy_();!reason.isEmpty()){reply({"update_install_busy",reason,{}},{});return;}
  if(!quit_||!restarter_||!restarter_(QCoreApplication::applicationPid(),image_)){reply({"update_restart_failed","Cannot start put.gd again",{}},{});return;}
- const auto version=installState_["installed"].toObject()["version"];
+ const auto version=installState_["installed"].toObject()["version"].toString();
  logging::info(logApp(),"Restarting into the installed update",{{"version",version}});
  reply({},{{"restarting",true},{"version",version}});
  QTimer::singleShot(0,this,[quit=quit_]{quit();});
