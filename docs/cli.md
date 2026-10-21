@@ -60,6 +60,7 @@ Methods and parameters:
 | `editor.apply` | `id`, `commands` array (1–100); atomic |
 | `editor.preview` | `id`, optional `maxEdge` 64–1600; base64 sanitized PNG |
 | `editor.saveCopy` | `id`, absolute `.png` `path`, optional `overwrite` |
+| `editor.fileDialog` | `id`, `action` (`open`, `inspect`, `cancel`); the editor's **Save a copy…** chooser and its state ([file-dialogs.md](file-dialogs.md)) |
 | `operation.recent` | empty object; configured recent-activity bound |
 | `operation.inspect`, `.cancel`, `.retry`, `.copy`, `.retryLocalSave` | `id`; `.cancel` also takes an optional `itemId` (an item's `artifact.id`) to cancel one file of an active batch while the others continue. That item ends `cancelled` and the next Retry uploads it |
 | `history.list` | optional limit, offset, search, category, mime, profileId, uploadStatus, localStatus, remoteStatus, from, to |
@@ -86,6 +87,7 @@ Methods and parameters:
 | `ui.moveDestination` | `direction` up/down, optional `profileId`; drives the open Settings window |
 | `ui.diagnostics` | `action` (`inspect`, `setDebugLogging`, `clearLogs`, `openPackage`, `setPackage`, `savePackage`, `showInFolder`, `closePackage`), with `enabled`, `includeNames`, absolute `folder`, `upload` or `operation` where they apply; drives Settings → Advanced → Diagnostics |
 | `ui.historySaveDiagnostics` | operation or history `id`; clicks **Save diagnostics for this upload** on that failed History row |
+| `ui.fileDialog` | `dialog` (`editImage`, `historySaveAs`, `outputFolder`, `diagnosticsFolder`), `action` (`open`, `inspect`, `cancel`), optional `field` (`root`, `images`, `videos`, `text`, `other`; `outputFolder` only) or history/operation `id` (`historySaveAs` only); opens a chooser in the open window as its button does and answers with its state ([file-dialogs.md](file-dialogs.md)) |
 
 Editor methods, command shapes and error codes are specified in
 [image-editor.md](image-editor.md). Nothing is uploaded until `editor.submit` or the

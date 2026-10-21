@@ -6,6 +6,7 @@ for local bulk artifacts and [verification](../verification.md) for limitations.
 
 | Topic | Starting point |
 | --- | --- |
+| File dialogs through the XDG portal, themed fallback (issue #259) | [Save copy… opening the GTK, KDE and GNOME choosers on m74 Cinnamon X11, d69 Plasma Wayland and f44 GNOME Wayland in dark mode, the themed fallback in Dark and Light; resident unchanged, putgd-record +0.12 MiB with the portal chooser open against +5.4 MiB for Qt's dialog](2026-10-21-file-dialogs-259/README.md) |
 | Checked, disabled indicators and the named update channel (issues #300, #305) | [Specimen card before/after in light and dark; Settings → Updates on a stable- and a nightly-tagged build before/after; new gui_theme and gui_settings tests on d69](2026-10-21-checkbox-channel-300-305/README.md) |
 | Tray "Update available" entry shown live (issue #304) | [Scheduled check then the tray menu without a restart on d69 Plasma, f44 GNOME and m74 Cinnamon, before/after pairs; m74 notifications now come from xfce4-notifyd (#312)](2026-10-21-tray-update-visible-304/README.md) |
 | Update check and AppImage updates on real desktops (issues #303, #295) | [Memory gate on f44 GNOME and d69 Plasma (+0.09/+0.14 MiB), stable scheduled check, one notification and tray entry on m74/f44/d69 (#304: no live tray entry on Plasma/GNOME), nightly without notification; Gear Lever, AppImageLauncher and start at login in a Mint 22.3 guest (#306, #307)](2026-10-21-updates-acceptance-303/README.md) |

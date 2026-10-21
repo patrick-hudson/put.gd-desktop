@@ -77,12 +77,14 @@ such as `session_unavailable` and `config_conflict` retain their original envelo
 | `check_for_updates` | → update.check | Checks now, as **Check now** does; nothing is downloaded or installed ([updates.md](updates.md)) |
 | `open_software_updates` | → update.openSoftwareUpdates | Opens Update Manager, Discover or GNOME Software for a DEB/RPM install that updates from put.gd's repository; put.gd itself installs nothing ([package-repositories.md](package-repositories.md)) |
 | `history_save_diagnostics` | id → ui.historySaveDiagnostics | Clicks **Save diagnostics for this upload** on that failed row of the open History window and returns the package |
+| `drive_file_dialog` | dialog editImage/historySaveAs/outputFolder/diagnosticsFolder, action open/inspect/cancel, optional field, id → ui.fileDialog | Opens a file chooser in the open window as its button does (the desktop's own through the XDG portal, or the themed fallback), reads its state or cancels it; the state says which backend showed it ([file-dialogs.md](file-dialogs.md)) |
 | `clear_logs` | logs.clear | Deletes every persistent log file and starts a new one; uploads, history, settings and saved diagnostics packages stay. `inspect` reports the log under `diagnostics.logging` ([diagnostics.md](diagnostics.md)) |
 | `open_editor` | optional source region/window/desktop/clipboard/file, path → editor.open | Opens the visible editor (Capture region & edit); uploads nothing yet. History's **Edit again** is `source: file` with the item's `local.path` from `history.list` or `history.detail` |
 | `get_editor` | id → editor.inspect | Image size, crop, shapes, undo/redo, phase |
 | `edit_image` | id, commands → editor.apply | Atomic redact/blur/arrow/rectangle/highlight/text/crop/undo/redo, shown live |
 | `preview_editor` | id, optional max_edge → editor.preview | Returns the sanitized result as an MCP image plus metadata |
 | `save_editor_copy` | id, path, optional overwrite → editor.saveCopy | Writes the sanitized PNG to a file; no upload |
+| `editor_file_dialog` | id, action open/inspect/cancel → editor.fileDialog | The editor's **Save a copy…** chooser as the button opens it, its state, or a cancel; a file picked there gets the sanitized PNG |
 | `submit_editor` | id → editor.submit | Sends only the sanitized result through the configured output |
 | `cancel_editor` / `raise_editor` | id → editor.cancel / editor.raise | Discard without upload / bring the window forward |
 | `get_recording_capabilities` | recording.capabilities | Recording support, formats/codecs, audio, limits, active ID; no capture or prompt |
@@ -92,7 +94,7 @@ such as `session_unavailable` and `config_conflict` retain their original envelo
 | `select_recording_region` | id, rect → recording.select | Completes an open region selector (tray, shortcut, dashboard) with a rectangle, as a drag would |
 | `edit_recording` | id, revision, commands → recording.edit | Atomic trim and timed blur/solid masks in microseconds and canvas pixels |
 | `preview_recording` | id, time_us, max_edge → recording.preview | One frame with trim/masks applied as an MCP image plus metadata |
-| `drive_recording_review` | id, action, time_us?, speed?, kind?, rect?, mask_id?, strength?, format?, codec? → recording.review | Works the open review window's controls as a user does (seek, play/pause, speed, trim in/out at the playhead, add/select/retime/remove masks, blur strength, output format) and inspects it (playhead, selection, contextual mask controls, the video's share of the window); edits go through the resident like the window's own |
+| `drive_recording_review` | id, action, time_us?, speed?, kind?, rect?, mask_id?, strength?, format?, codec? → recording.review | Works the open review window's controls as a user does (seek, play/pause, speed, trim in/out at the playhead, add/select/retime/remove masks, blur strength, output format, Save copy… with `saveCopyDialog` / `closeFileDialog`) and inspects it (playhead, selection, contextual mask controls, the video's share of the window); edits go through the resident like the window's own |
 | `save_recording_copy` | id, path, overwrite → recording.saveCopy | Exports the reviewed result to a file; no upload. Returns `exporting` when the export starts; poll `get_recording` until `reviewing` and read `lastExport` |
 | `upload_recording` | id, revision → recording.upload | The only publishing action; sends the validated export through the configured output. Returns `exporting` and the `operationId` when the export starts; a failed export returns the session to `reviewing` with `lastExport.error`, otherwise `get_operation` follows the upload |
 

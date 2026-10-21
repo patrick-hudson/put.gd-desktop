@@ -19,6 +19,10 @@ views and helpers keep the desktop's native theme. The resident's own visible
 surfaces are unaffected:
 
 - The tray menu and notifications are drawn by the desktop over D-Bus.
+- File dialogs (in `putgd-ui` and `putgd-record`, never the resident) are the
+  desktop's own, through the XDG portal FileChooser: the chooser runs in the
+  portal backend's process, so no platform theme is needed for them; with it
+  open `putgd-record` grows by at most 0.12 MiB ([file-dialogs.md](file-dialogs.md)).
 - The region overlay is custom-painted.
 - Only a desktop without StatusNotifierItem support would see Qt's fallback
   menu in the plain Fusion style.
