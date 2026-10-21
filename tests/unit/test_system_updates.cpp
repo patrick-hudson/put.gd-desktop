@@ -43,7 +43,7 @@ private slots:
   QCOMPARE(action("")["repository"].toString(),QString("none"));
  }
  void dnfRepositoryFollowsItsEnabledFlag(){
-  const QByteArray repo="[putgd-nightly]\nname=put.gd (nightly)\nbaseurl=https://pkg.put.gd/rpm/fedora/44/x86_64/nightly\nenabled=1\ngpgcheck=0\nrepo_gpgcheck=1\n";
+  const QByteArray repo="[putgd-nightly]\nname=put.gd (nightly)\nbaseurl=https://pkg.put.gd/rpm/fedora/44/x86_64/nightly\nenabled=1\ngpgcheck=1\nrepo_gpgcheck=0\n";
   write("/etc/yum.repos.d/putgd.repo",repo);
   auto result=action("fedora44");QCOMPARE(result["kind"].toString(),QString("software-updates"));QCOMPARE(result["manager"].toString(),QString("dnf"));
   QCOMPARE(result["channel"].toString(),QString("nightly"));QCOMPARE(result["command"].toString(),QString("sudo dnf upgrade --refresh"));

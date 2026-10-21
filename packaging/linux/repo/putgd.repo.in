@@ -5,7 +5,7 @@
 name=put.gd (@PUTGD_REPO_CHANNEL@)
 baseurl=@PUTGD_REPO_URL@/rpm/fedora/44/x86_64/@PUTGD_REPO_CHANNEL@
 enabled=1
-gpgcheck=0
-repo_gpgcheck=1
+gpgcheck=1
+repo_gpgcheck=0
 gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd
 metadata_expire=6h
