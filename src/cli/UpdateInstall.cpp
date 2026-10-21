@@ -3,6 +3,7 @@
 #include "Minisign.h"
 #include "app/AppImageInstall.h"
 #include "core/BuildInfo.h"
+#include "core/CaBundle.h"
 #include "core/HostEnvironment.h"
 #include "core/Log.h"
 #include <QCoreApplication>
@@ -266,8 +267,10 @@ int runInstallMode(int argc,char** argv) {
   else if(arguments[index]=="--state")options.stateRoot=arguments[index+1];
   else {printLine({{"schemaVersion",1},{"ok",false},{"result",QJsonObject{}},{"error",Error{"invalid_request","Unknown option "+arguments[index].left(40),{}}.toJson()}});return 2;}
  }
- // The image this process runs from, and the host CA bundle AppRun found (#329).
- options.image=qEnvironmentVariable("APPIMAGE");options.caBundle=qEnvironmentVariable("PUTGD_CA_BUNDLE");
+ // The image this process runs from, and the host CA bundle AppRun found (#329):
+ // for put.gd's own downloads and, as SSL_CERT_FILE, for zsync2.
+ options.image=qEnvironmentVariable("APPIMAGE");options.caBundle=hostCaBundle();
+ useHostCaBundle();
  const auto build=update::build(QJsonDocument::fromJson(buildManifestJson()).object());
  Error error;const auto result=installUpdate(build,options,printLine,error);
  printLine({{"schemaVersion",1},{"ok",!error},{"result",error?QJsonObject{}:result},{"error",error.toJson()}});
