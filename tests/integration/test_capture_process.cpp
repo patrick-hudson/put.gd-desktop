@@ -237,6 +237,9 @@ private slots:
   int early=0;bool aliveAtNotification=false;putgd::Error terminal;
   auto ticket=controller.prepare(regionSnapshot(),{},[&](putgd::Error error){terminal=std::move(error);aliveAtNotification=controller.busy()&&controller.processId()>0;++early;});
   QTRY_COMPARE(early,1);QCOMPARE(terminal.code,code);QVERIFY(aliveAtNotification);QVERIFY(!controller.preparedReady());
+  // The helper's own reason and geometry reach the operation's error (#331).
+  if(code!="cancelled"){QCOMPARE(terminal.message,QString("Synthetic selection outside the layout"));QCOMPARE(terminal.details["check"].toString(),QString("fixture_selection"));QCOMPARE(terminal.details["selection"].toArray(),(QJsonArray{0,1080,100,100}));}
+  else QVERIFY(terminal.details.isEmpty());
   // BEGIN must deliver the latched failure even while the old helper is exiting,
   // and cannot authorize a pixel read or start another child.
   int completed=0;putgd::Error result;
@@ -409,7 +412,13 @@ private slots:
   QCOMPARE(exit["code"].toInt(),0);
  }
  void malformedResultsSettleOnce_data(){QTest::addColumn<QByteArray>("mode");for(const char* mode:{"wrong-build","wrong-dimension","wrong-hash","duplicate","early-exit"})QTest::newRow(mode)<<QByteArray(mode);}
- void malformedResultsSettleOnce(){QFETCH(QByteArray,mode);qputenv("PUTGD_TEST_CAPTURE_MODE",mode);putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);int count=0;putgd::Error error;controller.start(snapshot(),{},[&](putgd::PayloadResult r){error=r.error;++count;});QTRY_COMPARE(count,1);QVERIFY(error);QVERIFY(!controller.busy());QTest::qWait(20);QCOMPARE(count,1);}
+ void malformedResultsSettleOnce(){QFETCH(QByteArray,mode);qputenv("PUTGD_TEST_CAPTURE_MODE",mode);putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);int count=0;putgd::Error error;controller.start(snapshot(),{},[&](putgd::PayloadResult r){error=r.error;++count;});QTRY_COMPARE(count,1);QVERIFY(error);QVERIFY(!controller.busy());QTest::qWait(20);QCOMPARE(count,1);
+  // Each resident check names itself instead of a bare capture_failed (#331).
+  const QHash<QByteArray,QString> checks{{"wrong-build","ready_frame"},{"wrong-dimension","descriptor_limits"},{"wrong-hash","sha256"},{"duplicate","result_frame"}};
+  // An early exit races BEGIN: either the write or the exit names it.
+  if(mode=="early-exit")QVERIFY2(QStringList({"helper_exit","begin_send"}).contains(error.details["check"].toString()),qPrintable(error.details["check"].toString()));
+  else QCOMPARE(error.details["check"].toString(),checks.value(mode));
+  if(mode=="wrong-hash"){QCOMPARE(error.code,QString("capture_failed"));QCOMPARE(error.details["stage"].toString(),QString("resident_verify"));QCOMPARE(error.details["width"].toInt(),3);QCOMPARE(error.details["height"].toInt(),2);QVERIFY(error.message.contains("SHA-256"));}}
  void cancellationOwnsOnlyOneChildAndCompletesOnce(){qputenv("PUTGD_TEST_CAPTURE_MODE","waiting");putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);int count=0;putgd::Error error;controller.start(snapshot(),{},[&](putgd::PayloadResult r){error=r.error;++count;});QTRY_VERIFY(controller.processId()>0);QTest::qWait(30);controller.cancel();controller.cancel();QTRY_COMPARE(count,1);QCOMPARE(error.code,QString("cancelled"));QVERIFY(!controller.busy());}
  void missingHelperCallbackCanDestroyController(){
   auto controller=std::make_unique<putgd::CaptureProcessController>("/does-not-exist-putgd-capture");
