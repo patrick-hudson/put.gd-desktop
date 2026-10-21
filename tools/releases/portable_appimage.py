@@ -455,6 +455,57 @@ def audit_window_icon(appdir: Path) -> str:
     return WINDOW_ICON
 
 
+ROOT_DESKTOP_ENTRY = "putgd.desktop"
+
+
+def keep_one_root_desktop_entry(appdir: Path) -> list[str]:
+    """Remove root links to the image's other desktop entries; return their names.
+
+    The AppImage spec allows one desktop entry at the AppDir root, and integrators
+    such as AppImageLauncher (libappimage) read whichever they find. A linuxdeploy
+    pass without --desktop-file links the first entry it finds in
+    usr/share/applications, so the NoDisplay putgd-ui.desktop could join
+    putgd.desktop there and stop integration (#306). Only such links are removed:
+    usr/share/applications keeps every entry AppRun and the helpers need.
+    """
+    applications = (appdir / "usr/share/applications").resolve()
+    removed = []
+    for path in sorted(appdir.glob("*.desktop")):
+        if path.name == ROOT_DESKTOP_ENTRY:
+            continue
+        if not path.is_symlink() or path.resolve().parent != applications:
+            raise ValueError("Unexpected desktop entry at the AppDir root: " + path.name)
+        path.unlink()
+        removed.append(path.name)
+    return removed
+
+
+def audit_root_desktop_entry(appdir: Path) -> str:
+    """Reject an AppDir whose root is not exactly one integrable putgd.desktop."""
+    entries = sorted(path.name for path in appdir.glob("*.desktop"))
+    if entries != [ROOT_DESKTOP_ENTRY]:
+        raise ValueError("The AppDir root must hold exactly one desktop entry, " + ROOT_DESKTOP_ENTRY +
+                         "; found: " + (", ".join(entries) or "none"))
+    entry = appdir / ROOT_DESKTOP_ENTRY
+    if not entry.resolve().is_relative_to(appdir.resolve()) or not entry.is_file():
+        raise ValueError("The root desktop entry must be a file inside the AppDir")
+    group = None
+    keys = {}
+    for line in entry.read_text().splitlines():
+        line = line.strip()
+        if line.startswith("["):
+            group = line
+        elif group == "[Desktop Entry]" and "=" in line and not line.startswith("#"):
+            key, value = line.split("=", 1)
+            keys[key.strip()] = value.strip()
+    if keys.get("Type") != "Application" or not keys.get("Exec"):
+        raise ValueError("The root desktop entry must be a launchable application")
+    for key in ("NoDisplay", "Hidden"):
+        if keys.get(key, "false").lower() != "false":
+            raise ValueError("The root desktop entry must not set " + key + ": integrators skip it")
+    return ROOT_DESKTOP_ENTRY
+
+
 def audit_deployed(appdir: Path, inventory: dict) -> dict:
     """Check actual relocated helpers and dynamic dependencies without SDK paths."""
     environment = dict(os.environ, LD_LIBRARY_PATH=str(appdir / "usr/lib") + ":" +
@@ -617,12 +668,15 @@ def main() -> int:
     # its environment and KDE supervision are the application runtime contract.
     shutil.copy2(ROOT / "packaging/appimage/AppRun", appdir / "AppRun")
     (appdir / "AppRun").chmod(0o755)
+    removed_root_entries = keep_one_root_desktop_entry(appdir)
     distro_licenses = system_library_licenses(appdir, qt, media_origins)
     refresh_runtime_manifest(appdir)
     deployed = audit_deployed(appdir, inventory)
     deployed["qtPlatforms"] = audit_platforms(appdir, inventory)
     deployed["qtWayland"] = audit_wayland(appdir, inventory)
     deployed["windowIcon"] = audit_window_icon(appdir)
+    deployed["rootDesktopEntry"] = {"file": audit_root_desktop_entry(appdir),
+                                    "removedLinks": removed_root_entries}
     proton = audit_proton(appdir, required=args.require_proton,
                           expected_manifest=inventory.get("proton", {}).get("manifest"))
     if proton:

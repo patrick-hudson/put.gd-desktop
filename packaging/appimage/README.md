@@ -256,6 +256,39 @@ such an image. The recorded check moves one build to the next with
 `appimageupdatetool`:
 [AppImage zsync updates (issue #293)](../../docs/evidence/2026-10-20-appimage-zsync-293/README.md).
 
+The AppDir root holds exactly one desktop entry, `putgd.desktop`, as the AppImage
+spec requires. A linuxdeploy pass without `--desktop-file` links the first entry it
+finds in `usr/share/applications`, so the NoDisplay `putgd-ui.desktop` could join it,
+and AppImageLauncher (libappimage) then refuses to integrate the image (#306).
+After the last pass `portable_appimage.py` removes such links (the entries stay in
+`usr/share/applications`) and rejects a root without exactly one `putgd.desktop`
+that sets neither `NoDisplay` nor `Hidden`. The receipt records it under
+`postDeploymentAudit.rootDesktopEntry`.
+
+### Start at login after an update
+
+Updaters that follow the `.zsync` write the new version under its versioned
+`Filename:` beside the old image (AppImageLauncher keeps the old one,
+`appimageupdatetool --remove-old` deletes it), so an autostart entry naming the
+old file would start the old version, or nothing (#307). From an AppImage, launch
+at login therefore runs `/bin/sh <data>/putgd/login/appimage-start.sh --background`
+(`src/app/appimage-login-start.sh`, written by `LoginStartup` with mode 0700 and
+rewritten at every start, so the running image becomes the configured one). At
+login the script starts the newest `putgd-VERSION-x86_64[_md5].AppImage` in the
+configured image's folder, ordered by version (`sort -V`, prereleases before their
+release), that is a regular file (not a symbolic link), the user's own, executable,
+writable by nobody else, has the AppImage magic and prints the same update information
+as the configured image (`--appimage-updateinformation`). Group write counts as private
+only for the user's own group (named after the user, no other members): umask 002, the
+desktop default on Debian 13, Kubuntu 26.04 and Mint 22.3 (Fedora 44 uses 022), makes
+every downloaded or updated image `775`. The folder must pass the same check, or only the
+configured image is used. The configured image itself only has to be an executable file,
+as the autostart entry required before. Without update information
+(untagged builds) the configured image is the only candidate. Gear Lever replaces
+the configured file in place; with no versioned sibling the script starts it
+without probing anything. put.gd touches only its own autostart entry and script,
+never another program's entries or images.
+
 ## Runtime behavior
 
 On Wayland sessions the views, the editor and the KDE region helper are native
@@ -286,8 +319,9 @@ Acceptance:
 
 The application AppRun is installed after deployment, so generic deployment
 hooks cannot override its host-tool environment or force unavailable GTK2 themes.
-AppRun resolves sibling helpers inside the mounted image. Login startup writes
-the persistent `APPIMAGE` path rather than a temporary `/tmp/.mount_*` path.
+AppRun resolves sibling helpers inside the mounted image. Login startup names
+the persistent `APPIMAGE` path, through the login script above, rather than a
+temporary `/tmp/.mount_*` path.
 KWin authorizes screenshots against the resident executable's canonical path.
 Host permission-cache calls retain the original host library/plugin environment,
 and the child retains the caller's umask. On KDE, AppRun uses `mktemp` with mode 0600 to create a unique NoDisplay host

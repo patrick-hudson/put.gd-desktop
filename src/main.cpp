@@ -384,7 +384,7 @@ int main(int argc,char* argv[]) {
   const auto launcher=QFileInfo(QCoreApplication::applicationFilePath()).dir().filePath("putgd-launcher");
   const auto executable=QFileInfo::exists(launcher)?launcher:QCoreApplication::applicationFilePath();
   const auto enabled=settings.snapshot().launchAtLogin;
-  operations.background([configRoot,executable,enabled,loginMutex,loginGeneration,ticket](putgd::Error& error){std::lock_guard lock(*loginMutex);if(ticket!=loginGeneration->load())return QJsonObject{};error=putgd::LoginStartup::apply(configRoot,executable,enabled);return QJsonObject{{"enabled",enabled},{"applied",!error}};},[&,loginGeneration,ticket](putgd::Error error,QJsonObject status){if(ticket!=loginGeneration->load())return;loginStatus=status;if(error)loginStatus["error"]=error.toJson();refreshSettingsDiagnostics();});
+  operations.background([configRoot,dataRoot,executable,enabled,loginMutex,loginGeneration,ticket](putgd::Error& error){std::lock_guard lock(*loginMutex);if(ticket!=loginGeneration->load())return QJsonObject{};error=putgd::LoginStartup::apply(configRoot,dataRoot,executable,enabled);return QJsonObject{{"enabled",enabled},{"applied",!error}};},[&,loginGeneration,ticket](putgd::Error error,QJsonObject status){if(ticket!=loginGeneration->load())return;loginStatus=status;if(error)loginStatus["error"]=error.toJson();refreshSettingsDiagnostics();});
  };
  configureLogin();QObject::connect(&settings,&putgd::SettingsService::accepted,&app,configureLogin);
  const auto showInitialView=[&]{if(view=="history")tray.showHistory();else if(view=="activity")tray.showActivity();else tray.showSettings();};

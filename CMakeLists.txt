@@ -227,6 +227,12 @@ install(TARGETS putgd_s3_module LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}/put
 
 add_library(putgd_app STATIC src/app/OperationService.cpp src/app/OperationClipboard.cpp src/app/UploadSlots.cpp src/app/RecordingService.cpp src/app/RecordingHelperBackend.cpp src/app/HistoryService.cpp src/app/SetupService.cpp src/app/LocalServer.cpp src/app/LocalIpc.cpp src/app/LoginStartup.cpp src/app/StorageLocations.cpp src/app/LogService.cpp src/app/DiagnosticsBundle.cpp src/app/UpdateService.cpp)
 target_link_libraries(putgd_app PUBLIC putgd_core PRIVATE putgd_credentials putgd_ui_control)
+# The AppImage login script LoginStartup writes (#307), compiled in from its source.
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/src/app/appimage-login-start.sh" putgd_login_start_script)
+file(CONFIGURE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/generated/app/LoginStartScript.h"
+  CONTENT "#pragma once\nnamespace putgd {\ninline constexpr char putgdLoginStartScript[]=R\"putgdsh(${putgd_login_start_script})putgdsh\";\n}\n" @ONLY)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS src/app/appimage-login-start.sh)
+target_include_directories(putgd_app PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated/app")
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   find_package(PkgConfig REQUIRED)
   pkg_check_modules(PUTGD_XCB REQUIRED IMPORTED_TARGET xcb xcb-randr xcb-keysyms xcb-xfixes xcb-render)
