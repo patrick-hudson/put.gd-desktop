@@ -33,4 +33,9 @@ QJsonObject systemAction(const QString& target,const QString& root,const QString
 QJsonObject systemAction(const QString& target);
 // Launches the updater systemAction names; false when there is none.
 bool openSoftwareUpdates(const QJsonObject& action);
+// put.gd's AppStream id (packaging/linux/gd.put.Putgd.metainfo.xml).
+inline constexpr char appstreamId[]="gd.put.Putgd";
+// True when a software centre handles appstream:// links (GNOME Software,
+// Discover). dataDirs is XDG_DATA_HOME followed by XDG_DATA_DIRS.
+bool hasAppstreamHandler(const QStringList& dataDirs);
 }

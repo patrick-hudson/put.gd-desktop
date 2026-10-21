@@ -1,4 +1,5 @@
 #include "SystemUpdates.h"
+#include <QDir>
 #include <QFile>
 #include <QJsonArray>
 #include <QProcess>
@@ -94,6 +95,15 @@ QJsonObject systemAction(const QString& target,const QString& root,const QString
 QJsonObject systemAction(const QString& target) {
  const auto choice=softwareUpdater(qEnvironmentVariable("XDG_CURRENT_DESKTOP"),[](const QString& program){return QStandardPaths::findExecutable(program);});
  return systemAction(target,qEnvironmentVariable("PUTGD_UPDATE_SYSTEM_ROOT"),packageRepository(),choice);
+}
+bool hasAppstreamHandler(const QStringList& dataDirs) {
+ static const QRegularExpression mime(R"(^MimeType=.*\bx-scheme-handler/appstream(;|$))",QRegularExpression::MultilineOption);
+ for(const auto& dir:dataDirs) {
+  for(const auto& name:QDir(dir+"/applications").entryList({"*.desktop"},QDir::Files)) {
+   bool exists=false;if(mime.match(readSmall(dir+"/applications/"+name,exists)).hasMatch())return true;
+  }
+ }
+ return false;
 }
 bool openSoftwareUpdates(const QJsonObject& action) {
  const auto updater=action["updater"].toObject();

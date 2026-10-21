@@ -25,7 +25,9 @@ DESKTOP_ASSETS = ("share/applications/putgd.desktop", "share/applications/putgd-
                   "share/icons/hicolor/scalable/apps/putgd.svg",
                   "share/gnome-shell/extensions/putgd@put.gd/extension.js",
                   "share/gnome-shell/extensions/putgd@put.gd/metadata.json",
-                  "share/putgd/autostart/putgd.desktop")
+                  "share/putgd/autostart/putgd.desktop",
+                  # AppStream: software centres list put.gd and its updates as an application.
+                  "share/metainfo/gd.put.Putgd.metainfo.xml")
 
 
 def sha256(path: Path) -> str:
