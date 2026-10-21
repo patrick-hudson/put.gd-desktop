@@ -520,3 +520,33 @@ through the workstation's `putgd-mint-vnc.service` on `127.0.0.1:5974`. A separa
 physical session and isn't acceptance evidence for physical Cinnamon. This
 establishes access, KVM and display, not guest boot or acceptance readiness.
 
+
+### m74 notifications belong to Cinnamon (#312), 2026-10-21
+
+The `:1` virtual desktop runs Xfce under its own bus (`~/.vnc/remote-xstartup`:
+`exec dbus-run-session -- startxfce4`), but Xfce's autostart entry
+(`/etc/xdg/autostart/xfce4-notifyd.desktop`) runs
+`systemctl --user start xfce4-notifyd.service`. That starts the unit with the user
+manager's environment, which means the shared `/run/user/1000/bus` with `DISPLAY=:0`. After
+m74's reboot at 02:55Z it claimed `org.freedesktop.Notifications` there two
+seconds before Cinnamon. put.gd's notifications on m74 were then drawn by
+xfce4-notifyd, and a click on the body didn't run the default action.
+
+The fix masks the user unit: `systemctl --user mask xfce4-notifyd.service`
+(`~/.config/systemd/user/xfce4-notifyd.service` → `/dev/null`). On the shared bus,
+activation through that unit now fails, so only Cinnamon claims the name. In the
+`:1` session the autostart falls back to `exec xfce4-notifyd` on its own bus.
+Applied at 16:17Z, followed by `systemctl --user stop xfce4-notifyd.service`, which
+passed the name to the already-queued Cinnamon without a logout:
+
+```
+before  shared bus   ('Xfce Notify Daemon', 'Xfce', '0.9.4', '1.2')   owner: xfce4-notifyd (the unit)
+        :1 bus       ('Xfce Notify Daemon', 'Xfce', '0.9.4', '1.2')   owner: xfce4-notifyd (the :1 session's)
+after   shared bus   ('cinnamon', 'GNOME', '6.6.9', '1.2')            owner: cinnamon --replace
+        :1 bus       ('Xfce Notify Daemon', 'Xfce', '0.9.4', '1.2')   owner: xfce4-notifyd (unchanged)
+```
+
+To check: `gdbus call --session -d org.freedesktop.Notifications -o /org/freedesktop/Notifications -m org.freedesktop.Notifications.GetServerInformation`
+with `DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus`. Rollback:
+`systemctl --user unmask xfce4-notifyd.service`. Evidence:
+[2026-10-21-test-lab-reliability](evidence/2026-10-21-test-lab-reliability/README.md).
