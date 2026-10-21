@@ -129,7 +129,9 @@ three updaters, even if the old file was removed, and put.gd then remembers the 
 
 ### Fedora
 
-appimageupdatetool looks for the certificate bundle at Ubuntu's path,
+put.gd's own **Check now** works in the AppImage on Fedora 44 since #329: AppRun points
+the image's TLS clients at Fedora's CA bundle ([details](diagnostics.md)). Updating the
+file itself is a separate tool. appimageupdatetool looks for the certificate bundle at Ubuntu's path,
 `/etc/ssl/certs/ca-certificates.crt`, which Fedora doesn't have
 ([#297](https://github.com/patrick-hudson/put.gd-desktop/issues/297), upstream
 [zsync2#91](https://github.com/AppImageCommunity/zsync2/issues/91)). Without it, it prints

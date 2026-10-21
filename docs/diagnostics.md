@@ -641,6 +641,35 @@ listed in `PUTGD_HOST_ENVIRONMENT`. put.gd restores them, drops anything else un
 its environment on unchanged. The log records each open as `Opened on the host` or
 `Could not open on the host`, with its `route` and `fallbackFrom`, never the link.
 
+The AppImage's own TLS clients use the host's CA certificates too (#329). The image
+bundles Ubuntu 24.04's OpenSSL and libcurl, plus Qt 6.8. Qt looks only for `*.pem` and `*.crt`
+files in Debian-style directories, and libcurl only for `/etc/ssl/certs/ca-certificates.crt`.
+Fedora 44 has neither: its `/etc/ssl/certs` holds only hash links. Before #329, Check now,
+S3 and R2 uploads, and Backblaze B2 all failed TLS there. `SSL_CERT_FILE` didn't help,
+because neither Qt nor libcurl's built-in default reads it.
+
+AppRun now names the host's bundle in `PUTGD_CA_BUNDLE`. It's `SSL_CERT_FILE` when that is
+a readable file, otherwise the first readable one of:
+
+1. `/etc/ssl/certs/ca-certificates.crt` (Debian, Ubuntu, Mint, Arch; Fedora Atomic has a link)
+2. `/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem` (Fedora, RHEL)
+3. `/etc/pki/tls/certs/ca-bundle.crt`
+4. `/etc/ssl/ca-bundle.pem` (openSUSE)
+5. `/etc/ssl/cert.pem`
+
+The update check and the B2 worker add that file's certificates to Qt's default CAs. The S3
+worker passes it to the AWS SDK as `caFile`, for uploads and Test connection's link check.
+
+- Verification stays on, and nothing is bundled or added to what the host trusts.
+- A DEB, RPM or Flatpak build never sets the variable, so it uses its distribution's TLS
+  setup unchanged.
+- The Proton Drive helper (Bun) carries its own root certificates and wasn't affected.
+- appimageupdatetool is a separate image with its own copy of libcurl. Its Fedora problem
+  is [#297](https://github.com/patrick-hudson/put.gd-desktop/issues/297); see
+  [Updates](updates.md#fedora).
+
+Evidence: [AppImage TLS on Fedora](evidence/2026-10-21-appimage-ca-bundle-329/README.md).
+
 A lab URL recorder set as the default browser must be in the user's real
 `~/.config/mimeapps.list`: the portal does not read a test resident's private
 `XDG_CONFIG_HOME`. `history.openLink` (MCP `open_history_link`) opens a stored link the
