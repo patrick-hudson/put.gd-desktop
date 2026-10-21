@@ -5,6 +5,7 @@
 class QLabel;class QPushButton;class QToolButton;class QComboBox;class QSlider;class QButtonGroup;class QFontComboBox;class QSpinBox;class QHBoxLayout;
 
 namespace putgd {
+class FileDialog;
 // One themed review window for one image. It owns no storage, credentials or
 // history; the hosting helper turns its explicit Upload into a private export.
 class EditorWindow final:public QWidget {
@@ -25,6 +26,10 @@ public:
  // seeds them from settings and reports them back when the editor closes.
  void setRecentColors(const QStringList&);
  QStringList recentColors() const {return recentColors_;}
+ // Save a copy…: the desktop's chooser (#259), then the sanitized PNG; false
+ // while busy or while the chooser is already open. editor.fileDialog drives it.
+ bool saveCopy();
+ FileDialog& fileDialog() {return *chooser_;}
 signals:
  void uploadRequested();
  void cancelRequested();
@@ -34,7 +39,6 @@ protected:
 private:
  void refresh();
  void syncStyle(bool applyToSelection);
- void saveCopy();
  QToolButton* makeSwatch(const QColor&);
  void useColor(const QColor&);
  void pickCustomColor();
@@ -56,6 +60,7 @@ private:
  QSlider* strength_=nullptr;
  QLabel *hint_=nullptr,*status_=nullptr,*message_=nullptr;
  QPushButton *upload_=nullptr,*save_=nullptr,*cancel_=nullptr;
+ FileDialog* chooser_=nullptr;
  QColor annotationColor_=QColor(220,38,38),highlightColor_=QColor(250,204,21);
  bool closing_=false,busy_=false,shown_=false;
 };

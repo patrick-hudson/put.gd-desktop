@@ -139,6 +139,22 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
   line(secondary,2);p.drawEllipse(QRectF(3,3,14,14));line(color,3);p.drawLine(15,15,21,21);
   if(name=="zoom-fit"){line(color,1.6);p.drawRect(QRectF(7,7,6,6));}
   else{fill(color);rounded(9,6,2,8,0.5);}
+ } else if(name=="back"||name=="forward"||name=="up") {
+  // The fallback file dialog's toolbar (#259): one arrow, turned.
+  if(name=="forward"){p.translate(24,0);p.scale(-1,1);}
+  if(name=="up"){p.translate(12,12);p.rotate(90);p.translate(-12,-12);}
+  line(secondary,2.5);p.drawLine(QPointF(7,12),QPointF(20,12));
+  line(color,2.5);QPainterPath head;head.moveTo(11,5);head.lineTo(4,12);head.lineTo(11,19);p.drawPath(head);
+ } else if(name=="folder-new") {
+  fill(secondary);QPainterPath folder;folder.moveTo(2,6);folder.quadTo(2,4,4,4);folder.lineTo(9,4);folder.lineTo(11,6);folder.lineTo(20,6);folder.quadTo(22,6,22,8);
+  folder.lineTo(22,18);folder.quadTo(22,20,20,20);folder.lineTo(4,20);folder.quadTo(2,20,2,18);folder.closeSubpath();p.drawPath(folder);
+  line(color,2.5);p.drawLine(QPointF(12,9),QPointF(12,17));p.drawLine(QPointF(8,13),QPointF(16,13));
+ } else if(name=="view-list") {
+  fill(color);for(const qreal y:{5.,12.,19.})p.drawEllipse(QPointF(4.5,y),1.8,1.8);
+  line(secondary,2.5);for(const qreal y:{5.,12.,19.})p.drawLine(QPointF(9,y),QPointF(21,y));
+ } else if(name=="view-detail") {
+  line(secondary,2);rounded(2,3,20,18,2);p.drawLine(QPointF(2,9),QPointF(22,9));p.drawLine(QPointF(2,15),QPointF(22,15));
+  line(color,2);p.drawLine(QPointF(10,3),QPointF(10,21));
  } else if(name=="save") {
   fill(secondary);rounded(3,3,18,18,3);
   fill(color);rounded(7,3,9,6,1);rounded(6,13,12,8,1.5);

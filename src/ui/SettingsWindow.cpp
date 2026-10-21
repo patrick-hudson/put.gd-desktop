@@ -20,7 +20,7 @@
 #include <QSpinBox>
 #include <QDoubleSpinBox>
 #include <QCompleter>
-#include <QFileDialog>
+#include "FileDialog.h"
 #include <QFormLayout>
 #include <QGridLayout>
 #include <QJsonArray>
@@ -216,7 +216,8 @@ public:
   save_=new QPushButton("Save package",this);save_->setObjectName("savePackage");VisualStyle::role(save_,"primary");save_->setDefault(true);buttons->addWidget(save_);layout->addLayout(buttons);
   connect(includeNames_,&QCheckBox::toggled,this,[this]{refreshPreview();});
   connect(upload_,&QCheckBox::toggled,this,[this]{if(saved_.isEmpty()&&!saving_)save_->setText(saveLabel());});
-  connect(choose,&QPushButton::clicked,this,[this]{const auto path=QFileDialog::getExistingDirectory(this,"Save diagnostics packages to",folder_->text());if(!path.isEmpty())setFolder(path,true);});
+  chooser_=new FileDialog(this);
+  connect(choose,&QPushButton::clicked,this,[this]{chooseFolder();});
   connect(useDefault_,&QPushButton::clicked,this,[this]{setFolder({},true);});
   connect(close_,&QPushButton::clicked,this,&QDialog::reject);
   connect(save_,&QPushButton::clicked,this,[this]{save({});});
@@ -229,6 +230,9 @@ public:
   if(!folder.isEmpty()&&!QFileInfo(folder).isDir())return {"diagnostics_output_unavailable","Choose an existing folder.",{{"path",folder}}};
   custom_=folder;if(remember&&folderChosen)folderChosen(folder);refreshPreview();return {};
  }
+ // Choose folder…: the desktop's folder chooser (#259); false while it is open.
+ bool chooseFolder(){return chooser_->open({FileDialog::Mode::Folder,"Save diagnostics packages to",folder_->text(),{},{}},[this](const QString& path){if(!path.isEmpty())setFolder(path,true);});}
+ FileDialog& folderDialog(){return *chooser_;}
  // Ticks Also upload and copy a link; only a destination that passed the check can.
  Error setUpload(bool upload){
   if(upload&&!uploadAvailable())return checkingTarget_?Error{"diagnostics_upload_checking","Still checking the upload destination; inspect until uploadTarget.checking is false.",{}}
@@ -341,7 +345,7 @@ private:
  }
  QString saveLabel()const{return uploading()?"Save and upload":"Save package";}
  UiSession& session_;
- QLabel *scope_,*contents_,*operations_,*redaction_,*folder_,*result_;QCheckBox* includeNames_;QPushButton *useDefault_,*show_,*close_,*save_;
+ QLabel *scope_,*contents_,*operations_,*redaction_,*folder_,*result_;QCheckBox* includeNames_;QPushButton *useDefault_,*show_,*close_,*save_;FileDialog* chooser_=nullptr;
  QCheckBox* upload_;QLabel* uploadNote_;QJsonObject target_;bool checkingTarget_=false,uploadRequested_=false;quint64 targetSequence_=0;
  QString operation_,custom_;QJsonObject preview_,saved_;Error error_;bool previewing_=false,saving_=false;quint64 previewSequence_=0;QList<Reply> previewReplies_;
 };
@@ -475,7 +479,8 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  auto* files=section(general,"Local copies","Save captures and clipboard uploads locally, with or without uploading to a destination.");
  keep_=new QCheckBox("Keep a local copy");keep_->setObjectName("keepUploadCopies");setting(files,"Local copies",keep_,"/archive/keepUploads");
  root_=input(this,"archiveRoot");auto* rootRow=setting(files,"Save to",root_,"/archive/root");
- auto browse=[this](QLineEdit* field){const auto path=QFileDialog::getExistingDirectory(this,"Choose output folder",field->text());if(!path.isEmpty()){field->setText(path);queueEdit(field);}};
+ folderChooser_=new FileDialog(this);
+ auto browse=[this](QLineEdit* field){chooseOutputFolder(field);};
  auto* chooseRoot=new QPushButton("Choose folder…");chooseRoot->setAccessibleName("Choose default output folder");qobject_cast<QVBoxLayout*>(rootRow->layout())->addWidget(chooseRoot,0,Qt::AlignLeft);connect(chooseRoot,&QPushButton::clicked,this,[=,this]{browse(root_);});
  for(const auto& category:QStringList{"images","videos","text","other"}){auto* field=folders_[category]=input(this,"folder"+title(category));field->setPlaceholderText("Use default folder");auto* row=setting(files,title(category),field,"/archive/folders/"+category);auto* button=new QPushButton("Browse…");button->setAccessibleName("Choose "+category+" folder");qobject_cast<QHBoxLayout*>(row->layout()->itemAt(0)->layout())->addWidget(button);connect(button,&QPushButton::clicked,this,[=,this]{browse(field);});}
  auto* captureDefaults=section(capture,"Default capture output","Choose where captures and clipboard uploads go. Local copies are controlled separately in General → Local copies.");
@@ -914,6 +919,25 @@ QJsonObject SettingsWindow::diagnosticsState()const{
  auto* dialog=static_cast<DiagnosticsPackageDialog*>(packageDialog_.data());
  state["package"]=dialog&&dialog->isVisible()?dialog->state():QJsonObject{{"open",false}};
  return state;
+}
+bool SettingsWindow::chooseOutputFolder(QLineEdit* field){
+ return folderChooser_->open({FileDialog::Mode::Folder,"Choose output folder",field->text(),{},{}},[this,field=QPointer<QLineEdit>(field)](const QString& path){if(field&&!path.isEmpty()){field->setText(path);queueEdit(field);}});
+}
+void SettingsWindow::fileDialogCommand(const QString& dialog,const QString& action,const QString& field,std::function<void(Error,QJsonObject)> reply){
+ // #259: the folder choosers as their buttons open them; the reply is the chooser's state.
+ FileDialog* chooser=folderChooser_;
+ if(dialog=="diagnosticsFolder"){
+  auto* package=static_cast<DiagnosticsPackageDialog*>(packageDialog_.data());
+  if(!package||!package->isVisible()){reply({"diagnostics_dialog_closed","Open Create diagnostics package first (ui.diagnostics openPackage).",{}},{});return;}
+  chooser=&package->folderDialog();
+  if(action=="open"&&!chooser->isOpen())package->chooseFolder();
+ }else if(action=="open"&&!chooser->isOpen()){
+  QLineEdit* target=field.isEmpty()||field=="root"?root_:folders_.value(field);
+  if(!target){reply({"invalid_request","field is root, images, videos, text or other.",{}},{});return;}
+  tabs_->setCurrentIndex(0);chooseOutputFolder(target);
+ }else if(action=="open"){reply({"file_dialog_open","Choose output folder is already open.",{}},chooser->state());return;}
+ if(action=="cancel")chooser->cancel();
+ reply({},chooser->state());
 }
 void SettingsWindow::diagnosticsCommand(const QJsonObject& params,std::function<void(Error,QJsonObject)> reply){
  const auto action=params["action"].toString();

@@ -6,6 +6,10 @@
 #include "ui/Theme.h"
 #include <QApplication>
 #include <QComboBox>
+#include <QFileDialog>
+#include <QLineEdit>
+#include <QPushButton>
+#include <QTemporaryDir>
 #include <QMouseEvent>
 #include <QScreen>
 #include <QShortcut>
@@ -286,6 +290,51 @@ private slots:
         QCOMPARE(drive({{"action", "setIn"}}).code, QString("recording_state"));
         QVERIFY(drive({{"action", "inspect"}}).state["exporting"].toBool());
         QCOMPARE(proposals.size(), count);
+    }
+    // #259: Save copy… opens the shared chooser; this test never asks a portal.
+    void saveCopyDialogIsDrivenAndSavesTheChosenPath() {
+        qputenv("PUTGD_FILE_DIALOG", "fallback");
+        QTemporaryDir folder;
+        QVERIFY(folder.isValid());
+        ReviewWindow window(options(), config());
+        window.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&window));
+        QSignalSpy saved(&window, &ReviewWindow::saveCopyRequested);
+        auto opened = window.drive({{"action", "saveCopyDialog"}});
+        QVERIFY2(opened.code.isEmpty(), qPrintable(opened.message));
+        auto dialog = opened.state["fileDialog"].toObject();
+        QVERIFY(dialog["open"].toBool());
+        QCOMPARE(dialog["backend"].toString(), QString("fallback"));
+        QCOMPARE(dialog["fallbackReason"].toString(), QString("disabled"));
+        QCOMPARE(dialog["mode"].toString(), QString("save"));
+        // Other controls wait for the dialog, as they did behind QFileDialog::exec.
+        QCOMPARE(window.drive({{"action", "setIn"}}).code, QString("recording_state"));
+        QCOMPARE(window.drive({{"action", "saveCopyDialog"}}).code, QString("recording_state"));
+        auto closed = window.drive({{"action", "closeFileDialog"}});
+        QVERIFY(!closed.state["fileDialog"].toObject()["open"].toBool());
+        QCOMPARE(closed.state["fileDialog"].toObject()["last"].toObject()["status"].toString(), QString("cancelled"));
+        QCOMPARE(saved.size(), 0);
+        // The button opens the same dialog; a name without the extension gets it.
+        QPushButton* save = nullptr;
+        for (auto* button : window.findChildren<QPushButton*>()) if (button->text() == QString::fromUtf8("Save copy…")) save = button;
+        QVERIFY(save);
+        save->click();
+        QFileDialog* fallback = nullptr;
+        QTRY_VERIFY((fallback = window.findChild<QFileDialog*>("putgdFileDialog")) && fallback->isVisible());
+        QCOMPARE(fallback->windowTitle(), QString("Save a copy"));
+        QCOMPARE(fallback->nameFilters(), QStringList{"MP4 (*.mp4)"});
+        fallback->setDirectory(folder.path());
+        auto* name = fallback->findChild<QLineEdit*>("fileNameEdit");
+        QVERIFY(name);
+        name->setText("chosen");
+        QMetaObject::invokeMethod(fallback, "accept");
+        QCOMPARE(saved.size(), 1);
+        QCOMPARE(saved.first().first().toString(), folder.filePath("chosen.mp4"));
+        // Starting an export closes an open chooser.
+        QVERIFY(window.drive({{"action", "saveCopyDialog"}}).code.isEmpty());
+        window.setExporting(true, "Exporting MP4…");
+        QVERIFY(!window.inspect()["fileDialog"].toObject()["open"].toBool());
+        qunsetenv("PUTGD_FILE_DIALOG");
     }
 };
 

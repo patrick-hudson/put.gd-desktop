@@ -1,7 +1,7 @@
 #include "MainWindow.h"
 #include <QDir>
 #include <QStandardPaths>
-#include <QFileDialog>
+#include "FileDialog.h"
 #include <QMenu>
 #include <QDropEvent>
 #include <QFileInfo>
@@ -27,6 +27,7 @@
 #include "core/ReleaseLink.h"
 namespace putgd {
 MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),session_(session){
+ chooser_=new FileDialog(this);
  setObjectName("putgdMainWindow");setWindowTitle("put.gd");setWindowIcon(VisualStyle::icon("brand"));resize(1320,880);setMinimumSize(1060,680);
  auto* center=new QWidget;setCentralWidget(center);auto* layout=new QHBoxLayout(center);layout->setContentsMargins(0,0,0,0);layout->setSpacing(0);
  auto* rail=new QWidget;rail->setObjectName("mainRail");rail->setFixedWidth(210);layout->addWidget(rail);auto* railBox=new QVBoxLayout(rail);railBox->setContentsMargins(14,20,14,14);railBox->setSpacing(6);
@@ -118,10 +119,9 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
 MainWindow::~MainWindow(){
  disconnect(settings_,nullptr,this,nullptr);disconnect(history_,nullptr,this,nullptr);disconnect(navigation_,nullptr,this,nullptr);disconnect(&session_,nullptr,this,nullptr);
 }
-void MainWindow::chooseImageToEdit(){
+bool MainWindow::chooseImageToEdit(){
  auto folder=QStandardPaths::writableLocation(QStandardPaths::PicturesLocation);if(folder.isEmpty())folder=QDir::homePath();
- const auto path=QFileDialog::getOpenFileName(this,"Edit an image file",folder,"Images (*.png *.jpg *.jpeg)");
- if(!path.isEmpty())emit editRequested("file",path);
+ return chooser_->open({FileDialog::Mode::Open,"Edit an image file",folder,{},{{"Images",{"*.png","*.jpg","*.jpeg"}}}},[this](const QString& path){if(!path.isEmpty())emit editRequested("file",path);});
 }
 QString MainWindow::droppedImage(const QMimeData* data){
  if(!data||data->urls().size()!=1||!data->urls().first().isLocalFile())return {};

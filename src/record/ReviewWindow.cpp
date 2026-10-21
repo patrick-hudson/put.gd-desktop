@@ -5,9 +5,10 @@
 #include <QCloseEvent>
 #include <QComboBox>
 #include <QDir>
-#include <QFileDialog>
+#include <QHideEvent>
 #include <QHBoxLayout>
 #include <QLabel>
+#include "ui/FileDialog.h"
 #include "ui/Theme.h"
 #include "ui/VisualStyle.h"
 #include <QGuiApplication>
@@ -524,12 +525,8 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
         emit uploadRequested(edit_.revision);
         close();
     });
-    connect(save_, &QPushButton::clicked, this, [this] {
-        if (exporting_) return;
-        const auto path = QFileDialog::getSaveFileName(this, "Save a copy", QDir::homePath() + "/recording." + config_.extension(), QStringLiteral("%1 (*.%2)").arg(config_.format.toUpper(), config_.extension()));
-        if (path.isEmpty()) return;
-        emit saveCopyRequested(path.endsWith("." + config_.extension(), Qt::CaseInsensitive) ? path : path + "." + config_.extension(), edit_.revision);
-    });
+    chooser_ = new FileDialog(this);
+    connect(save_, &QPushButton::clicked, this, [this] { chooseCopy(); });
     connect(cancel_, &QPushButton::clicked, this, [this] { closing_ = true; emit cancelRequested(); });
     setConfig(config);
     setEdit({});
@@ -632,7 +629,7 @@ void ReviewWindow::setConfig(const RecordingConfig& config) {
 }
 void ReviewWindow::setExporting(bool exporting, const QString& label) {
     stopPlayback();
-    if (exporting) disarm();
+    if (exporting) { disarm(); chooser_->cancel(); }
     exporting_ = exporting;
     for (auto* w : std::initializer_list<QWidget*>{upload_, save_, cancel_, trimStart_, trimEnd_, resetTrim_, addBlur_, addSolid_, removeMask_, maskStart_, maskEnd_, strength_, masks_, format_, play_, speed_, timeline_}) w->setEnabled(!exporting);
     status_->setText(label);
@@ -711,6 +708,7 @@ QJsonObject ReviewWindow::inspect() const {
         {"armed", view_->armed().isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(view_->armed())},
         {"maskControls", QJsonObject{{"list", maskTools_->isVisibleTo(this)}, {"times", maskStart_->isVisibleTo(this)}, {"strength", strength_->isVisibleTo(this)}, {"remove", removeMask_->isVisibleTo(this)}}},
         {"status", status_->text()}, {"notice", notice_->isVisibleTo(this) ? QJsonValue(notice_->text()) : QJsonValue(QJsonValue::Null)},
+        {"fileDialog", chooser_->state()},
         {"format", QJsonObject{{"format", config_.format}, {"codec", config_.codec}}},
         {"video", QJsonObject{{"rect", rect(video)}, {"share", double(video.width()) * video.height() / area}}},
         {"timeline", QJsonObject{{"rect", rect(timeline_->geometry())}, {"lanes", timeline_->lanes()}}}};
@@ -720,8 +718,13 @@ ReviewWindow::DriveResult ReviewWindow::drive(const QJsonObject& params) {
     const auto invalid = [](const QString& message) { return DriveResult{"invalid_request", message, {}}; };
     auto done = [this](const QString& error = {}) { return error.isEmpty() ? DriveResult{{}, {}, inspect()} : DriveResult{"invalid_request", error, {}}; };
     if (action == "inspect") return done();
+    // #259: the Save copy… chooser, as the button opens it; the copy is saved
+    // when someone picks a file in it (recording.saveCopy saves to a path).
+    if (action == "closeFileDialog") { chooser_->cancel(); return done(); }
     if (exporting_) return {"recording_state", "The review controls are disabled while an export runs", {}};
     if (!isVisible()) return {"recording_state", "The review window is closed", {}};
+    if (chooser_->isOpen()) return {"recording_state", "The Save copy dialog is open; close it first (closeFileDialog)", {}};
+    if (action == "saveCopyDialog") { chooseCopy(); return done(); }
     if (action == "seek") {
         const auto time = params["time"].toDouble(-1);
         if (!params["time"].isDouble() || time < 0 || time >= double(options_.durationUs) || time != std::floor(time)) return invalid("seek takes a clip time in microseconds within the recording");
@@ -863,6 +866,21 @@ void ReviewWindow::stopPlayback() {
 ReviewWindow::~ReviewWindow() {
     if (playStop_) playStop_->store(true);
     if (playThread_) playThread_->wait();
+}
+bool ReviewWindow::chooseCopy() {
+    if (exporting_ || chooser_->isOpen()) return false;
+    const auto extension = config_.extension();
+    FileDialog::Options options{FileDialog::Mode::Save, "Save a copy", QDir::homePath(), "recording." + extension, {{config_.format.toUpper(), {"*." + extension}}}};
+    return chooser_->open(options, [this, extension](const QString& path) {
+        if (path.isEmpty() || exporting_) return;
+        emit saveCopyRequested(path.endsWith("." + extension, Qt::CaseInsensitive) ? path : path + "." + extension, edit_.revision);
+    });
+}
+void ReviewWindow::hideEvent(QHideEvent* e) {
+    // Upload, cancel and a stop elsewhere hide the review: its chooser goes too
+    // (minimizing is a spontaneous hide and leaves it open).
+    if (!e->spontaneous()) chooser_->cancel();
+    QWidget::hideEvent(e);
 }
 void ReviewWindow::closeEvent(QCloseEvent* e) {
     // Closing the window is a discard; nothing was uploaded.

@@ -1,4 +1,5 @@
 #include "EditorWindow.h"
+#include "FileDialog.h"
 #include "Theme.h"
 #include "RedesignTheme.h"
 #include "VisualStyle.h"
@@ -10,7 +11,6 @@
 #include <QFontComboBox>
 #include <QDateTime>
 #include <QDir>
-#include <QFileDialog>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QMessageBox>
@@ -57,6 +57,7 @@ QWidget* row(QWidget* parent,QHBoxLayout*& layout){auto* widget=new QWidget(pare
 EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(parent),doc_(doc){
  setObjectName("putgdWindow");setWindowTitle("Edit image — put.gd");setWindowIcon(VisualStyle::icon("brand"));
  setAttribute(Qt::WA_DeleteOnClose,false);
+ chooser_=new FileDialog(this);
  auto* root=new QVBoxLayout(this);root->setContentsMargins(0,0,0,0);root->setSpacing(0);
 
  auto* toolbar=new QWidget(this);toolbar->setObjectName("editorToolbar");toolbar->setAttribute(Qt::WA_StyledBackground);
@@ -273,22 +274,23 @@ void EditorWindow::refresh(){
  status_->setText(QString("%1 × %2 px · %3%").arg(crop.width()).arg(crop.height()).arg(int(std::lround(canvas_->zoom()*100))));
 }
 
-void EditorWindow::saveCopy(){
- if(busy_)return;
+bool EditorWindow::saveCopy(){
+ if(busy_||chooser_->isOpen())return false;
  if(canvas_->editingText())canvas_->finishText(true);
  auto folder=QStandardPaths::writableLocation(QStandardPaths::PicturesLocation);if(folder.isEmpty())folder=QDir::homePath();
- const auto suggested=QDir(folder).filePath("put.gd-edit-"+QDateTime::currentDateTime().toString("yyyy-MM-dd-HH-mm-ss")+".png");
- const auto path=QFileDialog::getSaveFileName(this,"Save a copy",suggested,"PNG image (*.png)");
- if(path.isEmpty())return;
- // The same sanitized export as Upload; QSaveFile replaces a chosen target atomically.
- const auto png=doc_.exportPng();
- QSaveFile file(path);file.setDirectWriteFallback(false);
- if(png.isEmpty()||!file.open(QIODevice::WriteOnly)||file.write(png)!=png.size()||!file.commit()){setFailure("The copy could not be saved.");return;}
- message_->setText("Saved a copy.");VisualStyle::role(message_,"success");message_->show();
+ const auto name="put.gd-edit-"+QDateTime::currentDateTime().toString("yyyy-MM-dd-HH-mm-ss")+".png";
+ return chooser_->open({FileDialog::Mode::Save,"Save a copy",folder,name,{{"PNG image",{"*.png"}}}},[this](const QString& path){
+  if(path.isEmpty()||busy_)return;
+  // The same sanitized export as Upload; QSaveFile replaces a chosen target atomically.
+  const auto png=doc_.exportPng();
+  QSaveFile file(path);file.setDirectWriteFallback(false);
+  if(png.isEmpty()||!file.open(QIODevice::WriteOnly)||file.write(png)!=png.size()||!file.commit()){setFailure("The copy could not be saved.");return;}
+  message_->setText("Saved a copy.");VisualStyle::role(message_,"success");message_->show();
+ });
 }
 
 void EditorWindow::setBusy(const QString& message){
- busy_=true;for(auto* widget:findChildren<QWidget*>())if(widget!=message_&&widget!=status_)widget->setEnabled(widget==this);
+ chooser_->cancel();busy_=true;for(auto* widget:findChildren<QWidget*>())if(widget!=message_&&widget!=status_)widget->setEnabled(widget==this);
  message_->setText(message);VisualStyle::role(message_,"secondary");message_->show();setCursor(Qt::BusyCursor);
 }
 void EditorWindow::setFailure(const QString& message){message_->setText(message);VisualStyle::role(message_,"error");message_->show();}
