@@ -72,9 +72,10 @@ def verified_zsync(directory, receipt, image, name, release, repository):
     path = asset_path(directory, zsync.get('file', ''), '.AppImage.zsync')
     if sha256(path) != zsync.get('sha256') or path.stat().st_size != zsync.get('bytes'):
         raise ValueError('AppImage .zsync bytes differ from audited receipt')
-    url = appimage_update.asset_url(repository, release['tag'], name)
+    appimage_update.asset_url(repository, release['tag'], name)
+    url = appimage_update.mirror_url(release['tag'], name)
     if zsync.get('url') != url:
-        raise ValueError('AppImage .zsync names another release URL')
+        raise ValueError('AppImage .zsync names another URL than the release mirror')
     appimage_update.verify_zsync(path, image, name, url)
     return path
 

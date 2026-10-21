@@ -229,6 +229,19 @@ class LoginStartTest(unittest.TestCase):
         self.receipt.unlink()
         self.assertStarts(configured, newer)
 
+    def test_in_place_update_keeps_the_old_name_and_still_starts_the_configured_image(self):
+        # put.gd's own update (#293 phase 3) writes 805 over the file named 800;
+        # an AppImageLauncher copy of 802 beside it is older than what the file holds.
+        configured = self.image("putgd-0.1.1-nightly.800-x86_64.AppImage", "0.1.1-nightly.805")
+        self.image("putgd-0.1.1-nightly.802-x86_64_0123456789abcdef0123456789abcdef.AppImage", "0.1.1-nightly.802")
+        self.assertStarts(configured, configured)
+        self.assertIn(str(configured) + " --version", self.probes.read_text())
+        # Its backup and staging folder are hidden and never candidates.
+        self.image(".putgd-update-backup-0.1.1-nightly.800.AppImage", "0.1.1-nightly.900")
+        (self.images / ".putgd-update-AbC123").mkdir()
+        self.receipt.unlink()
+        self.assertStarts(configured, configured)
+
     def test_same_version_prefers_the_configured_image(self):
         configured = self.image("putgd-0.1.1-nightly.801-x86_64_0123456789abcdef0123456789abcdef.AppImage",
                                 "0.1.1-nightly.801")

@@ -9,7 +9,7 @@ import appimage_update
 from appimage_fixture import make_appimage, make_zsync
 
 NAME = 'putgd-0.1.1-nightly.600-x86_64.AppImage'
-URL = 'https://github.com/patrick-hudson/put.gd-desktop/releases/download/v0.1.1-nightly.600/' + NAME
+URL = 'https://pkg.put.gd/releases/v0.1.1-nightly.600/' + NAME
 
 
 class AppImageUpdate(unittest.TestCase):
@@ -42,6 +42,13 @@ class AppImageUpdate(unittest.TestCase):
             appimage_update.asset_url(appimage_update.REPOSITORY, 'v0.1.1', '../' + NAME)
         with self.assertRaisesRegex(ValueError, 'origin'):
             appimage_update.targets(NAME, origin='file:///tmp')
+        # A tagged lab build: the live layout under the signer's lab prefix (#293 phase 3).
+        self.assertEqual(appimage_update.targets(NAME, 'v0.1.1-nightly.600', base='https://pkg.put.gd/lab/'),
+                         ('zsync|https://pkg.put.gd/lab/dl/nightly/appimage.zsync',
+                          'https://pkg.put.gd/lab/releases/v0.1.1-nightly.600/' + NAME))
+        for base in ('http://pkg.put.gd/lab/', 'https://pkg.put.gd/lab', 'https://pkg.put.gd/lab?x/'):
+            with self.assertRaisesRegex(ValueError, 'base'):
+                appimage_update.targets(NAME, 'v0.1.1-nightly.600', base=base)
 
     def test_reads_embedded_update_information(self):
         image = self.root / NAME

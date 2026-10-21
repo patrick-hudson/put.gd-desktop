@@ -112,14 +112,14 @@ class ReleaseCollection(unittest.TestCase):
         self.stage_debug_symbols(identity)
         self.output = self.root / 'build/output'
 
-    def write_appimage(self, tag, information=None, repository=appimage_update.REPOSITORY):
-        """The image embeds tag's update information; its .zsync names the release URL (#293)."""
+    def write_appimage(self, tag, information=None, url=None):
+        """The image embeds tag's update information; its .zsync names the signer's mirror copy (#293)."""
         directory = self.inputs / 'release-appimage'
         path = directory / 'synthetic.AppImage'
         make_appimage(path, appimage_update.update_information(tag) if information is None else information,
                       b'byte-integrity fixture, not an AppImage' * 100)
         name = 'putgd-' + tag[1:] + '-x86_64.AppImage'
-        url = appimage_update.asset_url(repository, tag, name)
+        url = url or appimage_update.mirror_url(tag, name)
         zsync = directory / 'synthetic.AppImage.zsync'
         make_zsync(zsync, path, name, url)
         receipt_path = directory / 'appimage-build.json'
@@ -378,7 +378,9 @@ class ReleaseCollection(unittest.TestCase):
         cases = [('update information', dict(information='zsync|http://127.0.0.1:8765/appimage.zsync')),
                  ('update information', dict(information='')),
                  ('update information', dict(information='zsync|https://app.put.gd/dl/nightly/appimage.zsync')),
-                 ('another release URL', dict(repository='someone/fork'))]
+                 # The GitHub asset redirects, which zsync2 can't follow on Fedora 44 (#297).
+                 ('release mirror', dict(url=appimage_update.asset_url(appimage_update.REPOSITORY, 'v0.1.1-rc.1',
+                                                                       'putgd-0.1.1-rc.1-x86_64.AppImage')))]
         for message, change in cases:
             self.write_appimage('v0.1.1-rc.1', **change)
             with self.assertRaisesRegex(ValueError, message):

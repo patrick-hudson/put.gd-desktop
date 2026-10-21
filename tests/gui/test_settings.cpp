@@ -4,6 +4,7 @@
 #include "ui/VisualStyle.h"
 #include "ui/RedesignTheme.h"
 #include <QVBoxLayout>
+#include <QProgressBar>
 #include <QAbstractItemView>
 #include <QScrollBar>
 #include "ui/SettingsWindow.h"
@@ -893,6 +894,48 @@ private slots:
   apply(false,QJsonValue(),"build","development_build");QTRY_COMPARE(channel->itemText(0),QString("This build's channel"));QVERIFY(!channel->isVisibleTo(window.settings()));
   apply(true,"stable","build",{});QTRY_COMPARE(channel->itemText(0),QString("This build's channel (stable)"));
   apply(false,"stable","build","flatpak");QTRY_COMPARE(channel->itemText(0),QString("This build's channel"));
+ }
+ // #293 phase 3: an AppImage with an update offers Download and install, shows
+ // the install's progress, then Restart put.gd; a repository install never does.
+ void appImageInstallShowsProgressThenRestart(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(Settings::developmentTemplate(),{}));
+  CredentialStore secrets;UiSessionFixture fixture(service,secrets);QJsonObject update;
+  fixture.server.setUiDiagnostics([&]{auto data=fixture.operations().diagnostics();data["update"]=update;return data;});
+  MainWindow window(fixture.session);window.navigate("settings");window.show();QTRY_VERIFY(fixture.session.ready());
+  auto* install=window.findChild<QPushButton*>("installUpdate");auto* restart=window.findChild<QPushButton*>("restartAfterUpdate");auto* download=window.findChild<QPushButton*>("downloadUpdate");
+  auto* progress=window.findChild<QProgressBar*>("updateInstallProgress");auto* status=window.findChild<QLabel*>("updateInstallStatus");
+  QVERIFY(install&&restart&&download&&progress&&status);
+  auto apply=[&](const QJsonObject& installState,const QJsonObject& action=QJsonObject{{"kind","download"},{"repository","none"}}){
+   update={{"supported",true},{"build",QJsonObject{{"version","0.1.1-nightly.800"},{"channel","nightly"},{"supported",true},{"packageTarget","appimage"}}},
+    {"check",true},{"channelSetting","build"},{"channel","nightly"},{"checking",false},{"action",action},{"error",QJsonObject{}},{"checkedAt",QJsonValue()},{"nextCheckAt",QJsonValue()},
+    {"result",QJsonObject{{"channel","nightly"},{"current","0.1.1-nightly.800"},{"latest","0.1.1-nightly.801"},{"updateAvailable",true},
+     {"downloadUrl","https://github.com/patrick-hudson/put.gd-desktop/releases/download/v0.1.1-nightly.801/putgd-0.1.1-nightly.801-x86_64.AppImage"}}},
+    {"install",installState}};
+   fixture.session.refreshSnapshot();
+  };
+  const auto settings=window.settings();
+  apply({{"state","idle"},{"available",true},{"running",false},{"restartRequired",false}});
+  QTRY_VERIFY(install->isVisibleTo(settings));QVERIFY(install->isEnabled());QVERIFY(download->isVisibleTo(settings));QVERIFY(!restart->isVisibleTo(settings));QVERIFY(!status->isVisibleTo(settings));
+  apply({{"state","running"},{"available",true},{"running",true},{"phase","download"},{"method","release"},{"bytes",50*1024*1024},{"total",100*1024*1024},{"restartRequired",false}});
+  QTRY_VERIFY(progress->isVisibleTo(settings));QCOMPARE(progress->value(),500);QVERIFY(!install->isEnabled());QVERIFY(status->text().contains("Downloading from the GitHub release"));
+  apply({{"state","running"},{"available",true},{"running",true},{"phase","zsync"},{"method","appimageupdatetool"},{"bytes",0},{"total",100}});
+  QTRY_VERIFY(status->text().contains("appimageupdatetool"));
+  apply({{"state","installed"},{"available",true},{"running",false},{"restartRequired",true},{"backup","/home/u/Applications/.putgd-update-backup-0.1.1-nightly.800.AppImage"},
+   {"installed",QJsonObject{{"version","0.1.1-nightly.801"},{"method","zsync"}}}});
+  QTRY_VERIFY(restart->isVisibleTo(settings));QVERIFY(!install->isVisibleTo(settings));QVERIFY(!download->isVisibleTo(settings));QVERIFY(!progress->isVisibleTo(settings));
+  QVERIFY(status->text().contains("Installed 0.1.1-nightly.801 with a zsync update. Restart put.gd to use it."));QVERIFY(status->text().contains(".putgd-update-backup-0.1.1-nightly.800.AppImage"));
+  // After the restart: this build is the installed version, and Settings says so.
+  apply({{"state","idle"},{"available",true},{"running",false},{"restartRequired",false},
+   {"installed",QJsonObject{{"version","0.1.1-nightly.800"},{"previousVersion","0.1.1-nightly.799"},{"method","zsync"},{"installedAt","2026-10-21T22:48:09Z"}}}});
+  QTRY_VERIFY(status->text().startsWith("Updated from 0.1.1-nightly.799 to 0.1.1-nightly.800 with a zsync update on "));QVERIFY(status->isVisibleTo(settings));QVERIFY(!restart->isVisibleTo(settings));
+  apply({{"state","failed"},{"available",true},{"running",false},{"restartRequired",false},{"error",QJsonObject{{"code","update_verification_failed"},{"message","The download doesn't match the release's SHA256SUMS; nothing was changed"}}}});
+  QTRY_VERIFY(status->text().contains("doesn't match the release's SHA256SUMS"));QVERIFY(install->isVisibleTo(settings));
+  // This resident has no install service: the click's refusal shows.
+  install->click();QTRY_VERIFY(status->text().contains("does not check for updates"));QVERIFY(install->isEnabled());
+  // A repository install and a non-AppImage never offer it.
+  apply({{"state","idle"},{"available",false},{"running",false},{"reason","not_appimage"},{"restartRequired",false}});QTRY_VERIFY(!install->isVisibleTo(settings));
+  apply({{"state","idle"},{"available",true},{"running",false},{"restartRequired",false}},{{"kind","software-updates"},{"manager","apt"},{"command","sudo apt update && sudo apt upgrade"},{"updater",QJsonValue()}});
+  QTRY_VERIFY(!download->isVisibleTo(settings));QVERIFY(!install->isVisibleTo(settings));
  }
  void railShowsTheResidentVersionAndOpensItsGitHubPage(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.show();QTRY_VERIFY(fixture.session.ready());

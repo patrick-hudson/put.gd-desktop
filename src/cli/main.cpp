@@ -1,5 +1,6 @@
 #include <cstring>
 #include "UpdateCheck.h"
+#include "UpdateInstall.h"
 #include "app/LocalServer.h"
 #include "core/BuildInfo.h"
 #include <QCoreApplication>
@@ -14,6 +15,7 @@ int main(int argc,char** argv) {
  if(argc==2&&std::strcmp(argv[1],"--version-json")==0){
   std::printf("%s\n",putgd::buildManifestJson());return 0;
  }
+ if(putgd::isInstallMode(argc,argv))return putgd::runInstallMode(argc,argv);
  if(putgd::isUpdateMode(argc,argv))return putgd::runUpdateMode(argc,argv);
  QCoreApplication app(argc,argv);QCoreApplication::setOrganizationName("putgd");QCoreApplication::setApplicationName("putgd-cli");QCoreApplication::setApplicationVersion(putgd::buildVersion());
  QCommandLineParser parser;parser.setApplicationDescription("JSON client for the resident put.gd session");parser.addHelpOption();parser.addVersionOption();parser.addOption({"socket","Session socket path","path"});parser.addOption({"request-id","Correlation ID","id"});

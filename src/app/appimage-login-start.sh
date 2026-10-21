@@ -107,9 +107,11 @@ fi
 # before #307, it only has to be an executable file.
 if [ -f "$configured" ] && [ -x "$configured" ]; then
     [ -n "$best" ] || exec "$configured" "$@"
-    # Gear Lever's put.gd.appimage carries no version in its name; ask the image.
-    version=$(name_version "$configured") ||
-        version=$(bounded "$configured" --version 2>/dev/null | sed -n '1s/^putgd //p')
+    # Ask the image which version it is. put.gd's own update (#293) and Gear
+    # Lever replace the file in place, so its name can be older than what it
+    # holds, or carry no version; the name is only the fallback.
+    version=$(bounded "$configured" --version 2>/dev/null | sed -n '1s/^putgd //p')
+    [ -n "$version" ] || version=$(name_version "$configured") || version=
     if [ -z "$version" ] || ! newer "$best_version" "$(sortable "$version")"; then
         exec "$configured" "$@"
     fi

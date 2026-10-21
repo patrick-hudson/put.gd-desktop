@@ -576,6 +576,7 @@ def main() -> int:
     parser.add_argument("--repository", default=os.environ.get("GITHUB_REPOSITORY") or appimage_update.REPOSITORY,
                         help="GitHub OWNER/NAME whose release serves the image")
     parser.add_argument("--update-origin", help="Lab only: point the update information and .zsync at this server")
+    parser.add_argument("--update-base", help="Lab only: with --release-tag, the signer's lab prefix (https://pkg.put.gd/lab/)")
     args = parser.parse_args()
     # Check the native install's identity, modes, runtime receipts and absence of
     # test/private files before deployment changes ELF RPATHs and bundles Qt.
@@ -682,7 +683,7 @@ def main() -> int:
     if proton:
         deployed["proton"] = proton
     target = output / ("putgd-" + args.version + "-x86_64.AppImage")
-    update = appimage_update.targets(target.name, args.release_tag, args.repository, args.update_origin)
+    update = appimage_update.targets(target.name, args.release_tag, args.repository, args.update_origin, args.update_base)
     subprocess.run([str(executables["appimagetool-x86_64.AppImage"]), "--runtime-file",
                     str(executables["runtime-x86_64"]), "--mksquashfs-opt=-b",
                     "--mksquashfs-opt=16384", *(("-u", update[0]) if update else ()), str(appdir), str(target)],
@@ -692,8 +693,9 @@ def main() -> int:
         raise ValueError("AppImage update information differs from the requested value")
     zsync = output / appimage_update.zsync_name(target.name)
     # With -u, appimagetool runs its bundled zsyncmake in its working directory,
-    # naming the image by a relative URL. Ours names the image's absolute release
-    # URL, so it works behind the site's redirect.
+    # naming the image by a relative URL. Ours names the image's absolute URL on
+    # the signer's mirror, so it works behind the site's redirect and needs no
+    # redirect itself (#297).
     zsync.unlink(missing_ok=True)
     if update:
         subprocess.run([str(executables["zsyncmake"]), "-u", update[1], "-o", str(zsync), target.name],

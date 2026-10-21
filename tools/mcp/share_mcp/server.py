@@ -573,6 +573,23 @@ def create_server(adapter: CliAdapter) -> FastMCP:
         """Open the system's software updater, as Settings → Updates → Open software updates does, for a DEB/RPM install that updates from put.gd's apt or dnf repository: Update Manager on Cinnamon, Discover on Plasma, GNOME Software on GNOME, else whichever is installed. Returns {opened, action}. Errors: software_updates_unavailable (not a repository install, or no updater installed; the details carry the apt/dnf command) or software_updates_failed. Nothing is installed by put.gd."""
         return await adapter.call('update.openSoftwareUpdates', {})
 
+    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, openWorldHint=True))
+    async def install_update(confirm: bool, method: str = 'auto') -> Json:
+        """Install the newest version over the running AppImage, as Settings → Updates → Download and install does (#293 phase 3). Needs confirm true; nothing installs otherwise. AppImage builds only, on this build's channel, while no recording or upload runs. method auto tries appimageupdatetool or zsync2 on the host with the release's mirrored .zsync, then downloads the whole image from the GitHub release (then pkg.put.gd); zsync or download forces one path. The file must match the release's SHA256SUMS line before it is renamed onto the same path; the old image stays as a hidden .putgd-update-backup-<version>.AppImage until the new version has started. Returns get_update_status's object at once; follow install (state running|installed|failed, phase checking|verifying|zsync|download|installing|done, method, bytes, total, error, result with method, zsync.fallbackReason and backup, restartRequired) with get_update_status, then restart_after_update. Errors: update_confirm_required, update_install_unavailable, update_install_busy, update_restart_required; the child's own (update_not_available, update_image_not_writable, update_disk_full, update_sums_unavailable, update_download_failed, update_verification_failed, update_zsync_failed, update_install_failed) arrive in install.error."""
+        if not isinstance(confirm, bool) or method not in ('auto', 'zsync', 'download'):
+            return invalid()
+        params: dict[str, Any] = {'confirm': confirm}
+        if method != 'auto':
+            params['method'] = method
+        return await adapter.call('update.install', params)
+
+    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
+    async def restart_after_update(confirm: bool) -> Json:
+        """Restart put.gd into the version install_update put in place, as Settings → Updates → Restart put.gd does: starts the AppImage again from the host once this resident has exited, then quits it (open windows close). Needs confirm true and get_update_status's install.restartRequired; refused while a recording or upload runs. Returns {restarting, version}; the new resident answers this MCP server's next call. Errors: update_confirm_required, update_restart_unavailable, update_install_busy, update_restart_failed."""
+        if not isinstance(confirm, bool):
+            return invalid()
+        return await adapter.call('update.restart', {'confirm': confirm})
+
     @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, openWorldHint=False))
     async def clear_logs() -> Json:
         """Delete every persistent log file in put.gd's state folder and start a new one; returns removedFiles and removedBytes. Uploads, history, settings and saved diagnostics packages are untouched. inspect shows the log folder size, file count and oldest record under diagnostics.logging."""

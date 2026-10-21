@@ -9,6 +9,7 @@
 #include <QSignalBlocker>
 #include "ShortcutEditor.h"
 #include "ByteSize.h"
+#include <QProgressBar>
 #include "VisualStyle.h"
 #include <QApplication>
 #include <QAbstractItemModel>
@@ -383,6 +384,7 @@ QString settingHelp(const QString& path,const QString& objectName){
   {"checkForUpdates","Once a day put.gd asks app.put.gd for the newest version on its channel. The request is the same from every computer: no version, account, locale or ID. The comparison happens here, and nothing is installed without you. Stable builds also show a notification once for each new version; nightly builds show it only here. Check now works with daily checks off."},
   {"updateChannel","This build's channel follows how put.gd was installed: a nightly build follows nightly, a release or release candidate follows stable. Choose Stable or Nightly to watch the other channel instead. Changing it doesn't change what is installed."},
   {"updateStatus","The result of the last check and when the next one runs. Download opens the new package for this installation in your browser. When this installation updates from put.gd's apt or dnf repository, Open software updates opens your system's updater instead."},
+  {"updateInstall","Download and install fetches the new AppImage, checks it against the release's SHA256SUMS and puts it in place of the one put.gd runs from, at the same path, so login startup and menu entries keep working. It uses appimageupdatetool or zsync2 when one is installed, which downloads only what changed, and otherwise the whole file. The current version is kept beside it as a hidden backup until the new one has started."},
   {"updateCommand","Updates from put.gd's repository install with the rest of your system's updates. You can also run this command in a terminal."},
   {"notifications","Shows desktop notifications for operation results when supported. Enabled by default. Disabling notifications leaves results available in History."},
   {"debugLogging","Adds detailed debug records to put.gd's log on this computer, for a maintainer working out a problem. It turns itself off 24 hours after you turn it on; restarting doesn't extend it. Credentials, tokens and file contents are never logged."},
@@ -461,9 +463,32 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  // A repository install (#293 phase 2) updates through the system's software
  // updater, so it gets that and the apt/dnf command instead of Download.
  openUpdates_=new QPushButton(VisualStyle::icon("download"),"Open software updates");openUpdates_->setObjectName("openSoftwareUpdates");VisualStyle::role(openUpdates_,"primary");updateActionsLayout->addWidget(openUpdates_);
+ // An AppImage installs the update itself (#293 phase 3): fetched, checked
+ // against the release's SHA256SUMS and put in place of the running image.
+ installUpdate_=new QPushButton(VisualStyle::icon("download"),"Download and install");installUpdate_->setObjectName("installUpdate");VisualStyle::role(installUpdate_,"primary");updateActionsLayout->addWidget(installUpdate_);installUpdate_->hide();
+ restartUpdate_=new QPushButton(VisualStyle::icon("redo"),"Restart put.gd");restartUpdate_->setObjectName("restartAfterUpdate");VisualStyle::role(restartUpdate_,"primary");updateActionsLayout->addWidget(restartUpdate_);restartUpdate_->hide();
  downloadUpdate_=new QPushButton(VisualStyle::icon("download"),"Download");downloadUpdate_->setObjectName("downloadUpdate");VisualStyle::role(downloadUpdate_,"primary");updateActionsLayout->addWidget(downloadUpdate_);
  releaseNotes_=new QPushButton("Release notes");releaseNotes_->setObjectName("updateReleaseNotes");VisualStyle::role(releaseNotes_,"link");updateActionsLayout->addWidget(releaseNotes_);updateActionsLayout->addStretch();
  updateActionsRow_=updateActions;updatesForm->addRow(QString(),updateActions);updateActions->hide();
+ installRow_=new QWidget;auto* installLayout=new QVBoxLayout(installRow_);installLayout->setContentsMargins(0,0,0,0);installLayout->setSpacing(6);
+ installProgress_=new QProgressBar;installProgress_->setObjectName("updateInstallProgress");installProgress_->setAccessibleName("Update install progress");installProgress_->setTextVisible(false);installProgress_->setMaximumWidth(320);installLayout->addWidget(installProgress_);
+ installStatus_=new QLabel;installStatus_->setObjectName("updateInstallStatus");installStatus_->setWordWrap(true);installStatus_->setTextInteractionFlags(Qt::TextSelectableByMouse);installStatus_->setAccessibleName("Update install status");installLayout->addWidget(installStatus_);
+ updatesForm->addRow(VisualStyle::settingLabel("Install",settingHelp({},"updateInstall"),installStatus_,this),installRow_);updatesForm->setRowVisible(installRow_,false);
+ connect(installUpdate_,&QPushButton::clicked,this,[this]{
+  installUpdate_->setEnabled(false);VisualStyle::feedback(installStatus_,"Starting…");updatesForm_->setRowVisible(installRow_,true);
+  settings_.request("update.install",{{"confirm",true}},this,[g=QPointer<SettingsWindow>(this)](Error error,QJsonObject){
+   if(!g)return;
+   if(error){g->installUpdate_->setEnabled(true);VisualStyle::feedback(g->installStatus_,error.message+".",true);return;}
+   g->settings_.refreshSnapshot([g](Error){if(g)g->refreshUpdateStatus();});
+  });
+ });
+ connect(restartUpdate_,&QPushButton::clicked,this,[this]{
+  restartUpdate_->setEnabled(false);
+  settings_.request("update.restart",{{"confirm",true}},this,[g=QPointer<SettingsWindow>(this)](Error error,QJsonObject){
+   if(!g)return;g->restartUpdate_->setEnabled(true);
+   if(error)VisualStyle::feedback(g->installStatus_,error.message+".",true);else VisualStyle::feedback(g->installStatus_,"Restarting…");
+  });
+ });
  auto* commandRow=new QWidget;auto* commandLayout=new QHBoxLayout(commandRow);commandLayout->setContentsMargins(0,0,0,0);commandLayout->setSpacing(8);
  updateCommand_=new QLineEdit;updateCommand_->setObjectName("updateCommand");updateCommand_->setReadOnly(true);updateCommand_->setAccessibleName("Update command");VisualStyle::role(updateCommand_,"mono");commandLayout->addWidget(updateCommand_,1);
  auto* copyCommand=new QPushButton("Copy");copyCommand->setObjectName("copyUpdateCommand");copyCommand->setAccessibleName("Copy the update command");commandLayout->addWidget(copyCommand);
@@ -821,7 +846,7 @@ void SettingsWindow::refreshUpdateStatus(){
  checkNow_->setVisible(supported||update.isEmpty());checkNow_->setEnabled(supported&&!update["checking"].toBool());
  const bool available=supported&&result["updateAvailable"].toBool();
  const auto action=update["action"].toObject();const bool managed=action["kind"]=="software-updates";
- updateActionsRow_->setVisible(available);
+ updateActionsRow_->setVisible(available||update["install"].toObject()["restartRequired"].toBool());
  downloadUpdate_->setVisible(!managed);openUpdates_->setVisible(managed&&action["updater"].isObject());
  if(managed){openUpdates_->setToolTip("Opens "+action["updater"].toObject()["name"].toString());updateCommand_->setText(action["command"].toString());}
  updatesForm_->setRowVisible(updateCommandRow_,available&&managed);
@@ -851,6 +876,50 @@ void SettingsWindow::refreshUpdateStatus(){
  }
  if(available)VisualStyle::success(updateStatus_,text);else VisualStyle::feedback(updateStatus_,text);
  downloadUpdate_->setText("Download "+result["latest"].toString());
+ refreshInstallStatus(update,available,managed);
+}
+void SettingsWindow::refreshInstallStatus(const QJsonObject& update,bool available,bool managed){
+ const auto install=update["install"].toObject();const auto state=install["state"].toString();
+ const bool running=install["running"].toBool(),restart=install["restartRequired"].toBool();
+ // The version put.gd installed is the one running now: the update is done.
+ const auto installed=install["installed"].toObject();const auto installedVersion=installed["version"].toString();
+ const bool updated=!running&&!restart&&!installedVersion.isEmpty()&&installedVersion==update["build"].toObject()["version"].toString();
+ const bool installable=available&&!managed&&install["available"].toBool();
+ installUpdate_->setVisible(installable&&!restart);installUpdate_->setEnabled(!running);
+ installUpdate_->setText(running?QString("Installing…"):QString("Download and install"));
+ // Download stays for anyone who would rather replace the file by hand.
+ VisualStyle::role(downloadUpdate_,installable?"secondary":"primary");
+ downloadUpdate_->setVisible(!managed&&!restart);releaseNotes_->setVisible(!restart||available);
+ restartUpdate_->setVisible(restart&&!running);
+ installProgress_->setVisible(running);
+ const bool shown=running||restart||state=="failed"||updated;
+ updatesForm_->setRowVisible(installRow_,shown);
+ if(!shown)return;
+ const auto bytes=install["bytes"].toInteger(),total=install["total"].toInteger();
+ if(running){
+  if(total>0&&(install["phase"]=="zsync"||install["phase"]=="download")){installProgress_->setRange(0,1000);installProgress_->setValue(int(qBound(qint64(0),bytes*1000/total,qint64(1000))));}
+  else installProgress_->setRange(0,0);
+  const auto phase=install["phase"].toString();const auto method=install["method"].toString();
+  const auto amount=total>0?" "+ByteSize::summary(bytes)+" of "+ByteSize::summary(total):QString();
+  QString text=phase=="zsync"?"Updating with "+method+", which downloads only what changed:"+amount:
+   phase=="download"?(method=="mirror"?QString("Downloading from pkg.put.gd:"):QString("Downloading from the GitHub release:"))+amount:
+   phase=="verifying"?QString("Checking against the release's SHA256SUMS…"):phase=="installing"?QString("Putting the new version in place…"):QString("Checking the release…");
+  VisualStyle::feedback(installStatus_,text);return;
+ }
+ if(restart){
+  const auto how=installed["method"].toString();
+  QString text="Installed "+installed["version"].toString()+(how=="zsync"?QString(" with a zsync update"):how=="download"?QString(" from a full download"):QString())+". Restart put.gd to use it.";
+  if(install["backup"].isString())text+=" The previous version is kept as "+QFileInfo(install["backup"].toString()).fileName()+" until the new one has started.";
+  VisualStyle::success(installStatus_,text);return;
+ }
+ const auto error=install["error"].toObject();
+ if(state!="failed"&&updated){
+  const auto how=installed["method"].toString();
+  VisualStyle::success(installStatus_,"Updated from "+installed["previousVersion"].toString()+" to "+installed["version"].toString()+
+   (how=="zsync"?QString(" with a zsync update"):how=="download"?QString(" from a full download"):QString())+" on "+localTime(installed["installedAt"].toString())+".");
+  return;
+ }
+ VisualStyle::feedback(installStatus_,"The update wasn't installed: "+error["message"].toString()+".",true);
 }
 void SettingsWindow::checkForUpdates(std::function<void(Error,QJsonObject)> done){
  checkNow_->setEnabled(false);VisualStyle::feedback(updateStatus_,"Checking…");
@@ -1082,7 +1151,11 @@ QString SettingsWindow::autosaveText()const{
  return {};
 }
 void SettingsWindow::showCaptureSettings(){tabs_->setCurrentIndex(1);}
-void SettingsWindow::showUpdates(){tabs_->setCurrentIndex(0);if(auto* scroll=qobject_cast<QScrollArea*>(tabs_->widget(0)))scroll->ensureWidgetVisible(updateStatus_);}
+void SettingsWindow::showUpdates(){
+ tabs_->setCurrentIndex(0);
+ // The status, then its actions and an install's progress below it (#293 phase 3).
+ if(auto* scroll=qobject_cast<QScrollArea*>(tabs_->widget(0))){scroll->ensureWidgetVisible(updateStatus_);for(auto* row:{updateActionsRow_,installRow_})if(row&&row->isVisible())scroll->ensureWidgetVisible(row);}
+}
 bool SettingsWindow::flushAutosave(){if(autosave_)autosave_->stop();if(!autosaveBlocked_&&!pendingEdits_.isEmpty()&&!conflict_&&(setupAccepting_||!setupJobs_.isEmpty())){const auto waiting=QStringLiteral("Waiting for destination setup to finish before saving your edits.");if(status_->text()!=waiting||status_->property("feedbackTone").toString()!="neutral")VisualStyle::feedback(status_,waiting);return false;}if(!saving_&&!pendingEdits_.isEmpty()&&!conflict_)save();return !saving_;}
 void SettingsWindow::save(){
  if(autosaveBlocked_||conflict_||saving_||resetting_||setupAccepting_||!setupJobs_.isEmpty())return;
