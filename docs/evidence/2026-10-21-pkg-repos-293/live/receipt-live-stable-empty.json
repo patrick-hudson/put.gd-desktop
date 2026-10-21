@@ -1,0 +1,202 @@
+{
+ "schemaVersion": 1,
+ "tag": null,
+ "channel": "stable",
+ "scope": "live",
+ "startedAt": "2026-10-21T15:19:34Z",
+ "finishedAt": "2026-10-21T15:28:04Z",
+ "result": "published",
+ "source": {},
+ "inputs": [],
+ "rpm": [],
+ "signatures": [
+  {
+   "file": "apt/ubuntu24.04/dists/stable/InRelease",
+   "kind": "openpgp",
+   "key": "C0962EFA929F5A5477A4509C0CC9E5A0F0B6FC1C"
+  },
+  {
+   "file": "apt/ubuntu24.04/dists/stable/Release.gpg",
+   "kind": "openpgp",
+   "key": "C0962EFA929F5A5477A4509C0CC9E5A0F0B6FC1C"
+  },
+  {
+   "file": "apt/ubuntu26.04/dists/stable/InRelease",
+   "kind": "openpgp",
+   "key": "C0962EFA929F5A5477A4509C0CC9E5A0F0B6FC1C"
+  },
+  {
+   "file": "apt/ubuntu26.04/dists/stable/Release.gpg",
+   "kind": "openpgp",
+   "key": "C0962EFA929F5A5477A4509C0CC9E5A0F0B6FC1C"
+  },
+  {
+   "file": "apt/debian13/dists/stable/InRelease",
+   "kind": "openpgp",
+   "key": "C0962EFA929F5A5477A4509C0CC9E5A0F0B6FC1C"
+  },
+  {
+   "file": "apt/debian13/dists/stable/Release.gpg",
+   "kind": "openpgp",
+   "key": "C0962EFA929F5A5477A4509C0CC9E5A0F0B6FC1C"
+  },
+  {
+   "file": "update/v1/stable.json.minisig",
+   "kind": "minisign",
+   "key": "stable"
+  }
+ ],
+ "s3": {
+  "uploaded": [
+   {
+    "key": "apt/debian13/dists/stable/main/binary-amd64/Packages",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+   },
+   {
+    "key": "apt/debian13/dists/stable/main/binary-amd64/Packages.gz",
+    "sha256": "59869db34853933b239f1e2219cf7d431da006aa919635478511fabbfc8849d2"
+   },
+   {
+    "key": "apt/ubuntu24.04/dists/stable/main/binary-amd64/Packages",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+   },
+   {
+    "key": "apt/ubuntu24.04/dists/stable/main/binary-amd64/Packages.gz",
+    "sha256": "59869db34853933b239f1e2219cf7d431da006aa919635478511fabbfc8849d2"
+   },
+   {
+    "key": "apt/ubuntu26.04/dists/stable/main/binary-amd64/Packages",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+   },
+   {
+    "key": "apt/ubuntu26.04/dists/stable/main/binary-amd64/Packages.gz",
+    "sha256": "59869db34853933b239f1e2219cf7d431da006aa919635478511fabbfc8849d2"
+   },
+   {
+    "key": "rpm/fedora/44/x86_64/stable/repodata/69a3730a283b85a4b3cff7d04bfde3b2b234f0607ebc17319d7a8d143a8e066e-primary.xml.zst",
+    "sha256": "69a3730a283b85a4b3cff7d04bfde3b2b234f0607ebc17319d7a8d143a8e066e"
+   },
+   {
+    "key": "rpm/fedora/44/x86_64/stable/repodata/6b37cc67608a24beaa81e1191d218f2ffd6b1191dceb5c100bac2e66249d518d-other.xml.zst",
+    "sha256": "6b37cc67608a24beaa81e1191d218f2ffd6b1191dceb5c100bac2e66249d518d"
+   },
+   {
+    "key": "rpm/fedora/44/x86_64/stable/repodata/9b07d97dc6ececed89aac0650b67bfb292647fe9fbaca48f629465be5f53f82b-filelists.xml.zst",
+    "sha256": "9b07d97dc6ececed89aac0650b67bfb292647fe9fbaca48f629465be5f53f82b"
+   },
+   {
+    "key": "apt/debian13/dists/stable/InRelease",
+    "sha256": "ba71619758ae711559123f41bbf5dc08b89a3fd718d761c8480c51181b8a3124"
+   },
+   {
+    "key": "apt/debian13/dists/stable/Release",
+    "sha256": "e2a853217823b55f2d1b5776f3ebcc1c5511556959f0c880cb80233d8109cc6b"
+   },
+   {
+    "key": "apt/debian13/dists/stable/Release.gpg",
+    "sha256": "2322588d20e37e7edfba20e0454d7108e70146b083fe95e75d241e93780e0f09"
+   },
+   {
+    "key": "apt/debian13/dists/stable/main/binary-amd64/Release",
+    "sha256": "259c764b61baa23d2a35f3eca3afc12af6574f17b4f12084b215eef309cb298c"
+   },
+   {
+    "key": "apt/ubuntu24.04/dists/stable/InRelease",
+    "sha256": "4d3ebf6f04670f90d25b440d1c37988500538ffff8f796d818531d32132ffce2"
+   },
+   {
+    "key": "apt/ubuntu24.04/dists/stable/Release",
+    "sha256": "899767cc75645507708bd32cac85480b1cdf41cb3458ee8798029dca783481fb"
+   },
+   {
+    "key": "apt/ubuntu24.04/dists/stable/Release.gpg",
+    "sha256": "a7717f185c5aa0fa84487283d849eeb15396cb78701415a0d153063e7b2384c7"
+   },
+   {
+    "key": "apt/ubuntu24.04/dists/stable/main/binary-amd64/Release",
+    "sha256": "bc326fd735cb0b73931c8e4fac98bbbb6316f89caa452b366eae4055a874ed8f"
+   },
+   {
+    "key": "apt/ubuntu26.04/dists/stable/InRelease",
+    "sha256": "5c459b0d805fc76c2943f19437c64c0cba5536fb42205a012747d689d0d4050f"
+   },
+   {
+    "key": "apt/ubuntu26.04/dists/stable/Release",
+    "sha256": "9a5866c2a1247b351e38ff70ef828df1b8d3fced9cc72bf4e8f9362ce227aaaa"
+   },
+   {
+    "key": "apt/ubuntu26.04/dists/stable/Release.gpg",
+    "sha256": "1d74693e2b8b5cf32d9731906cab0b5298aa7aab1534b80dcd0a1919b5769847"
+   },
+   {
+    "key": "apt/ubuntu26.04/dists/stable/main/binary-amd64/Release",
+    "sha256": "656910a8b38c431f335a2f3f6787c7abb7e78c531de3b4985498e6890560e657"
+   },
+   {
+    "key": "rpm/fedora/44/x86_64/stable/repodata/repomd.xml",
+    "sha256": "48619309f5e4e8c1029dda20a2a5f48fd75508dac6d011544c706260207ca820"
+   },
+   {
+    "key": "update/v1/stable.json",
+    "sha256": "f96d2a541ef66deb11f209ad7600089516b452424df861e019051436302b983a"
+   },
+   {
+    "key": "update/v1/stable.json.minisig",
+    "sha256": "4319521980e6fa7666616caaaf453620a072b6117b832b3b941dd41719063c6b"
+   }
+  ],
+  "deleted": []
+ },
+ "invalidations": [
+  {
+   "distribution": "EY4KKRLYNFZ1W",
+   "id": "IEGK5L16UR41BDI82KX0R4PW4Y",
+   "paths": 19
+  },
+  {
+   "distribution": "EY4KKRLYNFZ1W",
+   "id": "IEVTZHUMF0C70HUCNO6J70CQ57",
+   "paths": 2
+  },
+  {
+   "distribution": "EP85P0MVCKASG",
+   "id": "I53GPTZOQQHHSSVHQR4LI662FC",
+   "paths": 2
+  }
+ ],
+ "readback": [
+  {
+   "url": "https://pkg.put.gd/apt/ubuntu24.04/dists/stable/InRelease",
+   "sha256": "4d3ebf6f04670f90d25b440d1c37988500538ffff8f796d818531d32132ffce2"
+  },
+  {
+   "url": "https://pkg.put.gd/apt/ubuntu24.04/dists/stable/main/binary-amd64/Packages",
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+   "url": "https://pkg.put.gd/apt/ubuntu26.04/dists/stable/InRelease",
+   "sha256": "5c459b0d805fc76c2943f19437c64c0cba5536fb42205a012747d689d0d4050f"
+  },
+  {
+   "url": "https://pkg.put.gd/apt/ubuntu26.04/dists/stable/main/binary-amd64/Packages",
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+   "url": "https://pkg.put.gd/apt/debian13/dists/stable/InRelease",
+   "sha256": "ba71619758ae711559123f41bbf5dc08b89a3fd718d761c8480c51181b8a3124"
+  },
+  {
+   "url": "https://pkg.put.gd/apt/debian13/dists/stable/main/binary-amd64/Packages",
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+   "url": "https://pkg.put.gd/rpm/fedora/44/x86_64/stable/repodata/repomd.xml",
+   "sha256": "48619309f5e4e8c1029dda20a2a5f48fd75508dac6d011544c706260207ca820"
+  }
+ ],
+ "feed": {
+  "key": "update/v1/stable.json",
+  "sha256": "f96d2a541ef66deb11f209ad7600089516b452424df861e019051436302b983a"
+ },
+ "error": null
+}

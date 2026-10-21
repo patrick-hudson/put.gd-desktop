@@ -1,0 +1,9 @@
+
+### erase putgd
+Purging configuration files for putgd (0.1.1~nightly.828)…
+dpkg-query: no packages found matching putgd
+ls: cannot access '/etc/apt/sources.list.d/putgd.sources': No such file or directory
+ls: cannot access '/usr/share/keyrings/putgd-archive-keyring.gpg': No such file or directory
+0
+ls: cannot access '/home/patrick/work/put.gd-pkg293-live': No such file or directory
+ls: cannot access '/home/patrick/.gnupg': No such file or directory 

@@ -96,7 +96,37 @@ No run left a child process behind. No TLS library was loaded into the resident 
 - **Discover killed by SIGPIPE.** Discover inherited the child's output pipes and died when the child exited (k72, pass 4). The updater now starts with its standard streams on `/dev/null`.
 - **First stable publication.** It failed when no stable workspace existed yet. A round-trip test caught it and it's fixed.
 
+## Live check after merge (2026-10-21)
+
+After #308, #309 and #315 merged into nightly, the production signer on d69 was enabled (a nightly `d07e9ff3` checkout, `putgd-signer.timer` every 10 minutes). It published real GitHub nightlies to `https://pkg.put.gd`. put.gd-site#3 then moved `app.put.gd/update/*` to the signer's bucket. Patrick signed the empty stable repositories with `sign_stable.py --empty`, and the signer published them.
+
+- **N = nightly 816** (`d07e9ff3`), published in 112 s ([receipt](live/receipt-live-v0.1.1-nightly.816.json)).
+- **N+1 = nightly 828** (`82087bee`), published in 113 s ([receipt](live/receipt-live-v0.1.1-nightly.828.json)).
+
+Each run made 27 uploads, invalidated pkg.put.gd and app.put.gd, read the metadata back through the CDN and only then wrote the feed. An hour after 816 replaced 801, the signer deleted 801's DEBs and the superseded dnf repodata.
+
+| Check (real nightlies, live repository) | m74 | k72 | d69 | f44 |
+| --- | --- | --- | --- | --- |
+| 816 downloaded from GitHub, checked against `SHA256SUMS` and installed from the file adds the repository file and the nightly key | pass | pass | pass | pass |
+| apt/dnf take putgd from `pkg.put.gd` | pass | pass | pass | pass |
+| With 828 published: apt/dnf and PackageKit see 828 waiting | pass | pass (apt; no `pkcon` on k72) | pass | pass |
+| The app's check against the live feed: 828 available, managed repository, the desktop's updater | pass | pass | pass | pass |
+| Settings → **Open software updates** opens the updater, which lists putgd 816 → 828 | Update Manager | Discover | GNOME Software | GNOME Software |
+| apt/dnf upgrade 816 → 828 from `pkg.put.gd`, keeping the repository file | pass | pass | pass | pass (signed RPM, key imported) |
+| The app afterwards: 828 is current | pass | pass | pass | pass |
+
+![Nightly 816 from GitHub on Fedora: Settings offers Open software updates for 828 from pkg.put.gd](live/live-settings-fedora.png)
+
+![Mint Update Manager lists putgd 816 → 828](live/live-mint-update-manager.png)
+
+![Discover on Kubuntu lists putgd 816 → 828](live/live-kde-discover.png)
+
+![GNOME Software on Debian 13 lists putgd 816 → 828](live/live-gnome-software-debian.png)
+
+![GNOME Software on Fedora 44 lists the signed putgd 816 → 828](live/live-gnome-software-fedora.png)
+
+As in the lab, Discover and Update Manager first showed their own dialogs: Discover's polkit "Update Issue" and Mint's welcome screen. They were closed before the pictures. Logs and the scripts are in [live/logs/](live/logs/). Afterwards putgd, its repository file and key were removed from every host. The lab prefix (`pkg.put.gd/lab/`, 92 objects), the signer's lab state and the lab asset folders on d69 were deleted as Patrick approved. The bucket's 14-day noncurrent-version rule expires the old versions.
+
 ## Not covered here
 
-- **Real GitHub nightlies.** Installing an actual GitHub nightly that carries the repository, then upgrading it to the next one, can only happen after #308 and #309 merge and the signer runs in production. That check runs then, on all four hosts.
 - **Installing through the updaters.** Installing from Update Manager, Discover or GNOME Software needs the host user's password (polkit). The updaters were checked to list the update; apt, dnf and PackageKit did the installs.
