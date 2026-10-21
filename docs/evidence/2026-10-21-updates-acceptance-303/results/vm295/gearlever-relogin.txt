@@ -1,0 +1,10 @@
+10 1000 lab -     -    closing no -
+25 1000 lab -     -    active  no -
+c1 1000 lab seat0 tty7 closing no -
+c3 1000 lab seat0 tty7 active  no -
+    PID                  STARTED COMMAND
+   3104 Tue Oct 20 21:28:47 2026 /tmp/.mount_put.gdGBieJN/usr/bin/putgd --background
+APPDIR=/tmp/.mount_put.gdGBieJN
+APPIMAGE=/home/lab/AppImages/put.gd.appimage
+{"schemaVersion":1,"version":"0.1.1-dev.795+g71f241b8f5d3","baseVersion":"0.1.1","packageVersion":"0.1.1~dev.795+g71f241b8f5d3","gitCommit":"71f241b8f5d35b2022b0e27efae6f7276679fdc5","gitTree":"a0126334c5ce085895c16ccd5dd36f0eeb0e5c9a","commitCount":795,"dirty":false,"sourceProvenance":"git"}
+Exec="/home/lab/AppImages/put.gd.appimage" --background

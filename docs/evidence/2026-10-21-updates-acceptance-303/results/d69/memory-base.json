@@ -1,0 +1,227 @@
+{
+  "schemaVersion": 1,
+  "scope": "physical KDE wayland idle resident, private local-only profile; windows before and after update.check",
+  "session": {
+    "XDG_CURRENT_DESKTOP": "KDE",
+    "XDG_SESSION_TYPE": "wayland",
+    "WAYLAND_DISPLAY": "/run/user/1000/wayland-0",
+    "DISPLAY": ":0"
+  },
+  "appSha256": "1ed48722978285b689104f6abe87c6d891336f39d9dd4700175d134f1aa4ff80",
+  "version": "0.1.1-nightly.781",
+  "updateInfo": null,
+  "host": "debian",
+  "kernel": "6.12.107+deb13-amd64",
+  "loadBefore": [
+    0.06689453125,
+    0.20458984375,
+    0.599609375
+  ],
+  "before": {
+    "window": "before",
+    "seconds": 180.1,
+    "samples": [
+      {
+        "elapsedSeconds": 0.0,
+        "rssBytes": 31191040
+      },
+      {
+        "elapsedSeconds": 10.0,
+        "rssBytes": 31195136
+      },
+      {
+        "elapsedSeconds": 20.0,
+        "rssBytes": 31195136
+      },
+      {
+        "elapsedSeconds": 30.0,
+        "rssBytes": 31170560
+      },
+      {
+        "elapsedSeconds": 40.0,
+        "rssBytes": 31170560
+      },
+      {
+        "elapsedSeconds": 50.0,
+        "rssBytes": 31170560
+      },
+      {
+        "elapsedSeconds": 60.0,
+        "rssBytes": 31420416
+      },
+      {
+        "elapsedSeconds": 70.0,
+        "rssBytes": 31420416
+      },
+      {
+        "elapsedSeconds": 80.0,
+        "rssBytes": 31420416
+      },
+      {
+        "elapsedSeconds": 90.0,
+        "rssBytes": 31420416
+      },
+      {
+        "elapsedSeconds": 100.0,
+        "rssBytes": 31420416
+      },
+      {
+        "elapsedSeconds": 110.0,
+        "rssBytes": 31420416
+      },
+      {
+        "elapsedSeconds": 120.0,
+        "rssBytes": 31420416
+      },
+      {
+        "elapsedSeconds": 130.0,
+        "rssBytes": 31420416
+      },
+      {
+        "elapsedSeconds": 140.0,
+        "rssBytes": 31420416
+      },
+      {
+        "elapsedSeconds": 150.1,
+        "rssBytes": 31420416
+      },
+      {
+        "elapsedSeconds": 160.1,
+        "rssBytes": 31420416
+      },
+      {
+        "elapsedSeconds": 170.1,
+        "rssBytes": 31420416
+      },
+      {
+        "elapsedSeconds": 180.1,
+        "rssBytes": 31420416
+      }
+    ],
+    "medianRssMiB": 29.965,
+    "peakRssMiB": 29.965,
+    "finalRssMiB": 29.965,
+    "cpuPercentOneCore": 0.0056,
+    "smapsRollup": {
+      "Rss": 31420416,
+      "Pss": 10887168,
+      "Private_Clean": 5480448,
+      "Private_Dirty": 3821568,
+      "Anonymous": 3821568
+    },
+    "tlsNetworkLibraries": []
+  },
+  "check": {
+    "error": {
+      "code": "unknown_method",
+      "details": {},
+      "message": "Unknown session method"
+    },
+    "ok": false,
+    "requestId": "4a6a4bc6-b3cc-4944-9bf4-0ff36f728fd5",
+    "result": {},
+    "schemaVersion": 1
+  },
+  "checkSeconds": 0.03,
+  "childrenAfterSettle": [],
+  "after": {
+    "window": "after",
+    "seconds": 180.1,
+    "samples": [
+      {
+        "elapsedSeconds": 0.0,
+        "rssBytes": 31420416
+      },
+      {
+        "elapsedSeconds": 10.0,
+        "rssBytes": 31420416
+      },
+      {
+        "elapsedSeconds": 20.0,
+        "rssBytes": 31420416
+      },
+      {
+        "elapsedSeconds": 30.0,
+        "rssBytes": 31420416
+      },
+      {
+        "elapsedSeconds": 40.0,
+        "rssBytes": 31420416
+      },
+      {
+        "elapsedSeconds": 50.0,
+        "rssBytes": 31420416
+      },
+      {
+        "elapsedSeconds": 60.0,
+        "rssBytes": 31420416
+      },
+      {
+        "elapsedSeconds": 70.0,
+        "rssBytes": 31420416
+      },
+      {
+        "elapsedSeconds": 80.0,
+        "rssBytes": 31420416
+      },
+      {
+        "elapsedSeconds": 90.0,
+        "rssBytes": 31420416
+      },
+      {
+        "elapsedSeconds": 100.0,
+        "rssBytes": 31420416
+      },
+      {
+        "elapsedSeconds": 110.0,
+        "rssBytes": 31420416
+      },
+      {
+        "elapsedSeconds": 120.0,
+        "rssBytes": 31420416
+      },
+      {
+        "elapsedSeconds": 130.1,
+        "rssBytes": 31420416
+      },
+      {
+        "elapsedSeconds": 140.1,
+        "rssBytes": 31420416
+      },
+      {
+        "elapsedSeconds": 150.1,
+        "rssBytes": 31420416
+      },
+      {
+        "elapsedSeconds": 160.1,
+        "rssBytes": 31420416
+      },
+      {
+        "elapsedSeconds": 170.1,
+        "rssBytes": 31420416
+      },
+      {
+        "elapsedSeconds": 180.1,
+        "rssBytes": 31420416
+      }
+    ],
+    "medianRssMiB": 29.965,
+    "peakRssMiB": 29.965,
+    "finalRssMiB": 29.965,
+    "cpuPercentOneCore": 0.0056,
+    "smapsRollup": {
+      "Rss": 31420416,
+      "Pss": 10887168,
+      "Private_Clean": 5480448,
+      "Private_Dirty": 3821568,
+      "Anonymous": 3821568
+    },
+    "tlsNetworkLibraries": []
+  },
+  "deltaMedianRssMiB": 0.0,
+  "loadAfter": [
+    0.169921875,
+    0.12158203125,
+    0.41748046875
+  ]
+}

@@ -1,0 +1,43 @@
+{
+ "schema": 1,
+ "channel": "stable",
+ "generatedAt": "2026-10-21T01:00:00Z",
+ "release": {
+  "tag": "v0.1.2",
+  "version": "0.1.2",
+  "publishedAt": "2026-10-21T00:30:00Z",
+  "notesUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v0.1.2",
+  "assets": {
+   "ubuntu24.04": {
+    "name": "putgd-0.1.2-ubuntu24.04-x86_64.deb",
+    "url": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/v0.1.2/putgd-0.1.2-ubuntu24.04-x86_64.deb",
+    "size": 52000000,
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+   },
+   "ubuntu26.04": {
+    "name": "putgd-0.1.2-ubuntu26.04-x86_64.deb",
+    "url": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/v0.1.2/putgd-0.1.2-ubuntu26.04-x86_64.deb",
+    "size": 52000000,
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+   },
+   "debian13": {
+    "name": "putgd-0.1.2-debian13-x86_64.deb",
+    "url": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/v0.1.2/putgd-0.1.2-debian13-x86_64.deb",
+    "size": 52000000,
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+   },
+   "fedora44": {
+    "name": "putgd-0.1.2-fedora44-x86_64.rpm",
+    "url": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/v0.1.2/putgd-0.1.2-fedora44-x86_64.rpm",
+    "size": 52000000,
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+   },
+   "appimage": {
+    "name": "putgd-0.1.2-x86_64.AppImage",
+    "url": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/v0.1.2/putgd-0.1.2-x86_64.AppImage",
+    "size": 52000000,
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+   }
+  }
+ }
+}

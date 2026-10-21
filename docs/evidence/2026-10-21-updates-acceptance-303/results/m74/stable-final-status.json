@@ -1,0 +1,149 @@
+{
+ "alive": true,
+ "pid": 281459,
+ "starts": [
+  "2026-10-21T01:05:16Z",
+  "2026-10-21T01:19:56Z",
+  "2026-10-21T01:20:26Z"
+ ],
+ "now": "2026-10-21T01:33:11Z",
+ "status": {
+  "attemptedAt": "2026-10-21T01:31:47Z",
+  "build": {
+   "channel": "stable",
+   "kind": "stable",
+   "packageTarget": "ubuntu24.04",
+   "reason": null,
+   "supported": true,
+   "version": "0.1.1"
+  },
+  "channel": "stable",
+  "channelSetting": "build",
+  "check": true,
+  "checkedAt": "2026-10-21T01:31:47Z",
+  "checking": false,
+  "enabled": true,
+  "error": null,
+  "nextCheckAt": "2026-10-22T01:41:25Z",
+  "notifies": true,
+  "reason": null,
+  "result": {
+   "channel": "stable",
+   "checkedAt": "2026-10-21T01:31:47Z",
+   "current": "0.1.1",
+   "downloadUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/v0.1.2/putgd-0.1.2-ubuntu24.04-x86_64.deb",
+   "latest": "0.1.2",
+   "notesUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v0.1.2",
+   "packageTarget": "ubuntu24.04",
+   "publishedAt": "2026-10-21T00:30:00Z",
+   "tag": "v0.1.2",
+   "updateAvailable": true
+  },
+  "supported": true
+ },
+ "events": [
+  {
+   "category": "putgd.app",
+   "fields": {
+    "channel": "stable",
+    "itemId": null,
+    "manual": false,
+    "operationId": null
+   },
+   "level": "info",
+   "message": "Checking for updates",
+   "pid": 280673,
+   "process": "putgd",
+   "time": "2026-10-21T01:14:58.473Z",
+   "v": 1
+  },
+  {
+   "category": "putgd.app",
+   "fields": {
+    "channel": "stable",
+    "itemId": null,
+    "latest": "0.1.2",
+    "operationId": null,
+    "updateAvailable": true
+   },
+   "level": "info",
+   "message": "Update check finished",
+   "pid": 280673,
+   "process": "putgd",
+   "time": "2026-10-21T01:14:58.520Z",
+   "v": 1
+  },
+  {
+   "category": "putgd.ui",
+   "fields": {
+    "itemId": null,
+    "notificationId": 1,
+    "notificationText": "put.gd 0.1.2 is available. Settings \u2192 Updates has the download.",
+    "operationId": null,
+    "summary": "update_available",
+    "title": "put.gd \u2014 update available",
+    "warning": false
+   },
+   "level": "info",
+   "message": "Notification shown",
+   "pid": 280673,
+   "process": "putgd",
+   "time": "2026-10-21T01:14:58.520Z",
+   "v": 1
+  },
+  {
+   "category": "putgd.app",
+   "fields": {
+    "channel": "stable",
+    "itemId": null,
+    "manual": false,
+    "operationId": null
+   },
+   "level": "info",
+   "message": "Checking for updates",
+   "pid": 281459,
+   "process": "putgd",
+   "time": "2026-10-21T01:31:47.472Z",
+   "v": 1
+  },
+  {
+   "category": "putgd.app",
+   "fields": {
+    "channel": "stable",
+    "itemId": null,
+    "latest": "0.1.2",
+    "operationId": null,
+    "updateAvailable": true
+   },
+   "level": "info",
+   "message": "Update check finished",
+   "pid": 281459,
+   "process": "putgd",
+   "time": "2026-10-21T01:31:47.516Z",
+   "v": 1
+  }
+ ],
+ "openedUrls": [
+  "2026-10-21T01:15:00Z https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v0.1.2"
+ ],
+ "stateFile": {
+  "attemptedAt": "2026-10-21T01:31:47Z",
+  "attemptedChannel": "stable",
+  "checkedAt": "2026-10-21T01:31:47Z",
+  "error": null,
+  "notifiedVersion": "0.1.2",
+  "result": {
+   "channel": "stable",
+   "checkedAt": "2026-10-21T01:31:47Z",
+   "current": "0.1.1",
+   "downloadUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/v0.1.2/putgd-0.1.2-ubuntu24.04-x86_64.deb",
+   "latest": "0.1.2",
+   "notesUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v0.1.2",
+   "packageTarget": "ubuntu24.04",
+   "publishedAt": "2026-10-21T00:30:00Z",
+   "tag": "v0.1.2",
+   "updateAvailable": true
+  },
+  "schemaVersion": 1
+ }
+}

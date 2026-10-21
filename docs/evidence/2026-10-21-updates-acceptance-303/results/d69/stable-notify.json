@@ -1,0 +1,90 @@
+{
+ "nextCheckAt": "2026-10-21T01:46:09Z",
+ "start": "2026-10-21T01:37:02Z",
+ "shownAt": "2026-10-21T01:46:09Z",
+ "banner": {
+  "label": "d69-plasma-notification",
+  "components": [
+   {
+    "blocks": 586,
+    "box": [
+     1552,
+     880,
+     1888,
+     992
+    ]
+   }
+  ],
+  "colour": [
+   28,
+   40,
+   48
+  ],
+  "inner": [
+   1556,
+   885,
+   1883,
+   984
+  ],
+  "changedShare": 1.0,
+  "kept": "/home/patrick/work/put.gd-303/p-d69stable/crops/d69-plasma-notification.png"
+ },
+ "clicked": [
+  1719,
+  918
+ ],
+ "events": [
+  {
+   "category": "putgd.app",
+   "fields": {
+    "channel": "stable",
+    "itemId": null,
+    "manual": false,
+    "operationId": null
+   },
+   "level": "info",
+   "message": "Checking for updates",
+   "pid": 1811046,
+   "process": "putgd",
+   "time": "2026-10-21T01:46:09.633Z",
+   "v": 1
+  },
+  {
+   "category": "putgd.app",
+   "fields": {
+    "channel": "stable",
+    "itemId": null,
+    "latest": "0.1.2",
+    "operationId": null,
+    "updateAvailable": true
+   },
+   "level": "info",
+   "message": "Update check finished",
+   "pid": 1811046,
+   "process": "putgd",
+   "time": "2026-10-21T01:46:09.664Z",
+   "v": 1
+  },
+  {
+   "category": "putgd.ui",
+   "fields": {
+    "itemId": null,
+    "notificationId": 1,
+    "notificationText": "put.gd 0.1.2 is available. Settings \u2192 Updates has the download.",
+    "operationId": null,
+    "summary": "update_available",
+    "title": "put.gd \u2014 update available",
+    "warning": false
+   },
+   "level": "info",
+   "message": "Notification shown",
+   "pid": 1811046,
+   "process": "putgd",
+   "time": "2026-10-21T01:46:09.664Z",
+   "v": 1
+  }
+ ],
+ "openedUrls": [
+  "2026-10-21T01:46:11Z https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v0.1.2"
+ ]
+}
