@@ -98,6 +98,19 @@ private slots:
   QJsonObject result;done=false;request(f.server,"ui.moveDestination",{{"direction","up"},{"profileId","profile1"}},[&](Error e,QJsonObject value){error=e;result=value;done=true;});
   QVERIFY(done);QVERIFY(!error);QCOMPARE(command,QString("moveDestination"));QCOMPARE(forwarded,QJsonObject({{"direction","up"},{"profileId","profile1"}}));QCOMPARE(result["order"].toArray().size(),2);
  }
+ // #293: update.status and update.check take no parameters and need the service.
+ void updateEndpointsReportTheCheckOrItsAbsence() {
+  Fixture f;QVERIFY(f.settings.save(configuration(f.root.path(),true),{}));
+  Error error;QJsonObject result;
+  for(const auto* method:{"update.status","update.check"}){request(f.server,method,{},[&](Error e,QJsonObject){error=e;});QCOMPARE(error.code,QString("update_check_unavailable"));}
+  UpdateService updates(f.settings,f.root.path(),"/bin/false");updates.start();f.server.setUpdateService(&updates);
+  request(f.server,"update.status",{},[&](Error e,QJsonObject value){error=e;result=value;});
+  QVERIFY(!error);QCOMPARE(result["supported"].toBool(),false);QCOMPARE(result["check"].toBool(),true);QVERIFY(result.contains("build"));
+  // A development build never checks, even when asked.
+  request(f.server,"update.check",{},[&](Error e,QJsonObject){error=e;});QCOMPARE(error.code,QString("update_check_unavailable"));
+  request(f.server,"update.status",{{"force",true}},[&](Error e,QJsonObject){error=e;});QCOMPARE(error.code,QString("invalid_request"));
+  QCOMPARE(LocalServer::replyDeadlineMs("update.check"),UpdateService::childTimeoutMs+15000);
+ }
  void setupEndpointsWithoutServiceReportUnavailable() {
   Fixture f;
   for(const auto& method:QStringList{"setup.storeCredentials","setup.unlockCredentials","setup.testDestination","setup.revealCredentialSecret","setup.inspect"}) {

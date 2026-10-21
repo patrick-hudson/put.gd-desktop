@@ -37,6 +37,20 @@ private slots:
         QJsonArray seven;for(int i=0;i<7;++i)seven.append(QString("#00000%1").arg(i));preferences["editorRecentColors"]=seven;doc["preferences"]=preferences;QVERIFY(putgd::Settings::validate(doc,validator));
         preferences.remove("editorRecentColors");preferences["unlockCredentialsAtStartup"]="yes";doc["preferences"]=preferences;QVERIFY(putgd::Settings::validate(doc,validator));
     }
+    // #293: no updates object means a daily check on this build's channel.
+    void updatePreferencesAreOptionalWithKnownChannels() {
+        auto doc=putgd::Settings::developmentTemplate();auto validator=[](const QString&,const QJsonObject&){return putgd::Error{};};
+        const auto defaults=putgd::Settings::fromValidated(doc);QVERIFY(defaults.checkForUpdates);QCOMPARE(defaults.updateChannel,QString("build"));
+        auto preferences=doc["preferences"].toObject();
+        for(const auto& updates:{QJsonObject{},QJsonObject{{"check",false}},QJsonObject{{"channel","nightly"}},QJsonObject{{"check",true},{"channel","stable"}}}){
+            preferences["updates"]=updates;doc["preferences"]=preferences;QVERIFY(!putgd::Settings::validate(doc,validator));
+        }
+        preferences["updates"]=QJsonObject{{"check",false},{"channel","nightly"}};doc["preferences"]=preferences;
+        const auto chosen=putgd::Settings::fromValidated(doc);QVERIFY(!chosen.checkForUpdates);QCOMPARE(chosen.updateChannel,QString("nightly"));
+        for(const auto& invalid:QList<QJsonValue>{QJsonObject{{"check","yes"}},QJsonObject{{"channel","beta"}},QJsonObject{{"channel","Stable"}},QJsonObject{{"interval",1}},QJsonValue(true)}){
+            preferences["updates"]=invalid;doc["preferences"]=preferences;QCOMPARE(putgd::Settings::validate(doc,validator).code,QString("config_invalid"));
+        }
+    }
     // #60: an older config without appearance loads as "system"; the accent and
     // overrides keep their shape but stay at the built-in values until phase 2.
     void appearanceThemeIsOptionalAndCustomColoursAreReserved() {

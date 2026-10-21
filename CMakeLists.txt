@@ -108,8 +108,26 @@ add_library(putgd_core STATIC src/core/Settings.cpp src/core/SettingsService.cpp
   src/core/ClipboardPayload.cpp src/core/ArtifactStore.cpp src/core/ImageJob.cpp src/core/PosterJob.cpp src/core/LocalArchive.cpp
   src/core/UploadNaming.cpp src/core/StorageReceipt.cpp src/core/StorageProvider.cpp
   src/core/Operation.cpp src/core/HistoryStore.cpp src/core/SanitizedPng.cpp src/core/EditorJob.cpp src/core/RecordingModel.cpp
-  src/core/ReleaseLink.cpp src/core/ZipWriter.cpp)
+  src/core/ReleaseLink.cpp src/core/Update.cpp src/core/Distribution.cpp src/core/ZipWriter.cpp)
 set_target_properties(putgd_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
+# Which published package this build becomes, and whether it may check for a
+# newer version once a day (#293). The package jobs set the target; a build
+# without one (development, source archive) never checks, and Flatpak updates
+# itself. A distribution packaging put.gd itself sets PUTGD_UPDATE_CHECK=OFF.
+set(putgd_package_targets ubuntu24.04 ubuntu26.04 debian13 fedora44 appimage flatpak)
+set(PUTGD_PACKAGE_TARGET "" CACHE STRING "Published package this build is for: ${putgd_package_targets}, or empty")
+set_property(CACHE PUTGD_PACKAGE_TARGET PROPERTY STRINGS "" ${putgd_package_targets})
+option(PUTGD_UPDATE_CHECK "Let tagged package builds check app.put.gd once a day for a newer version" ON)
+if(NOT PUTGD_PACKAGE_TARGET STREQUAL "" AND NOT PUTGD_PACKAGE_TARGET IN_LIST putgd_package_targets)
+  message(FATAL_ERROR "PUTGD_PACKAGE_TARGET must be one of ${putgd_package_targets}, or empty")
+endif()
+if(PUTGD_UPDATE_CHECK)
+  set(putgd_update_check_built 1)
+else()
+  set(putgd_update_check_built 0)
+endif()
+set_source_files_properties(src/core/Distribution.cpp PROPERTIES COMPILE_DEFINITIONS
+  "PUTGD_PACKAGE_TARGET_NAME=\"${PUTGD_PACKAGE_TARGET}\";PUTGD_UPDATE_CHECK_BUILT=${putgd_update_check_built}")
 target_include_directories(putgd_core PUBLIC src)
 target_link_libraries(putgd_core PUBLIC putgd_build_options putgd_build_identity putgd_log Qt6::Core Qt6::Gui Qt6::Sql PRIVATE putgd_ui_control)
 
@@ -201,7 +219,7 @@ endif()
 add_dependencies(putgd_s3 putgd_s3_module)
 install(TARGETS putgd_s3_module LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}/putgd")
 
-add_library(putgd_app STATIC src/app/OperationService.cpp src/app/OperationClipboard.cpp src/app/UploadSlots.cpp src/app/RecordingService.cpp src/app/RecordingHelperBackend.cpp src/app/HistoryService.cpp src/app/SetupService.cpp src/app/LocalServer.cpp src/app/LocalIpc.cpp src/app/LoginStartup.cpp src/app/StorageLocations.cpp src/app/LogService.cpp src/app/DiagnosticsBundle.cpp)
+add_library(putgd_app STATIC src/app/OperationService.cpp src/app/OperationClipboard.cpp src/app/UploadSlots.cpp src/app/RecordingService.cpp src/app/RecordingHelperBackend.cpp src/app/HistoryService.cpp src/app/SetupService.cpp src/app/LocalServer.cpp src/app/LocalIpc.cpp src/app/LoginStartup.cpp src/app/StorageLocations.cpp src/app/LogService.cpp src/app/DiagnosticsBundle.cpp src/app/UpdateService.cpp)
 target_link_libraries(putgd_app PUBLIC putgd_core PRIVATE putgd_credentials putgd_ui_control)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   find_package(PkgConfig REQUIRED)
@@ -328,7 +346,7 @@ add_library(putgd_editor_window STATIC src/ui/EditorWindow.cpp)
 target_link_libraries(putgd_editor_window PUBLIC putgd_editor putgd_ui putgd_visual)
 add_library(putgd_ui_application STATIC src/ui/UiApplicationController.cpp)
 target_link_libraries(putgd_ui_application PUBLIC putgd_ui putgd_about putgd_ui_control)
-add_executable(putgd-cli src/cli/main.cpp)
+add_executable(putgd-cli src/cli/main.cpp src/cli/UpdateCheck.cpp)
 target_link_libraries(putgd-cli PRIVATE putgd_app Qt6::Network)
 install(TARGETS putgd-cli RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 add_executable(putgd src/main.cpp)
@@ -733,6 +751,17 @@ if(BUILD_TESTING)
   add_executable(test_release_link tests/unit/test_release_link.cpp)
   target_link_libraries(test_release_link PRIVATE putgd_core Qt6::Test)
   add_test(NAME release_link_contract COMMAND test_release_link)
+  # Update checks (#293): the feed contract, the checker's request and the resident's schedule.
+  add_executable(test_update tests/unit/test_update.cpp)
+  target_link_libraries(test_update PRIVATE putgd_core Qt6::Test)
+  add_test(NAME update_feed_contract COMMAND test_update)
+  add_executable(test_update_check tests/integration/test_update_check.cpp src/cli/UpdateCheck.cpp)
+  target_include_directories(test_update_check PRIVATE src)
+  target_link_libraries(test_update_check PRIVATE putgd_core Qt6::Network Qt6::Test)
+  add_test(NAME update_check_request COMMAND test_update_check)
+  add_executable(test_update_service tests/unit/test_update_service.cpp)
+  target_link_libraries(test_update_service PRIVATE putgd_app putgd_s3_runtime Qt6::Test)
+  add_test(NAME update_service_schedule COMMAND test_update_service)
   add_executable(test_geometry tests/unit/test_geometry.cpp)
   target_link_libraries(test_geometry PRIVATE putgd_core Qt6::Test)
   add_test(NAME geometry_contract COMMAND test_geometry)

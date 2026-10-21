@@ -376,6 +376,9 @@ QString settingHelp(const QString& path,const QString& objectName){
   {"unlockCredentialsAtStartup","Reads saved destination credentials from the desktop keyring once when put.gd starts, so uploads work without pressing Unlock. If the keyring is locked, the desktop shows its own unlock prompt then. Uploads and shortcuts never unlock the keyring."},
   {"appearanceTheme","Match the desktop follows your desktop's light or dark setting and changes with it. Dark and Light keep one look. Applies at once to every open put.gd window."},
   {"launchAtLogin","Starts put.gd when you sign in. Disabled by default. The desktop startup entry is updated after persistence; another app copy is not started."},
+  {"checkForUpdates","Once a day put.gd asks app.put.gd for the newest version on its channel. The request is the same from every computer: no version, account, locale or ID. The comparison happens here, and nothing is installed without you. Stable builds also show a notification once for each new version; nightly builds show it only here. Check now works with daily checks off."},
+  {"updateChannel","This build's channel follows how put.gd was installed: a nightly build follows nightly, a release or release candidate follows stable. Choose Stable or Nightly to watch the other channel instead. Changing it doesn't change what is installed."},
+  {"updateStatus","The result of the last check and when the next one runs. Download opens the new package for this installation in your browser."},
   {"notifications","Shows desktop notifications for operation results when supported. Enabled by default. Disabling notifications leaves results available in History."},
   {"debugLogging","Adds detailed debug records to put.gd's log on this computer, for a maintainer working out a problem. It turns itself off 24 hours after you turn it on; restarting doesn't extend it. Credentials, tokens and file contents are never logged."},
   {"logSummary","put.gd keeps a log of what it did in its state folder, at most 14 days and 50 MiB by default (Advanced settings in the configuration file). Clear logs deletes every log file and starts a new one; uploads, history, settings and saved diagnostics packages stay."},
@@ -440,6 +443,22 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  uploadClipboard_=choices(this,"uploadClipboardBehavior",{});uploadClipboard_->addItem("Copy each link as it finishes","each_link");uploadClipboard_->addItem("Copy a list when uploads finish","list");setting(preferences,"After uploading",uploadClipboard_,"/preferences/uploadClipboardBehavior");
  auto* look=section(general,"Appearance","Colours of these windows. The tray icon follows your panel's colour either way.");
  appearance_=choices(this,"appearanceTheme",{});appearance_->addItem("Match the desktop","system");appearance_->addItem("Dark","dark");appearance_->addItem("Light","light");setting(look,"Theme",appearance_,"/preferences/appearance/theme");
+ // Updates (#293): the daily check, its channel and the last result. The
+ // resident runs the check; this page shows it and starts Check now.
+ auto* updatesForm=section(general,"Updates","One small request a day to app.put.gd, with nothing that identifies you. Nothing installs without you.");
+ updatesForm_=updatesForm;checkUpdates_=new QCheckBox("Check for updates once a day");checkUpdates_->setObjectName("checkForUpdates");updateRows_.append(setting(updatesForm,"Updates",checkUpdates_,"/preferences/updates/check"));
+ updateChannel_=choices(this,"updateChannel",{});updateChannel_->addItem("This build's channel","build");updateChannel_->addItem("Stable","stable");updateChannel_->addItem("Nightly","nightly");updateRows_.append(setting(updatesForm,"Channel",updateChannel_,"/preferences/updates/channel"));
+ auto* updateRow=new QWidget;auto* updateLayout=new QHBoxLayout(updateRow);updateLayout->setContentsMargins(0,0,0,0);updateLayout->setSpacing(8);
+ updateStatus_=new QLabel;updateStatus_->setObjectName("updateStatus");updateStatus_->setWordWrap(true);updateStatus_->setAccessibleName("Update status");updateLayout->addWidget(updateStatus_,1);
+ checkNow_=new QPushButton("Check now");checkNow_->setObjectName("checkForUpdatesNow");updateLayout->addWidget(checkNow_,0,Qt::AlignTop);
+ updatesForm->addRow(VisualStyle::settingLabel("Status",settingHelp({},"updateStatus"),updateStatus_,this),updateRow);
+ auto* updateActions=new QWidget;auto* updateActionsLayout=new QHBoxLayout(updateActions);updateActionsLayout->setContentsMargins(0,0,0,0);updateActionsLayout->setSpacing(8);
+ downloadUpdate_=new QPushButton(VisualStyle::icon("download"),"Download");downloadUpdate_->setObjectName("downloadUpdate");VisualStyle::role(downloadUpdate_,"primary");updateActionsLayout->addWidget(downloadUpdate_);
+ releaseNotes_=new QPushButton("Release notes");releaseNotes_->setObjectName("updateReleaseNotes");VisualStyle::role(releaseNotes_,"link");updateActionsLayout->addWidget(releaseNotes_);updateActionsLayout->addStretch();
+ updateActionsRow_=updateActions;updatesForm->addRow(QString(),updateActions);updateActions->hide();
+ connect(checkNow_,&QPushButton::clicked,this,[this]{checkForUpdates({});});
+ connect(downloadUpdate_,&QPushButton::clicked,this,[this]{const QUrl url(settings_.diagnostics()["update"].toObject()["result"].toObject()["downloadUrl"].toString());if(url.scheme()=="https")QDesktopServices::openUrl(url);});
+ connect(releaseNotes_,&QPushButton::clicked,this,[this]{const QUrl url(settings_.diagnostics()["update"].toObject()["result"].toObject()["notesUrl"].toString());if(url.scheme()=="https")QDesktopServices::openUrl(url);});
  auto* files=section(general,"Local copies","Save captures and clipboard uploads locally, with or without uploading to a destination.");
  keep_=new QCheckBox("Keep a local copy");keep_->setObjectName("keepUploadCopies");setting(files,"Local copies",keep_,"/archive/keepUploads");
  root_=input(this,"archiveRoot");auto* rootRow=setting(files,"Save to",root_,"/archive/root");
@@ -597,7 +616,7 @@ void SettingsWindow::status(const Error& error){
  if(e.code=="config_missing"&&settings_.revision().isEmpty()){VisualStyle::feedback(status_,"Changes save automatically when valid.");return;}
  VisualStyle::feedback(status_,e?e.code+": "+e.message+" "+e.details["path"].toString():"Done.",bool(e));
 }
-void SettingsWindow::refreshDiagnostics(){refreshLoggingStatus();auto data=settings_.diagnostics();quit_->setVisible(data["trayAvailable"].isBool()&&!data["trayAvailable"].toBool());capabilities_->setText(QString::fromUtf8(QJsonDocument(data).toJson(QJsonDocument::Indented)));shortcuts_->setStatus(data["shortcuts"].toObject());}
+void SettingsWindow::refreshDiagnostics(){refreshLoggingStatus();refreshUpdateStatus();auto data=settings_.diagnostics();quit_->setVisible(data["trayAvailable"].isBool()&&!data["trayAvailable"].toBool());capabilities_->setText(QString::fromUtf8(QJsonDocument(data).toJson(QJsonDocument::Indented)));shortcuts_->setStatus(data["shortcuts"].toObject());}
 void SettingsWindow::refresh(bool preserveDrafts){
  if(preserveDrafts)rememberCredentialInputs();else{clearCredentialInputs();profileEditors_={};provisionalProfile_={};}
  autosaveBlocked_=false;for(auto* button:retryAutosave_)button->hide();reorderBaseline_.clear();
@@ -625,7 +644,7 @@ void SettingsWindow::populate(){
  captureProfile_->setCurrentIndex(captureProfile_->findData(base["destination"]=="local"?QString{}:base["profileId"].toString()));captureSharing_->setCurrentIndex(captureSharing_->findData(base["publicationMode"].toString("default")));
  bool exceptions=false;for(auto* inherit:useCaptureDefault_)exceptions|=!inherit->isChecked();captureExceptions_->setChecked(exceptions);
  shortcuts_->setActions(actions);auto archive=draft_["archive"].toObject();root_->setText(archive["root"].toString());keep_->setChecked(archive["keepUploads"].toBool());for(auto it=folders_.begin();it!=folders_.end();++it)it.value()->setText(archive["folders"].toObject()[it.key()].toString());
- naming_->setCurrentIndex(naming_->findData(draft_["naming"].toObject()["mode"].toString()));const auto effective=Settings::fromValidated(draft_);const QHash<QString,QString> formats{{"fileTemplate",effective.fileTemplate},{"captureTemplate",effective.captureTemplate},{"imageTemplate",effective.imageTemplate},{"textTemplate",effective.textTemplate}};for(auto it=templates_.begin();it!=templates_.end();++it)it.value()->setText(formats.value(it.key()));collision_->setCurrentIndex(collision_->findData(draft_["naming"].toObject()["collisionPolicy"].toString()));auto prefs=draft_["preferences"].toObject();uploadClipboard_->setCurrentIndex(uploadClipboard_->findData(effective.uploadClipboardBehavior));appearance_->setCurrentIndex(appearance_->findData(effective.appearanceTheme));notifications_->setChecked(prefs["notifications"].toBool());login_->setChecked(prefs["launchAtLogin"].toBool());debugLogging_->setChecked(prefs["diagnostics"].toObject()["debugLogging"].toBool());unlockAtStartup_->setChecked(effective.unlockCredentialsAtStartup);
+ naming_->setCurrentIndex(naming_->findData(draft_["naming"].toObject()["mode"].toString()));const auto effective=Settings::fromValidated(draft_);const QHash<QString,QString> formats{{"fileTemplate",effective.fileTemplate},{"captureTemplate",effective.captureTemplate},{"imageTemplate",effective.imageTemplate},{"textTemplate",effective.textTemplate}};for(auto it=templates_.begin();it!=templates_.end();++it)it.value()->setText(formats.value(it.key()));collision_->setCurrentIndex(collision_->findData(draft_["naming"].toObject()["collisionPolicy"].toString()));auto prefs=draft_["preferences"].toObject();uploadClipboard_->setCurrentIndex(uploadClipboard_->findData(effective.uploadClipboardBehavior));appearance_->setCurrentIndex(appearance_->findData(effective.appearanceTheme));notifications_->setChecked(prefs["notifications"].toBool());login_->setChecked(prefs["launchAtLogin"].toBool());debugLogging_->setChecked(prefs["diagnostics"].toObject()["debugLogging"].toBool());unlockAtStartup_->setChecked(effective.unlockCredentialsAtStartup);checkUpdates_->setChecked(effective.checkForUpdates);updateChannel_->setCurrentIndex(qMax(0,updateChannel_->findData(effective.updateChannel)));
  for(auto it=numbers_.begin();it!=numbers_.end();++it){QJsonValue value=draft_["limits"].toObject().contains(it.key())?draft_["limits"].toObject().value(it.key()):draft_["retention"].toObject().value(it.key());if(it.key()=="pendingImageBytes"&&value.isUndefined())value=effective.limits.pendingImageBytes;it.value()->setText(value.isNull()?QString{}:value.isString()?QStringLiteral("Auto"):ByteSize::exact(value.toInteger(),displayUnit(it.key())));}
  updateCaptureInheritance();loading_=false;
 }
@@ -715,6 +734,8 @@ QJsonObject SettingsWindow::candidate() const {
  if(preferences.contains("uploadClipboardBehavior")||uploadClipboard_->currentData()!="each_link")preferences["uploadClipboardBehavior"]=uploadClipboard_->currentData().toString();
  // An untouched config keeps no appearance object; it reads as "system".
  if(preferences.contains("appearance")||appearance_->currentData()!="system"){auto appearance=preferences["appearance"].toObject();appearance["theme"]=appearance_->currentData().toString();preferences["appearance"]=appearance;}
+ // An untouched config keeps no updates object; it reads as a daily check on this build's channel.
+ if(preferences.contains("updates")||!checkUpdates_->isChecked()||updateChannel_->currentData()!="build"){auto updates=preferences["updates"].toObject();updates["check"]=checkUpdates_->isChecked();updates["channel"]=updateChannel_->currentData().toString();preferences["updates"]=updates;}
  // debugLogging is always written with the object; packageFolder stays as the draft holds it.
  if(preferences.contains("diagnostics")||debugLogging_->isChecked()){auto diagnostics=preferences["diagnostics"].toObject();diagnostics["debugLogging"]=debugLogging_->isChecked();preferences["diagnostics"]=diagnostics;}
  doc["preferences"]=preferences;auto limits=doc["limits"].toObject(),retention=doc["retention"].toObject();
@@ -769,6 +790,47 @@ Error SettingsWindow::moveDestination(int from,int to){
  stageEdit("/profiles",value,destinationList_);dirty();
  if(saving_)autosave_->start();else save();
  emit viewStateChanged();return {};
+}
+void SettingsWindow::refreshUpdateStatus(){
+ const auto update=settings_.diagnostics()["update"].toObject();const auto build=update["build"].toObject();const auto result=update["result"].toObject();
+ const bool supported=update["supported"].toBool();
+ // A build that never checks has nothing to choose: only the reason shows.
+ for(auto* row:updateRows_)updatesForm_->setRowVisible(row,supported||update.isEmpty());
+ checkNow_->setVisible(supported||update.isEmpty());checkNow_->setEnabled(supported&&!update["checking"].toBool());
+ const bool available=supported&&result["updateAvailable"].toBool();
+ updateActionsRow_->setVisible(available);
+ if(update.isEmpty()){VisualStyle::feedback(updateStatus_,"Not available yet.");return;}
+ if(!supported){
+  static const QHash<QString,QString> reasons{
+   {"flatpak","Flatpak keeps this installation up to date. Use your software manager, or run flatpak update."},
+   {"development_build","This is a development build, so it doesn't check for updates."},
+   {"no_package","This build wasn't made by a put.gd package (for example, a build from source), so it doesn't check for updates."},
+   {"disabled_at_build","Update checks were turned off when this build was made, for example by a distribution's own package."}};
+  VisualStyle::feedback(updateStatus_,reasons.value(update["reason"].toString(),"This build doesn't check for updates."));return;
+ }
+ const auto channel=update["channel"].toString();const auto current=build["version"].toString();
+ QString text;
+ if(update["checking"].toBool())text="Checking…";
+ else if(available)text="put.gd "+result["latest"].toString()+" is available. This is "+current+".";
+ else if(!result.isEmpty()&&result["latest"].isNull())text="No "+channel+" release has been published yet. This is "+current+".";
+ else if(!result.isEmpty())text="Up to date: "+current+" is the newest "+channel+" version.";
+ else text="Not checked yet. This is "+current+".";
+ if(!update["checking"].toBool()){
+  if(!update["checkedAt"].isNull())text+=" Checked "+localTime(update["checkedAt"].toString())+".";
+  const auto error=update["error"].toObject();
+  if(!error.isEmpty())text+=" The last check failed: "+error["message"].toString()+".";
+  if(!update["nextCheckAt"].isNull())text+=" Next check "+localTime(update["nextCheckAt"].toString())+".";
+  else if(!update["check"].toBool())text+=" Daily checks are off.";
+ }
+ if(available)VisualStyle::success(updateStatus_,text);else VisualStyle::feedback(updateStatus_,text);
+ downloadUpdate_->setText("Download "+result["latest"].toString());
+}
+void SettingsWindow::checkForUpdates(std::function<void(Error,QJsonObject)> done){
+ checkNow_->setEnabled(false);VisualStyle::feedback(updateStatus_,"Checking…");
+ settings_.request("update.check",{},this,[g=QPointer<SettingsWindow>(this),done](Error error,QJsonObject result){
+  if(!g)return;
+  g->settings_.refreshSnapshot([g,done,error,result](Error){if(!g)return;g->refreshUpdateStatus();if(done)done(error,result);});
+ });
 }
 void SettingsWindow::refreshLoggingStatus(){
  const auto data=settings_.diagnostics();const auto logging=data["logging"].toObject();
@@ -974,6 +1036,7 @@ QString SettingsWindow::autosaveText()const{
  return {};
 }
 void SettingsWindow::showCaptureSettings(){tabs_->setCurrentIndex(1);}
+void SettingsWindow::showUpdates(){tabs_->setCurrentIndex(0);if(auto* scroll=qobject_cast<QScrollArea*>(tabs_->widget(0)))scroll->ensureWidgetVisible(updateStatus_);}
 bool SettingsWindow::flushAutosave(){if(autosave_)autosave_->stop();if(!autosaveBlocked_&&!pendingEdits_.isEmpty()&&!conflict_&&(setupAccepting_||!setupJobs_.isEmpty())){const auto waiting=QStringLiteral("Waiting for destination setup to finish before saving your edits.");if(status_->text()!=waiting||status_->property("feedbackTone").toString()!="neutral")VisualStyle::feedback(status_,waiting);return false;}if(!saving_&&!pendingEdits_.isEmpty()&&!conflict_)save();return !saving_;}
 void SettingsWindow::save(){
  if(autosaveBlocked_||conflict_||saving_||resetting_||setupAccepting_||!setupJobs_.isEmpty())return;

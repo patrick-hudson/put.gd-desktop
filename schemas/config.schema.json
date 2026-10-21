@@ -940,6 +940,23 @@
             }
           }
         },
+        "updates": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "The daily check for a newer version (#293). It sends one request to app.put.gd with no identifying details and compares versions on this computer. Omitted means {\"check\": true, \"channel\": \"build\"}.",
+          "properties": {
+            "check": {
+              "type": "boolean",
+              "default": true,
+              "description": "Check once a day. Stable builds notify once per new version; nightly builds only show it in Settings. Development, source and Flatpak builds never check."
+            },
+            "channel": {
+              "enum": ["build", "stable", "nightly"],
+              "default": "build",
+              "description": "build follows this installation's own channel (release candidates follow stable); stable or nightly choose one."
+            }
+          }
+        },
         "diagnostics": {
           "type": "object",
           "additionalProperties": false,

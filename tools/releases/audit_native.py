@@ -104,7 +104,7 @@ def command(argv: list[str], *, env=None) -> str:
 
 
 def audit_tree(root: Path, expected_manifest=None, *, require_kde=False, require_proton=False,
-               expected_proton_manifest: dict | None = None) -> dict:
+               expected_proton_manifest: dict | None = None, package_target: str | None = None) -> dict:
     root = root.resolve()
     result = validate_inventory(root, expected_manifest, require_kde=require_kde,
                                 require_proton=require_proton, expected_proton_manifest=expected_proton_manifest)
@@ -132,6 +132,12 @@ def audit_tree(root: Path, expected_manifest=None, *, require_kde=False, require
             if version != name + " " + result["manifest"]["version"]:
                 raise ValueError(f"Compiled version mismatch: {name}")
         result["compiledIdentities"][name] = identity
+    # The update check offers this package's own download (#293); a build
+    # without its target would never check.
+    update = json.loads(command([str(root / "usr/bin/putgd-cli"), "--update-info"], env=env))
+    if package_target is not None and update.get("packageTarget") != package_target:
+        raise ValueError(f"Update check package target mismatch: {update.get('packageTarget')!r} is not {package_target!r}")
+    result["updateCheck"] = update
     for path in [*(root / "usr/bin" / name for name in result["programs"] if name != "putgd-launcher"),
                  *(path for path in private.iterdir() if path.is_file()),
                  *([root / result["proton"]["helper"]] if "proton" in result else [])]:
@@ -158,12 +164,14 @@ def main():
     parser.add_argument("--require-kde", action="store_true")
     parser.add_argument("--require-proton", action="store_true")
     parser.add_argument("--proton-manifest", type=Path, help="Expected provisioned Proton runtime manifest")
+    parser.add_argument("--package-target", help="Expected PUTGD_PACKAGE_TARGET, such as debian13")
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
     expected = json.loads(args.manifest.read_text()) if args.manifest else None
     proton_expected = json.loads(args.proton_manifest.read_text()) if args.proton_manifest else None
     result = audit_tree(args.root, expected, require_kde=args.require_kde,
-                        require_proton=args.require_proton, expected_proton_manifest=proton_expected)
+                        require_proton=args.require_proton, expected_proton_manifest=proton_expected,
+                        package_target=args.package_target)
     args.output.write_text(json.dumps(result, indent=2) + "\n")
 
 

@@ -94,12 +94,22 @@ class NativeInventoryTests(unittest.TestCase):
             return "libc.so.6 => /lib/libc.so.6 (0x1234)"
         if argv[1] == "--version-json":
             return json.dumps(self.manifest)
+        if argv[1] == "--update-info":
+            return json.dumps({"packageTarget": "debian13", "supported": False, "reason": "development_build"})
         return Path(argv[0]).name + " " + self.manifest["version"]
 
     def test_full_audit_compares_every_compiled_identity(self):
         with patch.object(audit, "command", side_effect=self.commands):
             result = audit.audit_tree(self.root, self.manifest)
         self.assertEqual(set(result["compiledIdentities"]), set(audit.PROGRAMS) - {"putgd-launcher"})
+        self.assertEqual(result["updateCheck"]["packageTarget"], "debian13")
+
+    def test_package_target_must_match_the_package_job(self):
+        # #293: a package built without its target would never check for updates.
+        with patch.object(audit, "command", side_effect=self.commands):
+            audit.audit_tree(self.root, self.manifest, package_target="debian13")
+            with self.assertRaisesRegex(ValueError, "Update check package target mismatch"):
+                audit.audit_tree(self.root, self.manifest, package_target="fedora44")
 
     def test_test_only_crash_trigger_rejected(self):
         # Development builds read PUTGD_TEST_CRASH (#124); release builds never contain it.

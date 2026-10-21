@@ -63,6 +63,8 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
             ('make_history_preview', {'id': ''}),
             ('show_diagnostics_package', {'path': 'relative.zip'}),
             ('create_diagnostics_bundle', {'preview': True, 'notify': True}),
+            ('check_for_updates', {'channel': 'nightly'}),
+            ('get_update_status', {'force': True}),
         ]:
             result = await server.call_tool(name, args)
             self.assertIn('invalid_request', str(result), name)
@@ -155,7 +157,7 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                             'get_recording', 'select_recording_region', 'set_recording_overlay', 'edit_recording', 'preview_recording', 'drive_recording_review',
                             'save_recording_copy', 'upload_recording', 'reorder_destinations', 'move_destination',
                             'clear_logs', 'create_diagnostics_bundle', 'get_diagnostics_upload_target', 'show_diagnostics_package',
-                            'settings_diagnostics', 'history_save_diagnostics'}
+                            'settings_diagnostics', 'history_save_diagnostics', 'get_update_status', 'check_for_updates'}
                 self.assertEqual({tool.name for tool in discovered}, expected)
                 for tool in discovered:
                     self.assertEqual(tool.inputSchema['type'], 'object')
@@ -220,6 +222,8 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('move_destination', {'direction': 'down'}, 'ui.moveDestination', {'direction': 'down'}),
                     ('move_destination', {'direction': 'up', 'profile_id': 'second'}, 'ui.moveDestination', {'direction': 'up', 'profileId': 'second'}),
                     ('clear_logs', {}, 'logs.clear', {}),
+                    ('get_update_status', {}, 'update.status', {}),
+                    ('check_for_updates', {}, 'update.check', {}),
                     ('create_diagnostics_bundle', {}, 'diagnostics.bundle', {}),
                     ('create_diagnostics_bundle', {'operation_id': 'synthetic-operation', 'since': '24h', 'include_names': True, 'output': '/synthetic dir/package.zip'},
                      'diagnostics.bundle', {'operation': 'synthetic-operation', 'since': '24h', 'includeNames': True, 'output': '/synthetic dir/package.zip'}),

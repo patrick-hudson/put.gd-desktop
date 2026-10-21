@@ -83,6 +83,18 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
   versionLink_->setText(link.version);versionLink_->setAccessibleName(name);versionLink_->setAccessibleDescription(page);versionLink_->setToolTip(page);versionLink_->setVisible(!link.url.isEmpty());
  };
  connect(&session_,&UiSession::statusChanged,this,updateVersion);updateVersion();
+ // A newer version, from the resident's daily check (#293): the prompt both
+ // channels get. It opens General → Updates, which has the download.
+ updateLink_=new QPushButton(VisualStyle::icon("download"),"Update available");updateLink_->setObjectName("updateAvailable");VisualStyle::role(updateLink_,"link");updateLink_->setCursor(Qt::PointingHandCursor);updateLink_->hide();railBox->addWidget(updateLink_,0,Qt::AlignLeft);
+ connect(updateLink_,&QPushButton::clicked,this,[this]{navigate("settings");settings_->showUpdates();});
+ auto updateAvailable=[this]{
+  const auto update=session_.diagnostics()["update"].toObject();const auto result=update["result"].toObject();
+  const bool available=update["supported"].toBool()&&result["updateAvailable"].toBool();
+  // A version is wider than the rail; it goes in the tooltip and the accessible name.
+  updateLink_->setToolTip("put.gd "+result["latest"].toString()+" is available. Open Settings → Updates.");
+  updateLink_->setAccessibleName("Update available: put.gd "+result["latest"].toString());updateLink_->setVisible(available);
+ };
+ connect(&session_,&UiSession::statusChanged,this,updateAvailable);updateAvailable();
  auto updateDestination=[this]{
   const auto document=session_.document();QString label;int exceptions=0;
   auto outputName=[&](const QJsonObject& output){const bool local=document["archive"].toObject()["keepUploads"].toBool();if(output["destination"]=="local"||output["profileId"].toString().isEmpty())return local?QString("Local files only"):QString("No output enabled");for(const auto& value:document["profiles"].toArray())if(value.toObject()["id"]==output["profileId"])return value.toObject()["label"].toString()+(local?QString(" + local copy"):QString{});return QString("Choose a destination");};

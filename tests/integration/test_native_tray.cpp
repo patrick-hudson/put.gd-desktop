@@ -18,6 +18,7 @@
 #include <QProcess>
 #include <QProcessEnvironment>
 #include <QDir>
+#include <tuple>
 #include <QFile>
 #include <QElapsedTimer>
 #include <QTimer>
@@ -118,6 +119,11 @@ class ActivitySignalPeer final:public QObject {
  Q_OBJECT
 public:int icons=0,tooltips=0;
 public slots:void iconChanged(){++icons;}void tooltipChanged(){++tooltips;}
+};
+class LayoutSignalPeer final:public QObject {
+ Q_OBJECT
+public:int updates=0;uint revision=0;int parent=-1;
+public slots:void layoutUpdated(uint r,int p){++updates;revision=r;parent=p;}
 };
 
 class NativeTrayWire final : public QObject {
@@ -433,7 +439,7 @@ private slots:
   }
   reply = call("/Menu", "com.canonical.dbusmenu", "GetLayout", {0, -1, QStringList{}});
   QCOMPARE(reply.signature(), QString("u(ia{sv}av)")); QCOMPARE(reply.arguments().at(0).toUInt(), uint(1));
-  auto layout = qdbus_cast<WireLayout>(reply.arguments().at(1)); QCOMPARE(layout.id, 0); QCOMPARE(layout.children.size(), 14);
+  auto layout = qdbus_cast<WireLayout>(reply.arguments().at(1)); QCOMPARE(layout.id, 0); QCOMPARE(layout.children.size(), 15);
   QCOMPARE(layout.props["children-display"].toString(), QString("submenu"));
   // Capture entries first: region, region & edit, window, desktop, screen recording, then the editor sources and the clipboard upload.
   const QStringList order{"Capture Region", "Capture Region & Edit", "Capture Window", "Capture Desktop", "Capture Screen Recording", "Edit Image", "Upload Clipboard"};
@@ -472,6 +478,25 @@ private slots:
   auto reply = call("/Menu", "com.canonical.dbusmenu", "EventGroup", {QVariant::fromValue(events)});
   QCOMPARE(reply.type(), QDBusMessage::ReplyMessage); QCOMPARE(qdbus_cast<QList<int>>(reply.arguments().at(0)), QList<int>{99});
   QTRY_COMPARE(actions.size(), 14); QCOMPARE(actions.last().at(0).toString(), QString("region"));
+ }
+ void updateEntryShowsItsVersionAndBumpsTheLayout() {
+  // #293: hidden until a stable update is available, then labelled with it.
+  NativeTray tray; QTRY_VERIFY(tray.available()); QSignalSpy actions(&tray, &NativeTray::actionActivated); LayoutSignalPeer observer;
+  QVERIFY(client.connect(watcher.registrations.last(), "/Menu", "com.canonical.dbusmenu", "LayoutUpdated", &observer, SLOT(layoutUpdated(uint,int))));
+  auto entry = [&] {
+   const auto reply = call("/Menu", "com.canonical.dbusmenu", "GetLayout", {0, -1, QStringList{}});
+   const auto root = qdbus_cast<WireLayout>(reply.arguments().at(1));
+   return std::pair(reply.arguments().at(0).toUInt(), qdbus_cast<WireLayout>(root.children.at(11).variant()));
+  };
+  auto [revision, update] = entry();
+  QCOMPARE(revision, uint(1)); QCOMPARE(update.id, 17); QCOMPARE(update.props["visible"].toBool(), false);
+  QCOMPARE(qdbus_cast<QDBusVariant>(call("/Menu", "com.canonical.dbusmenu", "GetProperty", {17, QString("visible")}).arguments().at(0)).variant().toBool(), false);
+  tray.setUpdateLabel("Update available: 0.1.2"); QTRY_COMPARE(observer.updates, 1); QCOMPARE(observer.revision, uint(2)); QCOMPARE(observer.parent, 0);
+  std::tie(revision, update) = entry();
+  QCOMPARE(revision, uint(2)); QCOMPARE(update.props["label"].toString(), QString("Update available: 0.1.2")); QVERIFY(!update.props.contains("visible"));
+  QCOMPARE(click(17).type(), QDBusMessage::ReplyMessage); QTRY_COMPARE(actions.size(), 1); QCOMPARE(actions.at(0).at(0).toString(), QString("update"));
+  tray.setUpdateLabel("Update available: 0.1.2"); QTest::qWait(50); QCOMPARE(observer.updates, 1);
+  tray.setUpdateLabel({}); QTRY_COMPARE(observer.updates, 2); QCOMPARE(entry().second.props["visible"].toBool(), false);
  }
  void lateHostAndWatcherRestartDoNotDuplicateRegistration() {
   watcher.hostPresent = false; NativeTray tray;

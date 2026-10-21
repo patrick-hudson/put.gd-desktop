@@ -46,6 +46,16 @@ class ConfigurationSchema(unittest.TestCase):
         for mode in ('latest', True, None, 42):
             self.assertFalse(validator.is_valid(legacy | {'uploadClipboardBehavior': mode}))
 
+    def test_update_check_preferences(self):
+        # #293: optional; check and channel each optional inside it.
+        schema = json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text())
+        validator = Draft202012Validator(schema['properties']['preferences'])
+        legacy = {'notifications': True, 'launchAtLogin': False}
+        for updates in ({}, {'check': False}, {'channel': 'build'}, {'check': True, 'channel': 'nightly'}, {'channel': 'stable'}):
+            self.assertTrue(validator.is_valid(legacy | {'updates': updates}))
+        for updates in ({'check': 'yes'}, {'channel': 'beta'}, {'interval': 1}, True, None):
+            self.assertFalse(validator.is_valid(legacy | {'updates': updates}))
+
     def test_appearance_theme_and_reserved_custom_colours(self):
         # #60: theme now; accent and overrides keep their shape for phase 2.
         schema = json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text())

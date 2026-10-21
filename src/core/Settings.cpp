@@ -260,7 +260,7 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
         return invalid("/retention/logBytes", "Log storage is 1 MiB to 1 GiB.");
     const auto preferences = doc["preferences"].toObject();
     QStringList preferenceKeys{"notifications", "launchAtLogin"};
-    for (const auto* optional : {"uploadClipboardBehavior", "unlockCredentialsAtStartup", "editorRecentColors", "diagnostics", "appearance"})
+    for (const auto* optional : {"uploadClipboardBehavior", "unlockCredentialsAtStartup", "editorRecentColors", "diagnostics", "appearance", "updates"})
         if (preferences.contains(optional)) preferenceKeys.append(optional);
     if (!doc["preferences"].isObject() || !keys(preferences, preferenceKeys) ||
         !preferences["notifications"].isBool() || !preferences["launchAtLogin"].isBool())
@@ -281,6 +281,15 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
         if (!preferences["diagnostics"].isObject() || !keys(diagnostics, hasFolder ? QStringList{"debugLogging", "packageFolder"} : QStringList{"debugLogging"}) ||
             !diagnostics["debugLogging"].isBool() || (hasFolder && !folder(diagnostics["packageFolder"], true)))
             return invalid("/preferences/diagnostics", "Diagnostics preferences hold debugLogging (true or false) and an optional absolute packageFolder.");
+    }
+    if (preferences.contains("updates")) {
+        // #293: both keys optional; check defaults to true, channel to "build".
+        const auto updates = preferences["updates"].toObject();
+        QStringList updateKeys;
+        for (const auto* optional : {"check", "channel"}) if (updates.contains(optional)) updateKeys.append(optional);
+        if (!preferences["updates"].isObject() || !keys(updates, updateKeys) || (updates.contains("check") && !updates["check"].isBool()) ||
+            (updates.contains("channel") && !choice(updates["channel"], {"build", "stable", "nightly"})))
+            return invalid("/preferences/updates", "Updates hold an optional check (true or false) and channel (build, stable or nightly).");
     }
     if (preferences.contains("appearance")) {
         // #60: the theme now; the accent and per-scheme overrides keep their
@@ -372,6 +381,8 @@ Settings Settings::fromValidated(const QJsonObject& original) {
     settings.notifications = doc["preferences"].toObject()["notifications"].toBool();
     settings.launchAtLogin = doc["preferences"].toObject()["launchAtLogin"].toBool();
     settings.unlockCredentialsAtStartup = doc["preferences"].toObject()["unlockCredentialsAtStartup"].toBool(true);
+    settings.checkForUpdates = doc["preferences"].toObject()["updates"].toObject()["check"].toBool(true);
+    settings.updateChannel = doc["preferences"].toObject()["updates"].toObject()["channel"].toString("build");
     for (const auto& color : doc["preferences"].toObject()["editorRecentColors"].toArray()) settings.editorRecentColors.append(color.toString());
     return settings;
 }
