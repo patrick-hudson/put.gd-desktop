@@ -9,6 +9,11 @@
 #include <QLoggingCategory>
 #include <QPalette>
 #include <QToolButton>
+#include <QTreeView>
+#include <QHeaderView>
+#include <QScreen>
+#include <QLocale>
+#include <QDateTime>
 #include <QUrl>
 #include <QUuid>
 #include <QWidget>
@@ -251,6 +256,16 @@ void FileDialog::openFallback(const QString& reason){
  QStringList filters;for(const auto& filter:options_.filters)filters.append(QStringLiteral("%1 (%2)").arg(filter.label,filter.patterns.join(' ')));
  if(!filters.isEmpty())dialog->setNameFilters(filters);
  theme(dialog);
+ // Qt's default leaves the detail columns too narrow for their own values.
+ QSize size(820,520);
+ if(const auto* screen=owner_->window()->screen())size=size.boundedTo(screen->availableGeometry().size()*0.9);
+ dialog->resize(size.expandedTo(dialog->minimumSizeHint()));
+ if(auto* tree=dialog->findChild<QTreeView*>("treeView");tree&&tree->header()->count()>=4){
+  const auto metrics=tree->fontMetrics();const int padding=32;
+  tree->header()->resizeSection(1,metrics.horizontalAdvance(QStringLiteral("1023.9 KiB"))+padding);
+  tree->header()->resizeSection(2,metrics.horizontalAdvance(QStringLiteral("MP4 video file"))+padding);
+  tree->header()->resizeSection(3,metrics.horizontalAdvance(QLocale().toString(QDateTime(QDate(2026,12,30),QTime(23,59)),QLocale::ShortFormat))+padding);
+ }
  fallback_=dialog;
  connect(dialog,&QFileDialog::finished,this,[this,dialog](int result){
   if(fallback_!=dialog)return;
