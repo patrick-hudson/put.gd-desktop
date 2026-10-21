@@ -15,7 +15,8 @@ namespace putgd {
 // check waits 5 to 15 minutes after start; later ones follow the last attempt
 // by 24 hours, plus or minus 2, which is kept in update-check.json in the state
 // folder so a restart does not check again early. Stable builds notify once per
-// new version; nightly builds only report it in Settings.
+// new version, unless the system's updater follows put.gd's repository (it
+// notifies itself); nightly builds only report it in Settings.
 class UpdateService final:public QObject {
  Q_OBJECT
 public:
@@ -31,11 +32,17 @@ public:
  // Checks now, whatever the schedule or the check setting says, and replies
  // with status(). A failed check replies with its error.
  void check(JsonReply);
+ // What updating this installation means here: the system's software
+ // updater when the package's repository file is in use, else a download.
+ QJsonObject action() const;
+ // Starts that updater (Update Manager, Discover or GNOME Software).
+ void openSoftwareUpdates(JsonReply) const;
  // Test seams.
  void setClock(std::function<QDateTime()> clock) {clock_=std::move(clock);}
  void setRandom(std::function<qint64(qint64,qint64)> random) {random_=std::move(random);}
  void setBuild(update::Build build) {build_=std::move(build);}
  void setProgram(QString program,QStringList prefix={}) {program_=std::move(program);prefix_=std::move(prefix);}
+ void setSystem(std::function<QJsonObject(const QString&)> actionFor,std::function<bool(const QJsonObject&)> open) {actionFor_=std::move(actionFor);openUpdater_=std::move(open);}
  qint64 nextCheckInMs() const {return timer_.isActive()?timer_.remainingTime():-1;}
 signals:
  void changed();
@@ -43,6 +50,7 @@ signals:
  void updateAvailable(const QJsonObject& result);
 private:
  QString channel() const;
+ bool notifies(const QJsonObject& action) const;
  bool enabled() const;
  void schedule();
  void run(bool manual);
@@ -64,5 +72,7 @@ private:
  QString notifiedVersion_,attemptedChannel_;
  std::function<QDateTime()> clock_;
  std::function<qint64(qint64,qint64)> random_;
+ std::function<QJsonObject(const QString&)> actionFor_;
+ std::function<bool(const QJsonObject&)> openUpdater_;
 };
 }

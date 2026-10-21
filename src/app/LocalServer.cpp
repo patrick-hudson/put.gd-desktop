@@ -272,6 +272,8 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  // The daily update check (#293): its state, and a check now.
  else if(method=="update.status"){if(updates_)reply({},updates_->status());else reply({"update_check_unavailable","This resident does not check for updates",{}},{});}
  else if(method=="update.check"){if(updates_)updates_->check(reply);else reply({"update_check_unavailable","This resident does not check for updates",{}},{});}
+ // Repository installs (#293 phase 2): the desktop's software updater.
+ else if(method=="update.openSoftwareUpdates"){if(updates_)updates_->openSoftwareUpdates(reply);else reply({"update_check_unavailable","This resident does not check for updates",{}},{});}
  else if(method=="history.clear")history_.clear(reply);
  else if(method=="cache.clear")operations_.cleanup(reply);
  // Removes every persistent log file and starts a new one (#74).

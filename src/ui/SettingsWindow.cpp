@@ -378,7 +378,8 @@ QString settingHelp(const QString& path,const QString& objectName){
   {"launchAtLogin","Starts put.gd when you sign in. Disabled by default. The desktop startup entry is updated after persistence; another app copy is not started."},
   {"checkForUpdates","Once a day put.gd asks app.put.gd for the newest version on its channel. The request is the same from every computer: no version, account, locale or ID. The comparison happens here, and nothing is installed without you. Stable builds also show a notification once for each new version; nightly builds show it only here. Check now works with daily checks off."},
   {"updateChannel","This build's channel follows how put.gd was installed: a nightly build follows nightly, a release or release candidate follows stable. Choose Stable or Nightly to watch the other channel instead. Changing it doesn't change what is installed."},
-  {"updateStatus","The result of the last check and when the next one runs. Download opens the new package for this installation in your browser."},
+  {"updateStatus","The result of the last check and when the next one runs. Download opens the new package for this installation in your browser. When this installation updates from put.gd's apt or dnf repository, Open software updates opens your system's updater instead."},
+  {"updateCommand","Updates from put.gd's repository install with the rest of your system's updates. You can also run this command in a terminal."},
   {"notifications","Shows desktop notifications for operation results when supported. Enabled by default. Disabling notifications leaves results available in History."},
   {"debugLogging","Adds detailed debug records to put.gd's log on this computer, for a maintainer working out a problem. It turns itself off 24 hours after you turn it on; restarting doesn't extend it. Credentials, tokens and file contents are never logged."},
   {"logSummary","put.gd keeps a log of what it did in its state folder, at most 14 days and 50 MiB by default (Advanced settings in the configuration file). Clear logs deletes every log file and starts a new one; uploads, history, settings and saved diagnostics packages stay."},
@@ -453,9 +454,21 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  checkNow_=new QPushButton("Check now");checkNow_->setObjectName("checkForUpdatesNow");updateLayout->addWidget(checkNow_,0,Qt::AlignTop);
  updatesForm->addRow(VisualStyle::settingLabel("Status",settingHelp({},"updateStatus"),updateStatus_,this),updateRow);
  auto* updateActions=new QWidget;auto* updateActionsLayout=new QHBoxLayout(updateActions);updateActionsLayout->setContentsMargins(0,0,0,0);updateActionsLayout->setSpacing(8);
+ // A repository install (#293 phase 2) updates through the system's software
+ // updater, so it gets that and the apt/dnf command instead of Download.
+ openUpdates_=new QPushButton(VisualStyle::icon("download"),"Open software updates");openUpdates_->setObjectName("openSoftwareUpdates");VisualStyle::role(openUpdates_,"primary");updateActionsLayout->addWidget(openUpdates_);
  downloadUpdate_=new QPushButton(VisualStyle::icon("download"),"Download");downloadUpdate_->setObjectName("downloadUpdate");VisualStyle::role(downloadUpdate_,"primary");updateActionsLayout->addWidget(downloadUpdate_);
  releaseNotes_=new QPushButton("Release notes");releaseNotes_->setObjectName("updateReleaseNotes");VisualStyle::role(releaseNotes_,"link");updateActionsLayout->addWidget(releaseNotes_);updateActionsLayout->addStretch();
  updateActionsRow_=updateActions;updatesForm->addRow(QString(),updateActions);updateActions->hide();
+ auto* commandRow=new QWidget;auto* commandLayout=new QHBoxLayout(commandRow);commandLayout->setContentsMargins(0,0,0,0);commandLayout->setSpacing(8);
+ updateCommand_=new QLineEdit;updateCommand_->setObjectName("updateCommand");updateCommand_->setReadOnly(true);updateCommand_->setAccessibleName("Update command");VisualStyle::role(updateCommand_,"mono");commandLayout->addWidget(updateCommand_,1);
+ auto* copyCommand=new QPushButton("Copy");copyCommand->setObjectName("copyUpdateCommand");copyCommand->setAccessibleName("Copy the update command");commandLayout->addWidget(copyCommand);
+ updateCommandRow_=commandRow;updatesForm->addRow(VisualStyle::settingLabel("Or in a terminal",settingHelp({},"updateCommand"),updateCommand_,this),commandRow);updatesForm->setRowVisible(commandRow,false);
+ connect(openUpdates_,&QPushButton::clicked,this,[this]{
+  openUpdates_->setEnabled(false);
+  settings_.request("update.openSoftwareUpdates",{},this,[g=QPointer<SettingsWindow>(this)](Error error,QJsonObject){if(!g)return;g->openUpdates_->setEnabled(true);if(error)VisualStyle::feedback(g->updateStatus_,error.message+".");});
+ });
+ connect(copyCommand,&QPushButton::clicked,this,[this]{qApp->clipboard()->setText(updateCommand_->text());});
  connect(checkNow_,&QPushButton::clicked,this,[this]{checkForUpdates({});});
  connect(downloadUpdate_,&QPushButton::clicked,this,[this]{const QUrl url(settings_.diagnostics()["update"].toObject()["result"].toObject()["downloadUrl"].toString());if(url.scheme()=="https")QDesktopServices::openUrl(url);});
  connect(releaseNotes_,&QPushButton::clicked,this,[this]{const QUrl url(settings_.diagnostics()["update"].toObject()["result"].toObject()["notesUrl"].toString());if(url.scheme()=="https")QDesktopServices::openUrl(url);});
@@ -798,7 +811,11 @@ void SettingsWindow::refreshUpdateStatus(){
  for(auto* row:updateRows_)updatesForm_->setRowVisible(row,supported||update.isEmpty());
  checkNow_->setVisible(supported||update.isEmpty());checkNow_->setEnabled(supported&&!update["checking"].toBool());
  const bool available=supported&&result["updateAvailable"].toBool();
+ const auto action=update["action"].toObject();const bool managed=action["kind"]=="software-updates";
  updateActionsRow_->setVisible(available);
+ downloadUpdate_->setVisible(!managed);openUpdates_->setVisible(managed&&action["updater"].isObject());
+ if(managed){openUpdates_->setToolTip("Opens "+action["updater"].toObject()["name"].toString());updateCommand_->setText(action["command"].toString());}
+ updatesForm_->setRowVisible(updateCommandRow_,available&&managed);
  if(update.isEmpty()){VisualStyle::feedback(updateStatus_,"Not available yet.");return;}
  if(!supported){
   static const QHash<QString,QString> reasons{
@@ -811,6 +828,7 @@ void SettingsWindow::refreshUpdateStatus(){
  const auto channel=update["channel"].toString();const auto current=build["version"].toString();
  QString text;
  if(update["checking"].toBool())text="Checking…";
+ else if(available&&managed)text="put.gd "+result["latest"].toString()+" is available from put.gd's "+action["channel"].toString()+" repository. This is "+current+".";
  else if(available)text="put.gd "+result["latest"].toString()+" is available. This is "+current+".";
  else if(!result.isEmpty()&&result["latest"].isNull())text="No "+channel+" release has been published yet. This is "+current+".";
  else if(!result.isEmpty())text="Up to date: "+current+" is the newest "+channel+" version.";

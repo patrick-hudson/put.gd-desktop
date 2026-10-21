@@ -93,6 +93,40 @@ foreach(aws_component aws-crt-cpp aws-crt-cpp/crt/aws-c-auth aws-crt-cpp/crt/aws
   endif()
 endforeach()
 putgd_install_snapshot("${PROJECT_SOURCE_DIR}/LICENSE" "${CMAKE_INSTALL_DATADIR}/doc/putgd")
+
+# Tagged DEB/RPM builds add their channel's signed repository at pkg.put.gd
+# (#293), trusting only that channel's key. apt keeps a deleted conffile deleted
+# and purge removes it; the RPM copies its file in on the first install only.
+set(PUTGD_REPO_CHANNEL "")
+if(PUTGD_RELEASE_TAG MATCHES "^v[0-9]+[.][0-9]+[.][0-9]+-nightly[.][1-9][0-9]*$")
+  set(PUTGD_REPO_CHANNEL nightly)
+elseif(PUTGD_RELEASE_TAG MATCHES "^v[0-9]+[.][0-9]+[.][0-9]+(-rc[.][1-9][0-9]*)?$")
+  set(PUTGD_REPO_CHANNEL stable)
+endif()
+set(PUTGD_REPO_URL "${PUTGD_PACKAGE_REPOSITORY_URL}")
+set(repo_dir "${CMAKE_CURRENT_SOURCE_DIR}/repo")
+if(PUTGD_REPO_CHANNEL AND PUTGD_PACKAGE_TARGET MATCHES "^(ubuntu24[.]04|ubuntu26[.]04|debian13)$")
+  # deb822 multi-line Signed-By: the key travels inside the conffile, so a
+  # removed (not purged) package leaves a source apt can still verify.
+  file(READ "${repo_dir}/keys/putgd-${PUTGD_REPO_CHANNEL}.asc" key_block)
+  string(STRIP "${key_block}" key_block)
+  string(REPLACE "\n\n" "\n.\n" key_block "${key_block}")
+  string(REPLACE "\n" "\n " key_block " ${key_block}")
+  set(PUTGD_REPO_KEY_BLOCK "${key_block}")
+  configure_file("${repo_dir}/putgd.sources.in" repo/putgd.sources @ONLY)
+  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/repo/putgd.sources" DESTINATION /etc/apt/sources.list.d)
+  install(FILES "${repo_dir}/keys/putgd-${PUTGD_REPO_CHANNEL}.gpg" DESTINATION "${CMAKE_INSTALL_DATADIR}/keyrings"
+    RENAME putgd-archive-keyring.gpg)
+  file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/repo/conffiles" "/etc/apt/sources.list.d/putgd.sources\n")
+  set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_BINARY_DIR}/repo/conffiles")
+elseif(PUTGD_REPO_CHANNEL AND PUTGD_PACKAGE_TARGET STREQUAL "fedora44")
+  configure_file("${repo_dir}/putgd.repo.in" repo/putgd.repo @ONLY)
+  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/repo/putgd.repo" DESTINATION "${CMAKE_INSTALL_DATADIR}/putgd/repo")
+  install(FILES "${repo_dir}/keys/putgd-${PUTGD_REPO_CHANNEL}.asc" DESTINATION /etc/pki/rpm-gpg RENAME RPM-GPG-KEY-putgd)
+  set(CPACK_RPM_USER_FILELIST "%ghost %config(noreplace) /etc/yum.repos.d/putgd.repo")
+  set(CPACK_RPM_POST_INSTALL_SCRIPT_FILE "${repo_dir}/rpm-post.sh")
+  set(CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION /etc/pki /etc/pki/rpm-gpg /etc/yum.repos.d)
+endif()
 set(CPACK_GENERATOR DEB) # Select -G RPM for a native Fedora build.
 set(CPACK_PACKAGE_NAME putgd)
 set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")

@@ -112,6 +112,28 @@ private slots:
   QCOMPARE(updates->status()["nextCheckAt"].toString(),now.addMSecs(UpdateService::intervalMs).toString(Qt::ISODate));
   QVERIFY(updates->status()["result"].isNull());QCOMPARE(updates->status()["error"].toObject()["code"].toString(),QString("update_feed_unavailable"));
  }
+ void repositoryInstallsLeaveNotificationsToTheSystem(){
+  // A stable DEB whose putgd.sources is in use: the system updater notifies, put.gd doesn't.
+  SettingsService settings(dir.filePath("config.json"));configure(settings);answer(available("stable","0.1.1"));
+  const QJsonObject managed{{"kind","software-updates"},{"manager","apt"},{"command","sudo apt update && sudo apt upgrade"},
+   {"updater",QJsonObject{{"id","gnome-software"},{"name","GNOME Software"},{"program","/usr/bin/gnome-software"}}}};
+  QJsonObject offered=managed;QList<QJsonObject> opened;
+  auto updates=service(settings,build("0.1.0","debian13"));
+  updates->setSystem([&](const QString& target){return target=="debian13"?offered:QJsonObject{};},[&](const QJsonObject& action){opened.append(action);return true;});
+  QSignalSpy announced(updates.get(),&UpdateService::updateAvailable);updates->start();
+  QTRY_COMPARE(calls().size(),1);QTRY_VERIFY(!updates->status()["checking"].toBool());
+  QCOMPARE(announced.size(),0);QCOMPARE(updates->status()["notifies"].toBool(),false);
+  QCOMPARE(updates->status()["action"].toObject()["kind"].toString(),QString("software-updates"));
+  QJsonObject reply;updates->openSoftwareUpdates([&](Error error,QJsonObject result){QVERIFY(!error);reply=result;});
+  QCOMPARE(reply["opened"].toString(),QString("gnome-software"));QCOMPARE(opened.size(),1);
+  // No updater installed: the command is the answer.
+  offered["updater"]=QJsonValue();Error error;updates->openSoftwareUpdates([&](Error e,QJsonObject){error=e;});
+  QCOMPARE(error.code,QString("software_updates_unavailable"));QCOMPARE(error.details["command"].toString(),QString("sudo apt update && sudo apt upgrade"));
+  // A deleted or disabled source: Download again, and stable notifies again.
+  offered={{"kind","download"},{"repository","absent"}};
+  updates->openSoftwareUpdates([&](Error e,QJsonObject){error=e;});QCOMPARE(error.details["repository"].toString(),QString("absent"));
+  QCOMPARE(updates->status()["notifies"].toBool(),true);QCOMPARE(opened.size(),1);
+ }
  void failedCheckKeepsTheLastResult(){
   SettingsService settings(dir.filePath("config.json"));configure(settings);answer(available("stable","0.1.1"));
   auto updates=service(settings,build("0.1.0"));updates->start();QTRY_COMPARE(calls().size(),1);QTRY_VERIFY(!updates->status()["checking"].toBool());

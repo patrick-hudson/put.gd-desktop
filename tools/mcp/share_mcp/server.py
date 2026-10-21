@@ -544,13 +544,18 @@ def create_server(adapter: CliAdapter) -> FastMCP:
 
     @server.tool(annotations=read)
     async def get_update_status() -> Json:
-        """The daily update check (#293): build (version, kind, channel, packageTarget, supported, reason), check and channelSetting (preferences.updates), the effective channel, enabled, notifies (stable announces each new version once; nightly only reports it), checking, attemptedAt, checkedAt, nextCheckAt, result (current, latest, tag, publishedAt, notesUrl, downloadUrl, updateAvailable) and the last error. Development, source and Flatpak builds report supported false with a reason. Turn checks off or pick a channel with patch_configuration's preferences.updates."""
+        """The daily update check (#293): build (version, kind, channel, packageTarget, supported, reason), check and channelSetting (preferences.updates), the effective channel, enabled, notifies (stable announces each new version once; nightly only reports it; a repository install never, since its system updater does), action, checking, attemptedAt, checkedAt, nextCheckAt, result (current, latest, tag, publishedAt, notesUrl, downloadUrl, updateAvailable) and the last error. action is {kind: software-updates, manager apt|dnf, file, channel, command, updater {id, name}|null} while the package's pkg.put.gd repository file is present and enabled (open it with open_software_updates), otherwise {kind: download, repository: absent|disabled|other|none}. Development, source and Flatpak builds report supported false with a reason. Turn checks off or pick a channel with patch_configuration's preferences.updates."""
         return await adapter.call('update.status', {})
 
     @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=True))
     async def check_for_updates() -> Json:
         """Check for a newer version now, as Settings → Updates → Check now does, even with daily checks off: one GET of https://app.put.gd/update/v1/<channel>.json with nothing identifying, compared on this computer. Returns get_update_status's object; a failed check returns its error (update_feed_unavailable, update_feed_invalid, update_check_failed or update_check_unavailable). Nothing is downloaded or installed."""
         return await adapter.call('update.check', {}, timeout=70)
+
+    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
+    async def open_software_updates() -> Json:
+        """Open the system's software updater, as Settings → Updates → Open software updates does, for a DEB/RPM install that updates from put.gd's apt or dnf repository: Update Manager on Cinnamon, Discover on Plasma, GNOME Software on GNOME, else whichever is installed. Returns {opened, action}. Errors: software_updates_unavailable (not a repository install, or no updater installed; the details carry the apt/dnf command) or software_updates_failed. Nothing is installed by put.gd."""
+        return await adapter.call('update.openSoftwareUpdates', {})
 
     @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, openWorldHint=False))
     async def clear_logs() -> Json:

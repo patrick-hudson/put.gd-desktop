@@ -1,6 +1,7 @@
 #include "UpdateService.h"
 #include "core/BuildInfo.h"
 #include "core/Log.h"
+#include "core/SystemUpdates.h"
 #include <QFile>
 #include <QJsonDocument>
 #include <QRandomGenerator>
@@ -49,13 +50,22 @@ void UpdateService::schedule() {
  nextAt_=due;
  timer_.start(int(qBound(qint64(0),now().msecsTo(due),qint64(INT_MAX))));
 }
+QJsonObject UpdateService::action() const {
+ if(!build_.supported)return {};
+ return actionFor_?actionFor_(build_.target):update::systemAction(build_.target);
+}
+bool UpdateService::notifies(const QJsonObject& action) const {
+ // A system updater that follows our repository already tells the user.
+ return channel()=="stable"&&action["kind"]!="software-updates";
+}
 QJsonObject UpdateService::status() const {
  const auto snapshot=settings_.snapshot();
  // Only a result for the current channel is shown.
  const bool current=result_["channel"]==channel()&&!channel().isEmpty();
+ const auto offered=action();
  return {{"build",build_.toJson()},{"check",snapshot.checkForUpdates},{"channelSetting",snapshot.updateChannel},{"channel",channel().isEmpty()?QJsonValue():QJsonValue(channel())},
   {"enabled",enabled()},{"supported",build_.supported},{"reason",build_.reason.isEmpty()?QJsonValue():QJsonValue(build_.reason)},
-  {"notifies",channel()=="stable"},{"checking",bool(process_)},{"attemptedAt",isoTime(attemptedAt_)},{"checkedAt",current?isoTime(checkedAt_):QJsonValue()},
+  {"notifies",notifies(offered)},{"action",offered.isEmpty()?QJsonValue():QJsonValue(offered)},{"checking",bool(process_)},{"attemptedAt",isoTime(attemptedAt_)},{"checkedAt",current?isoTime(checkedAt_):QJsonValue()},
   {"nextCheckAt",isoTime(nextAt_)},{"result",current?QJsonValue(result_):QJsonValue()},{"error",error_.isEmpty()?QJsonValue():QJsonValue(error_)}};
 }
 void UpdateService::check(JsonReply reply) {
@@ -63,6 +73,14 @@ void UpdateService::check(JsonReply reply) {
  waiting_.append(std::move(reply));
  if(process_){manualRunning_=true;return;}
  run(true);
+}
+void UpdateService::openSoftwareUpdates(JsonReply reply) const {
+ const auto offered=action();
+ if(offered["kind"]!="software-updates"){reply({"software_updates_unavailable","This installation does not update from put.gd's repository",{{"repository",offered["repository"]}}},{});return;}
+ if(offered["updater"].isNull()){reply({"software_updates_unavailable","No software updater is installed",{{"command",offered["command"]}}},{});return;}
+ if(!(openUpdater_?openUpdater_(offered):update::openSoftwareUpdates(offered))){reply({"software_updates_failed","Cannot start the software updater",{{"updater",offered["updater"].toObject()["id"]}}},{});return;}
+ logging::info(logApp(),"Opened the software updater",{{"updater",offered["updater"].toObject()["id"]}});
+ reply({},{{"opened",offered["updater"].toObject()["id"]},{"action",offered}});
 }
 void UpdateService::run(bool manual) {
  if(process_)return;
@@ -101,7 +119,7 @@ void UpdateService::finished(bool manual,const QByteArray& output,const Error& f
   // Stable announces each new version once. A version someone already saw in
   // Settings is not announced again; nightly is never announced.
   if(available&&latest!=notifiedVersion_) {
-   if(!manual&&channel()=="stable"&&settings_.snapshot().notifications)emit updateAvailable(result);
+   if(!manual&&notifies(action())&&settings_.snapshot().notifications)emit updateAvailable(result);
    if(manual||channel()=="stable")notifiedVersion_=latest;
   }
  }
