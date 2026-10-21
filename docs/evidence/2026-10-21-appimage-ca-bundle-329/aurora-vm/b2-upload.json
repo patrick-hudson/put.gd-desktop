@@ -1,0 +1,38 @@
+{
+ "host": "aurora-lab",
+ "profile": "b2",
+ "store": "completed",
+ "testConnection": {
+  "state": "completed",
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  },
+  "seconds": 2.07
+ },
+ "upload": {
+  "state": "completed",
+  "uploadStatus": "uploaded",
+  "error": {
+   "code": "source_unsupported",
+   "details": {},
+   "message": "Native desktop adapter is not available"
+  },
+  "link": "https://f001.backblazeb2.com/file/putgd-i329-f53d5a37/put.gd/acceptance/i329/acb2/Screen-Capture-2026-10-21-16-19-39.png",
+  "seconds": 2.72
+ },
+ "linkFetch": {
+  "status": 200,
+  "png": true,
+  "bytes": 2038
+ },
+ "delete": {
+  "state": "completed",
+  "items": [
+   "removed"
+  ],
+  "remoteStatus": "removed",
+  "linkAfter": 404
+ }
+}
