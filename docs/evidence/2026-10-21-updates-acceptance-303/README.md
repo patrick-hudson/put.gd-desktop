@@ -65,7 +65,7 @@ driver is [lab/accept303.py](lab/accept303.py): `setup`, `start`, `notify`, `men
 | First check after start (resident's own timer, `manual: false`) | 9 min 42 s | 10 min 44 s | 9 min 07 s |
 | Notifications shown | 1 | 1 | 1 |
 | Clicking it opened | `…/releases/tag/v0.1.2` | same | same |
-| Tray **Update available: 0.1.2** right after the live check | ✅ | ❌ (#304) | ❌ (#304) |
+| Tray **Update available: 0.1.2** right after the live check | ✅ | ❌ (#304, fixed in [#311](../2026-10-21-tray-update-visible-304/README.md)) | ❌ (#304, fixed in #311) |
 | …after a restart | ✅ | ✅ | ✅ |
 | Tray entry opens Settings → General → Updates | ✅ | ✅ | ✅ |
 | Restart: next check | a day later (2026-10-22T01:08Z) | 2026-10-22T01:13Z | 2026-10-22T03:44Z |

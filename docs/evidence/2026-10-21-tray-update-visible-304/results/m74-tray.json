@@ -1,0 +1,94 @@
+{
+ "menu": {
+  "label": "m74-fix-live-tray-menu",
+  "components": [
+   {
+    "blocks": 1238,
+    "box": [
+     1704,
+     680,
+     1920,
+     1080
+    ]
+   }
+  ],
+  "colour": [
+   252,
+   252,
+   252
+  ],
+  "inner": [
+   1709,
+   685,
+   1915,
+   1039
+  ],
+  "changedShare": 1.0,
+  "kept": "/home/patrick/work/put.gd-304/p-m74fix/crops/m74-fix-live-tray-menu.png"
+ },
+ "menuSelected": {
+  "label": "m74-fix-live-tray-menu-selected",
+  "components": [
+   {
+    "blocks": 1238,
+    "box": [
+     1704,
+     680,
+     1920,
+     1080
+    ]
+   }
+  ],
+  "colour": [
+   252,
+   252,
+   252
+  ],
+  "inner": [
+   1843,
+   685,
+   1883,
+   1039
+  ],
+  "changedShare": 1.0,
+  "kept": "/home/patrick/work/put.gd-304/p-m74fix/crops/m74-fix-live-tray-menu-selected.png"
+ },
+ "window": {
+  "label": "m74-fix-live-settings",
+  "components": [
+   {
+    "blocks": 18918,
+    "box": [
+     296,
+     40,
+     1624,
+     960
+    ]
+   },
+   {
+    "blocks": 24,
+    "box": [
+     192,
+     1040,
+     232,
+     1080
+    ]
+   }
+  ],
+  "colour": [
+   252,
+   252,
+   252
+  ],
+  "inner": [
+   299,
+   74,
+   1619,
+   954
+  ],
+  "changedShare": 1.0,
+  "themeShare": 0.947,
+  "kept": "/home/patrick/work/put.gd-304/p-m74fix/crops/m74-fix-live-settings.png"
+ },
+ "ui": null
+}

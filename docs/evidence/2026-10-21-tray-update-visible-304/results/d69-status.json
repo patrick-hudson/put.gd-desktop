@@ -1,0 +1,116 @@
+{
+ "alive": true,
+ "pid": 1840504,
+ "starts": [
+  "2026-10-21T02:55:45Z"
+ ],
+ "now": "2026-10-21T03:05:47Z",
+ "status": {
+  "attemptedAt": "2026-10-21T03:04:50Z",
+  "build": {
+   "channel": "stable",
+   "kind": "stable",
+   "packageTarget": "debian13",
+   "reason": null,
+   "supported": true,
+   "version": "0.1.1"
+  },
+  "channel": "stable",
+  "channelSetting": "build",
+  "check": true,
+  "checkedAt": "2026-10-21T03:04:50Z",
+  "checking": false,
+  "enabled": true,
+  "error": null,
+  "nextCheckAt": "2026-10-22T01:08:06Z",
+  "notifies": true,
+  "reason": null,
+  "result": {
+   "channel": "stable",
+   "checkedAt": "2026-10-21T03:04:50Z",
+   "current": "0.1.1",
+   "downloadUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/v0.1.2/putgd-0.1.2-debian13-x86_64.deb",
+   "latest": "0.1.2",
+   "notesUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v0.1.2",
+   "packageTarget": "debian13",
+   "publishedAt": "2026-10-21T00:30:00Z",
+   "tag": "v0.1.2",
+   "updateAvailable": true
+  },
+  "supported": true
+ },
+ "events": [
+  {
+   "category": "putgd.app",
+   "fields": {
+    "channel": "stable",
+    "itemId": null,
+    "manual": false,
+    "operationId": null
+   },
+   "level": "info",
+   "message": "Checking for updates",
+   "pid": 1840504,
+   "process": "putgd",
+   "time": "2026-10-21T03:04:50.634Z",
+   "v": 1
+  },
+  {
+   "category": "putgd.app",
+   "fields": {
+    "channel": "stable",
+    "itemId": null,
+    "latest": "0.1.2",
+    "operationId": null,
+    "updateAvailable": true
+   },
+   "level": "info",
+   "message": "Update check finished",
+   "pid": 1840504,
+   "process": "putgd",
+   "time": "2026-10-21T03:04:50.663Z",
+   "v": 1
+  },
+  {
+   "category": "putgd.ui",
+   "fields": {
+    "itemId": null,
+    "notificationId": 1,
+    "notificationText": "put.gd 0.1.2 is available. Settings \u2192 Updates has the download.",
+    "operationId": null,
+    "summary": "update_available",
+    "title": "put.gd \u2014 update available",
+    "warning": false
+   },
+   "level": "info",
+   "message": "Notification shown",
+   "pid": 1840504,
+   "process": "putgd",
+   "time": "2026-10-21T03:04:50.663Z",
+   "v": 1
+  }
+ ],
+ "openedUrls": [
+  "2026-10-21T03:04:52Z https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v0.1.2"
+ ],
+ "stateFile": {
+  "attemptedAt": "2026-10-21T03:04:50Z",
+  "attemptedChannel": "stable",
+  "checkedAt": "2026-10-21T03:04:50Z",
+  "error": null,
+  "notifiedVersion": "0.1.2",
+  "result": {
+   "channel": "stable",
+   "checkedAt": "2026-10-21T03:04:50Z",
+   "current": "0.1.1",
+   "downloadUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/v0.1.2/putgd-0.1.2-debian13-x86_64.deb",
+   "latest": "0.1.2",
+   "notesUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v0.1.2",
+   "packageTarget": "debian13",
+   "publishedAt": "2026-10-21T00:30:00Z",
+   "tag": "v0.1.2",
+   "updateAvailable": true
+  },
+  "schemaVersion": 1
+ }
+}

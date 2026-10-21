@@ -6,6 +6,7 @@ for local bulk artifacts and [verification](../verification.md) for limitations.
 
 | Topic | Starting point |
 | --- | --- |
+| Tray "Update available" entry shown live (issue #304) | [Scheduled check then the tray menu without a restart on d69 Plasma, f44 GNOME and m74 Cinnamon, before/after pairs; m74 notifications now come from xfce4-notifyd (#312)](2026-10-21-tray-update-visible-304/README.md) |
 | Update check and AppImage updates on real desktops (issues #303, #295) | [Memory gate on f44 GNOME and d69 Plasma (+0.09/+0.14 MiB), stable scheduled check, one notification and tray entry on m74/f44/d69 (#304: no live tray entry on Plasma/GNOME), nightly without notification; Gear Lever, AppImageLauncher and start at login in a Mint 22.3 guest (#306, #307)](2026-10-21-updates-acceptance-303/README.md) |
 | AppImage zsync update information and `.zsync` asset (issue #293) | [Three CI-equivalent AppImage builds on f44; `appimageupdatetool` moves build A to the next commit's B through a local Range server on Fedora 44 and Ubuntu 24.04 (95.5 % reused, 5.6 of 109.5 MiB fetched, B's exact bytes); tagged nightly readback and `collect.py` binding](2026-10-20-appimage-zsync-293/README.md) |
 | Review window: the video first, one timeline, contextual mask tools (issue #283) | [d69 Plasma Wayland and m74 Cinnamon X11 before/after in both schemes (video 28.9 % → 70.0 % of the window), MCP end to end with `drive_recording_review`, upload to the S3 fixture, motion 18.3 vs 0.875](2026-10-20-review-window-283/README.md) |
