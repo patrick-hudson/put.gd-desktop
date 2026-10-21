@@ -72,7 +72,9 @@ the editor's additions are templates with `%token%` placeholders; custom
 painting (History rows, the editor canvas, drag images) reads the tokens when
 it paints; IconArt glyphs set through `VisualStyle::icon(name)` redraw in the
 new scheme; the check, radio, chevron and spin box step (#233) images are painted from the
-tokens into a private temporary folder. The two former dark sets (the
+tokens into a private temporary folder. A checked, disabled check box keeps the
+`selected` fill with a `textMuted` tick, and disabled radio buttons use a `border`
+ring with a `textMuted` dot, so a setting that is on never looks off (#300). The two former dark sets (the
 redesign's and the settings stylesheet's near-copies such as `#111318` for
 `#111317`) are now one, the redesign's.
 
