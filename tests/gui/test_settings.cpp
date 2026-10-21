@@ -834,6 +834,31 @@ private slots:
   restored({"shortcut_recording_interrupted","Global shortcut configuration changed.",{}});QCOMPARE(status->text(),recorded);QCOMPARE(input->text(),QString("Ctrl+1"));
   record->click();QTest::keyClick(input,Qt::Key_Escape);restored({"shortcut_restore_failed","Synthetic restore failure",{}});QVERIFY(status->text().contains("Could not restore shortcuts"));QCOMPARE(input->text(),QString("Ctrl+1"));
  }
+ // #305: "This build's channel" says which channel it resolves to, from the
+ // build's channel in update.status; a build that never checks keeps the plain label.
+ void updateChannelNamesWhatThisBuildFollows(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(Settings::developmentTemplate(),{}));
+  CredentialStore secrets;UiSessionFixture fixture(service,secrets);QJsonObject update;
+  fixture.server.setUiDiagnostics([&]{auto data=fixture.operations().diagnostics();data["update"]=update;return data;});
+  MainWindow window(fixture.session);window.navigate("settings");window.show();QTRY_VERIFY(fixture.session.ready());
+  auto* channel=window.findChild<QComboBox*>("updateChannel");QVERIFY(channel);QCOMPARE(channel->itemData(0).toString(),QString("build"));
+  auto apply=[&](bool supported,const QJsonValue& buildChannel,const QString& setting,const QString& reason){
+   update={{"supported",supported},{"build",QJsonObject{{"version","0.2.0-synthetic"},{"channel",buildChannel},{"supported",supported},{"reason",reason.isEmpty()?QJsonValue():QJsonValue(reason)}}},
+    {"check",true},{"channelSetting",setting},{"channel",setting=="build"?buildChannel:QJsonValue(setting)},{"checking",false},{"result",QJsonObject{}},{"error",QJsonObject{}},
+    {"checkedAt",QJsonValue()},{"nextCheckAt",QJsonValue()},{"reason",reason.isEmpty()?QJsonValue():QJsonValue(reason)}};
+   fixture.session.refreshSnapshot();
+  };
+  apply(true,"stable","build",{});QTRY_COMPARE(channel->itemText(0),QString("This build's channel (stable)"));
+  QVERIFY(channel->isVisibleTo(window.settings()));QCOMPARE(channel->currentText(),QString("This build's channel (stable)"));
+  apply(true,"nightly","build",{});QTRY_COMPARE(channel->itemText(0),QString("This build's channel (nightly)"));
+  // Watching the other channel doesn't change what this build follows.
+  apply(true,"nightly","stable",{});QTRY_VERIFY(window.findChild<QLabel*>("updateStatus")->text().contains("Not checked yet"));QCOMPARE(channel->itemText(0),QString("This build's channel (nightly)"));
+  QCOMPARE(channel->itemText(1),QString("Stable"));QCOMPARE(channel->itemText(2),QString("Nightly"));
+  // No channel: a development build, and a Flatpak (tagged, but it never checks).
+  apply(false,QJsonValue(),"build","development_build");QTRY_COMPARE(channel->itemText(0),QString("This build's channel"));QVERIFY(!channel->isVisibleTo(window.settings()));
+  apply(true,"stable","build",{});QTRY_COMPARE(channel->itemText(0),QString("This build's channel (stable)"));
+  apply(false,"stable","build","flatpak");QTRY_COMPARE(channel->itemText(0),QString("This build's channel"));
+ }
  void railShowsTheResidentVersionAndOpensItsGitHubPage(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.show();QTRY_VERIFY(fixture.session.ready());
   auto* rail=window.findChild<QWidget*>("mainRail");auto* label=window.findChild<QLabel*>("appVersion");auto* link=window.findChild<QPushButton*>("appVersionLink");QVERIFY(rail&&label&&link);QVERIFY(rail->isAncestorOf(label)&&rail->isAncestorOf(link));
