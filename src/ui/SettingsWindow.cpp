@@ -881,6 +881,9 @@ void SettingsWindow::refreshUpdateStatus(){
 void SettingsWindow::refreshInstallStatus(const QJsonObject& update,bool available,bool managed){
  const auto install=update["install"].toObject();const auto state=install["state"].toString();
  const bool running=install["running"].toBool(),restart=install["restartRequired"].toBool();
+ // The version put.gd installed is the one running now: the update is done.
+ const auto installed=install["installed"].toObject();const auto installedVersion=installed["version"].toString();
+ const bool updated=!running&&!restart&&!installedVersion.isEmpty()&&installedVersion==update["build"].toObject()["version"].toString();
  const bool installable=available&&!managed&&install["available"].toBool();
  installUpdate_->setVisible(installable&&!restart);installUpdate_->setEnabled(!running);
  installUpdate_->setText(running?QString("Installing…"):QString("Download and install"));
@@ -889,7 +892,7 @@ void SettingsWindow::refreshInstallStatus(const QJsonObject& update,bool availab
  downloadUpdate_->setVisible(!managed&&!restart);releaseNotes_->setVisible(!restart||available);
  restartUpdate_->setVisible(restart&&!running);
  installProgress_->setVisible(running);
- const bool shown=running||restart||state=="failed";
+ const bool shown=running||restart||state=="failed"||updated;
  updatesForm_->setRowVisible(installRow_,shown);
  if(!shown)return;
  const auto bytes=install["bytes"].toInteger(),total=install["total"].toInteger();
@@ -904,12 +907,18 @@ void SettingsWindow::refreshInstallStatus(const QJsonObject& update,bool availab
   VisualStyle::feedback(installStatus_,text);return;
  }
  if(restart){
-  const auto installed=install["installed"].toObject();const auto how=installed["method"].toString();
+  const auto how=installed["method"].toString();
   QString text="Installed "+installed["version"].toString()+(how=="zsync"?QString(" with a zsync update"):how=="download"?QString(" from a full download"):QString())+". Restart put.gd to use it.";
   if(install["backup"].isString())text+=" The previous version is kept as "+QFileInfo(install["backup"].toString()).fileName()+" until the new one has started.";
   VisualStyle::success(installStatus_,text);return;
  }
  const auto error=install["error"].toObject();
+ if(state!="failed"&&updated){
+  const auto how=installed["method"].toString();
+  VisualStyle::success(installStatus_,"Updated from "+installed["previousVersion"].toString()+" to "+installed["version"].toString()+
+   (how=="zsync"?QString(" with a zsync update"):how=="download"?QString(" from a full download"):QString())+" on "+localTime(installed["installedAt"].toString())+".");
+  return;
+ }
  VisualStyle::feedback(installStatus_,"The update wasn't installed: "+error["message"].toString()+".",true);
 }
 void SettingsWindow::checkForUpdates(std::function<void(Error,QJsonObject)> done){

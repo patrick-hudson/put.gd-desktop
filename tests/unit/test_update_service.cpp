@@ -222,6 +222,18 @@ private slots:
   QCOMPARE(other->status()["install"].toObject()["reason"].toString(),QString("other_channel"));
   QVERIFY(calls().isEmpty());
  }
+ // After an update the saved check names the version that now runs: it's not offered again.
+ void aSavedResultIsComparedWithTheVersionThatRunsNow(){
+  SettingsService settings(dir.filePath("config.json"));configure(settings);
+  QFile state(dir.filePath("update-check.json"));QVERIFY(state.open(QIODevice::WriteOnly));
+  state.write(QJsonDocument(QJsonObject{{"schemaVersion",1},{"attemptedAt",now.toString(Qt::ISODate)},{"attemptedChannel","stable"},{"checkedAt",now.toString(Qt::ISODate)},
+   {"result",QJsonObject{{"channel","stable"},{"current","0.1.0"},{"latest","0.1.1"},{"updateAvailable",true}}}}).toJson());state.close();
+  auto old=service(settings,build("0.1.0"));old->start();
+  QCOMPARE(old->status()["result"].toObject()["updateAvailable"].toBool(),true);
+  auto updated=service(settings,build("0.1.1"));updated->start();
+  const auto result=updated->status()["result"].toObject();
+  QCOMPARE(result["updateAvailable"].toBool(),false);QCOMPARE(result["current"].toString(),QString("0.1.1"));QCOMPARE(result["latest"].toString(),QString("0.1.1"));
+ }
  void theFirstStartOfTheNewVersionRemovesTheBackup(){
   SettingsService settings(dir.filePath("config.json"));configure(settings);
   const auto image=dir.filePath("putgd.AppImage"),backup=dir.filePath(".putgd-update-backup-0.1.0.AppImage");

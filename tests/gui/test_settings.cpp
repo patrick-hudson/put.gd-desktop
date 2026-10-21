@@ -924,6 +924,10 @@ private slots:
    {"installed",QJsonObject{{"version","0.1.1-nightly.801"},{"method","zsync"}}}});
   QTRY_VERIFY(restart->isVisibleTo(settings));QVERIFY(!install->isVisibleTo(settings));QVERIFY(!download->isVisibleTo(settings));QVERIFY(!progress->isVisibleTo(settings));
   QVERIFY(status->text().contains("Installed 0.1.1-nightly.801 with a zsync update. Restart put.gd to use it."));QVERIFY(status->text().contains(".putgd-update-backup-0.1.1-nightly.800.AppImage"));
+  // After the restart: this build is the installed version, and Settings says so.
+  apply({{"state","idle"},{"available",true},{"running",false},{"restartRequired",false},
+   {"installed",QJsonObject{{"version","0.1.1-nightly.800"},{"previousVersion","0.1.1-nightly.799"},{"method","zsync"},{"installedAt","2026-10-21T22:48:09Z"}}}});
+  QTRY_VERIFY(status->text().startsWith("Updated from 0.1.1-nightly.799 to 0.1.1-nightly.800 with a zsync update on "));QVERIFY(status->isVisibleTo(settings));QVERIFY(!restart->isVisibleTo(settings));
   apply({{"state","failed"},{"available",true},{"running",false},{"restartRequired",false},{"error",QJsonObject{{"code","update_verification_failed"},{"message","The download doesn't match the release's SHA256SUMS; nothing was changed"}}}});
   QTRY_VERIFY(status->text().contains("doesn't match the release's SHA256SUMS"));QVERIFY(install->isVisibleTo(settings));
   // This resident has no install service: the click's refusal shows.

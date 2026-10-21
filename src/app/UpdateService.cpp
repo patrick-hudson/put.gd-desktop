@@ -48,6 +48,13 @@ void UpdateService::start() {
    result_=state["result"].toObject();error_=state["error"].toObject();notifiedVersion_=state["notifiedVersion"].toString();
    // A clock that went backwards must not postpone the next check for days.
    if(attemptedAt_>now())attemptedAt_={};
+   // The saved result compared the feed with the version that ran then. After
+   // an update (put.gd's own install or another updater's), compare it with
+   // this one, so Settings doesn't offer the version that is running (#293).
+   if(result_["latest"].isString()){
+    const auto order=update::compareVersions(result_["latest"].toString(),build_.version);
+    result_["current"]=build_.version;result_["updateAvailable"]=order&&*order>0;
+   }
   }
  }
  // An interrupted install's staging folder goes; once this version runs
