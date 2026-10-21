@@ -86,6 +86,7 @@ int main(int argc,char** argv){
    if(mode.startsWith("preview-")&&!traceCursor("preview",bootstrap,payload)){control.stop();app.exit(5);return;}
    if(mode=="preview-cancel"||mode=="preview-error"){
     terminal=true;auto reply=identity;reply["code"]=mode=="preview-cancel"?"cancelled":"capture_geometry";
+    reply["reason"]=mode=="preview-cancel"?QString{}:QString("Synthetic selection outside the layout");reply["details"]=mode=="preview-cancel"?QJsonObject{}:QJsonObject{{"stage","select"},{"check","fixture_selection"},{"selection",QJsonArray{0,1080,100,100}}};
     control.send(mode=="preview-cancel"?"cancelled":"error",reply);
     // Keep the child alive briefly so tests distinguish early notification from
     // final process completion. The controller must retain the ticket's error.
@@ -101,6 +102,6 @@ int main(int argc,char** argv){
    QFile output(bootstrap["path"].toString());if(!output.open(QIODevice::WriteOnly)){app.exit(5);return;}const int side=mode=="large"?700:3;QImage image(side,mode=="large"?700:2,QImage::Format_ARGB32);image.fill(Qt::blue);image.save(&output,"PNG");output.close();if(!output.open(QIODevice::ReadOnly)){app.exit(5);return;}const auto bytes=output.readAll();output.close();auto result=identity;result["bytes"]=QString::number(bytes.size());result["sha256"]=QString::fromLatin1(QCryptographicHash::hash(bytes,QCryptographicHash::Sha256).toHex());result["width"]=mode=="wrong-dimension"?1000000000:image.width();result["height"]=image.height();if(mode=="wrong-hash")result["sha256"]=QString(64,'0');control.send("result",result);if(mode=="duplicate")control.send("result",result);return;
   }
   if(type=="accept"&&begun){app.quit();return;}
-  if(type=="cancel"){auto reply=identity;reply["code"]="cancelled";control.send("cancelled",reply);app.quit();return;}
+  if(type=="cancel"){auto reply=identity;reply["code"]="cancelled";reply["reason"]="";reply["details"]=QJsonObject{};control.send("cancelled",reply);app.quit();return;}
  });QObject::connect(&pipe,&QIODevice::readChannelFinished,&app,[&]{app.exit(3);});QTimer::singleShot(15000,&app,[&]{app.exit(9);});return app.exec();
 }
