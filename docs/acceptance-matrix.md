@@ -29,10 +29,13 @@ missing VM/profile or use an appropriate native machine and retain manual
 acceptance evidence. Do not relabel an existing profile as another distro or
 session. An unavailable required combination remains a recorded gate.
 
-`aurora-kde-wayland` (UEFI, `install: appimage`) is an evaluation profile for
-the AppImage and the future Flatpak on Universal Blue's Aurora (Fedora Atomic
-KDE); see [Aurora VM](aurora-vm.md). It is not a row of this matrix and does not
-replace Kubuntu or Debian KDE/Wayland evidence.
+`aurora-kde-wayland` (UEFI, `install: appimage`) is the Universal Blue Aurora
+(Fedora Atomic KDE) VM; see [Aurora VM](aurora-vm.md). It has no row in the
+package matrix above, because Aurora installs no DEB or RPM, and it doesn't
+replace the Kubuntu or Debian KDE/Wayland evidence. It is a required VM desktop,
+alongside the Ubuntu GNOME VM, in the
+[AppImage full-acceptance profile](#appimage-full-acceptance-profile) below. The
+Flatpak's acceptance will use it too.
 
 XWayland or `QT_QPA_PLATFORM=xcb` inside a Wayland session does not establish a
 native GNOME/X11 or KDE/X11 result. Verify the actual login session/compositor
