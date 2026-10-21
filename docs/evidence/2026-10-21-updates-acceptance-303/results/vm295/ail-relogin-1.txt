@@ -1,0 +1,9 @@
+typed
+45 1000 lab -     -    active  no -
+c7 1000 lab seat0 tty7 active  no -
+   5452 Tue Oct 20 21:33:39 2026
+APPIMAGE=/home/lab/Applications/putgd-0.1.1-dev.788+gfbd9ce8eea45-x86_64_6b9be45c7ea9f6243711c461b0f77065.AppImage
+0.1.1-dev.788+gfbd9ce8eea45
+Exec="/home/lab/Applications/putgd-0.1.1-dev.788+gfbd9ce8eea45-x86_64_6b9be45c7ea9f6243711c461b0f77065.AppImage" --background
+putgd-0.1.1-dev.788+gfbd9ce8eea45-x86_64_6b9be45c7ea9f6243711c461b0f77065.AppImage
+putgd-0.1.1-dev.795+g71f241b8f5d3-x86_64.AppImage

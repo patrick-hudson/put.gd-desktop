@@ -1,0 +1,29 @@
+file::/update_spinner.qml:2:1: module "QtQuick.Layouts" is not installed 
+     import QtQuick.Layouts 1.15 
+     ^
+file::/update_spinner.qml:1:1: module "QtQuick.Controls" is not installed 
+     import QtQuick.Controls 2.15 
+     ^
+file::/update_spinner.qml:2:1: module "QtQuick.Layouts" is not installed 
+     import QtQuick.Layouts 1.15 
+     ^
+file::/update_spinner.qml:1:1: module "QtQuick.Controls" is not installed 
+     import QtQuick.Controls 2.15 
+     ^
+QObject::connect: Cannot queue arguments of type 'std::string'
+(Make sure 'std::string' is registered using qRegisterMetaType().)
+QObject::connect: Cannot queue arguments of type 'std::string'
+(Make sure 'std::string' is registered using qRegisterMetaType().)
+Updating from generic server via ZSync
+zsync2: Using CA bundle found on system: /etc/ssl/certs/ca-certificates.crt
+zsync2: Target file: /home/lab/Applications/putgd-0.1.1-dev.795+g71f241b8f5d3-x86_64.AppImage
+zsync2: Reading seed file: /home/lab/Applications/putgd-0.1.1-dev.788+gfbd9ce8eea45-x86_64_794e5fd87c9ece8a7ce53c7cefbed113.AppImage
+zsync2: Usable data from seed files: 95.350164%
+zsync2: Renaming temp file
+zsync2: Fetching remaining blocks
+zsync2: Downloading from http://127.0.0.1:8765/putgd-0.1.1-dev.795+g71f241b8f5d3-x86_64.AppImage
+zsync2: optimized ranges, old requests count 15, new requests count 6
+
+zsync2: Verifying downloaded file
+zsync2: checksum matches OK
+zsync2: used 109527040 local, fetched 6150648

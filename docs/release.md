@@ -299,9 +299,25 @@ Assembly details are in
 update from one build to the next is recorded in
 [AppImage zsync updates](evidence/2026-10-20-appimage-zsync-293/README.md).
 On Fedora, appimageupdatetool needs
-`SSL_CERT_FILE=/etc/pki/tls/certs/ca-bundle.crt` (#297). Gear Lever,
-AppImageLauncher and autostart after an update are still to be checked (#295),
-as is the first live update through the site permalink (#296).
+`SSL_CERT_FILE=/etc/pki/tls/certs/ca-bundle.crt` (#297).
+
+Gear Lever and AppImageLauncher both move N to N+1 through a 302, like the site
+permalink's, in a lab Mint 22.3 guest
+([desktop acceptance](evidence/2026-10-21-updates-acceptance-303/README.md#4-appimage-updates-gear-lever-appimagelauncher-start-at-login-295)).
+
+**Gear Lever** downloads the whole image and replaces the file in place, so start
+at login picks up the new version.
+
+**AppImageLauncher**'s updater does a zsync delta but writes the new version under
+the `.zsync`'s file name and keeps the old one. Start at login then keeps the old
+version until the new file has been launched once. An updater that removes the old
+file leaves nothing to start
+([#307](https://github.com/patrick-hudson/put.gd-desktop/issues/307)).
+
+AppImageLauncher can't integrate the image until its root has a single desktop
+entry ([#306](https://github.com/patrick-hudson/put.gd-desktop/issues/306)).
+
+The first live update through the site permalink is still to come (#296).
 
 ## GitHub downloads and source
 

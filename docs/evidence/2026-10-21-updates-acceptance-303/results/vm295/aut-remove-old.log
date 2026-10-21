@@ -1,0 +1,25 @@
+Checking for updates...
+zsync2: Using CA bundle found on system: /etc/ssl/certs/ca-certificates.crt
+... done!
+Starting update...
+
+Updating from generic server via ZSync
+zsync2: Using CA bundle found on system: /etc/ssl/certs/ca-certificates.crt
+zsync2: Target file: /home/lab/Applications/putgd-0.1.1-dev.795+g71f241b8f5d3-x86_64.AppImage
+zsync2: Reading seed file: /home/lab/Applications/putgd-0.1.1-dev.788+gfbd9ce8eea45-x86_64_6b9be45c7ea9f6243711c461b0f77065.AppImage
+[2K11.8136% done (12.94 of 109.55 MiB)...[2K40.35% done (44.21 of 109.55 MiB)...[2K61.80% done (67.70 of 109.55 MiB)...[2K80.03% done (87.67 of 109.55 MiB)...
+zsync2: Usable data from seed files: 95.350164%
+zsync2: Renaming temp file
+zsync2: Fetching remaining blocks
+zsync2: Downloading from http://127.0.0.1:8765/putgd-0.1.1-dev.795+g71f241b8f5d3-x86_64.AppImage
+zsync2: optimized ranges, old requests count 15, new requests count 6
+
+[2K96.13% done (105.30 of 109.55 MiB)...
+zsync2: Verifying downloaded file
+[2K100.00% done (109.55 of 109.55 MiB)...[2K100.00% done (109.55 of 109.55 MiB)...[2K100.00% done (109.55 of 109.55 MiB)...
+zsync2: checksum matches OK
+zsync2: used 109527040 local, fetched 6150648
+[2K100.00% done (109.55 of 109.55 MiB)...
+Validation warning: AppImage not signed
+Removing old AppImage: /home/lab/Applications/putgd-0.1.1-dev.788+gfbd9ce8eea45-x86_64_6b9be45c7ea9f6243711c461b0f77065.AppImage
+Update successful. New file created: /home/lab/Applications/putgd-0.1.1-dev.795+g71f241b8f5d3-x86_64.AppImage

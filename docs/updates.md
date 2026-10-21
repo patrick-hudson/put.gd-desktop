@@ -51,6 +51,22 @@ private Xvfb and profile against a local feed server set with `PUTGD_UPDATE_FEED
 The resident's TLS and Qt Network library mappings were the same before and after
 **Check now**.
 
+[Desktop acceptance](evidence/2026-10-21-updates-acceptance-303/README.md) (#303) ran
+tagged builds on Cinnamon (m74), GNOME with AppIndicator (f44) and Plasma Wayland
+(d69), each against a local feed:
+
+- **Memory:** idle memory stays within 0.14 MiB of the build before #301.
+- **Scheduled check:** the first check ran 9–11 minutes after start.
+- **Stable:** exactly one notification, which opens the release notes. A restart doesn't announce the version again.
+- **Nightly:** only Settings and the rail show the update.
+
+Known gaps:
+
+- On Plasma and GNOME the tray's **Update available** entry appears only after a
+  restart ([#304](https://github.com/patrick-hudson/put.gd-desktop/issues/304)).
+- *This build's channel* doesn't say which channel it is
+  ([#305](https://github.com/patrick-hudson/put.gd-desktop/issues/305)).
+
 ## Settings
 
 **Settings → General → Updates**:
