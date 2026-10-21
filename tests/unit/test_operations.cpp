@@ -164,14 +164,22 @@ private slots:
   OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());HistoryStore journal(operations.databasePath());
   auto drain=qScopeGuard([&]{provider->deferUploads=false;for(auto complete:provider->completions)complete();provider->completions.clear();if(source.pending)source.acknowledge();});QStringList ids;
   for(int i=0;i<2;++i){QString id;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});QTRY_VERIFY(!id.isEmpty());QTRY_COMPARE(source.reads,i+1);ids.append(id);}
-  QTRY_COMPARE(provider->completions.size(),1);provider->completions.takeFirst()();QTRY_COMPARE(source.copies,1);QVERIFY(source.pending);
-  QTRY_COMPARE(provider->completions.size(),1);provider->completions.takeFirst()();QTRY_COMPARE(journal.operation(ids[1]).state,QString("completed"));QCOMPARE(source.copies,1);
+  // The uploads share one name and its object lock, which either operation may take first
+  // (#289): follow the operations in the order their uploads finish.
+  QStringList finished;
+  for(int i=0;i<2;++i) {
+   QTRY_COMPARE(provider->completions.size(),1);
+   QString id;for(const auto& candidate:ids)if(provider->requests.last().artifact.path.contains(candidate))id=candidate;
+   QVERIFY(!id.isEmpty());QVERIFY(!finished.contains(id));finished.append(id);provider->completions.takeFirst()();
+   if(i==0){QTRY_COMPARE(source.copies,1);QVERIFY(source.pending);}
+   else {QTRY_COMPARE(journal.operation(id).state,QString("completed"));QCOMPARE(source.copies,1);}
+  }
   source.acknowledge();
   if(userChanged){++source.revision;source.current="synthetic user edit";}
   else {QTRY_COMPARE(source.copies,2);source.acknowledge();}
   QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
-  QCOMPARE(journal.operation(ids[0]).copyStatus,QString("copied"));QCOMPARE(journal.operation(ids[1]).copyStatus,QString(userChanged?"suppressed":"copied"));
-  QCOMPARE(source.copies,userChanged?1:2);QCOMPARE(source.current,userChanged?QString("synthetic user edit"):journal.operation(ids[1]).items.first().receipt.directUrl);
+  QCOMPARE(journal.operation(finished[0]).copyStatus,QString("copied"));QCOMPARE(journal.operation(finished[1]).copyStatus,QString(userChanged?"suppressed":"copied"));
+  QCOMPARE(source.copies,userChanged?1:2);QCOMPARE(source.current,userChanged?QString("synthetic user edit"):journal.operation(finished[1]).items.first().receipt.directUrl);
  }
  void newImportPausesAndResumesAnUnsentLinkCopy() {
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;registry.add("opaque",provider);
