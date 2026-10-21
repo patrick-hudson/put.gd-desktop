@@ -461,7 +461,7 @@ the KDE region helper and the GNOME extension, and this spike only touches
    directory where Muffin and the sandbox see the same path:
    `$XDG_RUNTIME_DIR/app/$FLATPAK_ID/` is bind-mounted at the same path in the
    sandbox. Keep the 0700 directory, pre-created 0600 files and the inotify
-   close-write wait. (Falling back to post-selection root capture would also
+   close-write wait (or, without a free inotify instance, the IEND polling of #331). (Falling back to post-selection root capture would also
    work, but it brings back the compositor-settle problem that path exists for.)
 6. **Plasma Wayland capture: a choice in Settings → Advanced.** In a sandbox on
    Plasma Wayland, Advanced gets a "Plasma screen capture" setting with two modes;
