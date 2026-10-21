@@ -1,0 +1,234 @@
+{
+ "total": 8,
+ "records": [
+  {
+   "id": "4b8ec582-e8c0-4bcb-8ad6-9a8c574293f0",
+   "name": "Screen-Recording-2026-10-21-13-48-04.mp4",
+   "mime": "video/mp4",
+   "uploadStatus": "uploaded",
+   "local": "saved",
+   "linkAvailable": true
+  },
+  {
+   "id": "78c83a6a-10b2-40af-9b00-73c069a98c69",
+   "name": "Screen-Capture-2026-10-21-13-44-48.png",
+   "mime": "image/png",
+   "uploadStatus": "uploaded",
+   "local": "saved",
+   "linkAvailable": false
+  },
+  {
+   "id": "de7b9b5b-c9a1-42bf-a668-c71e87469ec4",
+   "name": "Screen-Capture-2026-10-21-13-43-37.png",
+   "mime": "image/png",
+   "uploadStatus": "uploaded",
+   "local": "saved",
+   "linkAvailable": true
+  },
+  {
+   "id": "27a2980b-3ffe-4ec6-ab54-f031ac7ed71b",
+   "name": "Screen-Capture-2026-10-21-13-43-22.png",
+   "mime": "image/png",
+   "uploadStatus": "uploaded",
+   "local": "saved",
+   "linkAvailable": true
+  },
+  {
+   "id": "5114b185-3491-496d-97b0-f632738143bd",
+   "name": "Screen-Capture-2026-10-21-13-43-18.png",
+   "mime": "image/png",
+   "uploadStatus": "uploaded",
+   "local": "saved",
+   "linkAvailable": true
+  },
+  {
+   "id": "66416024-363c-4cc6-8a82-7b89d13ea765",
+   "name": "Screen-Capture-2026-10-21-13-42-36.png",
+   "mime": "image/png",
+   "uploadStatus": "uploaded",
+   "local": "saved",
+   "linkAvailable": true
+  },
+  {
+   "id": "b952d6a9-24d0-4c44-a5ce-4ee7ba5f59bd",
+   "name": "Screen-Capture-2026-10-21-13-42-34.png",
+   "mime": "image/png",
+   "uploadStatus": "uploaded",
+   "local": "saved",
+   "linkAvailable": true
+  },
+  {
+   "id": "1dc78827-6a30-4516-b6bc-54bccbc431e6",
+   "name": "Screen-Capture-2026-10-21-13-42-32.png",
+   "mime": "image/png",
+   "uploadStatus": "uploaded",
+   "local": "saved",
+   "linkAvailable": true
+  }
+ ],
+ "previews": {
+  "Screen-Recording-2026-10-21-13-48-04.mp4": {
+   "ok": true,
+   "state": "ready",
+   "source": null,
+   "exists": true,
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "Screen-Capture-2026-10-21-13-44-48.png": {
+   "ok": true,
+   "state": "ready",
+   "source": null,
+   "exists": true,
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "Screen-Capture-2026-10-21-13-43-37.png": {
+   "ok": true,
+   "state": "ready",
+   "source": null,
+   "exists": true,
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "Screen-Capture-2026-10-21-13-43-22.png": {
+   "ok": true,
+   "state": "ready",
+   "source": null,
+   "exists": true,
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "Screen-Capture-2026-10-21-13-43-18.png": {
+   "ok": true,
+   "state": "ready",
+   "source": null,
+   "exists": true,
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "Screen-Capture-2026-10-21-13-42-36.png": {
+   "ok": true,
+   "state": "ready",
+   "source": null,
+   "exists": true,
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "Screen-Capture-2026-10-21-13-42-34.png": {
+   "ok": true,
+   "state": "ready",
+   "source": null,
+   "exists": true,
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "Screen-Capture-2026-10-21-13-42-32.png": {
+   "ok": true,
+   "state": "ready",
+   "source": null,
+   "exists": true,
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  }
+ },
+ "copyImage": {
+  "reply": {
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   },
+   "ok": true,
+   "requestId": "174690eb-e6b4-4961-862f-e45bade7040c",
+   "result": {
+    "copied": true
+   },
+   "schemaVersion": 1
+  },
+  "clipboardPng": true,
+  "clipboardBytes": 3564,
+  "sameSize": true,
+  "samePixels": true
+ },
+ "windowShot": {
+  "label": "history",
+  "components": [
+   {
+    "blocks": 14331,
+    "box": [
+     48,
+     16,
+     1376,
+     936
+    ]
+   },
+   {
+    "blocks": 55,
+    "box": [
+     712,
+     488,
+     1088,
+     512
+    ]
+   },
+   {
+    "blocks": 45,
+    "box": [
+     712,
+     360,
+     960,
+     376
+    ]
+   },
+   {
+    "blocks": 34,
+    "box": [
+     192,
+     1040,
+     280,
+     1080
+    ]
+   }
+  ],
+  "colour": [
+   244,
+   244,
+   248
+  ],
+  "inner": [
+   50,
+   18,
+   1370,
+   930
+  ],
+  "changedShare": 1.0,
+  "ownShare": 0.958,
+  "kept": "/home/patrick/work/put.gd-afa/runs/m74/crops/history.png"
+ },
+ "full": "/home/patrick/work/put.gd-afa/runs/m74/full/history.png"
+}
