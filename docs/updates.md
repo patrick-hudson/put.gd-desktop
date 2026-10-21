@@ -83,6 +83,10 @@ restart. [#311](https://github.com/patrick-hudson/put.gd-desktop/pull/311) fixed
 - **Download** and **Release notes:** shown when there is a newer version.
   **Download** opens this installation's package (the same DEB, RPM or AppImage you
   installed) in your browser.
+- **Download and install** (AppImage only): shown first when a newer version is on this
+  build's channel. put.gd fetches it, checks it and puts it in place of the AppImage it
+  runs from ([how](#download-and-install-from-putgd)). A progress bar and a line below
+  show each step and any error; then **Restart put.gd** starts the new version.
 - **Open software updates:** replaces **Download** on a DEB or RPM install whose
   repository file from [pkg.put.gd](package-repositories.md) is present and enabled. It
   opens Update Manager on Cinnamon, Discover on Plasma or GNOME Software on GNOME (else
@@ -106,8 +110,51 @@ Both keys are optional. Without the object, put.gd checks daily on this build's 
 
 ## Updating the AppImage
 
-Tagged AppImages (stable, candidate and nightly) can update themselves through the
-usual AppImage tools; untagged builds can't ([how it works](release.md#appimage-updates)):
+### Download and install from put.gd
+
+A tagged AppImage (stable, candidate or nightly) updates itself from **Settings → Updates →
+Download and install**, or `update.install` with `confirm: true` from the CLI or MCP. Nothing
+installs on its own: not on the daily check, not from a notification.
+
+1. **What it installs:** the newest release on this build's channel, as the update feed names it.
+   put.gd reads that release's `SHA256SUMS` from GitHub, and its signature,
+   `SHA256SUMS.minisig`, from `pkg.put.gd`. The signature must be by the channel's release key
+   (built into put.gd from `packaging/linux/repo/keys/`) and name that release. An unsigned,
+   foreign-signed or changed `SHA256SUMS` stops the install.
+2. **zsync first:** with `appimageupdatetool` (or `zsync2`) on your `PATH`, put.gd runs it, which
+   downloads only the parts that changed. It runs with your system's own environment and
+   `SSL_CERT_FILE` set to your system's CA bundle (so it also works on Fedora,
+   [#297](https://github.com/patrick-hudson/put.gd-desktop/issues/297)), on a link to the running
+   image inside a hidden folder `.putgd-update-XXXXXX` beside it, against the release's `.zsync`
+   on `pkg.put.gd`.
+3. **Otherwise the whole file:** without such a tool, or when it fails, stalls or produces
+   something else, put.gd downloads the whole AppImage from the GitHub release (then from
+   `pkg.put.gd`) with its own TLS. Settings and `update.status` say which path was taken and why.
+4. **Checked before anything changes:** the new file must match the release's `SHA256SUMS`
+   line, be an AppImage, and carry the same update information (the same channel). A download
+   that doesn't match is refused and nothing is changed.
+5. **Same path:** the new version is renamed onto the file put.gd runs from, keeping its mode.
+   Start at login, menu entries and Gear Lever's records keep working; the file keeps its old
+   name. The old version stays beside it as a hidden `.putgd-update-backup-VERSION.AppImage`
+   until the new one has started once; then put.gd removes it, if it is still the file put.gd
+   made. Nothing else in the folder is touched.
+6. **Restart:** **Restart put.gd** (or `update.restart` with `confirm: true`) quits put.gd and
+   starts the new version.
+
+It refuses, with the reason in Settings, while a recording or an upload runs, when the AppImage's
+folder isn't writable or has no room for another copy, when the file isn't yours, when you watch
+the other channel (switch **Channel** back to this build's), or when an installed update still
+waits for its restart. DEB and RPM installs update through their repository instead; Flatpak
+updates itself.
+
+**Going back:** if the new version doesn't start, quit put.gd and move the backup over the
+AppImage, for example
+`mv ~/Applications/.putgd-update-backup-0.1.1-nightly.N.AppImage ~/Applications/putgd-….AppImage`.
+
+### Other AppImage updaters
+
+Tagged AppImages also update through the usual AppImage tools; untagged builds can't
+([how it works](release.md#appimage-updates)):
 
 - **Gear Lever** (Flatpak): **Update** downloads the new image and replaces the file in
   place.
@@ -125,13 +172,18 @@ usual AppImage tools; untagged builds can't ([how it works](release.md#appimage-
 **Start at login follows the update.** From an AppImage, launch at login starts the newest put.gd
 AppImage in the same folder as the one you last ran, if it is your own file and carries the same
 update information (the same channel). So the next login starts the new version after any of the
-three updaters, even if the old file was removed, and put.gd then remembers the new file.
+updaters, even if the old file was removed, and put.gd then remembers the new file. The version of
+the file you last ran is read from the file itself, not its name, since put.gd's own update keeps
+the name.
 
 ### Fedora
 
 put.gd's own **Check now** works in the AppImage on Fedora 44 since #329: AppRun points
-the image's TLS clients at Fedora's CA bundle ([details](diagnostics.md)). Updating the
-file itself is a separate tool. appimageupdatetool looks for the certificate bundle at Ubuntu's path,
+the image's TLS clients at Fedora's CA bundle ([details](diagnostics.md)).
+**Download and install** works too: put.gd hands appimageupdatetool that bundle, and the
+`.zsync` names the image on `pkg.put.gd`, which doesn't redirect
+([above](#download-and-install-from-putgd)). The rest of this section is about running
+appimageupdatetool yourself. It looks for the certificate bundle at Ubuntu's path,
 `/etc/ssl/certs/ca-certificates.crt`, which Fedora doesn't have
 ([#297](https://github.com/patrick-hudson/put.gd-desktop/issues/297), upstream
 [zsync2#91](https://github.com/AppImageCommunity/zsync2/issues/91)). Without it, it prints
@@ -139,7 +191,14 @@ file itself is a separate tool. appimageupdatetool looks for the certificate bun
 times and crashes. Setting `SSL_CERT_FILE=/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem`
 stops the crash and the update check works, but the update itself still fails with
 `zsync_legacy: Other error? -1`: the step that follows GitHub's download redirect doesn't read
-`SSL_CERT_FILE`. Either use **Gear Lever**, which isn't affected (it runs in its own Flatpak
+`SSL_CERT_FILE`. Releases whose `.zsync` names the image on `pkg.put.gd` (from #293 phase 3 on)
+need no redirect, so `SSL_CERT_FILE` alone is then enough:
+
+```sh
+SSL_CERT_FILE=/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem appimageupdatetool ~/Applications/putgd-….AppImage
+```
+
+For older releases, either use **Gear Lever**, which isn't affected (it runs in its own Flatpak
 runtime), or show appimageupdatetool Fedora's bundle at the expected path, without root:
 
 ```sh
@@ -164,11 +223,16 @@ because FUSE mounts don't work inside `bwrap`. AppImageLauncher's updater uses t
 | `putgd-cli --check-update nightly` | The resident's child mode: one feed request and one JSON line, whose `action` says how this install updates (it reads the repository file). No resident needed |
 | `putgd-cli --open-software-updates` | The child mode behind `update.openSoftwareUpdates`: reads the repository file again and starts the updater. No resident needed |
 | `putgd-cli update.openSoftwareUpdates` | Opens the system's software updater, as **Open software updates** does. `software_updates_unavailable` when this install doesn't update from put.gd's repository (the details name why) or no updater is installed (the details carry the command) |
-| MCP `get_update_status`, `check_for_updates`, `open_software_updates` | `update.status`, `update.check` and `update.openSoftwareUpdates` |
+| `putgd-cli update.install '{"confirm":true}'` | AppImage only: starts **Download and install** and returns `update.status` at once. `method` (`auto`, `zsync` or `download`) forces one path. Follow `install` in `update.status`: `state` (`idle`, `running`, `installed`, `failed`), `phase` (`checking`, `verifying`, `zsync`, `download`, `installing`, `done`), `method`, `bytes`, `total`, `error`, `result` (with `zsync.fallbackReason`, `backup` and the signature's trusted comment), `available`/`reason`, `restartRequired`, `installed` and `backup`. Refusals: `update_confirm_required`, `update_install_unavailable` (`not_appimage`, `not_running_from_appimage`, `other_channel`), `update_install_busy`, `update_restart_required`; the install's own errors (`update_not_available`, `update_image_not_writable`, `update_disk_full`, `update_sums_unavailable`, `update_signature_invalid`, `update_download_failed`, `update_verification_failed`, `update_zsync_failed`, `update_install_failed`) arrive in `install.error` |
+| `putgd-cli update.restart '{"confirm":true}'` | Once an installed update waits for its restart: starts the AppImage again from the host after this resident exits, and quits it. `update_restart_unavailable` otherwise |
+| `putgd-cli --install-update nightly [--method M] [--state DIR]` | The child mode behind `update.install`: progress lines, then one result line. No resident needed; it reads `$APPIMAGE` |
+| MCP `get_update_status`, `check_for_updates`, `open_software_updates`, `install_update`, `restart_after_update` | `update.status`, `update.check`, `update.openSoftwareUpdates`, `update.install` and `update.restart` |
 | `settings.patch` / MCP `patch_configuration` | `{"preferences": {"updates": {"check": false}}}` and so on |
 
-`PUTGD_UPDATE_FEED_URL` replaces `https://app.put.gd/update/v1/` for tests and the lab.
-It must be `https`, or `http` on a loopback address.
+`PUTGD_UPDATE_FEED_URL` replaces `https://app.put.gd/update/v1/` for tests and the lab;
+`PUTGD_UPDATE_RELEASE_URL` replaces `https://github.com/patrick-hudson/put.gd-desktop/releases/download/`
+and `PUTGD_UPDATE_MIRROR_URL` replaces `https://pkg.put.gd/releases/` for the install. Each must
+be `https`, or `http` on a loopback address.
 
 ## Feed contract v1
 
@@ -233,7 +297,8 @@ build reports `development_build` or `no_package` and never checks.
   RPM add when installed; see [package-repositories.md](package-repositories.md).
   AppStream catalog data in the repositories, so software centres can find put.gd before
   it's installed, is [#314](https://github.com/patrick-hudson/put.gd-desktop/issues/314).
-- **Phase 3:** the AppImage's own **Install update**. It replaces the file in place after
-  checking a minisign signature.
+- **Phase 3 (done):** the AppImage's own **Download and install**
+  ([above](#download-and-install-from-putgd)), with the signer's AppImage mirror on
+  `pkg.put.gd`.
 - **Phase 4:** Flatpak, from its own signed repository, in [#83](https://github.com/patrick-hudson/put.gd-desktop/issues/83).
 - **Windows:** waits for a published Windows build.
