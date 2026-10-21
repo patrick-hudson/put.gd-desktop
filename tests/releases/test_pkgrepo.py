@@ -515,6 +515,34 @@ class RealTools(unittest.TestCase):
             self.assertFalse(pkgrepo.verify_gpg(keys / 'putgd-nightly.gpg', inrelease))
             self.assertEqual({entry['kind'] for entry in receipt['signatures']}, {'openpgp', 'minisign', 'rpm'})
 
+    def test_appimage_only_lab_release_gets_signed_repositories_and_the_mirror(self):
+        """#293 phase 3 lab acceptance publishes AppImages only; the lab repositories stay valid."""
+        with tempfile.TemporaryDirectory(prefix='pgtools-') as directory:
+            root = Path(directory)
+            settings, env, assets, fingerprints = tool_fixture(root, VERSION, PACKAGE_VERSION)
+            lab = root / 'lab-appimage'
+            lab.mkdir()
+            files = dict(zip((IMAGE, IMAGE + '.zsync'), appimage_files(f'https://pkg.put.gd/lab/releases/{TAG}/{IMAGE}')))
+            for name, data in files.items():
+                (lab / name).write_bytes(data)
+            (lab / 'SHA256SUMS').write_text(''.join(f'{hashlib.sha256(d).hexdigest()}  {n}\n' for n, d in files.items()))
+            signer = pkgrepo.Signer(settings, github=object(), clients=(None, None))
+            inputs = pkgrepo.local_inputs(TAG, lab)
+            receipt = pkgrepo.new_receipt(inputs, 'lab')
+            signer.record_inputs(receipt, inputs)
+            workspace = signer.build_next('lab', 'nightly', inputs, receipt)
+            signer.sign_nightly(workspace, inputs, receipt)
+            tree = workspace.tree
+            self.assertEqual((tree / f'releases/{TAG}/{IMAGE}').read_bytes(), files[IMAGE])
+            self.assertEqual((tree / 'dl/nightly/appimage.zsync').read_bytes(), files[IMAGE + '.zsync'])
+            self.assertTrue(pkgrepo.verify_gpg(settings.keys / 'putgd-nightly.gpg', tree / 'apt/debian13/dists/nightly/InRelease'))
+            sums = tree / f'releases/{TAG}/SHA256SUMS'
+            self.assertTrue(pkgrepo.verify_minisign(settings.keys / 'putgd-nightly.minisign.pub', sums, sums.with_name('SHA256SUMS.minisig')))
+            feed = json.loads((tree / 'update/v1/nightly.json').read_text())
+            update_feed.check_feed(feed)
+            self.assertEqual(sorted(feed['release']['assets']), ['appimage'])
+            self.assertEqual([entry['label'] for entry in receipt['inputs']], ['appimage', 'appimage-zsync'])
+
 
 if __name__ == '__main__':
     unittest.main()
