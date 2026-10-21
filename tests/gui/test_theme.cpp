@@ -5,6 +5,9 @@
 #include "ui/ViewState.h"
 #include "ui/VisualStyle.h"
 #include <QApplication>
+#include <QCheckBox>
+#include <QRadioButton>
+#include <QStyleOptionButton>
 #include <QComboBox>
 #include <QFile>
 #include <QTemporaryDir>
@@ -85,6 +88,69 @@ private slots:
             // The painted indicator images exist for this scheme.
             for (const auto* name : {"check", "check@2x", "radio", "radio-checked", "chevron", "spin-up", "spin-down", "spin-up-off", "spin-down-off", "spin-up@2x"})
                 QVERIFY2(QFile::exists(RedesignTheme::indicators(scheme) + "/" + name + ".png"), name);
+        }
+    }
+    // #300: a checked, disabled check box or radio button still looks checked:
+    // a muted tick or dot on the accent-tinted fill, not an empty box.
+    void checkedDisabledIndicatorsStayChecked() {
+        QWidget window;
+        auto* layout = new QVBoxLayout(&window);
+        QList<QAbstractButton*> buttons;
+        for (const bool radio : {false, true})
+            for (const bool checked : {false, true})
+                for (const bool enabled : {true, false}) {
+                    QAbstractButton* button = radio ? static_cast<QAbstractButton*>(new QRadioButton("Synthetic", &window)) : new QCheckBox("Synthetic", &window);
+                    if (radio) button->setAutoExclusive(false);
+                    button->setChecked(checked);
+                    button->setEnabled(enabled);
+                    layout->addWidget(button);
+                    buttons.append(button);
+                }
+        RedesignTheme::apply(window);
+        window.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&window));
+        for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
+            Theme::setScheme(scheme);
+            const auto& p = Theme::palette(scheme);
+            QList<QImage> shots;
+            for (auto* button : buttons) {
+                QStyleOptionButton option;
+                option.initFrom(button);
+                const auto element = qobject_cast<QRadioButton*>(button) ? QStyle::SE_RadioButtonIndicator : QStyle::SE_CheckBoxIndicator;
+                const auto box = button->style()->subElementRect(element, &option, button);
+                QVERIFY2(box.width() >= 15 && box.height() >= 15, "no indicator");
+                shots.append(button->grab(box).toImage().convertToFormat(QImage::Format_RGB32));
+            }
+            const auto near = [](const QColor& c, const QColor& t, int d) { return std::abs(c.red() - t.red()) + std::abs(c.green() - t.green()) + std::abs(c.blue() - t.blue()) < d; };
+            const auto count = [&](const QImage& image, const QColor& colour, int d) {
+                int n = 0;
+                for (int y = 0; y < image.height(); ++y)
+                    for (int x = 0; x < image.width(); ++x) n += near(image.pixelColor(x, y), colour, d);
+                return n;
+            };
+            const auto differing = [](const QImage& a, const QImage& b) {
+                int n = 0;
+                for (int y = 0; y < std::min(a.height(), b.height()); ++y)
+                    for (int x = 0; x < std::min(a.width(), b.width()); ++x) n += a.pixel(x, y) != b.pixel(x, y);
+                return n;
+            };
+            const auto what = [&](const char* text) { return qPrintable(Theme::name(scheme) + ": " + text); };
+            // Order: [radio][checked][enabled]; disabled is the odd index.
+            const auto& boxOff = shots[1], &boxOnEnabled = shots[2], &boxOn = shots[3];
+            const auto& radioOff = shots[5], &radioOn = shots[7];
+            // A checked, disabled indicator differs from an unchecked, disabled one,
+            // and from a checked, enabled one.
+            QVERIFY2(differing(boxOn, boxOff) > 40, what("checked and unchecked disabled check boxes look alike"));
+            QVERIFY2(differing(boxOn, boxOnEnabled) > 40, what("a disabled check box looks enabled"));
+            QVERIFY2(differing(radioOn, radioOff) > 20, what("checked and unchecked disabled radio buttons look alike"));
+            // The box keeps its accent-tinted fill and a visible tick; unchecked has neither.
+            const int inside = (boxOn.width() - 4) * (boxOn.height() - 4);
+            QVERIFY2(count(boxOn, p.selected, 8) * 3 > inside, what("checked, disabled box is not on the muted accent fill"));
+            QVERIFY2(count(boxOn, p.textMuted, 60) >= 6, what("checked, disabled box has no tick"));
+            QCOMPARE(count(boxOff, p.textMuted, 60), 0);
+            QCOMPARE(count(boxOff, p.selected, 8), 0);
+            QVERIFY2(count(radioOn, p.textMuted, 60) >= 6, what("checked, disabled radio button has no dot"));
+            QCOMPARE(count(radioOff, p.textMuted, 60), 0);
         }
     }
     // #233: spin box steps are token chevrons on the themed field, in both

@@ -807,6 +807,10 @@ Error SettingsWindow::moveDestination(int from,int to){
 void SettingsWindow::refreshUpdateStatus(){
  const auto update=settings_.diagnostics()["update"].toObject();const auto build=update["build"].toObject();const auto result=update["result"].toObject();
  const bool supported=update["supported"].toBool();
+ // #305: the first choice names the channel this build resolves to; a build
+ // that never checks (development, Flatpak) keeps the plain label.
+ const auto buildChannel=supported?build["channel"].toString():QString();
+ updateChannel_->setItemText(0,buildChannel.isEmpty()?QString("This build's channel"):"This build's channel ("+buildChannel+")");
  // A build that never checks has nothing to choose: only the reason shows.
  for(auto* row:updateRows_)updatesForm_->setRowVisible(row,supported||update.isEmpty());
  checkNow_->setVisible(supported||update.isEmpty());checkNow_->setEnabled(supported&&!update["checking"].toBool());

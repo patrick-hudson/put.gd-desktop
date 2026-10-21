@@ -53,11 +53,14 @@ void paintIndicators(const QString& folder, const Theme::Palette& p)
         painter.setBrush(Qt::NoBrush);
         painter.drawPath(path);
     };
-    save("check", {17, 17}, [&](QPainter& painter) {
-        QPainterPath tick;
-        tick.moveTo(4, 8.5); tick.lineTo(7, 11.5); tick.lineTo(13, 5.5);
-        stroke(painter, p.onAccent, 1.8, tick);
-    });
+    // Checked but disabled (#300): a muted tick on the accent-tinted fill.
+    for (const bool off : {false, true}) {
+        save(off ? "check-off" : "check", {17, 17}, [&](QPainter& painter) {
+            QPainterPath tick;
+            tick.moveTo(4, 8.5); tick.lineTo(7, 11.5); tick.lineTo(13, 5.5);
+            stroke(painter, off ? p.textMuted : p.onAccent, 1.8, tick);
+        });
+    }
     save("chevron", {12, 12}, [&](QPainter& painter) {
         QPainterPath chevron;
         chevron.moveTo(2, 4); chevron.lineTo(6, 8); chevron.lineTo(10, 4);
@@ -75,15 +78,17 @@ void paintIndicators(const QString& folder, const Theme::Palette& p)
         }
     }
     for (const bool checked : {false, true}) {
-        save(checked ? "radio-checked" : "radio", {18, 18}, [&](QPainter& painter) {
-            painter.setPen(QPen(p.borderStrong, 1));
-            painter.setBrush(p.surfaceRaised);
-            painter.drawEllipse(QPointF(9, 9), 8, 8);
-            if (!checked) return;
-            painter.setPen(Qt::NoPen);
-            painter.setBrush(p.accent);
-            painter.drawEllipse(QPointF(9, 9), 4, 4);
-        });
+        for (const bool off : {false, true}) {
+            save(QString("radio%1%2").arg(checked ? "-checked" : "", off ? "-off" : ""), {18, 18}, [&](QPainter& painter) {
+                painter.setPen(QPen(off ? p.border : p.borderStrong, 1));
+                painter.setBrush(off ? p.surface : p.surfaceRaised);
+                painter.drawEllipse(QPointF(9, 9), 8, 8);
+                if (!checked) return;
+                painter.setPen(Qt::NoPen);
+                painter.setBrush(off ? p.textMuted : p.accent);
+                painter.drawEllipse(QPointF(9, 9), 4, 4);
+            });
+        }
     }
 }
 // Fit the name column when the viewport changes, never while dragging a section.

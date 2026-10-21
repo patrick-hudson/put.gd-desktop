@@ -127,6 +127,9 @@ QRadioButton::indicator:checked { image: url(%INDICATORS%/radio-checked.png); }
 QCheckBox::indicator:focus { border: 2px solid %accent%; }
 QRadioButton:focus { color: %link%; border: 1px solid %accent%; border-radius: 7px; padding: 2px 0; }
 QCheckBox::indicator:disabled, QRadioButton::indicator:disabled { border-color: %border%; background: %surface%; }
+QCheckBox::indicator:checked:disabled { image: url(%INDICATORS%/check-off.png); background: %selected%; border-color: %borderStrong%; }
+QRadioButton::indicator:disabled { background: transparent; image: url(%INDICATORS%/radio-off.png); }
+QRadioButton::indicator:checked:disabled { image: url(%INDICATORS%/radio-checked-off.png); }
 QTabWidget::pane { background: transparent; border: none; border-top: 1px solid %border%; top: -1px; }
 QTabBar { background: transparent; }
 QTabBar::tab { background: transparent; color: %textSecondary%; border: none; border-bottom: 2px solid transparent; padding: 12px 15px; margin-right: 8px; }
