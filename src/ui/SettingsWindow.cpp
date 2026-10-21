@@ -1,11 +1,8 @@
 #include "SettingsWindow.h"
-#include "core/SystemUpdates.h"
 #include "storage/proton/ProtonProvider.h"
 #include "storage/s3/PublicUrl.h"
 #include "storage/b2/B2Common.h"
 #include <QDesktopServices>
-#include <QGuiApplication>
-#include <QStandardPaths>
 #include <QUrl>
 #include "ViewState.h"
 #include <QTimer>
@@ -468,11 +465,6 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  auto* copyCommand=new QPushButton("Copy");copyCommand->setObjectName("copyUpdateCommand");copyCommand->setAccessibleName("Copy the update command");commandLayout->addWidget(copyCommand);
  updateCommandRow_=commandRow;updatesForm->addRow(VisualStyle::settingLabel("Or in a terminal",settingHelp({},"updateCommand"),updateCommand_,this),commandRow);updatesForm->setRowVisible(commandRow,false);
  connect(openUpdates_,&QPushButton::clicked,this,[this]{
-  // On Wayland a compositor raises the software centre only for a launch that
-  // carries this window's activation token, which Qt adds to openUrl; the
-  // resident's launch has none, and GNOME then opens it behind this window.
-  if(QGuiApplication::platformName().startsWith("wayland")&&update::hasAppstreamHandler(QStandardPaths::standardLocations(QStandardPaths::GenericDataLocation))
-     &&QDesktopServices::openUrl(QUrl(QString("appstream://")+update::appstreamId)))return;
   openUpdates_->setEnabled(false);
   settings_.request("update.openSoftwareUpdates",{},this,[g=QPointer<SettingsWindow>(this)](Error error,QJsonObject){if(!g)return;g->openUpdates_->setEnabled(true);if(error)VisualStyle::feedback(g->updateStatus_,error.message+".");});
  });

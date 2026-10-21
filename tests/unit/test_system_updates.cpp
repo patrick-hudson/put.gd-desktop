@@ -53,15 +53,6 @@ private slots:
   QFile::remove(root.filePath("etc/yum.repos.d/putgd.repo"));write("/etc/apt/sources.list.d/putgd.sources",sources());
   QCOMPARE(action("fedora44")["repository"].toString(),QString("absent"));
  }
- void appstreamLinksNeedAHandler(){
-  // Settings opens appstream://gd.put.Putgd on Wayland only when a software centre takes such links.
-  QVERIFY(!update::hasAppstreamHandler({root.filePath("share")}));
-  write("/share/applications/org.example.Viewer.desktop","[Desktop Entry]\nMimeType=image/png;x-scheme-handler/appstreamx;\n");
-  QVERIFY(!update::hasAppstreamHandler({root.filePath("share")}));
-  write("/share/applications/org.gnome.Software.desktop","[Desktop Entry]\nName=Software\nMimeType=x-scheme-handler/appstream;x-content/unix-software;\n");
-  QVERIFY(update::hasAppstreamHandler({root.filePath("missing"),root.filePath("share")}));
-  QCOMPARE(QString(update::appstreamId),QString("gd.put.Putgd"));
- }
  void theDesktopsOwnUpdaterComesFirst(){
   const auto all=[](const QString& program){return "/usr/bin/"+program;};
   QCOMPARE(update::softwareUpdater("X-Cinnamon",all).updater.id,QString("mintupdate"));
