@@ -1,0 +1,386 @@
+{
+  "schemaVersion": 1,
+  "label": "nightly-816",
+  "desktop": "cinnamon",
+  "session": {
+    "XDG_CURRENT_DESKTOP": "X-Cinnamon",
+    "XDG_SESSION_TYPE": "x11"
+  },
+  "fallbackForced": false,
+  "host": "mint-builder",
+  "kernel": "6.14.0-37-generic",
+  "app": "/home/patrick/work/put.gd-i259-lab/putgd-0.1.1-nightly.816-x86_64.AppImage",
+  "binaries": {
+    "appimage": "342fcabaaa31f20a2d98a474d73f4b7eeeabf9cbd440fac646d730db25f7c1d5"
+  },
+  "version": "0.1.1-nightly.816",
+  "windows": [
+    {
+      "window": "resident-idle-before",
+      "seconds": 120,
+      "loadavg": [
+        0.10791015625,
+        0.248046875,
+        0.1767578125
+      ],
+      "resident": {
+        "pid": 3246,
+        "medianRssMiB": 28.836,
+        "peakRssMiB": 28.836,
+        "smapsRollup": {
+          "Rss": 30236672,
+          "Pss": 24157184,
+          "Private_Clean": 20545536,
+          "Private_Dirty": 3448832,
+          "Anonymous": 3448832
+        },
+        "PssMiB": 23.038,
+        "libraries": {
+          "tls": [],
+          "gtk": [],
+          "kde": [],
+          "platformTheme": []
+        }
+      }
+    },
+    {
+      "window": "review-open",
+      "seconds": 60,
+      "loadavg": [
+        0.1396484375,
+        0.22412109375,
+        0.1748046875
+      ],
+      "resident": {
+        "pid": 3246,
+        "medianRssMiB": 29.176,
+        "peakRssMiB": 29.176,
+        "smapsRollup": {
+          "Rss": 30593024,
+          "Pss": 16939008,
+          "Private_Clean": 5619712,
+          "Private_Dirty": 3600384,
+          "Anonymous": 3600384
+        },
+        "PssMiB": 16.154,
+        "libraries": {
+          "tls": [],
+          "gtk": [],
+          "kde": [],
+          "platformTheme": []
+        }
+      },
+      "record": {
+        "pid": 3762,
+        "medianRssMiB": 100.297,
+        "peakRssMiB": 100.406,
+        "smapsRollup": {
+          "Rss": 105168896,
+          "Pss": 86739968,
+          "Private_Clean": 31232000,
+          "Private_Dirty": 46243840,
+          "Anonymous": 46243840
+        },
+        "PssMiB": 82.722,
+        "libraries": {
+          "tls": [],
+          "gtk": [],
+          "kde": [
+            "iHD_drv_video.so"
+          ],
+          "platformTheme": []
+        }
+      }
+    },
+    {
+      "window": "save-copy-dialog-open",
+      "seconds": 30,
+      "loadavg": [
+        0.2666015625,
+        0.24658203125,
+        0.1845703125
+      ],
+      "resident": {
+        "pid": 3246,
+        "medianRssMiB": 29.184,
+        "peakRssMiB": 29.184,
+        "smapsRollup": {
+          "Rss": 30601216,
+          "Pss": 16947200,
+          "Private_Clean": 5619712,
+          "Private_Dirty": 3608576,
+          "Anonymous": 3608576
+        },
+        "PssMiB": 16.162,
+        "libraries": {
+          "tls": [],
+          "gtk": [],
+          "kde": [],
+          "platformTheme": []
+        }
+      },
+      "record": {
+        "pid": 3762,
+        "medianRssMiB": 100.297,
+        "peakRssMiB": 100.297,
+        "smapsRollup": {
+          "Rss": 105168896,
+          "Pss": 86739968,
+          "Private_Clean": 31232000,
+          "Private_Dirty": 46243840,
+          "Anonymous": 46243840
+        },
+        "PssMiB": 82.722,
+        "libraries": {
+          "tls": [],
+          "gtk": [],
+          "kde": [
+            "iHD_drv_video.so"
+          ],
+          "platformTheme": []
+        }
+      }
+    },
+    {
+      "window": "after-dialog-closed",
+      "seconds": 30,
+      "loadavg": [
+        0.32177734375,
+        0.265625,
+        0.19189453125
+      ],
+      "resident": {
+        "pid": 3246,
+        "medianRssMiB": 29.184,
+        "peakRssMiB": 29.184,
+        "smapsRollup": {
+          "Rss": 30601216,
+          "Pss": 16947200,
+          "Private_Clean": 5619712,
+          "Private_Dirty": 3608576,
+          "Anonymous": 3608576
+        },
+        "PssMiB": 16.162,
+        "libraries": {
+          "tls": [],
+          "gtk": [],
+          "kde": [],
+          "platformTheme": []
+        }
+      },
+      "record": {
+        "pid": 3762,
+        "medianRssMiB": 100.297,
+        "peakRssMiB": 100.297,
+        "smapsRollup": {
+          "Rss": 105168896,
+          "Pss": 86739968,
+          "Private_Clean": 31232000,
+          "Private_Dirty": 46243840,
+          "Anonymous": 46243840
+        },
+        "PssMiB": 82.722,
+        "libraries": {
+          "tls": [],
+          "gtk": [],
+          "kde": [
+            "iHD_drv_video.so"
+          ],
+          "platformTheme": []
+        }
+      }
+    },
+    {
+      "window": "resident-idle-after",
+      "seconds": 120,
+      "loadavg": [
+        0.130859375,
+        0.2080078125,
+        0.1767578125
+      ],
+      "resident": {
+        "pid": 3246,
+        "medianRssMiB": 29.039,
+        "peakRssMiB": 29.039,
+        "smapsRollup": {
+          "Rss": 30449664,
+          "Pss": 24371200,
+          "Private_Clean": 20754432,
+          "Private_Dirty": 3452928,
+          "Anonymous": 3452928
+        },
+        "PssMiB": 23.242,
+        "libraries": {
+          "tls": [],
+          "gtk": [],
+          "kde": [],
+          "platformTheme": []
+        }
+      }
+    }
+  ],
+  "events": [
+    {
+      "cover": {
+        "monitorIndex": 0,
+        "ok": true,
+        "output": [
+          "HDMI-1"
+        ],
+        "rect": [
+          0,
+          0,
+          1920,
+          1080
+        ],
+        "state": "covered"
+      },
+      "precheck": "{\"check\": \"precheck\", \"fraction\": 1.0, \"framebuffer\": [1920, 1080], \"minFraction\": 0.98, \"ok\": true, \"output\": [\"HDMI-1\"], \"rect\": [0, 0, 1920, 1080]}",
+      "precheckExit": 0,
+      "t": 2.65
+    },
+    {
+      "window": "resident-idle-before",
+      "resident": {
+        "medianRssMiB": 28.836,
+        "PssMiB": 23.038
+      },
+      "t": 128.09
+    },
+    {
+      "prepare": {
+        "ok": true,
+        "error": "",
+        "acquisition": null
+      },
+      "t": 128.38
+    },
+    {
+      "prepared": "ready",
+      "t": 128.9
+    },
+    {
+      "reviewing": "reviewing",
+      "helper": 3762,
+      "t": 132.05
+    },
+    {
+      "window": "review-open",
+      "resident": {
+        "medianRssMiB": 29.176,
+        "PssMiB": 16.154
+      },
+      "record": {
+        "medianRssMiB": 100.297,
+        "PssMiB": 82.722
+      },
+      "t": 195.13
+    },
+    {
+      "frame": "review",
+      "kept": false,
+      "size": [
+        1920,
+        1080
+      ],
+      "crop": [
+        0,
+        30,
+        1920,
+        1050
+      ],
+      "outsideCoverFraction": 1.0,
+      "edgeCoverFraction": 0.6633,
+      "t": 195.4
+    },
+    {
+      "saveCopyDialog": {
+        "code": "invalid_request",
+        "details": {},
+        "message": "Invalid request fields or parameter types"
+      },
+      "t": 195.41
+    },
+    {
+      "window": "save-copy-dialog-open",
+      "resident": {
+        "medianRssMiB": 29.184,
+        "PssMiB": 16.162
+      },
+      "record": {
+        "medianRssMiB": 100.297,
+        "PssMiB": 82.722
+      },
+      "t": 231.46
+    },
+    {
+      "frame": "chooser",
+      "kept": false,
+      "size": [
+        1920,
+        1080
+      ],
+      "crop": [
+        0,
+        30,
+        1920,
+        1050
+      ],
+      "outsideCoverFraction": 1.0,
+      "edgeCoverFraction": 0.6633,
+      "t": 231.72
+    },
+    {
+      "window": "after-dialog-closed",
+      "resident": {
+        "medianRssMiB": 29.184,
+        "PssMiB": 16.162
+      },
+      "record": {
+        "medianRssMiB": 100.297,
+        "PssMiB": 82.722
+      },
+      "t": 265.77
+    },
+    {
+      "window": "resident-idle-after",
+      "resident": {
+        "medianRssMiB": 29.039,
+        "PssMiB": 23.242
+      },
+      "t": 393.89
+    }
+  ],
+  "loadBefore": [
+    0.24462890625,
+    0.33447265625,
+    0.1953125
+  ],
+  "operationId": "245620cd-8560-4512-8bbf-3ae422f039f1",
+  "reviewBefore": {
+    "visible": true,
+    "size": [
+      960,
+      600
+    ],
+    "scheme": "dark",
+    "fileDialog": null
+  },
+  "saveCopyDialog": {
+    "code": "invalid_request",
+    "details": {},
+    "message": "Invalid request fields or parameter types"
+  },
+  "dialogState": null,
+  "closed": {
+    "code": "invalid_request",
+    "details": {},
+    "message": "Invalid request fields or parameter types"
+  },
+  "childrenAfterCancel": null,
+  "loadAfter": [
+    0.130859375,
+    0.2080078125,
+    0.1767578125
+  ]
+}

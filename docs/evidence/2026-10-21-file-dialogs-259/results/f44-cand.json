@@ -1,0 +1,470 @@
+{
+  "schemaVersion": 1,
+  "label": "pr321-a5ec7d6",
+  "desktop": "gnome-shell",
+  "session": {
+    "XDG_CURRENT_DESKTOP": "GNOME",
+    "XDG_SESSION_TYPE": "wayland"
+  },
+  "fallbackForced": false,
+  "host": "fedora",
+  "kernel": "6.19.10-300.fc44.x86_64",
+  "app": "/home/patrick/work/put.gd-i259/build/dev",
+  "binaries": {
+    "putgd": "2f8eaf9c56cdfe0397c746a1079e64412c805217bfd8eba21dc89c1ff7d9d2e0",
+    "putgd-ui": "a6e0aba8698b2c68c5c0620d602a15fd683a7e0129f663aa7cddbe4c3ff75202",
+    "putgd-record": "d66e7e6a36d97e5c3d98c32cc489af1852720bcbb4f443623f3f5c273202f0d1",
+    "putgd-cli": "7a45022379f72db7caf6f4e57a46b5f843deb0d26135d60a235b85a8a8daa834"
+  },
+  "version": "0.1.1-dev.unknown",
+  "windows": [
+    {
+      "window": "resident-idle-before",
+      "seconds": 20,
+      "loadavg": [
+        0.22216796875,
+        0.54736328125,
+        0.47509765625
+      ],
+      "resident": {
+        "pid": 1896157,
+        "medianRssMiB": 36.129,
+        "peakRssMiB": 36.129,
+        "smapsRollup": {
+          "Rss": 37883904,
+          "Pss": 23150592,
+          "Private_Clean": 18370560,
+          "Private_Dirty": 3993600,
+          "Anonymous": 3993600
+        },
+        "PssMiB": 22.078,
+        "libraries": {
+          "tls": [
+            "libcrypto.so.3.5.9"
+          ],
+          "gtk": [],
+          "kde": [],
+          "platformTheme": []
+        }
+      }
+    },
+    {
+      "window": "review-open",
+      "seconds": 20,
+      "loadavg": [
+        0.1865234375,
+        0.509765625,
+        0.46337890625
+      ],
+      "resident": {
+        "pid": 1896157,
+        "medianRssMiB": 36.68,
+        "peakRssMiB": 36.68,
+        "smapsRollup": {
+          "Rss": 38461440,
+          "Pss": 17309696,
+          "Private_Clean": 5971968,
+          "Private_Dirty": 4300800,
+          "Anonymous": 4300800
+        },
+        "PssMiB": 16.508,
+        "libraries": {
+          "tls": [
+            "libcrypto.so.3.5.9"
+          ],
+          "gtk": [],
+          "kde": [],
+          "platformTheme": []
+        }
+      },
+      "record": {
+        "pid": 1896309,
+        "medianRssMiB": 124.902,
+        "peakRssMiB": 124.902,
+        "smapsRollup": {
+          "Rss": 130760704,
+          "Pss": 87884800,
+          "Private_Clean": 36855808,
+          "Private_Dirty": 36605952,
+          "Anonymous": 36605952
+        },
+        "PssMiB": 83.813,
+        "libraries": {
+          "tls": [
+            "libcrypto.so.3.5.9",
+            "libgnutls.so.30.42.0",
+            "libssl.so.3.5.9"
+          ],
+          "gtk": [
+            "libadwaita.so"
+          ],
+          "kde": [
+            "iHD_drv_video.so"
+          ],
+          "platformTheme": []
+        }
+      }
+    },
+    {
+      "window": "save-copy-dialog-open",
+      "seconds": 20,
+      "loadavg": [
+        0.2177734375,
+        0.49072265625,
+        0.45703125
+      ],
+      "resident": {
+        "pid": 1896157,
+        "medianRssMiB": 36.766,
+        "peakRssMiB": 36.766,
+        "smapsRollup": {
+          "Rss": 38551552,
+          "Pss": 17361920,
+          "Private_Clean": 5971968,
+          "Private_Dirty": 4390912,
+          "Anonymous": 4390912
+        },
+        "PssMiB": 16.558,
+        "libraries": {
+          "tls": [
+            "libcrypto.so.3.5.9"
+          ],
+          "gtk": [],
+          "kde": [],
+          "platformTheme": []
+        }
+      },
+      "record": {
+        "pid": 1896309,
+        "medianRssMiB": 124.754,
+        "peakRssMiB": 124.754,
+        "smapsRollup": {
+          "Rss": 130813952,
+          "Pss": 87848960,
+          "Private_Clean": 36880384,
+          "Private_Dirty": 36622336,
+          "Anonymous": 36605952
+        },
+        "PssMiB": 83.779,
+        "libraries": {
+          "tls": [
+            "libcrypto.so.3.5.9",
+            "libgnutls.so.30.42.0",
+            "libssl.so.3.5.9"
+          ],
+          "gtk": [
+            "libadwaita.so"
+          ],
+          "kde": [
+            "iHD_drv_video.so"
+          ],
+          "platformTheme": []
+        }
+      }
+    },
+    {
+      "window": "after-dialog-closed",
+      "seconds": 20,
+      "loadavg": [
+        0.142578125,
+        0.4501953125,
+        0.4443359375
+      ],
+      "resident": {
+        "pid": 1896157,
+        "medianRssMiB": 36.766,
+        "peakRssMiB": 36.766,
+        "smapsRollup": {
+          "Rss": 38551552,
+          "Pss": 17399808,
+          "Private_Clean": 5971968,
+          "Private_Dirty": 4390912,
+          "Anonymous": 4390912
+        },
+        "PssMiB": 16.594,
+        "libraries": {
+          "tls": [
+            "libcrypto.so.3.5.9"
+          ],
+          "gtk": [],
+          "kde": [],
+          "platformTheme": []
+        }
+      },
+      "record": {
+        "pid": 1896309,
+        "medianRssMiB": 124.742,
+        "peakRssMiB": 124.742,
+        "smapsRollup": {
+          "Rss": 130801664,
+          "Pss": 87925760,
+          "Private_Clean": 36892672,
+          "Private_Dirty": 36610048,
+          "Anonymous": 36610048
+        },
+        "PssMiB": 83.853,
+        "libraries": {
+          "tls": [
+            "libcrypto.so.3.5.9",
+            "libgnutls.so.30.42.0",
+            "libssl.so.3.5.9"
+          ],
+          "gtk": [
+            "libadwaita.so"
+          ],
+          "kde": [
+            "iHD_drv_video.so"
+          ],
+          "platformTheme": []
+        }
+      }
+    },
+    {
+      "window": "resident-idle-after",
+      "seconds": 20,
+      "loadavg": [
+        0.1669921875,
+        0.4296875,
+        0.43798828125
+      ],
+      "resident": {
+        "pid": 1896157,
+        "medianRssMiB": 36.613,
+        "peakRssMiB": 36.613,
+        "smapsRollup": {
+          "Rss": 38391808,
+          "Pss": 23537664,
+          "Private_Clean": 18554880,
+          "Private_Dirty": 4169728,
+          "Anonymous": 4169728
+        },
+        "PssMiB": 22.447,
+        "libraries": {
+          "tls": [
+            "libcrypto.so.3.5.9"
+          ],
+          "gtk": [],
+          "kde": [],
+          "platformTheme": []
+        }
+      }
+    }
+  ],
+  "events": [
+    {
+      "cover": {
+        "monitorIndex": 0,
+        "ok": true,
+        "output": [
+          "HDMI-1"
+        ],
+        "rect": [
+          0,
+          0,
+          1920,
+          1080
+        ],
+        "state": "covered"
+      },
+      "precheck": "{\"check\": \"precheck\", \"fraction\": 1.0, \"framebuffer\": [1920, 1080], \"minFraction\": 0.98, \"ok\": true, \"output\": [\"HDMI-1\"], \"rect\": [0, 0, 1920, 1080]}",
+      "precheckExit": 0,
+      "t": 2.82
+    },
+    {
+      "window": "resident-idle-before",
+      "resident": {
+        "medianRssMiB": 36.129,
+        "PssMiB": 22.078
+      },
+      "t": 28.18
+    },
+    {
+      "prepare": {
+        "ok": true,
+        "error": "",
+        "acquisition": null
+      },
+      "t": 29.75
+    },
+    {
+      "prepared": "ready",
+      "t": 30.31
+    },
+    {
+      "reviewing": "reviewing",
+      "helper": 1896309,
+      "t": 34.54
+    },
+    {
+      "window": "review-open",
+      "resident": {
+        "medianRssMiB": 36.68,
+        "PssMiB": 16.508
+      },
+      "record": {
+        "medianRssMiB": 124.902,
+        "PssMiB": 83.813
+      },
+      "t": 57.58
+    },
+    {
+      "frame": "review",
+      "kept": true,
+      "size": [
+        1920,
+        1080
+      ],
+      "crop": [
+        462,
+        218,
+        998,
+        676
+      ],
+      "panelRows": {
+        "top": 0,
+        "bottom": 0
+      },
+      "nonCover": {
+        "columns": [],
+        "rows": []
+      },
+      "outsideCoverFraction": 1.0,
+      "edgeCoverFraction": 1.0,
+      "path": "/home/patrick/work/put.gd-i259-lab/f44-cand/frames/review.png",
+      "t": 57.9
+    },
+    {
+      "saveCopyDialog": {
+        "backend": "portal",
+        "fallbackReason": null,
+        "last": null,
+        "mode": "save",
+        "open": true,
+        "parentWindow": "",
+        "title": "Save a copy"
+      },
+      "t": 57.92
+    },
+    {
+      "window": "save-copy-dialog-open",
+      "resident": {
+        "medianRssMiB": 36.766,
+        "PssMiB": 16.558
+      },
+      "record": {
+        "medianRssMiB": 124.754,
+        "PssMiB": 83.779
+      },
+      "t": 85.97
+    },
+    {
+      "frame": "chooser",
+      "kept": true,
+      "size": [
+        1920,
+        1080
+      ],
+      "crop": [
+        462,
+        218,
+        998,
+        676
+      ],
+      "panelRows": {
+        "top": 0,
+        "bottom": 0
+      },
+      "nonCover": {
+        "columns": [],
+        "rows": []
+      },
+      "outsideCoverFraction": 1.0,
+      "edgeCoverFraction": 1.0,
+      "path": "/home/patrick/work/put.gd-i259-lab/f44-cand/frames/chooser.png",
+      "t": 86.27
+    },
+    {
+      "window": "after-dialog-closed",
+      "resident": {
+        "medianRssMiB": 36.766,
+        "PssMiB": 16.594
+      },
+      "record": {
+        "medianRssMiB": 124.742,
+        "PssMiB": 83.853
+      },
+      "t": 110.32
+    },
+    {
+      "window": "resident-idle-after",
+      "resident": {
+        "medianRssMiB": 36.613,
+        "PssMiB": 22.447
+      },
+      "t": 138.37
+    }
+  ],
+  "loadBefore": [
+    0.21630859375,
+    0.568359375,
+    0.48095703125
+  ],
+  "operationId": "59a743e0-9b7b-44db-ba99-1f7132ea8a47",
+  "reviewBefore": {
+    "visible": true,
+    "size": [
+      960,
+      600
+    ],
+    "scheme": "dark",
+    "fileDialog": {
+      "backend": null,
+      "fallbackReason": null,
+      "last": null,
+      "mode": null,
+      "open": false,
+      "parentWindow": null,
+      "title": null
+    }
+  },
+  "saveCopyDialog": {
+    "backend": "portal",
+    "fallbackReason": null,
+    "last": null,
+    "mode": "save",
+    "open": true,
+    "parentWindow": "",
+    "title": "Save a copy"
+  },
+  "dialogState": {
+    "backend": "portal",
+    "fallbackReason": null,
+    "last": null,
+    "mode": "save",
+    "open": true,
+    "parentWindow": "",
+    "title": "Save a copy"
+  },
+  "closed": {
+    "backend": null,
+    "fallbackReason": null,
+    "last": {
+      "backend": "portal",
+      "error": null,
+      "fallbackReason": null,
+      "mode": "save",
+      "path": null,
+      "status": "cancelled"
+    },
+    "mode": null,
+    "open": false,
+    "parentWindow": null,
+    "title": null
+  },
+  "childrenAfterCancel": null,
+  "loadAfter": [
+    0.1669921875,
+    0.4296875,
+    0.43798828125
+  ]
+}

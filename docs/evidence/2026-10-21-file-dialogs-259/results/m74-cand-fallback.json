@@ -1,0 +1,448 @@
+{
+  "schemaVersion": 1,
+  "label": "pr321-91e1889-fallback",
+  "desktop": "cinnamon",
+  "session": {
+    "XDG_CURRENT_DESKTOP": "X-Cinnamon",
+    "XDG_SESSION_TYPE": "x11"
+  },
+  "fallbackForced": true,
+  "host": "mint-builder",
+  "kernel": "6.14.0-37-generic",
+  "app": "/home/patrick/work/put.gd-i259-lab/putgd-0.1.1-dev.824+g91e18890b397-x86_64.AppImage",
+  "binaries": {
+    "appimage": "082254749da2f1360539ea007b214fea9dc5a436e8639b100a11b1c8d8a023b6"
+  },
+  "version": "0.1.1-dev.824+g91e18890b397",
+  "windows": [
+    {
+      "window": "resident-idle-before",
+      "seconds": 30,
+      "loadavg": [
+        0.111328125,
+        0.12353515625,
+        0.13671875
+      ],
+      "resident": {
+        "pid": 4921,
+        "medianRssMiB": 28.766,
+        "peakRssMiB": 28.766,
+        "smapsRollup": {
+          "Rss": 30142464,
+          "Pss": 24015872,
+          "Private_Clean": 20447232,
+          "Private_Dirty": 3407872,
+          "Anonymous": 3407872
+        },
+        "PssMiB": 22.903,
+        "libraries": {
+          "tls": [],
+          "gtk": [],
+          "kde": [],
+          "platformTheme": []
+        }
+      }
+    },
+    {
+      "window": "review-open",
+      "seconds": 30,
+      "loadavg": [
+        0.1005859375,
+        0.12109375,
+        0.134765625
+      ],
+      "resident": {
+        "pid": 4921,
+        "medianRssMiB": 29.25,
+        "peakRssMiB": 29.289,
+        "smapsRollup": {
+          "Rss": 30711808,
+          "Pss": 17027072,
+          "Private_Clean": 5591040,
+          "Private_Dirty": 3739648,
+          "Anonymous": 3739648
+        },
+        "PssMiB": 16.238,
+        "libraries": {
+          "tls": [],
+          "gtk": [],
+          "kde": [],
+          "platformTheme": []
+        }
+      },
+      "record": {
+        "pid": 4981,
+        "medianRssMiB": 101.086,
+        "peakRssMiB": 101.109,
+        "smapsRollup": {
+          "Rss": 105906176,
+          "Pss": 87522304,
+          "Private_Clean": 31526912,
+          "Private_Dirty": 46755840,
+          "Anonymous": 46755840
+        },
+        "PssMiB": 83.468,
+        "libraries": {
+          "tls": [],
+          "gtk": [],
+          "kde": [
+            "iHD_drv_video.so"
+          ],
+          "platformTheme": []
+        }
+      }
+    },
+    {
+      "window": "save-copy-dialog-open",
+      "seconds": 30,
+      "loadavg": [
+        0.103515625,
+        0.12109375,
+        0.1337890625
+      ],
+      "resident": {
+        "pid": 4921,
+        "medianRssMiB": 29.289,
+        "peakRssMiB": 29.289,
+        "smapsRollup": {
+          "Rss": 30711808,
+          "Pss": 16689152,
+          "Private_Clean": 4915200,
+          "Private_Dirty": 3739648,
+          "Anonymous": 3739648
+        },
+        "PssMiB": 15.916,
+        "libraries": {
+          "tls": [],
+          "gtk": [],
+          "kde": [],
+          "platformTheme": []
+        }
+      },
+      "record": {
+        "pid": 4981,
+        "medianRssMiB": 106.445,
+        "peakRssMiB": 106.445,
+        "smapsRollup": {
+          "Rss": 111616000,
+          "Pss": 92121088,
+          "Private_Clean": 35205120,
+          "Private_Dirty": 46792704,
+          "Anonymous": 46792704
+        },
+        "PssMiB": 87.854,
+        "libraries": {
+          "tls": [],
+          "gtk": [],
+          "kde": [
+            "iHD_drv_video.so"
+          ],
+          "platformTheme": []
+        }
+      }
+    },
+    {
+      "window": "after-dialog-closed",
+      "seconds": 30,
+      "loadavg": [
+        0.13037109375,
+        0.123046875,
+        0.1328125
+      ],
+      "resident": {
+        "pid": 4921,
+        "medianRssMiB": 29.289,
+        "peakRssMiB": 29.289,
+        "smapsRollup": {
+          "Rss": 30711808,
+          "Pss": 16689152,
+          "Private_Clean": 4915200,
+          "Private_Dirty": 3739648,
+          "Anonymous": 3739648
+        },
+        "PssMiB": 15.916,
+        "libraries": {
+          "tls": [],
+          "gtk": [],
+          "kde": [],
+          "platformTheme": []
+        }
+      },
+      "record": {
+        "pid": 4981,
+        "medianRssMiB": 105.43,
+        "peakRssMiB": 105.43,
+        "smapsRollup": {
+          "Rss": 110551040,
+          "Pss": 91588608,
+          "Private_Clean": 35205120,
+          "Private_Dirty": 46792704,
+          "Anonymous": 46792704
+        },
+        "PssMiB": 87.346,
+        "libraries": {
+          "tls": [],
+          "gtk": [],
+          "kde": [
+            "iHD_drv_video.so"
+          ],
+          "platformTheme": []
+        }
+      }
+    },
+    {
+      "window": "resident-idle-after",
+      "seconds": 30,
+      "loadavg": [
+        0.1103515625,
+        0.12060546875,
+        0.130859375
+      ],
+      "resident": {
+        "pid": 4921,
+        "medianRssMiB": 29.152,
+        "peakRssMiB": 29.152,
+        "smapsRollup": {
+          "Rss": 30568448,
+          "Pss": 24441856,
+          "Private_Clean": 20729856,
+          "Private_Dirty": 3551232,
+          "Anonymous": 3551232
+        },
+        "PssMiB": 23.31,
+        "libraries": {
+          "tls": [],
+          "gtk": [],
+          "kde": [],
+          "platformTheme": []
+        }
+      }
+    }
+  ],
+  "events": [
+    {
+      "cover": {
+        "monitorIndex": 0,
+        "ok": true,
+        "output": [
+          "HDMI-1"
+        ],
+        "rect": [
+          0,
+          0,
+          1920,
+          1080
+        ],
+        "state": "covered"
+      },
+      "precheck": "{\"check\": \"precheck\", \"fraction\": 1.0, \"framebuffer\": [1920, 1080], \"minFraction\": 0.98, \"ok\": true, \"output\": [\"HDMI-1\"], \"rect\": [0, 0, 1920, 1080]}",
+      "precheckExit": 0,
+      "t": 2.66
+    },
+    {
+      "window": "resident-idle-before",
+      "resident": {
+        "medianRssMiB": 28.766,
+        "PssMiB": 22.903
+      },
+      "t": 38.03
+    },
+    {
+      "prepare": {
+        "ok": true,
+        "error": "",
+        "acquisition": null
+      },
+      "t": 38.34
+    },
+    {
+      "prepared": "ready",
+      "t": 38.89
+    },
+    {
+      "reviewing": "reviewing",
+      "helper": 4981,
+      "t": 42.09
+    },
+    {
+      "window": "review-open",
+      "resident": {
+        "medianRssMiB": 29.25,
+        "PssMiB": 16.238
+      },
+      "record": {
+        "medianRssMiB": 101.086,
+        "PssMiB": 83.468
+      },
+      "t": 75.15
+    },
+    {
+      "centered": [
+        480,
+        240,
+        960,
+        600
+      ],
+      "t": 75.16
+    },
+    {
+      "frame": "review",
+      "kept": true,
+      "size": [
+        1920,
+        1080
+      ],
+      "crop": [
+        458,
+        188,
+        1006,
+        678
+      ],
+      "panelRows": {
+        "top": 0,
+        "bottom": 41
+      },
+      "nonCover": {
+        "columns": [],
+        "rows": []
+      },
+      "outsideCoverFraction": 1.0,
+      "edgeCoverFraction": 1.0,
+      "path": "/home/patrick/work/put.gd-i259-lab/m74-cand-fallback/frames/review.png",
+      "t": 77.04
+    },
+    {
+      "saveCopyDialog": {
+        "backend": "fallback",
+        "fallbackReason": "disabled",
+        "last": null,
+        "mode": "save",
+        "open": true,
+        "parentWindow": null,
+        "title": "Save a copy"
+      },
+      "t": 77.17
+    },
+    {
+      "window": "save-copy-dialog-open",
+      "resident": {
+        "medianRssMiB": 29.289,
+        "PssMiB": 15.916
+      },
+      "record": {
+        "medianRssMiB": 106.445,
+        "PssMiB": 87.854
+      },
+      "t": 113.23
+    },
+    {
+      "frame": "chooser",
+      "kept": true,
+      "size": [
+        1920,
+        1080
+      ],
+      "crop": [
+        462,
+        190,
+        998,
+        670
+      ],
+      "panelRows": {
+        "top": 0,
+        "bottom": 41
+      },
+      "nonCover": {
+        "columns": [],
+        "rows": []
+      },
+      "outsideCoverFraction": 1.0,
+      "edgeCoverFraction": 1.0,
+      "path": "/home/patrick/work/put.gd-i259-lab/m74-cand-fallback/frames/chooser.png",
+      "t": 113.57
+    },
+    {
+      "window": "after-dialog-closed",
+      "resident": {
+        "medianRssMiB": 29.289,
+        "PssMiB": 15.916
+      },
+      "record": {
+        "medianRssMiB": 105.43,
+        "PssMiB": 87.346
+      },
+      "t": 147.64
+    },
+    {
+      "window": "resident-idle-after",
+      "resident": {
+        "medianRssMiB": 29.152,
+        "PssMiB": 23.31
+      },
+      "t": 185.7
+    }
+  ],
+  "loadBefore": [
+    0.18505859375,
+    0.13818359375,
+    0.142578125
+  ],
+  "operationId": "116bedbd-bb7d-4986-bb02-6f29b4afa37a",
+  "reviewBefore": {
+    "visible": true,
+    "size": [
+      960,
+      600
+    ],
+    "scheme": "dark",
+    "fileDialog": {
+      "backend": null,
+      "fallbackReason": null,
+      "last": null,
+      "mode": null,
+      "open": false,
+      "parentWindow": null,
+      "title": null
+    }
+  },
+  "saveCopyDialog": {
+    "backend": "fallback",
+    "fallbackReason": "disabled",
+    "last": null,
+    "mode": "save",
+    "open": true,
+    "parentWindow": null,
+    "title": "Save a copy"
+  },
+  "dialogState": {
+    "backend": "fallback",
+    "fallbackReason": "disabled",
+    "last": null,
+    "mode": "save",
+    "open": true,
+    "parentWindow": null,
+    "title": "Save a copy"
+  },
+  "closed": {
+    "backend": null,
+    "fallbackReason": null,
+    "last": {
+      "backend": "fallback",
+      "error": null,
+      "fallbackReason": "disabled",
+      "mode": "save",
+      "path": null,
+      "status": "cancelled"
+    },
+    "mode": null,
+    "open": false,
+    "parentWindow": null,
+    "title": null
+  },
+  "childrenAfterCancel": null,
+  "loadAfter": [
+    0.1103515625,
+    0.12060546875,
+    0.130859375
+  ]
+}

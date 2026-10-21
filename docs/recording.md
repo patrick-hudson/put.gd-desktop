@@ -85,7 +85,7 @@ All methods go through `putgd-cli` unchanged. `id` is the recording ID.
 | `recording.raise` / `recording.overlay` | `{id}` / `{id, visible}` | overlay control; a hidden bar stays hidden through state changes until `raise` (a full-screen clip without the handle); the recording indicator stays visible |
 | `recording.edit` | `{id, revision, commands[1–100]}` | atomic `setTrim {start, end\|null}`, `resetTrim`, `addMask {mask}`, `updateMask {maskId, mask}`, `removeMask {maskId}` |
 | `recording.preview` | `{id, time, maxEdge? 64–1600}` | one PNG frame (base64 `png`) at clip time with current trim/masks, plus `retained`, `outputTimeUs`, `revision`; returned only to the requesting client |
-| `recording.review` | `{id, action, time?, speed?, kind?, rect?, maskId?, strength?, format?, codec?}` | works one review-window control as a user does and answers with the window's state and the resident's edit (see [Review window](#review-window)); `reviewing` only, `inspect` also while `exporting` |
+| `recording.review` | `{id, action, time?, speed?, kind?, rect?, maskId?, strength?, format?, codec?}`; `action` also `saveCopyDialog` / `closeFileDialog` | works one review-window control as a user does and answers with the window's state and the resident's edit (see [Review window](#review-window)); `reviewing` only, `inspect` also while `exporting` |
 | `recording.saveCopy` | `{id, path, overwrite?}` | exports to an absolute path with the format's extension; no upload. Replies once the export starts with `state: exporting`; poll `inspect` until `reviewing`, then `lastExport.status` is `saved` or `failed` |
 | `recording.upload` | `{id, revision}` | the only publishing action. Replies once the export starts with `state: exporting` and the linked `operationId`; see "Exports" below |
 
@@ -304,13 +304,18 @@ window's controls as a user does, one action per call, in `reviewing` (and
 `inspect` while `exporting`): `inspect`, `seek {time}`, `play`, `pause`,
 `speed {speed}`, `setIn`, `setOut`, `resetTrim`, `addMask {kind, rect}` (from
 the playhead to the trim end, as Add blur/cover and a drag), `selectMask
-{maskId|null}`, `setMaskIn`, `setMaskOut`, `strength {strength}`, `removeMask`
-and `format {format, codec}`. A refused action answers `invalid_request` with
-the message the window shows. The answer is the window's state after the
+{maskId|null}`, `setMaskIn`, `setMaskOut`, `strength {strength}`, `removeMask`,
+`format {format, codec}`, `saveCopyDialog` (opens **Save copy…** as the button
+does: the desktop's chooser through the XDG portal, or the themed fallback; see
+[file-dialogs.md](file-dialogs.md)) and `closeFileDialog` (closes it as a
+cancel). While that chooser is open the other actions answer
+`recording_state`, as the window takes no input then. A refused action answers
+`invalid_request` with the message the window shows. The answer is the window's state after the
 action (`visible`, `size`, `playheadUs`, `playing`, `speed`, `trim`, `masks`
 with their timeline bars, `selectedMaskId`, `armed`, `maskControls {list,
 times, strength, remove}`, `status`, `notice`, `video {rect, share}`,
-`timeline {rect, lanes}`, `scheme`) plus the resident's `state` and `edit`: an
+`timeline {rect, lanes}`, `scheme`, `fileDialog {open, mode, title, backend,
+parentWindow, fallbackReason, last}`) plus the resident's `state` and `edit`: an
 edit a control proposes reaches the resident as an `edit` event first, and the
 resident reads the window again after pushing the result back.
 

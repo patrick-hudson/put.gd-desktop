@@ -75,9 +75,13 @@ Undo (Ctrl+Z) and redo (Ctrl+Shift+Z or Ctrl+Y) are bounded. Ctrl+0 fits the
 window, Ctrl+1 shows 100% for checking text and redaction edges, Ctrl+wheel
 zooms, the wheel or Space/middle-drag pans. **Save a copy…** (Ctrl+S) writes the
 same sanitized export as Upload to a user-chosen file; it never overwrites the
-private source. The editor runs on Qt's built-in `generic` platform theme, so its
-file dialog is Qt's own (styled like the editor) rather than the GTK/KDE one;
-this keeps the desktop's integration libraries out of the image process. The
+private source. The editor runs on Qt's built-in `generic` platform theme, which
+keeps the desktop's integration libraries out of the image process. Its file
+dialog is nevertheless the desktop's own: Save a copy asks the XDG portal's
+FileChooser over D-Bus, so the chooser runs in the portal backend's process, and
+Qt's widget dialog, themed like the editor, is only the fallback when no portal
+answers ([file-dialogs.md](file-dialogs.md)). `editor.fileDialog` opens,
+inspects or cancels it as the button does. The
 helper also clears its desktop identity variables (`XDG_CURRENT_DESKTOP` and
 similar), because Qt would otherwise still load the desktop's theme plugin; on
 Plasma that plugin brings in Qt Quick and the GPU driver (about 85 MiB).
