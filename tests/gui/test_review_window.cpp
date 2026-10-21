@@ -7,6 +7,7 @@
 #include <QApplication>
 #include <QComboBox>
 #include <QFileDialog>
+#include <QLineEdit>
 #include <QPushButton>
 #include <QTemporaryDir>
 #include <QMouseEvent>
@@ -322,7 +323,10 @@ private slots:
         QTRY_VERIFY((fallback = window.findChild<QFileDialog*>("putgdFileDialog")) && fallback->isVisible());
         QCOMPARE(fallback->windowTitle(), QString("Save a copy"));
         QCOMPARE(fallback->nameFilters(), QStringList{"MP4 (*.mp4)"});
-        fallback->selectFile(folder.filePath("chosen"));
+        fallback->setDirectory(folder.path());
+        auto* name = fallback->findChild<QLineEdit*>("fileNameEdit");
+        QVERIFY(name);
+        name->setText("chosen");
         QMetaObject::invokeMethod(fallback, "accept");
         QCOMPARE(saved.size(), 1);
         QCOMPARE(saved.first().first().toString(), folder.filePath("chosen.mp4"));

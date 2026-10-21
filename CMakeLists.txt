@@ -794,15 +794,15 @@ if(BUILD_TESTING)
     putgd_xvfb_display(xvfb)
     add_test(NAME native_background_startup_integration COMMAND dbus-run-session -- ${PUTGD_XVFB_RUN} ${xvfb} $<TARGET_FILE:test_native_tray> backgroundStartupWaitsForLateTray)
     set_tests_properties(native_background_startup_integration PROPERTIES ENVIRONMENT "PUTGD_ISOLATED_STARTUP_TEST=1;QT_QPA_PLATFORM=xcb;XDG_SESSION_TYPE=x11;WAYLAND_DISPLAY=" TIMEOUT 120)
-    # #259: the shared file chooser against a fake XDG portal on the private bus
-    # of dbus-run-session (never the desktop's), and its X11 parent handle.
+    # #259: the shared file chooser against a fake XDG portal on a private bus
+    # that can activate nothing (never the desktop's portal), and its X11 parent.
     add_executable(test_file_dialog tests/integration/test_file_dialog.cpp)
     target_include_directories(test_file_dialog PRIVATE src)
     target_link_libraries(test_file_dialog PRIVATE putgd_file_dialog Qt6::Test Qt6::DBus)
-    add_test(NAME file_dialog_integration COMMAND dbus-run-session -- $<TARGET_FILE:test_file_dialog>)
+    add_test(NAME file_dialog_integration COMMAND dbus-run-session --config-file=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/dbus-session-isolated.conf -- $<TARGET_FILE:test_file_dialog>)
     set_tests_properties(file_dialog_integration PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
     putgd_xvfb_display(xvfb)
-    add_test(NAME file_dialog_x11_parent COMMAND dbus-run-session -- ${PUTGD_XVFB_RUN} ${xvfb} $<TARGET_FILE:test_file_dialog> parentWindowOnX11)
+    add_test(NAME file_dialog_x11_parent COMMAND dbus-run-session --config-file=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/dbus-session-isolated.conf -- ${PUTGD_XVFB_RUN} ${xvfb} $<TARGET_FILE:test_file_dialog> parentWindowOnX11)
     set_tests_properties(file_dialog_x11_parent PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=xcb;XDG_SESSION_TYPE=x11;WAYLAND_DISPLAY=" TIMEOUT 30)
     add_executable(test_ui_native_lifecycle tests/integration/test_ui_native_lifecycle.cpp)
     target_include_directories(test_ui_native_lifecycle PRIVATE tests)

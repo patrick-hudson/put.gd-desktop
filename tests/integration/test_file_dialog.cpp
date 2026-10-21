@@ -4,6 +4,7 @@
 #include "ui/Theme.h"
 #include <QApplication>
 #include <QDBusConnection>
+#include <QDBusConnectionInterface>
 #include <QDBusContext>
 #include <QDBusMessage>
 #include <QDBusMetaType>
@@ -97,6 +98,9 @@ class FileDialogTest final:public QObject {
 private slots:
  void initTestCase(){
   QVERIFY2(QDBusConnection::sessionBus().isConnected(),"Run under dbus-run-session");
+  // The bus must not be able to start the desktop's real portal for the fallback cases.
+  const auto activatable=QDBusConnection::sessionBus().interface()->activatableServiceNames().value();
+  QVERIFY2(!activatable.contains(service),"Run under dbus-run-session --config-file=tests/fixtures/dbus-session-isolated.conf");
   QVERIFY(peer_.isConnected());
   portal::registerTypes();
   chooser_=new FakeChooser(peer_);
@@ -221,7 +225,8 @@ private slots:
   auto* fallback=waitForFallback(dialog);QVERIFY(fallback);QCOMPARE(chooser_->calls,0);
   QCOMPARE(dialog.state()["fallbackReason"].toString(),QString("disabled"));
   QCOMPARE(fallback->windowTitle(),QString("Save a copy"));QCOMPARE(fallback->nameFilters(),QStringList{"PNG image (*.png)"});
-  fallback->selectFile(folder.filePath("chosen.png"));QMetaObject::invokeMethod(fallback,"accept");
+  // selectFile leaves a focused name field alone; type the name as a user does.
+  auto* field=fallback->findChild<QLineEdit*>("fileNameEdit");QVERIFY(field);field->setText("chosen.png");QMetaObject::invokeMethod(fallback,"accept");
   QCOMPARE(answer,folder.filePath("chosen.png"));
   QCOMPARE(dialog.state()["last"].toObject()["status"].toString(),QString("chosen"));
  }
