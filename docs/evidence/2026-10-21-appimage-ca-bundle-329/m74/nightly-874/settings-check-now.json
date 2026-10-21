@@ -1,0 +1,28 @@
+{
+ "checkNow": {
+  "ok": true,
+  "seconds": 0.46,
+  "result": {
+   "action": {
+    "kind": "download",
+    "repository": "none"
+   },
+   "channel": "nightly",
+   "checkedAt": "2026-10-21T22:26:18Z",
+   "current": "0.1.1-nightly.874",
+   "downloadUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/v0.1.1-nightly.874/putgd-0.1.1-nightly.874-x86_64.AppImage",
+   "latest": "0.1.1-nightly.874",
+   "notesUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v0.1.1-nightly.874",
+   "packageTarget": "appimage",
+   "publishedAt": "2026-10-21T22:20:20Z",
+   "tag": "v0.1.1-nightly.874",
+   "updateAvailable": false
+  },
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  }
+ },
+ "caBundle": "/etc/ssl/certs/ca-certificates.crt"
+}
