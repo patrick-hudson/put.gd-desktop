@@ -215,6 +215,20 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   QPointer<LocalServer> guarded(this);
   bundles_->create(bundle,[guarded,reply=std::move(reply)](Error error,QJsonObject result){if(!error&&guarded&&guarded->diagnosticsSaved_)guarded->diagnosticsSaved_(result);reply(error,result);});return;
  }
+ // A recorded link in the default browser, as the link-ready notification opens
+ // it (#326); the reply says which way it went: portal, launcher.
+ if(method=="history.openLink") {
+  if(!fields(p,{"id"})||!string(p,"id")) {reply(invalid(),{});return;}
+  if(!openLink_){reply({"ui_unavailable","This resident cannot open links",{}},{});return;}
+  history_.detail(p["id"].toString(),[open=openLink_,reply](Error e,QJsonObject data){
+   if(e){reply(e,{});return;}
+   if(!data["linkAvailable"].toBool()){reply({"link_unavailable","This recorded link is no longer available",{}},{});return;}
+   open(QUrl(data["receipt"].toObject()["directUrl"].toString()),[reply](const QJsonObject& result){
+    if(result["opened"].toBool())reply({},result);else reply({"link_not_opened","The link could not be opened on this desktop",result},{});
+   });
+  });
+  return;
+ }
  // Show in folder for a saved package: the file manager selects it (#122).
  if(method=="diagnostics.reveal") {
   if(!fields(p,{"path"})||!string(p,"path",4096)){reply(invalid(),{});return;}

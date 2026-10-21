@@ -2,7 +2,7 @@
 #include "storage/proton/ProtonProvider.h"
 #include "storage/s3/PublicUrl.h"
 #include "storage/b2/B2Common.h"
-#include <QDesktopServices>
+#include "platform/HostOpen.h"
 #include <QUrl>
 #include "ViewState.h"
 #include <QTimer>
@@ -474,8 +474,8 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  });
  connect(copyCommand,&QPushButton::clicked,this,[this]{qApp->clipboard()->setText(updateCommand_->text());});
  connect(checkNow_,&QPushButton::clicked,this,[this]{checkForUpdates({});});
- connect(downloadUpdate_,&QPushButton::clicked,this,[this]{const QUrl url(settings_.diagnostics()["update"].toObject()["result"].toObject()["downloadUrl"].toString());if(url.scheme()=="https")QDesktopServices::openUrl(url);});
- connect(releaseNotes_,&QPushButton::clicked,this,[this]{const QUrl url(settings_.diagnostics()["update"].toObject()["result"].toObject()["notesUrl"].toString());if(url.scheme()=="https")QDesktopServices::openUrl(url);});
+ connect(downloadUpdate_,&QPushButton::clicked,this,[this]{const QUrl url(settings_.diagnostics()["update"].toObject()["result"].toObject()["downloadUrl"].toString());if(url.scheme()=="https")host::openLink(url);});
+ connect(releaseNotes_,&QPushButton::clicked,this,[this]{const QUrl url(settings_.diagnostics()["update"].toObject()["result"].toObject()["notesUrl"].toString());if(url.scheme()=="https")host::openLink(url);});
  auto* files=section(general,"Local copies","Save captures and clipboard uploads locally, with or without uploading to a destination.");
  keep_=new QCheckBox("Keep a local copy");keep_->setObjectName("keepUploadCopies");setting(files,"Local copies",keep_,"/archive/keepUploads");
  root_=input(this,"archiveRoot");auto* rootRow=setting(files,"Save to",root_,"/archive/root");
@@ -534,7 +534,7 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  auto* createPackage=new QPushButton(VisualStyle::icon("save"),"Create diagnostics package…");createPackage->setObjectName("createDiagnosticsPackage");createPackage->setToolTip("Preview and save a redacted .zip of recent failures, settings and logs. Nothing is uploaded.");diagnosticsForm->addRow(createPackage);
  connect(clearLogs_,&QPushButton::clicked,this,[this]{if(QMessageBox::question(this,"Clear logs","Delete every put.gd log file? Uploads, history, settings and saved diagnostics packages stay.")!=QMessageBox::Yes)return;clearLogs({});});
  connect(createPackage,&QPushButton::clicked,this,[this]{openDiagnosticsPackage();});
- auto* config=section(right,"Config file");configPath_=new QLabel;configPath_->setWordWrap(true);configPath_->setTextInteractionFlags(Qt::TextSelectableByMouse);configPath_->setProperty("visualRole","mono");config->addRow(configPath_);auto* configActions=new QHBoxLayout;auto* editor=new QPushButton("Open in editor");auto* reload=new QPushButton("Reload from file");reload->setObjectName("reloadSettings");configActions->addWidget(editor);configActions->addWidget(reload);config->addRow(configActions);connect(editor,&QPushButton::clicked,this,[this]{QDesktopServices::openUrl(QUrl::fromLocalFile(settings_.path()));});connect(reload,&QPushButton::clicked,this,[this]{resetDraft(true);});
+ auto* config=section(right,"Config file");configPath_=new QLabel;configPath_->setWordWrap(true);configPath_->setTextInteractionFlags(Qt::TextSelectableByMouse);configPath_->setProperty("visualRole","mono");config->addRow(configPath_);auto* configActions=new QHBoxLayout;auto* editor=new QPushButton("Open in editor");auto* reload=new QPushButton("Reload from file");reload->setObjectName("reloadSettings");configActions->addWidget(editor);configActions->addWidget(reload);config->addRow(configActions);connect(editor,&QPushButton::clicked,this,[this]{host::openFile(settings_.path());});connect(reload,&QPushButton::clicked,this,[this]{resetDraft(true);});
  // Cards keep their own height; the shorter column ends in space.
  left->addStretch();right->addStretch();
  auto* diagnostics=section(advancedPage,"Desktop support details");capabilities_=new QLabel;capabilities_->setAccessibleName("Desktop support diagnostics");capabilities_->setWordWrap(true);capabilities_->setTextInteractionFlags(Qt::TextSelectableByMouse);VisualStyle::role(capabilities_,"mono");diagnostics->addRow(capabilities_);metadata_=new QLabel;metadata_->setObjectName("settingsMetadata");metadata_->setWordWrap(true);metadata_->setTextInteractionFlags(Qt::TextSelectableByMouse);VisualStyle::role(metadata_,"muted");diagnostics->addRow(metadata_);auto* diagnose=new QPushButton("Refresh diagnostics");auto* copyDiagnostics=new QPushButton("Copy diagnostics");auto* diagnosticActions=new QHBoxLayout;diagnosticActions->addWidget(diagnose);diagnosticActions->addWidget(copyDiagnostics);diagnosticActions->addStretch();diagnostics->addRow(diagnosticActions);connect(diagnose,&QPushButton::clicked,this,[this]{settings_.refreshSnapshot();});connect(copyDiagnostics,&QPushButton::clicked,this,[this]{qApp->clipboard()->setText(capabilities_->text()+"\n"+metadata_->text());});
@@ -1402,7 +1402,7 @@ void SettingsWindow::pollSetup(){
   int index=0;while(index<setupJobs_.size()&&setupJobs_[index].toObject()["setupId"]!=id)++index;
   if(index==setupJobs_.size())return;
   const auto job=setupJobs_[index].toObject();const auto event=data["event"].toObject();
-  if(!e&&event["event"]=="auth"&&!protonBrowserOpened_){const QUrl url(event["url"].toString());if(url.scheme()=="https"&&url.host()=="account.proton.me"){protonBrowserOpened_=true;const bool opened=QDesktopServices::openUrl(url);protonAccount_->setText(opened?"Finish signing in to Proton in your browser.":"Could not open the default browser for Proton sign-in.");}}
+  if(!e&&event["event"]=="auth"&&!protonBrowserOpened_){const QUrl url(event["url"].toString());if(url.scheme()=="https"&&url.host()=="account.proton.me"){protonBrowserOpened_=true;protonAccount_->setText("Finish signing in to Proton in your browser.");host::openLink(url,[account=QPointer<QLabel>(protonAccount_)](const QJsonObject& result){if(account&&!result["opened"].toBool())account->setText("Could not open the default browser for Proton sign-in.");});}}
   if(e.code=="setup_not_found"||(!e&&data["state"]!="running")){
    setupJobs_.removeAt(index);updateSetupButton();if(setupJobs_.isEmpty())setupTimer_->stop();
    if(e)e.message="This setup result is no longer available; the action was not repeated.";

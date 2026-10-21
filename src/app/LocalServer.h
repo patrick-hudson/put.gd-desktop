@@ -32,6 +32,8 @@ public:
  // The resident's "diagnostics saved" notification (with Show in folder) and
  // Show in folder itself (#122).
  void setDiagnosticsNotifications(std::function<void(const QJsonObject&)> saved,std::function<Error(const QString&)> reveal) {diagnosticsSaved_=std::move(saved);revealPackage_=std::move(reveal);}
+ // history.openLink: the link a notification opens, by the same host opener (#326).
+ void setLinkOpener(std::function<void(const QUrl&,std::function<void(const QJsonObject&)>)> open) {openLink_=std::move(open);}
 private:
  void accept();
  std::function<void(const QString&,std::function<void(Error)>)> uiActivation_;
@@ -40,6 +42,7 @@ private:
  std::function<void()> uiQuit_;
  std::function<void(const QJsonObject&)> diagnosticsSaved_;
  std::function<Error(const QString&)> revealPackage_;
+ std::function<void(const QUrl&,std::function<void(const QJsonObject&)>)> openLink_;
  QPointer<SetupService> setup_;
  QPointer<DiagnosticsBundles> bundles_;
  QPointer<UpdateService> updates_;

@@ -159,7 +159,7 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                 discovered = (await session.list_tools()).tools
                 expected = {'inspect', 'get_view_state', 'perform_action', 'get_operation', 'retry_operation',
                             'copy_result', 'cancel_operation', 'list_history', 'get_history_entry',
-                            'make_history_preview', 'copy_history_link', 'delete_history_uploads', 'reload_configuration',
+                            'make_history_preview', 'copy_history_link', 'open_history_link', 'delete_history_uploads', 'reload_configuration',
                             'patch_configuration', 'open_editor', 'get_editor', 'edit_image',
                             'preview_editor', 'save_editor_copy', 'submit_editor', 'cancel_editor',
                             'raise_editor', 'get_recording_capabilities', 'prepare_recording', 'control_recording',
@@ -223,6 +223,7 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('get_history_entry', {'id': 'synthetic-entry'}, 'history.detail', {'id': 'synthetic-entry'}),
                     ('make_history_preview', {'id': 'synthetic-entry'}, 'history.preview', {'id': 'synthetic-entry'}),
                     ('copy_history_link', {'id': 'synthetic-entry'}, 'history.copyLink', {'id': 'synthetic-entry'}),
+                    ('open_history_link', {'id': 'synthetic-entry'}, 'history.openLink', {'id': 'synthetic-entry'}),
                     ('list_history', {'limit': 2, 'offset': 1, 'search': 'name with spaces', 'remote_status': 'removed'}, 'history.list', {'limit': 2, 'offset': 1, 'search': 'name with spaces', 'remoteStatus': 'removed'}),
                     ('delete_history_uploads', {'ids': ['synthetic-entry']}, 'delete.prepare', {'ids': ['synthetic-entry']}),
                     ('delete_history_uploads', {'ids': ['synthetic-entry'], 'acknowledgement': 'synthetic-effect'}, 'delete.confirm', {'ids': ['synthetic-entry'], 'acknowledgement': 'synthetic-effect'}),

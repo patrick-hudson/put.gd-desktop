@@ -1,0 +1,71 @@
+{
+ "notify": {
+  "clicked": [
+   673,
+   69
+  ],
+  "actionInvoked": [
+   "default",
+   "default"
+  ],
+  "openedUrls": [],
+  "notifyActions": [
+   "default",
+   "Open in browser"
+  ],
+  "logged": [
+   {
+    "itemId": null,
+    "notificationId": 1,
+    "notificationText": "Uploaded. Link copied to the clipboard. Click to open in browser.",
+    "operationId": null,
+    "summary": "operation_completed",
+    "title": "put.gd \u2014 completed",
+    "warning": false
+   }
+  ]
+ },
+ "start": {
+  "diagnostics": {
+   "baseVersion": "0.1.1",
+   "commitCount": 842,
+   "dirty": false,
+   "gitCommit": "08878c9971a7db449e03248ea6d214571aae780b",
+   "gitTree": "609a311c4a8b39afbce7d686ae5de89d6d1de971",
+   "packageVersion": "0.1.1~nightly.842",
+   "schemaVersion": 1,
+   "sourceProvenance": "git",
+   "version": "0.1.1-nightly.842"
+  },
+  "processes": [
+   {
+    "comm": "AppRun",
+    "exe": "/usr/bin/dash",
+    "QT_QPA_PLATFORM": null
+   },
+   {
+    "comm": "putgd-0.1.1-nig",
+    "exe": "/home/lab/work/put.gd-326/dl-842/putgd-0.1.1-nightly.842-x86_64.AppImage",
+    "QT_QPA_PLATFORM": null
+   },
+   {
+    "comm": "putgd",
+    "exe": "/tmp/.mount_putgd-kJJaNC/usr/bin/putgd",
+    "QT_QPA_PLATFORM": null
+   }
+  ]
+ },
+ "vmOpenLink": {},
+ "hostPrograms": [
+  {
+   "at": "2026-10-21T20:47:47Z",
+   "program": "gio",
+   "argv": "open http://127.0.0.1:46491/fixture/afa/Screen-Capture-2026-10-21-15-47-42.png",
+   "LD_LIBRARY_PATH": "/tmp/.mount_putgd-kJJaNC/usr/bin/../lib/putgd:/tmp/.mount_putgd-kJJaNC/usr/lib:/tmp/.mount_putgd-kJJaNC/usr/lib/putgd",
+   "QT_PLUGIN_PATH": "/tmp/.mount_putgd-kJJaNC/usr/plugins:/tmp/.mount_putgd-kJJaNC/usr/lib/qt6/plugins",
+   "APPDIR": "/tmp/.mount_putgd-kJJaNC",
+   "PUTGD_HOST_ENVIRONMENT": "unset",
+   "exit": "127"
+  }
+ ]
+}

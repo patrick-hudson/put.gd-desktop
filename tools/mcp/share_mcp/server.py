@@ -480,6 +480,11 @@ def create_server(adapter: CliAdapter) -> FastMCP:
         """Write the stored direct URL to clipboard; no upload or target reconstruction."""
         return await adapter.call('history.copyLink', {'id': id}) if identifier(id) else invalid()
 
+    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=True))
+    async def open_history_link(id: str) -> Json:
+        """Open the stored direct URL in the desktop's default browser, as clicking the link-ready notification does: the XDG portal's OpenURI, else gio open with the host's environment. Returns route (portal or launcher), opened and fallbackFrom; link_not_opened when nothing could open it."""
+        return await adapter.call('history.openLink', {'id': id}) if identifier(id) else invalid()
+
     @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, openWorldHint=True))
     async def delete_history_uploads(ids: list[str], acknowledgement: str | None = None) -> Json:
         """Prepare original targets/effects without deletion when acknowledgement is omitted; exact acknowledgement confirms remote deletion and preserves local copies/history."""
@@ -548,7 +553,7 @@ def create_server(adapter: CliAdapter) -> FastMCP:
 
     @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
     async def show_diagnostics_package(path: str) -> Json:
-        """Show in folder: open the file manager with a saved diagnostics package selected (org.freedesktop.FileManager1.ShowItems), or its folder when no file manager answers. path is the absolute path create_diagnostics_bundle returned; put.gd's own putgd-diagnostics-*.zip names are accepted, and any other path a diagnostics package was saved to by this resident."""
+        """Show in folder: open the file manager with a saved diagnostics package selected (org.freedesktop.FileManager1.ShowItems); without one, the XDG portal's OpenDirectory, else gio open on its folder with the host's environment. path is the absolute path create_diagnostics_bundle returned; put.gd's own putgd-diagnostics-*.zip names are accepted, and any other path a diagnostics package was saved to by this resident."""
         if not identifier(path, 4096) or not path.startswith('/'):
             return invalid()
         return await adapter.call('diagnostics.reveal', {'path': path})

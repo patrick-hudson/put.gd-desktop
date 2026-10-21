@@ -4,6 +4,18 @@ set -eu
 appdir=${APPDIR:-$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)}
 host_library_path=${LD_LIBRARY_PATH-}
 host_plugin_path=${QT_PLUGIN_PATH-}
+# Host programs put.gd starts (gio for a link or folder, a software updater)
+# need the host's own values of what this script replaces, or they load the
+# image's older GLib and Qt (#326). PUTGD_HOST_<NAME> holds each value the host
+# set; one the host left unset has none. src/core/HostEnvironment.cpp restores them.
+unset PUTGD_HOST_LD_LIBRARY_PATH PUTGD_HOST_QT_PLUGIN_PATH
+export PUTGD_HOST_ENVIRONMENT='LD_LIBRARY_PATH QT_PLUGIN_PATH'
+if [ -n "${LD_LIBRARY_PATH+set}" ]; then
+    export PUTGD_HOST_LD_LIBRARY_PATH="$LD_LIBRARY_PATH"
+fi
+if [ -n "${QT_PLUGIN_PATH+set}" ]; then
+    export PUTGD_HOST_QT_PLUGIN_PATH="$QT_PLUGIN_PATH"
+fi
 host_cache() {
     LD_LIBRARY_PATH="$host_library_path" QT_PLUGIN_PATH="$host_plugin_path" \
         kbuildsycoca6 --noincremental >/dev/null 2>&1

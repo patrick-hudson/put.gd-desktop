@@ -168,6 +168,33 @@ while :; do sleep 0.05; done
         self.assertEqual(host_receipt.read_text(), "/ambient/libraries\n/ambient/plugins\n" * 2)
         self.assertEqual(self.receipt.read_text().strip(), "0022")
 
+    def test_launch_saves_host_values_it_replaces_for_host_programs(self):
+        """#326: what a host gio or updater must get back; unset stays unset."""
+        self.env["XDG_CURRENT_DESKTOP"] = "GNOME"
+        self.write(self.app / "usr/bin/putgd-launcher", """#!/bin/sh
+for name in PUTGD_HOST_ENVIRONMENT PUTGD_HOST_LD_LIBRARY_PATH PUTGD_HOST_QT_PLUGIN_PATH LD_LIBRARY_PATH; do
+    eval "set=\\${$name+set}"
+    eval "value=\\${$name-}"
+    printf '%s=%s:%s\\n' "$name" "$set" "$value" >> "$PG_TEST_RECEIPT"
+done
+""")
+        cases = (({"LD_LIBRARY_PATH": "/host/lib:", "QT_PLUGIN_PATH": ""},
+                  ["set:/host/lib:", "set:"]),
+                 # A stale saved value from an earlier launch's environment is not kept.
+                 ({"PUTGD_HOST_LD_LIBRARY_PATH": "/stale", "PUTGD_HOST_QT_PLUGIN_PATH": "/stale"},
+                  [":", ":"]))
+        for given, (library, plugins) in cases:
+            with self.subTest(given=given):
+                environment = {key: value for key, value in self.env.items() if key not in ("LD_LIBRARY_PATH", "QT_PLUGIN_PATH")}
+                environment.update(given)
+                self.receipt.unlink(missing_ok=True)
+                self.assertEqual(subprocess.run([str(APP_RUN)], env=environment).returncode, 0)
+                lines = self.receipt.read_text().splitlines()
+                self.assertEqual(lines[0], "PUTGD_HOST_ENVIRONMENT=set:LD_LIBRARY_PATH QT_PLUGIN_PATH")
+                self.assertEqual(lines[1], "PUTGD_HOST_LD_LIBRARY_PATH=" + library)
+                self.assertEqual(lines[2], "PUTGD_HOST_QT_PLUGIN_PATH=" + plugins)
+                self.assertTrue(lines[3].startswith("LD_LIBRARY_PATH=set:" + str(self.app) + "/usr/lib:"))
+
     def test_headless_identity_avoids_kde_registration(self):
         self.write(self.root / "bin/kbuildsycoca6", "#!/bin/sh\nexit 9\n")
         self.write(self.app / "usr/bin/putgd-launcher", "#!/bin/sh\nprintf '%s\\n' \"$@\" > \"$PG_TEST_RECEIPT\"\n")

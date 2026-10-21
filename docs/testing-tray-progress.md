@@ -407,7 +407,9 @@ first appearance of a service preserves replies for notifications that started
 it. The generic Qt fallback has no per-notification click ID and does not promise
 browser activation.
 
-Browser activation uses `gio open` and the configured HTTP(S) URI handler.
+Browser activation asks the XDG portal's OpenURI, and falls back to `gio open` with the
+host's environment and the configured HTTP(S) URI handler
+([diagnostics.md](diagnostics.md#opening-links-and-folders-on-the-host)).
 KDE’s generic `xdg-open` path can choose an image application for a remote PNG
 even when Firefox is the default browser. Keep the native desktop’s data/config
 search paths when launching an isolated test session; a missing browser desktop

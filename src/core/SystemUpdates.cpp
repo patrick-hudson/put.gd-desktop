@@ -1,4 +1,5 @@
 #include "SystemUpdates.h"
+#include "HostEnvironment.h"
 #include <QFile>
 #include <QJsonArray>
 #include <QProcess>
@@ -104,8 +105,9 @@ bool openSoftwareUpdates(const QJsonObject& action) {
  if(known==updaters.cend())return false;
  // The updater outlives the short-lived putgd-cli child that starts it, so it
  // must not inherit that child's pipes: Discover logs to stderr and died of
- // SIGPIPE once the resident closed them (k72).
- QProcess process;process.setProgram(updater["program"].toString());process.setArguments(known->arguments);
+ // SIGPIPE once the resident closed them (k72). It gets the host's libraries
+ // and Qt plugins, not the AppImage's (#326).
+ QProcess process;process.setProgram(updater["program"].toString());process.setArguments(known->arguments);process.setProcessEnvironment(host::environment());
  process.setStandardInputFile(QProcess::nullDevice());process.setStandardOutputFile(QProcess::nullDevice());process.setStandardErrorFile(QProcess::nullDevice());
  return process.startDetached();
 }
