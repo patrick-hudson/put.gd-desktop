@@ -1,0 +1,38 @@
+{
+ "host": "fedora",
+ "profile": "b2",
+ "store": "completed",
+ "testConnection": {
+  "state": "completed",
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  },
+  "seconds": 2.06
+ },
+ "upload": {
+  "state": "completed",
+  "uploadStatus": "uploaded",
+  "error": {
+   "code": "source_unsupported",
+   "details": {},
+   "message": "Native desktop adapter is not available"
+  },
+  "link": "https://f001.backblazeb2.com/file/putgd-i329-f53d5a37/put.gd/acceptance/i329/f44nb2/Screen-Capture-2026-10-21-17-22-40.png",
+  "seconds": 2.65
+ },
+ "linkFetch": {
+  "status": 200,
+  "png": true,
+  "bytes": 2032
+ },
+ "delete": {
+  "state": "completed",
+  "items": [
+   "removed"
+  ],
+  "remoteStatus": "removed",
+  "linkAfter": 404
+ }
+}
