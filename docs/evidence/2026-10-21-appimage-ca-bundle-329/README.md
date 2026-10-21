@@ -2,7 +2,8 @@
 
 PR #334 makes the AppImage's own TLS clients use the host's CA certificates. Before it, on
 Fedora 44, **Check now**, S3 and R2 uploads, and Backblaze B2 all failed TLS. This is the
-reproduction, the cause, and the live check of the fix on every lab desktop.
+reproduction, the cause, and the live check of the fix on every lab desktop, with the PR's CI
+build and then with nightly 874.
 
 ![Before and after on each desktop](before-after.png)
 
@@ -87,19 +88,55 @@ A CI AppImage is a development build, and those never run the update check
 (`update_check_unavailable`, reason `development_build`; see `HOST/update-check.json`). Patrick's
 decision: merge #334 after the uploads, pictures and docs. Then verify **Check now** on f44,
 Aurora, m74, k72 and d69 with the first nightly that contains it, before closing #329.
-That result will be added here.
+
+## Nightly 874, the first nightly with #334 (2026-10-21, 22:22–22:33Z)
+
+- **Build:** `v0.1.1-nightly.874` (`dc1ab32`; contains #334, #330 and #338). The AppImage was
+  checked against the release's `SHA256SUMS`.
+- **Headless runs** (as above): Check now, then live S3 and B2 upload and delete, in `HOST/nightly-874/`.
+- **Settings pictures:** on the four physical desktops, put.gd ran in the logged-in session with a private
+  profile, under desktop locks. Settings was opened and **Check now** pressed (`update.check`, the
+  button's method). Only the verified Settings window was cropped.
+- **Aurora:** a fresh overlay of the read-only golden. Its picture is the VM's own display (QMP screendump),
+  scrolled to the Updates card.
+
+| Desktop | `PUTGD_CA_BUNDLE` | Check now (Settings) | S3 upload → delete | B2 upload, link → delete |
+| --- | --- | --- | --- | --- |
+| f44 Fedora 44 GNOME 50 | `/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem` | up to date, 0.37 s | uploaded → `removed` | link 200 → `removed`, 404 |
+| Aurora 44 Plasma 6.7 (VM on f44) | `/etc/ssl/certs/ca-certificates.crt` | up to date | uploaded → `removed` | link 200 → `removed`, 404 |
+| m74 Mint 22.3 Cinnamon | `/etc/ssl/certs/ca-certificates.crt` | up to date, 0.46 s | uploaded → `removed` | link 200 → `removed`, 404 |
+| k72 Kubuntu 26.04 Plasma 6.6 | `/etc/ssl/certs/ca-certificates.crt` | up to date, 0.49 s | uploaded → `removed` | link 200 → `removed`, 404 |
+| d69 Debian 13 Plasma 6.3 | `/etc/ssl/certs/ca-certificates.crt` | up to date, 0.39 s | uploaded → `removed` | link 200 → `removed`, 404 |
+
+On f44, nightly 847 in the same session showed "The last check failed: Cannot read the update
+feed" (`f44/before-847-settings-check-now.json`).
+
+![f44: Check now before (847) and after (874)](pictures/f44-before-after.png)
+
+![Aurora VM: Check now on 874](pictures/aurora-vm-after-874.png)
+
+![m74: Check now on 874](pictures/m74-after-874.png)
+
+![k72: Check now on 874](pictures/k72-after-874.png)
+
+![d69: Check now on 874](pictures/d69-after-874.png)
 
 ## Cleanup
 
-- `put.gd/acceptance/i329/` was listed with key set 2 after the last run (2026-10-21 21:20:44Z):
+- **S3:** `put.gd/acceptance/i329/` was listed with key set 2 after the last run (2026-10-21 22:34:09Z):
   0 objects, 0 versions, 0 delete markers, 0 incomplete uploads.
-  One synthetic object from an aborted guest script run was removed by
-  [lab/s3verify.py](lab/s3verify.py) `--purge` first.
-- The B2 bucket had 0 file versions, 0 hide markers and 0 unfinished large files at 21:20:33Z.
-  Every scoped key was deleted by its own run.
-- The R2 bucket `putgd-i329-r2-e0c7ae41` had its r2.dev domain disabled (200) and was deleted (204).
+  One synthetic object, from an aborted guest script run at 21:09Z, was removed earlier by
+  [lab/s3verify.py](lab/s3verify.py) `--purge`.
+- **B2:** the bucket `putgd-i329-f53d5a37` had 0 file versions, 0 hide markers and 0 unfinished large
+  files at 22:34:05Z, and was then deleted (200). `b2_list_buckets` and `b2_list_keys` show no
+  `putgd-i329-` bucket or key. Every scoped key was deleted by its own run.
+- **R2:** the bucket `putgd-i329-r2-e0c7ae41` had its r2.dev domain disabled (200) and was deleted (204).
   No `putgd-i329` R2 bucket remains.
-- All residents were quit and their private run and runtime directories removed, on every host
-  and in the guest. The Aurora overlay was stopped and its disk deleted. The golden is read-only and was not touched.
-- No credential appears in any file here. The lab scripts read `~/Documents/creds.txt` on the
-  builder and pass keys only through a pipe to the session socket.
+- **Hosts:**
+  - All residents were quit, on every host and in both guests.
+  - The four desktop locks were released verified clean (22:28Z), and the input-agent sockets removed.
+  - Both Aurora overlays were stopped and their disks deleted. The golden is read-only and was not touched.
+  - `/home/patrick/work/put.gd-i329` was removed from f44, m74, k72 and d69. `strace` stays installed on f44.
+- **Credentials:** none appears in any file here. The lab scripts read `~/Documents/creds.txt` on the
+  builder and pass keys only through a pipe to the session socket. The IAM inline policy
+  `putgd-acceptance-i329` on `putgd-acceptance-87` is Patrick's to remove.
