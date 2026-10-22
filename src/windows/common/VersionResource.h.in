@@ -1,0 +1,4 @@
+// Generated at configure time from the build manifest (cmake/WindowsVersion.cmake).
+#define PUTGD_RC_VERSION @PUTGD_WINDOWS_FILE_VERSION@
+#define PUTGD_RC_FILE_VERSION_TEXT "@PUTGD_WINDOWS_FILE_VERSION_TEXT@"
+#define PUTGD_RC_VERSION_TEXT "@PUTGD_VERSION@"

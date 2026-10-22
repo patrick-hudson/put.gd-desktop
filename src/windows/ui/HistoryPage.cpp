@@ -441,9 +441,9 @@ int HistoryPageImpl::layout(int width, int height) {
     // Details pane: the preview gives up height first, down to a strip, so the actions always fit.
     int dy = y;
     const int titleHeight = fontHeight(font(FontRole::Bold, d));
-    const int small = fontHeight(font(FontRole::SmallBold, d));
+    const int smallHeight = fontHeight(font(FontRole::SmallBold, d));
     const bool sharing = !activityMode_ && sharingVisible_;
-    const int buttonsHeight = (buttonHeight + gap) * 3 - gap + (activityMode_ ? 0 : small + scale(4, d) + fieldHeight + scale(12, d)) + (sharing ? buttonHeight + gap : 0);
+    const int buttonsHeight = (buttonHeight + gap) * 3 - gap + (activityMode_ ? 0 : smallHeight + scale(4, d) + fieldHeight + scale(12, d)) + (sharing ? buttonHeight + gap : 0);
     const int below = scale(14, d) + titleHeight + scale(8, d) + scale(64, d) + gap + buttonsHeight;
     const int previewHeight = std::clamp(bottomY - scale(12, d) - y - below, scale(72, d), scale(180, d));
     place(preview_, x, dy, detailsWidth, previewHeight);
@@ -454,8 +454,8 @@ int HistoryPageImpl::layout(int width, int height) {
     place(details_, x, dy, detailsWidth, detailsHeight);
     dy += detailsHeight + gap;
     if (!activityMode_) {
-        place(linkLabel_, x, dy, detailsWidth, small + 2);
-        dy += small + scale(4, d);
+        place(linkLabel_, x, dy, detailsWidth, smallHeight + 2);
+        dy += smallHeight + scale(4, d);
         place(link_, x, dy, detailsWidth, fieldHeight);
         dy += fieldHeight + scale(12, d);
         place(copyLink_, x, dy, half, buttonHeight);

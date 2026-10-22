@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  put.gd per-user installer (#404), built on Linux by wixl through
+  src/windows/packaging/package.py with these variables:
+    Version     the calendar version, 26.1022.942-nightly (docs/versioning.md)
+    MsiVersion  its MSI mapping (src/windows/cmake/WindowsVersion.cmake)
+    FileVersion the executables' FILEVERSION, 26.1022.0.942
+    SourceDir   the directory holding putgd.exe, putgd-cli.exe, build-info.json and LICENSE.txt
+    IconFile    src/windows/resident/app.ico
+
+  Installs into %LOCALAPPDATA%\Programs\put.gd without elevation, adds a Start Menu
+  entry and its own Apps entry, and replaces any older or same-version put.gd
+  (MajorUpgrade). It never writes the login-startup Run value: put.gd writes and
+  removes that from its launchAtLogin preference. Uninstalling removes exactly what
+  this package installed and keeps %LOCALAPPDATA%\put.gd (configuration, history,
+  logs) and Credential Manager entries.
+-->
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Product Id="*" Name="put.gd" Language="1033" Version="$(var.MsiVersion)" Manufacturer="put.gd"
+           UpgradeCode="7BD6CE99-5644-460D-BF82-9768D7FAD327">
+    <Package InstallerVersion="500" Compressed="yes" InstallScope="perUser"
+             Description="put.gd $(var.Version)" Manufacturer="put.gd" Comments="https://put.gd"/>
+    <MajorUpgrade AllowSameVersionUpgrades="yes"
+                  DowngradeErrorMessage="A newer put.gd is already installed. Uninstall it first to install this version."/>
+    <Media Id="1" Cabinet="putgd.cab" EmbedCab="yes"/>
+
+    <Icon Id="putgd.ico" SourceFile="$(var.IconFile)"/>
+    <!-- The Apps entry is the registry key below, so it shows the calendar version
+         rather than the MSI mapping; Windows Installer's own entry stays hidden. -->
+    <Property Id="ARPSYSTEMCOMPONENT" Value="1"/>
+    <!-- wixl leaves File.Version empty unless told, and an unversioned new file never
+         replaces the versioned putgd.exe on disk: the upgrade then removed the old one
+         and installed nothing. The executables carry their FILEVERSION, and "a" copies
+         every file even when the versions are equal (a nightly and the stable release of
+         one YY.MDD.N), since the old product is removed first anyway. -->
+    <Property Id="REINSTALLMODE" Value="amus"/>
+    <Property Id="ARPPRODUCTICON" Value="putgd.ico"/>
+
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="LocalAppDataFolder">
+        <Directory Id="UserPrograms" Name="Programs">
+          <!-- Removed on uninstall only when empty; other per-user apps share it. -->
+          <Component Id="UserProgramsFolder" Guid="5E0B5E39-2D0C-4C8A-9C1B-6A3E0F1D2B07">
+            <RemoveFolder Id="RemoveUserPrograms" On="uninstall"/>
+            <RegistryValue Root="HKCU" Key="Software\put.gd\Installer" Name="ProgramsFolder" Type="integer" Value="1" KeyPath="yes"/>
+          </Component>
+          <Directory Id="INSTALLDIR" Name="put.gd">
+            <Component Id="Resident" Guid="5E0B5E39-2D0C-4C8A-9C1B-6A3E0F1D2B01">
+              <File Id="putgd.exe" Name="putgd.exe" Source="$(var.SourceDir)/putgd.exe" DefaultVersion="$(var.FileVersion)"/>
+            </Component>
+            <Component Id="Cli" Guid="5E0B5E39-2D0C-4C8A-9C1B-6A3E0F1D2B02">
+              <File Id="putgd_cli.exe" Name="putgd-cli.exe" Source="$(var.SourceDir)/putgd-cli.exe" DefaultVersion="$(var.FileVersion)"/>
+            </Component>
+            <Component Id="Manifest" Guid="5E0B5E39-2D0C-4C8A-9C1B-6A3E0F1D2B03">
+              <File Id="build_info.json" Name="build-info.json" Source="$(var.SourceDir)/build-info.json"/>
+            </Component>
+            <Component Id="License" Guid="5E0B5E39-2D0C-4C8A-9C1B-6A3E0F1D2B04">
+              <File Id="LICENSE.txt" Name="LICENSE.txt" Source="$(var.SourceDir)/LICENSE.txt"/>
+            </Component>
+            <!-- How put.gd recognises an installed copy (update.install runs the MSI
+                 for it) and its Apps entry. -->
+            <Component Id="Registration" Guid="5E0B5E39-2D0C-4C8A-9C1B-6A3E0F1D2B05">
+              <RemoveFolder Id="RemoveInstallDir" On="uninstall"/>
+              <RegistryKey Root="HKCU" Key="Software\put.gd\Installer">
+                <RegistryValue Name="InstallLocation" Type="string" Value="[INSTALLDIR]" KeyPath="yes"/>
+                <RegistryValue Name="Version" Type="string" Value="$(var.Version)"/>
+                <RegistryValue Name="ProductCode" Type="string" Value="[ProductCode]"/>
+              </RegistryKey>
+              <RegistryKey Root="HKCU" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\put.gd">
+                <RegistryValue Name="DisplayName" Type="string" Value="put.gd"/>
+                <RegistryValue Name="DisplayVersion" Type="string" Value="$(var.Version)"/>
+                <RegistryValue Name="Publisher" Type="string" Value="put.gd"/>
+                <RegistryValue Name="DisplayIcon" Type="string" Value="[INSTALLDIR]putgd.exe,0"/>
+                <RegistryValue Name="InstallLocation" Type="string" Value="[INSTALLDIR]"/>
+                <RegistryValue Name="URLInfoAbout" Type="string" Value="https://put.gd"/>
+                <RegistryValue Name="UninstallString" Type="string" Value="MsiExec.exe /X[ProductCode]"/>
+                <RegistryValue Name="QuietUninstallString" Type="string" Value="MsiExec.exe /X[ProductCode] /qn"/>
+                <RegistryValue Name="NoModify" Type="integer" Value="1"/>
+                <RegistryValue Name="NoRepair" Type="integer" Value="1"/>
+              </RegistryKey>
+            </Component>
+          </Directory>
+        </Directory>
+      </Directory>
+      <Directory Id="ProgramMenuFolder">
+        <Component Id="StartMenu" Guid="5E0B5E39-2D0C-4C8A-9C1B-6A3E0F1D2B06">
+          <Shortcut Id="StartMenuShortcut" Name="put.gd" Description="Capture and share screenshots and files"
+                    Target="[INSTALLDIR]putgd.exe" WorkingDirectory="INSTALLDIR" Icon="putgd.ico"/>
+          <RegistryValue Root="HKCU" Key="Software\put.gd\Installer" Name="StartMenuShortcut" Type="integer" Value="1" KeyPath="yes"/>
+        </Component>
+      </Directory>
+    </Directory>
+
+    <Feature Id="Complete" Level="1">
+      <ComponentRef Id="UserProgramsFolder"/>
+      <ComponentRef Id="Resident"/>
+      <ComponentRef Id="Cli"/>
+      <ComponentRef Id="Manifest"/>
+      <ComponentRef Id="License"/>
+      <ComponentRef Id="Registration"/>
+      <ComponentRef Id="StartMenu"/>
+    </Feature>
+  </Product>
+</Wix>

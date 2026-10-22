@@ -22,7 +22,9 @@
 #include "resident/SetupService.h"
 #include "resident/Tray.h"
 #include "resident/UiProcess.h"
+#include "resident/UpdateInstall.h"
 #include "resident/UpdateService.h"
+#include <cstdlib>
 #include <shellapi.h>
 
 namespace putgd {
@@ -74,6 +76,8 @@ int residentMain(const std::vector<std::string>& args) {
     for (size_t i = 0; i < args.size(); ++i) {
         const auto& a = args[i];
         if (a == "--background") background = true;
+        // A restart into an installed update (UpdateService::restart) waits for the old resident.
+        else if (a == "--after-update" && i + 1 < args.size()) update::waitForExit(std::strtoul(args[++i].c_str(), nullptr, 10), 30000);
         else if (a == "--history") view = "history"; else if (a == "--activity") view = "activity"; else if (a == "--settings") view = "settings"; else if (a == "--about") view = "about";
     }
     const auto pipePath = paths::sessionPipePath();
@@ -165,7 +169,11 @@ int residentMain(const std::vector<std::string>& args) {
         if (message == WM_ENDSESSION) { if (wParam) quit(); return true; }
         return false;
     });
-    operations.onActivityChanged = [&](bool active, bool uploading) { tray.setTint(uploading ? Tray::Tint::Uploading : active ? Tray::Tint::Busy : Tray::Tint::Idle); };
+    bool operationsActive = false;
+    operations.onActivityChanged = [&](bool active, bool uploading) { operationsActive = active; tray.setTint(uploading ? Tray::Tint::Uploading : active ? Tray::Tint::Busy : Tray::Tint::Idle); };
+    updates.busy = [&] { return operationsActive ? std::string("A capture or upload is running; try again when it has finished") : std::string(); };
+    updates.quit = quit;
+    updates.onChanged = [&] { ui.invalidate("update"); };
     bool invalidationPending = false;
     auto invalidateOperations = [&] {
         if (invalidationPending) return;

@@ -59,7 +59,7 @@ class Workflows(unittest.TestCase):
         summary = job(ci, 'ci')
         self.assertIn('name: CI', summary)
         self.assertIn('if: always()', summary)
-        self.assertIn('needs: [changes, contracts, linux, portable, windows, packages, pipewire]', summary)
+        self.assertIn('needs: [changes, contracts, linux, portable, windows, windows-msvc, packages, pipewire]', summary)
         self.assertIn("'packages': 'success' if selected.get('packages') == 'true' else 'skipped'", summary)
         self.assertIn("'pipewire': 'success' if selected.get('pipewire') == 'true' else 'skipped'", summary)
 
@@ -67,7 +67,7 @@ class Workflows(unittest.TestCase):
         ci = workflow('ci.yml')
         self.assertIn('python3 tools/ci/changes.py', job(ci, 'changes'))
         self.assertNotIn('needs:', job(ci, 'contracts'))
-        for name in ('linux', 'portable'):
+        for name in ('linux', 'portable', 'windows', 'windows-msvc'):
             self.assertIn("if: needs.changes.outputs.build == 'true'", job(ci, name))
         self.assertIn("if: needs.changes.outputs.packages == 'true'", job(ci, 'packages'))
 

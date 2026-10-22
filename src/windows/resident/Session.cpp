@@ -196,9 +196,9 @@ void Session::dispatch(const json::Object& request, JsonReply reply) {
         const auto error = settings_.validate(p.value("document").objectRef()); reply(error, {{"valid", !error}}); return;
     }
     if (method == "update.check") { if (!p.empty()) { reply(invalid(), {}); return; } updates_.check(true, reply); return; }
-    if (method == "update.install" || method == "update.restart" || method == "update.openSoftwareUpdates") {
-        reply({"update_check_unavailable", "Windows builds are updated by replacing the executables; use the download link in Settings → Updates", {}}, {}); return;
-    }
+    if (method == "update.install") { updates_.install(p, reply); return; }
+    if (method == "update.restart") { updates_.restart(p, reply); return; }
+    if (method == "update.openSoftwareUpdates") { reply({"software_updates_unavailable", "Windows installs update through put.gd itself: update.install", {{"reason", "not_repository_install"}}}, {}); return; }
     if (method == "diagnostics.bundle") { diagnosticsBundle(p, reply); return; }
     if (method == "diagnostics.uploadTarget") { reply({}, {{"available", false}, {"reason", "unsupported"}, {"message", "Diagnostics packages are saved locally in the Windows build; attach the file by hand"}}); return; }
     if (method == "diagnostics.reveal") {
