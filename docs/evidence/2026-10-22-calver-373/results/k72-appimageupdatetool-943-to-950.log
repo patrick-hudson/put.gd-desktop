@@ -1,0 +1,19 @@
+2026-10-22T06:31:23Z
+old: f957e39da2681889de3bac5db96c1477735f0c9a4d443887a6dc926334a1e0fb  zs/putgd-0.1.1-nightly.943-x86_64.AppImage
+update information: zsync|https://pkg.put.gd/lab/dl/nightly/appimage.zsync
+old version: putgd 0.1.1-nightly.943
+[2K100.00% done (110.03 of 110.03 MiB)...[2K100.00% done (110.03 of 110.03 MiB)...
+zsync2: checksum matches OK
+zsync2: used 109027328 local, fetched 6773240
+[2K100.00% done (110.03 of 110.03 MiB)...
+Validation warning: AppImage not signed
+Update successful. New file created: /home/patrick/work/put.gd-calver373-acc/zs/putgd-26.1022.950-nightly-x86_64.AppImage
+exit=0
+total 225340
+drwxrwxr-x 2 patrick patrick      4096 Oct 22 01:31 .
+drwxrwxr-x 7 patrick patrick      4096 Oct 22 01:31 ..
+-rwxr-xr-x 1 patrick patrick 115366392 Oct 22 01:31 putgd-0.1.1-nightly.943-x86_64.AppImage
+-rwxr-xr-x 1 patrick patrick 115370488 Oct 22  2026 putgd-26.1022.950-nightly-x86_64.AppImage
+new: 9f9bfe2b15025ea7fdadf9f5d4192710710f756e06833b014cde92b514d20ef2  zs/putgd-26.1022.950-nightly-x86_64.AppImage
+new version: putgd 26.1022.950-nightly
+lab SHA256SUMS: 9f9bfe2b15025ea7fdadf9f5d4192710710f756e06833b014cde92b514d20ef2  putgd-26.1022.950-nightly-x86_64.AppImage

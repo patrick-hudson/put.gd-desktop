@@ -344,6 +344,7 @@ the app.put.gd copy within about a minute of each release.
   an invalid version for its channel"), and it can't install the update in-app. apt, dnf
   and the zsync updaters (appimageupdatetool, Gear Lever, AppImageLauncher) still upgrade
   it, because they don't parse put.gd's versions; after that, in-app updates work again.
+  The lab acceptance shows both sides ([evidence](evidence/2026-10-22-calver-373/README.md)).
 - **Checks the client makes:** a stable feed may name only stable versions and a
   nightly feed only nightlies. The tag must be `v` + version. Any other `schema` is
   rejected, and so is a feed over 256 KiB.

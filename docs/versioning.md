@@ -164,7 +164,10 @@ build sorts before the stable release of the same `YY.MDD.N`. Package release
 
 So the first calendar nightly upgrades every installed `0.1.1~nightly.N` with
 apt and dnf, without an epoch. `tests/releases/test_verify_tag.py` checks the
-whole sequence with real `dpkg --compare-versions` and `rpm.vercmp`.
+whole sequence with real `dpkg --compare-versions` and `rpm.vercmp`. In the lab, the published `0.1.1-nightly.925` upgraded through dnf on Fedora 44
+and apt on Mint 22.3 to a calendar nightly from `pkg.put.gd/lab`. The AppImage
+updated in place, from an old-format image with appimageupdatetool and between
+calendar versions in-app ([evidence](evidence/2026-10-22-calver-373/README.md)).
 
 **Order across channels:**
 
