@@ -8,7 +8,7 @@ Recorded 2026-10-22 by the tray-drop-recent-activity session, under desktop lock
 | | Build | Source | AppImage SHA-256 |
 | --- | --- | --- | --- |
 | After | `0.1.1-dev.943+gef7b1eca305a` | #374 head `ef7b1eca`, CI run [39725705583](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/39725705583) (manual, every job green, `release-appimage` artifact) | `25c70260183a40e693c1899320660473106155536b6c28f9d56bfcb43ba0f87a` |
-| Before | `0.1.1-nightly.925` | nightly `0435ed6a`, the base of #374 | `49c6dfaa61a561b9…` (checked against the release's `SHA256SUMS`) |
+| Before | `0.1.1-nightly.925` | tag `v0.1.1-nightly.925`, commit `124fb3c0`: 17 commits before #374's base `0435ed6a`, with no change to the tray, menu or view-alias code in between (only a login-script hookup in `main.cpp`) | `49c6dfaa61a561b955dc69c231d57887aef1b80ed9e0130e6c59025587eb3b81` (matches the release's `SHA256SUMS`) |
 
 Each run used a private, local-only profile (its own `XDG_*` directories and runtime dir,
 notifications off) and the AppImage itself as the resident. `putgd-cli` came from the same
