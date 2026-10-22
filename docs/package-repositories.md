@@ -54,14 +54,16 @@ The packages also install AppStream metadata, `/usr/share/metainfo/gd.put.Putgd.
 | `apt/<label>/dists/<channel>/` | `InRelease`, `Release`, `Release.gpg`, `main/binary-amd64/Packages*` | the channel key (`InRelease`, `Release.gpg`) |
 | `apt/<label>/pool/main/p/putgd/` | the DEBs, byte-identical to the GitHub assets | through `InRelease` |
 | `rpm/fedora/44/x86_64/<channel>/` | `Packages/*.rpm` and `repodata/` | each RPM, with `rpmsign` and the channel key |
-| `releases/<tag>/` | `SHA256SUMS` and `SHA256SUMS.minisig` | the channel's minisign key |
+| `releases/<tag>/` | `SHA256SUMS` and `SHA256SUMS.minisig`; for the newest two releases per channel also `putgd-VERSION-x86_64.AppImage` and its `.zsync` (#293 phase 3) | the channel's minisign key (`SHA256SUMS`, which lists the image and `.zsync`) |
+| `dl/<channel>/appimage.zsync` | the newest mirrored `.zsync`, served at `https://app.put.gd/dl/<channel>/appimage.zsync` | through `SHA256SUMS` |
 | `update/v1/<channel>.json` | the update feed and its `.minisig` | the channel's minisign key |
 | `receipts/<tag>.json` | what each publication verified, signed and uploaded | — |
 
 - **Labels and channels:** `<label>` is `ubuntu24.04`, `ubuntu26.04` or `debian13`, and `<channel>` is `nightly` or `stable`.
 - **Separate archives per label:** the three DEBs share a name and version but have different bytes, and reprepro keeps one pool per archive.
 - **One suite per channel:** an `InRelease` covers its whole suite, so each channel gets its own and is signed by its own key.
-- **Retention:** apt keeps the newest version, and dnf keeps the newest three.
+- **Retention:** apt keeps the newest version, and dnf keeps the newest three. The newest two releases per channel keep their AppImage (`appimage_keep`); older images and `.zsync` files go after the usual delay, and `SHA256SUMS` stays.
+- **AppImage mirror:** the image and `.zsync` upload with the packages, before any metadata, with immutable caching; the `.zsync` is read back through the CDN; `dl/<channel>/appimage.zsync` moves with the feed. A `.zsync` must describe exactly the image and name either the GitHub asset (releases before #293 phase 3) or its mirror copy. `publish-local` takes an AppImage-only lab directory for the lab.
 
 **Why the dnf metadata isn't signed.** On Fedora 44, GNOME Software reads packages through dnf5daemon. dnf5daemon 5.4 can't load any repository with `repo_gpgcheck=1`; OpenAI's ChatGPT repository fails the same way. So the dnf repository follows Fedora's own model: signed packages (`gpgcheck=1`) and unsigned repodata. A forged repository can't install a package that isn't signed by the channel key. The RPM in the repository is the GitHub asset plus a signature; its header and payload digests are unchanged, and each receipt records both SHA-256 values. (Decided 2026-10-21 in #293.)
 

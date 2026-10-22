@@ -1,0 +1,15 @@
+deployed /home/patrick/putgd-signer/src appimage input: False
+pr /home/patrick/work/put.gd-i293p3 appimage input: True
+{
+ "tag": "v0.1.1-nightly.847",
+ "deployedFiles": 28,
+ "prFiles": 31,
+ "changed": [],
+ "onlyDeployed": [],
+ "onlyPr": [
+  "dl/nightly/appimage.zsync",
+  "releases/v0.1.1-nightly.847/putgd-0.1.1-nightly.847-x86_64.AppImage",
+  "releases/v0.1.1-nightly.847/putgd-0.1.1-nightly.847-x86_64.AppImage.zsync"
+ ],
+ "phaseOrHeaderChanges": []
+}

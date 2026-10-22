@@ -298,8 +298,14 @@ put.gd-site permalink to the newest `.zsync` of the channel:
 An untagged build carries nothing, so no updater offers to replace a development
 build with a release. Each release publishes `putgd-VERSION-x86_64.AppImage.zsync`,
 made in the AppImage job from the final image bytes. Its `URL` is the image's
-absolute GitHub release download URL, so the updater fetches that exact asset
-however it reached the `.zsync`. The AppImage receipt records the update
+copy on the release signer's mirror, `https://pkg.put.gd/releases/TAG/putgd-VERSION-x86_64.AppImage`,
+so the updater fetches that exact image however it reached the `.zsync`, and with no
+redirect: zsync2 follows redirects with a request that ignores the CA bundle, which fails
+on Fedora 44 (#297). The signer mirrors each release's image and `.zsync` (verified against
+`SHA256SUMS`, the receipt and GitHub's digest) before it moves the channel's
+`dl/<channel>/appimage.zsync`, which `app.put.gd/dl/<channel>/appimage.zsync` serves from
+the pkg bucket, and the feed ([package repositories](package-repositories.md#layout)).
+Releases built before that name the GitHub download, and the mirror accepts both. The AppImage receipt records the update
 information and the `.zsync`'s URL, size and SHA-256 under `update`. Read an
 image's value with `./putgd-VERSION-x86_64.AppImage --appimage-updateinformation`.
 Assembly details are in

@@ -236,7 +236,8 @@ stable releases; untagged builds embed nothing ([AppImage updates](../../docs/re
 `tools/releases/appimage_update.py` derives both values from the tag.
 After appimagetool, `portable_appimage.py` reads the section back, writes
 `putgd-VERSION-x86_64.AppImage.zsync` with
-`zsyncmake -u https://github.com/OWNER/REPO/releases/download/TAG/putgd-VERSION-x86_64.AppImage`,
+`zsyncmake -u https://pkg.put.gd/releases/TAG/putgd-VERSION-x86_64.AppImage` (the release
+signer's mirror, which doesn't redirect, #297),
 and checks its header (`Filename`, `URL`, `Length`, `SHA-1`) and block count
 against the image. appimagetool's own `.zsync`, which names the image by a
 relative URL, is replaced.
@@ -252,7 +253,10 @@ For a lab update test, `PUTGD_APPIMAGE_UPDATE_ORIGIN=http://127.0.0.1:8765` in
 the environment of `tools/releases/build-appimage.sh` points both the update
 information (`ORIGIN/appimage.zsync`) and the `.zsync`'s image URL
 (`ORIGIN/putgd-VERSION-x86_64.AppImage`) at a local server; `collect.py` rejects
-such an image. The recorded check moves one build to the next with
+such an image. `PUTGD_APPIMAGE_UPDATE_BASE=https://pkg.put.gd/lab/` with a (local, unpushed)
+release tag gives a lab build the live layout under the signer's lab prefix
+(`zsync|BASE/dl/nightly/appimage.zsync`, `BASE/releases/TAG/NAME`), which the signer's
+`publish-local` serves. The recorded check moves one build to the next with
 `appimageupdatetool`:
 [AppImage zsync updates (issue #293)](../../docs/evidence/2026-10-20-appimage-zsync-293/README.md).
 
@@ -283,7 +287,9 @@ only for the user's own group (named after the user, no other members): umask 00
 desktop default on Debian 13, Kubuntu 26.04 and Mint 22.3 (Fedora 44 uses 022), makes
 every downloaded or updated image `775`. The folder must pass the same check, or only the
 configured image is used. The configured image itself only has to be an executable file,
-as the autostart entry required before. Without update information
+as the autostart entry required before. Its version comes from the image itself
+(`--version`), falling back to its file name: put.gd's own update replaces the file in
+place, so the name can be older than what it holds. Without update information
 (untagged builds) the configured image is the only candidate. Gear Lever replaces
 the configured file in place; with no versioned sibling the script starts it
 without probing anything. put.gd touches only its own autostart entry and script,
