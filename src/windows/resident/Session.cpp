@@ -84,7 +84,24 @@ void Session::dispatch(const json::Object& request, JsonReply reply) {
     }
     if (method == "ui.snapshot") { if (!p.empty()) { reply(invalid(), {}); return; } reply({}, snapshot()); return; }
     if (startsWith(method, "ui.")) { reply({"ui_unavailable", "This window command is not available in the Windows build", {{"method", method}}}, {}); return; }
-    if (startsWith(method, "recording.")) { reply({"recording_unavailable", "Screen recording is not available in the Windows build yet", {}}, {}); return; }
+    if (startsWith(method, "recording.")) {
+        // Field checks as on Linux (LocalServer); the session checks state and revision.
+        const auto command = method.substr(10);
+        bool ok = true;
+        if (command == "capabilities") ok = p.empty();
+        else if (command == "prepare") ok = fields(p, {"target", "format"}, {"codec", "fps", "audio", "maxEdge"}) && p.value("target").isObject() && stringField(p, "format", 8) && (!p.contains("codec") || p.value("codec").isString()) && (!p.contains("audio") || p.value("audio").isObject());
+        else if (command == "start" || command == "pause" || command == "resume" || command == "stop" || command == "cancel" || command == "inspect" || command == "raise") ok = fields(p, {"id"}) && stringField(p, "id");
+        else if (command == "select") ok = fields(p, {"id", "rect"}) && stringField(p, "id") && p.value("rect").isArray() && p.value("rect").arrayRef().size() == 4;
+        else if (command == "overlay") ok = fields(p, {"id", "visible"}) && stringField(p, "id") && p.value("visible").isBool();
+        else if (command == "edit") ok = fields(p, {"id", "revision", "commands"}) && stringField(p, "id") && p.value("revision").isNumber() && p.value("commands").isArray() && p.value("commands").arrayRef().size() <= 100;
+        else if (command == "preview") ok = fields(p, {"id", "time"}, {"maxEdge"}) && stringField(p, "id") && p.value("time").isNumber() && (!p.contains("maxEdge") || p.value("maxEdge").isNumber());
+        else if (command == "review") ok = stringField(p, "id") && stringField(p, "action", 32);
+        else if (command == "saveCopy") ok = fields(p, {"id", "path"}, {"overwrite"}) && stringField(p, "id") && stringField(p, "path", 4096) && (!p.contains("overwrite") || p.value("overwrite").isBool());
+        else if (command == "upload") ok = fields(p, {"id", "revision"}) && stringField(p, "id") && p.value("revision").isNumber();
+        else { reply({"unknown_method", "Unknown recording method", {}}, {}); return; }
+        if (!ok) { reply(invalid(), {}); return; }
+        operations_.recordingCommand(command, p, reply); return;
+    }
     if (method == "action.invoke") {
         if (!fields(p, {"action"}, {"source", "path", "mode"}) || !stringField(p, "action") || (p.contains("source") && !stringField(p, "source", 32)) || (p.contains("path") && !stringField(p, "path", 4096))) { reply(invalid(), {}); return; }
         auto options = p; options.remove("action"); operations_.invoke(p.value("action").stringRef(), options, reply); return;

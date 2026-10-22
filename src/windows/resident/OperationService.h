@@ -30,6 +30,10 @@ public:
     // `edit` accepts options {source: region|window|desktop|clipboard|file, path}.
     void invoke(const std::string& action, const json::Object& options, JsonReply);
     void editorCommand(const std::string& id, const std::string& command, const json::Object& params, JsonReply);
+    // recording.* session methods (docs/recording.md) after the session layer checked
+    // their fields; the record action goes through invoke(). resident/Recording.cpp.
+    void recordingCommand(const std::string& command, const json::Object& params, JsonReply);
+    std::string recordingOperation() const;
     std::string editingOperation() const { return editingId_; }
     void inspect(const std::string& id, JsonReply);
     void recent(JsonReply);
@@ -68,10 +72,21 @@ private:
     struct Job { Operation op; Payload payload; bool acquire = false; CancelFlag cancelled; };
     struct CaptureSession;
     struct EditorSession;
+    struct RecordingSession;
     void acceptOperation(Operation op, const std::string& source, const std::string& sourcePath, bool upload, JsonReply);
     void acquireSource(Operation op, const std::string& source, const std::string& sourcePath, CancelFlag);
     void startCapture(Operation op, const std::string& mode, CancelFlag);
     void startEditing(Operation op, Payload input, CancelFlag);
+    void recordInvoke(const std::string& mode, JsonReply);
+    void prepareRecording(const json::Object& params, JsonReply);
+    void recordingControl(const std::string& command, JsonReply);
+    void cancelRecording(JsonReply);
+    void exportRecording(const std::string& command, const json::Object& params, JsonReply);
+    void endRecording(Operation, bool removeStaging = true);
+    void recordingProbe(std::function<void()> done);
+    json::Object recordingCapabilities() const;
+    json::Object recordingJson() const;
+    void terminateRecording();
     void enqueue(Job);
     void pump();
     Operation run(Job);
@@ -103,6 +118,10 @@ private:
     std::string selectingId_, editingId_;
     std::unique_ptr<CaptureSession> capture_;
     std::shared_ptr<EditorSession> editor_;
+    std::shared_ptr<RecordingSession> recording_;
+    // The helper's capabilities probe, cached while available (a failure is retried after a minute).
+    json::Object recordingProbe_; unsigned long long recordingProbeAt_ = 0; bool recordingProbing_ = false;
+    std::vector<std::function<void()>> recordingProbeWaiters_;
     bool ready_ = false, stopping_ = false, cleanupInProgress_ = false;
     Error startupError_;
     unsigned long uiPid_ = 0;
@@ -114,5 +133,6 @@ private:
     std::map<std::string, UploadCopy> uploadCopies_;
     friend struct CaptureSession;
     friend struct EditorSession;
+    friend struct RecordingSession;
 };
 }

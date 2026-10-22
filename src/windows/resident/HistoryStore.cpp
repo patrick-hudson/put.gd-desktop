@@ -129,7 +129,7 @@ std::vector<Operation> HistoryStore::recover(Error* error) {
     std::vector<Operation> result;
     if (error_) { if (error) *error = error_; return result; }
     std::vector<std::string> ids;
-    { sqlite::Statement q(db_, "SELECT id FROM operations WHERE json_extract(data,'$.state') IN ('accepted','acquiring','editing','stored','running')"); while (q.step()) ids.push_back(q.text(0)); if (q.failed()) { if (error) *error = sqlError(); return result; } }
+    { sqlite::Statement q(db_, "SELECT id FROM operations WHERE json_extract(data,'$.state') IN ('accepted','acquiring','editing','recording','stored','running')"); while (q.step()) ids.push_back(q.text(0)); if (q.failed()) { if (error) *error = sqlError(); return result; } }
     for (const auto& id : ids) { Error e; auto op = operation(id, &e); if (!e) result.push_back(std::move(op)); }
     return result;
 }
