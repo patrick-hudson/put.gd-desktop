@@ -160,7 +160,17 @@ with `provision_runtime.py --target windows-x64`, next to its executable under
 `proton\`. The session and link passwords live in Credential Manager (Bun.secrets);
 the resident must run in the interactive session because Credential Manager refuses
 writes from a non-interactive logon. Account coordination uses a lock file under
-`%LOCALAPPDATA%\put.gd\proton-accounts`. Shipping the Windows runtime is tracked in #408.
+`%LOCALAPPDATA%\put.gd\proton-accounts`.
+
+The Windows packages ship the helper (#408). CI's `windows-packages` job provisions it,
+binds `putgd.exe` to its digest and packages it with its manifest, dependency notices and
+a sixteen-file redistribution set in `proton\redistribution\`. That set holds the Bun
+notice aggregate, the Windows scope and attribution (`BUN-WINDOWS-SCOPE.json`,
+`BUN-WINDOWS-ATTRIBUTION.md`), ICU 78.3's licence, the JavaScript notices, and the
+Windows corresponding-source catalog `SOURCES-WINDOWS.json` with `REBUILD-WINDOWS.md`.
+The catalog pins the Windows helper and the `@oven/bun-windows-x64` package against the
+same six published source packets as `SOURCES.json`. The Windows release gates are in
+[the gates document](proton-drive-release-gates.md#windows-x64).
 
 ## Building and verification
 

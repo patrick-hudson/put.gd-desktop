@@ -57,8 +57,28 @@ logon (an SSH key session, a service): the resident must run in the user's deskt
 session. Sharing, link expiry, revocation, reconciliation and the retry deadline
 adoption follow the Linux rules; the journal's `sharing_operations` table and the
 `history.share`/`history.revokeLink`/`history.inspectLink`/`share.inspect` methods
-are served on Windows. Shipping the runtime with a Windows build (CI provisioning,
-Bun attribution, catalog, installer placement) is #408; Backblaze B2 on Windows is #409.
+are served on Windows. Backblaze B2 on Windows is #409.
+
+**Shipping the runtime (#408).** CI's `windows-packages` job provisions the helper from
+the pinned sources, builds `putgd.exe` with `-DPUTGD_PROTON_MANIFEST` and puts the runtime
+in both packages (below). The helper is reproducible: f44 and d69 built
+`809832fa519b…dab26b1` byte for byte from the same commit, with different Node and npm
+versions. It ships with its manifest, dependency notices and a redistribution set
+under `proton\redistribution\`:
+
+- the Bun notice aggregate, plus `BUN-WINDOWS-SCOPE.json` and `BUN-WINDOWS-ATTRIBUTION.md`.
+  These check the Windows `bun.exe` (same Bun, WebKit and TinyCC commits as Linux) against
+  that aggregate: its 192 Cargo packages, all 24 native recipes (libuv is Windows-only)
+  and ICU 78.3, whose own licence is added as `LICENSE.icu4c-78.3`;
+- `SOURCES-WINDOWS.json`, the corresponding-source catalog. It pins the Windows helper and
+  Bun package against the same six published source packets as Linux, and
+  `REBUILD-WINDOWS.md` gives the rebuild route.
+
+`provision_runtime.py` records `redistributionComplete: true` only when that catalog
+describes the build it made. The packager refuses anything else. Still open before a
+public Windows release with Proton: the statically linked Microsoft C runtime's terms
+([#463](https://github.com/patrick-hudson/put.gd-desktop/issues/463)) and a Windows
+native Bun relink proof ([#462](https://github.com/patrick-hudson/put.gd-desktop/issues/462)).
 
 ![The Proton destination editor](evidence/2026-10-22-windows-native/08-proton-editor-annotated.png)
 
@@ -130,21 +150,33 @@ cmake --build build/msvc --config Release
 ## Packages and versions
 
 `src/windows/packaging/package.py` turns a cross build into the two packages CI keeps
-as the `windows-packages` artifact (wixl comes from Ubuntu's `wixl` package):
+as the `windows-packages` artifact (wixl comes from Ubuntu's `wixl` package). A build
+configured with `-DPUTGD_PROTON_MANIFEST` ships its Proton runtime: pass the provisioning
+output with `--proton-runtime` (CI adds `--require-proton`):
 
 ```sh
 sudo apt-get install -y wixl msitools
-python3 src/windows/packaging/package.py --build build/windows --output build/windows-packages
+python3 tools/proton/provision_runtime.py --target windows-x64
+cmake -S src/windows -B build/windows -G Ninja -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_TOOLCHAIN_FILE="$PWD/cmake/toolchains/x86_64-w64-mingw32.cmake" \
+  -DPUTGD_PROTON_MANIFEST="$PWD/build/dependencies/proton-runtime-windows/manifest.json"
+cmake --build build/windows
+python3 src/windows/packaging/package.py --build build/windows --output build/windows-packages \
+  --proton-runtime build/dependencies/proton-runtime-windows
 ```
 
 | File | Contents |
 | --- | --- |
-| `putgd-VERSION-windows-x86_64.zip` | `put.gd\` with `putgd.exe`, `putgd-cli.exe`, `build-info.json` and `LICENSE.txt`: the portable build, run from any folder you can write to |
+| `putgd-VERSION-windows-x86_64.zip` | `put.gd\` with `putgd.exe`, `putgd-cli.exe`, `build-info.json` and `LICENSE.txt`, and `proton\` with the Proton runtime: the portable build, run from any folder you can write to |
 | `putgd-VERSION-windows-x86_64.msi` | the per-user installer (`src/windows/packaging/putgd.wxs`) |
 | `windows-packages.json` | the build identity, the version mappings and each file's size and SHA-256 |
 
 The packager refuses executables that don't embed the manifest's version and commit,
-so a stale executable can't be packaged under a new label.
+so a stale executable can't be packaged under a new label. It also refuses a Proton
+runtime that isn't the one `putgd.exe` was built for (the build keeps the manifest it
+compiled in as `proton-runtime-manifest.json`), or that fails
+`tools/releases/audit_proton.py`'s Windows checks: the exact file set, every digest, and
+the catalog matching the helper and Bun package.
 
 **Versions (#396).** Both executables carry a version resource generated from the
 build manifest at configure time (`src/windows/cmake/WindowsVersion.cmake`):
@@ -179,8 +211,8 @@ signed yet, so SmartScreen asks once ([#447](https://github.com/patrick-hudson/p
   and removes `HKCU\Software\Microsoft\Windows\CurrentVersion\Run\put.gd` from
   **Launch at login**, pointing at the `putgd.exe` that runs. The installer never writes it.
 - **Uninstalling** (Settings → Apps, or `msiexec /x` with the product code) removes what
-  the MSI installed: the program folder, the Start menu entry, the Apps entry and the
-  `Installer` key. It keeps everything put.gd made: `%LOCALAPPDATA%\put.gd`
+  the MSI installed: the program folder with `proton\`, the Start menu entry, the Apps
+  entry and the `Installer` key. It keeps everything put.gd made: `%LOCALAPPDATA%\put.gd`
   (configuration, history, previews, logs), local copies under `Documents\put.gd`, and
   the Credential Manager entries. That matches the Linux packages ([#382](https://github.com/patrick-hudson/put.gd-desktop/issues/382)).
 - **Start at login after uninstalling:** if **Launch at login** was on, its Run value stays
@@ -206,8 +238,11 @@ the channel's minisign signature, and the package must match it.
   starts the new version. If the installer fails, Windows Installer rolls it back, and put.gd
   starts again on the old version and reports the exit code.
 - **Portable folders:** the verified zip is unpacked beside `putgd.exe`. The running files
-  move to `.putgd-update-backup-VERSION`, and the new ones take their names. The restart
-  starts the new `putgd.exe`. The backup is removed once the new version runs.
+  move to `.putgd-update-backup-VERSION`, and the new ones take their names. The `proton\`
+  folder moves as one entry, so the new `putgd.exe` gets the helper it was built for; a
+  Proton request still running keeps the folder from moving, and the update then changes
+  nothing. The restart starts the new `putgd.exe`. The backup is removed once the new
+  version runs.
 
 Development builds, and a channel other than the build's own, don't install
 (`update_install_unavailable`, `development_build` or `switch_unsupported`).
@@ -275,7 +310,7 @@ operation of the window, Windows 10, and a signed install.
 | Gap | Issue |
 | --- | --- |
 | Screen recording (`record` action, `recording.*`) | #400 |
-| Shipping the Proton runtime with a Windows build | #408 |
+| Windows native Bun relink proof for the Proton helper | [#462](https://github.com/patrick-hudson/put.gd-desktop/issues/462) |
 | Backblaze B2 destination | #409 |
 | Multipart uploads and files over the 5 GiB single-PUT limit | #402 |
 | Per-item cancellation, the `ui.*` window-driving methods, diagnostics upload, history gallery/date/MIME filters | #403 |

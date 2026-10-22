@@ -21,13 +21,21 @@ The `windows` job (ubuntu-24.04) builds the native Windows app under `src/window
 with the mingw-w64 cross toolchain file in `cmake/toolchains/`, runs the portable
 core, SigV4, editor, minisign, update-plan and version-mapping contract tests with the
 host compiler, and keeps `putgd.exe`, `putgd-cli.exe` and their `build-info.json` as the
-`windows-native` artifact. It then packages the portable zip and the per-user MSI with
-wixl (`src/windows/packaging/package.py`) as the `windows-packages` artifact. On a
-tagged run it builds with `PUTGD_RELEASE_TAG`, so the packages carry the release version.
+`windows-native` artifact. It carries no Proton runtime, so it stays fast.
+
+The `windows-packages` job (ubuntu-24.04) builds what ships (#408). It provisions the
+Windows Proton helper from the pinned sources
+(`tools/proton/provision_runtime.py --target windows-x64`, online as the Linux package
+jobs do). It requires `redistributionComplete`, cross-builds `putgd.exe` bound to the
+helper's digest (`-DPUTGD_PROTON_MANIFEST`) and runs the packager contracts with wixl.
+It then packages the portable zip and the per-user MSI with `--require-proton`, which
+audits the `proton\` folder. It keeps the `windows-packages` artifact and the runtime with
+its manifest, notices and catalog as `windows-proton-runtime`. On a tagged run it builds
+with `PUTGD_RELEASE_TAG`, so the packages carry the release version.
 
 The `windows-msvc` job (windows-2022) configures `src/windows` with Visual Studio 2022
 and builds both executables with `/W4 /WX`, so the sources stay MSVC-clean; it runs no
-tests. Both jobs are selected with the build group and required by the `CI` summary.
+tests. All three jobs are selected with the build group and required by the `CI` summary.
 They prove compilation, packaging and the portable contracts only; Windows desktop
 acceptance is recorded in [windows.md](windows.md).
 
