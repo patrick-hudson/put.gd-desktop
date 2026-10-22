@@ -103,7 +103,9 @@ private slots:
   const auto calendar=update::build(manifest("26.1022.942-nightly"),"appimage",true);
   QCOMPARE(calendar.channel,QString("nightly"));QCOMPARE(calendar.kind,QString("nightly"));
   QCOMPARE(update::build(manifest("26.1101.960"),"appimage",true).channel,QString("stable"));
-  QCOMPARE(update::evaluate(feed("stable",release("26.1101.960")),calendar,"stable",error)["updateAvailable"].toBool(),false);QVERIFY(!error);
+  // A stable release committed before this nightly is older; a later one is an update.
+  QCOMPARE(update::evaluate(feed("stable",release("26.1020.900")),calendar,"stable",error)["updateAvailable"].toBool(),false);QVERIFY(!error);
+  QCOMPARE(update::evaluate(feed("stable",release("26.1101.960")),calendar,"stable",error)["updateAvailable"].toBool(),true);QVERIFY(!error);
   QCOMPARE(update::evaluate(feed("nightly",release("26.1022.941-nightly")),calendar,"nightly",error)["updateAvailable"].toBool(),false);QVERIFY(!error);
  }
  void feedAddressIsFixedUnlessALoopbackOrHttpsOverride(){

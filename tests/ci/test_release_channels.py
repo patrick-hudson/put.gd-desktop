@@ -258,15 +258,16 @@ class Workflows(unittest.TestCase):
         self.assertIn('contents: write', job(nightly, 'plan'))
         self.assertIn('contents: read', ci)
 
-    def test_main_pushes_cut_candidates_and_stable_is_manual(self):
+    def test_main_pushes_tag_and_stage_the_stable_release(self):
+        # #373: no candidate channel; every push to main tags HEAD's calendar version.
         release = workflow('release.yml')
-        self.assertIn('  push:\n    branches: [main]\n', release)
-        self.assertIn('options: [candidate, stable]', release)
+        self.assertIn('  push:\n    branches: [main]\n  workflow_dispatch:\npermissions:', release)
+        self.assertNotIn('candidate', release)
         self.assertIn('group: release-main\n  cancel-in-progress: false', release)
-        self.assertIn("CHANNEL: ${{ inputs.channel || 'candidate' }}", job(release, 'tag'))
-        self.assertIn('python3 tools/releases/release_tag.py --channel "$CHANNEL"', job(release, 'tag'))
+        self.assertIn('python3 tools/releases/release_tag.py --output "$RUNNER_TEMP/release-tag.json"', job(release, 'tag'))
         self.assertIn('needs: [tag, ci]', job(release, 'draft'))
         self.assertIn('publish.py --tag "$TAG" --directory build/publish\n', job(release, 'draft'))
+        self.assertIn('promote.py --finalize $TAG --open', job(release, 'draft'))
 
     def test_no_workflow_publishes_a_stable_or_candidate_release(self):
         # Comments and step-summary text may describe the manual command; nothing may run it.
