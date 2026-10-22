@@ -8,7 +8,7 @@
 
 <br>
 
-**A native Linux sharing app.** Hit a hotkey, grab a region, window, desktop, clipboard or screen recording. The public link lands on your clipboard the moment it uploads. Qt 6 and C++20, talking straight to your own S3 bucket or Proton Drive. No middleman, no telemetry, no updater.
+**A native Linux sharing app.** Hit a hotkey, grab a region, window, desktop, clipboard or screen recording. The public link lands on your clipboard the moment it uploads. Qt 6 and C++20, talking straight to your own S3 bucket or Proton Drive. No middleman, no telemetry, no silent updates.
 
 <br>
 
@@ -99,7 +99,7 @@ Cinnamon/X11 through the compositor's own screenshot service, GNOME 50 Wayland t
 <td width="50%" valign="top">
 
 ### <img src="docs/readme/icons/quiet.svg" width="32" height="32" align="absmiddle" alt=""> Quiet and small
-One resident process; windows, capture helpers, the recorder and the AWS SDK worker start on demand and go away when done. The idle resident family stays under 40 MiB in the measured workflows on all three desktops, and nothing phones home.
+One resident process; windows, capture helpers, the recorder and the AWS SDK worker start on demand and go away when done. The idle resident family stays under 40 MiB in the measured workflows on all three desktops, and it sends no telemetry.
 
 </td>
 </tr>
@@ -200,6 +200,8 @@ chmod +x putgd-*.AppImage && ./putgd-*.AppImage
 # GNOME 50 only: enable the capture extension, then log out and back in
 gnome-extensions enable putgd@put.gd
 ```
+
+**Updating:** a once-a-day check (on by default) looks for a newer build; nothing installs without your confirmation, and [updates](docs/updates.md) covers the check, the channels and the AppImage recovery path if a new version will not start.
 
 > **Nightlies are build-tested, not desktop-certified.** Each one passed the full Linux test suites, the Windows compile, package audits and a production build of its own source tarball. Graphical, memory and live-S3 acceptance are recorded separately per candidate in [verification.md](docs/verification.md). Candidates and stable releases land on the same page once their exact packages pass acceptance on real desktops; a published stable becomes GitHub's *Latest*.
 
@@ -376,7 +378,7 @@ One resident owns the journal, settings, history, hotkeys and the tray. Windows,
 
 | Area | Start here |
 | --- | --- |
-| Using it | [User guide](docs/user-guide.md) · [Configuration](docs/configuration.md) · [Credentials](docs/credentials.md) · [Troubleshooting](docs/troubleshooting.md) · [Errors](docs/errors.md) |
+| Using it | [User guide](docs/user-guide.md) · [Configuration](docs/configuration.md) · [Updates](docs/updates.md) · [Credentials](docs/credentials.md) · [Troubleshooting](docs/troubleshooting.md) · [Errors](docs/errors.md) |
 | Automating it | [CLI](docs/cli.md) · [MCP helper](docs/mcp.md) · [Image editor](docs/image-editor.md) · [Screen recording](docs/recording.md) |
 | Storage | [S3](docs/s3.md) · [Backblaze B2](docs/b2.md) · [Proton Drive](docs/proton-drive.md) · [Provider contract](docs/storage-providers.md) |
 | Desktops | [Cinnamon / X11](docs/desktops/cinnamon.md) · [GNOME 50](docs/desktops/gnome.md) · [KDE Plasma](docs/desktops/kde.md) · [Acceptance matrix](docs/acceptance-matrix.md) |
