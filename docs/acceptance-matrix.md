@@ -312,7 +312,8 @@ Each resident runs with private `XDG_CONFIG_HOME`,
 - **Pictures:** one annotated full-desktop picture per desktop per route, whose footer names the build
   (version and commit). Each is captured from that build during this pass (rule 16 in the coordination
   notes), and every frame is checked for privacy before it is kept.
-- **A results table:** desktops × U1–U16, with versions, methods, timings and RSS.
+- **A results table:** desktops × U1–U16, with versions, methods, timings and RSS. Every cell names its build
+  (version and commit), host and run name, so later passes can cite a result instead of repeating it.
 - **The run logs** (`results/`) and the drivers (`lab/`).
 - **A docs-only pull request** into `nightly`, with each failure linked to its issue.
 
