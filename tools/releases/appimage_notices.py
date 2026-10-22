@@ -153,6 +153,23 @@ def remove_linuxdeploy_leftovers(appdir: Path) -> list[str]:
     return removed
 
 
+def place_dir_icon(appdir: Path) -> str:
+    """Link .DirIcon to the root desktop entry's icon, as appimagetool does
+    when it packs, so the inventory and its audit see the image's own files."""
+    entry = (appdir / "putgd.desktop").read_text()
+    icon = re.search(r"^Icon=(.+)$", entry, re.M)
+    if not icon:
+        raise ValueError("The root desktop entry names no icon")
+    found = [path for path in sorted(appdir.glob(icon.group(1).strip() + ".*")) if path.suffix in (".svg", ".png")]
+    if not found:
+        raise ValueError("The root desktop entry's icon is not at the AppDir root: " + icon.group(1))
+    link = appdir / ".DirIcon"
+    if link.is_symlink() or link.exists():
+        link.unlink()
+    link.symlink_to(found[0].name)
+    return found[0].name
+
+
 def remove_library_copies(appdir: Path) -> list[dict]:
     """Remove the second copies linuxdeploy's `--library` leaves in usr/lib.
 
@@ -699,6 +716,7 @@ def finish(appdir: Path, *, qt: Path, lock: dict, license_sources: list[Path], d
             raise ValueError("Licence source given twice: " + path.name)
         sources[path.name] = path.resolve()
     spec = json.loads(COMPONENTS.read_text())
+    place_dir_icon(appdir)
     removed = {"linuxdeployLeftovers": remove_linuxdeploy_leftovers(appdir),
                "libraryCopies": remove_library_copies(appdir)}
     names = [relative(appdir, path) for path in entries(appdir)]

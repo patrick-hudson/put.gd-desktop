@@ -51,7 +51,8 @@ SPEC = {"schemaVersion": 1, "components": [
     {"id": "putgd", "name": "put.gd", "version": {"from": "build"},
      "source": {"from": "build", "repository": "https://example.invalid/putgd"}, "license": "MIT",
      "licenseTexts": {"MIT": "usr/share/doc/putgd/LICENSE"},
-     "files": ["AppRun", "usr/bin/putgd", "usr/share/metainfo/gd.put.Putgd.metainfo.xml", "usr/lib/putgd/libputgd-s3.so"],
+     "files": ["AppRun", ".DirIcon", "putgd.desktop", "putgd.svg", "usr/share/applications/*.desktop",
+               "usr/share/icons/hicolor/scalable/apps/putgd.svg", "usr/bin/putgd", "usr/share/metainfo/gd.put.Putgd.metainfo.xml", "usr/lib/putgd/libputgd-s3.so"],
      "noticeFiles": ["usr/share/doc/putgd/LICENSE"]},
     {"id": "aws", "name": "AWS SDK", "version": {"from": "dependencyLock", "key": "awsSdk"},
      "source": {"from": "dependencyLock", "key": "awsSdk"}, "license": "Apache-2.0",
@@ -133,6 +134,10 @@ class NoticesTest(unittest.TestCase):
     def make_appdir(self):
         app = self.app
         write(app / "AppRun", "#!/bin/sh\n")
+        write(app / "usr/share/applications/putgd.desktop", "[Desktop Entry]\nType=Application\nIcon=putgd\nExec=putgd\n")
+        (app / "putgd.desktop").symlink_to("usr/share/applications/putgd.desktop")
+        write(app / "usr/share/icons/hicolor/scalable/apps/putgd.svg", "<svg/>\n")
+        (app / "putgd.svg").symlink_to("usr/share/icons/hicolor/scalable/apps/putgd.svg")
         write(app / "AppRun.wrapped", "#!/bin/sh\n")
         write(app / "apprun-hooks/linuxdeploy-plugin-qt-hook.sh", "export QT_QPA_PLATFORMTHEME=gtk2\n")
         make_elf(app / "usr/bin/putgd", needed=["libQt6Core.so.6"], runpath="$ORIGIN/../lib")
@@ -222,6 +227,21 @@ class NoticesTest(unittest.TestCase):
         self.assertEqual(summary["removed"]["linuxdeployLeftovers"], ["AppRun.wrapped", "apprun-hooks"])
         self.assertEqual(summary["removed"]["distroDocCopies"], ["usr/share/doc/libfoo1"])
         self.assertEqual(result["components"], 5)
+
+    def test_dir_icon_that_appimagetool_adds_is_in_the_inventory(self):
+        """appimagetool links .DirIcon to the entry's icon when it packs; the
+        inventory must already list it (#424's first CI run)."""
+        self.assertFalse((self.app / ".DirIcon").exists())
+        self.finish()
+        self.assertEqual(str((self.app / ".DirIcon").readlink()), "putgd.svg")
+        putgd = next(item for item in self.inventory()["components"] if item["id"] == "putgd")
+        self.assertIn(".DirIcon", putgd["files"])
+        (self.app / ".DirIcon").unlink()
+        (self.app / ".DirIcon").symlink_to("putgd.svg")  # as appimagetool recreates it
+        notices.audit(self.app)
+        write(self.app / ".DirIcon.extra", "x")
+        with self.assertRaisesRegex(ValueError, "missing from the inventory: .DirIcon.extra"):
+            notices.audit(self.app)
 
     def test_different_usr_lib_copy_of_a_private_library_is_rejected(self):
         (self.app / "usr/lib/libaws-cpp-sdk-core.so").write_bytes(b"\x7fELF other bytes")
