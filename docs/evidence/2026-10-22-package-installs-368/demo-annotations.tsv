@@ -1,0 +1,25 @@
+== 119662540762
+notice	Package install (native (fedora44), dnf): attempt 2 of 4: **passed on retry**
+warning	Package install (native (fedora44), dnf): attempt 1 of 4: failed, retrying in 30 s with refreshed metadata: Failed to download metadata (baseurl: "https://wrong.host.badssl.com/") for repository "updates": Usable URL not found
+== 119662540829
+notice	Package install (native (ubuntu24.04), apt-get): attempt 2 of 4: **passed on retry**
+warning	Package install (native (ubuntu24.04), apt-get): attempt 1 of 4: failed, retrying in 30 s with refreshed metadata: E: Failed to fetch http://security.ubuntu.com/ubuntu/dists/noble-security/InRelease  Could not connect to 127.0.0.1:9 (127.0.0.1). - connect (111: Connection refused)
+== 119662540712
+warning	Package install (native (fedora44-snapshot), dnf): attempt snapshot: **installed offline from the package snapshot** saved 2026-10-22T05:25Z by https://github.com/patrick-hudson/put.gd-desktop/actions/runs/39727602972
+warning	Package install (native (fedora44-snapshot), dnf): attempt 4 of 4: failed: Failed to download metadata (baseurl: "https://wrong.host.badssl.com/") for repository "updates": Usable URL not found
+warning	Package install (native (fedora44-snapshot), dnf): attempt 3 of 4: failed, retrying in 120 s with refreshed metadata: Failed to download metadata (baseurl: "https://wrong.host.badssl.com/") for repository "updates": Usable URL not found
+warning	Package install (native (fedora44-snapshot), dnf): attempt 2 of 4: failed, retrying in 60 s with refreshed metadata: Failed to download metadata (baseurl: "https://wrong.host.badssl.com/") for repository "updates": Usable URL not found
+warning	Package install (native (fedora44-snapshot), dnf): attempt 1 of 4: failed, retrying in 30 s with refreshed metadata: Failed to download metadata (baseurl: "https://wrong.host.badssl.com/") for repository "updates": Usable URL not found
+== 119662540809
+warning	Package install (native (debian13), apt-get): attempt snapshot: **installed offline from the package snapshot** saved 2026-10-22T05:24Z by https://github.com/patrick-hudson/put.gd-desktop/actions/runs/39727602972
+warning	Package install (native (debian13), apt-get): attempt 4 of 4: failed: E: Failed to fetch http://deb.debian.org/debian-security/dists/trixie-security/InRelease  Unable to connect to 127.0.0.1:9:
+warning	Package install (native (debian13), apt-get): attempt 3 of 4: failed, retrying in 120 s with refreshed metadata: E: Failed to fetch http://deb.debian.org/debian-security/dists/trixie-security/InRelease  Unable to connect to 127.0.0.1:9:
+warning	Package install (native (debian13), apt-get): attempt 2 of 4: failed, retrying in 60 s with refreshed metadata: E: Failed to fetch http://deb.debian.org/debian-security/dists/trixie-security/InRelease  Unable to connect to 127.0.0.1:9:
+warning	Package install (native (debian13), apt-get): attempt 1 of 4: failed, retrying in 30 s with refreshed metadata: E: Failed to fetch http://deb.debian.org/debian-security/dists/trixie-security/InRelease  Unable to connect to 127.0.0.1:9:
+== 119662540877
+failure	Process completed with exit code 1.
+failure	Package install (native (fedora44-allfail), dnf): attempt snapshot: **failed**: Cache-only enabled but no cache for repository "updates"
+warning	Package install (native (fedora44-allfail), dnf): attempt 4 of 4: failed: Failed to download metadata (baseurl: "https://wrong.host.badssl.com/") for repository "updates": Usable URL not found
+warning	Package install (native (fedora44-allfail), dnf): attempt 3 of 4: failed, retrying in 120 s with refreshed metadata: Failed to download metadata (baseurl: "https://wrong.host.badssl.com/") for repository "updates": Usable URL not found
+warning	Package install (native (fedora44-allfail), dnf): attempt 2 of 4: failed, retrying in 60 s with refreshed metadata: Failed to download metadata (baseurl: "https://wrong.host.badssl.com/") for repository "updates": Usable URL not found
+warning	Package install (native (fedora44-allfail), dnf): attempt 1 of 4: failed, retrying in 30 s with refreshed metadata: Failed to download metadata (baseurl: "https://wrong.host.badssl.com/") for repository "updates": Usable URL not found
