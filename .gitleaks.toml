@@ -1,0 +1,37 @@
+# gitleaks configuration for the CI secret scan (contracts job in
+# .github/workflows/ci.yml). The default rules apply; the allowlists below name
+# the values this repository legitimately records that look like secrets.
+# Keep every entry narrow: a hash shape, a public key shape or a test fixture
+# marker, never a directory.
+title = "put.gd secret scan"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Digests, fingerprints, build ids and object keys named by UUID"
+regexTarget = "secret"
+regexes = [
+  '''^[0-9a-fA-F]{40}$''',
+  '''^[0-9a-fA-F]{64}$''',
+  '''^[A-Za-z0-9._-]*[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}[A-Za-z0-9._-]*$''',
+]
+
+[[allowlists]]
+description = "Public verification keys, CMake cache entries and error-code names"
+regexTarget = "secret"
+regexes = [
+  '''^RW[A-Za-z0-9+/=]{50,60}$''',
+  '''^INTERNAL=''',
+  '''^libxcb-keysyms''',
+  '''^b2_bucket_private$''',
+]
+
+[[allowlists]]
+description = "Visibly synthetic fixtures and redaction tests"
+regexTarget = "line"
+regexes = [
+  '''(?i)synthetic''',
+  '''redact::text\(''',
+  '''Quarterly Secret Plan\.png''',
+]
