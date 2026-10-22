@@ -66,7 +66,7 @@ QString HistoryModel::statusText(const QJsonObject& r){
   return "Preparing capture…";
  }
  auto message=r["error"].toObject()["message"].toString();if(message.isEmpty())message=op["error"].toObject()["message"].toString();
- if(r["uploadStatus"]=="local_only")return localSaveFailed(r)?QString("Local save failed"):op["copyStatus"]=="copied"?QString("Saved locally · Copied to clipboard"):QString("Saved locally");
+ if(r["uploadStatus"]=="local_only")return localSaveFailed(r)?QString("Local save failed"):op["copyStatus"]=="copied"?QString("Saved locally · Copied to clipboard"):op["copyStatus"]=="suppressed"?QString("Saved locally · Not copied (clipboard changed). Copy it again."):QString("Saved locally");
  if(r["uploadStatus"]=="uploaded"&&QStringList{"failed","unknown","changed"}.contains(r["shareStatus"].toString()))return message.isEmpty()?QString("Share link needs attention"):message;
  if(localSaveFailed(r)&&r["uploadStatus"]!="failed")return "Local save failed";
  if(r["uploadStatus"]=="failed"||state=="failed"||state=="partial")return (message.isEmpty()?failureLabel(r):message)+(r["local"].toObject()["status"]=="saved"?" · Saved locally":QString{});
@@ -75,8 +75,10 @@ QString HistoryModel::statusText(const QJsonObject& r){
  if(r["remoteStatus"]=="changed"||r["remoteStatus"]=="unknown")return "Remote outcome needs inspection";
  if(r["shareStatus"]=="revoked")return "Share link revoked";
  if(r["uploadStatus"]=="uploaded"&&op["copyStatus"]=="failed")return "Uploaded · Could not copy link. Copy it again.";
+ // The automatic copy was refused because the clipboard moved on (#473); Copy link is the way back.
+ if(r["uploadStatus"]=="uploaded"&&op["copyStatus"]=="suppressed")return "Uploaded · Link not copied (clipboard changed). Copy it again.";
  if(r["uploadStatus"]=="uploaded")return op["copyStatus"]=="copied"?"Uploaded · Link copied":"Uploaded";
- if(r["local"].toObject()["status"]=="saved"||r["uploadStatus"]=="local_only")return op["copyStatus"]=="copied"?"Saved locally · Copied to clipboard":"Saved locally";
+ if(r["local"].toObject()["status"]=="saved"||r["uploadStatus"]=="local_only")return op["copyStatus"]=="copied"?"Saved locally · Copied to clipboard":op["copyStatus"]=="suppressed"?"Saved locally · Not copied (clipboard changed). Copy it again.":"Saved locally";
  return "Capture complete";
 }
 QVariant HistoryModel::data(const QModelIndex& i,int role)const{
@@ -91,7 +93,7 @@ QVariant HistoryModel::data(const QModelIndex& i,int role)const{
  if(role==FailedRole){if(r["uploadStatus"]=="local_only")return localSaveFailed(r);return r["uploadStatus"]=="failed"||op["state"]=="failed"||op["state"]=="partial";}
  if(role==PrimaryActionRole){if(active(r))return "Cancel";if(r["uploadStatus"]=="local_only"){if(localSaveFailed(r))return "Retry local save";if(r["local"].toObject()["status"]=="saved")return "Copy result";}if(data(i,FailedRole).toBool()&&storedNothing(r))return QString{};if(data(i,FailedRole).toBool()&&!r["operationId"].toString().isEmpty())return "Retry upload";if(linkAvailable(i.row()))return "Copy link";return QString{};}
  if(role==ProgressRole)return aggregateProgress(op).percent();
- if(role==SubtitleRole){if(data(i,FailedRole).toBool()||active(r)||op["state"]=="cancelled")return statusText(r);auto text=friendlyAction(op["action"].toString(r["category"].toString()))+" · "+fileSize(r["bytes"].toInteger());const auto time=relativeTime(r);if(!time.isEmpty())text+=" · "+time;if(op["copyStatus"]=="copied")text+=r["uploadStatus"]=="local_only"?" · Copied to clipboard":" · Link copied";else if(op["copyStatus"]=="failed")text+=r["uploadStatus"]=="local_only"?" · Could not copy result":" · Could not copy link";if(r["records"].toArray().size()>1)text+=QString(" · %1 files").arg(r["records"].toArray().size());return text;}
+ if(role==SubtitleRole){if(data(i,FailedRole).toBool()||active(r)||op["state"]=="cancelled")return statusText(r);auto text=friendlyAction(op["action"].toString(r["category"].toString()))+" · "+fileSize(r["bytes"].toInteger());const auto time=relativeTime(r);if(!time.isEmpty())text+=" · "+time;if(op["copyStatus"]=="copied")text+=r["uploadStatus"]=="local_only"?" · Copied to clipboard":" · Link copied";else if(op["copyStatus"]=="failed")text+=r["uploadStatus"]=="local_only"?" · Could not copy result":" · Could not copy link";else if(op["copyStatus"]=="suppressed")text+=r["uploadStatus"]=="local_only"?" · Result not copied":" · Link not copied";if(r["records"].toArray().size()>1)text+=QString(" · %1 files").arg(r["records"].toArray().size());return text;}
  if(role==ThumbnailRole){const auto path=r["previewPath"].toString();if(path.isEmpty())return {};if(auto* img=thumbnails_.object(path))return *img;loadThumbnail(path);}
  return {};
 }

@@ -396,8 +396,19 @@ QJsonObject DiagnosticsBundles::build(const Context& context,const BundleRequest
  QSet<QByteArray> uploadedPackages;
  {
   Error query;
-  for(const auto& op:store.operationsSince(iso(from),{"completed"},100000,&query))
-   if(op.action==OperationService::diagnosticsAction&&op.id!=request.operationId)uploadedPackages.insert("\"operationId\":\""+op.id.toUtf8()+"\"");
+  for(const auto& op:store.operationsSince(iso(from),{"completed"},100000,&query)) {
+   if(op.action==OperationService::diagnosticsAction) {if(op.id!=request.operationId)uploadedPackages.insert("\"operationId\":\""+op.id.toUtf8()+"\"");continue;}
+   // A completed upload whose link never reached the clipboard (#473) is a
+   // support case too: the copy was refused (suppressed), failed, or only
+   // partly done, or there was a link and still no result. Nothing to copy
+   // (a private upload, say) is not.
+   const bool link=std::any_of(op.items.cbegin(),op.items.cend(),[](const OperationItem& item){return item.linkAvailable();});
+   if(request.operationId.isEmpty()&&(QStringList{"suppressed","failed","partial"}.contains(op.copyStatus)||(op.copyStatus=="no_result"&&link)))operations.append(op);
+  }
+  if(request.operationId.isEmpty()) {
+   std::stable_sort(operations.begin(),operations.end(),[](const Operation& a,const Operation& b){return a.created>b.created;});
+   if(operations.size()>maximumOperations)operations.resize(maximumOperations);
+  }
  }
  const auto uploadedPackage=[&uploadedPackages](const QByteArray& line){for(const auto& needle:uploadedPackages)if(line.contains(needle))return true;return false;};
  for(const auto& op:operations)for(const auto& item:op.items) {

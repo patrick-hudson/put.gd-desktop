@@ -221,6 +221,14 @@ private:
  std::shared_ptr<std::atomic_bool> posterCancel_=std::make_shared<std::atomic_bool>(false);
  void releaseActive(const QString&);
  void performCopy(Operation,bool explicitCopy,JsonReply,quint64 ticket=0);
+ // Which guard refused a copy, for the putgd.clipboard log record (#473): the
+ // clipboard revision moved, the epoch/invocation moved (`epochGuard` names
+ // what that means at the call site), the operation was cancelled or the
+ // resident is stopping. Empty while the copy is still eligible.
+ static QJsonObject copyGuard(bool stopping,bool cancelled,const char* epochGuard,quint64 epoch,quint64 currentEpoch,quint64 revision,quint64 currentRevision);
+ // A copy_suppressed answer from the native clipboard itself (ownership moved
+ // before the result was acknowledged); its message never carries the payload.
+ static QJsonObject nativeCopyGuard(const Error&);
  void deliverCopy(const CopyPayload&,std::function<void(Error)>,std::function<bool()> eligible={},bool upload=false);
  struct CopyPreparationState {quint64 revision=0;std::shared_ptr<std::atomic_bool> cancelled=std::make_shared<std::atomic_bool>(false);};
  using CopyPreparation=std::function<void(std::function<void(Error)>)>;

@@ -82,6 +82,11 @@ private slots:
   const QJsonObject done{{"state","completed"},{"copyStatus","copied"},{"items",QJsonArray{QJsonObject{{"uploadStatus","uploaded"}}}},{"error",QJsonObject{}}};
   QCOMPARE(TrayController::completionMessage(done,true),QString("Uploaded. Link copied to the clipboard. Click to open in browser."));
   QCOMPARE(TrayController::completionMessage(QJsonObject{{"state","completed"},{"copyStatus","no_result"},{"items",QJsonArray{QJsonObject{{"uploadStatus","uploaded"}},QJsonObject{{"uploadStatus","uploaded"}}}}},false),QString("2 files uploaded."));
+  // #473: a refused automatic copy is named, with the way back; the link still opens.
+  const QJsonObject suppressed{{"state","completed"},{"copyStatus","suppressed"},{"items",QJsonArray{QJsonObject{{"uploadStatus","uploaded"}}}},{"error",QJsonObject{}}};
+  QCOMPARE(TrayController::completionMessage(suppressed,true),QString("Uploaded. Link not copied: the clipboard changed during the upload. Copy it from Activity. Click to open in browser."));
+  const QJsonObject suppressedLocal{{"state","completed"},{"copyStatus","suppressed"},{"items",QJsonArray{QJsonObject{{"uploadStatus","local_only"}}}},{"error",QJsonObject{}}};
+  QCOMPARE(TrayController::completionMessage(suppressedLocal,false),QString("Saved locally; not copied because the clipboard changed meanwhile. Copy it from Activity."));
  }
  // #152: a failed or partial upload names the failure in plain words, never a raw copyStatus code.
  void failedUploadsNameTheFailure() {

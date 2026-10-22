@@ -32,6 +32,7 @@ Q_LOGGING_CATEGORY(logIpc,"putgd.ipc",QtInfoMsg)
 Q_LOGGING_CATEGORY(logSettings,"putgd.settings",QtInfoMsg)
 Q_LOGGING_CATEGORY(logHistory,"putgd.history",QtInfoMsg)
 Q_LOGGING_CATEGORY(logRecording,"putgd.recording",QtInfoMsg)
+Q_LOGGING_CATEGORY(logClipboard,"putgd.clipboard",QtInfoMsg)
 namespace logging {
 namespace {
 const QRegularExpression& fileName() {static const QRegularExpression value("^putgd-\\d{8}T\\d{9}Z-\\d+-\\d+\\.jsonl$");return value;}
