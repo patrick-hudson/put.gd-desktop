@@ -10,9 +10,10 @@ A systemd user timer on one lab builder runs `pkgrepo.py run`. Each run:
    package's own name, version and architecture;
 3. builds the next repository state in a copy of the channel's workspace:
    reprepro for apt/<label>/dists/<channel>, createrepo_c for
-   rpm/fedora/44/x86_64/<channel>;
-4. signs it: nightly here with the builder's nightly key (InRelease,
-   Release.gpg, an rpmsign signature on a copy of the RPM, SHA256SUMS.minisig,
+   rpm/fedora/44/x86_64/<channel>, each with an AppStream catalog made from the
+   package it carries (DEP-11 listed in Release, appstream in repomd.xml; #314);
+4. signs it: nightly here with the builder's nightly key (InRelease and
+   Release.gpg over the finished Release, an rpmsign signature on a copy of the RPM, SHA256SUMS.minisig,
    the feed's .minisig); stable is staged unsigned until sign_stable.py on the
    workstation returns the stable key's signatures and signed RPM, which are
    checked here before use. dnf checks the RPM signature (gpgcheck=1); the
@@ -56,6 +57,7 @@ import urllib.request
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from release_identity import parse_tag, parse_version  # noqa: E402
 import appimage_update  # noqa: E402
+import appstream_catalog  # noqa: E402
 import update_feed  # noqa: E402
 
 REPOSITORY = 'patrick-hudson/put.gd-desktop'
@@ -413,12 +415,11 @@ def clone_workspace(source, destination):
     shutil.copytree(source, destination, symlinks=False, copy_function=copy)
 
 
-def distributions_stanza(channel, label, fingerprint):
+def distributions_stanza(channel, label):
+    # reprepro writes only Release: the signer adds the DEP-11 catalog to it, then signs it
+    # (nightly here, stable on the workstation).
     lines = ['Origin: put.gd', 'Label: put.gd', f'Suite: {channel}', f'Codename: {channel}', 'Architectures: amd64',
              'Components: main', f'Description: put.gd {channel} packages for {label}']
-    # Stable is signed on the workstation; reprepro then writes only Release.
-    if fingerprint:
-        lines.append('SignWith: ' + fingerprint)
     return '\n'.join(lines) + '\n'
 
 
@@ -426,6 +427,8 @@ class Workspace:
     def __init__(self, root, channel, config, run=subprocess.run):
         self.root, self.channel, self.config, self.run = Path(root), channel, config, run
         self.tree = self.root / 'tree'
+        # label -> what each AppStream catalog was made from and the files it wrote (#314).
+        self.catalogs = {}
 
     def env(self):
         return dict(os.environ, GNUPGHOME=str(self.config.gnupghome))
@@ -439,11 +442,10 @@ class Workspace:
         return self.tree / RPM_LABELS[label] / self.channel
 
     def prepare(self):
-        signer = self.config.nightly_fingerprint if self.channel == 'nightly' else None
         for label in DEB_LABELS:
             conf = self.root / 'reprepro' / label / 'conf'
             conf.mkdir(parents=True, exist_ok=True)
-            (conf / 'distributions').write_text(distributions_stanza(self.channel, label, signer))
+            (conf / 'distributions').write_text(distributions_stanza(self.channel, label))
         (self.rpm_dir() / 'Packages').mkdir(parents=True, exist_ok=True)
 
     def published(self):
@@ -458,7 +460,35 @@ class Workspace:
     def include(self, inputs, rpm_path):
         for label in DEB_LABELS:
             self.reprepro(label, '-C', 'main', 'includedeb', self.channel, str(inputs['packages'][label]['path']))
+            self.catalog_deb(label)
         self.createrepo(rpm_path)
+
+    def dists(self, label):
+        return self.tree / 'apt' / label / 'dists' / self.channel
+
+    def catalog_deb(self, label):
+        """DEP-11 from the DEB the suite now carries, listed in its Release before anything signs it."""
+        dists = self.dists(label)
+        stanzas = [stanza for stanza in deb_stanzas((dists / 'main/binary-amd64/Packages').read_text())
+                   if stanza.get('Package') == 'putgd']
+        if len(stanzas) != 1 or not SAFE_PATH.match(stanzas[0].get('Filename', '')):
+            raise SignerError(f'The {label} suite does not carry exactly one putgd package')
+        deb = self.tree / 'apt' / label / stanzas[0]['Filename']
+        origin = f'putgd-{label}-{self.channel}'
+        with tempfile.TemporaryDirectory(prefix='appstream-', dir=self.config.state) as work:
+            files = appstream_catalog.write_dep11(deb, origin, dists, Path(work), self.run)
+        appstream_catalog.list_in_release(dists / 'Release', dists, list(files))
+        self.catalogs[label] = {'origin': origin, 'package': deb.name, 'packageSha256': sha256_file(deb),
+                                'files': {f'apt/{label}/dists/{self.channel}/{name}': digest for name, digest in files.items()}}
+
+    def catalog_rpm(self, rpm):
+        """appstream and appstream-icons in repomd.xml from the newest RPM; dnf5 files them under the repo id."""
+        origin = 'putgd-' + self.channel
+        with tempfile.TemporaryDirectory(prefix='appstream-', dir=self.config.state) as work:
+            files = appstream_catalog.write_appstream_repodata(rpm, origin, self.rpm_dir(), Path(work), self.run)
+        self.catalogs['fedora44'] = {'origin': origin, 'package': rpm.name, 'packageSha256': sha256_file(rpm),
+                                     'files': {f'{RPM_LABELS["fedora44"]}/{self.channel}/{name}': digest
+                                               for name, digest in files.items()}}
 
     def createrepo(self, rpm_path):
         packages = self.rpm_dir() / 'Packages'
@@ -473,6 +503,9 @@ class Workspace:
             old.unlink()
         self.run(['createrepo_c', '--quiet', '--update', '--unique-md-filenames', '--checksum', 'sha256',
                   '--no-database', str(self.rpm_dir())], check=True, capture_output=True, text=True)
+        # createrepo_c drops the types it didn't make; the catalog describes the newest package.
+        if rpms:
+            self.catalog_rpm(rpms[0])
 
     def replace_rpm(self, signed):
         """Put a signed RPM in place of its unsigned build and regenerate the repodata."""
@@ -486,6 +519,13 @@ class Workspace:
     def write_published(self, inputs):
         record = {'tag': inputs['tag'], 'version': inputs['version'], 'publishedAt': iso(now_utc())} if inputs else None
         (self.root / 'published.json').write_text(json.dumps(record) + '\n')
+
+
+SAFE_PATH = re.compile(r'^pool/main/p/putgd/[A-Za-z0-9][A-Za-z0-9._+~-]{0,199}\.deb$')
+
+
+def deb_stanzas(text):
+    return [dict(re.findall(r'^([A-Za-z0-9-]+): ?(.*)$', block, re.M)) for block in text.split('\n\n') if block.strip()]
 
 
 def rpm_version(filename):
@@ -528,6 +568,15 @@ def minisign(config, path, trusted, run=subprocess.run):
     run(['minisign', '-S', '-q', '-s', str(config.minisign_key), '-m', str(path), '-x', str(signature), '-t', trusted],
         check=True, capture_output=True, text=True, stdin=subprocess.DEVNULL)
     return signature
+
+
+def sign_release(release, fingerprint, gnupghome, run=subprocess.run):
+    """InRelease and Release.gpg over a finished Release (one that lists the DEP-11 catalog)."""
+    command = ['gpg', '--batch', '--yes', '--no-tty', '--local-user', fingerprint, '--digest-algo', 'SHA512']
+    env = dict(os.environ, GNUPGHOME=str(gnupghome))
+    for name, mode in (('InRelease', ['--clearsign']), ('Release.gpg', ['--armor', '--detach-sign'])):
+        run(command + mode + ['--output', str(release.with_name(name)), str(release)], check=True,
+            capture_output=True, text=True, env=env, stdin=subprocess.DEVNULL)
 
 
 def verify_gpg(keyring, signed, signature=None, run=subprocess.run):
@@ -689,6 +738,10 @@ class Publisher:
 def readback_files(workspace):
     files = [f'apt/{label}/dists/{workspace.channel}/{name}' for label in DEB_LABELS
              for name in ('InRelease', 'main/binary-amd64/Packages')]
+    # Empty suites (no package yet) carry no catalog.
+    catalogs = [f'apt/{label}/dists/{workspace.channel}/{appstream_catalog.DEP11}/{appstream_catalog.COMPONENTS}'
+                for label in DEB_LABELS]
+    files += [relative for relative in catalogs if (workspace.tree / relative).exists()]
     return files + [f'{RPM_LABELS["fedora44"]}/{workspace.channel}/repodata/repomd.xml']
 
 
@@ -703,7 +756,7 @@ def aws_clients(config):
 def new_receipt(inputs, scope):
     return {'schemaVersion': 1, 'tag': inputs['tag'] if inputs else None, 'channel': None, 'scope': scope,
             'startedAt': iso(now_utc()), 'finishedAt': None, 'result': 'running',
-            'source': {}, 'inputs': [], 'rpm': [], 'signatures': [], 's3': {'uploaded': [], 'deleted': []},
+            'source': {}, 'inputs': [], 'rpm': [], 'catalog': {}, 'signatures': [], 's3': {'uploaded': [], 'deleted': []},
             'invalidations': [], 'readback': [], 'feed': None, 'error': None}
 
 
@@ -748,6 +801,7 @@ class Signer:
                     workspace.include(inputs, self.rpm_signed_copy(rpm, Path(directory), receipt))
             else:
                 workspace.include(inputs, rpm['path'])
+            receipt['catalog'].update(workspace.catalogs)
         elif not (workspace.tree / 'apt' / DEB_LABELS[0] / 'dists' / channel / 'Release').exists():
             # An AppImage-only lab release on a fresh lab scope still gets (empty) signed repositories.
             workspace.export_empty()
@@ -821,11 +875,11 @@ class Signer:
     def sign_nightly(self, workspace, inputs, receipt):
         signed = []
         for label in DEB_LABELS:
-            for name in ('InRelease', 'Release.gpg'):
-                path = workspace.tree / 'apt' / label / 'dists' / workspace.channel / name
-                if not path.exists():
-                    raise SignerError('reprepro did not sign ' + label)
-                signed.append(path)
+            release = workspace.dists(label) / 'Release'
+            if not release.exists():
+                raise SignerError('reprepro wrote no Release for ' + label)
+            sign_release(release, self.config.nightly_fingerprint, self.config.gnupghome, self.run)
+            signed += [release.with_name('InRelease'), release.with_name('Release.gpg')]
         extra = []
         if inputs:
             trusted = f'put.gd {inputs["tag"]} {workspace.channel}'
@@ -984,6 +1038,7 @@ class Signer:
                 self.check_signed_rpm(unsigned, signed, self.config.keys / 'putgd-stable.asc',
                                       self.config.stable_fingerprint, receipt)
                 workspace.replace_rpm(signed)
+                receipt.setdefault('catalog', {}).update(workspace.catalogs)
                 receipt['signatures'].append({'file': f'{RPM_LABELS["fedora44"]}/stable/Packages/{signed.name}',
                                               'kind': 'rpm', 'key': self.config.stable_fingerprint})
             for relative in manifest['sign']['minisign']:
