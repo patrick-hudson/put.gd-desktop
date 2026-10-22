@@ -34,7 +34,7 @@ Once a day the resident asks app.put.gd for the newest version on its channel:
 | --- | --- | --- | --- | --- |
 | Stable release | stable | once per new version | **Update available: X.Y.Z** | yes |
 | Stable DEB/RPM that updates from put.gd's repository | stable | never: the system updater tells you | yes | yes, with **Open software updates** |
-| Release candidate | stable | once per new version | yes | yes |
+| Pre-#373 release candidate (`0.1.1-rc.1`, never published) | stable | once per new version | yes | yes |
 | Nightly | nightly | never | no | yes |
 | Nightly AppImage watching Stable | stable | once per new stable version, so you hear about the first one; never for the first result after you change the channel | yes, while the stable version is newer | yes, with **Switch to stable X** ([switching](#switching-channels)) |
 | Development or source build | none | no check | no | says why |
@@ -78,7 +78,7 @@ channel*, which named the channel it resolved to since
 
 - **Check for updates once a day:** on by default.
 - **Channel:** *Stable* or *Nightly*. It starts on the build's own channel: *Stable* on a
-  release or candidate, *Nightly* on a nightly. Choosing the other one watches it instead,
+  release, *Nightly* on a nightly. Choosing the other one watches it instead,
   and an AppImage then offers to [switch](#switching-channels). A build that never checks
   hides the choice and the section says why.
 - **Status:** the last result, when it was checked and when the next check runs, with
@@ -119,7 +119,7 @@ other channel stores `"stable"` or `"nightly"`.
 
 ### Download and install from put.gd
 
-A tagged AppImage (stable, candidate or nightly) updates itself from **Settings → Updates →
+A tagged AppImage (stable or nightly) updates itself from **Settings → Updates →
 Download and install**, or `update.install` with `confirm: true` from the CLI or MCP. Nothing
 installs on its own: not on the daily check, not from a notification.
 
@@ -163,7 +163,7 @@ memory unchanged within 0.2 MiB:
 
 **Going back:** if the new version doesn't start, quit put.gd and move the backup over the
 AppImage, for example
-`mv ~/Applications/.putgd-update-backup-0.1.1-nightly.N.AppImage ~/Applications/putgd-….AppImage`.
+`mv ~/Applications/.putgd-update-backup-26.1022.942-nightly.AppImage ~/Applications/putgd-….AppImage`.
 
 ### Switching channels
 
@@ -172,8 +172,10 @@ the other channel, **Download and install** becomes an explicit **Switch to CHAN
 ([#344](https://github.com/patrick-hudson/put.gd-desktop/issues/344)).
 
 - **Nightly → stable:** choose **Stable**. Once the stable feed names a release, Settings says
-  *"Stable 0.1.1 is available. This is nightly 0.1.1-nightly.N; switching replaces it with
-  the stable release."* and offers **Switch to stable 0.1.1**.
+  *"Stable 26.1101.960 is available. This is nightly 26.1105.951-nightly; switching replaces it with
+  the stable release."* and offers **Switch to stable 26.1101.960**. Versions sort by date
+  ([versioning.md](versioning.md)), so a nightly is usually newer than the latest stable
+  release, and the switch is to an older version that must be confirmed (below).
 - **No stable release yet:** Settings says *"There's no stable release yet. This nightly
   build (VERSION) stays as it is, and doesn't get nightly updates while Stable is chosen.
   put.gd offers the switch once the first stable release is out."* There's no button and
@@ -320,12 +322,12 @@ the app.put.gd copy within about a minute of each release.
   "channel": "nightly",
   "generatedAt": "2026-10-20T18:32:24Z",
   "release": {
-    "tag": "v0.1.1-nightly.588",
-    "version": "0.1.1-nightly.588",
-    "publishedAt": "2026-10-20T05:55:50Z",
-    "notesUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v0.1.1-nightly.588",
+    "tag": "v26.1022.942-nightly",
+    "version": "26.1022.942-nightly",
+    "publishedAt": "2026-10-22T05:55:50Z",
+    "notesUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v26.1022.942-nightly",
     "assets": {
-      "debian13": {"name": "putgd-0.1.1-nightly.588-debian13-x86_64.deb", "url": "https://github.com/…", "size": 52732030, "sha256": "…"}
+      "debian13": {"name": "putgd-26.1022.942-nightly-debian13-x86_64.deb", "url": "https://github.com/…", "size": 52732030, "sha256": "…"}
     }
   }
 }
@@ -333,7 +335,15 @@ the app.put.gd copy within about a minute of each release.
 
 - **Assets:** keyed `ubuntu24.04`, `ubuntu26.04`, `debian13`, `fedora44` and `appimage`.
 - **No release:** `release` is `null` while a channel has none. Today that's stable.
-- **Version order:** within one base version, `X.Y.Z-nightly.N` < `X.Y.Z-rc.N` < `X.Y.Z`.
+- **Version order:** calendar versions `YY.MDD.N` sort by date, then commit count, and a
+  nightly sorts before the stable release with the same `YY.MDD.N` (#373,
+  [versioning.md](versioning.md)). Every calendar version sorts after every pre-#373
+  `0.1.1[-rc.N|-nightly.N]`.
+- **Builds from before #373:** a `0.1.1-nightly.N` build can't read a calendar version, so
+  once its feed names one, its check reports `update_feed_invalid` ("The update feed names
+  an invalid version for its channel"), and it can't install the update in-app. apt, dnf
+  and the zsync updaters (appimageupdatetool, Gear Lever, AppImageLauncher) still upgrade
+  it, because they don't parse put.gd's versions; after that, in-app updates work again.
 - **Checks the client makes:** a stable feed may name only stable versions and a
   nightly feed only nightlies. The tag must be `v` + version. Any other `schema` is
   rejected, and so is a feed over 256 KiB.
@@ -359,7 +369,7 @@ Two CMake cache variables decide whether a build checks:
   builds add this repository, and the app recognises it in the repository file. Lab builds
   set `https://pkg.put.gd/lab`.
 
-Only clean tagged builds (stable, candidate or nightly) have a channel. Every other
+Only clean tagged builds (stable or nightly, and the pre-#373 candidate) have a channel. Every other
 build reports `development_build` or `no_package` and never checks.
 
 ## Later phases (#293)

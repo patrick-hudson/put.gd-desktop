@@ -1,25 +1,36 @@
 # Software versions
 
-Every build carries a release base, Git commit and working-tree state. The base
-is `project(putgd VERSION ...)` in `CMakeLists.txt`, for example `0.1.1`.
-Development builds look like `0.1.1-dev.123+g0123456789ab`; an uncommitted
-checkout adds `.dirty`.
-Each commit has a different Git suffix, including documentation-only and merge
+put.gd uses calendar versions `YY.MDD.N` (#373). They replaced semantic
+versions before the first stable release.
+
+- **`YY.MDD`** is the UTC committer date of the commit, with the month and day
+  written as one number: month times 100 plus day. October 22, 2026 is
+  `26.1022` and January 5, 2027 is `27.105`. No part has a leading zero.
+- **`N`** is the commit's full-history count (`git rev-list --count`). It grows
+  with every commit on a branch, so it orders commits made on the same day.
+
+Both come from the commit itself, never from the clock. Building the same commit
+on any machine, on any day, gives the same version. Every build carries the
+version, its Git commit and the working-tree state:
+
+| Build | Version | Package version |
+| --- | --- | --- |
+| Untagged (development, CI, local) | `26.1022.942-dev+g0123456789ab` | `26.1022.942~dev+g0123456789ab` |
+| Untagged, uncommitted changes | `26.1022.942-dev+g0123456789ab.dirty` | `…~dev+g0123456789ab.dirty` |
+| Nightly tag `v26.1022.942-nightly` | `26.1022.942-nightly` | `26.1022.942~nightly` |
+| Stable tag `v26.1101.960` | `26.1101.960` | `26.1101.960` |
+
+Each commit has a different version, including documentation-only and merge
 commits. Run the ordinary build after committing: it refreshes identity even when
 no C++ file changed. It does not require clearing the cache or configuring again.
+Nothing is bumped by hand: `project(putgd ...)` in `CMakeLists.txt` carries no
+version, and neither a stable release nor a hotfix changes a file to start the
+next version. See [releases](release.md).
 
-The base in `project(... VERSION ...)` follows semantic versioning. Increment its
-patch for a compatible bug-fix release, minor for compatible functionality and
-major for incompatible changes. Do not bump it merely to allocate a commit ID;
-the generated commit identity does that. A build remains a development version
-unless the builder explicitly selects a verified release tag.
-
-On `nightly` the base is always the next release, because package versions order
-`BASE~dev` and `BASE~rc` before `BASE`. Feature pull requests leave it alone.
-After a stable `vBASE` is tagged, a pull request into `nightly` raises it, normally
-to the next patch; nightly publication refuses to run until that change merges.
-A deliberate minor or major bump is its own one-line pull request into `nightly`.
-A hotfix pull request into `main` raises the patch itself. See [releases](release.md).
+The date is UTC: a commit made at 23:39 on October 21 in Chicago (04:39 UTC) is
+`26.1022`. For a GitHub merge, the committer date is the moment of the merge, so
+a nightly cut the next morning from that merge carries the merge's date, not the
+build's.
 
 Inspect the compiled build through:
 
@@ -53,33 +64,53 @@ retain binary/archive SHA-256 values for experiments as before.
 
 ## Tagged releases
 
-A release build requires the explicit CMake option `PUTGD_RELEASE_TAG`. Supported
-tags are `vMAJOR.MINOR.PATCH` for stable releases and
-`vMAJOR.MINOR.PATCH-rc.N` for release candidates, and
-`vMAJOR.MINOR.PATCH-nightly.N` for nightlies, for example `v0.1.1-nightly.312`.
-A nightly's `N` must equal the full-history commit count of the tagged commit, so
-it grows with every commit on `nightly` and needs no date or hash to stay unique.
-The release title spells it out ("put.gd 0.1.1 nightly 312"), and the notes and
-`--version-json` carry the full commit. Nightlies published before 2026-10-18 used
-`vBASE-dev.COUNT.UTC+gSHORT`; they keep their tags and still upgrade cleanly.
-The ordinary untagged development identity remains unchanged. Components have no leading zeros;
-`N` is positive. The tag's base must match `project(... VERSION ...)`, the working
-tree must be clean, and that exact tag must resolve to the checked-out commit.
-Both annotated and lightweight tags work. A missing tag, another commit's tag,
-a dirty tree or an archive source fails configuration and subsequent identity
-refresh rather than relabeling the binary. Tags do not change ordinary development
-builds automatically.
+A release build requires the explicit CMake option `PUTGD_RELEASE_TAG`. A tag
+is either:
 
-After committing the intended release source, an example prerelease build is:
+- `vYY.MDD.N` for a stable release, or
+- `vYY.MDD.N-nightly` for a nightly.
+
+It must equal the version of the checked-out commit, as above. CMake and
+`tools/releases/verify_tag.py` derive it the same way and reject:
+
+- any other date or count, including the committer's local date;
+- leading zeros, such as `v26.01022.942` or `v26.1022.0942`;
+- dates that don't exist, such as `v26.229.942` in a non-leap year;
+- the release-candidate forms, `-rc` and `-rc.N`, and a numbered `-nightly.N`;
+- a shallow clone, whose count would be wrong;
+- a dirty tree, a tag on another commit, and an archive source.
+
+These fail configuration and every later identity refresh, rather than
+relabeling the binary. Both annotated and lightweight tags work. Tags don't
+change ordinary development builds by themselves.
+
+**Tags cut before #373** keep their tags and stay readable everywhere a version
+is compared. The updater, the release tools, the signer and the changelog all
+read them:
+
+- `v0.1.1-nightly.N` (and, before 2026-10-18, `v0.1.1-dev.COUNT.UTC+gSHORT`);
+- the unpublished `v0.1.1-rc.1` draft.
+
+Nothing creates them any more. Every calendar version sorts after every one of
+them.
+
+After committing the intended release source, an example nightly build is:
 
 ```sh
-git tag -a v0.1.1-rc.1 -m "put.gd 0.1.1 release candidate 1"
-cmake --preset release -DPUTGD_RELEASE_TAG=v0.1.1-rc.1
+tag=v$(python3 -c 'import subprocess, sys; sys.path.insert(0, "tools/releases")
+from release_identity import calendar_base
+time = int(subprocess.check_output(["git", "show", "-s", "--format=%ct", "HEAD"]))
+count = int(subprocess.check_output(["git", "rev-list", "--count", "HEAD"]))
+print(calendar_base(time, count))')-nightly
+git tag "$tag"
+cmake --preset release -DPUTGD_RELEASE_TAG="$tag"
 cmake --build --preset release
 cpack --config build/release/CPackConfig.cmake
 ```
 
-The compiled version is `0.1.1-rc.1`; a stable tag produces `0.1.1`.
+If the tag doesn't match, configuration names the one that does: "Release tag
+must be v26.1022.942 or v26.1022.942-nightly".
+
 The full commit, committed tree, commit count and observed clean Git provenance
 remain in the manifest. GitHub release assets must retain that manifest and their
 checksums; the release name alone does not identify their binary bytes. Changing
@@ -119,40 +150,57 @@ cpack --config build/release/CPackConfig.cmake
 dpkg-deb --field build/release/putgd_*.deb Version
 ```
 
-Debian and RPM use `0.1.1~dev.123+g0123456789ab`, with the same optional `.dirty`
-suffix. Tagged candidates map to `0.1.1~rc.1`; stable releases map to `0.1.1`.
-Tagged nightlies map to `0.1.1~nightly.N`; the commit count orders successive
-nightlies on the append-only branch. Debian and RPM order untagged `~dev` builds,
-then the earlier `~dev.COUNT.UTC+gSHORT` nightlies, then `~nightly`, `~rc` and the
-stable base. Actual Debian and RPM comparisons cover that whole sequence.
-A same-base stable-to-nightly switch is an explicit package downgrade; bump the next
-development base deliberately after a stable release. No updater or automatic downgrade
-policy is implemented here. RPM uses package release `1`. The tilde places development packages and release
-candidates before final `0.1.1`, and numeric candidate components order
-`rc.2` before `rc.10`; the count orders
-ordinary successive commits in a full-history lineage. SemVer's `+g...` metadata
-distinguishes builds but does not affect SemVer precedence. Hashes do not give a
-chronological order across branches, and shallow history can change the count.
-Use full-history clones for comparable development numbering and retain the full
-commit as the authority. CI checks out full history and preserves the compiled
-build manifest with its build artifacts. Version equality alone does not prove
-binary equality.
+Debian and RPM turn the version's `-` into `~`, so a nightly or development
+build sorts before the stable release of the same `YY.MDD.N`. Package release
+`1` is used, and there is no epoch.
+
+**Order, as dpkg, rpm and put.gd's updater compare it:**
+
+- every pre-#373 version comes first (`0.1.1~dev…`, `0.1.1~nightly.N`,
+  `0.1.1~rc.N`, `0.1.1`);
+- then calendar versions, by date, then count. The date is a number, so
+  `26.105` (January 5) comes before `26.1022` (October 22);
+- on one `YY.MDD.N`: `~dev+g…` before `~nightly` before the stable release.
+
+So the first calendar nightly upgrades every installed `0.1.1~nightly.N` with
+apt and dnf, without an epoch. `tests/releases/test_verify_tag.py` checks the
+whole sequence with real `dpkg --compare-versions` and `rpm.vercmp`.
+
+**Order across channels:**
+
+- Because versions sort by date, a nightly is usually newer than the latest
+  stable release, and moving from nightly to stable is a downgrade. put.gd's
+  channel switch asks for it explicitly ([updates.md](updates.md)).
+- Main's merge commit counts the commits it carries, so a stable release's `N`
+  is a little higher than the `N` of the nightly it was promoted from.
+- On the stable release's own UTC day, a later nightly can therefore sort just
+  below that stable release. From the next day on, the date decides.
+- The same `YY.MDD.N` on `main` and on `nightly` would name two commits. The
+  suffix keeps the tags and package versions apart, and the nightly sorts lower.
+
+SemVer's `+g...` metadata distinguishes development builds but doesn't affect
+precedence. Shallow history changes the count, so use full-history clones; CI
+checks out full history. Keep the full commit as the authority: version equality
+alone does not prove binary equality, so preserve the compiled build manifest
+with every build artifact.
 
 ## Building a source archive
 
-Source archives have no `.git`. Supply the exact commit, tree and commit count from
-the repository that produced the archive. This is explicit provenance supplied by
+Source archives have no `.git`. Supply the exact commit, tree, commit count and
+committer time (Unix seconds) from the repository that produced the archive. This is explicit provenance supplied by
 the builder, recorded as `sourceProvenance: "supplied"` with `dirty: null`; it is
 not claimed as locally observed clean Git state. Archive builds keep the `-dev`
 label and reject `PUTGD_RELEASE_TAG`; tagged release publishing uses a full Git
 checkout instead of an archive assertion.
-The three values must be supplied together, and hashes must be full lowercase Git
-object IDs. A Git checkout rejects archive overrides.
+The four values must be supplied together, and hashes must be full lowercase Git
+object IDs. The version is the commit's calendar version with `-dev+g…`, the
+same as a Git checkout of that commit. A Git checkout rejects archive overrides.
 
 ```sh
 revision=$(git rev-parse HEAD)
 source_tree=$(git rev-parse 'HEAD^{tree}')
 revision_count=$(git rev-list --count HEAD)
+revision_time=$(git show -s --format=%ct HEAD)
 git archive --format=tar "$revision" > /tmp/putgd-source.tar
 mkdir -p /tmp/putgd-source
 tar -xf /tmp/putgd-source.tar -C /tmp/putgd-source
@@ -162,14 +210,14 @@ cmake -S /tmp/putgd-source -B /tmp/putgd-source-build -G Ninja \
   -DPUTGD_AWS_RUNTIME_DIR=/absolute/path/to/sdk/lib \
   -DPUTGD_AWS_SOURCE_DIR=/absolute/path/to/pinned/aws-sdk-cpp \
   -DPUTGD_SOURCE_COMMIT="$revision" -DPUTGD_SOURCE_TREE="$source_tree" \
-  -DPUTGD_SOURCE_COMMIT_COUNT="$revision_count"
+  -DPUTGD_SOURCE_COMMIT_COUNT="$revision_count" -DPUTGD_SOURCE_COMMIT_TIME="$revision_time"
 cmake --build /tmp/putgd-source-build --parallel 2
 ```
 
 Transfer those values and the archive checksum together when building in a VM.
 The overrides assert the archive's origin; they cannot detect edits made after
 extraction. Recreate the archive from the intended commit for repeatable builds.
-An archive with no supplied provenance builds as `0.1.1-dev.unknown`, with empty
+An archive with no supplied provenance builds as `0.0.0-dev.unknown`, with empty
 commit/tree and unknown dirty state. It never silently presents itself as a clean
 release. Ordinary `git archive HEAD` exports only committed files, so commit the
 intended code first rather than expecting it to include local edits.
@@ -178,9 +226,9 @@ intended code first rather than expecting it to include local edits.
 
 `version_contract` creates small temporary Git repositories and uses normal
 CMake/Ninja builds. It checks all three executable versions and embedded manifests
-immediately after a commit-only rebuild. It also covers same-version release binaries from different commits, explicit
-clean stable/RC tags, malformed tags, mismatched base and
-commit, dirty/archive release rejection, package ordering, dirty state,
+immediately after a commit-only rebuild. It also covers release binaries from different commits, explicit clean stable
+and nightly calendar tags, malformed tags, a tag with the local date or another
+count, a tag on another commit, dirty/archive release rejection, package ordering, dirty state,
 embedded/installed manifest agreement, package identity and runtime asset snapshots
 after Git advances,
 mixed executable rejection (including stale UI and KDE region helpers in ordinary
