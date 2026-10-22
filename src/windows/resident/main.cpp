@@ -3,10 +3,12 @@
 #include "common/Frames.h"
 #include "common/Modes.h"
 #include "common/Paths.h"
+#include "resident/UpdateService.h"
 #include <cstdio>
 #include <string>
 #include <vector>
 #include <windows.h>
+#include <shellapi.h>
 
 int wmain(int argc, wchar_t** argv) {
     std::vector<std::string> args;
@@ -22,6 +24,7 @@ int wmain(int argc, wchar_t** argv) {
     if (mode == "--s3-worker") return putgd::s3WorkerMain(args);
     if (mode == "--ui") return putgd::uiMain(args);
     if (mode == "--edit-image") return putgd::editorMain(args);
+    if (mode == "--check-update") return putgd::UpdateService::childMain(args);
     return putgd::residentMain(args);
 }
 // MinGW -municode and MSVC /SUBSYSTEM:WINDOWS both reach wmain through wWinMain.

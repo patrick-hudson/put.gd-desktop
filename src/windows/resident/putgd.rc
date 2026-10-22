@@ -1,0 +1,46 @@
+// Resources of putgd.exe: application icon, manifest and version information.
+// The build may pass PUTGD_RC_VERSION (e.g. 0,1,1,0) and PUTGD_RC_VERSION_TEXT
+// ("0.1.1-dev.12+gabc") as resource-compiler definitions.
+#include <windows.h>
+
+#define IDI_APP 1
+
+#ifndef PUTGD_RC_VERSION
+#define PUTGD_RC_VERSION 0,1,1,0
+#endif
+#ifndef PUTGD_RC_VERSION_TEXT
+#define PUTGD_RC_VERSION_TEXT "0.1.1"
+#endif
+
+IDI_APP ICON "app.ico"
+
+// CREATEPROCESS_MANIFEST_RESOURCE_ID (1), RT_MANIFEST (24). MSVC links with /MANIFEST:NO.
+1 24 "putgd.manifest"
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION PUTGD_RC_VERSION
+PRODUCTVERSION PUTGD_RC_VERSION
+FILEFLAGSMASK VS_FFI_FILEFLAGSMASK
+FILEFLAGS 0
+FILEOS VOS_NT_WINDOWS32
+FILETYPE VFT_APP
+FILESUBTYPE VFT2_UNKNOWN
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "CompanyName", "put.gd"
+            VALUE "FileDescription", "put.gd"
+            VALUE "FileVersion", PUTGD_RC_VERSION_TEXT
+            VALUE "InternalName", "putgd"
+            VALUE "OriginalFilename", "putgd.exe"
+            VALUE "ProductName", "put.gd"
+            VALUE "ProductVersion", PUTGD_RC_VERSION_TEXT
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END

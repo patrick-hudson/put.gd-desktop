@@ -38,9 +38,12 @@
 //   Deadlines: ready within 10 s of start; no deadline while selecting; checkpoint within 30 s of selected.
 //
 // --image-job (role "image-job"): decode and normalize an image away from the resident.
-//   bootstrap fields: input:{path, kind: png|dib|file}, output:{path}, preview:{path, edge} (optional),
-//                     limits:{imagePixels, imageBytes}, reencode (bool: false keeps PNG bytes verbatim)
-//   child  checkpoint   {bytes, sha256, width, height, mime, previewWritten}
+//   bootstrap fields: input:{path, kind: png|dib|file}, output:{path, kind: png|dib} (dib writes the
+//                     CF_DIBV5 bytes a clipboard owner can hand out verbatim), preview:{path, edge} (optional),
+//                     limits:{imagePixels, imageBytes}, reencode (bool: false keeps PNG bytes verbatim),
+//                     previewOnly (bool: write only the preview; output may be absent)
+//   child  checkpoint   {bytes, sha256, width, height, mime, previewWritten}   (bytes/sha256 of the output;
+//                                                                              0/"" when previewOnly)
 //   child  failed       {code, message}  codes: source_unsupported, input_excessive, encoding_failed, artifact_io
 //   parent checkpointAccepted {}
 //

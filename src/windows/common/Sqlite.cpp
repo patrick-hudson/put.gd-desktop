@@ -6,7 +6,7 @@
 namespace putgd::sqlite {
 namespace {
 constexpr int SQLITE_OK = 0, SQLITE_ROW = 100, SQLITE_DONE = 101, SQLITE_OPEN_READWRITE = 2, SQLITE_OPEN_CREATE = 4, SQLITE_OPEN_NOMUTEX = 0x8000;
-constexpr void* SQLITE_TRANSIENT = reinterpret_cast<void*>(-1);
+void* const SQLITE_TRANSIENT = reinterpret_cast<void*>(static_cast<intptr_t>(-1));
 using open_v2_t = int (*)(const char*, sqlite3**, int, const char*);
 using close_t = int (*)(sqlite3*);
 using exec_t = int (*)(sqlite3*, const char*, void*, void*, char**);
@@ -44,7 +44,7 @@ Api& api() {
         GetSystemDirectoryW(system, MAX_PATH);
         a.module = LoadLibraryExW((std::wstring(system) + L"\\winsqlite3.dll").c_str(), nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
         if (!a.module) return;
-        auto get = [&](const char* name) { return GetProcAddress(a.module, name); };
+        auto get = [&](const char* name) { return reinterpret_cast<void*>(GetProcAddress(a.module, name)); };
 #define PUTGD_SQLITE_BIND(field, symbol) a.field = reinterpret_cast<decltype(a.field)>(get(symbol)); if (!a.field) return;
         PUTGD_SQLITE_BIND(open_v2, "sqlite3_open_v2") PUTGD_SQLITE_BIND(close, "sqlite3_close_v2") PUTGD_SQLITE_BIND(exec, "sqlite3_exec")
         PUTGD_SQLITE_BIND(prepare, "sqlite3_prepare_v2") PUTGD_SQLITE_BIND(finalize, "sqlite3_finalize") PUTGD_SQLITE_BIND(step, "sqlite3_step")

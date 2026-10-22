@@ -32,7 +32,7 @@ bool isRegularFile(const std::string& path) { const auto a = attributes(path); r
 long long size(const std::string& path) {
     WIN32_FILE_ATTRIBUTE_DATA data;
     if (!GetFileAttributesExW(w(path).c_str(), GetFileExInfoStandard, &data)) return -1;
-    return (long long(data.nFileSizeHigh) << 32) | data.nFileSizeLow;
+    return (static_cast<long long>(data.nFileSizeHigh) << 32) | data.nFileSizeLow;
 }
 bool makeDirectories(const std::string& path) {
     if (isDirectory(path)) return true;
@@ -110,7 +110,7 @@ FileIdentity identity(const std::string& path) {
     HANDLE h = CreateFileW(w(path).c_str(), 0, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
     if (h == INVALID_HANDLE_VALUE) return id;
     BY_HANDLE_FILE_INFORMATION info;
-    if (GetFileInformationByHandle(h, &info)) { id.volume = info.dwVolumeSerialNumber; id.index = (unsigned long long(info.nFileIndexHigh) << 32) | info.nFileIndexLow; id.valid = true; }
+    if (GetFileInformationByHandle(h, &info)) { id.volume = info.dwVolumeSerialNumber; id.index = (static_cast<unsigned long long>(info.nFileIndexHigh) << 32) | info.nFileIndexLow; id.valid = true; }
     CloseHandle(h);
     return id;
 }
@@ -139,7 +139,7 @@ std::string isoUtcFromMs(long long ms) {
 }
 std::string nowIsoUtc() {
     FILETIME ft; GetSystemTimePreciseAsFileTime(&ft);
-    return isoUtcFromFileTime((unsigned long long(ft.dwHighDateTime) << 32) | ft.dwLowDateTime);
+    return isoUtcFromFileTime((static_cast<unsigned long long>(ft.dwHighDateTime) << 32) | ft.dwLowDateTime);
 }
 long long parseIsoUtcMs(const std::string& s) {
     int y, mo, d, h, mi, sec, ms = 0;
@@ -151,7 +151,7 @@ long long parseIsoUtcMs(const std::string& s) {
 }
 LocalFields localFields(const std::string& iso) {
     long long ms = iso.empty() ? -1 : parseIsoUtcMs(iso);
-    if (ms < 0) { FILETIME ft; GetSystemTimeAsFileTime(&ft); ms = (long long)((((unsigned long long)ft.dwHighDateTime << 32) | ft.dwLowDateTime) / 10000ULL) - 11644473600000LL; }
+    if (ms < 0) { FILETIME ft; GetSystemTimeAsFileTime(&ft); ms = static_cast<long long>(((static_cast<unsigned long long>(ft.dwHighDateTime) << 32) | ft.dwLowDateTime) / 10000ULL) - 11644473600000LL; }
     const time_t seconds = ms / 1000; std::tm t; localtime_s(&t, &seconds);
     return {t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec};
 }

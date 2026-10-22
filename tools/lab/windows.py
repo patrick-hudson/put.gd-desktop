@@ -130,7 +130,7 @@ def clone(base, directory):
 
 
 @serialized('directory')
-def launch(directory, display, iso=None, network=False, memory=4096):
+def launch(directory, display, iso=None, network=False, memory=4096, ssh_forward=None, cpus=2):
     if (directory / 'manifest.json').exists():
         raise LabError('Sealed bases cannot boot; create an overlay instead')
     stopped(directory)
@@ -153,10 +153,14 @@ def launch(directory, display, iso=None, network=False, memory=4096):
             '--ctrl', f'type=unixio,path={directory / "tpm.sock"}',
             '--flags', 'not-need-init', '--pid', f'file={directory / "swtpm.pid"}', '--daemon')
     try:
-        state.update(clean_shutdown=False, vnc_port=5900 + display, network=network)
+        state.update(clean_shutdown=False, vnc_port=5900 + display, network=network, cpus=cpus)
+        if ssh_forward:
+            state['ssh_forward'] = ssh_forward
+        else:
+            state.pop('ssh_forward', None)
         save(directory / 'state.json', state)
         args = ['qemu-system-x86_64', '-enable-kvm', '-machine', 'q35,smm=on',
-                '-cpu', 'host', '-smp', '2', '-m', str(memory), '-uuid', state['uuid'],
+                '-cpu', 'host', '-smp', str(cpus), '-m', str(memory), '-uuid', state['uuid'],
                 '-name', f'{state["os"]}-{directory.name}',
                 '-global', 'driver=cfi.pflash01,property=secure,value=on',
                 '-drive', f'if=pflash,format=raw,readonly=on,file={FIRMWARE / "OVMF_CODE_4M.ms.fd"}',
@@ -171,7 +175,10 @@ def launch(directory, display, iso=None, network=False, memory=4096):
         if iso:
             args += ['-cdrom', str(iso), '-boot', 'order=dc,menu=on']
         if network:
-            args += ['-netdev', 'user,id=net0', '-device', 'e1000e,netdev=net0']
+            netdev = 'user,id=net0'
+            if ssh_forward:
+                netdev += f',hostfwd=tcp:127.0.0.1:{ssh_forward}-:22'
+            args += ['-netdev', netdev, '-device', 'e1000e,netdev=net0']
         else:
             args += ['-nic', 'none']
         command(*args)
@@ -264,6 +271,9 @@ def main():
     p.add_argument('--iso', type=Path)
     p.add_argument('--network', action='store_true', help='Explicit outbound NAT; no forwarded ports')
     p.add_argument('--memory', type=int, default=4096)
+    p.add_argument('--cpus', type=int, default=2, help='Virtual CPUs (-smp), 1..8')
+    p.add_argument('--ssh-forward', type=int, metavar='PORT',
+                   help='With --network: forward host 127.0.0.1:PORT to guest port 22 (loopback only)')
     p = sub.add_parser('shutdown')
     p.add_argument('--vm', type=Path, required=True)
     p.add_argument('--force', action='store_true', help='Abrupt stop; disallows sealing')
@@ -293,7 +303,12 @@ def main():
     elif args.action == 'start':
         if not 0 <= args.display <= 99 or args.memory < 4096:
             raise LabError('Display must be 0..99 and memory at least 4096 MiB')
-        launch(directory, args.display, args.iso.resolve() if args.iso else None, args.network, args.memory)
+        if args.ssh_forward is not None and (not args.network or not 1024 <= args.ssh_forward <= 65535):
+            raise LabError('--ssh-forward needs --network and a port in 1024..65535')
+        if not 1 <= args.cpus <= 8:
+            raise LabError('--cpus must be 1..8')
+        launch(directory, args.display, args.iso.resolve() if args.iso else None, args.network, args.memory,
+               args.ssh_forward, args.cpus)
     elif args.action == 'shutdown':
         shutdown(directory, args.force)
     elif args.action == 'cleanup':

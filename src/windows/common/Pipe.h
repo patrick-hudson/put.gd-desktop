@@ -4,6 +4,7 @@
 // one newline-terminated JSON reply per connection, like the Linux Unix socket
 // (docs/cli.md: 1 MiB request, 10 s framing deadline, 64 clients, 16 MiB reply).
 #include <functional>
+#include <memory>
 #include <optional>
 #include <string>
 #include <windows.h>

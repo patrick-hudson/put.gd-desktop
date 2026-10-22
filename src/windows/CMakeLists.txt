@@ -44,7 +44,7 @@ if(GIT_EXECUTABLE)
 endif()
 string(SUBSTRING "${_commit}" 0 12 _short)
 set(PUTGD_VERSION "${PROJECT_VERSION}-dev.${_count}+g${_short}")
-configure_file(common/BuildInfo.h.in "${CMAKE_CURRENT_BINARY_DIR}/generated/BuildInfo.h" @ONLY)
+configure_file(common/BuildInfo.h.in "${CMAKE_CURRENT_BINARY_DIR}/generated/common/BuildInfo.h" @ONLY)
 
 add_library(putgd_win_options INTERFACE)
 target_include_directories(putgd_win_options INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/generated")
@@ -67,7 +67,8 @@ endif()
 # Portable core: no Windows headers. Tested on Linux and used by every executable.
 add_library(putgd_win_core STATIC
   common/Json.cpp common/Text.cpp common/Shortcut.cpp common/Sha256.cpp
-  core/Settings.cpp core/Naming.cpp core/Operation.cpp core/SettingsPatch.cpp core/S3Settings.cpp core/SanitizedPng.cpp)
+  core/Settings.cpp core/Naming.cpp core/Operation.cpp core/SettingsPatch.cpp core/S3Settings.cpp core/SanitizedPng.cpp
+  s3/SigV4.cpp)
 target_link_libraries(putgd_win_core PUBLIC putgd_win_options)
 
 if(PUTGD_WINDOWS_PORTABLE_TESTS)
@@ -75,6 +76,12 @@ if(PUTGD_WINDOWS_PORTABLE_TESTS)
   add_executable(test_win_core tests/test_core.cpp)
   target_link_libraries(test_win_core PRIVATE putgd_win_core)
   add_test(NAME windows_core_contract COMMAND test_win_core)
+  add_executable(test_win_sigv4 tests/test_sigv4.cpp)
+  target_link_libraries(test_win_sigv4 PRIVATE putgd_win_core)
+  add_test(NAME windows_sigv4 COMMAND test_win_sigv4)
+  add_executable(test_win_editor tests/test_editor.cpp editor/EditDocument.cpp editor/EditorCommands.cpp editor/Export.cpp)
+  target_link_libraries(test_win_editor PRIVATE putgd_win_core)
+  add_test(NAME windows_editor_contract COMMAND test_win_editor)
 endif()
 
 if(WIN32)
@@ -82,14 +89,14 @@ if(WIN32)
   add_library(putgd_win_platform STATIC
     common/Paths.cpp common/Files.cpp common/Process.cpp common/Frames.cpp common/Pipe.cpp
     common/Log.cpp common/Sqlite.cpp common/Uuid.cpp)
-  target_link_libraries(putgd_win_platform PUBLIC putgd_win_core shlwapi shell32 ole32 bcrypt advapi32 userenv)
+  target_link_libraries(putgd_win_platform PUBLIC putgd_win_core shlwapi shell32 ole32 bcrypt advapi32 userenv uuid)
 
   add_executable(putgd WIN32
-    resident/main.cpp resident/Resident.cpp resident/Tray.cpp resident/Hotkeys.cpp resident/Clipboard.cpp
+    resident/main.cpp resident/App.cpp resident/Resident.cpp resident/Tray.cpp resident/Hotkeys.cpp resident/Clipboard.cpp
     resident/Session.cpp resident/SettingsService.cpp resident/HistoryStore.cpp resident/Artifacts.cpp
     resident/OperationService.cpp resident/HistoryService.cpp resident/SetupService.cpp resident/CredentialStore.cpp
-    resident/LoginStartup.cpp resident/Helpers.cpp resident/S3Provider.cpp resident/UpdateService.cpp
-    s3/S3Worker.cpp s3/SigV4.cpp s3/WinHttp.cpp
+    resident/LoginStartup.cpp resident/Helpers.cpp resident/S3Provider.cpp resident/UpdateService.cpp resident/UiProcess.cpp
+    s3/S3Worker.cpp s3/WinHttp.cpp
     capture/CaptureMain.cpp capture/Overlay.cpp capture/Grab.cpp capture/Png.cpp capture/ImageJob.cpp
     ui/UiMain.cpp ui/MainWindow.cpp ui/SettingsPage.cpp ui/DestinationsPage.cpp ui/HistoryPage.cpp ui/UiSession.cpp ui/Controls.cpp
     editor/EditorMain.cpp editor/EditDocument.cpp editor/EditorCommands.cpp editor/EditorWindow.cpp editor/Export.cpp
@@ -97,6 +104,9 @@ if(WIN32)
   target_link_libraries(putgd PRIVATE putgd_win_platform user32 gdi32 comctl32 comdlg32 uxtheme dwmapi winhttp
     windowscodecs gdiplus shcore msimg32 credui)
   target_compile_definitions(putgd PRIVATE ISOLATION_AWARE_ENABLED=1)
+  if(MSVC)
+    target_link_options(putgd PRIVATE /MANIFEST:NO)
+  endif()
 
   add_executable(putgd-cli cli/main.cpp)
   target_link_libraries(putgd-cli PRIVATE putgd_win_platform)

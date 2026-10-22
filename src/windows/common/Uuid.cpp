@@ -1,7 +1,7 @@
 #include "common/Uuid.h"
+#include <windows.h>
 #include <bcrypt.h>
 #include <cstdio>
-#include <windows.h>
 namespace putgd::uuid {
 std::string create() {
     unsigned char b[16];
