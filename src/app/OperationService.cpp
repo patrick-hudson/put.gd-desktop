@@ -19,6 +19,7 @@
 #include <QFileInfo>
 #include <QJsonDocument>
 #include <QPointer>
+#include <QScopeGuard>
 #include <QTimer>
 #include <QUuid>
 #include <chrono>
@@ -539,6 +540,11 @@ Operation OperationService::run(Job job) {
   return true;
  };
  auto settled=[&](int index){QPointer<OperationService> owner(this);QMetaObject::invokeMethod(this,[owner,id=op.id,index]{if(owner&&!owner->stopping_)owner->uploadItemSettled(id,index);},Qt::QueuedConnection);};
+ // A sharing provider (Proton Drive) makes the link in the sharing step below,
+ // after the transfer. Such a file settles there, so each_link ordering waits
+ // for its link instead of passing it and stranding the link (#478).
+ auto linkFollows=[&](const OperationItem& item){return capabilities.sharing&&item.uploadStatus=="uploaded"&&item.receipt.directUrl.isEmpty();};
+ auto settleTransfer=[&](int index){OperationItem item;{std::lock_guard lock(itemsMutex);item=op.items[index];}if(!linkFollows(item))settled(index);};
  auto transfer=[&](int index,const std::shared_ptr<std::atomic_bool>& cancel) {
   OperationItem item;{std::lock_guard lock(itemsMutex);item=op.items[index];}
   ArtifactStore artifacts(root_+"/artifacts");
@@ -621,7 +627,7 @@ Operation OperationService::run(Job job) {
  std::vector<std::thread> workers;
  for(int index=0;index<op.items.size()&&persisted;++index) {
   OperationItem item;{std::lock_guard lock(itemsMutex);item=op.items[index];}
-  if(terminalUpload(item.uploadStatus)||item.uploadStatus=="failed") {settled(index);continue;}
+  if(terminalUpload(item.uploadStatus)||item.uploadStatus=="failed") {settleTransfer(index);continue;}
   if(job.cancelled->load()) {op.cancelled=true;break;}
   const auto cancel=itemCancellation(op.id,item.artifact.id);
   // Waiting for a slot: the operation reads as queued until one of its files transfers.
@@ -632,15 +638,20 @@ Operation OperationService::run(Job job) {
    if(job.cancelled->load()) {op.cancelled=true;break;}
    item.uploadStatus="cancelled";item.phase="cancelled";item.error={"cancelled","Upload cancelled before it started; Retry uploads this file",{}};commit(item,index);settled(index);continue;
   }
-  if(!parallel) {transfer(index,cancel);uploadSlots_.release(op.id);settled(index);continue;}
-  workers.emplace_back([&,index,cancel]{transfer(index,cancel);uploadSlots_.release(op.id);settled(index);});
+  if(!parallel) {transfer(index,cancel);uploadSlots_.release(op.id);settleTransfer(index);continue;}
+  workers.emplace_back([&,index,cancel]{transfer(index,cancel);uploadSlots_.release(op.id);settleTransfer(index);});
  }
  for(auto& worker:workers)worker.join();
  forgetItemCancellations(op.id);
  if(!persisted)return op;
  // Persist the uploaded receipt before the separate sharing mutation. Sharing
  // failure leaves an uploaded file and resumes only the link step on explicit retry.
- for(auto& item:op.items) {
+ for(int index=0;index<op.items.size();++index) {
+  auto& item=op.items[index];
+  // A file whose link this step makes settles when the step ends for it,
+  // whichever way: its link, if any, has been offered by then (#478).
+  const bool deferredSettle=linkFollows(item);
+  const auto settleShared=qScopeGuard([&]{if(deferredSettle)settled(index);});
   if(item.uploadStatus!="uploaded"||job.cancelled->load())continue;
   if(!capabilities.sharing)continue;
   auto lock=objectLock(item.receipt.destination,item.receipt.objectReference,{});std::unique_lock guard(*lock);
