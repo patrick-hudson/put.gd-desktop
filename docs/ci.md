@@ -246,7 +246,8 @@ reads the newest one on a ref. Three rules keep the total bounded:
   `GITHUB_TOKEN` (`actions: write`, `pull-requests: read`; the nightly and release
   callers grant them, and the job runs only on `nightly` pushes). It deletes, by id:
   every entry of a rolling family (`ccache-*` and `ctest-cost-*` by
-  `<run>-<attempt>` suffix, `qt-asan-core-<distro>-`) older than the newest on the
+  `<run>-<attempt>` suffix, `qt-asan-core-<distro>-`, and `putgd-pkgs-v1-*` by ISO
+  week) older than the newest on the
   same ref, and every cache of a closed pull request or deleted branch. On `main`,
   `nightly` and `v*` tags it deletes only those superseded entries. Merging a
   pull request pushes to `nightly`, so its caches go with the next run. Exact-key
@@ -266,6 +267,11 @@ Budget per job, measured 2026-10-19 (compressed archive sizes; the ceiling is
 | `install-qt-action-*` (Windows, AppImage) | first miss | 1 each | 650 MB | Qt version |
 | `putgd-sdk-v1-*` (9 environments) | first miss on a ref | 1 per environment | about 60 MB | dependency lock |
 | `ctest-cost-linux-*` | every non-fork run | 1 per ref | under 2 kB | |
+| `putgd-pkgs-v1-*` ([package snapshots](#package-installs)) | first run of an ISO week, or new dependency scripts, per ref | 1 per package target | 408-544 MB (Fedora 544, Ubuntu 24.04 408, Ubuntu 26.04 422, Debian 13 421 on 2026-10-22) | dependency lists |
+
+The four package snapshots add 1.8 GB on `nightly` to the steady state below. A new week's
+snapshot supersedes the previous week's at the next prune, and a pull request
+that changes the dependency scripts saves its own four until it closes.
 
 Steady state after a `nightly` push is about 1.7 GB (the ccache sizes above
 still include objects from earlier commits, so the trimmed caches will be
@@ -600,6 +606,67 @@ to 76.6 s and 95.0 s at twelve
 ([run 39712963621](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/39712963621)).
 A retry costs only the failed tests' own time. The repository is public, so
 hosted minutes are free; the change saves about 15-30 s per Linux job.
+
+## Package installs
+
+On 2026-10-22 a Fedora mirror sync turned every pull request's
+`packages / native (fedora44)` job red for about 40 minutes
+([#368](https://github.com/patrick-hudson/put.gd-desktop/issues/368)). The
+`updates` metadata listed mesa 26.2.4 before any mirror served it. dnf tried
+every mirror, `dl.fedoraproject.org` included, and got 404 or a broken TLS
+connection. Retrying the same install a few minutes later, or falling back to
+the master mirror, would not have helped.
+
+![Before: run 39717118907, the fedora44 job fails when no mirror serves mesa 26.2.4](https://raw.githubusercontent.com/patrick-hudson/put.gd-desktop/174b27a826aa34532dee6e22c0ddda70682e4a3e/docs/evidence/2026-10-22-package-installs-368/368-before.png)
+
+Package jobs install through `tools/ci/install-packages.sh` (dnf or apt-get).
+`tools/releases/install-native-deps.sh` calls it, so do the AppImage, weston
+and dwz steps. It works in three layers:
+
+- **Bounded attempts.** Up to 4 online attempts (`PUTGD_PKG_ATTEMPTS`), waiting
+  30, 60 and 120 s between them (`PUTGD_PKG_BACKOFF`). Every retry downloads
+  fresh metadata: `dnf --refresh`, or `apt-get update --error-on=any`, which
+  fails on any index it couldn't fetch instead of installing from stale lists.
+  dnf retries each download 10 times across mirrors (`retries=10`) and apt 3
+  times. If a package name doesn't exist, the install fails at once with no
+  retry.
+- **Package snapshot.** The native package jobs restore
+  `/var/cache/putgd-packages` from `actions/cache`, under the key
+  `putgd-pkgs-v1-<target>-<hash of both scripts>-<ISO week>`. It holds the
+  package metadata and exactly the packages of the last successful install.
+  Online attempts start from a copy of it, so packages already in it aren't
+  downloaded again. After an online success, the copy, pruned to the installed
+  packages, replaces it. The cache is saved on that week's first run and when
+  the dependency scripts change, never after a fallback. If all online attempts
+  fail, the install runs once more offline from the snapshot
+  (`dnf --cacheonly`, `apt-get --no-download`). That builds against a package
+  set at most a week old instead of failing the job. A dependency list that
+  changed since the snapshot can't be satisfied offline, and the step fails.
+- **Reporting.** Each failed attempt, a retry that passed and a snapshot
+  install are warning annotations and rows of a "Package install retries"
+  table in the job summary. A clean install writes nothing. The pre-checkout
+  bootstrap (git only) retries 3 times inline and reports in a table of the same form.
+
+![After: run 39729960271 (throwaway e8f9443b on aca7858f), retries, snapshot installs and a red all-fail job](https://raw.githubusercontent.com/patrick-hudson/put.gd-desktop/174b27a826aa34532dee6e22c0ddda70682e4a3e/docs/evidence/2026-10-22-package-installs-368/368-after.png)
+
+The pictures come from #388. Before: run 39717118907, PR #357's head
+`fd9e255`. After: run 39729960271 on a throwaway commit (`e8f9443b`, PR head
+`aca7858f` plus a demo-only workflow change that wrapped `dnf` and `apt-get`
+to inject mirror faults). There, a fault on the first attempt passed on its
+retry, four failed attempts installed from the snapshot and built the package,
+and a fault on every attempt and on the snapshot failed the job. Job summaries
+and logs are visible only to signed-in viewers, so the after picture lists the
+same lines from the check-runs API. The files are in
+`docs/evidence/2026-10-22-package-installs-368/`. To repeat it, push such a
+wrapper to a pull request branch, never to `nightly`.
+
+Not covered yet: the `linux`, `sanitizers` and `contracts` jobs in `ci.yml`
+still use bare `apt-get`
+([#389](https://github.com/patrick-hudson/put.gd-desktop/issues/389)). `npm ci`
+in the Proton helper step runs with `npm_config_fetch_retries=5`. Its separate
+exit-152 failure
+([#332](https://github.com/patrick-hudson/put.gd-desktop/issues/332)) is a
+CPU-time kill, not a network error.
 
 ## Proton Linux runtime
 
