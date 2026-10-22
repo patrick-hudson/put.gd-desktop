@@ -174,6 +174,7 @@ private:
  void setGap(int gap){if(gap_==gap)return;gap_=gap;viewport()->update();}
  int dragRow_=-1,gap_=-1;
 };
+QString capitalized(const QString& text){return text.isEmpty()?text:text.left(1).toUpper()+text.mid(1);}
 QString localTime(const QString& iso){const auto time=QDateTime::fromString(iso,Qt::ISODateWithMs);return time.isValid()?QLocale().toString(time.toLocalTime(),QLocale::ShortFormat):iso;}
 QString operationLine(const QJsonObject& op){
  static const QHash<QString,QString> actions{{"region","Region capture"},{"window","Window capture"},{"desktop","Desktop capture"},{"clipboard","Clipboard upload"},{"edit","Edited capture"},{"record","Screen recording"},{"file","File upload"}};
@@ -382,9 +383,9 @@ QString settingHelp(const QString& path,const QString& objectName){
   {"appearanceTheme","Match the desktop follows your desktop's light or dark setting and changes with it. Dark and Light keep one look. Applies at once to every open put.gd window."},
   {"launchAtLogin","Starts put.gd when you sign in. Disabled by default. The desktop startup entry is updated after persistence; another app copy is not started."},
   {"checkForUpdates","Once a day put.gd asks app.put.gd for the newest version on its channel. The request is the same from every computer: no version, account, locale or ID. The comparison happens here, and nothing is installed without you. Stable builds also show a notification once for each new version; nightly builds show it only here. Check now works with daily checks off."},
-  {"updateChannel","This build's channel follows how put.gd was installed: a nightly build follows nightly, a release or release candidate follows stable. Choose Stable or Nightly to watch the other channel instead. Changing it doesn't change what is installed."},
+  {"updateChannel","This build's channel follows how put.gd was installed: a nightly build follows nightly, a release or release candidate follows stable. Choose Stable or Nightly to watch the other channel instead. Changing it doesn't change what is installed: an AppImage then offers to switch to that channel's newest release, which you start yourself."},
   {"updateStatus","The result of the last check and when the next one runs. Download opens the new package for this installation in your browser. When this installation updates from put.gd's apt or dnf repository, Open software updates opens your system's updater instead."},
-  {"updateInstall","Download and install fetches the new AppImage, checks it against the release's SHA256SUMS and puts it in place of the one put.gd runs from, at the same path, so login startup and menu entries keep working. It uses appimageupdatetool or zsync2 when one is installed, which downloads only what changed, and otherwise the whole file. The current version is kept beside it as a hidden backup until the new one has started."},
+  {"updateInstall","Download and install fetches the new AppImage, checks it against the release's SHA256SUMS and puts it in place of the one put.gd runs from, at the same path, so login startup and menu entries keep working. It uses appimageupdatetool or zsync2 when one is installed, which downloads only what changed, and otherwise the whole file. The current version is kept beside it as a hidden backup until the new one has started. When you watch the other channel, the same steps switch to that channel's release, checked with its own signing key; an older version is installed only after you confirm."},
   {"updateCommand","Updates from put.gd's repository install with the rest of your system's updates. You can also run this command in a terminal."},
   {"notifications","Shows desktop notifications for operation results when supported. Enabled by default. Disabling notifications leaves results available in History."},
   {"debugLogging","Adds detailed debug records to put.gd's log on this computer, for a maintainer working out a problem. It turns itself off 24 hours after you turn it on; restarting doesn't extend it. Credentials, tokens and file contents are never logged."},
@@ -475,8 +476,23 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  installStatus_=new QLabel;installStatus_->setObjectName("updateInstallStatus");installStatus_->setWordWrap(true);installStatus_->setTextInteractionFlags(Qt::TextSelectableByMouse);installStatus_->setAccessibleName("Update install status");installLayout->addWidget(installStatus_);
  updatesForm->addRow(VisualStyle::settingLabel("Install",settingHelp({},"updateInstall"),installStatus_,this),installRow_);updatesForm->setRowVisible(installRow_,false);
  connect(installUpdate_,&QPushButton::clicked,this,[this]{
+  // A channel switch (#344) names its channel; an older version is confirmed first.
+  const auto offer=settings_.diagnostics()["update"].toObject()["install"].toObject()["switch"].toObject();
+  QJsonObject params{{"confirm",true}};
+  if(!offer.isEmpty()){
+   params["channel"]=offer["to"];
+   if(offer["older"].toBool()){
+    const auto image=QFileInfo(settings_.diagnostics()["update"].toObject()["install"].toObject()["image"].toString()).fileName();
+    const auto target=offer["to"].toString()+" "+offer["version"].toString();
+    if(QMessageBox::question(this,"Switch to an older version","Switch to "+target+", which is older than this build ("+
+       settings_.diagnostics()["update"].toObject()["build"].toObject()["version"].toString()+")?\n\nput.gd replaces "+image+" with "+target+
+       ", checked against the "+offer["to"].toString()+" release's signature, at the same path. An older version may not open settings or history saved by a newer one. "
+       "This version is kept as a hidden backup until the new one has started.")!=QMessageBox::Yes)return;
+    params["allowOlder"]=true;
+   }
+  }
   installUpdate_->setEnabled(false);VisualStyle::feedback(installStatus_,"Starting…");updatesForm_->setRowVisible(installRow_,true);
-  settings_.request("update.install",{{"confirm",true}},this,[g=QPointer<SettingsWindow>(this)](Error error,QJsonObject){
+  settings_.request("update.install",params,this,[g=QPointer<SettingsWindow>(this)](Error error,QJsonObject){
    if(!g)return;
    if(error){g->installUpdate_->setEnabled(true);VisualStyle::feedback(g->installStatus_,error.message+".",true);return;}
    g->settings_.refreshSnapshot([g](Error){if(g)g->refreshUpdateStatus();});
@@ -846,7 +862,10 @@ void SettingsWindow::refreshUpdateStatus(){
  checkNow_->setVisible(supported||update.isEmpty());checkNow_->setEnabled(supported&&!update["checking"].toBool());
  const bool available=supported&&result["updateAvailable"].toBool();
  const auto action=update["action"].toObject();const bool managed=action["kind"]=="software-updates";
- updateActionsRow_->setVisible(available||update["install"].toObject()["restartRequired"].toBool());
+ // An AppImage watching the other channel switches to its release (#344).
+ const auto install=update["install"].toObject();const auto offer=install["switch"].toObject();
+ const bool switching=supported&&build["packageTarget"]=="appimage"&&install["kind"]=="switch";
+ updateActionsRow_->setVisible(available||!offer.isEmpty()||install["restartRequired"].toBool());
  downloadUpdate_->setVisible(!managed);openUpdates_->setVisible(managed&&action["updater"].isObject());
  if(managed){openUpdates_->setToolTip("Opens "+action["updater"].toObject()["name"].toString());updateCommand_->setText(action["command"].toString());}
  updatesForm_->setRowVisible(updateCommandRow_,available&&managed);
@@ -862,6 +881,14 @@ void SettingsWindow::refreshUpdateStatus(){
  const auto channel=update["channel"].toString();const auto current=build["version"].toString();
  QString text;
  if(update["checking"].toBool())text="Checking…";
+ else if(switching&&!offer.isEmpty()){
+  const auto target=offer["to"].toString()+" "+offer["version"].toString();
+  text=offer["older"].toBool()?capitalized(target)+" is older than this "+build["channel"].toString()+" build ("+current+"). Switching installs the older version in its place.":
+   capitalized(target)+" is available. This is "+build["channel"].toString()+" "+current+"; switching replaces it with the "+offer["to"].toString()+" release.";
+ }
+ else if(switching&&!result.isEmpty()&&result["latest"].isNull())
+  text="There's no "+channel+" release yet. This "+build["channel"].toString()+" build ("+current+") stays as it is, and doesn't get "+build["channel"].toString()+
+   " updates while "+capitalized(channel)+" is chosen. put.gd offers the switch once the first "+channel+" release is out.";
  else if(available&&managed)text="put.gd "+result["latest"].toString()+" is available from put.gd's "+action["channel"].toString()+" repository. This is "+current+".";
  else if(available)text="put.gd "+result["latest"].toString()+" is available. This is "+current+".";
  else if(!result.isEmpty()&&result["latest"].isNull())text="No "+channel+" release has been published yet. This is "+current+".";
@@ -874,9 +901,9 @@ void SettingsWindow::refreshUpdateStatus(){
   if(!update["nextCheckAt"].isNull())text+=" Next check "+localTime(update["nextCheckAt"].toString())+".";
   else if(!update["check"].toBool())text+=" Daily checks are off.";
  }
- if(available)VisualStyle::success(updateStatus_,text);else VisualStyle::feedback(updateStatus_,text);
+ if(available||!offer.isEmpty())VisualStyle::success(updateStatus_,text);else VisualStyle::feedback(updateStatus_,text);
  downloadUpdate_->setText("Download "+result["latest"].toString());
- refreshInstallStatus(update,available,managed);
+ refreshInstallStatus(update,available||!offer.isEmpty(),managed);
 }
 void SettingsWindow::refreshInstallStatus(const QJsonObject& update,bool available,bool managed){
  const auto install=update["install"].toObject();const auto state=install["state"].toString();
@@ -886,7 +913,9 @@ void SettingsWindow::refreshInstallStatus(const QJsonObject& update,bool availab
  const bool updated=!running&&!restart&&!installedVersion.isEmpty()&&installedVersion==update["build"].toObject()["version"].toString();
  const bool installable=available&&!managed&&install["available"].toBool();
  installUpdate_->setVisible(installable&&!restart);installUpdate_->setEnabled(!running);
- installUpdate_->setText(running?QString("Installing…"):QString("Download and install"));
+ const auto offer=install["switch"].toObject();
+ installUpdate_->setText(running?QString(offer.isEmpty()?"Installing…":"Switching…"):offer.isEmpty()?QString("Download and install"):
+  "Switch to "+offer["to"].toString()+" "+offer["version"].toString()+(offer["older"].toBool()?" (older)":""));
  // Download stays for anyone who would rather replace the file by hand.
  VisualStyle::role(downloadUpdate_,installable?"secondary":"primary");
  downloadUpdate_->setVisible(!managed&&!restart);releaseNotes_->setVisible(!restart||available);
@@ -906,16 +935,19 @@ void SettingsWindow::refreshInstallStatus(const QJsonObject& update,bool availab
    phase=="verifying"?QString("Checking against the release's SHA256SUMS…"):phase=="installing"?QString("Putting the new version in place…"):QString("Checking the release…");
   VisualStyle::feedback(installStatus_,text);return;
  }
+ // A switch says so (#344): the record names both channels.
+ const auto from=installed["previousChannel"].toString(),to=installed["channel"].toString();
+ const bool switched=!from.isEmpty()&&!to.isEmpty()&&from!=to;
  if(restart){
   const auto how=installed["method"].toString();
-  QString text="Installed "+installed["version"].toString()+(how=="zsync"?QString(" with a zsync update"):how=="download"?QString(" from a full download"):QString())+". Restart put.gd to use it.";
+  QString text=(switched?"Switched to "+to+" ":QString("Installed "))+installed["version"].toString()+(how=="zsync"?QString(" with a zsync update"):how=="download"?QString(" from a full download"):QString())+". Restart put.gd to use it.";
   if(install["backup"].isString())text+=" The previous version is kept as "+QFileInfo(install["backup"].toString()).fileName()+" until the new one has started.";
   VisualStyle::success(installStatus_,text);return;
  }
  const auto error=install["error"].toObject();
  if(state!="failed"&&updated){
   const auto how=installed["method"].toString();
-  VisualStyle::success(installStatus_,"Updated from "+installed["previousVersion"].toString()+" to "+installed["version"].toString()+
+  VisualStyle::success(installStatus_,(switched?"Switched from "+from+" "+installed["previousVersion"].toString()+" to "+to+" ":"Updated from "+installed["previousVersion"].toString()+" to ")+installed["version"].toString()+
    (how=="zsync"?QString(" with a zsync update"):how=="download"?QString(" from a full download"):QString())+" on "+localTime(installed["installedAt"].toString())+".");
   return;
  }

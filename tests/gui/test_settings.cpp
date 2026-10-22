@@ -937,6 +937,53 @@ private slots:
   apply({{"state","idle"},{"available",true},{"running",false},{"restartRequired",false}},{{"kind","software-updates"},{"manager","apt"},{"command","sudo apt update && sudo apt upgrade"},{"updater",QJsonValue()}});
   QTRY_VERIFY(!download->isVisibleTo(settings));QVERIFY(!install->isVisibleTo(settings));
  }
+ // #344: an AppImage watching the other channel offers an explicit switch, says
+ // when that channel has no release yet, and confirms an older version first.
+ void appImageWatchingTheOtherChannelOffersASwitch(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(Settings::developmentTemplate(),{}));
+  CredentialStore secrets;UiSessionFixture fixture(service,secrets);QJsonObject update;
+  fixture.server.setUiDiagnostics([&]{auto data=fixture.operations().diagnostics();data["update"]=update;return data;});
+  MainWindow window(fixture.session);window.navigate("settings");window.show();QTRY_VERIFY(fixture.session.ready());
+  auto* install=window.findChild<QPushButton*>("installUpdate");auto* restart=window.findChild<QPushButton*>("restartAfterUpdate");
+  auto* line=window.findChild<QLabel*>("updateStatus");auto* status=window.findChild<QLabel*>("updateInstallStatus");QVERIFY(install&&restart&&line&&status);
+  auto apply=[&](const QString& version,const QString& buildChannel,const QString& channel,const QJsonValue& latest,bool newer,const QJsonObject& installState){
+   update={{"supported",true},{"build",QJsonObject{{"version",version},{"channel",buildChannel},{"supported",true},{"packageTarget","appimage"}}},
+    {"check",true},{"channelSetting",channel},{"channel",channel},{"checking",false},{"action",QJsonObject{{"kind","download"},{"repository","none"}}},{"error",QJsonObject{}},
+    {"checkedAt",QJsonValue()},{"nextCheckAt",QJsonValue()},
+    {"result",QJsonObject{{"channel",channel},{"current",version},{"latest",latest},{"updateAvailable",newer},{"downloadUrl","https://app.put.gd/dl/"+channel+"/appimage"}}},{"install",installState}};
+   fixture.session.refreshSnapshot();
+  };
+  const auto settings=window.settings();
+  // No stable release yet: said plainly, with nothing to click.
+  apply("0.1.1-nightly.900","nightly","stable",QJsonValue(),false,{{"state","idle"},{"kind","switch"},{"available",false},{"reason","no_release"},{"switch",QJsonValue()},{"running",false},{"restartRequired",false}});
+  QTRY_VERIFY(line->text().startsWith("There's no stable release yet. This nightly build (0.1.1-nightly.900) stays as it is"));
+  QVERIFY(!line->text().contains("Up to date"));QVERIFY(!install->isVisibleTo(settings));
+  // The first stable release: Switch to stable 0.1.1.
+  apply("0.1.1-nightly.900","nightly","stable","0.1.1",true,{{"state","idle"},{"kind","switch"},{"available",true},{"running",false},{"restartRequired",false},
+   {"switch",QJsonObject{{"from","nightly"},{"to","stable"},{"version","0.1.1"},{"tag","v0.1.1"},{"older",false}}}});
+  QTRY_COMPARE(install->text(),QString("Switch to stable 0.1.1"));QVERIFY(install->isVisibleTo(settings));
+  QVERIFY(line->text().startsWith("Stable 0.1.1 is available. This is nightly 0.1.1-nightly.900; switching replaces it with the stable release."));
+  // Without an install service here the click's refusal shows; it was asked for.
+  install->click();QTRY_VERIFY(status->text().contains("does not check for updates"));
+  // Back from stable to an older nightly: labelled, and confirmed first.
+  apply("0.1.1","stable","nightly","0.1.1-nightly.901",false,{{"state","idle"},{"kind","switch"},{"available",true},{"running",false},{"restartRequired",false},
+   {"switch",QJsonObject{{"from","stable"},{"to","nightly"},{"version","0.1.1-nightly.901"},{"tag","v0.1.1-nightly.901"},{"older",true}}}});
+  QTRY_COMPARE(install->text(),QString("Switch to nightly 0.1.1-nightly.901 (older)"));
+  QVERIFY(line->text().startsWith("Nightly 0.1.1-nightly.901 is older than this stable build (0.1.1)."));
+  QString asked;
+  QTimer dismiss;connect(&dismiss,&QTimer::timeout,this,[&]{if(auto* box=qobject_cast<QMessageBox*>(QApplication::activeModalWidget())){asked=box->text();box->button(QMessageBox::No)->click();}});dismiss.start(10);
+  status->clear();install->click();dismiss.stop();
+  QTRY_VERIFY(asked.contains("which is older than this build (0.1.1)"));QVERIFY(asked.contains("may not open settings or history"));
+  QTest::qWait(100);QVERIFY(!status->text().contains("does not check for updates"));QVERIFY(install->isEnabled());
+  // Switched and waiting, then switched and running.
+  apply("0.1.1-nightly.900","nightly","stable","0.1.1",true,{{"state","installed"},{"kind","switch"},{"available",true},{"running",false},{"restartRequired",true},{"switch",QJsonValue()},
+   {"installed",QJsonObject{{"version","0.1.1"},{"channel","stable"},{"previousChannel","nightly"},{"method","zsync"}}}});
+  QTRY_VERIFY(status->text().startsWith("Switched to stable 0.1.1 with a zsync update. Restart put.gd to use it."));QVERIFY(restart->isVisibleTo(settings));
+  apply("0.1.1","stable","stable","0.1.1",false,{{"state","idle"},{"kind","update"},{"available",true},{"running",false},{"restartRequired",false},{"switch",QJsonValue()},
+   {"installed",QJsonObject{{"version","0.1.1"},{"previousVersion","0.1.1-nightly.900"},{"channel","stable"},{"previousChannel","nightly"},{"method","download"},{"installedAt","2026-10-22T10:00:00Z"}}}});
+  QTRY_VERIFY(status->text().startsWith("Switched from nightly 0.1.1-nightly.900 to stable 0.1.1 from a full download on "));
+  QVERIFY(line->text().startsWith("Up to date: 0.1.1 is the newest stable version."));QVERIFY(!install->isVisibleTo(settings));
+ }
  void railShowsTheResidentVersionAndOpensItsGitHubPage(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.show();QTRY_VERIFY(fixture.session.ready());
   auto* rail=window.findChild<QWidget*>("mainRail");auto* label=window.findChild<QLabel*>("appVersion");auto* link=window.findChild<QPushButton*>("appVersionLink");QVERIFY(rail&&label&&link);QVERIFY(rail->isAncestorOf(label)&&rail->isAncestorOf(link));

@@ -111,4 +111,11 @@ QJsonObject evaluate(const QByteArray& feed,const Build& build,const QString& ch
  result["updateAvailable"]=order&&*order>0;
  return result;
 }
+QString switchedUpdateInformation(const QString& information,const QString& from,const QString& to) {
+ const QStringList channels{"stable","nightly"};
+ if(from==to||!channels.contains(from)||!channels.contains(to))return {};
+ const auto suffix="/dl/"+from+"/appimage.zsync";
+ if(!information.startsWith("zsync|")||!information.endsWith(suffix)||information.size()<=suffix.size()+6)return {};
+ return information.left(information.size()-suffix.size())+"/dl/"+to+"/appimage.zsync";
+}
 }

@@ -123,14 +123,26 @@ QJsonObject installUpdate(const update::Build& build,const InstallOptions& optio
  };
  if(build.target!="appimage"||!build.supported){error={"update_install_unavailable","Only AppImage builds install updates themselves",{{"packageTarget",build.target},{"reason",build.reason}}};return {};}
  if(!QStringList{"auto","zsync","download"}.contains(options.method)){error={"invalid_request","method is auto, zsync or download",{}};return {};}
+ // Another channel's image is a switch, never an update (#344).
+ const bool switching=options.channel!=build.channel;
+ if(switching&&!options.switchChannel){error={"update_switch_confirm_required","Installing another channel's version is a channel switch, which must be asked for",{{"channel",options.channel},{"buildChannel",build.channel}}};return {};}
  progress("checking",{},0,0);
  const auto check=fetchUpdate(build,options.channel,error);if(error)return {};
- if(!check["updateAvailable"].toBool()){error={"update_not_available","This is the newest version on the channel",{{"current",build.version},{"latest",check["latest"]}}};return {};}
+ if(switching) {
+  if(!check["latest"].isString()){error={"update_no_release","There's no "+options.channel+" release yet",{{"channel",options.channel}}};return {};}
+  const auto order=update::compareVersions(check["latest"].toString(),build.version);
+  if(order&&*order<0&&!options.allowOlder){
+   error={"update_switch_older",options.channel+" "+check["latest"].toString()+" is older than this build ("+build.version+"); switching to it must be confirmed",{{"latest",check["latest"]},{"current",build.version}}};return {};
+  }
+ } else if(!check["updateAvailable"].toBool()){error={"update_not_available","This is the newest version on the channel",{{"current",build.version},{"latest",check["latest"]}}};return {};}
  const auto asset=check["asset"].toObject();const auto tag=check["tag"].toString(),version=check["latest"].toString(),name=asset["name"].toString();
  if(asset.isEmpty()||!name.endsWith(".AppImage")){error={"update_install_unavailable","The release names no AppImage to install",{{"tag",tag}}};return {};}
  const auto size=asset["size"].toInteger();
  if(size<=0||size>appimage::maximumImageBytes){error={"update_verification_failed","The release's AppImage has an implausible size",{{"size",size}}};return {};}
  auto image=appimage::inspect(options.image,size,error);if(error)return {};
+ // What the new image must embed: the same channel's permalink, or the target's.
+ const auto information=switching?update::switchedUpdateInformation(image.updateInformation,build.channel,options.channel):image.updateInformation;
+ if(information.isEmpty()){error={"update_install_unavailable","This AppImage doesn't follow put.gd's "+build.channel+" update permalink, so it can't switch channels",{{"updateInformation",image.updateInformation}}};return {};}
  auto state=appimage::readState(options.stateRoot);
  // An install that is waiting for its restart is finished first.
  const auto pending=state.value("installed").toObject();
@@ -144,30 +156,32 @@ QJsonObject installUpdate(const update::Build& build,const InstallOptions& optio
  const auto sumsUrl=update::releaseFileUrl(tag,"SHA256SUMS",error);if(error)return {};
  Transfer sumsTransfer;const auto sums=fetch(network,sumsUrl,maximumSumsBytes,nullptr,nullptr,{},sumsTransfer);
  if(!sumsTransfer.ok){error={"update_sums_unavailable","Cannot read the release's SHA256SUMS",transferDetails(sumsUrl,sumsTransfer)};return {};}
- // The release signer's signature over exactly these bytes, by this build's
- // channel key: a SHA256SUMS that is unsigned, signed by another key or for
- // another release is refused.
+ // The release signer's signature over exactly these bytes, by the release's
+ // channel key: a SHA256SUMS that is unsigned, signed by another key (the
+ // other channel's too) or for another release is refused.
  const auto signatureUrl=update::mirrorFileUrl(tag,"SHA256SUMS.minisig",error);if(error)return {};
  Transfer signatureTransfer;const auto signature=fetch(network,signatureUrl,maximumSignatureBytes,nullptr,nullptr,{},signatureTransfer);
  if(!signatureTransfer.ok){
   auto details=transferDetails(signatureUrl,signatureTransfer);details["check"]="missing";
   error={"update_signature_invalid","The release's SHA256SUMS has no signature; nothing was changed",details};return {};
  }
- const auto key=options.publicKey.isEmpty()?minisign::releaseKey(build.channel):options.publicKey;
+ const auto key=options.publicKeys.value(options.channel,minisign::releaseKey(options.channel));
  QString trusted;
  if(auto failed=minisign::verify(sums,signature,key,&trusted)){error=failed;error.message="The release's SHA256SUMS signature isn't valid ("+failed.message.toLower()+"); nothing was changed";return {};}
- if(trusted!="put.gd "+tag+" "+build.channel){error={"update_signature_invalid","The SHA256SUMS signature is for another release; nothing was changed",{{"check","release"},{"trustedComment",trusted}}};return {};}
+ if(trusted!="put.gd "+tag+" "+options.channel){error={"update_signature_invalid","The SHA256SUMS signature is for another release; nothing was changed",{{"check","release"},{"trustedComment",trusted}}};return {};}
  const auto expected=appimage::sumsLine(sums,name);
  if(expected.isEmpty()){error={"update_sums_unavailable","The release's SHA256SUMS doesn't list the AppImage",{{"name",name}}};return {};}
  if(asset.contains("sha256")&&asset["sha256"].toString()!=expected){
   error={"update_verification_failed","The update feed and the release's SHA256SUMS disagree; nothing was changed",{{"feed",asset["sha256"]},{"sums",expected}}};return {};
  }
  QJsonObject result{{"installed",false},{"version",version},{"tag",tag},{"previousVersion",build.version},{"image",image.path},{"sha256",expected},{"method",QJsonValue()},
-  {"zsync",QJsonValue()},{"backup",QJsonValue()},{"signature",QJsonObject{{"trustedComment",trusted}}}};
+  {"zsync",QJsonValue()},{"backup",QJsonValue()},{"signature",QJsonObject{{"trustedComment",trusted}}},
+  {"channel",options.channel},{"previousChannel",build.channel},{"switched",switching}};
  // Already on disk (an earlier install, or another updater, replaced the file):
  // nothing to fetch, only the restart is left.
  if(appimage::sha256(image.path)==expected) {
-  state["installed"]=QJsonObject{{"image",image.path},{"version",version},{"previousVersion",build.version},{"sha256",expected},{"method","none"},{"installedAt",QDateTime::currentDateTimeUtc().toString(Qt::ISODate)}};
+  state["installed"]=QJsonObject{{"image",image.path},{"version",version},{"previousVersion",build.version},{"channel",options.channel},{"previousChannel",build.channel},
+   {"sha256",expected},{"method","none"},{"installedAt",QDateTime::currentDateTimeUtc().toString(Qt::ISODate)}};
   state["backup"]=QJsonValue();state["staging"]=QJsonValue();appimage::writeState(options.stateRoot,state);
   result["installed"]=true;result["method"]="none";progress("done","none",size,size);
   return result;
@@ -202,7 +216,7 @@ QJsonObject installUpdate(const update::Build& build,const InstallOptions& optio
     if(ran&&!QFileInfo(candidatePath).isFile())reason="no_output";
     else if(ran) {
      progress("verifying",tool.kind,size,size);
-     if(const auto failed=appimage::verify(candidatePath,expected,image.updateInformation))reason="verification_failed:"+failed.details["check"].toString();
+     if(const auto failed=appimage::verify(candidatePath,expected,information))reason="verification_failed:"+failed.details["check"].toString();
      else candidate=candidatePath;
     }
     QFile::remove(seed);
@@ -236,7 +250,7 @@ QJsonObject installUpdate(const update::Build& build,const InstallOptions& optio
    }
    progress("verifying",source,size,size);
    if(!QFile::rename(part,candidatePath)){clearStaging();error={"update_install_failed","Cannot prepare the download beside the AppImage",{}};return {};}
-   if(auto failed=appimage::verify(candidatePath,expected,image.updateInformation)){clearStaging();error=failed;error.details["source"]=source;return {};}
+   if(auto failed=appimage::verify(candidatePath,expected,information)){clearStaging();error=failed;error.details["source"]=source;return {};}
    candidate=candidatePath;result["method"]="download";result["source"]=source;
    break;
   }
@@ -249,7 +263,8 @@ QJsonObject installUpdate(const update::Build& build,const InstallOptions& optio
  if(error){clearStaging();return {};}
  state=appimage::readState(options.stateRoot);
  state["staging"]=QJsonValue();state["backup"]=backup;
- state["installed"]=QJsonObject{{"image",image.path},{"version",version},{"previousVersion",build.version},{"sha256",expected},{"method",result["method"]},
+ state["installed"]=QJsonObject{{"image",image.path},{"version",version},{"previousVersion",build.version},{"channel",options.channel},{"previousChannel",build.channel},
+  {"sha256",expected},{"method",result["method"]},
   {"installedAt",QDateTime::currentDateTimeUtc().toString(Qt::ISODate)}};
  appimage::writeState(options.stateRoot,state);
  result["installed"]=true;result["backup"]=backup["path"];
@@ -261,10 +276,12 @@ int runInstallMode(int argc,char** argv) {
  QCoreApplication app(argc,argv);QCoreApplication::setOrganizationName("putgd");QCoreApplication::setApplicationName("putgd-cli");
  InstallOptions options;options.channel=QString::fromLocal8Bit(argv[2]);options.stateRoot=logging::stateRoot();
  const auto arguments=app.arguments();
- for(int index=3;index<arguments.size();index+=2) {
+ for(int index=3;index<arguments.size();++index) {
+  if(arguments[index]=="--switch"){options.switchChannel=true;continue;}
+  if(arguments[index]=="--allow-older"){options.allowOlder=true;continue;}
   if(index+1>=arguments.size()){printLine({{"schemaVersion",1},{"ok",false},{"result",QJsonObject{}},{"error",Error{"invalid_request","--method and --state take a value",{}}.toJson()}});return 2;}
-  if(arguments[index]=="--method")options.method=arguments[index+1];
-  else if(arguments[index]=="--state")options.stateRoot=arguments[index+1];
+  if(arguments[index]=="--method")options.method=arguments[++index];
+  else if(arguments[index]=="--state")options.stateRoot=arguments[++index];
   else {printLine({{"schemaVersion",1},{"ok",false},{"result",QJsonObject{}},{"error",Error{"invalid_request","Unknown option "+arguments[index].left(40),{}}.toJson()}});return 2;}
  }
  // The image this process runs from, and the host CA bundle AppRun found (#329):

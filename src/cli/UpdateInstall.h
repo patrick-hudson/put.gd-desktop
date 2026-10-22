@@ -1,5 +1,6 @@
 #pragma once
 #include "core/Update.h"
+#include <QHash>
 #include <QJsonObject>
 #include <functional>
 namespace putgd {
@@ -18,11 +19,17 @@ namespace putgd {
 // SHA256SUMS must carry the release signer's minisign signature
 // (pkg.put.gd/releases/<tag>/SHA256SUMS.minisig) by the channel's key, with the
 // trusted comment "put.gd <tag> <channel>".
+//
+// --switch (#344): CHANNEL is not the build's own. The release is then checked
+// with CHANNEL's key and trusted comment, and the new image must embed CHANNEL's
+// permalink instead of the running image's; an older version also needs
+// --allow-older. Without --switch another channel's image is refused.
 struct InstallOptions {
  QString channel,method="auto",stateRoot,image,caBundle;
- // The minisign key SHA256SUMS must be signed with; empty: the release key
- // compiled in for the build's channel (tests pass their own).
- QByteArray publicKey;
+ bool switchChannel=false,allowOlder=false;
+ // The minisign key SHA256SUMS must be signed with, by channel; a channel
+ // without one uses the release key compiled in (tests pass their own).
+ QHash<QString,QByteArray> publicKeys;
 };
 bool isInstallMode(int argc,char** argv);
 int runInstallMode(int argc,char** argv);
