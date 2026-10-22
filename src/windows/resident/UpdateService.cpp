@@ -152,7 +152,8 @@ std::string UpdateService::installUnavailable() const {
 bool UpdateService::restartRequired() const {
     const auto installed = installState_.value("installed").toObject();
     const auto applied = installed.value("applied").toObject();
-    return installed.value("version").isString() && installed.value("version") != build::version && installed.value("previousVersion") == build::version &&
+    // The record is per user; another installation's (an MSI beside a portable folder) isn't this one's.
+    return update::sameDirectory(installed.value("directory").toString(), update::installation().directory) && installed.value("version").isString() && installed.value("version") != build::version && installed.value("previousVersion") == build::version &&
         (applied.empty() || applied.value("ok").toBool());
 }
 json::Object UpdateService::installStatus() const {
@@ -164,7 +165,8 @@ json::Object UpdateService::installStatus() const {
     status["kind"] = "update";
     status["running"] = installing_;
     status["restartRequired"] = restartRequired();
-    status["installed"] = installState_.value("installed").isObject() ? installState_.value("installed") : json::Value();
+    const auto installed = installState_.value("installed").toObject();
+    status["installed"] = !installed.empty() && update::sameDirectory(installed.value("directory").toString(), update::installation().directory) ? json::Value(installed) : json::Value();
     status["backup"] = installState_.value("backup")["path"].isString() ? installState_.value("backup")["path"] : json::Value();
     return status;
 }
@@ -249,7 +251,7 @@ void UpdateService::restart(const json::Object& p, std::function<void(Error, jso
 void UpdateService::finishRestartedUpdate() {
     installState_ = update::readState();
     auto installed = installState_.value("installed").toObject();
-    if (installed.empty()) return;
+    if (installed.empty() || !update::sameDirectory(installed.value("directory").toString(), update::installation().directory)) return;
     const auto applied = installed.value("applied").toObject();
     if (installed.value("version") == build::version) {
         // The new version runs: record it once, then remove the backup, the staged MSI and its helper.

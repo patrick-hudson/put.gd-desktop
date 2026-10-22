@@ -530,7 +530,7 @@ int SettingsPageImpl::layoutSection(int section, int width, int height) {
         rows.heading(updatesHeading_);
         rows.line({{updateCheck_, 360}}, true, rows.fieldHeight());
         rows.field(channelLabel_, channel_, 240, checkNow_, -1);
-        rows.block(updateStatus_, line * 2 + 2);
+        rows.block(updateStatus_, line * 3 + 2);
         show(installUpdate_, !installAction_.empty());
         if (!installAction_.empty()) rows.line({{installUpdate_, -1}}, true);
         rows.heading(configHeading_);
