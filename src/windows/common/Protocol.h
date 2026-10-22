@@ -69,11 +69,20 @@
 //   is s3::publicObjectUrl(settings, key). Credentials never appear in result, progress, error or log frames.
 //
 // --ui VIEW (role "ui"): the on-demand window. It talks to the resident over the
-// session pipe like the CLI for every command; this channel only carries lifecycle.
+// session pipe like the CLI for every request of its own; this channel carries the
+// lifecycle, view state and the view commands the resident forwards.
 //   bootstrap fields: session (pipe path), residentEpoch, state (last checkpoint, may be {}), view
 //   parent activate            {view: settings|history|activity|about|editFile}
 //   child  viewShown           {view}
-//   parent invalidate          {kind: settings|history|operations|setup|update}
+//   parent invalidate          {kind: settings|history|operations|setup|update|shortcuts}
+//   parent command             {version:1, requestId, command, params}   command: moveDestination | diagnostics |
+//                              historySaveDiagnostics | fileDialog (ui.* session methods; at most 8 outstanding)
+//   child  commandResult       {requestId, error:{code,message,details}, result}   on the window's thread, at
+//                              most once; unanswered after 10 s the resident fails it with ui_command_timeout
+//                              (outcomeUnknown). Codes: ui_command_unsupported (version), ui_command_unknown,
+//                              ui_view_closed (no open window; also a helper exit), plus each command's own.
+//   child  checkpoint          {state}   250 ms after a view-state change; the resident keeps the last valid
+//                              one for ui.viewState and the next helper (no reply)
 //   child  shortcutRecording   {active}          parent -> shortcutRecordingChanged {replyTo, active, error}
 //   child  closeRequested      {sequence, state} parent -> closeAccepted {sequence} | closeCancelled {sequence}
 //   child  closeConfirmed      {sequence}        (child exits 0)

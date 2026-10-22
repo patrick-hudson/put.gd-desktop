@@ -114,6 +114,7 @@ int residentMain(const std::vector<std::string>& args) {
         const auto snapshot = settings.snapshot();
         for (const auto& name : Settings::actionNames()) desired[name] = snapshot.action(name).shortcut;
         hotkeys.apply(desired);
+        ui.invalidate("shortcuts"); // Settings → Shortcuts shows the effective bindings
     };
     auto applySettings = [&] {
         applyShortcuts();
@@ -184,7 +185,7 @@ int residentMain(const std::vector<std::string>& args) {
     history.onChanged = [&] { ui.invalidate("history"); };
     setup.onChanged = [&](const std::string&) { ui.invalidate("setup"); };
     updates.onUpdateAvailable = [&](const json::Object& r) { if (settings.snapshot().notifications) tray.notify("put.gd — update available", "put.gd " + r.value("latest").toString() + " is available. Settings → Updates has the download.", false, r.value("notesUrl").toString()); ui.invalidate("update"); };
-    ui.onShortcutRecording = [&](bool active, std::function<void(Error)> reply) { if (active) hotkeys.pause(); else hotkeys.resume(); reply({}); };
+    ui.onShortcutRecording = [&](bool active, std::function<void(Error)> reply) { if (active) hotkeys.pause(); else hotkeys.resume(); reply({}); ui.invalidate("shortcuts"); };
     ui.onProcessChanged = [&](unsigned long pid) { operations.setUiProcessId(pid); };
     operations.shortcutStatus = [&] { return hotkeys.status(); };
 

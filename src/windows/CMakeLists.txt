@@ -65,7 +65,7 @@ endif()
 # Portable core: no Windows headers. Tested on Linux and used by every executable.
 add_library(putgd_win_core STATIC
   common/Json.cpp common/Text.cpp common/Shortcut.cpp common/Sha256.cpp
-  core/Settings.cpp core/Naming.cpp core/Operation.cpp core/SettingsPatch.cpp core/S3Settings.cpp core/SanitizedPng.cpp core/ProtonSettings.cpp
+  core/Settings.cpp core/Naming.cpp core/Operation.cpp core/Cancellation.cpp core/UiState.cpp core/FileDialogState.cpp core/HistoryFilters.cpp core/ShortcutStatus.cpp core/SettingsPatch.cpp core/S3Settings.cpp core/SanitizedPng.cpp core/ProtonSettings.cpp
   s3/SigV4.cpp)
 target_link_libraries(putgd_win_core PUBLIC putgd_win_options)
 

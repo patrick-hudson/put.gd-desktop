@@ -1,14 +1,20 @@
-// History and Activity: history.list pages with filters and a details pane, and
-// operation.recent with live upload progress. Remote deletion follows
-// delete.prepare -> TaskDialog -> delete.confirm -> delete.inspect.
+// History and Activity: history.list pages as a list or a gallery of thumbnails,
+// with filters (type, states, destination, dates and content type) and a details
+// pane, and operation.recent with live upload progress. Remote deletion follows
+// delete.prepare -> TaskDialog -> delete.confirm -> delete.inspect. The view
+// commands ui.historySaveDiagnostics and ui.fileDialog historySaveAs act here.
 #include "ui/MainWindow.h"
 #include "ui/Theme.h"
 #include "common/Files.h"
+#include "common/Paths.h"
 #include "common/Text.h"
+#include "core/HistoryFilters.h"
 #include "core/Operation.h"
 #include <algorithm>
+#include <thread>
 #include <cwctype>
 #include <map>
+#include <optional>
 #include <wincodec.h>
 
 namespace putgd::ui {
@@ -17,9 +23,12 @@ enum : int {
     idSearch = 100, idCategory, idUpload, idLocal, idRemote, idDestination, idActivity, idEditImage, idList,
     idPrevious, idNext, idPageLabel, idPreview, idPreviewNote, idTitle, idDetails, idLinkLabel, idLink,
     idCopyLink, idOpenLink, idOpenFolder, idEditAgain, idDelete, idClearHistory, idClearCache,
-    idRetry, idCancel, idCopyResult, idRetryLocal, idSaveDiagnostics, idShare, idRevoke, idInspectLink
+    idRetry, idCancel, idCopyResult, idRetryLocal, idSaveDiagnostics, idShare, idRevoke, idInspectLink,
+    idViewMode, idMoreFilters, idFrom, idTo, idMime, idSaveAs
 };
 constexpr UINT_PTR timerSearch = 1, timerActivity = 2, timerDeletion = 3, timerRefresh = 4, timerShare = 5;
+// Gallery tiles (logical pixels): the tile, and the thumbnail inside it.
+constexpr int tileWidth = 172, tileHeight = 160, thumbWidth = 156, thumbHeight = 100;
 constexpr int pageSize = 50;
 
 const GUID clsidWicFactory{0xCACAF262, 0x9370, 0x4615, {0xA1, 0x3B, 0x9F, 0x55, 0x39, 0xDA, 0x4C, 0x0A}};
@@ -195,6 +204,18 @@ int comboWidth(HWND combo) {
     return size.cx + scale(52, windowDpi(combo));
 }
 
+// A static label's single-line text width in its own font.
+int textWidth(HWND label) {
+    const auto text = textW(label);
+    HDC dc = GetDC(label);
+    HGDIOBJ old = SelectObject(dc, reinterpret_cast<HFONT>(SendMessageW(label, WM_GETFONT, 0, 0)));
+    SIZE size{};
+    GetTextExtentPoint32W(dc, text.c_str(), int(text.size()), &size);
+    SelectObject(dc, old);
+    ReleaseDC(label, dc);
+    return size.cx + 2;
+}
+
 // The details text shows a scroll bar only when it overflows.
 void fitScrollBar(HWND edit) {
     RECT r{};
@@ -202,6 +223,20 @@ void fitScrollBar(HWND edit) {
     const int lines = int(SendMessageW(edit, EM_GETLINECOUNT, 0, 0));
     const int line = std::max(1, lineHeight(windowDpi(edit)));
     ShowScrollBar(edit, SB_VERT, lines * line > r.bottom + line / 2);
+}
+
+// A calendar day typed in the user's time zone, as the UTC instant that starts or ends it.
+std::optional<std::string> dayBound(const std::string& raw, bool end) {
+    const auto day = historyfilter::parseDay(raw);
+    if (!day) return std::nullopt;
+    SYSTEMTIME local{WORD(day->year), WORD(day->month), 0, WORD(day->day), WORD(end ? 23 : 0), WORD(end ? 59 : 0), WORD(end ? 59 : 0), WORD(end ? 999 : 0)};
+    SYSTEMTIME utc{};
+    if (!TzSpecificLocalTimeToSystemTime(nullptr, &local, &utc)) return std::nullopt;
+    return historyfilter::isoUtc(utc.wYear, utc.wMonth, utc.wDay, utc.wHour, utc.wMinute, utc.wSecond, utc.wMilliseconds);
+}
+bool failedUpload(const json::Object& record) {
+    const auto status = record.value("uploadStatus").toString();
+    return status == "failed" || status == "unknown";
 }
 
 bool editableImage(const std::string& path) {
@@ -212,7 +247,7 @@ bool editableImage(const std::string& path) {
 class HistoryPageImpl final : public Page {
 public:
     using Page::Page;
-    ~HistoryPageImpl() override { if (bitmap_) DeleteObject(bitmap_); }
+    ~HistoryPageImpl() override { if (bitmap_) DeleteObject(bitmap_); } // the list view owns the image list it shows
     HWND create(HWND parent) override;
     void activated() override { refresh(); }
     void settingsChanged(bool) override { fillDestinations(); }
@@ -222,7 +257,10 @@ public:
     json::Object saveState() const override;
     void restoreState(const json::Object&) override;
     void showSection(const std::string& view) override { setActivity(view == "activity"); }
-    void dpiChanged() override { setColumns(); panel_.layout(); }
+    void dpiChanged() override { setColumns(); resetGallery(); setGridMode(grid_); panel_.layout(); }
+    bool viewCommand(const std::string& name, const json::Object& params, const CommandReply& answer) override;
+    // Thumbnails are flattened onto the placeholder colour: make them again.
+    void themeChanged() override { if (!activityMode_) fill(); }
 private:
     int layout(int width, int height);
     void command(int id, int code, HWND control);
@@ -252,12 +290,34 @@ private:
     void pollSharing();
     void showSharing(bool on);
     void updateSharingButtons(const json::Object& record);
+    // Gallery and the extra filters.
+    void setGridMode(bool grid);
+    void setFiltersExpanded(bool expanded);
+    bool readFilters(json::Object& params);
+    int galleryIndex(const json::Object&);
+    void resetGallery();
+    // Save as…, Save diagnostics for this upload, and the view commands that click them.
+    void saveAs();
+    void saveDiagnostics(const std::string& operationId, CommandReply answer);
+    int rowOf(const std::string& id) const;
+    void selectRow(int row);
+    void saveAsCommand(const std::string& action, const std::string& id, const CommandReply& answer);
+    void saveDiagnosticsCommand(const std::string& id, const CommandReply& answer);
 
     Panel panel_;
     HWND search_{}, category_{}, upload_{}, local_{}, remote_{}, destination_{}, activity_{}, editImage_{}, list_{};
     HWND previous_{}, next_{}, pageLabel_{}, preview_{}, previewNote_{}, title_{}, details_{}, linkLabel_{}, link_{};
     HWND copyLink_{}, openLink_{}, openFolder_{}, editAgain_{}, delete_{}, clearHistory_{}, clearCache_{};
     HWND retry_{}, cancel_{}, copyResult_{}, retryLocal_{}, saveDiagnostics_{};
+    HWND viewMode_{}, moreFilters_{}, fromLabel_{}, from_{}, toLabel_{}, to_{}, mimeLabel_{}, mime_{}, filterError_{}, saveAs_{};
+    bool grid_ = false, filtersExpanded_ = false, savingDiagnostics_ = false;
+    // Gallery thumbnails, kept across refreshes (keyed by record and preview) and
+    // made again for another scheme or DPI.
+    HIMAGELIST gallery_ = nullptr;
+    std::map<std::string, int> galleryImages_;
+    bool galleryDark_ = false;
+    UINT galleryDpi_ = 0;
+    FileChooser saveAsChooser_;
     HIMAGELIST thumbnails_ = nullptr;
     int thumbnailIndex(const json::Object&);
     void setRowImage(int row, int image);
@@ -291,6 +351,24 @@ HWND HistoryPageImpl::create(HWND parent) {
     setTooltip(main_.tooltip(), activity_, L"Files: everything put.gd captured or uploaded. Activity: current and recent operations with live progress.");
     editImage_ = button(p, idEditImage, L"Edit image\x2026");
     setTooltip(main_.tooltip(), editImage_, L"Edit the clipboard image or an image file, then upload it.");
+    viewMode_ = theme::pivot(p, idViewMode, {L"List", L"Gallery"});
+    theme::setSegmented(viewMode_);
+    setTooltip(main_.tooltip(), viewMode_, L"List: one row per file with its details. Gallery: thumbnails of your captures.");
+    moreFilters_ = button(p, idMoreFilters, L"More filters");
+    theme::setRole(moreFilters_, theme::Role::Subtle);
+    setTooltip(main_.tooltip(), moreFilters_, L"Filter by the day a capture was made and by its content type.");
+    fromLabel_ = ui::label(p, L"From");
+    from_ = edit(p, idFrom);
+    setCue(from_, L"YYYY-MM-DD");
+    toLabel_ = ui::label(p, L"To");
+    to_ = edit(p, idTo);
+    setCue(to_, L"YYYY-MM-DD");
+    mimeLabel_ = ui::label(p, L"Content type");
+    mime_ = edit(p, idMime);
+    setCue(mime_, L"such as image/png");
+    filterError_ = ui::label(p, L"");
+    panel_.markError(filterError_, true);
+    for (HWND h : {fromLabel_, toLabel_, mimeLabel_}) panel_.markMuted(h);
     category_ = combo(p, idCategory);
     setChoices(category_, {{L"All types", ""}, {L"Images", "images"}, {L"Videos", "videos"}, {L"Text", "text"}, {L"Other files", "other"}});
     upload_ = combo(p, idUpload);
@@ -332,6 +410,9 @@ HWND HistoryPageImpl::create(HWND parent) {
     copyLink_ = button(p, idCopyLink, L"Copy link");
     openLink_ = button(p, idOpenLink, L"Open link");
     openFolder_ = button(p, idOpenFolder, L"Open folder");
+    saveAs_ = button(p, idSaveAs, L"Save as\x2026");
+    setTooltip(main_.tooltip(), saveAs_, L"Save a copy of the retained local file somewhere else.");
+    saveAsChooser_.post = [this](std::function<void()> work) { main_.post(std::move(work)); };
     editAgain_ = button(p, idEditAgain, L"Edit again");
     setTooltip(main_.tooltip(), editAgain_, L"Open the retained local copy in the editor. The result uploads as a new item.");
     delete_ = button(p, idDelete, L"Delete from destination\x2026");
@@ -348,6 +429,8 @@ HWND HistoryPageImpl::create(HWND parent) {
     copyResult_ = button(p, idCopyResult, L"Copy result");
     retryLocal_ = button(p, idRetryLocal, L"Retry local save");
     saveDiagnostics_ = button(p, idSaveDiagnostics, L"Save diagnostics for this upload");
+    setTooltip(main_.tooltip(), saveDiagnostics_, L"Saves a redacted diagnostics package about this upload, without credentials or file contents.");
+    setFiltersExpanded(false);
     setActivity(false);
     return p;
 }
@@ -380,6 +463,17 @@ void HistoryPageImpl::fitColumns() {
     GetClientRect(list_, &client);
     if (client.right <= 0) return;
     const UINT d = panel_.dpi();
+    if (grid_ && !activityMode_) {
+        // Gallery tiles share the width: as many columns as fit, none left over.
+        const int available = int(client.right) - (GetWindowLongW(list_, GWL_STYLE) & WS_VSCROLL ? 0 : GetSystemMetrics(SM_CXVSCROLL)) - 1;
+        const int columns = std::max(1, available / scale(tileWidth, d));
+        LVTILEVIEWINFO info{};
+        info.cbSize = sizeof info;
+        info.dwMask = LVTVIM_TILESIZE;
+        info.dwFlags = LVTVIF_FIXEDSIZE;
+        info.sizeTile = {std::max(scale(tileWidth, d), available / columns), scale(tileHeight, d)};
+        SendMessageW(list_, LVM_SETTILEVIEWINFO, 0, reinterpret_cast<LPARAM>(&info));
+    }
     std::vector<int> widths = activityMode_ ? std::vector<int>{170, 132, 130, 0, 52} : std::vector<int>{0, 104, 64, 104, 116};
     const size_t flex = activityMode_ ? 3 : 0;
     const int minimum = scale(activityMode_ ? 140 : 160, d);
@@ -399,10 +493,14 @@ int HistoryPageImpl::layout(int width, int height) {
     Rows rows(d, 0, 0, width, 0);
     const int gap = scale(8, d), fieldHeight = rows.fieldHeight(), buttonHeight = rows.buttonHeight();
     const int margin = scale(24, d), detailsWidth = scale(320, d), column = scale(24, d);
-    // Row 1: the Files | Activity segmented control, Edit image at the right.
+    // Row 1: the Files | Activity segmented control; More filters, List | Gallery and Edit image at the right.
     place(activity_, margin, 0, theme::pivotWidth(activity_), buttonHeight);
     const int editWidth = buttonWidth(editImage_, 110);
     place(editImage_, width - margin - editWidth, 0, editWidth, buttonHeight);
+    const int viewWidth = theme::pivotWidth(viewMode_);
+    place(viewMode_, width - margin - editWidth - gap - viewWidth, 0, viewWidth, buttonHeight);
+    const int moreWidth = buttonWidth(moreFilters_, 80);
+    place(moreFilters_, width - margin - editWidth - 2 * gap - viewWidth - scale(4, d) - moreWidth, 0, moreWidth, buttonHeight);
     int y = buttonHeight + scale(12, d);
     // Row 2: one toolbar, search at the left and the filters at their natural widths at the right.
     const HWND filters[] = {category_, upload_, local_, remote_, destination_};
@@ -422,6 +520,20 @@ int HistoryPageImpl::layout(int width, int height) {
     int fx = width - margin - total - 4 * gap;
     for (int i = 0; i < 5; ++i) { place(filters[i], fx, y, natural[i], fieldHeight); fx += natural[i] + gap; }
     y += fieldHeight + scale(16, d);
+    // Row 3 (More filters): the days and the content type, each caption beside its field.
+    if (filtersExpanded_ && !activityMode_) {
+        const int caption = lineHeight(d) + 2, captionY = y + (fieldHeight - lineHeight(d)) / 2;
+        int x = margin;
+        for (auto [label, field, fieldWidth] : {std::tuple{fromLabel_, from_, 132}, std::tuple{toLabel_, to_, 132}, std::tuple{mimeLabel_, mime_, 200}}) {
+            const int labelWidth = textWidth(label);
+            place(label, x, captionY, labelWidth, caption);
+            x += labelWidth + scale(8, d);
+            place(field, x, y, scale(fieldWidth, d), fieldHeight);
+            x += scale(fieldWidth, d) + scale(20, d);
+        }
+        place(filterError_, x, captionY, std::max(scale(80, d), width - margin - x), caption);
+        y += fieldHeight + scale(16, d);
+    }
     // Main: the table, and the details pane at a fixed width on the right.
     const int bottomY = height - scale(12, d) - buttonHeight;
     const int listWidth = width - 2 * margin - detailsWidth - column;
@@ -471,10 +583,14 @@ int HistoryPageImpl::layout(int width, int height) {
             place(inspectLink_, x + shareWidth + revokeWidth + 2 * gap, dy, detailsWidth - shareWidth - revokeWidth - 2 * gap, buttonHeight);
             dy += buttonHeight + gap;
         }
-        place(openFolder_, x, dy, half, buttonHeight);
-        place(editAgain_, x + half + gap, dy, half, buttonHeight);
+        const int third = (detailsWidth - 2 * gap) / 3;
+        place(openFolder_, x, dy, third, buttonHeight);
+        place(saveAs_, x + third + gap, dy, third, buttonHeight);
+        place(editAgain_, x + 2 * (third + gap), dy, detailsWidth - 2 * (third + gap), buttonHeight);
         dy += buttonHeight + gap;
+        // A failed upload has nothing to delete remotely: its diagnostics take that place.
         place(delete_, x, dy, detailsWidth, buttonHeight);
+        place(saveDiagnostics_, x, dy, detailsWidth, buttonHeight);
     } else {
         place(retry_, x, dy, half, buttonHeight);
         place(cancel_, x + half + gap, dy, half, buttonHeight);
@@ -493,19 +609,134 @@ void HistoryPageImpl::setActivity(bool on) {
     activityMode_ = on;
     SendMessageW(activity_, LB_SETCURSEL, on ? 1 : 0, 0);
     for (HWND h : {category_, upload_, local_, remote_, destination_, search_, previous_, next_}) enable(h, !on);
-    for (HWND h : {linkLabel_, link_, copyLink_, openLink_, openFolder_, editAgain_, delete_}) show(h, !on);
+    for (HWND h : {linkLabel_, link_, copyLink_, openLink_, openFolder_, saveAs_, editAgain_, delete_, viewMode_, moreFilters_}) show(h, !on);
     for (HWND h : {share_, revoke_, inspectLink_}) show(h, !on && sharingVisible_);
-    for (HWND h : {retry_, cancel_, copyResult_, retryLocal_, saveDiagnostics_}) show(h, on);
+    for (HWND h : {retry_, cancel_, copyResult_, retryLocal_}) show(h, on);
+    show(saveDiagnostics_, on); // in Files, showRecord shows it for a failed upload
+    for (HWND h : {fromLabel_, from_, toLabel_, to_, mimeLabel_, mime_, filterError_}) show(h, !on && filtersExpanded_);
     show(pageLabel_, !on);
     if (changed) {
         SendMessageW(list_, LVM_DELETEALLITEMS, 0, 0);
+        // Activity is always a list; Files keeps its own list or gallery choice.
+        SendMessageW(list_, LVM_SETVIEW, !on && grid_ ? LV_VIEW_TILE : LV_VIEW_DETAILS, 0);
+        SendMessageW(list_, LVM_SETEXTENDEDLISTVIEWSTYLE, LVS_EX_LABELTIP, !on && grid_ ? 0 : LVS_EX_LABELTIP);
+        if (HWND tips = reinterpret_cast<HWND>(SendMessageW(list_, LVM_GETTOOLTIPS, 0, 0))) SendMessageW(tips, TTM_ACTIVATE, on || !grid_, 0);
         setColumns();
         selectedId_.clear();
         selectionChanged();
+        main_.viewStateChanged();
     }
     panel_.layout();
     if (changed && IsWindowVisible(panel_.hwnd())) refresh();
     if (!on) KillTimer(panel_.hwnd(), timerActivity);
+}
+
+// The gallery: a tile view of fixed-size tiles that the theme draws (thumbnail,
+// name, state and time); the list: the report view with small thumbnails.
+void HistoryPageImpl::setGridMode(bool grid) {
+    grid_ = grid;
+    SendMessageW(viewMode_, LB_SETCURSEL, grid ? 1 : 0, 0);
+    if (grid) {
+        const UINT d = panel_.dpi();
+        LVTILEVIEWINFO info{};
+        info.cbSize = sizeof info;
+        info.dwMask = LVTVIM_TILESIZE | LVTVIM_COLUMNS | LVTVIM_LABELMARGIN;
+        info.dwFlags = LVTVIF_FIXEDSIZE;
+        info.sizeTile = {scale(tileWidth, d), scale(tileHeight, d)};
+        info.cLines = 0;
+        info.rcLabelMargin = {0, 0, 0, 0};
+        SendMessageW(list_, LVM_SETTILEVIEWINFO, 0, reinterpret_cast<LPARAM>(&info));
+        if (!gallery_) resetGallery();
+    }
+    if (!activityMode_) {
+        SendMessageW(list_, LVM_SETVIEW, grid ? LV_VIEW_TILE : LV_VIEW_DETAILS, 0);
+        // Label tips place themselves for report rows; over custom-drawn tiles they land at the
+        // screen's corner, so the list's own tooltips are off in the gallery.
+        SendMessageW(list_, LVM_SETEXTENDEDLISTVIEWSTYLE, LVS_EX_LABELTIP, grid ? 0 : LVS_EX_LABELTIP);
+        if (HWND tips = reinterpret_cast<HWND>(SendMessageW(list_, LVM_GETTOOLTIPS, 0, 0))) SendMessageW(tips, TTM_ACTIVATE, !grid, 0);
+        fitColumns();
+        fill(); // each item's image indexes the list its view draws
+    }
+    main_.viewStateChanged();
+}
+
+void HistoryPageImpl::resetGallery() {
+    galleryImages_.clear();
+    galleryDark_ = theme::dark();
+    galleryDpi_ = panel_.dpi();
+    HIMAGELIST fresh = ImageList_Create(scale(thumbWidth, galleryDpi_), scale(thumbHeight, galleryDpi_), ILC_COLOR32, 32, 16);
+    HIMAGELIST old = reinterpret_cast<HIMAGELIST>(SendMessageW(list_, LVM_SETIMAGELIST, LVSIL_NORMAL, reinterpret_cast<LPARAM>(fresh)));
+    if (old && old != fresh) ImageList_Destroy(old);
+    gallery_ = fresh;
+}
+
+// A gallery thumbnail: the preview fitted into the tile's picture area on the
+// placeholder colour, or the file type's glyph. Kept across refreshes.
+int HistoryPageImpl::galleryIndex(const json::Object& r) {
+    if (!gallery_ || galleryDark_ != theme::dark() || galleryDpi_ != panel_.dpi() || galleryImages_.size() > 400) resetGallery();
+    const auto path = r.value("previewPath").toString();
+    const auto category = r.value("category").toString();
+    const auto key = path.empty() ? "glyph:" + category : r.value("id").toString() + "\n" + path;
+    if (const auto it = galleryImages_.find(key); it != galleryImages_.end()) return it->second;
+    const UINT d = panel_.dpi();
+    const int width = scale(thumbWidth, d), height = scale(thumbHeight, d);
+    BITMAPINFO tile{};
+    tile.bmiHeader.biSize = sizeof tile.bmiHeader; tile.bmiHeader.biWidth = width; tile.bmiHeader.biHeight = -height; tile.bmiHeader.biPlanes = 1; tile.bmiHeader.biBitCount = 32;
+    void* bits = nullptr;
+    HBITMAP canvas = CreateDIBSection(nullptr, &tile, DIB_RGB_COLORS, &bits, nullptr, 0);
+    if (!canvas || !bits) { if (canvas) DeleteObject(canvas); return -1; }
+    const auto& c = theme::colors();
+    HDC screen = GetDC(nullptr);
+    HDC dst = CreateCompatibleDC(screen);
+    HGDIOBJ oldDst = SelectObject(dst, canvas);
+    theme::fill(dst, {0, 0, width, height}, c.placeholder);
+    HBITMAP image = path.empty() ? nullptr : decodePreview(path, width, height);
+    if (image) {
+        BITMAP info{};
+        GetObjectW(image, sizeof info, &info);
+        HDC src = CreateCompatibleDC(screen);
+        HGDIOBJ oldSrc = SelectObject(src, image);
+        BitBlt(dst, (width - info.bmWidth) / 2, (height - info.bmHeight) / 2, info.bmWidth, info.bmHeight, src, 0, 0, SRCCOPY);
+        SelectObject(src, oldSrc);
+        DeleteDC(src);
+        DeleteObject(image);
+    } else {
+        const int size = scale(40, d);
+        const char* name = category == "images" ? "images" : category == "videos" ? "window" : category == "text" ? "clipboard" : "destinations";
+        theme::drawGlyph(dst, name, (width - size) / 2, (height - size) / 2, size, c.iconSecondary, c.divider);
+    }
+    SelectObject(dst, oldDst);
+    DeleteDC(dst);
+    ReleaseDC(nullptr, screen);
+    // GDI leaves alpha at 0; make the tile opaque for the image list.
+    auto* px = static_cast<unsigned*>(bits);
+    for (int i = 0; i < width * height; ++i) px[i] |= 0xFF000000u;
+    const int index = ImageList_Add(gallery_, canvas, nullptr);
+    DeleteObject(canvas);
+    if (index >= 0) galleryImages_[key] = index;
+    return index;
+}
+
+void HistoryPageImpl::setFiltersExpanded(bool expanded) {
+    filtersExpanded_ = expanded;
+    int active = 0;
+    for (HWND h : {from_, to_, mime_}) if (!text::trim(text(h)).empty()) ++active;
+    setTextW(moreFilters_, expanded ? std::wstring(L"Fewer filters") : active ? L"More filters (" + std::to_wstring(active) + L")" : std::wstring(L"More filters"));
+    for (HWND h : {fromLabel_, from_, toLabel_, to_, mimeLabel_, mime_, filterError_}) show(h, expanded && !activityMode_);
+    panel_.layout();
+    main_.viewStateChanged();
+}
+
+// The date and content-type filters; false (with the reason shown) when one is not valid yet.
+bool HistoryPageImpl::readFilters(json::Object& params) {
+    std::wstring problem;
+    const auto from = text::trim(text(from_)), to = text::trim(text(to_)), mime = text::trim(text(mime_));
+    if (!from.empty()) { if (auto bound = dayBound(from, false)) params["from"] = *bound; else problem = L"Enter From as YYYY-MM-DD."; }
+    if (!to.empty()) { if (auto bound = dayBound(to, true)) params["to"] = *bound; else if (problem.empty()) problem = L"Enter To as YYYY-MM-DD."; }
+    if (problem.empty() && params.contains("from") && params.contains("to") && params.value("from").stringRef() > params.value("to").stringRef()) problem = L"From is after To.";
+    if (!mime.empty()) { if (auto type = historyfilter::normalizeMime(mime)) params["mime"] = *type; else if (problem.empty()) problem = L"Enter a content type such as image/png."; }
+    setTextW(filterError_, problem);
+    return problem.empty();
 }
 
 void HistoryPageImpl::fillDestinations() {
@@ -536,6 +767,7 @@ void HistoryPageImpl::refresh() {
         return;
     }
     json::Object params{{"limit", pageSize}, {"offset", offset_}};
+    if (!readFilters(params)) { loading_ = false; return; }
     const auto searchText = text::trim(text(search_));
     if (!searchText.empty()) params["search"] = searchText;
     const std::pair<const char*, HWND> filters[] = {{"category", category_}, {"uploadStatus", upload_}, {"localStatus", local_}, {"remoteStatus", remote_}, {"profileId", destination_}};
@@ -589,7 +821,7 @@ void HistoryPageImpl::setRowImage(int row, int image) {
 }
 void HistoryPageImpl::resetThumbnails() {
     const int size = scale(28, panel_.dpi());
-    HIMAGELIST fresh = activityMode_ ? nullptr : ImageList_Create(size, size, ILC_COLOR32 | ILC_MASK, 64, 16);
+    HIMAGELIST fresh = activityMode_ || grid_ ? nullptr : ImageList_Create(size, size, ILC_COLOR32 | ILC_MASK, 64, 16);
     HIMAGELIST old = reinterpret_cast<HIMAGELIST>(SendMessageW(list_, LVM_SETIMAGELIST, LVSIL_SMALL, reinterpret_cast<LPARAM>(fresh)));
     if (old && old != fresh) ImageList_Destroy(old);
     if (thumbnails_ && thumbnails_ != old && thumbnails_ != fresh) ImageList_Destroy(thumbnails_);
@@ -633,7 +865,7 @@ void HistoryPageImpl::fill() {
                                            destination, statusLabel(uploadLabels, r.value("uploadStatus").toString())},
                                    LPARAM(i));
             (void)link;
-            setRowImage(row, thumbnailIndex(r));
+            setRowImage(row, grid_ ? galleryIndex(r) : thumbnailIndex(r));
             if (r.value("id").toString() == selectedId_) selectedRow = row;
         }
         const long long first = total_ ? offset_ + 1 : 0, last = std::min<long long>(total_, offset_ + static_cast<long long>(records_.size()));
@@ -642,7 +874,7 @@ void HistoryPageImpl::fill() {
         enable(next_, offset_ + pageSize < total_);
     }
     // Keep the scroll position across refreshes (Activity refreshes every second).
-    if (top > 0 && SendMessageW(list_, LVM_GETITEMCOUNT, 0, 0) > top) {
+    if (top > 0 && !(grid_ && !activityMode_) && SendMessageW(list_, LVM_GETITEMCOUNT, 0, 0) > top) {
         RECT item{};
         item.left = LVIR_BOUNDS;
         if (SendMessageW(list_, LVM_GETITEMRECT, 0, reinterpret_cast<LPARAM>(&item)))
@@ -703,6 +935,7 @@ void HistoryPageImpl::selectionChanged() {
         enable(delete_, !selectedIds().empty());
         if (!record.empty()) loadDetail(selectedId_);
     }
+    main_.viewStateChanged();
 }
 
 // The detail adds what the list does not carry: sharing state and the provider's capabilities.
@@ -843,7 +1076,9 @@ void HistoryPageImpl::showRecord(const json::Object& r) {
         setTextW(details_, count > 1 ? L"Delete from destination applies to every selected file." : L"Select a capture to inspect its files and link.");
         fitScrollBar(details_);
         setText(link_, "");
-        for (HWND h : {copyLink_, openLink_, openFolder_, editAgain_}) enable(h, false);
+        for (HWND h : {copyLink_, openLink_, openFolder_, saveAs_, editAgain_}) enable(h, false);
+        show(delete_, true);
+        show(saveDiagnostics_, false);
         showSharing(false);
         return;
     }
@@ -882,7 +1117,12 @@ void HistoryPageImpl::showRecord(const json::Object& r) {
     setTextW(copyLink_, r.value("uploadStatus") == "local_only" ? L"Copy result" : L"Copy link");
     enable(openLink_, linkAvailable);
     enable(openFolder_, localSaved);
+    enable(saveAs_, localSaved && !saveAsChooser_.isOpen());
     enable(editAgain_, localSaved && editableImage(local.value("path").toString()));
+    const bool failed = failedUpload(r);
+    show(delete_, !failed);
+    show(saveDiagnostics_, failed);
+    enable(saveDiagnostics_, failed && !savingDiagnostics_);
     // Share-link actions for providers that manage links; until the detail arrives they keep
     // their previous visibility (no layout jump) but stay off.
     if (haveDetail) showSharing(sharingCapable);
@@ -926,7 +1166,7 @@ void HistoryPageImpl::showOperation(const json::Object& op) {
     enable(cancel_, active);
     enable(copyResult_, !active && copyable);
     enable(retryLocal_, !active && failedLocal);
-    enable(saveDiagnostics_, !active && (state == "failed" || failedUpload));
+    enable(saveDiagnostics_, !active && (state == "failed" || failedUpload) && !savingDiagnostics_);
 }
 
 void HistoryPageImpl::operationAction(const std::string& method) {
@@ -1021,14 +1261,135 @@ void HistoryPageImpl::maintenance(bool cache) {
     });
 }
 
+// ---- Save as…, Save diagnostics and the view commands ----------------------------
+void HistoryPageImpl::saveAs() {
+    const auto record = selectedRecord();
+    const auto source = record.value("local")["path"].toString();
+    if (record.value("local")["status"] != "saved" || source.empty() || !files::isRegularFile(source)) return;
+    FileChooser::Options options;
+    options.mode = FileChooser::Mode::Save;
+    options.title = L"Save original file as";
+    options.fileName = wide(record.value("name").toString(paths::fileName(source)));
+    // The original's own type first, so Save as type names it; any name is still accepted.
+    const auto dot = source.rfind('.');
+    if (dot != std::string::npos && source.find_first_of("\\/", dot) == std::string::npos && source.size() - dot <= 10) {
+        const auto extension = wide(source.substr(dot + 1));
+        options.filters = {{L"Same type (*." + extension + L")", L"*." + extension}, {L"All files (*.*)", L"*.*"}};
+    }
+    const bool opened = saveAsChooser_.open(main_.hwnd(), options, [this, source](const std::string& destination) {
+        enable(saveAs_, !selectedRecord().empty());
+        if (destination.empty()) return;
+        if (text::lower(destination) == text::lower(source)) { main_.status(L"This is already the retained local file."); return; }
+        main_.status(L"Saving the original file\x2026");
+        // A copy beside the target, then an atomic replace; large files copy off the UI thread.
+        std::thread([this, source, destination] {
+            const auto temporary = destination + ".putgd-save";
+            const bool ok = CopyFileW(paths::wide(source).c_str(), paths::wide(temporary).c_str(), FALSE) &&
+                            MoveFileExW(paths::wide(temporary).c_str(), paths::wide(destination).c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH);
+            if (!ok) DeleteFileW(paths::wide(temporary).c_str());
+            main_.post([this, ok] { main_.status(ok ? L"Original file saved." : L"The original file could not be saved there.", !ok); });
+        }).detach();
+    });
+    if (opened) enable(saveAs_, false);
+}
+
+void HistoryPageImpl::saveDiagnostics(const std::string& operationId, CommandReply answer) {
+    if (operationId.empty() || savingDiagnostics_) { if (answer) answer({"diagnostics_busy", "A diagnostics package is already being saved.", {}}, {}); return; }
+    savingDiagnostics_ = true;
+    enable(saveDiagnostics_, false);
+    main_.status(L"Saving diagnostics for this upload\x2026");
+    main_.session().call("diagnostics.bundle", {{"operation", operationId}}, [this, answer](const Reply& reply) {
+        savingDiagnostics_ = false;
+        selectionChanged();
+        if (!reply.ok) {
+            main_.status(UiSession::describe(reply), true);
+            if (answer) { auto error = reply.error; if (reply.outcomeUnknown) error.details["outcomeUnknown"] = true; answer(error, {}); }
+            return;
+        }
+        const auto path = reply.result.value("path").toString();
+        main_.status(L"Diagnostics saved to " + wide(path));
+        revealInExplorer(path);
+        if (answer) answer({}, reply.result);
+    });
+}
+
+// The row of a file (history ID) or of an operation's file (operation ID) on the page shown.
+int HistoryPageImpl::rowOf(const std::string& id) const {
+    const int count = int(SendMessageW(list_, LVM_GETITEMCOUNT, 0, 0));
+    for (int row = 0; row < count; ++row) {
+        const auto index = size_t(rowData(list_, row));
+        if (activityMode_) {
+            if (index >= operations_.size()) continue;
+            const auto& op = operations_[index].objectRef();
+            if (op.value("id") == id.c_str()) return row;
+            for (const auto& item : op.value("items").arrayRef()) if (item.objectRef().value("artifact")["id"] == id.c_str()) return row;
+        } else if (index < records_.size()) {
+            const auto& record = records_[index].objectRef();
+            if (record.value("id") == id.c_str() || record.value("operationId") == id.c_str()) return row;
+        }
+    }
+    return -1;
+}
+
+void HistoryPageImpl::selectRow(int row) {
+    LVITEMW clear{};
+    clear.stateMask = LVIS_SELECTED;
+    SendMessageW(list_, LVM_SETITEMSTATE, WPARAM(-1), reinterpret_cast<LPARAM>(&clear));
+    LVITEMW state{};
+    state.stateMask = LVIS_SELECTED | LVIS_FOCUSED;
+    state.state = LVIS_SELECTED | LVIS_FOCUSED;
+    SendMessageW(list_, LVM_SETITEMSTATE, WPARAM(row), reinterpret_cast<LPARAM>(&state));
+    SendMessageW(list_, LVM_ENSUREVISIBLE, WPARAM(row), FALSE);
+    selectionChanged();
+}
+
+void HistoryPageImpl::saveAsCommand(const std::string& action, const std::string& id, const CommandReply& answer) {
+    auto withDialog = [answer](Error error, json::Object result) { if (!error) result["dialog"] = "historySaveAs"; answer(error, result); };
+    if (action == "inspect") { withDialog({}, saveAsChooser_.state()); return; }
+    if (action == "cancel") { saveAsChooser_.cancel(); withDialog({}, saveAsChooser_.state()); return; }
+    if (saveAsChooser_.isOpen()) { withDialog({"file_dialog_open", "Save as is already open.", {}}, saveAsChooser_.state()); return; }
+    if (FileChooser::anyOpen()) { withDialog({"file_dialog_open", "Another file chooser is open in this window.", {}}, {}); return; }
+    if (!id.empty()) {
+        const int row = activityMode_ ? -1 : rowOf(id);
+        if (row < 0) { withDialog({"history_row_not_found", "That file is not on the History page shown; search or page to it first.", {{"id", id}}}, {}); return; }
+        selectRow(row);
+    }
+    main_.setPage(MainWindow::HistoryPage);
+    if (selectedRecord().empty() || !IsWindowEnabled(saveAs_)) { withDialog({"history_save_unavailable", "Save as needs a selected file with a retained local original.", {}}, {}); return; }
+    saveAs();
+    withDialog({}, saveAsChooser_.state());
+}
+
+void HistoryPageImpl::saveDiagnosticsCommand(const std::string& id, const CommandReply& answer) {
+    const int row = rowOf(id);
+    if (row < 0) { answer({"history_row_not_found", "That upload is not on the History page shown; search or page to it first.", {{"id", id}}}, {}); return; }
+    selectRow(row);
+    main_.setPage(MainWindow::HistoryPage);
+    const auto operationId = activityMode_ ? selectedOperation().value("id").toString() : selectedRecord().value("operationId").toString();
+    const bool failed = activityMode_ ? IsWindowEnabled(saveDiagnostics_) || savingDiagnostics_ : failedUpload(selectedRecord());
+    if (!failed) { answer({"diagnostics_row_not_failed", "Only a failed upload has diagnostics to save.", {{"id", id}}}, {}); return; }
+    saveDiagnostics(operationId, answer);
+}
+
+bool HistoryPageImpl::viewCommand(const std::string& name, const json::Object& params, const CommandReply& answer) {
+    if (name == "historySaveDiagnostics") { saveDiagnosticsCommand(params.value("id").toString(), answer); return true; }
+    if (name == "fileDialog" && params.value("dialog") == "historySaveAs") { saveAsCommand(params.value("action").toString(), params.value("id").toString(), answer); return true; }
+    return false;
+}
+
 void HistoryPageImpl::command(int id, int code, HWND control) {
     if (populating_) return;
     switch (id) {
-    case idSearch:
-        if (code == EN_CHANGE) SetTimer(panel_.hwnd(), timerSearch, 300, nullptr);
+    case idSearch: case idFrom: case idTo: case idMime:
+        if (code == EN_CHANGE) { SetTimer(panel_.hwnd(), timerSearch, 300, nullptr); main_.viewStateChanged(); }
         break;
+    case idViewMode:
+        if (code == LBN_SELCHANGE) setGridMode(SendMessageW(viewMode_, LB_GETCURSEL, 0, 0) == 1);
+        break;
+    case idMoreFilters: setFiltersExpanded(!filtersExpanded_); break;
+    case idSaveAs: saveAs(); break;
     case idCategory: case idUpload: case idLocal: case idRemote: case idDestination:
-        if (code == CBN_SELCHANGE) { offset_ = 0; refresh(); }
+        if (code == CBN_SELCHANGE) { offset_ = 0; refresh(); main_.viewStateChanged(); }
         break;
     case idActivity:
         if (code == LBN_SELCHANGE) setActivity(SendMessageW(activity_, LB_GETCURSEL, 0, 0) == 1);
@@ -1080,18 +1441,9 @@ void HistoryPageImpl::command(int id, int code, HWND control) {
     case idCancel: operationAction("operation.cancel"); break;
     case idCopyResult: operationAction("operation.copy"); break;
     case idRetryLocal: operationAction("operation.retryLocalSave"); break;
-    case idSaveDiagnostics: {
-        const auto id = selectedOperation().value("id").toString();
-        if (id.empty()) break;
-        main_.status(L"Saving diagnostics for this upload\x2026");
-        main_.session().call("diagnostics.bundle", {{"operation", id}}, [this](const Reply& reply) {
-            if (!reply.ok) { main_.status(UiSession::describe(reply), true); return; }
-            const auto path = reply.result.value("path").toString();
-            main_.status(L"Diagnostics saved to " + wide(path));
-            revealInExplorer(path);
-        });
+    case idSaveDiagnostics:
+        saveDiagnostics(activityMode_ ? selectedOperation().value("id").toString() : selectedRecord().value("operationId").toString(), {});
         break;
-    }
     }
 }
 
@@ -1100,7 +1452,7 @@ LRESULT HistoryPageImpl::notify(NMHDR* header) {
     if (header->code == LVN_GETEMPTYMARKUP) {
         auto* markup = reinterpret_cast<NMLVEMPTYMARKUP*>(header);
         markup->dwFlags = EMF_CENTERED;
-        bool filtered = !text::trim(text(search_)).empty();
+        bool filtered = !text::trim(text(search_)).empty() || !text::trim(text(from_)).empty() || !text::trim(text(to_)).empty() || !text::trim(text(mime_)).empty();
         for (HWND h : {category_, upload_, local_, remote_, destination_}) filtered = filtered || !selected(h).empty();
         const wchar_t* message = activityMode_ ? L"No recent activity. Captures and uploads in progress appear here."
                                  : filtered    ? L"Nothing matches the search and filters."
@@ -1123,7 +1475,7 @@ LRESULT HistoryPageImpl::notify(NMHDR* header) {
 }
 
 void HistoryPageImpl::timer(UINT_PTR id) {
-    if (id == timerSearch) { KillTimer(panel_.hwnd(), timerSearch); offset_ = 0; refresh(); }
+    if (id == timerSearch) { KillTimer(panel_.hwnd(), timerSearch); offset_ = 0; refresh(); if (!filtersExpanded_) setFiltersExpanded(false); }
     else if (id == timerRefresh) { KillTimer(panel_.hwnd(), timerRefresh); if (IsWindowVisible(panel_.hwnd())) refresh(); }
     else if (id == timerActivity) { if (activityMode_ && IsWindowVisible(panel_.hwnd())) refresh(); else KillTimer(panel_.hwnd(), timerActivity); }
     else if (id == timerDeletion) pollDeletion();
@@ -1134,7 +1486,10 @@ json::Object HistoryPageImpl::saveState() const {
     json::Object filters{{"offset", offset_}, {"limit", pageSize}};
     const std::pair<const char*, HWND> controls[] = {{"category", category_}, {"uploadStatus", upload_}, {"localStatus", local_}, {"remoteStatus", remote_}, {"profileId", destination_}};
     for (const auto& [key, control] : controls) if (const auto value = selected(control); !value.empty()) filters[key] = value;
-    json::Object state{{"query", text(search_)}, {"filters", filters}};
+    // The raw day and content-type text, as typed (docs/ui-process-state.md keeps raw filters).
+    for (const auto& [key, control] : {std::pair{"from", from_}, std::pair{"to", to_}, std::pair{"mime", mime_}})
+        if (const auto value = text(control); !value.empty()) filters[key] = value;
+    json::Object state{{"query", text(search_)}, {"filters", filters}, {"gridMode", grid_}, {"filtersExpanded", filtersExpanded_}};
     if (!selectedId_.empty() && !activityMode_) state["selectedIds"] = json::Array{selectedId_};
     if (!deletionId_.empty()) state["deletionId"] = deletionId_;
     if (sharingActive_ && !sharingId_.empty()) state["sharingId"] = sharingId_;
@@ -1151,6 +1506,9 @@ void HistoryPageImpl::restoreState(const json::Object& state) {
     select(local_, filters.value("localStatus").toString());
     select(remote_, filters.value("remoteStatus").toString());
     select(destination_, filters.value("profileId").toString());
+    setText(from_, filters.value("from").toString());
+    setText(to_, filters.value("to").toString());
+    setText(mime_, filters.value("mime").toString());
     offset_ = std::max(0, int(filters.value("offset").toInteger()));
     const auto ids = state.value("selectedIds").toArray();
     if (!ids.empty()) selectedId_ = ids.front().toString();
@@ -1161,6 +1519,8 @@ void HistoryPageImpl::restoreState(const json::Object& state) {
     sharingStopped_ = false;
     sharingActive_ = !sharingId_.empty();
     if (sharingActive_) SetTimer(panel_.hwnd(), timerShare, 500, nullptr);
+    setFiltersExpanded(state.value("filtersExpanded").toBool(false));
+    if (state.value("gridMode").toBool(false)) setGridMode(true);
 }
 }
 

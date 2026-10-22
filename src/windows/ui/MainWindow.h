@@ -1,8 +1,10 @@
 #pragma once
 // The single put.gd window of the UI helper: a navigation rail (History,
 // Destinations, Settings, then the capture actions) beside the current page. It owns the
-// control-channel lifecycle (Protocol.h, role "ui"), the shared 400 ms settings
-// autosave and the close checkpoint handshake.
+// control-channel lifecycle (Protocol.h, role "ui"), the view commands the resident
+// forwards (ui.moveDestination, ui.diagnostics, ui.historySaveDiagnostics,
+// ui.fileDialog), the view-state checkpoints, the shared 400 ms settings autosave
+// and the close checkpoint handshake.
 #include "common/Frames.h"
 #include "ui/Controls.h"
 #include "ui/UiSession.h"
@@ -17,6 +19,8 @@ inline constexpr UINT controlClosedMessage = WM_APP + 12; // the resident's pipe
 inline constexpr UINT deferredMessage = WM_APP + 13;      // lParam: std::function<void()>*
 
 class MainWindow;
+// A view command's answer: an error (empty code for success) and the result object.
+using CommandReply = std::function<void(Error, json::Object)>;
 
 // One tab. Pages create their own child panels and talk to the resident through
 // main().session(); settings edits go through main().queuePatch().
@@ -44,7 +48,12 @@ public:
     virtual void restoreState(const json::Object&) {}
     // History: "history" or "activity". Settings: capture, general, shortcuts, advanced, updates.
     virtual void showSection(const std::string&) {}
+    // A view command (docs/ui-process-protocol.md); true when this page handles it.
+    // `answer` is called exactly once, possibly later.
+    virtual bool viewCommand(const std::string& name, const json::Object& params, const CommandReply& answer) { return false; }
     virtual void dpiChanged() {}
+    // The colour scheme changed (pages repaint what they drew with the old palette).
+    virtual void themeChanged() {}
 protected:
     MainWindow& main_;
 };
@@ -99,12 +108,20 @@ public:
     void shortcutRecording(bool active, std::function<void(bool ok, const std::string& error)> reply);
     void post(std::function<void()>);
     static std::wstring actionLabel(const std::string& action);
+    // What a route does (the rail tooltips and Settings → Capture's routing state).
+    static std::wstring routeText(const json::Object& document, bool upload, const std::string& profileId, const std::string& publicationMode);
+    // Pages call this after a change ui.viewState reflects; a checkpoint follows 250 ms later.
+    void viewStateChanged();
+    FileChooser::Options imageFileOptions() const;
 private:
     static LRESULT CALLBACK proc(HWND, UINT, WPARAM, LPARAM);
     LRESULT handle(UINT, WPARAM, LPARAM);
     void layout();
     void paint();
     void onFrame(const protocol::Frame&);
+    void handleCommand(const json::Object& payload);
+    void sendCheckpoint();
+    json::Object appearance() const;
     void sendPending();
     void finishSave();
     void broadcastSettings(bool external);
@@ -132,7 +149,9 @@ private:
     std::array<HWND, 3> pageWindows_{};
     int page_ = 0;
     std::string view_;
-    bool activated_ = false;
+    bool activated_ = false, exiting_ = false;
+    FileChooser editImage_;
+    std::string lastCheckpoint_;
 
     // autosave
     json::Object pending_, inFlightPatch_, failed_;
