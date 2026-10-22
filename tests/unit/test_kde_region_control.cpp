@@ -11,6 +11,7 @@
 #include <thread>
 #include <algorithm>
 #include <csignal>
+#include "fixtures/Waits.h"
 
 using namespace putgd;
 namespace {
@@ -158,9 +159,9 @@ private slots:
   qputenv("PUTGD_TEST_KDE_REGION_HELPER",mode);
   KdeRegionProcess process(QCoreApplication::applicationFilePath());int callbacks=0;QRectF result;Error error;
   process.start(frames(),[&](QRectF rect,Error e){QVERIFY(!process.busy());result=rect;error=e;++callbacks;});
-  QTRY_COMPARE(callbacks,1);qunsetenv("PUTGD_TEST_KDE_REGION_HELPER");
+  PUTGD_TRY_COMPARE(callbacks,1);qunsetenv("PUTGD_TEST_KDE_REGION_HELPER");
   QCOMPARE(!bool(error),success);QCOMPARE(result.isEmpty(),!success);
-  QTest::qWait(40);QCOMPARE(callbacks,1);QCOMPARE(process.processId(),qint64(0));
+  putgd::test::settle(40);PUTGD_TRY_COMPARE(callbacks,1);PUTGD_TRY_COMPARE(process.processId(),qint64(0));
   const auto exit=process.diagnostics()["lastExit"].toObject();
   QVERIFY(exit["processId"].toInteger()>0);QVERIFY(exit["startTicks"].toString().toULongLong()>0);
   if(success) { QVERIFY(!process.cleanupRequired());QVERIFY(exit["teardownCertified"].toBool()); QCOMPARE(exit["code"].toInt(),0);QCOMPARE(exit["status"].toString(),QString("normal")); }
@@ -170,7 +171,7 @@ private slots:
   KdeRegionProcess process(QCoreApplication::applicationFilePath());int cancelled=0,busy=0;
   process.start(frames(),[&](QRectF rect,Error e){QVERIFY(rect.isEmpty());QCOMPARE(e.code,QString("cancelled"));++cancelled;});
   process.start(frames(),[&](QRectF rect,Error e){QVERIFY(rect.isEmpty());QCOMPARE(e.code,QString("busy_selecting"));++busy;});
-  QCOMPARE(busy,1);QTest::qWait(30);process.cancel();process.cancel();QTRY_COMPARE(cancelled,1);
+  QCOMPARE(busy,1);putgd::test::settle(30);process.cancel();process.cancel();PUTGD_TRY_COMPARE(cancelled,1);
   qunsetenv("PUTGD_TEST_KDE_REGION_HELPER");QVERIFY(!process.busy());
   const auto exit=process.diagnostics()["lastExit"].toObject();
   QCOMPARE(exit["code"].toInt(),0);QCOMPARE(exit["status"].toString(),QString("normal"));
@@ -186,16 +187,16 @@ private slots:
   QFETCH(QByteArray,mode);QFETCH(QString,expectedCode);qputenv("PUTGD_TEST_KDE_REGION_HELPER",mode);
   KdeRegionProcess process(QCoreApplication::applicationFilePath());int callbacks=0;Error error;QElapsedTimer elapsed;elapsed.start();
   process.start(frames(),[&](QRectF rectangle,Error e){QVERIFY(rectangle.isEmpty());error=e;++callbacks;});
-  QTRY_COMPARE_WITH_TIMEOUT(callbacks,1,4000);qunsetenv("PUTGD_TEST_KDE_REGION_HELPER");
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(callbacks,1,4000);qunsetenv("PUTGD_TEST_KDE_REGION_HELPER");
   QVERIFY2(elapsed.elapsed()<4000,"Repeated terminal frames postponed the shutdown bound");
   QCOMPARE(error.code,expectedCode);QVERIFY(!process.busy());QCOMPARE(process.processId(),qint64(0));
-  QTest::qWait(40);QCOMPARE(callbacks,1);
+  putgd::test::settle(40);PUTGD_TRY_COMPARE(callbacks,1);
  }
  void abruptPreFenceExitBlocksFurtherSelection() {
   qputenv("PUTGD_TEST_KDE_REGION_HELPER","crash-before-teardown");
   KdeRegionProcess process(QCoreApplication::applicationFilePath());int completed=0;Error error;
   process.start(frames(),[&](QRectF r,Error e){QVERIFY(r.isEmpty());error=e;++completed;});
-  QTRY_COMPARE(completed,1);qunsetenv("PUTGD_TEST_KDE_REGION_HELPER");
+  PUTGD_TRY_COMPARE(completed,1);qunsetenv("PUTGD_TEST_KDE_REGION_HELPER");
   QCOMPARE(error.code,QString("capture_crashed"));QVERIFY(process.cleanupRequired());QVERIFY(!process.busy());
   QVERIFY(!process.diagnostics()["lastExit"].toObject()["teardownCertified"].toBool());
   process.start(frames(),[&](QRectF r,Error e){QVERIFY(r.isEmpty());QCOMPARE(e.code,QString("capture_cleanup_pending"));++completed;});
@@ -220,7 +221,7 @@ private slots:
    // A callback during destruction would reenter its partially dying owner.
    if(tearingDown){++reentries;raw->process.cancel();}
   });
-  QTRY_VERIFY(owner->process.processId()>0);
+  PUTGD_TRY_VERIFY(owner->process.processId()>0);
   QPointer<QProcess> child=owner->process.findChild<QProcess*>();QVERIFY(child);
   if(explicitShutdown){
    owner->process.shutdown();owner->process.shutdown();
@@ -228,13 +229,13 @@ private slots:
    QCOMPARE(child->state(),QProcess::NotRunning);
   }
   owner.reset();QVERIFY(child.isNull());
-  QTest::qWait(40);qunsetenv("PUTGD_TEST_KDE_REGION_HELPER");
+  putgd::test::settle(40);qunsetenv("PUTGD_TEST_KDE_REGION_HELPER");
   QVERIFY(tearingDown);QCOMPARE(callbacks,0);QCOMPARE(reentries,0);
  }
  void missingHelperFailsOnce() {
   KdeRegionProcess process("/does-not-exist-putgd-kde-region");int callbacks=0;
   process.start(frames(),[&](QRectF r,Error e){QVERIFY(r.isEmpty());QCOMPARE(e.code,QString("capture_start_failed"));++callbacks;});
-  QTRY_COMPARE(callbacks,1);QVERIFY(!process.busy());QTest::qWait(30);QCOMPARE(callbacks,1);
+  PUTGD_TRY_COMPARE(callbacks,1);QVERIFY(!process.busy());putgd::test::settle(30);PUTGD_TRY_COMPARE(callbacks,1);
  }
 };
 int main(int argc,char** argv) {

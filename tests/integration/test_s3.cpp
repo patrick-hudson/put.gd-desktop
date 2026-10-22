@@ -2,6 +2,7 @@
 #include <thread>
 #include <QBuffer>
 #include <mutex>
+#include "fixtures/Waits.h"
 using namespace putgd::test;
 class S3Test : public QObject {
     Q_OBJECT
@@ -103,7 +104,7 @@ private slots:
             QCOMPARE(progress.last().bytesTransferred, std::optional<qint64>(request.artifact.bytes));
             count = progress.size();
         }
-        QTest::qWait(350);
+        putgd::test::settle(350);
         std::lock_guard lock(mutex);
         QCOMPARE(progress.size(), count);
     }
@@ -290,7 +291,7 @@ private slots:
         QTimer timer;
         connect(&timer, &QTimer::timeout, this, [&] { ++ticks; });
         timer.start(5);
-        QTRY_COMPARE(callbacks.load(), 2);
+        PUTGD_TRY_COMPARE(callbacks.load(), 2);
         QVERIFY(ticks > 10);
         QCOMPARE(secondStatus, QString("cancelled"));
         QCOMPARE(f.events("PUT").size(), 1);
@@ -304,12 +305,12 @@ private slots:
         std::atomic_int callbacks{0};
         QString firstStatus, secondCode;
         f.provider.upload(first, [&](auto result) { firstStatus = result.status; ++callbacks; });
-        QTRY_COMPARE(f.events("PUT").size(), 1);
+        PUTGD_TRY_COMPARE(f.events("PUT").size(), 1);
         QCOMPARE(callbacks.load(), 0);
         f.provider.upload(queued, [&](auto result) { secondCode = result.error.code; ++callbacks; });
         f.credentials.forget(f.destination.profileId, f.destination.credentialReference);
         f.control("/__release", {{"barrier", "credential-change"}}, true);
-        QTRY_COMPARE(callbacks.load(), 2);
+        PUTGD_TRY_COMPARE(callbacks.load(), 2);
         QCOMPARE(firstStatus, QString("uploaded"));
         QCOMPARE(secondCode, QString("credential_setup_required"));
         QCOMPARE(f.events("PUT").size(), 1);
@@ -324,18 +325,18 @@ private slots:
         std::atomic_bool blockedDone{false}, freeDone{false};
         QString blockedStatus, freeStatus;
         f.provider.upload(blocked, [&](auto result) { blockedStatus = result.status; blockedDone = true; });
-        QTRY_COMPARE(f.events("PUT").size(), 1);
+        PUTGD_TRY_COMPARE(f.events("PUT").size(), 1);
         // A second upload completes on another lane while the first is still in flight.
         f.provider.upload(free, [&](auto result) { freeStatus = result.status; freeDone = true; });
-        QTRY_VERIFY_WITH_TIMEOUT(freeDone.load(), 15000);
+        PUTGD_TRY_VERIFY_WITH_TIMEOUT(freeDone.load(), 15000);
         QCOMPARE(freeStatus, QString("uploaded"));
         QVERIFY(!blockedDone.load());
         QCOMPARE(f.provider.diagnostics()["lanes"].toInt(), 2);
         f.control("/__release", {{"barrier", "lane"}}, true);
-        QTRY_VERIFY_WITH_TIMEOUT(blockedDone.load(), 15000);
+        PUTGD_TRY_VERIFY_WITH_TIMEOUT(blockedDone.load(), 15000);
         QCOMPARE(blockedStatus, QString("uploaded"));
         // An idle provider reuses its lanes; their drivers are released once idle.
-        QTRY_COMPARE(f.provider.diagnostics()["queuedRequests"].toInt(), 0);
+        PUTGD_TRY_COMPARE(f.provider.diagnostics()["queuedRequests"].toInt(), 0);
         QCOMPARE(f.provider.diagnostics()["retainedDrivers"].toInt(), 0);
     }
     void providerDestructionDrainsSentRequestBeforeRuntime() {
@@ -346,7 +347,7 @@ private slots:
         std::atomic_bool completed{false};
         QString status;
         provider->upload(request, [&](auto result) { status = result.status; completed.store(true); });
-        QTRY_COMPARE(f.events("PUT").size(), 1);
+        PUTGD_TRY_COMPARE(f.events("PUT").size(), 1);
         QVERIFY(!completed.load());
         std::thread release([&] { f.control("/__release", {{"barrier", "shutdown"}}, true); });
         provider.reset();
@@ -378,7 +379,7 @@ private slots:
         QJsonObject result;
         Error error;
         f.provider.testDestination(f.destination, [](auto, auto ack) { ack({}); }, [&](auto value, auto e) { result = value; error = e; done = true; });
-        QTRY_VERIFY(done.load());
+        PUTGD_TRY_VERIFY(done.load());
         if (reachable) QVERIFY2(!error, qPrintable(error.code));
         else {QCOMPARE(error.code, QString("public_url_unreachable"));QVERIFY(error.message.contains("Link domain"));QVERIFY(error.message.contains("public-read"));}
         QCOMPARE(result["publicReachable"].toBool(), reachable);

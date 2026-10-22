@@ -21,6 +21,7 @@
 #include <QTimer>
 #include <QtTest>
 #include <optional>
+#include "fixtures/Waits.h"
 
 using namespace putgd;
 
@@ -90,13 +91,13 @@ class HostOpenTest final:public QObject {
   return QString::fromUtf8(file.readAll()).split('\n',Qt::SkipEmptyParts);
  }
  QStringList waitForLaunches(int count){
-  for(int waited=0;launches().size()<count&&waited<5000;waited+=10)QTest::qWait(10);
+  (void)putgd::test::waitFor([&]{return launches().size()>=count;},5000);
   return launches();
  }
  static QJsonObject run(const std::function<void(host::Opened)>& request){
   std::optional<QJsonObject> result;
   request([&](const QJsonObject& value){result=value;});
-  for(int waited=0;!result&&waited<8000;waited+=10)QTest::qWait(10);
+  (void)putgd::test::waitFor([&]{return bool(result);},8000);
   return result.value_or(QJsonObject{{"timedOut",true}});
  }
  void writeOpener(const QString& directory,const QString& name){
@@ -143,7 +144,7 @@ private slots:
   QCOMPARE(portal_->calls,QStringList{"OpenURI"});
   QCOMPARE(portal_->uri,link.toString(QUrl::FullyEncoded));QCOMPARE(portal_->parent,QString());
   QVERIFY(portal_->options.value("handle_token").toString().startsWith("putgd"));
-  QTest::qWait(100);QVERIFY(launches().isEmpty());
+  putgd::test::settle(100);PUTGD_TRY_VERIFY(launches().isEmpty());
  }
  void failedPortalFallsBackToHostGioWithoutImagePaths(){
   for(const auto answer:{FakeOpenUri::Answer::Fail,FakeOpenUri::Answer::Refuse}){
@@ -164,7 +165,7 @@ private slots:
   portal_->answer=FakeOpenUri::Answer::NoReply;
   result=run([&](host::Opened done){host::openLink(QUrl("https://put.gd/hung.png"),done);});
   QCOMPARE(result["route"].toString(),QString("launcher"));QCOMPARE(result["fallbackFrom"].toString(),QString("org.freedesktop.DBus.Error.NoReply"));
-  QTest::qWait(1200);QCOMPARE(launches().size(),1);
+  putgd::test::settle(1200);PUTGD_TRY_COMPARE(launches().size(),1);
  }
  void cancelledOrUnansweredIsNotOpenedTwice(){
   portal_->answer=FakeOpenUri::Answer::Cancel;
@@ -173,14 +174,14 @@ private slots:
   portal_->answer=FakeOpenUri::Answer::Wait;
   result=run([&](host::Opened done){host::openLink(QUrl("https://put.gd/wait.png"),done);});
   QCOMPARE(result["error"].toString(),QString("no_answer"));
-  QTest::qWait(100);QVERIFY(launches().isEmpty());
+  putgd::test::settle(100);PUTGD_TRY_VERIFY(launches().isEmpty());
  }
  void onlyWebLinksAreOpened(){
   for(const auto& link:{QUrl("file:///etc/hostname"),QUrl("javascript:alert(1)"),QUrl()}){
    const auto result=run([&](host::Opened done){host::openLink(link,done);});
    QCOMPARE(result["error"].toString(),QString("unsupported_link"));
   }
-  QVERIFY(portal_->calls.isEmpty());QTest::qWait(50);QVERIFY(launches().isEmpty());
+  QVERIFY(portal_->calls.isEmpty());putgd::test::settle(50);PUTGD_TRY_VERIFY(launches().isEmpty());
  }
  void showInFolderAsksTheFileManagerFirst(){
   registerFileManager(true);
@@ -188,7 +189,7 @@ private slots:
   const auto result=run([&](host::Opened done){host::showInFolder(package,done);});
   QCOMPARE(result["route"].toString(),QString("file-manager"));QVERIFY(result["opened"].toBool());
   QCOMPARE(files_->shown,QList<QStringList>{{QUrl::fromLocalFile(package).toString(QUrl::FullyEncoded)}});
-  QVERIFY(portal_->calls.isEmpty());QTest::qWait(50);QVERIFY(launches().isEmpty());
+  QVERIFY(portal_->calls.isEmpty());putgd::test::settle(50);PUTGD_TRY_VERIFY(launches().isEmpty());
  }
  void showInFolderUsesThePortalWithoutAFileManager(){
   const auto package=root_.filePath("with space é.zip");{QFile file(package);QVERIFY(file.open(QIODevice::WriteOnly));}
@@ -199,7 +200,7 @@ private slots:
    QCOMPARE(result["fallbackFrom"].toString(),QString("org.freedesktop.DBus.Error.ServiceUnknown"));
    QCOMPARE(portal_->calls,QStringList{"OpenDirectory"});QCOMPARE(portal_->directory,QFileInfo(package).canonicalFilePath());
   }
-  QTest::qWait(50);QVERIFY(launches().isEmpty());
+  putgd::test::settle(50);PUTGD_TRY_VERIFY(launches().isEmpty());
  }
  void showInFolderFallsBackToGioOnTheFolder(){
   const auto package=root_.filePath("fallback.zip");{QFile file(package);QVERIFY(file.open(QIODevice::WriteOnly));}

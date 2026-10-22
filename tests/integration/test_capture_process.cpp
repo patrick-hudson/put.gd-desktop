@@ -16,6 +16,7 @@
 #include <thread>
 #include <QScopeGuard>
 #include <QTemporaryDir>
+#include "fixtures/Waits.h"
 namespace {
 bool cacheExpected(){return QVersionNumber::fromString(QString::fromLatin1(qVersion()))<QVersionNumber(6,5,0);}
 QJsonObject regionSnapshot(char fingerprint='a');
@@ -52,14 +53,14 @@ private slots:
   QTemporaryDir directory("/tmp/putgd-cache-XXXXXX");QVERIFY(directory.isValid());const auto trace=directory.filePath("trace.jsonl");QVERIFY(createCursorTrace(trace));
   qputenv("PUTGD_TEST_CAPTURE_MODE",mode);putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);
   int count=0;putgd::Error error;controller.start(regionSnapshot(),{},[&](putgd::PayloadResult value){error=value.error;++count;});
-  QTRY_COMPARE(count,1);QCOMPARE(error.code,code);QVERIFY(!controller.busy());QCOMPARE(controller.processId(),qint64(0));
-  QTest::qWait(20);QCOMPARE(count,1);
+  PUTGD_TRY_COMPARE(count,1);QCOMPARE(error.code,code);QVERIFY(!controller.busy());QCOMPARE(controller.processId(),qint64(0));
+  putgd::test::settle(20);PUTGD_TRY_COMPARE(count,1);
   const auto frames=cursorTrace(trace);QCOMPARE(frames.size(),1);QCOMPARE(frames[0]["phase"].toString(),QString("bootstrap"));
  }
  void nonRegionReadyCannotSupplyCursorSeed(){
   qputenv("PUTGD_TEST_CAPTURE_MODE","cursor-force-seed");putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);
   int count=0;putgd::Error error;controller.start(snapshot(),{},[&](putgd::PayloadResult value){error=value.error;++count;});
-  QTRY_COMPARE(count,1);QCOMPARE(error.code,QString("capture_protocol"));QVERIFY(!controller.busy());
+  PUTGD_TRY_COMPARE(count,1);QCOMPARE(error.code,QString("capture_protocol"));QVERIFY(!controller.busy());
  }
  void cursorCacheSurvivesHelperExitAndDesktopCaptureButInvalidatesFingerprint(){
   putgd::CaptureCursorCache backend;QVERIFY2(backend.supported(),"Run cache reuse tests on the private Render-capable Xvfb server");
@@ -68,7 +69,7 @@ private slots:
   const QList<QJsonObject> targets{regionSnapshot('a'),snapshot(),regionSnapshot('a'),regionSnapshot('b'),regionSnapshot('a'),regionSnapshot('a')};
   for(qsizetype index=0;index<targets.size();++index){
    qputenv("PUTGD_TEST_CAPTURE_MODE",index==1||index==5?"cursor-empty":"cursor-seed");int count=0;putgd::PayloadResult result;
-   controller.start(targets[index],{},[&](putgd::PayloadResult value){result=std::move(value);++count;});QTRY_COMPARE(count,1);
+   controller.start(targets[index],{},[&](putgd::PayloadResult value){result=std::move(value);++count;});PUTGD_TRY_COMPARE(count,1);
    QVERIFY2(!result.error,qPrintable(result.error.code));QVERIFY(!controller.busy());QCOMPARE(controller.processId(),qint64(0));
    const auto exit=controller.diagnostics()["lastExit"].toObject();QCOMPARE(exit["status"].toString(),QString("normal"));QCOMPARE(exit["code"].toInt(),0);
   }
@@ -106,7 +107,7 @@ private slots:
   QVERIFY(layout!=original["layout"].toObject());
   qputenv("PUTGD_TEST_CAPTURE_MODE","cursor-seed");putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);
   for(const auto& target:QList<QJsonObject>{original,original,changed,changed}){
-   int count=0;putgd::PayloadResult result;controller.start(target,{},[&](putgd::PayloadResult value){result=std::move(value);++count;});QTRY_COMPARE(count,1);
+   int count=0;putgd::PayloadResult result;controller.start(target,{},[&](putgd::PayloadResult value){result=std::move(value);++count;});PUTGD_TRY_COMPARE(count,1);
    QVERIFY2(!result.error,qPrintable(result.error.code));QVERIFY(!controller.busy());QCOMPARE(controller.processId(),qint64(0));
   }
   const auto frames=cursorTrace(trace);QCOMPARE(frames.size(),8);
@@ -132,7 +133,7 @@ private slots:
    QJsonObject target=original;
    if(stage){qputenv("XCURSOR_THEME",previous.last()+"-putgd-synthetic-change");target=native.freeze("region",{},error);QVERIFY2(!error,qPrintable(error.code));QVERIFY(target["layout"].toObject()["scale"]!=original["layout"].toObject()["scale"]);}
    for(int repeat=0;repeat<2;++repeat){
-    int count=0;putgd::PayloadResult result;controller.start(target,{},[&](putgd::PayloadResult value){result=std::move(value);++count;});QTRY_COMPARE(count,1);
+    int count=0;putgd::PayloadResult result;controller.start(target,{},[&](putgd::PayloadResult value){result=std::move(value);++count;});PUTGD_TRY_COMPARE(count,1);
     QVERIFY2(!result.error,qPrintable(result.error.code));QVERIFY(!controller.busy());QCOMPARE(controller.processId(),qint64(0));
     const auto exit=controller.diagnostics()["lastExit"].toObject();QCOMPARE(exit["status"].toString(),QString("normal"));QCOMPARE(exit["code"].toInt(),0);
    }
@@ -150,7 +151,7 @@ private slots:
   putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);
   for(int index=0;index<3;++index){
    qputenv("PUTGD_TEST_CAPTURE_MODE",index==1?"cursor-force-seed":"cursor-seed");int count=0;putgd::PayloadResult result;
-   controller.start(regionSnapshot(),{},[&](putgd::PayloadResult value){result=std::move(value);++count;});QTRY_COMPARE(count,1);
+   controller.start(regionSnapshot(),{},[&](putgd::PayloadResult value){result=std::move(value);++count;});PUTGD_TRY_COMPARE(count,1);
    if(index==1)QCOMPARE(result.error.code,QString("capture_protocol"));else QVERIFY2(!result.error,qPrintable(result.error.code));
    QVERIFY(!controller.busy());
   }
@@ -164,7 +165,7 @@ private slots:
   putgd::CaptureCursorCache backend;QVERIFY2(backend.supported(),"Run optional export tests on the private Render-capable Xvfb server");
   QTemporaryDir directory("/tmp/putgd-cache-XXXXXX");QVERIFY(directory.isValid());const auto trace=directory.filePath("trace.jsonl");QVERIFY(createCursorTrace(trace));
   qputenv("PUTGD_TEST_CAPTURE_MODE","cursor-empty");putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);
-  for(int index=0;index<2;++index){int count=0;putgd::PayloadResult result;controller.start(regionSnapshot(),{},[&](putgd::PayloadResult value){result=std::move(value);++count;});QTRY_COMPARE(count,1);QVERIFY2(!result.error,qPrintable(result.error.code));QVERIFY(!controller.busy());}
+  for(int index=0;index<2;++index){int count=0;putgd::PayloadResult result;controller.start(regionSnapshot(),{},[&](putgd::PayloadResult value){result=std::move(value);++count;});PUTGD_TRY_COMPARE(count,1);QVERIFY2(!result.error,qPrintable(result.error.code));QVERIFY(!controller.busy());}
   const auto frames=cursorTrace(trace);QCOMPARE(frames.size(),4);
   for(const auto& frame:frames){QCOMPARE(frame["cache"].toBool(),cacheExpected());QCOMPARE(frame["cursorId"].toString(),QString("0"));}
  }
@@ -173,10 +174,10 @@ private slots:
   const auto restore=qScopeGuard([&]{if(present)qputenv("XCURSOR_RESIZED",previous);else qunsetenv("XCURSOR_RESIZED");});
   QTemporaryDir directory("/tmp/putgd-cache-XXXXXX");QVERIFY(directory.isValid());const auto trace=directory.filePath("trace.jsonl");QVERIFY(createCursorTrace(trace));
   qunsetenv("XCURSOR_RESIZED");putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);qputenv("PUTGD_TEST_CAPTURE_MODE","cursor-seed");
-  int primed=0;putgd::Error error;controller.start(regionSnapshot(),{},[&](putgd::PayloadResult result){error=result.error;++primed;});QTRY_COMPARE(primed,1);QVERIFY(!error);
+  int primed=0;putgd::Error error;controller.start(regionSnapshot(),{},[&](putgd::PayloadResult result){error=result.error;++primed;});PUTGD_TRY_COMPARE(primed,1);QVERIFY(!error);
   QVERIFY(!controller.busy());const auto prior=cursorTrace(trace);QCOMPARE(prior.size(),2);QCOMPARE(prior[0]["cache"].toBool(),cacheExpected());if(cacheExpected())QVERIFY(prior[1]["cursorId"].toString().toULongLong()>0);else QCOMPARE(prior[1]["cursorId"].toString(),QString("0"));
   QVERIFY(createCursorTrace(trace));qputenv("XCURSOR_RESIZED","1");
-  for(int index=0;index<2;++index){int count=0;controller.start(regionSnapshot(),{},[&](putgd::PayloadResult result){error=result.error;++count;});QTRY_COMPARE(count,1);QVERIFY(!error);QVERIFY(!controller.busy());QCOMPARE(controller.processId(),qint64(0));}
+  for(int index=0;index<2;++index){int count=0;controller.start(regionSnapshot(),{},[&](putgd::PayloadResult result){error=result.error;++count;});PUTGD_TRY_COMPARE(count,1);QVERIFY(!error);QVERIFY(!controller.busy());QCOMPARE(controller.processId(),qint64(0));}
   const auto frames=cursorTrace(trace);QCOMPARE(frames.size(),4);for(const auto& frame:frames){QVERIFY(!frame["cache"].toBool());QCOMPARE(frame["cursorId"].toString(),QString("0"));}
  }
  void unavailableCursorCachePreservesOptionalFallback(){
@@ -185,18 +186,18 @@ private slots:
   putgd::CaptureCursorCache backend;QVERIFY(!backend.supported());
   QTemporaryDir directory("/tmp/putgd-cache-XXXXXX");QVERIFY(directory.isValid());const auto trace=directory.filePath("trace.jsonl");QVERIFY(createCursorTrace(trace));
   qputenv("PUTGD_TEST_CAPTURE_MODE","cursor-seed");putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);
-  int count=0;putgd::PayloadResult result;controller.start(regionSnapshot(),{},[&](putgd::PayloadResult value){result=std::move(value);++count;});QTRY_COMPARE(count,1);
+  int count=0;putgd::PayloadResult result;controller.start(regionSnapshot(),{},[&](putgd::PayloadResult value){result=std::move(value);++count;});PUTGD_TRY_COMPARE(count,1);
   QVERIFY2(!result.error,qPrintable(result.error.code));QVERIFY(!controller.busy());const auto frames=cursorTrace(trace);QCOMPARE(frames.size(),2);
   for(const auto& frame:frames){QVERIFY(!frame["cache"].toBool());QCOMPARE(frame["cursorId"].toString(),QString("0"));}
  }
- void genuinePngValidatedOnlyAfterNormalChildExit(){putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);int completed=0;putgd::PayloadResult result;controller.start(snapshot(),{},[&](putgd::PayloadResult r){result=std::move(r);++completed;});QTRY_COMPARE(completed,1);QVERIFY2(!result.error,qPrintable(result.error.code));QCOMPARE(result.payload.image.size(),QSize(3,2));QCOMPARE(result.payload.image.pixelColor(1,1),QColor(Qt::blue));QVERIFY(!controller.busy());QCOMPARE(controller.processId(),qint64(0));const auto exit=controller.diagnostics()["lastExit"].toObject();QCOMPARE(exit["status"].toString(),QString("normal"));QCOMPARE(exit["code"].toInt(),0);QVERIFY(exit["processId"].toInteger()>0);QVERIFY(exit["startTicks"].toString().toULongLong()>0);}
+ void genuinePngValidatedOnlyAfterNormalChildExit(){putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);int completed=0;putgd::PayloadResult result;controller.start(snapshot(),{},[&](putgd::PayloadResult r){result=std::move(r);++completed;});PUTGD_TRY_COMPARE(completed,1);QVERIFY2(!result.error,qPrintable(result.error.code));QCOMPARE(result.payload.image.size(),QSize(3,2));QCOMPARE(result.payload.image.pixelColor(1,1),QColor(Qt::blue));QVERIFY(!controller.busy());QCOMPARE(controller.processId(),qint64(0));const auto exit=controller.diagnostics()["lastExit"].toObject();QCOMPARE(exit["status"].toString(),QString("normal"));QCOMPARE(exit["code"].toInt(),0);QVERIFY(exit["processId"].toInteger()>0);QVERIFY(exit["startTicks"].toString().toULongLong()>0);}
  void preparedHelperStaysIdleUntilBegin(){
   putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);
   auto ticket=controller.prepare(snapshot(),{});QVERIFY(controller.busy());
-  QTRY_VERIFY(controller.preparedReady());QTest::qWait(40);QVERIFY(controller.busy());
+  PUTGD_TRY_VERIFY(controller.preparedReady());putgd::test::settle(40);PUTGD_TRY_VERIFY(controller.busy());
   int count=0;putgd::PayloadResult result;
   controller.begin(ticket,[&](putgd::PayloadResult value){result=std::move(value);++count;});
-  QTRY_COMPARE(count,1);QVERIFY2(!result.error,qPrintable(result.error.code));QVERIFY(!controller.busy());
+  PUTGD_TRY_COMPARE(count,1);QVERIFY2(!result.error,qPrintable(result.error.code));QVERIFY(!controller.busy());
  }
  void regionPreviewPrecedesBeginWithoutProducingImage_data(){
   QTest::addColumn<bool>("cachedCursor");
@@ -209,20 +210,20 @@ private slots:
    putgd::CaptureCursorCache backend;QVERIFY2(backend.supported(),"Run preview cache tests on the private Render-capable Xvfb server");
    qputenv("PUTGD_TEST_CAPTURE_MODE","cursor-seed");int completed=0;putgd::Error error;
    controller.start(regionSnapshot(),{},[&](putgd::PayloadResult value){error=value.error;++completed;});
-   QTRY_COMPARE(completed,1);QVERIFY2(!error,qPrintable(error.code));
+   PUTGD_TRY_COMPARE(completed,1);QVERIFY2(!error,qPrintable(error.code));
   }
   QTemporaryDir directory("/tmp/putgd-preview-XXXXXX");QVERIFY(directory.isValid());const auto trace=directory.filePath("trace.jsonl");QVERIFY(createCursorTrace(trace));
   qputenv("PUTGD_TEST_CAPTURE_MODE","preview-waiting");int early=0;
   auto ticket=controller.prepare(regionSnapshot(),{},[&](putgd::Error){++early;});
-  QTRY_COMPARE(cursorTrace(trace).size(),2);QVERIFY(controller.preparedReady());QCOMPARE(early,0);
+  PUTGD_TRY_COMPARE(cursorTrace(trace).size(),2);QVERIFY(controller.preparedReady());QCOMPARE(early,0);
   const auto before=cursorTrace(trace);QCOMPARE(before[0]["phase"].toString(),QString("bootstrap"));QCOMPARE(before[1]["phase"].toString(),QString("preview"));
   QCOMPARE(before[1]["generation"],before[0]["generation"]);
   QCOMPARE(before[0]["cache"].toBool(),cacheExpected());if(!cacheExpected())QCOMPARE(before[0]["cursorId"].toString(),QString("0"));
   const auto preview=before[1]["cursorId"].toString();if(cachedCursor&&cacheExpected())QVERIFY(preview.toULongLong()>0);else QCOMPARE(preview,QString("0"));
-  QTest::qWait(40);QCOMPARE(cursorTrace(trace).size(),2);QCOMPARE(early,0);QVERIFY(controller.busy());
+  putgd::test::settle(40);PUTGD_TRY_COMPARE(cursorTrace(trace).size(),2);PUTGD_TRY_COMPARE(early,0);PUTGD_TRY_VERIFY(controller.busy());
   int completed=0;putgd::PayloadResult result;
   controller.begin(ticket,[&](putgd::PayloadResult value){result=std::move(value);++completed;});
-  QTRY_COMPARE(completed,1);QVERIFY2(!result.error,qPrintable(result.error.code));QCOMPARE(result.payload.image.size(),QSize(3,2));QCOMPARE(early,0);QVERIFY(!controller.busy());
+  PUTGD_TRY_COMPARE(completed,1);QVERIFY2(!result.error,qPrintable(result.error.code));QCOMPARE(result.payload.image.size(),QSize(3,2));QCOMPARE(early,0);QVERIFY(!controller.busy());
   const auto after=cursorTrace(trace);QCOMPARE(after.size(),3);QCOMPARE(after[2]["phase"].toString(),QString("begin"));QCOMPARE(after[2]["cursorId"].toString(),preview);
  }
  void earlyPreviewTerminalIsReportedOnceAndRetained_data(){
@@ -236,7 +237,7 @@ private slots:
   qputenv("PUTGD_TEST_CAPTURE_MODE",mode);putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);
   int early=0;bool aliveAtNotification=false;putgd::Error terminal;
   auto ticket=controller.prepare(regionSnapshot(),{},[&](putgd::Error error){terminal=std::move(error);aliveAtNotification=controller.busy()&&controller.processId()>0;++early;});
-  QTRY_COMPARE(early,1);QCOMPARE(terminal.code,code);QVERIFY(aliveAtNotification);QVERIFY(!controller.preparedReady());
+  PUTGD_TRY_COMPARE(early,1);QCOMPARE(terminal.code,code);QVERIFY(aliveAtNotification);QVERIFY(!controller.preparedReady());
   // The helper's own reason and geometry reach the operation's error (#331).
   if(code!="cancelled"){QCOMPARE(terminal.message,QString("Synthetic selection outside the layout"));QCOMPARE(terminal.details["check"].toString(),QString("fixture_selection"));QCOMPARE(terminal.details["selection"].toArray(),(QJsonArray{0,1080,100,100}));}
   else QVERIFY(terminal.details.isEmpty());
@@ -245,7 +246,7 @@ private slots:
   int completed=0;putgd::Error result;
   controller.begin(ticket,[&](putgd::PayloadResult value){result=value.error;++completed;});
   QCOMPARE(completed,1);QCOMPARE(result.code,code);
-  QTRY_VERIFY(!controller.busy());QCOMPARE(controller.processId(),qint64(0));QTest::qWait(30);QCOMPARE(early,1);QCOMPARE(completed,1);
+  PUTGD_TRY_VERIFY(!controller.busy());QCOMPARE(controller.processId(),qint64(0));putgd::test::settle(30);PUTGD_TRY_COMPARE(early,1);PUTGD_TRY_COMPARE(completed,1);
   const auto frames=cursorTrace(trace);QCOMPARE(frames.size(),2);QCOMPARE(frames[1]["phase"].toString(),QString("preview"));
  }
  void nonRegionPreparationNeverRequestsPreview_data(){
@@ -256,19 +257,19 @@ private slots:
   if(action=="window"){target["window"]="1";target["windowRect"]=QJsonArray{16,16,32,32};}
   QTemporaryDir directory("/tmp/putgd-preview-XXXXXX");QVERIFY(directory.isValid());const auto trace=directory.filePath("trace.jsonl");QVERIFY(createCursorTrace(trace));
   qputenv("PUTGD_TEST_CAPTURE_MODE","preview-waiting");putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);int early=0;
-  auto ticket=controller.prepare(target,{},[&](putgd::Error){++early;});QTRY_VERIFY(controller.preparedReady());QTest::qWait(40);
+  auto ticket=controller.prepare(target,{},[&](putgd::Error){++early;});PUTGD_TRY_VERIFY(controller.preparedReady());putgd::test::settle(40);
   const auto before=cursorTrace(trace);QCOMPARE(before.size(),1);QCOMPARE(before[0]["phase"].toString(),QString("bootstrap"));QCOMPARE(early,0);
   int completed=0;putgd::Error error;controller.begin(ticket,[&](putgd::PayloadResult value){error=value.error;++completed;});
-  QTRY_COMPARE(completed,1);QVERIFY2(!error,qPrintable(error.code));QCOMPARE(early,0);QVERIFY(!controller.busy());QCOMPARE(cursorTrace(trace).size(),2);
+  PUTGD_TRY_COMPARE(completed,1);QVERIFY2(!error,qPrintable(error.code));QCOMPARE(early,0);QVERIFY(!controller.busy());QCOMPARE(cursorTrace(trace).size(),2);
  }
  void cancellationWhileStartingSuppressesPreview(){
   QTemporaryDir directory("/tmp/putgd-preview-XXXXXX");QVERIFY(directory.isValid());const auto trace=directory.filePath("trace.jsonl");QVERIFY(createCursorTrace(trace));
   qputenv("PUTGD_TEST_CAPTURE_MODE","preview-waiting");putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);int early=0;putgd::Error terminal;
   auto ticket=controller.prepare(regionSnapshot(),{},[&](putgd::Error error){terminal=std::move(error);++early;});
   QVERIFY(!controller.preparedReady());controller.cancel();controller.cancel();
-  QTRY_COMPARE(early,1);QCOMPARE(terminal.code,QString("cancelled"));QTRY_VERIFY(!controller.busy());
+  PUTGD_TRY_COMPARE(early,1);QCOMPARE(terminal.code,QString("cancelled"));PUTGD_TRY_VERIFY(!controller.busy());
   int completed=0;putgd::Error error;controller.begin(ticket,[&](putgd::PayloadResult value){error=value.error;++completed;});
-  QCOMPARE(completed,1);QCOMPARE(error.code,QString("cancelled"));QTest::qWait(30);QCOMPARE(early,1);
+  QCOMPARE(completed,1);QCOMPARE(error.code,QString("cancelled"));putgd::test::settle(30);PUTGD_TRY_COMPARE(early,1);
   const auto frames=cursorTrace(trace);QCOMPARE(frames.size(),1);QCOMPARE(frames[0]["phase"].toString(),QString("bootstrap"));
   const auto exit=controller.diagnostics()["lastExit"].toObject();QCOMPARE(exit["status"].toString(),QString("normal"));QCOMPARE(exit["code"].toInt(),0);
  }
@@ -279,32 +280,32 @@ private slots:
   QFETCH(bool,deleteOnRelease);auto controller=std::make_unique<putgd::CaptureProcessController>(PUTGD_CAPTURE_FIXTURE);int releases=0,completed=0;
   auto ticket=controller->prepare(snapshot(),{}, {},[&]{QVERIFY(!controller->busy());QCOMPARE(controller->processId(),qint64(0));++releases;if(deleteOnRelease)controller.reset();});
   controller->begin(ticket,[&](putgd::PayloadResult result){QVERIFY(!result.error);QCOMPARE(releases,1);++completed;controller.reset();});
-  QTRY_COMPARE(completed,1);QCOMPARE(releases,1);QVERIFY(!controller);QTest::qWait(30);QCOMPARE(completed,1);QCOMPARE(releases,1);
+  PUTGD_TRY_COMPARE(completed,1);QCOMPARE(releases,1);QVERIFY(!controller);putgd::test::settle(30);PUTGD_TRY_COMPARE(completed,1);PUTGD_TRY_COMPARE(releases,1);
  }
  void earlyReleaseWaitsForCompleteHelperCleanup(){
   qputenv("PUTGD_TEST_CAPTURE_MODE","preview-error");putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);
   int terminal=0,released=0;
   auto ticket=controller.prepare(regionSnapshot(),{},[&](putgd::Error error){QCOMPARE(error.code,QString("capture_geometry"));QVERIFY(controller.busy());QCOMPARE(released,0);++terminal;},[&]{QVERIFY(!controller.busy());QCOMPARE(controller.processId(),qint64(0));QCOMPARE(terminal,1);++released;});
-  QTRY_COMPARE(terminal,1);QTRY_COMPARE(released,1);QTest::qWait(30);QCOMPARE(released,1);
+  PUTGD_TRY_COMPARE(terminal,1);PUTGD_TRY_COMPARE(released,1);putgd::test::settle(30);PUTGD_TRY_COMPARE(released,1);
   int count=0;controller.begin(ticket,[&](putgd::PayloadResult result){QCOMPARE(result.error.code,QString("capture_geometry"));++count;});QCOMPARE(count,1);
  }
  void cancelledMissingHelperRetainsFirstTerminalError(){
   putgd::CaptureProcessController controller("/missing-putgd-preview-helper");int early=0;putgd::Error terminal;
   auto ticket=controller.prepare(regionSnapshot(),{},[&](putgd::Error error){terminal=error;++early;});
-  controller.cancel();QTRY_VERIFY(!controller.busy());QTRY_COMPARE(early,1);QCOMPARE(terminal.code,QString("cancelled"));
+  controller.cancel();PUTGD_TRY_VERIFY(!controller.busy());PUTGD_TRY_COMPARE(early,1);QCOMPARE(terminal.code,QString("cancelled"));
   int count=0;putgd::Error retained;controller.begin(ticket,[&](putgd::PayloadResult result){retained=result.error;++count;});
-  QCOMPARE(count,1);QCOMPARE(retained.code,terminal.code);QTest::qWait(30);QCOMPARE(early,1);
+  QCOMPARE(count,1);QCOMPARE(retained.code,terminal.code);putgd::test::settle(30);PUTGD_TRY_COMPARE(early,1);
  }
  void earlyTerminalCallbackCanDestroyController(){
   qputenv("PUTGD_TEST_CAPTURE_MODE","preview-error");auto controller=std::make_unique<putgd::CaptureProcessController>(PUTGD_CAPTURE_FIXTURE);int early=0;
   auto ticket=controller->prepare(regionSnapshot(),{},[&](putgd::Error error){QCOMPARE(error.code,QString("capture_geometry"));++early;controller.reset();});
-  QTRY_COMPARE(early,1);QVERIFY(!controller);ticket.reset();QTest::qWait(30);QCOMPARE(early,1);
+  PUTGD_TRY_COMPARE(early,1);QVERIFY(!controller);ticket.reset();putgd::test::settle(30);PUTGD_TRY_COMPARE(early,1);
  }
  void cancellationNotificationCanDestroyControllerWhileStarting(){
   qputenv("PUTGD_TEST_CAPTURE_MODE","preview-waiting");auto controller=std::make_unique<putgd::CaptureProcessController>(PUTGD_CAPTURE_FIXTURE);int early=0;
   auto ticket=controller->prepare(regionSnapshot(),{},[&](putgd::Error error){QCOMPARE(error.code,QString("cancelled"));++early;controller.reset();});
   QVERIFY(!controller->preparedReady());controller->cancel();
-  QTRY_COMPARE(early,1);QVERIFY(!controller);ticket.reset();QTest::qWait(30);QCOMPARE(early,1);
+  PUTGD_TRY_COMPARE(early,1);QVERIFY(!controller);ticket.reset();putgd::test::settle(30);PUTGD_TRY_COMPARE(early,1);
  }
  void terminalAfterBeginRequestUsesOnlyAcquisitionCallback_data(){
   QTest::addColumn<QByteArray>("mode");QTest::addColumn<QString>("code");
@@ -318,40 +319,40 @@ private slots:
   // A requested BEGIN transfers terminal delivery to the ordinary callback,
   // even if READY and the preview's terminal event have not arrived yet.
   controller.begin(ticket,[&](putgd::PayloadResult value){error=value.error;++completed;});
-  QTRY_COMPARE(completed,1);QCOMPARE(error.code,code);QCOMPARE(early,0);QVERIFY(!controller.busy());
-  QTest::qWait(30);QCOMPARE(completed,1);QCOMPARE(early,0);
+  PUTGD_TRY_COMPARE(completed,1);QCOMPARE(error.code,code);QCOMPARE(early,0);QVERIFY(!controller.busy());
+  putgd::test::settle(30);PUTGD_TRY_COMPARE(completed,1);PUTGD_TRY_COMPARE(early,0);
  }
  void preparedLimitsRemainTheDecodeBound(){
   putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);putgd::ResourceLimits limits;limits.imagePixels=1;limits.imageBytes=4;
-  auto ticket=controller.prepare(snapshot(),limits);QTRY_VERIFY(controller.preparedReady());int count=0;putgd::Error error;
+  auto ticket=controller.prepare(snapshot(),limits);PUTGD_TRY_VERIFY(controller.preparedReady());int count=0;putgd::Error error;
   controller.begin(ticket,[&](putgd::PayloadResult value){error=value.error;++count;});
-  QTRY_COMPARE(count,1);QCOMPARE(error.code,QString("input_excessive"));QVERIFY(!controller.busy());
+  PUTGD_TRY_COMPARE(count,1);QCOMPARE(error.code,QString("input_excessive"));QVERIFY(!controller.busy());
  }
  void abandonedPreparationCancelsWithoutBegin(){
   putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);
-  auto ticket=controller.prepare(snapshot(),{});QTRY_VERIFY(controller.preparedReady());ticket.reset();
-  QTRY_VERIFY(!controller.busy());QCOMPARE(controller.processId(),qint64(0));
+  auto ticket=controller.prepare(snapshot(),{});PUTGD_TRY_VERIFY(controller.preparedReady());ticket.reset();
+  PUTGD_TRY_VERIFY(!controller.busy());QCOMPARE(controller.processId(),qint64(0));
   QCOMPARE(controller.diagnostics()["lastExit"].toObject()["code"].toInt(),0);
   QCOMPARE(controller.diagnostics()["lastExit"].toObject()["status"].toString(),QString("normal"));
  }
  void lastPreparationCanDieOnJournalWorker(){
   putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);
-  auto ticket=controller.prepare(snapshot(),{});QTRY_VERIFY(controller.preparedReady());
+  auto ticket=controller.prepare(snapshot(),{});PUTGD_TRY_VERIFY(controller.preparedReady());
   std::thread worker([ticket=std::move(ticket)]()mutable{ticket.reset();});worker.join();
-  QTRY_VERIFY(!controller.busy());QCOMPARE(controller.processId(),qint64(0));
+  PUTGD_TRY_VERIFY(!controller.busy());QCOMPARE(controller.processId(),qint64(0));
   QCOMPARE(controller.diagnostics()["lastExit"].toObject()["code"].toInt(),0);
  }
  void earlyFailureIsRetainedUntilBegin(){
   qputenv("PUTGD_TEST_CAPTURE_MODE","early-exit");
   putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);
-  auto ticket=controller.prepare(snapshot(),{});QTRY_VERIFY(!controller.busy());
+  auto ticket=controller.prepare(snapshot(),{});PUTGD_TRY_VERIFY(!controller.busy());
   int count=0;putgd::Error error;
   controller.begin(ticket,[&](putgd::PayloadResult value){error=value.error;++count;});
-  QCOMPARE(count,1);QVERIFY(error);QTest::qWait(30);QCOMPARE(count,1);QVERIFY(!controller.busy());
+  QCOMPARE(count,1);QVERIFY(error);putgd::test::settle(30);PUTGD_TRY_COMPARE(count,1);PUTGD_TRY_VERIFY(!controller.busy());
  }
  void cancelledPreparationNeverRestartsWhenBeginArrives(){
   putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);
-  auto ticket=controller.prepare(snapshot(),{});controller.cancel();QTRY_VERIFY(!controller.busy());
+  auto ticket=controller.prepare(snapshot(),{});controller.cancel();PUTGD_TRY_VERIFY(!controller.busy());
   const auto previous=controller.diagnostics()["lastExit"].toObject();int count=0;putgd::Error error;
   controller.begin(ticket,[&](putgd::PayloadResult value){error=value.error;++count;});
   QCOMPARE(count,1);QCOMPARE(error.code,QString("cancelled"));QVERIFY(!controller.busy());
@@ -360,7 +361,7 @@ private slots:
  void prebeginResultIsRejectedAndFailureRemembered(){
   qputenv("PUTGD_TEST_CAPTURE_MODE","prebegin-result");
   putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);
-  auto ticket=controller.prepare(snapshot(),{});QTRY_VERIFY(!controller.busy());int count=0;putgd::Error error;
+  auto ticket=controller.prepare(snapshot(),{});PUTGD_TRY_VERIFY(!controller.busy());int count=0;putgd::Error error;
   controller.begin(ticket,[&](putgd::PayloadResult value){error=value.error;++count;});
   QCOMPARE(count,1);QCOMPARE(error.code,QString("capture_protocol"));
  }
@@ -369,22 +370,22 @@ private slots:
   int first=0,duplicate=0;putgd::Error duplicateError;
   controller.begin(ticket,[&](putgd::PayloadResult value){QVERIFY(!value.error);++first;});
   controller.begin(ticket,[&](putgd::PayloadResult value){duplicateError=value.error;++duplicate;});
-  QCOMPARE(duplicate,1);QCOMPARE(duplicateError.code,QString("capture_protocol"));QTRY_COMPARE(first,1);QVERIFY(!controller.busy());
+  QCOMPARE(duplicate,1);QCOMPARE(duplicateError.code,QString("capture_protocol"));PUTGD_TRY_COMPARE(first,1);QVERIFY(!controller.busy());
  }
  void discardAfterBeginCannotCancelActiveCapture(){
   qputenv("PUTGD_TEST_CAPTURE_MODE","waiting");
-  putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);auto ticket=controller.prepare(snapshot(),{});QTRY_VERIFY(controller.preparedReady());
+  putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);auto ticket=controller.prepare(snapshot(),{});PUTGD_TRY_VERIFY(controller.preparedReady());
   int count=0;putgd::Error error;
   controller.begin(ticket,[&](putgd::PayloadResult value){error=value.error;++count;});
-  controller.discard(ticket);QTest::qWait(40);QCOMPARE(count,0);QVERIFY(controller.busy());
-  controller.cancel();QTRY_COMPARE(count,1);QCOMPARE(error.code,QString("cancelled"));QVERIFY(!controller.busy());
+  controller.discard(ticket);putgd::test::settle(40);PUTGD_TRY_COMPARE(count,0);PUTGD_TRY_VERIFY(controller.busy());
+  controller.cancel();PUTGD_TRY_COMPARE(count,1);QCOMPARE(error.code,QString("cancelled"));QVERIFY(!controller.busy());
  }
  void staleAbandonCannotCancelNewGeneration(){
-  putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);auto old=controller.prepare(snapshot(),{});QTRY_VERIFY(controller.preparedReady());
-  controller.discard(old);QTRY_VERIFY(!controller.busy());old.reset(); // queues old epoch cleanup
+  putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);auto old=controller.prepare(snapshot(),{});PUTGD_TRY_VERIFY(controller.preparedReady());
+  controller.discard(old);PUTGD_TRY_VERIFY(!controller.busy());old.reset(); // queues old epoch cleanup
   auto current=controller.prepare(snapshot(),{});int count=0;
   controller.begin(current,[&](putgd::PayloadResult value){QVERIFY(!value.error);++count;});
-  QTRY_COMPARE(count,1);QVERIFY(!controller.busy());QCOMPARE(controller.diagnostics()["lastExit"].toObject()["generation"].toString(),QString("2"));
+  PUTGD_TRY_COMPARE(count,1);QVERIFY(!controller.busy());QCOMPARE(controller.diagnostics()["lastExit"].toObject()["generation"].toString(),QString("2"));
  }
  void trustedImageRespectsItsAcceptedBudgetWithoutChangingReaderGuard(){
   // CTest sets QT_IMAGEIO_MAXALLOC=1 before the first image reader is created.
@@ -393,7 +394,7 @@ private slots:
   putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);
   int count=0;putgd::PayloadResult result;
   controller.start(snapshot(),{},[&](putgd::PayloadResult value){result=std::move(value);++count;});
-  QTRY_COMPARE(count,1);
+  PUTGD_TRY_COMPARE(count,1);
   QVERIFY2(!result.error,qPrintable(result.error.code));
   QCOMPARE(result.payload.image.size(),QSize(700,700));
   QCOMPARE(result.payload.image.pixelColor(699,699),QColor(Qt::blue));
@@ -405,21 +406,21 @@ private slots:
   int count=0;putgd::Error error;
   controller.start(snapshot(),{},[&](putgd::PayloadResult value){error=value.error;++count;});
   controller.cancel();
-  QTRY_COMPARE(count,1);
+  PUTGD_TRY_COMPARE(count,1);
   QCOMPARE(error.code,QString("cancelled"));
   const auto exit=controller.diagnostics()["lastExit"].toObject();
   QCOMPARE(exit["status"].toString(),QString("normal"));
   QCOMPARE(exit["code"].toInt(),0);
  }
  void malformedResultsSettleOnce_data(){QTest::addColumn<QByteArray>("mode");for(const char* mode:{"wrong-build","wrong-dimension","wrong-hash","duplicate","early-exit"})QTest::newRow(mode)<<QByteArray(mode);}
- void malformedResultsSettleOnce(){QFETCH(QByteArray,mode);qputenv("PUTGD_TEST_CAPTURE_MODE",mode);putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);int count=0;putgd::Error error;controller.start(snapshot(),{},[&](putgd::PayloadResult r){error=r.error;++count;});QTRY_COMPARE(count,1);QVERIFY(error);QVERIFY(!controller.busy());QTest::qWait(20);QCOMPARE(count,1);
+ void malformedResultsSettleOnce(){QFETCH(QByteArray,mode);qputenv("PUTGD_TEST_CAPTURE_MODE",mode);putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);int count=0;putgd::Error error;controller.start(snapshot(),{},[&](putgd::PayloadResult r){error=r.error;++count;});PUTGD_TRY_COMPARE(count,1);QVERIFY(error);QVERIFY(!controller.busy());putgd::test::settle(20);PUTGD_TRY_COMPARE(count,1);
   // Each resident check names itself instead of a bare capture_failed (#331).
   const QHash<QByteArray,QString> checks{{"wrong-build","ready_frame"},{"wrong-dimension","descriptor_limits"},{"wrong-hash","sha256"},{"duplicate","result_frame"}};
   // An early exit races BEGIN: either the write or the exit names it.
   if(mode=="early-exit")QVERIFY2(QStringList({"helper_exit","begin_send"}).contains(error.details["check"].toString()),qPrintable(error.details["check"].toString()));
   else QCOMPARE(error.details["check"].toString(),checks.value(mode));
   if(mode=="wrong-hash"){QCOMPARE(error.code,QString("capture_failed"));QCOMPARE(error.details["stage"].toString(),QString("resident_verify"));QCOMPARE(error.details["width"].toInt(),3);QCOMPARE(error.details["height"].toInt(),2);QVERIFY(error.message.contains("SHA-256"));}}
- void cancellationOwnsOnlyOneChildAndCompletesOnce(){qputenv("PUTGD_TEST_CAPTURE_MODE","waiting");putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);int count=0;putgd::Error error;controller.start(snapshot(),{},[&](putgd::PayloadResult r){error=r.error;++count;});QTRY_VERIFY(controller.processId()>0);QTest::qWait(30);controller.cancel();controller.cancel();QTRY_COMPARE(count,1);QCOMPARE(error.code,QString("cancelled"));QVERIFY(!controller.busy());}
+ void cancellationOwnsOnlyOneChildAndCompletesOnce(){qputenv("PUTGD_TEST_CAPTURE_MODE","waiting");putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);int count=0;putgd::Error error;controller.start(snapshot(),{},[&](putgd::PayloadResult r){error=r.error;++count;});PUTGD_TRY_VERIFY(controller.processId()>0);putgd::test::settle(30);controller.cancel();controller.cancel();PUTGD_TRY_COMPARE(count,1);QCOMPARE(error.code,QString("cancelled"));QVERIFY(!controller.busy());}
  void missingHelperCallbackCanDestroyController(){
   auto controller=std::make_unique<putgd::CaptureProcessController>("/does-not-exist-putgd-capture");
   int count=0;
@@ -428,10 +429,10 @@ private slots:
    ++count;
    controller.reset();
   });
-  QTRY_COMPARE(count,1);
+  PUTGD_TRY_COMPARE(count,1);
   QVERIFY(!controller);
-  QTest::qWait(30);
-  QCOMPARE(count,1);
+  putgd::test::settle(30);
+  PUTGD_TRY_COMPARE(count,1);
  }
  void successfulCallbackCanDestroyController(){
   auto controller=std::make_unique<putgd::CaptureProcessController>(PUTGD_CAPTURE_FIXTURE);
@@ -442,10 +443,10 @@ private slots:
    ++count;
    controller.reset();
   });
-  QTRY_COMPARE(count,1);
+  PUTGD_TRY_COMPARE(count,1);
   QVERIFY(!controller);
-  QTest::qWait(30);
-  QCOMPARE(count,1);
+  putgd::test::settle(30);
+  PUTGD_TRY_COMPARE(count,1);
  }
  void successfulCallbackCanStartNewGeneration(){
   putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);
@@ -458,7 +459,7 @@ private slots:
     ++count;
    });
   });
-  QTRY_COMPARE(count,2);
+  PUTGD_TRY_COMPARE(count,2);
   QVERIFY(!controller.busy());
   QCOMPARE(controller.diagnostics()["lastExit"].toObject()["generation"].toString(),QString("2"));
  }
@@ -467,12 +468,12 @@ private slots:
   auto controller=std::make_unique<putgd::CaptureProcessController>(PUTGD_CAPTURE_FIXTURE);
   int count=0;putgd::Error error;
   controller->start(snapshot(),{},[&](putgd::PayloadResult result){error=result.error;++count;});
-  QTRY_VERIFY(controller->processId()>0);
+  PUTGD_TRY_VERIFY(controller->processId()>0);
   controller.reset();
   QCOMPARE(count,1);
   QCOMPARE(error.code,QString("cancelled"));
-  QTest::qWait(30);
-  QCOMPARE(count,1);
+  putgd::test::settle(30);
+  PUTGD_TRY_COMPARE(count,1);
  }
  void helperEofCleansVerifiedArtifact(){
   qputenv("PUTGD_TEST_CAPTURE_MODE","waiting");
@@ -483,7 +484,7 @@ private slots:
   putgd::CaptureControl control(process);bool ready=false;connect(&control,&putgd::CaptureControl::frame,this,[&](const QString& type,const QJsonObject&){if(type=="ready")ready=true;});
   process.start(PUTGD_CAPTURE_FIXTURE,{});QVERIFY(process.waitForStarted());
   QVERIFY(control.send("bootstrap",{{"build",QJsonDocument::fromJson(putgd::buildManifestJson()).object()},{"nonce",QUuid::createUuid().toString(QUuid::WithoutBraces)},{"generation","1"},{"target",snapshot()},{"cursor",QJsonObject{{"id","0"},{"cache",false}}},{"path",path},{"device",QString::number(qulonglong(st.st_dev))},{"inode",QString::number(qulonglong(st.st_ino))},{"limits",QJsonObject{{"imagePixels",1000},{"imageBytes",4000},{"maxFileBytes",4000}}}}));
-  QTRY_VERIFY(ready);process.closeWriteChannel();QVERIFY(process.waitForFinished());QCOMPARE(process.exitStatus(),QProcess::NormalExit);QCOMPARE(process.exitCode(),3);QVERIFY(!QFile::exists(path));QVERIFY(!QDir(directory.path()).exists());
+  PUTGD_TRY_VERIFY(ready);process.closeWriteChannel();QVERIFY(process.waitForFinished());QCOMPARE(process.exitStatus(),QProcess::NormalExit);QCOMPARE(process.exitCode(),3);QVERIFY(!QFile::exists(path));QVERIFY(!QDir(directory.path()).exists());
  }
  void artifactCleanupPreservesReplacementFile(){
   QTemporaryDir directory("/tmp/putgd-capture-XXXXXX");QVERIFY(directory.isValid());const auto path=directory.filePath("result.png");
@@ -499,7 +500,7 @@ private slots:
   QVERIFY(QDir().rename(oldPath,moved));QVERIFY(QDir().mkdir(oldPath));QVERIFY(QFile::setPermissions(oldPath,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner));
   artifact.cleanup();QVERIFY(QDir(oldPath).exists());QVERIFY(QFile::exists(moved+"/result.png"));QVERIFY(QDir(moved).removeRecursively());
  }
- void missingHelperDoesNotRestart(){putgd::CaptureProcessController controller("/does-not-exist-putgd-capture");int count=0;controller.start(snapshot(),{},[&](putgd::PayloadResult r){QVERIFY(r.error);++count;});QTRY_COMPARE(count,1);QVERIFY(!controller.busy());QCOMPARE(controller.diagnostics()["lastExit"].toObject()["processId"].toInteger(),qint64(0));QVERIFY(controller.diagnostics()["lastExit"].toObject()["startTicks"].toString().isEmpty());QTest::qWait(30);QCOMPARE(count,1);}
+ void missingHelperDoesNotRestart(){putgd::CaptureProcessController controller("/does-not-exist-putgd-capture");int count=0;controller.start(snapshot(),{},[&](putgd::PayloadResult r){QVERIFY(r.error);++count;});PUTGD_TRY_COMPARE(count,1);QVERIFY(!controller.busy());QCOMPARE(controller.diagnostics()["lastExit"].toObject()["processId"].toInteger(),qint64(0));QVERIFY(controller.diagnostics()["lastExit"].toObject()["startTicks"].toString().isEmpty());putgd::test::settle(30);PUTGD_TRY_COMPARE(count,1);}
 };
 QTEST_GUILESS_MAIN(CaptureProcessTests)
 #include "test_capture_process.moc"
