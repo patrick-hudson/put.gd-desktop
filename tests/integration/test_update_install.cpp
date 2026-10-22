@@ -14,11 +14,11 @@
 #include <QtEndian>
 using namespace putgd;
 namespace {
-const QString nightly="zsync|https://app.put.gd/dl/nightly/appimage.zsync";
+const QString nightly="zsync|https://app.put.gd/dl/nightly/appimage.zsync",stable="zsync|https://app.put.gd/dl/stable/appimage.zsync";
 const QString tag="v0.1.1-nightly.801",name="putgd-0.1.1-nightly.801-x86_64.AppImage";
-QByteArray elfImage(const QByteArray& payload) {
+QByteArray elfImage(const QByteArray& payload,const QString& updateInformation=nightly) {
  const QByteArray names("\0.shstrtab\0.upd_info\0",21);
- auto info=nightly.toUtf8();info.append(QByteArray(1024-info.size(),'\0'));
+ auto info=updateInformation.toUtf8();info.append(QByteArray(1024-info.size(),'\0'));
  QByteArray header(64,'\0');
  header.replace(0,4,"\x7f""ELF");header[4]=2;header[5]=1;header[6]=1;header[8]='A';header[9]='I';header[10]=2;
  qToLittleEndian<quint64>(64+names.size()+info.size(),header.data()+0x28);
@@ -68,6 +68,8 @@ class UpdateInstallTest:public QObject {
  QTemporaryDir dir;QString images,tools,state;QByteArray path_;
  // The release signer's key for these tests.
  MinisignKey signer_;
+ // The stable channel's own key (#344).
+ MinisignKey stableSigner_{QByteArray::fromHex("a4388fb41f96a6d7")};
  const QByteArray old_=elfImage("800"),next_=elfImage("801 with changes");
  static update::Build build(){
   return update::build(QJsonObject{{"version","0.1.1-nightly.800"},{"gitCommit","528fe444b0cb0123456789abcdef0123456789ab"},{"dirty",false},{"sourceProvenance","git"}},"appimage",true);
@@ -94,7 +96,25 @@ class UpdateInstallTest:public QObject {
    "seed=$3\n/bin/cp '%1/tool.out' \"${seed%/*}/%2\"\nexit %3\n").arg(dir.path(),name).arg(code).toUtf8());
   write(dir.filePath("tool.out"),output);
  }
- InstallOptions options(const QString& method="auto") const {InstallOptions o;o.channel="nightly";o.method=method;o.stateRoot=state;o.image=image();o.caBundle="/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem";o.publicKey=signer_.publicFile();return o;}
+ InstallOptions options(const QString& method="auto") const {
+  InstallOptions o;o.channel="nightly";o.method=method;o.stateRoot=state;o.image=image();o.caBundle="/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem";
+  o.publicKeys={{"nightly",signer_.publicFile()},{"stable",stableSigner_.publicFile()}};return o;
+ }
+ // #344: a release of either channel, its SHA256SUMS signed by signer with trusted comment.
+ void release(ReleaseServer& server,const QString& channel,const QString& version,const QByteArray& served,const MinisignKey& signer,const QByteArray& trusted={},const QByteArray& listed={}) {
+  const auto releaseTag="v"+version,releaseName="putgd-"+version+"-x86_64.AppImage";const auto bytes=listed.isEmpty()?served:listed;
+  server.files["/update/v1/"+channel.toUtf8()+".json"]=QJsonDocument(QJsonObject{{"schema",1},{"channel",channel},{"release",QJsonObject{{"tag",releaseTag},{"version",version},
+   {"assets",QJsonObject{{"appimage",QJsonObject{{"name",releaseName},{"url","https://github.com/patrick-hudson/put.gd-desktop/releases/download/"+releaseTag+"/"+releaseName},{"size",bytes.size()},{"sha256",hex(bytes)}}}}}}}}).toJson();
+  const auto sums=(hex(bytes)+"  "+releaseName+"\n").toUtf8();
+  server.files["/release/"+releaseTag.toUtf8()+"/SHA256SUMS"]=sums;
+  server.files["/mirror/"+releaseTag.toUtf8()+"/SHA256SUMS.minisig"]=signer.signature(sums,trusted.isEmpty()?"put.gd "+releaseTag.toUtf8()+" "+channel.toUtf8():trusted);
+  server.files["/release/"+releaseTag.toUtf8()+"/"+releaseName.toUtf8()]=served;server.files["/mirror/"+releaseTag.toUtf8()+"/"+releaseName.toUtf8()]=served;
+  qputenv("PUTGD_UPDATE_FEED_URL",server.base()+"/update/v1");qputenv("PUTGD_UPDATE_RELEASE_URL",server.base()+"/release");qputenv("PUTGD_UPDATE_MIRROR_URL",server.base()+"/mirror");
+ }
+ InstallOptions switchTo(const QString& channel,bool allowOlder=false) const {auto o=options();o.channel=channel;o.switchChannel=true;o.allowOlder=allowOlder;return o;}
+ static update::Build buildOf(const QString& version){
+  return update::build(QJsonObject{{"version",version},{"gitCommit","528fe444b0cb0123456789abcdef0123456789ab"},{"dirty",false},{"sourceProvenance","git"}},"appimage",true);
+ }
  QStringList leftovers() const {return QDir(images).entryList({".putgd-update-*"},QDir::AllEntries|QDir::Hidden|QDir::NoDotAndDotDot);}
 private slots:
  void initTestCase(){path_=qgetenv("PATH");}
@@ -205,6 +225,53 @@ private slots:
  void onlyAppImageBuildsInstall(){
   auto deb=update::build(QJsonObject{{"version","0.1.1-nightly.800"},{"gitCommit","528fe444b0cb0123456789abcdef0123456789ab"},{"dirty",false},{"sourceProvenance","git"}},"debian13",true);
   Error error;installUpdate(deb,options(),{},error);QCOMPARE(error.code,QString("update_install_unavailable"));
+ }
+ // #344: switching channels installs the other channel's release, checked with
+ // that channel's key, trusted comment and permalink.
+ void aSwitchToStableChecksTheStableKeyAndPermalink(){
+  ReleaseServer server;const auto target=elfImage("0.1.1 stable",stable);release(server,"stable","0.1.1",target,stableSigner_);
+  Error error;const auto result=installUpdate(build(),switchTo("stable"),{},error);
+  QVERIFY2(!error,qPrintable(error.message+" "+QJsonDocument(error.details).toJson()));
+  QCOMPARE(result["switched"].toBool(),true);QCOMPARE(result["channel"].toString(),QString("stable"));QCOMPARE(result["previousChannel"].toString(),QString("nightly"));
+  QCOMPARE(result["signature"].toObject()["trustedComment"].toString(),QString("put.gd v0.1.1 stable"));
+  QCOMPARE(read(image()),target);QCOMPARE(read(result["backup"].toString()),old_);
+  const auto installed=appimage::readState(state)["installed"].toObject();
+  QCOMPARE(installed["version"].toString(),QString("0.1.1"));QCOMPARE(installed["channel"].toString(),QString("stable"));QCOMPARE(installed["previousChannel"].toString(),QString("nightly"));
+ }
+ void anotherChannelWithoutSwitchIsRefused(){
+  ReleaseServer server;release(server,"stable","0.1.1",elfImage("0.1.1 stable",stable),stableSigner_);
+  auto o=options();o.channel="stable";Error error;installUpdate(build(),o,{},error);
+  QCOMPARE(error.code,QString("update_switch_confirm_required"));QVERIFY(server.requests.isEmpty());QCOMPARE(read(image()),old_);
+ }
+ void aSwitchKeepsEveryTamperRefusal(){
+  const auto target=elfImage("0.1.1 stable",stable);
+  const auto refused=[&](ReleaseServer& server,const QString& code,const QString& check){
+   Error error;installUpdate(build(),switchTo("stable"),{},error);
+   QCOMPARE(error.code,code);QCOMPARE(error.details["check"].toString(),check);QCOMPARE(read(image()),old_);QVERIFY(leftovers().isEmpty());
+  };
+  // Signed with the nightly key (this build's own), or for the nightly channel.
+  {ReleaseServer server;release(server,"stable","0.1.1",target,signer_);refused(server,"update_signature_invalid","keyId");}
+  {ReleaseServer server;release(server,"stable","0.1.1",target,stableSigner_,"put.gd v0.1.1 nightly");refused(server,"update_signature_invalid","release");}
+  // A stable-signed image that still follows nightly's permalink is not the stable release.
+  {ReleaseServer server;release(server,"stable","0.1.1",elfImage("0.1.1 stable",nightly),stableSigner_);refused(server,"update_verification_failed","updateInformation");}
+  // A flipped byte against the signed SHA256SUMS.
+  {ReleaseServer server;auto tampered=target;tampered[tampered.size()-1]='X';release(server,"stable","0.1.1",tampered,stableSigner_,{},target);
+   auto o=switchTo("stable");o.method="download";Error error;installUpdate(build(),o,{},error);
+   QCOMPARE(error.code,QString("update_verification_failed"));QCOMPARE(error.details["check"].toString(),QString("sha256"));QCOMPARE(read(image()),old_);}
+ }
+ void anOlderTargetNeedsAllowOlder(){
+  // Stable 0.1.1 switching to nightly 0.1.1-nightly.801, which is older.
+  write(image(),elfImage("0.1.1 stable",stable));const auto target=elfImage("801 nightly",nightly);
+  ReleaseServer server;release(server,"nightly","0.1.1-nightly.801",target,signer_);
+  Error error;installUpdate(buildOf("0.1.1"),switchTo("nightly"),{},error);
+  QCOMPARE(error.code,QString("update_switch_older"));QCOMPARE(error.details["latest"].toString(),QString("0.1.1-nightly.801"));QCOMPARE(read(image()),elfImage("0.1.1 stable",stable));
+  error={};const auto result=installUpdate(buildOf("0.1.1"),switchTo("nightly",true),{},error);
+  QVERIFY2(!error,qPrintable(error.message));QCOMPARE(read(image()),target);QCOMPARE(result["previousChannel"].toString(),QString("stable"));
+ }
+ void noStableReleaseIsNothingToSwitchTo(){
+  ReleaseServer server;server.files["/update/v1/stable.json"]=R"({"schema":1,"channel":"stable","release":null})";
+  qputenv("PUTGD_UPDATE_FEED_URL",server.base()+"/update/v1");
+  Error error;installUpdate(build(),switchTo("stable"),{},error);QCOMPARE(error.code,QString("update_no_release"));QCOMPARE(read(image()),old_);
  }
 };
 QTEST_GUILESS_MAIN(UpdateInstallTest)

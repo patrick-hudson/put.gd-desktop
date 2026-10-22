@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "status": "completed",
+  "run": "/home/patrick/work/put.gd-afa2/labtree/work/lab-runs/aur-afa2b",
+  "disk": "/home/patrick/work/put.gd-afa2/labtree/work/lab-runs/aur-afa2b/disk.qcow2",
+  "diskIdentity": {
+    "device": 49,
+    "inode": 3995696,
+    "size": 517668864,
+    "mtimeNs": 1792652270532723598,
+    "ctimeNs": 1792652270532723598,
+    "allocatedBytes": 517607424
+  },
+  "base": "/home/patrick/work/put.gd/work/lab-images/aurora-stable-44.20260908.1-v3-492c3f8945d1/image.qcow2",
+  "stateSha256": "4f8662601917d80f12eb813c341136d6870450258d1cea8a310690c230e6d2a8",
+  "evidence": {
+    "manifest": "/home/patrick/work/put.gd-afa2/vm/ev-aurora3/manifest.json",
+    "sha256": "ea84f5049970f3d5de3c86bb9eec177d819ff92c379b91f30a11b1dc07b10577",
+    "runId": "eecf0b20-5cf0-47ef-824e-dbbbf7680111",
+    "mode": "explicit"
+  },
+  "preparedUtc": "2026-10-22T06:57:52.401578+00:00",
+  "completedUtc": "2026-10-22T06:57:52.492492+00:00"
+}

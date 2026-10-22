@@ -34,12 +34,14 @@ Once a day the resident asks app.put.gd for the newest version on its channel:
 | --- | --- | --- | --- | --- |
 | Stable release | stable | once per new version | **Update available: X.Y.Z** | yes |
 | Stable DEB/RPM that updates from put.gd's repository | stable | never: the system updater tells you | yes | yes, with **Open software updates** |
-| Release candidate | stable | once per new version | yes | yes |
+| Pre-#373 release candidate (`0.1.1-rc.1`, never published) | stable | once per new version | yes | yes |
 | Nightly | nightly | never | no | yes |
+| Nightly AppImage watching Stable | stable | once per new stable version, so you hear about the first one; never for the first result after you change the channel | yes, while the stable version is newer | yes, with **Switch to stable X** ([switching](#switching-channels)) |
 | Development or source build | none | no check | no | says why |
 | Flatpak | none: Flatpak updates itself | no check | no | says why |
 
-A version you already saw after **Check now** isn't announced again. The notification
+A version you already saw after **Check now** isn't announced again. put.gd remembers this per
+channel, so changing the channel neither repeats an announcement nor hides one. The notification
 also follows **Show a notification when a link is ready**.
 
 ![Settings → General → Updates and the main window rail on a nightly build, with a newer nightly available](evidence/2026-10-21-updates-293/settings-update-available-annotated.png)
@@ -65,26 +67,28 @@ On Plasma and GNOME the tray's **Update available** entry used to appear only af
 restart. [#311](https://github.com/patrick-hudson/put.gd-desktop/pull/311) fixed that
 ([evidence](evidence/2026-10-21-tray-update-visible-304/README.md)).
 
-*This build's channel* now names the channel it resolves to
-([#305](https://github.com/patrick-hudson/put.gd-desktop/issues/305),
-[evidence](evidence/2026-10-21-checkbox-channel-300-305/README.md)).
+**Channel** offers *Stable* and *Nightly* and starts on the build's own channel
+([#344](https://github.com/patrick-hudson/put.gd-desktop/issues/344); it replaced *This build's
+channel*, which named the channel it resolved to since
+[#305](https://github.com/patrick-hudson/put.gd-desktop/issues/305)).
 
 ## Settings
 
 **Settings → General → Updates**:
 
 - **Check for updates once a day:** on by default.
-- **Channel:** *This build's channel* (the default), *Stable* or *Nightly*. The first
-  choice names what it resolves to, from the build's channel in `update.status`:
-  *This build's channel (stable)* on a release or candidate, *(nightly)* on a nightly.
-  A build that never checks keeps the plain label and the section says why.
+- **Channel:** *Stable* or *Nightly*. It starts on the build's own channel: *Stable* on a
+  release, *Nightly* on a nightly. Choosing the other one watches it instead,
+  and an AppImage then offers to [switch](#switching-channels). A build that never checks
+  hides the choice and the section says why.
 - **Status:** the last result, when it was checked and when the next check runs, with
   **Check now**.
 - **Download** and **Release notes:** shown when there is a newer version.
   **Download** opens this installation's package (the same DEB, RPM or AppImage you
   installed) in your browser.
 - **Download and install** (AppImage only): shown first when a newer version is on this
-  build's channel. put.gd fetches it, checks it and puts it in place of the AppImage it
+  build's channel. While you watch the other channel it reads **Switch to CHANNEL VERSION**
+  instead ([switching](#switching-channels)). put.gd fetches it, checks it and puts it in place of the AppImage it
   runs from ([how](#download-and-install-from-putgd)). A progress bar and a line below
   show each step and any error; then **Restart put.gd** starts the new version.
 - **Open software updates:** replaces **Download** on a DEB or RPM install whose
@@ -107,12 +111,15 @@ In the configuration file this is `preferences.updates`
 ```
 
 Both keys are optional. Without the object, put.gd checks daily on this build's channel.
+`"build"` is that default: Settings stores it when you pick the build's own channel, so a DEB
+and an AppImage that share one configuration each keep following their own. Picking the
+other channel stores `"stable"` or `"nightly"`.
 
 ## Updating the AppImage
 
 ### Download and install from put.gd
 
-A tagged AppImage (stable, candidate or nightly) updates itself from **Settings → Updates →
+A tagged AppImage (stable or nightly) updates itself from **Settings → Updates →
 Download and install**, or `update.install` with `confirm: true` from the CLI or MCP. Nothing
 installs on its own: not on the daily check, not from a notification.
 
@@ -144,9 +151,9 @@ installs on its own: not on the daily check, not from a notification.
    next start of put.gd, at login for example, runs the new version too.
 
 It refuses, with the reason in Settings, while a recording or an upload runs, when the AppImage's
-folder isn't writable or has no room for another copy, when the file isn't yours, when you watch
-the other channel (switch **Channel** back to this build's), or when an installed update still
-waits for its restart. DEB and RPM installs update through their repository instead; Flatpak
+folder isn't writable or has no room for another copy, when the file isn't yours, or when an
+installed update still waits for its restart. While you watch the other channel, the same
+button switches channels instead ([below](#switching-channels)). DEB and RPM installs update through their repository instead; Flatpak
 updates itself.
 
 Accepted on Fedora 44 GNOME, Linux Mint 22.3 Cinnamon, Kubuntu 26.04 Plasma, Debian 13 Plasma and
@@ -156,7 +163,66 @@ memory unchanged within 0.2 MiB:
 
 **Going back:** if the new version doesn't start, quit put.gd and move the backup over the
 AppImage, for example
-`mv ~/Applications/.putgd-update-backup-0.1.1-nightly.N.AppImage ~/Applications/putgd-….AppImage`.
+`mv ~/Applications/.putgd-update-backup-26.1022.942-nightly.AppImage ~/Applications/putgd-….AppImage`.
+
+### Switching channels
+
+Settings → Updates → **Channel** picks which feed put.gd reads. For an AppImage that watches
+the other channel, **Download and install** becomes an explicit **Switch to CHANNEL VERSION**
+([#344](https://github.com/patrick-hudson/put.gd-desktop/issues/344)).
+
+- **Nightly → stable:** choose **Stable**. Once the stable feed names a release, Settings says
+  *"Stable 26.1101.960 is available. This is nightly 26.1105.951-nightly; switching replaces it with
+  the stable release."* and offers **Switch to stable 26.1101.960**. Versions sort by date
+  ([versioning.md](versioning.md)), so a nightly is usually newer than the latest stable
+  release, and the switch is to an older version that must be confirmed (below).
+- **No stable release yet:** Settings says *"There's no stable release yet. This nightly
+  build (VERSION) stays as it is, and doesn't get nightly updates while Stable is chosen.
+  put.gd offers the switch once the first stable release is out."* There's no button and
+  no error. `update.status` reports `install.reason: "no_release"`.
+- **Stable → nightly:** choose **Nightly**, then **Switch to nightly VERSION**.
+- **An older version:** when the other channel's release is older than this build (nightly
+  → stable once nightlies have moved to the next patch, or stable → nightly before they
+  have), the status says so, the button reads **Switch to … (older)**, and put.gd asks first:
+  an older version may not open settings or history saved by a newer one.
+
+A switch runs the [Download and install](#download-and-install-from-putgd) steps, with the
+other channel's checks:
+
+- `SHA256SUMS.minisig` must be by **that channel's** release key, and its trusted comment
+  must be `put.gd TAG CHANNEL`. A release signed by the other key is refused.
+- The new image must carry that channel's update information, the running image's with
+  `/dl/<from>/` changed to `/dl/<to>/`.
+- zsync is seeded from the running image, with the whole-file download as the fallback.
+- The new version is renamed onto the same path, the old one is kept as a hidden backup
+  until the new one has started, and **Restart put.gd** starts it.
+
+**After the switch:**
+
+- Settings says *"Switched from nightly X to stable Y … on DATE"*, and **Channel** stays on
+  the channel you chose, which is now also the build's own, so later updates install as usual.
+- **Start at login:** put.gd rewrites the login script from the new image right after the
+  switch, before any restart. Login starts the switched image, and only put.gd AppImages
+  beside it with the new channel's update information count as newer ones. Old-channel
+  copies (from AppImageLauncher or appimageupdatetool) are ignored, even when their names
+  look newer.
+- **Other updaters:** the file now embeds the new channel's permalink, so appimageupdatetool,
+  AppImageLauncher and Gear Lever follow the new channel from then on. (Gear Lever reads it at
+  each check unless you saved a custom update URL in its app details.)
+- **Notifications:** put.gd remembers the version it announced (or you saw in Settings) per
+  channel. The first result after you change the channel shows in Settings and isn't also
+  announced; the version you switched to counts as seen. Stable still announces each later
+  version once, including to a nightly AppImage that watches Stable; nightly never announces.
+
+**From an agent:** `update.status` reports `install.kind` (`update` or `switch`) and
+`install.switch` (`{from, to, version, tag, older}`). `update.install` then needs
+`{"confirm": true, "channel": "stable"}`, plus `"allowOlder": true` when `older` is true
+(MCP `install_update(confirm, channel, allow_older)`).
+
+Accepted on Fedora 44 GNOME and Linux Mint 22.3 Cinnamon with lab channels under `pkg.put.gd/lab`:
+both directions, the older-version confirmation, no stable release yet, tampered releases refused,
+start at login after a switch, and the resident's idle memory unchanged
+([evidence](evidence/2026-10-22-appimage-channel-344/README.md)).
 
 ### Other AppImage updaters
 
@@ -230,9 +296,9 @@ because FUSE mounts don't work inside `bwrap`. AppImageLauncher's updater uses t
 | `putgd-cli --check-update nightly` | The resident's child mode: one feed request and one JSON line, whose `action` says how this install updates (it reads the repository file). No resident needed |
 | `putgd-cli --open-software-updates` | The child mode behind `update.openSoftwareUpdates`: reads the repository file again and starts the updater. No resident needed |
 | `putgd-cli update.openSoftwareUpdates` | Opens the system's software updater, as **Open software updates** does. `software_updates_unavailable` when this install doesn't update from put.gd's repository (the details name why) or no updater is installed (the details carry the command) |
-| `putgd-cli update.install '{"confirm":true}'` | AppImage only: starts **Download and install** and returns `update.status` at once. `method` (`auto`, `zsync` or `download`) forces one path. Follow `install` in `update.status`: `state` (`idle`, `running`, `installed`, `failed`), `phase` (`checking`, `verifying`, `zsync`, `download`, `installing`, `done`), `method`, `bytes`, `total`, `error`, `result` (with `zsync.fallbackReason`, `backup` and the signature's trusted comment), `available`/`reason`, `restartRequired`, `installed` and `backup`. Refusals: `update_confirm_required`, `update_install_unavailable` (`not_appimage`, `not_running_from_appimage`, `other_channel`), `update_install_busy`, `update_restart_required`; the install's own errors (`update_not_available`, `update_image_not_writable`, `update_disk_full`, `update_sums_unavailable`, `update_signature_invalid`, `update_download_failed`, `update_verification_failed`, `update_zsync_failed`, `update_install_failed`) arrive in `install.error` |
+| `putgd-cli update.install '{"confirm":true}'` | AppImage only: starts **Download and install** and returns `update.status` at once. `method` (`auto`, `zsync` or `download`) forces one path. Follow `install` in `update.status`: `state` (`idle`, `running`, `installed`, `failed`), `phase` (`checking`, `verifying`, `zsync`, `download`, `installing`, `done`), `method`, `bytes`, `total`, `error`, `result` (with `zsync.fallbackReason`, `backup` and the signature's trusted comment), `available`/`reason`, `kind` (`update` or `switch`), `switch` (`{from, to, version, tag, older}`), `restartRequired`, `installed` (with `channel` and `previousChannel`) and `backup`. A switch takes `"channel"` (the watched channel) and, when `switch.older`, `"allowOlder": true`. Refusals: `update_confirm_required`, `update_install_unavailable` (`not_appimage`, `not_running_from_appimage`, `not_checked`, `no_release`), `update_install_busy`, `update_restart_required`, `update_switch_confirm_required`, `update_switch_older`; the install's own errors (`update_not_available`, `update_no_release`, `update_image_not_writable`, `update_disk_full`, `update_sums_unavailable`, `update_signature_invalid`, `update_download_failed`, `update_verification_failed`, `update_zsync_failed`, `update_install_failed`) arrive in `install.error` |
 | `putgd-cli update.restart '{"confirm":true}'` | Once an installed update waits for its restart: starts the AppImage again from the host after this resident exits, and quits it. `update_restart_unavailable` otherwise |
-| `putgd-cli --install-update nightly [--method M] [--state DIR]` | The child mode behind `update.install`: progress lines, then one result line. No resident needed; it reads `$APPIMAGE` |
+| `putgd-cli --install-update nightly [--method M] [--state DIR] [--switch [--allow-older]]` | The child mode behind `update.install`: progress lines, then one result line. No resident needed; it reads `$APPIMAGE`. Another channel than the build's needs `--switch`, and an older version `--allow-older` |
 | MCP `get_update_status`, `check_for_updates`, `open_software_updates`, `install_update`, `restart_after_update` | `update.status`, `update.check`, `update.openSoftwareUpdates`, `update.install` and `update.restart` |
 | `settings.patch` / MCP `patch_configuration` | `{"preferences": {"updates": {"check": false}}}` and so on |
 
@@ -256,12 +322,12 @@ the app.put.gd copy within about a minute of each release.
   "channel": "nightly",
   "generatedAt": "2026-10-20T18:32:24Z",
   "release": {
-    "tag": "v0.1.1-nightly.588",
-    "version": "0.1.1-nightly.588",
-    "publishedAt": "2026-10-20T05:55:50Z",
-    "notesUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v0.1.1-nightly.588",
+    "tag": "v26.1022.942-nightly",
+    "version": "26.1022.942-nightly",
+    "publishedAt": "2026-10-22T05:55:50Z",
+    "notesUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v26.1022.942-nightly",
     "assets": {
-      "debian13": {"name": "putgd-0.1.1-nightly.588-debian13-x86_64.deb", "url": "https://github.com/…", "size": 52732030, "sha256": "…"}
+      "debian13": {"name": "putgd-26.1022.942-nightly-debian13-x86_64.deb", "url": "https://github.com/…", "size": 52732030, "sha256": "…"}
     }
   }
 }
@@ -269,7 +335,16 @@ the app.put.gd copy within about a minute of each release.
 
 - **Assets:** keyed `ubuntu24.04`, `ubuntu26.04`, `debian13`, `fedora44` and `appimage`.
 - **No release:** `release` is `null` while a channel has none. Today that's stable.
-- **Version order:** within one base version, `X.Y.Z-nightly.N` < `X.Y.Z-rc.N` < `X.Y.Z`.
+- **Version order:** calendar versions `YY.MDD.N` sort by date, then commit count, and a
+  nightly sorts before the stable release with the same `YY.MDD.N` (#373,
+  [versioning.md](versioning.md)). Every calendar version sorts after every pre-#373
+  `0.1.1[-rc.N|-nightly.N]`.
+- **Builds from before #373:** a `0.1.1-nightly.N` build can't read a calendar version, so
+  once its feed names one, its check reports `update_feed_invalid` ("The update feed names
+  an invalid version for its channel"), and it can't install the update in-app. apt, dnf
+  and the zsync updaters (appimageupdatetool, Gear Lever, AppImageLauncher) still upgrade
+  it, because they don't parse put.gd's versions; after that, in-app updates work again.
+  The lab acceptance shows both sides ([evidence](evidence/2026-10-22-calver-373/README.md)).
 - **Checks the client makes:** a stable feed may name only stable versions and a
   nightly feed only nightlies. The tag must be `v` + version. Any other `schema` is
   rejected, and so is a feed over 256 KiB.
@@ -295,7 +370,7 @@ Two CMake cache variables decide whether a build checks:
   builds add this repository, and the app recognises it in the repository file. Lab builds
   set `https://pkg.put.gd/lab`.
 
-Only clean tagged builds (stable, candidate or nightly) have a channel. Every other
+Only clean tagged builds (stable or nightly, and the pre-#373 candidate) have a channel. Every other
 build reports `development_build` or `no_package` and never checks.
 
 ## Later phases (#293)

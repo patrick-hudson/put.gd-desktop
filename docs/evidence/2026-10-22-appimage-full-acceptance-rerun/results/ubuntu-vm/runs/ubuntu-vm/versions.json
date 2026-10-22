@@ -1,0 +1,45 @@
+{
+ "os": "Ubuntu 26.04.1 LTS",
+ "osVersionId": "26.04",
+ "kernel": "7.0.0-38-generic",
+ "host": "putgd-ubuntu-lab",
+ "sessionProcess": "gnome-shell",
+ "graphicalSessions": [
+  {
+   "Seat": "seat0",
+   "Service": "gdm-autologin",
+   "Desktop": "",
+   "Leader": "1279",
+   "Type": "wayland",
+   "Class": "user",
+   "State": "active",
+   "Id": "1"
+  }
+ ],
+ "shellSession": "0::/user.slice/user-1000.slice/user@1000.service/session.slice/org.gnome.Shell@ubuntu.service",
+ "envSessionType": "wayland",
+ "currentDesktop": "ubuntu:GNOME",
+ "gnome-shell": [
+  "GNOME Shell 50.1"
+ ],
+ "packages": {
+  "gnome-shell": "50.1-0ubuntu1.2",
+  "xwayland": "2:24.1.10-1",
+  "libqt6core6t64": "6.10.2+dfsg-7",
+  "xdg-desktop-portal": "1.21.1+ds-1ubuntu3.1",
+  "xdg-desktop-portal-gnome": "50.0-0ubuntu1",
+  "xdg-desktop-portal-gtk": "1.15.3-2ubuntu1",
+  "pipewire": "1.6.2-1ubuntu1.1",
+  "libpipewire-0.3-0t64": "1.6.2-1ubuntu1.1",
+  "fuse3": "3.18.2-1",
+  "libmutter-18-0": "50.1-0ubuntu2.2"
+ },
+ "gpu": [
+  "00:01.0 VGA compatible controller: Red Hat, Inc. Virtio 1.0 GPU (rev 01)"
+ ],
+ "fuse": {
+  "fusermount": true,
+  "fusermount3": true
+ },
+ "libfuse2": false
+}

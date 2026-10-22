@@ -58,7 +58,7 @@ file(COPY "${REPO_ROOT}/cmake/BuildVersion.cmake" "${REPO_ROOT}/cmake/GenerateBu
 file(COPY "${REPO_ROOT}/src/core/BuildInfo.h" DESTINATION "${TEST_ROOT}/source/src/core")
 file(WRITE "${TEST_ROOT}/source/CMakeLists.txt" [=[
 cmake_minimum_required(VERSION 3.24)
-project(version_fixture VERSION 0.1.1 LANGUAGES CXX)
+project(version_fixture LANGUAGES CXX)
 include(GNUInstallDirs)
 include(cmake/BuildVersion.cmake)
 include(cmake/InstallPackageSnapshot.cmake)
@@ -100,6 +100,10 @@ set(build "${TEST_ROOT}/build")
 set(first_asset "// Synthetic runtime asset from the built revision.\n")
 set(second_asset "// Synthetic runtime asset from the next revision.\n")
 file(WRITE "${source}/runtime-asset.js" "${first_asset}")
+# Calendar versions (#373) come from the commit's UTC date: pin it. 23:30 at
+# -05:00 is October 22 in UTC, so the fixture's versions are 26.1022.N.
+set(ENV{GIT_AUTHOR_DATE} "2026-10-21T23:30:00-0500")
+set(ENV{GIT_COMMITTER_DATE} "2026-10-21T23:30:00-0500")
 run("${GIT_EXECUTABLE}" -C "${source}" init -q)
 run("${GIT_EXECUTABLE}" -C "${source}" config user.name "Version contract")
 run("${GIT_EXECUTABLE}" -C "${source}" config user.email "version@example.invalid")
@@ -119,21 +123,23 @@ run("${CMAKE_COMMAND}" --build "${build}" --parallel 1)
 read_manifest(second)
 check_json("${second}" commitCount 2)
 string(JSON second_version GET "${second}" version)
+string(JSON second_commit GET "${second}" gitCommit)
+string(SUBSTRING "${second_commit}" 0 12 second_short)
 if(first_version STREQUAL second_version)
   message(FATAL_ERROR "An incremental build kept the previous commit's version")
 endif()
 check_binaries("${build}" "${second}")
 # Release identity is explicit: a tag never changes the default development build.
-run("${GIT_EXECUTABLE}" -C "${source}" tag v0.1.1-rc.2)
-run("${GIT_EXECUTABLE}" -C "${source}" tag v0.1.1-rc.10)
-run("${GIT_EXECUTABLE}" -C "${source}" tag -a v0.1.1 -m "Synthetic stable release")
+check_json("${second}" baseVersion 26.1022.2)
+check_json("${second}" version "26.1022.2-dev+g${second_short}")
+run("${GIT_EXECUTABLE}" -C "${source}" tag -a v26.1022.2 -m "Synthetic stable release")
 set(release_build "${TEST_ROOT}/release-build")
 run("${CMAKE_COMMAND}" -S "${source}" -B "${release_build}" -G Ninja
-  -DPUTGD_RELEASE_TAG=v0.1.1-rc.2)
+  -DPUTGD_RELEASE_TAG=v26.1022.2)
 run("${CMAKE_COMMAND}" --build "${release_build}" --parallel 1)
 file(READ "${release_build}/build-identity/build-info.json" release_manifest)
-check_json("${release_manifest}" version 0.1.1-rc.2)
-check_json("${release_manifest}" packageVersion 0.1.1~rc.2)
+check_json("${release_manifest}" version 26.1022.2)
+check_json("${release_manifest}" packageVersion 26.1022.2)
 check_json("${release_manifest}" sourceProvenance git)
 check_json("${release_manifest}" dirty OFF)
 check_json("${release_manifest}" commitCount 2)
@@ -144,19 +150,19 @@ run("${CMAKE_CPACK_COMMAND}" --config "${release_build}/CPackConfig.cmake" -G TG
 # RPM archive construction and metadata are verified by the release packaging job.
 file(WRITE "${TEST_ROOT}/release-package-versions.cmake"
   "include(\"${release_build}/package-identity.cmake\")\n"
-  "if(NOT CPACK_DEBIAN_PACKAGE_VERSION STREQUAL \"0.1.1~rc.2\" OR NOT CPACK_RPM_PACKAGE_VERSION STREQUAL \"0.1.1~rc.2\" OR NOT CPACK_RPM_PACKAGE_RELEASE STREQUAL \"1\")\n"
+  "if(NOT CPACK_DEBIAN_PACKAGE_VERSION STREQUAL \"26.1022.2\" OR NOT CPACK_RPM_PACKAGE_VERSION STREQUAL \"26.1022.2\" OR NOT CPACK_RPM_PACKAGE_RELEASE STREQUAL \"1\")\n"
   "  message(FATAL_ERROR \"Native package versions differ from tagged release identity\")\nendif()\n")
 run("${CMAKE_COMMAND}" -P "${TEST_ROOT}/release-package-versions.cmake")
 function(release_identity tag expected_version expected_package)
   run("${CMAKE_COMMAND}" "-DSOURCE_DIR=${source}" "-DOUTPUT_DIR=${TEST_ROOT}/tag-identity"
-    -DBASE_VERSION=0.1.1 "-DRELEASE_TAG=${tag}" -P "${source}/cmake/GenerateBuildInfo.cmake")
+    "-DRELEASE_TAG=${tag}" -P "${source}/cmake/GenerateBuildInfo.cmake")
   file(READ "${TEST_ROOT}/tag-identity/build-info.json" identity)
   check_json("${identity}" version "${expected_version}")
   check_json("${identity}" packageVersion "${expected_package}")
 endfunction()
 function(reject_release tag expected_error)
   execute_process(COMMAND "${CMAKE_COMMAND}" "-DSOURCE_DIR=${source}"
-    "-DOUTPUT_DIR=${TEST_ROOT}/rejected-tag" -DBASE_VERSION=0.1.1 "-DRELEASE_TAG=${tag}"
+    "-DOUTPUT_DIR=${TEST_ROOT}/rejected-tag" "-DRELEASE_TAG=${tag}"
     -P "${source}/cmake/GenerateBuildInfo.cmake"
     RESULT_VARIABLE code OUTPUT_VARIABLE out ERROR_VARIABLE err)
   string(MAKE_C_IDENTIFIER "${tag}-${expected_error}" log_name)
@@ -165,14 +171,13 @@ function(reject_release tag expected_error)
     message(FATAL_ERROR "Release ${tag} did not reject ${expected_error}: ${out}\n${err}")
   endif()
 endfunction()
-release_identity(v0.1.1-rc.10 0.1.1-rc.10 0.1.1~rc.10)
-release_identity(v0.1.1 0.1.1 0.1.1)
+release_identity(v26.1022.2 26.1022.2 26.1022.2)
 # Tagged nightlies retain the full clean source identity in every product helper.
-# The nightly number is the source's full-history commit count (2 here).
+# N is the source's full-history commit count (2 here).
 string(JSON nightly_commit GET "${second}" gitCommit)
-set(nightly_tag "v0.1.1-nightly.2")
-set(nightly_version "0.1.1-nightly.2")
-set(nightly_package "0.1.1~nightly.2")
+set(nightly_tag "v26.1022.2-nightly")
+set(nightly_version "26.1022.2-nightly")
+set(nightly_package "26.1022.2~nightly")
 run("${GIT_EXECUTABLE}" -C "${source}" tag "${nightly_tag}")
 release_identity("${nightly_tag}" "${nightly_version}" "${nightly_package}")
 set(nightly_build "${TEST_ROOT}/nightly-build")
@@ -193,18 +198,20 @@ if(NOT installed_nightly STREQUAL nightly_manifest)
   message(FATAL_ERROR "Installed nightly manifest differs from compiled identity")
 endif()
 check_binaries("${TEST_ROOT}/nightly-installed/bin" "${nightly_manifest}")
-foreach(invalid_tag v0.1.1-rc.0 v0.1.1-rc.02 v00.1.1 v0.1.1-beta.1 v0.1.1+build
-    v0.1.1-nightly v0.1.1-nightly.0 v0.1.1-nightly.02 v0.1.1-nightly.2+g0123456789ab
-    v0.1.1-dev.2.20261012030405+g0123456789ab)
+# Candidates ended with #373; pre-#373 tags are never cut again.
+foreach(invalid_tag v26.1022.2-rc v26.1022.2-rc.1 v26.01022.2 v26.1022.02 v026.1022.2 v26.1022.0
+    v26.1022.2+build v26.1022.2-nightly.2 v26.1022.2-nightly+g0123456789ab v26.1022.2-Nightly
+    v0.1.1 v0.1.1-rc.2 v0.1.1-nightly.2 v0.1.1-dev.2.20261012030405+g0123456789ab)
   reject_release("${invalid_tag}" "Invalid release tag")
 endforeach()
-run("${GIT_EXECUTABLE}" -C "${source}" tag v0.1.1-nightly.3)
-reject_release(v0.1.1-nightly.3 "must equal the source HEAD commit count")
-run("${GIT_EXECUTABLE}" -C "${source}" tag v0.1.2)
-reject_release(v0.1.2 "does not match project base version")
-reject_release(v0.1.1-rc.3 "does not identify the current commit")
-run("${GIT_EXECUTABLE}" -C "${source}" tag -f v0.1.1-rc.2 HEAD~1)
-reject_release(v0.1.1-rc.2 "does not identify the current commit")
+# The tag must name this commit's UTC date and count: not the local date, not another count.
+foreach(other_tag v26.1022.3-nightly v26.1021.2-nightly v26.1021.2)
+  run("${GIT_EXECUTABLE}" -C "${source}" tag "${other_tag}")
+  reject_release("${other_tag}" "Release tag must be v26[.]1022[.]2 or v26[.]1022[.]2-nightly")
+endforeach()
+run("${GIT_EXECUTABLE}" -C "${source}" tag -f v26.1022.2 HEAD~1)
+reject_release(v26.1022.2 "does not identify the current commit")
+run("${GIT_EXECUTABLE}" -C "${source}" tag -f v26.1022.2 HEAD)
 # Tag selection does not change the existing untagged incremental identity.
 run("${CMAKE_COMMAND}" --build "${build}" --parallel 1)
 read_manifest(tagged_development)
@@ -213,15 +220,17 @@ if(NOT tagged_development STREQUAL second)
 endif()
 find_program(dpkg_compare dpkg)
 if(dpkg_compare)
-  run("${dpkg_compare}" --compare-versions 0.1.1~dev.2 lt 0.1.1~rc.2)
-  run("${dpkg_compare}" --compare-versions 0.1.1~rc.2 lt 0.1.1~rc.10)
-  run("${dpkg_compare}" --compare-versions 0.1.1~rc.10 lt 0.1.1)
+  run("${dpkg_compare}" --compare-versions 0.1.1~nightly.925 lt 26.1022.2~dev+g0123456789ab)
+  run("${dpkg_compare}" --compare-versions 26.1022.2~dev+g0123456789ab lt 26.1022.2~nightly)
+  run("${dpkg_compare}" --compare-versions 26.1022.2~nightly lt 26.1022.2)
+  run("${dpkg_compare}" --compare-versions 26.1022.2 lt 26.1022.3~nightly)
+  run("${dpkg_compare}" --compare-versions 26.1022.999 lt 26.1023.3~nightly)
 endif()
 file(APPEND "${source}/main.cpp" "\n// Synthetic uncommitted edit.\n")
 run("${CMAKE_COMMAND}" --build "${build}" --parallel 1)
 read_manifest(dirty)
 check_json("${dirty}" dirty ON)
-reject_release(v0.1.1 "requires a clean Git checkout")
+reject_release(v26.1022.2 "requires a clean Git checkout")
 string(JSON dirty_version GET "${dirty}" version)
 if(NOT dirty_version MATCHES "[.]dirty$")
   message(FATAL_ERROR "Dirty build is not marked in its version")
@@ -230,11 +239,11 @@ endif()
 file(WRITE "${source}/runtime-asset.js" "${second_asset}")
 run("${GIT_EXECUTABLE}" -C "${source}" add main.cpp runtime-asset.js)
 run("${GIT_EXECUTABLE}" -C "${source}" commit -qm "Third synthetic commit")
-# Reusing a release label cannot hide mixed commits. Both binaries advertise
-# rc.2, but an older resident must fail the compiled-manifest check.
-run("${GIT_EXECUTABLE}" -C "${source}" tag -f v0.1.1-rc.2 HEAD)
+# A release build cannot mix commits: after the third commit's release is
+# configured in the same tree, an older resident must fail the compiled-manifest check.
+run("${GIT_EXECUTABLE}" -C "${source}" tag v26.1022.3 HEAD)
 run("${CMAKE_COMMAND}" -S "${source}" -B "${release_build}" -G Ninja
-  -DPUTGD_RELEASE_TAG=v0.1.1-rc.2)
+  -DPUTGD_RELEASE_TAG=v26.1022.3)
 run("${CMAKE_COMMAND}" --build "${release_build}" --target putgd-cli --parallel 1)
 execute_process(COMMAND "${CMAKE_COMMAND}" --install "${release_build}"
   --prefix "${TEST_ROOT}/mixed-release-install"
@@ -374,19 +383,24 @@ endif()
 file(ARCHIVE_EXTRACT INPUT "${TEST_ROOT}/source.tar" DESTINATION "${TEST_ROOT}/archive")
 execute_process(COMMAND "${GIT_EXECUTABLE}" -C "${source}" rev-parse HEAD OUTPUT_VARIABLE commit OUTPUT_STRIP_TRAILING_WHITESPACE)
 execute_process(COMMAND "${GIT_EXECUTABLE}" -C "${source}" rev-parse "HEAD^{tree}" OUTPUT_VARIABLE tree OUTPUT_STRIP_TRAILING_WHITESPACE)
+execute_process(COMMAND "${GIT_EXECUTABLE}" -C "${source}" show -s --format=%ct HEAD OUTPUT_VARIABLE time OUTPUT_STRIP_TRAILING_WHITESPACE)
 run("${CMAKE_COMMAND}" -S "${TEST_ROOT}/archive" -B "${TEST_ROOT}/archive-build" -G Ninja
-  "-DPUTGD_SOURCE_COMMIT=${commit}" "-DPUTGD_SOURCE_TREE=${tree}" -DPUTGD_SOURCE_COMMIT_COUNT=3)
+  "-DPUTGD_SOURCE_COMMIT=${commit}" "-DPUTGD_SOURCE_TREE=${tree}" -DPUTGD_SOURCE_COMMIT_COUNT=3
+  "-DPUTGD_SOURCE_COMMIT_TIME=${time}")
 run("${CMAKE_COMMAND}" --build "${TEST_ROOT}/archive-build" --parallel 1)
 file(READ "${TEST_ROOT}/archive-build/build-identity/build-info.json" supplied)
 check_json("${supplied}" sourceProvenance supplied)
 check_json("${supplied}" gitCommit "${commit}")
 check_json("${supplied}" gitTree "${tree}")
+string(SUBSTRING "${commit}" 0 12 short)
+check_json("${supplied}" version "26.1022.3-dev+g${short}")
+check_json("${supplied}" baseVersion 26.1022.3)
 run("${CMAKE_COMMAND}" -S "${TEST_ROOT}/archive" -B "${TEST_ROOT}/unknown-build" -G Ninja)
 file(READ "${TEST_ROOT}/unknown-build/build-identity/build-info.json" unknown)
 check_json("${unknown}" sourceProvenance unknown)
-check_json("${unknown}" version 0.1.1-dev.unknown)
+check_json("${unknown}" version 0.0.0-dev.unknown)
 execute_process(COMMAND "${CMAKE_COMMAND}" "-DSOURCE_DIR=${TEST_ROOT}/archive"
-  "-DOUTPUT_DIR=${TEST_ROOT}/archive-release" -DBASE_VERSION=0.1.1 -DRELEASE_TAG=v0.1.1
+  "-DOUTPUT_DIR=${TEST_ROOT}/archive-release" -DRELEASE_TAG=v26.1022.3
   -P "${TEST_ROOT}/archive/cmake/GenerateBuildInfo.cmake"
   RESULT_VARIABLE archive_release OUTPUT_VARIABLE out ERROR_VARIABLE err)
 file(WRITE "${TEST_ROOT}/archive-release.log" "exit=${archive_release}\n${out}\n${err}")
@@ -396,6 +410,7 @@ endif()
 
 execute_process(COMMAND "${CMAKE_COMMAND}" -S "${TEST_ROOT}/archive" -B "${TEST_ROOT}/invalid-build" -G Ninja
   -DPUTGD_SOURCE_COMMIT=not-a-commit "-DPUTGD_SOURCE_TREE=${tree}" -DPUTGD_SOURCE_COMMIT_COUNT=3
+  "-DPUTGD_SOURCE_COMMIT_TIME=${time}"
   RESULT_VARIABLE invalid OUTPUT_VARIABLE out ERROR_VARIABLE err)
 if(invalid EQUAL 0 OR NOT "${out}${err}" MATCHES "Invalid supplied source provenance")
   message(FATAL_ERROR "Invalid archive provenance was accepted: ${out}\n${err}")
@@ -422,10 +437,12 @@ if(EXISTS "${TEST_ROOT}/x11-only-installed/bin/putgd-kde-region")
   message(FATAL_ERROR "X11-only installation unexpectedly contains KDE helper")
 endif()
 run("${CMAKE_CPACK_COMMAND}" --config "${x11_build}/CPackConfig.cmake" -G TGZ -B "${TEST_ROOT}/x11-only-package")
-message(STATUS "Version contract passed: exact clean release tags, native package ordering, product executable identities, stale UI/KDE/X11 helper rejection, absent-helper builds, commits, dirty state, package snapshots and source archives")
+message(STATUS "Version contract passed: exact clean calendar release tags, native package ordering, product executable identities, stale UI/KDE/X11 helper rejection, absent-helper builds, commits, dirty state, package snapshots and source archives")
 
 # One case table drives the real Python verifier and normal CMake identity script,
 # with fresh private Git fixtures. RPM comparisons run when rpm is installed.
 find_program(PYTHON_EXECUTABLE python3 REQUIRED)
+unset(ENV{GIT_AUTHOR_DATE})
+unset(ENV{GIT_COMMITTER_DATE})
 run("${CMAKE_COMMAND}" -E env PYTHONDONTWRITEBYTECODE=1 "${PYTHON_EXECUTABLE}"
   "${REPO_ROOT}/tests/releases/test_verify_tag.py" -v)

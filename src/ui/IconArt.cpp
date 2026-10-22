@@ -174,9 +174,6 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
  } else if(name=="remove") {
   fill(secondary);QPainterPath bin;bin.moveTo(5.5,8);bin.lineTo(18.5,8);bin.lineTo(17.2,21);bin.quadTo(17,22,16,22);bin.lineTo(8,22);bin.quadTo(7,22,6.8,21);bin.closeSubpath();p.drawPath(bin);
   fill(color);rounded(3,5,18,2.5,1);rounded(9,2,6,3.5,1);line(color,1.6);p.drawLine(QPointF(10,11),QPointF(10.4,19));p.drawLine(QPointF(14,11),QPointF(13.6,19));
- } else if(name=="activity") {
-  fill(secondary);rounded(2,2,20,20,4);line(color);QPainterPath pulse;
-  pulse.moveTo(4,13);pulse.lineTo(7,13);pulse.lineTo(10,6);pulse.lineTo(14,19);pulse.lineTo(17,11);pulse.lineTo(20,11);p.drawPath(pulse);
  } else {
   fill(secondary);QPainterPath file;file.moveTo(5,2);file.lineTo(14,2);file.lineTo(20,8);file.lineTo(20,20);file.quadTo(20,22,18,22);file.lineTo(6,22);file.quadTo(4,22,4,20);file.lineTo(4,4);file.quadTo(4,2,5,2);p.drawPath(file);
   fill(color);QPainterPath fold;fold.moveTo(14,2);fold.lineTo(14,8);fold.lineTo(20,8);fold.closeSubpath();p.drawPath(fold);

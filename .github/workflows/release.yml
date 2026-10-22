@@ -1,20 +1,15 @@
 name: Release
-# Every push to main (a promotion from nightly, or a hotfix) cuts the next
-# release candidate vBASE-rc.N. Run manually with channel=stable on a candidate
-# commit to cut vBASE. Both stage a GitHub draft only; publication stays manual
-# after exact-asset acceptance (tools/releases/publish.py --publish --acceptance).
+# Every push to main (a promotion from nightly, or a hotfix) tags the stable
+# release vYY.MDD.N, main HEAD's UTC commit date and commit count (#373), and
+# stages its GitHub draft; a manual run repeats that for main HEAD, reusing its
+# tag. Publication stays manual after exact-asset acceptance
+# (tools/releases/publish.py --publish --acceptance).
 # Nothing here is public, so the put.gd-site notification that nightly.yml
 # sends after publishing is not sent from this run (issue #178).
 on:
   push:
     branches: [main]
   workflow_dispatch:
-    inputs:
-      channel:
-        description: candidate cuts the next vBASE-rc.N; stable cuts vBASE on a candidate commit
-        type: choice
-        options: [candidate, stable]
-        default: candidate
 permissions:
   contents: read
 concurrency:
@@ -38,8 +33,7 @@ jobs:
         id: tag
         env:
           GH_TOKEN: ${{ github.token }}
-          CHANNEL: ${{ inputs.channel || 'candidate' }}
-        run: python3 tools/releases/release_tag.py --channel "$CHANNEL" --output "$RUNNER_TEMP/release-tag.json"
+        run: python3 tools/releases/release_tag.py --output "$RUNNER_TEMP/release-tag.json"
       - name: Retain the tag decision
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -86,19 +80,14 @@ jobs:
         run: python3 tools/releases/publish.py --tag "$TAG" --directory build/publish
       - name: Summarize next steps
         run: |
-          base="${TAG%%-rc.*}"
           {
             echo "Staged draft $CHANNEL release \`$TAG\`: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases"
             echo
             echo "1. Run exact-asset acceptance on the draft downloads (docs/release.md)."
             echo "2. Publish: \`gh release download $TAG -D build/publish\`, check out \`$TAG\`, then"
             echo "   \`python3 tools/releases/publish.py --tag $TAG --directory build/publish --publish --acceptance RECEIPT\`."
-            if [ "$CHANNEL" = candidate ]; then
-              echo "3. When this candidate is accepted, run Release with channel=stable to cut \`$base\` on this commit."
-            else
-              echo "3. Open a pull request into nightly that bumps project(putgd VERSION) past \`${TAG#v}\`."
-              echo "   Nightlies stay paused until it merges."
-            fi
+            echo "3. Name the CHANGELOG.md section: \`python3 tools/releases/promote.py --finalize $TAG --open\`."
+            echo "If acceptance fails, fix it on nightly and promote again: the next merge is a new version."
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Retain staging evidence
         if: always()

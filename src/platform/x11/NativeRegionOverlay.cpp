@@ -16,6 +16,11 @@
 namespace putgd {
 namespace {
 Error unavailable(){return {"capture_unavailable","Cannot initialize region selection",{}};}
+// The capture helper protocol carries this reason to the notification.
+Error inputHeld(int waited,int attempts,bool pointer,bool keyboard){
+ return {"capture_unavailable","Region selection could not start: an open menu or another app is holding the keyboard or mouse. Close it, then try again.",{{"stage","select"},{"check","input_grab"},{"waitedMs",waited},{"attempts",attempts},{"pointerHeld",pointer},{"keyboardHeld",keyboard}}};
+}
+bool held(uint8_t status){return status==XCB_GRAB_STATUS_ALREADY_GRABBED||status==XCB_GRAB_STATUS_FROZEN;}
 bool nativeGeometry(const QRect& r){
  // Core input reports signed16 root coordinates; core drawing also uses
  // signed16 local origins. Both complete rectangles must be representable.
@@ -121,14 +126,35 @@ void NativeRegionOverlay::initializeSurfaces(){
  // pre-grab parent input and subsequent child-grab input are delivered to this
  // same connection, preserving event order without a Qt logical-input fallback.
  for(const auto& surface:surfaces_)xcb_map_window(connection_,surface.window);
+ grabClock_.start();
+ grabInput();
+}
+void NativeRegionOverlay::grabInput(){
+ if(finished_)return;
+ ++grabAttempts_;
+ const auto input=xcb_window_t(cursorWindow_->winId());
  const auto pointerCookie=xcb_grab_pointer(connection_,false,input,XCB_EVENT_MASK_BUTTON_PRESS|XCB_EVENT_MASK_BUTTON_RELEASE|XCB_EVENT_MASK_POINTER_MOTION,XCB_GRAB_MODE_ASYNC,XCB_GRAB_MODE_ASYNC,XCB_WINDOW_NONE,residentCursor_,XCB_CURRENT_TIME);
  const auto keyboardCookie=xcb_grab_keyboard(connection_,false,input,XCB_CURRENT_TIME,XCB_GRAB_MODE_ASYNC,XCB_GRAB_MODE_ASYNC);
  xcb_flush(connection_);
  auto* pointer=xcb_grab_pointer_reply(connection_,pointerCookie,nullptr);
- pointerGrabbed_=pointer&&pointer->status==XCB_GRAB_STATUS_SUCCESS;std::free(pointer);
+ const uint8_t pointerStatus=pointer?pointer->status:uint8_t(XCB_GRAB_STATUS_INVALID_TIME);std::free(pointer);
  auto* keyboard=xcb_grab_keyboard_reply(connection_,keyboardCookie,nullptr);
- keyboardGrabbed_=keyboard&&keyboard->status==XCB_GRAB_STATUS_SUCCESS;std::free(keyboard);
- if(!pointerGrabbed_||!keyboardGrabbed_){cancel(unavailable());return;}
+ const uint8_t keyboardStatus=keyboard?keyboard->status:uint8_t(XCB_GRAB_STATUS_INVALID_TIME);std::free(keyboard);
+ pointerGrabbed_=pointerStatus==XCB_GRAB_STATUS_SUCCESS;keyboardGrabbed_=keyboardStatus==XCB_GRAB_STATUS_SUCCESS;
+ if(!pointerGrabbed_||!keyboardGrabbed_){
+  // An open menu holds both grabs. Release a partial grab so a click or Esc
+  // still reaches the menu and closes it, then retry for a bounded time.
+  if(pointerGrabbed_)xcb_ungrab_pointer(connection_,XCB_CURRENT_TIME);
+  if(keyboardGrabbed_)xcb_ungrab_keyboard(connection_,XCB_CURRENT_TIME);
+  pointerGrabbed_=keyboardGrabbed_=false;xcb_flush(connection_);
+  const bool busy=(pointerStatus==XCB_GRAB_STATUS_SUCCESS||held(pointerStatus))&&(keyboardStatus==XCB_GRAB_STATUS_SUCCESS||held(keyboardStatus));
+  if(!busy){cancel(unavailable());return;}
+  const int waited=int(grabClock_.elapsed());
+  if(waited>=grabWaitMs){cancel(inputHeld(waited,grabAttempts_,held(pointerStatus),held(keyboardStatus)));return;}
+  QPointer<NativeRegionOverlay> guard(this);
+  QTimer::singleShot(grabRetryMs,this,[guard]{if(guard)guard->grabInput();});
+  return;
+ }
  notifier_=new QSocketNotifier(xcb_get_file_descriptor(connection_),QSocketNotifier::Read,this);
  connect(notifier_,&QSocketNotifier::activated,this,[this]{events();});
  // Replies above may already have buffered events; do not depend on another

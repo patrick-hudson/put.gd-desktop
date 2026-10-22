@@ -8,7 +8,7 @@ Update Manager, Discover and GNOME Software install new versions. This is phase 
 
 ## What the packages add
 
-Only tagged builds (nightly, candidate and stable) add a repository, and each trusts only
+Only tagged builds (nightly and stable, and the pre-#373 candidate) add a repository, and each trusts only
 its own channel's key. Candidates follow stable. Development and source builds add
 nothing.
 
@@ -126,7 +126,7 @@ journalctl --user -u putgd-signer.service -n 50
 python3 ~/putgd-signer/src/tools/releases/pkgrepo.py status
 ```
 
-- **Lab scope:** `pkgrepo.py publish-local --tag vX.Y.Z-nightly.N --assets DIR` publishes locally built, tagged packages under `pkg.put.gd/lab/`. They're signed by the same nightly key, and nothing goes into the live paths. Lab packages are built with `-DPUTGD_PACKAGE_REPOSITORY_URL=https://pkg.put.gd/lab`.
+- **Lab scope:** `pkgrepo.py publish-local --tag vYY.MDD.N-nightly --assets DIR` publishes locally built, tagged packages under `pkg.put.gd/lab/`. They're signed by the same nightly key, and nothing goes into the live paths. Lab packages are built with `-DPUTGD_PACKAGE_REPOSITORY_URL=https://pkg.put.gd/lab`.
 - **Failures:** a verification failure writes `receipts/<scope>/<tag>.failed.json` and changes nothing. The next run retries, because a signer outage only delays repository updates.
 
 ## Stable publication
@@ -138,7 +138,7 @@ The stable key never leaves the workstation, so stable releases are signed in tw
 **Then, on the workstation, after `publish.py --publish`:**
 
 ```sh
-python3 tools/releases/sign_stable.py --tag vX.Y.Z
+python3 tools/releases/sign_stable.py --tag vYY.MDD.N
 ```
 
 The script:
@@ -150,7 +150,7 @@ The script:
 
 The signer's next run checks them against the stable public keys, regenerates the repodata and publishes. The workstation needs `gpg`, `minisign`, `rpmsign` and `gh`.
 
-**Once, before the first stable or candidate package exists,** create empty stable repositories so a stable package never points at a missing suite:
+**Once, before the first stable package exists,** create empty stable repositories so a stable package never points at a missing suite:
 
 ```sh
 python3 ~/putgd-signer/src/tools/releases/pkgrepo.py init-stable   # on d69

@@ -20,7 +20,7 @@ class SourceBuild(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
         self.identity = {'gitCommit': 'a' * 40, 'gitTree': 'b' * 40, 'commitCount': 7}
-        self.manifest = {**self.identity, 'sourceProvenance': 'supplied', 'version': '0.1.1-dev.7+gaaaaaaaaaaaa'}
+        self.manifest = {**self.identity, 'sourceProvenance': 'supplied', 'version': '26.1022.7-dev+gaaaaaaaaaaaa'}
         self.helper = b'#!/usr/bin/env python3\nimport json\nprint(json.dumps({"runtime":"synthetic-proton"}))\n'
         provisioner = '''import hashlib, json, pathlib, sys
 output = pathlib.Path('build/dependencies/proton-runtime')
@@ -40,7 +40,7 @@ helper = %r
         self.receipt = self.root / 'source-archive.json'
         self.receipt.write_text(json.dumps({'format': 'source.tar.gz', 'artifact': {
             'file': archive.name, 'sha256': hashlib.sha256(archive.read_bytes()).hexdigest(),
-            'bytes': archive.stat().st_size}, 'archiveRoot': 'source', 'identity': self.identity,
+            'bytes': archive.stat().st_size}, 'archiveRoot': 'source', 'identity': self.identity, 'timestamp': 1792639800,
             'localBuild': {'version': self.manifest['version']}}))
         self.bin = self.root / 'bin'
         self.bin.mkdir()

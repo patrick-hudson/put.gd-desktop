@@ -1,0 +1,27 @@
+{
+ "label": "f44-leftclick",
+ "components": [
+  {
+   "blocks": 1838,
+   "box": [
+    1584,
+    0,
+    1832,
+    504
+   ]
+  }
+ ],
+ "colour": [
+  52,
+  52,
+  56
+ ],
+ "inner": [
+  1591,
+  39,
+  1825,
+  496
+ ],
+ "changedShare": 1.0,
+ "themeShare": 0.007
+}

@@ -1,0 +1,21 @@
+{
+ "storedChannel": "build",
+ "status": {
+  "channel": "nightly",
+  "channelSetting": "build",
+  "build": {
+   "channel": "nightly",
+   "kind": "nightly",
+   "packageTarget": "appimage",
+   "reason": null,
+   "supported": true,
+   "version": "0.1.1-nightly.942"
+  }
+ },
+ "closed": "/home/patrick/work/put.gd-afa2/runs/k72/full/k72-channel-dropdown-closed.png",
+ "open": "/home/patrick/work/put.gd-afa2/runs/k72/full/k72-channel-dropdown-open.png",
+ "clicked": [
+  1105,
+  707
+ ]
+}

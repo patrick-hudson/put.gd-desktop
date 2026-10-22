@@ -90,21 +90,24 @@ constexpr auto notificationService = "org.freedesktop.Notifications";
 constexpr auto notificationPath = "/org/freedesktop/Notifications";
 constexpr int callTimeoutMs = 1500;
 // IDs are 1-based table positions and stay stable; rootOrder sets the display
-// order. An entry with a parent belongs to that entry's submenu.
+// order. An entry with a parent belongs to that entry's submenu. A retired
+// entry keeps its slot, so later IDs don't move, and is unknown on the wire.
 struct Entry { const char* label; const char* action; int parent; };
+constexpr int retired = -1;
 constexpr Entry entries[] {
  {"Capture Region", "region", 0}, {"Capture Window", "window", 0},
  {"Capture Desktop", "desktop", 0}, {"Upload Clipboard", "clipboard", 0},
  {"Capture Region & Edit", "edit", 0},
  {"", "", 0}, {"Settings and setup", "settings", 0}, {"Upload history", "history", 0},
- {"Recent activity", "activity", 0}, {"", "", 0}, {"About put.gd", "about", 0}, {"Quit", "quit", 0},
+ // 9 was "Recent activity", which opened the same History page.
+ {"", "", retired}, {"", "", 0}, {"About put.gd", "about", 0}, {"Quit", "quit", 0},
  {"Edit Image", "", 0}, {"From clipboard", "edit-clipboard", 13}, {"From file…", "edit-file", 13},
  {"Capture Screen Recording", "record", 0},
  // Hidden until a stable update is available; its label names the version (#293).
  {"Update available", "update", 0}
 };
 constexpr int updateId = 17;
-constexpr int rootOrder[] {1, 5, 2, 3, 16, 13, 4, 6, 7, 8, 9, 17, 10, 11, 12};
+constexpr int rootOrder[] {1, 5, 2, 3, 16, 13, 4, 6, 7, 8, 17, 10, 11, 12};
 constexpr int entryCount = sizeof(entries) / sizeof(entries[0]);
 QList<int> childrenOf(int id) {
  QList<int> result;
@@ -112,7 +115,7 @@ QList<int> childrenOf(int id) {
  else for (int i = 1; i <= entryCount; ++i) if (entries[i-1].parent == id) result.append(i);
  return result;
 }
-bool knownId(int id) { return id >= 0 && id <= entryCount; }
+bool knownId(int id) { return id == 0 || (id > 0 && id <= entryCount && entries[id-1].parent != retired); }
 bool validNames(const QStringList& names) {
  if (names.size() > 32) return false;
  for (const auto& name : names) if (name.size() > 128) return false;
@@ -492,7 +495,7 @@ bool TrayExport::handleMessage(const QDBusMessage& m, const QDBusConnection& bus
  if (!m.interface().isEmpty() && m.interface() != expected) return error("org.freedesktop.DBus.Error.UnknownInterface");
  if (!menu_) {
   if ((member == "Activate" || member == "SecondaryActivate" || member == "ContextMenu") && sig == "ii") {
-   if (member == "Activate") owner_->dispatch("activity");
+   if (member == "Activate") owner_->dispatch("history");
    if (member == "ContextMenu") {
     auto show = QDBusMessage::createSignal("/Menu", menuInterface, "ItemActivationRequested");
     show.setArguments({0, uint(0)}); bus.send(show);

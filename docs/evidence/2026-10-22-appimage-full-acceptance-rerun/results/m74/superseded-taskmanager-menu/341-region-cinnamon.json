@@ -1,0 +1,138 @@
+{
+ "action": "region",
+ "shortcut": "Ctrl+Shift+1",
+ "opened": "click:21,1058",
+ "menuBox": [
+  175,
+  759,
+  665,
+  1075
+ ],
+ "menuFull": "/home/patrick/work/put.gd-afa2/runs/m74/full/m74-341-region-cinnamonmenu-menu-open.png",
+ "menuClosedAt": 1.07,
+ "selectorFull": "/home/patrick/work/put.gd-afa2/runs/m74/full/m74-341-region-cinnamonmenu-selector.png",
+ "drag": [
+  1000,
+  500,
+  1080,
+  560
+ ],
+ "seconds": 6.57,
+ "operations": [
+  {
+   "id": "4d2ad148-1835-41a6-8dee-959876ece3ff",
+   "state": "running",
+   "copyStatus": "pending",
+   "items": [
+    {
+     "name": "Screen-Capture-2026-10-22-00-33-04.png",
+     "mime": "image/png",
+     "uploadStatus": "stored",
+     "link": "",
+     "local": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "path": "/home/patrick/work/put.gd-afa2/runs/m74/archive/images/Screen-Capture-2026-10-22-00-33-04.png",
+      "status": "saved"
+     }
+    }
+   ],
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  }
+ ],
+ "newHistory": [
+  "c3bf2c9f-9c64-4ae9-8316-4d9717a574d8"
+ ],
+ "notices": [
+  {
+   "itemId": null,
+   "notificationId": 1,
+   "notificationText": "Uploaded. Link copied to the clipboard. Click to open in browser.",
+   "operationId": null,
+   "summary": "operation_completed",
+   "title": "put.gd \u2014 completed",
+   "warning": false
+  }
+ ],
+ "shortcutLog": [
+  {
+   "message": "Shortcut pressed",
+   "fields": {
+    "action": "desktop",
+    "itemId": null,
+    "operationId": null,
+    "path": "raw"
+   }
+  },
+  {
+   "message": "Shortcut pressed",
+   "fields": {
+    "action": "window",
+    "itemId": null,
+    "operationId": null,
+    "path": "raw"
+   }
+  },
+  {
+   "message": "Shortcut pressed",
+   "fields": {
+    "action": "region",
+    "itemId": null,
+    "operationId": null,
+    "path": "raw"
+   }
+  },
+  {
+   "message": "Shortcut pressed",
+   "fields": {
+    "action": "region",
+    "itemId": null,
+    "operationId": null,
+    "path": "raw"
+   }
+  },
+  {
+   "message": "Shortcut pressed",
+   "fields": {
+    "action": "desktop",
+    "itemId": null,
+    "operationId": null,
+    "path": "raw"
+   }
+  },
+  {
+   "message": "Shortcut pressed",
+   "fields": {
+    "action": "region",
+    "itemId": null,
+    "operationId": null,
+    "path": "raw"
+   }
+  }
+ ],
+ "history": {
+  "id": "c3bf2c9f-9c64-4ae9-8316-4d9717a574d8",
+  "name": "Screen-Capture-2026-10-22-00-33-04.png",
+  "uploadStatus": "stored"
+ },
+ "png": {
+  "path": "/home/patrick/work/put.gd-afa2/runs/m74/out/m74-341-region-cinnamonmenu.png",
+  "size": [
+   80,
+   60
+  ],
+  "sha256": "69d2c88fd692008f5ea7bcbeabcd4a92098fc6080af3b8ad4889d7a215797278"
+ },
+ "expectedSize": [
+  80,
+  60
+ ],
+ "after": "/home/patrick/work/put.gd-afa2/runs/m74/full/m74-341-region-cinnamonmenu-after.png"
+}

@@ -29,7 +29,6 @@ public:
  void activate();
  void showSettings();
  void showHistory();
- void showActivity();
  void notifyFailure(const Error&);
  // Completion toast text: the operation's own error when it failed before any
  // item; for a failed or partial upload, the failure in plain words, whether a

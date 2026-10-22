@@ -7,7 +7,7 @@ and the socket uses Qt's user-access restriction. A second resident never remove
 live socket. No TCP listener exists.
 
 Launching `putgd`, `putgd --history` or `putgd --activity` again asks the resident
-to open that window. The launcher exits 0 only after the matching window acknowledgement;
+to open that window. `--activity` is the same as `--history`: both open History. The launcher exits 0 only after the matching window acknowledgement;
 a refused, malformed, incomplete or oversized reply exits 1. The exchange has one
 15-second deadline and a 16 KiB reply limit. A connected resident remains the session
 owner even if opening its UI fails: the launcher does not start a second resident or

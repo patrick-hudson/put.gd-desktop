@@ -9,6 +9,58 @@ missing profiles, and run physical-hardware release gates on physical machines.
 This requirement is separate from the historical results below; missing new
 rows and current-candidate evidence remain gates.
 
+## First stable gate plan — 2026-10-22
+
+No release asset has been accepted yet. The first stable switches to calendar
+versions `vYY.MDD.N` first ([#373](https://github.com/patrick-hudson/put.gd-desktop/issues/373)),
+so it won't be `v0.1.1`. There is no candidate channel: merging the promotion
+tags `vYY.MDD.N` and stages the stable draft, and exact-asset acceptance runs on
+that draft before it is published. If acceptance fails, the tag stays unreleased
+and the next promotion gets a new version.
+[Issue #44](https://github.com/patrick-hudson/put.gd-desktop/issues/44) holds the
+current gate table, the proposal for what the first stable requires or defers, and these
+work packages:
+
+| Gate | Issue | Status on 2026-10-22 |
+| --- | --- | --- |
+| Calendar versions `YY.MDD.N`, prerequisite for promotion | [#373](https://github.com/patrick-hudson/put.gd-desktop/issues/373) | design approved 2026-10-22 (one code PR, no `-rc`); implementation in progress |
+| AppImage full acceptance A–K, six desktops | [profile](acceptance-matrix.md#appimage-full-acceptance-profile), [first pass](evidence/2026-10-21-appimage-full-acceptance/README.md) | first pass on nightly 842 failed F (5 desktops), H and J (f44); rerun pending |
+| DEB lifecycle, recording rows, live S3 | [#375](https://github.com/patrick-hudson/put.gd-desktop/issues/375) | partial: source144 Cinnamon VM only; no state-preserving upgrade or removal + login on Wayland; schema 5→7 never exercised |
+| RPM lifecycle on f44 | [#377](https://github.com/patrick-hudson/put.gd-desktop/issues/377) | partial: repo upgrade 816→828 only |
+| GUI/CLI/MCP parity, AE17, fresh-agent walkthrough | [#378](https://github.com/patrick-hudson/put.gd-desktop/issues/378) | partial: 2026-10-13, CLI `dev.143` |
+| Physical Cinnamon latency, 10,000-entry history, burst, slow network | [#379](https://github.com/patrick-hudson/put.gd-desktop/issues/379) | latency stale (current63, 121.273 ms p95); history/burst/slow network not started |
+| Multi-display geometry in VMs | [#380](https://github.com/patrick-hudson/put.gd-desktop/issues/380) | partial: 3-head Cinnamon X11 region, single-output fractional scale |
+| Physical mixed DPI and rotation | [#381](https://github.com/patrick-hudson/put.gd-desktop/issues/381) | blocked: no builder has two outputs; proposed for 0.1.2 |
+| Uninstall login-startup entry | [#382](https://github.com/patrick-hudson/put.gd-desktop/issues/382) | needs Patrick's decision |
+| License, notices, provenance, dependencies | [#383](https://github.com/patrick-hudson/put.gd-desktop/issues/383) | CI audits every nightly; no human review since `dev.133` |
+| Release campaign and stable signing | [#384](https://github.com/patrick-hudson/put.gd-desktop/issues/384) | promote.py dry run passed on `0435ed6a` under the old scheme; repeat after #373 |
+| KDE/X11 rows, graphical-store installs | [#385](https://github.com/patrick-hudson/put.gd-desktop/issues/385) | proposed for 0.1.2; GNOME/X11 obsolete (GNOME 50 has no X11 session) |
+
+Flatpak ([#83](https://github.com/patrick-hudson/put.gd-desktop/issues/83)) is
+outside the first stable.
+
+## Package install retries and snapshot (#368) — 2026-10-22
+
+Code: [#388](https://github.com/patrick-hudson/put.gd-desktop/pull/388), head
+`aca7858f`, all CI jobs green
+([run 39727602972](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/39727602972)).
+Policy: [CI coverage, package installs](ci.md#package-installs). Evidence:
+`docs/evidence/2026-10-22-package-installs-368/`.
+
+- **Before.** Run 39717118907 (#357, `fd9e255`): `native (fedora44)` failed
+  twice because no mirror, `dl.fedoraproject.org` included, served mesa
+  26.2.4.
+- **Demo.** Run 39729960271 on throwaway `e8f9443b` (`aca7858f` plus injected
+  mirror faults, not merged). A fault on attempt 1 passed on the retry (fedora44,
+  ubuntu24.04). Four failed attempts installed from the snapshot and the
+  packages built (fedora44-snapshot, debian13). A fault on every attempt and on
+  the snapshot failed the job (fedora44-allfail).
+- **Lab.** On f44 (podman, pinned `fedora:44` and `ubuntu:24.04`), with
+  networking cut: the offline install from a snapshot passed, a package outside
+  the snapshot failed, and an unknown package failed without a retry.
+
+Not covered: the `ci.yml` jobs' installs (#389).
+
 ## Flaky-test rethink (#351) — 2026-10-22
 
 Code: [#351](https://github.com/patrick-hudson/put.gd-desktop/pull/351), head

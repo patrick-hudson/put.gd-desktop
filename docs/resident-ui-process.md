@@ -7,8 +7,8 @@ current real S3/remote History and full release acceptance remain pending. Read
 from source41 and earlier are historical, not the current baseline. See
 [protocol and lifecycle](ui-process-protocol.md).
 The resident must retain a tray icon and menu while all UI windows are closed.
-It must still offer capture/upload actions and reopen Settings, History and
-Activity. Closing the UI must leave shortcuts, clipboard ownership and operations
+It must still offer capture/upload actions and reopen Settings and History
+(the former Activity view is now History). Closing the UI must leave shortcuts, clipboard ownership and operations
 running; the explicit Quit command exits the application.
 
 The user also raised replacing Qt with a visual framework built from scratch.

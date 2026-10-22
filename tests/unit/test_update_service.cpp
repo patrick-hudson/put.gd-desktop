@@ -51,6 +51,11 @@ class UpdateServiceTest:public QObject {
   preferences["notifications"]=notifications;if(!updates.isEmpty())preferences["updates"]=updates;document["preferences"]=preferences;
   QVERIFY(settings.save(document,settings.revision()));
  }
+ // #344: what the last check of the other channel found decides the switch.
+ static QJsonObject found(const QString& channel,const QString& current,const QJsonValue& latest,bool newer){
+  return {{"schemaVersion",1},{"ok",true},{"error",QJsonObject{}},{"result",QJsonObject{{"channel",channel},{"current",current},{"latest",latest},{"updateAvailable",newer},
+   {"tag",latest.isString()?QJsonValue("v"+latest.toString()):QJsonValue()},{"asset",QJsonValue()}}}};
+ }
 private slots:
  void init(){QVERIFY(dir.isValid());for(const auto& name:QDir(dir.path()).entryList(QDir::Files))QFile::remove(dir.filePath(name));}
  void unsupportedBuildsNeverCheck(){
@@ -217,10 +222,11 @@ private slots:
   Error error;deb->install({{"confirm",true}},[&](Error e,QJsonObject){error=e;});QCOMPARE(error.code,QString("update_install_unavailable"));
   auto unpacked=service(settings,build("0.1.0"));unpacked->setImage({});unpacked->start();
   QCOMPARE(unpacked->status()["install"].toObject()["reason"].toString(),QString("not_running_from_appimage"));
-  // A stable image watching nightly would get another channel's image.
+  // A stable image watching nightly switches (#344), but only to a release a check found.
   configure(settings,{{"channel","nightly"}});
   auto other=service(settings,build("0.1.0"));other->setImage(dir.filePath("putgd.AppImage"));other->start();
-  QCOMPARE(other->status()["install"].toObject()["reason"].toString(),QString("other_channel"));
+  QCOMPARE(other->status()["install"].toObject()["reason"].toString(),QString("not_checked"));QCOMPARE(other->status()["install"].toObject()["kind"].toString(),QString("switch"));
+  error={};other->install({{"confirm",true},{"channel","nightly"}},[&](Error e,QJsonObject){error=e;});QCOMPARE(error.code,QString("update_install_unavailable"));QCOMPARE(error.details["reason"].toString(),QString("not_checked"));
   QVERIFY(calls().isEmpty());
  }
  // After an update the saved check names the version that now runs: it's not offered again.
@@ -249,6 +255,100 @@ private slots:
   QVERIFY(!QFileInfo::exists(backup));
   const auto install=updated->status()["install"].toObject();
   QCOMPARE(install["restartRequired"].toBool(),false);QVERIFY(install["backup"].isNull());QCOMPARE(install["installed"].toObject()["backupRemoved"].toBool(),true);
+ }
+ void aSwitchNamesItsChannelAndAnOlderOneMustBeAllowed(){
+  SettingsService settings(dir.filePath("config.json"));configure(settings,{{"channel","nightly"}});
+  // Stable 0.1.1 watching nightly, whose newest is still 0.1.1-nightly.900: older.
+  answer(found("nightly","0.1.1","0.1.1-nightly.900",false));
+  auto updates=service(settings,build("0.1.1"));const auto image=dir.filePath("putgd.AppImage");updates->setImage(image);
+  QSignalSpy replaced(updates.get(),&UpdateService::imageReplaced);updates->start();
+  PUTGD_TRY_COMPARE(calls().size(),1);PUTGD_TRY_VERIFY(!updates->status()["checking"].toBool());
+  auto install=updates->status()["install"].toObject();
+  QCOMPARE(install["kind"].toString(),QString("switch"));QCOMPARE(install["available"].toBool(),true);
+  const auto offer=install["switch"].toObject();
+  QCOMPARE(offer["from"].toString(),QString("stable"));QCOMPARE(offer["to"].toString(),QString("nightly"));QCOMPARE(offer["version"].toString(),QString("0.1.1-nightly.900"));
+  QCOMPARE(offer["tag"].toString(),QString("v0.1.1-nightly.900"));QCOMPARE(offer["older"].toBool(),true);
+  // Confirm alone is not enough: the switch must name where it goes, and allow the older version.
+  Error error;updates->install({{"confirm",true}},[&](Error e,QJsonObject){error=e;});QCOMPARE(error.code,QString("update_switch_confirm_required"));
+  error={};updates->install({{"confirm",true},{"channel","stable"}},[&](Error e,QJsonObject){error=e;});QCOMPARE(error.code,QString("update_switch_confirm_required"));
+  error={};updates->install({{"confirm",true},{"channel","nightly"}},[&](Error e,QJsonObject){error=e;});QCOMPARE(error.code,QString("update_switch_older"));
+  error={};updates->install({{"confirm",true},{"channel","nightly"},{"allowOlder","yes"}},[&](Error e,QJsonObject){error=e;});QCOMPARE(error.code,QString("invalid_request"));
+  QCOMPARE(calls().size(),1);
+  answerLines({{{"schemaVersion",1},{"ok",true},{"error",QJsonObject{}},{"result",QJsonObject{{"installed",true},{"version","0.1.1-nightly.900"},{"channel","nightly"},{"previousChannel","stable"},{"switched",true},{"method","zsync"}}}}});
+  bool replied=false;updates->install({{"confirm",true},{"channel","nightly"},{"allowOlder",true}},[&](Error e,QJsonObject){QVERIFY(!e);replied=true;});QVERIFY(replied);
+  QVERIFY(appimage::writeState(dir.path(),{{"installed",QJsonObject{{"image",image},{"version","0.1.1-nightly.900"},{"channel","nightly"},{"previousChannel","stable"},{"method","zsync"}}}}));
+  PUTGD_TRY_COMPARE(updates->status()["install"].toObject()["state"].toString(),QString("installed"));
+  QCOMPARE(calls().last(),"--install-update nightly --method auto --state "+dir.path()+" --switch --allow-older");
+  // The login script is written again from the new image, and the version switched to counts as seen.
+  QCOMPARE(replaced.size(),1);QCOMPARE(updates->status()["install"].toObject()["restartRequired"].toBool(),true);
+  const auto saved=QJsonDocument::fromJson([&]{QFile f(dir.filePath("update-check.json"));f.open(QIODevice::ReadOnly);return f.readAll();}()).object();
+  QCOMPARE(saved["notifiedVersions"].toObject()["nightly"].toString(),QString("0.1.1-nightly.900"));
+ }
+ void aNewerSwitchNeedsOnlyItsChannel(){
+  SettingsService settings(dir.filePath("config.json"));configure(settings,{{"channel","nightly"}});
+  answer(found("nightly","0.1.1","0.1.2-nightly.5",true));
+  auto updates=service(settings,build("0.1.1"));updates->setImage(dir.filePath("putgd.AppImage"));updates->start();
+  PUTGD_TRY_COMPARE(calls().size(),1);PUTGD_TRY_VERIFY(!updates->status()["checking"].toBool());
+  QCOMPARE(updates->status()["install"].toObject()["switch"].toObject()["older"].toBool(),false);
+  answerLines({},9);bool replied=false;updates->install({{"confirm",true},{"channel","nightly"}},[&](Error e,QJsonObject){QVERIFY(!e);replied=true;});QVERIFY(replied);
+  PUTGD_TRY_COMPARE(calls().size(),2);QCOMPARE(calls().last(),"--install-update nightly --method auto --state "+dir.path()+" --switch");
+  PUTGD_TRY_COMPARE(updates->status()["install"].toObject()["state"].toString(),QString("failed"));
+ }
+ // Before the first stable release: a clear "none yet", never an error or a switch.
+ void noStableReleaseYetOffersNothing(){
+  SettingsService settings(dir.filePath("config.json"));configure(settings,{{"channel","stable"}});
+  answer(found("stable","0.1.1-nightly.900",QJsonValue(),false));
+  auto updates=service(settings,build("0.1.1-nightly.900"));updates->setImage(dir.filePath("putgd.AppImage"));
+  QSignalSpy announced(updates.get(),&UpdateService::updateAvailable);updates->start();
+  PUTGD_TRY_COMPARE(calls().size(),1);PUTGD_TRY_VERIFY(!updates->status()["checking"].toBool());
+  const auto status=updates->status();
+  QVERIFY(status["error"].isNull());QVERIFY(status["result"].toObject()["latest"].isNull());QCOMPARE(status["result"].toObject()["updateAvailable"].toBool(),false);
+  const auto install=status["install"].toObject();
+  QCOMPARE(install["kind"].toString(),QString("switch"));QCOMPARE(install["available"].toBool(),false);QCOMPARE(install["reason"].toString(),QString("no_release"));QVERIFY(install["switch"].isNull());
+  Error error;updates->install({{"confirm",true},{"channel","stable"}},[&](Error e,QJsonObject){error=e;});
+  QCOMPARE(error.code,QString("update_install_unavailable"));QCOMPARE(error.details["reason"].toString(),QString("no_release"));
+  QCOMPARE(announced.size(),0);QCOMPARE(calls().size(),1);
+ }
+ // Notifications remember a version per channel; the first result after a
+ // channel change is shown in Settings, so it isn't announced as well.
+ void switchingChannelsNeitherRepeatsNorHidesAnAnnouncement(){
+  SettingsService settings(dir.filePath("config.json"));configure(settings);
+  // A nightly AppImage checks nightly first.
+  answer(found("nightly","0.1.1-nightly.900","0.1.1-nightly.901",true));
+  auto nightly=service(settings,build("0.1.1-nightly.900"));nightly->start();PUTGD_TRY_COMPARE(calls().size(),1);PUTGD_TRY_VERIFY(!nightly->status()["checking"].toBool());
+  // Stable is chosen: the first stable result shows in Settings, without a notification.
+  // (Each resident goes before the next, so only one reacts to a settings change.)
+  nightly.reset();configure(settings,{{"channel","stable"}});answer(found("stable","0.1.1-nightly.900","0.1.1",true));now=now.addSecs(60);
+  auto chosen=service(settings,build("0.1.1-nightly.900"));QSignalSpy first(chosen.get(),&UpdateService::updateAvailable);chosen->start();
+  PUTGD_TRY_COMPARE(calls().size(),2);PUTGD_TRY_VERIFY(!chosen->status()["checking"].toBool());QCOMPARE(first.size(),0);
+  auto saved=QJsonDocument::fromJson([&]{QFile f(dir.filePath("update-check.json"));f.open(QIODevice::ReadOnly);return f.readAll();}()).object();
+  QCOMPARE(saved["notifiedVersions"].toObject()["stable"].toString(),QString("0.1.1"));QCOMPARE(saved["notifiedVersion"].toString(),QString("0.1.1"));
+  // A later stable release is announced once, as on a stable build.
+  chosen.reset();answer(found("stable","0.1.1-nightly.900","0.1.2",true));now=now.addDays(1);
+  auto later=service(settings,build("0.1.1-nightly.900"));QSignalSpy second(later.get(),&UpdateService::updateAvailable);later->start();
+  PUTGD_TRY_COMPARE(second.size(),1);QCOMPARE(second.first().first().toJsonObject()["latest"].toString(),QString("0.1.2"));
+  PUTGD_TRY_VERIFY(!later->status()["checking"].toBool());
+  // Back to nightly and to stable again: 0.1.2 was announced on stable already.
+  later.reset();configure(settings,{{"channel","nightly"}});answer(found("nightly","0.1.1-nightly.900","0.1.1-nightly.950",true));now=now.addDays(1);
+  auto back=service(settings,build("0.1.1-nightly.900"));back->start();PUTGD_TRY_COMPARE(calls().size(),4);PUTGD_TRY_VERIFY(!back->status()["checking"].toBool());
+  back.reset();configure(settings,{{"channel","stable"}});answer(found("stable","0.1.1-nightly.900","0.1.2",true));now=now.addDays(1);
+  auto again=service(settings,build("0.1.1-nightly.900"));QSignalSpy repeated(again.get(),&UpdateService::updateAvailable);again->start();
+  PUTGD_TRY_COMPARE(calls().size(),5);PUTGD_TRY_VERIFY(!again->status()["checking"].toBool());QCOMPARE(repeated.size(),0);
+  saved=QJsonDocument::fromJson([&]{QFile f(dir.filePath("update-check.json"));f.open(QIODevice::ReadOnly);return f.readAll();}()).object();
+  QCOMPARE(saved["notifiedVersions"].toObject()["stable"].toString(),QString("0.1.2"));QCOMPARE(saved["notifiedVersions"].toObject()["nightly"].toString(),QString("0.1.1-nightly.950"));
+  // The nightly version seen in between didn't replace stable's: a day later 0.1.2 stays quiet.
+  again.reset();now=now.addDays(1);auto quiet=service(settings,build("0.1.1-nightly.900"));QSignalSpy none(quiet.get(),&UpdateService::updateAvailable);quiet->start();
+  PUTGD_TRY_COMPARE(calls().size(),6);PUTGD_TRY_VERIFY(!quiet->status()["checking"].toBool());QCOMPARE(none.size(),0);
+ }
+ // A state file from before #344 kept one version; it counts for its own channel.
+ void theOldSingleNotifiedVersionCountsForItsChannel(){
+  SettingsService settings(dir.filePath("config.json"));configure(settings);
+  QFile state(dir.filePath("update-check.json"));QVERIFY(state.open(QIODevice::WriteOnly));
+  state.write(QJsonDocument(QJsonObject{{"schemaVersion",1},{"attemptedAt",now.addDays(-2).toString(Qt::ISODate)},{"attemptedChannel","stable"},{"notifiedVersion","0.1.1"},
+   {"result",QJsonObject{{"channel","stable"},{"current","0.1.0"},{"latest","0.1.1"},{"updateAvailable",true}}}}).toJson());state.close();
+  answer(found("stable","0.1.0","0.1.1",true));
+  auto updates=service(settings,build("0.1.0"));QSignalSpy announced(updates.get(),&UpdateService::updateAvailable);updates->start();
+  PUTGD_TRY_COMPARE(calls().size(),1);PUTGD_TRY_VERIFY(!updates->status()["checking"].toBool());QCOMPARE(announced.size(),0);
  }
 };
 QTEST_GUILESS_MAIN(UpdateServiceTest)

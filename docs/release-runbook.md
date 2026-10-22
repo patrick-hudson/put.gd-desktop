@@ -1,7 +1,7 @@
 # Releasing a version: agent runbook
 
-Follow this procedure when the user asks for a release, for example "release
-0.1.1", "cut a release" or "ship 0.2.0". [Releases](release.md) explains the
+Follow this procedure when the user asks for a release, for example "cut a
+release", "ship stable" or "release what's on nightly". [Releases](release.md) explains the
 branches, channels and assets; this page is the order of work. Do the steps in
 sequence and stop where a step says to.
 
@@ -9,36 +9,34 @@ A version tag is permanent and the version is compiled into every package. So
 each version gets exactly one tag, and every set of bytes that ships needs its
 own acceptance receipt. Nothing below moves, deletes or retags a `v*` tag.
 
+Versions are calendar versions, `YY.MDD.N` (#373, [versioning.md](versioning.md)).
+A stable release's version is the UTC date and commit count of `main`'s merge
+commit. It can't be chosen, and it's known only once the promotion merges. There
+is no release-candidate channel: acceptance runs on the stable draft itself.
+
 ## Who decides what
 
 | Action | Who |
 | --- | --- |
 | Open pull requests, watch runs, rerun failed jobs, run acceptance | The agent |
 | Merge any pull request into `nightly` or `main` | The user, unless they told you in this conversation to merge it and your permissions allow it |
-| Cut the stable tag, publish a candidate, publish a stable release | The agent, after telling the user the tag, commit and acceptance result and getting a yes, unless the user said to proceed without asking |
-| Choose the acceptance path (below) | The user; default to candidate-first when they have not said |
+| Publish a stable release | The agent, after telling the user the tag, commit and acceptance result and getting a yes, unless the user said to proceed without asking |
 | Mark a blocked or failed gate as passed | Nobody |
 
-**Acceptance paths.** *Candidate-first* (default) accepts and publishes the
-candidate, then cuts stable and accepts the stable draft: two campaigns, and a
-failure costs only a new candidate number. *Single campaign* cuts stable as soon
-as the candidate draft exists and accepts only the stable draft: one campaign,
-but a failure burns the version and the release moves to the next patch.
+A failed acceptance costs only that version: the fix goes into `nightly`, and the
+next promotion is a new commit with a new version.
 
-## 1. Establish the target version
+## 1. Check the source
 
 ```sh
 git fetch origin --tags
-git show origin/nightly:CMakeLists.txt | grep -m1 'project(putgd VERSION'
-gh api repos/patrick-hudson/put.gd-desktop/git/matching-refs/tags/vX.Y.Z --jq '.[].ref'
+python3 tools/releases/promote.py
 ```
 
-| Situation | Do |
-| --- | --- |
-| Requested version equals `nightly`'s base and `vX.Y.Z` does not exist | Continue. |
-| No version given | Use `nightly`'s base and tell the user which version you are releasing. |
-| Requested version is higher than the base | Open a pull request into `nightly` titled `chore(release): prepare X.Y.Z` that changes only `project(putgd VERSION ...)`. Continue after it merges. |
-| Requested version is lower than the base, or `vX.Y.Z` already exists | Stop and ask. An older line is released only through the hotfix path below. |
+The preview names the nightly version being promoted (`release: promote nightly
+YY.MDD.N`), the change list and `CHANGELOG.md`'s `[Unreleased]` section. Tell the
+user the stable version isn't known yet: it will be the merge commit's date and
+count, a little higher than that nightly's `N`.
 
 Then check that the source is ready:
 
@@ -50,40 +48,46 @@ Then check that the source is ready:
 ## 2. Promote nightly into main
 
 ```sh
-python3 tools/releases/promote.py
 python3 tools/releases/promote.py --open
 ```
 
-The first command previews the title, the change list and the version's
-`CHANGELOG.md` section. The second opens two pull requests: `changelog: vX.Y.Z`
-into `nightly`, which adds that section, then the `release: vX.Y.Z` pull request
-into `main`. Show the user the changelog pull request so they can curate its
-entries, and ask them to merge it (an ordinary merge into `nightly`). Then wait for
-the promotion's `CI` check; it now includes `CHANGELOG.md`. Fix a failure with an
+It opens two pull requests:
+
+- `changelog: next stable release` into `nightly`, which adds the
+  `[Unreleased]` section;
+- `release: promote nightly YY.MDD.N` into `main`.
+
+Show the user the changelog pull request so they can curate its entries, and ask
+them to merge it (an ordinary merge into `nightly`). Then wait for the
+promotion's `CI` check; it now includes `CHANGELOG.md`. Fix a failure with an
 ordinary pull request into `nightly`; the promotion pull request picks it up. Ask
 the user to merge the promotion with a merge commit.
 
-## 3. Check the candidate draft
+## 3. Check the stable draft
 
 The merge starts the Release workflow on `main`: `tag`, then `ci`, then `draft`.
+The `tag` job's summary and `release-tag` artifact name the version.
 
 ```sh
 gh run list --workflow release.yml --branch main --limit 1
-gh release view vX.Y.Z-rc.N --json isDraft,isPrerelease,assets --jq '{draft: .isDraft, prerelease: .isPrerelease, assets: (.assets | length)}'
+tag=$(gh release list --limit 5 --json tagName,isDraft --jq '[.[] | select(.isDraft)][0].tagName')
+gh release view "$tag" --json isDraft,isPrerelease,assets --jq '{draft: .isDraft, prerelease: .isPrerelease, assets: (.assets | length)}'
 ```
 
-Expect a draft prerelease with 12 assets, tagged on `main` HEAD. If a job fails
-for an infrastructure reason, use "Re-run failed jobs" on that run. If the source
-is at fault, fix it on `nightly` and promote again; the next push cuts `rc.N+1`.
+Expect a draft for `vYY.MDD.N` that is not a prerelease, with the 16 assets
+listed in [Releases](release.md#github-downloads-and-source), tagged on `main`
+HEAD. Check that `vYY.MDD.N` is exactly `main` HEAD's date and count:
+`git rev-parse "$tag^{commit}"` must equal `git ls-remote origin refs/heads/main`.
+If a job fails for an infrastructure reason, use "Re-run failed jobs" on that
+run. If the source is at fault, fix it on `nightly` and promote again; the next
+push to `main` is a new version.
 
-On the single-campaign path, skip to step 6.
-
-## 4. Run acceptance on the candidate
+## 4. Run acceptance on the stable draft
 
 Work in a private, ignored directory and test the exact draft bytes:
 
 ```sh
-tag=vX.Y.Z-rc.N
+tag=vYY.MDD.N
 git fetch origin --tags
 mkdir -p "work/releases/$tag"
 gh release download "$tag" -D "work/releases/$tag/assets"
@@ -131,9 +135,11 @@ PY
 Fill in `rows` with each distro, session, asset and result. Set `status` to
 `passed` only when every required row passed on these exact bytes. If any gate
 failed or is blocked, leave it `pending`, report to the user and stop. A failure
-means fixing on `nightly` and starting again from step 2 with the next candidate.
+means leaving the draft unpublished, fixing on `nightly` and starting again from
+step 2; the next promotion is a new version. The failed tag stays unreleased, and
+the release notes and CHANGELOG skip it.
 
-## 5. Publish the candidate
+## 5. Publish stable
 
 Get the user's yes, then publish from a clean checkout of the tag:
 
@@ -147,81 +153,61 @@ git worktree remove "../putgd-$tag"
 ```
 
 It runs the tag's own publisher, re-downloads the draft, checks every byte
-against the receipt and makes the release public. A candidate stays a prerelease;
-a stable release becomes Latest.
-
-## 6. Cut stable
-
-Confirm that `main` HEAD is still the accepted candidate's commit:
-
-```sh
-git ls-remote origin refs/heads/main
-git rev-parse "vX.Y.Z-rc.N^{commit}"
-```
-
-If they differ, something else reached `main` and a newer candidate was cut;
-accept that one first. Otherwise get the user's yes, then:
-
-```sh
-gh workflow run release.yml --repo patrick-hudson/put.gd-desktop --ref main -f channel=stable
-```
-
-Expect a draft for `vX.Y.Z` that is not a prerelease, with 12 assets. From the
-moment this tag exists, scheduled nightlies with new commits fail until step 8.
-
-## 7. Accept and publish stable
-
-The stable assets are rebuilt with the stable version, so their bytes differ from
-the candidate's. Repeat step 4 with `tag=vX.Y.Z`, writing a new receipt and
-evidence record, then step 5 with the same tag. Confirm the result:
+against the receipt and makes the release public. A stable release becomes
+Latest. Confirm it:
 
 ```sh
 gh api repos/patrick-hudson/put.gd-desktop/releases/latest --jq .tag_name
 ```
 
-Then sign the stable apt and dnf repositories, which only the user's stable key can do
+## 6. Sign the stable repositories
+
+Sign the stable apt and dnf repositories, which only the user's stable key can do
 ([package-repositories.md](package-repositories.md)). Within ten minutes of publication
 the signer on d69 stages the release. Ask the user to run, on the workstation:
 
 ```sh
-python3 tools/releases/sign_stable.py --tag vX.Y.Z
+python3 tools/releases/sign_stable.py --tag vYY.MDD.N
 ```
 
 gpg-agent and minisign ask for the passphrases, so the user runs it. The signer
 publishes on its next run. Check that `https://pkg.put.gd/update/v1/stable.json`
-names `vX.Y.Z` and that `receipts/vX.Y.Z.json` says `published`.
+names `vYY.MDD.N` and that `receipts/vYY.MDD.N.json` says `published`.
 
-## 8. Start the next version
+## 7. Name the CHANGELOG section
 
-Open a pull request into `nightly` titled `chore(release): start X.Y.Z+1
-development` that changes only `project(putgd VERSION ...)` in `CMakeLists.txt`,
-normally to the next patch. Ask the user to merge it; nightlies resume after it
-merges. Do not open it before step 6: until stable is cut, a fix may still need a
-new candidate of the current version.
+```sh
+python3 tools/releases/promote.py --finalize "$tag" --open
+```
+
+It opens `changelog: vYY.MDD.N` into `nightly`, which renames `[Unreleased]` to
+`[YY.MDD.N] - <publication date>`. Ask the user to merge it. Nothing else starts
+the next version: nightlies continue with the next commit's date and count.
 
 ## 9. Report
 
 Tell the user, with links:
 
-- The candidate and stable tags, their release pages and Release run IDs.
-- Where each receipt and evidence record is, and the evidence pull request.
+- The stable tag, its release page and Release run ID.
+- Where the receipt and evidence record are, and the evidence pull request.
 - Any gate that was blocked, and what remains open.
-- The next-version pull request.
+- The CHANGELOG pull request.
 
 ## Other cases
 
-**Hotfix of the released line.** Branch from `origin/main`, make the fix, raise
-the patch in `project(putgd VERSION ...)`, and open a pull request into `main`.
-Its merge cuts that version's first candidate; continue from step 3. Afterwards,
-open a pull request merging `main` into `nightly` so the fix is kept. In a
-version conflict, `nightly` keeps its own higher version.
+**Hotfix of the released line.** Branch from `origin/main`, make the fix and open
+a pull request into `main`. Its merge tags that commit's version and stages its
+draft; continue from step 3. Afterwards, open a pull request merging `main` into
+`nightly` so the fix is kept. No version is bumped anywhere.
 
 **A run fails after a draft was partly uploaded.** Rerun the failed job of the
 same run; the publisher keeps matching uploads and adds missing ones. A new run
 rebuilds packages and cannot resume another run's draft. Inspect that draft and
 ask the user before deleting an unpublished draft.
 
-**The nightly reports that a stable tag already exists.** Step 8 has not merged.
+**The nightly refuses a version that wouldn't sort after the newest nightly.**
+`nightly` HEAD's committer date is older than the last nightly's. Find out how
+that commit reached `nightly` before doing anything else.
 
 **Never:** publish without a passed receipt for the exact bytes, accept evidence
 from a different tag, substitute a VM or XWayland result for a physical or native

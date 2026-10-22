@@ -1,6 +1,7 @@
 #include "ui/UiApplicationController.h"
 #include "ui/SettingsWindow.h"
 #include "ui/MainWindow.h"
+#include "ui/HistoryWindow.h"
 #include "ui/AboutWindow.h"
 #include "ui/Theme.h"
 #include "ui/VisualStyle.h"
@@ -13,7 +14,9 @@
 #include <QLineEdit>
 #include <QListWidget>
 #include <QPushButton>
+#include <QScrollArea>
 #include <QScrollBar>
+#include <QTabWidget>
 #include <QStyledItemDelegate>
 #include <QtTest>
 #include <QTimer>
@@ -274,6 +277,46 @@ private slots:
   QVERIFY2(window->isVisible(),"Keep the last window alive until the resident accepts its draft");
   const auto request=device.last("closeRequested");QVERIFY(!request.isEmpty());QCOMPARE(exits,0);
   device.send("closeAccepted",{{"replyTo",request["sequence"]}});QCOMPARE(exits,1);
+ }
+ // #348: the first ui.show updates lands on Updates although the fresh window
+ // settles smaller than it opened (Aurora's 1280×800 screen) and the update's
+ // rows arrive after it is shown. A scroll of the user's own then wins.
+ // The tray's "Recent activity" entry is gone; the view name stays an alias for History.
+ void activityViewNameOpensHistory(){
+  QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(settings.save(Settings::developmentTemplate(),{}));
+  CredentialStore secrets;UiSessionFixture fixture(settings,secrets);ControlDevice device;UiControl control(device);UiApplicationController controller(fixture.session,control,{});
+  device.send("activate",{{"view","settings"}});
+  MainWindow* window=nullptr;for(auto* widget:QApplication::topLevelWidgets())if(auto* candidate=qobject_cast<MainWindow*>(widget))window=candidate;QVERIFY(window);
+  auto* navigation=window->findChild<QListWidget*>("mainNavigation");QVERIFY(navigation);PUTGD_TRY_COMPARE(navigation->currentRow(),2);
+  device.send("activate",{{"view","activity"}});
+  PUTGD_TRY_COMPARE(navigation->currentRow(),0);QCOMPARE(navigation->currentItem()->text(),QString("History"));PUTGD_TRY_VERIFY(window->history()->isVisible());
+  const auto windows=QApplication::topLevelWidgets();QCOMPARE(std::count_if(windows.begin(),windows.end(),[](QWidget* widget){return qobject_cast<MainWindow*>(widget)!=nullptr;}),1);
+ }
+ void showUpdatesLandsOnUpdatesInAFreshWindow(){
+  QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(settings.save(Settings::developmentTemplate(),{}));
+  CredentialStore secrets;UiSessionFixture fixture(settings,secrets);QJsonObject update;
+  fixture.server.setUiDiagnostics([&]{auto data=fixture.operations().diagnostics();if(!update.isEmpty())data["update"]=update;return data;});
+  ControlDevice device;UiControl control(device);UiApplicationController controller(fixture.session,control,{});
+  device.send("activate",{{"view","updates"}});
+  MainWindow* window=nullptr;for(auto* widget:QApplication::topLevelWidgets())if(auto* candidate=qobject_cast<MainWindow*>(widget))window=candidate;QVERIFY(window);
+  auto* status=window->findChild<QLabel*>("updateStatus");auto* install=window->findChild<QPushButton*>("installUpdate");auto* tabs=window->findChild<QTabWidget*>("settingsTabs");QVERIFY(status&&install&&tabs);
+  auto* scroll=qobject_cast<QScrollArea*>(tabs->widget(0));QVERIFY(scroll);auto* bar=scroll->verticalScrollBar();
+  const auto inView=[&](QWidget* widget){return widget->isVisible()&&scroll->viewport()->rect().contains(QRect(widget->mapTo(scroll->viewport(),QPoint()),widget->size()));};
+  PUTGD_TRY_VERIFY(window->isVisible());PUTGD_TRY_VERIFY(fixture.session.ready());PUTGD_TRY_VERIFY(inView(status));
+  // The window manager fits it to the screen after it was shown.
+  window->resize(1280,760);PUTGD_TRY_COMPARE(window->height(),760);PUTGD_TRY_VERIFY(bar->maximum()>0);
+  PUTGD_TRY_VERIFY2(inView(status),"Updates stays in view after the window settles smaller");
+  // The update arrives: its actions add rows to the group, still in view.
+  update={{"supported",true},{"build",QJsonObject{{"version","0.1.1-nightly.886"},{"channel","nightly"},{"supported",true},{"packageTarget","appimage"}}},
+   {"check",true},{"channelSetting","build"},{"channel","nightly"},{"checking",false},{"action",QJsonObject{{"kind","download"},{"repository","none"}}},{"error",QJsonObject{}},
+   {"checkedAt",QJsonValue()},{"nextCheckAt",QJsonValue()},
+   {"result",QJsonObject{{"channel","nightly"},{"current","0.1.1-nightly.886"},{"latest","0.1.1-nightly.887"},{"updateAvailable",true},
+    {"downloadUrl","https://github.com/patrick-hudson/put.gd-desktop/releases/download/v0.1.1-nightly.887/putgd-0.1.1-nightly.887-x86_64.AppImage"}}},
+   {"install",QJsonObject{{"state","idle"},{"available",true},{"running",false},{"restartRequired",false}}}};
+  fixture.session.refreshSnapshot();PUTGD_TRY_VERIFY(install->isVisible());PUTGD_TRY_VERIFY(inView(status));PUTGD_TRY_VERIFY(inView(install));
+  // Once the user scrolls, a later change of size leaves the page where they put it.
+  bar->triggerAction(QAbstractSlider::SliderToMinimum);QCOMPARE(bar->value(),0);
+  window->resize(1280,700);PUTGD_TRY_COMPARE(window->height(),700);PUTGD_COMPARE_STEADY(bar->value(),0,300);QVERIFY(!inView(status));
  }
 };
 QTEST_MAIN(UiApplicationTest)

@@ -45,7 +45,11 @@ void UpdateService::start() {
   const auto state=QJsonDocument::fromJson(file.readAll()).object();
   if(state["schemaVersion"]==1) {
    attemptedAt_=parseTime(state["attemptedAt"]);checkedAt_=parseTime(state["checkedAt"]);attemptedChannel_=state["attemptedChannel"].toString();
-   result_=state["result"].toObject();error_=state["error"].toObject();notifiedVersion_=state["notifiedVersion"].toString();
+   result_=state["result"].toObject();error_=state["error"].toObject();
+   const auto notified=state["notifiedVersions"].toObject();
+   for(const auto& name:{QStringLiteral("stable"),QStringLiteral("nightly")})if(notified[name].isString())notified_[name]=notified[name].toString();
+   // Before #344 one version was kept, of whichever channel was checked.
+   if(!state.contains("notifiedVersions")&&state["notifiedVersion"].isString()){const auto version=state["notifiedVersion"].toString();notified_[version.contains("-nightly")?"nightly":"stable"]=version;}
    // A clock that went backwards must not postpone the next check for days.
    if(attemptedAt_>now())attemptedAt_={};
    // The saved result compared the feed with the version that ran then. After
@@ -100,9 +104,18 @@ QString UpdateService::installUnavailable() const {
  if(build_.target!="appimage")return "not_appimage";
  if(!build_.supported)return build_.reason;
  if(image_.isEmpty())return "not_running_from_appimage";
- // The new image must follow the same permalink as this one.
- if(channel()!=build_.channel)return "other_channel";
+ // Another channel's image is a switch (#344), only to a release the last
+ // check of that channel found.
+ if(channel()!=build_.channel){
+  if(result_["channel"]!=channel())return "not_checked";
+  if(!result_["latest"].isString())return "no_release";
+ }
  return {};
+}
+QJsonObject UpdateService::switchOffer() const {
+ if(channel()==build_.channel||!installUnavailable().isEmpty())return {};
+ const auto version=result_["latest"].toString();const auto order=update::compareVersions(version,build_.version);
+ return {{"from",build_.channel},{"to",channel()},{"version",version},{"tag",result_["tag"]},{"older",order&&*order<0}};
 }
 bool UpdateService::restartRequired() const {
  const auto installed=installState_["installed"].toObject();const auto version=installed["version"].toString();
@@ -113,6 +126,9 @@ QJsonObject UpdateService::installStatus() const {
  auto status=install_;
  if(!status.contains("state"))status["state"]="idle";
  status["available"]=unavailable.isEmpty();
+ const auto offer=switchOffer();
+ status["kind"]=build_.channel.isEmpty()||channel()==build_.channel?"update":"switch";
+ status["switch"]=offer.isEmpty()?QJsonValue():QJsonValue(offer);
  status["reason"]=unavailable.isEmpty()?QJsonValue():QJsonValue(unavailable);
  status["running"]=bool(installer_);
  status["image"]=image_.isEmpty()?QJsonValue():QJsonValue(image_);
@@ -122,16 +138,31 @@ QJsonObject UpdateService::installStatus() const {
  return status;
 }
 void UpdateService::install(const QJsonObject& params,JsonReply reply) {
- for(auto it=params.begin();it!=params.end();++it)if(it.key()!="confirm"&&it.key()!="method"){reply({"invalid_request","update.install takes confirm and method",{}},{});return;}
+ for(auto it=params.begin();it!=params.end();++it)if(!QStringList{"confirm","method","channel","allowOlder"}.contains(it.key())){reply({"invalid_request","update.install takes confirm, method, channel and allowOlder",{}},{});return;}
  // Nothing installs without an explicit yes.
  if(params["confirm"]!=true){reply({"update_confirm_required","Installing an update needs confirm: true",{}},{});return;}
  const auto method=params["method"].toString("auto");
  if(!QStringList{"auto","zsync","download"}.contains(method)||(params.contains("method")&&!params["method"].isString())){reply({"invalid_request","method is auto, zsync or download",{}},{});return;}
+ if((params.contains("channel")&&!params["channel"].isString())||(params.contains("allowOlder")&&!params["allowOlder"].isBool())){reply({"invalid_request","channel is stable or nightly and allowOlder true or false",{}},{});return;}
  if(const auto reason=installUnavailable();!reason.isEmpty()){
-  reply({"update_install_unavailable",reason=="other_channel"?QString("Switch the channel back to this build's channel to install its updates"):QString("Only an AppImage installs updates itself"),{{"reason",reason}}},{});return;
+  const auto message=reason=="no_release"?"There's no "+channel()+" release yet, so there is nothing to switch to":
+   reason=="not_checked"?"Check the "+channel()+" channel first: put.gd only switches to a release it has found":QString("Only an AppImage installs updates itself");
+  reply({"update_install_unavailable",message,{{"reason",reason}}},{});return;
  }
  if(installer_){reply({"update_install_busy","An update is already being installed",{}},{});return;}
  if(restartRequired()){reply({"update_restart_required","Restart put.gd to finish the update that is already installed",{{"installed",installState_["installed"].toObject()["version"]}}},{});return;}
+ // A switch names where it goes, so a stale confirmation can't land elsewhere,
+ // and an older version is installed only when asked for (#344).
+ const auto offer=switchOffer();
+ if(params.contains("channel")&&params["channel"]!=channel()){
+  reply({"update_switch_confirm_required","channel must be the channel put.gd watches, "+channel(),{{"channel",channel()}}},{});return;
+ }
+ if(!offer.isEmpty()&&!params.contains("channel")){
+  reply({"update_switch_confirm_required","This is a switch to "+channel()+" "+offer["version"].toString()+"; confirm it with channel: \""+channel()+"\"",{{"switch",offer}}},{});return;
+ }
+ if(offer["older"].toBool()&&params["allowOlder"]!=true){
+  reply({"update_switch_older",channel()+" "+offer["version"].toString()+" is older than this build ("+build_.version+"); switching to it needs allowOlder: true",{{"switch",offer}}},{});return;
+ }
  if(busy_)if(const auto reason=busy_();!reason.isEmpty()){reply({"update_install_busy",reason,{}},{});return;}
  auto* process=new QProcess(this);installer_=process;process->setProcessChannelMode(QProcess::SeparateChannels);
  install_={{"state","running"},{"phase","starting"},{"method",method},{"bytes",0},{"total",0},{"startedAt",isoTime(now())}};
@@ -156,9 +187,13 @@ void UpdateService::install(const QJsonObject& params,JsonReply reply) {
   installer_=nullptr;process->deleteLater();
   installFinished(status==QProcess::NormalExit&&(code==0||code==1)?*last:QByteArray(),{"update_install_failed","The update install stopped without a result",{}});
  });
- logging::info(logApp(),"Installing an update",{{"channel",channel()},{"method",method}});
+ QStringList arguments{"--install-update",channel(),"--method",method,"--state",stateRoot_};
+ if(!offer.isEmpty())arguments<<"--switch";
+ if(offer["older"].toBool())arguments<<"--allow-older";
+ if(offer.isEmpty())logging::info(logApp(),"Installing an update",{{"channel",channel()},{"method",method}});
+ else logging::info(logApp(),"Switching channels",{{"from",build_.channel},{"to",channel()},{"version",offer["version"]},{"older",offer["older"]},{"method",method}});
  installDeadline_.start();
- process->start(program_,prefix_+QStringList{"--install-update",channel(),"--method",method,"--state",stateRoot_},QIODevice::ReadOnly);
+ process->start(program_,prefix_+arguments,QIODevice::ReadOnly);
  emit changed();
  reply({},status());
 }
@@ -180,9 +215,12 @@ void UpdateService::installFinished(const QByteArray& last,const Error& failure)
   logging::warning(logApp(),"Update install failed",{{"code",error.code},{"details",error.details}});
  } else {
   install_["state"]="installed";install_["result"]=result;install_.remove("error");install_["phase"]="done";
-  logging::info(logApp(),"Update installed; it starts with the next start of put.gd",{{"version",result["version"]},{"method",result["method"]},{"zsync",result["zsync"]}});
+  logging::info(logApp(),"Update installed; it starts with the next start of put.gd",{{"version",result["version"]},{"channel",result["channel"]},{"switched",result["switched"]},{"method",result["method"]},{"zsync",result["zsync"]}});
+  // The version someone switched to has been seen.
+  if(result["switched"].toBool()&&result["channel"].isString()){notified_[result["channel"].toString()]=result["version"].toString();save();}
  }
  emit changed();
+ if(!error)emit imageReplaced();
 }
 void UpdateService::restart(const QJsonObject& params,JsonReply reply) {
  if(params.size()!=1||params["confirm"]!=true){reply({"update_confirm_required","Restarting needs confirm: true",{}},{});return;}
@@ -243,6 +281,9 @@ void UpdateService::run(bool manual) {
  emit changed();
 }
 void UpdateService::finished(bool manual,const QByteArray& output,const Error& failure) {
+ // The first result after the channel was changed shows in Settings, where it
+ // was changed: it counts as seen, like a manual check (#344).
+ const auto shown=result_["channel"].toString();const bool channelChanged=!shown.isEmpty()&&shown!=channel();
  manualRunning_=false;attemptedAt_=now();attemptedChannel_=channel();jitter_=random(-jitterMs,jitterMs);
  const auto reply=QJsonDocument::fromJson(output.trimmed()).object();
  Error error=failure;QJsonObject result;
@@ -256,10 +297,12 @@ void UpdateService::finished(bool manual,const QByteArray& output,const Error& f
   const auto latest=result["latest"].toString();const bool available=result["updateAvailable"].toBool();
   logging::info(logApp(),"Update check finished",{{"channel",result["channel"]},{"latest",result["latest"]},{"updateAvailable",available}});
   // Stable announces each new version once. A version someone already saw in
-  // Settings is not announced again; nightly is never announced.
-  if(available&&latest!=notifiedVersion_) {
-   if(!manual&&notifies(result["action"].toObject())&&settings_.snapshot().notifications)emit updateAvailable(result);
-   if(manual||channel()=="stable")notifiedVersion_=latest;
+  // Settings is not announced again; nightly is never announced. Each channel
+  // remembers its own, so switching neither repeats nor hides one.
+  const bool seen=manual||channelChanged;
+  if(available&&latest!=notified_.value(channel())) {
+   if(!seen&&notifies(result["action"].toObject())&&settings_.snapshot().notifications)emit updateAvailable(result);
+   if(seen||channel()=="stable")notified_[channel()]=latest;
   }
  }
  save();schedule();emit changed();
@@ -267,8 +310,10 @@ void UpdateService::finished(bool manual,const QByteArray& output,const Error& f
  for(const auto& reply:replies){if(error)reply(error,{});else reply({},status());}
 }
 void UpdateService::save() {
+ QJsonObject notified;for(auto it=notified_.cbegin();it!=notified_.cend();++it)notified[it.key()]=it.value();
+ // notifiedVersion is what builds before #344 read: the watched channel's.
  const auto bytes=QJsonDocument(QJsonObject{{"schemaVersion",1},{"attemptedAt",isoTime(attemptedAt_)},{"attemptedChannel",attemptedChannel_},{"checkedAt",isoTime(checkedAt_)},{"result",result_},
-  {"error",error_.isEmpty()?QJsonValue():QJsonValue(error_)},{"notifiedVersion",notifiedVersion_}}).toJson(QJsonDocument::Compact);
+  {"error",error_.isEmpty()?QJsonValue():QJsonValue(error_)},{"notifiedVersion",notified_.value(channel())},{"notifiedVersions",notified}}).toJson(QJsonDocument::Compact);
  QSaveFile state(statePath_);state.setDirectWriteFallback(false);
  if(!state.open(QIODevice::WriteOnly)||!state.setPermissions(QFile::ReadOwner|QFile::WriteOwner)||state.write(bytes)!=bytes.size()||!state.commit())
   logging::warning(logApp(),"Cannot save the update check state; the next start checks again");

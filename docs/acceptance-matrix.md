@@ -75,8 +75,9 @@ One pass of the exact published AppImage on every desktop below, with every item
 evidenced on every desktop. A failed item is a finding and gets its own issue; the
 pass still reports it as a fail. An item that can't run on a desktop needs a
 written reason, and Patrick decides whether the pass counts as complete. Nothing
-is skipped silently. The first pass is
-[2026-10-21, nightly 842](evidence/2026-10-21-appimage-full-acceptance/README.md).
+is skipped silently. The passes so far are
+[2026-10-21, nightly 842](evidence/2026-10-21-appimage-full-acceptance/README.md) and
+[2026-10-22, nightly 942](evidence/2026-10-22-appimage-full-acceptance-rerun/README.md).
 
 | Desktop | Placement |
 | --- | --- |
@@ -115,11 +116,14 @@ memory window and the coordinator's OK for each logout.
   - Each clip's motion score is compared with a static control recorded on the same desktop.
   - Record the live encoder (VA-API or the bundled x264).
   - On Plasma Wayland, AppRun's KWin entry gives `kde-screencast`, and the entry is removed on exit.
-- **F. Notifications:** the link-ready notification appears, and its default action opens the link (a recorded `x-scheme-handler/https` handler receives it).
+- **F. Notifications:** the link-ready notification appears, and a real click on it opens the link in the desktop's real default browser, which loads the image.
+  - The image is a synthetic PNG uploaded public-read to the live S3 test prefix (`put.gd/acceptance/`, key set 2), so `https://put.gd/<key>` serves it. It's deleted afterwards with **Delete from destination**, and the prefix is listed empty.
+  - The browser runs in a temporary profile, never one of Patrick's. Where the default `https` handler isn't a browser (the ChatGPT app on d69 and k72), Firefox is made the default for the test only, and `mimeapps.list` is restored byte for byte afterwards.
+  - The frame shows the address bar and the image. A recorded `x-scheme-handler/https` handler (#326's recorder) stays as a supporting check of the opener's environment.
 - **G. History:** entries show with previews, including a video poster, and **Copy image** puts the same pixels on the clipboard.
   - **Delete from destination…** removes the uploaded object from the fixture, and the row shows "Deleted from destination". The local file is kept by design.
 - **H. Settings:** a theme switch (System, Dark, Light) repaints the open window live.
-  - **Updates** shows "This build's channel (nightly)", with a status from the live app.put.gd feed.
+  - **Updates** shows **Channel** on *Nightly*, the build's own (*Stable* and *Nightly* are the only choices since #344), with a status from the live app.put.gd feed.
   - **Check now** works, and the nightly channel shows no notification.
 - **I. Start at login:** turn on **Launch at login**, then do a real logout and login. Put.gd must start from the AppImage.
   - Physical desktops: only with the coordinator's OK, and only after checking that none of Patrick's apps are open.

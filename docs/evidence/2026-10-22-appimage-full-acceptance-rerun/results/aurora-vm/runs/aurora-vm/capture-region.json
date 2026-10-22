@@ -1,0 +1,96 @@
+{
+ "kind": "region",
+ "operation": {
+  "id": "20437a68-9387-4e23-bebf-83b4995664a9",
+  "state": "completed",
+  "copyStatus": "copied",
+  "items": [
+   {
+    "name": "Screen-Capture-2026-10-22-01-01-17.png",
+    "mime": "image/png",
+    "uploadStatus": "uploaded",
+    "link": "http://127.0.0.1:42355/fixture/afa/Screen-Capture-2026-10-22-01-01-17.png",
+    "local": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "path": "/var/home/lab/work/put.gd-afa2/runs/aurora-vm/archive/images/Screen-Capture-2026-10-22-01-01-17.png",
+     "status": "saved"
+    }
+   }
+  ],
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  }
+ },
+ "png": {
+  "bytes": 3732,
+  "sha256": "8fc33084d01f7d5ed0619a23cfcae932c778534dbf8d49a491ac50fd04adb40e",
+  "magic": true,
+  "size": [
+   980,
+   600
+  ]
+ },
+ "coverCheck": {
+  "edges": {
+   "bottom": 1.0,
+   "left": 1.0,
+   "right": 1.0,
+   "top": 1.0
+  },
+  "fraction": 0.6082,
+  "kept": "/var/home/lab/work/put.gd-afa2/runs/aurora-vm/out/capture-region.png",
+  "minFraction": 0.5,
+  "ok": true,
+  "rect": [
+   0,
+   0,
+   980,
+   600
+  ],
+  "sha256": "8fc33084d01f7d5ed0619a23cfcae932c778534dbf8d49a491ac50fd04adb40e",
+  "size": [
+   980,
+   600
+  ]
+ },
+ "clipboard": "http://127.0.0.1:42355/fixture/afa/Screen-Capture-2026-10-22-01-01-17.png",
+ "linkCopied": true,
+ "linkServes": {
+  "status": 200,
+  "sha256": "8fc33084d01f7d5ed0619a23cfcae932c778534dbf8d49a491ac50fd04adb40e",
+  "matchesLocal": true
+ },
+ "historyEntry": {
+  "id": "fe9bca58-1c12-49db-beee-4ca9572b1787",
+  "name": "Screen-Capture-2026-10-22-01-01-17.png",
+  "uploadStatus": "uploaded",
+  "local": "saved",
+  "linkAvailable": true
+ },
+ "notifications": [
+  {
+   "category": "putgd.ui",
+   "fields": {
+    "itemId": null,
+    "notificationId": 2,
+    "notificationText": "Uploaded. Link copied to the clipboard. Click to open in browser.",
+    "operationId": null,
+    "summary": "operation_completed",
+    "title": "put.gd \u2014 completed",
+    "warning": false
+   },
+   "level": "info",
+   "message": "Notification shown",
+   "pid": 3523,
+   "process": "putgd",
+   "time": "2026-10-22T06:01:24.156Z",
+   "v": 1
+  }
+ ]
+}

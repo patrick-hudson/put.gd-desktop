@@ -160,7 +160,7 @@ int main(int argc,char* argv[]) {
  }
  auto& app=*application;
  QCoreApplication::setOrganizationName("putgd");QCoreApplication::setApplicationName("putgd");QCoreApplication::setApplicationVersion(putgd::buildVersion());
- QCommandLineParser parser;parser.addHelpOption();parser.addVersionOption();parser.addOption({"background","Start in tray after setup"});parser.addOption({"history","Show upload history"});parser.addOption({"activity","Show recent activity"});parser.process(app);
+ QCommandLineParser parser;parser.addHelpOption();parser.addVersionOption();parser.addOption({"background","Start in tray after setup"});parser.addOption({"history","Show upload history"});parser.addOption({"activity","Show upload history (same as --history)"});parser.process(app);
  const auto backgroundOnly=parser.isSet("background")&&!parser.isSet("history")&&!parser.isSet("activity");
  const auto view=parser.isSet("history")?QStringLiteral("history"):parser.isSet("activity")?QStringLiteral("activity"):QStringLiteral("settings");
  const int activation=activateResident(view,backgroundOnly);if(activation>=0)return activation;
@@ -398,7 +398,10 @@ int main(int argc,char* argv[]) {
   operations.background([configRoot,dataRoot,executable,enabled,loginMutex,loginGeneration,ticket](putgd::Error& error){std::lock_guard lock(*loginMutex);if(ticket!=loginGeneration->load())return QJsonObject{};error=putgd::LoginStartup::apply(configRoot,dataRoot,executable,enabled);return QJsonObject{{"enabled",enabled},{"applied",!error}};},[&,loginGeneration,ticket](putgd::Error error,QJsonObject status){if(ticket!=loginGeneration->load())return;loginStatus=status;if(error)loginStatus["error"]=error.toJson();refreshSettingsDiagnostics();});
  };
  configureLogin();QObject::connect(&settings,&putgd::SettingsService::accepted,&app,configureLogin);
- const auto showInitialView=[&]{if(view=="history")tray.showHistory();else if(view=="activity")tray.showActivity();else tray.showSettings();};
+ // The login script carries the image's update information; after an install
+ // (a channel switch changes it, #344) write it from the new image at once.
+ QObject::connect(&updates,&putgd::UpdateService::imageReplaced,&app,configureLogin);
+ const auto showInitialView=[&]{if(view=="history"||view=="activity")tray.showHistory();else tray.showSettings();};
  if(!parser.isSet("background")||settings.revision().isEmpty())showInitialView();
  else if(!tray.available()) {
   // XDG autostart can precede the desktop's tray watcher or host. Give them a

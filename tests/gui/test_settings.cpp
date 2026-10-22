@@ -871,30 +871,37 @@ private slots:
   restored({"shortcut_recording_interrupted","Global shortcut configuration changed.",{}});QCOMPARE(status->text(),recorded);QCOMPARE(input->text(),QString("Ctrl+1"));
   record->click();QTest::keyClick(input,Qt::Key_Escape);restored({"shortcut_restore_failed","Synthetic restore failure",{}});QVERIFY(status->text().contains("Could not restore shortcuts"));QCOMPARE(input->text(),QString("Ctrl+1"));
  }
- // #305: "This build's channel" says which channel it resolves to, from the
- // build's channel in update.status; a build that never checks keeps the plain label.
- void updateChannelNamesWhatThisBuildFollows(){
+ // #344: Channel offers Stable and Nightly and starts on this build's own; the
+ // build's own is stored as "build", the other one explicitly.
+ void updateChannelStartsOnThisBuildsChannel(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(Settings::developmentTemplate(),{}));
   CredentialStore secrets;UiSessionFixture fixture(service,secrets);QJsonObject update;
   fixture.server.setUiDiagnostics([&]{auto data=fixture.operations().diagnostics();data["update"]=update;return data;});
   MainWindow window(fixture.session);window.navigate("settings");window.show();PUTGD_TRY_VERIFY(fixture.session.ready());
-  auto* channel=window.findChild<QComboBox*>("updateChannel");QVERIFY(channel);QCOMPARE(channel->itemData(0).toString(),QString("build"));
+  auto* channel=window.findChild<QComboBox*>("updateChannel");QVERIFY(channel);
+  QCOMPARE(channel->count(),2);QCOMPARE(channel->itemText(0),QString("Stable"));QCOMPARE(channel->itemData(0).toString(),QString("stable"));
+  QCOMPARE(channel->itemText(1),QString("Nightly"));QCOMPARE(channel->itemData(1).toString(),QString("nightly"));
   auto apply=[&](bool supported,const QJsonValue& buildChannel,const QString& setting,const QString& reason){
    update={{"supported",supported},{"build",QJsonObject{{"version","0.2.0-synthetic"},{"channel",buildChannel},{"supported",supported},{"reason",reason.isEmpty()?QJsonValue():QJsonValue(reason)}}},
     {"check",true},{"channelSetting",setting},{"channel",setting=="build"?buildChannel:QJsonValue(setting)},{"checking",false},{"result",QJsonObject{}},{"error",QJsonObject{}},
     {"checkedAt",QJsonValue()},{"nextCheckAt",QJsonValue()},{"reason",reason.isEmpty()?QJsonValue():QJsonValue(reason)}};
    fixture.session.refreshSnapshot();
   };
-  apply(true,"stable","build",{});PUTGD_TRY_COMPARE(channel->itemText(0),QString("This build's channel (stable)"));
-  QVERIFY(channel->isVisibleTo(window.settings()));QCOMPARE(channel->currentText(),QString("This build's channel (stable)"));
-  apply(true,"nightly","build",{});PUTGD_TRY_COMPARE(channel->itemText(0),QString("This build's channel (nightly)"));
-  // Watching the other channel doesn't change what this build follows.
-  apply(true,"nightly","stable",{});PUTGD_TRY_VERIFY(window.findChild<QLabel*>("updateStatus")->text().contains("Not checked yet"));QCOMPARE(channel->itemText(0),QString("This build's channel (nightly)"));
-  QCOMPARE(channel->itemText(1),QString("Stable"));QCOMPARE(channel->itemText(2),QString("Nightly"));
-  // No channel: a development build, and a Flatpak (tagged, but it never checks).
-  apply(false,QJsonValue(),"build","development_build");PUTGD_TRY_COMPARE(channel->itemText(0),QString("This build's channel"));QVERIFY(!channel->isVisibleTo(window.settings()));
-  apply(true,"stable","build",{});PUTGD_TRY_COMPARE(channel->itemText(0),QString("This build's channel (stable)"));
-  apply(false,"stable","build","flatpak");PUTGD_TRY_COMPARE(channel->itemText(0),QString("This build's channel"));
+  const auto stored=[&]{return service.document()["preferences"].toObject()["updates"].toObject()["channel"].toString("(none)");};
+  apply(true,"stable","build",{});PUTGD_TRY_COMPARE(channel->currentData().toString(),QString("stable"));QVERIFY(channel->isVisibleTo(window.settings()));
+  apply(true,"nightly","build",{});PUTGD_TRY_COMPARE(channel->currentData().toString(),QString("nightly"));
+  // Showing the build's channel saves nothing: an untouched file keeps no updates object.
+  PUTGD_COMPARE_STEADY(stored(),QString("(none)"),200);
+  // The other channel is stored by name, and the build's own as "build".
+  channel->setCurrentIndex(0);PUTGD_TRY_COMPARE(stored(),QString("stable"));
+  apply(true,"nightly","stable",{});PUTGD_TRY_VERIFY(window.findChild<QLabel*>("updateStatus")->text().contains("Not checked yet"));QCOMPARE(channel->currentData().toString(),QString("stable"));
+  channel->setCurrentIndex(1);PUTGD_TRY_COMPARE(stored(),QString("build"));
+  // A stored "build" from before #344 shows as this build's channel too.
+  apply(true,"stable","build",{});PUTGD_TRY_COMPARE(channel->currentData().toString(),QString("stable"));
+  // A development build or Flatpak never checks: the row is hidden and nothing is rewritten.
+  apply(false,QJsonValue(),"build","development_build");PUTGD_TRY_VERIFY(!channel->isVisibleTo(window.settings()));
+  window.findChild<QCheckBox*>("notifications")->setChecked(!window.findChild<QCheckBox*>("notifications")->isChecked());PUTGD_COMPARE_STEADY(stored(),QString("build"),300);
+  apply(false,"stable","build","flatpak");PUTGD_TRY_VERIFY(!channel->isVisibleTo(window.settings()));
  }
  // #293 phase 3: an AppImage with an update offers Download and install, shows
  // the install's progress, then Restart put.gd; a repository install never does.
@@ -937,6 +944,53 @@ private slots:
   apply({{"state","idle"},{"available",false},{"running",false},{"reason","not_appimage"},{"restartRequired",false}});PUTGD_TRY_VERIFY(!install->isVisibleTo(settings));
   apply({{"state","idle"},{"available",true},{"running",false},{"restartRequired",false}},{{"kind","software-updates"},{"manager","apt"},{"command","sudo apt update && sudo apt upgrade"},{"updater",QJsonValue()}});
   PUTGD_TRY_VERIFY(!download->isVisibleTo(settings));QVERIFY(!install->isVisibleTo(settings));
+ }
+ // #344: an AppImage watching the other channel offers an explicit switch, says
+ // when that channel has no release yet, and confirms an older version first.
+ void appImageWatchingTheOtherChannelOffersASwitch(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(Settings::developmentTemplate(),{}));
+  CredentialStore secrets;UiSessionFixture fixture(service,secrets);QJsonObject update;
+  fixture.server.setUiDiagnostics([&]{auto data=fixture.operations().diagnostics();data["update"]=update;return data;});
+  MainWindow window(fixture.session);window.navigate("settings");window.show();PUTGD_TRY_VERIFY(fixture.session.ready());
+  auto* install=window.findChild<QPushButton*>("installUpdate");auto* restart=window.findChild<QPushButton*>("restartAfterUpdate");
+  auto* line=window.findChild<QLabel*>("updateStatus");auto* status=window.findChild<QLabel*>("updateInstallStatus");QVERIFY(install&&restart&&line&&status);
+  auto apply=[&](const QString& version,const QString& buildChannel,const QString& channel,const QJsonValue& latest,bool newer,const QJsonObject& installState){
+   update={{"supported",true},{"build",QJsonObject{{"version",version},{"channel",buildChannel},{"supported",true},{"packageTarget","appimage"}}},
+    {"check",true},{"channelSetting",channel},{"channel",channel},{"checking",false},{"action",QJsonObject{{"kind","download"},{"repository","none"}}},{"error",QJsonObject{}},
+    {"checkedAt",QJsonValue()},{"nextCheckAt",QJsonValue()},
+    {"result",QJsonObject{{"channel",channel},{"current",version},{"latest",latest},{"updateAvailable",newer},{"downloadUrl","https://app.put.gd/dl/"+channel+"/appimage"}}},{"install",installState}};
+   fixture.session.refreshSnapshot();
+  };
+  const auto settings=window.settings();
+  // No stable release yet: said plainly, with nothing to click.
+  apply("0.1.1-nightly.900","nightly","stable",QJsonValue(),false,{{"state","idle"},{"kind","switch"},{"available",false},{"reason","no_release"},{"switch",QJsonValue()},{"running",false},{"restartRequired",false}});
+  PUTGD_TRY_VERIFY(line->text().startsWith("There's no stable release yet. This nightly build (0.1.1-nightly.900) stays as it is"));
+  QVERIFY(!line->text().contains("Up to date"));QVERIFY(!install->isVisibleTo(settings));
+  // The first stable release: Switch to stable 0.1.1.
+  apply("0.1.1-nightly.900","nightly","stable","0.1.1",true,{{"state","idle"},{"kind","switch"},{"available",true},{"running",false},{"restartRequired",false},
+   {"switch",QJsonObject{{"from","nightly"},{"to","stable"},{"version","0.1.1"},{"tag","v0.1.1"},{"older",false}}}});
+  PUTGD_TRY_COMPARE(install->text(),QString("Switch to stable 0.1.1"));QVERIFY(install->isVisibleTo(settings));
+  QVERIFY(line->text().startsWith("Stable 0.1.1 is available. This is nightly 0.1.1-nightly.900; switching replaces it with the stable release."));
+  // Without an install service here the click's refusal shows; it was asked for.
+  install->click();PUTGD_TRY_VERIFY(status->text().contains("does not check for updates"));
+  // Back from stable to an older nightly: labelled, and confirmed first.
+  apply("0.1.1","stable","nightly","0.1.1-nightly.901",false,{{"state","idle"},{"kind","switch"},{"available",true},{"running",false},{"restartRequired",false},
+   {"switch",QJsonObject{{"from","stable"},{"to","nightly"},{"version","0.1.1-nightly.901"},{"tag","v0.1.1-nightly.901"},{"older",true}}}});
+  PUTGD_TRY_COMPARE(install->text(),QString("Switch to nightly 0.1.1-nightly.901 (older)"));
+  QVERIFY(line->text().startsWith("Nightly 0.1.1-nightly.901 is older than this stable build (0.1.1)."));
+  QString asked;
+  QTimer dismiss;connect(&dismiss,&QTimer::timeout,this,[&]{if(auto* box=qobject_cast<QMessageBox*>(QApplication::activeModalWidget())){asked=box->text();box->button(QMessageBox::No)->click();}});dismiss.start(10);
+  status->clear();install->click();dismiss.stop();
+  PUTGD_TRY_VERIFY(asked.contains("which is older than this build (0.1.1)"));QVERIFY(asked.contains("may not open settings or history"));
+  PUTGD_VERIFY_STEADY(!status->text().contains("does not check for updates"),100);QVERIFY(install->isEnabled());
+  // Switched and waiting, then switched and running.
+  apply("0.1.1-nightly.900","nightly","stable","0.1.1",true,{{"state","installed"},{"kind","switch"},{"available",true},{"running",false},{"restartRequired",true},{"switch",QJsonValue()},
+   {"installed",QJsonObject{{"version","0.1.1"},{"channel","stable"},{"previousChannel","nightly"},{"method","zsync"}}}});
+  PUTGD_TRY_VERIFY(status->text().startsWith("Switched to stable 0.1.1 with a zsync update. Restart put.gd to use it."));QVERIFY(restart->isVisibleTo(settings));
+  apply("0.1.1","stable","stable","0.1.1",false,{{"state","idle"},{"kind","update"},{"available",true},{"running",false},{"restartRequired",false},{"switch",QJsonValue()},
+   {"installed",QJsonObject{{"version","0.1.1"},{"previousVersion","0.1.1-nightly.900"},{"channel","stable"},{"previousChannel","nightly"},{"method","download"},{"installedAt","2026-10-22T10:00:00Z"}}}});
+  PUTGD_TRY_VERIFY(status->text().startsWith("Switched from nightly 0.1.1-nightly.900 to stable 0.1.1 from a full download on "));
+  QVERIFY(line->text().startsWith("Up to date: 0.1.1 is the newest stable version."));QVERIFY(!install->isVisibleTo(settings));
  }
  void railShowsTheResidentVersionAndOpensItsGitHubPage(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.show();PUTGD_TRY_VERIFY(fixture.session.ready());

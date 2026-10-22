@@ -19,6 +19,7 @@
 #include <QProcessEnvironment>
 #include <QDir>
 #include <tuple>
+#include <memory>
 #include <QFile>
 #include <QElapsedTimer>
 #include <QTimer>
@@ -283,9 +284,17 @@ private slots:
   PUTGD_TRY_COMPARE_WITH_TIMEOUT(resident.state(), QProcess::NotRunning, 5000);
   QCOMPARE(resident.exitCode(), 0);
  }
+ void rejectedGlobalShortcutReportsMissingDestination_data() {
+  QTest::addColumn<bool>("menuOpen");
+  QTest::newRow("passive grab") << false;
+  // #341: another client's open menu holds the keyboard; XInput2 raw keys fire it.
+  QTest::newRow("menu holds the keyboard") << true;
+ }
  void rejectedGlobalShortcutReportsMissingDestination() {
   if (qEnvironmentVariable("PUTGD_ISOLATED_SHORTCUT_TEST") != "1")
    QSKIP("Requires its dedicated private-bus/Xvfb invocation");
+  QFETCH(bool, menuOpen);
+  notifications.values.clear();
   QTemporaryDir directory;
   QVERIFY(directory.isValid());
   const auto runtime = directory.filePath("r");
@@ -324,10 +333,17 @@ private slots:
   PUTGD_TRY_VERIFY(request("ui.snapshot")["diagnostics"].toObject()["trayAvailable"].toBool());
   QVERIFY(snapshot["diagnostics"].toObject()["shortcuts"].toObject()["bindings"].toObject()["region"].toObject()["bound"].toBool());
   QCOMPARE(snapshot["diagnostics"].toObject()["ui"].toObject()["pid"].toInteger(), qint64(0));
+  QVERIFY(snapshot["diagnostics"].toObject()["shortcuts"].toObject()["keyPaths"].toObject()["raw"].toObject()["available"].toBool());
   X11DesktopFixture desktop;
+  std::unique_ptr<X11GrabbingClient> menu;
+  if (menuOpen) { menu = std::make_unique<X11GrabbingClient>(); QVERIFY(menu->grabbed); }
   desktop.key(XK_Control_L,true);desktop.key(XK_1,true);
   desktop.key(XK_1,false);desktop.key(XK_Control_L,false);
   PUTGD_TRY_COMPARE_WITH_TIMEOUT(notifications.values.size(), 1, 5000);
+  // The CLI (and the MCP helper's inspect, which forwards to it) names the path that fired.
+  const auto fired = request("ui.snapshot")["diagnostics"].toObject()["shortcuts"].toObject()["keyPaths"].toObject()["lastActivation"].toObject();
+  QCOMPARE(fired["action"].toString(), QString("region"));
+  QCOMPARE(fired["path"].toString(), QString(menuOpen ? "raw" : "passive"));
   const auto body=notifications.values.first()["body"].toString();QVERIFY(body.contains("No output is enabled"));QVERIFY(body.contains("Settings → Capture"));QVERIFY(body.contains("Keep a local copy in Settings → General"));
   for(int repeat=0;repeat<2;++repeat){
    desktop.key(XK_Control_L,true);desktop.key(XK_1,true);
@@ -444,7 +460,7 @@ private slots:
   }
   reply = call("/Menu", "com.canonical.dbusmenu", "GetLayout", {0, -1, QStringList{}});
   QCOMPARE(reply.signature(), QString("u(ia{sv}av)")); QCOMPARE(reply.arguments().at(0).toUInt(), uint(1));
-  auto layout = qdbus_cast<WireLayout>(reply.arguments().at(1)); QCOMPARE(layout.id, 0); QCOMPARE(layout.children.size(), 15);
+  auto layout = qdbus_cast<WireLayout>(reply.arguments().at(1)); QCOMPARE(layout.id, 0); QCOMPARE(layout.children.size(), 14);
   QCOMPARE(layout.props["children-display"].toString(), QString("submenu"));
   // Capture entries first: region, region & edit, window, desktop, screen recording, then the editor sources and the clipboard upload.
   const QStringList order{"Capture Region", "Capture Region & Edit", "Capture Window", "Capture Desktop", "Capture Screen Recording", "Edit Image", "Upload Clipboard"};
@@ -470,19 +486,23 @@ private slots:
  }
  void everyActionAndActivationUsesFixedIds() {
   NativeTray tray; PUTGD_TRY_VERIFY(tray.available()); QSignalSpy actions(&tray, &NativeTray::actionActivated);
-  const QList<int> ids{1,2,3,4,5,7,8,9,11,12,14,15};
-  const QStringList expected{"region","window","desktop","clipboard","edit","settings","history","activity","about","quit","edit-clipboard","edit-file"};
+  const QList<int> ids{1,2,3,4,5,7,8,11,12,14,15};
+  const QStringList expected{"region","window","desktop","clipboard","edit","settings","history","about","quit","edit-clipboard","edit-file"};
   for (int i = 0; i < ids.size(); ++i) { QCOMPARE(click(ids[i]).type(), QDBusMessage::ReplyMessage); PUTGD_TRY_COMPARE(actions.size(), i+1); QCOMPARE(actions.at(i).at(0).toString(), expected[i]); }
   // Separators and the submenu header dispatch nothing.
   QCOMPARE(click(6).type(), QDBusMessage::ReplyMessage); QCOMPARE(click(10).type(), QDBusMessage::ReplyMessage); QCOMPARE(click(13).type(), QDBusMessage::ReplyMessage);
   QCOMPARE(click(1, "hovered").type(), QDBusMessage::ReplyMessage); QCOMPARE(click(99).type(), QDBusMessage::ErrorMessage);
-  QCOMPARE(actions.size(), 12);
+  // 9 was "Recent activity": its ID stays retired rather than shifting the others.
+  QCOMPARE(click(9).type(), QDBusMessage::ErrorMessage);
+  QCOMPARE(call("/Menu", "com.canonical.dbusmenu", "GetProperty", {9, QString("label")}).type(), QDBusMessage::ErrorMessage);
+  QCOMPARE(actions.size(), 11);
+  // Left-click opens History.
   QCOMPARE(call("/StatusNotifierItem", "org.kde.StatusNotifierItem", "Activate", {0,0}).type(), QDBusMessage::ReplyMessage);
-  PUTGD_TRY_COMPARE(actions.size(), 13); QCOMPARE(actions.last().at(0).toString(), QString("activity"));
+  PUTGD_TRY_COMPARE(actions.size(), 12); QCOMPARE(actions.last().at(0).toString(), QString("history"));
   WireEvents events{{1,"clicked",QDBusVariant(0),0},{99,"clicked",QDBusVariant(0),0}};
   auto reply = call("/Menu", "com.canonical.dbusmenu", "EventGroup", {QVariant::fromValue(events)});
   QCOMPARE(reply.type(), QDBusMessage::ReplyMessage); QCOMPARE(qdbus_cast<QList<int>>(reply.arguments().at(0)), QList<int>{99});
-  PUTGD_TRY_COMPARE(actions.size(), 14); QCOMPARE(actions.last().at(0).toString(), QString("region"));
+  PUTGD_TRY_COMPARE(actions.size(), 13); QCOMPARE(actions.last().at(0).toString(), QString("region"));
  }
  void updateEntryShowsItsVersionAndBumpsTheLayout() {
   // #293: hidden until a stable update is available, then labelled with it.
@@ -492,7 +512,7 @@ private slots:
   auto entry = [&] {
    const auto reply = call("/Menu", "com.canonical.dbusmenu", "GetLayout", {0, -1, QStringList{}});
    const auto root = qdbus_cast<WireLayout>(reply.arguments().at(1));
-   return std::pair(reply.arguments().at(0).toUInt(), qdbus_cast<WireLayout>(root.children.at(11).variant()));
+   return std::pair(reply.arguments().at(0).toUInt(), qdbus_cast<WireLayout>(root.children.at(10).variant()));
   };
   auto [revision, update] = entry();
   QCOMPARE(revision, uint(1)); QCOMPARE(update.id, 17); QCOMPARE(update.props["visible"].toBool(), false);
@@ -734,8 +754,8 @@ private slots:
   QStringList views; int quits = 0;
   TrayController controller(operations, [&](const QString& view) { views.append(view); }, [&] { ++quits; });
   auto* native = controller.findChild<NativeTray*>(); QVERIFY(native); PUTGD_TRY_VERIFY(native->available());
-  for (int id : {7,8,9,11}) QCOMPARE(click(id).type(), QDBusMessage::ReplyMessage);
-  PUTGD_TRY_COMPARE(views, QStringList({"settings","history","activity","about"}));
+  for (int id : {7,8,11}) QCOMPARE(click(id).type(), QDBusMessage::ReplyMessage);
+  PUTGD_TRY_COMPARE(views, QStringList({"settings","history","about"}));
   QCOMPARE(click(4).type(), QDBusMessage::ReplyMessage); PUTGD_TRY_COMPARE(source.copies, 1); PUTGD_TRY_COMPARE(notifications.values.size(), 1);
   QVERIFY(notifications.values.first()["summary"].toString().contains("completed"));
   QVERIFY(notifications.values.first()["body"].toString().contains("copied"));

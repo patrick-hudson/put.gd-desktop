@@ -1,0 +1,35 @@
+2026-10-22T05:16:41Z lock acquire (45 min) exit=0
+2026-10-22T05:18:31Z installed putgd-gnome50-0.1.1-nightly.942.zip as user copy ~/.local/share/gnome-shell/extensions/putgd@put.gd; enabled-extensions += putgd@put.gd (was [background-logo, appindicatorsupport])
+2026-10-22T05:18:44Z logout #1 (gnome-session-quit --logout, session 12197) to load the extension; then sudo systemctl restart gdm -> autologin
+2026-10-22T05:19:13Z re-login #1: new session 12260 (gdm-autologin), gnome-shell up ~05:18:50Z; extension state checked
+2026-10-22T05:20:03Z A-C start (ac.sh f44, after 60 s settle)
+2026-10-22T05:23:57Z A-C done
+2026-10-22T05:24:10Z Aurora VM overlay launch (lab.py launch aurora-kde-wayland, golden aurora v3 492c3f8945d1, run labtree/work/lab-runs/aur-afa2, ssh 22426, vnc 5926, UEFI)
+2026-10-22T05:24:50Z D-H start (dk.sh)
+2026-10-22T05:26:22Z Aurora VM launch returned
+2026-10-22T05:30:35Z D-H done
+2026-10-22T05:34:25Z lock extend 45 min
+2026-10-22T05:36:23Z live in-app update 925->latest (947, which had just published) start (upd293 --live, run f44-live925)
+2026-10-22T05:37:27Z live in-app update done
+2026-10-22T05:38:15Z live925 attempt 1 aborted (journal_busy: the acceptance resident owns the data-home journal); 925 resident quit, run cleaned up; retry after K
+2026-10-22T05:39:04Z item I real logout/login:
+  2026-10-22T05:39:00Z shell gnome-shell pid 2432431
+  2026-10-22T05:39:00Z logout requested (gnome-session-quit --logout)
+  2026-10-22T05:39:02Z old shell gone
+  2026-10-22T05:39:03Z systemctl restart gdm
+  2026-10-22T05:39:04Z new shell pid 2461502
+  12328  1000 patrick     seat0 2461427 user          tty2 no -
+2026-10-22T05:39:47Z login check done
+2026-10-22T05:42:06Z K: quit from tray (real click)
+2026-10-22T05:48:19Z lock extend 45 min
+2026-10-22T05:48:59Z live in-app update 925->latest (947, which had just published) (run f44-live925b) done
+2026-10-22T05:49:23Z live in-app update 942->947 (N->N+1, run f44-live942) start
+2026-10-22T05:50:26Z live 942->947 done
+2026-10-22T05:51:18Z live in-app update 942->947 (run f44-live942b) done; resident quit and run cleaned
+2026-10-22T05:52:06Z cleanup: afa login disable + cleanup (autostart entry, data home, user files removed); uinput agent PID 2437087 stopped
+2026-10-22T05:52:10Z f44: putgd@put.gd user copy uninstalled; enabled-extensions restored to [background-logo, appindicatorsupport]
+2026-10-22T05:53:34Z lock released --verified-clean
+2026-10-22T06:47:57Z lock acquire (30 min) for real-browser F
+2026-10-22T06:48:13Z F: temporary Firefox profile made default (profiles.ini/installs.ini backed up), run f44-F, live S3 public-read to put.gd/acceptance/afa2/f44/, banner click with the uinput agent
+2026-10-22T06:51:20Z F PASS (Firefox temp profile loaded the image); object deleted via put.gd; Firefox PID 2567540 closed; run cleaned; profiles.ini/installs.ini restored byte for byte, temp profile removed; removed the temp profile's new 'Profile Groups/87c9febe.sqlite{,-shm,-wal}' (only new paths vs the pre-test listing)
+2026-10-22T06:51:37Z uinput agent stopped (exact PID 2567148, child of the recorded sudo PID), socket removed; Aurora lab-run receipts copied; ~/work/put.gd-afa2 removed (labtree with the retired Aurora run); prefix listed; lock released --verified-clean

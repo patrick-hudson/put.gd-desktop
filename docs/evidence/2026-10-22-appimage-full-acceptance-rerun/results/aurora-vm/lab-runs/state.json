@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "084251d3-337e-46c6-8f19-fdf8e6ff0b01",
+  "profile": "aurora-kde-wayland",
+  "guest_user": "lab",
+  "ssh_port": 22426,
+  "vnc_display": 26,
+  "acceleration": "kvm",
+  "golden": "/home/patrick/work/put.gd/work/lab-images/aurora-stable-44.20260908.1-v3-492c3f8945d1/image.qcow2",
+  "golden_sha256": "6a2fb407830f95228bb06f4d20d7cd0bd1aec8ed937ef59430e50eb608b62c2d",
+  "bootstrap_key": "/home/patrick/work/put.gd/work/lab-bootstrap-f44/aurora/identity",
+  "known_hosts": "/home/patrick/work/put.gd-afa2/labtree/work/lab-runs/aur-afa2/known_hosts",
+  "overlay": "/home/patrick/work/put.gd-afa2/labtree/work/lab-runs/aur-afa2/disk.qcow2",
+  "firmware": {
+    "type": "uefi",
+    "code": "/usr/share/edk2/ovmf/OVMF_CODE_4M.qcow2",
+    "vars_template": "/usr/share/edk2/ovmf/OVMF_VARS_4M.qcow2",
+    "format": "qcow2",
+    "vars": "/home/patrick/work/put.gd-afa2/labtree/work/lab-runs/aur-afa2/vars.qcow2",
+    "code_sha256": "cc2b32e9c508fb3017092096a1dafe3b3a1f843b6a931a56904797b448fff1ba",
+    "vars_template_sha256": "035317bb2923a13c1dc57373d608521cc3a486f1e3119016727d54baccc6e8bb"
+  },
+  "pid": 2446918
+}

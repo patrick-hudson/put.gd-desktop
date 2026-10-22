@@ -82,13 +82,13 @@ class GitHubProtocol(unittest.TestCase):
 
 
 class Fixture(unittest.TestCase):
-    """One clean full-history Git checkout whose HEAD is the candidate source."""
+    """One clean full-history Git checkout whose HEAD, committed 2026-10-12 UTC, is 26.1012.1."""
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix='pgnightly-')
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name) / 'source'
         self.root.mkdir()
-        (self.root / 'CMakeLists.txt').write_text('project(putgd VERSION 0.1.1 LANGUAGES CXX)\n')
+        (self.root / 'CMakeLists.txt').write_text('project(putgd LANGUAGES CXX)\n')
         self.git('init', '-q')
         self.git('config', 'user.name', 'Synthetic fixture')
         self.git('config', 'user.email', 'fixture@example.invalid')
@@ -117,14 +117,14 @@ class Fixture(unittest.TestCase):
 
 class NightlyPlan(Fixture):
     def tag(self):
-        return 'v0.1.1-nightly.1'
+        return 'v26.1012.1-nightly'
 
     def test_preparation_names_immutable_head_identity(self):
         prepared = nightly.prepare(self.root)
         self.assertEqual(prepared['tag'], self.tag())
         self.assertEqual(prepared['sourceSha'], self.sha)
         self.assertEqual(prepared['commitCount'], 1)
-        self.assertEqual(prepared['baseVersion'], '0.1.1')
+        self.assertEqual(prepared['baseVersion'], '26.1012.1')
 
     def test_dirty_or_shallow_source_is_rejected(self):
         (self.root / 'untracked.txt').write_text('dirty\n')
@@ -159,14 +159,18 @@ class NightlyPlan(Fixture):
             nightly.plan(self.api, self.root, 'refs/heads/nightly')
         self.assertEqual(self.api.created, [])
 
-    def test_released_base_requires_the_next_version_before_new_nightlies(self):
-        self.api.tags['v0.1.1'] = 'b' * 40
-        with self.assertRaisesRegex(ValueError, 'next version'):
+    def test_a_stable_release_or_pre_calendar_nightly_does_not_stop_nightlies(self):
+        self.api.tags.update({'v26.1012.1': 'b' * 40, 'v0.1.1': 'c' * 40, 'v0.1.1-nightly.925': 'd' * 40})
+        self.assertFalse(nightly.plan(self.api, self.root, 'refs/heads/nightly')['skip'])
+        self.assertEqual(self.api.created, [self.tag()])
+
+    def test_a_version_older_than_an_existing_nightly_is_refused(self):
+        # A rewritten committer date must not publish a nightly that sorts below the last one.
+        self.api.tags['v26.1013.5-nightly'] = 'b' * 40
+        with self.assertRaisesRegex(ValueError, 'would not sort after the existing nightly v26.1013.5-nightly'):
             nightly.plan(self.api, self.root, 'refs/heads/nightly')
         self.assertEqual(self.api.created, [])
-        self.api.tags[self.tag()] = self.sha
-        with patch.object(nightly, 'published_nightly', return_value={'releaseId': 66}):
-            self.assertTrue(nightly.plan(self.api, self.root, 'refs/heads/nightly')['skip'])
+        self.assertEqual(nightly.newest_nightly(self.api), 'v26.1013.5-nightly')
 
     def test_only_the_nightly_branch_publishes_nightlies(self):
         for ref in ('refs/heads/main', 'refs/heads/feature', 'refs/tags/v0.1.1'):
@@ -186,56 +190,36 @@ class NightlyPlan(Fixture):
             self.assertIn(self.tag(), summary.read_text())
 
 
-class CandidateAndStable(Fixture):
-    def cut(self, channel):
-        return release_tag.cut(self.api, self.root, 'refs/heads/main', channel)
+class StableRelease(Fixture):
+    def cut(self):
+        return release_tag.cut(self.api, self.root, 'refs/heads/main')
 
-    def test_first_candidate_then_reuse_on_rerun(self):
-        self.assertEqual(self.cut('candidate')['tag'], 'v0.1.1-rc.1')
-        self.assertEqual(self.api.created, ['v0.1.1-rc.1'])
-        rerun = self.cut('candidate')
-        self.assertEqual((rerun['tag'], rerun['created']), ('v0.1.1-rc.1', False))
-        self.assertEqual(self.api.created, ['v0.1.1-rc.1'])
-
-    def test_next_candidate_number_follows_the_highest_existing(self):
-        self.api.tags.update({'v0.1.1-rc.1': 'b' * 40, 'v0.1.1-rc.9': 'c' * 40,
-                              'v0.1.10-rc.20': 'd' * 40, 'v0.1.1-nightly.5': 'e' * 40,
-                              'v0.1.1-dev.4.20261012030405+gbbbbbbbbbbbb': 'f' * 40})
-        self.assertEqual(release_tag.choose('candidate', '0.1.1', self.sha,
-                                            release_tag.release_tags(self.api, '0.1.1')), ('v0.1.1-rc.10', True))
-
-    def test_released_base_rejects_candidates(self):
-        self.api.tags['v0.1.1'] = 'b' * 40
-        with self.assertRaisesRegex(ValueError, 'already released'):
-            self.cut('candidate')
-        self.assertEqual(self.api.created, [])
-
-    def test_stable_requires_a_candidate_on_the_same_commit(self):
-        self.api.tags['v0.1.1-rc.1'] = 'b' * 40
-        with self.assertRaisesRegex(ValueError, 'candidate commit'):
-            self.cut('stable')
-        self.assertEqual(self.api.created, [])
-        self.api.tags['v0.1.1-rc.2'] = self.sha
-        result = self.cut('stable')
-        self.assertEqual((result['tag'], result['created'], result['release']['channel']), ('v0.1.1', True, 'stable'))
-        self.assertEqual(self.cut('stable')['created'], False)
+    def test_stable_tag_comes_from_head_and_is_reused_on_rerun(self):
+        self.assertEqual(release_tag.choose(self.root, self.sha), 'v26.1012.1')
+        result = self.cut()
+        self.assertEqual((result['tag'], result['created'], result['release']['channel']), ('v26.1012.1', True, 'stable'))
+        self.assertEqual(self.api.created, ['v26.1012.1'])
+        rerun = self.cut()
+        self.assertEqual((rerun['tag'], rerun['created']), ('v26.1012.1', False))
+        self.assertEqual(self.api.created, ['v26.1012.1'])
 
     def test_stable_tag_on_another_commit_is_never_moved(self):
-        self.api.tags.update({'v0.1.1-rc.1': self.sha, 'v0.1.1': 'b' * 40})
+        self.api.tags['v26.1012.1'] = 'b' * 40
         with self.assertRaisesRegex(ValueError, 'already identifies'):
-            self.cut('stable')
+            self.cut()
+        self.assertEqual(self.api.created, [])
 
-    def test_only_main_cuts_candidates_and_stable(self):
+    def test_only_main_cuts_stable_releases(self):
         for ref in ('refs/heads/nightly', 'refs/pull/1/merge'):
             with self.subTest(ref=ref), self.assertRaisesRegex(ValueError, 'main only'):
-                release_tag.cut(self.api, self.root, ref, 'candidate')
+                release_tag.cut(self.api, self.root, ref)
         self.assertEqual(self.api.created, [])
 
 
 class PublicNightly(unittest.TestCase):
     def setUp(self):
         self.api = API()
-        self.tag = 'v0.1.1-nightly.2'
+        self.tag = 'v26.1012.2-nightly'
         self.release = {'tag': self.tag, 'version': self.tag[1:], 'channel': 'nightly', 'gitCommit': SHA}
         files = {name: name.encode() for name in nightly.public_inventory(self.tag) if name != 'SHA256SUMS'}
         files['release-builds.json'] = json.dumps({'release': self.release}).encode()

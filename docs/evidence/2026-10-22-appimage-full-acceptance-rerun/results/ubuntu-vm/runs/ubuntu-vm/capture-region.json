@@ -1,0 +1,77 @@
+{
+ "kind": "region",
+ "operation": {
+  "id": "679a82b6-f787-4ccf-a1cd-8b59397bb8c9",
+  "state": "completed",
+  "copyStatus": "copied",
+  "items": [
+   {
+    "name": "Screen-Capture-2026-10-22-00-55-08.png",
+    "mime": "image/png",
+    "uploadStatus": "uploaded",
+    "link": "http://127.0.0.1:41809/fixture/afa/Screen-Capture-2026-10-22-00-55-08.png",
+    "local": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "path": "/home/lab/work/put.gd-afa2/runs/ubuntu-vm/archive/images/Screen-Capture-2026-10-22-00-55-08.png",
+     "status": "saved"
+    }
+   }
+  ],
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  }
+ },
+ "png": {
+  "bytes": 3782,
+  "sha256": "612037e620bd640e76fd337abe025ebd8f9b690386938964c143d33706beb820",
+  "magic": true,
+  "size": [
+   980,
+   600
+  ]
+ },
+ "coverCheck": {
+  "edges": {
+   "bottom": 1.0,
+   "left": 1.0,
+   "right": 1.0,
+   "top": 1.0
+  },
+  "fraction": 0.6082,
+  "kept": "/home/lab/work/put.gd-afa2/runs/ubuntu-vm/out/capture-region.png",
+  "minFraction": 0.5,
+  "ok": true,
+  "rect": [
+   0,
+   0,
+   980,
+   600
+  ],
+  "sha256": "612037e620bd640e76fd337abe025ebd8f9b690386938964c143d33706beb820",
+  "size": [
+   980,
+   600
+  ]
+ },
+ "clipboard": "http://127.0.0.1:41809/fixture/afa/Screen-Capture-2026-10-22-00-55-08.png",
+ "linkCopied": true,
+ "linkServes": {
+  "status": 200,
+  "sha256": "612037e620bd640e76fd337abe025ebd8f9b690386938964c143d33706beb820",
+  "matchesLocal": true
+ },
+ "historyEntry": {
+  "id": "a510cddc-bd75-4f62-b3df-c21423ad0d73",
+  "name": "Screen-Capture-2026-10-22-00-55-08.png",
+  "uploadStatus": "uploaded",
+  "local": "saved",
+  "linkAvailable": true
+ },
+ "notifications": []
+}

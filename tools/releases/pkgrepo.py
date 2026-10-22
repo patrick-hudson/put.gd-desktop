@@ -105,14 +105,9 @@ def sha256_file(path):
 
 
 def version_key(version):
-    """Order versions as packages do: base, then nightly < candidate < stable, then the number."""
-    identity = parse_version(version)
-    base = tuple(int(part) for part in identity.base_version.split('.'))
-    if identity.channel == 'nightly':
-        return base + (0, identity.count)
-    if identity.channel == 'candidate':
-        return base + (1, int(version.rsplit('.', 1)[1]))
-    return base + (2, 0)
+    """Order versions as packages do: calendar versions (#373) by date and count after every
+    pre-#373 one; on one version nightly < candidate < stable."""
+    return parse_version(version).key
 
 
 def repo_channel(tag):
@@ -494,8 +489,9 @@ class Workspace:
 
 
 def rpm_version(filename):
-    """putgd-0.1.1~nightly.588-1.fc44.x86_64.rpm -> 0.1.1-nightly.588."""
-    match = re.match(r'^putgd-(?P<version>[0-9.]+(?:~(?:nightly|rc)\.[0-9]+)?)-', filename)
+    """putgd-26.1022.942~nightly-1.fc44.x86_64.rpm -> 26.1022.942-nightly; pre-#373
+    putgd-0.1.1~nightly.588-1.fc44.x86_64.rpm -> 0.1.1-nightly.588."""
+    match = re.match(r'^putgd-(?P<version>[0-9.]+(?:~nightly|~(?:nightly|rc)\.[0-9]+)?)-', filename)
     if not match:
         raise SignerError('Unexpected RPM file name: ' + filename)
     return match['version'].replace('~', '-')

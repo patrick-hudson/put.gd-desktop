@@ -76,6 +76,8 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
             ('open_software_updates', {'updater': 'gnome-software'}),
             ('install_update', {'confirm': True, 'method': 'torrent'}),
             ('install_update', {'confirm': True, 'image': '/tmp/x.AppImage'}),
+            ('install_update', {'confirm': True, 'channel': 'beta'}),
+            ('install_update', {'confirm': True, 'channel': 'stable', 'allow_older': 'maybe'}),
             ('restart_after_update', {'confirm': True, 'version': '0.1.2'}),
         ]:
             result = await server.call_tool(name, args)
@@ -241,6 +243,8 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('open_software_updates', {}, 'update.openSoftwareUpdates', {}),
                     ('install_update', {'confirm': True}, 'update.install', {'confirm': True}),
                     ('install_update', {'confirm': True, 'method': 'download'}, 'update.install', {'confirm': True, 'method': 'download'}),
+                    ('install_update', {'confirm': True, 'channel': 'stable'}, 'update.install', {'confirm': True, 'channel': 'stable'}),
+                    ('install_update', {'confirm': True, 'channel': 'nightly', 'allow_older': True}, 'update.install', {'confirm': True, 'channel': 'nightly', 'allowOlder': True}),
                     ('restart_after_update', {'confirm': True}, 'update.restart', {'confirm': True}),
                     ('create_diagnostics_bundle', {}, 'diagnostics.bundle', {}),
                     ('create_diagnostics_bundle', {'operation_id': 'synthetic-operation', 'since': '24h', 'include_names': True, 'output': '/synthetic dir/package.zip'},

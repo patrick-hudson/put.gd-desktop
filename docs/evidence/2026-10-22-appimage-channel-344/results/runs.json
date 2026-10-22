@@ -1,0 +1,1809 @@
+{
+ "f44/fedora-login": {
+  "host": "fedora",
+  "image": "putgd-0.1.1-nightly.9101-x86_64.AppImage",
+  "imageSha256": "c06a2dd7c52dc137f57ae25b97d17b578447b9ef43e8796b862a07b786b297e9",
+  "tool": true,
+  "steps": [
+   {
+    "at": "2026-10-22T04:20:33Z",
+    "step": "start",
+    "status": {
+     "build": "0.1.1-nightly.9101",
+     "channel": "nightly",
+     "latest": null,
+     "updateAvailable": null,
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "/home/patrick/work/put.gd-i344acc/runs/fedora-login/apps/putgd-0.1.1-nightly.9101-x86_64.AppImage",
+      "installed": null,
+      "kind": "update",
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle",
+      "switch": null
+     }
+    },
+    "frame": "login-1-start.png"
+   },
+   {
+    "at": "2026-10-22T04:20:34Z",
+    "step": "loginEnable"
+   },
+   {
+    "at": "2026-10-22T04:20:38Z",
+    "step": "channel",
+    "channel": "stable",
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "0.1.1-nightly.9101",
+     "channel": "stable",
+     "latest": "0.1.1",
+     "updateAvailable": true,
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "/home/patrick/work/put.gd-i344acc/runs/fedora-login/apps/putgd-0.1.1-nightly.9101-x86_64.AppImage",
+      "installed": null,
+      "kind": "switch",
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle",
+      "switch": {
+       "from": "nightly",
+       "older": false,
+       "tag": "v0.1.1",
+       "to": "stable",
+       "version": "0.1.1"
+      }
+     }
+    },
+    "frame": "login-2-offer.png"
+   },
+   {
+    "at": "2026-10-22T04:20:46Z",
+    "step": "install",
+    "params": {
+     "confirm": true,
+     "channel": "stable"
+    },
+    "seconds": 7.9,
+    "phases": [
+     {
+      "at": 0.1,
+      "phase": [
+       "starting",
+       "auto"
+      ],
+      "bytes": 0,
+      "total": 0
+     },
+     {
+      "at": 0.5,
+      "phase": [
+       "verifying",
+       null
+      ],
+      "bytes": 0,
+      "total": 0
+     },
+     {
+      "at": 1.7,
+      "phase": [
+       "zsync",
+       "appimageupdatetool"
+      ],
+      "bytes": 0,
+      "total": 115255800
+     },
+     {
+      "at": 4.6,
+      "phase": [
+       "done",
+       "zsync"
+      ],
+      "bytes": 115255800,
+      "total": 115255800
+     }
+    ],
+    "imageSha256": "60dcdfae62e0d5a2ceac8168b674eb8e74d17f65af2a141b3ae6829bdd3f01b2",
+    "folder": [
+     ".putgd-update-backup-0.1.1-nightly.9101.AppImage",
+     "putgd-0.1.1-nightly.9101-x86_64.AppImage",
+     "putgd-0.1.2-nightly.1-x86_64.AppImage"
+    ],
+    "install": {
+     "state": "installed",
+     "kind": "switch",
+     "switch": {
+      "from": "nightly",
+      "older": false,
+      "tag": "v0.1.1",
+      "to": "stable",
+      "version": "0.1.1"
+     },
+     "error": null,
+     "installed": {
+      "channel": "stable",
+      "image": "/home/patrick/work/put.gd-i344acc/runs/fedora-login/apps/putgd-0.1.1-nightly.9101-x86_64.AppImage",
+      "installedAt": "2026-10-22T04:20:42Z",
+      "method": "zsync",
+      "previousChannel": "nightly",
+      "previousVersion": "0.1.1-nightly.9101",
+      "sha256": "60dcdfae62e0d5a2ceac8168b674eb8e74d17f65af2a141b3ae6829bdd3f01b2",
+      "version": "0.1.1"
+     },
+     "result": {
+      "backup": "/home/patrick/work/put.gd-i344acc/runs/fedora-login/apps/.putgd-update-backup-0.1.1-nightly.9101.AppImage",
+      "channel": "stable",
+      "image": "/home/patrick/work/put.gd-i344acc/runs/fedora-login/apps/putgd-0.1.1-nightly.9101-x86_64.AppImage",
+      "installed": true,
+      "method": "zsync",
+      "previousChannel": "nightly",
+      "previousVersion": "0.1.1-nightly.9101",
+      "sha256": "60dcdfae62e0d5a2ceac8168b674eb8e74d17f65af2a141b3ae6829bdd3f01b2",
+      "signature": {
+       "trustedComment": "put.gd v0.1.1 stable"
+      },
+      "switched": true,
+      "tag": "v0.1.1",
+      "version": "0.1.1",
+      "zsync": {
+       "output": "zsync2: used 109170688 local, fetched 6687224 | 100.00% done (109.92 of 109.92 MiB)... | Validation warning: AppImage not signed | Update successful. New file created: /home/patrick/work/put.gd-i344acc/runs/fedora-login/apps/.putgd-update-zLNfyK/putgd-0.1.1-x86_64.AppImage",
+       "tool": "appimageupdatetool",
+       "used": true
+      }
+     }
+    },
+    "frames": {
+     "zsync": "login-3-switch-zsync.png",
+     "result": "login-3-switch-result.png"
+    }
+   },
+   {
+    "at": "2026-10-22T04:21:05Z",
+    "step": "loginCheck",
+    "imageSha256": "60dcdfae62e0d5a2ceac8168b674eb8e74d17f65af2a141b3ae6829bdd3f01b2",
+    "version": "putgd 0.1.1",
+    "residents": [
+     {
+      "pid": 2415437,
+      "appimage": "/home/patrick/work/put.gd-i344acc/runs/fedora-login/apps/putgd-0.1.1-nightly.9101-x86_64.AppImage",
+      "parent": "AppRun",
+      "started": "23:20:53"
+     }
+    ]
+   },
+   {
+    "at": "2026-10-22T04:21:15Z",
+    "step": "loginDisable"
+   }
+  ]
+ },
+ "f44/fedora-n2s": {
+  "host": "fedora",
+  "image": "putgd-0.1.1-nightly.9101-x86_64.AppImage",
+  "imageSha256": "c06a2dd7c52dc137f57ae25b97d17b578447b9ef43e8796b862a07b786b297e9",
+  "tool": true,
+  "steps": [
+   {
+    "at": "2026-10-22T04:18:33Z",
+    "step": "start",
+    "status": {
+     "build": "0.1.1-nightly.9101",
+     "channel": "nightly",
+     "latest": null,
+     "updateAvailable": null,
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "/home/patrick/work/put.gd-i344acc/runs/fedora-n2s/apps/putgd-0.1.1-nightly.9101-x86_64.AppImage",
+      "installed": null,
+      "kind": "update",
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle",
+      "switch": null
+     }
+    },
+    "frame": "1-nightly-start.png"
+   },
+   {
+    "at": "2026-10-22T04:18:37Z",
+    "step": "channel",
+    "channel": "stable",
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "0.1.1-nightly.9101",
+     "channel": "stable",
+     "latest": null,
+     "updateAvailable": false,
+     "install": {
+      "available": false,
+      "backup": null,
+      "image": "/home/patrick/work/put.gd-i344acc/runs/fedora-n2s/apps/putgd-0.1.1-nightly.9101-x86_64.AppImage",
+      "installed": null,
+      "kind": "switch",
+      "reason": "no_release",
+      "restartRequired": false,
+      "running": false,
+      "state": "idle",
+      "switch": null
+     }
+    },
+    "frame": "2-no-stable-yet.png"
+   },
+   {
+    "at": "2026-10-22T04:19:15Z",
+    "step": "check",
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "0.1.1-nightly.9101",
+     "channel": "stable",
+     "latest": "0.1.1",
+     "updateAvailable": true,
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "/home/patrick/work/put.gd-i344acc/runs/fedora-n2s/apps/putgd-0.1.1-nightly.9101-x86_64.AppImage",
+      "installed": null,
+      "kind": "switch",
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle",
+      "switch": {
+       "from": "nightly",
+       "older": false,
+       "tag": "v0.1.1",
+       "to": "stable",
+       "version": "0.1.1"
+      }
+     }
+    },
+    "frame": "3-stable-offer.png"
+   },
+   {
+    "at": "2026-10-22T04:19:19Z",
+    "step": "install",
+    "params": {
+     "confirm": true
+    },
+    "reply": {
+     "ok": false,
+     "error": {
+      "code": "update_switch_confirm_required",
+      "details": {
+       "switch": {
+        "from": "nightly",
+        "older": false,
+        "tag": "v0.1.1",
+        "to": "stable",
+        "version": "0.1.1"
+       }
+      },
+      "message": "This is a switch to stable 0.1.1; confirm it with channel: \"stable\""
+     }
+    },
+    "status": {
+     "build": "0.1.1-nightly.9101",
+     "channel": "stable",
+     "latest": "0.1.1",
+     "updateAvailable": true,
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "/home/patrick/work/put.gd-i344acc/runs/fedora-n2s/apps/putgd-0.1.1-nightly.9101-x86_64.AppImage",
+      "installed": null,
+      "kind": "switch",
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle",
+      "switch": {
+       "from": "nightly",
+       "older": false,
+       "tag": "v0.1.1",
+       "to": "stable",
+       "version": "0.1.1"
+      }
+     }
+    },
+    "frame": "4-switch-n2s-unnamed-refused.png"
+   },
+   {
+    "at": "2026-10-22T04:19:27Z",
+    "step": "install",
+    "params": {
+     "confirm": true,
+     "channel": "stable"
+    },
+    "seconds": 7.9,
+    "phases": [
+     {
+      "at": 0.1,
+      "phase": [
+       "starting",
+       "auto"
+      ],
+      "bytes": 0,
+      "total": 0
+     },
+     {
+      "at": 0.5,
+      "phase": [
+       "verifying",
+       null
+      ],
+      "bytes": 0,
+      "total": 0
+     },
+     {
+      "at": 1.7,
+      "phase": [
+       "zsync",
+       "appimageupdatetool"
+      ],
+      "bytes": 0,
+      "total": 115255800
+     },
+     {
+      "at": 4.6,
+      "phase": [
+       "done",
+       "zsync"
+      ],
+      "bytes": 115255800,
+      "total": 115255800
+     }
+    ],
+    "imageSha256": "60dcdfae62e0d5a2ceac8168b674eb8e74d17f65af2a141b3ae6829bdd3f01b2",
+    "folder": [
+     ".putgd-update-backup-0.1.1-nightly.9101.AppImage",
+     "putgd-0.1.1-nightly.9101-x86_64.AppImage"
+    ],
+    "install": {
+     "state": "installed",
+     "kind": "switch",
+     "switch": {
+      "from": "nightly",
+      "older": false,
+      "tag": "v0.1.1",
+      "to": "stable",
+      "version": "0.1.1"
+     },
+     "error": null,
+     "installed": {
+      "channel": "stable",
+      "image": "/home/patrick/work/put.gd-i344acc/runs/fedora-n2s/apps/putgd-0.1.1-nightly.9101-x86_64.AppImage",
+      "installedAt": "2026-10-22T04:19:23Z",
+      "method": "zsync",
+      "previousChannel": "nightly",
+      "previousVersion": "0.1.1-nightly.9101",
+      "sha256": "60dcdfae62e0d5a2ceac8168b674eb8e74d17f65af2a141b3ae6829bdd3f01b2",
+      "version": "0.1.1"
+     },
+     "result": {
+      "backup": "/home/patrick/work/put.gd-i344acc/runs/fedora-n2s/apps/.putgd-update-backup-0.1.1-nightly.9101.AppImage",
+      "channel": "stable",
+      "image": "/home/patrick/work/put.gd-i344acc/runs/fedora-n2s/apps/putgd-0.1.1-nightly.9101-x86_64.AppImage",
+      "installed": true,
+      "method": "zsync",
+      "previousChannel": "nightly",
+      "previousVersion": "0.1.1-nightly.9101",
+      "sha256": "60dcdfae62e0d5a2ceac8168b674eb8e74d17f65af2a141b3ae6829bdd3f01b2",
+      "signature": {
+       "trustedComment": "put.gd v0.1.1 stable"
+      },
+      "switched": true,
+      "tag": "v0.1.1",
+      "version": "0.1.1",
+      "zsync": {
+       "output": "zsync2: used 109170688 local, fetched 6687224 | 100.00% done (109.92 of 109.92 MiB)... | Validation warning: AppImage not signed | Update successful. New file created: /home/patrick/work/put.gd-i344acc/runs/fedora-n2s/apps/.putgd-update-IHBaQt/putgd-0.1.1-x86_64.AppImage",
+       "tool": "appimageupdatetool",
+       "used": true
+      }
+     }
+    },
+    "frames": {
+     "zsync": "5-switch-n2s-zsync.png",
+     "result": "5-switch-n2s-result.png"
+    }
+   },
+   {
+    "at": "2026-10-22T04:19:32Z",
+    "step": "restart",
+    "imageSha256": "60dcdfae62e0d5a2ceac8168b674eb8e74d17f65af2a141b3ae6829bdd3f01b2",
+    "version": "0.1.1",
+    "channel": "stable",
+    "channelSetting": "stable",
+    "afterRestart": {
+     "current": "0.1.1",
+     "latest": "0.1.1",
+     "updateAvailable": false
+    },
+    "folder": [
+     "putgd-0.1.1-nightly.9101-x86_64.AppImage"
+    ],
+    "loginScript": null,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "install": {
+     "state": "idle",
+     "kind": "update",
+     "switch": null,
+     "error": null,
+     "installed": {
+      "backupRemoved": true,
+      "channel": "stable",
+      "image": "/home/patrick/work/put.gd-i344acc/runs/fedora-n2s/apps/putgd-0.1.1-nightly.9101-x86_64.AppImage",
+      "installedAt": "2026-10-22T04:19:23Z",
+      "method": "zsync",
+      "previousChannel": "nightly",
+      "previousVersion": "0.1.1-nightly.9101",
+      "sha256": "60dcdfae62e0d5a2ceac8168b674eb8e74d17f65af2a141b3ae6829bdd3f01b2",
+      "version": "0.1.1"
+     },
+     "result": null
+    },
+    "frame": "6-n2s-restarted.png"
+   }
+  ]
+ },
+ "f44/fedora-s2n": {
+  "host": "fedora",
+  "image": "putgd-0.1.1-x86_64.AppImage",
+  "imageSha256": "60dcdfae62e0d5a2ceac8168b674eb8e74d17f65af2a141b3ae6829bdd3f01b2",
+  "tool": false,
+  "steps": [
+   {
+    "at": "2026-10-22T04:19:58Z",
+    "step": "start",
+    "status": {
+     "build": "0.1.1",
+     "channel": "stable",
+     "latest": null,
+     "updateAvailable": null,
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "/home/patrick/work/put.gd-i344acc/runs/fedora-s2n/apps/putgd-0.1.1-x86_64.AppImage",
+      "installed": null,
+      "kind": "update",
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle",
+      "switch": null
+     }
+    },
+    "frame": "1-stable-start.png"
+   },
+   {
+    "at": "2026-10-22T04:20:02Z",
+    "step": "channel",
+    "channel": "nightly",
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "0.1.1",
+     "channel": "nightly",
+     "latest": "0.1.1-nightly.9102",
+     "updateAvailable": false,
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "/home/patrick/work/put.gd-i344acc/runs/fedora-s2n/apps/putgd-0.1.1-x86_64.AppImage",
+      "installed": null,
+      "kind": "switch",
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle",
+      "switch": {
+       "from": "stable",
+       "older": true,
+       "tag": "v0.1.1-nightly.9102",
+       "to": "nightly",
+       "version": "0.1.1-nightly.9102"
+      }
+     }
+    },
+    "frame": "2-older-offer.png"
+   },
+   {
+    "at": "2026-10-22T04:20:05Z",
+    "step": "install",
+    "params": {
+     "confirm": true,
+     "channel": "nightly"
+    },
+    "reply": {
+     "ok": false,
+     "error": {
+      "code": "update_switch_older",
+      "details": {
+       "switch": {
+        "from": "stable",
+        "older": true,
+        "tag": "v0.1.1-nightly.9102",
+        "to": "nightly",
+        "version": "0.1.1-nightly.9102"
+       }
+      },
+      "message": "nightly 0.1.1-nightly.9102 is older than this build (0.1.1); switching to it needs allowOlder: true"
+     }
+    },
+    "status": {
+     "build": "0.1.1",
+     "channel": "nightly",
+     "latest": "0.1.1-nightly.9102",
+     "updateAvailable": false,
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "/home/patrick/work/put.gd-i344acc/runs/fedora-s2n/apps/putgd-0.1.1-x86_64.AppImage",
+      "installed": null,
+      "kind": "switch",
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle",
+      "switch": {
+       "from": "stable",
+       "older": true,
+       "tag": "v0.1.1-nightly.9102",
+       "to": "nightly",
+       "version": "0.1.1-nightly.9102"
+      }
+     }
+    },
+    "frame": "3-older-refused-refused.png"
+   },
+   {
+    "at": "2026-10-22T04:20:14Z",
+    "step": "install",
+    "params": {
+     "confirm": true,
+     "channel": "nightly",
+     "allowOlder": true
+    },
+    "seconds": 7.9,
+    "phases": [
+     {
+      "at": 0.0,
+      "phase": [
+       "starting",
+       "auto"
+      ],
+      "bytes": 0,
+      "total": 0
+     },
+     {
+      "at": 0.5,
+      "phase": [
+       "verifying",
+       null
+      ],
+      "bytes": 0,
+      "total": 0
+     },
+     {
+      "at": 1.7,
+      "phase": [
+       "download",
+       "release"
+      ],
+      "bytes": 0,
+      "total": 115259896
+     },
+     {
+      "at": 4.6,
+      "phase": [
+       "done",
+       "download"
+      ],
+      "bytes": 115259896,
+      "total": 115259896
+     }
+    ],
+    "imageSha256": "5ee142150cc8e4f9f5a9e051a071acc6ece07d1f29a23000426570b2371650b1",
+    "folder": [
+     ".putgd-update-backup-0.1.1.AppImage",
+     "putgd-0.1.1-x86_64.AppImage"
+    ],
+    "install": {
+     "state": "installed",
+     "kind": "switch",
+     "switch": {
+      "from": "stable",
+      "older": true,
+      "tag": "v0.1.1-nightly.9102",
+      "to": "nightly",
+      "version": "0.1.1-nightly.9102"
+     },
+     "error": null,
+     "installed": {
+      "channel": "nightly",
+      "image": "/home/patrick/work/put.gd-i344acc/runs/fedora-s2n/apps/putgd-0.1.1-x86_64.AppImage",
+      "installedAt": "2026-10-22T04:20:10Z",
+      "method": "download",
+      "previousChannel": "stable",
+      "previousVersion": "0.1.1",
+      "sha256": "5ee142150cc8e4f9f5a9e051a071acc6ece07d1f29a23000426570b2371650b1",
+      "version": "0.1.1-nightly.9102"
+     },
+     "result": {
+      "backup": "/home/patrick/work/put.gd-i344acc/runs/fedora-s2n/apps/.putgd-update-backup-0.1.1.AppImage",
+      "channel": "nightly",
+      "downloads": [
+       {
+        "source": "release",
+        "transfer": {
+         "httpStatus": 200,
+         "network": null,
+         "tooLarge": false,
+         "url": "https://pkg.put.gd/lab/releases/v0.1.1-nightly.9102/putgd-0.1.1-nightly.9102-x86_64.AppImage"
+        }
+       }
+      ],
+      "image": "/home/patrick/work/put.gd-i344acc/runs/fedora-s2n/apps/putgd-0.1.1-x86_64.AppImage",
+      "installed": true,
+      "method": "download",
+      "previousChannel": "stable",
+      "previousVersion": "0.1.1",
+      "sha256": "5ee142150cc8e4f9f5a9e051a071acc6ece07d1f29a23000426570b2371650b1",
+      "signature": {
+       "trustedComment": "put.gd v0.1.1-nightly.9102 nightly"
+      },
+      "source": "release",
+      "switched": true,
+      "tag": "v0.1.1-nightly.9102",
+      "version": "0.1.1-nightly.9102",
+      "zsync": {
+       "fallbackReason": "not_installed",
+       "tool": null,
+       "used": false
+      }
+     }
+    },
+    "frames": {
+     "download": "4-switch-s2n-download.png",
+     "result": "4-switch-s2n-result.png"
+    }
+   },
+   {
+    "at": "2026-10-22T04:20:19Z",
+    "step": "restart",
+    "imageSha256": "5ee142150cc8e4f9f5a9e051a071acc6ece07d1f29a23000426570b2371650b1",
+    "version": "0.1.1-nightly.9102",
+    "channel": "nightly",
+    "channelSetting": "nightly",
+    "afterRestart": {
+     "current": "0.1.1-nightly.9102",
+     "latest": "0.1.1-nightly.9102",
+     "updateAvailable": false
+    },
+    "folder": [
+     "putgd-0.1.1-x86_64.AppImage"
+    ],
+    "loginScript": null,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "install": {
+     "state": "idle",
+     "kind": "update",
+     "switch": null,
+     "error": null,
+     "installed": {
+      "backupRemoved": true,
+      "channel": "nightly",
+      "image": "/home/patrick/work/put.gd-i344acc/runs/fedora-s2n/apps/putgd-0.1.1-x86_64.AppImage",
+      "installedAt": "2026-10-22T04:20:10Z",
+      "method": "download",
+      "previousChannel": "stable",
+      "previousVersion": "0.1.1",
+      "sha256": "5ee142150cc8e4f9f5a9e051a071acc6ece07d1f29a23000426570b2371650b1",
+      "version": "0.1.1-nightly.9102"
+     },
+     "result": null
+    },
+    "frame": "5-s2n-restarted.png"
+   }
+  ]
+ },
+ "f44/fedora-tamper": {
+  "host": "fedora",
+  "image": "putgd-0.1.1-nightly.9101-x86_64.AppImage",
+  "imageSha256": "c06a2dd7c52dc137f57ae25b97d17b578447b9ef43e8796b862a07b786b297e9",
+  "tool": false,
+  "steps": [
+   {
+    "at": "2026-10-22T04:19:52Z",
+    "step": "tamper",
+    "unchanged": true,
+    "results": {
+     "image": {
+      "state": "failed",
+      "error": {
+       "code": "update_verification_failed",
+       "details": {
+        "actual": "4dc00079ede96253fe679ec233a431990152fec6d631410acbe1e22dbccb76e7",
+        "check": "sha256",
+        "expected": "60dcdfae62e0d5a2ceac8168b674eb8e74d17f65af2a141b3ae6829bdd3f01b2",
+        "source": "release"
+       },
+       "message": "The download doesn't match the release's SHA256SUMS; nothing was changed"
+      },
+      "imageSha256": "c06a2dd7c52dc137f57ae25b97d17b578447b9ef43e8796b862a07b786b297e9",
+      "folder": [
+       "putgd-0.1.1-nightly.9101-x86_64.AppImage"
+      ]
+     },
+     "foreign": {
+      "state": "failed",
+      "error": {
+       "code": "update_signature_invalid",
+       "details": {
+        "check": "keyId"
+       },
+       "message": "The release's SHA256SUMS signature isn't valid (the signature was made with another key); nothing was changed"
+      },
+      "imageSha256": "c06a2dd7c52dc137f57ae25b97d17b578447b9ef43e8796b862a07b786b297e9",
+      "folder": [
+       "putgd-0.1.1-nightly.9101-x86_64.AppImage"
+      ]
+     },
+     "comment": {
+      "state": "failed",
+      "error": {
+       "code": "update_signature_invalid",
+       "details": {
+        "check": "release",
+        "trustedComment": "put.gd v0.1.1 nightly"
+       },
+       "message": "The SHA256SUMS signature is for another release; nothing was changed"
+      },
+      "imageSha256": "c06a2dd7c52dc137f57ae25b97d17b578447b9ef43e8796b862a07b786b297e9",
+      "folder": [
+       "putgd-0.1.1-nightly.9101-x86_64.AppImage"
+      ]
+     }
+    }
+   }
+  ]
+ },
+ "m74/mint-builder-login": {
+  "host": "mint-builder",
+  "image": "putgd-0.1.1-nightly.9101-x86_64.AppImage",
+  "imageSha256": "c06a2dd7c52dc137f57ae25b97d17b578447b9ef43e8796b862a07b786b297e9",
+  "tool": true,
+  "steps": [
+   {
+    "at": "2026-10-22T04:06:25Z",
+    "step": "start",
+    "status": {
+     "build": "0.1.1-nightly.9101",
+     "channel": "nightly",
+     "latest": null,
+     "updateAvailable": null,
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "/home/patrick/work/put.gd-i344acc/runs/mint-builder-login/apps/putgd-0.1.1-nightly.9101-x86_64.AppImage",
+      "installed": null,
+      "kind": "update",
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle",
+      "switch": null
+     }
+    },
+    "frame": "login-1-start.png"
+   },
+   {
+    "at": "2026-10-22T04:06:25Z",
+    "step": "loginEnable"
+   },
+   {
+    "at": "2026-10-22T04:06:30Z",
+    "step": "channel",
+    "channel": "stable",
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "0.1.1-nightly.9101",
+     "channel": "stable",
+     "latest": "0.1.1",
+     "updateAvailable": true,
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "/home/patrick/work/put.gd-i344acc/runs/mint-builder-login/apps/putgd-0.1.1-nightly.9101-x86_64.AppImage",
+      "installed": null,
+      "kind": "switch",
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle",
+      "switch": {
+       "from": "nightly",
+       "older": false,
+       "tag": "v0.1.1",
+       "to": "stable",
+       "version": "0.1.1"
+      }
+     }
+    },
+    "frame": "login-2-offer.png"
+   },
+   {
+    "at": "2026-10-22T04:06:40Z",
+    "step": "install",
+    "params": {
+     "confirm": true,
+     "channel": "stable"
+    },
+    "seconds": 9.9,
+    "phases": [
+     {
+      "at": 0.0,
+      "phase": [
+       "starting",
+       "auto"
+      ],
+      "bytes": 0,
+      "total": 0
+     },
+     {
+      "at": 0.5,
+      "phase": [
+       "verifying",
+       null
+      ],
+      "bytes": 0,
+      "total": 0
+     },
+     {
+      "at": 1.7,
+      "phase": [
+       "zsync",
+       "appimageupdatetool"
+      ],
+      "bytes": 0,
+      "total": 115255800
+     },
+     {
+      "at": 4.8,
+      "phase": [
+       "installing",
+       "zsync"
+      ],
+      "bytes": 115255800,
+      "total": 115255800
+     },
+     {
+      "at": 6.4,
+      "phase": [
+       "done",
+       "zsync"
+      ],
+      "bytes": 115255800,
+      "total": 115255800
+     }
+    ],
+    "imageSha256": "60dcdfae62e0d5a2ceac8168b674eb8e74d17f65af2a141b3ae6829bdd3f01b2",
+    "folder": [
+     ".putgd-update-backup-0.1.1-nightly.9101.AppImage",
+     "putgd-0.1.1-nightly.9101-x86_64.AppImage",
+     "putgd-0.1.2-nightly.1-x86_64.AppImage"
+    ],
+    "install": {
+     "state": "installed",
+     "kind": "switch",
+     "switch": {
+      "from": "nightly",
+      "older": false,
+      "tag": "v0.1.1",
+      "to": "stable",
+      "version": "0.1.1"
+     },
+     "error": null,
+     "installed": {
+      "channel": "stable",
+      "image": "/home/patrick/work/put.gd-i344acc/runs/mint-builder-login/apps/putgd-0.1.1-nightly.9101-x86_64.AppImage",
+      "installedAt": "2026-10-22T04:06:36Z",
+      "method": "zsync",
+      "previousChannel": "nightly",
+      "previousVersion": "0.1.1-nightly.9101",
+      "sha256": "60dcdfae62e0d5a2ceac8168b674eb8e74d17f65af2a141b3ae6829bdd3f01b2",
+      "version": "0.1.1"
+     },
+     "result": {
+      "backup": "/home/patrick/work/put.gd-i344acc/runs/mint-builder-login/apps/.putgd-update-backup-0.1.1-nightly.9101.AppImage",
+      "channel": "stable",
+      "image": "/home/patrick/work/put.gd-i344acc/runs/mint-builder-login/apps/putgd-0.1.1-nightly.9101-x86_64.AppImage",
+      "installed": true,
+      "method": "zsync",
+      "previousChannel": "nightly",
+      "previousVersion": "0.1.1-nightly.9101",
+      "sha256": "60dcdfae62e0d5a2ceac8168b674eb8e74d17f65af2a141b3ae6829bdd3f01b2",
+      "signature": {
+       "trustedComment": "put.gd v0.1.1 stable"
+      },
+      "switched": true,
+      "tag": "v0.1.1",
+      "version": "0.1.1",
+      "zsync": {
+       "output": "zsync2: used 109170688 local, fetched 6687224 | 100.00% done (109.92 of 109.92 MiB)... | Validation warning: AppImage not signed | Update successful. New file created: /home/patrick/work/put.gd-i344acc/runs/mint-builder-login/apps/.putgd-update-hOCiFw/putgd-0.1.1-x86_64.AppImage",
+       "tool": "appimageupdatetool",
+       "used": true
+      }
+     }
+    },
+    "frames": {
+     "zsync": "login-3-switch-zsync.png",
+     "result": "login-3-switch-result.png"
+    }
+   },
+   {
+    "at": "2026-10-22T04:07:07Z",
+    "step": "loginCheck",
+    "imageSha256": "60dcdfae62e0d5a2ceac8168b674eb8e74d17f65af2a141b3ae6829bdd3f01b2",
+    "version": "putgd 0.1.1",
+    "residents": [
+     {
+      "pid": 244733,
+      "appimage": "/home/patrick/work/put.gd-i344acc/runs/mint-builder-login/apps/putgd-0.1.1-nightly.9101-x86_64.AppImage",
+      "parent": "cinnamon-sessio",
+      "started": "23:06:57"
+     }
+    ]
+   },
+   {
+    "at": "2026-10-22T04:07:29Z",
+    "step": "loginDisable"
+   }
+  ]
+ },
+ "m74/mint-builder-mem893": {
+  "host": "mint-builder",
+  "image": "putgd-0.1.1-nightly.893-x86_64.AppImage",
+  "imageSha256": "20785459eab9e42be64e182665f23bfc035a0e22757bf5261cde62e0e7ceba9b",
+  "tool": false,
+  "steps": [
+   {
+    "at": "2026-10-22T04:14:46Z",
+    "step": "mem",
+    "imageSha256": "20785459eab9e42be64e182665f23bfc035a0e22757bf5261cde62e0e7ceba9b",
+    "version": "0.1.1-nightly.893",
+    "A": {
+     "window": "A cold idle",
+     "seconds": 180.1,
+     "rssMedianMiB": 29.36,
+     "rssMinMiB": 29.12,
+     "rssMaxMiB": 29.36,
+     "every10s": [
+      29.12,
+      29.12,
+      29.12,
+      29.36,
+      29.36,
+      29.36,
+      29.36,
+      29.36,
+      29.36,
+      29.36,
+      29.36,
+      29.36,
+      29.36,
+      29.36,
+      29.36,
+      29.36,
+      29.36,
+      29.36
+     ],
+     "pssMiB": 23.48,
+     "privateMiB": 23.35,
+     "tlsNetworkLibraries": [],
+     "load": [
+      0.0166015625,
+      0.15673828125,
+      0.193359375
+     ]
+    },
+    "B": {
+     "window": "B idle after check",
+     "seconds": 180.1,
+     "rssMedianMiB": 29.38,
+     "rssMinMiB": 29.38,
+     "rssMaxMiB": 29.38,
+     "every10s": [
+      29.38,
+      29.38,
+      29.38,
+      29.38,
+      29.38,
+      29.38,
+      29.38,
+      29.38,
+      29.38,
+      29.38,
+      29.38,
+      29.38,
+      29.38,
+      29.38,
+      29.38,
+      29.38,
+      29.38,
+      29.38
+     ],
+     "pssMiB": 23.5,
+     "privateMiB": 23.38,
+     "tlsNetworkLibraries": [],
+     "load": [
+      0.0498046875,
+      0.09765625,
+      0.16015625
+     ]
+    },
+    "action": {
+     "check": true
+    },
+    "session": "x11",
+    "desktop": "X-Cinnamon"
+   }
+  ]
+ },
+ "m74/mint-builder-mem9101": {
+  "host": "mint-builder",
+  "image": "putgd-0.1.1-nightly.9101-x86_64.AppImage",
+  "imageSha256": "c06a2dd7c52dc137f57ae25b97d17b578447b9ef43e8796b862a07b786b297e9",
+  "tool": false,
+  "steps": [
+   {
+    "at": "2026-10-22T04:21:51Z",
+    "step": "mem",
+    "imageSha256": "c06a2dd7c52dc137f57ae25b97d17b578447b9ef43e8796b862a07b786b297e9",
+    "version": "0.1.1-nightly.9101",
+    "A": {
+     "window": "A cold idle",
+     "seconds": 180.1,
+     "rssMedianMiB": 29.41,
+     "rssMinMiB": 29.14,
+     "rssMaxMiB": 29.41,
+     "every10s": [
+      29.14,
+      29.14,
+      29.14,
+      29.41,
+      29.41,
+      29.41,
+      29.41,
+      29.41,
+      29.41,
+      29.41,
+      29.41,
+      29.41,
+      29.41,
+      29.41,
+      29.41,
+      29.41,
+      29.41,
+      29.41
+     ],
+     "pssMiB": 23.52,
+     "privateMiB": 23.38,
+     "tlsNetworkLibraries": [],
+     "load": [
+      0.0390625,
+      0.06640625,
+      0.1298828125
+     ]
+    },
+    "B": {
+     "window": "B idle after check",
+     "seconds": 180.1,
+     "rssMedianMiB": 29.43,
+     "rssMinMiB": 29.43,
+     "rssMaxMiB": 29.43,
+     "every10s": [
+      29.43,
+      29.43,
+      29.43,
+      29.43,
+      29.43,
+      29.43,
+      29.43,
+      29.43,
+      29.43,
+      29.43,
+      29.43,
+      29.43,
+      29.43,
+      29.43,
+      29.43,
+      29.43,
+      29.43,
+      29.43
+     ],
+     "pssMiB": 23.54,
+     "privateMiB": 23.4,
+     "tlsNetworkLibraries": [],
+     "load": [
+      0.06640625,
+      0.06201171875,
+      0.1064453125
+     ]
+    },
+    "action": {
+     "check": true
+    },
+    "session": "x11",
+    "desktop": "X-Cinnamon"
+   }
+  ]
+ },
+ "m74/mint-builder-n2s": {
+  "host": "mint-builder",
+  "image": "putgd-0.1.1-nightly.9101-x86_64.AppImage",
+  "imageSha256": "c06a2dd7c52dc137f57ae25b97d17b578447b9ef43e8796b862a07b786b297e9",
+  "tool": true,
+  "steps": [
+   {
+    "at": "2026-10-22T04:00:47Z",
+    "step": "start",
+    "status": {
+     "build": "0.1.1-nightly.9101",
+     "channel": "nightly",
+     "latest": null,
+     "updateAvailable": null,
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "/home/patrick/work/put.gd-i344acc/runs/mint-builder-n2s/apps/putgd-0.1.1-nightly.9101-x86_64.AppImage",
+      "installed": null,
+      "kind": "update",
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle",
+      "switch": null
+     }
+    },
+    "frame": "1-nightly-start.png"
+   },
+   {
+    "at": "2026-10-22T04:00:52Z",
+    "step": "channel",
+    "channel": "stable",
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "0.1.1-nightly.9101",
+     "channel": "stable",
+     "latest": null,
+     "updateAvailable": false,
+     "install": {
+      "available": false,
+      "backup": null,
+      "image": "/home/patrick/work/put.gd-i344acc/runs/mint-builder-n2s/apps/putgd-0.1.1-nightly.9101-x86_64.AppImage",
+      "installed": null,
+      "kind": "switch",
+      "reason": "no_release",
+      "restartRequired": false,
+      "running": false,
+      "state": "idle",
+      "switch": null
+     }
+    },
+    "frame": "2-no-stable-yet.png"
+   },
+   {
+    "at": "2026-10-22T04:02:48Z",
+    "step": "check",
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "0.1.1-nightly.9101",
+     "channel": "stable",
+     "latest": "0.1.1",
+     "updateAvailable": true,
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "/home/patrick/work/put.gd-i344acc/runs/mint-builder-n2s/apps/putgd-0.1.1-nightly.9101-x86_64.AppImage",
+      "installed": null,
+      "kind": "switch",
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle",
+      "switch": {
+       "from": "nightly",
+       "older": false,
+       "tag": "v0.1.1",
+       "to": "stable",
+       "version": "0.1.1"
+      }
+     }
+    },
+    "frame": "3-stable-offer.png"
+   },
+   {
+    "at": "2026-10-22T04:02:52Z",
+    "step": "install",
+    "params": {
+     "confirm": true
+    },
+    "reply": {
+     "ok": false,
+     "error": {
+      "code": "update_switch_confirm_required",
+      "details": {
+       "switch": {
+        "from": "nightly",
+        "older": false,
+        "tag": "v0.1.1",
+        "to": "stable",
+        "version": "0.1.1"
+       }
+      },
+      "message": "This is a switch to stable 0.1.1; confirm it with channel: \"stable\""
+     }
+    },
+    "status": {
+     "build": "0.1.1-nightly.9101",
+     "channel": "stable",
+     "latest": "0.1.1",
+     "updateAvailable": true,
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "/home/patrick/work/put.gd-i344acc/runs/mint-builder-n2s/apps/putgd-0.1.1-nightly.9101-x86_64.AppImage",
+      "installed": null,
+      "kind": "switch",
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle",
+      "switch": {
+       "from": "nightly",
+       "older": false,
+       "tag": "v0.1.1",
+       "to": "stable",
+       "version": "0.1.1"
+      }
+     }
+    },
+    "frame": "4-switch-n2s-unnamed-refused.png"
+   },
+   {
+    "at": "2026-10-22T04:03:02Z",
+    "step": "install",
+    "params": {
+     "confirm": true,
+     "channel": "stable"
+    },
+    "seconds": 9.7,
+    "phases": [
+     {
+      "at": 0.0,
+      "phase": [
+       "starting",
+       "auto"
+      ],
+      "bytes": 0,
+      "total": 0
+     },
+     {
+      "at": 0.5,
+      "phase": [
+       "verifying",
+       null
+      ],
+      "bytes": 0,
+      "total": 0
+     },
+     {
+      "at": 1.7,
+      "phase": [
+       "zsync",
+       "appimageupdatetool"
+      ],
+      "bytes": 0,
+      "total": 115255800
+     },
+     {
+      "at": 4.8,
+      "phase": [
+       "installing",
+       "zsync"
+      ],
+      "bytes": 115255800,
+      "total": 115255800
+     },
+     {
+      "at": 6.1,
+      "phase": [
+       "done",
+       "zsync"
+      ],
+      "bytes": 115255800,
+      "total": 115255800
+     }
+    ],
+    "imageSha256": "60dcdfae62e0d5a2ceac8168b674eb8e74d17f65af2a141b3ae6829bdd3f01b2",
+    "folder": [
+     ".putgd-update-backup-0.1.1-nightly.9101.AppImage",
+     "putgd-0.1.1-nightly.9101-x86_64.AppImage"
+    ],
+    "install": {
+     "state": "installed",
+     "kind": "switch",
+     "switch": {
+      "from": "nightly",
+      "older": false,
+      "tag": "v0.1.1",
+      "to": "stable",
+      "version": "0.1.1"
+     },
+     "error": null,
+     "installed": {
+      "channel": "stable",
+      "image": "/home/patrick/work/put.gd-i344acc/runs/mint-builder-n2s/apps/putgd-0.1.1-nightly.9101-x86_64.AppImage",
+      "installedAt": "2026-10-22T04:02:57Z",
+      "method": "zsync",
+      "previousChannel": "nightly",
+      "previousVersion": "0.1.1-nightly.9101",
+      "sha256": "60dcdfae62e0d5a2ceac8168b674eb8e74d17f65af2a141b3ae6829bdd3f01b2",
+      "version": "0.1.1"
+     },
+     "result": {
+      "backup": "/home/patrick/work/put.gd-i344acc/runs/mint-builder-n2s/apps/.putgd-update-backup-0.1.1-nightly.9101.AppImage",
+      "channel": "stable",
+      "image": "/home/patrick/work/put.gd-i344acc/runs/mint-builder-n2s/apps/putgd-0.1.1-nightly.9101-x86_64.AppImage",
+      "installed": true,
+      "method": "zsync",
+      "previousChannel": "nightly",
+      "previousVersion": "0.1.1-nightly.9101",
+      "sha256": "60dcdfae62e0d5a2ceac8168b674eb8e74d17f65af2a141b3ae6829bdd3f01b2",
+      "signature": {
+       "trustedComment": "put.gd v0.1.1 stable"
+      },
+      "switched": true,
+      "tag": "v0.1.1",
+      "version": "0.1.1",
+      "zsync": {
+       "output": "zsync2: used 109170688 local, fetched 6687224 | 100.00% done (109.92 of 109.92 MiB)... | Validation warning: AppImage not signed | Update successful. New file created: /home/patrick/work/put.gd-i344acc/runs/mint-builder-n2s/apps/.putgd-update-RUcJEr/putgd-0.1.1-x86_64.AppImage",
+       "tool": "appimageupdatetool",
+       "used": true
+      }
+     }
+    },
+    "frames": {
+     "zsync": "5-switch-n2s-zsync.png",
+     "result": "5-switch-n2s-result.png"
+    }
+   },
+   {
+    "at": "2026-10-22T04:03:07Z",
+    "step": "restart",
+    "imageSha256": "60dcdfae62e0d5a2ceac8168b674eb8e74d17f65af2a141b3ae6829bdd3f01b2",
+    "version": "0.1.1",
+    "channel": "stable",
+    "channelSetting": "stable",
+    "afterRestart": {
+     "current": "0.1.1",
+     "latest": "0.1.1",
+     "updateAvailable": false
+    },
+    "folder": [
+     "putgd-0.1.1-nightly.9101-x86_64.AppImage"
+    ],
+    "loginScript": null,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "install": {
+     "state": "idle",
+     "kind": "update",
+     "switch": null,
+     "error": null,
+     "installed": {
+      "backupRemoved": true,
+      "channel": "stable",
+      "image": "/home/patrick/work/put.gd-i344acc/runs/mint-builder-n2s/apps/putgd-0.1.1-nightly.9101-x86_64.AppImage",
+      "installedAt": "2026-10-22T04:02:57Z",
+      "method": "zsync",
+      "previousChannel": "nightly",
+      "previousVersion": "0.1.1-nightly.9101",
+      "sha256": "60dcdfae62e0d5a2ceac8168b674eb8e74d17f65af2a141b3ae6829bdd3f01b2",
+      "version": "0.1.1"
+     },
+     "result": null
+    },
+    "frame": "6-n2s-restarted.png"
+   }
+  ]
+ },
+ "m74/mint-builder-s2n": {
+  "host": "mint-builder",
+  "image": "putgd-0.1.1-x86_64.AppImage",
+  "imageSha256": "60dcdfae62e0d5a2ceac8168b674eb8e74d17f65af2a141b3ae6829bdd3f01b2",
+  "tool": false,
+  "steps": [
+   {
+    "at": "2026-10-22T04:05:11Z",
+    "step": "start",
+    "status": {
+     "build": "0.1.1",
+     "channel": "stable",
+     "latest": null,
+     "updateAvailable": null,
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "/home/patrick/work/put.gd-i344acc/runs/mint-builder-s2n/apps/putgd-0.1.1-x86_64.AppImage",
+      "installed": null,
+      "kind": "update",
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle",
+      "switch": null
+     }
+    },
+    "frame": "1-stable-start.png"
+   },
+   {
+    "at": "2026-10-22T04:05:15Z",
+    "step": "channel",
+    "channel": "nightly",
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "0.1.1",
+     "channel": "nightly",
+     "latest": "0.1.1-nightly.9102",
+     "updateAvailable": false,
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "/home/patrick/work/put.gd-i344acc/runs/mint-builder-s2n/apps/putgd-0.1.1-x86_64.AppImage",
+      "installed": null,
+      "kind": "switch",
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle",
+      "switch": {
+       "from": "stable",
+       "older": true,
+       "tag": "v0.1.1-nightly.9102",
+       "to": "nightly",
+       "version": "0.1.1-nightly.9102"
+      }
+     }
+    },
+    "frame": "2-older-offer.png"
+   },
+   {
+    "at": "2026-10-22T04:05:19Z",
+    "step": "install",
+    "params": {
+     "confirm": true,
+     "channel": "nightly"
+    },
+    "reply": {
+     "ok": false,
+     "error": {
+      "code": "update_switch_older",
+      "details": {
+       "switch": {
+        "from": "stable",
+        "older": true,
+        "tag": "v0.1.1-nightly.9102",
+        "to": "nightly",
+        "version": "0.1.1-nightly.9102"
+       }
+      },
+      "message": "nightly 0.1.1-nightly.9102 is older than this build (0.1.1); switching to it needs allowOlder: true"
+     }
+    },
+    "status": {
+     "build": "0.1.1",
+     "channel": "nightly",
+     "latest": "0.1.1-nightly.9102",
+     "updateAvailable": false,
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "/home/patrick/work/put.gd-i344acc/runs/mint-builder-s2n/apps/putgd-0.1.1-x86_64.AppImage",
+      "installed": null,
+      "kind": "switch",
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle",
+      "switch": {
+       "from": "stable",
+       "older": true,
+       "tag": "v0.1.1-nightly.9102",
+       "to": "nightly",
+       "version": "0.1.1-nightly.9102"
+      }
+     }
+    },
+    "frame": "3-older-refused-refused.png"
+   },
+   {
+    "at": "2026-10-22T04:06:02Z",
+    "step": "uiSwitch",
+    "phases": [
+     [
+      0.0,
+      [
+       "starting",
+       "auto"
+      ]
+     ],
+     [
+      0.5,
+      [
+       "verifying",
+       null
+      ]
+     ],
+     [
+      1.7,
+      [
+       "download",
+       "release"
+      ]
+     ],
+     [
+      4.3,
+      [
+       "done",
+       "download"
+      ]
+     ]
+    ],
+    "install": {
+     "state": "installed",
+     "kind": "switch",
+     "switch": {
+      "from": "stable",
+      "older": true,
+      "tag": "v0.1.1-nightly.9102",
+      "to": "nightly",
+      "version": "0.1.1-nightly.9102"
+     },
+     "error": null,
+     "installed": {
+      "channel": "nightly",
+      "image": "/home/patrick/work/put.gd-i344acc/runs/mint-builder-s2n/apps/putgd-0.1.1-x86_64.AppImage",
+      "installedAt": "2026-10-22T04:05:59Z",
+      "method": "download",
+      "previousChannel": "stable",
+      "previousVersion": "0.1.1",
+      "sha256": "5ee142150cc8e4f9f5a9e051a071acc6ece07d1f29a23000426570b2371650b1",
+      "version": "0.1.1-nightly.9102"
+     },
+     "result": {
+      "backup": "/home/patrick/work/put.gd-i344acc/runs/mint-builder-s2n/apps/.putgd-update-backup-0.1.1.AppImage",
+      "channel": "nightly",
+      "downloads": [
+       {
+        "source": "release",
+        "transfer": {
+         "httpStatus": 200,
+         "network": null,
+         "tooLarge": false,
+         "url": "https://pkg.put.gd/lab/releases/v0.1.1-nightly.9102/putgd-0.1.1-nightly.9102-x86_64.AppImage"
+        }
+       }
+      ],
+      "image": "/home/patrick/work/put.gd-i344acc/runs/mint-builder-s2n/apps/putgd-0.1.1-x86_64.AppImage",
+      "installed": true,
+      "method": "download",
+      "previousChannel": "stable",
+      "previousVersion": "0.1.1",
+      "sha256": "5ee142150cc8e4f9f5a9e051a071acc6ece07d1f29a23000426570b2371650b1",
+      "signature": {
+       "trustedComment": "put.gd v0.1.1-nightly.9102 nightly"
+      },
+      "source": "release",
+      "switched": true,
+      "tag": "v0.1.1-nightly.9102",
+      "version": "0.1.1-nightly.9102",
+      "zsync": {
+       "fallbackReason": "not_installed",
+       "tool": null,
+       "used": false
+      }
+     }
+    }
+   },
+   {
+    "at": "2026-10-22T04:06:07Z",
+    "step": "restart",
+    "imageSha256": "5ee142150cc8e4f9f5a9e051a071acc6ece07d1f29a23000426570b2371650b1",
+    "version": "0.1.1-nightly.9102",
+    "channel": "nightly",
+    "channelSetting": "nightly",
+    "afterRestart": {
+     "current": "0.1.1-nightly.9102",
+     "latest": "0.1.1-nightly.9102",
+     "updateAvailable": false
+    },
+    "folder": [
+     "putgd-0.1.1-x86_64.AppImage"
+    ],
+    "loginScript": null,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "install": {
+     "state": "idle",
+     "kind": "update",
+     "switch": null,
+     "error": null,
+     "installed": {
+      "backupRemoved": true,
+      "channel": "nightly",
+      "image": "/home/patrick/work/put.gd-i344acc/runs/mint-builder-s2n/apps/putgd-0.1.1-x86_64.AppImage",
+      "installedAt": "2026-10-22T04:05:59Z",
+      "method": "download",
+      "previousChannel": "stable",
+      "previousVersion": "0.1.1",
+      "sha256": "5ee142150cc8e4f9f5a9e051a071acc6ece07d1f29a23000426570b2371650b1",
+      "version": "0.1.1-nightly.9102"
+     },
+     "result": null
+    },
+    "frame": "5-s2n-restarted.png"
+   }
+  ]
+ },
+ "m74/mint-builder-tamper": {
+  "host": "mint-builder",
+  "image": "putgd-0.1.1-nightly.9101-x86_64.AppImage",
+  "imageSha256": "c06a2dd7c52dc137f57ae25b97d17b578447b9ef43e8796b862a07b786b297e9",
+  "tool": false,
+  "steps": [
+   {
+    "at": "2026-10-22T04:03:35Z",
+    "step": "tamper",
+    "unchanged": true,
+    "results": {
+     "image": {
+      "state": "failed",
+      "error": {
+       "code": "update_verification_failed",
+       "details": {
+        "actual": "4dc00079ede96253fe679ec233a431990152fec6d631410acbe1e22dbccb76e7",
+        "check": "sha256",
+        "expected": "60dcdfae62e0d5a2ceac8168b674eb8e74d17f65af2a141b3ae6829bdd3f01b2",
+        "source": "release"
+       },
+       "message": "The download doesn't match the release's SHA256SUMS; nothing was changed"
+      },
+      "imageSha256": "c06a2dd7c52dc137f57ae25b97d17b578447b9ef43e8796b862a07b786b297e9",
+      "folder": [
+       "putgd-0.1.1-nightly.9101-x86_64.AppImage"
+      ]
+     },
+     "foreign": {
+      "state": "failed",
+      "error": {
+       "code": "update_signature_invalid",
+       "details": {
+        "check": "keyId"
+       },
+       "message": "The release's SHA256SUMS signature isn't valid (the signature was made with another key); nothing was changed"
+      },
+      "imageSha256": "c06a2dd7c52dc137f57ae25b97d17b578447b9ef43e8796b862a07b786b297e9",
+      "folder": [
+       "putgd-0.1.1-nightly.9101-x86_64.AppImage"
+      ]
+     },
+     "comment": {
+      "state": "failed",
+      "error": {
+       "code": "update_signature_invalid",
+       "details": {
+        "check": "release",
+        "trustedComment": "put.gd v0.1.1 nightly"
+       },
+       "message": "The SHA256SUMS signature is for another release; nothing was changed"
+      },
+      "imageSha256": "c06a2dd7c52dc137f57ae25b97d17b578447b9ef43e8796b862a07b786b297e9",
+      "folder": [
+       "putgd-0.1.1-nightly.9101-x86_64.AppImage"
+      ]
+     }
+    }
+   }
+  ]
+ }
+}

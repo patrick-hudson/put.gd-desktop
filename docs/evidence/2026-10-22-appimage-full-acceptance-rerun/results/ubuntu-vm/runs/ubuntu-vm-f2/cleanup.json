@@ -1,0 +1,24 @@
+{
+ "removed": [
+  "/home/lab/.local/share/putgd",
+  "/tmp/afa.j2aZEM",
+  "/home/lab/work/put.gd-afa2/runs/ubuntu-vm-f2/appdir",
+  "/home/lab/work/put.gd-afa2/runs/ubuntu-vm-f2/frames",
+  "/home/lab/work/put.gd-afa2/runs/ubuntu-vm-f2/config",
+  "/home/lab/work/put.gd-afa2/runs/ubuntu-vm-f2/cache",
+  "/home/lab/work/put.gd-afa2/runs/ubuntu-vm-f2/archive",
+  "/home/lab/work/put.gd-afa2/runs/ubuntu-vm-f2/working",
+  "/home/lab/work/put.gd-afa2/runs/ubuntu-vm-f2/urldata"
+ ],
+ "fixtureStopped": 6047,
+ "leftovers": {
+  "processes": [],
+  "mounts": [],
+  "entries": []
+ },
+ "after": {
+  "processes": [],
+  "mounts": [],
+  "entries": []
+ }
+}

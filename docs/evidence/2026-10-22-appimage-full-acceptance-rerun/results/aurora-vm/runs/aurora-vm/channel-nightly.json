@@ -1,0 +1,147 @@
+{
+ "to": "nightly",
+ "patch": true,
+ "patchError": {
+  "code": "",
+  "details": {},
+  "message": ""
+ },
+ "check": {
+  "ok": true,
+  "seconds": 1.83,
+  "result": {
+   "action": {
+    "kind": "download",
+    "repository": "none"
+   },
+   "attemptedAt": "2026-10-22T06:00:29Z",
+   "build": {
+    "channel": "nightly",
+    "kind": "nightly",
+    "packageTarget": "appimage",
+    "reason": null,
+    "supported": true,
+    "version": "0.1.1-nightly.942"
+   },
+   "channel": "nightly",
+   "channelSetting": "nightly",
+   "check": true,
+   "checkedAt": "2026-10-22T06:00:29Z",
+   "checking": false,
+   "enabled": true,
+   "error": null,
+   "install": {
+    "available": true,
+    "backup": null,
+    "image": "/var/home/lab/afa2/images/putgd-0.1.1-nightly.942-x86_64.AppImage",
+    "installed": null,
+    "kind": "update",
+    "reason": null,
+    "restartRequired": false,
+    "running": false,
+    "state": "idle",
+    "switch": null
+   },
+   "nextCheckAt": "2026-10-23T06:35:14Z",
+   "notifies": false,
+   "reason": null,
+   "result": {
+    "action": {
+     "kind": "download",
+     "repository": "none"
+    },
+    "asset": {
+     "name": "putgd-0.1.1-nightly.947-x86_64.AppImage",
+     "sha256": "e75d5a01c104228cb4235db47bcb6beb7961c91b684cae978a3539762dbc5646",
+     "size": 115370488
+    },
+    "channel": "nightly",
+    "checkedAt": "2026-10-22T06:00:29Z",
+    "current": "0.1.1-nightly.942",
+    "downloadUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/v0.1.1-nightly.947/putgd-0.1.1-nightly.947-x86_64.AppImage",
+    "latest": "0.1.1-nightly.947",
+    "notesUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v0.1.1-nightly.947",
+    "packageTarget": "appimage",
+    "publishedAt": "2026-10-22T05:40:12Z",
+    "tag": "v0.1.1-nightly.947",
+    "updateAvailable": true
+   },
+   "supported": true
+  },
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  }
+ },
+ "status": {
+  "channel": "nightly",
+  "channelSetting": "nightly",
+  "supported": true,
+  "reason": null,
+  "notifies": false,
+  "error": null,
+  "result": {
+   "action": {
+    "kind": "download",
+    "repository": "none"
+   },
+   "asset": {
+    "name": "putgd-0.1.1-nightly.947-x86_64.AppImage",
+    "sha256": "e75d5a01c104228cb4235db47bcb6beb7961c91b684cae978a3539762dbc5646",
+    "size": 115370488
+   },
+   "channel": "nightly",
+   "checkedAt": "2026-10-22T06:00:29Z",
+   "current": "0.1.1-nightly.942",
+   "downloadUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/v0.1.1-nightly.947/putgd-0.1.1-nightly.947-x86_64.AppImage",
+   "latest": "0.1.1-nightly.947",
+   "notesUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v0.1.1-nightly.947",
+   "packageTarget": "appimage",
+   "publishedAt": "2026-10-22T05:40:12Z",
+   "tag": "v0.1.1-nightly.947",
+   "updateAvailable": true
+  },
+  "build": {
+   "channel": "nightly",
+   "kind": "nightly",
+   "packageTarget": "appimage",
+   "reason": null,
+   "supported": true,
+   "version": "0.1.1-nightly.942"
+  },
+  "install": {
+   "available": true,
+   "backup": null,
+   "image": "/var/home/lab/afa2/images/putgd-0.1.1-nightly.942-x86_64.AppImage",
+   "installed": null,
+   "kind": "update",
+   "reason": null,
+   "restartRequired": false,
+   "running": false,
+   "state": "idle",
+   "switch": null
+  }
+ },
+ "notifications": [
+  {
+   "category": "putgd.ui",
+   "fields": {
+    "itemId": null,
+    "notificationId": 1,
+    "notificationText": "Cannot read the image file",
+    "summary": "operation_failed",
+    "title": "put.gd \u2014 failed",
+    "warning": true
+   },
+   "level": "info",
+   "message": "Notification shown",
+   "operationId": "8043efbb-b74b-4d06-be98-bd089b9f2ca3",
+   "pid": 3523,
+   "process": "putgd",
+   "time": "2026-10-22T05:57:45.611Z",
+   "v": 1
+  }
+ ],
+ "full": "/var/home/lab/work/put.gd-afa2/runs/aurora-vm/full/aurora-vm-344-nightly.png"
+}

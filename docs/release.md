@@ -16,16 +16,28 @@ directly, and published tags are never moved or deleted.
 
 | Channel | Tag | Cut by | Publication |
 | --- | --- | --- | --- |
-| Nightly | `vBASE-nightly.N` | daily schedule on changed `nightly` | automated, build-tested prerelease |
-| Candidate | `vBASE-rc.N` | every push to `main` | draft; published after exact-asset acceptance |
-| Stable | `vBASE` | manual Release run on a candidate commit | draft; published after exact-asset acceptance |
+| Channel | Tag | Cut by | Publication |
+| --- | --- | --- | --- |
+| Nightly | `vYY.MDD.N-nightly` | daily schedule on changed `nightly` | automated, build-tested prerelease |
+| Stable | `vYY.MDD.N` | every push to `main` | draft; published after exact-asset acceptance |
 
-`BASE` is `project(putgd VERSION ...)`. On `nightly` it is always the version
-being prepared, because packages order `BASE~nightly` and `BASE~rc` before `BASE`.
-A nightly's `N` is the tagged commit's full-history commit count, so it increases
-with every commit on `nightly`; for example `v0.1.1-nightly.312`, titled
-"put.gd 0.1.1 nightly 312". The tag, base, full commit, tree and count must match
-the clean source. Nightlies before 2026-10-18 used `vBASE-dev.COUNT.UTC+gSHORT`.
+Versions are calendar versions (#373, [versioning.md](versioning.md)):
+
+- `YY.MDD` is the tagged commit's UTC committer date, as month times 100 plus
+  day, with no leading zeros.
+- `N` is the commit's full-history count.
+
+For example, `v26.1022.942-nightly` is titled "put.gd 26.1022.942 nightly". The
+tag, full commit, tree and count must match the clean source. Because the
+version comes from the commit, no file is bumped before or after a release.
+
+There is no release-candidate channel. The stable draft is what exact-asset
+acceptance runs on. A failed acceptance is fixed on `nightly` and promoted again,
+which makes a new commit on `main` and so a new version.
+
+Earlier tags keep their names and stay readable: `v0.1.1-nightly.N`, the
+unpublished `v0.1.1-rc.1` draft, and before 2026-10-18
+`vBASE-dev.COUNT.UTC+gSHORT`. Every calendar version sorts after them.
 Nightlies never replace GitHub's Latest stable release. Every channel publishes
 all sixteen individual downloads listed below, including the three raw DEBs, the RPM,
 the exact compiled curated source archive, the AppImage's media source and `.zsync`, and the
@@ -49,8 +61,9 @@ instead of at its next six-hourly deploy. The step needs the `SITE_DISPATCH_TOKE
 secret and only warns when the notification fails; see
 [Notifying put.gd-site](ci.md#notifying-putgd-site).
 
-`plan` refuses to start once a stable `vBASE` tag exists for the current base.
-Merge the pull request that starts the next version first (see below).
+`plan` refuses a tag that wouldn't sort after the newest existing nightly. Only
+a rewritten committer date on `nightly` HEAD could cause that; check the commit
+and its date.
 
 Nightly notes state automated coverage: Linux test suites, Windows portable
 compilation, package audits and the extracted-source production build. They are
@@ -63,10 +76,13 @@ written by `tools/releases/changelog.py` when `publish.py` stages the release.
 It lists the pull requests whose merge commits are in `<previous>..<tag>`:
 
 - **Nightly:** since the previous nightly tag reachable from this one.
-- **Candidate and stable:** since the previous stable tag, so a candidate lists
-  everything the version adds. Documentation, lab and test pull requests are
+- **Stable:** since the previous stable release, so the notes list everything
+  the version adds. Documentation, lab and test pull requests are
   folded into one "Also N documentation, lab and test changes" line.
-- The promotion (`release: vX.Y.Z`, head `nightly`) and back-merge pull requests
+- Only published releases count as the previous one. A stable tag whose
+  acceptance failed, or a nightly whose publication failed, is skipped. The
+  publisher reads the list with `gh`; with `--offline` every tag counts.
+- The promotion (`release: promote nightly YY.MDD.N`, head `nightly`) and back-merge pull requests
   (head `main`) aren't listed themselves; the pull requests they carry are.
 - With no earlier tag of that kind, the section is "Changes in <tag>" and lists
   the whole history.
@@ -84,7 +100,7 @@ numbers a title ends with, such as `(#146 #148)`, stand in, and publication
 continues. If the history itself can't be read, the section says so instead.
 
 Preview a section from a local checkout with
-`python3 tools/releases/changelog.py --tag vX.Y.Z-nightly.N --repository patrick-hudson/put.gd-desktop`
+`python3 tools/releases/changelog.py --tag vYY.MDD.N-nightly --repository patrick-hudson/put.gd-desktop`
 (add `--offline` to skip the GitHub query). The fixture history in
 `tests/releases/test_changelog.py` covers the ranges, grouping and folding.
 
@@ -94,49 +110,63 @@ Preview a section from a local checkout with
 
 `CHANGELOG.md` at the repository root is the curated history of stable versions,
 in [Keep a Changelog 1.1](https://keepachangelog.com/en/1.1.0/) style (#217).
-`tools/releases/promote.py` writes each version's section from the same data as
-the release notes: the pull requests merged since the previous stable tag, with
+`tools/releases/promote.py` writes the section from the same data as the release
+notes: the pull requests merged since the previous published stable release, with
 their labels and closing issues. Entries are grouped by change type instead of
 area. `bug` and `enhancement` labels win; otherwise a `feat:` or `fix:` title
 (any scope) gives Added or Fixed, and everything else is Changed. Documentation,
-lab and test pull requests fold into one line. The heading is
-`## [X.Y.Z] - <promotion date>`, with a link reference to the compare view from
-the previous stable tag (or the release itself for the first one).
+lab and test pull requests fold into one line.
 
-`nightly` takes changes only through pull requests, so `promote.py --open` first
-pushes `changelog/vX.Y.Z` (one commit on `origin/nightly` that adds the section,
-built without touching the working tree) and opens a `changelog: vX.Y.Z` pull
-request into `nightly`. Curate the entries there and merge it; the promotion pull
-request, opened next, shows the same section as its change list and carries the
-file once that pull request is in `nightly`. A rerun after that opens only the
-promotion. `CHANGELOG.md` is prose, so CI runs `contracts` alone for it.
-`tests/releases/test_promote.py` covers the section, the file update and the
-pull request order.
+A stable version is the date and count of `main`'s merge commit, so it exists
+only after the promotion merges (#373). The section is therefore written in two
+steps:
+
+1. **Before the promotion.** `promote.py --open` pushes `changelog/promote-YY.MDD.N`.
+   That is one commit on `origin/nightly` that adds the section as `## [Unreleased]`,
+   built without touching the working tree, and named after the nightly version
+   being promoted. It opens a `changelog: next stable release` pull request into
+   `nightly`. Curate the entries there and merge it. The promotion pull request,
+   opened next, shows the same section as its change list and carries the file
+   once that pull request is in `nightly`. A rerun after that opens only the
+   promotion, and never replaces an `[Unreleased]` section that is being curated.
+2. **After the stable release is published.** `promote.py --finalize vYY.MDD.N --open`
+   opens `changelog: vYY.MDD.N` into `nightly`. It renames the heading to
+   `## [YY.MDD.N] - <publication date>` and links it to the compare view from the
+   previous stable release, or to the release itself for the first one. If
+   `nightly` has no `[Unreleased]` section, it writes the version's section
+   instead. It refuses a tag that isn't a published calendar stable release.
+
+The stable release's own source tree therefore carries its section under
+"Unreleased". `CHANGELOG.md` is prose, so CI runs `contracts` alone for it.
+`tests/releases/test_promote.py` covers the section, the file update, the pull
+request order and `--finalize`.
 
 ![A rendered CHANGELOG.md excerpt from a promote.py dry run on nightly: the Keep a Changelog header, the 0.1.1 section, Added, Fixed and Changed entries with PR and issue links, and the folded documentation, lab and test line](evidence/2026-10-20-changelog-md-217/217-changelog-excerpt.png)
 
-### Candidate and stable
+### Stable
 
 Agents releasing a version follow [the release runbook](release-runbook.md),
 which adds the version checks, acceptance recording and confirmation points.
 
 1. Run `python3 tools/releases/promote.py` to preview, then `--open` to create
-   the `changelog: vBASE` pull request into `nightly` (see [CHANGELOG.md](#changelogmd))
-   and the pull request from `nightly` into `main` titled `release: vBASE`. Merge
-   the changelog pull request first. Merge the promotion with a merge commit once
-   `CI` passes, so every `nightly` commit keeps its SHA.
-2. The push to `main` starts `.github/workflows/release.yml`. It tags the next
-   `vBASE-rc.N`, or reuses the candidate already on that commit when rerun. It
-   runs full CI and packaging on the tag and stages a verified draft prerelease.
-   The run summary lists the next steps.
+   the `changelog: next stable release` pull request into `nightly` (see
+   [CHANGELOG.md](#changelogmd)) and the pull request from `nightly` into `main`
+   titled `release: promote nightly YY.MDD.N`. Merge the changelog pull request
+   first. Merge the promotion with a merge commit once `CI` passes, so every
+   `nightly` commit keeps its SHA.
+2. The push to `main` starts `.github/workflows/release.yml`. It tags the merge
+   commit's version, `vYY.MDD.N`, or reuses that tag when rerun (a manual run
+   does the same for `main` HEAD). It runs full CI and packaging on the tag and
+   stages a verified stable draft. The run summary names the tag and the next
+   steps.
 3. Run exact-package acceptance on the draft's assets, as described under
-   [Acceptance boundary](#acceptance-boundary). Publish the candidate with the
-   acceptance receipt:
+   [Acceptance boundary](#acceptance-boundary). Publish it with the acceptance
+   receipt; a published stable release becomes GitHub's Latest release:
 
    ```sh
-   git checkout vBASE-rc.N
-   gh release download vBASE-rc.N -D build/publish
-   python3 tools/releases/publish.py --tag vBASE-rc.N --directory build/publish --publish --acceptance /private/current-package-acceptance.json
+   git checkout vYY.MDD.N
+   gh release download vYY.MDD.N -D build/publish
+   python3 tools/releases/publish.py --tag vYY.MDD.N --directory build/publish --publish --acceptance /private/current-package-acceptance.json
    ```
 
    After the draft goes public, the command notifies `patrick-hudson/put.gd-site`
@@ -146,20 +176,19 @@ which adds the version checks, acceptance recording and confirmation points.
    catches up on its six-hour schedule, or run its deploy by hand with
    `gh workflow run deploy.yml -R patrick-hudson/put.gd-site`.
 
-   If acceptance fails, fix it on `nightly` and promote again. The next push to
-   `main` cuts `rc.N+1`; nothing is retagged.
-4. Cut stable on the accepted candidate's commit:
-   `gh workflow run release.yml --ref main -f channel=stable`. It requires a
-   candidate tag on `main` HEAD, tags `vBASE`, rebuilds every asset with the
-   stable identity and stages a draft. Accept and publish it the same way; a
-   published stable becomes GitHub's Latest release.
-5. Open a pull request into `nightly` that raises `project(putgd VERSION ...)`
-   to the next version, normally the next patch. Nightlies resume once it merges.
+   If acceptance fails, leave the draft unpublished, fix it on `nightly` and
+   promote again. The next push to `main` is a new commit with a new version;
+   nothing is retagged. The failed tag stays as an unreleased tag, and the
+   release notes and CHANGELOG skip it because it was never published.
+4. Run `python3 tools/releases/promote.py --finalize vYY.MDD.N --open` to name the
+   CHANGELOG.md section after the release, and merge that pull request into
+   `nightly`. Nothing else changes for the next version: nightlies continue
+   with the next commit's date and count.
 
-A hotfix is a pull request into `main` that also raises the patch version. Its
-merge cuts that version's first candidate; follow steps 3 to 5. Then merge `main`
-into `nightly` through a pull request so the fix is not lost at the next
-promotion. Promotion does not need `nightly` to contain `main`'s merge commits.
+A hotfix is a pull request into `main`. Its merge tags that commit's version and
+stages its draft; follow steps 3 and 4. Then merge `main` into `nightly` through
+a pull request so the fix is not lost at the next promotion. Promotion does not
+need `nightly` to contain `main`'s merge commits.
 
 ### Recovery
 
@@ -208,7 +237,7 @@ integration maintainer's dated compatibility/migration check, pinned SDK/Crypto/
 Bun versions, runtime/manifest/notices hashes, supported asset list and current
 acceptance evidence. Follow the [maintenance procedure](proton-drive-release-gates.md#maintenance-procedure).
 An upstream required update or observed service incompatibility requires a
-compatible put.gd release and preserved recovery state. Existing stable/candidate
+compatible put.gd release and preserved recovery state. Existing stable
 and nightly coverage classes continue to apply.
 
 ## Formats and build environments
@@ -291,8 +320,8 @@ put.gd-site permalink to the newest `.zsync` of the channel:
 
 | Tag | Channel in the update information |
 | --- | --- |
-| `vBASE-nightly.N` | `nightly` |
-| `vBASE-rc.N`, `vBASE` | `stable` (candidate users follow stable) |
+| `vYY.MDD.N-nightly` (and pre-#373 `v0.1.1-nightly.N`) | `nightly` |
+| `vYY.MDD.N` (and the pre-#373 `v0.1.1-rc.N`) | `stable` |
 | none (pull requests, CI pushes, local builds) | nothing is embedded and no `.zsync` is made |
 
 An untagged build carries nothing, so no updater offers to replace a development
@@ -394,9 +423,10 @@ archive bytes that were tested.
 
 ## Version identity
 
-Normal builds remain `0.1.1-dev.N+gHASH`; each commit changes their identity.
-An explicit clean exact `v0.1.1-rc.1` tag can produce `0.1.1-rc.1`. Stable labels
-use `vMAJOR.MINOR.PATCH`, matching the project base. Dirty, missing, mismatched and
+Normal builds are `YY.MDD.N-dev+gHASH`, the commit's calendar version; each
+commit changes their identity. An explicit clean exact tag of that commit,
+`vYY.MDD.N-nightly` or `vYY.MDD.N`, produces `YY.MDD.N-nightly` or `YY.MDD.N`;
+any other date or count is rejected. Dirty, missing, mismatched and
 arbitrary archive release labels are rejected. [versioning.md](versioning.md)
 explains package ordering and the archive provenance boundary.
 
@@ -411,7 +441,7 @@ Use the standard packages and SDK provisioning in [build.md](build.md). For a
 fixture-free native package:
 
 ```sh
-cmake --preset release -DBUILD_TESTING=OFF -DPUTGD_LAB_FIXTURE=OFF -DPUTGD_PHYSICAL_BENCHMARKS=OFF -DCMAKE_INSTALL_PREFIX=/usr -DPUTGD_RELEASE_TAG=v0.1.1-rc.1
+cmake --preset release -DBUILD_TESTING=OFF -DPUTGD_LAB_FIXTURE=OFF -DPUTGD_PHYSICAL_BENCHMARKS=OFF -DCMAKE_INSTALL_PREFIX=/usr -DPUTGD_RELEASE_TAG=vYY.MDD.N-nightly
 cmake --build --preset release
 python3 tools/releases/native.py --build build/release --format DEB --output /tmp/new-release-deb
 ```
@@ -464,9 +494,9 @@ Draft staging uses `gh release create --verify-tag`. A rerun can resume a
 partial draft: existing uploaded bytes must match exactly, and only missing
 assets are uploaded. Incomplete or conflicting assets and an already published
 release are rejected for inspection; existing assets are never silently replaced.
-For stable and candidate releases, public publication is the last step after
+For stable releases, public publication is the last step after
 actual package-specific acceptance. Nightlies use the explicit automated class
-described above; `--nightly` cannot publish stable or candidate tags.
+described above; `--nightly` cannot publish stable tags.
 The publisher downloads the exact draft assets, checks every accepted checksum
 and the checksum file, and rejects missing/extra assets, a different remote tag,
 or assets changed during verification. GitHub does not offer an atomic lock
@@ -475,7 +505,7 @@ publication receipt retains verified remote asset identities:
 
 
 ```sh
-python3 tools/releases/publish.py --tag v0.1.1-rc.1 --directory build/publish --publish --acceptance /private/current-package-acceptance.json
+python3 tools/releases/publish.py --tag vYY.MDD.N --directory build/publish --publish --acceptance /private/current-package-acceptance.json
 ```
 
 The acceptance receipt must identify the exact tag/commit and every collected
@@ -490,7 +520,7 @@ artifacts, logs or review material.
 
 Hosted packaging/ELF checks and saved source114 evidence replay establish their
 stated contracts. They do not prove the new packages' compositor integration.
-Cinnamon functionality and memory come first for a new candidate; after passing,
+Cinnamon functionality and memory come first for a new stable draft; after passing,
 GNOME/KDE checks may proceed independently on the exact package. Keep graphical
 interactions visible through the VNC wall and use immutable-base overlays.
 
