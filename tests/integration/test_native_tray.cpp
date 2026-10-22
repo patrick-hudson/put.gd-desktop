@@ -28,6 +28,7 @@
 #include <sys/types.h>
 #include "fixtures/X11DesktopFixture.h"
 #include <X11/keysym.h>
+#include "fixtures/Waits.h"
 using namespace putgd;
 using namespace putgd::test;
 
@@ -162,7 +163,7 @@ private slots:
   QVERIFY(peer.registerService("org.freedesktop.Notifications"));
  }
  void init() {
-  QTRY_VERIFY(watcher.activeServices.isEmpty());
+  PUTGD_TRY_VERIFY(watcher.activeServices.isEmpty());
   watcher.registrations.clear(); watcher.failRegistration = false; watcher.hostPresent = true; notifications.values.clear();
   QVERIFY(peer.registerService("org.kde.StatusNotifierWatcher"));
  }
@@ -237,7 +238,7 @@ private slots:
   };
   auto ui = [&] { return request("ui.snapshot")["diagnostics"].toObject()["ui"].toObject(); };
   QJsonObject snapshot;
-  QTRY_VERIFY_WITH_TIMEOUT((snapshot=request("ui.snapshot"))["operationsReady"].toBool(), 5000);
+  PUTGD_TRY_VERIFY_WITH_TIMEOUT((snapshot=request("ui.snapshot"))["operationsReady"].toBool(), 5000);
   QElapsedTimer readyElapsed; readyElapsed.start();
   if (late || trayState == "after-bound") appearance.start(trayState == "after-bound" ? 12000 : 1500);
   const bool windowless = background && configuration == "valid";
@@ -247,11 +248,11 @@ private slots:
    QProcess activation; activation.setProcessEnvironment(environment);
    activation.start(PUTGD_PRODUCT_APP_PATH, {"--history"});
    QVERIFY(activation.waitForFinished(5000)); QCOMPARE(activation.exitCode(), 0);
-   QTRY_COMPARE(ui()["state"].toString(), QString("ready"));
+   PUTGD_TRY_COMPARE(ui()["state"].toString(), QString("ready"));
    const auto helperPid = ui()["pid"].toInteger();
    QVERIFY(helperPid > 0);
    QVERIFY(::kill(static_cast<pid_t>(helperPid), SIGTERM) == 0);
-   QTRY_VERIFY(!(expectedExit=ui()["lastExit"].toObject()).isEmpty());
+   PUTGD_TRY_VERIFY(!(expectedExit=ui()["lastExit"].toObject()).isEmpty());
   }
   if (windowless) {
    // Observe the interval, not just the final state: a transient helper is a failure too.
@@ -261,25 +262,25 @@ private slots:
     QCOMPARE(status["state"].toString(), QString("stopped"));
     QCOMPARE(status["pid"].toInteger(), qint64(0));
     QCOMPARE(status["lastExit"].toObject(), expectedExit);
-    QTest::qWait(100);
+    putgd::test::settle(100);
    }
    if (!recovery && trayState != "user-activation") {
-    QTRY_VERIFY(!watcher.registrations.isEmpty());
-    QTRY_VERIFY(request("ui.snapshot")["diagnostics"].toObject()["trayAvailable"].toBool());
+    PUTGD_TRY_VERIFY(!watcher.registrations.isEmpty());
+    PUTGD_TRY_VERIFY(request("ui.snapshot")["diagnostics"].toObject()["trayAvailable"].toBool());
    }
   }
   if (!windowless || recovery) {
-   QTRY_COMPARE_WITH_TIMEOUT(ui()["state"].toString(), QString("ready"), 10000);
+   PUTGD_TRY_COMPARE_WITH_TIMEOUT(ui()["state"].toString(), QString("ready"), 10000);
    if (windowless) QVERIFY(elapsed.elapsed() >= 10000);
    else QVERIFY(elapsed.elapsed() < 10000);
   }
   if (trayState == "after-bound") {
-   QTRY_VERIFY_WITH_TIMEOUT(!watcher.registrations.isEmpty(), 5000);
-   QTRY_VERIFY(request("ui.snapshot")["diagnostics"].toObject()["trayAvailable"].toBool());
+   PUTGD_TRY_VERIFY_WITH_TIMEOUT(!watcher.registrations.isEmpty(), 5000);
+   PUTGD_TRY_VERIFY(request("ui.snapshot")["diagnostics"].toObject()["trayAvailable"].toBool());
    QCOMPARE(ui()["state"].toString(), QString("ready"));
   }
   QVERIFY(request("ui.quit")["quitting"].toBool());
-  QTRY_COMPARE_WITH_TIMEOUT(resident.state(), QProcess::NotRunning, 5000);
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(resident.state(), QProcess::NotRunning, 5000);
   QCOMPARE(resident.exitCode(), 0);
  }
  void rejectedGlobalShortcutReportsMissingDestination() {
@@ -317,27 +318,27 @@ private slots:
    return QJsonDocument::fromJson(cli.readAllStandardOutput()).object()["result"].toObject();
   };
   QJsonObject snapshot;
-  QTRY_VERIFY_WITH_TIMEOUT((snapshot=request("ui.snapshot"))["operationsReady"].toBool(), 5000);
-  QTRY_VERIFY(!watcher.registrations.isEmpty());
+  PUTGD_TRY_VERIFY_WITH_TIMEOUT((snapshot=request("ui.snapshot"))["operationsReady"].toBool(), 5000);
+  PUTGD_TRY_VERIFY(!watcher.registrations.isEmpty());
   // Notifications wait for the resident's registration reply, not just the watcher's view of the call.
-  QTRY_VERIFY(request("ui.snapshot")["diagnostics"].toObject()["trayAvailable"].toBool());
+  PUTGD_TRY_VERIFY(request("ui.snapshot")["diagnostics"].toObject()["trayAvailable"].toBool());
   QVERIFY(snapshot["diagnostics"].toObject()["shortcuts"].toObject()["bindings"].toObject()["region"].toObject()["bound"].toBool());
   QCOMPARE(snapshot["diagnostics"].toObject()["ui"].toObject()["pid"].toInteger(), qint64(0));
   X11DesktopFixture desktop;
   desktop.key(XK_Control_L,true);desktop.key(XK_1,true);
   desktop.key(XK_1,false);desktop.key(XK_Control_L,false);
-  QTRY_COMPARE_WITH_TIMEOUT(notifications.values.size(), 1, 5000);
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(notifications.values.size(), 1, 5000);
   const auto body=notifications.values.first()["body"].toString();QVERIFY(body.contains("No output is enabled"));QVERIFY(body.contains("Settings → Capture"));QVERIFY(body.contains("Keep a local copy in Settings → General"));
   for(int repeat=0;repeat<2;++repeat){
    desktop.key(XK_Control_L,true);desktop.key(XK_1,true);
    desktop.key(XK_1,false);desktop.key(XK_Control_L,false);
-   QTest::qWait(50);
+   putgd::test::settle(50);
   }
   QCOMPARE(notifications.values.size(),1);
   QVERIFY(request("operation.recent")["operations"].toArray().isEmpty());
   QCOMPARE(request("ui.snapshot")["diagnostics"].toObject()["ui"].toObject()["pid"].toInteger(), qint64(0));
   QVERIFY(request("ui.quit")["quitting"].toBool());
-  QTRY_COMPARE_WITH_TIMEOUT(resident.state(), QProcess::NotRunning, 5000);
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(resident.state(), QProcess::NotRunning, 5000);
   QCOMPARE(resident.exitCode(), 0);
  }
  void coreControllerExportsLiveUploadStatusAndReturnsIdle() {
@@ -348,31 +349,31 @@ private slots:
   auto provider=std::make_shared<OpaqueProvider>();provider->deferUploads=true;provider->dispatcher=this;providers.add("opaque",provider);
   SettingsService settings(directory.filePath("config.json"),[&](auto id,auto value){return providers.validate(id,value);});QVERIFY(settings.save(configuration(directory.path()),{}));
   Source source;source.defer=true;source.payload.kind="text";source.payload.bytes=QByteArray(4*1024*1024,'x');
-  OperationService operations(directory.filePath("data"),settings,providers,source);QTRY_VERIFY(operations.ready());
-  QStringList views;TrayController controller(operations,[&](const QString& view){views.append(view);},[]{});QTRY_VERIFY(controller.available());
+  OperationService operations(directory.filePath("data"),settings,providers,source);PUTGD_TRY_VERIFY(operations.ready());
+  QStringList views;TrayController controller(operations,[&](const QString& view){views.append(view);},[]{});PUTGD_TRY_VERIFY(controller.available());
   auto properties=[&]{auto result=call("/StatusNotifierItem","org.freedesktop.DBus.Properties","GetAll",{QString("org.kde.StatusNotifierItem")});return result.type()==QDBusMessage::ReplyMessage?qdbus_cast<QVariantMap>(result.arguments().first()):QVariantMap{};};
   const auto idle=properties();const auto idleIcon=qdbus_cast<WireImages>(idle["IconPixmap"]).first().bytes;
   operations.invoke("clipboard",[](Error e,QJsonObject){QVERIFY(!e);});
-  QTRY_COMPARE(source.acquisitions.size(),1);
-  QTRY_VERIFY(qdbus_cast<WireTooltip>(properties()["ToolTip"]).description.contains("Acquiring"));
+  PUTGD_TRY_COMPARE(source.acquisitions.size(),1);
+  PUTGD_TRY_VERIFY(qdbus_cast<WireTooltip>(properties()["ToolTip"]).description.contains("Acquiring"));
   QCOMPARE(qdbus_cast<WireImages>(properties()["IconPixmap"]).first().bytes,idleIcon);
   source.acquisitions.takeFirst()({source.payload,{}});
   struct Drain {std::shared_ptr<OpaqueProvider> provider;~Drain(){for(auto complete:std::exchange(provider->completions,{}))complete();}} drain{provider};
-  QTRY_COMPARE(provider->requests.size(),1);
+  PUTGD_TRY_COMPARE(provider->requests.size(),1);
   auto pixels=[&]{return qdbus_cast<WireImages>(properties()["IconPixmap"]).first().bytes;};
   auto green=[](const QByteArray& bytes){int count=0;for(int i=0;i<bytes.size();i+=4)if(uchar(bytes[i])==255&&uchar(bytes[i+1])==98&&uchar(bytes[i+2])==214&&uchar(bytes[i+3])==155)++count;return count;};
   provider->requests.first().progress({"uploading",0,4*1024*1024});
-  QTRY_VERIFY(qdbus_cast<WireTooltip>(properties()["ToolTip"]).description.contains("(0%)"));
+  PUTGD_TRY_VERIFY(qdbus_cast<WireTooltip>(properties()["ToolTip"]).description.contains("(0%)"));
   const auto emptyIcon=pixels();
   provider->requests.first().progress({"uploading",2*1024*1024,4*1024*1024});
-  QTRY_VERIFY(qdbus_cast<WireTooltip>(properties()["ToolTip"]).description.contains("2 MiB of 4 MiB"));
+  PUTGD_TRY_VERIFY(qdbus_cast<WireTooltip>(properties()["ToolTip"]).description.contains("2 MiB of 4 MiB"));
   const auto activeIcon=qdbus_cast<WireImages>(properties()["IconPixmap"]).first().bytes;QVERIFY(activeIcon!=idleIcon);
   QVERIFY(green(activeIcon)>green(emptyIcon));
   provider->requests.first().progress({"uploading",4*1024*1024,4*1024*1024});
-  QTRY_VERIFY(qdbus_cast<WireTooltip>(properties()["ToolTip"]).description.contains("(100%)"));
+  PUTGD_TRY_VERIFY(qdbus_cast<WireTooltip>(properties()["ToolTip"]).description.contains("(100%)"));
   QVERIFY(green(pixels())>green(activeIcon));
   provider->requests.first().progress({"uploading",2*1024*1024,{}});
-  QTRY_VERIFY(qdbus_cast<WireTooltip>(properties()["ToolTip"]).description.contains("Estimated 50%"));
+  PUTGD_TRY_VERIFY(qdbus_cast<WireTooltip>(properties()["ToolTip"]).description.contains("Estimated 50%"));
   QCOMPARE(pixels(),activeIcon);
   QVERIFY(views.isEmpty());QVERIFY(!QCoreApplication::instance()->inherits("QGuiApplication"));
   controller.notifyFailure({"fixture_failed","Synthetic error",{}});
@@ -380,10 +381,10 @@ private slots:
   int opaqueRed=0;for(int index=0;index<redIcon.size();index+=4)
    if(uchar(redIcon[index])==255&&uchar(redIcon[index+1])==255&&uchar(redIcon[index+2])==180&&uchar(redIcon[index+3])==171)++opaqueRed;
   QVERIFY(opaqueRed>10);
-  QTRY_COMPARE(pixels(),idleIcon);QTRY_COMPARE(pixels(),redIcon);
-  QTest::qWait(3100);QCOMPARE(pixels(),activeIcon);
+  PUTGD_TRY_COMPARE(pixels(),idleIcon);PUTGD_TRY_COMPARE(pixels(),redIcon);
+  putgd::test::settle(3100);PUTGD_TRY_COMPARE(pixels(),activeIcon);
   provider->completions.takeFirst()();
-  QTRY_COMPARE(qdbus_cast<WireTooltip>(properties()["ToolTip"]).title,qdbus_cast<WireTooltip>(idle["ToolTip"]).title);
+  PUTGD_TRY_COMPARE(qdbus_cast<WireTooltip>(properties()["ToolTip"]).title,qdbus_cast<WireTooltip>(idle["ToolTip"]).title);
   QCOMPARE(qdbus_cast<WireImages>(properties()["IconPixmap"]).first().bytes,idleIcon);
   logging::flush();QList<QJsonObject> records;
   const QDir logs(directory.filePath("logs"));
@@ -404,15 +405,15 @@ private slots:
   QVERIFY(toast);QVERIFY(progress);QVERIFY(idleAgain);
  }
  void activitySignalsChangeOnlyTheAffectedPropertiesAndSurviveHostRestart() {
-  NativeTray tray;QTRY_VERIFY(tray.available());ActivitySignalPeer observer;
+  NativeTray tray;PUTGD_TRY_VERIFY(tray.available());ActivitySignalPeer observer;
   const auto service=watcher.registrations.last();
   QVERIFY(client.connect(service,"/StatusNotifierItem","org.kde.StatusNotifierItem","NewIcon",&observer,SLOT(iconChanged())));
   QVERIFY(client.connect(service,"/StatusNotifierItem","org.kde.StatusNotifierItem","NewToolTip",&observer,SLOT(tooltipChanged())));
-  tray.setActivity(QColor("#62d69b"),"Uploading: 2 MiB of 4 MiB (50%)",50);QTRY_COMPARE(observer.icons,1);QTRY_COMPARE(observer.tooltips,1);
-  tray.setActivity(QColor("#62d69b"),"Uploading: 3 MiB of 4 MiB (75%)",75);QTRY_COMPARE(observer.tooltips,2);QTRY_COMPARE(observer.icons,2);
-  tray.setActivity(QColor("#62d69b"),"Uploading: 3 MiB of 4 MiB (75%)",75);QTest::qWait(50);QCOMPARE(observer.tooltips,2);QCOMPARE(observer.icons,2);
-  changeHost(false);QTRY_VERIFY(!tray.available());tray.setActivity(QColor("#62d69b"),"Finalizing: 4 MiB of 4 MiB (100%)",100);
-  changeHost(true);QTRY_VERIFY(tray.available());
+  tray.setActivity(QColor("#62d69b"),"Uploading: 2 MiB of 4 MiB (50%)",50);PUTGD_TRY_COMPARE(observer.icons,1);PUTGD_TRY_COMPARE(observer.tooltips,1);
+  tray.setActivity(QColor("#62d69b"),"Uploading: 3 MiB of 4 MiB (75%)",75);PUTGD_TRY_COMPARE(observer.tooltips,2);PUTGD_TRY_COMPARE(observer.icons,2);
+  tray.setActivity(QColor("#62d69b"),"Uploading: 3 MiB of 4 MiB (75%)",75);putgd::test::settle(50);PUTGD_TRY_COMPARE(observer.tooltips,2);PUTGD_TRY_COMPARE(observer.icons,2);
+  changeHost(false);PUTGD_TRY_VERIFY(!tray.available());tray.setActivity(QColor("#62d69b"),"Finalizing: 4 MiB of 4 MiB (100%)",100);
+  changeHost(true);PUTGD_TRY_VERIFY(tray.available());
   auto result=call("/StatusNotifierItem","org.freedesktop.DBus.Properties","GetAll",{QString("org.kde.StatusNotifierItem")});
   const auto props=qdbus_cast<QVariantMap>(result.arguments().first());
   QCOMPARE(qdbus_cast<WireTooltip>(props["ToolTip"]).description,QString("Finalizing: 4 MiB of 4 MiB (100%)"));
@@ -420,12 +421,12 @@ private slots:
   for(int index=0;index<pixels.size();index+=4)if(uchar(pixels[index])==255&&uchar(pixels[index+1])==98&&uchar(pixels[index+2])==214&&uchar(pixels[index+3])==155)++opaqueGreen;
   QVERIFY(opaqueGreen>10);
   const auto tooltips=observer.tooltips;
-  tray.setActivity(QColor("#ffb4ab"),"Finalizing: 4 MiB of 4 MiB (100%)");QTRY_COMPARE(observer.icons,4);
+  tray.setActivity(QColor("#ffb4ab"),"Finalizing: 4 MiB of 4 MiB (100%)");PUTGD_TRY_COMPARE(observer.icons,4);
   QCOMPARE(observer.tooltips,tooltips);
-  tray.setActivity(QColor("#9bbcff"),{});QTRY_COMPARE(observer.icons,5);
+  tray.setActivity(QColor("#9bbcff"),{});PUTGD_TRY_COMPARE(observer.icons,5);
  }
  void coreOnlyBrandPropertiesAndActualLayoutWire() {
-  NativeTray tray; QVERIFY(!tray.availabilityKnown()); QTRY_VERIFY(tray.availabilityKnown()); QTRY_VERIFY(tray.available()); QCOMPARE(watcher.registrations.size(), 1);
+  NativeTray tray; QVERIFY(!tray.availabilityKnown()); PUTGD_TRY_VERIFY(tray.availabilityKnown()); PUTGD_TRY_VERIFY(tray.available()); QCOMPARE(watcher.registrations.size(), 1);
   auto reply = call("/StatusNotifierItem", "org.freedesktop.DBus.Properties", "GetAll", {QString("org.kde.StatusNotifierItem")});
   QCOMPARE(reply.type(), QDBusMessage::ReplyMessage); QCOMPARE(reply.signature(), QString("a{sv}"));
   auto props = qdbus_cast<QVariantMap>(reply.arguments().at(0));
@@ -468,24 +469,24 @@ private slots:
   QVERIFY(!QCoreApplication::instance()->inherits("QGuiApplication"));
  }
  void everyActionAndActivationUsesFixedIds() {
-  NativeTray tray; QTRY_VERIFY(tray.available()); QSignalSpy actions(&tray, &NativeTray::actionActivated);
+  NativeTray tray; PUTGD_TRY_VERIFY(tray.available()); QSignalSpy actions(&tray, &NativeTray::actionActivated);
   const QList<int> ids{1,2,3,4,5,7,8,9,11,12,14,15};
   const QStringList expected{"region","window","desktop","clipboard","edit","settings","history","activity","about","quit","edit-clipboard","edit-file"};
-  for (int i = 0; i < ids.size(); ++i) { QCOMPARE(click(ids[i]).type(), QDBusMessage::ReplyMessage); QTRY_COMPARE(actions.size(), i+1); QCOMPARE(actions.at(i).at(0).toString(), expected[i]); }
+  for (int i = 0; i < ids.size(); ++i) { QCOMPARE(click(ids[i]).type(), QDBusMessage::ReplyMessage); PUTGD_TRY_COMPARE(actions.size(), i+1); QCOMPARE(actions.at(i).at(0).toString(), expected[i]); }
   // Separators and the submenu header dispatch nothing.
   QCOMPARE(click(6).type(), QDBusMessage::ReplyMessage); QCOMPARE(click(10).type(), QDBusMessage::ReplyMessage); QCOMPARE(click(13).type(), QDBusMessage::ReplyMessage);
   QCOMPARE(click(1, "hovered").type(), QDBusMessage::ReplyMessage); QCOMPARE(click(99).type(), QDBusMessage::ErrorMessage);
   QCOMPARE(actions.size(), 12);
   QCOMPARE(call("/StatusNotifierItem", "org.kde.StatusNotifierItem", "Activate", {0,0}).type(), QDBusMessage::ReplyMessage);
-  QTRY_COMPARE(actions.size(), 13); QCOMPARE(actions.last().at(0).toString(), QString("activity"));
+  PUTGD_TRY_COMPARE(actions.size(), 13); QCOMPARE(actions.last().at(0).toString(), QString("activity"));
   WireEvents events{{1,"clicked",QDBusVariant(0),0},{99,"clicked",QDBusVariant(0),0}};
   auto reply = call("/Menu", "com.canonical.dbusmenu", "EventGroup", {QVariant::fromValue(events)});
   QCOMPARE(reply.type(), QDBusMessage::ReplyMessage); QCOMPARE(qdbus_cast<QList<int>>(reply.arguments().at(0)), QList<int>{99});
-  QTRY_COMPARE(actions.size(), 14); QCOMPARE(actions.last().at(0).toString(), QString("region"));
+  PUTGD_TRY_COMPARE(actions.size(), 14); QCOMPARE(actions.last().at(0).toString(), QString("region"));
  }
  void updateEntryShowsItsVersionAndBumpsTheLayout() {
   // #293: hidden until a stable update is available, then labelled with it.
-  NativeTray tray; QTRY_VERIFY(tray.available()); QSignalSpy actions(&tray, &NativeTray::actionActivated); LayoutSignalPeer observer;
+  NativeTray tray; PUTGD_TRY_VERIFY(tray.available()); QSignalSpy actions(&tray, &NativeTray::actionActivated); LayoutSignalPeer observer;
   QVERIFY(client.connect(watcher.registrations.last(), "/Menu", "com.canonical.dbusmenu", "LayoutUpdated", &observer, SLOT(layoutUpdated(uint,int))));
   QVERIFY(client.connect(watcher.registrations.last(), "/Menu", "com.canonical.dbusmenu", "ItemsPropertiesUpdated", "a(ia{sv})a(ias)", &observer, SLOT(itemsUpdated(QDBusMessage))));
   auto entry = [&] {
@@ -496,105 +497,105 @@ private slots:
   auto [revision, update] = entry();
   QCOMPARE(revision, uint(1)); QCOMPARE(update.id, 17); QCOMPARE(update.props["visible"].toBool(), false);
   QCOMPARE(qdbus_cast<QDBusVariant>(call("/Menu", "com.canonical.dbusmenu", "GetProperty", {17, QString("visible")}).arguments().at(0)).variant().toBool(), false);
-  tray.setUpdateLabel("Update available: 0.1.2"); QTRY_COMPARE(observer.updates, 1); QCOMPARE(observer.revision, uint(2)); QCOMPARE(observer.parent, 0);
+  tray.setUpdateLabel("Update available: 0.1.2"); PUTGD_TRY_COMPARE(observer.updates, 1); QCOMPARE(observer.revision, uint(2)); QCOMPARE(observer.parent, 0);
   std::tie(revision, update) = entry();
   // #304: visible is sent explicitly, in the layout and as a property change, because
   // Plasma's and GNOME's hosts apply only the properties they are sent to a known item.
   QCOMPARE(revision, uint(2)); QCOMPARE(update.props["label"].toString(), QString("Update available: 0.1.2")); QCOMPARE(update.props["visible"].toBool(), true);
-  QTRY_COMPARE(observer.itemUpdates, 1); QCOMPARE(observer.items.size(), 1); QCOMPARE(observer.items.at(0).first, 17);
+  PUTGD_TRY_COMPARE(observer.itemUpdates, 1); QCOMPARE(observer.items.size(), 1); QCOMPARE(observer.items.at(0).first, 17);
   QCOMPARE(observer.items.at(0).second["visible"].toBool(), true); QCOMPARE(observer.items.at(0).second["label"].toString(), QString("Update available: 0.1.2"));
   QCOMPARE(qdbus_cast<QDBusVariant>(call("/Menu", "com.canonical.dbusmenu", "GetProperty", {17, QString("visible")}).arguments().at(0)).variant().toBool(), true);
-  QCOMPARE(click(17).type(), QDBusMessage::ReplyMessage); QTRY_COMPARE(actions.size(), 1); QCOMPARE(actions.at(0).at(0).toString(), QString("update"));
-  tray.setUpdateLabel("Update available: 0.1.2"); QTest::qWait(50); QCOMPARE(observer.updates, 1);
-  tray.setUpdateLabel({}); QTRY_COMPARE(observer.updates, 2); QCOMPARE(entry().second.props["visible"].toBool(), false);
-  QTRY_COMPARE(observer.itemUpdates, 2); QCOMPARE(observer.items.at(0).second["visible"].toBool(), false);
+  QCOMPARE(click(17).type(), QDBusMessage::ReplyMessage); PUTGD_TRY_COMPARE(actions.size(), 1); QCOMPARE(actions.at(0).at(0).toString(), QString("update"));
+  tray.setUpdateLabel("Update available: 0.1.2"); putgd::test::settle(50); PUTGD_TRY_COMPARE(observer.updates, 1);
+  tray.setUpdateLabel({}); PUTGD_TRY_COMPARE(observer.updates, 2); QCOMPARE(entry().second.props["visible"].toBool(), false);
+  PUTGD_TRY_COMPARE(observer.itemUpdates, 2); QCOMPARE(observer.items.at(0).second["visible"].toBool(), false);
  }
  void lateHostAndWatcherRestartDoNotDuplicateRegistration() {
   watcher.hostPresent = false; NativeTray tray;
-  QTRY_COMPARE(watcher.registrations.size(), 1); QTRY_VERIFY(tray.availabilityKnown()); QVERIFY(!tray.available());
-  changeHost(true); QTRY_VERIFY(tray.available());
+  PUTGD_TRY_COMPARE(watcher.registrations.size(), 1); PUTGD_TRY_VERIFY(tray.availabilityKnown()); QVERIFY(!tray.available());
+  changeHost(true); PUTGD_TRY_VERIFY(tray.available());
   for (int i = 0; i < 3; ++i) emit watcher.StatusNotifierHostRegistered();
-  QTest::qWait(100); QCOMPARE(watcher.registrations.size(), 1);
-  changeHost(false); QTRY_VERIFY(!tray.available()); changeHost(true); QTRY_VERIFY(tray.available()); QCOMPARE(watcher.registrations.size(), 1);
-  QVERIFY(peer.unregisterService("org.kde.StatusNotifierWatcher")); QTRY_VERIFY(!tray.available());
-  QVERIFY(peer.registerService("org.kde.StatusNotifierWatcher")); QTRY_VERIFY(tray.available()); QCOMPARE(watcher.registrations.size(), 2);
+  putgd::test::settle(100); PUTGD_TRY_COMPARE(watcher.registrations.size(), 1);
+  changeHost(false); PUTGD_TRY_VERIFY(!tray.available()); changeHost(true); PUTGD_TRY_VERIFY(tray.available()); QCOMPARE(watcher.registrations.size(), 1);
+  QVERIFY(peer.unregisterService("org.kde.StatusNotifierWatcher")); PUTGD_TRY_VERIFY(!tray.available());
+  QVERIFY(peer.registerService("org.kde.StatusNotifierWatcher")); PUTGD_TRY_VERIFY(tray.available()); QCOMPARE(watcher.registrations.size(), 2);
  }
  void initiallyAbsentWatcherResolvesThenRecoversOnAppearance() {
   QVERIFY(peer.unregisterService("org.kde.StatusNotifierWatcher"));
   NativeTray tray; QSignalSpy resolved(&tray, &NativeTray::availabilityResolved);
-  QVERIFY(!tray.availabilityKnown()); QTRY_VERIFY(tray.availabilityKnown());
-  QVERIFY(!tray.available()); QTRY_COMPARE(resolved.size(), 1); QVERIFY(watcher.registrations.isEmpty());
-  QVERIFY(peer.registerService("org.kde.StatusNotifierWatcher")); QTRY_VERIFY(tray.available());
-  QTRY_VERIFY(tray.availabilityKnown()); QCOMPARE(watcher.registrations.size(), 1);
+  QVERIFY(!tray.availabilityKnown()); PUTGD_TRY_VERIFY(tray.availabilityKnown());
+  QVERIFY(!tray.available()); PUTGD_TRY_COMPARE(resolved.size(), 1); QVERIFY(watcher.registrations.isEmpty());
+  QVERIFY(peer.registerService("org.kde.StatusNotifierWatcher")); PUTGD_TRY_VERIFY(tray.available());
+  PUTGD_TRY_VERIFY(tray.availabilityKnown()); QCOMPARE(watcher.registrations.size(), 1);
  }
  void watcherNameBeforeObjectExportRecoversWithoutFalseAbsence() {
   peer.unregisterObject("/StatusNotifierWatcher");
   NativeTray tray; QSignalSpy resolved(&tray, &NativeTray::availabilityResolved);
-  QTest::qWait(100); QVERIFY(!tray.availabilityKnown()); QVERIFY(!tray.available());
+  putgd::test::settle(100); PUTGD_TRY_VERIFY(!tray.availabilityKnown()); PUTGD_TRY_VERIFY(!tray.available());
   QVERIFY(peer.registerObject("/StatusNotifierWatcher", &watcher, QDBusConnection::ExportAllSlots | QDBusConnection::ExportAllProperties | QDBusConnection::ExportAllSignals));
-  QTRY_VERIFY_WITH_TIMEOUT(tray.available(), 3000); QVERIFY(tray.availabilityKnown());
-  QTRY_COMPARE(resolved.size(), 1); QCOMPARE(watcher.registrations.size(), 1);
+  PUTGD_TRY_VERIFY_WITH_TIMEOUT(tray.available(), 3000); QVERIFY(tray.availabilityKnown());
+  PUTGD_TRY_COMPARE(resolved.size(), 1); QCOMPARE(watcher.registrations.size(), 1);
  }
  void registrationFailuresAreBoundedAndNewHostCanRecover() {
   watcher.failRegistration = true; NativeTray tray;
-  QTRY_COMPARE_WITH_TIMEOUT(watcher.registrations.size(), 3, 4000); QVERIFY(!tray.available());
-  QTRY_VERIFY(tray.availabilityKnown());
-  QTest::qWait(1700); QCOMPARE(watcher.registrations.size(), 3);
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(watcher.registrations.size(), 3, 4000); QVERIFY(!tray.available());
+  PUTGD_TRY_VERIFY(tray.availabilityKnown());
+  putgd::test::settle(1700); PUTGD_TRY_COMPARE(watcher.registrations.size(), 3);
   watcher.failRegistration = false; emit watcher.StatusNotifierHostRegistered();
-  QTRY_VERIFY(tray.available()); QCOMPARE(watcher.registrations.size(), 4);
+  PUTGD_TRY_VERIFY(tray.available()); QCOMPARE(watcher.registrations.size(), 4);
  }
  void destructiveCallbackRemovesServiceAndExports() {
-  auto tray = std::make_unique<NativeTray>(); QTRY_VERIFY(tray->available());
+  auto tray = std::make_unique<NativeTray>(); PUTGD_TRY_VERIFY(tray->available());
   const auto service = watcher.registrations.last();
   QPointer<NativeTray> guard(tray.get()); bool invoked = false;
   connect(tray.get(), &NativeTray::actionActivated, this, [&](const QString&) { invoked = true; tray.reset(); });
-  QCOMPARE(click(12).type(), QDBusMessage::ReplyMessage); QTRY_VERIFY(invoked); QVERIFY(guard.isNull());
+  QCOMPARE(click(12).type(), QDBusMessage::ReplyMessage); PUTGD_TRY_VERIFY(invoked); QVERIFY(guard.isNull());
   QVERIFY(!client.interface()->isServiceRegistered(service).value());
-  QTRY_VERIFY(!watcher.activeServices.contains(service));
+  PUTGD_TRY_VERIFY(!watcher.activeServices.contains(service));
   QVERIFY(QDBusConnection::sessionBus().isConnected());
   QCOMPARE(call("/Menu", "com.canonical.dbusmenu", "AboutToShow", {0}).type(), QDBusMessage::ErrorMessage);
-  NativeTray replacement; QTRY_VERIFY(replacement.available()); QCOMPARE(watcher.registrations.size(), 2);
+  NativeTray replacement; PUTGD_TRY_VERIFY(replacement.available()); QCOMPARE(watcher.registrations.size(), 2);
  }
  void notificationWireAndNoHostSuppression() {
-  NativeTray tray; QTRY_VERIFY(tray.available());
-  tray.notify("put.gd — failed", "Synthetic failure", true); QTRY_COMPARE(notifications.values.size(), 1);
+  NativeTray tray; PUTGD_TRY_VERIFY(tray.available());
+  tray.notify("put.gd — failed", "Synthetic failure", true); PUTGD_TRY_COMPARE(notifications.values.size(), 1);
   const auto value = notifications.values.first(); QCOMPARE(value["app"].toString(), QString("put.gd"));
   QCOMPARE(value["summary"].toString(), QString("put.gd — failed")); QCOMPARE(value["timeout"].toInt(), 10000);
   QCOMPARE(value["hints"].toMap()["urgency"].toUInt(), uint(2)); QVERIFY(value["actions"].toStringList().isEmpty());
   // #151: a notification with buttons stays until used or dismissed, except where the
   // server keeps it, buttons and all, in its list (GNOME Shell, Plasma).
   tray.notify("put.gd — partial", "Synthetic failure", true, {}, {{"save-diagnostics", "Save diagnostics for this upload", "op"}});
-  QTRY_COMPARE(notifications.values.size(), 2); QCOMPARE(notifications.values[1]["timeout"].toInt(), 0);
+  PUTGD_TRY_COMPARE(notifications.values.size(), 2); QCOMPARE(notifications.values[1]["timeout"].toInt(), 0);
   // Resident, so Cinnamon keeps it when a put.gd window takes focus; put.gd closes it once used.
   QCOMPARE(notifications.values[1]["hints"].toMap().value("resident").toBool(), true);
   QVERIFY(!notifications.values.first()["hints"].toMap().contains("resident"));
-  notifications.closed.clear(); emit notifications.ActionInvoked(2, "save-diagnostics"); QTRY_COMPARE(notifications.closed, QList<uint>{2});
-  emit notifications.ActionInvoked(2, "save-diagnostics"); QTest::qWait(50); QCOMPARE(notifications.closed, QList<uint>{2});
-  tray.notify("put.gd — completed", "Synthetic link", false, QUrl("https://example.invalid/a")); QTRY_COMPARE(notifications.values.size(), 3);
+  notifications.closed.clear(); emit notifications.ActionInvoked(2, "save-diagnostics"); PUTGD_TRY_COMPARE(notifications.closed, QList<uint>{2});
+  emit notifications.ActionInvoked(2, "save-diagnostics"); putgd::test::settle(50); PUTGD_TRY_COMPARE(notifications.closed, QList<uint>{2});
+  tray.notify("put.gd — completed", "Synthetic link", false, QUrl("https://example.invalid/a")); PUTGD_TRY_COMPARE(notifications.values.size(), 3);
   QCOMPARE(notifications.values[2]["timeout"].toInt(), 10000);
   for (const auto& [server, timeout] : std::initializer_list<std::pair<QString, int>>{{"Plasma", 10000}, {"gnome-shell", 10000}, {"cinnamon", 0}}) {
    // A new notification server owner is asked its name again.
    notifications.server = server; const int queries = notifications.serverQueries;
    QVERIFY(peer.unregisterService("org.freedesktop.Notifications")); QVERIFY(peer.registerService("org.freedesktop.Notifications"));
-   QTRY_VERIFY(notifications.serverQueries > queries); QTest::qWait(50);
+   PUTGD_TRY_VERIFY(notifications.serverQueries > queries); putgd::test::settle(50);
    const auto sent = notifications.values.size();
    tray.notify("put.gd — diagnostics saved", "Synthetic package", false, {}, {{"show-in-folder", "Show in folder", "/synthetic.zip"}});
-   QTRY_COMPARE(notifications.values.size(), sent + 1); QCOMPARE(notifications.values.last()["timeout"].toInt(), timeout);
+   PUTGD_TRY_COMPARE(notifications.values.size(), sent + 1); QCOMPARE(notifications.values.last()["timeout"].toInt(), timeout);
    QCOMPARE(notifications.values.last()["hints"].toMap().contains("resident"), timeout == 0);
   }
   notifications.server.clear();
   QCOMPARE(NativeTray::notificationTimeoutMs("cinnamon", false), 10000); QCOMPARE(NativeTray::notificationTimeoutMs({}, true), 0);
-  changeHost(false); QTRY_VERIFY(!tray.available()); tray.notify("Hidden", "Unavailable"); QTest::qWait(50); QCOMPARE(notifications.values.size(), 3 + 3);
+  changeHost(false); PUTGD_TRY_VERIFY(!tray.available()); tray.notify("Hidden", "Unavailable"); putgd::test::settle(50); PUTGD_TRY_COMPARE(notifications.values.size(), 3 + 3);
  }
  void firstNotificationOwnerAppearancePreservesClickTarget() {
   QVERIFY(peer.unregisterService("org.freedesktop.Notifications"));
-  NativeTray tray;QTRY_VERIFY(tray.available());QSignalSpy activated(&tray,&NativeTray::notificationActivated);
+  NativeTray tray;PUTGD_TRY_VERIFY(tray.available());QSignalSpy activated(&tray,&NativeTray::notificationActivated);
   QVERIFY(peer.registerService("org.freedesktop.Notifications"));
   const QUrl link("https://example.invalid/first-image.png");
   tray.notify("put.gd — completed","Click to open in browser",false,link);
-  QTRY_COMPARE(notifications.values.size(),1);QTest::qWait(50);
+  PUTGD_TRY_COMPARE(notifications.values.size(),1);putgd::test::settle(50);
   emit notifications.ActionInvoked(1,"default");
-  QTRY_COMPARE(activated.count(),1);QCOMPARE(activated.first().first().toUrl(),link);
+  PUTGD_TRY_COMPARE(activated.count(),1);QCOMPARE(activated.first().first().toUrl(),link);
  }
  void uploadToastOpensItsOwnLink() {
   QTemporaryDir directory; QVERIFY(directory.isValid());
@@ -611,20 +612,20 @@ private slots:
   ProviderRegistry providers; auto provider=std::make_shared<OpaqueProvider>();providers.add("opaque",provider);
   SettingsService settings(directory.filePath("config.json"),[&](auto id,auto value){return providers.validate(id,value);});
   auto config=configuration(directory.path());auto naming=config["naming"].toObject();naming["mode"]="generated";config["naming"]=naming;QVERIFY(settings.save(config,{}));
-  Source source;source.payload=textPayload();OperationService operations(directory.filePath("data"),settings,providers,source);QTRY_VERIFY(operations.ready());
-  TrayController controller(operations,[](const QString&){QFAIL("Clicking a single upload must open its link, not a view");},[]{});QTRY_VERIFY(controller.available());
+  Source source;source.payload=textPayload();OperationService operations(directory.filePath("data"),settings,providers,source);PUTGD_TRY_VERIFY(operations.ready());
+  TrayController controller(operations,[](const QString&){QFAIL("Clicking a single upload must open its link, not a view");},[]{});PUTGD_TRY_VERIFY(controller.available());
   QStringList links;
   for(int index=0;index<3;++index) {
    operations.invoke("clipboard",[](Error error,QJsonObject){QVERIFY(!error);});
-   QTRY_COMPARE(source.copies,index+1);QTRY_COMPARE(notifications.values.size(),index+1);links.append(source.copied.text);
+   PUTGD_TRY_COMPARE(source.copies,index+1);PUTGD_TRY_COMPARE(notifications.values.size(),index+1);links.append(source.copied.text);
    QCOMPARE(notifications.values[index]["actions"].toStringList(),QStringList({"default","Open in browser"}));
   }
   QVERIFY(links[0]!=links[1]);QVERIFY(opened().isEmpty());
-  emit notifications.ActionInvoked(999,"default");emit notifications.ActionInvoked(1,"unrecognized");QTest::qWait(50);QVERIFY(opened().isEmpty());
-  emit notifications.ActionInvoked(1,"default");QTRY_COMPARE(opened(),QStringList{links[0]});
-  emit notifications.ActionInvoked(2,"default");QTRY_COMPARE(opened(),links.mid(0,2));
-  emit notifications.NotificationClosed(3,2);emit notifications.ActionInvoked(3,"default");QTest::qWait(50);QCOMPARE(opened(),links.mid(0,2));
-  QVERIFY(!QCoreApplication::instance()->inherits("QGuiApplication"));
+  emit notifications.ActionInvoked(999,"default");emit notifications.ActionInvoked(1,"unrecognized");putgd::test::settle(50);PUTGD_TRY_VERIFY(opened().isEmpty());
+  emit notifications.ActionInvoked(1,"default");PUTGD_TRY_COMPARE(opened(),QStringList{links[0]});
+  emit notifications.ActionInvoked(2,"default");PUTGD_TRY_COMPARE(opened(),links.mid(0,2));
+  emit notifications.NotificationClosed(3,2);emit notifications.ActionInvoked(3,"default");putgd::test::settle(50);PUTGD_TRY_COMPARE(opened(),links.mid(0,2));
+  PUTGD_TRY_VERIFY(!QCoreApplication::instance()->inherits("QGuiApplication"));
  }
  void failedUploadOffersDiagnosticsAndShowInFolder() {
   // #122: the failure toast saves a package for that operation; the saved toast shows it in the file manager.
@@ -636,116 +637,116 @@ private slots:
   auto opened=[&]{QFile file(output);if(!file.open(QIODevice::ReadOnly))return QStringList{};return QString::fromUtf8(file.readAll()).split('\n',Qt::SkipEmptyParts);};
   ProviderRegistry providers;auto provider=std::make_shared<OpaqueProvider>();provider->failUpload=true;providers.add("opaque",provider);
   SettingsService settings(directory.filePath("config.json"),[&](auto id,auto value){return providers.validate(id,value);});QVERIFY(settings.save(configuration(directory.path()),{}));
-  Source source;source.payload=textPayload();OperationService operations(directory.filePath("data"),settings,providers,source);QTRY_VERIFY(operations.ready());
-  TrayController controller(operations,[](const QString&){},[]{});QTRY_VERIFY(controller.available());
+  Source source;source.payload=textPayload();OperationService operations(directory.filePath("data"),settings,providers,source);PUTGD_TRY_VERIFY(operations.ready());
+  TrayController controller(operations,[](const QString&){},[]{});PUTGD_TRY_VERIFY(controller.available());
   const auto package=directory.filePath("putgd-diagnostics-20261020-010203Z.zip");{QFile file(package);QVERIFY(file.open(QIODevice::WriteOnly));file.write("PK");}
   QStringList requested;controller.setDiagnosticsSaver([&](const QString& id,JsonReply reply){requested.append(id);reply({},{{"path",package},{"bytes",2048}});});
   QString id;operations.invoke("clipboard",[&](Error error,QJsonObject value){QVERIFY(!error);id=value["operationId"].toString();});
-  QTRY_COMPARE(notifications.values.size(),1);QVERIFY2(QRegularExpression("put.gd — (failed|partial)").match(notifications.values[0]["summary"].toString()).hasMatch(),qPrintable(notifications.values[0]["summary"].toString()+" / "+notifications.values[0]["body"].toString()));
+  PUTGD_TRY_COMPARE(notifications.values.size(),1);QVERIFY2(QRegularExpression("put.gd — (failed|partial)").match(notifications.values[0]["summary"].toString()).hasMatch(),qPrintable(notifications.values[0]["summary"].toString()+" / "+notifications.values[0]["body"].toString()));
   QCOMPARE(notifications.values[0]["actions"].toStringList(),QStringList({"save-diagnostics","Save diagnostics for this upload"}));
   // #152: the body names the failure, not a clipboard code; #151: it stays until used.
   QVERIFY2(notifications.values[0]["body"].toString().startsWith("Upload failed: "),qPrintable(notifications.values[0]["body"].toString()));
   QVERIFY(!notifications.values[0]["body"].toString().contains("Clipboard:"));QCOMPARE(notifications.values[0]["timeout"].toInt(),0);
   // A click on the body uses the resident notification up too: put.gd closes it.
-  notifications.closed.clear();emit notifications.ActionInvoked(1,"default");QTest::qWait(50);QVERIFY(requested.isEmpty());QTRY_COMPARE(notifications.closed,QList<uint>{1});
-  emit notifications.ActionInvoked(1,"save-diagnostics");QTRY_COMPARE(requested,QStringList{id});QCOMPARE(notifications.closed,QList<uint>{1});
-  QTRY_COMPARE(notifications.values.size(),2);QCOMPARE(notifications.values[1]["summary"].toString(),QString("put.gd — diagnostics saved"));
+  notifications.closed.clear();emit notifications.ActionInvoked(1,"default");putgd::test::settle(50);PUTGD_TRY_VERIFY(requested.isEmpty());PUTGD_TRY_COMPARE(notifications.closed,QList<uint>{1});
+  emit notifications.ActionInvoked(1,"save-diagnostics");PUTGD_TRY_COMPARE(requested,QStringList{id});QCOMPARE(notifications.closed,QList<uint>{1});
+  PUTGD_TRY_COMPARE(notifications.values.size(),2);QCOMPARE(notifications.values[1]["summary"].toString(),QString("put.gd — diagnostics saved"));
   QVERIFY(notifications.values[1]["body"].toString().contains("putgd-diagnostics-20261020-010203Z.zip"));QVERIFY(notifications.values[1]["body"].toString().contains("Nothing was uploaded"));
   QCOMPARE(notifications.values[1]["actions"].toStringList(),QStringList({"show-in-folder","Show in folder"}));
   // The action is spent once used.
-  emit notifications.ActionInvoked(1,"save-diagnostics");QTest::qWait(50);QCOMPARE(requested.size(),1);
+  emit notifications.ActionInvoked(1,"save-diagnostics");putgd::test::settle(50);PUTGD_TRY_COMPARE(requested.size(),1);
   // Without a file manager on the bus, Show in folder opens the package's folder.
   FileManagerPeer files;files.refuse=true;QVERIFY(peer.registerObject("/org/freedesktop/FileManager1",&files,QDBusConnection::ExportAllSlots));QVERIFY(peer.registerService("org.freedesktop.FileManager1"));
   auto unregister=qScopeGuard([&]{peer.unregisterService("org.freedesktop.FileManager1");peer.unregisterObject("/org/freedesktop/FileManager1");});
-  emit notifications.ActionInvoked(2,"show-in-folder");QTRY_COMPARE(opened(),QStringList{QUrl::fromLocalFile(directory.path()).toString(QUrl::FullyEncoded)});
+  emit notifications.ActionInvoked(2,"show-in-folder");PUTGD_TRY_COMPARE(opened(),QStringList{QUrl::fromLocalFile(directory.path()).toString(QUrl::FullyEncoded)});
   // With one, the package is selected.
   files.refuse=false;
-  QVERIFY(!TrayController::revealPackage(package));QTRY_COMPARE(files.shown.size(),1);QCOMPARE(files.shown[0],QStringList{QUrl::fromLocalFile(package).toString(QUrl::FullyEncoded)});QTest::qWait(50);QCOMPARE(opened().size(),1);
+  QVERIFY(!TrayController::revealPackage(package));PUTGD_TRY_COMPARE(files.shown.size(),1);QCOMPARE(files.shown[0],QStringList{QUrl::fromLocalFile(package).toString(QUrl::FullyEncoded)});putgd::test::settle(50);PUTGD_TRY_COMPARE(opened().size(),1);
   QCOMPARE(TrayController::revealPackage(directory.filePath("other.zip")).code,QString("invalid_request"));
   QCOMPARE(TrayController::revealPackage("relative/putgd-diagnostics-20261020-010203Z.zip").code,QString("invalid_request"));
   QCOMPARE(TrayController::revealPackage(directory.filePath("putgd-diagnostics-20261020-010204Z.zip")).code,QString("diagnostics_package_missing"));
   // A failed save says so instead.
   controller.setDiagnosticsSaver([&](const QString&,JsonReply reply){reply({"diagnostics_output_unavailable","Synthetic folder failure",{}},{});});
-  controller.saveDiagnostics(id);QTRY_COMPARE(notifications.values.size(),3);QCOMPARE(notifications.values[2]["body"].toString(),QString("Synthetic folder failure"));QVERIFY(notifications.values[2]["actions"].toStringList().isEmpty());
+  controller.saveDiagnostics(id);PUTGD_TRY_COMPARE(notifications.values.size(),3);QCOMPARE(notifications.values[2]["body"].toString(),QString("Synthetic folder failure"));QVERIFY(notifications.values[2]["actions"].toStringList().isEmpty());
   // A package the dialog also uploaded (#158) says where it went, or why it didn't.
   controller.notifyDiagnosticsSaved({{"path",package},{"bytes",2048},{"link","https://example.invalid/p.zip"},{"linkCopied",true},{"upload",QJsonObject{{"label","Synthetic S3"}}}});
-  QTRY_COMPARE(notifications.values.size(),4);QVERIFY2(notifications.values[3]["body"].toString().endsWith(". Uploaded to Synthetic S3; link copied."),qPrintable(notifications.values[3]["body"].toString()));
+  PUTGD_TRY_COMPARE(notifications.values.size(),4);QVERIFY2(notifications.values[3]["body"].toString().endsWith(". Uploaded to Synthetic S3; link copied."),qPrintable(notifications.values[3]["body"].toString()));
   controller.notifyDiagnosticsSaved({{"path",package},{"bytes",2048},{"uploadError",QJsonObject{{"code","s3_permission_denied"},{"message","S3 denied the request (HTTP 403)."}}}});
-  QTRY_COMPARE(notifications.values.size(),5);QVERIFY2(notifications.values[4]["body"].toString().endsWith(". Not uploaded: access denied by the destination."),qPrintable(notifications.values[4]["body"].toString()));
+  PUTGD_TRY_COMPARE(notifications.values.size(),5);QVERIFY2(notifications.values[4]["body"].toString().endsWith(". Not uploaded: access denied by the destination."),qPrintable(notifications.values[4]["body"].toString()));
   // #223: a package saved under a name the caller chose opens from its button too;
   // diagnostics.reveal keeps the name check for paths this resident did not save.
   QVERIFY(QDir().mkpath(directory.filePath("out")));const auto custom=directory.filePath("out/putgd-diagnostics-r9.zip");{QFile file(custom);QVERIFY(file.open(QIODevice::WriteOnly));file.write("PK");}
   QCOMPARE(TrayController::revealPackage(custom).code,QString("invalid_request"));
-  controller.notifyDiagnosticsSaved({{"path",custom},{"bytes",2048}});QTRY_COMPARE(notifications.values.size(),6);
+  controller.notifyDiagnosticsSaved({{"path",custom},{"bytes",2048}});PUTGD_TRY_COMPARE(notifications.values.size(),6);
   QCOMPARE(notifications.values[5]["actions"].toStringList(),QStringList({"show-in-folder","Show in folder"}));
-  emit notifications.ActionInvoked(6,"show-in-folder");QTRY_COMPARE(files.shown.size(),2);QCOMPARE(files.shown[1],QStringList{QUrl::fromLocalFile(custom).toString(QUrl::FullyEncoded)});
-  QVERIFY(!TrayController::revealPackage(custom,true));QTRY_COMPARE(files.shown.size(),3);
+  emit notifications.ActionInvoked(6,"show-in-folder");PUTGD_TRY_COMPARE(files.shown.size(),2);QCOMPARE(files.shown[1],QStringList{QUrl::fromLocalFile(custom).toString(QUrl::FullyEncoded)});
+  QVERIFY(!TrayController::revealPackage(custom,true));PUTGD_TRY_COMPARE(files.shown.size(),3);
   // A package removed before the click says so instead of doing nothing.
-  controller.notifyDiagnosticsSaved({{"path",custom},{"bytes",2048}});QTRY_COMPARE(notifications.values.size(),7);QVERIFY(QFile::remove(custom));
-  emit notifications.ActionInvoked(7,"show-in-folder");QTRY_COMPARE(notifications.values.size(),8);
+  controller.notifyDiagnosticsSaved({{"path",custom},{"bytes",2048}});PUTGD_TRY_COMPARE(notifications.values.size(),7);QVERIFY(QFile::remove(custom));
+  emit notifications.ActionInvoked(7,"show-in-folder");PUTGD_TRY_COMPARE(notifications.values.size(),8);
   QCOMPARE(notifications.values[7]["summary"].toString(),QString("put.gd — Show in folder"));QCOMPARE(notifications.values[7]["body"].toString(),QString("The diagnostics package is no longer there"));
-  QTest::qWait(50);QCOMPARE(files.shown.size(),3);QCOMPARE(opened().size(),1);
+  putgd::test::settle(50);PUTGD_TRY_COMPARE(files.shown.size(),3);PUTGD_TRY_COMPARE(opened().size(),1);
  }
  void selfStoppedRecordingAndKeptUploadsAreAnnounced() {
   // #225 and #226: what ended a recording, and uploads cleanup left behind, reach the user.
   QTemporaryDir directory;ProviderRegistry providers;SettingsService settings(directory.filePath("config.json"));QVERIFY(settings.save(configuration(directory.path(),true),{}));Source source;
-  OperationService operations(directory.filePath("data"),settings,providers,source);QTRY_VERIFY(operations.ready());
-  TrayController controller(operations,[](const QString&){},[]{});QTRY_VERIFY(controller.available());const auto before=notifications.values.size();
+  OperationService operations(directory.filePath("data"),settings,providers,source);PUTGD_TRY_VERIFY(operations.ready());
+  TrayController controller(operations,[](const QString&){},[]{});PUTGD_TRY_VERIFY(controller.available());const auto before=notifications.values.size();
   emit operations.recording().budgetStopped("synthetic",{{"reason","disk_space"},{"message","Recording stopped at 0:03: the disk ran out of room."}});
-  QTRY_COMPARE(notifications.values.size(),before+1);QCOMPARE(notifications.values.last()["summary"].toString(),QString("put.gd — recording stopped"));
+  PUTGD_TRY_COMPARE(notifications.values.size(),before+1);QCOMPARE(notifications.values.last()["summary"].toString(),QString("put.gd — recording stopped"));
   QCOMPARE(notifications.values.last()["body"].toString(),QString("Recording stopped at 0:03: the disk ran out of room."));
   emit operations.incompleteUploadsKept({{"count",2},{"message","Automatic cleanup could not cancel 2 incomplete uploads in bucket synthetic."}});
-  QTRY_COMPARE(notifications.values.size(),before+2);QCOMPARE(notifications.values.last()["summary"].toString(),QString("put.gd — incomplete uploads left"));
+  PUTGD_TRY_COMPARE(notifications.values.size(),before+2);QCOMPARE(notifications.values.last()["summary"].toString(),QString("put.gd — incomplete uploads left"));
   QCOMPARE(notifications.values.last()["body"].toString(),QString("Automatic cleanup could not cancel 2 incomplete uploads in bucket synthetic."));
  }
  void coreControllerRoutesAllFourActionsWithoutViews() {
   QTemporaryDir directory; QVERIFY(directory.isValid()); ProviderRegistry providers;
   SettingsService settings(directory.filePath("config.json")); QVERIFY(settings.save(configuration(directory.path(), true), {}));
   Source source; source.defer = true;
-  OperationService operations(directory.filePath("data"), settings, providers, source); QTRY_VERIFY(operations.ready());
+  OperationService operations(directory.filePath("data"), settings, providers, source); PUTGD_TRY_VERIFY(operations.ready());
   QStringList views; QSet<QString> cancelled;
   TrayController controller(operations, [&](const QString& view) { views.append(view); }, [] {});
-  QTRY_VERIFY(controller.available());
+  PUTGD_TRY_VERIFY(controller.available());
   connect(&operations, &OperationService::changed, this, [&](const QString& id) {
    operations.inspect(id, [&](Error e, QJsonObject op) { QVERIFY(!e); if (op["state"] == "cancelled") cancelled.insert(op["action"].toString()); });
   });
   const QStringList names{"region","window","desktop","clipboard"};
   for (int i = 0; i < names.size(); ++i) {
-   QCOMPARE(click(i+1).type(), QDBusMessage::ReplyMessage); QTRY_COMPARE(source.reads, i+1);
-   QTRY_COMPARE(source.acquisitions.size(), 1);
+   QCOMPARE(click(i+1).type(), QDBusMessage::ReplyMessage); PUTGD_TRY_COMPARE(source.reads, i+1);
+   PUTGD_TRY_COMPARE(source.acquisitions.size(), 1);
    auto acquired = source.acquisitions.takeFirst(); acquired({{}, {"source_cancelled", "Synthetic source cancellation", {}}});
-   QTRY_VERIFY(cancelled.contains(names[i]));
+   PUTGD_TRY_VERIFY(cancelled.contains(names[i]));
   }
   QCOMPARE(cancelled.size(), 4); QCOMPARE(source.copies, 0); QVERIFY(views.isEmpty());
  }
  void progressChangesDoNotRepeatTerminalToastAndExplicitCopyStillNotifies(){
   QTemporaryDir directory;ProviderRegistry providers;SettingsService settings(directory.filePath("config.json"));QVERIFY(settings.save(configuration(directory.path(),true),{}));Source source;source.payload=textPayload();
-  OperationService operations(directory.filePath("data"),settings,providers,source);QTRY_VERIFY(operations.ready());QStringList views;TrayController controller(operations,[&](const QString& value){views.append(value);},[]{});QTRY_VERIFY(controller.available());QString id;
-  operations.invoke("clipboard",[&](Error e,QJsonObject result){QVERIFY(!e);id=result["operationId"].toString();});QTRY_COMPARE(source.copies,1);QTRY_VERIFY(!notifications.values.isEmpty());
+  OperationService operations(directory.filePath("data"),settings,providers,source);PUTGD_TRY_VERIFY(operations.ready());QStringList views;TrayController controller(operations,[&](const QString& value){views.append(value);},[]{});PUTGD_TRY_VERIFY(controller.available());QString id;
+  operations.invoke("clipboard",[&](Error e,QJsonObject result){QVERIFY(!e);id=result["operationId"].toString();});PUTGD_TRY_COMPARE(source.copies,1);PUTGD_TRY_VERIFY(!notifications.values.isEmpty());
   for(int i=0;i<50;++i)emit operations.changed(id);
-  QTest::qWait(400);QCOMPARE(notifications.values.size(),1);QVERIFY(views.isEmpty());bool copied=false;operations.copyResult(id,[&](Error e,QJsonObject){QVERIFY(!e);copied=true;});QTRY_VERIFY(copied);QTRY_COMPARE(notifications.values.size(),2);QCOMPARE(source.copies,2);
+  putgd::test::settle(400);PUTGD_TRY_COMPARE(notifications.values.size(),1);PUTGD_TRY_VERIFY(views.isEmpty());PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);bool copied=false;operations.copyResult(id,[&](Error e,QJsonObject){QVERIFY(!e);copied=true;});PUTGD_TRY_VERIFY(copied);PUTGD_TRY_COMPARE(notifications.values.size(),2);QCOMPARE(source.copies,2);
  }
  void coreControllerDelegatesViewsAndPreservesCopyPendingAndNotificationSetting() {
   QTemporaryDir directory; QVERIFY(directory.isValid()); ProviderRegistry providers;
   SettingsService settings(directory.filePath("config.json")); auto config = configuration(directory.path(), true);
   QVERIFY(settings.save(config, {})); Source source; source.payload = textPayload();
-  OperationService operations(directory.filePath("data"), settings, providers, source); QTRY_VERIFY(operations.ready());
+  OperationService operations(directory.filePath("data"), settings, providers, source); PUTGD_TRY_VERIFY(operations.ready());
   QStringList views; int quits = 0;
   TrayController controller(operations, [&](const QString& view) { views.append(view); }, [&] { ++quits; });
-  auto* native = controller.findChild<NativeTray*>(); QVERIFY(native); QTRY_VERIFY(native->available());
+  auto* native = controller.findChild<NativeTray*>(); QVERIFY(native); PUTGD_TRY_VERIFY(native->available());
   for (int id : {7,8,9,11}) QCOMPARE(click(id).type(), QDBusMessage::ReplyMessage);
-  QTRY_COMPARE(views, QStringList({"settings","history","activity","about"}));
-  QCOMPARE(click(4).type(), QDBusMessage::ReplyMessage); QTRY_COMPARE(source.copies, 1); QTRY_COMPARE(notifications.values.size(), 1);
+  PUTGD_TRY_COMPARE(views, QStringList({"settings","history","activity","about"}));
+  QCOMPARE(click(4).type(), QDBusMessage::ReplyMessage); PUTGD_TRY_COMPARE(source.copies, 1); PUTGD_TRY_COMPARE(notifications.values.size(), 1);
   QVERIFY(notifications.values.first()["summary"].toString().contains("completed"));
   QVERIFY(notifications.values.first()["body"].toString().contains("copied"));
-  QTest::qWait(100); QCOMPARE(notifications.values.size(), 1);
+  putgd::test::settle(100); PUTGD_TRY_COMPARE(notifications.values.size(), 1);
   auto updated = settings.document();
   auto preferences = updated["preferences"].toObject(); preferences["notifications"] = false; updated["preferences"] = preferences;
   const auto saved = settings.save(updated, settings.revision());
   QVERIFY2(saved, qPrintable(saved.error.code)); QVERIFY(!settings.snapshot().notifications);
-  QCOMPARE(click(4).type(), QDBusMessage::ReplyMessage); QTRY_COMPARE(source.copies, 2);
-  QTest::qWait(100); QCOMPARE(notifications.values.size(), 1);
-  QCOMPARE(click(12).type(), QDBusMessage::ReplyMessage); QTRY_COMPARE(quits, 1);
+  QCOMPARE(click(4).type(), QDBusMessage::ReplyMessage); PUTGD_TRY_COMPARE(source.copies, 2);
+  putgd::test::settle(100); PUTGD_TRY_COMPARE(notifications.values.size(), 1);
+  QCOMPARE(click(12).type(), QDBusMessage::ReplyMessage); PUTGD_TRY_COMPARE(quits, 1);
   QVERIFY(!QCoreApplication::instance()->inherits("QGuiApplication"));
  }
 };

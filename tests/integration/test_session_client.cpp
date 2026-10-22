@@ -12,6 +12,7 @@
 #include <QUuid>
 #include <iterator>
 #include <memory>
+#include "fixtures/Waits.h"
 
 using namespace putgd;
 namespace {
@@ -87,7 +88,7 @@ private slots:
             [&](Error e, QJsonObject r) { ++callbacks; error = e; result = r; });
         QVERIFY(id != 0);
         QCOMPARE(callbacks, 0);
-        QTRY_COMPARE_WITH_TIMEOUT(callbacks, 1, 1000);
+        PUTGD_TRY_COMPARE_WITH_TIMEOUT(callbacks, 1, 1000);
         QVERIFY2(!error, qPrintable(error.code));
         QVERIFY(result["ready"].toBool());
         QVERIFY(heartbeats >= 3);
@@ -99,8 +100,8 @@ private slots:
         QCOMPARE(received["params"].toObject(), QJsonObject({{"fixture", true}}));
         QVERIFY(!QUuid(received["requestId"].toString()).isNull());
         QCOMPARE(client.socketPath(), server.path());
-        QTest::qWait(50);
-        QCOMPARE(callbacks, 1);
+        putgd::test::settle(50);
+        PUTGD_TRY_COMPARE(callbacks, 1);
     }
 
     void errorReplyPreservesResidentDetails() {
@@ -121,7 +122,7 @@ private slots:
         client.request("settings.save", {}, this, [&](Error e, QJsonObject r) {
             ++callbacks; error = e; result = r;
         });
-        QTRY_COMPARE(callbacks, 1);
+        PUTGD_TRY_COMPARE(callbacks, 1);
         QCOMPARE(error.toJson(), expected.toJson());
         QCOMPARE(result, QJsonObject({{"accepted", false}}));
     }
@@ -176,13 +177,13 @@ private slots:
                 ++callbacks; error = e; QVERIFY(result.isEmpty());
             });
         QCOMPARE(callbacks, 0);
-        QTRY_COMPARE(callbacks, 1);
+        PUTGD_TRY_COMPARE(callbacks, 1);
         QCOMPARE(error.code, QString("invalid_response"));
         QVERIFY(error.details["outcomeUnknown"].toBool());
         QVERIFY(!frame(error.toJson()).contains("DO_NOT_ECHO_RAW"));
-        QTest::qWait(20);
-        QCOMPARE(callbacks, 1);
-        QCOMPARE(server.requests.size(), 1);
+        putgd::test::settle(20);
+        PUTGD_TRY_COMPARE(callbacks, 1);
+        PUTGD_TRY_COMPARE(server.requests.size(), 1);
     }
 
     void responseLimit_data() {
@@ -211,7 +212,7 @@ private slots:
         client.request("history.detail", {}, this, [&](Error e, QJsonObject result) {
             ++callbacks; error = e; resultLength = result["text"].toString().size();
         });
-        QTRY_COMPARE_WITH_TIMEOUT(callbacks, 1, 5000);
+        PUTGD_TRY_COMPARE_WITH_TIMEOUT(callbacks, 1, 5000);
         if (oversized) {
             QCOMPARE(error.code, QString("invalid_response"));
             QVERIFY(error.details["outcomeUnknown"].toBool());
@@ -220,8 +221,8 @@ private slots:
             QVERIFY(!error);
             QVERIFY(resultLength > 15 * 1024 * 1024);
         }
-        QTest::qWait(20);
-        QCOMPARE(callbacks, 1);
+        putgd::test::settle(20);
+        PUTGD_TRY_COMPARE(callbacks, 1);
     }
 
     void requestAtOneMiBLimitIsAccepted() {
@@ -241,7 +242,7 @@ private slots:
         client.request("settings.save", {{"data", QString(dataLength, QChar('x'))}}, this,
             [&](Error error, QJsonObject) { QVERIFY(!error); ++callbacks; });
         QCOMPARE(callbacks, 0);
-        QTRY_COMPARE(callbacks, 1);
+        PUTGD_TRY_COMPARE(callbacks, 1);
         QCOMPARE(server.requests.size(), 1);
     }
 
@@ -254,7 +255,7 @@ private slots:
         client.request("settings.save", {{"data", QString(1024 * 1024, QChar('x'))}}, this,
             [&](Error e, QJsonObject result) { ++callbacks; error = e; QVERIFY(result.isEmpty()); });
         QCOMPARE(callbacks, 0);
-        QTRY_COMPARE(callbacks, 1);
+        PUTGD_TRY_COMPARE(callbacks, 1);
         QCOMPARE(error.code, QString("request_too_large"));
         QVERIFY(!error.details.contains("outcomeUnknown"));
         QVERIFY(server.peers.isEmpty());
@@ -268,11 +269,11 @@ private slots:
         client.request("action.invoke", {{"action", "clipboard"}}, this,
             [&](Error e, QJsonObject result) { ++callbacks; error = e; QVERIFY(result.isEmpty()); });
         QCOMPARE(callbacks, 0);
-        QTRY_COMPARE_WITH_TIMEOUT(callbacks, 1, 1000);
+        PUTGD_TRY_COMPARE_WITH_TIMEOUT(callbacks, 1, 1000);
         QCOMPARE(error.code, QString("client_unavailable"));
         QVERIFY(!error.details.contains("outcomeUnknown"));
-        QTest::qWait(30);
-        QCOMPARE(callbacks, 1);
+        putgd::test::settle(30);
+        PUTGD_TRY_COMPARE(callbacks, 1);
     }
 
     void lostReplyMakesMutationUnknownWithoutRetry_data() {
@@ -293,13 +294,13 @@ private slots:
         int callbacks = 0;
         client.request("action.invoke", {{"action", "clipboard"}}, this,
             [&](Error e, QJsonObject result) { ++callbacks; error = e; QVERIFY(result.isEmpty()); });
-        QTRY_COMPARE(callbacks, 1);
+        PUTGD_TRY_COMPARE(callbacks, 1);
         QCOMPARE(error.code, QString("client_unavailable"));
         QVERIFY(error.details["outcomeUnknown"].toBool());
-        QTest::qWait(100);
-        QCOMPARE(callbacks, 1);
-        QCOMPARE(server.requests.size(), 1);
-        QCOMPARE(server.peers.size(), 1);
+        putgd::test::settle(100);
+        PUTGD_TRY_COMPARE(callbacks, 1);
+        PUTGD_TRY_COMPARE(server.requests.size(), 1);
+        PUTGD_TRY_COMPARE(server.peers.size(), 1);
     }
 
     void deadlineIsBoundedAndKeepsEventLoopResponsive() {
@@ -317,16 +318,16 @@ private slots:
         elapsed.start();
         client.request("settings.save", {}, this,
             [&](Error e, QJsonObject) { ++callbacks; error = e; });
-        QTRY_COMPARE_WITH_TIMEOUT(callbacks, 1, 18000);
+        PUTGD_TRY_COMPARE_WITH_TIMEOUT(callbacks, 1, 18000);
         QVERIFY(elapsed.elapsed() >= 14900);
         QVERIFY(elapsed.elapsed() < 18000);
         QVERIFY(heartbeats >= 100);
         QCOMPARE(error.code, QString("client_timeout"));
         QVERIFY(error.details["outcomeUnknown"].toBool());
-        QTest::qWait(100);
-        QCOMPARE(callbacks, 1);
-        QCOMPARE(server.requests.size(), 1);
-        QCOMPARE(server.peers.size(), 1);
+        putgd::test::settle(100);
+        PUTGD_TRY_COMPARE(callbacks, 1);
+        PUTGD_TRY_COMPARE(server.requests.size(), 1);
+        PUTGD_TRY_COMPARE(server.peers.size(), 1);
     }
 
     void concurrentRepliesStayCorrelated() {
@@ -351,7 +352,7 @@ private slots:
             ids.insert(id);
         }
         QVERIFY(completionOrder.isEmpty());
-        QTRY_COMPARE(completionOrder.size(), 12);
+        PUTGD_TRY_COMPARE(completionOrder.size(), 12);
         QVERIFY(completionOrder.first() > completionOrder.last());
         QSet<QString> wireIds;
         for (const auto& request : server.requests) wireIds.insert(request["requestId"].toString());
@@ -372,10 +373,10 @@ private slots:
         client.request("operation.inspect", {}, this,
             [&](Error error, QJsonObject) { ++busyCallbacks; busy = error; });
         QCOMPARE(busyCallbacks, 0);
-        QTRY_COMPARE(busyCallbacks, 1);
+        PUTGD_TRY_COMPARE(busyCallbacks, 1);
         QCOMPARE(busy.code, QString("client_busy"));
         QVERIFY(!busy.details.contains("outcomeUnknown"));
-        QTRY_COMPARE_WITH_TIMEOUT(server.requests.size(), 64, 4000);
+        PUTGD_TRY_COMPARE_WITH_TIMEOUT(server.requests.size(), 64, 4000);
         QCOMPARE(server.peers.size(), 64);
         client.abandon(ids.takeFirst());
         server.onRequest = [](QLocalSocket* peer, const QJsonObject& request) { respond(peer, request); };
@@ -383,7 +384,7 @@ private slots:
         client.request("capabilities", {}, this, [&](Error error, QJsonObject) {
             QVERIFY(!error); ++healthyCallbacks;
         });
-        QTRY_COMPARE(healthyCallbacks, 1);
+        PUTGD_TRY_COMPARE(healthyCallbacks, 1);
         QCOMPARE(acceptedCallbacks, 0);
         QCOMPARE(server.requests.size(), 65);
         for (const auto id : ids) client.abandon(id);
@@ -403,18 +404,18 @@ private slots:
         int callbacks = 0;
         const auto id = client.request("action.invoke", {{"action", "clipboard"}}, receiver.get(),
             [&](Error, QJsonObject) { ++callbacks; });
-        QTRY_COMPARE(server.requests.size(), 1);
+        PUTGD_TRY_COMPARE(server.requests.size(), 1);
         if (destroyReceiver) receiver.reset();
         else client.abandon(id);
-        QTRY_COMPARE(server.peers.front()->state(), QLocalSocket::UnconnectedState);
-        QTest::qWait(30);
-        QCOMPARE(callbacks, 0);
-        QCOMPARE(server.requests.size(), 1); // No operation.cancel or other follow-up was sent.
+        PUTGD_TRY_COMPARE(server.peers.front()->state(), QLocalSocket::UnconnectedState);
+        putgd::test::settle(30);
+        PUTGD_TRY_COMPARE(callbacks, 0);
+        PUTGD_TRY_COMPARE(server.requests.size(), 1); // No operation.cancel or other follow-up was sent.
         server.onRequest = [](QLocalSocket* peer, const QJsonObject& request) { respond(peer, request); };
         client.request("capabilities", {}, this, [&](Error error, QJsonObject) {
             QVERIFY(!error); ++callbacks;
         });
-        QTRY_COMPARE(callbacks, 1);
+        PUTGD_TRY_COMPARE(callbacks, 1);
     }
 
     void queuedFailuresCanBeAbandonedAndReceiverDestroyed() {
@@ -433,9 +434,9 @@ private slots:
         client.request("settings.save", large, receiver.get(),
             [&](Error, QJsonObject) { ++callbacks; });
         receiver.reset();
-        QTest::qWait(30);
-        QCOMPARE(callbacks, 0);
-        QVERIFY(server.peers.isEmpty());
+        putgd::test::settle(30);
+        PUTGD_TRY_COMPARE(callbacks, 0);
+        PUTGD_TRY_VERIFY(server.peers.isEmpty());
     }
 
     void clientDestructionStopsPendingDelivery() {
@@ -444,11 +445,11 @@ private slots:
         auto client = std::make_unique<SessionClient>(server.path());
         int callbacks = 0;
         client->request("operation.inspect", {}, this, [&](Error, QJsonObject) { ++callbacks; });
-        QTRY_COMPARE(server.requests.size(), 1);
+        PUTGD_TRY_COMPARE(server.requests.size(), 1);
         client.reset();
-        QTRY_COMPARE(server.peers.front()->state(), QLocalSocket::UnconnectedState);
-        QTest::qWait(30);
-        QCOMPARE(callbacks, 0);
+        PUTGD_TRY_COMPARE(server.peers.front()->state(), QLocalSocket::UnconnectedState);
+        putgd::test::settle(30);
+        PUTGD_TRY_COMPARE(callbacks, 0);
     }
 
     void clientDestructionWithOwnedReceiver_data() {
@@ -464,11 +465,11 @@ private slots:
         QObject* receiver = useChild ? new QObject(client.get()) : client.get();
         int callbacks = 0;
         client->request("operation.inspect", {}, receiver, [&](Error, QJsonObject) { ++callbacks; });
-        QTRY_COMPARE(server.requests.size(), 1);
+        PUTGD_TRY_COMPARE(server.requests.size(), 1);
         client.reset();
-        QTRY_COMPARE(server.peers.front()->state(), QLocalSocket::UnconnectedState);
-        QTest::qWait(30);
-        QCOMPARE(callbacks, 0);
+        PUTGD_TRY_COMPARE(server.peers.front()->state(), QLocalSocket::UnconnectedState);
+        putgd::test::settle(30);
+        PUTGD_TRY_COMPARE(callbacks, 0);
     }
 
     void callbackMayDeleteClient() {
@@ -480,10 +481,10 @@ private slots:
         client->request("capabilities", {}, client.get(), [&](Error error, QJsonObject) {
             QVERIFY(!error); ++callbacks; client.reset();
         });
-        QTRY_COMPARE(callbacks, 1);
+        PUTGD_TRY_COMPARE(callbacks, 1);
         QVERIFY(!client);
-        QTest::qWait(30);
-        QCOMPARE(callbacks, 1);
+        putgd::test::settle(30);
+        PUTGD_TRY_COMPARE(callbacks, 1);
     }
 };
 QTEST_GUILESS_MAIN(SessionClientContract)

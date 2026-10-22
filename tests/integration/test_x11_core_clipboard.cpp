@@ -9,6 +9,7 @@
 #include <vector>
 #include <algorithm>
 #include <cstring>
+#include "fixtures/Waits.h"
 using namespace putgd;
 // Independent requestor on its own XCB connection: no Qt GUI application,
 // QClipboard or production import implementation can make these tests pass.
@@ -58,53 +59,53 @@ private slots:
  }
  void textTargetsTimestampAndNoneProperty(){
   X11Clipboard owner;CopyPayload payload;payload.kind="text";payload.text=QString::fromUtf8("synthetic café\nsecond line");QVERIFY(!copy(owner,payload));
-  Receiver receiver;receiver.request("TARGETS");QTRY_VERIFY(receiver.done);QVERIFY(!receiver.rejected);QCOMPARE(receiver.type,xcb_atom_t(XCB_ATOM_ATOM));QCOMPARE(receiver.format,quint8(32));
+  Receiver receiver;receiver.request("TARGETS");PUTGD_TRY_VERIFY(receiver.done);QVERIFY(!receiver.rejected);QCOMPARE(receiver.type,xcb_atom_t(XCB_ATOM_ATOM));QCOMPARE(receiver.format,quint8(32));
   QList<xcb_atom_t> targets;for(qsizetype i=0;i+4<=receiver.data.size();i+=4){xcb_atom_t atom;memcpy(&atom,receiver.data.constData()+i,4);targets.append(atom);}
   for(const auto* mime:{"TARGETS","TIMESTAMP","UTF8_STRING","text/plain;charset=utf-8","text/plain"})QVERIFY(targets.contains(receiver.atom(mime)));
   QVERIFY(!targets.contains(receiver.atom("MULTIPLE")));
-  receiver.request("TIMESTAMP");QTRY_VERIFY(receiver.done);QCOMPARE(receiver.format,quint8(32));QCOMPARE(receiver.data.size(),4);quint32 timestamp;memcpy(&timestamp,receiver.data.constData(),4);QVERIFY(timestamp!=XCB_CURRENT_TIME);
-  for(const auto* mime:{"UTF8_STRING","text/plain;charset=utf-8","text/plain"}){receiver.request(mime,true);QTRY_VERIFY(receiver.done);QVERIFY(!receiver.rejected);QCOMPARE(receiver.data,payload.text.toUtf8());}
-  receiver.request("MULTIPLE");QTRY_VERIFY(receiver.done);QVERIFY(receiver.rejected);
-  receiver.request("UTF8_STRING",false,false,timestamp-1);QTRY_VERIFY(receiver.done);QVERIFY(receiver.rejected);
+  receiver.request("TIMESTAMP");PUTGD_TRY_VERIFY(receiver.done);QCOMPARE(receiver.format,quint8(32));QCOMPARE(receiver.data.size(),4);quint32 timestamp;memcpy(&timestamp,receiver.data.constData(),4);QVERIFY(timestamp!=XCB_CURRENT_TIME);
+  for(const auto* mime:{"UTF8_STRING","text/plain;charset=utf-8","text/plain"}){receiver.request(mime,true);PUTGD_TRY_VERIFY(receiver.done);QVERIFY(!receiver.rejected);QCOMPARE(receiver.data,payload.text.toUtf8());}
+  receiver.request("MULTIPLE");PUTGD_TRY_VERIFY(receiver.done);QVERIFY(receiver.rejected);
+  receiver.request("UTF8_STRING",false,false,timestamp-1);PUTGD_TRY_VERIFY(receiver.done);QVERIFY(receiver.rejected);
  }
  void filesAndImageMime(){
   X11Clipboard owner;CopyPayload files;files.kind="files";files.files=QStringList{"/tmp/synthetic space.txt","/tmp/synthetic-unicode-é.png"};QVERIFY(!copy(owner,files));
   QByteArray expected;for(const auto& path:files.files)expected+=QUrl::fromLocalFile(path).toEncoded()+"\r\n";
-  Receiver receiver;receiver.request("text/uri-list");QTRY_VERIFY(receiver.done);QCOMPARE(receiver.data,expected);
+  Receiver receiver;receiver.request("text/uri-list");PUTGD_TRY_VERIFY(receiver.done);QCOMPARE(receiver.data,expected);
   CopyPayload image;image.kind="image";QImage pixels(23,17,QImage::Format_ARGB32);pixels.fill(Qt::cyan);QBuffer buffer(&image.encodedImage);QVERIFY(buffer.open(QIODevice::WriteOnly));QVERIFY(pixels.save(&buffer,"PNG"));QVERIFY(!copy(owner,image));
-  receiver.request("image/png");QTRY_VERIFY(receiver.done);QVERIFY(!receiver.rejected);QCOMPARE(receiver.data,image.encodedImage);QCOMPARE(QImage::fromData(receiver.data),pixels);
-  receiver.request("UTF8_STRING");QTRY_VERIFY(receiver.done);QVERIFY(receiver.rejected);
+  receiver.request("image/png");PUTGD_TRY_VERIFY(receiver.done);QVERIFY(!receiver.rejected);QCOMPARE(receiver.data,image.encodedImage);QCOMPARE(QImage::fromData(receiver.data),pixels);
+  receiver.request("UTF8_STRING");PUTGD_TRY_VERIFY(receiver.done);QVERIFY(receiver.rejected);
  }
  void independentIncrementalLeasesSurviveReplacementAndImportCancel(){
   X11Clipboard owner;CopyPayload old;old.kind="text";old.text=QString(256*1024,'a');QVERIFY(!copy(owner,old));
-  Receiver first,second;first.request("UTF8_STRING",false,true);second.request("text/plain",false,true);QTRY_VERIFY(first.incremental&&second.incremental);QVERIFY(!first.done&&!second.done);
+  Receiver first,second;first.request("UTF8_STRING",false,true);second.request("text/plain",false,true);PUTGD_TRY_VERIFY(first.incremental&&second.incremental);QVERIFY(!first.done&&!second.done);
   CopyPayload fresh;fresh.kind="text";fresh.text="new owner content";QVERIFY(!copy(owner,fresh));owner.cancel();
-  Receiver newest;newest.request("UTF8_STRING");QTRY_VERIFY(newest.done);QCOMPARE(newest.data,fresh.text.toUtf8());
-  first.resume();second.resume();QTRY_VERIFY(first.done&&second.done);QCOMPARE(first.data,old.text.toUtf8());QCOMPARE(second.data,old.text.toUtf8());
+  Receiver newest;newest.request("UTF8_STRING");PUTGD_TRY_VERIFY(newest.done);QCOMPARE(newest.data,fresh.text.toUtf8());
+  first.resume();second.resume();PUTGD_TRY_VERIFY(first.done&&second.done);QCOMPARE(first.data,old.text.toUtf8());QCOMPARE(second.data,old.text.toUtf8());
   // The native import queue remains usable while this owner serves output.
-  X11Clipboard importer;bool done=false;PayloadResult imported;importer.acquire({},[&](PayloadResult value){imported=std::move(value);done=true;});QTRY_VERIFY(done);QVERIFY(!imported.error);QCOMPARE(imported.payload.bytes,fresh.text.toUtf8());
+  X11Clipboard importer;bool done=false;PayloadResult imported;importer.acquire({},[&](PayloadResult value){imported=std::move(value);done=true;});PUTGD_TRY_VERIFY(done);QVERIFY(!imported.error);QCOMPARE(imported.payload.bytes,fresh.text.toUtf8());
  }
  void selectionClearPreservesExistingTransfer(){
   X11Clipboard owner;CopyPayload payload;payload.kind="text";payload.text=QString(192*1024,'b');QVERIFY(!copy(owner,payload));
-  Receiver receiver;receiver.request("UTF8_STRING",false,true);QTRY_VERIFY(receiver.incremental);
-  const auto previous=owner.revision();Receiver competing;competing.steal();QTRY_VERIFY(owner.revision()>previous);
-  receiver.resume();QTRY_VERIFY(receiver.done);QCOMPARE(receiver.data,payload.text.toUtf8());
-  CopyPayload after;after.kind="text";after.text="regained";QVERIFY(!copy(owner,after));Receiver fresh;fresh.request("UTF8_STRING");QTRY_VERIFY(fresh.done);QCOMPARE(fresh.data,after.text.toUtf8());
+  Receiver receiver;receiver.request("UTF8_STRING",false,true);PUTGD_TRY_VERIFY(receiver.incremental);
+  const auto previous=owner.revision();Receiver competing;competing.steal();PUTGD_TRY_VERIFY(owner.revision()>previous);
+  receiver.resume();PUTGD_TRY_VERIFY(receiver.done);QCOMPARE(receiver.data,payload.text.toUtf8());
+  CopyPayload after;after.kind="text";after.text="regained";QVERIFY(!copy(owner,after));Receiver fresh;fresh.request("UTF8_STRING");PUTGD_TRY_VERIFY(fresh.done);QCOMPARE(fresh.data,after.text.toUtf8());
  }
  void boundedRequestorsAndDestroyedPeer(){
   X11Clipboard owner;CopyPayload payload;payload.kind="text";payload.text=QString(96*1024,'c');QVERIFY(!copy(owner,payload));
   std::vector<std::unique_ptr<Receiver>> peers;for(int i=0;i<16;++i){auto peer=std::make_unique<Receiver>();peer->request("UTF8_STRING",false,true);peers.push_back(std::move(peer));}
-  QTRY_VERIFY(std::all_of(peers.begin(),peers.end(),[](const auto& peer){return peer->incremental;}));
-  Receiver excess;excess.request("UTF8_STRING");QTRY_VERIFY(excess.done);QVERIFY(excess.rejected);
-  peers.pop_back();QTest::qWait(30);excess.request("UTF8_STRING");QTRY_VERIFY(excess.done);QVERIFY(!excess.rejected);QCOMPARE(excess.data,payload.text.toUtf8());
+  PUTGD_TRY_VERIFY(std::all_of(peers.begin(),peers.end(),[](const auto& peer){return peer->incremental;}));
+  Receiver excess;excess.request("UTF8_STRING");PUTGD_TRY_VERIFY(excess.done);QVERIFY(excess.rejected);
+  peers.pop_back();putgd::test::settle(30);excess.request("UTF8_STRING");PUTGD_TRY_VERIFY(excess.done);QVERIFY(!excess.rejected);QCOMPARE(excess.data,payload.text.toUtf8());
   for(auto& peer:peers) peer->resume();
-  QTRY_VERIFY(std::all_of(peers.begin(),peers.end(),[](const auto& peer){return peer->done;}));
+  PUTGD_TRY_VERIFY(std::all_of(peers.begin(),peers.end(),[](const auto& peer){return peer->done;}));
  }
  void abandonedTransferExpires(){
-  X11Clipboard owner;CopyPayload old;old.kind="text";old.text=QString(96*1024,'d');QVERIFY(!copy(owner,old));Receiver receiver;receiver.request("UTF8_STRING",false,true);QTRY_VERIFY(receiver.incremental);
+  X11Clipboard owner;CopyPayload old;old.kind="text";old.text=QString(96*1024,'d');QVERIFY(!copy(owner,old));Receiver receiver;receiver.request("UTF8_STRING",false,true);PUTGD_TRY_VERIFY(receiver.incremental);
   CopyPayload fresh;fresh.kind="text";fresh.text="replacement";QVERIFY(!copy(owner,fresh));
-  QTest::qWait(16500);receiver.resume();QTest::qWait(100);QVERIFY(receiver.data.isEmpty());QVERIFY(!receiver.done);
-  Receiver active;active.request("UTF8_STRING");QTRY_VERIFY(active.done);QCOMPARE(active.data,fresh.text.toUtf8());
+  putgd::test::settle(16500);receiver.resume();putgd::test::settle(100);PUTGD_TRY_VERIFY(receiver.data.isEmpty());PUTGD_TRY_VERIFY(!receiver.done);
+  Receiver active;active.request("UTF8_STRING");PUTGD_TRY_VERIFY(active.done);QCOMPARE(active.data,fresh.text.toUtf8());
  }
  void sharedEncodedImageLeasesReleaseOnReplacementAndClear(){
   CopyPayload original;original.kind="image";
@@ -116,13 +117,13 @@ private slots:
    X11Clipboard owner;QVERIFY(!copy(owner,original));
    // The owner shares encoded input rather than duplicating the whole image.
    QVERIFY(!original.encodedImage.isDetached());
-   Receiver receiver;receiver.request("image/png",false,true);QTRY_VERIFY(receiver.incremental);
+   Receiver receiver;receiver.request("image/png",false,true);PUTGD_TRY_VERIFY(receiver.incremental);
    CopyPayload fresh;fresh.kind="text";fresh.text="current small result";QVERIFY(!copy(owner,fresh));
    QVERIFY(!original.encodedImage.isDetached()); // only its accepted INCR lease remains
-   receiver.resume();QTRY_VERIFY(receiver.done);QCOMPARE(receiver.data,original.encodedImage);
-   QTRY_VERIFY(original.encodedImage.isDetached());
+   receiver.resume();PUTGD_TRY_VERIFY(receiver.done);QCOMPARE(receiver.data,original.encodedImage);
+   PUTGD_TRY_VERIFY(original.encodedImage.isDetached());
    QVERIFY(!copy(owner,original));QVERIFY(!original.encodedImage.isDetached());
-   Receiver competing;competing.steal();QTRY_VERIFY(original.encodedImage.isDetached());
+   Receiver competing;competing.steal();PUTGD_TRY_VERIFY(original.encodedImage.isDetached());
    QVERIFY(!copy(owner,original));QVERIFY(!original.encodedImage.isDetached());
   }
   QVERIFY(original.encodedImage.isDetached()); // destruction releases current ownership
@@ -130,7 +131,7 @@ private slots:
  void persistentAfterPayloadLifetimeAndRejectedCopy(){
   X11Clipboard owner;{CopyPayload temporary;temporary.kind="text";temporary.text="leased beyond the caller";QVERIFY(!copy(owner,temporary));}
   CopyPayload invalid;invalid.kind="image";invalid.encodedImage="not-png";QCOMPARE(copy(owner,invalid).code,QString("artifact_invalid"));
-  Receiver receiver;receiver.request("UTF8_STRING");QTRY_VERIFY(receiver.done);QCOMPARE(receiver.data,QByteArray("leased beyond the caller"));
+  Receiver receiver;receiver.request("UTF8_STRING");PUTGD_TRY_VERIFY(receiver.done);QCOMPARE(receiver.data,QByteArray("leased beyond the caller"));
  }
 };
 QTEST_GUILESS_MAIN(CoreClipboardTest)

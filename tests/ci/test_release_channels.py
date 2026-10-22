@@ -108,7 +108,8 @@ class Workflows(unittest.TestCase):
     def test_linux_tests_keep_their_isolation_and_skip_the_duplicate_release_compile(self):
         linux = job(workflow('ci.yml'), 'linux')
         for text in ("distribution: ['24.04', '26.04']", 'cmake --preset dev -DPUTGD_BUNDLE_PROTON=ON',
-                     'ctest --preset dev --parallel 8', 'runuser -u putgd-ci',
+                     'tools/ci/ctest_retry.py --ledger build/dev/flake-ledger.json', '-- --preset dev --parallel 12',
+                     'runuser -u putgd-ci',
                      'python3 tools/ci/ctest_preflight.py', '-DCMAKE_CXX_COMPILER_LAUNCHER=ccache',
                      'aws-sdk-source-licenses', 'python3 tools/proton/provision_runtime.py'):
             self.assertIn(text, linux)
@@ -116,12 +117,36 @@ class Workflows(unittest.TestCase):
         self.assertNotIn('sdk-source.sh', linux)
         assertCompilerCacheIsTrimmedAndSavedOnlyByNightlyPushes(self, linux)
 
+    def test_test_jobs_scale_waits_retry_integration_tests_once_and_report_flakes(self):
+        ci = workflow('ci.yml')
+        for name, build, scale in (('linux', 'build/dev', "'3'"), ('sanitizers', 'build/clang-asan', "'5'")):
+            with self.subTest(job=name):
+                steps = job(ci, name)
+                test = steps.split('- name: Test', 1)[1].split('- name: ', 1)[0]
+                self.assertIn('PUTGD_TEST_TIME_SCALE: ' + scale, test)
+                self.assertIn('-DPUTGD_TEST_TIMEOUT_SCALE=' + scale.strip("'"), steps)
+                self.assertIn(f'python3 tools/ci/ctest_retry.py --ledger {build}/flake-ledger.json', test)
+                self.assertNotIn('--repeat', test)
+                report = steps.split('- name: Report flaky tests', 1)[1].split('- name: ', 1)[0]
+                self.assertIn(f"if: always() && hashFiles('{build}/flake-ledger.json') != ''", report)
+                self.assertIn('GITHUB_TOKEN: ${{ github.token }}', report)
+                self.assertIn(f'flake_ledger.py summary {build}/flake-ledger.json', report)
+                self.assertIn('--output "$GITHUB_STEP_SUMMARY"', report)
+                self.assertIn(f'flake_ledger.py issues {build}/flake-ledger.json', report)
+                self.assertIn('issues: write', steps)
+                for path in ('ctest-results-retry.xml', 'flake-ledger.json'):
+                    self.assertIn(f'{build}/{path}', steps)
+        # A called workflow's job may not request more than its caller grants.
+        for name in ('nightly.yml', 'release.yml'):
+            with self.subTest(workflow=name):
+                self.assertIn('issues: write', job(workflow(name), 'ci'))
+
     def test_sanitizer_job_tests_against_instrumented_qtcore_outside_the_required_summary(self):
         ci = workflow('ci.yml')
         sanitizers = job(ci, 'sanitizers')
         for text in ("if: needs.changes.outputs.sanitizers == 'true'", 'container: ubuntu:26.04',
                      'clang libclang-rt-dev llvm', 'bash tools/ci/provision-qt-asan.sh build/qt-asan',
-                     'cmake --preset clang-asan', 'ctest --preset clang-asan',
+                     'cmake --preset clang-asan', 'tools/ci/ctest_retry.py', '-- --preset clang-asan',
                      'LD_LIBRARY_PATH="$PWD/build/qt-asan/lib"', 'runuser -u putgd-ci',
                      'python3 tools/ci/ctest_preflight.py --build build/clang-asan'):
             self.assertIn(text, sanitizers)
@@ -167,7 +192,7 @@ class Workflows(unittest.TestCase):
             self.assertIn(path, step)
             self.assertIn(key, step)
         self.assertIn('restore-keys: ctest-cost-linux-${{ matrix.distribution }}-', restore)
-        self.assertIn('ctest --preset dev', test)
+        self.assertIn('-- --preset dev', test)
         self.assertIn('--resource-spec-file "$3"', test)
         self.assertIn('"$PWD/tools/ci/ctest-resources.json"', test)
         self.assertIn('if: always()', save)
@@ -177,7 +202,7 @@ class Workflows(unittest.TestCase):
         spec = json.loads((ROOT / 'tools/ci/ctest-resources.json').read_text())
         self.assertEqual(spec['version'], {'major': 1, 'minor': 0})
         self.assertEqual(spec['local'], [{'cpu': [{'id': 'runner', 'slots': 3}]}])
-        self.assertIn('RESOURCE_GROUPS "cpu:1"', (ROOT / 'CMakeLists.txt').read_text())
+        self.assertIn('RESOURCE_GROUPS "cpu:1"', (ROOT / 'cmake/TestPolicy.cmake').read_text())
 
     def test_portable_compiles_windows_only(self):
         portable = job(workflow('ci.yml'), 'portable')

@@ -15,6 +15,7 @@
 #include <cstring>
 #include <memory>
 #include <limits>
+#include "fixtures/Waits.h"
 using namespace putgd;
 class NativeRegionTest final:public QObject {
  Q_OBJECT
@@ -76,7 +77,7 @@ private slots:
    if(old&&old->status==XCB_GRAB_STATUS_SUCCESS){xcb_ungrab_pointer(connection_,XCB_CURRENT_TIME);auto fence=x11::reply(xcb_get_input_focus_reply(connection_,xcb_get_input_focus(connection_),nullptr));}
    return !old&&code==XCB_CURSOR;
   };
-  QTRY_VERIFY_WITH_TIMEOUT(originalGone(),2000);
+  PUTGD_TRY_VERIFY_WITH_TIMEOUT(originalGone(),2000);
   QCOMPARE(imageWithCursor(cached),expected);
   QCOMPARE(cache.lookup(fingerprint),cached);
   QCOMPARE(cache.lookup(QString(64,'b')),xcb_cursor_t(XCB_CURSOR_NONE));
@@ -99,70 +100,70 @@ private slots:
   xcb_ungrab_pointer(connection_,XCB_CURRENT_TIME);xcb_flush(connection_);availableGrabs();
  }
  void transparentDrawablesAndLogicalSelection(){
-  NativeRegionOverlay overlay(frames());int selected=0,cancelled=0;QRectF selection;connect(&overlay,&RegionSelector::selected,this,[&](const QRectF& r){selection=r;++selected;});connect(&overlay,&RegionSelector::cancelled,this,[&](const Error&){++cancelled;});overlay.start();QTRY_COMPARE(drawables().size(),2);QCOMPARE(cancelled,0);
+  NativeRegionOverlay overlay(frames());int selected=0,cancelled=0;QRectF selection;connect(&overlay,&RegionSelector::selected,this,[&](const QRectF& r){selection=r;++selected;});connect(&overlay,&RegionSelector::cancelled,this,[&](const Error&){++cancelled;});overlay.start();PUTGD_TRY_COMPARE(drawables().size(),2);QCOMPARE(cancelled,0);
   for(const auto& frame:frames()){const auto w=at(frame.nativeRect.center());QVERIFY(w);auto g=x11::reply(xcb_get_geometry_reply(connection_,xcb_get_geometry(connection_,w),nullptr));QCOMPARE(g->depth,uint8_t(32));QCOMPARE(pixels(frame.nativeRect.topLeft()+QPoint(20,20)),QByteArray(4,'\0'));}
-  motion({40,40});button(1,true);motion({1200,600});QTRY_VERIFY(white({44,41}));QTRY_VERIFY(white({646,82}));button(1,false);QTRY_COMPARE(selected,1);QCOMPARE(cancelled,0);QCOMPARE(selection,QRectF(40,40,880,260));QTRY_COMPARE(drawables().size(),0);availableGrabs();
+  motion({40,40});button(1,true);motion({1200,600});PUTGD_TRY_VERIFY(white({44,41}));PUTGD_TRY_VERIFY(white({646,82}));button(1,false);PUTGD_TRY_COMPARE(selected,1);QCOMPARE(cancelled,0);QCOMPARE(selection,QRectF(40,40,880,260));PUTGD_TRY_COMPARE(drawables().size(),0);availableGrabs();
  }
  void outlineContrastsWithBothWhiteAndBlack(){
-  NativeRegionOverlay overlay(frames());overlay.start();QTRY_COMPARE(drawables().size(),2);
-  motion({40,40});button(1,true);motion({400,300});QTRY_VERIFY(white({100,41}));
+  NativeRegionOverlay overlay(frames());overlay.start();PUTGD_TRY_COMPARE(drawables().size(),2);
+  motion({40,40});button(1,true);motion({400,300});PUTGD_TRY_VERIFY(white({100,41}));
   bool dark=false,light=false;
   for(int y=38;y<47;++y){const auto b=pixels({100,y});if(b.size()!=4)continue;
    const int alpha=quint8(b[3]);
    dark|=alpha==255&&quint8(b[0])<64&&quint8(b[1])<64&&quint8(b[2])<64;
    light|=alpha==255&&quint8(b[0])>192&&quint8(b[1])>192&&quint8(b[2])>192;
   }
-  overlay.cancel();button(1,false);QTRY_COMPARE(drawables().size(),0);availableGrabs();
+  overlay.cancel();button(1,false);PUTGD_TRY_COMPARE(drawables().size(),0);availableGrabs();
   QVERIFY2(dark,"The outline needs opaque dark pixels to remain visible over white content");
   QVERIFY2(light,"The outline needs opaque light pixels to remain visible over dark content");
  }
  void movingOutlineClearsPreviousPixels(){
-  NativeRegionOverlay overlay(frames());overlay.start();QTRY_COMPARE(drawables().size(),2);motion({40,40});button(1,true);motion({1200,600});
+  NativeRegionOverlay overlay(frames());overlay.start();PUTGD_TRY_COMPARE(drawables().size(),2);motion({40,40});button(1,true);motion({1200,600});
   auto whiteCount=[&]{const auto bytes=pixels({1196,300},8);int count=0;for(int i=0;i+3<bytes.size();i+=4)if(quint8(bytes[i])==255&&quint8(bytes[i+1])==255&&quint8(bytes[i+2])==255&&quint8(bytes[i+3])==255)++count;return count;};
-  QTRY_VERIFY(whiteCount()>0);motion({1150,550});QTRY_COMPARE(whiteCount(),0);overlay.cancel();button(1,false);QTRY_COMPARE(drawables().size(),0);availableGrabs();
+  PUTGD_TRY_VERIFY(whiteCount()>0);motion({1150,550});PUTGD_TRY_COMPARE(whiteCount(),0);overlay.cancel();button(1,false);PUTGD_TRY_COMPARE(drawables().size(),0);availableGrabs();
  }
  void nativeCursorMatchesQtCrosshair(){
-  QWidget control(nullptr,Qt::Tool|Qt::FramelessWindowHint|Qt::WindowDoesNotAcceptFocus);control.setAttribute(Qt::WA_TranslucentBackground);control.setGeometry(0,0,1,1);control.setCursor(Qt::CrossCursor);control.show();control.grabMouse(Qt::CrossCursor);motion({20,20});QTest::qWait(30);const auto expected=cursor();QVERIFY(!expected.isEmpty());control.releaseMouse();control.hide();
+  QWidget control(nullptr,Qt::Tool|Qt::FramelessWindowHint|Qt::WindowDoesNotAcceptFocus);control.setAttribute(Qt::WA_TranslucentBackground);control.setGeometry(0,0,1,1);control.setCursor(Qt::CrossCursor);control.show();control.grabMouse(Qt::CrossCursor);motion({20,20});putgd::test::settle(30);const auto expected=cursor();QVERIFY(!expected.isEmpty());control.releaseMouse();control.hide();
   for(bool cached:{false,true}){
    CaptureCursorCache cache;quint32 id=0;
    if(cached){
-    control.show();control.grabMouse(Qt::CrossCursor);motion({20,20});QTest::qWait(10);
+    control.show();control.grabMouse(Qt::CrossCursor);motion({20,20});putgd::test::settle(10);
     auto image=x11::reply(xcb_xfixes_get_cursor_image_reply(connection_,xcb_xfixes_get_cursor_image(connection_),nullptr));QVERIFY(image);
     QByteArray wire(image->width*image->height*4,Qt::Uninitialized);const auto* data=xcb_xfixes_get_cursor_image_cursor_image(image.get());for(int i=0;i<image->width*image->height;++i)qToBigEndian(data[i],wire.data()+i*4);
     control.releaseMouse();control.hide();QVERIFY(cache.seed(image->width,image->height,image->xhot,image->yhot,wire,QString(64,'a')));id=cache.lookup(QString(64,'a'));
    }
-   NativeRegionOverlay overlay(frames(),nullptr,id);overlay.start();QTRY_COMPARE(drawables().size(),2);motion({1000,200});QTRY_COMPARE(cursor(),expected);overlay.cancel();QTRY_COMPARE(drawables().size(),0);availableGrabs();
+   NativeRegionOverlay overlay(frames(),nullptr,id);overlay.start();PUTGD_TRY_COMPARE(drawables().size(),2);motion({1000,200});PUTGD_TRY_COMPARE(cursor(),expected);overlay.cancel();PUTGD_TRY_COMPARE(drawables().size(),0);availableGrabs();
   }
  }
  void cancellationModes_data(){QTest::addColumn<int>("mode");QTest::newRow("escape")<<0;QTest::newRow("right-click")<<1;QTest::newRow("zero-area")<<2;QTest::newRow("explicit-twice")<<3;}
- void cancellationModes(){QFETCH(int,mode);for(int repeat=0;repeat<2;++repeat){NativeRegionOverlay overlay(frames());int cancelled=0,selected=0;QString code;connect(&overlay,&RegionSelector::cancelled,this,[&](const Error& e){code=e.code;++cancelled;});connect(&overlay,&RegionSelector::selected,this,[&](const QRectF&){++selected;});overlay.start();QTRY_COMPARE(drawables().size(),2);if(mode==0)escape();else if(mode==1){button(3,true);button(3,false);}else if(mode==2){motion({100,100});button(1,true);button(1,false);}else{overlay.cancel();overlay.cancel();}QTRY_COMPARE(cancelled,1);QCOMPARE(selected,0);QCOMPARE(code,QString("cancelled"));QTRY_COMPARE(drawables().size(),0);availableGrabs();}}
+ void cancellationModes(){QFETCH(int,mode);for(int repeat=0;repeat<2;++repeat){NativeRegionOverlay overlay(frames());int cancelled=0,selected=0;QString code;connect(&overlay,&RegionSelector::cancelled,this,[&](const Error& e){code=e.code;++cancelled;});connect(&overlay,&RegionSelector::selected,this,[&](const QRectF&){++selected;});overlay.start();PUTGD_TRY_COMPARE(drawables().size(),2);if(mode==0)escape();else if(mode==1){button(3,true);button(3,false);}else if(mode==2){motion({100,100});button(1,true);button(1,false);}else{overlay.cancel();overlay.cancel();}PUTGD_TRY_COMPARE(cancelled,1);QCOMPARE(selected,0);QCOMPARE(code,QString("cancelled"));PUTGD_TRY_COMPARE(drawables().size(),0);availableGrabs();}}
  void destructionDuringCompletionDoesNotRetainInput(){
-  for(bool release:{false,true}){auto overlay=std::make_unique<NativeRegionOverlay>(frames());int completed=0;connect(overlay.get(),&RegionSelector::cancelled,this,[&](const Error&){++completed;overlay.reset();});connect(overlay.get(),&RegionSelector::selected,this,[&](const QRectF&){++completed;overlay.reset();});overlay->start();QTRY_COMPARE(drawables().size(),2);if(release){motion({40,40});button(1,true);motion({400,400});button(1,false);}else escape();QTRY_COMPARE(completed,1);QVERIFY(!overlay);QTRY_COMPARE(drawables().size(),0);availableGrabs();}
+  for(bool release:{false,true}){auto overlay=std::make_unique<NativeRegionOverlay>(frames());int completed=0;connect(overlay.get(),&RegionSelector::cancelled,this,[&](const Error&){++completed;overlay.reset();});connect(overlay.get(),&RegionSelector::selected,this,[&](const QRectF&){++completed;overlay.reset();});overlay->start();PUTGD_TRY_COMPARE(drawables().size(),2);if(release){motion({40,40});button(1,true);motion({400,400});button(1,false);}else escape();PUTGD_TRY_COMPARE(completed,1);QVERIFY(!overlay);PUTGD_TRY_COMPARE(drawables().size(),0);availableGrabs();}
  }
  void cancellationDuringStartup(){
   auto overlay=std::make_unique<NativeRegionOverlay>(frames());int completed=0;
   connect(overlay.get(),&RegionSelector::cancelled,this,[&](const Error& e){QCOMPARE(e.code,QString("cancelled"));++completed;overlay.reset();});
   QTimer::singleShot(0,this,[&]{if(overlay)overlay->cancel();});
-  overlay->start();QTRY_COMPARE(completed,1);QVERIFY(!overlay);QCOMPARE(drawables().size(),0);availableGrabs();
+  overlay->start();PUTGD_TRY_COMPARE(completed,1);QVERIFY(!overlay);QCOMPARE(drawables().size(),0);availableGrabs();
  }
  void destructionDuringStartup(){
   auto overlay=std::make_unique<NativeRegionOverlay>(frames());QTimer::singleShot(0,this,[&]{overlay.reset();});
-  overlay->start();QTRY_VERIFY(!overlay);QCOMPARE(drawables().size(),0);availableGrabs();
+  overlay->start();PUTGD_TRY_VERIFY(!overlay);QCOMPARE(drawables().size(),0);availableGrabs();
  }
  void unmatchedReleaseBeforeEscape(){
   motion({100,100});button(1,true);
   auto* pressed=xcb_query_pointer_reply(connection_,xcb_query_pointer(connection_,root_),nullptr);const bool down=pressed&&(pressed->mask&XCB_BUTTON_MASK_1);std::free(pressed);QVERIFY(down);
-  NativeRegionOverlay overlay(frames());int cancelled=0;connect(&overlay,&RegionSelector::cancelled,this,[&](const Error&){++cancelled;});overlay.start();QTRY_COMPARE(drawables().size(),2);
+  NativeRegionOverlay overlay(frames());int cancelled=0;connect(&overlay,&RegionSelector::cancelled,this,[&](const Error&){++cancelled;});overlay.start();PUTGD_TRY_COMPARE(drawables().size(),2);
   auto* codes=xcb_key_symbols_get_keycode(keys_,0xff1b);QVERIFY(codes&&codes[0]);const auto key=codes[0];std::free(codes);
   xcb_test_fake_input(connection_,XCB_BUTTON_RELEASE,1,XCB_CURRENT_TIME,root_,0,0,0);
   xcb_test_fake_input(connection_,XCB_KEY_PRESS,key,XCB_CURRENT_TIME,root_,0,0,0);xcb_test_fake_input(connection_,XCB_KEY_RELEASE,key,XCB_CURRENT_TIME,root_,0,0,0);xcb_flush(connection_);
-  QTRY_COMPARE(cancelled,1);QCOMPARE(drawables().size(),0);availableGrabs();
+  PUTGD_TRY_COMPARE(cancelled,1);QCOMPARE(drawables().size(),0);availableGrabs();
  }
  void displayChangeDuringStartup(){
   auto overlay=std::make_unique<NativeRegionOverlay>(frames());int completed=0;
   connect(overlay.get(),&RegionSelector::cancelled,this,[&](const Error& e){QCOMPARE(e.code,QString("display_changed"));++completed;overlay.reset();});
   QTimer::singleShot(0,this,[]{auto* screen=QGuiApplication::primaryScreen();QMetaObject::invokeMethod(screen,"geometryChanged",Qt::DirectConnection,Q_ARG(QRect,screen->geometry()));});
-  overlay->start();QTRY_COMPARE(completed,1);QVERIFY(!overlay);QCOMPARE(drawables().size(),0);availableGrabs();
+  overlay->start();PUTGD_TRY_COMPARE(completed,1);QVERIFY(!overlay);QCOMPARE(drawables().size(),0);availableGrabs();
  }
  void nativeCoordinateEligibility(){
   QVERIFY(NativeRegionOverlay::supportsLayout(frames()));
@@ -180,15 +181,15 @@ private slots:
   QFETCH(bool,pointer);
   if(pointer){auto r=x11::reply(xcb_grab_pointer_reply(connection_,xcb_grab_pointer(connection_,false,root_,XCB_EVENT_MASK_BUTTON_PRESS,XCB_GRAB_MODE_ASYNC,XCB_GRAB_MODE_ASYNC,XCB_NONE,XCB_NONE,XCB_CURRENT_TIME),nullptr));QVERIFY(r&&r->status==XCB_GRAB_STATUS_SUCCESS);}
   else {auto r=x11::reply(xcb_grab_keyboard_reply(connection_,xcb_grab_keyboard(connection_,false,root_,XCB_CURRENT_TIME,XCB_GRAB_MODE_ASYNC,XCB_GRAB_MODE_ASYNC),nullptr));QVERIFY(r&&r->status==XCB_GRAB_STATUS_SUCCESS);}
-  NativeRegionOverlay overlay(frames());int cancelled=0;QString code;connect(&overlay,&RegionSelector::cancelled,this,[&](const Error& e){code=e.code;++cancelled;});overlay.start();QTRY_COMPARE(cancelled,1);QCOMPARE(code,QString("capture_unavailable"));QCOMPARE(drawables().size(),0);
+  NativeRegionOverlay overlay(frames());int cancelled=0;QString code;connect(&overlay,&RegionSelector::cancelled,this,[&](const Error& e){code=e.code;++cancelled;});overlay.start();PUTGD_TRY_COMPARE(cancelled,1);QCOMPARE(code,QString("capture_unavailable"));QCOMPARE(drawables().size(),0);
   auto* probe=xcb_connect(nullptr,nullptr);int status=-1;
   if(pointer){auto r=x11::reply(xcb_grab_pointer_reply(probe,xcb_grab_pointer(probe,false,root_,XCB_EVENT_MASK_BUTTON_PRESS,XCB_GRAB_MODE_ASYNC,XCB_GRAB_MODE_ASYNC,XCB_NONE,XCB_NONE,XCB_CURRENT_TIME),nullptr));if(r)status=r->status;}
   else{auto r=x11::reply(xcb_grab_keyboard_reply(probe,xcb_grab_keyboard(probe,false,root_,XCB_CURRENT_TIME,XCB_GRAB_MODE_ASYNC,XCB_GRAB_MODE_ASYNC),nullptr));if(r)status=r->status;}
   xcb_disconnect(probe);QCOMPARE(status,int(XCB_GRAB_STATUS_ALREADY_GRABBED));
   if(pointer)xcb_ungrab_pointer(connection_,XCB_CURRENT_TIME);else xcb_ungrab_keyboard(connection_,XCB_CURRENT_TIME);xcb_flush(connection_);availableGrabs();
  }
- void invalidResidentCursorReleasesBothGrabs(){NativeRegionOverlay overlay(frames(),nullptr,xcb_generate_id(connection_));int cancelled=0;connect(&overlay,&RegionSelector::cancelled,this,[&](const Error& e){QCOMPARE(e.code,QString("capture_unavailable"));++cancelled;});overlay.start();QTRY_COMPARE(cancelled,1);QTRY_COMPARE(drawables().size(),0);availableGrabs();}
- void invalidLayoutFailsWithoutTakingGrabs(){NativeRegionOverlay overlay({});int cancelled=0;connect(&overlay,&RegionSelector::cancelled,this,[&](const Error& e){QVERIFY(bool(e));++cancelled;});overlay.start();QTRY_COMPARE(cancelled,1);QCOMPARE(drawables().size(),0);availableGrabs();}
+ void invalidResidentCursorReleasesBothGrabs(){NativeRegionOverlay overlay(frames(),nullptr,xcb_generate_id(connection_));int cancelled=0;connect(&overlay,&RegionSelector::cancelled,this,[&](const Error& e){QCOMPARE(e.code,QString("capture_unavailable"));++cancelled;});overlay.start();PUTGD_TRY_COMPARE(cancelled,1);PUTGD_TRY_COMPARE(drawables().size(),0);availableGrabs();}
+ void invalidLayoutFailsWithoutTakingGrabs(){NativeRegionOverlay overlay({});int cancelled=0;connect(&overlay,&RegionSelector::cancelled,this,[&](const Error& e){QVERIFY(bool(e));++cancelled;});overlay.start();PUTGD_TRY_COMPARE(cancelled,1);QCOMPARE(drawables().size(),0);availableGrabs();}
 };
 QTEST_MAIN(NativeRegionTest)
 #include "test_native_region_overlay.moc"

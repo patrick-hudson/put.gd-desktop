@@ -9,6 +9,7 @@
 #include <QRandomGenerator>
 #include <QTest>
 #include <QtEndian>
+#include "fixtures/Waits.h"
 using namespace putgd;using namespace putgd::editor;
 
 namespace {
@@ -152,7 +153,7 @@ private slots:
   QVERIFY(Commands::apply(doc,{QJsonObject{{"op","remove"},{"shapeId",first}}},created,code,message));QCOMPARE(doc.shapes().size(),5);
  }
  void canvasDragCreatesOutwardRoundedRedaction(){
-  EditDocument doc(noise({400,300},8));EditorCanvas canvas(doc);canvas.resize(832,632);canvas.show();QVERIFY(QTest::qWaitForWindowExposed(&canvas));
+  EditDocument doc(noise({400,300},8));EditorCanvas canvas(doc);canvas.resize(832,632);canvas.show();QVERIFY(putgd::test::waitForWindowExposed(&canvas));
   canvas.setTool(Tool::Redact);canvas.fit();QCOMPARE(canvas.zoom(),1.0);
   // At 2x the widget-to-image mapping is fractional; partial pixels are covered.
   canvas.zoomBy(2.0,QPointF(0,0));QCOMPARE(canvas.zoom(),2.0);
@@ -168,7 +169,7 @@ private slots:
   canvas.documentChanged();QTest::mouseClick(&canvas,Qt::LeftButton,{},QPoint(500,500));QCOMPARE(doc.shapes().size(),1);
  }
  void drawingToolsPickUpVisibleShapes(){
-  EditDocument doc(noise({400,300},11));EditorCanvas canvas(doc);canvas.resize(832,632);canvas.show();QVERIFY(QTest::qWaitForWindowExposed(&canvas));
+  EditDocument doc(noise({400,300},11));EditorCanvas canvas(doc);canvas.resize(832,632);canvas.show();QVERIFY(putgd::test::waitForWindowExposed(&canvas));
   canvas.setTool(Tool::Rectangle);canvas.fit();QCOMPARE(canvas.zoom(),1.0);
   // Fitted at 100% and centered: image point p is at widget origin+p.
   const QPoint origin((canvas.width()-400)/2,(canvas.height()-300)/2);
@@ -194,7 +195,7 @@ private slots:
   QTest::mouseClick(&canvas,Qt::LeftButton,{},origin+QPoint(300,90));QCOMPARE(canvas.selected(),redactId);QCOMPARE(doc.find(redactId)->rect,before);QVERIFY(!doc.canRedo());
  }
  void textToolDragsLabelsAndClicksToEdit(){
-  EditDocument doc(noise({400,300},12));EditorCanvas canvas(doc);canvas.resize(832,632);canvas.show();QVERIFY(QTest::qWaitForWindowExposed(&canvas));
+  EditDocument doc(noise({400,300},12));EditorCanvas canvas(doc);canvas.resize(832,632);canvas.show();QVERIFY(putgd::test::waitForWindowExposed(&canvas));
   canvas.setTool(Tool::Text);canvas.fit();
   const QPoint origin((canvas.width()-400)/2,(canvas.height()-300)/2);
   auto label=box(Shape::Kind::Text,QRect(50,50,80,30));label.text="Note";label.fontPixels=28;const auto id=doc.add(label);canvas.documentChanged();
@@ -218,7 +219,7 @@ private slots:
   QVERIFY(!doc.exportPng().isEmpty());
  }
  void textCornersScaleTheFontAroundTheOppositeCorner(){
-  EditDocument doc(noise({400,300},14));EditorCanvas canvas(doc);canvas.resize(832,632);canvas.show();QVERIFY(QTest::qWaitForWindowExposed(&canvas));
+  EditDocument doc(noise({400,300},14));EditorCanvas canvas(doc);canvas.resize(832,632);canvas.show();QVERIFY(putgd::test::waitForWindowExposed(&canvas));
   canvas.setTool(Tool::Select);canvas.fit();QCOMPARE(canvas.zoom(),1.0);
   const QPoint origin((canvas.width()-400)/2,(canvas.height()-300)/2);
   QJsonArray created;QString code,message;
@@ -244,7 +245,7 @@ private slots:
   QCOMPARE(shrunk->rect.bottomRight(),big.bottomRight());QVERIFY(!canvas.editingText());
  }
  void canvasCropRequiresExplicitApply(){
-  EditDocument doc(noise({400,300},9));EditorCanvas canvas(doc);canvas.resize(500,400);canvas.show();QVERIFY(QTest::qWaitForWindowExposed(&canvas));
+  EditDocument doc(noise({400,300},9));EditorCanvas canvas(doc);canvas.resize(500,400);canvas.show();QVERIFY(putgd::test::waitForWindowExposed(&canvas));
   canvas.setTool(Tool::Crop);
   const auto start=QPoint(int(canvas.width()/2-100),int(canvas.height()/2-60));
   QTest::mousePress(&canvas,Qt::LeftButton,{},start);
@@ -256,7 +257,7 @@ private slots:
   QTest::keyClick(&canvas,Qt::Key_Return);QVERIFY(doc.crop()!=doc.imageRect());QVERIFY(doc.crop().width()>50);QVERIFY(doc.canUndo());
  }
  void blurPreviewCacheIsBounded(){
-  EditDocument doc(noise({3000,2000},10));EditorCanvas canvas(doc);canvas.resize(800,600);canvas.show();QVERIFY(QTest::qWaitForWindowExposed(&canvas));
+  EditDocument doc(noise({3000,2000},10));EditorCanvas canvas(doc);canvas.resize(800,600);canvas.show();QVERIFY(putgd::test::waitForWindowExposed(&canvas));
   for(int i=0;i<40;++i){auto blur=box(Shape::Kind::Blur,QRect((i*61)%2500,(i*37)%1500,500,500));blur.strength=20;doc.add(blur);}
   canvas.documentChanged();canvas.actualSize();canvas.repaint();canvas.fit();canvas.repaint();
   QVERIFY(canvas.cachedBlurBytes()<=EditorCanvas::blurCacheBytes);QVERIFY(canvas.cachedBlurBytes()>0);
