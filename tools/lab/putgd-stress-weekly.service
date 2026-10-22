@@ -1,0 +1,18 @@
+# User unit for the weekly builder stress lane on k72 (#360). Installed with
+# tools/lab/install-stress-weekly.sh and started by putgd-stress-weekly.timer.
+# See docs/ci.md ("Builder stress lane") and docs/remote-builders.md.
+[Unit]
+Description=put.gd weekly stress lane (nightly integration tests under CPU contention)
+After=network-online.target
+
+[Service]
+Type=oneshot
+# Plasma imports its session into the user manager; the tests must not reach the live desktop.
+# The wrapper also passes its children an allowlisted environment.
+UnsetEnvironment=DISPLAY WAYLAND_DISPLAY XAUTHORITY XDG_SESSION_TYPE XDG_SESSION_DESKTOP XDG_SESSION_CLASS XDG_SESSION_ID XDG_SESSION_PATH XDG_CURRENT_DESKTOP XDG_SEAT XDG_SEAT_PATH XDG_VTNR DESKTOP_SESSION KDE_FULL_SESSION KDE_SESSION_UID KDE_SESSION_VERSION SESSION_MANAGER ICEAUTHORITY QT_WAYLAND_RECONNECT SSH_AUTH_SOCK
+ExecStart=/usr/bin/python3 -I %h/.local/libexec/putgd-stress/stress_weekly.py
+# A hang guard: a normal run (fetch, incremental build, ten iterations) takes 30-60 min.
+TimeoutStartSec=4h
+# Stopping the unit stops only this service's own processes (its cgroup).
+KillMode=control-group
+TimeoutStopSec=60

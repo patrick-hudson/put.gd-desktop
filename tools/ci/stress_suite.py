@@ -70,7 +70,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0],
                                      formatter_class=argparse.RawDescriptionHelpFormatter, epilog=__doc__)
     parser.add_argument('--source', type=Path, default=Path.cwd(), help='source tree to run CTest in')
-    parser.add_argument('--out', type=Path, required=True, help='new directory for JUnit, ledger and summary')
+    parser.add_argument('--out', type=Path, required=True, help='directory for JUnit, ledger and summary; new, or without an earlier run')
     parser.add_argument('--iterations', type=int, default=10)
     parser.add_argument('--hogs', type=int, default=0, help='busy-loop processes for the whole run')
     parser.add_argument('--hog-cpus', default='', help='taskset CPU list for the busy loops')
@@ -83,7 +83,9 @@ def main(argv=None):
     args = parser.parse_args(argv)
     ctest_args = args.ctest_args[1:] if args.ctest_args[:1] == ['--'] else args.ctest_args
     source = args.source.resolve()
-    args.out.mkdir(parents=True, exist_ok=False)
+    args.out.mkdir(parents=True, exist_ok=True)
+    if (args.out / 'ledger.json').exists() or any(args.out.glob('iteration-*')):
+        parser.error(f'{args.out} already holds a stress run')
     private = Path(tempfile.mkdtemp(prefix='pgst.', dir='/tmp'))
     (args.out / 'private-tmp.txt').write_text(str(private) + '\n')
     (args.out / 'pid.txt').write_text(f'{os.getpid()}\n')
