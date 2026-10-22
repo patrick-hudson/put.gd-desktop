@@ -30,9 +30,6 @@ private:
 struct VideoFormat {
     int width = 0, height = 0, fps = 30;
     long long bitrate = 0;
-    // The index before the media data, so a shared link plays before the file
-    // has arrived. Off for the working clip, which must grow on disk while recording.
-    bool faststart = false;
 };
 
 // An H.264 MP4 writer over a file the resident created (helpers never create

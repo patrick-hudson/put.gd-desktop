@@ -15,10 +15,6 @@
 namespace putgd::media {
 namespace {
 using wic::Com;
-// MF_MPEG4SINK_MOOV_BEFORE_MDAT (Windows 8 and later; missing from mingw's headers):
-// the index goes first, so a shared link plays before the whole file arrives.
-const GUID moovBeforeMdat{0xf672e3ac, 0xe1e6, 0x4f10, {0xb5, 0xec, 0x5f, 0x3b, 0x30, 0x82, 0x88, 0x16}};
-
 struct Api {
     HMODULE plat = nullptr, readwrite = nullptr;
     HRESULT(WINAPI* startup)(ULONG, DWORD) = nullptr;
@@ -92,7 +88,6 @@ Error Mp4Writer::start(void* byteStreamPointer, const VideoFormat& format) {
         if (FAILED(api.createAttributes(attributes.put(), 4))) return encoderError("attributes", E_FAIL);
         attributes->SetGUID(MF_TRANSCODE_CONTAINERTYPE, MFTranscodeContainerType_MPEG4);
         attributes->SetUINT32(MF_READWRITE_ENABLE_HARDWARE_TRANSFORMS, hardware ? TRUE : FALSE);
-        if (format.faststart) attributes->SetUINT32(moovBeforeMdat, TRUE);
         byteStream->SetCurrentPosition(0);
         byteStream->SetLength(0);
         IMFSinkWriter* writer = nullptr;

@@ -2,6 +2,7 @@
 // rules the Linux recording_model_contract holds the resident to.
 #include "core/Recording.h"
 #include "core/RecordingFrames.h"
+#include "core/Mp4.h"
 #include <vector>
 #include <cstdio>
 #include <string>
@@ -161,8 +162,35 @@ static void frames() {
     CHECK(all.first == 0 && all.second == 8266658);
 }
 
+static std::string box(const std::string& type, const std::string& body) {
+    const uint32_t size = uint32_t(body.size() + 8);
+    std::string out{char(size >> 24), char(size >> 16), char(size >> 8), char(size)};
+    return out + type + body;
+}
+static std::string u32(uint32_t v) { return {char(v >> 24), char(v >> 16), char(v >> 8), char(v)}; }
+static void mp4Boxes() {
+    const std::string stco = box("stco", u32(0) + u32(2) + u32(64) + u32(1000));
+    const std::string co64 = box("co64", u32(0) + u32(1) + u32(0) + u32(4000000000u));
+    const std::string moov = box("moov", box("mvhd", std::string(20, '\0')) + box("trak", box("mdia", box("minf", box("stbl", stco)))) + box("trak", box("mdia", box("minf", box("stbl", co64)))));
+    std::string shifted = moov;
+    CHECK(mp4::shiftChunkOffsets(shifted, 100));
+    CHECK(shifted.size() == moov.size() && shifted.find(u32(164) + u32(1100)) != std::string::npos && shifted.find(u32(0) + u32(4000000100u)) != std::string::npos);
+    // A 32-bit offset that would overflow leaves the box unchanged.
+    std::string big = box("moov", box("trak", box("mdia", box("minf", box("stbl", box("stco", u32(0) + u32(1) + u32(0xFFFFFFF0u)))))));
+    const auto before = big;
+    CHECK(!mp4::shiftChunkOffsets(big, 100) && big == before);
+    std::string truncated = moov.substr(0, moov.size() - 3);
+    CHECK(!mp4::shiftChunkOffsets(truncated, 1));
+    const std::string file = box("ftyp", "isom") + box("mdat", std::string(50, 'x')) + moov;
+    auto read = [&](uint64_t at, size_t n) { return file.substr(size_t(at), n); };
+    const auto boxes = mp4::topLevel(file.size(), read);
+    CHECK(boxes.size() == 3 && boxes[1].type == "mdat" && boxes[1].offset == 12 && boxes[2].type == "moov" && boxes[2].size == moov.size());
+    CHECK(mp4::topLevel(file.size() + 4, read).empty());
+}
+
 int main() {
     frames();
+    mp4Boxes();
     targetsAndConfigs();
     transitions();
     edits();

@@ -1,6 +1,8 @@
 #include "record/Export.h"
 #include "capture/Png.h"
 #include "common/Files.h"
+#include "common/Paths.h"
+#include "core/Mp4.h"
 #include "core/RecordingFrames.h"
 #include "record/Media.h"
 #include <cmath>
@@ -10,6 +12,47 @@ namespace putgd::record {
 namespace {
 // Frame times are 100-ns units in the clip; edits are microseconds.
 long long toUs(long long time100ns) { return time100ns / 10; }
+
+// Moves moov ahead of the media data in place (as qt-faststart does): the bytes
+// from the first mdat up to moov move forward by moov's size, moov goes where
+// mdat began, and every chunk offset grows by the same amount. The file keeps
+// its length. A layout this does not recognise is left as written.
+Error faststart(const std::string& path) {
+    HANDLE file = CreateFileW(paths::wide(path).c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, FILE_FLAG_OPEN_REPARSE_POINT, nullptr);
+    if (file == INVALID_HANDLE_VALUE) return {"recording_export_failed", "Cannot reopen the export", {}};
+    struct Closer { HANDLE h; ~Closer() { CloseHandle(h); } } closer{file};
+    LARGE_INTEGER length{};
+    GetFileSizeEx(file, &length);
+    auto readAt = [file](uint64_t at, size_t n) {
+        std::string bytes(n, '\0');
+        LARGE_INTEGER position; position.QuadPart = LONGLONG(at);
+        DWORD got = 0;
+        if (!SetFilePointerEx(file, position, nullptr, FILE_BEGIN) || !ReadFile(file, bytes.data(), DWORD(n), &got, nullptr)) return std::string();
+        bytes.resize(got);
+        return bytes;
+    };
+    auto writeAt = [file](uint64_t at, const std::string& bytes) {
+        LARGE_INTEGER position; position.QuadPart = LONGLONG(at);
+        DWORD put = 0;
+        return SetFilePointerEx(file, position, nullptr, FILE_BEGIN) && WriteFile(file, bytes.data(), DWORD(bytes.size()), &put, nullptr) && put == bytes.size();
+    };
+    const auto boxes = mp4::topLevel(uint64_t(length.QuadPart), readAt);
+    size_t mdat = boxes.size(), moov = boxes.size();
+    for (size_t i = 0; i < boxes.size(); ++i) { if (boxes[i].type == "mdat" && mdat == boxes.size()) mdat = i; if (boxes[i].type == "moov") moov = i; }
+    if (mdat == boxes.size() || moov == boxes.size() || moov < mdat || moov + 1 != boxes.size() || boxes[moov].size > 64ull * 1024 * 1024) return {};
+    std::string index = readAt(boxes[moov].offset, size_t(boxes[moov].size));
+    if (index.size() != boxes[moov].size || !mp4::shiftChunkOffsets(index, boxes[moov].size)) return {};
+    const uint64_t shift = boxes[moov].size, begin = boxes[mdat].offset;
+    constexpr uint64_t chunk = 1 << 20;
+    for (uint64_t end = boxes[moov].offset; end > begin;) {
+        const uint64_t n = std::min(chunk, end - begin);
+        const auto bytes = readAt(end - n, size_t(n));
+        if (bytes.size() != n || !writeAt(end - n + shift, bytes)) return {"recording_export_failed", "Cannot reorder the export", {}};
+        end -= n;
+    }
+    if (!writeAt(begin, index) || !FlushFileBuffers(file)) return {"recording_export_failed", "Cannot reorder the export", {}};
+    return {};
+}
 }
 
 Error exportClip(const ExportRequest& r, ExportResult& result, const std::atomic_bool& cancel, const std::function<void(double)>& progress) {
@@ -23,9 +66,7 @@ Error exportClip(const ExportRequest& r, ExportResult& result, const std::atomic
     if (auto e = reader.open(r.working, r.canvas.w, r.canvas.h)) return e;
     if (auto e = reader.seek(start)) return e;
     media::Mp4Writer writer;
-    media::VideoFormat format{size.w, size.h, fps, recording::liveBitrate(size.w, size.h, fps), true};
-    // The index first when the sink can write it that way; a plain MP4 otherwise.
-    if (writer.open(r.output, format)) { format.faststart = false; if (auto e = writer.open(r.output, format)) return e; }
+    if (auto e = writer.open(r.output, {size.w, size.h, fps, recording::liveBitrate(size.w, size.h, fps)})) return e;
     std::vector<uint8_t> frame, scaled(size_t(size.w) * size.h * 4);
     long long time = 0;
     Error error;
@@ -50,6 +91,7 @@ Error exportClip(const ExportRequest& r, ExportResult& result, const std::atomic
     if (frames == 0) { writer.abandon(); return {"recording_export_failed", "No frame lies in the retained interval", {}}; }
     result.encoder = writer.encoder();
     if (auto e = writer.finish()) return {"recording_export_failed", e.message, e.details};
+    if (auto e = faststart(r.output)) return e;
     result.sha256 = files::sha256(r.output, &result.bytes);
     if (result.sha256.empty() || result.bytes < 1) return {"recording_export_failed", "The export produced no file", {}};
     result.frames = frames;
