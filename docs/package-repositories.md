@@ -47,13 +47,30 @@ metadata_expire=6h
 
 The packages also install AppStream metadata, `/usr/share/metainfo/gd.put.Putgd.metainfo.xml`.
 
+## AppStream catalog (#314)
+
+The installed metainfo only lets a software centre show put.gd once it's installed. To let people find put.gd by searching and install it from there, each repository also carries an AppStream catalog. The signer builds it from the exact package that suite or repository publishes.
+
+| Repository | Catalog | Read by |
+| --- | --- | --- |
+| apt (each label and channel) | DEP-11 in `dists/<channel>/main/dep11/`: `Components-amd64.yml` and `icons-{48x48,64x64,64x64@2,128x128,128x128@2}.tar`, each also as `.gz`. All are listed in `Release`, so `InRelease` covers them. Origin `putgd-<label>-<channel>`. | apt fetches them through the targets appstream's `/etc/apt/apt.conf.d/50appstream` declares, and `appstreamcli refresh` installs them in `/var/lib/swcatalog`. Discover and GNOME Software read them through AppStream. |
+| dnf | `appstream` and `appstream-icons` (`<size>/gd.put.Putgd.png`) entries in `repomd.xml`, in the copr layout. | When GNOME Software refreshes, dnf5 installs them as `/var/cache/swcatalog/xml/<repo id>.xml` and `icons/<repo id>/`. |
+
+- **Built from the published package.** `tools/releases/appstream_catalog.py` extracts only the package's metainfo, desktop files and icons. `appstreamcli compose` renders the catalog and the cached icons from the scalable SVG. The signer then sets the origin and `<pkgname>putgd</pkgname>` and refuses anything but exactly `gd.put.Putgd`. The apt catalog comes from the DEB that `Packages` names; the dnf catalog comes from the newest RPM and is rebuilt after every `createrepo_c` run.
+- **Validated before use.** `appstreamcli validate` checks the catalog XML, and also the DEP-11 YAML after converting it back to XML.
+- **Recorded.** Archives are deterministic, so an unchanged catalog isn't uploaded again. The receipt's `catalog` map records each origin, the package and its SHA-256, and the files written.
+- **Both apt forms.** apt skips an optional index target unless `Release` lists its *uncompressed* name. So the signer lists and publishes both forms, as Ubuntu's archive does, and apt then fetches the `.gz`.
+- **Signing.** reprepro can't list files it didn't write, so it no longer signs. The signer adds the catalog to `Release` and then signs the finished file: nightly with `gpg --clearsign` and `--detach-sign` (SHA512); stable on the workstation, unchanged.
+- **Mint's Software Manager** doesn't read AppStream for apt packages: `mintcommon/installer/pkgInfo.py` `AptPkgInfo` reads apt and the icon theme only. It finds put.gd as "Putgd", shows the control file's summary, and shows a generic icon until the package is installed. [#430](https://github.com/patrick-hudson/put.gd-desktop/issues/430) adds an extended package description so it can show more text.
+- **No screenshots yet.** Adding them to the metainfo is [#431](https://github.com/patrick-hudson/put.gd-desktop/issues/431).
+
 ## Layout
 
 | Path | Contents | Signed by |
 | --- | --- | --- |
-| `apt/<label>/dists/<channel>/` | `InRelease`, `Release`, `Release.gpg`, `main/binary-amd64/Packages*` | the channel key (`InRelease`, `Release.gpg`) |
+| `apt/<label>/dists/<channel>/` | `InRelease`, `Release`, `Release.gpg`, `main/binary-amd64/Packages*`, `main/dep11/*` (the AppStream catalog) | the channel key (`InRelease`, `Release.gpg`) |
 | `apt/<label>/pool/main/p/putgd/` | the DEBs, byte-identical to the GitHub assets | through `InRelease` |
-| `rpm/fedora/44/x86_64/<channel>/` | `Packages/*.rpm` and `repodata/` | each RPM, with `rpmsign` and the channel key |
+| `rpm/fedora/44/x86_64/<channel>/` | `Packages/*.rpm` and `repodata/`, including `appstream` and `appstream-icons` | each RPM, with `rpmsign` and the channel key |
 | `releases/<tag>/` | `SHA256SUMS` and `SHA256SUMS.minisig`; for the newest two releases per channel also `putgd-VERSION-x86_64.AppImage` and its `.zsync` (#293 phase 3) | the channel's minisign key (`SHA256SUMS`, which lists the image and `.zsync`) |
 | `dl/<channel>/appimage.zsync` | the newest mirrored `.zsync`, served at `https://app.put.gd/dl/<channel>/appimage.zsync` | through `SHA256SUMS` |
 | `update/v1/<channel>.json` | the update feed and its `.minisig` | the channel's minisign key |
@@ -91,7 +108,7 @@ The packages also install AppStream metadata, `/usr/share/metainfo/gd.put.Putgd.
    - that `SHA256SUMS` lists exactly the assets;
    - each DEB and RPM against `SHA256SUMS`, its `release-builds.json` receipt and GitHub's `digest`;
    - each package's own name, version and architecture.
-3. **Build the next state** in a copy of the workspace: reprepro for apt, and `createrepo_c` for dnf, with the RPM signed by `rpmsign`. The signed RPM must verify against the channel key only, and its digests must match the GitHub build.
+3. **Build the next state** in a copy of the workspace: reprepro for apt, and `createrepo_c` for dnf, with the RPM signed by `rpmsign`. The signed RPM must verify against the channel key only, and its digests must match the GitHub build. Each suite and repository then gets its [AppStream catalog](#appstream-catalog-314), and the signer signs the finished `Release` (`InRelease`, `Release.gpg`).
 4. **Upload in order:** packages, then indexes, then `InRelease` and `repomd.xml`.
 5. **Invalidate and read back.** It invalidates what changed, then reads `InRelease`, `Packages` and `repomd.xml` back through `https://pkg.put.gd`.
 6. **Write the feed.** Only after that readback does it write and invalidate `update/v1/<channel>.json`, on pkg.put.gd and app.put.gd. The feed never names a version apt or dnf can't fetch yet.
@@ -102,7 +119,7 @@ Objects that leave the repository are deleted an hour later, after every cached 
 ### Setup on the builder
 
 ```sh
-sudo apt-get install reprepro createrepo-c rpm minisign python3-boto3
+sudo apt-get install reprepro createrepo-c rpm minisign python3-boto3 appstream appstream-compose
 sudo loginctl enable-linger "$USER"
 git clone https://github.com/patrick-hudson/put.gd-desktop.git ~/putgd-signer/src   # then: git -C ~/putgd-signer/src checkout nightly
 install -d -m 700 ~/.config/putgd-signer
@@ -148,7 +165,9 @@ The script:
 - signs `InRelease`, `Release.gpg` and the minisign signatures. gpg-agent and minisign ask for their passphrases.
 - copies only the signatures and the signed RPM back.
 
-The signer's next run checks them against the stable public keys, regenerates the repodata and publishes. The workstation needs `gpg`, `minisign`, `rpmsign` and `gh`.
+The signer's next run checks them against the stable public keys, regenerates the repodata (and its catalog, from the stable-signed RPM) and publishes. The workstation needs `gpg`, `minisign`, `rpmsign` and `gh`.
+
+The staged `Release` already lists the DEP-11 catalog, so the stable signature covers it. `sign_stable.py` checks every package hash; the catalog is metadata the signer builds from those packages, and it can't install anything.
 
 **Once, before the first stable package exists,** create empty stable repositories so a stable package never points at a missing suite:
 
@@ -160,3 +179,5 @@ python3 tools/releases/sign_stable.py --empty                      # on the work
 ## Acceptance (2026-10-21)
 
 Lab-scope and live evidence (real nightlies 816 → 828 on all four desktops, 2026-10-21) is in [evidence/2026-10-21-pkg-repos-293](evidence/2026-10-21-pkg-repos-293/README.md).
+
+The AppStream catalog (#314) was tested in the lab on 2026-10-22: search, install and remove from Discover (k72), GNOME Software (f44) and Mint's Software Manager (m74). The evidence is in [evidence/2026-10-22-appstream-catalog-314](evidence/2026-10-22-appstream-catalog-314/README.md).

@@ -1,0 +1,19 @@
+End-Date: 2026-10-22  14:50:18
+
+Start-Date: 2026-10-22  14:53:45
+Commandline: packagekit role='install-packages'
+Requested-By: patrick (1000)
+Install: putgd:amd64 (26.1022.968~nightly)
+End-Date: 2026-10-22  14:53:47
+
+Start-Date: 2026-10-22  14:56:51
+Commandline: packagekit role='remove-packages'
+Requested-By: patrick (1000)
+Remove: putgd:amd64 (26.1022.968~nightly)
+End-Date: 2026-10-22  14:56:51
+
+Start-Date: 2026-10-22  15:03:11
+Commandline: apt-get purge -y putgd
+Requested-By: patrick (1000)
+Purge: putgd:amd64 ()
+End-Date: 2026-10-22  15:03:11
