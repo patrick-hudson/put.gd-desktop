@@ -72,7 +72,7 @@ gh run list --workflow release.yml --branch main --limit 1
 gh release view vX.Y.Z-rc.N --json isDraft,isPrerelease,assets --jq '{draft: .isDraft, prerelease: .isPrerelease, assets: (.assets | length)}'
 ```
 
-Expect a draft prerelease with 12 assets, tagged on `main` HEAD. If a job fails
+Expect a draft prerelease with the 16 assets listed in [Releases](release.md#github-downloads-and-source), tagged on `main` HEAD. If a job fails
 for an infrastructure reason, use "Re-run failed jobs" on that run. If the source
 is at fault, fix it on `nightly` and promote again; the next push cuts `rc.N+1`.
 
@@ -166,7 +166,7 @@ accept that one first. Otherwise get the user's yes, then:
 gh workflow run release.yml --repo patrick-hudson/put.gd-desktop --ref main -f channel=stable
 ```
 
-Expect a draft for `vX.Y.Z` that is not a prerelease, with 12 assets. From the
+Expect a draft for `vX.Y.Z` that is not a prerelease, with the same 16 assets. From the
 moment this tag exists, scheduled nightlies with new commits fail until step 8.
 
 ## 7. Accept and publish stable
