@@ -112,6 +112,28 @@ private slots:
   const auto ubuntu=update::build(manifest("0.1.1-nightly.588"),"ubuntu26.04",true);
   QCOMPARE(update::evaluate(feed("nightly",release("0.1.1-nightly.590")),ubuntu,"nightly",error)["downloadUrl"].toString(),QString("https://app.put.gd/dl/nightly/ubuntu26.04"));QVERIFY(!error);
  }
+ // #344: a switch's new image must follow the other channel's permalink and nothing else.
+ void aSwitchMovesOnlyTheChannelOfThePermalink(){
+  QCOMPARE(update::switchedUpdateInformation("zsync|https://app.put.gd/dl/nightly/appimage.zsync","nightly","stable"),QString("zsync|https://app.put.gd/dl/stable/appimage.zsync"));
+  QCOMPARE(update::switchedUpdateInformation("zsync|https://app.put.gd/dl/stable/appimage.zsync","stable","nightly"),QString("zsync|https://app.put.gd/dl/nightly/appimage.zsync"));
+  // The lab's own origin keeps its prefix.
+  QCOMPARE(update::switchedUpdateInformation("zsync|http://127.0.0.1:8344/dl/nightly/appimage.zsync","nightly","stable"),QString("zsync|http://127.0.0.1:8344/dl/stable/appimage.zsync"));
+  // Not this channel's permalink, the same channel, no update information or an unknown channel: no switch.
+  QVERIFY(update::switchedUpdateInformation("zsync|https://app.put.gd/dl/stable/appimage.zsync","nightly","stable").isEmpty());
+  QVERIFY(update::switchedUpdateInformation("zsync|https://app.put.gd/dl/nightly/appimage.zsync","nightly","nightly").isEmpty());
+  QVERIFY(update::switchedUpdateInformation("","nightly","stable").isEmpty());
+  QVERIFY(update::switchedUpdateInformation("zsync|/dl/nightly/appimage.zsync","nightly","stable").isEmpty());
+  QVERIFY(update::switchedUpdateInformation("gh-releases-zsync|patrick-hudson|put.gd-desktop|latest|putgd-*.zsync","nightly","stable").isEmpty());
+  QVERIFY(update::switchedUpdateInformation("zsync|https://app.put.gd/dl/nightly/appimage.zsync","nightly","beta").isEmpty());
+ }
+ // #344: which way a switch goes. Before the first stable release, nightly →
+ // stable is newer; once nightlies move to the next patch, it is older.
+ void switchDirectionFollowsTheVersionOrder(){
+  QCOMPARE(update::compareVersions("0.1.1","0.1.1-nightly.900"),std::optional(1));
+  QCOMPARE(update::compareVersions("0.1.1","0.1.2-nightly.5"),std::optional(-1));
+  QCOMPARE(update::compareVersions("0.1.2-nightly.5","0.1.1"),std::optional(1));
+  QCOMPARE(update::compareVersions("0.1.1-nightly.901","0.1.1"),std::optional(-1));
+ }
  void malformedFeedsAreRejected_data(){
   QTest::addColumn<QByteArray>("body");QTest::addColumn<QString>("channel");
   QTest::newRow("not json")<<QByteArray("<html>")<<"nightly";

@@ -79,6 +79,10 @@ private:
  QLabel *configPath_=nullptr,*endpointHint_=nullptr,*linkExample_=nullptr,*destinationStatus_=nullptr;
  void refreshEffectiveLimits();void updateLimitHints();QHash<QString,QLabel*> limitHints_;QJsonObject effectiveLimits_;
  void refreshUpdateStatus();void checkForUpdates(std::function<void(Error,QJsonObject)> done);
+ // The Channel choice (#344): Stable or Nightly, showing this build's own
+ // channel while the stored setting is "build" (the default); the build's
+ // channel, empty when it never checks, and the choice as shown at load.
+ QString buildUpdateChannel() const;void showUpdateChannel();QString updateChannelSetting_,updateChannelShown_;
  // #348: set by showUpdates until the user scrolls or leaves the page.
  void revealUpdates();bool revealUpdates_=false;QWidget *generalPage_=nullptr,*updatesCard_=nullptr;
  QCheckBox* checkUpdates_=nullptr;QComboBox* updateChannel_=nullptr;QLabel* updateStatus_=nullptr;QPushButton *checkNow_=nullptr,*downloadUpdate_=nullptr,*releaseNotes_=nullptr,*openUpdates_=nullptr;QWidget *updateActionsRow_=nullptr,*updateCommandRow_=nullptr;QLineEdit* updateCommand_=nullptr;QFormLayout* updatesForm_=nullptr;QList<QWidget*> updateRows_;

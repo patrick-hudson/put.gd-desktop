@@ -51,5 +51,10 @@ QUrl mirrorFileUrl(const QString& tag,const QString& name,Error&);
 // build's own package on the project's release, else null. Links the feed names must stay on the project's GitHub releases or
 // app.put.gd, since phase 1 feeds are not signed.
 QJsonObject evaluate(const QByteArray& feed,const Build&,const QString& channel,Error&);
+// The update information an AppImage switched from channel FROM to TO must
+// embed (#344): the running image's own, with its channel permalink
+// …/dl/FROM/appimage.zsync turned into …/dl/TO/appimage.zsync and nothing else
+// changed. Empty when the running image doesn't follow FROM's permalink.
+QString switchedUpdateInformation(const QString& information,const QString& from,const QString& to);
 }
 }

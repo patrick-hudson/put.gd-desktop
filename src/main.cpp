@@ -398,6 +398,9 @@ int main(int argc,char* argv[]) {
   operations.background([configRoot,dataRoot,executable,enabled,loginMutex,loginGeneration,ticket](putgd::Error& error){std::lock_guard lock(*loginMutex);if(ticket!=loginGeneration->load())return QJsonObject{};error=putgd::LoginStartup::apply(configRoot,dataRoot,executable,enabled);return QJsonObject{{"enabled",enabled},{"applied",!error}};},[&,loginGeneration,ticket](putgd::Error error,QJsonObject status){if(ticket!=loginGeneration->load())return;loginStatus=status;if(error)loginStatus["error"]=error.toJson();refreshSettingsDiagnostics();});
  };
  configureLogin();QObject::connect(&settings,&putgd::SettingsService::accepted,&app,configureLogin);
+ // The login script carries the image's update information; after an install
+ // (a channel switch changes it, #344) write it from the new image at once.
+ QObject::connect(&updates,&putgd::UpdateService::imageReplaced,&app,configureLogin);
  const auto showInitialView=[&]{if(view=="history")tray.showHistory();else if(view=="activity")tray.showActivity();else tray.showSettings();};
  if(!parser.isSet("background")||settings.revision().isEmpty())showInitialView();
  else if(!tray.available()) {

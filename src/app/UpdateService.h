@@ -3,6 +3,7 @@
 #include "core/SettingsService.h"
 #include "core/Update.h"
 #include <QDateTime>
+#include <QHash>
 #include <QObject>
 #include <QPointer>
 #include <QProcess>
@@ -23,6 +24,11 @@ namespace putgd {
 // confirm). `putgd-cli --install-update CHANNEL` does the download, checks and
 // file swap; the resident keeps its progress lines and, at its next start,
 // removes the backup of the old image once the new version runs from the path.
+//
+// An AppImage whose chosen channel isn't its own switches instead (#344): the
+// other channel's newest release, named by the last check, installed the same
+// way but checked with that channel's key and permalink. Its version may be
+// older, which update.install must allow explicitly.
 class UpdateService final:public QObject {
  Q_OBJECT
 public:
@@ -48,9 +54,10 @@ public:
  // Starts that updater (Update Manager, Discover or GNOME Software) through
  // `putgd-cli --open-software-updates`, which reads the file again.
  void openSoftwareUpdates(JsonReply);
- // update.install {confirm: true, method?: auto|zsync|download}: starts the
- // install child and replies with status() at once; progress follows in
- // status()["install"].
+ // update.install {confirm: true, method?: auto|zsync|download, channel?,
+ // allowOlder?}: starts the install child and replies with status() at once;
+ // progress follows in status()["install"]. A switch must name its channel,
+ // and allowOlder: true when its version is older than this build's.
  void install(const QJsonObject& params,JsonReply);
  // update.restart {confirm: true}: once an installed update waits for a
  // restart, starts the image again from the host and quits this resident.
@@ -73,11 +80,16 @@ signals:
  void changed();
  // A newer stable version that has not been announced before.
  void updateAvailable(const QJsonObject& result);
+ // The install child put a new image in place of this one.
+ void imageReplaced();
 private:
  QString channel() const;
  bool notifies(const QJsonObject& action) const;
  QJsonObject installStatus() const;
  QString installUnavailable() const;
+ // {from, to, version, tag, older} when update.install would switch channels
+ // to a release the last check found; else empty.
+ QJsonObject switchOffer() const;
  bool restartRequired() const;
  void installLine(const QByteArray& line);
  void installFinished(const QByteArray& last,const Error& failure);
@@ -99,7 +111,9 @@ private:
  QDateTime startedAt_,attemptedAt_,checkedAt_,nextAt_;
  qint64 startupDelayMs_=0,jitter_=0;
  QJsonObject result_,error_;
- QString notifiedVersion_,attemptedChannel_;
+ QString attemptedChannel_;
+ // The version last announced or seen in Settings, by channel.
+ QHash<QString,QString> notified_;
  std::function<QDateTime()> clock_;
  std::function<qint64(qint64,qint64)> random_;
  // The install child, its live progress and update-install.json as last read.
