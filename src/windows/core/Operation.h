@@ -54,6 +54,9 @@ struct OperationItem {
     Error error;
     std::string phase;
     std::optional<UploadProgress> uploadProgress;
+    // The provider's resume journal of a resumable upload (an S3 multipart upload
+    // ID), durable before the provider relies on it; empty when none remains.
+    json::Object uploadJournal;
     json::Object toJson() const;
     static OperationItem fromJson(const json::Object&);
     bool linkAvailable() const;

@@ -20,9 +20,10 @@ struct SyncResult { Error error; json::Object checkpoint; json::Object result; b
 // run and is returned. `send` lets the handler answer (checkpointAccepted ...).
 using FrameHandler = std::function<bool(const protocol::Frame&, frames::Channel& send)>;
 // `firstType`/`firstPayload` (optional) is sent right after activate (the S3 worker's request).
+// `cancelGraceMs` (> 0) bounds how long a cancelled helper may take to drain.
 SyncResult runSynchronous(const std::string& role, const std::vector<std::string>& args, json::Object bootstrap, int startupMs, int totalMs,
                           FrameHandler onFrame, std::shared_ptr<std::atomic_bool> cancel = {}, int silenceMs = 15000,
-                          const std::string& firstType = {}, const json::Object& firstPayload = {});
+                          const std::string& firstType = {}, const json::Object& firstPayload = {}, int cancelGraceMs = 0);
 // Creates an empty owner-only file a helper will fill (helpers never create files).
 bool prepareOutputFile(const std::string& path);
 // An asynchronous helper whose frames arrive on the owner thread.

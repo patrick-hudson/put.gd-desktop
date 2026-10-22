@@ -33,6 +33,12 @@ struct UploadRequest {
     std::string candidate, publicationId, condition; // absent or match
     json::Object objectReference; std::string concurrencyToken;
     std::optional<int> requestTimeoutMs;
+    // Opaque provider-owned journal of a resumable upload (an S3 multipart upload
+    // ID), last acknowledged through `checkpoint`. Empty starts fresh.
+    json::Object resume;
+    // A resumable upload awaits this durable acknowledgement before it relies on
+    // remote state it created; an empty journal means none remains to resume or abort.
+    DurableCheckpoint checkpoint;
 };
 struct UploadResult { std::string status; StorageReceipt receipt; Error error; }; // uploaded, collision, failed, unknown
 struct StatResult { std::string status; StorageReceipt receipt; Error error; };   // own, foreign, missing, unknown
@@ -74,6 +80,10 @@ public:
     virtual StatResult reconcile(const UploadRequest&, CancelFlag) = 0;
     virtual DeleteResult remove(const DeleteRequest&, DurableCheckpoint, CancelFlag) = 0;
     virtual json::Object testDestination(const Destination&, DurableCheckpoint, Error&) = 0;
+    // Removes the remote state a failed upload's journal (UploadRequest::resume) still
+    // holds, such as an S3 multipart upload's parts, once no Retry can resume it (#146).
+    // Best effort; an empty error means nothing of it remains.
+    virtual Error abandonUpload(const Destination&, const json::Object& /*journal*/) { return {}; }
     virtual ShareResult share(const ShareRequest& r, DurableCheckpoint, CancelFlag) { return {"failed", r.receipt, {}, {"sharing_unsupported", "This provider cannot manage share links", {}}, {}}; }
     virtual json::Object setup(const std::string& kind, const Destination&, const json::Object&, Error& error, SetupEvent) { error = {"setup_unavailable", "This provider has no account setup", {{"kind", kind}}}; return {}; }
     // A longer current request deadline an explicit Retry may adopt; nullopt keeps the accepted one.

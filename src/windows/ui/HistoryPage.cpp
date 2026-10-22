@@ -1014,7 +1014,10 @@ void HistoryPageImpl::maintenance(bool cache) {
     if (!accepted) return;
     main_.session().call(cache ? "cache.clear" : "history.clear", {}, [this, cache](const Reply& reply) {
         if (!reply.ok) { main_.status(UiSession::describe(reply), true); return; }
-        if (cache) main_.status(L"Artifact cleanup finished: " + std::to_wstring(reply.result.value("removedOperations").toInteger()) + L" operations cleaned.");
+        // Uploads the pass could not abort are said once, in the resident's words (#226).
+        const auto notice = reply.result.value("incompleteUploadNotice")["message"].toString();
+        if (cache) main_.status(L"Artifact cleanup finished: " + std::to_wstring(reply.result.value("removedOperations").toInteger()) + L" operations cleaned." +
+                                (notice.empty() ? std::wstring() : L" " + wide(notice)), !notice.empty());
         else main_.status(L"History cleared.");
         offset_ = 0;
         refresh();

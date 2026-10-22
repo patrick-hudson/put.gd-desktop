@@ -3,7 +3,7 @@
 // process, one connection per request (keep-alive is disabled so WinHTTP can
 // never transparently replay a request on a reused connection that lost its
 // reply), no redirects, no cookies, no automatic authentication. Certificate
-// errors always fail. Bodies stream from a file in 1 MiB reads.
+// errors always fail. Bodies stream from a file (or a byte range of one) in 1 MiB reads.
 // Nothing here logs; URLs, headers and bodies stay with the caller.
 #include <atomic>
 #include <functional>
@@ -30,7 +30,8 @@ struct Request {
     std::string query;           // encoded, without '?'; empty for none
     std::vector<std::pair<std::string, std::string>> headers; // sent verbatim (Host is replaced by `host`)
     std::string body;            // small in-memory body (used when bodyFile is empty)
-    std::string bodyFile;        // streamed body; bodyBytes must equal its size
+    std::string bodyFile;        // streamed body: the whole file, which must be bodyBytes long ...
+    long long bodyOffset = -1;   // ... or, when >= 0, bodyBytes from this offset (a multipart part)
     long long bodyBytes = 0;
     size_t maximumResponseBytes = 64 * 1024;
 };
@@ -52,6 +53,10 @@ struct Response {
 
 struct Observer {
     const std::atomic<bool>* cancel = nullptr;                    // checked between body writes
+    // Cancel also cuts the request while a body write blocks or the reply is
+    // awaited (the request handle is closed within ~50 ms). Only for requests
+    // that cannot publish, such as UploadPart; a PUT that may have published drains.
+    bool cutAnywhere = false;
     std::function<void(long long sent, long long total)> progress; // body bytes handed to the transport
     std::function<void()> bodySent;                               // every body byte written; awaiting reply
 };

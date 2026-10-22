@@ -471,7 +471,7 @@ Operation OperationService::run(Job job) {
         if (item.uploadStatus == "unknown") {
             item.phase = "reconciling"; observe(op.publicJson());
             ++storageRequests_; auto stat = provider->reconcile(request, job.cancelled); --storageRequests_;
-            if (stat.status == "own" && !stat.receipt.validate() && stat.receipt.publicationId == item.publicationId) { item.receipt = stat.receipt; item.uploadStatus = "uploaded"; item.phase = "uploaded"; item.error = {}; if (!saveItem(item)) return op; continue; }
+            if (stat.status == "own" && !stat.receipt.validate() && stat.receipt.publicationId == item.publicationId) { item.receipt = stat.receipt; item.uploadStatus = "uploaded"; item.phase = "uploaded"; item.error = {}; item.uploadJournal = {}; if (!saveItem(item)) return op; continue; }
             if (stat.status != "missing") { item.phase = "unknown"; item.error = stat.error ? stat.error : Error{"publication_unknown", "Resolve ambiguous publication before uploading again", {}}; if (!saveItem(item)) return op; continue; }
             item.uploadStatus = "stored";
             if (auto e = artifacts.verify(item.artifact)) { item.uploadStatus = "failed"; item.error = e; saveItem(item); continue; }
@@ -482,12 +482,15 @@ Operation OperationService::run(Job job) {
             auto progress = [this, &op, index](const UploadProgress& p) { op.items[index].uploadProgress = p; op.items[index].phase = p.phase; observe(op.publicJson()); };
             ++storageRequests_; notifyActivity();
             request.candidate = item.candidate; request.condition = item.condition; request.objectReference = item.objectReference; request.concurrencyToken = item.concurrencyToken;
+            // A resumable (multipart) upload journals its remote upload before relying on it.
+            request.resume = item.uploadJournal;
+            request.checkpoint = [&](const json::Object& journal) { item.uploadJournal = journal; return store.checkpointOperation(op, {item.artifact.id}, &providers_); };
             auto result = provider->upload(request, progress, job.cancelled);
             --storageRequests_; notifyActivity();
             item.uploadProgress.reset();
             if (result.status == "uploaded") {
                 if (result.receipt.validate() || result.receipt.publicationId != item.publicationId) { item.uploadStatus = "unknown"; item.phase = "unknown"; item.error = {"receipt_invalid", "Provider returned an unusable receipt", {}}; break; }
-                item.receipt = result.receipt; item.uploadStatus = "uploaded"; item.phase = "uploaded"; item.error = {}; break;
+                item.receipt = result.receipt; item.uploadStatus = "uploaded"; item.phase = "uploaded"; item.error = {}; item.uploadJournal = {}; break;
             }
             if (result.status == "collision") {
                 if (settings.collisionPolicy == "skip") { item.uploadStatus = "skipped"; item.phase = "skipped"; break; }
@@ -498,6 +501,12 @@ Operation OperationService::run(Job job) {
                     item.objectReference = check.objectReference; item.concurrencyToken = {}; item.condition = "absent"; continue;
                 }
                 item.uploadStatus = "failed"; item.phase = "failed"; item.error = result.error ? result.error : Error{"collision", "The object changed before the overwrite", {}}; break;
+            }
+            // A cancelled file stays pending for Retry; an abort that failed keeps its journal and says so.
+            if (result.status == "failed" && job.cancelled->load()) {
+                item.uploadStatus = "cancelled"; item.phase = "cancelled"; item.error = {"cancelled", "Upload cancelled; Retry uploads this file again", {}};
+                if (result.error.details.value("incompleteUpload").toBool()) { item.error.details["incompleteUpload"] = true; item.error.details["abortError"] = result.error.details.value("abortError"); }
+                break;
             }
             item.uploadStatus = result.status == "unknown" ? "unknown" : "failed"; item.phase = item.uploadStatus; item.error = result.error; break;
         }
@@ -757,6 +766,82 @@ void OperationService::retryLocalSave(const std::string& id, JsonReply reply) {
         return json::Object{{"operationId", id}, {"saved", saved}, {"failed", failed}, {"state", op.state}};
     }, [this, reply, id](Error e, json::Object result) { if (onChanged) onChanged(id); reply(e, result); });
 }
+// Aborts the remote uploads an operation's items still journal (#146, #226): the
+// artifact goes with this pass, so no Retry can resume them. Best effort: a refused
+// abort keeps the journal for the next pass and is listed once in the notice.
+void OperationService::abandonUploads(HistoryStore& store, Operation& op, json::Object& outcome) {
+    std::set<std::string> changed;
+    for (auto& item : op.items) {
+        if (item.uploadJournal.value("uploadId").toString().empty() || item.uploadStatus == "uploaded") continue;
+        const auto provider = providers_.find(op.destination.providerId);
+        Error error = provider ? Error{} : Error{"provider_unavailable", "Restore access to the original destination", {}};
+        if (provider) {
+            auto lock = objectLock(op.destination, item.objectReference, item.candidate); std::lock_guard guard(*lock);
+            ++storageRequests_; error = provider->abandonUpload(op.destination, item.uploadJournal); --storageRequests_;
+        }
+        json::Object fields{{"operationId", op.id}, {"itemId", item.artifact.id}, {"profileId", op.destination.profileId}};
+        if (!error) {
+            item.uploadJournal = {};
+            for (const auto* key : {"incompleteUpload", "abortError", "incompleteUploadReported"}) item.error.details.remove(key);
+            outcome["abortedUploads"] = outcome.value("abortedUploads").toInteger() + 1;
+            log::info("operations", "Incomplete upload aborted", fields);
+        } else {
+            // The user hears of each kept upload once: the flag is saved with the item,
+            // so neither the hourly pass nor a restart repeats the notice for it.
+            const bool reported = item.error.details.value("incompleteUploadReported").toBool();
+            item.error.details["incompleteUpload"] = true; item.error.details["abortError"] = error.toJson(); item.error.details["incompleteUploadReported"] = true;
+            auto kept = outcome.value("incompleteUploads").toArray();
+            if (kept.size() < 100) kept.push_back(json::Object{{"operationId", op.id}, {"itemId", item.artifact.id}, {"error", error.toJson()}, {"reported", reported}});
+            outcome["incompleteUploads"] = kept;
+            if (!reported) {
+                auto notice = outcome.value("incompleteUploadNotice").toObject();
+                const auto add = [&](const char* key, const std::string& value) { auto values = notice.value(key).toArray(); if (!value.empty() && std::find(values.begin(), values.end(), json::Value(value)) == values.end()) values.push_back(value); notice[key] = values; };
+                notice["count"] = notice.value("count").toInteger() + 1;
+                // The upload's whole size: at most this much is stored in its parts.
+                notice["bytes"] = notice.value("bytes").toDouble() + item.uploadJournal.value("bytes").toDouble(double(item.artifact.bytes));
+                add("providers", op.destination.providerId); add("profiles", op.destination.profileId); add("buckets", op.destination.settings.value("bucket").toString());
+                if (!notice.contains("error")) notice["error"] = error.toJson();
+                outcome["incompleteUploadNotice"] = notice;
+            }
+            fields["code"] = error.code;
+            log::warning("operations", "Incomplete upload kept", fields);
+        }
+        changed.insert(item.artifact.id);
+    }
+    if (!changed.empty()) if (auto error = store.checkpointOperation(op, changed, &providers_)) log::warning("operations", "Upload journal not saved", {{"operationId", op.id}, {"code", error.code}});
+}
+// The notice for uploads a pass could not abort: count, buckets, the most the parts
+// can hold, S3's reason and the fix (docs/s3.md, "Retiring a retained upload").
+void OperationService::describeIncompleteUploads(json::Object& outcome, const Settings& snapshot, bool automatic) {
+    auto notice = outcome.value("incompleteUploadNotice").toObject();
+    if (notice.empty()) return;
+    std::vector<std::string> labels, buckets;
+    for (const auto& id : notice.value("profiles").toArray()) {
+        const auto it = snapshot.profiles.find(id.toString());
+        const auto label = it == snapshot.profiles.end() ? std::string() : it->second.value("label").toString();
+        if (!label.empty() && std::find(labels.begin(), labels.end(), label) == labels.end()) labels.push_back(label);
+    }
+    for (const auto& bucket : notice.value("buckets").toArray()) buckets.push_back(bucket.toString());
+    const auto count = notice.value("count").toInteger();
+    const auto bytes = notice.value("bytes").toInteger();
+    const auto uploads = count == 1 ? std::string("an incomplete upload") : std::to_string(count) + " incomplete uploads";
+    const auto where = buckets.size() == 1 ? " in bucket " + buckets[0] : buckets.size() > 1 ? " in " + std::to_string(buckets.size()) + " buckets (" + text::join(buckets, ", ") + ")"
+                     : labels.empty() ? std::string() : " at " + text::join(labels, ", ");
+    const auto size = bytes > 0 ? " (up to " + text::byteSize(bytes) + " of stored parts)" : std::string();
+    auto reason = notice.value("error").toObject().value("message").toString();
+    if (!reason.empty() && reason.back() != '.') reason += '.';
+    const auto providers = notice.value("providers").toArray();
+    const bool s3 = std::find(providers.begin(), providers.end(), json::Value("s3")) != providers.end();
+    const std::string hint = s3 ? "Allow s3:AbortMultipartUpload for put.gd's access key, or add a lifecycle rule to the bucket that aborts incomplete multipart uploads after a few days."
+                                : "Check that put.gd's account may cancel uploads at the destination.";
+    notice["hint"] = hint; notice["labels"] = json::stringArray(labels); notice["notified"] = automatic; notice["at"] = files::nowIsoUtc();
+    // S3's own words for a refused abort already name the permission and the lifecycle rule.
+    const auto advice = text::contains(reason, "AbortMultipartUpload") ? reason
+        : (reason.empty() ? std::string() : reason + " ") + (count == 1 ? "Its" : "Their") + " parts keep using storage. " + hint;
+    notice["message"] = std::string(automatic ? "Automatic cleanup" : "Cleanup") + " could not cancel " + uploads + where + size + ". " + advice + " put.gd tries again at each cleanup.";
+    outcome["incompleteUploadNotice"] = notice;
+    log::warning("operations", "Incomplete uploads left at the destination", {{"trigger", automatic ? "automatic" : "manual"}, {"count", double(count)}, {"bytes", double(bytes)}, {"providers", providers}});
+}
 void OperationService::cleanup(bool automatic, JsonReply reply) {
     if (cleanupInProgress_) { reply({"cleanup_busy", "Wait for artifact cleanup to finish", {}}, {}); return; }
     cleanupInProgress_ = true;
@@ -765,26 +850,59 @@ void OperationService::cleanup(bool automatic, JsonReply reply) {
     if (capture_) activeIds.insert(capture_->op.id);
     if (editor_) activeIds.insert(editor_->op.id);
     const auto start = GetTickCount64();
+    // Retry is refused while cleanup runs and active operations are skipped, so no
+    // upload aborted here is one a Retry is about to resume (#146).
     background([this, snapshot, activeIds, start, automatic](Error& e) {
         HistoryStore store(root_, paths_db_);
         ArtifactStore artifacts(root_);
+        if (store.error()) { e = store.error(); return json::Object{}; }
         int removed = 0;
+        json::Object outcome{{"trigger", automatic ? "automatic" : "manual"}, {"abortedUploads", 0}, {"incompleteUploads", json::Array{}}};
+        std::set<std::string> visited;
         const long long now = files::parseIsoUtcMs(files::nowIsoUtc());
         for (const auto& name : files::list(artifacts.root())) {
             if (name.empty() || name[0] == '.' || activeIds.count(name)) continue;
-            Error lookup; const auto op = store.operation(name, &lookup);
+            Error lookup; auto op = store.operation(name, &lookup);
             bool eligible = false;
             if (lookup.code == "operation_not_found") eligible = true; // no journal record: orphaned retained artifacts
             else if (lookup) continue; // a journal read error never justifies removal
             else if (Operation::activeState(op.state)) continue;
-            else if (op.state == "completed") eligible = true;
-            else { const auto age = now - files::parseIsoUtcMs(op.created); eligible = snapshot.failedArtifactDays > 0 && age > (long long)snapshot.failedArtifactDays * 86400000LL; }
+            else {
+                // An unresolved item keeps its artifact for the reconciling Retry.
+                bool successful = true, uploaded = true, archivePending = false;
+                for (const auto& item : op.items) {
+                    if (item.uploadStatus == "unknown" || item.uploadStatus == "uploading") successful = false;
+                    if (!Operation::terminalUpload(item.uploadStatus)) uploaded = false;
+                    if (item.local.status == "failed") archivePending = true;
+                }
+                const auto age = now - files::parseIsoUtcMs(op.created);
+                const bool expired = snapshot.failedArtifactDays > 0 && age >= (long long)snapshot.failedArtifactDays * 86400000LL;
+                eligible = successful && (op.state == "completed" || (!automatic && uploaded && !archivePending) || expired);
+                // Without its artifact no Retry can resume the upload: abort it first, best effort.
+                if (eligible) { abandonUploads(store, op, outcome); visited.insert(name); }
+            }
             if (eligible && !artifacts.remove(name)) ++removed;
         }
+        // An abort refused earlier is tried again on every cleanup after its artifact went.
+        for (const auto& id : store.journaledOperations()) {
+            if (activeIds.count(id) || visited.count(id) || files::exists(paths::join(artifacts.root(), id))) continue;
+            Error lookup; auto op = store.operation(id, &lookup);
+            if (!lookup) abandonUploads(store, op, outcome);
+        }
         if (snapshot.previewCacheBytes <= 0) artifacts.clearPreviews();
-        (void)e;
-        return json::Object{{"removedOperations", removed}, {"abortedUploads", 0}, {"incompleteUploads", json::Array{}}, {"trigger", automatic ? "automatic" : "manual"}, {"elapsedMs", double(GetTickCount64() - start)}, {"finished", true}};
-    }, [this, reply](Error e, json::Object result) { cleanupInProgress_ = false; lastCleanup_ = result; reply(e, result); });
+        describeIncompleteUploads(outcome, snapshot, automatic);
+        outcome["removedOperations"] = removed; outcome["elapsedMs"] = double(GetTickCount64() - start); outcome["finished"] = true;
+        const auto incomplete = outcome.value("incompleteUploads").toArray().size();
+        if (!automatic || removed > 0 || outcome.value("abortedUploads").toInteger() > 0 || incomplete > 0)
+            log::info("operations", "Artifact cleanup finished", {{"trigger", automatic ? "automatic" : "manual"}, {"removedOperations", removed},
+                      {"abortedUploads", outcome.value("abortedUploads")}, {"incompleteUploads", double(incomplete)}});
+        return outcome;
+    }, [this, reply, automatic](Error e, json::Object result) {
+        cleanupInProgress_ = false; lastCleanup_ = result;
+        const auto notice = result.value("incompleteUploadNotice").toObject();
+        if (!notice.empty()) { lastIncompleteNotice_ = notice; if (automatic && onIncompleteUploadsKept) onIncompleteUploadsKept(notice); }
+        reply(e, result);
+    });
 }
 
 // ---- capabilities and diagnostics ------------------------------------------
@@ -799,7 +917,8 @@ json::Object OperationService::capabilities() const {
 }
 json::Object OperationService::diagnostics() const {
     return {{"schemaVersion", 1}, {"build", protocol::buildIdentity()}, {"backend", "win32"}, {"platform", "windows"}, {"activeOperations", double(active_.size())}, {"journalReady", ready_},
-        {"capabilities", capabilities()}, {"storage", providers_.diagnostics()}, {"artifactCleanup", json::Object{{"running", cleanupInProgress_}, {"automatic", true}, {"intervalMs", 3600000}, {"last", lastCleanup_}}},
+        {"capabilities", capabilities()}, {"storage", providers_.diagnostics()}, {"artifactCleanup", json::Object{{"running", cleanupInProgress_}, {"automatic", true}, {"intervalMs", 3600000}, {"last", lastCleanup_},
+            {"incompleteUploadNotice", lastIncompleteNotice_.empty() ? json::Value() : json::Value(lastIncompleteNotice_)}}},
         {"memory", json::Object{{"allocatorReclamationSupported", true}, {"allocatorReclamationPending", heapPending_}, {"allocatorReclamationCount", double(heapReclamations_)}, {"lastAllocatorReclamationUsec", double(lastHeapReclamationUsec_)}}}};
 }
 void OperationService::shutdown() {

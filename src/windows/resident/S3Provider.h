@@ -24,6 +24,7 @@ public:
     StatResult reconcile(const UploadRequest&, CancelFlag) override;
     DeleteResult remove(const DeleteRequest&, DurableCheckpoint, CancelFlag) override;
     json::Object testDestination(const Destination&, DurableCheckpoint, Error&) override;
+    Error abandonUpload(const Destination&, const json::Object& journal) override;
     json::Object diagnostics() const override;
 private:
     struct Outcome { json::Object result; Error error; };

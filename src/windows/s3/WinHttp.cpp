@@ -5,6 +5,8 @@
 #include <winhttp.h>
 #include <algorithm>
 #include <memory>
+#include <mutex>
+#include <thread>
 #include <vector>
 
 namespace putgd::winhttp {
@@ -24,6 +26,34 @@ struct Handle {
 struct File {
     HANDLE h = INVALID_HANDLE_VALUE;
     ~File() { if (h != INVALID_HANDLE_VALUE) CloseHandle(h); }
+};
+// Closes the request handle from another thread when cancel is set: WinHTTP then
+// fails the blocked synchronous call (write or receive) on the owning thread.
+class Cutter {
+public:
+    Cutter(Handle& request, const std::atomic<bool>* cancel) : request_(request) {
+        if (!cancel) return;
+        watcher_ = std::thread([this, cancel] {
+            std::unique_lock lock(mutex_);
+            while (!done_) {
+                if (cancel->load()) { WinHttpCloseHandle(request_.h); cut_ = true; return; }
+                lock.unlock();
+                Sleep(50);
+                lock.lock();
+            }
+        });
+    }
+    ~Cutter() {
+        { std::lock_guard lock(mutex_); done_ = true; }
+        if (watcher_.joinable()) watcher_.join();
+        if (cut_) request_.h = nullptr; // already closed
+    }
+    bool cut() { std::lock_guard lock(mutex_); return cut_; }
+private:
+    Handle& request_;
+    std::mutex mutex_;
+    bool done_ = false, cut_ = false;
+    std::thread watcher_;
 };
 
 bool tlsError(DWORD e) {
@@ -155,10 +185,18 @@ Response Session::perform(const Request& request, const Limits& limits, const Ob
     File file;
     if (streamed) {
         file.h = CreateFileW(paths::wide(request.bodyFile).c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, nullptr);
-        LARGE_INTEGER size{};
-        if (file.h == INVALID_HANDLE_VALUE || !GetFileSizeEx(file.h, &size) || size.QuadPart != total) return finish(Failure::BodyRead, GetLastError());
+        LARGE_INTEGER size{}, offset{};
+        offset.QuadPart = request.bodyOffset;
+        const bool range = request.bodyOffset >= 0;
+        if (file.h == INVALID_HANDLE_VALUE || !GetFileSizeEx(file.h, &size) ||
+            (range ? size.QuadPart < request.bodyOffset + total : size.QuadPart != total) ||
+            (range && !SetFilePointerEx(file.h, offset, nullptr, FILE_BEGIN)))
+            return finish(Failure::BodyRead, GetLastError());
     }
     if (observer.cancel && observer.cancel->load()) return finish(Failure::Cancelled, 0);
+    // Destroyed before `handle`, so a cut handle is never closed twice.
+    Cutter cutter(handle, observer.cutAnywhere ? observer.cancel : nullptr);
+    auto fail = [&](DWORD error) { return finish(cutter.cut() ? Failure::Cancelled : classify(error), error); };
 
     const bool hasBody = total > 0;
     BOOL ok;
@@ -173,7 +211,7 @@ Response Session::perform(const Request& request, const Limits& limits, const Ob
         // bodyless one may have been fully written before the failure.
         const bool bodyPending = streamed && hasBody;
         response.delivered = !bodyPending && !beforeDelivery(error);
-        return finish(classify(error), error);
+        return fail(error);
     }
 
     if (streamed && hasBody) {
@@ -189,13 +227,13 @@ Response Session::perform(const Request& request, const Limits& limits, const Ob
             if (!ReadFile(file.h, buffer.data(), want, &read, nullptr) || read == 0) return finish(Failure::BodyRead, GetLastError());
             for (DWORD offset = 0; offset < read;) {
                 if (observer.cancel && observer.cancel->load()) return finish(Failure::Cancelled, 0);
+    // Destroyed before `handle`, so a cut handle is never closed twice.
+    Cutter cutter(handle, observer.cutAnywhere ? observer.cancel : nullptr);
+    auto fail = [&](DWORD error) { return finish(cutter.cut() ? Failure::Cancelled : classify(error), error); };
                 const DWORD slice = std::min(writeSlice, read - offset);
                 DWORD written = 0;
-                if (!WinHttpWriteData(handle.h, buffer.data() + offset, slice, &written)) {
-                    const DWORD error = GetLastError();
-                    return finish(classify(error), error);
-                }
-                if (written == 0) return finish(Failure::Connection, 0);
+                if (!WinHttpWriteData(handle.h, buffer.data() + offset, slice, &written)) return fail(GetLastError());
+                if (written == 0) return fail(0);
                 offset += written;
                 sent += written;
                 windowBytes += written;
@@ -215,13 +253,10 @@ Response Session::perform(const Request& request, const Limits& limits, const Ob
     response.delivered = true;
     if (observer.bodySent) observer.bodySent();
 
-    if (!WinHttpReceiveResponse(handle.h, nullptr)) {
-        const DWORD error = GetLastError();
-        return finish(classify(error), error);
-    }
+    if (!WinHttpReceiveResponse(handle.h, nullptr)) return fail(GetLastError());
     DWORD status = 0, size = sizeof status;
     if (!WinHttpQueryHeaders(handle.h, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER, WINHTTP_HEADER_NAME_BY_INDEX, &status, &size, WINHTTP_NO_HEADER_INDEX))
-        return finish(Failure::Connection, GetLastError());
+        return cutter.cut() ? fail(0) : finish(Failure::Connection, GetLastError());
     response.status = int(status);
     DWORD rawBytes = 0;
     WinHttpQueryHeaders(handle.h, WINHTTP_QUERY_RAW_HEADERS_CRLF, WINHTTP_HEADER_NAME_BY_INDEX, WINHTTP_NO_OUTPUT_BUFFER, &rawBytes, WINHTTP_NO_HEADER_INDEX);
@@ -236,18 +271,12 @@ Response Session::perform(const Request& request, const Limits& limits, const Ob
         std::vector<char> chunk(16 * 1024);
         while (response.body.size() < request.maximumResponseBytes) {
             DWORD available = 0;
-            if (!WinHttpQueryDataAvailable(handle.h, &available)) {
-                const DWORD error = GetLastError();
-                // The status arrived; a cut body only matters to callers that read it.
-                return finish(classify(error), error);
-            }
+            // The status arrived; a cut body only matters to callers that read it.
+            if (!WinHttpQueryDataAvailable(handle.h, &available)) return fail(GetLastError());
             if (available == 0) break;
             const DWORD want = DWORD(std::min<size_t>({size_t(available), chunk.size(), request.maximumResponseBytes - response.body.size()}));
             DWORD read = 0;
-            if (!WinHttpReadData(handle.h, chunk.data(), want, &read)) {
-                const DWORD error = GetLastError();
-                return finish(classify(error), error);
-            }
+            if (!WinHttpReadData(handle.h, chunk.data(), want, &read)) return fail(GetLastError());
             if (read == 0) break;
             response.body.append(chunk.data(), read);
         }

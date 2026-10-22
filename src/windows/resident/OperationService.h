@@ -58,6 +58,8 @@ public:
     std::function<void(const std::string& id)> onChanged;
     std::function<void(const Operation&)> onResultReady; // terminal or copy result durable
     std::function<void(const Error&)> onOperationError;
+    // An automatic cleanup could not abort uploads it reported for the first time (#226).
+    std::function<void(const json::Object& notice)> onIncompleteUploadsKept;
     std::function<void()> onObservationsChanged;
     std::function<void(bool active, bool uploading)> onActivityChanged;
     std::function<json::Object()> shortcutStatus; // Hotkeys::status for capabilities
@@ -85,6 +87,9 @@ private:
     void copyText(const std::string& text, unsigned long long expectedRevision, bool automatic, std::function<void(Error)>);
     std::string routeDestination(const Operation&) const;
     void expireArtifacts(bool automatic, JsonReply);
+    // Cleanup (background thread): abort retired items' journaled uploads, then word the notice.
+    void abandonUploads(HistoryStore&, Operation&, json::Object& outcome);
+    static void describeIncompleteUploads(json::Object& outcome, const Settings&, bool automatic);
     void notifyActivity();
     std::string root_, paths_db_;
     SettingsService& settings_;
@@ -108,7 +113,7 @@ private:
     unsigned long uiPid_ = 0;
     UINT_PTR heapTimer_ = 0, cleanupTimer_ = 0;
     unsigned long long heapReclamations_ = 0; long long lastHeapReclamationUsec_ = 0; bool heapPending_ = false;
-    json::Object lastCleanup_;
+    json::Object lastCleanup_, lastIncompleteNotice_;
     // Per-operation upload-copy bookkeeping (docs/architecture.md, issue #32 policy).
     struct UploadCopy { std::vector<std::pair<int, std::string>> links; unsigned long long clipboardRevision = 0; unsigned long long epoch = 0; bool copied = false, suppressed = false, failed = false; std::string mode; int copiedCount = 0; };
     std::map<std::string, UploadCopy> uploadCopies_;

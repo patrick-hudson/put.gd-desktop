@@ -181,6 +181,9 @@ int residentMain(const std::vector<std::string>& args) {
         if (op.state == "cancelled" && !op.error) return;
         tray.notify("put.gd — " + op.state, completionMessage(op, !link.empty()), warning, link);
     };
+    operations.onIncompleteUploadsKept = [&](const json::Object& notice) {
+        if (settings.snapshot().notifications) tray.notify("put.gd — incomplete uploads left", notice.value("message").toString(), true);
+    };
     history.onChanged = [&] { ui.invalidate("history"); };
     setup.onChanged = [&](const std::string&) { ui.invalidate("setup"); };
     updates.onUpdateAvailable = [&](const json::Object& r) { if (settings.snapshot().notifications) tray.notify("put.gd — update available", "put.gd " + r.value("latest").toString() + " is available. Settings → Updates has the download.", false, r.value("notesUrl").toString()); ui.invalidate("update"); };

@@ -172,6 +172,18 @@ std::vector<std::string> HistoryStore::activeDeletionHistoryIds() const {
     sqlite::Statement q(db_, "SELECT history_id FROM deletion_targets WHERE active=1"); while (q.step()) ids.push_back(q.text(0));
     return ids;
 }
+std::vector<std::string> HistoryStore::journaledOperations(Error* error) const {
+    std::vector<std::string> ids;
+    if (error_) { if (error) *error = error_; return ids; }
+    // A text prefilter, then the exact check on the decoded items.
+    sqlite::Statement q(db_, "SELECT id,data FROM operations WHERE instr(data,'\"uploadId\"')>0");
+    while (q.step()) {
+        const auto op = Operation::fromJson(decode(q.blob(1)));
+        for (const auto& item : op.items) if (!item.uploadJournal.value("uploadId").toString().empty()) { ids.push_back(op.id); break; }
+    }
+    if (q.failed() && error) *error = sqlError();
+    return ids;
+}
 Error HistoryStore::expireBefore(const std::string& timestamp) {
     if (error_) return error_;
     sqlite::Statement q(db_, "DELETE FROM history WHERE created<? AND upload_status<>'uploading' AND id NOT IN (SELECT history_id FROM deletion_targets WHERE active=1)"); q.bind(1, timestamp);
