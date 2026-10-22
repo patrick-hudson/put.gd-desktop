@@ -98,9 +98,9 @@ putgd_install_snapshot("${PROJECT_SOURCE_DIR}/LICENSE" "${CMAKE_INSTALL_DATADIR}
 # (#293), trusting only that channel's key. apt keeps a deleted conffile deleted
 # and purge removes it; the RPM copies its file in on the first install only.
 set(PUTGD_REPO_CHANNEL "")
-if(PUTGD_RELEASE_TAG MATCHES "^v[0-9]+[.][0-9]+[.][0-9]+-nightly[.][1-9][0-9]*$")
+if(PUTGD_RELEASE_TAG MATCHES "^v[0-9]+[.][0-9]+[.][0-9]+-nightly$")
   set(PUTGD_REPO_CHANNEL nightly)
-elseif(PUTGD_RELEASE_TAG MATCHES "^v[0-9]+[.][0-9]+[.][0-9]+(-rc[.][1-9][0-9]*)?$")
+elseif(PUTGD_RELEASE_TAG MATCHES "^v[0-9]+[.][0-9]+[.][0-9]+$")
   set(PUTGD_REPO_CHANNEL stable)
 endif()
 set(PUTGD_REPO_URL "${PUTGD_PACKAGE_REPOSITORY_URL}")
@@ -132,7 +132,8 @@ elseif(PUTGD_REPO_CHANNEL AND PUTGD_PACKAGE_TARGET STREQUAL "fedora44")
 endif()
 set(CPACK_GENERATOR DEB) # Select -G RPM for a native Fedora build.
 set(CPACK_PACKAGE_NAME putgd)
-set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+# package-identity.cmake sets the build identity's version when CPack runs.
+set(CPACK_PACKAGE_VERSION "0.0.0")
 configure_file("${PROJECT_SOURCE_DIR}/cmake/PackageBuildIdentity.cmake.in" package-identity.cmake @ONLY)
 set(CPACK_PROJECT_CONFIG_FILE "${CMAKE_CURRENT_BINARY_DIR}/package-identity.cmake")
 set(CPACK_PACKAGE_CONTACT "put.gd maintainers")
@@ -185,7 +186,9 @@ string(JSON metainfo_version GET "${metainfo_identity}" packageVersion)
 string(JSON metainfo_commit GET "${metainfo_identity}" gitCommit)
 find_program(PUTGD_GIT git)
 if(PUTGD_GIT AND metainfo_commit MATCHES "^[0-9a-f]+$" AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
-  execute_process(COMMAND "${PUTGD_GIT}" -C "${PROJECT_SOURCE_DIR}" show -s --format=%cs "${metainfo_commit}"
+  # The UTC date, as in the version (#373).
+  execute_process(COMMAND "${CMAKE_COMMAND}" -E env TZ=UTC0 "${PUTGD_GIT}" -C "${PROJECT_SOURCE_DIR}" show -s
+      --date=format-local:%Y-%m-%d --format=%cd "${metainfo_commit}"
     OUTPUT_VARIABLE metainfo_date OUTPUT_STRIP_TRAILING_WHITESPACE RESULT_VARIABLE metainfo_result ERROR_QUIET)
   if(metainfo_result EQUAL 0 AND metainfo_date MATCHES "^[0-9]+-[0-9]+-[0-9]+$")
     set(PUTGD_METAINFO_RELEASES "  <releases>\n    <release version=\"${metainfo_version}\" date=\"${metainfo_date}\"/>\n  </releases>\n")

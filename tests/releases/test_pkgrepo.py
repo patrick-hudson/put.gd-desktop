@@ -94,12 +94,20 @@ def fake_fields(command, **_):
 
 class Versions(unittest.TestCase):
     def test_package_order(self):
-        order = ['0.1.1-nightly.9', '0.1.1-nightly.10', '0.1.1-rc.1', '0.1.1', '0.1.2-nightly.1', '0.2.0']
-        self.assertEqual(sorted(order, key=pkgrepo.version_key), order)
+        order = ['0.1.1-nightly.9', '0.1.1-nightly.10', '0.1.1-rc.1', '0.1.1', '0.1.2-nightly.1', '0.2.0',
+                 # #373: calendar versions sort after every 0.Y.Z, by date, then count, nightly first.
+                 '26.105.990-nightly', '26.1022.942-nightly', '26.1022.943-nightly', '26.1101.960-nightly',
+                 '26.1101.960', '26.1105.951-nightly', '27.101.1500']
+        self.assertEqual(sorted(reversed(order), key=pkgrepo.version_key), order)
 
     def test_channels(self):
         self.assertEqual(pkgrepo.repo_channel('v0.1.1-nightly.5'), 'nightly')
         self.assertEqual(pkgrepo.repo_channel('v0.1.1'), 'stable')
+        self.assertEqual(pkgrepo.repo_channel('v26.1022.942-nightly'), 'nightly')
+        self.assertEqual(pkgrepo.repo_channel('v26.1101.960'), 'stable')
+        for tag in ('v26.1101.960-rc', 'v26.1022.942-nightly.942', 'v26.0105.1'):
+            with self.subTest(tag=tag), self.assertRaises(ValueError):
+                pkgrepo.repo_channel(tag)
         self.assertIsNone(pkgrepo.repo_channel('v0.1.1-rc.1'))
         with self.assertRaises(ValueError):
             pkgrepo.repo_channel('0.1.1')
@@ -107,6 +115,9 @@ class Versions(unittest.TestCase):
     def test_rpm_versions_from_header_names(self):
         self.assertEqual(pkgrepo.rpm_version('putgd-0.1.1~nightly.588-1.fc44.x86_64.rpm'), '0.1.1-nightly.588')
         self.assertEqual(pkgrepo.rpm_version('putgd-0.1.2-1.fc44.x86_64.rpm'), '0.1.2')
+        self.assertEqual(pkgrepo.rpm_version('putgd-0.1.1~rc.2-1.fc44.x86_64.rpm'), '0.1.1-rc.2')
+        self.assertEqual(pkgrepo.rpm_version('putgd-26.1022.942~nightly-1.fc44.x86_64.rpm'), '26.1022.942-nightly')
+        self.assertEqual(pkgrepo.rpm_version('putgd-26.1101.960-1.fc44.x86_64.rpm'), '26.1101.960')
 
 
 class Verification(unittest.TestCase):

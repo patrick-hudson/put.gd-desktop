@@ -73,7 +73,7 @@ name_version() {
     printf '%s\n' "$version"
 }
 
-# Prereleases order before their release: 0.1.2-rc.1 < 0.1.2 (sort -V, ~).
+# Prereleases order before their release: 26.1101.960-nightly < 26.1101.960 (sort -V, ~).
 sortable() {
     case $1 in
         *-*) printf '%s~%s\n' "${1%%-*}" "${1#*-}" ;;

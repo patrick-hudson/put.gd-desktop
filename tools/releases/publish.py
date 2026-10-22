@@ -103,7 +103,8 @@ def release_title(release):
     """Name the GitHub release; nightlies say so in words rather than in a suffix."""
     identity = parse_version(release['version'])
     if identity.channel == 'nightly':
-        return f'put.gd {identity.base_version} nightly {identity.count}'
+        return (f'put.gd {identity.base_version} nightly {identity.count}' if identity.legacy
+                else f'put.gd {identity.base_version} nightly')
     return 'put.gd ' + release['version']
 
 
@@ -178,7 +179,8 @@ def changes_section(tag, producer):
     """
     server = os.environ.get('GITHUB_SERVER_URL', 'https://github.com')
     try:
-        return changelog.section(Path.cwd(), tag, producer['repository'], server) + '\n'
+        return changelog.section(Path.cwd(), tag, producer['repository'], server,
+                                 released=changelog.released_tags) + '\n'
     except (subprocess.CalledProcessError, OSError, ValueError) as error:
         print(f'Warning: could not list the changes in {tag}: {error}', file=sys.stderr, flush=True)
         return '## Changes\n\nThe changes could not be listed from this checkout; see the commit history.\n\n'
@@ -201,8 +203,7 @@ def publish_nightly(args, release, listed):
         receipt.update(published=True, unchanged=True, verifiedPublishedNightly=public)
     else:
         notes = args.directory / 'release-notes.md'
-        identity = parse_tag(args.tag)
-        notes.write_text(f'Nightly {identity.count} of {identity.base_version}: a build-tested development '
+        notes.write_text(f'Nightly {parse_tag(args.tag).base_version}: a build-tested development '
             f'release of commit {release["gitCommit"]}.\n\n'
             + changes_section(args.tag, producer) +
             'Automated coverage: Linux test suites, Windows/macOS portable compilation, '

@@ -13,11 +13,11 @@ from pathlib import Path
 import re
 import subprocess
 
-from github_api import GitHub, full_sha, remote_tag_commit, tag_exists
+from github_api import GitHub, full_sha, matching_tags, remote_tag_commit, tag_exists
 from release_bundle import expected_members
 from proton_sources import PART_NAMES
 from debug_symbols import asset_name as debug_asset_name
-from release_identity import parse_tag
+from release_identity import calendar_base, parse_tag
 from verify_tag import verify
 
 NIGHTLY_REF = 'refs/heads/nightly'
@@ -27,24 +27,20 @@ def git(root, *args):
     return subprocess.check_output(['git', '-C', str(root), *args], text=True).strip()
 
 
-def project_base(root):
-    project = re.search(r'project\(\s*putgd\s+VERSION\s+([0-9.]+)', (root / 'CMakeLists.txt').read_text())
-    if not project:
-        raise ValueError('Missing project base version')
-    return project[1]
-
-
 def prepare(root):
-    """Derive the immutable nightly identity from the clean full-history checkout."""
+    """Derive the immutable nightly identity from the clean full-history checkout.
+
+    The tag is `vYY.MDD.N-nightly` (#373): HEAD's UTC committer date and commit count.
+    """
     if (git(root, 'rev-parse', '--is-shallow-repository') != 'false'
             or git(root, 'status', '--porcelain', '--untracked-files=normal')):
         raise ValueError('Preparation requires clean source and full Git history')
     sha = full_sha(git(root, 'rev-parse', 'HEAD'))
-    base = project_base(root)
     count = int(git(root, 'rev-list', '--count', 'HEAD'))
-    tag = f'v{base}-nightly.{count}'
+    base = calendar_base(int(git(root, 'show', '-s', '--format=%ct', 'HEAD')), count)
+    tag = f'v{base}-nightly'
     parse_tag(tag)
-    return {'schemaVersion': 3, 'tag': tag, 'sourceSha': sha, 'baseVersion': base,
+    return {'schemaVersion': 4, 'tag': tag, 'sourceSha': sha, 'baseVersion': base,
             'gitTree': git(root, 'rev-parse', 'HEAD^{tree}'), 'commitCount': count,
             'committerDate': committer_date(root, 'HEAD')}
 
@@ -138,8 +134,21 @@ def published_nightly(api, tag, release):
     return {'releaseId': value['id'], 'tag': tag, 'sourceSha': release['gitCommit'], 'assetSha256': expected}
 
 
+def newest_nightly(api):
+    """The newest existing nightly tag, by version (pre-#373 ones included), or None."""
+    found = []
+    for name in matching_tags(api, 'v'):
+        try:
+            identity = parse_tag(name)
+        except ValueError:
+            continue
+        if identity.channel == 'nightly':
+            found.append((identity.key, name))
+    return max(found)[1] if found else None
+
+
 def plan(api, root, ref):
-    """Skip a published source; otherwise refuse a released base, then tag HEAD."""
+    """Skip a published source; otherwise tag HEAD, which must sort after every earlier nightly."""
     if ref != NIGHTLY_REF:
         raise ValueError('Nightlies are cut from the nightly branch only, not ' + ref)
     prepared = prepare(root)
@@ -148,10 +157,12 @@ def plan(api, root, ref):
         public = published_nightly(api, tag, ensure_tag(api, root, tag, prepared['sourceSha']))
         if public:
             return {**prepared, 'skip': True, 'publishedNightly': public}
-    stable = 'v' + prepared['baseVersion']
-    if tag_exists(api, stable):
-        raise ValueError(stable + ' is already a stable tag. Merge the pull request that starts the next '
-                         'version on nightly (project(putgd VERSION ...)) before publishing more nightlies')
+    else:
+        # A rewritten committer date could name a version older than a published nightly.
+        newest = newest_nightly(api)
+        if newest and parse_tag(newest).key >= parse_tag(tag).key:
+            raise ValueError(f'{tag} would not sort after the existing nightly {newest}; '
+                             'check the committer date of nightly HEAD')
     ensure_tag(api, root, tag, prepared['sourceSha'])
     return {**prepared, 'skip': False, 'publishedNightly': None}
 
