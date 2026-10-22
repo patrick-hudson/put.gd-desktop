@@ -205,7 +205,8 @@ other channel's checks:
   copies (from AppImageLauncher or appimageupdatetool) are ignored, even when their names
   look newer.
 - **Other updaters:** the file now embeds the new channel's permalink, so appimageupdatetool,
-  AppImageLauncher and Gear Lever follow the new channel from then on.
+  AppImageLauncher and Gear Lever follow the new channel from then on. (Gear Lever reads it at
+  each check unless you saved a custom update URL in its app details.)
 - **Notifications:** put.gd remembers the version it announced (or you saw in Settings) per
   channel. The first result after you change the channel shows in Settings and isn't also
   announced; the version you switched to counts as seen. Stable still announces each later
@@ -215,6 +216,11 @@ other channel's checks:
 `install.switch` (`{from, to, version, tag, older}`). `update.install` then needs
 `{"confirm": true, "channel": "stable"}`, plus `"allowOlder": true` when `older` is true
 (MCP `install_update(confirm, channel, allow_older)`).
+
+Accepted on Fedora 44 GNOME and Linux Mint 22.3 Cinnamon with lab channels under `pkg.put.gd/lab`:
+both directions, the older-version confirmation, no stable release yet, tampered releases refused,
+start at login after a switch, and the resident's idle memory unchanged
+([evidence](evidence/2026-10-22-appimage-channel-344/README.md)).
 
 ### Other AppImage updaters
 
