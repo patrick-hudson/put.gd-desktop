@@ -3,6 +3,7 @@
 #include "common/Files.h"
 #include "common/Paths.h"
 #include <algorithm>
+#include <set>
 #include <dwmapi.h>
 #include <shellapi.h>
 #include <shlobj.h>
@@ -585,11 +586,13 @@ void setTooltip(HWND tip, HWND control, const std::wstring& value) {
     info.hwnd = GetParent(control);
     info.uId = reinterpret_cast<UINT_PTR>(control);
     info.lpszText = const_cast<wchar_t*>(value.c_str());
-    if (SendMessageW(tip, TTM_GETTOOLINFOW, 0, reinterpret_cast<LPARAM>(&info))) {
-        info.lpszText = const_cast<wchar_t*>(value.c_str());
+    // Remember which tools exist instead of asking with TTM_GETTOOLINFO: that copies the
+    // current text into lpszText, which overflows when the old text is longer than the new one.
+    static std::set<std::pair<HWND, HWND>> tools;
+    if (tools.count({tip, control})) {
         SendMessageW(tip, TTM_UPDATETIPTEXTW, 0, reinterpret_cast<LPARAM>(&info));
-    } else {
-        SendMessageW(tip, TTM_ADDTOOLW, 0, reinterpret_cast<LPARAM>(&info));
+    } else if (SendMessageW(tip, TTM_ADDTOOLW, 0, reinterpret_cast<LPARAM>(&info))) {
+        tools.insert({tip, control});
     }
 }
 

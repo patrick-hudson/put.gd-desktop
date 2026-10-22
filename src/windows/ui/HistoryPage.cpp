@@ -17,9 +17,9 @@ enum : int {
     idSearch = 100, idCategory, idUpload, idLocal, idRemote, idDestination, idActivity, idEditImage, idList,
     idPrevious, idNext, idPageLabel, idPreview, idPreviewNote, idTitle, idDetails, idLinkLabel, idLink,
     idCopyLink, idOpenLink, idOpenFolder, idEditAgain, idDelete, idClearHistory, idClearCache,
-    idRetry, idCancel, idCopyResult, idRetryLocal, idSaveDiagnostics
+    idRetry, idCancel, idCopyResult, idRetryLocal, idSaveDiagnostics, idShare, idRevoke, idInspectLink
 };
-constexpr UINT_PTR timerSearch = 1, timerActivity = 2, timerDeletion = 3, timerRefresh = 4;
+constexpr UINT_PTR timerSearch = 1, timerActivity = 2, timerDeletion = 3, timerRefresh = 4, timerShare = 5;
 constexpr int pageSize = 50;
 
 const GUID clsidWicFactory{0xCACAF262, 0x9370, 0x4615, {0xA1, 0x3B, 0x9F, 0x55, 0x39, 0xDA, 0x4C, 0x0A}};
@@ -101,6 +101,21 @@ const std::vector<std::pair<const char*, const wchar_t*>> remoteLabels{
     {"pending", L"Waiting for remote deletion"}, {"hidden_version_retained", L"Hidden; original version remains"},
     {"version_retained", L"Original version remains"}, {"superseded", L"Replaced by a newer upload"},
     {"unsupported_safe_removal", L"Safe removal not supported"}};
+// Share-link states, worded as on Linux.
+const std::vector<std::pair<const char*, const wchar_t*>> sharingLabels{
+    {"shared", L"Shared link"}, {"not_requested", L"No share link requested"}, {"private", L"Private upload"}, {"pending", L"Creating share link"},
+    {"revoked", L"Share link revoked"}, {"failed", L"Sharing failed"}, {"unknown", L"Sharing outcome unknown"}, {"changed", L"Share link changed"}};
+// "Link expires on …" / "Link expired on …" for a confirmed shared or private link.
+std::wstring linkExpiry(const json::Object& record) {
+    const auto expires = record.value("shareExpiresAt").toString();
+    const auto status = record.value("shareStatus").toString();
+    const long long at = files::parseIsoUtcMs(expires);
+    if (at < 0 || (status != "shared" && status != "private")) return {};
+    const auto when = localTime(expires);
+    if (when.empty()) return {};
+    if (at <= files::parseIsoUtcMs(files::nowIsoUtc())) return L"Link expired on " + when;
+    return record.value("linkAvailable").toBool() ? L"Link expires on " + when : std::wstring();
+}
 const std::vector<std::pair<const char*, const wchar_t*>> deletionLabels{
     {"removed", L"removed"}, {"missing", L"already missing"}, {"changed", L"changed since upload, not deleted"}, {"failed", L"failed"},
     {"unknown", L"outcome unknown"}, {"pending", L"waiting"}, {"hidden_version_retained", L"hidden; original version remains"},
@@ -232,6 +247,11 @@ private:
     void operationAction(const std::string& method);
     void maintenance(bool cache);
     std::wstring nameOf(const std::string& historyId) const;
+    void loadDetail(const std::string& id);
+    void changeSharing(const std::string& action);
+    void pollSharing();
+    void showSharing(bool on);
+    void updateSharingButtons(const json::Object& record);
 
     Panel panel_;
     HWND search_{}, category_{}, upload_{}, local_{}, remote_{}, destination_{}, activity_{}, editImage_{}, list_{};
@@ -249,6 +269,13 @@ private:
     unsigned long long generation_ = 0, previewGeneration_ = 0;
     std::string selectedId_, deletionId_, previewKey_;
     HBITMAP bitmap_ = nullptr;
+    // history.detail of the selected record (sharing state and provider capabilities).
+    json::Object detail_;
+    unsigned long long detailGeneration_ = 0;
+    // Share-link actions: history.share / revokeLink / inspectLink, then share.inspect polls.
+    HWND share_{}, revoke_{}, inspectLink_{};
+    std::string sharingId_;
+    bool sharingVisible_ = false, sharingAccepting_ = false, sharingActive_ = false, sharingPolling_ = false, sharingStopped_ = false;
 };
 
 HWND HistoryPageImpl::create(HWND parent) {
@@ -309,6 +336,13 @@ HWND HistoryPageImpl::create(HWND parent) {
     setTooltip(main_.tooltip(), editAgain_, L"Open the retained local copy in the editor. The result uploads as a new item.");
     delete_ = button(p, idDelete, L"Delete from destination\x2026");
     theme::setRole(delete_, theme::Role::Danger);
+    share_ = button(p, idShare, L"Create share link");
+    setTooltip(main_.tooltip(), share_, L"Create a share link for this file with the destination's current link settings.");
+    revoke_ = button(p, idRevoke, L"Revoke link\x2026");
+    setTooltip(main_.tooltip(), revoke_, L"Revoke this file's public share link. The uploaded file remains.");
+    inspectLink_ = button(p, idInspectLink, L"Inspect link");
+    setTooltip(main_.tooltip(), inspectLink_, L"Ask the destination for this file's current share-link state. Nothing is created or changed.");
+    for (HWND h : {share_, revoke_, inspectLink_}) show(h, false);
     retry_ = button(p, idRetry, L"Retry upload");
     cancel_ = button(p, idCancel, L"Cancel");
     copyResult_ = button(p, idCopyResult, L"Copy result");
@@ -408,7 +442,8 @@ int HistoryPageImpl::layout(int width, int height) {
     int dy = y;
     const int titleHeight = fontHeight(font(FontRole::Bold, d));
     const int small = fontHeight(font(FontRole::SmallBold, d));
-    const int buttonsHeight = (buttonHeight + gap) * 3 - gap + (activityMode_ ? 0 : small + scale(4, d) + fieldHeight + scale(12, d));
+    const bool sharing = !activityMode_ && sharingVisible_;
+    const int buttonsHeight = (buttonHeight + gap) * 3 - gap + (activityMode_ ? 0 : small + scale(4, d) + fieldHeight + scale(12, d)) + (sharing ? buttonHeight + gap : 0);
     const int below = scale(14, d) + titleHeight + scale(8, d) + scale(64, d) + gap + buttonsHeight;
     const int previewHeight = std::clamp(bottomY - scale(12, d) - y - below, scale(72, d), scale(180, d));
     place(preview_, x, dy, detailsWidth, previewHeight);
@@ -426,6 +461,16 @@ int HistoryPageImpl::layout(int width, int height) {
         place(copyLink_, x, dy, half, buttonHeight);
         place(openLink_, x + half + gap, dy, half, buttonHeight);
         dy += buttonHeight + gap;
+        if (sharing) {
+            // Create | Revoke | Inspect: the outer two at their natural widths, Inspect takes the rest.
+            const int third = (detailsWidth - 2 * gap) / 3;
+            const int shareWidth = std::max(third, std::min(buttonWidth(share_, 80), detailsWidth / 2 - gap));
+            const int revokeWidth = std::max(scale(60, d), std::min(buttonWidth(revoke_, 80), detailsWidth - shareWidth - 2 * gap - scale(80, d)));
+            place(share_, x, dy, shareWidth, buttonHeight);
+            place(revoke_, x + shareWidth + gap, dy, revokeWidth, buttonHeight);
+            place(inspectLink_, x + shareWidth + revokeWidth + 2 * gap, dy, detailsWidth - shareWidth - revokeWidth - 2 * gap, buttonHeight);
+            dy += buttonHeight + gap;
+        }
         place(openFolder_, x, dy, half, buttonHeight);
         place(editAgain_, x + half + gap, dy, half, buttonHeight);
         dy += buttonHeight + gap;
@@ -449,6 +494,7 @@ void HistoryPageImpl::setActivity(bool on) {
     SendMessageW(activity_, LB_SETCURSEL, on ? 1 : 0, 0);
     for (HWND h : {category_, upload_, local_, remote_, destination_, search_, previous_, next_}) enable(h, !on);
     for (HWND h : {linkLabel_, link_, copyLink_, openLink_, openFolder_, editAgain_, delete_}) show(h, !on);
+    for (HWND h : {share_, revoke_, inspectLink_}) show(h, !on && sharingVisible_);
     for (HWND h : {retry_, cancel_, copyResult_, retryLocal_, saveDiagnostics_}) show(h, on);
     show(pageLabel_, !on);
     if (changed) {
@@ -652,9 +698,98 @@ void HistoryPageImpl::selectionChanged() {
     } else {
         const auto record = selectedRecord();
         selectedId_ = record.value("id").toString();
+        if (record.empty() || detail_.value("id").toString() != selectedId_) detail_ = {};
         showRecord(record);
         enable(delete_, !selectedIds().empty());
+        if (!record.empty()) loadDetail(selectedId_);
     }
+}
+
+// The detail adds what the list does not carry: sharing state and the provider's capabilities.
+void HistoryPageImpl::loadDetail(const std::string& id) {
+    const auto generation = ++detailGeneration_;
+    main_.session().call("history.detail", {{"id", id}}, [this, generation, id](const Reply& reply) {
+        if (generation != detailGeneration_ || selectedId_ != id || activityMode_ || !reply.ok) return;
+        detail_ = reply.result;
+        const auto record = selectedRecord();
+        if (record.value("id").toString() == id) showRecord(record);
+    });
+}
+
+void HistoryPageImpl::showSharing(bool on) {
+    if (on == sharingVisible_) return;
+    sharingVisible_ = on;
+    for (HWND h : {share_, revoke_, inspectLink_}) show(h, on && !activityMode_);
+    panel_.layout();
+}
+
+// As on Linux: busy while a request is being accepted, polled, or a pending result is not yet stopped.
+void HistoryPageImpl::updateSharingButtons(const json::Object& record) {
+    const auto status = record.value("shareStatus").toString();
+    const bool stopped = sharingStopped_ && sharingId_ == record.value("shareOperationId").toString();
+    const bool busy = sharingAccepting_ || sharingActive_ || (status == "pending" && !stopped);
+    enable(share_, !busy && status != "pending" && status != "unknown" && status != "changed");
+    enable(revoke_, !busy && record.value("linkAvailable").toBool());
+    enable(inspectLink_, !busy);
+}
+
+void HistoryPageImpl::changeSharing(const std::string& action) {
+    const auto record = selectedRecord();
+    if (record.empty() || sharingAccepting_ || sharingActive_) return;
+    const auto historyId = record.value("id").toString();
+    if (action == "revoke" &&
+        !confirm(main_.hwnd(), L"Revoke recorded share link", L"Revoke this file\x2019s public share link?",
+                 L"The uploaded file remains. Existing member access and downloaded copies remain.", L"Revoke link"))
+        return;
+    sharingAccepting_ = true;
+    for (HWND h : {share_, revoke_, inspectLink_}) enable(h, false);
+    const char* method = action == "create" ? "history.share" : action == "revoke" ? "history.revokeLink" : "history.inspectLink";
+    main_.status(action == "create" ? L"Creating a share link\x2026" : action == "revoke" ? L"Revoking the share link\x2026" : L"Inspecting the share link\x2026");
+    main_.session().call(method, {{"id", historyId}}, [this](const Reply& reply) {
+        sharingAccepting_ = false;
+        if (!reply.ok) {
+            main_.status(UiSession::describe(reply), true);
+            selectionChanged();
+            return;
+        }
+        sharingId_ = reply.result.value("shareOperationId").toString();
+        sharingStopped_ = false;
+        if (sharingId_.empty()) { selectionChanged(); return; }
+        sharingActive_ = true;
+        SetTimer(panel_.hwnd(), timerShare, 1000, nullptr);
+        pollSharing();
+    });
+}
+
+void HistoryPageImpl::pollSharing() {
+    if (sharingPolling_) return;
+    if (sharingId_.empty()) { sharingActive_ = false; KillTimer(panel_.hwnd(), timerShare); return; }
+    sharingPolling_ = true;
+    const auto id = sharingId_;
+    main_.session().call("share.inspect", {{"id", id}}, [this, id](const Reply& reply) {
+        sharingPolling_ = false;
+        if (id != sharingId_) return;
+        if (!reply.ok) {
+            if (reply.outcomeUnknown) return; // keep the accepted ID and ask again on the next tick
+            sharingActive_ = false;
+            KillTimer(panel_.hwnd(), timerShare);
+            main_.status(UiSession::describe(reply), true);
+            refresh();
+            return;
+        }
+        const auto doc = reply.result.contains("state") ? reply.result : reply.result.value("sharing").toObject();
+        const auto state = doc.value("state").toString();
+        sharingStopped_ = state == "interrupted";
+        if (state != "completed" && state != "interrupted") return;
+        sharingActive_ = false;
+        KillTimer(panel_.hwnd(), timerShare);
+        const auto error = doc.value("error").toObject();
+        std::wstring text = L"Link: " + statusLabel(sharingLabels, doc.value("status").toString());
+        const auto message = error.value("message").toString();
+        if (!message.empty()) text += L" \x2014 " + wide(message);
+        main_.status(text, !error.value("code").toString().empty());
+        refresh(); // the list, then the selected record's detail
+    });
 }
 
 void HistoryPageImpl::setPreview(HBITMAP bitmap, const std::wstring& note) {
@@ -709,8 +844,12 @@ void HistoryPageImpl::showRecord(const json::Object& r) {
         fitScrollBar(details_);
         setText(link_, "");
         for (HWND h : {copyLink_, openLink_, openFolder_, editAgain_}) enable(h, false);
+        showSharing(false);
         return;
     }
+    // The detail of this record, once loaded, is the authoritative source for its link and sharing state.
+    const bool haveDetail = !detail_.empty() && detail_.value("id") == r.value("id");
+    const json::Object& source = haveDetail ? detail_ : r;
     setText(title_, r.value("name").toString());
     const auto profileId = r.value("profileId").toString(r.value("receipt")["destination"]["profileId"].toString());
     const auto local = r.value("local").toObject();
@@ -722,6 +861,12 @@ void HistoryPageImpl::showRecord(const json::Object& r) {
     text += L"Local copy: " + statusLabel(localLabels, local.value("status").toString());
     if (!local.value("path").toString().empty()) text += L"\r\n    " + wide(local.value("path").toString());
     text += L"\r\nRemote: " + statusLabel(remoteLabels, r.value("remoteStatus").toString());
+    const bool sharingCapable = source.value("capabilities")["sharing"].toBool();
+    const auto shareStatus = source.value("shareStatus").toString();
+    if (sharingCapable || (!shareStatus.empty() && shareStatus != "not_requested")) {
+        text += L"\r\nSharing: " + (shareStatus.empty() ? std::wstring(L"Sharing not recorded") : statusLabel(sharingLabels, shareStatus));
+        if (const auto expiry = linkExpiry(source); !expiry.empty()) text += L"\r\n" + expiry;
+    }
     const auto error = r.value("error").toObject();
     if (!error.value("code").toString().empty())
         text += L"\r\nError: " + wide(error.value("message").toString()) + L" (" + wide(error.value("code").toString()) + L")";
@@ -729,8 +874,8 @@ void HistoryPageImpl::showRecord(const json::Object& r) {
         text += L"\r\nLocal save error: " + wide(local.value("error")["message"].toString());
     setTextW(details_, text);
     fitScrollBar(details_);
-    const bool linkAvailable = r.value("linkAvailable").toBool() && !r.value("receipt")["directUrl"].toString().empty();
-    setText(link_, linkAvailable ? r.value("receipt")["directUrl"].toString() : std::string());
+    const bool linkAvailable = source.value("linkAvailable").toBool() && !source.value("receipt")["directUrl"].toString().empty();
+    setText(link_, linkAvailable ? source.value("receipt")["directUrl"].toString() : std::string());
     setCue(link_, linkAvailable ? L"" : L"No link");
     const bool localSaved = local.value("status") == "saved" && !local.value("path").toString().empty();
     enable(copyLink_, linkAvailable || r.value("uploadStatus") == "local_only");
@@ -738,6 +883,11 @@ void HistoryPageImpl::showRecord(const json::Object& r) {
     enable(openLink_, linkAvailable);
     enable(openFolder_, localSaved);
     enable(editAgain_, localSaved && editableImage(local.value("path").toString()));
+    // Share-link actions for providers that manage links; until the detail arrives they keep
+    // their previous visibility (no layout jump) but stay off.
+    if (haveDetail) showSharing(sharingCapable);
+    if (haveDetail) updateSharingButtons(source);
+    else for (HWND h : {share_, revoke_, inspectLink_}) enable(h, false);
 }
 
 void HistoryPageImpl::showOperation(const json::Object& op) {
@@ -921,6 +1071,9 @@ void HistoryPageImpl::command(int id, int code, HWND control) {
         break;
     }
     case idDelete: prepareDelete(); break;
+    case idShare: changeSharing("create"); break;
+    case idRevoke: changeSharing("revoke"); break;
+    case idInspectLink: changeSharing("inspect"); break;
     case idClearHistory: maintenance(false); break;
     case idClearCache: maintenance(true); break;
     case idRetry: operationAction("operation.retry"); break;
@@ -974,6 +1127,7 @@ void HistoryPageImpl::timer(UINT_PTR id) {
     else if (id == timerRefresh) { KillTimer(panel_.hwnd(), timerRefresh); if (IsWindowVisible(panel_.hwnd())) refresh(); }
     else if (id == timerActivity) { if (activityMode_ && IsWindowVisible(panel_.hwnd())) refresh(); else KillTimer(panel_.hwnd(), timerActivity); }
     else if (id == timerDeletion) pollDeletion();
+    else if (id == timerShare) pollSharing();
 }
 
 json::Object HistoryPageImpl::saveState() const {
@@ -983,6 +1137,7 @@ json::Object HistoryPageImpl::saveState() const {
     json::Object state{{"query", text(search_)}, {"filters", filters}};
     if (!selectedId_.empty() && !activityMode_) state["selectedIds"] = json::Array{selectedId_};
     if (!deletionId_.empty()) state["deletionId"] = deletionId_;
+    if (sharingActive_ && !sharingId_.empty()) state["sharingId"] = sharingId_;
     return state;
 }
 
@@ -1002,6 +1157,10 @@ void HistoryPageImpl::restoreState(const json::Object& state) {
     populating_ = false;
     deletionId_ = state.value("deletionId").toString();
     if (!deletionId_.empty()) SetTimer(panel_.hwnd(), timerDeletion, 500, nullptr);
+    sharingId_ = state.value("sharingId").toString();
+    sharingStopped_ = false;
+    sharingActive_ = !sharingId_.empty();
+    if (sharingActive_) SetTimer(panel_.hwnd(), timerShare, 500, nullptr);
 }
 }
 

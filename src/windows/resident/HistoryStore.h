@@ -28,6 +28,9 @@ public:
     Error clear(); // preserves identities retained by in-progress deletion
     Error saveDeletion(const json::Object&);
     json::Object deletion(const std::string& id, Error* = nullptr) const;
+    // Sharing journal and the item's effective receipt/status in one transaction (docs/proton-drive.md).
+    Error saveSharing(const json::Object& doc);
+    json::Object sharing(const std::string& id, Error* = nullptr) const;
     // Merges remote-management fields into an item's state and history row.
     Error updateRemote(const std::string& historyId, const json::Object& fields);
     std::vector<std::string> activeDeletionHistoryIds() const;

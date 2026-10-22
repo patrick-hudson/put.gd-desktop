@@ -5,6 +5,8 @@
 namespace putgd::process {
 Child::~Child() {
     if (channel) channel->close();
+    if (rawStdin) CloseHandle(rawStdin);
+    if (rawStdout) CloseHandle(rawStdout);
     if (process) {
         if (WaitForSingleObject(process, 0) != WAIT_OBJECT_0) TerminateProcess(process, 9);
         CloseHandle(process);
@@ -41,8 +43,28 @@ bool makePipe(HANDLE& readEnd, HANDLE& writeEnd, bool inheritRead) {
     SetHandleInformation(inheritRead ? writeEnd : readEnd, HANDLE_FLAG_INHERIT, 0);
     return true;
 }
+std::wstring environmentBlock(const std::map<std::string, std::string>& additions, const std::vector<std::string>& dropPrefixes) {
+    std::map<std::wstring, std::wstring, bool(*)(const std::wstring&, const std::wstring&)> variables([](const std::wstring& a, const std::wstring& b) { return _wcsicmp(a.c_str(), b.c_str()) < 0; });
+    if (wchar_t* strings = GetEnvironmentStringsW()) {
+        for (const wchar_t* p = strings; *p; p += wcslen(p) + 1) {
+            const std::wstring entry(p);
+            const auto eq = entry.find(L'=', 1);
+            if (eq == std::wstring::npos) continue;
+            const auto name = entry.substr(0, eq);
+            bool drop = false;
+            for (const auto& prefix : dropPrefixes) { const auto w = paths::wide(prefix); if (name.size() >= w.size() && _wcsnicmp(name.c_str(), w.c_str(), w.size()) == 0) drop = true; }
+            if (!drop) variables[name] = entry.substr(eq + 1);
+        }
+        FreeEnvironmentStringsW(strings);
+    }
+    for (const auto& pair : additions) variables[paths::wide(pair.first)] = paths::wide(pair.second);
+    std::wstring block;
+    for (const auto& pair : variables) { block += pair.first; block += L'='; block += pair.second; block += L'\0'; }
+    block += L'\0';
+    return block;
 }
-std::unique_ptr<Child> start(const std::string& executable, const std::vector<std::string>& arguments, bool hidden) {
+std::unique_ptr<Child> spawn(const std::string& executable, const std::vector<std::string>& arguments, bool hidden, bool raw,
+                             const std::map<std::string, std::string>& environment, const std::vector<std::string>& dropPrefixes) {
     auto child = std::make_unique<Child>();
     HANDLE stdinRead, stdinWrite, stdoutRead, stdoutWrite, stderrWrite;
     if (!makePipe(stdinRead, stdinWrite, true) || !makePipe(stdoutRead, stdoutWrite, false) || !makePipe(child->stderrRead, stderrWrite, false)) return nullptr;
@@ -58,13 +80,15 @@ std::unique_ptr<Child> start(const std::string& executable, const std::vector<st
     }
     auto commandW = paths::wide(command);
     const DWORD flags = CREATE_UNICODE_ENVIRONMENT | CREATE_SUSPENDED | (hidden ? CREATE_NO_WINDOW : 0);
-    const BOOL created = CreateProcessW(paths::wide(executable).c_str(), commandW.data(), nullptr, nullptr, TRUE, flags, nullptr, nullptr, &si, &pi);
+    std::wstring block; if (raw) block = environmentBlock(environment, dropPrefixes);
+    const BOOL created = CreateProcessW(paths::wide(executable).c_str(), commandW.data(), nullptr, nullptr, TRUE, flags, raw ? block.data() : nullptr, nullptr, &si, &pi);
     CloseHandle(stdinRead); CloseHandle(stdoutWrite); CloseHandle(stderrWrite);
     if (!created) { CloseHandle(stdinWrite); CloseHandle(stdoutRead); log::warning("process", "CreateProcess failed", {{"error", double(GetLastError())}}); return nullptr; }
     if (child->job) AssignProcessToJobObject(child->job, pi.hProcess);
     ResumeThread(pi.hThread); CloseHandle(pi.hThread);
     child->process = pi.hProcess; child->pid = pi.dwProcessId;
-    child->channel = std::make_unique<frames::Channel>(stdoutRead, stdinWrite);
+    if (raw) { child->rawStdin = stdinWrite; child->rawStdout = stdoutRead; }
+    else child->channel = std::make_unique<frames::Channel>(stdoutRead, stdinWrite);
     HANDLE err = child->stderrRead;
     child->stderrDrain = std::thread([err, pid = pi.dwProcessId] {
         char buffer[4096]; std::string line;
@@ -80,6 +104,11 @@ std::unique_ptr<Child> start(const std::string& executable, const std::vector<st
         }
     });
     return child;
+}
+}
+std::unique_ptr<Child> start(const std::string& executable, const std::vector<std::string>& arguments, bool hidden) { return spawn(executable, arguments, hidden, false, {}, {}); }
+std::unique_ptr<Child> startRaw(const std::string& executable, const std::vector<std::string>& arguments, const std::map<std::string, std::string>& environment, const std::vector<std::string>& dropPrefixes) {
+    return spawn(executable, arguments, true, true, environment, dropPrefixes);
 }
 bool launchDetached(const std::string& executable, const std::vector<std::string>& arguments) {
     std::string command = quoteArgument(executable);

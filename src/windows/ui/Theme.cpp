@@ -1148,6 +1148,7 @@ void drawListItem(DRAWITEMSTRUCT* item) {
         return false;
     };
     take(L" \x2014 needs attention", L"Needs attention");
+    take(L" (connected)", L"Connected") || take(L" (signed out)", L"Signed out") || take(L" (choose a folder)", L"Choose a folder");
     take(L" (default)", L"Default destination") || take(L" (not saved)", L"Not saved") || take(L" (not available on Windows)", L"Not available on Windows");
     const int left = face.left + scale(14, dpi);
     RECT top{left, face.top, face.right - scale(8, dpi), detail.empty() ? face.bottom : (face.top + face.bottom) / 2 + scale(1, dpi)};

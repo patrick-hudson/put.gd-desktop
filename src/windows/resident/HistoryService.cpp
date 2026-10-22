@@ -218,4 +218,85 @@ void HistoryService::cancelDelete(const std::string& id, JsonReply reply) {
     it->second->store(true);
     reply({}, {{"deleteOperationId", id}, {"cancellationRequested", true}, {"effect", "Already sent deletion cannot be rolled back"}});
 }
+
+// ---- sharing ---------------------------------------------------------------------
+void HistoryService::inspectSharing(const std::string& id, JsonReply reply) {
+    if (!operations_.ready()) { reply(notReady(), {}); return; }
+    const auto stopped = stoppedSharing_.find(id);
+    if (stopped != stoppedSharing_.end()) { reply({}, stopped->second); return; }
+    const auto root = operations_.dataRoot(), path = operations_.databasePath();
+    operations_.background([root, path, id](Error& e) { HistoryStore store(root, path); return store.sharing(id, &e); }, std::move(reply));
+}
+void HistoryService::changeSharing(const std::string& historyId, const std::string& action, const json::Object& options, JsonReply reply) {
+    if (!operations_.ready()) { reply(notReady(), {}); return; }
+    if (!in({"create", "revoke", "inspect"}, action)) { reply({"invalid_request", "Invalid sharing action", {}}, {}); return; }
+    for (const auto& pair : options) if (pair.first != "expirationDays" && pair.first != "passwordReference") { reply({"invalid_request", "Sharing options contain unsupported fields", {}}, {}); return; }
+    if (options.contains("expirationDays") && !json::integer(options.value("expirationDays"), 0, 365)) { reply({"invalid_request", "Invalid link expiration", {}}, {}); return; }
+    if (options.contains("passwordReference") && !options.value("passwordReference").isNull() && (!options.value("passwordReference").isString() || options.value("passwordReference").stringRef().empty() || options.value("passwordReference").stringRef().size() > 256)) { reply({"invalid_request", "Use a keychain password reference", {}}, {}); return; }
+    if (action != "inspect") operations_.invalidateCopyEligibility();
+    const auto root = operations_.dataRoot(), path = operations_.databasePath();
+    std::map<std::string, json::Object> stopped;
+    for (const auto& pair : stoppedSharing_) if (pair.second.value("historyId") == historyId.c_str()) stopped.insert(pair);
+    operations_.background([this, root, path, historyId, action, options, stopped](Error& e) {
+        HistoryStore store(root, path);
+        auto item = store.detail(historyId, &e); if (e) return json::Object{};
+        auto receipt = StorageReceipt::fromJson(item.value("receipt").toObject());
+        auto provider = operations_.providers().find(receipt.destination.providerId);
+        if (receipt.validate() || !provider || !provider->capabilities(receipt.destination).sharing) { e = {"sharing_unsupported", "This provider cannot manage share links", {}}; return json::Object{}; }
+        auto lock = operations_.objectLock(receipt.destination, receipt.objectReference, {}); std::lock_guard guard(*lock);
+        item = store.detail(historyId, &e); if (e) return json::Object{};
+        const auto previousId = item.value("shareOperationId").toString();
+        if (stopped.count(previousId) && action == "inspect") {
+            // A failed terminal write left a durable pending intent. Commit an unknown,
+            // URL-cleared outcome before permitting a new read-only reconciliation.
+            e = store.saveSharing(stopped.at(previousId)); if (e) return json::Object{};
+            item = store.detail(historyId, &e); if (e) return json::Object{};
+        }
+        if (item.value("uploadStatus") != "uploaded" || in({"pending", "deleting", "unknown", "removed", "already_missing", "changed"}, item.value("remoteStatus").toString())) { e = {"share_unavailable", "This item has no available confirmed upload", {}}; return json::Object{}; }
+        const auto shareStatus = item.value("shareStatus").toString();
+        if (shareStatus == "pending" || (action != "inspect" && shareStatus == "unknown")) { e = {"share_result_unknown", "Wait for or inspect the previous sharing result before another mutation", {}}; return json::Object{}; }
+        receipt = StorageReceipt::fromJson(item.value("receipt").toObject()); if (action == "revoke") receipt.directUrl.clear();
+        json::Object doc{{"id", uuid::create()}, {"historyId", historyId}, {"action", action}, {"options", options}, {"state", "accepted"}, {"status", "pending"}, {"receipt", receipt.toJson()}, {"progress", json::Object{}}};
+        e = store.saveSharing(doc); return doc;
+    }, [this, reply, stopped](Error e, json::Object doc) {
+        if (e) { reply(e, {}); return; }
+        for (const auto& pair : stopped) stoppedSharing_.erase(pair.first);
+        const auto id = doc.value("id").toString();
+        auto cancelled = std::make_shared<std::atomic_bool>(false); active_[id] = cancelled; notifyChanged();
+        reply({}, {{"shareOperationId", id}, {"sharing", doc}});
+        runSharing(doc, cancelled);
+    });
+}
+void HistoryService::recordStoppedSharing(json::Object doc, const Error& error) {
+    doc["state"] = "interrupted"; doc["status"] = "unknown"; doc["error"] = error.toJson();
+    auto receipt = doc.value("receipt").toObject(); receipt["directUrl"] = ""; doc["receipt"] = receipt;
+    stoppedSharing_[doc.value("id").toString()] = doc; notifyChanged();
+}
+void HistoryService::runSharing(json::Object doc, CancelFlag cancelled) {
+    const auto root = operations_.dataRoot(), path = operations_.databasePath(), id = doc.value("id").toString();
+    operations_.background([this, root, path, doc, cancelled](Error& e) mutable {
+        HistoryStore store(root, path);
+        auto receipt = StorageReceipt::fromJson(doc.value("receipt").toObject());
+        auto provider = operations_.providers().find(receipt.destination.providerId);
+        if (!provider) { e = {"provider_unavailable", "Restore access to the original destination", {}}; return doc; }
+        auto lock = operations_.objectLock(receipt.destination, receipt.objectReference, {}); std::lock_guard guard(*lock);
+        doc["state"] = "running"; if ((e = store.saveSharing(doc))) return doc;
+        Loop::instance().post([this] { notifyChanged(); });
+        auto checkpoint = [root, path, &doc](const json::Object& progress) -> Error {
+            auto proposed = doc; proposed["progress"] = progress; HistoryStore durable(root, path);
+            const auto error = durable.saveSharing(proposed); if (!error) doc = std::move(proposed); return error;
+        };
+        ShareRequest request{doc.value("id").toString(), doc.value("action").toString(), receipt, doc.value("options").toObject(), {}, cancelled};
+        auto result = provider->share(request, checkpoint, cancelled);
+        if (!shareResultMatchesReceipt(result, receipt)) { result.status = "unknown"; result.receipt = receipt; result.expiresAt.clear(); result.error = {"share_identity_changed", "Sharing did not confirm the recorded publication identity", {}}; }
+        if (!result.expiresAt.empty()) doc["expiresAt"] = result.expiresAt;
+        if (result.status != "shared") result.receipt.directUrl.clear();
+        doc["state"] = "completed"; doc["status"] = result.status; doc["receipt"] = result.receipt.toJson(); doc["progress"] = result.progress; doc["error"] = result.error.toJson();
+        e = store.saveSharing(doc); return doc;
+    }, [this, id](Error e, json::Object doc) {
+        if (e) recordStoppedSharing(doc, e);
+        else log::info("history", "Sharing finished", {{"shareOperationId", id}, {"action", doc.value("action")}, {"status", doc.value("status")}, {"error", doc.value("error")["code"]}});
+        active_.erase(id); notifyChanged();
+    });
+}
 }

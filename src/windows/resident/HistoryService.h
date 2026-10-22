@@ -1,7 +1,7 @@
 #pragma once
-// Offline history browsing, explicit link copying and separately identified
-// remote deletion (docs/architecture.md). Sharing methods answer honestly that
-// no Windows provider manages links.
+// Offline history browsing, explicit link copying, separately identified remote
+// deletion (docs/architecture.md) and share-link management for providers that
+// support it (docs/proton-drive.md).
 #include "resident/OperationService.h"
 
 namespace putgd {
@@ -20,14 +20,21 @@ public:
     void inspectDelete(const std::string& id, JsonReply);
     void retryDelete(const std::string& id, JsonReply);
     void cancelDelete(const std::string& id, JsonReply);
+    // history.share / history.revokeLink / history.inspectLink and share.inspect.
+    void changeSharing(const std::string& historyId, const std::string& action, const json::Object& options, JsonReply);
+    void inspectSharing(const std::string& id, JsonReply);
     void expireConfigured();
     void shutdown();
     std::function<void()> onChanged;
 private:
     json::Object prepare(const std::vector<std::string>& ids, Error&) const;
     void runDelete(json::Object doc, CancelFlag);
+    void runSharing(json::Object doc, CancelFlag);
+    void recordStoppedSharing(json::Object doc, const Error&);
     void notifyChanged();
     OperationService& operations_;
     std::map<std::string, CancelFlag> active_;
+    // Sharing results whose terminal journal write failed: served by share.inspect until committed.
+    std::map<std::string, json::Object> stoppedSharing_;
 };
 }

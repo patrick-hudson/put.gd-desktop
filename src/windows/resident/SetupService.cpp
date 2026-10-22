@@ -19,6 +19,7 @@ void SetupService::finish(const std::string& id, Error error, json::Object resul
     auto found = jobs_.find(id);
     if (found == jobs_.end() || found->second.value("state") != "running") return;
     auto& record = found->second;
+    record.remove("event");
     record["result"] = result; record["state"] = error ? "failed" : "completed"; record["error"] = error.toJson();
     active_.erase(record.value("profileId").toString() + "/" + record.value("kind").toString());
     completed_.push_back(id);
@@ -30,9 +31,12 @@ void SetupService::start(const std::string& kind, const std::string& profileId, 
     if (auto e = resolveProfile(profileId, expectedRevision, profile)) { reply(e, {}); return; }
     const auto provider = providers_.find(profile.value("provider").toString());
     if (!provider) { reply({"unknown_provider", "No registered storage provider has this identifier", {}}, {}); return; }
-    if (kind == "connectAccount" || kind == "inspectAccount" || kind == "createFolder" || kind == "storeSharePassword")
-        { reply({"setup_unavailable", "This provider setup is not available on Windows", {{"kind", kind}}}, {}); return; }
-    if (kind != "storeCredentials" && kind != "unlockCredentials" && kind != "testDestination") { reply({"invalid_request", "Unknown setup kind", {}}, {}); return; }
+    const bool accountSetup = kind == "connectAccount" || kind == "inspectAccount" || kind == "createFolder" || kind == "storeSharePassword";
+    if (!accountSetup && kind != "storeCredentials" && kind != "unlockCredentials" && kind != "testDestination") { reply({"invalid_request", "Unknown setup kind", {}}, {}); return; }
+    if (kind == "createFolder" && (input.size() != 1 || !input.value("name").isString() || input.value("name").stringRef().empty() || input.value("name").stringRef().size() > 255)) { reply({"invalid_request", "Invalid setup fields or parameter types", {}}, {}); return; }
+    if (kind == "storeSharePassword" && (input.size() != 2 || !input.value("password").isString() || input.value("password").stringRef().size() > 4096 || !input.value("reference").isString() || input.value("reference").stringRef().empty() || input.value("reference").stringRef().size() > 256)) { reply({"invalid_request", "Invalid setup fields or parameter types", {}}, {}); return; }
+    if ((kind == "connectAccount" || kind == "inspectAccount") && !input.empty()) { reply({"invalid_request", "Invalid setup fields or parameter types", {}}, {}); return; }
+    if (accountSetup && !provider->available()) { reply({"setup_unavailable", "Account setup is unavailable: " + provider->unavailableReason(), {{"kind", kind}, {"reason", provider->unavailableReason()}}}, {}); return; }
     if (active_.count(profileId + "/" + kind)) { reply({"setup_busy", "A setup job of this kind is already running for this destination", {}}, {}); return; }
     int running = 0; for (const auto& pair : jobs_) if (pair.second.value("state") == "running") ++running;
     if (running >= 32) { reply({"setup_busy", "Too many active setup jobs", {}}, {}); return; }
@@ -43,6 +47,17 @@ void SetupService::start(const std::string& kind, const std::string& profileId, 
     const auto credentialsField = profile.value("credentials").toObject();
     const bool keychain = credentialsField.value("mode") == "keychain";
     const auto reference = credentialsField.value("reference").toString();
+    if (accountSetup) {
+        // Provider account actions run off the owner thread; the record only ever holds the safe job id,
+        // transient UI events (the sign-in URL) and the provider's non-secret result.
+        Destination destination{profile.value("provider").toString(), profileId, expectedRevision, profile.value("settings").toObject(), credentialsField};
+        auto event = [this, id](const json::Object& value) {
+            Loop::instance().post([this, id, value] { auto found = jobs_.find(id); if (found != jobs_.end() && found->second.value("state") == "running") { found->second["event"] = value; if (onChanged) onChanged(id); } });
+        };
+        operations_.background([provider, destination, kind, input, event](Error& error) { return provider->setup(kind, destination, input, error, event); },
+            [this, id](Error error, json::Object result) { finish(id, error, result); });
+        return;
+    }
     if (kind == "storeCredentials") {
         Credentials c{input.value("accessKey").toString(), input.value("secretKey").toString(), input.value("sessionToken").toString()};
         if (c.accessKey.empty() || c.secretKey.empty() || c.accessKey.size() > 256 || c.secretKey.size() > 512 || c.sessionToken.size() > 4096) { finish(id, {"credentials_invalid", "Enter an access key ID and secret access key", {}}, {}); return; }

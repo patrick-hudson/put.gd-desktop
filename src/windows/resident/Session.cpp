@@ -74,7 +74,7 @@ void Session::dispatch(const json::Object& request, JsonReply reply) {
     if (request.value("session").stringRef() != server_.path()) { reply({"wrong_session", "Request targets a different resident session", {}}, {}); return; }
     const auto method = request.value("method").stringRef();
     const auto p = request.value("params").toObject();
-    if (!operations_.ready() && (startsWith(method, "operation.") || startsWith(method, "history.") || startsWith(method, "delete.") || method == "cache.clear")) { reply({"initializing", "Wait for resident journal recovery", {}}, {}); return; }
+    if (!operations_.ready() && (startsWith(method, "operation.") || startsWith(method, "history.") || startsWith(method, "delete.") || startsWith(method, "share.") || method == "cache.clear")) { reply({"initializing", "Wait for resident journal recovery", {}}, {}); return; }
     if (method == "ui.quit") { if (!p.empty()) { reply(invalid(), {}); return; } reply({}, {{"quitting", true}}); Loop::instance().singleShot(0, [this] { if (onQuit) onQuit(); }); return; }
     if (method == "ui.show") {
         if (!fields(p, {"view"}) || !p.value("view").isString()) { reply(invalid(), {}); return; }
@@ -112,10 +112,11 @@ void Session::dispatch(const json::Object& request, JsonReply reply) {
         else reply({"unknown_method", "Unknown operation method", {}}, {});
         return;
     }
-    if (method == "history.share" || method == "history.revokeLink" || method == "history.inspectLink" || method == "share.inspect") {
+    if (method == "history.share" || method == "history.revokeLink" || method == "history.inspectLink") {
         if (!fields(p, {"id"}) || !stringField(p, "id")) { reply(invalid(), {}); return; }
-        reply({"sharing_unsupported", "No Windows destination manages share links", {}}, {}); return;
+        history_.changeSharing(p.value("id").stringRef(), method == "history.share" ? "create" : method == "history.revokeLink" ? "revoke" : "inspect", {}, reply); return;
     }
+    if (method == "share.inspect") { if (!fields(p, {"id"}) || !stringField(p, "id")) { reply(invalid(), {}); return; } history_.inspectSharing(p.value("id").stringRef(), reply); return; }
     if (method == "history.list") {
         const std::vector<std::string> allowed{"limit", "offset", "search", "category", "mime", "profileId", "uploadStatus", "localStatus", "remoteStatus", "from", "to"};
         if (!fields(p, {}, allowed)) { reply(invalid(), {}); return; }

@@ -38,6 +38,21 @@ struct UploadResult { std::string status; StorageReceipt receipt; Error error; }
 struct StatResult { std::string status; StorageReceipt receipt; Error error; };   // own, foreign, missing, unknown
 struct DeleteRequest { std::string id; StorageReceipt receipt; json::Object progress; };
 struct DeleteResult { std::string status; json::Object progress; Error error; };
+// Link management (docs/proton-drive.md): one durable sharing operation per mutation.
+struct ShareRequest {
+    std::string id, action; // create, revoke, inspect
+    StorageReceipt receipt;
+    json::Object options, progress; // non-secret options and opaque driver progress
+    CancelFlag cancellation;
+};
+struct ShareResult {
+    std::string status; StorageReceipt receipt; json::Object progress; Error error; // shared, private, revoked, changed, unknown, failed
+    std::string expiresAt; // provider-confirmed link expiry (ISO 8601 UTC), also once passed; empty when none
+};
+bool shareResultMatchesReceipt(const ShareResult&, const StorageReceipt& original);
+// Provider account setup (connectAccount, inspectAccount, createFolder, storeSharePassword);
+// `event` receives transient UI events such as {"event":"auth","url":...}.
+using SetupEvent = std::function<void(const json::Object&)>;
 class StorageProvider {
 public:
     virtual ~StorageProvider() = default;
@@ -59,8 +74,18 @@ public:
     virtual StatResult reconcile(const UploadRequest&, CancelFlag) = 0;
     virtual DeleteResult remove(const DeleteRequest&, DurableCheckpoint, CancelFlag) = 0;
     virtual json::Object testDestination(const Destination&, DurableCheckpoint, Error&) = 0;
+    virtual ShareResult share(const ShareRequest& r, DurableCheckpoint, CancelFlag) { return {"failed", r.receipt, {}, {"sharing_unsupported", "This provider cannot manage share links", {}}, {}}; }
+    virtual json::Object setup(const std::string& kind, const Destination&, const json::Object&, Error& error, SetupEvent) { error = {"setup_unavailable", "This provider has no account setup", {{"kind", kind}}}; return {}; }
+    // A longer current request deadline an explicit Retry may adopt; nullopt keeps the accepted one.
+    virtual std::optional<int> retryRequestTimeout(const Destination&, const json::Object& /*currentProfile*/) const { return std::nullopt; }
     virtual json::Object diagnostics() const { return {}; }
 };
+inline bool shareResultMatchesReceipt(const ShareResult& result, const StorageReceipt& original) {
+    static const char* const statuses[] = {"shared", "revoked", "private", "changed", "unknown", "failed"};
+    bool known = false; for (const auto* s : statuses) if (result.status == s) known = true;
+    return known && !result.receipt.validate() && result.receipt.destination.toJson() == original.destination.toJson() && result.receipt.objectReference == original.objectReference &&
+        result.receipt.concurrencyToken == original.concurrencyToken && result.receipt.publicationId == original.publicationId;
+}
 class ProviderRegistry {
 public:
     void add(std::shared_ptr<StorageProvider> provider) { providers_[provider->id()] = std::move(provider); }
@@ -73,7 +98,8 @@ public:
     Error validateCredentials(const std::string& id, const json::Object& credentials) const { const auto p = find(id); return p ? p->validateCredentials(credentials) : Error{}; }
     json::Object capabilities() const {
         json::Object result;
-        for (const auto& pair : providers_) result[pair.first] = json::Object{{"available", pair.second->available()}, {"reason", pair.second->unavailableReason()}, {"sharing", false}};
+        // The Linux shape (every capability field) plus availability, so shared UIs can show why a provider is off.
+        for (const auto& pair : providers_) { auto o = pair.second->capabilities({}).toJson(); o["available"] = pair.second->available(); o["reason"] = pair.second->unavailableReason(); result[pair.first] = o; }
         return result;
     }
     json::Object diagnostics() const { json::Object r; for (const auto& pair : providers_) r[pair.first] = pair.second->diagnostics(); return r; }

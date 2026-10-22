@@ -5,6 +5,7 @@
 #include "common/Text.h"
 #include "core/Naming.h"
 #include "core/Operation.h"
+#include "core/ProtonSettings.h"
 #include "core/S3Settings.h"
 #include "core/SanitizedPng.h"
 #include "core/Settings.h"
@@ -104,6 +105,34 @@ static void namingTests() {
     named = naming::batch(batch, "original", "overwrite", {}); CHECK(named[0].status == "conflict" && named[2].status == "conflict");
     CHECK(naming::category("video/mp4") == "videos" && naming::category("application/zip") == "other");
 }
+static void protonTests() {
+    const std::string node = std::string(44, 'A') + std::string(44, 'b') + "~" + std::string(22, 'z');
+    CHECK(proton::nodeUid(node)); CHECK(proton::nodeUid(std::string(22, '_') + "~" + std::string(108, '=')));
+    CHECK(!proton::nodeUid("abc~def")); CHECK(!proton::nodeUid(node + "~x")); CHECK(!proton::nodeUid(std::string(22, 'a') + "~" + std::string(22, '!')));
+    auto s = proton::defaults();
+    CHECK(!proton::validateSettings(s));
+    s["folderUid"] = node; CHECK(proton::validateSettings(s).code == "config_invalid");          // folder without account
+    s["accountRootUid"] = node; CHECK(!proton::validateSettings(s));
+    s["folderName"] = "Screenshots"; CHECK(!proton::validateSettings(s));
+    s["folderName"] = ""; CHECK(proton::validateSettings(s)); s.remove("folderName");
+    s["linkExpirationDays"] = 366; CHECK(proton::validateSettings(s)); s["linkExpirationDays"] = 365; CHECK(!proton::validateSettings(s));
+    s["requestTimeoutMs"] = 999; CHECK(proton::validateSettings(s)); s["requestTimeoutMs"] = proton::maximumRequestTimeoutMs; CHECK(!proton::validateSettings(s));
+    s["sharePasswordReference"] = ""; CHECK(proton::validateSettings(s)); s["sharePasswordReference"] = "putgd/proton/link/abc"; CHECK(!proton::validateSettings(s));
+    s["extra"] = 1; CHECK(proton::validateSettings(s)); s.remove("extra");
+    CHECK(!proton::validateCredentials({{"mode", "keychain"}, {"reference", "putgd/proton/x"}}));
+    CHECK(proton::validateCredentials({{"mode", "session"}, {"reference", json::Value()}}).code == "config_invalid");
+    CHECK(proton::serializationKey(s, {}, "a.png") == crypto::Sha256::hexDigest(json::serialize(json::Array{node, node, "a.png"})));
+    CHECK(proton::serializationKey(s, {{"accountRootUid", "r"}, {"folderUid", "f"}, {"name", "n"}}, "ignored") == crypto::Sha256::hexDigest(json::serialize(json::Array{"r", "f", "n"})));
+    json::Object credentials{{"mode", "keychain"}, {"reference", "putgd/proton/x"}};
+    json::Object profile{{"id", "p"}, {"provider", "proton-drive"}, {"credentials", credentials}, {"settings", s}};
+    auto accepted = s; accepted["requestTimeoutMs"] = 30000;
+    CHECK(proton::retryRequestTimeout("p", "proton-drive", credentials, accepted, profile) == proton::maximumRequestTimeoutMs);
+    auto shorter = profile; { auto cs = s; cs["requestTimeoutMs"] = 5000; shorter["settings"] = cs; }
+    CHECK(proton::retryRequestTimeout("p", "proton-drive", credentials, accepted, shorter) == 30000); // never shortens the accepted budget
+    auto other = profile; { auto cs = s; cs["folderUid"] = node; cs["accountRootUid"] = std::string(22, 'q') + "~" + std::string(22, 'q'); other["settings"] = cs; }
+    CHECK(!proton::retryRequestTimeout("p", "proton-drive", credentials, accepted, other));
+    CHECK(!proton::retryRequestTimeout("other", "proton-drive", credentials, accepted, profile));
+}
 static void s3Tests() {
     auto settings = Settings::developmentTemplate("/d").value("profiles").arrayRef()[0].objectRef().value("settings").toObject();
     CHECK(!s3::validateSettings(settings));
@@ -150,7 +179,7 @@ static void operationTests() {
     CHECK(Operation::activeState("editing") && !Operation::activeState("completed"));
 }
 int main() {
-    jsonTests(); shaTests(); shortcutTests(); settingsTests(); namingTests(); s3Tests(); operationTests(); pngTests();
+    jsonTests(); shaTests(); shortcutTests(); settingsTests(); namingTests(); s3Tests(); protonTests(); operationTests(); pngTests();
     if (failures) { std::fprintf(stderr, "%d failure(s)\n", failures); return 1; }
     std::printf("windows core contract: ok\n");
     return 0;

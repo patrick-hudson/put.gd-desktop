@@ -53,7 +53,9 @@ Error HistoryStore::initialize() {
 }
 json::Object HistoryStore::publicRecord(json::Object data) const {
     if (data.contains("shareReceipt")) data["receipt"] = data.take("shareReceipt");
-    data["linkAvailable"] = OperationItem::fromJson(data).linkAvailable();
+    // A link past its confirmed expiry no longer opens, so it is not offered for copying.
+    const auto expires = files::parseIsoUtcMs(data.value("shareExpiresAt").toString());
+    data["linkAvailable"] = OperationItem::fromJson(data).linkAvailable() && !(expires >= 0 && expires <= files::parseIsoUtcMs(files::nowIsoUtc()));
     // Previews move with the data root; only the tail is trusted.
     const auto preview = data.value("previewPath").toString();
     if (!preview.empty()) data["previewPath"] = previewPathFor(root_, data.value("id").toString());
@@ -116,7 +118,9 @@ Operation HistoryStore::operation(const std::string& id, Error* error) const {
         sqlite::Statement s(db_, "SELECT data FROM item_state WHERE id=?"); s.bind(1, item.artifact.id);
         if (s.step()) { const auto state = decode(s.blob(0)); if (state.contains("remoteStatus")) item.remoteStatus = state.value("remoteStatus").toString();
             if (state.contains("shareReceipt")) item.receipt = StorageReceipt::fromJson(state.value("shareReceipt").toObject());
-            if (state.contains("shareStatus")) item.shareStatus = state.value("shareStatus").toString(); }
+            if (state.contains("shareStatus")) item.shareStatus = state.value("shareStatus").toString();
+            if (state.contains("shareIntent")) item.shareIntent = state.value("shareIntent").toString();
+            if (state.contains("shareIntentOptions")) item.shareIntentOptions = state.value("shareIntentOptions").toObject(); }
         if (!item.artifact.path.empty()) item.artifact.path = artifactPathFor(root_, op.id, item.artifact.id);
     }
     return op;
@@ -214,6 +218,42 @@ json::Object HistoryStore::deletion(const std::string& id, Error* error) const {
     sqlite::Statement q(db_, "SELECT data FROM deletions WHERE id=?"); q.bind(1, id);
     if (!q.step()) { if (error) *error = q.failed() ? sqlError() : Error{"deletion_not_found", "No deletion operation has this identifier", {}}; return {}; }
     return decode(q.blob(0));
+}
+json::Object HistoryStore::sharing(const std::string& id, Error* error) const {
+    if (error_) { if (error) *error = error_; return {}; }
+    sqlite::Statement q(db_, "SELECT data FROM sharing_operations WHERE id=?"); q.bind(1, id);
+    if (!q.step()) { if (error) *error = q.failed() ? sqlError() : Error{"share_not_found", "No sharing operation has this identifier", {}}; return {}; }
+    return decode(q.blob(0));
+}
+Error HistoryStore::saveSharing(const json::Object& doc) {
+    if (error_) return error_;
+    const auto id = doc.value("id").toString(), historyId = doc.value("historyId").toString();
+    const auto receipt = StorageReceipt::fromJson(doc.value("receipt").toObject());
+    if (id.empty() || historyId.empty() || receipt.validate()) return {"share_journal_invalid", "Incomplete sharing intent", {}};
+    if (!db_.begin()) return sqlError();
+    auto fail = [&] { db_.rollback(); return sqlError(); };
+    json::Object remote;
+    { sqlite::Statement q(db_, "SELECT data FROM item_state WHERE id=?"); q.bind(1, historyId);
+      if (!q.step()) { db_.rollback(); return q.failed() ? sqlError() : Error{"history_not_found", "Uploaded item ledger not found", {}}; }
+      remote = decode(q.blob(0)); }
+    // Remember a create until it is confirmed shared or explicitly abandoned.
+    // A read-only inspection that proves private resolves uncertainty, not intent.
+    auto intent = remote.value("shareIntent").toString();
+    const auto status = doc.value("status").toString(), action = doc.value("action").toString();
+    if (action == "create") { intent = "create"; remote["shareIntentOptions"] = doc.value("options").toObject(); }
+    if (action == "revoke" || status == "shared" || status == "revoked" || status == "changed") intent.clear();
+    if (intent.empty()) remote["shareIntentOptions"] = json::Object{};
+    // A confirmed result replaces the recorded link expiry; an uncertain one keeps the last confirmed value.
+    if (status == "shared" || status == "private" || status == "revoked" || status == "changed") { if (doc.value("expiresAt").isString()) remote["shareExpiresAt"] = doc.value("expiresAt"); else remote.remove("shareExpiresAt"); }
+    remote["shareIntent"] = intent; remote["shareStatus"] = status; remote["shareReceipt"] = doc.value("receipt"); remote["shareOperationId"] = id; remote["shareProgress"] = doc.value("progress");
+    { sqlite::Statement q(db_, "INSERT INTO sharing_operations VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data"); q.bind(1, id).bind(2, historyId).bindBlob(3, encode(doc)); if (!q.exec()) return fail(); }
+    { sqlite::Statement u(db_, "UPDATE item_state SET data=? WHERE id=?"); u.bindBlob(1, encode(remote)).bind(2, historyId); if (!u.exec()) return fail(); }
+    { sqlite::Statement h(db_, "SELECT data FROM history WHERE id=?"); h.bind(1, historyId);
+      if (h.step()) { auto data = decode(h.blob(0)); for (const auto& pair : remote) data[pair.first] = pair.second; if (!remote.contains("shareExpiresAt")) data.remove("shareExpiresAt"); data["receipt"] = doc.value("receipt");
+          sqlite::Statement u(db_, "UPDATE history SET data=? WHERE id=?"); u.bindBlob(1, encode(data)).bind(2, historyId); if (!u.exec()) return fail(); }
+      else if (h.failed()) return fail(); }
+    if (!db_.commit()) return fail();
+    return {};
 }
 Error HistoryStore::updateRemote(const std::string& historyId, const json::Object& fields) {
     if (error_) return error_;

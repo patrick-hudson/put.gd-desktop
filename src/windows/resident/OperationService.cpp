@@ -503,10 +503,45 @@ Operation OperationService::run(Job job) {
         }
         if (!saveItem(item)) return op;
     }
-    int uploaded = 0, pending = 0, failed = 0;
-    for (const auto& item : op.items) { if (item.uploadStatus == "uploaded" || item.uploadStatus == "skipped" || item.uploadStatus == "local_only") ++uploaded; else if (item.uploadStatus == "unknown" || item.uploadStatus == "stored" || item.uploadStatus == "uploading") ++pending; else ++failed; }
-    if (job.cancelled->load() && pending + failed > 0) { op.cancelled = true; op.state = "cancelled"; }
-    else if (failed == 0 && pending == 0) op.state = "completed";
+    // Persist the uploaded receipt before the separate sharing mutation (docs/proton-drive.md).
+    // Sharing failure leaves an uploaded file and resumes only the link step on explicit retry.
+    if (capabilities.sharing) for (auto& item : op.items) {
+        if (item.uploadStatus != "uploaded" || job.cancelled->load()) continue;
+        auto lock = objectLock(item.receipt.destination, item.receipt.objectReference, {}); std::lock_guard guard(*lock);
+        Error detailError; const auto current = store.detail(item.artifact.id, &detailError);
+        if (!detailError && current.contains("shareStatus")) { item.shareStatus = current.value("shareStatus").toString(); item.shareIntent = current.value("shareIntent").toString(); item.shareIntentOptions = current.value("shareIntentOptions").toObject(); item.receipt = StorageReceipt::fromJson(current.value("receipt").toObject()); }
+        if (item.shareStatus != "not_requested" && item.shareStatus != "unknown" && !((item.shareStatus == "private" || item.shareStatus == "failed") && item.shareIntent == "create")) continue;
+        if (publicationMode == "private" && item.shareStatus != "unknown" && item.shareIntent != "create") { item.shareStatus = "private"; item.phase = "private"; if (!saveItem(item)) return op; continue; }
+        if (!item.receipt.directUrl.empty()) continue;
+        op.phase = "sharing"; item.phase = "sharing"; if (!saveItem(item)) return op;
+        const auto shareId = uuid::create();
+        json::Object doc{{"id", shareId}, {"historyId", item.artifact.id}, {"action", item.shareStatus == "unknown" ? "inspect" : "create"}, {"state", "running"}, {"status", "pending"}, {"receipt", item.receipt.toJson()}, {"progress", json::Object{}}, {"options", item.shareIntentOptions}};
+        if (auto e = store.saveSharing(doc)) { item.error = e; op.state = "partial"; saveItem(item); return op; }
+        auto checkpoint = [this, &doc](const json::Object& progress) -> Error { auto proposed = doc; proposed["progress"] = progress; HistoryStore durable(root_, paths_db_); const auto e = durable.saveSharing(proposed); if (!e) doc = std::move(proposed); return e; };
+        ShareRequest request{shareId, doc.value("action").toString(), item.receipt, doc.value("options").toObject(), doc.value("progress").toObject(), job.cancelled};
+        ++storageRequests_; notifyActivity();
+        auto result = provider->share(request, checkpoint, job.cancelled);
+        --storageRequests_; notifyActivity();
+        if (!shareResultMatchesReceipt(result, item.receipt)) { result.status = "unknown"; result.receipt = item.receipt; result.receipt.directUrl.clear(); result.expiresAt.clear(); result.error = {"share_identity_changed", "Sharing returned a different publication identity", {}}; }
+        if (result.status != "shared") result.receipt.directUrl.clear();
+        item.receipt = result.receipt; item.shareStatus = result.status; item.phase = result.status; item.error = result.error;
+        log::write(result.status == "shared" || result.status == "private" ? log::Level::Info : log::Level::Warning, "operations", "Sharing finished", {{"operationId", op.id}, {"itemId", item.artifact.id}, {"action", request.action}, {"status", result.status}, {"error", result.error.code}});
+        doc["state"] = "completed"; doc["status"] = result.status; doc["receipt"] = result.receipt.toJson(); doc["progress"] = result.progress; doc["error"] = result.error.toJson();
+        if (!result.expiresAt.empty()) doc["expiresAt"] = result.expiresAt;
+        if (auto e = store.saveSharing(doc)) { item.error = e; op.state = "partial"; saveItem(item); return op; }
+        Error committedError; const auto committed = store.sharing(shareId, &committedError);
+        if (result.status == "shared" || result.status == "revoked" || result.status == "changed") { item.shareIntent.clear(); item.shareIntentOptions = {}; }
+        else if (!committedError && committed.value("action") == "create") { item.shareIntent = "create"; item.shareIntentOptions = committed.value("options").toObject(); }
+        if (!saveItem(item)) return op;
+    }
+    int uploaded = 0, pending = 0, failed = 0; bool sharingIncomplete = false; Error shareError;
+    for (const auto& item : op.items) {
+        if (item.uploadStatus == "uploaded" || item.uploadStatus == "skipped" || item.uploadStatus == "local_only") ++uploaded; else if (item.uploadStatus == "unknown" || item.uploadStatus == "stored" || item.uploadStatus == "uploading") ++pending; else ++failed;
+        if (item.uploadStatus == "uploaded" && (item.shareStatus == "failed" || item.shareStatus == "unknown" || item.shareStatus == "changed" || item.shareIntent == "create")) { sharingIncomplete = true; if (!shareError && item.error) shareError = item.error; }
+    }
+    if (job.cancelled->load() && (pending + failed > 0 || sharingIncomplete)) { op.cancelled = true; op.state = "cancelled"; }
+    else if (failed == 0 && pending == 0 && !sharingIncomplete) op.state = "completed";
+    else if (failed == 0 && pending == 0) { op.state = "partial"; op.error = shareError ? shareError : Error{"sharing_incomplete", "The upload finished but its share link is not confirmed; use Retry", {}}; }
     else if (uploaded > 0) { op.state = "partial"; op.error = {"partial_upload", "Some items did not upload; use Retry", {}}; }
     else { op.state = "failed"; if (!op.error) { for (const auto& item : op.items) if (item.error) { op.error = item.error; break; } } }
     save();
@@ -685,7 +720,13 @@ void OperationService::retry(const std::string& id, JsonReply reply) {
         if (e) { active_.erase(id); reply(e, {}); return; }
         auto op = Operation::fromJson(doc);
         if (op.items.empty()) { active_.erase(id); reply({"artifact_missing", "No acquired artifacts; invoke a new action", {}}, {}); return; }
-        bool pending = false; for (const auto& i : op.items) if (!Operation::terminalUpload(i.uploadStatus)) pending = true;
+        // Sharing left incomplete also retries: the link step resumes without another upload.
+        const auto provider = providers_.find(op.destination.providerId);
+        const bool sharing = provider && !op.destination.profileId.empty() && provider->capabilities(op.destination).sharing;
+        auto mode = Settings::fromValidated(op.settingsDocument).action(op.action).publicationMode; if (mode == "default" && provider) mode = provider->defaultPublicationMode(op.destination);
+        bool pending = false;
+        for (const auto& i : op.items) if (!Operation::terminalUpload(i.uploadStatus) || (sharing && i.uploadStatus == "uploaded" && (i.shareStatus == "unknown" || (i.shareStatus == "private" && i.shareIntent == "create") || (mode == "share" && (i.shareStatus == "not_requested" || (i.shareStatus == "failed" && i.shareIntent == "create")))))) pending = true;
+        if (provider) { const auto profiles = settingsSnapshot().profiles; const auto current = profiles.find(op.destination.profileId); if (current != profiles.end()) if (auto adopted = provider->retryRequestTimeout(op.destination, current->second)) op.requestTimeoutMs = *adopted; }
         if (!pending) { active_.erase(id); performCopy(op, true, [this, reply, op](Error error, json::Object result) mutable { background([this, op](Error& err) { HistoryStore store(root_, paths_db_); err = store.saveOperation(op, &providers_); return json::Object{}; }, [reply, error, result](Error, json::Object) { reply(error, result); }); }); return; }
         op.cancelled = false; op.error = {}; op.state = "stored"; op.phase = "queued"; op.invocation = ++invocation_; op.clipboardRevision = clipboard_.revision(); op.copyStatus = "pending";
         for (auto& item : op.items) if (item.uploadStatus == "failed" || item.uploadStatus == "cancelled") { item.uploadStatus = "stored"; item.error = {}; }

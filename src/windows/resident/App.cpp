@@ -14,6 +14,7 @@
 #include "resident/Hotkeys.h"
 #include "resident/LoginStartup.h"
 #include "resident/OperationService.h"
+#include "resident/ProtonProvider.h"
 #include "resident/Resident.h"
 #include "resident/S3Provider.h"
 #include "resident/Session.h"
@@ -26,8 +27,8 @@
 
 namespace putgd {
 namespace {
-// Proton Drive needs the bundled Node/Bun runtime helper; it is not packaged for
-// Windows. Configurations naming it still validate so a shared config file loads.
+// Backblaze B2 has no Windows provider yet. Configurations naming it still
+// validate so a shared config file loads; its destinations report unavailability.
 class UnavailableProvider final : public StorageProvider {
 public:
     explicit UnavailableProvider(std::string id) : id_(std::move(id)) {}
@@ -87,7 +88,9 @@ int residentMain(const std::vector<std::string>& args) {
     CredentialStore credentials;
     ProviderRegistry providers;
     providers.add(std::make_shared<S3Provider>(credentials));
-    providers.add(std::make_shared<UnavailableProvider>("proton"));
+    auto proton = std::make_shared<ProtonProvider>(root);
+    providers.add(proton);
+    providers.add(std::make_shared<UnavailableProvider>("backblaze-b2"));
     SettingsService settings(paths::configPath(), [&providers](const std::string& id, const json::Object& s) { return providers.validate(id, s); },
                              [&providers](const std::string& id, const json::Object& c) { return providers.validateCredentials(id, c); });
     const auto loaded = settings.load();
@@ -127,7 +130,7 @@ int residentMain(const std::vector<std::string>& args) {
         if (quitting) return;
         quitting = true;
         log::info("app", "Resident quitting");
-        ui.stop(); operations.shutdown(); history.shutdown(); session.stop(); settings.stopWatching();
+        ui.stop(); proton->shutdown(); operations.shutdown(); history.shutdown(); session.stop(); settings.stopWatching();
         loop.quit(0);
     };
     session.onQuit = quit;

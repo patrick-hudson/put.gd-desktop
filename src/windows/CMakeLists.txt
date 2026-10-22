@@ -65,7 +65,7 @@ endif()
 # Portable core: no Windows headers. Tested on Linux and used by every executable.
 add_library(putgd_win_core STATIC
   common/Json.cpp common/Text.cpp common/Shortcut.cpp common/Sha256.cpp
-  core/Settings.cpp core/Naming.cpp core/Operation.cpp core/SettingsPatch.cpp core/S3Settings.cpp core/SanitizedPng.cpp
+  core/Settings.cpp core/Naming.cpp core/Operation.cpp core/SettingsPatch.cpp core/S3Settings.cpp core/SanitizedPng.cpp core/ProtonSettings.cpp
   s3/SigV4.cpp)
 target_link_libraries(putgd_win_core PUBLIC putgd_win_options)
 
@@ -93,7 +93,7 @@ if(WIN32)
     resident/main.cpp resident/App.cpp resident/Resident.cpp resident/Tray.cpp resident/Hotkeys.cpp resident/Clipboard.cpp
     resident/Session.cpp resident/SettingsService.cpp resident/HistoryStore.cpp resident/Artifacts.cpp
     resident/OperationService.cpp resident/HistoryService.cpp resident/SetupService.cpp resident/CredentialStore.cpp
-    resident/LoginStartup.cpp resident/Helpers.cpp resident/S3Provider.cpp resident/UpdateService.cpp resident/UiProcess.cpp
+    resident/LoginStartup.cpp resident/Helpers.cpp resident/S3Provider.cpp resident/ProtonProvider.cpp resident/UpdateService.cpp resident/UiProcess.cpp
     s3/S3Worker.cpp s3/WinHttp.cpp
     capture/CaptureMain.cpp capture/Overlay.cpp capture/Grab.cpp capture/Png.cpp capture/ImageJob.cpp
     ui/UiMain.cpp ui/MainWindow.cpp ui/SettingsPage.cpp ui/DestinationsPage.cpp ui/HistoryPage.cpp ui/UiSession.cpp ui/Controls.cpp ui/Theme.cpp
@@ -102,6 +102,22 @@ if(WIN32)
   target_link_libraries(putgd PRIVATE putgd_win_platform user32 gdi32 comctl32 comdlg32 uxtheme dwmapi winhttp
     windowscodecs gdiplus shcore msimg32 credui)
   target_compile_definitions(putgd PRIVATE ISOLATION_AWARE_ENABLED=1)
+  # Proton Drive: the separately provisioned Windows runtime helper
+  # (tools/proton/provision_runtime.py --target windows-x64). The manifest's digest
+  # is compiled in; the resident runs only a helper whose bytes match it, from
+  # proton\putgd-proton-runtime.exe next to putgd.exe. Without a manifest the
+  # provider reports proton_runtime_unavailable.
+  set(PUTGD_PROTON_MANIFEST "" CACHE FILEPATH "manifest.json of the provisioned Windows Proton runtime")
+  if(PUTGD_PROTON_MANIFEST)
+    file(READ "${PUTGD_PROTON_MANIFEST}" _proton_manifest)
+    string(JSON _proton_sha256 GET "${_proton_manifest}" sha256)
+    string(JSON _proton_platform GET "${_proton_manifest}" platform)
+    string(JSON _proton_protocol GET "${_proton_manifest}" protocolVersion)
+    if(NOT _proton_platform STREQUAL "windows-x64" OR NOT _proton_protocol EQUAL 1)
+      message(FATAL_ERROR "The Proton runtime manifest is not a protocol-1 windows-x64 build")
+    endif()
+    target_compile_definitions(putgd PRIVATE "PUTGD_PROTON_RUNTIME_SHA256=\"${_proton_sha256}\"")
+  endif()
   if(MSVC)
     target_link_options(putgd PRIVATE /MANIFEST:NO)
   endif()
