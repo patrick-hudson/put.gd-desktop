@@ -12,7 +12,7 @@ channel-options     #344: on a fresh profile, the stored channel, update.status,
                     with a real click (two options, Nightly preselected on a nightly build).
 menu-shortcut       #341: open a menu with real input, press an action's own shortcut with real input,
                     and check what the capture holds (the open menu) or that region selection starts.
-region-size         #333: a real-input region drag of W x H must give a W x H PNG.
+region-size         #333: a real-input region drag of W x H must give a W x H PNG; --coords also gives its screen origin.
 update-check        J: appimageupdatetool --check-for-update, optionally with SSL_CERT_FILE (#297 on Fedora 44).
 """
 import argparse, hashlib, json, os, re, subprocess, sys, time
@@ -186,24 +186,54 @@ def menu_shortcut(args):
 
 # ---------------------------------------------------------------- #333
 
+def decode(rgb):
+    r, g, b = rgb; return [r | (b & 15) << 8, g | (b >> 4) << 8]
+
+
 def region_size(args):
+    """A W x H real-input drag must give a W x H PNG. With --coords the screen shows coord_pattern.py, so the PNG's
+    own pixels give its screen origin (and prove the capture holds nothing but the pattern)."""
     run = Run(args.name); frames, inp, size = tools(run)
     x0, y0, x1, y1 = (int(v) for v in args.drag.split(','))
-    ids = set(history_ids(run))
-    r = run.ok('action.invoke', {'action': 'region'}); time.sleep(args.selector_wait)
-    inp.drag(x0, y0, x1, y1)
-    op = operation_done(run, r['operationId'])
-    item = (op or {}).get('items', [{}])[0] if op else {}
-    local = (item.get('local') or {}).get('path')
-    rep = {'drag': [x0, y0, x1, y1], 'expected': [x1 - x0, y1 - y0], 'operation': summarize_op(op or {'id': r['operationId'], 'state': 'timeout'})}
-    if local and Path(local).exists():
-        dest = run.dir / 'out' / f'region-{x1 - x0}x{y1 - y0}.png'; dest.write_bytes(Path(local).read_bytes())
-        rep['coverCheck'] = afa.check_capture(run, dest, f'region-{x1 - x0}x{y1 - y0}')
-        if dest.exists():
-            rep['png'] = list(png_read(dest.read_bytes())[:2])
-    rep['newHistory'] = [i for i in history_ids(run) if i not in ids]
-    rep['pass'] = rep.get('png') == rep['expected'] and bool(rep['newHistory'])
-    out(run.record(f'regionSize:{x1 - x0}x{y1 - y0}', rep))
+    rep = {'drag': [x0, y0, x1, y1], 'expected': [x1 - x0, y1 - y0], 'coords': args.coords}
+    pattern = None
+    if args.coords:
+        pattern = subprocess.Popen([sys.executable, str(Path(__file__).resolve().parent / 'coord_pattern.py')], env=run.env(private=False),
+                                   stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+        pattern.stdout.readline(); time.sleep(2.5); park(run, inp, size)
+        f = frames.grab(); w, h = size
+        probes = [(0, 0), (w - 1, h - 1), (x0, y0), (x1 - 1, y1 - 1), (w // 2, h // 2)]
+        rep['screenDecodes'] = {f'{x},{y}': decode(afa.pixel(f, x, y)) for x, y in probes}
+        rep['screenCovered'] = all(v == [int(k.split(',')[0]), int(k.split(',')[1])] for k, v in rep['screenDecodes'].items())
+    try:
+        ids = set(history_ids(run))
+        r = run.ok('action.invoke', {'action': 'region'}); time.sleep(args.selector_wait)
+        inp.drag(x0, y0, x1, y1)
+        op = operation_done(run, r['operationId'])
+        item = (op or {}).get('items', [{}])[0] if op else {}
+        local = (item.get('local') or {}).get('path')
+        rep['operation'] = summarize_op(op or {'id': r['operationId'], 'state': 'timeout'})
+        label = f'region-{x1 - x0}x{y1 - y0}' + ('-coords' if args.coords else '')
+        if local and Path(local).exists():
+            dest = run.dir / 'out' / f'{label}.png'; dest.write_bytes(Path(local).read_bytes())
+            img = png_read(dest.read_bytes()); pw, ph = img[:2]; rep['png'] = [pw, ph]
+            if args.coords:
+                corners = {'topLeft': decode(afa.png_rgb(img, 0, 0)), 'bottomRight': decode(afa.png_rgb(img, pw - 1, ph - 1))}
+                o = corners['topLeft']
+                sample = [(i, j) for j in range(0, ph, max(1, ph // 16)) for i in range(0, pw, max(1, pw // 16))]
+                rep['consistent'] = all(decode(afa.png_rgb(img, i, j)) == [o[0] + i, o[1] + j] for i, j in sample)
+                rep['origin'] = o; rep['corners'] = corners; rep['originOffset'] = [o[0] - x0, o[1] - y0]
+                if not rep['consistent']: dest.unlink(); rep['png_deleted'] = 'pixels are not the coordinate pattern'
+            else:
+                rep['coverCheck'] = afa.check_capture(run, dest, label)
+        rep['newHistory'] = [i for i in history_ids(run) if i not in ids]
+    finally:
+        if pattern:
+            try: pattern.stdin.write('quit\n'); pattern.stdin.flush(); pattern.wait(5)
+            except Exception: pattern.terminate()
+    rep['sizePass'] = rep.get('png') == rep['expected'] and bool(rep.get('newHistory'))
+    if args.coords: rep['originExact'] = rep.get('originOffset') == [0, 0]
+    out(run.record(f"regionSize:{x1 - x0}x{y1 - y0}{':coords' if args.coords else ''}", rep))
 
 
 # ---------------------------------------------------------------- J
@@ -232,6 +262,7 @@ def main():
     a.add_argument('--open', required=True, help='click:X,Y (real click) or key:super (real key)'); a.add_argument('--button', default='right')
     a.add_argument('--label', required=True); a.add_argument('--drag'); a.add_argument('--selector-wait', type=float, default=2.5); a.add_argument('--timeout', type=float, default=30)
     a = sub.add_parser('region-size'); a.add_argument('name'); a.add_argument('--drag', required=True); a.add_argument('--selector-wait', type=float, default=2.5)
+    a.add_argument('--coords', action='store_true', help='show coord_pattern.py and check the origin from the PNG itself')
     a = sub.add_parser('update-check'); a.add_argument('name'); a.add_argument('--tool', required=True); a.add_argument('--ssl-cert-file'); a.add_argument('--label', required=True)
     args = p.parse_args()
     {'updates-first-open': updates_first_open, 'channel-options': channel_options, 'status-clean': status_clean, 'channel': channel, 'menu-shortcut': menu_shortcut,

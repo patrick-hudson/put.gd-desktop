@@ -163,3 +163,15 @@ Patrick: Settings → Updates → **Channel** offers only **Stable** and **Night
 - the picture must show exactly two options, Nightly preselected.
 
 The channel round trip then ends on **Nightly**, not on the build value.
+
+## Addition from #333 (draft PR #356): judge D on size, check origin on physical Plasma
+
+- The fix floors fractional pointer positions in the KDE overlay, as the GNOME extension does.
+  - With afa's uinput tablet mapping, physical Plasma drags give exactly W×H.
+  - VNC input in the VMs lands just below the integer, so the size is right but the origin may sit 1 px up and left.
+- **Item D:** judged on **size** everywhere. The origin is checked on the physical Plasma desktops (d69, k72) and reported on every other desktop. A 1 px origin offset on a VM is a note, not a fail.
+- **Origin method:** `rerun.py region-size --coords` shows `lab/coord_pattern.py`, a static full-screen window whose pixel (x, y) encodes x and y.
+  - The VNC frame first proves the pattern covers the screen at the origin (`screenCovered`).
+  - The PNG's own pixels then give its screen origin (`originOffset`). `consistent` proves the capture holds nothing but the pattern.
+  - Drags: 80×60 and 1120×680 (980×600 in the VMs), with and without `--coords`.
+- **Colour management:** if a compositor alters the colours so the decode isn't exact, `consistent` is false and the PNG is deleted. The size check still stands, and the origin is reported as not measurable on that desktop.
