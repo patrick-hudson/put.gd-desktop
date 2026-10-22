@@ -1,0 +1,2002 @@
+{
+ "at-spi2-core 2.52.0-1build1": {
+  "dir": "pool/main/a/at-spi2-core",
+  "files": [
+   [
+    "at-spi2-core_2.52.0-1build1.dsc",
+    3906,
+    "16b82af63769eefb96343366f34545f2af2de5c3661c83293f50969de7fa450a"
+   ],
+   [
+    "at-spi2-core_2.52.0.orig.tar.xz",
+    574684,
+    "0ac3fc8320c8d01fa147c272ba7fa03806389c6b03d3c406d0823e30e35ff5ab"
+   ],
+   [
+    "at-spi2-core_2.52.0-1build1.debian.tar.xz",
+    19940,
+    "20bda0a6815fb1e7c6ca286a02b4b70aaa706f304664aad30bd88a4ee163b91c"
+   ]
+  ]
+ },
+ "brotli 1.1.0-2build2": {
+  "dir": "pool/main/b/brotli",
+  "files": [
+   [
+    "brotli_1.1.0-2build2.dsc",
+    2401,
+    "c58421959677a80d942924685007e8d5b5d1160fd7f61a1f0a9062bf08835856"
+   ],
+   [
+    "brotli_1.1.0.orig.tar.gz",
+    512036,
+    "10973f4b4199eafa1d5735ef661ddb2ec2f97319ee9fd1824d4aabe08cff5265"
+   ],
+   [
+    "brotli_1.1.0-2build2.debian.tar.xz",
+    5644,
+    "96603222d7b6edb3253a846852972b6bde5b86814907d5540249e6950980a943"
+   ]
+  ]
+ },
+ "cairo 1.18.0-3build1": {
+  "dir": "pool/main/c/cairo",
+  "files": [
+   [
+    "cairo_1.18.0-3build1.dsc",
+    2780,
+    "873d57c66682a2bd419a696c4d47df5f27888c6fab022ce88e885c3b394d5b75"
+   ],
+   [
+    "cairo_1.18.0.orig.tar.xz",
+    33761148,
+    "243a0736b978a33dee29f9cca7521733b78a65b5418206fef7bd1c3d4cf10b64"
+   ],
+   [
+    "cairo_1.18.0-3build1.debian.tar.xz",
+    29880,
+    "0f5853ec9851bdbedfb4a45221baa0fae44e3bf7ed1492826e1b8459b610355c"
+   ]
+  ]
+ },
+ "flac 1.4.3+ds-2.1ubuntu2": {
+  "dir": "pool/main/f/flac",
+  "files": [
+   [
+    "flac_1.4.3+ds-2.1ubuntu2.dsc",
+    2502,
+    "87f2c7e67791a4711f84ca624367f70980a8b499e1c1d493f52982b2027ad504"
+   ],
+   [
+    "flac_1.4.3+ds.orig.tar.xz",
+    769468,
+    "6ab48719bb60a38b391736518116b70ac55952963853ff27fc5206eb2bc108fc"
+   ],
+   [
+    "flac_1.4.3+ds-2.1ubuntu2.debian.tar.xz",
+    17636,
+    "b295c764278488a05371ccd210b016a1e84446d150a33e0efd166acef506762d"
+   ]
+  ]
+ },
+ "keyutils 1.6.3-3build1": {
+  "dir": "pool/main/k/keyutils",
+  "files": [
+   [
+    "keyutils_1.6.3-3build1.dsc",
+    2211,
+    "d81679165d93bfcadd5bf3fdca123ce0e4562e2ad9712aa2b9d8c2d1c701324d"
+   ],
+   [
+    "keyutils_1.6.3.orig.tar.gz",
+    137022,
+    "a61d5706136ae4c05bd48f86186bcfdbd88dd8bd5107e3e195c924cfc1b39bb4"
+   ],
+   [
+    "keyutils_1.6.3-3build1.debian.tar.xz",
+    13456,
+    "71904f9f862c496333fd04c7af70c15b42198b90b41f460c501c80e86c3f1d3d"
+   ]
+  ]
+ },
+ "lame 3.100-6build1": {
+  "dir": "pool/main/l/lame",
+  "files": [
+   [
+    "lame_3.100-6build1.dsc",
+    2275,
+    "5e3b3dad91b659e2b8cd7962f1978a5bd1fc3381d1dcb00823ca85292fcd8402"
+   ],
+   [
+    "lame_3.100.orig.tar.gz",
+    1524133,
+    "ddfe36cab873794038ae2c1210557ad34857a4b6bdc515785d1da9e175b1da1e"
+   ],
+   [
+    "lame_3.100-6build1.debian.tar.xz",
+    13440,
+    "49e2130db68031586cd42a1af23b0b0d722d0aeeebfce07f8b8e2adabf7cdc68"
+   ]
+  ]
+ },
+ "libasyncns 0.8-6build4": {
+  "dir": "pool/main/liba/libasyncns",
+  "files": [
+   [
+    "libasyncns_0.8-6build4.dsc",
+    2067,
+    "1509aa38b5f49b34acd62c1c87dd8b848f113de235f60b1df712550e8de56aaa"
+   ],
+   [
+    "libasyncns_0.8.orig.tar.gz",
+    341591,
+    "4f1a66e746cbe54ff3c2fbada5843df4fbbbe7481d80be003e8d11161935ab74"
+   ],
+   [
+    "libasyncns_0.8-6build4.debian.tar.xz",
+    4852,
+    "872436761f5afcbc6118df3f52a3e28af5218490276ad253e51505fcc7ba635a"
+   ]
+  ]
+ },
+ "libdatrie 0.2.13-3build1": {
+  "dir": "pool/main/libd/libdatrie",
+  "files": [
+   [
+    "libdatrie_0.2.13-3build1.dsc",
+    2368,
+    "9d4bef261b1f1a5abd62c99ecdee5cd8b5dc09987b13d1ba1b66a73f1b1f0c6f"
+   ],
+   [
+    "libdatrie_0.2.13.orig.tar.xz",
+    314072,
+    "12231bb2be2581a7f0fb9904092d24b0ed2a271a16835071ed97bed65267f4be"
+   ],
+   [
+    "libdatrie_0.2.13-3build1.debian.tar.xz",
+    9776,
+    "7e321906339b790e881700643bba7e4fa66accf61788d466a94eaba25e30637b"
+   ]
+  ]
+ },
+ "libepoxy 1.5.10-1build1": {
+  "dir": "pool/main/libe/libepoxy",
+  "files": [
+   [
+    "libepoxy_1.5.10-1build1.dsc",
+    2227,
+    "5569ae7a39c089ecc46296c57a2886b7e1b7219be0687fbc9ef9ae7997f21dae"
+   ],
+   [
+    "libepoxy_1.5.10.orig.tar.gz",
+    332078,
+    "a7ced37f4102b745ac86d6a70a9da399cc139ff168ba6b8002b4d8d43c900c15"
+   ],
+   [
+    "libepoxy_1.5.10-1build1.debian.tar.xz",
+    17596,
+    "c02353ecfdbf86caeff5269d44200f46207ebb8248656f8c26ff6cbce4fcebd4"
+   ]
+  ]
+ },
+ "libffi 3.4.6-1build1": {
+  "dir": "pool/main/libf/libffi",
+  "files": [
+   [
+    "libffi_3.4.6-1build1.dsc",
+    2055,
+    "a7a2c320c04149192a6dd78df8be28b2b27fd38e48d76f2ee6ba0c19ae0758f6"
+   ],
+   [
+    "libffi_3.4.6.orig.tar.gz",
+    598175,
+    "9ac790464c1eb2f5ab5809e978a1683e9393131aede72d1b0a0703771d3c6cda"
+   ],
+   [
+    "libffi_3.4.6-1build1.debian.tar.xz",
+    10736,
+    "9d8712818b833baf002a2413552194b8770800cb20b802ba1d3714156eba14fe"
+   ]
+  ]
+ },
+ "libglvnd 1.7.0-1build1": {
+  "dir": "pool/main/libg/libglvnd",
+  "files": [
+   [
+    "libglvnd_1.7.0-1build1.dsc",
+    2819,
+    "d0f2f934a0b329cc1ea257f4a2b0f1386842917ad7381743ee8e8f40a1e8fc7f"
+   ],
+   [
+    "libglvnd_1.7.0.orig.tar.gz",
+    839809,
+    "073e7292788d4d3eeb45ea6c7bdcce9bfdb3b3eef8d7dbd47f2f30dce046ef98"
+   ],
+   [
+    "libglvnd_1.7.0-1build1.debian.tar.xz",
+    22520,
+    "d75e37585040ca01fbaab98efbd800d7db65caee2a9e81f93bdcdbf584e6bd54"
+   ]
+  ]
+ },
+ "libgudev 238-5ubuntu1": {
+  "dir": "pool/main/libg/libgudev",
+  "files": [
+   [
+    "libgudev_238-5ubuntu1.dsc",
+    2475,
+    "c2d915143623f1674413c119da0068f55087c407a958b154d144cc92f6f35a1b"
+   ],
+   [
+    "libgudev_238.orig.tar.xz",
+    30548,
+    "61266ab1afc9d73dbc60a8b2af73e99d2fdff47d99544d085760e4fa667b5dd1"
+   ],
+   [
+    "libgudev_238-5ubuntu1.debian.tar.xz",
+    4964,
+    "121d2ef3de67bdd8f662634214a41be922d553b54fc4f2efc36e5df97f61adc3"
+   ]
+  ]
+ },
+ "libjpeg-turbo 2.1.5-2ubuntu2": {
+  "dir": "pool/main/libj/libjpeg-turbo",
+  "files": [
+   [
+    "libjpeg-turbo_2.1.5-2ubuntu2.dsc",
+    2535,
+    "7d17c0964d491cad7237491f28f1ee42d8335a57f9b1c01a5cd141bea418d3a2"
+   ],
+   [
+    "libjpeg-turbo_2.1.5.orig.tar.gz",
+    2264471,
+    "254f3642b04e309fee775123133c6464181addc150499561020312ec61c1bf7c"
+   ],
+   [
+    "libjpeg-turbo_2.1.5-2ubuntu2.debian.tar.xz",
+    108492,
+    "57be35d38b31a88aae42a1242126b22b75395e4d3225092f8cca74082605f6d4"
+   ]
+  ]
+ },
+ "libogg 1.3.5-3build1": {
+  "dir": "pool/main/libo/libogg",
+  "files": [
+   [
+    "libogg_1.3.5-3build1.dsc",
+    2194,
+    "60e700e863a1214221bf083edc5f2562e26f1e0c933da374a2f6e7cfaad96562"
+   ],
+   [
+    "libogg_1.3.5.orig.tar.xz",
+    429076,
+    "c4d91be36fc8e54deae7575241e03f4211eb102afb3fc0775fbbc1b740016705"
+   ],
+   [
+    "libogg_1.3.5-3build1.debian.tar.xz",
+    18152,
+    "e8c8e0b7840794288808c613002d340776a9cd2f75b3bd3c6349a43f73cb577c"
+   ]
+  ]
+ },
+ "libpsl 0.21.2-1.1build1": {
+  "dir": "pool/main/libp/libpsl",
+  "files": [
+   [
+    "libpsl_0.21.2-1.1build1.dsc",
+    2425,
+    "bc742d8be05151fc4e5a5e20f48a03a276dd3094286861f19da1346a0dd761b4"
+   ],
+   [
+    "libpsl_0.21.2.orig.tar.xz",
+    1870352,
+    "11e34380f2c81d6e72c710464aae3b680df4ddcc1007826c630fb03c7ca6aa54"
+   ],
+   [
+    "libpsl_0.21.2-1.1build1.debian.tar.xz",
+    12244,
+    "70e66bec75c564eee5ce7b1b422a51753601bd64d9738b68551127093321eabc"
+   ]
+  ]
+ },
+ "libthai 0.1.29-2build1": {
+  "dir": "pool/main/libt/libthai",
+  "files": [
+   [
+    "libthai_0.1.29-2build1.dsc",
+    2451,
+    "a20705f03af7fca8f1bbed128e09020ed958f1bd092859e9133c6c600401a5e5"
+   ],
+   [
+    "libthai_0.1.29.orig.tar.xz",
+    417728,
+    "fc80cc7dcb50e11302b417cebd24f2d30a8b987292e77e003267b9100d0f4bcd"
+   ],
+   [
+    "libthai_0.1.29-2build1.debian.tar.xz",
+    12744,
+    "3538d2a717c5f9e329a2a9c3f62ae3b82d277b047d042df105a98d9417894357"
+   ]
+  ]
+ },
+ "libvorbis 1.3.7-1build3": {
+  "dir": "pool/main/libv/libvorbis",
+  "files": [
+   [
+    "libvorbis_1.3.7-1build3.dsc",
+    2494,
+    "45953afb7453e430d8573ad474a9f4ba90cbf76c99a1d4a80acdd46e952bebe9"
+   ],
+   [
+    "libvorbis_1.3.7.orig.tar.gz",
+    1658963,
+    "0e982409a9c3fc82ee06e08205b1355e5c6aa4c36bca58146ef399621b0ce5ab"
+   ],
+   [
+    "libvorbis_1.3.7-1build3.debian.tar.xz",
+    11800,
+    "9e5d88326b8de10ffd3feed8798e0c54b5ce1ed1bdc78ddee4d822955da454c4"
+   ]
+  ]
+ },
+ "libwebp 1.3.2-0.4build3": {
+  "dir": "pool/main/libw/libwebp",
+  "files": [
+   [
+    "libwebp_1.3.2-0.4build3.dsc",
+    2468,
+    "704013e180ee9efe23427f200d8f773adb7769627fc4e9befbd8c550e2d8aad9"
+   ],
+   [
+    "libwebp_1.3.2.orig.tar.gz",
+    4162949,
+    "2a499607df669e40258e53d0ade8035ba4ec0175244869d1025d460562aa09b4"
+   ],
+   [
+    "libwebp_1.3.2-0.4build3.debian.tar.xz",
+    15816,
+    "c19fe0781db6c9745e4e793a154f056621428543af89426d4c37ad3a52cbc2d7"
+   ]
+  ]
+ },
+ "libxau 1:1.0.9-1build6": {
+  "dir": "pool/main/libx/libxau",
+  "files": [
+   [
+    "libxau_1.0.9-1build6.dsc",
+    2315,
+    "b6a676b936d6c7c2c75b60b789066f0b92f741104d6dfacaaffb985800ba4e55"
+   ],
+   [
+    "libxau_1.0.9.orig.tar.gz",
+    394068,
+    "1f123d8304b082ad63a9e89376400a3b1d4c29e67e3ea07b3f659cccca690eea"
+   ],
+   [
+    "libxau_1.0.9.orig.tar.gz.asc",
+    801,
+    "af6104aaf3c5ede529e381237dd60f49640ec96593a84502fa493b86582b2f04"
+   ],
+   [
+    "libxau_1.0.9-1build6.diff.gz",
+    10712,
+    "6e68b5a0dd458b0736fb4e327ca96ea5d3a25ec6fe5bd65c8ef66f90006248bd"
+   ]
+  ]
+ },
+ "libxcb 1.15-1ubuntu2": {
+  "dir": "pool/main/libx/libxcb",
+  "files": [
+   [
+    "libxcb_1.15-1ubuntu2.dsc",
+    5372,
+    "aa994469e76b17847c1153d43cd37884adebbce5008ad221ef0e1e8ad840f8de"
+   ],
+   [
+    "libxcb_1.15.orig.tar.gz",
+    650774,
+    "1cb65df8543a69ec0555ac696123ee386321dfac1964a3da39976c9a05ad724d"
+   ],
+   [
+    "libxcb_1.15-1ubuntu2.diff.gz",
+    26975,
+    "d45e55f604af83b47f621c97b49885f35b518909bb3b9f9c877cfd3daddfb5ee"
+   ]
+  ]
+ },
+ "libxcomposite 1:0.4.5-1build3": {
+  "dir": "pool/main/libx/libxcomposite",
+  "files": [
+   [
+    "libxcomposite_0.4.5-1build3.dsc",
+    2199,
+    "ab25ebb6e0f160f5fc146822ac6af56bc8e9aa78a829f80fc9788e286f578f56"
+   ],
+   [
+    "libxcomposite_0.4.5.orig.tar.gz",
+    386513,
+    "581c7fc0f41a99af38b1c36b9be64bc13ef3f60091cd3f01105bbc7c01617d6c"
+   ],
+   [
+    "libxcomposite_0.4.5-1build3.diff.gz",
+    7840,
+    "a9310699c92296e861555384ab52911c36920cbd076eb704120fda5a2a0c2435"
+   ]
+  ]
+ },
+ "libxcursor 1:1.2.1-1build1": {
+  "dir": "pool/main/libx/libxcursor",
+  "files": [
+   [
+    "libxcursor_1.2.1-1build1.dsc",
+    2363,
+    "eddf2ff8bb61871ff00af5f31333b4e4ab9328ab5b220b269ed3348664cc8b2e"
+   ],
+   [
+    "libxcursor_1.2.1.orig.tar.gz",
+    415378,
+    "77f96b9ad0a3c422cfa826afabaf1e02b9bfbfc8908c5fa1a45094faad074b98"
+   ],
+   [
+    "libxcursor_1.2.1-1build1.debian.tar.xz",
+    9188,
+    "bc511593cf395948184efc6dd861a2864c3cd4a2c55bb7bc11b018bf8f2422fb"
+   ]
+  ]
+ },
+ "libxdamage 1:1.1.6-1build1": {
+  "dir": "pool/main/libx/libxdamage",
+  "files": [
+   [
+    "libxdamage_1.1.6-1build1.dsc",
+    2256,
+    "78c5c356893ca89fb5141e02c820a20cdd476f7f15955aa1a6efb67ce6600aaa"
+   ],
+   [
+    "libxdamage_1.1.6.orig.tar.gz",
+    381548,
+    "2afcc139eb6eb926ffe344494b1fc023da25def42874496e6e6d3aa8acef8595"
+   ],
+   [
+    "libxdamage_1.1.6-1build1.debian.tar.xz",
+    6332,
+    "ab55bdb36b2591a2e82889a5e3228bb4336d2fddacecbe090cf5ad2a2098a897"
+   ]
+  ]
+ },
+ "libxdmcp 1:1.1.3-0ubuntu6": {
+  "dir": "pool/main/libx/libxdmcp",
+  "files": [
+   [
+    "libxdmcp_1.1.3-0ubuntu6.dsc",
+    2252,
+    "71d1e9513fb58807fb131a5a2327eaac801ac5789ce4292038c2fed6365f7f68"
+   ],
+   [
+    "libxdmcp_1.1.3.orig.tar.gz",
+    429668,
+    "2ef9653d32e09d1bf1b837d0e0311024979653fe755ad3aaada8db1aa6ea180c"
+   ],
+   [
+    "libxdmcp_1.1.3-0ubuntu6.diff.gz",
+    18400,
+    "9a72f64460520fdc2125472557f30a4748107f98fe008a04b576dc8b93536bc8"
+   ]
+  ]
+ },
+ "libxext 2:1.3.4-1build2": {
+  "dir": "pool/main/libx/libxext",
+  "files": [
+   [
+    "libxext_1.3.4-1build2.dsc",
+    2250,
+    "0d2faa231cb2d5750994e8d93c4973cf4c24f74d8f1912234a1a244952d5e627"
+   ],
+   [
+    "libxext_1.3.4.orig.tar.gz",
+    494434,
+    "8ef0789f282826661ff40a8eef22430378516ac580167da35cc948be9041aac1"
+   ],
+   [
+    "libxext_1.3.4-1build2.diff.gz",
+    12720,
+    "ed434b3facecdf2c1f9ff58578033da61e087d73d6ce2d84433871ee4fb22ba6"
+   ]
+  ]
+ },
+ "libxfixes 1:6.0.0-2build1": {
+  "dir": "pool/main/libx/libxfixes",
+  "files": [
+   [
+    "libxfixes_6.0.0-2build1.dsc",
+    2372,
+    "85c831269a0513da54f1cd6a816a9d2fa75d4bb04159079618fb2ecc5ea2b7ab"
+   ],
+   [
+    "libxfixes_6.0.0.orig.tar.gz",
+    387810,
+    "82045da5625350838390c9440598b90d69c882c324ca92f73af9f0e992cb57c7"
+   ],
+   [
+    "libxfixes_6.0.0.orig.tar.gz.asc",
+    195,
+    "e5598f42aa32140936c7772ab4d99ba35ecb859c29adc1703bb51440e7a54928"
+   ],
+   [
+    "libxfixes_6.0.0-2build1.diff.gz",
+    17437,
+    "4afbdb618c6f60e95c4251a8c08e928b19c3a19316dc9801c1e51c5c0b7f7a49"
+   ]
+  ]
+ },
+ "libxi 2:1.8.1-1build1": {
+  "dir": "pool/main/libx/libxi",
+  "files": [
+   [
+    "libxi_1.8.1-1build1.dsc",
+    2418,
+    "be66f78bc6bcd3038e31db9c880c18837bd90ad02860323a74b29e00cf69e2b6"
+   ],
+   [
+    "libxi_1.8.1.orig.tar.gz",
+    610202,
+    "3b5f47c223e4b63d7f7fe758886b8bf665b20a7edb6962c423892fd150e326ea"
+   ],
+   [
+    "libxi_1.8.1.orig.tar.gz.asc",
+    195,
+    "b5c9eeb7e50cd128d749aa74da9ad4114276b88cc9dd0c0463272d4d5e2ee92d"
+   ],
+   [
+    "libxi_1.8.1-1build1.diff.gz",
+    25945,
+    "271d0fc504c47738b36f82d2107ec2e3d03c250778f383d4652dc6a7fcaf1b2d"
+   ]
+  ]
+ },
+ "libxinerama 2:1.1.4-3build1": {
+  "dir": "pool/main/libx/libxinerama",
+  "files": [
+   [
+    "libxinerama_1.1.4-3build1.dsc",
+    2220,
+    "1b4280858eb9c44eb28fc17d785d4712c0255ae441de897fcd2d42eecb2f5049"
+   ],
+   [
+    "libxinerama_1.1.4.orig.tar.gz",
+    380740,
+    "64de45e18cc76b8e703cb09b3c9d28bd16e3d05d5cd99f2d630de2d62c3acc18"
+   ],
+   [
+    "libxinerama_1.1.4-3build1.diff.gz",
+    8639,
+    "c9a95ee62cef0075a491ae98718dfbc37b971d697910bcc097c89cf0c4170905"
+   ]
+  ]
+ },
+ "libxkbcommon 1.6.0-1build1": {
+  "dir": "pool/main/libx/libxkbcommon",
+  "files": [
+   [
+    "libxkbcommon_1.6.0-1build1.dsc",
+    2857,
+    "b8296cebd84ba35a1148fa10c505a5221aba7b8203349ba9997c76e50857c49a"
+   ],
+   [
+    "libxkbcommon_1.6.0.orig.tar.xz",
+    510456,
+    "0edc14eccdd391514458bc5f5a4b99863ed2d651e4dd761a90abf4f46ef99c2b"
+   ],
+   [
+    "libxkbcommon_1.6.0-1build1.debian.tar.xz",
+    8372,
+    "f193f739748e1f6bf28eb27ea0997da93eb20dca3557ae426fefc8f210aa95bb"
+   ]
+  ]
+ },
+ "libxrandr 2:1.5.2-2build1": {
+  "dir": "pool/main/libx/libxrandr",
+  "files": [
+   [
+    "libxrandr_1.5.2-2build1.dsc",
+    2207,
+    "733b5be4c178c017181334e36d6649455c78222b2a146bb732a03598f8da6ffc"
+   ],
+   [
+    "libxrandr_1.5.2.orig.tar.gz",
+    411714,
+    "3f10813ab355e7a09f17e147d61b0ce090d898a5ea5b5519acd0ef68675dcf8e"
+   ],
+   [
+    "libxrandr_1.5.2-2build1.diff.gz",
+    15940,
+    "65e365ff8a3205d5532e9867045238dc6abbcdc146e063bafc7f614e730c1b7b"
+   ]
+  ]
+ },
+ "libxrender 1:0.9.10-1.1build1": {
+  "dir": "pool/main/libx/libxrender",
+  "files": [
+   [
+    "libxrender_0.9.10-1.1build1.dsc",
+    2204,
+    "fbc2eb120a290e733e01420e6bed5f7158a822e94baa8952b10bdcf5ae55a15e"
+   ],
+   [
+    "libxrender_0.9.10.orig.tar.gz",
+    373717,
+    "770527cce42500790433df84ec3521e8bf095dfe5079454a92236494ab296adf"
+   ],
+   [
+    "libxrender_0.9.10-1.1build1.diff.gz",
+    15274,
+    "7a09639402d326f5c665c848286d26932ba3a1d104e41fb921500ca93895598b"
+   ]
+  ]
+ },
+ "opus 1.4-1build1": {
+  "dir": "pool/main/o/opus",
+  "files": [
+   [
+    "opus_1.4-1build1.dsc",
+    2271,
+    "873892e1f22d3297a79adbec277e53da490da249855ba1b69f19431d9ef806bf"
+   ],
+   [
+    "opus_1.4.orig.tar.gz",
+    1063408,
+    "c9b32b4253be5ae63d1ff16eea06b94b5f0f2951b7a02aceef58e3a3ce49c51f"
+   ],
+   [
+    "opus_1.4-1build1.debian.tar.xz",
+    109268,
+    "cea2249c7aa45747ef64e8a10ae5f3f40eb7e895e2acfff44dceaf453eed6da3"
+   ]
+  ]
+ },
+ "pango1.0 1.52.1+ds-1build1": {
+  "dir": "pool/main/p/pango1.0",
+  "files": [
+   [
+    "pango1.0_1.52.1+ds-1build1.dsc",
+    3654,
+    "faad8d9f21cdd77fb7c930f46506dc304fd66c49c6c5f9bb5d92a8bdc55ec744"
+   ],
+   [
+    "pango1.0_1.52.1+ds.orig.tar.xz",
+    1738052,
+    "12d67d8182cbb2ae427406df9bab5ce2ff5619102bf2a0fc6331d80a9914b139"
+   ],
+   [
+    "pango1.0_1.52.1+ds-1build1.debian.tar.xz",
+    41748,
+    "688c01a1af76bfb861805bbd66cddeac6a968123b10e401877974a8d9b8ae236"
+   ]
+  ]
+ },
+ "pixman 0.42.2-1build1": {
+  "dir": "pool/main/p/pixman",
+  "files": [
+   [
+    "pixman_0.42.2-1build1.dsc",
+    2153,
+    "15369200fce8d64216d6f1b7968c8172982b03b2d0caf2372225a7f55e8f78b8"
+   ],
+   [
+    "pixman_0.42.2.orig.tar.gz",
+    959669,
+    "ea1480efada2fd948bc75366f7c349e1c96d3297d09a3fe62626e38e234a625e"
+   ],
+   [
+    "pixman_0.42.2-1build1.diff.gz",
+    327276,
+    "fa53ab054cbf755ac80258f2b747b9b66c921f37e5e066bc7585058a6c58a1f9"
+   ]
+  ]
+ },
+ "rtmpdump 2.4+20151223.gitfa8646d.1-2build7": {
+  "dir": "pool/main/r/rtmpdump",
+  "files": [
+   [
+    "rtmpdump_2.4+20151223.gitfa8646d.1-2build7.dsc",
+    2439,
+    "076006f9c26e898a8da252ee8dbd6f04252833fac08898b9fd9344ccba848853"
+   ],
+   [
+    "rtmpdump_2.4+20151223.gitfa8646d.1.orig.tar.gz",
+    142213,
+    "5c032f5c8cc2937eb55a81a94effdfed3b0a0304b6376147b86f951e225e3ab5"
+   ],
+   [
+    "rtmpdump_2.4+20151223.gitfa8646d.1-2build7.debian.tar.xz",
+    8464,
+    "bbc24a32c42f37238190944ecfc640387373d7dfa8e570fa23353d6a1f0e3d0b"
+   ]
+  ]
+ },
+ "wayland 1.22.0-2.1build1": {
+  "dir": "pool/main/w/wayland",
+  "files": [
+   [
+    "wayland_1.22.0-2.1build1.dsc",
+    2753,
+    "f462ebb5625fc0cdf1c960bb5773099b63fa2765dcc41ec4a66cde33731f30e0"
+   ],
+   [
+    "wayland_1.22.0.orig.tar.gz",
+    362983,
+    "b1b023a31902286e476e109ed48070a815d3ab5f615daec29e9635188881eece"
+   ],
+   [
+    "wayland_1.22.0-2.1build1.diff.gz",
+    16367,
+    "3a22976ff3f1d80b9c7bdebcf0667f2ca4b30f3c2feaaa7e358b2e307a7d082e"
+   ]
+  ]
+ },
+ "xcb-util 0.4.0-1build3": {
+  "dir": "pool/main/x/xcb-util",
+  "files": [
+   [
+    "xcb-util_0.4.0-1build3.dsc",
+    2217,
+    "d4adb574e0bcad0c998e8ffb192e480c66645cecc9466338616233431030b302"
+   ],
+   [
+    "xcb-util_0.4.0.orig.tar.gz",
+    362923,
+    "0ed0934e2ef4ddff53fcc70fc64fb16fe766cd41ee00330312e20a985fd927a7"
+   ],
+   [
+    "xcb-util_0.4.0-1build3.debian.tar.xz",
+    4628,
+    "c03f4dfd8381c6e76bd861c81ade9884730398152656b53ae415379b0f08cfc4"
+   ]
+  ]
+ },
+ "xcb-util-image 0.4.0-2build1": {
+  "dir": "pool/main/x/xcb-util-image",
+  "files": [
+   [
+    "xcb-util-image_0.4.0-2build1.dsc",
+    2253,
+    "c5587344f6224bf70e7291dee95cb610b294ee1e8b7f3293d73d18cc7d8d247c"
+   ],
+   [
+    "xcb-util-image_0.4.0.orig.tar.bz2",
+    327891,
+    "2db96a37d78831d643538dd1b595d7d712e04bdccf8896a5e18ce0f398ea2ffc"
+   ],
+   [
+    "xcb-util-image_0.4.0-2build1.debian.tar.xz",
+    4636,
+    "2eec540084e0e9509a9cc14f8c1571a6ee83d28b11d0922b6c61c13c1b148dc6"
+   ]
+  ]
+ },
+ "xcb-util-keysyms 0.4.0-1build4": {
+  "dir": "pool/main/x/xcb-util-keysyms",
+  "files": [
+   [
+    "xcb-util-keysyms_0.4.0-1build4.dsc",
+    2315,
+    "d164566b5bd3752176e14dc9b54477d334b348b927584e9dca79506cd511f935"
+   ],
+   [
+    "xcb-util-keysyms_0.4.0.orig.tar.bz2",
+    289880,
+    "0ef8490ff1dede52b7de533158547f8b454b241aa3e4dcca369507f66f216dd9"
+   ],
+   [
+    "xcb-util-keysyms_0.4.0-1build4.debian.tar.xz",
+    4512,
+    "f5e03d354d159448ba93129347e553b4f219faf9e2b521be5f577e8f84e69eff"
+   ]
+  ]
+ },
+ "xcb-util-renderutil 0.3.9-1build4": {
+  "dir": "pool/main/x/xcb-util-renderutil",
+  "files": [
+   [
+    "xcb-util-renderutil_0.3.9-1build4.dsc",
+    2388,
+    "8680cd4eb848d5ed59b3110ee1331449c5cb4b7ec713fa150a9989f08b1432c2"
+   ],
+   [
+    "xcb-util-renderutil_0.3.9.orig.tar.bz2",
+    292898,
+    "c6e97e48fb1286d6394dddb1c1732f00227c70bd1bedb7d1acabefdd340bea5b"
+   ],
+   [
+    "xcb-util-renderutil_0.3.9-1build4.debian.tar.xz",
+    4568,
+    "2c0c9a568af20ca0ea46d1362b1f0dfff4f76cd93b4e2a03e2ce2ccf1a0c5875"
+   ]
+  ]
+ },
+ "xcb-util-wm 0.4.1-1.1build3": {
+  "dir": "pool/main/x/xcb-util-wm",
+  "files": [
+   [
+    "xcb-util-wm_0.4.1-1.1build3.dsc",
+    2428,
+    "5a31f8adbd2c0bbd34ccffe11e87b742d5ab7c008cf759a11d119e3a65140cea"
+   ],
+   [
+    "xcb-util-wm_0.4.1.orig.tar.gz",
+    395835,
+    "038b39c4bdc04a792d62d163ba7908f4bb3373057208c07110be73c1b04b8334"
+   ],
+   [
+    "xcb-util-wm_0.4.1-1.1build3.debian.tar.xz",
+    4668,
+    "e652fae7c7b076be265112a189470a1cf7f7f713dc8fa434c5947ecf24ebd8bb"
+   ]
+  ]
+ },
+ "bzip2 1.0.8-5.1ubuntu0.1": {
+  "dir": "pool/main/b/bzip2",
+  "files": [
+   [
+    "bzip2_1.0.8.orig.tar.gz",
+    810029,
+    "ab5a03176ee106d3f0fa90e381da478ddae405918153cca248e682cd0c4a2269"
+   ],
+   [
+    "bzip2_1.0.8-5.1ubuntu0.1.debian.tar.bz2",
+    27529,
+    "77c61e0490ff7cf49aa8ffe62e117e85b3af08e14341c4b851f8d7ec757fe099"
+   ],
+   [
+    "bzip2_1.0.8-5.1ubuntu0.1.dsc",
+    1699,
+    "87d782671790af480ab3c3b258885ad2c239e41772e0116ceda6446c493f9dd4"
+   ]
+  ]
+ },
+ "curl 8.5.0-2ubuntu10.16": {
+  "dir": "pool/main/c/curl",
+  "files": [
+   [
+    "curl_8.5.0.orig.tar.gz",
+    4372979,
+    "05fc17ff25b793a437a0906e0484b82172a9f4de02be5ed447e0cab8c3475add"
+   ],
+   [
+    "curl_8.5.0-2ubuntu10.16.debian.tar.xz",
+    97764,
+    "4ccc6c6a0c4b41c4d753d60c2991541c7f2a41d81c0000f582cf6b4901c746a4"
+   ],
+   [
+    "curl_8.5.0-2ubuntu10.16.dsc",
+    3096,
+    "ff4ae5226e471829f638b94b1b8bb74bb2f7e57ca999353f6ad7274bf43a8abf"
+   ]
+  ]
+ },
+ "elfutils 0.190-1.1ubuntu0.1": {
+  "dir": "pool/main/e/elfutils",
+  "files": [
+   [
+    "elfutils_0.190.orig.tar.bz2",
+    9162766,
+    "8e00a3a9b5f04bc1dc273ae86281d2d26ed412020b391ffcc23198f10231d692"
+   ],
+   [
+    "elfutils_0.190-1.1ubuntu0.1.debian.tar.xz",
+    46976,
+    "4c3130951f7b865d50ff57379a258926a66bcd2753e3c12301bbb110fbb417fa"
+   ],
+   [
+    "elfutils_0.190-1.1ubuntu0.1.dsc",
+    3410,
+    "7852785ce5ce51a6dad0f6b67188d94ffedaffa6d0128fecabeb6a1ccc2aabea"
+   ]
+  ]
+ },
+ "gdk-pixbuf 2.42.10+dfsg-3ubuntu3.3": {
+  "dir": "pool/main/g/gdk-pixbuf",
+  "files": [
+   [
+    "gdk-pixbuf_2.42.10+dfsg.orig.tar.xz",
+    6439240,
+    "46663e445468e92f4a0ca876b02aed4f8758595ee3acfaa6ef3ba2b29e1c1930"
+   ],
+   [
+    "gdk-pixbuf_2.42.10+dfsg-3ubuntu3.3.debian.tar.xz",
+    29808,
+    "62966dc916fb4476b0d36ccdb53040845290a55f2f3efe2358ecb567c8295906"
+   ],
+   [
+    "gdk-pixbuf_2.42.10+dfsg-3ubuntu3.3.dsc",
+    3187,
+    "b86025ff9d9ff4e39ec4b1773f23648f18556d154867e28b2f8fc1e589be80d0"
+   ]
+  ]
+ },
+ "gnutls28 3.8.3-1.1ubuntu3.6": {
+  "dir": "pool/main/g/gnutls28",
+  "files": [
+   [
+    "gnutls28_3.8.3.orig.tar.xz",
+    6463720,
+    "f74fc5954b27d4ec6dfbb11dea987888b5b124289a3703afcada0ee520f4173e"
+   ],
+   [
+    "gnutls28_3.8.3.orig.tar.xz.asc",
+    854,
+    "b2b90d225728890b0e2aa7c05e5f25f8ba1282821b46e72cd99f0c732b639cef"
+   ],
+   [
+    "gnutls28_3.8.3-1.1ubuntu3.6.debian.tar.xz",
+    124984,
+    "b4cc6ebad4cb21ffe82d094f6d9c90de31e08a8b31ed36911a2adbe5aaa56d47"
+   ],
+   [
+    "gnutls28_3.8.3-1.1ubuntu3.6.dsc",
+    3397,
+    "34455be2f5fb343b5833ff40cc00623106326e6cc88aaf9862943f6b3aa5ab60"
+   ]
+  ]
+ },
+ "graphite2 1.3.14-2ubuntu0.24.04.1": {
+  "dir": "pool/main/g/graphite2",
+  "files": [
+   [
+    "graphite2_1.3.14.orig.tar.gz",
+    6629829,
+    "7a3b342c5681921ce2e0c2496509d30b5b078399d5a7bd2358f95166d57d91df"
+   ],
+   [
+    "graphite2_1.3.14-2ubuntu0.24.04.1.debian.tar.xz",
+    15004,
+    "1a860887ab20f97acd841511d2318649cee3a31ad990a150f2999c36afa72693"
+   ],
+   [
+    "graphite2_1.3.14-2ubuntu0.24.04.1.dsc",
+    2682,
+    "c34a4358cdadcf881fe9794e13c27650f1c5de7bcd3aaf9a40a908047c4d44b4"
+   ]
+  ]
+ },
+ "gst-plugins-base1.0 1.24.2-1ubuntu0.5": {
+  "dir": "pool/main/g/gst-plugins-base1.0",
+  "files": [
+   [
+    "gst-plugins-base1.0_1.24.2.orig.tar.xz",
+    2421032,
+    "282f1cc8065c9b62eb6a0a20fb9e8328f8e5296df2458b7236daa729c41ae769"
+   ],
+   [
+    "gst-plugins-base1.0_1.24.2.orig.tar.xz.asc",
+    833,
+    "b8e22b9ecab549c22cee596f88f29da9112d56665fe42b12490fa33b2e4aa8d0"
+   ],
+   [
+    "gst-plugins-base1.0_1.24.2-1ubuntu0.5.debian.tar.xz",
+    57908,
+    "b7aad40ae5062e85f1afca0630b0e419ef2f203d3edd7994f50132811f575253"
+   ],
+   [
+    "gst-plugins-base1.0_1.24.2-1ubuntu0.5.dsc",
+    4150,
+    "73a25ece6c488d230e976ced527a7d04d8252b073f1aa17375f4986bbbb64cac"
+   ]
+  ]
+ },
+ "gst-plugins-good1.0 1.24.2-1ubuntu1.8": {
+  "dir": "pool/main/g/gst-plugins-good1.0",
+  "files": [
+   [
+    "gst-plugins-good1.0_1.24.2.orig.tar.xz",
+    2907768,
+    "6e347c72d4b8b2886d890ffe9f6767a9edb02f201588e8c3a572dcd08d9852bd"
+   ],
+   [
+    "gst-plugins-good1.0_1.24.2.orig.tar.xz.asc",
+    833,
+    "463db731a3ebcf50c161911de7b8a4558f0baf5fa2c66882687d5dc60a1c7687"
+   ],
+   [
+    "gst-plugins-good1.0_1.24.2-1ubuntu1.8.debian.tar.xz",
+    149660,
+    "ad0b80fb55ea620963279c35e78c4ef5b3bb0e3b534127052a2dffe9b2a9d3dc"
+   ],
+   [
+    "gst-plugins-good1.0_1.24.2-1ubuntu1.8.dsc",
+    5412,
+    "461b4d93ca5c2e8e62bd4aa22446697637a035bb23d23f9bc17f6037bc3a8e60"
+   ]
+  ]
+ },
+ "gstreamer1.0 1.24.2-1ubuntu0.1": {
+  "dir": "pool/main/g/gstreamer1.0",
+  "files": [
+   [
+    "gstreamer1.0_1.24.2.orig.tar.xz",
+    1850672,
+    "9cafdd23bd180f1681c56cd3a6879a8497ccf24da6f422a6b6f356fa074a8481"
+   ],
+   [
+    "gstreamer1.0_1.24.2.orig.tar.xz.asc",
+    833,
+    "360f2173830a1624f6eb09fae72d5487f2cbd99b2cf83174890607e1eda96ec4"
+   ],
+   [
+    "gstreamer1.0_1.24.2-1ubuntu0.1.debian.tar.xz",
+    50960,
+    "a2e8ac4ff91003ca640e62c2d29afa1cee706ecc0988a28aa3c3e23e12e1591b"
+   ],
+   [
+    "gstreamer1.0_1.24.2-1ubuntu0.1.dsc",
+    3161,
+    "b3ae9fe0ed9ccb3e5745f09b65a9b2ab0b7a0dadefcb2d17c60f0a28dd3db381"
+   ]
+  ]
+ },
+ "libcap2 1:2.66-5ubuntu2.4": {
+  "dir": "pool/main/libc/libcap2",
+  "files": [
+   [
+    "libcap2_2.66.orig.tar.xz",
+    181592,
+    "15c40ededb3003d70a283fe587a36b7d19c8b3b554e33f86129c059a4bb466b2"
+   ],
+   [
+    "libcap2_2.66-5ubuntu2.4.debian.tar.xz",
+    24724,
+    "7eb46752c6b59984494d2f641a049b9d4b394b7d1fe067729ccbc413c5943136"
+   ],
+   [
+    "libcap2_2.66-5ubuntu2.4.dsc",
+    2319,
+    "8178019803f285b92e52e82cf84b0a6fc18840041270b2c588db826b8277e3e0"
+   ]
+  ]
+ },
+ "libgcrypt20 1.10.3-2ubuntu0.2": {
+  "dir": "pool/main/libg/libgcrypt20",
+  "files": [
+   [
+    "libgcrypt20_1.10.3.orig.tar.bz2",
+    3783827,
+    "8b0870897ac5ac67ded568dcfadf45969cfa8a6beb0fd60af2a9eadc2a3272aa"
+   ],
+   [
+    "libgcrypt20_1.10.3.orig.tar.bz2.asc",
+    390,
+    "f02a5f961b89c034a78decbb355ea5a8d9356df5a9636dec53ae548d7d814b14"
+   ],
+   [
+    "libgcrypt20_1.10.3-2ubuntu0.2.debian.tar.xz",
+    66364,
+    "8298a57538f427d3c1112f2d86e374dd8223156e06b403f5c7945dd3d86f2050"
+   ],
+   [
+    "libgcrypt20_1.10.3-2ubuntu0.2.dsc",
+    2914,
+    "688df10bc9c90b241926470d1f12a4d5092157263a6c1555996c53bcf40ca7d1"
+   ]
+  ]
+ },
+ "libpng1.6 1.6.43-5ubuntu0.7": {
+  "dir": "pool/main/libp/libpng1.6",
+  "files": [
+   [
+    "libpng1.6_1.6.43.orig.tar.gz",
+    1554715,
+    "fecc95b46cf05e8e3fc8a414750e0ba5aad00d89e9fdf175e94ff041caf1a03a"
+   ],
+   [
+    "libpng1.6_1.6.43-5ubuntu0.7.debian.tar.xz",
+    51640,
+    "ea25368d26281cff3282c18ffbec6c75335e6ba0458d79841936c959395c15e6"
+   ],
+   [
+    "libpng1.6_1.6.43-5ubuntu0.7.dsc",
+    2421,
+    "956b23034b8dd709deb9cbaa13dd3e41d8dbef2a3042c7ff30166a72d8031b37"
+   ]
+  ]
+ },
+ "libsndfile 1.2.2-1ubuntu5.24.04.1": {
+  "dir": "pool/main/libs/libsndfile",
+  "files": [
+   [
+    "libsndfile_1.2.2.orig.tar.gz",
+    684875,
+    "ffe12ef8add3eaca876f04087734e6e8e029350082f3251f565fa9da55b52121"
+   ],
+   [
+    "libsndfile_1.2.2-1ubuntu5.24.04.1.debian.tar.xz",
+    29192,
+    "bb33bf50bde6feabb4c903b47b4f646071ac1c6bb33fbb8650661152e619ff81"
+   ],
+   [
+    "libsndfile_1.2.2-1ubuntu5.24.04.1.dsc",
+    2370,
+    "b59d6b10344043e7c1382627966449992c2f65911443e71a854298d2f5061ca8"
+   ]
+  ]
+ },
+ "libssh 0.10.6-2ubuntu0.5": {
+  "dir": "pool/main/libs/libssh",
+  "files": [
+   [
+    "libssh_0.10.6.orig.tar.xz",
+    561036,
+    "1861d498f5b6f1741b6abc73e608478491edcf9c9d4b6630eef6e74596de9dc1"
+   ],
+   [
+    "libssh_0.10.6.orig.tar.xz.asc",
+    833,
+    "140420406d7796548b0beaf736e73864c32291787cf2bd3983fdbc41741494ae"
+   ],
+   [
+    "libssh_0.10.6-2ubuntu0.5.debian.tar.xz",
+    63744,
+    "5ea1b360802689a7daa557470a661665d95996ab8c0b8dc700083ed8caf8f8d8"
+   ],
+   [
+    "libssh_0.10.6-2ubuntu0.5.dsc",
+    2857,
+    "e5eb4bf8c16013acaab5a3ed38d3c4141b3d5fab317cbc8f11118ddd5b4479ad"
+   ]
+  ]
+ },
+ "libtasn1-6 4.19.0-3ubuntu0.24.04.2": {
+  "dir": "pool/main/libt/libtasn1-6",
+  "files": [
+   [
+    "libtasn1-6_4.19.0.orig.tar.gz",
+    1786576,
+    "1613f0ac1cf484d6ec0ce3b8c06d56263cc7242f1c23b30d82d23de345a63f7a"
+   ],
+   [
+    "libtasn1-6_4.19.0.orig.tar.gz.asc",
+    228,
+    "8410c0c004f3509c218a98b276b3308b9c46f48068e8b1a6d9ebfd61ea9f357a"
+   ],
+   [
+    "libtasn1-6_4.19.0-3ubuntu0.24.04.2.debian.tar.xz",
+    25112,
+    "23e6e79b1be16c247e0d3b152a5838d5d182a788ba053c640b2a120b8b00adad"
+   ],
+   [
+    "libtasn1-6_4.19.0-3ubuntu0.24.04.2.dsc",
+    2801,
+    "a322b48ad14f13ef24ccebcc1feab975817c67000382096146a281d0b4354e7e"
+   ]
+  ]
+ },
+ "libvpx 1.14.0-1ubuntu2.3": {
+  "dir": "pool/main/libv/libvpx",
+  "files": [
+   [
+    "libvpx_1.14.0.orig.tar.xz",
+    4374856,
+    "11150687870e4c94479abafe5d1ed38790e68dc7bbe08880fd5fb55138e4c6f3"
+   ],
+   [
+    "libvpx_1.14.0-1ubuntu2.3.debian.tar.xz",
+    18964,
+    "9605b124232fe21980e2f1a4e7d86b2cedd0f72ac7961a02171eb90a7d762c34"
+   ],
+   [
+    "libvpx_1.14.0-1ubuntu2.3.dsc",
+    2374,
+    "284e824d29a73ce6a19b3533ecbde9576bf9325add0b21f2764cb1b29f5aa167"
+   ]
+  ]
+ },
+ "libxtst 2:1.2.3-1.1ubuntu0.1": {
+  "dir": "pool/main/libx/libxtst",
+  "files": [
+   [
+    "libxtst_1.2.3.orig.tar.gz",
+    400197,
+    "a0c83acce02d4923018c744662cb28eb0dbbc33b4adc027726879ccf68fbc2c2"
+   ],
+   [
+    "libxtst_1.2.3-1.1ubuntu0.1.diff.gz",
+    10755,
+    "0234822be5b7c8e05d7b5ef471a2e72b950a32783402ad5a2beabb3ddc48cf9a"
+   ],
+   [
+    "libxtst_1.2.3-1.1ubuntu0.1.dsc",
+    1761,
+    "a401a5dcb3fd0692121df91a97650dc2b60b5ef53bba758843e770e1e16ce822"
+   ]
+  ]
+ },
+ "mpg123 1.32.5-1ubuntu1.1": {
+  "dir": "pool/main/m/mpg123",
+  "files": [
+   [
+    "mpg123_1.32.5.orig.tar.xz",
+    927136,
+    "04d20ed3ae6aad576a0ccec4a851b9f142afa56ef20e82f1bf610c4e8bcd8579"
+   ],
+   [
+    "mpg123_1.32.5-1ubuntu1.1.debian.tar.xz",
+    35592,
+    "b82502b87d031e5f9f49eef0d90e59bc94eba737bcc1aa3e6a8e3a665ea6774a"
+   ],
+   [
+    "mpg123_1.32.5-1ubuntu1.1.dsc",
+    2479,
+    "10c771ac9362ddfa6b863740cc541a3d1b88841908231a28b87b49f66974cab6"
+   ]
+  ]
+ },
+ "nghttp2 1.59.0-1ubuntu0.4": {
+  "dir": "pool/main/n/nghttp2",
+  "files": [
+   [
+    "nghttp2_1.59.0.orig.tar.gz",
+    1055492,
+    "0dd5c980f1262ff5f03676fd99f46f250b66c842f7d864fa1ca9f8453e5f8868"
+   ],
+   [
+    "nghttp2_1.59.0-1ubuntu0.4.debian.tar.xz",
+    18840,
+    "f9f73792cc9c1b903dac7ab6742674e275cc8fb0489c536dba644baccc777119"
+   ],
+   [
+    "nghttp2_1.59.0-1ubuntu0.4.dsc",
+    2624,
+    "2e88ef28abff157157454f097e50256dccafd071206623c0b9294e83457b919b"
+   ]
+  ]
+ },
+ "openssl 3.0.13-0ubuntu3.16": {
+  "dir": "pool/main/o/openssl",
+  "files": [
+   [
+    "openssl_3.0.13.orig.tar.gz",
+    15294843,
+    "88525753f79d3bec27d2fa7c66aa0b92b3aa9498dafd93d7cfa4b3780cdae313"
+   ],
+   [
+    "openssl_3.0.13-0ubuntu3.16.debian.tar.xz",
+    223332,
+    "77893129922c917792dd187c2853fb36ce1c98597c442b42d8190252959b7f6c"
+   ],
+   [
+    "openssl_3.0.13-0ubuntu3.16.dsc",
+    2516,
+    "7d1e552a6f519836c352407e521bafdda7552ec6d1ba242968c35fc0e17f47b6"
+   ]
+  ]
+ },
+ "orc 1:0.4.38-1ubuntu0.1": {
+  "dir": "pool/main/o/orc",
+  "files": [
+   [
+    "orc_0.4.38.orig.tar.xz",
+    227152,
+    "a55a98d4772567aa3faed8fb84d540c3db77eaba16d3e2e10b044fbc9228668d"
+   ],
+   [
+    "orc_0.4.38.orig.tar.xz.asc",
+    833,
+    "6c96eb2daccefc923028fdb128f6b2131c151f27eae5c503d1ecd29b44409a51"
+   ],
+   [
+    "orc_0.4.38-1ubuntu0.1.debian.tar.xz",
+    14488,
+    "b2ec203c6eec26131e46d0f42078a656c707e59443de79e2d93ecc28c7a5dedf"
+   ],
+   [
+    "orc_0.4.38-1ubuntu0.1.dsc",
+    2571,
+    "66d2cf76265eeb710c65436b578a7043c3e1665cc74e517b7bf73d55470415c2"
+   ]
+  ]
+ },
+ "p11-kit 0.25.3-4ubuntu2.2": {
+  "dir": "pool/main/p/p11-kit",
+  "files": [
+   [
+    "p11-kit_0.25.3.orig.tar.xz",
+    991528,
+    "d8ddce1bb7e898986f9d250ccae7c09ce14d82f1009046d202a0eb1b428b2adc"
+   ],
+   [
+    "p11-kit_0.25.3-4ubuntu2.2.debian.tar.xz",
+    28712,
+    "297b8c03f6cf5bc9a00487ddcfee8ab674040afb7b256029a5eeaf8c5edb18a5"
+   ],
+   [
+    "p11-kit_0.25.3-4ubuntu2.2.dsc",
+    2406,
+    "c3975f825965d6ee899edcfb8bce29d56716b322859df37f200e3aa80d0da69e"
+   ]
+  ]
+ },
+ "pipewire 1.0.5-1ubuntu3.3": {
+  "dir": "pool/main/p/pipewire",
+  "files": [
+   [
+    "pipewire_1.0.5.orig.tar.bz2",
+    1698291,
+    "d5e5f3d0b8460e5711c1571c500156fd61768ba55a062eaeb94356abdb955a56"
+   ],
+   [
+    "pipewire_1.0.5-1ubuntu3.3.debian.tar.xz",
+    51808,
+    "a1650f8e95859b3a8057ea95dad7e0509bfed9896db5b0d17c70910c4e9a3ff0"
+   ],
+   [
+    "pipewire_1.0.5-1ubuntu3.3.dsc",
+    4783,
+    "8c9f84687253a01bd787431bf8ef04f4c9306db1a7c0dda6c9564f17da6a7c02"
+   ]
+  ]
+ },
+ "systemd 255.4-1ubuntu8.18": {
+  "dir": "pool/main/s/systemd",
+  "files": [
+   [
+    "systemd_255.4.orig.tar.gz",
+    14952427,
+    "96e75bd08c57ad401677456fb88ef54a9f05bb1695693013bc6ecce839640fd5"
+   ],
+   [
+    "systemd_255.4-1ubuntu8.18.debian.tar.xz",
+    273272,
+    "ec3ce620c3e072d34bbeaf9a4155cd91b5bee94eb412071bf81182f230ae2657"
+   ],
+   [
+    "systemd_255.4-1ubuntu8.18.dsc",
+    7324,
+    "04154737afced0898fc7966b85e88505fb3a17f46c8c7079576d022cdeb67304"
+   ]
+  ]
+ },
+ "util-linux 2.39.3-9ubuntu6.6": {
+  "dir": "pool/main/u/util-linux",
+  "files": [
+   [
+    "util-linux_2.39.3.orig.tar.xz",
+    8526168,
+    "7b6605e48d1a49f43cc4b4cfc59f313d0dd5402fa40b96810bd572e167dfed0f"
+   ],
+   [
+    "util-linux_2.39.3-9ubuntu6.6.debian.tar.xz",
+    155164,
+    "d63476e26c149179ae8a19f4c701e27cf9235c3df2482714d369211683824e37"
+   ],
+   [
+    "util-linux_2.39.3-9ubuntu6.6.dsc",
+    4726,
+    "b30cb22e05473810a48e14db8b5ea7786bb38aed7617dc89ad4f81cd7c6c3397"
+   ]
+  ]
+ },
+ "xz-utils 5.6.1+really5.4.5-1ubuntu0.4": {
+  "dir": "pool/main/x/xz-utils",
+  "files": [
+   [
+    "xz-utils_5.6.1+really5.4.5.orig.tar.xz",
+    1680520,
+    "da9dec6c12cf2ecf269c31ab65b5de18e8e52b96f35d5bcd08c12b43e6878803"
+   ],
+   [
+    "xz-utils_5.6.1+really5.4.5-1ubuntu0.4.debian.tar.xz",
+    33844,
+    "b11106c2e0e0898d87cf186d14073770c1ff8999e7c8c4cb02b55bfc0cc8b424"
+   ],
+   [
+    "xz-utils_5.6.1+really5.4.5-1ubuntu0.4.dsc",
+    2684,
+    "a9d6c2e7561c928d75594277a3b9f2ffe3b61293d272e282aab5110de18d0109"
+   ]
+  ]
+ },
+ "libva 2.20.0-2ubuntu0.2": {
+  "dir": "pool/universe/libv/libva",
+  "files": [
+   [
+    "libva_2.20.0.orig.tar.xz",
+    211632,
+    "a19cbc3b537cd04f43a4511448bcd9fd0b065ea9a3f83efd590bac0a567b0752"
+   ],
+   [
+    "libva_2.20.0-2ubuntu0.2.debian.tar.xz",
+    23292,
+    "b2173dfe95da760ec5633bf8c673bd305d5a69b2f0b1b6d6c21966cae58b06d3"
+   ],
+   [
+    "libva_2.20.0-2ubuntu0.2.dsc",
+    2563,
+    "d00d24e6d37e9eceb2bd6965164cdb8e1c9104723ea9548e2232fafb3e5dd617"
+   ]
+  ]
+ },
+ "gst-plugins-bad1.0 1.24.2-1ubuntu4": {
+  "dir": "pool/universe/g/gst-plugins-bad1.0",
+  "files": [
+   [
+    "gst-plugins-bad1.0_1.24.2-1ubuntu4.dsc",
+    5850,
+    "064b23e05d08dd65a8ea16e8325fe0fc21468d21e3fd0347ba5b069617034d02"
+   ],
+   [
+    "gst-plugins-bad1.0_1.24.2.orig.tar.xz",
+    7046860,
+    "448e32787bc82b586c6cb2f81c9a8ef404fea4f77f25566fe06e597a3f59136b"
+   ],
+   [
+    "gst-plugins-bad1.0_1.24.2.orig.tar.xz.asc",
+    833,
+    "a3c06d7c7b09adf0b8a668bea2b657c577fed9d6c11fbe92d8e1d1b55d8c16a7"
+   ],
+   [
+    "gst-plugins-bad1.0_1.24.2-1ubuntu4.debian.tar.xz",
+    47348,
+    "05fefdaf55bd00dfd434caa10e837a4f01fb5ff6fdd54c9c8a0ddddcec15620b"
+   ]
+  ]
+ },
+ "gst-plugins-ugly1.0 1.24.1-1build1": {
+  "dir": "pool/universe/g/gst-plugins-ugly1.0",
+  "files": [
+   [
+    "gst-plugins-ugly1.0_1.24.1-1build1.dsc",
+    2974,
+    "7cf1c7048271da80b5827a642b3f59718ed2601c3edbde6d2254c334ba61d0ac"
+   ],
+   [
+    "gst-plugins-ugly1.0_1.24.1.orig.tar.xz",
+    217704,
+    "6462d36ce64b74203a8b302c109e762b1dd404a6235dfec3c4255106b7b86976"
+   ],
+   [
+    "gst-plugins-ugly1.0_1.24.1.orig.tar.xz.asc",
+    833,
+    "2d241376ea4f422de0bf22f8a4784ad78b6d8f63486b0badeffc3f125203789b"
+   ],
+   [
+    "gst-plugins-ugly1.0_1.24.1-1build1.debian.tar.xz",
+    28276,
+    "c176e49ed064ed7b6a4907ab064295e71a3161203862d1ff83845dc77438d00a"
+   ]
+  ]
+ },
+ "gstreamer-vaapi 1.24.2-1": {
+  "dir": "pool/universe/g/gstreamer-vaapi",
+  "files": [
+   [
+    "gstreamer-vaapi_1.24.2-1.dsc",
+    2902,
+    "98928b89294fe4cf202e5c8038423f47160b2b95a4e5cf32dd636057193043a5"
+   ],
+   [
+    "gstreamer-vaapi_1.24.2.orig.tar.xz",
+    533344,
+    "cc5ab8c88443e0f5bf23d6110b4aac33df59e4ae626f536d968b1605cc7b962f"
+   ],
+   [
+    "gstreamer-vaapi_1.24.2.orig.tar.xz.asc",
+    833,
+    "634e8fc06c2b32b6c150c40a248c5f646fe9222a3588dc0190d91f9e9730e937"
+   ],
+   [
+    "gstreamer-vaapi_1.24.2-1.debian.tar.xz",
+    9648,
+    "78a830c08bff82d4dcb49df923173d616cb7794eeff15973909e869f0ec6f5d0"
+   ]
+  ]
+ },
+ "vo-aacenc 0.1.3-2build1": {
+  "dir": "pool/universe/v/vo-aacenc",
+  "files": [
+   [
+    "vo-aacenc_0.1.3-2build1.dsc",
+    2147,
+    "e3ac2f753145ea0ffe5e380d599ff9dffd4cbd2e77a701750d6f4f94f04fff24"
+   ],
+   [
+    "vo-aacenc_0.1.3.orig.tar.gz",
+    612463,
+    "e51a7477a359f18df7c4f82d195dab4e14e7414cbd48cf79cc195fc446850f36"
+   ],
+   [
+    "vo-aacenc_0.1.3-2build1.debian.tar.xz",
+    2608,
+    "f50a3035c2d1ec3f73e24532447f1817cff4cea265b0fede40750b07d01cb17c"
+   ]
+  ]
+ },
+ "x264 2:0.164.3108+git31e19f9-1": {
+  "dir": "pool/universe/x/x264",
+  "files": [
+   [
+    "x264_0.164.3108+git31e19f9-1.dsc",
+    1730,
+    "27ebdf555dd61d52c20af95a39c42c02ba46bbb433178f7ba2cb180bf231c483"
+   ],
+   [
+    "x264_0.164.3108+git31e19f9.orig.tar.gz",
+    954789,
+    "41606cb8e788a7f8c4514290646d4ba5c7bc68d9e1ccd1a73f446a90546913eb"
+   ],
+   [
+    "x264_0.164.3108+git31e19f9-1.debian.tar.xz",
+    23648,
+    "7844a9b42bedec211bc9a131d0655ea52524fbb055582921d8e6d4a4d953efc6"
+   ]
+  ]
+ },
+ "x265 3.5-2build1": {
+  "dir": "pool/universe/x/x265",
+  "files": [
+   [
+    "x265_3.5-2build1.dsc",
+    2366,
+    "5a015d647c832f111f0925e08adbc532d86ba12ecf4dfe7073b5c032fdf29bd8"
+   ],
+   [
+    "x265_3.5.orig.tar.gz",
+    1537044,
+    "e70a3335cacacbba0b3a20ec6fecd6783932288ebc8163ad74bcc9606477cae8"
+   ],
+   [
+    "x265_3.5-2build1.debian.tar.xz",
+    13648,
+    "f97d5320970e64e2c17b37397b6bb68a736d360a7c0b0d6e966469af7f5b5a09"
+   ]
+  ]
+ },
+ "xcb-util-cursor 0.1.4-1build1": {
+  "dir": "pool/universe/x/xcb-util-cursor",
+  "files": [
+   [
+    "xcb-util-cursor_0.1.4-1build1.dsc",
+    2456,
+    "d1f039f06bd3c85a48b541de75af1b93e1fa0f8058deaff64aa13502230a20a7"
+   ],
+   [
+    "xcb-util-cursor_0.1.4.orig.tar.gz",
+    394342,
+    "cc8608ebb695742b6cf84712be29b2b66aa5f6768039528794fca0fa283022bf"
+   ],
+   [
+    "xcb-util-cursor_0.1.4.orig.tar.gz.asc",
+    801,
+    "7eefc92b95d5dd785cbe03a47fa5ebd57cbe9b4a4e93b717e58605574efeac0d"
+   ],
+   [
+    "xcb-util-cursor_0.1.4-1build1.debian.tar.xz",
+    6116,
+    "dc151c6dbd01e192be4856eea45220a320e3332a822cb7b59260eb6c46b583f2"
+   ]
+  ]
+ },
+ "apparmor 4.0.1really4.0.1-0ubuntu0.24.04.9": {
+  "dir": "pool/main/a/apparmor",
+  "files": [
+   [
+    "apparmor_4.0.1really4.0.1.orig.tar.gz",
+    6984984,
+    "b0d72cedc48e533d189ea415bde721ad597101c77fa398fdd2858ec4f58f7e26"
+   ],
+   [
+    "apparmor_4.0.1really4.0.1-0ubuntu0.24.04.9.debian.tar.xz",
+    141000,
+    "effdf47c19dd830409b12324aa987c080f1a2cad2a73725cb8d7486fff12fc92"
+   ],
+   [
+    "apparmor_4.0.1really4.0.1-0ubuntu0.24.04.9.dsc",
+    3434,
+    "3b43e3d2f3157c06084590cc1e86b38e7e285c3b292ccfd9834515a48aed79d3"
+   ]
+  ]
+ },
+ "cyrus-sasl2 2.1.28+dfsg1-5ubuntu3.1": {
+  "dir": "pool/main/c/cyrus-sasl2",
+  "files": [
+   [
+    "cyrus-sasl2_2.1.28+dfsg1.orig.tar.xz",
+    794540,
+    "e796a5d85d1a85e1b433d43504e467f9075c7ebc0b45730a3996cf11b1deada4"
+   ],
+   [
+    "cyrus-sasl2_2.1.28+dfsg1-5ubuntu3.1.debian.tar.xz",
+    98324,
+    "a1017cf9d4fd098325338d1d7f1f71cb87102934e7b35c8f5e726d246360689e"
+   ],
+   [
+    "cyrus-sasl2_2.1.28+dfsg1-5ubuntu3.1.dsc",
+    3501,
+    "6ede2d7122c4ea1e807f45b647edbdf9fb1521ad09b0ca0b9b48f220ef33f23f"
+   ]
+  ]
+ },
+ "dbus 1.14.10-4ubuntu4.1": {
+  "dir": "pool/main/d/dbus",
+  "files": [
+   [
+    "dbus_1.14.10.orig.tar.xz",
+    1372328,
+    "ba1f21d2bd9d339da2d4aa8780c09df32fea87998b73da24f49ab9df1e36a50f"
+   ],
+   [
+    "dbus_1.14.10.orig.tar.xz.asc",
+    833,
+    "5f292cd0603c3d736026ed3f4d1c1937847981669c1f0a389083518f013e1081"
+   ],
+   [
+    "dbus_1.14.10-4ubuntu4.1.debian.tar.xz",
+    69668,
+    "c28e0e4840bf3c3f3cbdacae9b7228bb4694dd234f325535942dde76af3c322e"
+   ],
+   [
+    "dbus_1.14.10-4ubuntu4.1.dsc",
+    3746,
+    "3d9037176550657a3584f7640027a6d970c85b0cd158a2be7e8051aab1349edb"
+   ]
+  ]
+ },
+ "glib2.0 2.80.0-6ubuntu3.10": {
+  "dir": "pool/main/g/glib2.0",
+  "files": [
+   [
+    "glib2.0_2.80.0.orig-unicode-data.tar.xz",
+    263364,
+    "38680f78a0ae6258826418cb5096c19ae3566ba8fee0a2112a0ec40056e58729"
+   ],
+   [
+    "glib2.0_2.80.0.orig.tar.xz",
+    5510536,
+    "8228a92f92a412160b139ae68b6345bd28f24434a7b5af150ebe21ff587a561d"
+   ],
+   [
+    "glib2.0_2.80.0-6ubuntu3.10.debian.tar.xz",
+    178808,
+    "9790a8bbf6d775f8a482f3862a64b2127330a1866ceaf04c85be34fbd2698254"
+   ],
+   [
+    "glib2.0_2.80.0-6ubuntu3.10.dsc",
+    4080,
+    "0ee18e055f5fba9a33763f94823b44ab38e4f677f625ba7540486fe03b436136"
+   ]
+  ]
+ },
+ "gtk+3.0 3.24.41-4ubuntu1.3": {
+  "dir": "pool/main/g/gtk+3.0",
+  "files": [
+   [
+    "gtk+3.0_3.24.41.orig.tar.xz",
+    13188312,
+    "47da61487af3087a94bc49296fd025ca0bc02f96ef06c556e7c8988bd651b6fa"
+   ],
+   [
+    "gtk+3.0_3.24.41-4ubuntu1.3.debian.tar.xz",
+    3666360,
+    "1a82c70d722296f15af0a00a737a0c552580c6bf3f527f9ef7e66f192fe1831c"
+   ],
+   [
+    "gtk+3.0_3.24.41-4ubuntu1.3.dsc",
+    4996,
+    "b7ea9dda7ffd3f01f97d7ee673f130a82db5b346ade2d003e609e27886b35269"
+   ]
+  ]
+ },
+ "krb5 1.20.1-6ubuntu2.10": {
+  "dir": "pool/main/k/krb5",
+  "files": [
+   [
+    "krb5_1.20.1.orig.tar.gz",
+    8661660,
+    "704aed49b19eb5a7178b34b2873620ec299db08752d6a8574f95d41879ab8851"
+   ],
+   [
+    "krb5_1.20.1-6ubuntu2.10.debian.tar.xz",
+    132764,
+    "e3a9136f4c3d93f41b5ffb3533ff472fedf52efecebaba79127fbc1fbdced6ca"
+   ],
+   [
+    "krb5_1.20.1-6ubuntu2.10.dsc",
+    3890,
+    "58839693f92867ecb31e253dc61198a94166f17da3afb1f9b740dc112f511a4b"
+   ]
+  ]
+ },
+ "libbsd 0.12.1-1build1.1": {
+  "dir": "pool/main/libb/libbsd",
+  "files": [
+   [
+    "libbsd_0.12.1.orig.tar.xz",
+    444048,
+    "d7747f8ec1baa6ff5c096a9dd587c061233dec90da0f1aedd66d830f6db6996a"
+   ],
+   [
+    "libbsd_0.12.1.orig.tar.xz.asc",
+    833,
+    "04a4b66da93ea3c761e15fcedd705a969b67597d0619c3ebc5fe3cf72d477f1f"
+   ],
+   [
+    "libbsd_0.12.1-1build1.1.debian.tar.xz",
+    18732,
+    "4086dc52ae53f0d7625a593c331460377868edc2a5606f4d8a341565aa94b2be"
+   ],
+   [
+    "libbsd_0.12.1-1build1.1.dsc",
+    2458,
+    "a44c2a70dbb9703c342ae49525507d22795b37308302c6167d72c3cbd3e76236"
+   ]
+  ]
+ },
+ "libidn2 2.3.7-2build1.1": {
+  "dir": "pool/main/libi/libidn2",
+  "files": [
+   [
+    "libidn2_2.3.7.orig.tar.gz",
+    2155214,
+    "4c21a791b610b9519b9d0e12b8097bf2f359b12f8dd92647611a929e6bfd7d64"
+   ],
+   [
+    "libidn2_2.3.7.orig.tar.gz.asc",
+    228,
+    "d4e78fc1c5a5c35980be3a04dd864574f450d55921360b0aa19326c75ada4a98"
+   ],
+   [
+    "libidn2_2.3.7-2build1.1.debian.tar.xz",
+    16468,
+    "50d3154a3a5b3506aa340c1784f96bfe0f4c5608e2a1a9dd265aa204da4ef327"
+   ],
+   [
+    "libidn2_2.3.7-2build1.1.dsc",
+    2651,
+    "fa2970145d391578511ef78bc74a9ba7a57cff510d9e5fba39520f63b023986c"
+   ]
+  ]
+ },
+ "libmd 1.1.0-2build1.1": {
+  "dir": "pool/main/libm/libmd",
+  "files": [
+   [
+    "libmd_1.1.0.orig.tar.xz",
+    271228,
+    "1bd6aa42275313af3141c7cf2e5b964e8b1fd488025caf2f971f43b00776b332"
+   ],
+   [
+    "libmd_1.1.0.orig.tar.xz.asc",
+    833,
+    "402fd3024e43ab975733d09e661804a58ca58697194e4b15216b1217cfe1dadb"
+   ],
+   [
+    "libmd_1.1.0-2build1.1.debian.tar.xz",
+    8448,
+    "ed337af7e336b7dbb6b246c339baa34c9e832bf614a44d06158238259df12307"
+   ],
+   [
+    "libmd_1.1.0-2build1.1.dsc",
+    2391,
+    "11dfd22bba97a4c4ca6c09f34743ac6c72a34eb81344e3a1681c45e2d60ce239"
+   ]
+  ]
+ },
+ "libselinux 3.5-2ubuntu2.1": {
+  "dir": "pool/main/libs/libselinux",
+  "files": [
+   [
+    "libselinux_3.5.orig.tar.gz",
+    211453,
+    "9a3a3705ac13a2ccca2de6d652b6356fead10f36fb33115c185c5ccdf29eec19"
+   ],
+   [
+    "libselinux_3.5.orig.tar.gz.asc",
+    981,
+    "fd37d441e0c08cabe9ac8f7815f52355bab2011549ec5792424fe18be9e1e015"
+   ],
+   [
+    "libselinux_3.5-2ubuntu2.1.debian.tar.xz",
+    38112,
+    "13e47e0983f59235e34f5abe07a2a0d1af3dd2d255962c6a50fac4698c3fe891"
+   ],
+   [
+    "libselinux_3.5-2ubuntu2.1.dsc",
+    3098,
+    "96134581a745ed85b3d5f1c24cdd88fa7d3e29548c0f80a683094ed886b7f150"
+   ]
+  ]
+ },
+ "libunistring 1.1-2build1.1": {
+  "dir": "pool/main/libu/libunistring",
+  "files": [
+   [
+    "libunistring_1.1.orig.tar.xz",
+    2397676,
+    "827c1eb9cb6e7c738b171745dac0888aa58c5924df2e59239318383de0729b98"
+   ],
+   [
+    "libunistring_1.1.orig.tar.xz.asc",
+    833,
+    "dadae6c38f85f9e8776231436c601c386924ceb44d511456c61c9be73608933d"
+   ],
+   [
+    "libunistring_1.1-2build1.1.debian.tar.xz",
+    14188,
+    "06254c8f2ad989bd8ff267fd921d6711fbc0390ff10b99bc3be09fe870baab5e"
+   ],
+   [
+    "libunistring_1.1-2build1.1.dsc",
+    2292,
+    "496ec65625b57a9c5cd0577843814cbd4701ab123a6146a56053dcc9463ae09e"
+   ]
+  ]
+ },
+ "libunwind 1.6.2-3build1.1": {
+  "dir": "pool/main/libu/libunwind",
+  "files": [
+   [
+    "libunwind_1.6.2.orig.tar.gz",
+    901392,
+    "4a6aec666991fb45d0889c44aede8ad6eb108071c3554fcdff671f9c94794976"
+   ],
+   [
+    "libunwind_1.6.2.orig.tar.gz.asc",
+    659,
+    "f064387f5505fff34735a72dcaf190d2ea8a87569ef50c539cfb154986bbd4d2"
+   ],
+   [
+    "libunwind_1.6.2-3build1.1.debian.tar.xz",
+    16904,
+    "1f267fd37c1a1eff97a002a0f96ce2e76bd8fa6f01c033da0d81ab715ed8f266"
+   ],
+   [
+    "libunwind_1.6.2-3build1.1.dsc",
+    2919,
+    "b598f97992f100e452d4766617a16275cb67674bb77731d649854729dc5b728a"
+   ]
+  ]
+ },
+ "libzstd 1.5.5+dfsg2-2build1.1": {
+  "dir": "pool/main/libz/libzstd",
+  "files": [
+   [
+    "libzstd_1.5.5+dfsg2.orig.tar.xz",
+    1784164,
+    "d7cf3c10d416fd999cb8fcf7685d9268ba7bec8eb78121fc2d0d916fa393d22b"
+   ],
+   [
+    "libzstd_1.5.5+dfsg2-2build1.1.debian.tar.xz",
+    21288,
+    "c1df6d2628b26d085259b8e7ac020eb060e4c1feca98d6103058eda5ded725bc"
+   ],
+   [
+    "libzstd_1.5.5+dfsg2-2build1.1.dsc",
+    2485,
+    "c190a5dff9e7c5b5b1399f0d701bb2c173bc7cbdf14d5e05970f5ac066c25570"
+   ]
+  ]
+ },
+ "lz4 1.9.4-1build1.1": {
+  "dir": "pool/main/l/lz4",
+  "files": [
+   [
+    "lz4_1.9.4.orig.tar.gz",
+    354063,
+    "0b0e3aa07c8c063ddf40b082bdf7e37a1562bda40a0ff5272957f3e987e0e54b"
+   ],
+   [
+    "lz4_1.9.4-1build1.1.debian.tar.xz",
+    8356,
+    "9551b039576db7c87f38c3c847283877de65114cca06488accb9596a7c4f1ead"
+   ],
+   [
+    "lz4_1.9.4-1build1.1.dsc",
+    2061,
+    "ba7b585b15d8b4c955dd68c7af5aa89901cfbb3fdb4f2607ccad51628857d669"
+   ]
+  ]
+ },
+ "nettle 3.9.1-2.2build1.1": {
+  "dir": "pool/main/n/nettle",
+  "files": [
+   [
+    "nettle_3.9.1.orig.tar.gz",
+    2396741,
+    "ccfeff981b0ca71bbd6fbcb054f407c60ffb644389a5be80d6716d5b550c6ce3"
+   ],
+   [
+    "nettle_3.9.1.orig.tar.gz.asc",
+    573,
+    "9746017a1a7fe60aad4b929ea592bc6ac51e12ea7179f289944eb44828d958af"
+   ],
+   [
+    "nettle_3.9.1-2.2build1.1.debian.tar.xz",
+    24848,
+    "be4ad3b97b32c4c4bacc10aa4caef2f3fa0840c21c642407fc3d48c4535b7c5e"
+   ],
+   [
+    "nettle_3.9.1-2.2build1.1.dsc",
+    2325,
+    "db439554d51174b657660a2a47d3d4128838e063f3c9c7da67bb3fe91931d1d2"
+   ]
+  ]
+ },
+ "numactl 2.0.18-1ubuntu0.24.04.1": {
+  "dir": "pool/main/n/numactl",
+  "files": [
+   [
+    "numactl_2.0.18.orig.tar.gz",
+    218289,
+    "8cd6c13f3096e9c2293c1d732f56e2aa37a7ada1a98deed3fac7bd6da1aaaaf6"
+   ],
+   [
+    "numactl_2.0.18-1ubuntu0.24.04.1.debian.tar.xz",
+    7936,
+    "4f4c6d80e15af0eba522e6d777d372b74be223405fb3100bff14baaa42578296"
+   ],
+   [
+    "numactl_2.0.18-1ubuntu0.24.04.1.dsc",
+    2144,
+    "fde5318bd6384807136bcb1abd118cc1001954becd99b63717d3dae7a7f88b00"
+   ]
+  ]
+ },
+ "openldap 2.6.10+dfsg-0ubuntu0.24.04.1": {
+  "dir": "pool/main/o/openldap",
+  "files": [
+   [
+    "openldap_2.6.10+dfsg.orig.tar.xz",
+    3754560,
+    "e871102bda1e42155fd4d6be4825a297e1c593cb0907b84fc7dde888dc847877"
+   ],
+   [
+    "openldap_2.6.10+dfsg-0ubuntu0.24.04.1.debian.tar.xz",
+    191132,
+    "91bdd643954645ce8ba51152516831ce4dcb497a222b88a5df847c4780e5f79e"
+   ],
+   [
+    "openldap_2.6.10+dfsg-0ubuntu0.24.04.1.dsc",
+    3653,
+    "63be3643ff4157d84ef8bd9763fb7252695ceaea46773277600377417ecd21de"
+   ]
+  ]
+ },
+ "pcre2 10.42-4ubuntu2.1": {
+  "dir": "pool/main/p/pcre2",
+  "files": [
+   [
+    "pcre2_10.42.orig.tar.gz",
+    2397194,
+    "c33b418e3b936ee3153de2c61cc638e7e4fe3156022a5c77d0711bcbb9d64f1f"
+   ],
+   [
+    "pcre2_10.42-4ubuntu2.1.diff.gz",
+    8431,
+    "29c5cb6ff392544bf48bd3ec2a98aa0da5297457fa4f4199a1c392ec3d41f19c"
+   ],
+   [
+    "pcre2_10.42-4ubuntu2.1.dsc",
+    2277,
+    "6272177be186d6f8ad16b668bb508b2e07645e05b5b8402d446492cb6d18104e"
+   ]
+  ]
+ },
+ "pulseaudio 1:16.1+dfsg1-2ubuntu10.1": {
+  "dir": "pool/main/p/pulseaudio",
+  "files": [
+   [
+    "pulseaudio_16.1+dfsg1.orig.tar.xz",
+    1437216,
+    "e471c61c47b6d95089be52a5122c87161a695b60534a0c8a36fe344310fd3d06"
+   ],
+   [
+    "pulseaudio_16.1+dfsg1-2ubuntu10.1.debian.tar.xz",
+    98660,
+    "80db1588384392c47d3233e670ca1e25e8096fd4f37e1160f3b476bc61b9668c"
+   ],
+   [
+    "pulseaudio_16.1+dfsg1-2ubuntu10.1.dsc",
+    3865,
+    "12ba094e43fb9e39de87647cf4c353a3b8c8a1ba48a419e812ab5f9b9ed936d3"
+   ]
+  ]
+ }
+}
