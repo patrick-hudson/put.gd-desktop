@@ -316,7 +316,7 @@ struct Metrics {
 };
 Metrics metrics(UINT d) {
     Metrics m{};
-    m.rail = scale(220, d);
+    m.rail = scale(248, d);
     m.item = scale(36, d);
     m.itemGap = scale(3, d);
     m.margin = scale(24, d);
@@ -686,6 +686,7 @@ void MainWindow::updateRail() {
         std::wstring tip = explanation(action) + L"\n\n" + outputText(document, action) + L"\n\n" +
                            (shortcut.empty() ? std::wstring(L"No shortcut assigned.") : L"Shortcut: " + wide(shortcut));
         setTooltip(tooltip_, rail_[action], tip);
+        theme::setHint(rail_[action], wide(shortcut));
     }
 }
 

@@ -56,6 +56,8 @@ void drawGlyph(HDC, const std::string& name, int x, int y, int size, COLORREF ma
 enum class Role { Standard = 0, Primary, Danger, Nav, Action, Subtle, Link };
 void setRole(HWND button, Role, const char* glyphName = nullptr);
 void setSelected(HWND button, bool selected);
+// A muted right-aligned hint on a Nav/Action item (the capture shortcut); empty clears it.
+void setHint(HWND button, const std::wstring& hint);
 // Combo boxes (drop-down lists) get a button-like face, vertically centred text and a chevron.
 void styleCombo(HWND combo);
 // Edits drawn inside a rounded frame painted by their parent (Panel). place() sizes them.

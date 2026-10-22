@@ -603,6 +603,38 @@ void applyTitleBarTheme(HWND hwnd, const std::string& themeSetting) {
     const BOOL dark = themeSetting == "dark" || (themeSetting != "light" && systemPrefersDark());
     if (FAILED(DwmSetWindowAttribute(hwnd, darkModeAttribute, &dark, sizeof dark)))
         DwmSetWindowAttribute(hwnd, darkModeAttributeOld, &dark, sizeof dark);
+    // Windows 11 (22000+): the caption takes the rail's colour so the title bar reads as
+    // part of the navigation rail, and the frame line follows the divider.
+    constexpr DWORD captionColor = 35, textColor = 36, borderColor = 34;
+    const auto& c = theme::colors();
+    const COLORREF caption = c.rail, text = c.text, border = c.divider;
+    DwmSetWindowAttribute(hwnd, captionColor, &caption, sizeof caption);
+    DwmSetWindowAttribute(hwnd, textColor, &text, sizeof text);
+    DwmSetWindowAttribute(hwnd, borderColor, &border, sizeof border);
+}
+std::wstring relativeTime(const std::string& isoUtc) {
+    const long long ms = files::parseIsoUtcMs(isoUtc);
+    if (ms < 0) return {};
+    const long long now = files::parseIsoUtcMs(files::nowIsoUtc());
+    const long long age = now - ms;
+    if (age < 60000) return L"Just now";
+    if (age < 3600000) return std::to_wstring(age / 60000) + L" min ago";
+    if (age < 6 * 3600000LL) return std::to_wstring(age / 3600000) + L" h ago";
+    const unsigned long long ticks = (static_cast<unsigned long long>(ms) + 11644473600000ULL) * 10000ULL;
+    FILETIME utc{DWORD(ticks & 0xFFFFFFFFULL), DWORD(ticks >> 32)};
+    SYSTEMTIME universal{}, local{}, today{};
+    if (!FileTimeToSystemTime(&utc, &universal) || !SystemTimeToTzSpecificLocalTime(nullptr, &universal, &local)) return {};
+    GetLocalTime(&today);
+    wchar_t time[64]{}, date[64]{};
+    GetTimeFormatEx(LOCALE_NAME_USER_DEFAULT, TIME_NOSECONDS, &local, nullptr, time, 64);
+    const bool sameDay = local.wYear == today.wYear && local.wMonth == today.wMonth && local.wDay == today.wDay;
+    if (sameDay) return std::wstring(L"Today ") + time;
+    if (age < 7 * 86400000LL) {
+        GetDateFormatEx(LOCALE_NAME_USER_DEFAULT, 0, &local, L"ddd", date, 64, nullptr);
+        return std::wstring(age < 2 * 86400000LL ? L"Yesterday" : date) + L" " + time;
+    }
+    GetDateFormatEx(LOCALE_NAME_USER_DEFAULT, DATE_SHORTDATE, &local, nullptr, date, 64, nullptr);
+    return std::wstring(date) + L" " + time;
 }
 
 void message(HWND owner, const std::wstring& title, const std::wstring& instruction, const std::wstring& content, bool error) {

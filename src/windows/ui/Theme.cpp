@@ -310,6 +310,8 @@ int textWidthOf(HDC dc, HFONT f, const std::wstring& text) {
     return r.right;
 }
 
+std::map<HWND, std::wstring>& hints() { static std::map<HWND, std::wstring> table; return table; }
+std::wstring hintOf(HWND h) { const auto it = hints().find(h); return it == hints().end() ? std::wstring() : it->second; }
 // ---- custom-drawn buttons -------------------------------------------------------------
 void paintPush(HWND h, HDC target, UINT state) {
     const auto& c = colors();
@@ -344,6 +346,17 @@ void paintPush(HWND h, HDC target, UINT state) {
         const int icon = scale(20, dpi), left = rc.left + scale(12, dpi);
         if (name) drawGlyph(dc, name, left, (rc.top + rc.bottom - icon) / 2, icon, disabled ? c.textDisabled : c.icon, disabled ? c.divider : c.iconSecondary);
         RECT label{left + icon + scale(12, dpi), rc.top, rc.right - scale(8, dpi), rc.bottom};
+        const auto hint = hintOf(h);
+        if (!hint.empty()) {
+            HFONT small = font(FontRole::Small, dpi);
+            const int hintWidth = textWidthOf(dc, small, hint);
+            const int labelWidth = textWidthOf(dc, fontOf(h), text);
+            if (labelWidth + hintWidth + scale(16, dpi) < label.right - label.left) {
+                RECT hintRect{label.right - hintWidth - scale(6, dpi), rc.top, label.right - scale(2, dpi), rc.bottom};
+                drawText(dc, hint, hintRect, disabled ? c.textDisabled : c.textMuted, small, DT_SINGLELINE | DT_VCENTER | DT_RIGHT | DT_NOPREFIX);
+                label.right = hintRect.left - scale(8, dpi);
+            }
+        }
         drawText(dc, text, label, ink, fontOf(h), format | DT_LEFT);
     } else {
         COLORREF face = c.button, border = c.buttonBorder, bottom = c.buttonBottom;
@@ -519,6 +532,18 @@ bool rowDraw(NMLVCUSTOMDRAW* cd, LRESULT& result) {
         get.cchTextMax = 1024;
         SendMessageW(list, LVM_GETITEMTEXTW, WPARAM(item), reinterpret_cast<LPARAM>(&get));
         RECT label{cell.left + scale(column == 0 ? 12 : 10, dpi), cell.top, cell.right - scale(6, dpi), cell.bottom};
+        if (column == 0) {
+            // A thumbnail or type glyph from the small image list, vertically centred.
+            HIMAGELIST images = ListView_GetImageList(list, LVSIL_SMALL);
+            LVITEMW probe{};
+            probe.mask = LVIF_IMAGE; probe.iItem = item;
+            if (images && SendMessageW(list, LVM_GETITEMW, 0, reinterpret_cast<LPARAM>(&probe)) && probe.iImage >= 0) {
+                int cx = 0, cy = 0;
+                ImageList_GetIconSize(images, &cx, &cy);
+                ImageList_Draw(images, probe.iImage, dc, label.left, (cell.top + cell.bottom - cy) / 2, ILD_NORMAL);
+                label.left += cx + scale(10, dpi);
+            }
+        }
         if (column + 1 == int(reinterpret_cast<INT_PTR>(GetPropW(list, L"putgd.stateColumn"))) && text[0]) {
             std::wstring word(text);
             for (auto& ch : word) ch = wchar_t(towlower(ch));
@@ -967,6 +992,10 @@ void drawText(HDC dc, const std::wstring& text, RECT r, COLORREF color, HFONT f,
     SetBkMode(dc, TRANSPARENT);
     DrawTextW(dc, text.c_str(), int(text.size()), &r, format);
     SelectObject(dc, old);
+}
+void setHint(HWND button, const std::wstring& hint) {
+    if (hint.empty()) hints().erase(button); else hints()[button] = hint;
+    InvalidateRect(button, nullptr, FALSE);
 }
 HICON glyph(const std::string& name, int size, COLORREF main, COLORREF secondary) {
     static std::map<std::tuple<std::string, int, COLORREF, COLORREF>, HICON> cache;

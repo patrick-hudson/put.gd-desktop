@@ -238,6 +238,10 @@ private:
     HWND previous_{}, next_{}, pageLabel_{}, preview_{}, previewNote_{}, title_{}, details_{}, linkLabel_{}, link_{};
     HWND copyLink_{}, openLink_{}, openFolder_{}, editAgain_{}, delete_{}, clearHistory_{}, clearCache_{};
     HWND retry_{}, cancel_{}, copyResult_{}, retryLocal_{}, saveDiagnostics_{};
+    HIMAGELIST thumbnails_ = nullptr;
+    int thumbnailIndex(const json::Object&);
+    void setRowImage(int row, int image);
+    void resetThumbnails();
     json::Array records_, operations_;
     long long total_ = 0;
     int offset_ = 0;
@@ -274,6 +278,7 @@ HWND HistoryPageImpl::create(HWND parent) {
     destination_ = combo(p, idDestination);
     fillDestinations();
     list_ = listView(p, idList);
+    SendMessageW(list_, LVM_SETEXTENDEDLISTVIEWSTYLE, LVS_EX_SUBITEMIMAGES, 0);
     setColumns();
     previous_ = button(p, idPrevious, L"Previous");
     next_ = button(p, idNext, L"Next");
@@ -341,7 +346,7 @@ void HistoryPageImpl::fitColumns() {
     GetClientRect(list_, &client);
     if (client.right <= 0) return;
     const UINT d = panel_.dpi();
-    std::vector<int> widths = activityMode_ ? std::vector<int>{170, 132, 130, 0, 52} : std::vector<int>{0, 126, 64, 112, 124};
+    std::vector<int> widths = activityMode_ ? std::vector<int>{170, 132, 130, 0, 52} : std::vector<int>{0, 104, 64, 104, 116};
     const size_t flex = activityMode_ ? 3 : 0;
     const int minimum = scale(activityMode_ ? 140 : 160, d);
     const int available = int(client.right) - (GetWindowLongW(list_, GWL_STYLE) & WS_VSCROLL ? 0 : GetSystemMetrics(SM_CXVSCROLL)) - 1;
@@ -492,9 +497,62 @@ void HistoryPageImpl::refresh() {
     main_.session().call("history.list", params, [done](const Reply& reply) { done(reply, false); });
 }
 
+// Row thumbnails: the bounded history preview scaled into a square tile, or a category
+// glyph; one image list per fill so nothing accumulates across refreshes.
+int HistoryPageImpl::thumbnailIndex(const json::Object& r) {
+    if (!thumbnails_) return -1;
+    const UINT d = panel_.dpi();
+    const int size = scale(28, d);
+    const auto& c = theme::colors();
+    const auto path = r.value("previewPath").toString();
+    HBITMAP thumb = path.empty() ? nullptr : decodePreview(path, size, size);
+    if (thumb) {
+        BITMAP info{};
+        GetObjectW(thumb, sizeof info, &info);
+        BITMAPINFO tile{};
+        tile.bmiHeader.biSize = sizeof tile.bmiHeader; tile.bmiHeader.biWidth = size; tile.bmiHeader.biHeight = -size; tile.bmiHeader.biPlanes = 1; tile.bmiHeader.biBitCount = 32;
+        void* bits = nullptr;
+        HBITMAP square = CreateDIBSection(nullptr, &tile, DIB_RGB_COLORS, &bits, nullptr, 0);
+        if (square && bits) {
+            HDC screen = GetDC(nullptr);
+            HDC dst = CreateCompatibleDC(screen), src = CreateCompatibleDC(screen);
+            HGDIOBJ oldDst = SelectObject(dst, square), oldSrc = SelectObject(src, thumb);
+            theme::roundRect(dst, {0, 0, size, size}, scale(4, d), c.placeholder);
+            BitBlt(dst, (size - info.bmWidth) / 2, (size - info.bmHeight) / 2, info.bmWidth, info.bmHeight, src, 0, 0, SRCCOPY);
+            SelectObject(dst, oldDst); SelectObject(src, oldSrc); DeleteDC(dst); DeleteDC(src); ReleaseDC(nullptr, screen);
+            // GDI leaves alpha at 0; make the tile opaque for the image list.
+            auto* px = static_cast<unsigned*>(bits);
+            for (int i = 0; i < size * size; ++i) px[i] |= 0xFF000000u;
+            const int index = ImageList_Add(thumbnails_, square, nullptr);
+            DeleteObject(square);
+            DeleteObject(thumb);
+            return index;
+        }
+        DeleteObject(thumb);
+    }
+    const auto category = r.value("category").toString();
+    const char* name = category == "images" ? "images" : category == "videos" ? "window" : category == "text" ? "clipboard" : "destinations";
+    HICON icon = theme::glyph(name, size, c.iconSecondary, c.divider);
+    return icon ? ImageList_AddIcon(thumbnails_, icon) : -1;
+}
+void HistoryPageImpl::setRowImage(int row, int image) {
+    if (row < 0 || image < 0) return;
+    LVITEMW item{};
+    item.mask = LVIF_IMAGE; item.iItem = row; item.iImage = image;
+    SendMessageW(list_, LVM_SETITEMW, 0, reinterpret_cast<LPARAM>(&item));
+}
+void HistoryPageImpl::resetThumbnails() {
+    const int size = scale(28, panel_.dpi());
+    HIMAGELIST fresh = activityMode_ ? nullptr : ImageList_Create(size, size, ILC_COLOR32 | ILC_MASK, 64, 16);
+    HIMAGELIST old = reinterpret_cast<HIMAGELIST>(SendMessageW(list_, LVM_SETIMAGELIST, LVSIL_SMALL, reinterpret_cast<LPARAM>(fresh)));
+    if (old && old != fresh) ImageList_Destroy(old);
+    if (thumbnails_ && thumbnails_ != old && thumbnails_ != fresh) ImageList_Destroy(thumbnails_);
+    thumbnails_ = fresh;
+}
 void HistoryPageImpl::fill() {
     populating_ = true;
     SendMessageW(list_, WM_SETREDRAW, FALSE, 0);
+    resetThumbnails();
     const int top = int(SendMessageW(list_, LVM_GETTOPINDEX, 0, 0));
     SendMessageW(list_, LVM_DELETEALLITEMS, 0, 0);
     int selectedRow = -1;
@@ -525,10 +583,11 @@ void HistoryPageImpl::fill() {
             const auto link = r.value("linkAvailable").toBool() ? r.value("receipt")["directUrl"].toString() : std::string();
             const auto profileId = r.value("profileId").toString(r.value("receipt")["destination"]["profileId"].toString());
             const auto destination = profileId.empty() ? std::wstring(L"\x2014") : wide(main_.session().profileLabel(profileId));
-            const int row = addRow(list_, {wide(r.value("name").toString()), localTime(r.value("created").toString()), wide(text::byteSize(r.value("bytes").toInteger())),
+            const int row = addRow(list_, {wide(r.value("name").toString()), relativeTime(r.value("created").toString()), wide(text::byteSize(r.value("bytes").toInteger())),
                                            destination, statusLabel(uploadLabels, r.value("uploadStatus").toString())},
                                    LPARAM(i));
             (void)link;
+            setRowImage(row, thumbnailIndex(r));
             if (r.value("id").toString() == selectedId_) selectedRow = row;
         }
         const long long first = total_ ? offset_ + 1 : 0, last = std::min<long long>(total_, offset_ + static_cast<long long>(records_.size()));

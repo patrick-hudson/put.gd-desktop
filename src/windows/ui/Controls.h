@@ -171,4 +171,6 @@ bool pickImageFile(HWND owner, std::string& chosen);
 void revealInExplorer(const std::string& path);
 void openUrl(const std::string& url);
 std::wstring localTime(const std::string& isoUtc); // short date + time in the user's locale; empty if invalid
+// "Just now", "12 min ago", "Today 09:41", "Yesterday 18:02", "Mon 18:02", else the short date; empty if invalid.
+std::wstring relativeTime(const std::string& isoUtc);
 }
