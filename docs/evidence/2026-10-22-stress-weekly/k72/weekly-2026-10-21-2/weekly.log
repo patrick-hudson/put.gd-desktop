@@ -1,0 +1,51 @@
+2026-10-21T22:21:22-05:00 putgd weekly stress lane on kubuntu: origin/claude/stress-lane-weekly-360-31d0ab, 10 runs, 4 busy loops, scale 3
+2026-10-21T22:21:22-05:00 k72 desktop lock: free (read with ~/.local/libexec/putgd-stress/desktop_lock.py)
+2026-10-21T22:21:22-05:00 no other ctest or stress suite running; load 0.19 on 4 CPUs
+2026-10-21T22:21:22-05:00 $ git clone --quiet --no-checkout https://github.com/patrick-hudson/put.gd-desktop.git ~/work/put.gd-stress
+2026-10-21T22:21:26-05:00 $ git -C ~/work/put.gd-stress fetch --quiet --prune --no-tags origin +refs/heads/claude/stress-lane-weekly-360-31d0ab:refs/remotes/origin/claude/stress-lane-weekly-360-31d0ab
+2026-10-21T22:21:26-05:00 $ git -C ~/work/put.gd-stress checkout --quiet --force --detach refs/remotes/origin/claude/stress-lane-weekly-360-31d0ab
+2026-10-21T22:21:27-05:00 $ git -C ~/work/put.gd-stress clean -ffdq
+2026-10-21T22:21:27-05:00 tree ~/work/put.gd-stress at origin/claude/stress-lane-weekly-360-31d0ab fe24932e722c6ac4b00f21bbabb54d5189efb961
+2026-10-21T22:21:27-05:00 disk: 103.8 GiB free, enough for a 4.0 GiB build plus the 10.0 GiB reserve
+2026-10-21T22:21:27-05:00 $ cmake --preset dev -DPUTGD_TEST_TIMEOUT_SCALE=3
+2026-10-21T22:21:32-05:00 $ nice -n 10 cmake --build --preset dev -j 3
+2026-10-21T22:31:28-05:00 built in 601 s; build/dev is 2.6 GiB
+2026-10-21T22:31:28-05:00 k72 desktop lock: free (read with ~/work/put.gd-stress/tools/lab/desktop_lock.py)
+2026-10-21T22:31:29-05:00 no other ctest or stress suite running; load 3.08 on 4 CPUs
+2026-10-21T22:31:29-05:00 $ /usr/bin/python3 -I ~/work/put.gd-stress/tools/ci/stress_suite.py --source ~/work/put.gd-stress --out ~/work/flake-stress/weekly-2026-10-21-2 --iterations 10 --hogs 4 --time-scale 3 --label weekly-2026-10-21-2 -- --preset dev -L integration --parallel 12 --resource-spec-file ~/work/put.gd-stress/tools/ci/ctest-resources.json
+2026-10-21T22:37:39-05:00 iteration 1/10: 74 tests, 370.15 s, load 4.09 4.56 3.28, failed: native_background_startup_integration, native_region_overlay, native_shortcut_rejection_integration, recording_helper_integration, ui_native_lifecycle_integration, x11_isolated
+2026-10-21T22:43:39-05:00 iteration 2/10: 74 tests, 360.13 s, load 4.10 5.01 4.05, failed: native_background_startup_integration, native_region_overlay, native_shortcut_rejection_integration, recording_helper_integration, ui_native_lifecycle_integration, x11_isolated
+2026-10-21T22:49:39-05:00 iteration 3/10: 74 tests, 360.15 s, load 4.20 5.11 4.55, failed: native_background_startup_integration, native_region_overlay, recording_helper_integration, ui_native_lifecycle_integration, x11_isolated
+2026-10-21T22:55:39-05:00 iteration 4/10: 74 tests, 360.16 s, load 4.12 5.15 4.88, failed: native_background_startup_integration, native_region_overlay, native_shortcut_rejection_integration, recording_helper_integration, ui_native_lifecycle_integration, x11_isolated
+2026-10-21T23:01:39-05:00 iteration 5/10: 74 tests, 360.12 s, load 4.09 5.23 5.16, failed: native_background_startup_integration, native_region_overlay, recording_helper_integration, ui_native_lifecycle_integration, x11_isolated
+2026-10-21T23:07:39-05:00 iteration 6/10: 74 tests, 360.13 s, load 4.12 5.22 5.32, failed: native_background_startup_integration, native_region_overlay, native_shortcut_rejection_integration, recording_helper_integration, ui_native_lifecycle_integration, x11_isolated
+2026-10-21T23:13:40-05:00 iteration 7/10: 74 tests, 360.16 s, load 4.14 5.19 5.41, failed: native_background_startup_integration, native_region_overlay, recording_helper_integration, ui_native_lifecycle_integration, x11_isolated
+2026-10-21T23:19:40-05:00 iteration 8/10: 74 tests, 360.15 s, load 4.17 5.26 5.51, failed: native_background_startup_integration, native_region_overlay, native_shortcut_rejection_integration, recording_helper_integration, ui_native_lifecycle_integration, x11_isolated
+2026-10-21T23:25:40-05:00 iteration 9/10: 74 tests, 360.15 s, load 4.21 5.44 5.67, failed: native_background_startup_integration, native_region_overlay, native_shortcut_rejection_integration, recording_helper_integration, ui_native_lifecycle_integration, x11_isolated
+2026-10-21T23:31:40-05:00 iteration 10/10: 74 tests, 360.13 s, load 4.11 5.22 5.62, failed: native_background_startup_integration, native_region_overlay, recording_helper_integration, ui_native_lifecycle_integration, x11_isolated
+2026-10-21T23:31:40-05:00 ### Stress: weekly-2026-10-21-2 on kubuntu
+2026-10-21T23:31:40-05:00 
+2026-10-21T23:31:40-05:00 | Test | Label | Runs | Failed | Outcome | Where | First failure |
+2026-10-21T23:31:40-05:00 | --- | --- | ---: | ---: | --- | --- | --- |
+2026-10-21T23:31:40-05:00 | `native_background_startup_integration` | integration | 10 | 10 | **failed** | stress on kubuntu: 10 runs, 4 busy loops, scale 3 | `Timeout` |
+2026-10-21T23:31:40-05:00 | `native_region_overlay` | integration | 10 | 10 | **failed** | stress on kubuntu: 10 runs, 4 busy loops, scale 3 | `Timeout` |
+2026-10-21T23:31:40-05:00 | `native_shortcut_rejection_integration` | integration | 10 | 6 | flaky | stress on kubuntu: 10 runs, 4 busy loops, scale 3 | `Timeout` |
+2026-10-21T23:31:40-05:00 | `recording_helper_integration` | integration | 10 | 10 | **failed** | stress on kubuntu: 10 runs, 4 busy loops, scale 3 | `FAIL!  : RecordingHelperContract::productHelperAnswersTheHandshakeAndRefusesCaptureTruthfully() 'acceptedCodes.contains(error.code)' returned FALSE. (recording_` |
+2026-10-21T23:31:40-05:00 | `ui_native_lifecycle_integration` | integration | 10 | 10 | **failed** | stress on kubuntu: 10 runs, 4 busy loops, scale 3 | `Timeout` |
+2026-10-21T23:31:40-05:00 | `x11_isolated` | integration | 10 | 10 | **failed** | stress on kubuntu: 10 runs, 4 busy loops, scale 3 | `Timeout` |
+2026-10-21T23:31:40-05:00 
+2026-10-21T23:31:40-05:00 1 flaky, 5 failed, 74 test results.
+2026-10-21T23:31:40-05:00 
+2026-10-21T23:31:40-05:00 | Test | Runs | Failed |
+2026-10-21T23:31:40-05:00 | --- | ---: | ---: |
+2026-10-21T23:31:40-05:00 | `native_background_startup_integration` | 10 | 10 |
+2026-10-21T23:31:40-05:00 | `ui_native_lifecycle_integration` | 10 | 10 |
+2026-10-21T23:31:40-05:00 | `x11_isolated` | 10 | 10 |
+2026-10-21T23:31:40-05:00 | `recording_helper_integration` | 10 | 10 |
+2026-10-21T23:31:40-05:00 | `native_region_overlay` | 10 | 10 |
+2026-10-21T23:31:40-05:00 | `native_shortcut_rejection_integration` | 10 | 6 |
+2026-10-21T23:31:40-05:00 
+2026-10-21T23:31:40-05:00 Iterations: 10, wall 360.12-370.15 s (median 360.15 s).
+2026-10-21T23:31:40-05:00 
+2026-10-21T23:31:40-05:00 GitHub token ~/.config/putgd-stress/github-token is missing: not commenting on flaky-test issues; the results stay in ~/work/flake-stress/weekly-2026-10-21-2
+2026-10-21T23:31:40-05:00 results: ~/work/flake-stress/weekly-2026-10-21-2/ledger.json and ~/work/flake-stress/weekly-2026-10-21-2/summary.md
