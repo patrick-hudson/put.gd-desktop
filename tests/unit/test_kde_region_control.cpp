@@ -95,6 +95,24 @@ private slots:
   QTest::newRow("extent-1-80x60")<<QPointF(400.195312,200.160156)<<QPointF(480.234375,260.210938)<<QRectF(400,200,80,60);
   QTest::newRow("upward-left")<<QPointF(480.7,260.9)<<QPointF(400.2,200.1)<<QRectF(400,200,80,60);
   QTest::newRow("exact-integers")<<QPointF(0,0)<<QPointF(1920,1080)<<QRectF(0,0,1920,1080);
+  // QEMU's VNC scaling lands just below each edge (measured on KWin 6.6.6): the
+  // hotspot is in the pixel before it, so the rectangle moves up-left by one
+  // pixel and keeps its size, as the GNOME extension's Math.floor selects.
+  QTest::newRow("vnc-below-edges")<<QPointF(149.941406,99.964844)<<QPointF(1129.921875,699.949219)<<QRectF(149,99,980,600);
+ }
+ void edgeIsThePixelUnderTheHotspot_data() {
+  QTest::addColumn<qreal>("position");QTest::addColumn<qreal>("edge");
+  QTest::newRow("x.0")<<qreal(400)<<qreal(400);
+  QTest::newRow("x.004")<<qreal(400.00390625)<<qreal(400);
+  QTest::newRow("x.5")<<qreal(400.5)<<qreal(400);
+  QTest::newRow("x.99")<<qreal(399.99)<<qreal(399);
+  QTest::newRow("wl_fixed-max-fraction")<<qreal(399+255.0/256)<<qreal(399);
+  QTest::newRow("negative-x.5")<<qreal(-640.5)<<qreal(-641);
+  QTest::newRow("negative-x.0")<<qreal(-640)<<qreal(-640);
+ }
+ void edgeIsThePixelUnderTheHotspot() {
+  QFETCH(qreal,position);QFETCH(qreal,edge);
+  QCOMPARE(kdeRegionEdge(QPointF(position,position)),QPointF(edge,edge));
  }
  void dragEdgesAreHalfOpen() {
   QFETCH(QPointF,press);QFETCH(QPointF,release);QFETCH(QRectF,expected);
