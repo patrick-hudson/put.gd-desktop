@@ -62,7 +62,15 @@ struct OperationService::RecordingSession : std::enable_shared_from_this<Recordi
 };
 
 std::string OperationService::recordingOperation() const { return recording_ ? recording_->op.id : std::string(); }
-void OperationService::terminateRecording() { if (recording_ && recording_->helper) recording_->helper->terminate("shutdown"); }
+// The resident is quitting: the helper goes, and the journal keeps the operation in
+// state `recording`, which the next start turns into recording_interrupted.
+void OperationService::terminateRecording() {
+    if (!recording_) return;
+    auto session = recording_;
+    session->ending = true;
+    session->answerAll({"recording_helper_closed", "put.gd is quitting", {}});
+    if (session->helper) session->helper->terminate("shutdown");
+}
 
 json::Object OperationService::recordingJson() const {
     const auto& s = *recording_;
@@ -261,6 +269,7 @@ void OperationService::prepareRecording(const json::Object& params, JsonReply re
                     } else if (event == "failed") fail(Error::fromJson(p.value("error").toObject()));
                 }
             }, [this, session, fail](int code, bool normal, const std::string& reason) {
+                log::info("recording", session->ending ? "Recording helper exited" : "Recording helper ended unexpectedly", {{"operationId", session->op.id}, {"exitCode", double(code)}, {"normal", normal}, {"reason", reason}});
                 if (session->ending) { Loop::instance().post([session] { session->helper.reset(); }); return; }
                 session->answerAll({"recording_helper_closed", "The recording helper ended", {}});
                 fail({normal ? "recording_helper_exited" : "recording_helper_crashed", "The recording helper ended unexpectedly; nothing was uploaded", {{"exitCode", double(code)}, {"reason", reason}}});

@@ -129,10 +129,14 @@ Error Mp4Writer::start(void* byteStreamPointer, const VideoFormat& format) {
                 GUID category{}; Com<IMFTransform> transform;
                 if (FAILED(extended->GetTransformForStream(stream, index, &category, transform.put()))) break;
                 if (category != MFT_CATEGORY_VIDEO_ENCODER) continue;
+                // Hardware MFTs carry a hardware URL and usually a friendly name; Microsoft's
+                // software encoder carries neither.
                 Com<IMFAttributes> facts;
-                wchar_t* name = nullptr; UINT32 length = 0;
-                if (SUCCEEDED(transform->GetAttributes(facts.put())) && facts && SUCCEEDED(facts->GetAllocatedString(MFT_FRIENDLY_NAME_Attribute, &name, &length))) { encoder_ = narrowName(name); CoTaskMemFree(name); }
-                if (encoder_.empty()) encoder_ = hardware ? "hardware H.264 encoder" : "H264 Encoder MFT";
+                wchar_t* name = nullptr; UINT32 length = 0; UINT32 urlLength = 0;
+                const bool hasFacts = SUCCEEDED(transform->GetAttributes(facts.put())) && facts;
+                const bool gpu = hasFacts && SUCCEEDED(facts->GetStringLength(MFT_ENUM_HARDWARE_URL_Attribute, &urlLength));
+                if (hasFacts && SUCCEEDED(facts->GetAllocatedString(MFT_FRIENDLY_NAME_Attribute, &name, &length))) { encoder_ = narrowName(name); CoTaskMemFree(name); }
+                if (encoder_.empty()) encoder_ = gpu ? "hardware H.264 encoder" : "Microsoft H.264 encoder (software)";
                 break;
             }
         }
