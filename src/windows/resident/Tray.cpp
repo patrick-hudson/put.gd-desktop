@@ -16,11 +16,21 @@ COLORREF tintColor(Tray::Tint t) {
     }
 }
 }
+namespace {
+// taskkill without /F posts WM_CLOSE to the process's first top-level window, which
+// may be this one: hand it to the resident's loop window (a clean stop) instead of
+// letting DefWindowProc destroy the menu owner.
+LRESULT CALLBACK menuOwnerProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
+    if (message == WM_CLOSE) { if (auto loop = reinterpret_cast<HWND>(GetWindowLongPtrW(hwnd, GWLP_USERDATA))) PostMessageW(loop, WM_CLOSE, 0, 0); return 0; }
+    return DefWindowProcW(hwnd, message, wParam, lParam);
+}
+}
 Tray::Tray(HWND owner) : owner_(owner) {
     taskbarCreated_ = RegisterWindowMessageW(L"TaskbarCreated");
-    WNDCLASSW wc{}; wc.lpfnWndProc = DefWindowProcW; wc.hInstance = GetModuleHandleW(nullptr); wc.lpszClassName = L"putgd.tray.menu";
+    WNDCLASSW wc{}; wc.lpfnWndProc = menuOwnerProcedure; wc.hInstance = GetModuleHandleW(nullptr); wc.lpszClassName = L"putgd.tray.menu";
     RegisterClassW(&wc);
     menuOwner_ = CreateWindowExW(WS_EX_TOOLWINDOW, wc.lpszClassName, L"put.gd", WS_POPUP, 0, 0, 0, 0, nullptr, nullptr, wc.hInstance, nullptr);
+    if (menuOwner_) SetWindowLongPtrW(menuOwner_, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(owner_));
     add();
 }
 Tray::~Tray() { remove(); if (icon_) DestroyIcon(icon_); if (menuOwner_) DestroyWindow(menuOwner_); }
