@@ -1,4 +1,5 @@
 #pragma once
+#include "app/AppImageInstall.h"
 #include "core/Update.h"
 #include <QHash>
 #include <QJsonObject>
@@ -30,6 +31,9 @@ struct InstallOptions {
  // The minisign key SHA256SUMS must be signed with, by channel; a channel
  // without one uses the release key compiled in (tests pass their own).
  QHash<QString,QByteArray> publicKeys;
+ // Who owns the image and whether its folder can be written; empty asks the
+ // system (tests pass their own).
+ appimage::Access access;
 };
 bool isInstallMode(int argc,char** argv);
 int runInstallMode(int argc,char** argv);

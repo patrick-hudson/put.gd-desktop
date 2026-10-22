@@ -4,6 +4,8 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonDocument>
+#include <QMap>
+#include <QScopeGuard>
 #include <QTemporaryDir>
 #include <QTest>
 #include <QtEndian>
@@ -89,14 +91,67 @@ private slots:
   // No room for another image.
   error={};appimage::inspect(path,qint64(1)<<60,error);QCOMPARE(error.code,QString("update_disk_full"));
  }
- void refusesAFolderItCannotWrite() {
-  if(::getuid()==0)QSKIP("root writes anywhere");
+ // #412: an image put.gd must not replace is refused with the reason Settings
+ // shows after "The update wasn't installed: ", and the file is left alone.
+ // CI can't make another user's file or a read-only mount, so the system's
+ // answers come through the Access seam.
+ void refusesAnImageItMustNotReplace() {
+  QTemporaryDir dir;const auto path=dir.filePath("putgd-0.1.1-nightly.800-x86_64.AppImage");const auto bytes=elfImage(nightly.toUtf8());write(path,bytes);
+  const auto folder=QFileInfo(path).canonicalPath();
+  QStringList asked;
+  const appimage::Access allowed{
+   [&](const QString& file){asked.append("owner "+file);return true;},
+   [&](const QString& directory){asked.append("readOnly "+directory);return false;},
+   [&](const QString& directory){asked.append("writable "+directory);return true;}};
+  Error error;QVERIFY(!appimage::inspect(path,1024,error,allowed).path.isEmpty());QVERIFY(!error);
+  // Each probe is asked about the file itself and its real folder.
+  QCOMPARE(asked,(QStringList{"owner "+QFileInfo(path).canonicalFilePath(),"readOnly "+folder,"writable "+folder}));
+  auto otherOwner=allowed;otherOwner.ownedByUser=[](const QString&){return false;};
+  auto readOnly=allowed;readOnly.readOnly=[](const QString&){return true;};
+  auto unwritable=allowed;unwritable.writable=[](const QString&){return false;};
+  const QList<std::pair<appimage::Access,QString>> refusals{
+   {otherOwner,"The AppImage belongs to another user, so put.gd won't replace it"},
+   {readOnly,"The AppImage's folder is on a read-only file system"},
+   {unwritable,"put.gd can't write to the AppImage's folder"}};
+  for(const auto& [access,message]:refusals) {
+   error={};const auto image=appimage::inspect(path,1024,error,access);
+   QCOMPARE(error.code,QString("update_image_not_writable"));QCOMPARE(error.message,message);
+   QCOMPARE(error.details,(QJsonObject{{"directory",folder}}));QVERIFY(image.path.isEmpty());
+  }
+  // Another user's file on a read-only file system: the owner is the reason given.
+  auto both=otherOwner;both.readOnly=readOnly.readOnly;both.writable=unwritable.writable;
+  error={};appimage::inspect(path,1024,error,both);QCOMPARE(error.message,refusals.first().second);
+  // Refusing changes nothing in the folder.
+  QCOMPARE(read(path),bytes);QCOMPARE(QDir(dir.path()).entryList(QDir::AllEntries|QDir::Hidden|QDir::NoDotAndDotDot),QStringList{QFileInfo(path).fileName()});
+ }
+ // The real answers behind the seam: this user's file and folder, a folder
+ // without write access, and a read-only mount when the host has one.
+ void hostAccessAsksTheSystem() {
+  const auto host=appimage::hostAccess();
   QTemporaryDir dir;const auto folder=dir.filePath("ro");QVERIFY(QDir().mkdir(folder));
   const auto path=folder+"/putgd.AppImage";write(path,elfImage(nightly.toUtf8()));
-  QVERIFY(QFile::setPermissions(folder,QFile::ReadOwner|QFile::ExeOwner));
-  Error error;appimage::inspect(path,1024,error);
-  QFile::setPermissions(folder,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner);
-  QCOMPARE(error.code,QString("update_image_not_writable"));
+  QVERIFY(host.ownedByUser(path));QVERIFY(!host.readOnly(folder));QVERIFY(host.writable(folder));
+  if(::getuid()!=0) {
+   // The root directory belongs to root.
+   QVERIFY(!host.ownedByUser("/"));QVERIFY(!host.writable("/"));
+   QVERIFY(QFile::setPermissions(folder,QFile::ReadOwner|QFile::ExeOwner));
+   const auto restore=qScopeGuard([&]{QFile::setPermissions(folder,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner);});
+   QVERIFY(!host.writable(folder));
+   Error error;appimage::inspect(path,1024,error);
+   QCOMPARE(error.code,QString("update_image_not_writable"));QCOMPARE(error.message,QString("put.gd can't write to the AppImage's folder"));
+  }
+  // Any read-only mount this host has (a snap, /sys in a container) reads as one.
+  QFile mounts("/proc/self/mounts");QVERIFY(mounts.open(QIODevice::ReadOnly));
+  // A later mount on the same point covers an earlier one.
+  QMap<QString,bool> readOnlyAt;
+  for(const auto& line:QString::fromUtf8(mounts.readAll()).split('\n',Qt::SkipEmptyParts)) {
+   const auto fields=line.split(' ');
+   if(fields.size()>3&&fields[2]!="autofs"&&!fields[1].contains('\\'))readOnlyAt[fields[1]]=fields[3].split(',').contains("ro");
+  }
+  QString readOnlyMount;
+  for(auto it=readOnlyAt.cbegin();it!=readOnlyAt.cend()&&readOnlyMount.isEmpty();++it)if(it.value()&&QFileInfo(it.key()).isDir())readOnlyMount=it.key();
+  if(readOnlyMount.isEmpty())qInfo("No read-only mount on this host; the seam covers the refusal");
+  else QVERIFY2(host.readOnly(readOnlyMount),qPrintable(readOnlyMount));
  }
  void readsTheReleaseLine() {
   const QByteArray sums="0000000000000000000000000000000000000000000000000000000000000001  putgd-0.1.1-nightly.801-x86_64.AppImage\n"
@@ -163,6 +218,31 @@ private slots:
   QVERIFY(appimage::writeState(state.path(),{{"backup",again},{"installed",QJsonObject{{"image",image.path},{"version","0.1.1-nightly.802"}}}}));
   settled=appimage::settle(state.path(),image.path,"0.1.1-nightly.802");
   QCOMPARE(read(again["path"].toString()),QByteArray("the user's own file"));QVERIFY(settled["backup"].isNull());QCOMPARE(settled["installed"].toObject()["backupRemoved"].toBool(),false);
+ }
+ // #412: the new version didn't start, so the user moved the backup back
+ // (docs/updates.md, "If the new version won't start"). The old version's
+ // next start forgets the install instead of waiting for a restart.
+ void forgetsAnUpdateWhoseBackupWasMovedBack() {
+  QTemporaryDir dir;const auto path=dir.filePath("putgd-0.1.1-nightly.800-x86_64.AppImage");const auto old=elfImage(nightly.toUtf8(),"800");write(path,old);
+  Error error;const auto image=appimage::inspect(path,1,error);QVERIFY(!error);
+  const auto candidate=dir.filePath("candidate");write(candidate,elfImage(nightly.toUtf8(),"801"));
+  const auto backup=appimage::swap(candidate,image,"0.1.1-nightly.800",error);QVERIFY(!error);
+  QTemporaryDir state;const QJsonObject installed{{"image",image.path},{"version","0.1.1-nightly.801"},{"previousVersion","0.1.1-nightly.800"}};
+  QVERIFY(appimage::writeState(state.path(),{{"backup",backup},{"installed",installed}}));
+  // The guide's command: mv .putgd-update-backup-VERSION.AppImage over the image.
+  QCOMPARE(::rename(QFile::encodeName(backup["path"].toString()).constData(),QFile::encodeName(image.path).constData()),0);
+  const auto settled=appimage::settle(state.path(),image.path,"0.1.1-nightly.800");
+  QVERIFY(settled["installed"].isNull());QVERIFY(settled["backup"].isNull());
+  QCOMPARE(settled["restored"].toObject(),(QJsonObject{{"image",image.path},{"version","0.1.1-nightly.801"},{"runningVersion","0.1.1-nightly.800"}}));
+  QCOMPARE(appimage::readState(state.path())["restored"],settled["restored"]);
+  QCOMPARE(read(image.path),old);QCOMPARE(QDir(dir.path()).entryList(QDir::AllEntries|QDir::Hidden|QDir::NoDotAndDotDot),QStringList{QFileInfo(path).fileName()});
+  // A copy put back (not the recorded file) proves nothing: the install still waits.
+  write(candidate,elfImage(nightly.toUtf8(),"801"));
+  const auto again=appimage::swap(candidate,image,"0.1.1-nightly.800",error);QVERIFY(!error);
+  QVERIFY(appimage::writeState(state.path(),{{"backup",again},{"installed",installed}}));
+  QVERIFY(QFile::remove(image.path));QVERIFY(QFile::copy(again["path"].toString(),image.path));
+  const auto waiting=appimage::settle(state.path(),image.path,"0.1.1-nightly.800");
+  QCOMPARE(waiting["installed"].toObject()["version"].toString(),QString("0.1.1-nightly.801"));QCOMPARE(waiting["backup"].toObject(),again);QVERIFY(QFileInfo::exists(again["path"].toString()));
  }
  void removesOnlyItsOwnStagingFolders() {
   QTemporaryDir dir;

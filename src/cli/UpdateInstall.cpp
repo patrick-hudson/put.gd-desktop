@@ -135,7 +135,7 @@ QJsonObject installUpdate(const update::Build& build,const InstallOptions& optio
  if(asset.isEmpty()||!name.endsWith(".AppImage")){error={"update_install_unavailable","The release names no AppImage to install",{{"tag",tag}}};return {};}
  const auto size=asset["size"].toInteger();
  if(size<=0||size>appimage::maximumImageBytes){error={"update_verification_failed","The release's AppImage has an implausible size",{{"size",size}}};return {};}
- auto image=appimage::inspect(options.image,size,error);if(error)return {};
+ auto image=appimage::inspect(options.image,size,error,options.access);if(error)return {};
  // What the new image must embed: the same channel's permalink, or the target's.
  const auto information=switching?update::switchedUpdateInformation(image.updateInformation,build.channel,options.channel):image.updateInformation;
  if(information.isEmpty()){error={"update_install_unavailable","This AppImage doesn't follow put.gd's "+build.channel+" update permalink, so it can't switch channels",{{"updateInformation",image.updateInformation}}};return {};}

@@ -7,11 +7,13 @@
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <QScopeGuard>
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <QTemporaryDir>
 #include <QTest>
 #include <QtEndian>
+#include <unistd.h>
 using namespace putgd;
 namespace {
 const QString nightly="zsync|https://app.put.gd/dl/nightly/appimage.zsync",stable="zsync|https://app.put.gd/dl/stable/appimage.zsync";
@@ -189,6 +191,36 @@ private slots:
   QCOMPARE(error.code,QString("update_verification_failed"));QCOMPARE(error.details["check"].toString(),QString("sha256"));
   QCOMPARE(read(image()),old_);QVERIFY(leftovers().isEmpty());
   QVERIFY(appimage::readState(state)["staging"].isNull());QVERIFY(!appimage::readState(state).contains("installed"));
+ }
+ // #412: an image put.gd must not replace is refused before anything is
+ // fetched or written, with the reason Settings shows.
+ void anImageItMustNotReplaceIsRefusedBeforeDownloading(){
+  ReleaseServer server;publish(server,next_);
+  const auto folder=QFileInfo(image()).canonicalPath();
+  auto otherOwner=options();otherOwner.access.ownedByUser=[](const QString&){return false;};
+  auto readOnly=options();readOnly.access.readOnly=[](const QString&){return true;};
+  auto unwritable=options();unwritable.access.writable=[](const QString&){return false;};
+  const QList<std::pair<InstallOptions,QString>> refusals{
+   {otherOwner,"The AppImage belongs to another user, so put.gd won't replace it"},
+   {readOnly,"The AppImage's folder is on a read-only file system"},
+   {unwritable,"put.gd can't write to the AppImage's folder"}};
+  for(const auto& [refused,message]:refusals) {
+   QList<QJsonObject> progress;Error error;
+   installUpdate(build(),refused,[&](const QJsonObject& line){progress.append(line);},error);
+   QCOMPARE(error.code,QString("update_image_not_writable"));QCOMPARE(error.message,message);QCOMPARE(error.details["directory"].toString(),folder);
+   // Only the feed was read; the install never got to verifying.
+   for(const auto& line:progress)QCOMPARE(line["phase"].toString(),QString("checking"));
+   QCOMPARE(read(image()),old_);QVERIFY(leftovers().isEmpty());QVERIFY(!QFileInfo::exists(appimage::statePath(state)));
+  }
+  QVERIFY(!server.requested("GET /release/"+tag.toUtf8()+"/SHA256SUMS"));QVERIFY(!server.requested("GET /release/"+tag.toUtf8()+"/"+name.toUtf8()));
+  QVERIFY(!server.requested("HEAD /mirror/"));
+  // A folder without write access, for real.
+  if(::getuid()==0)QSKIP("root writes anywhere");
+  QVERIFY(QFile::setPermissions(images,QFile::ReadOwner|QFile::ExeOwner));
+  const auto restore=qScopeGuard([&]{QFile::setPermissions(images,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner);});
+  Error error;installUpdate(build(),options(),{},error);
+  QCOMPARE(error.code,QString("update_image_not_writable"));QCOMPARE(error.message,QString("put.gd can't write to the AppImage's folder"));
+  QCOMPARE(read(image()),old_);QVERIFY(leftovers().isEmpty());
  }
  void aFeedThatDisagreesWithSha256SumsIsRefusedBeforeDownloading(){
   ReleaseServer server;publish(server,next_,hex("another file"));

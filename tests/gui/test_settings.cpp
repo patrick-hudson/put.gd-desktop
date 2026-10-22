@@ -938,6 +938,12 @@ private slots:
   PUTGD_TRY_VERIFY(status->text().startsWith("Updated from 0.1.1-nightly.799 to 0.1.1-nightly.800 with a zsync update on "));QVERIFY(status->isVisibleTo(settings));QVERIFY(!restart->isVisibleTo(settings));
   apply({{"state","failed"},{"available",true},{"running",false},{"restartRequired",false},{"error",QJsonObject{{"code","update_verification_failed"},{"message","The download doesn't match the release's SHA256SUMS; nothing was changed"}}}});
   PUTGD_TRY_VERIFY(status->text().contains("doesn't match the release's SHA256SUMS"));QVERIFY(install->isVisibleTo(settings));
+  // #412: an image put.gd must not replace says why, and the download link stays.
+  for(const QString message:{"The AppImage belongs to another user, so put.gd won't replace it","The AppImage's folder is on a read-only file system","put.gd can't write to the AppImage's folder"}){
+   apply({{"state","failed"},{"available",true},{"running",false},{"restartRequired",false},
+    {"error",QJsonObject{{"code","update_image_not_writable"},{"message",message},{"details",QJsonObject{{"directory","/home/u/Applications"}}}}}});
+   PUTGD_TRY_COMPARE(status->text(),"The update wasn't installed: "+message+".");QVERIFY(status->isVisibleTo(settings));QVERIFY(download->isVisibleTo(settings));
+  }
   // This resident has no install service: the click's refusal shows.
   install->click();PUTGD_TRY_VERIFY(status->text().contains("does not check for updates"));QVERIFY(install->isEnabled());
   // A repository install and a non-AppImage never offer it.

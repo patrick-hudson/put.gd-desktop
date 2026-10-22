@@ -256,6 +256,25 @@ private slots:
   const auto install=updated->status()["install"].toObject();
   QCOMPARE(install["restartRequired"].toBool(),false);QVERIFY(install["backup"].isNull());QCOMPARE(install["installed"].toObject()["backupRemoved"].toBool(),true);
  }
+ // #412: the backup moved back over an update that didn't start ends the
+ // wait for a restart, so Settings offers the update again.
+ void aBackupMovedBackEndsTheWaitForARestart(){
+  SettingsService settings(dir.filePath("config.json"));configure(settings);
+  const auto image=dir.filePath("putgd.AppImage"),backup=dir.filePath(".putgd-update-backup-0.1.0.AppImage");
+  {QFile file(image);QVERIFY(file.open(QIODevice::WriteOnly));file.write("new image");}
+  {QFile file(backup);QVERIFY(file.open(QIODevice::WriteOnly));file.write("old image");}
+  struct stat kept{};QCOMPARE(::stat(QFile::encodeName(backup).constData(),&kept),0);
+  QVERIFY(appimage::writeState(dir.path(),{{"installed",QJsonObject{{"image",image},{"version","0.1.1"},{"previousVersion","0.1.0"}}},
+   {"backup",QJsonObject{{"path",backup},{"device",QString::number(quint64(kept.st_dev))},{"inode",QString::number(quint64(kept.st_ino))},{"size",qint64(kept.st_size)},{"mtime",qint64(kept.st_mtim.tv_sec)}}}}));
+  auto waiting=service(settings,build("0.1.0"));waiting->setImage(image);waiting->start();
+  QCOMPARE(waiting->status()["install"].toObject()["restartRequired"].toBool(),true);
+  Error error;waiting->install({{"confirm",true}},[&](Error e,QJsonObject){error=e;});QCOMPARE(error.code,QString("update_restart_required"));
+  QCOMPARE(::rename(QFile::encodeName(backup).constData(),QFile::encodeName(image).constData()),0);
+  auto restored=service(settings,build("0.1.0"));restored->setImage(image);restored->start();
+  const auto install=restored->status()["install"].toObject();
+  QCOMPARE(install["restartRequired"].toBool(),false);QVERIFY(install["backup"].isNull());QVERIFY(install["installed"].isNull()||install["installed"].toObject().isEmpty());
+  QCOMPARE(install["available"].toBool(),true);QCOMPARE(appimage::readState(dir.path())["restored"].toObject()["version"].toString(),QString("0.1.1"));
+ }
  void aSwitchNamesItsChannelAndAnOlderOneMustBeAllowed(){
   SettingsService settings(dir.filePath("config.json"));configure(settings,{{"channel","nightly"}});
   // Stable 0.1.1 watching nightly, whose newest is still 0.1.1-nightly.900: older.
