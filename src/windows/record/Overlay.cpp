@@ -1,5 +1,6 @@
 #include "record/Overlay.h"
 #include "core/BarPlacement.h"
+#include "core/Recording.h"
 #include "core/ReviewTimeline.h"
 #include "ui/Controls.h"
 #include "ui/Theme.h"
@@ -12,7 +13,7 @@ namespace {
 constexpr wchar_t edgeClass[] = L"putgd.record.edge";
 constexpr wchar_t barClass[] = L"putgd.record.bar";
 constexpr UINT_PTR clockTimer = 1;
-constexpr int idRecord = 101, idPause = 102, idStop = 103, idCancel = 104;
+constexpr int idRecord = 101, idPause = 102, idStop = 103, idCancel = 104, idFormat = 105, idAudio = 106;
 constexpr int ringWidth = 3;   // white ring, then a 1 px dark hairline outside it
 constexpr BYTE dimAlpha = 110; // everything outside the area while recording
 
@@ -104,7 +105,7 @@ void AreaFrame::hide() {
 ControlBar::ControlBar(Callbacks callbacks) : callbacks_(std::move(callbacks)) {}
 ControlBar::~ControlBar() { destroy(); }
 void ControlBar::destroy() { if (hwnd_) { DestroyWindow(hwnd_); hwnd_ = nullptr; } }
-bool ControlBar::create(const grab::Rect& area, const std::wstring& target) {
+bool ControlBar::create(const grab::Rect& area, const std::wstring& target, const std::vector<std::string>& formats, const std::string& format, bool audioAvailable, bool audio) {
     static const bool registered = [] {
         WNDCLASSEXW wc{sizeof wc};
         wc.lpfnWndProc = &ControlBar::proc; wc.hInstance = GetModuleHandleW(nullptr); wc.lpszClassName = barClass; wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
@@ -127,12 +128,24 @@ bool ControlBar::create(const grab::Rect& area, const std::wstring& target) {
     pause_ = ui::button(hwnd_, idPause, L"Pause"); theme::setRole(pause_, theme::Role::Standard, "pause");
     stop_ = ui::button(hwnd_, idStop, L"Stop"); theme::setRole(stop_, theme::Role::Danger, "stop");
     cancel_ = ui::button(hwnd_, idCancel, L"Cancel"); theme::setRole(cancel_, theme::Role::Standard);
+    // Before Record: the export format and the computer's playback; locked from Record on.
+    format_ = ui::combo(hwnd_, idFormat);
+    std::vector<ui::Choice> choices;
+    for (const auto& key : formats) choices.push_back({ui::wide(recording::formatLabel(key)), key});
+    ui::setChoices(format_, choices);
+    ui::select(format_, format);
+    theme::styleCombo(format_);
+    audio_ = ui::check(hwnd_, idAudio, L"System audio");
+    audioAvailable_ = audioAvailable;
+    ui::setChecked(audio_, audio && audioAvailable && format != "gif");
     tooltip_ = ui::createTooltip(hwnd_);
     ui::setTooltip(tooltip_, record_, L"Start recording");
     ui::setTooltip(tooltip_, pause_, L"Pause or resume the recording");
     ui::setTooltip(tooltip_, stop_, L"Stop and review the recording (or press the recording shortcut)");
     ui::setTooltip(tooltip_, cancel_, L"Discard this recording");
-    for (HWND b : {record_, pause_, stop_, cancel_}) ui::setFont(b, ui::FontRole::Normal, dpi_);
+    ui::setTooltip(tooltip_, format_, L"Output format; GIF is silent. It can still change in the review.");
+    ui::setTooltip(tooltip_, audio_, audioAvailable ? L"Record what the computer plays" : L"No audio output device to record from");
+    for (HWND b : {record_, pause_, stop_, cancel_, format_, audio_}) ui::setFont(b, ui::FontRole::Normal, dpi_);
     excluded_ = excludeFromCapture(hwnd_);
     theme::applyTo(hwnd_);
     setState("ready");
@@ -140,6 +153,12 @@ bool ControlBar::create(const grab::Rect& area, const std::wstring& target) {
     ShowWindow(hwnd_, SW_SHOWNOACTIVATE);
     SetTimer(hwnd_, clockTimer, 100, nullptr);
     return true;
+}
+void ControlBar::setChoice(const std::string& format, bool audio) {
+    if (!hwnd_) return;
+    ui::select(format_, format);
+    ui::setChecked(audio_, audio && audioAvailable_ && format != "gif");
+    InvalidateRect(format_, nullptr, FALSE);
 }
 void ControlBar::setState(const std::string& state) {
     state_ = state;
@@ -151,6 +170,8 @@ void ControlBar::setState(const std::string& state) {
     ui::setTextW(pause_, state == "paused" ? L"Resume" : L"Pause");
     theme::setRole(pause_, theme::Role::Standard, state == "paused" ? "play" : "pause");
     for (HWND b : {record_, pause_, stop_, cancel_}) ui::enable(b, !stopping);
+    ui::enable(format_, ready && SendMessageW(format_, CB_GETCOUNT, 0, 0) > 1);
+    ui::enable(audio_, ready && audioAvailable_ && ui::selected(format_) != "gif");
     layout();
     InvalidateRect(hwnd_, nullptr, TRUE);
 }
@@ -167,6 +188,10 @@ void ControlBar::layout() {
     SelectObject(dc, old); ReleaseDC(hwnd_, dc);
     int x = pad + ui::scale(12, dpi_) + gap + clock.cx + gap * 2 + target.cx + gap * 2;
     const int y = (height - buttonHeight) / 2;
+    const int formatWidth = ui::scale(120, dpi_), audioWidth = ui::buttonWidth(audio_, 60) + ui::scale(24, dpi_);
+    ui::place(format_, x, y, formatWidth, buttonHeight); x += formatWidth + gap;
+    MoveWindow(audio_, x, y, audioWidth, buttonHeight, TRUE); x += audioWidth + gap;
+    const int choices = formatWidth + audioWidth + 2 * gap;
     // Buttons with a glyph need room for it beside the text (16 px and a 6 px gap).
     auto width = [&](HWND b) { return ui::buttonWidth(b, 72) + (b == cancel_ ? 0 : ui::scale(22, dpi_)); };
     auto put = [&](HWND b) { if (!ui::visible(b)) return; const int w = width(b); MoveWindow(b, x, y, w, buttonHeight, TRUE); x += w + gap; };
@@ -176,7 +201,7 @@ void ControlBar::layout() {
     ui::setTextW(pause_, L"Resume");
     const int pauseWidth = width(pause_);
     ui::setTextW(pause_, before);
-    const int widest = pad + ui::scale(12, dpi_) + gap + clock.cx + gap * 2 + target.cx + gap * 2 + pauseWidth + width(stop_) + width(cancel_) + gap * 2 + pad;
+    const int widest = pad + ui::scale(12, dpi_) + gap + clock.cx + gap * 2 + target.cx + gap * 2 + choices + pauseWidth + width(stop_) + width(cancel_) + gap * 2 + pad;
     RECT r; GetWindowRect(hwnd_, &r);
     if (r.right - r.left != widest || r.bottom - r.top != height) SetWindowPos(hwnd_, nullptr, 0, 0, widest, height, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
 }
@@ -252,7 +277,7 @@ LRESULT ControlBar::handle(UINT message, WPARAM wParam, LPARAM lParam) {
         }
         return 0;
     case WM_NOTIFY: { LRESULT result = 0; if (theme::customDraw(reinterpret_cast<NMHDR*>(lParam), result)) return result; break; }
-    case WM_CTLCOLORBTN: case WM_CTLCOLORSTATIC: return theme::controlColor(message, reinterpret_cast<HDC>(wParam), reinterpret_cast<HWND>(lParam), 0);
+    case WM_CTLCOLORBTN: case WM_CTLCOLORSTATIC: case WM_CTLCOLORLISTBOX: return theme::controlColor(message, reinterpret_cast<HDC>(wParam), reinterpret_cast<HWND>(lParam), 0);
     case WM_COMMAND:
         if (HIWORD(wParam) == BN_CLICKED) {
             const int id = LOWORD(wParam);
@@ -260,12 +285,21 @@ LRESULT ControlBar::handle(UINT message, WPARAM wParam, LPARAM lParam) {
             else if (id == idPause) { if (state_ == "paused") { if (callbacks_.resume) callbacks_.resume(); } else if (callbacks_.pause) callbacks_.pause(); }
             else if (id == idStop && callbacks_.stop) callbacks_.stop();
             else if (id == idCancel && callbacks_.cancel) callbacks_.cancel();
+            else if (id == idAudio && callbacks_.audioChanged) callbacks_.audioChanged(ui::checked(audio_));
+            return 0;
+        }
+        if (HIWORD(wParam) == CBN_SELCHANGE && LOWORD(wParam) == idFormat) {
+            const auto key = ui::selected(format_);
+            // GIF is silent.
+            if (key == "gif") { ui::setChecked(audio_, false); if (callbacks_.audioChanged) callbacks_.audioChanged(false); }
+            ui::enable(audio_, audioAvailable_ && key != "gif");
+            if (callbacks_.formatChanged) callbacks_.formatChanged(key);
             return 0;
         }
         break;
     case WM_DPICHANGED: {
         dpi_ = HIWORD(wParam);
-        for (HWND b : {record_, pause_, stop_, cancel_}) ui::setFont(b, ui::FontRole::Normal, dpi_);
+        for (HWND b : {record_, pause_, stop_, cancel_, format_, audio_}) ui::setFont(b, ui::FontRole::Normal, dpi_);
         layout();
         return 0;
     }

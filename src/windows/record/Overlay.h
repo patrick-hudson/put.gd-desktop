@@ -9,6 +9,7 @@
 #include "capture/Grab.h"
 #include <functional>
 #include <string>
+#include <vector>
 #include <windows.h>
 
 namespace putgd::record {
@@ -32,11 +33,19 @@ private:
 
 class ControlBar {
 public:
-    struct Callbacks { std::function<void()> record, pause, resume, stop, cancel; std::function<long long()> elapsedUs; };
+    struct Callbacks {
+        std::function<void()> record, pause, resume, stop, cancel;
+        std::function<long long()> elapsedUs;
+        std::function<void(bool)> audioChanged;               // the System audio box (ready only)
+        std::function<void(const std::string&)> formatChanged; // format or format/codec (ready only)
+    };
     explicit ControlBar(Callbacks);
     ~ControlBar();
     // Creates the bar for `area` and places it (outside the area when there is room).
-    bool create(const grab::Rect& area, const std::wstring& target);
+    // `formats` are the menu keys (mp4/h264, gif …); audio is offered when available.
+    bool create(const grab::Rect& area, const std::wstring& target, const std::vector<std::string>& formats, const std::string& format, bool audioAvailable, bool audio);
+    // Shows the resident's answer to a format or audio change.
+    void setChoice(const std::string& format, bool audio);
     // ready | recording | paused | stopping
     void setState(const std::string& state);
     void setVisible(bool visible);
@@ -54,7 +63,8 @@ private:
     void place();
     void paint(HDC);
     Callbacks callbacks_;
-    HWND hwnd_ = nullptr, record_ = nullptr, pause_ = nullptr, stop_ = nullptr, cancel_ = nullptr, tooltip_ = nullptr;
+    HWND hwnd_ = nullptr, record_ = nullptr, pause_ = nullptr, stop_ = nullptr, cancel_ = nullptr, tooltip_ = nullptr, format_ = nullptr, audio_ = nullptr;
+    bool audioAvailable_ = false;
     grab::Rect area_;
     std::wstring target_;
     std::string state_ = "ready";

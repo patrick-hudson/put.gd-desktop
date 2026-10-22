@@ -92,5 +92,9 @@ RecordingSize outputSize(RecordingSize canvas, const std::optional<int>& maxEdge
 RecordingRect evenArea(RecordingRect);
 // H.264 bitrate for a live capture: about 0.1 bit per pixel per frame, 1.5 to 20 Mbit/s.
 long long liveBitrate(int width, int height, int fps);
+// Menu keys of the bar and the review: a format, or format/codec for formats with
+// codecs; and their labels.
+std::string formatKey(const RecordingConfig&);
+std::string formatLabel(const std::string& key);
 }
 }

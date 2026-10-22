@@ -5,6 +5,7 @@
 #include "core/Mp4.h"
 #include "core/BarPlacement.h"
 #include "core/ReviewTimeline.h"
+#include "core/Audio.h"
 #include <vector>
 #include <cstdio>
 #include <string>
@@ -44,6 +45,10 @@ static void targetsAndConfigs() {
     auto round = c.toJson(); round.remove("mime"); round.remove("budgetBytes");
     RecordingConfig again;
     CHECK(!recording::parseConfig(round, again) && json::serialize(again.toJson()) == json::serialize(c.toJson()));
+    // The bar's and the review's menu keys.
+    CHECK(recording::formatKey(again) == "webm/vp9" && recording::formatLabel("webm/vp9") == "WebM (VP9)");
+    CHECK(!recording::parseConfig(object(R"({"format":"gif","codec":""})"), c) && recording::formatKey(c) == "gif" && recording::formatLabel("gif") == "GIF");
+    CHECK(recording::formatLabel("mp4/h265") == "MP4 (H.265)" && recording::formatLabel("mp4") == "MP4 (H.264)");
 }
 
 static void transitions() {
@@ -223,8 +228,51 @@ static void barAndTimeline() {
     CHECK(recording::clockText(8266658) == "0:08.26" && recording::clockText(14700000, true) == "0:14.7" && recording::clockText(61230000) == "1:01.23");
 }
 
+static void audioTimeline() {
+    std::vector<int16_t> out;
+    const float mono[] = {0.5f, -1.5f};
+    audio::toStereo16(mono, 2, 1, out);
+    CHECK(out == (std::vector<int16_t>{16384, 16384, -32767, -32767}));
+    const float six[] = {0.25f, -0.25f, 1, 1, 1, 1};
+    audio::toStereo16(six, 1, 6, out);
+    CHECK(out == (std::vector<int16_t>{8192, -8192}));
+    const int16_t pcm[] = {1, 2, 3, 4};
+    audio::toStereo16(pcm, 2, 2, out);
+    CHECK(out == (std::vector<int16_t>{1, 2, 3, 4}));
+    CHECK(audio::encoderRate(48000) && audio::encoderRate(44100) && !audio::encoderRate(96000));
+    // Same rate: unchanged. Half rate: half the frames, continuous across calls.
+    std::vector<int16_t> ramp;
+    for (int i = 0; i < 100; ++i) { ramp.push_back(int16_t(i * 10)); ramp.push_back(int16_t(-i * 10)); }
+    audio::Resampler same(48000, 48000);
+    same.process(ramp, out);
+    CHECK(out == ramp);
+    audio::Resampler half(96000, 48000);
+    std::vector<int16_t> first(ramp.begin(), ramp.begin() + 100), second(ramp.begin() + 100, ramp.end()), a, b;
+    half.process(first, a); half.process(second, b);
+    CHECK(a.size() / 2 + b.size() / 2 == 50);
+    a.insert(a.end(), b.begin(), b.end());
+    bool steps = true;
+    for (size_t i = 2; i < a.size(); i += 2) steps = steps && a[i] - a[i - 2] == 20;
+    CHECK(steps && a[0] == 0);
+    // The timeline: a gap becomes silence, an overlap is cut, the end is filled.
+    audio::Timeline line(48000);
+    const std::vector<int16_t> tone(20, 7); // 10 stereo frames
+    auto piece = line.place(0, tone);
+    CHECK(piece.start == 0 && piece.samples.size() == 20 && line.written() == 10);
+    piece = line.place(15, tone);
+    CHECK(piece.start == 10 && piece.samples.size() == 30 && piece.samples[0] == 0 && piece.samples[9] == 0 && piece.samples[10] == 7 && line.written() == 25);
+    piece = line.place(20, tone);
+    CHECK(piece.start == 25 && piece.samples.size() == 10 && line.written() == 30);
+    piece = line.place(5, tone);
+    CHECK(piece.samples.empty() && line.written() == 30);
+    piece = line.fillTo(40);
+    CHECK(piece.start == 30 && piece.samples.size() == 20 && line.written() == 40);
+    CHECK(audio::Timeline::frameAt(10000000, 48000) == 48000 && audio::Timeline::frameAt(333333, 48000) == 1600);
+}
+
 int main() {
     frames();
+    audioTimeline();
     mp4Boxes();
     barAndTimeline();
     targetsAndConfigs();

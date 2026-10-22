@@ -2,6 +2,7 @@
 #include "capture/Png.h"
 #include "common/Files.h"
 #include "common/Paths.h"
+#include "core/Audio.h"
 #include "core/Mp4.h"
 #include "core/RecordingFrames.h"
 #include "record/Gif.h"
@@ -18,6 +19,50 @@ long long toUs(long long time100ns) { return time100ns / 10; }
 // from the first mdat up to moov move forward by moov's size, moov goes where
 // mdat began, and every chunk offset grows by the same amount. The file keeps
 // its length. A layout this does not recognise is left as written.
+// The working clip's system audio cut to the retained interval and rebased to
+// the export's zero: packets before the start lose their head, a hole becomes
+// silence, and the track ends with the video.
+class AudioCut {
+public:
+    Error open(const std::string& working, long long startUs, long long endUs) {
+        if (auto e = reader_.open(working)) return e;
+        if (!reader_.available()) return {};
+        if (!audio::encoderRate(reader_.rate())) return {"recording_export_failed", "The working clip's audio rate is not one the AAC encoder takes", {{"rate", reader_.rate()}}};
+        startUs_ = startUs;
+        timeline_ = audio::Timeline(reader_.rate());
+        endFrame_ = audio::Timeline::frameAt((endUs - startUs) * 10, reader_.rate());
+        return reader_.seek(startUs);
+    }
+    bool available() const { return reader_.available(); }
+    int rate() const { return reader_.rate(); }
+    // Writes the track up to `us` on the export timeline (the end once `us` reaches it).
+    Error writeUntil(media::Mp4Writer& writer, long long us) {
+        const long long until = std::min(endFrame_, audio::Timeline::frameAt(us * 10, timeline_.rate()));
+        while (!ended_ && timeline_.written() < until) {
+            long long time = 0;
+            Error error;
+            if (!reader_.next(packet_, time, error)) { if (error) return error; ended_ = true; break; }
+            audio::toStereo16(packet_.data(), packet_.size() / size_t(reader_.channels()), reader_.channels(), stereo_);
+            if (auto e = write(writer, timeline_.place(audio::Timeline::frameAt(time - startUs_ * 10, timeline_.rate()), stereo_))) return e;
+        }
+        if (ended_ && until == endFrame_) return write(writer, timeline_.fillTo(endFrame_));
+        return {};
+    }
+private:
+    Error write(media::Mp4Writer& writer, audio::Timeline::Piece piece) {
+        // Nothing past the end of the video.
+        const long long room = std::max(0LL, endFrame_ - piece.start);
+        if ((long long)piece.samples.size() / 2 > room) piece.samples.resize(size_t(room) * 2);
+        if (piece.samples.empty()) return {};
+        return writer.writeAudio(piece.samples.data(), piece.samples.size() / 2, piece.start * 10000000 / timeline_.rate());
+    }
+    media::AudioReader reader_;
+    audio::Timeline timeline_{48000};
+    long long startUs_ = 0, endFrame_ = 0;
+    bool ended_ = false;
+    std::vector<int16_t> packet_, stereo_;
+};
+
 Error faststart(const std::string& path) {
     HANDLE file = CreateFileW(paths::wide(path).c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, FILE_FLAG_OPEN_REPARSE_POINT, nullptr);
     if (file == INVALID_HANDLE_VALUE) return {"recording_export_failed", "Cannot reopen the export", {}};
@@ -122,8 +167,10 @@ Error exportClip(const ExportRequest& r, ExportResult& result, const std::atomic
     media::ClipReader reader;
     if (auto e = reader.open(r.working, r.canvas.w, r.canvas.h)) return e;
     if (auto e = reader.seek(start)) return e;
+    AudioCut audio;
+    if (r.config.audioSystem) if (auto e = audio.open(r.working, start, end)) return e;
     media::Mp4Writer writer;
-    if (auto e = writer.open(r.output, {size.w, size.h, fps, recording::liveBitrate(size.w, size.h, fps), r.config.codec == "h265"})) return e;
+    if (auto e = writer.open(r.output, {size.w, size.h, fps, recording::liveBitrate(size.w, size.h, fps), r.config.codec == "h265", audio.available() ? audio.rate() : 0})) return e;
     std::vector<uint8_t> frame, scaled(size_t(size.w) * size.h * 4);
     long long time = 0;
     Error error;
@@ -142,11 +189,15 @@ Error exportClip(const ExportRequest& r, ExportResult& result, const std::atomic
         const long long index = std::llround(double(time - start * 10) / double(period));
         if (auto e = writer.write(bits, size_t(size.w) * 4, std::max(0LL, index) * period, period)) { writer.abandon(); return {"recording_export_failed", e.message, e.details}; }
         ++frames;
+        // Audio interleaved with the video, so the muxer holds little of either.
+        if (audio.available()) if (auto e = audio.writeUntil(writer, (std::max(0LL, index) + 1) * period / 10)) { writer.abandon(); return {"recording_export_failed", e.message, e.details}; }
         if (progress) progress(double(us - start) / double(end - start));
     }
     if (error) { writer.abandon(); return error; }
     if (frames == 0) { writer.abandon(); return {"recording_export_failed", "No frame lies in the retained interval", {}}; }
+    if (audio.available()) if (auto e = audio.writeUntil(writer, end - start)) { writer.abandon(); return {"recording_export_failed", e.message, e.details}; }
     result.encoder = writer.encoder();
+    result.audio = audio.available();
     if (auto e = writer.finish()) return {"recording_export_failed", e.message, e.details};
     if (auto e = faststart(r.output)) return e;
     result.sha256 = files::sha256(r.output, &result.bytes);

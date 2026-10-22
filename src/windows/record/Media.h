@@ -7,6 +7,7 @@
 #include "common/Error.h"
 #include <cstdint>
 #include <string>
+#include <mutex>
 #include <vector>
 #include <windows.h>
 
@@ -31,6 +32,8 @@ struct VideoFormat {
     int width = 0, height = 0, fps = 30;
     long long bitrate = 0;
     bool hevc = false; // H.265 instead of H.264 (needs an HEVC encoder: hardware or the Store extension)
+    // An AAC track from 16-bit stereo PCM at this rate (44100 or 48000); 0 for none.
+    int audioRate = 0;
 };
 
 // An H.264 MP4 writer over a file the resident created (helpers never create
@@ -48,6 +51,9 @@ public:
     Error open(const std::string& path, const VideoFormat&);
     Error openInMemory(const VideoFormat&);
     Error write(const uint8_t* bits, size_t stride, long long time100ns, long long duration100ns);
+    // Interleaved 16-bit stereo frames for the AAC track. The video and audio
+    // threads may write at the same time; calls are serialized.
+    Error writeAudio(const int16_t* samples, size_t frames, long long time100ns);
     // Finalizes the container (index written); the file is complete afterwards.
     Error finish();
     // Drops the writer without finalizing; the resident discards the file.
@@ -57,7 +63,8 @@ public:
 private:
     Error start(void* byteStream, const VideoFormat&);
     IMFSinkWriter* writer_ = nullptr;
-    DWORD stream_ = 0;
+    DWORD stream_ = 0, audioStream_ = 0;
+    std::mutex mutex_;
     VideoFormat format_;
     std::string encoder_;
 };
@@ -82,6 +89,27 @@ private:
     int width_ = 0, height_ = 0;
     long defaultStride_ = 0;
 };
+
+// Decodes a clip's first audio stream to interleaved 16-bit PCM at its own rate
+// and channel count; `available` is false for a clip without one.
+class AudioReader {
+public:
+    AudioReader() = default;
+    ~AudioReader();
+    AudioReader(const AudioReader&) = delete;
+    AudioReader& operator=(const AudioReader&) = delete;
+    Error open(const std::string& path);
+    bool available() const { return reader_ != nullptr; }
+    int rate() const { return rate_; }
+    int channels() const { return channels_; }
+    Error seek(long long us);
+    bool next(std::vector<int16_t>& samples, long long& time100ns, Error& error);
+private:
+    IMFSourceReader* reader_ = nullptr;
+    int rate_ = 0, channels_ = 0;
+};
+// The AAC encoder with a short silent track, in memory.
+Error probeAac();
 
 // Encodes two synthetic 320x240 frames to memory: registry presence is not proof
 // that an encoder works. Fills the encoder name on success.

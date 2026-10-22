@@ -29,15 +29,8 @@ enum : int {
 };
 const double speeds[] = {0.5, 1.0, 2.0, 4.0};
 std::wstring w(const std::string& s) { return ui::wide(s); }
-// Menu keys are a format, or format/codec for formats with codecs.
-std::string formatKey(const RecordingConfig& c) { return c.codec.empty() ? c.format : c.format + "/" + c.codec; }
-std::string formatLabel(const std::string& key) {
-    if (key == "mp4" || key == "mp4/h264") return "MP4 (H.264)";
-    if (key == "mp4/h265") return "MP4 (H.265)";
-    if (key == "gif") return "GIF";
-    if (key == "webp") return "WebP";
-    return "WebM (VP9)";
-}
+using recording::formatKey;
+using recording::formatLabel;
 LRESULT CALLBACK childProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
     auto* owner = reinterpret_cast<ReviewWindow*>(GetWindowLongPtrW(hwnd, GWLP_USERDATA));
     if (!owner) return DefWindowProcW(hwnd, message, wParam, lParam);

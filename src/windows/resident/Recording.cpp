@@ -33,6 +33,7 @@ struct OperationService::RecordingSession : std::enable_shared_from_this<Recordi
     RecordingTarget target; RecordingConfig config; RecordingSize canvas; long long duration = 0;
     RecordingEdit edit; json::Object progress, lastExport; int exports = 0;
     bool selecting = false, ending = false;
+    bool audioRecorded = false; // the working clip has a system-audio track
     std::string overlayPlacement; std::optional<bool> overlayExcluded;
     struct Waiter { JsonReply reply; UINT_PTR timer = 0; };
     std::map<std::string, Waiter> waiting;
@@ -83,6 +84,7 @@ json::Object OperationService::recordingJson() const {
         {"lastExport", s.lastExport.empty() ? json::Value() : json::Value(s.lastExport)}, {"error", s.op.error.toJson()}, {"selecting", s.selecting}};
     if (!s.canvas.empty()) { const auto out = recording::outputSize(s.canvas, s.config.maxEdge); o["outputSize"] = json::Array{out.w, out.h}; }
     if (!s.stopReason.empty()) o["stopReason"] = s.stopReason;
+    if (s.state == "reviewing" || s.state == "exporting") o["audioRecorded"] = s.audioRecorded;
     if (!s.overlayPlacement.empty()) o["overlayPlacement"] = s.overlayPlacement;
     if (s.overlayExcluded) o["overlayExcluded"] = *s.overlayExcluded;
     return o;
@@ -258,7 +260,8 @@ void OperationService::prepareRecording(const json::Object& params, JsonReply re
         if (!contains(caps.value("targets").toArray(), target.kind)) { reply({"recording_unsupported", "Recording a " + target.kind + " is not available on Windows yet", {{"kind", target.kind}}}, {}); return; }
         if (!contains(caps.value("formats").toArray(), config.format) || (!config.codec.empty() && !contains(caps.value("codecs")[config.format].toArray(), config.codec)))
             { reply({"recording_unsupported", "This format is not available: no built-in Windows encoder produces it", {{"format", config.format}, {"codec", config.codec}}}, {}); return; }
-        if (config.audioSystem) { reply({"recording_unsupported", "System audio is not available on Windows yet", {{"field", "audio.system"}}}, {}); return; }
+        if (config.audioSystem && !caps.value("audio")["system"].toBool())
+            { reply({"recording_unsupported", caps.value("audioUnavailable")["system"].toString("System audio is not available on this computer"), {{"field", "audio.system"}}}, {}); return; }
         const bool interactive = target.kind == "region" && !target.rect;
         if (interactive && !selectingId_.empty()) { reply({"busy_selecting", "Another interactive acquisition is active", {}}, {}); return; }
         const auto snapshot = settings_.snapshot();
@@ -300,7 +303,8 @@ void OperationService::prepareRecording(const json::Object& params, JsonReply re
             json::Array exclude; if (uiPid_) exclude.push_back(double(uiPid_)); exclude.push_back(double(GetCurrentProcessId()));
             json::Object bootstrap{{"target", session->target.toJson()}, {"config", session->config.toJson()}, {"output", json::Object{{"path", session->workingPath}}},
                 {"limits", json::Object{{"budgetBytes", double(session->config.budgetBytes)}}}, {"excludePids", exclude},
-                {"appearance", json::Object{{"theme", settingsSnapshot().appearanceTheme}}}, {"formats", reviewFormats()}};
+                {"appearance", json::Object{{"theme", settingsSnapshot().appearanceTheme}}}, {"formats", reviewFormats()},
+                {"audio", json::Object{{"system", recordingProbe_.value("audio")["system"].toBool()}}}};
             session->helper = std::make_unique<helpers::Supervised>("record", std::vector<std::string>{"--record"});
             auto phase = [this, session](const std::string& state) { session->state = state; auto doc = session->op.publicJson(); doc["phase"] = state; observe(doc); if (onChanged) onChanged(session->op.id); };
             auto fail = [this, session](Error e) {
@@ -346,6 +350,7 @@ void OperationService::prepareRecording(const json::Object& params, JsonReply re
                     else if (event == "resumed" && session->state == "paused") phase("recording");
                     else if (event == "stopped" && (session->state == "recording" || session->state == "paused" || session->state == "stopping")) {
                         session->duration = p.value("durationUs").toInteger(0); session->stopReason = p.value("reason").toString("user"); session->edit = {};
+                        session->audioRecorded = p.value("audio").toBool();
                         if (session->stopReason == "budget") {
                             log::warning("recording", "Recording stopped on its budget", {{"operationId", session->op.id}, {"durationUs", double(session->duration)}, {"budgetBytes", double(session->config.budgetBytes)}});
                             session->request("notice", {{"text", "Recording stopped at " + recording::clockText(session->duration, true) + ": it reached the room put.gd keeps for one recording (" + text::byteSize(session->config.budgetBytes) +
@@ -365,6 +370,11 @@ void OperationService::prepareRecording(const json::Object& params, JsonReply re
                         RecordingConfig parsed;
                         auto merged = session->config.toJson(); for (const auto& pair : config) merged[pair.first] = pair.second;
                         merged.remove("mime"); merged.remove("budgetBytes");
+                        // Audio: chosen on the bar before Record, where the probe offers it; in review it
+                        // follows the clip (GIF drops it, MP4 keeps what was recorded). GIF is always silent.
+                        const auto format = merged.value("format").toString();
+                        const bool wanted = session->state == "ready" ? merged.value("audio")["system"].toBool() && recordingProbe_.value("audio")["system"].toBool() : session->audioRecorded;
+                        merged["audio"] = json::Object{{"system", wanted && format != "gif" && format != "webp"}, {"microphone", false}};
                         if (!recording::parseConfig(merged, parsed) && contains(recordingProbe_.value("formats").toArray(), parsed.format) &&
                             (parsed.codec.empty() || contains(recordingProbe_.value("codecs")[parsed.format].toArray(), parsed.codec))) {
                             parsed.budgetBytes = session->config.budgetBytes; parsed.fps = session->config.fps;

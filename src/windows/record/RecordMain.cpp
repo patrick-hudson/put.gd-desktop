@@ -136,6 +136,7 @@ struct Bootstrap {
     std::vector<DWORD> excludePids;
     std::string theme = "system"; // preferences.appearance.theme
     std::vector<std::string> formats{"mp4/h264"}; // what the review may export: format or format/codec
+    bool audioAvailable = false; // the probe found a loopback device and an AAC encoder
 };
 bool parseBootstrap(const json::Object& p, Bootstrap& b) {
     if (p.value("role") != "record" || !p.value("nonce").isString() || p.value("nonce").stringRef().empty()) return false;
@@ -151,6 +152,7 @@ bool parseBootstrap(const json::Object& p, Bootstrap& b) {
     b.budget = p.value("limits")["budgetBytes"].toInteger(0);
     for (const auto& pid : p.value("excludePids").toArray()) if (json::integer(pid, 0, 4294967295.0)) b.excludePids.push_back(DWORD(pid.toInteger()));
     b.theme = p.value("appearance")["theme"].toString("system");
+    b.audioAvailable = p.value("audio")["system"].toBool();
     if (p.value("formats").isArray()) { b.formats = json::toStringVector(p.value("formats").toArray()); if (b.formats.empty()) b.formats = {"mp4/h264"}; }
     return true;
 }
@@ -179,6 +181,11 @@ int probe(Link& link, frames::Channel& channel) {
             result["formatFailures"] = failures;
             result["formats"] = formats; result["codecs"] = json::Object{{"mp4", mp4}};
             result["unavailableFormats"] = json::Object{{"webm", "No WebM (VP9) encoder is built into Windows"}, {"webp", "No animated WebP encoder is built into Windows"}};
+            // System audio: WASAPI loopback on the default output device into AAC.
+            std::string reason;
+            if (!record::loopbackAvailable(reason)) result["audioUnavailable"] = json::Object{{"system", reason}};
+            else if (auto e = media::probeAac()) result["audioUnavailable"] = json::Object{{"system", e.message}};
+            else result["audio"] = json::Object{{"system", true}, {"microphone", false}};
         }
     }
     link.send("result", result);
@@ -208,9 +215,16 @@ public:
             [this] { pauseCapture(false); link_.event("resumed"); },
             [this] { stopCapture({}); },
             [this] { cancelCapture(); link_.event("cancelled"); },
-            [this] { return recorder_.durationUs(); }});
+            [this] { return recorder_.durationUs(); },
+            [this](bool audio) { link_.event("configChanged", {{"config", json::Object{{"audio", json::Object{{"system", audio}}}}}}); },
+            [this](const std::string& key) {
+                const auto slash = key.find('/');
+                json::Object config{{"format", key.substr(0, slash)}, {"codec", slash == std::string::npos ? std::string() : key.substr(slash + 1)}};
+                if (key == "gif") config["audio"] = json::Object{{"system", false}};
+                link_.event("configChanged", {{"config", config}});
+            }});
         const std::wstring target = (b_.target.kind == "region" ? L"Region " : b_.target.kind == "desktop" ? L"Desktop " : L"Monitor ") + std::to_wstring(area.w) + L"×" + std::to_wstring(area.h);
-        bar_->create(area, target);
+        bar_->create(area, target, b_.formats, recording::formatKey(b_.config), b_.audioAvailable, b_.config.audioSystem);
         link_.send("prepared", {{"canvas", json::Array{area.w, area.h}}, {"rect", json::Array{area.x, area.y, area.w, area.h}}, {"acquisition", "gdi"}, {"encoder", recorder_.encoder()},
             {"overlayPlacement", bar_->placement()}, {"overlayExcluded", bar_->excluded() && frame_.excluded()}});
         SetTimer(link_.window(), progressTimer, 1000, nullptr);
@@ -254,6 +268,7 @@ private:
     // ---- capture steps shared by the bar and the resident's commands ----
     void startCapture() {
         started_ = true;
+        recorder_.setAudio(b_.config.audioSystem && !b_.config.animation());
         recorder_.start();
         if (bar_) bar_->setState("recording");
         frame_.setDimmed(true);
@@ -285,7 +300,8 @@ private:
             link_.post([this, requestId, reason, e, duration] {
                 bar_.reset();
                 frame_.hide();
-                const json::Object result{{"durationUs", double(duration)}, {"canvas", json::Array{area_.w, area_.h}}, {"bytes", double(recorder_.fileBytes())}, {"encoder", recorder_.encoder()}};
+                const json::Object result{{"durationUs", double(duration)}, {"canvas", json::Array{area_.w, area_.h}}, {"bytes", double(recorder_.fileBytes())}, {"encoder", recorder_.encoder()},
+                    {"audio", !recorder_.audioEncoder().empty()}, {"audioEncoder", recorder_.audioEncoder()}};
                 if (!e) openReview(duration);
                 if (!requestId.empty()) { if (e) link_.reply(requestId, e); else link_.reply(requestId, {}, result); return; }
                 if (e) { link_.event("failed", {{"error", e.toJson()}}); return; }
@@ -309,7 +325,7 @@ private:
         const auto reason = recorder_.stoppedReason();
         if (reason == "budget") { stopCapture({}, "budget"); return; }
         if (reason == "error") { stopped_ = true; link_.event("failed", {{"error", recorder_.failure().toJson()}}); return; }
-        link_.event("progress", {{"durationUs", double(recorder_.durationUs())}, {"bytes", double(recorder_.fileBytes())}, {"paused", recorder_.paused()}, {"encoder", recorder_.encoder()}});
+        link_.event("progress", {{"durationUs", double(recorder_.durationUs())}, {"bytes", double(recorder_.fileBytes())}, {"paused", recorder_.paused()}, {"encoder", recorder_.encoder()}, {"audioEncoder", recorder_.audioEncoder()}});
     }
     void handle(std::unique_ptr<protocol::Frame> frame) {
         if (frame->type == "shutdown") { quitting_ = true; if (selecting_) selecting_->cancel(); PostQuitMessage(0); return; }
@@ -339,7 +355,12 @@ private:
         if (command == "setEdit") {
             RecordingEdit edit;
             if (!recording::parseEdit(params.value("edit").toObject(), edit)) { link_.reply(requestId, {"invalid_request", "Invalid edit", {}}); return; }
-            if (review_) {
+            if (!review_) {
+                // Before Record: the bar's format and audio as the resident accepted them.
+                auto config = params.value("config").toObject(); config.remove("mime"); config.remove("budgetBytes");
+                RecordingConfig parsed;
+                if (!started_ && !config.empty() && !recording::parseConfig(config, parsed)) { b_.config = parsed; if (bar_) bar_->setChoice(recording::formatKey(parsed), parsed.audioSystem); }
+            } else {
                 const auto& limits = params.value("limits");
                 review_->setEdit(edit, limits["animationSeconds"].toInteger(0) * 1000000, limits["animationEdge"].toInt(0));
                 auto config = params.value("config").toObject(); config.remove("mime"); config.remove("budgetBytes");
@@ -411,7 +432,7 @@ private:
                 link_.post([this, e, result, label] { if (review_) review_->setExporting(false, e ? "Export failed: " + e.message : "Exported " + label + " (" + std::to_string(result.bytes / 1024) + " KiB)"); });
                 if (e) link_.reply(requestId, e);
                 else link_.reply(requestId, {}, {{"bytes", double(result.bytes)}, {"sha256", result.sha256}, {"durationUs", double(result.durationUs)}, {"frames", result.frames},
-                    {"videoEncoder", result.encoder}, {"size", json::Array{result.size.w, result.size.h}}});
+                    {"videoEncoder", result.encoder}, {"audio", result.audio}, {"size", json::Array{result.size.w, result.size.h}}});
             });
             return;
         }

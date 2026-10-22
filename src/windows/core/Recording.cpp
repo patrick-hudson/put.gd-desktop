@@ -273,5 +273,13 @@ long long liveBitrate(int width, int height, int fps) {
     const double bits = 0.1 * double(width) * double(height) * double(std::max(1, fps));
     return std::clamp<long long>((long long)bits, 1500000, 20000000);
 }
+std::string formatKey(const RecordingConfig& c) { return c.codec.empty() ? c.format : c.format + "/" + c.codec; }
+std::string formatLabel(const std::string& key) {
+    if (key == "mp4" || key == "mp4/h264") return "MP4 (H.264)";
+    if (key == "mp4/h265") return "MP4 (H.265)";
+    if (key == "gif") return "GIF";
+    if (key == "webp") return "WebP";
+    return "WebM (VP9)";
+}
 }
 }

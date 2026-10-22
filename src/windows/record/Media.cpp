@@ -60,7 +60,7 @@ Platform::Platform() {
 Platform::~Platform() { if (ok_) api.shutdown(); }
 
 Mp4Writer::~Mp4Writer() { abandon(); }
-void Mp4Writer::abandon() { if (writer_) { writer_->Release(); writer_ = nullptr; } }
+void Mp4Writer::abandon() { std::lock_guard lock(mutex_); if (writer_) { writer_->Release(); writer_ = nullptr; } }
 Error Mp4Writer::open(const std::string& path, const VideoFormat& format) {
     const auto wide = paths::wide(path);
     const DWORD attributes = GetFileAttributesW(wide.c_str());
@@ -91,6 +91,9 @@ Error Mp4Writer::start(void* byteStreamPointer, const VideoFormat& format) {
         if (FAILED(api.createAttributes(attributes.put(), 4))) return encoderError("attributes", E_FAIL);
         attributes->SetGUID(MF_TRANSCODE_CONTAINERTYPE, MFTranscodeContainerType_MPEG4);
         attributes->SetUINT32(MF_READWRITE_ENABLE_HARDWARE_TRANSFORMS, hardware ? TRUE : FALSE);
+        // Loopback audio arrives in bursts and stops while nothing plays; throttling
+        // would hold the video back waiting for it.
+        if (format.audioRate) attributes->SetUINT32(MF_SINK_WRITER_DISABLE_THROTTLING, TRUE);
         byteStream->SetCurrentPosition(0);
         byteStream->SetLength(0);
         IMFSinkWriter* writer = nullptr;
@@ -125,9 +128,32 @@ Error Mp4Writer::start(void* byteStreamPointer, const VideoFormat& format) {
         if (SUCCEEDED(api.createAttributes(encoding.put(), 1))) encoding->SetUINT32(bPictureCount, 0);
         hr = writer->SetInputMediaType(stream, input.get(), encoding.get());
         if (FAILED(hr)) { writer->Release(); last = encoderError("inputType", hr, format.hevc); continue; }
+        DWORD audioStream = 0;
+        if (format.audioRate) {
+            Com<IMFMediaType> aac, pcm;
+            api.createMediaType(aac.put());
+            aac->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Audio);
+            aac->SetGUID(MF_MT_SUBTYPE, MFAudioFormat_AAC);
+            aac->SetUINT32(MF_MT_AUDIO_BITS_PER_SAMPLE, 16);
+            aac->SetUINT32(MF_MT_AUDIO_SAMPLES_PER_SECOND, UINT32(format.audioRate));
+            aac->SetUINT32(MF_MT_AUDIO_NUM_CHANNELS, 2);
+            aac->SetUINT32(MF_MT_AUDIO_AVG_BYTES_PER_SECOND, 24000); // 192 kbit/s, the encoder's highest
+            hr = writer->AddStream(aac.get(), &audioStream);
+            if (FAILED(hr)) { writer->Release(); last = {"recording_audio_unavailable", "The built-in AAC encoder refused the audio", {{"step", "audioOutput"}, {"hresult", hex(hr)}}}; break; }
+            api.createMediaType(pcm.put());
+            pcm->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Audio);
+            pcm->SetGUID(MF_MT_SUBTYPE, MFAudioFormat_PCM);
+            pcm->SetUINT32(MF_MT_AUDIO_BITS_PER_SAMPLE, 16);
+            pcm->SetUINT32(MF_MT_AUDIO_SAMPLES_PER_SECOND, UINT32(format.audioRate));
+            pcm->SetUINT32(MF_MT_AUDIO_NUM_CHANNELS, 2);
+            pcm->SetUINT32(MF_MT_AUDIO_BLOCK_ALIGNMENT, 4);
+            pcm->SetUINT32(MF_MT_AUDIO_AVG_BYTES_PER_SECOND, UINT32(format.audioRate * 4));
+            hr = writer->SetInputMediaType(audioStream, pcm.get(), nullptr);
+            if (FAILED(hr)) { writer->Release(); last = {"recording_audio_unavailable", "The built-in AAC encoder refused the audio", {{"step", "audioInput"}, {"hresult", hex(hr)}}}; break; }
+        }
         hr = writer->BeginWriting();
         if (FAILED(hr)) { writer->Release(); last = encoderError("beginWriting", hr, format.hevc); continue; }
-        writer_ = writer; stream_ = stream;
+        writer_ = writer; stream_ = stream; audioStream_ = audioStream;
         encoder_.clear();
         Com<IMFSinkWriterEx> extended;
         if (SUCCEEDED(writer->QueryInterface(IID_IMFSinkWriterEx, reinterpret_cast<void**>(extended.put())))) {
@@ -167,14 +193,38 @@ Error Mp4Writer::write(const uint8_t* bits, size_t stride, long long time, long 
     sample->AddBuffer(buffer.get());
     sample->SetSampleTime(time);
     sample->SetSampleDuration(duration);
+    std::lock_guard lock(mutex_);
     const HRESULT hr = writer_->WriteSample(stream_, sample.get());
     if (FAILED(hr)) return {"recording_failed", "The encoder refused a frame", {{"hresult", hex(hr)}}};
     return {};
 }
+Error Mp4Writer::writeAudio(const int16_t* samples, size_t frames, long long time) {
+    if (!writer_ || !format_.audioRate) return {"recording_failed", "The audio encoder is not open", {}};
+    if (frames == 0) return {};
+    const DWORD length = DWORD(frames * 4);
+    Com<IMFMediaBuffer> buffer;
+    if (FAILED(api.createMemoryBuffer(length, buffer.put()))) return {"recording_failed", "Out of memory for audio", {}};
+    BYTE* destination = nullptr;
+    if (FAILED(buffer->Lock(&destination, nullptr, nullptr))) return {"recording_failed", "Cannot lock audio", {}};
+    std::memcpy(destination, samples, length);
+    buffer->Unlock();
+    buffer->SetCurrentLength(length);
+    Com<IMFSample> sample;
+    if (FAILED(api.createSample(sample.put()))) return {"recording_failed", "Out of memory for audio", {}};
+    sample->AddBuffer(buffer.get());
+    sample->SetSampleTime(time);
+    sample->SetSampleDuration((long long)frames * 10000000 / format_.audioRate);
+    std::lock_guard lock(mutex_);
+    const HRESULT hr = writer_->WriteSample(audioStream_, sample.get());
+    if (FAILED(hr)) return {"recording_failed", "The audio encoder refused samples", {{"hresult", hex(hr)}}};
+    return {};
+}
 Error Mp4Writer::finish() {
+    std::lock_guard lock(mutex_);
     if (!writer_) return {"recording_failed", "The encoder is not open", {}};
     const HRESULT hr = writer_->Finalize();
-    abandon();
+    writer_->Release();
+    writer_ = nullptr;
     if (FAILED(hr)) return {"recording_failed", "The recording could not be finalized", {{"hresult", hex(hr)}}};
     return {};
 }
@@ -247,6 +297,52 @@ bool ClipReader::next(std::vector<uint8_t>& bgrx, long long& time, Error& error)
     }
 }
 
+AudioReader::~AudioReader() { if (reader_) reader_->Release(); }
+Error AudioReader::open(const std::string& path) {
+    HRESULT hr = api.sourceReaderFromUrl(paths::wide(path).c_str(), nullptr, &reader_);
+    if (FAILED(hr)) { reader_ = nullptr; return {"recording_export_failed", "Cannot open the working clip's audio", {{"hresult", hex(hr)}}}; }
+    reader_->SetStreamSelection(MF_SOURCE_READER_ALL_STREAMS, FALSE);
+    if (FAILED(reader_->SetStreamSelection(MF_SOURCE_READER_FIRST_AUDIO_STREAM, TRUE))) { reader_->Release(); reader_ = nullptr; return {}; }
+    Com<IMFMediaType> type;
+    api.createMediaType(type.put());
+    type->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Audio);
+    type->SetGUID(MF_MT_SUBTYPE, MFAudioFormat_PCM);
+    type->SetUINT32(MF_MT_AUDIO_BITS_PER_SAMPLE, 16);
+    hr = reader_->SetCurrentMediaType(MF_SOURCE_READER_FIRST_AUDIO_STREAM, nullptr, type.get());
+    if (FAILED(hr)) { reader_->Release(); reader_ = nullptr; return {"recording_export_failed", "Cannot decode the working clip's audio", {{"hresult", hex(hr)}}}; }
+    Com<IMFMediaType> current;
+    UINT32 rate = 0, channels = 0;
+    if (SUCCEEDED(reader_->GetCurrentMediaType(MF_SOURCE_READER_FIRST_AUDIO_STREAM, current.put()))) { current->GetUINT32(MF_MT_AUDIO_SAMPLES_PER_SECOND, &rate); current->GetUINT32(MF_MT_AUDIO_NUM_CHANNELS, &channels); }
+    rate_ = int(rate); channels_ = int(channels);
+    if (rate_ <= 0 || channels_ <= 0) { reader_->Release(); reader_ = nullptr; return {"recording_export_failed", "The working clip's audio has no usable format", {}}; }
+    return {};
+}
+Error AudioReader::seek(long long us) {
+    PROPVARIANT position; PropVariantInit(&position);
+    position.vt = VT_I8; position.hVal.QuadPart = us * 10;
+    const HRESULT hr = reader_->SetCurrentPosition(GUID_NULL, position);
+    if (FAILED(hr)) return {"recording_export_failed", "Cannot seek in the working clip's audio", {{"hresult", hex(hr)}}};
+    return {};
+}
+bool AudioReader::next(std::vector<int16_t>& samples, long long& time, Error& error) {
+    while (true) {
+        DWORD stream = 0, flags = 0; LONGLONG timestamp = 0;
+        Com<IMFSample> sample;
+        const HRESULT hr = reader_->ReadSample(MF_SOURCE_READER_FIRST_AUDIO_STREAM, 0, &stream, &flags, &timestamp, sample.put());
+        if (FAILED(hr)) { error = {"recording_export_failed", "Cannot decode the working clip's audio", {{"hresult", hex(hr)}}}; return false; }
+        if (flags & MF_SOURCE_READERF_ENDOFSTREAM) return false;
+        if (!sample) continue;
+        Com<IMFMediaBuffer> buffer;
+        if (FAILED(sample->ConvertToContiguousBuffer(buffer.put()))) { error = {"recording_export_failed", "Cannot read decoded audio", {}}; return false; }
+        BYTE* data = nullptr; DWORD length = 0;
+        if (FAILED(buffer->Lock(&data, nullptr, &length))) { error = {"recording_export_failed", "Cannot read decoded audio", {}}; return false; }
+        samples.assign(reinterpret_cast<const int16_t*>(data), reinterpret_cast<const int16_t*>(data) + length / 2);
+        buffer->Unlock();
+        time = timestamp;
+        return true;
+    }
+}
+
 namespace {
 Error probeEncoder(bool hevc, std::string& encoder) {
     VideoFormat format{320, 240, 30, 1500000, hevc};
@@ -264,4 +360,13 @@ Error probeEncoder(bool hevc, std::string& encoder) {
 }
 Error probeH264(std::string& encoder) { return probeEncoder(false, encoder); }
 Error probeHevc(std::string& encoder) { return probeEncoder(true, encoder); }
+Error probeAac() {
+    Mp4Writer writer;
+    if (auto e = writer.openInMemory({64, 64, 30, 1500000, false, 48000})) return e;
+    std::vector<uint8_t> frame(size_t(64) * 64 * 4, 128);
+    std::vector<int16_t> silence(size_t(4800) * 2, 0);
+    if (auto e = writer.write(frame.data(), 64 * 4, 0, 333333)) return e;
+    if (auto e = writer.writeAudio(silence.data(), 4800, 0)) return e;
+    return writer.finish();
+}
 }

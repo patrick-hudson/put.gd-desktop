@@ -22,6 +22,7 @@ struct ExportResult {
     int frames = 0;
     std::string sha256, encoder;
     RecordingSize size;
+    bool audio = false; // an AAC track of the clip's system audio
 };
 // Errors: recording_unsupported (a format this build cannot write),
 // recording_export_failed, cancelled.
