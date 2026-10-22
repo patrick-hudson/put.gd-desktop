@@ -76,9 +76,10 @@ QPushButton[visualRole="link"], QToolButton[visualRole="link"] { color: %link%; 
 QPushButton[visualRole="link"]:hover, QToolButton[visualRole="link"]:hover { text-decoration: underline; }
 QPushButton[visualRole="link"]:focus, QToolButton[visualRole="link"]:focus { border-color: %accent%; padding: 3px 2px; }
 QLabel[visualRole="version"] { color: %textMuted%; font-size: 11px; padding: 0 3px; }
-QPushButton[visualRole="version"] { color: %textMuted%; font-size: 11px; border-color: transparent; background: transparent; padding: 2px 3px; min-height: 0; text-align: left; }
+/* The version's full line, descent included, plus a pixel above and below (#391). */
+QPushButton[visualRole="version"] { color: %textMuted%; font-size: 11px; border-color: transparent; background: transparent; padding: 3px 3px; min-height: 0; text-align: left; }
 QPushButton[visualRole="version"]:hover { color: %link%; text-decoration: underline; }
-QPushButton[visualRole="version"]:focus { color: %link%; border-color: %accent%; padding: 1px 2px; }
+QPushButton[visualRole="version"]:focus { color: %link%; border-color: %accent%; padding: 2px 2px; }
 QPushButton#captureRailButton { background: %surface%; text-align: left; padding: 8px 10px; min-height: 24px; }
 QPushButton#captureRailButton:hover { background: %surfaceRaised%; }
 QPushButton#captureRailButton:focus { border: 2px solid %accent%; padding: 7px 9px; }

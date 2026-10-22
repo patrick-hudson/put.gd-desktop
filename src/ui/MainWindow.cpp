@@ -136,6 +136,9 @@ void MainWindow::fitRail(){
  const int available=railScroll_->viewport()->height();
  if(!railCompact_){const int natural=needed();if(natural>available){setRailCompact(true);railSaving_=natural-needed();}}
  else if(needed()+railSaving_<=available)setRailCompact(false);
+ // Scroll rather than squeeze: the stylesheet's minimum heights are below some
+ // items' text (the version link's is 6 px), so a squeezed rail clipped them.
+ railScroll_->widget()->setMinimumHeight(needed());
  fittingRail_=false;
 }
 void MainWindow::setRailCompact(bool compact){

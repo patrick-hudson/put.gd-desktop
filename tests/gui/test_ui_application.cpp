@@ -342,6 +342,10 @@ private slots:
   CredentialStore secrets;UiSessionFixture fixture(settings,secrets);
   fixture.server.setUiDiagnostics([&]{auto data=fixture.operations().diagnostics();data["update"]=QJsonObject{{"supported",true},{"result",QJsonObject{{"updateAvailable",true},{"latest","26.1022.999-nightly"}}}};return data;});
   MainWindow window(fixture.session);if(size.height()<window.minimumHeight())window.setMinimumSize(size);window.resize(size);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));fixture.session.refreshSnapshot();
+  // A nightly links its version to its release; the longest CalVer one.
+  QJsonObject snapshot;fixture.server.dispatch({{"schemaVersion",1},{"requestId","rail"},{"session",fixture.server.socketPath()},{"method","ui.snapshot"},{"params",QJsonObject{}}},[&](Error e,QJsonObject data){QVERIFY(!e);snapshot=data;});PUTGD_TRY_VERIFY(!snapshot.isEmpty());
+  auto build=snapshot["build"].toObject();build["version"]="26.1231.99999-nightly";build["dirty"]=false;snapshot["build"]=build;fixture.session.applySnapshot(snapshot);
+  auto* version=window.findChild<QPushButton*>("appVersionLink");QVERIFY(version);PUTGD_TRY_VERIFY(version->isVisible());
   auto* update=window.findChild<QPushButton*>("updateAvailable");auto* output=window.findChild<QLabel*>("captureOutputSummary");auto* navigation=window.findChild<QListWidget*>("mainNavigation");auto* scroll=window.findChild<QScrollArea*>("mainRailScroll");
   QVERIFY(update&&output&&navigation);PUTGD_TRY_VERIFY(update->isVisible());PUTGD_TRY_COMPARE(window.size(),size);QCOMPARE(output->text().count('\n'),2);
   auto* content=scroll?scroll->widget():window.findChild<QWidget*>("mainRail");QWidgetList items;for(auto* child:content->findChildren<QWidget*>(Qt::FindDirectChildrenOnly))if(child->isVisible())items<<child;
@@ -353,6 +357,8 @@ private slots:
    for(int j=i+1;j<items.size();++j)QVERIFY2(!item->geometry().intersects(items[j]->geometry()),qPrintable(item->objectName()+" overlaps "+items[j]->objectName()));
   }
   QVERIFY(scroll);
+  // The version's whole line shows, descent included, with room to spare (Patrick's clipped "nightly").
+  QVERIFY2(version->height()>=version->fontMetrics().lineSpacing()+8,qPrintable(QString("version link %1 px for a %2 px line").arg(version->height()).arg(version->fontMetrics().lineSpacing())));
   const auto inView=[&](QWidget* widget){return scroll->viewport()->rect().contains(QRect(widget->mapTo(scroll->viewport(),QPoint()),widget->size()));};
   const auto settingsRow=navigation->visualItemRect(navigation->item(2));QVERIFY(navigation->viewport()->rect().contains(settingsRow));
   QVERIFY(inView(navigation));
