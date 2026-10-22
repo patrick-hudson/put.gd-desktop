@@ -86,7 +86,7 @@ appimage-deps)
        printf "Types: deb-src\nURIs: http://archive.ubuntu.com/ubuntu/\nSuites: noble noble-updates noble-security\nComponents: main restricted universe multiverse\nSigned-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\n" > /etc/apt/sources.list.d/putgd-appimage-src.sources
        apt-get update -q && apt-get install -y -q --no-install-recommends weston python3-venv
        git config --global --add safe.directory /lab/appsrc'
-  run '[ -x /lab/qt/6.8.3/gcc_64/bin/qmake ] || { python3 -m venv /lab/aqt && /lab/aqt/bin/pip install -q aqtinstall==3.3.0 && /lab/aqt/bin/aqt install-qt linux desktop 6.8.3 linux_gcc_64 -m qtimageformats -O /lab/qt; }'
+  run '[ -x /lab/qt/6.8.3/gcc_64/bin/qmake ] || { cd /lab && python3 -m venv /lab/aqt && /lab/aqt/bin/pip install -q aqtinstall==3.3.0 && /lab/aqt/bin/aqt install-qt linux desktop 6.8.3 linux_gcc_64 -m qtimageformats -O /lab/qt; }'
   run '[ -d build/dependencies/aws-sdk-cpp ] || bash tools/ci/sdk-source.sh'
   run '[ -f build/sdk-cache.json ] || PUTGD_SDK_JOBS=3 nice -n 19 bash tools/releases/provision-sdk.sh'
   run 'nice -n 19 python3 tools/releases/provision-appimage.py --qt-root "$QT_ROOT_DIR"'

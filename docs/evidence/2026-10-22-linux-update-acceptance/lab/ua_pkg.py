@@ -172,6 +172,22 @@ def start(args):
     check(args, run)
 
 
+def attach(args):
+    """A run with the session's metadata and no resident, for clicks, keys and frames in other apps (software centres)."""
+    run = Run(args.name)
+    if run.meta: raise SystemExit('run exists')
+    run.dir.mkdir(parents=True, mode=0o700)
+    for sub in ('config', 'state', 'cache', 'data', 'frames', 'logs'):
+        (run.dir / sub).mkdir(mode=0o700)
+    session, shell, _ = afa.session_environment()
+    run.meta = {'name': args.name, 'runtime': subprocess.check_output(['mktemp', '-d', '/tmp/ua-pkg.XXXXXX'], text=True).strip(),
+                'session': session, 'shell': shell, 'vnc': args.vnc_port, 'input': args.input, 'profile': 'private', 'feed': 'live',
+                'hostPath': os.environ.get('PATH', '/usr/bin:/bin'), 'host': os.uname().nodename, 'created': afa.iso(), 'pids': {}, 'log': [],
+                'attached': True}
+    run.save()
+    out(run.record('attach', {'frame': ua_app.frame(run, args.label)}))
+
+
 def launch(run, label):
     log = open(run.dir / f'logs/launch-{label}.log', 'ab')
     p = subprocess.Popen(['/usr/bin/putgd', '--background'], env=run.env(), stdin=subprocess.DEVNULL, stdout=log, stderr=log,
@@ -203,6 +219,7 @@ def pointer(args):
     c = rfb.RFB(run.meta['vnc'], host=os.environ.get('UPD_VNC_HOST', '127.0.0.1')); size = c.frame()[:2]; c.close()
     inp = afa.Input(run, size)
     if args.cmd == 'click': inp.click(args.x, args.y, args.button)
+    elif args.cmd == 'type': inp.type(args.text)
     else: inp.key(*args.keys)
     time.sleep(args.settle)
     out(run.record(args.cmd, {'x': getattr(args, 'x', None), 'y': getattr(args, 'y', None), 'keys': getattr(args, 'keys', None),
@@ -385,11 +402,11 @@ def quit_(args):
 
 def cleanup(args):
     run = Run(args.name)
-    if resident_pid(run): quit_(args)
+    if not run.meta.get('attached') and resident_pid(run): quit_(args)
     for key, pid in list(run.meta.get('pids', {}).items()):
         if key.startswith('watch-') and Path(f'/proc/{pid}').exists(): os.kill(pid, signal.SIGTERM)
     removed = []
-    if run.meta['profile'] == 'default':
+    if run.meta['profile'] == 'default' and not run.meta.get('attached'):
         for path, existed in run.meta['before']['defaultProfile'].items():
             if not existed and Path(path).exists(): shutil.rmtree(path); removed.append(path)
     shutil.rmtree(run.meta['runtime'], ignore_errors=True)
@@ -409,11 +426,14 @@ p.add_argument('--profile', choices=('private', 'default'), default='private'); 
 p.add_argument('--input', choices=('xdotool', 'uinput', 'vnc'), default='vnc'); p.add_argument('--notifications', action='store_true')
 for name in ('check', 'frame', 'restart'):
     p = sub.add_parser(name); p.add_argument('name'); p.add_argument('--label', required=True)
+p = sub.add_parser('attach'); p.add_argument('name'); p.add_argument('--vnc-port', type=int, required=True); p.add_argument('--label', required=True)
+p.add_argument('--input', choices=('xdotool', 'uinput', 'vnc'), default='vnc')
 p = sub.add_parser('open-updates'); p.add_argument('name'); p.add_argument('--label', required=True); p.add_argument('--settle', type=float, default=8)
 p = sub.add_parser('snapshot'); p.add_argument('name'); p.add_argument('--label')
 p = sub.add_parser('click'); p.add_argument('name'); p.add_argument('x', type=int); p.add_argument('y', type=int)
 p.add_argument('--button', default='left'); p.add_argument('--label'); p.add_argument('--settle', type=float, default=2)
 p = sub.add_parser('key'); p.add_argument('name'); p.add_argument('keys', nargs='+'); p.add_argument('--label'); p.add_argument('--settle', type=float, default=1)
+p = sub.add_parser('type'); p.add_argument('name'); p.add_argument('text'); p.add_argument('--label'); p.add_argument('--settle', type=float, default=1)
 p = sub.add_parser('live-s3'); p.add_argument('name'); p.add_argument('--prefix', required=True)
 p = sub.add_parser('upload'); p.add_argument('name'); p.add_argument('--label', default='upload')
 p = sub.add_parser('watch'); p.add_argument('name'); p.add_argument('action', choices=('start', 'stop')); p.add_argument('--label', required=True)
@@ -423,6 +443,6 @@ for name in ('quit', 'cleanup', 'delete'):
     p = sub.add_parser(name); p.add_argument('name')
 args = parser.parse_args()
 if args.cmd == 'repo': out(repo())
-else: {'start': start, 'check': check, 'frame': frame_only, 'click': pointer, 'key': pointer, 'open-updates': open_updates, 'snapshot': snapshot,
+else: {'attach': attach, 'start': start, 'check': check, 'frame': frame_only, 'click': pointer, 'key': pointer, 'type': pointer, 'open-updates': open_updates, 'snapshot': snapshot,
        'live-s3': live_s3, 'upload': upload, 'delete': delete, 'watch': watch, 'restart': restart, 'mem': mem, 'quit': quit_,
        'cleanup': cleanup}[args.cmd](args)
