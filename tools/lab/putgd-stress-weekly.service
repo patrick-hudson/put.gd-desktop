@@ -1,0 +1,15 @@
+# User unit for the weekly builder stress lane on k72 (#360). Installed with
+# tools/lab/install-stress-weekly.sh and started by putgd-stress-weekly.timer.
+# See docs/ci.md ("Builder stress lane") and docs/remote-builders.md.
+[Unit]
+Description=put.gd weekly stress lane (nightly integration tests under CPU contention)
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 -I %h/.local/libexec/putgd-stress/stress_weekly.py
+# A hang guard: a normal run (fetch, incremental build, ten iterations) takes 30-60 min.
+TimeoutStartSec=4h
+# Stopping the unit stops only this service's own processes (its cgroup).
+KillMode=control-group
+TimeoutStopSec=60

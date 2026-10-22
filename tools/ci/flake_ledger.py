@@ -9,9 +9,11 @@ with its attempts; a test with a failed attempt and a passed one is flaky.
       Markdown table of the flaky and failed tests (appends to PATH, such as
       $GITHUB_STEP_SUMMARY).
   flake_ledger.py issues LEDGER [--repo OWNER/NAME]
-      For each test that passed only on its retry, add an occurrence comment
-      to its open `flaky-test` issue, reopening or creating it as needed.
-      Needs GITHUB_TOKEN with issues: write; without one it prints a warning.
+      For each test that passed only on its retry (a CI ledger), or failed at
+      least one run (a stress ledger), add an occurrence comment to its
+      `flaky-test` issue, reopening or creating it as needed. Needs
+      GITHUB_TOKEN (or GH_TOKEN) with issues: write; without one it prints a
+      warning.
 """
 import argparse
 import json
@@ -145,10 +147,26 @@ def occurrence(name, test, source):
             f"```\n{details[:3000]}\n```\n")
 
 
+def stress_occurrence(name, test, source):
+    runs, failed = counts(test)
+    every = ' (every run: likely broken, not only flaky)' if test['outcome'] == 'failed' else ''
+    return (f"**Failed {failed} of {runs} runs**{every} in the builder {describe_source(source)}, commit "
+            f"`{source.get('commit', '')[:12]}`" + (f", {source['label']}" if source.get('label') else '') + ".\n\n"
+            f"```\n{first_detail(test)[:3000]}\n```\n")
+
+
+def tracked(ledger):
+    """The tests that get a tracker comment: passed on retry in CI, or failed any stress run."""
+    outcomes = ('flaky', 'failed') if ledger['source'].get('kind') == 'stress' else ('passed_on_retry',)
+    return {name: test for name, test in ledger['tests'].items() if test['outcome'] in outcomes}
+
+
 def issues(ledger, repo, token):
-    flaky = {name: test for name, test in ledger['tests'].items() if test['outcome'] == 'passed_on_retry'}
+    flaky = tracked(ledger)
+    stress = ledger['source'].get('kind') == 'stress'
     if not flaky:
-        print('flake_ledger: no test passed on retry; no tracker update')
+        print('flake_ledger: no test failed a stress run; no tracker update' if stress else
+              'flake_ledger: no test passed on retry; no tracker update')
         return 0
     if not token or not repo:
         print('::warning title=Flaky-test tracker not updated::No GITHUB_TOKEN/GITHUB_REPOSITORY; '
@@ -160,11 +178,14 @@ def issues(ledger, repo, token):
         github.ensure_label()
         for name, test in sorted(flaky.items()):
             issue = github.find_issue(name)
-            comment = occurrence(name, test, source)
+            comment = (stress_occurrence if stress else occurrence)(name, test, source)
             if issue is None:
-                body = (f"{MARKER.format(name)}\n`{name}` ({', '.join(test.get('labels', []))}) failed in CI and "
-                        "then passed its one retry. `tools/ci/ctest_retry.py` retries a failed integration test "
-                        "once and records every pass on a retry here, one comment per occurrence.\n\n"
+                found = ("failed in the builder stress lane (`tools/ci/stress_suite.py`, CPU contention). "
+                         if stress else "failed in CI and then passed its one retry. ")
+                body = (f"{MARKER.format(name)}\n`{name}` ({', '.join(test.get('labels', []))}) {found}"
+                        "`tools/ci/ctest_retry.py` retries a failed integration test once and records every pass "
+                        "on a retry here, and the weekly stress lane records every failure, one comment per "
+                        "occurrence.\n\n"
                         "Done when the cause is fixed and the builder stress lane "
                         "(`tools/ci/stress_suite.py`) shows the test stable under contention.\n")
                 issue = github.call('POST', f'/repos/{repo}/issues',
@@ -172,7 +193,8 @@ def issues(ledger, repo, token):
                 print(f"flake_ledger: opened {issue['html_url']}")
             elif issue['state'] == 'closed':
                 github.call('PATCH', f"/repos/{repo}/issues/{issue['number']}", {'state': 'open'})
-                comment = 'Reopened: the test passed only on its retry again.\n\n' + comment
+                comment = ('Reopened: the test failed under stress again.\n\n' if stress else
+                           'Reopened: the test passed only on its retry again.\n\n') + comment
                 print(f"flake_ledger: reopened {issue['html_url']}")
             github.call('POST', f"/repos/{repo}/issues/{issue['number']}/comments", {'body': comment})
             print(f"flake_ledger: recorded {name} in {issue['html_url']}")
@@ -200,7 +222,7 @@ def main(argv=None):
                 stream.write(text)
         print(text)
         return 0
-    return issues(load(args.ledger), args.repo, os.environ.get('GITHUB_TOKEN', ''))
+    return issues(load(args.ledger), args.repo, os.environ.get('GITHUB_TOKEN') or os.environ.get('GH_TOKEN', ''))
 
 
 if __name__ == '__main__':

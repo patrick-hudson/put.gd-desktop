@@ -296,6 +296,53 @@ class Tracker(unittest.TestCase):
     def test_missing_token_warns_and_succeeds(self):
         self.assertEqual(ledger_tool.issues(self.flaky_ledger(), 'o/r', ''), 0)
 
+    def stress_ledger(self):
+        return {'schemaVersion': 1, 'source': {'kind': 'stress', 'host': 'k72', 'iterations': 10, 'label': 'weekly-x',
+                                               'contention': '4 busy loops', 'PUTGD_TEST_TIME_SCALE': '3',
+                                               'commit': 'feedface12345678'},
+                'tests': {'gui_flaky': {'labels': ['integration'], 'outcome': 'flaky',
+                                        'attempts': [{'outcome': 'passed', 'details': []},
+                                                     {'outcome': 'failed', 'details': ['FAIL! late']},
+                                                     {'outcome': 'passed', 'details': []}]},
+                          'broken': {'labels': ['integration'], 'outcome': 'failed',
+                                     'attempts': [{'outcome': 'failed', 'details': ['FAIL! always']}]},
+                          'steady': {'labels': ['integration'], 'outcome': 'passed',
+                                     'attempts': [{'outcome': 'passed', 'details': []}]}}}
+
+    def test_stress_failures_are_recorded_with_their_counts(self):
+        github = self.FakeGitHub([{'number': 7, 'state': 'closed', 'html_url': 'u',
+                                   'body': '<!-- flake-ledger: gui_flaky -->'}])
+        github.repo = 'o/r'
+        original = ledger_tool.GitHub
+        ledger_tool.GitHub = lambda repo, token: github
+        github.find_issue = lambda name: original.find_issue(github, name)
+        github.ensure_label = lambda: None
+        try:
+            ledger_tool.issues(self.stress_ledger(), 'o/r', 'token')
+        finally:
+            ledger_tool.GitHub = original
+        comments = {path: body['body'] for method, path, body in github.calls if path.endswith('/comments')}
+        self.assertIn('Reopened: the test failed under stress again.', comments['/repos/o/r/issues/7/comments'])
+        self.assertIn('**Failed 1 of 3 runs** in the builder stress on k72', comments['/repos/o/r/issues/7/comments'])
+        self.assertIn('`feedface1234`, weekly-x', comments['/repos/o/r/issues/7/comments'])
+        self.assertIn('every run', comments['/repos/o/r/issues/99/comments'])
+        created = [body for method, path, body in github.calls if method == 'POST' and path == '/repos/o/r/issues']
+        self.assertEqual([body['title'] for body in created], ['Flaky test: broken'])
+        self.assertIn('stress lane', created[0]['body'])
+        self.assertNotIn('steady', json.dumps(github.calls))
+
+    def test_gh_token_is_accepted(self):
+        with tempfile.TemporaryDirectory() as directory:
+            ledger = Path(directory) / 'ledger.json'
+            ledger.write_text(json.dumps(self.stress_ledger()))
+            environment = {key: value for key, value in os.environ.items() if key not in ('GITHUB_TOKEN', 'GH_TOKEN')}
+            result = subprocess.run([sys.executable, str(ROOT / 'tools/ci/flake_ledger.py'), 'issues', str(ledger),
+                                     '--repo', 'o/r'], env=dict(environment, GITHUB_API_URL='http://127.0.0.1:9',
+                                                                GH_TOKEN='x'), capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertNotIn('No GITHUB_TOKEN', result.stdout)
+            self.assertIn('Flaky-test tracker not updated', result.stdout)
+
 
 class Stress(unittest.TestCase):
     def test_counts_every_iteration_into_one_ledger_and_stops_its_own_loops(self):
@@ -315,6 +362,10 @@ class Stress(unittest.TestCase):
             self.assertIn('| `gui_flaky` | 3 | 1 |', (out / 'summary.md').read_text())
             private = Path((out / 'private-tmp.txt').read_text().strip())
             self.assertFalse(private.exists())
+            again = fake.run('stress_suite.py', '--source', str(fake.root), '--out', str(out), '--iterations', '1',
+                             '--', '--preset', 'dev')
+            self.assertNotEqual(again.returncode, 0)
+            self.assertIn('already holds a stress run', again.stderr)
             for pid in (out / 'hog-pids.txt').read_text().split():
                 self.assertFalse(Path(f'/proc/{pid}').exists() and
                                  'python' in Path(f'/proc/{pid}/cmdline').read_bytes().decode(errors='replace'))
