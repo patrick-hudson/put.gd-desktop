@@ -19,6 +19,7 @@ declares are issues #400 to #404 and #406.
 | `putgd.exe --ui VIEW` | History/Activity, Destinations, Settings and About window | common controls v6, custom drawing, `IFileOpenDialog`, uxtheme, DWM |
 | `putgd.exe --edit-image` | Capture region & edit canvas | GDI+, WIC |
 | `putgd-cli.exe` | JSON session client over the pipe | named pipes |
+| `proton\putgd-proton-runtime.exe --stdio` | One Proton Drive request through the official Drive SDK (the Linux helper, cross-built for Windows) | Credential Manager through Bun.secrets, WinHTTP-free: Bun's own TLS stack |
 
 The helper control protocol (bootstrap, ready, activate, heartbeat, checkpoints) is
 specified in `src/windows/common/Protocol.h`. Helpers never create files: the
@@ -36,6 +37,43 @@ a cooperative `config.json.lock`, atomic replacement and a directory watcher wit
 the 75 ms debounce ([configuration](configuration.md)). The journal is
 `history.sqlite` through the SQLite that ships in Windows; artifacts, previews and
 capture/editor staging sit beside it as owner-only directories.
+
+## Proton Drive
+
+The resident registers the `proton-drive` provider ([Proton Drive](proton-drive.md)) when
+`proton\putgd-proton-runtime.exe` next to `putgd.exe` matches the digest compiled in from
+its provisioning manifest (`-DPUTGD_PROTON_MANIFEST=…/manifest.json`); otherwise
+`capabilities` reports the provider unavailable with `proton_runtime_unavailable` and the
+Destinations editor keeps its Add menu entry disabled. The helper is the same TypeScript
+source as on Linux, cross-compiled on a Linux host with
+`python3 tools/proton/provision_runtime.py --target windows-x64` (the locked
+`@oven/bun-windows-x64` runtime, checks recorded in the manifest for running on Windows).
+Each request is one child with a newline-JSON request on stdin, a private
+owner-only data directory under `%LOCALAPPDATA%\put.gd\proton-data`, and a per-account
+lock file under `proton-accounts` because the service rotates the refresh token; the
+resident holds no Proton secret. The helper stores the session and link passwords in
+Credential Manager through Bun.secrets, which refuses writes from a non-interactive
+logon (an SSH key session, a service): the resident must run in the user's desktop
+session. Sharing, link expiry, revocation, reconciliation and the retry deadline
+adoption follow the Linux rules; the journal's `sharing_operations` table and the
+`history.share`/`history.revokeLink`/`history.inspectLink`/`share.inspect` methods
+are served on Windows. Shipping the runtime with a Windows build (CI provisioning,
+Bun attribution, catalog, installer placement) is #408; Backblaze B2 on Windows is #409.
+
+![The Proton destination editor](evidence/2026-10-22-windows-native/08-proton-editor-annotated.png)
+
+![Connect account: the sign-in URL from the setup job opened in the default browser](evidence/2026-10-22-windows-native/09-proton-connect-annotated.png)
+
+![Add destination offers Proton Drive when the helper is verified](evidence/2026-10-22-windows-native/10-proton-add-menu-annotated.png)
+
+Verified on 2026-10-22 in the guest (`work/verification/2026-10-22-windows-native/proton/`):
+the helper's version, probe and stdio cases, a Bun.secrets round trip through Credential
+Manager, the connect auth event within a second, a Proton profile validated and saved, Test
+connection answering `proton_setup_required`, concurrent setup on one account answering
+`proton_account_busy`, `history.share` on an S3 record answering `sharing_unsupported`, and
+the S3 path unchanged. Not verified: anything that needs a connected Proton account
+(upload, link creation, revocation, expiry, reconciliation, folder creation), which waits
+for a sign-in on the guest display.
 
 ## Building
 
@@ -110,7 +148,8 @@ operation of the window, Windows 10, and a signed or packaged install.
 | Gap | Issue |
 | --- | --- |
 | Screen recording (`record` action, `recording.*`) | #400 |
-| Proton Drive destination | #401 |
+| Proton Drive with a connected account (live acceptance), shipping its runtime | #401, #408 |
+| Backblaze B2 destination | #409 |
 | Multipart uploads and files over the 5 GiB single-PUT limit | #402 |
 | Per-item cancellation, the `ui.*` window-driving methods, diagnostics upload, history gallery/date/MIME filters | #403 |
 | Packaging (portable zip, installer), VERSIONINFO, update installation, an MSVC CI job | #404 |

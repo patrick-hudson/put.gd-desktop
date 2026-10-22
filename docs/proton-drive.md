@@ -153,6 +153,15 @@ The key cache is discarded with the helper process and is never persisted.
 Timeouts/cancellation can leave an uncertain mutation, which the journal reconciles instead of hiding with another upload. SDK transport retries
 are separate from application-level operation replay.
 
+## Windows
+
+The native Windows app ([windows.md](windows.md)) runs the same helper, cross-compiled
+with `provision_runtime.py --target windows-x64`, next to its executable under
+`proton\`. The session and link passwords live in Credential Manager (Bun.secrets);
+the resident must run in the interactive session because Credential Manager refuses
+writes from a non-interactive logon. Account coordination uses a lock file under
+`%LOCALAPPDATA%\put.gd\proton-accounts`. Shipping the Windows runtime is tracked in #408.
+
 ## Building and verification
 
 See [the helper provisioning instructions](../tools/proton/README.md). The current
