@@ -95,6 +95,30 @@ one-row repaint).
 Not verified: Proton's plan-size (200003) and quota refusals, a service-side revision change
 racing a link mutation, and DPI above 100 %.
 
+## S3 uploads
+
+The S3 worker follows [s3.md](s3.md) without the AWS SDK: SigV4 over WinHTTP, one
+connection per request, no automatic retries or redirects. Files up to 64 MiB
+upload with one conditional PUT. Larger files, up to S3's 5 TiB object limit, use a
+multipart upload with the Linux part plan: 16 MiB parts, or larger in whole MiB
+when 10,000 parts would not hold the file. Each part carries its `Content-MD5` and
+its SHA-256 as the signed payload hash. `CompleteMultipartUpload` carries the
+item's `If-None-Match`/`If-Match` condition and `x-amz-mp-object-size`.
+
+The worker sends the upload ID to the resident in `checkpoint` frames, and the
+resident saves it on the history item before the first part is sent. An explicit
+Retry resumes from the parts S3 lists with matching size and MD5. Cancel cuts a
+part in flight, including one waiting for its reply, then aborts the upload. An
+abort that fails keeps the journal and marks the item `incompleteUpload`.
+**Clean artifacts** (`cache.clear`) and the hourly pass abort the journaled uploads
+of the operations they retire. They report `abortedUploads`, `incompleteUploads`
+and `incompleteUploadNotice`; an automatic pass also posts the notice as a tray
+toast. Test connection also creates, lists and aborts a synthetic multipart upload.
+
+Windows differs from Linux in two ways. It sends one part at a time: there are no
+parallel parts on lent upload slots (#435). Automatic cleanup runs hourly only: there
+is no first pass a minute after start and no batching (#436).
+
 ## Building
 
 Cross-compile from Linux (what CI's `windows` job does, [ci.md](ci.md)):
@@ -144,6 +168,13 @@ curated subset.
 - Capture region & edit driven through `editor.open/inspect/apply/preview/submit` (redaction, arrow, text, crop) with the sanitized PNG handoff.
 - Live S3 with the acceptance key set under `put.gd/acceptance/windows-lab/`: credentials stored in Credential Manager, `setup.testDestination` (synthetic upload, public GET, guarded cleanup), a real capture uploaded and fetched publicly with matching bytes, link copied, `delete.prepare/confirm` removed the object; a wrong key set stayed `failed` with `s3_access_denied` and retried truthfully.
 - Launch at login through the Run key, the update feed check against app.put.gd, the diagnostics package, `cache.clear`, `logs.clear`.
+- Multipart (#402, [#438](https://github.com/patrick-hudson/put.gd-desktop/pull/438)), live S3 under the same prefix:
+  - A 66 MiB file uploaded in 5 parts, and its public GET matched byte for byte.
+  - Cancel in part 2 aborted the upload within a second, and cleanup found nothing left.
+  - A killed worker left the journal. Retry resumed after the two listed parts.
+  - An abort blocked by the firewall was kept as `incompleteUploads` with the notice, and the next cleanup aborted it.
+  - Test connection's multipart probe passed.
+  - A 2 MiB file still used a single PUT.
 - Memory, resident alone with no window open, five minutes of one-second samples: 2.6 MiB working set on average (4.4 peak), 2.8 MiB private, 0 CPU seconds. After captures and uploads the resident settled between 4 and 8 MiB; the window helper used about 25 MiB while open and exits with the window.
 
 ![History in the light scheme: thumbnails, relative times, shortcut hints, retained preview](evidence/2026-10-22-windows-native/01-history-light-annotated.png)
@@ -170,7 +201,8 @@ operation of the window, Windows 10, and a signed or packaged install.
 | Screen recording (`record` action, `recording.*`) | #400 |
 | Shipping the Proton runtime with a Windows build | #408 |
 | Backblaze B2 destination | #409 |
-| Multipart uploads and files over the 5 GiB single-PUT limit | #402 |
+| Parallel multipart parts on idle upload slots | #435 |
+| Cleanup schedule: first pass after a minute, batches, a Retry stopping an automatic pass | #436 |
 | Per-item cancellation, the `ui.*` window-driving methods, diagnostics upload, history gallery/date/MIME filters | #403 |
 | Packaging (portable zip, installer), VERSIONINFO, update installation, an MSVC CI job | #404 |
 | Following a system theme change while the window is open | #406 |
