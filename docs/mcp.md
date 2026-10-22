@@ -53,7 +53,7 @@ such as `session_unavailable` and `config_conflict` retain their original envelo
 
 | Tool | Inputs / forwarded service | Effect |
 | --- | --- | --- |
-| `inspect` | capabilities, diagnostics, settings.get | Local metadata only; accepted non-secret config/path/revisions/status and redacted backend diagnostics |
+| `inspect` | capabilities, diagnostics, settings.get | Local metadata only; accepted non-secret config/path/revisions/status and redacted backend diagnostics. On X11, `capabilities.result.source.shortcuts.keyPaths` names the listening key paths and the last one that fired (`passive`, or `raw` when another client held the keyboard; [#341](https://github.com/patrick-hudson/put.gd-desktop/issues/341)) |
 | `get_view_state` | ui.viewState | Settings → Capture as last checkpointed: default output and each action's destination, sharing, resolved mode, inheritance and enabled controls; the appearance in use (theme setting, desktop preference and source, scheme, token values) |
 | `perform_action` | action region/window/desktop/clipboard/edit/record → action.invoke | Acquires source; configured local save or public upload; may write clipboard result. `record` prepares a dragged-region recording (or raises the active one); drive it with the recording tools |
 | `get_operation` | id; kind operation/delete/share | operation.inspect, delete.inspect or share.inspect (a `shareOperationId`: sharing status and confirmed link `expiresAt`); local state |

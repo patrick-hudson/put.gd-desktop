@@ -109,7 +109,8 @@ accepting a chord; capture state and provisional keys never enter checkpoints.
 
 The resident suppresses action dispatch before asking the native adapter to
 release global shortcuts. X11 removes passive and active keyboard grabs, waits
-for a server roundtrip, and discards queued shortcut presses. GNOME awaits the
+for a server roundtrip, and discards queued shortcut presses; XInput2 raw key
+presses are ignored until the pause ends. GNOME awaits the
 extension's `Bind` reply with empty accelerators. KDE awaits `setInactive` for
 each registered action. Desired configuration remains separate from effective
 registrations; settings changes and native service reconnection retain the pause.
