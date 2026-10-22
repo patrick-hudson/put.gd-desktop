@@ -95,6 +95,16 @@ one-row repaint).
 Not verified: Proton's plan-size (200003) and quota refusals, a service-side revision change
 racing a link mutation, and DPI above 100 %.
 
+## Logs and diagnostics
+
+The resident keeps the persistent log, unclean-exit detection, crash records, opt-in crash
+dumps and the diagnostics package with upload described in
+[diagnostics.md](diagnostics.md#windows) (#125): JSON Lines records of the same schema and
+redaction under `%LOCALAPPDATA%\put.gd\logs\`, a `running.json` marker with notes for
+`WM_ENDSESSION`, `WM_CLOSE` and console events, an unhandled-exception filter in every mode,
+minidumps through the system's `dbghelp.dll`, and `diagnostics.bundle`/
+`diagnostics.uploadTarget` through the ordinary upload pipeline.
+
 ## Building
 
 Cross-compile from Linux (what CI's `windows` job does, [ci.md](ci.md)):
@@ -171,6 +181,8 @@ operation of the window, Windows 10, and a signed or packaged install.
 | Shipping the Proton runtime with a Windows build | #408 |
 | Backblaze B2 destination | #409 |
 | Multipart uploads and files over the 5 GiB single-PUT limit | #402 |
-| Per-item cancellation, the `ui.*` window-driving methods, diagnostics upload, history gallery/date/MIME filters | #403 |
+| Per-item cancellation, the `ui.*` window-driving methods, history gallery/date/MIME filters | #403 |
+| The diagnostics package dialog and **Save diagnostics for this upload** | #450 |
+| Symbolizing crash records and dumps | #451 |
 | Packaging (portable zip, installer), VERSIONINFO, update installation, an MSVC CI job | #404 |
 | Following a system theme change while the window is open | #406 |

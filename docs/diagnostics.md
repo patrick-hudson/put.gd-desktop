@@ -783,6 +783,9 @@ putgd-crash	module	0	0x00007ff6a1b00000	6717A2B0B4000	C:\putgd\putgd.exe
 putgd-crash	end	1
 ```
 
+(An example with one frame and one module; a record holds every frame and module the
+unwind reached.)
+
 The module's image ID (PE `TimeDateStamp` as eight hex digits, then `SizeOfImage`) is the
 key a symbol server files the image under, and each frame's offset is relative to the
 module's load address. The resident writes to `running.crash`, opened when it starts;
@@ -798,33 +801,33 @@ ones above (`putgd` for the resident). The CMake option `PUTGD_CRASH_TRIGGER` is
 the build type is `Release`, `MinSizeRel` or `RelWithDebInfo` or `PUTGD_RELEASE_TAG` is
 set, and configuring a release tag with it fails.
 
-### Crash dumps (WER LocalDumps)
+### Crash dumps
 
 `preferences.diagnostics.crashDumps` ([configuration.md](configuration.md), off by
-default; **Save crash dumps (Windows Error Reporting)** in Settings → Advanced) has the
-resident register, under the user's own registry hive,
+default; **Save crash dumps** in Settings → Advanced) makes the crash filter also write a
+minidump when any mode of `putgd.exe` crashes: `MiniDumpNormal` (thread stacks, the thread
+and module lists, no heap), written with `MiniDumpWriteDump` from the system's
+`dbghelp.dll`, which is loaded only then, to
+`%LOCALAPPDATA%\put.gd\crashdumps\putgd.exe.<pid>.dmp` (the name Windows Error Reporting
+uses). The resident passes the folder to its helpers in `PUTGD_CRASH_DUMPS`, keeps the
+newest five dumps, and writes no registry value. No third-party code is involved.
 
-```text
-HKCU\Software\Microsoft\Windows\Windows Error Reporting\LocalDumps\putgd.exe
-  DumpFolder   REG_EXPAND_SZ  %LOCALAPPDATA%\put.gd\crashdumps
-  DumpType     REG_DWORD      1   (a minidump: thread stacks and the module list, no heap)
-  DumpCount    REG_DWORD      5
-  PutgdManaged REG_DWORD      1   (put.gd made this key)
-```
+Windows Error Reporting's LocalDumps was the first choice, but it doesn't serve a per-user
+opt-in: on the lab guest (Windows 11 26H2, build 26300.9457) WER handled every test crash
+(an Application Error event and an archived AppCrash report) yet wrote no dump for a
+`LocalDumps\putgd.exe` key under HKCU, nor for a global HKCU `LocalDumps` key, with or
+without `DumpFolder`. It reads only the HKLM keys, which need administrator rights. WER
+still runs after put.gd's filter, so a system-wide LocalDumps configuration an administrator
+set up keeps working.
 
-so Windows Error Reporting writes `putgd.exe.<pid>.dmp` when any mode of `putgd.exe`
-crashes. None of put.gd's code runs to make the dump, and no third-party code is
-involved. Turning the setting off deletes the key. A key put.gd did not make (no
-`PutgdManaged`, set up by the user or an administrator) is never changed or deleted;
-`diagnostics.crashDumps` then reports `reason` `configured_elsewhere` and lists that
-configuration's folder. `diagnostics.crashDumps` holds `enabled`, `registered`,
-`managedByPutgd`, `mechanism` (`wer-localdumps`), `folder`, `dumpType`, `dumpCount`,
-`count` and the newest five dumps of put.gd's executables (`file`, `bytes`, `time`).
-
+`diagnostics.crashDumps` holds `enabled`, `armed`, `mechanism` (`minidump`), `writer`,
+`dumpType`, `kept`, `folder`, `count` and the newest five dumps (`file`, `bytes`, `time`).
 A dump holds the memory of each thread's stack, which can include fragments of what put.gd
-was handling, so dumps stay in that folder. A package lists them in `crashdumps.json`
-(the Windows counterpart of `coredumps.json`: hashed name, size, time) and never includes
-one; sending a dump to a maintainer is the user's choice, by hand.
+was handling, so dumps stay in that folder. A package lists them in `crashdumps.json` (the
+Windows counterpart of `coredumps.json`: placeholder path, size, time) and never includes
+one; sending a dump to a maintainer is the user's choice, by hand. A dump written by the
+filter adds a `dump` line (`written` or `failed`) to the crash record. Symbolizing records and
+dumps is #451.
 
 ### Diagnostics package
 
@@ -859,7 +862,7 @@ one; sending a dump to a maintainer is the user's choice, by hand.
 ### Settings
 
 Settings → Advanced → **Logs and diagnostics** has the retention fields, **Debug logging**,
-**Save crash dumps (Windows Error Reporting)**, a line with the file count, folder size
+**Save crash dumps**, a line with the file count, folder size
 and oldest record (with the reason and dropped-record count while logging is degraded),
 **Last unclean exit** when this start found one, and **Also upload the package and copy a
 link**. Ticking that runs `diagnostics.uploadTarget` for the default destination (a Test
@@ -868,7 +871,38 @@ package…** then saves to the chosen folder (remembered in
 `preferences.diagnostics.packageFolder`), uploads, copies the link and shows the result
 under the saved path with **Show in folder**. The Windows window has no preview dialog yet,
 and failure notifications and History rows have no **Save diagnostics for this upload**
-(see [windows.md](windows.md#not-available-in-this-build)).
+(#450).
+
+![Settings → Advanced on Windows: Save crash dumps, the log folder line, the last unclean exit and the upload offer](evidence/2026-10-22-windows-logging-125/14-windows-diagnostics-settings-annotated.png)
+
+![Ticking the upload offer runs diagnostics.uploadTarget: the destination and its sharing warning](evidence/2026-10-22-windows-logging-125/15-windows-diagnostics-upload-target-annotated.png)
+
+![After Save diagnostics package: uploaded under a random name with the link copied, and the local file with Show in folder](evidence/2026-10-22-windows-logging-125/16-windows-diagnostics-uploaded-annotated.png)
+
+### Verified on Windows (2026-10-22)
+
+Build `26.1022.998-dev+g4d160c230813` in the lab guest `w11-e3ceec338284` (Windows 11
+Enterprise evaluation 26H2, build 26300.9457), desktop session, with the lab S3 destination
+named explicitly for uploads ([#449](https://github.com/patrick-hudson/put.gd-desktop/pull/449)
+has the full table; raw results are in the private
+`work/verification/2026-10-22-windows-logging-125/`):
+
+- A clean exit (`ui.quit`, `taskkill` without `/F`, `WM_ENDSESSION`) leaves no marker; a
+  killed resident is reported as `unknown` on the next start with its pid; a session end cut
+  short is reported as `signal` with `session_end`/`logoff`; a resident crash as `crash` with
+  `0xC0000005` and its frames; a capture-helper crash as `Helper crash record` and
+  `Helper crashed`; with crash dumps on, both crashes left minidumps.
+- The package holds the files above with matching manifest hashes and no dump; the labels,
+  endpoint, credential references, home path and every token of the guest's `creds.txt` are
+  absent from a hashed package.
+- `diagnostics.uploadTarget` and an upload with `copyLink`: the public object's bytes match
+  the local package, the link is on the clipboard, a later package leaves the upload out, and
+  the test objects were deleted again.
+- The idle resident maps the same 38 modules as before #125, with 6 threads and a 3.3 MiB
+  working set.
+
+Not verified: a real logoff or restart (#453), DPI above 100 % and several monitors,
+a stack-overflow record and a full disk.
 
 ## Not yet available
 
