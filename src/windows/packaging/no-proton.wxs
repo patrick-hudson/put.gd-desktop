@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A build without the Proton runtime: putgd.wxs's Proton component group is empty (see proton.wxs). -->
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Fragment>
+    <ComponentGroup Id="Proton"/>
+  </Fragment>
+</Wix>

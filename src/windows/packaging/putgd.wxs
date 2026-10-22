@@ -5,7 +5,8 @@
     Version     the calendar version, 26.1022.942-nightly (docs/versioning.md)
     MsiVersion  its MSI mapping (src/windows/cmake/WindowsVersion.cmake)
     FileVersion the executables' FILEVERSION, 26.1022.0.942
-    SourceDir   the directory holding putgd.exe, putgd-cli.exe, build-info.json and LICENSE.txt
+    SourceDir   the directory holding putgd.exe, putgd-cli.exe, build-info.json and LICENSE.txt,
+                and proton\ when the build carries the Proton runtime (proton.wxs)
     IconFile    src/windows/resident/app.ico
 
   Installs into %LOCALAPPDATA%\Programs\put.gd without elevation, adds a Start Menu
@@ -99,6 +100,8 @@
       <ComponentRef Id="License"/>
       <ComponentRef Id="Registration"/>
       <ComponentRef Id="StartMenu"/>
+      <!-- proton.wxs, or the empty group in no-proton.wxs. -->
+      <ComponentGroupRef Id="Proton"/>
     </Feature>
   </Product>
 </Wix>

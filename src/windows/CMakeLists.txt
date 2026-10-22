@@ -135,6 +135,10 @@ if(WIN32)
       message(FATAL_ERROR "The Proton runtime manifest is not a protocol-1 windows-x64 build")
     endif()
     target_compile_definitions(putgd PRIVATE "PUTGD_PROTON_RUNTIME_SHA256=\"${_proton_sha256}\"")
+    # src/windows/packaging/package.py ships only the runtime this manifest names.
+    configure_file("${PUTGD_PROTON_MANIFEST}" "${CMAKE_CURRENT_BINARY_DIR}/proton-runtime-manifest.json" COPYONLY)
+  else()
+    file(REMOVE "${CMAKE_CURRENT_BINARY_DIR}/proton-runtime-manifest.json")
   endif()
   # The release signer's minisign keys (#293): update.install checks the release's
   # SHA256SUMS.minisig with its channel's key, as the Linux AppImage install does.

@@ -39,11 +39,14 @@ REDISTRIBUTION_FILES = ['BUN-THIRD-PARTY-NOTICES.txt.gz', 'BUN-NOTICE-PROVENANCE
                         'LICENSE.crypto-GPL-3.0', 'LICENSE.pmcrypto-MIT', 'LICENSE.srp-MIT', 'LICENSE.boltffi-MIT',
                         'CRYPTO-PROVENANCE.md', 'SOURCES.json', 'REBUILD.md', 'OPENPGP-REBUILD.patch']
 
-# Platform-neutral notices for the bundled JavaScript. The Bun native notices, Linux
-# attribution and the Linux helper's source catalog/rebuild notes are not reused for
-# Windows: its Bun attribution has not been collected yet.
-WINDOWS_REDISTRIBUTION_FILES = ['OPENPGP-PREBUNDLED-NOTICES.txt', 'LICENSE.crypto-GPL-3.0', 'LICENSE.pmcrypto-MIT',
-                                'LICENSE.srp-MIT', 'LICENSE.boltffi-MIT', 'CRYPTO-PROVENANCE.md', 'OPENPGP-REBUILD.patch']
+# The Windows set: the same platform-superset Bun aggregate and JavaScript notices, the
+# Windows scope and attribution, ICU 78.3's license (the WebKit Windows prebuild embeds it)
+# and the Windows corresponding-source catalog and rebuild notes.
+WINDOWS_REDISTRIBUTION_FILES = ['BUN-THIRD-PARTY-NOTICES.txt.gz', 'BUN-NOTICE-PROVENANCE.json.gz',
+                                'BUN-LINUX-ATTRIBUTION.md', 'BUN-WINDOWS-ATTRIBUTION.md', 'BUN-WINDOWS-SCOPE.json',
+                                'LICENSE.icu4c-78.3', 'OPENPGP-PREBUNDLED-NOTICES.txt', 'LICENSE.crypto-GPL-3.0',
+                                'LICENSE.pmcrypto-MIT', 'LICENSE.srp-MIT', 'LICENSE.boltffi-MIT', 'CRYPTO-PROVENANCE.md',
+                                'SOURCES-WINDOWS.json', 'REBUILD.md', 'REBUILD-WINDOWS.md', 'OPENPGP-REBUILD.patch']
 TARGETS = {'linux-x64': {'bun': 'bun-linux-x64', 'suffix': '', 'output': 'proton-runtime'},
            'windows-x64': {'bun': 'bun-windows-x64', 'suffix': '.exe', 'output': 'proton-runtime-windows'}}
 STDOUT_FIXTURE_BYTES = b'{"synthetic":"' + b'x' * (1024 * 1024 - 256) + b'"}\n'
@@ -108,14 +111,14 @@ def apply_crypto_source(work, source, lock):
     return {'registryVersion': bootstrap['version'], 'version': metadata['version'],
             'sourceUrl': lock['cryptoSourceUrl'], 'sourceReference': commit, 'license': metadata['license']}
 
-def write_notices(work, source, output, source_overrides):
+def write_notices(work, source, output, source_overrides, catalog='SOURCES.json'):
     compiled = json.loads((output / 'build-metafile.json').read_text())
     classified = {item['location']: item for item in inventory(work, compiled, source_overrides)}
     sections = ['put.gd Proton runtime: installed dependency license inventory.\n'
                 'Includes build packages; this is not a claim that every package is embedded.\n'
                 'Registry integrity identifies bootstrap inputs; approved source overrides below replace their code.\n'
                 'Bun native and OpenPGP prebundled notices accompany this file under redistribution/.\n'
-                'Corresponding sources and rebuild instructions are catalogued in redistribution/SOURCES.json.\n',
+                f'Corresponding sources and rebuild instructions are catalogued in redistribution/{catalog}.\n',
                 'Proton SDK/account source MIT notice:\n' + (source / 'LICENSE.md').read_text()]
     locked = json.loads((work / 'package-lock.json').read_text())['packages']
     for relative, package in sorted(locked.items()):
@@ -286,7 +289,7 @@ def provision_cross(args, lock, target, bun, work, source, output, commit, sourc
     run([*compile_args, './stdout_fixture.ts', f'--outfile={stdout_fixture}'], work)
     artifact = output / f'putgd-proton-runtime{suffix}'
     candidate.replace(artifact)
-    notices = write_notices(work, source, output, source_overrides)
+    notices = write_notices(work, source, output, source_overrides, 'SOURCES-WINDOWS.json')
     redistribution = output / 'redistribution'
     if redistribution.exists():
         shutil.rmtree(redistribution)
@@ -310,17 +313,44 @@ def provision_cross(args, lock, target, bun, work, source, output, commit, sourc
                     'stdoutRegression': {'artifact': stdout_fixture.name, 'sha256': sha256(stdout_fixture),
                                          'stdoutBytes': len(STDOUT_FIXTURE_BYTES),
                                          'stdoutSha256': hashlib.sha256(STDOUT_FIXTURE_BYTES).hexdigest(), 'stderr': ''}},
-                'redistributionComplete': False,
-                'redistributionNote': 'Experimental lab artifact. Windows Bun native attribution and notices, and a Windows '
-                                      'corresponding-source catalog, are still to be collected; only the platform-neutral '
-                                      'JavaScript notices below accompany it. Not for distribution.',
                 'redistributionFilesSha256': {name: sha256(redistribution / name) for name in WINDOWS_REDISTRIBUTION_FILES},
                 'runtimeLockSha256': sha256(ROOT / 'runtime-lock.json'),
                 'dependencyLockSha256': sha256(ROOT / 'package-lock.json'),
                 'dependencyNotices': notices.name, 'dependencyNoticesSha256': sha256(notices),
                 'helperSourceSha256': helper_source_hashes()}
+    gaps = windows_redistribution_gaps(manifest, lock, redistribution)
+    manifest['redistributionComplete'] = not gaps
+    if gaps:
+        manifest['redistributionNote'] = 'Not for distribution: ' + '; '.join(gaps)
     (output / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
-    print(json.dumps({'artifact': str(artifact), 'manifest': str(output / 'manifest.json'), 'sha256': manifest['sha256']}))
+    print(json.dumps({'artifact': str(artifact), 'manifest': str(output / 'manifest.json'), 'sha256': manifest['sha256'],
+                      'redistributionComplete': manifest['redistributionComplete']}))
+
+def windows_redistribution_gaps(manifest, lock, redistribution):
+    """What keeps this Windows artifact from shipping with its complete redistribution set.
+
+    The catalog and the Bun scope are written for one helper and one Bun executable; after
+    an overlay or lock change they describe another build until they are updated.
+    """
+    gaps = [f'redistribution/{name} is missing' for name in WINDOWS_REDISTRIBUTION_FILES
+            if not (redistribution / name).is_file()]
+    if gaps:
+        return gaps
+    catalog = json.loads((redistribution / 'SOURCES-WINDOWS.json').read_text())
+    scope = json.loads((redistribution / 'BUN-WINDOWS-SCOPE.json').read_text())
+    runtime = manifest['bunTargetRuntime']
+    if catalog.get('platform') != manifest['platform'] or catalog.get('materialsReady') is not True:
+        gaps.append('SOURCES-WINDOWS.json is not a ready windows-x64 catalog')
+    if catalog.get('helperSha256') != manifest['sha256']:
+        gaps.append(f"SOURCES-WINDOWS.json pins helper {catalog.get('helperSha256')}, this build is {manifest['sha256']}")
+    if catalog.get('bunTargetRuntime') != runtime:
+        gaps.append('SOURCES-WINDOWS.json names another Windows Bun runtime')
+    if scope.get('bunExecutable', {}).get('executableSha256') != runtime['executableSha256']:
+        gaps.append('BUN-WINDOWS-SCOPE.json describes another bun.exe')
+    pins = catalog.get('sourcePins', {})
+    if pins.get('sdk') != lock['sourceReference'] or pins.get('crypto') != lock['cryptoSourceReference']:
+        gaps.append('SOURCES-WINDOWS.json source pins differ from runtime-lock.json')
+    return gaps
 
 if __name__ == '__main__':
     main()

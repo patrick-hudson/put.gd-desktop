@@ -476,7 +476,9 @@ jobs:
           retention-days: 30
 
   windows:
-    name: windows (native, mingw cross-build, zip and MSI)
+    # The fast check: portable contracts and the cross-build without Proton. The
+    # packages come from windows-packages below, with the Proton runtime (#408).
+    name: windows (native, mingw cross-build)
     needs: changes
     if: needs.changes.outputs.build == 'true'
     runs-on: ubuntu-24.04
@@ -488,7 +490,7 @@ jobs:
       - name: Install the mingw-w64 cross toolchain
         run: |
           sudo apt-get update
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends g++-mingw-w64-x86-64-posix mingw-w64-tools ninja-build wixl msitools
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends g++-mingw-w64-x86-64-posix mingw-w64-tools ninja-build
       - name: Portable core contracts on the host compiler
         run: |
           cmake -S src/windows -B build/windows-host -G Ninja -DPUTGD_WINDOWS_PORTABLE_TESTS=ON
@@ -502,11 +504,6 @@ jobs:
             -DCMAKE_TOOLCHAIN_FILE="$PWD/cmake/toolchains/x86_64-w64-mingw32.cmake" -DPUTGD_RELEASE_TAG="$RELEASE_TAG"
           cmake --build build/windows
           x86_64-w64-mingw32-objdump -p build/windows/putgd.exe | grep -i 'DLL Name' | sort -u
-      - name: Package the portable zip and the per-user MSI
-        run: |
-          python3 src/windows/packaging/package.py --build build/windows --output build/windows-packages
-          msiinfo export build/windows-packages/*.msi Property | grep -E '^(ProductVersion|UpgradeCode)'
-          unzip -l build/windows-packages/*.zip
       - name: Preserve the Windows executables
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -516,12 +513,68 @@ jobs:
             build/windows/putgd-cli.exe
             build/windows/build-identity/build-info.json
           retention-days: 30
+
+  windows-packages:
+    # The shipped Windows build (#404, #408): the Proton runtime helper provisioned
+    # from the pinned sources as package.yml does for Linux, putgd.exe bound to its
+    # digest, and the zip and MSI carrying it with its notices and source catalog.
+    name: windows (zip and MSI with the Proton runtime)
+    needs: changes
+    if: needs.changes.outputs.build == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.release_tag || github.sha }}
+      - name: Install the mingw-w64 cross toolchain and wixl
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends g++-mingw-w64-x86-64-posix mingw-w64-tools ninja-build wixl msitools
+      - name: Provision the pinned Windows Proton helper
+        env:
+          # npm's own per-request retries for registry errors (#368).
+          npm_config_fetch_retries: '5'
+        run: |
+          node --version
+          npm --version
+          python3 tools/proton/provision_runtime.py --target windows-x64
+          python3 -c "import json, sys; m = json.load(open('build/dependencies/proton-runtime-windows/manifest.json')); print(m['sha256']); sys.exit(0 if m['redistributionComplete'] else m['redistributionNote'])"
+      - name: Cross-compile putgd.exe and putgd-cli.exe for that helper
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag || '' }}
+        run: |
+          cmake -S src/windows -B build/windows -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_TOOLCHAIN_FILE="$PWD/cmake/toolchains/x86_64-w64-mingw32.cmake" -DPUTGD_RELEASE_TAG="$RELEASE_TAG" \
+            -DPUTGD_PROTON_MANIFEST="$PWD/build/dependencies/proton-runtime-windows/manifest.json"
+          cmake --build build/windows
+      - name: Packager contracts with wixl
+        run: python3 tests/releases/test_windows_package.py
+      - name: Package and audit the portable zip and the per-user MSI
+        run: |
+          python3 src/windows/packaging/package.py --build build/windows --output build/windows-packages \
+            --proton-runtime build/dependencies/proton-runtime-windows --require-proton
+          msiinfo export build/windows-packages/*.msi Property | grep -E '^(ProductVersion|UpgradeCode)'
+          unzip -l build/windows-packages/*.zip
       - name: Preserve the Windows packages
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: windows-packages
           path: build/windows-packages/
           if-no-files-found: error
+          retention-days: 30
+      - name: Preserve the Windows Proton runtime and its provisioning record
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-proton-runtime
+          path: |
+            build/dependencies/proton-runtime-windows/putgd-proton-runtime.exe
+            build/dependencies/proton-runtime-windows/manifest.json
+            build/dependencies/proton-runtime-windows/THIRD-PARTY-NOTICES.txt
+            build/dependencies/proton-runtime-windows/build-metafile.json
+            build/dependencies/proton-runtime-windows/redistribution/
+          if-no-files-found: warn
           retention-days: 30
 
   windows-msvc:
@@ -592,7 +645,7 @@ jobs:
   ci:
     name: CI
     if: always()
-    needs: [changes, contracts, linux, portable, windows, windows-msvc, packages, pipewire]
+    needs: [changes, contracts, linux, portable, windows, windows-packages, windows-msvc, packages, pipewire]
     runs-on: ubuntu-24.04
     steps:
       - name: Require every selected job
@@ -607,13 +660,14 @@ jobs:
                       'linux': 'success' if selected.get('build') == 'true' else 'skipped',
                       'portable': 'success' if selected.get('build') == 'true' else 'skipped',
                       'windows': 'success' if selected.get('build') == 'true' else 'skipped',
+                      'windows-packages': 'success' if selected.get('build') == 'true' else 'skipped',
                       'windows-msvc': 'success' if selected.get('build') == 'true' else 'skipped',
                       'packages': 'success' if selected.get('packages') == 'true' else 'skipped',
                       'pipewire': 'success' if selected.get('pipewire') == 'true' else 'skipped'}
           failed = False
           for job, want in expected.items():
               got = needs[job]['result']
-              print(f'{job:12} {got:10} (required: {want})')
+              print(f'{job:16} {got:10} (required: {want})')
               failed |= got != want
           sys.exit(1 if failed else 0)
           PY

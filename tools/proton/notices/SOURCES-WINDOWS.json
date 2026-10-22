@@ -1,0 +1,159 @@
+{
+  "schemaVersion": 1,
+  "platform": "windows-x64",
+  "materialsReady": true,
+  "distributionReady": false,
+  "published": true,
+  "distributionRequirement": "Deliver every listed artifact and this catalog beside the binary packages; retain corresponding-source availability. Public release URLs must be added to the release receipt at P4.",
+  "helperSha256": "809832fa519b25ac7889ab99224d7ddfc21cc99c7088d4150836cdf05dab26b1",
+  "bunTargetRuntime": {
+    "package": "@oven/bun-windows-x64",
+    "version": "1.4.2",
+    "resolved": "https://registry.npmjs.org/@oven/bun-windows-x64/-/bun-windows-x64-1.4.2.tgz",
+    "integrity": "sha512-+bN6OuVld/9diT/RLSXSW7JE6CvNE3gL9XsAEjULi1nUsXd6DNO6GuA9jNdNb3r8PdJFnYHr5aypNV1Oj3Rd9g==",
+    "executableSha256": "15277c59ccd6c6c20f8dc9716c2b59c1776320d606b6a8658f70be8799519ca4"
+  },
+  "sourcePins": {
+    "sdk": "8ffae007b0fbb8bcef53514719d6f093bb32dcf9",
+    "crypto": "956a713c0823b365cc512018974eb4fcba47c9dd",
+    "openpgp": "36198c3369ab8d4a02d70372d62f1aa8bc247dcb",
+    "bun": "744846f844374847c902b5e7fd59b4342a51ef99",
+    "webkit": "2e2aa2290fac856d6f451ceacb58f7f5b44dd057",
+    "tinycc": "05f0fafaa3be31e31d7b4b5c17dc60f62c991171",
+    "argon2id": "6fc76bcf69fbe07b5ec532a7912772d28f1ea43a",
+    "icu4c": "release-78.3"
+  },
+  "proof": {
+    "helperExactRebuildVerified": true,
+    "windowsBunIdentityVerified": true,
+    "packetDeliveryReverified": true,
+    "nativeWindowsBunRelinkVerified": false,
+    "finalPackageAcceptanceVerified": false
+  },
+  "openGates": [
+    "Modified native Bun/JavaScriptCore/TinyCC relink for Windows (the Linux relink proof covers the same sources)",
+    "Review of the statically linked Microsoft C runtime's distribution terms before a public Windows release",
+    "Windows release asset placement and publication (docs/release.md does not list Windows assets yet)"
+  ],
+  "artifacts": [
+    {
+      "filename": "putgd-proton-build-controls.tar.gz",
+      "bytes": 3223548,
+      "sha256": "0dd9bb6985606925b4cd71d85d23079c14b480f4f6c7d5df0d32fa8e89197fd6",
+      "purpose": "Proton component sources, locks, provisioner, audit/tests, notices and CMake integration; SOURCES.json accompanies separately to avoid a hash cycle"
+    },
+    {
+      "filename": "putgd-proton-helper-rebuild.tar.gz",
+      "bytes": 15261507,
+      "sha256": "5f6060a5b744db2d69ac858c310c667d1ea1fea3918c438bce1f172fb2012b96",
+      "purpose": "Original patched helper/SDK/account/crypto source graph and dependencies; 6298 public files. Apply applicationSourceOverlay from the current application source archive for the current helper."
+    },
+    {
+      "filename": "putgd-proton-crypto-source-and-provenance.tar.gz",
+      "bytes": 326295,
+      "sha256": "7e726a9974c73616d8c47c60a84939238970066088e47b8e93eb4d1fc2aa506a",
+      "purpose": "Official GPL source snapshot, historical evidence and recovered predecessor notices; no retroactive interpretation of 2.0.0 ISC metadata"
+    },
+    {
+      "filename": "putgd-proton-openpgp-preferred-source.tar.gz",
+      "bytes": 86740453,
+      "sha256": "b980431b29868350e6b09cee3782db60cfaffe9ffba4b74d722e0b97984a621c",
+      "purpose": "Preferred OpenPGP source and offline npm inputs, full Argon2 C/WASM source and prebundled preferred source/notices; use accompanying supplement for clean pinned compiler replay"
+    },
+    {
+      "filename": "putgd-proton-bun-sources-1.4.2.tar",
+      "bytes": 2352957440,
+      "sha256": "754765f1f38e6e57e369806ac8e19b190a6eea812696848003bd40df9f06df27",
+      "purpose": "Full pinned Bun/WebKit/native/Cargo/npm source/build inputs, patches and offline reconstruction; includes optional build-tool binaries, not a pure text-only source archive"
+    },
+    {
+      "filename": "putgd-proton-native-rebuild-supplement.tar.gz",
+      "bytes": 47345002,
+      "sha256": "a8ca1e3a313a40d55542470a01770cfd7037e221e3761156c18ee7723f7034fc",
+      "purpose": "Corrected native/Argon rebuild recipes, pinned disposable toolchains, Rust standard-library preferred source/notices, proof fixtures and optional published bootstrap Bun; supersedes original preflight and Argon replay commands"
+    }
+  ],
+  "windowsSourceInputs": {
+    "bunPacket": "putgd-proton-bun-sources-1.4.2.tar",
+    "icu": {
+      "archive": "bun-source-materials/archives/icu4c-78.3-sources.tgz",
+      "url": "https://github.com/unicode-org/icu/releases/download/release-78.3/icu4c-78.3-sources.tgz",
+      "sha256": "3a2e7a47604ba702f345878308e6fefeca612ee895cf4a5f222e7955fabfe0c0"
+    },
+    "webkitWindowsRecipe": "Dockerfile.windows and build-icu.ps1 in bun-source-materials/webkit-git-source.tar at the webkit pin",
+    "bunWindowsRecipes": "scripts/build/winsysroot.ts, scripts/build/flags.ts and scripts/build/deps/libuv.ts at the bun pin",
+    "microsoftComponents": {
+      "msvcCrt": "14.44.17.14",
+      "windowsSdk": "10.0.26100",
+      "fetchedBy": "xwin 0.9.0",
+      "note": "Microsoft's runtime and SDK, downloaded under Microsoft's license by the upstream recipes; not source packets."
+    }
+  },
+  "rebuildToolchains": {
+    "helperHost": "Linux x86-64 with Node and npm; tools/proton/provision_runtime.py --target windows-x64",
+    "windowsBun": "LLVM 21 clang-cl/lld-link with xwin MSVC CRT 14.44.17.14 and Windows SDK 10.0.26100 (upstream recipes)",
+    "nativeOrWasmByteIdentityClaimed": false
+  },
+  "delivery": {
+    "file": "putgd-proton-corresponding-source.tar.gz",
+    "bytes": 2484914096,
+    "sha256": "74ccb7b1be2c3fd3db2ed70222e1dd06a1dea0eb901448170a76709bcfe4c8ab",
+    "parts": [
+      {
+        "file": "putgd-proton-corresponding-source.tar.gz.part1",
+        "bytes": 1300000000,
+        "sha256": "ed4ad0f31dc9a8e8e47f2e0ad7ce8b61bd812240640095866ae1ac036abab757",
+        "url": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/proton-sources-0.22.2-crypto2.0.1/putgd-proton-corresponding-source.tar.gz.part1"
+      },
+      {
+        "file": "putgd-proton-corresponding-source.tar.gz.part2",
+        "bytes": 1184914096,
+        "sha256": "9b47aab2e8229fda914fdb142812893c78fb04d51f91850b782f957868b36684",
+        "url": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/proton-sources-0.22.2-crypto2.0.1/putgd-proton-corresponding-source.tar.gz.part2"
+      }
+    ]
+  },
+  "publication": {
+    "releaseUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/tag/proton-sources-0.22.2-crypto2.0.1",
+    "publishedAt": "2026-10-15T22:52:51Z",
+    "releaseId": 414343618,
+    "scope": "Verified corresponding-source materials only; final binary package acceptance is recorded separately"
+  },
+  "applicationSourceOverlay": {
+    "required": true,
+    "baseSourceArtifact": "putgd-proton-helper-rebuild.tar.gz",
+    "baseSourceArtifactSha256": "5f6060a5b744db2d69ac858c310c667d1ea1fea3918c438bce1f172fb2012b96",
+    "repository": "https://github.com/patrick-hudson/put.gd-desktop",
+    "sourceCommit": "6b329b6db5deec7c95ea70f53c7e2fcc4cb6af8c",
+    "delivery": "Included in the current put.gd application source archive alongside the six unchanged original packets. Apply the listed files, then follow REBUILD-WINDOWS.md.",
+    "reason": "The same overlay as the Linux helper (SOURCES.json); the Windows helper is its windows-x64 cross-compile. Return the connected account email from existing SDK root metadata (#40), and report Proton error 200003 as destination_file_too_large_for_plan instead of quota_exceeded (#147), settling it and quota refusals as failed when the name is still free afterwards (#201). Report a refused keychain session write as keychain_unavailable (#252) and return the confirmed link expiry from share create and inspect (#253). Drop the helper's POSIX-only assumptions so the same sources also build for Windows x64: the private data directory check accepts the resident's owner-only directory on win32, uploads accept any absolute path and refuse a symbolic link or swapped file before opening it (#401). No SDK, crypto, Bun or dependency source changes.",
+    "files": [
+      {
+        "source": "tools/proton/runtime.ts",
+        "destination": "build-source/runtime.ts",
+        "sha256": "16b9fce622cd59b8a9c2bf75733ca30733425c6052a6d88920d5e478f02a4ee5"
+      },
+      {
+        "source": "tools/proton/runtime.test.ts",
+        "destination": "build-source/runtime.test.ts",
+        "sha256": "cc7758c1a8c0843edc3e3bf68e2407860b44695e2315330ba2083471558dace0"
+      },
+      {
+        "source": "tools/proton/protocol.ts",
+        "destination": "build-source/protocol.ts",
+        "sha256": "25cca19b3baea0d77ffaf27e2a230f43ef33885f256dd373b89092e5a0d1c5ec"
+      },
+      {
+        "source": "tools/proton/protocol.test.ts",
+        "destination": "build-source/protocol.test.ts",
+        "sha256": "4871074adc4d26e8e48cc2ad51fd6bd8fc00b90b190bcc2e65fdae9ca740c4f8"
+      },
+      {
+        "source": "tools/proton/account.ts",
+        "destination": "build-source/account.ts",
+        "sha256": "c95a5beb5840d4d226a215b184f50500443d48bebe826c6a72f85f40d9655526"
+      }
+    ],
+    "exactHelperRebuildVerified": true
+  }
+}

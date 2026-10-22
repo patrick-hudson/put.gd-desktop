@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The Proton Drive runtime helper (#408), installed by putgd.wxs when the build was
+  configured with -DPUTGD_PROTON_MANIFEST: package.py passes this fragment, or
+  no-proton.wxs without a runtime. proton\putgd-proton-runtime.exe is the helper whose
+  SHA-256 putgd.exe carries; its manifest, dependency notices and the redistribution
+  set (tools/proton/provision_runtime.py WINDOWS_REDISTRIBUTION_FILES) sit beside it.
+  Uninstalling removes them with the rest of the package.
+-->
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Fragment>
+    <DirectoryRef Id="INSTALLDIR">
+      <Directory Id="ProtonDir" Name="proton">
+        <Component Id="ProtonRuntime" Guid="5E0B5E39-2D0C-4C8A-9C1B-6A3E0F1D2C01">
+          <RemoveFolder Id="RemoveProtonDir" On="uninstall"/>
+          <File Id="putgd_proton_runtime.exe" Name="putgd-proton-runtime.exe" Source="$(var.SourceDir)/proton/putgd-proton-runtime.exe"/>
+        </Component>
+        <Component Id="ProtonManifest" Guid="5E0B5E39-2D0C-4C8A-9C1B-6A3E0F1D2C02">
+          <File Id="proton_manifest.json" Name="manifest.json" Source="$(var.SourceDir)/proton/manifest.json"/>
+        </Component>
+        <Component Id="ProtonNotices" Guid="5E0B5E39-2D0C-4C8A-9C1B-6A3E0F1D2C03">
+          <File Id="proton_THIRD_PARTY_NOTICES.txt" Name="THIRD-PARTY-NOTICES.txt" Source="$(var.SourceDir)/proton/THIRD-PARTY-NOTICES.txt"/>
+        </Component>
+        <Directory Id="ProtonRedistributionDir" Name="redistribution">
+          <Component Id="ProtonRedistribution01" Guid="5E0B5E39-2D0C-4C8A-9C1B-6A3E0F1D2D01">
+            <RemoveFolder Id="RemoveProtonRedistributionDir" On="uninstall"/>
+            <File Id="proton_BUN_THIRD_PARTY_NOTICES.txt.gz" Name="BUN-THIRD-PARTY-NOTICES.txt.gz" Source="$(var.SourceDir)/proton/redistribution/BUN-THIRD-PARTY-NOTICES.txt.gz"/>
+          </Component>
+          <Component Id="ProtonRedistribution02" Guid="5E0B5E39-2D0C-4C8A-9C1B-6A3E0F1D2D02">
+            <File Id="proton_BUN_NOTICE_PROVENANCE.json.gz" Name="BUN-NOTICE-PROVENANCE.json.gz" Source="$(var.SourceDir)/proton/redistribution/BUN-NOTICE-PROVENANCE.json.gz"/>
+          </Component>
+          <Component Id="ProtonRedistribution03" Guid="5E0B5E39-2D0C-4C8A-9C1B-6A3E0F1D2D03">
+            <File Id="proton_BUN_LINUX_ATTRIBUTION.md" Name="BUN-LINUX-ATTRIBUTION.md" Source="$(var.SourceDir)/proton/redistribution/BUN-LINUX-ATTRIBUTION.md"/>
+          </Component>
+          <Component Id="ProtonRedistribution04" Guid="5E0B5E39-2D0C-4C8A-9C1B-6A3E0F1D2D04">
+            <File Id="proton_BUN_WINDOWS_ATTRIBUTION.md" Name="BUN-WINDOWS-ATTRIBUTION.md" Source="$(var.SourceDir)/proton/redistribution/BUN-WINDOWS-ATTRIBUTION.md"/>
+          </Component>
+          <Component Id="ProtonRedistribution05" Guid="5E0B5E39-2D0C-4C8A-9C1B-6A3E0F1D2D05">
+            <File Id="proton_BUN_WINDOWS_SCOPE.json" Name="BUN-WINDOWS-SCOPE.json" Source="$(var.SourceDir)/proton/redistribution/BUN-WINDOWS-SCOPE.json"/>
+          </Component>
+          <Component Id="ProtonRedistribution06" Guid="5E0B5E39-2D0C-4C8A-9C1B-6A3E0F1D2D06">
+            <File Id="proton_LICENSE.icu4c_78.3" Name="LICENSE.icu4c-78.3" Source="$(var.SourceDir)/proton/redistribution/LICENSE.icu4c-78.3"/>
+          </Component>
+          <Component Id="ProtonRedistribution07" Guid="5E0B5E39-2D0C-4C8A-9C1B-6A3E0F1D2D07">
+            <File Id="proton_OPENPGP_PREBUNDLED_NOTICES.txt" Name="OPENPGP-PREBUNDLED-NOTICES.txt" Source="$(var.SourceDir)/proton/redistribution/OPENPGP-PREBUNDLED-NOTICES.txt"/>
+          </Component>
+          <Component Id="ProtonRedistribution08" Guid="5E0B5E39-2D0C-4C8A-9C1B-6A3E0F1D2D08">
+            <File Id="proton_LICENSE.crypto_GPL_3.0" Name="LICENSE.crypto-GPL-3.0" Source="$(var.SourceDir)/proton/redistribution/LICENSE.crypto-GPL-3.0"/>
+          </Component>
+          <Component Id="ProtonRedistribution09" Guid="5E0B5E39-2D0C-4C8A-9C1B-6A3E0F1D2D09">
+            <File Id="proton_LICENSE.pmcrypto_MIT" Name="LICENSE.pmcrypto-MIT" Source="$(var.SourceDir)/proton/redistribution/LICENSE.pmcrypto-MIT"/>
+          </Component>
+          <Component Id="ProtonRedistribution10" Guid="5E0B5E39-2D0C-4C8A-9C1B-6A3E0F1D2D10">
+            <File Id="proton_LICENSE.srp_MIT" Name="LICENSE.srp-MIT" Source="$(var.SourceDir)/proton/redistribution/LICENSE.srp-MIT"/>
+          </Component>
+          <Component Id="ProtonRedistribution11" Guid="5E0B5E39-2D0C-4C8A-9C1B-6A3E0F1D2D11">
+            <File Id="proton_LICENSE.boltffi_MIT" Name="LICENSE.boltffi-MIT" Source="$(var.SourceDir)/proton/redistribution/LICENSE.boltffi-MIT"/>
+          </Component>
+          <Component Id="ProtonRedistribution12" Guid="5E0B5E39-2D0C-4C8A-9C1B-6A3E0F1D2D12">
+            <File Id="proton_CRYPTO_PROVENANCE.md" Name="CRYPTO-PROVENANCE.md" Source="$(var.SourceDir)/proton/redistribution/CRYPTO-PROVENANCE.md"/>
+          </Component>
+          <Component Id="ProtonRedistribution13" Guid="5E0B5E39-2D0C-4C8A-9C1B-6A3E0F1D2D13">
+            <File Id="proton_SOURCES_WINDOWS.json" Name="SOURCES-WINDOWS.json" Source="$(var.SourceDir)/proton/redistribution/SOURCES-WINDOWS.json"/>
+          </Component>
+          <Component Id="ProtonRedistribution14" Guid="5E0B5E39-2D0C-4C8A-9C1B-6A3E0F1D2D14">
+            <File Id="proton_REBUILD.md" Name="REBUILD.md" Source="$(var.SourceDir)/proton/redistribution/REBUILD.md"/>
+          </Component>
+          <Component Id="ProtonRedistribution15" Guid="5E0B5E39-2D0C-4C8A-9C1B-6A3E0F1D2D15">
+            <File Id="proton_REBUILD_WINDOWS.md" Name="REBUILD-WINDOWS.md" Source="$(var.SourceDir)/proton/redistribution/REBUILD-WINDOWS.md"/>
+          </Component>
+          <Component Id="ProtonRedistribution16" Guid="5E0B5E39-2D0C-4C8A-9C1B-6A3E0F1D2D16">
+            <File Id="proton_OPENPGP_REBUILD.patch" Name="OPENPGP-REBUILD.patch" Source="$(var.SourceDir)/proton/redistribution/OPENPGP-REBUILD.patch"/>
+          </Component>
+        </Directory>
+      </Directory>
+    </DirectoryRef>
+    <ComponentGroup Id="Proton">
+      <ComponentRef Id="ProtonRuntime"/>
+      <ComponentRef Id="ProtonManifest"/>
+      <ComponentRef Id="ProtonNotices"/>
+      <ComponentRef Id="ProtonRedistribution01"/>
+      <ComponentRef Id="ProtonRedistribution02"/>
+      <ComponentRef Id="ProtonRedistribution03"/>
+      <ComponentRef Id="ProtonRedistribution04"/>
+      <ComponentRef Id="ProtonRedistribution05"/>
+      <ComponentRef Id="ProtonRedistribution06"/>
+      <ComponentRef Id="ProtonRedistribution07"/>
+      <ComponentRef Id="ProtonRedistribution08"/>
+      <ComponentRef Id="ProtonRedistribution09"/>
+      <ComponentRef Id="ProtonRedistribution10"/>
+      <ComponentRef Id="ProtonRedistribution11"/>
+      <ComponentRef Id="ProtonRedistribution12"/>
+      <ComponentRef Id="ProtonRedistribution13"/>
+      <ComponentRef Id="ProtonRedistribution14"/>
+      <ComponentRef Id="ProtonRedistribution15"/>
+      <ComponentRef Id="ProtonRedistribution16"/>
+    </ComponentGroup>
+  </Fragment>
+</Wix>
