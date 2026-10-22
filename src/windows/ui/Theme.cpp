@@ -480,12 +480,16 @@ bool rowDraw(NMLVCUSTOMDRAW* cd, LRESULT& result) {
         RECT client{}, header{};
         GetClientRect(list, &client);
         if (HWND h = ListView_GetHeader(list)) { GetWindowRect(h, &header); client.top += header.bottom - header.top; }
+        // Only the area being painted: a repaint of one row (selection, hover) must not
+        // wipe the rows the list is not about to draw again.
+        RECT area{};
+        if (!IntersectRect(&area, &client, &cd->nmcd.rc)) area = client;
         if (!SendMessageW(list, LVM_GETITEMCOUNT, 0, 0)) {
-            fill(cd->nmcd.hdc, client, backgroundOf(list));
+            fill(cd->nmcd.hdc, area, backgroundOf(list));
             result = CDRF_DODEFAULT; // the empty-state text follows
             return true;
         }
-        fill(cd->nmcd.hdc, client, backgroundOf(list));
+        fill(cd->nmcd.hdc, area, backgroundOf(list));
         result = CDRF_NOTIFYITEMDRAW;
         return true;
     }
@@ -877,7 +881,7 @@ void placeInside(HWND h, int x, int y, int width, int height) {
     }
     SetPropW(h, padXProperty, reinterpret_cast<HANDLE>(static_cast<INT_PTR>(padX)));
     SetPropW(h, padYProperty, reinterpret_cast<HANDLE>(static_cast<INT_PTR>(padY)));
-    SetWindowPos(h, nullptr, x + padX, y + padY, std::max(0, width - 2 * padX), std::max(0, height - 2 * padY), SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOCOPYBITS);
+    SetWindowPos(h, nullptr, x + padX, y + padY, std::max(0, width - 2 * padX), std::max(0, height - 2 * padY), SWP_NOZORDER | SWP_NOACTIVATE);
 }
 
 void applyTo(HWND root) {
