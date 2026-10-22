@@ -273,7 +273,7 @@ private slots:
   error={};updates->install({{"confirm",true},{"channel","nightly"}},[&](Error e,QJsonObject){error=e;});QCOMPARE(error.code,QString("update_switch_older"));
   error={};updates->install({{"confirm",true},{"channel","nightly"},{"allowOlder","yes"}},[&](Error e,QJsonObject){error=e;});QCOMPARE(error.code,QString("invalid_request"));
   QCOMPARE(calls().size(),1);
-  answerLines({{{"schemaVersion",1},{"ok",true},{"error",QJsonObject{}},{"result",QJsonObject{{"installed",true},{"version","0.1.1-nightly.900"},{"channel","nightly"},{"previousChannel","stable"},{"switched",true},{"method","zsync"}}}}}});
+  answerLines({{{"schemaVersion",1},{"ok",true},{"error",QJsonObject{}},{"result",QJsonObject{{"installed",true},{"version","0.1.1-nightly.900"},{"channel","nightly"},{"previousChannel","stable"},{"switched",true},{"method","zsync"}}}}});
   bool replied=false;updates->install({{"confirm",true},{"channel","nightly"},{"allowOlder",true}},[&](Error e,QJsonObject){QVERIFY(!e);replied=true;});QVERIFY(replied);
   QVERIFY(appimage::writeState(dir.path(),{{"installed",QJsonObject{{"image",image},{"version","0.1.1-nightly.900"},{"channel","nightly"},{"previousChannel","stable"},{"method","zsync"}}}}));
   QTRY_COMPARE(updates->status()["install"].toObject()["state"].toString(),QString("installed"));
