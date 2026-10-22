@@ -1421,6 +1421,7 @@ bool EditorWindow::openSaveCopyDialog() {
     if (saveDialog_.open || busy_ || modal_ || !hwnd_) return false;
     saveDialog_.begin("save", "Save a copy");
     saveDialogCancelled_ = false;
+    raise(); // the chooser opens over the editor, as its button opens it
     PostMessageW(hwnd_, saveCopyMessage, 0, 0);
     return true;
 }

@@ -1265,6 +1265,12 @@ void HistoryPageImpl::saveAs() {
     options.mode = FileChooser::Mode::Save;
     options.title = L"Save original file as";
     options.fileName = wide(record.value("name").toString(paths::fileName(source)));
+    // The original's own type first, so Save as type names it; any name is still accepted.
+    const auto dot = source.rfind('.');
+    if (dot != std::string::npos && source.find_first_of("\\/", dot) == std::string::npos && source.size() - dot <= 10) {
+        const auto extension = wide(source.substr(dot + 1));
+        options.filters = {{L"Same type (*." + extension + L")", L"*." + extension}, {L"All files (*.*)", L"*.*"}};
+    }
     const bool opened = saveAsChooser_.open(main_.hwnd(), options, [this, source](const std::string& destination) {
         enable(saveAs_, !selectedRecord().empty());
         if (destination.empty()) return;
