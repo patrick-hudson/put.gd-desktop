@@ -175,3 +175,14 @@ The channel round trip then ends on **Nightly**, not on the build value.
   - The PNG's own pixels then give its screen origin (`originOffset`). `consistent` proves the capture holds nothing but the pattern.
   - Drags: 80×60 and 1120×680 (980×600 in the VMs), with and without `--coords`.
 - **Colour management:** if a compositor alters the colours so the decode isn't exact, `consistent` is false and the PNG is deleted. The size check still stands, and the origin is reported as not measurable on that desktop.
+
+## Addition: screen check before full-desktop frames (coordinator, after #333 found a tailnet admin URL on d69)
+
+- **Before any full-desktop frame on f44, d69, k72 or m74:**
+  - list the open windows: `wmctrl -l`/`xdotool` on m74; KWin's window list over D-Bus on d69 and k72; `gdbus` Shell windows or a pre-check frame viewed by me on f44;
+  - close Patrick's Firefox and ChatGPT/Codex windows by exact PID, under his authority, logging each in the timeline;
+  - never crop around them.
+- Every frame is looked at before it's kept. A frame that shows anything of Patrick's is deleted on the host and here.
+- The `allow-full on` step in `afa.py` comes only after that check passes on each desktop.
+
+Status: #333 merged (#356). #341, #348/#349 and #344 are still in progress.
