@@ -8,6 +8,8 @@ it in the run's results.json.
 updates-first-open  #348: a resident whose Settings was never shown; one `ui.show updates`, then a frame.
 status-clean        #349: every string in update.status (and the run's install record) free of control characters.
 channel             #344: switch preferences.updates.channel, Check now, update.status and a frame of Updates.
+channel-options     #344: on a fresh profile, the stored channel, update.status, and the Channel dropdown opened
+                    with a real click (two options, Nightly preselected on a nightly build).
 menu-shortcut       #341: open a menu with real input, press an action's own shortcut with real input,
                     and check what the capture holds (the open menu) or that region selection starts.
 region-size         #333: a real-input region drag of W x H must give a W x H PNG.
@@ -89,6 +91,22 @@ def channel(args):
            'notifications': run.logs('Notification shown')[-3:],
            'full': frame_full(run, f'{args.label}-{args.to}')}
     out(run.record(f'channel:{args.label}:{args.to}', rep))
+
+
+def channel_options(args):
+    run = Run(args.name); frames, inp, size = tools(run)
+    doc = run.ok('settings.get')['document']
+    st = run.ok('update.status')
+    run.ok('ui.show', {'view': 'updates'}); time.sleep(2); park(run, inp, size)
+    rep = {'storedChannel': ((doc.get('preferences') or {}).get('updates') or {}).get('channel'),
+           'status': {k: st.get(k) for k in ('channel', 'channelSetting', 'build')},
+           'closed': fullshot(run, frames.grab(), f'{args.label}-closed')}
+    if args.click:
+        x, y = (int(v) for v in args.click.split(','))
+        inp.click(x, y); time.sleep(1.2)
+        rep['open'] = fullshot(run, frames.grab(), f'{args.label}-open'); rep['clicked'] = [x, y]
+        inp.key('Escape'); time.sleep(.5)
+    out(run.record('channelOptions:' + args.label, rep))
 
 
 # ---------------------------------------------------------------- #341
@@ -207,15 +225,16 @@ def main():
     sub = p.add_subparsers(dest='cmd', required=True)
     a = sub.add_parser('updates-first-open'); a.add_argument('name'); a.add_argument('--label', required=True); a.add_argument('--wait', type=float, default=3)
     a = sub.add_parser('status-clean'); a.add_argument('name'); a.add_argument('--label', required=True); a.add_argument('--install-record')
-    a = sub.add_parser('channel'); a.add_argument('name'); a.add_argument('--to', required=True, choices=('build', 'stable', 'nightly'))
+    a = sub.add_parser('channel'); a.add_argument('name'); a.add_argument('--to', required=True, choices=('stable', 'nightly', 'build'))  # 'build' only if the PR keeps it
     a.add_argument('--label', required=True)
+    a = sub.add_parser('channel-options'); a.add_argument('name'); a.add_argument('--label', required=True); a.add_argument('--click', help='X,Y of the Channel dropdown')
     a = sub.add_parser('menu-shortcut'); a.add_argument('name'); a.add_argument('--action', required=True, choices=('region', 'window', 'desktop'))
     a.add_argument('--open', required=True, help='click:X,Y (real click) or key:super (real key)'); a.add_argument('--button', default='right')
     a.add_argument('--label', required=True); a.add_argument('--drag'); a.add_argument('--selector-wait', type=float, default=2.5); a.add_argument('--timeout', type=float, default=30)
     a = sub.add_parser('region-size'); a.add_argument('name'); a.add_argument('--drag', required=True); a.add_argument('--selector-wait', type=float, default=2.5)
     a = sub.add_parser('update-check'); a.add_argument('name'); a.add_argument('--tool', required=True); a.add_argument('--ssl-cert-file'); a.add_argument('--label', required=True)
     args = p.parse_args()
-    {'updates-first-open': updates_first_open, 'status-clean': status_clean, 'channel': channel, 'menu-shortcut': menu_shortcut,
+    {'updates-first-open': updates_first_open, 'channel-options': channel_options, 'status-clean': status_clean, 'channel': channel, 'menu-shortcut': menu_shortcut,
      'region-size': region_size, 'update-check': update_check}[args.cmd](args)
 
 

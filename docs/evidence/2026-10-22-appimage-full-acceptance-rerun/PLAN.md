@@ -154,3 +154,12 @@ Every frame is checked before it's kept. Physical desktops are sanitized (full f
 2. N+1 will be dispatched right after N publishes; both tags will be sent. Run the live N → N+1 update once N+1 is published.
 3. On the go, all four builders plus both VMs (Ubuntu on d69, Aurora on f44) are mine for the pass. The logouts (f44 ×2, d69/k72/m74 ×1) are covered by Patrick's builder authority: no further ask, but each is recorded in the timeline.
 4. #344: Patrick wants the stable side tested through a lab-signed feed under `pkg.put.gd/lab` (lab keys only). If the #344 PR leaves that feed in place, ask the coordinator before using it. Otherwise, "no stable release yet" plus switching back is enough.
+
+## Addition from the coordinator: Channel dropdown (#344)
+
+Patrick: Settings → Updates → **Channel** offers only **Stable** and **Nightly**. The running build's channel is selected by default, and "This build's channel" is gone (part of the #344 PR). On **every desktop**, on N with a fresh profile:
+- `rerun.py channel-options --click X,Y` records the stored setting and `update.status`;
+- the dropdown is opened with a real click;
+- the picture must show exactly two options, Nightly preselected.
+
+The channel round trip then ends on **Nightly**, not on the build value.
