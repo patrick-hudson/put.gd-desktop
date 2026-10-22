@@ -21,7 +21,7 @@ namespace {
 enum : int {
     idSections = 100, idDefaultDestination, idDefaultSharing, idKeepLocal, idNamingMode, idCollision, idClipboard,
     idNotifications, idLaunch, idUnlockStartup, idTheme, idDebug, idClearLogs, idDiagnostics, idShowDiagnostics,
-    idUpdateCheck, idUpdateChannel, idCheckNow, idReload, idResetLimits,
+    idUpdateCheck, idUpdateChannel, idCheckNow, idInstallUpdate, idReload, idResetLimits,
     idActionDestination = 200, idActionSharing = 220, idRecord = 240, idClear = 260, idShortcutEdit = 280,
     idField = 300, idBrowse = 400
 };
@@ -264,7 +264,8 @@ private:
     unsigned long long recordToken_ = 0;
     // Advanced
     HWND uploadsHeading_{}, limitsNote_{}, resetLimits_{}, imagesHeading_{}, retentionHeading_{}, logsHeading_{}, debug_{}, clearLogs_{};
-    HWND diagnostics_{}, diagnosticsResult_{}, showDiagnostics_{}, updatesHeading_{}, updateCheck_{}, channelLabel_{}, channel_{}, checkNow_{}, updateStatus_{};
+    HWND diagnostics_{}, diagnosticsResult_{}, showDiagnostics_{}, updatesHeading_{}, updateCheck_{}, channelLabel_{}, channel_{}, checkNow_{}, updateStatus_{}, installUpdate_{};
+    std::string installAction_; // "install", "restart" or empty: what installUpdate_ offers
     HWND configHeading_{}, configPath_{}, reload_{};
     std::string diagnosticsPath_;
     int updatesY_ = 0;
@@ -409,6 +410,7 @@ HWND SettingsPageImpl::create(HWND parent) {
     checkNow_ = button(a, idCheckNow, L"Check now");
     updateStatus_ = ui::label(a, L"");
     panels_[Advanced].markMuted(updateStatus_);
+    installUpdate_ = button(a, idInstallUpdate, L"Download and install");
     configHeading_ = heading(a, L"Config file");
     configPath_ = ui::label(a, L"", 0, SS_PATHELLIPSIS | SS_NOPREFIX);
     panels_[Advanced].markMuted(configPath_);
@@ -529,6 +531,8 @@ int SettingsPageImpl::layoutSection(int section, int width, int height) {
         rows.line({{updateCheck_, 360}}, true, rows.fieldHeight());
         rows.field(channelLabel_, channel_, 240, checkNow_, -1);
         rows.block(updateStatus_, line * 2 + 2);
+        show(installUpdate_, !installAction_.empty());
+        if (!installAction_.empty()) rows.line({{installUpdate_, -1}}, true);
         rows.heading(configHeading_);
         rows.block(configPath_, line * 2 + 2);
         rows.line({{reload_, -1}}, true);
@@ -901,6 +905,20 @@ void SettingsPageImpl::showUpdateStatus(const json::Object& status) {
     }
     if (status.value("error").isString()) text += L"\nThe last check failed: " + wide(status.value("error").toString());
     else if (status.value("checkedAt").isString()) text += L"\nChecked " + localTime(status.value("checkedAt").toString());
+    // Installing (#404): Download and install, then Restart put.gd, as on the Linux AppImage.
+    const auto install = status.value("install").toObject();
+    const auto state = install.value("state").toString();
+    const auto installed = install.value("installed").toObject();
+    if (state == "running") text += L"\nInstalling: " + wide(install.value("phase").toString()) +
+        (install.value("total").toInteger() > 0 ? L" " + std::to_wstring(install.value("bytes").toInteger() * 100 / install.value("total").toInteger()) + L"%" : std::wstring());
+    else if (state == "failed") text += L"\nThe update didn't install: " + wide(install.value("error")["message"].toString());
+    else if (install.value("restartRequired").toBool()) text += L"\nput.gd " + wide(installed.value("version").toString()) + L" is ready; it starts when put.gd restarts.";
+    else if (state == "installed" && installed.value("completedAt").isString())
+        text += L"\nUpdated from " + wide(installed.value("previousVersion").toString()) + L" on " + localTime(installed.value("completedAt").toString());
+    installAction_.clear();
+    if (install.value("restartRequired").toBool()) installAction_ = "restart";
+    else if (install.value("available").toBool() && state != "running" && status.value("state") == "update_available") installAction_ = "install";
+    setTextW(installUpdate_, installAction_ == "restart" ? L"Restart put.gd" : L"Download and install");
     setTextW(updateStatus_, text);
     panels_[Advanced].layout();
 }
@@ -1002,6 +1020,16 @@ void SettingsPageImpl::command(int id, int code, HWND control) {
     case idDebug: if (click) main_.queuePatch({{"preferences", json::Object{{"diagnostics", json::Object{{"debugLogging", checked(debug_)}}}}}}); break;
     case idUpdateCheck: if (click) main_.queuePatch({{"preferences", json::Object{{"updates", json::Object{{"check", checked(updateCheck_)}}}}}}); break;
     case idUpdateChannel: if (selection) main_.queuePatch({{"preferences", json::Object{{"updates", json::Object{{"channel", selected(channel_)}}}}}}); break;
+    case idInstallUpdate:
+        if (click && !installAction_.empty()) {
+            EnableWindow(installUpdate_, FALSE);
+            main_.session().call(installAction_ == "restart" ? "update.restart" : "update.install", {{"confirm", true}}, [this](const Reply& reply) {
+                EnableWindow(installUpdate_, TRUE);
+                if (!reply.ok) { setTextW(updateStatus_, UiSession::describe(reply)); panels_[Advanced].layout(); }
+                else refreshUpdateStatus();
+            });
+        }
+        break;
     case idCheckNow:
         if (click) {
             checking_ = true;
