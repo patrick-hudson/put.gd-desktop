@@ -567,7 +567,10 @@ std::vector<Choice> SettingsPageImpl::destinationChoices(bool withDefault) const
     choices.push_back({L"No destination (uploads off)", "local"});
     for (const auto& entry : main_.session().document().value("profiles").arrayRef()) {
         const auto& profile = entry.objectRef();
-        const bool available = profile.value("provider") == "s3";
+        // Availability comes from the resident's capabilities (providers[id].available), not a provider list of our own.
+        const auto& providers = main_.session().diagnostics().value("capabilities")["providers"];
+        const auto& entryCaps = providers[profile.value("provider").toString()];
+        const bool available = entryCaps.isObject() ? entryCaps["available"].toBool(false) : profile.value("provider") == "s3";
         choices.push_back({wide(profile.value("label").toString()) + (available ? L"" : L" (not available on Windows)"), "profile:" + profile.value("id").toString(), available});
     }
     return choices;
