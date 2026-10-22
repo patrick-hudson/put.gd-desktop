@@ -66,14 +66,34 @@ Bun attribution, catalog, installer placement) is #408; Backblaze B2 on Windows 
 
 ![Add destination offers Proton Drive when the helper is verified](evidence/2026-10-22-windows-native/10-proton-add-menu-annotated.png)
 
-Verified on 2026-10-22 in the guest (`work/verification/2026-10-22-windows-native/proton/`):
-the helper's version, probe and stdio cases, a Bun.secrets round trip through Credential
-Manager, the connect auth event within a second, a Proton profile validated and saved, Test
-connection answering `proton_setup_required`, concurrent setup on one account answering
-`proton_account_busy`, `history.share` on an S3 record answering `sharing_unsupported`, and
-the S3 path unchanged. Not verified: anything that needs a connected Proton account
-(upload, link creation, revocation, expiry, reconciliation, folder creation), which waits
-for a sign-in on the guest display.
+Verified on 2026-10-22 in the guest (`work/verification/2026-10-22-windows-native/proton/`),
+first without an account: the helper's version, probe and stdio cases, a Bun.secrets round
+trip through Credential Manager, the connect auth event within a second, a Proton profile
+validated and saved, Test connection answering `proton_setup_required`, concurrent setup on
+one account answering `proton_account_busy`, `history.share` on an S3 record answering
+`sharing_unsupported`, and the S3 path unchanged. Then with Patrick signed in on the guest
+display through the window's Connect account… (`live-results.md` there): account
+inspection with the e-mail and folders, a folder created by the app, Test connection
+(`account-folder`), a capture uploaded and shared with the link copied, inspect, revoke
+(link gone, `linkAvailable` false), a new link created, a one-day expiry recorded as
+`shareExpiresAt`, a stored link password used for a new link, a private upload with no
+link and nothing copied followed by an explicit link, a 4-second deadline ending as
+`proton_request_timeout` with the upload unknown and Retry adopting the longer current
+deadline (the link step keeps the receipt's accepted deadline, as on Linux), a repeated
+name renamed on collision, and a 120 MiB upload cancelled mid-transfer
+(`proton_result_unknown`, reason `cancelled`) that Retry reconciled and uploaded. The
+same session found and fixed three window repaint faults (a scrolled pane showing another
+label's text, Settings combos still calling Proton unavailable, History rows blanked by a
+one-row repaint).
+
+![History with the Proton uploads and their link actions](evidence/2026-10-22-windows-native/11-history-proton-annotated.png)
+
+![The connected destination, scrolled](evidence/2026-10-22-windows-native/12-proton-editor-connected-scrolled-annotated.png)
+
+![The completion toast after a Proton upload](evidence/2026-10-22-windows-native/13-proton-toast-annotated.png)
+
+Not verified: Proton's plan-size (200003) and quota refusals, a service-side revision change
+racing a link mutation, and DPI above 100 %.
 
 ## Building
 
@@ -148,7 +168,7 @@ operation of the window, Windows 10, and a signed or packaged install.
 | Gap | Issue |
 | --- | --- |
 | Screen recording (`record` action, `recording.*`) | #400 |
-| Proton Drive with a connected account (live acceptance), shipping its runtime | #401, #408 |
+| Shipping the Proton runtime with a Windows build | #408 |
 | Backblaze B2 destination | #409 |
 | Multipart uploads and files over the 5 GiB single-PUT limit | #402 |
 | Per-item cancellation, the `ui.*` window-driving methods, diagnostics upload, history gallery/date/MIME filters | #403 |
