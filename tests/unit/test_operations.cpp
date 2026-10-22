@@ -1324,7 +1324,7 @@ private slots:
   // The transfer has ended without a link; the sharing step is still running.
   PUTGD_TRY_COMPARE(provider->shares.size(),1);
   {const auto op=journal.operation(id);QCOMPARE(op.items[0].uploadStatus,QString("uploaded"));QVERIFY(op.items[0].receipt.directUrl.isEmpty());QCOMPARE(op.copyStatus,QString("pending"));}
-  putgd::test::settle(100);QCOMPARE(source.copies,0);
+  PUTGD_COMPARE_STEADY(source.copies,0,100);
   provider->shares.takeFirst()();
   PUTGD_TRY_COMPARE(journal.operation(id).copyStatus,QString("copied"));
   const auto op=journal.operation(id);QCOMPARE(op.state,QString("completed"));QCOMPARE(op.items[0].shareStatus,QString("shared"));QVERIFY(!op.error);
@@ -1343,10 +1343,10 @@ private slots:
   QString id;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});
   PUTGD_TRY_COMPARE(provider->storage.completions.size(),2);
   // The second file finishes first, link included: it waits for the first.
-  finish("late-1.txt");putgd::test::settle(100);QCOMPARE(source.copies,0);
+  finish("late-1.txt");PUTGD_COMPARE_STEADY(source.copies,0,100);
   // The first file's transfer ends without a link; its sharing step is pending.
   finish("late-0.txt");PUTGD_TRY_COMPARE(provider->shares.size(),1);
-  PUTGD_TRY_COMPARE(journal.operation(id).items[0].uploadStatus,QString("uploaded"));putgd::test::settle(100);QCOMPARE(source.copies,0);
+  PUTGD_TRY_COMPARE(journal.operation(id).items[0].uploadStatus,QString("uploaded"));PUTGD_COMPARE_STEADY(source.copies,0,100);
   provider->shares.takeFirst()();
   PUTGD_TRY_COMPARE(journal.operation(id).copyStatus,QString("copied"));
   const auto op=journal.operation(id);QCOMPARE(op.state,QString("completed"));QStringList expected;for(const auto& item:op.items)expected.append(item.receipt.directUrl);
