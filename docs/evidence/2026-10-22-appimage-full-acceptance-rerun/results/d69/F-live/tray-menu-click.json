@@ -1,0 +1,28 @@
+{
+ "label": "d69-tray-menu",
+ "components": [
+  {
+   "blocks": 1122,
+   "box": [
+    1560,
+    696,
+    1768,
+    1048
+   ]
+  }
+ ],
+ "colour": [
+  244,
+  244,
+  244
+ ],
+ "inner": [
+  1562,
+  703,
+  1761,
+  1035
+ ],
+ "changedShare": 1.0,
+ "kept": "/home/patrick/work/put.gd-afa2/runs/d69-F/crops/d69-tray-menu.png",
+ "full": "/home/patrick/work/put.gd-afa2/runs/d69-F/full/d69-tray-menu.png"
+}

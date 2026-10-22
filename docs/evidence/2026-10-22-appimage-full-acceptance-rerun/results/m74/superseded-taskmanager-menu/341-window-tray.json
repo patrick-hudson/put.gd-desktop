@@ -1,0 +1,127 @@
+{
+ "action": "window",
+ "shortcut": "Ctrl+Shift+2",
+ "opened": "click:212,1055",
+ "menuBox": [
+  92,
+  799,
+  333,
+  1040
+ ],
+ "menuFull": "/home/patrick/work/put.gd-afa2/runs/m74/full/m74-341-window-traymenu-menu-open.png",
+ "seconds": 0.6,
+ "operations": [
+  {
+   "id": "b761db01-ffb2-4210-9f89-0aa690fb8b2e",
+   "state": "completed",
+   "copyStatus": "pending",
+   "items": [
+    {
+     "name": "Screen-Capture-2026-10-22-00-34-07.png",
+     "mime": "image/png",
+     "uploadStatus": "uploaded",
+     "link": "http://127.0.0.1:34531/fixture/afa/Screen-Capture-2026-10-22-00-34-07.png",
+     "local": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "path": "/home/patrick/work/put.gd-afa2/runs/m74/archive/images/Screen-Capture-2026-10-22-00-34-07.png",
+      "status": "saved"
+     }
+    }
+   ],
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  }
+ ],
+ "newHistory": [
+  "71ca9bfd-e194-4abf-9bc9-64365641716e"
+ ],
+ "notices": [
+  {
+   "itemId": null,
+   "notificationId": 1,
+   "notificationText": "Uploaded. Link copied to the clipboard. Click to open in browser.",
+   "operationId": null,
+   "summary": "operation_completed",
+   "title": "put.gd \u2014 completed",
+   "warning": false
+  }
+ ],
+ "shortcutLog": [
+  {
+   "message": "Shortcut pressed",
+   "fields": {
+    "action": "region",
+    "itemId": null,
+    "operationId": null,
+    "path": "raw"
+   }
+  },
+  {
+   "message": "Shortcut pressed",
+   "fields": {
+    "action": "region",
+    "itemId": null,
+    "operationId": null,
+    "path": "raw"
+   }
+  },
+  {
+   "message": "Shortcut pressed",
+   "fields": {
+    "action": "desktop",
+    "itemId": null,
+    "operationId": null,
+    "path": "raw"
+   }
+  },
+  {
+   "message": "Shortcut pressed",
+   "fields": {
+    "action": "region",
+    "itemId": null,
+    "operationId": null,
+    "path": "raw"
+   }
+  },
+  {
+   "message": "Shortcut pressed",
+   "fields": {
+    "action": "window",
+    "itemId": null,
+    "operationId": null,
+    "path": "passive"
+   }
+  },
+  {
+   "message": "Shortcut pressed",
+   "fields": {
+    "action": "window",
+    "itemId": null,
+    "operationId": null,
+    "path": "raw"
+   }
+  }
+ ],
+ "history": {
+  "id": "71ca9bfd-e194-4abf-9bc9-64365641716e",
+  "name": "Screen-Capture-2026-10-22-00-34-07.png",
+  "uploadStatus": "uploaded"
+ },
+ "png": {
+  "path": "/home/patrick/work/put.gd-afa2/runs/m74/out/m74-341-window-traymenu.png",
+  "size": [
+   584,
+   232
+  ],
+  "sha256": "50d40ef72cee2d62f9dd508f37188d33537965c93fbf4389c79ecf7b7a07d59c"
+ },
+ "menuInCapture": null,
+ "after": "/home/patrick/work/put.gd-afa2/runs/m74/full/m74-341-window-traymenu-after.png"
+}

@@ -1,0 +1,149 @@
+{
+ "processes": [
+  {
+   "pid": 253718,
+   "ppid": 1,
+   "exe": "/tmp/.mount_putgd-aMoBeP/usr/bin/putgd",
+   "comm": "putgd",
+   "cmd": "/tmp/.mount_putgd-aMoBeP/usr/bin/putgd --background",
+   "qtPlatformPlugins": [],
+   "QT_QPA_PLATFORM": null,
+   "APPIMAGE": "/home/patrick/work/put.gd-afa2/images/putgd-0.1.1-nightly.942-x86_64.AppImage"
+  },
+  {
+   "pid": 253791,
+   "ppid": 253718,
+   "exe": "/tmp/.mount_putgd-aMoBeP/usr/bin/putgd-ui",
+   "comm": "putgd-ui",
+   "cmd": "/tmp/.mount_putgd-aMoBeP/usr/bin/putgd-ui",
+   "qtPlatformPlugins": [
+    "libqxcb.so"
+   ],
+   "QT_QPA_PLATFORM": null,
+   "APPIMAGE": "/home/patrick/work/put.gd-afa2/images/putgd-0.1.1-nightly.942-x86_64.AppImage"
+  }
+ ],
+ "entries": [],
+ "window": {
+  "label": "m74-settings-window",
+  "components": [
+   {
+    "blocks": 32400,
+    "box": [
+     0,
+     0,
+     1920,
+     1080
+    ]
+   }
+  ],
+  "colour": [
+   252,
+   252,
+   252
+  ],
+  "inner": [
+   299,
+   234,
+   1619,
+   831
+  ],
+  "changedShare": 1.0,
+  "ownShare": 0.963,
+  "kept": "/home/patrick/work/put.gd-afa2/runs/m74/crops/m74-settings-window.png"
+ },
+ "full": "/home/patrick/work/put.gd-afa2/runs/m74/full/m74-settings-window.png",
+ "titlebar": {
+  "label": "m74-settings-titlebar",
+  "components": [
+   {
+    "blocks": 1680,
+    "box": [
+     0,
+     0,
+     1920,
+     56
+    ]
+   }
+  ],
+  "colour": [
+   232,
+   232,
+   236
+  ],
+  "inner": null
+ },
+ "switcher": {
+  "label": "m74-settings-switcher",
+  "components": [
+   {
+    "blocks": 1586,
+    "box": [
+     656,
+     640,
+     1560,
+     984
+    ]
+   },
+   {
+    "blocks": 420,
+    "box": [
+     880,
+     456,
+     1040,
+     624
+    ]
+   },
+   {
+    "blocks": 153,
+    "box": [
+     112,
+     800,
+     336,
+     960
+    ]
+   },
+   {
+    "blocks": 63,
+    "box": [
+     112,
+     888,
+     240,
+     1032
+    ]
+   },
+   {
+    "blocks": 7,
+    "box": [
+     144,
+     1016,
+     176,
+     1032
+    ]
+   },
+   {
+    "blocks": 2,
+    "box": [
+     216,
+     888,
+     224,
+     904
+    ]
+   }
+  ],
+  "colour": [
+   252,
+   252,
+   252
+  ],
+  "inner": [
+   717,
+   719,
+   1558,
+   883
+  ],
+  "changedShare": 0.268,
+  "kept": null
+ },
+ "switcherFull": "/home/patrick/work/put.gd-afa2/runs/m74/full/m74-settings-switcher.png"
+}

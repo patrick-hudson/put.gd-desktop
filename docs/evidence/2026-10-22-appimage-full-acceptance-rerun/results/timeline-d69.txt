@@ -1,0 +1,41 @@
+2026-10-22T05:16:41Z lock acquire (45 min) exit=0
+2026-10-22T05:17:30Z closed Patrick's session-restored xterm PID 2018455 (idle bash 2018551) by exact PID (builder authority)
+2026-10-22T05:18:19Z A-C start (ac.sh d69)
+2026-10-22T05:22:14Z A-C done
+2026-10-22T05:22:30Z Ubuntu VM overlay launch (lab.py launch gnome-wayland, golden transfer-0d2922e34f4b, run labtree/work/lab-runs/ubu-afa2, ssh 22341, vnc 5941)
+2026-10-22T05:23:21Z Ubuntu VM launch returned
+2026-10-22T05:23:25Z D-H start (dk.sh)
+2026-10-22T05:23:48Z tunnel putgd-vm-ubuntu-afa2 ws:5991 -> d69:5941 started; wall tile 'Ubuntu 26.04 GNOME VM afa2 (d69)' added
+2026-10-22T05:28:31Z D-H done
+2026-10-22T05:34:25Z lock extend 45 min
+2026-10-22T05:36:23Z live in-app update 925->latest (947, which had just published) start (upd293 --live, run d69-live925)
+2026-10-22T05:37:25Z live in-app update done
+2026-10-22T05:38:16Z live925 attempt 1 aborted (journal_busy: the acceptance resident owns the data-home journal); 925 resident quit, run cleaned up; retry after K
+2026-10-22T05:39:08Z item I real logout/login:
+  2026-10-22T05:39:01Z shell plasmashell pid 2018239
+  2026-10-22T05:39:01Z logout requested (org.kde.Shutdown.logout)
+  2026-10-22T05:39:02Z old shell gone
+  2026-10-22T05:39:02Z temp drop-in /etc/sddm.conf.d/zz-afa2-relogin.conf (Relogin=true) added
+  2026-10-22T05:39:02Z systemctl restart sddm
+  2026-10-22T05:39:05Z new shell pid 2212315
+  2026-10-22T05:39:08Z temp drop-in removed
+  14583 1000 patrick seat0 2212126 user    tty4 no -
+2026-10-22T05:39:48Z login check done
+2026-10-22T05:40:28Z wall w0vncserver.service was inactive after the re-login; started it (systemctl --user start)
+2026-10-22T05:42:45Z K: quit from tray (real click)
+2026-10-22T05:43:59Z K mis-click: find-tray matched the task-manager icon; quit-tray right-clicked a task-manager entry and clicked 'Show Panel Configuration' -> panel edit mode; exited with a real click (nothing changed)
+2026-10-22T05:45:31Z K: quit from the system tray icon (1536,1049) with a real click
+2026-10-22T05:46:01Z K mis-click #2: wrong tray coordinate hit the keyboard-layout indicator and chose 'Emoji Choice' (no emoji window found running)
+2026-10-22T05:46:23Z K: quit from the put.gd tray icon (1566,1050) with a real click
+2026-10-22T05:46:43Z redo B tray picture and #341 with put.gd's own tray icon (private resident restarted)
+2026-10-22T05:48:19Z lock extend 45 min
+2026-10-22T05:48:28Z K (again, after the #341 redo): quit from the put.gd tray icon with a real click
+2026-10-22T05:48:59Z live in-app update 925->latest (947, which had just published) (run d69-live925b) done
+2026-10-22T05:49:23Z live in-app update 942->947 (N->N+1, run d69-live942) start
+2026-10-22T05:50:25Z live 942->947 done
+2026-10-22T05:51:18Z live in-app update 942->947 (run d69-live942b) done; resident quit and run cleaned
+2026-10-22T05:52:08Z cleanup: afa login disable + cleanup (autostart entry, data home, user files removed); uinput agent PID 2204946 stopped
+2026-10-22T05:53:34Z lock released --verified-clean
+2026-10-22T07:07:19Z lock acquire (30 min) for real-browser F and the tray-menu picture retake
+2026-10-22T07:07:31Z F: ChatGPT app not running (nothing to close); backed up ~/.config/mimeapps.list + kde-mimeapps.list, wrote putgd-afa2-firefox.desktop (Firefox --profile temp dir), xdg-mime default http/https; gio checked; run d69-F, live S3 public-read to put.gd/acceptance/afa2/d69/, banner click with the uinput agent
+2026-10-22T07:11:00Z F PASS (Firefox ESR, temporary profile, loaded the image); object deleted via put.gd; Firefox PID 2220277 closed; tray-menu picture retaken (no emoji popup); run cleaned; mimeapps.list + kde-mimeapps.list restored byte for byte, desktop entry and temp profile removed, gio resolves chatgpt.desktop again; no new Firefox files; uinput agent stopped; prefix listed empty; ~/work/put.gd-afa2 removed (labtree with the retired Ubuntu run; receipts copied); lock released --verified-clean

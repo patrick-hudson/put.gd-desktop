@@ -1,0 +1,73 @@
+{
+ "kind": "region",
+ "operation": {
+  "id": "5ea4acca-d54b-4732-bb43-33ff62e74723",
+  "state": "completed",
+  "copyStatus": "pending",
+  "items": [
+   {
+    "name": "Screen-Capture-2026-10-22-00-55-14.png",
+    "mime": "image/png",
+    "uploadStatus": "uploaded",
+    "link": "http://127.0.0.1:42355/fixture/afa/Screen-Capture-2026-10-22-00-55-14.png",
+    "local": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "path": "/var/home/lab/work/put.gd-afa2/runs/aurora-vm/archive/images/Screen-Capture-2026-10-22-00-55-14.png",
+     "status": "saved"
+    }
+   }
+  ],
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  }
+ },
+ "png": {
+  "bytes": 22441,
+  "sha256": "965cf8e505d38f5aa32ae9032f056c3174a4e645f6721368cad013f5aa48a4c2",
+  "magic": true
+ },
+ "coverCheck": {
+  "deleted": true,
+  "edges": {
+   "bottom": 0.7786,
+   "left": 1.0,
+   "right": 0.84,
+   "top": 1.0
+  },
+  "fraction": 0.5727,
+  "minFraction": 0.5,
+  "ok": false,
+  "reason": "uncovered_edge",
+  "rect": [
+   0,
+   0,
+   980,
+   600
+  ],
+  "size": [
+   980,
+   600
+  ]
+ },
+ "clipboard": "http://127.0.0.1:42355/fixture/afa/Screen-Capture-2026-10-22-00-55-14.png",
+ "linkCopied": true,
+ "linkServes": {
+  "status": 200,
+  "sha256": "965cf8e505d38f5aa32ae9032f056c3174a4e645f6721368cad013f5aa48a4c2",
+  "matchesLocal": true
+ },
+ "historyEntry": {
+  "id": "ed1e8ca7-ad46-428a-ad76-8da6726da6f4",
+  "name": "Screen-Capture-2026-10-22-00-55-14.png",
+  "uploadStatus": "uploaded",
+  "local": "saved",
+  "linkAvailable": true
+ },
+ "notifications": []
+}

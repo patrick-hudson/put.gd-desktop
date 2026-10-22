@@ -1,0 +1,50 @@
+{
+ "menuComponents": [
+  {
+   "blocks": 1206,
+   "box": [
+    960,
+    384,
+    1168,
+    768
+   ]
+  }
+ ],
+ "hover": [
+  1065,
+  739
+ ],
+ "menu": {
+  "label": "tray-quit",
+  "components": [
+   {
+    "blocks": 1206,
+    "box": [
+     960,
+     384,
+     1168,
+     768
+    ]
+   }
+  ],
+  "colour": [
+   28,
+   28,
+   32
+  ],
+  "inner": [
+   968,
+   389,
+   1163,
+   753
+  ],
+  "changedShare": 1.0,
+  "kept": "/var/home/lab/work/put.gd-afa2/runs/aurora-vm2/crops/tray-quit.png"
+ },
+ "allGone": true,
+ "after": {
+  "processes": [],
+  "mounts": [],
+  "entries": []
+ }
+}

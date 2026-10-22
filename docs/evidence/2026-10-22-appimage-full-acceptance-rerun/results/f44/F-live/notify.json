@@ -1,0 +1,115 @@
+{
+ "notificationsOn": true,
+ "operation": {
+  "id": "c6580692-31d4-4232-9285-6296a56931d5",
+  "state": "completed",
+  "copyStatus": "failed",
+  "items": [
+   {
+    "name": "Screen-Capture-2026-10-22-01-48-59.png",
+    "mime": "image/png",
+    "uploadStatus": "uploaded",
+    "link": "https://put.gd/acceptance/afa2/f44/Screen-Capture-2026-10-22-01-48-59.png",
+    "local": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "path": "/home/patrick/work/put.gd-afa2/runs/f44-F/archive/images/Screen-Capture-2026-10-22-01-48-59.png",
+     "status": "saved"
+    }
+   }
+  ],
+  "error": {
+   "code": "clipboard_unavailable",
+   "details": {},
+   "message": "GNOME helper cannot own CLIPBOARD"
+  }
+ },
+ "notification": {
+  "logged": [
+   {
+    "category": "putgd.ui",
+    "fields": {
+     "itemId": null,
+     "notificationId": 1,
+     "notificationText": "Uploaded. Could not copy the link. Click to open in browser.",
+     "operationId": null,
+     "summary": "operation_completed",
+     "title": "put.gd \u2014 completed",
+     "warning": false
+    },
+    "level": "info",
+    "message": "Notification shown",
+    "pid": 2567380,
+    "process": "putgd",
+    "time": "2026-10-22T06:49:00.598Z",
+    "v": 1
+   }
+  ],
+  "banner": {
+   "label": "f44-F-F-notify-notification",
+   "components": [
+    {
+     "blocks": 922,
+     "box": [
+      696,
+      8,
+      1224,
+      144
+     ]
+    },
+    {
+     "blocks": 4,
+     "box": [
+      1696,
+      8,
+      1720,
+      24
+     ]
+    }
+   ],
+   "colour": [
+    84,
+    84,
+    88
+   ],
+   "inner": [
+    715,
+    36,
+    1179,
+    138
+   ],
+   "changedShare": 1.0,
+   "kept": "/home/patrick/work/put.gd-afa2/runs/f44-F/crops/f44-F-F-notify-notification.png"
+  },
+  "full": "/home/patrick/work/put.gd-afa2/runs/f44-F/full/f44-F-F-notify-notification.png",
+  "clicked": [
+   947,
+   70
+  ],
+  "dbusMembers": [
+   "NameAcquired",
+   "NameLost",
+   "Notify",
+   "Notify",
+   "ActivationToken",
+   "ActionInvoked",
+   "NotificationClosed",
+   "ActivationToken",
+   "ActionInvoked",
+   "NotificationClosed"
+  ],
+  "notifyActions": [
+   "default",
+   "Open in browser"
+  ],
+  "actionInvoked": [
+   "default",
+   "default"
+  ],
+  "openedUrls": []
+ },
+ "notificationsOff": true
+}

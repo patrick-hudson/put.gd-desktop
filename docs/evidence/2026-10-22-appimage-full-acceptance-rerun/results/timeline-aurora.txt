@@ -1,0 +1,44 @@
+2026-10-22T05:41:21Z tunnel putgd-vm-aurora-afa2 ws:5992 -> f44:5926 started; wall tile 'Aurora 44 KDE VM afa2 (f44)' added; tools/images copied into guest
+2026-10-22T05:41:28Z A-C start (ac.sh aurora-vm in guest, input vnc 10.0.2.2:5926)
+2026-10-22T05:45:28Z A-C done
+2026-10-22T05:54:55Z wall tile checked in the built-in browser: VNC connected
+2026-10-22T06:00:32Z channel dropdown + D-H (dk.sh) in guest
+2026-10-22T06:01:12Z rerun D (region, edit), E control, #333 coords, F recorder: the uupd System Warning had overlapped the region in the first run
+2026-10-22T06:04:00Z #341 tray-menu shortcuts + J update-check
+2026-10-22T06:15:01Z item I: login enable, quit, guest reboot via session (guest_reboot.py), autologin, login check:
+  True
+  2026-10-22T06:04:15Z
+  desktop session did not restart after the reboot request
+  2026-10-22T06:14:20Z
+  fromAppImage False shell 2026-10-22T05:26:33Z []
+   01:15:01 up 49 min,  3 users,  load average: 0.05, 0.20, 0.51
+2026-10-22T06:16:46Z item I retry: guest_reboot.py's Plasma logoutAndReboot did nothing (timed out); sudo -n systemctl reboot, plasmalogin autologin, login check:
+  putgd.desktop
+  2026-10-22T06:15:04Z
+  2026-10-22T06:16:05Z
+  fromAppImage True shell 2026-10-22T06:15:56Z [('AppRun', '2026-10-22T06:15:59Z'), ('putgd', '2026-10-22T06:16:02Z'), ('putgd-ui', '2026-10-22T06:16:03Z')]
+   01:16:46 up 1 min,  2 users,  load average: 1.54, 0.65, 0.24
+  Service=plasmalogin-autologin
+  Type=wayland
+2026-10-22T06:17:44Z K: quit from the tray (real click via VNC), login disable, cleanup:
+  allGone False after {'processes': ['1800 AppRun /usr/bin/bash', '1943 putgd-0.1.1-nig /var/home/lab/afa2/images/putgd-0.1.1-nightly.942-x86_64.AppImage', '1988 putgd /tmp/.mount_putgd-nfEMgg/usr/bin/putgd', '2006 putgd-ui /tmp/.mount_putgd-nfEMgg/usr/bin/putgd-ui'], 'mounts': ['/tmp/.mount_putgd-nfEMgg'], 'entries': ['putgd-appimage-EYTje40d.desktop', 'putgd-record-appimage-D69yObAy.desktop', 'putgd-record.desktop', 'putgd-ui.desktop']} hover [1098, 744]
+  removed ['/var/home/lab/.local/state/putgd', '/var/home/lab/.local/share/putgd', 'putgd-appimage-EYTje40d.desktop', 'putgd-record-appimage-D69yObAy.desktop', 'putgd-record.desktop', 'putgd-ui.desktop', '/var/home/lab/afa-aurora-vm-review.mp4', '/var/home/lab/Pictures/afa-aurora-vm-edited.png'] after {'processes': ['1800 AppRun /usr/bin/bash', '1943 putgd-0.1.1-nig /var/home/lab/afa2/images/putgd-0.1.1-nightly.942-x86_64.AppImage', '1988 putgd /tmp/.mount_putgd-nfEMgg/usr/bin/putgd', '2006 putgd-ui /tmp/.mount_putgd-nfEMgg/usr/bin/putgd-ui'], 'mounts': ['/tmp/.mount_putgd-nfEMgg'], 'entries': []}
+2026-10-22T06:18:21Z K mis-click: (1012,777) was Klipper's icon (put.gd moved to 981 once the clipboard had content); quit-tray chose 'Configure Clipboard...'; cancelling that dialog (nothing changed). Aurora B tray picture and #341 runs had hit Klipper's menu: redo
+2026-10-22T06:20:25Z redo B tray picture + #341 (run aurora-vm2) with put.gd's own tray icon at (982,772); quit from tray; cleanup
+2026-10-22T06:25:39Z live in-app update 942->947 (upd293 --live, scenario a):
+  Traceback (most recent call last):
+    File "/var/home/lab/afa2/tool/upd293.py", line 444, in <module>
+      main()
+2026-10-22T06:26:14Z live in-app update 942->947 retry (run aurora-vm-live942b; first try failed on the frame host env, its resident quit and run cleaned):
+  {"checkLatest": null, "state": "installed", "method": "zsync", "zsyncUsed": true, "zsyncOutput": "zsync2: used 115023872 local, fetched 1063416 | 100.00% done (110.03 of 110.03 MiB)... | Validation warning: AppImage not signed | Update successful. New file created: /var/home/lab/afa2/upd/runs/aurora-vm-live942b/apps/.putgd-update-ZKKddl/putgd-0.1.1-nightly.947-x86_64.AppImage", "zsyncOutputHasControl": false, "seconds": 8.3, "image": "e75d5a01c104", "backup": "3594d1bd8a29", "restartVersion": "0.1.1-nightly.947", "afterRestart": {"current": "0.1.1-nightly.947", "latest": "0.1.1-nightly.947", "updateAvailable": false}, "folder": ["putgd-0.1.1-nightly.942-x86_64.AppImage"], "backupRemoved": true}
+2026-10-22T06:35:17Z F (real browser, live S3 public-read): run aurora-vm-f, prefix put.gd/acceptance/afa2/aurora-vm/, key set 2 piped from f44 creds.txt (never printed)
+2026-10-22T06:37:40Z F: upload public-read completed (https://put.gd/acceptance/afa2/aurora-vm/Screen-Capture-2026-10-22-01-36-18.png); banner click -> ActionInvoked default -> portal -> Firefox Flatpak (PID 4039) opened the URL, but its first-run 'Welcome to Firefox' Terms-of-Use modal covers the page; waiting for Patrick's OK before accepting/bypassing it
+2026-10-22T06:38:49Z F: clicked Firefox first-run 'Continue' (Mozilla ToU) in the disposable Aurora guest, per Patrick's approval for item F
+2026-10-22T06:40:48Z F PASS: Firefox Flatpak loaded https://put.gd/acceptance/afa2/aurora-vm/Screen-Capture-2026-10-22-01-36-18.png; object deleted via put.gd; Firefox PID 4039 closed; run cleaned; prefix listed
+2026-10-22T06:41:22Z VM stopped (lab.py reset); cleanup dry-run with evidence manifest
+2026-10-22T06:41:34Z overlay retired: guarded lab.py cleanup with evidence manifest removed disk.qcow2
+2026-10-22T06:41:34Z tunnel putgd-vm-*-afa2 stopped; wall tile removed (only this pass's 5991/5992 entries; another session's tile added meanwhile kept)
+2026-10-22T06:48:05Z golden re-hash after retirement: 6a2fb407830f95228bb06f4d20d7cd0bd1aec8ed937ef59430e50eb608b62c2d (unchanged)
+2026-10-22T06:53:26Z relaunch an Aurora overlay (aur-afa2b) only to retake the Channel dropdown picture (the first run's click missed: the window had scrolled)
+2026-10-22T06:55:36Z tunnel putgd-vm-aurora-afa2b ws:5992 -> f44:5926; tile added
+2026-10-22T06:59:15Z Channel dropdown retaken on aur-afa2b (run aurora-vm3): two options, Nightly preselected; overlay retired (guarded cleanup + manifest), tunnel stopped, tile removed, golden re-hashed, ~/work/put.gd-afa2 removed on f44

@@ -1,0 +1,6 @@
+{
+ "sessionEntryNow": "[Desktop Entry]\nType=Application\nName=put.gd\nExec=/bin/sh \"/var/home/lab/.local/share/putgd/login/appimage-start.sh\" --background\nTerminal=false\nX-putgd-Managed=true\n",
+ "processes": [],
+ "shellStarted": "2026-10-22T05:26:33Z",
+ "fromAppImage": false
+}

@@ -156,6 +156,14 @@ def menu_shortcut(args):
     box = menu.get('inner') or (menu['components'][0]['box'] if menu.get('components') else None)
     rep = {'action': args.action, 'shortcut': keys, 'opened': args.open, 'menuBox': box, 'menuFull': fullshot(run, menu_frame, f'{args.label}-menu-open')}
     t = time.monotonic(); inp.key(*names)
+    if args.notice_wait:
+        # #357: with the menu still open, region selection gives up after 3 s with a notice.
+        time.sleep(args.notice_wait)
+        nf = frames.grab(); rep['noticeFull'] = fullshot(run, nf, f'{args.label}-notice')
+        rep['noticeLog'] = [{'message': l.get('message'), 'fields': l.get('fields')} for l in run.logs() if 'input_grab' in json.dumps(l) or 'could not start' in json.dumps(l)][-3:]
+    if args.close_after is not None:
+        # Esc reaches the menu (put.gd holds no grab while it retries), so the menu closes and selection starts.
+        time.sleep(args.close_after); inp.key('Escape'); rep['menuClosedAt'] = round(time.monotonic() - t, 2)
     if args.action == 'region':
         time.sleep(args.selector_wait)
         sel = frames.grab(); rep['selectorFull'] = fullshot(run, sel, f'{args.label}-selector')
@@ -236,6 +244,57 @@ def region_size(args):
     out(run.record(f"regionSize:{x1 - x0}x{y1 - y0}{':coords' if args.coords else ''}", rep))
 
 
+# ---------------------------------------------------------------- F with a real browser (Patrick, 2026-10-22)
+
+LIVE_PROFILE = 'live-s3'
+
+
+def live_s3(args):
+    """Point every action at a live S3 profile (bucket put.gd, links through https://put.gd), then store key set 2
+    from stdin in the session. The keys go from stdin to the session socket; nothing here prints or stores them."""
+    run = Run(args.name)
+    if sys.stdin.isatty(): raise SystemExit('keys come on stdin')
+    keys = json.loads(sys.stdin.read())
+    doc = run.ok('settings.get')['document']
+    profile = {'credentials': {'mode': 'session', 'reference': None}, 'id': LIVE_PROFILE, 'label': 'Live S3 acceptance', 'provider': 's3',
+               'settings': {'aclMode': args.acl, 'addressing': 'path', 'bucket': 'put.gd', 'connectTimeoutMs': 10000, 'endpoint': 'https://s3.us-east-2.amazonaws.com',
+                            'lowSpeedBytesPerSecond': 1, 'lowSpeedTimeSeconds': 120, 'objectPrefix': args.prefix,
+                            'publicUrlBase': 'https://put.gd', 'region': 'us-east-2', 'requestTimeoutMs': 120000, 'storageClass': 'STANDARD'}}
+    doc['profiles'] = [p for p in doc['profiles'] if p['id'] != LIVE_PROFILE] + [profile]
+    for name, action in doc['actions'].items():
+        if 'destination' in action: action['profileId'] = LIVE_PROFILE
+    cfg = Path(run.env()['XDG_CONFIG_HOME']) / 'putgd/config.json'
+    cfg.write_text(json.dumps(doc, indent=1)); run.ok('settings.reload')
+    snap = run.wait(lambda: (lambda s: s if s.get('ok') and s['result']['metadata']['validation']['ok'] else None)(run.cli('settings.get')), 20)
+    stored = run.socket_request('setup.storeCredentials', {'profileId': LIVE_PROFILE, 'expectedRevision': snap['result']['metadata']['acceptedRevision'],
+                                                            'credentials': {'accessKey': keys['accessKey'], 'secretKey': keys['secretKey']}})
+    del keys
+    rep = {'profile': {k: v for k, v in profile['settings'].items()}, 'stored': stored.get('ok'), 'storeError': (stored.get('error') or {}).get('code')}
+    if stored.get('ok'):
+        job = run.wait(lambda: (lambda j: j if j.get('ok') and j['result']['state'] != 'running' else None)(run.cli('setup.inspect', {'id': stored['result']['setupId']})), 40)
+        rep['credentials'] = (job or {}).get('result', {}).get('state')
+    out(run.record('liveS3', rep))
+
+
+def browser_shot(args):
+    """After the notification click: browser processes started since the click, the resident's open record, a full frame."""
+    run = Run(args.name); frames, inp, size = tools(run)
+    time.sleep(args.wait)
+    since = time.time() - args.since
+    procs = []
+    for p in Path('/proc').iterdir():
+        if not p.name.isdigit(): continue
+        try:
+            if p.stat().st_uid != os.getuid() or p.stat().st_mtime < since: continue
+            comm = (p / 'comm').read_text().strip()
+            if re.search(r'firefox|chrom|epiphany|falkon|konqueror|GeckoMain', comm, re.I):
+                procs.append({'pid': int(p.name), 'comm': comm, 'cmd': (p / 'cmdline').read_bytes().replace(b'\0', b' ').decode(errors='replace')[:300]})
+        except OSError: continue
+    rep = {'browserProcesses': procs, 'opened': [l.get('fields') for l in run.logs('Opened on the host')][-2:],
+           'full': fullshot(run, frames.grab(), args.label)}
+    out(run.record('browser:' + args.label, rep))
+
+
 # ---------------------------------------------------------------- J
 
 def update_check(args):
@@ -261,11 +320,15 @@ def main():
     a = sub.add_parser('menu-shortcut'); a.add_argument('name'); a.add_argument('--action', required=True, choices=('region', 'window', 'desktop'))
     a.add_argument('--open', required=True, help='click:X,Y (real click) or key:super (real key)'); a.add_argument('--button', default='right')
     a.add_argument('--label', required=True); a.add_argument('--drag'); a.add_argument('--selector-wait', type=float, default=2.5); a.add_argument('--timeout', type=float, default=30)
+    a.add_argument('--close-after', type=float); a.add_argument('--notice-wait', type=float)
     a = sub.add_parser('region-size'); a.add_argument('name'); a.add_argument('--drag', required=True); a.add_argument('--selector-wait', type=float, default=2.5)
     a.add_argument('--coords', action='store_true', help='show coord_pattern.py and check the origin from the PNG itself')
     a = sub.add_parser('update-check'); a.add_argument('name'); a.add_argument('--tool', required=True); a.add_argument('--ssl-cert-file'); a.add_argument('--label', required=True)
+    a = sub.add_parser('live-s3'); a.add_argument('name'); a.add_argument('--prefix', required=True); a.add_argument('--acl', default='omit', choices=('omit', 'public-read'))
+    a = sub.add_parser('browser-shot'); a.add_argument('name'); a.add_argument('--label', required=True); a.add_argument('--wait', type=float, default=6)
+    a.add_argument('--since', type=float, default=120)
     args = p.parse_args()
-    {'updates-first-open': updates_first_open, 'channel-options': channel_options, 'status-clean': status_clean, 'channel': channel, 'menu-shortcut': menu_shortcut,
+    {'live-s3': live_s3, 'browser-shot': browser_shot, 'updates-first-open': updates_first_open, 'channel-options': channel_options, 'status-clean': status_clean, 'channel': channel, 'menu-shortcut': menu_shortcut,
      'region-size': region_size, 'update-check': update_check}[args.cmd](args)
 
 

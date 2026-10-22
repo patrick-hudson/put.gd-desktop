@@ -1,0 +1,82 @@
+{
+ "menuComponents": [
+  {
+   "blocks": 854,
+   "box": [
+    88,
+    792,
+    336,
+    1040
+   ]
+  }
+ ],
+ "hover": [
+  212,
+  1024
+ ],
+ "menu": {
+  "label": "tray-quit",
+  "components": [
+   {
+    "blocks": 877,
+    "box": [
+     88,
+     792,
+     336,
+     1048
+    ]
+   },
+   {
+    "blocks": 10,
+    "box": [
+     464,
+     144,
+     496,
+     176
+    ]
+   },
+   {
+    "blocks": 6,
+    "box": [
+     1904,
+     536,
+     1920,
+     568
+    ]
+   },
+   {
+    "blocks": 1,
+    "box": [
+     1896,
+     1056,
+     1904,
+     1064
+    ]
+   }
+  ],
+  "colour": [
+   32,
+   32,
+   36
+  ],
+  "inner": [
+   202,
+   799,
+   232,
+   1001
+  ],
+  "changedShare": 1.0,
+  "kept": "/home/patrick/work/put.gd-afa2/runs/m74/crops/tray-quit.png"
+ },
+ "allGone": false,
+ "after": {
+  "processes": [
+   "261183 putgd /tmp/.mount_putgd-gjOHoI/usr/bin/putgd",
+   "261278 putgd-0.1.1-nig /home/patrick/work/put.gd-afa2/images/putgd-0.1.1-nightly.942-x86_64.AppImage"
+  ],
+  "mounts": [
+   "/tmp/.mount_putgd-gjOHoI"
+  ],
+  "entries": []
+ }
+}

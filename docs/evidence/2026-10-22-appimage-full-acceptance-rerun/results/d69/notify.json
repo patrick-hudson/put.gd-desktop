@@ -1,0 +1,103 @@
+{
+ "notificationsOn": true,
+ "operation": {
+  "id": "32eef6a0-f9b9-491e-8490-e11db8da8570",
+  "state": "completed",
+  "copyStatus": "pending",
+  "items": [
+   {
+    "name": "Screen-Capture-2026-10-22-00-26-01.png",
+    "mime": "image/png",
+    "uploadStatus": "uploaded",
+    "link": "http://127.0.0.1:43465/fixture/afa/Screen-Capture-2026-10-22-00-26-01.png",
+    "local": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "path": "/home/patrick/work/put.gd-afa2/runs/d69/archive/images/Screen-Capture-2026-10-22-00-26-01.png",
+     "status": "saved"
+    }
+   }
+  ],
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  }
+ },
+ "notification": {
+  "logged": [
+   {
+    "category": "putgd.ui",
+    "fields": {
+     "itemId": null,
+     "notificationId": 1,
+     "notificationText": "Uploaded. Link copied to the clipboard. Click to open in browser.",
+     "operationId": null,
+     "summary": "operation_completed",
+     "title": "put.gd \u2014 completed",
+     "warning": false
+    },
+    "level": "info",
+    "message": "Notification shown",
+    "pid": 2205086,
+    "process": "putgd",
+    "time": "2026-10-22T05:26:02.788Z",
+    "v": 1
+   }
+  ],
+  "banner": {
+   "label": "d69-notify-notification",
+   "components": [
+    {
+     "blocks": 588,
+     "box": [
+      1544,
+      880,
+      1888,
+      992
+     ]
+    }
+   ],
+   "colour": [
+    28,
+    40,
+    48
+   ],
+   "inner": [
+    1553,
+    885,
+    1883,
+    984
+   ],
+   "changedShare": 1.0,
+   "kept": "/home/patrick/work/put.gd-afa2/runs/d69/crops/d69-notify-notification.png"
+  },
+  "full": "/home/patrick/work/put.gd-afa2/runs/d69/full/d69-notify-notification.png",
+  "clicked": [
+   1718,
+   918
+  ],
+  "dbusMembers": [
+   "NameAcquired",
+   "NameLost",
+   "Notify",
+   "ActivationToken",
+   "ActionInvoked",
+   "NotificationClosed"
+  ],
+  "notifyActions": [
+   "default",
+   "Open in browser"
+  ],
+  "actionInvoked": [
+   "default"
+  ],
+  "openedUrls": [
+   "2026-10-22T05:26:06Z http://127.0.0.1:43465/fixture/afa/Screen-Capture-2026-10-22-00-26-01.png lib=unset plugins=unset appdir=unset parent=systemd"
+  ]
+ },
+ "notificationsOff": true
+}

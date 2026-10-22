@@ -1,0 +1,37 @@
+2026-10-22T05:16:40Z lock acquire (45 min) exit=0
+2026-10-22T05:18:19Z A-C start (ac.sh k72)
+2026-10-22T05:22:13Z A-C done
+2026-10-22T05:23:25Z D-H start (dk.sh)
+2026-10-22T05:28:31Z D-H done
+2026-10-22T05:34:26Z lock extend 45 min
+2026-10-22T05:36:24Z live in-app update 925->latest (947, which had just published) start (upd293 --live, run k72-live925)
+2026-10-22T05:37:26Z live in-app update done
+2026-10-22T05:38:17Z live925 attempt 1 aborted (journal_busy: the acceptance resident owns the data-home journal); 925 resident quit, run cleaned up; retry after K
+2026-10-22T05:39:16Z item I real logout/login:
+  2026-10-22T05:39:01Z shell plasmashell pid 384651
+  2026-10-22T05:39:01Z logout requested (org.kde.Shutdown.logout)
+  2026-10-22T05:39:02Z old shell gone
+  2026-10-22T05:39:14Z systemctl restart sddm
+  2026-10-22T05:39:16Z new shell pid 1251425
+  8513 1000 patrick seat0 1251143 user    tty3 no -
+2026-10-22T05:39:49Z login check done
+2026-10-22T05:42:45Z K: quit from tray (real click)
+2026-10-22T05:44:02Z K mis-click: find-tray matched the task-manager icon; quit-tray right-clicked a task-manager entry and clicked 'Show Panel Configuration' -> panel edit mode; exited with a real click (nothing changed)
+2026-10-22T05:45:31Z K: quit from the system tray icon (1493,1053) with a real click
+2026-10-22T05:46:01Z K mis-click #2: wrong tray coordinate hit the notifications icon and chose 'Configure Event Notifications and Actions...'; closed the opened systemsettings kcm_notifications PID 1256807 (nothing changed)
+2026-10-22T05:46:23Z K: quit from the put.gd tray icon (1522,1052) with a real click
+2026-10-22T05:46:43Z redo B tray picture and #341 with put.gd's own tray icon (private resident restarted)
+2026-10-22T05:48:20Z lock extend 45 min
+2026-10-22T05:48:28Z K (again, after the #341 redo): quit from the put.gd tray icon with a real click
+2026-10-22T05:49:00Z live in-app update 925->latest (947, which had just published) (run k72-live925b) done
+2026-10-22T05:49:23Z live in-app update 942->947 (N->N+1, run k72-live942) start
+2026-10-22T05:50:25Z live 942->947 done
+2026-10-22T05:51:18Z live in-app update 942->947 (run k72-live942b) done; resident quit and run cleaned
+2026-10-22T05:52:09Z cleanup: afa login disable + cleanup (autostart entry, data home, user files removed); uinput agent PID 1242927 stopped
+2026-10-22T05:53:31Z removed ~/work/put.gd-afa2 (evidence copied to the workstation)
+2026-10-22T05:53:33Z lock released --verified-clean
+2026-10-22T07:03:30Z restaged ~/work/put.gd-afa2 (tool + 942 AppImage, SHA256SUMS verified) for the real-browser F
+2026-10-22T07:03:38Z lock acquire (30 min) for real-browser F
+2026-10-22T07:03:46Z F: ChatGPT app not running (nothing to close); backed up ~/.config/mimeapps.list + kde-mimeapps.list, wrote ~/.local/share/applications/putgd-afa2-firefox.desktop (snap Firefox --profile temp dir) and xdg-mime default for http/https; gio checked before the click
+2026-10-22T07:03:53Z F: run k72-F, live S3 public-read to put.gd/acceptance/afa2/k72/, banner click with the uinput agent
+2026-10-22T07:07:10Z F PASS (snap Firefox, temporary profile, loaded the image); object deleted via put.gd; Firefox PID 1264026 closed; run cleaned; mimeapps.list + kde-mimeapps.list restored byte for byte, desktop entry and temp profile removed, gio resolves chatgpt.desktop again; no new files in the Firefox root; uinput agent stopped; ~/work/put.gd-afa2 removed; prefix listed; lock released --verified-clean

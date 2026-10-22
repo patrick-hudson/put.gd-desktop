@@ -30,6 +30,7 @@ SESSION_VARIABLES = ('DISPLAY', 'XAUTHORITY', 'DBUS_SESSION_BUS_ADDRESS', 'XDG_S
                      'XDG_DATA_DIRS', 'LANG')
 ACCESS, SECRET = 'PUTGD_SYNTHETIC_ACCESS', 'putgd-synthetic-secret-not-a-real-key'  # tests/fixtures/s3_server.py's own pair
 MAGENTA = (255, 0, 255)
+DEFAULT_KEYS = {'region': 'Ctrl+Shift+1', 'window': 'Ctrl+Shift+2', 'desktop': 'Ctrl+Shift+3'}
 DATA_HOME = Path.home() / '.local/share'
 # Theme.cpp palettes (dark and light) plus FrameView's surround, from r283lab.py.
 DARK = ['111317', '181B21', '20242C', '232838', '2A2F38', '343A45', 'E7E9EE', 'C4C9D2', '9AA1AD', '6F7682', '6EA8FE',
@@ -479,7 +480,8 @@ def config_document(run, template):
     doc = dict(template)
     doc.update({
         'schemaVersion': 1,
-        'actions': {n: {'destination': 'upload', 'profileId': 'afa-fixture', 'shortcut': ''} for n in ('clipboard', 'desktop', 'edit', 'region', 'window')} | {'record': {'shortcut': ''}},
+        # The app's default shortcuts (Settings::defaults: Ctrl+Shift+1..3), which #341's check presses.
+        'actions': {n: {'destination': 'upload', 'profileId': 'afa-fixture', 'shortcut': DEFAULT_KEYS.get(n, '')} for n in ('clipboard', 'desktop', 'edit', 'region', 'window')} | {'record': {'shortcut': ''}},
         'archive': {'folders': {'images': None, 'other': None, 'text': None, 'videos': None}, 'keepUploads': True, 'root': str(run.dir / 'archive')},
         'profiles': [{'credentials': {'mode': 'session', 'reference': None}, 'id': 'afa-fixture', 'label': 'Loopback fixture', 'provider': 's3',
                       'settings': {'aclMode': 'public-read', 'addressing': 'path', 'bucket': 'fixture', 'connectTimeoutMs': 5000,

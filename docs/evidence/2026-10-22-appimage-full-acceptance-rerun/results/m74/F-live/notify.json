@@ -1,0 +1,100 @@
+{
+ "notificationsOn": true,
+ "operation": {
+  "id": "ba0db602-9e2c-4ec5-a6f4-14835d9db74c",
+  "state": "completed",
+  "copyStatus": "copied",
+  "items": [
+   {
+    "name": "Screen-Capture-2026-10-22-01-44-36.png",
+    "mime": "image/png",
+    "uploadStatus": "uploaded",
+    "link": "https://put.gd/acceptance/afa2/m74/Screen-Capture-2026-10-22-01-44-36.png",
+    "local": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "path": "/home/patrick/work/put.gd-afa2/runs/m74-F/archive/images/Screen-Capture-2026-10-22-01-44-36.png",
+     "status": "saved"
+    }
+   }
+  ],
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  }
+ },
+ "notification": {
+  "logged": [
+   {
+    "category": "putgd.ui",
+    "fields": {
+     "itemId": null,
+     "notificationId": 1,
+     "notificationText": "Uploaded. Link copied to the clipboard. Click to open in browser.",
+     "operationId": null,
+     "summary": "operation_completed",
+     "title": "put.gd \u2014 completed",
+     "warning": false
+    },
+    "level": "info",
+    "message": "Notification shown",
+    "pid": 265340,
+    "process": "putgd",
+    "time": "2026-10-22T06:44:38.091Z",
+    "v": 1
+   }
+  ],
+  "banner": {
+   "label": "m74-F-F-notify-notification",
+   "components": [
+    {
+     "blocks": 608,
+     "box": [
+      1416,
+      8,
+      1904,
+      88
+     ]
+    }
+   ],
+   "colour": [
+    32,
+    32,
+    36
+   ],
+   "inner": [
+    1421,
+    14,
+    1899,
+    82
+   ],
+   "changedShare": 1.0,
+   "kept": "/home/patrick/work/put.gd-afa2/runs/m74-F/crops/m74-F-F-notify-notification.png"
+  },
+  "full": "/home/patrick/work/put.gd-afa2/runs/m74-F/full/m74-F-F-notify-notification.png",
+  "clicked": [
+   1660,
+   36
+  ],
+  "dbusMembers": [
+   "NameAcquired",
+   "NameLost",
+   "Notify",
+   "ActionInvoked",
+   "NotificationClosed"
+  ],
+  "notifyActions": [
+   "default",
+   "Open in browser"
+  ],
+  "actionInvoked": [
+   "default"
+  ],
+  "openedUrls": []
+ },
+ "notificationsOff": true
+}
