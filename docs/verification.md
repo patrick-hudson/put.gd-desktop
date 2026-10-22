@@ -61,6 +61,31 @@ Policy: [CI coverage, package installs](ci.md#package-installs). Evidence:
 
 Not covered: the `ci.yml` jobs' installs (#389).
 
+## Weekly stress lane on k72 (#360) — 2026-10-22
+
+Code: [#364](https://github.com/patrick-hudson/put.gd-desktop/pull/364). How it
+works: [CI coverage, weekly run on k72](ci.md#weekly-run-on-k72) and
+[remote builders](remote-builders.md#weekly-stress-lane-on-k72). Evidence:
+`docs/evidence/2026-10-22-stress-weekly/`.
+
+- **Installed.** `tools/lab/install-stress-weekly.sh` ran on k72 and enabled
+  lingering. `systemctl --user list-timers` shows the next run at
+  Sun 2026-10-25 03:00:00 CDT.
+- **Skip path.** With a fake quiet A/V lock in a test copy, the service skipped
+  the week, logged why and wrote a `weekly.json` with status `skipped`. A dry
+  run with the same lock reported the same skip.
+- **Full run.** At `3ae60a5`, ten iterations of the 74 integration tests ran
+  with four busy loops at time scale 3, 117.5–119.9 s each.
+  `capture_process_integration` failed once
+  ([#398](https://github.com/patrick-hudson/put.gd-desktop/issues/398)). The
+  earlier run at `fe24932` reached the live desktop through the inherited
+  session environment, which the wrapper and the unit now remove.
+- **Token missing.** `~/.config/putgd-stress/github-token` doesn't exist yet.
+  The run logged that it wouldn't comment and kept its results; #398 was
+  filed by hand from the run's ledger with `flake_ledger.py issues`.
+- **Tests.** `tests/ci/test_stress_weekly.py` (19) and
+  `tests/ci/test_flake_tools.py` (20) run in the `contracts` job.
+
 ## Flaky-test rethink (#351) — 2026-10-22
 
 Code: [#351](https://github.com/patrick-hudson/put.gd-desktop/pull/351), head

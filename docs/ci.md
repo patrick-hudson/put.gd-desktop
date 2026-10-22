@@ -577,9 +577,67 @@ assumed the first operation takes the shared upload lock, and an X11 test read
 grabs before the resident's ungrab reached the server. The ledgers are in
 `docs/evidence/2026-10-22-flaky-tests/stress/`.
 
-The lane isn't scheduled. A weekly timer on k72 is proposed in
-[#360](https://github.com/patrick-hudson/put.gd-desktop/issues/360) and waits
-for Patrick's approval.
+### Weekly run on k72
+
+Since 2026-10-21 the lane runs every week on k72 (Kubuntu 26.04, four cores
+like the hosted runner), so a new flaky test shows up before it turns CI red
+([#360](https://github.com/patrick-hudson/put.gd-desktop/issues/360), approved
+by Patrick). `tools/ci/stress_weekly.py` runs as the systemd user service
+`putgd-stress-weekly.service`, which `putgd-stress-weekly.timer` starts on
+Sundays at 03:00 local time. `Persistent=false` means a missed week isn't caught
+up. Each run does this:
+
+1. **It checks first and skips the week** with the reason logged when:
+   - the k72 desktop lock (`tools/lab/desktop_lock.py`) is held for quiet, A/V
+     or performance work (its purpose names quiet, recording, A/V, audio,
+     video, perf, latency, benchmark, memory, timing or profiling);
+   - another weekly run holds `~/.local/state/putgd-stress/weekly.lock`;
+   - a `ctest` or `stress_suite.py` process (any owner, matched by its exact
+     name) is still running, or the load is still above the CPU count, after
+     an hour of waiting. It never stops those processes.
+
+   It repeats these checks after the build, before the tests start.
+2. **It fetches `origin/nightly`** into its own tree, `~/work/put.gd-stress`,
+   with `build/sdk` and `build/dependencies` linked to `~/work/put.gd/build/`.
+   It configures with `-DPUTGD_TEST_TIMEOUT_SCALE=3` and builds at
+   `nice -n 10 -j3`. It removes the previous `build/dev` first only when the
+   disk lacks the reserve from [lab-storage.md](lab-storage.md): 10 GiB plus
+   the build.
+3. **It runs the tests:** `stress_suite.py --iterations 10 --hogs 4
+   --time-scale 3 -- --preset dev -L integration --parallel 12
+   --resource-spec-file tools/ci/ctest-resources.json`.
+4. **It writes the results** to `~/work/flake-stress/weekly-DATE/` on k72:
+   `ledger.json`, `summary.md`, each iteration's JUnit and log, `build.log`,
+   `weekly.log` and `weekly.json` (status, commit, timings and the tracker
+   outcome). It keeps eight weeks of these directories and deletes only older
+   ones that it created itself.
+5. **It reports to the tracker:** `flake_ledger.py issues` adds a comment to
+   the `flaky-test` issue of every test that failed a run, opening or
+   reopening the issue as CI does. The comment gives the failure count, the
+   commit and the first failure line. This uses a fine-grained token at
+   `~/.config/putgd-stress/github-token` (see
+   [remote-builders.md](remote-builders.md#weekly-stress-lane-on-k72)).
+   Without the token, the run logs why and keeps its local results.
+
+To see a week's result, read `summary.md` in the newest `weekly-*` directory,
+or run `journalctl --user -u putgd-stress-weekly` on k72. A test that fails
+only in this lane runs under more contention than the hosted runner. Treat it
+like a CI flake: find the wait that assumes a fast machine.
+
+The first runs, on 2026-10-21, were started by hand
+(`docs/evidence/2026-10-22-stress-weekly/`):
+
+- A fake quiet A/V lock in a test copy skipped the week and logged why.
+- The first full run timed out five native and X11 tests in every iteration.
+  They had inherited the Plasma session from the systemd user manager (see
+  [remote-builders.md](remote-builders.md#weekly-stress-lane-on-k72)). Since
+  that fix, the children get a headless environment.
+- The rerun built incrementally in 31 s, then ran the 74 integration tests ten
+  times in about 118 s each, 20 minutes in all.
+  `capture_process_integration` failed 1 of 10 runs, now
+  [#398](https://github.com/patrick-hudson/put.gd-desktop/issues/398).
+
+![The weekly stress lane on k72: the timer, a skipped week, a full run and the missing-token path, code 3ae60a5](https://raw.githubusercontent.com/patrick-hudson/put.gd-desktop/33f03566b9594d130c6a91186f0fcf916892072b/docs/evidence/2026-10-22-stress-weekly/stress-weekly-k72.png)
 
 ### Parallelism
 
