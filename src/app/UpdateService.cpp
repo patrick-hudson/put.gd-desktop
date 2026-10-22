@@ -66,6 +66,9 @@ void UpdateService::start() {
  installState_=appimage::settle(stateRoot_,image_,build_.version);
  if(installState_["installed"].toObject()["backupRemoved"].toBool()&&installState_["installed"].toObject()["version"]==build_.version)
   logging::info(logApp(),"Update finished: the new version started, so the old image's backup was removed",{{"version",build_.version}});
+ const auto restored=installState_["restored"].toObject();
+ if(restored["image"]==image_&&restored["runningVersion"]==build_.version&&installState_["installed"].isNull())
+  logging::info(logApp(),"The previous version was moved back over the update, so nothing waits for a restart",{{"version",build_.version},{"update",restored["version"]}});
  schedule();
 }
 void UpdateService::schedule() {

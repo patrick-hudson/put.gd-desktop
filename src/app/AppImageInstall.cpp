@@ -29,6 +29,17 @@ bool syncPath(const QString& path,bool directory) {
  return synced;
 }
 #endif
+// The file at path is the one record {device, inode, size, mtime} describes.
+bool isRecordedFile(const QString& path,const QJsonObject& record) {
+#ifdef Q_OS_UNIX
+ struct stat info{};
+ return ::lstat(QFile::encodeName(path).constData(),&info)==0&&S_ISREG(info.st_mode)&&
+  QString::number(quint64(info.st_dev))==record["device"].toString()&&QString::number(quint64(info.st_ino))==record["inode"].toString()&&
+  qint64(info.st_size)==record["size"].toInteger()&&qint64(info.st_mtim.tv_sec)==record["mtime"].toInteger();
+#else
+ Q_UNUSED(path);Q_UNUSED(record);return false;
+#endif
+}
 }
 bool isAppImage(const QString& path) {
  QFile file(path);
@@ -36,7 +47,18 @@ bool isAppImage(const QString& path) {
  const auto head=file.read(11);
  return head.size()==11&&head.startsWith("\x7f""ELF")&&head.mid(8,3)==QByteArray("AI\x02",3);
 }
-Image inspect(const QString& path,qint64 requiredBytes,Error& error) {
+Access hostAccess() {
+#ifdef Q_OS_UNIX
+ return {
+  [](const QString& file){return QFileInfo(file).ownerId()==::getuid();},
+  [](const QString& directory){struct statvfs volume{};return ::statvfs(QFile::encodeName(directory).constData(),&volume)==0&&(volume.f_flag&ST_RDONLY);},
+  [](const QString& directory){return ::access(QFile::encodeName(directory).constData(),W_OK|X_OK)==0;},
+ };
+#else
+ return {[](const QString&){return false;},[](const QString&){return true;},[](const QString&){return false;}};
+#endif
+}
+Image inspect(const QString& path,qint64 requiredBytes,Error& error,const Access& access) {
  Image image;
  const QFileInfo given(path);
  if(path.isEmpty()||!given.isAbsolute()){error={"update_install_unavailable","put.gd is not running from an AppImage file",{}};return {};}
@@ -46,11 +68,11 @@ Image inspect(const QString& path,qint64 requiredBytes,Error& error) {
  image.path=canonical;image.directory=file.absolutePath();image.size=file.size();
  image.updateInformation=LoginStartup::appImageUpdateInformation(canonical);
 #ifdef Q_OS_UNIX
- if(file.ownerId()!=::getuid()){error=notWritable("The AppImage belongs to another user, so put.gd won't replace it",image.directory);return {};}
- struct statvfs volume{};
- if(::statvfs(QFile::encodeName(image.directory).constData(),&volume)==0&&(volume.f_flag&ST_RDONLY)){error=notWritable("The AppImage's folder is on a read-only file system",image.directory);return {};}
- if(::access(QFile::encodeName(image.directory).constData(),W_OK|X_OK)!=0){error=notWritable("put.gd can't write to the AppImage's folder",image.directory);return {};}
+ if(!access.ownedByUser(canonical)){error=notWritable("The AppImage belongs to another user, so put.gd won't replace it",image.directory);return {};}
+ if(access.readOnly(image.directory)){error=notWritable("The AppImage's folder is on a read-only file system",image.directory);return {};}
+ if(!access.writable(image.directory)){error=notWritable("put.gd can't write to the AppImage's folder",image.directory);return {};}
 #else
+ Q_UNUSED(access);
  error={"update_install_unavailable","In-app updates replace AppImages on Linux only",{}};return {};
 #endif
  const QStorageInfo storage(image.directory);
@@ -165,16 +187,15 @@ QJsonObject settle(const QString& stateRoot,const QString& runningImage,const QS
   // The new version has started from the path: the backup has done its job,
   // if it is still the file put.gd made. Anything else there is the user's.
   const auto path=backup["path"].toString();
-  bool remove=false;
-#ifdef Q_OS_UNIX
-  struct stat kept{};
-  if(QFileInfo(path).fileName().startsWith(backupPrefix)&&::lstat(QFile::encodeName(path).constData(),&kept)==0&&S_ISREG(kept.st_mode))
-   remove=QString::number(quint64(kept.st_dev))==backup["device"].toString()&&QString::number(quint64(kept.st_ino))==backup["inode"].toString()&&
-    qint64(kept.st_size)==backup["size"].toInteger()&&qint64(kept.st_mtim.tv_sec)==backup["mtime"].toInteger();
-#endif
+  const bool remove=QFileInfo(path).fileName().startsWith(backupPrefix)&&isRecordedFile(path,backup);
   auto record=installed;
   record["backupRemoved"]=remove&&QFile::remove(path);
   state["installed"]=record;state["backup"]=QJsonValue();changed=true;
+ } else if(!backup.isEmpty()&&!runningImage.isEmpty()&&installed["image"].toString()==runningImage&&isRecordedFile(runningImage,backup)) {
+  // The backup was moved back onto the path by hand, because the new version
+  // didn't start (#412): nothing waits for a restart any more. Files stay.
+  state["restored"]=QJsonObject{{"image",runningImage},{"version",installed["version"]},{"runningVersion",runningVersion}};
+  state["installed"]=QJsonValue();state["backup"]=QJsonValue();changed=true;
  }
  if(changed)writeState(stateRoot,state);
  return state;
