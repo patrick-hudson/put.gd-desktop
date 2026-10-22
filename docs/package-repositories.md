@@ -14,8 +14,8 @@ nothing.
 
 | Package | File | Notes |
 | --- | --- | --- |
-| DEB (`ubuntu24.04`, `ubuntu26.04`, `debian13`) | `/etc/apt/sources.list.d/putgd.sources` | A dpkg conffile. `Signed-By` holds the channel's public key inline, so a removed but not purged package still leaves a source apt can verify. The key is also at `/usr/share/keyrings/putgd-archive-keyring.gpg`. |
-| RPM (`fedora44`) | `/etc/yum.repos.d/putgd.repo` | Copied in on the first install only, from `/usr/share/putgd/repo/putgd.repo`, and declared `%ghost %config(noreplace)`. The key is `/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd`. |
+| DEB (`ubuntu24.04`, `ubuntu26.04`, `debian13`) | `/etc/apt/sources.list.d/putgd.sources` | A dpkg conffile. `Signed-By` holds the channel's public key inline, so a removed but not purged package still leaves a source apt can verify. The key is also at `/usr/share/keyrings/putgd-archive-keyring.gpg`. Both channels' files are in `/usr/share/putgd/repo/putgd-{nightly,stable}.sources` ([switching](#switching-channels)). |
+| RPM (`fedora44`) | `/etc/yum.repos.d/putgd.repo` | Copied in on the first install only, from `/usr/share/putgd/repo/putgd.repo`, and declared `%ghost %config(noreplace)`. Both channels' files are in `/usr/share/putgd/repo/putgd-{nightly,stable}.repo`, and each names its own key, `/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-{nightly,stable}`. `RPM-GPG-KEY-putgd` holds the package's own channel key, for files written before [#386](https://github.com/patrick-hudson/put.gd-desktop/issues/386). |
 
 ```ini
 # /etc/apt/sources.list.d/putgd.sources (nightly, Ubuntu 24.04 and Mint 22)
@@ -37,7 +37,7 @@ baseurl=https://pkg.put.gd/rpm/fedora/44/x86_64/nightly
 enabled=1
 gpgcheck=1
 repo_gpgcheck=0
-gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly
 metadata_expire=6h
 ```
 
@@ -46,6 +46,77 @@ metadata_expire=6h
 - **dnf:** delete the file, or set `enabled=0`. Upgrades leave either change alone, and `dnf remove putgd` removes the file.
 
 The packages also install AppStream metadata, `/usr/share/metainfo/gd.put.Putgd.metainfo.xml`.
+
+## Switching channels
+
+put.gd doesn't change your repository file. A DEB or RPM follows the channel its repository file
+names, and you move it to the other channel yourself, in a terminal
+([#386](https://github.com/patrick-hudson/put.gd-desktop/issues/386); Patrick decided against
+a password prompt inside put.gd).
+
+**In Settings → Updates**, while the repository file is present and enabled:
+- **Channel** shows that file's channel. You can't change it there, and the line under it says
+  *"Set by your system's put.gd repository, /etc/apt/sources.list.d/putgd.sources."*
+- **Update checks** read that channel's feed, whatever the stored choice says. The stored choice
+  isn't rewritten, so an AppImage that shares the configuration keeps its own.
+- **Other channel** lists the commands below, with **Copy** and a link here.
+
+**Nightly to stable:**
+
+```bash
+# apt (Mint, Ubuntu, Debian)
+sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources &&
+sudo apt update &&
+sudo apt install --allow-downgrades putgd/stable
+```
+
+```bash
+# dnf (Fedora)
+sudo install -m 644 /usr/share/putgd/repo/putgd-stable.repo /etc/yum.repos.d/putgd.repo &&
+sudo dnf distro-sync --refresh putgd
+```
+
+**Stable to nightly:** the same commands with `nightly` in place of `stable`.
+
+**What the commands do:**
+- **The first one** puts the package's copy of the other channel's repository file in place. It's
+  byte for byte the file that channel's package installs, with that channel's key.
+- **The last one** installs that channel's package even when it's older. apt needs
+  `--allow-downgrades` for that, and `dnf distro-sync` downgrades on its own. dnf asks once to
+  import the other channel's key from `/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-CHANNEL`.
+
+**An older target.** Versions follow dates ([versioning.md](versioning.md)), so stable is usually
+older than a nightly. You have two choices:
+- **Install it now:** run all the commands.
+- **Wait:** leave out the last command. Your system updater then keeps the nightly until a stable
+  release newer than it is out, and installs that one as a normal update. Meanwhile Settings
+  says *"Your system now updates put.gd from the stable repository. Stable X is older than this
+  nightly build (Y), so the system updater keeps this version until a newer stable release is
+  out."* It shows the one command that installs it now.
+
+**No stable release yet:** the stable repositories exist but are empty. The last command reports
+that there's nothing to install, and the nightly stays until the first stable release.
+
+**Package upgrades keep the channel you chose:**
+- **apt:** dpkg keeps the copied file through upgrades of the same channel. When the other
+  channel's package arrives, it ships exactly that file, so dpkg takes it without a conffile
+  prompt. Checked with dpkg 1.22.22 on d69 ([probe](evidence/2026-10-22-deb-rpm-channel-386/lab/i386-conffile-probe.sh))
+  and on Mint 22.3.
+- **dnf:** RPM never rewrites a `%ghost` file.
+- **The conffile's bytes are pinned:** `tests/releases/test_repository_files.py` holds the
+  SHA-256 values. Changing the template needs a migration in the package, or dpkg would prompt
+  anyone who switched.
+
+**From an agent:** `update.status` reports `channelSource: "repository"`. Its `action.otherChannel`
+holds `{channel, commands, docs}`, and its `action.older` holds `{version, command}`. They're
+instructions only: there's no method that switches a repository install. If you remove or disable
+the repository file, the Channel choice comes back and put.gd offers **Download** again.
+
+![Settings on a nightly DEB: the channel follows putgd.sources, and the commands that move to stable](https://raw.githubusercontent.com/patrick-hudson/put.gd-desktop/2b0367ae90ef24511aff54e6fa43a14660eb444e/docs/evidence/2026-10-22-deb-rpm-channel-386/pictures/m74-1-nightly-repository.png)
+
+![After moving the repository to stable by hand: stable 26.1018.989 is older, so apt keeps the nightly until the last command](https://raw.githubusercontent.com/patrick-hudson/put.gd-desktop/2b0367ae90ef24511aff54e6fa43a14660eb444e/docs/evidence/2026-10-22-deb-rpm-channel-386/pictures/m74-2-stable-repository-older.png)
+
+The pictures come from lab builds of [#428](https://github.com/patrick-hudson/put.gd-desktop/pull/428), on Linux Mint 22.3 and Fedora 44. The lab channels were under `pkg.put.gd/lab`, and the stable side was signed with a lab-only key ([evidence](evidence/2026-10-22-deb-rpm-channel-386/README.md)).
 
 ## AppStream catalog (#314)
 

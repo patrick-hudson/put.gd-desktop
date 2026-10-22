@@ -33,7 +33,7 @@ Once a day the resident asks app.put.gd for the newest version on its channel:
 | Build | Channel it follows | Notification | Tray menu | Settings and main window |
 | --- | --- | --- | --- | --- |
 | Stable release | stable | once per new version | **Update available: X.Y.Z** | yes |
-| Stable DEB/RPM that updates from put.gd's repository | stable | never: the system updater tells you | yes | yes, with **Open software updates** |
+| DEB/RPM that updates from put.gd's repository | its repository's channel ([switching](package-repositories.md#switching-channels)) | never: the system updater tells you | yes, while that repository has a newer version | yes, with **Open software updates** |
 | Pre-#373 release candidate (`0.1.1-rc.1`, never published) | stable | once per new version | yes | yes |
 | Nightly | nightly | never | no | yes |
 | Nightly AppImage watching Stable | stable | once per new stable version, so you hear about the first one; never for the first result after you change the channel | yes, while the stable version is newer | yes, with **Switch to stable X** ([switching](#switching-channels)) |
@@ -80,7 +80,9 @@ channel*, which named the channel it resolved to since
 - **Channel:** *Stable* or *Nightly*. It starts on the build's own channel: *Stable* on a
   release, *Nightly* on a nightly. Choosing the other one watches it instead,
   and an AppImage then offers to [switch](#switching-channels). A build that never checks
-  hides the choice and the section says why.
+  hides the choice and the section says why. A DEB or RPM whose pkg.put.gd repository file is in
+  use shows that file's channel instead, without a choice, and **Other channel** lists the
+  terminal commands that move it ([how](package-repositories.md#switching-channels)).
 - **Status:** the last result, when it was checked and when the next check runs, with
   **Check now**.
 - **Download** and **Release notes:** shown when there is a newer version.
@@ -113,7 +115,8 @@ In the configuration file this is `preferences.updates`
 Both keys are optional. Without the object, put.gd checks daily on this build's channel.
 `"build"` is that default: Settings stores it when you pick the build's own channel, so a DEB
 and an AppImage that share one configuration each keep following their own. Picking the
-other channel stores `"stable"` or `"nightly"`.
+other channel stores `"stable"` or `"nightly"`. A DEB or RPM whose repository file is in use
+ignores the setting and follows the repository, and Settings doesn't rewrite it.
 
 ## Updating the AppImage
 
@@ -214,6 +217,10 @@ version that didn't start, and a diagnostics bundle from the old version if you 
 (Settings → Advanced → Diagnostics → **Create diagnostics package…**).
 
 ### Switching channels
+
+A DEB or RPM that updates from put.gd's repository moves channels from the command line, not
+from Settings: see [package-repositories.md](package-repositories.md#switching-channels). The
+rest of this section is about the AppImage.
 
 Settings → Updates → **Channel** picks which feed put.gd reads. For an AppImage that watches
 the other channel, **Download and install** becomes an explicit **Switch to CHANNEL VERSION**
@@ -338,7 +345,7 @@ because FUSE mounts don't work inside `bwrap`. AppImageLauncher's updater uses t
 
 | Interface | What it does |
 | --- | --- |
-| `putgd-cli update.status` | Returns `build` (version, kind, channel, packageTarget, supported, reason), `check`, `channelSetting`, `channel`, `enabled`, `notifies`, `action`, `checking`, `attemptedAt`, `checkedAt`, `nextCheckAt`, `result` and `error`. `action`, from the last check, is `{kind: "software-updates", manager, file, channel, command, updater}` for a repository install, otherwise `{kind: "download", repository: "absent" \| "disabled" \| "other" \| "none"}` |
+| `putgd-cli update.status` | Returns `build` (version, kind, channel, packageTarget, supported, reason), `check`, `channelSetting`, `channel`, `channelSource` (`setting`, or `repository` when a repository install follows its repository's suite), `enabled`, `notifies`, `action`, `checking`, `attemptedAt`, `checkedAt`, `nextCheckAt`, `result` and `error`. `action`, from the last check, is `{kind: "software-updates", manager, file, channel, command, updater, otherChannel, older}` for a repository install (`otherChannel` `{channel, commands, docs}`: the terminal commands that move to the other channel; `older` `{version, command}` while the repository's release is older than this build), otherwise `{kind: "download", repository: "absent" \| "disabled" \| "other" \| "none"}` |
 | `putgd-cli update.check` | Checks now, even with daily checks off, and returns the same object. A failed check returns its error: `update_feed_unavailable`, `update_feed_invalid`, `update_check_failed` or `update_check_unavailable` |
 | `putgd-cli --update-info` | This build's channel and package target. No resident and no network |
 | `putgd-cli --check-update nightly` | The resident's child mode: one feed request and one JSON line, whose `action` says how this install updates (it reads the repository file). No resident needed |

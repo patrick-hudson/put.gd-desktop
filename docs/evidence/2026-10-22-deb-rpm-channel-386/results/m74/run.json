@@ -1,0 +1,822 @@
+{
+ "name": "m74",
+ "runtime": "/tmp/acc386.5pKwRx",
+ "shell": "cinnamon",
+ "vnc": 5900,
+ "host": "mint-builder",
+ "created": "2026-10-22T20:08:17Z",
+ "log": [
+  {
+   "at": "2026-10-22T20:08:21Z",
+   "1-nightly-on-nightly": {
+    "pid": 309636,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1019.988-nightly",
+     "buildChannel": "nightly",
+     "channel": "nightly",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1019.988-nightly",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "channel": "nightly",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "otherChannel": {
+       "channel": "stable",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/stable"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installReason": "not_appimage"
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "4ffc66e7888aa1f32f8260a29c9ae1252d7bace233434b341546288e55e001e4",
+     "sameAs": "/usr/share/putgd/repo/putgd-nightly.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/ubuntu24.04",
+      "Suites: nightly"
+     ],
+     "installed": "26.1019.988~nightly",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1019.988~nightly",
+      "  Candidate: 26.1019.988~nightly",
+      "  Version table:",
+      " *** 26.1019.988~nightly 500",
+      "        500 https://pkg.put.gd/lab/apt/ubuntu24.04 nightly/main amd64 Packages",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources d88e0fec650178fc877b444700f4acbb"
+    },
+    "frame": "1-nightly-on-nightly.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:08:47Z",
+   "1-nightly-on-nightly-max": {
+    "pid": 309636,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1019.988-nightly",
+     "buildChannel": "nightly",
+     "channel": "nightly",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1019.988-nightly",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "channel": "nightly",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "otherChannel": {
+       "channel": "stable",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/stable"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installReason": "not_appimage"
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "4ffc66e7888aa1f32f8260a29c9ae1252d7bace233434b341546288e55e001e4",
+     "sameAs": "/usr/share/putgd/repo/putgd-nightly.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/ubuntu24.04",
+      "Suites: nightly"
+     ],
+     "installed": "26.1019.988~nightly",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1019.988~nightly",
+      "  Candidate: 26.1019.988~nightly",
+      "  Version table:",
+      " *** 26.1019.988~nightly 500",
+      "        500 https://pkg.put.gd/lab/apt/ubuntu24.04 nightly/main amd64 Packages",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources d88e0fec650178fc877b444700f4acbb"
+    },
+    "frame": "1-nightly-on-nightly-max.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:09:20Z",
+   "2-stable-repo-older": {
+    "pid": 309636,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1019.988-nightly",
+     "buildChannel": "nightly",
+     "channel": "stable",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1018.989",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "channel": "stable",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "otherChannel": {
+       "channel": "nightly",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-nightly.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/nightly"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": {
+       "command": "sudo apt install --allow-downgrades putgd/stable",
+       "version": "26.1018.989"
+      }
+     },
+     "installKind": "update",
+     "installReason": "not_appimage"
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "375ede87dedc2b45be676076f6ea93936972e91ea25b34945a1ffa940c7b5f56",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/ubuntu24.04",
+      "Suites: stable"
+     ],
+     "installed": "26.1019.988~nightly",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1019.988~nightly",
+      "  Candidate: 26.1019.988~nightly",
+      "  Version table:",
+      " *** 26.1019.988~nightly 100",
+      "        100 /var/lib/dpkg/status",
+      "     26.1018.989 500",
+      "        500 https://pkg.put.gd/lab/apt/ubuntu24.04 stable/main amd64 Packages"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources d88e0fec650178fc877b444700f4acbb"
+    },
+    "frame": "2-stable-repo-older.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:09:48Z",
+   "3-stable-installed": {
+    "pid": 310541,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1018.989",
+     "buildChannel": "stable",
+     "channel": "stable",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1018.989",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "channel": "stable",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "otherChannel": {
+       "channel": "nightly",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-nightly.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/nightly"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installReason": "not_appimage"
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "375ede87dedc2b45be676076f6ea93936972e91ea25b34945a1ffa940c7b5f56",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/ubuntu24.04",
+      "Suites: stable"
+     ],
+     "installed": "26.1018.989",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1018.989",
+      "  Candidate: 26.1018.989",
+      "  Version table:",
+      " *** 26.1018.989 500",
+      "        500 https://pkg.put.gd/lab/apt/ubuntu24.04 stable/main amd64 Packages",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 3a86911649a68d74414e1510d25d356f"
+    },
+    "frame": "3-stable-installed.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:09:54Z",
+   "3-stable-installed-max": {
+    "pid": 310541,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1018.989",
+     "buildChannel": "stable",
+     "channel": "stable",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1018.989",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "channel": "stable",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "otherChannel": {
+       "channel": "nightly",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-nightly.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/nightly"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installReason": "not_appimage"
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "375ede87dedc2b45be676076f6ea93936972e91ea25b34945a1ffa940c7b5f56",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/ubuntu24.04",
+      "Suites: stable"
+     ],
+     "installed": "26.1018.989",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1018.989",
+      "  Candidate: 26.1018.989",
+      "  Version table:",
+      " *** 26.1018.989 500",
+      "        500 https://pkg.put.gd/lab/apt/ubuntu24.04 stable/main amd64 Packages",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 3a86911649a68d74414e1510d25d356f"
+    },
+    "frame": "3-stable-installed-max.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:11:21Z",
+   "4-stable-update-available": {
+    "pid": 310541,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1018.989",
+     "buildChannel": "stable",
+     "channel": "stable",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1020.990",
+     "updateAvailable": true,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "channel": "stable",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "otherChannel": {
+       "channel": "nightly",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-nightly.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/nightly"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installReason": "not_appimage"
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "375ede87dedc2b45be676076f6ea93936972e91ea25b34945a1ffa940c7b5f56",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/ubuntu24.04",
+      "Suites: stable"
+     ],
+     "installed": "26.1018.989",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1018.989",
+      "  Candidate: 26.1020.990",
+      "  Version table:",
+      "     26.1020.990 500",
+      "        500 https://pkg.put.gd/lab/apt/ubuntu24.04 stable/main amd64 Packages",
+      " *** 26.1018.989 100",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 3a86911649a68d74414e1510d25d356f"
+    },
+    "frame": "4-stable-update-available.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:11:47Z",
+   "5-update-manager": {
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "375ede87dedc2b45be676076f6ea93936972e91ea25b34945a1ffa940c7b5f56",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/ubuntu24.04",
+      "Suites: stable"
+     ],
+     "installed": "26.1018.989",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1018.989",
+      "  Candidate: 26.1020.990",
+      "  Version table:",
+      "     26.1020.990 500",
+      "        500 https://pkg.put.gd/lab/apt/ubuntu24.04 stable/main amd64 Packages",
+      " *** 26.1018.989 100",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 3a86911649a68d74414e1510d25d356f"
+    },
+    "frame": "5-update-manager.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:12:16Z",
+   "5-update-manager-list": {
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "375ede87dedc2b45be676076f6ea93936972e91ea25b34945a1ffa940c7b5f56",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/ubuntu24.04",
+      "Suites: stable"
+     ],
+     "installed": "26.1018.989",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1018.989",
+      "  Candidate: 26.1020.990",
+      "  Version table:",
+      "     26.1020.990 500",
+      "        500 https://pkg.put.gd/lab/apt/ubuntu24.04 stable/main amd64 Packages",
+      " *** 26.1018.989 100",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 3a86911649a68d74414e1510d25d356f"
+    },
+    "frame": "5-update-manager-list.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:12:35Z",
+   "5-update-manager-putgd": {
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "375ede87dedc2b45be676076f6ea93936972e91ea25b34945a1ffa940c7b5f56",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/ubuntu24.04",
+      "Suites: stable"
+     ],
+     "installed": "26.1018.989",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1018.989",
+      "  Candidate: 26.1020.990",
+      "  Version table:",
+      "     26.1020.990 500",
+      "        500 https://pkg.put.gd/lab/apt/ubuntu24.04 stable/main amd64 Packages",
+      " *** 26.1018.989 100",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 3a86911649a68d74414e1510d25d356f"
+    },
+    "frame": "5-update-manager-putgd.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:12:54Z",
+   "5-update-manager-putgd-info": {
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "375ede87dedc2b45be676076f6ea93936972e91ea25b34945a1ffa940c7b5f56",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/ubuntu24.04",
+      "Suites: stable"
+     ],
+     "installed": "26.1018.989",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1018.989",
+      "  Candidate: 26.1020.990",
+      "  Version table:",
+      "     26.1020.990 500",
+      "        500 https://pkg.put.gd/lab/apt/ubuntu24.04 stable/main amd64 Packages",
+      " *** 26.1018.989 100",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 3a86911649a68d74414e1510d25d356f"
+    },
+    "frame": "5-update-manager-putgd-info.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:14:20Z",
+   "6-stable-990": {
+    "pid": 311916,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1020.990",
+     "buildChannel": "stable",
+     "channel": "stable",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1020.990",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "channel": "stable",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "otherChannel": {
+       "channel": "nightly",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-nightly.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/nightly"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installReason": "not_appimage"
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "375ede87dedc2b45be676076f6ea93936972e91ea25b34945a1ffa940c7b5f56",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/ubuntu24.04",
+      "Suites: stable"
+     ],
+     "installed": "26.1020.990",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1020.990",
+      "  Candidate: 26.1020.990",
+      "  Version table:",
+      " *** 26.1020.990 500",
+      "        500 https://pkg.put.gd/lab/apt/ubuntu24.04 stable/main amd64 Packages",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 3a86911649a68d74414e1510d25d356f"
+    },
+    "frame": "6-stable-990.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:14:25Z",
+   "6-stable-990-max": {
+    "pid": 311916,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1020.990",
+     "buildChannel": "stable",
+     "channel": "stable",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1020.990",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "channel": "stable",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "otherChannel": {
+       "channel": "nightly",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-nightly.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/nightly"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installReason": "not_appimage"
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "375ede87dedc2b45be676076f6ea93936972e91ea25b34945a1ffa940c7b5f56",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/ubuntu24.04",
+      "Suites: stable"
+     ],
+     "installed": "26.1020.990",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1020.990",
+      "  Candidate: 26.1020.990",
+      "  Version table:",
+      " *** 26.1020.990 500",
+      "        500 https://pkg.put.gd/lab/apt/ubuntu24.04 stable/main amd64 Packages",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 3a86911649a68d74414e1510d25d356f"
+    },
+    "frame": "6-stable-990-max.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:14:53Z",
+   "7-back-on-nightly": {
+    "pid": 312591,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1021.991-nightly",
+     "buildChannel": "nightly",
+     "channel": "nightly",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1021.991-nightly",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "channel": "nightly",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "otherChannel": {
+       "channel": "stable",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/stable"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installReason": "not_appimage"
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "4ffc66e7888aa1f32f8260a29c9ae1252d7bace233434b341546288e55e001e4",
+     "sameAs": "/usr/share/putgd/repo/putgd-nightly.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/ubuntu24.04",
+      "Suites: nightly"
+     ],
+     "installed": "26.1021.991~nightly",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1021.991~nightly",
+      "  Candidate: 26.1021.991~nightly",
+      "  Version table:",
+      " *** 26.1021.991~nightly 500",
+      "        500 https://pkg.put.gd/lab/apt/ubuntu24.04 nightly/main amd64 Packages",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources d88e0fec650178fc877b444700f4acbb"
+    },
+    "frame": "7-back-on-nightly.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:14:58Z",
+   "7-back-on-nightly-max": {
+    "pid": 312591,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1021.991-nightly",
+     "buildChannel": "nightly",
+     "channel": "nightly",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1021.991-nightly",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "channel": "nightly",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "otherChannel": {
+       "channel": "stable",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/stable"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installReason": "not_appimage"
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "4ffc66e7888aa1f32f8260a29c9ae1252d7bace233434b341546288e55e001e4",
+     "sameAs": "/usr/share/putgd/repo/putgd-nightly.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/ubuntu24.04",
+      "Suites: nightly"
+     ],
+     "installed": "26.1021.991~nightly",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1021.991~nightly",
+      "  Candidate: 26.1021.991~nightly",
+      "  Version table:",
+      " *** 26.1021.991~nightly 500",
+      "        500 https://pkg.put.gd/lab/apt/ubuntu24.04 nightly/main amd64 Packages",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources d88e0fec650178fc877b444700f4acbb"
+    },
+    "frame": "7-back-on-nightly-max.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:15:26Z",
+   "8-repo-disabled": {
+    "pid": 312591,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1021.991-nightly",
+     "buildChannel": "nightly",
+     "channel": "nightly",
+     "channelSource": "setting",
+     "channelSetting": "build",
+     "latest": "26.1021.991-nightly",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "download",
+      "channel": null,
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": null,
+      "otherChannel": null,
+      "older": null
+     },
+     "installKind": "update",
+     "installReason": "not_appimage"
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "2901795f0732e2522cfce8c6b6defe175a8290a402f6cc737f93c2ed664a47a7",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/ubuntu24.04",
+      "Suites: nightly",
+      "Enabled: no"
+     ],
+     "installed": "26.1021.991~nightly",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1021.991~nightly",
+      "  Candidate: 26.1021.991~nightly",
+      "  Version table:",
+      " *** 26.1021.991~nightly 100",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources d88e0fec650178fc877b444700f4acbb"
+    },
+    "frame": "8-repo-disabled.png"
+   }
+  }
+ ]
+}
