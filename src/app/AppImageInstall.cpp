@@ -197,4 +197,48 @@ QProcessEnvironment zsyncEnvironment(const QProcessEnvironment& host,const QStri
  if(!caBundle.isEmpty())environment.insert("SSL_CERT_FILE",caBundle);
  return environment;
 }
+QStringList terminalLines(const QByteArray& output) {
+ QStringList lines;QString line;qsizetype column=0;
+ const auto finish=[&]{const auto text=line.trimmed();if(!text.isEmpty())lines.append(text);line.clear();column=0;};
+ const auto text=QString::fromUtf8(output);
+ for(qsizetype i=0;i<text.size();++i) {
+  const auto c=text.at(i).unicode();
+  if(c==0x1b||c==0x9b) {
+   // CSI (ESC [ or 0x9B): parameters and intermediates up to a final byte.
+   // An erase-line (K) clears what it names; everything else just goes.
+   if(c==0x9b||(i+1<text.size()&&text.at(i+1)==u'[')) {
+    auto j=i+(c==0x9b?1:2);const auto start=j;
+    while(j<text.size()&&text.at(j).unicode()>=0x20&&text.at(j).unicode()<=0x3f)++j;
+    if(j<text.size()&&text.at(j)==u'K') {
+     const auto mode=text.mid(start,j-start);
+     if(mode=="1"||mode=="2"){for(qsizetype k=0;k<line.size()&&(mode=="2"||k<=column);++k)line[k]=u' ';}else line.truncate(column);
+    }
+    i=j;continue;
+   }
+   // OSC, DCS, SOS, PM and APC run to BEL or ST (ESC \).
+   if(i+1<text.size()&&QStringView(u"]PX^_").contains(text.at(i+1))) {
+    auto j=i+2;
+    while(j<text.size()&&text.at(j)!=u'\a'&&!(text.at(j)==u'\x1b'&&j+1<text.size()&&text.at(j+1)==u'\\'))++j;
+    i=j<text.size()&&text.at(j)==u'\x1b'?j+1:j;continue;
+   }
+   // Any other escape: intermediates, then one final character.
+   auto j=i+1;while(j<text.size()&&text.at(j).unicode()>=0x20&&text.at(j).unicode()<=0x2f)++j;
+   i=j;continue;
+  }
+  if(c=='\n'){finish();continue;}
+  if(c=='\r'){column=0;continue;}
+  if(c=='\b'){column=qMax<qsizetype>(0,column-1);continue;}
+  if(c!='\t'&&(c<0x20||c==0x7f||(c>=0x80&&c<0xa0)))continue;
+  const QChar shown=c=='\t'?QChar(u' '):text.at(i);
+  if(column<line.size())line[column]=shown;else{line.append(QString(column-line.size(),u' '));line.append(shown);}
+  ++column;
+ }
+ finish();
+ return lines;
+}
+QString zsyncOutputTail(const QByteArray& output) {
+ // The tool's last lines name what went wrong; only for the result's details.
+ const auto lines=terminalLines(output);
+ return lines.mid(qMax(0,int(lines.size())-4)).join(" | ").left(400);
+}
 }

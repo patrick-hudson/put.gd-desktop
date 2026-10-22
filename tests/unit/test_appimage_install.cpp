@@ -34,6 +34,13 @@ void write(const QString& path,const QByteArray& bytes,QFile::Permissions permis
 }
 QByteArray read(const QString& path) {QFile file(path);return file.open(QIODevice::ReadOnly)?file.readAll():QByteArray{};}
 QString hex(const QByteArray& bytes) {return QString::fromLatin1(QCryptographicHash::hash(bytes,QCryptographicHash::Sha256).toHex());}
+// appimageupdatetool's output for lab 886 -> 887 on m74 (#293 phase 3), as the
+// pipe put.gd reads it delivered it; only the home folder is renamed.
+const QByteArray appimageupdatetoolOutput=
+ "zsync2: used 114933760 local, fetched 1251832\n"
+ "\x1b[2K\r100.00% done (109.89 of 109.89 MiB)...\n"
+ "Validation warning: AppImage not signed\n"
+ "Update successful. New file created: /home/lab/Applications/.putgd-update-bnesRJ/putgd-0.1.1-nightly.887-x86_64.AppImage\n";
 ino_t inode(const QString& path) {struct stat info{};return ::stat(QFile::encodeName(path).constData(),&info)==0?info.st_ino:0;}
 mode_t mode(const QString& path) {struct stat info{};return ::stat(QFile::encodeName(path).constData(),&info)==0?(info.st_mode&07777):0;}
 }
@@ -161,6 +168,26 @@ private slots:
   // zsync2 gets the host's CA bundle (#297, #329).
   QCOMPARE(appimage::zsyncEnvironment(host,"/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem").value("SSL_CERT_FILE"),QString("/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem"));
   QVERIFY(!appimage::zsyncEnvironment(host,{}).contains("SSL_CERT_FILE"));
+ }
+ // #349: zsync.output keeps what the tool's terminal would show, not its
+ // escape sequences and every progress redraw.
+ void cleansTheToolsOutput() {
+  QCOMPARE(appimage::zsyncOutputTail(appimageupdatetoolOutput),
+           QString("zsync2: used 114933760 local, fetched 1251832 | 100.00% done (109.89 of 109.89 MiB)... | Validation warning: AppImage not signed | "
+                   "Update successful. New file created: /home/lab/Applications/.putgd-update-bnesRJ/putgd-0.1.1-nightly.887-x86_64.AppImage"));
+  for(const auto& line:appimage::terminalLines(appimageupdatetoolOutput))
+   for(const auto c:line)QVERIFY2(c.unicode()>=0x20&&c.unicode()!=0x7f,qPrintable(line));
+  // A redraw overwrites from the line's start; an erase clears what it names.
+  QCOMPARE(appimage::terminalLines("abcdef\rXY\n"),QStringList{"XYcdef"});
+  QCOMPARE(appimage::terminalLines("  0.00% done (0.00 of 109.89 MiB)...\x1b[2K\r 50.00%\x1b[K\n"),QStringList{"50.00%"});
+  QCOMPARE(appimage::terminalLines("abcdef\x1b[1K\rgh"),QStringList{"gh"});
+  // Colours, titles, CRLF, backspace, bell and other controls go; blank lines too.
+  QCOMPARE(appimage::terminalLines("\x1b[1;31mError:\x1b[0m bad\r\n\r\n\x1b]0;title\x07ok\x1b]2;t\x1b\\\tdone\nab\bc\x07\x01\x7f\n\x1b(B\x1b" "7x\n\xc2\x9b" "2Ky\n"),
+           (QStringList{"Error: bad","ok done","ac","x","y"}));
+  // Only the last four lines, and at most 400 characters.
+  QCOMPARE(appimage::zsyncOutputTail("1\n2\n3\n4\n5\n6\n"),QString("3 | 4 | 5 | 6"));
+  QCOMPARE(appimage::zsyncOutputTail(QByteArray(1000,'x')).size(),400);
+  QVERIFY(appimage::zsyncOutputTail("\x1b[2K\r\n\r").isEmpty());
  }
 };
 QTEST_GUILESS_MAIN(AppImageInstallTest)

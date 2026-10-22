@@ -75,4 +75,10 @@ QStringList zsyncArguments(const ZsyncTool&,const QString& seed,const QString& o
 // host's CA bundle the AppImage found (#329); zsync2 otherwise walks past the
 // end of its CA path list on Fedora 44 and crashes (#297).
 QProcessEnvironment zsyncEnvironment(const QProcessEnvironment& host,const QString& caBundle);
+// The tool's output as a terminal would leave it (#349): escape sequences and
+// other control characters dropped, each carriage-return redraw overwriting
+// its line, blank lines skipped.
+QStringList terminalLines(const QByteArray& output);
+// Its last four lines, for an install's zsync.output.
+QString zsyncOutputTail(const QByteArray& output);
 }
