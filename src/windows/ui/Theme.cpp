@@ -39,6 +39,7 @@ bool schemeApplied = false;
 constexpr wchar_t surfaceProperty[] = L"putgd.surface";
 constexpr wchar_t roleProperty[] = L"putgd.role";
 constexpr wchar_t glyphProperty[] = L"putgd.glyph";
+constexpr wchar_t iconOnlyProperty[] = L"putgd.icononly";
 constexpr wchar_t selectedProperty[] = L"putgd.selected";
 constexpr wchar_t framedProperty[] = L"putgd.framed";
 constexpr wchar_t cardProperty[] = L"putgd.card";
@@ -190,6 +191,11 @@ Glyph define(const std::string& name) {
         g.rounded(1, 10, 17, 4, 5, 1);
         g.rounded(0, 4, 5, 16, 10, 1);
         g.rounded(0, 6, 20.5f, 12, 2.5f, 1.2f);
+    } else if (name == "recordScreen") {
+        g.rounded(1, 2, 3, 20, 15, 2);
+        g.rounded(1, 10, 17, 4, 5, 1);
+        g.rounded(0, 6, 20.5f, 12, 2.5f, 1.2f);
+        g.circle(0, 12, 10.5f, 4.2f);
     } else if (name == "clipboard") {
         g.rounded(1, 4, 4, 16, 18, 3);
         g.rounded(0, 8, 2, 8, 5, 2);
@@ -214,6 +220,40 @@ Glyph define(const std::string& name) {
         g.polyline(0, {6, 9, 12, 15, 18, 9}, 2.2f);
     } else if (name == "check") {
         g.polyline(0, {5.5f, 12.5f, 10, 17, 18.5f, 7.5f}, 2.6f);
+    // Recording (#400): the bar's and the review window's controls.
+    } else if (name == "play") {
+        g.polygon(0, {7, 4.5f, 19.5f, 12, 7, 19.5f});
+    } else if (name == "pause") {
+        g.rounded(0, 6, 4.5f, 4.5f, 15, 1.2f);
+        g.rounded(0, 13.5f, 4.5f, 4.5f, 15, 1.2f);
+    } else if (name == "record") {
+        g.circle(1, 12, 12, 9.5f);
+        g.circle(0, 12, 12, 5.5f);
+    } else if (name == "stop") {
+        g.rounded(0, 5.5f, 5.5f, 13, 13, 2.5f);
+    } else if (name == "trimIn" || name == "maskIn") {
+        g.rounded(name == "maskIn" ? 1 : 0, 4, 4, 2.6f, 16, 1);
+        g.polyline(0, {4, 5.3f, 9, 5.3f}, 2.6f);
+        g.polyline(0, {4, 18.7f, 9, 18.7f}, 2.6f);
+        g.polygon(1, {11, 7, 19, 12, 11, 17});
+    } else if (name == "trimOut" || name == "maskOut") {
+        g.rounded(name == "maskOut" ? 1 : 0, 17.4f, 4, 2.6f, 16, 1);
+        g.polyline(0, {15, 5.3f, 20, 5.3f}, 2.6f);
+        g.polyline(0, {15, 18.7f, 20, 18.7f}, 2.6f);
+        g.polygon(1, {13, 7, 5, 12, 13, 17});
+    } else if (name == "reset") {
+        g.arc(0, 12, 12, 7.5f, 100, 290, 2.4f);
+        g.polygon(0, {6, 2.5f, 12, 4.8f, 7.4f, 9.4f});
+    } else if (name == "blur") {
+        g.rounded(1, 3, 3, 18, 18, 3);
+        for (float y : {7.0f, 12.0f, 17.0f}) for (float x : {7.0f, 12.0f, 17.0f}) g.circle(0, x, y, (int(x + y) % 2) ? 1.3f : 2.0f);
+    } else if (name == "solid") {
+        g.rounded(1, 3, 3, 18, 18, 3);
+        g.rounded(0, 7, 7, 10, 10, 1.5f);
+    } else if (name == "remove") {
+        g.polygon(1, {5.5f, 8, 18.5f, 8, 17.2f, 21, 6.8f, 21});
+        g.rounded(0, 3, 5, 18, 2.5f, 1);
+        g.rounded(0, 9, 2, 6, 3.5f, 1);
     }
     return g;
 }
@@ -382,7 +422,19 @@ void paintPush(HWND h, HDC target, UINT state) {
         }
         RECT label = rc;
         InflateRect(&label, -scale(role == Role::Link ? 4 : 10, dpi), 0);
-        drawText(dc, text, label, ink, fontOf(h), format | (role == Role::Link ? DT_LEFT : DT_CENTER));
+        // A glyph on a push button: alone and centred for an icon button (its text
+        // stays the accessible name), else before the text, centred as a group.
+        if (const auto* name = reinterpret_cast<const char*>(GetPropW(h, glyphProperty))) {
+            const int icon = scale(16, dpi), gap = scale(6, dpi);
+            const COLORREF main = disabled ? c.textDisabled : role == Role::Primary ? c.onAccent : role == Role::Danger ? c.danger : c.icon;
+            const COLORREF second = disabled ? c.divider : role == Role::Primary ? blend(c.accent, c.onAccent, 110) : c.iconSecondary;
+            const bool iconOnly = prop<int>(h, iconOnlyProperty) != 0;
+            const int textWidth = iconOnly ? 0 : textWidthOf(dc, fontOf(h), text);
+            const int group = icon + (iconOnly ? 0 : gap + textWidth);
+            const int x = std::max(int(label.left), int(rc.left + rc.right - group) / 2);
+            drawGlyph(dc, name, x, (rc.top + rc.bottom - icon) / 2, icon, main, second);
+            if (!iconOnly) drawText(dc, text, {x + icon + gap, rc.top, label.right, rc.bottom}, ink, fontOf(h), format | DT_LEFT);
+        } else drawText(dc, text, label, ink, fontOf(h), format | (role == Role::Link ? DT_LEFT : DT_CENTER));
     }
     if (focus) focusRing(dc, rc, radius + scale(1, dpi), dpi);
 }
@@ -995,6 +1047,7 @@ void drawText(HDC dc, const std::wstring& text, RECT r, COLORREF color, HFONT f,
     DrawTextW(dc, text.c_str(), int(text.size()), &r, format);
     SelectObject(dc, old);
 }
+void setIconOnly(HWND button, bool iconOnly) { setProp(button, iconOnlyProperty, iconOnly ? 1 : 0); InvalidateRect(button, nullptr, FALSE); }
 void setHint(HWND button, const std::wstring& hint) {
     if (hint.empty()) hints().erase(button); else hints()[button] = hint;
     InvalidateRect(button, nullptr, FALSE);

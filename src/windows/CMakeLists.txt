@@ -18,6 +18,7 @@
 #   putgd.exe --s3-worker     one S3 request: SigV4 over WinHTTP, exits afterwards
 #   putgd.exe --ui VIEW       Settings/Destinations/History/Activity/About (common controls)
 #   putgd.exe --edit-image    Capture region & edit canvas (GDI+)
+#   putgd.exe --record        screen recording: GDI capture, Media Foundation H.264 MP4
 #   putgd-cli.exe             JSON session client over the named pipe
 cmake_minimum_required(VERSION 3.22)
 project(putgd-windows LANGUAGES CXX)
@@ -65,7 +66,7 @@ endif()
 # Portable core: no Windows headers. Tested on Linux and used by every executable.
 add_library(putgd_win_core STATIC
   common/Json.cpp common/Text.cpp common/Shortcut.cpp common/Sha256.cpp
-  core/Settings.cpp core/Naming.cpp core/Operation.cpp core/SettingsPatch.cpp core/S3Settings.cpp core/SanitizedPng.cpp core/ProtonSettings.cpp
+  core/Settings.cpp core/Naming.cpp core/Operation.cpp core/SettingsPatch.cpp core/S3Settings.cpp core/SanitizedPng.cpp core/ProtonSettings.cpp core/Recording.cpp core/RecordingFrames.cpp core/Mp4.cpp core/BarPlacement.cpp core/ReviewTimeline.cpp core/Audio.cpp
   s3/SigV4.cpp)
 target_link_libraries(putgd_win_core PUBLIC putgd_win_options)
 
@@ -80,6 +81,9 @@ if(PUTGD_WINDOWS_PORTABLE_TESTS)
   add_executable(test_win_editor tests/test_editor.cpp editor/EditDocument.cpp editor/EditorCommands.cpp editor/Export.cpp)
   target_link_libraries(test_win_editor PRIVATE putgd_win_core)
   add_test(NAME windows_editor_contract COMMAND test_win_editor)
+  add_executable(test_win_recording tests/test_recording.cpp)
+  target_link_libraries(test_win_recording PRIVATE putgd_win_core)
+  add_test(NAME windows_recording_contract COMMAND test_win_recording)
 endif()
 
 if(WIN32)
@@ -93,14 +97,17 @@ if(WIN32)
     resident/main.cpp resident/App.cpp resident/Resident.cpp resident/Tray.cpp resident/Hotkeys.cpp resident/Clipboard.cpp
     resident/Session.cpp resident/SettingsService.cpp resident/HistoryStore.cpp resident/Artifacts.cpp
     resident/OperationService.cpp resident/HistoryService.cpp resident/SetupService.cpp resident/CredentialStore.cpp
-    resident/LoginStartup.cpp resident/Helpers.cpp resident/S3Provider.cpp resident/ProtonProvider.cpp resident/UpdateService.cpp resident/UiProcess.cpp
+    resident/LoginStartup.cpp resident/Helpers.cpp resident/Recording.cpp resident/S3Provider.cpp resident/ProtonProvider.cpp resident/UpdateService.cpp resident/UiProcess.cpp
     s3/S3Worker.cpp s3/WinHttp.cpp
     capture/CaptureMain.cpp capture/Overlay.cpp capture/Grab.cpp capture/Png.cpp capture/ImageJob.cpp
     ui/UiMain.cpp ui/MainWindow.cpp ui/SettingsPage.cpp ui/DestinationsPage.cpp ui/HistoryPage.cpp ui/UiSession.cpp ui/Controls.cpp ui/Theme.cpp
     editor/EditorMain.cpp editor/EditDocument.cpp editor/EditorCommands.cpp editor/EditorWindow.cpp editor/Export.cpp
+    record/RecordMain.cpp record/Recorder.cpp record/Sources.cpp record/Media.cpp record/Export.cpp record/Overlay.cpp record/FrameSource.cpp record/ReviewWindow.cpp record/Gif.cpp
     resident/putgd.rc)
   target_link_libraries(putgd PRIVATE putgd_win_platform user32 gdi32 comctl32 comdlg32 uxtheme dwmapi winhttp
-    windowscodecs gdiplus shcore msimg32 credui)
+    windowscodecs gdiplus shcore msimg32 credui
+    # GUIDs only: Media Foundation itself is loaded at run time by putgd.exe --record (record/Media.cpp).
+    mfuuid)
   target_compile_definitions(putgd PRIVATE ISOLATION_AWARE_ENABLED=1)
   # Proton Drive: the separately provisioned Windows runtime helper
   # (tools/proton/provision_runtime.py --target windows-x64). The manifest's digest

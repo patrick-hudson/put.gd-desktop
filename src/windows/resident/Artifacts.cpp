@@ -54,7 +54,7 @@ Acquisition ArtifactStore::acquire(const std::string& op, const Payload& p, cons
     const int count = p.kind == "files" ? int(p.files.size()) : 1;
     if (count < 1 || count > limits.maxFiles) return fail("input_excessive", "Invalid batch size", 0);
     long long total = 0; const long long existing = bytes();
-    long long required = p.kind == "text" || p.kind == "png" || p.kind == "image" ? static_cast<long long>(p.bytes.size()) : p.kind == "capture" ? files::size(p.imagePath) : 0;
+    long long required = p.kind == "text" || p.kind == "png" || p.kind == "image" ? static_cast<long long>(p.bytes.size()) : p.kind == "capture" || p.kind == "recording" ? files::size(p.imagePath) : 0;
     if (p.kind == "files") for (int i = 0; i < count; ++i) {
         const auto size = files::size(p.files[i]);
         if (size < 0) continue;
@@ -93,6 +93,14 @@ Acquisition ArtifactStore::acquire(const std::string& op, const Payload& p, cons
             if (!files::isRegularFile(p.imagePath)) return fail("source_unavailable", "The capture file is missing", i);
             if (!files::rename(p.imagePath, a.path, false)) return fail("artifact_io", "Cannot move the capture into artifact storage", i);
             source = a.path; fromFile = true; a.mime = "image/png"; a.name = "capture.png";
+        } else if (p.kind == "recording") {
+            // The exact bytes the recording helper exported and the resident checked.
+            static const std::map<std::string, std::string> extensions{{"video/mp4", "mp4"}, {"video/webm", "webm"}, {"image/gif", "gif"}, {"image/webp", "webp"}};
+            const auto extension = extensions.find(p.mime);
+            if (extension == extensions.end()) return fail("source_unsupported", "Unsupported recording format", i);
+            if (!files::isRegularFile(p.imagePath)) return fail("source_unavailable", "The recording export is missing", i);
+            if (!files::rename(p.imagePath, a.path, false)) return fail("artifact_io", "Cannot move the recording into artifact storage", i);
+            source = a.path; fromFile = true; a.mime = p.mime; a.name = "recording." + extension->second;
         } else return fail("source_unsupported", "Unsupported source", i);
         const auto named = naming::acquiredName(a, settings, action, LocalTime{time.year, time.month, time.day, time.hour, time.minute, time.second}, a.id);
         if (named.error) return fail(named.error.code, named.error.message, i);

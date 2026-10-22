@@ -70,7 +70,7 @@ OperationItem OperationItem::fromJson(const Object& o) {
     i.uploadProgress = UploadProgress::fromJson(o.value("uploadProgress").toObject());
     return i;
 }
-bool Operation::activeState(const std::string& s) { return in({"accepted", "acquiring", "editing", "stored", "running"}, s); }
+bool Operation::activeState(const std::string& s) { return in({"accepted", "acquiring", "editing", "recording", "stored", "running"}, s); }
 bool Operation::terminalUpload(const std::string& s) { return in({"uploaded", "skipped", "conflict", "local_only", "cancelled"}, s); }
 Object Operation::toJson() const {
     Array array; for (const auto& i : items) array.push_back(i.toJson());

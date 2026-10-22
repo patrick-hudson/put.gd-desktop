@@ -12,4 +12,5 @@ int imageJobMain(const std::vector<std::string>& args);   // capture/ImageJob.cp
 int s3WorkerMain(const std::vector<std::string>& args);   // s3/S3Worker.cpp          (--s3-worker)
 int uiMain(const std::vector<std::string>& args);         // ui/UiMain.cpp            (--ui VIEW)
 int editorMain(const std::vector<std::string>& args);     // editor/EditorMain.cpp    (--edit-image)
+int recordMain(const std::vector<std::string>& args);     // record/RecordMain.cpp    (--record)
 }

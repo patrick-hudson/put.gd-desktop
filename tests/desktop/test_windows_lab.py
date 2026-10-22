@@ -158,6 +158,20 @@ class ShutdownTransitions(unittest.TestCase):
         self.assertEqual(command.call_args.args[0], 'swtpm')
         stop.assert_called_once_with(self.vm)
 
+    def test_audio_adds_a_null_hd_audio_output(self):
+        windows.save(self.vm / 'state.json', {'uuid': 'test', 'os': 'windows11'})
+        with patch.object(windows, 'stopped'), patch.object(windows.shutil, 'which', return_value='/usr/bin/test'), patch.object(windows.os, 'access', return_value=True), patch.object(windows.socket, 'socket'), patch.object(windows, 'command') as command:
+            windows.launch(self.vm, 30, audio=True)
+        qemu = command.call_args_list[-1].args
+        self.assertIn('ich9-intel-hda', qemu)
+        self.assertIn('hda-output,audiodev=snd0', qemu)
+        self.assertEqual(qemu[qemu.index('-audiodev') + 1], 'none,id=snd0')
+        self.assertTrue(windows.load(self.vm / 'state.json')['audio'])
+        with patch.object(windows, 'stopped'), patch.object(windows.shutil, 'which', return_value='/usr/bin/test'), patch.object(windows.os, 'access', return_value=True), patch.object(windows.socket, 'socket'), patch.object(windows, 'command') as command:
+            windows.launch(self.vm, 30)
+        self.assertNotIn('-audiodev', command.call_args_list[-1].args)
+        self.assertFalse(windows.load(self.vm / 'state.json')['audio'])
+
     def test_state_load_failure_starts_no_daemon(self):
         (self.vm / 'state.json').write_text('invalid json')
         with patch.object(windows, 'stopped'), patch.object(windows.shutil, 'which', return_value='/usr/bin/test'), patch.object(windows.os, 'access', return_value=True), patch.object(windows.socket, 'socket'), patch.object(windows, 'command') as command:

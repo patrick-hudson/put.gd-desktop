@@ -112,7 +112,7 @@ int residentMain(const std::vector<std::string>& args) {
     auto applyShortcuts = [&] {
         std::map<std::string, std::string> desired;
         const auto snapshot = settings.snapshot();
-        for (const auto& name : Settings::actionNames()) desired[name] = snapshot.action(name).shortcut;
+        for (const auto& name : Settings::invocableActionNames()) desired[name] = snapshot.action(name).shortcut;
         hotkeys.apply(desired);
     };
     auto applySettings = [&] {
@@ -137,7 +137,7 @@ int residentMain(const std::vector<std::string>& args) {
     auto showView = [&](const std::string& v) { ui.show(v, [v](Error e) { if (e) log::warning("ui", "View not shown", {{"view", v}, {"code", e.code}}); }); };
     auto invoke = [&](const std::string& action, json::Object options = {}) {
         operations.invoke(action, options, [&tray, action](Error e, json::Object) {
-            if (e && e.code != "busy_selecting" && e.code != "editor_active") tray.notify("put.gd", e.message, true);
+            if (e && e.code != "busy_selecting" && e.code != "editor_active" && e.code != "cancelled") tray.notify("put.gd", e.message, true);
         });
     };
     tray.onCommand([&](UINT command) {
@@ -146,6 +146,7 @@ int residentMain(const std::vector<std::string>& args) {
         case Tray::CmdCaptureEdit: invoke("edit"); break;
         case Tray::CmdCaptureWindow: invoke("window"); break;
         case Tray::CmdCaptureDesktop: invoke("desktop"); break;
+        case Tray::CmdRecord: invoke("record"); break;
         case Tray::CmdUploadClipboard: invoke("clipboard"); break;
         case Tray::CmdEditClipboard: invoke("edit", {{"source", "clipboard"}}); break;
         case Tray::CmdEditFile: showView("editFile"); break;
@@ -158,7 +159,8 @@ int residentMain(const std::vector<std::string>& args) {
         }
     });
     loop.setMessageHook([&](UINT message, WPARAM wParam, LPARAM lParam, LRESULT& result) {
-        if (message == WM_HOTKEY) { const auto action = hotkeys.actionFor(wParam); if (!action.empty()) invoke(action); return true; }
+        // The recording shortcut toggles (prepare, start, stop), so the keyboard can end a recording.
+        if (message == WM_HOTKEY) { const auto action = hotkeys.actionFor(wParam); if (action == "record") invoke(action, {{"mode", "toggle"}}); else if (!action.empty()) invoke(action); return true; }
         if (message == WM_CLIPBOARDUPDATE) { clipboard.handleUpdate(); return true; }
         if (tray.handleMessage(message, wParam, lParam)) return true;
         if (message == WM_QUERYENDSESSION) { result = TRUE; return true; }

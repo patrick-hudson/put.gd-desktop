@@ -13,12 +13,13 @@ namespace putgd {
 // What an acquisition delivered: local files, text, verified PNG bytes (editor),
 // a clipboard image (png or dib bytes) or a capture already written as a PNG file.
 struct Payload {
-    std::string kind; // files, text, png, image, capture
+    std::string kind; // files, text, png, image, capture, recording
     std::vector<std::string> files;
     std::string bytes;
     std::string imageFormat; // png or dib for kind image
     std::string imagePath;   // kind capture: a PNG the capture helper wrote
-    std::string stagingDirectory; // kind capture: removed once the file was taken
+    std::string stagingDirectory; // kind capture/recording: removed once the file was taken
+    std::string mime;             // kind recording: the export's MIME type; imagePath is its file
 };
 struct Acquisition { std::vector<Artifact> artifacts; Error error; };
 class ArtifactStore {

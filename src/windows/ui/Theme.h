@@ -48,7 +48,8 @@ void roundRect(HDC, const RECT&, int radius, COLORREF fill, COLORREF border = CL
 void fill(HDC, const RECT&, COLORREF);
 void drawText(HDC, const std::wstring&, RECT, COLORREF, HFONT, UINT format);
 // IconArt-style two-tone glyph. Names: brand history destinations settings region edit
-// window desktop clipboard info power warning images check.
+// window desktop clipboard info power warning images check; for recording: play pause record
+// stop trimIn trimOut maskIn maskOut reset blur solid remove.
 HICON glyph(const std::string& name, int size, COLORREF main, COLORREF secondary);
 void drawGlyph(HDC, const std::string& name, int x, int y, int size, COLORREF main, COLORREF secondary);
 
@@ -56,6 +57,8 @@ void drawGlyph(HDC, const std::string& name, int x, int y, int size, COLORREF ma
 enum class Role { Standard = 0, Primary, Danger, Nav, Action, Subtle, Link };
 void setRole(HWND button, Role, const char* glyphName = nullptr);
 void setSelected(HWND button, bool selected);
+// A push button that shows only its glyph; its text stays the accessible name.
+void setIconOnly(HWND button, bool iconOnly);
 // A muted right-aligned hint on a Nav/Action item (the capture shortcut); empty clears it.
 void setHint(HWND button, const std::wstring& hint);
 // Combo boxes (drop-down lists) get a button-like face, vertically centred text and a chevron.

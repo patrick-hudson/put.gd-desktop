@@ -24,6 +24,7 @@ int wmain(int argc, wchar_t** argv) {
     if (mode == "--s3-worker") return putgd::s3WorkerMain(args);
     if (mode == "--ui") return putgd::uiMain(args);
     if (mode == "--edit-image") return putgd::editorMain(args);
+    if (mode == "--record") return putgd::recordMain(args);
     if (mode == "--check-update") return putgd::UpdateService::childMain(args);
     return putgd::residentMain(args);
 }

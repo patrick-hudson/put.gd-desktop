@@ -26,7 +26,7 @@ public:
     // Handles WM_APP_TRAY and the TaskbarCreated broadcast; true when consumed.
     bool handleMessage(UINT message, WPARAM wParam, LPARAM lParam);
     UINT taskbarCreatedMessage() const { return taskbarCreated_; }
-    // The recording entry is disabled on Windows until a native recorder exists.
+    // Capture Screen Recording; a computer without a usable encoder answers with the reason.
     void setRecordingAvailable(bool available) { recording_ = available; }
 private:
     void add();
@@ -35,7 +35,7 @@ private:
     HICON makeIcon(Tint, int size);
     HWND owner_;
     HWND menuOwner_ = nullptr; // a hidden top-level window: TrackPopupMenu needs a real foreground owner
-    bool added_ = false, recording_ = false;
+    bool added_ = false, recording_ = true;
     Tint tint_ = Tint::Idle;
     HICON icon_ = nullptr;
     UINT taskbarCreated_ = 0;

@@ -75,6 +75,7 @@ std::shared_ptr<std::mutex> OperationService::objectLock(const Destination& d, c
 void OperationService::initialize(std::function<void()> done) {
     files::makePrivateDirectory(paths::join(root_, "editing"));
     files::makePrivateDirectory(paths::join(root_, "capture"));
+    files::makePrivateDirectory(paths::join(root_, "recording"));
     background([this](Error& e) {
         HistoryStore store(root_, paths_db_);
         if (store.error()) { e = store.error(); return json::Object{}; }
@@ -83,6 +84,8 @@ void OperationService::initialize(std::function<void()> done) {
             bool changed = false;
             for (auto& item : op.items) if (item.uploadStatus == "uploading") { item.uploadStatus = "unknown"; item.phase = "unknown"; item.error = {"publication_unknown", "The resident stopped while this upload was in flight; retry reconciles it", {}}; changed = true; }
             if (op.state == "editing") op.error = {"edit_interrupted", "The editor was open when put.gd stopped; start a new edit", {}};
+            // A recording is never resumed or uploaded after a restart; its private staging is discarded.
+            else if (op.state == "recording") op.error = {"recording_interrupted", "A recording was active when put.gd stopped; nothing was uploaded", {}};
             else if (op.state == "accepted" || op.state == "acquiring") op.error = {"interrupted", "The resident stopped before this capture finished", {}};
             else op.error = {"interrupted", "The resident stopped while this upload was running; use Retry", {}};
             op.state = "interrupted"; op.phase = "interrupted"; if (op.copyStatus == "pending") op.copyStatus = "no_result";
@@ -91,6 +94,7 @@ void OperationService::initialize(std::function<void()> done) {
         }
         for (const auto& name : files::list(paths::join(root_, "editing"))) files::removeDirectoryRecursively(paths::join(paths::join(root_, "editing"), name));
         for (const auto& name : files::list(paths::join(root_, "capture"))) files::removeDirectoryRecursively(paths::join(paths::join(root_, "capture"), name));
+        for (const auto& name : files::list(paths::join(root_, "recording"))) files::removeDirectoryRecursively(paths::join(paths::join(root_, "recording"), name));
         ArtifactStore(root_).discardIncomplete();
         return json::Object{};
     }, [this, done](Error e, json::Object) {
@@ -101,7 +105,7 @@ void OperationService::initialize(std::function<void()> done) {
         if (done) done();
     });
 }
-bool OperationService::idle() const { return !stopping_ && queue_.empty() && running_ == 0 && active_.empty() && !capture_ && !editor_; }
+bool OperationService::idle() const { return !stopping_ && queue_.empty() && running_ == 0 && active_.empty() && !capture_ && !editor_ && !recording_; }
 void OperationService::scheduleHeapReclamation() {
     heapPending_ = true;
     if (heapTimer_) Loop::instance().stopTimer(heapTimer_);
@@ -147,12 +151,20 @@ std::string OperationService::routeDestination(const Operation& op) const { retu
 // ---- acceptance -------------------------------------------------------------
 void OperationService::invoke(const std::string& action, const json::Object& options, JsonReply reply) {
     if (!ready_) { reply(startupError_ ? startupError_ : notReady(), {}); return; }
-    if (action == Settings::recordingActionName()) { reply({"recording_unavailable", "Screen recording is not available in the Windows build yet", {}}, {}); return; }
+    // Screen recording is its own session: the tray opens or raises it, a global
+    // shortcut toggles it (prepare, start, stop) so the keyboard can end a recording.
+    if (action == Settings::recordingActionName()) {
+        const auto mode = options.value("mode").toString("open");
+        if ((!options.empty() && !(options.size() == 1 && options.contains("mode"))) || (mode != "open" && mode != "toggle")) { reply({"invalid_request", "The record action takes mode open or toggle", {}}, {}); return; }
+        if (editor_) { reply({"editor_active", "An edit is open; finish or cancel it before recording", {{"operationId", editingId_}}}, {}); return; }
+        recordInvoke(mode, reply); return;
+    }
     if (!in(Settings::actionNames(), action)) { reply({"invalid_action", "Unknown sharing action", {}}, {}); return; }
     const auto source = action == "edit" ? options.value("source").toString("region") : action;
     const auto sourcePath = options.value("path").toString();
     if ((action != "edit" && !options.empty()) || (action == "edit" && (!in({"region", "window", "desktop", "clipboard", "file"}, source) || (source == "file") != options.contains("path") || (source == "file" && !paths::isAbsolute(sourcePath)))))
         { reply({"invalid_request", "Edit sources are region, window, desktop, clipboard, or file with an absolute path", {}}, {}); return; }
+    if (action == "edit" && recording_) { reply({"recording_active", "A recording is active; stop or cancel it before editing", {{"operationId", recordingOperation()}}}, {}); return; }
     if (action == "edit" && editor_) { editorCommand(editingId_, "raise", {}, [](Error, json::Object) {}); reply({"editor_active", "An edit is already open; finish or cancel it first", {{"operationId", editingId_}}}, {}); return; }
     const bool interactive = source != "clipboard" && source != "file";
     const auto snapshot = settings_.snapshot();
@@ -706,6 +718,7 @@ void OperationService::cancel(const std::string& id, const std::string& itemId, 
     it->second->store(true);
     if (capture_ && capture_->op.id == id) capture_->helper->send("cancel");
     if (editor_ && editingId_ == id) editorCommand(id, "cancel", {}, [](Error, json::Object) {});
+    if (recording_ && recordingOperation() == id) cancelRecording([](Error, json::Object) {});
     reply({}, {{"operationId", id}, {"cancellationRequested", true}});
 }
 void OperationService::retry(const std::string& id, JsonReply reply) {
@@ -795,7 +808,7 @@ json::Object OperationService::capabilities() const {
     json::Object editor{{"available", true}, {"admissionPixels", double(editorAdmissionPixels)}, {"open", !editingId_.empty()}, {"sources", json::Array{"region", "window", "desktop", "clipboard", "file"}},
         {"fileFormats", json::Array{"png", "jpeg"}}, {"output", "png"}, {"shapes", json::Array{"redact", "blur", "arrow", "rectangle", "text", "highlight"}},
         {"commands", json::Array{"inspect", "apply", "preview", "saveCopy", "submit", "cancel", "raise"}}};
-    return {{"source", source}, {"providers", providers_.capabilities()}, {"editor", editor}, {"recording", json::Object{{"available", false}, {"reason", "not_available_on_windows"}}}};
+    return {{"source", source}, {"providers", providers_.capabilities()}, {"editor", editor}, {"recording", recordingCapabilities()}};
 }
 json::Object OperationService::diagnostics() const {
     return {{"schemaVersion", 1}, {"build", protocol::buildIdentity()}, {"backend", "win32"}, {"platform", "windows"}, {"activeOperations", double(active_.size())}, {"journalReady", ready_},
@@ -808,6 +821,7 @@ void OperationService::shutdown() {
     for (auto& pair : active_) pair.second->store(true);
     if (capture_) capture_->helper->terminate("shutdown");
     if (editor_) editor_->helper->terminate("shutdown");
+    terminateRecording();
     if (cleanupTimer_) Loop::instance().stopTimer(cleanupTimer_);
     if (heapTimer_) Loop::instance().stopTimer(heapTimer_);
 }
