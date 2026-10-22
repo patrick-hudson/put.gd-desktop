@@ -38,6 +38,8 @@
 
 </div>
 
+> **Under heavy development.** There is no stable release yet; every build is a nightly, and the code moves every day. Settings, the CLI and MCP contracts, package layouts, shortcuts and these docs all change between nightlies, and an older build may not read what a newer one saved. Treat it as a preview, keep the [releases page](https://github.com/patrick-hudson/put.gd-desktop/releases) handy, and tell us what broke in [issues](https://github.com/patrick-hudson/put.gd-desktop/issues).
+
 <br>
 
 <img src="docs/readme/flow.svg" alt="The put.gd pipeline, three scenarios in a loop: trigger by hotkey, tray menu or CLI; capture a region, clipboard files or a screen recording; optionally edit or review; upload to S3 or Proton Drive with a local copy; link on the clipboard and a receipt in History." width="100%">
@@ -99,7 +101,7 @@ Cinnamon/X11 through the compositor's own screenshot service, GNOME 50 Wayland t
 <td width="50%" valign="top">
 
 ### <img src="docs/readme/icons/quiet.svg" width="32" height="32" align="absmiddle" alt=""> Quiet and small
-One resident process; windows, capture helpers, the recorder and the AWS SDK worker start on demand and go away when done. The idle resident family stays under 40 MiB in the measured workflows on all three desktops, and it sends no telemetry.
+One resident process; windows, capture helpers, the recorder and the AWS SDK worker start on demand and go away when done. The idle resident family stays under 40 MiB in the measured workflows on all three desktops, and nothing phones home except a once-a-day update check that identifies nothing and can be turned off.
 
 </td>
 </tr>
@@ -201,7 +203,7 @@ chmod +x putgd-*.AppImage && ./putgd-*.AppImage
 gnome-extensions enable putgd@put.gd
 ```
 
-**Updating:** a once-a-day check (on by default) looks for a newer build; nothing installs without your confirmation, and [updates](docs/updates.md) covers the check, the channels and the AppImage recovery path if a new version will not start.
+**Updating.** Once a day put.gd asks app.put.gd for the newest version on its channel: one request with nothing identifying, on by default, off in **Settings → General → Updates**. Nothing installs on its own. A DEB or RPM updates through the apt or dnf repository it added, like any other package, and Settings opens your system's software updater when there is something new. An AppImage offers **Download and install**: put.gd verifies the release against its signed checksums, replaces the file in place and keeps the old version as a hidden backup. [updates.md](docs/updates.md) covers the channels, switching between them and going back if a new version will not start.
 
 > **Nightlies are build-tested, not desktop-certified.** Each one passed the full Linux test suites, the Windows compile, package audits and a production build of its own source tarball. Graphical, memory and live-S3 acceptance are recorded separately per candidate in [verification.md](docs/verification.md). Candidates and stable releases land on the same page once their exact packages pass acceptance on real desktops; a published stable becomes GitHub's *Latest*.
 
