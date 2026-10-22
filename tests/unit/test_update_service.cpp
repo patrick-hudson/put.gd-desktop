@@ -152,6 +152,31 @@ private slots:
   auto later=service(settings,build("0.1.0","debian13"));QSignalSpy again(later.get(),&UpdateService::updateAvailable);later->start();
   PUTGD_TRY_COMPARE(again.size(),1);QCOMPARE(later->status()["notifies"].toBool(),true);
  }
+ // #386: a DEB/RPM follows its repository's channel, which the check child
+ // reads; the setting stays as stored, and nothing offers to switch.
+ void repositoryInstallsFollowTheirRepositorysChannel(){
+  SettingsService settings(dir.filePath("config.json"));configure(settings);
+  const QJsonObject managed{{"kind","software-updates"},{"manager","apt"},{"channel","stable"},{"command","sudo apt update && sudo apt upgrade"},{"updater",QJsonValue()},
+   {"older",QJsonObject{{"version","26.1020.950"},{"command","sudo apt install --allow-downgrades putgd/stable"}}}};
+  auto reply=found("stable","26.1022.968-nightly","26.1020.950",false);auto result=reply["result"].toObject();result["action"]=managed;result["channelSource"]="repository";reply["result"]=result;answer(reply);
+  auto updates=service(settings,build("26.1022.968-nightly","ubuntu24.04"));QSignalSpy announced(updates.get(),&UpdateService::updateAvailable);updates->start();
+  // The resident asked for its build's channel; the answer names the repository's.
+  PUTGD_TRY_COMPARE(calls().size(),1);QCOMPARE(calls().first(),QString("--check-update nightly"));PUTGD_TRY_VERIFY(!updates->status()["checking"].toBool());
+  auto status=updates->status();
+  QCOMPARE(status["channel"].toString(),QString("stable"));QCOMPARE(status["channelSource"].toString(),QString("repository"));QCOMPARE(status["channelSetting"].toString(),QString("build"));
+  QCOMPARE(status["result"].toObject()["latest"].toString(),QString("26.1020.950"));QCOMPARE(status["action"].toObject()["older"].toObject()["version"].toString(),QString("26.1020.950"));
+  QCOMPARE(status["notifies"].toBool(),false);QCOMPARE(announced.size(),0);
+  const auto install=status["install"].toObject();QCOMPARE(install["kind"].toString(),QString("update"));QVERIFY(install["switch"].isNull());QCOMPARE(install["reason"].toString(),QString("not_appimage"));
+  // The next check asks for the repository's channel, and a restart remembers it.
+  Error error;bool replied=false;updates->check([&](Error e,QJsonObject){error=e;replied=true;});PUTGD_TRY_VERIFY(replied);QVERIFY(!error);
+  QCOMPARE(calls().last(),QString("--check-update stable"));
+  auto restarted=service(settings,build("26.1022.968-nightly","ubuntu24.04"));restarted->start();
+  QCOMPARE(restarted->status()["channel"].toString(),QString("stable"));QCOMPARE(restarted->status()["channelSource"].toString(),QString("repository"));
+  // The repository file removed: the setting decides again.
+  result["action"]=QJsonObject{{"kind","download"},{"repository","absent"}};result["channelSource"]="setting";reply["result"]=result;answer(reply);
+  replied=false;restarted->check([&](Error e,QJsonObject){error=e;replied=true;});PUTGD_TRY_VERIFY(replied);
+  QCOMPARE(restarted->status()["channelSource"].toString(),QString("setting"));QCOMPARE(restarted->status()["channel"].toString(),QString("nightly"));
+ }
  void failedCheckKeepsTheLastResult(){
   SettingsService settings(dir.filePath("config.json"));configure(settings);answer(available("stable","0.1.1"));
   auto updates=service(settings,build("0.1.0"));updates->start();PUTGD_TRY_COMPARE(calls().size(),1);PUTGD_TRY_VERIFY(!updates->status()["checking"].toBool());

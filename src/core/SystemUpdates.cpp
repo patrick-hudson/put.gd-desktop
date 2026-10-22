@@ -46,6 +46,17 @@ QList<QHash<QString,QString>> sections(const QString& text) {
 }
 bool falseValue(const QString& value) {return QStringList{"no","false","0","off"}.contains(value.trimmed().toLower());}
 }
+QStringList moveCommands(const QString& manager,const QString& channel) {
+ // The package installs both channels' files under /usr/share/putgd/repo,
+ // byte for byte what each channel's package installs, so dpkg takes the next
+ // package without a conffile prompt.
+ if(manager=="apt")return {"sudo install -m 644 /usr/share/putgd/repo/putgd-"+channel+".sources /etc/apt/sources.list.d/putgd.sources","sudo apt update",installFromRepositoryCommand(manager,channel)};
+ return {"sudo install -m 644 /usr/share/putgd/repo/putgd-"+channel+".repo /etc/yum.repos.d/putgd.repo",installFromRepositoryCommand(manager,channel)};
+}
+QString installFromRepositoryCommand(const QString& manager,const QString& channel) {
+ return manager=="apt"?"sudo apt install --allow-downgrades putgd/"+channel:QString("sudo dnf distro-sync --refresh putgd");
+}
+QString channelDocs() {return "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels";}
 UpdaterChoice softwareUpdater(const QString& currentDesktop,const std::function<QString(const QString&)>& which) {
  const auto desktops=currentDesktop.toLower().split(':',Qt::SkipEmptyParts);
  const auto preferred=desktops.contains("x-cinnamon")||desktops.contains("cinnamon")?QString("mintupdate"):
@@ -87,7 +98,11 @@ QJsonObject systemAction(const QString& target,const QString& root,const QString
  }
  if(state!="managed")return {{"kind","download"},{"repository",state},{"file",file}};
  QJsonObject result{{"kind","software-updates"},{"manager",deb?"apt":"dnf"},{"repository","managed"},{"file",file},{"channel",channel},
-  {"command",deb?"sudo apt update && sudo apt upgrade":"sudo dnf upgrade --refresh"},{"updater",QJsonValue()}};
+  {"command",deb?"sudo apt update && sudo apt upgrade":"sudo dnf upgrade --refresh"},{"updater",QJsonValue()},{"otherChannel",QJsonValue()},{"older",QJsonValue()}};
+ if(channel=="nightly"||channel=="stable"){
+  const auto other=channel=="nightly"?QString("stable"):QString("nightly");
+  result["otherChannel"]=QJsonObject{{"channel",other},{"commands",QJsonArray::fromStringList(moveCommands(result["manager"].toString(),other))},{"docs",channelDocs()}};
+ }
  if(choice.found)result["updater"]=QJsonObject{{"id",choice.updater.id},{"name",choice.updater.name},{"program",choice.updater.program},
   {"arguments",QJsonArray::fromStringList(choice.updater.arguments)}};
  return result;

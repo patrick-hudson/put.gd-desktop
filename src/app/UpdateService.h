@@ -29,6 +29,11 @@ namespace putgd {
 // other channel's newest release, named by the last check, installed the same
 // way but checked with that channel's key and permalink. Its version may be
 // older, which update.install must allow explicitly.
+//
+// A DEB or RPM whose pkg.put.gd repository file is in use follows that
+// repository's channel instead of the setting (#386): the check child reads the
+// file and checks that channel, and put.gd only explains how to move to the
+// other one. It never changes the file.
 class UpdateService final:public QObject {
  Q_OBJECT
 public:
@@ -84,6 +89,9 @@ signals:
  void imageReplaced();
 private:
  QString channel() const;
+ // The channel of the repository a DEB/RPM install updates from, as the last
+ // check found it, or empty.
+ QString repositoryChannel() const;
  bool notifies(const QJsonObject& action) const;
  QJsonObject installStatus() const;
  QString installUnavailable() const;

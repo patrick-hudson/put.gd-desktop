@@ -1,6 +1,7 @@
 #include "core/SystemUpdates.h"
 #include <QDir>
 #include <QFile>
+#include <QJsonArray>
 #include <QTemporaryDir>
 #include <QTest>
 using namespace putgd;
@@ -52,6 +53,29 @@ private slots:
   // The apt file means nothing to an RPM install.
   QFile::remove(root.filePath("etc/yum.repos.d/putgd.repo"));write("/etc/apt/sources.list.d/putgd.sources",sources());
   QCOMPARE(action("fedora44")["repository"].toString(),QString("absent"));
+ }
+ // #386: put.gd never changes the repository; it names the commands that move
+ // to the other channel, which someone runs in a terminal.
+ void repositoryInstallsExplainHowToMoveToTheOtherChannel(){
+  write("/etc/apt/sources.list.d/putgd.sources",sources());
+  auto other=action("ubuntu24.04")["otherChannel"].toObject();
+  QCOMPARE(other["channel"].toString(),QString("stable"));
+  QCOMPARE(other["commands"].toArray(),QJsonArray({"sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+   "sudo apt update","sudo apt install --allow-downgrades putgd/stable"}));
+  QVERIFY(other["docs"].toString().endsWith("docs/package-repositories.md#switching-channels"));
+  QVERIFY(action("ubuntu24.04")["older"].isNull());
+  write("/etc/apt/sources.list.d/putgd.sources",QByteArray(sources()).replace("Suites: nightly","Suites: stable"));
+  QCOMPARE(action("ubuntu24.04")["channel"].toString(),QString("stable"));
+  QCOMPARE(action("ubuntu24.04")["otherChannel"].toObject()["commands"].toArray().last().toString(),QString("sudo apt install --allow-downgrades putgd/nightly"));
+  // A suite that's neither channel is someone's own setup: nothing to suggest.
+  write("/etc/apt/sources.list.d/putgd.sources",QByteArray(sources()).replace("Suites: nightly","Suites: testing"));
+  QCOMPARE(action("ubuntu24.04")["kind"].toString(),QString("software-updates"));QVERIFY(action("ubuntu24.04")["otherChannel"].isNull());
+  write("/etc/yum.repos.d/putgd.repo","[putgd-stable]\nname=put.gd (stable)\nbaseurl=https://pkg.put.gd/rpm/fedora/44/x86_64/stable\nenabled=1\ngpgcheck=1\n");
+  other=action("fedora44")["otherChannel"].toObject();QCOMPARE(other["channel"].toString(),QString("nightly"));
+  QCOMPARE(other["commands"].toArray(),QJsonArray({"sudo install -m 644 /usr/share/putgd/repo/putgd-nightly.repo /etc/yum.repos.d/putgd.repo","sudo dnf distro-sync --refresh putgd"}));
+  QCOMPARE(update::installFromRepositoryCommand("dnf","stable"),QString("sudo dnf distro-sync --refresh putgd"));
+  // Disabled or absent: no repository channel, so nothing to move.
+  QVERIFY(!action("debian13").contains("otherChannel"));
  }
  void theDesktopsOwnUpdaterComesFirst(){
   const auto all=[](const QString& program){return "/usr/bin/"+program;};

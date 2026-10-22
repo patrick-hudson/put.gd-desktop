@@ -36,7 +36,15 @@ UpdateService::UpdateService(SettingsService& settings,QString stateRoot,QString
  };
 }
 qint64 UpdateService::random(qint64 low,qint64 high) const {return random_?random_(low,high):low+qint64(QRandomGenerator::global()->bounded(quint64(high-low+1)));}
-QString UpdateService::channel() const {const auto chosen=settings_.snapshot().updateChannel;return chosen=="stable"||chosen=="nightly"?chosen:build_.channel;}
+QString UpdateService::channel() const {
+ // A repository install follows its repository, as the last check found it (#386).
+ if(const auto followed=repositoryChannel();!followed.isEmpty())return followed;
+ const auto chosen=settings_.snapshot().updateChannel;return chosen=="stable"||chosen=="nightly"?chosen:build_.channel;
+}
+QString UpdateService::repositoryChannel() const {
+ const auto followed=result_["channelSource"]=="repository"?result_["channel"].toString():QString();
+ return followed=="stable"||followed=="nightly"?followed:QString();
+}
 bool UpdateService::enabled() const {return build_.supported&&settings_.snapshot().checkForUpdates&&!channel().isEmpty();}
 void UpdateService::start() {
  startedAt_=now();startupDelayMs_=random(startupMinimumMs,startupMaximumMs);jitter_=random(-jitterMs,jitterMs);
@@ -95,6 +103,7 @@ QJsonObject UpdateService::status() const {
  const bool current=result_["channel"]==channel()&&!channel().isEmpty();
  const auto offered=action();
  return {{"build",build_.toJson()},{"check",snapshot.checkForUpdates},{"channelSetting",snapshot.updateChannel},{"channel",channel().isEmpty()?QJsonValue():QJsonValue(channel())},
+  {"channelSource",repositoryChannel().isEmpty()?"setting":"repository"},
   {"enabled",enabled()},{"supported",build_.supported},{"reason",build_.reason.isEmpty()?QJsonValue():QJsonValue(build_.reason)},
   {"notifies",notifies(offered)},{"action",offered.isEmpty()?QJsonValue():QJsonValue(offered)},{"checking",bool(process_)},{"attemptedAt",isoTime(attemptedAt_)},{"checkedAt",current?isoTime(checkedAt_):QJsonValue()},
   {"nextCheckAt",isoTime(nextAt_)},{"result",current?QJsonValue(result_):QJsonValue()},{"error",error_.isEmpty()?QJsonValue():QJsonValue(error_)},
@@ -127,7 +136,8 @@ QJsonObject UpdateService::installStatus() const {
  if(!status.contains("state"))status["state"]="idle";
  status["available"]=unavailable.isEmpty();
  const auto offer=switchOffer();
- status["kind"]=build_.channel.isEmpty()||channel()==build_.channel?"update":"switch";
+ // Only an AppImage switches itself; a repository install's channel is apt's or dnf's (#386).
+ status["kind"]=build_.target!="appimage"||build_.channel.isEmpty()||channel()==build_.channel?"update":"switch";
  status["switch"]=offer.isEmpty()?QJsonValue():QJsonValue(offer);
  status["reason"]=unavailable.isEmpty()?QJsonValue():QJsonValue(unavailable);
  status["running"]=bool(installer_);
@@ -287,13 +297,15 @@ void UpdateService::finished(bool manual,const QByteArray& output,const Error& f
  manualRunning_=false;attemptedAt_=now();attemptedChannel_=channel();jitter_=random(-jitterMs,jitterMs);
  const auto reply=QJsonDocument::fromJson(output.trimmed()).object();
  Error error=failure;QJsonObject result;
- if(reply["schemaVersion"]==1&&reply["ok"]==true&&reply["result"].isObject()&&reply["result"].toObject()["channel"]==channel()){error={};result=reply["result"].toObject();}
+ // A repository install's result names its repository's channel, whichever was asked for (#386).
+ const auto answered=reply["result"].toObject();
+ if(reply["schemaVersion"]==1&&reply["ok"]==true&&reply["result"].isObject()&&(answered["channel"]==channel()||answered["channelSource"]=="repository")){error={};result=answered;}
  else if(reply["schemaVersion"]==1&&reply["ok"]==false){const auto e=reply["error"].toObject();error={e["code"].toString(),e["message"].toString(),e["details"].toObject()};}
  if(error) {
   error_=error.toJson();
   logging::warning(logApp(),"Update check failed",{{"code",error.code},{"details",error.details}});
  } else {
-  checkedAt_=attemptedAt_;result_=result;error_={};
+  checkedAt_=attemptedAt_;result_=result;error_={};attemptedChannel_=result["channel"].toString();
   const auto latest=result["latest"].toString();const bool available=result["updateAvailable"].toBool();
   logging::info(logApp(),"Update check finished",{{"channel",result["channel"]},{"latest",result["latest"]},{"updateAvailable",available}});
   // Stable announces each new version once. A version someone already saw in

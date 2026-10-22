@@ -33,6 +33,8 @@
 #include <QComboBox>
 #include <QDoubleSpinBox>
 #include <QLineEdit>
+#include <QClipboard>
+#include <QJsonArray>
 #include <QLabel>
 #include <QListWidget>
 #include <QPushButton>
@@ -902,6 +904,62 @@ private slots:
   apply(false,QJsonValue(),"build","development_build");PUTGD_TRY_VERIFY(!channel->isVisibleTo(window.settings()));
   window.findChild<QCheckBox*>("notifications")->setChecked(!window.findChild<QCheckBox*>("notifications")->isChecked());PUTGD_COMPARE_STEADY(stored(),QString("build"),300);
   apply(false,"stable","build","flatpak");PUTGD_TRY_VERIFY(!channel->isVisibleTo(window.settings()));
+ }
+ // #386: a DEB/RPM that updates from put.gd's repository shows the
+ // repository's channel without a choice, and the commands that move to the
+ // other one; put.gd runs none of them and never rewrites the stored choice.
+ void repositoryInstallShowsItsChannelAndHowToMove(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(Settings::developmentTemplate(),{}));
+  CredentialStore secrets;UiSessionFixture fixture(service,secrets);QJsonObject update;
+  fixture.server.setUiDiagnostics([&]{auto data=fixture.operations().diagnostics();data["update"]=update;return data;});
+  MainWindow window(fixture.session);window.navigate("settings");window.show();PUTGD_TRY_VERIFY(fixture.session.ready());
+  auto* channel=window.findChild<QComboBox*>("updateChannel");auto* source=window.findChild<QLabel*>("updateChannelSource");auto* line=window.findChild<QLabel*>("updateStatus");
+  auto* text=window.findChild<QLabel*>("otherChannelText");auto* commands=window.findChild<QLabel*>("otherChannelCommands");auto* copy=window.findChild<QPushButton*>("copyOtherChannelCommands");
+  auto* command=window.findChild<QLineEdit*>("updateCommand");auto* open=window.findChild<QPushButton*>("openSoftwareUpdates");
+  QVERIFY(channel&&source&&line&&text&&commands&&copy&&command&&open);
+  const auto settings=window.settings();
+  const auto stored=[&]{return service.document()["preferences"].toObject()["updates"].toObject()["channel"].toString("(none)");};
+  auto apply=[&](const QString& version,const QString& buildChannel,const QString& repository,const QJsonValue& latest,bool newer,const QJsonObject& older={}){
+   const auto other=repository=="nightly"?QString("stable"):QString("nightly");
+   const QJsonArray moves{"sudo install -m 644 /usr/share/putgd/repo/putgd-"+other+".sources /etc/apt/sources.list.d/putgd.sources","sudo apt update","sudo apt install --allow-downgrades putgd/"+other};
+   QJsonObject action{{"kind","software-updates"},{"manager","apt"},{"repository","managed"},{"file","/etc/apt/sources.list.d/putgd.sources"},{"channel",repository},
+    {"command","sudo apt update && sudo apt upgrade"},{"updater",QJsonObject{{"id","mintupdate"},{"name","Update Manager"},{"program","/usr/bin/mintupdate"}}},
+    {"otherChannel",QJsonObject{{"channel",other},{"commands",moves},{"docs","https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"}}},
+    {"older",older.isEmpty()?QJsonValue():QJsonValue(older)}};
+   update={{"supported",true},{"build",QJsonObject{{"version",version},{"channel",buildChannel},{"supported",true},{"packageTarget","ubuntu24.04"}}},
+    {"check",true},{"channelSetting","build"},{"channel",repository},{"channelSource","repository"},{"checking",false},{"action",action},{"error",QJsonObject{}},
+    {"checkedAt",QJsonValue()},{"nextCheckAt",QJsonValue()},
+    {"result",QJsonObject{{"channel",repository},{"channelSource","repository"},{"current",version},{"latest",latest},{"updateAvailable",newer}}},
+    {"install",QJsonObject{{"state","idle"},{"kind","update"},{"available",false},{"reason","not_appimage"},{"switch",QJsonValue()},{"running",false},{"restartRequired",false}}}};
+   fixture.session.refreshSnapshot();
+  };
+  // A nightly DEB on its nightly repository: Nightly, shown but not chosen, and how to reach stable.
+  apply("26.1022.968-nightly","nightly","nightly","26.1022.968-nightly",false);
+  PUTGD_TRY_VERIFY(text->isVisibleTo(settings));QCOMPARE(channel->currentData().toString(),QString("nightly"));QVERIFY(!channel->isEnabled());
+  QVERIFY(source->isVisibleTo(settings));QCOMPARE(source->text(),QString("Set by your system's put.gd repository, /etc/apt/sources.list.d/putgd.sources."));
+  QVERIFY(text->text().startsWith("To move to stable, run these commands in a terminal. Stable is usually older than a nightly"));
+  QCOMPARE(commands->text(),QString("sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources &&\nsudo apt update &&\nsudo apt install --allow-downgrades putgd/stable"));
+  copy->click();QCOMPARE(QApplication::clipboard()->text(),commands->text());
+  QVERIFY(line->text().startsWith("Up to date: 26.1022.968-nightly is the newest nightly version."));
+  // Moved to stable by hand, whose release is older: said plainly, with the command that installs it anyway.
+  apply("26.1022.968-nightly","nightly","stable","26.1020.950",false,{{"version","26.1020.950"},{"command","sudo apt install --allow-downgrades putgd/stable"}});
+  PUTGD_TRY_COMPARE(channel->currentData().toString(),QString("stable"));QVERIFY(!channel->isEnabled());
+  QVERIFY(line->text().startsWith("Your system now updates put.gd from the stable repository. Stable 26.1020.950 is older than this nightly build (26.1022.968-nightly), so the system updater keeps this version until a newer stable release is out."));
+  QVERIFY(command->isVisibleTo(settings));QCOMPARE(command->text(),QString("sudo apt install --allow-downgrades putgd/stable"));
+  QVERIFY(text->text().startsWith("To move to nightly"));QVERIFY(commands->text().endsWith("putgd/nightly"));
+  // No stable release yet: the nightly stays until the first one.
+  apply("26.1022.968-nightly","nightly","stable",QJsonValue(),false);
+  PUTGD_TRY_VERIFY(line->text().startsWith("There's no stable release yet. Your system updates put.gd from the stable repository, so this nightly build (26.1022.968-nightly) stays as it is"));
+  QVERIFY(!command->isVisibleTo(settings));
+  // A newer stable release is an ordinary update through the system's updater.
+  apply("26.1022.968-nightly","nightly","stable","26.1101.990",true);
+  PUTGD_TRY_VERIFY(open->isVisibleTo(settings));QVERIFY(line->text().startsWith("put.gd 26.1101.990 is available from put.gd's stable repository."));
+  // Nothing was stored: the choice belongs to builds that switch themselves.
+  window.findChild<QCheckBox*>("notifications")->setChecked(!window.findChild<QCheckBox*>("notifications")->isChecked());PUTGD_COMPARE_STEADY(stored(),QString("(none)"),300);
+  // Without a repository the choice is back, and the instructions go.
+  update["channelSource"]="setting";update["channel"]="nightly";update["action"]=QJsonObject{{"kind","download"},{"repository","absent"}};
+  auto result=update["result"].toObject();result["channel"]="nightly";result["channelSource"]="setting";update["result"]=result;fixture.session.refreshSnapshot();
+  PUTGD_TRY_VERIFY(channel->isEnabled());QVERIFY(!source->isVisibleTo(settings));QVERIFY(!text->isVisibleTo(settings));QCOMPARE(channel->currentData().toString(),QString("nightly"));
  }
  // #293 phase 3: an AppImage with an update offers Download and install, shows
  // the install's progress, then Restart put.gd; a repository install never does.

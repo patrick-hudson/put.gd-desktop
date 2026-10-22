@@ -384,10 +384,11 @@ QString settingHelp(const QString& path,const QString& objectName){
   {"appearanceTheme","Match the desktop follows your desktop's light or dark setting and changes with it. Dark and Light keep one look. Applies at once to every open put.gd window."},
   {"launchAtLogin","Starts put.gd when you sign in. Disabled by default. The desktop startup entry is updated after persistence; another app copy is not started."},
   {"checkForUpdates","Once a day put.gd asks app.put.gd for the newest version on its channel. The request is the same from every computer: no version, account, locale or ID. The comparison happens here, and nothing is installed without you. Stable builds also show a notification once for each new version; nightly builds show it only here. Check now works with daily checks off."},
-  {"updateChannel","Starts on the channel of this build: a nightly build follows nightly, a release or release candidate follows stable. Choose the other one to watch it instead. Changing it doesn't change what is installed: an AppImage then offers to switch to that channel's newest release, which you start yourself."},
+  {"updateChannel","Starts on the channel of this build: a nightly build follows nightly, a release or release candidate follows stable. Choose the other one to watch it instead. Changing it doesn't change what is installed: an AppImage then offers to switch to that channel's newest release, which you start yourself. A DEB or RPM that updates from put.gd's apt or dnf repository follows that repository's channel instead, which only you change, in a terminal."},
   {"updateStatus","The result of the last check and when the next one runs. Download opens the new package for this installation in your browser. When this installation updates from put.gd's apt or dnf repository, Open software updates opens your system's updater instead."},
   {"updateInstall","Download and install fetches the new AppImage, checks it against the release's SHA256SUMS and puts it in place of the one put.gd runs from, at the same path, so login startup and menu entries keep working. It uses appimageupdatetool or zsync2 when one is installed, which downloads only what changed, and otherwise the whole file. The current version is kept beside it as a hidden backup until the new one has started. When you watch the other channel, the same steps switch to that channel's release, checked with its own signing key; an older version is installed only after you confirm."},
   {"updateCommand","Updates from put.gd's repository install with the rest of your system's updates. You can also run this command in a terminal."},
+  {"otherChannel","This installation updates from put.gd's apt or dnf repository, so your system decides which channel it installs. These commands put the package's copy of the other channel's repository file in place, then install that channel's package. put.gd never runs them for you."},
   {"notifications","Shows desktop notifications for operation results when supported. Enabled by default. Disabling notifications leaves results available in History."},
   {"debugLogging","Adds detailed debug records to put.gd's log on this computer, for a maintainer working out a problem. It turns itself off 24 hours after you turn it on; restarting doesn't extend it. Credentials, tokens and file contents are never logged."},
   {"logSummary","put.gd keeps a log of what it did in its state folder, at most 14 days and 50 MiB by default (Advanced settings in the configuration file). Clear logs deletes every log file and starts a new one; uploads, history, settings and saved diagnostics packages stay."},
@@ -456,7 +457,9 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  // resident runs the check; this page shows it and starts Check now.
  auto* updatesForm=section(general,"Updates","One small request a day to app.put.gd, with nothing that identifies you. Nothing installs without you.");
  updatesForm_=updatesForm;checkUpdates_=new QCheckBox("Check for updates once a day");checkUpdates_->setObjectName("checkForUpdates");updateRows_.append(setting(updatesForm,"Updates",checkUpdates_,"/preferences/updates/check"));
- updateChannel_=choices(this,"updateChannel",{});updateChannel_->addItem("Stable","stable");updateChannel_->addItem("Nightly","nightly");updateRows_.append(setting(updatesForm,"Channel",updateChannel_,"/preferences/updates/channel"));
+ updateChannel_=choices(this,"updateChannel",{});updateChannel_->addItem("Stable","stable");updateChannel_->addItem("Nightly","nightly");auto* channelRow=setting(updatesForm,"Channel",updateChannel_,"/preferences/updates/channel");updateRows_.append(channelRow);
+ // A repository install shows its repository's channel and can't choose (#386).
+ updateChannelSource_=new QLabel;updateChannelSource_->setObjectName("updateChannelSource");updateChannelSource_->setWordWrap(true);VisualStyle::role(updateChannelSource_,"muted");updateChannelSource_->hide();channelRow->layout()->addWidget(updateChannelSource_);
  auto* updateRow=new QWidget;auto* updateLayout=new QHBoxLayout(updateRow);updateLayout->setContentsMargins(0,0,0,0);updateLayout->setSpacing(8);
  updateStatus_=new QLabel;updateStatus_->setObjectName("updateStatus");updateStatus_->setWordWrap(true);updateStatus_->setAccessibleName("Update status");updateLayout->addWidget(updateStatus_,1);
  checkNow_=new QPushButton("Check now");checkNow_->setObjectName("checkForUpdatesNow");updateLayout->addWidget(checkNow_,0,Qt::AlignTop);
@@ -510,6 +513,19 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  updateCommand_=new QLineEdit;updateCommand_->setObjectName("updateCommand");updateCommand_->setReadOnly(true);updateCommand_->setAccessibleName("Update command");VisualStyle::role(updateCommand_,"mono");commandLayout->addWidget(updateCommand_,1);
  auto* copyCommand=new QPushButton("Copy");copyCommand->setObjectName("copyUpdateCommand");copyCommand->setAccessibleName("Copy the update command");commandLayout->addWidget(copyCommand);
  updateCommandRow_=commandRow;updatesForm->addRow(VisualStyle::settingLabel("Or in a terminal",settingHelp({},"updateCommand"),updateCommand_,this),commandRow);updatesForm->setRowVisible(commandRow,false);
+ // Moving a repository install to the other channel (#386): the commands to
+ // run in a terminal. put.gd never runs a privileged command itself.
+ otherChannelRow_=new QWidget;auto* otherLayout=new QVBoxLayout(otherChannelRow_);otherLayout->setContentsMargins(0,0,0,0);otherLayout->setSpacing(6);
+ otherChannelText_=new QLabel;otherChannelText_->setObjectName("otherChannelText");otherChannelText_->setWordWrap(true);otherLayout->addWidget(otherChannelText_);
+ auto* commandsLine=new QHBoxLayout;commandsLine->setContentsMargins(0,0,0,0);commandsLine->setSpacing(8);
+ otherChannelCommands_=new QLabel;otherChannelCommands_->setObjectName("otherChannelCommands");otherChannelCommands_->setTextFormat(Qt::PlainText);otherChannelCommands_->setWordWrap(true);
+ otherChannelCommands_->setTextInteractionFlags(Qt::TextSelectableByMouse);otherChannelCommands_->setAccessibleName("Commands that move to the other channel");VisualStyle::role(otherChannelCommands_,"mono");commandsLine->addWidget(otherChannelCommands_,1);
+ auto* copyOther=new QPushButton("Copy");copyOther->setObjectName("copyOtherChannelCommands");copyOther->setAccessibleName("Copy the commands that move to the other channel");commandsLine->addWidget(copyOther,0,Qt::AlignTop);
+ otherLayout->addLayout(commandsLine);
+ auto* channelDocs=new QPushButton("How switching channels works");channelDocs->setObjectName("otherChannelDocs");VisualStyle::role(channelDocs,"link");otherLayout->addWidget(channelDocs,0,Qt::AlignLeft);
+ updatesForm->addRow(VisualStyle::settingLabel("Other channel",settingHelp({},"otherChannel"),otherChannelText_,this),otherChannelRow_);updatesForm->setRowVisible(otherChannelRow_,false);
+ connect(copyOther,&QPushButton::clicked,this,[this]{qApp->clipboard()->setText(otherChannelCommands_->text());});
+ connect(channelDocs,&QPushButton::clicked,this,[this]{const QUrl url(settings_.diagnostics()["update"].toObject()["action"].toObject()["otherChannel"].toObject()["docs"].toString());if(url.scheme()=="https")host::openLink(url);});
  connect(openUpdates_,&QPushButton::clicked,this,[this]{
   openUpdates_->setEnabled(false);
   settings_.request("update.openSoftwareUpdates",{},this,[g=QPointer<SettingsWindow>(this)](Error error,QJsonObject){if(!g)return;g->openUpdates_->setEnabled(true);if(error)VisualStyle::feedback(g->updateStatus_,error.message+".");});
@@ -871,6 +887,17 @@ QString SettingsWindow::buildUpdateChannel() const {
  return update["supported"].toBool()?update["build"].toObject()["channel"].toString():QString();
 }
 void SettingsWindow::showUpdateChannel(){
+ // A repository install follows its repository's channel (#386): shown, not
+ // chosen, and the stored choice stays as it is for an AppImage sharing it.
+ const auto update=settings_.diagnostics()["update"].toObject();
+ const bool repository=update["supported"].toBool()&&update["channelSource"]=="repository";
+ updateChannel_->setEnabled(!repository);updateChannelSource_->setVisible(repository);
+ if(repository){
+  const auto channel=update["channel"].toString();
+  updateChannelSource_->setText("Set by your system's put.gd repository, "+update["action"].toObject()["file"].toString("which only you change")+".");
+  const QSignalBlocker block(updateChannel_);updateChannel_->setCurrentIndex(qMax(0,updateChannel_->findData(channel)));updateChannelShown_=channel;
+  return;
+ }
  // Once the choice has been changed here, it stays as chosen.
  if(!updateChannelShown_.isEmpty()&&updateChannel_->currentData()!=updateChannelShown_)return;
  const auto channel=updateChannelSetting_=="stable"||updateChannelSetting_=="nightly"?updateChannelSetting_:buildUpdateChannel();
@@ -893,7 +920,21 @@ void SettingsWindow::refreshUpdateStatus(){
  updateActionsRow_->setVisible(available||!offer.isEmpty()||install["restartRequired"].toBool());
  downloadUpdate_->setVisible(!managed);openUpdates_->setVisible(managed&&action["updater"].isObject());
  if(managed){openUpdates_->setToolTip("Opens "+action["updater"].toObject()["name"].toString());updateCommand_->setText(action["command"].toString());}
- updatesForm_->setRowVisible(updateCommandRow_,available&&managed);
+ // Moved to the other channel's repository, whose release is older: the
+ // command that installs it anyway (#386).
+ const auto older=managed?action["older"].toObject():QJsonObject{};
+ if(!older.isEmpty())updateCommand_->setText(older["command"].toString());
+ updatesForm_->setRowVisible(updateCommandRow_,(available&&managed)||!older.isEmpty());
+ const auto other=managed&&supported&&update["channelSource"]=="repository"?action["otherChannel"].toObject():QJsonObject{};
+ updatesForm_->setRowVisible(otherChannelRow_,!other.isEmpty());
+ if(!other.isEmpty()){
+  const auto to=other["channel"].toString();
+  otherChannelText_->setText(to=="stable"?
+   QString("To move to stable, run these commands in a terminal. Stable is usually older than a nightly, so the last command installs it as a downgrade. Leave it out to keep this version until a newer stable release is out; your system updater then installs it."):
+   QString("To move to nightly, run these commands in a terminal. Nightly builds come from the newest code every day, so they're usually newer than the stable release."));
+  QStringList commands;for(const auto& command:other["commands"].toArray())commands.append(command.toString());
+  otherChannelCommands_->setText(commands.join(" &&\n"));
+ }
  if(update.isEmpty()){VisualStyle::feedback(updateStatus_,"Not available yet.");return;}
  if(!supported){
   static const QHash<QString,QString> reasons{
@@ -914,6 +955,12 @@ void SettingsWindow::refreshUpdateStatus(){
  else if(switching&&!result.isEmpty()&&result["latest"].isNull())
   text="There's no "+channel+" release yet. This "+build["channel"].toString()+" build ("+current+") stays as it is, and doesn't get "+build["channel"].toString()+
    " updates while "+capitalized(channel)+" is chosen. put.gd offers the switch once the first "+channel+" release is out.";
+ else if(!older.isEmpty())
+  text="Your system now updates put.gd from the "+channel+" repository. "+capitalized(channel)+" "+older["version"].toString()+" is older than this "+build["channel"].toString()+" build ("+current+
+   "), so the system updater keeps this version until a newer "+channel+" release is out. To install "+channel+" "+older["version"].toString()+" now, run the command below.";
+ else if(managed&&channel!=build["channel"].toString()&&!result.isEmpty()&&result["latest"].isNull())
+  text="There's no "+channel+" release yet. Your system updates put.gd from the "+channel+" repository, so this "+build["channel"].toString()+" build ("+current+
+   ") stays as it is until the first "+channel+" release, which the system updater then installs.";
  else if(available&&managed)text="put.gd "+result["latest"].toString()+" is available from put.gd's "+action["channel"].toString()+" repository. This is "+current+".";
  else if(available)text="put.gd "+result["latest"].toString()+" is available. This is "+current+".";
  else if(!result.isEmpty()&&result["latest"].isNull())text="No "+channel+" release has been published yet. This is "+current+".";

@@ -1,5 +1,6 @@
 #include "cli/UpdateCheck.h"
 #include "core/CaBundle.h"
+#include <QDir>
 #include <QFile>
 #include <QJsonDocument>
 #include <QScopeGuard>
@@ -7,6 +8,7 @@
 #include <QSslSocket>
 #include <QTcpServer>
 #include <QTcpSocket>
+#include <QTemporaryDir>
 #include <QTest>
 using namespace putgd;
 // The checker's one request (#293): which bytes leave the computer, and how
@@ -36,13 +38,13 @@ class UpdateCheckTest:public QObject {
  static update::Build build(){
   return update::build(QJsonObject{{"version","0.1.1-nightly.588"},{"gitCommit","528fe444b0cb0123456789abcdef0123456789ab"},{"dirty",false},{"sourceProvenance","git"}},"debian13",true);
  }
- static QByteArray feed(const QString& version){
+ static QByteArray feed(const QString& version,const QString& channel="nightly"){
   const auto tag="v"+version;const auto name="putgd-"+version+"-debian13-x86_64.deb";
-  return QJsonDocument(QJsonObject{{"schema",1},{"channel","nightly"},{"release",QJsonObject{{"tag",tag},{"version",version},{"publishedAt","2026-10-20T05:55:50Z"},
+  return QJsonDocument(QJsonObject{{"schema",1},{"channel",channel},{"release",QJsonObject{{"tag",tag},{"version",version},{"publishedAt","2026-10-20T05:55:50Z"},
    {"assets",QJsonObject{{"debian13",QJsonObject{{"name",name},{"url","https://github.com/patrick-hudson/put.gd-desktop/releases/download/"+tag+"/"+name},{"size",1}}}}}}}}).toJson();
  }
 private slots:
- void cleanup(){qunsetenv("PUTGD_UPDATE_FEED_URL");}
+ void cleanup(){qunsetenv("PUTGD_UPDATE_FEED_URL");qunsetenv("PUTGD_UPDATE_SYSTEM_ROOT");}
  void sendsOneIdenticalRequestAndComparesLocally(){
   FeedServer server;server.body=feed("0.1.1-nightly.590");qputenv("PUTGD_UPDATE_FEED_URL",server.base());
   Error error;const auto result=fetchUpdate(build(),"nightly",error);
@@ -65,6 +67,31 @@ private slots:
   // and pragma are no-cache, from AlwaysNetwork.
   for(const auto& name:names)QVERIFY2(QStringList({"host","user-agent","accept","accept-language","accept-encoding","connection","cache-control","pragma"}).contains(name),qPrintable(name));
   QVERIFY(names.contains("user-agent"));
+ }
+ // #386: a DEB whose putgd.sources names the stable suite checks stable,
+ // whichever channel the resident asked for, and says when that release is
+ // older than the installed nightly.
+ void repositoryInstallsCheckTheirRepositorysChannel(){
+  QTemporaryDir root;QVERIFY(QDir().mkpath(root.filePath("etc/apt/sources.list.d")));
+  QFile sources(root.filePath("etc/apt/sources.list.d/putgd.sources"));QVERIFY(sources.open(QIODevice::WriteOnly));
+  sources.write("Types: deb\nURIs: https://pkg.put.gd/apt/debian13\nSuites: stable\nComponents: main\nSigned-By:\n -----BEGIN PGP PUBLIC KEY BLOCK-----\n -----END PGP PUBLIC KEY BLOCK-----\n");sources.close();
+  qputenv("PUTGD_UPDATE_SYSTEM_ROOT",root.path().toLocal8Bit());
+  FeedServer server;server.body=feed("26.1020.950","stable");qputenv("PUTGD_UPDATE_FEED_URL",server.base());
+  const auto nightly=update::build(QJsonObject{{"version","26.1022.968-nightly"},{"gitCommit","528fe444b0cb0123456789abcdef0123456789ab"},{"dirty",false},{"sourceProvenance","git"}},"debian13",true);
+  Error error;auto result=fetchUpdate(nightly,"nightly",error);QVERIFY2(!error,qPrintable(error.message));
+  QCOMPARE(server.requests.size(),1);QVERIFY(server.requests.first().startsWith("GET /update/v1/stable.json "));
+  QCOMPARE(result["channel"].toString(),QString("stable"));QCOMPARE(result["channelSource"].toString(),QString("repository"));QCOMPARE(result["updateAvailable"].toBool(),false);
+  const auto action=result["action"].toObject();QCOMPARE(action["channel"].toString(),QString("stable"));
+  QCOMPARE(action["older"].toObject()["version"].toString(),QString("26.1020.950"));
+  QCOMPARE(action["older"].toObject()["command"].toString(),QString("sudo apt install --allow-downgrades putgd/stable"));
+  QCOMPARE(action["otherChannel"].toObject()["channel"].toString(),QString("nightly"));
+  // A newer stable release is an ordinary update from the repository.
+  server.body=feed("26.1101.990","stable");result=fetchUpdate(nightly,"nightly",error);QVERIFY(!error);
+  QCOMPARE(result["updateAvailable"].toBool(),true);QVERIFY(result["action"].toObject()["older"].isNull());
+  // Without the file the resident's channel is checked, as before.
+  QVERIFY(QFile::remove(sources.fileName()));server.body=feed("26.1022.970-nightly");result=fetchUpdate(nightly,"nightly",error);QVERIFY(!error);
+  QVERIFY(server.requests.last().startsWith("GET /update/v1/nightly.json "));QCOMPARE(result["channelSource"].toString(),QString("setting"));
+  QCOMPARE(result["action"].toObject()["kind"].toString(),QString("download"));
  }
  void missingFeedIsUnavailable(){
   FeedServer server;server.status="404 Not Found";server.body="{}";qputenv("PUTGD_UPDATE_FEED_URL",server.base());
