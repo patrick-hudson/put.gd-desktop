@@ -1,0 +1,17 @@
+Transaction ID : 89
+Begin time     : 2026-10-22 19:47:37
+Begin rpmdb    : 531f366bd1223ab8dbceea3a6ca1bdf92b86b31099c27b2b0c5c2e98cef227c3
+End time       : 2026-10-22 19:47:41
+End rpmdb      : f4fbf62e577cd710dcdd3cff9c9965edbadf82becfdfa4ceba034986300133e8
+User           : 0 Super User <root>
+Status         : Ok
+Releasever     : 44
+Description    : dnf5daemon-server
+Comment        : 
+Packages altered:
+  Action  Package                                   Reason     Repository
+  Install putgd-0:26.1022.968~nightly-1.fc44.x86_64 User       putgd-lab-314
+  Install qt6-qtimageformats-0:6.11.2-1.fc44.x86_64 Dependency updates
+  Install jasper-libs-0:4.2.8-2.fc44.x86_64         Dependency fedora
+  Install libmng-0:2.0.3-25.fc44.x86_64             Dependency fedora
+
