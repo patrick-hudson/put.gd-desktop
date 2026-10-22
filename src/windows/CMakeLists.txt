@@ -64,7 +64,8 @@ endif()
 
 # Portable core: no Windows headers. Tested on Linux and used by every executable.
 add_library(putgd_win_core STATIC
-  common/Json.cpp common/Text.cpp common/Shortcut.cpp common/Sha256.cpp
+  common/Json.cpp common/Text.cpp common/Shortcut.cpp common/Sha256.cpp common/Redact.cpp
+  core/LogFormat.cpp core/CrashRecord.cpp core/UncleanExit.cpp core/Zip.cpp core/DiagnosticsPackage.cpp
   core/Settings.cpp core/Naming.cpp core/Operation.cpp core/SettingsPatch.cpp core/S3Settings.cpp core/SanitizedPng.cpp core/ProtonSettings.cpp
   s3/SigV4.cpp)
 target_link_libraries(putgd_win_core PUBLIC putgd_win_options)
@@ -80,6 +81,9 @@ if(PUTGD_WINDOWS_PORTABLE_TESTS)
   add_executable(test_win_editor tests/test_editor.cpp editor/EditDocument.cpp editor/EditorCommands.cpp editor/Export.cpp)
   target_link_libraries(test_win_editor PRIVATE putgd_win_core)
   add_test(NAME windows_editor_contract COMMAND test_win_editor)
+  add_executable(test_win_diagnostics tests/test_diagnostics.cpp)
+  target_link_libraries(test_win_diagnostics PRIVATE putgd_win_core)
+  add_test(NAME windows_diagnostics_contract COMMAND test_win_diagnostics)
 endif()
 
 if(WIN32)
