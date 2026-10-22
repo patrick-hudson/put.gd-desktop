@@ -1115,6 +1115,7 @@ void DestinationsPageImpl::poll() {
                                         : L"Connection test failed. " + setupError(failure);
             if (!result.empty() && !accountScope)
                 text += L"\nUpload: " + stepText(result.value("upload")) + L"\nPublic link: " + stepText(result.value("publicGet")) + L"\nCleanup: " + stepText(result.value("cleanup"));
+            if (result.value("multipart").isObject() && !accountScope) text += L"\nMultipart (files over 64 MiB): " + stepText(result.value("multipart"));
             if (!success && error.code == "credential_setup_required") text += L"\nStore or unlock credentials, then test again.";
             testResults_[job.profileId] = text;
             main_.status(success ? L"Connection test passed." : L"Connection test failed.", !success);

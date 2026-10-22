@@ -34,6 +34,8 @@ public:
     // Merges remote-management fields into an item's state and history row.
     Error updateRemote(const std::string& historyId, const json::Object& fields);
     std::vector<std::string> activeDeletionHistoryIds() const;
+    // Operations with an item that still journals a remote upload (an S3 multipart upload ID).
+    std::vector<std::string> journaledOperations(Error* = nullptr) const;
     static std::string publicationIdentity(const StorageReceipt&, const ProviderRegistry&);
 private:
     Error initialize();

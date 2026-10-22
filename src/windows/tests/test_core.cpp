@@ -176,6 +176,10 @@ static void operationTests() {
     CHECK(!op.publicJson().contains("settings"));
     CHECK(!op.publicJson().value("items").arrayRef()[0].objectRef().value("artifact").objectRef().contains("path"));
     item.remoteStatus = "removed"; CHECK(!item.linkAvailable());
+    // The multipart resume journal is durable on the item but never public.
+    op.items[0].uploadJournal = json::Object{{"schemaVersion", 1}, {"partBytes", 16777216.0}, {"uploadId", "abc"}};
+    CHECK(Operation::fromJson(op.toJson()).items[0].uploadJournal.value("uploadId").toString() == "abc");
+    CHECK(!op.publicJson().value("items").arrayRef()[0].objectRef().contains("uploadJournal"));
     CHECK(Operation::activeState("editing") && !Operation::activeState("completed"));
 }
 int main() {

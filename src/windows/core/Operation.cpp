@@ -58,7 +58,7 @@ Object OperationItem::toJson() const {
     return {{"artifact", artifact.toJson()}, {"uploadStatus", uploadStatus}, {"candidate", candidate}, {"condition", condition}, {"concurrencyToken", concurrencyToken},
         {"publicationId", publicationId}, {"objectReference", objectReference}, {"receipt", receipt.toJson()}, {"local", local.toJson()}, {"remoteStatus", remoteStatus},
         {"shareStatus", shareStatus}, {"shareIntent", shareIntent}, {"shareIntentOptions", shareIntentOptions}, {"error", error.toJson()}, {"phase", phase},
-        {"uploadProgress", uploadProgress ? Value(uploadProgress->toJson()) : Value()}};
+        {"uploadProgress", uploadProgress ? Value(uploadProgress->toJson()) : Value()}, {"uploadJournal", uploadJournal}};
 }
 OperationItem OperationItem::fromJson(const Object& o) {
     OperationItem i;
@@ -68,6 +68,7 @@ OperationItem OperationItem::fromJson(const Object& o) {
     i.remoteStatus = o.value("remoteStatus").toString(); i.shareStatus = o.value("shareStatus").toString("not_requested"); i.shareIntent = o.value("shareIntent").toString();
     i.shareIntentOptions = o.value("shareIntentOptions").toObject(); i.error = Error::fromJson(o.value("error").toObject()); i.phase = o.value("phase").toString(i.uploadStatus);
     i.uploadProgress = UploadProgress::fromJson(o.value("uploadProgress").toObject());
+    i.uploadJournal = o.value("uploadJournal").toObject();
     return i;
 }
 bool Operation::activeState(const std::string& s) { return in({"accepted", "acquiring", "editing", "stored", "running"}, s); }
@@ -82,7 +83,7 @@ Object Operation::publicJson() const {
     auto result = toJson();
     result.remove("settings");
     auto array = result.value("items").toArray();
-    for (auto& value : array) { auto item = value.toObject(); auto artifact = item.value("artifact").toObject(); artifact.remove("path"); item["artifact"] = artifact; value = item; }
+    for (auto& value : array) { auto item = value.toObject(); auto artifact = item.value("artifact").toObject(); artifact.remove("path"); item["artifact"] = artifact; item.remove("uploadJournal"); value = item; }
     result["items"] = array;
     return result;
 }

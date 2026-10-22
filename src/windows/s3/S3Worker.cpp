@@ -6,13 +6,16 @@
 #include "common/Frames.h"
 #include "common/Json.h"
 #include "common/Log.h"
+#include "common/Md5.h"
 #include "common/Modes.h"
+#include "common/Paths.h"
 #include "common/Protocol.h"
 #include "common/Sha256.h"
 #include "common/Text.h"
 #include "common/Uuid.h"
 #include "core/Operation.h"
 #include "core/S3Settings.h"
+#include "s3/Multipart.h"
 #include "s3/SigV4.h"
 #include "s3/WinHttp.h"
 #include <windows.h>
@@ -21,6 +24,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <deque>
+#include <map>
 #include <mutex>
 #include <optional>
 #include <thread>
@@ -30,6 +34,7 @@ namespace putgd {
 namespace {
 using json::Object;
 using json::Value;
+namespace mp = s3::multipart;
 
 constexpr long long maximumSinglePutBytes = 5LL * 1024 * 1024 * 1024; // S3 PutObject limit
 constexpr size_t maximumKeyBytes = 1024;
@@ -89,18 +94,18 @@ public:
     }
 
     // Durable checkpoint: the destructive request follows only after ok:true.
-    Error checkpoint(const Object& progress) {
+    Error checkpoint(const Object& progress, const std::string& failure = "The deletion journal could not be saved") {
         paused_ = true;
         if (!send("checkpoint", {{"progress", progress}})) {
             paused_ = false;
-            return {"checkpoint_failed", "The deletion journal could not be saved", {}};
+            return {"checkpoint_failed", failure, {}};
         }
         auto frame = waitFor("checkpointAccepted", -1);
         paused_ = false;
-        if (!frame) return {"checkpoint_failed", "The deletion journal could not be saved", {}};
+        if (!frame) return {"checkpoint_failed", failure, {}};
         if (frame->payload.value("ok").toBool()) return {};
         auto error = Error::fromJson(frame->payload.value("error").toObject());
-        if (!error) error = {"checkpoint_rejected", "The deletion journal could not be saved", {}};
+        if (!error) error = {"checkpoint_rejected", failure, {}};
         return error;
     }
     void result(const Object& payload) {
@@ -219,7 +224,8 @@ const std::vector<std::string>& knownServiceCodes() {
         "TokenRefreshRequired", "RequestTimeTooSkewed", "RequestExpired", "NoSuchBucket", "NoSuchKey", "NoSuchVersion", "InvalidBucketName",
         "AuthorizationHeaderMalformed", "PermanentRedirect", "TemporaryRedirect", "PreconditionFailed", "ConditionalRequestConflict",
         "InvalidRequest", "InvalidArgument", "ObjectLocked", "SlowDown", "RequestTimeout", "InternalError", "ServiceUnavailable",
-        "EntityTooLarge", "BadDigest", "XAmzContentSHA256Mismatch", "NotImplemented", "MethodNotAllowed", "InvalidObjectState"};
+        "EntityTooLarge", "BadDigest", "XAmzContentSHA256Mismatch", "NotImplemented", "MethodNotAllowed", "InvalidObjectState",
+        "NoSuchUpload", "EntityTooSmall", "InvalidPart", "InvalidPartOrder"};
     return codes;
 }
 std::string messageFor(const std::string& code, const std::string& stage) {
@@ -231,6 +237,7 @@ std::string messageFor(const std::string& code, const std::string& stage) {
     if (code == "s3_region_mismatch") return "S3 rejected the destination region or endpoint. Check that the region and endpoint match the bucket's location.";
     if (code == "s3_acl_unsupported") return "This bucket does not accept ACLs. Set Who can open files to Follow the bucket's policy (send no ACL), and ensure its public-read policy supports the intended links.";
     if (code == "s3_precondition_failed") return "The S3 object changed while the request was running. Refresh its state before retrying; put.gd will not overwrite or delete an unchecked replacement.";
+    if (code == "s3_unsupported_request" && stage == "upload_complete") return "The storage service does not support a request put.gd needs, such as conditional multipart completion. Check that the endpoint implements S3 conditional writes for multipart uploads.";
     if (code == "s3_unsupported_request") return "The storage service does not support a request put.gd needs, such as conditional writes (If-None-Match and If-Match). Use an endpoint that implements S3 conditional writes.";
     if (code == "s3_object_missing") return "The S3 object no longer exists.";
     if (code == "s3_tls_failed") return "The secure connection to S3 failed. Check the endpoint, system clock and trusted certificates, including any proxy certificate.";
@@ -238,8 +245,16 @@ std::string messageFor(const std::string& code, const std::string& stage) {
     if (code == "s3_connection_failed") return "Could not connect to the S3 endpoint. Check the endpoint, DNS, network connection, proxy and firewall.";
     if (code == "s3_service_error") return "The S3 service returned a server error. Check service availability and retry after it recovers; any uncertain upload or cleanup remains recorded.";
     if (code == "s3_slow_down") return "S3 is limiting requests. Wait before retrying and reduce concurrent uploads if this continues.";
+    if (code == "s3_multipart_missing") return "S3 no longer has this multipart upload; it was completed, aborted or expired by a bucket lifecycle rule. Retry to upload the file again.";
+    if (code == "s3_multipart_rejected") return "The storage service rejected the uploaded parts. It may not support S3 multipart uploads of 5 MiB or larger parts; check its multipart limits.";
+    if (code == "s3_object_too_large") return "The storage service rejected the file size. Check its object and part size limits; Amazon S3 accepts objects up to 5 TiB.";
+    if (code == "s3_body_mismatch") return "The storage service received different bytes than put.gd sent. Retry the upload; if it continues, check proxies or network equipment that change request bodies.";
     if (code == "s3_access_denied") {
         if (stage == "upload") return "S3 denied the upload. Check s3:PutObject in IAM and the bucket policy. Request public read also needs s3:PutObjectAcl and bucket settings that permit public ACLs.";
+        if (stage == "upload_create" || stage == "upload_part" || stage == "upload_complete")
+            return "S3 denied the multipart upload that files over 64 MiB use. Check s3:PutObject in IAM and the bucket policy; it covers every part. Request public read also needs s3:PutObjectAcl and bucket settings that permit public ACLs.";
+        if (stage == "upload_abort") return "S3 denied removing an incomplete multipart upload, so its uploaded parts keep using storage. Check s3:AbortMultipartUpload in IAM and the bucket policy, or add a bucket lifecycle rule that aborts incomplete multipart uploads.";
+        if (stage == "upload_list_parts") return "S3 denied listing the parts of an interrupted multipart upload, so put.gd sends every part again. Check s3:ListMultipartUploadParts in IAM and the bucket policy.";
         if (stage == "versioning") return "S3 denied the bucket versioning check required for safe cleanup. Check s3:GetBucketVersioning in IAM and the bucket policy.";
         if (stage == "delete") return "S3 denied object cleanup. Check s3:DeleteObject in IAM and the bucket policy, and s3:DeleteObjectVersion when targeting a recorded version. Also check Object Lock, retention and MFA restrictions.";
         if (stage == "publicGet") return "The public link was refused. Check Link domain and the bucket public-read policy or ACL settings.";
@@ -278,6 +293,10 @@ Error s3Error(const winhttp::Response& r, const std::string& stage) {
     else if (service == "PermanentRedirect" || service == "AuthorizationHeaderMalformed" || status == 301 ||
              (status == 400 && service.empty() && !r.header("x-amz-bucket-region").empty())) code = "s3_region_mismatch";
     else if (service == "NotImplemented" || status == 501) code = "s3_unsupported_request";
+    else if (service == "NoSuchUpload") code = "s3_multipart_missing";
+    else if (service == "EntityTooSmall" || service == "InvalidPart" || service == "InvalidPartOrder") code = "s3_multipart_rejected";
+    else if (service == "EntityTooLarge") code = "s3_object_too_large";
+    else if (service == "BadDigest" || service == "XAmzContentSHA256Mismatch") code = "s3_body_mismatch";
     else if (status == 412 || status == 409) code = "s3_precondition_failed";
     else if (service == "RequestTimeout") code = "s3_timeout";
     else if (service == "SlowDown" || status == 429 || status == 503) code = status >= 500 ? "s3_service_error" : "s3_slow_down";
@@ -297,8 +316,9 @@ bool transient(const winhttp::Response& r) {
 
 // ---------------------------------------------------------------------------
 struct Body {
-    std::string memory;       // small synthetic bodies
+    std::string memory;       // small synthetic bodies and request documents
     std::string file;         // retained artifact
+    long long offset = -1;    // a part's first byte in `file`; -1 sends the whole file
     long long bytes = 0;
     std::string sha256;       // hex; empty -> empty payload hash
 };
@@ -389,7 +409,9 @@ private:
         wire.headers = signedRequest.headers;
         wire.body = body.memory;
         wire.bodyFile = body.file;
+        wire.bodyOffset = body.offset;
         wire.bodyBytes = body.file.empty() ? (long long)body.memory.size() : body.bytes;
+        if (method == "GET" && !query.empty()) wire.maximumResponseBytes = 2 * 1024 * 1024; // part listings
         // Only an unfinished PUT body is cut on cancel (it cannot publish). Checks
         // always run so the truth can be learned, and DELETEs are gated by the
         // callers' explicit cancellation checks around their checkpoints.
@@ -476,6 +498,14 @@ private:
     // Requests --------------------------------------------------------------
     UploadOutcome put(const std::string& key, const std::string& publicationId, const std::string& condition, const std::string& token,
                       const Body& body, const std::string& mime, bool report);
+    struct PartDigest { std::string md5, sha256; bool ok = false; };
+    PartDigest partDigest(const std::string& path, long long offset, long long length) const;
+    sigv4::Pairs createHeaders(const std::string& mime, const std::string& publicationId, const std::string& sha256) const;
+    Error abortUpload(const std::string& key, const std::string& uploadId);
+    UploadOutcome multipartUpload(const std::string& key, const std::string& publicationId, const std::string& condition, const std::string& token,
+                                  const Body& body, const std::string& mime, long long partBytes, const Object& resume);
+    Object multipartProbe(Error& error);
+    Object abandon(const Object& request);
     RemoveOutcome remove(const StorageReceipt& target, Object progress);
     Object checkName(const Object& request);
     Object upload(const Object& request);
@@ -537,6 +567,305 @@ UploadOutcome Job::put(const std::string& key, const std::string& publicationId,
     return {"failed", {}, last};
 }
 
+// ---------------------------------------------------------------------------
+// Multipart upload (docs/s3.md, "Large files: multipart upload"). Parts stream
+// from the retained artifact; each carries its Content-MD5 and its SHA-256 as the
+// signed payload hash. Part requests never publish, so an uncertain part is sent
+// again under the same number. Only CompleteMultipartUpload, sent with the item's
+// create or replace precondition, can publish. Cancellation and every failure
+// that ends the attempt abort the upload; the resident's journal of the upload ID
+// lets an attempt that could not abort resume on Retry from the parts S3 lists.
+Job::PartDigest Job::partDigest(const std::string& path, long long offset, long long length) const {
+    PartDigest digest;
+    HANDLE file = CreateFileW(paths::wide(path).c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, nullptr);
+    if (file == INVALID_HANDLE_VALUE) return digest;
+    LARGE_INTEGER position{};
+    position.QuadPart = offset;
+    crypto::Md5 md5;
+    crypto::Sha256 sha;
+    std::vector<char> buffer(1024 * 1024);
+    long long left = length;
+    bool ok = SetFilePointerEx(file, position, nullptr, FILE_BEGIN);
+    while (ok && left > 0) {
+        DWORD read = 0;
+        const DWORD want = DWORD(std::min<long long>(left, (long long)buffer.size()));
+        if (!ReadFile(file, buffer.data(), want, &read, nullptr) || read == 0) { ok = false; break; }
+        md5.update(buffer.data(), read);
+        sha.update(buffer.data(), read);
+        left -= read;
+    }
+    CloseHandle(file);
+    if (!ok) return digest;
+    const auto m = md5.finish();
+    digest.md5 = text::hex(m.data(), m.size());
+    digest.sha256 = crypto::hex(sha.finish());
+    digest.ok = true;
+    return digest;
+}
+sigv4::Pairs Job::createHeaders(const std::string& mime, const std::string& publicationId, const std::string& sha256) const {
+    // The completed object carries the same type, class, ACL and identity metadata as a single PUT.
+    sigv4::Pairs headers{{"content-type", mime}, {"x-amz-meta-putgd-publication", publicationId}};
+    if (!sha256.empty()) headers.emplace_back("x-amz-meta-putgd-sha256", sha256);
+    const auto storageClass = settings_.value("storageClass").toString();
+    if (!storageClass.empty() && storageClass != "STANDARD") headers.emplace_back("x-amz-storage-class", storageClass);
+    if (settings_.value("aclMode") == "public-read") headers.emplace_back("x-amz-acl", "public-read");
+    return headers;
+}
+// An upload S3 no longer has (completed, aborted or expired by a lifecycle rule) counts as aborted.
+Error Job::abortUpload(const std::string& key, const std::string& uploadId) {
+    Error last;
+    for (int attempt = 0; attempt < 3; ++attempt) {
+        const auto r = s3("DELETE", s3::requestPath(settings_, key), {{"uploadId", uploadId}}, {});
+        if (r.status == 204 || r.status == 200 || r.status == 404) return {};
+        last = s3Error(r, "upload_abort");
+        if (!transient(r)) break;
+    }
+    return last;
+}
+
+UploadOutcome Job::multipartUpload(const std::string& key, const std::string& publicationId, const std::string& condition, const std::string& token,
+                                   const Body& body, const std::string& mime, long long partBytes, const Object& resume) {
+    const long long total = body.bytes;
+    const int parts = int(mp::partCount(total, partBytes));
+    const auto path = s3::requestPath(settings_, key);
+    const Expected expected{key, {}, publicationId, body.sha256, {}, total};
+    auto save = [&](const Object& journal) { return wire_.checkpoint(journal, "The upload journal could not be saved"); };
+    Object journal{{"schemaVersion", 1}, {"partBytes", double(partBytes)}};
+    std::string uploadId;
+    // Ends the attempt without publication: S3 keeps no parts unless the abort failed.
+    auto fail = [&](Error error, const std::string& status = "failed") -> UploadOutcome {
+        if (!uploadId.empty()) {
+            if (auto aborted = abortUpload(key, uploadId)) {
+                error.details["incompleteUpload"] = true;
+                error.details["abortError"] = aborted.toJson();
+                error.message += " The incomplete multipart upload could not be removed, so its uploaded parts keep using storage until a bucket lifecycle rule or a later cleanup removes them.";
+            } else {
+                save({});
+            }
+        }
+        return {status, {}, error};
+    };
+    std::map<int, std::string> done; // part number -> quoted ETag
+    long long completed = 0;
+    const auto previous = resume.value("uploadId").toString();
+    const bool interruptedCompletion = resume.value("phase") == "completing";
+    if (!previous.empty() && !mp::journalMatches(resume, key, total, body.sha256, partBytes)) {
+        // A journal for another target or another artifact is never resumed.
+        if (!abortUpload(resume.value("key").toString(), previous)) save({});
+    } else if (!previous.empty()) {
+        uploadId = previous;
+        int marker = 0;
+        for (int page = 0; page < 11; ++page) {
+            sigv4::Pairs query{{"uploadId", uploadId}, {"max-parts", "1000"}};
+            if (marker > 0) query.emplace_back("part-number-marker", std::to_string(marker));
+            const auto r = s3("GET", path, query, {});
+            if (r.status == 404) {
+                // Completed or aborted: the object is either published or absent.
+                const auto found = inspect(expected, true);
+                if (found.status == "own") { save({}); return {"uploaded", found.receipt, {}}; }
+                if (found.status == "unknown") return {"unknown", {}, found.error};
+                if (found.status == "foreign")
+                    return {interruptedCompletion ? "unknown" : "collision", {}, {"s3_precondition_failed", "Another object now uses the saved object key", {}}};
+                save({});
+                uploadId.clear();
+                break;
+            }
+            if (r.status == 403) {
+                // Without the listing, every part is sent again under the same upload.
+                done.clear();
+                break;
+            }
+            const auto listing = r.status == 200 ? mp::parseListParts(r.body) : mp::PartListing{};
+            if (!listing.ok) {
+                auto error = r.status == 200 ? Error{"s3_multipart_invalid", "S3 returned a part listing put.gd cannot read", {{"requestStage", "upload_list_parts"}}}
+                                             : s3Error(r, "upload_list_parts");
+                return {interruptedCompletion ? "unknown" : "failed", {}, error};
+            }
+            for (const auto& part : listing.parts) {
+                const auto range = mp::partRange(part.number, total, partBytes);
+                if (range.length == 0 || part.size != range.length) continue;
+                // Keep a listed part only if S3 holds exactly these bytes.
+                const auto digest = partDigest(body.file, range.offset, range.length);
+                if (digest.ok && mp::plainEtag(part.etag) == digest.md5) done[part.number] = part.etag;
+            }
+            if (!listing.truncated) break;
+            marker = listing.nextMarker;
+        }
+        for (const auto& [number, etag] : done) completed += mp::partRange(number, total, partBytes).length;
+    }
+    if (uploadId.empty()) {
+        done.clear();
+        completed = 0;
+        const auto headers = createHeaders(mime, publicationId, body.sha256);
+        for (int attempt = 0; attempt < 3 && uploadId.empty(); ++attempt) {
+            if (wire_.cancelled()) return {"failed", {}, cancelledError()};
+            const auto r = s3("POST", path, {{"uploads", ""}}, headers);
+            if (r.status == 200 && !mp::errorDocument(r.body)) {
+                uploadId = mp::createdUploadId(r.body);
+                if (uploadId.empty()) return {"failed", {}, {"s3_multipart_invalid", "S3 returned no multipart upload ID", {{"requestStage", "upload_create"}}}};
+                break;
+            }
+            auto failed = r;
+            if (r.status == 200) failed.status = 500; // an error document after the status line
+            if (!transient(failed) || attempt == 2) return {"failed", {}, s3Error(failed, "upload_create")};
+        }
+    }
+    journal["uploadId"] = uploadId;
+    journal["key"] = key;
+    journal["bytes"] = double(total);
+    journal["sha256"] = body.sha256;
+    journal["phase"] = "parts";
+    // The upload ID is durable before any part relies on it.
+    if (auto error = save(journal)) return fail(error);
+    wire_.progress("uploading", completed, total);
+
+    for (int number = 1; number <= parts; ++number) {
+        if (done.count(number)) continue;
+        const auto range = mp::partRange(number, total, partBytes);
+        const auto digest = partDigest(body.file, range.offset, range.length);
+        if (!digest.ok) return fail({"artifact_changed", "Retained artifact changed or became unreadable", {}});
+        const auto rawMd5 = text::fromHex(digest.md5);
+        Body part;
+        part.file = body.file;
+        part.offset = range.offset;
+        part.bytes = range.length;
+        part.sha256 = digest.sha256;
+        Error last;
+        bool sent = false;
+        for (int attempt = 1; attempt <= 3 && !sent; ++attempt) {
+            if (wire_.cancelled()) return fail(cancelledError());
+            winhttp::Observer observer;
+            observer.cancel = &wire_.cancelFlag();
+            // A part never publishes: cancel cuts it wherever it is, also while its reply is awaited.
+            observer.cutAnywhere = true;
+            observer.progress = [&](long long bytes, long long) { wire_.progress("uploading", completed + bytes, total); };
+            const auto started = GetTickCount64();
+            // S3 rejects a part whose bytes differ from this digest (BadDigest).
+            const auto r = s3("PUT", path, {{"partNumber", std::to_string(number)}, {"uploadId", uploadId}},
+                              {{"content-md5", text::base64(rawMd5->data(), rawMd5->size())}}, part, observer);
+            if (r.status == 200 && !r.header("etag").empty()) {
+                done[number] = r.header("etag");
+                completed += range.length;
+                wire_.progress("uploading", completed, total);
+                sent = true;
+                // Diagnostics only (#148): numbers and S3's request IDs, never the key or upload ID.
+                Object record{{"partNumber", number}, {"bytes", double(range.length)}, {"attempt", attempt}, {"elapsedMs", double(GetTickCount64() - started)}};
+                if (const auto id = requestIdentifier(r.header("x-amz-request-id"), 128); !id.empty()) record["requestId"] = id;
+                if (const auto id = requestIdentifier(r.header("x-amz-id-2"), 256); !id.empty()) record["extendedRequestId"] = id;
+                log::debug("s3-worker", "Multipart part uploaded", record);
+                break;
+            }
+            // A part cut on cancel reports that, not its transport error. It never published.
+            if (wire_.cancelled() || (r.status == 0 && r.failure == winhttp::Failure::Cancelled)) return fail(cancelledError());
+            if (r.status == 0 && r.failure == winhttp::Failure::BodyRead) return fail(s3Error(r, "upload_part"));
+            last = s3Error(r, "upload_part");
+            last.details["partNumber"] = number;
+            if (r.status == 200) { last = {"s3_multipart_invalid", "S3 accepted a part without returning its ETag", {{"requestStage", "upload_part"}, {"partNumber", number}}}; continue; }
+            if (r.status == 404) {
+                // The upload vanished (aborted elsewhere, or a lifecycle rule): start again on retry.
+                save({});
+                return {"failed", {}, last};
+            }
+            if (!transient(r)) return fail(last);
+        }
+        if (!sent) return fail(last);
+    }
+
+    journal["phase"] = "completing";
+    if (auto error = save(journal)) return fail(error);
+    wire_.progress("finalizing", total, total);
+    Body manifest;
+    manifest.memory = mp::completeRequest(done);
+    manifest.sha256 = crypto::Sha256::hexDigest(manifest.memory);
+    sigv4::Pairs headers{{"content-type", "application/xml"}, {"x-amz-mp-object-size", std::to_string(total)}};
+    if (condition == "absent") headers.emplace_back("if-none-match", "*");
+    else headers.emplace_back("if-match", token);
+    const auto composite = mp::compositeEtag(done);
+    bool uncertain = interruptedCompletion;
+    for (int attempt = 0; attempt < 3; ++attempt) {
+        const auto started = GetTickCount64();
+        auto r = s3("POST", path, {{"uploadId", uploadId}}, headers, manifest);
+        if (r.status == 200 && !mp::errorDocument(r.body)) {
+            save({});
+            Object record{{"parts", double(done.size())}, {"bytes", double(total)}, {"attempt", attempt + 1}, {"elapsedMs", double(GetTickCount64() - started)}};
+            if (const auto id = requestIdentifier(r.header("x-amz-request-id"), 128); !id.empty()) record["requestId"] = id;
+            if (const auto id = requestIdentifier(r.header("x-amz-id-2"), 256); !id.empty()) record["extendedRequestId"] = id;
+            log::info("s3-worker", "Multipart upload completed", record);
+            const auto etag = mp::xmlText(r.body, "ETag", 256).value_or(r.header("etag"));
+            // Plain-MD5 part ETags (no SSE-KMS) fix the object's ETag: MD5 of the part MD5s, a dash, the count.
+            const auto plain = mp::plainEtag(etag);
+            if (!composite.empty() && text::containsChar(plain, '-') && plain != composite)
+                return {"unknown", {}, {"s3_multipart_checksum_mismatch", "S3 completed the upload with a different part checksum than put.gd sent; inspect the object before relying on it", {}}};
+            return {"uploaded", receipt(key, publicationId, body.sha256, total, etag, r.header("x-amz-version-id")), {}};
+        }
+        // S3 can fail a completion after sending its 200 status line.
+        if (r.status == 200) r.status = 500;
+        const auto error = s3Error(r, "upload_complete");
+        const bool conflict = r.status == 412 || r.status == 409;
+        uncertain = uncertain || mayHaveActed(r);
+        if (!mayHaveActed(r) && !transient(r) && !conflict && r.status != 404) return fail(error);
+        // A lost reply, a precondition failure or a vanished upload: check what the key holds.
+        const auto found = inspect(expected, true);
+        if (found.status == "own") { save({}); return {"uploaded", found.receipt, {}}; }
+        if (found.status == "unknown") return {"unknown", {}, error};
+        if (found.status == "foreign" || conflict) return fail(error, uncertain ? "unknown" : "collision");
+        if (r.status == 404) { save({}); return {uncertain ? "unknown" : "failed", {}, error}; }
+        // Missing after an uncertain completion: the upload still exists, so complete it again.
+    }
+    return {"unknown", {}, {"publication_unknown", "Publication remains uncertain at the saved object key", {}}};
+}
+
+// Test connection proves the extra multipart permissions on a synthetic key,
+// without sending a part: create (s3:PutObject), list (s3:ListMultipartUploadParts),
+// abort (s3:AbortMultipartUpload). The journal names the upload before any later step.
+Object Job::multipartProbe(Error& error) {
+    const auto key = s3::objectKey(settings_, "putgd-test-" + uuid::create() + "-multipart.txt");
+    Object journal{{"schemaVersion", 1}, {"phase", "synthetic_multipart_intent"}, {"destination", destination_.toJson()}, {"key", key}};
+    if ((error = wire_.checkpoint(journal, "The test journal could not be saved"))) return {{"status", "failed"}, {"stage", "upload_create"}};
+    const auto path = s3::requestPath(settings_, key);
+    const auto created = s3("POST", path, {{"uploads", ""}}, createHeaders("text/plain", uuid::create(), {}));
+    const auto uploadId = created.status == 200 ? mp::createdUploadId(created.body) : std::string();
+    if (uploadId.empty()) {
+        auto failed = created;
+        if (created.status == 200) failed.status = 500;
+        error = s3Error(failed, "upload_create");
+        return {{"status", created.status == 403 ? "denied" : mayHaveActed(failed) ? "unknown" : "failed"}, {"stage", "upload_create"}};
+    }
+    journal["phase"] = "synthetic_multipart_created";
+    journal["uploadId"] = uploadId;
+    Object result{{"status", "ok"}};
+    if ((error = wire_.checkpoint(journal, "The test journal could not be saved"))) result = {{"status", "failed"}, {"stage", "upload_create"}};
+    const auto listed = s3("GET", path, {{"uploadId", uploadId}}, {});
+    if ((listed.status != 200 || !mp::parseListParts(listed.body).ok) && !error) {
+        error = listed.status == 200 ? Error{"s3_multipart_invalid", "S3 returned a part listing put.gd cannot read", {{"requestStage", "upload_list_parts"}}} : s3Error(listed, "upload_list_parts");
+        result = {{"status", listed.status == 403 ? "denied" : "failed"}, {"stage", "upload_list_parts"}};
+    }
+    const auto aborted = s3("DELETE", path, {{"uploadId", uploadId}}, {});
+    const bool abortOk = aborted.status == 204 || aborted.status == 200;
+    result["abort"] = abortOk ? "aborted" : mayHaveActed(aborted) ? "unknown" : "failed";
+    if (!abortOk && (!error || result.value("status") == "ok")) {
+        error = s3Error(aborted, "upload_abort");
+        result["status"] = aborted.status == 403 ? "denied" : "failed";
+        result["stage"] = "upload_abort";
+    }
+    journal["phase"] = "synthetic_multipart_finished";
+    journal["abort"] = result.value("abort");
+    if (auto saved = wire_.checkpoint(journal, "The test journal could not be saved"); saved && !error) error = saved;
+    return result;
+}
+
+// Cleanup retires a failed item's journaled upload once no Retry can resume it (#146).
+Object Job::abandon(const Object& request) {
+    const auto journal = request.value("journal").toObject();
+    const auto uploadId = journal.value("uploadId").toString(), key = journal.value("key").toString();
+    if (uploadId.empty()) return {{"status", "aborted"}, {"error", Value()}};
+    const auto prefix = s3::objectKey(settings_, "");
+    if (!mp::validJournal(journal) || key.empty() || key.size() > maximumKeyBytes || !text::startsWith(key, prefix))
+        return {{"status", "failed"}, {"error", Error{"s3_multipart_invalid", "The saved multipart upload does not belong to this destination", {}}.toJson()}};
+    const auto error = abortUpload(key, uploadId);
+    return {{"status", error ? "failed" : "aborted"}, {"error", errorValue(error)}};
+}
+
 Object Job::checkName(const Object& request) {
     const auto candidate = request.value("candidate").toString();
     const auto key = s3::objectKey(settings_, candidate);
@@ -569,7 +898,13 @@ Object Job::upload(const Object& request) {
         return failed("failed", {"s3_precondition_invalid", "Persist an exact object key and write precondition before upload", {}});
     if (publicationId.empty() || !asciiHeaderValue(publicationId) || mime.empty() || !asciiHeaderValue(mime) || !lowerHex64(sha256) || path.empty() || total < 0)
         return failed("failed", {"s3_request_invalid", "The upload request is incomplete", {}});
-    if (total > maximumSinglePutBytes) return failed("failed", {"s3_object_too_large", "The file is larger than one S3 request can upload", {}});
+    // The resident plans files over the multipart threshold (docs/s3.md); an
+    // existing journal keeps its own part size, since its parts were cut with it.
+    const auto resume = request.value("resume").toObject();
+    const long long partBytes = resume.value("partBytes").toInteger(0);
+    if (!mp::validJournal(resume) || (partBytes > 0 && !mp::validPlan(total, partBytes)))
+        return failed("failed", {"s3_multipart_invalid", "The multipart upload plan does not fit S3's part limits", {}});
+    if (partBytes == 0 && total > maximumSinglePutBytes) return failed("failed", {"s3_object_too_large", "The file is larger than one S3 request can upload", {}});
     long long measured = -1;
     const auto digest = files::sha256(path, &measured);
     if (digest.empty() || digest != sha256 || measured != total) return failed("failed", {"artifact_changed", "Retained artifact changed or became unreadable", {}});
@@ -579,7 +914,8 @@ Object Job::upload(const Object& request) {
     body.file = path;
     body.bytes = total;
     body.sha256 = sha256;
-    const auto outcome = put(key, publicationId, condition, token, body, mime, true);
+    const auto outcome = partBytes > 0 ? multipartUpload(key, publicationId, condition, token, body, mime, partBytes, resume)
+                                       : put(key, publicationId, condition, token, body, mime, true);
     return {{"status", outcome.status}, {"receipt", outcome.status == "uploaded" ? Value(outcome.receipt.toJson()) : Value()}, {"error", errorValue(outcome.error)}};
 }
 
@@ -878,11 +1214,27 @@ Object Job::testDestination() {
     result["cleanup"] = cleanup;
     result["progress"] = removed.progress;
     if (!cleaned) result["receipt"] = uploaded.receipt.toJson();
+    Error multipartError;
+    result["multipart"] = multipartProbe(multipartError);
     const bool ok = publicGet.value("ok").toBool() && cleaned;
-    result["status"] = ok ? "ok" : "failed";
+    result["status"] = ok && !multipartError ? "ok" : "failed";
     if (publicError) result["error"] = publicError.toJson();
     else if (!cleaned) result["error"] = cleanupError.toJson();
-    else result["error"] = Value();
+    else if (multipartError) {
+        // Small uploads work; say what larger (multipart) uploads lose.
+        const auto probe = result.value("multipart").toObject();
+        const auto stage = probe.value("stage").toString(), abort = probe.value("abort").toString();
+        const bool denied = multipartError.details.value("httpStatus").toInt() == 403;
+        auto message = multipartError.message;
+        if (stage == "upload_list_parts" && denied)
+            message = "Uploads work, but S3 denied s3:ListMultipartUploadParts. Files over 64 MiB still upload in parts, but an interrupted upload sends every part again instead of resuming. Grant s3:ListMultipartUploadParts in IAM and the bucket policy.";
+        else if (stage == "upload_abort" && denied)
+            message = "Uploads work, but S3 denied s3:AbortMultipartUpload. A cancelled or failed upload of a file over 64 MiB can leave incomplete parts that keep using storage. Grant s3:AbortMultipartUpload, or add a bucket lifecycle rule that aborts incomplete multipart uploads.";
+        else if (stage == "upload_create" && denied)
+            message = "Uploads work, but S3 denied starting a multipart upload, which files over 64 MiB use. Check s3:PutObject in IAM and the bucket policy, and s3:PutObjectAcl when requesting public read.";
+        if (!abort.empty() && abort != "aborted") message += " The test's incomplete multipart upload could not be removed; its recorded target is retained.";
+        result["error"] = Error{"s3_multipart_permission", message, multipartError.details}.toJson();
+    } else result["error"] = Value();
     return result;
 }
 
@@ -903,7 +1255,7 @@ Object invalidResult(const std::string& kind, const Error& error, const Object& 
 Object Job::run(Object& request) {
     const auto kind = request.value("kind").toString();
     auto credentialError = takeCredentials(request);
-    if (!in({"checkName", "upload", "stat", "reconcile", "remove", "testDestination"}, kind))
+    if (!in({"checkName", "upload", "stat", "reconcile", "remove", "testDestination", "abandon"}, kind))
         return invalidResult(kind, {"s3_request_invalid", "Unsupported S3 request", {}}, request);
     // Stat and removal address the object through the receipt's saved destination,
     // never an edited profile.
@@ -916,6 +1268,7 @@ Object Job::run(Object& request) {
     if (kind == "stat") return stat(request);
     if (kind == "reconcile") return reconcile(request);
     if (kind == "remove") return removeRequest(request);
+    if (kind == "abandon") return abandon(request);
     return testDestination();
 }
 }

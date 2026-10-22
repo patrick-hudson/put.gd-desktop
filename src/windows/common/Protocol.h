@@ -53,13 +53,19 @@
 //                    credentials:{accessKey, secretKey, sessionToken?}, ...kind fields}
 //     kind=checkName      candidate                      -> result {status: absent|present|inconclusive, objectReference:{key, etag?, versionId?}, concurrencyToken, error}
 //     kind=upload         artifact:{path,bytes,sha256,mime}, candidate, publicationId, condition (absent|match),
-//                         objectReference, concurrencyToken, timeoutMs?
+//                         objectReference, concurrencyToken, timeoutMs?, resume?
 //                                                        -> progress frames, then result {status: uploaded|collision|failed|unknown, receipt, error}
+//                         resume (s3/Multipart.h) is the multipart plan {schemaVersion:1, partBytes} for files over
+//                         64 MiB, or the item's journal {+uploadId, key, bytes, sha256, phase: parts|completing}. A
+//                         multipart upload sends checkpoint frames carrying the journal (and {} once nothing remains
+//                         to resume or abort) before it relies on the upload ID and before completing.
 //     kind=stat           receipt                        -> result {status: own|foreign|missing|unknown, receipt, error}
 //     kind=reconcile      same fields as upload           -> result {status: own|foreign|missing|unknown, receipt, error}
 //     kind=remove         receipt, deleteId, progress    -> checkpoint frames (see below), then
 //                                                           result {status: removed|missing|changed|failed|unknown|hidden_version_retained|version_retained|unsupported_safe_removal, progress, error}
-//     kind=testDestination                               -> checkpoint frames, then result {status: ok|failed, upload, publicGet, cleanup, receipt?, progress?, error}
+//     kind=testDestination                               -> checkpoint frames, then result {status: ok|failed, upload, publicGet, cleanup,
+//                                                           multipart:{status: ok|denied|failed|unknown, stage?, abort?}, receipt?, progress?, error}
+//     kind=abandon        journal                        -> result {status: aborted|failed, error}  (cleanup retires a journaled upload)
 //   child  progress   {phase: preparing|uploading|finalizing, bytesTransferred?, bytesTotal?}   (at most every 250 ms)
 //   child  checkpoint {progress:{schemaVersion:1, ...}}   parent -> checkpointAccepted {ok:true} | {ok:false, error}
 //                                                        (the child sends the destructive request only after ok:true)

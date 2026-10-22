@@ -34,7 +34,7 @@ bool prepareOutputFile(const std::string& path) {
     return files::restrictToOwner(path) || true;
 }
 SyncResult runSynchronous(const std::string& role, const std::vector<std::string>& args, json::Object bootstrap, int startupMs, int totalMs, FrameHandler onFrame,
-                          std::shared_ptr<std::atomic_bool> cancel, int silenceMs, const std::string& firstType, const json::Object& firstPayload) {
+                          std::shared_ptr<std::atomic_bool> cancel, int silenceMs, const std::string& firstType, const json::Object& firstPayload, int cancelGraceMs) {
     SyncResult result;
     auto child = process::start(helperExecutable(), args, true);
     if (!child) { result.error = {"helper_unavailable", "Cannot start the " + role + " helper", {}}; return result; }
@@ -48,10 +48,14 @@ SyncResult runSynchronous(const std::string& role, const std::vector<std::string
     if (!firstType.empty() && !child->channel->send(firstType, firstPayload)) { child->terminate(); result.error = {"helper_pipe", "Cannot send the request to the " + role + " helper", {}}; return result; }
     const ULONGLONG start = GetTickCount64();
     bool cancelSent = false;
+    ULONGLONG cancelledAt = 0;
     while (true) {
-        if (cancel && cancel->load() && !cancelSent) { child->channel->send("cancel"); cancelSent = true; }
+        if (cancel && cancel->load() && !cancelSent) { child->channel->send("cancel"); cancelSent = true; cancelledAt = GetTickCount64(); }
         const auto elapsed = GetTickCount64() - start;
         if (elapsed >= ULONGLONG(totalMs)) { child->terminate(); result.error = {"helper_timeout", "The " + role + " helper exceeded its time budget", {}}; return result; }
+        if (cancelSent && cancelGraceMs > 0 && GetTickCount64() - cancelledAt >= ULONGLONG(cancelGraceMs)) {
+            child->terminate(); result.error = {"helper_timeout", "The cancelled " + role + " helper did not finish in time", {}}; return result;
+        }
         protocol::Frame frame; std::string error;
         const int wait = int(std::min<ULONGLONG>(ULONGLONG(silenceMs), ULONGLONG(totalMs) - elapsed));
         if (!child->channel->receive(frame, wait, &error)) {
