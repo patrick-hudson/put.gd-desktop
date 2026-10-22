@@ -2,7 +2,7 @@
 
 Code: [PR #433](https://github.com/patrick-hudson/put.gd-desktop/pull/433) (draft, into
 `claude/native-windows-parity-app-a34127`). Raw guest logs, every screenshot and the lab
-scripts are kept privately in `work/verification/2026-10-22-windows-packaging-404/` on d69.
+scripts are kept privately in `work/verification/2026-10-22-windows-packaging-404/` on the workstation (and on d69).
 
 ## Setup
 
