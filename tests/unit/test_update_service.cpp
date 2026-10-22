@@ -316,26 +316,27 @@ private slots:
   answer(found("nightly","0.1.1-nightly.900","0.1.1-nightly.901",true));
   auto nightly=service(settings,build("0.1.1-nightly.900"));nightly->start();QTRY_COMPARE(calls().size(),1);QTRY_VERIFY(!nightly->status()["checking"].toBool());
   // Stable is chosen: the first stable result shows in Settings, without a notification.
-  configure(settings,{{"channel","stable"}});answer(found("stable","0.1.1-nightly.900","0.1.1",true));now=now.addSecs(60);
+  // (Each resident goes before the next, so only one reacts to a settings change.)
+  nightly.reset();configure(settings,{{"channel","stable"}});answer(found("stable","0.1.1-nightly.900","0.1.1",true));now=now.addSecs(60);
   auto chosen=service(settings,build("0.1.1-nightly.900"));QSignalSpy first(chosen.get(),&UpdateService::updateAvailable);chosen->start();
   QTRY_COMPARE(calls().size(),2);QTRY_VERIFY(!chosen->status()["checking"].toBool());QCOMPARE(first.size(),0);
   auto saved=QJsonDocument::fromJson([&]{QFile f(dir.filePath("update-check.json"));f.open(QIODevice::ReadOnly);return f.readAll();}()).object();
   QCOMPARE(saved["notifiedVersions"].toObject()["stable"].toString(),QString("0.1.1"));QCOMPARE(saved["notifiedVersion"].toString(),QString("0.1.1"));
   // A later stable release is announced once, as on a stable build.
-  answer(found("stable","0.1.1-nightly.900","0.1.2",true));now=now.addDays(1);
+  chosen.reset();answer(found("stable","0.1.1-nightly.900","0.1.2",true));now=now.addDays(1);
   auto later=service(settings,build("0.1.1-nightly.900"));QSignalSpy second(later.get(),&UpdateService::updateAvailable);later->start();
   QTRY_COMPARE(second.size(),1);QCOMPARE(second.first().first().toJsonObject()["latest"].toString(),QString("0.1.2"));
   QTRY_VERIFY(!later->status()["checking"].toBool());
   // Back to nightly and to stable again: 0.1.2 was announced on stable already.
-  configure(settings,{{"channel","nightly"}});answer(found("nightly","0.1.1-nightly.900","0.1.1-nightly.950",true));now=now.addDays(1);
+  later.reset();configure(settings,{{"channel","nightly"}});answer(found("nightly","0.1.1-nightly.900","0.1.1-nightly.950",true));now=now.addDays(1);
   auto back=service(settings,build("0.1.1-nightly.900"));back->start();QTRY_COMPARE(calls().size(),4);QTRY_VERIFY(!back->status()["checking"].toBool());
-  configure(settings,{{"channel","stable"}});answer(found("stable","0.1.1-nightly.900","0.1.2",true));now=now.addDays(1);
+  back.reset();configure(settings,{{"channel","stable"}});answer(found("stable","0.1.1-nightly.900","0.1.2",true));now=now.addDays(1);
   auto again=service(settings,build("0.1.1-nightly.900"));QSignalSpy repeated(again.get(),&UpdateService::updateAvailable);again->start();
   QTRY_COMPARE(calls().size(),5);QTRY_VERIFY(!again->status()["checking"].toBool());QCOMPARE(repeated.size(),0);
   saved=QJsonDocument::fromJson([&]{QFile f(dir.filePath("update-check.json"));f.open(QIODevice::ReadOnly);return f.readAll();}()).object();
   QCOMPARE(saved["notifiedVersions"].toObject()["stable"].toString(),QString("0.1.2"));QCOMPARE(saved["notifiedVersions"].toObject()["nightly"].toString(),QString("0.1.1-nightly.950"));
   // The nightly version seen in between didn't replace stable's: a day later 0.1.2 stays quiet.
-  now=now.addDays(1);auto quiet=service(settings,build("0.1.1-nightly.900"));QSignalSpy none(quiet.get(),&UpdateService::updateAvailable);quiet->start();
+  again.reset();now=now.addDays(1);auto quiet=service(settings,build("0.1.1-nightly.900"));QSignalSpy none(quiet.get(),&UpdateService::updateAvailable);quiet->start();
   QTRY_COMPARE(calls().size(),6);QTRY_VERIFY(!quiet->status()["checking"].toBool());QCOMPARE(none.size(),0);
  }
  // A state file from before #344 kept one version; it counts for its own channel.
