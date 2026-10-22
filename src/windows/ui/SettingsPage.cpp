@@ -990,7 +990,7 @@ void SettingsPageImpl::saveDiagnostics() {
     main_.queuePatch({{"preferences", json::Object{{"diagnostics", json::Object{{"debugLogging", checked(debug_)}, {"packageFolder", chosen}}}}}});
     enable(diagnostics_, false);
     main_.status(L"Saving the diagnostics package\x2026");
-    json::Object params{{"output", chosen}};
+    json::Object params{{"output", chosen}, {"notify", true}};
     const bool upload = checked(diagnosticsUpload_) && uploadTarget_.value("available").toBool();
     if (upload) { params["upload"] = true; params["copyLink"] = true; params["profileId"] = uploadTarget_.value("profileId"); }
     main_.flushSettings([this, params, upload](bool) {
@@ -1001,7 +1001,9 @@ void SettingsPageImpl::saveDiagnostics() {
             diagnosticsPath_ = reply.result.value("path").toString();
             setTextW(diagnosticsResult_, L"Saved " + wide(diagnosticsPath_));
             // The saved file stays either way; an upload that fails only adds its reason.
-            if (reply.result.contains("link")) setTextW(uploadNote_, L"Uploaded: " + wide(reply.result.value("link").toString()) + (reply.result.value("linkCopied").toBool() ? L" (link copied)" : L""));
+            // The link itself is long; the clipboard and History have it.
+            if (reply.result.contains("link")) setTextW(uploadNote_, L"Uploaded to " + wide(reply.result.value("upload")["label"].toString()) + L" as " + wide(reply.result.value("upload")["name"].toString()) +
+                (reply.result.value("linkCopied").toBool() ? L". The link is on the clipboard." : L"."));
             else if (reply.result.contains("uploadError")) setTextW(uploadNote_, L"Not uploaded: " + wide(reply.result.value("uploadError")["message"].toString()));
             main_.status(reply.result.contains("link") ? L"Diagnostics package saved and uploaded." : L"Diagnostics package saved.");
             panels_[Advanced].layout();
