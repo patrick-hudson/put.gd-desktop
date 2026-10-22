@@ -46,6 +46,11 @@ private slots:
         for(const auto& updates:{QJsonObject{},QJsonObject{{"check",false}},QJsonObject{{"channel","nightly"}},QJsonObject{{"check",true},{"channel","stable"}}}){
             preferences["updates"]=updates;doc["preferences"]=preferences;QVERIFY(!putgd::Settings::validate(doc,validator));
         }
+        // #344: Settings no longer offers "This build's channel", but "build" stays the stored default:
+        // older files keep validating and read as before, with nothing rewritten.
+        preferences["updates"]=QJsonObject{{"check",true},{"channel","build"}};doc["preferences"]=preferences;
+        QVERIFY(!putgd::Settings::validate(doc,validator));QCOMPARE(putgd::Settings::fromValidated(doc).updateChannel,QString("build"));
+        QCOMPARE(putgd::Settings::normalized(doc)["preferences"].toObject()["updates"].toObject()["channel"].toString(),QString("build"));
         preferences["updates"]=QJsonObject{{"check",false},{"channel","nightly"}};doc["preferences"]=preferences;
         const auto chosen=putgd::Settings::fromValidated(doc);QVERIFY(!chosen.checkForUpdates);QCOMPARE(chosen.updateChannel,QString("nightly"));
         for(const auto& invalid:QList<QJsonValue>{QJsonObject{{"check","yes"}},QJsonObject{{"channel","beta"}},QJsonObject{{"channel","Stable"}},QJsonObject{{"interval",1}},QJsonValue(true)}){
