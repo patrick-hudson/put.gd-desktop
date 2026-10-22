@@ -151,7 +151,10 @@ dpkg-deb --field build/release/putgd_*.deb Version
 ```
 
 Debian and RPM turn the version's `-` into `~`, so a nightly or development
-build sorts before the stable release of the same `YY.MDD.N`. Package release
+build sorts before the stable release of the same `YY.MDD.N`. Windows needs numbers:
+the executables' version resource is `YY,MDD,N/10000,N%10000` with the full version as
+its `ProductVersion` string, and the MSI's `ProductVersion` packs year and month into
+its first field ([windows.md](windows.md#packages-and-versions)). Package release
 `1` is used, and there is no epoch.
 
 **Order, as dpkg, rpm and put.gd's updater compare it:**

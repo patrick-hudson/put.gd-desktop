@@ -286,6 +286,43 @@ because FUSE mounts don't work inside `bwrap`. AppImageLauncher's updater uses t
 (zsync2) and is expected to behave the same; it wasn't tested on Fedora. Recorded on Fedora 44:
 [AppImage updates on Fedora](evidence/2026-10-21-appimage-login-306-307/README.md#fedora-297).
 
+## Updating on Windows
+
+A tagged Windows build (stable or nightly) installs its channel's newest release from
+**Settings → Updates → Download and install**, or `update.install` with `confirm: true`.
+Then **Restart put.gd** (`update.restart` with `confirm: true`) starts the new version.
+Nothing installs on its own. The checks are the AppImage's
+([above](#download-and-install-from-putgd)):
+
+1. **What it installs:** the release the feed names, with the asset for this installation:
+   `windows-msi` when put.gd runs from the folder the MSI recorded in
+   `HKCU\Software\put.gd\Installer`, otherwise `windows-zip`.
+2. **Signed list first:** put.gd reads the release's `SHA256SUMS` from GitHub and its
+   `SHA256SUMS.minisig` from `pkg.put.gd`. The signature must be by the channel's release
+   key, built into put.gd from `packaging/linux/repo/keys/`, with the trusted comment
+   `put.gd TAG CHANNEL`. Windows has no Ed25519 in its crypto API, so put.gd carries its
+   own verifier (`src/windows/common/Minisign.cpp`).
+3. **Download:** from the GitHub release, then from `pkg.put.gd`. The size and SHA-256 must
+   match `SHA256SUMS` and the feed, or nothing changes.
+4. **MSI install:** the MSI waits in `%LOCALAPPDATA%\put.gd\updates`. **Restart put.gd**
+   hands it to a copy of `putgd.exe` in that folder. The copy waits for put.gd to quit,
+   runs `msiexec /i … /passive /norestart` (a progress bar, no questions, no
+   administrator prompt), and starts put.gd again. If msiexec fails, Windows Installer
+   rolls back, and put.gd reports `update_install_failed` with the exit code and the
+   installer log's path.
+5. **Portable folder:** the zip is unpacked beside `putgd.exe` with Windows' own
+   `tar.exe`. The new `build-info.json` must name this release, and both executables
+   must embed its version and commit. Then the running files move to
+   `.putgd-update-backup-VERSION` and the new ones take their names. Windows allows a
+   running program to be renamed, not replaced. Without a restart, the next start runs
+   the new version.
+6. **After the restart:** Settings says "Updated from OLD". After 15 seconds put.gd
+   removes the backup, the staged MSI and the copy that ran it.
+
+It refuses while a capture or upload runs, and when an installed update still waits for
+its restart. Development builds don't install (`development_build`). Switching channels
+isn't supported on Windows yet (`switch_unsupported`, #SWITCH_ISSUE).
+
 ## CLI and MCP
 
 | Interface | What it does |
@@ -296,7 +333,7 @@ because FUSE mounts don't work inside `bwrap`. AppImageLauncher's updater uses t
 | `putgd-cli --check-update nightly` | The resident's child mode: one feed request and one JSON line, whose `action` says how this install updates (it reads the repository file). No resident needed |
 | `putgd-cli --open-software-updates` | The child mode behind `update.openSoftwareUpdates`: reads the repository file again and starts the updater. No resident needed |
 | `putgd-cli update.openSoftwareUpdates` | Opens the system's software updater, as **Open software updates** does. `software_updates_unavailable` when this install doesn't update from put.gd's repository (the details name why) or no updater is installed (the details carry the command) |
-| `putgd-cli update.install '{"confirm":true}'` | AppImage only: starts **Download and install** and returns `update.status` at once. `method` (`auto`, `zsync` or `download`) forces one path. Follow `install` in `update.status`: `state` (`idle`, `running`, `installed`, `failed`), `phase` (`checking`, `verifying`, `zsync`, `download`, `installing`, `done`), `method`, `bytes`, `total`, `error`, `result` (with `zsync.fallbackReason`, `backup` and the signature's trusted comment), `available`/`reason`, `kind` (`update` or `switch`), `switch` (`{from, to, version, tag, older}`), `restartRequired`, `installed` (with `channel` and `previousChannel`) and `backup`. A switch takes `"channel"` (the watched channel) and, when `switch.older`, `"allowOlder": true`. Refusals: `update_confirm_required`, `update_install_unavailable` (`not_appimage`, `not_running_from_appimage`, `not_checked`, `no_release`), `update_install_busy`, `update_restart_required`, `update_switch_confirm_required`, `update_switch_older`; the install's own errors (`update_not_available`, `update_no_release`, `update_image_not_writable`, `update_disk_full`, `update_sums_unavailable`, `update_signature_invalid`, `update_download_failed`, `update_verification_failed`, `update_zsync_failed`, `update_install_failed`) arrive in `install.error` |
+| `putgd-cli update.install '{"confirm":true}'` | AppImage and tagged Windows builds ([Windows](#updating-on-windows): `method` is `auto` or `download`, and no `channel` switch): starts **Download and install** and returns `update.status` at once. `method` (`auto`, `zsync` or `download`) forces one path. Follow `install` in `update.status`: `state` (`idle`, `running`, `installed`, `failed`), `phase` (`checking`, `verifying`, `zsync`, `download`, `installing`, `done`), `method`, `bytes`, `total`, `error`, `result` (with `zsync.fallbackReason`, `backup` and the signature's trusted comment), `available`/`reason`, `kind` (`update` or `switch`), `switch` (`{from, to, version, tag, older}`), `restartRequired`, `installed` (with `channel` and `previousChannel`) and `backup`. A switch takes `"channel"` (the watched channel) and, when `switch.older`, `"allowOlder": true`. Refusals: `update_confirm_required`, `update_install_unavailable` (`not_appimage`, `not_running_from_appimage`, `not_checked`, `no_release`), `update_install_busy`, `update_restart_required`, `update_switch_confirm_required`, `update_switch_older`; the install's own errors (`update_not_available`, `update_no_release`, `update_image_not_writable`, `update_disk_full`, `update_sums_unavailable`, `update_signature_invalid`, `update_download_failed`, `update_verification_failed`, `update_zsync_failed`, `update_install_failed`) arrive in `install.error` |
 | `putgd-cli update.restart '{"confirm":true}'` | Once an installed update waits for its restart: starts the AppImage again from the host after this resident exits, and quits it. `update_restart_unavailable` otherwise |
 | `putgd-cli --install-update nightly [--method M] [--state DIR] [--switch [--allow-older]]` | The child mode behind `update.install`: progress lines, then one result line. No resident needed; it reads `$APPIMAGE`. Another channel than the build's needs `--switch`, and an older version `--allow-older` |
 | MCP `get_update_status`, `check_for_updates`, `open_software_updates`, `install_update`, `restart_after_update` | `update.status`, `update.check`, `update.openSoftwareUpdates`, `update.install` and `update.restart` |
@@ -333,7 +370,8 @@ the app.put.gd copy within about a minute of each release.
 }
 ```
 
-- **Assets:** keyed `ubuntu24.04`, `ubuntu26.04`, `debian13`, `fedora44` and `appimage`.
+- **Assets:** keyed `ubuntu24.04`, `ubuntu26.04`, `debian13`, `fedora44` and `appimage`,
+  plus `windows-msi` and `windows-zip` once releases carry the Windows packages (#RELEASE_ISSUE).
 - **No release:** `release` is `null` while a channel has none. Today that's stable.
 - **Version order:** calendar versions `YY.MDD.N` sort by date, then commit count, and a
   nightly sorts before the stable release with the same `YY.MDD.N` (#373,
@@ -383,4 +421,5 @@ build reports `development_build` or `no_package` and never checks.
   ([above](#download-and-install-from-putgd)), with the signer's AppImage mirror on
   `pkg.put.gd`.
 - **Phase 4:** Flatpak, from its own signed repository, in [#83](https://github.com/patrick-hudson/put.gd-desktop/issues/83).
-- **Windows:** waits for a published Windows build.
+- **Windows:** in-app install for the MSI and the portable zip ([above](#updating-on-windows));
+  it takes effect once releases publish the Windows packages (#RELEASE_ISSUE).
