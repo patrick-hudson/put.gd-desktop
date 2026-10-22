@@ -36,7 +36,10 @@ All three were built from `a82a5192` plus one local commit, `8d55de8c`. That com
 - `PUTGD_UPDATE_FEED_URL=https://pkg.put.gd/lab/update/v1/`;
 - `PUTGD_UPDATE_RELEASE_URL` and `PUTGD_UPDATE_MIRROR_URL=https://pkg.put.gd/lab/releases`.
 
-**Afterwards:** every lab object was deleted ([lab/clean_nightly344.py](lab/clean_nightly344.py) and `lab344_stable.py clean`), and the lab URLs answer 404. The live feeds were never written.
+**Afterwards:**
+- **Lab objects:** every one was deleted ([lab/clean_nightly344.py](lab/clean_nightly344.py) and `lab344_stable.py clean`), and the lab URLs answer 404. Each of the 37 keys created and deleted is listed in [results/lab-keys-removed.txt](results/lab-keys-removed.txt): 7 stable and 30 nightly, including the 9102 receipt. The live feeds were never written.
+- **Lab-only minisign keys:** the stable key and a second "foreign" key used only for the tamper case were shredded on d69 (`shred -u`), and d69's `~/work/put.gd-i344lab` was removed.
+- **Signer:** its source tree (`dc1ab32`) is unchanged, and its lab workspace and lab-nightly publisher state are gone.
 
 ## Desktops and how each run worked
 
@@ -65,6 +68,15 @@ f44 and m74 each passed every check.
 | **Restart after stable → nightly** | Runs `0.1.1-nightly.9102` (`5ee14215…`), "Switched from stable 0.1.1 to nightly 0.1.1-nightly.9102" | same |
 | **Tamper (loopback copy of the lab stable release)** | Flipped byte → `update_verification_failed` (`sha256`); foreign key → `update_signature_invalid` (`keyId`); nightly trusted comment → `update_signature_invalid` (`release`). The image is unchanged and nothing is left in its folder | same |
 | **Start at login after a switch** | See below. Login started stable `0.1.1` from the configured path (`AppRun`), and the decoy was ignored | Same. Login started `0.1.1`, with `cinnamon-session` as its parent |
+
+**No stable release yet, against the live feed:**
+- **Setup:** lab nightly 9101 ran on f44 through its own AppRun, headless with private folders, and with no `PUTGD_UPDATE_*` variables. So it read the real `https://app.put.gd/update/v1/stable.json` (`release: null`) over real TLS with stock Fedora 44's CA layout.
+- **Steps:** Channel was set to Stable with `settings.patch`, then `update.check`.
+- **Result:**
+  - `ok: true` and no error;
+  - `result.latest: null`, `updateAvailable: false`;
+  - `install: {kind: switch, available: false, reason: no_release, switch: null}`.
+- **The resident's log:** "Update check finished" with `channel: stable, latest: null`. The feed was only read.
 
 **How the login check worked:**
 1. Launch at login was turned on in 9101.
