@@ -1,4 +1,5 @@
 #include "ui/Controls.h"
+#include "ui/Theme.h"
 #include "common/Files.h"
 #include "common/Paths.h"
 #include <algorithm>
@@ -68,6 +69,30 @@ void enablePerMonitorDpi() {
     if (set) set(reinterpret_cast<HANDLE>(static_cast<INT_PTR>(-4)));
 }
 
+namespace {
+// Segoe UI Variable on Windows 11 (its GDI named instances, e.g. "Segoe UI Variable
+// Display Semib"), else the message font's face (Segoe UI).
+std::vector<std::wstring>& families() {
+    static std::vector<std::wstring> names = [] {
+        std::vector<std::wstring> found;
+        LOGFONTW query{};
+        query.lfCharSet = DEFAULT_CHARSET;
+        HDC dc = GetDC(nullptr);
+        EnumFontFamiliesExW(dc, &query, [](const LOGFONTW* font, const TEXTMETRICW*, DWORD, LPARAM data) -> int {
+            reinterpret_cast<std::vector<std::wstring>*>(data)->push_back(font->lfFaceName);
+            return 1;
+        }, reinterpret_cast<LPARAM>(&found), 0);
+        ReleaseDC(nullptr, dc);
+        return found;
+    }();
+    return names;
+}
+std::wstring familyStarting(const std::wstring& prefix) {
+    for (const auto& name : families()) if (name.rfind(prefix, 0) == 0) return name;
+    return {};
+}
+}
+
 HFONT font(FontRole role, UINT dpi) {
     static std::map<std::pair<int, UINT>, HFONT> cache;
     const auto key = std::make_pair(int(role), dpi);
@@ -75,13 +100,35 @@ HFONT font(FontRole role, UINT dpi) {
     NONCLIENTMETRICSW metrics{};
     metrics.cbSize = sizeof metrics;
     static auto forDpi = user32<SystemParametersInfoForDpiFn>("SystemParametersInfoForDpi");
-    if (!(forDpi && forDpi(SPI_GETNONCLIENTMETRICS, sizeof metrics, &metrics, 0, dpi))) {
-        SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof metrics, &metrics, 0);
-        metrics.lfMessageFont.lfHeight = MulDiv(metrics.lfMessageFont.lfHeight, int(dpi), int(systemDpi()));
-    }
+    if (!(forDpi && forDpi(SPI_GETNONCLIENTMETRICS, sizeof metrics, &metrics, 0, dpi))) SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof metrics, &metrics, 0);
     LOGFONTW logical = metrics.lfMessageFont;
-    if (role != FontRole::Normal) logical.lfWeight = FW_SEMIBOLD;
-    if (role == FontRole::Heading) logical.lfHeight = MulDiv(logical.lfHeight, 6, 5);
+    int points10 = 90;
+    bool semibold = false, display = false;
+    switch (role) {
+    case FontRole::Normal: break;
+    case FontRole::Bold: semibold = true; break;
+    case FontRole::Heading: points10 = 120; semibold = display = true; break;
+    case FontRole::Title: points10 = 200; semibold = display = true; break;
+    case FontRole::Subtitle: points10 = 140; semibold = display = true; break;
+    case FontRole::Large: points10 = 105; break;
+    case FontRole::Small: points10 = 80; break;
+    case FontRole::SmallBold: points10 = 80; semibold = true; break;
+    }
+    logical.lfHeight = -MulDiv(points10, int(dpi), 720);
+    logical.lfWeight = semibold ? FW_SEMIBOLD : FW_NORMAL;
+    logical.lfQuality = CLEARTYPE_QUALITY;
+    const std::wstring base = display ? L"Segoe UI Variable Display" : L"Segoe UI Variable Text";
+    std::wstring face;
+    if (semibold) {
+        face = familyStarting(base + L" Semib");
+        if (!face.empty()) logical.lfWeight = FW_NORMAL; // the named instance carries the weight
+    }
+    if (face.empty() && !semibold) for (const auto& name : families()) if (name == base) face = name;
+    if (face.empty() && semibold) face = familyStarting(L"Segoe UI Semibold");
+    if (!face.empty()) {
+        if (face == L"Segoe UI Semibold") logical.lfWeight = FW_NORMAL;
+        lstrcpynW(logical.lfFaceName, face.c_str(), LF_FACESIZE);
+    }
     HFONT created = CreateFontIndirectW(&logical);
     cache[key] = created;
     return created;
@@ -99,34 +146,78 @@ void refreshFonts(HWND root, UINT dpi) {
         return TRUE;
     }, reinterpret_cast<LPARAM>(&context));
 }
-int lineHeight(UINT dpi) {
+int fontHeight(HFONT f) {
     HDC dc = GetDC(nullptr);
-    HGDIOBJ old = SelectObject(dc, font(FontRole::Normal, dpi));
+    HGDIOBJ old = SelectObject(dc, f);
     TEXTMETRICW metrics{};
     GetTextMetricsW(dc, &metrics);
     SelectObject(dc, old);
     ReleaseDC(nullptr, dc);
     return metrics.tmHeight + metrics.tmExternalLeading;
 }
+int lineHeight(UINT dpi) { return fontHeight(font(FontRole::Normal, dpi)); }
+int textHeight(HWND hwnd, int width) {
+    HFONT f = reinterpret_cast<HFONT>(SendMessageW(hwnd, WM_GETFONT, 0, 0));
+    if (!f) f = font(FontRole::Normal, windowDpi(hwnd));
+    const auto value = textW(hwnd);
+    if (value.empty()) return fontHeight(f);
+    HDC dc = GetDC(hwnd);
+    HGDIOBJ old = SelectObject(dc, f);
+    RECT r{0, 0, std::max(1, width), 0};
+    DrawTextW(dc, value.c_str(), int(value.size()), &r, DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX | DT_EDITCONTROL);
+    SelectObject(dc, old);
+    ReleaseDC(hwnd, dc);
+    return std::max<int>(r.bottom, fontHeight(f));
+}
+int buttonWidth(HWND hwnd, int minimum) {
+    const UINT dpi = windowDpi(hwnd);
+    HFONT f = reinterpret_cast<HFONT>(SendMessageW(hwnd, WM_GETFONT, 0, 0));
+    if (!f) f = font(FontRole::Normal, dpi);
+    const auto value = textW(hwnd);
+    HDC dc = GetDC(hwnd);
+    HGDIOBJ old = SelectObject(dc, f);
+    RECT r{0, 0, 0, 0};
+    DrawTextW(dc, value.c_str(), int(value.size()), &r, DT_CALCRECT | DT_SINGLELINE);
+    SelectObject(dc, old);
+    ReleaseDC(hwnd, dc);
+    return std::max(scale(minimum, dpi), int(r.right) + scale(40, dpi));
+}
 
 HWND label(HWND parent, const std::wstring& text, int id, DWORD extraStyle) { return make(0, WC_STATICW, text, SS_LEFT | SS_NOPREFIX | extraStyle, parent, id); }
 HWND heading(HWND parent, const std::wstring& text) { return make(0, WC_STATICW, text, SS_LEFT | SS_NOPREFIX, parent, 0, FontRole::Heading); }
-HWND edit(HWND parent, int id, DWORD extraStyle) { return make(WS_EX_CLIENTEDGE, WC_EDITW, L"", WS_TABSTOP | ES_AUTOHSCROLL | extraStyle, parent, id); }
+HWND edit(HWND parent, int id, DWORD extraStyle) {
+    HWND hwnd = make(0, WC_EDITW, L"", WS_TABSTOP | ES_AUTOHSCROLL | extraStyle, parent, id);
+    theme::setFramed(hwnd, true);
+    return hwnd;
+}
 HWND multilineReadOnly(HWND parent, int id) {
     return make(0, WC_EDITW, L"", WS_TABSTOP | ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL | WS_VSCROLL, parent, id);
 }
-HWND password(HWND parent, int id) { return make(WS_EX_CLIENTEDGE, WC_EDITW, L"", WS_TABSTOP | ES_AUTOHSCROLL | ES_PASSWORD, parent, id); }
-HWND combo(HWND parent, int id) { return make(0, WC_COMBOBOXW, L"", WS_TABSTOP | WS_VSCROLL | CBS_DROPDOWNLIST, parent, id); }
+HWND password(HWND parent, int id) {
+    HWND hwnd = make(0, WC_EDITW, L"", WS_TABSTOP | ES_AUTOHSCROLL | ES_PASSWORD, parent, id);
+    theme::setFramed(hwnd, true);
+    return hwnd;
+}
+HWND combo(HWND parent, int id) {
+    HWND hwnd = make(0, WC_COMBOBOXW, L"", WS_TABSTOP | WS_VSCROLL | CBS_DROPDOWNLIST, parent, id);
+    theme::styleCombo(hwnd);
+    return hwnd;
+}
 HWND check(HWND parent, int id, const std::wstring& text) { return make(0, WC_BUTTONW, text, WS_TABSTOP | BS_AUTOCHECKBOX, parent, id); }
 HWND radio(HWND parent, int id, const std::wstring& text, bool firstInGroup) {
     return make(0, WC_BUTTONW, text, BS_AUTORADIOBUTTON | (firstInGroup ? WS_GROUP | WS_TABSTOP : 0), parent, id);
 }
 HWND button(HWND parent, int id, const std::wstring& text, DWORD extraStyle) { return make(0, WC_BUTTONW, text, WS_TABSTOP | BS_PUSHBUTTON | extraStyle, parent, id); }
-HWND listBox(HWND parent, int id) { return make(WS_EX_CLIENTEDGE, WC_LISTBOXW, L"", WS_TABSTOP | WS_VSCROLL | LBS_NOTIFY | LBS_NOINTEGRALHEIGHT, parent, id); }
+HWND listBox(HWND parent, int id, bool ownerDrawn) {
+    HWND hwnd = make(0, WC_LISTBOXW, L"", WS_TABSTOP | WS_VSCROLL | LBS_NOTIFY | LBS_NOINTEGRALHEIGHT | (ownerDrawn ? LBS_OWNERDRAWFIXED | LBS_HASSTRINGS : 0), parent, id);
+    theme::setCard(hwnd, true);
+    return hwnd;
+}
 HWND listView(HWND parent, int id, DWORD extraStyle) {
-    HWND list = make(WS_EX_CLIENTEDGE, WC_LISTVIEWW, L"", WS_TABSTOP | LVS_REPORT | LVS_SHOWSELALWAYS | extraStyle, parent, id);
+    HWND list = make(0, WC_LISTVIEWW, L"", WS_TABSTOP | LVS_REPORT | LVS_SHOWSELALWAYS | extraStyle, parent, id);
     ListView_SetExtendedListViewStyle(list, LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER | LVS_EX_LABELTIP);
     SetWindowTheme(list, L"Explorer", nullptr);
+    theme::setCard(list, true);
     return list;
 }
 HWND imageBox(HWND parent, int id) { return make(0, WC_STATICW, L"", SS_BITMAP | SS_CENTERIMAGE | SS_REALSIZECONTROL, parent, id); }
@@ -227,55 +318,73 @@ LPARAM rowData(HWND list, int row) {
 
 void place(HWND hwnd, int x, int y, int width, int height) {
     if (!hwnd) return;
+    if (theme::framed(hwnd) || theme::card(hwnd)) { theme::placeInside(hwnd, x, y, width, height); return; }
     wchar_t cls[32]{};
     GetClassNameW(hwnd, cls, 32);
-    if (lstrcmpiW(cls, WC_COMBOBOXW) == 0) height += scale(260, windowDpi(hwnd));
+    if (lstrcmpiW(cls, WC_COMBOBOXW) == 0) {
+        // The face takes the row's height; the drop-down list gets roomier items.
+        const UINT dpi = windowDpi(hwnd);
+        SetPropW(hwnd, L"putgd.faceHeight", reinterpret_cast<HANDLE>(static_cast<INT_PTR>(height - scale(6, dpi))));
+        SetWindowPos(hwnd, nullptr, x, y, std::max(0, width), std::max(0, height + scale(260, dpi)), SWP_NOZORDER | SWP_NOACTIVATE);
+        // After sizing: a resize recomputes the face from the font.
+        if (SendMessageW(hwnd, CB_GETITEMHEIGHT, WPARAM(-1), 0) != height - scale(6, dpi)) {
+            SendMessageW(hwnd, CB_SETITEMHEIGHT, WPARAM(-1), height - scale(6, dpi));
+            SendMessageW(hwnd, CB_SETITEMHEIGHT, 0, scale(26, dpi));
+        }
+        RECT face{};
+        GetWindowRect(hwnd, &face);
+        if (face.bottom - face.top != height) SetWindowPos(hwnd, nullptr, x, y + (height - int(face.bottom - face.top)) / 2, 0, 0, SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOSIZE);
+        return;
+    }
     SetWindowPos(hwnd, nullptr, x, y, std::max(0, width), std::max(0, height), SWP_NOZORDER | SWP_NOACTIVATE);
 }
 
 Rows::Rows(UINT dpi, int x, int y, int width, int labelWidth) : dpi_(dpi), x_(x), y_(y), width_(width), label_(scale(labelWidth, dpi)) {
     if (label_ > width_ / 2) label_ = width_ / 2;
 }
-int Rows::fieldHeight() const { return std::max(px(23), lineHeight(dpi_) + px(8)); }
-int Rows::buttonHeight() const { return std::max(px(27), lineHeight(dpi_) + px(10)); }
+int Rows::fieldHeight() const { return std::max(px(32), lineHeight(dpi_) + px(14)); }
+int Rows::buttonHeight() const { return std::max(px(32), lineHeight(dpi_) + px(14)); }
 void Rows::heading(HWND hwnd) {
-    y_ += px(10);
-    place(hwnd, x_, y_, width_, lineHeight(dpi_) * 6 / 5 + px(4));
-    y_ += lineHeight(dpi_) * 6 / 5 + px(10);
+    const int height = textHeight(hwnd, width_);
+    if (!first_) y_ += px(30);
+    first_ = false;
+    place(hwnd, x_, y_, width_, height + px(2));
+    y_ += height + px(14);
 }
 void Rows::text(HWND hwnd, int lines) {
-    const int height = lineHeight(dpi_) * lines + px(2);
+    (void)lines;
+    const int height = textHeight(hwnd, width_) + px(2);
     place(hwnd, x_, y_, width_, height);
-    y_ += height + px(6);
+    y_ += height + px(10);
 }
 void Rows::field(HWND labelControl, HWND control, int controlWidth, HWND trailing, int trailingWidth) {
     const int height = fieldHeight();
-    const int textHeight = lineHeight(dpi_);
-    if (labelControl) place(labelControl, x_, y_ + (height - textHeight) / 2, label_ - px(8), textHeight + px(2));
+    const int textHeightPx = lineHeight(dpi_);
+    if (labelControl) place(labelControl, x_, y_ + (height - textHeightPx) / 2, label_ - px(12), textHeightPx + px(2));
     int available = width_ - label_;
     const int gap = px(8);
-    const int trailingSpace = trailing ? scale(trailingWidth, dpi_) + gap : 0;
+    const int trailingPx = trailing ? (trailingWidth < 0 ? buttonWidth(trailing) : scale(trailingWidth, dpi_)) : 0;
+    const int trailingSpace = trailing ? trailingPx + gap : 0;
     int width = controlWidth > 0 ? std::min(scale(controlWidth, dpi_), available - trailingSpace) : available - trailingSpace;
     if (control) place(control, x_ + label_, y_, width, height);
-    if (trailing) place(trailing, x_ + label_ + width + gap, y_ + (height - buttonHeight()) / 2, scale(trailingWidth, dpi_), buttonHeight());
+    if (trailing) place(trailing, x_ + label_ + width + gap, y_ + (height - buttonHeight()) / 2, trailingPx, buttonHeight());
     y_ += std::max(height, trailing ? buttonHeight() : 0) + px(8);
 }
 void Rows::error(HWND hwnd) {
     if (!hwnd) return;
     if (GetWindowTextLengthW(hwnd) == 0) { show(hwnd, false); return; }
-    const int lines = 1 + GetWindowTextLengthW(hwnd) / 70;
-    const int height = lineHeight(dpi_) * lines + px(2);
+    const int height = textHeight(hwnd, width_ - label_) + px(2);
     y_ -= px(4);
     place(hwnd, x_ + label_, y_, width_ - label_, height);
     show(hwnd, true);
-    y_ += height + px(6);
+    y_ += height + px(8);
 }
 void Rows::line(const std::vector<std::pair<HWND, int>>& items, bool controlColumn, int height) {
     if (!height) height = buttonHeight();
     int x = controlColumn ? x_ + label_ : x_;
     for (const auto& [hwnd, width] : items) {
         if (!hwnd) continue;
-        const int w = width > 0 ? scale(width, dpi_) : x_ + width_ - x;
+        const int w = width > 0 ? scale(width, dpi_) : width < 0 ? buttonWidth(hwnd) : x_ + width_ - x;
         place(hwnd, x, y_, w, height);
         x += w + px(8);
     }
@@ -299,7 +408,7 @@ HWND Panel::create(HWND parent, bool scrollable) {
         cls.lpfnWndProc = proc;
         cls.hInstance = GetModuleHandleW(nullptr);
         cls.hCursor = LoadCursorW(nullptr, IDC_ARROW);
-        cls.hbrBackground = GetSysColorBrush(COLOR_WINDOW);
+        cls.hbrBackground = nullptr;
         cls.lpszClassName = panelClass;
         RegisterClassExW(&cls);
         registered = true;
@@ -307,6 +416,7 @@ HWND Panel::create(HWND parent, bool scrollable) {
     scrollable_ = scrollable;
     hwnd_ = CreateWindowExW(WS_EX_CONTROLPARENT, panelClass, L"", WS_CHILD | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | (scrollable ? WS_VSCROLL : 0),
                             0, 0, 10, 10, parent, nullptr, GetModuleHandleW(nullptr), this);
+    if (hwnd_) theme::setSurface(hwnd_, theme::Surface::Content);
     return hwnd_;
 }
 void Panel::layout() {
@@ -317,6 +427,8 @@ void Panel::layout() {
     content_ = onLayout ? onLayout(client.right, client.bottom) : 0;
     laying_ = false;
     if (scrollable_) updateScrollBar(client.bottom);
+    // Frames and dividers are painted by the panel itself: repaint them where children moved.
+    InvalidateRect(hwnd_, nullptr, FALSE);
 }
 void Panel::updateScrollBar(int height) {
     const int maximum = std::max(0, content_ - height);
@@ -345,6 +457,25 @@ void Panel::markError(HWND control, bool error) {
     InvalidateRect(control, nullptr, TRUE);
 }
 void Panel::markMuted(HWND control) { muted_.push_back(control); }
+void Panel::markFaint(HWND control) { faint_.push_back(control); }
+void Panel::paint() {
+    PAINTSTRUCT ps;
+    HDC target = BeginPaint(hwnd_, &ps);
+    RECT client{};
+    GetClientRect(hwnd_, &client);
+    if (client.right > 0 && client.bottom > 0) {
+        HDC dc = CreateCompatibleDC(target);
+        HBITMAP bitmap = CreateCompatibleBitmap(target, client.right, client.bottom);
+        HGDIOBJ old = SelectObject(dc, bitmap);
+        theme::fill(dc, client, theme::backgroundOf(hwnd_));
+        theme::paintDecor(hwnd_, dc, scroll_);
+        BitBlt(target, ps.rcPaint.left, ps.rcPaint.top, ps.rcPaint.right - ps.rcPaint.left, ps.rcPaint.bottom - ps.rcPaint.top, dc, ps.rcPaint.left, ps.rcPaint.top, SRCCOPY);
+        SelectObject(dc, old);
+        DeleteObject(bitmap);
+        DeleteDC(dc);
+    }
+    EndPaint(hwnd_, &ps);
+}
 LRESULT CALLBACK Panel::proc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
     Panel* self = reinterpret_cast<Panel*>(GetWindowLongPtrW(hwnd, GWLP_USERDATA));
     if (message == WM_NCCREATE) {
@@ -359,36 +490,57 @@ LRESULT Panel::handle(UINT message, WPARAM wParam, LPARAM lParam) {
     if (onMessage) { LRESULT result = 0; if (onMessage(message, wParam, lParam, result)) return result; }
     switch (message) {
     case WM_COMMAND:
+        if (lParam && (HIWORD(wParam) == EN_SETFOCUS || HIWORD(wParam) == EN_KILLFOCUS) && theme::framed(reinterpret_cast<HWND>(lParam))) {
+            RECT frame = theme::outerRect(reinterpret_cast<HWND>(lParam));
+            InvalidateRect(hwnd_, &frame, FALSE);
+        }
         if (onCommand && lParam) onCommand(LOWORD(wParam), HIWORD(wParam), reinterpret_cast<HWND>(lParam));
         return 0;
-    case WM_NOTIFY:
+    case WM_NOTIFY: {
+        LRESULT result = 0;
+        if (theme::customDraw(reinterpret_cast<NMHDR*>(lParam), result)) return result;
         if (onNotify) return onNotify(reinterpret_cast<NMHDR*>(lParam));
         return 0;
+    }
     case WM_TIMER:
         if (onTimer) onTimer(wParam);
         return 0;
     case WM_SIZE:
         layout();
         return 0;
+    case WM_ERASEBKGND:
+        return 1;
+    case WM_PAINT:
+        paint();
+        return 0;
+    case WM_LBUTTONDOWN: {
+        // A click in a framed edit's padding focuses the edit.
+        const POINT at{static_cast<short>(LOWORD(lParam)), static_cast<short>(HIWORD(lParam))};
+        for (HWND child = GetWindow(hwnd_, GW_CHILD); child; child = GetWindow(child, GW_HWNDNEXT)) {
+            if (!theme::framed(child) || !IsWindowVisible(child) || !IsWindowEnabled(child)) continue;
+            RECT frame = theme::outerRect(child);
+            if (PtInRect(&frame, at)) { SetFocus(child); SendMessageW(child, EM_SETSEL, WPARAM(-1), 0); break; }
+        }
+        return 0;
+    }
+    case WM_MEASUREITEM: {
+        auto* item = reinterpret_cast<MEASUREITEMSTRUCT*>(lParam);
+        if (item->CtlType == ODT_LISTBOX) { theme::measureListItem(GetDlgItem(hwnd_, int(item->CtlID)), item); return TRUE; }
+        break;
+    }
+    case WM_DRAWITEM: {
+        auto* item = reinterpret_cast<DRAWITEMSTRUCT*>(lParam);
+        if (item->CtlType == ODT_LISTBOX) { theme::drawListItem(item); return TRUE; }
+        break;
+    }
+    case WM_CTLCOLOREDIT:
+    case WM_CTLCOLORLISTBOX:
     case WM_CTLCOLORSTATIC:
     case WM_CTLCOLORBTN: {
-        HDC dc = reinterpret_cast<HDC>(wParam);
         HWND control = reinterpret_cast<HWND>(lParam);
-        wchar_t cls[16]{};
-        GetClassNameW(control, cls, 16);
-        if (message == WM_CTLCOLORSTATIC && lstrcmpiW(cls, WC_EDITW) == 0) {
-            // Read-only and disabled edits keep the standard face colour.
-            SetBkColor(dc, GetSysColor(COLOR_BTNFACE));
-            SetTextColor(dc, GetSysColor(IsWindowEnabled(control) ? COLOR_WINDOWTEXT : COLOR_GRAYTEXT));
-            return reinterpret_cast<LRESULT>(GetSysColorBrush(COLOR_BTNFACE));
-        }
-        SetBkMode(dc, TRANSPARENT);
-        SetBkColor(dc, GetSysColor(COLOR_WINDOW));
-        if (!IsWindowEnabled(control)) { SetTextColor(dc, GetSysColor(COLOR_GRAYTEXT)); return reinterpret_cast<LRESULT>(GetSysColorBrush(COLOR_WINDOW)); }
-        if (std::find(errors_.begin(), errors_.end(), control) != errors_.end()) SetTextColor(dc, RGB(196, 43, 28));
-        else if (std::find(muted_.begin(), muted_.end(), control) != muted_.end()) SetTextColor(dc, GetSysColor(COLOR_GRAYTEXT));
-        else SetTextColor(dc, GetSysColor(COLOR_WINDOWTEXT));
-        return reinterpret_cast<LRESULT>(GetSysColorBrush(COLOR_WINDOW));
+        const auto has = [control](const std::vector<HWND>& list) { return std::find(list.begin(), list.end(), control) != list.end(); };
+        const int role = has(errors_) ? 2 : has(muted_) ? 1 : has(faint_) ? 3 : 0;
+        return theme::controlColor(message, reinterpret_cast<HDC>(wParam), control, role);
     }
     case WM_VSCROLL: {
         if (!scrollable_) break;

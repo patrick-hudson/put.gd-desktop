@@ -1,4 +1,5 @@
 #include "ui/MainWindow.h"
+#include "ui/Theme.h"
 #include "common/Log.h"
 #include "common/Paths.h"
 #include "core/Settings.h"
@@ -11,11 +12,15 @@
 namespace putgd::ui {
 namespace {
 constexpr wchar_t windowClass[] = L"putgd.Main";
-constexpr int idRailFirst = 200, idAbout = 220, idQuit = 221, idNoticeButton = 222, idTab = 230, idStatus = 231;
+constexpr int idRailFirst = 200, idAbout = 220, idQuit = 221, idNoticeButton = 222, idNavFirst = 230, idStatus = 236, idSaveStatus = 237;
 constexpr int idEditClipboard = 240, idEditFile = 241;
 constexpr UINT_PTR timerHeartbeat = 1, timerAutosave = 2, timerClose = 3, timerCloseSafety = 4;
 constexpr int noticeNone = 0, noticeReload = 1, noticeRetry = 2;
 const std::vector<std::string> railActions{"region", "edit", "window", "desktop", "clipboard"};
+const wchar_t* pageTitles[] = {L"History", L"Destinations", L"Settings"};
+const char* pageGlyphs[] = {"history", "destinations", "settings"};
+// The brand mark's two tones (resident/app.ico).
+constexpr COLORREF brandArrow = RGB(176, 204, 255), brandTray = RGB(110, 150, 232);
 
 bool screenAction(const std::string& action) { return action == "region" || action == "edit" || action == "window" || action == "desktop"; }
 
@@ -63,10 +68,123 @@ LRESULT CALLBACK editButtonProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM l
     }
     return DefSubclassProc(hwnd, message, wParam, lParam);
 }
-HRESULT CALLBACK aboutCallback(HWND, UINT notification, WPARAM, LPARAM lParam, LONG_PTR) {
-    if (notification == TDN_HYPERLINK_CLICKED) openUrl(narrow(reinterpret_cast<PCWSTR>(lParam)));
-    return S_OK;
-}
+// About put.gd: a small owned window in the app's theme (TaskDialog cannot follow dark mode).
+struct About {
+    HWND hwnd = nullptr, owner = nullptr, ok = nullptr, link = nullptr;
+    std::wstring version, commit;
+    static constexpr int idLink = 10;
+    static LRESULT CALLBACK proc(HWND h, UINT message, WPARAM wParam, LPARAM lParam) {
+        auto* self = reinterpret_cast<About*>(GetWindowLongPtrW(h, GWLP_USERDATA));
+        if (message == WM_NCCREATE) {
+            self = static_cast<About*>(reinterpret_cast<CREATESTRUCTW*>(lParam)->lpCreateParams);
+            SetWindowLongPtrW(h, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(self));
+            self->hwnd = h;
+        }
+        if (!self) return DefWindowProcW(h, message, wParam, lParam);
+        switch (message) {
+        case WM_COMMAND:
+            if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL) { SendMessageW(h, WM_CLOSE, 0, 0); return 0; }
+            if (LOWORD(wParam) == idLink) { openUrl("https://put.gd"); return 0; }
+            break;
+        case WM_NOTIFY: {
+            LRESULT result = 0;
+            if (theme::customDraw(reinterpret_cast<NMHDR*>(lParam), result)) return result;
+            break;
+        }
+        case WM_ERASEBKGND:
+            return 1;
+        case WM_PAINT:
+            self->paint();
+            return 0;
+        case WM_CLOSE:
+            if (self->owner) EnableWindow(self->owner, TRUE);
+            DestroyWindow(h);
+            return 0;
+        }
+        return DefWindowProcW(h, message, wParam, lParam);
+    }
+    int footer() const { return scale(68, windowDpi(hwnd)); }
+    void paint() {
+        PAINTSTRUCT ps;
+        HDC target = BeginPaint(hwnd, &ps);
+        RECT client{};
+        GetClientRect(hwnd, &client);
+        HDC dc = CreateCompatibleDC(target);
+        HBITMAP bitmap = CreateCompatibleBitmap(target, client.right, client.bottom);
+        HGDIOBJ old = SelectObject(dc, bitmap);
+        const auto& c = theme::colors();
+        const UINT d = windowDpi(hwnd);
+        theme::fill(dc, client, c.content);
+        theme::fill(dc, {0, client.bottom - footer(), client.right, client.bottom}, c.rail);
+        theme::fill(dc, {0, client.bottom - footer(), client.right, client.bottom - footer() + 1}, c.divider);
+        const int icon = scale(56, d), left = scale(28, d), text = left + icon + scale(18, d);
+        theme::drawGlyph(dc, "brand", left, scale(28, d), icon, brandArrow, brandTray);
+        const int titleHeight = fontHeight(font(FontRole::Title, d));
+        theme::drawText(dc, L"put.gd", {text, scale(22, d), client.right - left, scale(22, d) + titleHeight}, c.text, font(FontRole::Title, d), DT_SINGLELINE | DT_LEFT | DT_NOPREFIX);
+        int y = scale(22, d) + titleHeight + scale(2, d);
+        theme::drawText(dc, version, {text, y, client.right - left, y + lineHeight(d)}, c.textSecondary, font(FontRole::Normal, d), DT_SINGLELINE | DT_LEFT | DT_NOPREFIX);
+        y += lineHeight(d) + scale(2, d);
+        if (!commit.empty()) theme::drawText(dc, commit, {text, y, client.right - left, y + lineHeight(d)}, c.textMuted, font(FontRole::Normal, d), DT_SINGLELINE | DT_LEFT | DT_NOPREFIX);
+        const int body = scale(28, d) + icon + scale(24, d);
+        theme::drawText(dc, L"Capture, upload and share screenshots and files.", {left, body, client.right - left, body + lineHeight(d) * 2}, c.text,
+                        font(FontRole::Normal, d), DT_WORDBREAK | DT_LEFT | DT_NOPREFIX);
+        BitBlt(target, 0, 0, client.right, client.bottom, dc, 0, 0, SRCCOPY);
+        SelectObject(dc, old);
+        DeleteObject(bitmap);
+        DeleteDC(dc);
+        EndPaint(hwnd, &ps);
+    }
+    void run(HWND parent, const std::string& themeSetting) {
+        owner = parent;
+        static bool registered = false;
+        if (!registered) {
+            WNDCLASSEXW cls{};
+            cls.cbSize = sizeof cls;
+            cls.lpfnWndProc = proc;
+            cls.hInstance = GetModuleHandleW(nullptr);
+            cls.hCursor = LoadCursorW(nullptr, IDC_ARROW);
+            cls.lpszClassName = L"putgd.About";
+            RegisterClassExW(&cls);
+            registered = true;
+        }
+        const UINT d = windowDpi(parent);
+        const DWORD style = WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_CLIPCHILDREN;
+        RECT frame{0, 0, scale(440, d), scale(292, d)};
+        adjustWindowRectForDpi(frame, style, WS_EX_DLGMODALFRAME, d);
+        RECT ownerRect{};
+        GetWindowRect(parent, &ownerRect);
+        const int width = frame.right - frame.left, height = frame.bottom - frame.top;
+        CreateWindowExW(WS_EX_DLGMODALFRAME | WS_EX_CONTROLPARENT, L"putgd.About", L"About put.gd", style, (ownerRect.left + ownerRect.right - width) / 2,
+                        (ownerRect.top + ownerRect.bottom - height) / 2, width, height, parent, nullptr, GetModuleHandleW(nullptr), this);
+        if (!hwnd) return;
+        theme::setSurface(hwnd, theme::Surface::Content);
+        RECT client{};
+        GetClientRect(hwnd, &client);
+        link = button(hwnd, idLink, L"https://put.gd");
+        theme::setRole(link, theme::Role::Link);
+        const int left = scale(28, d), body = scale(28, d) + scale(56, d) + scale(24, d) + lineHeight(d) + scale(10, d);
+        place(link, left - scale(4, d), body, buttonWidth(link, 60) - scale(24, d), scale(28, d));
+        ok = button(hwnd, IDOK, L"OK", BS_DEFPUSHBUTTON);
+        theme::setRole(ok, theme::Role::Primary);
+        const int okWidth = scale(120, d), okHeight = scale(32, d);
+        place(ok, client.right - left - okWidth, client.bottom - footer() + (footer() - okHeight) / 2, okWidth, okHeight);
+        applyTitleBarTheme(hwnd, themeSetting);
+        theme::applyTo(hwnd);
+        EnableWindow(parent, FALSE);
+        ShowWindow(hwnd, SW_SHOW);
+        SetFocus(ok);
+        MSG msg{};
+        while (IsWindow(hwnd)) {
+            const BOOL got = GetMessageW(&msg, nullptr, 0, 0);
+            if (got == 0) { PostQuitMessage(int(msg.wParam)); break; }
+            if (got == -1) break;
+            if (IsDialogMessageW(hwnd, &msg)) continue;
+            TranslateMessage(&msg);
+            DispatchMessageW(&msg);
+        }
+        if (IsWindow(parent)) { EnableWindow(parent, TRUE); SetActiveWindow(parent); }
+    }
+};
 }
 
 MainWindow::MainWindow(UiSession& session, frames::Channel& channel) : session_(session), channel_(channel) {
@@ -92,7 +210,7 @@ bool MainWindow::create(const std::string& initialView, const json::Object& stat
     cls.lpfnWndProc = proc;
     cls.hInstance = GetModuleHandleW(nullptr);
     cls.hCursor = LoadCursorW(nullptr, IDC_ARROW);
-    cls.hbrBackground = GetSysColorBrush(COLOR_BTNFACE);
+    cls.hbrBackground = nullptr;
     cls.lpszClassName = windowClass;
     cls.hIcon = static_cast<HICON>(LoadImageW(cls.hInstance, MAKEINTRESOURCEW(1), IMAGE_ICON, GetSystemMetrics(SM_CXICON), GetSystemMetrics(SM_CYICON), LR_DEFAULTCOLOR));
     cls.hIconSm = static_cast<HICON>(LoadImageW(cls.hInstance, MAKEINTRESOURCEW(1), IMAGE_ICON, GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), LR_DEFAULTCOLOR));
@@ -101,7 +219,7 @@ bool MainWindow::create(const std::string& initialView, const json::Object& stat
     const UINT dpi = systemDpi();
     RECT work{};
     SystemParametersInfoW(SPI_GETWORKAREA, 0, &work, 0);
-    const int width = std::min(scale(1120, dpi), int(work.right - work.left)), height = std::min(scale(780, dpi), int(work.bottom - work.top));
+    const int width = std::min(scale(1240, dpi), int(work.right - work.left)), height = std::min(scale(780, dpi), int(work.bottom - work.top));
     hwnd_ = CreateWindowExW(WS_EX_CONTROLPARENT, windowClass, L"put.gd", WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN,
                             work.left + (work.right - work.left - width) / 2, work.top + (work.bottom - work.top - height) / 2, width, height,
                             nullptr, nullptr, cls.hInstance, this);
@@ -109,12 +227,20 @@ bool MainWindow::create(const std::string& initialView, const json::Object& stat
     session_.attach(hwnd_);
     tooltip_ = createTooltip(hwnd_);
 
+    theme::setSurface(hwnd_, theme::Surface::Rail);
+    const UINT d = this->dpi();
+    for (int i = 0; i < 3; ++i) {
+        nav_[size_t(i)] = button(hwnd_, idNavFirst + i, pageTitles[i]);
+        theme::setRole(nav_[size_t(i)], theme::Role::Nav, pageGlyphs[i]);
+    }
     railHeading_ = ui::label(hwnd_, L"Capture & upload");
-    setFont(railHeading_, FontRole::Bold, this->dpi());
+    setFont(railHeading_, FontRole::SmallBold, d);
     for (size_t i = 0; i < railActions.size(); ++i) {
         auto caption = actionLabel(railActions[i]);
         if (railActions[i] == "edit") caption = L"Capture region && edit";
         HWND b = button(hwnd_, idRailFirst + int(i), caption);
+        theme::setRole(b, theme::Role::Action, railActions[i] == "edit" ? "edit" : railActions[i] == "region" ? "region" : railActions[i] == "window" ? "window"
+                                                 : railActions[i] == "desktop" ? "desktop" : "clipboard");
         rail_[railActions[i]] = b;
         if (railActions[i] == "edit") {
             DragAcceptFiles(b, TRUE);
@@ -122,27 +248,22 @@ bool MainWindow::create(const std::string& initialView, const json::Object& stat
         }
     }
     version_ = ui::label(hwnd_, L"");
+    setFont(version_, FontRole::Small, d);
     about_ = button(hwnd_, idAbout, L"About put.gd");
+    theme::setRole(about_, theme::Role::Action, "info");
     quit_ = button(hwnd_, idQuit, L"Quit put.gd");
+    theme::setRole(quit_, theme::Role::Action, "power");
     setTooltip(tooltip_, quit_, L"Exit put.gd, its tray icon and shortcuts. Pending work is cancelled.");
-    notice_ = ui::label(hwnd_, L"", 0, SS_CENTERIMAGE);
+    notice_ = ui::label(hwnd_, L"", 0, SS_CENTERIMAGE | SS_ENDELLIPSIS);
+    theme::setSurface(notice_, theme::Surface::Notice);
     noticeButton_ = button(hwnd_, idNoticeButton, L"Reload");
+    theme::setSurface(noticeButton_, theme::Surface::Notice);
     show(notice_, false);
     show(noticeButton_, false);
-
-    tab_ = CreateWindowExW(0, WC_TABCONTROLW, L"", WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_TABSTOP, 0, 0, 10, 10, hwnd_,
-                           reinterpret_cast<HMENU>(static_cast<INT_PTR>(idTab)), cls.hInstance, nullptr);
-    setFont(tab_, FontRole::Normal, this->dpi());
-    const wchar_t* names[] = {L"History", L"Destinations", L"Settings"};
-    for (int i = 0; i < 3; ++i) {
-        TCITEMW item{};
-        item.mask = TCIF_TEXT;
-        item.pszText = const_cast<wchar_t*>(names[i]);
-        SendMessageW(tab_, TCM_INSERTITEMW, WPARAM(i), reinterpret_cast<LPARAM>(&item));
-    }
-    statusBar_ = CreateWindowExW(0, STATUSCLASSNAMEW, L"", WS_CHILD | WS_VISIBLE | SBARS_SIZEGRIP, 0, 0, 0, 0, hwnd_,
-                                 reinterpret_cast<HMENU>(static_cast<INT_PTR>(idStatus)), cls.hInstance, nullptr);
-    setFont(statusBar_, FontRole::Normal, this->dpi());
+    status_ = ui::label(hwnd_, L"", idStatus, SS_ENDELLIPSIS | SS_NOTIFY);
+    theme::setSurface(status_, theme::Surface::Content);
+    saveStatus_ = ui::label(hwnd_, L"", idSaveStatus, SS_RIGHT | SS_ENDELLIPSIS);
+    theme::setSurface(saveStatus_, theme::Surface::Content);
     for (size_t i = 0; i < pages_.size(); ++i) {
         pageWindows_[i] = pages_[i]->create(hwnd_);
         show(pageWindows_[i], false);
@@ -189,55 +310,120 @@ json::Object MainWindow::checkpoint() const {
     return state;
 }
 
+namespace {
+struct Metrics {
+    int rail, item, itemGap, margin, titleTop, titleHeight, top, footer, noticeHeight;
+};
+Metrics metrics(UINT d) {
+    Metrics m{};
+    m.rail = scale(220, d);
+    m.item = scale(36, d);
+    m.itemGap = scale(3, d);
+    m.margin = scale(24, d);
+    m.titleTop = scale(18, d);
+    m.titleHeight = fontHeight(font(FontRole::Title, d));
+    m.top = m.titleTop + m.titleHeight + scale(10, d);
+    m.footer = scale(34, d);
+    m.noticeHeight = scale(44, d);
+    return m;
+}
+}
+
 void MainWindow::layout() {
-    if (!hwnd_ || !tab_) return;
+    if (!hwnd_ || !nav_[0]) return;
     RECT client{};
     GetClientRect(hwnd_, &client);
     const UINT d = dpi();
-    SendMessageW(statusBar_, WM_SIZE, 0, 0);
-    RECT bar{};
-    GetWindowRect(statusBar_, &bar);
-    const int statusHeight = bar.bottom - bar.top;
-    int parts[2] = {std::max(0, int(client.right) - scale(300, d)), -1};
-    SendMessageW(statusBar_, SB_SETPARTS, 2, reinterpret_cast<LPARAM>(parts));
-
-    const int pad = scale(12, d), railWidth = scale(210, d), line = lineHeight(d), buttonHeight = std::max(scale(32, d), line + scale(14, d));
-    int y = pad;
-    place(railHeading_, pad, y, railWidth - 2 * pad, line + scale(2, d));
-    y += line + scale(10, d);
+    const auto m = metrics(d);
+    const int itemX = scale(6, d), itemWidth = m.rail - 2 * itemX;
+    int y = scale(64, d);
+    for (HWND item : nav_) {
+        place(item, itemX, y, itemWidth, m.item);
+        y += m.item + m.itemGap;
+    }
+    y += scale(18, d);
+    const int small = fontHeight(font(FontRole::SmallBold, d));
+    place(railHeading_, scale(18, d), y, itemWidth - scale(12, d), small + scale(2, d));
+    y += small + scale(8, d);
     for (const auto& action : railActions) {
-        place(rail_[action], pad, y, railWidth - 2 * pad, buttonHeight);
-        y += buttonHeight + scale(6, d);
+        place(rail_[action], itemX, y, itemWidth, m.item);
+        y += m.item + m.itemGap;
     }
-    int bottom = client.bottom - statusHeight - pad - buttonHeight;
-    place(quit_, pad, bottom, railWidth - 2 * pad, buttonHeight);
-    bottom -= buttonHeight + scale(6, d);
-    place(about_, pad, bottom, railWidth - 2 * pad, buttonHeight);
-    bottom -= line * 2 + scale(8, d);
-    place(version_, pad, bottom, railWidth - 2 * pad, line * 2 + scale(2, d));
+    const int versionHeight = fontHeight(font(FontRole::Small, d)) + scale(2, d);
+    int bottom = client.bottom - scale(14, d) - versionHeight;
+    place(version_, scale(18, d), bottom, itemWidth - scale(12, d), versionHeight);
+    bottom -= scale(8, d) + m.item;
+    place(quit_, itemX, bottom, itemWidth, m.item);
+    bottom -= m.itemGap + m.item;
+    place(about_, itemX, bottom, itemWidth, m.item);
 
-    const int left = railWidth, right = client.right - pad;
-    int top = scale(10, d);
+    const int left = m.rail + m.margin, right = client.right - m.margin;
+    int top = m.top;
     if (visible(notice_)) {
-        const int buttonWidth = scale(120, d);
-        place(notice_, left, top, right - left - buttonWidth - scale(8, d), buttonHeight);
-        place(noticeButton_, right - buttonWidth, top, buttonWidth, buttonHeight);
-        top += buttonHeight + scale(8, d);
+        const int buttonHeight = scale(30, d), buttonW = buttonWidth(noticeButton_, 96);
+        place(noticeButton_, right - scale(8, d) - buttonW, top + (m.noticeHeight - buttonHeight) / 2, buttonW, buttonHeight);
+        place(notice_, left + scale(42, d), top + scale(4, d), right - left - scale(42, d) - buttonW - scale(20, d), m.noticeHeight - scale(8, d));
+        top += m.noticeHeight + scale(12, d);
     }
-    const int tabBottom = client.bottom - statusHeight - scale(8, d);
-    place(tab_, left, top, right - left, tabBottom - top);
-    RECT display{left, top, right, tabBottom};
-    SendMessageW(tab_, TCM_ADJUSTRECT, FALSE, reinterpret_cast<LPARAM>(&display));
+    const int footerTop = client.bottom - m.footer;
+    const int line = lineHeight(d) + scale(2, d), saveWidth = scale(240, d);
+    place(saveStatus_, right - saveWidth, footerTop + (m.footer - line) / 2, saveWidth, line);
+    place(status_, left, footerTop + (m.footer - line) / 2, std::max(0, right - saveWidth - scale(16, d) - left), line);
     for (HWND page : pageWindows_)
-        SetWindowPos(page, HWND_TOP, display.left, display.top, display.right - display.left, display.bottom - display.top, SWP_NOACTIVATE);
+        SetWindowPos(page, HWND_TOP, m.rail + 1, top, std::max(0, int(client.right) - m.rail - 1), std::max(0, footerTop - top - scale(4, d)), SWP_NOACTIVATE);
+    InvalidateRect(hwnd_, nullptr, FALSE);
+}
+
+void MainWindow::paint() {
+    PAINTSTRUCT ps;
+    HDC target = BeginPaint(hwnd_, &ps);
+    RECT client{};
+    GetClientRect(hwnd_, &client);
+    if (client.right > 0 && client.bottom > 0) {
+        HDC dc = CreateCompatibleDC(target);
+        HBITMAP bitmap = CreateCompatibleBitmap(target, client.right, client.bottom);
+        HGDIOBJ old = SelectObject(dc, bitmap);
+        const auto& c = theme::colors();
+        const UINT d = dpi();
+        const auto m = metrics(d);
+        theme::fill(dc, client, c.rail);
+        // The content layer: a rounded sheet beside the rail, as in Windows 11.
+        const int radius = scale(6, d);
+        theme::roundRect(dc, {m.rail, 0, client.right + 2 * radius, client.bottom + 2 * radius}, radius, c.content, c.cardBorder);
+        // Brand.
+        const int icon = scale(24, d);
+        theme::drawGlyph(dc, "brand", scale(18, d), scale(20, d), icon, brandArrow, brandTray);
+        theme::drawText(dc, L"put.gd", {scale(18, d) + icon + scale(12, d), scale(16, d), m.rail, scale(16, d) + icon + scale(8, d)}, c.text, font(FontRole::Heading, d),
+                        DT_SINGLELINE | DT_VCENTER | DT_LEFT | DT_NOPREFIX);
+        // Page title.
+        const int left = m.rail + m.margin, right = client.right - m.margin;
+        theme::drawText(dc, pageTitles[std::clamp(page_, 0, 2)], {left, m.titleTop, right, m.titleTop + m.titleHeight}, c.text, font(FontRole::Title, d),
+                        DT_SINGLELINE | DT_LEFT | DT_NOPREFIX);
+        // Notice (Windows 11 InfoBar).
+        if (visible(notice_)) {
+            RECT bar{left, m.top, right, m.top + m.noticeHeight};
+            theme::roundRect(dc, bar, scale(6, d), c.notice, c.noticeBorder);
+            const int size = scale(18, d);
+            theme::drawGlyph(dc, "warning", left + scale(14, d), m.top + (m.noticeHeight - size) / 2, size, c.warning, c.notice);
+        }
+        // Footer divider.
+        const int footerTop = client.bottom - m.footer;
+        theme::fill(dc, {m.rail + 1, footerTop, client.right, footerTop + 1}, c.divider);
+        BitBlt(target, ps.rcPaint.left, ps.rcPaint.top, ps.rcPaint.right - ps.rcPaint.left, ps.rcPaint.bottom - ps.rcPaint.top, dc, ps.rcPaint.left, ps.rcPaint.top, SRCCOPY);
+        SelectObject(dc, old);
+        DeleteObject(bitmap);
+        DeleteDC(dc);
+    }
+    EndPaint(hwnd_, &ps);
 }
 
 void MainWindow::setPage(int index) {
     index = std::clamp(index, 0, 2);
     const int previous = page_;
     page_ = index;
-    SendMessageW(tab_, TCM_SETCURSEL, WPARAM(index), 0);
+    for (size_t i = 0; i < nav_.size(); ++i) theme::setSelected(nav_[i], int(i) == index);
     for (size_t i = 0; i < pageWindows_.size(); ++i) ShowWindow(pageWindows_[i], int(i) == index ? SW_SHOW : SW_HIDE);
+    InvalidateRect(hwnd_, nullptr, FALSE);
     if (previous != index) pages_[size_t(previous)]->deactivated();
     pages_[size_t(index)]->activated();
 }
@@ -481,13 +667,15 @@ void MainWindow::updateSaveStatus() {
     std::wstring text = L"Settings save automatically";
     if (inFlight_ || hasPending_) text = L"Saving\x2026";
     else if (!saveText_.empty()) text = saveText_;
-    SendMessageW(statusBar_, SB_SETTEXTW, 1, reinterpret_cast<LPARAM>(text.c_str()));
+    setTextW(saveStatus_, text);
 }
 
 void MainWindow::status(const std::wstring& text, bool error) {
     const std::wstring shown = error && !text.empty() ? L"\x26A0 " + text : text;
-    SendMessageW(statusBar_, SB_SETTEXTW, 0, reinterpret_cast<LPARAM>(shown.c_str()));
-    SendMessageW(statusBar_, SB_SETTIPTEXTW, 0, reinterpret_cast<LPARAM>(shown.c_str()));
+    statusError_ = error;
+    setTextW(status_, shown);
+    setTooltip(tooltip_, status_, shown);
+    InvalidateRect(status_, nullptr, TRUE);
     if (error) log::info("ui", "Status message shown", {{"error", true}});
 }
 
@@ -504,6 +692,12 @@ void MainWindow::updateRail() {
 void MainWindow::applyTheme(const std::string& themeSetting) {
     const auto theme = themeSetting.empty() ? session_.document().value("preferences")["appearance"]["theme"].toString("system") : themeSetting;
     applyTitleBarTheme(hwnd_, theme);
+    // Re-theme the controls only when the scheme changes: settings broadcasts follow every save.
+    if (theme::setDark(theme::wantsDark(theme)) || !themeApplied_) {
+        themeApplied_ = true;
+        theme::applyTo(hwnd_);
+        if (tooltip_) theme::applyTo(tooltip_);
+    }
 }
 
 // ---- actions -------------------------------------------------------------------
@@ -562,21 +756,10 @@ void MainWindow::showAbout() {
     const auto& build = session_.build();
     auto commit = build.value("commit").toString();
     if (commit.size() > 12) commit.resize(12);
-    std::wstring content = L"Version " + wide(build.value("version").toString("unknown"));
-    if (!commit.empty()) content += L"\nCommit " + wide(commit);
-    content += L"\n\nCapture, upload and share screenshots and files.\n<a href=\"https://put.gd\">https://put.gd</a>";
-    TASKDIALOGCONFIG config{};
-    config.cbSize = sizeof config;
-    config.hwndParent = hwnd_;
-    config.hInstance = GetModuleHandleW(nullptr);
-    config.dwFlags = TDF_ALLOW_DIALOG_CANCELLATION | TDF_ENABLE_HYPERLINKS | TDF_POSITION_RELATIVE_TO_WINDOW;
-    config.dwCommonButtons = TDCBF_OK_BUTTON;
-    config.pszWindowTitle = L"About put.gd";
-    config.pszMainIcon = MAKEINTRESOURCEW(1);
-    config.pszMainInstruction = L"put.gd";
-    config.pszContent = content.c_str();
-    config.pfCallback = aboutCallback;
-    TaskDialogIndirect(&config, nullptr, nullptr, nullptr);
+    About about;
+    about.version = L"Version " + wide(build.value("version").toString("unknown"));
+    if (!commit.empty()) about.commit = L"Commit " + wide(commit);
+    about.run(hwnd_, session_.document().value("preferences")["appearance"]["theme"].toString("system"));
 }
 
 void MainWindow::quit() {
@@ -697,6 +880,7 @@ LRESULT MainWindow::handle(UINT message, WPARAM wParam, LPARAM lParam) {
     case WM_COMMAND: {
         const int id = LOWORD(wParam);
         if (id >= idRailFirst && id < idRailFirst + int(railActions.size()) && HIWORD(wParam) == BN_CLICKED) invokeAction(railActions[size_t(id - idRailFirst)]);
+        else if (id >= idNavFirst && id < idNavFirst + 3 && HIWORD(wParam) == BN_CLICKED) setPage(id - idNavFirst);
         else if (id == idAbout) showAbout();
         else if (id == idQuit) quit();
         else if (id == idNoticeButton) {
@@ -726,29 +910,28 @@ LRESULT MainWindow::handle(UINT message, WPARAM wParam, LPARAM lParam) {
         }
         break;
     case WM_NOTIFY: {
-        auto* header = reinterpret_cast<NMHDR*>(lParam);
-        if (header->hwndFrom == tab_ && header->code == TCN_SELCHANGE) setPage(int(SendMessageW(tab_, TCM_GETCURSEL, 0, 0)));
+        LRESULT result = 0;
+        if (theme::customDraw(reinterpret_cast<NMHDR*>(lParam), result)) return result;
         return 0;
     }
-    case WM_CTLCOLORSTATIC: {
-        HDC dc = reinterpret_cast<HDC>(wParam);
-        if (reinterpret_cast<HWND>(lParam) == notice_) {
-            static HBRUSH noticeBrush = CreateSolidBrush(RGB(255, 244, 206));
-            SetBkColor(dc, RGB(255, 244, 206));
-            SetTextColor(dc, RGB(32, 32, 32));
-            return reinterpret_cast<LRESULT>(noticeBrush);
-        }
-        SetBkMode(dc, TRANSPARENT);
-        SetTextColor(dc, GetSysColor(COLOR_BTNTEXT));
-        return reinterpret_cast<LRESULT>(GetSysColorBrush(COLOR_BTNFACE));
+    case WM_CTLCOLORSTATIC:
+    case WM_CTLCOLORBTN: {
+        const HWND control = reinterpret_cast<HWND>(lParam);
+        const int role = control == status_ ? (statusError_ ? 2 : 0) : control == saveStatus_ || control == railHeading_ ? 1 : control == version_ ? 3 : 0;
+        return theme::controlColor(message, reinterpret_cast<HDC>(wParam), control, role);
     }
+    case WM_ERASEBKGND:
+        return 1;
+    case WM_PAINT:
+        paint();
+        return 0;
     case WM_ACTIVATE:
         // Dialog-style focus memory: restore the last focused control on activation.
         if (LOWORD(wParam) == WA_INACTIVE) {
             HWND focus = GetFocus();
             if (focus && IsChild(hwnd_, focus)) lastFocus_ = focus;
         } else {
-            SetFocus(lastFocus_ && IsWindow(lastFocus_) && IsWindowVisible(lastFocus_) ? lastFocus_ : tab_);
+            SetFocus(lastFocus_ && IsWindow(lastFocus_) && IsWindowVisible(lastFocus_) ? lastFocus_ : nav_[size_t(std::clamp(page_, 0, 2))]);
         }
         return 0;
     case WM_SIZE:
@@ -762,6 +945,7 @@ LRESULT MainWindow::handle(UINT message, WPARAM wParam, LPARAM lParam) {
     case WM_DPICHANGED: {
         const UINT newDpi = HIWORD(wParam);
         refreshFonts(hwnd_, newDpi);
+        theme::applyTo(hwnd_);
         const auto* suggested = reinterpret_cast<RECT*>(lParam);
         SetWindowPos(hwnd_, nullptr, suggested->left, suggested->top, suggested->right - suggested->left, suggested->bottom - suggested->top, SWP_NOZORDER | SWP_NOACTIVATE);
         for (auto& page : pages_) page->dpiChanged();

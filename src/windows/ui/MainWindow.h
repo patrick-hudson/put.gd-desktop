@@ -1,6 +1,6 @@
 #pragma once
-// The single put.gd window of the UI helper: a rail of capture actions and a tab
-// control with History (and Activity), Destinations and Settings. It owns the
+// The single put.gd window of the UI helper: a navigation rail (History,
+// Destinations, Settings, then the capture actions) beside the current page. It owns the
 // control-channel lifecycle (Protocol.h, role "ui"), the shared 400 ms settings
 // autosave and the close checkpoint handshake.
 #include "common/Frames.h"
@@ -103,6 +103,7 @@ private:
     static LRESULT CALLBACK proc(HWND, UINT, WPARAM, LPARAM);
     LRESULT handle(UINT, WPARAM, LPARAM);
     void layout();
+    void paint();
     void onFrame(const protocol::Frame&);
     void sendPending();
     void finishSave();
@@ -121,7 +122,9 @@ private:
 
     UiSession& session_;
     frames::Channel& channel_;
-    HWND hwnd_ = nullptr, tab_ = nullptr, statusBar_ = nullptr, tooltip_ = nullptr;
+    HWND hwnd_ = nullptr, tooltip_ = nullptr, status_ = nullptr, saveStatus_ = nullptr;
+    std::array<HWND, 3> nav_{};
+    bool statusError_ = false, themeApplied_ = false;
     HWND notice_ = nullptr, noticeButton_ = nullptr, railHeading_ = nullptr, version_ = nullptr, about_ = nullptr, quit_ = nullptr;
     HWND keyCapture_ = nullptr, lastFocus_ = nullptr;
     std::map<std::string, HWND> rail_;

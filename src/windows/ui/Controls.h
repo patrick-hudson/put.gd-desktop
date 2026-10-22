@@ -28,12 +28,19 @@ void enablePerMonitorDpi();
 #endif
 
 // ---- Fonts -------------------------------------------------------------------
-enum class FontRole { Normal = 1, Bold = 2, Heading = 3 };
+// Body 9 pt; Heading 12 pt semibold (section headers); Title 20 pt (page titles);
+// Subtitle 14 pt semibold; Large 10.5 pt (selectors); Small 8 pt (captions).
+enum class FontRole { Normal = 1, Bold = 2, Heading = 3, Title = 4, Subtitle = 5, Large = 6, Small = 7, SmallBold = 8 };
 HFONT font(FontRole, UINT dpi);
 // Sets the font and remembers its role so refreshFonts can reapply it after a DPI change.
 void setFont(HWND, FontRole, UINT dpi);
 void refreshFonts(HWND root, UINT dpi);
-int lineHeight(UINT dpi); // the message font's height in pixels
+int lineHeight(UINT dpi); // the body font's height in pixels
+int fontHeight(HFONT);
+// Height of a control's (word-wrapped) text at the given width, in its own font.
+int textHeight(HWND, int width);
+// A push button's natural width: its text plus padding, at least `minimum` logical pixels.
+int buttonWidth(HWND, int minimum = 96);
 
 // ---- Controls ----------------------------------------------------------------
 HWND label(HWND parent, const std::wstring& text, int id = 0, DWORD extraStyle = 0);
@@ -45,7 +52,7 @@ HWND combo(HWND parent, int id);
 HWND check(HWND parent, int id, const std::wstring& text);
 HWND radio(HWND parent, int id, const std::wstring& text, bool firstInGroup);
 HWND button(HWND parent, int id, const std::wstring& text, DWORD extraStyle = 0);
-HWND listBox(HWND parent, int id);
+HWND listBox(HWND parent, int id, bool ownerDrawn = false);
 HWND listView(HWND parent, int id, DWORD extraStyle = 0);
 HWND imageBox(HWND parent, int id);
 
@@ -76,7 +83,8 @@ std::vector<int> selectedRows(HWND list);
 LPARAM rowData(HWND list, int row);
 
 // ---- Layout ------------------------------------------------------------------
-// Positions a control; combo boxes get room for their drop-down list.
+// Positions a control; combo boxes get room for their drop-down list and the
+// given height for their face; framed edits and cards sit inside the rectangle.
 void place(HWND, int x, int y, int width, int height);
 
 // Simple top-to-bottom rows: a label column and a control column.
@@ -91,13 +99,14 @@ public:
     int controlWidth() const { return width_ - label_; }
     int fieldHeight() const;
     int buttonHeight() const;
-    void heading(HWND);
-    void text(HWND, int lines = 1);                     // wrapped label across the full width
+    void heading(HWND);                                 // a section header; a divider is painted above all but the first
+    void text(HWND, int lines = 1);                     // wrapped label across the full width (measured; `lines` is a minimum)
     // label | control [width 0 = fill] | trailing control
     void field(HWND label, HWND control, int controlWidth = 0, HWND trailing = nullptr, int trailingWidth = 0);
     // Shown under the control column only when it has text; hidden otherwise.
     void error(HWND);
     // Controls side by side starting at the given column (true = control column).
+    // Widths: > 0 logical pixels, 0 the rest of the row, < 0 the button's natural width.
     void line(const std::vector<std::pair<HWND, int>>& items, bool controlColumn = false, int height = 0);
     void full(HWND, int height);
     // A control of a given pixel height in the control column (or across the full width).
@@ -106,11 +115,13 @@ public:
 private:
     UINT dpi_;
     int x_, y_, width_, label_;
+    bool first_ = true;
 };
 
 // ---- Panel ---------------------------------------------------------------------
 // A plain child window hosting controls. It forwards WM_COMMAND/WM_NOTIFY/WM_TIMER
-// to its owner, paints the window background behind static text and can scroll
+// to its owner, paints its theme surface with the frames, cards and section
+// dividers its children ask for (Theme.h), colours its children, and can scroll
 // vertically (children are laid out again at the new offset).
 class Panel {
 public:
@@ -120,6 +131,7 @@ public:
     std::function<void(UINT_PTR)> onTimer;
     std::function<bool(UINT, WPARAM, LPARAM, LRESULT&)> onMessage;
     HWND create(HWND parent, bool scrollable);
+    int scrollOffset() const { return scroll_; }
     HWND hwnd() const { return hwnd_; }
     int offsetY() const { return -scroll_; }
     void layout();
@@ -128,6 +140,7 @@ public:
     // Marks a static control as an error (red) or notice (normal) text.
     void markError(HWND control, bool error);
     void markMuted(HWND control);
+    void markFaint(HWND control); // tertiary text (captions)
 private:
     static LRESULT CALLBACK proc(HWND, UINT, WPARAM, LPARAM);
     LRESULT handle(UINT, WPARAM, LPARAM);
@@ -135,7 +148,8 @@ private:
     HWND hwnd_ = nullptr;
     bool scrollable_ = false, laying_ = false;
     int scroll_ = 0, content_ = 0;
-    std::vector<HWND> errors_, muted_;
+    void paint();
+    std::vector<HWND> errors_, muted_, faint_;
 };
 
 // ---- Tooltips ------------------------------------------------------------------

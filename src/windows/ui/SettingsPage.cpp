@@ -4,6 +4,7 @@
 // config file). Valid edits autosave through the window's settings.patch queue;
 // invalid text stays local with a message next to the field.
 #include "ui/MainWindow.h"
+#include "ui/Theme.h"
 #include "common/Paths.h"
 #include "common/Shortcut.h"
 #include "common/Text.h"
@@ -280,9 +281,7 @@ HWND SettingsPageImpl::create(HWND parent) {
     page_.onLayout = [this](int w, int h) { return layoutPage(w, h); };
     page_.onCommand = [this](int id, int code, HWND control) { command(id, code, control); };
     HWND p = page_.create(parent, false);
-    sections_ = listBox(p, idSections);
-    for (const auto* name : sectionNames) SendMessageW(sections_, LB_ADDSTRING, 0, reinterpret_cast<LPARAM>(name));
-    SendMessageW(sections_, LB_SETITEMHEIGHT, 0, scale(28, page_.dpi()));
+    sections_ = theme::pivot(p, idSections, {sectionNames[0], sectionNames[1], sectionNames[2], sectionNames[3]});
     for (int i = 0; i < 4; ++i) {
         auto& panel = panels_[size_t(i)];
         panel.onLayout = [this, i](int w, int h) { return layoutSection(i, w, h); };
@@ -397,6 +396,7 @@ HWND SettingsPageImpl::create(HWND parent) {
     logsHeading_ = heading(a, L"Logs and diagnostics");
     debug_ = check(a, idDebug, L"Debug logging (turns itself off after 24 hours)");
     clearLogs_ = button(a, idClearLogs, L"Clear logs\x2026");
+    theme::setRole(clearLogs_, theme::Role::Danger);
     diagnostics_ = button(a, idDiagnostics, L"Save diagnostics package\x2026");
     setTooltip(main_.tooltip(), diagnostics_, L"Saves a redacted package with logs and settings, without credentials or file contents.");
     diagnosticsResult_ = ui::label(a, L"", 0, SS_PATHELLIPSIS);
@@ -410,7 +410,7 @@ HWND SettingsPageImpl::create(HWND parent) {
     updateStatus_ = ui::label(a, L"");
     panels_[Advanced].markMuted(updateStatus_);
     configHeading_ = heading(a, L"Config file");
-    configPath_ = ui::label(a, L"", 0, SS_PATHELLIPSIS);
+    configPath_ = ui::label(a, L"", 0, SS_PATHELLIPSIS | SS_NOPREFIX);
     panels_[Advanced].markMuted(configPath_);
     reload_ = button(a, idReload, L"Reload from file");
     setTooltip(main_.tooltip(), reload_, L"Discard unsaved edits and read the settings file again.");
@@ -426,9 +426,9 @@ HWND SettingsPageImpl::create(HWND parent) {
 
 int SettingsPageImpl::layoutPage(int width, int height) {
     const UINT d = page_.dpi();
-    const int pad = scale(12, d), left = scale(170, d);
-    place(sections_, pad, pad, left, std::min(height - 2 * pad, scale(28, d) * 4 + scale(6, d)));
-    for (auto& panel : panels_) place(panel.hwnd(), pad + left + pad, 0, width - left - 2 * pad, height);
+    const int margin = scale(24, d) - scale(12, d), pivotHeight = scale(40, d); // the pivot's items carry 12 px of padding
+    place(sections_, margin, 0, std::min(width - 2 * margin, theme::pivotWidth(sections_) + scale(8, d)), pivotHeight);
+    for (auto& panel : panels_) place(panel.hwnd(), 0, pivotHeight + scale(6, d), width, height - pivotHeight - scale(6, d));
     return height;
 }
 
@@ -436,11 +436,12 @@ int SettingsPageImpl::layoutSection(int section, int width, int height) {
     if (fields_.size() != specs.size() || shortcuts_.size() != shortcutActions.size() || !configPath_) return 0; // still creating controls
     auto& panel = panels_[size_t(section)];
     const UINT d = panel.dpi();
-    Rows rows(d, scale(8, d), scale(12, d) + panel.offsetY(), std::max(scale(320, d), width - scale(28, d)), 230);
+    const int margin = scale(24, d);
+    Rows rows(d, margin, scale(14, d) + panel.offsetY(), std::clamp(width - 2 * margin, scale(320, d), scale(780, d)), 220);
     const int line = lineHeight(d);
     auto field = [&](size_t index, int fieldWidth = 0) {
         const auto& controls = fields_[index];
-        rows.field(controls.label, controls.edit, fieldWidth, controls.browse, controls.browse ? 90 : 0);
+        rows.field(controls.label, controls.edit, fieldWidth, controls.browse, controls.browse ? -1 : 0);
         rows.error(errors_[specs[index].path]);
     };
     auto fieldsOf = [&](const char* prefix, int fieldWidth) {
@@ -457,7 +458,7 @@ int SettingsPageImpl::layoutSection(int section, int width, int height) {
         rows.heading(exceptionsHeading_);
         wrapped(exceptionsNote_, 2);
         for (const auto& row : actions_) {
-            rows.field(row.label, row.destination, 300, row.sharing, 220);
+            rows.field(row.label, row.destination, 300, row.sharing, 230);
             rows.error(errors_["/actions/" + row.name]);
         }
         break;
@@ -467,23 +468,24 @@ int SettingsPageImpl::layoutSection(int section, int width, int height) {
         fieldsOf("/archive/", 0);
         rows.error(errors_["/archive"]);
         rows.heading(namesHeading_);
-        rows.field(namingLabel_, naming_, 280);
-        rows.field(collisionLabel_, collision_, 280);
+        rows.field(namingLabel_, naming_, 300);
+        rows.field(collisionLabel_, collision_, 300);
         rows.error(errors_["/naming"]);
         fieldsOf("/naming/", 0);
         wrapped(tokens_, 2);
         rows.heading(clipboardHeading_);
-        rows.field(clipboardLabel_, clipboard_, 320);
+        rows.field(clipboardLabel_, clipboard_, 300);
         rows.heading(startupHeading_);
         for (HWND h : {notifications_, launch_, unlockStartup_}) rows.line({{h, 420}}, true, rows.fieldHeight());
         rows.heading(appearanceHeading_);
-        rows.field(themeLabel_, theme_, 220);
+        rows.field(themeLabel_, theme_, 300);
         rows.error(errors_["/preferences"]);
         break;
     case Shortcuts:
         wrapped(shortcutsNote_, 2);
+        rows.space(8);
         for (const auto& row : shortcuts_) {
-            const int gap = rows.px(8), buttonWidth = rows.px(90);
+            const int gap = rows.px(8), buttonWidth = rows.px(96);
             rows.field(row.label, row.edit, 240);
             const int y = rows.y() - rows.px(8) - rows.fieldHeight() - (rows.buttonHeight() - rows.fieldHeight()) / 2;
             const int x = rows.controlX() + std::min(rows.px(240), rows.controlWidth() - 2 * (buttonWidth + gap)) + gap;
@@ -502,7 +504,7 @@ int SettingsPageImpl::layoutSection(int section, int width, int height) {
         for (const auto* key : {"/limits/clipboardTextBytes", "/limits/imageBytes", "/limits/imagePixels", "/limits/pendingImageBytes"})
             for (size_t i = 0; i < specs.size(); ++i) if (specs[i].path == key) field(i, 200);
         rows.error(errors_["/limits"]);
-        rows.line({{resetLimits_, 210}}, true);
+        rows.line({{resetLimits_, -1}}, true);
         rows.heading(retentionHeading_);
         for (const auto* key : {"/retention/failedArtifactDays", "/retention/recentActivityLimit", "/retention/previewCacheBytes", "/retention/historyRetentionDays"})
             for (size_t i = 0; i < specs.size(); ++i) if (specs[i].path == key) field(i, 200);
@@ -511,11 +513,12 @@ int SettingsPageImpl::layoutSection(int section, int width, int height) {
         for (const auto* key : {"/retention/logDays", "/retention/logBytes"})
             for (size_t i = 0; i < specs.size(); ++i) if (specs[i].path == key) field(i, 200);
         rows.line({{debug_, 420}}, true, rows.fieldHeight());
-        rows.line({{clearLogs_, 130}, {diagnostics_, 230}}, true);
+        rows.line({{clearLogs_, -1}, {diagnostics_, -1}}, true);
         if (!diagnosticsPath_.empty()) {
-            const int labelWidth = std::max(rows.px(100), rows.controlWidth() - rows.px(140));
+            const int showWidth = buttonWidth(showDiagnostics_);
+            const int labelWidth = std::max(rows.px(100), rows.controlWidth() - showWidth - rows.px(8));
             place(diagnosticsResult_, rows.controlX(), rows.y() + (rows.buttonHeight() - line) / 2, labelWidth, line + 2);
-            place(showDiagnostics_, rows.controlX() + labelWidth + rows.px(8), rows.y(), rows.px(130), rows.buttonHeight());
+            place(showDiagnostics_, rows.controlX() + labelWidth + rows.px(8), rows.y(), showWidth, rows.buttonHeight());
             rows.space(0);
             rows.line({}, true);
         }
@@ -524,14 +527,14 @@ int SettingsPageImpl::layoutSection(int section, int width, int height) {
         updatesY_ = rows.y() - panel.offsetY();
         rows.heading(updatesHeading_);
         rows.line({{updateCheck_, 360}}, true, rows.fieldHeight());
-        rows.field(channelLabel_, channel_, 240, checkNow_, 110);
+        rows.field(channelLabel_, channel_, 240, checkNow_, -1);
         rows.block(updateStatus_, line * 2 + 2);
         rows.heading(configHeading_);
         rows.block(configPath_, line * 2 + 2);
-        rows.line({{reload_, 150}}, true);
+        rows.line({{reload_, -1}}, true);
         break;
     }
-    return rows.y() - panel.offsetY() + rows.px(12);
+    return rows.y() - panel.offsetY() + rows.px(16);
 }
 
 void SettingsPageImpl::setSection(int section) {

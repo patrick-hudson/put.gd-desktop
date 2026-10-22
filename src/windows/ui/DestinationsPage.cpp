@@ -2,6 +2,7 @@
 // form. Valid non-secret edits autosave through the window's settings.patch
 // queue; credentials go only to setup.storeCredentials and are never kept.
 #include "ui/MainWindow.h"
+#include "ui/Theme.h"
 #include "common/Text.h"
 #include "core/S3Settings.h"
 #include "core/Settings.h"
@@ -128,10 +129,12 @@ HWND DestinationsPageImpl::create(HWND parent) {
     panel_.onCommand = [this](int id, int code, HWND control) { command(id, code, control); };
     panel_.onTimer = [this](UINT_PTR id) { if (id == timerSetup) poll(); };
     HWND p = panel_.create(parent, false);
-    list_ = listBox(p, idList);
+    list_ = listBox(p, idList, true);
     SetWindowSubclass(list_, listKeys, 1, 0);
     add_ = button(p, idAdd, L"Add destination\x2026");
+    theme::setRole(add_, theme::Role::Primary);
     remove_ = button(p, idRemove, L"Remove\x2026");
+    theme::setRole(remove_, theme::Role::Danger);
     up_ = button(p, idUp, L"Move up");
     down_ = button(p, idDown, L"Move down");
     default_ = button(p, idDefault, L"Make default");
@@ -144,7 +147,9 @@ HWND DestinationsPageImpl::create(HWND parent) {
     HWND f = form_.create(p, true);
     ShowWindow(f, SW_SHOW);
     empty_ = ui::label(f, L"No destinations yet. Choose Add destination to upload captures to S3 or an S3-compatible service.");
+    form_.markMuted(empty_);
     title_ = heading(f, L"");
+    setFont(title_, FontRole::Subtitle, form_.dpi());
     provider_ = ui::label(f, L"Amazon S3 or S3-compatible service");
     form_.markMuted(provider_);
     general_ = ui::label(f, L"");
@@ -195,6 +200,7 @@ HWND DestinationsPageImpl::create(HWND parent) {
     keychain_ = radio(f, idKeychain, L"Remember in Windows Credential Manager", true);
     session_ = radio(f, idSession, L"This session only (forgotten when put.gd exits)", false);
     store_ = button(f, idStore, L"Store credentials");
+    theme::setRole(store_, theme::Role::Primary);
     unlock_ = button(f, idUnlock, L"Unlock saved credentials");
     hint_ = ui::label(f, L"");
     form_.markMuted(hint_);
@@ -207,27 +213,30 @@ HWND DestinationsPageImpl::create(HWND parent) {
 
 int DestinationsPageImpl::layoutPage(int width, int height) {
     const UINT d = panel_.dpi();
-    const int pad = scale(12, d), gap = scale(8, d), left = scale(250, d);
-    Rows rows(d, pad, pad, left, 0);
+    const int margin = scale(24, d), gap = scale(8, d), left = scale(260, d);
+    Rows rows(d, margin, 0, left, 0);
     const int buttonHeight = rows.buttonHeight();
-    const int listBottom = height - pad - 3 * buttonHeight - 3 * gap;
-    place(list_, pad, pad, left, listBottom - pad);
-    int y = listBottom + gap;
-    place(add_, pad, y, left, buttonHeight);
+    const int top = scale(4, d), bottom = height - scale(12, d);
+    const int listBottom = bottom - 3 * buttonHeight - 2 * gap - scale(12, d);
+    place(list_, margin, top, left, listBottom - top);
+    SetPropW(list_, L"putgd.dividerRight", reinterpret_cast<HANDLE>(static_cast<INT_PTR>(scale(14, d))));
+    int y = listBottom + scale(12, d);
+    place(add_, margin, y, left, buttonHeight);
     y += buttonHeight + gap;
     const int half = (left - gap) / 2;
-    place(up_, pad, y, half, buttonHeight);
-    place(down_, pad + half + gap, y, half, buttonHeight);
+    place(up_, margin, y, half, buttonHeight);
+    place(down_, margin + half + gap, y, half, buttonHeight);
     y += buttonHeight + gap;
-    place(default_, pad, y, half, buttonHeight);
-    place(remove_, pad + half + gap, y, half, buttonHeight);
-    place(form_.hwnd(), pad + left + pad, 0, width - left - 2 * pad, height);
+    place(default_, margin, y, half, buttonHeight);
+    place(remove_, margin + half + gap, y, half, buttonHeight);
+    const int formX = margin + left + scale(28, d);
+    place(form_.hwnd(), formX, 0, width - formX, height);
     return height;
 }
 
 int DestinationsPageImpl::layoutForm(int width, int height) {
     const UINT d = form_.dpi();
-    Rows rows(d, scale(8, d), scale(12, d) + form_.offsetY(), std::max(scale(300, d), width - scale(28, d)), 210);
+    Rows rows(d, 0, scale(4, d) + form_.offsetY(), std::clamp(width - scale(24, d), scale(300, d), scale(700, d)), 200);
     auto* profile = current();
     const bool any = profile != nullptr;
     const bool s3 = any && profile->value("provider") == "s3";
@@ -242,34 +251,36 @@ int DestinationsPageImpl::layoutForm(int width, int height) {
     if (!any) { rows.text(empty_, 2); return rows.y() - form_.offsetY(); }
     const int line = lineHeight(d);
     rows.heading(title_);
+    rows.space(-10);
     rows.text(provider_);
+    rows.space(6);
     if (GetWindowTextLengthW(general_)) { show(general_, true); rows.text(general_, 2); } else show(general_, false);
     auto field = [&](const std::string& key, int fieldWidth = 0) { rows.field(labels_[key], fields_[key], fieldWidth); rows.error(errorLabels_[key]); };
-    field("label", 360);
+    field("label", 460);
     if (!s3) return rows.y() - form_.offsetY();
-    field("bucket", 360);
+    field("bucket", 460);
     field("region", 240);
-    field("endpoint");
-    field("objectPrefix");
-    rows.field(labels_["aclMode"], acl_, 360);
+    field("endpoint", 460);
+    field("objectPrefix", 460);
+    rows.field(labels_["aclMode"], acl_, 460);
     rows.error(errorLabels_["aclMode"]);
-    field("publicUrlBase");
+    field("publicUrlBase", 460);
     rows.heading(advanced_);
-    rows.field(labels_["storageClass"], storageClass_, 280);
+    rows.field(labels_["storageClass"], storageClass_, 300);
     rows.error(errorLabels_["storageClass"]);
-    rows.field(labels_["addressing"], addressing_, 280);
+    rows.field(labels_["addressing"], addressing_, 300);
     rows.error(errorLabels_["addressing"]);
     for (const auto& key : numberFields) field(key, 160);
     rows.heading(credentialsHeading_);
-    rows.field(accessLabel_, access_, 360);
-    rows.field(secretLabel_, secret_, 360, show_, 80);
-    rows.field(tokenLabel_, token_, 360);
+    rows.field(accessLabel_, access_, 460);
+    rows.field(secretLabel_, secret_, 460 - 88, show_, 80);
+    rows.field(tokenLabel_, token_, 460);
     rows.line({{keychain_, 380}}, true, rows.fieldHeight());
     rows.line({{session_, 380}}, true, rows.fieldHeight());
-    rows.line({{store_, 150}, {unlock_, 190}}, true);
+    rows.line({{store_, -1}, {unlock_, -1}}, true);
     if (GetWindowTextLengthW(hint_)) rows.block(hint_, line * 2 + 2);
     rows.heading(testHeading_);
-    rows.line({{test_, 160}}, true);
+    rows.line({{test_, -1}}, true);
     const auto& result = testResults_[profile->value("id").toString()];
     const int resultLines = 1 + int(std::count(result.begin(), result.end(), L'\n'));
     rows.block(testResult_, line * (resultLines + 1));

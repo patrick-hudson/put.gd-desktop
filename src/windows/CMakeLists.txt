@@ -98,7 +98,7 @@ if(WIN32)
     resident/LoginStartup.cpp resident/Helpers.cpp resident/S3Provider.cpp resident/UpdateService.cpp resident/UiProcess.cpp
     s3/S3Worker.cpp s3/WinHttp.cpp
     capture/CaptureMain.cpp capture/Overlay.cpp capture/Grab.cpp capture/Png.cpp capture/ImageJob.cpp
-    ui/UiMain.cpp ui/MainWindow.cpp ui/SettingsPage.cpp ui/DestinationsPage.cpp ui/HistoryPage.cpp ui/UiSession.cpp ui/Controls.cpp
+    ui/UiMain.cpp ui/MainWindow.cpp ui/SettingsPage.cpp ui/DestinationsPage.cpp ui/HistoryPage.cpp ui/UiSession.cpp ui/Controls.cpp ui/Theme.cpp
     editor/EditorMain.cpp editor/EditDocument.cpp editor/EditorCommands.cpp editor/EditorWindow.cpp editor/Export.cpp
     resident/putgd.rc)
   target_link_libraries(putgd PRIVATE putgd_win_platform user32 gdi32 comctl32 comdlg32 uxtheme dwmapi winhttp

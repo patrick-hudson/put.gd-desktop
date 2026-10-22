@@ -2,6 +2,7 @@
 // operation.recent with live upload progress. Remote deletion follows
 // delete.prepare -> TaskDialog -> delete.confirm -> delete.inspect.
 #include "ui/MainWindow.h"
+#include "ui/Theme.h"
 #include "common/Files.h"
 #include "common/Text.h"
 #include "core/Operation.h"
@@ -36,7 +37,7 @@ template <class T> struct Com {
 };
 
 // Decodes a bounded preview PNG/JPEG with WIC, scales it to fit and flattens it
-// onto the window colour as a 24-bit DIB (a static control keeps it as is).
+// onto the preview placeholder's colour as a 24-bit DIB.
 HBITMAP decodePreview(const std::string& path, int maxWidth, int maxHeight) {
     const long long bytes = files::size(path);
     if (bytes <= 0 || bytes > 8 * 1024 * 1024 || maxWidth < 8 || maxHeight < 8) return nullptr;
@@ -67,7 +68,7 @@ HBITMAP decodePreview(const std::string& path, int maxWidth, int maxHeight) {
     void* bits = nullptr;
     HBITMAP bitmap = CreateDIBSection(nullptr, &info, DIB_RGB_COLORS, &bits, nullptr, 0);
     if (!bitmap || !bits) return nullptr;
-    const COLORREF background = GetSysColor(COLOR_WINDOW);
+    const COLORREF background = theme::colors().placeholder;
     const int back[3] = {GetBValue(background), GetGValue(background), GetRValue(background)};
     const size_t stride = (size_t(targetWidth) * 3 + 3) & ~size_t(3);
     auto* out = static_cast<BYTE*>(bits);
@@ -115,6 +116,79 @@ std::wstring progressText(const json::Object& item) {
     else if (transferred >= 0) text += L" " + wide(text::byteSize(transferred));
     return text;
 }
+// The preview: a rounded placeholder with the image centred, or a glyph and the
+// note text (previewNote_ holds the text; this control draws it).
+LRESULT CALLBACK previewProc(HWND h, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR data) {
+    if (message == WM_ERASEBKGND) return 1;
+    if (message == WM_PAINT) {
+        PAINTSTRUCT ps;
+        HDC target = BeginPaint(h, &ps);
+        RECT rc{};
+        GetClientRect(h, &rc);
+        if (rc.right > 0 && rc.bottom > 0) {
+            HDC dc = CreateCompatibleDC(target);
+            HBITMAP canvas = CreateCompatibleBitmap(target, rc.right, rc.bottom);
+            HGDIOBJ old = SelectObject(dc, canvas);
+            const auto& c = theme::colors();
+            const UINT d = windowDpi(h);
+            theme::fill(dc, rc, theme::backgroundOf(GetParent(h)));
+            theme::roundRect(dc, rc, scale(6, d), c.placeholder);
+            HBITMAP image = reinterpret_cast<HBITMAP>(SendMessageW(h, STM_GETIMAGE, IMAGE_BITMAP, 0));
+            BITMAP info{};
+            if (image && GetObjectW(image, sizeof info, &info)) {
+                HDC source = CreateCompatibleDC(dc);
+                HGDIOBJ previous = SelectObject(source, image);
+                BitBlt(dc, (rc.right - info.bmWidth) / 2, (rc.bottom - info.bmHeight) / 2, info.bmWidth, info.bmHeight, source, 0, 0, SRCCOPY);
+                SelectObject(source, previous);
+                DeleteDC(source);
+            } else {
+                const int size = scale(36, d);
+                const int top = rc.bottom / 2 - size - scale(2, d);
+                theme::drawGlyph(dc, "images", (rc.right - size) / 2, top, size, c.textMuted, c.divider);
+                const std::wstring note = textW(reinterpret_cast<HWND>(data));
+                theme::drawText(dc, note, {scale(8, d), rc.bottom / 2 + scale(8, d), rc.right - scale(8, d), rc.bottom / 2 + scale(8, d) + lineHeight(d) * 2}, c.textSecondary,
+                                font(FontRole::Normal, d), DT_CENTER | DT_WORDBREAK | DT_NOPREFIX);
+            }
+            BitBlt(target, 0, 0, rc.right, rc.bottom, dc, 0, 0, SRCCOPY);
+            SelectObject(dc, old);
+            DeleteObject(canvas);
+            DeleteDC(dc);
+        }
+        EndPaint(h, &ps);
+        return 0;
+    }
+    return DefSubclassProc(h, message, wParam, lParam);
+}
+#ifndef LVN_GETEMPTYMARKUP
+#define LVN_GETEMPTYMARKUP (LVN_FIRST - 87)
+#define EMF_CENTERED 0x00000001
+typedef struct tagNMLVEMPTYMARKUP { NMHDR hdr; DWORD dwFlags; WCHAR szMarkup[2084]; } NMLVEMPTYMARKUP;
+#endif
+
+// A filter's natural width: its first (default) choice plus room for the chevron.
+int comboWidth(HWND combo) {
+    const int length = int(SendMessageW(combo, CB_GETLBTEXTLEN, 0, 0));
+    std::wstring text(size_t(std::max(0, length)) + 1, L'\0');
+    if (length > 0) SendMessageW(combo, CB_GETLBTEXT, 0, reinterpret_cast<LPARAM>(text.data()));
+    text.resize(size_t(std::max(0, length)));
+    HDC dc = GetDC(combo);
+    HGDIOBJ old = SelectObject(dc, reinterpret_cast<HFONT>(SendMessageW(combo, WM_GETFONT, 0, 0)));
+    SIZE size{};
+    GetTextExtentPoint32W(dc, text.c_str(), int(text.size()), &size);
+    SelectObject(dc, old);
+    ReleaseDC(combo, dc);
+    return size.cx + scale(52, windowDpi(combo));
+}
+
+// The details text shows a scroll bar only when it overflows.
+void fitScrollBar(HWND edit) {
+    RECT r{};
+    GetClientRect(edit, &r);
+    const int lines = int(SendMessageW(edit, EM_GETLINECOUNT, 0, 0));
+    const int line = std::max(1, lineHeight(windowDpi(edit)));
+    ShowScrollBar(edit, SB_VERT, lines * line > r.bottom + line / 2);
+}
+
 bool editableImage(const std::string& path) {
     const auto lower = text::lower(path);
     return text::endsWith(lower, ".png") || text::endsWith(lower, ".jpg") || text::endsWith(lower, ".jpeg");
@@ -141,6 +215,7 @@ private:
     void timer(UINT_PTR);
     void setActivity(bool on);
     void setColumns();
+    void fitColumns();
     void refresh();
     void fill();
     void fillDestinations();
@@ -180,7 +255,9 @@ HWND HistoryPageImpl::create(HWND parent) {
     HWND p = panel_.create(parent, false);
     search_ = edit(p, idSearch);
     setCue(search_, L"Search history by file name");
-    activity_ = check(p, idActivity, L"Show current activity");
+    activity_ = theme::pivot(p, idActivity, {L"Files", L"Activity"});
+    theme::setSegmented(activity_);
+    setTooltip(main_.tooltip(), activity_, L"Files: everything put.gd captured or uploaded. Activity: current and recent operations with live progress.");
     editImage_ = button(p, idEditImage, L"Edit image\x2026");
     setTooltip(main_.tooltip(), editImage_, L"Edit the clipboard image or an image file, then upload it.");
     category_ = combo(p, idCategory);
@@ -201,17 +278,24 @@ HWND HistoryPageImpl::create(HWND parent) {
     previous_ = button(p, idPrevious, L"Previous");
     next_ = button(p, idNext, L"Next");
     pageLabel_ = ui::label(p, L"", idPageLabel);
+    panel_.markMuted(pageLabel_);
     clearHistory_ = button(p, idClearHistory, L"Clear history\x2026");
+    theme::setRole(clearHistory_, theme::Role::Subtle);
     setTooltip(main_.tooltip(), clearHistory_, L"Remove local history records. Remote objects and your local files stay.");
     clearCache_ = button(p, idClearCache, L"Clean artifacts\x2026");
+    theme::setRole(clearCache_, theme::Role::Subtle);
     setTooltip(main_.tooltip(), clearCache_, L"Remove retry artifacts and previews. Remote objects and your local files stay.");
     preview_ = imageBox(p, idPreview);
     previewNote_ = ui::label(p, L"Select a capture to preview", idPreviewNote, SS_CENTER);
     panel_.markMuted(previewNote_);
+    show(previewNote_, false);
+    SetWindowSubclass(preview_, previewProc, 1, reinterpret_cast<DWORD_PTR>(previewNote_));
     title_ = ui::label(p, L"", idTitle, SS_ENDELLIPSIS);
     setFont(title_, FontRole::Bold, panel_.dpi());
     details_ = multilineReadOnly(p, idDetails);
     linkLabel_ = ui::label(p, L"Link");
+    setFont(linkLabel_, FontRole::SmallBold, panel_.dpi());
+    panel_.markMuted(linkLabel_);
     link_ = edit(p, idLink, ES_READONLY);
     copyLink_ = button(p, idCopyLink, L"Copy link");
     openLink_ = button(p, idOpenLink, L"Open link");
@@ -219,6 +303,7 @@ HWND HistoryPageImpl::create(HWND parent) {
     editAgain_ = button(p, idEditAgain, L"Edit again");
     setTooltip(main_.tooltip(), editAgain_, L"Open the retained local copy in the editor. The result uploads as a new item.");
     delete_ = button(p, idDelete, L"Delete from destination\x2026");
+    theme::setRole(delete_, theme::Role::Danger);
     retry_ = button(p, idRetry, L"Retry upload");
     cancel_ = button(p, idCancel, L"Cancel");
     copyResult_ = button(p, idCopyResult, L"Copy result");
@@ -233,63 +318,106 @@ void HistoryPageImpl::setColumns() {
     const UINT d = panel_.dpi();
     if (activityMode_) {
         addColumn(list_, 0, L"Action", scale(170, d));
-        addColumn(list_, 1, L"Started", scale(140, d));
-        addColumn(list_, 2, L"State", scale(150, d));
-        addColumn(list_, 3, L"Progress", scale(240, d));
-        addColumn(list_, 4, L"Files", scale(60, d));
+        addColumn(list_, 1, L"Started", scale(132, d));
+        addColumn(list_, 2, L"State", scale(130, d));
+        addColumn(list_, 3, L"Progress", scale(200, d));
+        addColumn(list_, 4, L"Files", scale(52, d));
+        theme::setStateColumn(list_, 2);
     } else {
-        addColumn(list_, 0, L"Name", scale(230, d));
-        addColumn(list_, 1, L"Created", scale(135, d));
-        addColumn(list_, 2, L"Size", scale(80, d));
-        addColumn(list_, 3, L"Upload", scale(130, d));
-        addColumn(list_, 4, L"Local copy", scale(120, d));
-        addColumn(list_, 5, L"Link", scale(240, d));
+        addColumn(list_, 0, L"Name", scale(220, d));
+        addColumn(list_, 1, L"When", scale(132, d));
+        addColumn(list_, 2, L"Size", scale(68, d));
+        addColumn(list_, 3, L"Destination", scale(120, d));
+        addColumn(list_, 4, L"State", scale(130, d));
+        theme::setStateColumn(list_, 4);
     }
+    fitColumns();
+}
+
+// One column takes the width the others leave, so the table never scrolls sideways;
+// the fixed columns give way proportionally in a narrow window.
+void HistoryPageImpl::fitColumns() {
+    RECT client{};
+    GetClientRect(list_, &client);
+    if (client.right <= 0) return;
+    const UINT d = panel_.dpi();
+    std::vector<int> widths = activityMode_ ? std::vector<int>{170, 132, 130, 0, 52} : std::vector<int>{0, 126, 64, 112, 124};
+    const size_t flex = activityMode_ ? 3 : 0;
+    const int minimum = scale(activityMode_ ? 140 : 160, d);
+    const int available = int(client.right) - (GetWindowLongW(list_, GWL_STYLE) & WS_VSCROLL ? 0 : GetSystemMetrics(SM_CXVSCROLL)) - 1;
+    int fixed = 0;
+    for (auto& w : widths) { w = scale(w, d); fixed += w; }
+    double ratio = 1.0;
+    if (available - fixed < minimum && fixed > 0) ratio = std::max(0.6, double(available - minimum) / fixed);
+    int used = 0;
+    for (size_t i = 0; i < widths.size(); ++i) if (i != flex) { widths[i] = int(widths[i] * ratio); used += widths[i]; }
+    widths[flex] = std::max(scale(80, d), available - used);
+    for (size_t i = 0; i < widths.size(); ++i) SendMessageW(list_, LVM_SETCOLUMNWIDTH, WPARAM(i), widths[i]);
 }
 
 int HistoryPageImpl::layout(int width, int height) {
     const UINT d = panel_.dpi();
-    Rows rows(d, scale(12, d), scale(10, d), width - scale(24, d), 0);
+    Rows rows(d, 0, 0, width, 0);
     const int gap = scale(8, d), fieldHeight = rows.fieldHeight(), buttonHeight = rows.buttonHeight();
-    const int pad = scale(12, d), detailsWidth = scale(330, d);
-    int y = rows.y();
-    const int checkWidth = scale(170, d), editWidth = scale(130, d);
-    place(search_, pad, y, width - 2 * pad - checkWidth - editWidth - 2 * gap, fieldHeight);
-    place(activity_, width - pad - editWidth - gap - checkWidth, y, checkWidth, fieldHeight);
-    place(editImage_, width - pad - editWidth, y - (buttonHeight - fieldHeight) / 2, editWidth, buttonHeight);
-    y += buttonHeight + gap;
+    const int margin = scale(24, d), detailsWidth = scale(320, d), column = scale(24, d);
+    // Row 1: the Files | Activity segmented control, Edit image at the right.
+    place(activity_, margin, 0, theme::pivotWidth(activity_), buttonHeight);
+    const int editWidth = buttonWidth(editImage_, 110);
+    place(editImage_, width - margin - editWidth, 0, editWidth, buttonHeight);
+    int y = buttonHeight + scale(12, d);
+    // Row 2: one toolbar, search at the left and the filters at their natural widths at the right.
     const HWND filters[] = {category_, upload_, local_, remote_, destination_};
-    const int filterWidth = (width - 2 * pad - 4 * gap) / 5;
-    for (int i = 0; i < 5; ++i) place(filters[i], pad + i * (filterWidth + gap), y, filterWidth, fieldHeight);
-    y += fieldHeight + gap;
-    const int bottomY = height - pad - buttonHeight;
-    const int listWidth = width - 2 * pad - detailsWidth - gap * 2;
-    place(list_, pad, y, listWidth, bottomY - gap - y);
-    // Paging and maintenance.
-    place(previous_, pad, bottomY, scale(90, d), buttonHeight);
-    place(next_, pad + scale(90, d) + gap, bottomY, scale(90, d), buttonHeight);
-    place(pageLabel_, pad + 2 * (scale(90, d) + gap), bottomY + (buttonHeight - lineHeight(d)) / 2, scale(220, d), lineHeight(d) + 2);
-    place(clearCache_, width - pad - scale(140, d), bottomY, scale(140, d), buttonHeight);
-    place(clearHistory_, width - pad - 2 * scale(140, d) - gap, bottomY, scale(140, d), buttonHeight);
-    // Details pane.
-    const int x = width - pad - detailsWidth;
-    int dy = y;
-    const int previewHeight = scale(200, d);
-    place(preview_, x, dy, detailsWidth, previewHeight);
-    place(previewNote_, x, dy + previewHeight / 2 - lineHeight(d) / 2, detailsWidth, lineHeight(d) + 2);
-    dy += previewHeight + gap;
-    place(title_, x, dy, detailsWidth, lineHeight(d) + scale(4, d));
-    dy += lineHeight(d) + scale(8, d);
+    int natural[5]{}, total = 0;
+    for (int i = 0; i < 5; ++i) { natural[i] = comboWidth(filters[i]); total += natural[i]; }
+    const int toolbar = width - 2 * margin;
+    int searchWidth = toolbar - total - 5 * gap;
+    if (searchWidth < scale(180, d)) {
+        searchWidth = std::max(scale(140, d), toolbar / 5);
+        const double shrink = double(toolbar - searchWidth - 5 * gap) / std::max(1, total);
+        total = 0;
+        for (auto& w : natural) { w = int(w * shrink); total += w; }
+    } else {
+        searchWidth = std::min(searchWidth, scale(360, d));
+    }
+    place(search_, margin, y, searchWidth, fieldHeight);
+    int fx = width - margin - total - 4 * gap;
+    for (int i = 0; i < 5; ++i) { place(filters[i], fx, y, natural[i], fieldHeight); fx += natural[i] + gap; }
+    y += fieldHeight + scale(16, d);
+    // Main: the table, and the details pane at a fixed width on the right.
+    const int bottomY = height - scale(12, d) - buttonHeight;
+    const int listWidth = width - 2 * margin - detailsWidth - column;
+    place(list_, margin, y, listWidth, bottomY - scale(12, d) - y);
+    SetPropW(list_, L"putgd.dividerRight", reinterpret_cast<HANDLE>(static_cast<INT_PTR>(column / 2)));
+    fitColumns();
+    const int pageButton = scale(96, d);
+    place(previous_, margin, bottomY, pageButton, buttonHeight);
+    place(next_, margin + pageButton + gap, bottomY, pageButton, buttonHeight);
+    place(pageLabel_, margin + 2 * (pageButton + gap) + scale(4, d), bottomY + (buttonHeight - lineHeight(d)) / 2, scale(220, d), lineHeight(d) + 2);
+    const int x = width - margin - detailsWidth;
     const int half = (detailsWidth - gap) / 2;
-    const int buttonsHeight = (buttonHeight + gap) * (activityMode_ ? 3 : 3) + (activityMode_ ? 0 : fieldHeight + lineHeight(d) + gap);
-    const int detailsHeight = std::max(scale(60, d), bottomY - gap - dy - buttonsHeight);
+    // Maintenance is secondary: quiet text buttons under the pane.
+    const int clearWidth = buttonWidth(clearHistory_, 80), cleanWidth = buttonWidth(clearCache_, 80);
+    place(clearCache_, width - margin - cleanWidth, bottomY, cleanWidth, buttonHeight);
+    place(clearHistory_, width - margin - cleanWidth - gap - clearWidth, bottomY, clearWidth, buttonHeight);
+    // Details pane: the preview gives up height first, down to a strip, so the actions always fit.
+    int dy = y;
+    const int titleHeight = fontHeight(font(FontRole::Bold, d));
+    const int small = fontHeight(font(FontRole::SmallBold, d));
+    const int buttonsHeight = (buttonHeight + gap) * 3 - gap + (activityMode_ ? 0 : small + scale(4, d) + fieldHeight + scale(12, d));
+    const int below = scale(14, d) + titleHeight + scale(8, d) + scale(64, d) + gap + buttonsHeight;
+    const int previewHeight = std::clamp(bottomY - scale(12, d) - y - below, scale(72, d), scale(180, d));
+    place(preview_, x, dy, detailsWidth, previewHeight);
+    dy += previewHeight + scale(14, d);
+    place(title_, x, dy, detailsWidth, titleHeight + scale(2, d));
+    dy += titleHeight + scale(8, d);
+    const int detailsHeight = std::max(scale(40, d), bottomY - scale(12, d) - dy - gap - buttonsHeight);
     place(details_, x, dy, detailsWidth, detailsHeight);
     dy += detailsHeight + gap;
     if (!activityMode_) {
-        place(linkLabel_, x, dy, detailsWidth, lineHeight(d) + 2);
-        dy += lineHeight(d) + scale(2, d);
+        place(linkLabel_, x, dy, detailsWidth, small + 2);
+        dy += small + scale(4, d);
         place(link_, x, dy, detailsWidth, fieldHeight);
-        dy += fieldHeight + gap;
+        dy += fieldHeight + scale(12, d);
         place(copyLink_, x, dy, half, buttonHeight);
         place(openLink_, x + half + gap, dy, half, buttonHeight);
         dy += buttonHeight + gap;
@@ -306,13 +434,14 @@ int HistoryPageImpl::layout(int width, int height) {
         dy += buttonHeight + gap;
         place(saveDiagnostics_, x, dy, detailsWidth, buttonHeight);
     }
+    fitScrollBar(details_);
     return height;
 }
 
 void HistoryPageImpl::setActivity(bool on) {
     const bool changed = on != activityMode_;
     activityMode_ = on;
-    setChecked(activity_, on);
+    SendMessageW(activity_, LB_SETCURSEL, on ? 1 : 0, 0);
     for (HWND h : {category_, upload_, local_, remote_, destination_, search_, previous_, next_}) enable(h, !on);
     for (HWND h : {linkLabel_, link_, copyLink_, openLink_, openFolder_, editAgain_, delete_}) show(h, !on);
     for (HWND h : {retry_, cancel_, copyResult_, retryLocal_, saveDiagnostics_}) show(h, on);
@@ -394,9 +523,12 @@ void HistoryPageImpl::fill() {
         for (size_t i = 0; i < records_.size(); ++i) {
             const auto& r = records_[i].objectRef();
             const auto link = r.value("linkAvailable").toBool() ? r.value("receipt")["directUrl"].toString() : std::string();
+            const auto profileId = r.value("profileId").toString(r.value("receipt")["destination"]["profileId"].toString());
+            const auto destination = profileId.empty() ? std::wstring(L"\x2014") : wide(main_.session().profileLabel(profileId));
             const int row = addRow(list_, {wide(r.value("name").toString()), localTime(r.value("created").toString()), wide(text::byteSize(r.value("bytes").toInteger())),
-                                           statusLabel(uploadLabels, r.value("uploadStatus").toString()), statusLabel(localLabels, r.value("local")["status"].toString()), wide(link)},
+                                           destination, statusLabel(uploadLabels, r.value("uploadStatus").toString())},
                                    LPARAM(i));
+            (void)link;
             if (r.value("id").toString() == selectedId_) selectedRow = row;
         }
         const long long first = total_ ? offset_ + 1 : 0, last = std::min<long long>(total_, offset_ + static_cast<long long>(records_.size()));
@@ -471,8 +603,8 @@ void HistoryPageImpl::setPreview(HBITMAP bitmap, const std::wstring& note) {
     if (previous && previous != bitmap && previous != bitmap_) DeleteObject(previous);
     if (bitmap_ && bitmap_ != bitmap) DeleteObject(bitmap_);
     bitmap_ = bitmap;
-    setTextW(previewNote_, note);
-    show(previewNote_, !note.empty());
+    setTextW(previewNote_, note); // drawn by the preview itself (previewProc)
+    InvalidateRect(preview_, nullptr, FALSE);
 }
 
 void HistoryPageImpl::loadPreview(const json::Object& record) {
@@ -486,6 +618,8 @@ void HistoryPageImpl::loadPreview(const json::Object& record) {
     if (category != "images" && category != "videos") { setPreview(nullptr, L"No preview for this file type"); return; }
     RECT box{};
     GetClientRect(preview_, &box);
+    InflateRect(&box, -scale(10, panel_.dpi()), -scale(10, panel_.dpi()));
+    OffsetRect(&box, -box.left, -box.top);
     const auto path = record.value("previewPath").toString();
     if (!path.empty() && files::isRegularFile(path)) {
         HBITMAP bitmap = decodePreview(path, box.right, box.bottom);
@@ -499,6 +633,8 @@ void HistoryPageImpl::loadPreview(const json::Object& record) {
         const auto path = reply.result.value("previewPath").toString();
         RECT box{};
         GetClientRect(preview_, &box);
+        InflateRect(&box, -scale(10, panel_.dpi()), -scale(10, panel_.dpi()));
+        OffsetRect(&box, -box.left, -box.top);
         HBITMAP bitmap = reply.ok && !path.empty() ? decodePreview(path, box.right, box.bottom) : nullptr;
         setPreview(bitmap, bitmap ? L"" : L"Preview unavailable");
         if (!bitmap && reply.outcomeUnknown) previewKey_.clear();
@@ -511,6 +647,7 @@ void HistoryPageImpl::showRecord(const json::Object& r) {
         const auto count = selectedIds().size();
         setTextW(title_, count > 1 ? std::to_wstring(count) + L" files selected" : L"");
         setTextW(details_, count > 1 ? L"Delete from destination applies to every selected file." : L"Select a capture to inspect its files and link.");
+        fitScrollBar(details_);
         setText(link_, "");
         for (HWND h : {copyLink_, openLink_, openFolder_, editAgain_}) enable(h, false);
         return;
@@ -532,6 +669,7 @@ void HistoryPageImpl::showRecord(const json::Object& r) {
     if (!local.value("error")["code"].toString().empty())
         text += L"\r\nLocal save error: " + wide(local.value("error")["message"].toString());
     setTextW(details_, text);
+    fitScrollBar(details_);
     const bool linkAvailable = r.value("linkAvailable").toBool() && !r.value("receipt")["directUrl"].toString().empty();
     setText(link_, linkAvailable ? r.value("receipt")["directUrl"].toString() : std::string());
     setCue(link_, linkAvailable ? L"" : L"No link");
@@ -548,6 +686,7 @@ void HistoryPageImpl::showOperation(const json::Object& op) {
     if (op.empty()) {
         setTextW(title_, L"");
         setTextW(details_, operations_.empty() ? L"No recent activity." : L"Select an operation to see its files and progress.");
+        fitScrollBar(details_);
         for (HWND h : {retry_, cancel_, copyResult_, retryLocal_, saveDiagnostics_}) enable(h, false);
         return;
     }
@@ -573,6 +712,7 @@ void HistoryPageImpl::showOperation(const json::Object& op) {
         if (!itemError.empty()) text += L"\r\n    " + wide(item.value("error")["message"].toString()) + L" (" + wide(itemError) + L")";
     }
     setTextW(details_, text);
+    fitScrollBar(details_);
     enable(retry_, !active && failedUpload);
     enable(cancel_, active);
     enable(copyResult_, !active && copyable);
@@ -682,7 +822,7 @@ void HistoryPageImpl::command(int id, int code, HWND control) {
         if (code == CBN_SELCHANGE) { offset_ = 0; refresh(); }
         break;
     case idActivity:
-        if (code == BN_CLICKED) setActivity(checked(activity_));
+        if (code == LBN_SELCHANGE) setActivity(SendMessageW(activity_, LB_GETCURSEL, 0, 0) == 1);
         break;
     case idEditImage: {
         RECT r{};
@@ -745,6 +885,17 @@ void HistoryPageImpl::command(int id, int code, HWND control) {
 
 LRESULT HistoryPageImpl::notify(NMHDR* header) {
     if (header->hwndFrom != list_) return 0;
+    if (header->code == LVN_GETEMPTYMARKUP) {
+        auto* markup = reinterpret_cast<NMLVEMPTYMARKUP*>(header);
+        markup->dwFlags = EMF_CENTERED;
+        bool filtered = !text::trim(text(search_)).empty();
+        for (HWND h : {category_, upload_, local_, remote_, destination_}) filtered = filtered || !selected(h).empty();
+        const wchar_t* message = activityMode_ ? L"No recent activity. Captures and uploads in progress appear here."
+                                 : filtered    ? L"Nothing matches the search and filters."
+                                               : L"No captures yet. Captures and uploads appear here.";
+        lstrcpynW(markup->szMarkup, message, int(sizeof markup->szMarkup / sizeof markup->szMarkup[0]));
+        return TRUE;
+    }
     if (header->code == LVN_ITEMCHANGED) {
         const auto* change = reinterpret_cast<NMLISTVIEW*>(header);
         if (!populating_ && (change->uChanged & LVIF_STATE) && ((change->uNewState ^ change->uOldState) & LVIS_SELECTED)) selectionChanged();
