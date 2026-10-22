@@ -321,7 +321,7 @@ Nothing installs on its own. The checks are the AppImage's
 
 It refuses while a capture or upload runs, and when an installed update still waits for
 its restart. Development builds don't install (`development_build`). Switching channels
-isn't supported on Windows yet (`switch_unsupported`, #SWITCH_ISSUE).
+isn't supported on Windows yet (`switch_unsupported`, [#448](https://github.com/patrick-hudson/put.gd-desktop/issues/448)).
 
 ## CLI and MCP
 
@@ -371,7 +371,7 @@ the app.put.gd copy within about a minute of each release.
 ```
 
 - **Assets:** keyed `ubuntu24.04`, `ubuntu26.04`, `debian13`, `fedora44` and `appimage`,
-  plus `windows-msi` and `windows-zip` once releases carry the Windows packages (#RELEASE_ISSUE).
+  plus `windows-msi` and `windows-zip` once releases carry the Windows packages ([#446](https://github.com/patrick-hudson/put.gd-desktop/issues/446)).
 - **No release:** `release` is `null` while a channel has none. Today that's stable.
 - **Version order:** calendar versions `YY.MDD.N` sort by date, then commit count, and a
   nightly sorts before the stable release with the same `YY.MDD.N` (#373,
@@ -422,4 +422,4 @@ build reports `development_build` or `no_package` and never checks.
   `pkg.put.gd`.
 - **Phase 4:** Flatpak, from its own signed repository, in [#83](https://github.com/patrick-hudson/put.gd-desktop/issues/83).
 - **Windows:** in-app install for the MSI and the portable zip ([above](#updating-on-windows));
-  it takes effect once releases publish the Windows packages (#RELEASE_ISSUE).
+  it takes effect once releases publish the Windows packages ([#446](https://github.com/patrick-hudson/put.gd-desktop/issues/446)).

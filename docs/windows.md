@@ -166,7 +166,7 @@ month and year boundaries and N passing 9,999 and 65,535 on one day.
 ## Installing and uninstalling
 
 The MSI installs for the current user only, with no administrator prompt. It is not
-signed yet, so SmartScreen asks once (#SIGNING_ISSUE).
+signed yet, so SmartScreen asks once ([#447](https://github.com/patrick-hudson/put.gd-desktop/issues/447)).
 
 - **Where:** `%LOCALAPPDATA%\Programs\put.gd`, a **put.gd** entry in the Start menu, and
   an entry in Settings → Apps → Installed apps that shows the calendar version.
@@ -263,7 +263,7 @@ operation of the window, Windows 10, and a signed or packaged install.
 | Backblaze B2 destination | #409 |
 | Multipart uploads and files over the 5 GiB single-PUT limit | #402 |
 | Per-item cancellation, the `ui.*` window-driving methods, diagnostics upload, history gallery/date/MIME filters | #403 |
-| Publishing the Windows packages with nightly and stable releases | #RELEASE_ISSUE |
-| Signed executables and installer | #SIGNING_ISSUE |
-| Switching update channels in-app | #SWITCH_ISSUE |
+| Publishing the Windows packages with nightly and stable releases | [#446](https://github.com/patrick-hudson/put.gd-desktop/issues/446) |
+| Signed executables and installer | [#447](https://github.com/patrick-hudson/put.gd-desktop/issues/447) |
+| Switching update channels in-app | [#448](https://github.com/patrick-hudson/put.gd-desktop/issues/448) |
 | Following a system theme change while the window is open | #406 |
