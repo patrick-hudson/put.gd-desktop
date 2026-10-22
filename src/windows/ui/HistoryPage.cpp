@@ -461,6 +461,17 @@ void HistoryPageImpl::fitColumns() {
     GetClientRect(list_, &client);
     if (client.right <= 0) return;
     const UINT d = panel_.dpi();
+    if (grid_ && !activityMode_) {
+        // Gallery tiles share the width: as many columns as fit, none left over.
+        const int available = int(client.right) - (GetWindowLongW(list_, GWL_STYLE) & WS_VSCROLL ? 0 : GetSystemMetrics(SM_CXVSCROLL)) - 1;
+        const int columns = std::max(1, available / scale(tileWidth, d));
+        LVTILEVIEWINFO info{};
+        info.cbSize = sizeof info;
+        info.dwMask = LVTVIM_TILESIZE;
+        info.dwFlags = LVTVIF_FIXEDSIZE;
+        info.sizeTile = {std::max(scale(tileWidth, d), available / columns), scale(tileHeight, d)};
+        SendMessageW(list_, LVM_SETTILEVIEWINFO, 0, reinterpret_cast<LPARAM>(&info));
+    }
     std::vector<int> widths = activityMode_ ? std::vector<int>{170, 132, 130, 0, 52} : std::vector<int>{0, 104, 64, 104, 116};
     const size_t flex = activityMode_ ? 3 : 0;
     const int minimum = scale(activityMode_ ? 140 : 160, d);
@@ -606,6 +617,7 @@ void HistoryPageImpl::setActivity(bool on) {
         SendMessageW(list_, LVM_DELETEALLITEMS, 0, 0);
         // Activity is always a list; Files keeps its own list or gallery choice.
         SendMessageW(list_, LVM_SETVIEW, !on && grid_ ? LV_VIEW_TILE : LV_VIEW_DETAILS, 0);
+        SendMessageW(list_, LVM_SETEXTENDEDLISTVIEWSTYLE, LVS_EX_LABELTIP, !on && grid_ ? 0 : LVS_EX_LABELTIP);
         setColumns();
         selectedId_.clear();
         selectionChanged();
@@ -635,6 +647,9 @@ void HistoryPageImpl::setGridMode(bool grid) {
     }
     if (!activityMode_) {
         SendMessageW(list_, LVM_SETVIEW, grid ? LV_VIEW_TILE : LV_VIEW_DETAILS, 0);
+        // Label tips place themselves for report rows; tiles show the whole name on hover instead.
+        SendMessageW(list_, LVM_SETEXTENDEDLISTVIEWSTYLE, LVS_EX_LABELTIP, grid ? 0 : LVS_EX_LABELTIP);
+        fitColumns();
         fill(); // each item's image indexes the list its view draws
     }
     main_.viewStateChanged();
