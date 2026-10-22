@@ -145,7 +145,8 @@
     "debian13": "decision",
     "fedora44": "decision"
    },
-   "issue": 469
+   "issue": 469,
+   "decision": "List every licence (Patrick delegated, 2026-10-22); implemented in #468 cc7ef74c"
   },
   {
    "id": "N4",
@@ -167,7 +168,8 @@
     "debian13": "decision",
     "fedora44": "decision"
    },
-   "issue": 416
+   "issue": 416,
+   "decision": "Release-page source pointer in runtime-notices.txt, no mirror (Patrick delegated, 2026-10-22); implemented in #468 cc7ef74c"
   },
   {
    "id": "N6",
@@ -292,5 +294,12 @@
    416,
    419
   ]
+ },
+ "decisions": {
+  "delegatedBy": "Patrick, 2026-10-22: \"make the decisions you think are best\"",
+  "licenceExpression": "every licence",
+  "protonSourceForAptDnf": "written pointer to the release page",
+  "codecsNative": "no change",
+  "maintainer": "packages@put.gd"
  }
 }

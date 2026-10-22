@@ -62,13 +62,15 @@ does not certify release bytes.
   The AppImage had the same gap. #468 also replaces leaked CPack defaults
   (Vendor "Humanity", boilerplate description, no Maintainer address) and the
   RPM licence id `GPL-3.0`.
-- **Open:** the declared licence omits LGPL/BSD/Zlib code
-  ([#469](https://github.com/patrick-hudson/put.gd-desktop/issues/469),
-  release-blocker, needs Patrick); no Debian `copyright`/`changelog` and no RPM
+- **Decided and implemented in #468** (Patrick left the call to the audit): the
+  declared licence lists every shipped licence
+  ([#469](https://github.com/patrick-hudson/put.gd-desktop/issues/469)), and
+  the native notices point to the release page with the Proton helper's source
+  (#416, native side).
+- **Open:** no Debian `copyright`/`changelog` and no RPM
   `%license` ([#470](https://github.com/patrick-hudson/put.gd-desktop/issues/470));
   non-PIE Fedora programs ([#475](https://github.com/patrick-hudson/put.gd-desktop/issues/475));
   hygiene ([#471](https://github.com/patrick-hudson/put.gd-desktop/issues/471)).
-  The Proton helper's source pointer for apt/dnf users goes with #416.
 - **Dependencies and codecs.** The Proton helper's npm lock has no known
   advisories (npm audit and OSV). The release jobs' npm installs all 26
   packages, so the notices match (#369). No codec is bundled; recording uses
