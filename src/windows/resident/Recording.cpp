@@ -437,7 +437,7 @@ void OperationService::recordingControl(const std::string& command, JsonReply re
         if (command == "stop") {
             s.duration = result.value("durationUs").toInteger(0);
             if (s.duration < 1) { auto op = s.op; endRecording(op); op.state = "failed"; op.error = {"recording_failed", "The recording ended without a usable clip", {}}; finish(op); reply(op.error, {}); return; }
-            s.edit = {}; s.stopReason = "user"; next = "reviewing";
+            s.edit = {}; s.stopReason = "user"; s.audioRecorded = result.value("audio").toBool(); next = "reviewing";
         }
         s.state = next;
         auto doc = s.op.publicJson(); doc["phase"] = next; observe(doc);

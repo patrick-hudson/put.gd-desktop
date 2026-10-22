@@ -118,6 +118,7 @@ void Recorder::captureAudio(void* source, media::Mp4Writer& writer) {
     audio::Resampler resampler(loopback.rate, outRate);
     audio::Timeline timeline(outRate);
     std::vector<int16_t> stereo, resampled;
+    log::info("record", "System audio capture", {{"rate", loopback.rate}, {"channels", loopback.channels}, {"float", loopback.isFloat}});
     auto write = [&](const audio::Timeline::Piece& piece) {
         if (piece.samples.empty()) return true;
         if (auto e = writer.writeAudio(piece.samples.data(), piece.samples.size() / 2, piece.start * 10000000 / outRate)) { finishOwn("error", e); return false; }

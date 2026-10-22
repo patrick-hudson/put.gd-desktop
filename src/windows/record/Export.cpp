@@ -64,8 +64,18 @@ private:
 };
 
 Error faststart(const std::string& path) {
-    HANDLE file = CreateFileW(paths::wide(path).c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, FILE_FLAG_OPEN_REPARSE_POINT, nullptr);
-    if (file == INVALID_HANDLE_VALUE) return {"recording_export_failed", "Cannot reopen the export", {}};
+    // The sink writer's byte stream can outlive Finalize briefly (and a scanner may
+    // look at the new file), so a sharing violation is retried for up to 2 s.
+    HANDLE file = INVALID_HANDLE_VALUE;
+    DWORD error = 0;
+    for (int attempt = 0; attempt < 40; ++attempt) {
+        file = CreateFileW(paths::wide(path).c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, FILE_FLAG_OPEN_REPARSE_POINT, nullptr);
+        if (file != INVALID_HANDLE_VALUE) break;
+        error = GetLastError();
+        if (error != ERROR_SHARING_VIOLATION) break;
+        Sleep(50);
+    }
+    if (file == INVALID_HANDLE_VALUE) return {"recording_export_failed", "Cannot reopen the export", {{"win32Error", double(error)}}};
     struct Closer { HANDLE h; ~Closer() { CloseHandle(h); } } closer{file};
     LARGE_INTEGER length{};
     GetFileSizeEx(file, &length);

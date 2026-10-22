@@ -188,7 +188,7 @@ void ControlBar::layout() {
     SelectObject(dc, old); ReleaseDC(hwnd_, dc);
     int x = pad + ui::scale(12, dpi_) + gap + clock.cx + gap * 2 + target.cx + gap * 2;
     const int y = (height - buttonHeight) / 2;
-    const int formatWidth = ui::scale(120, dpi_), audioWidth = ui::buttonWidth(audio_, 60) + ui::scale(24, dpi_);
+    const int formatWidth = ui::scale(120, dpi_), audioWidth = ui::buttonWidth(audio_, 60) + ui::scale(36, dpi_); // the box, its gap and the focus rectangle
     ui::place(format_, x, y, formatWidth, buttonHeight); x += formatWidth + gap;
     MoveWindow(audio_, x, y, audioWidth, buttonHeight, TRUE); x += audioWidth + gap;
     const int choices = formatWidth + audioWidth + 2 * gap;
