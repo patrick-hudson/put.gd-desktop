@@ -3,8 +3,10 @@
 #include "common/Paths.h"
 #include "core/Audio.h"
 #include "core/Recording.h"
+#include <algorithm>
 #include <audioclient.h>
 #include <cmath>
+#include <cstring>
 #include <mmdeviceapi.h>
 #include <mmreg.h>
 #include <vector>
@@ -15,10 +17,6 @@ constexpr int budgetCheckFrames = 15;
 // KSDATAFORMAT_SUBTYPE_IEEE_FLOAT and _PCM, spelled out (ksmedia.h pulls in much more).
 const GUID subtypeFloat{0x00000003, 0x0000, 0x0010, {0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71}};
 const GUID subtypePcm{0x00000001, 0x0000, 0x0010, {0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71}};
-long long frequency() { static const long long f = [] { LARGE_INTEGER v; QueryPerformanceFrequency(&v); return v.QuadPart; }(); return f; }
-long long qpc() { LARGE_INTEGER v; QueryPerformanceCounter(&v); return v.QuadPart; }
-// QPC ticks to 100-ns units without overflowing.
-long long hundredNs(long long ticks) { const long long f = frequency(); return ticks / f * 10000000 + ticks % f * 10000000 / f; }
 
 // A loopback capture client on the default output device and how its samples look.
 struct Loopback {
@@ -55,6 +53,60 @@ struct Loopback {
 };
 }
 
+// How long the default output takes from the engine's mix to the speaker: a short
+// silent shared-mode stream compares the frames the engine has taken with the
+// endpoint clock's play position (the median of 15 readings, 100-ns units). A
+// player times its picture to when its sound is heard, and loopback hands over the
+// mix, so loopback samples are that much early.
+long long outputLatency() {
+    IMMDeviceEnumerator* enumerator = nullptr;
+    if (FAILED(CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, IID_PPV_ARGS(&enumerator)))) return 0;
+    IMMDevice* device = nullptr;
+    const HRESULT found = enumerator->GetDefaultAudioEndpoint(eRender, eConsole, &device);
+    enumerator->Release();
+    if (FAILED(found)) return 0;
+    IAudioClient* client = nullptr;
+    const HRESULT activated = device->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, reinterpret_cast<void**>(&client));
+    device->Release();
+    if (FAILED(activated)) return 0;
+    std::vector<long long> readings;
+    WAVEFORMATEX* mix = nullptr;
+    IAudioRenderClient* render = nullptr;
+    IAudioClock* clock = nullptr;
+    UINT32 size = 0;
+    UINT64 frequency = 0;
+    if (SUCCEEDED(client->GetMixFormat(&mix)) && SUCCEEDED(client->Initialize(AUDCLNT_SHAREMODE_SHARED, 0, 1000000, 0, mix, nullptr)) &&
+        SUCCEEDED(client->GetBufferSize(&size)) && SUCCEEDED(client->GetService(__uuidof(IAudioRenderClient), reinterpret_cast<void**>(&render))) &&
+        SUCCEEDED(client->GetService(__uuidof(IAudioClock), reinterpret_cast<void**>(&clock))) && SUCCEEDED(clock->GetFrequency(&frequency)) && frequency > 0) {
+        const long long rate = mix->nSamplesPerSec;
+        unsigned long long written = 0;
+        auto fill = [&] {
+            UINT32 padding = 0; BYTE* data = nullptr;
+            if (FAILED(client->GetCurrentPadding(&padding)) || padding >= size) return;
+            if (SUCCEEDED(render->GetBuffer(size - padding, &data))) { render->ReleaseBuffer(size - padding, AUDCLNT_BUFFERFLAGS_SILENT); written += size - padding; }
+        };
+        fill();
+        client->Start();
+        for (int i = 0; i < 20; ++i) {
+            Sleep(10);
+            fill();
+            UINT32 padding = 0; UINT64 position = 0, at = 0;
+            if (i < 5 || FAILED(client->GetCurrentPadding(&padding)) || FAILED(clock->GetPosition(&position, &at))) continue;
+            const long long taken = (long long)(written - padding) * 10000000 / rate;
+            const long long played = (long long)(position * 10000000 / frequency) + (now100ns() - (long long)at);
+            if (taken > played) readings.push_back(taken - played);
+        }
+        client->Stop();
+    }
+    if (clock) clock->Release();
+    if (render) render->Release();
+    if (mix) CoTaskMemFree(mix);
+    client->Release();
+    if (readings.empty()) return 0;
+    std::nth_element(readings.begin(), readings.begin() + long(readings.size() / 2), readings.end());
+    return std::min(readings[readings.size() / 2], 2000000LL); // at most 200 ms
+}
+
 bool loopbackAvailable(std::string& reason) {
     Loopback loopback;
     if (auto e = loopback.open()) { reason = e.message; return false; }
@@ -67,12 +119,12 @@ long long Recorder::fileBytes() const {
     if (output_.empty() || !GetFileAttributesExW(paths::wide(output_).c_str(), GetFileExInfoStandard, &data)) return 0;
     return (long long)(((unsigned long long)data.nFileSizeHigh << 32) | data.nFileSizeLow);
 }
-long long Recorder::clock100ns() const { return hundredNs(qpc() - origin_); }
-Error Recorder::prepare(const grab::Rect& area, const std::string& output, int fps, long long budgetBytes) {
+long long Recorder::clock100ns() const { return now100ns() - origin_; }
+Error Recorder::prepare(const CaptureTarget& target, const std::string& output, int fps, long long budgetBytes) {
     output_ = output; budget_ = budgetBytes; period_ = 10000000LL / std::max(1, fps);
     wake_ = CreateEventW(nullptr, FALSE, FALSE, nullptr);
     ready_ = CreateEventW(nullptr, TRUE, FALSE, nullptr);
-    thread_ = std::thread([this, area, output, fps] { run(area, output, fps); });
+    thread_ = std::thread([this, target, output, fps] { run(target, output, fps); });
     WaitForSingleObject(ready_, INFINITE);
     if (openError_) { thread_.join(); return openError_; }
     return {};
@@ -124,7 +176,8 @@ void Recorder::captureAudio(void* source, media::Mp4Writer& writer) {
         if (auto e = writer.writeAudio(piece.samples.data(), piece.samples.size() / 2, piece.start * 10000000 / outRate)) { finishOwn("error", e); return false; }
         return true;
     };
-    const long long origin100 = hundredNs(origin_);
+    // Samples are placed where they are heard: the mix time plus the output's latency.
+    const long long origin100 = origin_ - latency_;
     loopback.client->Start();
     bool ok = true;
     while (ok && !audioStop_) {
@@ -159,14 +212,20 @@ void Recorder::captureAudio(void* source, media::Mp4Writer& writer) {
     if (ok && end > 0) write(timeline.fillTo(audio::Timeline::frameAt(end, outRate)));
     if (SUCCEEDED(com)) CoUninitialize();
 }
-void Recorder::run(grab::Rect area, std::string output, int fps) {
+void Recorder::run(CaptureTarget target, std::string output, int fps) {
     const HRESULT com = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
-    HDC screen = GetDC(nullptr);
-    grab::Image image;
+    std::unique_ptr<Source> source;
+    std::string note;
+    if (target.window) openError_ = openWindowSource(target.window, target.width, target.height, source);
+    else openError_ = openScreenSource(target.area, source, note);
+    if (!openError_) {
+        std::lock_guard l(mutex_);
+        acquisition_ = source->name(); acquisitionNote_ = note;
+    }
+    const int width = target.window ? target.width : target.area.w, height = target.window ? target.height : target.area.h;
     media::Mp4Writer writer;
-    if (!screen || !image.create(area.w, area.h)) openError_ = {"recording_failed", "Cannot open the screen for recording", {}};
     SetEvent(ready_);
-    auto cleanup = [&] { if (screen) ReleaseDC(nullptr, screen); image.release(); if (SUCCEEDED(com)) CoUninitialize(); };
+    auto cleanup = [&] { source.reset(); if (SUCCEEDED(com)) CoUninitialize(); };
     if (openError_) { cleanup(); return; }
     while (command_ == int(Command::None)) WaitForSingleObject(wake_, INFINITE);
     if (command_ != int(Command::Start)) { cleanup(); return; }
@@ -175,48 +234,54 @@ void Recorder::run(grab::Rect area, std::string output, int fps) {
     Loopback loopback;
     bool audio = audio_;
     if (audio) if (auto e = loopback.open()) { finishOwn("error", e); cleanup(); return; }
+    if (audio) latency_ = outputLatency();
     const int audioRate = audio ? (audio::encoderRate(loopback.rate) ? loopback.rate : 48000) : 0;
-    if (auto e = writer.open(output, {area.w, area.h, fps, recording::liveBitrate(area.w, area.h, fps), false, audioRate})) { finishOwn("error", e); cleanup(); return; }
+    if (auto e = writer.open(output, {width, height, fps, recording::liveBitrate(width, height, fps), false, audioRate})) { finishOwn("error", e); cleanup(); return; }
     { std::lock_guard l(mutex_); encoder_ = writer.encoder(); audioEncoder_ = audio ? "Media Foundation AAC" : ""; }
+    log::info("record", "Capture started", {{"acquisition", source->name()}, {"note", note}, {"size", json::Array{width, height}}, {"fps", fps}, {"outputLatencyUs", double(latency_ / 10)}});
 
-    HANDLE timer = CreateWaitableTimerExW(nullptr, nullptr, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, TIMER_ALL_ACCESS);
-    if (!timer) timer = CreateWaitableTimerW(nullptr, FALSE, nullptr);
-    origin_ = qpc();
+    origin_ = now100ns();
     std::thread audioThread;
     if (audio) audioThread = std::thread([this, &loopback, &writer] { captureAudio(&loopback, writer); });
+    std::vector<uint8_t> current(size_t(width) * height * 4);
+    const size_t stride = size_t(width) * 4;
+    bool have = false;
     long long frames = 0;
-    bool ownStop = false;
-    while (command_ == int(Command::Start) && stoppedReason().empty()) {
+    std::string ownReason;
+    auto emit = [&](long long index) {
+        if (auto e = writer.write(current.data(), stride, index * period_, period_)) { finishOwn("error", e); return false; }
+        lastFrame_ = index;
+        if (budget_ > 0 && ++frames % budgetCheckFrames == 0 && fileBytes() >= budget_) { ownReason = "budget"; return false; }
+        return true;
+    };
+    bool running = true;
+    while (running && command_ == int(Command::Start) && stoppedReason().empty()) {
         if (paused_) { WaitForSingleObject(wake_, 100); continue; }
-        const long long clip = clock100ns() - pausedTotal_;
-        const long long index = std::max(0LL, std::llround(double(clip) / double(period_)));
-        if (index > lastFrame_) {
-            if (!BitBlt(image.dc(), 0, 0, area.w, area.h, screen, area.x, area.y, SRCCOPY | CAPTUREBLT)) { finishOwn("error", {"recording_failed", "The screen could not be read", {}}); break; }
-            GdiFlush();
-            if (auto e = writer.write(image.bits(), image.stride(), index * period_, period_)) { finishOwn("error", e); break; }
-            lastFrame_ = index;
-            if (budget_ > 0 && ++frames % budgetCheckFrames == 0 && fileBytes() >= budget_) { ownStop = true; break; }
-        }
-        // Sleep until the next frame boundary, or a command.
-        const long long due = (lastFrame_ + 1) * period_ - (clock100ns() - pausedTotal_);
-        if (due > 0 && timer) {
-            LARGE_INTEGER relative; relative.QuadPart = -due;
-            SetWaitableTimer(timer, &relative, 0, nullptr, nullptr, FALSE);
-            HANDLE handles[2] = {timer, wake_};
-            WaitForMultipleObjects(2, handles, FALSE, INFINITE);
-        }
+        const long long next = lastFrame_ + 1;
+        const long long deadline = origin_ + pausedTotal_ + (2 * next + 1) * period_ / 2;
+        if (have && now100ns() >= deadline) { running = emit(next); continue; }
+        bool got = false;
+        long long present = 0;
+        if (auto e = source->next(deadline, wake_, got, present)) { finishOwn("error", e); break; }
+        if (source->ended()) { ownReason = "target_closed"; break; }
+        if (!got) continue;
+        // Frames before this picture's slot keep the previous one.
+        const long long slot = recording::frameSlot(present - origin_ - pausedTotal_, period_);
+        while (running && have && !paused_ && lastFrame_ + 1 < slot) running = emit(lastFrame_ + 1);
+        for (int y = 0; y < height; ++y) std::memcpy(current.data() + stride * size_t(y), source->bits() + source->stride() * size_t(y), stride);
+        have = true;
     }
-    if (timer) CloseHandle(timer);
     // The audio thread finishes its track at the clip's end before the file is finalized.
     audioEnd_ = (lastFrame_ + 1) * period_;
     audioStop_ = true;
     if (audioThread.joinable()) audioThread.join();
-    if (command_ == int(Command::Cancel) || (failure() && !ownStop)) writer.abandon();
+    if (command_ == int(Command::Cancel) || (failure() && ownReason.empty())) writer.abandon();
     else {
         stopError_ = writer.finish();
-        if (ownStop) finishOwn("budget", stopError_);
+        if (!ownReason.empty()) finishOwn(ownReason, stopError_);
     }
-    log::info("record", "Capture ended", {{"frames", double(lastFrame_ + 1)}, {"encoder", encoder()}, {"audio", audio}, {"reason", ownStop ? "budget" : command_ == int(Command::Cancel) ? "cancel" : "stop"}});
+    log::info("record", "Capture ended", {{"frames", double(lastFrame_ + 1)}, {"encoder", encoder()}, {"acquisition", source->name()}, {"audio", audio},
+        {"reason", !ownReason.empty() ? ownReason : command_ == int(Command::Cancel) ? "cancel" : "stop"}});
     cleanup();
 }
 }

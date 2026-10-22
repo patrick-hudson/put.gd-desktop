@@ -35,6 +35,7 @@ struct OperationService::RecordingSession : std::enable_shared_from_this<Recordi
     bool selecting = false, ending = false;
     bool audioRecorded = false; // the working clip has a system-audio track
     std::string overlayPlacement; std::optional<bool> overlayExcluded;
+    json::Object window; // a window target: identity and title as the helper resolved them
     struct Waiter { JsonReply reply; UINT_PTR timer = 0; };
     std::map<std::string, Waiter> waiting;
     // One command to the helper; the reply arrives on the owner thread, once.
@@ -87,6 +88,7 @@ json::Object OperationService::recordingJson() const {
     if (s.state == "reviewing" || s.state == "exporting") o["audioRecorded"] = s.audioRecorded;
     if (!s.overlayPlacement.empty()) o["overlayPlacement"] = s.overlayPlacement;
     if (s.overlayExcluded) o["overlayExcluded"] = *s.overlayExcluded;
+    if (!s.window.empty()) o["window"] = s.window;
     return o;
 }
 
@@ -262,7 +264,7 @@ void OperationService::prepareRecording(const json::Object& params, JsonReply re
             { reply({"recording_unsupported", "This format is not available: no built-in Windows encoder produces it", {{"format", config.format}, {"codec", config.codec}}}, {}); return; }
         if (config.audioSystem && !caps.value("audio")["system"].toBool())
             { reply({"recording_unsupported", caps.value("audioUnavailable")["system"].toString("System audio is not available on this computer"), {{"field", "audio.system"}}}, {}); return; }
-        const bool interactive = target.kind == "region" && !target.rect;
+        const bool interactive = (target.kind == "region" && !target.rect) || (target.kind == "window" && target.identity.empty());
         if (interactive && !selectingId_.empty()) { reply({"busy_selecting", "Another interactive acquisition is active", {}}, {}); return; }
         const auto snapshot = settings_.snapshot();
         const auto& route = snapshot.action(Settings::recordingActionName());
@@ -325,9 +327,12 @@ void OperationService::prepareRecording(const json::Object& params, JsonReply re
                     if (selectingId_ == session->op.id) selectingId_.clear();
                     const auto& canvas = p.value("canvas");
                     session->canvas = {canvas[size_t(0)].toInt(), canvas[size_t(1)].toInt()};
+                    if (session->target.kind == "window") session->target.identity = p.value("window")["identity"].toString();
                     if (session->target.kind == "region") { const auto& r = p.value("rect"); session->target.rect = RecordingRect{r[size_t(0)].toInteger(), r[size_t(1)].toInteger(), r[size_t(2)].toInteger(), r[size_t(3)].toInteger()}; }
                     recording::clampAnimationSize(session->config, session->canvas, limitsOf(settingsSnapshot()));
                     session->progress = {{"durationUs", 0}, {"bytes", 0}, {"paused", false}, {"encoder", p.value("encoder")}, {"acquisition", p.value("acquisition")}};
+                    if (p.value("acquisitionNote").isString()) session->progress["acquisitionNote"] = p.value("acquisitionNote");
+                    if (p.value("window").isObject()) session->window = p.value("window").toObject();
                     session->overlayPlacement = p.value("overlayPlacement").toString();
                     if (p.value("overlayExcluded").isBool()) session->overlayExcluded = p.value("overlayExcluded").toBool();
                     log::info("recording", "Recording step", {{"operationId", session->op.id}, {"state", "ready"}, {"encoder", p.value("encoder")}});
@@ -356,6 +361,8 @@ void OperationService::prepareRecording(const json::Object& params, JsonReply re
                             session->request("notice", {{"text", "Recording stopped at " + recording::clockText(session->duration, true) + ": it reached the room put.gd keeps for one recording (" + text::byteSize(session->config.budgetBytes) +
                                 "). The clip so far is kept for review; free up disk space or raise Largest file in Settings to record longer."}}, commandMs, [](Error, json::Object) {});
                         }
+                        if (session->stopReason == "target_closed")
+                            session->request("notice", {{"text", "Recording stopped at " + recording::clockText(session->duration, true) + ": the window closed. The clip so far is kept for review."}}, commandMs, [](Error, json::Object) {});
                         session->pending.clear();
                         phase("reviewing");
                     } else if (event == "cancelled") {

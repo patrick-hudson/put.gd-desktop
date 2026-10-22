@@ -26,9 +26,11 @@
 #include "record/Media.h"
 #include "record/Overlay.h"
 #include "record/Recorder.h"
+#include "record/Sources.h"
 #include "record/ReviewWindow.h"
 #include "ui/Controls.h"
 #include "ui/Theme.h"
+#include <algorithm>
 #include <atomic>
 #include <commctrl.h>
 #include <functional>
@@ -120,10 +122,35 @@ Error resolveArea(const RecordingTarget& target, grab::Rect& area) {
         const grab::Rect wanted{int(target.rect->x), int(target.rect->y), int(target.rect->w), int(target.rect->h)};
         area = grab::intersect(wanted, grab::virtualScreen());
         if (!(area == wanted)) return {"recording_target", "The region is not on the desktop", {{"desktop", json::Array{grab::virtualScreen().x, grab::virtualScreen().y, grab::virtualScreen().w, grab::virtualScreen().h}}}};
-    } else return {"recording_unsupported", "This target kind is not available on Windows yet", {{"kind", target.kind}}};
+    } else return {"recording_unsupported", "This target kind is not available here", {{"kind", target.kind}}};
     const auto even = recording::evenArea({area.x, area.y, area.w, area.h});
     area = {int(even.x), int(even.y), int(even.w), int(even.h)};
     if (area.w < 16 || area.h < 16) return {"recording_target", "The area to record must be at least 16 by 16 pixels", {}};
+    return {};
+}
+
+// A window target from its identity (the handle, decimal or 0x hex): a visible
+// top-level window of another process. `frame` is where it is on screen (for the
+// bar), width x height its even capture size.
+Error resolveWindow(const std::string& identity, const std::vector<DWORD>& excludePids, HWND& window, grab::Rect& frame, int& width, int& height) {
+    unsigned long long value = 0;
+    const bool hexadecimal = identity.size() > 2 && identity[0] == '0' && (identity[1] == 'x' || identity[1] == 'X');
+    for (size_t i = hexadecimal ? 2 : 0; i < identity.size(); ++i) {
+        const char c = identity[i];
+        const int digit = c >= '0' && c <= '9' ? c - '0' : hexadecimal && c >= 'a' && c <= 'f' ? c - 'a' + 10 : hexadecimal && c >= 'A' && c <= 'F' ? c - 'A' + 10 : -1;
+        if (digit < 0 || value > (1ULL << 48)) return {"recording_target", "A window identity is its handle, decimal or 0x hexadecimal", {}};
+        value = value * (hexadecimal ? 16 : 10) + unsigned(digit);
+    }
+    window = reinterpret_cast<HWND>(uintptr_t(value));
+    if (!value || !IsWindow(window) || GetAncestor(window, GA_ROOT) != window) return {"recording_target", "No top-level window has this identity", {{"identity", identity}}};
+    DWORD pid = 0;
+    GetWindowThreadProcessId(window, &pid);
+    if (pid == GetCurrentProcessId() || std::find(excludePids.begin(), excludePids.end(), pid) != excludePids.end()) return {"recording_target", "put.gd's own windows cannot be recorded", {}};
+    if (!IsWindowVisible(window) || IsIconic(window)) return {"recording_target", "The window is hidden or minimized", {}};
+    if (!grab::frameBounds(window, frame)) frame = {};
+    if (auto e = record::windowCaptureSize(window, width, height)) return e;
+    width -= width % 2; height -= height % 2;
+    if (width < 16 || height < 16) return {"recording_target", "The window must be at least 16 by 16 pixels", {}};
     return {};
 }
 
@@ -181,6 +208,13 @@ int probe(Link& link, frames::Channel& channel) {
             result["formatFailures"] = failures;
             result["formats"] = formats; result["codecs"] = json::Object{{"mp4", mp4}};
             result["unavailableFormats"] = json::Object{{"webm", "No WebM (VP9) encoder is built into Windows"}, {"webp", "No animated WebP encoder is built into Windows"}};
+            // Pictures: Desktop Duplication where it works (GDI otherwise); windows through
+            // Windows.Graphics.Capture.
+            std::string why;
+            if (record::duplicationAvailable(primaryMonitor(), why)) result["acquisition"] = "dxgi";
+            else result["acquisitionNote"] = why;
+            if (record::windowCaptureAvailable(why)) { result["targets"] = json::Array{"monitor", "desktop", "region", "window"}; result["windowAcquisition"] = "wgc"; }
+            else result["unavailableTargets"] = json::Object{{"window", why}};
             // System audio: WASAPI loopback on the default output device into AAC.
             std::string reason;
             if (!record::loopbackAvailable(reason)) result["audioUnavailable"] = json::Object{{"system", reason}};
@@ -202,13 +236,19 @@ public:
     }
     int run() {
         grab::Rect area;
-        if (b_.target.kind == "region" && !b_.target.rect) { if (!select(area)) return loop(); }
-        else if (auto e = resolveArea(b_.target, area)) { link_.send("failed", {{"code", e.code}, {"message", e.message}, {"details", e.details}}); return loop(); }
+        record::CaptureTarget capture;
+        const bool window = b_.target.kind == "window";
+        auto failed = [this](const Error& e) { link_.send("failed", {{"code", e.code}, {"message", e.message}, {"details", e.details}}); return loop(); };
+        if ((b_.target.kind == "region" && !b_.target.rect) || (window && b_.target.identity.empty())) { if (!select(window ? overlay::Mode::Window : overlay::Mode::Region, area, capture)) return loop(); }
+        else if (window) { if (auto e = resolveWindow(b_.target.identity, b_.excludePids, capture.window, area, capture.width, capture.height)) return failed(e); }
+        else if (auto e = resolveArea(b_.target, area)) return failed(e);
         if (quitting_) return loop();
-        if (auto e = recorder_.prepare(area, b_.output, b_.config.fps, b_.budget)) { link_.send("failed", {{"code", e.code}, {"message", e.message}, {"details", e.details}}); return loop(); }
-        area_ = area; prepared_ = true;
-        // The ring and the bar: excluded from capture, the bar outside the area when it fits.
-        frame_.show(area);
+        if (!window) capture = {area, nullptr, area.w, area.h};
+        if (auto e = recorder_.prepare(capture, b_.output, b_.config.fps, b_.budget)) return failed(e);
+        area_ = area; canvas_ = {capture.width, capture.height}; window_ = capture.window; prepared_ = true;
+        // The ring and the bar: excluded from capture, the bar outside the area when it fits. A
+        // window's capture holds only that window, so it gets no ring.
+        if (!window) frame_.show(area);
         bar_ = std::make_unique<record::ControlBar>(record::ControlBar::Callbacks{
             [this] { if (!started_) startCapture(); link_.event("started"); },
             [this] { pauseCapture(true); link_.event("paused"); },
@@ -223,18 +263,22 @@ public:
                 if (key == "gif") config["audio"] = json::Object{{"system", false}};
                 link_.event("configChanged", {{"config", config}});
             }});
-        const std::wstring target = (b_.target.kind == "region" ? L"Region " : b_.target.kind == "desktop" ? L"Desktop " : L"Monitor ") + std::to_wstring(area.w) + L"×" + std::to_wstring(area.h);
+        const std::wstring target = (b_.target.kind == "region" ? L"Region " : b_.target.kind == "desktop" ? L"Desktop " : window ? L"Window " : L"Monitor ") +
+            std::to_wstring(canvas_.w) + L"×" + std::to_wstring(canvas_.h);
         bar_->create(area, target, b_.formats, recording::formatKey(b_.config), b_.audioAvailable, b_.config.audioSystem);
-        link_.send("prepared", {{"canvas", json::Array{area.w, area.h}}, {"rect", json::Array{area.x, area.y, area.w, area.h}}, {"acquisition", "gdi"}, {"encoder", recorder_.encoder()},
-            {"overlayPlacement", bar_->placement()}, {"overlayExcluded", bar_->excluded() && frame_.excluded()}});
+        json::Object prepared{{"canvas", json::Array{canvas_.w, canvas_.h}}, {"rect", json::Array{area.x, area.y, area.w, area.h}}, {"acquisition", recorder_.acquisition()}, {"encoder", recorder_.encoder()},
+            {"overlayPlacement", window && bar_->placement() == "inside" ? std::string("hidden") : bar_->placement()}, {"overlayExcluded", window || (bar_->excluded() && frame_.excluded())}};
+        if (!recorder_.acquisitionNote().empty()) prepared["acquisitionNote"] = recorder_.acquisitionNote();
+        if (window) prepared["window"] = json::Object{{"identity", std::to_string(uintptr_t(window_))}, {"title", grab::windowTitle(window_)}};
+        link_.send("prepared", prepared);
         SetTimer(link_.window(), progressTimer, 1000, nullptr);
         return loop();
     }
 private:
-    // Region selection with the capture helper's overlay; cancel ends the session.
-    bool select(grab::Rect& area) {
+    // Region or window selection with the capture helper's overlay; cancel ends the session.
+    bool select(overlay::Mode mode, grab::Rect& area, record::CaptureTarget& capture) {
         overlay::Selector selector;
-        if (auto e = selector.show(overlay::Mode::Region, b_.excludePids)) { link_.send("failed", {{"code", e.code}, {"message", e.message}}); return false; }
+        if (auto e = selector.show(mode, b_.excludePids)) { link_.send("failed", {{"code", e.code}, {"message", e.message}}); return false; }
         selecting_ = &selector;
         link_.send("selecting", {{"selector", "win32"}});
         MSG msg;
@@ -245,8 +289,12 @@ private:
         if (quitting_) return false;
         if (result.kind != overlay::Result::Kind::Selected || result.rect.empty()) {
             if (result.kind == overlay::Result::Kind::Failed) link_.send("failed", {{"code", result.error.code}, {"message", result.error.message}});
-            else link_.send("failed", {{"code", "cancelled"}, {"message", "Region selection cancelled; nothing was recorded"}});
+            else link_.send("failed", {{"code", "cancelled"}, {"message", mode == overlay::Mode::Window ? "Window selection cancelled; nothing was recorded" : "Region selection cancelled; nothing was recorded"}});
             return false;
+        }
+        if (mode == overlay::Mode::Window) {
+            if (auto e = resolveWindow(std::to_string(uintptr_t(result.window)), b_.excludePids, capture.window, area, capture.width, capture.height)) { link_.send("failed", {{"code", e.code}, {"message", e.message}}); return false; }
+            return true;
         }
         RecordingTarget target; target.kind = "region"; target.rect = RecordingRect{result.rect.x, result.rect.y, result.rect.w, result.rect.h};
         if (auto e = resolveArea(target, area)) { link_.send("failed", {{"code", e.code}, {"message", e.message}}); return false; }
@@ -300,7 +348,7 @@ private:
             link_.post([this, requestId, reason, e, duration] {
                 bar_.reset();
                 frame_.hide();
-                const json::Object result{{"durationUs", double(duration)}, {"canvas", json::Array{area_.w, area_.h}}, {"bytes", double(recorder_.fileBytes())}, {"encoder", recorder_.encoder()},
+                const json::Object result{{"durationUs", double(duration)}, {"canvas", json::Array{canvas_.w, canvas_.h}}, {"bytes", double(recorder_.fileBytes())}, {"encoder", recorder_.encoder()},
                     {"audio", !recorder_.audioEncoder().empty()}, {"audioEncoder", recorder_.audioEncoder()}};
                 if (!e) openReview(duration);
                 if (!requestId.empty()) { if (e) link_.reply(requestId, e); else link_.reply(requestId, {}, result); return; }
@@ -312,7 +360,7 @@ private:
     }
     void openReview(long long duration) {
         RecordingEdit edit;
-        review_ = std::make_unique<record::ReviewWindow>(b_.output, RecordingSize{area_.w, area_.h}, duration, b_.config, edit, b_.formats, record::ReviewWindow::Callbacks{
+        review_ = std::make_unique<record::ReviewWindow>(b_.output, canvas_, duration, b_.config, edit, b_.formats, record::ReviewWindow::Callbacks{
             [this](unsigned long long revision, const json::Array& commands) { link_.event("edit", {{"revision", double(revision)}, {"commands", commands}}); },
             [this](const std::string& path, unsigned long long revision) { link_.event("saveCopyRequested", {{"path", path}, {"revision", double(revision)}}); },
             [this](unsigned long long revision) { link_.event("uploadRequested", {{"revision", double(revision)}}); },
@@ -323,9 +371,10 @@ private:
     void progress() {
         if (!started_ || stopped_) return;
         const auto reason = recorder_.stoppedReason();
-        if (reason == "budget") { stopCapture({}, "budget"); return; }
+        if (reason == "budget" || reason == "target_closed") { stopCapture({}, reason); return; }
         if (reason == "error") { stopped_ = true; link_.event("failed", {{"error", recorder_.failure().toJson()}}); return; }
-        link_.event("progress", {{"durationUs", double(recorder_.durationUs())}, {"bytes", double(recorder_.fileBytes())}, {"paused", recorder_.paused()}, {"encoder", recorder_.encoder()}, {"audioEncoder", recorder_.audioEncoder()}});
+        link_.event("progress", {{"durationUs", double(recorder_.durationUs())}, {"bytes", double(recorder_.fileBytes())}, {"paused", recorder_.paused()}, {"encoder", recorder_.encoder()}, {"audioEncoder", recorder_.audioEncoder()},
+            {"acquisition", recorder_.acquisition()}, {"outputLatencyUs", double(recorder_.outputLatencyUs())}});
     }
     void handle(std::unique_ptr<protocol::Frame> frame) {
         if (frame->type == "shutdown") { quitting_ = true; if (selecting_) selecting_->cancel(); PostQuitMessage(0); return; }
@@ -390,7 +439,7 @@ private:
             if (!stopped_) { link_.reply(requestId, {"recording_state", "Nothing to export before stop", {}}); return; }
             RecordingEdit edit;
             if (!recording::parseEdit(params.value("edit").toObject(), edit)) { link_.reply(requestId, {"invalid_request", "Invalid edit", {}}); return; }
-            const RecordingSize canvas{area_.w, area_.h};
+            const RecordingSize canvas = canvas_;
             workerDone_ = false;
             if (command == "preview") {
                 const long long time = params.value("time").toInteger(0);
@@ -454,6 +503,8 @@ private:
     std::unique_ptr<record::ControlBar> bar_;
     std::unique_ptr<record::ReviewWindow> review_;
     grab::Rect area_;
+    RecordingSize canvas_;
+    HWND window_ = nullptr;
     overlay::Selector* selecting_ = nullptr;
     std::thread worker_;
     bool prepared_ = false, started_ = false, quitting_ = false;

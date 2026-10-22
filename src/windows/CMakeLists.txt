@@ -102,7 +102,7 @@ if(WIN32)
     capture/CaptureMain.cpp capture/Overlay.cpp capture/Grab.cpp capture/Png.cpp capture/ImageJob.cpp
     ui/UiMain.cpp ui/MainWindow.cpp ui/SettingsPage.cpp ui/DestinationsPage.cpp ui/HistoryPage.cpp ui/UiSession.cpp ui/Controls.cpp ui/Theme.cpp
     editor/EditorMain.cpp editor/EditDocument.cpp editor/EditorCommands.cpp editor/EditorWindow.cpp editor/Export.cpp
-    record/RecordMain.cpp record/Recorder.cpp record/Media.cpp record/Export.cpp record/Overlay.cpp record/FrameSource.cpp record/ReviewWindow.cpp record/Gif.cpp
+    record/RecordMain.cpp record/Recorder.cpp record/Sources.cpp record/Media.cpp record/Export.cpp record/Overlay.cpp record/FrameSource.cpp record/ReviewWindow.cpp record/Gif.cpp
     resident/putgd.rc)
   target_link_libraries(putgd PRIVATE putgd_win_platform user32 gdi32 comctl32 comdlg32 uxtheme dwmapi winhttp
     windowscodecs gdiplus shcore msimg32 credui

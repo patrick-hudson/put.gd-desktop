@@ -45,6 +45,11 @@ static void targetsAndConfigs() {
     auto round = c.toJson(); round.remove("mime"); round.remove("budgetBytes");
     RecordingConfig again;
     CHECK(!recording::parseConfig(round, again) && json::serialize(again.toJson()) == json::serialize(c.toJson()));
+    // Frame slots are centred on their instants: 30 fps, period 333333 (100 ns).
+    CHECK(recording::frameSlot(-5000000, 333333) == 0 && recording::frameSlot(0, 333333) == 0);
+    CHECK(recording::frameSlot(166666, 333333) == 0 && recording::frameSlot(166667, 333333) == 1);
+    CHECK(recording::frameSlot(333333, 333333) == 1 && recording::frameSlot(499999, 333333) == 1 && recording::frameSlot(500000, 333333) == 2);
+    CHECK(recording::frameSlot(10000000, 333333) == 30 && recording::frameSlot(123, 0) == 0);
     // The bar's and the review's menu keys.
     CHECK(recording::formatKey(again) == "webm/vp9" && recording::formatLabel("webm/vp9") == "WebM (VP9)");
     CHECK(!recording::parseConfig(object(R"({"format":"gif","codec":""})"), c) && recording::formatKey(c) == "gif" && recording::formatLabel("gif") == "GIF");
