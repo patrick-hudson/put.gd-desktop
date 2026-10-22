@@ -62,7 +62,9 @@ Records at the default level:
   artifact cleanup's abort of a failed item's multipart upload, with the error when S3
   refused it), `Sharing finished`, and
   `Operation finished` (state, duration since acceptance, bytes, per-status item counts
-  and every item error).
+  and every item error), and `Automatic copy not attempted` (warning: a link was
+  available but the per-link copy ordering never queued it; `behavior`, `links`, `held`
+  and `cursor`, see #478).
 - **Provider errors:** the error's `code`, `message` and `details`. S3 details carry
   `httpStatus`, `serviceCode`, `requestStage`, `sdkRetryable`, `curlCode`, `elapsedMs`,
   and the S3 request IDs `requestId` (`x-amz-request-id`) and `extendedRequestId`
