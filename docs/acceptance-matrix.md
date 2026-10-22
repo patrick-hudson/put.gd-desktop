@@ -119,7 +119,7 @@ memory window and the coordinator's OK for each logout.
 - **G. History:** entries show with previews, including a video poster, and **Copy image** puts the same pixels on the clipboard.
   - **Delete from destination…** removes the uploaded object from the fixture, and the row shows "Deleted from destination". The local file is kept by design.
 - **H. Settings:** a theme switch (System, Dark, Light) repaints the open window live.
-  - **Updates** shows "This build's channel (nightly)", with a status from the live app.put.gd feed.
+  - **Updates** shows **Channel** on *Nightly*, the build's own (*Stable* and *Nightly* are the only choices since #344), with a status from the live app.put.gd feed.
   - **Check now** works, and the nightly channel shows no notification.
 - **I. Start at login:** turn on **Launch at login**, then do a real logout and login. Put.gd must start from the AppImage.
   - Physical desktops: only with the coordinator's OK, and only after checking that none of Patrick's apps are open.
