@@ -16,6 +16,10 @@
                 "usr/share/putgd/build-info.json", "usr/share/putgd/dependency-lock.json",
                 "usr/share/putgd/aws-runtime-manifest.json"],
       "noticeFiles": ["usr/share/doc/putgd/LICENSE", "usr/share/doc/putgd/wayland-*.xml"],
+      "embedded": [
+        {"name": "zkde-screencast-unstable-v1 protocol bindings", "license": "LGPL-2.1-or-later",
+         "licenseText": "usr/share/doc/putgd/bundled-licenses/distro-common/LGPL-2.1"}
+      ],
       "note": "The Wayland protocol files beside the notices keep the copyright and permission text of the protocols whose generated client bindings are compiled into put.gd."
     },
     {
@@ -23,8 +27,10 @@
       "name": "AWS SDK for C++ (with aws-crt-cpp, the aws-c libraries and s2n-tls)",
       "version": {"from": "dependencyLock", "key": "awsSdk"},
       "source": {"from": "dependencyLock", "key": "awsSdk"},
-      "license": "Apache-2.0",
-      "licenseTexts": {"Apache-2.0": "usr/share/doc/putgd/aws-sdk-LICENSE"},
+      "license": "Apache-2.0 AND MIT AND BSD-2-Clause AND Zlib",
+      "licenseTexts": {"Apache-2.0": "usr/share/doc/putgd/aws-sdk-LICENSE", "MIT": "usr/share/doc/putgd/aws-sdk-cJSON-LICENSE",
+                       "BSD-2-Clause": "usr/share/doc/putgd/aws-crt-cpp-crt-aws-checksums-xxHash-LICENSE",
+                       "Zlib": "usr/share/doc/putgd/aws-sdk-TinyXML2-LICENSE"},
       "files": ["usr/lib/putgd/libaws-*", "usr/lib/putgd/libs2n*"],
       "noticeFiles": ["usr/share/doc/putgd/aws-*"],
       "embedded": [
@@ -40,9 +46,13 @@
       "name": "put.gd Proton Drive helper (Proton Drive SDK, Bun runtime, OpenPGP and crypto libraries)",
       "version": {"from": "protonManifest"},
       "source": {"from": "protonManifest", "catalog": "usr/libexec/putgd/proton/redistribution/SOURCES.json"},
-      "license": "MIT AND GPL-3.0-only",
+      "license": "MIT AND GPL-3.0-only AND LGPL-3.0-or-later AND LGPL-2.1-or-later AND LGPL-2.0-or-later AND BSD-3-Clause",
       "licenseTexts": {"MIT": "usr/share/doc/putgd/proton/LICENSE.proton",
-                       "GPL-3.0-only": "usr/libexec/putgd/proton/redistribution/LICENSE.crypto-GPL-3.0"},
+                       "GPL-3.0-only": "usr/libexec/putgd/proton/redistribution/LICENSE.crypto-GPL-3.0",
+                       "LGPL-3.0-or-later": "usr/libexec/putgd/proton/THIRD-PARTY-NOTICES.txt",
+                       "BSD-3-Clause": "usr/libexec/putgd/proton/THIRD-PARTY-NOTICES.txt",
+                       "LGPL-2.1-or-later": "usr/libexec/putgd/proton/redistribution/BUN-THIRD-PARTY-NOTICES.txt.gz",
+                       "LGPL-2.0-or-later": "usr/libexec/putgd/proton/redistribution/BUN-THIRD-PARTY-NOTICES.txt.gz"},
       "files": ["usr/libexec/putgd/proton/manifest.json", "usr/libexec/putgd/proton/putgd-proton-runtime",
                 "usr/share/putgd/proton-runtime-manifest.json"],
       "noticeFiles": ["usr/libexec/putgd/proton/THIRD-PARTY-NOTICES.txt", "usr/libexec/putgd/proton/redistribution/*",

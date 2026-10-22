@@ -66,7 +66,13 @@ set_target_properties(putgd_s3_module PROPERTIES BUILD_RPATH "${PUTGD_AWS_RUNTIM
 configure_file(putgd-launcher.in putgd-launcher @ONLY)
 install(PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/putgd-launcher" DESTINATION "${CMAKE_INSTALL_BINDIR}" RENAME putgd-launcher)
 putgd_install_snapshot("${PROJECT_SOURCE_DIR}/cmake/dependency-lock.json" "${CMAKE_INSTALL_DATADIR}/putgd")
-putgd_install_snapshot(runtime-notices.txt "${CMAKE_INSTALL_DATADIR}/doc/putgd")
+# The notices name the release page that carries this build's source (#416, #469).
+set(PUTGD_SOURCE_URL "https://github.com/patrick-hudson/put.gd-desktop/releases")
+if(PUTGD_RELEASE_TAG)
+  string(APPEND PUTGD_SOURCE_URL "/tag/${PUTGD_RELEASE_TAG}")
+endif()
+configure_file(runtime-notices.txt.in package-inputs/runtime-notices.txt @ONLY)
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/package-inputs/runtime-notices.txt" DESTINATION "${CMAKE_INSTALL_DATADIR}/doc/putgd")
 putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/platform/kde/protocols/ext-data-control-v1.xml"
   "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME wayland-ext-data-control-v1.xml)
 putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/platform/kde/protocols/wlr-data-control-unstable-v1.xml"
@@ -191,7 +197,10 @@ set(CPACK_DEBIAN_PACKAGE_DEPENDS "libqt6sql6-sqlite, qt6-qpa-plugins, qt6-waylan
 set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
 # Resolve system SONAMEs on Fedora; Qt's platform/SQL plugins are loaded at runtime.
 set(CPACK_RPM_FILE_NAME RPM-DEFAULT)
-set(CPACK_RPM_PACKAGE_LICENSE "MIT AND Apache-2.0")
+# Every licence of the code the package ships, not only put.gd's (#469): put.gd
+# (MIT), the private AWS SDK and CRT (Apache-2.0) and the cJSON, libcbor, xxHash
+# and TinyXML-2 code compiled into them (MIT, BSD-2-Clause, Zlib).
+set(putgd_licenses MIT Apache-2.0 BSD-2-Clause Zlib)
 set(CPACK_RPM_PACKAGE_URL "https://github.com/patrick-hudson/put.gd-desktop")
 set(CPACK_RPM_PACKAGE_REQUIRES "qt6-qtbase-gui, qt6-qtbase, qt6-qtwayland, qt6-qtimageformats, glib2")
 set(CPACK_RPM_PACKAGE_RELEASE_DIST ON)
@@ -218,12 +227,26 @@ if(TARGET putgd-record)
   # placeholder unless Cisco's openh264 (fedora-cisco-openh264) replaces it.
   string(APPEND CPACK_RPM_PACKAGE_REQUIRES ", gstreamer1-plugins-base, gstreamer1-plugins-good, gstreamer1-plugins-bad-free, pipewire-gstreamer")
   set(CPACK_RPM_PACKAGE_RECOMMENDS "gstreamer1-plugin-openh264, openh264")
+  # Its zkde-screencast-unstable-v1 bindings come from LGPL-2.1-or-later XML.
+  list(APPEND putgd_licenses LGPL-2.1-or-later)
 endif()
 if(PUTGD_BUNDLE_PROTON)
   string(APPEND CPACK_DEBIAN_PACKAGE_DEPENDS ", xdg-utils, libsecret-1-0")
   string(APPEND CPACK_RPM_PACKAGE_REQUIRES ", xdg-utils, libsecret")
-  string(APPEND CPACK_RPM_PACKAGE_LICENSE " AND GPL-3.0-only")
+  # The helper compiles in Proton's crypto (GPL-3.0-only), OpenPGP.js
+  # (LGPL-3.0-or-later) and bcryptjs (BSD-3-Clause); Bun links JavaScriptCore
+  # (LGPL-2.0-or-later) and TinyCC (LGPL-2.1-or-later). Their texts are in
+  # doc/putgd/proton.
+  list(APPEND putgd_licenses GPL-3.0-only LGPL-3.0-or-later LGPL-2.1-or-later LGPL-2.0-or-later BSD-3-Clause)
 endif()
+set(CPACK_RPM_PACKAGE_LICENSE "")
+foreach(license IN ITEMS MIT Apache-2.0 GPL-3.0-only LGPL-3.0-or-later LGPL-2.1-or-later LGPL-2.0-or-later
+    BSD-2-Clause BSD-3-Clause Zlib)
+  if(license IN_LIST putgd_licenses)
+    list(APPEND CPACK_RPM_PACKAGE_LICENSE "${license}")
+  endif()
+endforeach()
+list(JOIN CPACK_RPM_PACKAGE_LICENSE " AND " CPACK_RPM_PACKAGE_LICENSE)
 # AppStream: software centres show put.gd and its updates as an application.
 # The release entry is this build's package version and commit date.
 set(PUTGD_METAINFO_LICENSE "${CPACK_RPM_PACKAGE_LICENSE}")

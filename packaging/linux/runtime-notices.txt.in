@@ -25,6 +25,14 @@ When the package includes the Proton Drive helper (/usr/libexec/putgd/proton), i
 licenses, the notices of everything compiled into it and the list of its
 corresponding source are in the proton directory beside this file.
 
+Source. put.gd's own source and the helper's corresponding source (Proton's crypto,
+OpenPGP.js, and Bun with JavaScriptCore and TinyCC, with the rebuild instructions)
+are published with this release at
+@PUTGD_SOURCE_URL@
+as putgd-VERSION-source.tar.gz, putgd-proton-corresponding-source.tar.gz.part1
+and .part2 (concatenate them) and proton-source-catalog.json. proton/SOURCES.json
+lists the source packets by SHA-256.
+
 Native packages include desktop integration assets and dependency notices. Release
 artifacts have build identities, package inventories and published checksums. Verify
 these against the exact artifact being installed. Installation and artifact auditing
