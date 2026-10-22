@@ -11,17 +11,19 @@ rows and current-candidate evidence remain gates.
 
 ## First stable gate plan — 2026-10-22
 
-No candidate or stable asset has been accepted yet. `v0.1.1-rc.1` (`ae603fab`)
-is an unpublished draft from 2026-10-18. The first stable switches to calendar
-versions `YY.MDD.N` first ([#373](https://github.com/patrick-hudson/put.gd-desktop/issues/373)),
-so it won't be `v0.1.1`, and the candidate steps change with it.
+No release asset has been accepted yet. The first stable switches to calendar
+versions `vYY.MDD.N` first ([#373](https://github.com/patrick-hudson/put.gd-desktop/issues/373)),
+so it won't be `v0.1.1`. There is no candidate channel: merging the promotion
+tags `vYY.MDD.N` and stages the stable draft, and exact-asset acceptance runs on
+that draft before it is published. If acceptance fails, the tag stays unreleased
+and the next promotion gets a new version.
 [Issue #44](https://github.com/patrick-hudson/put.gd-desktop/issues/44) holds the
 current gate table, the proposal for what the first stable requires or defers, and these
 work packages:
 
 | Gate | Issue | Status on 2026-10-22 |
 | --- | --- | --- |
-| Calendar versions `YY.MDD.N`, prerequisite for promotion | [#373](https://github.com/patrick-hudson/put.gd-desktop/issues/373) | design awaiting Patrick; bridge nightly, then CalVer tags |
+| Calendar versions `YY.MDD.N`, prerequisite for promotion | [#373](https://github.com/patrick-hudson/put.gd-desktop/issues/373) | design approved 2026-10-22 (one code PR, no `-rc`); implementation in progress |
 | AppImage full acceptance A–K, six desktops | [profile](acceptance-matrix.md#appimage-full-acceptance-profile), [first pass](evidence/2026-10-21-appimage-full-acceptance/README.md) | first pass on nightly 842 failed F (5 desktops), H and J (f44); rerun pending |
 | DEB lifecycle, recording rows, live S3 | [#375](https://github.com/patrick-hudson/put.gd-desktop/issues/375) | partial: source144 Cinnamon VM only; no state-preserving upgrade or removal + login on Wayland; schema 5→7 never exercised |
 | RPM lifecycle on f44 | [#377](https://github.com/patrick-hudson/put.gd-desktop/issues/377) | partial: repo upgrade 816→828 only |
