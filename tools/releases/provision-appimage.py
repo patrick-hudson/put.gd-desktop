@@ -19,9 +19,13 @@ def checkout(item, destination, license_only=False):
     run('git', '-C', str(destination), 'fetch', '--depth', '1', '--filter=blob:none', 'origin', item['commit'])
     if license_only:
         run('git', '-C', str(destination), 'sparse-checkout', 'init', '--no-cone')
+        # Qt's qt_attribution.json entries name their licence files, for example
+        # LICENCE.md (PCRE2), ijg-license.txt (libjpeg) and ../MIT_LICENSE.txt
+        # (Qt Wayland protocols): match license/licence, copying and copyright
+        # in any case.
         run('git', '-C', str(destination), 'sparse-checkout', 'set', '--no-cone',
-            '/LICENSE*', '/LICENSES/', '**/LICENSE*', '**/COPYING*',
-            '**/NOTICE*', '**/COPYRIGHT*', '**/qt_attribution.json')
+            '/LICENSES/', '**/*[Ll][Ii][Cc][Ee][Nn][CcSs][Ee]*', '**/*[Cc][Oo][Pp][Yy][Ii][Nn][Gg]*',
+            '**/*[Cc][Oo][Pp][Yy][Rr][Ii][Gg][Hh][Tt]*', '**/NOTICE*', '**/qt_attribution.json')
     run('git', '-C', str(destination), 'checkout', '--detach', 'FETCH_HEAD')
     actual = subprocess.check_output(['git', '-C', str(destination), 'rev-parse', 'HEAD'], text=True).strip()
     if actual != item['commit']:
@@ -70,7 +74,9 @@ def main():
         run('make', '-C', str(build), '-j' + str(os.cpu_count() or 2))
         run('make', '-C', str(build), 'install')
     records.append({'name': 'ffmpeg', 'commit': item['commit'], 'source': str(source), 'configure': configure})
-    for item in lock['qtLicenseSources']:
+    # Licence texts only: the Qt modules the image bundles and the ICU build
+    # shipped with Qt (tools/releases/appimage_notices.py).
+    for item in [*lock['qtLicenseSources'], lock['icu']]:
         name = item['repository'].rsplit('/', 1)[1].removesuffix('.git')
         source = sources / name
         checkout(item, source, license_only=True)

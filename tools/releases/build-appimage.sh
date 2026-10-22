@@ -46,9 +46,10 @@ python3 tools/releases/portable_appimage.py --stage "$stage" --output-dir "$PWD/
   --dependency-prefix "$PWD/build/appimage-deps" --version "$version" "${update[@]}" \
   --license-source build/dependencies/appimage/qtbase \
   --license-source build/dependencies/appimage/qtwayland \
-  --license-source build/dependencies/appimage/qtdeclarative \
   --license-source build/dependencies/appimage/qtsvg \
   --license-source build/dependencies/appimage/qtimageformats \
+  --license-source build/dependencies/appimage/qttranslations \
+  --license-source build/dependencies/appimage/icu \
   --license-source build/dependencies/appimage/qtkeychain \
   --license-source build/dependencies/appimage/layershell \
   --license-source build/dependencies/appimage/ffmpeg
@@ -61,6 +62,9 @@ mkdir "$diagnostics"
 (cd "$diagnostics" && "${images[0]}" --appimage-extract > /dev/null)
 python3 tools/releases/appimage_diagnostics.py --appdir "$diagnostics/squashfs-root" \
   --output build/appimage-output/appimage-diagnostics.json
+# The built image's own notices, inventory and content (#417, #421).
+python3 tools/releases/appimage_notices.py --appdir "$diagnostics/squashfs-root" \
+  --output build/appimage-output/appimage-notices.json
 rm -rf "$diagnostics"
 # The image is a GPL-2.0-or-later combined work (bundled x264/x265 and a GPL
 # FFmpeg); its corresponding source is a release asset of its own.

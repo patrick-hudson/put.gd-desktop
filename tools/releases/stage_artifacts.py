@@ -16,7 +16,7 @@ def stage(build, output, kind):
         selected += list((build / 'source-export').glob('*-source.tar.gz'))
     else:
         packages = build / 'appimage-output'
-        selected += [packages / 'appimage-build.json', build / 'appimage-dependencies.json',
+        selected += [packages / 'appimage-build.json', packages / 'appimage-notices.json', build / 'appimage-dependencies.json',
                      build / 'release/build-identity/build-info.json']
         selected += list(packages.glob('*.AppImage')) + list(packages.glob('*.AppImage.zsync'))
         selected += [packages / 'appimage-media-source.json'] + list(packages.glob('*-appimage-media-source.tar.gz'))
