@@ -19,6 +19,7 @@
 #include <QProcessEnvironment>
 #include <QDir>
 #include <tuple>
+#include <memory>
 #include <QFile>
 #include <QElapsedTimer>
 #include <QTimer>
@@ -283,9 +284,17 @@ private slots:
   PUTGD_TRY_COMPARE_WITH_TIMEOUT(resident.state(), QProcess::NotRunning, 5000);
   QCOMPARE(resident.exitCode(), 0);
  }
+ void rejectedGlobalShortcutReportsMissingDestination_data() {
+  QTest::addColumn<bool>("menuOpen");
+  QTest::newRow("passive grab") << false;
+  // #341: another client's open menu holds the keyboard; XInput2 raw keys fire it.
+  QTest::newRow("menu holds the keyboard") << true;
+ }
  void rejectedGlobalShortcutReportsMissingDestination() {
   if (qEnvironmentVariable("PUTGD_ISOLATED_SHORTCUT_TEST") != "1")
    QSKIP("Requires its dedicated private-bus/Xvfb invocation");
+  QFETCH(bool, menuOpen);
+  notifications.values.clear();
   QTemporaryDir directory;
   QVERIFY(directory.isValid());
   const auto runtime = directory.filePath("r");
@@ -324,10 +333,17 @@ private slots:
   PUTGD_TRY_VERIFY(request("ui.snapshot")["diagnostics"].toObject()["trayAvailable"].toBool());
   QVERIFY(snapshot["diagnostics"].toObject()["shortcuts"].toObject()["bindings"].toObject()["region"].toObject()["bound"].toBool());
   QCOMPARE(snapshot["diagnostics"].toObject()["ui"].toObject()["pid"].toInteger(), qint64(0));
+  QVERIFY(snapshot["diagnostics"].toObject()["shortcuts"].toObject()["keyPaths"].toObject()["raw"].toObject()["available"].toBool());
   X11DesktopFixture desktop;
+  std::unique_ptr<X11GrabbingClient> menu;
+  if (menuOpen) { menu = std::make_unique<X11GrabbingClient>(); QVERIFY(menu->grabbed); }
   desktop.key(XK_Control_L,true);desktop.key(XK_1,true);
   desktop.key(XK_1,false);desktop.key(XK_Control_L,false);
   PUTGD_TRY_COMPARE_WITH_TIMEOUT(notifications.values.size(), 1, 5000);
+  // The CLI (and the MCP helper's inspect, which forwards to it) names the path that fired.
+  const auto fired = request("ui.snapshot")["diagnostics"].toObject()["shortcuts"].toObject()["keyPaths"].toObject()["lastActivation"].toObject();
+  QCOMPARE(fired["action"].toString(), QString("region"));
+  QCOMPARE(fired["path"].toString(), QString(menuOpen ? "raw" : "passive"));
   const auto body=notifications.values.first()["body"].toString();QVERIFY(body.contains("No output is enabled"));QVERIFY(body.contains("Settings → Capture"));QVERIFY(body.contains("Keep a local copy in Settings → General"));
   for(int repeat=0;repeat<2;++repeat){
    desktop.key(XK_Control_L,true);desktop.key(XK_1,true);

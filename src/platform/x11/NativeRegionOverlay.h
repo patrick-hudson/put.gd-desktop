@@ -1,5 +1,6 @@
 #pragma once
 #include "ui/RegionSelector.h"
+#include <QElapsedTimer>
 #include <QRegion>
 #include <QPointer>
 #include <xcb/xcb.h>
@@ -15,10 +16,14 @@ public:
  explicit NativeRegionOverlay(QList<CaptureFrame>,QObject* parent=nullptr,xcb_cursor_t residentCursor=XCB_CURSOR_NONE);
  ~NativeRegionOverlay() override;
  static bool supportsLayout(const QList<CaptureFrame>&);
+ // How long selection waits for another client's grab, such as an open
+ // menu's, to end before it explains why it cannot start (#341).
+ static constexpr int grabWaitMs=3000,grabRetryMs=50;
  void start() override;
  void cancel(Error error={"cancelled","Region selection cancelled",{}}) override;
 private:
  void initializeSurfaces();
+ void grabInput();
  struct Surface {CaptureFrame frame;xcb_window_t window=XCB_WINDOW_NONE;QRect outline;int pen=1;};
  void events();
  QPointF logicalPoint(QPoint)const;
@@ -44,5 +49,7 @@ private:
  bool dragging_=false,started_=false,finished_=false;
  bool pointerGrabbed_=false,keyboardGrabbed_=false;
  bool initialized_=false;
+ QElapsedTimer grabClock_;
+ int grabAttempts_=0;
 };
 }

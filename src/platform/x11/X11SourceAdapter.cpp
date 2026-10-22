@@ -47,7 +47,7 @@ quint64 X11SourceAdapter::clipboardRevision()const{return clipboard_.revision();
 QJsonObject X11SourceAdapter::capabilities()const {
  const auto captureStatus=QJsonObject{{"available",capture_.available()},{"mode","visible-pixels"},{"consent","none"}};
  const auto clipboardStatus=QJsonObject{{"available",clipboard_.available()},{"types",QJsonArray{"files","image","text"}},{"import","asynchronous-x11-selection"},{"result","qt-ownership"}};
- return {{"adapter","cinnamon-x11"},{"capture",QJsonObject{{"region",captureStatus},{"window",captureStatus},{"desktop",captureStatus}}},{"clipboard",clipboardStatus},{"shortcuts",QJsonObject{{"available",shortcuts_.available()},{"bindings",shortcuts_.status()}}}};
+ return {{"adapter","cinnamon-x11"},{"capture",QJsonObject{{"region",captureStatus},{"window",captureStatus},{"desktop",captureStatus}}},{"clipboard",clipboardStatus},{"shortcuts",QJsonObject{{"available",shortcuts_.available()},{"bindings",shortcuts_.status()},{"keyPaths",shortcuts_.keyPaths()}}}};
 }
 SourceAdapter::PreparedAcquisition X11SourceAdapter::prepareAcquisition(const QString& action) {
  QPointer<X11SourceAdapter> guard(this);

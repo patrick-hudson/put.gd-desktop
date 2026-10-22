@@ -447,7 +447,12 @@ void TrayController::showView(const QString& view) {
  const auto open = openView_;
  open(view);
 }
-void TrayController::invokeShortcut(const QString& action) { invokeAction(action, true); }
+void TrayController::invokeShortcut(const QString& action) {
+ // This tray's own open menu holds the keyboard and mouse a selection needs,
+ // so close it first. A desktop or window capture keeps it in the picture (#341).
+ if (menu_ && menu_->isVisible() && action != "desktop" && action != "window") menu_->hide();
+ invokeAction(action, true);
+}
 void TrayController::invokeAction(const QString& action, bool fromShortcut, const QJsonObject& options) {
  // The tray opens or raises a recording; its shortcut toggles it.
  const auto effective = action == Settings::recordingActionName() && options.isEmpty() ? QJsonObject{{"mode", fromShortcut ? "toggle" : "open"}} : options;
