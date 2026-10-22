@@ -976,7 +976,7 @@
             "crashDumps": {
               "type": "boolean",
               "default": false,
-              "description": "Windows only: register Windows Error Reporting LocalDumps for putgd.exe under the user's registry hive, so a crash leaves a minidump in %LOCALAPPDATA%\\put.gd\\crashdumps. Dumps stay local and are never put in a diagnostics package. The Linux build accepts and ignores it."
+              "description": "Windows only: a crash of putgd.exe writes a minidump to %LOCALAPPDATA%\\put.gd\\crashdumps (the newest five are kept). Dumps stay local and are never put in a diagnostics package. The Linux build accepts and ignores it."
             }
           }
         }

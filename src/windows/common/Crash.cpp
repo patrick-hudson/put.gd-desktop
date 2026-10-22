@@ -1,6 +1,7 @@
 #include "common/Crash.h"
 #include "common/BuildInfo.h"
 #include "core/CrashRecord.h"
+#include <dbghelp.h>
 #include <cstdlib>
 #include <cstring>
 #ifdef _MSC_VER
@@ -17,6 +18,7 @@ namespace {
 LPTOP_LEVEL_EXCEPTION_FILTER previous = nullptr;
 HANDLE output = INVALID_HANDLE_VALUE;
 char processName[64] = "putgd";
+wchar_t dumpFolder[MAX_PATH] = L"";
 volatile LONG writing = 0;
 // A line buffer on the filter's stack: no heap, no C runtime formatting.
 struct Line {
@@ -107,9 +109,31 @@ void writeRecord(EXCEPTION_POINTERS* info) {
     line.begin("end"); line.tab(); line.number(frames); line.end();
     if (output != INVALID_HANDLE_VALUE) FlushFileBuffers(output);
 }
+// <folder>\putgd.exe.<pid>.dmp, the name Windows Error Reporting gives its dumps.
+void writeDump(EXCEPTION_POINTERS* info) {
+    if (!dumpFolder[0]) return;
+    wchar_t path[MAX_PATH + 40]; size_t n = 0;
+    for (const wchar_t* p = dumpFolder; *p && n < MAX_PATH; ++p) path[n++] = *p;
+    for (const wchar_t* p = L"\\putgd.exe."; *p; ++p) path[n++] = *p;
+    wchar_t digits[12]; int d = 0; DWORD pid = GetCurrentProcessId();
+    do { digits[d++] = wchar_t(L'0' + pid % 10); pid /= 10; } while (pid && d < 11);
+    while (d > 0) path[n++] = digits[--d];
+    for (const wchar_t* p = L".dmp"; *p; ++p) path[n++] = *p;
+    path[n] = 0;
+    using Write = BOOL(WINAPI*)(HANDLE, DWORD, HANDLE, MINIDUMP_TYPE, PMINIDUMP_EXCEPTION_INFORMATION, PMINIDUMP_USER_STREAM_INFORMATION, PMINIDUMP_CALLBACK_INFORMATION);
+    HMODULE dbghelp = LoadLibraryExW(L"dbghelp.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
+    auto write = dbghelp ? reinterpret_cast<Write>(reinterpret_cast<void*>(GetProcAddress(dbghelp, "MiniDumpWriteDump"))) : nullptr;
+    if (!write) return;
+    HANDLE file = CreateFileW(path, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (file == INVALID_HANDLE_VALUE) return;
+    MINIDUMP_EXCEPTION_INFORMATION exception{GetCurrentThreadId(), info, FALSE};
+    const BOOL ok = write(GetCurrentProcess(), GetCurrentProcessId(), file, MiniDumpNormal, &exception, nullptr, nullptr);
+    CloseHandle(file);
+    Line line; line.begin("dump"); line.tab(); line.put(ok ? "written" : "failed"); line.end();
+}
 LONG WINAPI filter(EXCEPTION_POINTERS* info) {
     // The first crashing thread writes; another one meanwhile waits for it.
-    if (InterlockedCompareExchange(&writing, 1, 0) == 0) writeRecord(info);
+    if (InterlockedCompareExchange(&writing, 1, 0) == 0) { writeRecord(info); writeDump(info); }
     else Sleep(2000);
     return previous ? previous(info) : EXCEPTION_CONTINUE_SEARCH;
 }
@@ -135,9 +159,17 @@ void install(const char* process) {
     processName[i] = 0;
     output = GetStdHandle(STD_ERROR_HANDLE);
     if (!output) output = INVALID_HANDLE_VALUE;
+    wchar_t folder[MAX_PATH];
+    const DWORD length = GetEnvironmentVariableW(L"PUTGD_CRASH_DUMPS", folder, MAX_PATH);
+    setDumpFolder(length && length < MAX_PATH ? folder : nullptr);
     previous = SetUnhandledExceptionFilter(filter);
 }
 void setOutput(HANDLE handle) { output = handle ? handle : INVALID_HANDLE_VALUE; }
+void setDumpFolder(const wchar_t* folder) {
+    size_t i = 0;
+    if (folder) for (; folder[i] && i < MAX_PATH - 1; ++i) dumpFolder[i] = folder[i];
+    dumpFolder[i] = 0;
+}
 void armTestTrigger(const char* process) {
 #ifdef PUTGD_CRASH_TRIGGER
     char value[128]; const DWORD length = GetEnvironmentVariableA("PUTGD_TEST_CRASH", value, sizeof value);

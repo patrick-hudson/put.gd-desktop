@@ -404,8 +404,8 @@ HWND SettingsPageImpl::create(HWND parent) {
     debug_ = check(a, idDebug, L"Debug logging (turns itself off after 24 hours)");
     clearLogs_ = button(a, idClearLogs, L"Clear logs\x2026");
     theme::setRole(clearLogs_, theme::Role::Danger);
-    crashDumps_ = check(a, idCrashDumps, L"Save crash dumps (Windows Error Reporting)");
-    setTooltip(main_.tooltip(), crashDumps_, L"Windows writes a minidump to put.gd's crashdumps folder when put.gd crashes. Dumps stay on this PC and are never put in a diagnostics package.");
+    crashDumps_ = check(a, idCrashDumps, L"Save crash dumps");
+    setTooltip(main_.tooltip(), crashDumps_, L"When put.gd crashes it writes a minidump to its crashdumps folder. Dumps stay on this PC and are never put in a diagnostics package.");
     logsStatus_ = ui::label(a, L"");
     panels_[Advanced].markMuted(logsStatus_);
     uncleanExit_ = ui::label(a, L"");

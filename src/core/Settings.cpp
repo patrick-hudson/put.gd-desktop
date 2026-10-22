@@ -277,7 +277,7 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
     if (preferences.contains("diagnostics")) {
         // debugLogging, and the folder Create diagnostics package last saved to (#122).
         const auto diagnostics = preferences["diagnostics"].toObject();
-        // crashDumps is the Windows build's WER LocalDumps opt-in (#125); the Linux build accepts and ignores it.
+        // crashDumps is the Windows build's crash-dump opt-in (#125); the Linux build accepts and ignores it.
         const bool hasFolder = diagnostics.contains("packageFolder"), hasDumps = diagnostics.contains("crashDumps");
         QStringList expected{"debugLogging"};
         if (hasFolder) expected.append("packageFolder");

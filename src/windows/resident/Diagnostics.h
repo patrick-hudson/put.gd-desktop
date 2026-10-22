@@ -2,7 +2,7 @@
 // The resident's diagnostics service (docs/diagnostics.md): diagnostics.bundle
 // (preview, save, notify, upload with copyLink), diagnostics.uploadTarget,
 // diagnostics.reveal, and the settings it applies: log retention, the 24-hour
-// debug-logging limit and the WER LocalDumps registration. The package's
+// debug-logging limit and the crash-dump opt-in. The package's
 // contents and redaction are core/DiagnosticsPackage.h; this gathers the inputs
 // on the owner thread, builds and writes the package on a background thread,
 // and uploads it through OperationService::uploadDiagnostics.
