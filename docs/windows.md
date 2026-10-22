@@ -163,6 +163,53 @@ curated subset.
 Not verified here: DPI scaling above 100 %, multiple monitors, keyboard-only
 operation of the window, Windows 10, and a signed or packaged install.
 
+## Window commands, the History gallery and filters
+
+Draft pull request [#444](https://github.com/patrick-hudson/put.gd-desktop/pull/444)
+(issue #403) brings these Windows parts to the Linux contracts in [cli.md](cli.md),
+[ui-process-protocol.md](ui-process-protocol.md), [ui-process-state.md](ui-process-state.md)
+and [file-dialogs.md](file-dialogs.md):
+
+- `operation.cancel` with `itemId` stops one file of an active batch. Its provider
+  requests poll their own flag; the file ends `cancelled`, the others continue, and
+  Retry uploads the cancelled files again.
+- The resident forwards `ui.moveDestination`, `ui.diagnostics`, `ui.historySaveDiagnostics`
+  and `ui.fileDialog` to the open window as `command` frames
+  (`src/windows/common/Protocol.h`). The window answers on its own thread within the
+  10-second deadline and with the Linux error codes. `ui.viewState` returns the last
+  checkpoint's capture routing and appearance; open windows checkpoint 250 ms after a
+  change, and the same checkpoint restores the window when it opens again.
+- The choosers are the shell's own `IFileOpenDialog`/`IFileSaveDialog` (`backend: native`).
+  `open` shows one the way its button does, `inspect` reports it, and `cancel` closes it.
+  `editor.fileDialog` drives the editor's Save a copy… the same way.
+- History has a List | Gallery switch, More filters for a day range in your time zone
+  and a content type, Save as… for the retained file, and Save diagnostics for this
+  upload on a failed file. Settings → Shortcuts shows each action's effective binding
+  as Windows registered it.
+- Windows has no Create diagnostics package dialog yet, so `ui.diagnostics` covers the
+  debug-logging switch, Clear logs and Show in folder, and saves packages through
+  `ui.fileDialog diagnosticsFolder` (#443).
+
+![History as a gallery: the List | Gallery switch, a selected tile and Save as…](evidence/2026-10-22-windows-ui-403/01-history-gallery-light-annotated.png)
+
+![The gallery in the dark scheme](evidence/2026-10-22-windows-ui-403/02-history-gallery-dark-annotated.png)
+
+![More filters: today's PNG files](evidence/2026-10-22-windows-ui-403/03-history-filters-annotated.png)
+
+![A failed upload offers its diagnostics in place of Delete](evidence/2026-10-22-windows-ui-403/04-history-failed-row-annotated.png)
+
+![Settings → Shortcuts with each row's effective binding](evidence/2026-10-22-windows-ui-403/05-settings-shortcuts-bindings-annotated.png)
+
+Verified on 2026-10-22 in the same guest with build `26.1022.996-dev+g7c3928fcac2c`.
+The checks drove the window through the new methods from `putgd-cli` and over VNC,
+with wheel scrolling and selection changes by click and arrow key in both schemes.
+They covered every chooser opened, cancelled and chosen; per-item cancel on live S3
+(one file cut in flight and one cancelled while waiting, the operation `partial`,
+then Retry completed it); and `ui.viewState` across close and reopen. The full table
+is in #444; raw pictures and the CLI log are in the private
+`work/verification/2026-10-22-windows-ui-403/` folder. Not verified: `ui.diagnostics`
+`clearLogs` in the shared guest, and DPI above 100 %.
+
 ## Not available in this build
 
 | Gap | Issue |
@@ -171,6 +218,6 @@ operation of the window, Windows 10, and a signed or packaged install.
 | Shipping the Proton runtime with a Windows build | #408 |
 | Backblaze B2 destination | #409 |
 | Multipart uploads and files over the 5 GiB single-PUT limit | #402 |
-| Per-item cancellation, the `ui.*` window-driving methods, diagnostics upload, history gallery/date/MIME filters | #403 |
+| Uploading a diagnostics package, and the Create diagnostics package dialog behind `ui.diagnostics` | #125, #443 |
 | Packaging (portable zip, installer), VERSIONINFO, update installation, an MSVC CI job | #404 |
 | Following a system theme change while the window is open | #406 |
