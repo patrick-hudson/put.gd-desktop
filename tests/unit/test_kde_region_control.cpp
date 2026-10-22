@@ -1,4 +1,6 @@
 #include "platform/kde/KdeRegionProcess.h"
+#include "platform/kde/KdeCaptureCompose.h"
+#include "platform/kde/KdeRegionProtocol.h"
 #include <QCoreApplication>
 #include <QJsonDocument>
 #include <QtTest>
@@ -82,6 +84,44 @@ private slots:
   }
   Error e;auto encoded=kdeRegionLayout(frames(),e);auto row=encoded[0].toObject();row["pixels"]="forbidden";encoded[0]=row;
   QVERIFY(kdeRegionLayout(encoded,e).isEmpty());QVERIFY(e);
+ }
+ void dragEdgesAreHalfOpen_data() {
+  // KWin 6.6.6 positions for real tablet drags (#333). The lab's ceil(x*32768/w)
+  // ticks land just past each edge; the extent-1 mapping lands 0.7 px inside the
+  // end pixel, which nearest-edge rounding had turned into one extra pixel.
+  QTest::addColumn<QPointF>("press");QTest::addColumn<QPointF>("release");QTest::addColumn<QRectF>("expected");
+  QTest::newRow("lab-1120x680")<<QPointF(400.019531,200.027344)<<QPointF(1520.039062,880.003906)<<QRectF(400,200,1120,680);
+  QTest::newRow("extent-1-1120x680")<<QPointF(400.195312,200.160156)<<QPointF(1520.742188,880.761719)<<QRectF(400,200,1120,680);
+  QTest::newRow("extent-1-80x60")<<QPointF(400.195312,200.160156)<<QPointF(480.234375,260.210938)<<QRectF(400,200,80,60);
+  QTest::newRow("upward-left")<<QPointF(480.7,260.9)<<QPointF(400.2,200.1)<<QRectF(400,200,80,60);
+  QTest::newRow("exact-integers")<<QPointF(0,0)<<QPointF(1920,1080)<<QRectF(0,0,1920,1080);
+ }
+ void dragEdgesAreHalfOpen() {
+  QFETCH(QPointF,press);QFETCH(QPointF,release);QFETCH(QRectF,expected);
+  const QRectF selection=QRectF(kdeRegionEdge(press),kdeRegionEdge(release)).normalized();
+  QCOMPARE(selection,expected);
+  CaptureFrame frame;frame.identity="HDMI-A-1";frame.logicalRect=QRectF(0,0,1920,1080);frame.nativeRect=QRect(0,0,1920,1080);
+  frame.pixels=QImage(1920,1080,QImage::Format_ARGB32);frame.pixels.fill(Qt::white);
+  Error e;const auto image=composeKdeFrames({frame},selection,qint64(1)<<31,e);QVERIFY(!e);
+  QCOMPARE(image.size(),expected.size().toSize());
+ }
+ void fractionalScaleKeepsLogicalSize_data() {
+  QTest::addColumn<qreal>("scale");QTest::addColumn<QPointF>("press");QTest::addColumn<QPointF>("release");QTest::addColumn<QSize>("pixels");
+  // Edges on the native grid scale exactly; otherwise composeFrames rounds the
+  // native boundaries outwards, adding at most one native pixel per axis.
+  QTest::newRow("1.5-even")<<qreal(1.5)<<QPointF(400.4,200.3)<<QPointF(480.6,260.8)<<QSize(120,90);
+  QTest::newRow("1.5-odd")<<qreal(1.5)<<QPointF(401.4,201.3)<<QPointF(481.6,261.8)<<QSize(121,91);
+  QTest::newRow("1.25-aligned")<<qreal(1.25)<<QPointF(400.9,200.9)<<QPointF(480.9,260.9)<<QSize(100,75);
+  QTest::newRow("1.25-1120x680")<<qreal(1.25)<<QPointF(400.7,200.2)<<QPointF(1520.7,880.6)<<QSize(1400,850);
+ }
+ void fractionalScaleKeepsLogicalSize() {
+  QFETCH(qreal,scale);QFETCH(QPointF,press);QFETCH(QPointF,release);QFETCH(QSize,pixels);
+  const QSize native(qRound(1536*scale),qRound(864*scale));
+  CaptureFrame frame;frame.identity="HDMI-A-1";frame.logicalRect=QRectF(0,0,1536,864);frame.nativeRect=QRect(QPoint(0,0),native);frame.density=scale;
+  frame.pixels=QImage(native,QImage::Format_ARGB32);frame.pixels.fill(Qt::white);
+  const QRectF selection=QRectF(kdeRegionEdge(press),kdeRegionEdge(release)).normalized();
+  Error e;const auto image=composeKdeFrames({frame},selection,qint64(1)<<31,e);QVERIFY(!e);
+  QCOMPARE(image.size(),pixels);
  }
  void invalidSelectionIsRejected() {
   for(const auto& rectangle:{QRectF(0,0,0,20),QRectF(900,0,20,20),QRectF(-700,0,100,20),
