@@ -190,7 +190,7 @@ jobs:
           test_tmp="$(mktemp -d /tmp/pgci.XXXXXX)"
           python3 tools/ci/ctest_preflight.py --build build/dev --tmp "$test_tmp" --user putgd-ci
           chown -R putgd-ci:putgd-ci build/dev "$test_tmp"
-          runuser -u putgd-ci -- sh -ec 'id -u > build/dev/ctest-observed-uid; exec env TMPDIR="$1" python3 tools/ci/ctest_retry.py --ledger build/dev/flake-ledger.json --junit "$2" -- --preset dev --parallel 8 --resource-spec-file "$3"' _ "$test_tmp" "$PWD/build/dev/ctest-results.xml" "$PWD/tools/ci/ctest-resources.json"
+          runuser -u putgd-ci -- sh -ec 'id -u > build/dev/ctest-observed-uid; exec env TMPDIR="$1" python3 tools/ci/ctest_retry.py --ledger build/dev/flake-ledger.json --junit "$2" -- --preset dev --parallel 12 --resource-spec-file "$3"' _ "$test_tmp" "$PWD/build/dev/ctest-results.xml" "$PWD/tools/ci/ctest-resources.json"
       - name: Report flaky tests
         # Every test that passed only on its retry is listed in the job summary
         # and recorded in its `flaky-test` tracker issue.
