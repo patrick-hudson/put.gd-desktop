@@ -20,8 +20,8 @@ that upstream support position and the risk of service/interface changes. The
 migration date is provisional. Compatibility, artifact redistribution and actual
 service behavior still require the concrete checks below.
 
-The initial runtime scope remains Linux x86-64. Windows/macOS Proton runtimes,
-sync, mounts, recursive uploads, raw-content links, overwrite and remote deletion
+The initial runtime scope remains Linux x86-64. The native Windows app's runtime
+has its own gates ([Windows x64](#windows-x64)). macOS Proton runtimes, sync, mounts, recursive uploads, raw-content links, overwrite and remote deletion
 are outside this acceptance scope. Existing S3 and local-only behavior remains
 supported. Preserve the documented third-party identity, keychain isolation,
 create-only writes, fresh ownership checks and explicit recovery contracts.
@@ -204,7 +204,8 @@ was used in this work.
 Linux x86-64 Build and release jobs now explicitly provision the pinned helper,
 run its helper/compiled-protocol checks and enable `PUTGD_BUNDLE_PROTON`. The
 CMake default remains OFF for unsupported platforms and deliberate builds without
-Proton. Windows/macOS do not provision this Linux-only artifact. Packaged users
+Proton. macOS does not provision a runtime; Windows provisions its own
+cross-compiled helper ([Windows x64](#windows-x64)). Packaged users
 need no separate Bun, Node or Proton CLI.
 
 Native and AppImage audits require the exact provisioned runtime manifest,
@@ -262,6 +263,20 @@ hashes, supported-version evidence, and visible native functional/memory results
 on Cinnamon/X11 first, followed by GNOME/Wayland and KDE/Wayland. Observe the
 remaining general release requirements in [release.md](release.md) and
 [verification.md](verification.md); this feature audit does not close them.
+
+## Windows x64
+
+The native Windows app (#405) runs the same helper sources, cross-compiled with
+`provision_runtime.py --target windows-x64` against the locked `@oven/bun-windows-x64`
+1.4.2. Its gates, as of #408 (2026-10-22):
+
+| Gate | State | Evidence |
+| --- | --- | --- |
+| W-P3 notices | Complete for the recorded scope | `bun.exe` carries the Linux runtime's Bun, WebKit and TinyCC commits. Rerun for `x86_64-pc-windows-msvc`, the Linux Cargo derivation gives a 192-package subset of the Linux closure, and all 24 native recipes are enabled. Every component maps to the existing aggregate (`BUN-WINDOWS-SCOPE.json`). ICU 78.3's licence is added; the Linux set lacks it too ([#461](https://github.com/patrick-hudson/put.gd-desktop/issues/461)). |
+| W-P3 source and rebuild | Materials complete; native relink open | `SOURCES-WINDOWS.json` pins the helper `809832fa…` and the Bun package against the six P3 packets. Their published parts were re-verified on 2026-10-22, and the Bun packet holds the Windows inputs (ICU 78.3 source, libuv, `windows-*` crates, `Dockerfile.windows`). f44 and d69 reproduced the helper byte for byte. No Windows native relink yet ([#462](https://github.com/patrick-hudson/put.gd-desktop/issues/462)). |
+| W-P4 shipping pipeline | Wired; publication open | CI's `windows-packages` job provisions, binds `putgd.exe` and packages with `--require-proton`; the packager audits the folder. Windows release assets wait on [#446](https://github.com/patrick-hudson/put.gd-desktop/issues/446). |
+| W-P6 package acceptance | Install/uninstall verified | On w11b the MSI installed `proton\` and the resident reported `proton-drive` available. A replaced helper turned it unavailable (`proton_runtime_unavailable`); uninstall removed the folder. The portable zip was also available, and the manifest's target checks passed. Live account acceptance was earlier, on the lab build (`windows.md`). |
+| Microsoft runtime terms | Open, needs Patrick | `bun.exe` statically links Microsoft's C runtime (`/MT`) under Microsoft's terms ([#463](https://github.com/patrick-hudson/put.gd-desktop/issues/463)). |
 
 ## Maintenance procedure
 
