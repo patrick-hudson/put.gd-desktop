@@ -127,21 +127,28 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
 // line (their tooltip keeps it), the links and gaps close up; when even that doesn't
 // fit, the rail scrolls. The navigation list is as tall as its rows.
 void MainWindow::fitRail(){
- if(!railScroll_||fittingRail_)return;
+ if(!railScroll_)return;
+ // A resize while fitting (a scroll bar coming or going) asks for another pass.
+ if(fittingRail_){refitRail_=true;return;}
  fittingRail_=true;
- int rows=2*navigation_->frameWidth();for(int row=0;row<navigation_->count();++row)rows+=navigation_->sizeHintForRow(row);
- if(rows>0&&navigation_->height()!=rows)navigation_->setFixedHeight(rows);
- auto* box=railScroll_->widget()->layout();
- const auto needed=[box,width=railScroll_->viewport()->width()]{const int height=box->totalHeightForWidth(width);return height>0?height:box->totalSizeHint().height();};
- const int available=railScroll_->viewport()->height();
- if(!railCompact_){const int natural=needed();if(natural>available){setRailCompact(true);railSaving_=natural-needed();}}
- else if(needed()+railSaving_<=available)setRailCompact(false);
- // Scroll rather than squeeze: the stylesheet's minimum heights are below some
- // items' text (the version link's is 6 px), so a squeezed rail clipped them.
- // The scroll area applies a new minimum only on a later pass; until then the
- // layout would squeeze into the old height, so the content grows here.
- auto* content=railScroll_->widget();const int minimum=needed();content->setMinimumHeight(minimum);
- if(content->height()<minimum)content->resize(content->width(),minimum);
+ for(int pass=0;pass<3;++pass){
+  refitRail_=false;
+  int rows=2*navigation_->frameWidth();for(int row=0;row<navigation_->count();++row)rows+=navigation_->sizeHintForRow(row);
+  if(rows>0&&navigation_->height()!=rows)navigation_->setFixedHeight(rows);
+  auto* content=railScroll_->widget();auto* box=content->layout();
+  const auto needed=[box,width=railScroll_->viewport()->width()]{const int height=box->totalHeightForWidth(width);return height>0?height:box->totalSizeHint().height();};
+  const int available=railScroll_->viewport()->height();
+  if(!railCompact_){const int natural=needed();if(natural>available){setRailCompact(true);railSaving_=natural-needed();}}
+  else if(needed()+railSaving_<=available)setRailCompact(false);
+  // Scroll rather than squeeze: the stylesheet's minimum heights are below some
+  // items' text (the version link's is 6 px), so a squeezed rail clipped them.
+  // The scroll area applies a new minimum only on a later pass; until then the
+  // layout would squeeze into the old height, so the content grows here.
+  const int minimum=needed();content->setMinimumHeight(minimum);
+  if(content->height()<minimum)content->resize(content->width(),minimum);
+  box->activate();
+  if(!refitRail_)break;
+ }
  fittingRail_=false;
 }
 void MainWindow::setRailCompact(bool compact){

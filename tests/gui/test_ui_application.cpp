@@ -350,13 +350,19 @@ private slots:
   QVERIFY(update&&output&&navigation);PUTGD_TRY_VERIFY(update->isVisible());PUTGD_TRY_COMPARE(window.size(),size);QCOMPARE(output->text().count('\n'),2);
   auto* content=scroll?scroll->widget():window.findChild<QWidget*>("mainRail");QWidgetList items;for(auto* child:content->findChildren<QWidget*>(Qt::FindDirectChildrenOnly))if(child->isVisible())items<<child;
   QVERIFY(items.size()>=12);
-  if(scroll)PUTGD_TRY_VERIFY(content->height()>=content->heightForWidth(content->width()));
-  for(int i=0;i<items.size();++i){
-   auto* item=items[i];const int need=qMin(item->maximumHeight(),qMax(item->minimumHeight(),item->hasHeightForWidth()?item->heightForWidth(item->width()):item->minimumSizeHint().height()));
-   QVERIFY2(item->height()>=need,qPrintable(item->objectName()+" is squeezed"));
-   const auto where=[&](QWidget* w){return QString("%1 %2,%3 %4x%5").arg(w->objectName()).arg(w->x()).arg(w->y()).arg(w->width()).arg(w->height());};
-   for(int j=i+1;j<items.size();++j)QVERIFY2(!item->geometry().intersects(items[j]->geometry()),qPrintable(where(item)+" overlaps "+where(items[j])+QString(" in a %1x%2 rail (minimum %3, viewport %4x%5)").arg(content->width()).arg(content->height()).arg(content->minimumHeight()).arg(scroll?scroll->viewport()->width():0).arg(scroll?scroll->viewport()->height():0)));
-  }
+  // Qt lays out on posted events: wait until the rail settles, then report what is still wrong.
+  const auto where=[&](QWidget* w){return QString("%1 %2,%3 %4x%5").arg(w->objectName()).arg(w->x()).arg(w->y()).arg(w->width()).arg(w->height());};
+  const auto problem=[&]()->QString{
+   for(int i=0;i<items.size();++i){
+    auto* item=items[i];const int need=qMin(item->maximumHeight(),qMax(item->minimumHeight(),item->hasHeightForWidth()?item->heightForWidth(item->width()):item->minimumSizeHint().height()));
+    if(item->height()<need)return where(item)+QString(" is squeezed below %1").arg(need);
+    for(int j=i+1;j<items.size();++j)if(item->geometry().intersects(items[j]->geometry()))return where(item)+" overlaps "+where(items[j]);
+   }
+   return {};
+  };
+  QString found;const bool settled=putgd::test::waitFor([&]{found=problem();return found.isEmpty();});
+  QVERIFY2(settled,qPrintable(found+QString(" in a %1x%2 rail (minimum %3, viewport %4x%5, compact %6)").arg(content->width()).arg(content->height()).arg(content->minimumHeight())
+   .arg(scroll?scroll->viewport()->width():0).arg(scroll?scroll->viewport()->height():0).arg(window.findChild<QPushButton*>("captureRailButton")->property("compact").toBool())));
   QVERIFY(scroll);
   // The version's whole line shows, descent included, with room to spare (Patrick's clipped "nightly").
   QVERIFY2(version->height()>=version->fontMetrics().lineSpacing()+8,qPrintable(QString("version link %1 px for a %2 px line").arg(version->height()).arg(version->fontMetrics().lineSpacing())));
