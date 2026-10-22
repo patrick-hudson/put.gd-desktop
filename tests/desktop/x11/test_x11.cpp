@@ -201,10 +201,11 @@ private slots:
     if(reply&&reply->depth==32&&xcb_get_image_data_length(reply)>=w->width()*w->height()*4){image=QImage(xcb_get_image_data(reply),w->width(),w->height(),w->width()*4,QImage::Format_ARGB32).copy();}free(reply);return image;};
    QTest::mouseMove(w,QPoint(90,90));PUTGD_TRY_VERIFY(paints.count>0);
    QVERIFY(paints.painted.contains(w->rect()));QVERIFY(paints.painted.contains(QPoint(59,40)));QVERIFY(paints.painted.contains(QPoint(89,40)));
-   auto grown=backing();QVERIFY(!grown.isNull());QCOMPARE(grown.pixelColor(59,40).alpha(),0);QCOMPARE(grown.pixelColor(30,69).alpha(),0);QCOMPARE(grown.pixelColor(89,40),QColor(Qt::black));QCOMPARE(grown.pixelColor(88,40),QColor(Qt::white));
+   // The paint reaches the X server after Qt flushes it; wait for the frame there.
+   QImage grown;PUTGD_TRY_VERIFY(!(grown=backing()).isNull()&&grown.pixelColor(59,40).alpha()==0);QCOMPARE(grown.pixelColor(30,69).alpha(),0);QCOMPARE(grown.pixelColor(89,40),QColor(Qt::black));QCOMPARE(grown.pixelColor(88,40),QColor(Qt::white));
    paints.painted={};paints.count=0;QTest::mouseMove(w,QPoint(60,70));PUTGD_TRY_VERIFY(paints.count>0);
    QVERIFY(paints.painted.contains(w->rect()));QVERIFY(paints.painted.contains(QPoint(89,40)));QVERIFY(paints.painted.contains(QPoint(59,40)));
-   auto shrunk=backing();QVERIFY(!shrunk.isNull());QCOMPARE(shrunk.pixelColor(89,40).alpha(),0);QCOMPARE(shrunk.pixelColor(30,89).alpha(),0);QCOMPARE(shrunk.pixelColor(59,40),QColor(Qt::black));QCOMPARE(shrunk.pixelColor(58,40),QColor(Qt::white));
+   QImage shrunk;PUTGD_TRY_VERIFY(!(shrunk=backing()).isNull()&&shrunk.pixelColor(89,40).alpha()==0);QCOMPARE(shrunk.pixelColor(30,89).alpha(),0);QCOMPARE(shrunk.pixelColor(59,40),QColor(Qt::black));QCOMPARE(shrunk.pixelColor(58,40),QColor(Qt::white));
    w->removeEventFilter(&paints);xcb_disconnect(connection);
    QTest::mouseRelease(w,Qt::LeftButton,Qt::NoModifier,QPoint(60,70));QCOMPARE(selected,QRectF(10,20,50,50));QVERIFY(!surface());Error error;auto image=composeFrames({frame},selected,100000,error);QVERIFY(!error);QCOMPARE(image.size(),QSize(50,50));QCOMPARE(image.pixelColor(2,2),QColor(Qt::red));}
   const CaptureFrame native{"fixture",QRectF(30,40,10,8),QRect(30,40,10,8),1,0,{}};

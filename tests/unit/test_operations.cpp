@@ -206,13 +206,15 @@ private slots:
   QCOMPARE(source.copies,1);QCOMPARE(source.copied.text,QString("https://example.invalid/explicit-history"));for(const auto& id:ids){QCOMPARE(journal.operation(id).copyStatus,QString("suppressed"));QVERIFY(journal.operation(id).items.first().linkAvailable());}
  }
  void explicitActivityCopyCanOverrideACompletedListMember() {
-  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;registry.add("opaque",provider);
+  // The destination takes both uploads at once: with one slot, the second
+  // operation may store first and take it, and the first could not finish alone.
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;provider->concurrency=2;registry.add("opaque",provider);
   SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});auto doc=configuration(d.path());auto prefs=doc["preferences"].toObject();prefs["uploadClipboardBehavior"]="list";doc["preferences"]=prefs;QVERIFY(settings.save(doc,{}));Source source;source.payload=textPayload();
   OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());HistoryStore journal(operations.databasePath());
-  auto drain=qScopeGuard([&]{provider->deferUploads=false;for(auto complete:provider->completions)complete();provider->completions.clear();});QStringList ids;bool firstSettled=false;
-  connect(&operations,&OperationService::changed,this,[&](const QString& id){if(!ids.isEmpty()&&id==ids.first()&&journal.operation(id).state=="completed")firstSettled=true;});
+  auto drain=qScopeGuard([&]{provider->deferUploads=false;for(auto complete:provider->completions)complete();provider->completions.clear();});QStringList ids;
   for(int i=0;i<2;++i){QString id;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});PUTGD_TRY_VERIFY(!id.isEmpty());PUTGD_TRY_COMPARE(source.reads,i+1);ids.append(id);}
-  PUTGD_TRY_COMPARE(provider->completions.size(),1);provider->completions.takeFirst()();PUTGD_TRY_VERIFY(firstSettled);QCOMPARE(source.copies,0);
+  PUTGD_TRY_COMPARE(provider->completions.size(),2);const qsizetype firstIndex=provider->requests[0].artifact.path.contains(ids[0])?0:1;QVERIFY(provider->requests[firstIndex].artifact.path.contains(ids[0]));
+  provider->requests.removeAt(firstIndex);provider->completions.takeAt(firstIndex)();PUTGD_TRY_COMPARE(journal.operation(ids[0]).state,QString("completed"));QCOMPARE(source.copies,0);
   // The upload worker journals `completed` (and a coalesced observation may
   // report it) before finish() hands the member to its list. Until then the
   // service still owns the operation and refuses without side effects, so ask
@@ -236,8 +238,14 @@ private slots:
   auto drain=qScopeGuard([&]{provider->deferUploads=false;for(auto complete:provider->completions)complete();provider->completions.clear();});QStringList ids;
   for(int i=0;i<3;++i){QString id;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});PUTGD_TRY_VERIFY(!id.isEmpty());PUTGD_TRY_COMPARE(source.reads,i+1);ids.append(id);}
   operations.cancel(ids[2],[](Error e,QJsonObject){QVERIFY(!e);});PUTGD_TRY_COMPARE(journal.operation(ids[2]).state,QString("cancelled"));
-  PUTGD_TRY_COMPARE(provider->completions.size(),1);provider->completions.takeFirst()();PUTGD_TRY_COMPARE(journal.operation(ids[0]).state,QString("completed"));
-  PUTGD_TRY_COMPARE(provider->completions.size(),1);provider->failUpload=true;provider->completions.takeFirst()();PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+  // The two uploads share one slot, which either operation may store first and
+  // take (as in queuedUploadsCopyEveryLink): the first operation's upload
+  // succeeds and the second's fails, in whichever order they reach it.
+  for(int i=0;i<2;++i){
+   PUTGD_TRY_COMPARE(provider->completions.size(),1);const bool second=provider->requests.last().artifact.path.contains(ids[1]);QVERIFY(second||provider->requests.last().artifact.path.contains(ids[0]));
+   provider->failUpload=second;provider->completions.takeFirst()();PUTGD_TRY_COMPARE(journal.operation(ids[second?1:0]).state,QString(second?"partial":"completed"));
+  }
+  PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
   QCOMPARE(source.copies,1);QCOMPARE(source.copied.text,journal.operation(ids[0]).items.first().receipt.directUrl);QCOMPARE(journal.operation(ids[0]).copyStatus,QString("copied"));
   QCOMPARE(journal.operation(ids[1]).state,QString("partial"));QCOMPARE(journal.operation(ids[1]).copyStatus,QString("no_result"));QCOMPARE(journal.operation(ids[2]).copyStatus,QString("no_result"));QCOMPARE(provider->uploads.load(),2);
  }

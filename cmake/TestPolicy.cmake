@@ -39,12 +39,22 @@ foreach(test IN LISTS putgd_tests)
   endif()
 endforeach()
 
-# CPU-bound tests share the runner's cores. With a resource spec such as
-# tools/ci/ctest-resources.json, CTest runs only that many of them at once
-# while mostly idle tests keep the remaining slots.
-foreach(test collision_policy_integration edit_operations_integration editor_contract
-    history_contract s3_delete_integration s3_integration s3_multipart_integration version_contract)
+# CPU-bound tests share the runner's cores. tools/ci/ctest_cpu_profile.py ran
+# every test alone on a four-core builder (k72, 2026-10-22): 102 tests used
+# 261 s of CPU in 822 s, a third of a core on average. A test that keeps at
+# least half a core busy for two seconds or more joins the `cpu` pool, with
+# one slot per core it uses (export_av_sync_contract: 1.7 cores, two slots).
+# With tools/ci/ctest-resources.json (three slots) CTest runs at most three
+# cores' worth of them at once while the mostly idle tests keep the rest.
+# Without a resource spec, as in a plain local `ctest`, this has no effect.
+foreach(test b2_integration collision_policy_integration diagnostics_bundle_contract
+    edit_operations_integration editor_contract history_contract image_job_integration
+    poster_job_integration s3_delete_integration s3_integration s3_multipart_integration
+    ui_native_lifecycle_integration version_contract)
   if(TEST ${test})
     set_tests_properties(${test} PROPERTIES RESOURCE_GROUPS "cpu:1")
   endif()
 endforeach()
+if(TEST export_av_sync_contract)
+  set_tests_properties(export_av_sync_contract PROPERTIES RESOURCE_GROUPS "cpu:2")
+endif()
