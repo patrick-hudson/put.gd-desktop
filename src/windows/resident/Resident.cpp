@@ -7,7 +7,9 @@ Loop::Loop() {
     threadId_ = GetCurrentThreadId();
     WNDCLASSW wc{}; wc.lpfnWndProc = &Loop::procedure; wc.hInstance = GetModuleHandleW(nullptr); wc.lpszClassName = L"putgd.resident.loop";
     RegisterClassW(&wc);
-    hwnd_ = CreateWindowExW(0, wc.lpszClassName, L"put.gd", 0, 0, 0, 0, 0, HWND_MESSAGE, nullptr, wc.hInstance, nullptr);
+    // A hidden top-level window, never shown: a message-only window gets no
+    // WM_QUERYENDSESSION/WM_ENDSESSION, no TaskbarCreated and no WM_CLOSE from taskkill.
+    hwnd_ = CreateWindowExW(WS_EX_TOOLWINDOW, wc.lpszClassName, L"put.gd", WS_POPUP, 0, 0, 0, 0, nullptr, nullptr, wc.hInstance, nullptr);
     SetWindowLongPtrW(hwnd_, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
 }
 void Loop::post(std::function<void()> fn) {
@@ -41,6 +43,7 @@ LRESULT CALLBACK Loop::procedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
     }
     LRESULT result = 0;
     if (self->hook_ && self->hook_(message, wParam, lParam, result)) return result;
+    if (message == WM_CLOSE) return 0; // the loop window is never destroyed by a close request
     return DefWindowProcW(hwnd, message, wParam, lParam);
 }
 int Loop::run() {

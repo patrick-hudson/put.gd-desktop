@@ -30,6 +30,16 @@ option(PUTGD_WINDOWS_PORTABLE_TESTS "Build the portable core and its tests on th
 # from the commit date and count) through the same generator the Linux build uses.
 set(PUTGD_SOURCE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../..")
 set(PUTGD_RELEASE_TAG "" CACHE STRING "Exact clean Git release tag: vYY.MDD.N or vYY.MDD.N-nightly")
+# PUTGD_TEST_CRASH (common/Crash.h) exists only in development builds, as on Linux.
+if(PUTGD_RELEASE_TAG OR CMAKE_BUILD_TYPE MATCHES "^(Release|MinSizeRel|RelWithDebInfo)$")
+  set(_crash_trigger_default OFF)
+else()
+  set(_crash_trigger_default ON)
+endif()
+option(PUTGD_CRASH_TRIGGER "Development crash trigger (PUTGD_TEST_CRASH)" ${_crash_trigger_default})
+if(PUTGD_CRASH_TRIGGER AND PUTGD_RELEASE_TAG)
+  message(FATAL_ERROR "PUTGD_CRASH_TRIGGER is for development builds; a release tag cannot have it")
+endif()
 set(_identity_dir "${CMAKE_CURRENT_BINARY_DIR}/build-identity")
 execute_process(COMMAND "${CMAKE_COMMAND}" "-DSOURCE_DIR=${PUTGD_SOURCE_ROOT}" "-DOUTPUT_DIR=${_identity_dir}" "-DRELEASE_TAG=${PUTGD_RELEASE_TAG}"
   "-DSUPPLIED_COMMIT=" "-DSUPPLIED_TREE=" "-DSUPPLIED_COUNT=" "-DSUPPLIED_TIME=" -P "${PUTGD_SOURCE_ROOT}/cmake/GenerateBuildInfo.cmake" RESULT_VARIABLE _identity_result)
@@ -64,7 +74,8 @@ endif()
 
 # Portable core: no Windows headers. Tested on Linux and used by every executable.
 add_library(putgd_win_core STATIC
-  common/Json.cpp common/Text.cpp common/Shortcut.cpp common/Sha256.cpp
+  common/Json.cpp common/Text.cpp common/Shortcut.cpp common/Sha256.cpp common/Redact.cpp
+  core/LogFormat.cpp core/CrashRecord.cpp core/UncleanExit.cpp core/Zip.cpp core/DiagnosticsPackage.cpp
   core/Settings.cpp core/Naming.cpp core/Operation.cpp core/SettingsPatch.cpp core/S3Settings.cpp core/SanitizedPng.cpp core/ProtonSettings.cpp
   s3/SigV4.cpp)
 target_link_libraries(putgd_win_core PUBLIC putgd_win_options)
@@ -80,20 +91,26 @@ if(PUTGD_WINDOWS_PORTABLE_TESTS)
   add_executable(test_win_editor tests/test_editor.cpp editor/EditDocument.cpp editor/EditorCommands.cpp editor/Export.cpp)
   target_link_libraries(test_win_editor PRIVATE putgd_win_core)
   add_test(NAME windows_editor_contract COMMAND test_win_editor)
+  add_executable(test_win_diagnostics tests/test_diagnostics.cpp)
+  target_link_libraries(test_win_diagnostics PRIVATE putgd_win_core)
+  add_test(NAME windows_diagnostics_contract COMMAND test_win_diagnostics)
 endif()
 
 if(WIN32)
   # Win32 platform layer shared by the resident, helpers and CLI.
   add_library(putgd_win_platform STATIC
     common/Paths.cpp common/Files.cpp common/Process.cpp common/Frames.cpp common/Pipe.cpp
-    common/Log.cpp common/Sqlite.cpp common/Uuid.cpp)
+    common/Log.cpp common/Crash.cpp common/Sqlite.cpp common/Uuid.cpp)
   target_link_libraries(putgd_win_platform PUBLIC putgd_win_core shlwapi shell32 ole32 bcrypt advapi32 userenv uuid)
+  if(PUTGD_CRASH_TRIGGER)
+    target_compile_definitions(putgd_win_platform PRIVATE PUTGD_CRASH_TRIGGER=1)
+  endif()
 
   add_executable(putgd WIN32
     resident/main.cpp resident/App.cpp resident/Resident.cpp resident/Tray.cpp resident/Hotkeys.cpp resident/Clipboard.cpp
     resident/Session.cpp resident/SettingsService.cpp resident/HistoryStore.cpp resident/Artifacts.cpp
     resident/OperationService.cpp resident/HistoryService.cpp resident/SetupService.cpp resident/CredentialStore.cpp
-    resident/LoginStartup.cpp resident/Helpers.cpp resident/S3Provider.cpp resident/ProtonProvider.cpp resident/UpdateService.cpp resident/UiProcess.cpp
+    resident/LoginStartup.cpp resident/Diagnostics.cpp resident/RunMarker.cpp resident/CrashDumps.cpp resident/Environment.cpp resident/Helpers.cpp resident/S3Provider.cpp resident/ProtonProvider.cpp resident/UpdateService.cpp resident/UiProcess.cpp
     s3/S3Worker.cpp s3/WinHttp.cpp
     capture/CaptureMain.cpp capture/Overlay.cpp capture/Grab.cpp capture/Png.cpp capture/ImageJob.cpp
     ui/UiMain.cpp ui/MainWindow.cpp ui/SettingsPage.cpp ui/DestinationsPage.cpp ui/HistoryPage.cpp ui/UiSession.cpp ui/Controls.cpp ui/Theme.cpp

@@ -41,25 +41,25 @@ SyncResult runSynchronous(const std::string& role, const std::vector<std::string
     const auto nonce = uuid::create();
     std::string failure;
     if (!handshake(*child, role, std::move(bootstrap), nonce, startupMs, failure)) {
-        child->terminate();
+        child->terminate(failure);
         result.error = {failure, "The " + role + " helper did not start correctly", {}};
         return result;
     }
-    if (!firstType.empty() && !child->channel->send(firstType, firstPayload)) { child->terminate(); result.error = {"helper_pipe", "Cannot send the request to the " + role + " helper", {}}; return result; }
+    if (!firstType.empty() && !child->channel->send(firstType, firstPayload)) { child->terminate("helper_pipe"); result.error = {"helper_pipe", "Cannot send the request to the " + role + " helper", {}}; return result; }
     const ULONGLONG start = GetTickCount64();
     bool cancelSent = false;
     while (true) {
         if (cancel && cancel->load() && !cancelSent) { child->channel->send("cancel"); cancelSent = true; }
         const auto elapsed = GetTickCount64() - start;
-        if (elapsed >= ULONGLONG(totalMs)) { child->terminate(); result.error = {"helper_timeout", "The " + role + " helper exceeded its time budget", {}}; return result; }
+        if (elapsed >= ULONGLONG(totalMs)) { child->terminate("helper_timeout"); result.error = {"helper_timeout", "The " + role + " helper exceeded its time budget", {}}; return result; }
         protocol::Frame frame; std::string error;
         const int wait = int(std::min<ULONGLONG>(ULONGLONG(silenceMs), ULONGLONG(totalMs) - elapsed));
         if (!child->channel->receive(frame, wait, &error)) {
             if (error == "timeout") {
                 if (cancel && cancel->load() && !cancelSent) continue;
-                child->terminate(); result.error = {"helper_silent", "The " + role + " helper stopped responding", {}}; return result;
+                child->terminate("helper_silent"); result.error = {"helper_silent", "The " + role + " helper stopped responding", {}}; return result;
             }
-            child->terminate(); result.error = {"helper_" + error, "The " + role + " helper failed its control channel", {}}; return result;
+            child->terminate("helper_" + error); result.error = {"helper_" + error, "The " + role + " helper failed its control channel", {}}; return result;
         }
         if (frame.type == "heartbeat" || frame.type == "log") { if (frame.type == "log") log::debug(role, frame.payload.value("message").toString().substr(0, 512)); continue; }
         if (frame.type == "checkpoint" && role != "s3") {
@@ -73,12 +73,12 @@ SyncResult runSynchronous(const std::string& role, const std::vector<std::string
         }
         if (frame.type == "result") { result.result = frame.payload; child->channel->send("resultAccepted"); break; }
         if (onFrame && onFrame(frame, *child->channel)) continue;
-        child->terminate(); result.error = {"helper_protocol", "The " + role + " helper sent an unexpected frame", {{"type", frame.type}}}; return result;
+        child->terminate("helper_protocol"); result.error = {"helper_protocol", "The " + role + " helper sent an unexpected frame", {{"type", frame.type}}}; return result;
     }
     child->channel->close();
     result.normalExit = child->waitExit(5000) && child->exitCode() == 0;
     result.exitCode = child->exitCode();
-    if (!result.normalExit) { child->terminate(); if (!result.error) result.error = {"helper_exit", "The " + role + " helper did not exit normally", {{"exitCode", double(result.exitCode)}}}; }
+    if (!result.normalExit) { child->terminate("helper_exit"); if (!result.error) result.error = {"helper_exit", "The " + role + " helper did not exit normally", {{"exitCode", double(result.exitCode)}}}; }
     return result;
 }
 
@@ -111,7 +111,7 @@ void Supervised::start(json::Object bootstrap, int startupMs, Frame onFrame, Exi
         const auto nonce = uuid::create();
         std::string failure;
         if (!handshake(*state->child, state->role, bootstrap, nonce, startupMs, failure)) {
-            state->child->terminate();
+            state->child->terminate(failure);
             Loop::instance().post([state, failure] { state->finish(-1, false, failure); });
             return;
         }
@@ -121,8 +121,7 @@ void Supervised::start(json::Object bootstrap, int startupMs, Frame onFrame, Exi
             if (watchdog) state->watchdog = Loop::instance().startTimer(5000, [state] {
                 if (state->exited || !state->child) return;
                 if (GetTickCount64() - state->lastFrame.load() > ULONGLONG(protocol::silenceMs) && state->child->running()) {
-                    log::warning(state->role, "Helper silent; terminating", {{"pid", double(state->child->pid)}});
-                    state->child->terminate();
+                    state->child->terminate("helper_silent");
                 }
             });
             if (ready) ready();
@@ -152,7 +151,7 @@ unsigned long Supervised::pid() const { return state_->child ? state_->child->pi
 void Supervised::terminate(const std::string& reason) {
     auto state = state_;
     state->stopping = true;
-    if (state->child) { state->child->terminate(); if (state->child->channel) state->child->channel->close(); }
+    if (state->child) { state->child->terminate(reason); if (state->child->channel) state->child->channel->close(); }
     if (state->reader.joinable()) { if (state->reader.get_id() == std::this_thread::get_id()) state->reader.detach(); else state->reader.join(); }
     if (Loop::instance().ownerThread()) state->finish(-1, false, reason);
     else Loop::instance().post([state, reason] { state->finish(-1, false, reason); });

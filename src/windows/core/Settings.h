@@ -36,7 +36,7 @@ struct Settings {
     int failedArtifactDays = 7, recentActivityLimit = 100;
     long long previewCacheBytes = 268435456LL;
     int historyRetentionDays = 0;
-    int logDays = 14; long long logBytes = 52428800LL; bool debugLogging = false;
+    int logDays = 14; long long logBytes = 52428800LL; bool debugLogging = false, crashDumps = false;
     std::string uploadClipboardBehavior = "each_link";
     std::string appearanceTheme = "system";
     bool notifications = true, launchAtLogin = false, unlockCredentialsAtStartup = true;

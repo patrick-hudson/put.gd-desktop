@@ -6,6 +6,7 @@
 #include "common/Sqlite.h"
 #include "core/Operation.h"
 #include "resident/Provider.h"
+#include <optional>
 #include <set>
 #include <vector>
 
@@ -24,6 +25,10 @@ public:
     HistoryPage list(const HistoryQuery&) const;
     json::Object detail(const std::string& id, Error* = nullptr) const;
     json::Array recent(int limit, Error* = nullptr) const;
+    // Operations created at or after `from` in one of `states`, newest first (diagnostics packages).
+    std::vector<Operation> operationsSince(const std::string& from, const std::vector<std::string>& states, int limit, Error* = nullptr) const;
+    // The newest finished upload to a destination (the diagnostics upload's working check).
+    std::optional<Operation> lastUpload(const std::string& profileId, Error* = nullptr) const;
     Error expireBefore(const std::string& timestamp);
     Error clear(); // preserves identities retained by in-progress deletion
     Error saveDeletion(const json::Object&);

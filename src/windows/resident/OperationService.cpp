@@ -5,6 +5,7 @@
 #include "common/Paths.h"
 #include "common/Text.h"
 #include "common/Uuid.h"
+#include "core/DiagnosticsPackage.h"
 #include "core/Naming.h"
 #include "core/SanitizedPng.h"
 #include "resident/Resident.h"
@@ -170,10 +171,11 @@ void OperationService::invoke(const std::string& action, const json::Object& opt
 void OperationService::acceptOperation(Operation op, const std::string& source, const std::string& sourcePath, bool upload, JsonReply reply) {
     auto flag = std::make_shared<std::atomic_bool>(false);
     active_[op.id] = flag;
-    const bool interactive = source != "clipboard" && source != "file";
+    const bool interactive = source != "clipboard" && source != "file" && source != diagnostics::operationAction;
     if (interactive) selectingId_ = op.id;
     if (op.action == "edit") editingId_ = op.id;
-    if (upload) { UploadCopy copy; copy.mode = settings_.snapshot().uploadClipboardBehavior; copy.clipboardRevision = op.clipboardRevision; copy.epoch = copyEpoch_; uploadCopies_[op.id] = copy; }
+    // A diagnostics package's link is copied only when asked for (diagnostics.bundle copyLink).
+    if (upload && op.action != diagnostics::operationAction) { UploadCopy copy; copy.mode = settings_.snapshot().uploadClipboardBehavior; copy.clipboardRevision = op.clipboardRevision; copy.epoch = copyEpoch_; uploadCopies_[op.id] = copy; }
     notifyActivity();
     const auto id = op.id;
     background([this, op](Error& e) { HistoryStore store(root_, paths_db_); e = store.saveOperation(op); return op.publicJson(); }, [this, op, flag, reply, source, sourcePath](Error e, json::Object result) mutable {
@@ -210,6 +212,11 @@ void OperationService::acquireSource(Operation op, const std::string& source, co
     if (source == "file") {
         Payload payload; payload.kind = "files"; payload.files = {sourcePath};
         startEditing(std::move(op), std::move(payload), flag);
+        return;
+    }
+    if (source == diagnostics::operationAction) {
+        Payload payload; payload.kind = "files"; payload.files = {sourcePath};
+        enqueue({std::move(op), std::move(payload), true, flag});
         return;
     }
     startCapture(std::move(op), source, flag);
@@ -396,7 +403,11 @@ Operation OperationService::run(Job job) {
     if (job.cancelled->load()) { op.cancelled = true; op.state = "cancelled"; save(); return op; }
     const auto settings = Settings::fromValidated(op.settingsDocument);
     const auto route = settings.action(op.action);
-    const bool local = route.destination == "local" || route.profileId.empty();
+    // A diagnostics upload has no action route: it goes to the destination it names,
+    // is never archived a second time, and a name clash renames, never overwrites.
+    const bool diagnosticsUpload = op.action == diagnostics::operationAction;
+    const bool local = !diagnosticsUpload && (route.destination == "local" || route.profileId.empty());
+    const std::string collisionPolicy = diagnosticsUpload ? "rename" : settings.collisionPolicy;
     auto provider = local ? nullptr : providers_.find(op.destination.providerId);
     if (job.acquire) {
         op.phase = "preparing"; if (!save()) return op;
@@ -410,7 +421,7 @@ Operation OperationService::run(Job job) {
         log::info("operations", "Artifacts acquired", {{"operationId", op.id}, {"items", double(op.items.size())}});
     }
     op.phase = "saving_local";
-    for (auto& item : op.items) if ((local || settings.archive.keepUploads) && item.local.status != "saved") {
+    for (auto& item : op.items) if (!diagnosticsUpload && (local || settings.archive.keepUploads) && item.local.status != "saved") {
         item.phase = "saving_local"; observe(op.publicJson());
         item.local = saveLocalCopy(item.artifact, settings.archive); item.phase = "stored";
         if (!saveItem(item)) return op;
@@ -425,12 +436,14 @@ Operation OperationService::run(Job job) {
     const auto capabilities = provider->capabilities(op.destination);
     auto publicationMode = route.publicationMode; if (publicationMode == "default") publicationMode = provider->defaultPublicationMode(op.destination);
     if (publicationMode == "private" && !capabilities.privateUploads) { op.error = {"unsupported_capability", "This provider cannot perform a private upload", {}}; op.state = "failed"; save(); return op; }
-    if (!capabilities.conditionalCreate || (settings.collisionPolicy == "overwrite" && !capabilities.conditionalReplace)) { op.error = {"unsupported_capability", "Provider cannot enforce this collision policy", {}}; op.state = "failed"; save(); return op; }
+    if (!capabilities.conditionalCreate || (collisionPolicy == "overwrite" && !capabilities.conditionalReplace)) { op.error = {"unsupported_capability", "Provider cannot enforce this collision policy", {}}; op.state = "failed"; save(); return op; }
     bool needsNames = job.acquire; for (const auto& item : op.items) if (!Operation::terminalUpload(item.uploadStatus) && item.candidate.empty()) needsNames = true;
     if (needsNames) {
         std::vector<Artifact> list; for (const auto& item : op.items) list.push_back(item.artifact);
         std::vector<std::string> uuids; for (size_t i = 0; i < list.size() * 2 + 2; ++i) uuids.push_back(uuid::create());
-        auto names = naming::batch(list, settings.namingMode, settings.collisionPolicy, uuids, capabilities.maximumNameBytes);
+        auto names = naming::batch(list, settings.namingMode, collisionPolicy, uuids, capabilities.maximumNameBytes);
+        // A diagnostics package ignores naming templates: an unguessable name.
+        if (diagnosticsUpload) for (auto& name : names) name = {"putgd-diagnostics-" + uuid::create() + ".zip", "pending"};
         for (size_t i = 0; i < op.items.size(); ++i) { if (!op.items[i].candidate.empty()) continue; op.items[i].candidate = names[i].name; if (names[i].status != "pending") op.items[i].uploadStatus = names[i].status; }
         if (!save()) return op;
     }
@@ -447,8 +460,8 @@ Operation OperationService::run(Job job) {
         for (int attempts = 0; attempts < 32; ++attempts) {
             ++storageRequests_; auto check = provider->checkName(op.destination, item.candidate, job.cancelled); --storageRequests_;
             if (check.error || check.status == "inconclusive" || check.objectReference.empty()) { item.error = check.error ? check.error : Error{"existence_unknown", "Name availability is inconclusive", {}}; item.uploadStatus = "failed"; break; }
-            if (check.status == "present" && settings.collisionPolicy == "skip") { item.uploadStatus = "skipped"; break; }
-            if (check.status == "present" && settings.collisionPolicy == "rename") { item.candidate = naming::renamedCandidate(item.candidate, uuid::create(), capabilities.maximumNameBytes); if (!saveItem(item)) return op; continue; }
+            if (check.status == "present" && collisionPolicy == "skip") { item.uploadStatus = "skipped"; break; }
+            if (check.status == "present" && collisionPolicy == "rename") { item.candidate = naming::renamedCandidate(item.candidate, uuid::create(), capabilities.maximumNameBytes); if (!saveItem(item)) return op; continue; }
             item.objectReference = check.objectReference; item.concurrencyToken = check.concurrencyToken; item.condition = check.status == "present" ? "match" : "absent";
             if (item.condition == "match" && item.concurrencyToken.empty()) { item.error = {"precondition_missing", "Provider returned no replacement precondition", {}}; item.uploadStatus = "failed"; break; }
             item.uploadStatus = "stored"; targets[json::serialize(item.objectReference)].push_back(index); checked = true; break;
@@ -457,8 +470,8 @@ Operation OperationService::run(Job job) {
         if (!saveItem(item)) return op;
     }
     for (const auto& group : targets) if (group.second.size() > 1) {
-        if (settings.collisionPolicy == "overwrite") for (auto i : group.second) op.items[i].uploadStatus = "conflict";
-        else if (settings.collisionPolicy == "skip") for (size_t n = 1; n < group.second.size(); ++n) op.items[group.second[n]].uploadStatus = "skipped";
+        if (collisionPolicy == "overwrite") for (auto i : group.second) op.items[i].uploadStatus = "conflict";
+        else if (collisionPolicy == "skip") for (size_t n = 1; n < group.second.size(); ++n) op.items[group.second[n]].uploadStatus = "skipped";
         else for (size_t n = 1; n < group.second.size(); ++n) { auto& item = op.items[group.second[n]]; item.uploadStatus = "failed"; item.error = {"name_alias_conflict", "Provider candidates resolve to one target", {}}; }
     }
     if (!save()) return op;
@@ -482,16 +495,23 @@ Operation OperationService::run(Job job) {
             auto progress = [this, &op, index](const UploadProgress& p) { op.items[index].uploadProgress = p; op.items[index].phase = p.phase; observe(op.publicJson()); };
             ++storageRequests_; notifyActivity();
             request.candidate = item.candidate; request.condition = item.condition; request.objectReference = item.objectReference; request.concurrencyToken = item.concurrencyToken;
+            log::info("operations", "Upload attempt", {{"operationId", op.id}, {"itemId", item.artifact.id}, {"attempt", attempts + 1}, {"name", item.candidate}, {"bytes", double(item.artifact.bytes)}, {"mime", item.artifact.mime}});
+            const auto attemptStart = GetTickCount64();
             auto result = provider->upload(request, progress, job.cancelled);
             --storageRequests_; notifyActivity();
             item.uploadProgress.reset();
+            {
+                json::Object fields{{"operationId", op.id}, {"itemId", item.artifact.id}, {"status", result.status}, {"elapsedMs", double(GetTickCount64() - attemptStart)}, {"uncertain", result.status == "unknown"}};
+                if (result.error) fields["error"] = result.error.toJson();
+                log::write(result.status == "uploaded" ? log::Level::Info : log::Level::Warning, "operations", result.status == "uploaded" ? "Upload finished" : result.status == "collision" ? "Upload name collision" : "Upload failed", fields);
+            }
             if (result.status == "uploaded") {
                 if (result.receipt.validate() || result.receipt.publicationId != item.publicationId) { item.uploadStatus = "unknown"; item.phase = "unknown"; item.error = {"receipt_invalid", "Provider returned an unusable receipt", {}}; break; }
                 item.receipt = result.receipt; item.uploadStatus = "uploaded"; item.phase = "uploaded"; item.error = {}; break;
             }
             if (result.status == "collision") {
-                if (settings.collisionPolicy == "skip") { item.uploadStatus = "skipped"; item.phase = "skipped"; break; }
-                if (settings.collisionPolicy == "rename") {
+                if (collisionPolicy == "skip") { item.uploadStatus = "skipped"; item.phase = "skipped"; break; }
+                if (collisionPolicy == "rename") {
                     item.candidate = naming::renamedCandidate(item.candidate, uuid::create(), capabilities.maximumNameBytes);
                     ++storageRequests_; auto check = provider->checkName(op.destination, item.candidate, job.cancelled); --storageRequests_;
                     if (check.error || check.status != "absent") { item.uploadStatus = "failed"; item.phase = "failed"; item.error = check.error ? check.error : Error{"collision_exhausted", "No available candidate after the collision", {}}; break; }
@@ -515,6 +535,8 @@ Operation OperationService::run(Job job) {
         if (!item.receipt.directUrl.empty()) continue;
         op.phase = "sharing"; item.phase = "sharing"; if (!saveItem(item)) return op;
         const auto shareId = uuid::create();
+        // A diagnostics package's share link expires.
+        if (diagnosticsUpload && item.shareIntentOptions.empty()) item.shareIntentOptions = {{"expirationDays", diagnostics::shareDays}};
         json::Object doc{{"id", shareId}, {"historyId", item.artifact.id}, {"action", item.shareStatus == "unknown" ? "inspect" : "create"}, {"state", "running"}, {"status", "pending"}, {"receipt", item.receipt.toJson()}, {"progress", json::Object{}}, {"options", item.shareIntentOptions}};
         if (auto e = store.saveSharing(doc)) { item.error = e; op.state = "partial"; saveItem(item); return op; }
         auto checkpoint = [this, &doc](const json::Object& progress) -> Error { auto proposed = doc; proposed["progress"] = progress; HistoryStore durable(root_, paths_db_); const auto e = durable.saveSharing(proposed); if (!e) doc = std::move(proposed); return e; };
@@ -553,7 +575,8 @@ void OperationService::finish(Operation op, JsonReply reply) {
     if (selectingId_ == op.id) selectingId_.clear();
     op.phase = op.state;
     if ((op.cancelled || op.state == "failed" || op.state == "interrupted") && op.copyStatus == "pending") op.copyStatus = "no_result";
-    performCopy(op, false, {});
+    if (op.action == diagnostics::operationAction) { if (op.copyStatus == "pending") op.copyStatus = "suppressed"; }
+    else performCopy(op, false, {});
     background([this, op](Error& e) { HistoryStore store(root_, paths_db_); e = store.saveOperation(op, &providers_); return e ? json::Object{} : store.operation(op.id, &e).toJson(); }, [this, id = op.id, reply](Error e, json::Object document) {
         clearObservation(id);
         if (onChanged) onChanged(id);
@@ -561,12 +584,36 @@ void OperationService::finish(Operation op, JsonReply reply) {
         uploadCopies_.erase(id);
         if (e) { log::error("history", "Cannot record the operation result", {{"operationId", id}, {"code", e.code}}); releaseActive(id); if (reply) reply(e, {}); return; }
         const auto finished = Operation::fromJson(document);
-        log::info("operations", "Operation finished", {{"operationId", finished.id}, {"action", finished.action}, {"state", finished.state}, {"items", double(finished.items.size())}, {"error", finished.error.code}});
-        if (onResultReady) onResultReady(finished);
+        json::Object counts; json::Array itemErrors; long long bytes = 0;
+        for (const auto& item : finished.items) {
+            counts[item.uploadStatus] = counts.value(item.uploadStatus).toInt() + 1; bytes += item.artifact.bytes;
+            if (item.error) itemErrors.push_back(json::Object{{"itemId", item.artifact.id}, {"error", item.error.toJson()}});
+        }
+        log::write(finished.state == "completed" ? log::Level::Info : log::Level::Warning, "operations", "Operation finished", {{"operationId", finished.id}, {"action", finished.action}, {"state", finished.state},
+            {"items", double(finished.items.size())}, {"itemStatus", counts}, {"bytes", double(bytes)}, {"durationMs", double(log::nowMs() - files::parseIsoUtcMs(finished.created))}, {"error", finished.error.toJson()}, {"itemErrors", itemErrors}});
+        if (finished.action == diagnostics::operationAction) {
+            const auto waiter = diagnosticsWaiters_.find(finished.id);
+            if (waiter != diagnosticsWaiters_.end()) { auto callback = std::move(waiter->second); diagnosticsWaiters_.erase(waiter); callback(finished); }
+        } else if (onResultReady) onResultReady(finished);
         if (finished.error && onOperationError) onOperationError(finished.error);
         releaseActive(id);
         if (reply) reply({}, finished.publicJson());
     });
+}
+
+void OperationService::uploadDiagnostics(const std::string& path, const std::string& profileId, std::function<void(Error)> accepted, std::function<void(const Operation&)> finished) {
+    if (!ready_) { accepted(startupError_ ? startupError_ : notReady()); return; }
+    const auto snapshot = settings_.snapshot();
+    const auto profile = snapshot.profiles.find(profileId);
+    if (profile == snapshot.profiles.end()) { accepted({"profile_not_found", "No configured destination has this identifier", {{"profileId", profileId}}}); return; }
+    if (int(active_.size()) >= snapshot.limits.pendingOperations + snapshot.limits.concurrentUploads) { accepted({"queue_full", "Pending operation limit reached", {}}); return; }
+    Operation op;
+    op.id = uuid::create(); op.action = diagnostics::operationAction; op.settingsDocument = snapshot.document; op.settingsRevision = settings_.revision(); op.created = files::nowIsoUtc();
+    op.invocation = ++invocation_; op.clipboardRevision = clipboard_.revision();
+    op.destination = {profile->second.value("provider").toString(), profileId, settings_.revision(), profile->second.value("settings").toObject(), profile->second.value("credentials").toObject()};
+    diagnosticsWaiters_[op.id] = std::move(finished);
+    const auto id = op.id;
+    acceptOperation(std::move(op), diagnostics::operationAction, path, true, [this, id, accepted](Error e, json::Object) { if (e) diagnosticsWaiters_.erase(id); accepted(e); });
 }
 
 // ---- copying results --------------------------------------------------------

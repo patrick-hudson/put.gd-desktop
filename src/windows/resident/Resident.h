@@ -1,6 +1,6 @@
 #pragma once
-// The resident's single owner thread: a message-only window whose loop runs
-// posted callbacks and timers, like the Qt event loop the Linux resident uses.
+// The resident's single owner thread: a hidden window whose loop runs posted
+// callbacks and timers, like the Qt event loop the Linux resident uses.
 // Everything that touches services runs here; workers hand results back with post().
 #include <functional>
 #include <map>

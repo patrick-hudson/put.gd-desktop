@@ -40,6 +40,10 @@ public:
     void copyResult(const std::string& id, JsonReply);
     void copyHistoryImage(const std::string& historyId, JsonReply);
     void copyHistoryUrl(const std::string& url, JsonReply);
+    // diagnostics.bundle upload: one item of an internal "diagnostics" operation to
+    // `profileId` (docs/diagnostics.md, "Uploading a package"). `accepted` answers
+    // the acceptance; `finished` gets the durable terminal operation.
+    void uploadDiagnostics(const std::string& path, const std::string& profileId, std::function<void(Error)> accepted, std::function<void(const Operation&)> finished);
     void cleanup(bool automatic, JsonReply);
     json::Object capabilities() const;
     json::Object diagnostics() const;
@@ -112,6 +116,7 @@ private:
     // Per-operation upload-copy bookkeeping (docs/architecture.md, issue #32 policy).
     struct UploadCopy { std::vector<std::pair<int, std::string>> links; unsigned long long clipboardRevision = 0; unsigned long long epoch = 0; bool copied = false, suppressed = false, failed = false; std::string mode; int copiedCount = 0; };
     std::map<std::string, UploadCopy> uploadCopies_;
+    std::map<std::string, std::function<void(const Operation&)>> diagnosticsWaiters_;
     friend struct CaptureSession;
     friend struct EditorSession;
 };

@@ -972,6 +972,11 @@
               "minLength": 1,
               "pattern": "^/",
               "description": "The folder Settings → Create diagnostics package last saved to. Omitted or null means <archive root>/diagnostics. Written by put.gd."
+            },
+            "crashDumps": {
+              "type": "boolean",
+              "default": false,
+              "description": "Windows only: a crash of putgd.exe writes a minidump to %LOCALAPPDATA%\\put.gd\\crashdumps (the newest five are kept). Dumps stay local and are never put in a diagnostics package. The Linux build accepts and ignores it."
             }
           }
         }

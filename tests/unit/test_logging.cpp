@@ -292,7 +292,9 @@ private slots:
   const auto defaults=Settings::fromValidated(Settings::defaults());QCOMPARE(defaults.logDays,14);QCOMPARE(defaults.logBytes,52428800LL);QVERIFY(!defaults.debugLogging);
   const QList<QPair<QString,QJsonValue>> invalid{{"logDays",0},{"logDays",366},{"logDays",1.5},{"logBytes",1048575},{"logBytes",1073741825},{"logBytes","50"}};
   for(const auto& [key,value]:invalid){auto changed=document;auto r=changed["retention"].toObject();r[key]=value;changed["retention"]=r;const auto error=Settings::validate(changed);QVERIFY(error);QCOMPARE(error.details["path"].toString(),"/retention/"+key);}
-  for(const auto& value:QList<QJsonValue>{QJsonObject{},QJsonObject{{"debugLogging","yes"}},QJsonObject{{"debugLogging",true},{"extra",1}},true}){auto changed=document;auto p=changed["preferences"].toObject();p["diagnostics"]=value;changed["preferences"]=p;QCOMPARE(Settings::validate(changed).details["path"].toString(),QString("/preferences/diagnostics"));}
+  for(const auto& value:QList<QJsonValue>{QJsonObject{},QJsonObject{{"debugLogging","yes"}},QJsonObject{{"debugLogging",true},{"extra",1}},QJsonObject{{"debugLogging",true},{"crashDumps","yes"}},true}){auto changed=document;auto p=changed["preferences"].toObject();p["diagnostics"]=value;changed["preferences"]=p;QCOMPARE(Settings::validate(changed).details["path"].toString(),QString("/preferences/diagnostics"));}
+  // The Windows build's crash-dump opt-in (#125) validates here too, so one document serves both.
+  {auto changed=document;auto p=changed["preferences"].toObject();p["diagnostics"]=QJsonObject{{"debugLogging",false},{"crashDumps",true}};changed["preferences"]=p;QVERIFY(!Settings::validate(changed));}
  }
  void debugLoggingTurnsItselfOffAfterADay() {
   QTemporaryDir dir;logging::open(dir.filePath("logs"));

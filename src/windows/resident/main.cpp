@@ -1,5 +1,6 @@
 // putgd.exe: the resident, or one of its helper modes (see common/Modes.h).
 #include "common/BuildInfo.h"
+#include "common/Crash.h"
 #include "common/Frames.h"
 #include "common/Modes.h"
 #include "common/Paths.h"
@@ -14,6 +15,11 @@ int wmain(int argc, wchar_t** argv) {
     std::vector<std::string> args;
     for (int i = 1; i < argc; ++i) args.push_back(putgd::paths::narrow(argv[i]));
     const std::string mode = args.empty() ? std::string() : args[0];
+    // Every mode records its own crash (common/Crash.h) before anything else runs.
+    const char* process = mode == "--capture" ? "putgd-capture" : mode == "--image-job" ? "putgd-image-job" : mode == "--s3-worker" ? "putgd-s3-worker" : mode == "--ui" ? "putgd-ui"
+        : mode == "--edit-image" ? "putgd-editor" : mode == "--check-update" ? "putgd-update-check" : "putgd";
+    putgd::crash::install(process);
+    putgd::crash::armTestTrigger(process);
     if (mode == "--version-json") {
         std::printf("%s\n", putgd::json::serialize(putgd::protocol::buildIdentity()).c_str());
         return 0;

@@ -167,6 +167,27 @@ json::Array HistoryStore::recent(int limit, Error* error) const {
     for (const auto& id : ids) { Error e; auto op = operation(id, &e); if (!e) result.push_back(op.publicJson()); }
     return result;
 }
+std::vector<Operation> HistoryStore::operationsSince(const std::string& from, const std::vector<std::string>& states, int limit, Error* error) const {
+    std::vector<Operation> result;
+    if (error_) { if (error) *error = error_; return result; }
+    std::string placeholders; for (size_t i = 0; i < states.size(); ++i) placeholders += i ? ",?" : "?";
+    sqlite::Statement q(db_, "SELECT id FROM operations WHERE json_extract(data,'$.created')>=? AND json_extract(data,'$.state') IN (" + placeholders + ") ORDER BY json_extract(data,'$.created') DESC,id LIMIT ?");
+    q.bind(1, from); for (size_t i = 0; i < states.size(); ++i) q.bind(int(i + 2), states[i]); q.bind(int(states.size() + 2), (long long)limit);
+    std::vector<std::string> ids; while (q.step()) ids.push_back(q.text(0));
+    if (q.failed()) { if (error) *error = sqlError(); return result; }
+    for (const auto& id : ids) { Error e; auto op = operation(id, &e); if (!e) result.push_back(std::move(op)); }
+    return result;
+}
+std::optional<Operation> HistoryStore::lastUpload(const std::string& profileId, Error* error) const {
+    if (error_) { if (error) *error = error_; return std::nullopt; }
+    sqlite::Statement q(db_, "SELECT id FROM operations WHERE json_extract(data,'$.destination.profileId')=? AND json_extract(data,'$.state') IN ('completed','failed','partial') ORDER BY json_extract(data,'$.created') DESC,id LIMIT 1");
+    q.bind(1, profileId);
+    if (!q.step()) { if (q.failed() && error) *error = sqlError(); return std::nullopt; }
+    const auto id = q.text(0);
+    Error e; auto op = operation(id, &e);
+    if (e) { if (error) *error = e; return std::nullopt; }
+    return op;
+}
 std::vector<std::string> HistoryStore::activeDeletionHistoryIds() const {
     std::vector<std::string> ids;
     sqlite::Statement q(db_, "SELECT history_id FROM deletion_targets WHERE active=1"); while (q.step()) ids.push_back(q.text(0));

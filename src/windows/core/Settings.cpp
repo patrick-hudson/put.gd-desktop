@@ -230,10 +230,13 @@ Error Settings::validate(const Object& original, const ProfileValidator& validat
     }
     if (preferences.contains("diagnostics")) {
         const auto diagnostics = preferences.value("diagnostics").toObject();
-        const bool hasFolder = diagnostics.contains("packageFolder");
-        if (!preferences.value("diagnostics").isObject() || !keys(diagnostics, hasFolder ? std::vector<std::string>{"debugLogging", "packageFolder"} : std::vector<std::string>{"debugLogging"}) ||
-            !diagnostics.value("debugLogging").isBool() || (hasFolder && !folder(diagnostics.value("packageFolder"), true)))
-            return invalid("/preferences/diagnostics", "Diagnostics preferences hold debugLogging (true or false) and an optional absolute packageFolder.");
+        const bool hasFolder = diagnostics.contains("packageFolder"), hasDumps = diagnostics.contains("crashDumps");
+        std::vector<std::string> expected{"debugLogging"};
+        if (hasFolder) expected.push_back("packageFolder");
+        if (hasDumps) expected.push_back("crashDumps");
+        if (!preferences.value("diagnostics").isObject() || !keys(diagnostics, expected) || !diagnostics.value("debugLogging").isBool() ||
+            (hasFolder && !folder(diagnostics.value("packageFolder"), true)) || (hasDumps && !diagnostics.value("crashDumps").isBool()))
+            return invalid("/preferences/diagnostics", "Diagnostics preferences hold debugLogging (true or false), an optional absolute packageFolder and an optional crashDumps (true or false).");
     }
     if (preferences.contains("updates")) {
         const auto updates = preferences.value("updates").toObject();
@@ -322,6 +325,7 @@ Settings Settings::fromValidated(const Object& original) {
     s.launchAtLogin = preferences.value("launchAtLogin").toBool();
     s.unlockCredentialsAtStartup = preferences.value("unlockCredentialsAtStartup").toBool(true);
     s.debugLogging = preferences.value("diagnostics").toObject().value("debugLogging").toBool(false);
+    s.crashDumps = preferences.value("diagnostics").toObject().value("crashDumps").toBool(false);
     s.appearanceTheme = preferences.value("appearance").toObject().value("theme").toString("system");
     s.checkForUpdates = preferences.value("updates").toObject().value("check").toBool(true);
     s.updateChannel = preferences.value("updates").toObject().value("channel").toString("build");

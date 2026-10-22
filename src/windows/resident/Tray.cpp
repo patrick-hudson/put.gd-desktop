@@ -16,11 +16,21 @@ COLORREF tintColor(Tray::Tint t) {
     }
 }
 }
+namespace {
+// taskkill without /F posts WM_CLOSE to the process's first top-level window, which
+// may be this one: hand it to the resident's loop window (a clean stop) instead of
+// letting DefWindowProc destroy the menu owner.
+LRESULT CALLBACK menuOwnerProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
+    if (message == WM_CLOSE) { if (auto loop = reinterpret_cast<HWND>(GetWindowLongPtrW(hwnd, GWLP_USERDATA))) PostMessageW(loop, WM_CLOSE, 0, 0); return 0; }
+    return DefWindowProcW(hwnd, message, wParam, lParam);
+}
+}
 Tray::Tray(HWND owner) : owner_(owner) {
     taskbarCreated_ = RegisterWindowMessageW(L"TaskbarCreated");
-    WNDCLASSW wc{}; wc.lpfnWndProc = DefWindowProcW; wc.hInstance = GetModuleHandleW(nullptr); wc.lpszClassName = L"putgd.tray.menu";
+    WNDCLASSW wc{}; wc.lpfnWndProc = menuOwnerProcedure; wc.hInstance = GetModuleHandleW(nullptr); wc.lpszClassName = L"putgd.tray.menu";
     RegisterClassW(&wc);
     menuOwner_ = CreateWindowExW(WS_EX_TOOLWINDOW, wc.lpszClassName, L"put.gd", WS_POPUP, 0, 0, 0, 0, nullptr, nullptr, wc.hInstance, nullptr);
+    if (menuOwner_) SetWindowLongPtrW(menuOwner_, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(owner_));
     add();
 }
 Tray::~Tray() { remove(); if (icon_) DestroyIcon(icon_); if (menuOwner_) DestroyWindow(menuOwner_); }
@@ -83,12 +93,18 @@ void Tray::setTint(Tint tint) { if (tint == tint_) return; tint_ = tint; add(); 
 void Tray::setTooltip(const std::string& utf8) { tooltip_ = utf8; if (added_) add(); }
 void Tray::notify(const std::string& title, const std::string& message, bool warning, const std::string& link) {
     if (!added_) return;
-    pendingLink_ = link;
+    pendingLink_ = link; pendingAction_ = nullptr;
+    static unsigned long long shown = 0;
+    log::info("ui", "Notification shown", {{"notificationId", double(++shown)}, {"title", title}, {"notificationText", message}, {"warning", warning}});
     NOTIFYICONDATAW data{}; data.cbSize = sizeof data; data.hWnd = owner_; data.uID = trayId; data.uFlags = NIF_INFO | NIF_SHOWTIP;
     data.dwInfoFlags = warning ? NIIF_WARNING : NIIF_INFO;
     wcsncpy_s(data.szInfoTitle, paths::wide(title).c_str(), _TRUNCATE);
     wcsncpy_s(data.szInfo, paths::wide(message).c_str(), _TRUNCATE);
     Shell_NotifyIconW(NIM_MODIFY, &data);
+}
+void Tray::notify(const std::string& title, const std::string& message, bool warning, std::function<void()> clicked) {
+    notify(title, message, warning, std::string());
+    pendingAction_ = std::move(clicked);
 }
 void Tray::showMenu() {
     HMENU menu = CreatePopupMenu();
@@ -125,8 +141,9 @@ bool Tray::handleMessage(UINT message, WPARAM wParam, LPARAM lParam) {
     case NIN_SELECT: case NIN_KEYSELECT: case WM_LBUTTONUP: if (command_) command_(CmdActivity); return true;
     case NIN_BALLOONUSERCLICK:
         if (!pendingLink_.empty()) { ShellExecuteW(nullptr, L"open", paths::wide(pendingLink_).c_str(), nullptr, nullptr, SW_SHOWNORMAL); pendingLink_.clear(); }
+        if (pendingAction_) { auto action = std::move(pendingAction_); pendingAction_ = nullptr; action(); }
         return true;
-    case NIN_BALLOONTIMEOUT: case NIN_BALLOONHIDE: pendingLink_.clear(); return true;
+    case NIN_BALLOONTIMEOUT: case NIN_BALLOONHIDE: pendingLink_.clear(); pendingAction_ = nullptr; return true;
     default: return true;
     }
 }

@@ -49,7 +49,7 @@ void UiSession::detach() { target_->window.store(nullptr); }
 
 int UiSession::deadlineFor(const std::string& method) {
     if (method == "update.check") return 60000;
-    if (method == "diagnostics.bundle") return 610000;
+    if (method == "diagnostics.bundle" || method == "diagnostics.uploadTarget") return 610000;
     if (method == "history.preview") return 50000;
     return defaultDeadlineMs;
 }
