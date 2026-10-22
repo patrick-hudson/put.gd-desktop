@@ -1,0 +1,31 @@
+{
+ "sessionEntryNow": null,
+ "processes": [
+  {
+   "pid": 1998,
+   "comm": "AppRun",
+   "exe": "/usr/bin/dash",
+   "APPIMAGE": "/home/lab/afa2/images/putgd-0.1.1-nightly.942-x86_64.AppImage",
+   "started": "2026-10-22T06:05:38Z",
+   "XDG_CONFIG_HOME": null
+  },
+  {
+   "pid": 2302,
+   "comm": "putgd",
+   "exe": "/tmp/.mount_putgd-PfCjdp/usr/bin/putgd",
+   "APPIMAGE": "/home/lab/afa2/images/putgd-0.1.1-nightly.942-x86_64.AppImage",
+   "started": "2026-10-22T06:05:39Z",
+   "XDG_CONFIG_HOME": null
+  },
+  {
+   "pid": 2404,
+   "comm": "putgd-ui",
+   "exe": "/tmp/.mount_putgd-PfCjdp/usr/bin/putgd-ui",
+   "APPIMAGE": "/home/lab/afa2/images/putgd-0.1.1-nightly.942-x86_64.AppImage",
+   "started": "2026-10-22T06:05:39Z",
+   "XDG_CONFIG_HOME": null
+  }
+ ],
+ "shellStarted": "2026-10-22T06:05:34Z",
+ "fromAppImage": true
+}

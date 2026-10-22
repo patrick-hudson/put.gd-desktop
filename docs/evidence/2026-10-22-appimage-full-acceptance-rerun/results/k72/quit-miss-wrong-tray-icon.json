@@ -1,0 +1,80 @@
+{
+ "menuComponents": [
+  {
+   "blocks": 336,
+   "box": [
+    1472,
+    960,
+    1808,
+    1032
+   ]
+  }
+ ],
+ "hover": [
+  1643,
+  1011
+ ],
+ "menu": {
+  "label": "tray-quit",
+  "components": [
+   {
+    "blocks": 337,
+    "box": [
+     1472,
+     960,
+     1808,
+     1040
+    ]
+   },
+   {
+    "blocks": 10,
+    "box": [
+     464,
+     184,
+     496,
+     216
+    ]
+   },
+   {
+    "blocks": 4,
+    "box": [
+     1912,
+     536,
+     1920,
+     568
+    ]
+   }
+  ],
+  "colour": [
+   244,
+   244,
+   244
+  ],
+  "inner": [
+   1484,
+   962,
+   1800,
+   1025
+  ],
+  "changedShare": 1.0,
+  "kept": "/home/patrick/work/put.gd-afa2/runs/k72/crops/tray-quit.png"
+ },
+ "allGone": false,
+ "after": {
+  "processes": [
+   "1251553 AppRun /usr/bin/dash",
+   "1251706 putgd-0.1.1-nig /home/patrick/work/put.gd-afa2/images/putgd-0.1.1-nightly.942-x86_64.AppImage",
+   "1251798 putgd /tmp/.mount_putgd-JMjbci/usr/bin/putgd",
+   "1251812 putgd-ui /tmp/.mount_putgd-JMjbci/usr/bin/putgd-ui"
+  ],
+  "mounts": [
+   "/tmp/.mount_putgd-JMjbci"
+  ],
+  "entries": [
+   "putgd-appimage-35ahJgoy.desktop",
+   "putgd-record-appimage-FS2emoHk.desktop",
+   "putgd-record.desktop",
+   "putgd-ui.desktop"
+  ]
+ }
+}

@@ -1,0 +1,19 @@
+{
+ "browserProcesses": [
+  {
+   "pid": 2220277,
+   "comm": "firefox-esr",
+   "cmd": "firefox-esr --profile /home/patrick/.mozilla/firefox/putgd-afa2-aacbd695 https://put.gd/acceptance/afa2/d69/Screen-Capture-2026-10-22-02-08-16.png "
+  }
+ ],
+ "opened": [
+  {
+   "itemId": null,
+   "opened": true,
+   "operationId": null,
+   "route": "portal",
+   "target": "notification-link"
+  }
+ ],
+ "full": "/home/patrick/work/put.gd-afa2/runs/d69-F/full/d69-F-F-browser.png"
+}

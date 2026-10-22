@@ -1,0 +1,48 @@
+{
+ "removed": [
+  "/var/home/lab/.local/state/putgd",
+  "/var/home/lab/.local/share/putgd",
+  "putgd-appimage-EYTje40d.desktop",
+  "putgd-record-appimage-D69yObAy.desktop",
+  "putgd-record.desktop",
+  "putgd-ui.desktop",
+  "/var/home/lab/afa-aurora-vm-review.mp4",
+  "/var/home/lab/Pictures/afa-aurora-vm-edited.png",
+  "/var/home/lab/work/put.gd-afa2/runs/aurora-vm/appdir",
+  "/var/home/lab/work/put.gd-afa2/runs/aurora-vm/frames",
+  "/var/home/lab/work/put.gd-afa2/runs/aurora-vm/config",
+  "/var/home/lab/work/put.gd-afa2/runs/aurora-vm/cache",
+  "/var/home/lab/work/put.gd-afa2/runs/aurora-vm/archive",
+  "/var/home/lab/work/put.gd-afa2/runs/aurora-vm/working",
+  "/var/home/lab/work/put.gd-afa2/runs/aurora-vm/urldata"
+ ],
+ "leftovers": {
+  "processes": [
+   "1800 AppRun /usr/bin/bash",
+   "1943 putgd-0.1.1-nig /var/home/lab/afa2/images/putgd-0.1.1-nightly.942-x86_64.AppImage",
+   "1988 putgd /tmp/.mount_putgd-nfEMgg/usr/bin/putgd",
+   "2006 putgd-ui /tmp/.mount_putgd-nfEMgg/usr/bin/putgd-ui"
+  ],
+  "mounts": [
+   "/tmp/.mount_putgd-nfEMgg"
+  ],
+  "entries": [
+   "putgd-appimage-EYTje40d.desktop",
+   "putgd-record-appimage-D69yObAy.desktop",
+   "putgd-record.desktop",
+   "putgd-ui.desktop"
+  ]
+ },
+ "after": {
+  "processes": [
+   "1800 AppRun /usr/bin/bash",
+   "1943 putgd-0.1.1-nig /var/home/lab/afa2/images/putgd-0.1.1-nightly.942-x86_64.AppImage",
+   "1988 putgd /tmp/.mount_putgd-nfEMgg/usr/bin/putgd",
+   "2006 putgd-ui /tmp/.mount_putgd-nfEMgg/usr/bin/putgd-ui"
+  ],
+  "mounts": [
+   "/tmp/.mount_putgd-nfEMgg"
+  ],
+  "entries": []
+ }
+}

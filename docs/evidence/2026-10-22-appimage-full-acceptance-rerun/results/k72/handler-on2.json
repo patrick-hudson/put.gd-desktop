@@ -1,0 +1,24 @@
+{
+ "backup": {
+  "/home/patrick/.config/mimeapps.list": true,
+  "/home/patrick/.config/kde-mimeapps.list": false
+ },
+ "entry": "/home/patrick/.local/share/applications/putgd326-url.desktop",
+ "before": {
+  "https": [
+   "Default application for \u201cx-scheme-handler/https\u201d: chatgpt.desktop"
+  ],
+  "http": [
+   "Default application for \u201cx-scheme-handler/http\u201d: chatgpt.desktop"
+  ]
+ },
+ "at": "2026-10-22T05:29:57Z",
+ "after": {
+  "https": [
+   "Default application for \u201cx-scheme-handler/https\u201d: putgd326-url.desktop"
+  ],
+  "http": [
+   "Default application for \u201cx-scheme-handler/http\u201d: putgd326-url.desktop"
+  ]
+ }
+}

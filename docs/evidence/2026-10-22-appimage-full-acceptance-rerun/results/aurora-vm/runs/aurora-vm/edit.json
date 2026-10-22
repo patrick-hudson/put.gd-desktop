@@ -1,0 +1,222 @@
+{
+ "editorId": "1710c483-1aa1-4679-b78d-b6e8dec94d12",
+ "size": [
+  980,
+  600
+ ],
+ "blur": [
+  294,
+  192,
+  176,
+  204
+ ],
+ "solid": [
+  509,
+  216,
+  137,
+  132
+ ],
+ "apply": true,
+ "inspect": {
+  "canRedo": false,
+  "canUndo": true,
+  "crop": [
+   0,
+   0,
+   980,
+   600
+  ],
+  "destination": "Upload to Loopback fixture",
+  "height": 600,
+  "historyTruncated": false,
+  "modified": true,
+  "operationId": "1710c483-1aa1-4679-b78d-b6e8dec94d12",
+  "phase": "editing",
+  "shapes": [
+   {
+    "id": 1,
+    "kind": "blur",
+    "rect": [
+     294,
+     192,
+     176,
+     204
+    ],
+    "strength": 24
+   },
+   {
+    "id": 2,
+    "kind": "redact",
+    "rect": [
+     509,
+     216,
+     137,
+     132
+    ]
+   }
+  ],
+  "width": 980
+ },
+ "window": {
+  "label": "editor",
+  "components": [
+   {
+    "blocks": 10069,
+    "box": [
+     0,
+     0,
+     1280,
+     800
+    ]
+   }
+  ],
+  "colour": [
+   252,
+   0,
+   252
+  ],
+  "inner": null
+ },
+ "full": "/var/home/lab/work/put.gd-afa2/runs/aurora-vm/full/editor.png",
+ "editorCommands": [
+  "inspect",
+  "apply",
+  "preview",
+  "saveCopy",
+  "fileDialog",
+  "submit",
+  "cancel",
+  "raise"
+ ],
+ "dialogOpen": {
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  },
+  "ok": true,
+  "requestId": "54a94e7e-e469-4f01-94c2-166a88fe3f6c",
+  "result": {
+   "backend": "portal",
+   "fallbackReason": null,
+   "last": null,
+   "mode": "save",
+   "open": true,
+   "operationId": "1710c483-1aa1-4679-b78d-b6e8dec94d12",
+   "parentWindow": "",
+   "title": "Save a copy"
+  },
+  "schemaVersion": 1
+ },
+ "dialogState": {
+  "backend": "portal",
+  "fallbackReason": null,
+  "last": null,
+  "mode": "save",
+  "open": true,
+  "operationId": "1710c483-1aa1-4679-b78d-b6e8dec94d12",
+  "parentWindow": "",
+  "title": "Save a copy"
+ },
+ "dialogShot": {
+  "label": "save-copy-dialog",
+  "components": [
+   {
+    "blocks": 8953,
+    "box": [
+     96,
+     0,
+     1248,
+     800
+    ]
+   }
+  ],
+  "colour": [
+   32,
+   32,
+   36
+  ],
+  "inner": null
+ },
+ "dialogFull": "/var/home/lab/work/put.gd-afa2/runs/aurora-vm/full/save-copy-dialog.png",
+ "dialogResult": {
+  "backend": null,
+  "fallbackReason": null,
+  "last": {
+   "backend": "portal",
+   "error": null,
+   "fallbackReason": null,
+   "mode": "save",
+   "path": "/var/home/lab/Pictures/afa-aurora-vm-edited.png",
+   "status": "chosen"
+  },
+  "mode": null,
+  "open": false,
+  "operationId": "1710c483-1aa1-4679-b78d-b6e8dec94d12",
+  "parentWindow": null,
+  "title": null
+ },
+ "savedCopy": {
+  "exists": true,
+  "bytes": 3856,
+  "size": [
+   980,
+   600
+  ],
+  "solidRegion": {
+   "mean": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "spread": 0
+  },
+  "blurChangedShare": 0.373
+ },
+ "upload": {
+  "id": "1710c483-1aa1-4679-b78d-b6e8dec94d12",
+  "state": "completed",
+  "copyStatus": "pending",
+  "items": [
+   {
+    "name": "Screen-Capture-2026-10-22-01-01-30.png",
+    "mime": "image/png",
+    "uploadStatus": "uploaded",
+    "link": "http://127.0.0.1:42355/fixture/afa/Screen-Capture-2026-10-22-01-01-30.png",
+    "local": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "path": "/var/home/lab/work/put.gd-afa2/runs/aurora-vm/archive/images/Screen-Capture-2026-10-22-01-01-30.png",
+     "status": "saved"
+    }
+   }
+  ],
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  }
+ },
+ "uploaded": {
+  "size": [
+   980,
+   600
+  ],
+  "solidRegion": {
+   "mean": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "spread": 0
+  },
+  "blurChangedShare": 0.373,
+  "unchangedOutsideShare": 1.0
+ },
+ "redactionVerified": true,
+ "clipboard": "http://127.0.0.1:42355/fixture/afa/Screen-Capture-2026-10-22-01-01-30.png",
+ "linkCopied": true
+}

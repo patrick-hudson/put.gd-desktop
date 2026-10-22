@@ -1,0 +1,37 @@
+{
+ "label": "k72-tray-menu",
+ "components": [
+  {
+   "blocks": 489,
+   "box": [
+    120,
+    920,
+    416,
+    1072
+   ]
+  },
+  {
+   "blocks": 234,
+   "box": [
+    656,
+    688,
+    1560,
+    728
+   ]
+  }
+ ],
+ "colour": [
+  244,
+  244,
+  244
+ ],
+ "inner": [
+  202,
+  927,
+  377,
+  1025
+ ],
+ "changedShare": 1.0,
+ "kept": "/home/patrick/work/put.gd-afa2/runs/k72/crops/k72-tray-menu.png",
+ "full": "/home/patrick/work/put.gd-afa2/runs/k72/full/k72-tray-menu.png"
+}

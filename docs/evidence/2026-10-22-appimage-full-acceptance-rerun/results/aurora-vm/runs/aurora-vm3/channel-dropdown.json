@@ -1,0 +1,21 @@
+{
+ "storedChannel": "build",
+ "status": {
+  "channel": "nightly",
+  "channelSetting": "build",
+  "build": {
+   "channel": "nightly",
+   "kind": "nightly",
+   "packageTarget": "appimage",
+   "reason": null,
+   "supported": true,
+   "version": "0.1.1-nightly.942"
+  }
+ },
+ "closed": "/var/home/lab/work/put.gd-afa2/runs/aurora-vm3/full/aurora-vm-channel-dropdown-closed.png",
+ "open": "/var/home/lab/work/put.gd-afa2/runs/aurora-vm3/full/aurora-vm-channel-dropdown-open.png",
+ "clicked": [
+  786,
+  560
+ ]
+}

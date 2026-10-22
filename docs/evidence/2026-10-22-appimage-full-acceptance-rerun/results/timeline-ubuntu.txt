@@ -1,0 +1,36 @@
+2026-10-22T05:24:57Z Ubuntu guest: apt-get remove putgd (0.1.1~dev.63), apt-get install gstreamer1.0-gtk3 (cover pattern)
+2026-10-22T05:25:33Z Ubuntu guest: 942 extension installed as user copy (~/.local/share/gnome-shell/extensions/putgd@put.gd); reboot to load it
+2026-10-22T05:26:39Z Ubuntu guest back after reboot (gdm autologin)
+2026-10-22T05:28:56Z Ubuntu guest rebooted via guest_reboot.py (gnome-session-quit --reboot), gdm autologin
+2026-10-22T05:40:51Z A-C start (ac.sh ubuntu-vm in guest, input vnc 10.0.2.2:5941)
+2026-10-22T05:44:45Z A-C done
+2026-10-22T05:54:55Z wall tile checked in the built-in browser: VNC connected
+2026-10-22T05:59:42Z channel dropdown + D-H (dk.sh) in guest
+2026-10-22T06:03:59Z #341 tray-menu shortcuts + J update-check
+2026-10-22T06:06:35Z item I: login enable, quit, guest reboot via session (guest_reboot.py), autologin, login check:
+  True
+  2026-10-22T06:04:14Z
+  lab.LabError: ssh failed (exit 1)
+  2026-10-22T06:05:55Z
+  fromAppImage True shell 2026-10-22T06:05:34Z [('AppRun', '2026-10-22T06:05:38Z'), ('putgd', '2026-10-22T06:05:39Z'), ('putgd-ui', '2026-10-22T06:05:39Z')]
+   01:06:35 up 1 min,  2 users,  load average: 2.04, 0.90, 0.33
+2026-10-22T06:17:03Z K: quit from the tray (real click via VNC), login disable, cleanup:
+  allGone True after {'processes': [], 'mounts': [], 'entries': []} hover [1148, 511]
+  removed ['/home/lab/.local/state/putgd', '/home/lab/.local/share/putgd', '/home/lab/Pictures/afa-ubuntu-vm-edited.png', '/home/lab/afa-ubuntu-vm-review.mp4'] after {'processes': [], 'mounts': [], 'entries': []}
+2026-10-22T06:20:55Z F (real browser, live S3): run ubuntu-vm-f, prefix put.gd/acceptance/afa2/ubuntu-vm/, key set 2 piped from d69 creds.txt to the resident's setup.storeCredentials (never printed)
+2026-10-22T06:24:30Z F attempt 1 (aclMode omit): banner click opened Firefox via portal, but https://put.gd/<key> answered 403 AccessDenied; object deleted via put.gd, prefix verified empty; Firefox PID 3480 closed. Attempt 2 with aclMode public-read
+2026-10-22T06:25:28Z F attempt 2 (aclMode public-read): S3 refused the upload (putgd-acceptance-87 lacks s3:PutObjectAcl); no object created; asked the coordinator/Patrick for (1) PutObjectAcl on acceptance/* or (2) a temporary public B2 bucket
+2026-10-22T06:25:40Z live in-app update 942->947 (upd293 --live, scenario a):
+  Traceback (most recent call last):
+    File "/home/lab/afa2/tool/upd293.py", line 444, in <module>
+      main()
+2026-10-22T06:26:14Z live in-app update 942->947 retry (run ubuntu-vm-live942b; first try failed on the frame host env, its resident quit and run cleaned):
+  {"checkLatest": null, "state": "installed", "method": "zsync", "zsyncUsed": true, "zsyncOutput": "zsync2: used 115023872 local, fetched 1063416 | 100.00% done (110.03 of 110.03 MiB)... | Validation warning: AppImage not signed | Update successful. New file created: /home/lab/afa2/upd/runs/ubuntu-vm-live942b/apps/.putgd-update-cLmIwC/putgd-0.1.1-nightly.947-x86_64.AppImage", "zsyncOutputHasControl": false, "seconds": 8.8, "image": "e75d5a01c104", "backup": "3594d1bd8a29", "restartVersion": "0.1.1-nightly.947", "afterRestart": {"current": "0.1.1-nightly.947", "latest": "0.1.1-nightly.947", "updateAvailable": false}, "folder": ["putgd-0.1.1-nightly.942-x86_64.AppImage"], "backupRemoved": true}
+2026-10-22T06:30:07Z F probe after Patrick's IAM change (putgd-acceptance-acl): run ubuntu-vm-f2, one public-read upload, curl -I
+2026-10-22T06:32:33Z probe: public-read upload completed; curl -I https://put.gd/acceptance/afa2/ubuntu-vm/Screen-Capture-2026-10-22-01-30-52.png -> HTTP/2 200 image/png 1088 B (x-cache Miss from cloudfront); probe deleted via put.gd, prefix listed
+2026-10-22T06:32:49Z F (real browser): notify + banner click (real input via QEMU VNC) on run ubuntu-vm-f2, public-read
+2026-10-22T06:35:03Z F PASS: Firefox (guest default, via portal) loaded https://put.gd/acceptance/afa2/ubuntu-vm/Screen-Capture-2026-10-22-01-32-51.png; object deleted via put.gd; Firefox PID 6794 closed; run cleaned; prefix listed
+2026-10-22T06:41:19Z VM stopped (lab.py reset); cleanup dry-run with evidence manifest
+2026-10-22T06:41:32Z overlay retired: guarded lab.py cleanup with evidence manifest removed disk.qcow2
+2026-10-22T06:41:34Z tunnel putgd-vm-*-afa2 stopped; wall tile removed (only this pass's 5991/5992 entries; another session's tile added meanwhile kept)
+2026-10-22T06:48:05Z golden re-hash after retirement: 563730cc1d929bd946d20cf30a9aecfe3c4ad40eb12ba7f9abcff1c461e342bb (unchanged)
