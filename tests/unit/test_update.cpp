@@ -48,6 +48,66 @@ private slots:
   QCOMPARE(update::compareVersions("0.1.1-dev.5+gabc","0.1.1"),std::nullopt);
   QCOMPARE(update::compareVersions("v0.1.1","0.1.1"),std::nullopt);
  }
+ // #373: calendar versions YY.MDD.N[-nightly] sort by date, then commit count,
+ // and every one sorts after every pre-#373 0.Y.Z version.
+ void ordersCalendarVersionsByDateAfterEveryLegacyVersion(){
+  QCOMPARE(update::compareVersions("26.1022.942-nightly","0.1.1-nightly.925"),std::optional(1));
+  QCOMPARE(update::compareVersions("26.1022.942-nightly","0.1.1"),std::optional(1));
+  QCOMPARE(update::compareVersions("0.1.1-rc.1","26.1022.942-nightly"),std::optional(-1));
+  QCOMPARE(update::compareVersions("26.1022.943-nightly","26.1022.942-nightly"),std::optional(1));
+  // MDD is a number: January 5 (105) is before October 22 (1022).
+  QCOMPARE(update::compareVersions("26.105.990-nightly","26.1022.942-nightly"),std::optional(-1));
+  QCOMPARE(update::compareVersions("27.105.1000-nightly","26.1231.5000"),std::optional(1));
+  // On one YY.MDD.N the nightly sorts before the stable release.
+  QCOMPARE(update::compareVersions("26.1101.960-nightly","26.1101.960"),std::optional(-1));
+  QCOMPARE(update::compareVersions("26.1101.960","26.1101.960"),std::optional(0));
+  // A later nightly is newer than an earlier stable release, so stable is usually an older switch (#344).
+  QCOMPARE(update::compareVersions("26.1105.951-nightly","26.1101.960"),std::optional(1));
+  QCOMPARE(update::compareVersions("26.1101.961-nightly","26.1101.960"),std::optional(1));
+ }
+ void rejectsMalformedCalendarVersions_data(){
+  QTest::addColumn<QString>("version");
+  QTest::newRow("leading zero month")<<"26.0105.990";
+  QTest::newRow("leading zero day part")<<"26.10.990";
+  QTest::newRow("leading zero count")<<"26.105.0990";
+  QTest::newRow("zero count")<<"26.105.0";
+  QTest::newRow("leading zero year")<<"026.105.990";
+  QTest::newRow("month 13")<<"26.1301.990";
+  QTest::newRow("day 32")<<"26.132.990";
+  QTest::newRow("no leap day")<<"26.229.990";
+  QTest::newRow("before the scheme")<<"25.1231.990";
+  QTest::newRow("candidate")<<"26.1101.960-rc";
+  QTest::newRow("numbered candidate")<<"26.1101.960-rc.1";
+  QTest::newRow("numbered nightly")<<"26.1022.942-nightly.942";
+  QTest::newRow("development")<<"26.1022.942-dev+g528fe444b0cb";
+  QTest::newRow("tag prefix")<<"v26.1022.942";
+  QTest::newRow("pre-#373 major other than 0")<<"1.10.0";
+ }
+ void rejectsMalformedCalendarVersions(){
+  QFETCH(QString,version);
+  QCOMPARE(update::compareVersions(version,"0.1.1"),std::nullopt);
+  QCOMPARE(update::compareVersions("0.1.1",version),std::nullopt);
+ }
+ void acceptsRealCalendarDates(){
+  QCOMPARE(update::compareVersions("28.229.990","28.228.990"),std::optional(1));
+  QCOMPARE(update::compareVersions("26.1231.990","26.101.990"),std::optional(1));
+ }
+ // #373: a nightly from before calendar versions sees the first calendar nightly as an update.
+ void legacyNightlyIsOfferedTheFirstCalendarNightly(){
+  const auto build=update::build(manifest("0.1.1-nightly.925"),"appimage",true);Error error;
+  const auto result=update::evaluate(feed("nightly",release("26.1022.942-nightly")),build,"nightly",error);
+  QVERIFY2(!error,qPrintable(error.message));
+  QCOMPARE(result["updateAvailable"].toBool(),true);QCOMPARE(result["tag"].toString(),QString("v26.1022.942-nightly"));
+  QCOMPARE(result["asset"].toObject()["name"].toString(),QString("putgd-26.1022.942-nightly-x86_64.AppImage"));
+  QCOMPARE(update::releaseFileUrl("v26.1022.942-nightly","SHA256SUMS",error),QUrl("https://github.com/patrick-hudson/put.gd-desktop/releases/download/v26.1022.942-nightly/SHA256SUMS"));QVERIFY(!error);
+  const auto calendar=update::build(manifest("26.1022.942-nightly"),"appimage",true);
+  QCOMPARE(calendar.channel,QString("nightly"));QCOMPARE(calendar.kind,QString("nightly"));
+  QCOMPARE(update::build(manifest("26.1101.960"),"appimage",true).channel,QString("stable"));
+  // A stable release committed before this nightly is older; a later one is an update.
+  QCOMPARE(update::evaluate(feed("stable",release("26.1020.900")),calendar,"stable",error)["updateAvailable"].toBool(),false);QVERIFY(!error);
+  QCOMPARE(update::evaluate(feed("stable",release("26.1101.960")),calendar,"stable",error)["updateAvailable"].toBool(),true);QVERIFY(!error);
+  QCOMPARE(update::evaluate(feed("nightly",release("26.1022.941-nightly")),calendar,"nightly",error)["updateAvailable"].toBool(),false);QVERIFY(!error);
+ }
  void feedAddressIsFixedUnlessALoopbackOrHttpsOverride(){
   qunsetenv("PUTGD_UPDATE_FEED_URL");Error error;
   QCOMPARE(update::feedUrl("nightly",error),QUrl("https://app.put.gd/update/v1/nightly.json"));QVERIFY(!error);
@@ -144,6 +204,10 @@ private slots:
   QTest::newRow("nightly version on stable")<<feed("stable",release("0.1.2-nightly.3"))<<"stable";
   QTest::newRow("candidate on stable")<<feed("stable",release("0.1.2-rc.1"))<<"stable";
   QTest::newRow("development version")<<feed("nightly",release("0.1.2-dev.3+gabc"))<<"nightly";
+  QTest::newRow("calendar stable on nightly")<<feed("nightly",release("26.1101.960"))<<"nightly";
+  QTest::newRow("calendar nightly on stable")<<feed("stable",release("26.1022.942-nightly"))<<"stable";
+  QTest::newRow("calendar candidate")<<feed("stable",release("26.1101.960-rc"))<<"stable";
+  QTest::newRow("calendar leading zero")<<feed("nightly",release("26.0105.942-nightly"))<<"nightly";
   auto mismatched=release("0.1.1-nightly.590");mismatched["tag"]="v0.1.1-nightly.591";
   QTest::newRow("tag mismatch")<<feed("nightly",mismatched)<<"nightly";
  }

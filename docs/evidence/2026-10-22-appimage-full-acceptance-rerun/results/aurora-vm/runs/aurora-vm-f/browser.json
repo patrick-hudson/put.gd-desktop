@@ -1,0 +1,19 @@
+{
+ "browserProcesses": [
+  {
+   "pid": 4039,
+   "comm": "firefox-bin",
+   "cmd": "/app/lib/firefox/firefox --name org.mozilla.firefox https://put.gd/acceptance/afa2/aurora-vm/Screen-Capture-2026-10-22-01-36-18.png "
+  }
+ ],
+ "opened": [
+  {
+   "itemId": null,
+   "opened": true,
+   "operationId": null,
+   "route": "portal",
+   "target": "notification-link"
+  }
+ ],
+ "full": "/var/home/lab/work/put.gd-afa2/runs/aurora-vm-f/full/aurora-vm-F-browser.png"
+}

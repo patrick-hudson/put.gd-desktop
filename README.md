@@ -110,7 +110,7 @@ One resident process; windows, capture helpers, the recorder and the AWS SDK wor
 Every image below is the current nightly build (`0.1.1-dev.343+gac92b2158535`) on a real desktop: Linux Mint Cinnamon, Fedora 44 GNOME 50 on Wayland and Debian 13 Plasma 6 on Wayland, all from the acceptance lab.
 
 <p align="center">
-  <img src="docs/readme/tray-trio.png" alt="The put.gd tray menu on Cinnamon, GNOME and KDE Plasma: capture region, region & edit, window, desktop, screen recording, edit image, upload clipboard" width="720">
+  <img src="docs/readme/tray-trio.png" alt="The put.gd tray menu on Cinnamon, GNOME and KDE Plasma: capture region, region & edit, window, desktop, screen recording, edit image, upload clipboard, then settings, upload history, about and quit" width="641">
   <br>
   <sub>The tray is the app. Cinnamon, GNOME and Plasma, same menu: capture, capture &amp; edit, record, edit an image, upload the clipboard.</sub>
 </p>
@@ -292,12 +292,12 @@ Every binary knows exactly what it is:
 
 ```console
 $ ./build/dev/putgd --version
-0.1.1-dev.340+g70722c3a4cbb
+putgd 26.1022.942-dev+g0435ed6a8974
 $ ./build/dev/putgd-cli --version-json | jq .gitCommit
-"70722c3a4cbb…"
+"0435ed6a8974…"
 ```
 
-Development builds are `BASE-dev.COUNT+gSHORT` (`.dirty` if the tree is), packages order as `BASE~nightly.N` < `BASE~rc.N` < `BASE`, and installation refuses to mix executables from different commits. [versioning.md](docs/versioning.md) has the whole contract.
+Versions are calendar versions `YY.MDD.N`: the commit's UTC date (October 22 is `1022`, January 5 is `105`) and its commit count, so a version comes from the commit itself, never from a file someone bumps. Development builds are `YY.MDD.N-dev+gSHORT` (`.dirty` if the tree is), packages order as `YY.MDD.N~nightly` < `YY.MDD.N` and by date before that, and installation refuses to mix executables from different commits. [versioning.md](docs/versioning.md) has the whole contract.
 
 ## <img src="docs/readme/icons/releases.svg" width="28" height="28" align="absmiddle" alt=""> Release channels
 
@@ -306,27 +306,25 @@ Development builds are `BASE-dev.COUNT+gSHORT` (`.dirty` if the tree is), packag
 ```mermaid
 %%{init: {'theme':'base','themeVariables':{'git0':'#62d69b','git1':'#9bbcff','gitBranchLabel0':'#0b0e14','gitBranchLabel1':'#0b0e14','commitLabelColor':'#c9d3e6','commitLabelBackground':'#1b1e25','tagLabelColor':'#0b0e14','tagLabelBackground':'#9bbcff','tagLabelBorder':'#9bbcff','gitInv0':'#62d69b'}}}%%
 gitGraph
-  commit id: "v0.1.0" tag: "v0.1.0"
+  commit id: "start"
   branch nightly
   checkout nightly
   commit id: "feat: recording"
-  commit id: "fix: tray" tag: "v0.1.1-nightly.317"
-  commit id: "docs: readme"
+  commit id: "fix: tray" tag: "v26.1030.955-nightly"
+  commit id: "changelog: next stable"
   checkout main
-  merge nightly id: "release: v0.1.1" tag: "v0.1.1-rc.1"
-  commit id: "accepted" tag: "v0.1.1" type: HIGHLIGHT
+  merge nightly id: "release: promote nightly" tag: "v26.1101.960" type: HIGHLIGHT
   checkout nightly
-  commit id: "chore: 0.1.2"
-  commit id: "feat: next" tag: "v0.1.2-nightly.360"
+  commit id: "changelog: v26.1101.960"
+  commit id: "feat: next" tag: "v26.1102.963-nightly"
 ```
 
 | Channel | Tag | When | What you get |
 | --- | --- | --- | --- |
-| **Nightly** | `vBASE-nightly.N` | 05:23 UTC daily, only if `nightly` changed | automatic prerelease after the full CI and package matrix passed on that exact tag |
-| **Candidate** | `vBASE-rc.N` | every push to `main` (a promotion PR or a hotfix) | draft, published after exact-asset acceptance on real desktops |
-| **Stable** | `vBASE` | manual Release run on an accepted candidate commit | draft, published the same way; becomes GitHub's *Latest* |
+| **Nightly** | `vYY.MDD.N-nightly` | 05:23 UTC daily, only if `nightly` changed | automatic prerelease after the full CI and package matrix passed on that exact tag |
+| **Stable** | `vYY.MDD.N` | every push to `main` (a promotion PR or a hotfix) | draft, published after exact-asset acceptance on real desktops; becomes GitHub's *Latest* |
 
-`N` in a nightly is the commit count of the tagged source, so it only goes up. Every release carries a `release-builds.json` with the producing workflow run, commit, tree and the SHA-256 of each asset, and the publisher refuses to replace bytes that are already public. The daily pipeline, job selection by changed paths and the SDK prefix caches are described in [ci.md](docs/ci.md); the promotion runbook in [release.md](docs/release.md).
+`YY.MDD` is the tagged commit's UTC date and `N` its commit count, so versions only go up and sort by when they were made, across channels. There is no release-candidate channel: the stable draft is what acceptance runs on. Every release carries a `release-builds.json` with the producing workflow run, commit, tree and the SHA-256 of each asset, and the publisher refuses to replace bytes that are already public. The daily pipeline, job selection by changed paths and the SDK prefix caches are described in [ci.md](docs/ci.md); the promotion runbook in [release.md](docs/release.md).
 
 <details>
 <summary><b>What a nightly actually proves</b></summary>

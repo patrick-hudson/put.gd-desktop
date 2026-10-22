@@ -1,0 +1,24 @@
+{
+ "backup": {
+  "/home/patrick/.config/mimeapps.list": false,
+  "/home/patrick/.config/kde-mimeapps.list": false
+ },
+ "entry": "/home/patrick/.local/share/applications/putgd326-url.desktop",
+ "before": {
+  "https": [
+   "Default application for \u201cx-scheme-handler/https\u201d: org.mozilla.firefox.desktop"
+  ],
+  "http": [
+   "Default application for \u201cx-scheme-handler/http\u201d: org.mozilla.firefox.desktop"
+  ]
+ },
+ "at": "2026-10-22T05:28:00Z",
+ "after": {
+  "https": [
+   "Default application for \u201cx-scheme-handler/https\u201d: putgd326-url.desktop"
+  ],
+  "http": [
+   "Default application for \u201cx-scheme-handler/http\u201d: putgd326-url.desktop"
+  ]
+ }
+}

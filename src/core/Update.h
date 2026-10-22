@@ -28,8 +28,10 @@ struct Build {
 Build build(const QJsonObject& manifest);
 Build build(const QJsonObject& manifest,const QString& target,bool built);
 
-// Release versions: X.Y.Z, X.Y.Z-rc.N or X.Y.Z-nightly.N. For one base,
-// nightly < rc < stable. Returns nullopt when either is not a release version.
+// Release versions (parseReleaseVersion): YY.MDD.N and YY.MDD.N-nightly, which
+// sort by date, then commit count, a nightly before the stable release of one
+// YY.MDD.N; and the pre-#373 0.Y.Z, 0.Y.Z-rc.N and 0.Y.Z-nightly.N, which sort
+// before them. Returns nullopt when either is not a release version.
 std::optional<int> compareVersions(const QString& left,const QString& right);
 
 // https://app.put.gd/update/v1/<channel>.json. PUTGD_UPDATE_FEED_URL replaces

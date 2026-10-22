@@ -175,7 +175,6 @@ TrayController::TrayController(OperationService& operations,
    else if (action == "edit-file") showView("editFile");
    else if (action == "settings") showSettings();
    else if (action == "history") showHistory();
-   else if (action == "activity") showActivity();
    else if (action == "about") showAbout();
    else if (action == "update") showSettings();
    else if (action == "quit") { const auto quit = quit_; quit(); }
@@ -211,9 +210,6 @@ TrayController::TrayController(OperationService& operations,
  auto* history = menu_->addAction("Upload history");
  history->setData("history");
  connect(history, &QAction::triggered, this, &TrayController::showHistory);
- auto* activity = menu_->addAction("Recent activity");
- activity->setData("activity");
- connect(activity, &QAction::triggered, this, &TrayController::showActivity);
  updateAction_ = menu_->addAction("Update available");
  updateAction_->setData("update");updateAction_->setVisible(false);
  connect(updateAction_, &QAction::triggered, this, &TrayController::showSettings);
@@ -227,7 +223,7 @@ TrayController::TrayController(OperationService& operations,
  tray_->setContextMenu(menu_.get());
  connect(tray_, &QSystemTrayIcon::activated, this, [this](auto reason) {
   if (reason == QSystemTrayIcon::Trigger || reason == QSystemTrayIcon::DoubleClick)
-   showActivity();
+   showHistory();
  });
  // Qt registers a visible icon when a desktop tray becomes available later.
  tray_->show();
@@ -441,7 +437,6 @@ void TrayController::flashError() {
 void TrayController::activate() { showSettings(); }
 void TrayController::showSettings() { showView("settings"); }
 void TrayController::showHistory() { showView("history"); }
-void TrayController::showActivity() { showView("activity"); }
 void TrayController::showAbout() { showView("about"); }
 void TrayController::showView(const QString& view) {
  const auto open = openView_;
@@ -467,7 +462,7 @@ void TrayController::invokeAction(const QString& action, bool fromShortcut, cons
     guard->lastShortcutError_ = error.code;
     guard->shortcutFeedbackClock_.start();
    }
-   if (!fromShortcut) guard->showActivity();
+   if (!fromShortcut) guard->showHistory();
    if (guard) guard->notifyFailure(error);
   }
  }, effective);

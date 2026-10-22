@@ -1,0 +1,265 @@
+{
+ "action": "window",
+ "shortcut": "Ctrl+Shift+2",
+ "opened": "click:1737,1059",
+ "menuBox": [
+  1712,
+  719,
+  1912,
+  1039
+ ],
+ "menuFull": "/home/patrick/work/put.gd-afa2/runs/m74/full/m74-341-window-traymenu-menu-open.png",
+ "seconds": 0.58,
+ "operations": [
+  {
+   "id": "43d1f267-6027-4ddc-ac4e-3abcff2f4fc8",
+   "state": "completed",
+   "copyStatus": "pending",
+   "items": [
+    {
+     "name": "Screen-Capture-2026-10-22-00-47-55.png",
+     "mime": "image/png",
+     "uploadStatus": "uploaded",
+     "link": "http://127.0.0.1:34531/fixture/afa/Screen-Capture-2026-10-22-00-47-55.png",
+     "local": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "path": "/home/patrick/work/put.gd-afa2/runs/m74/archive/images/Screen-Capture-2026-10-22-00-47-55.png",
+      "status": "saved"
+     }
+    }
+   ],
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  }
+ ],
+ "newHistory": [
+  "c18f022b-b374-4830-93d3-87051a5a03c2"
+ ],
+ "notices": [
+  {
+   "itemId": null,
+   "notificationId": 1,
+   "notificationText": "Uploaded. Link copied to the clipboard. Click to open in browser.",
+   "operationId": null,
+   "summary": "operation_completed",
+   "title": "put.gd \u2014 completed",
+   "warning": false
+  }
+ ],
+ "shortcutLog": [
+  {
+   "message": "Shortcut pressed",
+   "fields": {
+    "action": "window",
+    "itemId": null,
+    "operationId": null,
+    "path": "raw"
+   }
+  },
+  {
+   "message": "Resident started",
+   "fields": {
+    "architecture": "x86_64",
+    "build": {
+     "baseVersion": "0.1.1",
+     "commitCount": 942,
+     "dirty": false,
+     "gitCommit": "0435ed6a8974135bb114f965cca923da04655169",
+     "gitTree": "34f4741e75cd379114f8612da58262ed5b6259bd",
+     "packageVersion": "0.1.1~nightly.942",
+     "schemaVersion": 1,
+     "sourceProvenance": "git",
+     "version": "0.1.1-nightly.942"
+    },
+    "capabilities": {
+     "adapter": "cinnamon-core-x11",
+     "capture": {
+      "desktop": {
+       "available": true,
+       "consent": "none",
+       "helper": {
+        "active": false,
+        "build": {
+         "baseVersion": "0.1.1",
+         "commitCount": 942,
+         "dirty": false,
+         "gitCommit": "0435ed6a8974135bb114f965cca923da04655169",
+         "gitTree": "34f4741e75cd379114f8612da58262ed5b6259bd",
+         "packageVersion": "0.1.1~nightly.942",
+         "schemaVersion": 1,
+         "sourceProvenance": "git",
+         "version": "0.1.1-nightly.942"
+        },
+        "lastExit": {},
+        "processId": 0
+       },
+       "mode": "visible-pixels"
+      },
+      "region": {
+       "available": true,
+       "consent": "none",
+       "helper": {
+        "active": false,
+        "build": {
+         "baseVersion": "0.1.1",
+         "commitCount": 942,
+         "dirty": false,
+         "gitCommit": "0435ed6a8974135bb114f965cca923da04655169",
+         "gitTree": "34f4741e75cd379114f8612da58262ed5b6259bd",
+         "packageVersion": "0.1.1~nightly.942",
+         "schemaVersion": 1,
+         "sourceProvenance": "git",
+         "version": "0.1.1-nightly.942"
+        },
+        "lastExit": {},
+        "processId": 0
+       },
+       "mode": "visible-pixels"
+      },
+      "window": {
+       "available": true,
+       "consent": "none",
+       "helper": {
+        "active": false,
+        "build": {
+         "baseVersion": "0.1.1",
+         "commitCount": 942,
+         "dirty": false,
+         "gitCommit": "0435ed6a8974135bb114f965cca923da04655169",
+         "gitTree": "34f4741e75cd379114f8612da58262ed5b6259bd",
+         "packageVersion": "0.1.1~nightly.942",
+         "schemaVersion": 1,
+         "sourceProvenance": "git",
+         "version": "0.1.1-nightly.942"
+        },
+        "lastExit": {},
+        "processId": 0
+       },
+       "mode": "visible-pixels"
+      }
+     },
+     "clipboard": "<redacted>",
+     "shortcuts": {
+      "available": true,
+      "bindings": {
+       "clipboard": "<redacted>",
+       "desktop": {
+        "actual": "Ctrl+Shift+3",
+        "bound": true,
+        "requested": "Ctrl+Shift+3"
+       },
+       "edit": {
+        "bound": false,
+        "error": "disabled",
+        "requested": ""
+       },
+       "record": {
+        "bound": false,
+        "error": "disabled",
+        "requested": ""
+       },
+       "region": {
+        "actual": "Ctrl+Shift+1",
+        "bound": true,
+        "requested": "Ctrl+Shift+1"
+       },
+       "window": {
+        "actual": "Ctrl+Shift+2",
+        "bound": true,
+        "requested": "Ctrl+Shift+2"
+       }
+      },
+      "keyPaths": {
+       "lastActivation": {},
+       "passive": true,
+       "raw": {
+        "available": true,
+        "xinput": "2.2"
+       }
+      }
+     }
+    },
+    "desktop": "X-Cinnamon",
+    "itemId": null,
+    "kernel": "6.14.0-37-generic",
+    "locations": {
+     "config": {
+      "path": "/home/patrick/work/put.gd-afa2/runs/m74/config/putgd",
+      "state": "current"
+     },
+     "data": {
+      "path": "/home/patrick/.local/share/putgd",
+      "state": "current"
+     },
+     "schemaVersion": 1
+    },
+    "operationId": null,
+    "os": "Linux Mint 22.3",
+    "platform": "none",
+    "qtCompiled": "6.8.3",
+    "qtRuntime": "6.8.3",
+    "resident": "x11-core",
+    "sessionType": "x11",
+    "trayAvailable": false
+   }
+  },
+  {
+   "message": "Shortcut pressed",
+   "fields": {
+    "action": "desktop",
+    "itemId": null,
+    "operationId": null,
+    "path": "raw"
+   }
+  },
+  {
+   "message": "Shortcut pressed",
+   "fields": {
+    "action": "region",
+    "itemId": null,
+    "operationId": null,
+    "path": "raw"
+   }
+  },
+  {
+   "message": "Shortcut pressed",
+   "fields": {
+    "action": "region",
+    "itemId": null,
+    "operationId": null,
+    "path": "raw"
+   }
+  },
+  {
+   "message": "Shortcut pressed",
+   "fields": {
+    "action": "window",
+    "itemId": null,
+    "operationId": null,
+    "path": "raw"
+   }
+  }
+ ],
+ "history": {
+  "id": "c18f022b-b374-4830-93d3-87051a5a03c2",
+  "name": "Screen-Capture-2026-10-22-00-47-55.png",
+  "uploadStatus": "uploaded"
+ },
+ "png": {
+  "path": "/home/patrick/work/put.gd-afa2/runs/m74/out/m74-341-window-traymenu.png",
+  "size": [
+   584,
+   232
+  ],
+  "sha256": "b61fb329b393b003ff8dc7a2ae5fc8e7eb889a547033d32ad91c9e76473a861c"
+ },
+ "menuInCapture": null,
+ "after": "/home/patrick/work/put.gd-afa2/runs/m74/full/m74-341-window-traymenu-after.png"
+}

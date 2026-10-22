@@ -12,8 +12,10 @@ REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / 'tools/releases'))
 import quiet_git  # noqa: F401  (disables git background maintenance, #99)
 import verify_tag
+from release_identity import calendar_base, parse_version
 
-BASE = '0.1.1'
+# HEAD is committed 2026-10-12 02:00 +0530: October 11 in UTC, the second commit.
+BASE = '26.1011.2'
 UTC = '20261011153045'
 
 
@@ -24,17 +26,18 @@ class ReleaseIdentity(unittest.TestCase):
         self.directory = Path(self.temp.name)
         self.source = self.directory / 'source'
         self.source.mkdir()
-        (self.source / 'CMakeLists.txt').write_text('project(putgd VERSION 0.1.1 LANGUAGES CXX)\n')
+        (self.source / 'CMakeLists.txt').write_text('project(putgd LANGUAGES CXX)\n')
         self.git('init', '-q')
         self.git('config', 'user.name', 'Synthetic identity fixture')
         self.git('config', 'user.email', 'identity@example.invalid')
         self.git('add', '.')
         self.commit('First', '2026-10-10T21:00:45+0530')
-        self.commit('Second', '2026-10-11T21:00:45+0530')
+        self.commit('Second', '2026-10-12T02:00:45+0530')
         self.head = self.git('rev-parse', 'HEAD')
         self.short = self.head[:12]
         self.tree = self.git('rev-parse', 'HEAD^{tree}')
-        self.nightly = f'v{BASE}-nightly.2'
+        self.time = int(self.git('show', '-s', '--format=%ct', 'HEAD'))
+        self.nightly = f'v{BASE}-nightly'
 
     def git(self, *args):
         return subprocess.check_output(['git', '-C', str(self.source), *args], text=True,
@@ -46,12 +49,11 @@ class ReleaseIdentity(unittest.TestCase):
 
     def cmake(self, tag='', source=None, supplied=None):
         command = ['cmake', f'-DSOURCE_DIR={source or self.source}',
-                   f'-DOUTPUT_DIR={self.directory / "identity"}', f'-DBASE_VERSION={BASE}',
-                   f'-DRELEASE_TAG={tag}']
+                   f'-DOUTPUT_DIR={self.directory / "identity"}', f'-DRELEASE_TAG={tag}']
         if supplied:
             command.extend(f'-DSUPPLIED_{key}={value}' for key, value in supplied.items())
         command.extend(['-P', str(REPO / 'cmake/GenerateBuildInfo.cmake')])
-        # SOURCE_DATE_EPOCH must not substitute the workflow clock for source time.
+        # SOURCE_DATE_EPOCH must not substitute the workflow clock for the commit time.
         result = subprocess.run(command, text=True, capture_output=True,
                                 env=dict(os.environ, SOURCE_DATE_EPOCH='0'))
         return result, (json.loads((self.directory / 'identity/build-info.json').read_text())
@@ -82,7 +84,7 @@ class ReleaseIdentity(unittest.TestCase):
 
     def test_qt_installer_logging_keeps_tagged_source_clean(self):
         self.git('tag', self.nightly)
-        self.both(self.nightly, True, f'{BASE}~nightly.2')
+        self.both(self.nightly, True, f'{BASE}~nightly')
         runner = self.directory / 'runner'
         runner.mkdir()
         config = REPO / 'tools/ci/aqt-logging.ini'
@@ -95,45 +97,50 @@ class ReleaseIdentity(unittest.TestCase):
         self.assertIn('synthetic installer diagnostic', (runner / 'aqtinstall.log').read_text())
         self.assertFalse((self.source / 'aqtinstall.log').exists())
         self.assertEqual(self.git('status', '--porcelain', '--untracked-files=normal'), '')
-        self.both(self.nightly, True, f'{BASE}~nightly.2')
+        self.both(self.nightly, True, f'{BASE}~nightly')
         # The logging override must not hide actual source changes.
-        (self.source / 'CMakeLists.txt').write_text('project(putgd VERSION 0.1.1)\n# mutation\n')
+        (self.source / 'CMakeLists.txt').write_text('project(putgd)\n# mutation\n')
         self.both(self.nightly, False)
 
-    def test_stable_rc_characterization(self):
-        for tag, package, prerelease in [('v0.1.1', '0.1.1', False),
-                                        ('v0.1.1-rc.2', '0.1.1~rc.2', True),
-                                        ('v0.1.1-rc.10', '0.1.1~rc.10', True)]:
+    def test_stable_characterization(self):
+        self.git('tag', '-a', f'v{BASE}', '-m', 'Synthetic tag')
+        receipt = self.both(f'v{BASE}', True, BASE)
+        self.assertFalse(receipt['prerelease'])
+        self.assertEqual(receipt['channel'], 'stable')
+        # Candidates ended with #373; pre-#373 tags and other dates or counts are not this commit's.
+        for tag in ['v0.1.1', 'v0.1.1-rc.2', f'v{BASE}-rc', f'v{BASE}-rc.1', 'v26.1012.2', 'v26.1011.3',
+                    'v26.01011.2', 'v26.1011.02', 'v026.1011.2', f'v{BASE}+build', f'v{BASE}-beta']:
             with self.subTest(tag=tag):
-                self.git('tag', '-a', tag, '-m', 'Synthetic tag')
-                receipt = self.both(tag, True, package)
-                self.assertEqual(receipt['prerelease'], prerelease)
-                self.assertEqual(receipt['channel'], 'candidate' if prerelease else 'stable')
-        for tag in ['v0.1.1-rc.0', 'v0.1.1-rc.02', 'v00.1.1', 'v0.1.1-beta.1', 'v0.1.1+build']:
-            with self.subTest(tag=tag):
+                self.git('tag', '-f', tag)
                 self.both(tag, False)
 
     def test_ordinary_dev_and_archive_characterization(self):
         self.git('tag', self.nightly)
         result, identity = self.cmake()
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(identity['version'], f'{BASE}-dev.2+g{self.short}')
+        self.assertEqual(identity['version'], f'{BASE}-dev+g{self.short}')
+        self.assertEqual(identity['packageVersion'], f'{BASE}~dev+g{self.short}')
+        self.assertEqual(identity['baseVersion'], BASE)
         self.assertEqual(identity['sourceProvenance'], 'git')
-        (self.source / 'CMakeLists.txt').write_text('project(putgd VERSION 0.1.1)\n# synthetic edit\n')
+        (self.source / 'CMakeLists.txt').write_text('project(putgd)\n# synthetic edit\n')
         result, identity = self.cmake()
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertTrue(identity['dirty'])
-        self.assertEqual(identity['version'], f'{BASE}-dev.2+g{self.short}.dirty')
+        self.assertEqual(identity['version'], f'{BASE}-dev+g{self.short}.dirty')
         archive = self.directory / 'archive'
         archive.mkdir()
-        (archive / 'CMakeLists.txt').write_text('project(putgd VERSION 0.1.1)\n')
-        supplied = {'COMMIT': self.head, 'TREE': self.tree, 'COUNT': 2}
+        (archive / 'CMakeLists.txt').write_text('project(putgd)\n')
+        supplied = {'COMMIT': self.head, 'TREE': self.tree, 'COUNT': 2, 'TIME': self.time}
         result, identity = self.cmake(source=archive, supplied=supplied)
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(identity['version'], f'{BASE}-dev.2+g{self.short}')
+        self.assertEqual(identity['version'], f'{BASE}-dev+g{self.short}')
+        self.assertEqual(identity['version'], calendar_base(self.time, 2) + f'-dev+g{self.short}')
+        # An archive must supply the commit time with the rest of its provenance.
+        result, _ = self.cmake(source=archive, supplied={'COMMIT': self.head, 'TREE': self.tree, 'COUNT': 2})
+        self.assertNotEqual(result.returncode, 0)
         self.assertEqual(identity['sourceProvenance'], 'supplied')
         self.assertIsNone(identity['dirty'])
-        for tag in ['v0.1.1', 'v0.1.1-rc.2', self.nightly]:
+        for tag in [f'v{BASE}', self.nightly]:
             with self.subTest(archive_tag=tag):
                 result, _ = self.cmake(tag, archive, supplied)
                 self.assertNotEqual(result.returncode, 0)
@@ -142,16 +149,17 @@ class ReleaseIdentity(unittest.TestCase):
 
     def test_nightly_cross_language_case_table(self):
         cases = [
-            ('exact source count', self.nightly, 'head', True),
-            ('wrong base', 'v0.1.2-nightly.2', 'head', False),
-            ('wrong count', f'v{BASE}-nightly.3', 'head', False),
-            ('leading zero count', f'v{BASE}-nightly.02', 'head', False),
-            ('zero count', f'v{BASE}-nightly.0', 'head', False),
-            ('missing number', f'v{BASE}-nightly', 'head', False),
-            ('leading zero base', 'v00.1.1-nightly.2', 'head', False),
-            ('uppercase label', f'v{BASE}-Nightly.2', 'head', False),
-            ('build metadata', f'v{BASE}-nightly.2+g{self.short}', 'head', False),
-            ('previous dev format', f'v{BASE}-dev.2.{UTC}+g{self.short}', 'head', False),
+            ('exact source date and count', self.nightly, 'head', True),
+            ('local date instead of UTC', 'v26.1012.2-nightly', 'head', False),
+            ('wrong count', 'v26.1011.3-nightly', 'head', False),
+            ('leading zero count', 'v26.1011.02-nightly', 'head', False),
+            ('leading zero date', 'v26.01011.2-nightly', 'head', False),
+            ('zero count', 'v26.1011.0-nightly', 'head', False),
+            ('pre-#373 numbered nightly', 'v0.1.1-nightly.2', 'head', False),
+            ('numbered nightly', f'v{BASE}-nightly.2', 'head', False),
+            ('uppercase label', f'v{BASE}-Nightly', 'head', False),
+            ('build metadata', f'v{BASE}-nightly+g{self.short}', 'head', False),
+            ('previous dev format', f'v0.1.1-dev.2.{UTC}+g{self.short}', 'head', False),
             ('missing tag', self.nightly, 'missing', False),
             ('wrong tag HEAD', self.nightly, 'previous', False),
             ('dirty source', self.nightly, 'dirty', False),
@@ -161,7 +169,7 @@ class ReleaseIdentity(unittest.TestCase):
                 self.git('tag', '-f', tag, 'HEAD~1' if state == 'previous' else 'HEAD')
                 if state == 'missing': self.git('tag', '-d', tag)
                 if state == 'dirty': (self.source / 'untracked').write_text('synthetic dirty file')
-                receipt = self.both(tag, accepted, f'{BASE}~nightly.2' if accepted else None)
+                receipt = self.both(tag, accepted, f'{BASE}~nightly' if accepted else None)
                 if accepted and receipt is not None:
                     self.assertEqual(receipt['channel'], 'nightly')
                     self.assertTrue(receipt['prerelease'])
@@ -170,19 +178,40 @@ class ReleaseIdentity(unittest.TestCase):
     def test_shallow_source_cannot_assert_full_history_count(self):
         shallow = self.directory / 'shallow'
         subprocess.run(['git', 'clone', '-q', '--depth=1', self.source.as_uri(), str(shallow)], check=True)
-        tag = f'v{BASE}-nightly.1'
+        tag = 'v' + calendar_base(self.time, 1) + '-nightly'
         subprocess.run(['git', '-C', str(shallow), 'tag', tag], check=True)
         result, _ = self.cmake(tag, shallow)
         self.assertNotEqual(result.returncode, 0)
         with self.assertRaises((ValueError, subprocess.CalledProcessError)):
             verify_tag.verify(shallow, tag)
 
-    # Untagged builds, then nightlies in the previous published format, then the
-    # current nightly format, candidates and stable: upgrades follow this order.
+    def test_grammar_and_utc_dates(self):
+        self.assertEqual(calendar_base(self.time, 2), BASE)
+        self.assertEqual(calendar_base(1767571200, 990), '26.105.990')  # 2026-01-05T00:00:00Z
+        self.assertEqual(calendar_base(1767571199, 990), '26.104.990')  # one second earlier
+        self.assertEqual(parse_version('28.229.5').channel, 'stable')  # 2028 is a leap year
+        for version in ['26.229.5', '26.1301.5', '26.132.5', '25.1231.5', '26.0105.5', '26.105.05', '26.105.0',
+                        '26.1101.960-rc', '26.1101.960-rc.1', '26.1022.942-nightly.942', '1.10.0', '026.105.5']:
+            with self.subTest(version=version), self.assertRaises(ValueError):
+                parse_version(version)
+        ordered = ['0.1.1-nightly.2', '0.1.1-nightly.925', '0.1.1-rc.1', '0.1.1', '26.105.990-nightly', '26.105.990',
+                   '26.1011.2-nightly', '26.1011.3-nightly', '26.1011.10-nightly', '26.1011.10', '26.1012.5-nightly',
+                   '27.101.5-nightly']
+        keys = [parse_version(version).key for version in ordered]
+        self.assertEqual(keys, sorted(keys))
+        self.assertEqual(len(set(keys)), len(keys))
+        self.assertEqual(parse_version('26.1022.942-nightly').package_version, '26.1022.942~nightly')
+        self.assertEqual(parse_version('0.1.1-nightly.925').package_version, '0.1.1~nightly.925')
+
+    # Untagged builds, then the pre-#373 nightlies, candidates and stable, then
+    # calendar versions (#373): upgrades follow this order, with no epoch.
     PACKAGE_VERSIONS = ['0.1.1~dev.2+g0123456789ab',
                         '0.1.1~dev.309.20261018030128+gcb26dc713228',
-                        '0.1.1~nightly.2', '0.1.1~nightly.3', '0.1.1~nightly.10',
-                        '0.1.1~rc.2', '0.1.1~rc.10', '0.1.1']
+                        '0.1.1~nightly.2', '0.1.1~nightly.3', '0.1.1~nightly.925',
+                        '0.1.1~rc.2', '0.1.1~rc.10', '0.1.1',
+                        '26.105.990~dev+g0123456789ab', '26.105.990~nightly', '26.105.990',
+                        '26.1011.2~nightly', '26.1011.3~nightly', '26.1011.10~dev+g0123456789ab',
+                        '26.1011.10~nightly', '26.1011.10', '26.1012.5~nightly', '27.101.5~nightly']
 
     @unittest.skipUnless(shutil.which('dpkg'), 'requires actual Debian dpkg comparison tool')
     def test_debian_package_ordering(self):

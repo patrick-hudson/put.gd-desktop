@@ -1,0 +1,642 @@
+{
+ "start": {
+  "startSeconds": 0.34,
+  "credentials": "completed",
+  "sessionSock": true,
+  "processes": [
+   {
+    "pid": 265340,
+    "ppid": 265339,
+    "exe": "/tmp/.mount_putgd-MeabLI/usr/bin/putgd",
+    "comm": "putgd",
+    "cmd": "/tmp/.mount_putgd-MeabLI/usr/bin/putgd --background",
+    "qtPlatformPlugins": [],
+    "QT_QPA_PLATFORM": null,
+    "APPIMAGE": "/home/patrick/work/put.gd-afa2/images/putgd-0.1.1-nightly.942-x86_64.AppImage"
+   },
+   {
+    "pid": 265344,
+    "ppid": 1,
+    "exe": "/home/patrick/work/put.gd-afa2/images/putgd-0.1.1-nightly.942-x86_64.AppImage",
+    "comm": "putgd-0.1.1-nig",
+    "cmd": "/home/patrick/work/put.gd-afa2/images/putgd-0.1.1-nightly.942-x86_64.AppImage --background",
+    "qtPlatformPlugins": [],
+    "QT_QPA_PLATFORM": null,
+    "APPIMAGE": null
+   }
+  ],
+  "diagnostics": {
+   "backend": "Qt",
+   "build": {
+    "baseVersion": "0.1.1",
+    "commitCount": 942,
+    "dirty": false,
+    "gitCommit": "0435ed6a8974135bb114f965cca923da04655169",
+    "gitTree": "34f4741e75cd379114f8612da58262ed5b6259bd",
+    "packageVersion": "0.1.1~nightly.942",
+    "schemaVersion": 1,
+    "sourceProvenance": "git",
+    "version": "0.1.1-nightly.942"
+   },
+   "capabilities": {
+    "editor": {
+     "admissionPixels": 24000000,
+     "available": true,
+     "commands": [
+      "inspect",
+      "apply",
+      "preview",
+      "saveCopy",
+      "fileDialog",
+      "submit",
+      "cancel",
+      "raise"
+     ],
+     "fileFormats": [
+      "png",
+      "jpeg"
+     ],
+     "open": false,
+     "output": "png",
+     "shapes": [
+      "redact",
+      "blur",
+      "arrow",
+      "rectangle",
+      "text",
+      "highlight"
+     ],
+     "sources": [
+      "region",
+      "window",
+      "desktop",
+      "clipboard",
+      "file"
+     ]
+    },
+    "providers": {
+     "backblaze-b2": {
+      "conditionalCreate": true,
+      "conditionalDelete": false,
+      "conditionalReplace": false,
+      "delete": true,
+      "deletionEffect": "Deletes exactly the uploaded B2 file version by its ID. put.gd never uploads over a visible file, so the name then shows nothing, or an older version that was hidden before the upload. Authorized links stop working when they expire.",
+      "maximumNameBytes": 1023,
+      "maximumObjectBytes": 10000000000000,
+      "privateUploads": false,
+      "sharing": false,
+      "stat": true,
+      "urls": true,
+      "versionAddressing": true
+     },
+     "proton-drive": {
+      "conditionalCreate": true,
+      "conditionalDelete": false,
+      "conditionalReplace": false,
+      "delete": false,
+      "deletionEffect": "Safe remote deletion is unavailable: Proton does not expose an atomic revision-guarded file deletion. Revoke share links separately.",
+      "maximumNameBytes": 255,
+      "maximumObjectBytes": null,
+      "privateUploads": true,
+      "sharing": true,
+      "stat": true,
+      "urls": true,
+      "versionAddressing": false
+     },
+     "s3": {
+      "conditionalCreate": true,
+      "conditionalDelete": true,
+      "conditionalReplace": true,
+      "delete": true,
+      "deletionEffect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+      "maximumNameBytes": 1024,
+      "maximumObjectBytes": 5497558138880,
+      "privateUploads": false,
+      "sharing": false,
+      "stat": true,
+      "urls": true,
+      "versionAddressing": true
+     }
+    },
+    "recording": {
+     "active": null,
+     "audio": {
+      "microphone": false,
+      "system": false
+     },
+     "available": false,
+     "codecs": {},
+     "commands": [
+      "prepare",
+      "start",
+      "pause",
+      "resume",
+      "stop",
+      "cancel",
+      "inspect",
+      "select",
+      "raise",
+      "overlay",
+      "edit",
+      "preview",
+      "review",
+      "saveCopy",
+      "upload"
+     ],
+     "editCommands": [
+      "setTrim",
+      "resetTrim",
+      "addMask",
+      "updateMask",
+      "removeMask"
+     ],
+     "formats": [],
+     "limits": {
+      "animationMaxEdge": 1280,
+      "animationMaxUs": 60000000,
+      "maxFileBytes": 1099511627776,
+      "maxMasks": 64
+     },
+     "maskKinds": [
+      "blur",
+      "solid"
+     ],
+     "overlayExclusion": {},
+     "reason": "recording_not_probed",
+     "states": [
+      "preparing",
+      "ready",
+      "starting",
+      "recording",
+      "paused",
+      "stopping",
+      "reviewing",
+      "exporting",
+      "submitted",
+      "cancelled",
+      "failed"
+     ],
+     "targets": [],
+     "timeUnit": "microseconds"
+    },
+    "source": {
+     "adapter": "cinnamon-core-x11",
+     "capture": {
+      "desktop": {
+       "available": true,
+       "consent": "none",
+       "helper": {
+        "active": false,
+        "build": {
+         "baseVersion": "0.1.1",
+         "commitCount": 942,
+         "dirty": false,
+         "gitCommit": "0435ed6a8974135bb114f965cca923da04655169",
+         "gitTree": "34f4741e75cd379114f8612da58262ed5b6259bd",
+         "packageVersion": "0.1.1~nightly.942",
+         "schemaVersion": 1,
+         "sourceProvenance": "git",
+         "version": "0.1.1-nightly.942"
+        },
+        "lastExit": {},
+        "processId": 0
+       },
+       "mode": "visible-pixels"
+      },
+      "region": {
+       "available": true,
+       "consent": "none",
+       "helper": {
+        "active": false,
+        "build": {
+         "baseVersion": "0.1.1",
+         "commitCount": 942,
+         "dirty": false,
+         "gitCommit": "0435ed6a8974135bb114f965cca923da04655169",
+         "gitTree": "34f4741e75cd379114f8612da58262ed5b6259bd",
+         "packageVersion": "0.1.1~nightly.942",
+         "schemaVersion": 1,
+         "sourceProvenance": "git",
+         "version": "0.1.1-nightly.942"
+        },
+        "lastExit": {},
+        "processId": 0
+       },
+       "mode": "visible-pixels"
+      },
+      "window": {
+       "available": true,
+       "consent": "none",
+       "helper": {
+        "active": false,
+        "build": {
+         "baseVersion": "0.1.1",
+         "commitCount": 942,
+         "dirty": false,
+         "gitCommit": "0435ed6a8974135bb114f965cca923da04655169",
+         "gitTree": "34f4741e75cd379114f8612da58262ed5b6259bd",
+         "packageVersion": "0.1.1~nightly.942",
+         "schemaVersion": 1,
+         "sourceProvenance": "git",
+         "version": "0.1.1-nightly.942"
+        },
+        "lastExit": {},
+        "processId": 0
+       },
+       "mode": "visible-pixels"
+      }
+     },
+     "clipboard": {
+      "available": true,
+      "import": "asynchronous-x11-selection",
+      "result": "native-x11-ownership",
+      "types": [
+       "files",
+       "image",
+       "text"
+      ]
+     },
+     "shortcuts": {
+      "available": true,
+      "bindings": {
+       "clipboard": {
+        "bound": false,
+        "error": "disabled",
+        "requested": ""
+       },
+       "desktop": {
+        "actual": "Ctrl+Shift+3",
+        "bound": true,
+        "requested": "Ctrl+Shift+3"
+       },
+       "edit": {
+        "bound": false,
+        "error": "disabled",
+        "requested": ""
+       },
+       "record": {
+        "bound": false,
+        "error": "disabled",
+        "requested": ""
+       },
+       "region": {
+        "actual": "Ctrl+Shift+1",
+        "bound": true,
+        "requested": "Ctrl+Shift+1"
+       },
+       "window": {
+        "actual": "Ctrl+Shift+2",
+        "bound": true,
+        "requested": "Ctrl+Shift+2"
+       }
+      },
+      "keyPaths": {
+       "lastActivation": {},
+       "passive": true,
+       "raw": {
+        "available": true,
+        "xinput": "2.2"
+       }
+      }
+     }
+    }
+   },
+   "journalReady": true,
+   "qtVersion": "6.8.3",
+   "release": {
+    "kind": "nightly",
+    "url": "https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v0.1.1-nightly.942",
+    "version": "0.1.1-nightly.942"
+   }
+  },
+  "ui": {
+   "ui": {
+    "checkpointBytes": 0,
+    "lastExit": {},
+    "pid": 0,
+    "state": "stopped"
+   },
+   "trayAvailable": true,
+   "trayTint": {
+    "color": "#9bbcff",
+    "panel": "dark",
+    "source": "cinnamon-theme"
+   },
+   "loginStartup": {
+    "applied": true,
+    "enabled": false
+   },
+   "update": {
+    "action": null,
+    "attemptedAt": null,
+    "build": {
+     "channel": "nightly",
+     "kind": "nightly",
+     "packageTarget": "appimage",
+     "reason": null,
+     "supported": true,
+     "version": "0.1.1-nightly.942"
+    },
+    "channel": "nightly",
+    "channelSetting": "build",
+    "check": true,
+    "checkedAt": null,
+    "checking": false,
+    "enabled": true,
+    "error": null,
+    "install": {
+     "available": true,
+     "backup": null,
+     "image": "/home/patrick/work/put.gd-afa2/images/putgd-0.1.1-nightly.942-x86_64.AppImage",
+     "installed": null,
+     "kind": "update",
+     "reason": null,
+     "restartRequired": false,
+     "running": false,
+     "state": "idle",
+     "switch": null
+    },
+    "nextCheckAt": "2026-10-22T06:49:45Z",
+    "notifies": false,
+    "reason": null,
+    "result": null,
+    "supported": true
+   }
+  },
+  "kdeEntries": []
+ },
+ "liveS3": {
+  "profile": {
+   "aclMode": "public-read",
+   "addressing": "path",
+   "bucket": "put.gd",
+   "connectTimeoutMs": 10000,
+   "endpoint": "https://s3.us-east-2.amazonaws.com",
+   "lowSpeedBytesPerSecond": 1,
+   "lowSpeedTimeSeconds": 120,
+   "objectPrefix": "acceptance/afa2/m74/",
+   "publicUrlBase": "https://put.gd",
+   "region": "us-east-2",
+   "requestTimeoutMs": 120000,
+   "storageClass": "STANDARD"
+  },
+  "stored": true,
+  "storeError": "",
+  "credentials": "completed"
+ },
+ "notify:m74-F-F-notify": {
+  "notificationsOn": true,
+  "operation": {
+   "id": "ba0db602-9e2c-4ec5-a6f4-14835d9db74c",
+   "state": "completed",
+   "copyStatus": "copied",
+   "items": [
+    {
+     "name": "Screen-Capture-2026-10-22-01-44-36.png",
+     "mime": "image/png",
+     "uploadStatus": "uploaded",
+     "link": "https://put.gd/acceptance/afa2/m74/Screen-Capture-2026-10-22-01-44-36.png",
+     "local": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "path": "/home/patrick/work/put.gd-afa2/runs/m74-F/archive/images/Screen-Capture-2026-10-22-01-44-36.png",
+      "status": "saved"
+     }
+    }
+   ],
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "notification": {
+   "logged": [
+    {
+     "category": "putgd.ui",
+     "fields": {
+      "itemId": null,
+      "notificationId": 1,
+      "notificationText": "Uploaded. Link copied to the clipboard. Click to open in browser.",
+      "operationId": null,
+      "summary": "operation_completed",
+      "title": "put.gd \u2014 completed",
+      "warning": false
+     },
+     "level": "info",
+     "message": "Notification shown",
+     "pid": 265340,
+     "process": "putgd",
+     "time": "2026-10-22T06:44:38.091Z",
+     "v": 1
+    }
+   ],
+   "banner": {
+    "label": "m74-F-F-notify-notification",
+    "components": [
+     {
+      "blocks": 608,
+      "box": [
+       1416,
+       8,
+       1904,
+       88
+      ]
+     }
+    ],
+    "colour": [
+     32,
+     32,
+     36
+    ],
+    "inner": [
+     1421,
+     14,
+     1899,
+     82
+    ],
+    "changedShare": 1.0,
+    "kept": "/home/patrick/work/put.gd-afa2/runs/m74-F/crops/m74-F-F-notify-notification.png"
+   },
+   "full": "/home/patrick/work/put.gd-afa2/runs/m74-F/full/m74-F-F-notify-notification.png",
+   "clicked": [
+    1660,
+    36
+   ],
+   "dbusMembers": [
+    "NameAcquired",
+    "NameLost",
+    "Notify",
+    "ActionInvoked",
+    "NotificationClosed"
+   ],
+   "notifyActions": [
+    "default",
+    "Open in browser"
+   ],
+   "actionInvoked": [
+    "default"
+   ],
+   "openedUrls": []
+  },
+  "notificationsOff": true
+ },
+ "browser:m74-F-F-browser": {
+  "browserProcesses": [
+   {
+    "pid": 265444,
+    "comm": "firefox-bin",
+    "cmd": "/usr/lib/firefox/firefox https://put.gd/acceptance/afa2/m74/Screen-Capture-2026-10-22-01-44-36.png "
+   }
+  ],
+  "opened": [
+   {
+    "itemId": null,
+    "opened": true,
+    "operationId": null,
+    "route": "portal",
+    "target": "notification-link"
+   }
+  ],
+  "full": "/home/patrick/work/put.gd-afa2/runs/m74-F/full/m74-F-F-browser.png"
+ },
+ "delete": {
+  "item": "Screen-Capture-2026-10-22-01-44-36.png",
+  "prepare": {
+   "acknowledgement": "33c5dfed8706610a81fbe35592869d6d4dfba484c3b7c1edefae0c1f651ffa80",
+   "cacheNotice": "Origin deletion does not invalidate browser or CDN caches",
+   "localCopiesPreserved": true,
+   "targets": [
+    {
+     "effect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+     "historyId": "b2f311fc-5d93-4322-9f78-3040fd05cae7",
+     "receipt": {
+      "concurrencyToken": "\"4a0b42e19b05ece35bd620c407e856b9\"",
+      "destination": {
+       "credentials": {
+        "mode": "session",
+        "reference": null
+       },
+       "profileId": "live-s3",
+       "profileRevision": "e2947ee56096bc1800c6cd7cbae0cc9469e3675828f58155b6f94cf2359f8aa0",
+       "providerId": "s3",
+       "settings": {
+        "aclMode": "public-read",
+        "addressing": "path",
+        "bucket": "put.gd",
+        "connectTimeoutMs": 10000,
+        "endpoint": "https://s3.us-east-2.amazonaws.com",
+        "lowSpeedBytesPerSecond": 1,
+        "lowSpeedTimeSeconds": 120,
+        "objectPrefix": "acceptance/afa2/m74/",
+        "publicUrlBase": "https://put.gd",
+        "region": "us-east-2",
+        "requestTimeoutMs": 120000,
+        "storageClass": "STANDARD"
+       }
+      },
+      "directUrl": "https://put.gd/acceptance/afa2/m74/Screen-Capture-2026-10-22-01-44-36.png",
+      "objectReference": {
+       "bytes": 1088,
+       "key": "acceptance/afa2/m74/Screen-Capture-2026-10-22-01-44-36.png",
+       "schemaVersion": 1,
+       "sha256": "162262561b65856a21546c6db5b619092c970b679efcfe607d060633af6ca9e7",
+       "versionId": ""
+      },
+      "publicationId": "c6db4edc-650b-43de-9db1-8febf7fdedd1",
+      "schemaVersion": 1
+     }
+    }
+   ]
+  },
+  "confirm": {
+   "deleteOperationId": "c0505c94-0fe1-4d7d-a1f1-d36cc86f6ef2",
+   "deletion": {
+    "acknowledgement": "33c5dfed8706610a81fbe35592869d6d4dfba484c3b7c1edefae0c1f651ffa80",
+    "cancelled": false,
+    "created": "2026-10-22T06:45:26.950Z",
+    "id": "c0505c94-0fe1-4d7d-a1f1-d36cc86f6ef2",
+    "items": [
+     {
+      "effect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+      "historyId": "b2f311fc-5d93-4322-9f78-3040fd05cae7",
+      "progress": {
+       "schemaVersion": 1
+      },
+      "receipt": {
+       "concurrencyToken": "\"4a0b42e19b05ece35bd620c407e856b9\"",
+       "destination": {
+        "credentials": {
+         "mode": "session",
+         "reference": null
+        },
+        "profileId": "live-s3",
+        "profileRevision": "e2947ee56096bc1800c6cd7cbae0cc9469e3675828f58155b6f94cf2359f8aa0",
+        "providerId": "s3",
+        "settings": {
+         "aclMode": "public-read",
+         "addressing": "path",
+         "bucket": "put.gd",
+         "connectTimeoutMs": 10000,
+         "endpoint": "https://s3.us-east-2.amazonaws.com",
+         "lowSpeedBytesPerSecond": 1,
+         "lowSpeedTimeSeconds": 120,
+         "objectPrefix": "acceptance/afa2/m74/",
+         "publicUrlBase": "https://put.gd",
+         "region": "us-east-2",
+         "requestTimeoutMs": 120000,
+         "storageClass": "STANDARD"
+        }
+       },
+       "directUrl": "https://put.gd/acceptance/afa2/m74/Screen-Capture-2026-10-22-01-44-36.png",
+       "objectReference": {
+        "bytes": 1088,
+        "key": "acceptance/afa2/m74/Screen-Capture-2026-10-22-01-44-36.png",
+        "schemaVersion": 1,
+        "sha256": "162262561b65856a21546c6db5b619092c970b679efcfe607d060633af6ca9e7",
+        "versionId": ""
+       },
+       "publicationId": "c6db4edc-650b-43de-9db1-8febf7fdedd1",
+       "schemaVersion": 1
+      },
+      "status": "pending"
+     }
+    ],
+    "state": "accepted"
+   }
+  },
+  "final": null,
+  "remoteAfter": "HTTP 403",
+  "remoteStatus": "removed",
+  "localPath": "/home/patrick/work/put.gd-afa2/runs/m74-F/archive/images/Screen-Capture-2026-10-22-01-44-36.png",
+  "localExistsAfter": true,
+  "historyRowKept": true
+ },
+ "cleanup": {
+  "removed": [
+   "/home/patrick/.local/share/putgd",
+   "/tmp/afa.L0qHcq",
+   "/home/patrick/work/put.gd-afa2/runs/m74-F/appdir",
+   "/home/patrick/work/put.gd-afa2/runs/m74-F/frames",
+   "/home/patrick/work/put.gd-afa2/runs/m74-F/config",
+   "/home/patrick/work/put.gd-afa2/runs/m74-F/cache",
+   "/home/patrick/work/put.gd-afa2/runs/m74-F/archive",
+   "/home/patrick/work/put.gd-afa2/runs/m74-F/working",
+   "/home/patrick/work/put.gd-afa2/runs/m74-F/urldata"
+  ],
+  "fixtureStopped": 265287,
+  "leftovers": {
+   "processes": [],
+   "mounts": [],
+   "entries": []
+  },
+  "after": {
+   "processes": [],
+   "mounts": [],
+   "entries": []
+  }
+ }
+}

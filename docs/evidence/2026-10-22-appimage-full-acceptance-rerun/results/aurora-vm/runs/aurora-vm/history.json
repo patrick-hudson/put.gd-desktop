@@ -1,0 +1,233 @@
+{
+ "total": 7,
+ "records": [
+  {
+   "id": "83c999e4-93cd-4cbb-b8f8-a0c7ed9d513e",
+   "name": "Screen-Capture-2026-10-22-00-57-37.png",
+   "mime": "image/png",
+   "uploadStatus": "uploaded",
+   "local": "saved",
+   "linkAvailable": true
+  },
+  {
+   "id": "6b00d4ce-a268-4f9e-8f57-2534e10dbbae",
+   "name": "Screen-Capture-2026-10-22-00-57-26.png",
+   "mime": "image/png",
+   "uploadStatus": "uploaded",
+   "local": "saved",
+   "linkAvailable": true
+  },
+  {
+   "id": "369d9659-957b-4b9b-bfdf-0f1d0fc2953f",
+   "name": "Screen-Recording-2026-10-22-00-55-48.mp4",
+   "mime": "video/mp4",
+   "uploadStatus": "uploaded",
+   "local": "saved",
+   "linkAvailable": true
+  },
+  {
+   "id": "52230b97-ebff-4072-84b3-5b2cc9d49e6d",
+   "name": "Screen-Capture-2026-10-22-00-55-40.png",
+   "mime": "image/png",
+   "uploadStatus": "uploaded",
+   "local": "saved",
+   "linkAvailable": true
+  },
+  {
+   "id": "c3a328cc-5db1-410d-ae45-4dce0a3e115c",
+   "name": "Screen-Capture-2026-10-22-00-55-35.png",
+   "mime": "image/png",
+   "uploadStatus": "uploaded",
+   "local": "saved",
+   "linkAvailable": true
+  },
+  {
+   "id": "8e7a1b6d-aa8d-4f16-a92c-9f34694da512",
+   "name": "Screen-Capture-2026-10-22-00-55-29.png",
+   "mime": "image/png",
+   "uploadStatus": "uploaded",
+   "local": "saved",
+   "linkAvailable": true
+  },
+  {
+   "id": "ed1e8ca7-ad46-428a-ad76-8da6726da6f4",
+   "name": "Screen-Capture-2026-10-22-00-55-14.png",
+   "mime": "image/png",
+   "uploadStatus": "uploaded",
+   "local": "saved",
+   "linkAvailable": true
+  }
+ ],
+ "previews": {
+  "Screen-Capture-2026-10-22-00-57-37.png": {
+   "ok": true,
+   "state": "ready",
+   "source": null,
+   "exists": true,
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "Screen-Capture-2026-10-22-00-57-26.png": {
+   "ok": true,
+   "state": "ready",
+   "source": null,
+   "exists": true,
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "Screen-Recording-2026-10-22-00-55-48.mp4": {
+   "ok": true,
+   "state": "ready",
+   "source": null,
+   "exists": true,
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "Screen-Capture-2026-10-22-00-55-40.png": {
+   "ok": true,
+   "state": "ready",
+   "source": null,
+   "exists": true,
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "Screen-Capture-2026-10-22-00-55-35.png": {
+   "ok": true,
+   "state": "ready",
+   "source": null,
+   "exists": true,
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "Screen-Capture-2026-10-22-00-55-29.png": {
+   "ok": true,
+   "state": "ready",
+   "source": null,
+   "exists": true,
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "Screen-Capture-2026-10-22-00-55-14.png": {
+   "ok": true,
+   "state": "ready",
+   "source": null,
+   "exists": true,
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  }
+ },
+ "copyImage": {
+  "reply": {
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   },
+   "ok": true,
+   "requestId": "c8262231-9900-4e31-9b93-7c14c99b966f",
+   "result": {
+    "copied": true
+   },
+   "schemaVersion": 1
+  },
+  "clipboardPng": true,
+  "clipboardBytes": 236,
+  "sameSize": true,
+  "samePixels": true
+ },
+ "windowShot": {
+  "label": "history",
+  "components": [
+   {
+    "blocks": 3794,
+    "box": [
+     232,
+     48,
+     1256,
+     704
+    ]
+   },
+   {
+    "blocks": 157,
+    "box": [
+     16,
+     536,
+     200,
+     592
+    ]
+   },
+   {
+    "blocks": 135,
+    "box": [
+     16,
+     440,
+     200,
+     488
+    ]
+   },
+   {
+    "blocks": 62,
+    "box": [
+     400,
+     120,
+     680,
+     144
+    ]
+   },
+   {
+    "blocks": 14,
+    "box": [
+     528,
+     64,
+     592,
+     80
+    ]
+   },
+   {
+    "blocks": 7,
+    "box": [
+     1120,
+     456,
+     1176,
+     464
+    ]
+   }
+  ],
+  "colour": [
+   16,
+   16,
+   20
+  ],
+  "inner": [
+   234,
+   53,
+   1248,
+   603
+  ],
+  "changedShare": 0.85,
+  "ownShare": 0.912,
+  "kept": "/var/home/lab/work/put.gd-afa2/runs/aurora-vm/crops/history.png"
+ },
+ "full": "/var/home/lab/work/put.gd-afa2/runs/aurora-vm/full/history.png"
+}

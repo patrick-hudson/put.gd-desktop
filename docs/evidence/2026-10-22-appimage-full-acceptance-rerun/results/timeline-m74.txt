@@ -1,0 +1,44 @@
+2026-10-22T05:16:40Z lock acquire (45 min) exit=0
+2026-10-22T05:17:41Z closed Mint Welcome window PID 244796 (session c9, :0) by exact PID; :1.0 instance 1568 (not on the physical display) left alone
+2026-10-22T05:18:19Z A-C start (ac.sh m74)
+2026-10-22T05:22:13Z A-C done
+2026-10-22T05:23:25Z D-H start (dk.sh)
+2026-10-22T05:28:30Z D-H done
+2026-10-22T05:30:51Z #341 menu-shortcut checks start
+2026-10-22T05:33:13Z #341 menu-shortcut checks done
+2026-10-22T05:34:26Z lock extend 45 min
+2026-10-22T05:36:24Z live in-app update 925->latest (947, which had just published) start (upd293 --live, run m74-live925)
+2026-10-22T05:37:27Z live in-app update done
+2026-10-22T05:38:19Z live925 attempt 1 aborted (journal_busy: the acceptance resident owns the data-home journal); 925 resident quit, run cleaned up; retry after K
+2026-10-22T05:39:07Z item I real logout/login:
+  2026-10-22T05:39:02Z shell cinnamon pid 244652
+  2026-10-22T05:39:02Z logout requested (cinnamon-session-quit --logout)
+  2026-10-22T05:39:05Z old shell gone
+  2026-10-22T05:39:05Z systemctl restart lightdm
+  2026-10-22T05:39:07Z new shell pid 261073
+    c1 1000 patrick seat0 tty7 closing no -
+   c11 1000 patrick seat0 tty7 active  no -
+    c3 1000 patrick seat0 tty7 closing no -
+    c5 1000 patrick seat0 tty7 closing no -
+    c7 1000 patrick seat0 tty7 closing no -
+    c9 1000 patrick seat0 tty7 closing no -
+2026-10-22T05:39:49Z login check done
+2026-10-22T05:40:14Z closed Mint Welcome (autostarted after re-login) PID 261237 on :0
+2026-10-22T05:42:46Z K: quit from tray (real click)
+2026-10-22T05:44:02Z K mis-click: find-tray matched put.gd's window-list entry; quit-tray clicked that menu's last item, which closed put.gd's own Settings window
+2026-10-22T05:44:52Z K: quit from the system tray icon (1737,1059) with a real click
+2026-10-22T05:46:43Z redo B tray picture and #341 with put.gd's own tray icon (private resident restarted)
+2026-10-22T05:48:21Z lock extend 45 min
+2026-10-22T05:48:28Z K (again, after the #341 redo): quit from the put.gd tray icon with a real click
+2026-10-22T05:49:01Z live in-app update 925->latest (947, which had just published) (run m74-live925b) done
+2026-10-22T05:49:23Z live in-app update 942->947 (N->N+1, run m74-live942) start
+2026-10-22T05:50:25Z live 942->947 done
+2026-10-22T05:51:22Z live in-app update 942->947 (run m74-live942b) done; resident quit and run cleaned
+2026-10-22T05:52:09Z cleanup: afa login disable + cleanup (autostart entry, data home, user files removed); uinput agent PID none stopped
+2026-10-22T05:53:31Z removed ~/work/put.gd-afa2 (evidence copied to the workstation)
+2026-10-22T05:53:33Z lock released --verified-clean
+2026-10-22T06:43:23Z restaged ~/work/put.gd-afa2 (tool + 942 AppImage, SHA256SUMS verified) for the real-browser F
+2026-10-22T06:43:43Z lock acquire (30 min) for real-browser F
+2026-10-22T06:43:52Z F: temporary Firefox profile made default via profiles.ini/installs.ini (backed up), run m74-F, live S3 public-read to put.gd/acceptance/afa2/m74/, banner click with xdotool
+2026-10-22T06:47:04Z F PASS (Firefox temp profile loaded the image); object deleted via put.gd; Firefox PID 265444 closed; run cleaned; profiles.ini/installs.ini restored byte for byte, temp profile removed; ~/work/put.gd-afa2 removed; prefix listed; lock released --verified-clean
+2026-10-22T06:47:39Z removed Firefox install-wide files the temporary profile created during the test (birth 06:44:46-06:45:43Z): 'Profile Groups/5f33ebb7.sqlite{,-shm,-wal}' (empty store of the temp profile) and 'Crash Reports/glean'. Pre-existing 'Crash Reports/crash_helper_server.log' (born 2026-10-19) got appended lines; left in place

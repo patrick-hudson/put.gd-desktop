@@ -1,19 +1,15 @@
 #!/usr/bin/env python3
-"""Validate a release label against the actual clean Git checkout and project base."""
+"""Validate a release label against the actual clean Git checkout: its UTC commit date and count (#373)."""
 import argparse
 import json
 from pathlib import Path
-import re
 import subprocess
 
-from release_identity import parse_tag
+from release_identity import calendar_base, parse_tag
 
 
 def verify(root, tag):
     identity = parse_tag(tag)
-    project = re.search(r'project\(\s*putgd\s+VERSION\s+([0-9.]+)', (root / 'CMakeLists.txt').read_text())
-    if not project or identity.base_version != project[1]:
-        raise ValueError('Release tag must match the project base version')
     def git(*args):
         return subprocess.check_output(['git', '-C', str(root), *args], text=True).strip()
     if git('status', '--porcelain', '--untracked-files=normal'):
@@ -21,12 +17,12 @@ def verify(root, tag):
     commit = git('rev-parse', 'HEAD')
     if git('rev-parse', '--verify', 'refs/tags/' + tag + '^{commit}') != commit:
         raise ValueError('Release tag must identify the current checkout')
+    if git('rev-parse', '--is-shallow-repository') != 'false':
+        raise ValueError('Release identity requires full Git history')
     count = int(git('rev-list', '--count', 'HEAD'))
-    if identity.channel == 'nightly':
-        if git('rev-parse', '--is-shallow-repository') != 'false':
-            raise ValueError('Nightly identity requires full Git history')
-        if identity.count != count:
-            raise ValueError('Nightly tag number must equal the source HEAD commit count')
+    base = calendar_base(int(git('show', '-s', '--format=%ct', 'HEAD')), count)
+    if identity.legacy or identity.base_version != base:
+        raise ValueError(f'Release tag must be v{base} or v{base}-nightly: the source commit\'s UTC date and commit count')
     return {'schemaVersion': 1, 'tag': tag, 'version': identity.version,
             'baseVersion': identity.base_version, 'packageVersion': identity.package_version,
             'channel': identity.channel, 'prerelease': identity.prerelease,

@@ -39,6 +39,28 @@ work packages:
 Flatpak ([#83](https://github.com/patrick-hudson/put.gd-desktop/issues/83)) is
 outside the first stable.
 
+## Package install retries and snapshot (#368) — 2026-10-22
+
+Code: [#388](https://github.com/patrick-hudson/put.gd-desktop/pull/388), head
+`aca7858f`, all CI jobs green
+([run 39727602972](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/39727602972)).
+Policy: [CI coverage, package installs](ci.md#package-installs). Evidence:
+`docs/evidence/2026-10-22-package-installs-368/`.
+
+- **Before.** Run 39717118907 (#357, `fd9e255`): `native (fedora44)` failed
+  twice because no mirror, `dl.fedoraproject.org` included, served mesa
+  26.2.4.
+- **Demo.** Run 39729960271 on throwaway `e8f9443b` (`aca7858f` plus injected
+  mirror faults, not merged). A fault on attempt 1 passed on the retry (fedora44,
+  ubuntu24.04). Four failed attempts installed from the snapshot and the
+  packages built (fedora44-snapshot, debian13). A fault on every attempt and on
+  the snapshot failed the job (fedora44-allfail).
+- **Lab.** On f44 (podman, pinned `fedora:44` and `ubuntu:24.04`), with
+  networking cut: the offline install from a snapshot passed, a package outside
+  the snapshot failed, and an unknown package failed without a retry.
+
+Not covered: the `ci.yml` jobs' installs (#389).
+
 ## Flaky-test rethink (#351) — 2026-10-22
 
 Code: [#351](https://github.com/patrick-hudson/put.gd-desktop/pull/351), head

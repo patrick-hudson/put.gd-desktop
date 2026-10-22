@@ -29,7 +29,9 @@ class Families(unittest.TestCase):
         self.assertEqual(cache_prune.family('ctest-cost-linux-26.04-39266470843-1'), 'ctest-cost-linux-26.04-')
         self.assertEqual(cache_prune.family('qt-asan-core-26.04-qt6.10.2+dfsg-7-clang21.1.8-7906bbcc033d33ba'),
                          'qt-asan-core-26.04-')
-        for key in (SDK, QT, 'ccache-linux-24.04', 'ccache-linux-24.04-latest'):
+        pkgs = 'putgd-pkgs-v1-fedora44-' + 'ab' * 32 + '-'
+        self.assertEqual(cache_prune.family(pkgs + '2026-W43'), pkgs)
+        for key in (SDK, QT, 'ccache-linux-24.04', 'ccache-linux-24.04-latest', pkgs + 'latest'):
             with self.subTest(key=key):
                 self.assertIsNone(cache_prune.family(key))
 
@@ -42,6 +44,12 @@ class Plan(unittest.TestCase):
             ('ccache-linux-24.04-1-1', NIGHTLY): 'superseded by ccache-linux-24.04-3-1',
             ('ccache-linux-24.04-2-1', NIGHTLY): 'superseded by ccache-linux-24.04-3-1',
         })
+
+    def test_a_newer_week_supersedes_the_package_snapshot(self):
+        pkgs = 'putgd-pkgs-v1-debian13-' + 'cd' * 32 + '-'
+        other = 'putgd-pkgs-v1-debian13-' + 'ef' * 32 + '-2026-W42'
+        caches = [cache(pkgs + '2026-W42', hour=1), cache(pkgs + '2026-W43', hour=2), cache(other, hour=1)]
+        self.assertEqual(deleted(caches), {(pkgs + '2026-W42', NIGHTLY): 'superseded by ' + pkgs + '2026-W43'})
 
     def test_refs_keep_their_own_newest_entry(self):
         pull = 'refs/pull/7/merge'

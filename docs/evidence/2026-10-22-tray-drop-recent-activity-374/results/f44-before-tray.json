@@ -1,0 +1,30 @@
+{
+ "menu": {
+  "label": "f44-before-tray-menu",
+  "components": [
+   {
+    "blocks": 1990,
+    "box": [
+     1584,
+     0,
+     1832,
+     544
+    ]
+   }
+  ],
+  "colour": [
+   52,
+   52,
+   56
+  ],
+  "inner": [
+   1591,
+   39,
+   1825,
+   533
+  ],
+  "changedShare": 1.0,
+  "kept": "/home/patrick/work/put.gd-tray374lab/p-f44-before/crops/f44-before-tray-menu.png"
+ },
+ "ui": null
+}

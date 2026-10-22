@@ -1,0 +1,264 @@
+{
+ "editorId": "265f9abe-02f9-44f5-8247-a2ad3aba164a",
+ "size": [
+  1120,
+  680
+ ],
+ "blur": [
+  336,
+  217,
+  201,
+  231
+ ],
+ "solid": [
+  582,
+  244,
+  156,
+  149
+ ],
+ "apply": true,
+ "inspect": {
+  "canRedo": false,
+  "canUndo": true,
+  "crop": [
+   0,
+   0,
+   1120,
+   680
+  ],
+  "destination": "Upload to Loopback fixture",
+  "height": 680,
+  "historyTruncated": false,
+  "modified": true,
+  "operationId": "265f9abe-02f9-44f5-8247-a2ad3aba164a",
+  "phase": "editing",
+  "shapes": [
+   {
+    "id": 1,
+    "kind": "blur",
+    "rect": [
+     336,
+     217,
+     201,
+     231
+    ],
+    "strength": 24
+   },
+   {
+    "id": 2,
+    "kind": "redact",
+    "rect": [
+     582,
+     244,
+     156,
+     149
+    ]
+   }
+  ],
+  "width": 1120
+ },
+ "window": {
+  "label": "editor",
+  "components": [
+   {
+    "blocks": 5789,
+    "box": [
+     360,
+     120,
+     1560,
+     992
+    ]
+   },
+   {
+    "blocks": 3156,
+    "box": [
+     640,
+     360,
+     1280,
+     768
+    ]
+   }
+  ],
+  "colour": [
+   252,
+   0,
+   252
+  ],
+  "inner": [
+   362,
+   122,
+   1558,
+   990
+  ],
+  "changedShare": 0.522,
+  "ownShare": 0.33,
+  "kept": "/home/patrick/work/put.gd-afa2/runs/f44/crops/editor.png"
+ },
+ "full": "/home/patrick/work/put.gd-afa2/runs/f44/full/editor.png",
+ "editorCommands": [
+  "inspect",
+  "apply",
+  "preview",
+  "saveCopy",
+  "fileDialog",
+  "submit",
+  "cancel",
+  "raise"
+ ],
+ "dialogOpen": {
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  },
+  "ok": true,
+  "requestId": "bcf40d98-1fa3-4d9a-a6ef-9b01568ccb6c",
+  "result": {
+   "backend": "portal",
+   "fallbackReason": null,
+   "last": null,
+   "mode": "save",
+   "open": true,
+   "operationId": "265f9abe-02f9-44f5-8247-a2ad3aba164a",
+   "parentWindow": "",
+   "title": "Save a copy"
+  },
+  "schemaVersion": 1
+ },
+ "dialogState": {
+  "backend": "portal",
+  "fallbackReason": null,
+  "last": null,
+  "mode": "save",
+  "open": true,
+  "operationId": "265f9abe-02f9-44f5-8247-a2ad3aba164a",
+  "parentWindow": "",
+  "title": "Save a copy"
+ },
+ "dialogShot": {
+  "label": "save-copy-dialog",
+  "components": [
+   {
+    "blocks": 8542,
+    "box": [
+     368,
+     256,
+     1552,
+     936
+    ]
+   },
+   {
+    "blocks": 20,
+    "box": [
+     888,
+     128,
+     1024,
+     152
+    ]
+   },
+   {
+    "blocks": 2,
+    "box": [
+     1504,
+     136,
+     1520,
+     144
+    ]
+   }
+  ],
+  "colour": [
+   252,
+   252,
+   252
+  ],
+  "inner": [
+   695,
+   541,
+   1405,
+   687
+  ],
+  "changedShare": 1.0,
+  "kept": "/home/patrick/work/put.gd-afa2/runs/f44/crops/save-copy-dialog.png"
+ },
+ "dialogFull": "/home/patrick/work/put.gd-afa2/runs/f44/full/save-copy-dialog.png",
+ "dialogResult": {
+  "backend": null,
+  "fallbackReason": null,
+  "last": {
+   "backend": "portal",
+   "error": null,
+   "fallbackReason": null,
+   "mode": "save",
+   "path": "/home/patrick/Pictures/afa-f44-edited.png",
+   "status": "chosen"
+  },
+  "mode": null,
+  "open": false,
+  "operationId": "265f9abe-02f9-44f5-8247-a2ad3aba164a",
+  "parentWindow": null,
+  "title": null
+ },
+ "savedCopy": {
+  "exists": true,
+  "bytes": 4911,
+  "size": [
+   1120,
+   680
+  ],
+  "solidRegion": {
+   "mean": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "spread": 0
+  },
+  "blurChangedShare": 0.627
+ },
+ "upload": {
+  "id": "265f9abe-02f9-44f5-8247-a2ad3aba164a",
+  "state": "completed",
+  "copyStatus": "copied",
+  "items": [
+   {
+    "name": "Screen-Capture-2026-10-22-00-25-46.png",
+    "mime": "image/png",
+    "uploadStatus": "uploaded",
+    "link": "http://127.0.0.1:45321/fixture/afa/Screen-Capture-2026-10-22-00-25-46.png",
+    "local": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "path": "/home/patrick/work/put.gd-afa2/runs/f44/archive/images/Screen-Capture-2026-10-22-00-25-46.png",
+     "status": "saved"
+    }
+   }
+  ],
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  }
+ },
+ "uploaded": {
+  "size": [
+   1120,
+   680
+  ],
+  "solidRegion": {
+   "mean": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "spread": 0
+  },
+  "blurChangedShare": 0.627,
+  "unchangedOutsideShare": 1.0
+ },
+ "redactionVerified": true,
+ "clipboard": "http://127.0.0.1:45321/fixture/afa/Screen-Capture-2026-10-22-00-25-46.png",
+ "linkCopied": true
+}

@@ -1,0 +1,28 @@
+{
+ "label": "f44-dclick-settings",
+ "components": [
+  {
+   "blocks": 19089,
+   "box": [
+    296,
+    96,
+    1624,
+    1016
+   ]
+  }
+ ],
+ "colour": [
+  252,
+  252,
+  252
+ ],
+ "inner": [
+  300,
+  98,
+  1620,
+  1014
+ ],
+ "changedShare": 1.0,
+ "themeShare": 0.959,
+ "kept": "/home/patrick/work/put.gd-tray374lab/p-f44-after2/crops/f44-dclick-settings.png"
+}

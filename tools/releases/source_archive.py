@@ -11,6 +11,7 @@ import subprocess
 import tarfile
 
 from audit_native import sha256
+from release_identity import calendar_base
 
 EXACT_PATHS = frozenset({
     'CMakeLists.txt', 'CMakePresets.json', 'LICENSE', 'THIRD_PARTY_NOTICES.md', '.gitignore',
@@ -178,7 +179,8 @@ cmake --preset release \\
   -DPUTGD_PHYSICAL_BENCHMARKS=OFF \\
   -DPUTGD_SOURCE_COMMIT={identity['gitCommit']} \\
   -DPUTGD_SOURCE_TREE={identity['gitTree']} \\
-  -DPUTGD_SOURCE_COMMIT_COUNT={identity['commitCount']}
+  -DPUTGD_SOURCE_COMMIT_COUNT={identity['commitCount']} \\
+  -DPUTGD_SOURCE_COMMIT_TIME={local['commitTime']}
 cmake --build --preset release
 ```
 
@@ -211,8 +213,10 @@ def create_archive(root: Path, output_file: Path, identity: dict) -> dict:
     original, timestamp = _identity(root, identity)
     entries = _entries(root, original['gitCommit'])
     blobs = _blobs(root, entries)
-    local = {'sourceProvenance': 'supplied', 'releaseTagBuild': False,
-             'version': f"{original['baseVersion']}-dev.{original['commitCount']}+g{original['gitCommit'][:12]}"}
+    # The development version of the same commit: its calendar base (#373) and short hash.
+    base = calendar_base(timestamp, original['commitCount'])
+    local = {'sourceProvenance': 'supplied', 'releaseTagBuild': False, 'commitTime': timestamp,
+             'version': f"{base}-dev+g{original['gitCommit'][:12]}"}
     files = {path: (blobs[oid], 0o755 if mode == '100755' else 0o644, oid) for path, mode, oid in entries}
     files['README_SOURCE.md'] = (_readme(original, local), 0o644, None)
 

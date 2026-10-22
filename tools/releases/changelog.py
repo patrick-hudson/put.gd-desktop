@@ -2,9 +2,11 @@
 """Write a release's "Changes since <previous tag>" section from merged pull requests.
 
 The changes are the pull request merge commits between the previous release and
-this tag. A nightly is compared with the previous nightly; a candidate or stable
-release with the previous stable, and its documentation, lab and test changes
-are folded into one line. Grouping uses the pull request's labels, falling back
+this tag. A nightly is compared with the previous nightly; a stable release
+(or a pre-#373 candidate) with the previous stable, and its documentation, lab
+and test changes are folded into one line. Only published releases count as
+the previous one when their list is available: a stable tag whose acceptance
+failed was never released. Grouping uses the pull request's labels, falling back
 to its title prefix (`feat:`, `fix(s3):`, `docs:` ...).
 
 Everything but the optional pull request lookup (labels and the issues each pull
@@ -49,22 +51,23 @@ def git(root, *args):
     return subprocess.check_output(['git', '-C', str(root), *args], text=True).strip()
 
 
-def previous_tag(root, tag):
+def previous_tag(root, tag, released=None):
     """Return the release tag this tag's notes start from, or None for the whole history.
 
     Only tags reachable from this tag count, so a hotfix on main never borrows
-    nightly's history and the result doesn't depend on tags pushed later.
+    nightly's history and the result doesn't depend on tags pushed later. With
+    released (the published release tags), unpublished tags don't count either.
     """
     identity = parse_tag(tag)
-    return _latest(root, tag, 'nightly' if identity.channel == 'nightly' else 'stable')
+    return _latest(root, tag, 'nightly' if identity.channel == 'nightly' else 'stable', released)
 
 
-def previous_stable(root, ref):
+def previous_stable(root, ref, released=None):
     """Return the newest stable tag reachable from ref (a promotion's base), or None."""
-    return _latest(root, ref, 'stable')
+    return _latest(root, ref, 'stable', released)
 
 
-def _latest(root, ref, wanted):
+def _latest(root, ref, wanted, released=None):
     commit = git(root, 'rev-parse', ref + '^{commit}')
     found = []
     for name in git(root, 'tag', '--merged', commit, '--list', 'v*').splitlines():
@@ -72,13 +75,23 @@ def _latest(root, ref, wanted):
             other = parse_tag(name)
         except ValueError:
             continue
-        if name == ref or other.channel != wanted:
+        if name == ref or other.channel != wanted or (released is not None and name not in released):
             continue
         if git(root, 'rev-parse', name + '^{commit}') == commit:
             continue
-        key = tuple(int(part) for part in other.base_version.split('.')) + (other.count or 0,)
-        found.append((key, name))
+        found.append((other.key, name))
     return max(found)[1] if found else None
+
+
+def released_tags(repository):
+    """The tags of the repository's published (non-draft) releases, or None if they can't be read."""
+    try:
+        output = subprocess.check_output(['gh', 'api', '--paginate', f'repos/{repository}/releases?per_page=100',
+                                          '--jq', '.[] | select(.draft == false) | .tag_name'], text=True, timeout=120)
+    except (subprocess.SubprocessError, OSError) as error:
+        print(f'Warning: could not read the published releases for the changelog: {error}', file=sys.stderr, flush=True)
+        return None
+    return set(output.split())
 
 
 def merged_pulls(root, start, tag):
@@ -247,14 +260,15 @@ def version_section(version, date, previous, items, server, repository):
     """Return (section, link) for CHANGELOG.md in Keep a Changelog 1.1 style.
 
     The same entries as the release notes, by change type instead of area;
-    documentation, lab and test changes are folded into one line.
+    documentation, lab and test changes are folded into one line. With version
+    None the section is `[Unreleased]`: the changes nightly is about to promote.
     """
     base = f'{server}/{repository}'
 
     def link(number, kind):
         return f'[#{number}]({base}/{kind}/{number})'
 
-    lines = [f'## [{version}] - {date}', '']
+    lines = [f'## [{version}] - {date}' if version else '## [Unreleased]', '']
     folded = [item for item in items if item['group'] in FOLDED]
     for name in KEEP_A_CHANGELOG_TYPES:
         listed = sorted((item for item in items if item['type'] == name and item not in folded),
@@ -274,17 +288,27 @@ def version_section(version, date, previous, items, server, repository):
         lines += [f'Also {len(folded)} {_series(kinds)} changes: {refs}.', '']
     if not items:
         lines += ['No pull requests were merged.', '']
-    target = f'{base}/compare/{previous}...v{version}' if previous else f'{base}/releases/tag/v{version}'
-    return '\n'.join(lines), f'[{version}]: {target}'
+    return '\n'.join(lines), version_link(version, previous, server, repository)
+
+
+def version_link(version, previous, server, repository):
+    """The link reference of a CHANGELOG.md section: its comparison with the previous stable release."""
+    base = f'{server}/{repository}'
+    if not version:
+        return '[Unreleased]: ' + (f'{base}/compare/{previous}...nightly' if previous else f'{base}/commits/nightly')
+    return f'[{version}]: ' + (f'{base}/compare/{previous}...v{version}' if previous else f'{base}/releases/tag/v{version}')
 
 
 def _series(words):
     return words[0] if len(words) == 1 else ', '.join(words[:-1]) + ' and ' + words[-1]
 
 
-def section(root, tag, repository, server='https://github.com', lookup=lookup_pulls):
-    """Return the Markdown changes section for tag, read from root's history."""
-    previous = previous_tag(root, tag)
+def section(root, tag, repository, server='https://github.com', lookup=lookup_pulls, released=None):
+    """Return the Markdown changes section for tag, read from root's history.
+
+    released, when given, reads the published release tags (released_tags).
+    """
+    previous = previous_tag(root, tag, released(repository) if released else None)
     pulls = merged_pulls(root, previous, tag)
     metadata = lookup(repository, [number for number, _ in pulls]) if lookup else {}
     fold = parse_tag(tag).channel != 'nightly'
@@ -298,7 +322,8 @@ def main():
     parser.add_argument('--root', type=Path, default=Path.cwd())
     parser.add_argument('--offline', action='store_true', help='Skip the pull request label lookup')
     args = parser.parse_args()
-    sys.stdout.write(section(args.root, args.tag, args.repository, lookup=None if args.offline else lookup_pulls))
+    sys.stdout.write(section(args.root, args.tag, args.repository, lookup=None if args.offline else lookup_pulls,
+                             released=None if args.offline else released_tags))
 
 
 if __name__ == '__main__':

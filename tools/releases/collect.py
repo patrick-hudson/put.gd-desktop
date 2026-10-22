@@ -45,7 +45,7 @@ def verified_source(directory, release):
     if sha256(archive) != artifact['sha256'] or archive.stat().st_size != artifact['bytes']:
         raise ValueError('Source archive bytes differ from compiled receipt')
     build = json.loads((directory / 'source-build-results.json').read_text())
-    version_suffix = f"dev.{release['commitCount']}+g{release['gitCommit'][:12]}"
+    version_suffix = f"dev+g{release['gitCommit'][:12]}"
     expected = {'schemaVersion': 1, 'version': release['baseVersion'] + '-' + version_suffix,
                 'baseVersion': release['baseVersion'], 'packageVersion': release['baseVersion'] + '~' + version_suffix,
                 'gitCommit': release['gitCommit'], 'gitTree': release['gitTree'], 'commitCount': release['commitCount'],

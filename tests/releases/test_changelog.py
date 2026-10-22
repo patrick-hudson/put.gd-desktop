@@ -220,6 +220,34 @@ class Changelog(unittest.TestCase):
              patch.object(sys, 'stderr'):
             self.assertEqual(changelog.lookup_pulls(REPO, [1, 2, 3], chunk=2), {})
 
+    def test_calendar_nightly_follows_the_last_pre_calendar_nightly(self):
+        # #373: every calendar version sorts after every 0.Y.Z one.
+        self.pull(21, 'fix: first calendar change')
+        self.git('tag', 'v26.1022.17-nightly')
+        self.assertEqual(changelog.previous_tag(self.root, 'v26.1022.17-nightly'), 'v0.1.1-nightly.15')
+        self.pull(22, 'fix: second calendar change')
+        self.git('tag', 'v26.1023.19-nightly')
+        self.assertEqual(changelog.previous_tag(self.root, 'v26.1023.19-nightly'), 'v26.1022.17-nightly')
+        text, numbers = self.section('v26.1023.19-nightly')
+        self.assertEqual(numbers, [22])
+        self.assertIn('## Changes since v26.1022.17-nightly', text)
+
+    def test_unpublished_releases_never_start_the_changes(self):
+        # A stable tag whose acceptance failed, or a nightly whose publication failed, was never released.
+        self.git('checkout', '-q', 'main')
+        self.merge(30, 'nightly', 'release: promote nightly', 'nightly')
+        self.git('tag', 'v26.1022.20')
+        self.commit('hotfix')
+        self.git('tag', 'v26.1023.22')
+        self.assertEqual(changelog.previous_tag(self.root, 'v26.1023.22'), 'v26.1022.20')
+        self.assertEqual(changelog.previous_tag(self.root, 'v26.1023.22', {'v0.1.0', 'v26.1023.22'}), 'v0.1.0')
+        self.assertEqual(changelog.previous_stable(self.root, 'v26.1023.22', set()), None)
+        released = []
+        text = changelog.section(self.root, 'v26.1023.22', REPO, lookup=None,
+                                 released=lambda repository: released.append(repository) or {'v0.1.0'})
+        self.assertEqual(released, [REPO])
+        self.assertIn('## Changes since v0.1.0', text)
+
     def test_publish_keeps_staging_when_the_history_is_unavailable(self):
         with patch.object(changelog, 'section', side_effect=subprocess.CalledProcessError(128, 'git')), \
              patch.object(sys, 'stderr') as stderr:

@@ -1,0 +1,745 @@
+{
+ "capabilities": {
+  "available": true,
+  "reason": null,
+  "acquisition": "kde-screencast",
+  "gstreamer": {
+   "audioSources": [
+    "pulsesrc",
+    "pipewiresrc"
+   ],
+   "available": true,
+   "elements": {
+    "aacparse": "1.24.2",
+    "appsink": null,
+    "audioconvert": "1.24.2",
+    "audioresample": "1.24.2",
+    "avenc_aac": null,
+    "compositor": null,
+    "fdkaacenc": null,
+    "h264parse": "1.24.2",
+    "matroskamux": "1.24.2",
+    "mp4mux": null,
+    "openh264enc": null,
+    "pipewiresrc": "1.0.5",
+    "pulsesrc": "1.24.2",
+    "vaapih264enc": "1.24.2",
+    "vah264enc": null,
+    "vah264lpenc": "1.24.2",
+    "videoconvert": "1.24.2",
+    "videocrop": "1.24.2",
+    "videorate": "1.24.2",
+    "videoscale": "1.24.2",
+    "voaacenc": "1.24.2",
+    "vp9enc": null,
+    "webmmux": "1.24.2",
+    "webpenc": null,
+    "x264enc": "1.24.1",
+    "x265enc": null,
+    "ximagesrc": "1.24.2"
+   },
+   "encoderFailures": {},
+   "liveAacEncoders": [
+    "voaacenc"
+   ],
+   "liveH264Encoders": [
+    "vah264lpenc",
+    "vaapih264enc",
+    "x264enc"
+   ],
+   "liveSources": [
+    "ximagesrc",
+    "pipewiresrc"
+   ],
+   "pluginDirectories": [
+    "/tmp/.mount_putgd-MPeLDp/usr/lib/gstreamer-1.0"
+   ],
+   "usableH264Encoders": [
+    "vah264lpenc",
+    "vaapih264enc",
+    "x264enc"
+   ],
+   "version": "GStreamer 1.24.2",
+   "webpAnimated": false
+  },
+  "exportEncoders": {
+   "h264": [
+    "h264_vaapi",
+    "libx264"
+   ],
+   "h265": [
+    "libx265"
+   ],
+   "vp9": [
+    "libvpx-vp9"
+   ]
+  },
+  "liveCapture": {
+   "audio": true,
+   "encoder": true,
+   "source": true
+  },
+  "kdeScreencast": {
+   "available": true,
+   "hidesRequester": true,
+   "kwinVersion": "6.6.6",
+   "outputs": [
+    {
+     "logical": [
+      0,
+      0,
+      1920,
+      1080
+     ],
+     "name": "HDMI-A-1"
+    }
+   ],
+   "version": 5
+  },
+  "formats": [
+   "mp4",
+   "webm",
+   "gif",
+   "webp"
+  ]
+ },
+ "entriesDuring": [
+  "putgd-appimage-FMwZ6uqI.desktop",
+  "putgd-record-appimage-NiHJ6G4u.desktop",
+  "putgd-record.desktop",
+  "putgd-ui.desktop"
+ ],
+ "patternRect": [
+  640,
+  360,
+  1280,
+  720
+ ],
+ "prepare": {
+  "state": "ready",
+  "target": {
+   "kind": "region",
+   "rect": [
+    400,
+    200,
+    1120,
+    680
+   ]
+  }
+ },
+ "readyShot": {
+  "label": "record-ready",
+  "components": [
+   {
+    "blocks": 1680,
+    "box": [
+     0,
+     1024,
+     1920,
+     1080
+    ]
+   },
+   {
+    "blocks": 903,
+    "box": [
+     392,
+     192,
+     1528,
+     936
+    ]
+   }
+  ],
+  "colour": [
+   252,
+   0,
+   252
+  ],
+  "inner": [
+   394,
+   194,
+   1526,
+   934
+  ],
+  "changedShare": 0.32,
+  "kept": "/home/patrick/work/put.gd-afa2/runs/k72/crops/record-ready.png"
+ },
+ "liveEncoder": "vah264lpenc",
+ "recordingShot": {
+  "label": "recording",
+  "components": [
+   {
+    "blocks": 20500,
+    "box": [
+     0,
+     0,
+     1920,
+     1080
+    ]
+   }
+  ],
+  "colour": [
+   144,
+   0,
+   144
+  ],
+  "inner": [
+   2,
+   2,
+   1918,
+   1026
+  ],
+  "changedShare": 0.73,
+  "coverHueShare": 0.98,
+  "kept": "/home/patrick/work/put.gd-afa2/runs/k72/crops/recording.png"
+ },
+ "recordingFull": "/home/patrick/work/put.gd-afa2/runs/k72/full/recording.png",
+ "paused": true,
+ "stopped": {
+  "durationUs": 12566666,
+  "wallSeconds": 14.6,
+  "state": "reviewing"
+ },
+ "reviewSteps": [
+  {
+   "action": "seek",
+   "time": 1000000,
+   "ok": true,
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  {
+   "action": "setIn",
+   "ok": true,
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  {
+   "action": "seek",
+   "time": 11566666,
+   "ok": true,
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  {
+   "action": "setOut",
+   "ok": true,
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  {
+   "action": "seek",
+   "time": 2000000,
+   "ok": true,
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  {
+   "action": "addMask",
+   "kind": "blur",
+   "rect": [
+    280,
+    170,
+    560,
+    340
+   ],
+   "ok": true,
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  {
+   "action": "setMaskIn",
+   "ok": true,
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  {
+   "action": "seek",
+   "time": 5000000,
+   "ok": true,
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  {
+   "action": "setMaskOut",
+   "ok": true,
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  {
+   "action": "strength",
+   "strength": 24,
+   "ok": true,
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  {
+   "action": "seek",
+   "time": 3000000,
+   "ok": true,
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  {
+   "action": "format",
+   "format": "mp4",
+   "codec": "h264",
+   "ok": true,
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  {
+   "action": "format",
+   "format": "webm",
+   "codec": "vp9",
+   "ok": true,
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  {
+   "action": "format",
+   "format": "gif",
+   "codec": "",
+   "ok": true,
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  {
+   "action": "format",
+   "format": "webp",
+   "codec": "",
+   "ok": true,
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  {
+   "action": "format",
+   "format": "mp4",
+   "codec": "h264",
+   "ok": true,
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  }
+ ],
+ "edit": {
+  "masks": [
+   {
+    "end": 5000000,
+    "id": "b3ecde92-c6b1-4453-8883-8c235144a7a8",
+    "kind": "blur",
+    "rect": [
+     280,
+     170,
+     560,
+     340
+    ],
+    "start": 2000000,
+    "strength": 24
+   }
+  ],
+  "revision": 7,
+  "trimEnd": 11566666,
+  "trimStart": 1000000
+ },
+ "reviewShot": {
+  "label": "review",
+  "components": [
+   {
+    "blocks": 6669,
+    "box": [
+     456,
+     184,
+     1464,
+     856
+    ]
+   },
+   {
+    "blocks": 1680,
+    "box": [
+     0,
+     1024,
+     1920,
+     1080
+    ]
+   },
+   {
+    "blocks": 390,
+    "box": [
+     400,
+     888,
+     920,
+     936
+    ]
+   }
+  ],
+  "colour": [
+   232,
+   0,
+   240
+  ],
+  "inner": [
+   460,
+   186,
+   1459,
+   854
+  ],
+  "changedShare": 1.0,
+  "ownShare": 0.338,
+  "kept": "/home/patrick/work/put.gd-afa2/runs/k72/crops/review.png"
+ },
+ "reviewFull": "/home/patrick/work/put.gd-afa2/runs/k72/full/review.png",
+ "exports": {
+  "mp4": {
+   "formatChosen": true,
+   "request": true,
+   "requestError": {
+    "code": "",
+    "details": {},
+    "message": ""
+   },
+   "status": "saved",
+   "bytes": 180980,
+   "error": null,
+   "durationUs": 10566667,
+   "motion": {
+    "motion": 20.085,
+    "compared": 7,
+    "durationMs": 10566,
+    "size": "1120x680",
+    "by": "putgd-record"
+   },
+   "sha256": "36289af9043d2d322ec310390faf2280935913af83413f66925c64bd4441f608"
+  },
+  "webm": {
+   "formatChosen": true,
+   "request": true,
+   "requestError": {
+    "code": "",
+    "details": {},
+    "message": ""
+   },
+   "status": "saved",
+   "bytes": 243176,
+   "error": null,
+   "durationUs": 10566667,
+   "motion": {
+    "motion": 20.148,
+    "compared": 7,
+    "durationMs": 10566,
+    "size": "1120x680",
+    "by": "putgd-record"
+   },
+   "sha256": "f5a10c9702737b15ee4be34a6c38ad77334614b1ce168e9aa1cdfca8a72f2e3e"
+  },
+  "gif": {
+   "formatChosen": true,
+   "request": true,
+   "requestError": {
+    "code": "",
+    "details": {},
+    "message": ""
+   },
+   "status": "saved",
+   "bytes": 6826093,
+   "error": null,
+   "durationUs": 10600000,
+   "motion": {
+    "motion": 20.028,
+    "compared": 7,
+    "durationMs": 10600,
+    "size": "1120x680",
+    "by": "putgd-record"
+   },
+   "sha256": "36a94f2ba6f2d532716e435f5c6b729256783a3788f907ff0cc69c4e9f08fc41"
+  },
+  "webp": {
+   "formatChosen": true,
+   "request": true,
+   "requestError": {
+    "code": "",
+    "details": {},
+    "message": ""
+   },
+   "status": "saved",
+   "bytes": 352224,
+   "error": null,
+   "durationUs": 10600000,
+   "motion": {
+    "motion": 23.836,
+    "frames": 159,
+    "size": "1120x680",
+    "by": "pillow"
+   },
+   "sha256": "4b5eda8676cb55a7fa4b147241327912bacf15cf322d24b38d2eec2be9bd2876"
+  }
+ },
+ "saveCopyDialog": {
+  "open": {
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   },
+   "ok": true,
+   "requestId": "92a87ea2-84aa-45cb-941f-6648469ee066",
+   "result": {
+    "armed": null,
+    "edit": {
+     "masks": [
+      {
+       "end": 5000000,
+       "id": "b3ecde92-c6b1-4453-8883-8c235144a7a8",
+       "kind": "blur",
+       "rect": [
+        280,
+        170,
+        560,
+        340
+       ],
+       "start": 2000000,
+       "strength": 24
+      }
+     ],
+     "revision": 7,
+     "trimEnd": 11566666,
+     "trimStart": 1000000
+    },
+    "exporting": false,
+    "fileDialog": {
+     "backend": "portal",
+     "fallbackReason": null,
+     "last": null,
+     "mode": "save",
+     "open": true,
+     "parentWindow": "",
+     "title": "Save a copy"
+    },
+    "format": {
+     "codec": "h264",
+     "format": "mp4"
+    },
+    "maskControls": {
+     "list": true,
+     "remove": true,
+     "strength": true,
+     "times": true
+    },
+    "masks": [
+     {
+      "id": "b3ecde92-c6b1-4453-8883-8c235144a7a8",
+      "kind": "blur",
+      "timeline": [
+       168,
+       509,
+       171,
+       5
+      ]
+     }
+    ],
+    "minimumSize": [
+     692,
+     305
+    ],
+    "notice": null,
+    "playheadUs": 3000000,
+    "playing": false,
+    "revision": 7,
+    "scheme": "light",
+    "selectedMaskId": "b3ecde92-c6b1-4453-8883-8c235144a7a8",
+    "size": [
+     960,
+     600
+    ],
+    "speed": 1,
+    "state": "reviewing",
+    "status": "No audio",
+    "timeline": {
+     "lanes": 1,
+     "rect": [
+      47,
+      489,
+      732,
+      30
+     ]
+    },
+    "trim": {
+     "end": 11566666,
+     "start": 1000000
+    },
+    "video": {
+     "rect": [
+      89,
+      8,
+      782,
+      475
+     ],
+     "share": 0.6448784722222223
+    },
+    "visible": true
+   },
+   "schemaVersion": 1
+  },
+  "shot": {
+   "label": "review-save-dialog",
+   "components": [
+    {
+     "blocks": 9157,
+     "box": [
+      448,
+      208,
+      1472,
+      832
+     ]
+    },
+    {
+     "blocks": 56,
+     "box": [
+      552,
+      1024,
+      616,
+      1080
+     ]
+    },
+    {
+     "blocks": 5,
+     "box": [
+      1816,
+      1032,
+      1840,
+      1056
+     ]
+    },
+    {
+     "blocks": 2,
+     "box": [
+      496,
+      728,
+      512,
+      736
+     ]
+    }
+   ],
+   "colour": [
+    236,
+    240,
+    240
+   ],
+   "inner": null
+  },
+  "full": "/home/patrick/work/put.gd-afa2/runs/k72/full/review-save-dialog.png",
+  "inspect": {
+   "backend": null,
+   "fallbackReason": null,
+   "last": {
+    "backend": "portal",
+    "error": null,
+    "fallbackReason": null,
+    "mode": "save",
+    "path": "/home/patrick/afa-k72-review.mp4",
+    "status": "chosen"
+   },
+   "mode": null,
+   "open": false,
+   "parentWindow": null,
+   "title": null
+  },
+  "lastExport": {
+   "bytes": 180980,
+   "command": "saveCopy",
+   "durationUs": 10566667,
+   "path": "/home/patrick/afa-k72-review.mp4",
+   "revision": 7,
+   "status": "saved"
+  },
+  "exists": true,
+  "bytes": 180980,
+  "motion": {
+   "motion": 20.085,
+   "compared": 7,
+   "durationMs": 10566,
+   "size": "1120x680",
+   "by": "putgd-record"
+  }
+ },
+ "upload": {
+  "id": "8c1c0d22-d7e8-4697-9127-b5cd2a1f5424",
+  "state": "completed",
+  "copyStatus": "copied",
+  "items": [
+   {
+    "name": "Screen-Recording-2026-10-22-00-24-32.mp4",
+    "mime": "video/mp4",
+    "uploadStatus": "uploaded",
+    "link": "http://127.0.0.1:34749/fixture/afa/Screen-Recording-2026-10-22-00-24-32.mp4",
+    "local": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "path": "/home/patrick/work/put.gd-afa2/runs/k72/archive/videos/Screen-Recording-2026-10-22-00-24-32.mp4",
+     "status": "saved"
+    }
+   }
+  ],
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  }
+ },
+ "uploadNotifications": [],
+ "entriesAfter": [
+  "putgd-appimage-FMwZ6uqI.desktop",
+  "putgd-record-appimage-NiHJ6G4u.desktop",
+  "putgd-record.desktop",
+  "putgd-ui.desktop"
+ ]
+}

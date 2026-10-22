@@ -1,0 +1,271 @@
+{
+ "total": 9,
+ "records": [
+  {
+   "id": "6220e001-596d-4623-96b3-ac64173fba8e",
+   "name": "Screen-Capture-2026-10-22-00-57-16.png",
+   "mime": "image/png",
+   "uploadStatus": "uploaded",
+   "local": "saved",
+   "linkAvailable": true
+  },
+  {
+   "id": "b4235978-afb5-4f04-b460-a7e94b95192b",
+   "name": "Screen-Capture-2026-10-22-00-57-08.png",
+   "mime": "image/png",
+   "uploadStatus": "uploaded",
+   "local": "saved",
+   "linkAvailable": true
+  },
+  {
+   "id": "c30b23e2-3db4-45de-a546-732b229c00a5",
+   "name": "Screen-Capture-2026-10-22-00-56-58.png",
+   "mime": "image/png",
+   "uploadStatus": "uploaded",
+   "local": "saved",
+   "linkAvailable": true
+  },
+  {
+   "id": "bf7a5ca7-11f5-46b7-95ce-090c7bdc37b1",
+   "name": "Screen-Recording-2026-10-22-00-55-49.mp4",
+   "mime": "video/mp4",
+   "uploadStatus": "uploaded",
+   "local": "saved",
+   "linkAvailable": true
+  },
+  {
+   "id": "411fd533-19cf-4883-86d9-b3712aa21746",
+   "name": "Screen-Capture-2026-10-22-00-55-31.png",
+   "mime": "image/png",
+   "uploadStatus": "uploaded",
+   "local": "saved",
+   "linkAvailable": true
+  },
+  {
+   "id": "0f638a58-2852-4980-88db-e58b9bb666fa",
+   "name": "Screen-Capture-2026-10-22-00-55-25.png",
+   "mime": "image/png",
+   "uploadStatus": "uploaded",
+   "local": "saved",
+   "linkAvailable": true
+  },
+  {
+   "id": "8da6f2d8-4088-4233-93ae-dee71d745bfb",
+   "name": "Screen-Capture-2026-10-22-00-55-21.png",
+   "mime": "image/png",
+   "uploadStatus": "uploaded",
+   "local": "saved",
+   "linkAvailable": true
+  },
+  {
+   "id": "6a6abc68-e67c-4e79-b247-741b6f4609a9",
+   "name": "Screen-Capture-2026-10-22-00-55-17.png",
+   "mime": "image/png",
+   "uploadStatus": "uploaded",
+   "local": "saved",
+   "linkAvailable": true
+  },
+  {
+   "id": "a510cddc-bd75-4f62-b3df-c21423ad0d73",
+   "name": "Screen-Capture-2026-10-22-00-55-08.png",
+   "mime": "image/png",
+   "uploadStatus": "uploaded",
+   "local": "saved",
+   "linkAvailable": true
+  }
+ ],
+ "previews": {
+  "Screen-Capture-2026-10-22-00-57-16.png": {
+   "ok": true,
+   "state": "ready",
+   "source": null,
+   "exists": true,
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "Screen-Capture-2026-10-22-00-57-08.png": {
+   "ok": true,
+   "state": "ready",
+   "source": null,
+   "exists": true,
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "Screen-Capture-2026-10-22-00-56-58.png": {
+   "ok": true,
+   "state": "ready",
+   "source": null,
+   "exists": true,
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "Screen-Recording-2026-10-22-00-55-49.mp4": {
+   "ok": true,
+   "state": "ready",
+   "source": null,
+   "exists": true,
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "Screen-Capture-2026-10-22-00-55-31.png": {
+   "ok": true,
+   "state": "ready",
+   "source": null,
+   "exists": true,
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "Screen-Capture-2026-10-22-00-55-25.png": {
+   "ok": true,
+   "state": "ready",
+   "source": null,
+   "exists": true,
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "Screen-Capture-2026-10-22-00-55-21.png": {
+   "ok": true,
+   "state": "ready",
+   "source": null,
+   "exists": true,
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "Screen-Capture-2026-10-22-00-55-17.png": {
+   "ok": true,
+   "state": "ready",
+   "source": null,
+   "exists": true,
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "Screen-Capture-2026-10-22-00-55-08.png": {
+   "ok": true,
+   "state": "ready",
+   "source": null,
+   "exists": true,
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  }
+ },
+ "copyImage": {
+  "reply": {
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   },
+   "ok": true,
+   "requestId": "a77dddcc-5eeb-41ca-a389-aa29c02b95d0",
+   "result": {
+    "copied": true
+   },
+   "schemaVersion": 1
+  },
+  "clipboardPng": true,
+  "clipboardBytes": 3688,
+  "sameSize": true,
+  "samePixels": true
+ },
+ "windowShot": {
+  "label": "history",
+  "components": [
+   {
+    "blocks": 3195,
+    "box": [
+     296,
+     48,
+     1256,
+     760
+    ]
+   },
+   {
+    "blocks": 136,
+    "box": [
+     80,
+     584,
+     264,
+     632
+    ]
+   },
+   {
+    "blocks": 135,
+    "box": [
+     80,
+     480,
+     264,
+     528
+    ]
+   },
+   {
+    "blocks": 61,
+    "box": [
+     1104,
+     88,
+     1248,
+     128
+    ]
+   },
+   {
+    "blocks": 47,
+    "box": [
+     944,
+     88,
+     1088,
+     128
+    ]
+   },
+   {
+    "blocks": 17,
+    "box": [
+     856,
+     512,
+     944,
+     528
+    ]
+   }
+  ],
+  "colour": [
+   244,
+   244,
+   248
+  ],
+  "inner": [
+   298,
+   139,
+   1248,
+   721
+  ],
+  "changedShare": 0.762,
+  "ownShare": 0.909,
+  "kept": "/home/lab/work/put.gd-afa2/runs/ubuntu-vm/crops/history.png"
+ },
+ "full": "/home/lab/work/put.gd-afa2/runs/ubuntu-vm/full/history.png"
+}

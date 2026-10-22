@@ -51,11 +51,11 @@ See `docs/build.md` for SDK provisioning and sanitizer builds. Keep AWS headers 
 Offscreen tests prove widget/core behavior only. Real desktop support requires graphical
 acceptance evidence for each declared compositor. Never report a mock as desktop proof.
 
-Run a new candidate's Cinnamon, GNOME and KDE checks in parallel on the build
+Run a new release's Cinnamon, GNOME and KDE checks in parallel on the build
 machines, each with its own functional and memory gates. Every declared desktop
-still requires current-version evidence on that exact candidate before acceptance.
+still requires current-version evidence on that exact build before acceptance.
 A failure on any desktop blocks acceptance until it is fixed or shown to predate
-the candidate; retest a fix on every desktop.
+the build; retest a fix on every desktop.
 
 Use synthetic payloads and an isolated test destination. Never commit `credentials.txt`, including with force-add. It is user-provided local
 test input only; never include its contents in logs, diagnostics, or review packets.
@@ -71,19 +71,21 @@ Branch from `nightly` and open pull requests against `nightly`, the default bran
 and integration trunk. Never push to `nightly` or `main` directly; rulesets require
 a pull request and the `CI` check. CI selects jobs from the changed paths, and the
 `CI` summary is the only required check; a cancelled or skipped-by-failure job is
-not a pass. Leave `project(putgd VERSION ...)` alone in feature pull requests.
+not a pass. Versions are calendar versions taken from the tagged commit
+(`docs/versioning.md`); nothing is bumped by hand.
 Keep documentation out of code pull requests: changes to `docs/`, `README.md`,
 `AGENTS.md` and `CLAUDE.md` go in a separate documentation-only pull request,
 which CI checks with `contracts` alone. A doc edit pushed to a code pull request
 re-runs its whole build. Open the documentation pull request alongside its code
 pull request, link the two, and merge it after the code. `docs/build.md` and
 `docs/proton-drive.md` are package inputs and select every job anyway.
-Promote to `main` only through `tools/releases/promote.py --open` (a `release: vX.Y.Z`
-pull request from `nightly`, merged with a merge commit); its merge cuts the next
-candidate draft. Stable and candidate publication stay manual after exact-asset
-acceptance. Never create, move or delete `v*` tags by hand. Hotfixes target `main`
-with a patch bump and are merged back into `nightly` by pull request. When the user
-asks for a release of a version, follow `docs/release-runbook.md` step by step.
+Promote to `main` only through `tools/releases/promote.py --open` (a `release:
+promote nightly YY.MDD.N` pull request from `nightly`, merged with a merge commit);
+its merge tags the stable `vYY.MDD.N` and stages its draft. There is no candidate
+channel; stable publication stays manual after exact-asset acceptance. Never
+create, move or delete `v*` tags by hand. Hotfixes target `main` and are merged
+back into `nightly` by pull request. When the user asks for a release, follow
+`docs/release-runbook.md` step by step.
 Channels and assets are in `docs/release.md`; CI coverage is in `docs/ci.md`.
 
 Record what was actually built/tested and any blocked acceptance gates. Commit explicit

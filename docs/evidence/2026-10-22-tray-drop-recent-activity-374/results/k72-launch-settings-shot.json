@@ -1,0 +1,46 @@
+{
+ "label": "k72-launch-settings",
+ "components": [
+  {
+   "blocks": 19516,
+   "box": [
+    280,
+    48,
+    1632,
+    992
+   ]
+  },
+  {
+   "blocks": 52,
+   "box": [
+    368,
+    1024,
+    432,
+    1080
+   ]
+  },
+  {
+   "blocks": 5,
+   "box": [
+    1816,
+    1032,
+    1832,
+    1056
+   ]
+  }
+ ],
+ "colour": [
+  252,
+  252,
+  252
+ ],
+ "inner": [
+  300,
+  87,
+  1620,
+  967
+ ],
+ "changedShare": 1.0,
+ "themeShare": 0.949,
+ "kept": "/home/patrick/work/put.gd-tray374lab/p-k72-after/crops/k72-launch-settings.png"
+}

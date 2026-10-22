@@ -1,0 +1,8 @@
+2026-10-22T06:18:43Z
+image: putgd-0.1.1-nightly.925-x86_64.AppImage 49c6dfaa61a561b955dc69c231d57887aef1b80ed9e0130e6c59025587eb3b81
+lab feed: v26.1022.949-nightly 26.1022.949-nightly
+$ putgd-cli --version
+putgd-cli 0.1.1-nightly.925
+$ putgd-cli --check-update nightly  (PUTGD_UPDATE_FEED_URL=https://pkg.put.gd/lab/update/v1/)
+{"error":{"code":"update_feed_invalid","details":{},"message":"The update feed names an invalid version for its channel"},"ok":false,"result":{},"schemaVersion":1}
+exit=1

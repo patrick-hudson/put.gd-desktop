@@ -1,0 +1,62 @@
+
+### host (2026-10-22T05:52:31Z)
+6.19.10-300.fc44.x86_64
+PRETTY_NAME="Ubuntu 24.04.5 LTS"
+
+### before (2026-10-22T05:52:31Z)
+dpkg-query: no packages found matching putgd
+ls: cannot access '/etc/apt/sources.list.d/putgd.sources': No such file or directory
+ls: cannot access '/etc/apt/sources.list.d/putgd-lab373.sources': No such file or directory
+
+### download putgd-0.1.1-nightly.925-ubuntu24.04-x86_64.deb and the release's SHA256SUMS from GitHub (2026-10-22T05:52:31Z)
+putgd-0.1.1-nightly.925-ubuntu24.04-x86_64.deb: OK
+
+### install putgd-0.1.1-nightly.925-ubuntu24.04-x86_64.deb from the file (it adds the live nightly repository) (2026-10-22T05:52:35Z)
+invoke-rc.d: could not determine current runlevel
+invoke-rc.d: policy-rc.d denied execution of force-reload.
+Processing triggers for libgdk-pixbuf-2.0-0:amd64 (2.42.10+dfsg-3ubuntu3.3) ...
+putgd 0.1.1~nightly.925 install ok installed
+putgd 0.1.1-nightly.925
+-rw-r--r--. 1 root root 2036 Oct 22 04:18 /etc/apt/sources.list.d/putgd.sources
+# put.gd nightly packages from pkg.put.gd, added by the putgd package.
+# To stop updates from this repository, delete this file or add "Enabled: no";
+# upgrades leave your change alone and `apt purge putgd` removes the file.
+Types: deb
+URIs: https://pkg.put.gd/apt/ubuntu24.04
+Suites: nightly
+Components: main
+Architectures: amd64
+
+### add the lab repository beside the live one (2026-10-22T05:55:17Z)
+URIs: https://pkg.put.gd/lab/apt/ubuntu24.04
+Suites: nightly
+
+### what the package manager sees (2026-10-22T05:55:17Z)
+Get:1 https://pkg.put.gd/lab/apt/ubuntu24.04 nightly InRelease [1807 B]
+Get:2 https://pkg.put.gd/apt/ubuntu24.04 nightly InRelease [1807 B]
+Get:5 https://pkg.put.gd/lab/apt/ubuntu24.04 nightly/main amd64 Packages [606 B]
+Get:8 https://pkg.put.gd/apt/ubuntu24.04 nightly/main amd64 Packages [741 B]
+putgd:
+  Installed: 0.1.1~nightly.925
+  Candidate: 26.1022.949~nightly
+  Version table:
+     26.1022.949~nightly 500
+        500 https://pkg.put.gd/lab/apt/ubuntu24.04 nightly/main amd64 Packages
+     0.1.1~nightly.947 500
+        500 https://pkg.put.gd/apt/ubuntu24.04 nightly/main amd64 Packages
+ *** 0.1.1~nightly.925 100
+        100 /var/lib/dpkg/status
+
+### upgrade through the repository (2026-10-22T05:55:21Z)
+Unpacking putgd (26.1022.949~nightly) over (0.1.1~nightly.925) ...
+Setting up putgd (26.1022.949~nightly) ...
+Installing new version of config file /etc/apt/sources.list.d/putgd.sources ...
+Processing triggers for hicolor-icon-theme (0.17-2) ...
+rc=0
+
+### after (2026-10-22T05:55:25Z)
+putgd 26.1022.949~nightly install ok installed
+putgd 26.1022.949-nightly
+dpkg: 26.1022.949~nightly > 0.1.1~nightly.925
+{'version': '26.1022.949-nightly', 'baseVersion': '26.1022.949', 'packageVersion': '26.1022.949~nightly', 'gitCommit': '3166555243e5d691a8a6346ee54175dc726a114b'}
+exit=0
