@@ -52,6 +52,8 @@ public:
     // `answer` is called exactly once, possibly later.
     virtual bool viewCommand(const std::string& name, const json::Object& params, const CommandReply& answer) { return false; }
     virtual void dpiChanged() {}
+    // The colour scheme changed (pages repaint what they drew with the old palette).
+    virtual void themeChanged() {}
 protected:
     MainWindow& main_;
 };

@@ -777,6 +777,7 @@ void MainWindow::applyTheme(const std::string& themeSetting) {
         themeApplied_ = true;
         theme::applyTo(hwnd_);
         if (tooltip_) theme::applyTo(tooltip_);
+        for (auto& page : pages_) page->themeChanged();
         viewStateChanged();
     }
 }

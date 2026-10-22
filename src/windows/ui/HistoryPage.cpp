@@ -259,6 +259,8 @@ public:
     void showSection(const std::string& view) override { setActivity(view == "activity"); }
     void dpiChanged() override { setColumns(); resetGallery(); setGridMode(grid_); panel_.layout(); }
     bool viewCommand(const std::string& name, const json::Object& params, const CommandReply& answer) override;
+    // Thumbnails are flattened onto the placeholder colour: make them again.
+    void themeChanged() override { if (!activityMode_) fill(); }
 private:
     int layout(int width, int height);
     void command(int id, int code, HWND control);
@@ -618,6 +620,7 @@ void HistoryPageImpl::setActivity(bool on) {
         // Activity is always a list; Files keeps its own list or gallery choice.
         SendMessageW(list_, LVM_SETVIEW, !on && grid_ ? LV_VIEW_TILE : LV_VIEW_DETAILS, 0);
         SendMessageW(list_, LVM_SETEXTENDEDLISTVIEWSTYLE, LVS_EX_LABELTIP, !on && grid_ ? 0 : LVS_EX_LABELTIP);
+        if (HWND tips = reinterpret_cast<HWND>(SendMessageW(list_, LVM_GETTOOLTIPS, 0, 0))) SendMessageW(tips, TTM_ACTIVATE, on || !grid_, 0);
         setColumns();
         selectedId_.clear();
         selectionChanged();
@@ -647,8 +650,10 @@ void HistoryPageImpl::setGridMode(bool grid) {
     }
     if (!activityMode_) {
         SendMessageW(list_, LVM_SETVIEW, grid ? LV_VIEW_TILE : LV_VIEW_DETAILS, 0);
-        // Label tips place themselves for report rows; tiles show the whole name on hover instead.
+        // Label tips place themselves for report rows; over custom-drawn tiles they land at the
+        // screen's corner, so the list's own tooltips are off in the gallery.
         SendMessageW(list_, LVM_SETEXTENDEDLISTVIEWSTYLE, LVS_EX_LABELTIP, grid ? 0 : LVS_EX_LABELTIP);
+        if (HWND tips = reinterpret_cast<HWND>(SendMessageW(list_, LVM_GETTOOLTIPS, 0, 0))) SendMessageW(tips, TTM_ACTIVATE, !grid, 0);
         fitColumns();
         fill(); // each item's image indexes the list its view draws
     }

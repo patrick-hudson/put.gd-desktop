@@ -1046,7 +1046,10 @@ void SettingsPageImpl::showBindings() {
     bool changed = false;
     for (size_t i = 0; i < shortcuts_.size(); ++i) {
         const auto& row = shortcuts_[i];
-        const auto presentation = shortcuts::present(bindings_, row.name, text(row.edit), int(i) == recording_);
+        auto presentation = shortcuts::present(bindings_, row.name, text(row.edit), int(i) == recording_);
+        // The resident registers no recording shortcut: recording is not in the Windows build yet.
+        if (row.name == "record" && !bindings_.value("bindings")["record"].isObject())
+            presentation = {"Unavailable \xC2\xB7 Screen recording is not available on Windows yet; the key stays in the shared configuration.", "muted", true};
         const auto shown = presentation.visible ? wide(presentation.text) : std::wstring();
         panels_[Shortcuts].markError(row.binding, presentation.tone == "error" || presentation.tone == "warning");
         if (textW(row.binding) != shown) { setTextW(row.binding, shown); changed = true; }
