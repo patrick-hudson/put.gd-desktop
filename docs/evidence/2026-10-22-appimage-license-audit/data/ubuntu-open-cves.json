@@ -1,0 +1,674 @@
+{
+ "apparmor": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "at-spi2-core": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "brotli": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "bzip2": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "cairo": {
+  "deferred": [
+   {
+    "id": "CVE-2018-18064",
+    "note": "",
+    "priority": "low",
+    "published": "2018-10-08",
+    "status": "deferred"
+   },
+   {
+    "id": "CVE-2017-7475",
+    "note": "",
+    "priority": "low",
+    "published": "2017-05-19",
+    "status": "deferred"
+   }
+  ],
+  "needed": [],
+  "pending": []
+ },
+ "curl": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "cyrus-sasl2": {
+  "deferred": [
+   {
+    "id": "CVE-2026-107161",
+    "note": "2026-10-14",
+    "priority": "medium",
+    "published": "2026-10-07",
+    "status": "deferred"
+   }
+  ],
+  "needed": [],
+  "pending": []
+ },
+ "dbus": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "elfutils": {
+  "deferred": [],
+  "needed": [
+   {
+    "id": "CVE-2025-1376",
+    "note": "",
+    "priority": "low",
+    "published": "2025-02-17",
+    "status": "needed"
+   },
+   {
+    "id": "CVE-2025-1352",
+    "note": "",
+    "priority": "low",
+    "published": "2025-02-16",
+    "status": "needed"
+   }
+  ],
+  "pending": []
+ },
+ "flac": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "gdk-pixbuf": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "glib2.0": {
+  "deferred": [
+   {
+    "id": "CVE-2026-86469",
+    "note": "2026-09-29",
+    "priority": "medium",
+    "published": "2026-09-07",
+    "status": "deferred"
+   }
+  ],
+  "needed": [],
+  "pending": []
+ },
+ "gnutls28": {
+  "deferred": [
+   {
+    "id": "CVE-2026-95209",
+    "note": "2026-10-15",
+    "priority": "medium",
+    "published": "2026-10-08",
+    "status": "deferred"
+   },
+   {
+    "id": "CVE-2026-67693",
+    "note": "2026-10-15",
+    "priority": "medium",
+    "published": "2026-10-08",
+    "status": "deferred"
+   },
+   {
+    "id": "CVE-2026-95210",
+    "note": "2026-10-15",
+    "priority": "medium",
+    "published": "2026-10-08",
+    "status": "deferred"
+   },
+   {
+    "id": "CVE-2026-95184",
+    "note": "2026-10-15",
+    "priority": "medium",
+    "published": "2026-10-08",
+    "status": "deferred"
+   },
+   {
+    "id": "CVE-2026-88647",
+    "note": "2026-10-15",
+    "priority": "medium",
+    "published": "2026-10-08",
+    "status": "deferred"
+   }
+  ],
+  "needed": [],
+  "pending": []
+ },
+ "graphite2": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "gst-plugins-bad1.0": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "gst-plugins-base1.0": {
+  "deferred": [],
+  "needed": [
+   {
+    "id": "CVE-2026-85150",
+    "note": "",
+    "priority": "medium",
+    "published": "2026-09-03",
+    "status": "needed"
+   }
+  ],
+  "pending": []
+ },
+ "gst-plugins-good1.0": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "gst-plugins-ugly1.0": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "gstreamer-vaapi": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "gstreamer1.0": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "gtk+3.0": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "keyutils": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "krb5": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "lame": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "libasyncns": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "libbsd": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "libcap2": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "libdatrie": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "libepoxy": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "libffi": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "libgcrypt20": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "libglvnd": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "libgudev": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "libidn2": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "libjpeg-turbo": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "libmd": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "libogg": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "libpng1.6": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "libpsl": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "libselinux": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "libsndfile": {
+  "deferred": [
+   {
+    "id": "CVE-2026-88372",
+    "note": "2026-10-22",
+    "priority": "medium",
+    "published": "2026-09-24",
+    "status": "deferred"
+   },
+   {
+    "id": "CVE-2025-52194",
+    "note": "2026-10-22",
+    "priority": "medium",
+    "published": "2025-08-21",
+    "status": "deferred"
+   },
+   {
+    "id": "CVE-2024-50613",
+    "note": "2026-10-22",
+    "priority": "low",
+    "published": "2024-10-27",
+    "status": "deferred"
+   }
+  ],
+  "needed": [
+   {
+    "id": "CVE-2026-37555",
+    "note": "",
+    "priority": "medium",
+    "published": "2026-04-29",
+    "status": "needed"
+   }
+  ],
+  "pending": []
+ },
+ "libssh": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "libtasn1-6": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "libthai": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "libunistring": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "libunwind": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "libva": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "libvorbis": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "libvpx": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "libwebp": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "libxau": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "libxcb": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "libxcomposite": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "libxcursor": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "libxdamage": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "libxdmcp": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "libxext": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "libxfixes": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "libxi": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "libxinerama": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "libxkbcommon": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "libxrandr": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "libxrender": {
+  "deferred": [
+   {
+    "id": "CVE-2026-88807",
+    "note": "2026-09-29",
+    "priority": "medium",
+    "published": "2026-09-21",
+    "status": "deferred"
+   }
+  ],
+  "needed": [],
+  "pending": []
+ },
+ "libxtst": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "libzstd": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "lz4": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "mpg123": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "nettle": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "nghttp2": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "numactl": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "openldap": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "openssl": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "opus": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "orc": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "p11-kit": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "pango1.0": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "pcre2": {
+  "deferred": [],
+  "needed": [
+   {
+    "id": "CVE-2026-103111",
+    "note": "",
+    "priority": "medium",
+    "published": "2026-09-30",
+    "status": "needed"
+   },
+   {
+    "id": "CVE-2026-89161",
+    "note": "",
+    "priority": "medium",
+    "published": "2026-09-11",
+    "status": "needed"
+   },
+   {
+    "id": "CVE-2026-89160",
+    "note": "",
+    "priority": "medium",
+    "published": "2026-09-11",
+    "status": "needed"
+   },
+   {
+    "id": "CVE-2026-89158",
+    "note": "",
+    "priority": "medium",
+    "published": "2026-09-11",
+    "status": "needed"
+   },
+   {
+    "id": "CVE-2026-89157",
+    "note": "",
+    "priority": "medium",
+    "published": "2026-09-11",
+    "status": "needed"
+   },
+   {
+    "id": "CVE-2026-89156",
+    "note": "",
+    "priority": "medium",
+    "published": "2026-09-11",
+    "status": "needed"
+   },
+   {
+    "id": "CVE-2026-86145",
+    "note": "",
+    "priority": "medium",
+    "published": "2026-09-05",
+    "status": "needed"
+   }
+  ],
+  "pending": []
+ },
+ "pipewire": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "pixman": {
+  "deferred": [
+   {
+    "id": "CVE-2023-37769",
+    "note": "",
+    "priority": "medium",
+    "published": "2023-07-17",
+    "status": "deferred"
+   }
+  ],
+  "needed": [],
+  "pending": []
+ },
+ "pulseaudio": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "rtmpdump": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "systemd": {
+  "deferred": [
+   {
+    "id": "CVE-2026-40228",
+    "note": "2026-06-05",
+    "priority": "low",
+    "published": "2026-04-10",
+    "status": "deferred"
+   }
+  ],
+  "needed": [],
+  "pending": []
+ },
+ "util-linux": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "vo-aacenc": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "wayland": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "x264": {
+  "deferred": [
+   {
+    "id": "CVE-2025-25467",
+    "note": "2026-04-21",
+    "priority": "medium",
+    "published": "2025-02-18",
+    "status": "deferred"
+   }
+  ],
+  "needed": [],
+  "pending": []
+ },
+ "x265": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "xcb-util": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "xcb-util-cursor": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "xcb-util-image": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "xcb-util-keysyms": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "xcb-util-renderutil": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "xcb-util-wm": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ },
+ "xz-utils": {
+  "deferred": [],
+  "needed": [],
+  "pending": []
+ }
+}

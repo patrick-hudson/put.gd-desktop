@@ -32,12 +32,45 @@ work packages:
 | Multi-display geometry in VMs | [#380](https://github.com/patrick-hudson/put.gd-desktop/issues/380) | partial: 3-head Cinnamon X11 region, single-output fractional scale |
 | Physical mixed DPI and rotation | [#381](https://github.com/patrick-hudson/put.gd-desktop/issues/381) | blocked: no builder has two outputs; proposed for 0.1.2 |
 | Uninstall login-startup entry | [#382](https://github.com/patrick-hudson/put.gd-desktop/issues/382) | needs Patrick's decision |
-| License, notices, provenance, dependencies | [#383](https://github.com/patrick-hudson/put.gd-desktop/issues/383) | CI audits every nightly; no human review since `dev.133` |
+| License, notices, provenance, dependencies | [#383](https://github.com/patrick-hudson/put.gd-desktop/issues/383) | AppImage rehearsal on `v26.1022.968-nightly` ([below](#appimage-exact-asset-audit-rehearsal-383--2026-10-22)): provenance passes; notices, complete source, Qt CVEs and codec patents open (#416–#419); DEB/RPM not yet audited |
 | Release campaign and stable signing | [#384](https://github.com/patrick-hudson/put.gd-desktop/issues/384) | promote.py dry run passed on `0435ed6a` under the old scheme; repeat after #373 |
 | KDE/X11 rows, graphical-store installs | [#385](https://github.com/patrick-hudson/put.gd-desktop/issues/385) | proposed for 0.1.2; GNOME/X11 obsolete (GNOME 50 has no X11 session) |
 
 Flatpak ([#83](https://github.com/patrick-hudson/put.gd-desktop/issues/83)) is
 outside the first stable.
+
+## AppImage exact-asset audit rehearsal (#383) — 2026-10-22
+
+Asset: `putgd-26.1022.968-nightly-x86_64.AppImage`, SHA-256
+`dc17d5c6fb92a35514f381051d58f9a0170fad2b40c7e0e328dae64b219f51cf`, from
+[Nightly run 39737710388](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/39737710388)
+on `ddc7981e`. Audited on m74 (Ubuntu 24.04 base). Evidence and repeatable
+scripts: `docs/evidence/2026-10-22-appimage-license-audit/`. This is a nightly
+pass; it does not certify release bytes.
+
+- **Provenance passes.** `SHA256SUMS` matches GitHub's digests and the
+  pkg.put.gd copy. The minisig verifies with nightly key `71440FA5E439AEBB`.
+  All 759 receipt inventory entries match the extracted image. The runtime is
+  the pinned type2-runtime, and the update information, `.zsync`, the
+  `/dl/nightly` permalink and the feed agree with the CalVer tag.
+- **Contents pass.** No debug or test files beyond the intended test-pattern
+  plugin, no secrets, one absolute CI RUNPATH
+  ([#421](https://github.com/patrick-hudson/put.gd-desktop/issues/421)).
+  The 110 MiB download is 36 % Proton helper, 29 % Qt, 14 % other Ubuntu
+  libraries, 12 % recording and 6 % put.gd.
+- **Ubuntu packages are current.** All 153 bundled distro ELFs match today's
+  noble-security builds by GNU build ID. A stable image freezes them
+  ([#420](https://github.com/patrick-hudson/put.gd-desktop/issues/420)).
+- **Open, all release-blockers:** the AppImage notices
+  ([#417](https://github.com/patrick-hudson/put.gd-desktop/issues/417)), and
+  three decisions for Patrick: complete source for Qt and the LGPL libraries
+  ([#416](https://github.com/patrick-hudson/put.gd-desktop/issues/416)),
+  Qt 6.8.3's later CVEs
+  ([#418](https://github.com/patrick-hudson/put.gd-desktop/issues/418)) and
+  the H.264/H.265/AAC patent posture
+  ([#419](https://github.com/patrick-hudson/put.gd-desktop/issues/419)).
+
+Not covered: the DEBs, the RPM and the Proton per-release check.
 
 ## Package install retries and snapshot (#368) — 2026-10-22
 

@@ -1,0 +1,40 @@
+{
+ "aws-sdk": {
+  "files": 30,
+  "rawBytes": 23500400,
+  "squashfsBytes": 3424256
+ },
+ "distro-other": {
+  "files": 98,
+  "rawBytes": 43635584,
+  "squashfsBytes": 16019456
+ },
+ "licenses-notices": {
+  "files": 415,
+  "rawBytes": 4134232,
+  "squashfsBytes": 516096
+ },
+ "proton-helper": {
+  "files": 30,
+  "rawBytes": 89576989,
+  "squashfsBytes": 41758720
+ },
+ "putgd": {
+  "files": 26,
+  "rawBytes": 16850207,
+  "squashfsBytes": 6864896
+ },
+ "qt": {
+  "files": 81,
+  "rawBytes": 83723122,
+  "squashfsBytes": 32649216
+ },
+ "recording-media": {
+  "files": 61,
+  "rawBytes": 44369369,
+  "squashfsBytes": 13213696
+ },
+ "_whole": {
+  "squashfsBytes": 114429952
+ }
+}

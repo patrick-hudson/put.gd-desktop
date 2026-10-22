@@ -1,0 +1,158 @@
+{
+ "schemaVersion": 1,
+ "date": "2026-10-22",
+ "issue": 383,
+ "asset": {
+  "file": "putgd-26.1022.968-nightly-x86_64.AppImage",
+  "sha256": "dc17d5c6fb92a35514f381051d58f9a0170fad2b40c7e0e328dae64b219f51cf",
+  "sha1": "9feee5d85e1774789211ad9a229e2b10b08e57a5",
+  "bytes": 115374584
+ },
+ "release": {
+  "tag": "v26.1022.968-nightly",
+  "gitCommit": "ddc7981e4a325f5c75bee39a57170a89d74685fd",
+  "gitTree": "fc8d9ba43d63aec39f6836a5b453490c8667ea46",
+  "commitCount": 968,
+  "ciRun": 39737710388
+ },
+ "auditHost": {
+  "name": "m74",
+  "os": "Linux Mint 22.3 (Ubuntu 24.04 noble base)",
+  "aptIndexDate": "2026-10-22"
+ },
+ "minisignCrossCheck": {
+  "host": "d69",
+  "tool": "minisign 0.12",
+  "trustedComment": "put.gd v26.1022.968-nightly nightly"
+ },
+ "items": [
+  {
+   "id": "P1",
+   "check": "SHA256SUMS verifies, equals GitHub digests and pkg.put.gd copy",
+   "result": "pass",
+   "issue": null
+  },
+  {
+   "id": "P2",
+   "check": "SHA256SUMS.minisig verifies with nightly key 71440FA5E439AEBB",
+   "result": "pass",
+   "issue": null
+  },
+  {
+   "id": "P3",
+   "check": "Image matches CI run 39737710388 and release-builds.json (759/759 inventory entries)",
+   "result": "pass",
+   "issue": null
+  },
+  {
+   "id": "P4",
+   "check": "Runtime equals pinned type2-runtime 20251108 outside writable sections",
+   "result": "pass",
+   "issue": null
+  },
+  {
+   "id": "P5",
+   "check": "Update information, .zsync, /dl/nightly permalink and feed agree with CalVer",
+   "result": "pass",
+   "issue": null
+  },
+  {
+   "id": "N1",
+   "check": "Licence text or copyright notice for every bundled library",
+   "result": "pass-with-gaps",
+   "issue": 417
+  },
+  {
+   "id": "N2",
+   "check": "Notices describe the AppImage accurately",
+   "result": "fail",
+   "issue": 417
+  },
+  {
+   "id": "N3",
+   "check": "GPL corresponding source for FFmpeg, x264, x265, gst-plugins-ugly",
+   "result": "pass",
+   "issue": null
+  },
+  {
+   "id": "N4",
+   "check": "Source or offer for Qt, LGPL libraries and runtime",
+   "result": "fail-decision",
+   "issue": 416
+  },
+  {
+   "id": "N5",
+   "check": "LGPL relinkability",
+   "result": "pass",
+   "issue": null
+  },
+  {
+   "id": "N6",
+   "check": "Codecs with patent caveats (H.264, H.265, AAC)",
+   "result": "flagged-for-patrick",
+   "issue": 419
+  },
+  {
+   "id": "C1",
+   "check": "No debug or test files",
+   "result": "pass",
+   "issue": null
+  },
+  {
+   "id": "C2",
+   "check": "No secrets",
+   "result": "pass",
+   "issue": null
+  },
+  {
+   "id": "C3",
+   "check": "No absolute build paths",
+   "result": "pass-with-gap",
+   "issue": 421
+  },
+  {
+   "id": "C4",
+   "check": "Size reasonable, with breakdown",
+   "result": "pass",
+   "issue": null
+  },
+  {
+   "id": "D1",
+   "check": "Bundled Ubuntu packages current (build-ID match)",
+   "result": "pass",
+   "issue": null
+  },
+  {
+   "id": "D2",
+   "check": "Bundled versions with known CVEs",
+   "result": "fail-decision",
+   "issue": 418
+  },
+  {
+   "id": "X1",
+   "check": "#369 web-stream-tools in Proton notices",
+   "result": "pass-on-asset",
+   "issue": 369
+  },
+  {
+   "id": "X2",
+   "check": "Curated source tarball spot check",
+   "result": "pass",
+   "issue": null
+  }
+ ],
+ "gapIssues": [
+  416,
+  417,
+  418,
+  419,
+  420,
+  421
+ ],
+ "notCovered": [
+  "DEBs",
+  "RPM",
+  "Proton per-release check and source-part concatenation",
+  "independent curated-source rebuild"
+ ]
+}
