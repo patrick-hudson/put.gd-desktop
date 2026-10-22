@@ -130,7 +130,7 @@ def clone(base, directory):
 
 
 @serialized('directory')
-def launch(directory, display, iso=None, network=False, memory=4096, ssh_forward=None, cpus=2):
+def launch(directory, display, iso=None, network=False, memory=4096, ssh_forward=None, cpus=2, audio=False):
     if (directory / 'manifest.json').exists():
         raise LabError('Sealed bases cannot boot; create an overlay instead')
     stopped(directory)
@@ -153,7 +153,7 @@ def launch(directory, display, iso=None, network=False, memory=4096, ssh_forward
             '--ctrl', f'type=unixio,path={directory / "tpm.sock"}',
             '--flags', 'not-need-init', '--pid', f'file={directory / "swtpm.pid"}', '--daemon')
     try:
-        state.update(clean_shutdown=False, vnc_port=5900 + display, network=network, cpus=cpus)
+        state.update(clean_shutdown=False, vnc_port=5900 + display, network=network, cpus=cpus, audio=audio)
         if ssh_forward:
             state['ssh_forward'] = ssh_forward
         else:
@@ -172,6 +172,10 @@ def launch(directory, display, iso=None, network=False, memory=4096, ssh_forward
                 '-vnc', f'127.0.0.1:{display}', '-display', 'none',
                 '-qmp', f'unix:{directory / "qmp.sock"},server=on,wait=off',
                 '-no-shutdown', '-daemonize', '-pidfile', str(directory / 'qemu.pid')]
+        if audio:
+            # An HD Audio output whose samples go nowhere: Windows gets a playback
+            # endpoint (loopback recording tests) and the host stays silent.
+            args += ['-audiodev', 'none,id=snd0', '-device', 'ich9-intel-hda', '-device', 'hda-output,audiodev=snd0']
         if iso:
             args += ['-cdrom', str(iso), '-boot', 'order=dc,menu=on']
         if network:
@@ -272,6 +276,7 @@ def main():
     p.add_argument('--network', action='store_true', help='Explicit outbound NAT; no forwarded ports')
     p.add_argument('--memory', type=int, default=4096)
     p.add_argument('--cpus', type=int, default=2, help='Virtual CPUs (-smp), 1..8')
+    p.add_argument('--audio', action='store_true', help='Emulated HD Audio output on a null audiodev')
     p.add_argument('--ssh-forward', type=int, metavar='PORT',
                    help='With --network: forward host 127.0.0.1:PORT to guest port 22 (loopback only)')
     p = sub.add_parser('shutdown')
@@ -308,7 +313,7 @@ def main():
         if not 1 <= args.cpus <= 8:
             raise LabError('--cpus must be 1..8')
         launch(directory, args.display, args.iso.resolve() if args.iso else None, args.network, args.memory,
-               args.ssh_forward, args.cpus)
+               args.ssh_forward, args.cpus, args.audio)
     elif args.action == 'shutdown':
         shutdown(directory, args.force)
     elif args.action == 'cleanup':
