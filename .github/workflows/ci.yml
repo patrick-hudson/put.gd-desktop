@@ -476,7 +476,7 @@ jobs:
           retention-days: 30
 
   windows:
-    name: windows (native, mingw cross-build)
+    name: windows (native, mingw cross-build, zip and MSI)
     needs: changes
     if: needs.changes.outputs.build == 'true'
     runs-on: ubuntu-24.04
@@ -488,18 +488,25 @@ jobs:
       - name: Install the mingw-w64 cross toolchain
         run: |
           sudo apt-get update
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends g++-mingw-w64-x86-64-posix mingw-w64-tools ninja-build
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends g++-mingw-w64-x86-64-posix mingw-w64-tools ninja-build wixl
       - name: Portable core contracts on the host compiler
         run: |
           cmake -S src/windows -B build/windows-host -G Ninja -DPUTGD_WINDOWS_PORTABLE_TESTS=ON
           cmake --build build/windows-host
           ctest --test-dir build/windows-host --output-on-failure
       - name: Cross-compile putgd.exe and putgd-cli.exe
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag || '' }}
         run: |
           cmake -S src/windows -B build/windows -G Ninja -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_TOOLCHAIN_FILE="$PWD/cmake/toolchains/x86_64-w64-mingw32.cmake"
+            -DCMAKE_TOOLCHAIN_FILE="$PWD/cmake/toolchains/x86_64-w64-mingw32.cmake" -DPUTGD_RELEASE_TAG="$RELEASE_TAG"
           cmake --build build/windows
           x86_64-w64-mingw32-objdump -p build/windows/putgd.exe | grep -i 'DLL Name' | sort -u
+      - name: Package the portable zip and the per-user MSI
+        run: |
+          python3 src/windows/packaging/package.py --build build/windows --output build/windows-packages
+          msiinfo export build/windows-packages/*.msi Property | grep -E '^(ProductVersion|UpgradeCode)'
+          unzip -l build/windows-packages/*.zip
       - name: Preserve the Windows executables
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -507,7 +514,32 @@ jobs:
           path: |
             build/windows/putgd.exe
             build/windows/putgd-cli.exe
+            build/windows/build-identity/build-info.json
           retention-days: 30
+      - name: Preserve the Windows packages
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-packages
+          path: build/windows-packages/
+          if-no-files-found: error
+          retention-days: 30
+
+  windows-msvc:
+    # Keeps src/windows MSVC-clean (#404): Visual Studio 2022 builds both
+    # executables at /W4; the mingw job above tests and packages them.
+    name: windows (native, MSVC compile)
+    needs: changes
+    if: needs.changes.outputs.build == 'true'
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.release_tag || github.sha }}
+      - name: Configure with Visual Studio 2022
+        run: cmake -S src/windows -B build/msvc -G "Visual Studio 17 2022" -A x64 -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
+      - name: Build putgd.exe and putgd-cli.exe
+        run: cmake --build build/msvc --config Release --parallel
 
   packages:
     needs: changes
@@ -560,7 +592,7 @@ jobs:
   ci:
     name: CI
     if: always()
-    needs: [changes, contracts, linux, portable, windows, packages, pipewire]
+    needs: [changes, contracts, linux, portable, windows, windows-msvc, packages, pipewire]
     runs-on: ubuntu-24.04
     steps:
       - name: Require every selected job
@@ -575,12 +607,13 @@ jobs:
                       'linux': 'success' if selected.get('build') == 'true' else 'skipped',
                       'portable': 'success' if selected.get('build') == 'true' else 'skipped',
                       'windows': 'success' if selected.get('build') == 'true' else 'skipped',
+                      'windows-msvc': 'success' if selected.get('build') == 'true' else 'skipped',
                       'packages': 'success' if selected.get('packages') == 'true' else 'skipped',
                       'pipewire': 'success' if selected.get('pipewire') == 'true' else 'skipped'}
           failed = False
           for job, want in expected.items():
               got = needs[job]['result']
-              print(f'{job:10} {got:10} (required: {want})')
+              print(f'{job:12} {got:10} (required: {want})')
               failed |= got != want
           sys.exit(1 if failed else 0)
           PY
