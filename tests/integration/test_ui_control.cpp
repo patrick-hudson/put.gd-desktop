@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <cstring>
 #include <memory>
+#include "fixtures/Waits.h"
 using namespace putgd;
 class Duplex final:public QIODevice {
 public:
@@ -46,10 +47,10 @@ private slots:
   QProcess peer;peer.setProcessChannelMode(QProcess::SeparateChannels);UiControl channel(peer);bool ready=false;Error error;
   connect(&channel,&UiControl::failed,this,[&](Error e){error=e;});
   connect(&channel,&UiControl::frame,this,[&](QString type,QString,QJsonObject data){if(type=="ready"){QCOMPARE(data["receivedBytes"].toInt(),2*1024*1024);ready=true;}});
-  peer.start(QCoreApplication::applicationFilePath(),{detached?"--private-pipe-peer":"--pipe-peer"});QTRY_COMPARE(peer.state(),QProcess::Running);
+  peer.start(QCoreApplication::applicationFilePath(),{detached?"--private-pipe-peer":"--pipe-peer"});PUTGD_TRY_COMPARE(peer.state(),QProcess::Running);
   int ticks=0;QTimer heartbeat;heartbeat.setInterval(1);connect(&heartbeat,&QTimer::timeout,this,[&]{++ticks;});heartbeat.start();
-  QVERIFY(!channel.send("bootstrap",{{"text",QString(2*1024*1024,'x')}}).isEmpty());QTRY_VERIFY_WITH_TIMEOUT(ready,5000);QVERIFY(!error);QVERIFY(ticks>0);
-  channel.send("shutdown");QTRY_COMPARE(peer.state(),QProcess::NotRunning);QCOMPARE(peer.exitStatus(),QProcess::NormalExit);QCOMPARE(peer.exitCode(),0);const auto diagnostic=peer.readAllStandardError();if(detached)QVERIFY(diagnostic.contains("synthetic plugin stdout"));else QVERIFY(diagnostic.isEmpty());
+  QVERIFY(!channel.send("bootstrap",{{"text",QString(2*1024*1024,'x')}}).isEmpty());PUTGD_TRY_VERIFY_WITH_TIMEOUT(ready,5000);QVERIFY(!error);QVERIFY(ticks>0);
+  channel.send("shutdown");PUTGD_TRY_COMPARE(peer.state(),QProcess::NotRunning);QCOMPARE(peer.exitStatus(),QProcess::NormalExit);QCOMPARE(peer.exitCode(),0);const auto diagnostic=peer.readAllStandardError();if(detached)QVERIFY(diagnostic.contains("synthetic plugin stdout"));else QVERIFY(diagnostic.isEmpty());
   }
 #endif
  }

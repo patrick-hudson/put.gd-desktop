@@ -16,6 +16,7 @@
 #ifdef Q_OS_UNIX
 #include <csignal>
 #include <sys/resource.h>
+#include "fixtures/Waits.h"
 #endif
 using namespace putgd;
 namespace {
@@ -153,10 +154,10 @@ private slots:
   logging::flush();
   const auto old=logs+"/putgd-20200101T000000000Z-1-1.jsonl";QFile stale(old);QVERIFY(stale.open(QIODevice::WriteOnly));stale.write("{}\n");stale.flush();
   stale.setFileTime(QDateTime::currentDateTimeUtc().addDays(-15),QFileDevice::FileModificationTime);stale.close();
-  logging::info(logApp(),"Still running");logging::flush();QTest::qWait(100);
-  QVERIFY(QFile::exists(old));
+  logging::info(logApp(),"Still running");logging::flush();putgd::test::settle(100);
+  PUTGD_TRY_VERIFY(QFile::exists(old));
   service.setCleanupInterval(20);
-  QTRY_VERIFY(!QFile::exists(old));
+  PUTGD_TRY_VERIFY(!QFile::exists(old));
   QVERIFY(!logging::files().isEmpty());
  }
  void failedWritesDegradeWithoutBlocking() {
@@ -308,8 +309,8 @@ private slots:
   QVERIFY(logging::debug());QCOMPARE(restarted.debugStatus()["expiresAt"],service.debugStatus()["expiresAt"]);
   now=now.addSecs(3600+1);restarted.apply();
   QVERIFY(!logging::debug());
-  QTRY_VERIFY(!settings.snapshot().debugLogging);
-  QTRY_VERIFY(!QFile::exists(dir.filePath("debug-logging.json")));
+  PUTGD_TRY_VERIFY(!settings.snapshot().debugLogging);
+  PUTGD_TRY_VERIFY(!QFile::exists(dir.filePath("debug-logging.json")));
  }
  void failedUploadIsLoggedWithoutPrivateContent() {
   QTemporaryDir dir;logging::open(dir.filePath("logs"));
@@ -317,13 +318,13 @@ private slots:
   SettingsService settings(dir.filePath("config.json"),[&registry](const auto& id,const auto& value){return registry.validate(id,value);});
   QVERIFY(settings.save(test::configuration(dir.path()),{}));
   test::Source source;source.payload.kind="text";source.payload.bytes="synthetic-private-clipboard text that must stay out of every log";
-  OperationService operations(dir.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());
+  OperationService operations(dir.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
   QString id;bool accepted=false;
   operations.invoke("clipboard",[&](Error error,QJsonObject result){QVERIFY(!error);id=result["operationId"].toString();accepted=true;});
-  QTRY_VERIFY(accepted);
+  PUTGD_TRY_VERIFY(accepted);
   QList<QJsonObject> lines;
   auto find=[&](const QString& message){for(const auto& line:lines)if(line["message"]==message&&line["operationId"]==id)return line;return QJsonObject{};};
-  QTRY_VERIFY_WITH_TIMEOUT((logging::flush(),lines=records(readLogs(dir.filePath("logs"))),!find("Operation finished").isEmpty()),10000);
+  PUTGD_TRY_VERIFY_WITH_TIMEOUT((logging::flush(),lines=records(readLogs(dir.filePath("logs"))),!find("Operation finished").isEmpty()),10000);
   verifyNoCanary(readLogs(dir.filePath("logs")));
   QVERIFY(!find("Operation accepted").isEmpty());QVERIFY(!find("Artifacts acquired").isEmpty());QVERIFY(!find("Upload names chosen").isEmpty());QVERIFY(!find("Upload attempt").isEmpty());
   const auto failure=find("Upload failed");QVERIFY(!failure.isEmpty());QCOMPARE(failure["level"].toString(),QString("warning"));

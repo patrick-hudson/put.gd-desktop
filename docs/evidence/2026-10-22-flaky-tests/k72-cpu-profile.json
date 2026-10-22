@@ -1,0 +1,1644 @@
+{
+ "cpus": 4,
+ "ctestArgs": [
+  "--preset",
+  "dev"
+ ],
+ "host": "kubuntu",
+ "tests": {
+  "archive_contract": {
+   "cores": 1.0,
+   "cpu": 0.03,
+   "exitCode": 0,
+   "labels": [
+    "unit"
+   ],
+   "runs": [
+    {
+     "cpu": 0.03,
+     "exitCode": 0,
+     "wall": 0.03
+    }
+   ],
+   "wall": 0.03
+  },
+  "b2_integration": {
+   "cores": 0.55,
+   "cpu": 7.95,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 7.95,
+     "exitCode": 0,
+     "wall": 14.55
+    }
+   ],
+   "wall": 14.55
+  },
+  "bar_placement_contract": {
+   "cores": 1.0,
+   "cpu": 0.12,
+   "exitCode": 0,
+   "labels": [
+    "unit"
+   ],
+   "runs": [
+    {
+     "cpu": 0.12,
+     "exitCode": 0,
+     "wall": 0.12
+    }
+   ],
+   "wall": 0.12
+  },
+  "bar_placement_single_monitor_contract": {
+   "cores": 1.0,
+   "cpu": 0.11,
+   "exitCode": 0,
+   "labels": [
+    "unit"
+   ],
+   "runs": [
+    {
+     "cpu": 0.11,
+     "exitCode": 0,
+     "wall": 0.11
+    }
+   ],
+   "wall": 0.11
+  },
+  "build_contract": {
+   "cores": 0.88,
+   "cpu": 0.07,
+   "exitCode": 0,
+   "labels": [
+    "unit"
+   ],
+   "runs": [
+    {
+     "cpu": 0.07,
+     "exitCode": 0,
+     "wall": 0.08
+    }
+   ],
+   "wall": 0.08
+  },
+  "capture_control_integration": {
+   "cores": 1.0,
+   "cpu": 0.02,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 0.02,
+     "exitCode": 0,
+     "wall": 0.02
+    }
+   ],
+   "wall": 0.02
+  },
+  "capture_preparation_x11": {
+   "cores": 0.33,
+   "cpu": 1.98,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 1.98,
+     "exitCode": 0,
+     "wall": 5.95
+    }
+   ],
+   "wall": 5.95
+  },
+  "capture_process_integration": {
+   "cores": 0.29,
+   "cpu": 2.65,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 2.65,
+     "exitCode": 0,
+     "wall": 9.12
+    }
+   ],
+   "wall": 9.12
+  },
+  "cli_integration": {
+   "cores": 0.07,
+   "cpu": 1.59,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 1.59,
+     "exitCode": 0,
+     "wall": 21.41
+    }
+   ],
+   "wall": 21.41
+  },
+  "collision_policy_integration": {
+   "cores": 0.73,
+   "cpu": 7.84,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 7.84,
+     "exitCode": 0,
+     "wall": 10.7
+    }
+   ],
+   "wall": 10.7
+  },
+  "config_reload_integration": {
+   "cores": 0.13,
+   "cpu": 0.09,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 0.09,
+     "exitCode": 0,
+     "wall": 0.68
+    }
+   ],
+   "wall": 0.68
+  },
+  "crash_handler_contract": {
+   "cores": 0.02,
+   "cpu": 0.31,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 0.31,
+     "exitCode": 0,
+     "wall": 12.86
+    }
+   ],
+   "wall": 12.86
+  },
+  "diagnostics_bundle_contract": {
+   "cores": 0.97,
+   "cpu": 10.88,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 10.88,
+     "exitCode": 0,
+     "wall": 11.18
+    }
+   ],
+   "wall": 11.18
+  },
+  "diagnostics_upload_contract": {
+   "cores": 0.58,
+   "cpu": 1.52,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 1.52,
+     "exitCode": 0,
+     "wall": 2.6
+    }
+   ],
+   "wall": 2.6
+  },
+  "edit_operations_integration": {
+   "cores": 0.86,
+   "cpu": 10.85,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 10.85,
+     "exitCode": 0,
+     "wall": 12.67
+    }
+   ],
+   "wall": 12.67
+  },
+  "editor_contract": {
+   "cores": 1.0,
+   "cpu": 6.51,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 6.51,
+     "exitCode": 0,
+     "wall": 6.5
+    }
+   ],
+   "wall": 6.5
+  },
+  "editor_job_integration": {
+   "cores": 0.27,
+   "cpu": 1.03,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 1.03,
+     "exitCode": 0,
+     "wall": 3.82
+    }
+   ],
+   "wall": 3.82
+  },
+  "export_av_sync_contract": {
+   "cores": 1.71,
+   "cpu": 17.42,
+   "exitCode": 0,
+   "labels": [
+    "unit"
+   ],
+   "runs": [
+    {
+     "cpu": 17.42,
+     "exitCode": 0,
+     "wall": 10.16
+    }
+   ],
+   "wall": 10.16
+  },
+  "file_dialog_integration": {
+   "cores": 0.31,
+   "cpu": 0.53,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 0.53,
+     "exitCode": 0,
+     "wall": 1.69
+    }
+   ],
+   "wall": 1.69
+  },
+  "file_dialog_x11_parent": {
+   "cores": 0.45,
+   "cpu": 0.1,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 0.1,
+     "exitCode": 0,
+     "wall": 0.22
+    }
+   ],
+   "wall": 0.22
+  },
+  "geometry_contract": {
+   "cores": 1.0,
+   "cpu": 0.92,
+   "exitCode": 0,
+   "labels": [
+    "unit"
+   ],
+   "runs": [
+    {
+     "cpu": 0.92,
+     "exitCode": 0,
+     "wall": 0.92
+    }
+   ],
+   "wall": 0.92
+  },
+  "gnome_bridge_contract": {
+   "cores": 1.0,
+   "cpu": 0.08,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 0.08,
+     "exitCode": 0,
+     "wall": 0.08
+    }
+   ],
+   "wall": 0.08
+  },
+  "gnome_core_transport_integration": {
+   "cores": 0.07,
+   "cpu": 0.76,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 0.76,
+     "exitCode": 0,
+     "wall": 11.36
+    }
+   ],
+   "wall": 11.36
+  },
+  "gnome_image_decode": {
+   "cores": 1.0,
+   "cpu": 0.19,
+   "exitCode": 0,
+   "labels": [
+    "unit"
+   ],
+   "runs": [
+    {
+     "cpu": 0.19,
+     "exitCode": 0,
+     "wall": 0.19
+    }
+   ],
+   "wall": 0.19
+  },
+  "gui_application": {
+   "cores": 0.31,
+   "cpu": 12.2,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 12.2,
+     "exitCode": 0,
+     "wall": 39.07
+    }
+   ],
+   "wall": 39.07
+  },
+  "gui_editor_window": {
+   "cores": 1.04,
+   "cpu": 0.26,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 0.26,
+     "exitCode": 0,
+     "wall": 0.25
+    }
+   ],
+   "wall": 0.25
+  },
+  "gui_history_view": {
+   "cores": 0.39,
+   "cpu": 10.05,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 10.05,
+     "exitCode": 0,
+     "wall": 25.85
+    }
+   ],
+   "wall": 25.85
+  },
+  "gui_review_window": {
+   "cores": 0.8,
+   "cpu": 0.33,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 0.33,
+     "exitCode": 0,
+     "wall": 0.41
+    }
+   ],
+   "wall": 0.41
+  },
+  "gui_settings": {
+   "cores": 0.39,
+   "cpu": 28.81,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 28.81,
+     "exitCode": 0,
+     "wall": 74.78
+    }
+   ],
+   "wall": 74.78
+  },
+  "gui_theme": {
+   "cores": 1.0,
+   "cpu": 0.13,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 0.13,
+     "exitCode": 0,
+     "wall": 0.13
+    }
+   ],
+   "wall": 0.13
+  },
+  "gui_tray": {
+   "cores": 0.07,
+   "cpu": 3.21,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 3.21,
+     "exitCode": 0,
+     "wall": 48.12
+    }
+   ],
+   "wall": 48.12
+  },
+  "gui_version": {
+   "cores": 1.0,
+   "cpu": 0.07,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 0.07,
+     "exitCode": 0,
+     "wall": 0.07
+    }
+   ],
+   "wall": 0.07
+  },
+  "history_contract": {
+   "cores": 1.0,
+   "cpu": 6.41,
+   "exitCode": 0,
+   "labels": [
+    "unit"
+   ],
+   "runs": [
+    {
+     "cpu": 6.41,
+     "exitCode": 0,
+     "wall": 6.41
+    }
+   ],
+   "wall": 6.41
+  },
+  "host_environment_contract": {
+   "cores": 0.38,
+   "cpu": 0.03,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 0.03,
+     "exitCode": 0,
+     "wall": 0.08
+    }
+   ],
+   "wall": 0.08
+  },
+  "host_open_integration": {
+   "cores": 0.04,
+   "cpu": 0.14,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 0.14,
+     "exitCode": 0,
+     "wall": 3.95
+    }
+   ],
+   "wall": 3.95
+  },
+  "image_job_integration": {
+   "cores": 0.6,
+   "cpu": 2.76,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 2.76,
+     "exitCode": 0,
+     "wall": 4.57
+    }
+   ],
+   "wall": 4.57
+  },
+  "ip_address_contract": {
+   "cores": 1.0,
+   "cpu": 0.06,
+   "exitCode": 0,
+   "labels": [
+    "unit"
+   ],
+   "runs": [
+    {
+     "cpu": 0.06,
+     "exitCode": 0,
+     "wall": 0.06
+    }
+   ],
+   "wall": 0.06
+  },
+  "json_ref_lifetime_contract": {
+   "cores": 1.0,
+   "cpu": 0.3,
+   "exitCode": 0,
+   "labels": [
+    "unit"
+   ],
+   "runs": [
+    {
+     "cpu": 0.3,
+     "exitCode": 0,
+     "wall": 0.3
+    }
+   ],
+   "wall": 0.3
+  },
+  "kde_clipboard_import": {
+   "cores": 0.34,
+   "cpu": 0.1,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 0.1,
+     "exitCode": 0,
+     "wall": 0.29
+    }
+   ],
+   "wall": 0.29
+  },
+  "kde_keyboard_map": {
+   "cores": 1.0,
+   "cpu": 0.03,
+   "exitCode": 0,
+   "labels": [
+    "unit"
+   ],
+   "runs": [
+    {
+     "cpu": 0.03,
+     "exitCode": 0,
+     "wall": 0.03
+    }
+   ],
+   "wall": 0.03
+  },
+  "kde_ownership_integration": {
+   "cores": 0.05,
+   "cpu": 0.51,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 0.51,
+     "exitCode": 0,
+     "wall": 9.58
+    }
+   ],
+   "wall": 9.58
+  },
+  "kde_region_control": {
+   "cores": 0.04,
+   "cpu": 0.39,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 0.39,
+     "exitCode": 0,
+     "wall": 9.79
+    }
+   ],
+   "wall": 9.79
+  },
+  "kde_shortcut_normalization": {
+   "cores": 1.0,
+   "cpu": 0.03,
+   "exitCode": 0,
+   "labels": [
+    "unit"
+   ],
+   "runs": [
+    {
+     "cpu": 0.03,
+     "exitCode": 0,
+     "wall": 0.03
+    }
+   ],
+   "wall": 0.03
+  },
+  "kde_shortcuts_integration": {
+   "cores": 0.06,
+   "cpu": 0.34,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 0.34,
+     "exitCode": 0,
+     "wall": 5.69
+    }
+   ],
+   "wall": 5.69
+  },
+  "keychain_backend_integration": {
+   "cores": 0.11,
+   "cpu": 0.04,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 0.04,
+     "exitCode": 0,
+     "wall": 0.35
+    }
+   ],
+   "wall": 0.35
+  },
+  "keychain_integration": {
+   "cores": 0.38,
+   "cpu": 0.06,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 0.06,
+     "exitCode": 0,
+     "wall": 0.16
+    }
+   ],
+   "wall": 0.16
+  },
+  "kwin_transfer_contract": {
+   "cores": 0.27,
+   "cpu": 0.06,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 0.06,
+     "exitCode": 0,
+     "wall": 0.22
+    }
+   ],
+   "wall": 0.22
+  },
+  "local_ipc_contract": {
+   "cores": 0.04,
+   "cpu": 0.54,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 0.54,
+     "exitCode": 0,
+     "wall": 13.56
+    }
+   ],
+   "wall": 13.56
+  },
+  "logging_contract": {
+   "cores": 0.65,
+   "cpu": 0.5,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 0.5,
+     "exitCode": 0,
+     "wall": 0.77
+    }
+   ],
+   "wall": 0.77
+  },
+  "login_startup_contract": {
+   "cores": 1.0,
+   "cpu": 0.06,
+   "exitCode": 0,
+   "labels": [
+    "unit"
+   ],
+   "runs": [
+    {
+     "cpu": 0.06,
+     "exitCode": 0,
+     "wall": 0.06
+    }
+   ],
+   "wall": 0.06
+  },
+  "native_background_startup_integration": {
+   "cores": 0.35,
+   "cpu": 24.44,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 24.44,
+     "exitCode": 0,
+     "wall": 70.49
+    }
+   ],
+   "wall": 70.49
+  },
+  "native_region_overlay": {
+   "cores": 0.16,
+   "cpu": 0.16,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 0.16,
+     "exitCode": 0,
+     "wall": 0.98
+    }
+   ],
+   "wall": 0.98
+  },
+  "native_session_guards": {
+   "cores": 1.0,
+   "cpu": 0.03,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 0.03,
+     "exitCode": 0,
+     "wall": 0.03
+    }
+   ],
+   "wall": 0.03
+  },
+  "native_shortcut_rejection_integration": {
+   "cores": 0.47,
+   "cpu": 0.36,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 0.36,
+     "exitCode": 0,
+     "wall": 0.77
+    }
+   ],
+   "wall": 0.77
+  },
+  "native_tray_integration": {
+   "cores": 0.09,
+   "cpu": 1.38,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 1.38,
+     "exitCode": 0,
+     "wall": 15.86
+    }
+   ],
+   "wall": 15.86
+  },
+  "operations_contract": {
+   "cores": 0.19,
+   "cpu": 14.11,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 14.11,
+     "exitCode": 0,
+     "wall": 75.44
+    }
+   ],
+   "wall": 75.44
+  },
+  "pause_timeline_contract": {
+   "cores": 1.0,
+   "cpu": 0.04,
+   "exitCode": 0,
+   "labels": [
+    "unit"
+   ],
+   "runs": [
+    {
+     "cpu": 0.04,
+     "exitCode": 0,
+     "wall": 0.04
+    }
+   ],
+   "wall": 0.04
+  },
+  "payload_contract": {
+   "cores": 1.08,
+   "cpu": 0.13,
+   "exitCode": 0,
+   "labels": [
+    "unit"
+   ],
+   "runs": [
+    {
+     "cpu": 0.13,
+     "exitCode": 0,
+     "wall": 0.12
+    }
+   ],
+   "wall": 0.12
+  },
+  "portal_streams_contract": {
+   "cores": 1.0,
+   "cpu": 0.02,
+   "exitCode": 0,
+   "labels": [
+    "unit"
+   ],
+   "runs": [
+    {
+     "cpu": 0.02,
+     "exitCode": 0,
+     "wall": 0.02
+    }
+   ],
+   "wall": 0.02
+  },
+  "poster_contract": {
+   "cores": 1.35,
+   "cpu": 0.92,
+   "exitCode": 0,
+   "labels": [
+    "unit"
+   ],
+   "runs": [
+    {
+     "cpu": 0.92,
+     "exitCode": 0,
+     "wall": 0.68
+    }
+   ],
+   "wall": 0.68
+  },
+  "poster_job_integration": {
+   "cores": 1.17,
+   "cpu": 5.21,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 5.21,
+     "exitCode": 0,
+     "wall": 4.45
+    }
+   ],
+   "wall": 4.45
+  },
+  "proton_contract": {
+   "cores": 0.33,
+   "cpu": 1.58,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 1.58,
+     "exitCode": 0,
+     "wall": 4.74
+    }
+   ],
+   "wall": 4.74
+  },
+  "proton_transport": {
+   "cores": 0.15,
+   "cpu": 1.13,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 1.13,
+     "exitCode": 0,
+     "wall": 7.44
+    }
+   ],
+   "wall": 7.44
+  },
+  "public_url": {
+   "cores": 1.0,
+   "cpu": 0.03,
+   "exitCode": 0,
+   "labels": [
+    "unit"
+   ],
+   "runs": [
+    {
+     "cpu": 0.03,
+     "exitCode": 0,
+     "wall": 0.03
+    }
+   ],
+   "wall": 0.03
+  },
+  "record_identity_contract": {
+   "cores": 1.0,
+   "cpu": 0.04,
+   "exitCode": 0,
+   "labels": [
+    "unit"
+   ],
+   "runs": [
+    {
+     "cpu": 0.04,
+     "exitCode": 0,
+     "wall": 0.04
+    }
+   ],
+   "wall": 0.04
+  },
+  "record_runtime_contract": {
+   "cores": 1.0,
+   "cpu": 0.02,
+   "exitCode": 0,
+   "labels": [
+    "unit"
+   ],
+   "runs": [
+    {
+     "cpu": 0.02,
+     "exitCode": 0,
+     "wall": 0.02
+    }
+   ],
+   "wall": 0.02
+  },
+  "recording_helper_integration": {
+   "cores": 0.16,
+   "cpu": 0.89,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 0.89,
+     "exitCode": 0,
+     "wall": 5.68
+    }
+   ],
+   "wall": 5.68
+  },
+  "recording_model_contract": {
+   "cores": 0.86,
+   "cpu": 0.06,
+   "exitCode": 0,
+   "labels": [
+    "unit"
+   ],
+   "runs": [
+    {
+     "cpu": 0.06,
+     "exitCode": 0,
+     "wall": 0.07
+    }
+   ],
+   "wall": 0.07
+  },
+  "recording_service_integration": {
+   "cores": 0.27,
+   "cpu": 1.09,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 1.09,
+     "exitCode": 0,
+     "wall": 4.01
+    }
+   ],
+   "wall": 4.01
+  },
+  "release_link_contract": {
+   "cores": 1.0,
+   "cpu": 0.03,
+   "exitCode": 0,
+   "labels": [
+    "unit"
+   ],
+   "runs": [
+    {
+     "cpu": 0.03,
+     "exitCode": 0,
+     "wall": 0.03
+    }
+   ],
+   "wall": 0.03
+  },
+  "s3_delete_integration": {
+   "cores": 0.69,
+   "cpu": 10.46,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 10.46,
+     "exitCode": 0,
+     "wall": 15.09
+    }
+   ],
+   "wall": 15.09
+  },
+  "s3_integration": {
+   "cores": 0.51,
+   "cpu": 7.41,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 7.41,
+     "exitCode": 0,
+     "wall": 14.52
+    }
+   ],
+   "wall": 14.52
+  },
+  "s3_module_integration": {
+   "cores": 0.14,
+   "cpu": 5.21,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 5.21,
+     "exitCode": 0,
+     "wall": 36.53
+    }
+   ],
+   "wall": 36.53
+  },
+  "s3_multipart_integration": {
+   "cores": 0.74,
+   "cpu": 20.45,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 20.45,
+     "exitCode": 0,
+     "wall": 27.53
+    }
+   ],
+   "wall": 27.53
+  },
+  "s3_worker_protocol": {
+   "cores": 1.0,
+   "cpu": 0.27,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 0.27,
+     "exitCode": 0,
+     "wall": 0.27
+    }
+   ],
+   "wall": 0.27
+  },
+  "s3_worker_supervision": {
+   "cores": 0.1,
+   "cpu": 4.62,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 4.62,
+     "exitCode": 0,
+     "wall": 47.94
+    }
+   ],
+   "wall": 47.94
+  },
+  "sdk_contract": {
+   "cores": 0.95,
+   "cpu": 0.19,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 0.19,
+     "exitCode": 0,
+     "wall": 0.2
+    }
+   ],
+   "wall": 0.2
+  },
+  "session_client_integration": {
+   "cores": 0.04,
+   "cpu": 0.68,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 0.68,
+     "exitCode": 0,
+     "wall": 18.57
+    }
+   ],
+   "wall": 18.57
+  },
+  "settings_contract": {
+   "cores": 0.02,
+   "cpu": 0.2,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 0.2,
+     "exitCode": 0,
+     "wall": 9.45
+    }
+   ],
+   "wall": 9.45
+  },
+  "storage_contract_integration": {
+   "cores": 0.24,
+   "cpu": 1.02,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 1.02,
+     "exitCode": 0,
+     "wall": 4.29
+    }
+   ],
+   "wall": 4.29
+  },
+  "storage_locations_integration": {
+   "cores": 0.72,
+   "cpu": 0.69,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 0.69,
+     "exitCode": 0,
+     "wall": 0.96
+    }
+   ],
+   "wall": 0.96
+  },
+  "ui_control_integration": {
+   "cores": 0.35,
+   "cpu": 0.4,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 0.4,
+     "exitCode": 0,
+     "wall": 1.15
+    }
+   ],
+   "wall": 1.15
+  },
+  "ui_endpoints_integration": {
+   "cores": 0.54,
+   "cpu": 0.26,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 0.26,
+     "exitCode": 0,
+     "wall": 0.48
+    }
+   ],
+   "wall": 0.48
+  },
+  "ui_native_lifecycle_integration": {
+   "cores": 0.69,
+   "cpu": 2.76,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 2.76,
+     "exitCode": 0,
+     "wall": 4.02
+    }
+   ],
+   "wall": 4.02
+  },
+  "ui_process_integration": {
+   "cores": 0.04,
+   "cpu": 0.53,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 0.53,
+     "exitCode": 0,
+     "wall": 14.88
+    }
+   ],
+   "wall": 14.88
+  },
+  "ui_split_services_integration": {
+   "cores": 0.69,
+   "cpu": 0.63,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 0.63,
+     "exitCode": 0,
+     "wall": 0.91
+    }
+   ],
+   "wall": 0.91
+  },
+  "update_appimage_install_child": {
+   "cores": 1.08,
+   "cpu": 0.14,
+   "exitCode": 0,
+   "labels": [
+    "unit"
+   ],
+   "runs": [
+    {
+     "cpu": 0.14,
+     "exitCode": 0,
+     "wall": 0.13
+    }
+   ],
+   "wall": 0.13
+  },
+  "update_appimage_install_files": {
+   "cores": 1.0,
+   "cpu": 0.03,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 0.03,
+     "exitCode": 0,
+     "wall": 0.03
+    }
+   ],
+   "wall": 0.03
+  },
+  "update_check_request": {
+   "cores": 1.0,
+   "cpu": 0.09,
+   "exitCode": 0,
+   "labels": [
+    "unit"
+   ],
+   "runs": [
+    {
+     "cpu": 0.09,
+     "exitCode": 0,
+     "wall": 0.09
+    }
+   ],
+   "wall": 0.09
+  },
+  "update_feed_contract": {
+   "cores": 1.0,
+   "cpu": 0.03,
+   "exitCode": 0,
+   "labels": [
+    "unit"
+   ],
+   "runs": [
+    {
+     "cpu": 0.03,
+     "exitCode": 0,
+     "wall": 0.03
+    }
+   ],
+   "wall": 0.03
+  },
+  "update_minisign_verify": {
+   "cores": 1.0,
+   "cpu": 0.03,
+   "exitCode": 0,
+   "labels": [
+    "unit"
+   ],
+   "runs": [
+    {
+     "cpu": 0.03,
+     "exitCode": 0,
+     "wall": 0.03
+    }
+   ],
+   "wall": 0.03
+  },
+  "update_service_schedule": {
+   "cores": 0.38,
+   "cpu": 0.53,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 0.53,
+     "exitCode": 0,
+     "wall": 1.4
+    }
+   ],
+   "wall": 1.4
+  },
+  "update_system_repository": {
+   "cores": 1.0,
+   "cpu": 0.05,
+   "exitCode": 0,
+   "labels": [
+    "unit"
+   ],
+   "runs": [
+    {
+     "cpu": 0.05,
+     "exitCode": 0,
+     "wall": 0.05
+    }
+   ],
+   "wall": 0.05
+  },
+  "upload_naming_contract": {
+   "cores": 1.0,
+   "cpu": 0.05,
+   "exitCode": 0,
+   "labels": [
+    "unit"
+   ],
+   "runs": [
+    {
+     "cpu": 0.05,
+     "exitCode": 0,
+     "wall": 0.05
+    }
+   ],
+   "wall": 0.05
+  },
+  "version_contract": {
+   "cores": 1.02,
+   "cpu": 9.7,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 9.7,
+     "exitCode": 0,
+     "wall": 9.55
+    }
+   ],
+   "wall": 9.55
+  },
+  "version_integration": {
+   "cores": 1.0,
+   "cpu": 0.12,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 0.12,
+     "exitCode": 0,
+     "wall": 0.12
+    }
+   ],
+   "wall": 0.12
+  },
+  "wayland_acquisition_contract": {
+   "cores": 1.0,
+   "cpu": 0.02,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 0.02,
+     "exitCode": 0,
+     "wall": 0.02
+    }
+   ],
+   "wall": 0.02
+  },
+  "x11_capture_decode": {
+   "cores": 0.36,
+   "cpu": 0.09,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 0.09,
+     "exitCode": 0,
+     "wall": 0.25
+    }
+   ],
+   "wall": 0.25
+  },
+  "x11_clipboard_import": {
+   "cores": 0.5,
+   "cpu": 0.5,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 0.5,
+     "exitCode": 0,
+     "wall": 1.01
+    }
+   ],
+   "wall": 1.01
+  },
+  "x11_core_clipboard": {
+   "cores": 0.02,
+   "cpu": 0.35,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 0.35,
+     "exitCode": 0,
+     "wall": 18.28
+    }
+   ],
+   "wall": 18.28
+  },
+  "x11_isolated": {
+   "cores": 0.04,
+   "cpu": 0.89,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 0.89,
+     "exitCode": 0,
+     "wall": 21.42
+    }
+   ],
+   "wall": 21.42
+  },
+  "x11_native_snapshot": {
+   "cores": 0.45,
+   "cpu": 0.05,
+   "exitCode": 0,
+   "labels": [
+    "integration"
+   ],
+   "runs": [
+    {
+     "cpu": 0.05,
+     "exitCode": 0,
+     "wall": 0.11
+    }
+   ],
+   "wall": 0.11
+  }
+ },
+ "totalCpu": 261.1,
+ "totalWall": 821.9
+}

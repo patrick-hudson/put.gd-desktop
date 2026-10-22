@@ -7,6 +7,7 @@
 #include <QScopeGuard>
 #include <algorithm>
 #include <mutex>
+#include "fixtures/Waits.h"
 using namespace putgd::test;
 namespace {
 constexpr qint64 mib = 1024 * 1024;
@@ -389,10 +390,10 @@ private slots:
         Traces traces;
         traces.attach(request);
         auto pending = start(f, request);
-        QTRY_VERIFY_WITH_TIMEOUT(parts(f, "2").size() == 1 && parts(f, "3").size() == 1 && parts(f, "4").size() == 1, 8000);
+        PUTGD_TRY_VERIFY_WITH_TIMEOUT(parts(f, "2").size() == 1 && parts(f, "3").size() == 1 && parts(f, "4").size() == 1, 8000);
         QVERIFY(!pending->ready());
         f.control("/__release", {{"barrier", "first"}}, true);
-        QTRY_VERIFY_WITH_TIMEOUT(pending->ready(), 15000);
+        PUTGD_TRY_VERIFY_WITH_TIMEOUT(pending->ready(), 15000);
         const auto result = pending->future.get();
         QVERIFY2(result.status == "uploaded", qPrintable(result.error.code + ": " + result.error.message));
         QCOMPARE(parts(f).size(), 4);
@@ -443,18 +444,18 @@ private slots:
         std::atomic_int lent{0};
         request.extraLanes = [&lent](int wanted) { return qMin(wanted, lent.load()); };
         auto pending = start(f, request);
-        QTRY_VERIFY_WITH_TIMEOUT(parts(f, "1").size() == 1, 8000);
-        QTest::qWait(300);
-        QVERIFY(parts(f, "2").isEmpty());
+        PUTGD_TRY_VERIFY_WITH_TIMEOUT(parts(f, "1").size() == 1, 8000);
+        putgd::test::settle(300);
+        PUTGD_TRY_VERIFY(parts(f, "2").isEmpty());
         lent = 1;
-        QTRY_VERIFY_WITH_TIMEOUT(parts(f, "2").size() == 1, 8000);
+        PUTGD_TRY_VERIFY_WITH_TIMEOUT(parts(f, "2").size() == 1, 8000);
         // Another file takes the slot back: the borrowed lane finishes part 2 and stops.
         lent = 0;
-        QTest::qWait(2000);
-        QVERIFY(parts(f, "3").isEmpty());
+        putgd::test::settle(2000);
+        PUTGD_TRY_VERIFY(parts(f, "3").isEmpty());
         QVERIFY(!pending->ready());
         f.control("/__release", {{"barrier", "held"}}, true);
-        QTRY_VERIFY_WITH_TIMEOUT(pending->ready(), 15000);
+        PUTGD_TRY_VERIFY_WITH_TIMEOUT(pending->ready(), 15000);
         const auto result = pending->future.get();
         QVERIFY2(result.status == "uploaded", qPrintable(result.error.code + ": " + result.error.message));
         for (const auto* number : {"1", "2", "3", "4"}) QCOMPARE(parts(f, number).size(), 1);
@@ -489,11 +490,11 @@ private slots:
         Journal journal;
         journal.attach(request);
         auto pending = start(f, request);
-        QTRY_VERIFY_WITH_TIMEOUT(parts(f).size() == 4, 8000);
+        PUTGD_TRY_VERIFY_WITH_TIMEOUT(parts(f).size() == 4, 8000);
         QElapsedTimer clock;
         clock.start();
         request.cancellation->store(true);
-        QTRY_VERIFY_WITH_TIMEOUT(pending->ready(), 20000);
+        PUTGD_TRY_VERIFY_WITH_TIMEOUT(pending->ready(), 20000);
         const auto elapsed = clock.elapsed();
         qInfo("cancel with 4 parts in flight: %lld ms", elapsed);
         const auto result = pending->future.get();
@@ -538,9 +539,9 @@ private slots:
         Journal journal;
         journal.attach(request);
         auto pending = start(f, request);
-        QTRY_VERIFY_WITH_TIMEOUT(parts(f).size() == 4, 8000);
+        PUTGD_TRY_VERIFY_WITH_TIMEOUT(parts(f).size() == 4, 8000);
         request.cancellation->store(true);
-        QTRY_VERIFY_WITH_TIMEOUT(pending->ready(), 20000);
+        PUTGD_TRY_VERIFY_WITH_TIMEOUT(pending->ready(), 20000);
         const auto cancelled = pending->future.get();
         QCOMPARE(cancelled.status, QString("failed"));
         QCOMPARE(cancelled.error.code, QString("cancelled"));
@@ -614,10 +615,10 @@ private slots:
         source.payload.kind = "files";
         source.payload.files = {fixture(dir.path(), "private-name-canary.bin", synthetic(11 * mib, 148))};
         OperationService operations(dir.filePath("data"), settings, registry, source);
-        QTRY_VERIFY(operations.ready());
+        PUTGD_TRY_VERIFY(operations.ready());
         QString id;
         operations.invoke("clipboard", [&](Error error, QJsonObject result) { QVERIFY(!error); id = result["operationId"].toString(); });
-        QTRY_VERIFY_WITH_TIMEOUT(!id.isEmpty() && HistoryStore(operations.databasePath()).operation(id).state == "completed", 30000);
+        PUTGD_TRY_VERIFY_WITH_TIMEOUT(!id.isEmpty() && HistoryStore(operations.databasePath()).operation(id).state == "completed", 30000);
         operations.shutdown();
         logging::flush();
         const auto bytes = readLogs(dir.filePath("logs"));
@@ -675,7 +676,7 @@ private slots:
         QList<QJsonObject> journal;
         f.provider.testDestination(f.destination, [&](auto value, auto ack) { journal.append(value); ack({}); },
                                    [&](auto value, auto e) { result = value; error = e; done = true; });
-        QTRY_VERIFY_WITH_TIMEOUT(done.load(), 15000);
+        PUTGD_TRY_VERIFY_WITH_TIMEOUT(done.load(), 15000);
         const auto probe = result["multipart"].toObject();
         QCOMPARE(count(f, "POST", "uploads"), 1);
         QVERIFY(parts(f).isEmpty());

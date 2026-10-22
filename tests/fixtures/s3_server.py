@@ -1,8 +1,20 @@
 #!/usr/bin/env python3
 """Offline S3 wire oracle. Fake credentials only; no AWS network access."""
-import base64, hashlib, hmac, json, socket, threading, time, urllib.parse, uuid
+import base64, hashlib, hmac, json, os, socket, threading, time, urllib.parse, uuid
 import xml.etree.ElementTree as ElementTree
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+
+def _time_scale():
+    # Budgets scale like tests/fixtures/Waits.h: PUTGD_TEST_TIME_SCALE, clamped to [1, 20].
+    try:
+        value = float(os.environ.get('PUTGD_TEST_TIME_SCALE', '1'))
+    except ValueError:
+        return 1.0
+    return min(max(value, 1.0), 20.0) if value == value else 1.0
+
+
+TIME_SCALE = _time_scale()
 
 lock = threading.RLock()
 barriers = {}
@@ -116,7 +128,7 @@ class Handler(BaseHTTPRequestHandler):
             if rule and rule.get('barrier'):
                 barrier = barriers.setdefault(rule['barrier'], threading.Event())
                 lock.release()
-                barrier.wait(10)
+                barrier.wait(10 * TIME_SCALE)
                 lock.acquire()
             if rule and rule.get('delay'):
                 lock.release()

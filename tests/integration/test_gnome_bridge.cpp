@@ -17,6 +17,7 @@
 #include <QProcess>
 #include <QUuid>
 #include <cstdio>
+#include "fixtures/Waits.h"
 using namespace putgd;
 class GnomeBridgeTest final:public QObject {
  Q_OBJECT
@@ -169,10 +170,10 @@ private slots:
  void init(){QVERIFY2(startFixture(),fixture_.readAllStandardError().constData());}
  void cleanup(){stopFixture();}
  void nonImageReaderMetadataCannotBreakClipboardAcquisition(){
-  GnomeAdapter source;QTRY_VERIFY(helperAvailable(source));
+  GnomeAdapter source;PUTGD_TRY_VERIFY(helperAvailable(source));
   bool completed=false;PayloadResult result;
   source.acquire("clipboard",{},[&](PayloadResult value){result=std::move(value);completed=true;});
-  QTRY_VERIFY(completed);QVERIFY2(!result.error,qPrintable(result.error.message));
+  PUTGD_TRY_VERIFY(completed);QVERIFY2(!result.error,qPrintable(result.error.message));
   QCOMPARE(result.payload.kind,QString("text"));QCOMPARE(result.payload.bytes,QByteArray("x"));
   const auto mimes=state()["imageMimes"].toArray();
   QVERIFY(mimes.contains("image/x-putgd-gnome-mime"));
@@ -181,26 +182,26 @@ private slots:
  void screenCapturesSendOnlyPngWithoutListingImagePlugins(){
   // Listing image types instantiates every installed Qt image plugin; only a
   // clipboard import needs them, and the image job lists them out of process.
-  GnomeAdapter source;QTRY_VERIFY(helperAvailable(source));
+  GnomeAdapter source;PUTGD_TRY_VERIFY(helperAvailable(source));
   for(const char* action:{"region","desktop"}){
-   bool completed=false;source.acquire(action,{},[&](PayloadResult){completed=true;});QTRY_VERIFY(completed);
+   bool completed=false;source.acquire(action,{},[&](PayloadResult){completed=true;});PUTGD_TRY_VERIFY(completed);
    QCOMPARE(state()["imageMimes"].toArray(),QJsonArray{"image/png"});
   }
-  bool completed=false;source.acquire("clipboard",{},[&](PayloadResult){completed=true;});QTRY_VERIFY(completed);
+  bool completed=false;source.acquire("clipboard",{},[&](PayloadResult){completed=true;});PUTGD_TRY_VERIFY(completed);
   const auto mimes=state()["imageMimes"].toArray();QCOMPARE(mimes.first().toString(),QString("image/png"));QVERIFY(mimes.contains("image/x-putgd-gnome-mime"));
  }
  void clipboardAndShortcutTransport(){
-  GnomeAdapter source;QTRY_VERIFY(helperAvailable(source));
+  GnomeAdapter source;PUTGD_TRY_VERIFY(helperAvailable(source));
   source.bindShortcuts({{"region","Ctrl+Shift+1"},{"clipboard","Ctrl+Alt+V"}});
-  QTRY_COMPARE(state()["lastBindings"].toObject()["region"].toObject()["accelerator"].toString(),QString("<Control><Shift>1"));
+  PUTGD_TRY_COMPARE(state()["lastBindings"].toObject()["region"].toObject()["accelerator"].toString(),QString("<Control><Shift>1"));
   QCOMPARE(state()["lastBindings"].toObject()["clipboard"].toObject()["accelerator"].toString(),QString("<Control><Alt>v"));
-  QTRY_VERIFY(source.capabilities()["shortcuts"].toObject()["bindings"].toObject()["region"].toObject()["bound"].toBool());
+  PUTGD_TRY_VERIFY(source.capabilities()["shortcuts"].toObject()["bindings"].toObject()["region"].toObject()["bound"].toBool());
   bool acquired=false;PayloadResult acquiredResult;
   source.acquire("clipboard",{},[&](PayloadResult value){acquiredResult=std::move(value);acquired=true;});
-  QTRY_VERIFY(acquired);QVERIFY2(!acquiredResult.error,qPrintable(acquiredResult.error.message));QCOMPARE(acquiredResult.payload.bytes,QByteArray("x"));
+  PUTGD_TRY_VERIFY(acquired);QVERIFY2(!acquiredResult.error,qPrintable(acquiredResult.error.message));QCOMPARE(acquiredResult.payload.bytes,QByteArray("x"));
   CopyPayload payload;payload.kind="text";payload.text=QString(gnome::chunkBytes+17,QChar('x'))+QString::fromUtf8("\xc3\xa9");
   bool copied=false;Error copyError;source.copy(payload,[&](Error error){copyError=error;copied=true;});
-  QTRY_VERIFY(copied);QVERIFY2(!copyError,qPrintable(copyError.message));
+  PUTGD_TRY_VERIFY(copied);QVERIFY2(!copyError,qPrintable(copyError.message));
   const auto copiedState=state();QCOMPARE(copiedState["copyMime"].toString(),QString("text/plain;charset=utf-8"));
   QCOMPARE(QByteArray::fromBase64(copiedState["copyData"].toString().toLatin1()),payload.text.toUtf8());QCOMPARE(copiedState["commits"].toInt(),1);
  }
@@ -212,41 +213,41 @@ private slots:
   QVERIFY(!QDBusConnection::sessionBus().interface()->isServiceRegistered("org.putgd.App.Gnome50").value());
  }
  void recordingSuspendsNativeBindingsAcrossSettingsAndOwnerChanges(){
-  GnomeAdapter source;QTRY_VERIFY(windowAvailable(source));source.bindShortcuts({{"window","Ctrl+1"}});
-  QTRY_VERIFY(!state()["lastBindings"].toObject()["window"].toObject()["accelerator"].toString().isEmpty());
-  bool done=false;Error error;source.setShortcutRecording(true,[&](Error value){error=value;done=true;});QVERIFY(!done);QTRY_VERIFY(done);QVERIFY2(!error,qPrintable(error.code));
+  GnomeAdapter source;PUTGD_TRY_VERIFY(windowAvailable(source));source.bindShortcuts({{"window","Ctrl+1"}});
+  PUTGD_TRY_VERIFY(!state()["lastBindings"].toObject()["window"].toObject()["accelerator"].toString().isEmpty());
+  bool done=false;Error error;source.setShortcutRecording(true,[&](Error value){error=value;done=true;});QVERIFY(!done);PUTGD_TRY_VERIFY(done);QVERIFY2(!error,qPrintable(error.code));
   QCOMPARE(state()["lastBindings"].toObject()["window"].toObject()["accelerator"].toString(),QString{});
-  QSignalSpy invoked(&source,&GnomeAdapter::actionRequested);control("TriggerWindow",{QUuid::createUuid().toString(QUuid::WithoutBraces)});QTest::qWait(50);QCOMPARE(invoked.size(),0);
-  source.bindShortcuts({{"window","Ctrl+2"}});QTest::qWait(50);QCOMPARE(state()["lastBindings"].toObject()["window"].toObject()["accelerator"].toString(),QString{});
-  stopFixture();QTRY_VERIFY(!helperAvailable(source));QVERIFY(startFixture());QTRY_VERIFY(windowAvailable(source));QTRY_VERIFY(state()["binds"].toInt()>0);
+  QSignalSpy invoked(&source,&GnomeAdapter::actionRequested);control("TriggerWindow",{QUuid::createUuid().toString(QUuid::WithoutBraces)});putgd::test::settle(50);PUTGD_TRY_COMPARE(invoked.size(),0);
+  source.bindShortcuts({{"window","Ctrl+2"}});putgd::test::settle(50);PUTGD_TRY_COMPARE(state()["lastBindings"].toObject()["window"].toObject()["accelerator"].toString(),QString{});
+  stopFixture();PUTGD_TRY_VERIFY(!helperAvailable(source));QVERIFY(startFixture());PUTGD_TRY_VERIFY(windowAvailable(source));PUTGD_TRY_VERIFY(state()["binds"].toInt()>0);
   QCOMPARE(state()["lastBindings"].toObject()["window"].toObject()["accelerator"].toString(),QString{});
-  done=false;source.setShortcutRecording(false,[&](Error value){error=value;done=true;});QTRY_VERIFY(done);QVERIFY(!error);
+  done=false;source.setShortcutRecording(false,[&](Error value){error=value;done=true;});PUTGD_TRY_VERIFY(done);QVERIFY(!error);
   QCOMPARE(state()["lastBindings"].toObject()["window"].toObject()["accelerator"].toString(),QString("<Control>2"));
  }
  void clearFailureRecoversWithoutUiReopen(){
-  GnomeAdapter source;QTRY_VERIFY(windowAvailable(source));source.setUiProcess(1234);
+  GnomeAdapter source;PUTGD_TRY_VERIFY(windowAvailable(source));source.setUiProcess(1234);
   QCOMPARE(control("FailRegistration",{uint(0),uint(1)}).type(),QDBusMessage::ReplyMessage);source.setUiProcess(0);
   QVERIFY(helperAvailable(source));QVERIFY(!windowAvailable(source));QVERIFY(source.capabilities()["capture"].toObject()["region"].toObject()["available"].toBool());
   bool rejected=false;source.acquire("window",{},[&](PayloadResult result){rejected=true;QCOMPARE(result.error.code,QString("helper_unavailable"));});QVERIFY(rejected);
-  QTRY_VERIFY_WITH_TIMEOUT(windowAvailable(source),5000);
+  PUTGD_TRY_VERIFY_WITH_TIMEOUT(windowAvailable(source),5000);
   auto recovered=state();QCOMPARE(recovered["currentPid"].toInt(),0);QCOMPARE(recovered["registrations"].toArray(),(QJsonArray{0,1234,0,0}));QCOMPARE(recovered["hellos"].toInt(),1);QCOMPARE(recovered["binds"].toInt(),1);
   bool completed=false;PayloadResult result;
   connect(&source,&GnomeAdapter::actionRequested,this,[&](const QString& action){source.acquire(action,{},[&](PayloadResult value){result=std::move(value);completed=true;});});
-  QCOMPARE(control("TriggerWindow",{QUuid::createUuid().toString(QUuid::WithoutBraces)}).type(),QDBusMessage::ReplyMessage);QTRY_VERIFY(completed);
+  QCOMPARE(control("TriggerWindow",{QUuid::createUuid().toString(QUuid::WithoutBraces)}).type(),QDBusMessage::ReplyMessage);PUTGD_TRY_VERIFY(completed);
   QVERIFY2(!result.error,qPrintable(result.error.message));QCOMPARE(result.payload.bytes,QByteArray("x"));
  }
  void liveFailureStaysClosedAndNewPidSupersedesClear(){
-  GnomeAdapter source;QTRY_VERIFY(windowAvailable(source));
+  GnomeAdapter source;PUTGD_TRY_VERIFY(windowAvailable(source));
   QCOMPARE(control("FailRegistration",{uint(1234),uint(1)}).type(),QDBusMessage::ReplyMessage);source.setUiProcess(1234);QVERIFY(!windowAvailable(source));
-  QTest::qWait(3300);QVERIFY(!windowAvailable(source));QCOMPARE(state()["registrations"].toArray(),(QJsonArray{0,1234}));
-  QCOMPARE(control("FailRegistration",{uint(0),uint(1)}).type(),QDBusMessage::ReplyMessage);source.setUiProcess(0);QVERIFY(!windowAvailable(source));
-  source.setUiProcess(5678);QVERIFY(windowAvailable(source));QTest::qWait(3300);
-  QCOMPARE(state()["currentPid"].toInt(),5678);QCOMPARE(state()["registrations"].toArray(),(QJsonArray{0,1234,0,5678}));
+  putgd::test::settle(3300);PUTGD_TRY_VERIFY(!windowAvailable(source));PUTGD_TRY_COMPARE(state()["registrations"].toArray(),(QJsonArray{0,1234}));
+  PUTGD_TRY_COMPARE(control("FailRegistration",{uint(0),uint(1)}).type(),QDBusMessage::ReplyMessage);source.setUiProcess(0);QVERIFY(!windowAvailable(source));
+  source.setUiProcess(5678);QVERIFY(windowAvailable(source));putgd::test::settle(3300);
+  PUTGD_TRY_COMPARE(state()["currentPid"].toInt(),5678);PUTGD_TRY_COMPARE(state()["registrations"].toArray(),(QJsonArray{0,1234,0,5678}));
  }
  void outdatedExtensionAsksForALogOut(){
   // The package was upgraded while version 1 (no recording protocol) stays loaded.
   stopFixture();QVERIFY(startFixture(1));
-  GnomeAdapter source;QTRY_VERIFY(helperAvailable(source));
+  GnomeAdapter source;PUTGD_TRY_VERIFY(helperAvailable(source));
   const auto helper=source.capabilities()["helper"].toObject();
   QVERIFY(helper["outdated"].toBool());QCOMPARE(helper["packagedExtensionVersion"].toInt(),putgd::gnome::extensionVersion);
   QVERIFY(!source.selectsRegions());
@@ -255,13 +256,13 @@ private slots:
   // Screenshots keep working with the loaded extension.
   QVERIFY(source.capabilities()["capture"].toObject()["region"].toObject()["available"].toBool());
   QCOMPARE(source.regionError().code,QString("helper_outdated"));
-  stopFixture();QTRY_VERIFY(!helperAvailable(source));QVERIFY(startFixture());QTRY_VERIFY(helperAvailable(source));QVERIFY(!source.capabilities()["helper"].toObject()["outdated"].toBool());
+  stopFixture();PUTGD_TRY_VERIFY(!helperAvailable(source));QVERIFY(startFixture());PUTGD_TRY_VERIFY(helperAvailable(source));QVERIFY(!source.capabilities()["helper"].toObject()["outdated"].toBool());
  }
  void ownerReplacementRegistersLatestPid(){
-  GnomeAdapter source;QTRY_VERIFY(windowAvailable(source));source.setUiProcess(1234);
+  GnomeAdapter source;PUTGD_TRY_VERIFY(windowAvailable(source));source.setUiProcess(1234);
   QCOMPARE(control("FailRegistration",{uint(0),uint(1)}).type(),QDBusMessage::ReplyMessage);source.setUiProcess(0);QVERIFY(!windowAvailable(source));
   QCOMPARE(control("FailRegistration",{uint(5678),uint(1)}).type(),QDBusMessage::ReplyMessage);source.setUiProcess(5678);QVERIFY(!windowAvailable(source));
-  stopFixture();QTRY_VERIFY(!helperAvailable(source));QVERIFY(startFixture());QTRY_VERIFY(windowAvailable(source));
+  stopFixture();PUTGD_TRY_VERIFY(!helperAvailable(source));QVERIFY(startFixture());PUTGD_TRY_VERIFY(windowAvailable(source));
   QCOMPARE(state()["currentPid"].toInt(),5678);QCOMPARE(state()["registrations"].toArray(),QJsonArray{5678});
  }
 };

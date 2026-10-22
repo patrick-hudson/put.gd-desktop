@@ -13,6 +13,7 @@
 #include <QStandardPaths>
 #include <QTemporaryDir>
 #include <QTest>
+#include "fixtures/Waits.h"
 using namespace putgd;
 namespace {
 const QStringList canaries{"synthetic-private-secret","synthetic-private-token","synthetic-private-clipboard","putgd/synthetic-private-reference"};
@@ -74,10 +75,10 @@ private slots:
   settings_=std::make_unique<SettingsService>(dir_.filePath("config.json"),[registry](const auto& id,const auto& value){return registry->validate(id,value);});
   QVERIFY(settings_->save(test::configuration(dir_.path()),{}));
   source_=std::make_unique<test::Source>();source_->payload.kind="text";source_->payload.bytes="synthetic-private-clipboard text";
-  operations_=std::make_unique<OperationService>(dir_.filePath("data"),*settings_,*registry_,*source_);QTRY_VERIFY(operations_->ready());
+  operations_=std::make_unique<OperationService>(dir_.filePath("data"),*settings_,*registry_,*source_);PUTGD_TRY_VERIFY(operations_->ready());
   bool accepted=false;operations_->invoke("clipboard",[&](Error error,QJsonObject result){QVERIFY(!error);failedId_=result["operationId"].toString();accepted=true;});
-  QTRY_VERIFY(accepted);
-  QTRY_VERIFY_WITH_TIMEOUT((logging::flush(),QDir(dir_.filePath("state/logs")).entryList({"putgd-*.jsonl"}).size()>0&&[&]{
+  PUTGD_TRY_VERIFY(accepted);
+  PUTGD_TRY_VERIFY_WITH_TIMEOUT((logging::flush(),QDir(dir_.filePath("state/logs")).entryList({"putgd-*.jsonl"}).size()>0&&[&]{
    QByteArray bytes;
    for(const auto& name:QDir(dir_.filePath("state/logs")).entryList({"putgd-*.jsonl"})){QFile file(dir_.filePath("state/logs/"+name));if(file.open(QIODevice::ReadOnly))bytes+=file.readAll();}
    return bytes.contains("Operation finished");}()),10000);
@@ -221,17 +222,17 @@ private slots:
   });
   QProcess client;client.setWorkingDirectory(d.path());
   client.start(PUTGD_CLI_PATH,{"--socket",server.fullServerName(),"diagnostics.bundle","--operation","synthetic-op","--since","24h","--include-names","--output","relative.zip"});
-  QTRY_COMPARE_WITH_TIMEOUT(client.state(),QProcess::NotRunning,10000);QCOMPARE(client.exitCode(),0);
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(client.state(),QProcess::NotRunning,10000);QCOMPARE(client.exitCode(),0);
   QCOMPARE(received["method"].toString(),QString("diagnostics.bundle"));
   QCOMPARE(received["params"].toObject(),(QJsonObject{{"operation","synthetic-op"},{"since","24h"},{"includeNames",true},{"output",QDir(d.path()).absoluteFilePath("relative.zip")}}));
   // --upload [--profile ID] [--copy-link] (#123).
   received={};client.start(PUTGD_CLI_PATH,{"--socket",server.fullServerName(),"diagnostics.bundle","--upload","--profile","synthetic-s3","--copy-link"});
-  QTRY_COMPARE_WITH_TIMEOUT(client.state(),QProcess::NotRunning,10000);QCOMPARE(client.exitCode(),0);
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(client.state(),QProcess::NotRunning,10000);QCOMPARE(client.exitCode(),0);
   QCOMPARE(received["params"].toObject(),(QJsonObject{{"upload",true},{"profileId","synthetic-s3"},{"copyLink",true}}));
   // The flags belong to diagnostics.bundle alone, and never with a JSON object.
   for(const auto& args:QList<QStringList>{{"diagnostics","--since","1d"},{"diagnostics.bundle","{}","--since","1d"},{"diagnostics.bundle","--profile","x"},{"diagnostics.bundle","--copy-link"}}) {
    received={};client.start(PUTGD_CLI_PATH,QStringList{"--socket",server.fullServerName()}+args);
-   QTRY_COMPARE_WITH_TIMEOUT(client.state(),QProcess::NotRunning,10000);QCOMPARE(client.exitCode(),1);
+   PUTGD_TRY_COMPARE_WITH_TIMEOUT(client.state(),QProcess::NotRunning,10000);QCOMPARE(client.exitCode(),1);
    QCOMPARE(QJsonDocument::fromJson(client.readAllStandardOutput()).object()["error"].toObject()["code"].toString(),QString("invalid_request"));QVERIFY(received.isEmpty());
   }
  }
@@ -241,16 +242,16 @@ private slots:
   QTemporaryDir out;bool done=false;Error error;QJsonObject result;
   server.dispatch({{"schemaVersion",1},{"requestId","bundle"},{"session",server.socketPath()},{"method","diagnostics.bundle"},{"params",QJsonObject{{"since","1d"},{"output",out.path()}}}},
    [&](Error e,QJsonObject r){error=e;result=r;done=true;});
-  QTRY_VERIFY_WITH_TIMEOUT(done,30000);QVERIFY2(!error,qPrintable(error.message));QVERIFY(QFile::exists(result["path"].toString()));QVERIFY(result["operations"].toInt()>=1);
+  PUTGD_TRY_VERIFY_WITH_TIMEOUT(done,30000);QVERIFY2(!error,qPrintable(error.message));QVERIFY(QFile::exists(result["path"].toString()));QVERIFY(result["operations"].toInt()>=1);
   // #223: the resident remembers what it saved, so Show in folder takes a package
   // under any name it wrote, and still nothing else.
   QVERIFY(bundles.saved(result["path"].toString()));const auto custom=out.filePath("putgd-diagnostics-r9.zip");done=false;
   server.dispatch({{"schemaVersion",1},{"requestId","custom"},{"session",server.socketPath()},{"method","diagnostics.bundle"},{"params",QJsonObject{{"since","1d"},{"output",custom}}}},
    [&](Error e,QJsonObject r){error=e;result=r;done=true;});
-  QTRY_VERIFY_WITH_TIMEOUT(done,30000);QVERIFY2(!error,qPrintable(error.message));QCOMPARE(result["path"].toString(),custom);
+  PUTGD_TRY_VERIFY_WITH_TIMEOUT(done,30000);QVERIFY2(!error,qPrintable(error.message));QCOMPARE(result["path"].toString(),custom);
   QVERIFY(bundles.saved(custom));QVERIFY(bundles.saved(out.path()+"/./putgd-diagnostics-r9.zip"));QVERIFY(!bundles.saved(out.filePath("other.zip")));
   done=false;server.dispatch({{"schemaVersion",1},{"requestId","bad"},{"session",server.socketPath()},{"method","diagnostics.bundle"},{"params",QJsonObject{{"since","forever"}}}},[&](Error e,QJsonObject){error=e;done=true;});
-  QTRY_VERIFY(done);QCOMPARE(error.code,QString("invalid_request"));
+  PUTGD_TRY_VERIFY(done);QCOMPARE(error.code,QString("invalid_request"));
  }
 };
 QTEST_GUILESS_MAIN(DiagnosticsBundleContract)
