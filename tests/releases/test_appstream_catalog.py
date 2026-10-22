@@ -209,8 +209,12 @@ class RealCompose(unittest.TestCase):
             dists = work / 'dists'
             (work / 'compose').mkdir()
             files = appstream_catalog.write_dep11(work / 'putgd.deb', 'putgd-debian13-nightly', dists, work / 'compose')
-            self.assertIn('main/dep11/Components-amd64.yml.gz', files)
-            self.assertTrue({'main/dep11/icons-64x64.tar.gz', 'main/dep11/icons-128x128.tar.gz'} <= set(files))
+            # apt skips an optional target whose uncompressed name Release doesn't list (#314 lab, k72).
+            for name in ('Components-amd64.yml', 'icons-64x64.tar', 'icons-128x128.tar'):
+                self.assertIn('main/dep11/' + name, files)
+                self.assertIn('main/dep11/' + name + '.gz', files)
+                self.assertEqual(gzip.decompress((dists / 'main/dep11' / (name + '.gz')).read_bytes()),
+                                 (dists / 'main/dep11' / name).read_bytes())
             yml = gzip.decompress((dists / 'main/dep11/Components-amd64.yml.gz').read_bytes()).decode()
             for line in ('File: DEP-11', 'Origin: putgd-debian13-nightly', 'ID: gd.put.Putgd', 'Package: putgd',
                          '  C: put.gd', '  - name: gd.put.Putgd.png', '  stock: putgd'):

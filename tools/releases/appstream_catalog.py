@@ -7,10 +7,12 @@ Mint's Software Manager need a catalog in the repository itself. The signer
 builds one from the exact package each suite or repository carries, before
 anything is signed:
 
-- apt: DEP-11, `dists/<channel>/main/dep11/Components-amd64.yml.gz` and
-  `icons-<size>.tar.gz`, listed in `Release` so `InRelease` covers them. apt
-  fetches them through the targets appstream's `50appstream` declares, and
-  `appstreamcli refresh` installs them.
+- apt: DEP-11, `dists/<channel>/main/dep11/Components-amd64.yml` and
+  `icons-<size>.tar`, each also gzipped, all listed in `Release` so `InRelease`
+  covers them. apt fetches them through the targets appstream's `50appstream`
+  declares, and `appstreamcli refresh` installs them. apt skips an optional
+  target unless Release lists its uncompressed name, so both forms are listed
+  and published (apt fetches the .gz).
 - dnf: `appstream` and `appstream-icons` entries in `repomd.xml`, laid out as
   copr repositories carry them. dnf5 installs them under /var/cache/swcatalog
   for the repository id.
@@ -36,6 +38,7 @@ COMPONENT = 'gd.put.Putgd'
 PACKAGE = 'putgd'
 DEP11 = 'main/dep11'
 COMPONENTS = 'Components-amd64.yml.gz'
+UNCOMPRESSED_COMPONENTS = 'Components-amd64.yml'
 # Only what compose reads; the rest of the package stays packed.
 INPUTS = ('usr/share/metainfo/', 'usr/share/applications/', 'usr/share/icons/', 'usr/share/pixmaps/')
 MAX_INPUT = 16 * 1024 * 1024
@@ -182,11 +185,13 @@ def write_dep11(package, origin, dists, workdir, run=subprocess.run):
     if target.exists():
         shutil.rmtree(target)
     target.mkdir(parents=True)
-    (target / COMPONENTS).write_bytes(gzip_bytes(yml.read_bytes()))
+    outputs = {UNCOMPRESSED_COMPONENTS: yml.read_bytes()}
     for size, directory in icons.items():
         # DEP-11 icon tarballs are flat; appstream unpacks each into icons/<origin>/<size>/.
-        files = {path.name: path for path in directory.iterdir() if path.is_file()}
-        (target / f'icons-{size}.tar.gz').write_bytes(gzip_bytes(tar_bytes(files)))
+        outputs[f'icons-{size}.tar'] = tar_bytes({path.name: path for path in directory.iterdir() if path.is_file()})
+    for name, data in outputs.items():
+        (target / name).write_bytes(data)
+        (target / (name + '.gz')).write_bytes(gzip_bytes(data))
     return {path.relative_to(dists).as_posix(): sha256(path) for path in sorted(target.iterdir())}
 
 

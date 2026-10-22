@@ -545,7 +545,8 @@ class RealTools(unittest.TestCase):
             self.assertEqual(body, (dists / 'Release').read_text())
             self.assertTrue(pkgrepo.verify_gpg(keyring, dists / 'Release', dists / 'Release.gpg'))
             hashes = __import__('sign_stable').release_hashes(body)
-            for name in ('Components-amd64.yml.gz', 'icons-64x64.tar.gz', 'icons-128x128.tar.gz'):
+            for name in ('Components-amd64.yml', 'Components-amd64.yml.gz', 'icons-64x64.tar', 'icons-64x64.tar.gz',
+                         'icons-128x128.tar.gz'):
                 self.assertEqual(hashes['main/dep11/' + name], pkgrepo.sha256_file(dists / 'main/dep11' / name))
             yml = gzip.decompress((dists / 'main/dep11/Components-amd64.yml.gz').read_bytes()).decode()
             self.assertIn(f'Origin: putgd-{label}-{channel}\n', yml)
