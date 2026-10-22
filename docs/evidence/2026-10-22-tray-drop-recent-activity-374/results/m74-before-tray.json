@@ -1,0 +1,30 @@
+{
+ "menu": {
+  "label": "m74-before-tray-menu",
+  "components": [
+   {
+    "blocks": 1156,
+    "box": [
+     1704,
+     704,
+     1920,
+     1080
+    ]
+   }
+  ],
+  "colour": [
+   252,
+   252,
+   252
+  ],
+  "inner": [
+   1711,
+   711,
+   1913,
+   1039
+  ],
+  "changedShare": 1.0,
+  "kept": "/home/patrick/work/put.gd-tray374lab/p-m74-before/crops/m74-before-tray-menu.png"
+ },
+ "ui": null
+}

@@ -1,0 +1,30 @@
+{
+ "menu": {
+  "label": "k72-before-tray-menu",
+  "components": [
+   {
+    "blocks": 1173,
+    "box": [
+     1504,
+     656,
+     1704,
+     1032
+    ]
+   }
+  ],
+  "colour": [
+   244,
+   244,
+   244
+  ],
+  "inner": [
+   1509,
+   661,
+   1702,
+   1025
+  ],
+  "changedShare": 1.0,
+  "kept": "/home/patrick/work/put.gd-tray374lab/p-k72-before/crops/k72-before-tray-menu.png"
+ },
+ "ui": null
+}

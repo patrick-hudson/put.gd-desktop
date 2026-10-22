@@ -1,0 +1,117 @@
+{
+ "watcherItems": [
+  "org.kde.StatusNotifierItem.putgd_8874b49e61234da8aaaeee91d67fad69"
+ ],
+ "ours": [
+  "org.kde.StatusNotifierItem.putgd_8874b49e61234da8aaaeee91d67fad69"
+ ],
+ "revision": 1,
+ "items": [
+  {
+   "id": 1,
+   "label": "Capture Region",
+   "type": "standard",
+   "visible": true,
+   "enabled": true
+  },
+  {
+   "id": 5,
+   "label": "Capture Region & Edit",
+   "type": "standard",
+   "visible": true,
+   "enabled": true
+  },
+  {
+   "id": 2,
+   "label": "Capture Window",
+   "type": "standard",
+   "visible": true,
+   "enabled": true
+  },
+  {
+   "id": 3,
+   "label": "Capture Desktop",
+   "type": "standard",
+   "visible": true,
+   "enabled": true
+  },
+  {
+   "id": 16,
+   "label": "Capture Screen Recording",
+   "type": "standard",
+   "visible": true,
+   "enabled": true
+  },
+  {
+   "id": 13,
+   "label": "Edit Image",
+   "type": "standard",
+   "visible": true,
+   "enabled": true
+  },
+  {
+   "id": 4,
+   "label": "Upload Clipboard",
+   "type": "standard",
+   "visible": true,
+   "enabled": true
+  },
+  {
+   "id": 6,
+   "label": null,
+   "type": "separator",
+   "visible": true,
+   "enabled": true
+  },
+  {
+   "id": 7,
+   "label": "Settings and setup",
+   "type": "standard",
+   "visible": true,
+   "enabled": true
+  },
+  {
+   "id": 8,
+   "label": "Upload history",
+   "type": "standard",
+   "visible": true,
+   "enabled": true
+  },
+  {
+   "id": 9,
+   "label": "Recent activity",
+   "type": "standard",
+   "visible": true,
+   "enabled": true
+  },
+  {
+   "id": 17,
+   "label": "Update available",
+   "type": "standard",
+   "visible": false,
+   "enabled": true
+  },
+  {
+   "id": 10,
+   "label": null,
+   "type": "separator",
+   "visible": true,
+   "enabled": true
+  },
+  {
+   "id": 11,
+   "label": "About put.gd",
+   "type": "standard",
+   "visible": true,
+   "enabled": true
+  },
+  {
+   "id": 12,
+   "label": "Quit",
+   "type": "standard",
+   "visible": true,
+   "enabled": true
+  }
+ ],
+ "title": "put.gd"
+}

@@ -1,0 +1,37 @@
+{
+ "label": "f44-activate",
+ "components": [
+  {
+   "blocks": 20673,
+   "box": [
+    296,
+    0,
+    1832,
+    1016
+   ]
+  },
+  {
+   "blocks": 1,
+   "box": [
+    984,
+    16,
+    992,
+    24
+   ]
+  }
+ ],
+ "colour": [
+  244,
+  244,
+  248
+ ],
+ "inner": [
+  496,
+  135,
+  1583,
+  930
+ ],
+ "changedShare": 1.0,
+ "themeShare": 0.989,
+ "kept": "/home/patrick/work/put.gd-tray374lab/p-f44-after/crops/f44-activate.png"
+}
