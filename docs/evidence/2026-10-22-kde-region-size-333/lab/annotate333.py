@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """#333 before/after picture: the KDE selector at the drag plus the PNG put.gd saved.
 
-annotate333.py FRAME RESULT_PNG OUT --drag x0,y0,x1,y1 --desk TEXT --build TEXT [--map TEXT]
+annotate333.py FRAME RESULT_PNG OUT --drag x0,y0,x1,y1 --desk TEXT --build TEXT [--map TEXT] [--input TEXT]
 
 FRAME is a full-desktop VNC frame taken while the button is still down; RESULT_PNG
 is the capture put.gd saved after the release. The picture boxes the selector,
@@ -19,7 +19,7 @@ WIDTH = 1280
 
 def main():
     p = argparse.ArgumentParser(); p.add_argument('frame'); p.add_argument('result'); p.add_argument('out')
-    p.add_argument('--drag', required=True); p.add_argument('--desk', required=True); p.add_argument('--build', required=True); p.add_argument('--map', default='')
+    p.add_argument('--drag', required=True); p.add_argument('--desk', required=True); p.add_argument('--build', required=True); p.add_argument('--map', default=''); p.add_argument('--input', default='real uinput drag')
     a = p.parse_args()
     x0, y0, x1, y1 = [int(v) for v in a.drag.split(',')]
     want = (x1 - x0, y1 - y0)
@@ -76,7 +76,7 @@ def main():
     bar = 64; out = Image.new('RGB', (WIDTH, pic.height + bar), (17, 19, 23)); out.paste(pic, (0, 0))
     od = ImageDraw.Draw(out)
     od.text((14, pic.height + 8), f'{a.desk} · put.gd {a.build}', font=f(19), fill=(231, 233, 238))
-    od.text((14, pic.height + 36), f'Region capture, real uinput drag{(" (" + a.map + ")") if a.map else ""}: PNG {got[0]}×{got[1]} for a {want[0]}×{want[1]} drag — {"exact" if ok else "one pixel too large"}',
+    od.text((14, pic.height + 36), f'Region capture, {a.input}{(" (" + a.map + ")") if a.map else ""}: PNG {got[0]}×{got[1]} for a {want[0]}×{want[1]} drag — {"exact" if ok else "one pixel too large"}',
             font=f(16, False), fill=colour)
     out.save(a.out, optimize=True)
     print(a.out, out.size, 'ok' if ok else 'mismatch', got, want)

@@ -8,7 +8,7 @@ Code: [#356](https://github.com/patrick-hudson/put.gd-desktop/pull/356) at `096c
 - Ubuntu 26.04 DEB, sha256 `59112fb141bb119b3f7810fbf40a4be4f66e9c7a97a5d59e00f485388640e95a`
 
 "Before" is `0.1.1-nightly.893` (`33c768ec`, the branch base), downloaded from its GitHub release and checked
-against its `SHA256SUMS`. All runs were on 2026-10-22, between 02:10Z and 03:10Z.
+against its `SHA256SUMS`. All runs were on 2026-10-22, between 02:10Z and 03:25Z.
 
 ## Cause
 
@@ -42,6 +42,7 @@ file's sha256 agree, and the PNG header gives the size. Per-capture data is in `
 | k72 | 895 DEB | 1120×680 | 80×60 | 1120×680 | 80×60 | — |
 | d69 Debian 13, Plasma 6.3.6 | 893 AppImage | **1121×681** | **81×61** | 1120×680 | — | — |
 | d69 | 895 AppImage | 1120×680 | 80×60 | 1120×680 | 80×60 | 80×60 |
+| m74 Mint 22.3, Cinnamon 6.6 X11 (regression check) | 895 AppImage | xdotool 1120×680 | xdotool 80×60 | — | xdotool 80×60 at (400,200) | — |
 
 The A–K mapping's 80×60 drag at (987,549) starts 0.48 px into its pixel and ends 0.52 px in. Before the fix only
 the end rounded up, so it shows the bug at the small size. At (1440,820) both ends round the same way.
@@ -90,6 +91,11 @@ The DEB of the same commit on k72:
 
 ![k72 DEB after, 1120×680 drag gives 1120×680](pictures/k72-deb-after-1120x680.png)
 
+X11 regression check on m74 with the same AppImage. X11 delivers integer pointer positions, so this path
+was exact before and still is:
+
+![m74 Cinnamon X11, 1120×680 drag gives 1120×680](pictures/m74-after-1120x680.png)
+
 ## Lab tools
 
 - `lab/probe.cpp`, `lab/CMakeLists.txt`: a Qt surface (fullscreen, or a layer-shell overlay with `PROBE_LAYER=1`)
@@ -102,7 +108,7 @@ The DEB of the same commit on k72:
 
 ## Host actions and cleanup
 
-- Locks: k72 02:10:54–02:25Z and 02:47:25–03:07Z, d69 02:43:58–02:47Z, all released with `--verified-clean`. The
+- Locks: k72 02:10:54–02:25Z and 02:47:25–03:07Z, d69 02:43:58–02:47Z, m74 03:21:41–03:24Z, all released with `--verified-clean`. The
   `put.gd-flake` CTest processes on k72's Xvfb displays belonged to another session and were named not-mine.
 - k72's scale was set to 1.5 and 1.25 temporarily and restored to 1. The DEB was installed with
   `apt-get install --no-install-recommends` (no other packages) and purged.
