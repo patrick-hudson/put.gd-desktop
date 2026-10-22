@@ -50,6 +50,7 @@ Every picture and number below comes from lab N `0.1.1-nightly.886` updating to 
   - **(c)** a shim `appimageupdatetool` that kills itself with SIGSEGV, as appimageupdatetool does on stock Fedora 44.
 - `update.check`, `update.install {"confirm": true}` and `update.restart {"confirm": true}` were driven through `putgd-cli`, which is the MCP path.
 - `ui.show {"view": "updates"}` showed Settings scrolled to Updates for each full-desktop frame.
+  For these runs the driver called it twice, because a freshly opened window could still leave Updates below the fold ([#348](https://github.com/patrick-hudson/put.gd-desktop/issues/348)). After the #348 fix, `upd293.py` calls it once; see [the #348/#349 acceptance](../2026-10-22-updater-polish-348-349/README.md).
 
 ## Results: N → N+1 on every desktop
 

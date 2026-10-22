@@ -32,6 +32,7 @@
 #include <QPointer>
 #include <QPushButton>
 #include <QScrollArea>
+#include <QScrollBar>
 #include <QTabWidget>
 #include <QVBoxLayout>
 #include <algorithm>
@@ -646,11 +647,19 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  });
  for(auto* spin:findChildren<QAbstractSpinBox*>())connect(spin,&QAbstractSpinBox::editingFinished,this,[this,spin]{queueEdit(spin);});
  connect(&settings_,&UiSession::accepted,this,[this]{configurationChanged();refreshEffectiveLimits();});connect(&settings_,&UiSession::statusChanged,this,[this]{configurationChanged();refreshDiagnostics();});connect(tabs_,&QTabWidget::currentChanged,this,&SettingsWindow::viewStateChanged);
+ // #348: Updates stays in view while a freshly shown window settles its size and
+ // rows, until the user scrolls or leaves the page.
+ if(auto* scroll=qobject_cast<QScrollArea*>(tabs_->widget(0))){
+  connect(scroll->verticalScrollBar(),&QScrollBar::rangeChanged,this,[this]{if(revealUpdates_)revealUpdates();});
+  connect(scroll->verticalScrollBar(),&QScrollBar::actionTriggered,this,[this]{revealUpdates_=false;});
+  generalPage_=scroll;updatesCard_=updatesForm_->parentWidget();scroll->installEventFilter(this);updatesCard_->installEventFilter(this);
+ }
  setupTimer_=new QTimer(this);setupTimer_->setInterval(500);connect(setupTimer_,&QTimer::timeout,this,&SettingsWindow::pollSetup);
  for(auto* label:findChildren<QLabel*>())label->setTextFormat(Qt::PlainText);
  refresh();refreshDiagnostics();refreshDestinationList();updateProviderVisibility_();refreshEffectiveLimits();
 }
 SettingsWindow::~SettingsWindow(){
+ revealUpdates_=false;
  for(auto* child:findChildren<QObject*>())disconnect(child,nullptr,this,nullptr);
  if(destinationPage_)for(auto* child:destinationPage_->findChildren<QObject*>())disconnect(child,nullptr,this,nullptr);
  disconnect(&settings_,nullptr,this,nullptr);
@@ -658,6 +667,8 @@ SettingsWindow::~SettingsWindow(){
 bool SettingsWindow::eventFilter(QObject* watched,QEvent* event){
  if(watched==destinationPage_&&event->type()==QEvent::Hide)resetCredentialSecretDisplay();
  if(watched==tabs_->tabBar()&&event->type()==QEvent::Wheel){event->ignore();return true;}
+ if(revealUpdates_&&(event->type()==QEvent::Move||event->type()==QEvent::Resize)&&watched==updatesCard_)revealUpdates();
+ if(event->type()==QEvent::Hide&&watched==generalPage_&&!event->spontaneous())revealUpdates_=false;
  return RetainedWindow::eventFilter(watched,event);
 }
 void SettingsWindow::refreshMetadata(){if(configPath_)configPath_->setText(settings_.path());metadata_->setText("Configuration: "+settings_.path()+"\nAccepted revision: "+settings_.revision()+"\nObserved file revision: "+settings_.metadata()["observedRevision"].toString());}
@@ -1197,10 +1208,10 @@ QString SettingsWindow::autosaveText()const{
  return {};
 }
 void SettingsWindow::showCaptureSettings(){tabs_->setCurrentIndex(1);}
-void SettingsWindow::showUpdates(){
- tabs_->setCurrentIndex(0);
+void SettingsWindow::showUpdates(){tabs_->setCurrentIndex(0);revealUpdates_=true;revealUpdates();}
+void SettingsWindow::revealUpdates(){
  // The status, then its actions and an install's progress below it (#293 phase 3).
- if(auto* scroll=qobject_cast<QScrollArea*>(tabs_->widget(0))){scroll->ensureWidgetVisible(updateStatus_);for(auto* row:{updateActionsRow_,installRow_})if(row&&row->isVisible())scroll->ensureWidgetVisible(row);}
+ if(auto* scroll=qobject_cast<QScrollArea*>(generalPage_)){scroll->ensureWidgetVisible(updateStatus_);for(auto* row:{updateActionsRow_,installRow_})if(row&&row->isVisible())scroll->ensureWidgetVisible(row);}
 }
 bool SettingsWindow::flushAutosave(){if(autosave_)autosave_->stop();if(!autosaveBlocked_&&!pendingEdits_.isEmpty()&&!conflict_&&(setupAccepting_||!setupJobs_.isEmpty())){const auto waiting=QStringLiteral("Waiting for destination setup to finish before saving your edits.");if(status_->text()!=waiting||status_->property("feedbackTone").toString()!="neutral")VisualStyle::feedback(status_,waiting);return false;}if(!saving_&&!pendingEdits_.isEmpty()&&!conflict_)save();return !saving_;}
 void SettingsWindow::save(){

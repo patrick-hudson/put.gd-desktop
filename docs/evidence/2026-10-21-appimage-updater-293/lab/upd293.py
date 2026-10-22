@@ -160,8 +160,8 @@ def frame(run, label):
 
 
 def show_updates(run):
-    """Settings scrolled to Updates; again once a freshly opened window has its final layout."""
-    run.ok('ui.show', {'view': 'updates'}); time.sleep(1.5); run.ok('ui.show', {'view': 'updates'}); time.sleep(1)
+    """Settings scrolled to Updates; one call lands there in a fresh window too (#348)."""
+    run.ok('ui.show', {'view': 'updates'}); time.sleep(2.5)
 
 
 def status(run):
