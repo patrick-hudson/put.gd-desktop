@@ -689,7 +689,20 @@ bool confirm(HWND owner, const std::wstring& title, const std::wstring& instruct
 namespace {
 const GUID clsidFileSaveDialog{0xC0B4E2F3, 0xBA21, 0x4773, {0x8D, 0xBA, 0x33, 0x5E, 0xC9, 0x46, 0xEB, 0x8B}};
 const GUID iidFileSaveDialog{0x84BCCD23, 0x5FDE, 0x4CDB, {0xAE, 0xA4, 0xAF, 0x64, 0xB8, 0x3D, 0x78, 0xAB}};
+const GUID iidOleWindow{0x00000114, 0x0000, 0x0000, {0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46}};
 int openChoosers = 0;
+// IFileDialog::Close does not end Show() when called from the owner's own message
+// handlers (only from the dialog's event callbacks); closing its window does.
+void closeDialog(IFileDialog* dialog) {
+    dialog->Close(HRESULT_FROM_WIN32(ERROR_CANCELLED));
+    IOleWindow* window = nullptr;
+    HWND hwnd = nullptr;
+    if (SUCCEEDED(dialog->QueryInterface(iidOleWindow, reinterpret_cast<void**>(&window))) && window) {
+        window->GetWindow(&hwnd);
+        window->Release();
+    }
+    if (hwnd) PostMessageW(hwnd, WM_COMMAND, IDCANCEL, 0);
+}
 const char* modeName(FileChooser::Mode mode) { return mode == FileChooser::Mode::Save ? "save" : mode == FileChooser::Mode::Folder ? "folder" : "open"; }
 }
 bool FileChooser::anyOpen() { return openChoosers > 0; }
@@ -716,7 +729,7 @@ bool FileChooser::open(HWND owner, Options options, Done done) {
 void FileChooser::cancel() {
     if (!state_.open) return;
     cancelled_ = true;
-    if (dialog_) static_cast<IFileDialog*>(dialog_)->Close(HRESULT_FROM_WIN32(ERROR_CANCELLED));
+    if (dialog_) closeDialog(static_cast<IFileDialog*>(dialog_));
     finish({});
 }
 void FileChooser::finish(const std::string& path, const std::string& failure) {

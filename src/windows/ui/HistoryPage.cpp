@@ -28,7 +28,7 @@ enum : int {
 };
 constexpr UINT_PTR timerSearch = 1, timerActivity = 2, timerDeletion = 3, timerRefresh = 4, timerShare = 5;
 // Gallery tiles (logical pixels): the tile, and the thumbnail inside it.
-constexpr int tileWidth = 196, tileHeight = 172, thumbWidth = 180, thumbHeight = 112;
+constexpr int tileWidth = 172, tileHeight = 160, thumbWidth = 156, thumbHeight = 100;
 constexpr int pageSize = 50;
 
 const GUID clsidWicFactory{0xCACAF262, 0x9370, 0x4615, {0xA1, 0x3B, 0x9F, 0x55, 0x39, 0xDA, 0x4C, 0x0A}};

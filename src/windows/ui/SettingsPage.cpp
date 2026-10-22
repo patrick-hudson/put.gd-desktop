@@ -1106,6 +1106,7 @@ void SettingsPageImpl::fileDialogCommand(const std::string& dialog, const std::s
     if (action == "cancel") { chooser.cancel(); withDialog({}, chooser.state()); return; }
     if (chooser.isOpen()) { withDialog({"file_dialog_open", "That chooser is already open.", {}}, chooser.state()); return; }
     if (FileChooser::anyOpen()) { withDialog({"file_dialog_open", "Another file chooser is open in this window.", {}}, {}); return; }
+    main_.setPage(MainWindow::SettingsPage);
     if (dialog == "diagnosticsFolder") {
         setSection(Advanced);
         saveDiagnostics();
@@ -1126,7 +1127,6 @@ bool SettingsPageImpl::viewCommand(const std::string& name, const json::Object& 
     if (name == "fileDialog") {
         const auto dialog = params.value("dialog").toString();
         if (dialog != "outputFolder" && dialog != "diagnosticsFolder") return false;
-        main_.setPage(MainWindow::SettingsPage);
         fileDialogCommand(dialog, params.value("action").toString(), params.value("field").toString(), answer);
         return true;
     }

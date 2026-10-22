@@ -39,6 +39,7 @@ constexpr UINT saveCopyMessage = WM_APP + 2; // editor.fileDialog open
 // Shell file dialog identifiers, spelled out so no uuid import library is needed.
 constexpr CLSID clsidFileSaveDialog = {0xC0B4E2F3, 0xBA21, 0x4773, {0x8D, 0xBA, 0x33, 0x5E, 0xC9, 0x46, 0xEB, 0x8B}};
 constexpr IID iidFileSaveDialog = {0x84BCCD23, 0x5FDE, 0x4CDB, {0xAE, 0xA4, 0xAF, 0x64, 0xB8, 0x3D, 0x78, 0xAB}};
+constexpr IID iidOleWindow = {0x00000114, 0x0000, 0x0000, {0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46}};
 constexpr KNOWNFOLDERID folderPictures = {0x33E28130, 0x4E1E, 0x4676, {0x83, 0x5A, 0x98, 0x39, 0x5C, 0x3B, 0xC3, 0xBB}};
 
 struct PointD { double x = 0, y = 0; };
@@ -1427,7 +1428,15 @@ bool EditorWindow::openSaveCopyDialog() {
 void EditorWindow::cancelSaveCopyDialog() {
     if (!saveDialog_.open) return;
     saveDialogCancelled_ = true;
-    if (fileDialog_) static_cast<IFileDialog*>(fileDialog_)->Close(HRESULT_FROM_WIN32(ERROR_CANCELLED));
+    if (fileDialog_) {
+        // Close() alone does not end Show() outside the dialog's own callbacks; closing its window does.
+        auto* dialog = static_cast<IFileDialog*>(fileDialog_);
+        dialog->Close(HRESULT_FROM_WIN32(ERROR_CANCELLED));
+        IOleWindow* window = nullptr;
+        HWND hwnd = nullptr;
+        if (SUCCEEDED(dialog->QueryInterface(iidOleWindow, reinterpret_cast<void**>(&window))) && window) { window->GetWindow(&hwnd); window->Release(); }
+        if (hwnd) PostMessageW(hwnd, WM_COMMAND, IDCANCEL, 0);
+    }
     saveDialog_.cancelled();
 }
 
