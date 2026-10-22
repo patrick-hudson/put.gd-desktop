@@ -21,6 +21,7 @@
 #include <QProcess>
 #include <QTemporaryDir>
 #include <QTimer>
+#include <algorithm>
 #include <cstdio>
 #include <cstring>
 namespace putgd {
@@ -85,7 +86,7 @@ bool runZsync(const appimage::ZsyncTool& tool,const QStringList& arguments,const
  process.setProcessEnvironment(environment);process.setProcessChannelMode(QProcess::MergedChannels);process.setStandardInputFile(QProcess::nullDevice());
  QEventLoop loop;QTimer tick;tick.setInterval(progressIntervalMs);
  QElapsedTimer started,grew;started.start();grew.start();qint64 last=-1;bool stopped=false;
- QObject::connect(&process,&QProcess::readyRead,&process,[&]{output+=process.readAll();if(output.size()>8192)output=output.right(4096);});
+ QObject::connect(&process,&QProcess::readyRead,&process,[&]{output+=process.readAll();if(output.size()>8192){output=output.right(4096);const auto cut=std::find_if(output.cbegin(),output.cend(),[](char c){return c=='\n'||c=='\r';});if(cut!=output.cend())output.remove(0,cut-output.cbegin()+1);}});
  QObject::connect(&process,&QProcess::finished,&loop,&QEventLoop::quit);
  QObject::connect(&process,&QProcess::errorOccurred,&loop,[&](QProcess::ProcessError error){if(error==QProcess::FailedToStart)loop.quit();});
  QObject::connect(&tick,&QTimer::timeout,&loop,[&]{
@@ -106,11 +107,6 @@ bool runZsync(const appimage::ZsyncTool& tool,const QStringList& arguments,const
  if(process.exitStatus()!=QProcess::NormalExit){reason="crashed";return false;}
  if(process.exitCode()!=0){reason=QString("exit_%1").arg(process.exitCode());return false;}
  return true;
-}
-QString firstLine(const QByteArray& output) {
- // The tool's last lines name what went wrong; only for the result's details.
- const auto lines=QString::fromUtf8(output).split('\n',Qt::SkipEmptyParts);
- return lines.isEmpty()?QString():lines.mid(qMax(0,int(lines.size())-4)).join(" | ").left(400);
 }
 }
 QJsonObject installUpdate(const update::Build& build,const InstallOptions& options,const std::function<void(const QJsonObject&)>& emitLine,Error& error) {
@@ -198,7 +194,7 @@ QJsonObject installUpdate(const update::Build& build,const InstallOptions& optio
     QByteArray output;progress("zsync",tool.kind,0,size);
     const bool ran=runZsync(tool,appimage::zsyncArguments(tool,seed,candidatePath,zsyncUrl.toString()),staging.path(),seed,
                             appimage::zsyncEnvironment(host,options.caBundle),size,[&](qint64 bytes){progress("zsync",tool.kind,bytes,size);},reason,output);
-    zsync["output"]=firstLine(output);
+    zsync["output"]=appimage::zsyncOutputTail(output);
     if(ran&&!QFileInfo(candidatePath).isFile())reason="no_output";
     else if(ran) {
      progress("verifying",tool.kind,size,size);
