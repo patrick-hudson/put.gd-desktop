@@ -104,6 +104,7 @@ the last accepted in-memory settings and the bad file so it can be corrected.
 | `preferences.editorRecentColors` | Optional, written by put.gd: up to 6 lowercase `#rrggbb` custom editor colors, most recent first |
 | `preferences.diagnostics.debugLogging` | Optional, default `false`: keep debug records in the persistent log. put.gd sets it back to `false` 24 hours after it was turned on ([diagnostics.md](diagnostics.md#debug-logging)) |
 | `preferences.diagnostics.packageFolder` | Optional absolute folder, or `null`: where **Create diagnostics package** and **Save diagnostics for this upload** save packages. Settings writes it when you choose a folder; omitted or `null` means `<archive root>/diagnostics/` ([diagnostics.md](diagnostics.md#diagnostics-package)) |
+| `preferences.diagnostics.crashDumps` | Optional, default `false`, Windows only: a crash of `putgd.exe` writes a minidump to `%LOCALAPPDATA%\put.gd\crashdumps\` (the newest five are kept). Dumps stay on the PC and are never put in a package ([diagnostics.md](diagnostics.md#crash-dumps)). The Linux build accepts and ignores it |
 
 Local saving and uploading are independent outputs. An upload route with a configured
 profile uploads; `archive.keepUploads: true` also saves a local copy before publication.
