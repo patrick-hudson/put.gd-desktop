@@ -8,6 +8,7 @@
 #include "common/Paths.h"
 #include "common/Shortcut.h"
 #include "common/Text.h"
+#include "core/DiagnosticsPackage.h"
 #include "core/Naming.h"
 #include "core/Settings.h"
 #include <algorithm>
@@ -21,7 +22,7 @@ namespace {
 enum : int {
     idSections = 100, idDefaultDestination, idDefaultSharing, idKeepLocal, idNamingMode, idCollision, idClipboard,
     idNotifications, idLaunch, idUnlockStartup, idTheme, idDebug, idClearLogs, idDiagnostics, idShowDiagnostics,
-    idUpdateCheck, idUpdateChannel, idCheckNow, idReload, idResetLimits,
+    idUpdateCheck, idUpdateChannel, idCheckNow, idReload, idResetLimits, idCrashDumps, idDiagnosticsUpload,
     idActionDestination = 200, idActionSharing = 220, idRecord = 240, idClear = 260, idShortcutEdit = 280,
     idField = 300, idBrowse = 400
 };
@@ -234,6 +235,8 @@ private:
     void startRecording(size_t index);
     void finishRecording(std::optional<std::string> chord);
     void refreshUpdateStatus();
+    void showDiagnosticsState();
+    void checkUploadTarget();
     void showUpdateStatus(const json::Object& status);
     void saveDiagnostics();
     void updateEnabled();
@@ -265,6 +268,10 @@ private:
     // Advanced
     HWND uploadsHeading_{}, limitsNote_{}, resetLimits_{}, imagesHeading_{}, retentionHeading_{}, logsHeading_{}, debug_{}, clearLogs_{};
     HWND diagnostics_{}, diagnosticsResult_{}, showDiagnostics_{}, updatesHeading_{}, updateCheck_{}, channelLabel_{}, channel_{}, checkNow_{}, updateStatus_{};
+    HWND crashDumps_{}, logsStatus_{}, uncleanExit_{}, diagnosticsUpload_{}, uploadNote_{};
+    json::Object uploadTarget_;      // diagnostics.uploadTarget's answer for the default destination
+    bool checkingTarget_ = false;
+    unsigned long long targetCheck_ = 0;
     HWND configHeading_{}, configPath_{}, reload_{};
     std::string diagnosticsPath_;
     int updatesY_ = 0;
@@ -397,6 +404,14 @@ HWND SettingsPageImpl::create(HWND parent) {
     debug_ = check(a, idDebug, L"Debug logging (turns itself off after 24 hours)");
     clearLogs_ = button(a, idClearLogs, L"Clear logs\x2026");
     theme::setRole(clearLogs_, theme::Role::Danger);
+    crashDumps_ = check(a, idCrashDumps, L"Save crash dumps (Windows Error Reporting)");
+    setTooltip(main_.tooltip(), crashDumps_, L"Windows writes a minidump to put.gd's crashdumps folder when put.gd crashes. Dumps stay on this PC and are never put in a diagnostics package.");
+    logsStatus_ = ui::label(a, L"");
+    panels_[Advanced].markMuted(logsStatus_);
+    uncleanExit_ = ui::label(a, L"");
+    diagnosticsUpload_ = check(a, idDiagnosticsUpload, L"Also upload the package and copy a link");
+    uploadNote_ = ui::label(a, L"");
+    panels_[Advanced].markMuted(uploadNote_);
     diagnostics_ = button(a, idDiagnostics, L"Save diagnostics package\x2026");
     setTooltip(main_.tooltip(), diagnostics_, L"Saves a redacted package with logs and settings, without credentials or file contents.");
     diagnosticsResult_ = ui::label(a, L"", 0, SS_PATHELLIPSIS);
@@ -513,6 +528,13 @@ int SettingsPageImpl::layoutSection(int section, int width, int height) {
         for (const auto* key : {"/retention/logDays", "/retention/logBytes"})
             for (size_t i = 0; i < specs.size(); ++i) if (specs[i].path == key) field(i, 200);
         rows.line({{debug_, 420}}, true, rows.fieldHeight());
+        rows.line({{crashDumps_, 420}}, true, rows.fieldHeight());
+        rows.block(logsStatus_, line * 2 + 2);
+        if (!ui::text(uncleanExit_).empty()) rows.block(uncleanExit_, line * 2 + 2);
+        show(uncleanExit_, !ui::text(uncleanExit_).empty());
+        rows.line({{diagnosticsUpload_, 420}}, true, rows.fieldHeight());
+        if (!ui::text(uploadNote_).empty()) rows.block(uploadNote_, line * 2 + 2);
+        show(uploadNote_, !ui::text(uploadNote_).empty());
         rows.line({{clearLogs_, -1}, {diagnostics_, -1}}, true);
         if (!diagnosticsPath_.empty()) {
             const int showWidth = buttonWidth(showDiagnostics_);
@@ -652,6 +674,8 @@ void SettingsPageImpl::populate(bool external) {
     setChecked(unlockStartup_, preferences.value("unlockCredentialsAtStartup").toBool(true));
     ui::select(theme_, preferences.value("appearance")["theme"].toString("system"));
     setChecked(debug_, preferences.value("diagnostics")["debugLogging"].toBool(false));
+    setChecked(crashDumps_, preferences.value("diagnostics")["crashDumps"].toBool(false));
+    showDiagnosticsState();
     setChecked(updateCheck_, preferences.value("updates")["check"].toBool(true));
     ui::select(channel_, preferences.value("updates")["channel"].toString("build"));
     const auto& metadata = main_.session().metadata();
@@ -909,6 +933,54 @@ void SettingsPageImpl::refreshUpdateStatus() {
     main_.session().call("update.status", {}, [this](const Reply& reply) { if (reply.ok) showUpdateStatus(reply.result); });
 }
 
+// The log folder's state, the last unclean exit and the upload option (docs/diagnostics.md).
+void SettingsPageImpl::showDiagnosticsState() {
+    const auto& d = main_.session().diagnostics();
+    const auto logging = d.value("logging").toObject();
+    std::wstring logs = std::to_wstring(logging.value("files").toInt()) + L" log files, " + wide(text::byteSize(logging.value("bytes").toInteger()));
+    if (logging.value("oldestRecord").isString()) logs += L", oldest record " + localTime(logging.value("oldestRecord").toString());
+    if (logging.value("degraded").toBool())
+        logs += L"\nLogging is degraded (" + wide(logging.value("degradedReason").toString()) + L"): " + std::to_wstring(logging.value("droppedRecords").toInteger()) + L" records dropped. Uploads and captures carry on.";
+    setTextW(logsStatus_, logs);
+    const auto last = d.value("uncleanExit")["last"].toObject();
+    std::wstring unclean;
+    if (!last.empty()) {
+        const auto cause = last.value("cause").toString();
+        unclean = L"Last unclean exit: put.gd " + wide(last.value("previousVersion").toString()) + L", started " + localTime(last.value("previousStart").toString()) + L", " +
+            (cause == "crash" ? L"crashed (" + wide(last.value("exceptionName").toString(last.value("exceptionCode").toString())) + L")"
+             : cause == "signal" ? L"stopped by Windows or a stop request (" + wide(last.value("detail").toString(last.value("event").toString())) + L")"
+                                 : std::wstring(L"ended for an unknown reason (a forced kill, a crash or a power loss)"));
+    }
+    setTextW(uncleanExit_, unclean);
+    // The upload is offered for the default destination; ticking it checks that destination.
+    const auto profileId = diagnostics::defaultUploadProfile(Settings::fromValidated(main_.session().document()));
+    enable(diagnosticsUpload_, !profileId.empty() && !checkingTarget_);
+    if (profileId.empty()) { setChecked(diagnosticsUpload_, false); setTextW(uploadNote_, L"No upload destination is set up, so packages are saved on this PC only."); }
+    else if (!checkingTarget_ && !checked(diagnosticsUpload_)) setTextW(uploadNote_, L"");
+}
+void SettingsPageImpl::checkUploadTarget() {
+    if (!checked(diagnosticsUpload_)) { uploadTarget_ = {}; showDiagnosticsState(); panels_[Advanced].layout(); return; }
+    checkingTarget_ = true;
+    const auto sequence = ++targetCheck_;
+    setTextW(uploadNote_, L"Checking the upload destination (a Test connection)\x2026");
+    showDiagnosticsState(); panels_[Advanced].layout();
+    main_.session().call("diagnostics.uploadTarget", {}, [this, sequence](const Reply& reply) {
+        if (sequence != targetCheck_) return;
+        checkingTarget_ = false;
+        uploadTarget_ = reply.ok ? reply.result : json::Object{};
+        if (!reply.ok) { setChecked(diagnosticsUpload_, false); setTextW(uploadNote_, L"Can't upload: " + UiSession::describe(reply)); }
+        else if (!uploadTarget_.value("available").toBool()) {
+            setChecked(diagnosticsUpload_, false);
+            const auto reason = uploadTarget_.value("reason").toString();
+            const auto label = wide(uploadTarget_.value("label").toString());
+            setTextW(uploadNote_, reason == "diagnostics_no_destination" ? std::wstring(L"No upload destination is set up.")
+                : reason == "diagnostics_destination_failing" ? L"The last upload to " + label + L" failed with a credential or configuration error. Fix the destination, then try again."
+                : L"Test connection failed for " + label + L": " + wide(uploadTarget_.value("details")["error"]["message"].toString(uploadTarget_.value("message").toString())));
+        } else setTextW(uploadNote_, L"Uploads to " + wide(uploadTarget_.value("label").toString()) + L". " + wide(uploadTarget_.value("warning").toString()));
+        showDiagnosticsState();
+        panels_[Advanced].layout();
+    });
+}
 void SettingsPageImpl::saveDiagnostics() {
     const auto& document = main_.session().document();
     auto folder = document.value("preferences")["diagnostics"]["packageFolder"].toString();
@@ -918,13 +990,20 @@ void SettingsPageImpl::saveDiagnostics() {
     main_.queuePatch({{"preferences", json::Object{{"diagnostics", json::Object{{"debugLogging", checked(debug_)}, {"packageFolder", chosen}}}}}});
     enable(diagnostics_, false);
     main_.status(L"Saving the diagnostics package\x2026");
-    main_.flushSettings([this, chosen](bool) {
-        main_.session().call("diagnostics.bundle", {{"output", chosen}}, [this](const Reply& reply) {
+    json::Object params{{"output", chosen}};
+    const bool upload = checked(diagnosticsUpload_) && uploadTarget_.value("available").toBool();
+    if (upload) { params["upload"] = true; params["copyLink"] = true; params["profileId"] = uploadTarget_.value("profileId"); }
+    main_.flushSettings([this, params, upload](bool) {
+        if (upload) main_.status(L"Saving and uploading the diagnostics package\x2026");
+        main_.session().call("diagnostics.bundle", params, [this](const Reply& reply) {
             enable(diagnostics_, true);
             if (!reply.ok) { main_.status(UiSession::describe(reply), true); return; }
             diagnosticsPath_ = reply.result.value("path").toString();
             setTextW(diagnosticsResult_, L"Saved " + wide(diagnosticsPath_));
-            main_.status(L"Diagnostics package saved.");
+            // The saved file stays either way; an upload that fails only adds its reason.
+            if (reply.result.contains("link")) setTextW(uploadNote_, L"Uploaded: " + wide(reply.result.value("link").toString()) + (reply.result.value("linkCopied").toBool() ? L" (link copied)" : L""));
+            else if (reply.result.contains("uploadError")) setTextW(uploadNote_, L"Not uploaded: " + wide(reply.result.value("uploadError")["message"].toString()));
+            main_.status(reply.result.contains("link") ? L"Diagnostics package saved and uploaded." : L"Diagnostics package saved.");
             panels_[Advanced].layout();
         });
     });
@@ -1020,6 +1099,8 @@ void SettingsPageImpl::command(int id, int code, HWND control) {
             main_.session().call("logs.clear", {}, [this](const Reply& reply) { main_.status(reply.ok ? L"Logs cleared." : UiSession::describe(reply), !reply.ok); });
         break;
     case idDiagnostics: if (click) saveDiagnostics(); break;
+    case idCrashDumps: if (click) main_.queuePatch({{"preferences", json::Object{{"diagnostics", json::Object{{"debugLogging", checked(debug_)}, {"crashDumps", checked(crashDumps_)}}}}}}); break;
+    case idDiagnosticsUpload: if (click) checkUploadTarget(); break;
     case idShowDiagnostics: if (click) revealInExplorer(diagnosticsPath_); break;
     case idReload:
         if (click) {

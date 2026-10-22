@@ -17,7 +17,7 @@ std::string response(const std::string& id, const Error& error, const json::Obje
     return json::serialize(json::Object{{"schemaVersion", 1}, {"requestId", id}, {"ok", !error}, {"result", error ? json::Object{} : result}, {"error", error.toJson()}}) + "\n";
 }
 int replyDeadlineMs(const std::string& method) {
-    if (method == "diagnostics.bundle") return 10 * 60 * 1000;
+    if (method == "diagnostics.bundle" || method == "diagnostics.uploadTarget") return 10 * 60 * 1000;
     if (method == "update.check") return 60000;
     if (method == "history.preview") return 50000;
     if (method == "setup.testDestination") return 20000;

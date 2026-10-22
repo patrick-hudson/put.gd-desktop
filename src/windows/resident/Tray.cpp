@@ -83,12 +83,18 @@ void Tray::setTint(Tint tint) { if (tint == tint_) return; tint_ = tint; add(); 
 void Tray::setTooltip(const std::string& utf8) { tooltip_ = utf8; if (added_) add(); }
 void Tray::notify(const std::string& title, const std::string& message, bool warning, const std::string& link) {
     if (!added_) return;
-    pendingLink_ = link;
+    pendingLink_ = link; pendingAction_ = nullptr;
+    static unsigned long long shown = 0;
+    log::info("ui", "Notification shown", {{"notificationId", double(++shown)}, {"title", title}, {"notificationText", message}, {"warning", warning}});
     NOTIFYICONDATAW data{}; data.cbSize = sizeof data; data.hWnd = owner_; data.uID = trayId; data.uFlags = NIF_INFO | NIF_SHOWTIP;
     data.dwInfoFlags = warning ? NIIF_WARNING : NIIF_INFO;
     wcsncpy_s(data.szInfoTitle, paths::wide(title).c_str(), _TRUNCATE);
     wcsncpy_s(data.szInfo, paths::wide(message).c_str(), _TRUNCATE);
     Shell_NotifyIconW(NIM_MODIFY, &data);
+}
+void Tray::notify(const std::string& title, const std::string& message, bool warning, std::function<void()> clicked) {
+    notify(title, message, warning, std::string());
+    pendingAction_ = std::move(clicked);
 }
 void Tray::showMenu() {
     HMENU menu = CreatePopupMenu();
@@ -125,8 +131,9 @@ bool Tray::handleMessage(UINT message, WPARAM wParam, LPARAM lParam) {
     case NIN_SELECT: case NIN_KEYSELECT: case WM_LBUTTONUP: if (command_) command_(CmdActivity); return true;
     case NIN_BALLOONUSERCLICK:
         if (!pendingLink_.empty()) { ShellExecuteW(nullptr, L"open", paths::wide(pendingLink_).c_str(), nullptr, nullptr, SW_SHOWNORMAL); pendingLink_.clear(); }
+        if (pendingAction_) { auto action = std::move(pendingAction_); pendingAction_ = nullptr; action(); }
         return true;
-    case NIN_BALLOONTIMEOUT: case NIN_BALLOONHIDE: pendingLink_.clear(); return true;
+    case NIN_BALLOONTIMEOUT: case NIN_BALLOONHIDE: pendingLink_.clear(); pendingAction_ = nullptr; return true;
     default: return true;
     }
 }

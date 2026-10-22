@@ -5,7 +5,9 @@
 #include "common/Text.h"
 #include "common/Uuid.h"
 #include "core/SanitizedPng.h"
+#include "resident/Diagnostics.h"
 #include "resident/Resident.h"
+#include "resident/RunMarker.h"
 #include <algorithm>
 #include <set>
 #include <shellapi.h>
@@ -20,29 +22,6 @@ bool fields(const json::Object& object, const std::vector<std::string>& required
 }
 bool stringField(const json::Object& object, const std::string& key, size_t max = 256) { const auto& v = object.value(key); return v.isString() && !v.stringRef().empty() && v.stringRef().size() <= max; }
 bool startsWith(const std::string& s, const char* p) { return text::startsWith(s, p); }
-// A store-only ZIP writer for the diagnostics package (no compression library needed).
-class Zip {
-public:
-    void add(const std::string& name, const std::string& bytes) {
-        const auto crc = png::crc32(bytes);
-        const uint32_t offset = uint32_t(data_.size());
-        append(data_, "PK\x03\x04", 4); u16(data_, 20); u16(data_, 0x0800); u16(data_, 0); u16(data_, 0); u16(data_, 0); u32(data_, uint32_t(crc)); u32(data_, uint32_t(bytes.size())); u32(data_, uint32_t(bytes.size()));
-        u16(data_, uint16_t(name.size())); u16(data_, 0); data_ += name; data_ += bytes;
-        append(central_, "PK\x01\x02", 4); u16(central_, 20); u16(central_, 20); u16(central_, 0x0800); u16(central_, 0); u16(central_, 0); u16(central_, 0); u32(central_, uint32_t(crc)); u32(central_, uint32_t(bytes.size())); u32(central_, uint32_t(bytes.size()));
-        u16(central_, uint16_t(name.size())); u16(central_, 0); u16(central_, 0); u16(central_, 0); u16(central_, 0); u32(central_, 0); u32(central_, offset); central_ += name;
-        ++entries_;
-    }
-    std::string finish() const {
-        std::string out = data_ + central_;
-        append(out, "PK\x05\x06", 4); u16(out, 0); u16(out, 0); u16(out, uint16_t(entries_)); u16(out, uint16_t(entries_)); u32(out, uint32_t(central_.size())); u32(out, uint32_t(data_.size())); u16(out, 0);
-        return out;
-    }
-private:
-    static void append(std::string& s, const char* p, size_t n) { s.append(p, n); }
-    static void u16(std::string& s, uint16_t v) { s += char(v & 0xFF); s += char(v >> 8); }
-    static void u32(std::string& s, uint32_t v) { for (int i = 0; i < 4; ++i) s += char((v >> (8 * i)) & 0xFF); }
-    std::string data_, central_; int entries_ = 0;
-};
 }
 Session::Session(SettingsService& settings, OperationService& operations, HistoryService& history, SetupService& setup, UpdateService& updates, UiProcess& ui, std::string logs)
     : epoch_(uuid::create()), logs_(std::move(logs)), settings_(settings), operations_(operations), history_(history), setup_(setup), updates_(updates), ui_(ui) {}
@@ -55,9 +34,15 @@ Error Session::listen(const std::string& path) {
     const bool ok = server_.listen(path, [this](std::string request, std::function<void(std::string)> reply) {
         Loop::instance().post([this, request = std::move(request), reply = std::move(reply)] {
             const auto object = json::parseObject(request);
-            if (!object) { reply(json::serialize(response("", {"invalid_json", "Request must be a JSON object", {}}, {}))); return; }
+            if (!object) { log::info("session", "Session request rejected", {{"code", "invalid_json"}}); reply(json::serialize(response("", {"invalid_json", "Request must be a JSON object", {}}, {}))); return; }
             const auto id = object->value("requestId").toString();
-            dispatch(*object, [reply, id](Error e, json::Object result) { reply(json::serialize(response(id, e, result))); });
+            const auto method = object->value("method").toString().substr(0, 64);
+            dispatch(*object, [reply, id, method](Error e, json::Object result) {
+                // Malformed or misdirected requests; parameters are never written.
+                if (e.code == "invalid_request" || e.code == "unsupported_version" || e.code == "wrong_session" || e.code == "unknown_method")
+                    log::info("session", "Session request rejected", {{"method", method}, {"code", e.code}});
+                reply(json::serialize(response(id, e, result)));
+            });
         });
     });
     if (!ok) return {"session_unavailable", "Cannot listen on the user session pipe", {}};
@@ -66,7 +51,17 @@ Error Session::listen(const std::string& path) {
 void Session::stop() { server_.stop(); }
 json::Object Session::snapshot() const {
     return {{"build", protocol::buildIdentity()}, {"residentEpoch", epoch_}, {"operationsReady", operations_.ready()},
-        {"settings", json::Object{{"document", settings_.document()}, {"metadata", settings_.metadata()}}}, {"diagnostics", operations_.diagnostics()}};
+        {"settings", json::Object{{"document", settings_.document()}, {"metadata", settings_.metadata()}}}, {"diagnostics", diagnosticsDocument()}};
+}
+json::Object Session::diagnosticsDocument() const {
+    auto d = operations_.diagnostics();
+    d["ui"] = ui_.diagnostics(); d["updates"] = updates_.status();
+    const auto logging = log::status();
+    d["logging"] = logging; d["loggingDegraded"] = logging.value("degraded");
+    d["uncleanExit"] = runmarker::report();
+    if (diagnostics_) d["crashDumps"] = diagnostics_->crashDumps();
+    d["locations"] = json::Object{{"config", json::Object{{"path", paths::parent(settings_.path())}}}, {"data", json::Object{{"path", operations_.dataRoot()}}}};
+    return d;
 }
 void Session::dispatch(const json::Object& request, JsonReply reply) {
     if (!fields(request, {"schemaVersion", "requestId", "session", "method", "params"}) || !stringField(request, "requestId", 128) || !stringField(request, "method", 64) || !request.value("params").isObject() || !request.value("session").isString()) { reply(invalid(), {}); return; }
@@ -199,62 +194,23 @@ void Session::dispatch(const json::Object& request, JsonReply reply) {
     if (method == "update.install" || method == "update.restart" || method == "update.openSoftwareUpdates") {
         reply({"update_check_unavailable", "Windows builds are updated by replacing the executables; use the download link in Settings → Updates", {}}, {}); return;
     }
-    if (method == "diagnostics.bundle") { diagnosticsBundle(p, reply); return; }
-    if (method == "diagnostics.uploadTarget") { reply({}, {{"available", false}, {"reason", "unsupported"}, {"message", "Diagnostics packages are saved locally in the Windows build; attach the file by hand"}}); return; }
-    if (method == "diagnostics.reveal") {
-        if (!fields(p, {"path"}) || !stringField(p, "path", 4096) || !paths::isAbsolute(p.value("path").stringRef()) || !text::startsWith(paths::fileName(p.value("path").stringRef()), "putgd-diagnostics-")) { reply(invalid(), {}); return; }
-        if (!files::isRegularFile(p.value("path").stringRef())) { reply({"not_found", "No saved diagnostics package at this path", {}}, {}); return; }
-        ShellExecuteW(nullptr, L"open", L"explorer.exe", paths::wide("/select,\"" + p.value("path").stringRef() + "\"").c_str(), nullptr, SW_SHOWNORMAL);
-        reply({}, {{"revealed", true}}); return;
+    if (method == "diagnostics.bundle" || method == "diagnostics.uploadTarget" || method == "diagnostics.reveal") {
+        if (!diagnostics_) { reply({"initializing", "Diagnostics are not ready yet", {}}, {}); return; }
+        if (method == "diagnostics.bundle") diagnostics_->bundle(p, reply);
+        else if (method == "diagnostics.uploadTarget") diagnostics_->uploadTarget(p, reply);
+        else diagnostics_->reveal(p, reply);
+        return;
     }
     if (!p.empty()) { reply(invalid(), {}); return; }
     if (method == "settings.get") reply({}, {{"document", settings_.document()}, {"metadata", settings_.metadata()}});
     else if (method == "settings.developmentTemplate") reply({}, {{"document", Settings::developmentTemplate(paths::documentsFolder())}, {"explicitImportRequired", true}});
     else if (method == "settings.reload") { const auto result = settings_.reload(); reply(result.error, settings_.metadata()); }
     else if (method == "capabilities") reply({}, operations_.capabilities());
-    else if (method == "diagnostics") { auto d = operations_.diagnostics(); d["ui"] = ui_.diagnostics(); d["updates"] = updates_.status(); reply({}, d); }
+    else if (method == "diagnostics") reply({}, diagnosticsDocument());
     else if (method == "history.clear") history_.clear(reply);
     else if (method == "cache.clear") operations_.cleanup(false, reply);
-    else if (method == "logs.clear") { log::clearAll(logs_); reply({}, {{"cleared", true}}); }
+    else if (method == "logs.clear") { auto removed = log::clearAll(); removed["cleared"] = true; reply({}, removed); }
     else if (method == "update.status") reply({}, updates_.status());
     else reply({"unknown_method", "Unknown session method", {}}, {});
-}
-void Session::diagnosticsBundle(const json::Object& p, JsonReply reply) {
-    if (!fields(p, {}, {"operation", "since", "includeNames", "output", "preview", "notify", "upload", "profileId", "copyLink"})) { reply(invalid(), {}); return; }
-    const bool preview = p.value("preview").toBool(false), includeNames = p.value("includeNames").toBool(false);
-    std::string output = p.value("output").toString();
-    if (!output.empty() && !paths::isAbsolute(output)) { reply({"invalid_request", "output must be an absolute .zip path or folder", {}}, {}); return; }
-    const auto snapshot = settings_.snapshot();
-    auto folder = output.empty() ? paths::join(snapshot.archive.root, "diagnostics") : (text::endsWith(text::lower(output), ".zip") ? paths::parent(output) : output);
-    auto stamp = files::nowIsoUtc(); for (char& c : stamp) if (c == '-' || c == ':') c = '\0';
-    std::string compact; for (const char c : stamp) if (c != '\0' && c != '.') compact += c; // yyyymmddThhmmssmmmZ
-    compact = compact.substr(0, 15) + "Z";
-    const auto file = output.empty() || !text::endsWith(text::lower(output), ".zip") ? paths::join(folder, "putgd-diagnostics-" + compact + ".zip") : output;
-    const auto redact = [includeNames](json::Object op) {
-        if (includeNames) return op;
-        auto items = op.value("items").toArray();
-        for (auto& v : items) { auto item = v.toObject(); auto artifact = item.value("artifact").toObject(); artifact["name"] = "<redacted>"; item["artifact"] = artifact; item["candidate"] = "<redacted>";
-            auto receipt = item.value("receipt").toObject(); receipt["directUrl"] = receipt.value("directUrl").toString().empty() ? "" : "<redacted>"; item["receipt"] = receipt; auto local = item.value("local").toObject(); local["path"] = local.value("path").toString().empty() ? "" : "<redacted>"; item["local"] = local; v = item; }
-        op["items"] = items; return op;
-    };
-    operations_.recent([this, reply, preview, file, folder, redact, snapshot](Error e, json::Object recent) {
-        if (e) { reply(e, {}); return; }
-        Zip zip;
-        json::Object diagnostics = operations_.diagnostics(); diagnostics["updates"] = updates_.status(); diagnostics["ui"] = ui_.diagnostics();
-        zip.add("diagnostics.json", json::pretty(json::Value(diagnostics)));
-        auto document = settings_.document(); zip.add("configuration.json", json::pretty(json::Value(json::Object{{"document", document}, {"metadata", settings_.metadata()}})));
-        json::Array operations; for (const auto& op : recent.value("operations").toArray()) operations.push_back(redact(op.toObject()));
-        zip.add("operations.json", json::pretty(json::Value(operations)));
-        int logs = 0;
-        for (const auto& name : files::list(logs_)) if (text::endsWith(name, ".log")) { if (auto bytes = files::read(paths::join(logs_, name), 8 * 1024 * 1024)) { zip.add("logs/" + name, *bytes); ++logs; } }
-        const auto bytes = zip.finish();
-        json::Object result{{"path", file}, {"bytes", double(bytes.size())}, {"operations", double(operations.size())}, {"logFiles", logs}, {"redaction", "names-hashed"}, {"preview", preview}};
-        if (preview) { reply({}, result); return; }
-        if (!files::makeDirectories(folder)) { reply({"diagnostics_not_saved", "Cannot create the diagnostics folder", {}}, {}); return; }
-        if (auto error = files::writeAtomically(file, bytes, false)) { reply({"diagnostics_not_saved", "Cannot write the diagnostics package", {}}, {}); return; }
-        result["uploadError"] = "Uploading diagnostics packages is not available in the Windows build";
-        log::info("diagnostics", "Diagnostics package saved", {{"bytes", double(bytes.size())}});
-        reply({}, result);
-    });
 }
 }

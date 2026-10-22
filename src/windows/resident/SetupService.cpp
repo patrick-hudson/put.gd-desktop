@@ -22,6 +22,7 @@ void SetupService::finish(const std::string& id, Error error, json::Object resul
     record.remove("event");
     record["result"] = result; record["state"] = error ? "failed" : "completed"; record["error"] = error.toJson();
     active_.erase(record.value("profileId").toString() + "/" + record.value("kind").toString());
+    if (!error && record.value("kind") == "testDestination" && onDestinationTested) onDestinationTested(record.value("profileId").toString());
     completed_.push_back(id);
     while (completed_.size() > 64) { jobs_.erase(completed_.front()); completed_.pop_front(); }
     if (onChanged) onChanged(id);
@@ -88,6 +89,20 @@ void SetupService::start(const std::string& kind, const std::string& profileId, 
         if (!error && result.value("status") == "ok") result["testScope"] = "upload-public-get-cleanup";
         finish(id, error, result);
     });
+}
+void SetupService::testNow(const std::string& profileId, std::function<void(Error)> done) {
+    const auto snapshot = settings_.snapshot();
+    const auto it = snapshot.profiles.find(profileId);
+    if (it == snapshot.profiles.end()) { done({"profile_not_found", "No configured destination has this identifier", {{"profileId", profileId}}}); return; }
+    const auto provider = providers_.find(it->second.value("provider").toString());
+    if (!provider) { done({"unknown_provider", "No registered storage provider has this identifier", {}}); return; }
+    Destination destination{it->second.value("provider").toString(), profileId, settings_.revision(), it->second.value("settings").toObject(), it->second.value("credentials").toObject()};
+    if (auto e = provider->readiness(destination)) { done(e); return; }
+    operations_.background([provider, destination](Error& error) { return provider->testDestination(destination, [](const json::Object&) -> Error { return {}; }, error); },
+        [this, profileId, done](Error error, json::Object) {
+            if (!error && onDestinationTested) onDestinationTested(profileId);
+            done(error);
+        });
 }
 void SetupService::inspect(const std::string& id, JsonReply reply) {
     const auto it = jobs_.find(id);

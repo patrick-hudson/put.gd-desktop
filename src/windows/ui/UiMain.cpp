@@ -17,7 +17,8 @@ bool knownView(const std::string& view) { for (const auto& v : views) if (v == v
 
 int uiMain(const std::vector<std::string>& args) {
     auto& channel = frames::helperChannel();
-    log::initialize(paths::join(paths::dataRoot(), "logs"), "putgd-ui");
+    // Only the resident opens log files; this helper's records reach it through stderr.
+    log::initialize("", "putgd-ui");
     ui::enablePerMonitorDpi();
     if (FAILED(CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE))) return 1;
     INITCOMMONCONTROLSEX controls{sizeof controls, ICC_STANDARD_CLASSES | ICC_WIN95_CLASSES | ICC_LISTVIEW_CLASSES | ICC_TAB_CLASSES | ICC_BAR_CLASSES};

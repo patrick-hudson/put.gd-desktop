@@ -22,6 +22,8 @@ public:
     void setTooltip(const std::string& utf8);
     // Shows a toast; `link` (optional) opens when the user clicks it.
     void notify(const std::string& title, const std::string& message, bool warning, const std::string& link = {});
+    // Shows a toast whose click runs `clicked` (the diagnostics package's Show in folder).
+    void notify(const std::string& title, const std::string& message, bool warning, std::function<void()> clicked);
     void onCommand(std::function<void(UINT)> handler) { command_ = std::move(handler); }
     // Handles WM_APP_TRAY and the TaskbarCreated broadcast; true when consumed.
     bool handleMessage(UINT message, WPARAM wParam, LPARAM lParam);
@@ -40,6 +42,7 @@ private:
     HICON icon_ = nullptr;
     UINT taskbarCreated_ = 0;
     std::string pendingLink_, tooltip_ = "put.gd";
+    std::function<void()> pendingAction_;
     std::function<void(UINT)> command_;
 };
 }

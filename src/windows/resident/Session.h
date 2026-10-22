@@ -10,6 +10,7 @@
 #include "resident/UpdateService.h"
 
 namespace putgd {
+class DiagnosticsService;
 class Session {
 public:
     Session(SettingsService&, OperationService&, HistoryService&, SetupService&, UpdateService&, UiProcess&, std::string logDirectory);
@@ -18,11 +19,14 @@ public:
     const std::string& path() const { return server_.path(); }
     const std::string& residentEpoch() const { return epoch_; }
     std::function<void()> onQuit;
+    // diagnostics.bundle, diagnostics.uploadTarget and diagnostics.reveal (resident/Diagnostics.h).
+    void setDiagnostics(DiagnosticsService* diagnostics) { diagnostics_ = diagnostics; }
+    // The `diagnostics` method's output, with logging, uncleanExit and crashDumps.
+    json::Object diagnosticsDocument() const;
     static json::Object response(const std::string& requestId, const Error&, const json::Object& result);
 private:
     void dispatch(const json::Object& request, JsonReply);
     json::Object snapshot() const;
-    void diagnosticsBundle(const json::Object& params, JsonReply);
     pipe::Server server_;
     std::string epoch_, logs_;
     SettingsService& settings_;
@@ -31,5 +35,6 @@ private:
     SetupService& setup_;
     UpdateService& updates_;
     UiProcess& ui_;
+    DiagnosticsService* diagnostics_ = nullptr;
 };
 }

@@ -277,10 +277,14 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
     if (preferences.contains("diagnostics")) {
         // debugLogging, and the folder Create diagnostics package last saved to (#122).
         const auto diagnostics = preferences["diagnostics"].toObject();
-        const bool hasFolder = diagnostics.contains("packageFolder");
-        if (!preferences["diagnostics"].isObject() || !keys(diagnostics, hasFolder ? QStringList{"debugLogging", "packageFolder"} : QStringList{"debugLogging"}) ||
-            !diagnostics["debugLogging"].isBool() || (hasFolder && !folder(diagnostics["packageFolder"], true)))
-            return invalid("/preferences/diagnostics", "Diagnostics preferences hold debugLogging (true or false) and an optional absolute packageFolder.");
+        // crashDumps is the Windows build's WER LocalDumps opt-in (#125); the Linux build accepts and ignores it.
+        const bool hasFolder = diagnostics.contains("packageFolder"), hasDumps = diagnostics.contains("crashDumps");
+        QStringList expected{"debugLogging"};
+        if (hasFolder) expected.append("packageFolder");
+        if (hasDumps) expected.append("crashDumps");
+        if (!preferences["diagnostics"].isObject() || !keys(diagnostics, expected) || !diagnostics["debugLogging"].isBool() ||
+            (hasFolder && !folder(diagnostics["packageFolder"], true)) || (hasDumps && !diagnostics["crashDumps"].isBool()))
+            return invalid("/preferences/diagnostics", "Diagnostics preferences hold debugLogging (true or false), an optional absolute packageFolder and an optional crashDumps (true or false).");
     }
     if (preferences.contains("updates")) {
         // #293: both keys optional; check defaults to true, channel to "build".

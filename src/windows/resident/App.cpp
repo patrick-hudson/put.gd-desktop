@@ -1,6 +1,7 @@
 // The resident: single instance per user session, tray, shortcuts, clipboard
 // owner, journal and the JSON session pipe. Launching again forwards a view
 // request to the running resident, as the Linux launcher does (docs/cli.md).
+#include "common/BuildInfo.h"
 #include "common/Files.h"
 #include "common/Log.h"
 #include "common/Modes.h"
@@ -10,11 +11,14 @@
 #include "common/Uuid.h"
 #include "resident/Clipboard.h"
 #include "resident/CredentialStore.h"
+#include "resident/Diagnostics.h"
+#include "resident/Environment.h"
 #include "resident/HistoryService.h"
 #include "resident/Hotkeys.h"
 #include "resident/LoginStartup.h"
 #include "resident/OperationService.h"
 #include "resident/ProtonProvider.h"
+#include "resident/RunMarker.h"
 #include "resident/Resident.h"
 #include "resident/S3Provider.h"
 #include "resident/Session.h"
@@ -58,6 +62,28 @@ std::string completionMessage(const Operation& op, bool hasLink) {
     if (op.state == "cancelled") return "Cancelled";
     return op.error ? op.error.message : "Failed";
 }
+// Stop requests from outside: noted for the next start (resident/RunMarker.h), then a clean quit.
+std::function<void()> stopRequested;
+HANDLE stoppedEvent = nullptr;
+const char* consoleEvent(DWORD type) {
+    switch (type) {
+    case CTRL_C_EVENT: return "CTRL_C_EVENT"; case CTRL_BREAK_EVENT: return "CTRL_BREAK_EVENT"; case CTRL_CLOSE_EVENT: return "CTRL_CLOSE_EVENT";
+    case CTRL_LOGOFF_EVENT: return "CTRL_LOGOFF_EVENT"; case CTRL_SHUTDOWN_EVENT: return "CTRL_SHUTDOWN_EVENT"; default: return "console_event";
+    }
+}
+// Runs on a thread the system creates. For close, logoff and shutdown the
+// process ends when this returns, so give the clean shutdown a few seconds.
+BOOL WINAPI consoleHandler(DWORD type) {
+    runmarker::note("console", consoleEvent(type));
+    Loop::instance().post([] { if (stopRequested) stopRequested(); });
+    if ((type == CTRL_CLOSE_EVENT || type == CTRL_LOGOFF_EVENT || type == CTRL_SHUTDOWN_EVENT) && stoppedEvent) WaitForSingleObject(stoppedEvent, 4500);
+    return TRUE;
+}
+std::string endSessionDetail(LPARAM flags) {
+    if (flags & ENDSESSION_CLOSEAPP) return "restart_manager";
+    if (flags & ENDSESSION_LOGOFF) return "logoff";
+    return flags & ENDSESSION_CRITICAL ? "shutdown_critical" : "shutdown";
+}
 int forwardView(const std::string& pipePath, const std::string& view) {
     const auto id = uuid::create();
     const auto request = json::serialize(json::Object{{"schemaVersion", 1}, {"requestId", id}, {"session", pipePath}, {"method", "ui.show"}, {"params", json::Object{{"view", view}}}});
@@ -84,6 +110,7 @@ int residentMain(const std::vector<std::string>& args) {
     const auto root = paths::dataRoot();
     files::makePrivateDirectory(root);
     log::initialize(paths::join(root, "logs"), "putgd");
+    stoppedEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
     auto& loop = Loop::instance();
     CredentialStore credentials;
     ProviderRegistry providers;
@@ -95,8 +122,7 @@ int residentMain(const std::vector<std::string>& args) {
                              [&providers](const std::string& id, const json::Object& c) { return providers.validateCredentials(id, c); });
     const auto loaded = settings.load();
     if (loaded.error) log::warning("settings", "Configuration not accepted at startup; defaults are active", {{"code", loaded.error.code}});
-    log::setDebugEnabled(settings.snapshot().debugLogging);
-    log::prune(paths::join(root, "logs"), settings.snapshot().logDays, settings.snapshot().logBytes);
+    log::setRetention(settings.snapshot().logDays, settings.snapshot().logBytes);
     Clipboard clipboard(loop.hwnd());
     Hotkeys hotkeys(loop.hwnd());
     Tray tray(loop.hwnd());
@@ -106,8 +132,16 @@ int residentMain(const std::vector<std::string>& args) {
     UpdateService updates(root, settings);
     UiProcess ui(pipePath, {});
     Session session(settings, operations, history, setup, updates, ui, paths::join(root, "logs"));
+    DiagnosticsService diagnostics(root, settings, operations, setup, tray);
+    diagnostics.document = [&session] { return session.diagnosticsDocument(); };
+    session.setDiagnostics(&diagnostics);
+    setup.onDestinationTested = [&diagnostics](const std::string& profileId) { diagnostics.destinationTested(profileId); };
     if (auto e = session.listen(pipePath)) { log::error("session", "Cannot serve the session pipe", {{"code", e.code}}); tray.notify("put.gd", "Another put.gd is already running in this session.", true); return 1; }
-    log::info("app", "Resident started", {{"version", protocol::buildIdentity()}, {"pipe", pipePath}, {"sqlite", sqlite::libraryVersion()}});
+    // Only the resident that owns the session keeps a run marker.
+    runmarker::begin(root, build::version);
+    log::info("app", "Resident started", {{"version", protocol::buildIdentity()}, {"environment", environment::summary(environment::collect(root, tray.available()))}, {"pipe", pipePath},
+        {"sqlite", sqlite::libraryVersion()}, {"residentKind", "win32"}, {"tray", tray.available()},
+        {"locations", json::Object{{"data", root}, {"config", settings.path()}, {"archive", settings.snapshot().archive.root}, {"logs", log::directory()}}}});
 
     auto applyShortcuts = [&] {
         std::map<std::string, std::string> desired;
@@ -117,7 +151,7 @@ int residentMain(const std::vector<std::string>& args) {
     };
     auto applySettings = [&] {
         applyShortcuts();
-        log::setDebugEnabled(settings.snapshot().debugLogging);
+        diagnostics.applySettings();
         if (auto e = startup::apply(paths::executablePath(), settings.snapshot().launchAtLogin)) log::warning("startup", "Login startup not applied", {{"code", e.code}});
         ui.invalidate("settings");
     };
@@ -129,11 +163,15 @@ int residentMain(const std::vector<std::string>& args) {
     auto quit = [&] {
         if (quitting) return;
         quitting = true;
-        log::info("app", "Resident quitting");
+        log::info("app", "Resident stopping");
         ui.stop(); proton->shutdown(); operations.shutdown(); history.shutdown(); session.stop(); settings.stopWatching();
         loop.quit(0);
     };
     session.onQuit = quit;
+    stopRequested = quit;
+    SetConsoleCtrlHandler(consoleHandler, TRUE);
+    // Retention runs at start, after each rotation, when the settings change and once a day.
+    loop.startTimer(24 * 60 * 60 * 1000, [] { log::cleanup(); });
     auto showView = [&](const std::string& v) { ui.show(v, [v](Error e) { if (e) log::warning("ui", "View not shown", {{"view", v}, {"code", e.code}}); }); };
     auto invoke = [&](const std::string& action, json::Object options = {}) {
         operations.invoke(action, options, [&tray, action](Error e, json::Object) {
@@ -162,7 +200,11 @@ int residentMain(const std::vector<std::string>& args) {
         if (message == WM_CLIPBOARDUPDATE) { clipboard.handleUpdate(); return true; }
         if (tray.handleMessage(message, wParam, lParam)) return true;
         if (message == WM_QUERYENDSESSION) { result = TRUE; return true; }
-        if (message == WM_ENDSESSION) { if (wParam) quit(); return true; }
+        // The session is ending: note it first, since Windows may end the process
+        // any time after this returns (the Linux resident's SIGTERM note).
+        if (message == WM_ENDSESSION) { if (wParam) { runmarker::note("session_end", endSessionDetail(lParam)); log::info("app", "Session ending", {{"reason", endSessionDetail(lParam)}}); quit(); } return true; }
+        // taskkill without /F, or another program closing put.gd: a clean stop.
+        if (message == WM_CLOSE) { runmarker::note("close_request", "WM_CLOSE"); quit(); return true; }
         return false;
     });
     operations.onActivityChanged = [&](bool active, bool uploading) { tray.setTint(uploading ? Tray::Tint::Uploading : active ? Tray::Tint::Busy : Tray::Tint::Idle); };
@@ -199,6 +241,10 @@ int residentMain(const std::vector<std::string>& args) {
     const int code = loop.run();
     loop.joinBackground();
     log::info("app", "Resident stopped", {{"code", code}});
+    stopRequested = nullptr;
+    runmarker::end();
+    log::close();
+    if (stoppedEvent) SetEvent(stoppedEvent);
     return code;
 }
 }
