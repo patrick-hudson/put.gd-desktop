@@ -50,6 +50,11 @@ class UpdateServiceTest:public QObject {
   preferences["notifications"]=notifications;if(!updates.isEmpty())preferences["updates"]=updates;document["preferences"]=preferences;
   QVERIFY(settings.save(document,settings.revision()));
  }
+ // #344: what the last check of the other channel found decides the switch.
+ static QJsonObject found(const QString& channel,const QString& current,const QJsonValue& latest,bool newer){
+  return {{"schemaVersion",1},{"ok",true},{"error",QJsonObject{}},{"result",QJsonObject{{"channel",channel},{"current",current},{"latest",latest},{"updateAvailable",newer},
+   {"tag",latest.isString()?QJsonValue("v"+latest.toString()):QJsonValue()},{"asset",QJsonValue()}}}};
+ }
 private slots:
  void init(){QVERIFY(dir.isValid());for(const auto& name:QDir(dir.path()).entryList(QDir::Files))QFile::remove(dir.filePath(name));}
  void unsupportedBuildsNeverCheck(){
@@ -249,11 +254,6 @@ private slots:
   QVERIFY(!QFileInfo::exists(backup));
   const auto install=updated->status()["install"].toObject();
   QCOMPARE(install["restartRequired"].toBool(),false);QVERIFY(install["backup"].isNull());QCOMPARE(install["installed"].toObject()["backupRemoved"].toBool(),true);
- }
- // #344: what the last check of the other channel found decides the switch.
- static QJsonObject found(const QString& channel,const QString& current,const QJsonValue& latest,bool newer){
-  return {{"schemaVersion",1},{"ok",true},{"error",QJsonObject{}},{"result",QJsonObject{{"channel",channel},{"current",current},{"latest",latest},{"updateAvailable",newer},
-   {"tag",latest.isString()?QJsonValue("v"+latest.toString()):QJsonValue()},{"asset",QJsonValue()}}}}};
  }
  void aSwitchNamesItsChannelAndAnOlderOneMustBeAllowed(){
   SettingsService settings(dir.filePath("config.json"));configure(settings,{{"channel","nightly"}});
