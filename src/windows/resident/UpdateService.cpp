@@ -22,8 +22,9 @@ Version parseVersion(const std::string& text) {
     if (std::sscanf(base.c_str(), "%d.%d.%d", &v.major, &v.minor, &v.patch) != 3) return v;
     if (dash != std::string::npos) {
         const auto rest = text.substr(dash + 1);
-        if (text::startsWith(rest, "nightly.")) { v.kind = 0; v.number = std::atoi(rest.c_str() + 8); }
-        else if (text::startsWith(rest, "rc.")) { v.kind = 1; v.number = std::atoi(rest.c_str() + 3); }
+        // "nightly.N", a bare "nightly" (calendar builds), "rc.N" and local "dev.N" stamps.
+        if (text::startsWith(rest, "nightly")) { v.kind = 0; v.number = rest.size() > 8 ? std::atoi(rest.c_str() + 8) : 0; }
+        else if (text::startsWith(rest, "rc")) { v.kind = 1; v.number = rest.size() > 3 ? std::atoi(rest.c_str() + 3) : 0; }
         else if (text::startsWith(rest, "dev.")) { v.kind = 0; v.number = std::atoi(rest.c_str() + 4); }
         else return v;
     }

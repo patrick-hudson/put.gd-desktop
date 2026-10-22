@@ -60,6 +60,7 @@ public:
     std::function<void(const Error&)> onOperationError;
     std::function<void()> onObservationsChanged;
     std::function<void(bool active, bool uploading)> onActivityChanged;
+    std::function<json::Object()> shortcutStatus; // Hotkeys::status for capabilities
     // A user clipboard change invalidates automatic link copies that expected the old revision.
     void clipboardChangedByUser(unsigned long long revision);
     unsigned long long invalidateCopyEligibility();

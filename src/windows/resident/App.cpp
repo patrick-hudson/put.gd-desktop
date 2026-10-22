@@ -184,6 +184,7 @@ int residentMain(const std::vector<std::string>& args) {
     updates.onUpdateAvailable = [&](const json::Object& r) { if (settings.snapshot().notifications) tray.notify("put.gd — update available", "put.gd " + r.value("latest").toString() + " is available. Settings → Updates has the download.", false, r.value("notesUrl").toString()); ui.invalidate("update"); };
     ui.onShortcutRecording = [&](bool active, std::function<void(Error)> reply) { if (active) hotkeys.pause(); else hotkeys.resume(); reply({}); };
     ui.onProcessChanged = [&](unsigned long pid) { operations.setUiProcessId(pid); };
+    operations.shortcutStatus = [&] { return hotkeys.status(); };
 
     const bool firstStart = settings.firstStart();
     operations.initialize([&, view, background, firstStart] {

@@ -752,7 +752,7 @@ void OperationService::cleanup(bool automatic, JsonReply reply) {
 json::Object OperationService::capabilities() const {
     json::Object source{{"adapter", "win32"}, {"capture", json::Object{{"region", true}, {"window", true}, {"desktop", true}}},
         {"clipboard", json::Object{{"available", true}, {"import", json::Array{"text/uri-list", "image/png", "text/plain"}}, {"result", json::Array{"text/plain", "image/png", "text/uri-list"}}}},
-        {"shortcuts", json::Object{{"available", true}}}};
+        {"shortcuts", json::Object{{"available", true}, {"bindings", shortcutStatus ? shortcutStatus() : json::Object{}}}}};
     json::Object editor{{"available", true}, {"admissionPixels", double(editorAdmissionPixels)}, {"open", !editingId_.empty()}, {"sources", json::Array{"region", "window", "desktop", "clipboard", "file"}},
         {"fileFormats", json::Array{"png", "jpeg"}}, {"output", "png"}, {"shapes", json::Array{"redact", "blur", "arrow", "rectangle", "text", "highlight"}},
         {"commands", json::Array{"inspect", "apply", "preview", "saveCopy", "submit", "cancel", "raise"}}};
