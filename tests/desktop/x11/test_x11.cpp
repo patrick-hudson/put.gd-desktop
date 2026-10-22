@@ -383,11 +383,14 @@ private slots:
   QList<xcb_keysym_t> replacement(previous.size(),XCB_NO_SYMBOL);replacement[0]=XK_F6;if(replacement.size()>1)replacement[1]=XK_F6;
   const auto before=changes;xcb_change_keyboard_mapping(desktop.connection,1,extra,replacement.size(),replacement.constData());xcb_flush(desktop.connection);PUTGD_TRY_VERIFY(changes>before);
   QVERIFY(!shortcuts.status()["region"].toObject()["bound"].toBool());QCOMPARE(shortcuts.status()["region"].toObject()["error"].toString(),QString("shortcut_conflict"));QVERIFY(shortcuts.status()["clipboard"].toObject()["bound"].toBool());
-  // Rejection must remove both retained and newly installed lock variants.
+  // Rejection must remove both retained and newly installed lock variants. The
+  // resident releases them on its own connection, which the X server may serve
+  // after this one, so each grab is retried until it succeeds or the wait ends.
+  auto grabbable=[&](xcb_keycode_t code,uint16_t mask){auto* refused=xcb_request_check(desktop.connection,xcb_grab_key_checked(desktop.connection,0,root,mask,code,XCB_GRAB_MODE_ASYNC,XCB_GRAB_MODE_ASYNC));
+   if(refused){free(refused);return false;}xcb_ungrab_key(desktop.connection,code,root,mask);return true;};
   for(const auto code:{original,extra})for(uint16_t mask=0;mask<256;++mask){
    if(!(mask&XCB_MOD_MASK_CONTROL))continue;
-   error=xcb_request_check(desktop.connection,xcb_grab_key_checked(desktop.connection,0,root,mask,code,XCB_GRAB_MODE_ASYNC,XCB_GRAB_MODE_ASYNC));QVERIFY(!error);
-   xcb_ungrab_key(desktop.connection,code,root,mask);
+   PUTGD_TRY_VERIFY(grabbable(code,mask));
   }
   desktop.inputFocus();shortcuts.bind(bindings);QVERIFY(shortcuts.status()["region"].toObject()["bound"].toBool());
   desktop.key(XK_Control_L,true);desktop.key(XK_Shift_L,true);desktop.key(XK_1,true);desktop.key(XK_1,false);desktop.key(XK_Shift_L,false);desktop.key(XK_Control_L,false);PUTGD_TRY_COMPARE(activated,QStringList{"clipboard"});
