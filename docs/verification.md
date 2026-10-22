@@ -9,6 +9,31 @@ missing profiles, and run physical-hardware release gates on physical machines.
 This requirement is separate from the historical results below; missing new
 rows and current-candidate evidence remain gates.
 
+## First stable (v0.1.1) gate plan — 2026-10-22
+
+No candidate or stable asset has been accepted yet. `v0.1.1-rc.1` (`ae603fab`)
+is an unpublished draft from 2026-10-18, and the next promotion cuts `rc.2`.
+[Issue #44](https://github.com/patrick-hudson/put.gd-desktop/issues/44) holds the
+current gate table, the proposal for what v0.1.1 requires or defers, and these
+work packages:
+
+| Gate | Issue | Status on 2026-10-22 |
+| --- | --- | --- |
+| AppImage full acceptance A–K, six desktops | [profile](acceptance-matrix.md#appimage-full-acceptance-profile), [first pass](evidence/2026-10-21-appimage-full-acceptance/README.md) | first pass on nightly 842 failed F (5 desktops), H and J (f44); rerun pending |
+| DEB lifecycle, recording rows, live S3 | [#375](https://github.com/patrick-hudson/put.gd-desktop/issues/375) | partial: source144 Cinnamon VM only; no state-preserving upgrade or removal + login on Wayland; schema 5→7 never exercised |
+| RPM lifecycle on f44 | [#377](https://github.com/patrick-hudson/put.gd-desktop/issues/377) | partial: repo upgrade 816→828 only |
+| GUI/CLI/MCP parity, AE17, fresh-agent walkthrough | [#378](https://github.com/patrick-hudson/put.gd-desktop/issues/378) | partial: 2026-10-13, CLI `dev.143` |
+| Physical Cinnamon latency, 10,000-entry history, burst, slow network | [#379](https://github.com/patrick-hudson/put.gd-desktop/issues/379) | latency stale (current63, 121.273 ms p95); history/burst/slow network not started |
+| Multi-display geometry in VMs | [#380](https://github.com/patrick-hudson/put.gd-desktop/issues/380) | partial: 3-head Cinnamon X11 region, single-output fractional scale |
+| Physical mixed DPI and rotation | [#381](https://github.com/patrick-hudson/put.gd-desktop/issues/381) | blocked: no builder has two outputs; proposed for 0.1.2 |
+| Uninstall login-startup entry | [#382](https://github.com/patrick-hudson/put.gd-desktop/issues/382) | needs Patrick's decision |
+| License, notices, provenance, dependencies | [#383](https://github.com/patrick-hudson/put.gd-desktop/issues/383) | CI audits every nightly; no human review since `dev.133` |
+| Release campaign and stable signing | [#384](https://github.com/patrick-hudson/put.gd-desktop/issues/384) | promote.py dry run passed on `0435ed6a` |
+| KDE/X11 rows, graphical-store installs | [#385](https://github.com/patrick-hudson/put.gd-desktop/issues/385) | proposed for 0.1.2; GNOME/X11 obsolete (GNOME 50 has no X11 session) |
+
+Flatpak ([#83](https://github.com/patrick-hudson/put.gd-desktop/issues/83)) is
+outside v0.1.1.
+
 ## Flaky-test rethink (#351) — 2026-10-22
 
 Code: [#351](https://github.com/patrick-hudson/put.gd-desktop/pull/351), head
