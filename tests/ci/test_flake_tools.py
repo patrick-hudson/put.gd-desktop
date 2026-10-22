@@ -163,6 +163,8 @@ class TestPolicy(unittest.TestCase):
         # scaled budget and the nominal steps have run out.
         self.assertIn('const int step = budget < 350 ? budget / 7 + 1 : 50;', header)
         self.assertIn('if (waited >= budget && deadline.hasExpired()) return predicate();', header)
+        policy = (ROOT / 'cmake/TestPolicy.cmake').read_text()
+        self.assertIn('math(EXPR putgd_timeout "${putgd_timeout} * ${PUTGD_TEST_TIMEOUT_SCALE}")', policy)
         for fixture in ('b2_server.py', 's3_server.py'):
             self.assertIn("os.environ.get('PUTGD_TEST_TIME_SCALE', '1')", (ROOT / 'tests/fixtures' / fixture).read_text())
 

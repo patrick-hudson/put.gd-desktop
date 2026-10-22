@@ -154,7 +154,7 @@ jobs:
         run: |
           echo "CCACHE_BUILD_START=$(date +%s)" >> "$GITHUB_ENV"
           ccache --zero-stats
-          cmake --preset dev -DPUTGD_BUNDLE_PROTON=ON \
+          cmake --preset dev -DPUTGD_BUNDLE_PROTON=ON -DPUTGD_TEST_TIMEOUT_SCALE=3 \
             -DPUTGD_AWS_SOURCE_DIR="$PWD/build/sdk/share/putgd-ci/aws-sdk-source-licenses" \
             -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
           cmake --build --preset dev --parallel "$(nproc)"
@@ -185,6 +185,7 @@ jobs:
         env:
           PUTGD_TEST_TIME_SCALE: '3'
           PUTGD_CI_JOB: linux (${{ matrix.distribution }})
+          PUTGD_CI_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           test_tmp="$(mktemp -d /tmp/pgci.XXXXXX)"
           python3 tools/ci/ctest_preflight.py --build build/dev --tmp "$test_tmp" --user putgd-ci
@@ -318,7 +319,7 @@ jobs:
         run: |
           echo "CCACHE_BUILD_START=$(date +%s)" >> "$GITHUB_ENV"
           ccache --zero-stats
-          cmake --preset clang-asan \
+          cmake --preset clang-asan -DPUTGD_TEST_TIMEOUT_SCALE=5 \
             -DPUTGD_AWS_SOURCE_DIR="$PWD/build/sdk/share/putgd-ci/aws-sdk-source-licenses" \
             -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
           cmake --build --preset clang-asan --parallel "$(nproc)"
@@ -343,6 +344,7 @@ jobs:
         env:
           PUTGD_TEST_TIME_SCALE: '5'
           PUTGD_CI_JOB: sanitizers (clang ASan/UBSan)
+          PUTGD_CI_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           test_tmp="$(mktemp -d /tmp/pgci.XXXXXX)"
           python3 tools/ci/ctest_preflight.py --build build/clang-asan --tmp "$test_tmp" --user putgd-ci

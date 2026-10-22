@@ -137,7 +137,7 @@ def occurrence(name, test, source):
     first = test['attempts'][0]
     retry = test['attempts'][1] if len(test['attempts']) > 1 else {}
     details = '\n'.join(first.get('details') or [first.get('message', '')])
-    sha = source.get('GITHUB_SHA', '')[:12]
+    sha = (source.get('PUTGD_CI_HEAD_SHA') or source.get('GITHUB_SHA', ''))[:12]
     return (f"**Passed on retry** in {describe_source(source)}, commit `{sha}` on "
             f"`{source.get('GITHUB_REF_NAME', '?')}` ({source.get('GITHUB_EVENT_NAME', '?')}), "
             f"time scale {source.get('PUTGD_TEST_TIME_SCALE', '1')}.\n\n"

@@ -80,7 +80,8 @@ def run_ctest(ctest_args, junit, selection=None):
 
 def environment_identity():
     keys = ('GITHUB_REPOSITORY', 'GITHUB_SERVER_URL', 'GITHUB_RUN_ID', 'GITHUB_RUN_ATTEMPT', 'GITHUB_SHA',
-            'GITHUB_REF_NAME', 'GITHUB_EVENT_NAME', 'GITHUB_JOB', 'PUTGD_TEST_TIME_SCALE', 'PUTGD_CI_JOB')
+            'GITHUB_REF_NAME', 'GITHUB_EVENT_NAME', 'GITHUB_JOB', 'PUTGD_TEST_TIME_SCALE', 'PUTGD_CI_JOB',
+            'PUTGD_CI_HEAD_SHA')
     return {key: os.environ[key] for key in keys if os.environ.get(key)}
 
 

@@ -39,6 +39,23 @@ foreach(test IN LISTS putgd_tests)
   endif()
 endforeach()
 
+# A test's TIMEOUT is a hang guard, a budget like its waits: CI scales both
+# (PUTGD_TEST_TIME_SCALE at run time, this at configure time) so a test whose
+# waits stretch on a loaded runner is not cut off by CTest instead.
+set(PUTGD_TEST_TIMEOUT_SCALE 1 CACHE STRING "Whole number that multiplies every explicit test TIMEOUT")
+if(NOT PUTGD_TEST_TIMEOUT_SCALE MATCHES "^[1-9][0-9]*$")
+  message(FATAL_ERROR "PUTGD_TEST_TIMEOUT_SCALE must be a whole number of at least 1")
+endif()
+if(PUTGD_TEST_TIMEOUT_SCALE GREATER 1)
+  foreach(test IN LISTS putgd_tests)
+    get_test_property(${test} TIMEOUT putgd_timeout)
+    if(putgd_timeout)
+      math(EXPR putgd_timeout "${putgd_timeout} * ${PUTGD_TEST_TIMEOUT_SCALE}")
+      set_tests_properties(${test} PROPERTIES TIMEOUT ${putgd_timeout})
+    endif()
+  endforeach()
+endif()
+
 # CPU-bound tests share the runner's cores. tools/ci/ctest_cpu_profile.py ran
 # every test alone on a four-core builder (k72, 2026-10-22): 102 tests used
 # 261 s of CPU in 822 s, a third of a core on average. A test that keeps at

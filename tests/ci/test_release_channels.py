@@ -124,6 +124,7 @@ class Workflows(unittest.TestCase):
                 steps = job(ci, name)
                 test = steps.split('- name: Test', 1)[1].split('- name: ', 1)[0]
                 self.assertIn('PUTGD_TEST_TIME_SCALE: ' + scale, test)
+                self.assertIn('-DPUTGD_TEST_TIMEOUT_SCALE=' + scale.strip("'"), steps)
                 self.assertIn(f'python3 tools/ci/ctest_retry.py --ledger {build}/flake-ledger.json', test)
                 self.assertNotIn('--repeat', test)
                 report = steps.split('- name: Report flaky tests', 1)[1].split('- name: ', 1)[0]
