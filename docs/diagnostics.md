@@ -13,8 +13,8 @@ The resident writes JSON Lines files to `$XDG_STATE_HOME/putgd/logs/`, which is
 `QStandardPaths::StateLocation` needs Qt 6.7 and the minimum is 6.4.2, so put.gd
 resolves the path itself. The `putgd` state folder and `logs/` are created owner-only
 (0700) and must be directories owned by the user; each file is created 0600 with
-`O_NOFOLLOW`. Windows builds are not supported yet; the planned location is
-`%LOCALAPPDATA%\putgd\logs\`.
+`O_NOFOLLOW`. The Windows build writes the same records to
+`%LOCALAPPDATA%\put.gd\logs\` (see [Windows](#windows)).
 
 Files are named `putgd-<UTC start, yyyyMMddTHHmmsszzz>Z-<pid>-<sequence>.jsonl`, so
 name order is time order. The resident starts a new file when it starts and when the
@@ -684,7 +684,193 @@ A lab URL recorder set as the default browser must be in the user's real
 `~/.config/mimeapps.list`: the portal does not read a test resident's private
 `XDG_CONFIG_HOME`. `history.openLink` (MCP `open_history_link`) opens a stored link the
 same way the notification does.
+
+## Windows
+
+The native Windows build ([windows.md](windows.md), #125) keeps the record schema, the
+redaction rules, retention, the `diagnostics` fields, the package format and the upload
+rules above. The portable parts (records, redaction, file names, retention selection,
+helper output, crash records, unclean-exit rules and the package builder) live in
+`src/windows/common/Redact.cpp` and `src/windows/core/`, and
+`src/windows/tests/test_diagnostics.cpp` checks them on Linux with the same kind of
+synthetic canaries as `test_logging.cpp`. What differs:
+
+### Location and writer
+
+- The log folder is `%LOCALAPPDATA%\put.gd\logs\`, with the file names above. It gets the
+  protected owner-only ACL of the rest of the data folder (the user, SYSTEM and
+  Administrators). A folder that is a reparse point is refused, and each file is created
+  with `CREATE_NEW`, the counterpart of `O_NOFOLLOW`/`O_EXCL`: the writer never appends to,
+  or through, a file that is already there.
+- Records are appended on the calling thread through one handle kept open, under a
+  lock, rather than by a writer thread, so the idle resident keeps no logging thread. A
+  failed write still never fails the caller: it is dropped, counted in `droppedRecords`
+  and sets `degraded` (`unavailable`, `write_failed` or `disk_full`), and a write that
+  fails part-way is cut back so no half record is left. `queue_full` doesn't occur.
+- Daily `putgd-<yyyymmdd>.log` files from earlier Windows builds are pruned by age and
+  removed by **Clear logs**.
+- The Windows code's short category names map onto the Linux ones (`operations` is
+  `putgd.operation`, `session` is `putgd.ipc` and so on).
+
+### Helpers
+
+Every helper mode of `putgd.exe` writes nothing to disk: helpers write their encoded
+records to stderr, and the resident records each one under the helper's name
+(`putgd-capture`, `putgd-image-job`, `putgd-s3-worker`, `putgd-ui`, `putgd-editor`,
+`putgd-update-check`) and pid, keeping its level, category and fields. Other stderr text
+is a warning with `stream` `stderr`. The bounds are the same, 64 KiB per helper and
+2 KiB per plain line (a helper's own record may be up to 16 KiB). Each child gets
+`Helper started`, then `Helper exited` (exit code), `Helper crashed` (an NTSTATUS exit
+such as `0xC0000005`, with its `exceptionName`) or, after `Killing helper` with the
+`reason` (`helper_timeout`, `helper_silent`, `helper_protocol`, `shutdown` and so on),
+`Helper killed by put.gd` with `supervisorKill` `true`. The S3 worker, image job and
+update check start and exit at debug level. The Proton runtime's stderr is read and
+discarded, as on Linux. Helpers run in a job object with
+`JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`, so they end with the resident however it ends.
+
+The resident also records `Upload attempt` (attempt, name, bytes, MIME type), `Upload
+finished`, `Upload name collision` or `Upload failed` (status, `elapsedMs`, `uncertain`,
+error), and `Operation finished` with `itemStatus` counts, bytes, `durationMs`, the error
+and `itemErrors`; `Notification shown` for each toast; and `Session request rejected`
+with the method and code. `Resident started` carries the build identity, an environment
+summary (OS version and build, architecture, session, display count, tray), the pipe,
+the SQLite version, `residentKind` `win32` and the data, config, archive and log
+locations.
+
+### Unclean exits
+
+The marker is `%LOCALAPPDATA%\put.gd\running.json` (pid, start time, version, boot ID:
+the kernel's `PrefetchParameters\BootId` counter, else the boot time to the minute). Only
+the resident that owns the session pipe writes one. Windows has no SIGTERM; a request to
+stop from outside is noted in `running.signal` first, then the resident shuts down
+cleanly, which removes the marker:
+
+| Request | `event` | `detail` |
+| --- | --- | --- |
+| `WM_ENDSESSION` (logoff, shutdown, an installer's Restart Manager) | `session_end` | `logoff`, `shutdown`, `shutdown_critical` or `restart_manager` |
+| `WM_CLOSE` (`taskkill` without `/F`, another program closing put.gd) | `close_request` | `WM_CLOSE` |
+| A console control event (only with a console attached) | `console` | `CTRL_C_EVENT`, `CTRL_CLOSE_EVENT`, `CTRL_LOGOFF_EVENT` ... |
+
+The resident's loop window is a hidden top-level window for this: a message-only window
+receives no `WM_QUERYENDSESSION`, `WM_ENDSESSION`, `WM_CLOSE` or `TaskbarCreated`. If
+Windows ends the process before the shutdown finishes, the next start records cause
+`signal` with that `event` and `detail` (info). `TerminateProcess` (`taskkill /F`, Task
+Manager's **End task**) or a power loss is cause `unknown` (warning), and a crash is cause
+`crash` with `exceptionCode`, `exceptionName` and the crash record (error). A marker whose
+pid is a running `putgd.exe` started at the marker's time is left alone. `uncleanExit` in
+`diagnostics` and the 10 records kept in `unclean-exits.json` are as on Linux.
+
+### Crash records
+
+Every mode of `putgd.exe` installs an unhandled-exception filter first thing in `wmain`
+(`src/windows/common/Crash.cpp`). On a crash it writes the record with `WriteFile` only
+and no heap: the process, pid, thread, build version, exception code and name, fault
+address and access (`read`, `write` or `execute`), the faulting thread's frames, unwound
+with `RtlVirtualUnwind` from the exception context, and the modules they fall in. Then it
+passes the exception to the filter that was there before and to Windows Error Reporting,
+so the exit code, WER's report and any dump are unchanged. No registers beyond the PC, no
+memory and no variables. A stack overflow may leave the filter too little stack; WER
+still sees it.
+
+```text
+putgd-crash	begin	1	putgd	4242	4243
+putgd-crash	version	26.1022.994-dev+g7b1a2fc8296b
+putgd-crash	exception	0xC0000005	EXCEPTION_ACCESS_VIOLATION	0x0000000000000000	write
+putgd-crash	time	1792702800
+putgd-crash	pc	0x00007ff6a1b21234
+putgd-crash	frame	0	0x00007ff6a1b21234	0	0x21234
+putgd-crash	module	0	0x00007ff6a1b00000	6717A2B0B4000	C:\putgd\putgd.exe
+putgd-crash	end	1
+```
+
+The module's image ID (PE `TimeDateStamp` as eight hex digits, then `SizeOfImage`) is the
+key a symbol server files the image under, and each frame's offset is relative to the
+module's load address. The resident writes to `running.crash`, opened when it starts;
+helpers write to stderr, which becomes one `Helper crash record` before `Helper crashed`.
+The `crash` object has `recordVersion`, `process`, `pid`, `thread`, `version`,
+`exceptionCode`, `exceptionName`, `faultAddress`, `access`, `pc`, `time`, `frames`
+(`index`, `address`, `module`, `offset`), `modules` (`index`, `loadAddress`, `imageId`,
+`file`) and `complete`.
+
+Development builds read `PUTGD_TEST_CRASH=<process>:<segv|ill|fpe|overflow>[:<delay ms>]`
+and crash that process on a thread of its own after the delay; the process names are the
+ones above (`putgd` for the resident). The CMake option `PUTGD_CRASH_TRIGGER` is on unless
+the build type is `Release`, `MinSizeRel` or `RelWithDebInfo` or `PUTGD_RELEASE_TAG` is
+set, and configuring a release tag with it fails.
+
+### Crash dumps (WER LocalDumps)
+
+`preferences.diagnostics.crashDumps` ([configuration.md](configuration.md), off by
+default; **Save crash dumps (Windows Error Reporting)** in Settings → Advanced) has the
+resident register, under the user's own registry hive,
+
+```text
+HKCU\Software\Microsoft\Windows\Windows Error Reporting\LocalDumps\putgd.exe
+  DumpFolder   REG_EXPAND_SZ  %LOCALAPPDATA%\put.gd\crashdumps
+  DumpType     REG_DWORD      1   (a minidump: thread stacks and the module list, no heap)
+  DumpCount    REG_DWORD      5
+  PutgdManaged REG_DWORD      1   (put.gd made this key)
+```
+
+so Windows Error Reporting writes `putgd.exe.<pid>.dmp` when any mode of `putgd.exe`
+crashes. None of put.gd's code runs to make the dump, and no third-party code is
+involved. Turning the setting off deletes the key. A key put.gd did not make (no
+`PutgdManaged`, set up by the user or an administrator) is never changed or deleted;
+`diagnostics.crashDumps` then reports `reason` `configured_elsewhere` and lists that
+configuration's folder. `diagnostics.crashDumps` holds `enabled`, `registered`,
+`managedByPutgd`, `mechanism` (`wer-localdumps`), `folder`, `dumpType`, `dumpCount`,
+`count` and the newest five dumps of put.gd's executables (`file`, `bytes`, `time`).
+
+A dump holds the memory of each thread's stack, which can include fragments of what put.gd
+was handling, so dumps stay in that folder. A package lists them in `crashdumps.json`
+(the Windows counterpart of `coredumps.json`: hashed name, size, time) and never includes
+one; sending a dump to a maintainer is the user's choice, by hand.
+
+### Diagnostics package
+
+- **`environment.json`:** `os` (`product`, `edition`, `displayVersion` such as `25H2`,
+  `version` with the update build revision, `build`, `updateBuildRevision`,
+  `installationType`), `architecture` (`native` and `process`), `session` (`type`
+  `console` or `remote`, session `id`, `windowStation`, `interactive`), `displays`
+  (`count`, the virtual screen size, `systemDpi`, and per monitor `primary`, `width`,
+  `height`, `dpiX`, `dpiY` and `scalePercent`; no pixels), `locale`, `uiLanguage`,
+  `memoryTotalBytes`, `dataFreeBytes`, `tray` (`available`, `notificationArea`),
+  `residentKind`, `toolkit` and `compiler`.
+- **`crashdumps.json`** in place of `coredumps.json`, as above.
+- **Placeholders:** `<data>` is `%LOCALAPPDATA%\put.gd` (where `config.json` lives too, so
+  there is no separate `<config>`), `<archive>` the archive root, `<home>` `%USERPROFILE%`
+  and `<runtime>` `%TEMP%`. Paths match case-insensitively with either separator. In a
+  hashed package, a path-valued field below `<home>` or `<archive>` is hashed whole,
+  spaces included.
+- **The archive is store-only:** Windows has no deflate library a resident can use without
+  third-party code, and a package is at most 20 MiB.
+- **Upload:** `diagnostics.uploadTarget` and `diagnostics.bundle` with `upload`,
+  `profileId` and `copyLink` follow "Uploading a package" above: an internal
+  `diagnostics` operation named `putgd-diagnostics-<uuid>.zip`, renamed on a clash, not
+  archived a second time, its link copied only with `copyLink`, a 7-day share link on
+  Proton Drive. The working check uses the last finished upload to that destination and
+  Test connection (reused for 10 minutes with the same settings revision); a Test
+  connection that passes in Settings clears an earlier credential failure. The Windows
+  build offers no Backblaze B2 destination (#409).
+- **`notify`:** a **put.gd — diagnostics saved** toast with the file name, size and folder,
+  and where the package went or why it wasn't uploaded. Clicking it is **Show in folder**
+  (`diagnostics.reveal`, which opens Explorer with the package selected).
+
+### Settings
+
+Settings → Advanced → **Logs and diagnostics** has the retention fields, **Debug logging**,
+**Save crash dumps (Windows Error Reporting)**, a line with the file count, folder size
+and oldest record (with the reason and dropped-record count while logging is degraded),
+**Last unclean exit** when this start found one, and **Also upload the package and copy a
+link**. Ticking that runs `diagnostics.uploadTarget` for the default destination (a Test
+connection), then shows the sharing warning or why it can't upload; **Save diagnostics
+package…** then saves to the chosen folder (remembered in
+`preferences.diagnostics.packageFolder`), uploads, copies the link and shows the result
+under the saved path with **Show in folder**. The Windows window has no preview dialog yet,
+and failure notifications and History rows have no **Save diagnostics for this upload**
+(see [windows.md](windows.md#not-available-in-this-build)).
+
 ## Not yet available
 
 Wiring the upload into the **Create diagnostics package…** dialog ("Also upload and
-copy a link") is #158; Windows is #125.
+copy a link") is #158.
