@@ -116,7 +116,7 @@ report() {
 
 # The most specific error line; apt's closing "Some index files failed" names no cause.
 last_error() {
-  grep -aE 'Error|error:|^E: |Failed|Cannot download|Curl error|All mirrors' "$log" | grep -av 'Some index files failed' |
+  grep -aE 'Error|error:|^E: |Failed|Cannot download|Cache-only|Curl error|All mirrors' "$log" | grep -av 'Some index files failed' |
     tail -n 1 | cut -c1-300 || true
 }
 

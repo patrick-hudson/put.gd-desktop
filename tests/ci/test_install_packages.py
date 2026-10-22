@@ -18,7 +18,13 @@ echo "dnf $*" >> "$FAKE_CALLS"
 cachedir=
 for arg; do case "$arg" in --setopt=cachedir=*) cachedir=${arg#--setopt=cachedir=} ;; esac; done
 case " $* " in
-  *' --cacheonly '*) [ "${FAKE_OFFLINE:-ok}" = ok ] && exit 0; echo 'Cannot download the "mesa" package, cacheonly option is activated.'; exit 1 ;;
+  *' --cacheonly '*)
+    case "${FAKE_OFFLINE:-ok}" in
+      ok) exit 0 ;;
+      missing) echo 'Cannot download the "mesa" package, cacheonly option is activated.' ;;
+      *) echo 'Cache-only enabled but no cache for repository "updates"' ;;
+    esac
+    exit 1 ;;
   *' no-such-package '*) echo 'No match for argument: no-such-package'; exit 1 ;;
 esac
 count=$(($(cat "$FAKE_COUNT" 2>/dev/null || echo 0) + 1)); echo "$count" > "$FAKE_COUNT"
@@ -121,6 +127,12 @@ class InstallPackages(unittest.TestCase):
         self.assertEqual(result.returncode, 1, result.stdout)
         self.assertIn('| snapshot | **failed** | `Cannot download the "mesa" package, cacheonly option is activated.` |',
                       summary)
+        self.summary.unlink()
+        (self.dir / 'count').unlink()
+        result, _, summary = self.run_script('dnf', 'mesa', FAKE_FAILURES='9', FAKE_OFFLINE='nocache',
+                                             PUTGD_PKG_CACHE=str(self.snapshot))
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn('| snapshot | **failed** | `Cache-only enabled but no cache for repository "updates"` |', summary)
 
     def test_the_job_fails_without_a_snapshot(self):
         result, calls, summary = self.run_script('dnf', 'mesa', FAKE_FAILURES='9')
