@@ -20,6 +20,7 @@ FEED = {'schema': 1, 'channel': 'nightly', 'release': {'version': '26.1022.999-n
 
 
 def feed(args):
+    if args.version: FEED['release'].update(version=args.version, tag='v' + args.version)
     body = json.dumps(FEED).encode()
     class Handler(http.server.BaseHTTPRequestHandler):
         def do_GET(self):
@@ -138,7 +139,7 @@ def crop(args):
 def main():
     p = argparse.ArgumentParser(); sub = p.add_subparsers(dest='cmd', required=True)
     a = sub.add_parser('crop'); a.add_argument('name'); a.add_argument('label')
-    a = sub.add_parser('feed'); a.add_argument('port', type=int)
+    a = sub.add_parser('feed'); a.add_argument('port', type=int); a.add_argument('--version')
     a = sub.add_parser('prep'); a.add_argument('name'); a.add_argument('--feed', type=int)
     a = sub.add_parser('show'); a.add_argument('name'); a.add_argument('--size')
     for n in ('state', 'close'): a = sub.add_parser(n); a.add_argument('name')
