@@ -1,0 +1,351 @@
+{
+  "image": {
+    "file": "putgd-26.1022.968-nightly-x86_64.AppImage",
+    "sha256": "dc17d5c6fb92a35514f381051d58f9a0170fad2b40c7e0e328dae64b219f51cf",
+    "bytes": 115374584
+  },
+  "extracted": {
+    "bytes": 305789903,
+    "files": 741,
+    "symlinks": 18
+  },
+  "runtimeNotices": {
+    "firstLine": "put.gd package dependency notice",
+    "bytes": 1623,
+    "nativeText": true
+  },
+  "nativeTextAnywhereInDocs": [
+    "usr/share/doc/putgd/runtime-notices.txt"
+  ],
+  "inventory": null,
+  "appstreamLicense": [
+    "MIT AND Apache-2.0 AND GPL-3.0-only"
+  ],
+  "licenceTexts": {
+    "qtbase": {
+      "files": 84,
+      "LICENSES": [
+        "LicenseRef-BSD-3-Clause-with-PCRE2-Binary-Like-Packages-Exception.txt",
+        "LicenseRef-ICC-License.txt",
+        "LicenseRef-Lcs-Telegraphics.txt",
+        "LicenseRef-Qt-Commercial.txt",
+        "LicenseRef-SHA1-Public-Domain.txt"
+      ],
+      "hasLGPL3": false,
+      "hasCommercial": true,
+      "testExampleFiles": 2
+    },
+    "qtwayland": {
+      "files": 22,
+      "LICENSES": [
+        "LicenseRef-Qt-Commercial.txt"
+      ],
+      "hasLGPL3": false,
+      "hasCommercial": true,
+      "testExampleFiles": 0
+    },
+    "qtsvg": {
+      "files": 3,
+      "LICENSES": [
+        "LicenseRef-Qt-Commercial.txt"
+      ],
+      "hasLGPL3": false,
+      "hasCommercial": true,
+      "testExampleFiles": 1
+    },
+    "qtimageformats": {
+      "files": 5,
+      "LICENSES": [
+        "LicenseRef-Qt-Commercial.txt"
+      ],
+      "hasLGPL3": false,
+      "hasCommercial": true,
+      "testExampleFiles": 0
+    },
+    "qttranslations": null,
+    "qtdeclarative": {
+      "files": 10,
+      "LICENSES": [
+        "LicenseRef-Qt-Commercial.txt"
+      ],
+      "hasLGPL3": false,
+      "hasCommercial": true,
+      "testExampleFiles": 5
+    },
+    "layershell": {
+      "files": 1,
+      "LICENSES": [
+        "LicenseRef-KDE-Accepted-LGPL.txt"
+      ],
+      "hasLGPL3": false,
+      "hasCommercial": false,
+      "testExampleFiles": 0
+    },
+    "qtkeychain": {
+      "files": 1,
+      "LICENSES": [],
+      "hasLGPL3": false,
+      "hasCommercial": false,
+      "testExampleFiles": 0
+    },
+    "ffmpeg": {
+      "files": 5,
+      "LICENSES": [],
+      "hasLGPL3": false,
+      "hasCommercial": false,
+      "testExampleFiles": 0
+    },
+    "icu": null
+  },
+  "distroCopyrightFiles": 124,
+  "searchPaths": {
+    "elfWithPaths": 246,
+    "absolute": {
+      "usr/plugins/wayland-shell-integration/liblayer-shell.so": [
+        "/home/runner/work/put.gd-desktop/put.gd-desktop/build/appimage-deps/lib",
+        "/home/runner/work/put.gd-desktop/Qt/6.8.3/gcc_64/lib"
+      ]
+    }
+  },
+  "linuxdeployLeftovers": [
+    "AppRun.wrapped",
+    "apprun-hooks"
+  ],
+  "duplicates": {
+    "qtPluginCopiesInUsrLib": [
+      "libadwaita.so",
+      "libbradient.so",
+      "liblayer-shell.so",
+      "libqgtk3.so",
+      "libqt-plugin-wayland-egl.so",
+      "libxdg-shell.so"
+    ],
+    "awsCopiesInUsrLib": [
+      "libaws-c-auth.so.1.0.0",
+      "libaws-c-cal.so.1.0.0",
+      "libaws-c-common.so.1",
+      "libaws-c-compression.so.1.0.0",
+      "libaws-c-event-stream.so.1.0.0",
+      "libaws-c-http.so.1.0.0",
+      "libaws-c-io.so.1.0.0",
+      "libaws-c-mqtt.so.1.0.0",
+      "libaws-c-s3.so.0unstable",
+      "libaws-c-sdkutils.so.1.0.0",
+      "libaws-checksums.so.1.0.0",
+      "libaws-cpp-sdk-core.so",
+      "libaws-cpp-sdk-s3.so",
+      "libaws-crt-cpp.so",
+      "libputgd-s3.so",
+      "libs2n.so.1"
+    ],
+    "distroDocCopies": 122,
+    "protonDocRegularFiles": [
+      "BUN-LINUX-ATTRIBUTION.md",
+      "BUN-NOTICE-PROVENANCE.json.gz",
+      "BUN-THIRD-PARTY-NOTICES.txt.gz",
+      "CRYPTO-PROVENANCE.md",
+      "LICENSE.boltffi-MIT",
+      "LICENSE.crypto-GPL-3.0",
+      "LICENSE.pmcrypto-MIT",
+      "LICENSE.proton",
+      "LICENSE.srp-MIT",
+      "OPENPGP-PREBUNDLED-NOTICES.txt",
+      "OPENPGP-REBUILD.patch",
+      "README.md",
+      "REBUILD.md",
+      "SOURCES.json",
+      "THIRD-PARTY-NOTICES.txt"
+    ],
+    "protonDocLinks": [],
+    "identicalFilesOutsideDocs": [
+      [
+        "AppRun",
+        "AppRun.wrapped"
+      ],
+      [
+        "usr/lib/libaws-c-auth.so.1.0.0",
+        "usr/lib/putgd/libaws-c-auth.so.1.0.0"
+      ],
+      [
+        "usr/lib/libaws-c-cal.so.1.0.0",
+        "usr/lib/putgd/libaws-c-cal.so.1.0.0"
+      ],
+      [
+        "usr/lib/libaws-c-common.so.1",
+        "usr/lib/putgd/libaws-c-common.so.0.14.5"
+      ],
+      [
+        "usr/lib/libaws-c-compression.so.1.0.0",
+        "usr/lib/putgd/libaws-c-compression.so.1.0.0"
+      ],
+      [
+        "usr/lib/libaws-c-event-stream.so.1.0.0",
+        "usr/lib/putgd/libaws-c-event-stream.so.1.0.0"
+      ],
+      [
+        "usr/lib/libaws-c-http.so.1.0.0",
+        "usr/lib/putgd/libaws-c-http.so.1.0.0"
+      ],
+      [
+        "usr/lib/libaws-c-io.so.1.0.0",
+        "usr/lib/putgd/libaws-c-io.so.1.0.0"
+      ],
+      [
+        "usr/lib/libaws-c-mqtt.so.1.0.0",
+        "usr/lib/putgd/libaws-c-mqtt.so.1.0.0"
+      ],
+      [
+        "usr/lib/libaws-c-s3.so.0unstable",
+        "usr/lib/putgd/libaws-c-s3.so.1.0.0"
+      ],
+      [
+        "usr/lib/libaws-c-sdkutils.so.1.0.0",
+        "usr/lib/putgd/libaws-c-sdkutils.so.1.0.0"
+      ],
+      [
+        "usr/lib/libaws-checksums.so.1.0.0",
+        "usr/lib/putgd/libaws-checksums.so.1.0.0"
+      ],
+      [
+        "usr/lib/libaws-cpp-sdk-core.so",
+        "usr/lib/putgd/libaws-cpp-sdk-core.so"
+      ],
+      [
+        "usr/lib/libaws-cpp-sdk-s3.so",
+        "usr/lib/putgd/libaws-cpp-sdk-s3.so"
+      ],
+      [
+        "usr/lib/libaws-crt-cpp.so",
+        "usr/lib/putgd/libaws-crt-cpp.so"
+      ],
+      [
+        "usr/lib/libputgd-s3.so",
+        "usr/lib/putgd/libputgd-s3.so"
+      ],
+      [
+        "usr/lib/libs2n.so.1",
+        "usr/lib/putgd/libs2n.so.1.0.0"
+      ],
+      [
+        "usr/share/doc/libatk-bridge2.0-0t64/copyright",
+        "usr/share/doc/libatk1.0-0t64/copyright"
+      ],
+      [
+        "usr/share/doc/libatk-bridge2.0-0t64/copyright",
+        "usr/share/doc/libatspi2.0-0t64/copyright"
+      ],
+      [
+        "usr/share/doc/libcairo-gobject2/copyright",
+        "usr/share/doc/libcairo2/copyright"
+      ],
+      [
+        "usr/share/doc/libdw1t64/copyright",
+        "usr/share/doc/libelf1t64/copyright"
+      ],
+      [
+        "usr/share/doc/gstreamer1.0-plugins-base/copyright",
+        "usr/share/doc/libgstreamer-gl1.0-0/copyright"
+      ],
+      [
+        "usr/share/doc/gstreamer1.0-plugins-bad/copyright",
+        "usr/share/doc/libgstreamer-plugins-bad1.0-0/copyright"
+      ],
+      [
+        "usr/share/doc/gstreamer1.0-plugins-base/copyright",
+        "usr/share/doc/libgstreamer-plugins-base1.0-0/copyright"
+      ],
+      [
+        "usr/share/doc/libgssapi-krb5-2/copyright",
+        "usr/share/doc/libk5crypto3/copyright"
+      ],
+      [
+        "usr/share/doc/libgssapi-krb5-2/copyright",
+        "usr/share/doc/libkrb5-3/copyright"
+      ],
+      [
+        "usr/share/doc/libgssapi-krb5-2/copyright",
+        "usr/share/doc/libkrb5support0/copyright"
+      ],
+      [
+        "usr/share/doc/libblkid1/copyright",
+        "usr/share/doc/libmount1/copyright"
+      ],
+      [
+        "usr/share/doc/libhogweed6t64/copyright",
+        "usr/share/doc/libnettle8t64/copyright"
+      ],
+      [
+        "usr/share/doc/libpango-1.0-0/copyright",
+        "usr/share/doc/libpangocairo-1.0-0/copyright"
+      ],
+      [
+        "usr/share/doc/libpango-1.0-0/copyright",
+        "usr/share/doc/libpangoft2-1.0-0/copyright"
+      ],
+      [
+        "usr/share/doc/libsystemd0/copyright",
+        "usr/share/doc/libudev1/copyright"
+      ],
+      [
+        "usr/share/doc/libvorbis0a/copyright",
+        "usr/share/doc/libvorbisenc2/copyright"
+      ],
+      [
+        "usr/share/doc/libwayland-cursor0/copyright",
+        "usr/share/doc/libwayland-egl1/copyright"
+      ],
+      [
+        "usr/share/doc/libsharpyuv0/copyright",
+        "usr/share/doc/libwebp7/copyright"
+      ],
+      [
+        "usr/share/doc/libsharpyuv0/copyright",
+        "usr/share/doc/libwebpmux3/copyright"
+      ],
+      [
+        "usr/share/doc/libxcb-damage0/copyright",
+        "usr/share/doc/libxcb-glx0/copyright"
+      ],
+      [
+        "usr/share/doc/libxcb-damage0/copyright",
+        "usr/share/doc/libxcb-randr0/copyright"
+      ],
+      [
+        "usr/share/doc/libxcb-damage0/copyright",
+        "usr/share/doc/libxcb-render0/copyright"
+      ],
+      [
+        "usr/share/doc/libxcb-damage0/copyright",
+        "usr/share/doc/libxcb-shape0/copyright"
+      ],
+      [
+        "usr/share/doc/libxcb-damage0/copyright",
+        "usr/share/doc/libxcb-shm0/copyright"
+      ],
+      [
+        "usr/share/doc/libxcb-damage0/copyright",
+        "usr/share/doc/libxcb-sync1/copyright"
+      ],
+      [
+        "usr/share/doc/libxcb-damage0/copyright",
+        "usr/share/doc/libxcb-xfixes0/copyright"
+      ],
+      [
+        "usr/share/doc/libxcb-damage0/copyright",
+        "usr/share/doc/libxcb-xinput0/copyright"
+      ],
+      [
+        "usr/share/doc/libxcb-damage0/copyright",
+        "usr/share/doc/libxcb-xkb1/copyright"
+      ],
+      [
+        "usr/share/doc/libxkbcommon-x11-0/copyright",
+        "usr/share/doc/libxkbcommon0/copyright"
+      ],
+      [
+        "usr/libexec/putgd/proton/manifest.json",
+        "usr/share/putgd/proton-runtime-manifest.json"
+      ]
+    ]
+  }
+}

@@ -1,0 +1,3785 @@
+{
+  "schemaVersion": 1,
+  "format": "AppImage",
+  "version": "26.1022.987-dev+gd471cb1a1792",
+  "build": {
+    "commit": "d471cb1a179213fe95cc693275dae14c0a767d26",
+    "tree": "44badc58b152fad94d99a5270be4dee511d1121b"
+  },
+  "appstreamLicense": "MIT AND Apache-2.0 AND GPL-3.0-only AND BSD-3-Clause AND (LGPL-2.1-only OR LGPL-3.0-only OR LicenseRef-KDE-Accepted-LGPL) AND GPL-2.0-or-later AND Unicode-DFS-2016 AND ICU AND NAIST-2003 AND (LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only) AND LGPL-2.1-or-later AND LGPL-2.0-or-later AND (BSD-3-Clause OR GPL-2.0-only) AND curl AND GPL-3.0-or-later AND (GPL-2.0-or-later OR LGPL-2.1-or-later) AND CC0-1.0 AND (LGPL-2.1-or-later OR MPL-1.1 OR GPL-2.0-or-later) AND (LGPL-3.0-or-later OR GPL-2.0-or-later) AND OLDAP-2.8 AND BSD-2-Clause AND LGPL-2.1-only AND Libpng",
+  "notices": [
+    "usr/share/doc/putgd/runtime-notices.txt",
+    "usr/share/doc/putgd/bundled-components.json",
+    "usr/share/doc/putgd/APPIMAGE-GPL-NOTICE.txt"
+  ],
+  "sharedLicenseTexts": [
+    "usr/share/doc/putgd/bundled-licenses/distro-common/Apache-2.0",
+    "usr/share/doc/putgd/bundled-licenses/distro-common/Artistic",
+    "usr/share/doc/putgd/bundled-licenses/distro-common/BSD",
+    "usr/share/doc/putgd/bundled-licenses/distro-common/CC0-1.0",
+    "usr/share/doc/putgd/bundled-licenses/distro-common/GFDL",
+    "usr/share/doc/putgd/bundled-licenses/distro-common/GFDL-1.2",
+    "usr/share/doc/putgd/bundled-licenses/distro-common/GFDL-1.3",
+    "usr/share/doc/putgd/bundled-licenses/distro-common/GPL",
+    "usr/share/doc/putgd/bundled-licenses/distro-common/GPL-1",
+    "usr/share/doc/putgd/bundled-licenses/distro-common/GPL-2",
+    "usr/share/doc/putgd/bundled-licenses/distro-common/GPL-3",
+    "usr/share/doc/putgd/bundled-licenses/distro-common/LGPL",
+    "usr/share/doc/putgd/bundled-licenses/distro-common/LGPL-2",
+    "usr/share/doc/putgd/bundled-licenses/distro-common/LGPL-2.1",
+    "usr/share/doc/putgd/bundled-licenses/distro-common/LGPL-3",
+    "usr/share/doc/putgd/bundled-licenses/distro-common/MPL-1.1",
+    "usr/share/doc/putgd/bundled-licenses/distro-common/MPL-2.0"
+  ],
+  "components": [
+    {
+      "id": "putgd",
+      "name": "put.gd",
+      "version": "26.1022.987-dev+gd471cb1a1792",
+      "license": "MIT",
+      "source": {
+        "repository": "https://github.com/patrick-hudson/put.gd-desktop",
+        "commit": "d471cb1a179213fe95cc693275dae14c0a767d26"
+      },
+      "files": [
+        ".DirIcon",
+        "AppRun",
+        "putgd.desktop",
+        "putgd.svg",
+        "usr/bin/putgd",
+        "usr/bin/putgd-b2-worker",
+        "usr/bin/putgd-capture",
+        "usr/bin/putgd-cli",
+        "usr/bin/putgd-kde-region",
+        "usr/bin/putgd-launcher",
+        "usr/bin/putgd-record",
+        "usr/bin/putgd-s3-worker",
+        "usr/bin/putgd-ui",
+        "usr/bin/qt.conf",
+        "usr/lib/putgd/libputgd-s3.so",
+        "usr/share/applications/putgd-record.desktop",
+        "usr/share/applications/putgd-ui.desktop",
+        "usr/share/applications/putgd.desktop",
+        "usr/share/gnome-shell/extensions/putgd@put.gd/extension.js",
+        "usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json",
+        "usr/share/icons/hicolor/scalable/apps/putgd.svg",
+        "usr/share/metainfo/gd.put.Putgd.metainfo.xml",
+        "usr/share/putgd/autostart/putgd.desktop",
+        "usr/share/putgd/aws-runtime-manifest.json",
+        "usr/share/putgd/build-info.json",
+        "usr/share/putgd/dependency-lock.json"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/LICENSE",
+        "usr/share/doc/putgd/wayland-ext-data-control-v1.xml",
+        "usr/share/doc/putgd/wayland-wlr-data-control-unstable-v1.xml",
+        "usr/share/doc/putgd/wayland-zkde-screencast-unstable-v1.xml"
+      ],
+      "licenseTexts": {
+        "MIT": "usr/share/doc/putgd/LICENSE"
+      },
+      "note": "The Wayland protocol files beside the notices keep the copyright and permission text of the protocols whose generated client bindings are compiled into put.gd."
+    },
+    {
+      "id": "aws-sdk-cpp",
+      "name": "AWS SDK for C++ (with aws-crt-cpp, the aws-c libraries and s2n-tls)",
+      "version": "1.11.907",
+      "license": "Apache-2.0",
+      "source": {
+        "repository": "https://github.com/aws/aws-sdk-cpp.git",
+        "commit": "a9f0ffcc276664b475230206fa554841ad5bc3de"
+      },
+      "files": [
+        "usr/lib/putgd/libaws-c-auth.so",
+        "usr/lib/putgd/libaws-c-auth.so.1.0.0",
+        "usr/lib/putgd/libaws-c-cal.so",
+        "usr/lib/putgd/libaws-c-cal.so.1.0.0",
+        "usr/lib/putgd/libaws-c-common.so",
+        "usr/lib/putgd/libaws-c-common.so.0.14.5",
+        "usr/lib/putgd/libaws-c-common.so.1",
+        "usr/lib/putgd/libaws-c-compression.so",
+        "usr/lib/putgd/libaws-c-compression.so.1.0.0",
+        "usr/lib/putgd/libaws-c-event-stream.so",
+        "usr/lib/putgd/libaws-c-event-stream.so.1.0.0",
+        "usr/lib/putgd/libaws-c-http.so",
+        "usr/lib/putgd/libaws-c-http.so.1.0.0",
+        "usr/lib/putgd/libaws-c-io.so",
+        "usr/lib/putgd/libaws-c-io.so.1.0.0",
+        "usr/lib/putgd/libaws-c-mqtt.so",
+        "usr/lib/putgd/libaws-c-mqtt.so.1.0.0",
+        "usr/lib/putgd/libaws-c-s3.so",
+        "usr/lib/putgd/libaws-c-s3.so.0unstable",
+        "usr/lib/putgd/libaws-c-s3.so.1.0.0",
+        "usr/lib/putgd/libaws-c-sdkutils.so",
+        "usr/lib/putgd/libaws-c-sdkutils.so.1.0.0",
+        "usr/lib/putgd/libaws-checksums.so",
+        "usr/lib/putgd/libaws-checksums.so.1.0.0",
+        "usr/lib/putgd/libaws-cpp-sdk-core.so",
+        "usr/lib/putgd/libaws-cpp-sdk-s3.so",
+        "usr/lib/putgd/libaws-crt-cpp.so",
+        "usr/lib/putgd/libs2n.so",
+        "usr/lib/putgd/libs2n.so.1",
+        "usr/lib/putgd/libs2n.so.1.0.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/aws-crt-cpp-LICENSE",
+        "usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-auth-LICENSE",
+        "usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-cal-LICENSE",
+        "usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-common-LICENSE",
+        "usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-compression-LICENSE",
+        "usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-event-stream-LICENSE",
+        "usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-http-LICENSE",
+        "usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-io-LICENSE",
+        "usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-mqtt-LICENSE",
+        "usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-s3-LICENSE",
+        "usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-sdkutils-LICENSE",
+        "usr/share/doc/putgd/aws-crt-cpp-crt-aws-checksums-LICENSE",
+        "usr/share/doc/putgd/aws-crt-cpp-crt-s2n-LICENSE",
+        "usr/share/doc/putgd/aws-sdk-LICENSE"
+      ],
+      "licenseTexts": {
+        "Apache-2.0": "usr/share/doc/putgd/aws-sdk-LICENSE"
+      }
+    },
+    {
+      "id": "proton-helper",
+      "name": "put.gd Proton Drive helper (Proton Drive SDK, Bun runtime, OpenPGP and crypto libraries)",
+      "version": "external-drive-put_gd@0.1.1-alpha (SDK js@0.22.2, Bun 1.4.2)",
+      "license": "MIT AND GPL-3.0-only",
+      "source": {
+        "sourceCatalog": "usr/libexec/putgd/proton/redistribution/SOURCES.json",
+        "commit": "8ffae007b0fbb8bcef53514719d6f093bb32dcf9"
+      },
+      "files": [
+        "usr/libexec/putgd/proton/manifest.json",
+        "usr/libexec/putgd/proton/putgd-proton-runtime",
+        "usr/share/putgd/proton-runtime-manifest.json"
+      ],
+      "licenseFiles": [
+        "usr/libexec/putgd/proton/THIRD-PARTY-NOTICES.txt",
+        "usr/libexec/putgd/proton/redistribution/BUN-LINUX-ATTRIBUTION.md",
+        "usr/libexec/putgd/proton/redistribution/BUN-NOTICE-PROVENANCE.json.gz",
+        "usr/libexec/putgd/proton/redistribution/BUN-THIRD-PARTY-NOTICES.txt.gz",
+        "usr/libexec/putgd/proton/redistribution/CRYPTO-PROVENANCE.md",
+        "usr/libexec/putgd/proton/redistribution/LICENSE.boltffi-MIT",
+        "usr/libexec/putgd/proton/redistribution/LICENSE.crypto-GPL-3.0",
+        "usr/libexec/putgd/proton/redistribution/LICENSE.pmcrypto-MIT",
+        "usr/libexec/putgd/proton/redistribution/LICENSE.srp-MIT",
+        "usr/libexec/putgd/proton/redistribution/OPENPGP-PREBUNDLED-NOTICES.txt",
+        "usr/libexec/putgd/proton/redistribution/OPENPGP-REBUILD.patch",
+        "usr/libexec/putgd/proton/redistribution/REBUILD.md",
+        "usr/libexec/putgd/proton/redistribution/SOURCES.json",
+        "usr/share/doc/putgd/proton/BUN-LINUX-ATTRIBUTION.md",
+        "usr/share/doc/putgd/proton/BUN-NOTICE-PROVENANCE.json.gz",
+        "usr/share/doc/putgd/proton/BUN-THIRD-PARTY-NOTICES.txt.gz",
+        "usr/share/doc/putgd/proton/CRYPTO-PROVENANCE.md",
+        "usr/share/doc/putgd/proton/LICENSE.boltffi-MIT",
+        "usr/share/doc/putgd/proton/LICENSE.crypto-GPL-3.0",
+        "usr/share/doc/putgd/proton/LICENSE.pmcrypto-MIT",
+        "usr/share/doc/putgd/proton/LICENSE.proton",
+        "usr/share/doc/putgd/proton/LICENSE.srp-MIT",
+        "usr/share/doc/putgd/proton/OPENPGP-PREBUNDLED-NOTICES.txt",
+        "usr/share/doc/putgd/proton/OPENPGP-REBUILD.patch",
+        "usr/share/doc/putgd/proton/README.md",
+        "usr/share/doc/putgd/proton/REBUILD.md",
+        "usr/share/doc/putgd/proton/SOURCES.json",
+        "usr/share/doc/putgd/proton/THIRD-PARTY-NOTICES.txt"
+      ],
+      "licenseTexts": {
+        "MIT": "usr/share/doc/putgd/proton/LICENSE.proton",
+        "GPL-3.0-only": "usr/libexec/putgd/proton/redistribution/LICENSE.crypto-GPL-3.0"
+      },
+      "note": "THIRD-PARTY-NOTICES.txt and redistribution/ list every package compiled into the helper, with its licence."
+    },
+    {
+      "id": "qtkeychain",
+      "name": "QtKeychain",
+      "version": "8eac9889775c",
+      "license": "BSD-3-Clause",
+      "source": {
+        "repository": "https://github.com/frankosterfeld/qtkeychain.git",
+        "commit": "8eac9889775ca45c106d077bb0d3744754a1570a"
+      },
+      "files": [
+        "usr/lib/libqt6keychain.so.1"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/qtkeychain/COPYING"
+      ],
+      "licenseTexts": {
+        "BSD-3-Clause": "usr/share/doc/putgd/bundled-licenses/qtkeychain/COPYING"
+      }
+    },
+    {
+      "id": "layershell",
+      "name": "LayerShellQt",
+      "version": "6.4.6",
+      "license": "(LGPL-2.1-only OR LGPL-3.0-only OR LicenseRef-KDE-Accepted-LGPL) AND MIT",
+      "source": {
+        "repository": "https://github.com/KDE/layer-shell-qt.git",
+        "commit": "b1317ba122420dd0542ad12f4780b02ba7b6288f"
+      },
+      "files": [
+        "usr/lib/libLayerShellQtInterface.so.6",
+        "usr/plugins/wayland-shell-integration/liblayer-shell.so"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/layershell/LICENSES/BSD-3-Clause.txt",
+        "usr/share/doc/putgd/bundled-licenses/layershell/LICENSES/CC0-1.0.txt",
+        "usr/share/doc/putgd/bundled-licenses/layershell/LICENSES/LGPL-2.1-only.txt",
+        "usr/share/doc/putgd/bundled-licenses/layershell/LICENSES/LGPL-3.0-only.txt",
+        "usr/share/doc/putgd/bundled-licenses/layershell/LICENSES/LGPL-3.0-or-later.txt",
+        "usr/share/doc/putgd/bundled-licenses/layershell/LICENSES/LicenseRef-KDE-Accepted-LGPL.txt",
+        "usr/share/doc/putgd/bundled-licenses/layershell/LICENSES/MIT.txt"
+      ],
+      "licenseTexts": {
+        "LGPL-2.1-only": "usr/share/doc/putgd/bundled-licenses/layershell/LICENSES/LGPL-2.1-only.txt",
+        "LGPL-3.0-only": "usr/share/doc/putgd/bundled-licenses/layershell/LICENSES/LGPL-3.0-only.txt",
+        "LicenseRef-KDE-Accepted-LGPL": "usr/share/doc/putgd/bundled-licenses/layershell/LICENSES/LicenseRef-KDE-Accepted-LGPL.txt",
+        "MIT": "usr/share/doc/putgd/bundled-licenses/layershell/LICENSES/MIT.txt"
+      },
+      "note": "The library and plugin sources are LGPL-2.1-only OR LGPL-3.0-only OR LicenseRef-KDE-Accepted-LGPL; the compiled wlr-layer-shell protocol is MIT."
+    },
+    {
+      "id": "ffmpeg",
+      "name": "FFmpeg",
+      "version": "7.1.5",
+      "license": "GPL-2.0-or-later",
+      "source": {
+        "repository": "https://github.com/FFmpeg/FFmpeg.git",
+        "commit": "3a0867c2bfda4a4d4309ca1a8cbdc6175e67f587"
+      },
+      "files": [
+        "usr/lib/libavcodec.so.61",
+        "usr/lib/libavfilter.so.10",
+        "usr/lib/libavformat.so.61",
+        "usr/lib/libavutil.so.59",
+        "usr/lib/libswresample.so.5",
+        "usr/lib/libswscale.so.8"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/ffmpeg/COPYING.GPLv2",
+        "usr/share/doc/putgd/bundled-licenses/ffmpeg/COPYING.GPLv3",
+        "usr/share/doc/putgd/bundled-licenses/ffmpeg/COPYING.LGPLv2.1",
+        "usr/share/doc/putgd/bundled-licenses/ffmpeg/COPYING.LGPLv3",
+        "usr/share/doc/putgd/bundled-licenses/ffmpeg/LICENSE.md"
+      ],
+      "licenseTexts": {
+        "GPL-2.0-or-later": "usr/share/doc/putgd/bundled-licenses/ffmpeg/COPYING.GPLv2"
+      },
+      "note": "Configured with --enable-gpl and the components in packaging/appimage/media.json; LICENSE.md explains the GPL build."
+    },
+    {
+      "id": "icu",
+      "name": "ICU (International Components for Unicode), shipped with Qt",
+      "version": "73.2",
+      "license": "Unicode-DFS-2016 AND ICU AND BSD-3-Clause AND NAIST-2003",
+      "source": {
+        "repository": "https://github.com/unicode-org/icu.git",
+        "commit": "680f521746a3bd6a86f25f25ee50a62d88b489cf"
+      },
+      "files": [
+        "usr/lib/libicudata.so.73",
+        "usr/lib/libicui18n.so.73",
+        "usr/lib/libicuuc.so.73"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/icu/icu4c/LICENSE"
+      ],
+      "licenseTexts": {
+        "Unicode-DFS-2016": "usr/share/doc/putgd/bundled-licenses/icu/icu4c/LICENSE",
+        "ICU": "usr/share/doc/putgd/bundled-licenses/icu/icu4c/LICENSE",
+        "BSD-3-Clause": "usr/share/doc/putgd/bundled-licenses/icu/icu4c/LICENSE",
+        "NAIST-2003": "usr/share/doc/putgd/bundled-licenses/icu/icu4c/LICENSE"
+      },
+      "note": "The official Qt binaries' own ICU build; icu4c/LICENSE holds the Unicode licence and the third-party terms of the code and data in the libraries."
+    },
+    {
+      "id": "appimage-runtime",
+      "name": "AppImage type2-runtime",
+      "version": "20251108",
+      "license": "MIT",
+      "source": {
+        "repository": "https://github.com/AppImage/type2-runtime",
+        "commit": "dd6cebedcbddde9c82f89b011e8e1d40b6e43868"
+      },
+      "files": [],
+      "licenseFiles": [
+        "usr/share/doc/putgd/appimage-runtime-LICENSE"
+      ],
+      "licenseTexts": {
+        "MIT": "usr/share/doc/putgd/appimage-runtime-LICENSE"
+      },
+      "embedded": [
+        {
+          "name": "musl libc",
+          "license": "MIT"
+        },
+        {
+          "name": "libfuse",
+          "license": "LGPL-2.1-only",
+          "licenseText": "usr/share/doc/putgd/bundled-licenses/distro-common/LGPL-2.1"
+        },
+        {
+          "name": "squashfuse",
+          "license": "BSD-2-Clause"
+        },
+        {
+          "name": "zstd",
+          "license": "BSD-3-Clause OR GPL-2.0-only"
+        },
+        {
+          "name": "zlib",
+          "license": "Zlib"
+        }
+      ],
+      "note": "The runtime is the start of the AppImage file itself, not a file in the AppDir. appimage-runtime-LICENSE names the libraries linked into it statically."
+    },
+    {
+      "id": "qtbase",
+      "name": "Qt qtbase",
+      "version": "6.8.3",
+      "license": "LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only",
+      "source": {
+        "repository": "https://github.com/qt/qtbase.git",
+        "commit": "c07c2d5a527a644d36e7853d55132ae38921682f"
+      },
+      "files": [
+        "usr/lib/libQt6Core.so.6",
+        "usr/lib/libQt6DBus.so.6",
+        "usr/lib/libQt6Gui.so.6",
+        "usr/lib/libQt6Network.so.6",
+        "usr/lib/libQt6OpenGL.so.6",
+        "usr/lib/libQt6Sql.so.6",
+        "usr/lib/libQt6Widgets.so.6",
+        "usr/lib/libQt6XcbQpa.so.6",
+        "usr/plugins/imageformats/libqgif.so",
+        "usr/plugins/imageformats/libqico.so",
+        "usr/plugins/imageformats/libqjpeg.so",
+        "usr/plugins/platforminputcontexts/libcomposeplatforminputcontextplugin.so",
+        "usr/plugins/platforminputcontexts/libibusplatforminputcontextplugin.so",
+        "usr/plugins/platforms/libqoffscreen.so",
+        "usr/plugins/platforms/libqxcb.so",
+        "usr/plugins/platformthemes/libqgtk3.so",
+        "usr/plugins/platformthemes/libqxdgdesktopportal.so",
+        "usr/plugins/sqldrivers/libqsqlite.so",
+        "usr/plugins/tls/libqcertonlybackend.so",
+        "usr/plugins/tls/libqopensslbackend.so",
+        "usr/plugins/xcbglintegrations/libqxcb-egl-integration.so",
+        "usr/plugins/xcbglintegrations/libqxcb-glx-integration.so"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/AFL-2.1.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/Apache-2.0.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/BSD-2-Clause.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/BSD-3-Clause.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/CC0-1.0.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/FTL.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/GPL-2.0-only.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/GPL-2.0-or-later.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/GPL-3.0-only.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/HPND.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/IJG.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/Imlib2.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/LGPL-3.0-only.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/Libpng.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/LicenseRef-BSD-3-Clause-with-PCRE2-Binary-Like-Packages-Exception.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/LicenseRef-ICC-License.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/LicenseRef-SHA1-Public-Domain.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/MIT.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/MPL-2.0.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/Unicode-3.0.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/X11.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/blessing.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/libpng-2.0.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/VulkanMemoryAllocator/LICENSE.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/VulkanMemoryAllocator/qt_attribution.json",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/blake2/COPYING",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/blake2/qt_attribution.json",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/double-conversion/LICENSE",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/double-conversion/qt_attribution.json",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/easing/LICENSE",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/easing/qt_attribution.json",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/forkfd/LICENSE",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/forkfd/qt_attribution.json",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/freetype/LICENSE.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/harfbuzz-ng/COPYING",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/harfbuzz-ng/qt_attribution.json",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/icc/LICENSE.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/icc/qt_attribution.json",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/libjpeg/LICENSE",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/libjpeg/ijg-license.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/libjpeg/qt_attribution.json",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/libpng/LICENSE",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/libpng/qt_attribution.json",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/libpsl/PSL-LICENSE.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/libpsl/qt_attribution.json",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/libpsl/src/LICENSE.chromium",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/md4/qt_attribution.json",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/md4c/LICENSE.md",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/md4c/qt_attribution.json",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/md5/qt_attribution.json",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/pcre2/LICENCE-SLJIT",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/pcre2/LICENCE.md",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/pcre2/qt_attribution.json",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/pixman/LICENSE",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/pixman/qt_attribution.json",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/rfc6234/LICENSE",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/rfc6234/qt_attribution.json",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/sha1/qt_attribution.json",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/sha3/BRG_ENDIAN_LICENSE",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/sha3/CC0_LICENSE",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/sha3/qt_attribution.json",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/siphash/qt_attribution.json",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/sqlite/qt_attribution.json",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/tinycbor/LICENSE",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/tinycbor/qt_attribution.json",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/xcb/LICENSE",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/xcb/qt_attribution.json",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/corelib/mimetypes/3rdparty/qt_attribution.json",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/corelib/text/qt_attribution.json",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/dbus/LIBDBUS-1-LICENSE.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/dbus/qt_attribution.json",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/gui/opengl/KHRONOS_LICENSE.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/gui/opengl/qt_attribution.json",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/gui/painting/QIMAGETRANSFORM_LICENSE.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/gui/painting/XCONSORTIUM_LICENSE.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/gui/painting/qt_attribution.json",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/gui/rhi/MiniEngine_LICENSE.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/gui/rhi/qt_attribution.json",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/gui/text/AGLFN_LICENSE.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/gui/text/qt_attribution.json",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/gui/vulkan/LICENSE.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/src/gui/vulkan/qt_attribution.json",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/util/gradientgen/WEBGRADIENTS_LICENSE.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtbase/util/gradientgen/qt_attribution.json"
+      ],
+      "licenseTexts": {
+        "LGPL-3.0-only": "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/LGPL-3.0-only.txt",
+        "GPL-2.0-only": "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/GPL-2.0-only.txt",
+        "GPL-3.0-only": "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/GPL-3.0-only.txt",
+        "LicenseRef-BSD-3-Clause-with-PCRE2-Binary-Like-Packages-Exception": "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/LicenseRef-BSD-3-Clause-with-PCRE2-Binary-Like-Packages-Exception.txt",
+        "Unicode-3.0": "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/Unicode-3.0.txt",
+        "CC0-1.0": "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/CC0-1.0.txt",
+        "Apache-2.0": "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/Apache-2.0.txt",
+        "LicenseRef-SHA1-Public-Domain": "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/LicenseRef-SHA1-Public-Domain.txt",
+        "BSD-2-Clause": "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/BSD-2-Clause.txt",
+        "BSD-3-Clause": "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/BSD-3-Clause.txt",
+        "MIT": "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/MIT.txt",
+        "AFL-2.1": "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/AFL-2.1.txt",
+        "GPL-2.0-or-later": "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/GPL-2.0-or-later.txt",
+        "Libpng": "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/Libpng.txt",
+        "libpng-2.0": "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/libpng-2.0.txt",
+        "FTL": "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/FTL.txt",
+        "Imlib2": "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/Imlib2.txt",
+        "X11": "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/X11.txt",
+        "HPND": "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/HPND.txt",
+        "LicenseRef-ICC-License": "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/LicenseRef-ICC-License.txt",
+        "MPL-2.0": "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/MPL-2.0.txt",
+        "IJG": "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/IJG.txt",
+        "blessing": "usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/blessing.txt"
+      },
+      "embedded": [
+        {
+          "name": "Adobe Glyph List For New Fonts",
+          "version": "1.7",
+          "license": "BSD-3-Clause",
+          "download": "https://github.com/adobe-type-tools/agl-aglfn",
+          "copyright": "Copyright 2002, 2003, 2005, 2006, 2008, 2010, 2015 Adobe Systems",
+          "usedBy": [
+            "libQt6Gui.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/gui/text/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/gui/text/AGLFN_LICENSE.txt"
+          ]
+        },
+        {
+          "name": "Anti-aliasing rasterizer from FreeType 2",
+          "version": "unknown",
+          "license": "FTL OR GPL-2.0-only",
+          "download": "http://www.freetype.org",
+          "copyright": "Copyright 2000-2016 by David Turner, Robert Wilhelm, and Werner Lemberg.",
+          "usedBy": [
+            "libQt6Gui.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/gui/painting/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/freetype/LICENSE.txt"
+          ]
+        },
+        {
+          "name": "Apache Tika MimeType Definitions",
+          "version": "5101bc7fb090ed7deffe56837d7633c9485a1e5d",
+          "license": "Apache-2.0",
+          "download": "https://github.com/apache/tika/blob/5101bc7fb090ed7deffe56837d7633c9485a1e5d/tika-core/src/main/resources/org/apache/tika/mime/tika-mimetypes.xml",
+          "copyright": "Copyright 2024 The Apache Software Foundation",
+          "usedBy": [
+            "libQt6Core.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/corelib/mimetypes/3rdparty/qt_attribution.json"
+          ]
+        },
+        {
+          "name": "BLAKE2 (reference implementation)",
+          "version": "ed1974ea83433eba7b2d95c5dcd9ac33cb847913",
+          "license": "CC0-1.0 OR Apache-2.0",
+          "download": "https://github.com/BLAKE2/BLAKE2/tree/ed1974ea83433eba7b2d95c5dcd9ac33cb847913",
+          "copyright": "Copyright 2012, Samuel Neves <sneves@dei.uc.pt>",
+          "usedBy": [
+            "libQt6Core.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/blake2/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/blake2/COPYING"
+          ]
+        },
+        {
+          "name": "Easing Equations by Robert Penner",
+          "version": "unknown",
+          "license": "BSD-3-Clause",
+          "download": "http://robertpenner.com/easing/",
+          "copyright": "Copyright (c) 2001 Robert Penner",
+          "usedBy": [
+            "libQt6Core.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/easing/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/easing/LICENSE"
+          ]
+        },
+        {
+          "name": "Efficient Binary-Decimal and Decimal-Binary Conversion Routines for IEEE Doubles",
+          "version": "3.3.0",
+          "license": "BSD-3-Clause",
+          "download": "https://github.com/google/double-conversion/releases/tag/v3.3.0",
+          "copyright": "Copyright 2006-2012, the V8 project authors",
+          "usedBy": [
+            "libQt6Core.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/double-conversion/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/double-conversion/LICENSE"
+          ]
+        },
+        {
+          "name": "forkfd",
+          "version": "unknown",
+          "license": "MIT",
+          "download": "NOASSERTION",
+          "copyright": "Copyright (C) 2016 Intel Corporation\nCopyright (C) 2015 Klar\u00e4lvdalens Datakonsult AB, a KDAB Group company, info@kdab.com",
+          "usedBy": [
+            "libQt6Core.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/forkfd/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/forkfd/LICENSE"
+          ]
+        },
+        {
+          "name": "HarfBuzz-NG",
+          "version": "10.4.0",
+          "license": "MIT",
+          "download": "https://github.com/harfbuzz/harfbuzz/releases/tag/10.4.0",
+          "copyright": "Copyright \u00a9 2010-2022  Google, Inc.\nCopyright \u00a9 2015-2020  Ebrahim Byagowi\nCopyright \u00a9 2019,2020  Facebook, Inc.\nCopyright \u00a9 2012,2015  Mozilla Foundation\nCopyright \u00a9 2011  Codethink Limited\nCopyright \u00a9 2008,2010  Nokia Corporation and/or its subsidiary(-ies)\nCopyright \u00a9 2009  Keith Stribley\nCopyright \u00a9 2011  Martin Hosken and SIL International\nCopyright \u00a9 2007  Chris Wilson\nCopyright \u00a9 2005,2006,2020,2021,2022,2023  Behdad Esfahbod\nCopyright \u00a9 2004,2007,2008,2009,2010,2013,2021,2022,2023  Red Hat, Inc.\nCopyright \u00a9 1998-2005  David Turner and Werner Lemberg\nCopyright \u00a9 2016  Igalia S.L.\nCopyright \u00a9 2022  Matthias Clasen\nCopyright \u00a9 2018,2021  Khaled Hosny\nCopyright \u00a9 2018,2019,2020  Adobe, Inc\nCopyright \u00a9 2013-2015  Alexei Podtelezhnikov",
+          "usedBy": [
+            "libQt6Gui.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/harfbuzz-ng/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/harfbuzz-ng/COPYING"
+          ]
+        },
+        {
+          "name": "libdus-1 headers",
+          "version": "dbus-1.13.12",
+          "license": "AFL-2.1 OR GPL-2.0-or-later",
+          "download": "https://www.freedesktop.org/wiki/Software/dbus/",
+          "copyright": "Copyright (C) 2002, 2003 CodeFactory AB\nCopyright (C) 2004, 2005 Red Hat, Inc.",
+          "usedBy": [
+            "libQt6DBus.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/dbus/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/dbus/LIBDBUS-1-LICENSE.txt"
+          ]
+        },
+        {
+          "name": "LibJPEG-turbo",
+          "version": "3.1.0",
+          "license": "IJG AND BSD-3-Clause",
+          "download": "https://github.com/libjpeg-turbo/libjpeg-turbo/releases/download/3.1.0/libjpeg-turbo-3.1.0.tar.gz",
+          "copyright": "Copyright (C) 2009-2024 D. R. Commander\nCopyright (C) 2015, 2020 Google, Inc.\nCopyright (C) 2019-2020 Arm Limited\nCopyright (C) 2015-2016, 2018 Matthieu Darbois\nCopyright (C) 2011-2016 Siarhei Siamashka\nCopyright (C) 2015 Intel Corporation\nCopyright (C) 2013-2014 Linaro Limited\nCopyright (C) 2013-2014 MIPS Technologies, Inc.\nCopyright (C) 2009, 2012 Pierre Ossman for Cendio AB\nCopyright (C) 2009-2011 Nokia Corporation and/or its subsidiary(-ies)\nCopyright (C) 1999-2006 MIYASAKA Masaru\nCopyright (C) 1999 Ken Murchison\nCopyright (C) 1991-2020 Thomas G. Lane, Guido Vollbeding\n",
+          "usedBy": [
+            "libqjpeg.so"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/libjpeg/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/libjpeg/LICENSE",
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/libjpeg/ijg-license.txt"
+          ]
+        },
+        {
+          "name": "LibPNG",
+          "version": "1.6.47",
+          "license": "Libpng AND libpng-2.0",
+          "download": "https://download.sourceforge.net/libpng/libpng-1.6.47.tar.xz",
+          "copyright": "Copyright (c) 1995-2025 The PNG Reference Library Authors\nCopyright (c) 2000-2025 Cosmin Truta\nCopyright (c) 1998-2018 Glenn Randers-Pehrson\nCopyright (c) 1996-1997 Andreas Dilger\nCopyright (c) 1995-1996 Guy Eric Schalnat, Group 42, Inc.\nCopyright (c) 2000-2017 Simon-Pierre Cadieux\nCopyright (c) 2000-2017 Eric S. Raymond\nCopyright (c) 2000-2017 Mans Rullgard\nCopyright (c) 2000-2017 Gilles Vollant\nCopyright (c) 2000-2017 James Yu\nCopyright (c) 2000-2017 Mandar Sahastrabuddhe\nCopyright (c) 1998-2000 Tom Lane\nCopyright (c) 1998-2000 Willem van Schaik\nCopyright (c) 1996-1997 John Bowler\nCopyright (c) 1996-1997 Kevin Bracey\nCopyright (c) 1996-1997 Sam Bushell\nCopyright (c) 1996-1997 Magnus Holmgren\nCopyright (c) 1996-1997 Greg Roelofs\nCopyright (c) 1996-1997 Tom Tanner\nCopyright (c) 1995-1996 Dave Martindale\nCopyright (c) 1995-1996 Paul Schmidt\nCopyright (c) 1995-1996 Tim Wegner",
+          "usedBy": [
+            "libQt6Gui.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/libpng/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/libpng/LICENSE"
+          ]
+        },
+        {
+          "name": "libpsl - C library to handle the Public Suffix List",
+          "version": "664f3dc85259ec65e30248a61fa1c45b7b0e4c3f",
+          "license": "BSD-3-Clause",
+          "download": "https://github.com/rockdaboot/libpsl",
+          "copyright": "Copyright 2014-2016 The Chromium Authors. All rights reserved.",
+          "usedBy": [
+            "libQt6Network.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/libpsl/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/libpsl/src/LICENSE.chromium"
+          ]
+        },
+        {
+          "name": "MD4",
+          "version": "unknown",
+          "license": "CC0-1.0",
+          "download": "NOASSERTION",
+          "copyright": "Written by Alexander Peslyak - better known as Solar Designer <solar@openwall.com> - in 2001, and placed in the public domain. There's absolutely no warranty.",
+          "usedBy": [
+            "libQt6Core.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/md4/qt_attribution.json"
+          ]
+        },
+        {
+          "name": "MD4C",
+          "version": "0.5.2",
+          "license": "MIT",
+          "download": "https://github.com/mity/md4c/releases/tag/release-0.5.2",
+          "copyright": "Copyright \u00a9 2016-2024 Martin Mit\u00e1\u0161",
+          "usedBy": [
+            "libQt6Gui.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/md4c/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/md4c/LICENSE.md"
+          ]
+        },
+        {
+          "name": "MD5",
+          "version": "unknown",
+          "license": "CC0-1.0",
+          "download": "NOASSERTION",
+          "copyright": "Written by Colin Plumb in 1993, no copyright is claimed. Ian Jackson <ian@chiark.greenend.org.uk>.",
+          "usedBy": [
+            "libQt6Core.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/md5/qt_attribution.json"
+          ]
+        },
+        {
+          "name": "Mipmap generator for D3D12",
+          "version": "0aa79bad78992da0b6a8279ddb9002c1753cb849",
+          "license": "MIT",
+          "download": "https://github.com/microsoft/DirectX-Graphics-Samples",
+          "copyright": "Copyright (c) 2015 Microsoft",
+          "usedBy": [
+            "libQt6Gui.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/gui/rhi/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/gui/rhi/MiniEngine_LICENSE.txt"
+          ]
+        },
+        {
+          "name": "OpenGL ES 2 Headers",
+          "version": "Revision 27673",
+          "license": "MIT",
+          "download": "https://www.khronos.org/",
+          "copyright": "Copyright (c) 2013-2014 The Khronos Group Inc.",
+          "usedBy": [
+            "libQt6Gui.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/gui/opengl/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/gui/opengl/KHRONOS_LICENSE.txt"
+          ]
+        },
+        {
+          "name": "OpenGL Headers",
+          "version": "Revision 27684",
+          "license": "MIT",
+          "download": "https://www.khronos.org/",
+          "copyright": "Copyright (c) 2013-2014 The Khronos Group Inc.",
+          "usedBy": [
+            "libQt6Gui.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/gui/opengl/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/gui/opengl/KHRONOS_LICENSE.txt"
+          ]
+        },
+        {
+          "name": "PCRE2",
+          "version": "10.45",
+          "license": "LicenseRef-BSD-3-Clause-with-PCRE2-Binary-Like-Packages-Exception",
+          "download": "https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.45/pcre2-10.45.tar.bz2",
+          "copyright": "Copyright (c) 1997-2024 University of Cambridge\nCopyright (c) 2010-2024 Zoltan Herczeg",
+          "usedBy": [
+            "libQt6Core.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/pcre2/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/pcre2/LICENCE.md"
+          ]
+        },
+        {
+          "name": "PCRE2 - Stack-less Just-In-Time Compiler",
+          "version": "10.45",
+          "license": "BSD-2-Clause",
+          "download": "https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.45/pcre2-10.45.tar.bz2",
+          "copyright": "Copyright (c) 2009-2024 Zoltan Herczeg",
+          "usedBy": [
+            "libQt6Core.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/pcre2/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/pcre2/LICENCE-SLJIT"
+          ]
+        },
+        {
+          "name": "Pixman",
+          "version": "0.17.12",
+          "license": "MIT",
+          "download": "http://www.pixman.org/",
+          "copyright": "Copyright \u00a9 2009 Nokia Corporation",
+          "usedBy": [
+            "libQt6Gui.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/pixman/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/pixman/LICENSE"
+          ]
+        },
+        {
+          "name": "Secure Hash Algorithm SHA-1",
+          "version": "unknown",
+          "license": "LicenseRef-SHA1-Public-Domain",
+          "download": "http://www.dominik-reichl.de/projects/csha1/",
+          "copyright": "Copyright (C) Dominik Reichl <dominik.reichl@t-online.de>\nCopyright (C) 2016 The Qt Company Ltd",
+          "usedBy": [
+            "libQt6Core.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/sha1/qt_attribution.json"
+          ]
+        },
+        {
+          "name": "Secure Hash Algorithm SHA-3 - brg_endian",
+          "version": "4b9e13ead2c5b5e41ca27c65de4dd69ae0bac228",
+          "license": "BSD-2-Clause",
+          "download": "NOASSERTION",
+          "copyright": "Copyright (c) 1998-2013, Brian Gladman, Worcester, UK. All rights reserved.",
+          "usedBy": [
+            "libQt6Core.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/sha3/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/sha3/BRG_ENDIAN_LICENSE"
+          ]
+        },
+        {
+          "name": "Secure Hash Algorithm SHA-3 - Keccak",
+          "version": "3.2",
+          "license": "CC0-1.0",
+          "download": "NOASSERTION",
+          "copyright": "Guido Bertoni, Joan Daemen, Micha\u00ebl Peeters and Gilles Van Assche.\nTo the extent possible under law, the implementers have waived all copyright\nand related or neighboring rights to the source code in this file.",
+          "usedBy": [
+            "libQt6Core.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/sha3/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/sha3/CC0_LICENSE"
+          ]
+        },
+        {
+          "name": "Secure Hash Algorithms SHA-384 and SHA-512",
+          "version": "unknown",
+          "license": "BSD-3-Clause",
+          "download": "NOASSERTION",
+          "copyright": "Copyright (c) 2011 IETF Trust and the persons identified as authors of the code.",
+          "usedBy": [
+            "libQt6Core.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/rfc6234/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/rfc6234/LICENSE"
+          ]
+        },
+        {
+          "name": "SipHash Algorithm",
+          "version": "unknown",
+          "license": "CC0-1.0",
+          "download": "https://raw.githubusercontent.com/veorq/SipHash/adcbf09b1684a718f594faa650ffc56bacdb0777/siphash24.c",
+          "copyright": "Copyright (C) 2012-2014 Jean-Philippe Aumasson\nCopyright (C) 2012-2014 Daniel J. Bernstein <djb@cr.yp.to>\nCopyright (C) 2016 Intel Corporation",
+          "usedBy": [
+            "libQt6Core.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/siphash/qt_attribution.json"
+          ]
+        },
+        {
+          "name": "Smooth Scaling Algorithm",
+          "version": "unknown",
+          "license": "BSD-2-Clause AND Imlib2",
+          "download": "NOASSERTION",
+          "copyright": "Copyright (C) 2004, 2005 Daniel M. Duley.\n(C) Carsten Haitzler and various contributors.\n(C) Willem Monsuwe <willem@stack.nl>",
+          "usedBy": [
+            "libQt6Gui.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/gui/painting/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/gui/painting/QIMAGETRANSFORM_LICENSE.txt"
+          ]
+        },
+        {
+          "name": "SQLite",
+          "version": "3.49.1",
+          "license": "blessing",
+          "download": "https://www.sqlite.org/2025/sqlite-amalgamation-3490100.zip",
+          "copyright": "The authors disclaim copyright to the source code. However, a license can be obtained if needed.",
+          "usedBy": [
+            "libqsqlite.so"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/sqlite/qt_attribution.json"
+          ]
+        },
+        {
+          "name": "sRGB color profile icc file",
+          "version": "unknown",
+          "license": "LicenseRef-ICC-License",
+          "download": "http://www.color.org/",
+          "copyright": "Copyright International Color Consortium, 2015",
+          "usedBy": [
+            "libQt6Gui.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/icc/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/icc/LICENSE.txt"
+          ]
+        },
+        {
+          "name": "The Public Suffix List",
+          "version": "47264b57765919188b9f4144de8d95cf77e1b6dc, fetched on 2025-01-22",
+          "license": "MPL-2.0",
+          "download": "https://publicsuffix.org/list/public_suffix_list.dat",
+          "copyright": "The list was originally provided by Jo Hermans <jo.hermans@gmail.com>.\nIt is now maintained on github (https://github.com/publicsuffix/list).",
+          "usedBy": [
+            "libQt6Network.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/libpsl/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/libpsl/PSL-LICENSE.txt"
+          ]
+        },
+        {
+          "name": "TinyCBOR",
+          "version": "0.6.1",
+          "license": "MIT",
+          "download": "https://github.com/intel/tinycbor/archive/v0.6.1/tinycbor-0.6.1.tar.gz",
+          "copyright": "Copyright (C) 2015-2021 Intel Corporation",
+          "usedBy": [
+            "libQt6Core.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/tinycbor/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/tinycbor/LICENSE"
+          ]
+        },
+        {
+          "name": "Unicode Character Database (UCD)",
+          "version": "34",
+          "license": "Unicode-3.0",
+          "download": "https://www.unicode.org/ucd/",
+          "copyright": "Copyright (C) 1991-2022 Unicode, Inc.",
+          "usedBy": [
+            "libQt6Core.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/corelib/text/qt_attribution.json"
+          ]
+        },
+        {
+          "name": "Unicode Common Locale Data Repository (CLDR)",
+          "version": "v46.1",
+          "license": "Unicode-3.0",
+          "download": "https://cldr.unicode.org/",
+          "copyright": "Copyright (C) 2004-2023 Unicode, Inc.",
+          "usedBy": [
+            "libQt6Core.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/corelib/text/qt_attribution.json"
+          ]
+        },
+        {
+          "name": "Vulkan API Registry",
+          "version": "1.3.223",
+          "license": "Apache-2.0 OR MIT",
+          "download": "https://www.khronos.org/",
+          "copyright": "Copyright (c) 2015-2022 The Khronos Group Inc.",
+          "usedBy": [
+            "libQt6Gui.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/gui/vulkan/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/gui/vulkan/LICENSE.txt"
+          ]
+        },
+        {
+          "name": "Vulkan Memory Allocator",
+          "version": "3.0.1",
+          "license": "MIT",
+          "download": "https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator",
+          "copyright": "Copyright (c) 2017-2024 Advanced Micro Devices, Inc. All rights reserved.",
+          "usedBy": [
+            "libQt6Gui.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/VulkanMemoryAllocator/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/VulkanMemoryAllocator/LICENSE.txt"
+          ]
+        },
+        {
+          "name": "WebGradients",
+          "version": "unknown",
+          "license": "MIT",
+          "download": "https://webgradients.com/",
+          "copyright": "Copyright (c) 2017 itmeo",
+          "usedBy": [
+            "libQt6Gui.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtbase/util/gradientgen/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtbase/util/gradientgen/WEBGRADIENTS_LICENSE.txt"
+          ]
+        },
+        {
+          "name": "X Server helper",
+          "version": "unknown",
+          "license": "X11 AND HPND",
+          "download": "https://www.x.org/",
+          "copyright": "Copyright (c) 1987, 1988 X Consortium\nCopyright 1987, 1988 by Digital Equipment Corporation, Maynard, Massachusetts.",
+          "usedBy": [
+            "libQt6Gui.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/gui/painting/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/gui/painting/XCONSORTIUM_LICENSE.txt"
+          ]
+        },
+        {
+          "name": "XCB-XInput",
+          "version": "unknown",
+          "license": "MIT",
+          "download": "https://xcb.freedesktop.org/",
+          "copyright": "Copyright (C) 2001-2006 Bart Massey, Jamey Sharp, and Josh Triplett.\nCopyright (C) 2006 Peter Hutterer\nCopyright (C) 2013 Daniel Martin",
+          "usedBy": [
+            "libQt6XcbQpa.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/xcb/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtbase/src/3rdparty/xcb/LICENSE"
+          ]
+        }
+      ],
+      "sbom": "qtbase-6.8.3.spdx.json"
+    },
+    {
+      "id": "qtimageformats",
+      "name": "Qt qtimageformats",
+      "version": "6.8.3",
+      "license": "LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only",
+      "source": {
+        "repository": "https://github.com/qt/qtimageformats.git",
+        "commit": "3b6b1fb96041f1bc85a8f42593bef2ee7bcdca6c"
+      },
+      "files": [
+        "usr/plugins/imageformats/libqicns.so",
+        "usr/plugins/imageformats/libqtga.so",
+        "usr/plugins/imageformats/libqtiff.so",
+        "usr/plugins/imageformats/libqwbmp.so",
+        "usr/plugins/imageformats/libqwebp.so"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/qtimageformats/LICENSES/BSD-3-Clause.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtimageformats/LICENSES/GPL-2.0-only.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtimageformats/LICENSES/GPL-3.0-only.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtimageformats/LICENSES/LGPL-3.0-only.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtimageformats/LICENSES/libtiff.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtimageformats/src/3rdparty/libtiff/COPYRIGHT",
+        "usr/share/doc/putgd/bundled-licenses/qtimageformats/src/3rdparty/libtiff/qt_attribution.json",
+        "usr/share/doc/putgd/bundled-licenses/qtimageformats/src/3rdparty/libwebp/COPYING",
+        "usr/share/doc/putgd/bundled-licenses/qtimageformats/src/3rdparty/libwebp/qt_attribution.json"
+      ],
+      "licenseTexts": {
+        "LGPL-3.0-only": "usr/share/doc/putgd/bundled-licenses/qtimageformats/LICENSES/LGPL-3.0-only.txt",
+        "GPL-2.0-only": "usr/share/doc/putgd/bundled-licenses/qtimageformats/LICENSES/GPL-2.0-only.txt",
+        "GPL-3.0-only": "usr/share/doc/putgd/bundled-licenses/qtimageformats/LICENSES/GPL-3.0-only.txt",
+        "libtiff": "usr/share/doc/putgd/bundled-licenses/qtimageformats/LICENSES/libtiff.txt",
+        "BSD-3-Clause": "usr/share/doc/putgd/bundled-licenses/qtimageformats/LICENSES/BSD-3-Clause.txt"
+      },
+      "embedded": [
+        {
+          "name": "TIFF Software Distribution (libtiff)",
+          "version": "4.7.0",
+          "license": "libtiff",
+          "download": "https://download.osgeo.org/libtiff/tiff-4.7.0.tar.gz",
+          "copyright": "Copyright (c) 1988-1997 Sam Leffler\nCopyright (c) 1991-1997 Silicon Graphics, Inc.",
+          "usedBy": [
+            "libqtiff.so"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtimageformats/src/3rdparty/libtiff/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtimageformats/src/3rdparty/libtiff/COPYRIGHT"
+          ]
+        },
+        {
+          "name": "WebP (libwebp)",
+          "version": "1.5.0",
+          "license": "BSD-3-Clause",
+          "download": "https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.5.0.tar.gz",
+          "copyright": "Copyright (c) 2010, Google Inc. All rights reserved.",
+          "usedBy": [
+            "libqwebp.so"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtimageformats/src/3rdparty/libwebp/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtimageformats/src/3rdparty/libwebp/COPYING"
+          ]
+        }
+      ],
+      "sbom": "qtimageformats-6.8.3.spdx.json"
+    },
+    {
+      "id": "qtsvg",
+      "name": "Qt qtsvg",
+      "version": "6.8.3",
+      "license": "LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only",
+      "source": {
+        "repository": "https://github.com/qt/qtsvg.git",
+        "commit": "c75099a75e81df35e7347a65e301bbf1011831a5"
+      },
+      "files": [
+        "usr/lib/libQt6Svg.so.6",
+        "usr/plugins/imageformats/libqsvg.so"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/qtsvg/LICENSES/GPL-2.0-only.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtsvg/LICENSES/GPL-3.0-only.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtsvg/LICENSES/LGPL-3.0-only.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtsvg/src/svg/XSVG_LICENSE.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtsvg/src/svg/qt_attribution.json"
+      ],
+      "licenseTexts": {
+        "LGPL-3.0-only": "usr/share/doc/putgd/bundled-licenses/qtsvg/LICENSES/LGPL-3.0-only.txt",
+        "GPL-2.0-only": "usr/share/doc/putgd/bundled-licenses/qtsvg/LICENSES/GPL-2.0-only.txt",
+        "GPL-3.0-only": "usr/share/doc/putgd/bundled-licenses/qtsvg/LICENSES/GPL-3.0-only.txt"
+      },
+      "embedded": [
+        {
+          "name": "XSVG",
+          "version": "unknown",
+          "license": "HPND-sell-variant",
+          "download": "NOASSERTION",
+          "copyright": "Copyright 2002 USC/Information Sciences Institute",
+          "usedBy": [
+            "libQt6Svg.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtsvg/src/svg/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtsvg/src/svg/XSVG_LICENSE.txt"
+          ]
+        }
+      ],
+      "sbom": "qtsvg-6.8.3.spdx.json"
+    },
+    {
+      "id": "qttranslations",
+      "name": "Qt qttranslations",
+      "version": "6.8.3",
+      "license": "BSD-3-Clause",
+      "source": {
+        "repository": "https://github.com/qt/qttranslations.git",
+        "commit": "abe01d7de31d311db8bc485d4e7e8d0c30493425"
+      },
+      "files": [
+        "usr/translations/qtbase_ar.qm",
+        "usr/translations/qtbase_bg.qm",
+        "usr/translations/qtbase_ca.qm",
+        "usr/translations/qtbase_cs.qm",
+        "usr/translations/qtbase_da.qm",
+        "usr/translations/qtbase_de.qm",
+        "usr/translations/qtbase_en.qm",
+        "usr/translations/qtbase_es.qm",
+        "usr/translations/qtbase_fa.qm",
+        "usr/translations/qtbase_fi.qm",
+        "usr/translations/qtbase_fr.qm",
+        "usr/translations/qtbase_gd.qm",
+        "usr/translations/qtbase_he.qm",
+        "usr/translations/qtbase_hr.qm",
+        "usr/translations/qtbase_hu.qm",
+        "usr/translations/qtbase_it.qm",
+        "usr/translations/qtbase_ja.qm",
+        "usr/translations/qtbase_ka.qm",
+        "usr/translations/qtbase_ko.qm",
+        "usr/translations/qtbase_lg.qm",
+        "usr/translations/qtbase_lv.qm",
+        "usr/translations/qtbase_nl.qm",
+        "usr/translations/qtbase_nn.qm",
+        "usr/translations/qtbase_pl.qm",
+        "usr/translations/qtbase_pt_BR.qm",
+        "usr/translations/qtbase_ru.qm",
+        "usr/translations/qtbase_sk.qm",
+        "usr/translations/qtbase_tr.qm",
+        "usr/translations/qtbase_uk.qm",
+        "usr/translations/qtbase_zh_CN.qm",
+        "usr/translations/qtbase_zh_TW.qm"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/qttranslations/LICENSES/BSD-3-Clause.txt"
+      ],
+      "licenseTexts": {
+        "BSD-3-Clause": "usr/share/doc/putgd/bundled-licenses/qttranslations/LICENSES/BSD-3-Clause.txt"
+      },
+      "embedded": [],
+      "sbom": "qttranslations-6.8.3.spdx.json"
+    },
+    {
+      "id": "qtwayland",
+      "name": "Qt qtwayland",
+      "version": "6.8.3",
+      "license": "LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only",
+      "source": {
+        "repository": "https://github.com/qt/qtwayland.git",
+        "commit": "8ab0d5b4cd2db654eb01eb74c9a8bbf7efc87d94"
+      },
+      "files": [
+        "usr/lib/libQt6WaylandClient.so.6",
+        "usr/lib/libQt6WaylandEglClientHwIntegration.so.6",
+        "usr/plugins/platforms/libqwayland-egl.so",
+        "usr/plugins/platforms/libqwayland-generic.so",
+        "usr/plugins/wayland-decoration-client/libadwaita.so",
+        "usr/plugins/wayland-decoration-client/libbradient.so",
+        "usr/plugins/wayland-graphics-integration-client/libqt-plugin-wayland-egl.so",
+        "usr/plugins/wayland-shell-integration/libxdg-shell.so"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/qtwayland/LICENSES/GPL-2.0-only.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtwayland/LICENSES/GPL-3.0-only.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtwayland/LICENSES/HPND.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtwayland/LICENSES/LGPL-3.0-only.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtwayland/LICENSES/MIT.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/MIT_LICENSE.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/fractional-scale/qt_attribution.json",
+        "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/pointer-gestures/qt_attribution.json",
+        "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/tablet/qt_attribution.json",
+        "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/text-input/v1/qt_attribution.json",
+        "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/text-input/v2/HPND_LICENSE.txt",
+        "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/text-input/v2/qt_attribution.json",
+        "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/text-input/v3/qt_attribution.json",
+        "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/viewporter/qt_attribution.json",
+        "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/wayland/qt_attribution.json",
+        "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/wp-primary-selection/qt_attribution.json",
+        "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/xdg-activation/qt_attribution.json",
+        "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/xdg-decoration/qt_attribution.json",
+        "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/xdg-dialog/qt_attribution.json",
+        "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/xdg-foreign/qt_attribution.json",
+        "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/xdg-output/qt_attribution.json",
+        "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/xdg-shell/qt_attribution.json"
+      ],
+      "licenseTexts": {
+        "LGPL-3.0-only": "usr/share/doc/putgd/bundled-licenses/qtwayland/LICENSES/LGPL-3.0-only.txt",
+        "GPL-2.0-only": "usr/share/doc/putgd/bundled-licenses/qtwayland/LICENSES/GPL-2.0-only.txt",
+        "GPL-3.0-only": "usr/share/doc/putgd/bundled-licenses/qtwayland/LICENSES/GPL-3.0-only.txt",
+        "MIT": "usr/share/doc/putgd/bundled-licenses/qtwayland/LICENSES/MIT.txt",
+        "HPND": "usr/share/doc/putgd/bundled-licenses/qtwayland/LICENSES/HPND.txt"
+      },
+      "embedded": [
+        {
+          "name": "Wayland Dialog Protocol",
+          "version": "1",
+          "license": "MIT",
+          "download": "https://wayland.freedesktop.org",
+          "copyright": "Copyright \u00a9 2023 Carlos Garnacho",
+          "usedBy": [
+            "libxdg-shell.so"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/xdg-dialog/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/MIT_LICENSE.txt"
+          ]
+        },
+        {
+          "name": "Wayland Fractional Scale Protocol",
+          "version": "1",
+          "license": "MIT",
+          "download": "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/1.31/unstable/fractional-scale/fractional-scale-v1.xml",
+          "copyright": "Copyright \u00a9 2022 Kenny Levinsen",
+          "usedBy": [
+            "libQt6WaylandClient.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/fractional-scale/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/MIT_LICENSE.txt"
+          ]
+        },
+        {
+          "name": "Wayland Pointer Gestures Protocol",
+          "version": "unstable v1, version 2",
+          "license": "MIT",
+          "download": "https://cgit.freedesktop.org/wayland/wayland-protocols/plain/unstable/pointer-gestures/pointer-gestures-unstable-v1.xml",
+          "copyright": "Copyright \u00a9 2015, 2016 Red Hat",
+          "usedBy": [
+            "libQt6WaylandClient.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/pointer-gestures/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/MIT_LICENSE.txt"
+          ]
+        },
+        {
+          "name": "Wayland Primary Selection Protocol",
+          "version": "1",
+          "license": "MIT",
+          "download": "https://gitlab.freedesktop.org/wayland/wayland-protocols/raw/1.18/unstable/primary-selection/primary-selection-unstable-v1.xml",
+          "copyright": "Copyright \u00a9 2015, 2016 Red Hat",
+          "usedBy": [
+            "libQt6WaylandClient.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/wp-primary-selection/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/MIT_LICENSE.txt"
+          ]
+        },
+        {
+          "name": "Wayland Protocol",
+          "version": "1.19.0",
+          "license": "MIT",
+          "download": "https://gitlab.freedesktop.org/wayland/wayland/raw/1.19.0/protocol/wayland.xml",
+          "copyright": "Copyright \u00a9 2008-2011 Kristian H\u00f8gsberg\nCopyright \u00a9 2010-2011 Intel Corporation\nCopyright \u00a9 2012-2013 Collabora, Ltd.",
+          "usedBy": [
+            "libQt6WaylandClient.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/wayland/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/MIT_LICENSE.txt"
+          ]
+        },
+        {
+          "name": "Wayland Tablet Protocol",
+          "version": "unstable v2, version 1",
+          "license": "MIT",
+          "download": "https://cgit.freedesktop.org/wayland/wayland-protocols/plain/unstable/tablet/tablet-unstable-v2.xml",
+          "copyright": "Copyright 2014 \u00a9 Stephen \"Lyude\" Chandler Paul\nCopyright 2015-2016 \u00a9 Red Hat, Inc.",
+          "usedBy": [
+            "libQt6WaylandClient.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/tablet/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/MIT_LICENSE.txt"
+          ]
+        },
+        {
+          "name": "Wayland Text Input Protocol",
+          "version": "unstable v3",
+          "license": "MIT",
+          "download": "https://cgit.freedesktop.org/wayland/wayland-protocols/plain/unstable/text-input/text-input-unstable-v3.xml",
+          "copyright": "Copyright \u00a9 2012, 2013 Intel Corporation\nCopyright \u00a9 2015, 2016 Jan Arne Petersen\nCopyright \u00a9 2017, 2018 Red Hat, Inc.\nCopyright \u00a9 2018       Purism SPC",
+          "usedBy": [
+            "libQt6WaylandClient.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/text-input/v3/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/MIT_LICENSE.txt"
+          ]
+        },
+        {
+          "name": "Wayland Text Input Protocol v1",
+          "version": "unstable v1",
+          "license": "MIT",
+          "download": "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/blob/main/unstable/text-input/text-input-unstable-v1.xml",
+          "copyright": "Copyright \u00a9 2012, 2013 Intel Corporation",
+          "usedBy": [
+            "libQt6WaylandClient.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/text-input/v1/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/MIT_LICENSE.txt"
+          ]
+        },
+        {
+          "name": "Wayland Text Input Protocol v2",
+          "version": "unstable v2",
+          "license": "HPND",
+          "download": "https://wayland.freedesktop.org",
+          "copyright": "Copyright \u00a9 2012, 2013 Intel Corporation\nCopyright \u00a9 2015, 2016 Jan Arne Petersen",
+          "usedBy": [
+            "libQt6WaylandClient.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/text-input/v2/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/text-input/v2/HPND_LICENSE.txt"
+          ]
+        },
+        {
+          "name": "Wayland Viewporter Protocol",
+          "version": "1",
+          "license": "MIT",
+          "download": "https://gitlab.freedesktop.org/wayland/wayland-protocols/raw/1.18/stable/viewporter/viewporter.xml",
+          "copyright": "Copyright \u00a9 2013-2016 Collabora, Ltd.",
+          "usedBy": [
+            "libQt6WaylandClient.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/viewporter/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/MIT_LICENSE.txt"
+          ]
+        },
+        {
+          "name": "Wayland XDG Foreign Protocol",
+          "version": "1",
+          "license": "MIT",
+          "download": "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/1.25/unstable/xdg-foreign/xdg-foreign-unstable-v2.xml",
+          "copyright": "Copyright \u00a9 2015-2016 Red Hat Inc.",
+          "usedBy": [
+            "libxdg-shell.so"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/xdg-foreign/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/MIT_LICENSE.txt"
+          ]
+        },
+        {
+          "name": "Wayland XDG Output Protocol",
+          "version": "unstable v1, version 3",
+          "license": "MIT",
+          "download": "https://gitlab.freedesktop.org/wayland/wayland-protocols/raw/1.18/unstable/xdg-output/xdg-output-unstable-v1.xml",
+          "copyright": "Copyright \u00a9 2017 Red Hat Inc.",
+          "usedBy": [
+            "libQt6WaylandClient.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/xdg-output/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/MIT_LICENSE.txt"
+          ]
+        },
+        {
+          "name": "Wayland XDG Shell Protocol",
+          "version": "1.18",
+          "license": "MIT",
+          "download": "https://gitlab.freedesktop.org/wayland/wayland-protocols/tree/1.18/",
+          "copyright": "Copyright \u00a9 2008-2013 Kristian H\u00f8gsberg\nCopyright \u00a9 2013      Rafael Antognolli\nCopyright \u00a9 2013      Jasper St. Pierre\nCopyright \u00a9 2010-2013 Intel Corporation\nCopyright \u00a9 2015-2017 Samsung Electronics Co., Ltd\nCopyright \u00a9 2015-2017 Red Hat Inc.\n",
+          "usedBy": [
+            "libQt6WaylandClient.so.6"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/xdg-shell/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/MIT_LICENSE.txt"
+          ]
+        },
+        {
+          "name": "Wayland XDG Shell Protocol",
+          "version": "1.18",
+          "license": "MIT",
+          "download": "https://gitlab.freedesktop.org/wayland/wayland-protocols/tree/1.18/",
+          "copyright": "Copyright \u00a9 2008-2013 Kristian H\u00f8gsberg\nCopyright \u00a9 2013      Rafael Antognolli\nCopyright \u00a9 2013      Jasper St. Pierre\nCopyright \u00a9 2010-2013 Intel Corporation\nCopyright \u00a9 2015-2017 Samsung Electronics Co., Ltd\nCopyright \u00a9 2015-2017 Red Hat Inc.\n",
+          "usedBy": [
+            "libxdg-shell.so"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/xdg-shell/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/MIT_LICENSE.txt"
+          ]
+        },
+        {
+          "name": "Wayland xdg-activation Protocol",
+          "version": "unstable v1, version 1",
+          "license": "MIT",
+          "download": "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/blob/main/staging/xdg-activation/xdg-activation-v1.xml",
+          "copyright": "Copyright \u00a9 2020 Aleix Pol Gonzalez &lt\naleixpol@kde.org&gt\n\nCopyright \u00a9 2020 Carlos Garnacho &lt\ncarlosg@gnome.org&gt\n",
+          "usedBy": [
+            "libxdg-shell.so"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/xdg-activation/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/MIT_LICENSE.txt"
+          ]
+        },
+        {
+          "name": "Wayland xdg-decoration Protocol",
+          "version": "unstable v1, version 1",
+          "license": "MIT",
+          "download": "https://gitlab.freedesktop.org/wayland/wayland-protocols/raw/1.18/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml",
+          "copyright": "Copyright \u00a9 2018 Simon Ser",
+          "usedBy": [
+            "libxdg-shell.so"
+          ],
+          "licenseFiles": [
+            "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/xdg-decoration/qt_attribution.json",
+            "usr/share/doc/putgd/bundled-licenses/qtwayland/src/3rdparty/protocol/MIT_LICENSE.txt"
+          ]
+        }
+      ],
+      "sbom": "qtwayland-6.8.3.spdx.json"
+    },
+    {
+      "id": "ubuntu:gstreamer1.0-pipewire",
+      "name": "gstreamer1.0-pipewire",
+      "version": "1.0.5-1ubuntu3.3",
+      "license": "MIT",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "pipewire",
+        "sourceVersion": "1.0.5-1ubuntu3.3",
+        "url": "https://launchpad.net/ubuntu/+source/pipewire/1.0.5-1ubuntu3.3"
+      },
+      "files": [
+        "usr/lib/gstreamer-1.0/libgstpipewire.so"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/gstreamer1.0-pipewire/copyright"
+      ],
+      "declaredLicense": "Expat"
+    },
+    {
+      "id": "ubuntu:gstreamer1.0-plugins-bad",
+      "name": "gstreamer1.0-plugins-bad",
+      "version": "1.24.2-1ubuntu4",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "gst-plugins-bad1.0",
+        "sourceVersion": "1.24.2-1ubuntu4",
+        "url": "https://launchpad.net/ubuntu/+source/gst-plugins-bad1.0/1.24.2-1ubuntu4"
+      },
+      "files": [
+        "usr/lib/gstreamer-1.0/libgstva.so",
+        "usr/lib/gstreamer-1.0/libgstvideoparsersbad.so",
+        "usr/lib/gstreamer-1.0/libgstvoaacenc.so"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/gstreamer1.0-plugins-bad/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:gstreamer1.0-plugins-base",
+      "name": "gstreamer1.0-plugins-base",
+      "version": "1.24.2-1ubuntu0.5",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "gst-plugins-base1.0",
+        "sourceVersion": "1.24.2-1ubuntu0.5",
+        "url": "https://launchpad.net/ubuntu/+source/gst-plugins-base1.0/1.24.2-1ubuntu0.5"
+      },
+      "files": [
+        "usr/lib/gstreamer-1.0/libgstaudioconvert.so",
+        "usr/lib/gstreamer-1.0/libgstaudioresample.so",
+        "usr/lib/gstreamer-1.0/libgstvideoconvertscale.so",
+        "usr/lib/gstreamer-1.0/libgstvideorate.so",
+        "usr/lib/gstreamer-1.0/libgstvideotestsrc.so"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/gstreamer1.0-plugins-base/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:gstreamer1.0-plugins-good",
+      "name": "gstreamer1.0-plugins-good",
+      "version": "1.24.2-1ubuntu1.8",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "gst-plugins-good1.0",
+        "sourceVersion": "1.24.2-1ubuntu1.8",
+        "url": "https://launchpad.net/ubuntu/+source/gst-plugins-good1.0/1.24.2-1ubuntu1.8"
+      },
+      "files": [
+        "usr/lib/gstreamer-1.0/libgstaudioparsers.so",
+        "usr/lib/gstreamer-1.0/libgstmatroska.so",
+        "usr/lib/gstreamer-1.0/libgstpulseaudio.so",
+        "usr/lib/gstreamer-1.0/libgstvideocrop.so",
+        "usr/lib/gstreamer-1.0/libgstximagesrc.so"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/gstreamer1.0-plugins-good/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:gstreamer1.0-plugins-ugly",
+      "name": "gstreamer1.0-plugins-ugly",
+      "version": "1.24.1-1build1",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "gst-plugins-ugly1.0",
+        "sourceVersion": "1.24.1-1build1",
+        "url": "https://launchpad.net/ubuntu/+source/gst-plugins-ugly1.0/1.24.1-1build1"
+      },
+      "files": [
+        "usr/lib/gstreamer-1.0/libgstx264.so"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/gstreamer1.0-plugins-ugly/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:gstreamer1.0-vaapi",
+      "name": "gstreamer1.0-vaapi",
+      "version": "1.24.2-1",
+      "license": "LGPL-2.1-or-later",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "gstreamer-vaapi",
+        "sourceVersion": "1.24.2-1",
+        "url": "https://launchpad.net/ubuntu/+source/gstreamer-vaapi/1.24.2-1"
+      },
+      "files": [
+        "usr/lib/gstreamer-1.0/libgstvaapi.so"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/gstreamer1.0-vaapi/copyright"
+      ],
+      "declaredLicense": "LGPL-2.1+"
+    },
+    {
+      "id": "ubuntu:libapparmor1",
+      "name": "libapparmor1",
+      "version": "4.0.1really4.0.1-0ubuntu0.24.04.9",
+      "license": "GPL-2.0-or-later",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "apparmor",
+        "sourceVersion": "4.0.1really4.0.1-0ubuntu0.24.04.9",
+        "url": "https://launchpad.net/ubuntu/+source/apparmor/4.0.1really4.0.1-0ubuntu0.24.04.9"
+      },
+      "files": [
+        "usr/lib/libapparmor.so.1"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libapparmor1/copyright"
+      ],
+      "declaredLicense": "GPL-2+"
+    },
+    {
+      "id": "ubuntu:libasyncns0",
+      "name": "libasyncns0",
+      "version": "0.8-6build4",
+      "license": "LGPL-2.1-or-later",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libasyncns",
+        "sourceVersion": "0.8-6build4",
+        "url": "https://launchpad.net/ubuntu/+source/libasyncns/0.8-6build4"
+      },
+      "files": [
+        "usr/lib/libasyncns.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libasyncns0/copyright"
+      ],
+      "declaredLicense": "LGPL-2.1+"
+    },
+    {
+      "id": "ubuntu:libatk-bridge2.0-0t64",
+      "name": "libatk-bridge2.0-0t64",
+      "version": "2.52.0-1build1",
+      "license": "LGPL-2.0-or-later",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "at-spi2-core",
+        "sourceVersion": "2.52.0-1build1",
+        "url": "https://launchpad.net/ubuntu/+source/at-spi2-core/2.52.0-1build1"
+      },
+      "files": [
+        "usr/lib/libatk-bridge-2.0.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libatk-bridge2.0-0t64/copyright"
+      ],
+      "declaredLicense": "LGPL-2+"
+    },
+    {
+      "id": "ubuntu:libatk1.0-0t64",
+      "name": "libatk1.0-0t64",
+      "version": "2.52.0-1build1",
+      "license": "LGPL-2.0-or-later",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "at-spi2-core",
+        "sourceVersion": "2.52.0-1build1",
+        "url": "https://launchpad.net/ubuntu/+source/at-spi2-core/2.52.0-1build1"
+      },
+      "files": [
+        "usr/lib/libatk-1.0.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libatk1.0-0t64/copyright"
+      ],
+      "declaredLicense": "LGPL-2+"
+    },
+    {
+      "id": "ubuntu:libatspi2.0-0t64",
+      "name": "libatspi2.0-0t64",
+      "version": "2.52.0-1build1",
+      "license": "LGPL-2.0-or-later",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "at-spi2-core",
+        "sourceVersion": "2.52.0-1build1",
+        "url": "https://launchpad.net/ubuntu/+source/at-spi2-core/2.52.0-1build1"
+      },
+      "files": [
+        "usr/lib/libatspi.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libatspi2.0-0t64/copyright"
+      ],
+      "declaredLicense": "LGPL-2+"
+    },
+    {
+      "id": "ubuntu:libblkid1",
+      "name": "libblkid1",
+      "version": "2.39.3-9ubuntu6.6",
+      "license": "GPL-2.0-or-later",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "util-linux",
+        "sourceVersion": "2.39.3-9ubuntu6.6",
+        "url": "https://launchpad.net/ubuntu/+source/util-linux/2.39.3-9ubuntu6.6"
+      },
+      "files": [
+        "usr/lib/libblkid.so.1"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libblkid1/copyright"
+      ],
+      "declaredLicense": "GPL-2+"
+    },
+    {
+      "id": "ubuntu:libbrotli1",
+      "name": "libbrotli1",
+      "version": "1.1.0-2build2",
+      "license": "MIT",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "brotli",
+        "sourceVersion": "1.1.0-2build2",
+        "url": "https://launchpad.net/ubuntu/+source/brotli/1.1.0-2build2"
+      },
+      "files": [
+        "usr/lib/libbrotlicommon.so.1",
+        "usr/lib/libbrotlidec.so.1"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libbrotli1/copyright"
+      ],
+      "declaredLicense": "MIT"
+    },
+    {
+      "id": "ubuntu:libbsd0",
+      "name": "libbsd0",
+      "version": "0.12.1-1build1.1",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libbsd",
+        "sourceVersion": "0.12.1-1build1.1",
+        "url": "https://launchpad.net/ubuntu/+source/libbsd/0.12.1-1build1.1"
+      },
+      "files": [
+        "usr/lib/libbsd.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libbsd0/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libbz2-1.0",
+      "name": "libbz2-1.0",
+      "version": "1.0.8-5.1ubuntu0.1",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "bzip2",
+        "sourceVersion": "1.0.8-5.1ubuntu0.1",
+        "url": "https://launchpad.net/ubuntu/+source/bzip2/1.0.8-5.1ubuntu0.1"
+      },
+      "files": [
+        "usr/lib/libbz2.so.1.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libbz2-1.0/copyright"
+      ],
+      "declaredLicense": "BSD-variant"
+    },
+    {
+      "id": "ubuntu:libcairo-gobject2",
+      "name": "libcairo-gobject2",
+      "version": "1.18.0-3build1",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "cairo",
+        "sourceVersion": "1.18.0-3build1",
+        "url": "https://launchpad.net/ubuntu/+source/cairo/1.18.0-3build1"
+      },
+      "files": [
+        "usr/lib/libcairo-gobject.so.2"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libcairo-gobject2/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libcairo2",
+      "name": "libcairo2",
+      "version": "1.18.0-3build1",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "cairo",
+        "sourceVersion": "1.18.0-3build1",
+        "url": "https://launchpad.net/ubuntu/+source/cairo/1.18.0-3build1"
+      },
+      "files": [
+        "usr/lib/libcairo.so.2"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libcairo2/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libcap2",
+      "name": "libcap2",
+      "version": "1:2.66-5ubuntu2.4",
+      "license": "BSD-3-Clause OR GPL-2.0-only",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libcap2",
+        "sourceVersion": "1:2.66-5ubuntu2.4",
+        "url": "https://launchpad.net/ubuntu/+source/libcap2/1:2.66-5ubuntu2.4"
+      },
+      "files": [
+        "usr/lib/libcap.so.2"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libcap2/copyright"
+      ],
+      "declaredLicense": "BSD-3-clause or GPL-2"
+    },
+    {
+      "id": "ubuntu:libcurl4t64",
+      "name": "libcurl4t64",
+      "version": "8.5.0-2ubuntu10.16",
+      "license": "curl",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "curl",
+        "sourceVersion": "8.5.0-2ubuntu10.16",
+        "url": "https://launchpad.net/ubuntu/+source/curl/8.5.0-2ubuntu10.16"
+      },
+      "files": [
+        "usr/lib/libcurl.so.4"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libcurl4t64/copyright"
+      ],
+      "declaredLicense": "curl"
+    },
+    {
+      "id": "ubuntu:libdatrie1",
+      "name": "libdatrie1",
+      "version": "0.2.13-3build1",
+      "license": "LGPL-2.1-or-later",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libdatrie",
+        "sourceVersion": "0.2.13-3build1",
+        "url": "https://launchpad.net/ubuntu/+source/libdatrie/0.2.13-3build1"
+      },
+      "files": [
+        "usr/lib/libdatrie.so.1"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libdatrie1/copyright"
+      ],
+      "declaredLicense": "LGPL-2.1+"
+    },
+    {
+      "id": "ubuntu:libdbus-1-3",
+      "name": "libdbus-1-3",
+      "version": "1.14.10-4ubuntu4.1",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "dbus",
+        "sourceVersion": "1.14.10-4ubuntu4.1",
+        "url": "https://launchpad.net/ubuntu/+source/dbus/1.14.10-4ubuntu4.1"
+      },
+      "files": [
+        "usr/lib/libdbus-1.so.3"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libdbus-1-3/copyright"
+      ],
+      "declaredLicense": "GPL-2+ or AFL-2.1, and Expat and Tcl-BSDish"
+    },
+    {
+      "id": "ubuntu:libdw1t64",
+      "name": "libdw1t64",
+      "version": "0.190-1.1ubuntu0.1",
+      "license": "GPL-3.0-or-later",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "elfutils",
+        "sourceVersion": "0.190-1.1ubuntu0.1",
+        "url": "https://launchpad.net/ubuntu/+source/elfutils/0.190-1.1ubuntu0.1"
+      },
+      "files": [
+        "usr/lib/libdw.so.1"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libdw1t64/copyright"
+      ],
+      "declaredLicense": "GPL-3+"
+    },
+    {
+      "id": "ubuntu:libelf1t64",
+      "name": "libelf1t64",
+      "version": "0.190-1.1ubuntu0.1",
+      "license": "GPL-3.0-or-later",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "elfutils",
+        "sourceVersion": "0.190-1.1ubuntu0.1",
+        "url": "https://launchpad.net/ubuntu/+source/elfutils/0.190-1.1ubuntu0.1"
+      },
+      "files": [
+        "usr/lib/libelf.so.1"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libelf1t64/copyright"
+      ],
+      "declaredLicense": "GPL-3+"
+    },
+    {
+      "id": "ubuntu:libepoxy0",
+      "name": "libepoxy0",
+      "version": "1.5.10-1build1",
+      "license": "MIT",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libepoxy",
+        "sourceVersion": "1.5.10-1build1",
+        "url": "https://launchpad.net/ubuntu/+source/libepoxy/1.5.10-1build1"
+      },
+      "files": [
+        "usr/lib/libepoxy.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libepoxy0/copyright"
+      ],
+      "declaredLicense": "Expat"
+    },
+    {
+      "id": "ubuntu:libffi8",
+      "name": "libffi8",
+      "version": "3.4.6-1build1",
+      "license": "MIT",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libffi",
+        "sourceVersion": "3.4.6-1build1",
+        "url": "https://launchpad.net/ubuntu/+source/libffi/3.4.6-1build1"
+      },
+      "files": [
+        "usr/lib/libffi.so.8"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libffi8/copyright"
+      ],
+      "declaredLicense": "Expat"
+    },
+    {
+      "id": "ubuntu:libflac12t64",
+      "name": "libflac12t64",
+      "version": "1.4.3+ds-2.1ubuntu2",
+      "license": "GPL-2.0-or-later OR LGPL-2.1-or-later",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "flac",
+        "sourceVersion": "1.4.3+ds-2.1ubuntu2",
+        "url": "https://launchpad.net/ubuntu/+source/flac/1.4.3+ds-2.1ubuntu2"
+      },
+      "files": [
+        "usr/lib/libFLAC.so.12"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libflac12t64/copyright"
+      ],
+      "declaredLicense": "GPL-2+ or LGPL-2.1+"
+    },
+    {
+      "id": "ubuntu:libgcrypt20",
+      "name": "libgcrypt20",
+      "version": "1.10.3-2ubuntu0.2",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libgcrypt20",
+        "sourceVersion": "1.10.3-2ubuntu0.2",
+        "url": "https://launchpad.net/ubuntu/+source/libgcrypt20/1.10.3-2ubuntu0.2"
+      },
+      "files": [
+        "usr/lib/libgcrypt.so.20"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libgcrypt20/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libgdk-pixbuf-2.0-0",
+      "name": "libgdk-pixbuf-2.0-0",
+      "version": "2.42.10+dfsg-3ubuntu3.3",
+      "license": "LGPL-2.0-or-later AND LGPL-2.1-or-later AND CC0-1.0",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "gdk-pixbuf",
+        "sourceVersion": "2.42.10+dfsg-3ubuntu3.3",
+        "url": "https://launchpad.net/ubuntu/+source/gdk-pixbuf/2.42.10+dfsg-3ubuntu3.3"
+      },
+      "files": [
+        "usr/lib/libgdk_pixbuf-2.0.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libgdk-pixbuf-2.0-0/copyright"
+      ],
+      "declaredLicense": "LGPL-2+ and LGPL-2.1+ and CC0-1.0"
+    },
+    {
+      "id": "ubuntu:libgles2",
+      "name": "libgles2",
+      "version": "1.7.0-1build1",
+      "license": "MIT",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libglvnd",
+        "sourceVersion": "1.7.0-1build1",
+        "url": "https://launchpad.net/ubuntu/+source/libglvnd/1.7.0-1build1"
+      },
+      "files": [
+        "usr/lib/libGLESv2.so.2"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libgles2/copyright"
+      ],
+      "declaredLicense": "MIT"
+    },
+    {
+      "id": "ubuntu:libglib2.0-0t64",
+      "name": "libglib2.0-0t64",
+      "version": "2.80.0-6ubuntu3.10",
+      "license": "LGPL-2.1-or-later",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "glib2.0",
+        "sourceVersion": "2.80.0-6ubuntu3.10",
+        "url": "https://launchpad.net/ubuntu/+source/glib2.0/2.80.0-6ubuntu3.10"
+      },
+      "files": [
+        "usr/lib/libgio-2.0.so.0",
+        "usr/lib/libglib-2.0.so.0",
+        "usr/lib/libgmodule-2.0.so.0",
+        "usr/lib/libgobject-2.0.so.0",
+        "usr/lib/libgthread-2.0.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libglib2.0-0t64/copyright"
+      ],
+      "declaredLicense": "LGPL-2.1+"
+    },
+    {
+      "id": "ubuntu:libgnutls30t64",
+      "name": "libgnutls30t64",
+      "version": "3.8.3-1.1ubuntu3.6",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "gnutls28",
+        "sourceVersion": "3.8.3-1.1ubuntu3.6",
+        "url": "https://launchpad.net/ubuntu/+source/gnutls28/3.8.3-1.1ubuntu3.6"
+      },
+      "files": [
+        "usr/lib/libgnutls.so.30"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libgnutls30t64/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libgraphite2-3",
+      "name": "libgraphite2-3",
+      "version": "1.3.14-2ubuntu0.24.04.1",
+      "license": "LGPL-2.1-or-later OR MPL-1.1 OR GPL-2.0-or-later",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "graphite2",
+        "sourceVersion": "1.3.14-2ubuntu0.24.04.1",
+        "url": "https://launchpad.net/ubuntu/+source/graphite2/1.3.14-2ubuntu0.24.04.1"
+      },
+      "files": [
+        "usr/lib/libgraphite2.so.3"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libgraphite2-3/copyright"
+      ],
+      "declaredLicense": "LGPL-2.1+ or MPL-1.1 or GPL-2+"
+    },
+    {
+      "id": "ubuntu:libgssapi-krb5-2",
+      "name": "libgssapi-krb5-2",
+      "version": "1.20.1-6ubuntu2.10",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "krb5",
+        "sourceVersion": "1.20.1-6ubuntu2.10",
+        "url": "https://launchpad.net/ubuntu/+source/krb5/1.20.1-6ubuntu2.10"
+      },
+      "files": [
+        "usr/lib/libgssapi_krb5.so.2"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libgssapi-krb5-2/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libgstreamer-gl1.0-0",
+      "name": "libgstreamer-gl1.0-0",
+      "version": "1.24.2-1ubuntu0.5",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "gst-plugins-base1.0",
+        "sourceVersion": "1.24.2-1ubuntu0.5",
+        "url": "https://launchpad.net/ubuntu/+source/gst-plugins-base1.0/1.24.2-1ubuntu0.5"
+      },
+      "files": [
+        "usr/lib/libgstgl-1.0.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libgstreamer-gl1.0-0/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libgstreamer-plugins-bad1.0-0",
+      "name": "libgstreamer-plugins-bad1.0-0",
+      "version": "1.24.2-1ubuntu4",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "gst-plugins-bad1.0",
+        "sourceVersion": "1.24.2-1ubuntu4",
+        "url": "https://launchpad.net/ubuntu/+source/gst-plugins-bad1.0/1.24.2-1ubuntu4"
+      },
+      "files": [
+        "usr/lib/libgstcodecparsers-1.0.so.0",
+        "usr/lib/libgstcodecs-1.0.so.0",
+        "usr/lib/libgstva-1.0.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libgstreamer-plugins-bad1.0-0/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libgstreamer-plugins-base1.0-0",
+      "name": "libgstreamer-plugins-base1.0-0",
+      "version": "1.24.2-1ubuntu0.5",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "gst-plugins-base1.0",
+        "sourceVersion": "1.24.2-1ubuntu0.5",
+        "url": "https://launchpad.net/ubuntu/+source/gst-plugins-base1.0/1.24.2-1ubuntu0.5"
+      },
+      "files": [
+        "usr/lib/libgstallocators-1.0.so.0",
+        "usr/lib/libgstaudio-1.0.so.0",
+        "usr/lib/libgstpbutils-1.0.so.0",
+        "usr/lib/libgstriff-1.0.so.0",
+        "usr/lib/libgsttag-1.0.so.0",
+        "usr/lib/libgstvideo-1.0.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libgstreamer-plugins-base1.0-0/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libgstreamer1.0-0",
+      "name": "libgstreamer1.0-0",
+      "version": "1.24.2-1ubuntu0.1",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "gstreamer1.0",
+        "sourceVersion": "1.24.2-1ubuntu0.1",
+        "url": "https://launchpad.net/ubuntu/+source/gstreamer1.0/1.24.2-1ubuntu0.1"
+      },
+      "files": [
+        "usr/lib/gstreamer-1.0/libgstcoreelements.so",
+        "usr/lib/libgstbase-1.0.so.0",
+        "usr/lib/libgstreamer-1.0.so.0",
+        "usr/libexec/gstreamer-1.0/gst-plugin-scanner"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libgstreamer1.0-0/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libgtk-3-0t64",
+      "name": "libgtk-3-0t64",
+      "version": "3.24.41-4ubuntu1.3",
+      "license": "LGPL-2.0-or-later AND LGPL-2.1-or-later AND MIT",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "gtk+3.0",
+        "sourceVersion": "3.24.41-4ubuntu1.3",
+        "url": "https://launchpad.net/ubuntu/+source/gtk+3.0/3.24.41-4ubuntu1.3"
+      },
+      "files": [
+        "usr/lib/libgdk-3.so.0",
+        "usr/lib/libgtk-3.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libgtk-3-0t64/copyright"
+      ],
+      "declaredLicense": "LGPL-2+ and LGPL-2.1+ and Expat"
+    },
+    {
+      "id": "ubuntu:libgudev-1.0-0",
+      "name": "libgudev-1.0-0",
+      "version": "1:238-5ubuntu1",
+      "license": "LGPL-2.0-or-later",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libgudev",
+        "sourceVersion": "238-5ubuntu1",
+        "url": "https://launchpad.net/ubuntu/+source/libgudev/238-5ubuntu1"
+      },
+      "files": [
+        "usr/lib/libgudev-1.0.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libgudev-1.0-0/copyright"
+      ],
+      "declaredLicense": "LGPL-2+"
+    },
+    {
+      "id": "ubuntu:libhogweed6t64",
+      "name": "libhogweed6t64",
+      "version": "3.9.1-2.2build1.1",
+      "license": "LGPL-3.0-or-later OR GPL-2.0-or-later",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "nettle",
+        "sourceVersion": "3.9.1-2.2build1.1",
+        "url": "https://launchpad.net/ubuntu/+source/nettle/3.9.1-2.2build1.1"
+      },
+      "files": [
+        "usr/lib/libhogweed.so.6"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libhogweed6t64/copyright"
+      ],
+      "declaredLicense": "LGPL-3+ or GPL-2+"
+    },
+    {
+      "id": "ubuntu:libidn2-0",
+      "name": "libidn2-0",
+      "version": "2.3.7-2build1.1",
+      "license": "GPL-3.0-or-later",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libidn2",
+        "sourceVersion": "2.3.7-2build1.1",
+        "url": "https://launchpad.net/ubuntu/+source/libidn2/2.3.7-2build1.1"
+      },
+      "files": [
+        "usr/lib/libidn2.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libidn2-0/copyright"
+      ],
+      "declaredLicense": "GPL-3+"
+    },
+    {
+      "id": "ubuntu:libjpeg-turbo8",
+      "name": "libjpeg-turbo8",
+      "version": "2.1.5-2ubuntu2",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libjpeg-turbo",
+        "sourceVersion": "2.1.5-2ubuntu2",
+        "url": "https://launchpad.net/ubuntu/+source/libjpeg-turbo/2.1.5-2ubuntu2"
+      },
+      "files": [
+        "usr/lib/libjpeg.so.8"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libjpeg-turbo8/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libk5crypto3",
+      "name": "libk5crypto3",
+      "version": "1.20.1-6ubuntu2.10",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "krb5",
+        "sourceVersion": "1.20.1-6ubuntu2.10",
+        "url": "https://launchpad.net/ubuntu/+source/krb5/1.20.1-6ubuntu2.10"
+      },
+      "files": [
+        "usr/lib/libk5crypto.so.3"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libk5crypto3/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libkeyutils1",
+      "name": "libkeyutils1",
+      "version": "1.6.3-3build1",
+      "license": "GPL-2.0-or-later",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "keyutils",
+        "sourceVersion": "1.6.3-3build1",
+        "url": "https://launchpad.net/ubuntu/+source/keyutils/1.6.3-3build1"
+      },
+      "files": [
+        "usr/lib/libkeyutils.so.1"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libkeyutils1/copyright"
+      ],
+      "declaredLicense": "GPL-2+"
+    },
+    {
+      "id": "ubuntu:libkrb5-3",
+      "name": "libkrb5-3",
+      "version": "1.20.1-6ubuntu2.10",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "krb5",
+        "sourceVersion": "1.20.1-6ubuntu2.10",
+        "url": "https://launchpad.net/ubuntu/+source/krb5/1.20.1-6ubuntu2.10"
+      },
+      "files": [
+        "usr/lib/libkrb5.so.3"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libkrb5-3/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libkrb5support0",
+      "name": "libkrb5support0",
+      "version": "1.20.1-6ubuntu2.10",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "krb5",
+        "sourceVersion": "1.20.1-6ubuntu2.10",
+        "url": "https://launchpad.net/ubuntu/+source/krb5/1.20.1-6ubuntu2.10"
+      },
+      "files": [
+        "usr/lib/libkrb5support.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libkrb5support0/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libldap2",
+      "name": "libldap2",
+      "version": "2.6.10+dfsg-0ubuntu0.24.04.1",
+      "license": "OLDAP-2.8",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "openldap",
+        "sourceVersion": "2.6.10+dfsg-0ubuntu0.24.04.1",
+        "url": "https://launchpad.net/ubuntu/+source/openldap/2.6.10+dfsg-0ubuntu0.24.04.1"
+      },
+      "files": [
+        "usr/lib/liblber.so.2",
+        "usr/lib/libldap.so.2"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libldap2/copyright"
+      ],
+      "declaredLicense": "OpenLDAP-2.8"
+    },
+    {
+      "id": "ubuntu:liblz4-1",
+      "name": "liblz4-1",
+      "version": "1.9.4-1build1.1",
+      "license": "BSD-2-Clause",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "lz4",
+        "sourceVersion": "1.9.4-1build1.1",
+        "url": "https://launchpad.net/ubuntu/+source/lz4/1.9.4-1build1.1"
+      },
+      "files": [
+        "usr/lib/liblz4.so.1"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/liblz4-1/copyright"
+      ],
+      "declaredLicense": "BSD-2-clause"
+    },
+    {
+      "id": "ubuntu:liblzma5",
+      "name": "liblzma5",
+      "version": "5.6.1+really5.4.5-1ubuntu0.4",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "xz-utils",
+        "sourceVersion": "5.6.1+really5.4.5-1ubuntu0.4",
+        "url": "https://launchpad.net/ubuntu/+source/xz-utils/5.6.1+really5.4.5-1ubuntu0.4"
+      },
+      "files": [
+        "usr/lib/liblzma.so.5"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/liblzma5/copyright"
+      ],
+      "declaredLicense": "PD"
+    },
+    {
+      "id": "ubuntu:libmd0",
+      "name": "libmd0",
+      "version": "1.1.0-2build1.1",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libmd",
+        "sourceVersion": "1.1.0-2build1.1",
+        "url": "https://launchpad.net/ubuntu/+source/libmd/1.1.0-2build1.1"
+      },
+      "files": [
+        "usr/lib/libmd.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libmd0/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libmount1",
+      "name": "libmount1",
+      "version": "2.39.3-9ubuntu6.6",
+      "license": "GPL-2.0-or-later",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "util-linux",
+        "sourceVersion": "2.39.3-9ubuntu6.6",
+        "url": "https://launchpad.net/ubuntu/+source/util-linux/2.39.3-9ubuntu6.6"
+      },
+      "files": [
+        "usr/lib/libmount.so.1"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libmount1/copyright"
+      ],
+      "declaredLicense": "GPL-2+"
+    },
+    {
+      "id": "ubuntu:libmp3lame0",
+      "name": "libmp3lame0",
+      "version": "3.100-6build1",
+      "license": "LGPL-2.0-or-later",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "lame",
+        "sourceVersion": "3.100-6build1",
+        "url": "https://launchpad.net/ubuntu/+source/lame/3.100-6build1"
+      },
+      "files": [
+        "usr/lib/libmp3lame.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libmp3lame0/copyright"
+      ],
+      "declaredLicense": "LGPL-2+"
+    },
+    {
+      "id": "ubuntu:libmpg123-0t64",
+      "name": "libmpg123-0t64",
+      "version": "1.32.5-1ubuntu1.1",
+      "license": "LGPL-2.1-only",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "mpg123",
+        "sourceVersion": "1.32.5-1ubuntu1.1",
+        "url": "https://launchpad.net/ubuntu/+source/mpg123/1.32.5-1ubuntu1.1"
+      },
+      "files": [
+        "usr/lib/libmpg123.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libmpg123-0t64/copyright"
+      ],
+      "declaredLicense": "LGPL-2.1"
+    },
+    {
+      "id": "ubuntu:libnettle8t64",
+      "name": "libnettle8t64",
+      "version": "3.9.1-2.2build1.1",
+      "license": "LGPL-3.0-or-later OR GPL-2.0-or-later",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "nettle",
+        "sourceVersion": "3.9.1-2.2build1.1",
+        "url": "https://launchpad.net/ubuntu/+source/nettle/3.9.1-2.2build1.1"
+      },
+      "files": [
+        "usr/lib/libnettle.so.8"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libnettle8t64/copyright"
+      ],
+      "declaredLicense": "LGPL-3+ or GPL-2+"
+    },
+    {
+      "id": "ubuntu:libnghttp2-14",
+      "name": "libnghttp2-14",
+      "version": "1.59.0-1ubuntu0.4",
+      "license": "MIT",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "nghttp2",
+        "sourceVersion": "1.59.0-1ubuntu0.4",
+        "url": "https://launchpad.net/ubuntu/+source/nghttp2/1.59.0-1ubuntu0.4"
+      },
+      "files": [
+        "usr/lib/libnghttp2.so.14"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libnghttp2-14/copyright"
+      ],
+      "declaredLicense": "Expat"
+    },
+    {
+      "id": "ubuntu:libnuma1",
+      "name": "libnuma1",
+      "version": "2.0.18-1ubuntu0.24.04.1",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "numactl",
+        "sourceVersion": "2.0.18-1ubuntu0.24.04.1",
+        "url": "https://launchpad.net/ubuntu/+source/numactl/2.0.18-1ubuntu0.24.04.1"
+      },
+      "files": [
+        "usr/lib/libnuma.so.1"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libnuma1/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libogg0",
+      "name": "libogg0",
+      "version": "1.3.5-3build1",
+      "license": "BSD-3-Clause",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libogg",
+        "sourceVersion": "1.3.5-3build1",
+        "url": "https://launchpad.net/ubuntu/+source/libogg/1.3.5-3build1"
+      },
+      "files": [
+        "usr/lib/libogg.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libogg0/copyright"
+      ],
+      "declaredLicense": "BSD-3-clause"
+    },
+    {
+      "id": "ubuntu:libopus0",
+      "name": "libopus0",
+      "version": "1.4-1build1",
+      "license": "BSD-3-Clause",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "opus",
+        "sourceVersion": "1.4-1build1",
+        "url": "https://launchpad.net/ubuntu/+source/opus/1.4-1build1"
+      },
+      "files": [
+        "usr/lib/libopus.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libopus0/copyright"
+      ],
+      "declaredLicense": "BSD-3-clause"
+    },
+    {
+      "id": "ubuntu:liborc-0.4-0t64",
+      "name": "liborc-0.4-0t64",
+      "version": "1:0.4.38-1ubuntu0.1",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "orc",
+        "sourceVersion": "1:0.4.38-1ubuntu0.1",
+        "url": "https://launchpad.net/ubuntu/+source/orc/1:0.4.38-1ubuntu0.1"
+      },
+      "files": [
+        "usr/lib/liborc-0.4.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/liborc-0.4-0t64/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libp11-kit0",
+      "name": "libp11-kit0",
+      "version": "0.25.3-4ubuntu2.2",
+      "license": "BSD-3-Clause",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "p11-kit",
+        "sourceVersion": "0.25.3-4ubuntu2.2",
+        "url": "https://launchpad.net/ubuntu/+source/p11-kit/0.25.3-4ubuntu2.2"
+      },
+      "files": [
+        "usr/lib/libp11-kit.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libp11-kit0/copyright"
+      ],
+      "declaredLicense": "BSD-3-clause"
+    },
+    {
+      "id": "ubuntu:libpango-1.0-0",
+      "name": "libpango-1.0-0",
+      "version": "1.52.1+ds-1build1",
+      "license": "LGPL-2.0-or-later AND LGPL-2.1-or-later",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "pango1.0",
+        "sourceVersion": "1.52.1+ds-1build1",
+        "url": "https://launchpad.net/ubuntu/+source/pango1.0/1.52.1+ds-1build1"
+      },
+      "files": [
+        "usr/lib/libpango-1.0.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libpango-1.0-0/copyright"
+      ],
+      "declaredLicense": "LGPL-2+ and LGPL-2.1+"
+    },
+    {
+      "id": "ubuntu:libpangocairo-1.0-0",
+      "name": "libpangocairo-1.0-0",
+      "version": "1.52.1+ds-1build1",
+      "license": "LGPL-2.0-or-later AND LGPL-2.1-or-later",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "pango1.0",
+        "sourceVersion": "1.52.1+ds-1build1",
+        "url": "https://launchpad.net/ubuntu/+source/pango1.0/1.52.1+ds-1build1"
+      },
+      "files": [
+        "usr/lib/libpangocairo-1.0.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libpangocairo-1.0-0/copyright"
+      ],
+      "declaredLicense": "LGPL-2+ and LGPL-2.1+"
+    },
+    {
+      "id": "ubuntu:libpangoft2-1.0-0",
+      "name": "libpangoft2-1.0-0",
+      "version": "1.52.1+ds-1build1",
+      "license": "LGPL-2.0-or-later AND LGPL-2.1-or-later",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "pango1.0",
+        "sourceVersion": "1.52.1+ds-1build1",
+        "url": "https://launchpad.net/ubuntu/+source/pango1.0/1.52.1+ds-1build1"
+      },
+      "files": [
+        "usr/lib/libpangoft2-1.0.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libpangoft2-1.0-0/copyright"
+      ],
+      "declaredLicense": "LGPL-2+ and LGPL-2.1+"
+    },
+    {
+      "id": "ubuntu:libpcre2-8-0",
+      "name": "libpcre2-8-0",
+      "version": "10.42-4ubuntu2.1",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "pcre2",
+        "sourceVersion": "10.42-4ubuntu2.1",
+        "url": "https://launchpad.net/ubuntu/+source/pcre2/10.42-4ubuntu2.1"
+      },
+      "files": [
+        "usr/lib/libpcre2-8.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libpcre2-8-0/copyright"
+      ],
+      "declaredLicense": "BSD-3-clause-Cambridge with BINARY LIBRARY-LIKE PACKAGES exception"
+    },
+    {
+      "id": "ubuntu:libpixman-1-0",
+      "name": "libpixman-1-0",
+      "version": "0.42.2-1build1",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "pixman",
+        "sourceVersion": "0.42.2-1build1",
+        "url": "https://launchpad.net/ubuntu/+source/pixman/0.42.2-1build1"
+      },
+      "files": [
+        "usr/lib/libpixman-1.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libpixman-1-0/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libpng16-16t64",
+      "name": "libpng16-16t64",
+      "version": "1.6.43-5ubuntu0.7",
+      "license": "Libpng",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libpng1.6",
+        "sourceVersion": "1.6.43-5ubuntu0.7",
+        "url": "https://launchpad.net/ubuntu/+source/libpng1.6/1.6.43-5ubuntu0.7"
+      },
+      "files": [
+        "usr/lib/libpng16.so.16"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libpng16-16t64/copyright"
+      ],
+      "declaredLicense": "libpng"
+    },
+    {
+      "id": "ubuntu:libpsl5t64",
+      "name": "libpsl5t64",
+      "version": "0.21.2-1.1build1",
+      "license": "MIT",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libpsl",
+        "sourceVersion": "0.21.2-1.1build1",
+        "url": "https://launchpad.net/ubuntu/+source/libpsl/0.21.2-1.1build1"
+      },
+      "files": [
+        "usr/lib/libpsl.so.5"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libpsl5t64/copyright"
+      ],
+      "declaredLicense": "MIT"
+    },
+    {
+      "id": "ubuntu:libpulse0",
+      "name": "libpulse0",
+      "version": "1:16.1+dfsg1-2ubuntu10.1",
+      "license": "LGPL-2.1-or-later",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "pulseaudio",
+        "sourceVersion": "1:16.1+dfsg1-2ubuntu10.1",
+        "url": "https://launchpad.net/ubuntu/+source/pulseaudio/1:16.1+dfsg1-2ubuntu10.1"
+      },
+      "files": [
+        "usr/lib/libpulse.so.0",
+        "usr/lib/libpulsecommon-16.1.so"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libpulse0/copyright"
+      ],
+      "declaredLicense": "LGPL-2.1+"
+    },
+    {
+      "id": "ubuntu:librtmp1",
+      "name": "librtmp1",
+      "version": "2.4+20151223.gitfa8646d.1-2build7",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "rtmpdump",
+        "sourceVersion": "2.4+20151223.gitfa8646d.1-2build7",
+        "url": "https://launchpad.net/ubuntu/+source/rtmpdump/2.4+20151223.gitfa8646d.1-2build7"
+      },
+      "files": [
+        "usr/lib/librtmp.so.1"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/librtmp1/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libsasl2-2",
+      "name": "libsasl2-2",
+      "version": "2.1.28+dfsg1-5ubuntu3.1",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "cyrus-sasl2",
+        "sourceVersion": "2.1.28+dfsg1-5ubuntu3.1",
+        "url": "https://launchpad.net/ubuntu/+source/cyrus-sasl2/2.1.28+dfsg1-5ubuntu3.1"
+      },
+      "files": [
+        "usr/lib/libsasl2.so.2"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libsasl2-2/copyright"
+      ],
+      "declaredLicense": "BSD-3-Clause-Attribution"
+    },
+    {
+      "id": "ubuntu:libselinux1",
+      "name": "libselinux1",
+      "version": "3.5-2ubuntu2.1",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libselinux",
+        "sourceVersion": "3.5-2ubuntu2.1",
+        "url": "https://launchpad.net/ubuntu/+source/libselinux/3.5-2ubuntu2.1"
+      },
+      "files": [
+        "usr/lib/libselinux.so.1"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libselinux1/copyright"
+      ],
+      "declaredLicense": "public-domain"
+    },
+    {
+      "id": "ubuntu:libsharpyuv0",
+      "name": "libsharpyuv0",
+      "version": "1.3.2-0.4build3",
+      "license": "BSD-3-Clause",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libwebp",
+        "sourceVersion": "1.3.2-0.4build3",
+        "url": "https://launchpad.net/ubuntu/+source/libwebp/1.3.2-0.4build3"
+      },
+      "files": [
+        "usr/lib/libsharpyuv.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libsharpyuv0/copyright"
+      ],
+      "declaredLicense": "BSD-3-Clause"
+    },
+    {
+      "id": "ubuntu:libsndfile1",
+      "name": "libsndfile1",
+      "version": "1.2.2-1ubuntu5.24.04.1",
+      "license": "LGPL-2.1-or-later",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libsndfile",
+        "sourceVersion": "1.2.2-1ubuntu5.24.04.1",
+        "url": "https://launchpad.net/ubuntu/+source/libsndfile/1.2.2-1ubuntu5.24.04.1"
+      },
+      "files": [
+        "usr/lib/libsndfile.so.1"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libsndfile1/copyright"
+      ],
+      "declaredLicense": "LGPL-2.1+"
+    },
+    {
+      "id": "ubuntu:libssh-4",
+      "name": "libssh-4",
+      "version": "0.10.6-2ubuntu0.5",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libssh",
+        "sourceVersion": "0.10.6-2ubuntu0.5",
+        "url": "https://launchpad.net/ubuntu/+source/libssh/0.10.6-2ubuntu0.5"
+      },
+      "files": [
+        "usr/lib/libssh.so.4"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libssh-4/copyright"
+      ],
+      "declaredLicense": "LGPL-2.1+~OpenSSL"
+    },
+    {
+      "id": "ubuntu:libssl3t64",
+      "name": "libssl3t64",
+      "version": "3.0.13-0ubuntu3.16",
+      "license": "Apache-2.0",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "openssl",
+        "sourceVersion": "3.0.13-0ubuntu3.16",
+        "url": "https://launchpad.net/ubuntu/+source/openssl/3.0.13-0ubuntu3.16"
+      },
+      "files": [
+        "usr/lib/libcrypto.so.3",
+        "usr/lib/libssl.so.3"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libssl3t64/copyright"
+      ],
+      "declaredLicense": "Apache-2.0"
+    },
+    {
+      "id": "ubuntu:libsystemd0",
+      "name": "libsystemd0",
+      "version": "255.4-1ubuntu8.18",
+      "license": "LGPL-2.1-or-later",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "systemd",
+        "sourceVersion": "255.4-1ubuntu8.18",
+        "url": "https://launchpad.net/ubuntu/+source/systemd/255.4-1ubuntu8.18"
+      },
+      "files": [
+        "usr/lib/libsystemd.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libsystemd0/copyright"
+      ],
+      "declaredLicense": "LGPL-2.1+"
+    },
+    {
+      "id": "ubuntu:libtasn1-6",
+      "name": "libtasn1-6",
+      "version": "4.19.0-3ubuntu0.24.04.2",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libtasn1-6",
+        "sourceVersion": "4.19.0-3ubuntu0.24.04.2",
+        "url": "https://launchpad.net/ubuntu/+source/libtasn1-6/4.19.0-3ubuntu0.24.04.2"
+      },
+      "files": [
+        "usr/lib/libtasn1.so.6"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libtasn1-6/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libthai0",
+      "name": "libthai0",
+      "version": "0.1.29-2build1",
+      "license": "LGPL-2.1-or-later",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libthai",
+        "sourceVersion": "0.1.29-2build1",
+        "url": "https://launchpad.net/ubuntu/+source/libthai/0.1.29-2build1"
+      },
+      "files": [
+        "usr/lib/libthai.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libthai0/copyright"
+      ],
+      "declaredLicense": "LGPL-2.1+"
+    },
+    {
+      "id": "ubuntu:libudev1",
+      "name": "libudev1",
+      "version": "255.4-1ubuntu8.18",
+      "license": "LGPL-2.1-or-later",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "systemd",
+        "sourceVersion": "255.4-1ubuntu8.18",
+        "url": "https://launchpad.net/ubuntu/+source/systemd/255.4-1ubuntu8.18"
+      },
+      "files": [
+        "usr/lib/libudev.so.1"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libudev1/copyright"
+      ],
+      "declaredLicense": "LGPL-2.1+"
+    },
+    {
+      "id": "ubuntu:libunistring5",
+      "name": "libunistring5",
+      "version": "1.1-2build1.1",
+      "license": "LGPL-3.0-or-later OR GPL-2.0-or-later",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libunistring",
+        "sourceVersion": "1.1-2build1.1",
+        "url": "https://launchpad.net/ubuntu/+source/libunistring/1.1-2build1.1"
+      },
+      "files": [
+        "usr/lib/libunistring.so.5"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libunistring5/copyright"
+      ],
+      "declaredLicense": "LGPL-3+ or GPL-2+"
+    },
+    {
+      "id": "ubuntu:libunwind8",
+      "name": "libunwind8",
+      "version": "1.6.2-3build1.1",
+      "license": "MIT",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libunwind",
+        "sourceVersion": "1.6.2-3build1.1",
+        "url": "https://launchpad.net/ubuntu/+source/libunwind/1.6.2-3build1.1"
+      },
+      "files": [
+        "usr/lib/libunwind.so.8"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libunwind8/copyright"
+      ],
+      "declaredLicense": "Expat"
+    },
+    {
+      "id": "ubuntu:libva-drm2",
+      "name": "libva-drm2",
+      "version": "2.20.0-2ubuntu0.2",
+      "license": "MIT",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libva",
+        "sourceVersion": "2.20.0-2ubuntu0.2",
+        "url": "https://launchpad.net/ubuntu/+source/libva/2.20.0-2ubuntu0.2"
+      },
+      "files": [
+        "usr/lib/putgd-host-fallback/libva-drm.so.2"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libva-drm2/copyright"
+      ],
+      "declaredLicense": "Expat"
+    },
+    {
+      "id": "ubuntu:libva2",
+      "name": "libva2",
+      "version": "2.20.0-2ubuntu0.2",
+      "license": "MIT",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libva",
+        "sourceVersion": "2.20.0-2ubuntu0.2",
+        "url": "https://launchpad.net/ubuntu/+source/libva/2.20.0-2ubuntu0.2"
+      },
+      "files": [
+        "usr/lib/putgd-host-fallback/libva.so.2"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libva2/copyright"
+      ],
+      "declaredLicense": "Expat"
+    },
+    {
+      "id": "ubuntu:libvo-aacenc0",
+      "name": "libvo-aacenc0",
+      "version": "0.1.3-2build1",
+      "license": "Apache-2.0",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "vo-aacenc",
+        "sourceVersion": "0.1.3-2build1",
+        "url": "https://launchpad.net/ubuntu/+source/vo-aacenc/0.1.3-2build1"
+      },
+      "files": [
+        "usr/lib/libvo-aacenc.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libvo-aacenc0/copyright"
+      ],
+      "declaredLicense": "Apache-2.0"
+    },
+    {
+      "id": "ubuntu:libvorbis0a",
+      "name": "libvorbis0a",
+      "version": "1.3.7-1build3",
+      "license": "BSD-3-Clause",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libvorbis",
+        "sourceVersion": "1.3.7-1build3",
+        "url": "https://launchpad.net/ubuntu/+source/libvorbis/1.3.7-1build3"
+      },
+      "files": [
+        "usr/lib/libvorbis.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libvorbis0a/copyright"
+      ],
+      "declaredLicense": "BSD-3-Clause"
+    },
+    {
+      "id": "ubuntu:libvorbisenc2",
+      "name": "libvorbisenc2",
+      "version": "1.3.7-1build3",
+      "license": "BSD-3-Clause",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libvorbis",
+        "sourceVersion": "1.3.7-1build3",
+        "url": "https://launchpad.net/ubuntu/+source/libvorbis/1.3.7-1build3"
+      },
+      "files": [
+        "usr/lib/libvorbisenc.so.2"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libvorbisenc2/copyright"
+      ],
+      "declaredLicense": "BSD-3-Clause"
+    },
+    {
+      "id": "ubuntu:libvpx9",
+      "name": "libvpx9",
+      "version": "1.14.0-1ubuntu2.3",
+      "license": "BSD-3-Clause",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libvpx",
+        "sourceVersion": "1.14.0-1ubuntu2.3",
+        "url": "https://launchpad.net/ubuntu/+source/libvpx/1.14.0-1ubuntu2.3"
+      },
+      "files": [
+        "usr/lib/libvpx.so.9"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libvpx9/copyright"
+      ],
+      "declaredLicense": "BSD-3-Clause"
+    },
+    {
+      "id": "ubuntu:libwayland-cursor0",
+      "name": "libwayland-cursor0",
+      "version": "1.22.0-2.1build1",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "wayland",
+        "sourceVersion": "1.22.0-2.1build1",
+        "url": "https://launchpad.net/ubuntu/+source/wayland/1.22.0-2.1build1"
+      },
+      "files": [
+        "usr/lib/libwayland-cursor.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libwayland-cursor0/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libwayland-egl1",
+      "name": "libwayland-egl1",
+      "version": "1.22.0-2.1build1",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "wayland",
+        "sourceVersion": "1.22.0-2.1build1",
+        "url": "https://launchpad.net/ubuntu/+source/wayland/1.22.0-2.1build1"
+      },
+      "files": [
+        "usr/lib/libwayland-egl.so.1"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libwayland-egl1/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libwebp7",
+      "name": "libwebp7",
+      "version": "1.3.2-0.4build3",
+      "license": "BSD-3-Clause",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libwebp",
+        "sourceVersion": "1.3.2-0.4build3",
+        "url": "https://launchpad.net/ubuntu/+source/libwebp/1.3.2-0.4build3"
+      },
+      "files": [
+        "usr/lib/libwebp.so.7"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libwebp7/copyright"
+      ],
+      "declaredLicense": "BSD-3-Clause"
+    },
+    {
+      "id": "ubuntu:libwebpmux3",
+      "name": "libwebpmux3",
+      "version": "1.3.2-0.4build3",
+      "license": "BSD-3-Clause",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libwebp",
+        "sourceVersion": "1.3.2-0.4build3",
+        "url": "https://launchpad.net/ubuntu/+source/libwebp/1.3.2-0.4build3"
+      },
+      "files": [
+        "usr/lib/libwebpmux.so.3"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libwebpmux3/copyright"
+      ],
+      "declaredLicense": "BSD-3-Clause"
+    },
+    {
+      "id": "ubuntu:libx264-164",
+      "name": "libx264-164",
+      "version": "2:0.164.3108+git31e19f9-1",
+      "license": "GPL-2.0-or-later",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "x264",
+        "sourceVersion": "2:0.164.3108+git31e19f9-1",
+        "url": "https://launchpad.net/ubuntu/+source/x264/2:0.164.3108+git31e19f9-1"
+      },
+      "files": [
+        "usr/lib/libx264.so.164"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libx264-164/copyright"
+      ],
+      "declaredLicense": "GPL-2+"
+    },
+    {
+      "id": "ubuntu:libx265-199",
+      "name": "libx265-199",
+      "version": "3.5-2build1",
+      "license": "GPL-2.0-or-later",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "x265",
+        "sourceVersion": "3.5-2build1",
+        "url": "https://launchpad.net/ubuntu/+source/x265/3.5-2build1"
+      },
+      "files": [
+        "usr/lib/libx265.so.199"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libx265-199/copyright"
+      ],
+      "declaredLicense": "GPL-2+"
+    },
+    {
+      "id": "ubuntu:libxau6",
+      "name": "libxau6",
+      "version": "1:1.0.9-1build6",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxau",
+        "sourceVersion": "1:1.0.9-1build6",
+        "url": "https://launchpad.net/ubuntu/+source/libxau/1:1.0.9-1build6"
+      },
+      "files": [
+        "usr/lib/libXau.so.6"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libxau6/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libxcb-cursor0",
+      "name": "libxcb-cursor0",
+      "version": "0.1.4-1build1",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "xcb-util-cursor",
+        "sourceVersion": "0.1.4-1build1",
+        "url": "https://launchpad.net/ubuntu/+source/xcb-util-cursor/0.1.4-1build1"
+      },
+      "files": [
+        "usr/lib/libxcb-cursor.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libxcb-cursor0/copyright"
+      ],
+      "declaredLicense": "MIT/X"
+    },
+    {
+      "id": "ubuntu:libxcb-damage0",
+      "name": "libxcb-damage0",
+      "version": "1.15-1ubuntu2",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxcb",
+        "sourceVersion": "1.15-1ubuntu2",
+        "url": "https://launchpad.net/ubuntu/+source/libxcb/1.15-1ubuntu2"
+      },
+      "files": [
+        "usr/lib/libxcb-damage.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libxcb-damage0/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libxcb-glx0",
+      "name": "libxcb-glx0",
+      "version": "1.15-1ubuntu2",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxcb",
+        "sourceVersion": "1.15-1ubuntu2",
+        "url": "https://launchpad.net/ubuntu/+source/libxcb/1.15-1ubuntu2"
+      },
+      "files": [
+        "usr/lib/libxcb-glx.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libxcb-glx0/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libxcb-icccm4",
+      "name": "libxcb-icccm4",
+      "version": "0.4.1-1.1build3",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "xcb-util-wm",
+        "sourceVersion": "0.4.1-1.1build3",
+        "url": "https://launchpad.net/ubuntu/+source/xcb-util-wm/0.4.1-1.1build3"
+      },
+      "files": [
+        "usr/lib/libxcb-icccm.so.4"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libxcb-icccm4/copyright"
+      ],
+      "declaredLicense": "MIT/X Consortium License"
+    },
+    {
+      "id": "ubuntu:libxcb-image0",
+      "name": "libxcb-image0",
+      "version": "0.4.0-2build1",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "xcb-util-image",
+        "sourceVersion": "0.4.0-2build1",
+        "url": "https://launchpad.net/ubuntu/+source/xcb-util-image/0.4.0-2build1"
+      },
+      "files": [
+        "usr/lib/libxcb-image.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libxcb-image0/copyright"
+      ],
+      "declaredLicense": "MIT/X11"
+    },
+    {
+      "id": "ubuntu:libxcb-keysyms1",
+      "name": "libxcb-keysyms1",
+      "version": "0.4.0-1build4",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "xcb-util-keysyms",
+        "sourceVersion": "0.4.0-1build4",
+        "url": "https://launchpad.net/ubuntu/+source/xcb-util-keysyms/0.4.0-1build4"
+      },
+      "files": [
+        "usr/lib/libxcb-keysyms.so.1"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libxcb-keysyms1/copyright"
+      ],
+      "declaredLicense": "MIT/X11"
+    },
+    {
+      "id": "ubuntu:libxcb-randr0",
+      "name": "libxcb-randr0",
+      "version": "1.15-1ubuntu2",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxcb",
+        "sourceVersion": "1.15-1ubuntu2",
+        "url": "https://launchpad.net/ubuntu/+source/libxcb/1.15-1ubuntu2"
+      },
+      "files": [
+        "usr/lib/libxcb-randr.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libxcb-randr0/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libxcb-render-util0",
+      "name": "libxcb-render-util0",
+      "version": "0.3.9-1build4",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "xcb-util-renderutil",
+        "sourceVersion": "0.3.9-1build4",
+        "url": "https://launchpad.net/ubuntu/+source/xcb-util-renderutil/0.3.9-1build4"
+      },
+      "files": [
+        "usr/lib/libxcb-render-util.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libxcb-render-util0/copyright"
+      ],
+      "declaredLicense": "MIT/X Consortium License"
+    },
+    {
+      "id": "ubuntu:libxcb-render0",
+      "name": "libxcb-render0",
+      "version": "1.15-1ubuntu2",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxcb",
+        "sourceVersion": "1.15-1ubuntu2",
+        "url": "https://launchpad.net/ubuntu/+source/libxcb/1.15-1ubuntu2"
+      },
+      "files": [
+        "usr/lib/libxcb-render.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libxcb-render0/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libxcb-shape0",
+      "name": "libxcb-shape0",
+      "version": "1.15-1ubuntu2",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxcb",
+        "sourceVersion": "1.15-1ubuntu2",
+        "url": "https://launchpad.net/ubuntu/+source/libxcb/1.15-1ubuntu2"
+      },
+      "files": [
+        "usr/lib/libxcb-shape.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libxcb-shape0/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libxcb-shm0",
+      "name": "libxcb-shm0",
+      "version": "1.15-1ubuntu2",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxcb",
+        "sourceVersion": "1.15-1ubuntu2",
+        "url": "https://launchpad.net/ubuntu/+source/libxcb/1.15-1ubuntu2"
+      },
+      "files": [
+        "usr/lib/libxcb-shm.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libxcb-shm0/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libxcb-sync1",
+      "name": "libxcb-sync1",
+      "version": "1.15-1ubuntu2",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxcb",
+        "sourceVersion": "1.15-1ubuntu2",
+        "url": "https://launchpad.net/ubuntu/+source/libxcb/1.15-1ubuntu2"
+      },
+      "files": [
+        "usr/lib/libxcb-sync.so.1"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libxcb-sync1/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libxcb-util1",
+      "name": "libxcb-util1",
+      "version": "0.4.0-1build3",
+      "license": "MIT",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "xcb-util",
+        "sourceVersion": "0.4.0-1build3",
+        "url": "https://launchpad.net/ubuntu/+source/xcb-util/0.4.0-1build3"
+      },
+      "files": [
+        "usr/lib/libxcb-util.so.1"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libxcb-util1/copyright"
+      ],
+      "declaredLicense": "MIT"
+    },
+    {
+      "id": "ubuntu:libxcb-xfixes0",
+      "name": "libxcb-xfixes0",
+      "version": "1.15-1ubuntu2",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxcb",
+        "sourceVersion": "1.15-1ubuntu2",
+        "url": "https://launchpad.net/ubuntu/+source/libxcb/1.15-1ubuntu2"
+      },
+      "files": [
+        "usr/lib/libxcb-xfixes.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libxcb-xfixes0/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libxcb-xinput0",
+      "name": "libxcb-xinput0",
+      "version": "1.15-1ubuntu2",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxcb",
+        "sourceVersion": "1.15-1ubuntu2",
+        "url": "https://launchpad.net/ubuntu/+source/libxcb/1.15-1ubuntu2"
+      },
+      "files": [
+        "usr/lib/libxcb-xinput.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libxcb-xinput0/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libxcb-xkb1",
+      "name": "libxcb-xkb1",
+      "version": "1.15-1ubuntu2",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxcb",
+        "sourceVersion": "1.15-1ubuntu2",
+        "url": "https://launchpad.net/ubuntu/+source/libxcb/1.15-1ubuntu2"
+      },
+      "files": [
+        "usr/lib/libxcb-xkb.so.1"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libxcb-xkb1/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libxcomposite1",
+      "name": "libxcomposite1",
+      "version": "1:0.4.5-1build3",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxcomposite",
+        "sourceVersion": "1:0.4.5-1build3",
+        "url": "https://launchpad.net/ubuntu/+source/libxcomposite/1:0.4.5-1build3"
+      },
+      "files": [
+        "usr/lib/libXcomposite.so.1"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libxcomposite1/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libxcursor1",
+      "name": "libxcursor1",
+      "version": "1:1.2.1-1build1",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxcursor",
+        "sourceVersion": "1:1.2.1-1build1",
+        "url": "https://launchpad.net/ubuntu/+source/libxcursor/1:1.2.1-1build1"
+      },
+      "files": [
+        "usr/lib/libXcursor.so.1"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libxcursor1/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libxdamage1",
+      "name": "libxdamage1",
+      "version": "1:1.1.6-1build1",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxdamage",
+        "sourceVersion": "1:1.1.6-1build1",
+        "url": "https://launchpad.net/ubuntu/+source/libxdamage/1:1.1.6-1build1"
+      },
+      "files": [
+        "usr/lib/libXdamage.so.1"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libxdamage1/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libxdmcp6",
+      "name": "libxdmcp6",
+      "version": "1:1.1.3-0ubuntu6",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxdmcp",
+        "sourceVersion": "1:1.1.3-0ubuntu6",
+        "url": "https://launchpad.net/ubuntu/+source/libxdmcp/1:1.1.3-0ubuntu6"
+      },
+      "files": [
+        "usr/lib/libXdmcp.so.6"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libxdmcp6/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libxext6",
+      "name": "libxext6",
+      "version": "2:1.3.4-1build2",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxext",
+        "sourceVersion": "2:1.3.4-1build2",
+        "url": "https://launchpad.net/ubuntu/+source/libxext/2:1.3.4-1build2"
+      },
+      "files": [
+        "usr/lib/libXext.so.6"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libxext6/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libxfixes3",
+      "name": "libxfixes3",
+      "version": "1:6.0.0-2build1",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxfixes",
+        "sourceVersion": "1:6.0.0-2build1",
+        "url": "https://launchpad.net/ubuntu/+source/libxfixes/1:6.0.0-2build1"
+      },
+      "files": [
+        "usr/lib/libXfixes.so.3"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libxfixes3/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libxi6",
+      "name": "libxi6",
+      "version": "2:1.8.1-1build1",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxi",
+        "sourceVersion": "2:1.8.1-1build1",
+        "url": "https://launchpad.net/ubuntu/+source/libxi/2:1.8.1-1build1"
+      },
+      "files": [
+        "usr/lib/libXi.so.6"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libxi6/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libxinerama1",
+      "name": "libxinerama1",
+      "version": "2:1.1.4-3build1",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxinerama",
+        "sourceVersion": "2:1.1.4-3build1",
+        "url": "https://launchpad.net/ubuntu/+source/libxinerama/2:1.1.4-3build1"
+      },
+      "files": [
+        "usr/lib/libXinerama.so.1"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libxinerama1/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libxkbcommon-x11-0",
+      "name": "libxkbcommon-x11-0",
+      "version": "1.6.0-1build1",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxkbcommon",
+        "sourceVersion": "1.6.0-1build1",
+        "url": "https://launchpad.net/ubuntu/+source/libxkbcommon/1.6.0-1build1"
+      },
+      "files": [
+        "usr/lib/libxkbcommon-x11.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libxkbcommon-x11-0/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libxkbcommon0",
+      "name": "libxkbcommon0",
+      "version": "1.6.0-1build1",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxkbcommon",
+        "sourceVersion": "1.6.0-1build1",
+        "url": "https://launchpad.net/ubuntu/+source/libxkbcommon/1.6.0-1build1"
+      },
+      "files": [
+        "usr/lib/libxkbcommon.so.0"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libxkbcommon0/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libxrandr2",
+      "name": "libxrandr2",
+      "version": "2:1.5.2-2build1",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxrandr",
+        "sourceVersion": "2:1.5.2-2build1",
+        "url": "https://launchpad.net/ubuntu/+source/libxrandr/2:1.5.2-2build1"
+      },
+      "files": [
+        "usr/lib/libXrandr.so.2"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libxrandr2/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libxrender1",
+      "name": "libxrender1",
+      "version": "1:0.9.10-1.1build1",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxrender",
+        "sourceVersion": "1:0.9.10-1.1build1",
+        "url": "https://launchpad.net/ubuntu/+source/libxrender/1:0.9.10-1.1build1"
+      },
+      "files": [
+        "usr/lib/libXrender.so.1"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libxrender1/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libxtst6",
+      "name": "libxtst6",
+      "version": "2:1.2.3-1.1ubuntu0.1",
+      "license": "NOASSERTION",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxtst",
+        "sourceVersion": "2:1.2.3-1.1ubuntu0.1",
+        "url": "https://launchpad.net/ubuntu/+source/libxtst/2:1.2.3-1.1ubuntu0.1"
+      },
+      "files": [
+        "usr/lib/libXtst.so.6"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libxtst6/copyright"
+      ]
+    },
+    {
+      "id": "ubuntu:libzstd1",
+      "name": "libzstd1",
+      "version": "1.5.5+dfsg2-2build1.1",
+      "license": "BSD-3-Clause OR GPL-2.0-only",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libzstd",
+        "sourceVersion": "1.5.5+dfsg2-2build1.1",
+        "url": "https://launchpad.net/ubuntu/+source/libzstd/1.5.5+dfsg2-2build1.1"
+      },
+      "files": [
+        "usr/lib/libzstd.so.1"
+      ],
+      "licenseFiles": [
+        "usr/share/doc/putgd/bundled-licenses/distro/libzstd1/copyright"
+      ],
+      "declaredLicense": "BSD-3-clause or GPL-2"
+    }
+  ]
+}
