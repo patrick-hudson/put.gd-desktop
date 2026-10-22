@@ -4,7 +4,7 @@
   "distributionReady": false,
   "published": true,
   "distributionRequirement": "Deliver every listed artifact and this catalog beside the binary packages; retain corresponding-source availability. Public release URLs must be added to the release receipt at P4.",
-  "helperSha256": "e93b3b520d20a19e37569c7a97a1680f47bc43fcb5acaf6a5d69fa660e0a34b0",
+  "helperSha256": "bc535e1ca669a42d5ae68b5fa4ec59a4ba39b09b9ebca0c8bec7e7adb153138c",
   "sourcePins": {
     "sdk": "8ffae007b0fbb8bcef53514719d6f093bb32dcf9",
     "crypto": "956a713c0823b365cc512018974eb4fcba47c9dd",
@@ -105,19 +105,19 @@
     "baseSourceArtifact": "putgd-proton-helper-rebuild.tar.gz",
     "baseSourceArtifactSha256": "5f6060a5b744db2d69ac858c310c667d1ea1fea3918c438bce1f172fb2012b96",
     "repository": "https://github.com/patrick-hudson/put.gd-desktop",
-    "sourceCommit": "692a93265208bc6e7b5d4800e5259fa663db97d9",
+    "sourceCommit": "6b329b6db5deec7c95ea70f53c7e2fcc4cb6af8c",
     "delivery": "Included in the current put.gd application source archive alongside these six unchanged original packets. Apply the listed files before rebuilding the current helper.",
-    "reason": "Return the connected account email from existing SDK root metadata (#40), and report Proton error 200003 as destination_file_too_large_for_plan instead of quota_exceeded (#147), settling it and quota refusals as failed when the name is still free afterwards (#201). Report a refused keychain session write as keychain_unavailable (#252) and return the confirmed link expiry from share create and inspect (#253). No SDK, crypto, Bun or dependency source changes.",
+    "reason": "Return the connected account email from existing SDK root metadata (#40), and report Proton error 200003 as destination_file_too_large_for_plan instead of quota_exceeded (#147), settling it and quota refusals as failed when the name is still free afterwards (#201). Report a refused keychain session write as keychain_unavailable (#252) and return the confirmed link expiry from share create and inspect (#253). Drop the helper's POSIX-only assumptions so the same sources also build for Windows x64: the private data directory check accepts the resident's owner-only directory on win32, uploads accept any absolute path and refuse a symbolic link or swapped file before opening it (#401). No SDK, crypto, Bun or dependency source changes.",
     "files": [
       {
         "source": "tools/proton/runtime.ts",
         "destination": "build-source/runtime.ts",
-        "sha256": "4a1b18be9770f0a12eb4866155e3650f99a5a5c20dfcfed7f0228d702dc468a3"
+        "sha256": "16b9fce622cd59b8a9c2bf75733ca30733425c6052a6d88920d5e478f02a4ee5"
       },
       {
         "source": "tools/proton/runtime.test.ts",
         "destination": "build-source/runtime.test.ts",
-        "sha256": "bb88413cb8ec35b995cd29971e43e5ac113861047f43ffbb3f9655e99c09e63f"
+        "sha256": "cc7758c1a8c0843edc3e3bf68e2407860b44695e2315330ba2083471558dace0"
       },
       {
         "source": "tools/proton/protocol.ts",
@@ -132,7 +132,7 @@
       {
         "source": "tools/proton/account.ts",
         "destination": "build-source/account.ts",
-        "sha256": "4e2209a305ff23ccc870511585fbdf93fafd192ebb575dc116c00de01ff16a01"
+        "sha256": "c95a5beb5840d4d226a215b184f50500443d48bebe826c6a72f85f40d9655526"
       }
     ],
     "exactHelperRebuildVerified": true
