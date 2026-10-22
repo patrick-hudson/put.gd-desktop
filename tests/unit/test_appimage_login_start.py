@@ -220,6 +220,22 @@ class LoginStartTest(unittest.TestCase):
         self.image("putgd-0.1.10-x86_64.AppImage", "0.1.10", info=STABLE)
         self.assertStarts(configured, self.images / "putgd-0.1.10-x86_64.AppImage", info=STABLE)
 
+    def test_calendar_versions_order_after_pre_calendar_ones_and_by_date(self):
+        # #373: a zsync updater writes 26.1022.950-nightly beside 0.1.1-nightly.943.
+        configured = self.image("putgd-0.1.1-nightly.943-x86_64.AppImage", "0.1.1-nightly.943")
+        calendar = self.image("putgd-26.1022.950-nightly-x86_64.AppImage", "26.1022.950-nightly")
+        self.assertStarts(configured, calendar)
+        self.receipt.unlink()
+        # October 22 (1022) is after January 5 (105) of the same year, and a later count wins on one day.
+        self.image("putgd-26.105.990-nightly-x86_64.AppImage", "26.105.990-nightly")
+        later = self.image("putgd-26.1022.951-nightly-x86_64.AppImage", "26.1022.951-nightly")
+        self.assertStarts(configured, later)
+        self.receipt.unlink()
+        # A nightly orders before the stable release of the same YY.MDD.N.
+        configured = self.image("putgd-26.1101.960-nightly-x86_64.AppImage", "26.1101.960-nightly", info=STABLE)
+        release = self.image("putgd-26.1101.960-x86_64.AppImage", "26.1101.960", info=STABLE)
+        self.assertStarts(configured, release, info=STABLE)
+
     def test_unversioned_configured_name_asks_the_image_for_its_version(self):
         configured = self.image("put.gd.appimage", "0.1.1-nightly.801")
         self.image("putgd-0.1.1-nightly.800-x86_64.AppImage", "0.1.1-nightly.800")

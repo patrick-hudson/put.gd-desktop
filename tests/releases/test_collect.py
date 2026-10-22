@@ -26,12 +26,17 @@ from stage_artifacts import stage
 from source_archive import create_archive
 
 
+# The fixture's one commit, 23:30 at -05:00: October 22 in UTC, so v26.1022.1 (#373).
+COMMITTED = '2026-10-21T23:30:00-0500'
+TAG = 'v26.1022.1'
+
+
 class ReleaseCollection(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix='pgrel-')
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
-        (self.root / 'CMakeLists.txt').write_text('project(putgd VERSION 0.1.1 LANGUAGES C CXX)\n')
+        (self.root / 'CMakeLists.txt').write_text('project(putgd LANGUAGES C CXX)\n')
         (self.root / '.gitignore').write_text('/build/\n')
         (self.root / 'LICENSE').write_text('synthetic license fixture\n')
         (self.root / 'CMakePresets.json').write_text('{}\n')
@@ -67,11 +72,12 @@ class ReleaseCollection(unittest.TestCase):
             'sourceCatalogSha256': hashlib.sha256(self.proton_catalog.read_bytes()).hexdigest()}
         commands = [['git', 'init', '-q', str(self.root)],
                     ['git', '-C', str(self.root), 'add', '.'],
-                    ['git', '-C', str(self.root), '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-qm', 'fixture'],
-                    ['git', '-C', str(self.root), 'tag', 'v0.1.1-rc.1']]
+                    ['git', '-C', str(self.root), '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-qm', 'fixture',
+                     '--date', COMMITTED],
+                    ['git', '-C', str(self.root), 'tag', TAG]]
         for command in commands:
-            subprocess.run(command, check=True)
-        self.release = collect.verify(self.root, 'v0.1.1-rc.1')
+            subprocess.run(command, check=True, env=dict(os.environ, GIT_COMMITTER_DATE=COMMITTED))
+        self.release = collect.verify(self.root, TAG)
         identity = {field: self.release[field] for field in ('version', 'baseVersion', 'packageVersion', 'gitCommit', 'gitTree', 'commitCount')}
         identity.update(schemaVersion=1, dirty=False, sourceProvenance='git')
         self.inputs = self.root / 'build/inputs'
@@ -96,14 +102,14 @@ class ReleaseCollection(unittest.TestCase):
             'appImage': {'version': identity['version'], 'sha256': image_sha}, 'file': media.name,
             'sha256': hashlib.sha256(media.read_bytes()).hexdigest(), 'bytes': media.stat().st_size, 'ffmpegCommit': 'f' * 40,
             'ubuntuSources': [{'sourcePackage': 'x264', 'sourceVersion': '2:0.164'}]}))
-        self.write_appimage('v0.1.1-rc.1')
+        self.write_appimage(TAG)
         directory = self.inputs / 'release-native-ubuntu24.04'
         archive = directory / ('putgd-' + identity['version'] + '-source.tar.gz')
         self.source_receipt = create_archive(self.root, archive, identity)
         (directory / 'source-archive.json').write_text(json.dumps(self.source_receipt))
         compiled = {**identity, 'dirty': None, 'sourceProvenance': 'supplied',
                     'version': self.source_receipt['localBuild']['version'],
-                    'packageVersion': identity['baseVersion'] + '~dev.' + str(identity['commitCount']) + '+g' + identity['gitCommit'][:12]}
+                    'packageVersion': identity['baseVersion'] + '~dev+g' + identity['gitCommit'][:12]}
         self.source_result = {'passed': True, 'compiledBuild': compiled,
                               'rebuiltProton': {'sha256': catalog['helperSha256'], 'bundledSha256': catalog['helperSha256']},
                               'identityMatchedPrograms': ['putgd', 'putgd-cli', 'putgd-ui', 'putgd-capture', 'putgd-s3-worker', 'putgd-b2-worker']}
@@ -152,39 +158,39 @@ class ReleaseCollection(unittest.TestCase):
                                         self.release['gitCommit']], text=True).strip()
 
     def run_collection(self):
-        return collect.collect(self.root, self.inputs, self.output, 'v0.1.1-rc.1')
+        return collect.collect(self.root, self.inputs, self.output, TAG)
 
     def test_collects_unique_distro_assets_and_checksums(self):
         self.assertEqual(self.run_collection(), self.release)
         files = {path.name for path in self.output.iterdir()}
-        self.assertIn('putgd-0.1.1-rc.1-ubuntu24.04-x86_64.deb', files)
-        self.assertIn('putgd-0.1.1-rc.1-ubuntu26.04-x86_64.deb', files)
-        self.assertIn('putgd-0.1.1-rc.1-debian13-x86_64.deb', files)
+        self.assertIn('putgd-26.1022.1-ubuntu24.04-x86_64.deb', files)
+        self.assertIn('putgd-26.1022.1-ubuntu26.04-x86_64.deb', files)
+        self.assertIn('putgd-26.1022.1-debian13-x86_64.deb', files)
         lines = (self.output / 'SHA256SUMS').read_text().splitlines()
-        self.assertIn('putgd-0.1.1-rc.1-source.tar.gz', files)
-        self.assertIn('putgd-0.1.1-rc.1-fedora44-x86_64.rpm', files)
-        self.assertIn('putgd-0.1.1-rc.1-x86_64.AppImage', files)
-        self.assertIn('putgd-0.1.1-rc.1-appimage-media-source.tar.gz', files)
-        self.assertIn('putgd-0.1.1-rc.1-x86_64.AppImage.zsync', files)
+        self.assertIn('putgd-26.1022.1-source.tar.gz', files)
+        self.assertIn('putgd-26.1022.1-fedora44-x86_64.rpm', files)
+        self.assertIn('putgd-26.1022.1-x86_64.AppImage', files)
+        self.assertIn('putgd-26.1022.1-appimage-media-source.tar.gz', files)
+        self.assertIn('putgd-26.1022.1-x86_64.AppImage.zsync', files)
         self.assertEqual(len(lines), 15)
-        self.assertIn('putgd-0.1.1-rc.1-debug-x86_64.tar.zst', files)
-        self.assertEqual((self.output / 'putgd-0.1.1-rc.1-source.tar.gz').read_bytes(),
+        self.assertIn('putgd-26.1022.1-debug-x86_64.tar.zst', files)
+        self.assertEqual((self.output / 'putgd-26.1022.1-source.tar.gz').read_bytes(),
                          (self.inputs / 'release-native-ubuntu24.04' / self.source_receipt['artifact']['file']).read_bytes())
-        combined = self.output / 'putgd-0.1.1-rc.1-release.zip'
+        combined = self.output / 'putgd-26.1022.1-release.zip'
         self.assertTrue(combined.is_file())
         commit_epoch = int(self.git_show_commit_time())
         utc = datetime.fromtimestamp(commit_epoch, timezone.utc)
         expected_time = (utc.year, utc.month, utc.day, utc.hour, utc.minute, utc.second - utc.second % 2)
         with zipfile.ZipFile(combined) as archive:
             self.assertTrue(all(item.date_time == expected_time for item in archive.infolist()))
-            underlying = files - {combined.name, 'SHA256SUMS', *proton_sources.PART_NAMES, 'putgd-0.1.1-rc.1-debug-x86_64.tar.zst'}
+            underlying = files - {combined.name, 'SHA256SUMS', *proton_sources.PART_NAMES, 'putgd-26.1022.1-debug-x86_64.tar.zst'}
             self.assertEqual(set(archive.namelist()), underlying | {'SHA256SUMS'})
             for line in archive.read('SHA256SUMS').decode().splitlines():
                 digest, name = line.split('  ', 1)
                 self.assertIn(name, underlying)
                 self.assertEqual(archive.read(name), (self.output / name).read_bytes())
                 self.assertEqual(digest, hashlib.sha256(archive.read(name)).hexdigest())
-        with zipfile.ZipFile(self.output / 'putgd-gnome50-0.1.1-rc.1.zip') as archive:
+        with zipfile.ZipFile(self.output / 'putgd-gnome50-26.1022.1.zip') as archive:
             self.assertTrue(all(item.date_time == expected_time for item in archive.infolist()))
         for line in lines:
             digest, name = line.split('  ', 1)
@@ -195,7 +201,7 @@ class ReleaseCollection(unittest.TestCase):
         for name in ('LICENSE', 'integrations/gnome/extension.js', 'integrations/gnome/metadata.json'):
             os.utime(self.root / name, (1234567890, 1234567890))
         second = self.root / 'build/second'
-        collect.collect(self.root, self.inputs, second, 'v0.1.1-rc.1')
+        collect.collect(self.root, self.inputs, second, TAG)
         for path in self.output.iterdir():
             self.assertEqual(path.read_bytes(), (second / path.name).read_bytes(), path.name)
 
@@ -218,7 +224,7 @@ class ReleaseCollection(unittest.TestCase):
         build = self.root / 'build/source-staging'
         export = build / 'source-export'
         export.mkdir(parents=True)
-        for name in ('source-archive.json', 'putgd-0.1.1-rc.1-source.tar.gz', 'private-context.txt'):
+        for name in ('source-archive.json', 'putgd-26.1022.1-source.tar.gz', 'private-context.txt'):
             (export / name).write_bytes(name.encode())
         compile_dir = build / 'source-build'
         compile_dir.mkdir()
@@ -227,14 +233,14 @@ class ReleaseCollection(unittest.TestCase):
         output = build / 'artifact'
         stage(build, output, 'native')
         self.assertEqual({p.name for p in output.iterdir()}, {'source-archive.json',
-            'putgd-0.1.1-rc.1-source.tar.gz', 'source-build-results.json', 'source-build-parameters.json', 'source-build.log'})
+            'putgd-26.1022.1-source.tar.gz', 'source-build-results.json', 'source-build-parameters.json', 'source-build.log'})
         self.assertEqual((output / 'source-build-results.json').read_bytes(), b'results.json')
 
     def test_corresponding_source_parts_and_exact_catalog_are_public(self):
         self.run_collection()
         for name in (*proton_sources.PART_NAMES, proton_sources.CATALOG_NAME):
             self.assertEqual((self.output / name).read_bytes(), (self.inputs / 'proton-sources' / name).read_bytes())
-        with zipfile.ZipFile(self.output / 'putgd-0.1.1-rc.1-release.zip') as archive:
+        with zipfile.ZipFile(self.output / 'putgd-26.1022.1-release.zip') as archive:
             self.assertIn(proton_sources.CATALOG_NAME, archive.namelist())
             self.assertTrue(set(proton_sources.PART_NAMES).isdisjoint(archive.namelist()))
 
@@ -379,16 +385,16 @@ class ReleaseCollection(unittest.TestCase):
                  ('update information', dict(information='')),
                  ('update information', dict(information='zsync|https://app.put.gd/dl/nightly/appimage.zsync')),
                  # The GitHub asset redirects, which zsync2 can't follow on Fedora 44 (#297).
-                 ('release mirror', dict(url=appimage_update.asset_url(appimage_update.REPOSITORY, 'v0.1.1-rc.1',
-                                                                       'putgd-0.1.1-rc.1-x86_64.AppImage')))]
+                 ('release mirror', dict(url=appimage_update.asset_url(appimage_update.REPOSITORY, TAG,
+                                                                       'putgd-26.1022.1-x86_64.AppImage')))]
         for message, change in cases:
-            self.write_appimage('v0.1.1-rc.1', **change)
+            self.write_appimage(TAG, **change)
             with self.assertRaisesRegex(ValueError, message):
                 self.run_collection()
             self.assertFalse(self.output.exists())
-        receipt_path, zsync = self.write_appimage('v0.1.1-rc.1')
+        receipt_path, zsync = self.write_appimage(TAG)
         image = zsync.with_name('synthetic.AppImage')
-        make_zsync(zsync, image, 'putgd-0.1.1-rc.1-x86_64.AppImage', json.loads(receipt_path.read_text())['update']['zsync']['url'],
+        make_zsync(zsync, image, 'putgd-26.1022.1-x86_64.AppImage', json.loads(receipt_path.read_text())['update']['zsync']['url'],
                    length=image.stat().st_size // 2048 * 2048)
         receipt = json.loads(receipt_path.read_text())
         receipt['update']['zsync'].update(sha256=hashlib.sha256(zsync.read_bytes()).hexdigest(), bytes=zsync.stat().st_size)
@@ -406,9 +412,9 @@ class ReleaseCollection(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'update information'):
             self.run_collection()
         self.assertFalse(self.output.exists())
-        self.write_appimage('v0.1.1-rc.1')
+        self.write_appimage(TAG)
         self.run_collection()
-        self.assertEqual((self.output / 'putgd-0.1.1-rc.1-x86_64.AppImage.zsync').read_bytes(), zsync.read_bytes())
+        self.assertEqual((self.output / 'putgd-26.1022.1-x86_64.AppImage.zsync').read_bytes(), zsync.read_bytes())
 
     def test_missing_or_foreign_debian_package_rejected_before_output(self):
         directory = self.inputs / 'release-native-debian13'
@@ -427,7 +433,7 @@ class ReleaseCollection(unittest.TestCase):
     def test_changed_package_version_rejected(self):
         path = self.inputs / 'release-native-fedora44/native-audit.json'
         receipt = json.loads(path.read_text())
-        receipt['manifest']['packageVersion'] = '0.1.1'
+        receipt['manifest']['packageVersion'] = '26.1022.1~nightly'
         path.write_text(json.dumps(receipt))
         with self.assertRaisesRegex(ValueError, 'identity'):
             self.run_collection()
@@ -436,9 +442,9 @@ class ReleaseCollection(unittest.TestCase):
     def nightly_inputs(self):
         # U1 covers exact Git-tag verification; this fixture starts at its verified
         # identity boundary and tests the real collector/archive byte pipeline.
-        tag = f"v0.1.1-nightly.{self.release['commitCount']}"
+        tag = TAG + '-nightly'
         version = tag[1:]
-        self.release.update(tag=tag, version=version, packageVersion=version.replace('-nightly.', '~nightly.'), channel='nightly')
+        self.release.update(tag=tag, version=version, packageVersion=version.replace('-nightly', '~nightly'), channel='nightly')
         for receipt_path in self.inputs.glob('*/native-audit.json'):
             receipt = json.loads(receipt_path.read_text())
             receipt['manifest'].update(version=version, packageVersion=self.release['packageVersion'])

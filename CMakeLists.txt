@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(putgd VERSION 0.1.1 LANGUAGES C CXX)
+project(putgd LANGUAGES C CXX)
 
 include(CTest)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)

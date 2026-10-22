@@ -2,7 +2,6 @@
 #include "ReleaseLink.h"
 #include <QJsonDocument>
 #include <QRegularExpression>
-#include <tuple>
 namespace putgd::update {
 namespace {
 const QString defaultFeedBase="https://app.put.gd/update/v1/";
@@ -11,18 +10,6 @@ const QString releaseDownloads="https://github.com/patrick-hudson/put.gd-desktop
 const QString mirrorDownloads="https://pkg.put.gd/releases/";
 const QStringList targets{"ubuntu24.04","ubuntu26.04","debian13","fedora44","appimage","flatpak"};
 Error invalidFeed(const QString& message) {return {"update_feed_invalid",message,{}};}
-struct Version {qulonglong major=0,minor=0,patch=0;int rank=0;qulonglong number=0;};
-std::optional<Version> parse(const QString& text) {
- // The grammar of ReleaseLink and tools/releases/release_identity.py.
- static const QRegularExpression release(R"(^(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8}))"
-                                         R"((?:-rc\.(?<candidate>[1-9][0-9]{0,8})|-nightly\.(?<nightly>[1-9][0-9]{0,8}))?$)");
- const auto match=release.match(text);if(!match.hasMatch())return std::nullopt;
- Version version{match.captured(1).toULongLong(),match.captured(2).toULongLong(),match.captured(3).toULongLong()};
- if(!match.captured("nightly").isEmpty()){version.rank=0;version.number=match.captured("nightly").toULongLong();}
- else if(!match.captured("candidate").isEmpty()){version.rank=1;version.number=match.captured("candidate").toULongLong();}
- else version.rank=2;
- return version;
-}
 }
 QJsonObject Build::toJson() const {
  return {{"version",version},{"kind",kind},{"channel",channel.isEmpty()?QJsonValue():QJsonValue(channel)},{"packageTarget",target.isEmpty()?QJsonValue():QJsonValue(target)},
@@ -43,9 +30,8 @@ Build build(const QJsonObject& manifest,const QString& target,bool built) {
  return result;
 }
 std::optional<int> compareVersions(const QString& left,const QString& right) {
- const auto a=parse(left),b=parse(right);if(!a||!b)return std::nullopt;
- const auto key=[](const Version& v){return std::tuple(v.major,v.minor,v.patch,v.rank,v.number);};
- return key(*a)<key(*b)?-1:key(*b)<key(*a)?1:0;
+ const auto a=parseReleaseVersion(left),b=parseReleaseVersion(right);if(!a||!b)return std::nullopt;
+ return a->key<b->key?-1:b->key<a->key?1:0;
 }
 namespace {
 // base (or the variable that replaces it) plus path: an https URL, or http on
@@ -62,7 +48,7 @@ QUrl located(const char* variable,const QString& defaultBase,const QString& path
 }
 const QRegularExpression& safeFileName() {static const QRegularExpression name(R"(^[A-Za-z0-9][A-Za-z0-9._+~-]{0,199}$)");return name;}
 QUrl releaseFile(const char* variable,const QString& base,const QString& tag,const QString& name,Error& error) {
- const auto version=tag.startsWith('v')?parse(tag.mid(1)):std::nullopt;
+ const auto version=tag.startsWith('v')?parseReleaseVersion(tag.mid(1)):std::nullopt;
  if(!version||!safeFileName().match(name).hasMatch()){error={"update_install_failed","Invalid release file",{{"tag",tag.left(64)},{"name",name.left(200)}}};return {};}
  return located(variable,base,tag+"/"+name,"update_download_failed",error);
 }
@@ -85,9 +71,9 @@ QJsonObject evaluate(const QByteArray& feed,const Build& build,const QString& ch
  if(value.isNull())return result;
  if(!value.isObject()){error=invalidFeed("The update feed's release is neither an object nor null");return {};}
  const auto release=value.toObject();const auto latest=release["version"].toString();
- const auto version=parse(latest);
+ const auto version=parseReleaseVersion(latest);
  // A stable feed lists only stable versions and a nightly feed only nightlies.
- if(!version||(channel=="nightly")!=(version->rank==0)||(channel=="stable"&&version->rank!=2)){error=invalidFeed("The update feed names an invalid version for its channel");return {};}
+ if(!version||(channel=="nightly")!=(version->kind=="nightly")||(channel=="stable"&&version->kind!="stable")){error=invalidFeed("The update feed names an invalid version for its channel");return {};}
  const auto tag="v"+latest;
  if(release["tag"]!=tag){error=invalidFeed("The update feed's tag does not match its version");return {};}
  result["latest"]=latest;result["tag"]=tag;

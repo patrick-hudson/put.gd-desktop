@@ -364,9 +364,9 @@ class NightlyPublicationTest(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory(prefix='pg-nightly-publish-')
         self.addCleanup(self.temporary.cleanup)
         self.directory = Path(self.temporary.name)
-        self.tag = 'v0.1.1-nightly.42'
+        self.tag = 'v26.1022.42-nightly'
         self.release = {'schemaVersion': 1, 'tag': self.tag, 'version': self.tag[1:],
-                        'baseVersion': '0.1.1', 'packageVersion': self.tag[1:].replace('-nightly.', '~nightly.'),
+                        'baseVersion': '26.1022.42', 'packageVersion': '26.1022.42~nightly',
                         'channel': 'nightly', 'prerelease': True, 'gitCommit': 'a' * 40,
                         'gitTree': 'b' * 40, 'commitCount': 42}
         names = sorted(publish.public_inventory(self.tag) - {'SHA256SUMS'})
@@ -436,8 +436,15 @@ class NightlyPublicationTest(unittest.TestCase):
              patch.object(subprocess, 'run', side_effect=self.command):
             publish.main()
 
-    def changes(self, root, tag, repository, server):
+    def test_release_titles_name_the_calendar_version(self):
+        self.assertEqual(publish.release_title({'version': '26.1022.42-nightly'}), 'put.gd 26.1022.42 nightly')
+        self.assertEqual(publish.release_title({'version': '26.1101.960'}), 'put.gd 26.1101.960')
+        self.assertEqual(publish.release_title({'version': '0.1.1-nightly.42'}), 'put.gd 0.1.1 nightly 42')
+
+    def changes(self, root, tag, repository, server, released=None):
         self.assertEqual((tag, repository, server), (self.tag, 'fixture/putgd', 'https://github.com'))
+        # Only published releases start the changes (#373): the reader is passed, not called here.
+        self.assertIs(released, publish.changelog.released_tags)
         return f'## Changes since fixture-previous\n\n- Synthetic change in {tag}\n'
 
     def test_cli_publishes_all_sixteen_verified_assets_as_nightly_prerelease(self):
@@ -461,11 +468,11 @@ class NightlyPublicationTest(unittest.TestCase):
                          {**self.listed, 'SHA256SUMS': hashlib.sha256(self.files['SHA256SUMS']).hexdigest()})
         notes = (self.directory / 'release-notes.md').read_text()
         self.assertIn('--title', self.commands[0])
-        self.assertEqual(self.commands[0][self.commands[0].index('--title') + 1], 'put.gd 0.1.1 nightly 42')
-        for text in ('Nightly 42 of 0.1.1', 'a' * 40, 'actions/runs/77', 'graphical', 'memory', 'S3'):
+        self.assertEqual(self.commands[0][self.commands[0].index('--title') + 1], 'put.gd 26.1022.42 nightly')
+        for text in ('Nightly 26.1022.42:', 'a' * 40, 'actions/runs/77', 'graphical', 'memory', 'S3'):
             self.assertIn(text, notes)
         # The changes follow the one-line summary, before the coverage and asset notes.
-        self.assertLess(notes.index('Nightly 42 of 0.1.1'), notes.index('## Changes since fixture-previous'))
+        self.assertLess(notes.index('Nightly 26.1022.42:'), notes.index('## Changes since fixture-previous'))
         self.assertLess(notes.index('Synthetic change in ' + self.tag), notes.index('Automated coverage'))
 
 
@@ -487,7 +494,7 @@ class NightlyPublicationTest(unittest.TestCase):
 
     def test_automated_mode_rejects_stable_and_candidate_before_mutation(self):
         original_tag, original_release = self.tag, self.release
-        for tag, channel in [('v0.1.1', 'stable'), ('v0.1.1-rc.1', 'candidate')]:
+        for tag, channel in [('v26.1022.42', 'stable'), ('v0.1.1', 'stable'), ('v0.1.1-rc.1', 'candidate')]:
             with self.subTest(tag=tag):
                 self.tag = tag
                 self.release = {**original_release, 'tag': tag, 'channel': channel}
@@ -588,7 +595,7 @@ class NightlyPublicationTest(unittest.TestCase):
                 self.assertEqual(self.commands, [])
 
     def test_stable_and_candidate_still_require_acceptance_to_publish(self):
-        for tag, channel in [('v0.1.1', 'stable'), ('v0.1.1-rc.1', 'candidate')]:
+        for tag, channel in [('v26.1022.42', 'stable'), ('v0.1.1', 'stable'), ('v0.1.1-rc.1', 'candidate')]:
             release = {**self.release, 'tag': tag, 'channel': channel, 'version': tag[1:]}
             for name in publish.public_inventory(tag) - {'SHA256SUMS'}:
                 (self.directory / name).write_bytes(('synthetic ' + name).encode())

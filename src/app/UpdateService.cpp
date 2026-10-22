@@ -49,7 +49,7 @@ void UpdateService::start() {
    const auto notified=state["notifiedVersions"].toObject();
    for(const auto& name:{QStringLiteral("stable"),QStringLiteral("nightly")})if(notified[name].isString())notified_[name]=notified[name].toString();
    // Before #344 one version was kept, of whichever channel was checked.
-   if(!state.contains("notifiedVersions")&&state["notifiedVersion"].isString()){const auto version=state["notifiedVersion"].toString();notified_[version.contains("-nightly.")?"nightly":"stable"]=version;}
+   if(!state.contains("notifiedVersions")&&state["notifiedVersion"].isString()){const auto version=state["notifiedVersion"].toString();notified_[version.contains("-nightly")?"nightly":"stable"]=version;}
    // A clock that went backwards must not postpone the next check for days.
    if(attemptedAt_>now())attemptedAt_={};
    // The saved result compared the feed with the version that ran then. After

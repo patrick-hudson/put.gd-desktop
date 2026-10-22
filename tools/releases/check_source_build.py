@@ -51,7 +51,8 @@ def check_build(receipt_path, sdk_prefix, sdk_source, output, *, bundle_proton=F
              '-DPUTGD_AWS_RUNTIME_DIR=' + str(sdk_prefix / 'lib'),
              '-DPUTGD_SOURCE_COMMIT=' + identity['gitCommit'],
              '-DPUTGD_SOURCE_TREE=' + identity['gitTree'],
-             '-DPUTGD_SOURCE_COMMIT_COUNT=' + str(identity['commitCount'])],
+             '-DPUTGD_SOURCE_COMMIT_COUNT=' + str(identity['commitCount']),
+             '-DPUTGD_SOURCE_COMMIT_TIME=' + str(receipt['timestamp'])],
             ['cmake', '--build', '--preset', 'release'],
         ]
         if bundle_proton:
