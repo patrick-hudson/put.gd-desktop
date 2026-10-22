@@ -8,7 +8,7 @@
 
 <br>
 
-**A native Linux sharing app.** Hit a hotkey, grab a region, window, desktop, clipboard or screen recording. The public link lands on your clipboard the moment it uploads. Qt 6 and C++20, talking straight to your own S3 bucket or Proton Drive. No middleman, no telemetry, no updater.
+**A native Linux sharing app.** Hit a hotkey, grab a region, window, desktop, clipboard or screen recording. The public link lands on your clipboard the moment it uploads. Qt 6 and C++20, talking straight to your own S3 bucket or Proton Drive. No middleman, no telemetry, no silent updates.
 
 <br>
 
@@ -37,6 +37,8 @@
 [**Download**](#-download) · [**Quickstart**](#-quickstart) · [**What you get**](#-what-you-get) · [**Screenshots**](#-screenshots) · [**Build**](#-build-from-source) · [**Release channels**](#-release-channels) · [**Docs**](#-documentation)
 
 </div>
+
+> **Under heavy development.** There is no stable release yet; every build is a nightly, and the code moves every day. Settings, the CLI and MCP contracts, package layouts, shortcuts and these docs all change between nightlies, and an older build may not read what a newer one saved. Treat it as a preview, keep the [releases page](https://github.com/patrick-hudson/put.gd-desktop/releases) handy, and tell us what broke in [issues](https://github.com/patrick-hudson/put.gd-desktop/issues).
 
 <br>
 
@@ -99,7 +101,7 @@ Cinnamon/X11 through the compositor's own screenshot service, GNOME 50 Wayland t
 <td width="50%" valign="top">
 
 ### <img src="docs/readme/icons/quiet.svg" width="32" height="32" align="absmiddle" alt=""> Quiet and small
-One resident process; windows, capture helpers, the recorder and the AWS SDK worker start on demand and go away when done. The idle resident family stays under 40 MiB in the measured workflows on all three desktops, and nothing phones home.
+One resident process; windows, capture helpers, the recorder and the AWS SDK worker start on demand and go away when done. The idle resident family stays under 40 MiB in the measured workflows on all three desktops, and nothing phones home except a once-a-day update check that identifies nothing and can be turned off.
 
 </td>
 </tr>
@@ -200,6 +202,8 @@ chmod +x putgd-*.AppImage && ./putgd-*.AppImage
 # GNOME 50 only: enable the capture extension, then log out and back in
 gnome-extensions enable putgd@put.gd
 ```
+
+**Updating.** Once a day put.gd asks app.put.gd for the newest version on its channel: one request with nothing identifying, on by default, off in **Settings → General → Updates**. Nothing installs on its own. A DEB or RPM updates through the apt or dnf repository it added, like any other package, and Settings opens your system's software updater when there is something new. An AppImage offers **Download and install**: put.gd verifies the release against its signed checksums, replaces the file in place and keeps the old version as a hidden backup. [updates.md](docs/updates.md) covers the channels, switching between them and going back if a new version will not start.
 
 > **Nightlies are build-tested, not desktop-certified.** Each one passed the full Linux test suites, the Windows compile, package audits and a production build of its own source tarball. Graphical, memory and live-S3 acceptance are recorded separately per candidate in [verification.md](docs/verification.md). Candidates and stable releases land on the same page once their exact packages pass acceptance on real desktops; a published stable becomes GitHub's *Latest*.
 
@@ -376,7 +380,7 @@ One resident owns the journal, settings, history, hotkeys and the tray. Windows,
 
 | Area | Start here |
 | --- | --- |
-| Using it | [User guide](docs/user-guide.md) · [Configuration](docs/configuration.md) · [Credentials](docs/credentials.md) · [Troubleshooting](docs/troubleshooting.md) · [Errors](docs/errors.md) |
+| Using it | [User guide](docs/user-guide.md) · [Configuration](docs/configuration.md) · [Updates](docs/updates.md) · [Credentials](docs/credentials.md) · [Troubleshooting](docs/troubleshooting.md) · [Errors](docs/errors.md) |
 | Automating it | [CLI](docs/cli.md) · [MCP helper](docs/mcp.md) · [Image editor](docs/image-editor.md) · [Screen recording](docs/recording.md) |
 | Storage | [S3](docs/s3.md) · [Backblaze B2](docs/b2.md) · [Proton Drive](docs/proton-drive.md) · [Provider contract](docs/storage-providers.md) |
 | Desktops | [Cinnamon / X11](docs/desktops/cinnamon.md) · [GNOME 50](docs/desktops/gnome.md) · [KDE Plasma](docs/desktops/kde.md) · [Acceptance matrix](docs/acceptance-matrix.md) |
