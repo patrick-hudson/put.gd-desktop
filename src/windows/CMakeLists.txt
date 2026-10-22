@@ -55,7 +55,9 @@ configure_file("${CMAKE_CURRENT_BINARY_DIR}/windows-version.json.tmp" "${CMAKE_C
 add_library(putgd_win_options INTERFACE)
 target_include_directories(putgd_win_options INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/generated")
 if(MSVC)
-  target_compile_options(putgd_win_options INTERFACE /W4 /utf-8 /EHsc /permissive-)
+  # The warning set of the mingw build: no unused-parameter warnings (-Wno-unused-parameter)
+  # and no shadowing warnings (GCC has no -Wshadow in -Wall -Wextra).
+  target_compile_options(putgd_win_options INTERFACE /W4 /utf-8 /EHsc /permissive- /wd4100 /wd4456 /wd4457)
   target_compile_definitions(putgd_win_options INTERFACE _CRT_SECURE_NO_WARNINGS)
 else()
   target_compile_options(putgd_win_options INTERFACE -Wall -Wextra -Wno-unused-parameter -Wno-missing-field-initializers)
