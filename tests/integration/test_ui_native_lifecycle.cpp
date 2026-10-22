@@ -12,6 +12,7 @@
 #include <xcb/xcb.h>
 #include <cstdlib>
 #include <cstring>
+#include "fixtures/Waits.h"
 
 using namespace putgd;
 using namespace putgd::test;
@@ -176,7 +177,7 @@ private slots:
   HistoryService history(operations);
   LocalServer server(settings, operations, history);
   QVERIFY(server.listen(dir.filePath("runtime")));
-  QTRY_VERIFY(operations.ready());
+  PUTGD_TRY_VERIFY(operations.ready());
   XWindows windows;
   QVERIFY(windows.available());
 
@@ -184,17 +185,17 @@ private slots:
   qint64 previousPid = 0;
   for (int cycle = 0; cycle < 4; ++cycle) {
    ProductHelper helper(server, retained);
-   QTRY_VERIFY_WITH_TIMEOUT(helper.ready || helper.failure, 10000);
+   PUTGD_TRY_VERIFY_WITH_TIMEOUT(helper.ready || helper.failure, 10000);
    QVERIFY2(!helper.failure, qPrintable(helper.failure.code));
    const auto pid = helper.process.processId();
    QVERIFY(pid > 0 && pid != previousPid);
    previousPid = pid;
    helper.activate("settings");
-   QTRY_VERIFY(helper.shown.contains("settings"));
+   PUTGD_TRY_VERIFY(helper.shown.contains("settings"));
    xcb_window_t window = XCB_WINDOW_NONE;
-   QTRY_VERIFY((window = windows.find(pid, "put.gd")) != XCB_WINDOW_NONE);
+   PUTGD_TRY_VERIFY((window = windows.find(pid, "put.gd")) != XCB_WINDOW_NONE);
    QVERIFY(windows.close(window));
-   QTRY_VERIFY_WITH_TIMEOUT(!helper.closeSequence.isEmpty() || helper.failure, 5000);
+   PUTGD_TRY_VERIFY_WITH_TIMEOUT(!helper.closeSequence.isEmpty() || helper.failure, 5000);
    QVERIFY2(!helper.failure, qPrintable(helper.failure.code));
    QVERIFY(!validateUiState(helper.closeState));
    QCOMPARE(helper.process.state(), QProcess::Running);
@@ -209,8 +210,8 @@ private slots:
    }
    retained = helper.closeState;
    helper.acceptClose();
-   QTRY_VERIFY(helper.confirmed);
-   QTRY_COMPARE_WITH_TIMEOUT(helper.process.state(), QProcess::NotRunning, 10000);
+   PUTGD_TRY_VERIFY(helper.confirmed);
+   PUTGD_TRY_COMPARE_WITH_TIMEOUT(helper.process.state(), QProcess::NotRunning, 10000);
    QCOMPARE(helper.process.exitStatus(), QProcess::NormalExit);
    QVERIFY2(helper.process.exitCode() == 0, helper.stderrTail.constData());
    QVERIFY2(!helper.failure, qPrintable(helper.failure.code));
@@ -251,11 +252,11 @@ private slots:
   HistoryService history(operations);
   LocalServer server(settings, operations, history);
   QVERIFY(server.listen(dir.filePath("runtime")));
-  QTRY_VERIFY(operations.ready());
+  PUTGD_TRY_VERIFY(operations.ready());
   XWindows windows;
   QVERIFY(windows.available());
   ProductHelper helper(server);
-  QTRY_VERIFY_WITH_TIMEOUT(helper.ready || helper.failure, 10000);
+  PUTGD_TRY_VERIFY_WITH_TIMEOUT(helper.ready || helper.failure, 10000);
   QVERIFY2(!helper.failure, qPrintable(helper.failure.code));
 
   const QString clipboard = "https://example.invalid/synthetic-resident-result";
@@ -267,33 +268,33 @@ private slots:
    QVERIFY(!error);
    operationId = accepted["operationId"].toString();
   });
-  QTRY_VERIFY(!operationId.isEmpty());
-  QTRY_COMPARE(source.acquisitions.size(), 1);
+  PUTGD_TRY_VERIFY(!operationId.isEmpty());
+  PUTGD_TRY_COMPARE(source.acquisitions.size(), 1);
 
   const QList<QPair<QString, QString>> views{{"settings", "put.gd"},
    {"history", "put.gd"}, {"activity", "put.gd"}, {"about", "About put.gd"}};
   QList<xcb_window_t> shown;
   for (const auto& [view, title] : views) {
    helper.activate(view);
-   QTRY_VERIFY(helper.shown.contains(view));
+   PUTGD_TRY_VERIFY(helper.shown.contains(view));
    xcb_window_t window = XCB_WINDOW_NONE;
-   QTRY_VERIFY((window = windows.find(helper.process.processId(), title)) != XCB_WINDOW_NONE);
+   PUTGD_TRY_VERIFY((window = windows.find(helper.process.processId(), title)) != XCB_WINDOW_NONE);
    if(view=="history"||view=="activity")QCOMPARE(window,shown.first());
    if(!shown.contains(window))shown.append(window);
   }
   for (qsizetype i = 0; i < shown.size() - 1; ++i) {
    QVERIFY(windows.close(shown[i]));
-   QTRY_VERIFY(!windows.mapped(shown[i]));
+   PUTGD_TRY_VERIFY(!windows.mapped(shown[i]));
    QCOMPARE(helper.process.state(), QProcess::Running);
    QVERIFY(helper.closeSequence.isEmpty());
    QCOMPARE(source.acquisitions.size(), 1);
   }
   QVERIFY(windows.close(shown.last()));
-  QTRY_VERIFY(!helper.closeSequence.isEmpty());
+  PUTGD_TRY_VERIFY(!helper.closeSequence.isEmpty());
   QVERIFY(!validateUiState(helper.closeState));
   helper.acceptClose();
-  QTRY_VERIFY(helper.confirmed);
-  QTRY_COMPARE_WITH_TIMEOUT(helper.process.state(), QProcess::NotRunning, 10000);
+  PUTGD_TRY_VERIFY(helper.confirmed);
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(helper.process.state(), QProcess::NotRunning, 10000);
   QCOMPARE(helper.process.exitStatus(), QProcess::NormalExit);
   QVERIFY2(helper.process.exitCode() == 0, helper.stderrTail.constData());
   QVERIFY2(!helper.failure, qPrintable(helper.failure.code));
@@ -304,18 +305,18 @@ private slots:
   PayloadResult result;
   bool read = false;
   independentReader.acquire({}, [&](PayloadResult payload) { result = std::move(payload); read = true; });
-  QTRY_VERIFY(read);
+  PUTGD_TRY_VERIFY(read);
   QVERIFY2(!result.error, qPrintable(result.error.code));
   QCOMPARE(result.payload.bytes, clipboard.toUtf8());
   QCOMPARE(source.acquisitions.size(), 1);
   source.acquisitions.takeFirst()({textPayload(), {}});
-  QTRY_COMPARE(source.copies, 1);
+  PUTGD_TRY_COMPARE(source.copies, 1);
   QJsonObject completed;
   operations.inspect(operationId, [&](Error error, QJsonObject value) {
    QVERIFY(!error);
    completed = value;
   });
-  QTRY_VERIFY(!completed.isEmpty());
+  PUTGD_TRY_VERIFY(!completed.isEmpty());
   QCOMPARE(completed["state"].toString(), QString("completed"));
   QCOMPARE(source.reads, 1);
   QCOMPARE(source.copied.kind, QString("text"));

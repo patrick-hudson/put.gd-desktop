@@ -6,8 +6,20 @@ A rule: {"call": name|"upload_file"|"upload_part"|"download", "status", "code", 
 "store": true (store, then drop the connection), "competitor": true (another upload of the same name lands first),
 "partNumber": n, "race": n (n racing uploads store together and reply together)}.
 """
-import base64, hashlib, json, socket, threading, time, urllib.parse, uuid
+import base64, hashlib, json, os, socket, threading, time, urllib.parse, uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+
+def _time_scale():
+    # Budgets scale like tests/fixtures/Waits.h: PUTGD_TEST_TIME_SCALE, clamped to [1, 20].
+    try:
+        value = float(os.environ.get('PUTGD_TEST_TIME_SCALE', '1'))
+    except ValueError:
+        return 1.0
+    return min(max(value, 1.0), 20.0) if value == value else 1.0
+
+
+TIME_SCALE = _time_scale()
 
 KEY_ID = 'PUTGD_SYNTHETIC_B2_KEY_ID'
 KEY = 'putgd-synthetic-b2-application-key-not-real'
@@ -80,7 +92,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def wait_for(self, condition, timeout=10):
         # Called with the state lock held; other requests run while it waits.
-        deadline = time.monotonic() + timeout
+        deadline = time.monotonic() + timeout * TIME_SCALE
         while not condition() and time.monotonic() < deadline:
             lock.release()
             time.sleep(0.02)

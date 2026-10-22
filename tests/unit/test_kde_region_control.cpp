@@ -1,4 +1,6 @@
 #include "platform/kde/KdeRegionProcess.h"
+#include "platform/kde/KdeCaptureCompose.h"
+#include "platform/kde/KdeRegionProtocol.h"
 #include <QCoreApplication>
 #include <QJsonDocument>
 #include <QtTest>
@@ -9,6 +11,7 @@
 #include <thread>
 #include <algorithm>
 #include <csignal>
+#include "fixtures/Waits.h"
 
 using namespace putgd;
 namespace {
@@ -83,6 +86,62 @@ private slots:
   Error e;auto encoded=kdeRegionLayout(frames(),e);auto row=encoded[0].toObject();row["pixels"]="forbidden";encoded[0]=row;
   QVERIFY(kdeRegionLayout(encoded,e).isEmpty());QVERIFY(e);
  }
+ void dragEdgesAreHalfOpen_data() {
+  // KWin 6.6.6 positions for real tablet drags (#333). The lab's ceil(x*32768/w)
+  // ticks land just past each edge; the extent-1 mapping lands 0.7 px inside the
+  // end pixel, which nearest-edge rounding had turned into one extra pixel.
+  QTest::addColumn<QPointF>("press");QTest::addColumn<QPointF>("release");QTest::addColumn<QRectF>("expected");
+  QTest::newRow("lab-1120x680")<<QPointF(400.019531,200.027344)<<QPointF(1520.039062,880.003906)<<QRectF(400,200,1120,680);
+  QTest::newRow("extent-1-1120x680")<<QPointF(400.195312,200.160156)<<QPointF(1520.742188,880.761719)<<QRectF(400,200,1120,680);
+  QTest::newRow("extent-1-80x60")<<QPointF(400.195312,200.160156)<<QPointF(480.234375,260.210938)<<QRectF(400,200,80,60);
+  QTest::newRow("upward-left")<<QPointF(480.7,260.9)<<QPointF(400.2,200.1)<<QRectF(400,200,80,60);
+  QTest::newRow("exact-integers")<<QPointF(0,0)<<QPointF(1920,1080)<<QRectF(0,0,1920,1080);
+  // QEMU's VNC scaling lands just below each edge (measured on KWin 6.6.6): the
+  // hotspot is in the pixel before it, so the rectangle moves up-left by one
+  // pixel and keeps its size, as the GNOME extension's Math.floor selects.
+  QTest::newRow("vnc-below-edges")<<QPointF(149.941406,99.964844)<<QPointF(1129.921875,699.949219)<<QRectF(149,99,980,600);
+ }
+ void edgeIsThePixelUnderTheHotspot_data() {
+  QTest::addColumn<qreal>("position");QTest::addColumn<qreal>("edge");
+  QTest::newRow("x.0")<<qreal(400)<<qreal(400);
+  QTest::newRow("x.004")<<qreal(400.00390625)<<qreal(400);
+  QTest::newRow("x.5")<<qreal(400.5)<<qreal(400);
+  QTest::newRow("x.99")<<qreal(399.99)<<qreal(399);
+  QTest::newRow("wl_fixed-max-fraction")<<qreal(399+255.0/256)<<qreal(399);
+  QTest::newRow("negative-x.5")<<qreal(-640.5)<<qreal(-641);
+  QTest::newRow("negative-x.0")<<qreal(-640)<<qreal(-640);
+ }
+ void edgeIsThePixelUnderTheHotspot() {
+  QFETCH(qreal,position);QFETCH(qreal,edge);
+  QCOMPARE(kdeRegionEdge(QPointF(position,position)),QPointF(edge,edge));
+ }
+ void dragEdgesAreHalfOpen() {
+  QFETCH(QPointF,press);QFETCH(QPointF,release);QFETCH(QRectF,expected);
+  const QRectF selection=QRectF(kdeRegionEdge(press),kdeRegionEdge(release)).normalized();
+  QCOMPARE(selection,expected);
+  CaptureFrame frame;frame.identity="HDMI-A-1";frame.logicalRect=QRectF(0,0,1920,1080);frame.nativeRect=QRect(0,0,1920,1080);
+  frame.pixels=QImage(1920,1080,QImage::Format_ARGB32);frame.pixels.fill(Qt::white);
+  Error e;const auto image=composeKdeFrames({frame},selection,qint64(1)<<31,e);QVERIFY(!e);
+  QCOMPARE(image.size(),expected.size().toSize());
+ }
+ void fractionalScaleKeepsLogicalSize_data() {
+  QTest::addColumn<qreal>("scale");QTest::addColumn<QPointF>("press");QTest::addColumn<QPointF>("release");QTest::addColumn<QSize>("pixels");
+  // Edges on the native grid scale exactly; otherwise composeFrames rounds the
+  // native boundaries outwards, adding at most one native pixel per axis.
+  QTest::newRow("1.5-even")<<qreal(1.5)<<QPointF(400.4,200.3)<<QPointF(480.6,260.8)<<QSize(120,90);
+  QTest::newRow("1.5-odd")<<qreal(1.5)<<QPointF(401.4,201.3)<<QPointF(481.6,261.8)<<QSize(121,91);
+  QTest::newRow("1.25-aligned")<<qreal(1.25)<<QPointF(400.9,200.9)<<QPointF(480.9,260.9)<<QSize(100,75);
+  QTest::newRow("1.25-1120x680")<<qreal(1.25)<<QPointF(400.7,200.2)<<QPointF(1520.7,880.6)<<QSize(1400,850);
+ }
+ void fractionalScaleKeepsLogicalSize() {
+  QFETCH(qreal,scale);QFETCH(QPointF,press);QFETCH(QPointF,release);QFETCH(QSize,pixels);
+  const QSize native(qRound(1536*scale),qRound(864*scale));
+  CaptureFrame frame;frame.identity="HDMI-A-1";frame.logicalRect=QRectF(0,0,1536,864);frame.nativeRect=QRect(QPoint(0,0),native);frame.density=scale;
+  frame.pixels=QImage(native,QImage::Format_ARGB32);frame.pixels.fill(Qt::white);
+  const QRectF selection=QRectF(kdeRegionEdge(press),kdeRegionEdge(release)).normalized();
+  Error e;const auto image=composeKdeFrames({frame},selection,qint64(1)<<31,e);QVERIFY(!e);
+  QCOMPARE(image.size(),pixels);
+ }
  void invalidSelectionIsRejected() {
   for(const auto& rectangle:{QRectF(0,0,0,20),QRectF(900,0,20,20),QRectF(-700,0,100,20),
                             QRectF(0,std::numeric_limits<double>::quiet_NaN(),20,20)}) {
@@ -100,9 +159,9 @@ private slots:
   qputenv("PUTGD_TEST_KDE_REGION_HELPER",mode);
   KdeRegionProcess process(QCoreApplication::applicationFilePath());int callbacks=0;QRectF result;Error error;
   process.start(frames(),[&](QRectF rect,Error e){QVERIFY(!process.busy());result=rect;error=e;++callbacks;});
-  QTRY_COMPARE(callbacks,1);qunsetenv("PUTGD_TEST_KDE_REGION_HELPER");
+  PUTGD_TRY_COMPARE(callbacks,1);qunsetenv("PUTGD_TEST_KDE_REGION_HELPER");
   QCOMPARE(!bool(error),success);QCOMPARE(result.isEmpty(),!success);
-  QTest::qWait(40);QCOMPARE(callbacks,1);QCOMPARE(process.processId(),qint64(0));
+  putgd::test::settle(40);PUTGD_TRY_COMPARE(callbacks,1);PUTGD_TRY_COMPARE(process.processId(),qint64(0));
   const auto exit=process.diagnostics()["lastExit"].toObject();
   QVERIFY(exit["processId"].toInteger()>0);QVERIFY(exit["startTicks"].toString().toULongLong()>0);
   if(success) { QVERIFY(!process.cleanupRequired());QVERIFY(exit["teardownCertified"].toBool()); QCOMPARE(exit["code"].toInt(),0);QCOMPARE(exit["status"].toString(),QString("normal")); }
@@ -112,7 +171,7 @@ private slots:
   KdeRegionProcess process(QCoreApplication::applicationFilePath());int cancelled=0,busy=0;
   process.start(frames(),[&](QRectF rect,Error e){QVERIFY(rect.isEmpty());QCOMPARE(e.code,QString("cancelled"));++cancelled;});
   process.start(frames(),[&](QRectF rect,Error e){QVERIFY(rect.isEmpty());QCOMPARE(e.code,QString("busy_selecting"));++busy;});
-  QCOMPARE(busy,1);QTest::qWait(30);process.cancel();process.cancel();QTRY_COMPARE(cancelled,1);
+  QCOMPARE(busy,1);putgd::test::settle(30);process.cancel();process.cancel();PUTGD_TRY_COMPARE(cancelled,1);
   qunsetenv("PUTGD_TEST_KDE_REGION_HELPER");QVERIFY(!process.busy());
   const auto exit=process.diagnostics()["lastExit"].toObject();
   QCOMPARE(exit["code"].toInt(),0);QCOMPARE(exit["status"].toString(),QString("normal"));
@@ -128,16 +187,16 @@ private slots:
   QFETCH(QByteArray,mode);QFETCH(QString,expectedCode);qputenv("PUTGD_TEST_KDE_REGION_HELPER",mode);
   KdeRegionProcess process(QCoreApplication::applicationFilePath());int callbacks=0;Error error;QElapsedTimer elapsed;elapsed.start();
   process.start(frames(),[&](QRectF rectangle,Error e){QVERIFY(rectangle.isEmpty());error=e;++callbacks;});
-  QTRY_COMPARE_WITH_TIMEOUT(callbacks,1,4000);qunsetenv("PUTGD_TEST_KDE_REGION_HELPER");
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(callbacks,1,4000);qunsetenv("PUTGD_TEST_KDE_REGION_HELPER");
   QVERIFY2(elapsed.elapsed()<4000,"Repeated terminal frames postponed the shutdown bound");
   QCOMPARE(error.code,expectedCode);QVERIFY(!process.busy());QCOMPARE(process.processId(),qint64(0));
-  QTest::qWait(40);QCOMPARE(callbacks,1);
+  putgd::test::settle(40);PUTGD_TRY_COMPARE(callbacks,1);
  }
  void abruptPreFenceExitBlocksFurtherSelection() {
   qputenv("PUTGD_TEST_KDE_REGION_HELPER","crash-before-teardown");
   KdeRegionProcess process(QCoreApplication::applicationFilePath());int completed=0;Error error;
   process.start(frames(),[&](QRectF r,Error e){QVERIFY(r.isEmpty());error=e;++completed;});
-  QTRY_COMPARE(completed,1);qunsetenv("PUTGD_TEST_KDE_REGION_HELPER");
+  PUTGD_TRY_COMPARE(completed,1);qunsetenv("PUTGD_TEST_KDE_REGION_HELPER");
   QCOMPARE(error.code,QString("capture_crashed"));QVERIFY(process.cleanupRequired());QVERIFY(!process.busy());
   QVERIFY(!process.diagnostics()["lastExit"].toObject()["teardownCertified"].toBool());
   process.start(frames(),[&](QRectF r,Error e){QVERIFY(r.isEmpty());QCOMPARE(e.code,QString("capture_cleanup_pending"));++completed;});
@@ -162,7 +221,7 @@ private slots:
    // A callback during destruction would reenter its partially dying owner.
    if(tearingDown){++reentries;raw->process.cancel();}
   });
-  QTRY_VERIFY(owner->process.processId()>0);
+  PUTGD_TRY_VERIFY(owner->process.processId()>0);
   QPointer<QProcess> child=owner->process.findChild<QProcess*>();QVERIFY(child);
   if(explicitShutdown){
    owner->process.shutdown();owner->process.shutdown();
@@ -170,13 +229,13 @@ private slots:
    QCOMPARE(child->state(),QProcess::NotRunning);
   }
   owner.reset();QVERIFY(child.isNull());
-  QTest::qWait(40);qunsetenv("PUTGD_TEST_KDE_REGION_HELPER");
+  putgd::test::settle(40);qunsetenv("PUTGD_TEST_KDE_REGION_HELPER");
   QVERIFY(tearingDown);QCOMPARE(callbacks,0);QCOMPARE(reentries,0);
  }
  void missingHelperFailsOnce() {
   KdeRegionProcess process("/does-not-exist-putgd-kde-region");int callbacks=0;
   process.start(frames(),[&](QRectF r,Error e){QVERIFY(r.isEmpty());QCOMPARE(e.code,QString("capture_start_failed"));++callbacks;});
-  QTRY_COMPARE(callbacks,1);QVERIFY(!process.busy());QTest::qWait(30);QCOMPARE(callbacks,1);
+  PUTGD_TRY_COMPARE(callbacks,1);QVERIFY(!process.busy());putgd::test::settle(30);PUTGD_TRY_COMPARE(callbacks,1);
  }
 };
 int main(int argc,char** argv) {

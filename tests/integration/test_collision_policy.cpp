@@ -1,6 +1,7 @@
 #include "fixtures/S3Fixture.h"
 #include "fixtures/U2Fixtures.h"
 #include <QSqlQuery>
+#include "fixtures/Waits.h"
 using namespace putgd::test;
 class CollisionTest : public QObject {
     Q_OBJECT
@@ -27,16 +28,16 @@ class CollisionTest : public QObject {
         Operation result;
         QElapsedTimer elapsed;elapsed.start();
         // Thirty-two guarded HEAD probes include durable checkpoints and worker IPC.
-        while (elapsed.elapsed() < 15000) {
-            QTest::qWait(25);
+        const bool terminal = putgd::test::waitFor([&] {
             HistoryStore store(operations.databasePath());
             result = store.operation(id);
-            if (QStringList{"completed", "partial", "failed", "cancelled"}.contains(result.state)) {
-                qInfo("collision_fixture_terminal_ms=%lld",elapsed.elapsed());
-                return result;
-            }
+            return QStringList{"completed", "partial", "failed", "cancelled"}.contains(result.state);
+        }, 15000);
+        if (terminal) {
+            qInfo("collision_fixture_terminal_ms=%lld",elapsed.elapsed());
+            return result;
         }
-        QTest::qFail("Operation did not reach a terminal state within 15 seconds",__FILE__,__LINE__);
+        QTest::qFail("Operation did not reach a terminal state within the 15-second budget",__FILE__,__LINE__);
         return result;
     }
 private slots:
@@ -62,10 +63,10 @@ private slots:
         source.payload.kind = "files";
         source.payload.files = {putgd::test::fixture(f.directory.path(), "report.pdf", "new fixture")};
         OperationService operations(f.directory.filePath("data"), settings, registry, source);
-        QTRY_VERIFY(operations.ready());
+        PUTGD_TRY_VERIFY(operations.ready());
         QString id;
         operations.invoke("clipboard", [&](auto error, auto result) { QVERIFY(!error); id = result["operationId"].toString(); });
-        QTRY_VERIFY(!id.isEmpty());
+        PUTGD_TRY_VERIFY(!id.isEmpty());
         auto operation = waitOperation(operations, id);
         QCOMPARE(operation.items.size(), 1);
         const auto item = operation.items[0];
@@ -76,7 +77,7 @@ private slots:
             QVERIFY(item.receipt.directUrl.isEmpty());
         } else {
             QCOMPARE(item.uploadStatus, QString("uploaded"));
-            QTRY_COMPARE(source.copies, 1);
+            PUTGD_TRY_COMPARE(source.copies, 1);
             QCOMPARE(source.copied.text, item.receipt.directUrl);
             if (policy == "rename") {
                 QVERIFY(item.candidate.startsWith("report-"));
@@ -105,10 +106,10 @@ private slots:
         source.payload.kind = "files";
         source.payload.files = {putgd::test::fixture(f.directory.path(), "a.txt", "a synthetic"), putgd::test::fixture(f.directory.path(), "b.txt", "b synthetic")};
         OperationService operations(f.directory.filePath("data"), settings, registry, source);
-        QTRY_VERIFY(operations.ready());
+        PUTGD_TRY_VERIFY(operations.ready());
         QString id;
         operations.invoke("clipboard", [&](auto error, auto result) { QVERIFY(!error); id = result["operationId"].toString(); });
-        QTRY_VERIFY(!id.isEmpty());
+        PUTGD_TRY_VERIFY(!id.isEmpty());
         auto operation = waitOperation(operations, id);
         QCOMPARE(operation.state, QString("partial"));
         QCOMPARE(operation.items[0].uploadStatus, QString("uploaded"));
@@ -123,16 +124,16 @@ private slots:
             QVERIFY(QFile::exists(item.local.path));
             QCOMPARE(QFileInfo(item.local.path).fileName(),item.artifact.name);
         }
-        QTRY_COMPARE(source.copies, 1);
+        PUTGD_TRY_COMPARE(source.copies, 1);
         QCOMPARE(source.copied.text, operation.items[0].receipt.directUrl);
-        QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(), 0);
+        PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(), 0);
         naming["mode"]="generated";naming["fileTemplate"]="Changed-{uuid}.{ext}";document["naming"]=naming;
         QVERIFY(settings.save(document,settings.revision()));
         bool retryAccepted = false;
         operations.retry(id, [&](auto error, auto) { QVERIFY(!error); retryAccepted = true; });
-        QTRY_VERIFY(retryAccepted);
-        QTRY_COMPARE(HistoryStore(operations.databasePath()).operation(id).items[1].uploadStatus, QString("uploaded"));
-        QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(), 0);
+        PUTGD_TRY_VERIFY(retryAccepted);
+        PUTGD_TRY_COMPARE(HistoryStore(operations.databasePath()).operation(id).items[1].uploadStatus, QString("uploaded"));
+        PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(), 0);
         operation = waitOperation(operations, id);
         QCOMPARE(operation.items[0].receipt.toJson(), savedReceipt);
         QCOMPARE(operation.items[1].uploadStatus, QString("uploaded"));
@@ -155,10 +156,10 @@ private slots:
         source.payload.files = {putgd::test::fixture(f.directory.path(), "history.txt", "history synthetic bytes")};
         OperationService operations(f.directory.filePath("data"), settings, registry, source);
         HistoryService history(operations);
-        QTRY_VERIFY(operations.ready());
+        PUTGD_TRY_VERIFY(operations.ready());
         QString operationId;
         operations.invoke("clipboard", [&](auto error, auto value) { QVERIFY(!error); operationId = value["operationId"].toString(); });
-        QTRY_VERIFY(!operationId.isEmpty());
+        PUTGD_TRY_VERIFY(!operationId.isEmpty());
         const auto uploaded = waitOperation(operations, operationId).items[0];
         QCOMPARE(uploaded.uploadStatus, QString("uploaded"));
         QVERIFY(QFile::exists(uploaded.local.path));
@@ -168,7 +169,7 @@ private slots:
         QVERIFY(settings.save(putgd::test::configuration(f.directory.path(), true), settings.revision()));
         QJsonObject preview;
         history.prepareDelete({uploaded.artifact.id}, [&](auto error, auto value) { QVERIFY(!error); preview = value; });
-        QTRY_VERIFY(!preview.isEmpty());
+        PUTGD_TRY_VERIFY(!preview.isEmpty());
         // Delay the marker's response so its durable intent can be observed while
         // a real SDK destructive request is already on the fixture wire.
         f.reset({{"objects", f.state()["objects"]}, {"versioning", "Enabled"},
@@ -178,14 +179,14 @@ private slots:
             QVERIFY(!error);
             deletionId = value["deleteOperationId"].toString();
         });
-        QTRY_VERIFY(!deletionId.isEmpty());
-        QTRY_COMPARE(f.events("DELETE").size(), 1);
+        PUTGD_TRY_VERIFY(!deletionId.isEmpty());
+        PUTGD_TRY_COMPARE(f.events("DELETE").size(), 1);
         auto journal = store.deletion(deletionId);
         const auto persistedIntent = journal["items"].toArray()[0].toObject()["progress"].toObject();
         QCOMPARE(persistedIntent["phase"].toString(), QString("marker_intent"));
         QCOMPARE(persistedIntent["target"].toObject(), originalReceipt);
         f.control("/__release", {{"barrier", "history-marker"}}, true);
-        QTRY_COMPARE(store.detail(uploaded.artifact.id)["remoteStatus"].toString(), QString("removed"));
+        PUTGD_TRY_COMPARE(store.detail(uploaded.artifact.id)["remoteStatus"].toString(), QString("removed"));
         journal = store.deletion(deletionId);
         const auto finalProgress = journal["items"].toArray()[0].toObject()["progress"].toObject();
         QCOMPARE(finalProgress["phase"].toString(), QString("done"));
@@ -241,11 +242,11 @@ private slots:
         {
             OperationService operations(data, settings, registry, source);
             HistoryService history(operations);
-            QTRY_VERIFY(operations.ready());
+            PUTGD_TRY_VERIFY(operations.ready());
             databasePath = operations.databasePath();
             QString operationId;
             operations.invoke("clipboard", [&](auto error, auto value) { QVERIFY(!error); operationId = value["operationId"].toString(); });
-            QTRY_VERIFY(!operationId.isEmpty());
+            PUTGD_TRY_VERIFY(!operationId.isEmpty());
             const auto uploaded = waitOperation(operations, operationId).items[0];
             QCOMPARE(uploaded.uploadStatus, QString("uploaded"));
             historyId = uploaded.artifact.id;
@@ -257,13 +258,13 @@ private slots:
                 "BEGIN SELECT RAISE(ABORT,'synthetic journal failure'); END").arg(checkpointPhase)));
             QJsonObject preview;
             history.prepareDelete({historyId}, [&](auto error, auto value) { QVERIFY(!error); preview = value; });
-            QTRY_VERIFY(!preview.isEmpty());
+            PUTGD_TRY_VERIFY(!preview.isEmpty());
             history.deleteConfirmed({historyId}, preview["acknowledgement"].toString(), [&](auto error, auto value) {
                 QVERIFY(!error); deletionId = value["deleteOperationId"].toString();
             });
-            QTRY_VERIFY(!deletionId.isEmpty());
+            PUTGD_TRY_VERIFY(!deletionId.isEmpty());
             HistoryStore store(databasePath);
-            QTRY_COMPARE(store.deletion(deletionId)["state"].toString(), QString("completed"));
+            PUTGD_TRY_COMPARE(store.deletion(deletionId)["state"].toString(), QString("completed"));
             const auto item = store.deletion(deletionId)["items"].toArray()[0].toObject();
             QCOMPARE(item["status"].toString(), initialDeletes ? QString("hidden_version_retained") : QString("failed"));
             QVERIFY(!item["error"].toObject()["code"].toString().isEmpty());
@@ -278,14 +279,14 @@ private slots:
         {
             OperationService operations(data, settings, registry, source);
             HistoryService history(operations);
-            QTRY_VERIFY(operations.ready());
+            PUTGD_TRY_VERIFY(operations.ready());
             HistoryStore reopened(operations.databasePath());
             QCOMPARE(reopened.deletion(deletionId)["items"].toArray()[0].toObject()["progress"].toObject(), failedProgress);
             bool accepted = false;
             history.retryDelete(deletionId, [&](auto error, auto value) { QVERIFY(!error); accepted = value["retryAccepted"].toBool(); });
-            QTRY_VERIFY(accepted);
-            QTRY_COMPARE(reopened.detail(historyId)["remoteStatus"].toString(), QString("removed"));
-            QTRY_COMPARE(reopened.deletion(deletionId)["state"].toString(), QString("completed"));
+            PUTGD_TRY_VERIFY(accepted);
+            PUTGD_TRY_COMPARE(reopened.detail(historyId)["remoteStatus"].toString(), QString("removed"));
+            PUTGD_TRY_COMPARE(reopened.deletion(deletionId)["state"].toString(), QString("completed"));
             qInfo("reopened_retry_status=%s delete_requests=%lld", qPrintable(reopened.detail(historyId)["remoteStatus"].toString()), qint64(f.events("DELETE").size()));
             QVERIFY(failedProgress.value("phase").toString() != "marker_intent");
             const auto finalProgress = reopened.deletion(deletionId)["items"].toArray()[0].toObject()["progress"].toObject();
@@ -311,11 +312,11 @@ private slots:
         source.payload.kind = "files";
         source.payload.files = {putgd::test::fixture(f.directory.path(), "a.txt", "a synthetic"), putgd::test::fixture(f.directory.path(), "b.txt", "b synthetic")};
         OperationService operations(f.directory.filePath("data"), settings, registry, source);
-        QTRY_VERIFY(operations.ready());
+        PUTGD_TRY_VERIFY(operations.ready());
         QString id;
         operations.invoke("clipboard", [&](auto error, auto result) { QVERIFY(!error); id = result["operationId"].toString(); });
-        QTRY_VERIFY(!id.isEmpty());
-        QTRY_COMPARE(f.events("PUT").size(), 1);
+        PUTGD_TRY_VERIFY(!id.isEmpty());
+        PUTGD_TRY_COMPARE(f.events("PUT").size(), 1);
         operations.cancel(id, [](auto error, auto) { QVERIFY(!error); });
         const auto operation = waitOperation(operations, id);
         QCOMPARE(operation.state, QString("cancelled"));
@@ -340,14 +341,14 @@ private slots:
         Source source;
         source.payload = textPayload();
         OperationService operations(f.directory.filePath("data"), settings, registry, source);
-        QTRY_VERIFY(operations.ready());
+        PUTGD_TRY_VERIFY(operations.ready());
         QString id;
         operations.invoke("clipboard", [&](auto error, auto result) { QVERIFY(!error); id = result["operationId"].toString(); });
-        QTRY_VERIFY(!id.isEmpty());
+        PUTGD_TRY_VERIFY(!id.isEmpty());
         auto operation = waitOperation(operations, id);
         QCOMPARE(operation.items[0].local.status, QString("failed"));
         QCOMPARE(operation.items[0].uploadStatus, QString("uploaded"));
-        QTRY_COMPARE(source.copies, 1);
+        PUTGD_TRY_COMPARE(source.copies, 1);
     }
     void exhaustedRenameAndDeniedHeadsNeverPut_data() {
         QTest::addColumn<QString>("failure");
@@ -371,10 +372,10 @@ private slots:
         source.payload.kind = "files";
         source.payload.files = {putgd::test::fixture(f.directory.path(), "report.pdf", "synthetic")};
         OperationService operations(f.directory.filePath("data"), settings, registry, source);
-        QTRY_VERIFY(operations.ready());
+        PUTGD_TRY_VERIFY(operations.ready());
         QString id;
         operations.invoke("clipboard", [&](auto error, auto result) { QVERIFY(!error); id = result["operationId"].toString(); });
-        QTRY_VERIFY(!id.isEmpty());
+        PUTGD_TRY_VERIFY(!id.isEmpty());
         auto operation = waitOperation(operations, id);
         QCOMPARE(operation.items[0].uploadStatus, QString("failed"));
         QCOMPARE(f.events("PUT").size(), 0);

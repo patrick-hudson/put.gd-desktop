@@ -10,6 +10,7 @@
 #include <QTemporaryDir>
 #include <QTest>
 #include <thread>
+#include "fixtures/Waits.h"
 using namespace putgd;
 // The optional diagnostics package upload (#123): only to a working
 // destination, through the normal pipeline, under an unguessable name, with a
@@ -42,7 +43,7 @@ public:
 QJsonObject wait(std::function<void(JsonReply)> start,Error* error=nullptr) {
  bool done=false;QJsonObject value;
  start([&](Error e,QJsonObject result){if(error)*error=e;value=result;done=true;});
- if(!QTest::qWaitFor([&]{return done;},20000))qWarning("timed out");
+ if(!putgd::test::waitFor([&]{return done;},20000))qWarning("timed out");
  return value;
 }
 }
@@ -76,7 +77,7 @@ private slots:
   settings_=std::make_unique<SettingsService>(dir_.filePath("config.json"),[registry](const auto& id,const auto& value){return registry->validate(id,value);});
   QVERIFY(settings_->save(test::configuration(dir_.path()),{}));
   source_=std::make_unique<test::Source>();source_->payload=test::textPayload();
-  operations_=std::make_unique<OperationService>(dir_.filePath("data"),*settings_,*registry_,*source_);QTRY_VERIFY(operations_->ready());
+  operations_=std::make_unique<OperationService>(dir_.filePath("data"),*settings_,*registry_,*source_);PUTGD_TRY_VERIFY(operations_->ready());
   history_=std::make_unique<HistoryService>(*operations_);
   bundles_=std::make_unique<DiagnosticsBundles>(*operations_,dir_.filePath("state"));
   // Like the S3 test, answer from another thread.
@@ -159,9 +160,9 @@ private slots:
  // without even testing, and say why.
  void credentialFailureSkipsTheUpload() {
   provider_->failure={"s3_permission_denied","S3 denied the request (HTTP 403).",{{"httpStatus",403}}};
-  bool accepted=false;operations_->invoke("clipboard",[&](Error error,QJsonObject){QVERIFY(!error);accepted=true;});QTRY_VERIFY(accepted);
-  QTRY_VERIFY_WITH_TIMEOUT(provider_->uploads.size()>0&&provider_->uploads.last().candidate.startsWith("Text-"),10000);
-  QTest::qWait(500);
+  bool accepted=false;operations_->invoke("clipboard",[&](Error error,QJsonObject){QVERIFY(!error);accepted=true;});PUTGD_TRY_VERIFY(accepted);
+  PUTGD_TRY_VERIFY_WITH_TIMEOUT(provider_->uploads.size()>0&&provider_->uploads.last().candidate.startsWith("Text-"),10000);
+  PUTGD_TRY_COMPARE(operations_->diagnostics()["activeOperations"].toInt(),0);
   provider_->failure={};tests_=0;
   const auto result=create(request());
   QCOMPARE(result["uploadError"]["code"].toString(),QString("diagnostics_destination_failing"));
@@ -171,8 +172,8 @@ private slots:
   bundles_->destinationTested("test");
   QVERIFY2(!create(request()).contains("uploadError"),"a passing Test connection clears the earlier failure");
   provider_->failure={"s3_permission_denied","S3 denied the request (HTTP 403).",{{"httpStatus",403}}};
-  accepted=false;operations_->invoke("clipboard",[&](Error error,QJsonObject){QVERIFY(!error);accepted=true;});QTRY_VERIFY(accepted);
-  QTest::qWait(1000);provider_->failure={};
+  accepted=false;operations_->invoke("clipboard",[&](Error error,QJsonObject){QVERIFY(!error);accepted=true;});PUTGD_TRY_VERIFY(accepted);
+  PUTGD_TRY_COMPARE(operations_->diagnostics()["activeOperations"].toInt(),0);provider_->failure={};
   QCOMPARE(QJsonObject(create(request())).value("uploadError").toObject()["code"].toString(),QString("diagnostics_destination_failing"));
   // A destination whose settings changed since that failure is checked afresh.
   auto document=settings_->document();auto profiles=document["profiles"].toArray();auto profile=profiles[0].toObject();
@@ -182,8 +183,8 @@ private slots:
   profile["settings"]=QJsonObject{{"workspace","fixture-workspace"}};profiles[0]=profile;document["profiles"]=profiles;
   QVERIFY(settings_->save(document,settings_->revision()));
   // A passing ordinary upload clears it.
-  accepted=false;operations_->invoke("clipboard",[&](Error error,QJsonObject){QVERIFY(!error);accepted=true;});QTRY_VERIFY(accepted);
-  QTest::qWait(1000);
+  accepted=false;operations_->invoke("clipboard",[&](Error error,QJsonObject){QVERIFY(!error);accepted=true;});PUTGD_TRY_VERIFY(accepted);
+  PUTGD_TRY_COMPARE(operations_->diagnostics()["activeOperations"].toInt(),0);
   QVERIFY(!create(request()).contains("uploadError"));
  }
  // A failed diagnostics upload reports the provider's error, and later

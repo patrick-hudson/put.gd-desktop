@@ -84,6 +84,9 @@ jobs:
     needs: changes
     if: needs.changes.outputs.build == 'true'
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      issues: write  # the flaky-test tracker (tools/ci/flake_ledger.py)
     container: ubuntu:${{ matrix.distribution }}
     env:
       LANG: C.UTF-8
@@ -96,7 +99,7 @@ jobs:
       - name: Install distro dependencies
         run: |
           apt-get update
-          DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential ccache git ca-certificates passwd util-linux qemu-utils python3 nodejs npm cmake ninja-build pkg-config qt6-base-dev qt6-base-dev-tools libqt6sql6-sqlite qt6-wayland-dev qtkeychain-qt6-dev libxcb1-dev libxcb-keysyms1-dev libxcb-util-dev libxcb-image0-dev libxcb-randr0-dev libxcb-xfixes0-dev libxcb-damage0-dev libxcb-shape0-dev libxcb-xtest0-dev xvfb xauth dbus-daemon libxcursor-dev libxkbcommon-dev libxkbcommon-x11-dev libcurl4-openssl-dev libssl-dev zlib1g-dev libwayland-dev wayland-protocols libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libavcodec-dev libavformat-dev libavfilter-dev libavutil-dev libswscale-dev libswresample-dev gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav
+          DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential ccache git ca-certificates passwd util-linux qemu-utils python3 nodejs npm cmake ninja-build pkg-config qt6-base-dev qt6-base-dev-tools libqt6sql6-sqlite qt6-wayland-dev qtkeychain-qt6-dev libxcb1-dev libxcb-keysyms1-dev libxcb-util-dev libxcb-image0-dev libxcb-randr0-dev libxcb-xfixes0-dev libxcb-damage0-dev libxcb-shape0-dev libxcb-xinput-dev libxcb-xtest0-dev xvfb xauth dbus-daemon libxcursor-dev libxkbcommon-dev libxkbcommon-x11-dev libcurl4-openssl-dev libssl-dev zlib1g-dev libwayland-dev wayland-protocols libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libavcodec-dev libavformat-dev libavfilter-dev libavutil-dev libswscale-dev libswresample-dev gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav
           if [ '${{ matrix.distribution }}' = '26.04' ]; then
             apt-get install -y liblayershellqtinterface-dev
           fi
@@ -151,7 +154,7 @@ jobs:
         run: |
           echo "CCACHE_BUILD_START=$(date +%s)" >> "$GITHUB_ENV"
           ccache --zero-stats
-          cmake --preset dev -DPUTGD_BUNDLE_PROTON=ON \
+          cmake --preset dev -DPUTGD_BUNDLE_PROTON=ON -DPUTGD_TEST_TIMEOUT_SCALE=3 \
             -DPUTGD_AWS_SOURCE_DIR="$PWD/build/sdk/share/putgd-ci/aws-sdk-source-licenses" \
             -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
           cmake --build --preset dev --parallel "$(nproc)"
@@ -177,11 +180,26 @@ jobs:
           key: ctest-cost-linux-${{ matrix.distribution }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: ctest-cost-linux-${{ matrix.distribution }}-
       - name: Test
+        # Wait budgets scale with PUTGD_TEST_TIME_SCALE (tests/fixtures/Waits.h).
+        # A failed integration test is retried once and reported; unit tests never are.
+        env:
+          PUTGD_TEST_TIME_SCALE: '3'
+          PUTGD_CI_JOB: linux (${{ matrix.distribution }})
+          PUTGD_CI_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           test_tmp="$(mktemp -d /tmp/pgci.XXXXXX)"
           python3 tools/ci/ctest_preflight.py --build build/dev --tmp "$test_tmp" --user putgd-ci
           chown -R putgd-ci:putgd-ci build/dev "$test_tmp"
-          runuser -u putgd-ci -- sh -ec 'id -u > build/dev/ctest-observed-uid; exec env TMPDIR="$1" ctest --preset dev --parallel 8 --resource-spec-file "$3" --output-junit "$2"' _ "$test_tmp" "$PWD/build/dev/ctest-results.xml" "$PWD/tools/ci/ctest-resources.json"
+          runuser -u putgd-ci -- sh -ec 'id -u > build/dev/ctest-observed-uid; exec env TMPDIR="$1" python3 tools/ci/ctest_retry.py --ledger build/dev/flake-ledger.json --junit "$2" -- --preset dev --parallel 12 --resource-spec-file "$3"' _ "$test_tmp" "$PWD/build/dev/ctest-results.xml" "$PWD/tools/ci/ctest-resources.json"
+      - name: Report flaky tests
+        # Every test that passed only on its retry is listed in the job summary
+        # and recorded in its `flaky-test` tracker issue.
+        if: always() && hashFiles('build/dev/flake-ledger.json') != ''
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python3 tools/ci/flake_ledger.py summary build/dev/flake-ledger.json --title 'linux (${{ matrix.distribution }}): flaky and failed tests' --output "$GITHUB_STEP_SUMMARY"
+          python3 tools/ci/flake_ledger.py issues build/dev/flake-ledger.json
       - name: Save test durations
         # Failed runs save too: CTest records failures and starts them first next time.
         if: always() && hashFiles('build/dev/Testing/Temporary/CTestCostData.txt') != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
@@ -196,6 +214,8 @@ jobs:
           name: ctest-linux-${{ matrix.distribution }}
           path: |
             build/dev/ctest-results.xml
+            build/dev/ctest-results-retry.xml
+            build/dev/flake-ledger.json
             build/dev/registered-tests.json
             build/dev/socket-preflight.json
             build/dev/ci-test-context.json
@@ -213,6 +233,9 @@ jobs:
     name: sanitizers (clang ASan/UBSan)
     needs: changes
     if: needs.changes.outputs.sanitizers == 'true'
+    permissions:
+      contents: read
+      issues: write  # the flaky-test tracker (tools/ci/flake_ledger.py)
     runs-on: ubuntu-24.04
     container: ubuntu:26.04
     env:
@@ -222,7 +245,7 @@ jobs:
       - name: Install distro dependencies
         run: |
           apt-get update
-          DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential clang libclang-rt-dev llvm ccache git ca-certificates curl passwd util-linux python3 cmake ninja-build pkg-config qt6-base-dev qt6-base-dev-tools libqt6sql6-sqlite qt6-wayland-dev qtkeychain-qt6-dev liblayershellqtinterface-dev libxcb1-dev libxcb-keysyms1-dev libxcb-util-dev libxcb-image0-dev libxcb-randr0-dev libxcb-xfixes0-dev libxcb-damage0-dev libxcb-shape0-dev libxcb-xtest0-dev xvfb xauth dbus-daemon libxcursor-dev libxkbcommon-dev libxkbcommon-x11-dev libcurl4-openssl-dev libssl-dev zlib1g-dev libwayland-dev wayland-protocols libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libavcodec-dev libavformat-dev libavfilter-dev libavutil-dev libswscale-dev libswresample-dev
+          DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential clang libclang-rt-dev llvm ccache git ca-certificates curl passwd util-linux python3 cmake ninja-build pkg-config qt6-base-dev qt6-base-dev-tools libqt6sql6-sqlite qt6-wayland-dev qtkeychain-qt6-dev liblayershellqtinterface-dev libxcb1-dev libxcb-keysyms1-dev libxcb-util-dev libxcb-image0-dev libxcb-randr0-dev libxcb-xfixes0-dev libxcb-damage0-dev libxcb-shape0-dev libxcb-xinput-dev libxcb-xtest0-dev xvfb xauth dbus-daemon libxcursor-dev libxkbcommon-dev libxkbcommon-x11-dev libcurl4-openssl-dev libssl-dev zlib1g-dev libwayland-dev wayland-protocols libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libavcodec-dev libavformat-dev libavfilter-dev libavutil-dev libswscale-dev libswresample-dev
           useradd --create-home --shell /bin/bash putgd-ci
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -296,7 +319,7 @@ jobs:
         run: |
           echo "CCACHE_BUILD_START=$(date +%s)" >> "$GITHUB_ENV"
           ccache --zero-stats
-          cmake --preset clang-asan \
+          cmake --preset clang-asan -DPUTGD_TEST_TIMEOUT_SCALE=5 \
             -DPUTGD_AWS_SOURCE_DIR="$PWD/build/sdk/share/putgd-ci/aws-sdk-source-licenses" \
             -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
           cmake --build --preset clang-asan --parallel "$(nproc)"
@@ -316,12 +339,24 @@ jobs:
           key: ccache-clang-asan-26.04-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Test core contracts under ASan/UBSan
         # The test preset selects the core contracts and short unit tests and
-        # makes every ASan or UBSan report fatal.
+        # makes every ASan or UBSan report fatal. Instrumented code runs about
+        # three times slower, so wait budgets scale further than in linux.
+        env:
+          PUTGD_TEST_TIME_SCALE: '5'
+          PUTGD_CI_JOB: sanitizers (clang ASan/UBSan)
+          PUTGD_CI_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           test_tmp="$(mktemp -d /tmp/pgci.XXXXXX)"
           python3 tools/ci/ctest_preflight.py --build build/clang-asan --tmp "$test_tmp" --user putgd-ci
           chown -R putgd-ci:putgd-ci build/clang-asan "$test_tmp"
-          runuser -u putgd-ci -- sh -ec 'exec env TMPDIR="$1" LD_LIBRARY_PATH="$PWD/build/qt-asan/lib" ASAN_SYMBOLIZER_PATH="$(command -v llvm-symbolizer)" ctest --preset clang-asan --parallel 4 --output-junit "$2"' _ "$test_tmp" "$PWD/build/clang-asan/ctest-results.xml"
+          runuser -u putgd-ci -- sh -ec 'exec env TMPDIR="$1" LD_LIBRARY_PATH="$PWD/build/qt-asan/lib" ASAN_SYMBOLIZER_PATH="$(command -v llvm-symbolizer)" python3 tools/ci/ctest_retry.py --ledger build/clang-asan/flake-ledger.json --junit "$2" -- --preset clang-asan --parallel 4' _ "$test_tmp" "$PWD/build/clang-asan/ctest-results.xml"
+      - name: Report flaky tests
+        if: always() && hashFiles('build/clang-asan/flake-ledger.json') != ''
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python3 tools/ci/flake_ledger.py summary build/clang-asan/flake-ledger.json --title 'sanitizers: flaky and failed tests' --output "$GITHUB_STEP_SUMMARY"
+          python3 tools/ci/flake_ledger.py issues build/clang-asan/flake-ledger.json
       - name: Preserve structured test reports
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -329,6 +364,8 @@ jobs:
           name: ctest-clang-asan
           path: |
             build/clang-asan/ctest-results.xml
+            build/clang-asan/ctest-results-retry.xml
+            build/clang-asan/flake-ledger.json
             build/clang-asan/registered-tests.json
             build/clang-asan/Testing/Temporary/LastTest.log
             build/clang-asan/Testing/Temporary/LastTestsFailed.log
