@@ -53,8 +53,9 @@ cmake --install build/layershell
 
 Check out the immutable commits in `tools.lock.json` with ordinary Git, then
 verify `git rev-parse HEAD` against the lock. Clone each `qtLicenseSources` root
-without building Qt; these are the matching 6.8.3 license/source notices for the
-official binaries. Pass all source roots matching the modules actually bundled.
+and the `icu` root without building them; these are the matching 6.8.3
+license/source notices for the official binaries and their ICU 73.2. Pass all
+source roots matching the modules actually bundled.
 
 Build QtKeychain at `8eac9889775ca45c106d077bb0d3744754a1570a`:
 
@@ -100,16 +101,46 @@ Do not reuse stale staging contents.
 
 ```sh
 DESTDIR="$STAGE" cmake --install build/release
-python3 tools/releases/portable_appimage.py --stage "$STAGE" --output-dir "$OUTPUT" --tools-dir "$TOOL_CACHE" --qt-root "$QT_ROOT" --dependency-prefix "$DEPENDENCY_PREFIX" --version "$RELEASE_VERSION" --license-source "$QT_SOURCE" --license-source "$QTWAYLAND_SOURCE" --license-source "$QTKEYCHAIN_SOURCE" --license-source "$LAYERSHELL_SOURCE"
+python3 tools/releases/portable_appimage.py --stage "$STAGE" --output-dir "$OUTPUT" --tools-dir "$TOOL_CACHE" --qt-root "$QT_ROOT" --dependency-prefix "$DEPENDENCY_PREFIX" --version "$RELEASE_VERSION" --license-source "$SOURCES/qtbase" --license-source "$SOURCES/qtwayland" --license-source "$SOURCES/qtsvg" --license-source "$SOURCES/qtimageformats" --license-source "$SOURCES/qttranslations" --license-source "$SOURCES/icu" --license-source "$SOURCES/qtkeychain" --license-source "$SOURCES/layershell" --license-source "$SOURCES/ffmpeg"
 ```
 
-`--license-source` may be repeated for every upstream Qt module bundled; use the
-source corresponding to Qt 6.8.3. The adapter retains upstream LICENSE/COPYING/
-NOTICE files and distro copyright notices for deployed system libraries. The
-native install already includes the application MIT license and SDK notices.
-The LGPL license texts and upstream attribution metadata accompany the bundled
-Qt modules. Qt dynamic replacements remain possible by extracting the image. The installer
-must also retain the original source/dependency identities in release metadata.
+Pass one `--license-source` per bundled component, named by its id: each Qt
+module with files in the image (the `qtLicenseSources` checkouts, including
+`qttranslations`), `icu`, `qtkeychain`, `layershell` and `ffmpeg`. The adapter
+rejects a source no bundled file belongs to (no Qt Quick/QML is bundled, so no
+`qtdeclarative`) and a bundled Qt module without one.
+
+After deployment, `tools/releases/appimage_notices.py` gives the image its own
+notices (#417). It assigns every AppDir file to one component: put.gd, the
+upstream builds in `components.json`, the Qt module that Qt's own SPDX documents
+(`QT_ROOT/sbom`) say contains it, or the Ubuntu package dpkg names. It then
+writes:
+
+- `usr/share/doc/putgd/runtime-notices.txt`, the AppImage's notice text in place
+  of the native packages' one, listing each component with its version, licence,
+  source and files;
+- `usr/share/doc/putgd/bundled-components.json`, the same inventory for tools;
+- `bundled-licenses/<component>/`: the full `LICENSES/` texts of each bundled Qt
+  module and LayerShellQt (without `LicenseRef-Qt-Commercial`), the
+  `qt_attribution.json` entries and licence files of the third-party code Qt's
+  SBOM says is compiled into the bundled Qt files, and the other components'
+  licence files;
+- the AppStream `project_license`, the AND of every component's licence.
+
+It also removes what linuxdeploy leaves behind (#421): `AppRun.wrapped` and the
+unused `apprun-hooks/`, the usr/lib copies of the AWS libraries (loaded from
+`usr/lib/putgd`, as `aws-runtime-manifest.json` verifies) and of the Qt plugins
+(loaded from `usr/plugins`), and the distro copyright files it copies to
+`usr/share/doc/PACKAGE`; the Proton notices under `usr/share/doc/putgd/proton`
+become links to the helper's copies. LayerShellQt's plugin gets an
+`$ORIGIN`-relative RUNPATH in place of its build prefix. `appimage_notices.py
+--appdir` audits a finished AppDir on its own: the AppImage notice text, every
+file listed exactly once, each listed licence text present, the AppStream
+licence, no absolute RUNPATH, no leftovers or second copies.
+`build-appimage.sh` runs it on the extracted image, so the job fails when the
+notices or this content regress. Qt dynamic replacements remain possible by
+extracting the image. The installer must also retain the original
+source/dependency identities in release metadata.
 
 Outputs are `putgd-VERSION-x86_64.AppImage`, `appimage-build.json`, and the AppDir.
 The JSON includes original build identity, all deployed file hashes, source

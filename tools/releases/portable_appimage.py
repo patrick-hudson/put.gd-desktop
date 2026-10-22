@@ -14,6 +14,7 @@ import urllib.request
 
 from audit_native import sha256 as digest
 from audit_proton import audit_proton
+import appimage_notices
 import appimage_update
 from release_identity import parse_tag
 
@@ -62,29 +63,14 @@ def tools(directory: Path) -> tuple[dict, dict[str, Path]]:
     return lock, result
 
 
-def copy_licenses(sources: list[Path], destination: Path) -> list[str]:
-    copied = []
-    for source in sources:
-        source = source.resolve()
-        matches = [path for path in source.rglob("*") if path.is_file() and
-                   (path.name.upper().startswith(("LICENSE", "COPYING", "NOTICE", "COPYRIGHT")) or
-                    path.name == "qt_attribution.json")]
-        if not matches:
-            raise ValueError("No licenses found in source: " + str(source))
-        for path in matches:
-            target = destination / source.name / path.relative_to(source)
-            target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(path, target)
-            copied.append(str(target.relative_to(destination)))
-    return sorted(copied)
-
-
-def system_library_licenses(appdir: Path, qt: Path, extra_origins: dict[str, Path] | None = None) -> list[str]:
+def system_library_licenses(appdir: Path, claimed: set[str],
+                            extra_origins: dict[str, Path] | None = None) -> dict[str, list[str]]:
     """Retain the distro copyright/license notice for each deployed system ELF.
 
-    `extra_origins` names files that are not in the linker cache, such as the
-    GStreamer plugins and scanner, by their original distro path."""
-    qt_names = {path.name for path in qt.rglob("*") if path.is_file()}
+    Files in `claimed` belong to put.gd, Qt or another pinned upstream
+    component (appimage_notices.py). `extra_origins` names files that are not
+    in the linker cache, such as the GStreamer plugins and scanner, by their
+    original distro path. Returns each binary package's AppDir files."""
     cache = subprocess.run(["/sbin/ldconfig", "-p"], check=True, text=True,
                            capture_output=True).stdout
     origins = {}
@@ -95,17 +81,14 @@ def system_library_licenses(appdir: Path, qt: Path, extra_origins: dict[str, Pat
             origins.setdefault(name.split()[0], original)
             origins.setdefault(original.resolve().name, original)
     origins.update(extra_origins or {})
-    copied = set()
-    for path in appdir.rglob("*"):
-        if not path.is_file():
+    packages: dict[str, list[str]] = {}
+    for path in sorted(appdir.rglob("*")):
+        if path.is_symlink() or not path.is_file() or str(path.relative_to(appdir)) in claimed:
             continue
         with path.open("rb") as stream:
             if stream.read(4) != b"\x7fELF":
                 continue
         name = path.name
-        if name in qt_names or name.startswith(("putgd", "libputgd", "libaws", "libs2n",
-                                                  "libqt6keychain", "libLayerShellQt", "liblayer-shell", *FFMPEG_LIBRARIES)):
-            continue  # Exact pinned upstream notices are already installed.
         source = origins.get(name)
         if source is None:
             # Private distro libraries outside the linker cache, such as
@@ -122,7 +105,8 @@ def system_library_licenses(appdir: Path, qt: Path, extra_origins: dict[str, Pat
         if owner.returncode:
             raise ValueError("Cannot identify distro license for: " + str(source))
         package = owner.stdout.split(": ", 1)[0].split(":", 1)[0]
-        if package in copied:
+        packages.setdefault(package, []).append(str(path.relative_to(appdir)))
+        if len(packages[package]) > 1:
             continue
         notice = Path("/usr/share/doc") / package / "copyright"
         if not notice.is_file():
@@ -130,13 +114,11 @@ def system_library_licenses(appdir: Path, qt: Path, extra_origins: dict[str, Pat
         destination = appdir / "usr/share/doc/putgd/bundled-licenses/distro" / package / "copyright"
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(notice, destination)
-        copied.add(package)
     common = Path("/usr/share/common-licenses")
     if common.is_dir():
         shutil.copytree(common, appdir / "usr/share/doc/putgd/bundled-licenses/distro-common",
                         dirs_exist_ok=True)
-    return sorted(copied)
-
+    return packages
 
 
 def deployment_qmake(qt: Path, output: Path) -> Path:
@@ -396,7 +378,9 @@ def write_gpl_notice(appdir: Path, components: list[dict], ffmpeg: dict, version
              "usr/share/doc/putgd/bundled-licenses.", "",
              "Corresponding source: the release asset putgd-" + version + "-appimage-media-source.tar.gz",
              "(FFmpeg, x264, x265 and the GStreamer plugin linking x264) and putgd-" + version + "-source.tar.gz",
-             "(put.gd), published with this image on the project's GitHub release.", "",
+             "(put.gd), published with this image on the project's GitHub release. The source location",
+             "of every other bundled component, Qt and the LGPL libraries among them, is listed in",
+             "runtime-notices.txt and bundled-components.json.", "",
              "FFmpeg " + ffmpeg["release"] + " (" + ffmpeg["repository"] + " commit " + ffmpeg["commit"] + "),",
              "configured as recorded in packaging/appimage/media.json.", ""]
     lines += ["%s %s (Ubuntu source package %s %s)" % (item["binaryPackage"], item["binaryVersion"],
@@ -568,7 +552,8 @@ def main() -> int:
     parser.add_argument("--qt-root", type=Path, required=True, help="Official Qt 6.8.3 gcc_64 install")
     parser.add_argument("--dependency-prefix", type=Path, required=True, help="QtKeychain/LayerShellQt install prefix")
     parser.add_argument("--license-source", type=Path, action="append", required=True,
-                        help="Pinned Qt/module, QtKeychain, LayerShellQt source; repeat per source")
+                        help="Pinned licence source of a bundled component, named by its id "
+                             "(packaging/appimage/components.json or the Qt repository); repeat per source")
     parser.add_argument("--version", required=True)
     parser.add_argument("--require-proton", action="store_true")
     parser.add_argument("--proton-manifest", type=Path, help="Expected provisioned Proton runtime manifest")
@@ -611,7 +596,6 @@ def main() -> int:
     layer_plugins = list(dependency_prefix.rglob("liblayer-shell.so"))
     if len(layer_plugins) != 1:
         raise ValueError("Expected one LayerShellQt native Wayland shell plugin")
-    licenses = copy_licenses(args.license_source, appdir / "usr/share/doc/putgd/bundled-licenses")
     desktop = ROOT / "packaging/appimage/putgd.desktop"
     shutil.copy2(desktop, appdir / "usr/share/applications/putgd.desktop")
     deployment_tool = deployment_qmake(qt, output)
@@ -655,6 +639,8 @@ def main() -> int:
     shutil.copy2(layer_plugins[0], layer)
     subprocess.run([str(executables["linuxdeploy-x86_64.AppImage"]), "--appdir", str(appdir),
                     "--library", str(layer), *excludes], check=True, env=environment)
+    # Its build RUNPATH names the CI's dependency prefix and Qt install (#421).
+    appimage_notices.set_origin_runpath(appdir, layer)
     wayland = []
     for name in WAYLAND_CLIENT_PLUGINS:
         wayland += ["--library", str(appdir / "usr/plugins" / name)]
@@ -670,7 +656,15 @@ def main() -> int:
     shutil.copy2(ROOT / "packaging/appimage/AppRun", appdir / "AppRun")
     (appdir / "AppRun").chmod(0o755)
     removed_root_entries = keep_one_root_desktop_entry(appdir)
-    distro_licenses = system_library_licenses(appdir, qt, media_origins)
+    distro_licenses = {}
+
+    def distro_packages(root: Path, claimed: set[str]) -> dict[str, list[str]]:
+        distro_licenses.update(system_library_licenses(root, claimed, media_origins))
+        return distro_licenses
+
+    notices = appimage_notices.finish(appdir, qt=qt, lock=lock, license_sources=args.license_source,
+                                      distro_packages=distro_packages, version=args.version,
+                                      build=inventory["manifest"], gpl=gpl)
     refresh_runtime_manifest(appdir)
     deployed = audit_deployed(appdir, inventory)
     deployed["qtPlatforms"] = audit_platforms(appdir, inventory)
@@ -682,6 +676,7 @@ def main() -> int:
                           expected_manifest=inventory.get("proton", {}).get("manifest"))
     if proton:
         deployed["proton"] = proton
+    deployed["notices"] = appimage_notices.audit(appdir)
     target = output / ("putgd-" + args.version + "-x86_64.AppImage")
     update = appimage_update.targets(target.name, args.release_tag, args.repository, args.update_origin, args.update_base)
     subprocess.run([str(executables["appimagetool-x86_64.AppImage"]), "--runtime-file",
@@ -714,7 +709,11 @@ def main() -> int:
                "recordingRuntime": {"media": media, "hostFallbackLibraries": fallbacks,
                                     "ffmpeg": lock["buildInputs"]["ffmpeg"], "gplComponents": gpl,
                                     "license": "GPL-2.0-or-later combined work"},
-               "bundledSourceLicenses": licenses, "distroLicensePackages": distro_licenses,
+               "notices": notices,
+               "bundledSourceLicenses": sorted(name for component in notices["inventory"]["components"]
+                                               if not component["id"].startswith("ubuntu:")
+                                               for name in component["licenseFiles"]),
+               "distroLicensePackages": sorted(distro_licenses),
                "inventory": [{"path": str(path.relative_to(appdir)), "sha256": digest(path),
                               "bytes": path.stat().st_size} for path in sorted(files)],
                "desktopAcceptance": "pending"}

@@ -1,0 +1,109 @@
+{
+  "schemaVersion": 1,
+  "purpose": "The AppImage's bundled components that are not Qt modules (Qt's own SPDX documents map those) or Ubuntu packages (dpkg maps those). tools/releases/appimage_notices.py assigns every AppDir file to exactly one component from these patterns, copies each component's licence texts and writes the image's runtime-notices.txt and bundled-components.json (#417). Versions and source locations come from the build: the put.gd build identity, packaging/appimage/tools.lock.json, the installed dependency-lock.json and the Proton runtime manifest. 'files' and 'noticeFiles' are AppDir paths (fnmatch patterns); 'licenseFiles' are paths in the component's pinned licence source (build/dependencies/appimage/ID); a 'licenseTexts' value is an AppDir path (usr/...) or a path in that licence source, and SPDX ids without one use LICENSES/ID.txt. A 'versionFile' must exist in the Qt install, so a Qt bump that changes the version fails until the lock follows.",
+  "components": [
+    {
+      "id": "putgd",
+      "name": "put.gd",
+      "version": {"from": "build"},
+      "source": {"from": "build", "repository": "https://github.com/patrick-hudson/put.gd-desktop"},
+      "license": "MIT",
+      "licenseTexts": {"MIT": "usr/share/doc/putgd/LICENSE"},
+      "files": ["AppRun", ".DirIcon", "putgd.desktop", "putgd.svg", "usr/bin/putgd", "usr/bin/putgd-*", "usr/bin/qt.conf",
+                "usr/lib/putgd/libputgd-s3.so", "usr/share/applications/*.desktop",
+                "usr/share/icons/hicolor/scalable/apps/putgd.svg", "usr/share/metainfo/gd.put.Putgd.metainfo.xml",
+                "usr/share/gnome-shell/extensions/putgd@put.gd/*", "usr/share/putgd/autostart/putgd.desktop",
+                "usr/share/putgd/build-info.json", "usr/share/putgd/dependency-lock.json",
+                "usr/share/putgd/aws-runtime-manifest.json"],
+      "noticeFiles": ["usr/share/doc/putgd/LICENSE", "usr/share/doc/putgd/wayland-*.xml"],
+      "note": "The Wayland protocol files beside the notices keep the copyright and permission text of the protocols whose generated client bindings are compiled into put.gd."
+    },
+    {
+      "id": "aws-sdk-cpp",
+      "name": "AWS SDK for C++ (with aws-crt-cpp, the aws-c libraries and s2n-tls)",
+      "version": {"from": "dependencyLock", "key": "awsSdk"},
+      "source": {"from": "dependencyLock", "key": "awsSdk"},
+      "license": "Apache-2.0",
+      "licenseTexts": {"Apache-2.0": "usr/share/doc/putgd/aws-sdk-LICENSE"},
+      "files": ["usr/lib/putgd/libaws-*", "usr/lib/putgd/libs2n*"],
+      "noticeFiles": ["usr/share/doc/putgd/aws-*-LICENSE"]
+    },
+    {
+      "id": "proton-helper",
+      "name": "put.gd Proton Drive helper (Proton Drive SDK, Bun runtime, OpenPGP and crypto libraries)",
+      "version": {"from": "protonManifest"},
+      "source": {"from": "protonManifest", "catalog": "usr/libexec/putgd/proton/redistribution/SOURCES.json"},
+      "license": "MIT AND GPL-3.0-only",
+      "licenseTexts": {"MIT": "usr/share/doc/putgd/proton/LICENSE.proton",
+                       "GPL-3.0-only": "usr/libexec/putgd/proton/redistribution/LICENSE.crypto-GPL-3.0"},
+      "files": ["usr/libexec/putgd/proton/manifest.json", "usr/libexec/putgd/proton/putgd-proton-runtime",
+                "usr/share/putgd/proton-runtime-manifest.json"],
+      "noticeFiles": ["usr/libexec/putgd/proton/THIRD-PARTY-NOTICES.txt", "usr/libexec/putgd/proton/redistribution/*",
+                      "usr/share/doc/putgd/proton/*"],
+      "note": "THIRD-PARTY-NOTICES.txt and redistribution/ list every package compiled into the helper, with its licence."
+    },
+    {
+      "id": "qtkeychain",
+      "name": "QtKeychain",
+      "version": {"from": "lock", "key": "qtKeychain"},
+      "source": {"from": "lock", "key": "qtKeychain"},
+      "license": "BSD-3-Clause",
+      "licenseTexts": {"BSD-3-Clause": "COPYING"},
+      "licenseFiles": ["COPYING"],
+      "files": ["usr/lib/libqt6keychain.so*"]
+    },
+    {
+      "id": "layershell",
+      "name": "LayerShellQt",
+      "version": {"from": "lock", "key": "layerShellQt"},
+      "source": {"from": "lock", "key": "layerShellQt"},
+      "license": "(LGPL-2.1-only OR LGPL-3.0-only OR LicenseRef-KDE-Accepted-LGPL) AND MIT",
+      "licenseFiles": ["LICENSES/*"],
+      "files": ["usr/lib/libLayerShellQtInterface.so*", "usr/plugins/wayland-shell-integration/liblayer-shell.so"],
+      "note": "The library and plugin sources are LGPL-2.1-only OR LGPL-3.0-only OR LicenseRef-KDE-Accepted-LGPL; the compiled wlr-layer-shell protocol is MIT."
+    },
+    {
+      "id": "ffmpeg",
+      "name": "FFmpeg",
+      "version": {"from": "lock", "key": "ffmpeg"},
+      "source": {"from": "lock", "key": "ffmpeg"},
+      "license": "GPL-2.0-or-later",
+      "licenseTexts": {"GPL-2.0-or-later": "COPYING.GPLv2"},
+      "licenseFiles": ["LICENSE.md", "COPYING.*"],
+      "files": ["usr/lib/libavcodec.so*", "usr/lib/libavformat.so*", "usr/lib/libavfilter.so*", "usr/lib/libavutil.so*",
+                "usr/lib/libswscale.so*", "usr/lib/libswresample.so*"],
+      "note": "Configured with --enable-gpl and the components in packaging/appimage/media.json; LICENSE.md explains the GPL build."
+    },
+    {
+      "id": "icu",
+      "name": "ICU (International Components for Unicode), shipped with Qt",
+      "version": {"from": "lock", "key": "icu"},
+      "source": {"from": "lock", "key": "icu"},
+      "license": "Unicode-DFS-2016 AND ICU AND BSD-3-Clause AND NAIST-2003",
+      "licenseTexts": {"Unicode-DFS-2016": "icu4c/LICENSE", "ICU": "icu4c/LICENSE", "BSD-3-Clause": "icu4c/LICENSE",
+                       "NAIST-2003": "icu4c/LICENSE"},
+      "licenseFiles": ["icu4c/LICENSE"],
+      "files": ["usr/lib/libicu*.so*"],
+      "versionFile": "{qt}/lib/libicuuc.so.{version}",
+      "note": "The official Qt binaries' own ICU build; icu4c/LICENSE holds the Unicode licence and the third-party terms of the code and data in the libraries."
+    },
+    {
+      "id": "appimage-runtime",
+      "name": "AppImage type2-runtime",
+      "version": {"from": "tool", "key": "runtime-x86_64"},
+      "source": {"from": "tool", "key": "runtime-x86_64"},
+      "license": "MIT",
+      "licenseTexts": {"MIT": "usr/share/doc/putgd/appimage-runtime-LICENSE"},
+      "files": [],
+      "noticeFiles": ["usr/share/doc/putgd/appimage-runtime-LICENSE"],
+      "embedded": [
+        {"name": "musl libc", "license": "MIT"},
+        {"name": "libfuse", "license": "LGPL-2.1-only", "licenseText": "usr/share/doc/putgd/bundled-licenses/distro-common/LGPL-2.1"},
+        {"name": "squashfuse", "license": "BSD-2-Clause"},
+        {"name": "zstd", "license": "BSD-3-Clause OR GPL-2.0-only"},
+        {"name": "zlib", "license": "Zlib"}
+      ],
+      "note": "The runtime is the start of the AppImage file itself, not a file in the AppDir. appimage-runtime-LICENSE names the libraries linked into it statically."
+    }
+  ]
+}
