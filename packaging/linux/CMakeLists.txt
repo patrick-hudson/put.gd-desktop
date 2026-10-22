@@ -184,7 +184,11 @@ set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Native Linux screen and clipboard sharing
 set(CPACK_PACKAGE_DESCRIPTION "Capture and share screen regions, windows, the desktop, the clipboard and
 screen recordings. put.gd uploads them to your own S3-compatible bucket or to
 Proton Drive and puts the public link on the clipboard. It runs on GNOME, KDE
-Plasma and Cinnamon, on Wayland and X11.")
+Plasma and Cinnamon, on Wayland and X11.
+
+The package's licence metadata names its main licences. Every licence and
+notice of the code it contains is listed in
+/usr/share/doc/putgd/runtime-notices.txt.")
 set(CPACK_RPM_PACKAGE_DESCRIPTION "${CPACK_PACKAGE_DESCRIPTION}")
 set(CPACK_DEBIAN_PACKAGE_SECTION graphics)
 set(CPACK_PACKAGING_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}")
@@ -197,10 +201,10 @@ set(CPACK_DEBIAN_PACKAGE_DEPENDS "libqt6sql6-sqlite, qt6-qpa-plugins, qt6-waylan
 set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
 # Resolve system SONAMEs on Fedora; Qt's platform/SQL plugins are loaded at runtime.
 set(CPACK_RPM_FILE_NAME RPM-DEFAULT)
-# Every licence of the code the package ships, not only put.gd's (#469): put.gd
-# (MIT), the private AWS SDK and CRT (Apache-2.0) and the cJSON, libcbor, xxHash
-# and TinyXML-2 code compiled into them (MIT, BSD-2-Clause, Zlib).
-set(putgd_licenses MIT Apache-2.0 BSD-2-Clause Zlib)
+# The main licences: put.gd (MIT) and the private AWS SDK (Apache-2.0), plus
+# the Proton helper's crypto below. runtime-notices.txt lists every other
+# licence of the shipped code (#469, Patrick's decision).
+set(CPACK_RPM_PACKAGE_LICENSE "MIT AND Apache-2.0")
 set(CPACK_RPM_PACKAGE_URL "https://github.com/patrick-hudson/put.gd-desktop")
 set(CPACK_RPM_PACKAGE_REQUIRES "qt6-qtbase-gui, qt6-qtbase, qt6-qtwayland, qt6-qtimageformats, glib2")
 set(CPACK_RPM_PACKAGE_RELEASE_DIST ON)
@@ -227,26 +231,18 @@ if(TARGET putgd-record)
   # placeholder unless Cisco's openh264 (fedora-cisco-openh264) replaces it.
   string(APPEND CPACK_RPM_PACKAGE_REQUIRES ", gstreamer1-plugins-base, gstreamer1-plugins-good, gstreamer1-plugins-bad-free, pipewire-gstreamer")
   set(CPACK_RPM_PACKAGE_RECOMMENDS "gstreamer1-plugin-openh264, openh264")
-  # Its zkde-screencast-unstable-v1 bindings come from LGPL-2.1-or-later XML.
-  list(APPEND putgd_licenses LGPL-2.1-or-later)
 endif()
 if(PUTGD_BUNDLE_PROTON)
   string(APPEND CPACK_DEBIAN_PACKAGE_DEPENDS ", xdg-utils, libsecret-1-0")
   string(APPEND CPACK_RPM_PACKAGE_REQUIRES ", xdg-utils, libsecret")
-  # The helper compiles in Proton's crypto (GPL-3.0-only), OpenPGP.js
-  # (LGPL-3.0-or-later) and bcryptjs (BSD-3-Clause); Bun links JavaScriptCore
-  # (LGPL-2.0-or-later) and TinyCC (LGPL-2.1-or-later). Their texts are in
-  # doc/putgd/proton.
-  list(APPEND putgd_licenses GPL-3.0-only LGPL-3.0-or-later LGPL-2.1-or-later LGPL-2.0-or-later BSD-3-Clause)
+  # WebPackages' README grants its crypto "version 3 ... or (at your option)
+  # any later version" (956a713c); package.json's bare GPL-3.0 says no more.
+  string(APPEND CPACK_RPM_PACKAGE_LICENSE " AND GPL-3.0-or-later")
+  # The helper's own pointer to the source published with this release.
+  configure_file(proton-source-location.txt.in package-inputs/proton/SOURCE-LOCATION.txt @ONLY)
+  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/package-inputs/proton/SOURCE-LOCATION.txt"
+    DESTINATION "${CMAKE_INSTALL_DATADIR}/doc/putgd/proton")
 endif()
-set(CPACK_RPM_PACKAGE_LICENSE "")
-foreach(license IN ITEMS MIT Apache-2.0 GPL-3.0-only LGPL-3.0-or-later LGPL-2.1-or-later LGPL-2.0-or-later
-    BSD-2-Clause BSD-3-Clause Zlib)
-  if(license IN_LIST putgd_licenses)
-    list(APPEND CPACK_RPM_PACKAGE_LICENSE "${license}")
-  endif()
-endforeach()
-list(JOIN CPACK_RPM_PACKAGE_LICENSE " AND " CPACK_RPM_PACKAGE_LICENSE)
 # AppStream: software centres show put.gd and its updates as an application.
 # The release entry is this build's package version and commit date.
 set(PUTGD_METAINFO_LICENSE "${CPACK_RPM_PACKAGE_LICENSE}")

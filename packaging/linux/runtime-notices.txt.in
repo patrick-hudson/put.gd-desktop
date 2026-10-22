@@ -1,5 +1,29 @@
 put.gd package dependency notice
 
+Licences. The package's licence metadata names the main licences: MIT (put.gd),
+Apache-2.0 (the AWS SDK for C++) and, with the Proton Drive helper, GPL-3.0-or-later
+(Proton's crypto). This file lists every licence of the code the package contains:
+
+  put.gd                                    MIT                 LICENSE
+  zkde-screencast-unstable-v1 bindings      LGPL-2.1-or-later   wayland-zkde-screencast-unstable-v1.xml
+    (in putgd-record)
+  ext/wlr data-control-v1 bindings          MIT-style           wayland-*-data-control-*.xml
+  AWS SDK for C++, aws-crt-cpp, aws-c-*,    Apache-2.0          aws-*-LICENSE, aws-*-NOTICE
+    s2n-tls
+  cJSON, libcbor (in the AWS libraries)     MIT                 aws-sdk-cJSON-LICENSE,
+                                                                aws-crt-cpp-crt-aws-c-common-THIRD-PARTY-LICENSES
+  xxHash (in the AWS libraries)             BSD-2-Clause        aws-crt-cpp-crt-aws-checksums-xxHash-LICENSE
+  TinyXML-2 (in the AWS libraries)          Zlib                aws-sdk-TinyXML2-LICENSE
+  Proton Drive helper, when included:                           proton/
+    Proton Drive SDK and account code       MIT                 proton/LICENSE.proton
+    Proton crypto (WebPackages)             GPL-3.0-or-later    proton/LICENSE.crypto-GPL-3.0
+    OpenPGP.js                              LGPL-3.0-or-later   proton/THIRD-PARTY-NOTICES.txt
+    bcryptjs                                BSD-3-Clause        proton/THIRD-PARTY-NOTICES.txt
+    other bundled npm packages              MIT                 proton/THIRD-PARTY-NOTICES.txt
+    Bun runtime                             MIT                 proton/BUN-*
+    JavaScriptCore/WebKit (in Bun)          LGPL-2.0-or-later   proton/BUN-THIRD-PARTY-NOTICES.txt.gz
+    TinyCC (in Bun)                         LGPL-2.1-or-later   proton/BUN-THIRD-PARTY-NOTICES.txt.gz
+
 Qt 6 and QtKeychain are dynamically linked distribution packages. Their licenses,
 source and security updates are supplied through the distribution package manager.
 Qt platform plugins and SQLite SQL driver remain distribution owned.
@@ -31,7 +55,7 @@ are published with this release at
 @PUTGD_SOURCE_URL@
 as putgd-VERSION-source.tar.gz, putgd-proton-corresponding-source.tar.gz.part1
 and .part2 (concatenate them) and proton-source-catalog.json. proton/SOURCES.json
-lists the source packets by SHA-256.
+lists the source packets by SHA-256, and proton/SOURCE-LOCATION.txt repeats this.
 
 Native packages include desktop integration assets and dependency notices. Release
 artifacts have build identities, package inventories and published checksums. Verify
