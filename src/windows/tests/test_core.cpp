@@ -64,6 +64,11 @@ static void settingsTests() {
     CHECK(!Settings::validate(dev, s3));
     CHECK(Settings::fromValidated(dev).action("clipboard").profileId == "development-s3");
     auto broken = defaults; broken["extra"] = 1; CHECK(Settings::validate(broken, s3).code == "config_invalid");
+    // The WER LocalDumps opt-in (#125): an optional boolean beside debugLogging.
+    auto dumps = defaults; auto prefs = dumps["preferences"].toObject(); prefs["diagnostics"] = json::Object{{"debugLogging", false}, {"crashDumps", true}}; dumps["preferences"] = prefs;
+    CHECK(!Settings::validate(dumps, s3) && Settings::fromValidated(dumps).crashDumps && !Settings::fromValidated(defaults).crashDumps);
+    prefs["diagnostics"] = json::Object{{"debugLogging", false}, {"crashDumps", "yes"}}; dumps["preferences"] = prefs;
+    CHECK(Settings::validate(dumps, s3).details.value("path") == "/preferences/diagnostics");
     auto bad = defaults; { auto actions = bad.value("actions").toObject(); auto region = actions.value("region").toObject(); region["shortcut"] = "Ctrl+Nope"; actions["region"] = region; bad["actions"] = actions; }
     CHECK(Settings::validate(bad, s3).details.value("path") == "/actions/region/shortcut");
     // Legacy 2 GiB limits migrate to "auto"; legacy documents without edit/record normalize.
