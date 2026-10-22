@@ -354,7 +354,8 @@ private slots:
   for(int i=0;i<items.size();++i){
    auto* item=items[i];const int need=qMin(item->maximumHeight(),qMax(item->minimumHeight(),item->hasHeightForWidth()?item->heightForWidth(item->width()):item->minimumSizeHint().height()));
    QVERIFY2(item->height()>=need,qPrintable(item->objectName()+" is squeezed"));
-   for(int j=i+1;j<items.size();++j)QVERIFY2(!item->geometry().intersects(items[j]->geometry()),qPrintable(item->objectName()+" overlaps "+items[j]->objectName()));
+   const auto where=[&](QWidget* w){return QString("%1 %2,%3 %4x%5").arg(w->objectName()).arg(w->x()).arg(w->y()).arg(w->width()).arg(w->height());};
+   for(int j=i+1;j<items.size();++j)QVERIFY2(!item->geometry().intersects(items[j]->geometry()),qPrintable(where(item)+" overlaps "+where(items[j])+QString(" in a %1x%2 rail (minimum %3, viewport %4x%5)").arg(content->width()).arg(content->height()).arg(content->minimumHeight()).arg(scroll?scroll->viewport()->width():0).arg(scroll?scroll->viewport()->height():0)));
   }
   QVERIFY(scroll);
   // The version's whole line shows, descent included, with room to spare (Patrick's clipped "nightly").

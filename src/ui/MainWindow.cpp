@@ -138,7 +138,10 @@ void MainWindow::fitRail(){
  else if(needed()+railSaving_<=available)setRailCompact(false);
  // Scroll rather than squeeze: the stylesheet's minimum heights are below some
  // items' text (the version link's is 6 px), so a squeezed rail clipped them.
- railScroll_->widget()->setMinimumHeight(needed());
+ // The scroll area applies a new minimum only on a later pass; until then the
+ // layout would squeeze into the old height, so the content grows here.
+ auto* content=railScroll_->widget();const int minimum=needed();content->setMinimumHeight(minimum);
+ if(content->height()<minimum)content->resize(content->width(),minimum);
  fittingRail_=false;
 }
 void MainWindow::setRailCompact(bool compact){
