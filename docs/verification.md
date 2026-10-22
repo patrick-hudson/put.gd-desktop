@@ -9,16 +9,19 @@ missing profiles, and run physical-hardware release gates on physical machines.
 This requirement is separate from the historical results below; missing new
 rows and current-candidate evidence remain gates.
 
-## First stable (v0.1.1) gate plan — 2026-10-22
+## First stable gate plan — 2026-10-22
 
 No candidate or stable asset has been accepted yet. `v0.1.1-rc.1` (`ae603fab`)
-is an unpublished draft from 2026-10-18, and the next promotion cuts `rc.2`.
+is an unpublished draft from 2026-10-18. The first stable switches to calendar
+versions `YY.MDD.N` first ([#373](https://github.com/patrick-hudson/put.gd-desktop/issues/373)),
+so it won't be `v0.1.1`, and the candidate steps change with it.
 [Issue #44](https://github.com/patrick-hudson/put.gd-desktop/issues/44) holds the
 current gate table, the proposal for what v0.1.1 requires or defers, and these
 work packages:
 
 | Gate | Issue | Status on 2026-10-22 |
 | --- | --- | --- |
+| Calendar versions `YY.MDD.N`, prerequisite for promotion | [#373](https://github.com/patrick-hudson/put.gd-desktop/issues/373) | design awaiting Patrick; bridge nightly, then CalVer tags |
 | AppImage full acceptance A–K, six desktops | [profile](acceptance-matrix.md#appimage-full-acceptance-profile), [first pass](evidence/2026-10-21-appimage-full-acceptance/README.md) | first pass on nightly 842 failed F (5 desktops), H and J (f44); rerun pending |
 | DEB lifecycle, recording rows, live S3 | [#375](https://github.com/patrick-hudson/put.gd-desktop/issues/375) | partial: source144 Cinnamon VM only; no state-preserving upgrade or removal + login on Wayland; schema 5→7 never exercised |
 | RPM lifecycle on f44 | [#377](https://github.com/patrick-hudson/put.gd-desktop/issues/377) | partial: repo upgrade 816→828 only |
@@ -28,11 +31,11 @@ work packages:
 | Physical mixed DPI and rotation | [#381](https://github.com/patrick-hudson/put.gd-desktop/issues/381) | blocked: no builder has two outputs; proposed for 0.1.2 |
 | Uninstall login-startup entry | [#382](https://github.com/patrick-hudson/put.gd-desktop/issues/382) | needs Patrick's decision |
 | License, notices, provenance, dependencies | [#383](https://github.com/patrick-hudson/put.gd-desktop/issues/383) | CI audits every nightly; no human review since `dev.133` |
-| Release campaign and stable signing | [#384](https://github.com/patrick-hudson/put.gd-desktop/issues/384) | promote.py dry run passed on `0435ed6a` |
+| Release campaign and stable signing | [#384](https://github.com/patrick-hudson/put.gd-desktop/issues/384) | promote.py dry run passed on `0435ed6a` under the old scheme; repeat after #373 |
 | KDE/X11 rows, graphical-store installs | [#385](https://github.com/patrick-hudson/put.gd-desktop/issues/385) | proposed for 0.1.2; GNOME/X11 obsolete (GNOME 50 has no X11 session) |
 
 Flatpak ([#83](https://github.com/patrick-hudson/put.gd-desktop/issues/83)) is
-outside v0.1.1.
+outside the first stable.
 
 ## Flaky-test rethink (#351) — 2026-10-22
 
