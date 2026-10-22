@@ -212,6 +212,22 @@ the channel's minisign signature, and the package must match it.
 Development builds, and a channel other than the build's own, don't install
 (`update_install_unavailable`, `development_build` or `switch_unsupported`).
 
+Verified on 2026-10-22 in the w11 guest with lab-signed nightlies 26.1022.1000 to 1004.
+That covered install, Start menu and Apps, MSI upgrade, same-version replacement, the
+refused downgrade, in-app updates of the MSI and the portable folder from Settings and the
+CLI, a tampered `SHA256SUMS` refused, and an uninstall that kept the user data
+([evidence](evidence/2026-10-22-windows-packaging-404/README.md)).
+
+![The Start menu entry of the per-user MSI](evidence/2026-10-22-windows-packaging-404/01-start-menu-search-annotated.png)
+
+![Apps shows the calendar version](evidence/2026-10-22-windows-packaging-404/03-apps-putgd-A-annotated.png)
+
+![Settings → Updates: Download and install](evidence/2026-10-22-windows-packaging-404/20-settings-download-and-install-annotated.png)
+
+![The update is ready; Restart put.gd runs the installer](evidence/2026-10-22-windows-packaging-404/21-settings-after-click-annotated.png)
+
+![After the restart: updated from the previous version](evidence/2026-10-22-windows-packaging-404/23-settings-updated-from-annotated.png)
+
 ## Lab
 
 Acceptance runs in a disposable Windows 11 guest cloned from the sealed base on a
@@ -252,7 +268,7 @@ curated subset.
 ![The tray icon in the notification area flyout](evidence/2026-10-22-windows-native/07-tray-flyout.png)
 
 Not verified here: DPI scaling above 100 %, multiple monitors, keyboard-only
-operation of the window, Windows 10, and a signed or packaged install.
+operation of the window, Windows 10, and a signed install.
 
 ## Not available in this build
 
