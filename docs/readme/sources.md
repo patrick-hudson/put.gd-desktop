@@ -51,8 +51,8 @@ local-only capture, the edited photo, or a six-second local recording.
 | `capture-plasma.png`, `shortcuts-plasma.png`, `destinations-plasma.png`, `history-plasma.png` | Settings › Capture, Settings › Shortcuts, Destinations, History (gallery, edited photo selected) | Debian VNC frames, same crop |
 | `review-plasma.png` | Review recording window (#283 layout) with a blur and a solid cover, after a 6.5 s region recording of a lab test card through KWin's screencast stream; replaced 2026-10-20 from a scratch build of PR #290 | Debian VNC frame, the window's client area (960×600), from [the #283 evidence](../evidence/2026-10-20-review-window-283/README.md) |
 | `editor-gnome.png` | Edit & upload with rectangle, highlight, redaction, arrow and text applied through `editor.apply` | Fedora VNC frame, crop `288, 54, 1632, 1052` |
-| `tray-cinnamon.png`, `tray-gnome.png`, `tray-plasma.png` | The tray context menu | guest frame crop `1055, 425, 1280, 800`; Fedora crop `1560, 33, 1860, 560`; Debian crop `1540, 680, 1920, 1080` |
-| `tray-trio.png` | the three tray crops side by side, 420 px tall, 16 px gaps, 12 px rounded corners | generated |
+| `tray-cinnamon.png`, `tray-gnome.png`, `tray-plasma.png` | The tray context menu, without Recent activity (#374), from build `0.1.1-dev.943+gef7b1eca305a` | menu-only crops from [the #374 evidence](../evidence/2026-10-22-tray-drop-recent-activity-374/README.md): m74 Cinnamon VNC frame `1711, 746, 1913, 1039`; f44 GNOME menu crop inset 10 px past its rounded corners; k72 Plasma VNC frame `1509, 690, 1702, 1025` |
+| `tray-trio.png` | the three tray crops side by side at their native size, top-aligned, 16 px gaps, 12 px rounded corners | generated |
 | `desktops-strip.png` | the three Settings crops scaled to 416 px wide, 16 px gaps, 14 px rounded corners, top-aligned to the shortest | generated |
 
 The photo in the editor is NASA's *Blue Marble* image of Earth

@@ -1,0 +1,46 @@
+{
+ "label": "m74-launch-settings",
+ "components": [
+  {
+   "blocks": 18931,
+   "box": [
+    296,
+    8,
+    1624,
+    928
+   ]
+  },
+  {
+   "blocks": 25,
+   "box": [
+    192,
+    1040,
+    232,
+    1080
+   ]
+  },
+  {
+   "blocks": 1,
+   "box": [
+    1896,
+    1056,
+    1904,
+    1064
+   ]
+  }
+ ],
+ "colour": [
+  252,
+  252,
+  252
+ ],
+ "inner": [
+  299,
+  42,
+  1619,
+  922
+ ],
+ "changedShare": 1.0,
+ "themeShare": 0.95,
+ "kept": "/home/patrick/work/put.gd-tray374lab/p-m74-after/crops/m74-launch-settings.png"
+}

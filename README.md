@@ -110,7 +110,7 @@ One resident process; windows, capture helpers, the recorder and the AWS SDK wor
 Every image below is the current nightly build (`0.1.1-dev.343+gac92b2158535`) on a real desktop: Linux Mint Cinnamon, Fedora 44 GNOME 50 on Wayland and Debian 13 Plasma 6 on Wayland, all from the acceptance lab.
 
 <p align="center">
-  <img src="docs/readme/tray-trio.png" alt="The put.gd tray menu on Cinnamon, GNOME and KDE Plasma: capture region, region & edit, window, desktop, screen recording, edit image, upload clipboard" width="720">
+  <img src="docs/readme/tray-trio.png" alt="The put.gd tray menu on Cinnamon, GNOME and KDE Plasma: capture region, region & edit, window, desktop, screen recording, edit image, upload clipboard, then settings, upload history, about and quit" width="641">
   <br>
   <sub>The tray is the app. Cinnamon, GNOME and Plasma, same menu: capture, capture &amp; edit, record, edit an image, upload the clipboard.</sub>
 </p>

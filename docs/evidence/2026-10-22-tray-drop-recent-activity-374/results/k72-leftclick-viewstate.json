@@ -1,0 +1,118 @@
+{
+ "method": "ui.viewState",
+ "params": {},
+ "response": {
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  },
+  "ok": true,
+  "requestId": "de642a72-b660-4593-96f0-100a2773a7cc",
+  "result": {
+   "appearance": {
+    "desktop": "light",
+    "desktopSource": "portal",
+    "scheme": "light",
+    "theme": "system",
+    "tokens": {
+     "accent": "#1f64d6",
+     "accentHover": "#1753b5",
+     "bg": "#f5f6f8",
+     "border": "#d5d9e0",
+     "borderStrong": "#aeb5c1",
+     "danger": "#b4312a",
+     "dangerHover": "#96271f",
+     "dangerSurface": "#fbe7e5",
+     "icon": "#2759b8",
+     "iconSecondary": "#b4c8ee",
+     "link": "#1754bd",
+     "onAccent": "#ffffff",
+     "selected": "#dce7fa",
+     "success": "#146c42",
+     "successSurface": "#e3f4ea",
+     "surface": "#ffffff",
+     "surfaceRaised": "#edeff3",
+     "text": "#1b1e24",
+     "textDisabled": "#8b929d",
+     "textMuted": "#585f6b",
+     "textSecondary": "#3a414d",
+     "warning": "#8a5300",
+     "warningSurface": "#fbf0dc"
+    }
+   },
+   "settings": {
+    "captureRouting": {
+     "clipboard": {
+      "destination": "No destination (uploads off)",
+      "destinationEnabled": false,
+      "effectivePublicationMode": "",
+      "inherited": true,
+      "profileId": "",
+      "publicationMode": "default",
+      "sharing": "Use destination default",
+      "sharingEnabled": false,
+      "status": "This action will fail: no destination and local copies are off. Choose a destination or enable Keep a local copy in General."
+     },
+     "default": {
+      "destination": "No destination (uploads off)",
+      "destinationEnabled": true,
+      "effectivePublicationMode": "",
+      "profileId": "",
+      "publicationMode": "default",
+      "sharing": "Use destination default",
+      "sharingEnabled": false,
+      "status": "This action will fail: no destination and local copies are off. Choose a destination or enable Keep a local copy in General."
+     },
+     "desktop": {
+      "destination": "No destination (uploads off)",
+      "destinationEnabled": false,
+      "effectivePublicationMode": "",
+      "inherited": true,
+      "profileId": "",
+      "publicationMode": "default",
+      "sharing": "Use destination default",
+      "sharingEnabled": false,
+      "status": "This action will fail: no destination and local copies are off. Choose a destination or enable Keep a local copy in General."
+     },
+     "edit": {
+      "destination": "No destination (uploads off)",
+      "destinationEnabled": false,
+      "effectivePublicationMode": "",
+      "inherited": true,
+      "profileId": "",
+      "publicationMode": "default",
+      "sharing": "Use destination default",
+      "sharingEnabled": false,
+      "status": "This action will fail: no destination and local copies are off. Choose a destination or enable Keep a local copy in General."
+     },
+     "region": {
+      "destination": "No destination (uploads off)",
+      "destinationEnabled": false,
+      "effectivePublicationMode": "",
+      "inherited": true,
+      "profileId": "",
+      "publicationMode": "default",
+      "sharing": "Use destination default",
+      "sharingEnabled": false,
+      "status": "This action will fail: no destination and local copies are off. Choose a destination or enable Keep a local copy in General."
+     },
+     "window": {
+      "destination": "No destination (uploads off)",
+      "destinationEnabled": false,
+      "effectivePublicationMode": "",
+      "inherited": true,
+      "profileId": "",
+      "publicationMode": "default",
+      "sharing": "Use destination default",
+      "sharingEnabled": false,
+      "status": "This action will fail: no destination and local copies are off. Choose a destination or enable Keep a local copy in General."
+     }
+    },
+    "section": 0
+   },
+   "state": "ready"
+  },
+  "schemaVersion": 1
+ }
+}

@@ -1,6 +1,6 @@
 # U11 C view state
 
-`validateUiState` is QtCore-only. Version 1 accepts only `schemaVersion: 1` and optional `settings`, `history`, legacy `activity`, and `main` objects. The redesign keeps legacy activity checkpoints readable, but opens History/Activity/Settings in one main window. It enforces the 8 MiB compact-JSON limit. State stays in resident RAM; this implementation writes no payload or state files.
+`validateUiState` is QtCore-only. Version 1 accepts only `schemaVersion: 1` and optional `settings`, `history`, legacy `activity`, and `main` objects. The redesign keeps legacy activity checkpoints readable, but opens History and Settings in one main window; the `activity` view is the same as History. It enforces the 8 MiB compact-JSON limit. State stays in resident RAM; this implementation writes no payload or state files.
 
 The state also carries a derived, read-only `appearance` object: `theme` (the setting), `desktop` (`dark`, `light` or null), `desktopSource`, the resolved `scheme` and its `tokens` (name to `#rrggbb`). `ui.viewState` returns it unchanged; see [appearance](appearance.md).
 

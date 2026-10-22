@@ -396,7 +396,7 @@ acceptance. Record those actual executions separately.
 The native Linux resident gives a single-item upload notification a browser action
 only when the item has a confirmed, available link. Clicking the toast opens that
 receipt's HTTP(S) URL through the default browser. A batch or local-only result
-keeps its existing Recent Activity guidance. Upload completion itself never opens
+keeps its existing guidance to open History. Upload completion itself never opens
 the browser.
 
 The transport uses the notification server's returned ID and the standard
