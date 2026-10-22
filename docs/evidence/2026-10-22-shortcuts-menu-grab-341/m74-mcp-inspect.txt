@@ -1,0 +1,3 @@
+ok True tools-result-keys ['capabilities', 'diagnostics', 'configuration']
+/result/capabilities/result/source/shortcuts/keyPaths {"lastActivation": {"action": "desktop", "path": "raw", "sequence": 3, "serverTime": 37027283}, "passive": true, "raw": {"available": true, "xinput": "2.2"}}
+/result/diagnostics/result/capabilities/source/shortcuts/keyPaths {"lastActivation": {"action": "desktop", "path": "raw", "sequence": 3, "serverTime": 37027283}, "passive": true, "raw": {"available": true, "xinput": "2.2"}}
