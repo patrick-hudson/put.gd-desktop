@@ -74,6 +74,7 @@ endif()
 add_library(putgd_win_core STATIC
   common/Json.cpp common/Text.cpp common/Shortcut.cpp common/Sha256.cpp
   core/Settings.cpp core/Naming.cpp core/Operation.cpp core/SettingsPatch.cpp core/S3Settings.cpp core/SanitizedPng.cpp core/ProtonSettings.cpp
+  common/Blake2b.cpp common/Ed25519.cpp common/Minisign.cpp core/UpdatePlan.cpp
   s3/SigV4.cpp)
 target_link_libraries(putgd_win_core PUBLIC putgd_win_options)
 
@@ -88,6 +89,12 @@ if(PUTGD_WINDOWS_PORTABLE_TESTS)
   add_executable(test_win_editor tests/test_editor.cpp editor/EditDocument.cpp editor/EditorCommands.cpp editor/Export.cpp)
   target_link_libraries(test_win_editor PRIVATE putgd_win_core)
   add_test(NAME windows_editor_contract COMMAND test_win_editor)
+  add_executable(test_win_minisign tests/test_minisign.cpp)
+  target_link_libraries(test_win_minisign PRIVATE putgd_win_core)
+  add_executable(test_win_update tests/test_update.cpp)
+  target_link_libraries(test_win_update PRIVATE putgd_win_core)
+  add_test(NAME windows_update_plan COMMAND test_win_update)
+  add_test(NAME windows_minisign COMMAND test_win_minisign "${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/minisign")
   add_test(NAME windows_version_mapping COMMAND "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_version_mapping.cmake")
 endif()
 
@@ -102,7 +109,7 @@ if(WIN32)
     resident/main.cpp resident/App.cpp resident/Resident.cpp resident/Tray.cpp resident/Hotkeys.cpp resident/Clipboard.cpp
     resident/Session.cpp resident/SettingsService.cpp resident/HistoryStore.cpp resident/Artifacts.cpp
     resident/OperationService.cpp resident/HistoryService.cpp resident/SetupService.cpp resident/CredentialStore.cpp
-    resident/LoginStartup.cpp resident/Helpers.cpp resident/S3Provider.cpp resident/ProtonProvider.cpp resident/UpdateService.cpp resident/UiProcess.cpp
+    resident/LoginStartup.cpp resident/Helpers.cpp resident/S3Provider.cpp resident/ProtonProvider.cpp resident/UpdateService.cpp resident/UpdateInstall.cpp resident/UiProcess.cpp
     s3/S3Worker.cpp s3/WinHttp.cpp
     capture/CaptureMain.cpp capture/Overlay.cpp capture/Grab.cpp capture/Png.cpp capture/ImageJob.cpp
     ui/UiMain.cpp ui/MainWindow.cpp ui/SettingsPage.cpp ui/DestinationsPage.cpp ui/HistoryPage.cpp ui/UiSession.cpp ui/Controls.cpp ui/Theme.cpp
@@ -127,6 +134,17 @@ if(WIN32)
     endif()
     target_compile_definitions(putgd PRIVATE "PUTGD_PROTON_RUNTIME_SHA256=\"${_proton_sha256}\"")
   endif()
+  # The release signer's minisign keys (#293): update.install checks the release's
+  # SHA256SUMS.minisig with its channel's key, as the Linux AppImage install does.
+  foreach(_channel nightly stable)
+    file(STRINGS "${PUTGD_SOURCE_ROOT}/packaging/linux/repo/keys/putgd-${_channel}.minisign.pub" _key REGEX "^RW[A-Za-z0-9+/=]+$")
+    list(LENGTH _key _keys)
+    if(NOT _keys EQUAL 1)
+      message(FATAL_ERROR "packaging/linux/repo/keys/putgd-${_channel}.minisign.pub must hold one minisign public key")
+    endif()
+    string(TOUPPER "${_channel}" _upper)
+    set_property(SOURCE resident/UpdateInstall.cpp APPEND PROPERTY COMPILE_DEFINITIONS "PUTGD_MINISIGN_${_upper}_KEY=\"${_key}\"")
+  endforeach()
   if(MSVC)
     target_link_options(putgd PRIVATE /MANIFEST:NO)
   endif()
