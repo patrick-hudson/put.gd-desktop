@@ -88,7 +88,7 @@ bool removeDirectoryRecursively(const std::string& path) {
 }
 bool rename(const std::string& from, const std::string& to, bool replace) { return MoveFileExW(w(from).c_str(), w(to).c_str(), replace ? MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH : MOVEFILE_WRITE_THROUGH); }
 std::string sha256(const std::string& path, long long* bytes) {
-    HANDLE h = CreateFileW(w(path).c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+    HANDLE h = CreateFileW(w(path).c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
     if (h == INVALID_HANDLE_VALUE) return {};
     crypto::Sha256 hash; std::string chunk(1 << 20, '\0'); long long total = 0;
     while (true) { DWORD got = 0; if (!ReadFile(h, chunk.data(), DWORD(chunk.size()), &got, nullptr)) { CloseHandle(h); return {}; } if (got == 0) break; hash.update(chunk.data(), got); total += got; }

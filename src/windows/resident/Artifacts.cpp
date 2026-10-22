@@ -163,7 +163,7 @@ std::string ArtifactStore::preview(const Artifact& a, long long budget, long lon
     if (files::isRegularFile(path)) return path;
     if (!helpers::prepareOutputFile(path)) return {};
     const auto run = helpers::runSynchronous("image-job", {"--image-job"}, json::Object{{"input", json::Object{{"path", a.path}, {"kind", a.mime == "image/png" ? "png" : "file"}}},
-        {"preview", json::Object{{"path", path}, {"edge", 256}}}, {"limits", json::Object{{"imagePixels", double(maximumPixels)}, {"imageBytes", double(a.bytes + 1)}}}, {"previewOnly", true}, {"reencode", false}}, 10000, 60000, {});
+        {"preview", json::Object{{"path", path}, {"edge", 256}}}, {"limits", json::Object{{"imagePixels", double(maximumPixels)}, {"imageBytes", 1099511627776.0}}}, {"previewOnly", true}, {"reencode", false}}, 10000, 60000, {});
     if (run.error || files::size(path) <= 0) { files::remove(path); log::debug("artifacts", "Preview not generated", {{"code", run.error.code}}); return {}; }
     // Evict the oldest previews beyond the budget.
     struct Entry { std::string path; long long size; unsigned long long written; };

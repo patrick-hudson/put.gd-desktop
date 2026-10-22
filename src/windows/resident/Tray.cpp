@@ -56,7 +56,13 @@ HICON Tray::makeIcon(Tint tint, int size) {
 }
 void Tray::add() {
     if (icon_) DestroyIcon(icon_);
-    icon_ = makeIcon(tint_, GetSystemMetrics(SM_CXSMICON));
+    icon_ = nullptr;
+    if (tint_ == Tint::Idle) {
+        // The brand icon from the executable's resources; a drawn tint replaces it while work runs.
+        const int size = GetSystemMetrics(SM_CXSMICON);
+        icon_ = static_cast<HICON>(LoadImageW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(1), IMAGE_ICON, size, size, LR_DEFAULTCOLOR));
+    }
+    if (!icon_) icon_ = makeIcon(tint_, GetSystemMetrics(SM_CXSMICON));
     NOTIFYICONDATAW data{}; data.cbSize = sizeof data; data.hWnd = owner_; data.uID = trayId;
     data.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP | NIF_SHOWTIP; data.uCallbackMessage = WM_APP_TRAY; data.hIcon = icon_;
     wcsncpy_s(data.szTip, paths::wide(tooltip_).c_str(), _TRUNCATE);
