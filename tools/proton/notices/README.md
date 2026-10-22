@@ -34,6 +34,15 @@ The current catalog adds the corrected rebuild supplement and refreshed build
 controls; the original source packets stay unchanged. P4 source publication and
 P6 final-helper functional/resource/package acceptance remain required.
 
+The Windows helper (`provision_runtime.py --target windows-x64`, #408) ships sixteen
+files: the same Bun aggregate and JavaScript notices, `BUN-WINDOWS-ATTRIBUTION.md`
+and `BUN-WINDOWS-SCOPE.json` (the Windows scope checked against that aggregate),
+`LICENSE.icu4c-78.3` (ICU, embedded by the WebKit prebuild), and the Windows catalog
+`SOURCES-WINDOWS.json` with `REBUILD.md` and `REBUILD-WINDOWS.md`. The catalog shares
+the six packets and the overlay with `SOURCES.json` and pins the Windows helper and
+Bun package; its manifest records `redistributionComplete: true` only when they match
+the build. `tools/releases/audit_proton.py` checks the Windows folder layout.
+
 Collect a fresh compiler-backed bundle into a new output directory:
 
 ```sh

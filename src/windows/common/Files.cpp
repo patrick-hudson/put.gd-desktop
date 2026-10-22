@@ -115,7 +115,7 @@ FileIdentity identity(const std::string& path) {
     return id;
 }
 long long freeBytes(const std::string& path) {
-    ULARGE_INTEGER available; std::string probe = path;
+    ULARGE_INTEGER available{}; std::string probe = path;
     while (!probe.empty() && !isDirectory(probe)) probe = paths::parent(probe);
     if (probe.empty() || !GetDiskFreeSpaceExW(w(probe).c_str(), &available, nullptr, nullptr)) return -1;
     return (long long)available.QuadPart;

@@ -3,6 +3,7 @@
 #include "common/Frames.h"
 #include "common/Modes.h"
 #include "common/Paths.h"
+#include "resident/UpdateInstall.h"
 #include "resident/UpdateService.h"
 #include <cstdio>
 #include <string>
@@ -25,6 +26,8 @@ int wmain(int argc, wchar_t** argv) {
     if (mode == "--ui") return putgd::uiMain(args);
     if (mode == "--edit-image") return putgd::editorMain(args);
     if (mode == "--check-update") return putgd::UpdateService::childMain(args);
+    if (mode == "--install-update") return putgd::update::installMain(args);
+    if (mode == "--apply-update") return putgd::update::applyMain(args);
     return putgd::residentMain(args);
 }
 // MinGW -municode and MSVC /SUBSYSTEM:WINDOWS both reach wmain through wWinMain.

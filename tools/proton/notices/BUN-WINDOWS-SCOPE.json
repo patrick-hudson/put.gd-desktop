@@ -1,0 +1,2423 @@
+{
+  "schemaVersion": 1,
+  "scope": "Bun 1.4.2 windows-x64 as embedded in putgd-proton-runtime.exe. Conservative source scope derived with the Linux method; inclusion is attribution preservation, not a linker SBOM or a statement that every listed component is linked. Not a legal opinion.",
+  "bunExecutable": {
+    "package": "@oven/bun-windows-x64",
+    "version": "1.4.2",
+    "archiveSha256": "50564fca0f5579f61291a7088b0d3f55a341f0a907afab7bb412d25615075423",
+    "executableSha256": "15277c59ccd6c6c20f8dc9716c2b59c1776320d606b6a8658f70be8799519ca4",
+    "embeddedIdentities": {
+      "revision": "1.4.2+744846f84",
+      "bunCommit": "744846f844374847c902b5e7fd59b4342a51ef99",
+      "webkitCommit": "2e2aa2290fac856d6f451ceacb58f7f5b44dd057",
+      "tinyccCommit": "05f0fafaa3be31e31d7b4b5c17dc60f62c991171",
+      "icuData": "icudt78"
+    }
+  },
+  "noticeAggregate": {
+    "file": "BUN-THIRD-PARTY-NOTICES.txt.gz",
+    "sha256": "d23e8fdd503be2de76787a56d27b89118e798e8c48f4adbbeb0a157d7a1db632",
+    "provenance": "BUN-NOTICE-PROVENANCE.json.gz",
+    "provenanceSha256": "b141d06229099bf76e1bd635b94daf6e5439970a513a9747b8e0a47ce85b22e7",
+    "records": 23143,
+    "note": "The Linux aggregate is a platform source superset: Windows-only libuv, Windows Cargo crates, Windows source files and TinyCC win32 headers are already preserved there."
+  },
+  "additionalNotices": [
+    {
+      "file": "LICENSE.icu4c-78.3",
+      "sha256": "e55522d81edc687a341a4411e0776e54ca654e90147f354a90458aaced4116af",
+      "component": "ICU 78.3",
+      "source": "https://github.com/unicode-org/icu/releases/download/release-78.3/icu4c-78.3-sources.tgz",
+      "sourceArchiveSha256": "3a2e7a47604ba702f345878308e6fefeca612ee895cf4a5f222e7955fabfe0c0",
+      "member": "icu/LICENSE",
+      "reason": "The WebKit windows-amd64 prebuild statically embeds ICU 78.3 (icudt78); the Linux aggregate holds only WebKit's WTF/icu header license (ICU 58-era text)."
+    }
+  ],
+  "cargo": {
+    "target": "x86_64-pc-windows-msvc",
+    "packages": [
+      {
+        "name": "allocator-api2",
+        "version": "0.2.21",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 2,
+        "noticeTextsSha256": [
+          "20fe7b00e904ed690e3b9fd6073784d3fc428141dbd10b81c01fd143d0797f58",
+          "36516aefdc84c5d5a1e7485425913a22dbda69eb1930c5e84d6ae4972b5194b9"
+        ]
+      },
+      {
+        "name": "arrayref",
+        "version": "0.3.9",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 1,
+        "noticeTextsSha256": [
+          "1bc7e6f475b3ec99b7e2643411950ae2368c250dd4c5c325f80f9811362a94a1"
+        ]
+      },
+      {
+        "name": "arrayvec",
+        "version": "0.7.6",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 3,
+        "noticeTextsSha256": [
+          "4da95ec4ecb65b738d470b7d762894ad9c97da93e6cbfb18b570fc2c96f4b871",
+          "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+          "d7a897946c233c44d9a976aa030d02eeff05b86df54157d9f5d478ef0cc214e7"
+        ]
+      },
+      {
+        "name": "base64",
+        "version": "0.22.1",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 2,
+        "noticeTextsSha256": [
+          "0dd882e53de11566d50f8e8e2d5a651bcf3fabee4987d70f306233cf39094ba7",
+          "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
+        ]
+      },
+      {
+        "name": "bcrypt",
+        "version": "0.19.0",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 1,
+        "noticeTextsSha256": [
+          "bb92dde0b21dc772d1a6446970082391984bdfc3dd7cb0ac44057c97c2dac181"
+        ]
+      },
+      {
+        "name": "bitflags",
+        "version": "2.11.1",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 3,
+        "noticeTextsSha256": [
+          "3b7df402160fc95c1ec4d256f720da6b75b1c5c69ad6826acfa5f096e349a42c",
+          "6485b8ed310d3f0340bf1ad1f47645069ce4069dcc6bb46c7d5c6faf41de1fdb",
+          "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
+        ]
+      },
+      {
+        "name": "blake2",
+        "version": "0.10.6",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 10,
+        "noticeTextsSha256": [
+          "14157350c3745c6a9648cf1479b45d451c933886faabcb413a898964c07405ff",
+          "5be5f0f04567c1161333c35d91621e3523cc9412b22419c242d6564c1dcfea6c",
+          "9c768944eb4a0422ca2efc25ea9fb2fb9e7fbd3fdb04e86b87366339cb7466db",
+          "a9040321c3712d8fd0b09cf52b17445de04a23a10165049ae187cd39e5c86be5"
+        ]
+      },
+      {
+        "name": "blake2b_simd",
+        "version": "1.0.4",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 1,
+        "noticeTextsSha256": [
+          "27e0387973d6b8507cb15f825f6f26e0278d4d5857082c1f56b49a7b39a90183"
+        ]
+      },
+      {
+        "name": "block-buffer",
+        "version": "0.10.4",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 2,
+        "noticeTextsSha256": [
+          "a9040321c3712d8fd0b09cf52b17445de04a23a10165049ae187cd39e5c86be5",
+          "d5c22aa3118d240e877ad41c5d9fa232f9c77d757d4aac0c2f943afc0a95e0ef"
+        ]
+      },
+      {
+        "name": "blowfish",
+        "version": "0.9.1",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 2,
+        "noticeTextsSha256": [
+          "52232c2cee3bb7d8cabe47ef367f1bf8bb607c22bdfca0219d6156cb7f446e9d",
+          "a9040321c3712d8fd0b09cf52b17445de04a23a10165049ae187cd39e5c86be5"
+        ]
+      },
+      {
+        "name": "bstr",
+        "version": "1.12.1",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 3,
+        "noticeTextsSha256": [
+          "68653aaa727a2bfa31b7a751e31701ce33c49d695c12dd291a07d1c54da4c14b",
+          "6b7374c39a57e57fc2c38eb529c4c88340152b10f51dd5ae2d819dfa67f61715",
+          "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
+        ]
+      },
+      {
+        "name": "bun_alloc",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_analytics",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_api",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_ast",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_ast_jsc",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_base64",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_boringssl",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_boringssl_sys",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_brotli",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_brotli_sys",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_bundler",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_bundler_jsc",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_bunfig",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_cares_sys",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_clap",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_clap_macros",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_collections",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_core",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_core_macros",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_crash_handler",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_csrf",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_css",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_css_derive",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_css_jsc",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_dispatch",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_dns",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_dotenv",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_errno",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_event_loop",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_exe_format",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_glob",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_hash",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_highway",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_http",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_http_jsc",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_http_types",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_ini",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_install",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_install_jsc",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_install_types",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_io",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_js_parser",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_js_parser_jsc",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_js_printer",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_jsc",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_jsc_macros",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_libarchive",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_libdeflate_sys",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_libuv_sys",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_lsquic_sys",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_md",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_mimalloc_sys",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_opaque",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_options_types",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_output",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_output_tags",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_parsers",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_patch",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_patch_jsc",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_paths",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_perf",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_picohttp",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_platform",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_ptr",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_react_compiler",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_resolve_builtins",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_resolver",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_router",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_runtime",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_s3_signing",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_safety",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_semver",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_semver_jsc",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_sha_hmac",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_shell_parser",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_simdutf_sys",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_sourcemap",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_sourcemap_jsc",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_spawn",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_spawn_sys",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_sql",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_sql_jsc",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_standalone_graph",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_sys",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_sys_jsc",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_tcc_sys",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_threading",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_transpiler",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_url",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_uws",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_uws_sys",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_valkey",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_watcher",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_which",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_windows_sys",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_wyhash",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_zlib",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_zlib_sys",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bun_zstd",
+        "version": "0.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "bytemuck",
+        "version": "1.25.0",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 3,
+        "noticeTextsSha256": [
+          "84b34dd7608f7fb9b17bd588a6bf392bf7de504e2716f024a77d89f1b145a151",
+          "9df9ba60a11af705f2e451b53762686e615d86f76b169cf075c3237730dbd7e2",
+          "e3ba223bb1423f0aad8c3dfce0fe3148db48926d41e6fbc3afbbf5ff9e1c89cb"
+        ]
+      },
+      {
+        "name": "byteorder",
+        "version": "1.5.0",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 2,
+        "noticeTextsSha256": [
+          "01c266bced4a434da0051174d6bee16a4c82cf634e2679b6155d40d75012390f",
+          "0f96a83840e146e43c0ec96a22ec1f392e0680e6c1226e6f3ba87e0740af850f"
+        ]
+      },
+      {
+        "name": "cfg-if",
+        "version": "1.0.4",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 2,
+        "noticeTextsSha256": [
+          "378f5840b258e2779c39418f3f2d7b2ba96f1c7917dd6be0713f88305dbda397",
+          "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
+        ]
+      },
+      {
+        "name": "cipher",
+        "version": "0.4.4",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 2,
+        "noticeTextsSha256": [
+          "5c7bd92d1f096f12203dc1b601e3cb17484fa1b023e30b6b8edcc80e416237ec",
+          "a9040321c3712d8fd0b09cf52b17445de04a23a10165049ae187cd39e5c86be5"
+        ]
+      },
+      {
+        "name": "const_format",
+        "version": "0.2.36",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 1,
+        "noticeTextsSha256": [
+          "c1e018d60dd011b335b5280b919bd3a75dbba81c6fbe24e2fc90cb235bdb6883"
+        ]
+      },
+      {
+        "name": "const_format_proc_macros",
+        "version": "0.2.34",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 1,
+        "noticeTextsSha256": [
+          "c1e018d60dd011b335b5280b919bd3a75dbba81c6fbe24e2fc90cb235bdb6883"
+        ]
+      },
+      {
+        "name": "constant_time_eq",
+        "version": "0.4.2",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 3,
+        "noticeTextsSha256": [
+          "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+          "9a3aeb3f63659c4c6302d315e1d98784d1e8559858a47ff9562e091bb922d28d",
+          "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499"
+        ]
+      },
+      {
+        "name": "crossbeam-utils",
+        "version": "0.8.21",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 2,
+        "noticeTextsSha256": [
+          "5734ed989dfca1f625b40281ee9f4530f91b2411ec01cb748223e7eb87e201ab",
+          "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
+        ]
+      },
+      {
+        "name": "crypto-common",
+        "version": "0.1.7",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 2,
+        "noticeTextsSha256": [
+          "3521672491a3479422d5fe1aca6645dd2984090f85da6e5205abfb18fb7a6897",
+          "a9040321c3712d8fd0b09cf52b17445de04a23a10165049ae187cd39e5c86be5"
+        ]
+      },
+      {
+        "name": "cssparser",
+        "version": "0.36.0",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 1,
+        "noticeTextsSha256": [
+          "fab3dd6bdab226f1c08630b1dd917e11fcb4ec5e1e020e2c16f83a0a13863e85"
+        ]
+      },
+      {
+        "name": "cssparser-macros",
+        "version": "0.6.1",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 1,
+        "noticeTextsSha256": [
+          "fab3dd6bdab226f1c08630b1dd917e11fcb4ec5e1e020e2c16f83a0a13863e85"
+        ]
+      },
+      {
+        "name": "darling",
+        "version": "0.21.3",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 1,
+        "noticeTextsSha256": [
+          "8ea93490d74a5a1b1af3ff71d786271b3f1e5f0bea79ac16e02ec533cef040d6"
+        ]
+      },
+      {
+        "name": "darling_core",
+        "version": "0.21.3",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 1,
+        "noticeTextsSha256": [
+          "8ea93490d74a5a1b1af3ff71d786271b3f1e5f0bea79ac16e02ec533cef040d6"
+        ]
+      },
+      {
+        "name": "darling_macro",
+        "version": "0.21.3",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 1,
+        "noticeTextsSha256": [
+          "8ea93490d74a5a1b1af3ff71d786271b3f1e5f0bea79ac16e02ec533cef040d6"
+        ]
+      },
+      {
+        "name": "derive_more",
+        "version": "2.1.1",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 2,
+        "noticeTextsSha256": [
+          "120c57e0add48a1808ae07248bbeca7432cd8dcfbf146dc9d50b3df3b8b1e932",
+          "8a35369f3ca263b3c62fbb5032947e53b6bfebc6c8a4d1bb982de1c069f6fba5"
+        ]
+      },
+      {
+        "name": "derive_more-impl",
+        "version": "2.1.1",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 1,
+        "noticeTextsSha256": [
+          "8a35369f3ca263b3c62fbb5032947e53b6bfebc6c8a4d1bb982de1c069f6fba5"
+        ]
+      },
+      {
+        "name": "digest",
+        "version": "0.10.7",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 2,
+        "noticeTextsSha256": [
+          "9e0dfd2dd4173a530e238cb6adb37aa78c34c6bc7444e0e10c1ab5d8881f63ba",
+          "a9040321c3712d8fd0b09cf52b17445de04a23a10165049ae187cd39e5c86be5"
+        ]
+      },
+      {
+        "name": "dtoa",
+        "version": "1.0.11",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 4,
+        "noticeTextsSha256": [
+          "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+          "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+          "d735de09ad0192b1c73d1a18ce1f5a2fd9c025a3419b30e9081882a026c90203"
+        ]
+      },
+      {
+        "name": "dtoa-short",
+        "version": "0.3.5",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 1,
+        "noticeTextsSha256": [
+          "1f256ecad192880510e84ad60474eab7589218784b9a50bc7ceee34c2b91f1d5"
+        ]
+      },
+      {
+        "name": "encoding_rs",
+        "version": "0.8.35",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 41,
+        "noticeTextsSha256": [
+          "0b42067f47b86c0b6da01296b79925b5fa4895d7439296ad6d9d14447826f36d",
+          "11789f45bb180841cd362a5eee6789c68ddb573a11105e30768c308a6add0190",
+          "3fa4ca83dcc9237839b1bdeb2e6d16bdfb5ec0c5ce42b24694d8bbf0dcbef72c",
+          "6ee66b06fcb5930b8ac17ab1a1bfb325748c2af7cf4af9ca90e72b88c8b0e0e4",
+          "72ac1605a568f39a658914e0cb71dc6295606ca51265a26bc57a7c1e9c90c5bf",
+          "74353951e590e933d4093132730503869de2395fd0b6b8b73d9efc43ff6c315b",
+          "838118388fe5c2e7f1dbbaeed13e1c7f3ebf88be91319c7c1d77c18e987d1a50",
+          "ba2c616b322ba9039034fc63072bc965a0e84d1a869fba15820aa2b504dceef3",
+          "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        ]
+      },
+      {
+        "name": "enum-map",
+        "version": "2.7.3",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 8,
+        "noticeTextsSha256": [
+          "074e6e32c86a4c0ef8b3ed25b721ca23aca83df277cd88106ef7177c354615ff",
+          "1908c2919db2da385ee7f8d9572e986d79dae4c2a04e5feef704dc07b2fa46ce",
+          "2a5c3d1bcabaa71f479320543d252e3f76f017e3aefbb2f82a329ae626d45d66",
+          "2f1f7a39fa0a7c43b47dba87220d200e9eae92a3a19b99c20aca752421582cec",
+          "3b55374387dc9e6277a6f31731398f254e1f605da3145fa1d2d0499fa8627257",
+          "3b72120c27cc3a8c69c0ad7c17dafd25df92b476380b76eca14e6cc386a339a8",
+          "b85dcd3e453d05982552c52b5fc9e0bdd6d23c6f8e844b984a88af32570b0cc0",
+          "f1ff1cf76fe3f0b724fc619b7e9b984e01d74834eabea39eb0c2a9eae46fab9c"
+        ]
+      },
+      {
+        "name": "enum-map-derive",
+        "version": "0.17.0",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 5,
+        "noticeTextsSha256": [
+          "074e6e32c86a4c0ef8b3ed25b721ca23aca83df277cd88106ef7177c354615ff",
+          "0d60650ae41f24b02c6b884d05448cedbf0abb54489ce931ee1684027d1c53a9",
+          "3e4db5145120fe05ce49f34d9df0cdb89ace28e8714dbd37a1a89b7c6cab8442",
+          "b85dcd3e453d05982552c52b5fc9e0bdd6d23c6f8e844b984a88af32570b0cc0",
+          "ca2a49a1eb6f985e25195562667523949212be251ea5953a44db6d73fa7edac0"
+        ]
+      },
+      {
+        "name": "enumset",
+        "version": "1.1.10",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 2,
+        "noticeTextsSha256": [
+          "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+          "c87c7f72fd595c10bbe55b688ecb609e2e5b7f610410d558efce1ba8dc16f7b3"
+        ]
+      },
+      {
+        "name": "enumset_derive",
+        "version": "0.14.0",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 2,
+        "noticeTextsSha256": [
+          "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+          "c87c7f72fd595c10bbe55b688ecb609e2e5b7f610410d558efce1ba8dc16f7b3"
+        ]
+      },
+      {
+        "name": "equivalent",
+        "version": "1.0.2",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 2,
+        "noticeTextsSha256": [
+          "7365cc8878a1d7ce155a58c4ca09c3d7a6be413efa5334a80ea842912b669349",
+          "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
+        ]
+      },
+      {
+        "name": "fastrand",
+        "version": "2.4.1",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 2,
+        "noticeTextsSha256": [
+          "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+          "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
+        ]
+      },
+      {
+        "name": "fnv",
+        "version": "1.0.7",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 2,
+        "noticeTextsSha256": [
+          "65fdb6c76cd61612070c066eec9ecdb30ee74fb27859d0d9af58b9f499fd0c3e",
+          "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
+        ]
+      },
+      {
+        "name": "foldhash",
+        "version": "0.1.5",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 1,
+        "noticeTextsSha256": [
+          "b1181a40b2a7b25cf66fd01481713bc1005df082c53ef73e851e55071b102744"
+        ]
+      },
+      {
+        "name": "foldhash",
+        "version": "0.2.0",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 1,
+        "noticeTextsSha256": [
+          "b1181a40b2a7b25cf66fd01481713bc1005df082c53ef73e851e55071b102744"
+        ]
+      },
+      {
+        "name": "generic-array",
+        "version": "0.14.7",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 1,
+        "noticeTextsSha256": [
+          "c09aae9d3c77b531f56351a9947bc7446511d6b025b3255312d3e3442a9a7583"
+        ]
+      },
+      {
+        "name": "getrandom",
+        "version": "0.4.2",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 2,
+        "noticeTextsSha256": [
+          "523a42c25d245dde9c015f882cec7f4555aad883382a6cf19b4b7d9b2cd5419b",
+          "aaff376532ea30a0cd5330b9502ad4a4c8bf769c539c87ffe78819d188a18ebf"
+        ]
+      },
+      {
+        "name": "hashbrown",
+        "version": "0.15.5",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 2,
+        "noticeTextsSha256": [
+          "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+          "ff8f68cb076caf8cefe7a6430d4ac086ce6af2ca8ce2c4e5a2004d4552ef52a2"
+        ]
+      },
+      {
+        "name": "hashbrown",
+        "version": "0.16.1",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 2,
+        "noticeTextsSha256": [
+          "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+          "ff8f68cb076caf8cefe7a6430d4ac086ce6af2ca8ce2c4e5a2004d4552ef52a2"
+        ]
+      },
+      {
+        "name": "heck",
+        "version": "0.5.0",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 2,
+        "noticeTextsSha256": [
+          "7b63ecd5f1902af1b63729947373683c32745c16a10e8e6292e2e2dcd7e90ae0",
+          "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
+        ]
+      },
+      {
+        "name": "ident_case",
+        "version": "1.0.1",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 2,
+        "noticeTextsSha256": [
+          "508a77d2e7b51d98adeed32648ad124b7b30241a8e70b2e72c99f92d8e5874d1",
+          "d929e0be94b1f678f280e580b0c9abad1725c002cc9d7f991bafe64b5d80980f"
+        ]
+      },
+      {
+        "name": "inout",
+        "version": "0.1.4",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 2,
+        "noticeTextsSha256": [
+          "304b898acad7f02e03d6d8832d682a3b43ee729ab5d3a069af5a36979083b6b4",
+          "a9040321c3712d8fd0b09cf52b17445de04a23a10165049ae187cd39e5c86be5"
+        ]
+      },
+      {
+        "name": "itoa",
+        "version": "1.0.18",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 2,
+        "noticeTextsSha256": [
+          "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+          "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+        ]
+      },
+      {
+        "name": "keccak",
+        "version": "0.1.6",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 2,
+        "noticeTextsSha256": [
+          "a9040321c3712d8fd0b09cf52b17445de04a23a10165049ae187cd39e5c86be5",
+          "bdebaf9156a298f8fdab56dd26cb5144673de522d80f4c0d88e0039145f147f9"
+        ]
+      },
+      {
+        "name": "konst",
+        "version": "0.2.20",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 1,
+        "noticeTextsSha256": [
+          "573e362dc50a6d9eb444cea38ef61587e16a0645cb8098ba13a2c42fdde72acd"
+        ]
+      },
+      {
+        "name": "konst_macro_rules",
+        "version": "0.2.19",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 1,
+        "noticeTextsSha256": [
+          "573e362dc50a6d9eb444cea38ef61587e16a0645cb8098ba13a2c42fdde72acd"
+        ]
+      },
+      {
+        "name": "libc",
+        "version": "0.2.186",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 2,
+        "noticeTextsSha256": [
+          "123a331b5dbf04c30097fa43b8f858bc85df671fe776de498d01f3d6b7c1f69e",
+          "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+        ]
+      },
+      {
+        "name": "log",
+        "version": "0.4.29",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 4,
+        "noticeTextsSha256": [
+          "0372df70e5652415fa6fdb9147e8f7efd878ce606b5890678def629645b78104",
+          "5d392ff1ac69a18c9beb41720ecbfd56f7792a1ec4321428e73757d4283f5a61",
+          "6485b8ed310d3f0340bf1ad1f47645069ce4069dcc6bb46c7d5c6faf41de1fdb",
+          "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
+        ]
+      },
+      {
+        "name": "lol_html",
+        "version": "2.7.2",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 3,
+        "noticeTextsSha256": [
+          "c1c09eede8bbef3fb4d0871426b57795bcd36d93f0bd85d1380ab5538c3297f3",
+          "e4ddaa9d7391bb9536fcb8c59b570a8b85a0bf6da54df5b3b26f098f6f99c9cc"
+        ]
+      },
+      {
+        "name": "memchr",
+        "version": "2.8.0",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 2,
+        "noticeTextsSha256": [
+          "01c266bced4a434da0051174d6bee16a4c82cf634e2679b6155d40d75012390f",
+          "0f96a83840e146e43c0ec96a22ec1f392e0680e6c1226e6f3ba87e0740af850f"
+        ]
+      },
+      {
+        "name": "mime",
+        "version": "0.3.17",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 2,
+        "noticeTextsSha256": [
+          "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+          "df9cfd06d8a44d9a671eadd39ffd97f166481da015a30f45dfd27886209c5922"
+        ]
+      },
+      {
+        "name": "new_debug_unreachable",
+        "version": "1.0.6",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 1,
+        "noticeTextsSha256": [
+          "f7715d38a3fa1b4ac97c5729740752505a39cb92ee83ab5b102aeb5eaa7cdea4"
+        ]
+      },
+      {
+        "name": "paste",
+        "version": "1.0.15",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 2,
+        "noticeTextsSha256": [
+          "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+          "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+        ]
+      },
+      {
+        "name": "phf",
+        "version": "0.13.1",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 1,
+        "noticeTextsSha256": [
+          "0ab4d106b6faac07fb6a051815fd1b4d862d730895e2d7d7358c2f13565e7a38"
+        ]
+      },
+      {
+        "name": "phf_codegen",
+        "version": "0.13.1",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 1,
+        "noticeTextsSha256": [
+          "0ab4d106b6faac07fb6a051815fd1b4d862d730895e2d7d7358c2f13565e7a38"
+        ]
+      },
+      {
+        "name": "phf_generator",
+        "version": "0.13.1",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 1,
+        "noticeTextsSha256": [
+          "0ab4d106b6faac07fb6a051815fd1b4d862d730895e2d7d7358c2f13565e7a38"
+        ]
+      },
+      {
+        "name": "phf_macros",
+        "version": "0.13.1",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 1,
+        "noticeTextsSha256": [
+          "0ab4d106b6faac07fb6a051815fd1b4d862d730895e2d7d7358c2f13565e7a38"
+        ]
+      },
+      {
+        "name": "phf_shared",
+        "version": "0.13.1",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 1,
+        "noticeTextsSha256": [
+          "0ab4d106b6faac07fb6a051815fd1b4d862d730895e2d7d7358c2f13565e7a38"
+        ]
+      },
+      {
+        "name": "precomputed-hash",
+        "version": "0.1.1",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 1,
+        "noticeTextsSha256": [
+          "7ca6700600dfa9c9497bf5556365067daa802c871ea78239f129309c7a2048f7"
+        ]
+      },
+      {
+        "name": "proc-macro2",
+        "version": "1.0.106",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 2,
+        "noticeTextsSha256": [
+          "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+          "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+        ]
+      },
+      {
+        "name": "quote",
+        "version": "1.0.45",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 2,
+        "noticeTextsSha256": [
+          "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+          "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+        ]
+      },
+      {
+        "name": "rust-argon2",
+        "version": "3.0.0",
+        "source": "workspace-or-vendor",
+        "inLinuxClosure": true,
+        "noticeBasis": "Bun workspace crate: Bun MIT declaration and Bun-copied-source notices",
+        "noticeRecords": 0,
+        "noticeTextsSha256": []
+      },
+      {
+        "name": "rustc-hash",
+        "version": "2.1.2",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 2,
+        "noticeTextsSha256": [
+          "30fefc3a7d6a0041541858293bcbea2dde4caa4c0a5802f996a7f7e8c0085652",
+          "95bd3988beee069fa2848f648dab43cc6e0b2add2ad6bcb17360caf749802bcc"
+        ]
+      },
+      {
+        "name": "rustc_version",
+        "version": "0.4.1",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 3,
+        "noticeTextsSha256": [
+          "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+          "c09395beab9eb2491d0e36a969f9fe84c4ad47010acf3e8e089117fe3df9592c",
+          "c9a75f18b9ab2927829a208fc6aa2cf4e63b8420887ba29cdb265d6619ae82d5"
+        ]
+      },
+      {
+        "name": "rustversion",
+        "version": "1.0.22",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 2,
+        "noticeTextsSha256": [
+          "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+          "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+        ]
+      },
+      {
+        "name": "scopeguard",
+        "version": "1.2.0",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 2,
+        "noticeTextsSha256": [
+          "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+          "fb77f0a9c53e473abe5103c8632ef9f0f2874d4fb3f17cb2d8c661aab9cee9d7"
+        ]
+      },
+      {
+        "name": "selectors",
+        "version": "0.33.0",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 2,
+        "noticeTextsSha256": [
+          "66a3107d5ad6a058aab753eaac2047ccb2ed0e39465dd0fe5844da3e300d5172",
+          "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5"
+        ]
+      },
+      {
+        "name": "semver",
+        "version": "1.0.28",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 2,
+        "noticeTextsSha256": [
+          "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+          "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+        ]
+      },
+      {
+        "name": "serde",
+        "version": "1.0.228",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 2,
+        "noticeTextsSha256": [
+          "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+          "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+        ]
+      },
+      {
+        "name": "serde_core",
+        "version": "1.0.228",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 2,
+        "noticeTextsSha256": [
+          "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+          "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+        ]
+      },
+      {
+        "name": "serde_derive",
+        "version": "1.0.228",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 2,
+        "noticeTextsSha256": [
+          "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+          "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+        ]
+      },
+      {
+        "name": "servo_arc",
+        "version": "0.4.3",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 3,
+        "noticeTextsSha256": [
+          "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+          "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+          "f3e4452a50490fd9b5f1c5fea4cd3ed45a7ada46f81ddf2dd66bfab28a742b51"
+        ]
+      },
+      {
+        "name": "sha3",
+        "version": "0.10.9",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 2,
+        "noticeTextsSha256": [
+          "a9040321c3712d8fd0b09cf52b17445de04a23a10165049ae187cd39e5c86be5",
+          "f18f6229547ab07f0b7b3e1f83acad8bb436f5f4c95a8a98b44f876caa00f04e"
+        ]
+      },
+      {
+        "name": "siphasher",
+        "version": "1.0.3",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 5,
+        "noticeTextsSha256": [
+          "3b7df402160fc95c1ec4d256f720da6b75b1c5c69ad6826acfa5f096e349a42c",
+          "b6adbd1aa47e52ff23227e30ec16807c5a5b8b8bd416394051ca11e776b611ca",
+          "c962ee4d1d05ddc138b202b2540219ebc57893fcf97b364852094a9a94ce1365"
+        ]
+      },
+      {
+        "name": "smallvec",
+        "version": "1.15.1",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 4,
+        "noticeTextsSha256": [
+          "0b28172679e0009b655da42797c03fd163a3379d5cfa67ba1f1655e974a2a1a9",
+          "74daf41676c68f1f95d00a50c724cfdab22c1be406ca50129063fe8bd0b42b96",
+          "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
+        ]
+      },
+      {
+        "name": "stable_deref_trait",
+        "version": "1.2.1",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 4,
+        "noticeTextsSha256": [
+          "4d854c78554e7b14dd38275a06a5ec9ea6294e514a6cd609136f5f9feb5bfb06",
+          "5e05b024f653a5ce199e77cbbbd42fb5553562ec714b819421ed0c3e552a75d7",
+          "74daf41676c68f1f95d00a50c724cfdab22c1be406ca50129063fe8bd0b42b96",
+          "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
+        ]
+      },
+      {
+        "name": "strum",
+        "version": "0.26.3",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 1,
+        "noticeTextsSha256": [
+          "8bce3b45e49ecd1461f223b46de133d8f62cd39f745cfdaf81bee554b908bd42"
+        ]
+      },
+      {
+        "name": "strum_macros",
+        "version": "0.26.4",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 1,
+        "noticeTextsSha256": [
+          "8bce3b45e49ecd1461f223b46de133d8f62cd39f745cfdaf81bee554b908bd42"
+        ]
+      },
+      {
+        "name": "subtle",
+        "version": "2.6.1",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 2,
+        "noticeTextsSha256": [
+          "d1fc1bc0d155df60b2e7705b6b2ae02a05c96f948e1cec6e2fb86360b09f346b",
+          "d7d979176231a7d1162977bd8d9a9989792349f42358e76056c1aaa5b9e53df6"
+        ]
+      },
+      {
+        "name": "syn",
+        "version": "2.0.117",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 2,
+        "noticeTextsSha256": [
+          "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+          "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+        ]
+      },
+      {
+        "name": "thiserror",
+        "version": "2.0.18",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 2,
+        "noticeTextsSha256": [
+          "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+          "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+        ]
+      },
+      {
+        "name": "thiserror-impl",
+        "version": "2.0.18",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 2,
+        "noticeTextsSha256": [
+          "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+          "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+        ]
+      },
+      {
+        "name": "typed-arena",
+        "version": "2.0.2",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 1,
+        "noticeTextsSha256": [
+          "9ed5e982274d54d0cf94f0e9f9fd889182b6f1f50a012f0be41ce7c884347ab6"
+        ]
+      },
+      {
+        "name": "typenum",
+        "version": "1.20.0",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 3,
+        "noticeTextsSha256": [
+          "516b24e051bf5630880ebbd55c40a25ce9552ebaf8970a53e8976eb70e522406",
+          "a825bd853ab71619a4923d7b4311221427848070ff44d990da39b0b274c1683f",
+          "db11fec9946737df39ca3898d9cd8c10ec6f6c3a884a6802b0ad0b81b4e8f23a"
+        ]
+      },
+      {
+        "name": "unicode-ident",
+        "version": "1.0.24",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 3,
+        "noticeTextsSha256": [
+          "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+          "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+          "f7db81051789b729fea528a63ec4c938fdcb93d9d61d97dc8cc2e9df6d47f2a1"
+        ]
+      },
+      {
+        "name": "unicode-xid",
+        "version": "0.2.6",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 6,
+        "noticeTextsSha256": [
+          "23860c2a7b5d96b21569afedf033469bab9fe14a1b24a35068b8641c578ce24d",
+          "7b63ecd5f1902af1b63729947373683c32745c16a10e8e6292e2e2dcd7e90ae0",
+          "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+          "e0e60fbc0c12756fc52a97e6c68b02cce37dee5155e3edbe6b1fd74e89992841"
+        ]
+      },
+      {
+        "name": "version_check",
+        "version": "0.9.5",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 2,
+        "noticeTextsSha256": [
+          "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+          "b7e650f3fce5c53249d1cdc608b54df156a97edd636cf9d23498d0cfe7aec63e"
+        ]
+      },
+      {
+        "name": "zeroize",
+        "version": "1.8.2",
+        "source": "registry",
+        "inLinuxClosure": true,
+        "noticeBasis": "exact crate/vendor legal files",
+        "noticeRecords": 2,
+        "noticeTextsSha256": [
+          "0b04ee3ce0021a922f43f37a17fee09a5a1ee6d1f4e149d5bf75b72395a49c72",
+          "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        ]
+      }
+    ],
+    "registryPackages": 91,
+    "workspaceOrVendorPackages": 101,
+    "notInLinuxClosure": [],
+    "excludedTargetEdges": [
+      {
+        "package": "serde_core",
+        "condition": "cfg(any())",
+        "dependencies": [
+          "serde_derive"
+        ]
+      },
+      {
+        "package": "bun_sys",
+        "condition": "cfg(any(target_os = \"linux\", target_os = \"android\"))",
+        "dependencies": [
+          "rustix"
+        ]
+      },
+      {
+        "package": "fastrand",
+        "condition": "cfg(all(any(target_arch = \"wasm32\", target_arch = \"wasm64\"), target_os = \"unknown\"))",
+        "dependencies": [
+          "getrandom"
+        ]
+      },
+      {
+        "package": "semver",
+        "condition": "cfg(any())",
+        "dependencies": [
+          "serde"
+        ]
+      },
+      {
+        "package": "hashbrown",
+        "condition": "cfg(any())",
+        "dependencies": [
+          "serde"
+        ]
+      },
+      {
+        "package": "hashbrown",
+        "condition": "cfg(unix)",
+        "dependencies": []
+      },
+      {
+        "package": "keccak",
+        "condition": "cfg(target_arch = \"aarch64\")",
+        "dependencies": [
+          "cpufeatures"
+        ]
+      },
+      {
+        "package": "getrandom",
+        "condition": "cfg(all(any(target_os = \"linux\", target_os = \"android\"), not(any(all(target_os = \"linux\", target_env = \"\"), getrandom_backend = \"custom\", getrandom_backend = \"linux_raw\", getrandom_backend = \"rdrand\", getrandom_backend = \"rndr\"))))",
+        "dependencies": [
+          "libc"
+        ]
+      },
+      {
+        "package": "getrandom",
+        "condition": "cfg(all(target_arch = \"wasm32\", any(target_os = \"unknown\", target_os = \"none\")))",
+        "dependencies": [
+          "wasm-bindgen"
+        ]
+      },
+      {
+        "package": "getrandom",
+        "condition": "cfg(all(target_arch = \"wasm32\", any(target_os = \"unknown\", target_os = \"none\"), target_feature = \"atomics\"))",
+        "dependencies": [
+          "js-sys"
+        ]
+      },
+      {
+        "package": "getrandom",
+        "condition": "cfg(all(target_arch = \"wasm32\", target_os = \"wasi\", target_env = \"p2\"))",
+        "dependencies": [
+          "wasip2"
+        ]
+      },
+      {
+        "package": "getrandom",
+        "condition": "cfg(all(target_arch = \"wasm32\", target_os = \"wasi\", target_env = \"p3\"))",
+        "dependencies": [
+          "wasip3"
+        ]
+      },
+      {
+        "package": "getrandom",
+        "condition": "cfg(all(target_os = \"uefi\", getrandom_backend = \"efi_rng\"))",
+        "dependencies": [
+          "r-efi"
+        ]
+      },
+      {
+        "package": "getrandom",
+        "condition": "cfg(any(target_os = \"dragonfly\", target_os = \"freebsd\", target_os = \"hurd\", target_os = \"illumos\", target_os = \"cygwin\", all(target_os = \"horizon\", target_arch = \"arm\")))",
+        "dependencies": [
+          "libc"
+        ]
+      },
+      {
+        "package": "getrandom",
+        "condition": "cfg(any(target_os = \"haiku\", target_os = \"redox\", target_os = \"nto\", target_os = \"aix\"))",
+        "dependencies": [
+          "libc"
+        ]
+      },
+      {
+        "package": "getrandom",
+        "condition": "cfg(any(target_os = \"ios\", target_os = \"visionos\", target_os = \"watchos\", target_os = \"tvos\"))",
+        "dependencies": [
+          "libc"
+        ]
+      },
+      {
+        "package": "getrandom",
+        "condition": "cfg(any(target_os = \"macos\", target_os = \"openbsd\", target_os = \"vita\", target_os = \"emscripten\"))",
+        "dependencies": [
+          "libc"
+        ]
+      },
+      {
+        "package": "getrandom",
+        "condition": "cfg(target_os = \"netbsd\")",
+        "dependencies": [
+          "libc"
+        ]
+      },
+      {
+        "package": "getrandom",
+        "condition": "cfg(target_os = \"solaris\")",
+        "dependencies": [
+          "libc"
+        ]
+      },
+      {
+        "package": "getrandom",
+        "condition": "cfg(target_os = \"vxworks\")",
+        "dependencies": [
+          "libc"
+        ]
+      }
+    ],
+    "lockSupersetOnly": 90,
+    "unresolved": [],
+    "derivation": {
+      "script": "derive_cargo_scope_target.py",
+      "sha256": "d1e83486b8635b3e46d25ef5826efde448ab8ba11df8660300a6aa4c57c3c1a6",
+      "linuxReproduced": true
+    }
+  },
+  "native": [
+    {
+      "recipe": "boringssl",
+      "enabled": "always",
+      "windowsX64": true,
+      "linuxX64": true,
+      "noticeBasis": "exact source archive notices and per-file headers",
+      "noticeRecords": 864
+    },
+    {
+      "recipe": "brotli",
+      "enabled": "always",
+      "windowsX64": true,
+      "linuxX64": true,
+      "noticeBasis": "exact source archive notices and per-file headers",
+      "noticeRecords": 92
+    },
+    {
+      "recipe": "cares",
+      "enabled": "always",
+      "windowsX64": true,
+      "linuxX64": true,
+      "noticeBasis": "exact source archive notices and per-file headers",
+      "noticeRecords": 140
+    },
+    {
+      "recipe": "hdrhistogram",
+      "enabled": "always",
+      "windowsX64": true,
+      "linuxX64": true,
+      "noticeBasis": "exact source archive notices and per-file headers",
+      "noticeRecords": 4
+    },
+    {
+      "recipe": "highway",
+      "enabled": "always",
+      "windowsX64": true,
+      "linuxX64": true,
+      "noticeBasis": "exact source archive notices and per-file headers",
+      "noticeRecords": 143
+    },
+    {
+      "recipe": "libarchive",
+      "enabled": "always",
+      "windowsX64": true,
+      "linuxX64": true,
+      "noticeBasis": "exact source archive notices and per-file headers",
+      "noticeRecords": 240
+    },
+    {
+      "recipe": "libdeflate",
+      "enabled": "always",
+      "windowsX64": true,
+      "linuxX64": true,
+      "noticeBasis": "exact source archive notices and per-file headers",
+      "noticeRecords": 40
+    },
+    {
+      "recipe": "libjpeg-turbo",
+      "enabled": "always",
+      "windowsX64": true,
+      "linuxX64": true,
+      "noticeBasis": "exact source archive notices and per-file headers",
+      "noticeRecords": 306
+    },
+    {
+      "recipe": "libspng",
+      "enabled": "always",
+      "windowsX64": true,
+      "linuxX64": true,
+      "noticeBasis": "exact source archive notices and per-file headers",
+      "noticeRecords": 8
+    },
+    {
+      "recipe": "libuv",
+      "enabled": "cfg.windows",
+      "windowsX64": true,
+      "linuxX64": false,
+      "noticeBasis": "exact source archive notices and per-file headers",
+      "noticeRecords": 123
+    },
+    {
+      "recipe": "libwebp",
+      "enabled": "always",
+      "windowsX64": true,
+      "linuxX64": true,
+      "noticeBasis": "exact source archive notices and per-file headers",
+      "noticeRecords": 209
+    },
+    {
+      "recipe": "lolhtml",
+      "enabled": "always",
+      "windowsX64": true,
+      "linuxX64": true,
+      "noticeBasis": "exact source archive notices and per-file headers",
+      "noticeRecords": 4
+    },
+    {
+      "recipe": "lshpack",
+      "enabled": "always",
+      "windowsX64": true,
+      "linuxX64": true,
+      "noticeBasis": "exact source archive notices and per-file headers",
+      "noticeRecords": 7
+    },
+    {
+      "recipe": "lsqpack",
+      "enabled": "always",
+      "windowsX64": true,
+      "linuxX64": true,
+      "noticeBasis": "exact source archive notices and per-file headers",
+      "noticeRecords": 7
+    },
+    {
+      "recipe": "lsquic",
+      "enabled": "always",
+      "windowsX64": true,
+      "linuxX64": true,
+      "noticeBasis": "exact source archive notices and per-file headers",
+      "noticeRecords": 215
+    },
+    {
+      "recipe": "mimalloc",
+      "enabled": "always",
+      "windowsX64": true,
+      "linuxX64": true,
+      "noticeBasis": "exact source archive notices and per-file headers",
+      "noticeRecords": 48
+    },
+    {
+      "recipe": "nodejs-headers",
+      "enabled": "always",
+      "windowsX64": true,
+      "linuxX64": true,
+      "noticeBasis": "Node.js headers used at build time; Bun-copied-source notices cover Node-derived code",
+      "noticeRecords": 722
+    },
+    {
+      "recipe": "picohttpparser",
+      "enabled": "always",
+      "windowsX64": true,
+      "linuxX64": true,
+      "noticeBasis": "exact source archive notices and per-file headers",
+      "noticeRecords": 4
+    },
+    {
+      "recipe": "rust-argon2",
+      "enabled": "always",
+      "windowsX64": true,
+      "linuxX64": true,
+      "noticeBasis": "exact source archive notices and per-file headers",
+      "noticeRecords": 19
+    },
+    {
+      "recipe": "sqlite",
+      "enabled": "cfg.staticSqlite",
+      "windowsX64": true,
+      "linuxX64": true,
+      "noticeBasis": "in-tree sqlite3 amalgamation (public-domain dedication; Bun docs/project/license.mdx credit)",
+      "noticeRecords": 148
+    },
+    {
+      "recipe": "tinycc",
+      "enabled": "cfg.tinycc",
+      "windowsX64": true,
+      "linuxX64": true,
+      "noticeBasis": "exact source archive notices and per-file headers",
+      "noticeRecords": 122
+    },
+    {
+      "recipe": "webkit",
+      "enabled": "always",
+      "windowsX64": true,
+      "linuxX64": true,
+      "noticeBasis": "JavaScriptCore/WTF/bmalloc legal files and per-file headers; ICU 78.3 LICENSE added for Windows",
+      "noticeRecords": 18758
+    },
+    {
+      "recipe": "zlib",
+      "enabled": "always",
+      "windowsX64": true,
+      "linuxX64": true,
+      "noticeBasis": "exact source archive notices and per-file headers",
+      "noticeRecords": 132
+    },
+    {
+      "recipe": "zstd",
+      "enabled": "always",
+      "windowsX64": true,
+      "linuxX64": true,
+      "noticeBasis": "exact source archive notices and per-file headers",
+      "noticeRecords": 241
+    }
+  ],
+  "systemComponents": [
+    {
+      "component": "Microsoft C/C++ runtime and STL (static, /MT)",
+      "version": "MSVC CRT 14.44.17.14",
+      "source": "Microsoft CDN through xwin 0.9.0 --accept-license (WebKit Dockerfile.windows, Bun scripts/build/winsysroot.ts)",
+      "notes": "Microsoft Distributable Code under the Visual Studio license; no source is available to deliver. The open-source microsoft/STL counterpart is Apache-2.0 WITH LLVM-exception."
+    },
+    {
+      "component": "Universal C Runtime (static libucrt) and Windows SDK import libraries",
+      "version": "Windows SDK 10.0.26100",
+      "source": "Microsoft CDN through xwin 0.9.0",
+      "notes": "Operating-system component interfaces; Windows itself supplies the DLLs."
+    },
+    {
+      "component": "LLVM clang-cl, lld-link and compiler-rt builtins",
+      "version": "LLVM 21",
+      "source": "apt.llvm.org packages mirrored by oven-sh/WebKit (llvm-21-debs release)",
+      "notes": "Apache-2.0 WITH LLVM-exception: no attribution required for compiled forms."
+    }
+  ],
+  "openBoundaries": [
+    "The exact linked PE notice closure has not been derived; the aggregate stays a conservative source superset.",
+    "No Windows native Bun/JavaScriptCore/TinyCC relink has been performed; the Linux relink proof covers the same sources.",
+    "Distribution terms of the statically linked Microsoft runtime need Patrick's review before a public Windows release."
+  ]
+}

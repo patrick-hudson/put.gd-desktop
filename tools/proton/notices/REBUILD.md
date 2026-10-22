@@ -35,8 +35,9 @@ pinned sources plus these three files, on a host that reproduced the #40 helper'
 hash exactly from its own files. The #201 helper was rebuilt the same way, on
 a host that reproduced the #147 helper's hash exactly from unchanged sources. The #401 helper (the Windows-portable overlay) was rebuilt the same way, on a
 host that reproduced the #252/#253 helper's hash exactly from unchanged sources;
-the same overlay cross-compiles with `--target windows-x64`, whose artifact ships
-no catalog yet (see its manifest's redistribution note).
+the same overlay cross-compiles with `--target windows-x64`, which two hosts
+reproduced exactly; `SOURCES-WINDOWS.json` pins that helper and
+`REBUILD-WINDOWS.md` covers its rebuild (#408).
 The #252/#253 helper was rebuilt the same way, on a host that reproduced the
 #201 helper's hash exactly from unchanged sources.
 The application source archive and original source packets must travel together.

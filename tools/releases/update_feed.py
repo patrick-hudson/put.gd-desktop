@@ -15,6 +15,9 @@ ASSET_PATTERNS = {
     'debian13': re.compile(r'^putgd-[^/]+-debian13-x86_64\.deb$'),
     'fedora44': re.compile(r'^putgd-[^/]+-fedora44-x86_64\.rpm$'),
     'appimage': re.compile(r'^putgd-[^/]+-x86_64\.AppImage$'),
+    # The Windows installer and portable zip (#404); update.install picks the one it was installed from.
+    'windows-msi': re.compile(r'^putgd-[^/]+-windows-x86_64\.msi$'),
+    'windows-zip': re.compile(r'^putgd-[^/]+-windows-x86_64\.zip$'),
 }
 ZSYNC_PERMALINK = 'https://app.put.gd/dl/{channel}/appimage.zsync'
 SHA256_LINE = re.compile(r'^([0-9a-fA-F]{64}) [ *](.+)$')
