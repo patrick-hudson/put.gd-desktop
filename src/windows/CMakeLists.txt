@@ -150,5 +150,8 @@ if(WIN32)
   endif()
 
   add_executable(putgd-cli cli/main.cpp cli/putgd-cli.rc)
+  # Resource compilers report no header dependencies: a new version must rebuild both resources.
+  set_source_files_properties(resident/putgd.rc cli/putgd-cli.rc PROPERTIES
+    OBJECT_DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/generated/common/VersionResource.h;${CMAKE_CURRENT_SOURCE_DIR}/common/VersionInfo.rc")
   target_link_libraries(putgd-cli PRIVATE putgd_win_platform)
 endif()
