@@ -18,11 +18,13 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QListWidget>
+#include <QScrollArea>
 #include <QStackedWidget>
 #include <QJsonArray>
 #include <QKeySequence>
 #include <QToolButton>
 #include <QStatusBar>
+#include <QTimer>
 #include "platform/HostOpen.h"
 #include "core/ReleaseLink.h"
 namespace putgd {
@@ -30,8 +32,11 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  chooser_=new FileDialog(this);
  setObjectName("putgdMainWindow");setWindowTitle("put.gd");setWindowIcon(VisualStyle::icon("brand"));resize(1320,880);setMinimumSize(1060,680);
  auto* center=new QWidget;setCentralWidget(center);auto* layout=new QHBoxLayout(center);layout->setContentsMargins(0,0,0,0);layout->setSpacing(0);
- auto* rail=new QWidget;rail->setObjectName("mainRail");rail->setFixedWidth(210);layout->addWidget(rail);auto* railBox=new QVBoxLayout(rail);railBox->setContentsMargins(14,20,14,14);railBox->setSpacing(6);
- auto* brand=new QLabel("put.gd");VisualStyle::role(brand,"title");railBox->addWidget(brand);railBox->addSpacing(14);
+ auto* rail=new QWidget;rail->setObjectName("mainRail");rail->setFixedWidth(210);layout->addWidget(rail);
+ // The rail scrolls when even its compact form is taller than the window (#391).
+ auto* railFrame=new QVBoxLayout(rail);railFrame->setContentsMargins(0,0,0,0);railScroll_=new QScrollArea;railScroll_->setObjectName("mainRailScroll");railScroll_->setWidgetResizable(true);railScroll_->setFrameShape(QFrame::NoFrame);railScroll_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);railFrame->addWidget(railScroll_);
+ auto* railContent=new QWidget;railContent->setObjectName("mainRailContent");railScroll_->setWidget(railContent);railScroll_->viewport()->installEventFilter(this);auto* railBox=new QVBoxLayout(railContent);railBox->setContentsMargins(14,20,14,14);railBox->setSpacing(6);
+ auto* brand=new QLabel("put.gd");VisualStyle::role(brand,"title");railBox->addWidget(brand);railBox->addSpacing(14);railGaps_<<railBox->itemAt(railBox->count()-1)->spacerItem();
  auto* captureHeading=new QHBoxLayout;captureHeading->setContentsMargins(0,0,0,0);auto* captureLabel=new QLabel("CAPTURE & UPLOAD");captureLabel->setObjectName("captureActionsHeading");VisualStyle::role(captureLabel,"railHeading");captureHeading->addWidget(captureLabel);captureHeading->addStretch();
  const QString actionHelp="Capture region: drag to select a screen area; Escape cancels.\n\nCapture window: capture the focused external app window, including its frame where supported.\n\nCapture desktop: capture every enabled monitor, including desktop panels.\n\nUpload clipboard: upload copied local files, an image, or plain text, in that order. URLs copied as text are uploaded as text.\n\nCapture region & edit: select a region, then redact, blur, crop or annotate it in the editor. Nothing uploads until you choose Upload. Right-click it, or drop a PNG or JPEG on it, to edit the clipboard image or an image file instead.\n\nEach button starts that action after finished settings edits are saved. Screen captures close this window to keep it out of the capture; clipboard uploads keep it open. Store or clear unfinished credentials before a screen capture. Settings → Capture selects the upload destination. Keep a local copy in Settings → General independently enables local saving. Both can be enabled. With neither enabled, the action fails before capturing. Shared uploads copy a link; private uploads create no link. Hover a button for its current output behavior. Results and recovery actions appear in History.";
  auto* captureHelp=VisualStyle::helpButton("Capture and clipboard actions",actionHelp,captureLabel,rail);captureHeading->addWidget(captureHelp);railBox->addLayout(captureHeading);railBox->addSpacing(4);
@@ -40,7 +45,7 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  for(const auto& action:Settings::invocableActionNames()){
   auto* button=new QPushButton;button->setObjectName("captureRailButton");button->setProperty("captureAction",action);button->setAccessibleName(labels.value(action));button->setMinimumHeight(52);
   auto* box=new QVBoxLayout(button);box->setContentsMargins(10,6,10,6);box->setSpacing(2);auto* line=new QHBoxLayout;line->setContentsMargins(0,0,0,0);line->setSpacing(8);auto* icon=new QLabel;const auto paintIcon=[icon,action]{icon->setPixmap(VisualStyle::icon(action).pixmap(19,19));};paintIcon();connect(&Theme::Notifier::instance(),&Theme::Notifier::changed,icon,paintIcon);line->addWidget(icon);auto* name=new QLabel(labels.value(action));line->addWidget(name);line->addStretch();
-  box->addLayout(line);auto* shortcut=new QLabel;shortcut->setProperty("visualRole","mono");
+  box->addLayout(line);auto* shortcut=new QLabel;shortcut->setObjectName("captureShortcut");shortcut->setProperty("visualRole","mono");
   box->addWidget(shortcut);
   if(action=="edit"){
    // The clipboard image and image files are secondary sources: right-click
@@ -52,7 +57,7 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
    connect(button,&QWidget::customContextMenuRequested,sources,[sources,button](const QPoint& at){sources->popup(button->mapToGlobal(at));});
   }for(auto* label:{name,icon,shortcut})label->setAttribute(Qt::WA_TransparentForMouseEvents);
   auto update=[this,shortcut,button,action,explanations]{
-   const auto document=session_.document();const auto saved=Settings::effectiveAction(document,action);const auto key=QKeySequence(saved["shortcut"].toString()).toString(QKeySequence::NativeText);shortcut->setText(key);shortcut->setVisible(!key.isEmpty());QString output;
+   const auto document=session_.document();const auto saved=Settings::effectiveAction(document,action);const auto key=QKeySequence(saved["shortcut"].toString()).toString(QKeySequence::NativeText);shortcut->setText(key);shortcut->setVisible(!key.isEmpty()&&!railCompact_);QString output;
    const bool local=document["archive"].toObject()["keepUploads"].toBool();
    if(saved["destination"]=="local"||saved["profileId"].toString().isEmpty())output=local?"Save locally using your output folders, then copy the result to the clipboard when eligible. Uploads are off.":"This action will fail: no destination and local copies are off. Choose a destination in Settings → Capture or enable Keep a local copy in Settings → General.";
    else{
@@ -64,36 +69,36 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
    const auto description=explanations.value(action)+"\n\n"+output+"\n\nUses saved settings. Review results in History."+(key.isEmpty()?"\nNo global shortcut assigned.":"\nShortcut: "+key);
    button->setAccessibleDescription(description);auto tooltip=description.toHtmlEscaped();tooltip.replace('\n',"<br>");button->setToolTip("<qt>"+tooltip+"</qt>");
   };
-  connect(&session_,&UiSession::accepted,button,update);update();connect(button,&QPushButton::clicked,this,[this,action]{emit actionRequested(action);});railBox->addWidget(button);
+  connect(&session_,&UiSession::accepted,button,update);update();connect(button,&QPushButton::clicked,this,[this,action]{emit actionRequested(action);});railBox->addWidget(button);railButtons_<<button;
  }
- railBox->addSpacing(16);navigation_=new QListWidget;navigation_->setObjectName("mainNavigation");navigation_->setAccessibleName("Main navigation");navigation_->setIconSize(QSize(20,20));
+ railBox->addSpacing(16);railGaps_<<railBox->itemAt(railBox->count()-1)->spacerItem();navigation_=new QListWidget;navigation_->setObjectName("mainNavigation");navigation_->setAccessibleName("Main navigation");navigation_->setIconSize(QSize(20,20));
  for(const auto& entry:QList<QPair<QString,QString>>{{"history","History"},{"destinations","Destinations"},{"preferences","Settings"}})new QListWidgetItem(VisualStyle::icon(entry.first),entry.second,navigation_);
  navigation_->setFixedHeight(168);railBox->addWidget(navigation_);railBox->addStretch();destination_=new QLabel;destination_->setObjectName("captureOutputSummary");destination_->setTextFormat(Qt::PlainText);destination_->setWordWrap(true);VisualStyle::role(destination_,"muted");railBox->addWidget(destination_);
- auto* changeOutput=new QPushButton("Change capture output…");changeOutput->setObjectName("changeCaptureOutput");VisualStyle::role(changeOutput,"link");railBox->addWidget(changeOutput);
+ auto* changeOutput=new QPushButton("Change capture output…");changeOutput->setObjectName("changeCaptureOutput");VisualStyle::role(changeOutput,"link");railBox->addWidget(changeOutput);railLinks_<<changeOutput;
  pages_=new QStackedWidget;pages_->setObjectName("mainPages");layout->addWidget(pages_,1);settings_=new SettingsWindow(session_,pages_);history_=new HistoryWindow(session_,pages_);pages_->addWidget(history_);pages_->addWidget(settings_->destinationsPage());pages_->addWidget(settings_);
  connect(navigation_,&QListWidget::currentRowChanged,pages_,&QStackedWidget::setCurrentIndex);connect(navigation_,&QListWidget::currentRowChanged,this,[this](int row){if(row==1)settings_->activateDestinations();emit viewStateChanged();});connect(settings_,&SettingsWindow::viewStateChanged,this,&MainWindow::viewStateChanged);connect(history_,&HistoryWindow::viewStateChanged,this,&MainWindow::viewStateChanged);connect(settings_,&SettingsWindow::actionRequested,this,&MainWindow::actionRequested);connect(history_,&HistoryWindow::editRequested,this,&MainWindow::editRequested);connect(history_,&HistoryWindow::chooseImageRequested,this,&MainWindow::chooseImageToEdit);connect(settings_,&SettingsWindow::quitRequested,this,&MainWindow::quitRequested);
  // The running build, from the resident identity About also shows. Stable,
  // candidate and nightly builds link to their GitHub release; development builds
  // are plain text, which may wrap after "+": a dirty one is wider than the rail.
- version_=new QLabel;version_->setObjectName("appVersion");version_->setTextFormat(Qt::PlainText);version_->setWordWrap(true);VisualStyle::role(version_,"version");railBox->addSpacing(6);railBox->addWidget(version_);
+ version_=new QLabel;version_->setObjectName("appVersion");version_->setTextFormat(Qt::PlainText);version_->setWordWrap(true);VisualStyle::role(version_,"version");railBox->addSpacing(6);railGaps_<<railBox->itemAt(railBox->count()-1)->spacerItem();railBox->addWidget(version_);
  versionLink_=new QPushButton;versionLink_->setObjectName("appVersionLink");VisualStyle::role(versionLink_,"version");versionLink_->setCursor(Qt::PointingHandCursor);railBox->addWidget(versionLink_,0,Qt::AlignLeft);
  connect(versionLink_,&QPushButton::clicked,this,[this]{if(const auto url=releaseLink(session_.build()).url;url.isValid())host::openLink(url);});
  auto updateVersion=[this]{
   const auto link=releaseLink(session_.build());const auto name="put.gd version "+link.version;const auto page="Open the v"+link.version+" release on GitHub";
   auto wrapped=link.version;wrapped.replace("+",QString("+")+QChar(0x200B));version_->setText(wrapped);version_->setAccessibleName(name);version_->setToolTip(name);version_->setVisible(!link.version.isEmpty()&&link.url.isEmpty());
-  versionLink_->setText(link.version);versionLink_->setAccessibleName(name);versionLink_->setAccessibleDescription(page);versionLink_->setToolTip(page);versionLink_->setVisible(!link.url.isEmpty());
+  versionLink_->setText(link.version);versionLink_->setAccessibleName(name);versionLink_->setAccessibleDescription(page);versionLink_->setToolTip(page);versionLink_->setVisible(!link.url.isEmpty());fitRail();
  };
  connect(&session_,&UiSession::statusChanged,this,updateVersion);updateVersion();
  // A newer version, from the resident's daily check (#293): the prompt both
  // channels get. It opens General → Updates, which has the download.
- updateLink_=new QPushButton(VisualStyle::icon("download"),"Update available");updateLink_->setObjectName("updateAvailable");VisualStyle::role(updateLink_,"link");updateLink_->setCursor(Qt::PointingHandCursor);updateLink_->hide();railBox->addWidget(updateLink_,0,Qt::AlignLeft);
+ updateLink_=new QPushButton(VisualStyle::icon("download"),"Update available");updateLink_->setObjectName("updateAvailable");VisualStyle::role(updateLink_,"link");updateLink_->setCursor(Qt::PointingHandCursor);updateLink_->hide();railBox->addWidget(updateLink_,0,Qt::AlignLeft);railLinks_<<updateLink_;
  connect(updateLink_,&QPushButton::clicked,this,[this]{navigate("settings");settings_->showUpdates();});
  auto updateAvailable=[this]{
   const auto update=session_.diagnostics()["update"].toObject();const auto result=update["result"].toObject();
   const bool available=update["supported"].toBool()&&result["updateAvailable"].toBool();
   // A version is wider than the rail; it goes in the tooltip and the accessible name.
   updateLink_->setToolTip("put.gd "+result["latest"].toString()+" is available. Open Settings → Updates.");
-  updateLink_->setAccessibleName("Update available: put.gd "+result["latest"].toString());updateLink_->setVisible(available);
+  updateLink_->setAccessibleName("Update available: put.gd "+result["latest"].toString());updateLink_->setVisible(available);fitRail();
  };
  connect(&session_,&UiSession::statusChanged,this,updateAvailable);updateAvailable();
  auto updateDestination=[this]{
@@ -107,7 +112,7 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
    const auto first=Settings::effectiveAction(document,"region");bool same=true;for(const auto& name:Settings::actionNames()){const auto action=Settings::effectiveAction(document,name);if(action["destination"]!=first["destination"]||action["profileId"]!=first["profileId"]||action["publicationMode"].toString("default")!=first["publicationMode"].toString("default"))same=false;}
    label=same?"Capture output\n"+outputName(first):QString("Capture output\nDifferent for each action");
   }
-  destination_->setText(label);destination_->setToolTip("Output for future captures, using your saved settings. This is not an active upload.");
+  destination_->setText(label);destination_->setToolTip("Output for future captures, using your saved settings. This is not an active upload.");fitRail();
  };
  connect(changeOutput,&QPushButton::clicked,this,[this]{navigate("settings");settings_->showCaptureSettings();});
  auto* explanation=new QLabel("Settings save automatically");explanation->setObjectName("autosaveExplanation");statusBar()->setSizeGripEnabled(false);statusBar()->addWidget(explanation);
@@ -115,6 +120,33 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  auto updateSaveStatus=[this]{const auto text=settings_->autosaveText();saveStatus_->setVisible(!text.isEmpty());VisualStyle::feedback(saveStatus_,text,!text.isEmpty()&&text!="Use Store to save credentials");};
  connect(settings_,&SettingsWindow::viewStateChanged,this,updateSaveStatus);connect(&session_,&UiSession::accepted,this,[updateDestination,updateSaveStatus]{updateDestination();updateSaveStatus();});
  updateDestination();updateSaveStatus();navigation_->setCurrentRow(0);RedesignTheme::apply(*this);
+ connect(&Theme::Notifier::instance(),&Theme::Notifier::changed,this,[this]{QTimer::singleShot(0,this,[this]{setRailCompact(false);fitRail();});});
+}
+// #391: a rail taller than the window used to squeeze its items into each
+// other. Below its natural height the capture buttons drop their shortcut
+// line (their tooltip keeps it), the links and gaps close up; when even that doesn't
+// fit, the rail scrolls. The navigation list is as tall as its rows.
+void MainWindow::fitRail(){
+ if(!railScroll_||fittingRail_)return;
+ fittingRail_=true;
+ int rows=2*navigation_->frameWidth();for(int row=0;row<navigation_->count();++row)rows+=navigation_->sizeHintForRow(row);
+ if(rows>0&&navigation_->height()!=rows)navigation_->setFixedHeight(rows);
+ auto* box=railScroll_->widget()->layout();
+ const auto needed=[box,width=railScroll_->viewport()->width()]{const int height=box->totalHeightForWidth(width);return height>0?height:box->totalSizeHint().height();};
+ const int available=railScroll_->viewport()->height();
+ if(!railCompact_){const int natural=needed();if(natural>available){setRailCompact(true);railSaving_=natural-needed();}}
+ else if(needed()+railSaving_<=available)setRailCompact(false);
+ fittingRail_=false;
+}
+void MainWindow::setRailCompact(bool compact){
+ if(compact==railCompact_)return;
+ railCompact_=compact;
+ for(auto* button:railButtons_){
+  button->setProperty("compact",compact);button->style()->unpolish(button);button->style()->polish(button);button->layout()->setContentsMargins(10,compact?3:6,10,compact?3:6);
+  if(auto* shortcut=button->findChild<QLabel*>("captureShortcut"))shortcut->setVisible(!compact&&!shortcut->text().isEmpty());
+ }
+ for(auto* link:railLinks_){link->setProperty("compact",compact);link->style()->unpolish(link);link->style()->polish(link);}
+ railGaps_[0]->changeSize(0,compact?4:14);railGaps_[1]->changeSize(0,compact?8:16);railGaps_[2]->changeSize(0,compact?0:6);railScroll_->widget()->layout()->invalidate();
 }
 MainWindow::~MainWindow(){
  disconnect(settings_,nullptr,this,nullptr);disconnect(history_,nullptr,this,nullptr);disconnect(navigation_,nullptr,this,nullptr);disconnect(&session_,nullptr,this,nullptr);
@@ -129,6 +161,7 @@ QString MainWindow::droppedImage(const QMimeData* data){
  return file.isFile()&&QStringList{"png","jpg","jpeg"}.contains(file.suffix().toLower())?file.absoluteFilePath():QString{};
 }
 bool MainWindow::eventFilter(QObject* watched,QEvent* event){
+ if(railScroll_&&watched==railScroll_->viewport()&&event->type()==QEvent::Resize)fitRail();
  if(watched!=editButton_)return QMainWindow::eventFilter(watched,event);
  auto highlight=[this](bool on){editButton_->setProperty("dropTarget",on);editButton_->style()->unpolish(editButton_);editButton_->style()->polish(editButton_);};
  switch(event->type()){

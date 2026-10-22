@@ -318,6 +318,48 @@ private slots:
   bar->triggerAction(QAbstractSlider::SliderToMinimum);QCOMPARE(bar->value(),0);
   window->resize(1280,700);PUTGD_TRY_COMPARE(window->height(),700);PUTGD_COMPARE_STEADY(bar->value(),0,300);QVERIFY(!inView(status));
  }
+ // #391: the rail at the heights a maximized window gets on short screens,
+ // with Update available and a three-line capture output. Nothing in it
+ // overlaps or is squeezed below its minimum, and the navigation stays in view.
+ // At 1280×800 the whole rail fits; at 768 px it may scroll a little,
+ // depending on the fonts, and below the window's minimum height, where a
+ // window manager can still hold it, the rest scrolls into view.
+ void railFitsShortWindows_data(){
+  QTest::addColumn<QSize>("size");QTest::addColumn<int>("scrolls");
+  enum{Never,Maybe,Always};
+  QTest::newRow("natural")<<QSize(1320,880)<<int(Never);
+  QTest::newRow("1280x800-gnome")<<QSize(1280,738)<<int(Never);
+  QTest::newRow("1280x800-plasma")<<QSize(1280,722)<<int(Never);
+  QTest::newRow("1366x768")<<QSize(1366,690)<<int(Maybe);
+  QTest::newRow("1024x768-minimum")<<QSize(1060,680)<<int(Maybe);
+  QTest::newRow("below-minimum")<<QSize(1060,560)<<int(Always);
+ }
+ void railFitsShortWindows(){
+  QFETCH(QSize,size);QFETCH(int,scrolls);
+  QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"),[](auto,auto){return Error{};});auto document=Settings::developmentTemplate();
+  document["captureDefaults"]=QJsonObject{{"destination","upload"},{"profileId","development-s3"},{"publicationMode","default"}};auto actions=document["actions"].toObject();
+  for(const auto& name:Settings::actionNames()){auto action=actions[name].toObject();action["destination"]=name=="region"?"local":"default";action["profileId"]=QJsonValue::Null;actions[name]=action;}document["actions"]=actions;QVERIFY(settings.save(document,{}));
+  CredentialStore secrets;UiSessionFixture fixture(settings,secrets);
+  fixture.server.setUiDiagnostics([&]{auto data=fixture.operations().diagnostics();data["update"]=QJsonObject{{"supported",true},{"result",QJsonObject{{"updateAvailable",true},{"latest","26.1022.999-nightly"}}}};return data;});
+  MainWindow window(fixture.session);if(size.height()<window.minimumHeight())window.setMinimumSize(size);window.resize(size);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));fixture.session.refreshSnapshot();
+  auto* update=window.findChild<QPushButton*>("updateAvailable");auto* output=window.findChild<QLabel*>("captureOutputSummary");auto* navigation=window.findChild<QListWidget*>("mainNavigation");auto* scroll=window.findChild<QScrollArea*>("mainRailScroll");
+  QVERIFY(update&&output&&navigation);PUTGD_TRY_VERIFY(update->isVisible());PUTGD_TRY_COMPARE(window.size(),size);QCOMPARE(output->text().count('\n'),2);
+  auto* content=scroll?scroll->widget():window.findChild<QWidget*>("mainRail");QWidgetList items;for(auto* child:content->findChildren<QWidget*>(Qt::FindDirectChildrenOnly))if(child->isVisible())items<<child;
+  QVERIFY(items.size()>=12);
+  if(scroll)PUTGD_TRY_VERIFY(content->height()>=content->heightForWidth(content->width()));
+  for(int i=0;i<items.size();++i){
+   auto* item=items[i];const int need=qMin(item->maximumHeight(),qMax(item->minimumHeight(),item->hasHeightForWidth()?item->heightForWidth(item->width()):item->minimumSizeHint().height()));
+   QVERIFY2(item->height()>=need,qPrintable(item->objectName()+" is squeezed"));
+   for(int j=i+1;j<items.size();++j)QVERIFY2(!item->geometry().intersects(items[j]->geometry()),qPrintable(item->objectName()+" overlaps "+items[j]->objectName()));
+  }
+  QVERIFY(scroll);
+  const auto inView=[&](QWidget* widget){return scroll->viewport()->rect().contains(QRect(widget->mapTo(scroll->viewport(),QPoint()),widget->size()));};
+  const auto settingsRow=navigation->visualItemRect(navigation->item(2));QVERIFY(navigation->viewport()->rect().contains(settingsRow));
+  QVERIFY(inView(navigation));
+  if(scrolls==0){QCOMPARE(scroll->verticalScrollBar()->maximum(),0);for(auto* item:items)QVERIFY2(inView(item),qPrintable(item->objectName()+" is out of view"));}
+  if(scrolls==2)QVERIFY(scroll->verticalScrollBar()->maximum()>0);
+  scroll->ensureWidgetVisible(update);PUTGD_TRY_VERIFY(inView(update));PUTGD_TRY_VERIFY(inView(output));
+ }
 };
 QTEST_MAIN(UiApplicationTest)
 #include "test_ui_application.moc"
