@@ -16,13 +16,16 @@ constexpr int idRailFirst = 200, idAbout = 220, idQuit = 221, idNoticeButton = 2
 constexpr int idEditClipboard = 240, idEditFile = 241;
 constexpr UINT_PTR timerHeartbeat = 1, timerAutosave = 2, timerClose = 3, timerCloseSafety = 4;
 constexpr int noticeNone = 0, noticeReload = 1, noticeRetry = 2;
-const std::vector<std::string> railActions{"region", "edit", "window", "desktop", "clipboard"};
+const std::vector<std::string> railActions{"region", "edit", "window", "desktop", "record", "clipboard"};
+// The rail's Record screen while recording is unavailable: a tool on the window over
+// its rectangle, since a disabled button gets no mouse input for its own tooltip.
+constexpr UINT_PTR recordTipId = 0x5245;
 const wchar_t* pageTitles[] = {L"History", L"Destinations", L"Settings"};
 const char* pageGlyphs[] = {"history", "destinations", "settings"};
 // The brand mark's two tones (resident/app.ico).
 constexpr COLORREF brandArrow = RGB(176, 204, 255), brandTray = RGB(110, 150, 232);
 
-bool screenAction(const std::string& action) { return action == "region" || action == "edit" || action == "window" || action == "desktop"; }
+bool screenAction(const std::string& action) { return action == "region" || action == "edit" || action == "window" || action == "desktop" || action == "record"; }
 
 std::wstring outputText(const json::Object& document, const std::string& action) {
     const auto saved = Settings::effectiveAction(document, action);
@@ -45,6 +48,7 @@ std::wstring explanation(const std::string& action) {
     if (action == "edit") return L"Select a region, then redact, blur, crop or annotate it. Nothing uploads until you choose Upload.\nRight-click to edit the clipboard image or an image file instead, or drop a PNG or JPEG on this button.";
     if (action == "window") return L"Capture the focused window of another app.";
     if (action == "desktop") return L"Capture all monitors.";
+    if (action == "record") return L"Select a region and record it, with a control bar to pause and stop. The review lets you trim, blur and choose the format; nothing uploads until you choose Upload.";
     return L"Upload copied files, an image, or plain text, in that order. Text URLs are uploaded as text.";
 }
 LRESULT CALLBACK editButtonProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR data) {
@@ -240,7 +244,7 @@ bool MainWindow::create(const std::string& initialView, const json::Object& stat
         if (railActions[i] == "edit") caption = L"Capture region && edit";
         HWND b = button(hwnd_, idRailFirst + int(i), caption);
         theme::setRole(b, theme::Role::Action, railActions[i] == "edit" ? "edit" : railActions[i] == "region" ? "region" : railActions[i] == "window" ? "window"
-                                                 : railActions[i] == "desktop" ? "desktop" : "clipboard");
+                                                 : railActions[i] == "desktop" ? "desktop" : railActions[i] == "record" ? "recordScreen" : "clipboard");
         rail_[railActions[i]] = b;
         if (railActions[i] == "edit") {
             DragAcceptFiles(b, TRUE);
@@ -271,6 +275,20 @@ bool MainWindow::create(const std::string& initialView, const json::Object& stat
     const auto version = session_.build().value("version").toString();
     setText(version_, version.empty() ? std::string() : "Version " + version);
     updateRail();
+    // Record screen is offered where the recording probe found a working encoder.
+    session_.call("recording.capabilities", {}, [this](const Reply& reply) {
+        HWND b = rail_["record"];
+        if (!reply.ok || reply.result.value("available").toBool() || !b) return;
+        const std::wstring reason = L"Screen recording is not available on this computer.\n\n" + wide(reply.result.value("message").toString("No built-in encoder can record here."));
+        EnableWindow(b, FALSE);
+        TTTOOLINFOW info{};
+        info.cbSize = sizeof info; info.uFlags = TTF_SUBCLASS; info.hwnd = hwnd_; info.uId = recordTipId;
+        info.lpszText = const_cast<wchar_t*>(reason.c_str());
+        GetWindowRect(b, &info.rect);
+        MapWindowPoints(nullptr, hwnd_, reinterpret_cast<POINT*>(&info.rect), 2);
+        SendMessageW(tooltip_, TTM_ADDTOOLW, 0, reinterpret_cast<LPARAM>(&info));
+        InvalidateRect(b, nullptr, TRUE);
+    });
     updateSaveStatus();
     applyTheme();
     restore(state);
@@ -348,6 +366,13 @@ void MainWindow::layout() {
     for (const auto& action : railActions) {
         place(rail_[action], itemX, y, itemWidth, m.item);
         y += m.item + m.itemGap;
+    }
+    if (!IsWindowEnabled(rail_["record"])) {
+        TTTOOLINFOW info{};
+        info.cbSize = sizeof info; info.hwnd = hwnd_; info.uId = recordTipId;
+        GetWindowRect(rail_["record"], &info.rect);
+        MapWindowPoints(nullptr, hwnd_, reinterpret_cast<POINT*>(&info.rect), 2);
+        SendMessageW(tooltip_, TTM_NEWTOOLRECTW, 0, reinterpret_cast<LPARAM>(&info));
     }
     const int versionHeight = fontHeight(font(FontRole::Small, d)) + scale(2, d);
     int bottom = client.bottom - scale(14, d) - versionHeight;
@@ -713,7 +738,9 @@ void MainWindow::invokeAction(const std::string& action) {
     flushSettings([this, action, screen](bool saved) {
         if (!saved) { status(L"Settings were not saved. Retry saving, then start the action again.", true); return; }
         if (screen) { hiddenForCapture_ = true; ShowWindow(hwnd_, SW_HIDE); }
-        session_.call("action.invoke", {{"action", action}}, [this, action, screen](const Reply& reply) {
+        json::Object params{{"action", action}};
+        if (action == "record") params["mode"] = "open";
+        session_.call("action.invoke", params, [this, action, screen](const Reply& reply) {
             if (!reply.ok) {
                 if (screen) { hiddenForCapture_ = false; ShowWindow(hwnd_, SW_SHOW); SetForegroundWindow(hwnd_); }
                 status(UiSession::describe(reply), true);

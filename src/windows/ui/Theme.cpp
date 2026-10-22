@@ -191,6 +191,11 @@ Glyph define(const std::string& name) {
         g.rounded(1, 10, 17, 4, 5, 1);
         g.rounded(0, 4, 5, 16, 10, 1);
         g.rounded(0, 6, 20.5f, 12, 2.5f, 1.2f);
+    } else if (name == "recordScreen") {
+        g.rounded(1, 2, 3, 20, 15, 2);
+        g.rounded(1, 10, 17, 4, 5, 1);
+        g.rounded(0, 6, 20.5f, 12, 2.5f, 1.2f);
+        g.circle(0, 12, 10.5f, 4.2f);
     } else if (name == "clipboard") {
         g.rounded(1, 4, 4, 16, 18, 3);
         g.rounded(0, 8, 2, 8, 5, 2);

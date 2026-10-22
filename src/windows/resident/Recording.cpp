@@ -313,7 +313,8 @@ void OperationService::prepareRecording(const json::Object& params, JsonReply re
                 if (recording_ != session) return;
                 auto op = session->op; endRecording(op);
                 op.cancelled = e.code == "cancelled" || session->cancel->load();
-                op.state = op.cancelled ? "cancelled" : "failed"; op.error = e;
+                // Escape in the selector is the user's choice, as in the editor: no error, no notification.
+                op.state = op.cancelled ? "cancelled" : "failed"; op.error = op.cancelled && e.code == "cancelled" ? Error{} : e;
                 if (selectingId_ == op.id) selectingId_.clear();
                 log::info("recording", op.cancelled ? "Recording cancelled" : "Recording failed", {{"operationId", op.id}, {"code", e.code}});
                 finish(op);
