@@ -35,6 +35,7 @@ constexpr int widthValues[3] = {2, 4, 8};
 constexpr wchar_t windowClass[] = L"PutgdEditImageWindow";
 constexpr wchar_t canvasClass[] = L"PutgdEditImageCanvas";
 constexpr UINT textDoneMessage = WM_APP + 1;
+constexpr UINT saveCopyMessage = WM_APP + 2; // editor.fileDialog open
 // Shell file dialog identifiers, spelled out so no uuid import library is needed.
 constexpr CLSID clsidFileSaveDialog = {0xC0B4E2F3, 0xBA21, 0x4773, {0x8D, 0xBA, 0x33, 0x5E, 0xC9, 0x46, 0xEB, 0x8B}};
 constexpr IID iidFileSaveDialog = {0x84BCCD23, 0x5FDE, 0x4CDB, {0xAE, 0xA4, 0xAF, 0x64, 0xB8, 0x3D, 0x78, 0xAB}};
@@ -1415,11 +1416,28 @@ void EditorWindow::canvasSelectionChanged() {
     refresh();
 }
 
+bool EditorWindow::openSaveCopyDialog() {
+    if (saveDialog_.open || busy_ || modal_ || !hwnd_) return false;
+    saveDialog_.begin("save", "Save a copy");
+    saveDialogCancelled_ = false;
+    PostMessageW(hwnd_, saveCopyMessage, 0, 0);
+    return true;
+}
+
+void EditorWindow::cancelSaveCopyDialog() {
+    if (!saveDialog_.open) return;
+    saveDialogCancelled_ = true;
+    if (fileDialog_) static_cast<IFileDialog*>(fileDialog_)->Close(HRESULT_FROM_WIN32(ERROR_CANCELLED));
+    saveDialog_.cancelled();
+}
+
 void EditorWindow::saveCopy() {
-    if (busy_ || modal_) return;
+    if (busy_ || modal_) { if (saveDialog_.open && !fileDialog_) saveDialog_.failed("editor_busy", "The editor is busy"); return; }
+    if (!saveDialog_.open) { saveDialog_.begin("save", "Save a copy"); saveDialogCancelled_ = false; }
     if (canvas_->editingText()) canvas_->finishText(true);
     IFileSaveDialog* dialog = nullptr;
     if (FAILED(CoCreateInstance(clsidFileSaveDialog, nullptr, CLSCTX_INPROC_SERVER, iidFileSaveDialog, reinterpret_cast<void**>(&dialog))) || !dialog) {
+        saveDialog_.failed("file_dialog_failed", "The save dialog could not be opened");
         setFailure("The save dialog could not be opened.");
         return;
     }
@@ -1457,8 +1475,12 @@ void EditorWindow::saveCopy() {
         }
     }
     dialog->Release();
-    if (path.empty() || busy_) return;
+    if (saveDialogCancelled_) return; // cancelSaveCopyDialog recorded it
+    if (!SUCCEEDED(shown) && shown != HRESULT_FROM_WIN32(ERROR_CANCELLED)) saveDialog_.failed("file_dialog_failed", "The save dialog failed");
+    else if (path.empty()) saveDialog_.cancelled();
+    if (path.empty() || busy_) { if (saveDialog_.open) saveDialog_.cancelled(); return; }
     if (!text::endsWith(text::lower(path), ".png")) path += ".png";
+    saveDialog_.chosen(path);
     // The same sanitized export as Upload; written atomically beside the target.
     if (const auto error = callbacks_.saveCopy ? callbacks_.saveCopy(path) : Error{"save_failed", "Unavailable", {}}) setFailure("The copy could not be saved.");
     else setMessage("Saved a copy.");
@@ -1614,6 +1636,9 @@ LRESULT CALLBACK EditorWindow::windowProc(HWND hwnd, UINT message, WPARAM wParam
 
 LRESULT EditorWindow::handle(UINT message, WPARAM wParam, LPARAM lParam) {
     switch (message) {
+    case saveCopyMessage:
+        if (saveDialog_.open && !saveDialogCancelled_ && !fileDialog_) saveCopy();
+        return 0;
     case WM_SIZE: layout(); return 0;
     case WM_ACTIVATE:
         // Keyboard focus returns to the control that had it (the canvas by default).

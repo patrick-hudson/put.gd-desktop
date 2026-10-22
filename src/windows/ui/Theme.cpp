@@ -471,6 +471,92 @@ bool headerDraw(NMCUSTOMDRAW* cd, LRESULT& result) {
     result = CDRF_DODEFAULT;
     return true;
 }
+// The state column's tone, from its word.
+COLORREF stateTone(const wchar_t* text) {
+    const auto& c = colors();
+    std::wstring word(text);
+    for (auto& ch : word) ch = wchar_t(towlower(ch));
+    auto has = [&word](const wchar_t* part) { return word.find(part) != std::wstring::npos; };
+    return has(L"fail") ? c.danger
+           : has(L"unknown") ? c.warning
+           : has(L"cancel") || has(L"local capture") || has(L"no upload") ? c.textMuted
+           : has(L"uploaded") || has(L"completed") || has(L"saved") || has(L"succeeded") ? c.success
+           : has(L"uploading") || has(L"waiting") || has(L"running") || has(L"preparing") || has(L"finaliz") || has(L"pending") || has(L"accepted") ||
+                     has(L"queued") || has(L"acquir")
+               ? c.accent
+               : c.textMuted;
+}
+std::wstring itemText(HWND list, int item, int column) {
+    wchar_t text[1024]{};
+    LVITEMW get{};
+    get.iSubItem = column;
+    get.pszText = text;
+    get.cchTextMax = 1024;
+    SendMessageW(list, LVM_GETITEMTEXTW, WPARAM(item), reinterpret_cast<LPARAM>(&get));
+    return text;
+}
+// Gallery tiles (History): a card with the thumbnail from the normal image list,
+// the name, and the state dot and word beside the time (columns 0, 1 and the state
+// column). Everything stays inside the tile's bounds, so a one-tile repaint is whole.
+bool tileDraw(NMLVCUSTOMDRAW* cd, LRESULT& result) {
+    HWND list = cd->nmcd.hdr.hwndFrom;
+    const auto& c = colors();
+    const UINT dpi = windowDpi(list);
+    HDC dc = cd->nmcd.hdc;
+    const int item = int(cd->nmcd.dwItemSpec);
+    RECT tile{};
+    tile.left = LVIR_BOUNDS;
+    SendMessageW(list, LVM_GETITEMRECT, WPARAM(item), reinterpret_cast<LPARAM>(&tile));
+    fill(dc, tile, backgroundOf(list));
+    const bool selected = ListView_GetItemState(list, item, LVIS_SELECTED) & LVIS_SELECTED;
+    const bool hot = int(SendMessageW(list, LVM_GETHOTITEM, 0, 0)) == item;
+    const bool focused = (ListView_GetItemState(list, item, LVIS_FOCUSED) & LVIS_FOCUSED) && GetFocus() == list;
+    RECT card = tile;
+    InflateRect(&card, -scale(4, dpi), -scale(4, dpi));
+    const int radius = scale(6, dpi);
+    if (selected) {
+        roundRect(dc, card, radius, c.accent);
+        RECT inner = card;
+        InflateRect(&inner, -scale(2, dpi), -scale(2, dpi));
+        roundRect(dc, inner, std::max(1, radius - scale(2, dpi)), hot ? blend(c.selected, c.text, 12) : c.selected);
+    } else {
+        roundRect(dc, card, radius, hot ? c.hover : c.card, c.cardBorder);
+    }
+    if (focused && !selected) {
+        RECT ring = card;
+        focusRing(dc, ring, radius, dpi);
+    }
+    const int pad = scale(8, dpi);
+    HIMAGELIST images = ListView_GetImageList(list, LVSIL_NORMAL);
+    LVITEMW probe{};
+    probe.mask = LVIF_IMAGE;
+    probe.iItem = item;
+    int cx = 0, cy = 0;
+    if (images) ImageList_GetIconSize(images, &cx, &cy);
+    const int pictureLeft = card.left + (card.right - card.left - cx) / 2, pictureTop = card.top + pad;
+    if (images && SendMessageW(list, LVM_GETITEMW, 0, reinterpret_cast<LPARAM>(&probe)) && probe.iImage >= 0)
+        ImageList_Draw(images, probe.iImage, dc, pictureLeft, pictureTop, ILD_NORMAL);
+    else
+        fill(dc, {pictureLeft, pictureTop, pictureLeft + cx, pictureTop + cy}, c.placeholder);
+    HFONT f = reinterpret_cast<HFONT>(SendMessageW(list, WM_GETFONT, 0, 0));
+    const int line = lineHeight(dpi);
+    RECT name{card.left + pad, pictureTop + cy + scale(6, dpi), card.right - pad, pictureTop + cy + scale(6, dpi) + line + scale(2, dpi)};
+    drawText(dc, itemText(list, item, 0), name, c.text, f, DT_SINGLELINE | DT_VCENTER | DT_LEFT | DT_END_ELLIPSIS | DT_NOPREFIX);
+    RECT detail{name.left, name.bottom, name.right, name.bottom + line + scale(2, dpi)};
+    const int stateColumn = int(reinterpret_cast<INT_PTR>(GetPropW(list, L"putgd.stateColumn"))) - 1;
+    if (stateColumn > 0) {
+        const auto state = itemText(list, item, stateColumn);
+        const int dot = scale(8, dpi);
+        RECT mark{detail.left, (detail.top + detail.bottom - dot) / 2, detail.left + dot, (detail.top + detail.bottom - dot) / 2 + dot};
+        roundRect(dc, mark, dot / 2, stateTone(state.c_str()));
+        detail.left += dot + scale(6, dpi);
+        const auto when = itemText(list, item, 1);
+        drawText(dc, state + (when.empty() ? L"" : L" \x00B7 " + when), detail, c.textSecondary, font(FontRole::Small, dpi),
+                 DT_SINGLELINE | DT_VCENTER | DT_LEFT | DT_END_ELLIPSIS | DT_NOPREFIX);
+    }
+    result = CDRF_SKIPDEFAULT;
+    return true;
+}
 // List view rows: a rounded selection with the accent pill, the first column in
 // primary text and the others in secondary text; no column separators.
 bool rowDraw(NMLVCUSTOMDRAW* cd, LRESULT& result) {
@@ -492,6 +578,7 @@ bool rowDraw(NMLVCUSTOMDRAW* cd, LRESULT& result) {
         return true;
     }
     if (cd->nmcd.dwDrawStage != CDDS_ITEMPREPAINT) { result = CDRF_DODEFAULT; return true; }
+    if (SendMessageW(list, LVM_GETVIEW, 0, 0) == LV_VIEW_TILE) return tileDraw(cd, result);
     const auto& c = colors();
     const UINT dpi = windowDpi(list);
     HDC dc = cd->nmcd.hdc;
@@ -547,17 +634,7 @@ bool rowDraw(NMLVCUSTOMDRAW* cd, LRESULT& result) {
             }
         }
         if (column + 1 == int(reinterpret_cast<INT_PTR>(GetPropW(list, L"putgd.stateColumn"))) && text[0]) {
-            std::wstring word(text);
-            for (auto& ch : word) ch = wchar_t(towlower(ch));
-            auto has = [&word](const wchar_t* part) { return word.find(part) != std::wstring::npos; };
-            const COLORREF tone = has(L"fail") ? c.danger
-                                  : has(L"unknown") ? c.warning
-                                  : has(L"cancel") || has(L"local capture") || has(L"no upload") ? c.textMuted
-                                  : has(L"uploaded") || has(L"completed") || has(L"saved") || has(L"succeeded") ? c.success
-                                  : has(L"uploading") || has(L"waiting") || has(L"running") || has(L"preparing") || has(L"finaliz") || has(L"pending") || has(L"accepted") ||
-                                            has(L"queued") || has(L"acquir")
-                                      ? c.accent
-                                      : c.textMuted;
+            const COLORREF tone = stateTone(text);
             const int dot = scale(8, dpi);
             RECT mark{label.left, (cell.top + cell.bottom - dot) / 2, label.left + dot, (cell.top + cell.bottom - dot) / 2 + dot};
             roundRect(dc, mark, dot / 2, tone);

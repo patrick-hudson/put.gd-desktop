@@ -93,6 +93,8 @@ private:
     ArtifactStore artifacts_;
     std::deque<Job> queue_;
     std::map<std::string, CancelFlag> active_;
+    // Per-item flags for operation.cancel with itemId; every provider request of an item polls its own.
+    ItemCancellations itemCancels_;
     std::map<std::string, std::weak_ptr<std::mutex>> locks_;
     std::mutex locksMutex_;
     mutable std::mutex observationsMutex_;

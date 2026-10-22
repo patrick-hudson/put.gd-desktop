@@ -4,6 +4,7 @@
 // "User workflow"). It edits the EditDocument it is given; EditorMain owns the
 // protocol, the document and finalization.
 #include "common/Error.h"
+#include "core/FileDialogState.h"
 #include "editor/EditDocument.h"
 #include <functional>
 #include <memory>
@@ -56,6 +57,12 @@ public:
     // Cancels open modal dialogs (file chooser, colour picker, confirmation).
     void closeDialogs();
     bool inModalLoop() const { return modal_ > 0; }
+    // editor.fileDialog (docs/file-dialogs.md): Save a copy… as its button opens it,
+    // shown from the next message so the command answers first.
+    bool openSaveCopyDialog(); // false while it is open or the window is busy
+    void cancelSaveCopyDialog();
+    bool saveCopyDialogOpen() const { return saveDialog_.open; }
+    json::Object saveCopyDialogState() const { return saveDialog_.toJson(); }
     void allowClose() { closing_ = true; }
 
     // Canvas notifications.
@@ -108,6 +115,8 @@ private:
     int modal_ = 0;
     HWND taskDialog_ = nullptr, lastFocus_ = nullptr;
     void* fileDialog_ = nullptr; // IFileDialog* while Save a copy is open
+    FileDialogState saveDialog_;
+    bool saveDialogCancelled_ = false;
     std::wstring message_;
 };
 }

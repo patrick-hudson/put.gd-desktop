@@ -3,6 +3,9 @@
 #include "common/Sha256.h"
 #include "common/Shortcut.h"
 #include "common/Text.h"
+#include "core/Cancellation.h"
+#include "core/FileDialogState.h"
+#include "core/HistoryFilters.h"
 #include "core/Naming.h"
 #include "core/Operation.h"
 #include "core/ProtonSettings.h"
@@ -10,8 +13,12 @@
 #include "core/SanitizedPng.h"
 #include "core/Settings.h"
 #include "core/SettingsPatch.h"
+#include "core/ShortcutStatus.h"
+#include "core/UiState.h"
+#include <atomic>
 #include <cstdio>
 #include <cstdlib>
+#include <memory>
 
 using namespace putgd;
 static int failures = 0;
@@ -178,8 +185,111 @@ static void operationTests() {
     item.remoteStatus = "removed"; CHECK(!item.linkAvailable());
     CHECK(Operation::activeState("editing") && !Operation::activeState("completed"));
 }
+// operation.cancel with itemId: only that item's requests stop; the operation's flag reaches every item.
+static void cancellationTests() {
+    ItemCancellations cancels;
+    auto operation = std::make_shared<std::atomic_bool>(false);
+    auto first = cancels.flag("op", "a", operation), second = cancels.flag("op", "b", operation);
+    CHECK(!first->load() && !second->load());
+    cancels.cancelItem("op", "a");
+    CHECK(first->load() && !second->load());
+    CHECK(cancels.cancelled("op", "a") && !cancels.cancelled("op", "b"));
+    CHECK(cancels.flag("op", "a", operation) == first); // the same flag on every request of the item
+    cancels.cancelItem("op", "later"); // not reached yet: its first request sees it cancelled
+    CHECK(cancels.flag("op", "later", operation)->load());
+    operation->store(true);
+    cancels.cancelAll("op");
+    CHECK(second->load());
+    CHECK(cancels.flag("op", "new", operation)->load()); // made after the operation was cancelled
+    cancels.forget("op");
+    CHECK(!cancels.cancelled("op", "a"));
+    CHECK(!cancels.flag("op", "a", std::make_shared<std::atomic_bool>(false))->load()); // a Retry starts afresh
+    CHECK(!cancels.flag("other", "a", nullptr)->load());
+}
+static void uiStateTests() {
+    using uistate::validateCommand;
+    CHECK(uistate::commandFor("ui.fileDialog") == "fileDialog" && uistate::commandFor("ui.viewState").empty());
+    CHECK(!validateCommand("ui.moveDestination", {{"direction", "up"}}));
+    CHECK(!validateCommand("ui.moveDestination", {{"direction", "down"}, {"profileId", "s3-1"}}));
+    CHECK(validateCommand("ui.moveDestination", {{"direction", "left"}}).code == "invalid_request");
+    CHECK(validateCommand("ui.moveDestination", {}).code == "invalid_request");
+    CHECK(!validateCommand("ui.diagnostics", {{"action", "inspect"}}));
+    CHECK(!validateCommand("ui.diagnostics", {{"action", "setPackage"}, {"folder", "C:\\Users\\lab\\Desktop"}, {"includeNames", true}}));
+    CHECK(validateCommand("ui.diagnostics", {{"action", "setPackage"}, {"folder", "relative\\path"}}).code == "invalid_request");
+    CHECK(validateCommand("ui.diagnostics", {{"action", "setDebugLogging"}, {"enabled", "yes"}}).code == "invalid_request");
+    CHECK(validateCommand("ui.diagnostics", {{"action", "explode"}}).code == "invalid_request");
+    CHECK(!validateCommand("ui.historySaveDiagnostics", {{"id", "op-1"}}));
+    CHECK(validateCommand("ui.historySaveDiagnostics", {{"id", ""}}).code == "invalid_request");
+    CHECK(!validateCommand("ui.fileDialog", {{"dialog", "outputFolder"}, {"action", "open"}, {"field", "images"}}));
+    CHECK(!validateCommand("ui.fileDialog", {{"dialog", "historySaveAs"}, {"action", "open"}, {"id", "h1"}}));
+    CHECK(validateCommand("ui.fileDialog", {{"dialog", "editImage"}, {"action", "open"}, {"field", "root"}}).code == "invalid_request");
+    CHECK(validateCommand("ui.fileDialog", {{"dialog", "outputFolder"}, {"action", "open"}, {"id", "h1"}}).code == "invalid_request");
+    CHECK(validateCommand("ui.fileDialog", {{"dialog", "printer"}, {"action", "open"}}).code == "invalid_request");
+    CHECK(!uistate::validateEditorFileDialog({{"id", "op"}, {"action", "inspect"}}));
+    CHECK(uistate::validateEditorFileDialog({{"id", "op"}, {"action", "save"}}).code == "invalid_request");
+    // Checkpoints: schema 1, classified objects only.
+    CHECK(!uistate::validateState({}));
+    CHECK(!uistate::validateState({{"schemaVersion", 1}, {"main", json::Object{{"page", 0}}}, {"history", json::Object{}}}));
+    CHECK(uistate::validateState({{"schemaVersion", 2}}).code == "ui_state_invalid");
+    CHECK(uistate::validateState({{"schemaVersion", 1}, {"secrets", json::Object{}}}).code == "ui_state_invalid");
+    CHECK(uistate::validateState({{"schemaVersion", 1}, {"main", 3}}).code == "ui_state_invalid");
+    // ui.viewState returns only the derived projections.
+    const json::Object checkpoint{{"schemaVersion", 1}, {"settings", json::Object{{"section", "capture"}, {"captureRouting", json::Object{{"default", json::Object{}}}}, {"draft", json::Object{{"x", 1}}}}},
+                                  {"appearance", json::Object{{"scheme", "dark"}}}, {"history", json::Object{{"query", "q"}}}};
+    const auto view = uistate::viewState(checkpoint, "running");
+    CHECK(view.value("state") == "running");
+    CHECK(view.value("settings")["section"] == "capture" && view.value("settings")["captureRouting"].isObject() && view.value("settings")["draft"].isNull());
+    CHECK(view.value("appearance")["scheme"] == "dark" && !view.contains("history"));
+    CHECK(!uistate::viewState({{"schemaVersion", 1}, {"settings", json::Object{{"section", "general"}}}}, "running").contains("settings"));
+}
+static void fileDialogStateTests() {
+    FileDialogState chooser;
+    CHECK(chooser.toJson().value("open") == json::Value(false) && chooser.toJson().value("last").isNull() && chooser.toJson().value("mode").isNull());
+    chooser.begin("folder", "Choose a folder");
+    auto state = chooser.toJson();
+    CHECK(state.value("open").toBool() && state.value("mode") == "folder" && state.value("title") == "Choose a folder" && state.value("backend") == "native");
+    chooser.chosen("C:\\Users\\lab\\Pictures");
+    state = chooser.toJson();
+    CHECK(!state.value("open").toBool() && state.value("last")["status"] == "chosen" && state.value("last")["path"] == "C:\\Users\\lab\\Pictures" && state.value("last")["mode"] == "folder");
+    chooser.begin("save", "Save a copy");
+    chooser.cancelled();
+    CHECK(chooser.toJson().value("last")["status"] == "cancelled" && chooser.toJson().value("last")["path"].isNull());
+    chooser.begin("open", "Edit an image file");
+    chooser.failed("file_dialog_failed", "The chooser could not be opened");
+    CHECK(chooser.toJson().value("last")["error"]["code"] == "file_dialog_failed");
+}
+static void historyFilterTests() {
+    using namespace historyfilter;
+    const auto day = parseDay(" 2026-10-22 ");
+    CHECK(day && day->year == 2026 && day->month == 10 && day->day == 22);
+    CHECK(parseDay("2024-02-29") && !parseDay("2026-02-29") && !parseDay("2026-13-01") && !parseDay("2026-1-01") && !parseDay("22.10.2026") && !parseDay(""));
+    CHECK(isoUtc(2026, 10, 21, 23, 0, 0, 0) == "2026-10-21T23:00:00.000Z");
+    CHECK(isoUtc(2026, 10, 22, 22, 59, 59, 999) == "2026-10-22T22:59:59.999Z");
+    CHECK(normalizeMime(" Image/PNG ") == std::optional<std::string>("image/png"));
+    CHECK(normalizeMime("application/vnd.oasis.opendocument.text") && !normalizeMime("image") && !normalizeMime("image/") && !normalizeMime("image/*") && !normalizeMime("a/b c"));
+}
+static void shortcutStatusTests() {
+    using shortcuts::present;
+    const json::Object status{{"available", true}, {"bindings", json::Object{
+        {"region", json::Object{{"configured", "Ctrl+Shift+1"}, {"bound", true}, {"error", ""}, {"paused", false}}},
+        {"desktop", json::Object{{"configured", "Win+E"}, {"bound", false}, {"error", "shortcut_conflict"}, {"paused", false}}},
+        {"record", json::Object{{"configured", ""}, {"bound", false}, {"error", ""}, {"paused", false}}},
+        {"window", json::Object{{"configured", "Ctrl+Shift+2"}, {"bound", false}, {"error", "shortcut_rejected"}, {"paused", false}}}}}};
+    auto active = present(status, "region", "Ctrl+Shift+1", false);
+    CHECK(active.tone == "active" && !active.visible && active.text.find("Ctrl+Shift+1") != std::string::npos);
+    CHECK(present(status, "region", "Ctrl+Shift+9", false).visible); // the row shows an unsaved chord
+    auto conflict = present(status, "desktop", "Win+E", false);
+    CHECK(conflict.tone == "error" && conflict.visible && conflict.text.rfind("Conflict", 0) == 0 && conflict.text.find("Win+E") != std::string::npos);
+    CHECK(present(status, "record", "", false).text.rfind("Disabled", 0) == 0);
+    CHECK(present(status, "window", "Ctrl+Shift+2", false).tone == "warning");
+    CHECK(present(status, "region", "Ctrl+Shift+1", true).text.rfind("Paused", 0) == 0);
+    CHECK(present({}, "edit", "", false).text.rfind("Not reported", 0) == 0);
+    CHECK(present({{"available", false}}, "edit", "", false).text.rfind("Unavailable", 0) == 0);
+}
+
 int main() {
     jsonTests(); shaTests(); shortcutTests(); settingsTests(); namingTests(); s3Tests(); protonTests(); operationTests(); pngTests();
+    cancellationTests(); uiStateTests(); fileDialogStateTests(); historyFilterTests(); shortcutStatusTests();
     if (failures) { std::fprintf(stderr, "%d failure(s)\n", failures); return 1; }
     std::printf("windows core contract: ok\n");
     return 0;

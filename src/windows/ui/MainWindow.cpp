@@ -6,6 +6,7 @@
 #include "core/SettingsPatch.h"
 #include <algorithm>
 #include <cctype>
+#include <cstdio>
 #include <cstdlib>
 #include <shellapi.h>
 
@@ -14,7 +15,8 @@ namespace {
 constexpr wchar_t windowClass[] = L"putgd.Main";
 constexpr int idRailFirst = 200, idAbout = 220, idQuit = 221, idNoticeButton = 222, idNavFirst = 230, idStatus = 236, idSaveStatus = 237;
 constexpr int idEditClipboard = 240, idEditFile = 241;
-constexpr UINT_PTR timerHeartbeat = 1, timerAutosave = 2, timerClose = 3, timerCloseSafety = 4;
+constexpr UINT_PTR timerHeartbeat = 1, timerAutosave = 2, timerClose = 3, timerCloseSafety = 4, timerCheckpoint = 5;
+constexpr int checkpointDelayMs = 250;
 constexpr int noticeNone = 0, noticeReload = 1, noticeRetry = 2;
 const std::vector<std::string> railActions{"region", "edit", "window", "desktop", "clipboard"};
 const wchar_t* pageTitles[] = {L"History", L"Destinations", L"Settings"};
@@ -26,18 +28,11 @@ bool screenAction(const std::string& action) { return action == "region" || acti
 
 std::wstring outputText(const json::Object& document, const std::string& action) {
     const auto saved = Settings::effectiveAction(document, action);
-    const bool local = document.value("archive")["keepUploads"].toBool();
-    const auto profileId = saved.value("profileId").toString();
-    if (saved.value("destination") == "local" || profileId.empty())
-        return local ? L"Saves a local copy using your folders in Settings > General. Uploads are off."
-                     : L"This action will fail: no destination and local copies are off. Choose a destination in Settings > Capture or turn on Keep a local copy in Settings > General.";
-    std::wstring label;
-    for (const auto& entry : document.value("profiles").arrayRef())
-        if (entry.objectRef().value("id") == profileId.c_str()) label = wide(entry.objectRef().value("label").toString());
-    if (label.empty()) return L"Choose an upload destination in Settings > Capture before using this action.";
-    std::wstring text = saved.value("publicationMode") == "private" ? L"Private uploads are not supported by this destination. Choose sharing in Settings > Capture."
-                                                                    : L"Uploads to " + label + L" and copies its link to the clipboard.";
-    if (local) text += L" Also saves a local copy.";
+    return MainWindow::routeText(document, saved.value("destination") == "upload", saved.value("profileId").toString(), saved.value("publicationMode").toString("default"));
+}
+std::string hexColor(COLORREF color) {
+    char text[8];
+    std::snprintf(text, sizeof text, "#%02x%02x%02x", GetRValue(color), GetGValue(color), GetBValue(color));
     return text;
 }
 std::wstring explanation(const std::string& action) {
@@ -188,6 +183,7 @@ struct About {
 }
 
 MainWindow::MainWindow(UiSession& session, frames::Channel& channel) : session_(session), channel_(channel) {
+    editImage_.post = [this](std::function<void()> work) { post(std::move(work)); };
     pages_[HistoryPage] = createHistoryPage(*this);
     pages_[DestinationsPage] = createDestinationsPage(*this);
     pages_[SettingsPage] = createSettingsPage(*this);
@@ -202,6 +198,21 @@ std::wstring MainWindow::actionLabel(const std::string& action) {
     if (action == "clipboard") return L"Upload clipboard";
     if (action == "record") return L"Record screen";
     return wide(action);
+}
+
+std::wstring MainWindow::routeText(const json::Object& document, bool upload, const std::string& profileId, const std::string& publicationMode) {
+    const bool local = document.value("archive")["keepUploads"].toBool();
+    if (!upload || profileId.empty())
+        return local ? L"Saves a local copy using your folders in Settings > General. Uploads are off."
+                     : L"This action will fail: no destination and local copies are off. Choose a destination in Settings > Capture or turn on Keep a local copy in Settings > General.";
+    std::wstring label;
+    for (const auto& entry : document.value("profiles").arrayRef())
+        if (entry.objectRef().value("id") == profileId.c_str()) label = wide(entry.objectRef().value("label").toString());
+    if (label.empty()) return L"Choose an upload destination in Settings > Capture before using this action.";
+    std::wstring text = publicationMode == "private" ? L"Private uploads are not supported by this destination. Choose sharing in Settings > Capture."
+                                                     : L"Uploads to " + label + L" and copies its link to the clipboard.";
+    if (local) text += L" Also saves a local copy.";
+    return text;
 }
 
 bool MainWindow::create(const std::string& initialView, const json::Object& state) {
@@ -303,7 +314,8 @@ json::Object MainWindow::checkpoint() const {
     json::Object settings = pages_[SettingsPage]->saveState();
     for (const auto& [key, value] : pages_[DestinationsPage]->saveState()) settings[key] = value;
     json::Object state{{"schemaVersion", 1},
-                       {"main", json::Object{{"page", page_}, {"geometry", json::Array{int(rect.left), int(rect.top), int(rect.right - rect.left), int(rect.bottom - rect.top)}}}}};
+                       {"main", json::Object{{"page", page_}, {"geometry", json::Array{int(rect.left), int(rect.top), int(rect.right - rect.left), int(rect.bottom - rect.top)}}}},
+                       {"appearance", appearance()}};
     const auto history = pages_[HistoryPage]->saveState();
     if (!history.empty()) state["history"] = history;
     if (!settings.empty()) state["settings"] = settings;
@@ -417,6 +429,69 @@ void MainWindow::paint() {
     EndPaint(hwnd_, &ps);
 }
 
+// The appearance in use (docs/ui-process-state.md): the setting, the Windows app
+// mode, the resolved scheme and its colour tokens. Derived; restoring ignores it.
+json::Object MainWindow::appearance() const {
+    const auto& c = theme::colors();
+    const std::pair<const char*, COLORREF> tokens[] = {
+        {"rail", c.rail}, {"content", c.content}, {"card", c.card}, {"cardBorder", c.cardBorder}, {"input", c.input}, {"placeholder", c.placeholder},
+        {"notice", c.notice}, {"hover", c.hover}, {"selected", c.selected}, {"divider", c.divider}, {"button", c.button}, {"buttonBorder", c.buttonBorder},
+        {"text", c.text}, {"textSecondary", c.textSecondary}, {"textMuted", c.textMuted}, {"textDisabled", c.textDisabled}, {"accent", c.accent},
+        {"onAccent", c.onAccent}, {"link", c.link}, {"danger", c.danger}, {"warning", c.warning}, {"success", c.success}, {"icon", c.icon}};
+    json::Object colours;
+    for (const auto& [name, colour] : tokens) colours[name] = hexColor(colour);
+    return {{"theme", session_.document().value("preferences")["appearance"]["theme"].toString("system")}, {"desktop", systemPrefersDark() ? "dark" : "light"},
+            {"desktopSource", "AppsUseLightTheme"}, {"scheme", theme::dark() ? "dark" : "light"}, {"tokens", colours}};
+}
+
+void MainWindow::viewStateChanged() {
+    if (hwnd_ && activated_ && !closing_ && !exiting_) SetTimer(hwnd_, timerCheckpoint, checkpointDelayMs, nullptr);
+}
+
+void MainWindow::sendCheckpoint() {
+    KillTimer(hwnd_, timerCheckpoint);
+    if (closing_ || exiting_ || !activated_) return;
+    const auto state = checkpoint();
+    auto bytes = json::serialize(state);
+    if (bytes == lastCheckpoint_ || bytes.size() > protocol::maximumUiStateBytes) return;
+    lastCheckpoint_ = std::move(bytes);
+    send("checkpoint", {{"state", state}});
+}
+
+void MainWindow::handleCommand(const json::Object& payload) {
+    const auto requestId = payload.value("requestId");
+    const auto name = payload.value("command").toString();
+    const auto params = payload.value("params").toObject();
+    // Answers arrive at most once; a window that is exiting stays silent and the resident times out.
+    auto answer = [this, requestId, answered = std::make_shared<bool>(false)](Error error, json::Object result) {
+        if (*answered || exiting_) return;
+        *answered = true;
+        send("commandResult", {{"requestId", requestId}, {"error", error.toJson()}, {"result", result}});
+    };
+    if (payload.value("version") != json::Value(1)) { answer({"ui_command_unsupported", "This window does not support that command version.", {{"version", payload.value("version")}}}, {}); return; }
+    if (name != "moveDestination" && name != "diagnostics" && name != "historySaveDiagnostics" && name != "fileDialog") { answer({"ui_command_unknown", "This window does not support that command.", {}}, {}); return; }
+    if (!IsWindowVisible(hwnd_) || closing_ || hiddenForCapture_) {
+        answer({"ui_view_closed", name == "historySaveDiagnostics" ? "Open History before driving it." : name == "fileDialog" ? "Open put.gd's window (History or Settings) before driving it." : "Open Settings before driving it.", {}}, {});
+        return;
+    }
+    if (name == "fileDialog" && params.value("dialog") == "editImage") {
+        // #259: Edit an image file…, as the rail's Edit menu opens it.
+        const auto action = params.value("action").toString();
+        auto withDialog = [answer](Error error, json::Object result) { if (!error) result["dialog"] = "editImage"; answer(error, result); };
+        if (action == "open") {
+            if (editImage_.isOpen()) { withDialog({"file_dialog_open", "Edit an image file is already open.", {}}, {}); return; }
+            if (FileChooser::anyOpen()) { withDialog({"file_dialog_open", "Another file chooser is open in this window.", {}}, {}); return; }
+            chooseImageToEdit();
+        } else if (action == "cancel") {
+            editImage_.cancel();
+        }
+        withDialog({}, editImage_.state());
+        return;
+    }
+    for (auto& page : pages_) if (page->viewCommand(name, params, answer)) return;
+    answer({"ui_command_unknown", "This window does not support that command.", {}}, {});
+}
+
 void MainWindow::setPage(int index) {
     index = std::clamp(index, 0, 2);
     const int previous = page_;
@@ -426,6 +501,7 @@ void MainWindow::setPage(int index) {
     InvalidateRect(hwnd_, nullptr, FALSE);
     if (previous != index) pages_[size_t(previous)]->deactivated();
     pages_[size_t(index)]->activated();
+    viewStateChanged();
 }
 
 void MainWindow::showView(const std::string& view) {
@@ -448,6 +524,7 @@ void MainWindow::showView(const std::string& view) {
         send("heartbeat");
         SetTimer(hwnd_, timerHeartbeat, protocol::heartbeatMs, nullptr);
     }
+    viewStateChanged();
     send("viewShown", {{"view", view}});
     if (view == "about") post([this] { showAbout(); });
     if (view == "editFile") post([this] { chooseImageToEdit(); });
@@ -473,6 +550,8 @@ void MainWindow::onFrame(const protocol::Frame& frame) {
         const auto kind = payload.value("kind").toString();
         if (kind == "settings") fetchSettings();
         else for (auto& page : pages_) page->invalidated(kind);
+    } else if (frame.type == "command") {
+        handleCommand(payload);
     } else if (frame.type == "shortcutRecordingChanged") {
         if (recordingReplies_.empty()) return;
         const auto& replyTo = payload.value("replyTo");
@@ -698,6 +777,7 @@ void MainWindow::applyTheme(const std::string& themeSetting) {
         themeApplied_ = true;
         theme::applyTo(hwnd_);
         if (tooltip_) theme::applyTo(tooltip_);
+        viewStateChanged();
     }
 }
 
@@ -738,9 +818,18 @@ void MainWindow::openEditor(const std::string& source, const std::string& path) 
     });
 }
 
+FileChooser::Options MainWindow::imageFileOptions() const {
+    FileChooser::Options options;
+    options.mode = FileChooser::Mode::Open;
+    options.title = L"Edit an image file";
+    options.folder = FileChooser::knownFolder(FOLDERID_Pictures);
+    options.filters = {{L"Images (PNG, JPEG)", L"*.png;*.jpg;*.jpeg"}};
+    return options;
+}
+
 void MainWindow::chooseImageToEdit() {
-    std::string path;
-    if (pickImageFile(hwnd_, path)) openEditor("file", path);
+    if (!editImage_.open(hwnd_, imageFileOptions(), [this](const std::string& path) { if (!path.empty()) openEditor("file", path); }))
+        status(L"Another file chooser is open. Finish it first.", true);
 }
 
 void MainWindow::showEditMenu(POINT screen) {
@@ -807,6 +896,8 @@ void MainWindow::sendCloseRequest() {
 }
 
 void MainWindow::finishClose() {
+    exiting_ = true;
+    KillTimer(hwnd_, timerCheckpoint);
     KillTimer(hwnd_, timerClose);
     KillTimer(hwnd_, timerCloseSafety);
     send("closeConfirmed", {{"sequence", closeSequence_}});
@@ -863,6 +954,7 @@ LRESULT MainWindow::handle(UINT message, WPARAM wParam, LPARAM lParam) {
     }
     case WM_TIMER:
         if (wParam == timerHeartbeat) send("heartbeat");
+        else if (wParam == timerCheckpoint) sendCheckpoint();
         else if (wParam == timerAutosave) sendPending();
         else if (wParam == timerClose) {
             KillTimer(hwnd_, timerClose);
@@ -937,6 +1029,10 @@ LRESULT MainWindow::handle(UINT message, WPARAM wParam, LPARAM lParam) {
         return 0;
     case WM_SIZE:
         layout();
+        viewStateChanged();
+        return 0;
+    case WM_EXITSIZEMOVE:
+        viewStateChanged();
         return 0;
     case WM_GETMINMAXINFO: {
         auto* info = reinterpret_cast<MINMAXINFO*>(lParam);

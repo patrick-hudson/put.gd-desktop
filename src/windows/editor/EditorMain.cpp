@@ -399,6 +399,19 @@ json::Object Session::execute(const std::string& name, const json::Object& param
         if (const auto error = saveCopyTo(path.stringRef(), params.value("overwrite").toBool(false), &result)) { code = error.code; message = error.message; return {}; }
         return result;
     }
+    if (name == "fileDialog") {
+        // #259: Save a copy… as the button opens it, its state, or a cancel; saveCopy saves to a path.
+        const auto& action = params.value("action");
+        if (params.size() != 1 || !action.isString() || (action.stringRef() != "open" && action.stringRef() != "inspect" && action.stringRef() != "cancel"))
+            return denied("invalid_request", "fileDialog needs action open, inspect or cancel");
+        if (action.stringRef() == "open") {
+            if (!open) return finalizing();
+            if (window_->saveCopyDialogOpen()) return denied("file_dialog_open", "Save a copy is already open");
+            if (!window_->openSaveCopyDialog()) return denied("editor_busy", "The editor is busy; try again");
+        }
+        if (action.stringRef() == "cancel") window_->cancelSaveCopyDialog();
+        return window_->saveCopyDialogState();
+    }
     if (name == "submit") {
         if (!params.empty()) return denied("invalid_request", "submit has no parameters");
         if (!open) return finalizing();

@@ -5,6 +5,7 @@
 #include "common/Text.h"
 #include "common/Uuid.h"
 #include "core/SanitizedPng.h"
+#include "core/UiState.h"
 #include "resident/Resident.h"
 #include <algorithm>
 #include <set>
@@ -83,7 +84,14 @@ void Session::dispatch(const json::Object& request, JsonReply reply) {
         return;
     }
     if (method == "ui.snapshot") { if (!p.empty()) { reply(invalid(), {}); return; } reply({}, snapshot()); return; }
-    if (startsWith(method, "ui.")) { reply({"ui_unavailable", "This window command is not available in the Windows build", {{"method", method}}}, {}); return; }
+    if (method == "ui.viewState") { if (!p.empty()) { reply(invalid(), {}); return; } reply({}, ui_.viewState()); return; }
+    // The view commands drive the open window as its controls do (docs/ui-process-protocol.md, "View commands").
+    if (const auto command = uistate::commandFor(method); !command.empty()) {
+        if (auto e = uistate::validateCommand(method, p)) { reply(e, {}); return; }
+        ui_.command(command, p, reply);
+        return;
+    }
+    if (startsWith(method, "ui.")) { reply({"unknown_method", "Unknown session method", {}}, {}); return; }
     if (startsWith(method, "recording.")) { reply({"recording_unavailable", "Screen recording is not available in the Windows build yet", {}}, {}); return; }
     if (method == "action.invoke") {
         if (!fields(p, {"action"}, {"source", "path", "mode"}) || !stringField(p, "action") || (p.contains("source") && !stringField(p, "source", 32)) || (p.contains("path") && !stringField(p, "path", 4096))) { reply(invalid(), {}); return; }
@@ -93,7 +101,11 @@ void Session::dispatch(const json::Object& request, JsonReply reply) {
         if (!fields(p, {}, {"source", "path"}) || (p.contains("source") && !stringField(p, "source", 32)) || (p.contains("path") && !stringField(p, "path", 4096))) { reply(invalid(), {}); return; }
         operations_.invoke("edit", p, reply); return;
     }
-    if (method == "editor.fileDialog") { reply({"invalid_request", "The editor's file dialog cannot be driven in the Windows build", {}}, {}); return; }
+    if (method == "editor.fileDialog") {
+        // Save a copy… as its button opens it; editor.saveCopy saves to a given path without a dialog.
+        if (auto e = uistate::validateEditorFileDialog(p)) { reply(e, {}); return; }
+        operations_.editorCommand(p.value("id").stringRef(), "fileDialog", {{"action", p.value("action")}}, reply); return;
+    }
     if (startsWith(method, "editor.")) {
         if (!stringField(p, "id")) { reply(invalid(), {}); return; }
         const auto command = method.substr(7);

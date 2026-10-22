@@ -1,8 +1,10 @@
 // Settings: Capture (default output and per-action exceptions), General (local
 // copies, file names, clipboard, startup, appearance), Shortcuts (recorded on the
-// control channel) and Advanced (limits, retention, logs, updates, diagnostics,
-// config file). Valid edits autosave through the window's settings.patch queue;
-// invalid text stays local with a message next to the field.
+// control channel, with each row's effective binding) and Advanced (limits,
+// retention, logs, updates, diagnostics, config file). Valid edits autosave through
+// the window's settings.patch queue; invalid text stays local with a message next
+// to the field. ui.diagnostics and ui.fileDialog (outputFolder, diagnosticsFolder)
+// drive this page as its controls do.
 #include "ui/MainWindow.h"
 #include "ui/Theme.h"
 #include "common/Paths.h"
@@ -10,6 +12,7 @@
 #include "common/Text.h"
 #include "core/Naming.h"
 #include "core/Settings.h"
+#include "core/ShortcutStatus.h"
 #include <algorithm>
 #include <cctype>
 #include <cstdio>
@@ -143,6 +146,18 @@ std::string displayValue(const Spec& spec, const json::Value& value, bool exists
     }
     return {};
 }
+// The text of a combo box's selected item, as displayed.
+std::string shownChoice(HWND combo) {
+    const auto index = SendMessageW(combo, CB_GETCURSEL, 0, 0);
+    if (index < 0) return {};
+    const auto length = SendMessageW(combo, CB_GETLBTEXTLEN, WPARAM(index), 0);
+    if (length <= 0) return {};
+    std::wstring text(size_t(length) + 1, L'\0');
+    SendMessageW(combo, CB_GETLBTEXT, WPARAM(index), reinterpret_cast<LPARAM>(text.data()));
+    text.resize(size_t(length));
+    return narrow(text);
+}
+
 // The configuration value for the text, or an error message.
 std::pair<std::optional<json::Value>, std::wstring> parseValue(const Spec& spec, const std::string& raw) {
     const auto value = text::trim(raw);
@@ -204,14 +219,18 @@ class SettingsPageImpl final : public Page {
 public:
     using Page::Page;
     HWND create(HWND parent) override;
-    void activated() override { refreshUpdateStatus(); }
+    void activated() override { refreshUpdateStatus(); refreshBindings(); }
     void deactivated() override { if (recording_ >= 0) finishRecording(std::nullopt); }
     void settingsChanged(bool external) override;
-    void invalidated(const std::string& kind) override { if (kind == "update") refreshUpdateStatus(); }
+    void invalidated(const std::string& kind) override {
+        if (kind == "update") refreshUpdateStatus();
+        if (kind == "shortcuts") refreshBindings();
+    }
     bool validationFailed(const std::string& path, const std::wstring& message) override;
     bool dirty() const override { return !invalid_.empty() || recording_ >= 0; }
     void discardDraft() override;
-    json::Object saveState() const override { return {{"section", sectionKeys[section_]}}; }
+    json::Object saveState() const override { return {{"section", sectionKeys[section_]}, {"captureRouting", captureRouting()}}; }
+    bool viewCommand(const std::string& name, const json::Object& params, const CommandReply& answer) override;
     void restoreState(const json::Object& state) override;
     void showSection(const std::string& name) override;
     void dpiChanged() override { for (auto& panel : panels_) panel.layout(); page_.layout(); }
@@ -237,6 +256,16 @@ private:
     void showUpdateStatus(const json::Object& status);
     void saveDiagnostics();
     void updateEnabled();
+    // Settings → Capture as shown (docs/ui-process-state.md, captureRouting).
+    json::Object captureRouting() const;
+    json::Object routingEntry(HWND destination, HWND sharing, const json::Object& route, bool inherited) const;
+    // Each shortcut row's effective binding, from the resident's capabilities.
+    void refreshBindings();
+    void showBindings();
+    void browse(size_t index);
+    json::Object diagnosticsState() const;
+    void diagnosticsCommand(const json::Object& params, const CommandReply& answer);
+    void fileDialogCommand(const std::string& dialog, const std::string& action, const std::string& field, const CommandReply& answer);
 
     Panel page_;
     std::array<Panel, 4> panels_;
@@ -257,8 +286,10 @@ private:
     HWND appearanceHeading_{}, themeLabel_{}, theme_{};
     // Shortcuts
     HWND shortcutsNote_{};
-    struct ShortcutRow { std::string name; HWND label, edit, record, clear; };
+    struct ShortcutRow { std::string name; HWND label, edit, record, clear, binding; };
     std::vector<ShortcutRow> shortcuts_;
+    json::Object bindings_; // capabilities.source.shortcuts
+    unsigned long long bindingsGeneration_ = 0;
     int recording_ = -1;
     bool awaitingAck_ = false;
     unsigned long long recordToken_ = 0;
@@ -267,8 +298,13 @@ private:
     HWND diagnostics_{}, diagnosticsResult_{}, showDiagnostics_{}, updatesHeading_{}, updateCheck_{}, channelLabel_{}, channel_{}, checkNow_{}, updateStatus_{};
     HWND configHeading_{}, configPath_{}, reload_{};
     std::string diagnosticsPath_;
+    json::Object diagnosticsSaved_;
+    bool savingDiagnostics_ = false;
     int updatesY_ = 0;
     bool checking_ = false;
+    // Browse… for the local-copy folders, and the diagnostics package folder.
+    FileChooser folderChooser_, diagnosticsChooser_;
+    std::string folderField_;
 };
 
 LRESULT CALLBACK shortcutEditProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR data) {
@@ -280,6 +316,7 @@ LRESULT CALLBACK shortcutEditProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM
 HWND SettingsPageImpl::create(HWND parent) {
     page_.onLayout = [this](int w, int h) { return layoutPage(w, h); };
     page_.onCommand = [this](int id, int code, HWND control) { command(id, code, control); };
+    for (auto* chooser : {&folderChooser_, &diagnosticsChooser_}) chooser->post = [this](std::function<void()> work) { main_.post(std::move(work)); };
     HWND p = page_.create(parent, false);
     sections_ = theme::pivot(p, idSections, {sectionNames[0], sectionNames[1], sectionNames[2], sectionNames[3]});
     for (int i = 0; i < 4; ++i) {
@@ -376,7 +413,8 @@ HWND SettingsPageImpl::create(HWND parent) {
     panels_[Shortcuts].markMuted(shortcutsNote_);
     for (size_t i = 0; i < shortcutActions.size(); ++i) {
         ShortcutRow row{shortcutActions[i], ui::label(s, MainWindow::actionLabel(shortcutActions[i])), edit(s, idShortcutEdit + int(i), ES_READONLY),
-                        button(s, idRecord + int(i), L"Record"), button(s, idClear + int(i), L"Clear")};
+                        button(s, idRecord + int(i), L"Record"), button(s, idClear + int(i), L"Clear"), ui::label(s, L"")};
+        panels_[Shortcuts].markMuted(row.binding);
         setCue(row.edit, L"Not assigned");
         SetWindowSubclass(row.edit, shortcutEditProc, 1, reinterpret_cast<DWORD_PTR>(this));
         shortcuts_.push_back(row);
@@ -492,6 +530,7 @@ int SettingsPageImpl::layoutSection(int section, int width, int height) {
             place(row.record, x, y, buttonWidth, rows.buttonHeight());
             place(row.clear, x + buttonWidth + gap, y, buttonWidth, rows.buttonHeight());
             rows.space(2);
+            rows.error(row.binding);
             rows.error(errors_["/actions/" + row.name + "/shortcut"]);
         }
         break;
@@ -543,6 +582,7 @@ void SettingsPageImpl::setSection(int section) {
     for (int i = 0; i < 4; ++i) ShowWindow(panels_[size_t(i)].hwnd(), i == section_ ? SW_SHOW : SW_HIDE);
     panels_[size_t(section_)].layout();
     if (section_ != Shortcuts && recording_ >= 0) finishRecording(std::nullopt);
+    main_.viewStateChanged();
 }
 
 void SettingsPageImpl::showSection(const std::string& name) {
@@ -608,6 +648,7 @@ void SettingsPageImpl::populateCapture() {
         ui::select(row.sharing, mode);
         enable(row.sharing, !inherited && route(action) != "local");
     }
+    main_.viewStateChanged();
 }
 
 void SettingsPageImpl::populateShortcuts() {
@@ -616,6 +657,7 @@ void SettingsPageImpl::populateShortcuts() {
         if (int(i) == recording_) continue;
         syncText(shortcuts_[i].edit, document.value("actions")[shortcuts_[i].name]["shortcut"].toString());
     }
+    showBindings();
 }
 
 void SettingsPageImpl::populate(bool external) {
@@ -665,7 +707,7 @@ void SettingsPageImpl::populate(bool external) {
     for (auto& panel : panels_) panel.layout();
 }
 
-void SettingsPageImpl::settingsChanged(bool external) { populate(external); }
+void SettingsPageImpl::settingsChanged(bool external) { populate(external); refreshBindings(); }
 
 void SettingsPageImpl::discardDraft() {
     invalid_.clear();
@@ -681,6 +723,7 @@ void SettingsPageImpl::updateEnabled() {
         enable(shortcuts_[i].clear, recording_ < 0);
         setTextW(shortcuts_[i].record, int(i) == recording_ ? L"Cancel" : L"Record");
     }
+    showBindings();
     enable(checkNow_, !checking_);
 }
 
@@ -747,6 +790,7 @@ void SettingsPageImpl::captureDefaultChanged() {
     enable(defaultSharing_, upload);
     setError("/captureDefaults", L"");
     main_.queuePatch(patch);
+    main_.viewStateChanged();
 }
 
 void SettingsPageImpl::actionChanged(size_t index, bool sharingOnly) {
@@ -772,6 +816,7 @@ void SettingsPageImpl::actionChanged(size_t index, bool sharingOnly) {
     patch["actions"] = json::Object{{row.name, action}};
     setError("/actions/" + row.name, L"");
     main_.queuePatch(patch);
+    main_.viewStateChanged();
 }
 
 // ---- shortcut recording ------------------------------------------------------
@@ -817,6 +862,7 @@ void SettingsPageImpl::finishRecording(std::optional<std::string> chord) {
     main_.setKeyCapture(nullptr);
     main_.shortcutRecording(false, [this](bool ok, const std::string& error) {
         if (!ok) main_.status(L"Global shortcuts could not be restored (" + wide(error) + L"). Restart put.gd if they stop working.", true);
+        refreshBindings();
     });
     (void)wasCapturing;
     const auto& name = shortcuts_[index].name;
@@ -910,24 +956,181 @@ void SettingsPageImpl::refreshUpdateStatus() {
 }
 
 void SettingsPageImpl::saveDiagnostics() {
+    if (savingDiagnostics_) return;
     const auto& document = main_.session().document();
     auto folder = document.value("preferences")["diagnostics"]["packageFolder"].toString();
     if (folder.empty()) folder = document.value("archive")["root"].toString();
-    std::string chosen;
-    if (!pickFolder(main_.hwnd(), L"Save diagnostics package to", folder, chosen)) return;
-    main_.queuePatch({{"preferences", json::Object{{"diagnostics", json::Object{{"debugLogging", checked(debug_)}, {"packageFolder", chosen}}}}}});
-    enable(diagnostics_, false);
-    main_.status(L"Saving the diagnostics package\x2026");
-    main_.flushSettings([this, chosen](bool) {
-        main_.session().call("diagnostics.bundle", {{"output", chosen}}, [this](const Reply& reply) {
-            enable(diagnostics_, true);
-            if (!reply.ok) { main_.status(UiSession::describe(reply), true); return; }
-            diagnosticsPath_ = reply.result.value("path").toString();
-            setTextW(diagnosticsResult_, L"Saved " + wide(diagnosticsPath_));
-            main_.status(L"Diagnostics package saved.");
-            panels_[Advanced].layout();
+    FileChooser::Options options;
+    options.mode = FileChooser::Mode::Folder;
+    options.title = L"Save diagnostics package to";
+    options.folder = folder;
+    const bool opened = diagnosticsChooser_.open(main_.hwnd(), options, [this](const std::string& chosen) {
+        enable(diagnostics_, true);
+        if (chosen.empty()) return;
+        main_.queuePatch({{"preferences", json::Object{{"diagnostics", json::Object{{"debugLogging", checked(debug_)}, {"packageFolder", chosen}}}}}});
+        enable(diagnostics_, false);
+        savingDiagnostics_ = true;
+        main_.status(L"Saving the diagnostics package\x2026");
+        main_.flushSettings([this, chosen](bool) {
+            main_.session().call("diagnostics.bundle", {{"output", chosen}}, [this](const Reply& reply) {
+                savingDiagnostics_ = false;
+                enable(diagnostics_, true);
+                if (!reply.ok) { main_.status(UiSession::describe(reply), true); return; }
+                diagnosticsSaved_ = reply.result;
+                diagnosticsPath_ = reply.result.value("path").toString();
+                setTextW(diagnosticsResult_, L"Saved " + wide(diagnosticsPath_));
+                main_.status(L"Diagnostics package saved.");
+                panels_[Advanced].layout();
+            });
         });
     });
+    if (opened) enable(diagnostics_, false);
+    else main_.status(L"Another file chooser is open. Finish it first.", true);
+}
+
+void SettingsPageImpl::browse(size_t index) {
+    std::string initial = text::trim(text(fields_[index].edit));
+    if (initial.empty()) initial = main_.session().document().value("archive")["root"].toString();
+    FileChooser::Options options;
+    options.mode = FileChooser::Mode::Folder;
+    options.title = L"Choose a folder";
+    options.folder = initial;
+    folderField_ = specs[index].path;
+    if (!folderChooser_.open(main_.hwnd(), options, [this, index](const std::string& chosen) {
+            if (!chosen.empty()) setText(fields_[index].edit, chosen); // EN_CHANGE saves it
+        }))
+        main_.status(L"Another file chooser is open. Finish it first.", true);
+}
+
+// ---- capture routing, shortcut bindings and view commands ---------------------------
+json::Object SettingsPageImpl::routingEntry(HWND destination, HWND sharing, const json::Object& route, bool inherited) const {
+    const auto& document = main_.session().document();
+    const auto profileId = route.value("destination") == "upload" ? route.value("profileId").toString() : std::string();
+    const auto mode = route.value("publicationMode").toString("default");
+    std::string effective;
+    if (!profileId.empty()) {
+        effective = mode;
+        if (mode == "default")
+            for (const auto& entry : document.value("profiles").arrayRef())
+                if (entry.objectRef().value("id") == profileId.c_str())
+                    effective = entry.objectRef().value("provider") == "proton-drive" && !entry.objectRef().value("settings")["shareByDefault"].toBool(true) ? "private" : "share";
+    }
+    json::Object result{{"profileId", profileId}, {"destination", shownChoice(destination)}, {"sharing", shownChoice(sharing)}, {"publicationMode", mode},
+                        {"effectivePublicationMode", effective}, {"status", narrow(MainWindow::routeText(document, !profileId.empty(), profileId, mode))},
+                        {"destinationEnabled", bool(IsWindowEnabled(destination))}, {"sharingEnabled", bool(IsWindowEnabled(sharing))}};
+    if (inherited || destination != defaultDestination_) result["inherited"] = inherited;
+    return result;
+}
+
+json::Object SettingsPageImpl::captureRouting() const {
+    const auto& document = main_.session().document();
+    if (!defaultDestination_) return {};
+    const auto output = document.contains("captureDefaults") ? document.value("captureDefaults").toObject() : Settings::effectiveAction(document, "region");
+    json::Object routing{{"default", routingEntry(defaultDestination_, defaultSharing_, output, false)}};
+    for (const auto& row : actions_)
+        routing[row.name] = routingEntry(row.destination, row.sharing, Settings::effectiveAction(document, row.name),
+                                         document.value("actions")[row.name]["destination"] == "default");
+    return routing;
+}
+
+void SettingsPageImpl::refreshBindings() {
+    const auto generation = ++bindingsGeneration_;
+    main_.session().call("capabilities", {}, [this, generation](const Reply& reply) {
+        if (generation != bindingsGeneration_ || !reply.ok) return;
+        bindings_ = reply.result.value("source")["shortcuts"].toObject();
+        showBindings();
+    });
+}
+
+void SettingsPageImpl::showBindings() {
+    bool changed = false;
+    for (size_t i = 0; i < shortcuts_.size(); ++i) {
+        const auto& row = shortcuts_[i];
+        const auto presentation = shortcuts::present(bindings_, row.name, text(row.edit), int(i) == recording_);
+        const auto shown = presentation.visible ? wide(presentation.text) : std::wstring();
+        panels_[Shortcuts].markError(row.binding, presentation.tone == "error" || presentation.tone == "warning");
+        if (textW(row.binding) != shown) { setTextW(row.binding, shown); changed = true; }
+        InvalidateRect(row.binding, nullptr, TRUE);
+    }
+    if (changed) panels_[Shortcuts].layout();
+}
+
+json::Object SettingsPageImpl::diagnosticsState() const {
+    const auto& document = main_.session().document();
+    return {{"debugLogging", json::Object{{"enabled", checked(debug_)}, {"saved", document.value("preferences")["diagnostics"]["debugLogging"].toBool(false)}, {"expiresAt", json::Value()}}},
+            {"texts", json::Object{{"debugLogging", text(debug_)}, {"package", text(diagnosticsResult_)}}},
+            {"folder", document.value("preferences")["diagnostics"]["packageFolder"].toString()},
+            {"fileDialog", diagnosticsChooser_.state()},
+            // Windows saves a package straight from its folder chooser; there is no package dialog yet.
+            {"package", json::Object{{"open", false}, {"saving", savingDiagnostics_}, {"saved", diagnosticsSaved_.empty() ? json::Value() : json::Value(diagnosticsSaved_)}}}};
+}
+
+void SettingsPageImpl::diagnosticsCommand(const json::Object& params, const CommandReply& answer) {
+    const auto action = params.value("action").toString();
+    setSection(Advanced);
+    auto withState = [this, answer](Error error, json::Object result) { auto state = diagnosticsState(); if (!result.empty()) state["result"] = result; answer(error, state); };
+    if (action == "inspect") { answer({}, diagnosticsState()); return; }
+    if (action == "setDebugLogging") {
+        if (!params.value("enabled").isBool()) { answer({"invalid_request", "setDebugLogging takes enabled, true or false.", {}}, {}); return; }
+        // The checkbox autosaves like any setting; the answer follows the save.
+        setChecked(debug_, params.value("enabled").toBool());
+        main_.queuePatch({{"preferences", json::Object{{"diagnostics", json::Object{{"debugLogging", checked(debug_)}}}}}});
+        main_.flushSettings([withState](bool saved) { withState(saved ? Error{} : Error{"config_not_saved", "The setting was not saved; see the window's notice.", {}}, {}); });
+        return;
+    }
+    if (action == "clearLogs") {
+        // As Clear logs… does after its confirmation.
+        main_.session().call("logs.clear", {}, [this, withState](const Reply& reply) {
+            main_.status(reply.ok ? L"Logs cleared." : UiSession::describe(reply), !reply.ok);
+            withState(reply.ok ? Error{} : reply.error, reply.result);
+        });
+        return;
+    }
+    if (action == "showInFolder") {
+        if (diagnosticsPath_.empty()) { answer({"diagnostics_not_saved", "Save a diagnostics package first.", {}}, {}); return; }
+        revealInExplorer(diagnosticsPath_);
+        withState({}, {{"revealed", true}, {"path", diagnosticsPath_}});
+        return;
+    }
+    if (action == "openPackage") {
+        answer({"diagnostics_dialog_unavailable", "This build saves a package from Save diagnostics package\xE2\x80\xA6 without a package dialog; drive it with ui.fileDialog diagnosticsFolder.", {}}, {});
+        return;
+    }
+    answer({"diagnostics_dialog_closed", "Open Create diagnostics package first (action openPackage).", {}}, {});
+}
+
+void SettingsPageImpl::fileDialogCommand(const std::string& dialog, const std::string& action, const std::string& field, const CommandReply& answer) {
+    auto& chooser = dialog == "diagnosticsFolder" ? diagnosticsChooser_ : folderChooser_;
+    auto withDialog = [answer, dialog](Error error, json::Object result) { if (!error) result["dialog"] = dialog; answer(error, result); };
+    if (action == "inspect") { auto state = chooser.state(); if (dialog == "outputFolder" && !folderField_.empty()) state["field"] = folderField_; withDialog({}, state); return; }
+    if (action == "cancel") { chooser.cancel(); withDialog({}, chooser.state()); return; }
+    if (chooser.isOpen()) { withDialog({"file_dialog_open", "That chooser is already open.", {}}, chooser.state()); return; }
+    if (FileChooser::anyOpen()) { withDialog({"file_dialog_open", "Another file chooser is open in this window.", {}}, {}); return; }
+    if (dialog == "diagnosticsFolder") {
+        setSection(Advanced);
+        saveDiagnostics();
+        withDialog({}, chooser.state());
+        return;
+    }
+    const auto path = field.empty() || field == "root" ? std::string("/archive/root") : "/archive/folders/" + field;
+    setSection(General);
+    for (size_t i = 0; i < specs.size(); ++i)
+        if (specs[i].path == path) { browse(i); break; }
+    auto state = chooser.state();
+    state["field"] = path;
+    withDialog({}, state);
+}
+
+bool SettingsPageImpl::viewCommand(const std::string& name, const json::Object& params, const CommandReply& answer) {
+    if (name == "diagnostics") { main_.setPage(MainWindow::SettingsPage); diagnosticsCommand(params, answer); return true; }
+    if (name == "fileDialog") {
+        const auto dialog = params.value("dialog").toString();
+        if (dialog != "outputFolder" && dialog != "diagnosticsFolder") return false;
+        main_.setPage(MainWindow::SettingsPage);
+        fileDialogCommand(dialog, params.value("action").toString(), params.value("field").toString(), answer);
+        return true;
+    }
+    return false;
 }
 
 void SettingsPageImpl::command(int id, int code, HWND control) {
@@ -941,11 +1144,7 @@ void SettingsPageImpl::command(int id, int code, HWND control) {
         return;
     }
     if (id >= idBrowse && id < idBrowse + int(specs.size())) {
-        const auto index = size_t(id - idBrowse);
-        std::string initial = text::trim(text(fields_[index].edit));
-        if (initial.empty()) initial = main_.session().document().value("archive")["root"].toString();
-        std::string chosen;
-        if (pickFolder(main_.hwnd(), L"Choose a folder", initial, chosen)) setText(fields_[index].edit, chosen); // EN_CHANGE saves it
+        browse(size_t(id - idBrowse));
         return;
     }
     if (id >= idActionDestination && id < idActionDestination + int(actions_.size())) {

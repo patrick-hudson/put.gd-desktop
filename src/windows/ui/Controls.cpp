@@ -685,49 +685,95 @@ bool confirm(HWND owner, const std::wstring& title, const std::wstring& instruct
     return pressed == acceptId;
 }
 
+// ---- FileChooser ----------------------------------------------------------------------
 namespace {
-bool runOpenDialog(HWND owner, const std::wstring& title, const std::string& initial, bool folders, std::string& chosen) {
-    IFileOpenDialog* dialog = nullptr;
-    if (FAILED(CoCreateInstance(clsidFileOpenDialog, nullptr, CLSCTX_INPROC_SERVER, iidFileOpenDialog, reinterpret_cast<void**>(&dialog))) || !dialog) return false;
-    FILEOPENDIALOGOPTIONS options = 0;
-    dialog->GetOptions(&options);
-    options |= FOS_FORCEFILESYSTEM | FOS_PATHMUSTEXIST | (folders ? FOS_PICKFOLDERS : FOS_FILEMUSTEXIST);
-    dialog->SetOptions(options);
-    dialog->SetTitle(title.c_str());
-    if (!folders) {
-        COMDLG_FILTERSPEC filters[] = {{L"Images (PNG, JPEG)", L"*.png;*.jpg;*.jpeg"}};
-        dialog->SetFileTypes(1, filters);
+const GUID clsidFileSaveDialog{0xC0B4E2F3, 0xBA21, 0x4773, {0x8D, 0xBA, 0x33, 0x5E, 0xC9, 0x46, 0xEB, 0x8B}};
+const GUID iidFileSaveDialog{0x84BCCD23, 0x5FDE, 0x4CDB, {0xAE, 0xA4, 0xAF, 0x64, 0xB8, 0x3D, 0x78, 0xAB}};
+int openChoosers = 0;
+const char* modeName(FileChooser::Mode mode) { return mode == FileChooser::Mode::Save ? "save" : mode == FileChooser::Mode::Folder ? "folder" : "open"; }
+}
+bool FileChooser::anyOpen() { return openChoosers > 0; }
+std::string FileChooser::knownFolder(const KNOWNFOLDERID& id) {
+    std::string folder;
+    PWSTR known = nullptr;
+    if (SUCCEEDED(SHGetKnownFolderPath(id, 0, nullptr, &known)) && known) { folder = narrow(known); CoTaskMemFree(known); }
+    return folder;
+}
+bool FileChooser::open(HWND owner, Options options, Done done) {
+    if (state_.open || anyOpen() || !post) return false;
+    owner_ = owner;
+    options_ = std::move(options);
+    done_ = std::move(done);
+    cancelled_ = false;
+    const auto generation = ++generation_;
+    state_.begin(modeName(options_.mode), narrow(options_.title));
+    ++openChoosers;
+    // The dialog runs its own modal loop; starting it from the next message lets a
+    // command answer first, and the window keeps handling frames while it is up.
+    post([this, generation] { show(generation); });
+    return true;
+}
+void FileChooser::cancel() {
+    if (!state_.open) return;
+    cancelled_ = true;
+    if (dialog_) static_cast<IFileDialog*>(dialog_)->Close(HRESULT_FROM_WIN32(ERROR_CANCELLED));
+    finish({});
+}
+void FileChooser::finish(const std::string& path, const std::string& failure) {
+    if (!state_.open) return;
+    if (!failure.empty()) state_.failed("file_dialog_failed", failure);
+    else if (path.empty()) state_.cancelled();
+    else state_.chosen(path);
+    --openChoosers;
+    auto done = std::move(done_);
+    done_ = {};
+    if (done) done(path);
+}
+void FileChooser::show(unsigned long long generation) {
+    if (generation != generation_ || !state_.open || cancelled_) return; // cancelled before it appeared
+    IFileDialog* dialog = nullptr;
+    const bool save = options_.mode == Mode::Save;
+    if (FAILED(CoCreateInstance(save ? clsidFileSaveDialog : clsidFileOpenDialog, nullptr, CLSCTX_INPROC_SERVER, save ? iidFileSaveDialog : iidFileOpenDialog,
+                                reinterpret_cast<void**>(&dialog))) || !dialog) {
+        finish({}, "The file chooser could not be opened");
+        return;
     }
-    if (!initial.empty() && files::isDirectory(initial)) {
+    FILEOPENDIALOGOPTIONS flags = 0;
+    dialog->GetOptions(&flags);
+    flags |= FOS_FORCEFILESYSTEM | FOS_PATHMUSTEXIST;
+    if (options_.mode == Mode::Folder) flags |= FOS_PICKFOLDERS;
+    else if (save) flags |= FOS_OVERWRITEPROMPT | FOS_NOREADONLYRETURN;
+    else flags |= FOS_FILEMUSTEXIST;
+    dialog->SetOptions(flags);
+    dialog->SetTitle(options_.title.c_str());
+    std::vector<COMDLG_FILTERSPEC> filters;
+    for (const auto& [name, pattern] : options_.filters) filters.push_back({name.c_str(), pattern.c_str()});
+    if (!filters.empty()) dialog->SetFileTypes(UINT(filters.size()), filters.data());
+    if (!options_.defaultExtension.empty()) dialog->SetDefaultExtension(options_.defaultExtension.c_str());
+    if (!options_.fileName.empty()) dialog->SetFileName(options_.fileName.c_str());
+    if (!options_.folder.empty() && files::isDirectory(options_.folder)) {
         IShellItem* folder = nullptr;
-        if (SUCCEEDED(SHCreateItemFromParsingName(wide(initial).c_str(), nullptr, iidShellItem, reinterpret_cast<void**>(&folder))) && folder) {
+        if (SUCCEEDED(SHCreateItemFromParsingName(wide(options_.folder).c_str(), nullptr, iidShellItem, reinterpret_cast<void**>(&folder))) && folder) {
             dialog->SetFolder(folder);
             folder->Release();
         }
     }
-    bool ok = false;
-    if (SUCCEEDED(dialog->Show(owner))) {
+    dialog_ = dialog;
+    const HRESULT shown = dialog->Show(owner_);
+    dialog_ = nullptr;
+    std::string path;
+    if (SUCCEEDED(shown) && !cancelled_) {
         IShellItem* item = nullptr;
         if (SUCCEEDED(dialog->GetResult(&item)) && item) {
-            PWSTR path = nullptr;
-            if (SUCCEEDED(item->GetDisplayName(SIGDN_FILESYSPATH, &path)) && path) {
-                chosen = narrow(path);
-                ok = !chosen.empty();
-                CoTaskMemFree(path);
-            }
+            PWSTR chosen = nullptr;
+            if (SUCCEEDED(item->GetDisplayName(SIGDN_FILESYSPATH, &chosen)) && chosen) { path = narrow(chosen); CoTaskMemFree(chosen); }
             item->Release();
         }
     }
     dialog->Release();
-    return ok;
-}
-}
-bool pickFolder(HWND owner, const std::wstring& title, const std::string& initial, std::string& chosen) { return runOpenDialog(owner, title, initial, true, chosen); }
-bool pickImageFile(HWND owner, std::string& chosen) {
-    std::string pictures;
-    PWSTR known = nullptr;
-    if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_Pictures, 0, nullptr, &known)) && known) { pictures = narrow(known); CoTaskMemFree(known); }
-    return runOpenDialog(owner, L"Edit an image file", pictures, false, chosen);
+    if (generation != generation_ || cancelled_) return; // cancel() already finished it
+    if (FAILED(shown) && shown != HRESULT_FROM_WIN32(ERROR_CANCELLED)) finish({}, "The file chooser failed");
+    else finish(path);
 }
 void revealInExplorer(const std::string& path) {
     if (path.empty()) return;

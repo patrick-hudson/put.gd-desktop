@@ -3,6 +3,7 @@
 // created with the system message font at the window's DPI, a scrollable panel
 // that forwards its children's notifications, a row layout, tooltips, standard
 // dialogs (TaskDialog, IFileOpenDialog) and the dark title-bar hint.
+#include "core/FileDialogState.h"
 #include <functional>
 #include <map>
 #include <string>
@@ -11,6 +12,7 @@
 #include <vector>
 #include <windows.h>
 #include <commctrl.h>
+#include <shlobj.h>
 
 namespace putgd::ui {
 std::wstring wide(std::string_view utf8);
@@ -166,8 +168,42 @@ void message(HWND owner, const std::wstring& title, const std::wstring& instruct
 // A TaskDialog with a custom accept button and Cancel (default); true when accepted.
 bool confirm(HWND owner, const std::wstring& title, const std::wstring& instruction, const std::wstring& content,
              const std::wstring& accept, const std::wstring& footer = {}, bool warning = true);
-bool pickFolder(HWND owner, const std::wstring& title, const std::string& initial, std::string& chosen);
-bool pickImageFile(HWND owner, std::string& chosen);
+// A shell file chooser (IFileOpenDialog / IFileSaveDialog) that can be driven
+// (docs/file-dialogs.md): open() marks it open at once and shows it from the next
+// message, cancel() closes it, state() is what ui.fileDialog reports. One chooser
+// at a time per window helper; `done` gets the chosen path, empty when cancelled.
+class FileChooser {
+public:
+    enum class Mode { Open, Save, Folder };
+    struct Options {
+        Mode mode = Mode::Open;
+        std::wstring title;
+        std::string folder;     // starting folder, when it exists
+        std::wstring fileName;  // suggested name (save)
+        std::vector<std::pair<std::wstring, std::wstring>> filters;
+        std::wstring defaultExtension;
+    };
+    using Done = std::function<void(const std::string& path)>;
+    // Defers work to the owner's message loop (MainWindow::post).
+    std::function<void(std::function<void()>)> post;
+    // False when this or another chooser is already open.
+    bool open(HWND owner, Options, Done);
+    void cancel();
+    bool isOpen() const { return state_.open; }
+    json::Object state() const { return state_.toJson(); }
+    static bool anyOpen();
+    static std::string knownFolder(const KNOWNFOLDERID&);
+private:
+    void show(unsigned long long generation);
+    void finish(const std::string& path, const std::string& failure = {});
+    HWND owner_ = nullptr;
+    Options options_;
+    Done done_;
+    FileDialogState state_;
+    void* dialog_ = nullptr; // IFileDialog* while shown
+    bool cancelled_ = false;
+    unsigned long long generation_ = 0;
+};
 void revealInExplorer(const std::string& path);
 void openUrl(const std::string& url);
 std::wstring localTime(const std::string& isoUtc); // short date + time in the user's locale; empty if invalid

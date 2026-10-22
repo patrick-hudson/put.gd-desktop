@@ -143,6 +143,8 @@ public:
     json::Object saveState() const override { return selected_ >= 0 ? json::Object{{"profileIndex", selected_}} : json::Object{}; }
     void restoreState(const json::Object& state) override { if (state.value("profileIndex").isNumber()) restoreIndex_ = state.value("profileIndex").toInt(); }
     void dpiChanged() override { panel_.layout(); form_.layout(); }
+    // ui.moveDestination: Move up / Move down on the selected (or given) destination.
+    bool viewCommand(const std::string& name, const json::Object& params, const CommandReply& answer) override;
 private:
     int layoutPage(int width, int height);
     int layoutForm(int width, int height);
@@ -202,6 +204,7 @@ private:
     std::map<std::string, std::map<std::string, std::wstring>> errors_;
     std::map<std::string, std::wstring> testResults_, generalErrors_;
     int selected_ = -1, restoreIndex_ = -1;
+    bool reordering_ = false; // a settings.reorderProfiles request is on its way
     bool populating_ = false, revealed_ = false, typedVisible_ = false, secretStored_ = false;
     unsigned long long revealToken_ = 0, hintToken_ = 0;
     struct Job { std::string setupId, kind, profileId; };
@@ -576,6 +579,7 @@ void DestinationsPageImpl::select(int index) {
     refreshHint();
     updateButtons();
     maybeInspect();
+    main_.viewStateChanged();
 }
 
 void DestinationsPageImpl::populate() {
@@ -838,6 +842,28 @@ void DestinationsPageImpl::remove() {
     refreshHint();
 }
 
+bool DestinationsPageImpl::viewCommand(const std::string& name, const json::Object& params, const CommandReply& answer) {
+    if (name != "moveDestination") return false;
+    if (draft_.empty() && provisional_.empty()) rebuild();
+    const auto profileId = params.value("profileId").toString();
+    if (!profileId.empty()) {
+        int index = -1;
+        for (size_t i = 0; i < draft_.size(); ++i) if (draft_[i].objectRef().value("id") == profileId.c_str()) index = int(i);
+        if (index < 0) { answer({"profile_not_found", "No destination has that ID.", {{"profileId", profileId}}}, {}); return true; }
+        if (index != selected_) { select(index); SendMessageW(list_, LB_SETCURSEL, WPARAM(index), 0); }
+    }
+    if (selected_ < 0) { answer({"destination_not_selected", "Select a destination first.", {}}, {}); return true; }
+    const int delta = params.value("direction") == "up" ? -1 : 1;
+    const int target = selected_ + delta;
+    if (target < 0 || size_t(target) >= draft_.size())
+        { answer({"destination_move_invalid", delta < 0 ? "That destination is already at the top." : "That destination is already at the bottom.", {}}, {}); return true; }
+    move(delta);
+    std::vector<std::string> order;
+    for (const auto& entry : draft_) order.push_back(entry.objectRef().value("id").toString());
+    answer({}, {{"order", json::stringArray(order)}, {"selected", draft_[size_t(selected_)].objectRef().value("id").toString()}, {"saving", reordering_ || main_.settingsBusy()}});
+    return true;
+}
+
 void DestinationsPageImpl::move(int delta) {
     const int target = selected_ + delta;
     if (selected_ < 0 || target < 0 || size_t(target) >= draft_.size()) return;
@@ -852,9 +878,11 @@ void DestinationsPageImpl::move(int delta) {
     std::vector<std::string> currentOrder;
     for (const auto& entry : main_.session().document().value("profiles").arrayRef()) currentOrder.push_back(entry.objectRef().value("id").toString());
     if (order == currentOrder) return;
+    reordering_ = true;
     main_.flushSettings([this, order](bool saved) {
-        if (!saved) { rebuild(); return; }
+        if (!saved) { reordering_ = false; rebuild(); return; }
         main_.session().call("settings.reorderProfiles", {{"order", json::stringArray(order)}, {"expectedRevision", main_.session().revision()}}, [this](const Reply& reply) {
+            reordering_ = false;
             if (!reply.ok) {
                 // The previous order comes back; a conflict asks for Reload.
                 rebuild();

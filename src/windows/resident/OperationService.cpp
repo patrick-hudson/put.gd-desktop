@@ -40,6 +40,11 @@ LocalCopy saveLocalCopy(const Artifact& a, const ArchiveSettings& s) {
     r.status = "saved";
     return r;
 }
+// One file stopped by operation.cancel with its itemId; the next Retry uploads it.
+void cancelItem(OperationItem& item, bool started) {
+    item.uploadStatus = "cancelled"; item.phase = "cancelled"; item.uploadProgress.reset();
+    item.error = {"cancelled", started ? "Upload cancelled; Retry uploads this file again" : "Upload cancelled before it started; Retry uploads this file", {}};
+}
 }
 
 struct OperationService::CaptureSession {
@@ -440,12 +445,15 @@ Operation OperationService::run(Job job) {
         auto& item = op.items[index];
         if (Operation::terminalUpload(item.uploadStatus) || item.uploadStatus == "unknown") continue;
         if (job.cancelled->load()) break;
+        const auto itemCancel = itemCancels_.flag(op.id, item.artifact.id, job.cancelled);
+        if (itemCancel->load()) { cancelItem(item, false); if (!saveItem(item)) return op; continue; }
         item.phase = "preflight"; observe(op.publicJson());
         if (auto e = artifacts.verify(item.artifact)) { item.error = e; item.uploadStatus = "failed"; if (!saveItem(item)) return op; continue; }
         if (!item.objectReference.empty() && !item.condition.empty() && item.uploadStatus != "failed") { targets[json::serialize(item.objectReference)].push_back(index); continue; }
         bool checked = false;
         for (int attempts = 0; attempts < 32; ++attempts) {
-            ++storageRequests_; auto check = provider->checkName(op.destination, item.candidate, job.cancelled); --storageRequests_;
+            ++storageRequests_; auto check = provider->checkName(op.destination, item.candidate, itemCancel); --storageRequests_;
+            if (itemCancel->load() && !job.cancelled->load()) { cancelItem(item, false); break; }
             if (check.error || check.status == "inconclusive" || check.objectReference.empty()) { item.error = check.error ? check.error : Error{"existence_unknown", "Name availability is inconclusive", {}}; item.uploadStatus = "failed"; break; }
             if (check.status == "present" && settings.collisionPolicy == "skip") { item.uploadStatus = "skipped"; break; }
             if (check.status == "present" && settings.collisionPolicy == "rename") { item.candidate = naming::renamedCandidate(item.candidate, uuid::create(), capabilities.maximumNameBytes); if (!saveItem(item)) return op; continue; }
@@ -466,11 +474,14 @@ Operation OperationService::run(Job job) {
         auto& item = op.items[index];
         if (Operation::terminalUpload(item.uploadStatus) || item.uploadStatus == "failed") continue;
         if (job.cancelled->load()) { item.uploadStatus = "cancelled"; item.phase = "cancelled"; if (!saveItem(item)) return op; continue; }
+        // Cancelling this file stops only its requests; the rest of the batch continues.
+        const auto itemCancel = itemCancels_.flag(op.id, item.artifact.id, job.cancelled);
+        if (itemCancel->load()) { cancelItem(item, false); if (!saveItem(item)) return op; continue; }
         auto lock = objectLock(op.destination, item.objectReference, item.candidate); std::lock_guard guard(*lock);
         UploadRequest request{op.destination, item.artifact, item.candidate, item.publicationId, item.condition, item.objectReference, item.concurrencyToken, op.requestTimeoutMs};
         if (item.uploadStatus == "unknown") {
             item.phase = "reconciling"; observe(op.publicJson());
-            ++storageRequests_; auto stat = provider->reconcile(request, job.cancelled); --storageRequests_;
+            ++storageRequests_; auto stat = provider->reconcile(request, itemCancel); --storageRequests_;
             if (stat.status == "own" && !stat.receipt.validate() && stat.receipt.publicationId == item.publicationId) { item.receipt = stat.receipt; item.uploadStatus = "uploaded"; item.phase = "uploaded"; item.error = {}; if (!saveItem(item)) return op; continue; }
             if (stat.status != "missing") { item.phase = "unknown"; item.error = stat.error ? stat.error : Error{"publication_unknown", "Resolve ambiguous publication before uploading again", {}}; if (!saveItem(item)) return op; continue; }
             item.uploadStatus = "stored";
@@ -482,9 +493,11 @@ Operation OperationService::run(Job job) {
             auto progress = [this, &op, index](const UploadProgress& p) { op.items[index].uploadProgress = p; op.items[index].phase = p.phase; observe(op.publicJson()); };
             ++storageRequests_; notifyActivity();
             request.candidate = item.candidate; request.condition = item.condition; request.objectReference = item.objectReference; request.concurrencyToken = item.concurrencyToken;
-            auto result = provider->upload(request, progress, job.cancelled);
+            auto result = provider->upload(request, progress, itemCancel);
             --storageRequests_; notifyActivity();
             item.uploadProgress.reset();
+            // A request the item's cancellation stopped; an unknown outcome stays unknown.
+            if (result.status == "failed" && itemCancel->load() && !job.cancelled->load()) { cancelItem(item, true); break; }
             if (result.status == "uploaded") {
                 if (result.receipt.validate() || result.receipt.publicationId != item.publicationId) { item.uploadStatus = "unknown"; item.phase = "unknown"; item.error = {"receipt_invalid", "Provider returned an unusable receipt", {}}; break; }
                 item.receipt = result.receipt; item.uploadStatus = "uploaded"; item.phase = "uploaded"; item.error = {}; break;
@@ -493,7 +506,8 @@ Operation OperationService::run(Job job) {
                 if (settings.collisionPolicy == "skip") { item.uploadStatus = "skipped"; item.phase = "skipped"; break; }
                 if (settings.collisionPolicy == "rename") {
                     item.candidate = naming::renamedCandidate(item.candidate, uuid::create(), capabilities.maximumNameBytes);
-                    ++storageRequests_; auto check = provider->checkName(op.destination, item.candidate, job.cancelled); --storageRequests_;
+                    ++storageRequests_; auto check = provider->checkName(op.destination, item.candidate, itemCancel); --storageRequests_;
+                    if (itemCancel->load() && !job.cancelled->load()) { cancelItem(item, true); break; }
                     if (check.error || check.status != "absent") { item.uploadStatus = "failed"; item.phase = "failed"; item.error = check.error ? check.error : Error{"collision_exhausted", "No available candidate after the collision", {}}; break; }
                     item.objectReference = check.objectReference; item.concurrencyToken = {}; item.condition = "absent"; continue;
                 }
@@ -549,6 +563,7 @@ Operation OperationService::run(Job job) {
 }
 void OperationService::releaseActive(const std::string& id) { active_.erase(id); notifyActivity(); if (active_.empty()) scheduleHeapReclamation(); }
 void OperationService::finish(Operation op, JsonReply reply) {
+    itemCancels_.forget(op.id);
     if (editingId_ == op.id) editingId_.clear();
     if (selectingId_ == op.id) selectingId_.clear();
     op.phase = op.state;
@@ -701,9 +716,18 @@ void OperationService::inspect(const std::string& id, JsonReply reply) {
 }
 void OperationService::cancel(const std::string& id, const std::string& itemId, JsonReply reply) {
     const auto it = active_.find(id);
+    if (!itemId.empty()) {
+        // One file of an active batch: waiting stops at once, a running transfer is
+        // cancelled like an operation's, and the other files continue.
+        if (it == active_.end()) { reply({"operation_inactive", "Only an active operation's files can be cancelled one at a time", {}}, {}); return; }
+        itemCancels_.cancelItem(id, itemId);
+        log::info("operations", "Item cancellation requested", {{"operationId", id}, {"itemId", itemId}});
+        reply({}, {{"operationId", id}, {"itemId", itemId}, {"cancellationRequested", true}, {"effect", "Only this file stops; already sent network requests cannot be rolled back"}});
+        return;
+    }
     if (it == active_.end()) { reply({"operation_not_active", "Operation is not active", {}}, {}); return; }
-    if (!itemId.empty()) { reply({"invalid_request", "Per-item cancellation is not available in the Windows build; cancel the operation", {}}, {}); return; }
     it->second->store(true);
+    itemCancels_.cancelAll(id);
     if (capture_ && capture_->op.id == id) capture_->helper->send("cancel");
     if (editor_ && editingId_ == id) editorCommand(id, "cancel", {}, [](Error, json::Object) {});
     reply({}, {{"operationId", id}, {"cancellationRequested", true}});
@@ -794,7 +818,7 @@ json::Object OperationService::capabilities() const {
         {"shortcuts", json::Object{{"available", true}, {"bindings", shortcutStatus ? shortcutStatus() : json::Object{}}}}};
     json::Object editor{{"available", true}, {"admissionPixels", double(editorAdmissionPixels)}, {"open", !editingId_.empty()}, {"sources", json::Array{"region", "window", "desktop", "clipboard", "file"}},
         {"fileFormats", json::Array{"png", "jpeg"}}, {"output", "png"}, {"shapes", json::Array{"redact", "blur", "arrow", "rectangle", "text", "highlight"}},
-        {"commands", json::Array{"inspect", "apply", "preview", "saveCopy", "submit", "cancel", "raise"}}};
+        {"commands", json::Array{"inspect", "apply", "preview", "saveCopy", "fileDialog", "submit", "cancel", "raise"}}};
     return {{"source", source}, {"providers", providers_.capabilities()}, {"editor", editor}, {"recording", json::Object{{"available", false}, {"reason", "not_available_on_windows"}}}};
 }
 json::Object OperationService::diagnostics() const {
@@ -805,7 +829,7 @@ json::Object OperationService::diagnostics() const {
 void OperationService::shutdown() {
     if (stopping_) return;
     stopping_ = true;
-    for (auto& pair : active_) pair.second->store(true);
+    for (auto& pair : active_) { pair.second->store(true); itemCancels_.cancelAll(pair.first); }
     if (capture_) capture_->helper->terminate("shutdown");
     if (editor_) editor_->helper->terminate("shutdown");
     if (cleanupTimer_) Loop::instance().stopTimer(cleanupTimer_);

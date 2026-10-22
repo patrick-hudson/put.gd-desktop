@@ -2,6 +2,7 @@
 // The provider-neutral storage contract (docs/storage-providers.md) as synchronous
 // calls made from operation worker threads. Every call completes exactly once
 // with a truthful status; ambiguous outcomes are "unknown", never guessed.
+#include "core/Cancellation.h"
 #include "core/Operation.h"
 #include <atomic>
 #include <functional>
@@ -11,7 +12,6 @@
 #include <string>
 
 namespace putgd {
-using CancelFlag = std::shared_ptr<std::atomic_bool>;
 using ProgressReport = std::function<void(const UploadProgress&)>;
 // Persists provider progress before a destructive step; the step may follow only on success.
 using DurableCheckpoint = std::function<Error(const json::Object& progress)>;
