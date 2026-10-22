@@ -149,6 +149,8 @@ void UpdateService::install(const QJsonObject& params,JsonReply reply) {
    reason=="not_checked"?"Check the "+channel()+" channel first: put.gd only switches to a release it has found":QString("Only an AppImage installs updates itself");
   reply({"update_install_unavailable",message,{{"reason",reason}}},{});return;
  }
+ if(installer_){reply({"update_install_busy","An update is already being installed",{}},{});return;}
+ if(restartRequired()){reply({"update_restart_required","Restart put.gd to finish the update that is already installed",{{"installed",installState_["installed"].toObject()["version"]}}},{});return;}
  // A switch names where it goes, so a stale confirmation can't land elsewhere,
  // and an older version is installed only when asked for (#344).
  const auto offer=switchOffer();
@@ -161,8 +163,6 @@ void UpdateService::install(const QJsonObject& params,JsonReply reply) {
  if(offer["older"].toBool()&&params["allowOlder"]!=true){
   reply({"update_switch_older",channel()+" "+offer["version"].toString()+" is older than this build ("+build_.version+"); switching to it needs allowOlder: true",{{"switch",offer}}},{});return;
  }
- if(installer_){reply({"update_install_busy","An update is already being installed",{}},{});return;}
- if(restartRequired()){reply({"update_restart_required","Restart put.gd to finish the update that is already installed",{{"installed",installState_["installed"].toObject()["version"]}}},{});return;}
  if(busy_)if(const auto reason=busy_();!reason.isEmpty()){reply({"update_install_busy",reason,{}},{});return;}
  auto* process=new QProcess(this);installer_=process;process->setProcessChannelMode(QProcess::SeparateChannels);
  install_={{"state","running"},{"phase","starting"},{"method",method},{"bytes",0},{"total",0},{"startedAt",isoTime(now())}};
