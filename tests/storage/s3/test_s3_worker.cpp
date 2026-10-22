@@ -27,6 +27,7 @@
 #include <cerrno>
 #include <csignal>
 #endif
+#include "fixtures/Waits.h"
 
 using namespace putgd;
 namespace {
@@ -101,25 +102,25 @@ private slots:
         child.start(QString::fromUtf8(S3_REAL_WORKER_PATH),{});QVERIFY(child.waitForStarted(5000));
         auto boot=envelope();boot["build"]=QJsonDocument::fromJson(buildManifestJson()).object();
         boot["contract"]=QString::fromUtf8(PUTGD_S3_BUILD_ID);boot["safeDelete"]=bool(PUTGD_SDK_CURL_TRANSPORT);boot["modulePath"]=S3Module::defaultPath();
-        QVERIFY(!control.send("bootstrap",boot).isEmpty());QTRY_VERIFY_WITH_TIMEOUT(ready&&!wireFailed,5000);
+        QVERIFY(!control.send("bootstrap",boot).isEmpty());PUTGD_TRY_VERIFY_WITH_TIMEOUT(ready&&!wireFailed,5000);
         auto active=envelope();active["method"]="upload";active["request"]=s3wire::encode(request);
         QVERIFY(!control.send("activate",active).isEmpty());
-        QTRY_VERIFY_WITH_TIMEOUT(!readinessRpc.isEmpty()&&progress.size()==1,5000);
+        PUTGD_TRY_VERIFY_WITH_TIMEOUT(!readinessRpc.isEmpty()&&progress.size()==1,5000);
         QCOMPARE(progress.first().phase,QString("preparing"));
         QVERIFY(acknowledge("readiness",readinessRpc,{{"error",s3wire::encode(Error{})}}));
-        QTRY_COMPARE_WITH_TIMEOUT(fixture.events("PUT").size(),1,5000);
-        QTest::qWait(650);QCOMPARE(progress.size(),1);QVERIFY(!terminal);QVERIFY(!wireFailed);
+        PUTGD_TRY_COMPARE_WITH_TIMEOUT(fixture.events("PUT").size(),1,5000);
+        putgd::test::settle(650);PUTGD_TRY_COMPARE(progress.size(),1);PUTGD_TRY_VERIFY(!terminal);PUTGD_TRY_VERIFY(!wireFailed);
         QVERIFY(acknowledge("uploadProgress",sequences.first(),{}));
-        QTRY_COMPARE_WITH_TIMEOUT(progress.size(),2,5000);
+        PUTGD_TRY_COMPARE_WITH_TIMEOUT(progress.size(),2,5000);
         QCOMPARE(progress.last().phase,QString("uploading"));
         QCOMPARE(progress.last().bytesTransferred,std::optional<qint64>(request.artifact.bytes));
         QCOMPARE(progress.last().bytesTotal,std::optional<qint64>(request.artifact.bytes));
         // Keep that observation outstanding. The terminal flush can add exactly
         // one final value, then deliver the durable result without an ACK wait.
         fixture.control("/__release",{{"barrier","progress"}},true);
-        QTRY_VERIFY_WITH_TIMEOUT(terminal,5000);QCOMPARE(progress.size(),3);
+        PUTGD_TRY_VERIFY_WITH_TIMEOUT(terminal,5000);QCOMPARE(progress.size(),3);
         QCOMPARE(progress.last().phase,QString("finalizing"));QCOMPARE(result["status"].toString(),QString("uploaded"));
-        QTRY_COMPARE_WITH_TIMEOUT(child.state(),QProcess::NotRunning,5000);
+        PUTGD_TRY_COMPARE_WITH_TIMEOUT(child.state(),QProcess::NotRunning,5000);
         QCOMPARE(child.exitStatus(),QProcess::NormalExit);QCOMPARE(child.exitCode(),0);QVERIFY(!wireFailed);
     }
     void faultyChildren_data() {
@@ -191,7 +192,7 @@ private slots:
                 acknowledgedAtCallback.store(snapshot["resultAck"].toBool());
                 if (callbacks.fetch_add(1) == 0) delivered->set_value(std::move(value));
             });
-            QTRY_VERIFY_WITH_TIMEOUT(result.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready, 20000);
+            PUTGD_TRY_VERIFY_WITH_TIMEOUT(result.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready, 20000);
             const auto checked = result.get();
             QCOMPARE(callbacks.load(), 1);
             QVERIFY(!aliveAtCallback.load());
@@ -209,10 +210,10 @@ private slots:
                 QVERIFY(checked.concurrencyToken.isEmpty());
                 if (mode == "terminal_then_crash") QVERIFY(acknowledgedAtCallback.load());
             }
-            QTRY_COMPARE_WITH_TIMEOUT(provider.diagnostics()["queuedRequests"].toInt(), 0, 5000);
+            PUTGD_TRY_COMPARE_WITH_TIMEOUT(provider.diagnostics()["queuedRequests"].toInt(), 0, 5000);
             QCOMPARE(provider.diagnostics()["retainedDrivers"].toInt(), 0);
-            QTest::qWait(100);
-            QCOMPARE(callbacks.load(), 1);
+            putgd::test::settle(100);
+            PUTGD_TRY_COMPARE(callbacks.load(), 1);
         }
         const auto snapshot = state();
         QVERIFY(!processExists(snapshot["pid"].toString().toLongLong()));
@@ -240,12 +241,12 @@ private slots:
             };
             provider.upload(request, [delivered](UploadResult reply) { delivered->set_value(reply.error); });
         }
-        QTRY_VERIFY_WITH_TIMEOUT(result.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready, 20000);
+        PUTGD_TRY_VERIFY_WITH_TIMEOUT(result.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready, 20000);
         const auto error = result.get();
         QCOMPARE(error.code, (mode == "progress_valid" || mode == "progress_callback_throw") ? QString("s3_request_failed") : QString("s3_transport_unknown"));
         QCOMPARE(progressCount.load(), (mode == "progress_valid" || mode == "progress_callback_throw") ? 1 : 0);
-        QTest::qWait(350);
-        QCOMPARE(progressCount.load(), (mode == "progress_valid" || mode == "progress_callback_throw") ? 1 : 0);
+        putgd::test::settle(350);
+        PUTGD_TRY_COMPARE(progressCount.load(), (mode == "progress_valid" || mode == "progress_callback_throw") ? 1 : 0);
     }
     void slowInlineCheckpointDoesNotLookLikeChildSilence() {
         test::S3Fixture fixture;
@@ -490,7 +491,7 @@ private slots:
             if (driver) owner->destroyDriver(driver);
             prepared->set_value(valid);
         });
-        QTRY_VERIFY_WITH_TIMEOUT(completed.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready, 20000);
+        PUTGD_TRY_VERIFY_WITH_TIMEOUT(completed.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready, 20000);
         QVERIFY(completed.get());
         QCOMPARE(module->liveDriverCount(), 0);
         const auto snapshot = state();

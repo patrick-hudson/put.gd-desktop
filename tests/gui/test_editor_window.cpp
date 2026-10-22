@@ -10,6 +10,7 @@
 #include <QFontComboBox>
 #include <QSignalSpy>
 #include <QTest>
+#include "fixtures/Waits.h"
 using namespace putgd;using namespace putgd::editor;
 
 class EditorWindowTest:public QObject {
@@ -18,7 +19,7 @@ class EditorWindowTest:public QObject {
  static void add(EditDocument& doc,const QJsonObject& shape){QJsonArray created;QString code,message;QVERIFY2(Commands::apply(doc,{QJsonObject{{"op","add"},{"shape",shape}}},created,code,message),qPrintable(message));}
 private slots:
  void keyboardContractNeverUploadsOnPlainEnter(){
-  EditDocument doc(canvasImage());EditorWindow window(doc);window.show();QVERIFY(QTest::qWaitForWindowExposed(&window));
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
   QSignalSpy uploads(&window,&EditorWindow::uploadRequested);
   // No two shortcuts share a key; ambiguous shortcuts would silently never fire.
   QList<QKeySequence> keys;for(auto* shortcut:window.findChildren<QShortcut*>()){QVERIFY2(!keys.contains(shortcut->key()),qPrintable(shortcut->key().toString()));keys.append(shortcut->key());}
@@ -39,7 +40,7 @@ private slots:
  }
  void switchingToolsNeverRestylesTheSelection(){
   // A selected red rectangle turned yellow when the Highlight tool was chosen.
-  EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,700);window.show();QVERIFY(QTest::qWaitForWindowExposed(&window));
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,700);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
   auto& canvas=window.canvas();window.selectTool(Tool::Rectangle);
   const QPoint start=canvas.rect().center()-QPoint(60,30),end=canvas.rect().center()+QPoint(60,30);
   QTest::mousePress(&canvas,Qt::LeftButton,{},start);
@@ -54,7 +55,7 @@ private slots:
   QCOMPARE(canvas.selected(),quint64(0));
  }
  void recentColorsAndTextControlsEditTheSelection(){
-  EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,700);window.show();QVERIFY(QTest::qWaitForWindowExposed(&window));
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,700);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
   // Malformed, duplicate and excess entries are dropped; at most six remain.
   window.setRecentColors({"#123456","#123456","NOTACOLOR","#A1B2C3","#000001","#000002","#000003","#000004","#000005","#000006"});
   QCOMPARE(window.recentColors(),QStringList({"#123456","#000001","#000002","#000003","#000004","#000005"}));
@@ -71,7 +72,7 @@ private slots:
   QVERIFY(window.findChild<QToolButton*>("customColor"));
  }
  void textSizeControlFollowsACornerDrag(){
-  EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,700);window.show();QVERIFY(QTest::qWaitForWindowExposed(&window));
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,700);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
   add(doc,{{"kind","text"},{"at",QJsonArray{40,40}},{"text","Label"},{"fontPixels",30}});window.documentEdited();
   auto& canvas=window.canvas();window.selectTool(Tool::Select);const auto id=doc.shapes().first().id;const auto box=doc.shapes().first().rect;
   const QPoint origin((canvas.width()-400)/2,(canvas.height()-260)/2);
@@ -93,7 +94,7 @@ private slots:
  }
  void canvasGeometryIsStableAcrossToolsAndSelection(){
   // Cinnamon acceptance found the options row collapsing mid-drag, refitting the image under the pointer.
-  EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,700);window.show();QVERIFY(QTest::qWaitForWindowExposed(&window));
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,700);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
   const auto geometry=window.canvas().geometry();
   for(auto tool:{Tool::Select,Tool::Redact,Tool::Blur,Tool::Crop,Tool::Arrow,Tool::Rectangle,Tool::Highlight,Tool::Text,Tool::Redact}){window.selectTool(tool);QApplication::processEvents();QCOMPARE(window.canvas().geometry(),geometry);}
   auto& canvas=window.canvas();const QPoint start=canvas.rect().center()-QPoint(60,30),end=canvas.rect().center()+QPoint(60,30);
@@ -105,7 +106,7 @@ private slots:
   QVERIFY2(qAbs(rect.left()-140)<=1&&qAbs(rect.top()-100)<=1&&qAbs(rect.right()+1-260)<=1&&qAbs(rect.bottom()+1-160)<=1,qPrintable(QString("%1,%2 %3x%4").arg(rect.x()).arg(rect.y()).arg(rect.width()).arg(rect.height())));
  }
  void agentEditsRefreshTheWindowAndBusyStateBlocksActions(){
-  EditDocument doc(canvasImage());EditorWindow window(doc);window.show();QVERIFY(QTest::qWaitForWindowExposed(&window));
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
   add(doc,{{"kind","redact"},{"rect",QJsonArray{10,10,50,20}}});window.documentEdited();
   QVERIFY(doc.canUndo());QSignalSpy uploads(&window,&EditorWindow::uploadRequested),cancels(&window,&EditorWindow::cancelRequested);
   window.setBusy("Preparing the edited image…");
@@ -115,7 +116,7 @@ private slots:
   window.allowClose();QVERIFY(window.close());
  }
  void unmodifiedCancelNeedsNoConfirmation(){
-  EditDocument doc(canvasImage());EditorWindow window(doc);window.show();QVERIFY(QTest::qWaitForWindowExposed(&window));
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
   QSignalSpy cancels(&window,&EditorWindow::cancelRequested);QVERIFY(!window.close());QCOMPARE(cancels.size(),1);QVERIFY(window.isVisible());
  }
 };

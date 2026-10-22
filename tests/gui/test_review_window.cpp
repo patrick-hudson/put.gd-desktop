@@ -17,6 +17,7 @@
 #include <QSpinBox>
 #include <QTest>
 #include <QToolButton>
+#include "fixtures/Waits.h"
 using namespace putgd;
 using namespace putgd::record;
 
@@ -69,7 +70,7 @@ private slots:
         QCOMPARE(QGuiApplication::primaryScreen()->geometry().size(), QSize(1366, 768));
         QVERIFY(ReviewWindow::defaultSize().width() <= 1366 - 24 && ReviewWindow::defaultSize().height() <= 768 - 120);
         window.show();
-        QVERIFY(QTest::qWaitForWindowExposed(&window));
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
         QCOMPARE(window.size(), ReviewWindow::defaultSize());
         auto state = window.inspect();
         // Before #283 the frame had about 30% of a 900×700 window; now most of it.
@@ -84,7 +85,7 @@ private slots:
         // The video scales with the window.
         const auto before = state["video"].toObject()["rect"].toArray();
         window.resize(1280, 760);
-        QTRY_VERIFY(window.inspect()["video"].toObject()["rect"].toArray()[2].toInt() > before[2].toInt());
+        PUTGD_TRY_VERIFY(window.inspect()["video"].toObject()["rect"].toArray()[2].toInt() > before[2].toInt());
     }
     void largeTextStillFitsA1366x768Desktop() {
         const auto font = QApplication::font();
@@ -96,7 +97,7 @@ private slots:
             ReviewWindow window(options(), config());
             window.setEdit(twoMasks());
             window.show();
-            QVERIFY(QTest::qWaitForWindowExposed(&window));
+            QVERIFY(putgd::test::waitForWindowExposed(&window));
             const auto minimum = window.minimumSizeHint();
             QVERIFY2(minimum.width() <= 1366 - 24 && minimum.height() <= 768 - 120, qPrintable(QStringLiteral("%1x%2").arg(minimum.width()).arg(minimum.height())));
             QVERIFY(window.width() <= 1366 && window.height() <= 768);
@@ -109,7 +110,7 @@ private slots:
     void maskControlsShowOnlyWhenTheyApply() {
         ReviewWindow window(options(), config());
         window.show();
-        QVERIFY(QTest::qWaitForWindowExposed(&window));
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
         auto controls = [&] { return window.inspect()["maskControls"].toObject(); };
         QCOMPARE(controls(), QJsonObject({{"list", false}, {"times", false}, {"strength", false}, {"remove", false}}));
         // Two masks arrive (the last added is selected): the list, times and Remove; a cover has no strength.
@@ -146,9 +147,9 @@ private slots:
         ReviewWindow window(options(), config());
         QSignalSpy proposals(&window, &ReviewWindow::editProposed);
         window.show();
-        QVERIFY(QTest::qWaitForWindowExposed(&window));
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
         window.activateWindow();
-        QVERIFY(QTest::qWaitForWindowActive(&window));
+        QVERIFY(putgd::test::waitForWindowActive(&window));
         auto* t = timeline(window);
         QVERIFY(t);
         const int y = t->trackRect().center().y();
@@ -211,7 +212,7 @@ private slots:
             ReviewWindow window(options(), config());
             window.setEdit(twoMasks());
             window.show();
-            QVERIFY(QTest::qWaitForWindowExposed(&window));
+            QVERIFY(putgd::test::waitForWindowExposed(&window));
             // No two shortcuts share a key; ambiguous shortcuts never fire.
             QList<QKeySequence> keys;
             for (auto* s : window.findChildren<QShortcut*>()) { QVERIFY2(!keys.contains(s->key()), qPrintable(s->key().toString())); keys.append(s->key()); }
@@ -229,10 +230,10 @@ private slots:
             QCOMPARE(window.inspect()["scheme"].toString(), Theme::name(scheme));
             // Space starts the preview (the clip is missing, so it stops again).
             window.activateWindow();
-            QVERIFY(QTest::qWaitForWindowActive(&window));
+            QVERIFY(putgd::test::waitForWindowActive(&window));
             QTest::keyClick(timeline(window), Qt::Key_Space);
             QVERIFY(window.inspect()["playing"].toBool());
-            QTRY_VERIFY(!window.inspect()["playing"].toBool());
+            PUTGD_TRY_VERIFY(!window.inspect()["playing"].toBool());
         }
         Theme::setScheme(Theme::Scheme::Dark);
     }
@@ -241,7 +242,7 @@ private slots:
         QSignalSpy proposals(&window, &ReviewWindow::editProposed);
         QSignalSpy configs(&window, &ReviewWindow::configChanged);
         window.show();
-        QVERIFY(QTest::qWaitForWindowExposed(&window));
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
         auto drive = [&](const QJsonObject& params) { return window.drive(params); };
         auto seek = drive({{"action", "seek"}, {"time", 2000000}});
         QVERIFY(seek.code.isEmpty());
@@ -298,7 +299,7 @@ private slots:
         QVERIFY(folder.isValid());
         ReviewWindow window(options(), config());
         window.show();
-        QVERIFY(QTest::qWaitForWindowExposed(&window));
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
         QSignalSpy saved(&window, &ReviewWindow::saveCopyRequested);
         auto opened = window.drive({{"action", "saveCopyDialog"}});
         QVERIFY2(opened.code.isEmpty(), qPrintable(opened.message));
@@ -320,7 +321,7 @@ private slots:
         QVERIFY(save);
         save->click();
         QFileDialog* fallback = nullptr;
-        QTRY_VERIFY((fallback = window.findChild<QFileDialog*>("putgdFileDialog")) && fallback->isVisible());
+        PUTGD_TRY_VERIFY((fallback = window.findChild<QFileDialog*>("putgdFileDialog")) && fallback->isVisible());
         QCOMPARE(fallback->windowTitle(), QString("Save a copy"));
         QCOMPARE(fallback->nameFilters(), QStringList{"MP4 (*.mp4)"});
         fallback->setDirectory(folder.path());

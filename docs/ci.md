@@ -64,7 +64,9 @@ also runs `actionlint` 1.7.12, pinned by SHA-256, on every workflow.
 **linux** builds the Debug `dev` preset with the bundled Proton helper on Ubuntu
 24.04 (minimum distro Qt API) and Ubuntu 26.04 (LayerShellQt). It runs the full
 registered CTest suite as an unprivileged user, with private temporary paths and
-saved socket preflight, JUnit, test logs and build identity. Hosted Xvfb and
+saved socket preflight, JUnit, test logs and build identity. Waits and test timeouts scale by 3
+and a failed integration test is retried once and reported (see
+[flaky tests](#flaky-tests)). Hosted Xvfb and
 offscreen contracts do not establish compositor support or physical memory
 acceptance. The Release-preset compile happens in the package builders, not here.
 
@@ -74,7 +76,8 @@ runs the core contracts and short unit tests the `clang-asan` test preset select
 settings, operations, history, storage locations, payload, archive, upload naming,
 recording model, storage, config reload, local IPC and the small parser and
 platform-model tests. The test preset makes every UBSan report fatal; any ASan
-report already is. The job is not in the required `CI` summary yet (issue
+report already is. Waits and test timeouts scale by 5 there, and the same
+[retry policy](#flaky-tests) applies. The job is not in the required `CI` summary yet (issue
 [#90](https://github.com/patrick-hudson/put.gd-desktop/issues/90)); add it there once
 it has run green on `nightly` for a while.
 
@@ -211,7 +214,7 @@ because `download.qt.io` didn't resolve once; the recipe now retries downloads.
   See [cache budget](#cache-budget). The build-identity source changes every
   commit and is always recompiled. Package builders compile from scratch.
 - **Parallel builds.** Application and SDK builds use every runner CPU.
-- **Parallel tests, longest first.** CTest runs eight tests at once and restores
+- **Parallel tests, longest first.** CTest runs twelve tests at once and restores
   the previous run's durations, so the longest tests start first. See
   [hosted CTest schedule](#hosted-ctest-schedule).
 - **One contracts job.** Python suites that previously ran in eight jobs run once.
@@ -275,9 +278,11 @@ already restored only the newest `nightly` entry, and that is the one kept.
 ## Reproduce and investigate
 
 Use normal presets. To reproduce the hosted test schedule locally, select a new
-short private TMPDIR, then run `tools/ci/ctest_preflight.py` and
-`ctest --preset dev --parallel 8 --resource-spec-file tools/ci/ctest-resources.json
---output-junit PATH`. Retain the exact command,
+short private TMPDIR, configure with `-DPUTGD_TEST_TIMEOUT_SCALE=3`, then run
+`tools/ci/ctest_preflight.py` and, with `PUTGD_TEST_TIME_SCALE=3`,
+`python3 tools/ci/ctest_retry.py --ledger LEDGER --junit PATH -- --preset dev
+--parallel 12 --resource-spec-file "$PWD/tools/ci/ctest-resources.json"`.
+Plain `ctest` works too, without the retry and ledger. Retain the exact command,
 registered tests, environment/version identity, JUnit and LastTest.log for each
 attempt. Preserve failures before retrying; never fix a long path by weakening
 socket checks or silently excluding a test.
@@ -299,7 +304,7 @@ CTest evidence totaled 363.86s; 27 sub-second tests contributed only 6.52s,
 while 14 tests over ten seconds contributed 271.86s.
 
 The collision-policy fixture waits for a terminal operation with an explicit
-15-second limit. Its former five-second polling helper silently returned a
+15-second budget (scaled like every wait since #351). Its former five-second polling helper silently returned a
 `running` operation: the controlled 32-HEAD exhaustion row completed at 5,056 ms
 on the local release work run. The no-PUT, exact 32-HEAD, no-copy and final
 `collision_exhausted` assertions remain unchanged; this is a test synchronization
@@ -319,21 +324,22 @@ preflight, the `putgd-ci` user and JUnit retention are as before.
   longest first. Same-repository pull requests save entries too and restore
   their own newest one before the newest `nightly` one. A new test has no
   duration until it has run once.
-- **Slots.** CTest runs eight tests at once on the four-vCPU runner.
-  About three quarters of the suite is waiting: profiled locally eight at a
-  time, the 72 tests used about 234 CPU seconds in about 900 summed seconds;
-  `gui_tray` used 3 s of CPU in a 69 s run.
+- **Slots.** CTest runs twelve tests at once on the four-vCPU runner (eight
+  until #351; see [parallelism](#parallelism)). Most of the suite is waiting:
+  `tools/ci/ctest_cpu_profile.py`, one test at a time on k72, measured 261 CPU
+  seconds in 822 summed seconds for 102 tests; `gui_tray` used 3 s of CPU in a
+  48 s run.
 - **CPU pool.** CPU is the one resource every test shares. With eight slots and
   no limit, the CPU-bound medium tests ran together once the long idle ones
   finished: on 24.04 `s3_delete_integration` took 22 s instead of 8 s and
   `collision_policy_integration` 18 s instead of 9 s, closer to the explicit
-  15-second collision bound. Seven CPU-bound tests (`collision_policy_integration`,
-  `edit_operations_integration`, `editor_contract`, `history_contract`,
-  `s3_delete_integration`, `s3_integration`, `version_contract`) declare
-  `RESOURCE_GROUPS "cpu:1"`, and `tools/ci/ctest-resources.json` gives the
-  runner three `cpu` slots, so at most three of them run at once while idle
-  tests use the other slots. Without a resource spec, as in a plain local
-  `ctest`, the property has no effect.
+  15-second collision bound. Every test that keeps at least half a core busy
+  for two seconds or more in that profile declares `RESOURCE_GROUPS`, one `cpu`
+  slot per core it uses, in `cmake/TestPolicy.cmake`: 13 tests with one slot
+  and `export_av_sync_contract` (1.7 cores) with two. `tools/ci/ctest-resources.json`
+  gives the runner three `cpu` slots, so at most three cores' worth of them run
+  at once while idle tests use the other slots. Without a resource spec, as in
+  a plain local `ctest`, the property has no effect.
 - **Shared resources.** The audit found one: Xvfb display numbers. Concurrent
   `xvfb-run -a` calls that start from the same display race for the X server's
   per-display lock, and the loser sleeps two seconds per attempt;
@@ -412,6 +418,188 @@ binaries:
 | `gui_operations_view` folded into other views | -0.8 |
 
 Ubuntu 26.04 matches within a few seconds (340.2 s to 614.6 s summed).
+
+## Flaky tests
+
+From 2026-10-14 to 2026-10-22, 52 of 840 Linux and sanitizer test jobs failed.
+From 2026-10-16, 22 failures were timing and ordering flakes on code that was
+otherwise green (the same commit passed on a re-run or on the other
+distribution), 2 more are open and are not wait problems (#352, #353), and 6
+were real bugs that failed everywhere and were fixed in their own pull
+requests. Thirteen tests flaked. Each earlier fix (#184, #187, #272, #275,
+#277) patched one test. Most shared one cause:
+
+- Tests waited with fixed budgets: 1770 `QTRY_*` and `qWait` uses, every
+  `QTRY_*` defaulting to 5 s, and 246 bare `qWait` calls, most of them a
+  sleep followed by an assertion.
+- The hosted runner has four vCPUs and runs eight tests at once, with SQLite,
+  worker threads, child processes and Xvfb. Under that load, a step that takes
+  0.2 s alone sometimes takes more than 5 s.
+
+![Every failed Linux and sanitizer test job from 2026-10-16 to 2026-10-22, classified](https://raw.githubusercontent.com/patrick-hudson/put.gd-desktop/396b54e2d55ef5e4e4dafdf0f66c26824f48b574/docs/evidence/2026-10-22-flaky-tests/ci-failure-history.png)
+
+The rest were tests that assumed which of two operations would take an upload
+first, a sleep standing in for a wait, and an X request read before another
+connection's ungrab reached the server. The fix has four parts, introduced by
+#351.
+
+### Scaled waits
+
+Every wait in a C++ test goes through `tests/fixtures/Waits.h`
+(namespace `putgd::test`):
+
+| Use | For |
+| --- | --- |
+| `PUTGD_TRY_VERIFY(expr)`, `PUTGD_TRY_COMPARE(a, b)` (and `_WITH_TIMEOUT`, `PUTGD_TRY_VERIFY2`) | wait until it holds, then assert it |
+| `PUTGD_VERIFY_STEADY(expr, ms)`, `PUTGD_COMPARE_STEADY(a, b, ms)` | it holds, and still holds `ms` later ("arrives once, nothing follows") |
+| `waitFor(predicate, ms)`, `waitForSignal(spy, count, ms)`, `waitForWindowExposed(w)`, `waitForWindowActive(w)` | helpers, callbacks and windows |
+| `settle(ms)` | fixed, unscaled time: to let a product timer run, or before a check that nothing happened |
+
+A budget scales with `PUTGD_TEST_TIME_SCALE`: 1 when unset (local runs), 3 in
+the `linux` job and 5 in `sanitizers` (instrumented code runs about three
+times slower). A passing wait returns as soon as its condition holds, so a
+larger budget doesn't slow a passing test; it only bounds how long a test
+waits for something that will happen. Product timing contracts are not
+budgets and never scale. The B2 and S3 fixture servers scale their own
+barriers the same way.
+
+`tools/ci/check_test_waits.py` (run by `tests/ci/test_flake_tools.py` in the
+`contracts` job) rejects `QTest::qWait`, `qWaitFor`, `QTRY_*`,
+`QSignalSpy::wait`, `qWaitForWindowExposed/Active`, and a `settle()` followed
+directly by a plain `QVERIFY`/`QCOMPARE` (a sleep standing in for a wait).
+Exceptions go in `tools/ci/test-waits-allowlist.json` with a reason and an
+exact count per file; today only the manual theme-switch benchmark is listed.
+
+Prefer a wait on the real completion signal or callback over polling where
+the code exposes one. For example, `proton_contract` now waits for each
+`inspectSharing` reply before asking again, instead of queueing a new request
+every few milliseconds, and the tray tests wait for the operation's release
+before copying its result (copying earlier is refused with `operation_busy`).
+
+The migration turned each `qWait(N); QCOMPARE(...)` into
+`settle(N); PUTGD_TRY_COMPARE(...)`: the N ms still elapse, so a check that
+nothing more arrives keeps its window, and a late arrival passes within the
+budget. Assertions with side effects stayed plain. `waitFor` polls like
+`QTRY_*` (every 50 ms, running the event loop in between) and ends only when
+both the scaled budget and its steps have run out, so it is never stricter
+than the loop it replaced. About 50 other `settle()` calls are fixed time on
+purpose; [#354](https://github.com/patrick-hudson/put.gd-desktop/issues/354)
+tracks replacing those that still stand in for a completion.
+
+### Labels and one reported retry
+
+`cmake/TestPolicy.cmake` labels every test. A `unit` test runs synchronously in
+its own process (no event loop waits, threads, child processes, sockets, buses
+or displays), so its failure is deterministic. Every other test is
+`integration`, including new tests until someone lists them as `unit`. The
+label follows the behaviour, not the name: `operations_contract` and
+`proton_contract` are integration tests.
+
+`tools/ci/ctest_retry.py` runs CTest once, then reruns the failed integration
+tests once with the same arguments:
+
+- every test passed: the job passes;
+- every failure was an integration test that passed its retry: the job passes,
+  with a workflow warning per test;
+- a unit test failed, an integration test failed twice, or CTest failed
+  without a failed test to show: the job fails.
+
+Nothing passes silently. `tools/ci/flake_ledger.py` writes every test that
+failed, retried or not, to the job summary, and records each pass on a retry
+in that test's [`flaky-test`](https://github.com/patrick-hudson/put.gd-desktop/issues?q=label%3Aflaky-test)
+issue: one issue per test, titled `Flaky test: NAME`, with a comment per
+occurrence (run link, job, commit, first failure lines). A recurrence reopens
+a closed issue. The `linux` and `sanitizers` jobs need `issues: write`, so
+`nightly.yml` and `release.yml` grant it to their `ci` call. Fork pull
+requests get a read-only token; their flaky tests still appear in the job
+summary, with a warning that the tracker wasn't updated.
+
+The ledger (`flake-ledger.json`) and the retry's JUnit
+(`ctest-results-retry.xml`) are kept in the `ctest-linux-*` and
+`ctest-clang-asan` artifacts. Nightly publication is unchanged: `publish` still
+needs the whole `ci.yml` call to succeed, so a test that fails twice blocks it
+and a test that passed its retry doesn't. Test `TIMEOUT`s are hang guards and
+scale like the waits: `-DPUTGD_TEST_TIMEOUT_SCALE` (3 on `linux`, 5 on
+`sanitizers`) multiplies every explicit one at configure time.
+
+The policy was demonstrated on #351 with temporary tests, since reverted: a
+test that failed its first run passed its retry, appeared in the job summary
+and opened a tracker issue
+([run 39710070705](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/39710070705),
+[#355](https://github.com/patrick-hudson/put.gd-desktop/issues/355)); a `unit`
+test that failed once failed the job without a retry
+([run 39711215419](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/39711215419)).
+
+### Builder stress lane
+
+`tools/ci/stress_suite.py` runs CTest repeatedly on a builder under CPU
+contention and writes a ledger in the same format, with per-test run and
+failure counts:
+
+```bash
+python3 tools/ci/stress_suite.py --source ~/work/put.gd-x --out ~/work/flake-stress/RUN \
+    --iterations 20 --hogs 4 --hog-cpus 0-1 --test-cpus 0-1 --time-scale 3 \
+    -- --preset dev -L integration --parallel 12 \
+    --resource-spec-file "$HOME/work/put.gd-x/tools/ci/ctest-resources.json"
+```
+
+`--hogs` starts busy loops (pinned with `--hog-cpus`), `--test-cpus` pins CTest
+and every test to a CPU subset, and `--time-scale` sets `PUTGD_TEST_TIME_SCALE`.
+It uses a private short `TMPDIR` and `XDG_STATE_HOME`, stops only the
+processes it started, by PID, and removes only its own temporary directory.
+Run it on a builder, one suite per host at a time, after checking
+`tools/lab/desktop_lock.py status` for a quiet-slot lock.
+
+Results, `tools/ci/stress_suite.py` on the builders, 2026-10-22. The known set
+is the twelve tests that flaked in CI. Pinning (`--test-cpus`, `--hog-cpus`)
+is what reproduces a starved runner: with six unpinned busy loops the nightly
+passed 8 of 8 runs.
+
+![Runs with a failed test under CPU contention, nightly 33c768e against #351](https://raw.githubusercontent.com/patrick-hudson/put.gd-desktop/396b54e2d55ef5e4e4dafdf0f66c26824f48b574/docs/evidence/2026-10-22-flaky-tests/stress-before-after.png)
+
+| Host | Load | Tests | Nightly `33c768e` | #351 |
+| --- | --- | --- | --- | --- |
+| d69 (Debian 13, Qt 6.8) | 4 busy loops and the tests on 2 of 4 CPUs | known set | 6 of 8 runs failed (`operations_contract`, 6) | 0 of 8 (`4984e80`) |
+| m74 (Mint 22.3, Qt 6.4) | same | known set | 1 of 8 (`operations_contract`) | 0 of 10 (`7ffcf42`) |
+| d69 | 3 busy loops and the tests on 1 of 4 CPUs | known set | 6 of 6 (`gui_history_view` 5 s budget, `operations_contract`) | 0 of 6 (`ea703c6`, timeouts scaled) |
+| k72 (Kubuntu 26.04, Qt 6.10) | 4 busy loops | the 74 `integration` tests, 12 at once | | 0 of 8 (`c6918fe`) |
+
+The lane also found four races the scaled waits alone did not fix, each fixed in
+#351: `onDemandPreviewsAreBounded` slept 1.5 s for the after-operation posters
+(it now waits for the new `previews` diagnostic), three operations tests
+assumed the first operation takes the shared upload lock, and an X11 test read
+grabs before the resident's ungrab reached the server. The ledgers are in
+`docs/evidence/2026-10-22-flaky-tests/stress/`.
+
+The lane isn't scheduled. A weekly timer on k72 is proposed in
+[#360](https://github.com/patrick-hudson/put.gd-desktop/issues/360) and waits
+for Patrick's approval.
+
+### Parallelism
+
+`tools/ci/ctest_cpu_profile.py` runs each test alone and reports its wall and
+CPU time; `cmake/TestPolicy.cmake`'s CPU pool comes from its k72 profile
+(`docs/evidence/2026-10-22-flaky-tests/k72-cpu-profile.json`). With that pool,
+the full suite on k72 (four cores, like the runner) took:
+
+![Full CTest wall time against tests run at once on k72](https://raw.githubusercontent.com/patrick-hudson/put.gd-desktop/396b54e2d55ef5e4e4dafdf0f66c26824f48b574/docs/evidence/2026-10-22-flaky-tests/parallelism.png)
+
+| `--parallel` | CPU pool | k72 wall (median of 3) | Failures |
+| ---: | --- | ---: | --- |
+| 8 | before: 8 tests | 106.8 s | none |
+| 6 | profiled, 14 tests | 137.5 s | none |
+| 8 | profiled | 113.2 s | none |
+| 10 | profiled | 97.4 s | none |
+| 12 | profiled | 83.8 s | one `x11_isolated` grab race, fixed in #351; then 10 of 10 runs passed, 83.3-84.1 s |
+
+The longest test takes about 75 s, so twelve at once is close to the floor.
+The load average was 4-5 on four cores. On the hosted runners the CTest step
+went from 107.4 s (24.04) and 97.8 s (26.04) at eight
+([run 39704821072](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/39704821072))
+to 76.6 s and 95.0 s at twelve
+([run 39712963621](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/39712963621)).
+A retry costs only the failed tests' own time. The repository is public, so
+hosted minutes are free; the change saves about 15-30 s per Linux job.
 
 ## Proton Linux runtime
 

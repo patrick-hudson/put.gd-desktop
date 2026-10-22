@@ -22,6 +22,7 @@
 #include <QStyleOptionSpinBox>
 #include <QVBoxLayout>
 #include <QtTest>
+#include "fixtures/Waits.h"
 
 using namespace putgd;
 
@@ -108,7 +109,7 @@ private slots:
                 }
         RedesignTheme::apply(window);
         window.show();
-        QVERIFY(QTest::qWaitForWindowExposed(&window));
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
         for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
             Theme::setScheme(scheme);
             const auto& p = Theme::palette(scheme);
@@ -165,7 +166,7 @@ private slots:
         layout->addWidget(spin);
         RedesignTheme::apply(window);
         window.show();
-        QVERIFY(QTest::qWaitForWindowExposed(&window));
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
         for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
             Theme::setScheme(scheme);
             const auto& p = Theme::palette(scheme);
@@ -200,7 +201,7 @@ private slots:
         new QVBoxLayout(&plain);
         plain.layout()->addWidget(label);
         plain.show();
-        QVERIFY(QTest::qWaitForWindowExposed(&plain));
+        QVERIFY(putgd::test::waitForWindowExposed(&plain));
         QWidget hidden;
         RedesignTheme::apply(hidden);
         hidden.resize(80, 60);
@@ -218,7 +219,7 @@ private slots:
         QCOMPARE(hidden.styleSheet(), rootSheet);
         QVERIFY(rootSheet.contains(Theme::palette(Theme::Scheme::Dark).bg.name()) && rootSheet.contains(Theme::palette(Theme::Scheme::Light).bg.name()));
         hidden.show();
-        QVERIFY(QTest::qWaitForWindowExposed(&hidden));
+        QVERIFY(putgd::test::waitForWindowExposed(&hidden));
         QCOMPARE(hidden.property("themeScheme").toString(), QString("light"));
         QCOMPARE(hidden.grab().toImage().pixelColor(4, 4), Theme::palette(Theme::Scheme::Light).bg);
         // A window opened later is marked with the active scheme.
@@ -234,7 +235,7 @@ private slots:
         layout->addWidget(button);
         RedesignTheme::apply(window);
         window.show();
-        QVERIFY(QTest::qWaitForWindowExposed(&window));
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
         QCOMPARE(window.palette().color(QPalette::Window), Theme::palette(Theme::Scheme::Dark).bg);
         const auto darkGlyph = centre(VisualStyle::icon("history"));
         QVERIFY(Theme::setScheme(Theme::Scheme::Light));

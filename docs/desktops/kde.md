@@ -23,6 +23,11 @@ requesting current screen pixels. The selected layout stays fixed throughout;
 layout changes cancel acquisition. Native compositor evidence must verify that
 neither the current nor a previous selection outline appears in the saved image.
 It never substitutes a screen picker for region selection.
+Wayland pointer positions are fractional. Each drag end becomes the logical pixel
+that contains the hotspot (floor), so a drag from pixel A to pixel B selects B−A,
+as on X11 and in the GNOME extension's selector. Rounding to the nearest edge added
+a pixel whenever a drag ended in the right half of its pixel ([#333](https://github.com/patrick-hudson/put.gd-desktop/issues/333)).
+On fractional-scale outputs the logical edges map to native pixels, rounded outwards.
 The Qt 6.4 compatibility build reports region selection unavailable when the
 per-window LayerShellQt API cannot be used; the Plasma 6.6 native profile needs
 the current distro library. An app-global shell-plugin override is not used.

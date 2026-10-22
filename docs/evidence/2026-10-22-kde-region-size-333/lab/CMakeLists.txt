@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.20)
+project(probe333 CXX)
+find_package(Qt6 REQUIRED COMPONENTS Widgets)
+find_package(LayerShellQt REQUIRED)
+add_executable(probe333 probe.cpp)
+target_link_libraries(probe333 Qt6::Widgets LayerShellQt::Interface)

@@ -8,6 +8,7 @@
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
+#include "fixtures/Waits.h"
 
 class SettingsContract final : public QObject {
     Q_OBJECT
@@ -178,10 +179,10 @@ private slots:
     void asynchronousWritesAndTemplateRemainExplicit() {
         QTemporaryDir dir;putgd::SettingsService service(dir.filePath("config.json"));
         const auto templ=putgd::Settings::developmentTemplate();QVERIFY(!templ["profiles"].toArray().isEmpty());QVERIFY(service.document()["profiles"].toArray().isEmpty());
-        bool saved=false;service.saveAsync(putgd::Settings::defaults(),{},[&](putgd::Result result){QVERIFY(result);saved=true;});QTRY_VERIFY(saved);const auto revision=service.revision();QVERIFY(!revision.isEmpty());
-        bool patched=false;service.patchAsync({{"preferences",QJsonObject{{"notifications",false}}}},revision,[&](putgd::Result result){QVERIFY(result);patched=true;});QTRY_VERIFY(patched);QVERIFY(!service.snapshot().notifications);
-        bool conflict=false;service.patchAsync({},revision,[&](putgd::Result result){QCOMPARE(result.error.code,QString("config_conflict"));conflict=true;});QTRY_VERIFY(conflict);QVERIFY(!service.snapshot().notifications);
-        bool rejected=false;service.saveAsync(templ,service.revision(),[&](putgd::Result result){QCOMPARE(result.error.code,QString("config_invalid"));rejected=true;});QTRY_VERIFY(rejected);QVERIFY(service.document()["profiles"].toArray().isEmpty());
+        bool saved=false;service.saveAsync(putgd::Settings::defaults(),{},[&](putgd::Result result){QVERIFY(result);saved=true;});PUTGD_TRY_VERIFY(saved);const auto revision=service.revision();QVERIFY(!revision.isEmpty());
+        bool patched=false;service.patchAsync({{"preferences",QJsonObject{{"notifications",false}}}},revision,[&](putgd::Result result){QVERIFY(result);patched=true;});PUTGD_TRY_VERIFY(patched);QVERIFY(!service.snapshot().notifications);
+        bool conflict=false;service.patchAsync({},revision,[&](putgd::Result result){QCOMPARE(result.error.code,QString("config_conflict"));conflict=true;});PUTGD_TRY_VERIFY(conflict);QVERIFY(!service.snapshot().notifications);
+        bool rejected=false;service.saveAsync(templ,service.revision(),[&](putgd::Result result){QCOMPARE(result.error.code,QString("config_invalid"));rejected=true;});PUTGD_TRY_VERIFY(rejected);QVERIFY(service.document()["profiles"].toArray().isEmpty());
     }
     void freshStartupDoesNotSelectDevelopmentDestination() {
         QTemporaryDir dir;
@@ -242,7 +243,7 @@ private slots:
             preferences[QStringLiteral("notifications")] = (i % 2 == 1);
             doc[QStringLiteral("preferences")] = preferences;
             replace(path, QJsonDocument(doc).toJson());
-            QTRY_VERIFY_WITH_TIMEOUT(service.revision() != prior, 4000);
+            PUTGD_TRY_VERIFY_WITH_TIMEOUT(service.revision() != prior, 4000);
             QCOMPARE(service.document(), doc);
         }
     }
@@ -317,7 +318,7 @@ private slots:
         QVERIFY(QDir().mkpath(parent));
         const auto doc = putgd::SettingsService::defaults();
         replace(path, QJsonDocument(doc).toJson());
-        QTRY_VERIFY_WITH_TIMEOUT(!service.revision().isEmpty(), 5000);
+        PUTGD_TRY_VERIFY_WITH_TIMEOUT(!service.revision().isEmpty(), 5000);
         QCOMPARE(service.document(), doc);
         QVERIFY(service.metadata()["watching"].toBool());
     }
@@ -329,21 +330,21 @@ private slots:
         putgd::SettingsService service(parent + "/config.json");
         QSignalSpy status(&service, &putgd::SettingsService::statusChanged);
         QVERIFY(!service.metadata()["watching"].toBool());
-        QTest::qWait(4500);
-        QCOMPARE(status.count(), 0);
+        putgd::test::settle(4500);
+        PUTGD_TRY_COMPARE(status.count(), 0);
         QCOMPARE(service.reload().error.code, QStringLiteral("config_missing"));
-        QCOMPARE(status.count(), 0);
+        PUTGD_TRY_COMPARE(status.count(), 0);
         // A real change still reports: the folder and file appear.
         QVERIFY(QDir().mkpath(parent));
         replace(parent + "/config.json", QJsonDocument(putgd::SettingsService::defaults()).toJson());
-        QTRY_VERIFY_WITH_TIMEOUT(status.count() >= 1, 5000);
+        PUTGD_TRY_VERIFY_WITH_TIMEOUT(status.count() >= 1, 5000);
         const auto settled = status.count();
         QVERIFY(service.metadata()["watching"].toBool());
-        QTest::qWait(500);
-        QCOMPARE(status.count(), settled);
+        putgd::test::settle(500);
+        PUTGD_TRY_COMPARE(status.count(), settled);
         // So does a rejected edit, once, and its repair.
         replace(parent + "/config.json", "{");
-        QTRY_COMPARE_WITH_TIMEOUT(service.metadata()["validation"].toObject()["ok"].toBool(), false, 5000);
+        PUTGD_TRY_COMPARE_WITH_TIMEOUT(service.metadata()["validation"].toObject()["ok"].toBool(), false, 5000);
         QCOMPARE(status.count(), settled + 1);
         QCOMPARE(service.reload().error.code, QStringLiteral("config_invalid"));
         QCOMPARE(status.count(), settled + 1);
@@ -354,8 +355,8 @@ private slots:
         QSignalSpy accepted(&service, &putgd::SettingsService::accepted);
         QVERIFY(service.save(putgd::SettingsService::defaults(), QString{}));
         QCOMPARE(accepted.count(), 1);
-        QTest::qWait(250);
-        QCOMPARE(accepted.count(), 1);
+        putgd::test::settle(250);
+        PUTGD_TRY_COMPARE(accepted.count(), 1);
     }
     void malformedTypesAndIncompleteActionsAreRejected() {
         QTemporaryDir dir;
@@ -441,7 +442,7 @@ private slots:
         putgd::SettingsService service(dir.filePath("config.json"));
         bool saved = false;
         service.saveAsync(document, {}, [&](putgd::Result result) { QVERIFY(result); saved = true; });
-        QTRY_VERIFY(saved);
+        PUTGD_TRY_VERIFY(saved);
         QCOMPARE(service.snapshot().actions.value("record").destination, QStringLiteral("local"));
         auto withRecord = [&](const QJsonValue& record) {
             auto candidate = document;

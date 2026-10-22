@@ -8,6 +8,7 @@
 #include <QElapsedTimer>
 #include <QDir>
 #include <QFileInfo>
+#include "fixtures/Waits.h"
 using namespace putgd;using namespace putgd::test;
 // Synthetic profiles in the layout releases before #56 used (putgd/putgd),
 // moved by StorageLocations into <generic>/putgd before anything opens them.
@@ -62,9 +63,9 @@ class StorageLocationsTest:public QObject {
   profile.configRevision=settings.revision();
   Source source;source.payload=textPayload();
   {
-   OperationService operations(legacyData(base),settings,registry,source);if(!QTest::qWaitFor([&]{return operations.ready();}))return {};
+   OperationService operations(legacyData(base),settings,registry,source);if(!putgd::test::waitFor([&]{return operations.ready();}))return {};
    operations.invoke("clipboard",[&](Error e,QJsonObject r){if(!e)profile.failed=r["operationId"].toString();});
-   if(!QTest::qWaitFor([&]{return !profile.failed.isEmpty()&&operations.diagnostics()["activeOperations"].toInt()==0;}))return {};
+   if(!putgd::test::waitFor([&]{return !profile.failed.isEmpty()&&operations.diagnostics()["activeOperations"].toInt()==0;}))return {};
   }
   HistoryStore store(legacyData(base)+"/history.sqlite");auto op=store.operation(profile.failed);if(op.items.size()!=1||op.items[0].uploadStatus!="failed")return {};
   profile.item=op.items[0].artifact.id;
@@ -108,7 +109,7 @@ private slots:
   QCOMPARE(locations.report["config"].toObject(),(QJsonObject{{"path",d.filePath("c/putgd")},{"state","current"}}));QCOMPARE(locations.report["data"].toObject(),(QJsonObject{{"path",d.filePath("d/putgd")},{"state","current"}}));
   QVERIFY(!QFileInfo::exists(d.filePath("c")));QVERIFY(!QFileInfo::exists(d.filePath("d")));
   ProviderRegistry registry;SettingsService settings(locations.configPath());QVERIFY(settings.save(Settings::defaults(),{}));Source source;
-  {OperationService operations(locations.dataRoot,settings,registry,source);QTRY_VERIFY(operations.ready());}
+  {OperationService operations(locations.dataRoot,settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());}
   QVERIFY(QFile::exists(d.filePath("c/putgd/config.json")));QVERIFY(QFile::exists(d.filePath("d/putgd/history.sqlite")));
   QVERIFY(!QFileInfo::exists(d.filePath("c/putgd/putgd")));QVERIFY(!QFileInfo::exists(d.filePath("d/putgd/putgd")));
   QCOMPARE(StorageLocations::prepare(d.filePath("c"),d.filePath("d")).report,locations.report);
@@ -121,7 +122,7 @@ private slots:
   ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);
   SettingsService settings(locations.configPath(),[&](auto id,auto value){return registry.validate(id,value);});
   QCOMPARE(settings.revision(),template_.configRevision);QVERIFY(settings.metadata()["validation"].toObject()["ok"].toBool());QCOMPARE(settings.path(),d.filePath("c/putgd/config.json"));
-  Source source;OperationService operations(locations.dataRoot,settings,registry,source);QTRY_VERIFY(operations.ready());
+  Source source;OperationService operations(locations.dataRoot,settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
   HistoryStore store(operations.databasePath());
   // Absolute paths journaled under the earlier root read under the new one.
   auto failed=store.operation(template_.failed);QCOMPARE(failed.items.size(),1);
@@ -133,8 +134,8 @@ private slots:
   const auto recovered=store.operation(template_.interrupted);QCOMPARE(recovered.state,QString("interrupted"));QCOMPARE(recovered.items.size(),1);
   QCOMPARE(provider->uploads.load(),0);QCOMPARE(source.reads,0);
   for(const auto& id:{template_.failed,template_.interrupted}) {
-   bool retried=false;operations.retry(id,[&](Error e,QJsonObject){QVERIFY2(!e,qPrintable(e.code));retried=true;});QTRY_VERIFY(retried);
-   QTRY_COMPARE(store.operation(id).items[0].uploadStatus,QString("uploaded"));
+   bool retried=false;operations.retry(id,[&](Error e,QJsonObject){QVERIFY2(!e,qPrintable(e.code));retried=true;});PUTGD_TRY_VERIFY(retried);
+   PUTGD_TRY_COMPARE(store.operation(id).items[0].uploadStatus,QString("uploaded"));
   }
   QCOMPARE(provider->uploads.load(),2);QCOMPARE(source.reads,0);
   QVERIFY(!QFileInfo::exists(legacyData(d.path())));
@@ -237,11 +238,11 @@ private slots:
    QProcess resident;resident.setProcessEnvironment(environment);resident.setProcessChannelMode(QProcess::ForwardedErrorChannel);
    struct Stop {QProcess& process;~Stop(){if(process.state()!=QProcess::NotRunning){process.kill();process.waitForFinished(3000);}}} stop{resident};
    resident.start(PUTGD_APP_PATH,{"--background"});QVERIFY(resident.waitForStarted());
-   QJsonObject response;QTRY_VERIFY2_WITH_TIMEOUT((response=request("diagnostics"))["result"].toObject()["journalReady"].toBool(),QJsonDocument(response).toJson(QJsonDocument::Compact).constData(),10000);
+   QJsonObject response;PUTGD_TRY_VERIFY2_WITH_TIMEOUT((response=request("diagnostics"))["result"].toObject()["journalReady"].toBool(),QJsonDocument(response).toJson(QJsonDocument::Compact).constData(),10000);
    const auto diagnostics=response["result"].toObject();
    const auto settings=request("settings.get")["result"].toObject();const auto history=request("history.list")["result"].toObject();
    check(diagnostics,settings,history);
-   QVERIFY(request("ui.quit")["ok"].toBool());QTRY_COMPARE_WITH_TIMEOUT(resident.state(),QProcess::NotRunning,10000);QCOMPARE(resident.exitCode(),0);
+   QVERIFY(request("ui.quit")["ok"].toBool());PUTGD_TRY_COMPARE_WITH_TIMEOUT(resident.state(),QProcess::NotRunning,10000);QCOMPARE(resident.exitCode(),0);
   };
   run([&](const QJsonObject& diagnostics,const QJsonObject& settings,const QJsonObject& history) {
    const auto locations=diagnostics["locations"].toObject();

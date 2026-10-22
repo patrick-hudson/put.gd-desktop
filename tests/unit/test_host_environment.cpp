@@ -5,6 +5,7 @@
 #include <QFile>
 #include <QTemporaryDir>
 #include <QtTest>
+#include "fixtures/Waits.h"
 
 using namespace putgd;
 
@@ -140,7 +141,7 @@ private slots:
   qint64 pid=0;const bool started=host::startDetached(program,{},&pid);
   for(const auto& key:image.keys())if(key!="PATH"&&key!="DISPLAY"&&key!="DBUS_SESSION_BUS_ADDRESS"){if(saved.contains(key))qputenv(key.toUtf8().constData(),saved.value(key).toUtf8());else qunsetenv(key.toUtf8().constData());}
   QVERIFY(started);QVERIFY(pid>0);
-  QTRY_VERIFY_WITH_TIMEOUT(QFile::exists(receipt),5000);
+  PUTGD_TRY_VERIFY_WITH_TIMEOUT(QFile::exists(receipt),5000);
   QFile file(receipt);QVERIFY(file.open(QIODevice::ReadOnly));const auto recorded=QString::fromUtf8(file.readAll());
   QVERIFY2(!recorded.contains(mount_),qPrintable(recorded));
   QVERIFY(recorded.contains("\nLD_LIBRARY_PATH=/opt/host/lib\n")||recorded.startsWith("LD_LIBRARY_PATH=/opt/host/lib\n"));

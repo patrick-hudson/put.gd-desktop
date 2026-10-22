@@ -1,0 +1,31 @@
+date,run,attempt,job,branch,test,function,class,what happened,addressed by
+2026-10-16,38980653949,1,linux (26.04),codex/lift-duotone-icons,gui_tray,queuedWorkAndTemporaryErrorFeedback,flake,icon still idle when sampled,scaled waits (#351)
+2026-10-18,39158564071,1,linux (24.04),claude/putgd-desktop-issue-50,s3_worker_supervision,faultyChildren(cancel_ignores_alive),flake,passed attempt 2,retry (#351)
+2026-10-18,39169471820,1,linux (24.04),claude/ci-ctest-speed-62,native_shortcut_rejection_integration,rejectedGlobalShortcutReportsMissingDestination,flake,tray not yet available,#70
+2026-10-18,39170267410,2,linux (26.04),claude/ci-ctest-speed-62,native_shortcut_rejection_integration,rejectedGlobalShortcutReportsMissingDestination,flake,tray not yet available,#70
+2026-10-19,39193115934,1,linux (26.04),claude/flatpak-spike,gui_tray,uploadProgressAndActiveColorWithoutOpeningViews,flake,copy before the operation was released (operation_busy),release wait (#351)
+2026-10-19,39198423172,1,linux (24.04),claude/recording-savecopy-wait,native_tray_integration,activitySignalsChangeOnlyTheAffectedPropertiesAndSurviveHostRestart,flake,50 ms sleep then assert,settle + scaled wait (#351)
+2026-10-19,39201599215,1,linux (26.04),nightly push,operations_contract,explicitActivityCopyCanOverrideACompletedListMember,flake,operation_busy; passed attempt 2,#91; upload-lock order (#351)
+2026-10-20,39357771157,1,linux (26.04),claude/elegant-jones,recording_service_integration,operationCancelEndsAnActiveRecording,flake,checked once before cancel finished,#184
+2026-10-20,39373943483,1,linux (24.04),nightly push,operations_contract,concurrentBatchIsBoundedAndCopiesInSourceOrder,flake,order race,#187
+2026-10-20,39378821910,1,sanitizers,feat/history-video-previews,operations_contract,videoPostersFollowTheResultWithoutDelayingIt(slow),flake,5 s budget under ASan,scaled waits x5 (#351)
+2026-10-20,39387043919,1,linux (24.04),nightly push,operations_contract,queuedUploadsCopyEveryLink(each_link3),flake,5 s budget,#277; scaled waits (#351)
+2026-10-20,39455029638,1,linux (24.04),docs/history-previews,proton_transport,invalidOrUnboundedProgressIsUnknown(flood),flake,product timeout before protocol limit; passed attempt 2,#236
+2026-10-20,39477714144,1,linux (26.04),nightly push,gui_application,pickedThemeAppliesBeforeTheSaveAndRevertsWhenRefused,flake,250 ms budget (358 ms needed),#272; scaled waits (#351)
+2026-10-20,39481039054,1,sanitizers,claude/r11-quick-knockouts,operations_contract,historyImageSupersededWorkerReleasesNewerCopy,flake,passed attempt 2,retry (#351)
+2026-10-20,39484265979,1,linux (24.04),claude/fix-theme-test-timing,operations_contract,retiredUploadJournalsAreAbortedBestEffort,flake,passed attempt 2,#275
+2026-10-20,39484265979,1,linux (26.04),claude/fix-theme-test-timing,operations_contract,retiredUploadJournalsAreAbortedBestEffort,flake,passed attempt 2,#275
+2026-10-20,39487100731,1,sanitizers,claude/fix-retired-upload-test,operations_contract,queuedUploadsCopyEveryLink(each_link2),flake,timeout under ASan; passed attempt 2,#277; scaled waits (#351)
+2026-10-20,39487181302,1,linux (24.04),nightly push,proton_contract,journalFailureStopsPollingAndCanBeInspected(terminal-write),flake,5 s polling budget,event-driven inspect (#351)
+2026-10-20,39496330154,1,linux (26.04),nightly push,gui_history_view,missingPreviewIsMadeOnSelection,open,black preview pixel (not a wait),#352
+2026-10-20,39505222854,1,linux (26.04),claude/b2-native,b2_integration,racersThatSeeEachOtherBothRemoveTheirCopies,flake,fixture race barrier 10 s,scaled fixture barrier (#351)
+2026-10-21,39635574155,1,linux (26.04),claude/portal-file-dialogs-259,gui_review_window,saveCopyDialogIsDrivenAndSavesTheChosenPath,open,QFileDialog name lost (not a wait),#353
+2026-10-21,39675370481,1,linux (24.04),nightly push,x11_isolated,mappingConflictReleasesRejectedGrabsAndPreservesOtherActions,flake,cross-connection ungrab order,grab retried (#351)
+2026-10-21,39690612122,1,linux (26.04),claude/appimage-updater-293,gui_tray,uploadProgressAndActiveColorWithoutOpeningViews,flake,operation_busy; passed attempt 2 (#346),release wait (#351)
+2026-10-22,39696622234,1,linux (24.04),nightly 39696622234,proton_contract,journalFailureStopsPollingAndCanBeInspected(terminal-write),flake,5 s polling budget,event-driven inspect (#351)
+2026-10-19,39266288858,1,both linux,claude/x11-editor-refusal,x11_native_snapshot,residentChildWindowRejectedWithoutRegistration,real bug,failed on both distros and re-runs,fixed in its PR
+2026-10-20,39358132934,1,both linux,claude/recording-reliability,recording_service_integration + gnome_core_transport,cancellingAShellSelectionLeavesNoSession,real bug,both distros,fixed in its PR
+2026-10-20,39450550505,1,both linux,fix/history-preview-fallbacks,gui_history_view,missingPreviewIsMadeOnSelection,real bug,both distros,13c54336
+2026-10-20,39481545920,1,both linux + sanitizers,claude/proton-keyring-link-expiry,history_contract + proton_contract,populatedLegacyMigrationPreservesReceipts,real bug,both distros,fixed in its PR
+2026-10-20,39505118790,1,both linux,claude/review-window-compact,recording_service_integration,reviewSessionMethodDrivesTheWindow,real bug,both distros,e53a0b47 in #290
+2026-10-21,39680439189,1,both linux,claude/appimage-updater-293,json_ref_lifetime_contract,(source lint),real bug,both distros,fixed in its PR
