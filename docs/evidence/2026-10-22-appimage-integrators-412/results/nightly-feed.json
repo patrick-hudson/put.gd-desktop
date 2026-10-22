@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "channel": "nightly",
+  "generatedAt": "2026-10-22T19:20:48Z",
+  "release": {
+    "tag": "v26.1022.983-nightly",
+    "version": "26.1022.983-nightly",
+    "publishedAt": "2026-10-22T19:19:10Z",
+    "notesUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v26.1022.983-nightly",
+    "assets": {
+      "ubuntu24.04": {
+        "name": "putgd-26.1022.983-nightly-ubuntu24.04-x86_64.deb",
+        "url": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/v26.1022.983-nightly/putgd-26.1022.983-nightly-ubuntu24.04-x86_64.deb",
+        "size": 54161956,
+        "sha256": "420a740ad6f4e39073cf2df4bfc3afb01d8831677dad44906955523e7e5d4944"
+      },
+      "ubuntu26.04": {
+        "name": "putgd-26.1022.983-nightly-ubuntu26.04-x86_64.deb",
+        "url": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/v26.1022.983-nightly/putgd-26.1022.983-nightly-ubuntu26.04-x86_64.deb",
+        "size": 54505412,
+        "sha256": "f57ebbd85b063b90da385f8bec4969cbc3b0367bb1acfa301ed2b59af1b6ee06"
+      },
+      "debian13": {
+        "name": "putgd-26.1022.983-nightly-debian13-x86_64.deb",
+        "url": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/v26.1022.983-nightly/putgd-26.1022.983-nightly-debian13-x86_64.deb",
+        "size": 54047994,
+        "sha256": "74fbf11efb1e3b2d14517be694d7331f43ca6c1620d4087b5c17b01461cbe3d6"
+      },
+      "fedora44": {
+        "name": "putgd-26.1022.983-nightly-fedora44-x86_64.rpm",
+        "url": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/v26.1022.983-nightly/putgd-26.1022.983-nightly-fedora44-x86_64.rpm",
+        "size": 40516532,
+        "sha256": "418e50f009931dd9df73d254b824b13d0bb3dfb0b7ab703b885b6572a9b2d705"
+      },
+      "appimage": {
+        "name": "putgd-26.1022.983-nightly-x86_64.AppImage",
+        "url": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/v26.1022.983-nightly/putgd-26.1022.983-nightly-x86_64.AppImage",
+        "size": 115374584,
+        "sha256": "c348ee5e1b0300f9f282f4d1979fe30d52d7326d7083b57ed1a62f8c61cd0862",
+        "zsync": "https://app.put.gd/dl/nightly/appimage.zsync"
+      }
+    }
+  }
+}

@@ -144,7 +144,7 @@ installs on its own: not on the daily check, not from a notification.
    Start at login, menu entries and Gear Lever's records keep working; the file keeps its old
    name. The old version stays beside it as a hidden `.putgd-update-backup-VERSION.AppImage`
    until the new one has started once; then put.gd removes it, if it is still the file put.gd
-   made. Nothing else in the folder is touched.
+   made ([going back to it](#if-the-new-version-wont-start)). Nothing else in the folder is touched.
 6. **Restart:** **Restart put.gd** (or `update.restart` with `confirm: true`) quits put.gd and
    starts the new version. Settings then says "Up to date" and, in the Install row, "Updated from
    OLD to NEW with a zsync update (or from a full download) on DATE". Without a restart, the
@@ -161,9 +161,57 @@ Aurora (Fedora Atomic) through all three paths, with tampered files refused and 
 memory unchanged within 0.2 MiB:
 [evidence](evidence/2026-10-21-appimage-updater-293/README.md).
 
-**Going back:** if the new version doesn't start, quit put.gd and move the backup over the
-AppImage, for example
-`mv ~/Applications/.putgd-update-backup-26.1022.942-nightly.AppImage ~/Applications/putgd-….AppImage`.
+An AppImage integrated by Gear Lever 4.6.2 or AppImageLauncher 3.0.0-beta-3 updates the same way:
+after 26.1022.968 → 26.1022.983 on Linux Mint 22.3, each tool's menu entry and record still start the
+new version, neither shows a second entry or picks up the hidden backup, and each reports no further
+update ([evidence](evidence/2026-10-22-appimage-integrators-412/README.md)).
+
+### If the new version won't start
+
+**The backup.** Download and install keeps the version you had next to the AppImage, as a
+hidden file named after that version: `.putgd-update-backup-VERSION.AppImage`, for example
+`.putgd-update-backup-26.1022.968-nightly.AppImage`. It is the old file itself, unchanged and
+still executable, so it takes as much room as one AppImage. The leading dot hides it from file
+managers (Ctrl+H shows it) and from start at login, which never starts it. While the update
+waits for its restart, Settings → Updates names the file.
+
+**When it goes.** The first time the new version starts from the AppImage's path (after
+**Restart put.gd**, or at the next login or launch), put.gd deletes the backup, but only if it is
+still the file put.gd made. A backup you renamed, edited or replaced stays where it is. If the
+new version never starts, the backup stays too.
+
+**Going back by hand.** If the new version crashes or won't open:
+
+1. Quit put.gd if any of it is still running: **Quit** in the tray menu, or `putgd-cli ui.quit`.
+2. In a terminal, go to the folder the AppImage is in (`~/Applications`, or `~/AppImages` with
+   Gear Lever) and find the backup:
+
+   ```bash
+   cd ~/Applications
+   ls -a .putgd-update-backup-*.AppImage
+   ```
+
+3. Move it over the AppImage. The AppImage keeps its name through an update, so that name is
+   still the one you started, the one in your menu entry and the one start at login runs:
+
+   ```bash
+   mv .putgd-update-backup-26.1022.968-nightly.AppImage putgd-26.1022.968-nightly-x86_64.AppImage
+   ```
+
+4. Start put.gd as usual. It runs the old version again, from the same path, so menu entries,
+   Gear Lever's and AppImageLauncher's records and start at login need nothing else.
+
+Use `mv`, not `cp`: put.gd recognises its own backup back on the path, forgets the update and
+offers it again in Settings → Updates; nothing installs until you click. After a copy, Settings
+keeps saying the update waits for a restart. Builds from before
+[#413](https://github.com/patrick-hudson/put.gd-desktop/pull/413) (26.1022.968-nightly and older)
+don't recognise the backup either way; for them, also delete
+`~/.local/state/putgd/update-install.json` (`$XDG_STATE_HOME/putgd/` if you set it) after the
+`mv`.
+
+Please [open an issue](https://github.com/patrick-hudson/put.gd-desktop/issues/new) with the
+version that didn't start, and a diagnostics bundle from the old version if you can
+(Settings → Advanced → Diagnostics → **Create diagnostics package…**).
 
 ### Switching channels
 
