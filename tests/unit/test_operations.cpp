@@ -200,7 +200,9 @@ private slots:
   OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());HistoryStore journal(operations.databasePath());
   auto drain=qScopeGuard([&]{provider->deferUploads=false;for(auto complete:provider->completions)complete();provider->completions.clear();});QStringList ids;
   for(int i=0;i<2;++i){QString id;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});PUTGD_TRY_VERIFY(!id.isEmpty());PUTGD_TRY_COMPARE(source.reads,i+1);ids.append(id);}
-  PUTGD_TRY_COMPARE(provider->completions.size(),1);provider->completions.takeFirst()();PUTGD_TRY_COMPARE(journal.operation(ids[0]).state,QString("completed"));QCOMPARE(source.copies,0);
+  // Either operation may take the shared name's object lock first (as in queuedUploadsCopyEveryLink).
+  PUTGD_TRY_COMPARE(provider->completions.size(),1);const auto owner=provider->requests.last().artifact.path.contains(ids[1])?ids[1]:ids[0];QVERIFY(provider->requests.last().artifact.path.contains(owner));
+  provider->completions.takeFirst()();PUTGD_TRY_COMPARE(journal.operation(owner).state,QString("completed"));QCOMPARE(source.copies,0);
   bool replied=false;operations.copyHistoryUrl("https://example.invalid/explicit-history",[&](Error e,QJsonObject){QVERIFY(!e);replied=true;});PUTGD_TRY_VERIFY(replied);
   PUTGD_TRY_COMPARE(provider->completions.size(),1);provider->completions.takeFirst()();PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
   QCOMPARE(source.copies,1);QCOMPARE(source.copied.text,QString("https://example.invalid/explicit-history"));for(const auto& id:ids){QCOMPARE(journal.operation(id).copyStatus,QString("suppressed"));QVERIFY(journal.operation(id).items.first().linkAvailable());}
