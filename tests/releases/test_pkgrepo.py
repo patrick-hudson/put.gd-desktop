@@ -1,4 +1,5 @@
 """The package signer only publishes verified releases, in a safe order, and the feed only afterwards (#293)."""
+import gzip
 import hashlib
 import io
 import json
@@ -14,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'tools/releases'))
 import pkgrepo
 import update_feed
 from appimage_fixture import make_appimage, make_zsync
+from test_appstream_catalog import compose_available, fixture_root
 
 TAG = 'v0.1.1-nightly.600'
 VERSION = '0.1.1-nightly.600'
@@ -398,9 +400,10 @@ class AppImageMirror(unittest.TestCase):
 
 
 class Metadata(unittest.TestCase):
-    def test_stable_suites_are_never_signed_on_the_builder(self):
-        self.assertIn('SignWith: ' + 'A' * 40, pkgrepo.distributions_stanza('nightly', 'debian13', 'A' * 40))
-        self.assertNotIn('SignWith', pkgrepo.distributions_stanza('stable', 'debian13', None))
+    def test_reprepro_never_signs(self):
+        # The signer signs Release itself once it lists the DEP-11 catalog (#314); stable is signed elsewhere.
+        for channel in ('nightly', 'stable'):
+            self.assertNotIn('SignWith', pkgrepo.distributions_stanza(channel, 'debian13'))
 
     def test_clearsigned_body_undoes_dash_escaping(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -434,11 +437,13 @@ class Metadata(unittest.TestCase):
         self.assertIsNone(update_feed.feed('stable', None, {}, '2026-10-21T06:00:00Z')['release'])
 
 
-TOOLS = all(shutil.which(tool) for tool in ('reprepro', 'createrepo_c', 'gpg', 'gpgv', 'minisign', 'dpkg-deb', 'rpmbuild'))
+TOOLS = all(shutil.which(tool) for tool in ('reprepro', 'createrepo_c', 'modifyrepo_c', 'gpg', 'gpgv', 'minisign', 'dpkg-deb',
+                                            'rpmbuild', 'rpm2archive')) and compose_available()
 
 
 @unittest.skipUnless(TOOLS and os.environ.get('PUTGD_SIGNER_TOOLS') == '1',
-                     'needs reprepro, createrepo_c, gpg, minisign, dpkg-deb and rpmbuild (PUTGD_SIGNER_TOOLS=1, signer host)')
+                     'needs reprepro, createrepo_c, gpg, minisign, dpkg-deb, rpmbuild and appstreamcli compose '
+                     '(PUTGD_SIGNER_TOOLS=1, signer host)')
 def make_key(env, name):
     subprocess.run(['gpg', '--batch', '--pinentry-mode', 'loopback', '--passphrase', '', '--quick-generate-key',
                     f'{name} <t@example.invalid>', 'rsa3072', 'sign', '1d'], env=env, check=True, capture_output=True)
@@ -466,6 +471,7 @@ def tool_fixture(root, version, package_version):
     assets.mkdir()
     for label in LABELS[:3]:
         package = root / ('deb-' + label)
+        fixture_root(package)
         (package / 'DEBIAN').mkdir(parents=True)
         (package / 'DEBIAN/control').write_text(
             f'Package: putgd\nVersion: {package_version}\nArchitecture: amd64\nMaintainer: t\nSection: x11\n'
@@ -473,8 +479,11 @@ def tool_fixture(root, version, package_version):
         subprocess.run(['dpkg-deb', '--build', '--root-owner-group', str(package), str(assets / asset_name(label, version))],
                        check=True, capture_output=True)
     spec = root / 'putgd.spec'
+    fixture_root(root / 'rpm-root')
+    files = sorted('/' + path.relative_to(root / 'rpm-root').as_posix() for path in (root / 'rpm-root').rglob('*') if path.is_file())
     spec.write_text(f'Name: putgd\nVersion: {package_version}\nRelease: 1.fc44\nSummary: t\nLicense: MIT\n'
-                    'BuildArch: x86_64\n%description\nt\n%files\n')
+                    f'BuildArch: x86_64\n%description\nt\n%install\ncp -a {root / "rpm-root"}/. %{{buildroot}}/\n'
+                    '%files\n' + ''.join(name + '\n' for name in files))
     subprocess.run(['rpmbuild', '-bb', '--define', f'_topdir {root / "rpm"}', '--define', '_build_id_links none',
                     str(spec)], check=True, capture_output=True)
     shutil.copy2(next((root / 'rpm/RPMS').rglob('*.rpm')), assets / asset_name('fedora44', version))
@@ -509,6 +518,7 @@ class RealTools(unittest.TestCase):
             self.assertIn(f'Version: {PACKAGE_VERSION}', packages)
             self.assertIn(pkgrepo.sha256_file(assets / asset_name('ubuntu24.04')), packages)
             self.assertTrue(pkgrepo.verify_gpg(keys / 'putgd-nightly.gpg', tree / 'apt/debian13/dists/nightly/InRelease'))
+            self.assert_catalog(tree, 'nightly', receipt, keys / 'putgd-nightly.gpg')
             # The repository RPM is the built one plus a nightly signature; the receipt maps the digests.
             signed = next((tree / 'rpm/fedora/44/x86_64/nightly/Packages').glob('putgd-*.rpm'))
             self.assertTrue(pkgrepo.verify_rpm(keys / 'putgd-nightly.asc', signed))
@@ -525,6 +535,34 @@ class RealTools(unittest.TestCase):
             inrelease.write_text(inrelease.read_text().replace('amd64', 'amd65', 1))
             self.assertFalse(pkgrepo.verify_gpg(keys / 'putgd-nightly.gpg', inrelease))
             self.assertEqual({entry['kind'] for entry in receipt['signatures']}, {'openpgp', 'minisign', 'rpm'})
+
+    def assert_catalog(self, tree, channel, receipt, keyring):
+        """#314: each suite's signed Release covers its DEP-11 catalog, repomd.xml lists appstream, and both
+        come from the package the repository carries."""
+        for label in LABELS[:3]:
+            dists = tree / f'apt/{label}/dists/{channel}'
+            body = pkgrepo.clearsigned_body(dists / 'InRelease')
+            self.assertEqual(body, (dists / 'Release').read_text())
+            self.assertTrue(pkgrepo.verify_gpg(keyring, dists / 'Release', dists / 'Release.gpg'))
+            hashes = __import__('sign_stable').release_hashes(body)
+            for name in ('Components-amd64.yml', 'Components-amd64.yml.gz', 'icons-64x64.tar', 'icons-64x64.tar.gz',
+                         'icons-128x128.tar.gz'):
+                self.assertEqual(hashes['main/dep11/' + name], pkgrepo.sha256_file(dists / 'main/dep11' / name))
+            yml = gzip.decompress((dists / 'main/dep11/Components-amd64.yml.gz').read_bytes()).decode()
+            self.assertIn(f'Origin: putgd-{label}-{channel}\n', yml)
+            self.assertIn('Package: putgd\n', yml)
+            deb = next((tree / f'apt/{label}/pool/main/p/putgd').glob('*.deb'))
+            self.assertEqual(receipt['catalog'][label]['packageSha256'], pkgrepo.sha256_file(deb))
+        repo = tree / f'rpm/fedora/44/x86_64/{channel}'
+        locations = __import__('appstream_catalog').repomd_locations(repo / 'repodata/repomd.xml')
+        self.assertTrue({'primary', 'appstream', 'appstream-icons'} <= set(locations))
+        xml = gzip.decompress((repo / locations['appstream']).read_bytes()).decode()
+        self.assertIn('origin="putgd-' + channel + '"', xml)
+        self.assertIn('<pkgname>putgd</pkgname>', xml)
+        self.assertEqual(sorted(p.name for p in (repo / 'repodata').glob('*appstream*')),
+                         sorted(Path(locations[kind]).name for kind in ('appstream', 'appstream-icons')))
+        rpm = next((repo / 'Packages').glob('*.rpm'))
+        self.assertEqual(receipt['catalog']['fedora44']['packageSha256'], pkgrepo.sha256_file(rpm))
 
     def test_appimage_only_lab_release_gets_signed_repositories_and_the_mirror(self):
         """#293 phase 3 lab acceptance publishes AppImages only; the lab repositories stay valid."""
@@ -553,10 +591,6 @@ class RealTools(unittest.TestCase):
             update_feed.check_feed(feed)
             self.assertEqual(sorted(feed['release']['assets']), ['appimage'])
             self.assertEqual([entry['label'] for entry in receipt['inputs']], ['appimage', 'appimage-zsync'])
-
-
-if __name__ == '__main__':
-    unittest.main()
 
 
 @unittest.skipUnless(TOOLS and os.environ.get('PUTGD_SIGNER_TOOLS') == '1', 'signer host tools, as RealTools')
@@ -612,6 +646,14 @@ class StableRoundTrip(unittest.TestCase):
             self.assertFalse(stage.exists())
             published = {key: value[0] for key, value in s3.objects.items()}
             self.assertIn('lab/apt/debian13/dists/stable/InRelease', published)
+            # The catalog the workstation's signature covers, and the RPM catalog from the signed package.
+            inrelease = published['lab/apt/debian13/dists/stable/InRelease'].decode()
+            self.assertIn('main/dep11/Components-amd64.yml.gz', inrelease)
+            components = published['lab/apt/debian13/dists/stable/main/dep11/Components-amd64.yml.gz']
+            self.assertIn(hashlib.sha256(components).hexdigest(), inrelease)
+            self.assertTrue(any(key.endswith('-appstream.xml.gz') for key in published))
+            self.assertEqual(json.loads(published['lab/receipts/v0.1.1.json'])['catalog']['fedora44']['packageSha256'],
+                             hashlib.sha256(published[next(key for key in published if key.endswith('.rpm'))]).hexdigest())
             rpm_key = next(key for key in published if key.endswith('.rpm'))
             rpm = root / 'published.rpm'
             rpm.write_bytes(published[rpm_key])
@@ -624,3 +666,7 @@ class StableRoundTrip(unittest.TestCase):
             mapping = receipt['rpm'][-1]
             self.assertEqual((mapping['signedWith'], mapping['repoSha256'], mapping['githubSha256']),
                              (fingerprints['stable'], hashlib.sha256(published[rpm_key]).hexdigest(), sums[asset_name('fedora44', '0.1.1')]))
+
+
+if __name__ == '__main__':
+    unittest.main()
