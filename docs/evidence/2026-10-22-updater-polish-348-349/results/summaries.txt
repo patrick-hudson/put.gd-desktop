@@ -1,0 +1,18 @@
+f44-before | install: installed zsync | zsync used True | sec 8.0 | image 3e031f5bf35e
+   zsync.output: "zsync2: used 110288896 local, fetched 5937656 | \u001b[2K\r100.00% done (109.89 of 109.89 MiB)... | Validation warning: AppImage not signed | Update successful. New file created: ~/work/put.gd-u348acc/runs/f44-before/apps/.putgd-update-YLpMeq/putgd-0.1.1-nightly.9002-x86_64.AppImage"
+f44-after | install: installed zsync | zsync used True | sec 7.9 | image 3e031f5bf35e
+   zsync.output: "zsync2: used 114880512 local, fetched 1554936 | 100.00% done (109.89 of 109.89 MiB)... | Validation warning: AppImage not signed | Update successful. New file created: ~/work/put.gd-u348acc/runs/f44-after/apps/.putgd-update-WZRRcp/putgd-0.1.1-nightly.9002-x86_64.AppImage"
+   restart 0.1.1-nightly.9002 | updateAvailable False
+m74-mb 0.1.1-nightly.9000 x11 A A cold idle | RSS median 29.27 min 29.03 max 29.27 | Pss 23.38 | libs [] | load [0.04, 0.34, 1.61]
+m74-mb 0.1.1-nightly.9000 x11 B B idle after check | RSS median 29.29 min 29.29 max 29.29 | Pss 23.41 | libs [] | load [0.11, 0.41, 1.39]
+m74-mh 0.1.1-nightly.9001 x11 A A cold idle | RSS median 29.27 min 29.0 max 29.27 | Pss 23.48 | libs [] | load [0.08, 0.24, 1.11]
+m74-mh 0.1.1-nightly.9001 x11 B B idle after check | RSS median 29.36 min 29.36 max 29.36 | Pss 23.56 | libs [] | load [0.06, 0.15, 0.89]
+m74-before | install: installed zsync | zsync used True | sec 9.3 | image 3e031f5bf35e
+   zsync.output: "zsync2: used 110288896 local, fetched 5937656 | \u001b[2K\r100.00% done (109.89 of 109.89 MiB)... | Validation warning: AppImage not signed | Update successful. New file created: ~/work/put.gd-u348acc/runs/m74-before/apps/.putgd-update-SGPdiL/putgd-0.1.1-nightly.9002-x86_64.AppImage"
+m74-after | install: installed zsync | zsync used True | sec 8.9 | image 3e031f5bf35e
+   zsync.output: "zsync2: used 114880512 local, fetched 1554936 | 100.00% done (109.89 of 109.89 MiB)... | Validation warning: AppImage not signed | Update successful. New file created: ~/work/put.gd-u348acc/runs/m74-after/apps/.putgd-update-fDZJPc/putgd-0.1.1-nightly.9002-x86_64.AppImage"
+   restart 0.1.1-nightly.9002 | updateAvailable False
+m74-mb 0.1.1-nightly.9000 x11 A A cold idle | RSS median 29.27 min 29.03 max 29.27 | Pss 23.38 | libs [] | load [0.04, 0.34, 1.61]
+m74-mb 0.1.1-nightly.9000 x11 B B idle after check | RSS median 29.29 min 29.29 max 29.29 | Pss 23.41 | libs [] | load [0.11, 0.41, 1.39]
+m74-mh 0.1.1-nightly.9001 x11 A A cold idle | RSS median 29.27 min 29.0 max 29.27 | Pss 23.48 | libs [] | load [0.08, 0.24, 1.11]
+m74-mh 0.1.1-nightly.9001 x11 B B idle after check | RSS median 29.36 min 29.36 max 29.36 | Pss 23.56 | libs [] | load [0.06, 0.15, 0.89]
