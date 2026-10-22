@@ -30,10 +30,11 @@
 #include <QTabWidget>
 #include <QToolButton>
 #include <QElapsedTimer>
+#include "fixtures/Waits.h"
 using namespace putgd;
 using namespace putgd::test;
 namespace {
-bool waitUntil(const std::function<bool()>& condition){QElapsedTimer timer;timer.start();while(!condition()&&timer.elapsed()<8000)QTest::qWait(20);return condition();}
+bool waitUntil(const std::function<bool()>& condition){return putgd::test::waitFor(condition,8000);}
 QImage iconSpecimen(){
  QImage image(1200,460,QImage::Format_RGB32);image.fill(QColor("#101216"));QPainter p(&image);
  p.setPen(QColor("#e7e9ef"));p.drawText(24,28,"Lift + Duotone · production renderer · synthetic specimen");
@@ -81,7 +82,7 @@ int main(int argc,char** argv){
   Operation cancelled;cancelled.id="synthetic-cancelled";cancelled.action="region";cancelled.created=now.addSecs(-500).toString(Qt::ISODateWithMs);cancelled.state="cancelled";cancelled.cancelled=true;cancelled.settings=settings.snapshot();if(ledger.saveOperation(cancelled))return 2;
  }
  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);JsonReply loadFolders;fixture.setup.setProviderSetup([&](const QString&,const Destination&,const QJsonObject&,JsonReply reply,auto){loadFolders=std::move(reply);});fixture.server.setUiDiagnostics([]{return QJsonObject{{"capabilities",QJsonObject{{"providers",QJsonObject{{"proton-drive",QJsonObject{}}}}}}};});fixture.session.refreshSnapshot();if(!waitUntil([&]{return fixture.session.diagnostics()["capabilities"].toObject()["providers"].toObject().contains("proton-drive");}))return 2;MainWindow window(fixture.session);window.resize(1440,960);window.statusBar()->addPermanentWidget(new QLabel("Synthetic preview"));window.show();auto* list=window.findChild<QListView*>("historyList");if(!list||!waitUntil([&]{return list->model()->rowCount()==8;})){qCritical("Synthetic history did not load");return 2;}list->selectionModel()->select(list->model()->index(0,0),QItemSelectionModel::ClearAndSelect|QItemSelectionModel::Rows);list->setCurrentIndex(list->model()->index(0,0));
- QJsonArray captures;auto save=[&](const QString& name){QTest::qWait(450);app.processEvents();if(name=="01-history-list"||name=="10-history-compact"){auto* selectedPreview=window.findChild<QLabel*>("historyPreview");if(!selectedPreview||!waitUntil([&]{return !selectedPreview->pixmap().isNull();}))return false;}const auto image=window.grab();const auto path=QDir(output).filePath(name+".png");if(!image.save(path))return false;captures.append(QJsonObject{{"file",name+".png"},{"width",image.width()},{"height",image.height()}});return true;};
+ QJsonArray captures;auto save=[&](const QString& name){putgd::test::settle(450);app.processEvents();if(name=="01-history-list"||name=="10-history-compact"){auto* selectedPreview=window.findChild<QLabel*>("historyPreview");if(!selectedPreview||!waitUntil([&]{return !selectedPreview->pixmap().isNull();}))return false;}const auto image=window.grab();const auto path=QDir(output).filePath(name+".png");if(!image.save(path))return false;captures.append(QJsonObject{{"file",name+".png"},{"width",image.width()},{"height",image.height()}});return true;};
  auto* preview=window.findChild<QLabel*>("historyPreview");if(!preview||!waitUntil([&]{return !preview->pixmap().isNull();}))return 2;
  if(!save("01-history-list"))return 2;
  window.findChild<QToolButton*>("historyGridMode")->click();if(!save("02-history-gallery"))return 2;window.findChild<QToolButton*>("historyListMode")->click();window.navigate("destinations");auto* destinations=window.findChild<QListWidget*>("destinationList");if(!destinations)return 2;destinations->setCurrentRow(0);if(!waitUntil([&]{return bool(loadFolders);}))return 2;loadFolders({},{{"accountRootUid","synthetic-root"},{"accountEmail","designer@example.invalid"},{"folders",QJsonArray{QJsonObject{{"uid","synthetic-folder"},{"name","put.gd"}}}}});if(!waitUntil([&]{return window.findChild<QLabel*>("protonAccountStatus")->text().contains("designer@example.invalid");}))return 2;if(!save("03-destinations-proton"))return 2;window.findChild<QPushButton*>("inspectProtonAccount")->click();if(!waitUntil([&]{return window.findChild<QLabel*>("protonFolderStatus")->isVisible();})||!save("16-proton-loading-folders"))return 2;loadFolders({},{{"accountRootUid","synthetic-root"},{"folders",QJsonArray{QJsonObject{{"uid","synthetic-folder"},{"name","put.gd"}}}}});if(!waitUntil([&]{return !window.findChild<QLabel*>("protonFolderStatus")->isVisible();}))return 2;destinations->setCurrentRow(1);if(!save("04-destinations-s3"))return 2;
@@ -103,7 +104,7 @@ int main(int argc,char** argv){
    QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","text"},{"at",QJsonArray{620,530}},{"text","New total"}}}}};
   if(!editor::Commands::apply(doc,edits,created,code,message)){qCritical("%s",qPrintable(message));return 2;}
   EditorWindow editor(doc);editor.resize(1180,820);editor.show();
-  auto grab=[&](const QString& name){QTest::qWait(450);app.processEvents();const auto image=editor.grab();const auto path=QDir(output).filePath(name+".png");if(!image.save(path))return false;captures.append(QJsonObject{{"file",name+".png"},{"width",image.width()},{"height",image.height()}});return true;};
+  auto grab=[&](const QString& name){putgd::test::settle(450);app.processEvents();const auto image=editor.grab();const auto path=QDir(output).filePath(name+".png");if(!image.save(path))return false;captures.append(QJsonObject{{"file",name+".png"},{"width",image.width()},{"height",image.height()}});return true;};
   editor.selectTool(editor::Tool::Redact);if(!grab("20-editor-redact"))return 2;
   editor.selectTool(editor::Tool::Blur);if(!grab("21-editor-blur-warning"))return 2;
   editor.selectTool(editor::Tool::Arrow);if(!grab("22-editor-arrow-style"))return 2;

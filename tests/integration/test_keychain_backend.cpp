@@ -6,6 +6,7 @@
 #include <QDirIterator>
 #include <QFile>
 #include <QJsonDocument>
+#include "fixtures/Waits.h"
 using namespace putgd;
 // A real QtKeychain job speaks its KWallet DBus protocol on an isolated bus.
 class WalletFixture : public QObject, protected QDBusContext {
@@ -63,14 +64,14 @@ private slots:
         bool done = false;
         Error error;
         store.save("profile", reference, {"synthetic-key", "synthetic-secret", {}}, [&](auto result) { error = result; done = true; });
-        QTRY_VERIFY(done);
+        PUTGD_TRY_VERIFY(done);
         QVERIFY(error);
         QVERIFY(!store.cached("profile", reference));
         QVERIFY(!QJsonDocument(error.toJson()).toJson().contains("synthetic-secret"));
         QCOMPARE(wallet.writes, writesBefore);
         done = false;
         store.unlock("profile", reference, [&](auto result) { error = result; done = true; });
-        QTRY_VERIFY(done);
+        PUTGD_TRY_VERIFY(done);
         QVERIFY(error);
         QVERIFY(!store.cached("profile", reference));
         QVERIFY(wallet.opens >= opensBefore + 2);
@@ -88,14 +89,14 @@ private slots:
         bool done = false;
         Error error;
         store.save("profile", reference, {"synthetic-key", "synthetic-secret", "synthetic-token"}, [&](auto result) { error = result; done = true; });
-        QTRY_VERIFY(done);
+        PUTGD_TRY_VERIFY(done);
         QVERIFY2(!error, qPrintable(error.code));
         QVERIFY(store.cached("profile", reference));
         store.forget("profile", reference);
         QVERIFY(!store.cached("profile", reference));
         done = false;
         store.unlock("profile", reference, [&](auto result) { error = result; done = true; });
-        QTRY_VERIFY(done);
+        PUTGD_TRY_VERIFY(done);
         QVERIFY2(!error, qPrintable(error.code));
         QCOMPARE(store.cached("profile", reference)->sessionToken, QString("synthetic-token"));
     }

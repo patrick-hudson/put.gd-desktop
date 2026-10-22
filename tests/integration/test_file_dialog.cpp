@@ -21,6 +21,7 @@
 #include <QTreeView>
 #include <QWidget>
 #include <optional>
+#include "fixtures/Waits.h"
 
 using namespace putgd;
 
@@ -88,11 +89,11 @@ class FileDialogTest final:public QObject {
  std::optional<QString> run(FileDialog& dialog,const FileDialog::Options& options,int timeout=3000){
   std::optional<QString> result;
   if(!dialog.open(options,[&](const QString& chosen){result=chosen;}))return std::nullopt;
-  for(int waited=0;!result&&!dialog.fallbackDialog()&&waited<timeout;waited+=10)QTest::qWait(10);
+  (void)putgd::test::waitFor([&]{return result||dialog.fallbackDialog();},timeout);
   return result;
  }
  static QFileDialog* waitForFallback(FileDialog& dialog){
-  for(int i=0;i<200&&!(dialog.fallbackDialog()&&dialog.fallbackDialog()->isVisible());++i)QTest::qWait(20);
+  (void)putgd::test::waitFor([&]{return dialog.fallbackDialog()&&dialog.fallbackDialog()->isVisible();},4000);
   return dialog.fallbackDialog();
  }
 private slots:
@@ -156,26 +157,26 @@ private slots:
   FileDialog dialog(window_);bool answered=false;QString answer="unset";
   QVERIFY(dialog.open({FileDialog::Mode::Save,"Save a copy",{},"a.png",{}},[&](const QString& p){answered=true;answer=p;}));
   QVERIFY(!dialog.open({FileDialog::Mode::Save,"Again",{},{},{}},[](const QString&){}));
-  QTRY_COMPARE(chooser_->calls,1);
+  PUTGD_TRY_COMPARE(chooser_->calls,1);
   // Modal like QFileDialog::exec, with nothing drawn by Qt.
   QVERIFY(QApplication::activeModalWidget());QVERIFY(!dialog.fallbackDialog());
   const auto state=dialog.state();QVERIFY(state["open"].toBool());QCOMPARE(state["backend"].toString(),QString("portal"));QCOMPARE(state["mode"].toString(),QString("save"));
-  QTest::qWait(100);QVERIFY(!answered);
+  putgd::test::settle(100);PUTGD_TRY_VERIFY(!answered);
   dialog.cancel();
   QVERIFY(answered);QCOMPARE(answer,QString());
-  QTRY_COMPARE(chooser_->request->closed,1);
-  QTRY_VERIFY(!QApplication::activeModalWidget());
+  PUTGD_TRY_COMPARE(chooser_->request->closed,1);
+  PUTGD_TRY_VERIFY(!QApplication::activeModalWidget());
   // A late Response after the cancel changes nothing.
-  chooser_->respond(0,{{"uris",QStringList{"file:///tmp/late.png"}}});QTest::qWait(50);
-  QCOMPARE(dialog.state()["last"].toObject()["status"].toString(),QString("cancelled"));
+  chooser_->respond(0,{{"uris",QStringList{"file:///tmp/late.png"}}});putgd::test::settle(50);
+  PUTGD_TRY_COMPARE(dialog.state()["last"].toObject()["status"].toString(),QString("cancelled"));
  }
  void destroyingTheOwnerClosesTheRequest(){
   chooser_->answer=FakeChooser::Answer::Wait;
   auto* dialog=new FileDialog(window_);bool answered=false;
   QVERIFY(dialog->open({FileDialog::Mode::Open,"Edit",{},{},{}},[&](const QString&){answered=true;}));
-  QTRY_COMPARE(chooser_->calls,1);
+  PUTGD_TRY_COMPARE(chooser_->calls,1);
   delete dialog;
-  QTRY_COMPARE(chooser_->request->closed,1);QVERIFY(!answered);
+  PUTGD_TRY_COMPARE(chooser_->request->closed,1);QVERIFY(!answered);
  }
  void portalFailureFallsBack(){
   chooser_->answer=FakeChooser::Answer::Fail;
@@ -201,7 +202,7 @@ private slots:
   QVERIFY(dialog.open({FileDialog::Mode::Open,"Edit",{},{},{}},[](const QString&){}));
   QVERIFY(waitForFallback(dialog));
   QCOMPARE(dialog.state()["fallbackReason"].toString(),QString("org.freedesktop.DBus.Error.NoReply"));
-  QTRY_COMPARE(chooser_->request->closed,1);
+  PUTGD_TRY_COMPARE(chooser_->request->closed,1);
  }
  void oldPortalFallsBackForFolders(){
   chooser_->versionValue=2;
@@ -250,7 +251,7 @@ private slots:
   QAbstractItemView* list=fallback->findChild<QListView*>("listView");QVERIFY(list);
   if(!list->isVisible())list=fallback->findChild<QTreeView*>("treeView");
   QVERIFY(list&&list->isVisible());
-  QTRY_VERIFY(list->model()&&list->model()->rowCount(list->rootIndex())>=2);
+  PUTGD_TRY_VERIFY(list->model()&&list->model()->rowCount(list->rootIndex())>=2);
   // The list draws on the scheme's surface, not Fusion's white.
   const auto image=fallback->grab().toImage();
   const auto inList=list->viewport()->mapTo(fallback,QPoint(list->viewport()->width()-6,list->viewport()->height()-6));

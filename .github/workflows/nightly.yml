@@ -47,6 +47,8 @@ jobs:
       # ci.yml's prune-caches job declares these; it runs only on nightly pushes.
       actions: write
       pull-requests: read
+      # ci.yml's test jobs record flaky tests in tracker issues.
+      issues: write
     uses: ./.github/workflows/ci.yml
     with:
       release_tag: ${{ needs.plan.outputs.tag }}

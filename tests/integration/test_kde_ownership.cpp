@@ -27,6 +27,7 @@
 #include <list>
 #include <memory>
 #include <unistd.h>
+#include "fixtures/Waits.h"
 using namespace putgd;
 namespace {
 const QString frozenId="{00000000-0000-0000-0000-000000000001}";
@@ -241,99 +242,99 @@ private slots:
  void dataControlFallsBackToWlrAndPrefersExt(){
   QFETCH(bool,ext);QFETCH(bool,wlr);QFETCH(QString,protocol);QFETCH(int,version);
   NativeOutputFixture compositor(3,true,4,true);QVERIFY2(compositor.ready(),qPrintable(compositor.error()));compositor.dataControl(ext,wlr);
-  DataControlClipboard clipboard;QTRY_VERIFY(clipboard.available());
+  DataControlClipboard clipboard;PUTGD_TRY_VERIFY(clipboard.available());
   QCOMPARE(clipboard.status()["import"].toString(),protocol);QCOMPARE(clipboard.status()["protocol_version"].toInt(),version);
   bool done=false;Error result{"pending","",{}};clipboard.copy({"text","synthetic result",{},{}},[&](Error error){result=std::move(error);done=true;});
-  QTRY_VERIFY(done);QVERIFY2(!result,qPrintable(result.code+": "+result.message));
+  PUTGD_TRY_VERIFY(done);QVERIFY2(!result,qPrintable(result.code+": "+result.message));
   QVERIFY(compositor.selectionMimes().contains("text/plain;charset=utf-8"));QCOMPARE(clipboard.lastCopyRevision(),std::optional<quint64>(clipboard.revision()));
  }
  void noDataControlReportsBothProtocols(){
   NativeOutputFixture compositor(3,true,4,true);QVERIFY(compositor.ready());DataControlClipboard clipboard;
-  QTRY_VERIFY(clipboard.status()["error"].toString().contains("wlr-data-control"));QVERIFY(!clipboard.available());QCOMPARE(clipboard.status()["import"].toString(),QString("none"));
+  PUTGD_TRY_VERIFY(clipboard.status()["error"].toString().contains("wlr-data-control"));QVERIFY(!clipboard.available());QCOMPARE(clipboard.status()["import"].toString(),QString("none"));
   bool done=false;Error result;clipboard.copy({"text","synthetic result",{},{}},[&](Error error){result=std::move(error);done=true;});QVERIFY(done);QCOMPARE(result.code,QString("clipboard_unavailable"));
  }
  void keyboardMapDiscoveryReplacementAndRemoval(){
   NativeOutputFixture compositor(3,true,4,true);QVERIFY2(compositor.ready(),qPrintable(compositor.error()));DataControlClipboard clipboard;QSignalSpy changed(&clipboard,&DataControlClipboard::keyboardChanged);
-  QTRY_VERIFY(clipboard.keyboardMap());QCOMPARE(xkb_keymap_num_layouts(clipboard.keyboardMap()),xkb_layout_index_t(1));
+  PUTGD_TRY_VERIFY(clipboard.keyboardMap());QCOMPARE(xkb_keymap_num_layouts(clipboard.keyboardMap()),xkb_layout_index_t(1));
   // Holding a reference must remain safe across map replacement.
-  auto* previous=xkb_keymap_ref(clipboard.keyboardMap());compositor.keyboardLayout("us,fr");QTRY_COMPARE(xkb_keymap_num_layouts(clipboard.keyboardMap()),xkb_layout_index_t(2));QCOMPARE(xkb_keymap_num_layouts(previous),xkb_layout_index_t(1));xkb_keymap_unref(previous);
-  const auto count=changed.count();compositor.malformedKeyboardMap();QTRY_VERIFY(!clipboard.keyboardMap());QVERIFY(changed.count()>count);
-  compositor.keyboardLayout("us");QTRY_VERIFY(clipboard.keyboardMap());compositor.removeKeyboardSeat();QTRY_VERIFY(!clipboard.keyboardMap());
+  auto* previous=xkb_keymap_ref(clipboard.keyboardMap());compositor.keyboardLayout("us,fr");PUTGD_TRY_COMPARE(xkb_keymap_num_layouts(clipboard.keyboardMap()),xkb_layout_index_t(2));QCOMPARE(xkb_keymap_num_layouts(previous),xkb_layout_index_t(1));xkb_keymap_unref(previous);
+  const auto count=changed.count();compositor.malformedKeyboardMap();PUTGD_TRY_VERIFY(!clipboard.keyboardMap());QVERIFY(changed.count()>count);
+  compositor.keyboardLayout("us");PUTGD_TRY_VERIFY(clipboard.keyboardMap());compositor.removeKeyboardSeat();PUTGD_TRY_VERIFY(!clipboard.keyboardMap());
  }
  void keyboardCapabilityCyclesReleaseLiveServerResources(){
-  NativeOutputFixture compositor(3,true,4,true);QVERIFY(compositor.ready());DataControlClipboard clipboard;QTRY_VERIFY(clipboard.keyboardMap());QTRY_COMPARE(compositor.keyboardCount(),1);
-  for(int cycle=0;cycle<3;++cycle){compositor.keyboardCapability(false);QTRY_VERIFY(!clipboard.keyboardMap());QTRY_COMPARE(compositor.keyboardCount(),0);compositor.keyboardCapability(true);QTRY_VERIFY(clipboard.keyboardMap());QTRY_COMPARE(compositor.keyboardCount(),1);}
+  NativeOutputFixture compositor(3,true,4,true);QVERIFY(compositor.ready());DataControlClipboard clipboard;PUTGD_TRY_VERIFY(clipboard.keyboardMap());PUTGD_TRY_COMPARE(compositor.keyboardCount(),1);
+  for(int cycle=0;cycle<3;++cycle){compositor.keyboardCapability(false);PUTGD_TRY_VERIFY(!clipboard.keyboardMap());PUTGD_TRY_COMPARE(compositor.keyboardCount(),0);compositor.keyboardCapability(true);PUTGD_TRY_VERIFY(clipboard.keyboardMap());PUTGD_TRY_COMPARE(compositor.keyboardCount(),1);}
  }
- void legacySeatStillDiscoversKeyboardMap(){NativeOutputFixture compositor(3,true,4,true,2);QVERIFY(compositor.ready());DataControlClipboard clipboard;QTRY_VERIFY(clipboard.keyboardMap());QCOMPARE(xkb_keymap_num_layouts(clipboard.keyboardMap()),xkb_layout_index_t(1));}
+ void legacySeatStillDiscoversKeyboardMap(){NativeOutputFixture compositor(3,true,4,true,2);QVERIFY(compositor.ready());DataControlClipboard clipboard;PUTGD_TRY_VERIFY(clipboard.keyboardMap());QCOMPARE(xkb_keymap_num_layouts(clipboard.keyboardMap()),xkb_layout_index_t(1));}
  void keyboardMapConnectionLossAndReconnect(){
-  NativeOutputFixture compositor(3,true,4,true);QVERIFY2(compositor.ready(),qPrintable(compositor.error()));DataControlClipboard clipboard;QTRY_VERIFY(clipboard.keyboardMap());
-  compositor.disconnectClients();QTRY_VERIFY(!clipboard.keyboardMap());QTRY_VERIFY(clipboard.keyboardMap());
+  NativeOutputFixture compositor(3,true,4,true);QVERIFY2(compositor.ready(),qPrintable(compositor.error()));DataControlClipboard clipboard;PUTGD_TRY_VERIFY(clipboard.keyboardMap());
+  compositor.disconnectClients();PUTGD_TRY_VERIFY(!clipboard.keyboardMap());PUTGD_TRY_VERIFY(clipboard.keyboardMap());
  }
  void outputConnectionLossAndReconnectNotifyStatus(){
   NativeOutputFixture compositor;QVERIFY2(compositor.ready(),qPrintable(compositor.error()));KdeOutputs outputs;
-  QTRY_VERIFY(outputs.status()["available"].toBool());QSignalSpy changed(&outputs,&KdeOutputs::changed);
+  PUTGD_TRY_VERIFY(outputs.status()["available"].toBool());QSignalSpy changed(&outputs,&KdeOutputs::changed);
   compositor.socketAvailable(false);compositor.disconnectClients();
-  QTRY_COMPARE(outputs.status()["error"].toString(),QString("Native output connection is unavailable"));
+  PUTGD_TRY_COMPARE(outputs.status()["error"].toString(),QString("Native output connection is unavailable"));
   const auto lostRevision=outputs.revision();const auto lostSignals=changed.count();QVERIFY(lostSignals>0);
-  QTRY_COMPARE(outputs.status()["error"].toString(),QString("Cannot connect to the Wayland compositor for output discovery"));
+  PUTGD_TRY_COMPARE(outputs.status()["error"].toString(),QString("Cannot connect to the Wayland compositor for output discovery"));
   QVERIFY(outputs.revision()>lostRevision);QVERIFY(changed.count()>lostSignals);QVERIFY(outputs.layout().isEmpty());
   const auto failedRevision=outputs.revision();const auto failedSignals=changed.count();
-  QTest::qWait(1100);QCOMPARE(outputs.revision(),failedRevision);QCOMPARE(changed.count(),failedSignals);
-  compositor.socketAvailable(true);QTRY_VERIFY(outputs.status()["available"].toBool());QVERIFY(outputs.revision()>failedRevision);
+  putgd::test::settle(1100);PUTGD_TRY_COMPARE(outputs.revision(),failedRevision);PUTGD_TRY_COMPARE(changed.count(),failedSignals);
+  compositor.socketAvailable(true);PUTGD_TRY_VERIFY(outputs.status()["available"].toBool());QVERIFY(outputs.revision()>failedRevision);
   QCOMPARE(outputs.layout().front().identity,QString("DP-1"));
  }
  void lowVersionOutputReportsProtocolNotOverflow(){
   NativeOutputFixture compositor(3,true,1);QVERIFY2(compositor.ready(),qPrintable(compositor.error()));KdeOutputs outputs;
-  QTRY_COMPARE(outputs.status()["error"].toString(),QString("Compositor output protocol lacks wl_output v2 batch completion"));
+  PUTGD_TRY_COMPARE(outputs.status()["error"].toString(),QString("Compositor output protocol lacks wl_output v2 batch completion"));
   QVERIFY(outputs.layout().isEmpty());const auto revision=outputs.revision();QSignalSpy changed(&outputs,&KdeOutputs::changed);
-  compositor.remove();QTRY_COMPARE(outputs.status()["error"].toString(),QString("Waiting for compositor outputs"));
+  compositor.remove();PUTGD_TRY_COMPARE(outputs.status()["error"].toString(),QString("Waiting for compositor outputs"));
   QVERIFY(outputs.revision()>revision);QVERIFY(changed.count()>0);
  }
  void nativeV3WaitsForWlDone(){
   NativeOutputFixture compositor;QVERIFY2(compositor.ready(),qPrintable(compositor.error()));KdeOutputs outputs;
-  QTRY_VERIFY(outputs.status()["available"].toBool());const auto revision=outputs.revision();
-  compositor.logical(QRect(-2560,0,2560,1440),false);QTRY_VERIFY(!outputs.status()["available"].toBool());QVERIFY(outputs.revision()>revision);
-  compositor.deprecatedDone();QTest::qWait(20);QVERIFY(!outputs.status()["available"].toBool());
-  compositor.nativeDone();QTRY_VERIFY(outputs.status()["available"].toBool());
+  PUTGD_TRY_VERIFY(outputs.status()["available"].toBool());const auto revision=outputs.revision();
+  compositor.logical(QRect(-2560,0,2560,1440),false);PUTGD_TRY_VERIFY(!outputs.status()["available"].toBool());QVERIFY(outputs.revision()>revision);
+  compositor.deprecatedDone();putgd::test::settle(20);PUTGD_TRY_VERIFY(!outputs.status()["available"].toBool());
+  compositor.nativeDone();PUTGD_TRY_VERIFY(outputs.status()["available"].toBool());
   const auto frames=outputs.layout();QCOMPARE(frames.size(),1);QCOMPARE(frames[0].logicalRect,QRectF(-2560,0,2560,1440));QCOMPARE(frames[0].density,1.5);
  }
  void nativeV2CannotCompleteDuringPendingNativeBatch(){
   NativeOutputFixture compositor(2);QVERIFY2(compositor.ready(),qPrintable(compositor.error()));KdeOutputs outputs;
-  QTRY_VERIFY(outputs.status()["available"].toBool());
+  PUTGD_TRY_VERIFY(outputs.status()["available"].toBool());
   compositor.nativeMode(QSize(5120,2880),2);compositor.logical(QRect(0,0,3200,1800),true);
-  QTRY_VERIFY(!outputs.status()["available"].toBool());compositor.nativeDone();QTRY_VERIFY(outputs.status()["available"].toBool());
+  PUTGD_TRY_VERIFY(!outputs.status()["available"].toBool());compositor.nativeDone();PUTGD_TRY_VERIFY(outputs.status()["available"].toBool());
   QCOMPARE(outputs.layout().front().logicalRect,QRectF(0,0,3200,1800));QCOMPARE(outputs.layout().front().density,1.6);
  }
  void nativeV2CannotReuseOldLogicalCompletion(){
   NativeOutputFixture compositor(2);QVERIFY2(compositor.ready(),qPrintable(compositor.error()));KdeOutputs outputs;
-  QTRY_VERIFY(outputs.status()["available"].toBool());const auto revision=outputs.revision();
+  PUTGD_TRY_VERIFY(outputs.status()["available"].toBool());const auto revision=outputs.revision();
   compositor.nativeMode(QSize(5120,2880),2);compositor.nativeDone();
-  QTRY_VERIFY(!outputs.status()["available"].toBool());QVERIFY(outputs.layout().isEmpty());QVERIFY(outputs.revision()>revision);
-  compositor.logical(QRect(0,0,3200,1800),true);QTRY_VERIFY(outputs.status()["available"].toBool());
+  PUTGD_TRY_VERIFY(!outputs.status()["available"].toBool());QVERIFY(outputs.layout().isEmpty());QVERIFY(outputs.revision()>revision);
+  compositor.logical(QRect(0,0,3200,1800),true);PUTGD_TRY_VERIFY(outputs.status()["available"].toBool());
   QCOMPARE(outputs.layout().front().logicalRect,QRectF(0,0,3200,1800));QCOMPARE(outputs.layout().front().density,1.6);
  }
  void nativeV2UnchangedBatchesPreserveSnapshot(){
   NativeOutputFixture compositor(2);QVERIFY2(compositor.ready(),qPrintable(compositor.error()));KdeOutputs outputs;
-  QTRY_VERIFY(outputs.status()["available"].toBool());const auto revision=outputs.revision();
+  PUTGD_TRY_VERIFY(outputs.status()["available"].toBool());const auto revision=outputs.revision();
   compositor.nativeMode(QSize(3840,2160),2);compositor.nativeDone();compositor.logical(QRect(0,0,2560,1440),true);
-  QTest::qWait(20);QVERIFY(outputs.status()["available"].toBool());QCOMPARE(outputs.revision(),revision);
-  QCOMPARE(outputs.layout().front().logicalRect,QRectF(0,0,2560,1440));QCOMPARE(outputs.layout().front().density,1.5);
+  putgd::test::settle(20);PUTGD_TRY_VERIFY(outputs.status()["available"].toBool());PUTGD_TRY_COMPARE(outputs.revision(),revision);
+  PUTGD_TRY_COMPARE(outputs.layout().front().logicalRect,QRectF(0,0,2560,1440));PUTGD_TRY_COMPARE(outputs.layout().front().density,1.5);
  }
  void nativeRemovalAndAwayBackInvalidateSnapshots(){
   NativeOutputFixture compositor;QVERIFY2(compositor.ready(),qPrintable(compositor.error()));KdeOutputs outputs;
-  QTRY_VERIFY(outputs.status()["available"].toBool());const auto before=outputs.layout();auto revision=outputs.revision();
-  compositor.transformAwayAndBack();QTRY_VERIFY(outputs.revision()>revision);QTRY_VERIFY(outputs.status()["available"].toBool());
+  PUTGD_TRY_VERIFY(outputs.status()["available"].toBool());const auto before=outputs.layout();auto revision=outputs.revision();
+  compositor.transformAwayAndBack();PUTGD_TRY_VERIFY(outputs.revision()>revision);PUTGD_TRY_VERIFY(outputs.status()["available"].toBool());
   QCOMPARE(outputs.layout().front().logicalRect,before.front().logicalRect);QCOMPARE(outputs.layout().front().rotation,before.front().rotation);
-  revision=outputs.revision();compositor.remove();QTRY_VERIFY(outputs.layout().isEmpty());QVERIFY(outputs.revision()>revision);QVERIFY(!outputs.status()["available"].toBool());
+  revision=outputs.revision();compositor.remove();PUTGD_TRY_VERIFY(outputs.layout().isEmpty());QVERIFY(outputs.revision()>revision);QVERIFY(!outputs.status()["available"].toBool());
  }
  void nativeOutputRequiresCurrentMode(){
   NativeOutputFixture compositor(3,false);QVERIFY2(compositor.ready(),qPrintable(compositor.error()));KdeOutputs outputs;
-  QTRY_VERIFY(compositor.discovered());QVERIFY(!outputs.status()["available"].toBool());
-  compositor.nativeMode(QSize(3840,2160),2);compositor.nativeDone();QTRY_VERIFY(outputs.status()["available"].toBool());
+  PUTGD_TRY_VERIFY(compositor.discovered());QVERIFY(!outputs.status()["available"].toBool());
+  compositor.nativeMode(QSize(3840,2160),2);compositor.nativeDone();PUTGD_TRY_VERIFY(outputs.status()["available"].toBool());
  }
  void coreCapabilitiesRemainValidWhileOutputsUnavailable(){
   NativeOutputFixture compositor(3,false);QVERIFY2(compositor.ready(),qPrintable(compositor.error()));KdeSourceAdapter source;
-  QTRY_VERIFY(compositor.discovered());QTRY_VERIFY(source.capabilities()["capture"].toObject()["window"].toObject()["available"].toBool());
+  PUTGD_TRY_VERIFY(compositor.discovered());PUTGD_TRY_VERIFY(source.capabilities()["capture"].toObject()["window"].toObject()["available"].toBool());
   for(int i=0;i<100;++i){
    const QJsonObject capabilities=source.capabilities();const auto capture=capabilities["capture"].toObject();
    QCOMPARE(capabilities["resident"].toString(),QString("qt-core"));QVERIFY(!capabilities["outputs"].toObject()["available"].toBool());
@@ -344,7 +345,7 @@ private slots:
    QCOMPARE(helper,capabilities["captureHelper"].toObject());
   }
   compositor.nativeMode(QSize(3840,2160),2);compositor.nativeDone();
-  QTRY_VERIFY(source.capabilities()["capture"].toObject()["desktop"].toObject()["available"].toBool());
+  PUTGD_TRY_VERIFY(source.capabilities()["capture"].toObject()["desktop"].toObject()["available"].toBool());
  }
  void coreApplicationOwnsNoGraphicalConnection(){QVERIFY(!qobject_cast<QGuiApplication*>(QCoreApplication::instance()));}
  void nativeLogicalGeometryPreservesFractionalScaleAndRotation(){
@@ -435,68 +436,68 @@ private slots:
   QCOMPARE(kdeClipboardImportFormats({"application/x-unknown","text/plain"},discover),QStringList({"application/x-unknown","text/plain"}));QCOMPARE(discoveries,1);
  }
  void recordingWaitsForNativeInactiveAndRestoresLatestBindings(){
-  KdeShortcuts source;QVERIFY(keyboardMap(source));source.bind({{"window","Ctrl+1"}});QTRY_VERIFY(source.status()["window"].toObject()["bound"].toBool());QVERIFY(shortcuts_.active.contains("window"));
-  shortcuts_.inactiveDelay=50;bool done=false;Error error;source.setRecording(true,[&](Error value){error=value;done=true;});QVERIFY(!done);QVERIFY(shortcuts_.active.contains("window"));QTRY_VERIFY(done);QVERIFY(!error);QVERIFY(!shortcuts_.active.contains("window"));
-  source.bind({{"window","Ctrl+2"}});QVERIFY(keyboardMap(source,"de"));QTest::qWait(50);QVERIFY(!shortcuts_.active.contains("window"));QCOMPARE(source.status()["window"].toObject()["requested"].toString(),QString("Ctrl+2"));
-  shortcuts_.inactiveDelay=0;done=false;source.setRecording(false,[&](Error value){error=value;done=true;});QTRY_VERIFY(done);QVERIFY(!error);QVERIFY(shortcuts_.active.contains("window"));
+  KdeShortcuts source;QVERIFY(keyboardMap(source));source.bind({{"window","Ctrl+1"}});PUTGD_TRY_VERIFY(source.status()["window"].toObject()["bound"].toBool());QVERIFY(shortcuts_.active.contains("window"));
+  shortcuts_.inactiveDelay=50;bool done=false;Error error;source.setRecording(true,[&](Error value){error=value;done=true;});QVERIFY(!done);QVERIFY(shortcuts_.active.contains("window"));PUTGD_TRY_VERIFY(done);QVERIFY(!error);QVERIFY(!shortcuts_.active.contains("window"));
+  source.bind({{"window","Ctrl+2"}});QVERIFY(keyboardMap(source,"de"));putgd::test::settle(50);PUTGD_TRY_VERIFY(!shortcuts_.active.contains("window"));PUTGD_TRY_COMPARE(source.status()["window"].toObject()["requested"].toString(),QString("Ctrl+2"));
+  shortcuts_.inactiveDelay=0;done=false;source.setRecording(false,[&](Error value){error=value;done=true;});PUTGD_TRY_VERIFY(done);QVERIFY(!error);QVERIFY(shortcuts_.active.contains("window"));
   QCOMPARE(shortcuts_.bindings["window"].first().keys.first(),QKeySequence("Ctrl+2")[0].toCombined());
  }
  void recordingRejectsNativeReleaseFailure(){
-  KdeShortcuts source;QVERIFY(keyboardMap(source));source.bind({{"window","Ctrl+1"}});QTRY_VERIFY(source.status()["window"].toObject()["bound"].toBool());
-  shortcuts_.failInactive=true;bool done=false;Error error;source.setRecording(true,[&](Error value){error=value;done=true;});QTRY_VERIFY(done);QCOMPARE(error.code,QString("shortcut_recording_failed"));
-  shortcuts_.failInactive=false;done=false;source.setRecording(false,[&](Error value){error=value;done=true;});QTRY_VERIFY(done);QVERIFY(!error);
+  KdeShortcuts source;QVERIFY(keyboardMap(source));source.bind({{"window","Ctrl+1"}});PUTGD_TRY_VERIFY(source.status()["window"].toObject()["bound"].toBool());
+  shortcuts_.failInactive=true;bool done=false;Error error;source.setRecording(true,[&](Error value){error=value;done=true;});PUTGD_TRY_VERIFY(done);QCOMPARE(error.code,QString("shortcut_recording_failed"));
+  shortcuts_.failInactive=false;done=false;source.setRecording(false,[&](Error value){error=value;done=true;});PUTGD_TRY_VERIFY(done);QVERIFY(!error);
  }
  void recordingSurvivesShortcutServiceRestart(){
-  KdeShortcuts source;QVERIFY(keyboardMap(source));source.bind({{"window","Ctrl+1"}});QTRY_VERIFY(source.available());QTRY_VERIFY(source.status()["window"].toObject()["bound"].toBool());
-  bool done=false;source.setRecording(true,[&](Error error){QVERIFY(!error);done=true;});QTRY_VERIFY(done);
-  auto bus=QDBusConnection("putgd-kde-ownership-fixture");QVERIFY(bus.unregisterService("org.kde.kglobalaccel"));QTRY_VERIFY(!source.available());
+  KdeShortcuts source;QVERIFY(keyboardMap(source));source.bind({{"window","Ctrl+1"}});PUTGD_TRY_VERIFY(source.available());PUTGD_TRY_VERIFY(source.status()["window"].toObject()["bound"].toBool());
+  bool done=false;source.setRecording(true,[&](Error error){QVERIFY(!error);done=true;});PUTGD_TRY_VERIFY(done);
+  auto bus=QDBusConnection("putgd-kde-ownership-fixture");QVERIFY(bus.unregisterService("org.kde.kglobalaccel"));PUTGD_TRY_VERIFY(!source.available());
   // A replacement daemon starts without the previous daemon's registrations.
   shortcuts_.active.clear();shortcuts_.bindings.clear();source.bind({{"window","Ctrl+2"}});const auto inactive=shortcuts_.inactiveCalls;
-  QVERIFY(bus.registerService("org.kde.kglobalaccel"));QTRY_VERIFY(shortcuts_.inactiveCalls>inactive);QVERIFY(shortcuts_.active.isEmpty());QCOMPARE(source.status()["window"].toObject()["state"].toString(),QString("recording"));
-  done=false;source.setRecording(false,[&](Error error){QVERIFY(!error);done=true;});QTRY_VERIFY(done);QVERIFY(shortcuts_.active.contains("window"));QCOMPARE(shortcuts_.bindings["window"].first().keys.first(),QKeySequence("Ctrl+2")[0].toCombined());
+  QVERIFY(bus.registerService("org.kde.kglobalaccel"));PUTGD_TRY_VERIFY(shortcuts_.inactiveCalls>inactive);QVERIFY(shortcuts_.active.isEmpty());QCOMPARE(source.status()["window"].toObject()["state"].toString(),QString("recording"));
+  done=false;source.setRecording(false,[&](Error error){QVERIFY(!error);done=true;});PUTGD_TRY_VERIFY(done);QVERIFY(shortcuts_.active.contains("window"));QCOMPARE(shortcuts_.bindings["window"].first().keys.first(),QKeySequence("Ctrl+2")[0].toCombined());
  }
  void recordingRejectsStaleServiceReply_data(){
   QTest::addColumn<bool>("restoring");QTest::newRow("pending-pause")<<false;QTest::newRow("pending-restore")<<true;
  }
  void recordingRejectsStaleServiceReply(){
-  QFETCH(bool,restoring);KdeShortcuts source;QVERIFY(keyboardMap(source));source.bind({{"window","Ctrl+1"}});QTRY_VERIFY(source.status()["window"].toObject()["bound"].toBool());
+  QFETCH(bool,restoring);KdeShortcuts source;QVERIFY(keyboardMap(source));source.bind({{"window","Ctrl+1"}});PUTGD_TRY_VERIFY(source.status()["window"].toObject()["bound"].toBool());
   QSignalSpy activated(&source,&KdeShortcuts::activated);
-  if(restoring){bool paused=false;source.setRecording(true,[&](Error error){QVERIFY(!error);paused=true;});QTRY_VERIFY(paused);shortcuts_.setterDelay=300;}
+  if(restoring){bool paused=false;source.setRecording(true,[&](Error error){QVERIFY(!error);paused=true;});PUTGD_TRY_VERIFY(paused);shortcuts_.setterDelay=300;}
   else shortcuts_.inactiveDelay=300;
   const auto calls=restoring?shortcuts_.setterCalls:shortcuts_.inactiveCalls;int completed=0;Error result;
   source.setRecording(!restoring,[&](Error error){result=error;++completed;});
-  QTRY_VERIFY((restoring?shortcuts_.setterCalls:shortcuts_.inactiveCalls)>calls);QCOMPARE(completed,0);
-  auto bus=QDBusConnection("putgd-kde-ownership-fixture");QVERIFY(bus.unregisterService("org.kde.kglobalaccel"));QTRY_VERIFY(!source.available());
+  PUTGD_TRY_VERIFY((restoring?shortcuts_.setterCalls:shortcuts_.inactiveCalls)>calls);QCOMPARE(completed,0);
+  auto bus=QDBusConnection("putgd-kde-ownership-fixture");QVERIFY(bus.unregisterService("org.kde.kglobalaccel"));PUTGD_TRY_VERIFY(!source.available());
   shortcuts_.active.clear();shortcuts_.bindings.clear();shortcuts_.inactiveDelay=0;shortcuts_.setterDelay=0;
-  QVERIFY(bus.registerService("org.kde.kglobalaccel"));QTRY_COMPARE(completed,1);QCOMPARE(result.code,QString("shortcut_recording_interrupted"));
-  if(!restoring){QVERIFY(shortcuts_.active.isEmpty());QCOMPARE(source.status()["window"].toObject()["state"].toString(),QString("recording"));bool resumed=false;source.setRecording(false,[&](Error error){QVERIFY(!error);resumed=true;});QTRY_VERIFY(resumed);}
-  QTRY_VERIFY(source.status()["window"].toObject()["bound"].toBool());
+  QVERIFY(bus.registerService("org.kde.kglobalaccel"));PUTGD_TRY_COMPARE(completed,1);QCOMPARE(result.code,QString("shortcut_recording_interrupted"));
+  if(!restoring){QVERIFY(shortcuts_.active.isEmpty());QCOMPARE(source.status()["window"].toObject()["state"].toString(),QString("recording"));bool resumed=false;source.setRecording(false,[&](Error error){QVERIFY(!error);resumed=true;});PUTGD_TRY_VERIFY(resumed);}
+  PUTGD_TRY_VERIFY(source.status()["window"].toObject()["bound"].toBool());
   auto signal=QDBusMessage::createSignal("/component/putgd","org.kde.kglobalaccel.Component","globalShortcutPressed");signal.setArguments({QString("putgd"),QString("window"),QVariant::fromValue(qlonglong(1))});
   // Retry signal delivery only until the asynchronous component lookup reconnects.
-  QTRY_VERIFY(([&]{bus.send(signal);return activated.count()>0;})());QTest::qWait(30);QCOMPARE(completed,1);
+  PUTGD_TRY_VERIFY(([&]{bus.send(signal);return activated.count()>0;})());putgd::test::settle(30);PUTGD_TRY_COMPARE(completed,1);
  }
  void recordingReportsConflictingRestore(){
-  KdeShortcuts source;QVERIFY(keyboardMap(source));source.bind({{"window","Ctrl+1"}});QTRY_VERIFY(source.status()["window"].toObject()["bound"].toBool());
-  bool done=false;source.setRecording(true,[&](Error error){QVERIFY(!error);done=true;});QTRY_VERIFY(done);
-  shortcuts_.rejectKeys=true;done=false;Error result;source.setRecording(false,[&](Error error){result=error;done=true;});QTRY_VERIFY(done);shortcuts_.rejectKeys=false;
+  KdeShortcuts source;QVERIFY(keyboardMap(source));source.bind({{"window","Ctrl+1"}});PUTGD_TRY_VERIFY(source.status()["window"].toObject()["bound"].toBool());
+  bool done=false;source.setRecording(true,[&](Error error){QVERIFY(!error);done=true;});PUTGD_TRY_VERIFY(done);
+  shortcuts_.rejectKeys=true;done=false;Error result;source.setRecording(false,[&](Error error){result=error;done=true;});PUTGD_TRY_VERIFY(done);shortcuts_.rejectKeys=false;
   QCOMPARE(result.code,QString("shortcut_conflict"));QVERIFY(!source.status()["window"].toObject()["bound"].toBool());QVERIFY(!shortcuts_.active.contains("window"));
  }
  void externalWindowCaptureRemainsNative(){
-  KdeSourceAdapter source;QTRY_VERIFY(source.capabilities()["capture"].toObject()["window"].toObject()["available"].toBool());source.setUiProcess(424242);
+  KdeSourceAdapter source;PUTGD_TRY_VERIFY(source.capabilities()["capture"].toObject()["window"].toObject()["available"].toBool());source.setUiProcess(424242);
   auto prepared=source.prepareAcquisition("window");
-  bool done=false;PayloadResult result;prepared({},[&](PayloadResult r){result=std::move(r);done=true;});QTRY_VERIFY(done);
+  bool done=false;PayloadResult result;prepared({},[&](PayloadResult r){result=std::move(r);done=true;});PUTGD_TRY_VERIFY(done);
   QVERIFY2(!result.error,qPrintable(result.error.message));QCOMPARE(screenshot_.captures,1);QCOMPARE(result.payload.image.pixelColor(0,0),QColor(Qt::cyan));
  }
  void helperWindowRejectedAfterHelperExit(){
-  KdeSourceAdapter source;QTRY_VERIFY(source.capabilities()["capture"].toObject()["window"].toObject()["available"].toBool());source.setUiProcess(424242);
+  KdeSourceAdapter source;PUTGD_TRY_VERIFY(source.capabilities()["capture"].toObject()["window"].toObject()["available"].toBool());source.setUiProcess(424242);
   info_.info["resourceClass"]="putgd-ui";auto prepared=source.prepareAcquisition("window");source.setUiProcess(0);
-  bool done=false;PayloadResult result;prepared({},[&](PayloadResult r){result=std::move(r);done=true;});QTRY_VERIFY(done);
+  bool done=false;PayloadResult result;prepared({},[&](PayloadResult r){result=std::move(r);done=true;});PUTGD_TRY_VERIFY(done);
   QCOMPARE(result.error.code,QString("target_unavailable"));QVERIFY(result.payload.image.isNull());QCOMPARE(screenshot_.captures,1);QCOMPARE(info_.queries,QStringList{frozenId});
  }
  void frozenUuidQueriedAfterFocusChanges(){
-  KdeSourceAdapter source;QTRY_VERIFY(source.capabilities()["capture"].toObject()["window"].toObject()["available"].toBool());source.setUiProcess(424242);
-  auto prepared=source.prepareAcquisition("window");QTRY_COMPARE(screenshot_.captures,1);screenshot_.windowId=otherId;
-  bool done=false;PayloadResult result;prepared({},[&](PayloadResult r){result=std::move(r);done=true;});QTRY_VERIFY(done);
+  KdeSourceAdapter source;PUTGD_TRY_VERIFY(source.capabilities()["capture"].toObject()["window"].toObject()["available"].toBool());source.setUiProcess(424242);
+  auto prepared=source.prepareAcquisition("window");PUTGD_TRY_COMPARE(screenshot_.captures,1);screenshot_.windowId=otherId;
+  bool done=false;PayloadResult result;prepared({},[&](PayloadResult r){result=std::move(r);done=true;});PUTGD_TRY_VERIFY(done);
   QVERIFY(!result.error);QCOMPARE(info_.queries,QStringList{frozenId});QCOMPARE(screenshot_.captures,1);
  }
  void missingWrongAndUnavailableIdentityAreRejected(){
@@ -505,25 +506,25 @@ private slots:
    if(mode==0)info_.info={};
    if(mode==1)info_.info["uuid"]=otherId;
    if(mode==2)info_.info["desktopFile"]="putgd-ui";
-   KdeSourceAdapter source;QTRY_VERIFY(source.capabilities()["capture"].toObject()["window"].toObject()["available"].toBool());source.setUiProcess(424242);
-   bool done=false;PayloadResult result;source.acquire("window",{},[&](PayloadResult r){result=std::move(r);done=true;});QTRY_VERIFY(done);
+   KdeSourceAdapter source;PUTGD_TRY_VERIFY(source.capabilities()["capture"].toObject()["window"].toObject()["available"].toBool());source.setUiProcess(424242);
+   bool done=false;PayloadResult result;source.acquire("window",{},[&](PayloadResult r){result=std::move(r);done=true;});PUTGD_TRY_VERIFY(done);
    QCOMPARE(result.error.code,QString("target_unavailable"));QVERIFY(result.payload.image.isNull());QCOMPARE(info_.queries,QStringList{frozenId});
   }
  }
  void emptyExternalAppIdIsAccepted(){
-  KdeSourceAdapter source;QTRY_VERIFY(source.capabilities()["capture"].toObject()["window"].toObject()["available"].toBool());source.setUiProcess(424242);
+  KdeSourceAdapter source;PUTGD_TRY_VERIFY(source.capabilities()["capture"].toObject()["window"].toObject()["available"].toBool());source.setUiProcess(424242);
   info_.info["resourceClass"]=QString{};info_.info["desktopFile"]=QString{};
-  bool done=false;PayloadResult result;source.acquire("window",{},[&](PayloadResult r){result=std::move(r);done=true;});QTRY_VERIFY(done);
+  bool done=false;PayloadResult result;source.acquire("window",{},[&](PayloadResult r){result=std::move(r);done=true;});PUTGD_TRY_VERIFY(done);
   QVERIFY(!result.error);QCOMPARE(info_.queries,QStringList{frozenId});
  }
  void cancellationDuringIdentityLookupCompletesOnce(){
-  KdeSourceAdapter source;QTRY_VERIFY(source.capabilities()["capture"].toObject()["window"].toObject()["available"].toBool());source.setUiProcess(424242);info_.delayMs=200;
-  int completed=0;PayloadResult result;source.acquire("window",{},[&](PayloadResult r){result=std::move(r);++completed;});QTRY_COMPARE(info_.queries.size(),1);QCOMPARE(completed,0);
-  source.cancelAcquisition();QTRY_COMPARE(completed,1);QCOMPARE(result.error.code,QString("cancelled"));QVERIFY(result.payload.image.isNull());QTest::qWait(30);QCOMPARE(completed,1);
+  KdeSourceAdapter source;PUTGD_TRY_VERIFY(source.capabilities()["capture"].toObject()["window"].toObject()["available"].toBool());source.setUiProcess(424242);info_.delayMs=200;
+  int completed=0;PayloadResult result;source.acquire("window",{},[&](PayloadResult r){result=std::move(r);++completed;});PUTGD_TRY_COMPARE(info_.queries.size(),1);QCOMPARE(completed,0);
+  source.cancelAcquisition();PUTGD_TRY_COMPARE(completed,1);QCOMPARE(result.error.code,QString("cancelled"));QVERIFY(result.payload.image.isNull());putgd::test::settle(30);PUTGD_TRY_COMPARE(completed,1);
  }
  void noHelperDoesNotQueryWindowInfo(){
-  KdeSourceAdapter source;QTRY_VERIFY(source.capabilities()["capture"].toObject()["window"].toObject()["available"].toBool());source.setUiProcess(424242);source.setUiProcess(0);info_.fail=true;
-  bool done=false;PayloadResult result;source.acquire("window",{},[&](PayloadResult r){result=std::move(r);done=true;});QTRY_VERIFY(done);
+  KdeSourceAdapter source;PUTGD_TRY_VERIFY(source.capabilities()["capture"].toObject()["window"].toObject()["available"].toBool());source.setUiProcess(424242);source.setUiProcess(0);info_.fail=true;
+  bool done=false;PayloadResult result;source.acquire("window",{},[&](PayloadResult r){result=std::move(r);done=true;});PUTGD_TRY_VERIFY(done);
   QVERIFY(!result.error);QVERIFY(info_.queries.isEmpty());
  }
 };
