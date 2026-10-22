@@ -62,11 +62,12 @@ does not certify release bytes.
   The AppImage had the same gap. #468 also replaces leaked CPack defaults
   (Vendor "Humanity", boilerplate description, no Maintainer address) and the
   RPM licence id `GPL-3.0`.
-- **Decided and implemented in #468** (Patrick left the call to the audit): the
-  declared licence lists every shipped licence
-  ([#469](https://github.com/patrick-hudson/put.gd-desktop/issues/469)), and
-  the native notices point to the release page with the Proton helper's source
-  (#416, native side).
+- **Decided by Patrick and implemented in #468:** the declared licence names the
+  main licences (`MIT AND Apache-2.0 AND GPL-3.0-or-later`; upstream allows
+  "or later" for Proton's crypto), and `runtime-notices.txt` lists every other
+  licence ([#469](https://github.com/patrick-hudson/put.gd-desktop/issues/469)).
+  The native notices point to the release page with the Proton helper's source
+  (#416, native side). The Maintainer stays `packages@put.gd`.
 - **Open:** no Debian `copyright`/`changelog` and no RPM
   `%license` ([#470](https://github.com/patrick-hudson/put.gd-desktop/issues/470));
   non-PIE Fedora programs ([#475](https://github.com/patrick-hudson/put.gd-desktop/issues/475));

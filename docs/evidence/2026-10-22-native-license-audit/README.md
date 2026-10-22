@@ -50,9 +50,9 @@ same scripts on the stable draft.
 | P6 | AppStream consistent with the packages | ✅ | ✅ | ✅ | ✅ | `appstreamcli validate --pedantic` passes; the only note is `cid-contains-uppercase-letter`. The DEP-11 catalog of each suite and the dnf `appstream` repodata have the same id, `Package`/`pkgname` `putgd`, licence and release version as the installed metainfo. The catalogs and icon tarballs are covered by `InRelease` or `repomd.xml` checksums. A nightly's release reads as `stable` → [#471](https://github.com/patrick-hudson/put.gd-desktop/issues/471). |
 | N1 | Licence texts and notices in `/usr/share/doc/putgd` | ⚠️ | ⚠️ | ⚠️ | ⚠️ | Present: put.gd's `LICENSE` (MIT), the native `runtime-notices.txt` (the right text for native packages, per #417), 14 AWS SDK/CRT/s2n `LICENSE` files, three Wayland protocol XMLs, and `proton/` (helper licences, notices, sources catalog). **Gap:** the SDK's and CRT's Apache-2.0 `NOTICE` files and the notices of cJSON (MIT), TinyXML-2 (Zlib), libcbor (MIT) and xxHash (BSD-2-Clause), which are compiled into `libaws-cpp-sdk-core`, `libaws-c-common` and `libaws-checksums`, weren't shipped. The AppImage has the same gap. Fixed in [#468](https://github.com/patrick-hudson/put.gd-desktop/pull/468). |
 | N2 | Debian `copyright` (DEP-5) / RPM `%license` | ❌ | ❌ | ❌ | ❌ | No `/usr/share/doc/putgd/copyright` and no `changelog` (lintian errors). Minimised Ubuntu images keep only `copyright` from `/usr/share/doc`, so they drop every put.gd notice. The RPM marks all 33 doc files `%doc`, none `%license`, so `--nodocs`/`tsflags=nodocs` drops them → [#470](https://github.com/patrick-hudson/put.gd-desktop/issues/470). |
-| N3 | Declared licence (RPM `License:`, AppStream) | 📋→✅ | 📋→✅ | 📋→✅ | 📋→✅ | `MIT AND Apache-2.0 AND GPL-3.0-only` omits code the packages ship: OpenPGP.js (LGPL-3.0+), Bun's JavaScriptCore/TinyCC (LGPL-2.x), bcryptjs (BSD-3-Clause), the zkde-screencast bindings in `putgd-record` (LGPL-2.1-or-later), and cJSON/libcbor/TinyXML-2/xxHash. The RPM spelled `GPL-3.0`, a deprecated SPDX id; #468 makes it `GPL-3.0-only` → [#469](https://github.com/patrick-hudson/put.gd-desktop/issues/469). Decided: list every licence, done in #468 (see Decisions). |
+| N3 | Declared licence (RPM `License:`, AppStream) | 📋→✅ | 📋→✅ | 📋→✅ | 📋→✅ | `MIT AND Apache-2.0 AND GPL-3.0-only` omits code the packages ship: OpenPGP.js (LGPL-3.0+), Bun's JavaScriptCore/TinyCC (LGPL-2.x), bcryptjs (BSD-3-Clause), the zkde-screencast bindings in `putgd-record` (LGPL-2.1-or-later), and cJSON/libcbor/TinyXML-2/xxHash. The RPM spelled `GPL-3.0`, a deprecated SPDX id; #468 makes it `GPL-3.0-or-later`, which upstream allows → [#469](https://github.com/patrick-hudson/put.gd-desktop/issues/469). Decided: main licences plus a pointer to `runtime-notices.txt`, done in #468 (see Decisions). |
 | N4 | Proton helper notices, #369 consistency | ✅ | ✅ | ✅ | ✅ | `proton/THIRD-PARTY-NOTICES.txt` is `df283c96…`, the same as the committed file and the `usr/libexec` copy. It lists 26 packages: 10 `bundled-js` (all with licence text), 1 `embedded-runtime` (Bun, covered by `BUN-THIRD-PARTY-NOTICES.txt.gz`), 9 `installed-not-bundled` and 6 `build-only`. `@openpgp/web-stream-tools` 0.3.1 and 0.1.3 are both there. The release jobs use npm 9.2.0 (Ubuntu/Debian `npm` package) and 10.9.8 (Fedora `nodejs22-npm`), and all install 26 packages. The pin that #369 asks for is still open. |
-| N5 | Corresponding source for the GPL/LGPL parts | 📋→✅ | 📋→✅ | 📋→✅ | 📋→✅ | Distro libraries (Qt, GStreamer, FFmpeg) come through Depends/Requires. The helper's GPL-3.0 crypto and LGPL OpenPGP.js/JSC source is on the GitHub release (`putgd-proton-corresponding-source.tar.gz.part1/2`, catalog `6d5d4798…`). The shipped `SOURCES.json` gives file names and hashes only and says `"distributionReady": false`, and apt/dnf users download from pkg.put.gd → [#416](https://github.com/patrick-hudson/put.gd-desktop/issues/416#issuecomment-6352661019). Decided: #468 puts the release page in `runtime-notices.txt`. |
+| N5 | Corresponding source for the GPL/LGPL parts | 📋→✅ | 📋→✅ | 📋→✅ | 📋→✅ | Distro libraries (Qt, GStreamer, FFmpeg) come through Depends/Requires. The helper's GPL-3.0 crypto and LGPL OpenPGP.js/JSC source is on the GitHub release (`putgd-proton-corresponding-source.tar.gz.part1/2`, catalog `6d5d4798…`). The shipped `SOURCES.json` gives file names and hashes only and says `"distributionReady": false`, and apt/dnf users download from pkg.put.gd → [#416](https://github.com/patrick-hudson/put.gd-desktop/issues/416#issuecomment-6352661019). Decided: #468 puts the release page in `runtime-notices.txt` and `proton/SOURCE-LOCATION.txt`. |
 | N6 | Every bundled component has its licence | ⚠️ | ⚠️ | ⚠️ | ⚠️ | Bundled are put.gd (MIT), the AWS SDK 1.11.907/CRT/s2n libraries (Apache-2.0, plus the embedded code in N1) and the Proton helper (N4). There's no Qt, compiler runtime, codec or aws-lc: `libcrypto.so.3`, `libcurl.so.4` and `libz.so.1` come from the distro. Same gap as N1, fixed by #468. |
 | C1 | No stray debug or test files | ⚠️ | ⚠️ | ⚠️ | ⚠️ | No `.a`, `.la`, `.o`, `.h`, `.pc`, `.cmake`, `.pyc`, test directories or fixtures, and none of the release audit's forbidden names. All 25 ELF files keep `.symtab` (lintian `unstripped-binary-or-object`). The Fedora `libs2n.so.1.0.0` also carries full DWARF → [#471](https://github.com/patrick-hudson/put.gd-desktop/issues/471). |
 | C2 | No secrets | ✅ | ✅ | ✅ | ✅ | The AWS/GitHub/Slack/OpenAI/Google key patterns, PEM private-key headers and `aws_secret_access_key`: no hits in any file. No key or certificate files apart from the public repo keys, and no `/home/patrick` paths. |
@@ -128,7 +128,7 @@ Nothing here needs a put.gd release.
 | | What | Labels |
 | --- | --- | --- |
 | [#468](https://github.com/patrick-hudson/put.gd-desktop/pull/468) | Code PR: AWS NOTICE and embedded-code notices (native and AppImage), RPM licence id, CPack metadata, RPM directory ownership | — |
-| [#469](https://github.com/patrick-hudson/put.gd-desktop/issues/469) | The declared licence omits LGPL, BSD and Zlib code the packages ship. Decided: list them all (fixed by #468) | P1, release-blocker |
+| [#469](https://github.com/patrick-hudson/put.gd-desktop/issues/469) | The declared licence omits LGPL, BSD and Zlib code the packages ship. Decided: main licences plus the notices table (fixed by #468) | P1, release-blocker |
 | [#470](https://github.com/patrick-hudson/put.gd-desktop/issues/470) | No Debian `copyright`/`changelog`; RPM licence texts are `%doc`, not `%license` | P2 |
 | [#471](https://github.com/patrick-hudson/put.gd-desktop/issues/471) | Hygiene: symbol tables, Fedora libs2n DWARF, CI paths, smaller lint findings | P3 |
 | [#475](https://github.com/patrick-hudson/put.gd-desktop/issues/475) | The Fedora RPM's programs are non-PIE | P2 |
@@ -136,18 +136,22 @@ Nothing here needs a put.gd release.
 
 ## Decisions
 
-Patrick left these to the audit on 2026-10-22 ("make the decisions you think are
-best"). They're implemented in [#468](https://github.com/patrick-hudson/put.gd-desktop/pull/468), commit `cc7ef74c`.
+Patrick decided on 2026-10-22 (relayed by the coordinator):
 
-1. **Licence expression: list every licence** ([#469](https://github.com/patrick-hudson/put.gd-desktop/issues/469#issuecomment-6353424115)).
-   - The RPM `License:` and AppStream `project_license` are built from what the build includes. A release build gets `MIT AND Apache-2.0 AND GPL-3.0-only AND LGPL-3.0-or-later AND LGPL-2.1-or-later AND LGPL-2.0-or-later AND BSD-2-Clause AND BSD-3-Clause AND Zlib`.
-   - Proton's crypto stays `GPL-3.0-only`, the meaning of its `package.json`'s deprecated `GPL-3.0`.
-   - The AppImage's `components.json` gives the AWS SDK and the Proton helper the same licences, with texts.
-2. **The Proton helper's source for apt/dnf users: a written pointer, no mirror** ([#416](https://github.com/patrick-hudson/put.gd-desktop/issues/416#issuecomment-6353424389)).
-   - `runtime-notices.txt` names the exact release page, which carries `putgd-VERSION-source.tar.gz`, the Proton source parts and their catalog.
-   - GitHub releases aren't pruned, so the source stays up while pkg.put.gd serves that version.
-3. **Codecs: no change for DEB/RPM.** They use the distribution's codecs. #419 is left with the AppImage only ([comment](https://github.com/patrick-hudson/put.gd-desktop/issues/419#issuecomment-6353424798)).
-4. **Maintainer address: keep `packages@put.gd`**, the address already published in the signing keys' UID.
+> #469: name the main licences and point to the full notices; Proton crypto package as GPL-3.0-or-later if its upstream allows, else -only. Proton source: add a URL in the notices to the GitHub release source. Maintainer: packages@put.gd is fine.
+
+Implemented in [#468](https://github.com/patrick-hudson/put.gd-desktop/pull/468), commit `7c3e7aba`:
+
+1. **Licence expression** ([#469](https://github.com/patrick-hudson/put.gd-desktop/issues/469#issuecomment-6353477447)).
+   - The RPM `License:` and AppStream are `MIT AND Apache-2.0 AND GPL-3.0-or-later`.
+   - The DEB/RPM description points to `runtime-notices.txt`, which opens with a table of every licence of the shipped code and where its text is.
+   - The AppImage's `components.json` names the same main licences per component and lists the rest as embedded.
+2. **Proton crypto is GPL-3.0-or-later.** Upstream allows it: WebPackages' README at `956a713c` grants "either version 3 of the License, or (at your option) any later version". Its `LICENSE` is the GPLv3 text pinned in `runtime-lock.json` (`1b3782cc…`), and the crypto sources have no narrower header.
+3. **Proton source** ([#416](https://github.com/patrick-hudson/put.gd-desktop/issues/416#issuecomment-6353477700)).
+   - `runtime-notices.txt` and a new `proton/SOURCE-LOCATION.txt` name the exact release page with the source parts, the catalog and put.gd's source.
+   - `SOURCES.json` stays as is: it's hash-pinned in the helper manifest and the published catalog.
+4. **Codecs:** no change for DEB/RPM ([#419](https://github.com/patrick-hudson/put.gd-desktop/issues/419#issuecomment-6352660745)).
+5. **Maintainer:** `packages@put.gd`.
 
 The AppImage decisions in #416 (Qt/LGPL source), #418 and #419 are separate and still open.
 

@@ -146,7 +146,7 @@
     "fedora44": "decision"
    },
    "issue": 469,
-   "decision": "List every licence (Patrick delegated, 2026-10-22); implemented in #468 cc7ef74c"
+   "decision": "Main licences (MIT AND Apache-2.0 AND GPL-3.0-or-later) plus a pointer to runtime-notices.txt, which lists every licence (Patrick, 2026-10-22); #468 7c3e7aba"
   },
   {
    "id": "N4",
@@ -169,7 +169,7 @@
     "fedora44": "decision"
    },
    "issue": 416,
-   "decision": "Release-page source pointer in runtime-notices.txt, no mirror (Patrick delegated, 2026-10-22); implemented in #468 cc7ef74c"
+   "decision": "Release-page source URL in runtime-notices.txt and proton/SOURCE-LOCATION.txt (Patrick, 2026-10-22); #468 7c3e7aba"
   },
   {
    "id": "N6",
@@ -296,9 +296,10 @@
   ]
  },
  "decisions": {
-  "delegatedBy": "Patrick, 2026-10-22: \"make the decisions you think are best\"",
-  "licenceExpression": "every licence",
-  "protonSourceForAptDnf": "written pointer to the release page",
+  "by": "Patrick, 2026-10-22, relayed by the coordinator",
+  "licenceExpression": "main licences + pointer to runtime-notices.txt",
+  "protonCrypto": "GPL-3.0-or-later (WebPackages README at 956a713c grants version 3 or any later version)",
+  "protonSourceForAptDnf": "release-page URL in the notices",
   "codecsNative": "no change",
   "maintainer": "packages@put.gd"
  }
