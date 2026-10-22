@@ -16,7 +16,7 @@ is an unpublished draft from 2026-10-18. The first stable switches to calendar
 versions `YY.MDD.N` first ([#373](https://github.com/patrick-hudson/put.gd-desktop/issues/373)),
 so it won't be `v0.1.1`, and the candidate steps change with it.
 [Issue #44](https://github.com/patrick-hudson/put.gd-desktop/issues/44) holds the
-current gate table, the proposal for what v0.1.1 requires or defers, and these
+current gate table, the proposal for what the first stable requires or defers, and these
 work packages:
 
 | Gate | Issue | Status on 2026-10-22 |
