@@ -48,7 +48,15 @@ int runUpdateMode(int argc,char** argv) {
  Error error;const auto result=fetchUpdate(build,QString::fromLocal8Bit(argv[2]),error);
  return finish(error,result);
 }
-QJsonObject fetchUpdate(const update::Build& build,const QString& channel,Error& error) {
+QJsonObject fetchUpdate(const update::Build& build,const QString& requested,Error& error) {
+ // How this installation updates: the system's updater while the package's
+ // repository file is in use, else a download. Read here, not in the resident.
+ // A repository install follows its repository's channel, whichever the
+ // resident asked for: that's what apt and dnf install (#386).
+ auto action=update::systemAction(build.target);
+ const auto followed=action["kind"]=="software-updates"?action["channel"].toString():QString();
+ const bool repository=followed=="stable"||followed=="nightly";
+ const auto channel=repository?followed:requested;
  const auto url=update::feedUrl(channel,error);if(error)return {};
  // The same request from every installation: no query, cookies, version or
  // locale. The version comparison happens here, on this computer.
@@ -75,9 +83,14 @@ QJsonObject fetchUpdate(const update::Build& build,const QString& channel,Error&
  }
  auto result=update::evaluate(body,build,channel,error);if(error)return {};
  result["checkedAt"]=QDateTime::currentDateTimeUtc().toString(Qt::ISODate);
- // How this installation updates: the system's updater while the package's
- // repository file is in use, else a download. Read here, not in the resident.
- result["action"]=update::systemAction(build.target);
+ result["channelSource"]=repository?"repository":"setting";
+ // Moved to the other channel's repository, whose release is older than the
+ // installed package: the system updater keeps this version until a newer one.
+ if(repository&&channel!=build.channel&&result["latest"].isString()){
+  const auto order=update::compareVersions(result["latest"].toString(),build.version);
+  if(order&&*order<0)action["older"]=QJsonObject{{"version",result["latest"]},{"command",update::installFromRepositoryCommand(action["manager"].toString(),channel)}};
+ }
+ result["action"]=action;
  return result;
 }
 }

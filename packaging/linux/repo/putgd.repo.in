@@ -7,5 +7,5 @@ baseurl=@PUTGD_REPO_URL@/rpm/fedora/44/x86_64/@PUTGD_REPO_CHANNEL@
 enabled=1
 gpgcheck=1
 repo_gpgcheck=0
-gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-@PUTGD_REPO_CHANNEL@
 metadata_expire=6h

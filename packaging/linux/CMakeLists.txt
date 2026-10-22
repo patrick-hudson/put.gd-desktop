@@ -97,24 +97,23 @@ putgd_install_snapshot("${PROJECT_SOURCE_DIR}/LICENSE" "${CMAKE_INSTALL_DATADIR}
 # Tagged DEB/RPM builds add their channel's signed repository at pkg.put.gd
 # (#293), trusting only that channel's key. apt keeps a deleted conffile deleted
 # and purge removes it; the RPM copies its file in on the first install only.
+# Both channels' files are installed under /usr/share/putgd/repo too: moving
+# to the other channel is copying one into place by hand (#386).
 set(PUTGD_REPO_CHANNEL "")
 if(PUTGD_RELEASE_TAG MATCHES "^v[0-9]+[.][0-9]+[.][0-9]+-nightly$")
   set(PUTGD_REPO_CHANNEL nightly)
 elseif(PUTGD_RELEASE_TAG MATCHES "^v[0-9]+[.][0-9]+[.][0-9]+$")
   set(PUTGD_REPO_CHANNEL stable)
 endif()
-set(PUTGD_REPO_URL "${PUTGD_PACKAGE_REPOSITORY_URL}")
 set(repo_dir "${CMAKE_CURRENT_SOURCE_DIR}/repo")
+include("${PROJECT_SOURCE_DIR}/cmake/PackageRepositoryFiles.cmake")
+if(PUTGD_REPO_CHANNEL AND PUTGD_PACKAGE_TARGET MATCHES "^(ubuntu24[.]04|ubuntu26[.]04|debian13|fedora44)$")
+  putgd_repository_files("${PUTGD_PACKAGE_TARGET}" "${PUTGD_PACKAGE_REPOSITORY_URL}" "${repo_dir}" "${CMAKE_CURRENT_BINARY_DIR}/repo")
+endif()
 if(PUTGD_REPO_CHANNEL AND PUTGD_PACKAGE_TARGET MATCHES "^(ubuntu24[.]04|ubuntu26[.]04|debian13)$")
-  # deb822 multi-line Signed-By: the key travels inside the conffile, so a
-  # removed (not purged) package leaves a source apt can still verify.
-  file(READ "${repo_dir}/keys/putgd-${PUTGD_REPO_CHANNEL}.asc" key_block)
-  string(STRIP "${key_block}" key_block)
-  string(REPLACE "\n\n" "\n.\n" key_block "${key_block}")
-  string(REPLACE "\n" "\n " key_block " ${key_block}")
-  set(PUTGD_REPO_KEY_BLOCK "${key_block}")
-  configure_file("${repo_dir}/putgd.sources.in" repo/putgd.sources @ONLY)
-  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/repo/putgd.sources" DESTINATION /etc/apt/sources.list.d)
+  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/repo/putgd-${PUTGD_REPO_CHANNEL}.sources" DESTINATION /etc/apt/sources.list.d RENAME putgd.sources)
+  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/repo/putgd-nightly.sources" "${CMAKE_CURRENT_BINARY_DIR}/repo/putgd-stable.sources"
+    DESTINATION "${CMAKE_INSTALL_DATADIR}/putgd/repo")
   install(FILES "${repo_dir}/keys/putgd-${PUTGD_REPO_CHANNEL}.gpg" DESTINATION "${CMAKE_INSTALL_DATADIR}/keyrings"
     RENAME putgd-archive-keyring.gpg)
   file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/repo/conffiles" "/etc/apt/sources.list.d/putgd.sources\n")
@@ -122,9 +121,16 @@ if(PUTGD_REPO_CHANNEL AND PUTGD_PACKAGE_TARGET MATCHES "^(ubuntu24[.]04|ubuntu26
   # 0644 whatever the builder's umask, as dpkg and lintian expect.
   set(CPACK_DEBIAN_PACKAGE_CONTROL_STRICT_PERMISSION TRUE)
 elseif(PUTGD_REPO_CHANNEL AND PUTGD_PACKAGE_TARGET STREQUAL "fedora44")
-  configure_file("${repo_dir}/putgd.repo.in" repo/putgd.repo @ONLY)
-  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/repo/putgd.repo" DESTINATION "${CMAKE_INSTALL_DATADIR}/putgd/repo")
+  # rpm-post.sh copies putgd.repo, this package's own channel, on the first install.
+  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/repo/putgd-${PUTGD_REPO_CHANNEL}.repo" DESTINATION "${CMAKE_INSTALL_DATADIR}/putgd/repo" RENAME putgd.repo)
+  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/repo/putgd-nightly.repo" "${CMAKE_CURRENT_BINARY_DIR}/repo/putgd-stable.repo"
+    DESTINATION "${CMAKE_INSTALL_DATADIR}/putgd/repo")
+  # Each channel's file names its own key, so either can be copied into place.
+  # RPM-GPG-KEY-putgd, this package's channel, is what repository files
+  # written before #386 name.
   install(FILES "${repo_dir}/keys/putgd-${PUTGD_REPO_CHANNEL}.asc" DESTINATION /etc/pki/rpm-gpg RENAME RPM-GPG-KEY-putgd)
+  install(FILES "${repo_dir}/keys/putgd-nightly.asc" DESTINATION /etc/pki/rpm-gpg RENAME RPM-GPG-KEY-putgd-nightly)
+  install(FILES "${repo_dir}/keys/putgd-stable.asc" DESTINATION /etc/pki/rpm-gpg RENAME RPM-GPG-KEY-putgd-stable)
   set(CPACK_RPM_USER_FILELIST "%ghost %config(noreplace) %attr(0644,root,root) /etc/yum.repos.d/putgd.repo")
   set(CPACK_RPM_POST_INSTALL_SCRIPT_FILE "${repo_dir}/rpm-post.sh")
   set(CPACK_RPM_POST_UNINSTALL_SCRIPT_FILE "${repo_dir}/rpm-postun.sh")
