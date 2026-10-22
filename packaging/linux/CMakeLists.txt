@@ -91,6 +91,34 @@ foreach(aws_component aws-crt-cpp aws-crt-cpp/crt/aws-c-auth aws-crt-cpp/crt/aws
   else()
     message(FATAL_ERROR "Pinned SDK component LICENSE missing: ${aws_component}")
   endif()
+  # Apache-2.0 4(d): the NOTICE files travel with the libraries (aws-checksums has none).
+  if(EXISTS "${PUTGD_AWS_SOURCE_DIR}/crt/${aws_component}/NOTICE")
+    putgd_install_snapshot("${PUTGD_AWS_SOURCE_DIR}/crt/${aws_component}/NOTICE"
+      "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME "${license_name}-NOTICE")
+  endif()
+endforeach()
+# The SDK and CRT compile in cJSON, TinyXML-2, libcbor and xxHash (#383), whose
+# MIT, Zlib and BSD terms ask for their notices in binary copies too.
+putgd_install_snapshot("${PUTGD_AWS_SOURCE_DIR}/NOTICE.txt" "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME aws-sdk-NOTICE)
+putgd_install_snapshot("${PUTGD_AWS_SOURCE_DIR}/crt/aws-crt-cpp/crt/aws-c-common/THIRD-PARTY-LICENSES.txt"
+  "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME aws-crt-cpp-crt-aws-c-common-THIRD-PARTY-LICENSES)
+foreach(embedded IN ITEMS "src/aws-cpp-sdk-core/source/external/cjson/cJSON.cpp|aws-sdk-cJSON-LICENSE"
+    "src/aws-cpp-sdk-core/source/external/tinyxml2/tinyxml2.cpp|aws-sdk-TinyXML2-LICENSE"
+    "crt/aws-crt-cpp/crt/aws-checksums/source/external/xxhash.h|aws-crt-cpp-crt-aws-checksums-xxHash-LICENSE")
+  string(REPLACE "|" ";" embedded "${embedded}")
+  list(GET embedded 0 embedded_source)
+  list(GET embedded 1 embedded_name)
+  # Their licence is the source file's leading comment.
+  file(READ "${PUTGD_AWS_SOURCE_DIR}/${embedded_source}" embedded_text LIMIT 4096)
+  string(FIND "${embedded_text}" "*/" embedded_end)
+  if(NOT embedded_text MATCHES "^/\\*" OR embedded_end LESS 0 OR NOT embedded_text MATCHES "[Cc]opyright|[Pp]ermission")
+    message(FATAL_ERROR "Pinned SDK ${embedded_source} lost its leading licence comment")
+  endif()
+  math(EXPR embedded_end "${embedded_end} + 2")
+  string(SUBSTRING "${embedded_text}" 0 ${embedded_end} embedded_text)
+  file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/package-inputs/aws/${embedded_name}"
+    "From ${embedded_source} in the AWS SDK for C++ source:\n\n${embedded_text}\n")
+  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/package-inputs/aws/${embedded_name}" DESTINATION "${CMAKE_INSTALL_DATADIR}/doc/putgd")
 endforeach()
 putgd_install_snapshot("${PROJECT_SOURCE_DIR}/LICENSE" "${CMAKE_INSTALL_DATADIR}/doc/putgd")
 
@@ -134,7 +162,7 @@ elseif(PUTGD_REPO_CHANNEL AND PUTGD_PACKAGE_TARGET STREQUAL "fedora44")
   set(CPACK_RPM_USER_FILELIST "%ghost %config(noreplace) %attr(0644,root,root) /etc/yum.repos.d/putgd.repo")
   set(CPACK_RPM_POST_INSTALL_SCRIPT_FILE "${repo_dir}/rpm-post.sh")
   set(CPACK_RPM_POST_UNINSTALL_SCRIPT_FILE "${repo_dir}/rpm-postun.sh")
-  set(CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION /etc/pki /etc/pki/rpm-gpg /etc/yum.repos.d)
+  list(APPEND putgd_rpm_system_dirs /etc/pki /etc/pki/rpm-gpg /etc/yum.repos.d)
 endif()
 set(CPACK_GENERATOR DEB) # Select -G RPM for a native Fedora build.
 set(CPACK_PACKAGE_NAME putgd)
@@ -142,8 +170,17 @@ set(CPACK_PACKAGE_NAME putgd)
 set(CPACK_PACKAGE_VERSION "0.0.0")
 configure_file("${PROJECT_SOURCE_DIR}/cmake/PackageBuildIdentity.cmake.in" package-identity.cmake @ONLY)
 set(CPACK_PROJECT_CONFIG_FILE "${CMAKE_CURRENT_BINARY_DIR}/package-identity.cmake")
-set(CPACK_PACKAGE_CONTACT "put.gd maintainers")
+set(CPACK_PACKAGE_CONTACT "put.gd maintainers <packages@put.gd>")
+set(CPACK_PACKAGE_VENDOR "put.gd")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Native Linux screen and clipboard sharing")
+# The DEB's extended description and the RPM's %description (CPack's default is
+# its own installer boilerplate). Same text as the AppStream summary.
+set(CPACK_PACKAGE_DESCRIPTION "Capture and share screen regions, windows, the desktop, the clipboard and
+screen recordings. put.gd uploads them to your own S3-compatible bucket or to
+Proton Drive and puts the public link on the clipboard. It runs on GNOME, KDE
+Plasma and Cinnamon, on Wayland and X11.")
+set(CPACK_RPM_PACKAGE_DESCRIPTION "${CPACK_PACKAGE_DESCRIPTION}")
+set(CPACK_DEBIAN_PACKAGE_SECTION graphics)
 set(CPACK_PACKAGING_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}")
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 set(CPACK_DEBIAN_PACKAGE_PRIVATE_DIRS "${PUTGD_AWS_RUNTIME_DIR}")
@@ -158,6 +195,10 @@ set(CPACK_RPM_PACKAGE_LICENSE "MIT AND Apache-2.0")
 set(CPACK_RPM_PACKAGE_URL "https://github.com/patrick-hudson/put.gd-desktop")
 set(CPACK_RPM_PACKAGE_REQUIRES "qt6-qtbase-gui, qt6-qtbase, qt6-qtwayland, qt6-qtimageformats, glib2")
 set(CPACK_RPM_PACKAGE_RELEASE_DIST ON)
+# Directories the filesystem, hicolor-icon-theme and appstream packages own.
+list(APPEND putgd_rpm_system_dirs /usr/libexec /usr/share/applications /usr/share/metainfo /usr/share/icons
+  /usr/share/icons/hicolor /usr/share/icons/hicolor/scalable /usr/share/icons/hicolor/scalable/apps)
+set(CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION ${putgd_rpm_system_dirs})
 # Private AWS libraries satisfy only this app, never another RPM. Keep automatic
 # detection of their system dependencies; filter only the bundled SONAMEs.
 # RPM's default stripping also changes bytes after our runtime digest is written.
@@ -181,11 +222,11 @@ endif()
 if(PUTGD_BUNDLE_PROTON)
   string(APPEND CPACK_DEBIAN_PACKAGE_DEPENDS ", xdg-utils, libsecret-1-0")
   string(APPEND CPACK_RPM_PACKAGE_REQUIRES ", xdg-utils, libsecret")
-  string(APPEND CPACK_RPM_PACKAGE_LICENSE " AND GPL-3.0")
+  string(APPEND CPACK_RPM_PACKAGE_LICENSE " AND GPL-3.0-only")
 endif()
 # AppStream: software centres show put.gd and its updates as an application.
 # The release entry is this build's package version and commit date.
-string(REPLACE " AND GPL-3.0" " AND GPL-3.0-only" PUTGD_METAINFO_LICENSE "${CPACK_RPM_PACKAGE_LICENSE}")
+set(PUTGD_METAINFO_LICENSE "${CPACK_RPM_PACKAGE_LICENSE}")
 set(PUTGD_METAINFO_RELEASES "")
 file(READ "${PUTGD_BUILD_IDENTITY_DIR}/build-info.json" metainfo_identity)
 string(JSON metainfo_version GET "${metainfo_identity}" packageVersion)

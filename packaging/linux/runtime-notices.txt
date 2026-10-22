@@ -6,16 +6,24 @@ Qt platform plugins and SQLite SQL driver remain distribution owned.
 
 The official AWS SDK for C++ and its CRT shared libraries are privately installed
 under the putgd library directory. Pinned source identities are recorded in
-/usr/share/putgd/dependency-lock.json. AWS SDK and CRT Apache-2.0 license texts are
-installed alongside this notice; s2n-tls uses Apache-2.0. Rebuild the pinned official
+/usr/share/putgd/dependency-lock.json. AWS SDK and CRT Apache-2.0 license texts
+(aws-*-LICENSE) and their NOTICE files (aws-*-NOTICE) are installed alongside this
+notice; s2n-tls uses Apache-2.0. The SDK and CRT libraries also contain cJSON (MIT,
+aws-sdk-cJSON-LICENSE), TinyXML-2 (Zlib, aws-sdk-TinyXML2-LICENSE), libcbor (MIT,
+aws-crt-cpp-crt-aws-c-common-THIRD-PARTY-LICENSES) and xxHash (BSD-2-Clause,
+aws-crt-cpp-crt-aws-checksums-xxHash-LICENSE). Rebuild the pinned official
 SDK following docs/build.md, update the lock deliberately, and rebuild the DEB to
 update these libraries. No compiler or Qt runtime is bundled.
 
-The ext-data-control-v1 and wlr-data-control-unstable-v1 Wayland protocol
-notices are retained in wayland-ext-data-control-v1.xml and
-wayland-wlr-data-control-unstable-v1.xml beside this file, including their
-original copyright and permission text. Generated client bindings use those
-protocols.
+The ext-data-control-v1, wlr-data-control-unstable-v1 and zkde-screencast-unstable-v1
+Wayland protocol notices are retained in wayland-ext-data-control-v1.xml,
+wayland-wlr-data-control-unstable-v1.xml and wayland-zkde-screencast-unstable-v1.xml
+beside this file, including their original copyright and license text. Generated
+client bindings use those protocols.
+
+When the package includes the Proton Drive helper (/usr/libexec/putgd/proton), its
+licenses, the notices of everything compiled into it and the list of its
+corresponding source are in the proton directory beside this file.
 
 Native packages include desktop integration assets and dependency notices. Release
 artifacts have build identities, package inventories and published checksums. Verify
