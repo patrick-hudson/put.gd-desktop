@@ -3,6 +3,7 @@
 #include "platform/x11/X11Reply.h"
 #include "platform/x11/CaptureCursorCache.h"
 #include <QtTest>
+#include <QElapsedTimer>
 #include <QApplication>
 #include <QScreen>
 #include <QWidget>
@@ -180,12 +181,37 @@ private slots:
   QFETCH(bool,pointer);
   if(pointer){auto r=x11::reply(xcb_grab_pointer_reply(connection_,xcb_grab_pointer(connection_,false,root_,XCB_EVENT_MASK_BUTTON_PRESS,XCB_GRAB_MODE_ASYNC,XCB_GRAB_MODE_ASYNC,XCB_NONE,XCB_NONE,XCB_CURRENT_TIME),nullptr));QVERIFY(r&&r->status==XCB_GRAB_STATUS_SUCCESS);}
   else {auto r=x11::reply(xcb_grab_keyboard_reply(connection_,xcb_grab_keyboard(connection_,false,root_,XCB_CURRENT_TIME,XCB_GRAB_MODE_ASYNC,XCB_GRAB_MODE_ASYNC),nullptr));QVERIFY(r&&r->status==XCB_GRAB_STATUS_SUCCESS);}
-  NativeRegionOverlay overlay(frames());int cancelled=0;QString code;connect(&overlay,&RegionSelector::cancelled,this,[&](const Error& e){code=e.code;++cancelled;});overlay.start();QTRY_COMPARE(cancelled,1);QCOMPARE(code,QString("capture_unavailable"));QCOMPARE(drawables().size(),0);
+  // Selection retries a held grab for a bounded time, then says why (#341).
+  QElapsedTimer waited;waited.start();
+  NativeRegionOverlay overlay(frames());int cancelled=0;Error failure;connect(&overlay,&RegionSelector::cancelled,this,[&](const Error& e){failure=e;++cancelled;});overlay.start();QTRY_COMPARE_WITH_TIMEOUT(cancelled,1,NativeRegionOverlay::grabWaitMs+3000);QCOMPARE(failure.code,QString("capture_unavailable"));QCOMPARE(drawables().size(),0);
+  QVERIFY(waited.elapsed()>=NativeRegionOverlay::grabWaitMs);
+  QCOMPARE(failure.details["check"].toString(),QString("input_grab"));QVERIFY(failure.details["attempts"].toInt()>1);
+  QCOMPARE(failure.details[pointer?"pointerHeld":"keyboardHeld"].toBool(),true);QCOMPARE(failure.details[pointer?"keyboardHeld":"pointerHeld"].toBool(),false);
+  QVERIFY(failure.message.contains("Close it, then try again"));
   auto* probe=xcb_connect(nullptr,nullptr);int status=-1;
   if(pointer){auto r=x11::reply(xcb_grab_pointer_reply(probe,xcb_grab_pointer(probe,false,root_,XCB_EVENT_MASK_BUTTON_PRESS,XCB_GRAB_MODE_ASYNC,XCB_GRAB_MODE_ASYNC,XCB_NONE,XCB_NONE,XCB_CURRENT_TIME),nullptr));if(r)status=r->status;}
   else{auto r=x11::reply(xcb_grab_keyboard_reply(probe,xcb_grab_keyboard(probe,false,root_,XCB_CURRENT_TIME,XCB_GRAB_MODE_ASYNC,XCB_GRAB_MODE_ASYNC),nullptr));if(r)status=r->status;}
   xcb_disconnect(probe);QCOMPARE(status,int(XCB_GRAB_STATUS_ALREADY_GRABBED));
   if(pointer)xcb_ungrab_pointer(connection_,XCB_CURRENT_TIME);else xcb_ungrab_keyboard(connection_,XCB_CURRENT_TIME);xcb_flush(connection_);availableGrabs();
+ }
+ void selectionStartsWhenAnotherClientsGrabEnds(){
+  // An open menu holds the keyboard and pointer (#341). Selection waits with
+  // no grab of its own, then starts as soon as the menu lets go.
+  auto* menu=xcb_connect(nullptr,nullptr);const auto closeMenu=qScopeGuard([&]{xcb_disconnect(menu);});QVERIFY(!xcb_connection_has_error(menu));
+  auto pointer=x11::reply(xcb_grab_pointer_reply(menu,xcb_grab_pointer(menu,false,root_,XCB_EVENT_MASK_BUTTON_PRESS,XCB_GRAB_MODE_ASYNC,XCB_GRAB_MODE_ASYNC,XCB_NONE,XCB_NONE,XCB_CURRENT_TIME),nullptr));QVERIFY(pointer&&pointer->status==XCB_GRAB_STATUS_SUCCESS);
+  auto keyboard=x11::reply(xcb_grab_keyboard_reply(menu,xcb_grab_keyboard(menu,false,root_,XCB_CURRENT_TIME,XCB_GRAB_MODE_ASYNC,XCB_GRAB_MODE_ASYNC),nullptr));QVERIFY(keyboard&&keyboard->status==XCB_GRAB_STATUS_SUCCESS);
+  NativeRegionOverlay overlay(frames());int cancelled=0,selected=0;QString code;
+  connect(&overlay,&RegionSelector::cancelled,this,[&](const Error& e){code=e.code;++cancelled;});connect(&overlay,&RegionSelector::selected,this,[&](const QRectF&){++selected;});
+  overlay.start();QTRY_COMPARE(drawables().size(),2);QTest::qWait(300);QCOMPARE(cancelled,0);
+  xcb_ungrab_pointer(menu,XCB_CURRENT_TIME);xcb_ungrab_keyboard(menu,XCB_CURRENT_TIME);x11::reply(xcb_get_input_focus_reply(menu,xcb_get_input_focus(menu),nullptr));
+  auto owned=[&]{
+   auto probe=x11::reply(xcb_grab_keyboard_reply(menu,xcb_grab_keyboard(menu,false,root_,XCB_CURRENT_TIME,XCB_GRAB_MODE_ASYNC,XCB_GRAB_MODE_ASYNC),nullptr));
+   if(probe&&probe->status==XCB_GRAB_STATUS_SUCCESS){xcb_ungrab_keyboard(menu,XCB_CURRENT_TIME);x11::reply(xcb_get_input_focus_reply(menu,xcb_get_input_focus(menu),nullptr));return false;}
+   return probe&&probe->status==XCB_GRAB_STATUS_ALREADY_GRABBED;
+  };
+  QTRY_VERIFY_WITH_TIMEOUT(owned(),2000);
+  motion({40,40});button(1,true);motion({400,300});button(1,false);
+  QTRY_COMPARE(selected,1);QCOMPARE(cancelled,0);QTRY_COMPARE(drawables().size(),0);availableGrabs();
  }
  void invalidResidentCursorReleasesBothGrabs(){NativeRegionOverlay overlay(frames(),nullptr,xcb_generate_id(connection_));int cancelled=0;connect(&overlay,&RegionSelector::cancelled,this,[&](const Error& e){QCOMPARE(e.code,QString("capture_unavailable"));++cancelled;});overlay.start();QTRY_COMPARE(cancelled,1);QTRY_COMPARE(drawables().size(),0);availableGrabs();}
  void invalidLayoutFailsWithoutTakingGrabs(){NativeRegionOverlay overlay({});int cancelled=0;connect(&overlay,&RegionSelector::cancelled,this,[&](const Error& e){QVERIFY(bool(e));++cancelled;});overlay.start();QTRY_COMPARE(cancelled,1);QCOMPARE(drawables().size(),0);availableGrabs();}

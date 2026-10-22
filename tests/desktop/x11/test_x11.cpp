@@ -34,6 +34,17 @@
 #include <xcb/xtest.h>
 #include <unistd.h>
 using namespace putgd;
+// A screen locker on the disposable bus that x11_isolated supplies (#341).
+class ScreenSaverFixture:public QObject {
+ Q_OBJECT
+ Q_CLASSINFO("D-Bus Interface","org.freedesktop.ScreenSaver")
+public:
+ explicit ScreenSaverFixture(bool active):active(active){auto bus=QDBusConnection::sessionBus();registered=bus.registerObject("/org/freedesktop/ScreenSaver",this,QDBusConnection::ExportAllSlots)&&bus.registerService("org.freedesktop.ScreenSaver");}
+ ~ScreenSaverFixture(){auto bus=QDBusConnection::sessionBus();if(registered)bus.unregisterService("org.freedesktop.ScreenSaver");bus.unregisterObject("/org/freedesktop/ScreenSaver");}
+ bool active,registered=false;int calls=0;
+public slots:
+ bool GetActive(){++calls;return active;}
+};
 class RegionPaintProbe final:public QObject {
 public:
  QRegion painted;int count=0;
@@ -488,6 +499,57 @@ private slots:
   xcb_change_property(c,XCB_PROP_MODE_REPLACE,window,version,atom("UTF8_STRING"),8,5,"6.6.1");sync();QVERIFY(capture.cinnamonCompositor()); // The owner has no WM_CLASS, like real Muffin.
   xcb_delete_property(c,window,version);sync();QVERIFY(!capture.cinnamonCompositor());xcb_delete_property(c,root,supporting);xcb_destroy_window(c,window);xcb_disconnect(c);
   Error error;auto target=capture.freeze("desktop",error);QVERIFY2(!error,qPrintable(error.message));auto frames=capture.frames(target,error);QVERIFY2(!error,qPrintable(error.message));QVERIFY(!frames.isEmpty());QVERIFY(!frames.first().pixels.isNull());
+ }
+
+ void shortcutFiresOnceWhileAnotherClientHoldsTheKeyboard() {
+  // #341: an open menu's active grab stops every passive grab. The XInput2
+  // raw path fires instead, and exactly once when both paths see the press.
+  X11DesktopFixture desktop;X11Shortcuts shortcuts;QStringList actions;
+  connect(&shortcuts,&X11Shortcuts::activated,this,[&](const QString& action){actions.append(action);});
+  shortcuts.bind({{"region","Ctrl+Shift+1"},{"desktop","Ctrl+Shift+3"}});
+  QVERIFY(shortcuts.status()["region"].toObject()["bound"].toBool());
+  const auto paths=shortcuts.keyPaths();QVERIFY(paths["passive"].toBool());QVERIFY(paths["raw"].toObject()["available"].toBool());QVERIFY(!paths["raw"].toObject()["xinput"].toString().isEmpty());
+  auto chord=[&](int digit,bool repeat=false){
+   desktop.key(XK_Control_L,true);desktop.key(XK_Shift_L,true);desktop.key(digit,true);if(repeat){desktop.key(digit,true);desktop.key(digit,true);}desktop.key(digit,false);desktop.key(XK_Shift_L,false);desktop.key(XK_Control_L,false);desktop.inputFocus();
+  };
+  auto last=[&]{return shortcuts.keyPaths()["lastActivation"].toObject();};
+  chord(XK_1);QTRY_COMPARE(actions,QStringList{"region"});QCOMPARE(last()["path"].toString(),QString("passive"));QCOMPARE(last()["action"].toString(),QString("region"));
+  QTest::qWait(50);QCOMPARE(actions.size(),1);
+  {
+   X11GrabbingClient menu;QVERIFY(menu.grabbed);
+   chord(XK_3);QTRY_COMPARE(actions.size(),2);QCOMPARE(actions.last(),QString("desktop"));QCOMPARE(last()["path"].toString(),QString("raw"));
+   // The menu keeps receiving the keys: put.gd only listens.
+   QTRY_VERIFY(menu.keyPresses()>=3);
+   chord(XK_1,true);QTRY_COMPARE(actions.size(),3);QCOMPARE(actions.last(),QString("region"));
+   // Neither the repeats, an unbound chord nor a missing modifier fire.
+   desktop.key(XK_Control_L,true);desktop.key(XK_1,true);desktop.key(XK_1,false);desktop.key(XK_Control_L,false);desktop.inputFocus();
+   desktop.key(XK_Shift_L,true);desktop.key(XK_3,true);desktop.key(XK_3,false);desktop.key(XK_Shift_L,false);desktop.inputFocus();
+   QTest::qWait(100);QCOMPARE(actions.size(),3);
+   // Recording a new shortcut pauses the raw path as well.
+   Error paused{"pending",{},{}};shortcuts.setRecording(true,[&](Error e){paused=e;});QVERIFY(!paused);
+   chord(XK_1);QTest::qWait(100);QCOMPARE(actions.size(),3);
+   Error restored{"pending",{},{}};shortcuts.setRecording(false,[&](Error e){restored=e;});QVERIFY(!restored);
+   chord(XK_1);QTRY_COMPARE(actions.size(),4);QCOMPARE(last()["path"].toString(),QString("raw"));
+  }
+  chord(XK_3);QTRY_COMPARE(actions.size(),5);QCOMPARE(actions.last(),QString("desktop"));QCOMPARE(last()["path"].toString(),QString("passive"));
+  QTest::qWait(50);QCOMPARE(actions.size(),5);
+  QCOMPARE(last()["sequence"].toInteger(),qint64(5));
+ }
+ void rawShortcutIsIgnoredWhileTheSessionIsLocked() {
+  // A screen locker holds the keyboard too; the raw path must not capture
+  // from a locked session (#341).
+  X11DesktopFixture desktop;X11Shortcuts shortcuts;int activated=0;
+  connect(&shortcuts,&X11Shortcuts::activated,this,[&](const QString&){++activated;});
+  shortcuts.bind({{"region","Ctrl+Shift+1"}});QVERIFY(shortcuts.status()["region"].toObject()["bound"].toBool());
+  ScreenSaverFixture saver(true);QVERIFY(saver.registered);
+  X11GrabbingClient locker;QVERIFY(locker.grabbed);
+  auto chord=[&]{desktop.key(XK_Control_L,true);desktop.key(XK_Shift_L,true);desktop.key(XK_1,true);desktop.key(XK_1,false);desktop.key(XK_Shift_L,false);desktop.key(XK_Control_L,false);desktop.inputFocus();};
+  chord();
+  QTRY_COMPARE(shortcuts.keyPaths()["lastActivation"].toObject()["suppressed"].toString(),QString("session_locked"));
+  QCOMPARE(activated,0);QVERIFY(saver.calls>=1);
+  saver.active=false;chord();QTRY_COMPARE(activated,1);
+  QCOMPARE(shortcuts.keyPaths()["lastActivation"].toObject()["path"].toString(),QString("raw"));
+  QVERIFY(!shortcuts.keyPaths()["lastActivation"].toObject().contains("suppressed"));
  }
 };
 QTEST_MAIN(X11Test)

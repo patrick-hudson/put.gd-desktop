@@ -1217,7 +1217,9 @@ export default class PutgdExtension extends Extension {
                         status.error = 'shortcut_conflict';
                     } else {
                         this._bindings.set(id, action);
-                        Main.wm.allowKeybinding(Meta.external_binding_name_for_action(id), Shell.ActionMode.NORMAL);
+                        // POPUP too: a Shell menu that is open, such as the tray
+                        // menu, must not swallow a capture shortcut (#341).
+                        Main.wm.allowKeybinding(Meta.external_binding_name_for_action(id), Shell.ActionMode.NORMAL | Shell.ActionMode.POPUP);
                         status.bound = true;
                         status.actual = status.requested;
                     }
