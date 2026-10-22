@@ -290,10 +290,10 @@ private slots:
   auto* status=window->findChild<QLabel*>("updateStatus");auto* install=window->findChild<QPushButton*>("installUpdate");auto* tabs=window->findChild<QTabWidget*>("settingsTabs");QVERIFY(status&&install&&tabs);
   auto* scroll=qobject_cast<QScrollArea*>(tabs->widget(0));QVERIFY(scroll);auto* bar=scroll->verticalScrollBar();
   const auto inView=[&](QWidget* widget){return widget->isVisible()&&scroll->viewport()->rect().contains(QRect(widget->mapTo(scroll->viewport(),QPoint()),widget->size()));};
-  QTRY_VERIFY(window->isVisible());QTRY_VERIFY(fixture.session.ready());QTRY_VERIFY(inView(status));
+  PUTGD_TRY_VERIFY(window->isVisible());PUTGD_TRY_VERIFY(fixture.session.ready());PUTGD_TRY_VERIFY(inView(status));
   // The window manager fits it to the screen after it was shown.
-  window->resize(1280,760);QTRY_COMPARE(window->height(),760);QTRY_VERIFY(bar->maximum()>0);
-  QTRY_VERIFY2(inView(status),"Updates stays in view after the window settles smaller");
+  window->resize(1280,760);PUTGD_TRY_COMPARE(window->height(),760);PUTGD_TRY_VERIFY(bar->maximum()>0);
+  PUTGD_TRY_VERIFY2(inView(status),"Updates stays in view after the window settles smaller");
   // The update arrives: its actions add rows to the group, still in view.
   update={{"supported",true},{"build",QJsonObject{{"version","0.1.1-nightly.886"},{"channel","nightly"},{"supported",true},{"packageTarget","appimage"}}},
    {"check",true},{"channelSetting","build"},{"channel","nightly"},{"checking",false},{"action",QJsonObject{{"kind","download"},{"repository","none"}}},{"error",QJsonObject{}},
@@ -301,10 +301,10 @@ private slots:
    {"result",QJsonObject{{"channel","nightly"},{"current","0.1.1-nightly.886"},{"latest","0.1.1-nightly.887"},{"updateAvailable",true},
     {"downloadUrl","https://github.com/patrick-hudson/put.gd-desktop/releases/download/v0.1.1-nightly.887/putgd-0.1.1-nightly.887-x86_64.AppImage"}}},
    {"install",QJsonObject{{"state","idle"},{"available",true},{"running",false},{"restartRequired",false}}}};
-  fixture.session.refreshSnapshot();QTRY_VERIFY(install->isVisible());QTRY_VERIFY(inView(status));QTRY_VERIFY(inView(install));
+  fixture.session.refreshSnapshot();PUTGD_TRY_VERIFY(install->isVisible());PUTGD_TRY_VERIFY(inView(status));PUTGD_TRY_VERIFY(inView(install));
   // Once the user scrolls, a later change of size leaves the page where they put it.
   bar->triggerAction(QAbstractSlider::SliderToMinimum);QCOMPARE(bar->value(),0);
-  window->resize(1280,700);QTRY_COMPARE(window->height(),700);QTest::qWait(100);QCOMPARE(bar->value(),0);QVERIFY(!inView(status));
+  window->resize(1280,700);PUTGD_TRY_COMPARE(window->height(),700);PUTGD_COMPARE_STEADY(bar->value(),0,300);QVERIFY(!inView(status));
  }
 };
 QTEST_MAIN(UiApplicationTest)
