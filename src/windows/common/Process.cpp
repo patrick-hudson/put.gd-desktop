@@ -128,8 +128,10 @@ std::unique_ptr<Child> spawn(const std::string& executable, const std::vector<st
     else child->channel = std::make_unique<frames::Channel>(stdoutRead, stdinWrite);
     HANDLE err = child->stderrRead, watched = nullptr;
     DuplicateHandle(GetCurrentProcess(), pi.hProcess, GetCurrentProcess(), &watched, SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION, FALSE, 0);
-    child->stderrDrain = std::thread([err, watched, output = child->output, name = child->name, pid = pi.dwProcessId] {
-        logformat::HelperOutput collected(name, pid, [](logformat::Record r) { log::writeRecord(std::move(r)); }, [] { return log::nowMs(); });
+    child->stderrDrain = std::thread([err, watched, raw, output = child->output, name = child->name, pid = pi.dwProcessId] {
+        // A raw child is a separate runtime (the Proton helper): its stderr is read
+        // and discarded, as on Linux; only its start and exit are recorded.
+        logformat::HelperOutput collected(name, pid, [raw](logformat::Record r) { if (!raw) log::writeRecord(std::move(r)); }, [] { return log::nowMs(); });
         char buffer[4096]; DWORD got = 0;
         while (ReadFile(err, buffer, sizeof buffer, &got, nullptr) && got > 0) collected.append(std::string_view(buffer, got));
         // The crash record and the truncation summary come before the exit record.
