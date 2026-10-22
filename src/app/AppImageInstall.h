@@ -30,20 +30,24 @@ struct Image {
 // What inspect asks the system about the image and its folder: whether this
 // user owns the file, whether the folder is on a read-only file system, and
 // whether this user can write to it. Test seam: CI can't make another user's
-// file or a read-only mount, so tests pass their own answers.
+// file or a read-only mount, so tests pass their own answers. An empty probe
+// asks the system.
 struct Access {
  std::function<bool(const QString& file)> ownedByUser;
  std::function<bool(const QString& directory)> readOnly;
  std::function<bool(const QString& directory)> writable;
 };
-// getuid() against the file's owner, statvfs() ST_RDONLY, access(W_OK|X_OK).
+#ifdef Q_OS_UNIX
+// The system's answers: getuid() against the file's owner, statvfs()
+// ST_RDONLY, access(W_OK|X_OK).
 Access hostAccess();
+#endif
 // The running image at path ($APPIMAGE): a regular file the user owns, with
 // the AppImage type 2 magic, in a writable folder with room for another
 // requiredBytes. Refusals: update_install_unavailable, update_image_not_writable
 // (another user's file, a read-only file system, a folder this user can't
 // write), update_disk_full.
-Image inspect(const QString& path,qint64 requiredBytes,Error&,const Access& access=hostAccess());
+Image inspect(const QString& path,qint64 requiredBytes,Error&,const Access& access={});
 // ELF and the AppImage type 2 magic ("AI\x02" at offset 8).
 bool isAppImage(const QString& path);
 // Lowercase hex SHA-256 of the file; empty when it cannot be read.
