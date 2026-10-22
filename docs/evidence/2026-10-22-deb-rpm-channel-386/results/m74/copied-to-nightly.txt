@@ -1,0 +1,3 @@
+sudo install -m 644 /usr/share/putgd/repo/putgd-nightly.sources /etc/apt/sources.list.d/putgd.sources &&
+sudo apt update &&
+sudo apt install --allow-downgrades putgd/nightly

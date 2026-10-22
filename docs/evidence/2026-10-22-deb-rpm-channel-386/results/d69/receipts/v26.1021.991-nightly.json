@@ -1,0 +1,171 @@
+{
+ "schemaVersion": 1,
+ "tag": "v26.1021.991-nightly",
+ "channel": "nightly",
+ "scope": "lab",
+ "startedAt": "2026-10-22T20:13:14Z",
+ "finishedAt": "2026-10-22T20:14:05Z",
+ "result": "published",
+ "source": {
+  "kind": "lab",
+  "repository": "patrick-hudson/put.gd-desktop",
+  "commit": null,
+  "checks": [
+   "lab build: SHA256SUMS and package fields only"
+  ]
+ },
+ "inputs": [
+  {
+   "label": "fedora44",
+   "name": "putgd-26.1021.991-nightly-fedora44-x86_64.rpm",
+   "sha256": "5d1d8e0dacbe28e932a89bc5b9ec88de8bb1c5b7dd77912df89ab63690018010",
+   "size": 7220889,
+   "checks": [
+    "SHA256SUMS",
+    "package fields putgd 26.1021.991~nightly x86_64"
+   ]
+  },
+  {
+   "label": "ubuntu24.04",
+   "name": "putgd-26.1021.991-nightly-ubuntu24.04-x86_64.deb",
+   "sha256": "de0e34c956e013980d54f9cd4d74581c3b8cf54a8ac2246282d14aaea7f2c282",
+   "size": 10277016,
+   "checks": [
+    "SHA256SUMS",
+    "package fields putgd 26.1021.991~nightly amd64"
+   ]
+  }
+ ],
+ "rpm": [
+  {
+   "asset": "putgd-26.1021.991-nightly-fedora44-x86_64.rpm",
+   "file": "putgd-26.1021.991~nightly-1.fc44.x86_64.rpm",
+   "githubSha256": "5d1d8e0dacbe28e932a89bc5b9ec88de8bb1c5b7dd77912df89ab63690018010",
+   "repoSha256": "3141f25f0789031a9f7259a93e362b173b35135637834286a3741be109931cb0",
+   "signedWith": "4032E28D893BAF66F4AC23D9A11D38D55536B371"
+  }
+ ],
+ "signatures": [
+  {
+   "file": "apt/ubuntu24.04/dists/nightly/InRelease",
+   "kind": "openpgp",
+   "key": "4032E28D893BAF66F4AC23D9A11D38D55536B371"
+  },
+  {
+   "file": "apt/ubuntu24.04/dists/nightly/Release.gpg",
+   "kind": "openpgp",
+   "key": "4032E28D893BAF66F4AC23D9A11D38D55536B371"
+  },
+  {
+   "file": "rpm/fedora/44/x86_64/nightly/Packages/putgd-26.1021.991~nightly-1.fc44.x86_64.rpm",
+   "kind": "rpm",
+   "key": "4032E28D893BAF66F4AC23D9A11D38D55536B371"
+  },
+  {
+   "file": "releases/v26.1021.991-nightly/SHA256SUMS.minisig",
+   "kind": "minisign",
+   "key": "nightly"
+  },
+  {
+   "file": "update/v1/nightly.json.minisig",
+   "kind": "minisign",
+   "key": "nightly"
+  }
+ ],
+ "s3": {
+  "uploaded": [
+   {
+    "key": "lab/apt/ubuntu24.04/pool/main/p/putgd/putgd_26.1021.991~nightly_amd64.deb",
+    "sha256": "de0e34c956e013980d54f9cd4d74581c3b8cf54a8ac2246282d14aaea7f2c282"
+   },
+   {
+    "key": "lab/rpm/fedora/44/x86_64/nightly/Packages/putgd-26.1021.991~nightly-1.fc44.x86_64.rpm",
+    "sha256": "3141f25f0789031a9f7259a93e362b173b35135637834286a3741be109931cb0"
+   },
+   {
+    "key": "lab/apt/ubuntu24.04/dists/nightly/main/binary-amd64/Packages",
+    "sha256": "0832eeec2358d744595068386e75f4172c2ab258c5440c4c7bd9ab4bd8cf601a"
+   },
+   {
+    "key": "lab/apt/ubuntu24.04/dists/nightly/main/binary-amd64/Packages.gz",
+    "sha256": "e87c95a9556097cf95e75549d92bd31cbba14895aa5a75f3e35cc72e04f33958"
+   },
+   {
+    "key": "lab/rpm/fedora/44/x86_64/nightly/repodata/7cd86e2ecef360fba0d24400b5a7bda830cabcd29ef694a974e20f6d5adcd852-other.xml.zst",
+    "sha256": "7cd86e2ecef360fba0d24400b5a7bda830cabcd29ef694a974e20f6d5adcd852"
+   },
+   {
+    "key": "lab/rpm/fedora/44/x86_64/nightly/repodata/ade9fe6b132ad12802e74de402a1216aeda9c6511aca097b1a749852e4187afb-primary.xml.zst",
+    "sha256": "ade9fe6b132ad12802e74de402a1216aeda9c6511aca097b1a749852e4187afb"
+   },
+   {
+    "key": "lab/rpm/fedora/44/x86_64/nightly/repodata/d6caec1521303cca19dbc1cf0bb755e0d7cc243692c2f76116d75504394ac192-filelists.xml.zst",
+    "sha256": "d6caec1521303cca19dbc1cf0bb755e0d7cc243692c2f76116d75504394ac192"
+   },
+   {
+    "key": "lab/apt/ubuntu24.04/dists/nightly/InRelease",
+    "sha256": "1e68ce05456162ce168a7353ebda01406de73b3cdc2fc8bb98bac5dbf517b1d1"
+   },
+   {
+    "key": "lab/apt/ubuntu24.04/dists/nightly/Release",
+    "sha256": "618d9939761713a77fd7e488c52ef3c6677de90a41d1fa01151de9d4756f9895"
+   },
+   {
+    "key": "lab/apt/ubuntu24.04/dists/nightly/Release.gpg",
+    "sha256": "764a0e857db637e6d2ed14511e2d9d41ccd45e202f7b7881f1b523f8a7838ffc"
+   },
+   {
+    "key": "lab/rpm/fedora/44/x86_64/nightly/repodata/repomd.xml",
+    "sha256": "ba824a9895d97db2d8eab513ad6aa8b711c9f6078b2ae6f8309d760fd4679ff5"
+   },
+   {
+    "key": "lab/releases/v26.1021.991-nightly/SHA256SUMS",
+    "sha256": "0b60dbefab28f5ebfbbeb181f6123a5cb57bce9aa9afceec2eba8f92f1cd23d2"
+   },
+   {
+    "key": "lab/releases/v26.1021.991-nightly/SHA256SUMS.minisig",
+    "sha256": "0c3d0c3c983ecff4b069c77f96ef89f678703aff03a5e7de75e49e715b245c64"
+   },
+   {
+    "key": "lab/update/v1/nightly.json",
+    "sha256": "2c9bb7e2b248ff2ee9d6e52b3b5135c29c6b91753036f42d5a9f7a58f7310add"
+   },
+   {
+    "key": "lab/update/v1/nightly.json.minisig",
+    "sha256": "ec5a75d42c5b423ffe516f198265d704acda8a57802e668c26a9a54665e1ca6b"
+   }
+  ],
+  "deleted": []
+ },
+ "invalidations": [
+  {
+   "distribution": "EY4KKRLYNFZ1W",
+   "id": "IDHBG0OW8UHVAD94NTOOJDCS80",
+   "paths": 8
+  },
+  {
+   "distribution": "EY4KKRLYNFZ1W",
+   "id": "IC1PPHUBG6BP3X633GE955UAOU",
+   "paths": 2
+  }
+ ],
+ "readback": [
+  {
+   "url": "https://pkg.put.gd/lab/apt/ubuntu24.04/dists/nightly/InRelease",
+   "sha256": "1e68ce05456162ce168a7353ebda01406de73b3cdc2fc8bb98bac5dbf517b1d1"
+  },
+  {
+   "url": "https://pkg.put.gd/lab/apt/ubuntu24.04/dists/nightly/main/binary-amd64/Packages",
+   "sha256": "0832eeec2358d744595068386e75f4172c2ab258c5440c4c7bd9ab4bd8cf601a"
+  },
+  {
+   "url": "https://pkg.put.gd/lab/rpm/fedora/44/x86_64/nightly/repodata/repomd.xml",
+   "sha256": "ba824a9895d97db2d8eab513ad6aa8b711c9f6078b2ae6f8309d760fd4679ff5"
+  }
+ ],
+ "feed": {
+  "key": "lab/update/v1/nightly.json",
+  "sha256": "2c9bb7e2b248ff2ee9d6e52b3b5135c29c6b91753036f42d5a9f7a58f7310add"
+ },
+ "error": null
+}
