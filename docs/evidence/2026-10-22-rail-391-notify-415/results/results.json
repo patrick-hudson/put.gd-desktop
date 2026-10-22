@@ -1,0 +1,1167 @@
+{
+ "reproduction968": {
+  "build": "26.1022.968-nightly (ddc7981e)",
+  "k72": [
+   {
+    "trial": "k72a-at172x14-1",
+    "kind": "putgd",
+    "at": "2026-10-22T18:13:34Z",
+    "hover": 0.2,
+    "pressAfterShownSeconds": 2.22,
+    "clicked": [
+     1716,
+     766
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "ActivationToken",
+     "ActionInvoked",
+     "NotificationClosed",
+     "Notify"
+    ],
+    "actionInvoked": [
+     "default"
+    ],
+    "openedUrls": 10
+   },
+   {
+    "trial": "k72a-at172x14-2",
+    "kind": "putgd",
+    "at": "2026-10-22T18:13:57Z",
+    "hover": 0.2,
+    "pressAfterShownSeconds": 2.21,
+    "clicked": [
+     1716,
+     766
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "ActivationToken",
+     "ActionInvoked",
+     "NotificationClosed",
+     "Notify"
+    ],
+    "actionInvoked": [
+     "default"
+    ],
+    "openedUrls": 11
+   },
+   {
+    "trial": "k72a-at251x36-1",
+    "kind": "putgd",
+    "at": "2026-10-22T18:12:49Z",
+    "hover": 0.2,
+    "pressAfterShownSeconds": 2.21,
+    "clicked": [
+     1795,
+     924
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "ActivationToken",
+     "ActionInvoked",
+     "NotificationClosed",
+     "Notify"
+    ],
+    "actionInvoked": [
+     "default"
+    ],
+    "openedUrls": 8
+   },
+   {
+    "trial": "k72a-at251x36-2",
+    "kind": "putgd",
+    "at": "2026-10-22T18:13:11Z",
+    "hover": 0.2,
+    "pressAfterShownSeconds": 2.24,
+    "clicked": [
+     1795,
+     788
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "ActivationToken",
+     "ActionInvoked",
+     "NotificationClosed",
+     "Notify"
+    ],
+    "actionInvoked": [
+     "default"
+    ],
+    "openedUrls": 9
+   },
+   {
+    "trial": "k72a-at322x14-1",
+    "kind": "putgd",
+    "at": "2026-10-22T18:14:19Z",
+    "hover": 0.2,
+    "pressAfterShownSeconds": 2.23,
+    "clicked": [
+     1866,
+     766
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "NotificationClosed"
+    ],
+    "actionInvoked": [],
+    "openedUrls": 11
+   },
+   {
+    "trial": "k72a-at322x14-2",
+    "kind": "putgd",
+    "at": "2026-10-22T18:14:42Z",
+    "hover": 0.2,
+    "pressAfterShownSeconds": 2.21,
+    "clicked": [
+     1866,
+     902
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "NotificationClosed"
+    ],
+    "actionInvoked": [],
+    "openedUrls": 11
+   },
+   {
+    "trial": "k72a-at330x60-1",
+    "kind": "putgd",
+    "at": "2026-10-22T18:15:04Z",
+    "hover": 0.2,
+    "pressAfterShownSeconds": 2.21,
+    "clicked": [
+     1874,
+     948
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "ActivationToken",
+     "ActionInvoked",
+     "NotificationClosed",
+     "Notify"
+    ],
+    "actionInvoked": [
+     "default"
+    ],
+    "openedUrls": 12
+   },
+   {
+    "trial": "k72a-at330x60-2",
+    "kind": "putgd",
+    "at": "2026-10-22T18:15:27Z",
+    "hover": 0.2,
+    "pressAfterShownSeconds": 2.22,
+    "clicked": [
+     1874,
+     812
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "ActivationToken",
+     "ActionInvoked",
+     "NotificationClosed",
+     "Notify"
+    ],
+    "actionInvoked": [
+     "default"
+    ],
+    "openedUrls": 13
+   },
+   {
+    "trial": "k72a-at40x80-1",
+    "kind": "putgd",
+    "at": "2026-10-22T18:15:50Z",
+    "hover": 0.2,
+    "pressAfterShownSeconds": 2.22,
+    "clicked": [
+     1584,
+     832
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "ActivationToken",
+     "ActionInvoked",
+     "NotificationClosed",
+     "Notify"
+    ],
+    "actionInvoked": [
+     "default"
+    ],
+    "openedUrls": 14
+   },
+   {
+    "trial": "k72a-at40x80-2",
+    "kind": "putgd",
+    "at": "2026-10-22T18:16:13Z",
+    "hover": 0.2,
+    "pressAfterShownSeconds": 2.21,
+    "clicked": [
+     1584,
+     832
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "ActivationToken",
+     "ActionInvoked",
+     "NotificationClosed",
+     "Notify"
+    ],
+    "actionInvoked": [
+     "default"
+    ],
+    "openedUrls": 15
+   },
+   {
+    "trial": "k72a-c02-1",
+    "kind": "control",
+    "at": "2026-10-22T18:07:08Z",
+    "hover": 0.2,
+    "pressAfterShownSeconds": null,
+    "clicked": null,
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "NotificationClosed"
+    ],
+    "actionInvoked": [],
+    "openedUrls": 0
+   },
+   {
+    "trial": "k72a-c02-2",
+    "kind": "control",
+    "at": "2026-10-22T18:07:25Z",
+    "hover": 0.2,
+    "pressAfterShownSeconds": null,
+    "clicked": null,
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "NotificationClosed"
+    ],
+    "actionInvoked": [],
+    "openedUrls": 0
+   },
+   {
+    "trial": "k72a-cov1-1",
+    "kind": "putgd",
+    "at": "2026-10-22T18:17:23Z",
+    "hover": 0.2,
+    "pressAfterShownSeconds": 2.21,
+    "clicked": [
+     1732,
+     943
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "ActivationToken",
+     "ActionInvoked",
+     "NotificationClosed",
+     "Notify"
+    ],
+    "actionInvoked": [
+     "default"
+    ],
+    "openedUrls": 16
+   },
+   {
+    "trial": "k72a-early-1",
+    "kind": "putgd",
+    "at": "2026-10-22T18:11:07Z",
+    "hover": 0.2,
+    "pressAfterShownSeconds": 1.61,
+    "clicked": [
+     1732,
+     808
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "ActivationToken",
+     "ActionInvoked",
+     "NotificationClosed",
+     "Notify"
+    ],
+    "actionInvoked": [
+     "default"
+    ],
+    "openedUrls": 5
+   },
+   {
+    "trial": "k72a-early-2",
+    "kind": "putgd",
+    "at": "2026-10-22T18:11:29Z",
+    "hover": 0.2,
+    "pressAfterShownSeconds": 1.61,
+    "clicked": [
+     1732,
+     808
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "ActivationToken",
+     "ActionInvoked",
+     "NotificationClosed",
+     "Notify"
+    ],
+    "actionInvoked": [
+     "default"
+    ],
+    "openedUrls": 6
+   },
+   {
+    "trial": "k72a-early-3",
+    "kind": "putgd",
+    "at": "2026-10-22T18:11:52Z",
+    "hover": 0.2,
+    "pressAfterShownSeconds": 1.62,
+    "clicked": [
+     1732,
+     808
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "ActivationToken",
+     "ActionInvoked",
+     "NotificationClosed",
+     "Notify"
+    ],
+    "actionInvoked": [
+     "default"
+    ],
+    "openedUrls": 7
+   },
+   {
+    "trial": "k72a-h0-1",
+    "kind": "putgd",
+    "at": "2026-10-22T18:09:59Z",
+    "hover": 0.0,
+    "pressAfterShownSeconds": 2.01,
+    "clicked": [
+     1732,
+     943
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "ActivationToken",
+     "ActionInvoked",
+     "NotificationClosed",
+     "Notify"
+    ],
+    "actionInvoked": [
+     "default"
+    ],
+    "openedUrls": 2
+   },
+   {
+    "trial": "k72a-h0-2",
+    "kind": "putgd",
+    "at": "2026-10-22T18:10:22Z",
+    "hover": 0.0,
+    "pressAfterShownSeconds": 2.03,
+    "clicked": [
+     1732,
+     808
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "ActivationToken",
+     "ActionInvoked",
+     "NotificationClosed",
+     "Notify"
+    ],
+    "actionInvoked": [
+     "default"
+    ],
+    "openedUrls": 3
+   },
+   {
+    "trial": "k72a-h0-3",
+    "kind": "putgd",
+    "at": "2026-10-22T18:10:44Z",
+    "hover": 0.0,
+    "pressAfterShownSeconds": 2.02,
+    "clicked": [
+     1732,
+     808
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "ActivationToken",
+     "ActionInvoked",
+     "NotificationClosed",
+     "Notify"
+    ],
+    "actionInvoked": [
+     "default"
+    ],
+    "openedUrls": 4
+   },
+   {
+    "trial": "k72a-p02-1",
+    "kind": "putgd",
+    "at": "2026-10-22T18:06:00Z",
+    "hover": 0.2,
+    "pressAfterShownSeconds": 2.24,
+    "clicked": [
+     1732,
+     943
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "ActivationToken",
+     "ActionInvoked",
+     "NotificationClosed"
+    ],
+    "actionInvoked": [
+     "default"
+    ],
+    "openedUrls": 0
+   },
+   {
+    "trial": "k72a-p02-2",
+    "kind": "putgd",
+    "at": "2026-10-22T18:06:23Z",
+    "hover": 0.2,
+    "pressAfterShownSeconds": 2.21,
+    "clicked": [
+     1732,
+     943
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "ActivationToken",
+     "ActionInvoked",
+     "NotificationClosed"
+    ],
+    "actionInvoked": [
+     "default"
+    ],
+    "openedUrls": 0
+   },
+   {
+    "trial": "k72a-p02-3",
+    "kind": "putgd",
+    "at": "2026-10-22T18:06:46Z",
+    "hover": 0.2,
+    "pressAfterShownSeconds": 2.23,
+    "clicked": [
+     1732,
+     943
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "ActivationToken",
+     "ActionInvoked",
+     "NotificationClosed"
+    ],
+    "actionInvoked": [
+     "default"
+    ],
+    "openedUrls": 0
+   },
+   {
+    "trial": "k72a-seq1-1",
+    "kind": "putgd",
+    "at": "2026-10-22T18:09:07Z",
+    "hover": 0.2,
+    "pressAfterShownSeconds": 2.23,
+    "clicked": [
+     1732,
+     943
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "ActivationToken",
+     "ActionInvoked",
+     "NotificationClosed",
+     "Notify"
+    ],
+    "actionInvoked": [
+     "default"
+    ],
+    "openedUrls": 1
+   }
+  ],
+  "m74": [
+   {
+    "trial": "m74a-at20x20-1",
+    "kind": "putgd",
+    "at": "2026-10-22T18:13:34Z",
+    "hover": 0.2,
+    "pressAfterShownSeconds": 2.26,
+    "clicked": [
+     1436,
+     28
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "ActionInvoked",
+     "NotificationClosed"
+    ],
+    "actionInvoked": [
+     "default"
+    ],
+    "openedUrls": 10
+   },
+   {
+    "trial": "m74a-at20x20-2",
+    "kind": "putgd",
+    "at": "2026-10-22T18:13:57Z",
+    "hover": 0.2,
+    "pressAfterShownSeconds": 2.26,
+    "clicked": [
+     1436,
+     28
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "ActionInvoked",
+     "NotificationClosed"
+    ],
+    "actionInvoked": [
+     "default"
+    ],
+    "openedUrls": 11
+   },
+   {
+    "trial": "m74a-at244x28-1",
+    "kind": "putgd",
+    "at": "2026-10-22T18:12:49Z",
+    "hover": 0.2,
+    "pressAfterShownSeconds": 2.21,
+    "clicked": [
+     1660,
+     36
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "ActionInvoked",
+     "NotificationClosed"
+    ],
+    "actionInvoked": [
+     "default"
+    ],
+    "openedUrls": 8
+   },
+   {
+    "trial": "m74a-at244x28-2",
+    "kind": "putgd",
+    "at": "2026-10-22T18:13:12Z",
+    "hover": 0.2,
+    "pressAfterShownSeconds": 2.21,
+    "clicked": [
+     1660,
+     36
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "ActionInvoked",
+     "NotificationClosed"
+    ],
+    "actionInvoked": [
+     "default"
+    ],
+    "openedUrls": 9
+   },
+   {
+    "trial": "m74a-at470x14-1",
+    "kind": "putgd",
+    "at": "2026-10-22T18:14:20Z",
+    "hover": 0.2,
+    "pressAfterShownSeconds": 2.23,
+    "clicked": [
+     1886,
+     22
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "ActionInvoked",
+     "NotificationClosed"
+    ],
+    "actionInvoked": [
+     "default"
+    ],
+    "openedUrls": 12
+   },
+   {
+    "trial": "m74a-at470x14-2",
+    "kind": "putgd",
+    "at": "2026-10-22T18:14:42Z",
+    "hover": 0.2,
+    "pressAfterShownSeconds": 2.21,
+    "clicked": [
+     1886,
+     22
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "ActionInvoked",
+     "NotificationClosed"
+    ],
+    "actionInvoked": [
+     "default"
+    ],
+    "openedUrls": 13
+   },
+   {
+    "trial": "m74a-at470x60-1",
+    "kind": "putgd",
+    "at": "2026-10-22T18:15:05Z",
+    "hover": 0.2,
+    "pressAfterShownSeconds": 2.26,
+    "clicked": [
+     1886,
+     68
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "ActionInvoked",
+     "NotificationClosed"
+    ],
+    "actionInvoked": [
+     "default"
+    ],
+    "openedUrls": 14
+   },
+   {
+    "trial": "m74a-at470x60-2",
+    "kind": "putgd",
+    "at": "2026-10-22T18:15:27Z",
+    "hover": 0.2,
+    "pressAfterShownSeconds": 2.26,
+    "clicked": [
+     1886,
+     68
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "ActionInvoked",
+     "NotificationClosed"
+    ],
+    "actionInvoked": [
+     "default"
+    ],
+    "openedUrls": 15
+   },
+   {
+    "trial": "m74a-c02-1",
+    "kind": "control",
+    "at": "2026-10-22T18:07:09Z",
+    "hover": 0.2,
+    "pressAfterShownSeconds": 2.22,
+    "clicked": [
+     1660,
+     39
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "ActionInvoked",
+     "NotificationClosed"
+    ],
+    "actionInvoked": [
+     "default"
+    ],
+    "openedUrls": 0
+   },
+   {
+    "trial": "m74a-c02-2",
+    "kind": "control",
+    "at": "2026-10-22T18:07:31Z",
+    "hover": 0.2,
+    "pressAfterShownSeconds": 2.24,
+    "clicked": [
+     1660,
+     39
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "ActionInvoked",
+     "NotificationClosed"
+    ],
+    "actionInvoked": [
+     "default"
+    ],
+    "openedUrls": 0
+   },
+   {
+    "trial": "m74a-cov1-1",
+    "kind": "putgd",
+    "at": "2026-10-22T18:17:24Z",
+    "hover": 0.2,
+    "pressAfterShownSeconds": 2.26,
+    "clicked": [
+     1660,
+     36
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "ActionInvoked",
+     "NotificationClosed"
+    ],
+    "actionInvoked": [
+     "default"
+    ],
+    "openedUrls": 16
+   },
+   {
+    "trial": "m74a-early-1",
+    "kind": "putgd",
+    "at": "2026-10-22T18:11:07Z",
+    "hover": 0.2,
+    "pressAfterShownSeconds": 1.6,
+    "clicked": [
+     1660,
+     36
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "ActionInvoked",
+     "NotificationClosed"
+    ],
+    "actionInvoked": [
+     "default"
+    ],
+    "openedUrls": 5
+   },
+   {
+    "trial": "m74a-early-2",
+    "kind": "putgd",
+    "at": "2026-10-22T18:11:29Z",
+    "hover": 0.2,
+    "pressAfterShownSeconds": 1.6,
+    "clicked": [
+     1660,
+     36
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "ActionInvoked",
+     "NotificationClosed"
+    ],
+    "actionInvoked": [
+     "default"
+    ],
+    "openedUrls": 6
+   },
+   {
+    "trial": "m74a-early-3",
+    "kind": "putgd",
+    "at": "2026-10-22T18:11:51Z",
+    "hover": 0.2,
+    "pressAfterShownSeconds": 1.6,
+    "clicked": [
+     1660,
+     36
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "ActionInvoked",
+     "NotificationClosed"
+    ],
+    "actionInvoked": [
+     "default"
+    ],
+    "openedUrls": 7
+   },
+   {
+    "trial": "m74a-h0-1",
+    "kind": "putgd",
+    "at": "2026-10-22T18:09:59Z",
+    "hover": 0.0,
+    "pressAfterShownSeconds": 2.06,
+    "clicked": [
+     1660,
+     36
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "ActionInvoked",
+     "NotificationClosed"
+    ],
+    "actionInvoked": [
+     "default"
+    ],
+    "openedUrls": 2
+   },
+   {
+    "trial": "m74a-h0-2",
+    "kind": "putgd",
+    "at": "2026-10-22T18:10:22Z",
+    "hover": 0.0,
+    "pressAfterShownSeconds": 2.03,
+    "clicked": [
+     1660,
+     36
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "ActionInvoked",
+     "NotificationClosed"
+    ],
+    "actionInvoked": [
+     "default"
+    ],
+    "openedUrls": 3
+   },
+   {
+    "trial": "m74a-h0-3",
+    "kind": "putgd",
+    "at": "2026-10-22T18:10:45Z",
+    "hover": 0.0,
+    "pressAfterShownSeconds": 2.03,
+    "clicked": [
+     1660,
+     36
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "ActionInvoked",
+     "NotificationClosed"
+    ],
+    "actionInvoked": [
+     "default"
+    ],
+    "openedUrls": 4
+   },
+   {
+    "trial": "m74a-p02-1",
+    "kind": "putgd",
+    "at": "2026-10-22T18:06:00Z",
+    "hover": 0.2,
+    "pressAfterShownSeconds": 2.21,
+    "clicked": [
+     1660,
+     36
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "ActionInvoked",
+     "NotificationClosed"
+    ],
+    "actionInvoked": [
+     "default"
+    ],
+    "openedUrls": 0
+   },
+   {
+    "trial": "m74a-p02-2",
+    "kind": "putgd",
+    "at": "2026-10-22T18:06:23Z",
+    "hover": 0.2,
+    "pressAfterShownSeconds": 2.23,
+    "clicked": [
+     1660,
+     36
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "ActionInvoked",
+     "NotificationClosed"
+    ],
+    "actionInvoked": [
+     "default"
+    ],
+    "openedUrls": 0
+   },
+   {
+    "trial": "m74a-p02-3",
+    "kind": "putgd",
+    "at": "2026-10-22T18:06:46Z",
+    "hover": 0.2,
+    "pressAfterShownSeconds": 2.24,
+    "clicked": [
+     1660,
+     36
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "ActionInvoked",
+     "NotificationClosed"
+    ],
+    "actionInvoked": [
+     "default"
+    ],
+    "openedUrls": 0
+   },
+   {
+    "trial": "m74a-seq1-1",
+    "kind": "putgd",
+    "at": "2026-10-22T18:09:07Z",
+    "hover": 0.2,
+    "pressAfterShownSeconds": 2.21,
+    "clicked": [
+     1660,
+     36
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "ActionInvoked",
+     "NotificationClosed"
+    ],
+    "actionInvoked": [
+     "default"
+    ],
+    "openedUrls": 1
+   }
+  ]
+ },
+ "prBuild": {
+  "build": "26.1022.987-dev+g9684be5d5e39 (run 39842648614, sha256 5aac86748f60436e058b504248cbe9ababc1b31057a5edfe517d2345df7e13fa)",
+  "k72": [
+   {
+    "trial": "k72p-pr-1",
+    "kind": "putgd",
+    "at": "2026-10-22T20:28:12Z",
+    "hover": 0.2,
+    "pressAfterShownSeconds": 2.22,
+    "clicked": [
+     1732,
+     943
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "ActivationToken",
+     "ActionInvoked",
+     "NotificationClosed",
+     "Notify"
+    ],
+    "actionInvoked": [
+     "default"
+    ],
+    "openedUrls": 1
+   },
+   {
+    "trial": "k72p-pr-2",
+    "kind": "putgd",
+    "at": "2026-10-22T20:28:34Z",
+    "hover": 0.2,
+    "pressAfterShownSeconds": 2.22,
+    "clicked": [
+     1732,
+     808
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "ActivationToken",
+     "ActionInvoked",
+     "NotificationClosed",
+     "Notify"
+    ],
+    "actionInvoked": [
+     "default"
+    ],
+    "openedUrls": 2
+   }
+  ],
+  "m74": [
+   {
+    "trial": "m74p-pr-1",
+    "kind": "putgd",
+    "at": "2026-10-22T20:28:11Z",
+    "hover": 0.2,
+    "pressAfterShownSeconds": 2.23,
+    "clicked": [
+     1660,
+     36
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "ActionInvoked",
+     "NotificationClosed"
+    ],
+    "actionInvoked": [
+     "default"
+    ],
+    "openedUrls": 1
+   },
+   {
+    "trial": "m74p-pr-2",
+    "kind": "putgd",
+    "at": "2026-10-22T20:28:35Z",
+    "hover": 0.2,
+    "pressAfterShownSeconds": 2.23,
+    "clicked": [
+     1660,
+     36
+    ],
+    "dbusMembers": [
+     "NameAcquired",
+     "NameLost",
+     "Notify",
+     "ActionInvoked",
+     "NotificationClosed"
+    ],
+    "actionInvoked": [
+     "default"
+    ],
+    "openedUrls": 2
+   }
+  ]
+ },
+ "memory": {
+  "k72p": {
+   "finalRssMiB": 32.797,
+   "peakRssMiB": 32.797,
+   "pssMiB": 26.34,
+   "pass": true,
+   "load": [
+    [
+     0.32421875,
+     0.1689453125,
+     0.060546875
+    ],
+    [
+     0.0703125,
+     0.12109375,
+     0.0517578125
+    ]
+   ]
+  },
+  "k72b": {
+   "finalRssMiB": 32.859,
+   "peakRssMiB": 32.859,
+   "pssMiB": 26.364,
+   "pass": true,
+   "load": [
+    [
+     0.4638671875,
+     0.2451171875,
+     0.10693359375
+    ],
+    [
+     0.12548828125,
+     0.19091796875,
+     0.09521484375
+    ]
+   ]
+  },
+  "m74p": {
+   "finalRssMiB": 32.266,
+   "peakRssMiB": 32.266,
+   "pssMiB": 27.127,
+   "pass": true,
+   "load": [
+    [
+     1.9287109375,
+     2.5595703125,
+     2.7431640625
+    ],
+    [
+     1.9306640625,
+     2.42236328125,
+     2.68017578125
+    ]
+   ]
+  },
+  "m74b": {
+   "finalRssMiB": 32.254,
+   "peakRssMiB": 32.254,
+   "pssMiB": 26.655,
+   "pass": true,
+   "load": [
+    [
+     3.1689453125,
+     2.66943359375,
+     2.72412109375
+    ],
+    [
+     2.78369140625,
+     2.72607421875,
+     2.74267578125
+    ]
+   ]
+  }
+ }
+}
