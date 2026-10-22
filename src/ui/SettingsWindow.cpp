@@ -383,7 +383,7 @@ QString settingHelp(const QString& path,const QString& objectName){
   {"appearanceTheme","Match the desktop follows your desktop's light or dark setting and changes with it. Dark and Light keep one look. Applies at once to every open put.gd window."},
   {"launchAtLogin","Starts put.gd when you sign in. Disabled by default. The desktop startup entry is updated after persistence; another app copy is not started."},
   {"checkForUpdates","Once a day put.gd asks app.put.gd for the newest version on its channel. The request is the same from every computer: no version, account, locale or ID. The comparison happens here, and nothing is installed without you. Stable builds also show a notification once for each new version; nightly builds show it only here. Check now works with daily checks off."},
-  {"updateChannel","This build's channel follows how put.gd was installed: a nightly build follows nightly, a release or release candidate follows stable. Choose Stable or Nightly to watch the other channel instead. Changing it doesn't change what is installed: an AppImage then offers to switch to that channel's newest release, which you start yourself."},
+  {"updateChannel","Starts on the channel of this build: a nightly build follows nightly, a release or release candidate follows stable. Choose the other one to watch it instead. Changing it doesn't change what is installed: an AppImage then offers to switch to that channel's newest release, which you start yourself."},
   {"updateStatus","The result of the last check and when the next one runs. Download opens the new package for this installation in your browser. When this installation updates from put.gd's apt or dnf repository, Open software updates opens your system's updater instead."},
   {"updateInstall","Download and install fetches the new AppImage, checks it against the release's SHA256SUMS and puts it in place of the one put.gd runs from, at the same path, so login startup and menu entries keep working. It uses appimageupdatetool or zsync2 when one is installed, which downloads only what changed, and otherwise the whole file. The current version is kept beside it as a hidden backup until the new one has started. When you watch the other channel, the same steps switch to that channel's release, checked with its own signing key; an older version is installed only after you confirm."},
   {"updateCommand","Updates from put.gd's repository install with the rest of your system's updates. You can also run this command in a terminal."},
@@ -455,7 +455,7 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  // resident runs the check; this page shows it and starts Check now.
  auto* updatesForm=section(general,"Updates","One small request a day to app.put.gd, with nothing that identifies you. Nothing installs without you.");
  updatesForm_=updatesForm;checkUpdates_=new QCheckBox("Check for updates once a day");checkUpdates_->setObjectName("checkForUpdates");updateRows_.append(setting(updatesForm,"Updates",checkUpdates_,"/preferences/updates/check"));
- updateChannel_=choices(this,"updateChannel",{});updateChannel_->addItem("This build's channel","build");updateChannel_->addItem("Stable","stable");updateChannel_->addItem("Nightly","nightly");updateRows_.append(setting(updatesForm,"Channel",updateChannel_,"/preferences/updates/channel"));
+ updateChannel_=choices(this,"updateChannel",{});updateChannel_->addItem("Stable","stable");updateChannel_->addItem("Nightly","nightly");updateRows_.append(setting(updatesForm,"Channel",updateChannel_,"/preferences/updates/channel"));
  auto* updateRow=new QWidget;auto* updateLayout=new QHBoxLayout(updateRow);updateLayout->setContentsMargins(0,0,0,0);updateLayout->setSpacing(8);
  updateStatus_=new QLabel;updateStatus_->setObjectName("updateStatus");updateStatus_->setWordWrap(true);updateStatus_->setAccessibleName("Update status");updateLayout->addWidget(updateStatus_,1);
  checkNow_=new QPushButton("Check now");checkNow_->setObjectName("checkForUpdatesNow");updateLayout->addWidget(checkNow_,0,Qt::AlignTop);
@@ -703,7 +703,7 @@ void SettingsWindow::populate(){
  captureProfile_->setCurrentIndex(captureProfile_->findData(base["destination"]=="local"?QString{}:base["profileId"].toString()));captureSharing_->setCurrentIndex(captureSharing_->findData(base["publicationMode"].toString("default")));
  bool exceptions=false;for(auto* inherit:useCaptureDefault_)exceptions|=!inherit->isChecked();captureExceptions_->setChecked(exceptions);
  shortcuts_->setActions(actions);auto archive=draft_["archive"].toObject();root_->setText(archive["root"].toString());keep_->setChecked(archive["keepUploads"].toBool());for(auto it=folders_.begin();it!=folders_.end();++it)it.value()->setText(archive["folders"].toObject()[it.key()].toString());
- naming_->setCurrentIndex(naming_->findData(draft_["naming"].toObject()["mode"].toString()));const auto effective=Settings::fromValidated(draft_);const QHash<QString,QString> formats{{"fileTemplate",effective.fileTemplate},{"captureTemplate",effective.captureTemplate},{"imageTemplate",effective.imageTemplate},{"textTemplate",effective.textTemplate}};for(auto it=templates_.begin();it!=templates_.end();++it)it.value()->setText(formats.value(it.key()));collision_->setCurrentIndex(collision_->findData(draft_["naming"].toObject()["collisionPolicy"].toString()));auto prefs=draft_["preferences"].toObject();uploadClipboard_->setCurrentIndex(uploadClipboard_->findData(effective.uploadClipboardBehavior));appearance_->setCurrentIndex(appearance_->findData(effective.appearanceTheme));notifications_->setChecked(prefs["notifications"].toBool());login_->setChecked(prefs["launchAtLogin"].toBool());debugLogging_->setChecked(prefs["diagnostics"].toObject()["debugLogging"].toBool());unlockAtStartup_->setChecked(effective.unlockCredentialsAtStartup);checkUpdates_->setChecked(effective.checkForUpdates);updateChannel_->setCurrentIndex(qMax(0,updateChannel_->findData(effective.updateChannel)));
+ naming_->setCurrentIndex(naming_->findData(draft_["naming"].toObject()["mode"].toString()));const auto effective=Settings::fromValidated(draft_);const QHash<QString,QString> formats{{"fileTemplate",effective.fileTemplate},{"captureTemplate",effective.captureTemplate},{"imageTemplate",effective.imageTemplate},{"textTemplate",effective.textTemplate}};for(auto it=templates_.begin();it!=templates_.end();++it)it.value()->setText(formats.value(it.key()));collision_->setCurrentIndex(collision_->findData(draft_["naming"].toObject()["collisionPolicy"].toString()));auto prefs=draft_["preferences"].toObject();uploadClipboard_->setCurrentIndex(uploadClipboard_->findData(effective.uploadClipboardBehavior));appearance_->setCurrentIndex(appearance_->findData(effective.appearanceTheme));notifications_->setChecked(prefs["notifications"].toBool());login_->setChecked(prefs["launchAtLogin"].toBool());debugLogging_->setChecked(prefs["diagnostics"].toObject()["debugLogging"].toBool());unlockAtStartup_->setChecked(effective.unlockCredentialsAtStartup);checkUpdates_->setChecked(effective.checkForUpdates);updateChannelSetting_=effective.updateChannel;updateChannelShown_.clear();showUpdateChannel();
  for(auto it=numbers_.begin();it!=numbers_.end();++it){QJsonValue value=draft_["limits"].toObject().contains(it.key())?draft_["limits"].toObject().value(it.key()):draft_["retention"].toObject().value(it.key());if(it.key()=="pendingImageBytes"&&value.isUndefined())value=effective.limits.pendingImageBytes;it.value()->setText(value.isNull()?QString{}:value.isString()?QStringLiteral("Auto"):ByteSize::exact(value.toInteger(),displayUnit(it.key())));}
  updateCaptureInheritance();loading_=false;
 }
@@ -794,7 +794,12 @@ QJsonObject SettingsWindow::candidate() const {
  // An untouched config keeps no appearance object; it reads as "system".
  if(preferences.contains("appearance")||appearance_->currentData()!="system"){auto appearance=preferences["appearance"].toObject();appearance["theme"]=appearance_->currentData().toString();preferences["appearance"]=appearance;}
  // An untouched config keeps no updates object; it reads as a daily check on this build's channel.
- if(preferences.contains("updates")||!checkUpdates_->isChecked()||updateChannel_->currentData()!="build"){auto updates=preferences["updates"].toObject();updates["check"]=checkUpdates_->isChecked();updates["channel"]=updateChannel_->currentData().toString();preferences["updates"]=updates;}
+ // The build's own channel is stored as "build", so a DEB and an AppImage that
+ // share this file each keep following their own (#344); a build with no
+ // channel keeps the stored value until the choice is changed.
+ const auto buildChannel=buildUpdateChannel();const auto chosen=updateChannel_->currentData().toString();
+ const auto channel=buildChannel.isEmpty()?(chosen==updateChannelShown_?updateChannelSetting_:chosen):chosen==buildChannel?QString("build"):chosen;
+ if(preferences.contains("updates")||!checkUpdates_->isChecked()||channel!="build"){auto updates=preferences["updates"].toObject();updates["check"]=checkUpdates_->isChecked();updates["channel"]=channel;preferences["updates"]=updates;}
  // debugLogging is always written with the object; packageFolder stays as the draft holds it.
  if(preferences.contains("diagnostics")||debugLogging_->isChecked()){auto diagnostics=preferences["diagnostics"].toObject();diagnostics["debugLogging"]=debugLogging_->isChecked();preferences["diagnostics"]=diagnostics;}
  doc["preferences"]=preferences;auto limits=doc["limits"].toObject(),retention=doc["retention"].toObject();
@@ -850,13 +855,22 @@ Error SettingsWindow::moveDestination(int from,int to){
  if(saving_)autosave_->start();else save();
  emit viewStateChanged();return {};
 }
+QString SettingsWindow::buildUpdateChannel() const {
+ const auto update=settings_.diagnostics()["update"].toObject();
+ return update["supported"].toBool()?update["build"].toObject()["channel"].toString():QString();
+}
+void SettingsWindow::showUpdateChannel(){
+ // Once the choice has been changed here, it stays as chosen.
+ if(!updateChannelShown_.isEmpty()&&updateChannel_->currentData()!=updateChannelShown_)return;
+ const auto channel=updateChannelSetting_=="stable"||updateChannelSetting_=="nightly"?updateChannelSetting_:buildUpdateChannel();
+ if(channel.isEmpty())return;
+ const QSignalBlocker block(updateChannel_);updateChannel_->setCurrentIndex(qMax(0,updateChannel_->findData(channel)));updateChannelShown_=channel;
+}
 void SettingsWindow::refreshUpdateStatus(){
  const auto update=settings_.diagnostics()["update"].toObject();const auto build=update["build"].toObject();const auto result=update["result"].toObject();
  const bool supported=update["supported"].toBool();
- // #305: the first choice names the channel this build resolves to; a build
- // that never checks (development, Flatpak) keeps the plain label.
- const auto buildChannel=supported?build["channel"].toString():QString();
- updateChannel_->setItemText(0,buildChannel.isEmpty()?QString("This build's channel"):"This build's channel ("+buildChannel+")");
+ // The choice shows this build's channel until it is changed (#344).
+ showUpdateChannel();
  // A build that never checks has nothing to choose: only the reason shows.
  for(auto* row:updateRows_)updatesForm_->setRowVisible(row,supported||update.isEmpty());
  checkNow_->setVisible(supported||update.isEmpty());checkNow_->setEnabled(supported&&!update["checking"].toBool());
