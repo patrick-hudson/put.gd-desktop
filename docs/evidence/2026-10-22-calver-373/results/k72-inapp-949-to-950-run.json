@@ -1,0 +1,255 @@
+{
+ "name": "r949",
+ "scenario": "a",
+ "image": "/home/patrick/work/put.gd-calver373-acc/runs/r949/apps/putgd-26.1022.949-nightly-x86_64.AppImage",
+ "imageSha256": "728b60e0ab0f97304ddb5c8b46601bed06d1e12578440acc7b3ea095d00f3e23",
+ "cliDir": "/home/patrick/work/put.gd-calver373-acc/runs/r949/cli/squashfs-root",
+ "runtime": "/tmp/upd293.coCjB2",
+ "host": "kubuntu",
+ "urls": {
+  "PUTGD_UPDATE_FEED_URL": "https://pkg.put.gd/lab/update/v1/",
+  "PUTGD_UPDATE_RELEASE_URL": "https://pkg.put.gd/lab/releases",
+  "PUTGD_UPDATE_MIRROR_URL": "https://pkg.put.gd/lab/releases"
+ },
+ "before": {
+  "dataPutgd": false,
+  "homePutgd": {
+   "/home/patrick/.config/putgd": false,
+   "/home/patrick/.local/state/putgd": true,
+   "/home/patrick/.cache/putgd": false
+  },
+  "autostart": [
+   "patrick-vnc.desktop"
+  ]
+ },
+ "pids": {
+  "apprun": 1261921
+ },
+ "created": "2026-10-22T06:29:43Z",
+ "log": [
+  {
+   "at": "2026-10-22T06:29:51Z",
+   "check": {
+    "status": {
+     "build": "26.1022.949-nightly",
+     "channel": "nightly",
+     "latest": "26.1022.950-nightly",
+     "updateAvailable": true,
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "/home/patrick/work/put.gd-calver373-acc/runs/r949/apps/putgd-26.1022.949-nightly-x86_64.AppImage",
+      "installed": null,
+      "kind": "update",
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle",
+      "switch": null
+     }
+    },
+    "frame": "/home/patrick/work/put.gd-calver373-acc/runs/r949/frames/check.png"
+   }
+  },
+  {
+   "at": "2026-10-22T06:30:18Z",
+   "install": {
+    "seconds": 10.8,
+    "phases": [
+     {
+      "at": 0.0,
+      "phase": [
+       "starting",
+       "auto"
+      ],
+      "bytes": 0,
+      "total": 0
+     },
+     {
+      "at": 0.5,
+      "phase": [
+       "verifying",
+       null
+      ],
+      "bytes": 0,
+      "total": 0
+     },
+     {
+      "at": 2.2,
+      "phase": [
+       "zsync",
+       "appimageupdatetool"
+      ],
+      "bytes": 0,
+      "total": 115370488
+     },
+     {
+      "at": 6.2,
+      "phase": [
+       "verifying",
+       "appimageupdatetool"
+      ],
+      "bytes": 115370488,
+      "total": 115370488
+     },
+     {
+      "at": 7.0,
+      "phase": [
+       "installing",
+       "zsync"
+      ],
+      "bytes": 115370488,
+      "total": 115370488
+     },
+     {
+      "at": 7.4,
+      "phase": [
+       "done",
+       "zsync"
+      ],
+      "bytes": 115370488,
+      "total": 115370488
+     }
+    ],
+    "install": {
+     "available": true,
+     "backup": "/home/patrick/work/put.gd-calver373-acc/runs/r949/apps/.putgd-update-backup-26.1022.949-nightly.AppImage",
+     "bytes": 115370488,
+     "finishedAt": "2026-10-22T06:30:13Z",
+     "image": "/home/patrick/work/put.gd-calver373-acc/runs/r949/apps/putgd-26.1022.949-nightly-x86_64.AppImage",
+     "installed": {
+      "channel": "nightly",
+      "image": "/home/patrick/work/put.gd-calver373-acc/runs/r949/apps/putgd-26.1022.949-nightly-x86_64.AppImage",
+      "installedAt": "2026-10-22T06:30:13Z",
+      "method": "zsync",
+      "previousChannel": "nightly",
+      "previousVersion": "26.1022.949-nightly",
+      "sha256": "9f9bfe2b15025ea7fdadf9f5d4192710710f756e06833b014cde92b514d20ef2",
+      "version": "26.1022.950-nightly"
+     },
+     "kind": "update",
+     "method": "zsync",
+     "phase": "done",
+     "reason": null,
+     "restartRequired": true,
+     "result": {
+      "backup": "/home/patrick/work/put.gd-calver373-acc/runs/r949/apps/.putgd-update-backup-26.1022.949-nightly.AppImage",
+      "channel": "nightly",
+      "image": "/home/patrick/work/put.gd-calver373-acc/runs/r949/apps/putgd-26.1022.949-nightly-x86_64.AppImage",
+      "installed": true,
+      "method": "zsync",
+      "previousChannel": "nightly",
+      "previousVersion": "26.1022.949-nightly",
+      "sha256": "9f9bfe2b15025ea7fdadf9f5d4192710710f756e06833b014cde92b514d20ef2",
+      "signature": {
+       "trustedComment": "put.gd v26.1022.950-nightly nightly"
+      },
+      "switched": false,
+      "tag": "v26.1022.950-nightly",
+      "version": "26.1022.950-nightly",
+      "zsync": {
+       "output": "zsync2: used 115040256 local, fetched 1030648 | 100.00% done (110.03 of 110.03 MiB)... | Validation warning: AppImage not signed | Update successful. New file created: /home/patrick/work/put.gd-calver373-acc/runs/r949/apps/.putgd-update-cMFarw/putgd-26.1022.950-nightly-x86_64.AppImage",
+       "tool": "appimageupdatetool",
+       "used": true
+      }
+     },
+     "running": false,
+     "startedAt": "2026-10-22T06:30:06Z",
+     "state": "installed",
+     "switch": null,
+     "total": 115370488
+    },
+    "frames": {
+     "zsync": "/home/patrick/work/put.gd-calver373-acc/runs/r949/frames/install-zsync.png",
+     "result": "/home/patrick/work/put.gd-calver373-acc/runs/r949/frames/install-result.png"
+    },
+    "imageSha256": "9f9bfe2b15025ea7fdadf9f5d4192710710f756e06833b014cde92b514d20ef2",
+    "backup": "/home/patrick/work/put.gd-calver373-acc/runs/r949/apps/.putgd-update-backup-26.1022.949-nightly.AppImage",
+    "backupSha256": "728b60e0ab0f97304ddb5c8b46601bed06d1e12578440acc7b3ea095d00f3e23",
+    "folder": [
+     ".putgd-update-backup-26.1022.949-nightly.AppImage",
+     "putgd-26.1022.949-nightly-x86_64.AppImage"
+    ],
+    "stateFile": {
+     "backup": {
+      "copied": false,
+      "device": "2050",
+      "inode": "4096594",
+      "mtime": 1792650573,
+      "path": "/home/patrick/work/put.gd-calver373-acc/runs/r949/apps/.putgd-update-backup-26.1022.949-nightly.AppImage",
+      "size": 115370488
+     },
+     "installed": {
+      "channel": "nightly",
+      "image": "/home/patrick/work/put.gd-calver373-acc/runs/r949/apps/putgd-26.1022.949-nightly-x86_64.AppImage",
+      "installedAt": "2026-10-22T06:30:13Z",
+      "method": "zsync",
+      "previousChannel": "nightly",
+      "previousVersion": "26.1022.949-nightly",
+      "sha256": "9f9bfe2b15025ea7fdadf9f5d4192710710f756e06833b014cde92b514d20ef2",
+      "version": "26.1022.950-nightly"
+     },
+     "schemaVersion": 1,
+     "staging": null
+    }
+   }
+  },
+  {
+   "at": "2026-10-22T06:30:28Z",
+   "restart": {
+    "reply": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "ok": true,
+     "requestId": "b6e67740-fb70-49d6-a571-3f627683cc9c",
+     "result": {
+      "restarting": true,
+      "version": "26.1022.950-nightly"
+     },
+     "schemaVersion": 1
+    },
+    "oldPid": 1261963,
+    "oldGone": true,
+    "newPid": 1262295,
+    "newExe": "/tmp/.mount_putgd-IkppcK/usr/bin/putgd",
+    "newAppimage": "/home/patrick/work/put.gd-calver373-acc/runs/r949/apps/putgd-26.1022.949-nightly-x86_64.AppImage",
+    "version": "26.1022.950-nightly",
+    "install": {
+     "available": true,
+     "backup": null,
+     "image": "/home/patrick/work/put.gd-calver373-acc/runs/r949/apps/putgd-26.1022.949-nightly-x86_64.AppImage",
+     "installed": {
+      "backupRemoved": true,
+      "channel": "nightly",
+      "image": "/home/patrick/work/put.gd-calver373-acc/runs/r949/apps/putgd-26.1022.949-nightly-x86_64.AppImage",
+      "installedAt": "2026-10-22T06:30:13Z",
+      "method": "zsync",
+      "previousChannel": "nightly",
+      "previousVersion": "26.1022.949-nightly",
+      "sha256": "9f9bfe2b15025ea7fdadf9f5d4192710710f756e06833b014cde92b514d20ef2",
+      "version": "26.1022.950-nightly"
+     },
+     "kind": "update",
+     "reason": null,
+     "restartRequired": false,
+     "running": false,
+     "state": "idle",
+     "switch": null
+    },
+    "imageSha256": "9f9bfe2b15025ea7fdadf9f5d4192710710f756e06833b014cde92b514d20ef2",
+    "afterRestart": {
+     "current": "26.1022.950-nightly",
+     "latest": "26.1022.950-nightly",
+     "updateAvailable": false
+    },
+    "folder": [
+     "putgd-26.1022.949-nightly-x86_64.AppImage"
+    ],
+    "frame": "/home/patrick/work/put.gd-calver373-acc/runs/r949/frames/restarted.png"
+   }
+  }
+ ]
+}

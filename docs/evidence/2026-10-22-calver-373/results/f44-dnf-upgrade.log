@@ -1,0 +1,60 @@
+
+### host (2026-10-22T05:54:30Z)
+6.19.10-300.fc44.x86_64
+PRETTY_NAME="Fedora Linux 44 (Workstation Edition)"
+
+### before (2026-10-22T05:54:30Z)
+package putgd is not installed
+ls: cannot access '/etc/yum.repos.d/putgd.repo': No such file or directory
+ls: cannot access '/etc/yum.repos.d/putgd-lab373.repo': No such file or directory
+
+### download putgd-0.1.1-nightly.925-fedora44-x86_64.rpm and the release's SHA256SUMS from GitHub (2026-10-22T05:54:30Z)
+putgd-0.1.1-nightly.925-fedora44-x86_64.rpm: OK
+
+### install putgd-0.1.1-nightly.925-fedora44-x86_64.rpm from the file (it adds the live nightly repository) (2026-10-22T05:54:31Z)
+[6/6] Installing putgd-0:0.1.1~nightly. 100% |  33.2 MiB/s | 115.2 MiB |  00m03s
+Warning: skipped OpenPGP checks for 1 package from repository: @commandline
+Complete!
+putgd-0.1.1~nightly.925-1.fc44.x86_64
+putgd 0.1.1-nightly.925
+-rw-r--r--. 1 root root 421 Oct 22 00:54 /etc/yum.repos.d/putgd.repo
+# put.gd nightly packages from pkg.put.gd, added by the putgd package.
+# To stop updates from this repository, delete this file or set enabled=0;
+# upgrades leave your change alone and `dnf remove putgd` removes the file.
+[putgd-nightly]
+name=put.gd (nightly)
+baseurl=https://pkg.put.gd/rpm/fedora/44/x86_64/nightly
+enabled=1
+gpgcheck=1
+
+### add the lab repository beside the live one (2026-10-22T05:54:41Z)
+baseurl=https://pkg.put.gd/lab/rpm/fedora/44/x86_64/nightly
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd
+
+### what the package manager sees (2026-10-22T05:54:41Z)
+Upgrades
+putgd.x86_64 26.1022.949~nightly-1.fc44 putgd-lab373
+
+### upgrade through the repository (2026-10-22T05:54:49Z)
+ Fingerprint: 4032E28D893BAF66F4AC23D9A11D38D55536B371
+ From       : file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd
+The key was successfully imported.
+[1/4] Verify package files              100% |   8.0   B/s |   1.0   B |  00m00s
+[2/4] Prepare transaction               100% |   6.0   B/s |   2.0   B |  00m00s
+[3/4] Upgrading putgd-0:26.1022.949~nig 100% |  66.8 MiB/s |  29.8 MiB |  00m00s
+[4/4] Removing putgd-0:0.1.1~nightly.92 100% |  51.0   B/s | 123.0   B |  00m02s
+Complete!
+rc=0
+
+### after (2026-10-22T05:54:59Z)
+putgd-26.1022.949~nightly-1.fc44.x86_64
+putgd 26.1022.949-nightly
+rpm.vercmp(26.1022.949~nightly-1.fc44, 0.1.1~nightly.925-1) = 1
+{'version': '26.1022.949-nightly', 'baseVersion': '26.1022.949', 'packageVersion': '26.1022.949~nightly', 'gitCommit': '3166555243e5d691a8a6346ee54175dc726a114b'}
+
+### remove putgd and the lab repository (2026-10-22T05:54:59Z)
+[5/5] Removing libmng-0:2.0.3-25.fc44.x 100% |  14.0   B/s |  17.0   B |  00m01s
+Complete!
+package putgd is not installed
+ls: cannot access '/etc/yum.repos.d/putgd.repo': No such file or directory
+ls: cannot access '/etc/yum.repos.d/putgd-lab373.repo': No such file or directory
