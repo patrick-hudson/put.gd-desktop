@@ -136,6 +136,36 @@ class Token(unittest.TestCase):
             self.assertNotIn('GH_TOKEN', os.environ)
 
 
+class Environment(unittest.TestCase):
+    def test_children_never_see_the_desktop_session(self):
+        session = {'HOME': '/h', 'PATH': '/bin', 'LC_TIME': 'C', 'XDG_RUNTIME_DIR': '/run/user/1',
+                   'DBUS_SESSION_BUS_ADDRESS': 'unix:path=/run/user/1/bus', 'DISPLAY': ':0',
+                   'WAYLAND_DISPLAY': 'wayland-0', 'XAUTHORITY': '/run/user/1/xauth', 'XDG_SESSION_TYPE': 'wayland',
+                   'XDG_CURRENT_DESKTOP': 'KDE', 'KDE_FULL_SESSION': 'true', 'GH_TOKEN': 'x', 'GITHUB_TOKEN': 'y',
+                   'PUTGD_TEST_TIME_SCALE': '9'}
+        self.assertEqual(weekly.headless_environment(session),
+                         {'HOME': '/h', 'PATH': '/bin', 'LC_TIME': 'C', 'XDG_RUNTIME_DIR': '/run/user/1',
+                          'DBUS_SESSION_BUS_ADDRESS': 'unix:path=/run/user/1/bus'})
+
+    def test_run_passes_the_headless_environment(self):
+        lines = []
+        original = dict(os.environ)
+        os.environ.update(DISPLAY=':0', WAYLAND_DISPLAY='wayland-0')
+        try:
+            weekly.run([sys.executable, '-c', 'import os; print(os.environ.get("DISPLAY"), '
+                                              'os.environ.get("WAYLAND_DISPLAY"))'], lines.append)
+        finally:
+            os.environ.clear()
+            os.environ.update(original)
+        self.assertEqual(lines[-1], 'None None')
+
+    def test_the_unit_unsets_the_session(self):
+        service = (ROOT / 'tools/lab/putgd-stress-weekly.service').read_text()
+        unset = next(line for line in service.splitlines() if line.startswith('UnsetEnvironment='))
+        for name in ('DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY', 'XDG_SESSION_TYPE', 'XDG_CURRENT_DESKTOP'):
+            self.assertIn(name, unset.split('=', 1)[1].split())
+
+
 class Retention(unittest.TestCase):
     def test_keeps_the_newest_weeks_of_its_own_directories_only(self):
         with tempfile.TemporaryDirectory() as directory:

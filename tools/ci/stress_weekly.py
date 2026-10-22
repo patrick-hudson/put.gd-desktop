@@ -28,6 +28,8 @@ on Sundays at 03:00 local time. One run:
 7. It keeps the newest --keep weeks of weekly-* directories that it created
    and deletes only older ones of those.
 
+Every child gets a headless environment (HEADLESS below): the desktop
+session's DISPLAY, WAYLAND_DISPLAY and XDG_SESSION_* never reach the tests.
 It stops only what it started (systemd stops the service's own cgroup) and
 deletes only its tree's build/dev and its own weekly-* directories.
 
@@ -65,6 +67,11 @@ RESERVE = 10 * GIB  # docs/lab-storage.md host reserve
 INCREMENTAL = 2 * GIB  # headroom for rebuilding over an existing build/dev
 DEFAULT_BUILD = 4 * GIB  # until a build has been measured
 MIN_INODES = 1024
+# The children get only these variables. A desktop session (Plasma, GNOME) imports DISPLAY, WAYLAND_DISPLAY,
+# XAUTHORITY and the XDG_SESSION_* set into the systemd user manager; tests inheriting them reach the live
+# desktop instead of their own Xvfb and private buses (the first k72 run, 2026-10-21, timed out five tests).
+HEADLESS = ('HOME', 'USER', 'LOGNAME', 'SHELL', 'PATH', 'LANG', 'LANGUAGE', 'TZ', 'XDG_RUNTIME_DIR',
+            'DBUS_SESSION_BUS_ADDRESS', 'SSL_CERT_FILE', 'SSL_CERT_DIR')
 
 
 class Skip(Exception):
@@ -244,9 +251,16 @@ def ensure_disk(tree, state_dir, log, dry_run, measure=free_space):
     log(f'disk: {gib(free)} free, enough for a {gib(estimate)} build plus the {gib(RESERVE)} reserve')
 
 
+def headless_environment(source=None):
+    """The environment for every child: no display, desktop session or tokens, like an SSH login."""
+    source = os.environ if source is None else source
+    return {key: value for key, value in source.items() if key in HEADLESS or key.startswith('LC_')}
+
+
 def run(command, log, output=None, **options):
     """Run a command; its output goes to the log, or to OUTPUT (a path) when given. Returns the exit code."""
     log('$ ' + ' '.join(map(str, command)))
+    options.setdefault('env', headless_environment())
     if output:
         with output.open('a') as stream:
             return subprocess.run(command, stdout=stream, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
@@ -275,7 +289,7 @@ def update_tree(tree, ref, sdk_from, log):
     git(tree, log, 'checkout', '--quiet', '--force', '--detach', f'refs/remotes/origin/{ref}')
     git(tree, log, 'clean', '-ffdq')  # untracked files only; the ignored build/ stays
     commit = subprocess.run(['git', '-C', str(tree), 'rev-parse', 'HEAD'], capture_output=True, text=True,
-                            check=True).stdout.strip()
+                            check=True, env=headless_environment()).stdout.strip()
     for name in ('sdk', 'dependencies'):
         link, target = tree / 'build' / name, sdk_from / name
         if not target.is_dir():
@@ -313,8 +327,7 @@ def update_tracker(tree, ledger, token_file, repo, log):
     if token is None:
         log(f'GitHub token {why}: not commenting on flaky-test issues; the results stay in {ledger.parent}')
         return f'skipped: token {why}'
-    environment = {key: value for key, value in os.environ.items() if key not in ('GITHUB_TOKEN', 'GH_TOKEN')}
-    environment['GH_TOKEN'] = token
+    environment = dict(headless_environment(), GH_TOKEN=token)
     result = subprocess.run([sys.executable, '-I', str(tree / 'tools/ci/flake_ledger.py'), 'issues', str(ledger),
                              '--repo', repo], env=environment, capture_output=True, text=True, timeout=900,
                             stdin=subprocess.DEVNULL)

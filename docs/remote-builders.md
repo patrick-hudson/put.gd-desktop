@@ -417,6 +417,69 @@ coordinator:
 `tests/desktop/test_desktop_lock.py` covers expiry, heartbeat staleness, atomic
 acquire, the release check and break rules; it runs in CI's `lab` contracts.
 
+## Weekly stress lane on k72
+
+k72 runs the weekly builder stress lane (see [ci.md](ci.md#weekly-run-on-k72)).
+It's headless and takes no desktop lock. These are the user units for
+`patrick`, with lingering enabled so they fire while nobody is logged in:
+
+| Unit | Does |
+| --- | --- |
+| `putgd-stress-weekly.timer` | starts the service on Sundays at 03:00 local time (`Persistent=false`) |
+| `putgd-stress-weekly.service` | `python3 -I ~/.local/libexec/putgd-stress/stress_weekly.py` (`Type=oneshot`, 4 h hang guard) |
+
+It uses these paths on k72:
+
+| Path | What |
+| --- | --- |
+| `~/.local/libexec/putgd-stress/` | the installed `stress_weekly.py` and `desktop_lock.py` |
+| `~/work/put.gd-stress` | its own tree, cloned and updated by the wrapper; don't build in it |
+| `~/work/flake-stress/weekly-DATE/` | each week's results, eight weeks kept |
+| `~/.local/state/putgd-stress/` | `weekly.lock` (held while a run is active) and the last build size |
+| `~/.config/putgd-stress/github-token` | the tracker token, mode 600, installed by Patrick only |
+
+**Installing or updating.** Run the one-shot installer on k72 from a checkout of
+the version you want, then delete the checkout:
+
+```bash
+src=$(mktemp -d /tmp/pgsw-install.XXXXXX)
+git clone -q --depth 1 -b nightly https://github.com/patrick-hudson/put.gd-desktop.git "$src/put.gd"
+sh "$src/put.gd/tools/lab/install-stress-weekly.sh"
+rm -rf -- "$src"
+```
+
+The installer copies the wrapper and the units, runs `daemon-reload`, enables
+the timer, enables lingering and prints the next run. Re-run it whenever
+`tools/ci/stress_weekly.py` or the units change. The weekly tree updates
+itself, but the wrapper does not.
+
+**The GitHub token.** Patrick creates and installs the token himself. Never
+create, copy, print or paste it in a session. It's a fine-grained token for
+the `patrick-hudson/put.gd-desktop` repository only, with the Issues
+permission set to read and write:
+
+```bash
+install -m 600 /dev/null ~/.config/putgd-stress/github-token
+${EDITOR:-nano} ~/.config/putgd-stress/github-token
+```
+
+The wrapper reads the token only from a regular file owned by `patrick` with
+mode 600. It passes the token only to the `flake_ledger.py` child as
+`GH_TOKEN`. When the file is missing or loose, the week's `weekly.log` says
+why, and the results stay local.
+
+**Working beside it.**
+- While a run is active, `pgrep -x ctest` and
+  `flock -n ~/.local/state/putgd-stress/weekly.lock true` (which fails) show
+  it. It takes about an hour on Sunday nights. Don't start another full suite
+  on k72 then.
+- To keep the run away from a quiet, A/V or performance slot, hold the k72
+  desktop lock with a purpose that says so. The run then skips that week.
+- `stress_weekly.py --dry-run` runs the checks and prints the plan without
+  fetching, building or writing anything.
+- To stop a run, use `systemctl --user stop putgd-stress-weekly.service`. It
+  stops only that service's processes.
+
 ## Remote VM operating procedures
 
 Use [remote VM display tunnels](remote-vm-displays.md) to add each builder-hosted
