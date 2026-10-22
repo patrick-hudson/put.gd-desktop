@@ -433,6 +433,19 @@ class Metadata(unittest.TestCase):
             update_feed.check_feed(broken)
         self.assertIsNone(update_feed.feed('stable', None, {}, '2026-10-21T06:00:00Z')['release'])
 
+    def test_feed_lists_windows_packages_when_the_release_has_them(self):
+        release = FakeGitHub(release_files()).release()
+        for suffix, size in (('msi', 3026944), ('zip', 2849467)):
+            name = f'putgd-26.1022.1-nightly-windows-x86_64.{suffix}'
+            release['assets'].append({'name': name, 'size': size, 'browser_download_url': 'https://github.com/x/' + name})
+        document = update_feed.feed('nightly', release, {'putgd-26.1022.1-nightly-windows-x86_64.msi': 'a' * 64}, '2026-10-21T06:00:00Z')
+        update_feed.check_feed(document)
+        assets = document['release']['assets']
+        self.assertEqual(assets['windows-msi']['name'], 'putgd-26.1022.1-nightly-windows-x86_64.msi')
+        self.assertEqual(assets['windows-msi']['sha256'], 'a' * 64)
+        self.assertEqual(assets['windows-zip']['size'], 2849467)
+        self.assertNotIn('sha256', assets['windows-zip'])
+
 
 TOOLS = all(shutil.which(tool) for tool in ('reprepro', 'createrepo_c', 'gpg', 'gpgv', 'minisign', 'dpkg-deb', 'rpmbuild'))
 
