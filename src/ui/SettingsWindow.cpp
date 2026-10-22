@@ -794,11 +794,11 @@ QJsonObject SettingsWindow::candidate() const {
  // An untouched config keeps no appearance object; it reads as "system".
  if(preferences.contains("appearance")||appearance_->currentData()!="system"){auto appearance=preferences["appearance"].toObject();appearance["theme"]=appearance_->currentData().toString();preferences["appearance"]=appearance;}
  // An untouched config keeps no updates object; it reads as a daily check on this build's channel.
- // The build's own channel is stored as "build", so a DEB and an AppImage that
- // share this file each keep following their own (#344); a build with no
- // channel keeps the stored value until the choice is changed.
- const auto buildChannel=buildUpdateChannel();const auto chosen=updateChannel_->currentData().toString();
- const auto channel=buildChannel.isEmpty()?(chosen==updateChannelShown_?updateChannelSetting_:chosen):chosen==buildChannel?QString("build"):chosen;
+ // The stored value stays until the choice shown is changed; then the build's
+ // own channel is stored as "build", so a DEB and an AppImage that share this
+ // file each keep following their own (#344), and the other one by name.
+ const auto chosen=updateChannel_->currentData().toString();const bool changed=!updateChannelShown_.isEmpty()&&chosen!=updateChannelShown_;
+ const auto channel=!changed?updateChannelSetting_:chosen==buildUpdateChannel()?QString("build"):chosen;
  if(preferences.contains("updates")||!checkUpdates_->isChecked()||channel!="build"){auto updates=preferences["updates"].toObject();updates["check"]=checkUpdates_->isChecked();updates["channel"]=channel;preferences["updates"]=updates;}
  // debugLogging is always written with the object; packageFolder stays as the draft holds it.
  if(preferences.contains("diagnostics")||debugLogging_->isChecked()){auto diagnostics=preferences["diagnostics"].toObject();diagnostics["debugLogging"]=debugLogging_->isChecked();preferences["diagnostics"]=diagnostics;}
