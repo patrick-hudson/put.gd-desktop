@@ -28,7 +28,7 @@ set(PUTGD_UNIT_TESTS
   pause_timeline_contract payload_contract portal_streams_contract poster_contract public_url
   record_identity_contract record_runtime_contract recording_model_contract release_link_contract
   update_appimage_install_child update_check_request update_feed_contract update_minisign_verify
-  update_system_repository upload_naming_contract ci_forced_flaky_unit_dummy)
+  update_system_repository upload_naming_contract)
 
 get_property(putgd_tests DIRECTORY PROPERTY TESTS)
 foreach(test IN LISTS putgd_tests)

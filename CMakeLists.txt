@@ -1189,5 +1189,4 @@ include(cmake/B2Tests.cmake)
 # TEMPORARY (PR #351 demonstration, reverted before merge): fails its first run
 # and passes its retry, to show the flake ledger, job summary and tracker issue.
 add_test(NAME ci_forced_flaky_dummy COMMAND sh -c "m=\"$TMPDIR/ci-forced-flaky-dummy\"; if [ -e \"$m\" ]; then echo 'PASS   : ForcedFlaky::dummy() second attempt'; exit 0; fi; : > \"$m\"; echo 'FAIL!  : ForcedFlaky::dummy() the first attempt fails by design'; exit 1")
-add_test(NAME ci_forced_flaky_unit_dummy COMMAND sh -c "m=\"$TMPDIR/ci-forced-flaky-unit-dummy\"; if [ -e \"$m\" ]; then exit 0; fi; : > \"$m\"; echo 'FAIL!  : ForcedFlakyUnit::dummy() a unit test is never retried'; exit 1")
 include(cmake/TestPolicy.cmake)
