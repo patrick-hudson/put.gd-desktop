@@ -491,12 +491,16 @@ private slots:
   QPointer<QMenu> menu = tray->contextMenu();
   QVERIFY(menu);
   const auto windows = QApplication::topLevelWidgets();
-  for (const auto& name : QStringList{"Settings and setup", "Upload history", "Recent activity", "About put.gd"}) {
+  for (const auto& name : QStringList{"Settings and setup", "Upload history", "About put.gd"}) {
    auto* action = actionNamed(tray, name);
    QVERIFY(action);
    action->trigger();
   }
-  QCOMPARE(views, QStringList({"settings", "history", "activity", "about"}));
+  QCOMPARE(views, QStringList({"settings", "history", "about"}));
+  // "Recent activity" opened the same History page, so it is gone.
+  QVERIFY(!actionNamed(tray, "Recent activity"));
+  QStringList data; for (auto* action : menu->actions()) data.append(action->data().toString());
+  QVERIFY(!data.contains("activity"));
   // A single & would be eaten as a mnemonic marker in the menu.
   QVERIFY(actionNamed(tray, "Capture Region && Edit"));
   // Capture entries come first in a fixed order, then the editor sources and the clipboard upload.
@@ -513,7 +517,7 @@ private slots:
   QCOMPARE(views.last(), QString("settings"));
   QVERIFY(QMetaObject::invokeMethod(tray, "activated", Qt::DirectConnection,
                                    Q_ARG(QSystemTrayIcon::ActivationReason, QSystemTrayIcon::Trigger)));
-  QCOMPARE(views.last(), QString("activity"));
+  QCOMPARE(views.last(), QString("history"));
   auto* quit = actionNamed(tray, "Quit");
   QVERIFY(quit);
   quit->trigger();
@@ -579,7 +583,7 @@ private slots:
   TrayController controller(operations,[&](const QString& view){views.append(view);},[]{});
   controller.invokeShortcut("region");
   controller.invokeShortcut("region");
-  QVERIFY2(views.isEmpty(),"A repeated native shortcut must not open Activity over an accepted selection");
+  QVERIFY2(views.isEmpty(),"A repeated native shortcut must not open History over an accepted selection");
   PUTGD_TRY_COMPARE(source.actions.size(),1);
  }
  void nativeFullQueueDoesNotOpenViewsOverSelection() {
@@ -592,7 +596,7 @@ private slots:
   controller.invokeShortcut("clipboard");controller.invokeShortcut("region");
   QCOMPARE(operations.diagnostics()["activeOperations"].toInt(),2);
   controller.invokeShortcut("region");
-  QVERIFY2(views.isEmpty(),"queue_full precedes busy_selecting and must not map Activity over selection");
+  QVERIFY2(views.isEmpty(),"queue_full precedes busy_selecting and must not map History over selection");
   PUTGD_TRY_COMPARE(source.actions.size(),2);PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
  }
  void nativeClipboardRejectionDoesNotOpenViewsOverSelection() {
@@ -626,12 +630,12 @@ private slots:
   QPointer<QAction> action = actionNamed(tray, "Capture Region");
   QVERIFY(action);
   action->trigger();
-  QCOMPARE(opened, QString("activity"));
+  QCOMPARE(opened, QString("history"));
   QVERIFY(!controller);
   QVERIFY(action.isNull());
  }
 
- void rejectedCaptureOpensActivityWithoutOwningAWindow() {
+ void rejectedCaptureOpensHistoryWithoutOwningAWindow() {
   QTemporaryDir directory;
   QVERIFY(directory.isValid());
   ProviderRegistry providers;
@@ -645,7 +649,7 @@ private slots:
   auto* action = actionNamed(tray, "Capture Region");
   QVERIFY(action);
   action->trigger();
-  PUTGD_TRY_COMPARE(views, QStringList({"activity"}));
+  PUTGD_TRY_COMPARE(views, QStringList({"history"}));
   QVERIFY(source.actions.isEmpty());
  }
  // The tray entry opens a recording (a dragged region) and raises it while one is

@@ -1,6 +1,7 @@
 #include "ui/UiApplicationController.h"
 #include "ui/SettingsWindow.h"
 #include "ui/MainWindow.h"
+#include "ui/HistoryWindow.h"
 #include "ui/AboutWindow.h"
 #include "ui/Theme.h"
 #include "ui/VisualStyle.h"
@@ -280,6 +281,17 @@ private slots:
  // #348: the first ui.show updates lands on Updates although the fresh window
  // settles smaller than it opened (Aurora's 1280×800 screen) and the update's
  // rows arrive after it is shown. A scroll of the user's own then wins.
+ // The tray's "Recent activity" entry is gone; the view name stays an alias for History.
+ void activityViewNameOpensHistory(){
+  QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(settings.save(Settings::developmentTemplate(),{}));
+  CredentialStore secrets;UiSessionFixture fixture(settings,secrets);ControlDevice device;UiControl control(device);UiApplicationController controller(fixture.session,control,{});
+  device.send("activate",{{"view","settings"}});
+  MainWindow* window=nullptr;for(auto* widget:QApplication::topLevelWidgets())if(auto* candidate=qobject_cast<MainWindow*>(widget))window=candidate;QVERIFY(window);
+  auto* navigation=window->findChild<QListWidget*>("mainNavigation");QVERIFY(navigation);PUTGD_TRY_COMPARE(navigation->currentRow(),2);
+  device.send("activate",{{"view","activity"}});
+  PUTGD_TRY_COMPARE(navigation->currentRow(),0);QCOMPARE(navigation->currentItem()->text(),QString("History"));PUTGD_TRY_VERIFY(window->history()->isVisible());
+  const auto windows=QApplication::topLevelWidgets();QCOMPARE(std::count_if(windows.begin(),windows.end(),[](QWidget* widget){return qobject_cast<MainWindow*>(widget)!=nullptr;}),1);
+ }
  void showUpdatesLandsOnUpdatesInAFreshWindow(){
   QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(settings.save(Settings::developmentTemplate(),{}));
   CredentialStore secrets;UiSessionFixture fixture(settings,secrets);QJsonObject update;
