@@ -4,6 +4,7 @@
 #include "common/Paths.h"
 #include "core/Mp4.h"
 #include "core/RecordingFrames.h"
+#include "record/Gif.h"
 #include "record/Media.h"
 #include <cmath>
 #include <vector>
@@ -55,8 +56,64 @@ Error faststart(const std::string& path) {
 }
 }
 
+// GIF: frames at min(fps, 15) on the kept part's timeline, each tick showing the
+// frame at or after it (as the Linux export's fps filter does), delays from the
+// rounded tick times so they never drift.
+Error exportGif(const ExportRequest& r, ExportResult& result, const std::atomic_bool& cancel, const std::function<void(double)>& progress) {
+    const int fps = std::max(1, r.config.fps), animationFps = std::min(fps, 15);
+    const auto [start, end] = recording::exportWindow(r.edit, r.durationUs, fps);
+    if (end <= start) return {"invalid_request", "The retained interval is empty", {}};
+    const auto size = recording::outputSize(r.canvas, r.config.maxEdge);
+    const long long retained = end - start;
+    const double step = 1000000.0 / animationFps;
+    const long long ticks = std::max(1LL, (long long)std::ceil(double(retained) / step - 1e-6));
+    auto centiseconds = [&](long long tick) { return std::llround(std::min(double(retained), double(tick) * step) / 10000.0); };
+    media::ClipReader reader;
+    if (auto e = reader.open(r.working, r.canvas.w, r.canvas.h)) return e;
+    if (auto e = reader.seek(start)) return e;
+    GifWriter writer;
+    if (auto e = writer.open(r.output, size.w, size.h)) return e;
+    std::vector<uint8_t> frame, scaled(size_t(size.w) * size.h * 4);
+    long long time = 0, tick = 0;
+    const long long half = 1000000 / fps / 2;
+    bool have = false;
+    Error error;
+    auto emit = [&]() -> Error {
+        const auto delay = int(centiseconds(tick + 1) - centiseconds(tick));
+        if (auto e = writer.write(scaled.data(), size_t(size.w) * 4, delay)) return e;
+        ++tick;
+        if (progress) progress(double(tick) / double(ticks));
+        return {};
+    };
+    while (tick < ticks && reader.next(frame, time, error)) {
+        if (cancel) return {"cancelled", "The export was cancelled", {}};
+        const long long us = time / 10;
+        if (us + half < start) continue;
+        if (us >= end) break;
+        const recording::Frame source{frame.data(), r.canvas.w, r.canvas.h, size_t(r.canvas.w) * 4};
+        recording::applyMasks(source, r.edit, us);
+        recording::resample(source, {scaled.data(), size.w, size.h, size_t(size.w) * 4});
+        have = true;
+        while (tick < ticks && double(tick) * step <= double(us - start) + double(half))
+            if (auto e = emit()) return e;
+    }
+    if (error) return error;
+    if (!have) return {"recording_export_failed", "No frame lies in the retained interval", {}};
+    // The kept part's last ticks hold its last frame.
+    while (tick < ticks) if (auto e = emit()) return e;
+    if (auto e = writer.finish()) return e;
+    result.sha256 = files::sha256(r.output, &result.bytes);
+    if (result.sha256.empty() || result.bytes < 1) return {"recording_export_failed", "The export produced no file", {}};
+    result.frames = int(ticks);
+    result.durationUs = retained;
+    result.size = size;
+    result.encoder = "WIC GIF";
+    return {};
+}
+
 Error exportClip(const ExportRequest& r, ExportResult& result, const std::atomic_bool& cancel, const std::function<void(double)>& progress) {
-    if (r.config.format != "mp4" || r.config.codec != "h264") return {"recording_unsupported", "This build exports MP4 (H.264) only", {{"format", r.config.format}}};
+    if (r.config.format == "gif") return exportGif(r, result, cancel, progress);
+    if (r.config.format != "mp4" || (r.config.codec != "h264" && r.config.codec != "h265")) return {"recording_unsupported", "This build exports MP4 (H.264 or H.265) and GIF", {{"format", r.config.format}}};
     const int fps = std::max(1, r.config.fps);
     const long long period = 10000000LL / fps;
     const auto [start, end] = recording::exportWindow(r.edit, r.durationUs, fps);
@@ -66,7 +123,7 @@ Error exportClip(const ExportRequest& r, ExportResult& result, const std::atomic
     if (auto e = reader.open(r.working, r.canvas.w, r.canvas.h)) return e;
     if (auto e = reader.seek(start)) return e;
     media::Mp4Writer writer;
-    if (auto e = writer.open(r.output, {size.w, size.h, fps, recording::liveBitrate(size.w, size.h, fps)})) return e;
+    if (auto e = writer.open(r.output, {size.w, size.h, fps, recording::liveBitrate(size.w, size.h, fps), r.config.codec == "h265"})) return e;
     std::vector<uint8_t> frame, scaled(size_t(size.w) * size.h * 4);
     long long time = 0;
     Error error;

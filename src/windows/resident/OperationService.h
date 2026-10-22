@@ -87,6 +87,7 @@ private:
     json::Object recordingCapabilities() const;
     json::Object recordingJson() const;
     void terminateRecording();
+    json::Array reviewFormats() const;
     void pushEdit(); // the resident's edit, config and limits to the review window
     void enqueue(Job);
     void pump();

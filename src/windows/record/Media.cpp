@@ -15,6 +15,9 @@
 namespace putgd::media {
 namespace {
 using wic::Com;
+// CODECAPI_AVEncMPVDefaultBPictureCount, spelled out (the header's macro needs __uuidof).
+const GUID bPictureCount{STATIC_CODECAPI_AVEncMPVDefaultBPictureCount};
+
 struct Api {
     HMODULE plat = nullptr, readwrite = nullptr;
     HRESULT(WINAPI* startup)(ULONG, DWORD) = nullptr;
@@ -34,8 +37,8 @@ template <class F> bool resolve(HMODULE module, const char* name, F& out) {
     return out != nullptr;
 }
 std::string hex(HRESULT hr) { char b[16]; wsprintfA(b, "0x%08lX", static_cast<unsigned long>(hr)); return b; }
-Error encoderError(const char* step, HRESULT hr) {
-    return {"recording_encoder_unavailable", "No built-in H.264 encoder accepted this recording", {{"step", step}, {"hresult", hex(hr)}}};
+Error encoderError(const char* step, HRESULT hr, bool hevc = false) {
+    return {"recording_encoder_unavailable", hevc ? "No built-in H.265 encoder accepted this recording" : "No built-in H.264 encoder accepted this recording", {{"step", step}, {"hresult", hex(hr)}}};
 }
 std::string narrowName(const wchar_t* w) { return w ? paths::narrow(w) : std::string(); }
 }
@@ -92,20 +95,20 @@ Error Mp4Writer::start(void* byteStreamPointer, const VideoFormat& format) {
         byteStream->SetLength(0);
         IMFSinkWriter* writer = nullptr;
         HRESULT hr = api.sinkWriterFromUrl(L".mp4", byteStream, attributes.get(), &writer);
-        if (FAILED(hr)) { last = encoderError("sinkWriter", hr); continue; }
+        if (FAILED(hr)) { last = encoderError("sinkWriter", hr, format.hevc); continue; }
         Com<IMFMediaType> output, input;
         api.createMediaType(output.put());
         output->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Video);
-        output->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_H264);
+        output->SetGUID(MF_MT_SUBTYPE, format.hevc ? MFVideoFormat_HEVC : MFVideoFormat_H264);
         output->SetUINT32(MF_MT_AVG_BITRATE, UINT32(format.bitrate));
         output->SetUINT32(MF_MT_INTERLACE_MODE, MFVideoInterlace_Progressive);
-        output->SetUINT32(MF_MT_MPEG2_PROFILE, eAVEncH264VProfile_Main);
+        output->SetUINT32(MF_MT_MPEG2_PROFILE, format.hevc ? UINT32(eAVEncH265VProfile_Main_420_8) : UINT32(eAVEncH264VProfile_Main));
         MFSetAttributeSize(output.get(), MF_MT_FRAME_SIZE, UINT32(format.width), UINT32(format.height));
         MFSetAttributeRatio(output.get(), MF_MT_FRAME_RATE, UINT32(format.fps), 1);
         MFSetAttributeRatio(output.get(), MF_MT_PIXEL_ASPECT_RATIO, 1, 1);
         DWORD stream = 0;
         hr = writer->AddStream(output.get(), &stream);
-        if (FAILED(hr)) { writer->Release(); last = encoderError("outputType", hr); continue; }
+        if (FAILED(hr)) { writer->Release(); last = encoderError("outputType", hr, format.hevc); continue; }
         api.createMediaType(input.put());
         input->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Video);
         input->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_RGB32);
@@ -115,10 +118,15 @@ Error Mp4Writer::start(void* byteStreamPointer, const VideoFormat& format) {
         MFSetAttributeSize(input.get(), MF_MT_FRAME_SIZE, UINT32(format.width), UINT32(format.height));
         MFSetAttributeRatio(input.get(), MF_MT_FRAME_RATE, UINT32(format.fps), 1);
         MFSetAttributeRatio(input.get(), MF_MT_PIXEL_ASPECT_RATIO, 1, 1);
-        hr = writer->SetInputMediaType(stream, input.get(), nullptr);
-        if (FAILED(hr)) { writer->Release(); last = encoderError("inputType", hr); continue; }
+        // No B-frames: Media Foundation's MP4 sink writes them with a composition
+        // offset and no edit list, which presents every frame one period late, so
+        // trims and masks read back from the clip would land a frame off.
+        Com<IMFAttributes> encoding;
+        if (SUCCEEDED(api.createAttributes(encoding.put(), 1))) encoding->SetUINT32(bPictureCount, 0);
+        hr = writer->SetInputMediaType(stream, input.get(), encoding.get());
+        if (FAILED(hr)) { writer->Release(); last = encoderError("inputType", hr, format.hevc); continue; }
         hr = writer->BeginWriting();
-        if (FAILED(hr)) { writer->Release(); last = encoderError("beginWriting", hr); continue; }
+        if (FAILED(hr)) { writer->Release(); last = encoderError("beginWriting", hr, format.hevc); continue; }
         writer_ = writer; stream_ = stream;
         encoder_.clear();
         Com<IMFSinkWriterEx> extended;
@@ -134,11 +142,11 @@ Error Mp4Writer::start(void* byteStreamPointer, const VideoFormat& format) {
                 const bool hasFacts = SUCCEEDED(transform->GetAttributes(facts.put())) && facts;
                 const bool gpu = hasFacts && SUCCEEDED(facts->GetStringLength(MFT_ENUM_HARDWARE_URL_Attribute, &urlLength));
                 if (hasFacts && SUCCEEDED(facts->GetAllocatedString(MFT_FRIENDLY_NAME_Attribute, &name, &length))) { encoder_ = narrowName(name); CoTaskMemFree(name); }
-                if (encoder_.empty()) encoder_ = gpu ? "hardware H.264 encoder" : "Microsoft H.264 encoder (software)";
+                if (encoder_.empty()) encoder_ = std::string(gpu ? "hardware " : "Microsoft ") + (format.hevc ? "H.265" : "H.264") + (gpu ? " encoder" : " encoder (software)");
                 break;
             }
         }
-        if (encoder_.empty()) encoder_ = "Media Foundation H.264";
+        if (encoder_.empty()) encoder_ = format.hevc ? "Media Foundation H.265" : "Media Foundation H.264";
         return {};
     }
     return last ? last : encoderError("unknown", E_FAIL);
@@ -239,8 +247,9 @@ bool ClipReader::next(std::vector<uint8_t>& bgrx, long long& time, Error& error)
     }
 }
 
-Error probeH264(std::string& encoder) {
-    VideoFormat format{320, 240, 30, 1500000};
+namespace {
+Error probeEncoder(bool hevc, std::string& encoder) {
+    VideoFormat format{320, 240, 30, 1500000, hevc};
     Mp4Writer writer;
     if (auto e = writer.openInMemory(format)) return e;
     std::vector<uint8_t> frame(size_t(format.width) * format.height * 4);
@@ -252,4 +261,7 @@ Error probeH264(std::string& encoder) {
     if (auto e = writer.finish()) return {"recording_encoder_unavailable", e.message, e.details};
     return {};
 }
+}
+Error probeH264(std::string& encoder) { return probeEncoder(false, encoder); }
+Error probeHevc(std::string& encoder) { return probeEncoder(true, encoder); }
 }

@@ -30,6 +30,7 @@ private:
 struct VideoFormat {
     int width = 0, height = 0, fps = 30;
     long long bitrate = 0;
+    bool hevc = false; // H.265 instead of H.264 (needs an HEVC encoder: hardware or the Store extension)
 };
 
 // An H.264 MP4 writer over a file the resident created (helpers never create
@@ -85,4 +86,6 @@ private:
 // Encodes two synthetic 320x240 frames to memory: registry presence is not proof
 // that an encoder works. Fills the encoder name on success.
 Error probeH264(std::string& encoder);
+// The same check for H.265; most computers without a GPU encoder have none.
+Error probeHevc(std::string& encoder);
 }

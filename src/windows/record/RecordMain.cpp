@@ -22,6 +22,7 @@
 #include "common/Text.h"
 #include "core/Recording.h"
 #include "record/Export.h"
+#include "record/Gif.h"
 #include "record/Media.h"
 #include "record/Overlay.h"
 #include "record/Recorder.h"
@@ -134,6 +135,7 @@ struct Bootstrap {
     long long budget = 0;
     std::vector<DWORD> excludePids;
     std::string theme = "system"; // preferences.appearance.theme
+    std::vector<std::string> formats{"mp4/h264"}; // what the review may export: format or format/codec
 };
 bool parseBootstrap(const json::Object& p, Bootstrap& b) {
     if (p.value("role") != "record" || !p.value("nonce").isString() || p.value("nonce").stringRef().empty()) return false;
@@ -149,12 +151,14 @@ bool parseBootstrap(const json::Object& p, Bootstrap& b) {
     b.budget = p.value("limits")["budgetBytes"].toInteger(0);
     for (const auto& pid : p.value("excludePids").toArray()) if (json::integer(pid, 0, 4294967295.0)) b.excludePids.push_back(DWORD(pid.toInteger()));
     b.theme = p.value("appearance")["theme"].toString("system");
+    if (p.value("formats").isArray()) { b.formats = json::toStringVector(p.value("formats").toArray()); if (b.formats.empty()) b.formats = {"mp4/h264"}; }
     return true;
 }
 
 int probe(Link& link, frames::Channel& channel) {
     json::Object result{{"acquisition", "gdi"}, {"targets", json::Array{"monitor", "desktop", "region"}}, {"audio", json::Object{{"system", false}, {"microphone", false}}},
         {"formats", json::Array{}}, {"codecs", json::Object{}}, {"monitors", monitorList()}};
+    wic::Apartment com;
     media::Platform platform;
     if (!platform.ok()) {
         result["available"] = false; result["reason"] = platform.failure();
@@ -165,7 +169,16 @@ int probe(Link& link, frames::Channel& channel) {
             result["available"] = false; result["reason"] = "h264_encoder_unusable"; result["message"] = e.message; result["details"] = e.details;
         } else {
             result["available"] = true; result["encoder"] = encoder;
-            result["formats"] = json::Array{"mp4"}; result["codecs"] = json::Object{{"mp4", json::Array{"h264"}}};
+            // Only what a built-in Windows encoder produces here: H.265 where an HEVC
+            // encoder works, GIF through WIC; WebM/VP9 and animated WebP have none.
+            json::Array formats{"mp4"}, mp4{"h264"};
+            std::string hevc;
+            json::Object failures;
+            if (auto e = media::probeHevc(hevc)) failures["mp4/h265"] = e.toJson(); else { mp4.push_back("h265"); result["hevcEncoder"] = hevc; }
+            if (auto e = record::probeGif()) failures["gif"] = e.toJson(); else formats.push_back("gif");
+            result["formatFailures"] = failures;
+            result["formats"] = formats; result["codecs"] = json::Object{{"mp4", mp4}};
+            result["unavailableFormats"] = json::Object{{"webm", "No WebM (VP9) encoder is built into Windows"}, {"webp", "No animated WebP encoder is built into Windows"}};
         }
     }
     link.send("result", result);
@@ -283,7 +296,7 @@ private:
     }
     void openReview(long long duration) {
         RecordingEdit edit;
-        review_ = std::make_unique<record::ReviewWindow>(b_.output, RecordingSize{area_.w, area_.h}, duration, b_.config, edit, std::vector<std::string>{"mp4"}, record::ReviewWindow::Callbacks{
+        review_ = std::make_unique<record::ReviewWindow>(b_.output, RecordingSize{area_.w, area_.h}, duration, b_.config, edit, b_.formats, record::ReviewWindow::Callbacks{
             [this](unsigned long long revision, const json::Array& commands) { link_.event("edit", {{"revision", double(revision)}, {"commands", commands}}); },
             [this](const std::string& path, unsigned long long revision) { link_.event("saveCopyRequested", {{"path", path}, {"revision", double(revision)}}); },
             [this](unsigned long long revision) { link_.event("uploadRequested", {{"revision", double(revision)}}); },

@@ -89,6 +89,16 @@ json::Object OperationService::recordingJson() const {
 }
 
 // ---- capabilities -------------------------------------------------------------
+// The review window's format menu: every format, or format/codec, the probe found.
+json::Array OperationService::reviewFormats() const {
+    json::Array keys;
+    for (const auto& format : recordingProbe_.value("formats").toArray()) {
+        const auto codecs = recordingProbe_.value("codecs")[format.toString()].toArray();
+        if (codecs.empty()) keys.push_back(format);
+        else for (const auto& codec : codecs) keys.push_back(format.toString() + "/" + codec.toString());
+    }
+    return keys;
+}
 json::Object OperationService::recordingCapabilities() const {
     json::Object result = recordingProbe_;
     if (result.empty()) result = {{"available", false}, {"reason", recordingProbing_ ? "recording_probe_pending" : "recording_not_probed"}, {"targets", json::Array{}}, {"formats", json::Array{}}, {"codecs", json::Object{}},
@@ -290,7 +300,7 @@ void OperationService::prepareRecording(const json::Object& params, JsonReply re
             json::Array exclude; if (uiPid_) exclude.push_back(double(uiPid_)); exclude.push_back(double(GetCurrentProcessId()));
             json::Object bootstrap{{"target", session->target.toJson()}, {"config", session->config.toJson()}, {"output", json::Object{{"path", session->workingPath}}},
                 {"limits", json::Object{{"budgetBytes", double(session->config.budgetBytes)}}}, {"excludePids", exclude},
-                {"appearance", json::Object{{"theme", settingsSnapshot().appearanceTheme}}}};
+                {"appearance", json::Object{{"theme", settingsSnapshot().appearanceTheme}}}, {"formats", reviewFormats()}};
             session->helper = std::make_unique<helpers::Supervised>("record", std::vector<std::string>{"--record"});
             auto phase = [this, session](const std::string& state) { session->state = state; auto doc = session->op.publicJson(); doc["phase"] = state; observe(doc); if (onChanged) onChanged(session->op.id); };
             auto fail = [this, session](Error e) {
@@ -355,7 +365,8 @@ void OperationService::prepareRecording(const json::Object& params, JsonReply re
                         RecordingConfig parsed;
                         auto merged = session->config.toJson(); for (const auto& pair : config) merged[pair.first] = pair.second;
                         merged.remove("mime"); merged.remove("budgetBytes");
-                        if (!recording::parseConfig(merged, parsed) && contains(recordingProbe_.value("formats").toArray(), parsed.format)) {
+                        if (!recording::parseConfig(merged, parsed) && contains(recordingProbe_.value("formats").toArray(), parsed.format) &&
+                            (parsed.codec.empty() || contains(recordingProbe_.value("codecs")[parsed.format].toArray(), parsed.codec))) {
                             parsed.budgetBytes = session->config.budgetBytes; parsed.fps = session->config.fps;
                             session->config = parsed;
                             recording::clampAnimationSize(session->config, session->canvas, limitsOf(settingsSnapshot()));

@@ -29,10 +29,13 @@ enum : int {
 };
 const double speeds[] = {0.5, 1.0, 2.0, 4.0};
 std::wstring w(const std::string& s) { return ui::wide(s); }
-std::string formatLabel(const std::string& format) {
-    if (format == "mp4") return "MP4 (H.264)";
-    if (format == "gif") return "GIF";
-    if (format == "webp") return "WebP";
+// Menu keys are a format, or format/codec for formats with codecs.
+std::string formatKey(const RecordingConfig& c) { return c.codec.empty() ? c.format : c.format + "/" + c.codec; }
+std::string formatLabel(const std::string& key) {
+    if (key == "mp4" || key == "mp4/h264") return "MP4 (H.264)";
+    if (key == "mp4/h265") return "MP4 (H.265)";
+    if (key == "gif") return "GIF";
+    if (key == "webp") return "WebP";
     return "WebM (VP9)";
 }
 LRESULT CALLBACK childProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
@@ -145,9 +148,9 @@ void ReviewWindow::createControls() {
     std::vector<ui::Choice> choices;
     for (const auto& f : formats_) choices.push_back({w(formatLabel(f)), f});
     ui::setChoices(format, choices);
-    ui::select(format, config_.format);
+    ui::select(format, formatKey(config_));
     theme::styleCombo(format);
-    ui::setTooltip(tooltip_, format, L"Output format of Save copy and Upload");
+    ui::setTooltip(tooltip_, format, L"Output format of Save copy and Upload. GIF is silent; H.265 links do not play in every browser.");
     ui::label(hwnd_, L"", idStatus, SS_ENDELLIPSIS | SS_NOPREFIX | SS_CENTERIMAGE);
     button(idSave, L"Save copy…", nullptr, L"Save the edited recording to a file; nothing is uploaded");
     button(idDiscard, L"Discard", nullptr, L"Discard this recording");
@@ -241,9 +244,13 @@ void ReviewWindow::refresh() {
     const long long kept = edit_.exportDuration(duration_);
     if (!error_.empty()) status = error_;
     else if (exporting_) status = status_ + (exportFraction_ >= 0 ? " " + std::to_string(int(exportFraction_ * 100)) + "%" : "");
-    else if (config_.animation() && kept > animationMaxUs_) status = formatLabel(config_.format) + " is limited to " + std::to_string(animationMaxUs_ / 1000000) + " s: trim the clip";
+    else if (config_.animation() && kept > animationMaxUs_) status = formatLabel(formatKey(config_)) + " is limited to " + std::to_string(animationMaxUs_ / 1000000) + " s: trim the clip";
     else if (!status_.empty()) status = status_;
-    else status = "Keeps " + recording::clockText(kept) + " · " + formatLabel(config_.format) + " · no audio";
+    else {
+        status = "Keeps " + recording::clockText(kept) + " · " + formatLabel(formatKey(config_)) + (config_.audioSystem && !config_.animation() ? " · system audio" : " · no audio");
+        if (config_.codec == "h265") status += " · H.265 links do not play in every browser";
+        if (config_.animation() && config_.maxEdge) status += " · " + std::to_string(recording::outputSize(canvas_, config_.maxEdge).w) + "×" + std::to_string(recording::outputSize(canvas_, config_.maxEdge).h);
+    }
     ui::setTextW(GetDlgItem(hwnd_, idStatus), w(status));
     HWND notice = GetDlgItem(hwnd_, idNotice);
     ui::setTextW(notice, w(notice_));
@@ -325,11 +332,12 @@ void ReviewWindow::removeMask() {
     if (!selected()) return;
     propose({json::Object{{"op", "removeMask"}, {"maskId", selected_}}});
 }
-void ReviewWindow::chooseFormat(const std::string& format) {
-    if (format == config_.format) return;
-    json::Object config{{"format", format}};
-    const auto codecs = recording::codecs(format);
-    if (!codecs.empty()) config["codec"] = codecs.front();
+void ReviewWindow::chooseFormat(const std::string& key) {
+    if (key == formatKey(config_)) return;
+    const auto slash = key.find('/');
+    json::Object config{{"format", key.substr(0, slash)}};
+    if (slash != std::string::npos) config["codec"] = key.substr(slash + 1);
+    else config["codec"] = "";
     if (callbacks_.configChanged) callbacks_.configChanged(config);
 }
 void ReviewWindow::saveCopyDialog() {
@@ -338,7 +346,7 @@ void ReviewWindow::saveCopyDialog() {
     IFileSaveDialog* dialog = nullptr;
     if (FAILED(CoCreateInstance(CLSID_FileSaveDialog, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&dialog)))) { error_ = "The save dialog is not available"; refresh(); return; }
     const auto extension = w(config_.extension());
-    const auto pattern = L"*." + extension, name = L"recording." + extension, type = w(formatLabel(config_.format));
+    const auto pattern = L"*." + extension, name = L"recording." + extension, type = w(formatLabel(formatKey(config_)));
     COMDLG_FILTERSPEC filter{type.c_str(), pattern.c_str()};
     dialog->SetFileTypes(1, &filter);
     dialog->SetDefaultExtension(extension.c_str());
@@ -403,7 +411,7 @@ void ReviewWindow::setEdit(const RecordingEdit& edit, long long animationMaxUs, 
     selectNewest_ = false;
     setPlayhead(playhead_);
 }
-void ReviewWindow::setConfig(const RecordingConfig& config) { config_ = config; if (hwnd_) ui::select(GetDlgItem(hwnd_, idFormat), config_.format); refresh(); }
+void ReviewWindow::setConfig(const RecordingConfig& config) { config_ = config; if (hwnd_) ui::select(GetDlgItem(hwnd_, idFormat), formatKey(config_)); refresh(); }
 void ReviewWindow::setNotice(const std::string& text) { notice_ = text; refresh(); }
 void ReviewWindow::setExporting(bool exporting, const std::string& status) {
     exporting_ = exporting; status_ = status; exportFraction_ = exporting ? 0 : -1;
@@ -726,9 +734,12 @@ ReviewWindow::Drive ReviewWindow::drive(const json::Object& p) {
         else { if (!json::integer(p.value("strength"), 2, 64) || selected()->kind != "blur") return refuse("strength is 2 to 64, for a selected blur"); setStrength(p.value("strength").toInt()); }
     }
     else if (action == "format") {
-        const auto format = p.value("format").toString();
-        if (std::find(formats_.begin(), formats_.end(), format) == formats_.end()) return {"recording_unsupported", "This format is not available", {{"format", format}}};
-        chooseFormat(format);
+        const auto format = p.value("format").toString(), codec = p.value("codec").toString();
+        auto key = codec.empty() ? format : format + "/" + codec;
+        // A format with codecs takes its first one when none is named.
+        if (codec.empty()) for (const auto& f : formats_) if (f.rfind(format + "/", 0) == 0) { key = f; break; }
+        if (std::find(formats_.begin(), formats_.end(), key) == formats_.end()) return {"recording_unsupported", "This format is not available", {{"format", format}, {"codec", codec}}};
+        chooseFormat(key);
     }
     else if (action == "saveCopyDialog") { PostMessageW(hwnd_, openDialog, 0, 0); auto s = state(); s["fileDialog"].objectRef()["open"] = true; return {{}, {}, s}; }
     else if (action == "closeFileDialog") { if (!dialog_) return {"recording_state", "No file dialog is open", {}}; closeFileDialog(); }
