@@ -1,14 +1,16 @@
 // putgd.exe --record: the screen recording helper (role "record" in
 // common/Protocol.h). It owns the region selector, the GDI capture, the Media
-// Foundation encoder and the exports; the resident only sees control frames and
-// files it created itself, checked by byte count and SHA-256.
+// Foundation encoder, the on-screen frame and control bar, the review window and
+// the exports; the resident only sees control frames and files it created itself,
+// checked by byte count and SHA-256.
 //
-// Threads: the main thread runs the handshake, the selector and the command loop
-// (a Win32 message loop, so the overlay and later windows work); a reader thread
-// owns stdin after activate and posts every parent frame to it; a heartbeat
-// thread sends `heartbeat` every second; the capture thread belongs to Recorder;
-// stop and export run on worker threads and answer from there (sends are
-// serialized). A closed parent pipe ends the process with exit code 1.
+// Threads: the main thread runs the handshake, the selector, the windows and the
+// command loop. Parent frames, timers and work finished on other threads all
+// arrive at one message-only window, so they are handled even while a modal loop
+// runs (the selector, the Save copy dialog). A reader thread owns stdin after
+// activate; a heartbeat thread sends `heartbeat` every second; the capture thread
+// belongs to Recorder; stop, export and preview run on worker threads. A closed
+// parent pipe ends the process with exit code 1.
 #include "capture/Grab.h"
 #include "capture/Overlay.h"
 #include "common/Files.h"
@@ -17,20 +19,27 @@
 #include "common/Modes.h"
 #include "common/Paths.h"
 #include "common/Protocol.h"
-#include "core/Recording.h"
 #include "common/Text.h"
+#include "core/Recording.h"
 #include "record/Export.h"
 #include "record/Media.h"
+#include "record/Overlay.h"
 #include "record/Recorder.h"
+#include "record/ReviewWindow.h"
+#include "ui/Controls.h"
+#include "ui/Theme.h"
 #include <atomic>
+#include <commctrl.h>
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <thread>
 
 namespace putgd {
 namespace {
-constexpr UINT frameMessage = WM_APP + 2;
+constexpr UINT frameMessage = WM_APP + 2, runMessage = WM_APP + 3;
 constexpr UINT_PTR progressTimer = 1;
+constexpr wchar_t linkClass[] = L"putgd.record.link";
 
 class Link {
 public:
@@ -41,16 +50,30 @@ public:
         else send("commandResult", {{"requestId", requestId}, {"ok", true}, {"result", result}});
     }
     void event(const std::string& name, json::Object fields = {}) { fields["event"] = name; send("event", fields); }
-    void startThreads() {
-        mainThread_ = GetCurrentThreadId();
-        MSG msg;
-        PeekMessageW(&msg, nullptr, WM_USER, WM_USER, PM_NOREMOVE); // the queue exists before the first frame
+    // Runs fn on the main thread (from any thread).
+    void post(std::function<void()> fn) { auto* job = new std::function<void()>(std::move(fn)); if (!PostMessageW(window_, runMessage, 0, reinterpret_cast<LPARAM>(job))) delete job; }
+    HWND window() const { return window_; }
+    std::function<void(std::unique_ptr<protocol::Frame>)> onFrame;
+    std::function<void()> onTimer;
+    void start() {
+        WNDCLASSEXW wc{sizeof wc};
+        wc.lpfnWndProc = [](HWND h, UINT m, WPARAM w, LPARAM l) -> LRESULT {
+            auto* self = reinterpret_cast<Link*>(GetWindowLongPtrW(h, GWLP_USERDATA));
+            if (self && m == frameMessage) { std::unique_ptr<protocol::Frame> f(reinterpret_cast<protocol::Frame*>(l)); if (self->onFrame) self->onFrame(std::move(f)); return 0; }
+            if (self && m == runMessage) { std::unique_ptr<std::function<void()>> job(reinterpret_cast<std::function<void()>*>(l)); (*job)(); return 0; }
+            if (self && m == WM_TIMER && w == progressTimer) { if (self->onTimer) self->onTimer(); return 0; }
+            return DefWindowProcW(h, m, w, l);
+        };
+        wc.hInstance = GetModuleHandleW(nullptr); wc.lpszClassName = linkClass;
+        RegisterClassExW(&wc);
+        window_ = CreateWindowExW(0, linkClass, L"", 0, 0, 0, 0, 0, HWND_MESSAGE, nullptr, GetModuleHandleW(nullptr), nullptr);
+        SetWindowLongPtrW(window_, GWLP_USERDATA, LONG_PTR(this));
         std::thread([this] {
             while (true) {
                 auto frame = std::make_unique<protocol::Frame>();
                 std::string error;
                 if (!channel_.receive(*frame, -1, &error)) { log::warning("record", "Parent channel ended", {{"reason", error}}); TerminateProcess(GetCurrentProcess(), 1); }
-                PostThreadMessageW(mainThread_, frameMessage, 0, reinterpret_cast<LPARAM>(frame.release()));
+                if (PostMessageW(window_, frameMessage, 0, reinterpret_cast<LPARAM>(frame.get()))) frame.release();
             }
         }).detach();
         std::thread([this] { while (true) { Sleep(protocol::heartbeatMs); if (!send("heartbeat")) TerminateProcess(GetCurrentProcess(), 1); } }).detach();
@@ -58,7 +81,7 @@ public:
 private:
     frames::Channel& channel_;
     std::mutex mutex_;
-    DWORD mainThread_ = 0;
+    HWND window_ = nullptr;
 };
 
 void becomeDpiAware() {
@@ -110,6 +133,7 @@ struct Bootstrap {
     RecordingConfig config;
     long long budget = 0;
     std::vector<DWORD> excludePids;
+    std::string theme = "system"; // preferences.appearance.theme
 };
 bool parseBootstrap(const json::Object& p, Bootstrap& b) {
     if (p.value("role") != "record" || !p.value("nonce").isString() || p.value("nonce").stringRef().empty()) return false;
@@ -124,6 +148,7 @@ bool parseBootstrap(const json::Object& p, Bootstrap& b) {
     if (b.output.empty() || !paths::isAbsolute(b.output)) return false;
     b.budget = p.value("limits")["budgetBytes"].toInteger(0);
     for (const auto& pid : p.value("excludePids").toArray()) if (json::integer(pid, 0, 4294967295.0)) b.excludePids.push_back(DWORD(pid.toInteger()));
+    b.theme = p.value("appearance")["theme"].toString("system");
     return true;
 }
 
@@ -151,17 +176,32 @@ int probe(Link& link, frames::Channel& channel) {
 
 class Helper {
 public:
-    Helper(Link& link, Bootstrap b) : link_(link), b_(std::move(b)) {}
+    Helper(Link& link, Bootstrap b) : link_(link), b_(std::move(b)) {
+        link_.onFrame = [this](std::unique_ptr<protocol::Frame> f) { handle(std::move(f)); };
+        link_.onTimer = [this] { progress(); };
+    }
     int run() {
         grab::Rect area;
-        if (b_.target.kind == "region" && !b_.target.rect) { if (!select(area)) return finishLoop(); }
-        else if (auto e = resolveArea(b_.target, area)) { link_.send("failed", {{"code", e.code}, {"message", e.message}, {"details", e.details}}); return finishLoop(); }
-        if (quitting_) return finishLoop();
-        if (auto e = recorder_.prepare(area, b_.output, b_.config.fps, b_.budget)) { link_.send("failed", {{"code", e.code}, {"message", e.message}, {"details", e.details}}); return finishLoop(); }
+        if (b_.target.kind == "region" && !b_.target.rect) { if (!select(area)) return loop(); }
+        else if (auto e = resolveArea(b_.target, area)) { link_.send("failed", {{"code", e.code}, {"message", e.message}, {"details", e.details}}); return loop(); }
+        if (quitting_) return loop();
+        if (auto e = recorder_.prepare(area, b_.output, b_.config.fps, b_.budget)) { link_.send("failed", {{"code", e.code}, {"message", e.message}, {"details", e.details}}); return loop(); }
         area_ = area; prepared_ = true;
-        link_.send("prepared", {{"canvas", json::Array{area.w, area.h}}, {"rect", json::Array{area.x, area.y, area.w, area.h}}, {"acquisition", "gdi"}, {"encoder", recorder_.encoder()}});
-        SetTimer(nullptr, progressTimer, 1000, nullptr);
-        return finishLoop();
+        // The ring and the bar: excluded from capture, the bar outside the area when it fits.
+        frame_.show(area);
+        bar_ = std::make_unique<record::ControlBar>(record::ControlBar::Callbacks{
+            [this] { if (!started_) startCapture(); link_.event("started"); },
+            [this] { pauseCapture(true); link_.event("paused"); },
+            [this] { pauseCapture(false); link_.event("resumed"); },
+            [this] { stopCapture({}); },
+            [this] { cancelCapture(); link_.event("cancelled"); },
+            [this] { return recorder_.durationUs(); }});
+        const std::wstring target = (b_.target.kind == "region" ? L"Region " : b_.target.kind == "desktop" ? L"Desktop " : L"Monitor ") + std::to_wstring(area.w) + L"×" + std::to_wstring(area.h);
+        bar_->create(area, target);
+        link_.send("prepared", {{"canvas", json::Array{area.w, area.h}}, {"rect", json::Array{area.x, area.y, area.w, area.h}}, {"acquisition", "gdi"}, {"encoder", recorder_.encoder()},
+            {"overlayPlacement", bar_->placement()}, {"overlayExcluded", bar_->excluded() && frame_.excluded()}});
+        SetTimer(link_.window(), progressTimer, 1000, nullptr);
+        return loop();
     }
 private:
     // Region selection with the capture helper's overlay; cancel ends the session.
@@ -171,10 +211,7 @@ private:
         selecting_ = &selector;
         link_.send("selecting", {{"selector", "win32"}});
         MSG msg;
-        while (GetMessageW(&msg, nullptr, 0, 0) > 0) {
-            if (!msg.hwnd && msg.message == frameMessage) { handle(std::unique_ptr<protocol::Frame>(reinterpret_cast<protocol::Frame*>(msg.lParam))); continue; }
-            TranslateMessage(&msg); DispatchMessageW(&msg);
-        }
+        while (GetMessageW(&msg, nullptr, 0, 0) > 0) { TranslateMessage(&msg); DispatchMessageW(&msg); }
         selecting_ = nullptr;
         const auto result = selector.result();
         selector.hide(); // gone from the compositor before any frame is grabbed
@@ -188,27 +225,76 @@ private:
         if (auto e = resolveArea(target, area)) { link_.send("failed", {{"code", e.code}, {"message", e.message}}); return false; }
         return true;
     }
-    int finishLoop() {
+    int loop() {
         MSG msg;
         while (!quitting_ && GetMessageW(&msg, nullptr, 0, 0) > 0) {
-            if (!msg.hwnd && msg.message == frameMessage) { handle(std::unique_ptr<protocol::Frame>(reinterpret_cast<protocol::Frame*>(msg.lParam))); continue; }
-            if (!msg.hwnd && msg.message == WM_TIMER && msg.wParam == progressTimer) { progress(); continue; }
+            if (review_ && review_->preTranslate(msg)) continue;
             TranslateMessage(&msg); DispatchMessageW(&msg);
         }
         if (worker_.joinable()) worker_.join();
         recorder_.cancel();
+        review_.reset();
+        bar_.reset();
+        frame_.hide();
         return 0;
+    }
+    // ---- capture steps shared by the bar and the resident's commands ----
+    void startCapture() {
+        started_ = true;
+        recorder_.start();
+        if (bar_) bar_->setState("recording");
+        frame_.setDimmed(true);
+        if (bar_) bar_->raise();
+    }
+    void pauseCapture(bool pause) {
+        if (pause) recorder_.pause(); else recorder_.resume();
+        if (bar_) bar_->setState(pause ? "paused" : "recording");
+    }
+    void cancelCapture() {
+        stopped_ = true;
+        exportCancel_ = true;
+        if (worker_.joinable()) worker_.join();
+        recorder_.cancel();
+        bar_.reset();
+        frame_.hide();
+        if (review_) review_->hide();
+    }
+    // Stop ends the clip, then the review opens; the resident hears it as the
+    // command's answer (requestId) or as a `stopped` event (the bar, the budget).
+    void stopCapture(const std::string& requestId, const std::string& reason = "user") {
+        stopped_ = true;
+        if (bar_) bar_->setState("stopping");
+        workerDone_ = false;
+        worker_ = std::thread([this, requestId, reason] {
+            long long duration = 0;
+            const auto e = recorder_.stop(duration);
+            workerDone_ = true;
+            link_.post([this, requestId, reason, e, duration] {
+                bar_.reset();
+                frame_.hide();
+                const json::Object result{{"durationUs", double(duration)}, {"canvas", json::Array{area_.w, area_.h}}, {"bytes", double(recorder_.fileBytes())}, {"encoder", recorder_.encoder()}};
+                if (!e) openReview(duration);
+                if (!requestId.empty()) { if (e) link_.reply(requestId, e); else link_.reply(requestId, {}, result); return; }
+                if (e) { link_.event("failed", {{"error", e.toJson()}}); return; }
+                auto fields = result; fields["reason"] = reason;
+                link_.event("stopped", fields);
+            });
+        });
+    }
+    void openReview(long long duration) {
+        RecordingEdit edit;
+        review_ = std::make_unique<record::ReviewWindow>(b_.output, RecordingSize{area_.w, area_.h}, duration, b_.config, edit, std::vector<std::string>{"mp4"}, record::ReviewWindow::Callbacks{
+            [this](unsigned long long revision, const json::Array& commands) { link_.event("edit", {{"revision", double(revision)}, {"commands", commands}}); },
+            [this](const std::string& path, unsigned long long revision) { link_.event("saveCopyRequested", {{"path", path}, {"revision", double(revision)}}); },
+            [this](unsigned long long revision) { link_.event("uploadRequested", {{"revision", double(revision)}}); },
+            [this] { cancelCapture(); link_.event("cancelled"); },
+            [this](const json::Object& config) { link_.event("configChanged", {{"config", config}}); }});
+        if (review_->create()) ui::applyTitleBarTheme(review_->hwnd(), b_.theme);
     }
     void progress() {
         if (!started_ || stopped_) return;
         const auto reason = recorder_.stoppedReason();
-        if (reason == "budget") {
-            long long duration = 0;
-            stopped_ = true;
-            if (auto e = recorder_.stop(duration)) { link_.event("failed", {{"error", e.toJson()}}); return; }
-            link_.event("stopped", {{"durationUs", double(duration)}, {"canvas", json::Array{area_.w, area_.h}}, {"reason", "budget"}});
-            return;
-        }
+        if (reason == "budget") { stopCapture({}, "budget"); return; }
         if (reason == "error") { stopped_ = true; link_.event("failed", {{"error", recorder_.failure().toJson()}}); return; }
         link_.event("progress", {{"durationUs", double(recorder_.durationUs())}, {"bytes", double(recorder_.fileBytes())}, {"paused", recorder_.paused()}, {"encoder", recorder_.encoder()}});
     }
@@ -220,29 +306,50 @@ private:
         const auto params = frame->payload.value("params").toObject();
         if (command == "cancel") {
             if (selecting_) selecting_->cancel();
-            exportCancel_ = true;
-            stopped_ = true;
-            if (worker_.joinable()) worker_.join();
-            recorder_.cancel();
+            cancelCapture();
             link_.reply(requestId, {});
             return;
         }
         if (!prepared_) { link_.reply(requestId, {"recording_state", "The helper has no prepared session", {}}); return; }
+        // Window commands answer at once, whatever a worker is doing.
+        if (command == "raise") {
+            if (review_) review_->reopen(params.value("error").toString());
+            else if (bar_) { bar_->setVisible(true); bar_->raise(); }
+            link_.reply(requestId, {});
+            return;
+        }
+        if (command == "overlay") {
+            if (params.contains("visible") && bar_) bar_->setVisible(params.value("visible").toBool(true));
+            link_.reply(requestId, {}, {{"visible", bar_ && IsWindowVisible(bar_->hwnd())}});
+            return;
+        }
+        if (command == "setEdit") {
+            RecordingEdit edit;
+            if (!recording::parseEdit(params.value("edit").toObject(), edit)) { link_.reply(requestId, {"invalid_request", "Invalid edit", {}}); return; }
+            if (review_) {
+                const auto& limits = params.value("limits");
+                review_->setEdit(edit, limits["animationSeconds"].toInteger(0) * 1000000, limits["animationEdge"].toInt(0));
+                auto config = params.value("config").toObject(); config.remove("mime"); config.remove("budgetBytes");
+                RecordingConfig parsed;
+                if (!config.empty() && !recording::parseConfig(config, parsed)) { b_.config = parsed; review_->setConfig(parsed); }
+            }
+            link_.reply(requestId, {});
+            return;
+        }
+        if (command == "notice") { if (review_) review_->setNotice(params.value("text").toString().substr(0, 1000)); link_.reply(requestId, {}); return; }
+        if (command == "review") {
+            if (!review_) { link_.reply(requestId, {"recording_state", "The review window is not open", {}}); return; }
+            const auto result = review_->drive(params);
+            if (!result.code.empty()) link_.reply(requestId, {result.code, result.message, {}});
+            else link_.reply(requestId, {}, result.state);
+            return;
+        }
         if (busy()) { link_.reply(requestId, {"recording_busy", "The helper is still finishing a command", {}}); return; }
-        if (command == "start") { if (started_) { link_.reply(requestId, {"recording_state", "Already started", {}}); return; } started_ = true; recorder_.start(); link_.reply(requestId, {}, status()); return; }
-        if (command == "pause") { recorder_.pause(); link_.reply(requestId, {}, status()); return; }
-        if (command == "resume") { recorder_.resume(); link_.reply(requestId, {}, status()); return; }
+        if (command == "start") { if (started_) { link_.reply(requestId, {"recording_state", "Already started", {}}); return; } startCapture(); link_.reply(requestId, {}, status()); return; }
+        if (command == "pause" || command == "resume") { pauseCapture(command == "pause"); link_.reply(requestId, {}, status()); return; }
         if (command == "stop") {
             if (!started_ || stopped_) { link_.reply(requestId, {"recording_state", "Nothing is recording", {}}); return; }
-            stopped_ = true;
-            workerDone_ = false;
-            worker_ = std::thread([this, requestId] {
-                long long duration = 0;
-                const auto e = recorder_.stop(duration);
-                workerDone_ = true;
-                if (e) link_.reply(requestId, e);
-                else link_.reply(requestId, {}, {{"durationUs", double(duration)}, {"canvas", json::Array{area_.w, area_.h}}, {"bytes", double(recorder_.fileBytes())}, {"encoder", recorder_.encoder()}});
-            });
+            stopCapture(requestId);
             return;
         }
         if (command == "export" || command == "preview") {
@@ -271,7 +378,10 @@ private:
             auto config = params.value("config").toObject(); config.remove("mime"); config.remove("budgetBytes");
             if (request.output.empty() || !paths::isAbsolute(request.output) || recording::parseConfig(config, request.config)) { workerDone_ = true; link_.reply(requestId, {"invalid_request", "Invalid export request", {}}); return; }
             exportCancel_ = false;
-            worker_ = std::thread([this, requestId, request] {
+            // Save copy keeps the window open with its controls disabled and the progress in its status.
+            const auto label = request.config.format == "mp4" ? std::string("MP4") : text::upper(request.config.format);
+            if (review_) review_->setExporting(true, "Exporting " + label + "…");
+            worker_ = std::thread([this, requestId, request, label] {
                 const HRESULT com = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
                 record::ExportResult result;
                 ULONGLONG reported = 0;
@@ -281,9 +391,11 @@ private:
                     if (fraction < 1.0 && now - reported < 100) return;
                     reported = now;
                     link_.event("progress", {{"exportFraction", fraction}});
+                    link_.post([this, fraction] { if (review_) review_->setExportProgress(fraction); });
                 });
                 if (SUCCEEDED(com)) CoUninitialize();
                 workerDone_ = true;
+                link_.post([this, e, result, label] { if (review_) review_->setExporting(false, e ? "Export failed: " + e.message : "Exported " + label + " (" + std::to_string(result.bytes / 1024) + " KiB)"); });
                 if (e) link_.reply(requestId, e);
                 else link_.reply(requestId, {}, {{"bytes", double(result.bytes)}, {"sha256", result.sha256}, {"durationUs", double(result.durationUs)}, {"frames", result.frames},
                     {"videoEncoder", result.encoder}, {"size", json::Array{result.size.w, result.size.h}}});
@@ -304,6 +416,9 @@ private:
     Link& link_;
     Bootstrap b_;
     record::Recorder recorder_;
+    record::AreaFrame frame_;
+    std::unique_ptr<record::ControlBar> bar_;
+    std::unique_ptr<record::ReviewWindow> review_;
     grab::Rect area_;
     overlay::Selector* selecting_ = nullptr;
     std::thread worker_;
@@ -327,10 +442,14 @@ int recordMain(const std::vector<std::string>&) {
     if (b.probe) return probe(link, channel);
     wic::Apartment com;
     media::Platform platform;
-    link.startThreads();
+    INITCOMMONCONTROLSEX controls{sizeof controls, ICC_STANDARD_CLASSES | ICC_BAR_CLASSES | ICC_WIN95_CLASSES};
+    InitCommonControlsEx(&controls);
+    ui::theme::setDark(ui::theme::wantsDark(b.theme));
+    link.start();
     if (!com.ok() || !platform.ok()) {
         link.send("failed", {{"code", "recording_unavailable"}, {"message", "Media Foundation is not available"}, {"details", json::Object{{"reason", platform.failure()}}}});
-        MSG msg; while (GetMessageW(&msg, nullptr, 0, 0) > 0) { if (!msg.hwnd && msg.message == frameMessage) { std::unique_ptr<protocol::Frame> f(reinterpret_cast<protocol::Frame*>(msg.lParam)); if (f->type == "shutdown") break; } }
+        link.onFrame = [](std::unique_ptr<protocol::Frame> f) { if (f->type == "shutdown") PostQuitMessage(0); };
+        MSG msg; while (GetMessageW(&msg, nullptr, 0, 0) > 0) DispatchMessageW(&msg);
         return 0;
     }
     Helper helper(link, std::move(b));

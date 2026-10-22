@@ -11,6 +11,7 @@
 #include "common/Text.h"
 #include "common/Uuid.h"
 #include "core/Recording.h"
+#include "core/ReviewTimeline.h"
 #include "resident/Resident.h"
 #include <algorithm>
 
@@ -32,6 +33,7 @@ struct OperationService::RecordingSession : std::enable_shared_from_this<Recordi
     RecordingTarget target; RecordingConfig config; RecordingSize canvas; long long duration = 0;
     RecordingEdit edit; json::Object progress, lastExport; int exports = 0;
     bool selecting = false, ending = false;
+    std::string overlayPlacement; std::optional<bool> overlayExcluded;
     struct Waiter { JsonReply reply; UINT_PTR timer = 0; };
     std::map<std::string, Waiter> waiting;
     // One command to the helper; the reply arrives on the owner thread, once.
@@ -81,6 +83,8 @@ json::Object OperationService::recordingJson() const {
         {"lastExport", s.lastExport.empty() ? json::Value() : json::Value(s.lastExport)}, {"error", s.op.error.toJson()}, {"selecting", s.selecting}};
     if (!s.canvas.empty()) { const auto out = recording::outputSize(s.canvas, s.config.maxEdge); o["outputSize"] = json::Array{out.w, out.h}; }
     if (!s.stopReason.empty()) o["stopReason"] = s.stopReason;
+    if (!s.overlayPlacement.empty()) o["overlayPlacement"] = s.overlayPlacement;
+    if (s.overlayExcluded) o["overlayExcluded"] = *s.overlayExcluded;
     return o;
 }
 
@@ -98,7 +102,7 @@ json::Object OperationService::recordingCapabilities() const {
     result["editCommands"] = json::Array{"setTrim", "resetTrim", "addMask", "updateMask", "removeMask"};
     result["limits"] = json::Object{{"animationMaxUs", double(limits.animationMaxUs)}, {"animationMaxEdge", limits.animationMaxEdge}, {"maxFileBytes", double(settings.limits.maxFileBytes)}, {"maxMasks", recording::maximumMasks}};
     // What this build's resident serves; the rest of docs/recording.md answers recording_unsupported.
-    result["commands"] = json::Array{"prepare", "start", "pause", "resume", "stop", "cancel", "inspect", "edit", "preview", "saveCopy", "upload"};
+    result["commands"] = json::Array{"prepare", "start", "pause", "resume", "stop", "cancel", "inspect", "raise", "overlay", "edit", "preview", "review", "saveCopy", "upload"};
     return result;
 }
 void OperationService::recordingProbe(std::function<void()> done) {
@@ -142,6 +146,7 @@ void OperationService::recordingCommand(const std::string& command, const json::
         if ((unsigned long long)params.value("revision").toInteger() != s.edit.revision) { reply({"recording_stale", "The edit revision moved; inspect and retry", {{"currentRevision", double(s.edit.revision)}}}, {}); return; }
         if (auto e = recording::applyEditCommands(s.edit, params.value("commands").toArray(), s.duration, s.canvas, s.config.fps, [] { return uuid::create(); })) { reply(e, {}); return; }
         log::info("recording", "Recording edited", {{"operationId", s.op.id}, {"revision", double(s.edit.revision)}, {"masks", double(s.edit.masks.size())}});
+        pushEdit();
         reply({}, recordingJson());
         return;
     }
@@ -163,7 +168,41 @@ void OperationService::recordingCommand(const std::string& command, const json::
         });
         return;
     }
+    if (command == "raise" || command == "overlay") {
+        auto session = recording_;
+        if (session->helper) AllowSetForegroundWindow(session->helper->pid());
+        json::Object forwarded;
+        if (command == "overlay") forwarded["visible"] = params.value("visible").toBool(true);
+        session->request(command, forwarded, commandMs, [this, session, reply](Error e, json::Object) { if (e) reply(e, {}); else if (recording_ == session) reply({}, recordingJson()); else reply(noSession(), {}); });
+        return;
+    }
+    if (command == "review") {
+        // One window control, as a user works it. An edit it proposes reaches the
+        // resident as an `edit` event first; the window is read again after the
+        // resident's answer went back, so the reply shows the applied edit.
+        auto session = recording_;
+        auto forwarded = params; forwarded.remove("id");
+        const bool inspect = params.value("action") == "inspect";
+        if (session->helper) AllowSetForegroundWindow(session->helper->pid());
+        session->request("review", forwarded, commandMs, [this, session, reply, inspect](Error e, json::Object window) {
+            auto answer = [this, session, reply](Error e, json::Object w) {
+                if (e) { reply(e, {}); return; }
+                if (recording_ != session) { reply(noSession(), {}); return; }
+                w["state"] = session->state; w["edit"] = session->edit.toJson();
+                reply({}, w);
+            };
+            if (e || inspect || recording_ != session) { answer(e, window); return; }
+            session->request("review", {{"action", "inspect"}}, commandMs, answer);
+        });
+        return;
+    }
     reply({"recording_unsupported", "recording." + command + " is not available on Windows yet", {{"command", command}}}, {});
+}
+void OperationService::pushEdit() {
+    auto session = recording_;
+    if (!session || !session->helper) return;
+    const auto limits = limitsOf(settingsSnapshot());
+    session->request("setEdit", {{"edit", session->edit.toJson()}, {"config", session->config.toJson()}, {"limits", json::Object{{"animationSeconds", double(limits.animationMaxUs / 1000000)}, {"animationEdge", limits.animationMaxEdge}}}}, commandMs, [](Error, json::Object) {});
 }
 void OperationService::recordInvoke(const std::string& mode, JsonReply reply) {
     if (!recording_) {
@@ -250,7 +289,8 @@ void OperationService::prepareRecording(const json::Object& params, JsonReply re
             if (onChanged) onChanged(session->op.id);
             json::Array exclude; if (uiPid_) exclude.push_back(double(uiPid_)); exclude.push_back(double(GetCurrentProcessId()));
             json::Object bootstrap{{"target", session->target.toJson()}, {"config", session->config.toJson()}, {"output", json::Object{{"path", session->workingPath}}},
-                {"limits", json::Object{{"budgetBytes", double(session->config.budgetBytes)}}}, {"excludePids", exclude}};
+                {"limits", json::Object{{"budgetBytes", double(session->config.budgetBytes)}}}, {"excludePids", exclude},
+                {"appearance", json::Object{{"theme", settingsSnapshot().appearanceTheme}}}};
             session->helper = std::make_unique<helpers::Supervised>("record", std::vector<std::string>{"--record"});
             auto phase = [this, session](const std::string& state) { session->state = state; auto doc = session->op.publicJson(); doc["phase"] = state; observe(doc); if (onChanged) onChanged(session->op.id); };
             auto fail = [this, session](Error e) {
@@ -274,6 +314,8 @@ void OperationService::prepareRecording(const json::Object& params, JsonReply re
                     if (session->target.kind == "region") { const auto& r = p.value("rect"); session->target.rect = RecordingRect{r[size_t(0)].toInteger(), r[size_t(1)].toInteger(), r[size_t(2)].toInteger(), r[size_t(3)].toInteger()}; }
                     recording::clampAnimationSize(session->config, session->canvas, limitsOf(settingsSnapshot()));
                     session->progress = {{"durationUs", 0}, {"bytes", 0}, {"paused", false}, {"encoder", p.value("encoder")}, {"acquisition", p.value("acquisition")}};
+                    session->overlayPlacement = p.value("overlayPlacement").toString();
+                    if (p.value("overlayExcluded").isBool()) session->overlayExcluded = p.value("overlayExcluded").toBool();
                     log::info("recording", "Recording step", {{"operationId", session->op.id}, {"state", "ready"}, {"encoder", p.value("encoder")}});
                     phase("ready");
                 } else if (frame.type == "failed") fail({p.value("code").toString("recording_failed"), p.value("message").toString("The recording could not be prepared"), p.value("details").toObject()});
@@ -288,11 +330,53 @@ void OperationService::prepareRecording(const json::Object& params, JsonReply re
                 } else if (frame.type == "event") {
                     const auto event = p.value("event").toString();
                     if (event == "progress") { for (const auto& pair : p) if (pair.first != "event") session->progress[pair.first] = pair.second; }
+                    // The control bar's and the review window's actions, applied to the same session.
+                    else if (event == "started" && session->state == "ready") phase("recording");
+                    else if (event == "paused" && session->state == "recording") phase("paused");
+                    else if (event == "resumed" && session->state == "paused") phase("recording");
                     else if (event == "stopped" && (session->state == "recording" || session->state == "paused" || session->state == "stopping")) {
                         session->duration = p.value("durationUs").toInteger(0); session->stopReason = p.value("reason").toString("user"); session->edit = {};
-                        log::warning("recording", "Recording stopped on its budget", {{"operationId", session->op.id}, {"durationUs", double(session->duration)}, {"budgetBytes", double(session->config.budgetBytes)}});
+                        if (session->stopReason == "budget") {
+                            log::warning("recording", "Recording stopped on its budget", {{"operationId", session->op.id}, {"durationUs", double(session->duration)}, {"budgetBytes", double(session->config.budgetBytes)}});
+                            session->request("notice", {{"text", "Recording stopped at " + recording::clockText(session->duration, true) + ": it reached the room put.gd keeps for one recording (" + text::byteSize(session->config.budgetBytes) +
+                                "). The clip so far is kept for review; free up disk space or raise Largest file in Settings to record longer."}}, commandMs, [](Error, json::Object) {});
+                        }
                         session->pending.clear();
                         phase("reviewing");
+                    } else if (event == "cancelled") {
+                        if (session->state == "exporting" || session->ending) return;
+                        auto op = session->op; endRecording(op);
+                        op.cancelled = true; op.state = "cancelled"; op.error = {};
+                        if (selectingId_ == op.id) selectingId_.clear();
+                        log::info("recording", "Recording cancelled", {{"operationId", op.id}, {"from", "window"}});
+                        finish(op);
+                    } else if (event == "configChanged" && (session->state == "ready" || session->state == "reviewing")) {
+                        auto config = p.value("config").toObject();
+                        RecordingConfig parsed;
+                        auto merged = session->config.toJson(); for (const auto& pair : config) merged[pair.first] = pair.second;
+                        merged.remove("mime"); merged.remove("budgetBytes");
+                        if (!recording::parseConfig(merged, parsed) && contains(recordingProbe_.value("formats").toArray(), parsed.format)) {
+                            parsed.budgetBytes = session->config.budgetBytes; parsed.fps = session->config.fps;
+                            session->config = parsed;
+                            recording::clampAnimationSize(session->config, session->canvas, limitsOf(settingsSnapshot()));
+                        }
+                        pushEdit();
+                    } else if (event == "edit") {
+                        // A review proposal at the revision it displayed; stale or invalid ones are refused
+                        // and the window gets the resident's edit back either way.
+                        const auto& revision = p.value("revision");
+                        if (session->state == "reviewing" && json::integer(revision, 1, 4503599627370496.0) && (unsigned long long)revision.toInteger() == session->edit.revision) {
+                            if (auto e = recording::applyEditCommands(session->edit, p.value("commands").toArray(), session->duration, session->canvas, session->config.fps, [] { return uuid::create(); }))
+                                log::info("recording", "Review edit refused", {{"operationId", session->op.id}, {"code", e.code}});
+                        }
+                        pushEdit();
+                    } else if (event == "uploadRequested" || event == "saveCopyRequested") {
+                        const bool upload = event == "uploadRequested";
+                        json::Object params{{"id", session->op.id}};
+                        if (upload) params["revision"] = p.value("revision"); else { params["path"] = p.value("path"); params["overwrite"] = true; }
+                        auto refused = [session](Error e, json::Object) { if (e && session->helper && !session->ending) session->request("raise", {{"error", e.message}}, commandMs, [](Error, json::Object) {}); };
+                        if (auto e = recording::checkTransition(session->state, upload ? "upload" : "saveCopy")) { refused(e, {}); return; }
+                        exportRecording(upload ? "upload" : "saveCopy", params, refused);
                     } else if (event == "failed") fail(Error::fromJson(p.value("error").toObject()));
                 }
             }, [this, session, fail](int code, bool normal, const std::string& reason) {
@@ -316,6 +400,8 @@ void OperationService::recordingControl(const std::string& command, JsonReply re
     const auto previous = s.state;
     if (command == "start") s.state = "starting";
     if (command == "stop") s.state = "stopping";
+    // Stop opens the review window in the helper; let it come to the front.
+    if (command == "stop" && s.helper) AllowSetForegroundWindow(s.helper->pid());
     session->request(command, {}, command == "stop" ? stopMs : commandMs, [this, session, command, previous, reply](Error e, json::Object result) {
         if (recording_ != session) { reply(e ? e : noSession(), {}); return; }
         auto& s = *session;

@@ -3,6 +3,8 @@
 #include "core/Recording.h"
 #include "core/RecordingFrames.h"
 #include "core/Mp4.h"
+#include "core/BarPlacement.h"
+#include "core/ReviewTimeline.h"
 #include <vector>
 #include <cstdio>
 #include <string>
@@ -188,9 +190,43 @@ static void mp4Boxes() {
     CHECK(mp4::topLevel(file.size() + 4, read).empty());
 }
 
+static void barAndTimeline() {
+    const std::vector<RecordingRect> one{{0, 0, 1280, 800}};
+    // Below the region when there is room, kept on the screen horizontally.
+    auto spot = recording::placeBar(600, 44, {60, 60, 800, 500}, one);
+    CHECK(spot.outside && spot.rect == (RecordingRect{60, 570, 600, 44}) && spot.screen == 0);
+    spot = recording::placeBar(600, 44, {900, 60, 300, 500}, one);
+    CHECK(spot.outside && spot.rect.x == 680);
+    // Above when the region reaches the bottom.
+    spot = recording::placeBar(600, 44, {60, 300, 800, 480}, one);
+    CHECK(spot.outside && spot.rect.y == 300 - 10 - 44);
+    // A whole monitor: inside its bottom-right corner.
+    spot = recording::placeBar(600, 44, {0, 0, 1280, 800}, one);
+    CHECK(!spot.outside && spot.rect == (RecordingRect{1280 - 10 - 600, 800 - 10 - 44, 600, 44}));
+    // A second monitor takes the bar when the first is full.
+    const std::vector<RecordingRect> two{{0, 0, 1280, 800}, {1280, 0, 1920, 1080}};
+    spot = recording::placeBar(600, 44, {0, 0, 1280, 800}, two);
+    CHECK(spot.outside && spot.screen == 1 && spot.rect == (RecordingRect{1280 + 960 - 300, 10, 600, 44}));
+    CHECK(recording::homeScreen({1200, 0, 400, 100}, two) == 1);
+    CHECK(recording::clampToScreen({1250, 790, 100, 50}, one[0]) == (RecordingRect{1180, 750, 100, 50}));
+
+    std::vector<RecordingMask> masks(5);
+    const long long spans[5][2] = {{0, 10}, {5, 15}, {10, 20}, {6, 8}, {7, 9}};
+    for (int i = 0; i < 5; ++i) { masks[size_t(i)].start = spans[i][0]; masks[size_t(i)].end = spans[i][1]; }
+    const auto lanes = recording::maskLanes(masks);
+    CHECK(lanes == (std::vector<int>{0, 1, 0, 2, 3}));
+    masks.push_back(masks[4]);
+    CHECK(recording::maskLanes(masks).back() == 3); // a fifth overlapping mask shares the last lane
+    CHECK(recording::timeAt(100, 100, 501, 10000000) == 0 && recording::timeAt(600, 100, 501, 10000000) == 10000000 && recording::timeAt(350, 100, 501, 10000000) == 5000000);
+    CHECK(recording::timeAt(50, 100, 501, 10000000) == 0 && recording::timeAt(900, 100, 501, 10000000) == 10000000);
+    CHECK(recording::xAt(5000000, 100, 501, 10000000) == 350 && recording::xAt(20000000, 100, 501, 10000000) == 600);
+    CHECK(recording::clockText(8266658) == "0:08.26" && recording::clockText(14700000, true) == "0:14.7" && recording::clockText(61230000) == "1:01.23");
+}
+
 int main() {
     frames();
     mp4Boxes();
+    barAndTimeline();
     targetsAndConfigs();
     transitions();
     edits();
