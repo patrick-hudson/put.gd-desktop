@@ -93,6 +93,7 @@ def write_zip(directory, names, destination):
 
 def write_msi(directory, manifest, mapping, destination, wixl):
     command = [wixl, '-a', 'x64', '-D', 'Version=' + manifest['version'], '-D', 'MsiVersion=' + mapping['msiVersion'],
+               '-D', 'FileVersion=' + mapping['fileVersion'],
                '-D', f'SourceDir={directory}', '-D', f'IconFile={ROOT / "src/windows/resident/app.ico"}',
                '-o', str(destination), str(HERE / 'putgd.wxs')]
     result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)

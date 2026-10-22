@@ -4,6 +4,7 @@
   src/windows/packaging/package.py with these variables:
     Version     the calendar version, 26.1022.942-nightly (docs/versioning.md)
     MsiVersion  its MSI mapping (src/windows/cmake/WindowsVersion.cmake)
+    FileVersion the executables' FILEVERSION, 26.1022.0.942
     SourceDir   the directory holding putgd.exe, putgd-cli.exe, build-info.json and LICENSE.txt
     IconFile    src/windows/resident/app.ico
 
@@ -27,6 +28,12 @@
     <!-- The Apps entry is the registry key below, so it shows the calendar version
          rather than the MSI mapping; Windows Installer's own entry stays hidden. -->
     <Property Id="ARPSYSTEMCOMPONENT" Value="1"/>
+    <!-- wixl leaves File.Version empty unless told, and an unversioned new file never
+         replaces the versioned putgd.exe on disk: the upgrade then removed the old one
+         and installed nothing. The executables carry their FILEVERSION, and "a" copies
+         every file even when the versions are equal (a nightly and the stable release of
+         one YY.MDD.N), since the old product is removed first anyway. -->
+    <Property Id="REINSTALLMODE" Value="amus"/>
     <Property Id="ARPPRODUCTICON" Value="putgd.ico"/>
 
     <Directory Id="TARGETDIR" Name="SourceDir">
@@ -39,10 +46,10 @@
           </Component>
           <Directory Id="INSTALLDIR" Name="put.gd">
             <Component Id="Resident" Guid="5E0B5E39-2D0C-4C8A-9C1B-6A3E0F1D2B01">
-              <File Id="putgd.exe" Name="putgd.exe" Source="$(var.SourceDir)/putgd.exe"/>
+              <File Id="putgd.exe" Name="putgd.exe" Source="$(var.SourceDir)/putgd.exe" DefaultVersion="$(var.FileVersion)"/>
             </Component>
             <Component Id="Cli" Guid="5E0B5E39-2D0C-4C8A-9C1B-6A3E0F1D2B02">
-              <File Id="putgd_cli.exe" Name="putgd-cli.exe" Source="$(var.SourceDir)/putgd-cli.exe"/>
+              <File Id="putgd_cli.exe" Name="putgd-cli.exe" Source="$(var.SourceDir)/putgd-cli.exe" DefaultVersion="$(var.FileVersion)"/>
             </Component>
             <Component Id="Manifest" Guid="5E0B5E39-2D0C-4C8A-9C1B-6A3E0F1D2B03">
               <File Id="build_info.json" Name="build-info.json" Source="$(var.SourceDir)/build-info.json"/>
