@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Delete GitHub Actions caches that no run can restore any more.
 
-Rolling caches (`ccache-linux-24.04-<run>-<attempt>`, the CTest durations and
-the instrumented QtCore) are restored by key prefix, and a prefix restore takes
+Rolling caches (`ccache-linux-24.04-<run>-<attempt>`, the CTest durations, the
+instrumented QtCore and the weekly distro package snapshots) are restored by key prefix, and a prefix restore takes
 the newest entry on the run's ref (or on nightly). Every older entry of the same
 family on the same ref is therefore never read again. Caches saved by closed
 pull requests and deleted branches are unreachable too. On main, nightly and
@@ -23,6 +23,7 @@ PROTECTED = re.compile(r'^refs/heads/(?:main|nightly)$|^refs/tags/v')
 FAMILIES = (
     re.compile(r'^((?:ccache|ctest-cost)-.+-)\d+-\d+$'),
     re.compile(r'^(qt-asan-core-[0-9.]+-)'),
+    re.compile(r'^(putgd-pkgs-v\d+-.+-[0-9a-f]{64}-)\d{4}-W\d{2}$'),
 )
 
 
