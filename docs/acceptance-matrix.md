@@ -138,6 +138,178 @@ Evidence per desktop:
 - annotated full-desktop pictures of the tray menu, Settings, a capture in the editor, the Review window, the native **Save a copy…** chooser and the link-ready notification;
 - every frame checked before it is kept.
 
+## Linux update profile (U1–U16)
+
+One pass proves that every Linux install format updates from one published nightly to the next,
+through every route a user would take. The pass uses two consecutive published nightlies, N and N+1, as
+CI and the signer published them. Neither is rebuilt.
+
+The same rules as the AppImage profile apply:
+- every item is evidenced on every desktop where it applies;
+- a failed item is a finding with its own labelled issue, and the pass reports it as a fail;
+- an item that can't run needs a written reason, and Patrick decides whether the pass counts.
+
+The passes so far are listed in the evidence folders named `*-linux-update-acceptance`.
+
+**Inputs:**
+- **N and N+1:** the published GitHub releases, each checked against its `SHA256SUMS`. Both must contain
+  every change the pass accepts, and N+1 must be the newest nightly while the desktops run.
+- **Lab stable, until the first stable release exists:** U6's populated-stable leg, U10 and U14's stable
+  half need a stable channel. Real nightlies trust only the real stable key, so this leg uses lab-key
+  builds of N+1's commit:
+  - one local commit puts a lab-only stable key in `packaging/linux/repo/keys/`, and empty commits give
+    the versions;
+  - the builds are nightly L1, stable S1 (older than L1) and stable S2, for every target (the three DEBs,
+    the RPM and the AppImage), plus stable S3 for the AppImage;
+  - they are published under `pkg.put.gd/lab/` only: nightlies by the signer's lab scope, stable signed
+    with the lab key, as in #344 and #386;
+  - afterwards every lab object is deleted and answers 404, and the lab keys are shredded.
+
+  Once a real stable release exists, these legs run on the real stable channel instead, with no lab
+  builds. Live feeds, the stable channel and the real stable key are never written by the pass.
+
+**Where each item runs:**
+
+| Item | f44 Fedora 44 GNOME | d69 Debian 13 Plasma | k72 Kubuntu 26.04 Plasma | m74 Mint 22.3 Cinnamon | Ubuntu 26.04 GNOME VM | Aurora VM |
+| --- | --- | --- | --- | --- | --- | --- |
+| U2–U5 package updates | RPM, dnf | DEB `debian13`, apt | DEB `ubuntu26.04`, apt | DEB `ubuntu24.04`, apt | DEB `ubuntu26.04`, apt | n/a (no DEB or RPM) |
+| U3 GUI updater | GNOME Software | GNOME Software (the installed updater; Discover isn't installed) | Discover | Update Manager | whatever **Open software updates** finds, or its message | n/a |
+| U6 DEB/RPM channel | live + lab | live + lab | live + lab | live + lab | live | n/a |
+| U7, U8, U11 AppImage updates | yes | yes | yes | yes | yes | yes |
+| U9 Gear Lever, AppImageLauncher | | | | | both | Gear Lever |
+| U10 AppImage channel | lab | | | lab | | |
+| U12 refusals | all | restart pending, folder not writable | restart pending, folder not writable | all | | |
+| U13 discovery | GNOME Software | GNOME Software | Discover | Software Manager | | |
+| U14 notifications | nightly, stable | nightly | nightly | nightly, stable | nightly | nightly |
+| U15 idle RSS | yes | yes | yes | yes | yes | yes |
+
+Physical desktops need a coordinator lock (`tools/lab/desktop_lock.py`: check the acquire, `extend`
+before expiry, release with `--verified-clean`). VMs are overlays of the goldens, retired afterwards.
+Installs are scoped to `putgd`: `apt install --only-upgrade putgd`, `dnf upgrade putgd`, never a bare
+upgrade. A GUI updater installs only put.gd: other updates are unticked, or the reason it can't be
+scoped is written down. Before any full-desktop frame, close Patrick's Firefox, ChatGPT and Codex
+windows, or leave that desktop until he has. Each resident runs with private `XDG_CONFIG_HOME`,
+`XDG_STATE_HOME`, `XDG_CACHE_HOME` and runtime directory unless the item tests the default profile
+(U5, U11).
+
+- **U1. Live infrastructure agrees.** Check this when N+1 is published, before the desktops start, and
+  again at the end:
+  - `app.put.gd` and `pkg.put.gd` `update/v1/nightly.json` name N+1, and the `.minisig` verifies with the
+    nightly key, with the trusted comment naming N+1. `stable.json` verifies too and names the real stable
+    release, or `release: null`.
+  - `/dl/nightly/<target>` resolves to N+1's asset for `appimage`, `appimage.zsync`, `ubuntu24.04`,
+    `ubuntu26.04`, `debian13` and `fedora44`.
+  - The `pkg.put.gd/releases/<tag>/` mirror holds the AppImage, its `.zsync`, `SHA256SUMS` and
+    `SHA256SUMS.minisig`, with the same SHA-256 as the GitHub release. The `.zsync` names the mirror's
+    image and its SHA-1.
+  - Each apt suite's `InRelease` verifies with the nightly key, and its `Packages` lists N+1 with the
+    release's SHA-256. dnf's `repomd.xml` signature verifies, and `primary` lists N+1 with that SHA-256.
+  - The DEP-11 and dnf AppStream catalogs name N+1.
+  - Every mismatch is a finding.
+- **U2. apt and dnf.** On a desktop without put.gd, install N from its release file (`apt install ./…deb`,
+  `dnf install ./…rpm`), the documented way a user starts. Check the repository file it adds.
+  - Then upgrade it to N+1 with `sudo apt update && sudo apt install --only-upgrade putgd`, or
+    `sudo dnf upgrade --refresh putgd`.
+  - apt and dnf verify the signature. N+1 installs with no conffile prompt, and the repository file is
+    unchanged.
+- **U3. The desktop's GUI updater.** With N installed again, the updater lists put.gd N → N+1 (picture),
+  then installs it with only put.gd selected. A polkit prompt is Patrick's to answer: ask for him through
+  the coordinator, never type it. Where the updater can't install one package alone, write down why and
+  apply N+1 through PackageKit (`pkcon update putgd`), the updater's own back end.
+- **U4. Settings on a repository install.** On N, before the upgrade:
+  - Settings → Updates shows Channel *Nightly*, read-only, set by the repository file. **Check now**
+    finds N+1 "from put.gd's nightly repository".
+  - **Open software updates** opens the U3 updater, shown by a real click. Where none is installed, the
+    message gives the command.
+  - There's no **Download and install** and no notification ("doesn't nag"). After the upgrade and a
+    restart of put.gd, Settings says *Up to date*.
+- **U5. An upgrade keeps settings and history.** Use put.gd's default profile, with the resident running
+  through the upgrade, as a user has it:
+  - Beforehand, change settings (theme, clipboard, a destination) and make history: two captures, one
+    uploaded public-read to the live S3 test prefix (`put.gd/acceptance/`, key set 2).
+  - After the upgrade, put.gd restarts, or it's started again. `config.json` is byte-identical, or differs
+    only by a documented migration. The history entries, previews and links are all there.
+  - A real click on the uploaded entry's link opens it in the desktop's real default browser, as in
+    profile item F above.
+  - The object is then removed with **Delete from destination**, and the prefix is listed empty.
+- **U6. DEB/RPM channel switch** ([package-repositories.md](package-repositories.md#switching-channels)).
+  Use the commands Settings → **Other channel** copies, run as given (`apt-get -y` only in place of the
+  prompt):
+  - **Live:** move N+1 to stable. While stable has no release, the stable suite is empty: the last
+    command installs nothing, the nightly stays and Settings says so. Move back to nightly: no conffile
+    prompt, and the file equals `putgd-nightly.*`. Then N → N+1 updates through the nightly suite
+    as in U2.
+  - **Populated stable (lab):**
+    - L1 → stable S1 (older; downgrade). S2 is published, the GUI updater shows it, and `--only-upgrade`
+      takes S1 → S2.
+    - The channel is kept. Back to nightly L1, then a newer lab nightly (or the downgrade when L1 is
+      older), with no prompt.
+- **U7. AppImage in-app update N → N+1**, through Settings → **Download and install** with a real click
+  on at least one desktop, and `update.install` elsewhere:
+  - **zsync:** with the real `appimageupdatetool` on `PATH`. The mirror's `.zsync` is used and only the
+    changed blocks are fetched.
+  - **The fallback, forced once per desktop:** a crashing `appimageupdatetool` on `PATH`, so the verified
+    full download is taken and `zsync.fallbackReason` names the crash.
+  - The new image is on the same path, with its mode kept. **Restart put.gd** runs N+1, and the hidden
+    backup is gone after that first start.
+- **U8. appimageupdatetool** (continuous build, digest recorded) on N: `--check-for-update` says yes, and
+  the update writes N+1 beside N, which matches `SHA256SUMS`. On Fedora this needs
+  `SSL_CERT_FILE=/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem` ([#297](https://github.com/patrick-hudson/put.gd-desktop/issues/297)).
+  Run put.gd from N's path afterwards: login (U11) picks N+1.
+- **U9. Gear Lever and AppImageLauncher** (as in [#412](evidence/2026-10-22-appimage-integrators-412/README.md)):
+  - Each integrates N. Then put.gd's in-app update N → N+1 runs from the integrator's menu entry.
+  - The entry and the record still start N+1, with no second entry and no adopted backup.
+  - Each tool's own check then reports no update. Gear Lever's own **Update** on a second copy of N goes
+    to N+1 too.
+- **U10. AppImage channel switch.** Before the first stable, on the lab builds:
+  - L1 watching Stable while lab `stable.json` has `release: null` says "no stable release yet", with
+    no button. The same check against the live `app.put.gd` stable feed does too.
+  - L1 → S1 (older: refused without `allowOlder`, then confirmed). S1 → S2 is an ordinary update.
+  - S2 → nightly with **Switch to nightly**. A tampered stable release is refused.
+- **U11. Start at login after an update.** Turn on **Launch at login** on N. Update in-app without a
+  restart (and, on a second run, with appimageupdatetool). Then a real logout and login. Login starts
+  N+1 from the same folder.
+  - Physical desktops: only with the coordinator's OK, after checking that none of Patrick's apps are
+    open. VMs: through their autologin.
+- **U12. Refusals.** Each reason is shown in Settings and in `update.status`, and the image is unchanged:
+  - the AppImage's folder isn't writable;
+  - the file belongs to another user;
+  - no room for a second copy (a small tmpfs);
+  - an upload is running (`update_install_busy`);
+  - an installed update still waits for its restart;
+  - a DEB or RPM build (`not_appimage`);
+  - a tampered image, an unsigned `SHA256SUMS` and a rewritten `SHA256SUMS` (loopback copy of N+1).
+- **U13. Discovery** ([#314](https://github.com/patrick-hudson/put.gd-desktop/issues/314)). With put.gd not
+  installed, add only the live nightly repository file and its key. These are the bytes the DEB or RPM
+  would install, taken from N+1's package without installing it.
+  - The software centre's search finds put.gd, with name, icon and summary (Mint: "Putgd", from apt;
+    [#430](https://github.com/patrick-hudson/put.gd-desktop/issues/430)).
+  - Installing it from there installs N+1. A later remove leaves the system as before.
+- **U14. Notifications, each checked against its feed at that moment** (a `dbus-monitor` log of
+  `org.freedesktop.Notifications` beside the picture):
+  - **Nightly never:** an AppImage and a repository DEB/RPM on N, against the live feed naming N+1,
+    through **Check now** and a scheduled check (5–15 min after start). There is no notification,
+    and the tray entry follows [updates.md](updates.md#who-is-told).
+  - **Stable once per version** (lab until the first stable): S1 against a stable feed naming S2 gives
+    exactly one notification. A restart and **Check now** don't repeat it, and S3 gives one more.
+  - A real click on the notification opens the release notes in the real default browser.
+  - A stable DEB from the repository never notifies.
+- **U15. Idle RSS.** The resident on N+1 after each desktop's updates, quiet host, `--background`, 30 s
+  settle, then RSS every second for 180 s. The median, Pss and the mapped TLS/network libraries are
+  recorded, compared with N on the same desktop. Both stay under the 40 MiB budget.
+- **U16. Cleanup.** Remove put.gd, the repository files and keys the pass added, the AppImages, profiles,
+  autostart entries, lab objects (404 confirmed), lab keys, VM overlays, tunnels and wall tiles.
+  - Restore each desktop's default browser byte for byte.
+  - Release the locks with `--verified-clean`.
+
+**Evidence:**
+- **Pictures:** one annotated full-desktop picture per desktop per route, whose footer names the build
+  (version and commit). Each is captured from that build during this pass (rule 16 in the coordination
+  notes), and every frame is checked for privacy before it is kept.
+- **A results table:** desktops × U1–U16, with versions, methods, timings and RSS.
+- **The run logs** (`results/`) and the drivers (`lab/`).
+- **A docs-only pull request** into `nightly`, with each failure linked to its issue.
+
 ## Choose physical hardware or a VM for each gate
 
 Prefer Patrick's [Fedora and Debian build servers](remote-builders.md), including
