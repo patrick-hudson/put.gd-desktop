@@ -93,7 +93,7 @@ class Workflows(unittest.TestCase):
         package = workflow('package.yml')
         for name, writer in (('debug-symbols', 'tools/releases/debug_symbols.py dry-run'), ('collect', 'tools/releases/collect.py')):
             text = job(package, name)
-            self.assertIn('sudo apt-get install -y --no-install-recommends dwz', text)
+            self.assertIn('bash tools/ci/install-packages.sh --no-install-recommends dwz', text)
             self.assertLess(text.index('dwz'), text.index(writer))
         self.assertIn('qemu-utils dwz', job(workflow('ci.yml'), 'contracts'))
 
