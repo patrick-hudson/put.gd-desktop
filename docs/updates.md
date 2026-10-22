@@ -161,6 +161,11 @@ Aurora (Fedora Atomic) through all three paths, with tampered files refused and 
 memory unchanged within 0.2 MiB:
 [evidence](evidence/2026-10-21-appimage-updater-293/README.md).
 
+An AppImage integrated by Gear Lever 4.6.2 or AppImageLauncher 3.0.0-beta-3 updates the same way:
+after 26.1022.968 → 26.1022.983 on Linux Mint 22.3, each tool's menu entry and record still start the
+new version, neither shows a second entry or picks up the hidden backup, and each reports no further
+update ([evidence](evidence/2026-10-22-appimage-integrators-412/README.md)).
+
 ### If the new version won't start
 
 **The backup.** Download and install keeps the version you had next to the AppImage, as a

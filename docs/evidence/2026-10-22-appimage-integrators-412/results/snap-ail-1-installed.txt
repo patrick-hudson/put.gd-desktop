@@ -1,0 +1,147 @@
+## ail-1-installed 2026-10-22T19:30:48Z
+### ls -la /home/lab/AppImages
+total 12
+drwxr-xr-x  3 lab lab 4096 2026-10-22 14:27:56.942130748 -0500 .
+drwxr-x--- 19 lab lab 4096 2026-10-22 14:28:28.513074654 -0500 ..
+drwxr-xr-x  2 lab lab 4096 2026-10-22 14:27:56.942266035 -0500 .icons
+### sha256 / inode
+### ls -la /home/lab/Applications
+total 225356
+drwxrwxr-x  3 lab lab      4096 2026-10-22 14:29:32.139693277 -0500 .
+drwxr-x--- 19 lab lab      4096 2026-10-22 14:28:28.513074654 -0500 ..
+-rwxrwxr-x  1 lab lab 115374584 2026-10-22 14:29:30.737701620 -0500 putgd-26.1022.968-nightly-x86_64_5f3321a488a6b61ff63e4f2e5b3c9e3e.AppImage
+-rwxrwxr-x  1 lab lab 115374584 2026-10-22 14:28:28.492074781 -0500 .putgd-update-backup-26.1022.968-nightly.AppImage
+drwxrwxr-x  2 lab lab      4096 2026-10-22 14:28:50.503942208 -0500 .trash
+### sha256 / inode
+534495 115374584 c348ee5e1b0300f9f282f4d1979fe30d52d7326d7083b57ed1a62f8c61cd0862  /home/lab/Applications/putgd-26.1022.968-nightly-x86_64_5f3321a488a6b61ff63e4f2e5b3c9e3e.AppImage
+534501 115374584 dc17d5c6fb92a35514f381051d58f9a0170fad2b40c7e0e328dae64b219f51cf  /home/lab/Applications/.putgd-update-backup-26.1022.968-nightly.AppImage
+### desktop entries naming put.gd
+#### /home/lab/.local/share/applications/appimagekit_ee40cb6cec293b8cdc7c3f0ef74b80f4-put.gd.desktop
+[Desktop Entry]
+Type=Application
+Name=put.gd
+Comment=Capture and share screen regions and clipboard content
+Exec=/home/lab/Applications/putgd-26.1022.968-nightly-x86_64_5f3321a488a6b61ff63e4f2e5b3c9e3e.AppImage
+Icon=appimagekit_ee40cb6cec293b8cdc7c3f0ef74b80f4_putgd
+Terminal=false
+Categories=Utility;Graphics;
+StartupNotify=true
+
+TryExec=/home/lab/Applications/putgd-26.1022.968-nightly-x86_64_5f3321a488a6b61ff63e4f2e5b3c9e3e.AppImage
+X-AppImage-Old-Icon=putgd
+X-AppImage-Identifier=ee40cb6cec293b8cdc7c3f0ef74b80f4
+Actions=AppImageLauncher-Remove-AppImage;AppImageLauncher-Update-AppImage;
+X-AppImageLauncher-Version=3.0.0-beta-2 (git commit 96cb937), built on 2025-10-28 22:31:15 UTC
+
+[Desktop Action AppImageLauncher-Remove-AppImage]
+Name=Delete this AppImage
+Icon=AppImageLauncher
+Exec=/opt/appimagelauncher.AppDir/usr/lib/x86_64-linux-gnu/appimagelauncher/remove "/home/lab/Applications/putgd-26.1022.968-nightly-x86_64_5f3321a488a6b61ff63e4f2e5b3c9e3e.AppImage"
+Name[ast]=Desaniciar AppImage del sistema
+Name[cs]=Odebrat AppImage ze systému
+Name[de]=Dieses AppImage löschen
+Name[en]=Delete this AppImage
+Name[es]=Eliminar Appimage del Sistema
+Name[fr]=Supprimer cette AppImage
+Name[it]=Rimuovi questa AppImage
+Name[ko]=이 AppImage 삭제
+Name[nb_NO]=Slett AppImage
+Name[nl]=AppImage deïnstalleren
+Name[pl]=Usuń AppImage z systemu
+Name[pt]=Remover AppImage do sistema
+Name[pt_BR]=Remover AppImage do sistema
+Name[ru]=Удалить AppImage
+Name[tr]=Bu AppImage uygulamasını sil
+Name[zh_Hans]=删除此 AppImage
+
+[Desktop Action AppImageLauncher-Update-AppImage]
+Name=Update this AppImage
+Icon=AppImageLauncher
+Exec=/opt/appimagelauncher.AppDir/usr/lib/x86_64-linux-gnu/appimagelauncher/update "/home/lab/Applications/putgd-26.1022.968-nightly-x86_64_5f3321a488a6b61ff63e4f2e5b3c9e3e.AppImage"
+Name[ast]=Anovar AppImage
+Name[cs]=Aktualizovat AppImage
+Name[de]=Dieses AppImage aktualisieren
+Name[en]=Update this AppImage
+Name[es]=Actualizar Appimage
+Name[fr]=Mettre à jour l'AppImage
+Name[it]=Aggiorna questa AppImage
+Name[ko]=이 AppImage 업데이트
+Name[nb_NO]=Oppdater AppImage
+Name[nl]=AppImage bijwerken
+Name[pl]=Uaktualnij AppImage
+Name[pt]=Atualizar AppImage
+Name[pt_BR]=Atualizar AppImage
+Name[ru]=Обновить AppImage
+Name[tr]=Bu AppImage uygulamasını güncelle
+Name[zh_Hans]=更新此 AppImage
+### Gear Lever --list-installed
+put.gd   [Not specified]   [StaticFileUpdater|embedded]   /home/lab/Applications/putgd-26.1022.968-nightly-x86_64_5f3321a488a6b61ff63e4f2e5b3c9e3e.AppImage   
+### Gear Lever config
+#### /home/lab/.var/app/it.mijorus.gearlever/config/gearlever.conf
+[DEFAULT]
+fetch-updates-in-background = no
+
+[app.fb4f1a143b8188deda4bdfa61df1f0e7.update_manager]
+
+
+it.mijorus.gearlever exec-as-name-for-terminal-apps false
+it.mijorus.gearlever fetch-updates-in-background false
+### AppImageLauncher
+ii  appimagelauncher 3.0.0-beta-2-gha287~96cb937 amd64        ldnp-built package
+4493 /opt/appimagelauncher.AppDir/usr/bin/appimagelauncherd
+### put.gd processes
+pid 4733 exe=/tmp/.mount_putgd-nkCopf/usr/bin/putgd APPIMAGE=/home/lab/Applications/putgd-26.1022.968-nightly-x86_64_5f3321a488a6b61ff63e4f2e5b3c9e3e.AppImage
+### update.status
+{
+ "build": {
+  "channel": "nightly",
+  "kind": "nightly",
+  "packageTarget": "appimage",
+  "reason": null,
+  "supported": true,
+  "version": "26.1022.968-nightly"
+ },
+ "result": {
+  "action": {
+   "kind": "download",
+   "repository": "none"
+  },
+  "asset": {
+   "name": "putgd-26.1022.983-nightly-x86_64.AppImage",
+   "sha256": "c348ee5e1b0300f9f282f4d1979fe30d52d7326d7083b57ed1a62f8c61cd0862",
+   "size": 115374584
+  },
+  "channel": "nightly",
+  "checkedAt": "2026-10-22T19:29:00Z",
+  "current": "26.1022.968-nightly",
+  "downloadUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/v26.1022.983-nightly/putgd-26.1022.983-nightly-x86_64.AppImage",
+  "latest": "26.1022.983-nightly",
+  "notesUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v26.1022.983-nightly",
+  "packageTarget": "appimage",
+  "publishedAt": "2026-10-22T19:19:10Z",
+  "tag": "v26.1022.983-nightly",
+  "updateAvailable": true
+ },
+ "install": {
+  "state": "installed",
+  "image": "/home/lab/Applications/putgd-26.1022.968-nightly-x86_64_5f3321a488a6b61ff63e4f2e5b3c9e3e.AppImage",
+  "restartRequired": true,
+  "backup": "/home/lab/Applications/.putgd-update-backup-26.1022.968-nightly.AppImage",
+  "installed": {
+   "channel": "nightly",
+   "image": "/home/lab/Applications/putgd-26.1022.968-nightly-x86_64_5f3321a488a6b61ff63e4f2e5b3c9e3e.AppImage",
+   "installedAt": "2026-10-22T19:29:32Z",
+   "method": "download",
+   "previousChannel": "nightly",
+   "previousVersion": "26.1022.968-nightly",
+   "sha256": "c348ee5e1b0300f9f282f4d1979fe30d52d7326d7083b57ed1a62f8c61cd0862",
+   "version": "26.1022.983-nightly"
+  },
+  "error": null,
+  "available": true
+ }
+}
+### update-install.json
+{"backup":{"copied":false,"device":"64771","inode":"534501","mtime":1792697308,"path":"/home/lab/Applications/.putgd-update-backup-26.1022.968-nightly.AppImage","size":115374584},"installed":{"channel":"nightly","image":"/home/lab/Applications/putgd-26.1022.968-nightly-x86_64_5f3321a488a6b61ff63e4f2e5b3c9e3e.AppImage","installedAt":"2026-10-22T19:29:32Z","method":"download","previousChannel":"nightly","previousVersion":"26.1022.968-nightly","sha256":"c348ee5e1b0300f9f282f4d1979fe30d52d7326d7083b57ed1a62f8c61cd0862","version":"26.1022.983-nightly"},"schemaVersion":1,"staging":null}
+### hidden update files
+-rwxrwxr-x 1 lab lab 115374584 Oct 22 14:28 /home/lab/Applications/.putgd-update-backup-26.1022.968-nightly.AppImage
