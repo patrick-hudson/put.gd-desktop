@@ -75,7 +75,7 @@ struct Server::State {
         return CreateNamedPipeW(path.c_str(), PIPE_ACCESS_DUPLEX | FILE_FLAG_FIRST_PIPE_INSTANCE * 0, PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT | PIPE_REJECT_REMOTE_CLIENTS,
                                 PIPE_UNLIMITED_INSTANCES, 1 << 16, 1 << 20, 0, &sa);
     }
-    void serve(HANDLE client) {
+    void serve(std::shared_ptr<State> self, HANDLE client) {
         std::string line; bool tooLarge = false;
         auto finish = [client](const std::string& reply) { writeAll(client, reply + "\n"); FlushFileBuffers(client); DisconnectNamedPipe(client); CloseHandle(client); };
         if (!readLine(client, line, maximumRequestBytes, framingDeadlineMs, tooLarge)) {
@@ -83,7 +83,6 @@ struct Server::State {
             else { DisconnectNamedPipe(client); CloseHandle(client); }
             --clients; return;
         }
-        auto self = this;
         handler(std::move(line), [finish, self](std::string reply) { finish(reply); --self->clients; });
     }
 };
@@ -114,7 +113,7 @@ bool Server::listen(const std::string& path, Handler handler) {
             instance = state->createInstance();
             state->current = instance;
             if (state->clients.load() >= maximumClients) { DisconnectNamedPipe(client); CloseHandle(client); }
-            else { ++state->clients; std::thread([state, client] { state->serve(client); }).detach(); }
+            else { ++state->clients; std::thread([state, client] { state->serve(state, client); }).detach(); }
             if (instance == INVALID_HANDLE_VALUE) break;
         }
     });

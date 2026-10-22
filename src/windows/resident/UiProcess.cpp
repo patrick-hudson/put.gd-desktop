@@ -34,12 +34,19 @@ void UiProcess::start(const std::string& view) {
 }
 void UiProcess::show(const std::string& view, std::function<void(Error)> reply) {
     if (!knownView(view)) { reply({"invalid_request", "Unknown view", {}}); return; }
+    if (helper_ && closing_) {
+        // A helper in its close handshake is immutable; end it now so the replacement
+        // can start. Its exit callback runs synchronously here, before the new request
+        // joins the pending list, so the request is not failed with it.
+        auto old = std::move(helper_);
+        old->terminate("replaced");
+    }
     Pending p; p.view = view; p.reply = std::move(reply);
     p.timer = Loop::instance().startTimer(viewDeadlineMs, [this, view] {
         for (auto it = pending_.begin(); it != pending_.end(); ++it) if (it->view == view) { auto r = it->reply; pending_.erase(it); r({"ui_timeout", "The put.gd window did not acknowledge the view in time", {}}); break; }
     }, false);
     pending_.push_back(std::move(p));
-    if (!helper_ || closing_) { start(view); return; }
+    if (!helper_) { start(view); return; }
     if (ready_) helper_->send("activate", json::Object{{"view", view}});
 }
 void UiProcess::invalidate(const std::string& kind) { if (helper_ && ready_ && !closing_) helper_->send("invalidate", json::Object{{"kind", kind}}); }
@@ -66,7 +73,7 @@ void UiProcess::handle(const protocol::Frame& frame) {
         const auto state = frame.payload.value("state").toObject();
         if (json::serialize(state).size() > protocol::maximumUiStateBytes) { helper_->send("closeCancelled", json::Object{{"sequence", sequence}, {"error", Error{"state_too_large", "The window state exceeds 8 MiB", {}}.toJson()}}); return; }
         if (!pending_.empty()) { helper_->send("closeCancelled", json::Object{{"sequence", sequence}}); return; }
-        state_ = state; closing_ = true; closeSequence_ = sequence.toInteger();
+        state_ = state; closing_ = true;
         helper_->send("closeAccepted", json::Object{{"sequence", sequence}});
         // A confirmed helper that lingers is killed after two seconds.
         Loop::instance().singleShot(2000 + 5000, [this, generation = generation_] { if (helper_ && closing_ && generation == generation_) helper_->terminate("close_timeout"); });

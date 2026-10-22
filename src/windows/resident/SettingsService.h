@@ -44,7 +44,7 @@ private:
     Settings settings_;
     std::string acceptedRevision_, observedRevision_;
     Error lastError_;
-    bool firstStart_ = false, watching_ = false, stopping_ = false, pendingReload_ = false;
+    bool firstStart_ = false, watching_ = false, stopping_ = false;
     std::vector<std::function<void()>> changed_;
     std::thread watcher_;
     void* stopEvent_ = nullptr;

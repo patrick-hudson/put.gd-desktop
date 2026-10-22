@@ -162,7 +162,6 @@ int residentMain(const std::vector<std::string>& args) {
         if (message == WM_ENDSESSION) { if (wParam) quit(); return true; }
         return false;
     });
-    clipboard.onUserChange([&](unsigned long long revision) { operations.clipboardChangedByUser(revision); });
     operations.onActivityChanged = [&](bool active, bool uploading) { tray.setTint(uploading ? Tray::Tint::Uploading : active ? Tray::Tint::Busy : Tray::Tint::Idle); };
     bool invalidationPending = false;
     auto invalidateOperations = [&] {

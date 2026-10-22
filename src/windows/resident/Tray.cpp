@@ -18,9 +18,12 @@ COLORREF tintColor(Tray::Tint t) {
 }
 Tray::Tray(HWND owner) : owner_(owner) {
     taskbarCreated_ = RegisterWindowMessageW(L"TaskbarCreated");
+    WNDCLASSW wc{}; wc.lpfnWndProc = DefWindowProcW; wc.hInstance = GetModuleHandleW(nullptr); wc.lpszClassName = L"putgd.tray.menu";
+    RegisterClassW(&wc);
+    menuOwner_ = CreateWindowExW(WS_EX_TOOLWINDOW, wc.lpszClassName, L"put.gd", WS_POPUP, 0, 0, 0, 0, nullptr, nullptr, wc.hInstance, nullptr);
     add();
 }
-Tray::~Tray() { remove(); if (icon_) DestroyIcon(icon_); }
+Tray::~Tray() { remove(); if (icon_) DestroyIcon(icon_); if (menuOwner_) DestroyWindow(menuOwner_); }
 HICON Tray::makeIcon(Tint tint, int size) {
     // A rounded square with a white "up" arrow: drawn at runtime so the resident
     // needs no image codec or resource loading beyond user32/gdi32.
@@ -107,9 +110,10 @@ void Tray::showMenu() {
     AppendMenuW(menu, MF_STRING, CmdAbout, L"About put.gd");
     AppendMenuW(menu, MF_STRING, CmdQuit, L"Quit");
     POINT point; GetCursorPos(&point);
-    SetForegroundWindow(owner_); // required for the menu to close when focus leaves
-    const UINT chosen = UINT(TrackPopupMenuEx(menu, TPM_RETURNCMD | TPM_NONOTIFY | TPM_RIGHTBUTTON, point.x, point.y, owner_, nullptr));
-    PostMessageW(owner_, WM_NULL, 0, 0);
+    const HWND menuOwner = menuOwner_ ? menuOwner_ : owner_;
+    SetForegroundWindow(menuOwner); // required for the menu to close when focus leaves
+    const UINT chosen = UINT(TrackPopupMenuEx(menu, TPM_RETURNCMD | TPM_NONOTIFY | TPM_RIGHTBUTTON, point.x, point.y, menuOwner, nullptr));
+    PostMessageW(menuOwner, WM_NULL, 0, 0);
     DestroyMenu(menu);
     if (chosen && command_) command_(chosen);
 }

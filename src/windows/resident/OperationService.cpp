@@ -233,7 +233,7 @@ void OperationService::startCapture(Operation op, const std::string& mode, Cance
         else if (frame.type == "selected") { raw->selected = true; if (selectingId_ == raw->op.id) selectingId_.clear(); observeState("capturing"); }
         else if (frame.type == "checkpoint") {
             long long bytes = 0; const auto digest = files::sha256(raw->outputPath, &bytes);
-            if (bytes != raw->checkpoint.value("bytes").toInteger(-1) && (bytes != frame.payload.value("bytes").toInteger(-1) || digest != frame.payload.value("sha256").toString())) raw->error = {"capture_failed", "The capture helper's checkpoint does not match the written file", {}};
+            if (digest.empty() || bytes != frame.payload.value("bytes").toInteger(-1) || digest != frame.payload.value("sha256").toString()) raw->error = {"capture_failed", "The capture helper's checkpoint does not match the written file", {}};
             else raw->checkpoint = frame.payload;
             raw->helper->send("checkpointAccepted");
         } else if (frame.type == "failed") raw->error = {frame.payload.value("code").toString("capture_failed"), frame.payload.value("message").toString("Capture failed"), {}};
@@ -249,11 +249,8 @@ void OperationService::startCapture(Operation op, const std::string& mode, Cance
             files::removeDirectoryRecursively(session->directory);
             finish(op); return;
         }
-        Payload payload; payload.kind = "capture"; payload.imagePath = session->outputPath;
+        Payload payload; payload.kind = "capture"; payload.imagePath = session->outputPath; payload.stagingDirectory = session->directory;
         if (op.action == "edit") startEditing(std::move(op), std::move(payload), session->cancel); else enqueue({std::move(op), std::move(payload), true, session->cancel});
-        // The staging directory is removed once the artifact store moved the file.
-        const auto directory = session->directory;
-        Loop::instance().singleShot(30000, [directory] { files::removeDirectoryRecursively(directory); });
     });
 }
 
@@ -267,7 +264,7 @@ void OperationService::startEditing(Operation op, Payload input, CancelFlag flag
     auto fail = [this, session](Error e) { files::removeDirectoryRecursively(session->directory); auto failed = session->op; failed.error = e; failed.state = "failed"; if (editingId_ == failed.id) editingId_.clear(); editor_.reset(); finish(failed); };
     if (!files::makePrivateDirectory(session->directory)) { fail({"edit_staging_failed", "Cannot create private editor staging", {}}); return; }
     Error stage;
-    if (input.kind == "capture") { if (!files::rename(input.imagePath, session->inputPath, false)) stage = {"edit_staging_failed", "Cannot stage the capture", {}}; }
+    if (input.kind == "capture") { if (!files::rename(input.imagePath, session->inputPath, false)) stage = {"edit_staging_failed", "Cannot stage the capture", {}}; files::removeDirectoryRecursively(input.stagingDirectory); }
     else if (input.kind == "png") { stage = files::writeAtomically(session->inputPath, input.bytes); }
     else if (input.kind == "files") {
         if (input.files.size() != 1 || !files::isRegularFile(input.files[0])) stage = {"source_unsupported", "Edit needs exactly one PNG or JPEG file", {}};
@@ -405,6 +402,7 @@ Operation OperationService::run(Job job) {
         op.phase = "preparing"; if (!save()) return op;
         long long objectLimit = 0; if (provider) objectLimit = provider->capabilities(op.destination).maximumObjectBytes;
         auto acquired = artifacts.acquire(op.id, job.payload, settings, op.action, op.created, objectLimit);
+        if (!job.payload.stagingDirectory.empty()) files::removeDirectoryRecursively(job.payload.stagingDirectory);
         job.payload = {};
         if (acquired.error) { op.error = acquired.error; op.state = "failed"; save(); log::warning("operations", "Acquisition failed", {{"operationId", op.id}, {"code", op.error.code}}); return op; }
         for (const auto& a : acquired.artifacts) { OperationItem item; item.phase = "stored"; item.artifact = a; item.artifact.previewPath = artifacts.preview(a, settings.previewCacheBytes, settings.limits.imagePixels); item.publicationId = uuid::create(); op.items.push_back(item); }
@@ -538,7 +536,6 @@ void OperationService::finish(Operation op, JsonReply reply) {
 
 // ---- copying results --------------------------------------------------------
 unsigned long long OperationService::invalidateCopyEligibility() { return ++copyEpoch_; }
-void OperationService::clipboardChangedByUser(unsigned long long) { /* eligibility compares live revisions; nothing to record */ }
 void OperationService::copyText(const std::string& value, unsigned long long expected, bool automatic, std::function<void(Error)> done) {
     if (automatic && clipboard_.revision() != expected && clipboard_.lastCopyRevision() != clipboard_.revision()) { done({"copy_suppressed", "A user clipboard change, cancellation or explicit copy superseded automatic copying", {}}); return; }
     unsigned long long revision = 0;
@@ -736,7 +733,8 @@ void OperationService::cleanup(bool automatic, JsonReply reply) {
             if (name.empty() || name[0] == '.' || activeIds.count(name)) continue;
             Error lookup; const auto op = store.operation(name, &lookup);
             bool eligible = false;
-            if (lookup) eligible = true; // no journal record: orphaned retained artifacts
+            if (lookup.code == "operation_not_found") eligible = true; // no journal record: orphaned retained artifacts
+            else if (lookup) continue; // a journal read error never justifies removal
             else if (Operation::activeState(op.state)) continue;
             else if (op.state == "completed") eligible = true;
             else { const auto age = now - files::parseIsoUtcMs(op.created); eligible = snapshot.failedArtifactDays > 0 && age > (long long)snapshot.failedArtifactDays * 86400000LL; }

@@ -18,6 +18,7 @@ struct Payload {
     std::string bytes;
     std::string imageFormat; // png or dib for kind image
     std::string imagePath;   // kind capture: a PNG the capture helper wrote
+    std::string stagingDirectory; // kind capture: removed once the file was taken
 };
 struct Acquisition { std::vector<Artifact> artifacts; Error error; };
 class ArtifactStore {

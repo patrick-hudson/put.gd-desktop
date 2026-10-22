@@ -34,7 +34,7 @@ private:
     struct Pending { std::string view; std::function<void(Error)> reply; UINT_PTR timer = 0; };
     std::vector<Pending> pending_;
     bool ready_ = false, closing_ = false;
-    unsigned long long generation_ = 0, closeSequence_ = 0;
+    unsigned long long generation_ = 0;
     json::Object lastExit_;
 };
 }

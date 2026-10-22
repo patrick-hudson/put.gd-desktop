@@ -61,8 +61,6 @@ public:
     std::function<void()> onObservationsChanged;
     std::function<void(bool active, bool uploading)> onActivityChanged;
     std::function<json::Object()> shortcutStatus; // Hotkeys::status for capabilities
-    // A user clipboard change invalidates automatic link copies that expected the old revision.
-    void clipboardChangedByUser(unsigned long long revision);
     unsigned long long invalidateCopyEligibility();
     // Explicit allocator/working-set trim after two quiet seconds (diagnostics.memory).
     void scheduleHeapReclamation();
@@ -99,7 +97,8 @@ private:
     std::mutex locksMutex_;
     mutable std::mutex observationsMutex_;
     std::map<std::string, json::Object> observations_;
-    int running_ = 0, storageRequests_ = 0;
+    int running_ = 0;
+    std::atomic<int> storageRequests_{0};
     unsigned long long invocation_ = 0, copyEpoch_ = 0;
     std::string selectingId_, editingId_;
     std::unique_ptr<CaptureSession> capture_;

@@ -34,6 +34,7 @@ private:
     void showMenu();
     HICON makeIcon(Tint, int size);
     HWND owner_;
+    HWND menuOwner_ = nullptr; // a hidden top-level window: TrackPopupMenu needs a real foreground owner
     bool added_ = false, recording_ = false;
     Tint tint_ = Tint::Idle;
     HICON icon_ = nullptr;
