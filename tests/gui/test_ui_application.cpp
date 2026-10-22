@@ -318,6 +318,61 @@ private slots:
   bar->triggerAction(QAbstractSlider::SliderToMinimum);QCOMPARE(bar->value(),0);
   window->resize(1280,700);PUTGD_TRY_COMPARE(window->height(),700);PUTGD_COMPARE_STEADY(bar->value(),0,300);QVERIFY(!inView(status));
  }
+ // #391: the rail at the heights a maximized window gets on short screens,
+ // with Update available and a three-line capture output. Nothing in it
+ // overlaps or is squeezed below its minimum, and the navigation stays in view.
+ // At 1280×800 the whole rail fits; at 768 px it may scroll a little,
+ // depending on the fonts, and below the window's minimum height, where a
+ // window manager can still hold it, the rest scrolls into view.
+ void railFitsShortWindows_data(){
+  QTest::addColumn<QSize>("size");QTest::addColumn<int>("scrolls");
+  enum{Never,Maybe,Always};
+  QTest::newRow("natural")<<QSize(1320,880)<<int(Never);
+  QTest::newRow("1280x800-gnome")<<QSize(1280,738)<<int(Never);
+  QTest::newRow("1280x800-plasma")<<QSize(1280,722)<<int(Never);
+  QTest::newRow("1366x768")<<QSize(1366,690)<<int(Maybe);
+  QTest::newRow("1024x768-minimum")<<QSize(1060,680)<<int(Maybe);
+  QTest::newRow("below-minimum")<<QSize(1060,560)<<int(Always);
+ }
+ void railFitsShortWindows(){
+  QFETCH(QSize,size);QFETCH(int,scrolls);
+  QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"),[](auto,auto){return Error{};});auto document=Settings::developmentTemplate();
+  document["captureDefaults"]=QJsonObject{{"destination","upload"},{"profileId","development-s3"},{"publicationMode","default"}};auto actions=document["actions"].toObject();
+  for(const auto& name:Settings::actionNames()){auto action=actions[name].toObject();action["destination"]=name=="region"?"local":"default";action["profileId"]=QJsonValue::Null;actions[name]=action;}document["actions"]=actions;QVERIFY(settings.save(document,{}));
+  CredentialStore secrets;UiSessionFixture fixture(settings,secrets);
+  fixture.server.setUiDiagnostics([&]{auto data=fixture.operations().diagnostics();data["update"]=QJsonObject{{"supported",true},{"result",QJsonObject{{"updateAvailable",true},{"latest","26.1022.999-nightly"}}}};return data;});
+  MainWindow window(fixture.session);if(size.height()<window.minimumHeight())window.setMinimumSize(size);window.resize(size);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));fixture.session.refreshSnapshot();
+  // A nightly links its version to its release; the longest CalVer one.
+  QJsonObject snapshot;fixture.server.dispatch({{"schemaVersion",1},{"requestId","rail"},{"session",fixture.server.socketPath()},{"method","ui.snapshot"},{"params",QJsonObject{}}},[&](Error e,QJsonObject data){QVERIFY(!e);snapshot=data;});PUTGD_TRY_VERIFY(!snapshot.isEmpty());
+  auto build=snapshot["build"].toObject();build["version"]="26.1231.99999-nightly";build["dirty"]=false;snapshot["build"]=build;fixture.session.applySnapshot(snapshot);
+  auto* version=window.findChild<QPushButton*>("appVersionLink");QVERIFY(version);PUTGD_TRY_VERIFY(version->isVisible());
+  auto* update=window.findChild<QPushButton*>("updateAvailable");auto* output=window.findChild<QLabel*>("captureOutputSummary");auto* navigation=window.findChild<QListWidget*>("mainNavigation");auto* scroll=window.findChild<QScrollArea*>("mainRailScroll");
+  QVERIFY(update&&output&&navigation);PUTGD_TRY_VERIFY(update->isVisible());PUTGD_TRY_COMPARE(window.size(),size);QCOMPARE(output->text().count('\n'),2);
+  auto* content=scroll?scroll->widget():window.findChild<QWidget*>("mainRail");QWidgetList items;for(auto* child:content->findChildren<QWidget*>(Qt::FindDirectChildrenOnly))if(child->isVisible())items<<child;
+  QVERIFY(items.size()>=12);
+  // Qt lays out on posted events: wait until the rail settles, then report what is still wrong.
+  const auto where=[&](QWidget* w){return QString("%1 %2,%3 %4x%5").arg(w->objectName()).arg(w->x()).arg(w->y()).arg(w->width()).arg(w->height());};
+  const auto problem=[&]()->QString{
+   for(int i=0;i<items.size();++i){
+    auto* item=items[i];const int need=qMin(item->maximumHeight(),qMax(item->minimumHeight(),item->hasHeightForWidth()?item->heightForWidth(item->width()):item->minimumSizeHint().height()));
+    if(item->height()<need)return where(item)+QString(" is squeezed below %1").arg(need);
+    for(int j=i+1;j<items.size();++j)if(item->geometry().intersects(items[j]->geometry()))return where(item)+" overlaps "+where(items[j]);
+   }
+   return {};
+  };
+  QString found;const bool settled=putgd::test::waitFor([&]{found=problem();return found.isEmpty();});
+  QVERIFY2(settled,qPrintable(found+QString(" in a %1x%2 rail (minimum %3, viewport %4x%5, compact %6)").arg(content->width()).arg(content->height()).arg(content->minimumHeight())
+   .arg(scroll?scroll->viewport()->width():0).arg(scroll?scroll->viewport()->height():0).arg(window.findChild<QPushButton*>("captureRailButton")->property("compact").toBool())));
+  QVERIFY(scroll);
+  // The version's whole line shows, descent included, with room to spare (Patrick's clipped "nightly").
+  QVERIFY2(version->height()>=version->fontMetrics().lineSpacing()+8,qPrintable(QString("version link %1 px for a %2 px line").arg(version->height()).arg(version->fontMetrics().lineSpacing())));
+  const auto inView=[&](QWidget* widget){return scroll->viewport()->rect().contains(QRect(widget->mapTo(scroll->viewport(),QPoint()),widget->size()));};
+  const auto settingsRow=navigation->visualItemRect(navigation->item(2));QVERIFY(navigation->viewport()->rect().contains(settingsRow));
+  QVERIFY(inView(navigation));
+  if(scrolls==0){QCOMPARE(scroll->verticalScrollBar()->maximum(),0);for(auto* item:items)QVERIFY2(inView(item),qPrintable(item->objectName()+" is out of view"));}
+  if(scrolls==2)QVERIFY(scroll->verticalScrollBar()->maximum()>0);
+  scroll->ensureWidgetVisible(update);PUTGD_TRY_VERIFY(inView(update));PUTGD_TRY_VERIFY(inView(output));
+ }
 };
 QTEST_MAIN(UiApplicationTest)
 #include "test_ui_application.moc"

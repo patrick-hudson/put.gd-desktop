@@ -76,13 +76,19 @@ QPushButton[visualRole="link"], QToolButton[visualRole="link"] { color: %link%; 
 QPushButton[visualRole="link"]:hover, QToolButton[visualRole="link"]:hover { text-decoration: underline; }
 QPushButton[visualRole="link"]:focus, QToolButton[visualRole="link"]:focus { border-color: %accent%; padding: 3px 2px; }
 QLabel[visualRole="version"] { color: %textMuted%; font-size: 11px; padding: 0 3px; }
-QPushButton[visualRole="version"] { color: %textMuted%; font-size: 11px; border-color: transparent; background: transparent; padding: 2px 3px; min-height: 0; text-align: left; }
+/* The version's full line, descent included, plus a pixel above and below (#391). */
+QPushButton[visualRole="version"] { color: %textMuted%; font-size: 11px; border-color: transparent; background: transparent; padding: 3px 3px; min-height: 0; text-align: left; }
 QPushButton[visualRole="version"]:hover { color: %link%; text-decoration: underline; }
-QPushButton[visualRole="version"]:focus { color: %link%; border-color: %accent%; padding: 1px 2px; }
+QPushButton[visualRole="version"]:focus { color: %link%; border-color: %accent%; padding: 2px 2px; }
 QPushButton#captureRailButton { background: %surface%; text-align: left; padding: 8px 10px; min-height: 24px; }
 QPushButton#captureRailButton:hover { background: %surfaceRaised%; }
 QPushButton#captureRailButton:focus { border: 2px solid %accent%; padding: 7px 9px; }
 QPushButton#captureRailButton[dropTarget="true"] { background: %selected%; border: 2px dashed %accent%; padding: 7px 9px; }
+/* A rail shorter than its natural height closes up its capture buttons (#391). */
+QPushButton#captureRailButton[compact="true"] { padding: 4px 10px; min-height: 20px; }
+QPushButton#captureRailButton[compact="true"]:focus, QPushButton#captureRailButton[compact="true"][dropTarget="true"] { padding: 3px 9px; }
+QPushButton[visualRole="link"][compact="true"] { padding: 1px 3px; }
+QPushButton[visualRole="link"][compact="true"]:focus { padding: 0 2px; }
 QPushButton#historyEditImage::menu-indicator { image: none; width: 0; }
 /* The 18 px icon plus Qt's 3 px: 23 px with the border, focused or not. A
    height left to the size hint followed focus and moved its row (#261). */

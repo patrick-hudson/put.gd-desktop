@@ -1,7 +1,7 @@
 #pragma once
 #include <QMainWindow>
 #include <QJsonObject>
-class QListWidget;class QStackedWidget;class QLabel;class QPushButton;class QMimeData;
+class QListWidget;class QStackedWidget;class QLabel;class QPushButton;class QMimeData;class QScrollArea;class QSpacerItem;
 namespace putgd {
 class UiSession;class SettingsWindow;class HistoryWindow;class FileDialog;
 class MainWindow final:public QMainWindow {
@@ -22,6 +22,8 @@ signals:void viewStateChanged();void actionRequested(const QString&);
 protected:
  bool eventFilter(QObject*,QEvent*)override;
 private:
+ void fitRail();void setRailCompact(bool);
  UiSession& session_;QPushButton* editButton_=nullptr;SettingsWindow* settings_;HistoryWindow* history_;QListWidget* navigation_;QStackedWidget* pages_;QLabel *destination_,*saveStatus_,*version_;QPushButton* versionLink_;QPushButton* updateLink_=nullptr;FileDialog* chooser_=nullptr;
+ QScrollArea* railScroll_=nullptr;QList<QPushButton*> railButtons_,railLinks_;QList<QSpacerItem*> railGaps_;bool railCompact_=false,fittingRail_=false,refitRail_=false;int railSaving_=0;
 };
 }
