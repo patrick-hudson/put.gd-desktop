@@ -147,3 +147,10 @@ Every frame is checked before it's kept. Physical desktops are sanitized (full f
 2. An N+1 nightly after N, for N's own updater path (#348/#349), or a decision to skip it.
 3. All four physical locks plus d69/f44 for the VMs, and OK for the logouts: f44 ×2, d69/k72/m74 ×1.
 4. Which #344 flow is testable without live publishing, if its PR doesn't say.
+
+## Coordinator's answers (2026-10-22)
+
+1. N comes once all four PRs have merged and a nightly containing them has published (expected in hours). Until then: idle, no locks.
+2. N+1 will be dispatched right after N publishes; both tags will be sent. Run the live N → N+1 update once N+1 is published.
+3. On the go, all four builders plus both VMs (Ubuntu on d69, Aurora on f44) are mine for the pass. The logouts (f44 ×2, d69/k72/m74 ×1) are covered by Patrick's builder authority: no further ask, but each is recorded in the timeline.
+4. #344: Patrick wants the stable side tested through a lab-signed feed under `pkg.put.gd/lab` (lab keys only). If the #344 PR leaves that feed in place, ask the coordinator before using it. Otherwise, "no stable release yet" plus switching back is enough.
