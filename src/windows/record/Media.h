@@ -7,9 +7,11 @@
 #include "common/Error.h"
 #include <cstdint>
 #include <string>
+#include <vector>
 #include <windows.h>
 
 struct IMFSinkWriter;
+struct IMFSourceReader;
 
 namespace putgd::media {
 // Loads Media Foundation and runs MFStartup; MFShutdown in the destructor. One
@@ -60,6 +62,27 @@ private:
     DWORD stream_ = 0;
     VideoFormat format_;
     std::string encoder_;
+};
+
+// Decodes a clip's first video stream to top-down BGRX frames of the canvas size,
+// in presentation order. The helper reads only its own working clip with it.
+class ClipReader {
+public:
+    ClipReader() = default;
+    ~ClipReader();
+    ClipReader(const ClipReader&) = delete;
+    ClipReader& operator=(const ClipReader&) = delete;
+    Error open(const std::string& path, int width, int height);
+    // Seeks to the keyframe at or before `us`; frames before `us` still follow.
+    Error seek(long long us);
+    // The next frame (`time100ns` is its presentation time); false at the end or on error.
+    bool next(std::vector<uint8_t>& bgrx, long long& time100ns, Error& error);
+    int width() const { return width_; }
+    int height() const { return height_; }
+private:
+    IMFSourceReader* reader_ = nullptr;
+    int width_ = 0, height_ = 0;
+    long defaultStride_ = 0;
 };
 
 // Encodes two synthetic 320x240 frames to memory: registry presence is not proof

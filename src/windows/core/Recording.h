@@ -81,6 +81,9 @@ Error parseConfig(const json::Object&, RecordingConfig&);
 // advances the revision once. `newId` names added masks.
 Error applyEditCommands(RecordingEdit&, const json::Array& commands, long long durationUs, RecordingSize canvas, int fps, const std::function<std::string()>& newId);
 long long alignToFrame(long long us, int fps);
+// Reads RecordingEdit::toJson's form back (the resident sends its edit to the
+// helper with each export and preview); false on anything malformed.
+bool parseEdit(const json::Object&, RecordingEdit&);
 Error checkExportBudget(const RecordingConfig&, const RecordingEdit&, long long durationUs, RecordingSize canvas, const RecordingLimits&);
 bool clampAnimationSize(RecordingConfig&, RecordingSize canvas, const RecordingLimits&);
 RecordingSize outputSize(RecordingSize canvas, const std::optional<int>& maxEdge);

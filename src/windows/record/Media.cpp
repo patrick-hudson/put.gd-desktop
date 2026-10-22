@@ -8,6 +8,8 @@
 #include <mfreadwrite.h>
 #include <mftransform.h>
 #include <shlwapi.h>
+#include <cstdlib>
+#include <cstring>
 #include <vector>
 
 namespace putgd::media {
@@ -28,6 +30,7 @@ struct Api {
     HRESULT(WINAPI* createAttributes)(IMFAttributes**, UINT32) = nullptr;
     HRESULT(WINAPI* byteStreamOnStream)(IStream*, IMFByteStream**) = nullptr;
     HRESULT(WINAPI* sinkWriterFromUrl)(LPCWSTR, IMFByteStream*, IMFAttributes*, IMFSinkWriter**) = nullptr;
+    HRESULT(WINAPI* sourceReaderFromUrl)(LPCWSTR, IMFAttributes*, IMFSourceReader**) = nullptr;
 };
 Api api;
 template <class F> bool resolve(HMODULE module, const char* name, F& out) {
@@ -50,7 +53,7 @@ Platform::Platform() {
         resolve(api.plat, "MFCreateMediaType", api.createMediaType) && resolve(api.plat, "MFCreateSample", api.createSample) &&
         resolve(api.plat, "MFCreateMemoryBuffer", api.createMemoryBuffer) && resolve(api.plat, "MFCopyImage", api.copyImage) &&
         resolve(api.plat, "MFCreateAttributes", api.createAttributes) && resolve(api.plat, "MFCreateMFByteStreamOnStream", api.byteStreamOnStream) &&
-        resolve(api.readwrite, "MFCreateSinkWriterFromURL", api.sinkWriterFromUrl);
+        resolve(api.readwrite, "MFCreateSinkWriterFromURL", api.sinkWriterFromUrl) && resolve(api.readwrite, "MFCreateSourceReaderFromURL", api.sourceReaderFromUrl);
     if (!resolved) { failure_ = "media_foundation_incomplete"; return; }
     if (FAILED(api.startup(MF_VERSION, MFSTARTUP_LITE))) { failure_ = "media_foundation_startup"; return; }
     ok_ = true;
@@ -171,6 +174,74 @@ Error Mp4Writer::finish() {
     abandon();
     if (FAILED(hr)) return {"recording_failed", "The recording could not be finalized", {{"hresult", hex(hr)}}};
     return {};
+}
+
+ClipReader::~ClipReader() { if (reader_) reader_->Release(); }
+Error ClipReader::open(const std::string& path, int width, int height) {
+    width_ = width; height_ = height;
+    Com<IMFAttributes> attributes;
+    if (FAILED(api.createAttributes(attributes.put(), 1))) return {"recording_export_failed", "Cannot prepare the decoder", {}};
+    // Colour conversion and the decoder's padded height cropped back to the canvas.
+    attributes->SetUINT32(MF_SOURCE_READER_ENABLE_ADVANCED_VIDEO_PROCESSING, TRUE);
+    HRESULT hr = api.sourceReaderFromUrl(paths::wide(path).c_str(), attributes.get(), &reader_);
+    if (FAILED(hr)) return {"recording_export_failed", "Cannot open the working clip", {{"hresult", hex(hr)}}};
+    reader_->SetStreamSelection(MF_SOURCE_READER_ALL_STREAMS, FALSE);
+    reader_->SetStreamSelection(MF_SOURCE_READER_FIRST_VIDEO_STREAM, TRUE);
+    Com<IMFMediaType> type;
+    api.createMediaType(type.put());
+    type->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Video);
+    type->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_RGB32);
+    MFSetAttributeSize(type.get(), MF_MT_FRAME_SIZE, UINT32(width), UINT32(height));
+    hr = reader_->SetCurrentMediaType(MF_SOURCE_READER_FIRST_VIDEO_STREAM, nullptr, type.get());
+    if (FAILED(hr)) return {"recording_export_failed", "The decoder cannot produce frames of the canvas size", {{"hresult", hex(hr)}}};
+    Com<IMFMediaType> current;
+    if (SUCCEEDED(reader_->GetCurrentMediaType(MF_SOURCE_READER_FIRST_VIDEO_STREAM, current.put()))) {
+        UINT32 stride = 0;
+        if (SUCCEEDED(current->GetUINT32(MF_MT_DEFAULT_STRIDE, &stride))) defaultStride_ = LONG(stride);
+    }
+    if (defaultStride_ == 0) defaultStride_ = LONG(width) * 4;
+    return {};
+}
+Error ClipReader::seek(long long us) {
+    PROPVARIANT position; PropVariantInit(&position);
+    position.vt = VT_I8; position.hVal.QuadPart = us * 10;
+    const HRESULT hr = reader_->SetCurrentPosition(GUID_NULL, position);
+    if (FAILED(hr)) return {"recording_export_failed", "Cannot seek in the working clip", {{"hresult", hex(hr)}}};
+    return {};
+}
+bool ClipReader::next(std::vector<uint8_t>& bgrx, long long& time, Error& error) {
+    while (true) {
+        DWORD stream = 0, flags = 0; LONGLONG timestamp = 0;
+        Com<IMFSample> sample;
+        const HRESULT hr = reader_->ReadSample(MF_SOURCE_READER_FIRST_VIDEO_STREAM, 0, &stream, &flags, &timestamp, sample.put());
+        if (FAILED(hr)) { error = {"recording_export_failed", "Cannot decode the working clip", {{"hresult", hex(hr)}}}; return false; }
+        if (flags & MF_SOURCE_READERF_ENDOFSTREAM) return false;
+        if (!sample) continue; // a stream tick
+        Com<IMFMediaBuffer> buffer;
+        if (FAILED(sample->ConvertToContiguousBuffer(buffer.put()))) { error = {"recording_export_failed", "Cannot read a decoded frame", {}}; return false; }
+        bgrx.resize(size_t(width_) * height_ * 4);
+        const size_t row = size_t(width_) * 4;
+        // Lock2D gives the top row and a signed pitch whatever the buffer's orientation.
+        Com<IMF2DBuffer> twoD;
+        BYTE* top = nullptr; LONG pitch = 0;
+        bool locked2D = SUCCEEDED(buffer->QueryInterface(IID_IMF2DBuffer, reinterpret_cast<void**>(twoD.put()))) && SUCCEEDED(twoD->Lock2D(&top, &pitch));
+        BYTE* base = nullptr; DWORD length = 0;
+        if (!locked2D) {
+            if (FAILED(buffer->Lock(&base, nullptr, &length))) { error = {"recording_export_failed", "Cannot read a decoded frame", {}}; return false; }
+            pitch = defaultStride_;
+            top = pitch < 0 ? base + size_t(-pitch) * size_t(height_ - 1) : base;
+            if (length < DWORD(std::abs(pitch)) * DWORD(height_ - 1) + DWORD(row)) { buffer->Unlock(); error = {"recording_export_failed", "A decoded frame is too small", {}}; return false; }
+        }
+        for (int y = 0; y < height_; ++y) {
+            const BYTE* source = top + (long long)pitch * y;
+            uint8_t* target = bgrx.data() + row * size_t(y);
+            std::memcpy(target, source, row);
+            for (size_t x = 3; x < row; x += 4) target[x] = 255;
+        }
+        if (locked2D) twoD->Unlock2D(); else buffer->Unlock();
+        time = timestamp;
+        return true;
+    }
 }
 
 Error probeH264(std::string& encoder) {

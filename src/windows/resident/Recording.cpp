@@ -98,7 +98,7 @@ json::Object OperationService::recordingCapabilities() const {
     result["editCommands"] = json::Array{"setTrim", "resetTrim", "addMask", "updateMask", "removeMask"};
     result["limits"] = json::Object{{"animationMaxUs", double(limits.animationMaxUs)}, {"animationMaxEdge", limits.animationMaxEdge}, {"maxFileBytes", double(settings.limits.maxFileBytes)}, {"maxMasks", recording::maximumMasks}};
     // What this build's resident serves; the rest of docs/recording.md answers recording_unsupported.
-    result["commands"] = json::Array{"prepare", "start", "pause", "resume", "stop", "cancel", "inspect", "saveCopy", "upload"};
+    result["commands"] = json::Array{"prepare", "start", "pause", "resume", "stop", "cancel", "inspect", "edit", "preview", "saveCopy", "upload"};
     return result;
 }
 void OperationService::recordingProbe(std::function<void()> done) {
@@ -136,6 +136,33 @@ void OperationService::recordingCommand(const std::string& command, const json::
     if (command == "cancel") { cancelRecording(reply); return; }
     if (command == "start" || command == "pause" || command == "resume" || command == "stop") { recordingControl(command, reply); return; }
     if (command == "saveCopy" || command == "upload") { exportRecording(command, params, reply); return; }
+    if (command == "edit") {
+        auto& s = *recording_;
+        if (!json::integer(params.value("revision"), 1, 4503599627370496.0)) { reply(invalidRequest("edit takes the revision it was made at"), {}); return; }
+        if ((unsigned long long)params.value("revision").toInteger() != s.edit.revision) { reply({"recording_stale", "The edit revision moved; inspect and retry", {{"currentRevision", double(s.edit.revision)}}}, {}); return; }
+        if (auto e = recording::applyEditCommands(s.edit, params.value("commands").toArray(), s.duration, s.canvas, s.config.fps, [] { return uuid::create(); })) { reply(e, {}); return; }
+        log::info("recording", "Recording edited", {{"operationId", s.op.id}, {"revision", double(s.edit.revision)}, {"masks", double(s.edit.masks.size())}});
+        reply({}, recordingJson());
+        return;
+    }
+    if (command == "preview") {
+        auto session = recording_;
+        auto& s = *session;
+        const auto& time = params.value("time");
+        if (!json::integer(time, 0, double(std::max<long long>(0, s.duration - 1))) || (params.contains("maxEdge") && !json::integer(params.value("maxEdge"), 64, 1600)))
+            { reply(invalidRequest("preview takes a clip time in microseconds and an optional maxEdge of 64 to 1600"), {}); return; }
+        const long long at = time.toInteger();
+        const auto edit = s.edit;
+        const bool retained = at >= edit.trimStart && at < edit.exportEnd(s.duration);
+        s.request("preview", {{"edit", edit.toJson()}, {"time", double(at)}, {"maxEdge", params.value("maxEdge").toInt(1024)}}, commandMs, [reply, edit, at, retained](Error e, json::Object result) {
+            if (e) { reply(e, {}); return; }
+            result["timeUs"] = double(at); result["retained"] = retained;
+            result["outputTimeUs"] = retained ? json::Value(double(at - edit.trimStart)) : json::Value();
+            result["revision"] = double(edit.revision);
+            reply({}, result);
+        });
+        return;
+    }
     reply({"recording_unsupported", "recording." + command + " is not available on Windows yet", {{"command", command}}}, {});
 }
 void OperationService::recordInvoke(const std::string& mode, JsonReply reply) {
@@ -345,7 +372,6 @@ void OperationService::exportRecording(const std::string& command, const json::O
         if ((unsigned long long)params.value("revision").toInteger() != s.edit.revision) { reply({"recording_stale", "The edit revision moved; inspect and retry", {{"currentRevision", double(s.edit.revision)}}}, {}); return; }
     }
     if (auto e = recording::checkExportBudget(s.config, s.edit, s.duration, s.canvas, limitsOf(settings))) { reply(e, {}); return; }
-    if (!s.edit.unedited(s.duration)) { reply({"recording_unsupported", "Trimmed or masked exports are not available on Windows yet", {}}, {}); return; }
     const auto output = paths::join(s.directory, "export-" + std::to_string(++s.exports) + extension);
     if (!helpers::prepareOutputFile(output)) { reply({"recording_export_failed", "Cannot stage the export", {}}, {}); return; }
     const auto edit = s.edit;
@@ -355,7 +381,7 @@ void OperationService::exportRecording(const std::string& command, const json::O
     { auto doc = s.op.publicJson(); doc["phase"] = command == "upload" ? "encoding" : "exporting"; observe(doc); }
     // An export may take minutes, longer than a client waits: answer now; inspect carries the outcome.
     reply({}, recordingJson());
-    const json::Object exportParams{{"output", json::Object{{"path", output}}}, {"format", s.config.format}, {"codec", s.config.codec}, {"edit", edit.toJson()}, {"unedited", true}};
+    const json::Object exportParams{{"output", json::Object{{"path", output}}}, {"config", s.config.toJson()}, {"edit", edit.toJson()}};
     session->request("export", exportParams, exportMs, [this, session, command, destination, overwrite, output, edit](Error e, json::Object result) {
         if (recording_ != session) { files::remove(output); return; }
         auto& s = *session;

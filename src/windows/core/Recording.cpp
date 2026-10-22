@@ -153,6 +153,28 @@ long long alignToFrame(long long us, int fps) {
     const double frame = 1000000.0 / fps;
     return std::llround(double(std::llround(double(us) / frame)) * frame);
 }
+bool parseEdit(const Object& o, RecordingEdit& out) {
+    RecordingEdit edit;
+    long long revision = 0;
+    if (!integer(o.value("revision"), 1, 4503599627370496LL, &revision) || !integer(o.value("trimStart"), 0, maximumClipUs, &edit.trimStart) || !o.value("masks").isArray()) return false;
+    edit.revision = (unsigned long long)revision;
+    if (!o.value("trimEnd").isNull()) { long long end = 0; if (!integer(o.value("trimEnd"), 1, maximumClipUs, &end)) return false; edit.trimEnd = end; }
+    if (o.value("masks").arrayRef().size() > size_t(maximumMasks)) return false;
+    for (const auto& value : o.value("masks").arrayRef()) {
+        if (!value.isObject()) return false;
+        const auto& m = value.objectRef();
+        RecordingMask mask;
+        mask.id = m.value("id").toString(); mask.kind = m.value("kind").toString();
+        if (mask.id.empty() || (mask.kind != "blur" && mask.kind != "solid") || !rect(m.value("rect"), mask.rect)) return false;
+        if (!integer(m.value("start"), 0, maximumClipUs, &mask.start) || !integer(m.value("end"), 0, maximumClipUs, &mask.end) || mask.end <= mask.start) return false;
+        long long strength = 16;
+        if (m.contains("strength") && !integer(m.value("strength"), 2, 64, &strength)) return false;
+        mask.strength = int(strength);
+        edit.masks.push_back(mask);
+    }
+    out = edit;
+    return true;
+}
 namespace {
 Error validateMask(const Value& value, RecordingMask& mask, long long duration, RecordingSize canvas) {
     if (!value.isObject()) return invalid("A mask must be an object", "mask");

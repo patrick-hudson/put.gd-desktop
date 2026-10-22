@@ -17,8 +17,9 @@
 #include "common/Modes.h"
 #include "common/Paths.h"
 #include "common/Protocol.h"
-#include "common/Sha256.h"
 #include "core/Recording.h"
+#include "common/Text.h"
+#include "record/Export.h"
 #include "record/Media.h"
 #include "record/Recorder.h"
 #include <atomic>
@@ -99,33 +100,6 @@ Error resolveArea(const RecordingTarget& target, grab::Rect& area) {
     const auto even = recording::evenArea({area.x, area.y, area.w, area.h});
     area = {int(even.x), int(even.y), int(even.w), int(even.h)};
     if (area.w < 16 || area.h < 16) return {"recording_target", "The area to record must be at least 16 by 16 pixels", {}};
-    return {};
-}
-
-// Copies the working clip into the export file the resident created, hashing it on the way.
-Error copyClip(const std::string& from, const std::string& to, long long& bytes, std::string& digest) {
-    HANDLE in = CreateFileW(paths::wide(from).c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, nullptr);
-    if (in == INVALID_HANDLE_VALUE) return {"recording_export_failed", "Cannot read the working clip", {}};
-    HANDLE out = CreateFileW(paths::wide(to).c_str(), GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, FILE_FLAG_OPEN_REPARSE_POINT, nullptr);
-    if (out == INVALID_HANDLE_VALUE) { CloseHandle(in); return {"recording_export_failed", "Cannot open the export file", {}}; }
-    SetEndOfFile(out);
-    crypto::Sha256 sha;
-    std::string buffer(1 << 20, '\0');
-    bytes = 0;
-    bool ok = true;
-    while (ok) {
-        DWORD got = 0;
-        if (!ReadFile(in, buffer.data(), DWORD(buffer.size()), &got, nullptr)) { ok = false; break; }
-        if (got == 0) break;
-        DWORD put = 0;
-        if (!WriteFile(out, buffer.data(), got, &put, nullptr) || put != got) { ok = false; break; }
-        sha.update(buffer.data(), got);
-        bytes += got;
-    }
-    ok = ok && FlushFileBuffers(out);
-    CloseHandle(in); CloseHandle(out);
-    if (!ok || bytes == 0) return {"recording_export_failed", "Cannot write the export file", {}};
-    digest = crypto::hex(sha.finish());
     return {};
 }
 
@@ -246,6 +220,7 @@ private:
         const auto params = frame->payload.value("params").toObject();
         if (command == "cancel") {
             if (selecting_) selecting_->cancel();
+            exportCancel_ = true;
             stopped_ = true;
             if (worker_.joinable()) worker_.join();
             recorder_.cancel();
@@ -270,19 +245,48 @@ private:
             });
             return;
         }
-        if (command == "export") {
+        if (command == "export" || command == "preview") {
             if (!stopped_) { link_.reply(requestId, {"recording_state", "Nothing to export before stop", {}}); return; }
-            const auto output = params.value("output")["path"].toString();
-            if (output.empty() || !paths::isAbsolute(output)) { link_.reply(requestId, {"invalid_request", "Invalid export request", {}}); return; }
-            // The working clip is already the H.264 MP4 an unedited export produces.
-            if (params.value("format").toString() != "mp4" || !params.value("unedited").toBool()) { link_.reply(requestId, {"recording_unsupported", "Only unedited MP4 exports are available on Windows yet", {}}); return; }
+            RecordingEdit edit;
+            if (!recording::parseEdit(params.value("edit").toObject(), edit)) { link_.reply(requestId, {"invalid_request", "Invalid edit", {}}); return; }
+            const RecordingSize canvas{area_.w, area_.h};
             workerDone_ = false;
-            worker_ = std::thread([this, requestId, output] {
-                long long bytes = 0; std::string digest;
-                const auto e = copyClip(b_.output, output, bytes, digest);
+            if (command == "preview") {
+                const long long time = params.value("time").toInteger(0);
+                const int maxEdge = params.value("maxEdge").toInt(1024);
+                worker_ = std::thread([this, requestId, canvas, edit, time, maxEdge] {
+                    const HRESULT com = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+                    record::PreviewResult preview;
+                    const auto e = record::previewFrame(b_.output, canvas, edit, time, maxEdge, preview);
+                    if (SUCCEEDED(com)) CoUninitialize();
+                    workerDone_ = true;
+                    if (e) link_.reply(requestId, e);
+                    else link_.reply(requestId, {}, {{"png", text::base64(preview.png)}, {"frameTimeUs", double(preview.frameTimeUs)}, {"width", preview.width}, {"height", preview.height}});
+                });
+                return;
+            }
+            record::ExportRequest request;
+            request.working = b_.output; request.output = params.value("output")["path"].toString();
+            request.canvas = canvas; request.durationUs = recorder_.durationUs(); request.edit = edit;
+            auto config = params.value("config").toObject(); config.remove("mime"); config.remove("budgetBytes");
+            if (request.output.empty() || !paths::isAbsolute(request.output) || recording::parseConfig(config, request.config)) { workerDone_ = true; link_.reply(requestId, {"invalid_request", "Invalid export request", {}}); return; }
+            exportCancel_ = false;
+            worker_ = std::thread([this, requestId, request] {
+                const HRESULT com = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+                record::ExportResult result;
+                ULONGLONG reported = 0;
+                // At most ten progress events a second, so a fast export stays inside the control channel's rate.
+                const auto e = record::exportClip(request, result, exportCancel_, [this, &reported](double fraction) {
+                    const auto now = GetTickCount64();
+                    if (fraction < 1.0 && now - reported < 100) return;
+                    reported = now;
+                    link_.event("progress", {{"exportFraction", fraction}});
+                });
+                if (SUCCEEDED(com)) CoUninitialize();
                 workerDone_ = true;
                 if (e) link_.reply(requestId, e);
-                else link_.reply(requestId, {}, {{"bytes", double(bytes)}, {"sha256", digest}, {"durationUs", double(recorder_.durationUs())}, {"videoEncoder", recorder_.encoder()}, {"size", json::Array{area_.w, area_.h}}});
+                else link_.reply(requestId, {}, {{"bytes", double(result.bytes)}, {"sha256", result.sha256}, {"durationUs", double(result.durationUs)}, {"frames", result.frames},
+                    {"videoEncoder", result.encoder}, {"size", json::Array{result.size.w, result.size.h}}});
             });
             return;
         }
@@ -304,7 +308,7 @@ private:
     overlay::Selector* selecting_ = nullptr;
     std::thread worker_;
     bool prepared_ = false, started_ = false, quitting_ = false;
-    std::atomic<bool> stopped_{false}, workerDone_{true};
+    std::atomic<bool> stopped_{false}, workerDone_{true}, exportCancel_{false};
 };
 }
 

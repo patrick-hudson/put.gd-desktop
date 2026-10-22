@@ -1,6 +1,8 @@
 // Portable checks of the Windows recording contract (core/Recording), the same
 // rules the Linux recording_model_contract holds the resident to.
 #include "core/Recording.h"
+#include "core/RecordingFrames.h"
+#include <vector>
 #include <cstdio>
 #include <string>
 
@@ -85,6 +87,13 @@ static void edits() {
     auto toEnd = json::parse(R"([{"op":"setTrim","start":0,"end":30000000}])").toArray();
     CHECK(!recording::applyEditCommands(edit, toEnd, duration, canvas, 30, id) && !edit.trimEnd);
     CHECK(json::serialize(edit.toJson()) == R"({"masks":[],"revision":4,"trimEnd":null,"trimStart":0})");
+    // The helper reads the resident's edit back exactly.
+    auto masked = json::parse(R"([{"op":"setTrim","start":1000000,"end":9000000},{"op":"addMask","mask":{"kind":"solid","rect":[1,2,30,40],"start":2000000,"end":3000000}}])").toArray();
+    CHECK(!recording::applyEditCommands(edit, masked, duration, canvas, 30, id));
+    RecordingEdit parsed;
+    CHECK(recording::parseEdit(edit.toJson(), parsed) && json::serialize(parsed.toJson()) == json::serialize(edit.toJson()));
+    auto broken = edit.toJson(); broken["masks"] = json::Array{json::Object{{"id", "x"}, {"kind", "blur"}, {"rect", json::Array{0, 0, 0, 1}}, {"start", 0}, {"end", 1}}};
+    CHECK(!recording::parseEdit(broken, parsed));
 }
 
 static void sizesAndBudgets() {
@@ -106,7 +115,54 @@ static void sizesAndBudgets() {
     CHECK(recording::liveBitrate(64, 64, 1) == 1500000 && recording::liveBitrate(7680, 4320, 60) == 20000000);
 }
 
+static std::vector<uint8_t> checker(int w, int h) {
+    std::vector<uint8_t> bits(size_t(w) * h * 4);
+    for (int y = 0; y < h; ++y) for (int x = 0; x < w; ++x) { uint8_t v = ((x / 2 + y / 2) % 2) ? 255 : 0; uint8_t* p = &bits[(size_t(y) * w + x) * 4]; p[0] = p[1] = p[2] = v; p[3] = 255; }
+    return bits;
+}
+static void frames() {
+    const int w = 64, h = 48;
+    auto bits = checker(w, h);
+    const auto original = bits;
+    recording::Frame frame{bits.data(), w, h, size_t(w) * 4};
+    RecordingEdit edit;
+    RecordingMask solid; solid.kind = "solid"; solid.rect = {4, 4, 8, 8}; solid.start = 1000000; solid.end = 2000000;
+    RecordingMask blur; blur.kind = "blur"; blur.rect = {32, 8, 16, 16}; blur.start = 0; blur.end = 5000000; blur.strength = 16;
+    edit.masks = {solid, blur};
+    CHECK(recording::blurRadius(blur) == 7);
+    RecordingMask narrow = blur; narrow.rect = {0, 0, 4, 100}; CHECK(recording::blurRadius(narrow) == 2);
+    // At 0.5 s only the blur is active; the solid area and everything outside the blur are untouched.
+    recording::applyMasks(frame, edit, 500000);
+    auto at = [&](const std::vector<uint8_t>& b, int x, int y) { return b[(size_t(y) * w + x) * 4]; };
+    CHECK(at(bits, 5, 5) == at(original, 5, 5));
+    CHECK(at(bits, 31, 8) == at(original, 31, 8) && at(bits, 48, 8) == at(original, 48, 8) && at(bits, 40, 24) == at(original, 40, 24));
+    bool smoothed = true;
+    for (int y = 10; y < 22; ++y) for (int x = 34; x < 46; ++x) smoothed = smoothed && at(bits, x, y) > 40 && at(bits, x, y) < 215;
+    CHECK(smoothed);
+    // At 1.5 s the solid mask is an opaque black fill of exactly its rectangle.
+    bits = original;
+    recording::applyMasks(frame, edit, 1500000);
+    bool black = true; for (int y = 4; y < 12; ++y) for (int x = 4; x < 12; ++x) black = black && at(bits, x, y) == 0;
+    CHECK(black && at(bits, 12, 12) == at(original, 12, 12) && at(bits, 3, 3) == at(original, 3, 3));
+    // A mask partly outside the frame is clipped, not refused.
+    RecordingEdit edge; RecordingMask out = solid; out.rect = {60, 44, 10, 10}; edge.masks = {out};
+    recording::applyMasks(frame, edge, 1500000);
+    CHECK(at(bits, 63, 47) == 0);
+    // Area-average downscale of a 2x2 checker cell pattern averages to grey.
+    auto source = checker(64, 48);
+    std::vector<uint8_t> small(size_t(16) * 12 * 4);
+    recording::resample({source.data(), 64, 48, 256}, {small.data(), 16, 12, 64});
+    CHECK(small[0] == 127 && small[3] == 255);
+    // The export keeps the trim aligned to the frame grid.
+    RecordingEdit trim; trim.trimStart = 1010000; trim.trimEnd = 3990000;
+    const auto window = recording::exportWindow(trim, 8266658, 30);
+    CHECK(window.first == 1000000 && window.second == 4000000);
+    const auto all = recording::exportWindow(RecordingEdit{}, 8266658, 30);
+    CHECK(all.first == 0 && all.second == 8266658);
+}
+
 int main() {
+    frames();
     targetsAndConfigs();
     transitions();
     edits();
