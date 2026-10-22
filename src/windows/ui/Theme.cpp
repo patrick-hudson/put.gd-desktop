@@ -877,7 +877,7 @@ void placeInside(HWND h, int x, int y, int width, int height) {
     }
     SetPropW(h, padXProperty, reinterpret_cast<HANDLE>(static_cast<INT_PTR>(padX)));
     SetPropW(h, padYProperty, reinterpret_cast<HANDLE>(static_cast<INT_PTR>(padY)));
-    SetWindowPos(h, nullptr, x + padX, y + padY, std::max(0, width - 2 * padX), std::max(0, height - 2 * padY), SWP_NOZORDER | SWP_NOACTIVATE);
+    SetWindowPos(h, nullptr, x + padX, y + padY, std::max(0, width - 2 * padX), std::max(0, height - 2 * padY), SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOCOPYBITS);
 }
 
 void applyTo(HWND root) {

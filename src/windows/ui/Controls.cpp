@@ -317,6 +317,9 @@ LPARAM rowData(HWND list, int row) {
     return item.lParam;
 }
 
+// SWP_NOCOPYBITS everywhere: a scroll lays every child out again, and without it
+// Windows copies a control's old screen pixels to its new place, which can be
+// another label's text when the pane moved by a section's height (ghost headings).
 void place(HWND hwnd, int x, int y, int width, int height) {
     if (!hwnd) return;
     if (theme::framed(hwnd) || theme::card(hwnd)) { theme::placeInside(hwnd, x, y, width, height); return; }
@@ -326,7 +329,7 @@ void place(HWND hwnd, int x, int y, int width, int height) {
         // The face takes the row's height; the drop-down list gets roomier items.
         const UINT dpi = windowDpi(hwnd);
         SetPropW(hwnd, L"putgd.faceHeight", reinterpret_cast<HANDLE>(static_cast<INT_PTR>(height - scale(6, dpi))));
-        SetWindowPos(hwnd, nullptr, x, y, std::max(0, width), std::max(0, height + scale(260, dpi)), SWP_NOZORDER | SWP_NOACTIVATE);
+        SetWindowPos(hwnd, nullptr, x, y, std::max(0, width), std::max(0, height + scale(260, dpi)), SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOCOPYBITS);
         // After sizing: a resize recomputes the face from the font.
         if (SendMessageW(hwnd, CB_GETITEMHEIGHT, WPARAM(-1), 0) != height - scale(6, dpi)) {
             SendMessageW(hwnd, CB_SETITEMHEIGHT, WPARAM(-1), height - scale(6, dpi));
@@ -334,10 +337,10 @@ void place(HWND hwnd, int x, int y, int width, int height) {
         }
         RECT face{};
         GetWindowRect(hwnd, &face);
-        if (face.bottom - face.top != height) SetWindowPos(hwnd, nullptr, x, y + (height - int(face.bottom - face.top)) / 2, 0, 0, SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOSIZE);
+        if (face.bottom - face.top != height) SetWindowPos(hwnd, nullptr, x, y + (height - int(face.bottom - face.top)) / 2, 0, 0, SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOSIZE | SWP_NOCOPYBITS);
         return;
     }
-    SetWindowPos(hwnd, nullptr, x, y, std::max(0, width), std::max(0, height), SWP_NOZORDER | SWP_NOACTIVATE);
+    SetWindowPos(hwnd, nullptr, x, y, std::max(0, width), std::max(0, height), SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOCOPYBITS);
 }
 
 Rows::Rows(UINT dpi, int x, int y, int width, int labelWidth) : dpi_(dpi), x_(x), y_(y), width_(width), label_(scale(labelWidth, dpi)) {
