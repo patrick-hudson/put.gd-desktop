@@ -28,6 +28,9 @@ namespace putgd::update {
 namespace {
 // What a portable folder holds; the MSI installs the same files.
 const std::vector<std::string> portableFiles = {"putgd.exe", "putgd-cli.exe", "build-info.json", "LICENSE.txt"};
+// The Proton runtime folder (#408) moves as one entry: the new putgd.exe runs only the
+// helper its build names, and a package without it takes the old one aside too.
+const std::string protonFolder = "proton";
 std::string environment(const wchar_t* name, const std::string& fallback) {
     wchar_t buffer[2048]; const DWORD n = GetEnvironmentVariableW(name, buffer, 2048);
     return n > 0 && n < 2048 ? paths::narrow(buffer) : fallback;
@@ -90,16 +93,24 @@ Error swapPortable(const std::string& from, const std::string& directory, const 
     if (!files::makeDirectories(backup)) return {"update_image_not_writable", "Cannot create the backup folder beside putgd.exe", {{"directory", directory}}};
     std::vector<std::string> saved, placed;
     auto rollback = [&] {
-        for (const auto& name : placed) files::remove(paths::join(directory, name));
+        for (const auto& name : placed) {
+            const auto path = paths::join(directory, name);
+            if (files::isDirectory(path)) files::removeDirectoryRecursively(path); else files::remove(path);
+        }
         for (const auto& name : saved) files::rename(paths::join(backup, name), paths::join(directory, name), false);
     };
-    for (const auto& name : portableFiles) {
-        const auto current = paths::join(directory, name);
+    auto entries = portableFiles;
+    entries.push_back(protonFolder);
+    for (const auto& name : entries) {
+        const auto current = paths::join(directory, name), incoming = paths::join(from, name);
+        if (name == protonFolder && !files::exists(current) && !files::exists(incoming)) continue;
+        // A running helper keeps its folder from moving; the update then changes nothing.
         if (files::exists(current)) {
             if (!files::rename(current, paths::join(backup, name), false)) { rollback(); return {"update_install_failed", "Cannot move " + name + " aside; nothing was changed", {{"error", double(GetLastError())}}}; }
             saved.push_back(name);
         }
-        if (!files::rename(paths::join(from, name), current, false)) { rollback(); return {"update_install_failed", "Cannot put the new " + name + " in place; nothing was changed", {{"error", double(GetLastError())}}}; }
+        if (name == protonFolder && !files::isDirectory(incoming)) continue;
+        if (!files::rename(incoming, current, false)) { rollback(); return {"update_install_failed", "Cannot put the new " + name + " in place; nothing was changed", {{"error", double(GetLastError())}}}; }
         placed.push_back(name);
     }
     return {};
