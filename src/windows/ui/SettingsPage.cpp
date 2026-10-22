@@ -896,10 +896,10 @@ void SettingsPageImpl::showUpdateStatus(const json::Object& status) {
         if (!status.value("reason").toString().empty()) text += L" (" + wide(status.value("reason").toString()) + L")";
     } else if (status.value("checking").toBool()) {
         text = L"Checking\x2026";
-    } else if (result.value("updateAvailable").toBool()) {
+    } else if (status.value("state") == "update_available" || result.value("updateAvailable").toBool()) {
         text = L"put.gd " + wide(result.value("latest").toString()) + L" is available.";
     } else if (result.value("latest").isString()) {
-        text = L"Up to date: " + wide(result.value("current").toString(result.value("latest").toString()));
+        text = L"Up to date: " + wide(result.value("current").toString(status.value("build")["version"].toString(result.value("latest").toString())));
     } else {
         text = L"Not checked yet.";
     }

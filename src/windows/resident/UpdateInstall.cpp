@@ -55,6 +55,16 @@ long run(const std::string& program, const std::vector<std::string>& arguments, 
     CloseHandle(pi.hProcess);
     return long(code);
 }
+// The first bytes of a file (files::read refuses files over its limit).
+std::string head(const std::string& path, DWORD size) {
+    HANDLE h = CreateFileW(paths::wide(path).c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (h == INVALID_HANDLE_VALUE) return {};
+    std::string bytes(size, '\0'); DWORD got = 0;
+    if (!ReadFile(h, bytes.data(), size, &got, nullptr)) got = 0;
+    CloseHandle(h);
+    bytes.resize(got);
+    return bytes;
+}
 json::Object transferDetails(const std::string& url, const Transfer& t) {
     return {{"url", url}, {"httpStatus", t.status ? json::Value(double(t.status)) : json::Value()}, {"network", t.failure.empty() ? json::Value() : json::Value(t.failure)}, {"tooLarge", t.tooLarge}};
 }
@@ -260,8 +270,7 @@ int installMain(const std::vector<std::string>& args) {
     json::Object state{{"installed", installed}};
     if (here.msi) {
         // An OLE compound file; the SHA-256 already ties it to the signed release.
-        const auto head = files::read(package, 8).value_or(std::string());
-        if (head != std::string("\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1", 8)) { files::remove(package); return finish({"update_verification_failed", "The package is not an MSI", {{"check", "format"}}}, {}); }
+        if (head(package, 8) != std::string("\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1", 8)) { files::remove(package); return finish({"update_verification_failed", "The package is not an MSI", {{"check", "format"}}}, {}); }
         installed["package"] = package; installed["pending"] = true;
         state["installed"] = installed;
     } else {
