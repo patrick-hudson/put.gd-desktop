@@ -459,8 +459,16 @@ void Panel::scrollTo(int y) {
     const int target = std::clamp(y, 0, std::max(0, content_ - int(client.bottom)));
     if (target == scroll_) return;
     scroll_ = target;
+    // The children move one at a time, and a moved edit or list keeps the screen
+    // pixels copied from its old place, which a sibling may already have covered
+    // (torn text in the folder fields). With drawing off nothing is copied; one
+    // repaint of the pane and every child follows. A hidden pane (a tab scrolled
+    // before it shows) is only laid out: WM_SETREDRAW TRUE would make it visible.
+    if (!IsWindowVisible(hwnd_)) { layout(); return; }
+    SendMessageW(hwnd_, WM_SETREDRAW, FALSE, 0);
     layout();
-    InvalidateRect(hwnd_, nullptr, TRUE);
+    SendMessageW(hwnd_, WM_SETREDRAW, TRUE, 0);
+    RedrawWindow(hwnd_, nullptr, nullptr, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
 }
 void Panel::markError(HWND control, bool error) {
     errors_.erase(std::remove(errors_.begin(), errors_.end(), control), errors_.end());
