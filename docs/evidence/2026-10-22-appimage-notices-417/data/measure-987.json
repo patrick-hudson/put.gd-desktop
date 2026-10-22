@@ -1,0 +1,258 @@
+{
+  "image": {
+    "file": "putgd-26.1022.987-dev+gd471cb1a1792-x86_64.AppImage",
+    "sha256": "a7b8c92b64b3887d416d5a527180f3085dfcdd6ccff122456ff081e2211af1dc",
+    "bytes": 115243512
+  },
+  "extracted": {
+    "bytes": 288612443,
+    "files": 587,
+    "symlinks": 31
+  },
+  "runtimeNotices": {
+    "firstLine": "put.gd AppImage 26.1022.987-dev+gd471cb1a1792: bundled components and their licences",
+    "bytes": 56268,
+    "nativeText": false
+  },
+  "nativeTextAnywhereInDocs": [],
+  "inventory": {
+    "components": 137,
+    "ubuntuPackages": 124,
+    "upstream": {
+      "putgd": [
+        "26.1022.987-dev+gd471cb1a1792",
+        "MIT",
+        26,
+        4
+      ],
+      "aws-sdk-cpp": [
+        "1.11.907",
+        "Apache-2.0",
+        30,
+        14
+      ],
+      "proton-helper": [
+        "external-drive-put_gd@0.1.1-alpha (SDK js@0.22.2, Bun 1.4.2)",
+        "MIT AND GPL-3.0-only",
+        3,
+        28
+      ],
+      "qtkeychain": [
+        "8eac9889775c",
+        "BSD-3-Clause",
+        1,
+        1
+      ],
+      "layershell": [
+        "6.4.6",
+        "(LGPL-2.1-only OR LGPL-3.0-only OR LicenseRef-KDE-Accepted-LGPL) AND MIT",
+        2,
+        7
+      ],
+      "ffmpeg": [
+        "7.1.5",
+        "GPL-2.0-or-later",
+        6,
+        5
+      ],
+      "icu": [
+        "73.2",
+        "Unicode-DFS-2016 AND ICU AND BSD-3-Clause AND NAIST-2003",
+        3,
+        1
+      ],
+      "appimage-runtime": [
+        "20251108",
+        "MIT",
+        0,
+        1
+      ],
+      "qtbase": [
+        "6.8.3",
+        "LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only",
+        22,
+        84
+      ],
+      "qtimageformats": [
+        "6.8.3",
+        "LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only",
+        5,
+        9
+      ],
+      "qtsvg": [
+        "6.8.3",
+        "LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only",
+        2,
+        5
+      ],
+      "qttranslations": [
+        "6.8.3",
+        "BSD-3-Clause",
+        31,
+        1
+      ],
+      "qtwayland": [
+        "6.8.3",
+        "LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only",
+        8,
+        22
+      ]
+    },
+    "listedPaths": 618
+  },
+  "appstreamLicense": [
+    "MIT AND Apache-2.0 AND GPL-3.0-only AND BSD-3-Clause AND (LGPL-2.1-only OR LGPL-3.0-only OR LicenseRef-KDE-Accepted-LGPL) AND GPL-2.0-or-later AND Unicode-DFS-2016 AND ICU AND NAIST-2003 AND (LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only) AND LGPL-2.1-or-later AND LGPL-2.0-or-later AND (BSD-3-Clause OR GPL-2.0-only) AND curl AND GPL-3.0-or-later AND (GPL-2.0-or-later OR LGPL-2.1-or-later) AND CC0-1.0 AND (LGPL-2.1-or-later OR MPL-1.1 OR GPL-2.0-or-later) AND (LGPL-3.0-or-later OR GPL-2.0-or-later) AND OLDAP-2.8 AND BSD-2-Clause AND LGPL-2.1-only AND Libpng"
+  ],
+  "licenceTexts": {
+    "qtbase": {
+      "files": 84,
+      "LICENSES": [
+        "AFL-2.1.txt",
+        "Apache-2.0.txt",
+        "BSD-2-Clause.txt",
+        "BSD-3-Clause.txt",
+        "CC0-1.0.txt",
+        "FTL.txt",
+        "GPL-2.0-only.txt",
+        "GPL-2.0-or-later.txt",
+        "GPL-3.0-only.txt",
+        "HPND.txt",
+        "IJG.txt",
+        "Imlib2.txt",
+        "LGPL-3.0-only.txt",
+        "Libpng.txt",
+        "LicenseRef-BSD-3-Clause-with-PCRE2-Binary-Like-Packages-Exception.txt",
+        "LicenseRef-ICC-License.txt",
+        "LicenseRef-SHA1-Public-Domain.txt",
+        "MIT.txt",
+        "MPL-2.0.txt",
+        "Unicode-3.0.txt",
+        "X11.txt",
+        "blessing.txt",
+        "libpng-2.0.txt"
+      ],
+      "hasLGPL3": true,
+      "hasCommercial": false,
+      "testExampleFiles": 0
+    },
+    "qtwayland": {
+      "files": 22,
+      "LICENSES": [
+        "GPL-2.0-only.txt",
+        "GPL-3.0-only.txt",
+        "HPND.txt",
+        "LGPL-3.0-only.txt",
+        "MIT.txt"
+      ],
+      "hasLGPL3": true,
+      "hasCommercial": false,
+      "testExampleFiles": 0
+    },
+    "qtsvg": {
+      "files": 5,
+      "LICENSES": [
+        "GPL-2.0-only.txt",
+        "GPL-3.0-only.txt",
+        "LGPL-3.0-only.txt"
+      ],
+      "hasLGPL3": true,
+      "hasCommercial": false,
+      "testExampleFiles": 0
+    },
+    "qtimageformats": {
+      "files": 9,
+      "LICENSES": [
+        "BSD-3-Clause.txt",
+        "GPL-2.0-only.txt",
+        "GPL-3.0-only.txt",
+        "LGPL-3.0-only.txt",
+        "libtiff.txt"
+      ],
+      "hasLGPL3": true,
+      "hasCommercial": false,
+      "testExampleFiles": 0
+    },
+    "qttranslations": {
+      "files": 1,
+      "LICENSES": [
+        "BSD-3-Clause.txt"
+      ],
+      "hasLGPL3": false,
+      "hasCommercial": false,
+      "testExampleFiles": 0
+    },
+    "qtdeclarative": null,
+    "layershell": {
+      "files": 7,
+      "LICENSES": [
+        "BSD-3-Clause.txt",
+        "CC0-1.0.txt",
+        "LGPL-2.1-only.txt",
+        "LGPL-3.0-only.txt",
+        "LGPL-3.0-or-later.txt",
+        "LicenseRef-KDE-Accepted-LGPL.txt",
+        "MIT.txt"
+      ],
+      "hasLGPL3": true,
+      "hasCommercial": false,
+      "testExampleFiles": 0
+    },
+    "qtkeychain": {
+      "files": 1,
+      "LICENSES": [],
+      "hasLGPL3": false,
+      "hasCommercial": false,
+      "testExampleFiles": 0
+    },
+    "ffmpeg": {
+      "files": 5,
+      "LICENSES": [],
+      "hasLGPL3": false,
+      "hasCommercial": false,
+      "testExampleFiles": 0
+    },
+    "icu": {
+      "files": 1,
+      "LICENSES": [],
+      "hasLGPL3": false,
+      "hasCommercial": false,
+      "testExampleFiles": 0
+    }
+  },
+  "distroCopyrightFiles": 124,
+  "searchPaths": {
+    "elfWithPaths": 224,
+    "absolute": {}
+  },
+  "linuxdeployLeftovers": [],
+  "duplicates": {
+    "qtPluginCopiesInUsrLib": [],
+    "awsCopiesInUsrLib": [],
+    "distroDocCopies": 0,
+    "protonDocRegularFiles": [
+      "LICENSE.proton",
+      "README.md"
+    ],
+    "protonDocLinks": [
+      "BUN-LINUX-ATTRIBUTION.md",
+      "BUN-NOTICE-PROVENANCE.json.gz",
+      "BUN-THIRD-PARTY-NOTICES.txt.gz",
+      "CRYPTO-PROVENANCE.md",
+      "LICENSE.boltffi-MIT",
+      "LICENSE.crypto-GPL-3.0",
+      "LICENSE.pmcrypto-MIT",
+      "LICENSE.srp-MIT",
+      "OPENPGP-PREBUNDLED-NOTICES.txt",
+      "OPENPGP-REBUILD.patch",
+      "REBUILD.md",
+      "SOURCES.json",
+      "THIRD-PARTY-NOTICES.txt"
+    ],
+    "identicalFilesOutsideDocs": [
+      [
+        "usr/libexec/putgd/proton/manifest.json",
+        "usr/share/putgd/proton-runtime-manifest.json"
+      ]
+    ]
+  }
+}

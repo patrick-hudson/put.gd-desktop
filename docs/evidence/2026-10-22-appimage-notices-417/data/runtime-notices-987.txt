@@ -1,0 +1,1019 @@
+put.gd AppImage 26.1022.987-dev+gd471cb1a1792: bundled components and their licences
+
+Unlike the DEB and RPM packages, which use the distribution's Qt, this AppImage carries
+its own runtime: Qt 6.8.3 with its ICU, QtKeychain, LayerShellQt, the AWS SDK for C++,
+FFmpeg, the Proton Drive helper and 124 Ubuntu 24.04 packages (GStreamer, GTK, GLib,
+codec and X11/Wayland client libraries). Every component keeps its own licence.
+
+This file and bundled-components.json beside it list every component with its version,
+SPDX licence expression, source location, licence texts and the image files that belong
+to it. Both are generated from the image's contents when it is built. Licence texts:
+  bundled-licenses/<component>/          pinned upstream licence texts and Qt's third-party
+                                         attributions (qt_attribution.json)
+  bundled-licenses/distro/<package>/     each Ubuntu package's copyright file
+  bundled-licenses/distro-common/        the licence texts those files refer to
+  APPIMAGE-GPL-NOTICE.txt                the GPL terms of the image and where its codec
+                                         source is published
+
+The LGPL libraries are separate shared objects in usr/lib, found through AppRun's
+LD_LIBRARY_PATH. To use a modified version, extract the image (--appimage-extract) and
+replace them in squashfs-root/usr/lib.
+
+AppStream licence of the image: MIT AND Apache-2.0 AND GPL-3.0-only AND BSD-3-Clause AND (LGPL-2.1-only OR LGPL-3.0-only OR LicenseRef-KDE-Accepted-LGPL) AND GPL-2.0-or-later AND Unicode-DFS-2016 AND ICU AND NAIST-2003 AND (LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only) AND LGPL-2.1-or-later AND LGPL-2.0-or-later AND (BSD-3-Clause OR GPL-2.0-only) AND curl AND GPL-3.0-or-later AND (GPL-2.0-or-later OR LGPL-2.1-or-later) AND CC0-1.0 AND (LGPL-2.1-or-later OR MPL-1.1 OR GPL-2.0-or-later) AND (LGPL-3.0-or-later OR GPL-2.0-or-later) AND OLDAP-2.8 AND BSD-2-Clause AND LGPL-2.1-only AND Libpng
+
+GPL codec libraries: gstreamer1.0-plugins-ugly, libx264-164, libx265-199 (see APPIMAGE-GPL-NOTICE.txt).
+
+Components
+==========
+
+put.gd 26.1022.987-dev+gd471cb1a1792
+  Licence: MIT
+  Source:  https://github.com/patrick-hudson/put.gd-desktop at commit d471cb1a179213fe95cc693275dae14c0a767d26
+  Note:    The Wayland protocol files beside the notices keep the copyright and permission text of the protocols whose generated client bindings are compiled into put.gd.
+  Licence texts:
+    MIT: usr/share/doc/putgd/LICENSE
+  Files:
+    .DirIcon
+    AppRun
+    putgd.desktop
+    putgd.svg
+    usr/bin/putgd
+    usr/bin/putgd-b2-worker
+    usr/bin/putgd-capture
+    usr/bin/putgd-cli
+    usr/bin/putgd-kde-region
+    usr/bin/putgd-launcher
+    usr/bin/putgd-record
+    usr/bin/putgd-s3-worker
+    usr/bin/putgd-ui
+    usr/bin/qt.conf
+    usr/lib/putgd/libputgd-s3.so
+    usr/share/applications/putgd-record.desktop
+    usr/share/applications/putgd-ui.desktop
+    usr/share/applications/putgd.desktop
+    usr/share/gnome-shell/extensions/putgd@put.gd/extension.js
+    usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json
+    usr/share/icons/hicolor/scalable/apps/putgd.svg
+    usr/share/metainfo/gd.put.Putgd.metainfo.xml
+    usr/share/putgd/autostart/putgd.desktop
+    usr/share/putgd/aws-runtime-manifest.json
+    usr/share/putgd/build-info.json
+    usr/share/putgd/dependency-lock.json
+
+AWS SDK for C++ (with aws-crt-cpp, the aws-c libraries and s2n-tls) 1.11.907
+  Licence: Apache-2.0
+  Source:  https://github.com/aws/aws-sdk-cpp.git at commit a9f0ffcc276664b475230206fa554841ad5bc3de
+  Licence texts:
+    Apache-2.0: usr/share/doc/putgd/aws-sdk-LICENSE
+  Files:
+    usr/lib/putgd/libaws-c-auth.so
+    usr/lib/putgd/libaws-c-auth.so.1.0.0
+    usr/lib/putgd/libaws-c-cal.so
+    usr/lib/putgd/libaws-c-cal.so.1.0.0
+    usr/lib/putgd/libaws-c-common.so
+    usr/lib/putgd/libaws-c-common.so.0.14.5
+    usr/lib/putgd/libaws-c-common.so.1
+    usr/lib/putgd/libaws-c-compression.so
+    usr/lib/putgd/libaws-c-compression.so.1.0.0
+    usr/lib/putgd/libaws-c-event-stream.so
+    usr/lib/putgd/libaws-c-event-stream.so.1.0.0
+    usr/lib/putgd/libaws-c-http.so
+    usr/lib/putgd/libaws-c-http.so.1.0.0
+    usr/lib/putgd/libaws-c-io.so
+    usr/lib/putgd/libaws-c-io.so.1.0.0
+    usr/lib/putgd/libaws-c-mqtt.so
+    usr/lib/putgd/libaws-c-mqtt.so.1.0.0
+    usr/lib/putgd/libaws-c-s3.so
+    usr/lib/putgd/libaws-c-s3.so.0unstable
+    usr/lib/putgd/libaws-c-s3.so.1.0.0
+    usr/lib/putgd/libaws-c-sdkutils.so
+    usr/lib/putgd/libaws-c-sdkutils.so.1.0.0
+    usr/lib/putgd/libaws-checksums.so
+    usr/lib/putgd/libaws-checksums.so.1.0.0
+    usr/lib/putgd/libaws-cpp-sdk-core.so
+    usr/lib/putgd/libaws-cpp-sdk-s3.so
+    usr/lib/putgd/libaws-crt-cpp.so
+    usr/lib/putgd/libs2n.so
+    usr/lib/putgd/libs2n.so.1
+    usr/lib/putgd/libs2n.so.1.0.0
+
+put.gd Proton Drive helper (Proton Drive SDK, Bun runtime, OpenPGP and crypto libraries) external-drive-put_gd@0.1.1-alpha (SDK js@0.22.2, Bun 1.4.2)
+  Licence: MIT AND GPL-3.0-only
+  Source:  the assets listed in usr/libexec/putgd/proton/redistribution/SOURCES.json (helper source 8ffae007b0fbb8bcef53514719d6f093bb32dcf9)
+  Note:    THIRD-PARTY-NOTICES.txt and redistribution/ list every package compiled into the helper, with its licence.
+  Licence texts:
+    GPL-3.0-only: usr/libexec/putgd/proton/redistribution/LICENSE.crypto-GPL-3.0
+    MIT: usr/share/doc/putgd/proton/LICENSE.proton
+  Files:
+    usr/libexec/putgd/proton/manifest.json
+    usr/libexec/putgd/proton/putgd-proton-runtime
+    usr/share/putgd/proton-runtime-manifest.json
+
+QtKeychain 8eac9889775c
+  Licence: BSD-3-Clause
+  Source:  https://github.com/frankosterfeld/qtkeychain.git at commit 8eac9889775ca45c106d077bb0d3744754a1570a
+  Licence texts:
+    BSD-3-Clause: usr/share/doc/putgd/bundled-licenses/qtkeychain/COPYING
+  Files:
+    usr/lib/libqt6keychain.so.1
+
+LayerShellQt 6.4.6
+  Licence: (LGPL-2.1-only OR LGPL-3.0-only OR LicenseRef-KDE-Accepted-LGPL) AND MIT
+  Source:  https://github.com/KDE/layer-shell-qt.git at commit b1317ba122420dd0542ad12f4780b02ba7b6288f
+  Note:    The library and plugin sources are LGPL-2.1-only OR LGPL-3.0-only OR LicenseRef-KDE-Accepted-LGPL; the compiled wlr-layer-shell protocol is MIT.
+  Licence texts:
+    LGPL-2.1-only: usr/share/doc/putgd/bundled-licenses/layershell/LICENSES/LGPL-2.1-only.txt
+    LGPL-3.0-only: usr/share/doc/putgd/bundled-licenses/layershell/LICENSES/LGPL-3.0-only.txt
+    LicenseRef-KDE-Accepted-LGPL: usr/share/doc/putgd/bundled-licenses/layershell/LICENSES/LicenseRef-KDE-Accepted-LGPL.txt
+    MIT: usr/share/doc/putgd/bundled-licenses/layershell/LICENSES/MIT.txt
+  Files:
+    usr/lib/libLayerShellQtInterface.so.6
+    usr/plugins/wayland-shell-integration/liblayer-shell.so
+
+FFmpeg 7.1.5
+  Licence: GPL-2.0-or-later
+  Source:  https://github.com/FFmpeg/FFmpeg.git at commit 3a0867c2bfda4a4d4309ca1a8cbdc6175e67f587
+  Note:    Configured with --enable-gpl and the components in packaging/appimage/media.json; LICENSE.md explains the GPL build.
+  Licence texts:
+    GPL-2.0-or-later: usr/share/doc/putgd/bundled-licenses/ffmpeg/COPYING.GPLv2
+  Files:
+    usr/lib/libavcodec.so.61
+    usr/lib/libavfilter.so.10
+    usr/lib/libavformat.so.61
+    usr/lib/libavutil.so.59
+    usr/lib/libswresample.so.5
+    usr/lib/libswscale.so.8
+
+ICU (International Components for Unicode), shipped with Qt 73.2
+  Licence: Unicode-DFS-2016 AND ICU AND BSD-3-Clause AND NAIST-2003
+  Source:  https://github.com/unicode-org/icu.git at commit 680f521746a3bd6a86f25f25ee50a62d88b489cf
+  Note:    The official Qt binaries' own ICU build; icu4c/LICENSE holds the Unicode licence and the third-party terms of the code and data in the libraries.
+  Licence texts:
+    BSD-3-Clause: usr/share/doc/putgd/bundled-licenses/icu/icu4c/LICENSE
+    ICU: usr/share/doc/putgd/bundled-licenses/icu/icu4c/LICENSE
+    NAIST-2003: usr/share/doc/putgd/bundled-licenses/icu/icu4c/LICENSE
+    Unicode-DFS-2016: usr/share/doc/putgd/bundled-licenses/icu/icu4c/LICENSE
+  Files:
+    usr/lib/libicudata.so.73
+    usr/lib/libicui18n.so.73
+    usr/lib/libicuuc.so.73
+
+AppImage type2-runtime 20251108
+  Licence: MIT
+  Source:  https://github.com/AppImage/type2-runtime at commit dd6cebedcbddde9c82f89b011e8e1d40b6e43868
+  Note:    The runtime is the start of the AppImage file itself, not a file in the AppDir. appimage-runtime-LICENSE names the libraries linked into it statically.
+  Licence texts:
+    MIT: usr/share/doc/putgd/appimage-runtime-LICENSE
+  Includes musl libc (MIT)
+  Includes libfuse (LGPL-2.1-only)
+  Includes squashfuse (BSD-2-Clause)
+  Includes zstd (BSD-3-Clause OR GPL-2.0-only)
+  Includes zlib (Zlib)
+  Files:
+    (the start of the AppImage file)
+
+Qt qtbase 6.8.3
+  Licence: LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Source:  https://github.com/qt/qtbase.git at commit c07c2d5a527a644d36e7853d55132ae38921682f
+  Licence texts:
+    AFL-2.1: usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/AFL-2.1.txt
+    Apache-2.0: usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/Apache-2.0.txt
+    BSD-2-Clause: usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/BSD-2-Clause.txt
+    BSD-3-Clause: usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/BSD-3-Clause.txt
+    CC0-1.0: usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/CC0-1.0.txt
+    FTL: usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/FTL.txt
+    GPL-2.0-only: usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/GPL-2.0-only.txt
+    GPL-2.0-or-later: usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/GPL-2.0-or-later.txt
+    GPL-3.0-only: usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/GPL-3.0-only.txt
+    HPND: usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/HPND.txt
+    IJG: usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/IJG.txt
+    Imlib2: usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/Imlib2.txt
+    LGPL-3.0-only: usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/LGPL-3.0-only.txt
+    Libpng: usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/Libpng.txt
+    LicenseRef-BSD-3-Clause-with-PCRE2-Binary-Like-Packages-Exception: usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/LicenseRef-BSD-3-Clause-with-PCRE2-Binary-Like-Packages-Exception.txt
+    LicenseRef-ICC-License: usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/LicenseRef-ICC-License.txt
+    LicenseRef-SHA1-Public-Domain: usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/LicenseRef-SHA1-Public-Domain.txt
+    MIT: usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/MIT.txt
+    MPL-2.0: usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/MPL-2.0.txt
+    Unicode-3.0: usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/Unicode-3.0.txt
+    X11: usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/X11.txt
+    blessing: usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/blessing.txt
+    libpng-2.0: usr/share/doc/putgd/bundled-licenses/qtbase/LICENSES/libpng-2.0.txt
+  Includes Adobe Glyph List For New Fonts 1.7 (BSD-3-Clause) in libQt6Gui.so.6
+  Includes Anti-aliasing rasterizer from FreeType 2 unknown (FTL OR GPL-2.0-only) in libQt6Gui.so.6
+  Includes Apache Tika MimeType Definitions 5101bc7fb090ed7deffe56837d7633c9485a1e5d (Apache-2.0) in libQt6Core.so.6
+  Includes BLAKE2 (reference implementation) ed1974ea83433eba7b2d95c5dcd9ac33cb847913 (CC0-1.0 OR Apache-2.0) in libQt6Core.so.6
+  Includes Easing Equations by Robert Penner unknown (BSD-3-Clause) in libQt6Core.so.6
+  Includes Efficient Binary-Decimal and Decimal-Binary Conversion Routines for IEEE Doubles 3.3.0 (BSD-3-Clause) in libQt6Core.so.6
+  Includes forkfd unknown (MIT) in libQt6Core.so.6
+  Includes HarfBuzz-NG 10.4.0 (MIT) in libQt6Gui.so.6
+  Includes libdus-1 headers dbus-1.13.12 (AFL-2.1 OR GPL-2.0-or-later) in libQt6DBus.so.6
+  Includes LibJPEG-turbo 3.1.0 (IJG AND BSD-3-Clause) in libqjpeg.so
+  Includes LibPNG 1.6.47 (Libpng AND libpng-2.0) in libQt6Gui.so.6
+  Includes libpsl - C library to handle the Public Suffix List 664f3dc85259ec65e30248a61fa1c45b7b0e4c3f (BSD-3-Clause) in libQt6Network.so.6
+  Includes MD4 unknown (CC0-1.0) in libQt6Core.so.6
+  Includes MD4C 0.5.2 (MIT) in libQt6Gui.so.6
+  Includes MD5 unknown (CC0-1.0) in libQt6Core.so.6
+  Includes Mipmap generator for D3D12 0aa79bad78992da0b6a8279ddb9002c1753cb849 (MIT) in libQt6Gui.so.6
+  Includes OpenGL ES 2 Headers Revision 27673 (MIT) in libQt6Gui.so.6
+  Includes OpenGL Headers Revision 27684 (MIT) in libQt6Gui.so.6
+  Includes PCRE2 10.45 (LicenseRef-BSD-3-Clause-with-PCRE2-Binary-Like-Packages-Exception) in libQt6Core.so.6
+  Includes PCRE2 - Stack-less Just-In-Time Compiler 10.45 (BSD-2-Clause) in libQt6Core.so.6
+  Includes Pixman 0.17.12 (MIT) in libQt6Gui.so.6
+  Includes Secure Hash Algorithm SHA-1 unknown (LicenseRef-SHA1-Public-Domain) in libQt6Core.so.6
+  Includes Secure Hash Algorithm SHA-3 - brg_endian 4b9e13ead2c5b5e41ca27c65de4dd69ae0bac228 (BSD-2-Clause) in libQt6Core.so.6
+  Includes Secure Hash Algorithm SHA-3 - Keccak 3.2 (CC0-1.0) in libQt6Core.so.6
+  Includes Secure Hash Algorithms SHA-384 and SHA-512 unknown (BSD-3-Clause) in libQt6Core.so.6
+  Includes SipHash Algorithm unknown (CC0-1.0) in libQt6Core.so.6
+  Includes Smooth Scaling Algorithm unknown (BSD-2-Clause AND Imlib2) in libQt6Gui.so.6
+  Includes SQLite 3.49.1 (blessing) in libqsqlite.so
+  Includes sRGB color profile icc file unknown (LicenseRef-ICC-License) in libQt6Gui.so.6
+  Includes The Public Suffix List 47264b57765919188b9f4144de8d95cf77e1b6dc, fetched on 2025-01-22 (MPL-2.0) in libQt6Network.so.6
+  Includes TinyCBOR 0.6.1 (MIT) in libQt6Core.so.6
+  Includes Unicode Character Database (UCD) 34 (Unicode-3.0) in libQt6Core.so.6
+  Includes Unicode Common Locale Data Repository (CLDR) v46.1 (Unicode-3.0) in libQt6Core.so.6
+  Includes Vulkan API Registry 1.3.223 (Apache-2.0 OR MIT) in libQt6Gui.so.6
+  Includes Vulkan Memory Allocator 3.0.1 (MIT) in libQt6Gui.so.6
+  Includes WebGradients unknown (MIT) in libQt6Gui.so.6
+  Includes X Server helper unknown (X11 AND HPND) in libQt6Gui.so.6
+  Includes XCB-XInput unknown (MIT) in libQt6XcbQpa.so.6
+  Files:
+    usr/lib/libQt6Core.so.6
+    usr/lib/libQt6DBus.so.6
+    usr/lib/libQt6Gui.so.6
+    usr/lib/libQt6Network.so.6
+    usr/lib/libQt6OpenGL.so.6
+    usr/lib/libQt6Sql.so.6
+    usr/lib/libQt6Widgets.so.6
+    usr/lib/libQt6XcbQpa.so.6
+    usr/plugins/imageformats/libqgif.so
+    usr/plugins/imageformats/libqico.so
+    usr/plugins/imageformats/libqjpeg.so
+    usr/plugins/platforminputcontexts/libcomposeplatforminputcontextplugin.so
+    usr/plugins/platforminputcontexts/libibusplatforminputcontextplugin.so
+    usr/plugins/platforms/libqoffscreen.so
+    usr/plugins/platforms/libqxcb.so
+    usr/plugins/platformthemes/libqgtk3.so
+    usr/plugins/platformthemes/libqxdgdesktopportal.so
+    usr/plugins/sqldrivers/libqsqlite.so
+    usr/plugins/tls/libqcertonlybackend.so
+    usr/plugins/tls/libqopensslbackend.so
+    usr/plugins/xcbglintegrations/libqxcb-egl-integration.so
+    usr/plugins/xcbglintegrations/libqxcb-glx-integration.so
+
+Qt qtimageformats 6.8.3
+  Licence: LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Source:  https://github.com/qt/qtimageformats.git at commit 3b6b1fb96041f1bc85a8f42593bef2ee7bcdca6c
+  Licence texts:
+    BSD-3-Clause: usr/share/doc/putgd/bundled-licenses/qtimageformats/LICENSES/BSD-3-Clause.txt
+    GPL-2.0-only: usr/share/doc/putgd/bundled-licenses/qtimageformats/LICENSES/GPL-2.0-only.txt
+    GPL-3.0-only: usr/share/doc/putgd/bundled-licenses/qtimageformats/LICENSES/GPL-3.0-only.txt
+    LGPL-3.0-only: usr/share/doc/putgd/bundled-licenses/qtimageformats/LICENSES/LGPL-3.0-only.txt
+    libtiff: usr/share/doc/putgd/bundled-licenses/qtimageformats/LICENSES/libtiff.txt
+  Includes TIFF Software Distribution (libtiff) 4.7.0 (libtiff) in libqtiff.so
+  Includes WebP (libwebp) 1.5.0 (BSD-3-Clause) in libqwebp.so
+  Files:
+    usr/plugins/imageformats/libqicns.so
+    usr/plugins/imageformats/libqtga.so
+    usr/plugins/imageformats/libqtiff.so
+    usr/plugins/imageformats/libqwbmp.so
+    usr/plugins/imageformats/libqwebp.so
+
+Qt qtsvg 6.8.3
+  Licence: LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Source:  https://github.com/qt/qtsvg.git at commit c75099a75e81df35e7347a65e301bbf1011831a5
+  Licence texts:
+    GPL-2.0-only: usr/share/doc/putgd/bundled-licenses/qtsvg/LICENSES/GPL-2.0-only.txt
+    GPL-3.0-only: usr/share/doc/putgd/bundled-licenses/qtsvg/LICENSES/GPL-3.0-only.txt
+    LGPL-3.0-only: usr/share/doc/putgd/bundled-licenses/qtsvg/LICENSES/LGPL-3.0-only.txt
+  Includes XSVG unknown (HPND-sell-variant) in libQt6Svg.so.6
+  Files:
+    usr/lib/libQt6Svg.so.6
+    usr/plugins/imageformats/libqsvg.so
+
+Qt qttranslations 6.8.3
+  Licence: BSD-3-Clause
+  Source:  https://github.com/qt/qttranslations.git at commit abe01d7de31d311db8bc485d4e7e8d0c30493425
+  Licence texts:
+    BSD-3-Clause: usr/share/doc/putgd/bundled-licenses/qttranslations/LICENSES/BSD-3-Clause.txt
+  Files:
+    usr/translations/qtbase_ar.qm
+    usr/translations/qtbase_bg.qm
+    usr/translations/qtbase_ca.qm
+    usr/translations/qtbase_cs.qm
+    usr/translations/qtbase_da.qm
+    usr/translations/qtbase_de.qm
+    usr/translations/qtbase_en.qm
+    usr/translations/qtbase_es.qm
+    usr/translations/qtbase_fa.qm
+    usr/translations/qtbase_fi.qm
+    usr/translations/qtbase_fr.qm
+    usr/translations/qtbase_gd.qm
+    usr/translations/qtbase_he.qm
+    usr/translations/qtbase_hr.qm
+    usr/translations/qtbase_hu.qm
+    usr/translations/qtbase_it.qm
+    usr/translations/qtbase_ja.qm
+    usr/translations/qtbase_ka.qm
+    usr/translations/qtbase_ko.qm
+    usr/translations/qtbase_lg.qm
+    usr/translations/qtbase_lv.qm
+    usr/translations/qtbase_nl.qm
+    usr/translations/qtbase_nn.qm
+    usr/translations/qtbase_pl.qm
+    usr/translations/qtbase_pt_BR.qm
+    usr/translations/qtbase_ru.qm
+    usr/translations/qtbase_sk.qm
+    usr/translations/qtbase_tr.qm
+    usr/translations/qtbase_uk.qm
+    usr/translations/qtbase_zh_CN.qm
+    usr/translations/qtbase_zh_TW.qm
+
+Qt qtwayland 6.8.3
+  Licence: LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+  Source:  https://github.com/qt/qtwayland.git at commit 8ab0d5b4cd2db654eb01eb74c9a8bbf7efc87d94
+  Licence texts:
+    GPL-2.0-only: usr/share/doc/putgd/bundled-licenses/qtwayland/LICENSES/GPL-2.0-only.txt
+    GPL-3.0-only: usr/share/doc/putgd/bundled-licenses/qtwayland/LICENSES/GPL-3.0-only.txt
+    HPND: usr/share/doc/putgd/bundled-licenses/qtwayland/LICENSES/HPND.txt
+    LGPL-3.0-only: usr/share/doc/putgd/bundled-licenses/qtwayland/LICENSES/LGPL-3.0-only.txt
+    MIT: usr/share/doc/putgd/bundled-licenses/qtwayland/LICENSES/MIT.txt
+  Includes Wayland Dialog Protocol 1 (MIT) in libxdg-shell.so
+  Includes Wayland Fractional Scale Protocol 1 (MIT) in libQt6WaylandClient.so.6
+  Includes Wayland Pointer Gestures Protocol unstable v1, version 2 (MIT) in libQt6WaylandClient.so.6
+  Includes Wayland Primary Selection Protocol 1 (MIT) in libQt6WaylandClient.so.6
+  Includes Wayland Protocol 1.19.0 (MIT) in libQt6WaylandClient.so.6
+  Includes Wayland Tablet Protocol unstable v2, version 1 (MIT) in libQt6WaylandClient.so.6
+  Includes Wayland Text Input Protocol unstable v3 (MIT) in libQt6WaylandClient.so.6
+  Includes Wayland Text Input Protocol v1 unstable v1 (MIT) in libQt6WaylandClient.so.6
+  Includes Wayland Text Input Protocol v2 unstable v2 (HPND) in libQt6WaylandClient.so.6
+  Includes Wayland Viewporter Protocol 1 (MIT) in libQt6WaylandClient.so.6
+  Includes Wayland XDG Foreign Protocol 1 (MIT) in libxdg-shell.so
+  Includes Wayland XDG Output Protocol unstable v1, version 3 (MIT) in libQt6WaylandClient.so.6
+  Includes Wayland XDG Shell Protocol 1.18 (MIT) in libQt6WaylandClient.so.6
+  Includes Wayland XDG Shell Protocol 1.18 (MIT) in libxdg-shell.so
+  Includes Wayland xdg-activation Protocol unstable v1, version 1 (MIT) in libxdg-shell.so
+  Includes Wayland xdg-decoration Protocol unstable v1, version 1 (MIT) in libxdg-shell.so
+  Files:
+    usr/lib/libQt6WaylandClient.so.6
+    usr/lib/libQt6WaylandEglClientHwIntegration.so.6
+    usr/plugins/platforms/libqwayland-egl.so
+    usr/plugins/platforms/libqwayland-generic.so
+    usr/plugins/wayland-decoration-client/libadwaita.so
+    usr/plugins/wayland-decoration-client/libbradient.so
+    usr/plugins/wayland-graphics-integration-client/libqt-plugin-wayland-egl.so
+    usr/plugins/wayland-shell-integration/libxdg-shell.so
+
+Ubuntu 24.04 packages
+=====================
+Binary package, version, source package and version, licence of its Files: * stanza
+(NOASSERTION where its copyright file is not machine-readable; the copyright file applies).
+
+gstreamer1.0-pipewire 1.0.5-1ubuntu3.3  (source pipewire 1.0.5-1ubuntu3.3)
+  Licence: MIT    Copyright: usr/share/doc/putgd/bundled-licenses/distro/gstreamer1.0-pipewire/copyright
+  Source:  https://launchpad.net/ubuntu/+source/pipewire/1.0.5-1ubuntu3.3
+    usr/lib/gstreamer-1.0/libgstpipewire.so
+
+gstreamer1.0-plugins-bad 1.24.2-1ubuntu4  (source gst-plugins-bad1.0 1.24.2-1ubuntu4)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/gstreamer1.0-plugins-bad/copyright
+  Source:  https://launchpad.net/ubuntu/+source/gst-plugins-bad1.0/1.24.2-1ubuntu4
+    usr/lib/gstreamer-1.0/libgstva.so
+    usr/lib/gstreamer-1.0/libgstvideoparsersbad.so
+    usr/lib/gstreamer-1.0/libgstvoaacenc.so
+
+gstreamer1.0-plugins-base 1.24.2-1ubuntu0.5  (source gst-plugins-base1.0 1.24.2-1ubuntu0.5)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/gstreamer1.0-plugins-base/copyright
+  Source:  https://launchpad.net/ubuntu/+source/gst-plugins-base1.0/1.24.2-1ubuntu0.5
+    usr/lib/gstreamer-1.0/libgstaudioconvert.so
+    usr/lib/gstreamer-1.0/libgstaudioresample.so
+    usr/lib/gstreamer-1.0/libgstvideoconvertscale.so
+    usr/lib/gstreamer-1.0/libgstvideorate.so
+    usr/lib/gstreamer-1.0/libgstvideotestsrc.so
+
+gstreamer1.0-plugins-good 1.24.2-1ubuntu1.8  (source gst-plugins-good1.0 1.24.2-1ubuntu1.8)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/gstreamer1.0-plugins-good/copyright
+  Source:  https://launchpad.net/ubuntu/+source/gst-plugins-good1.0/1.24.2-1ubuntu1.8
+    usr/lib/gstreamer-1.0/libgstaudioparsers.so
+    usr/lib/gstreamer-1.0/libgstmatroska.so
+    usr/lib/gstreamer-1.0/libgstpulseaudio.so
+    usr/lib/gstreamer-1.0/libgstvideocrop.so
+    usr/lib/gstreamer-1.0/libgstximagesrc.so
+
+gstreamer1.0-plugins-ugly 1.24.1-1build1  (source gst-plugins-ugly1.0 1.24.1-1build1)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/gstreamer1.0-plugins-ugly/copyright
+  Source:  https://launchpad.net/ubuntu/+source/gst-plugins-ugly1.0/1.24.1-1build1
+    usr/lib/gstreamer-1.0/libgstx264.so
+
+gstreamer1.0-vaapi 1.24.2-1  (source gstreamer-vaapi 1.24.2-1)
+  Licence: LGPL-2.1-or-later    Copyright: usr/share/doc/putgd/bundled-licenses/distro/gstreamer1.0-vaapi/copyright
+  Source:  https://launchpad.net/ubuntu/+source/gstreamer-vaapi/1.24.2-1
+    usr/lib/gstreamer-1.0/libgstvaapi.so
+
+libapparmor1 4.0.1really4.0.1-0ubuntu0.24.04.9  (source apparmor 4.0.1really4.0.1-0ubuntu0.24.04.9)
+  Licence: GPL-2.0-or-later    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libapparmor1/copyright
+  Source:  https://launchpad.net/ubuntu/+source/apparmor/4.0.1really4.0.1-0ubuntu0.24.04.9
+    usr/lib/libapparmor.so.1
+
+libasyncns0 0.8-6build4  (source libasyncns 0.8-6build4)
+  Licence: LGPL-2.1-or-later    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libasyncns0/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libasyncns/0.8-6build4
+    usr/lib/libasyncns.so.0
+
+libatk-bridge2.0-0t64 2.52.0-1build1  (source at-spi2-core 2.52.0-1build1)
+  Licence: LGPL-2.0-or-later    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libatk-bridge2.0-0t64/copyright
+  Source:  https://launchpad.net/ubuntu/+source/at-spi2-core/2.52.0-1build1
+    usr/lib/libatk-bridge-2.0.so.0
+
+libatk1.0-0t64 2.52.0-1build1  (source at-spi2-core 2.52.0-1build1)
+  Licence: LGPL-2.0-or-later    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libatk1.0-0t64/copyright
+  Source:  https://launchpad.net/ubuntu/+source/at-spi2-core/2.52.0-1build1
+    usr/lib/libatk-1.0.so.0
+
+libatspi2.0-0t64 2.52.0-1build1  (source at-spi2-core 2.52.0-1build1)
+  Licence: LGPL-2.0-or-later    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libatspi2.0-0t64/copyright
+  Source:  https://launchpad.net/ubuntu/+source/at-spi2-core/2.52.0-1build1
+    usr/lib/libatspi.so.0
+
+libblkid1 2.39.3-9ubuntu6.6  (source util-linux 2.39.3-9ubuntu6.6)
+  Licence: GPL-2.0-or-later    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libblkid1/copyright
+  Source:  https://launchpad.net/ubuntu/+source/util-linux/2.39.3-9ubuntu6.6
+    usr/lib/libblkid.so.1
+
+libbrotli1 1.1.0-2build2  (source brotli 1.1.0-2build2)
+  Licence: MIT    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libbrotli1/copyright
+  Source:  https://launchpad.net/ubuntu/+source/brotli/1.1.0-2build2
+    usr/lib/libbrotlicommon.so.1
+    usr/lib/libbrotlidec.so.1
+
+libbsd0 0.12.1-1build1.1  (source libbsd 0.12.1-1build1.1)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libbsd0/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libbsd/0.12.1-1build1.1
+    usr/lib/libbsd.so.0
+
+libbz2-1.0 1.0.8-5.1ubuntu0.1  (source bzip2 1.0.8-5.1ubuntu0.1)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libbz2-1.0/copyright
+  Source:  https://launchpad.net/ubuntu/+source/bzip2/1.0.8-5.1ubuntu0.1
+    usr/lib/libbz2.so.1.0
+
+libcairo-gobject2 1.18.0-3build1  (source cairo 1.18.0-3build1)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libcairo-gobject2/copyright
+  Source:  https://launchpad.net/ubuntu/+source/cairo/1.18.0-3build1
+    usr/lib/libcairo-gobject.so.2
+
+libcairo2 1.18.0-3build1  (source cairo 1.18.0-3build1)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libcairo2/copyright
+  Source:  https://launchpad.net/ubuntu/+source/cairo/1.18.0-3build1
+    usr/lib/libcairo.so.2
+
+libcap2 1:2.66-5ubuntu2.4  (source libcap2 1:2.66-5ubuntu2.4)
+  Licence: BSD-3-Clause OR GPL-2.0-only    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libcap2/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libcap2/1:2.66-5ubuntu2.4
+    usr/lib/libcap.so.2
+
+libcurl4t64 8.5.0-2ubuntu10.16  (source curl 8.5.0-2ubuntu10.16)
+  Licence: curl    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libcurl4t64/copyright
+  Source:  https://launchpad.net/ubuntu/+source/curl/8.5.0-2ubuntu10.16
+    usr/lib/libcurl.so.4
+
+libdatrie1 0.2.13-3build1  (source libdatrie 0.2.13-3build1)
+  Licence: LGPL-2.1-or-later    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libdatrie1/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libdatrie/0.2.13-3build1
+    usr/lib/libdatrie.so.1
+
+libdbus-1-3 1.14.10-4ubuntu4.1  (source dbus 1.14.10-4ubuntu4.1)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libdbus-1-3/copyright
+  Source:  https://launchpad.net/ubuntu/+source/dbus/1.14.10-4ubuntu4.1
+    usr/lib/libdbus-1.so.3
+
+libdw1t64 0.190-1.1ubuntu0.1  (source elfutils 0.190-1.1ubuntu0.1)
+  Licence: GPL-3.0-or-later    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libdw1t64/copyright
+  Source:  https://launchpad.net/ubuntu/+source/elfutils/0.190-1.1ubuntu0.1
+    usr/lib/libdw.so.1
+
+libelf1t64 0.190-1.1ubuntu0.1  (source elfutils 0.190-1.1ubuntu0.1)
+  Licence: GPL-3.0-or-later    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libelf1t64/copyright
+  Source:  https://launchpad.net/ubuntu/+source/elfutils/0.190-1.1ubuntu0.1
+    usr/lib/libelf.so.1
+
+libepoxy0 1.5.10-1build1  (source libepoxy 1.5.10-1build1)
+  Licence: MIT    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libepoxy0/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libepoxy/1.5.10-1build1
+    usr/lib/libepoxy.so.0
+
+libffi8 3.4.6-1build1  (source libffi 3.4.6-1build1)
+  Licence: MIT    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libffi8/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libffi/3.4.6-1build1
+    usr/lib/libffi.so.8
+
+libflac12t64 1.4.3+ds-2.1ubuntu2  (source flac 1.4.3+ds-2.1ubuntu2)
+  Licence: GPL-2.0-or-later OR LGPL-2.1-or-later    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libflac12t64/copyright
+  Source:  https://launchpad.net/ubuntu/+source/flac/1.4.3+ds-2.1ubuntu2
+    usr/lib/libFLAC.so.12
+
+libgcrypt20 1.10.3-2ubuntu0.2  (source libgcrypt20 1.10.3-2ubuntu0.2)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libgcrypt20/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libgcrypt20/1.10.3-2ubuntu0.2
+    usr/lib/libgcrypt.so.20
+
+libgdk-pixbuf-2.0-0 2.42.10+dfsg-3ubuntu3.3  (source gdk-pixbuf 2.42.10+dfsg-3ubuntu3.3)
+  Licence: LGPL-2.0-or-later AND LGPL-2.1-or-later AND CC0-1.0    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libgdk-pixbuf-2.0-0/copyright
+  Source:  https://launchpad.net/ubuntu/+source/gdk-pixbuf/2.42.10+dfsg-3ubuntu3.3
+    usr/lib/libgdk_pixbuf-2.0.so.0
+
+libgles2 1.7.0-1build1  (source libglvnd 1.7.0-1build1)
+  Licence: MIT    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libgles2/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libglvnd/1.7.0-1build1
+    usr/lib/libGLESv2.so.2
+
+libglib2.0-0t64 2.80.0-6ubuntu3.10  (source glib2.0 2.80.0-6ubuntu3.10)
+  Licence: LGPL-2.1-or-later    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libglib2.0-0t64/copyright
+  Source:  https://launchpad.net/ubuntu/+source/glib2.0/2.80.0-6ubuntu3.10
+    usr/lib/libgio-2.0.so.0
+    usr/lib/libglib-2.0.so.0
+    usr/lib/libgmodule-2.0.so.0
+    usr/lib/libgobject-2.0.so.0
+    usr/lib/libgthread-2.0.so.0
+
+libgnutls30t64 3.8.3-1.1ubuntu3.6  (source gnutls28 3.8.3-1.1ubuntu3.6)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libgnutls30t64/copyright
+  Source:  https://launchpad.net/ubuntu/+source/gnutls28/3.8.3-1.1ubuntu3.6
+    usr/lib/libgnutls.so.30
+
+libgraphite2-3 1.3.14-2ubuntu0.24.04.1  (source graphite2 1.3.14-2ubuntu0.24.04.1)
+  Licence: LGPL-2.1-or-later OR MPL-1.1 OR GPL-2.0-or-later    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libgraphite2-3/copyright
+  Source:  https://launchpad.net/ubuntu/+source/graphite2/1.3.14-2ubuntu0.24.04.1
+    usr/lib/libgraphite2.so.3
+
+libgssapi-krb5-2 1.20.1-6ubuntu2.10  (source krb5 1.20.1-6ubuntu2.10)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libgssapi-krb5-2/copyright
+  Source:  https://launchpad.net/ubuntu/+source/krb5/1.20.1-6ubuntu2.10
+    usr/lib/libgssapi_krb5.so.2
+
+libgstreamer-gl1.0-0 1.24.2-1ubuntu0.5  (source gst-plugins-base1.0 1.24.2-1ubuntu0.5)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libgstreamer-gl1.0-0/copyright
+  Source:  https://launchpad.net/ubuntu/+source/gst-plugins-base1.0/1.24.2-1ubuntu0.5
+    usr/lib/libgstgl-1.0.so.0
+
+libgstreamer-plugins-bad1.0-0 1.24.2-1ubuntu4  (source gst-plugins-bad1.0 1.24.2-1ubuntu4)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libgstreamer-plugins-bad1.0-0/copyright
+  Source:  https://launchpad.net/ubuntu/+source/gst-plugins-bad1.0/1.24.2-1ubuntu4
+    usr/lib/libgstcodecparsers-1.0.so.0
+    usr/lib/libgstcodecs-1.0.so.0
+    usr/lib/libgstva-1.0.so.0
+
+libgstreamer-plugins-base1.0-0 1.24.2-1ubuntu0.5  (source gst-plugins-base1.0 1.24.2-1ubuntu0.5)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libgstreamer-plugins-base1.0-0/copyright
+  Source:  https://launchpad.net/ubuntu/+source/gst-plugins-base1.0/1.24.2-1ubuntu0.5
+    usr/lib/libgstallocators-1.0.so.0
+    usr/lib/libgstaudio-1.0.so.0
+    usr/lib/libgstpbutils-1.0.so.0
+    usr/lib/libgstriff-1.0.so.0
+    usr/lib/libgsttag-1.0.so.0
+    usr/lib/libgstvideo-1.0.so.0
+
+libgstreamer1.0-0 1.24.2-1ubuntu0.1  (source gstreamer1.0 1.24.2-1ubuntu0.1)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libgstreamer1.0-0/copyright
+  Source:  https://launchpad.net/ubuntu/+source/gstreamer1.0/1.24.2-1ubuntu0.1
+    usr/lib/gstreamer-1.0/libgstcoreelements.so
+    usr/lib/libgstbase-1.0.so.0
+    usr/lib/libgstreamer-1.0.so.0
+    usr/libexec/gstreamer-1.0/gst-plugin-scanner
+
+libgtk-3-0t64 3.24.41-4ubuntu1.3  (source gtk+3.0 3.24.41-4ubuntu1.3)
+  Licence: LGPL-2.0-or-later AND LGPL-2.1-or-later AND MIT    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libgtk-3-0t64/copyright
+  Source:  https://launchpad.net/ubuntu/+source/gtk+3.0/3.24.41-4ubuntu1.3
+    usr/lib/libgdk-3.so.0
+    usr/lib/libgtk-3.so.0
+
+libgudev-1.0-0 1:238-5ubuntu1  (source libgudev 238-5ubuntu1)
+  Licence: LGPL-2.0-or-later    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libgudev-1.0-0/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libgudev/238-5ubuntu1
+    usr/lib/libgudev-1.0.so.0
+
+libhogweed6t64 3.9.1-2.2build1.1  (source nettle 3.9.1-2.2build1.1)
+  Licence: LGPL-3.0-or-later OR GPL-2.0-or-later    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libhogweed6t64/copyright
+  Source:  https://launchpad.net/ubuntu/+source/nettle/3.9.1-2.2build1.1
+    usr/lib/libhogweed.so.6
+
+libidn2-0 2.3.7-2build1.1  (source libidn2 2.3.7-2build1.1)
+  Licence: GPL-3.0-or-later    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libidn2-0/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libidn2/2.3.7-2build1.1
+    usr/lib/libidn2.so.0
+
+libjpeg-turbo8 2.1.5-2ubuntu2  (source libjpeg-turbo 2.1.5-2ubuntu2)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libjpeg-turbo8/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libjpeg-turbo/2.1.5-2ubuntu2
+    usr/lib/libjpeg.so.8
+
+libk5crypto3 1.20.1-6ubuntu2.10  (source krb5 1.20.1-6ubuntu2.10)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libk5crypto3/copyright
+  Source:  https://launchpad.net/ubuntu/+source/krb5/1.20.1-6ubuntu2.10
+    usr/lib/libk5crypto.so.3
+
+libkeyutils1 1.6.3-3build1  (source keyutils 1.6.3-3build1)
+  Licence: GPL-2.0-or-later    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libkeyutils1/copyright
+  Source:  https://launchpad.net/ubuntu/+source/keyutils/1.6.3-3build1
+    usr/lib/libkeyutils.so.1
+
+libkrb5-3 1.20.1-6ubuntu2.10  (source krb5 1.20.1-6ubuntu2.10)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libkrb5-3/copyright
+  Source:  https://launchpad.net/ubuntu/+source/krb5/1.20.1-6ubuntu2.10
+    usr/lib/libkrb5.so.3
+
+libkrb5support0 1.20.1-6ubuntu2.10  (source krb5 1.20.1-6ubuntu2.10)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libkrb5support0/copyright
+  Source:  https://launchpad.net/ubuntu/+source/krb5/1.20.1-6ubuntu2.10
+    usr/lib/libkrb5support.so.0
+
+libldap2 2.6.10+dfsg-0ubuntu0.24.04.1  (source openldap 2.6.10+dfsg-0ubuntu0.24.04.1)
+  Licence: OLDAP-2.8    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libldap2/copyright
+  Source:  https://launchpad.net/ubuntu/+source/openldap/2.6.10+dfsg-0ubuntu0.24.04.1
+    usr/lib/liblber.so.2
+    usr/lib/libldap.so.2
+
+liblz4-1 1.9.4-1build1.1  (source lz4 1.9.4-1build1.1)
+  Licence: BSD-2-Clause    Copyright: usr/share/doc/putgd/bundled-licenses/distro/liblz4-1/copyright
+  Source:  https://launchpad.net/ubuntu/+source/lz4/1.9.4-1build1.1
+    usr/lib/liblz4.so.1
+
+liblzma5 5.6.1+really5.4.5-1ubuntu0.4  (source xz-utils 5.6.1+really5.4.5-1ubuntu0.4)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/liblzma5/copyright
+  Source:  https://launchpad.net/ubuntu/+source/xz-utils/5.6.1+really5.4.5-1ubuntu0.4
+    usr/lib/liblzma.so.5
+
+libmd0 1.1.0-2build1.1  (source libmd 1.1.0-2build1.1)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libmd0/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libmd/1.1.0-2build1.1
+    usr/lib/libmd.so.0
+
+libmount1 2.39.3-9ubuntu6.6  (source util-linux 2.39.3-9ubuntu6.6)
+  Licence: GPL-2.0-or-later    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libmount1/copyright
+  Source:  https://launchpad.net/ubuntu/+source/util-linux/2.39.3-9ubuntu6.6
+    usr/lib/libmount.so.1
+
+libmp3lame0 3.100-6build1  (source lame 3.100-6build1)
+  Licence: LGPL-2.0-or-later    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libmp3lame0/copyright
+  Source:  https://launchpad.net/ubuntu/+source/lame/3.100-6build1
+    usr/lib/libmp3lame.so.0
+
+libmpg123-0t64 1.32.5-1ubuntu1.1  (source mpg123 1.32.5-1ubuntu1.1)
+  Licence: LGPL-2.1-only    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libmpg123-0t64/copyright
+  Source:  https://launchpad.net/ubuntu/+source/mpg123/1.32.5-1ubuntu1.1
+    usr/lib/libmpg123.so.0
+
+libnettle8t64 3.9.1-2.2build1.1  (source nettle 3.9.1-2.2build1.1)
+  Licence: LGPL-3.0-or-later OR GPL-2.0-or-later    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libnettle8t64/copyright
+  Source:  https://launchpad.net/ubuntu/+source/nettle/3.9.1-2.2build1.1
+    usr/lib/libnettle.so.8
+
+libnghttp2-14 1.59.0-1ubuntu0.4  (source nghttp2 1.59.0-1ubuntu0.4)
+  Licence: MIT    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libnghttp2-14/copyright
+  Source:  https://launchpad.net/ubuntu/+source/nghttp2/1.59.0-1ubuntu0.4
+    usr/lib/libnghttp2.so.14
+
+libnuma1 2.0.18-1ubuntu0.24.04.1  (source numactl 2.0.18-1ubuntu0.24.04.1)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libnuma1/copyright
+  Source:  https://launchpad.net/ubuntu/+source/numactl/2.0.18-1ubuntu0.24.04.1
+    usr/lib/libnuma.so.1
+
+libogg0 1.3.5-3build1  (source libogg 1.3.5-3build1)
+  Licence: BSD-3-Clause    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libogg0/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libogg/1.3.5-3build1
+    usr/lib/libogg.so.0
+
+libopus0 1.4-1build1  (source opus 1.4-1build1)
+  Licence: BSD-3-Clause    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libopus0/copyright
+  Source:  https://launchpad.net/ubuntu/+source/opus/1.4-1build1
+    usr/lib/libopus.so.0
+
+liborc-0.4-0t64 1:0.4.38-1ubuntu0.1  (source orc 1:0.4.38-1ubuntu0.1)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/liborc-0.4-0t64/copyright
+  Source:  https://launchpad.net/ubuntu/+source/orc/1:0.4.38-1ubuntu0.1
+    usr/lib/liborc-0.4.so.0
+
+libp11-kit0 0.25.3-4ubuntu2.2  (source p11-kit 0.25.3-4ubuntu2.2)
+  Licence: BSD-3-Clause    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libp11-kit0/copyright
+  Source:  https://launchpad.net/ubuntu/+source/p11-kit/0.25.3-4ubuntu2.2
+    usr/lib/libp11-kit.so.0
+
+libpango-1.0-0 1.52.1+ds-1build1  (source pango1.0 1.52.1+ds-1build1)
+  Licence: LGPL-2.0-or-later AND LGPL-2.1-or-later    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libpango-1.0-0/copyright
+  Source:  https://launchpad.net/ubuntu/+source/pango1.0/1.52.1+ds-1build1
+    usr/lib/libpango-1.0.so.0
+
+libpangocairo-1.0-0 1.52.1+ds-1build1  (source pango1.0 1.52.1+ds-1build1)
+  Licence: LGPL-2.0-or-later AND LGPL-2.1-or-later    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libpangocairo-1.0-0/copyright
+  Source:  https://launchpad.net/ubuntu/+source/pango1.0/1.52.1+ds-1build1
+    usr/lib/libpangocairo-1.0.so.0
+
+libpangoft2-1.0-0 1.52.1+ds-1build1  (source pango1.0 1.52.1+ds-1build1)
+  Licence: LGPL-2.0-or-later AND LGPL-2.1-or-later    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libpangoft2-1.0-0/copyright
+  Source:  https://launchpad.net/ubuntu/+source/pango1.0/1.52.1+ds-1build1
+    usr/lib/libpangoft2-1.0.so.0
+
+libpcre2-8-0 10.42-4ubuntu2.1  (source pcre2 10.42-4ubuntu2.1)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libpcre2-8-0/copyright
+  Source:  https://launchpad.net/ubuntu/+source/pcre2/10.42-4ubuntu2.1
+    usr/lib/libpcre2-8.so.0
+
+libpixman-1-0 0.42.2-1build1  (source pixman 0.42.2-1build1)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libpixman-1-0/copyright
+  Source:  https://launchpad.net/ubuntu/+source/pixman/0.42.2-1build1
+    usr/lib/libpixman-1.so.0
+
+libpng16-16t64 1.6.43-5ubuntu0.7  (source libpng1.6 1.6.43-5ubuntu0.7)
+  Licence: Libpng    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libpng16-16t64/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libpng1.6/1.6.43-5ubuntu0.7
+    usr/lib/libpng16.so.16
+
+libpsl5t64 0.21.2-1.1build1  (source libpsl 0.21.2-1.1build1)
+  Licence: MIT    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libpsl5t64/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libpsl/0.21.2-1.1build1
+    usr/lib/libpsl.so.5
+
+libpulse0 1:16.1+dfsg1-2ubuntu10.1  (source pulseaudio 1:16.1+dfsg1-2ubuntu10.1)
+  Licence: LGPL-2.1-or-later    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libpulse0/copyright
+  Source:  https://launchpad.net/ubuntu/+source/pulseaudio/1:16.1+dfsg1-2ubuntu10.1
+    usr/lib/libpulse.so.0
+    usr/lib/libpulsecommon-16.1.so
+
+librtmp1 2.4+20151223.gitfa8646d.1-2build7  (source rtmpdump 2.4+20151223.gitfa8646d.1-2build7)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/librtmp1/copyright
+  Source:  https://launchpad.net/ubuntu/+source/rtmpdump/2.4+20151223.gitfa8646d.1-2build7
+    usr/lib/librtmp.so.1
+
+libsasl2-2 2.1.28+dfsg1-5ubuntu3.1  (source cyrus-sasl2 2.1.28+dfsg1-5ubuntu3.1)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libsasl2-2/copyright
+  Source:  https://launchpad.net/ubuntu/+source/cyrus-sasl2/2.1.28+dfsg1-5ubuntu3.1
+    usr/lib/libsasl2.so.2
+
+libselinux1 3.5-2ubuntu2.1  (source libselinux 3.5-2ubuntu2.1)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libselinux1/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libselinux/3.5-2ubuntu2.1
+    usr/lib/libselinux.so.1
+
+libsharpyuv0 1.3.2-0.4build3  (source libwebp 1.3.2-0.4build3)
+  Licence: BSD-3-Clause    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libsharpyuv0/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libwebp/1.3.2-0.4build3
+    usr/lib/libsharpyuv.so.0
+
+libsndfile1 1.2.2-1ubuntu5.24.04.1  (source libsndfile 1.2.2-1ubuntu5.24.04.1)
+  Licence: LGPL-2.1-or-later    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libsndfile1/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libsndfile/1.2.2-1ubuntu5.24.04.1
+    usr/lib/libsndfile.so.1
+
+libssh-4 0.10.6-2ubuntu0.5  (source libssh 0.10.6-2ubuntu0.5)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libssh-4/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libssh/0.10.6-2ubuntu0.5
+    usr/lib/libssh.so.4
+
+libssl3t64 3.0.13-0ubuntu3.16  (source openssl 3.0.13-0ubuntu3.16)
+  Licence: Apache-2.0    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libssl3t64/copyright
+  Source:  https://launchpad.net/ubuntu/+source/openssl/3.0.13-0ubuntu3.16
+    usr/lib/libcrypto.so.3
+    usr/lib/libssl.so.3
+
+libsystemd0 255.4-1ubuntu8.18  (source systemd 255.4-1ubuntu8.18)
+  Licence: LGPL-2.1-or-later    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libsystemd0/copyright
+  Source:  https://launchpad.net/ubuntu/+source/systemd/255.4-1ubuntu8.18
+    usr/lib/libsystemd.so.0
+
+libtasn1-6 4.19.0-3ubuntu0.24.04.2  (source libtasn1-6 4.19.0-3ubuntu0.24.04.2)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libtasn1-6/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libtasn1-6/4.19.0-3ubuntu0.24.04.2
+    usr/lib/libtasn1.so.6
+
+libthai0 0.1.29-2build1  (source libthai 0.1.29-2build1)
+  Licence: LGPL-2.1-or-later    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libthai0/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libthai/0.1.29-2build1
+    usr/lib/libthai.so.0
+
+libudev1 255.4-1ubuntu8.18  (source systemd 255.4-1ubuntu8.18)
+  Licence: LGPL-2.1-or-later    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libudev1/copyright
+  Source:  https://launchpad.net/ubuntu/+source/systemd/255.4-1ubuntu8.18
+    usr/lib/libudev.so.1
+
+libunistring5 1.1-2build1.1  (source libunistring 1.1-2build1.1)
+  Licence: LGPL-3.0-or-later OR GPL-2.0-or-later    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libunistring5/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libunistring/1.1-2build1.1
+    usr/lib/libunistring.so.5
+
+libunwind8 1.6.2-3build1.1  (source libunwind 1.6.2-3build1.1)
+  Licence: MIT    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libunwind8/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libunwind/1.6.2-3build1.1
+    usr/lib/libunwind.so.8
+
+libva-drm2 2.20.0-2ubuntu0.2  (source libva 2.20.0-2ubuntu0.2)
+  Licence: MIT    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libva-drm2/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libva/2.20.0-2ubuntu0.2
+    usr/lib/putgd-host-fallback/libva-drm.so.2
+
+libva2 2.20.0-2ubuntu0.2  (source libva 2.20.0-2ubuntu0.2)
+  Licence: MIT    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libva2/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libva/2.20.0-2ubuntu0.2
+    usr/lib/putgd-host-fallback/libva.so.2
+
+libvo-aacenc0 0.1.3-2build1  (source vo-aacenc 0.1.3-2build1)
+  Licence: Apache-2.0    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libvo-aacenc0/copyright
+  Source:  https://launchpad.net/ubuntu/+source/vo-aacenc/0.1.3-2build1
+    usr/lib/libvo-aacenc.so.0
+
+libvorbis0a 1.3.7-1build3  (source libvorbis 1.3.7-1build3)
+  Licence: BSD-3-Clause    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libvorbis0a/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libvorbis/1.3.7-1build3
+    usr/lib/libvorbis.so.0
+
+libvorbisenc2 1.3.7-1build3  (source libvorbis 1.3.7-1build3)
+  Licence: BSD-3-Clause    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libvorbisenc2/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libvorbis/1.3.7-1build3
+    usr/lib/libvorbisenc.so.2
+
+libvpx9 1.14.0-1ubuntu2.3  (source libvpx 1.14.0-1ubuntu2.3)
+  Licence: BSD-3-Clause    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libvpx9/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libvpx/1.14.0-1ubuntu2.3
+    usr/lib/libvpx.so.9
+
+libwayland-cursor0 1.22.0-2.1build1  (source wayland 1.22.0-2.1build1)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libwayland-cursor0/copyright
+  Source:  https://launchpad.net/ubuntu/+source/wayland/1.22.0-2.1build1
+    usr/lib/libwayland-cursor.so.0
+
+libwayland-egl1 1.22.0-2.1build1  (source wayland 1.22.0-2.1build1)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libwayland-egl1/copyright
+  Source:  https://launchpad.net/ubuntu/+source/wayland/1.22.0-2.1build1
+    usr/lib/libwayland-egl.so.1
+
+libwebp7 1.3.2-0.4build3  (source libwebp 1.3.2-0.4build3)
+  Licence: BSD-3-Clause    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libwebp7/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libwebp/1.3.2-0.4build3
+    usr/lib/libwebp.so.7
+
+libwebpmux3 1.3.2-0.4build3  (source libwebp 1.3.2-0.4build3)
+  Licence: BSD-3-Clause    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libwebpmux3/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libwebp/1.3.2-0.4build3
+    usr/lib/libwebpmux.so.3
+
+libx264-164 2:0.164.3108+git31e19f9-1  (source x264 2:0.164.3108+git31e19f9-1)
+  Licence: GPL-2.0-or-later    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libx264-164/copyright
+  Source:  https://launchpad.net/ubuntu/+source/x264/2:0.164.3108+git31e19f9-1
+    usr/lib/libx264.so.164
+
+libx265-199 3.5-2build1  (source x265 3.5-2build1)
+  Licence: GPL-2.0-or-later    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libx265-199/copyright
+  Source:  https://launchpad.net/ubuntu/+source/x265/3.5-2build1
+    usr/lib/libx265.so.199
+
+libxau6 1:1.0.9-1build6  (source libxau 1:1.0.9-1build6)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libxau6/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libxau/1:1.0.9-1build6
+    usr/lib/libXau.so.6
+
+libxcb-cursor0 0.1.4-1build1  (source xcb-util-cursor 0.1.4-1build1)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libxcb-cursor0/copyright
+  Source:  https://launchpad.net/ubuntu/+source/xcb-util-cursor/0.1.4-1build1
+    usr/lib/libxcb-cursor.so.0
+
+libxcb-damage0 1.15-1ubuntu2  (source libxcb 1.15-1ubuntu2)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libxcb-damage0/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libxcb/1.15-1ubuntu2
+    usr/lib/libxcb-damage.so.0
+
+libxcb-glx0 1.15-1ubuntu2  (source libxcb 1.15-1ubuntu2)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libxcb-glx0/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libxcb/1.15-1ubuntu2
+    usr/lib/libxcb-glx.so.0
+
+libxcb-icccm4 0.4.1-1.1build3  (source xcb-util-wm 0.4.1-1.1build3)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libxcb-icccm4/copyright
+  Source:  https://launchpad.net/ubuntu/+source/xcb-util-wm/0.4.1-1.1build3
+    usr/lib/libxcb-icccm.so.4
+
+libxcb-image0 0.4.0-2build1  (source xcb-util-image 0.4.0-2build1)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libxcb-image0/copyright
+  Source:  https://launchpad.net/ubuntu/+source/xcb-util-image/0.4.0-2build1
+    usr/lib/libxcb-image.so.0
+
+libxcb-keysyms1 0.4.0-1build4  (source xcb-util-keysyms 0.4.0-1build4)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libxcb-keysyms1/copyright
+  Source:  https://launchpad.net/ubuntu/+source/xcb-util-keysyms/0.4.0-1build4
+    usr/lib/libxcb-keysyms.so.1
+
+libxcb-randr0 1.15-1ubuntu2  (source libxcb 1.15-1ubuntu2)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libxcb-randr0/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libxcb/1.15-1ubuntu2
+    usr/lib/libxcb-randr.so.0
+
+libxcb-render-util0 0.3.9-1build4  (source xcb-util-renderutil 0.3.9-1build4)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libxcb-render-util0/copyright
+  Source:  https://launchpad.net/ubuntu/+source/xcb-util-renderutil/0.3.9-1build4
+    usr/lib/libxcb-render-util.so.0
+
+libxcb-render0 1.15-1ubuntu2  (source libxcb 1.15-1ubuntu2)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libxcb-render0/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libxcb/1.15-1ubuntu2
+    usr/lib/libxcb-render.so.0
+
+libxcb-shape0 1.15-1ubuntu2  (source libxcb 1.15-1ubuntu2)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libxcb-shape0/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libxcb/1.15-1ubuntu2
+    usr/lib/libxcb-shape.so.0
+
+libxcb-shm0 1.15-1ubuntu2  (source libxcb 1.15-1ubuntu2)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libxcb-shm0/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libxcb/1.15-1ubuntu2
+    usr/lib/libxcb-shm.so.0
+
+libxcb-sync1 1.15-1ubuntu2  (source libxcb 1.15-1ubuntu2)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libxcb-sync1/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libxcb/1.15-1ubuntu2
+    usr/lib/libxcb-sync.so.1
+
+libxcb-util1 0.4.0-1build3  (source xcb-util 0.4.0-1build3)
+  Licence: MIT    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libxcb-util1/copyright
+  Source:  https://launchpad.net/ubuntu/+source/xcb-util/0.4.0-1build3
+    usr/lib/libxcb-util.so.1
+
+libxcb-xfixes0 1.15-1ubuntu2  (source libxcb 1.15-1ubuntu2)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libxcb-xfixes0/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libxcb/1.15-1ubuntu2
+    usr/lib/libxcb-xfixes.so.0
+
+libxcb-xinput0 1.15-1ubuntu2  (source libxcb 1.15-1ubuntu2)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libxcb-xinput0/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libxcb/1.15-1ubuntu2
+    usr/lib/libxcb-xinput.so.0
+
+libxcb-xkb1 1.15-1ubuntu2  (source libxcb 1.15-1ubuntu2)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libxcb-xkb1/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libxcb/1.15-1ubuntu2
+    usr/lib/libxcb-xkb.so.1
+
+libxcomposite1 1:0.4.5-1build3  (source libxcomposite 1:0.4.5-1build3)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libxcomposite1/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libxcomposite/1:0.4.5-1build3
+    usr/lib/libXcomposite.so.1
+
+libxcursor1 1:1.2.1-1build1  (source libxcursor 1:1.2.1-1build1)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libxcursor1/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libxcursor/1:1.2.1-1build1
+    usr/lib/libXcursor.so.1
+
+libxdamage1 1:1.1.6-1build1  (source libxdamage 1:1.1.6-1build1)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libxdamage1/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libxdamage/1:1.1.6-1build1
+    usr/lib/libXdamage.so.1
+
+libxdmcp6 1:1.1.3-0ubuntu6  (source libxdmcp 1:1.1.3-0ubuntu6)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libxdmcp6/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libxdmcp/1:1.1.3-0ubuntu6
+    usr/lib/libXdmcp.so.6
+
+libxext6 2:1.3.4-1build2  (source libxext 2:1.3.4-1build2)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libxext6/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libxext/2:1.3.4-1build2
+    usr/lib/libXext.so.6
+
+libxfixes3 1:6.0.0-2build1  (source libxfixes 1:6.0.0-2build1)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libxfixes3/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libxfixes/1:6.0.0-2build1
+    usr/lib/libXfixes.so.3
+
+libxi6 2:1.8.1-1build1  (source libxi 2:1.8.1-1build1)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libxi6/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libxi/2:1.8.1-1build1
+    usr/lib/libXi.so.6
+
+libxinerama1 2:1.1.4-3build1  (source libxinerama 2:1.1.4-3build1)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libxinerama1/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libxinerama/2:1.1.4-3build1
+    usr/lib/libXinerama.so.1
+
+libxkbcommon-x11-0 1.6.0-1build1  (source libxkbcommon 1.6.0-1build1)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libxkbcommon-x11-0/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libxkbcommon/1.6.0-1build1
+    usr/lib/libxkbcommon-x11.so.0
+
+libxkbcommon0 1.6.0-1build1  (source libxkbcommon 1.6.0-1build1)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libxkbcommon0/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libxkbcommon/1.6.0-1build1
+    usr/lib/libxkbcommon.so.0
+
+libxrandr2 2:1.5.2-2build1  (source libxrandr 2:1.5.2-2build1)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libxrandr2/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libxrandr/2:1.5.2-2build1
+    usr/lib/libXrandr.so.2
+
+libxrender1 1:0.9.10-1.1build1  (source libxrender 1:0.9.10-1.1build1)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libxrender1/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libxrender/1:0.9.10-1.1build1
+    usr/lib/libXrender.so.1
+
+libxtst6 2:1.2.3-1.1ubuntu0.1  (source libxtst 2:1.2.3-1.1ubuntu0.1)
+  Licence: NOASSERTION    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libxtst6/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libxtst/2:1.2.3-1.1ubuntu0.1
+    usr/lib/libXtst.so.6
+
+libzstd1 1.5.5+dfsg2-2build1.1  (source libzstd 1.5.5+dfsg2-2build1.1)
+  Licence: BSD-3-Clause OR GPL-2.0-only    Copyright: usr/share/doc/putgd/bundled-licenses/distro/libzstd1/copyright
+  Source:  https://launchpad.net/ubuntu/+source/libzstd/1.5.5+dfsg2-2build1.1
+    usr/lib/libzstd.so.1
