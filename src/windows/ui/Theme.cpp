@@ -480,16 +480,14 @@ bool rowDraw(NMLVCUSTOMDRAW* cd, LRESULT& result) {
         RECT client{}, header{};
         GetClientRect(list, &client);
         if (HWND h = ListView_GetHeader(list)) { GetWindowRect(h, &header); client.top += header.bottom - header.top; }
-        // Only the area being painted: a repaint of one row (selection, hover) must not
-        // wipe the rows the list is not about to draw again.
-        RECT area{};
-        if (!IntersectRect(&area, &client, &cd->nmcd.rc)) area = client;
         if (!SendMessageW(list, LVM_GETITEMCOUNT, 0, 0)) {
-            fill(cd->nmcd.hdc, area, backgroundOf(list));
+            fill(cd->nmcd.hdc, client, backgroundOf(list));
             result = CDRF_DODEFAULT; // the empty-state text follows
             return true;
         }
-        fill(cd->nmcd.hdc, area, backgroundOf(list));
+        // No background fill here: the list erases with its own background colour, and
+        // every row fills its rectangle below. Filling at this stage reached the whole
+        // double buffer while only the dirty rows were drawn again, which wiped the rest.
         result = CDRF_NOTIFYITEMDRAW;
         return true;
     }
