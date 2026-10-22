@@ -81,6 +81,23 @@ Every picture names its build in its caption.
 
 ![m74: first click, ActionInvoked default, the recorder's log](pictures/415-first-click-m74.png)
 
+## The link guard
+
+The two mishaps below came from links reaching the user's real browser profile. So the drivers in [`lab/`](lab/) now refuse that outright. These are copies of the acceptance rerun's `afa.py` and `i326.py` with the guard added; the other helpers they import are the rerun's own `lab/` and `tools/lab/`.
+
+**What's guarded:**
+- **`afa.require_recorder`:** it checks that `gio`, in the session's real environment, resolves both `x-scheme-handler/http` and `https` to the stand-in recorder, and that the recorder's desktop entry exists. Otherwise it refuses and exits 4. It runs:
+  - at the start of `afa.py notify` and right before its banner click;
+  - in `i326.py open-link`;
+  - at the start of every [`trial415.py`](lab/trial415.py) trial and right before its click.
+- **`afa.py cleanup`:**
+  - it refuses while any run has the recorder on, so `handler-off` comes first;
+  - it never deletes the recorder's entry itself.
+
+**Tested on k72 with the recorder off** (2026-10-22T20:41Z, a throwaway `AFA_ROOT` in /tmp, removed afterwards). All four commands refused: `recorder-check`, `trial415.py` and `afa.py notify` exited 4, and `cleanup` exited 1. The transcript is [`results/guard-test.txt`](results/guard-test.txt).
+
+![The guard refusing](pictures/415-link-guard-refuses.png)
+
 ## Idle memory
 
 `afa memory`, 90 s, after the same steps on each build (setup, start, two banner trials):
@@ -97,7 +114,7 @@ The RSS is unchanged, and both builds are inside the 40 MiB budget.
 - **Firefox opened twice by mistake.** Both times, the loopback `http://127.0.0.1:…/fixture/afa/…` links reached Firefox with the default profile on k72 and m74, instead of the stand-in recorder.
   - **18:06Z:** the first six reproduction clicks ran before the recorder was on.
   - **20:32Z:** for the 968 memory baseline, `afa cleanup` of the PR run removed the recorder's desktop entry. That cleanup removes desktop entries created during its run.
-  - **Lesson:** turn the recorder off (`i326.py handler-off`) before any `afa cleanup`, and keep it in its own run.
+  - **Lesson:** turn the recorder off (`i326.py handler-off`) before any `afa cleanup`, and keep it in its own run. The drivers now enforce both (see the link guard above).
   - **Handling:** each Firefox was closed by its PID within three minutes. No frame of it was kept: one crop that might have caught it was deleted unseen. ChatGPT, k72's https default, was never opened.
 - **Default handlers restored:** `mimeapps.list` was restored byte for byte from the recorder's backup both times. k72 resolves http(s) to `chatgpt.desktop` again, and m74 to `firefox.desktop`.
 - **Desktops:** both locks were released `--verified-clean`. Residents, input agents, loopback feeds and run folders were removed.

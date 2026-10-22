@@ -32,7 +32,9 @@ def main():
     p = argparse.ArgumentParser(); p.add_argument('kind', choices=('putgd', 'control')); p.add_argument('name')
     p.add_argument('--hover', type=float, default=.2); p.add_argument('--label', required=True); p.add_argument('--settle', type=float, default=2.0); p.add_argument('--at', help='x,y relative to the banner component box (default: inner centre, top third)')
     a = p.parse_args()
-    run = Run(a.name); frames, inp, size = tools(run)
+    run = Run(a.name)
+    afa.require_recorder(run.env(private=False))  # #415: refuse before any notification while links could reach a browser
+    frames, inp, size = tools(run)
     rep = {'kind': a.kind, 'hover': a.hover, 'settle': a.settle, 'at': iso()}
     park(run, inp, size); base = frames.grab()
     monitor = notify_monitor(run); time.sleep(.6)
@@ -57,6 +59,7 @@ def main():
             outer = rep['banner']['components'][0]['box']; dx, dy = (int(v) for v in a.at.split(','))
             target = (outer[0] + dx, outer[1] + dy); rep['outer'] = outer
         while time.monotonic() - t0 < a.settle: time.sleep(.05)
+        afa.require_recorder(run.env(private=False))
         t = click(inp, target, a.hover)
         rep.update(clicked=target, pressAfterShownSeconds=round(t - t0, 2))
         time.sleep(3); f2 = frames.grab()
