@@ -30,8 +30,8 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-import afa  # noqa: E402
-import ua_app  # noqa: E402  frame, notifications, window, synthetic_png
+import afa  # noqa: E402  #415's guarded copy (docs/evidence/2026-10-22-rail-391-notify-415/lab/afa.py)
+import ua_app  # noqa: E402  frame, notifications, window, synthetic_png, safe_handler
 ROOT = Path(os.environ.get('UA_ROOT', str(Path.home() / 'work/put.gd-ua/pkg')))
 LAB = 'https://pkg.put.gd/lab'
 APT = Path('/etc/apt/sources.list.d/putgd.sources')
@@ -198,6 +198,7 @@ def frame_only(args):
 
 def pointer(args):
     run = Run(args.name)
+    ua_app.safe_handler(run.meta['session'])
     import rfb
     c = rfb.RFB(run.meta['vnc'], host=os.environ.get('UPD_VNC_HOST', '127.0.0.1')); size = c.frame()[:2]; c.close()
     inp = afa.Input(run, size)

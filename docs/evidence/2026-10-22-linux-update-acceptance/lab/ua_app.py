@@ -19,7 +19,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-import afa  # noqa: E402  session_environment, write_png, sha256, iso
+import afa  # noqa: E402  #415's guarded copy: session_environment, write_png, sha256, iso, Input, RECORDER
 ROOT = Path(os.environ.get('UPD_ROOT', str(Path.home() / 'work/put.gd-ua/app')))
 LAB = 'https://pkg.put.gd/lab'
 DATA = Path.home() / '.local/share'
@@ -395,10 +395,34 @@ def frame_only(args):
     out(run.record('frame', {'label': args.label, 'frame': frame(run, args.label)}))
 
 
+def safe_handler(session):
+    """Hard guard (after #415): every click or key chord runs only while links can't reach the user's own browser. The
+    session's http and https default must be #326's stand-in recorder (i326.py handler-on) or the temporary Firefox entry
+    (ffdefault.py on), or be Firefox whose every install defaults to a temporary putgd-afa2-* profile (ffprofile.py on).
+    Exits 4 otherwise."""
+    import configparser
+    env = dict(session); env['PATH'] = '/usr/bin:/bin'
+    found = {s: (afa.sh('gio', 'mime', f'x-scheme-handler/{s}', env=env).splitlines() or [''])[0] for s in ('http', 'https')}
+    entries = (afa.RECORDER, 'putgd-afa2-firefox.desktop')
+    ok = all(v.rstrip().endswith(entries) for v in found.values())
+    if not ok and all('firefox' in v for v in found.values()):
+        for root in (Path.home() / '.mozilla/firefox', Path.home() / 'snap/firefox/common/.mozilla/firefox'):
+            ini = root / 'profiles.ini'
+            if ini.exists():
+                c = configparser.RawConfigParser(); c.optionxform = str; c.read(ini)
+                installs = [x for x in c.sections() if x.startswith('Install')]
+                ok = bool(installs) and all(c.get(x, 'Default', fallback='').startswith('putgd-afa2-') for x in installs)
+    if ok: return found
+    print(json.dumps({'refused': 'no click: links could reach the user\'s own browser (run i326.py handler-on, or ffdefault.py/ffprofile.py on)',
+                      'gio': found}), file=sys.stderr, flush=True)
+    raise SystemExit(4)
+
+
 def pointer(args):
     """A real pointer click (or a key chord) on the desktop: xdotool on X11, the uinput agent on physical
-    Wayland (tools/lab/host_input.py), the VNC server in a VM. Coordinates are frame pixels."""
+    Wayland (tools/lab/host_input.py), the VNC server in a VM. Coordinates are frame pixels. Guarded by safe_handler."""
     run = Run(args.name)
+    safe_handler(run.meta['session'])
     import rfb
     c = rfb.RFB(run.meta['vnc'], host=os.environ.get('UPD_VNC_HOST', '127.0.0.1')); size = c.frame()[:2]; c.close()
     run.meta.setdefault('input', 'vnc')

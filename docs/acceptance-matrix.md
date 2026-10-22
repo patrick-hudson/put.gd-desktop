@@ -188,7 +188,13 @@ before expiry, release with `--verified-clean`). VMs are overlays of the goldens
 Installs are scoped to `putgd`: `apt install --only-upgrade putgd`, `dnf upgrade putgd`, never a bare
 upgrade. A GUI updater installs only put.gd: other updates are unticked, or the reason it can't be
 scoped is written down. Before any full-desktop frame, close Patrick's Firefox, ChatGPT and Codex
-windows, or leave that desktop until he has. Each resident runs with private `XDG_CONFIG_HOME`,
+windows, or leave that desktop until he has. No link may reach his browser:
+- The drivers refuse every click unless the session's `http` and `https` default is #326's stand-in
+  recorder, or a temporary Firefox profile from #397's item F helpers (the guard #415 added).
+- Turn the recorder on before the first click.
+- Switch to the temporary Firefox profile only for the link steps (U5, U14).
+
+Each resident runs with private `XDG_CONFIG_HOME`,
 `XDG_STATE_HOME`, `XDG_CACHE_HOME` and runtime directory unless the item tests the default profile
 (U5, U11).
 
