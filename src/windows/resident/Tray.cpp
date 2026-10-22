@@ -82,7 +82,7 @@ void Tray::notify(const std::string& title, const std::string& message, bool war
     if (!added_) return;
     pendingLink_ = link;
     NOTIFYICONDATAW data{}; data.cbSize = sizeof data; data.hWnd = owner_; data.uID = trayId; data.uFlags = NIF_INFO | NIF_SHOWTIP;
-    data.dwInfoFlags = (warning ? NIIF_WARNING : NIIF_INFO) | NIIF_RESPECT_QUIET_TIME;
+    data.dwInfoFlags = warning ? NIIF_WARNING : NIIF_INFO;
     wcsncpy_s(data.szInfoTitle, paths::wide(title).c_str(), _TRUNCATE);
     wcsncpy_s(data.szInfo, paths::wide(message).c_str(), _TRUNCATE);
     Shell_NotifyIconW(NIM_MODIFY, &data);
