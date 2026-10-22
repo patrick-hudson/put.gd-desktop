@@ -1,0 +1,34 @@
+// The version resource of putgd.exe and putgd-cli.exe, included by their .rc files
+// after they define PUTGD_RC_DESCRIPTION, PUTGD_RC_NAME and PUTGD_RC_FILENAME.
+// FILEVERSION and PRODUCTVERSION are YY,MDD,N/10000,N%10000; ProductVersion is the
+// full calendar version (docs/versioning.md).
+#include "common/VersionResource.h"
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION PUTGD_RC_VERSION
+PRODUCTVERSION PUTGD_RC_VERSION
+FILEFLAGSMASK VS_FFI_FILEFLAGSMASK
+FILEFLAGS 0
+FILEOS VOS_NT_WINDOWS32
+FILETYPE VFT_APP
+FILESUBTYPE VFT2_UNKNOWN
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "CompanyName", "put.gd"
+            VALUE "FileDescription", PUTGD_RC_DESCRIPTION
+            VALUE "FileVersion", PUTGD_RC_FILE_VERSION_TEXT
+            VALUE "InternalName", PUTGD_RC_NAME
+            VALUE "LegalCopyright", "Copyright (c) 2026 Patrick Hudson. MIT License."
+            VALUE "OriginalFilename", PUTGD_RC_FILENAME
+            VALUE "ProductName", "put.gd"
+            VALUE "ProductVersion", PUTGD_RC_VERSION_TEXT
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END

@@ -1,0 +1,7 @@
+// Resources of putgd-cli.exe: version information.
+#include <windows.h>
+
+#define PUTGD_RC_DESCRIPTION "put.gd command-line client"
+#define PUTGD_RC_NAME "putgd-cli"
+#define PUTGD_RC_FILENAME "putgd-cli.exe"
+#include "common/VersionInfo.rc"

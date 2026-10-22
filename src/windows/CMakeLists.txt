@@ -43,6 +43,14 @@ string(JSON _commit GET "${_manifest}" gitCommit)
 string(JSON _count GET "${_manifest}" commitCount)
 string(JSON _dirty GET "${_manifest}" dirty)
 configure_file(common/BuildInfo.h.in "${CMAKE_CURRENT_BINARY_DIR}/generated/common/BuildInfo.h" @ONLY)
+# VERSIONINFO of both executables and the MSI version (#396), from the same manifest.
+include(cmake/WindowsVersion.cmake)
+putgd_windows_version("${PUTGD_VERSION}" PUTGD_WINDOWS)
+configure_file(common/VersionResource.h.in "${CMAKE_CURRENT_BINARY_DIR}/generated/common/VersionResource.h" @ONLY)
+# Read by src/windows/packaging/package.py, which builds the zip and the MSI.
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/windows-version.json.tmp"
+  "{\"version\": \"${PUTGD_VERSION}\", \"fileVersion\": \"${PUTGD_WINDOWS_FILE_VERSION_TEXT}\", \"msiVersion\": \"${PUTGD_WINDOWS_MSI_VERSION}\"}\n")
+configure_file("${CMAKE_CURRENT_BINARY_DIR}/windows-version.json.tmp" "${CMAKE_CURRENT_BINARY_DIR}/windows-version.json" COPYONLY)
 
 add_library(putgd_win_options INTERFACE)
 target_include_directories(putgd_win_options INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/generated")
@@ -80,6 +88,7 @@ if(PUTGD_WINDOWS_PORTABLE_TESTS)
   add_executable(test_win_editor tests/test_editor.cpp editor/EditDocument.cpp editor/EditorCommands.cpp editor/Export.cpp)
   target_link_libraries(test_win_editor PRIVATE putgd_win_core)
   add_test(NAME windows_editor_contract COMMAND test_win_editor)
+  add_test(NAME windows_version_mapping COMMAND "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_version_mapping.cmake")
 endif()
 
 if(WIN32)
@@ -122,6 +131,6 @@ if(WIN32)
     target_link_options(putgd PRIVATE /MANIFEST:NO)
   endif()
 
-  add_executable(putgd-cli cli/main.cpp)
+  add_executable(putgd-cli cli/main.cpp cli/putgd-cli.rc)
   target_link_libraries(putgd-cli PRIVATE putgd_win_platform)
 endif()
