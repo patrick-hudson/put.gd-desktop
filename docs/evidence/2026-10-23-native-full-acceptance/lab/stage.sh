@@ -10,7 +10,7 @@ cp "$repo"/docs/evidence/2026-10-23-native-full-acceptance/lab/nfa.py \
    "$repo"/docs/evidence/2026-10-22-rail-391-notify-415/lab/afa.py "$repo"/docs/evidence/2026-10-22-rail-391-notify-415/lab/i326.py \
    "$repo"/docs/evidence/2026-10-22-appimage-full-acceptance-rerun/lab/rerun.py "$repo"/docs/evidence/2026-10-22-appimage-full-acceptance-rerun/lab/ffdefault.py \
    "$repo"/docs/evidence/2026-10-22-appimage-full-acceptance-rerun/lab/ffprofile.py "$repo"/docs/evidence/2026-10-22-appimage-full-acceptance-rerun/lab/s3creds.py \
-   "$repo"/docs/evidence/2026-10-22-appimage-full-acceptance-rerun/lab/gtk_pattern.py \
+   "$repo"/docs/evidence/2026-10-22-appimage-full-acceptance-rerun/lab/gtk_pattern.py "$repo"/docs/evidence/2026-10-22-linux-update-acceptance/lab/relogin.sh \
    "$repo"/docs/evidence/2026-10-23-native-full-acceptance/lab/nk.sh "$repo"/docs/evidence/2026-10-23-native-full-acceptance/lab/clip_owner.py \
    "$repo"/tools/lab/rfb.py "$repo"/tools/lab/cover_player.py "$repo"/tools/lab/host_input.py "$repo"/tests/fixtures/s3_server.py \
    "$repo"/packaging/linux/repo/keys/putgd-nightly.minisign.pub "$repo"/packaging/linux/repo/keys/putgd-stable.minisign.pub "$dst"/
