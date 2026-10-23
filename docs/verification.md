@@ -157,6 +157,27 @@ Policy: [CI coverage, package installs](ci.md#package-installs). Evidence:
 
 Not covered: the `ci.yml` jobs' installs (#389).
 
+## Stalled package installs (#467) — 2026-10-23
+
+Code: [#498](https://github.com/patrick-hudson/put.gd-desktop/pull/498), head
+`1926941a`, all CI jobs green
+([run 40008537011](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40008537011)).
+Policy: [CI coverage, stalled installs](ci.md#stalled-installs). Evidence:
+`docs/evidence/2026-10-23-package-install-stalls-467/`.
+
+- **Before.** Nightly run 39851369595 (`eab13a18`): `packages / appimage`
+  hung for 93 minutes after `Get:5 https://archive.ubuntu.com/ubuntu
+  noble-security InRelease` until it was cancelled.
+- **Demo.** Run 40008409878 on throwaway `04aac39e` (#498's install script plus
+  a stalling apt proxy, not merged). A stall was stopped after 60 s and the
+  retry passed. Two stopped attempts fell back to the snapshot, which
+  installed. With the default limits and no snapshot, four 10-minute stalls
+  failed the job red after 43.5 minutes, inside its 90-minute timeout.
+
+Not covered: retries for the `linux` and `sanitizers` installs (#389), the
+AppImage install's lack of a snapshot (#500), the Windows `portable` job
+(#501), and the Qt ASan download (#502).
+
 ## Weekly stress lane on k72 (#360) — 2026-10-22
 
 Code: [#364](https://github.com/patrick-hudson/put.gd-desktop/pull/364). How it
