@@ -274,6 +274,74 @@ class Recovery(LendTest):
         self.assertNotIn('export', [call[0] for call in self.calls])
 
 
+class Resident:
+    """A headless lab resident whose setup jobs end with synthetic outcomes."""
+
+    def __init__(self, outcomes, folder='folder-uid'):
+        self.outcomes, self.patches = outcomes, []
+        self.settings = {'accountRootUid': '', 'folderUid': folder, 'folderName': 'putgd-lab-d69-check'}
+
+    def setup(self, kind, params):
+        return self.outcomes.get(kind, {'state': 'completed', 'result': {}})
+
+    def patch_profile(self, changes):
+        self.patches.append(changes)
+        self.settings.update(changes)
+
+    def profile(self):
+        return {}, {'settings': self.settings}
+
+
+class Checks(LendTest):
+    def check(self, outcomes, **options):
+        resident = Resident(outcomes)
+        with mock.patch.object(proton, 'headless', lambda layout, registry, keychain: _context(resident)):
+            return proton.check(self.layout, 'local_checker', 'checker', clock=self.clock, heartbeat=False,
+                                **options), resident
+
+    def test_a_passing_check_records_the_account_and_releases_the_lock(self):
+        outcome, resident = self.check({'inspectAccount': {'state': 'completed', 'result': {
+            'accountRootUid': 'synthetic-root', 'accountEmail': 'lab@example.invalid'}}})
+        self.assertEqual((outcome['state'], outcome['passed']), ('ok', True))
+        registry = proton.read_registry(self.layout)
+        self.assertEqual((registry['session'], registry['account']), ('ok', 'lab@example.invalid'))
+        self.assertEqual(resident.patches, [{'accountRootUid': 'synthetic-root'}])
+        self.assertEqual(self.lock().status()['state'], 'free')
+
+    def test_a_lost_session_is_reported_with_the_sign_in_again_action(self):
+        failed = {'inspectAccount': {'state': 'failed', 'error': {'code': 'authentication_required'}}}
+        with self.assertRaises(proton.SessionFailure) as raised:
+            self.check(failed)
+        self.assertIn('signs in again on this builder only', str(raised.exception))
+        registry = proton.read_registry(self.layout)
+        self.assertEqual((registry['session'], registry['lastCheck']['passed']), ('signed_out', False))
+        status = proton.status(self.layout)['session']
+        self.assertEqual(status['state'], 'signed_out')
+        self.assertIn('signs in again', status['action'])
+        self.assertEqual(self.lock().status()['state'], 'free')
+
+    def test_a_locked_keyring_is_not_reported_as_a_lost_session(self):
+        failed = {'testDestination': {'state': 'failed', 'error': {'code': 'keychain_unavailable'}}}
+        with self.assertRaises(proton.SessionFailure):
+            self.check(failed)
+        self.assertEqual(proton.read_registry(self.layout)['session'], 'keychain_unavailable')
+        self.assertEqual(proton.diagnose('rate_limited')['state'], 'service_error')
+
+    def test_keepalive_skips_while_the_session_is_lent(self):
+        self.lock().acquire('lender', 'local_lender', 'lend', 30)
+        self.assertIn('held by lender', proton.keepalive(self.layout, clock=self.clock)['skipped'])
+        self.lock().release('local_lender', verified_clean=True)
+        with mock.patch.object(proton, 'headless', lambda layout, registry, keychain: _context(Resident({}))):
+            later = lambda: START + datetime.timedelta(minutes=5)
+            self.assertEqual(proton.keepalive(self.layout, clock=later)['state'], 'ok')
+        self.assertEqual(proton.proton_lock(self.layout, 'd69', later).status()['last']['owner'], 'proton-keepalive')
+
+
+def _context(value):
+    import contextlib
+    return contextlib.nullcontext(value)
+
+
 class Registry(unittest.TestCase):
     def test_reference_is_per_builder_and_the_registry_is_private_nonsecret_json(self):
         self.assertEqual(proton.reference_for('m74'), 'putgd/proton/lab-m74')

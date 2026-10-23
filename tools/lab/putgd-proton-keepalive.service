@@ -1,0 +1,17 @@
+# User unit for a builder's put.gd Proton lab session: one non-destructive check
+# (account inspection and Test connection) under the builder's Proton lock, which
+# also refreshes and so uses the session. Installed with proton_lab.py
+# install-keepalive and started by putgd-proton-keepalive.timer. It is skipped,
+# not queued, while anyone holds the Proton lock. See docs/proton-drive.md.
+[Unit]
+Description=put.gd Proton lab session keep-alive check
+After=network-online.target
+
+[Service]
+Type=oneshot
+# The check runs headless with its own runtime directory; it must not reach the live desktop.
+UnsetEnvironment=DISPLAY WAYLAND_DISPLAY XAUTHORITY XDG_SESSION_TYPE XDG_CURRENT_DESKTOP DESKTOP_SESSION
+ExecStart=/usr/bin/python3 -I %h/.local/libexec/putgd-proton/proton_lab.py keepalive
+TimeoutStartSec=20min
+KillMode=control-group
+TimeoutStopSec=60

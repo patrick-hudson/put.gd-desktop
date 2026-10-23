@@ -15,11 +15,14 @@ VM borrowing the session through `lend`. The rules are in docs/proton-drive.md
   proton_lab.py status
   proton_lab.py install-app APPIMAGE
   proton_lab.py seed HOST
+  proton_lab.py lab-keyring                 # gnome-keyring: blank 'putgd lab' keyring as the default
+  proton_lab.py keychain                    # synthetic write/read/delete in the default keyring
   proton_lab.py open --session ID           # under the desktop lock: Settings for the sign-in
   proton_lab.py close --session ID
   proton_lab.py check --session ID --owner NAME [--new-folder]
   proton_lab.py lend RUN --session ID --owner NAME --purpose TEXT -- COMMAND [ARG ...]
   proton_lab.py recover RECEIPTS --session ID --owner NAME
+  proton_lab.py keepalive | install-keepalive   # weekly check under the Proton lock
 
 No command prints, logs, hashes or writes session material. Snapshots move only
 through tools/lab/provision_live_credentials.py's private pipes, inside one
@@ -463,48 +466,94 @@ def close_settings(layout, session):
     return {'closed': record['pids']}
 
 
-def check(layout, session, owner, new_folder=False, clock=desktop_lock.now_utc):
+# What a failed check means for the builder's session, and what to do about it.
+DIAGNOSES = {
+    'authentication_required': ('signed_out', 'The session is gone: signed out, password changed, revoked in '
+                                "Proton's security settings, or a refused refresh (the official code then deletes "
+                                'the keychain entry). Patrick signs in again on this builder only: open, Connect account.'),
+    'keychain_unavailable': ('keychain_unavailable', 'The keyring is locked or has no default collection (for '
+                             'example after a reboot under autologin). Unlock it on this desktop; the session itself '
+                             'may still be valid. Check again before asking for a new sign-in.'),
+    'account_reference_in_use': ('needs_new_reference', 'The keychain entry exists but holds no usable session. Patrick '
+                                 'signs in again on this builder; seed then records the replacement reference.'),
+    'account_changed': ('account_changed', 'A different Proton account is connected; reconnect the lab test account.'),
+    'destination_unavailable': ('folder_unavailable', 'The session works but the selected folder is gone; '
+                                'check --new-folder selects a new one.'),
+}
+
+
+def diagnose(code):
+    state, action = DIAGNOSES.get(code, ('service_error', 'Proton or the network failed; the session is not known '
+                                         'to be lost. Check again later.'))
+    return {'state': state, 'error': code, 'action': action}
+
+
+def setup_or_fail(resident, kind, params):
+    state = resident.setup(kind, params)
+    if state.get('state') != 'completed':
+        raise SessionFailure((state.get('error') or {}).get('code') or 'operation_failed', kind)
+    return state.get('result') or {}
+
+
+class SessionFailure(LabFailure):
+    def __init__(self, code, step):
+        self.diagnosis = dict(diagnose(code), step=step)
+        super().__init__(f'{step} failed ({code}): {self.diagnosis["action"]}')
+
+
+def check(layout, session, owner, new_folder=False, clock=desktop_lock.now_utc, purpose='proton_lab.py check',
+          heartbeat=True):
     """Non-destructive proof that the builder's session works: inspect the account, optionally
-    create a new isolated synthetic folder for it, then run Test connection (read-only)."""
+    create a new isolated synthetic folder for it, then run Test connection (read-only).
+    The outcome, and on failure what it means, is recorded in the registry as `lastCheck`."""
     registry = require_registry(layout, signed_in=False)
     host = registry['host']
     if lab_app_processes(layout):
         raise LabFailure('The lab profile is open on the desktop; close it (close) before a check')
-    with holding(proton_lock(layout, host, clock), session, owner, 'proton_lab.py check'):
-        with headless(layout, registry, keychain=True) as resident:
-            account = resident.setup('inspectAccount', {})
-            if account.get('state') != 'completed':
-                raise LabFailure('Account inspection failed: ' + json.dumps(account.get('error')))
-            result = account.get('result') or {}
-            changes = {}
-            if result.get('accountRootUid'):
-                changes['accountRootUid'] = result['accountRootUid']
-            if new_folder:
-                name = f'putgd-lab-{host}-check-{now_text().replace(":", "")}'
-                created = resident.setup('createFolder', {'input': {'name': name}})
-                if created.get('state') != 'completed':
-                    raise LabFailure('Creating the check folder failed: ' + json.dumps(created.get('error')))
-                folder = created.get('result') or {}
-                changes.update(folderUid=folder['uid'], folderName=folder.get('name', name))
-            if changes:
-                resident.patch_profile(changes)
-            tested = resident.setup('testDestination', {})
-            _, profile = resident.profile()
-    passed = tested.get('state') == 'completed'
-    registry = require_registry(layout, signed_in=False)
-    registry['lastCheck'] = {'at': now_text(), 'passed': passed, 'by': owner,
-                             'folderName': profile['settings'].get('folderName'),
-                             'testScope': (tested.get('result') or {}).get('testScope'),
-                             'error': (tested.get('error') or {}).get('code'),
-                             'app': (registry.get('app') or {}).get('version', {}).get('version')}
-    if passed and not registry.get('signedIn'):
-        registry['signedIn'] = registry['lastCheck']['at']
-    if result.get('accountEmail'):
-        registry['account'] = result['accountEmail']
-    write_registry(layout, registry)
-    if not passed:
-        raise LabFailure('Test connection failed: ' + str(registry['lastCheck']['error']))
-    return registry['lastCheck']
+    outcome = {'at': now_text(), 'by': owner, 'app': (registry.get('app') or {}).get('version', {}).get('version')}
+    account = {}
+    try:
+        with holding(proton_lock(layout, host, clock), session, owner, purpose, heartbeat=heartbeat):
+            with headless(layout, registry, keychain=True) as resident:
+                account = setup_or_fail(resident, 'inspectAccount', {})
+                changes = {'accountRootUid': account['accountRootUid']} if account.get('accountRootUid') else {}
+                if new_folder:
+                    name = f'putgd-lab-{host}-check-{now_text().replace(":", "")}'
+                    folder = setup_or_fail(resident, 'createFolder', {'input': {'name': name}})
+                    changes.update(folderUid=folder['uid'], folderName=folder.get('name', name))
+                if changes:
+                    resident.patch_profile(changes)
+                _, profile = resident.profile()
+                if profile['settings'].get('folderUid'):
+                    tested = setup_or_fail(resident, 'testDestination', {})
+                    outcome['testScope'] = tested.get('testScope')
+                outcome['folderName'] = profile['settings'].get('folderName')
+        outcome.update(passed=True, state='ok')
+    except SessionFailure as failure:
+        outcome.update(failure.diagnosis, passed=False)
+        raise
+    finally:
+        registry = require_registry(layout, signed_in=False)
+        registry['lastCheck'] = outcome
+        registry['session'] = outcome.get('state', 'unknown')
+        if outcome.get('passed') and not registry.get('signedIn'):
+            registry['signedIn'] = outcome['at']
+        if account.get('accountEmail'):
+            registry['account'] = account['accountEmail']
+        write_registry(layout, registry)
+    return outcome
+
+
+def keepalive(layout, clock=desktop_lock.now_utc):
+    """The scheduled check: skipped, never queued, while anyone holds the builder's Proton lock."""
+    registry = require_registry(layout)
+    state = proton_lock(layout, registry['host'], clock).status()
+    if state['state'] != 'free':
+        return {'skipped': 'the Proton lock is held by ' + str((state.get('lock') or {}).get('owner'))}
+    if lab_app_processes(layout):
+        return {'skipped': 'the lab profile app is open'}
+    return check(layout, 'keepalive-' + registry['host'], 'proton-keepalive', clock=clock,
+                 purpose='scheduled keep-alive (proton_lab.py keepalive)', heartbeat=False)
 
 
 def brokers(directory):
@@ -685,10 +734,148 @@ def recover(layout, folder, session, owner, chain_factory=None, guest_factory=Gu
         return {'recovered': True, 'carriedBack': carried}
 
 
+def secret_service(run=subprocess.run):
+    """The default Secret Service collection's label and lock state (D-Bus properties only)."""
+    def call(*arguments):
+        result = run(['busctl', '--user', *arguments], capture_output=True, text=True, timeout=20)
+        return result.stdout.strip() if result.returncode == 0 else None
+    owner = call('status', 'org.freedesktop.secrets')
+    provider = next((line.split('=', 1)[1] for line in (owner or '').splitlines() if line.startswith('Comm=')), None)
+    alias = call('call', 'org.freedesktop.secrets', '/org/freedesktop/secrets', 'org.freedesktop.Secret.Service',
+                 'ReadAlias', 's', 'default')
+    path = alias.split('"')[1] if alias and '"' in alias else '/'
+    if path == '/':
+        return {'provider': provider, 'default': None, 'locked': None}
+    label = call('get-property', 'org.freedesktop.secrets', path, 'org.freedesktop.Secret.Collection', 'Label')
+    locked = call('get-property', 'org.freedesktop.secrets', path, 'org.freedesktop.Secret.Collection', 'Locked')
+    return {'provider': provider, 'default': path, 'label': label.split('"')[1] if label and '"' in label else None,
+            'locked': None if locked is None else locked.endswith('true')}
+
+
+LAB_KEYRING = 'putgd lab'
+
+
+def lab_keyring():
+    """gnome-keyring only: create a collection with an empty master password (stored unencrypted, so it
+    is open after every boot and autologin, with no prompt) and make it the default alias. Existing
+    keyrings stay as they are. Patrick approved blank lab keyrings on 2026-10-23."""
+    import gi  # PyGObject, present with GNOME, Cinnamon and Plasma
+    gi.require_version('Gio', '2.0')
+    from gi.repository import Gio, GLib
+    bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+
+    def call(path, interface, method, parameters, reply):
+        return bus.call_sync('org.freedesktop.secrets', path, interface, method, parameters,
+                             GLib.VariantType(reply), Gio.DBusCallFlags.NONE, 20000, None).unpack()
+
+    service = '/org/freedesktop/secrets'
+    current = call(service, 'org.freedesktop.Secret.Service', 'ReadAlias', GLib.Variant('(s)', ('default',)), '(o)')[0]
+    if secret_service().get('provider') == 'ksecretd':
+        path = kwallet_lab_wallet(call, GLib)
+        call(service, 'org.freedesktop.Secret.Service', 'SetAlias', GLib.Variant('(so)', ('default', path)), '()')
+        return {'collection': path, 'previousDefault': None if current == '/' else current}
+    for path in call(service, 'org.freedesktop.DBus.Properties', 'Get', GLib.Variant(
+            '(ss)', ('org.freedesktop.Secret.Service', 'Collections')), '(v)')[0]:
+        label = call(path, 'org.freedesktop.DBus.Properties', 'Get', GLib.Variant(
+            '(ss)', ('org.freedesktop.Secret.Collection', 'Label')), '(v)')[0]
+        if label == LAB_KEYRING:
+            break
+    else:
+        # The session belongs to this connection; the empty secret is the (blank) master password.
+        session = call(service, 'org.freedesktop.Secret.Service', 'OpenSession',
+                       GLib.Variant('(sv)', ('plain', GLib.Variant('s', ''))), '(vo)')[1]
+        path = call(service, 'org.gnome.keyring.InternalUnsupportedGuiltRiddenInterface', 'CreateWithMasterPassword',
+                    GLib.Variant('(a{sv}(oayays))', ({'org.freedesktop.Secret.Collection.Label':
+                                                      GLib.Variant('s', LAB_KEYRING)},
+                                                     (session, b'', b'', 'text/plain'))), '(o)')[0]
+    call(service, 'org.freedesktop.Secret.Service', 'SetAlias', GLib.Variant('(so)', ('default', path)), '()')
+    return {'collection': path, 'previousDefault': None if current == '/' else current}
+
+
+KWALLET_LAB = 'putgdlab'
+
+
+def kwallet_lab_wallet(call, GLib):
+    """KWallet (ksecretd): create the blank-password wallet the way kwallet-pam creates kdewallet, from
+    a PBKDF2-SHA512 hash (50000 rounds, 56 bytes) of the empty password and a new 56-byte salt. kwalletd
+    opens a wallet whose password is empty without asking, so it is open after every boot."""
+    import hashlib
+    wallets = call('/ksecretd', 'org.kde.KWallet', 'wallets', None, '(as)')[0]
+    if KWALLET_LAB not in wallets:
+        folder = Path.home() / '.local/share/kwalletd'
+        folder.mkdir(mode=0o700, parents=True, exist_ok=True)
+        salt_path = folder / f'{KWALLET_LAB}.salt'
+        if not salt_path.exists():
+            with open(os.open(salt_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), 'wb') as stream:
+                stream.write(os.urandom(56))
+        digest = hashlib.pbkdf2_hmac('sha512', b'', salt_path.read_bytes(), 50000, dklen=56)
+        call('/ksecretd', 'org.kde.KWallet', 'pamOpen', GLib.Variant('(sayi)', (KWALLET_LAB, digest, 0)), '()')
+        deadline = time.monotonic() + 20
+        while KWALLET_LAB not in call('/ksecretd', 'org.kde.KWallet', 'wallets', None, '(as)')[0]:
+            if time.monotonic() > deadline:
+                raise LabFailure('KWallet did not create the lab wallet')
+            time.sleep(.5)
+    return '/org/freedesktop/secrets/collection/' + KWALLET_LAB
+
+
+def keychain(layout):
+    """Prove the default collection takes, returns and removes a synthetic put.gd entry without a prompt,
+    through the same relay and Bun.secrets path the app and lend use. Records the result."""
+    registry = require_registry(layout, signed_in=False)
+    service = secret_service()
+    reference = 'putgd-lab-' + str(__import__('uuid').uuid4())
+    synthetic = json.dumps({'session': {'uid': 'synthetic-uid', 'accessToken': 'synthetic-access'},
+                            'userKeyPassword': 'synthetic-key-password'})
+    broker = brokers(layout.host_bridge)
+    writable = False
+    try:
+        bridge.host_call(broker, 'proton', {'op': 'import', 'reference': reference, 'snapshot': synthetic})
+        writable = bridge.host_call(broker, 'proton', {'op': 'export', 'reference': reference})['snapshot'] == synthetic
+    except bridge.ProvisionError:
+        writable = False
+    finally:
+        with contextlib.suppress(bridge.ProvisionError):
+            bridge.host_call(broker, 'proton', {'op': 'delete', 'reference': reference})
+    # A blank-password collection may report locked until first use; it then opens without a prompt.
+    registry['keychain'] = dict(service, lockedBefore=service['locked'], locked=secret_service()['locked'],
+                                writable=writable, checked=now_text())
+    write_registry(layout, registry)
+    if not writable:
+        raise LabFailure('The default secret-service collection refused a synthetic entry (keychain_unavailable): '
+                         'create or unlock a default collection first; see docs/proton-drive.md')
+    return registry['keychain']
+
+
+KEEPALIVE_FILES = ('proton_lab.py', 'desktop_lock.py', 'provision_live_credentials.py', 'lab.py')
+KEEPALIVE_UNITS = ('putgd-proton-keepalive.service', 'putgd-proton-keepalive.timer')
+
+
+def install_keepalive(layout, libexec=Path.home() / '.local/libexec/putgd-proton',
+                      units=Path.home() / '.config/systemd/user', run=subprocess.run):
+    """Copy this tool set to a stable path and enable the weekly keep-alive timer."""
+    require_registry(layout)
+    layout.private_directory(libexec)
+    for name in KEEPALIVE_FILES:
+        shutil.copyfile(HERE / name, libexec / name)
+    shutil.copytree(HERE / 'profiles', libexec / 'profiles', dirs_exist_ok=True)
+    units.mkdir(parents=True, exist_ok=True)
+    for name in KEEPALIVE_UNITS:
+        shutil.copyfile(HERE / name, units / name)
+    run(['systemctl', '--user', 'daemon-reload'], check=True)
+    run(['systemctl', '--user', 'enable', '--now', KEEPALIVE_UNITS[1]], check=True)
+    return {'libexec': str(libexec), 'units': [str(units / name) for name in KEEPALIVE_UNITS]}
+
+
 def status(layout):
     registry = read_registry(layout)
     lock = proton_lock(layout, registry['host']).status() if registry and registry.get('host') else None
-    return {'registry': registry, 'lock': lock, 'running': lab_app_processes(layout),
+    last = (registry or {}).get('lastCheck') or {}
+    if not registry or not registry.get('signedIn'):
+        session = {'state': 'not_signed_in', 'action': 'Patrick signs in once on this builder: open, Connect account'}
+    else:
+        session = {'state': registry.get('session', 'unknown'), 'checked': last.get('at'),
+                   'action': last.get('action') or 'none'}
+    return {'session': session, 'registry': registry, 'lock': lock, 'running': lab_app_processes(layout),
             'hostBridge': all((layout.host_bridge / name).is_file() for name in BROKERS),
             'guestBridge': all((layout.guest_bridge / name).is_file() for name in BROKERS)}
 
@@ -696,7 +883,12 @@ def status(layout):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     commands = parser.add_subparsers(dest='action', required=True)
-    commands.add_parser('status', help='registry, Proton lock, running lab app and bridge')
+    commands.add_parser('status', help='registry, session state, Proton lock, running lab app and bridge')
+    commands.add_parser('keepalive', help='the scheduled check; skipped while the Proton lock is held')
+    commands.add_parser('install-keepalive', help='enable the weekly keep-alive timer on this builder')
+    commands.add_parser('keychain', help='prove the default keyring takes a synthetic entry without a prompt')
+    commands.add_parser('lab-keyring', help="make a blank-password lab keyring (gnome-keyring) or wallet (KWallet) "
+                                            'the default')
     installing = commands.add_parser('install-app', help='extract a put.gd AppImage into the lab profile')
     installing.add_argument('appimage')
     seeding = commands.add_parser('seed', help='create the lab profile and its Proton Drive destination')
@@ -728,6 +920,14 @@ def main(argv=None):
             reply = open_settings(layout, args.session)
         elif args.action == 'close':
             reply = close_settings(layout, args.session)
+        elif args.action == 'lab-keyring':
+            reply = lab_keyring()
+        elif args.action == 'keychain':
+            reply = keychain(layout)
+        elif args.action == 'install-keepalive':
+            reply = install_keepalive(layout)
+        elif args.action == 'keepalive':
+            reply = keepalive(layout)
         elif args.action == 'check':
             reply = check(layout, args.session, args.owner, args.new_folder)
         elif args.action == 'lend':
