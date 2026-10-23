@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-: "${QT_ROOT_DIR:?Official Qt 6.8.3 root is required}"
+: "${QT_ROOT_DIR:?The official Qt root of packaging/appimage/tools.lock.json is required}"
 release_tag=${RELEASE_TAG:-}
 if [ "${GITHUB_EVENT_NAME:-}" = 'pull_request' ]; then
   release_tag=

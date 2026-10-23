@@ -174,7 +174,7 @@ jobs:
         env:
           LOG_CFG: ${{ github.workspace }}/tools/ci/aqt-logging.ini
         with:
-          version: '6.8.3'
+          version: '6.12.0'
           arch: linux_gcc_64
           modules: qtimageformats
           cache: true
