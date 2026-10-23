@@ -25,6 +25,8 @@ DOCUMENTATION_FILES = frozenset({'README.md', 'AGENTS.md', 'CLAUDE.md', 'CHANGEL
 CONTRACT_PREFIXES = ('tools/lab/', 'tools/maintenance/', 'tools/mcp/',
                      'tests/ci/', 'tests/releases/', 'tests/maintenance/')
 CONTRACT_SUFFIXES = {'tests/desktop': ('.py', '.yaml'), 'tests/performance': ('.py',)}
+# The contracts job's secret scan reads its allowlist from here alone.
+CONTRACT_FILES = frozenset({'.gitleaks.toml'})
 
 # Inputs to the package builders, the curated source archive or CI itself.
 PACKAGING_PREFIXES = ('packaging/', 'tools/releases/', 'tools/proton/', 'tools/ci/',
@@ -54,7 +56,7 @@ def _documentation(path):
 
 
 def _contract_only(path):
-    if path.startswith(CONTRACT_PREFIXES):
+    if path in CONTRACT_FILES or path.startswith(CONTRACT_PREFIXES):
         return True
     parent = str(PurePosixPath(path).parent)
     return path.endswith(CONTRACT_SUFFIXES.get(parent, ()))

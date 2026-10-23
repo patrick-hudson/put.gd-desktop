@@ -101,9 +101,25 @@ class Workflows(unittest.TestCase):
         contracts = job(workflow('ci.yml'), 'contracts')
         for group in ('release', 'proton', 'lab', 'observer', 'evidence'):
             self.assertIn('python3 tools/ci/contracts.py ' + group, contracts)
-        self.assertEqual(contracts.count('if: always()'), 7)
+        self.assertEqual(contracts.count('if: always()'), 8)
         self.assertIn('sha256sum --check --strict', contracts)
         self.assertIn('qemu-utils', contracts)
+
+    def test_contracts_scan_every_ref_for_leaked_secrets(self):
+        # A fork receives every public ref, so the scan reads all of them, with
+        # the pinned gitleaks release and the repository's narrow allowlist.
+        contracts = job(workflow('ci.yml'), 'contracts')
+        self.assertIn('fetch-depth: 0', contracts.split('- name:', 1)[0])
+        scan = contracts.split('- name: Scan every branch and tag for leaked secrets', 1)[1].split('- name:', 1)[0]
+        self.assertIn('if: always()', scan)
+        self.assertRegex(scan, r'gitleaks/releases/download/v8\.\d+\.\d+/gitleaks_8\.\d+\.\d+_linux_x64\.tar\.gz')
+        self.assertRegex(scan, r'echo "[0-9a-f]{64}  \$archive" \| sha256sum --check --strict')
+        for text in ('--config .gitleaks.toml', '--log-opts=--all', '--redact', '--exit-code 1',
+                     '--report-path build/contracts/gitleaks.sarif'):
+            self.assertIn(text, scan)
+        config = (ROOT / '.gitleaks.toml').read_text()
+        self.assertIn('useDefault = true', config)
+        self.assertNotRegex(config, r'(?m)^paths\s*=')
 
     def test_linux_tests_keep_their_isolation_and_skip_the_duplicate_release_compile(self):
         linux = job(workflow('ci.yml'), 'linux')

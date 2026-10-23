@@ -42,6 +42,9 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          # Full history and every branch and tag: the secret scan below reads
+          # them all, since a fork receives every public ref.
+          fetch-depth: 0
           ref: ${{ inputs.release_tag || github.sha }}
       - name: Install QEMU disk utilities and dwz for the contracts
         env:
@@ -71,6 +74,19 @@ jobs:
           echo "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  $archive" | sha256sum --check --strict
           tar -xzf "$archive" -C "$RUNNER_TEMP" actionlint
           "$RUNNER_TEMP/actionlint" -color -shellcheck= -pyflakes=
+      - name: Scan every branch and tag for leaked secrets
+        # Allowlisted shapes live in .gitleaks.toml. The redacted SARIF report
+        # joins the contract reports; a finding fails the job.
+        if: always()
+        run: |
+          archive="$RUNNER_TEMP/gitleaks.tar.gz"
+          curl --fail --silent --show-error --location --output "$archive" \
+            https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+          echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  $archive" | sha256sum --check --strict
+          tar -xzf "$archive" -C "$RUNNER_TEMP" gitleaks
+          mkdir -p build/contracts
+          "$RUNNER_TEMP/gitleaks" git . --config .gitleaks.toml --log-opts=--all --redact --no-banner \
+            --exit-code 1 --report-format sarif --report-path build/contracts/gitleaks.sarif
       - name: Preserve contract reports
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
