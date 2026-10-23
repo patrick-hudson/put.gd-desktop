@@ -16,6 +16,40 @@
 
 The CI image is untagged, so it doesn't check for updates (`development_build`). H's update parts (Channel, Check now, #344) and J therefore ran on the lab nightlies, which are built from the same tree. The commits are never pushed and carry only the version.
 
+## Merged head re-check (rule 16)
+
+After the pass, #497 merged `nightly` in (head `786ed9fc`, which brings #420's SBOM and the Qt version read from `tools.lock.json`). The CI AppImage of that head was checked again on 2026-10-23: CI run [40026118521](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40026118521), `putgd-26.1023.1101-dev+gaa047473ad2e-x86_64.AppImage`, 116,472,312 bytes, SHA-256 `9918e7ea37126035fca7d957d8e8e174afb32261759597129c30abb7e2f8d9cb`, checked against the run's `SHA256SUMS`.
+
+- **Same Qt as the accepted image** ([qt-bundle-compare.txt](results/merged-head/qt-bundle-compare.txt)):
+  - **Qt files:** all 36 Qt libraries and plugins are byte-identical to those in `26.1023.1068-dev+g6a325a722afd`. The two images hold the same 607 files.
+  - **Versions:** `libQt6Core` and `libQt6Gui` export `Qt_6.12` symbols, and the running app reports Qt 6.12.0.
+  - **Plugins:** the platform plugins are `libqoffscreen`, `libqwayland` and `libqxcb`. The shell integrations are `xdg-shell` and `layer-shell`.
+  - **Notices:** the image's `bundled-components.json` still lists 137 components. Apart from put.gd itself, only QtKeychain's label changed (`8eac9889775c` to `0.14.2`, #420's notices change).
+  - **SBOM:** the CI SBOM lists qtbase, qtimageformats, qtsvg, qttranslations and qtwayland at 6.12.0.
+- **On f44** (GNOME 50.0 Wayland; private profile, loopback fixture, wall VNC):
+  - **Identity:** checksum, tag and root `.desktop` file pass.
+  - **Region capture:** `completed`, 1120×680, cover check passed, History entry present.
+  - **Idle RSS:** 29.88 MiB (PSS 23.58 MiB) after 180 s, with no flagged library.
+  - **CVE file:** `cve-2025-10729-pattern-orphan.svg` went in through **Upload clipboard** as `image/svg+xml`. Its preview is `ready` and it renders in History. The resident and `putgd-ui` kept their PIDs.
+  - **Results:** [f44-rck3](results/merged-head/f44-rck3/).
+- **Harness, not product:** the first two runs fell over in the driver, and both are kept:
+  - **Run 1** ([f44-rck1](results/merged-head/f44-rck1/), where the RSS above comes from): f44 has `wl-clipboard`, and GNOME has no data-control protocol. `wl-paste` therefore hung after the capture, and `wl-copy` offered text only, so the upload was a text file.
+  - **Fix:** [afa.py](lab/afa.py) and [qt418.py](lab/qt418.py) now skip `wl-*` on GNOME.
+  - **Run 2** ([f44-rck2](results/merged-head/f44-rck2/)): it passed but kept no frame. The SVG's rendered thumbnail hides the placeholder colour the card finder looks for, so run 3 names the newest card's row (`CARD_AT`).
+  - **Driver:** [rck.sh](lab/rck.sh). Timeline: [timeline-f44.txt](results/merged-head/timeline-f44.txt).
+- **Host changes on f44:**
+  - **GNOME extension:** a user copy of 1058's extension was installed with one re-login and uninstalled afterwards. `enabled-extensions` was restored.
+  - **Left alone:** the two old `0.1.1-dev.133` FUSE mounts.
+  - **Lock:** released `--verified-clean` at 21:54:10Z.
+- **Scanner findings on this head** (`vulnerability-report`, Grype):
+  - **Cleared by Qt 6.12:** the Critical/High findings in Qt's embedded PCRE2, libpng, SQLite and libtiff that [#511](https://github.com/patrick-hudson/put.gd-desktop/issues/511) lists against Qt 6.8.3.
+  - **Left in Qt's code:**
+    - ICU 73.2 (CVE-2025-5222, fixed in 77.1): Qt 6.12.0 still ships ICU 73.2.
+    - libtiff 4.7.2 (CVE-2026-4775): no fixed version yet.
+  - **Tracking:** both are recorded on #511 with FFmpeg's.
+
+![f44: merged head 786ed9fc: region capture and the CVE-2025-10729 SVG in History](pictures/f44-merged-head-recheck.png)
+
 ## Results
 
 ✅ pass · ❌ fail · 🔸 pass with a note (below the table)

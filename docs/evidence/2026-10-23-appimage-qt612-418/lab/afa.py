@@ -871,7 +871,7 @@ def clipboard(run, mime):
     if env.get('XDG_SESSION_TYPE') == 'x11':
         r = subprocess.run(['xclip', '-o', '-selection', 'clipboard', '-t', mime], env=env, capture_output=True, timeout=10)
         return r.stdout if r.returncode == 0 else None
-    if shutil.which('wl-paste'):
+    if shutil.which('wl-paste') and 'GNOME' not in env.get('XDG_CURRENT_DESKTOP', ''):
         r = subprocess.run(['wl-paste', '--no-newline', '--type', mime], env=env, capture_output=True, timeout=10)
         if r.returncode == 0: return r.stdout
     # GNOME (no data-control): a GTK 4 window reads it with focus.

@@ -14,7 +14,8 @@
       each original with QImageReader). Records whether the resident, putgd-ui and the image
       worker survived, their PIDs before and after, and a full-desktop frame per row when allowed.
 """
-import argparse, hashlib, json, os, shutil, subprocess, sys, time
+import argparse
+import hashlib, json, os, shutil, subprocess, sys, time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -130,7 +131,8 @@ def set_clipboard(run, path):
                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
         owner.stdin.write(uri.encode()); owner.stdin.close(); time.sleep(1)
         return owner
-    if shutil.which('wl-copy'):
+    # GNOME has no data-control, so wl-copy can't own the clipboard there.
+    if shutil.which('wl-copy') and 'GNOME' not in env.get('XDG_CURRENT_DESKTOP', ''):
         uri = Path(path).resolve().as_uri() + '\r\n'
         owner = subprocess.Popen(['wl-copy', '--foreground', '--type', 'text/uri-list'], env=env, stdin=subprocess.PIPE,
                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
@@ -180,6 +182,11 @@ def clipfile(args):
         run.ok('ui.show', {'view': 'history'}); time.sleep(3); park(run, inp, size)
         found = cards(frames.grab(), raised)
         entry['cards'] = len(found)
+        # A rendered thumbnail hides the placeholder colour: CARD_AT=x,y names the newest card's row instead.
+        if not found and os.environ.get('CARD_AT'):
+            cx, cy = map(int, os.environ['CARD_AT'].split(','))
+            found = [(cx - 60, cy, cx - 60, cy)]
+            entry['cardAt'] = [cx, cy]
         if found:
             x0, y0, x1, y1 = found[0]
             inp.click(x1 + 60, (y0 + y1) // 2); time.sleep(1.5)

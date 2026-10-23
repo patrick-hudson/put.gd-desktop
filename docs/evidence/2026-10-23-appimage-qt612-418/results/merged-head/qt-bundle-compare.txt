@@ -1,0 +1,9 @@
+# Qt in the AppImage: 26.1023.1068-dev+g6a325a722afd (accepted, 4c1bfa9e) vs 26.1023.1101-dev+gaa047473ad2e (merged head 786ed9fc, 9918e7ea)
+Qt libraries and plugins: 36 files, 36 byte-identical, 0 differ, only-old [], only-new []
+usr/lib/libQt6Core.so.6: newest symbol version Qt_6.12; sha256 26341368e3f2017a…
+usr/lib/libQt6Gui.so.6: newest symbol version Qt_6.12; sha256 392cf5a2fed77ca7…
+platform plugins: ['libqoffscreen.so', 'libqwayland.so', 'libqxcb.so']
+wayland shell integrations: ['liblayer-shell.so', 'libxdg-shell.so']
+all files only in one image: []
+bundled-components.json: 137 vs 137 components; changed: {'QtKeychain': ('8eac9889775c', '0.14.2'), 'put.gd': ('26.1023.1068-dev+g6a325a722afd', '26.1023.1101-dev+gaa047473ad2e')}
+Qt and its embedded libraries in the new image: {'QtKeychain': '0.14.2', 'LayerShellQt': '6.4.6', 'ICU (International Components for Unicode), shipped with Qt': '73.2', 'Qt qtbase': '6.12.0', 'Qt qtimageformats': '6.12.0', 'Qt qtsvg': '6.12.0', 'Qt qttranslations': '6.12.0', 'Qt qtwayland': '6.12.0', 'libjpeg-turbo8': '2.1.5-2ubuntu2', 'libpcre2-8-0': '10.42-4ubuntu2.1', 'libpng16-16t64': '1.6.43-5ubuntu0.7'}
