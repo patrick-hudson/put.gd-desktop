@@ -174,7 +174,8 @@ Use the [private credential bridge](../tools/lab/secret_bridge/README.md), keep
 rotating snapshots in host memory, serialize use of the copied session, and
 carry refreshed state back under the production account lock. Remove only the
 local lab keychain entry; signing out would invalidate the shared remote session.
-See the [tray-progress replay](testing-tray-progress.md) for the isolated live
+The builders' lab sessions below do this for any test. See the
+[tray-progress replay](testing-tray-progress.md) for the isolated live
 test path. Release acceptance requires Cinnamon functional/memory evidence
 before expanding to GNOME/KDE.
 Recovery, authenticated helper memory, redistribution notices, Proton-enabled
@@ -183,3 +184,130 @@ shipping assets and final-candidate acceptance remain open in
 Upstream approval is not required for the intended production shipment.
 See [integration verification](proton-drive-verification.md) for the historical
 build, test and review checkpoints.
+
+## Lab sessions on the builders
+
+Each lab builder (f44, d69, k72, m74) holds one put.gd Proton session, signed in
+once by Patrick with the dedicated test account phudson2@gmail.com. Later sessions
+test against it without a new sign-in: on the builder itself, or in a VM on that
+builder that borrows it. Every refresh rotates the session's refresh token, so a
+session is a baton with one holder at a time, and the refreshed state goes back to
+the builder. That holder takes the builder's **Proton lock**:
+
+```sh
+python3 tools/lab/desktop_lock.py acquire d69 --resource proton --owner NAME --session ID --purpose TEXT --minutes 30
+```
+
+The Proton lock is separate from the desktop lock: a test can hold the session
+without the desktop, or the desktop without the session. It has the same
+heartbeat, extend, release, break and history receipts. Hold it for anything that
+uses the builder's session: the lab profile's app, `check`, `lend` or `recover`.
+The `proton_lab.py` commands below take it themselves when it is free, and reuse it
+when the same session already holds it.
+
+### Where each session lives
+
+| | |
+| --- | --- |
+| Lab profile | `~/putgd-lab/proton/` with its own `config/`, `data/` and `state/` (`XDG_CONFIG_HOME`, `XDG_DATA_HOME`, `XDG_STATE_HOME`); destination `proton-lab` |
+| Keychain entry | service `ch.proton.drive/putgd`, name `putgd/proton/lab-<host>`, in the builder's default Secret Service collection |
+| Registry | `~/putgd-lab/locks/proton-registry.json`, next to the lock: host, reference, app, keyring, last check and its outcome, nothing secret |
+| App | nightly 26.1023.1058 extracted into `~/putgd-lab/proton/app/`: the AppImage on f44 and m74; the debian13 or ubuntu26.04 .deb on d69 and k72, until [#518](https://github.com/patrick-hudson/put.gd-desktop/issues/518) is fixed |
+| Bridge | `~/putgd-lab/proton/bridge/` (host relay built on that builder and the Bun 1.4.2 broker) and `guest-bridge/` (relay built against Qt 6.4.2 on m74, for guests) |
+| Keep-alive | `~/.config/systemd/user/putgd-proton-keepalive.{service,timer}`, running a copy of the lab tools in `~/.local/libexec/putgd-proton/` |
+
+The default collection is a **blank-password lab keyring**: gnome-keyring
+`putgd lab` on f44, d69 and m74, KWallet `putgdlab` on k72.
+- **Why blank:** the builders log in automatically, and a password-protected
+  keyring stays locked after every boot, so the session would fail with
+  `keychain_unavailable` until someone typed the password.
+- **Decision:** Patrick chose this on 2026-10-23 for the test account on lab
+  machines, accepting that the session is stored unencrypted on disk.
+- **Earlier keyrings:** each builder's earlier keyrings and wallets are kept, still
+  password-protected. New secrets from other apps now go to the lab keyring.
+- **Repairing it:** `proton_lab.py lab-keyring` creates the collection and makes it the
+  default. `proton_lab.py keychain` proves it accepts a synthetic entry without a
+  prompt.
+
+### Commands
+
+`tools/lab/proton_lab.py` runs on the builder, from a checkout of `nightly` there.
+The keep-alive copy in `~/.local/libexec/putgd-proton/` also works for `status`
+and `check`.
+
+| Command | What it does |
+| --- | --- |
+| `status` | session state and the action to take, registry, Proton lock, running lab app, bridge files |
+| `check [--new-folder]` | headless: inspects the account and runs Test connection; with `--new-folder`, first creates a new isolated folder and selects it. Records the outcome in the registry |
+| `lend RUN --session ID --owner NAME --purpose TEXT -- COMMAND` | lends the session to one disposable VM run on this builder for COMMAND (see below) |
+| `recover RECEIPTS --session ID --owner NAME` | finishes an interrupted lend from its receipts folder; the VM must be running |
+| `open` / `close --session ID` | under the desktop lock, shows the lab profile's Settings on the desktop (for a sign-in) and quits it |
+| `install-app FILE`, `seed HOST` | extracts an AppImage or .deb into the profile; creates the profile and its destination |
+| `lab-keyring`, `keychain`, `install-keepalive`, `keepalive` | the keyring and keep-alive set-up above |
+
+### Lending the session to a VM
+
+Launch the VM from a golden overlay on the same builder (`lab.py launch`), and
+install put.gd in it (`lab.py install`). Then:
+
+```sh
+python3 tools/lab/proton_lab.py lend "$run" --session ID --owner NAME --purpose TEXT -- \
+  python3 tools/lab/proton_lend_smoke.py
+```
+
+Under the builder's Proton lock, `lend`:
+1. Copies the guest brokers into the VM and gives the VM the same blank lab keyring.
+2. Exports the builder's session through the [private credential bridge](../tools/lab/secret_bridge/README.md)
+   and imports it under a new `putgd-lab-UUID` name.
+3. Runs COMMAND with `PUTGD_LAB_RUN`, `PUTGD_LAB_PROTON_REFERENCE` and
+   `PUTGD_LAB_PROTON_RECEIPTS` set.
+4. Quits the guest's put.gd, collects the guest copy and carries it back to the
+   builder's entry (an exact compare-and-replace under the production account lock,
+   with `reconcile_carry_back` after an ambiguous reply).
+5. Deletes only the guest entry.
+
+Receipts go in `~/putgd-lab/proton/receipts/<time>-<run>/` and hold names and states,
+never session material. The smoke test uploads a synthetic image privately into a
+new folder, then creates, inspects and revokes its link. It has these options:
+- `--browser --hold N`: pauses before and after revoke, so the live link and its
+  share page can be framed.
+- `--revoke HISTORY_ID`: settles a link left by an earlier run; use it with
+  `lend --guest-reference` and that run's guest name.
+
+Keep the VM running until `lend` returns: its copy may be the only current one. If
+`lend` fails while a copy is outstanding, it leaves the Proton lock held and blocked
+("lent copy outstanding"). Boot the same overlay again if it stopped, run `recover`
+with the receipts folder, then check. `recover` releases the lock it finishes.
+
+### When a session is lost
+
+`status` and `check` name the state in the registry. Patrick signs in again only on
+the builder that lost it.
+
+| State | Meaning | What to do |
+| --- | --- | --- |
+| `signed_out` (`authentication_required`) | signed out, password changed, revoked in Proton's security settings, or a refused refresh; the official code then deletes the keychain entry | Patrick signs in again on that builder: `open` under the desktop lock, **Connect account**, then `close` and `check --new-folder` |
+| `keychain_unavailable` | the default collection is missing or locked | `keychain`, then `lab-keyring` if needed; the session may still be valid, so check again before asking for a sign-in |
+| `needs_new_reference` | the entry exists but holds no usable session | Patrick signs in again on that builder |
+| `service_error` | Proton or the network failed; the session is not known to be lost | check again later |
+
+Never sign out, revoke or copy a builder's session yourself. Signing out from one
+copy ends the session for every copy.
+
+### Idle expiry and the keep-alive
+
+The pinned SDK (0.22.2, `incubating/account/js/src/apiClient.ts`) tracks no session
+expiry:
+- After a 401 it refreshes once; a refused refresh deletes only the local entry.
+- Its API types document no idle limit for refresh tokens.
+
+The weekly keep-alive is therefore insurance. It runs one `check` under the Proton
+lock each Wednesday at 04:30 local time, with up to 15 minutes' random delay, and
+catches up after the builder was off. That check refreshes the session once its
+access token has expired. It is skipped, not queued, while the lock is held or the
+lab app is open. To disable it, run
+`systemctl --user disable --now putgd-proton-keepalive.timer` on that builder.
+
+Carrying back a session that the VM refreshed has not been exercised live yet
+([#527](https://github.com/patrick-hudson/put.gd-desktop/issues/527)). Evidence:
+[the 2026-10-23 lab sessions](evidence/2026-10-23-proton-lab-sessions/README.md).
