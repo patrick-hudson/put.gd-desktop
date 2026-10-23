@@ -11,6 +11,7 @@
 #include "app/DiagnosticsBundle.h"
 #include "app/LogService.h"
 #include "app/LoginStartup.h"
+#include "app/ResidentSession.h"
 #include "app/UiProcessController.h"
 #include "app/RecordingHelperBackend.h"
 #include "app/SetupService.h"
@@ -64,6 +65,22 @@ namespace {
 // stderr is not a terminal, so write these lines to stderr directly.
 void launcherError(const QString& line) {
  const auto bytes=line.toUtf8();std::fwrite(bytes.constData(),1,size_t(bytes.size()),stderr);std::fputc('\n',stderr);std::fflush(stderr);
+}
+// #490: hand off only to a resident whose login session is still running. One
+// left behind by an ended session belongs to that session's X server, and its
+// captures fail; it is asked to quit, then signalled by its exact process, and
+// this process takes its place. replaced records what was done, for the log.
+int retireEndedResident(const QString& path,QJsonObject& replaced) {
+ const auto peer=putgd::localSessionPeer(path);
+ if(!peer.connected||peer.pid<=0)return -1;
+ const auto logins=putgd::LoginSessions::system();
+ const auto session=putgd::residentSession(*logins,peer.pid,QCoreApplication::applicationPid());
+ if(!session.ended)return -1;
+ const auto retired=putgd::retireResident(path,peer);
+ replaced={{"pid",peer.pid},{"session",session.session.id},{"type",session.session.type},{"state",session.session.state},{"reason",session.reason},{"how",retired.done?retired.how:QStringLiteral("failed")}};
+ if(retired.done)return -1;
+ launcherError("stale_resident: A put.gd resident left from an ended login session did not stop. Quit put.gd and start it again.");
+ return 1;
 }
 int activateResident(const QString& view,bool background) {
  const auto path=putgd::LocalServer::defaultSocketPath();
@@ -163,6 +180,8 @@ int main(int argc,char* argv[]) {
  QCommandLineParser parser;parser.addHelpOption();parser.addVersionOption();parser.addOption({"background","Start in tray after setup"});parser.addOption({"history","Show upload history"});parser.addOption({"activity","Show upload history (same as --history)"});parser.process(app);
  const auto backgroundOnly=parser.isSet("background")&&!parser.isSet("history")&&!parser.isSet("activity");
  const auto view=parser.isSet("history")?QStringLiteral("history"):parser.isSet("activity")?QStringLiteral("activity"):QStringLiteral("settings");
+ QJsonObject replacedResident;
+ if(const int retired=retireEndedResident(putgd::LocalServer::defaultSocketPath(),replacedResident);retired>=0)return retired;
  const int activation=activateResident(view,backgroundOnly);if(activation>=0)return activation;
  // Resolve the private roots, moving an earlier putgd/putgd layout into place,
  // before settings or the journal open anything.
@@ -352,6 +371,22 @@ int main(int argc,char* argv[]) {
  if(kde)QObject::connect(kde,&putgd::KdeSourceAdapter::actionRequested,&tray,requested);
 #endif
  server.setUiQuit(quitApplication);
+ // #490: the resident ends with its login session, whatever the session manager
+ // does with its autostart entries: when logind reports the session closing,
+ // or when the X server it shortcuts and captures through goes away.
+ putgd::SessionWatch sessionWatch;
+ bool sessionEnded=false;
+ const auto endSession=[&](const QString& reason,const QJsonObject& session){
+  if(std::exchange(sessionEnded,true))return;
+  putgd::logging::info(putgd::logApp(),"Resident session ended",{{"reason",reason},{"session",session}});
+  quitApplication();
+ };
+ QObject::connect(&sessionWatch,&putgd::SessionWatch::ended,&app,endSession);
+#ifdef PUTGD_NATIVE_X11
+ const auto displayLost=[&]{endSession("display_lost",sessionWatch.status());};
+ if(coreNative)QObject::connect(coreNative,&putgd::X11CoreSourceAdapter::displayLost,&app,displayLost);
+ if(native)QObject::connect(native,&putgd::X11SourceAdapter::displayLost,&app,displayLost);
+#endif
  // An AppImage update install or restart waits for recordings and uploads (#293 phase 3).
  updates.setBusy([&]()->QString{
   if(operations.recording().active())return "A recording is running; install the update when it has finished";
@@ -367,7 +402,7 @@ int main(int argc,char* argv[]) {
  tray.setDiagnosticsSaver([&](const QString& id,putgd::JsonReply reply){putgd::BundleRequest request;request.operationId=id;const auto folder=operations.settingsSnapshot().document["preferences"].toObject()["diagnostics"].toObject()["packageFolder"].toString();if(QFileInfo(folder).isDir())request.output=folder;bundles.create(request,std::move(reply));});
  server.setLinkOpener([](const QUrl& link,std::function<void(const QJsonObject&)> done){putgd::TrayController::openLink(link,"history-link",std::move(done));});
  server.setDiagnosticsNotifications([&](const QJsonObject& result){tray.notifyDiagnosticsSaved(result);},[&](const QString& path){return putgd::TrayController::revealPackage(path,bundles.saved(path));});
- const auto fullDiagnostics=[&]{auto diagnostics=operations.diagnostics();diagnostics["loginStartup"]=loginStatus;diagnostics["shortcuts"]=source->capabilities()["shortcuts"];diagnostics["ui"]=ui.status();diagnostics["trayAvailable"]=tray.available();diagnostics["trayTint"]=tray.trayTint();diagnostics["update"]=updates.status();return diagnostics;};
+ const auto fullDiagnostics=[&]{auto diagnostics=operations.diagnostics();diagnostics["loginStartup"]=loginStatus;diagnostics["loginSession"]=sessionWatch.status();diagnostics["shortcuts"]=source->capabilities()["shortcuts"];diagnostics["ui"]=ui.status();diagnostics["trayAvailable"]=tray.available();diagnostics["trayTint"]=tray.trayTint();diagnostics["update"]=updates.status();return diagnostics;};
  server.setUiDiagnostics(fullDiagnostics);
  bundles.setDiagnostics(fullDiagnostics);
  // environment.json's session-side facts: no pixels, only geometry scale.
@@ -417,6 +452,7 @@ int main(int argc,char* argv[]) {
    {"resident",coreResident?"x11-core":gnomeCoreResident?"gnome-core":kdeCoreResident?"kde-core":"graphical"},
    {"trayAvailable",tray.available()},{"locations",locations.report},{"capabilities",source->capabilities()}};
   putgd::logging::info(putgd::logApp(),"Resident started",startup);
+  if(!replacedResident.isEmpty())putgd::logging::info(putgd::logApp(),"Replaced a resident from an ended login session",replacedResident);
 #ifdef Q_OS_LINUX
   // The session bus may be slow to answer; ask off the session thread.
   operations.background([](putgd::Error&){

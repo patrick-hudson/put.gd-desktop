@@ -26,6 +26,8 @@ public:
 signals:
  void actionRequested(const QString&);
  void capabilitiesChanged();
+ // The display's X server went away, as it does when its session ends.
+ void displayLost();
 private:
  X11NativeSnapshot capture_;X11Clipboard clipboard_;X11Shortcuts shortcuts_;CaptureProcessController helper_;qint64 uiProcess_=0;
 };

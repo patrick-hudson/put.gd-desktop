@@ -3,7 +3,7 @@
 #include <QPointer>
 #include <QJsonArray>
 namespace putgd {
-X11CoreSourceAdapter::X11CoreSourceAdapter(QObject* parent):QObject(parent){connect(&shortcuts_,&X11Shortcuts::activated,this,&X11CoreSourceAdapter::actionRequested);connect(&shortcuts_,&X11Shortcuts::bindingsChanged,this,&X11CoreSourceAdapter::capabilitiesChanged);}
+X11CoreSourceAdapter::X11CoreSourceAdapter(QObject* parent):QObject(parent){connect(&shortcuts_,&X11Shortcuts::activated,this,&X11CoreSourceAdapter::actionRequested);connect(&shortcuts_,&X11Shortcuts::bindingsChanged,this,&X11CoreSourceAdapter::capabilitiesChanged);connect(&shortcuts_,&X11Shortcuts::connectionLost,this,&X11CoreSourceAdapter::displayLost);}
 X11CoreSourceAdapter::~X11CoreSourceAdapter(){helper_.cancel();clipboard_.cancel();}
 quint64 X11CoreSourceAdapter::clipboardRevision()const{return clipboard_.revision();}
 QJsonObject X11CoreSourceAdapter::capabilities()const{

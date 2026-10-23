@@ -24,6 +24,8 @@ public:
 signals:
  void activated(const QString& action);
  void bindingsChanged();
+ // The X server closed this connection: its session is over (#490).
+ void connectionLost();
 private:
  struct Grab {QString action;xcb_keycode_t code;uint16_t modifiers;};
  // A raw press that matched a binding, held until the same drain shows

@@ -10,6 +10,12 @@ enum class LocalSessionState { Connected, Absent, Unavailable };
 struct LocalActivation { bool connected=false; QByteArray response; QString errorCode; };
 LocalSessionState probeLocalSession(const QString& path,int timeoutMs);
 LocalActivation activateLocalSession(const QString& path,const QByteArray& request);
+// The process listening on a session socket, from the kernel's credentials for
+// the connection (#490). start is its start time since boot, which tells it
+// apart from a later process given the same PID; 0 where it cannot be read.
+struct LocalPeer { bool connected=false; qint64 pid=0; uint uid=0; quint64 start=0; };
+LocalPeer localSessionPeer(const QString& path);
+quint64 processStartTime(qint64 pid);
 class LocalIpcConnection final : public QObject {
  Q_OBJECT
 public:
