@@ -568,6 +568,11 @@ of `--deb`). Its goldens on `f44`, their provisioning and the runner commands
 are in [Aurora VM](aurora-vm.md). BIOS profiles have no `firmware` key and
 their QEMU command is unchanged.
 
+KDE neon (User for released Plasma, Unstable for Plasma git master) uses the
+`neon-kde-wayland` profile (BIOS, `install: appimage`) and its own
+`bootstrap-neon-guest.sh`, because neon uses plasmalogin and wraps `apt-get` in
+`/usr/sbin`. Its goldens and provisioning are in [KDE neon VMs](neon-vm.md).
+
 `bootstrap-guest.sh` supports apt-based guests and Fedora's dnf. Run it inside
 the guest with only the lab public key. It restores SSH file labels on SELinux
 guests and enables their SSH firewall service when Firewalld is running. Its

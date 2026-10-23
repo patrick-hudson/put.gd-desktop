@@ -43,6 +43,17 @@ per Fedora base, and the runner takes either through `--golden`:
 | Fedora 45 (`ghcr.io/ublue-os/aurora:testing`, `testing-45.20261022.1`) | `aurora-testing-45.20261022.1-852d34e885c1` | 6.7.5 / 6.7.5, kernel 7.2.11 | **Required** for the KDE/Wayland AppImage checks. #478 reproduced only on this base. |
 | Fedora 44 (`ghcr.io/ublue-os/aurora:stable`, `44.20260908.1`) | `aurora-stable-44.20260908.1-v3-492c3f8945d1` | 6.7.4 / 6.7.4, kernel 7.1.8 | The base the `stable` tag still shipped on 2026-10-22; run it when a pass compares the two bases or a finding is base-specific. |
 
+`neon-kde-wayland` (BIOS, `install: appimage`) runs two KDE neon goldens for
+catching KDE bugs early; see [KDE neon VMs](neon-vm.md). Like Aurora, it has no
+row in the package matrix and replaces no required evidence. Run it when a
+change touches KWin, the portal or Plasma integration, or when a KDE finding
+needs splitting into "already released" and "new on master":
+
+| neon edition | Golden | Plasma / KWin | Role |
+| --- | --- | --- | --- |
+| Unstable (git master) | `neon-unstable-noble-20261023-d613510c07bd` | master / 6.8.80, Qt 6.11.1 | Furthest-edge KDE target |
+| User (release) | `neon-user-6.8.1-20261023-9ef808278853` | 6.8.1 / 6.8.1, Qt 6.11.1 | Newest released Plasma; the comparison point for Unstable findings |
+
 XWayland or `QT_QPA_PLATFORM=xcb` inside a Wayland session does not establish a
 native GNOME/X11 or KDE/X11 result. Verify the actual login session/compositor
 and Qt platform, along with the OS and desktop versions, in the evidence.
