@@ -688,6 +688,15 @@ and dwz steps. It works in three layers:
   dnf retries each download 10 times across mirrors (`retries=10`) and apt 3
   times. If a package name doesn't exist, the install fails at once with no
   retry.
+- **Stopped attempts.** An attempt that runs longer than `PUTGD_PKG_TIMEOUT`
+  (900 s) or prints nothing for `PUTGD_PKG_STALL` seconds (600 s) is stopped
+  (`timeout --kill-after=30s`, process group included) and counts as a failed
+  attempt, so the back-off and the snapshot apply. A stopped apt attempt is
+  followed by `dpkg --configure -a` before the retry. Downloaded packages stay
+  in the cache, so the retry resumes them. Inside an attempt, apt drops a
+  connection that moves nothing for 60 s (`Acquire::http(s)::Timeout=60`) and
+  dnf one under 1 kB/s for 60 s (`timeout=60`, `minrate=1000`); both retry the
+  download themselves. See [Stalled installs](#stalled-installs).
 - **Package snapshot.** The native package jobs restore
   `/var/cache/putgd-packages` from `actions/cache`, under the key
   `putgd-pkgs-v1-<target>-<hash of both scripts>-<ISO week>`. It holds the
@@ -700,10 +709,12 @@ and dwz steps. It works in three layers:
   (`dnf --cacheonly`, `apt-get --no-download`). That builds against a package
   set at most a week old instead of failing the job. A dependency list that
   changed since the snapshot can't be satisfied offline, and the step fails.
-- **Reporting.** Each failed attempt, a retry that passed and a snapshot
-  install are warning annotations and rows of a "Package install retries"
-  table in the job summary. A clean install writes nothing. The pre-checkout
-  bootstrap (git only) retries 3 times inline and reports in a table of the same form.
+- **Reporting.** Each failed or stopped attempt, a retry that passed and a
+  snapshot install are warning annotations and rows of a "Package install
+  retries" table in the job summary. A stopped attempt's row says
+  `**stopped**`, which limit stopped it and the last line it printed. A clean
+  install writes nothing. The pre-checkout bootstrap (git only) retries 3 times
+  inline, each attempt limited to 10 minutes, and reports in a table of the same form.
 
 ![After: run 39729960271 (throwaway e8f9443b on aca7858f), retries, snapshot installs and a red all-fail job](https://raw.githubusercontent.com/patrick-hudson/put.gd-desktop/174b27a826aa34532dee6e22c0ddda70682e4a3e/docs/evidence/2026-10-22-package-installs-368/368-after.png)
 
@@ -718,13 +729,71 @@ same lines from the check-runs API. The files are in
 `docs/evidence/2026-10-22-package-installs-368/`. To repeat it, push such a
 wrapper to a pull request branch, never to `nightly`.
 
-Not covered yet: the `linux`, `sanitizers` and `contracts` jobs in `ci.yml`
-still use bare `apt-get`
-([#389](https://github.com/patrick-hudson/put.gd-desktop/issues/389)). `npm ci`
-in the Proton helper step runs with `npm_config_fetch_retries=5`. Its separate
-exit-152 failure
+Not covered yet: the `linux` and `sanitizers` installs in `ci.yml` run before
+checkout with bare `apt-get`. They have the acquire timeouts and a 20-minute
+step limit, but no retry or snapshot
+([#389](https://github.com/patrick-hudson/put.gd-desktop/issues/389)). The
+`contracts` install uses the helper. `npm ci` in the Proton helper step runs
+with `npm_config_fetch_retries=5`. Its separate exit-152 failure
 ([#332](https://github.com/patrick-hudson/put.gd-desktop/issues/332)) is a
 CPU-time kill, not a network error.
+
+### Stalled installs
+
+Before [#467](https://github.com/patrick-hudson/put.gd-desktop/issues/467), an
+attempt that never returned was never retried. Nightly run 39851369595
+(2026-10-22) hung for 93 minutes in `packages / appimage` after
+`Get:5 https://archive.ubuntu.com/ubuntu noble-security InRelease [126 kB]`
+until it was cancelled. apt's own 120 s timeout never fired. Every install
+attempt now runs under the two limits above.
+
+The limits come from the 60 green runs before the change. A normal install
+attempt takes 1–4 minutes. On 2026-10-22 and 2026-10-23, though, the hosted
+runner's Azure mirror served 40–55 kB/s, and five green AppImage installs took
+26 to 113 minutes. The longest silence in them was 8.2 minutes, a 27 MB
+package, so the stall limit is 10 minutes. The AppImage install has no
+snapshot, so its attempts get 30 minutes (`PUTGD_PKG_TIMEOUT=1800`) and resume
+each other's downloads. A snapshot or another mirror for it is
+[#500](https://github.com/patrick-hudson/put.gd-desktop/issues/500).
+
+Every Linux job with a network step has a `timeout-minutes` above its normal
+run time and above its worst bounded install path (four stopped attempts plus
+3.5 minutes of back-off):
+
+| Job | Normal run (p50 / max, min) | `timeout-minutes` |
+| --- | --- | --- |
+| `packages / native` (4 targets) | 8–13 / 17 | 90 |
+| `packages / appimage` | 13 / 128 (slow mirror) | 180 |
+| `packages / debug-symbols`, `collect` | 5–8 / 8 | 75 |
+| `contracts` | 1 / 3 | 75 |
+| `linux` (2 releases) | 5–6 / 10 | 60 |
+| `sanitizers` | 5 / 10, more when QtCore is rebuilt | 90 |
+| `pipewire` | 2 / 15 | 30 |
+| `prune caches`, nightly `plan`, release `tag` | under 1 | 15 |
+| nightly `publish`, release `draft` | 4 / 6 | 60 |
+
+Steps that clone or download outside the helper have step limits:
+"Verify pinned SDK source" 20 minutes, "Provision pinned Proton helper" 15,
+"Provision pinned AWS SDK" 30. The actionlint download uses `curl --retry 3
+--connect-timeout 30 --max-time 300`, and `portable_appimage.py` downloads the
+AppImage tools with a 120 s socket timeout. Two gaps remain: the Windows
+`portable` job, which the Windows rewrite owns
+([#501](https://github.com/patrick-hudson/put.gd-desktop/issues/501)), and
+`provision-qt-asan.sh`'s curl
+([#502](https://github.com/patrick-hudson/put.gd-desktop/issues/502)).
+
+![After #467: a stalled mirror is stopped and retried, the snapshot takes over, and an install where every attempt stalls goes red in 44 minutes](https://raw.githubusercontent.com/patrick-hudson/put.gd-desktop/d0e2883032759494645ef6c6c99cefb824e07128/docs/evidence/2026-10-23-package-install-stalls-467/467-after.png)
+
+The demo ran on throwaway branch `claude/ci-install-timeouts-467-demo` (run
+40008409878, commit `04aac39e`), which is #498's install script plus a
+demo-only workflow and was never merged. apt went through a local proxy that
+accepts every connection, sends response headers, and then sends one body byte
+every 15 s. apt's idle timeout never fires against it, as in the nightly
+hang. With a 60 s stall limit, a stall during the first 75 s was stopped and
+the retry passed. Two stopped attempts were followed by an offline install
+from a snapshot. With the default limits and no snapshot, every attempt
+stalled and the job failed red after 43.5 minutes, inside its 90-minute timeout. Evidence:
+`docs/evidence/2026-10-23-package-install-stalls-467/`.
 
 ## Proton Linux runtime
 
