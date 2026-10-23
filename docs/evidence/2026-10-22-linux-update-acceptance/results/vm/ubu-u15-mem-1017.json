@@ -1,0 +1,86 @@
+pkg-cleaned
+Purging configuration files for putgd (26.1022.1017~nightly)…
+{
+ "mem": {
+  "version": "26.1022.1017-nightly",
+  "imageSha256": "005762e9ede991c78fce115707a41617d899d7870738fb525151c182357b7c3a",
+  "pid": 6030,
+  "host": "putgd-ubuntu-lab",
+  "session": "wayland",
+  "desktop": "ubuntu:GNOME",
+  "A": {
+   "window": "A cold idle",
+   "seconds": 180.1,
+   "rssMedianMiB": 29.41,
+   "rssMinMiB": 29.21,
+   "rssMaxMiB": 29.41,
+   "every10s": [
+    29.21,
+    29.21,
+    29.21,
+    29.41,
+    29.41,
+    29.41,
+    29.41,
+    29.41,
+    29.41,
+    29.41,
+    29.41,
+    29.41,
+    29.41,
+    29.41,
+    29.41,
+    29.41,
+    29.41,
+    29.41
+   ],
+   "pssMiB": 22.95,
+   "privateMiB": 22.61,
+   "tlsNetworkLibraries": [],
+   "load": [
+    0.02490234375,
+    0.32275390625,
+    0.314453125
+   ]
+  },
+  "action": {
+   "check": true
+  },
+  "B": {
+   "window": "B idle after check",
+   "seconds": 180.1,
+   "rssMedianMiB": 29.44,
+   "rssMinMiB": 29.44,
+   "rssMaxMiB": 29.44,
+   "every10s": [
+    29.44,
+    29.44,
+    29.44,
+    29.44,
+    29.44,
+    29.44,
+    29.44,
+    29.44,
+    29.44,
+    29.44,
+    29.44,
+    29.44,
+    29.44,
+    29.44,
+    29.44,
+    29.44,
+    29.44,
+    29.44
+   ],
+   "pssMiB": 22.98,
+   "privateMiB": 22.64,
+   "tlsNetworkLibraries": [],
+   "load": [
+    0.0,
+    0.15283203125,
+    0.2421875
+   ]
+  }
+ }
+}
+cleanup True

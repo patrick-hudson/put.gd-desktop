@@ -1,0 +1,132 @@
+{
+ "name": "aur-mem-1017",
+ "tool": null,
+ "live": true,
+ "image": "/var/home/lab/ua/app/runs/aur-mem-1017/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+ "imageSha256": "005762e9ede991c78fce115707a41617d899d7870738fb525151c182357b7c3a",
+ "cliDir": "/var/home/lab/ua/app/runs/aur-mem-1017/cli/squashfs-root",
+ "runtime": "/tmp/ua-app.qMewNk",
+ "session": {
+  "HOME": "/var/home/lab",
+  "PATH": "/var/home/lab/.local/bin:/var/home/lab/bin:/usr/local/bin:/usr/bin",
+  "USER": "lab",
+  "LANG": "en_US.UTF-8",
+  "DISPLAY": ":0",
+  "XAUTHORITY": "/run/user/1000/xauth_RZIWEK",
+  "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus",
+  "XDG_SESSION_TYPE": "wayland",
+  "XDG_CURRENT_DESKTOP": "KDE",
+  "WAYLAND_DISPLAY": "/run/user/1000/wayland-0",
+  "XDG_SESSION_DESKTOP": "KDE",
+  "DESKTOP_SESSION": "/usr/share/wayland-sessions/plasma.desktop",
+  "KDE_FULL_SESSION": "true",
+  "KDE_SESSION_VERSION": "6",
+  "XDG_DATA_DIRS": "/var/home/lab/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share:/usr/share"
+ },
+ "shell": "plasmashell",
+ "hostPath": "/var/home/lab/.local/bin:/var/home/lab/bin:/usr/local/bin:/usr/bin",
+ "host": "aurora-lab",
+ "vnc": 5936,
+ "urls": {},
+ "input": "vnc",
+ "privateData": true,
+ "before": {
+  "dataPutgd": false,
+  "homePutgd": {
+   "/var/home/lab/.config/putgd": false,
+   "/var/home/lab/.local/state/putgd": false,
+   "/var/home/lab/.cache/putgd": false
+  },
+  "autostart": []
+ },
+ "pids": {
+  "apprun": 2908
+ },
+ "created": "2026-10-23T02:33:43Z",
+ "log": [
+  {
+   "at": "2026-10-23T02:40:47Z",
+   "mem": {
+    "version": "26.1022.1017-nightly",
+    "imageSha256": "005762e9ede991c78fce115707a41617d899d7870738fb525151c182357b7c3a",
+    "pid": 2951,
+    "host": "aurora-lab",
+    "session": "wayland",
+    "desktop": "KDE",
+    "A": {
+     "window": "A cold idle",
+     "seconds": 180.1,
+     "rssMedianMiB": 29.82,
+     "rssMinMiB": 29.58,
+     "rssMaxMiB": 29.82,
+     "every10s": [
+      29.58,
+      29.58,
+      29.58,
+      29.82,
+      29.82,
+      29.82,
+      29.82,
+      29.82,
+      29.82,
+      29.82,
+      29.82,
+      29.82,
+      29.82,
+      29.82,
+      29.82,
+      29.82,
+      29.82,
+      29.82
+     ],
+     "pssMiB": 23.37,
+     "privateMiB": 23.0,
+     "tlsNetworkLibraries": [],
+     "load": [
+      0.0615234375,
+      0.39599609375,
+      0.2353515625
+     ]
+    },
+    "action": {
+     "check": true
+    },
+    "B": {
+     "window": "B idle after check",
+     "seconds": 180.1,
+     "rssMedianMiB": 29.91,
+     "rssMinMiB": 29.91,
+     "rssMaxMiB": 29.91,
+     "every10s": [
+      29.91,
+      29.91,
+      29.91,
+      29.91,
+      29.91,
+      29.91,
+      29.91,
+      29.91,
+      29.91,
+      29.91,
+      29.91,
+      29.91,
+      29.91,
+      29.91,
+      29.91,
+      29.91,
+      29.91,
+      29.91
+     ],
+     "pssMiB": 23.46,
+     "privateMiB": 23.09,
+     "tlsNetworkLibraries": [],
+     "load": [
+      0.0166015625,
+      0.201171875,
+      0.18017578125
+     ]
+    }
+   }
+  }
+ ]
+}

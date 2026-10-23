@@ -1,0 +1,27 @@
+{"status": "stopped", "evidence": "/home/patrick/work/put.gd-ua/vm/src/work/lab-runs/aur-b8e4fd"}
+qemu 3107765 gone
+{"schemaVersion": 1, "status": "completed", "run": "/home/patrick/work/put.gd-ua/vm/src/work/lab-runs/aur-b8e4fd", "disk": "/home/patrick/work/put.gd-ua/vm/src/work/lab-runs/aur-b8e4fd/disk.qcow2", "diskIdentity": {"device": 49, "inode": 4845312, "size": 871366656, "mtimeNs": 1792723267583371110, "c
+{
+  "schemaVersion": 1,
+  "status": "completed",
+  "run": "/home/patrick/work/put.gd-ua/vm/src/work/lab-runs/aur-b8e4fd",
+  "disk": "/home/patrick/work/put.gd-ua/vm/src/work/lab-runs/aur-b8e4fd/disk.qcow2",
+  "diskIdentity": {
+    "device": 49,
+    "inode": 4845312,
+    "size": 871366656,
+    "mtimeNs": 1792723267583371110,
+    "ctimeNs": 1792723267583371110,
+    "allocatedBytes": 871305216
+  },
+  "base": "/home/patrick/work/put.gd/work/lab-images/aurora-stable-44.20260908.1-v3-492c3f8945d1/image.qcow2",
+  "stateSha256": "22913b185fe8899733cc4770f5b4f68bd37c813b01eb4a2844f76d90ba6e3fda",
+  "evidence": {
+    "manifest": "/home/patrick/work/put.gd-ua/vm/evidence-aur/manifest.json",
+    "sha256": "6554fc74431ec28d19915bb2674811c35fe60a33ebf50f651b0cf264561468e4",
+    "runId": "56eefd24-3517-4452-9588-daa5164e3805",
+    "mode": "explicit"
+  },
+  "preparedUtc": "2026-10-23T02:41:11.455649+00:00",
+  "completedUtc": "2026-10-23T02:41:11.555678+00:00"
+}

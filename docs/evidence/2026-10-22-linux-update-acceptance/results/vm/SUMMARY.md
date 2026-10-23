@@ -8,3 +8,15 @@ U9 Gear Lever 4.6.2 both; AppImageLauncher 3.0.0-beta-2 (gha287, sha 41175521…
 U11 both: Launch at login on N (private-profile run, entry in real autostart), install without restart, session reboot (gnome-session-quit --reboot / org.kde.Shutdown.logoutAndReboot), autologin started the same path = 1019.
 U14 both: notifications on, no Check now; scheduled check found 1019; dbus-monitor saw no put.gd Notify.
 U15: Ubuntu A 29.21 MiB RSS median / Pss 22.76 / priv 22.42; B 29.30/22.85. Aurora A 30.05 / Pss 23.55 / priv 23.18; B 30.14/23.65. No TLS/network libs mapped.
+
+## Round 2 (02:23Z–02:50Z): new overlays of the same goldens
+Ubuntu: run ubu-2c94f9 (ssh 22222, vnc 5922; d69 key appended over VNC as before). Aurora: run aur-b8e4fd on ssh 22436 / vnc 5936. Another session's aurora-d473 had taken 22426/5926 at 02:27Z, so I used a private known_hosts with the golden's same host key under [127.0.0.1]:22436. uupd.timer and uupd.service were stopped first (`sudo -n systemctl stop`, allowed by the guest's sudo rule), and no deployment was staged.
+appimageupdatetool continuous, sha256 8d17a50e… = GitHub digest (asset updated 2025-10-18).
+U8 Ubuntu (ubu-aut): --check-for-update exit 1 (update available); update exit 0 in 3.1 s; new putgd-26.1022.1019-nightly-x86_64.AppImage e5b7ad2c… = SHA256SUMS; N unchanged. CA /etc/ssl/certs/ca-certificates.crt.
+U8 Aurora (aur-aut, SSL_CERT_FILE=/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem): check 1, update 0 in 2.9 s, = SHA256SUMS, N unchanged. Also without SSL_CERT_FILE (aur-aut-nocert): check 1, update 0 in 3.7 s, = SHA256SUMS. zsync2 found /etc/ssl/cert.pem on Aurora, so #297's crash didn't happen here.
+U6 Ubuntu: NOT RUN. The golden's passwordless sudo covers only /usr/bin/apt-get, so the first Other channel command (`sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources`) can't run non-interactively, and no password is typed. The commands are shown in frame u6-3-1017-other-channel-commands.png and in ubu-u6-start.json / ubu-u6b-start.json (action.otherChannel.commands). The ubuntu26.04 suite was covered live on k72. Handed over to the coordinator with the overlay left running (see below).
+U15 on N (1017), same method (180 s windows after a 30 s settle, check between):
+  Ubuntu 1017: A RSS median 29.41 MiB, Pss 22.95, private 22.61; B 29.44 / 22.98 / 22.64. 1019 (round 1): A 29.21 / 22.76 / 22.42; B 29.30 / 22.85 / 22.51.
+  Aurora 1017: A 29.82 / 23.37 / 23.00; B 29.91 / 23.46 / 23.09. 1019 (round 1): A 30.05 / 23.55 / 23.18; B 30.14 / 23.65 / 23.27.
+  No TLS/network libraries mapped in any window.
+Cleanup: Aurora overlay retired with lab.py reset + cleanup (aur2-overlay-cleanup.txt), f44 tree removed, golden 6a2fb407… unchanged. The Ubuntu overlay ubu-2c94f9 stays up on purpose (QEMU 2502561), with N's DEB installed and the ua_pkg resident ubu-u6b on Settings → Updates. The coordinator retires it. Golden 563730cc… unchanged as of 02:47Z.
