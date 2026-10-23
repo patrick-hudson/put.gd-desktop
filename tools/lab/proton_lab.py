@@ -13,7 +13,7 @@ VM borrowing the session through `lend`. The rules are in docs/proton-drive.md
 ("Lab sessions") and docs/remote-builders.md.
 
   proton_lab.py status
-  proton_lab.py install-app APPIMAGE
+  proton_lab.py install-app APPIMAGE|DEB
   proton_lab.py seed HOST
   proton_lab.py lab-keyring                 # gnome-keyring: blank 'putgd lab' keyring as the default
   proton_lab.py keychain                    # synthetic write/read/delete in the default keyring
@@ -208,16 +208,23 @@ def holding(lock, session, owner, purpose, minutes=LOCK_MINUTES, heartbeat=True,
 def app_root(registry):
     app = (registry or {}).get('app') or {}
     root = Path(app.get('root', ''))
-    if not app.get('root') or not (root / 'AppRun').is_file():
-        raise LabFailure('No extracted put.gd AppImage; run install-app first')
+    if not app.get('root') or not (root / launcher_name(root)).is_file():
+        raise LabFailure('No extracted put.gd AppImage or package; run install-app first')
     return root
+
+
+def launcher_name(root):
+    """An extracted AppImage starts through AppRun; an extracted distro package through its launcher."""
+    return 'AppRun' if (Path(root) / 'AppRun').is_file() else 'usr/bin/putgd-launcher'
 
 
 def app_environment(root, base):
     environment = dict(base)
-    library = f'{root}/usr/lib:{root}/usr/lib/putgd'
-    environment['LD_LIBRARY_PATH'] = library + (':' + base['LD_LIBRARY_PATH'] if base.get('LD_LIBRARY_PATH') else '')
-    environment['QT_PLUGIN_PATH'] = f'{root}/usr/plugins:{root}/usr/lib/qt6/plugins'
+    if launcher_name(root) == 'AppRun':  # the CLI has no AppRun route; give it the image's libraries
+        library = f'{root}/usr/lib:{root}/usr/lib/putgd'
+        environment['LD_LIBRARY_PATH'] = library + (':' + base['LD_LIBRARY_PATH'] if base.get('LD_LIBRARY_PATH')
+                                                    else '')
+        environment['QT_PLUGIN_PATH'] = f'{root}/usr/plugins:{root}/usr/lib/qt6/plugins'
     return environment
 
 
@@ -279,7 +286,7 @@ class Resident:
     def start(self, log_name):
         log = self.layout.logs / f'{log_name}-{now_text().replace(":", "-")}.log'
         with open(log, 'x') as stream:
-            subprocess.Popen([str(self.root / 'AppRun'), '--background'], env=self.environment, stdin=subprocess.DEVNULL,
+            subprocess.Popen([str(self.root / launcher_name(self.root)), '--background'], env=self.environment, stdin=subprocess.DEVNULL,
                              stdout=stream, stderr=subprocess.STDOUT, start_new_session=True)
         self.wait()
         return log
@@ -371,31 +378,37 @@ def desktop_environment():
 
 # Commands -----------------------------------------------------------------------------------
 
-def install_app(layout, appimage):
-    """Extract an AppImage into the lab profile (no FUSE, no system package)."""
-    source = Path(appimage).resolve()
-    if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._+-]*\.AppImage', source.name) or not source.is_file():
-        raise LabFailure('Pass an existing .AppImage file')
+def install_app(layout, package):
+    """Extract a put.gd AppImage (no FUSE) or nightly .deb (no apt, no system package) into the lab profile.
+    The .deb serves builders whose host libsecret needs a newer GLib than the AppImage bundles: there the
+    AppImage's Proton helper cannot load the keychain (Debian 13, Ubuntu 26.04)."""
+    source = Path(package).resolve()
+    kind = 'appimage' if source.name.endswith('.AppImage') else 'deb' if source.name.endswith('.deb') else None
+    if kind is None or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._+~-]*', source.name) or not source.is_file():
+        raise LabFailure('Pass an existing .AppImage or .deb file')
     layout.prepare()
     layout.private_directory(layout.apps)
     digest = lab.hash_file(source)
     target = layout.apps / digest[:16]
-    if not (target / 'squashfs-root/AppRun').is_file():
+    root = target / ('squashfs-root' if kind == 'appimage' else 'root')
+    if not (root / launcher_name(root)).is_file():
         staging = Path(tempfile.mkdtemp(prefix='.extract-', dir=layout.apps))
-        copy = staging / source.name
-        shutil.copyfile(source, copy)
-        copy.chmod(0o700)
-        subprocess.run([str(copy), '--appimage-extract'], cwd=staging, check=True, stdout=subprocess.DEVNULL)
-        copy.unlink()
+        if kind == 'appimage':
+            copy = staging / source.name
+            shutil.copyfile(source, copy)
+            copy.chmod(0o700)
+            subprocess.run([str(copy), '--appimage-extract'], cwd=staging, check=True, stdout=subprocess.DEVNULL)
+            copy.unlink()
+        else:
+            subprocess.run(['dpkg-deb', '-x', str(source), str(staging / 'root')], check=True)
         if target.exists():
-            raise LabFailure(f'{target} exists without an extracted AppRun; inspect it')
+            raise LabFailure(f'{target} exists without an extracted launcher; inspect it')
         staging.rename(target)
-    root = target / 'squashfs-root'
-    version = json.loads(subprocess.run([str(root / 'AppRun'), '--version-json'], capture_output=True, text=True,
-                                        check=True).stdout)
+    version = json.loads(subprocess.run([str(root / launcher_name(root)), '--version-json'], capture_output=True,
+                                        text=True, check=True).stdout)
     registry = read_registry(layout) or {'schema': 1}
-    registry['app'] = {'appimage': source.name, 'sha256': digest, 'root': str(root), 'version': version,
-                       'installed': now_text()}
+    registry['app'] = {'kind': kind, 'package': source.name, 'sha256': digest, 'root': str(root),
+                       'version': version, 'installed': now_text()}
     write_registry(layout, registry)
     return registry['app']
 
@@ -889,8 +902,8 @@ def main(argv=None):
     commands.add_parser('keychain', help='prove the default keyring takes a synthetic entry without a prompt')
     commands.add_parser('lab-keyring', help="make a blank-password lab keyring (gnome-keyring) or wallet (KWallet) "
                                             'the default')
-    installing = commands.add_parser('install-app', help='extract a put.gd AppImage into the lab profile')
-    installing.add_argument('appimage')
+    installing = commands.add_parser('install-app', help='extract a put.gd AppImage or .deb into the lab profile')
+    installing.add_argument('package')
     seeding = commands.add_parser('seed', help='create the lab profile and its Proton Drive destination')
     seeding.add_argument('host', choices=sorted(desktop_lock.HOSTS))
     opening = commands.add_parser('open', help='show the lab profile Settings on the desktop (desktop lock)')
@@ -913,7 +926,7 @@ def main(argv=None):
         if args.action == 'status':
             reply = status(layout)
         elif args.action == 'install-app':
-            reply = install_app(layout, args.appimage)
+            reply = install_app(layout, args.package)
         elif args.action == 'seed':
             reply = seed(layout, args.host)
         elif args.action == 'open':
