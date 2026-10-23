@@ -11,7 +11,8 @@ After=network-online.target
 Type=oneshot
 # The check runs headless with its own runtime directory; it must not reach the live desktop.
 UnsetEnvironment=DISPLAY WAYLAND_DISPLAY XAUTHORITY XDG_SESSION_TYPE XDG_CURRENT_DESKTOP DESKTOP_SESSION
-ExecStart=/usr/bin/python3 -I %h/.local/libexec/putgd-proton/proton_lab.py keepalive
+# -E -s, not -I: proton_lab.py imports its sibling lab tools from the script directory.
+ExecStart=/usr/bin/python3 -E -s %h/.local/libexec/putgd-proton/proton_lab.py keepalive
 TimeoutStartSec=20min
 KillMode=control-group
 TimeoutStopSec=60

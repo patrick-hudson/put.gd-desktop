@@ -859,7 +859,6 @@ def keychain(layout):
     return registry['keychain']
 
 
-KEEPALIVE_FILES = ('proton_lab.py', 'desktop_lock.py', 'provision_live_credentials.py', 'lab.py')
 KEEPALIVE_UNITS = ('putgd-proton-keepalive.service', 'putgd-proton-keepalive.timer')
 
 
@@ -868,8 +867,8 @@ def install_keepalive(layout, libexec=Path.home() / '.local/libexec/putgd-proton
     """Copy this tool set to a stable path and enable the weekly keep-alive timer."""
     require_registry(layout)
     layout.private_directory(libexec)
-    for name in KEEPALIVE_FILES:
-        shutil.copyfile(HERE / name, libexec / name)
+    for path in HERE.glob('*.py'):  # lab.py imports its siblings
+        shutil.copyfile(path, libexec / path.name)
     shutil.copytree(HERE / 'profiles', libexec / 'profiles', dirs_exist_ok=True)
     units.mkdir(parents=True, exist_ok=True)
     for name in KEEPALIVE_UNITS:
