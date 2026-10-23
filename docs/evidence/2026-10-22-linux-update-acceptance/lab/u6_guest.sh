@@ -1,6 +1,6 @@
 #!/bin/bash
-# u6_guest.sh RUN stable|nightly: U6 live in a VM guest . A sudo password, if the guest needs one,
-# lab password (read from the provisioning file by the caller) arrives as the first line of stdin and reaches sudo -S on stdin only (never argv or a log).
+# u6_guest.sh RUN stable|nightly: U6 live in a VM guest. The first line of stdin is the sudo password when the guest
+# needs one (empty when sudo is passwordless); it reaches sudo -S on stdin only, never argv or a log.
 # The Other channel commands come from update.status (action.otherChannel.commands) and run as given, with sudo -S
 # and apt-get -y in place of the prompts. Then: the installed version, the sources file against both packaged
 # channel files, a Check now status and a Settings frame.
