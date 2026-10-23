@@ -15,6 +15,7 @@ concurrency:
 jobs:
   plan:
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     permissions:
       contents: write  # create the immutable nightly tag
     outputs:
@@ -57,6 +58,7 @@ jobs:
     needs: [plan, ci]
     if: needs.plan.outputs.skip == 'false'
     runs-on: ubuntu-24.04
+    timeout-minutes: 60
     permissions:
       contents: write  # stage and publish the prerelease
       pull-requests: read  # labels for the release notes' changes section
