@@ -1,0 +1,2 @@
+u14 2026-10-23T01:40:00Z 2026-10-23T01:49:44Z putgd notify [] [('Update check finished', '26.1022.1019-nightly')]
+cleanup True

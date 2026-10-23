@@ -180,6 +180,20 @@ private slots:
   // An existing file is never replaced.
   QCOMPARE(build(context(),request,error)["path"].toString(),QString());QCOMPARE(error.code,QString("diagnostics_output_exists"));
  }
+ // #473: a completed upload whose link never reached the clipboard belongs in a
+ // window package, with the failures and the same redaction; a copied one does not.
+ void windowPackagesCarryUploadsWhoseLinkWasNotCopied() {
+  HistoryStore store(operations_->databasePath());QVERIFY(!store.error());
+  const auto save=[&](const QString& id,const QString& copyStatus){Operation op;op.id=id;op.action="clipboard";op.state="completed";op.phase="completed";op.copyStatus=copyStatus;op.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);OperationItem item;item.artifact.id=id+"-item";item.artifact.mime="text/plain";item.artifact.name="synthetic-private-name.txt";item.uploadStatus="uploaded";item.shareStatus="shared";item.receipt.directUrl="https://synthetic-private-cdn.example.invalid/"+id+".txt";op.items={item};return store.saveOperation(op);};
+  QVERIFY(!save("suppressed-copy-upload","suppressed"));QVERIFY(!save("copied-upload","copied"));
+  Error error;BundleRequest request;request.output=dir_.filePath("suppressed-copy.zip");
+  const auto result=build(context(),request,error);QVERIFY2(!error,qPrintable(error.message));
+  const auto operations=QJsonDocument::fromJson(unzip(result["path"].toString())["operations.json"].toString().toUtf8()).array();
+  QStringList ids;QJsonObject suppressed;for(const auto& value:operations){ids.append(value.toObject()["id"].toString());if(value.toObject()["id"]=="suppressed-copy-upload")suppressed=value.toObject();}
+  QVERIFY2(ids.contains("suppressed-copy-upload")&&ids.contains(failedId_)&&!ids.contains("copied-upload"),qPrintable(ids.join(',')));
+  QCOMPARE(suppressed["copyStatus"].toString(),QString("suppressed"));QCOMPARE(suppressed["state"].toString(),QString("completed"));
+  const auto item=suppressed["items"].toArray()[0].toObject();QVERIFY(item["name"].toString().startsWith("<name:"));QVERIFY(!item["directUrl"].toString().contains("synthetic-private-cdn"));
+ }
  void sizeLimitDropsTheOldestRecords() {
   const auto filler=QString("lorem ipsum ").repeated(125);
   // The writer queue holds 4096 records; let it drain as a real resident would.

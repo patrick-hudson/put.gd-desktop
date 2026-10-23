@@ -1,0 +1,6 @@
+2026-10-23T00:28:18Z shell plasmashell pid 1251425
+2026-10-23T00:28:18Z logout requested (org.kde.Shutdown.logout)
+2026-10-23T00:28:19Z old shell gone
+2026-10-23T00:28:30Z systemctl restart sddm
+2026-10-23T00:28:33Z new shell pid 1468098
+9125 1000 patrick seat0 1467851 user    tty1 no -

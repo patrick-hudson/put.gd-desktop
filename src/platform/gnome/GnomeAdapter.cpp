@@ -2,6 +2,7 @@
 #include "GnomeProtocol.h"
 #include "platform/NativeSession.h"
 #include "core/ImageJob.h"
+#include "core/Log.h"
 #include <QThread>
 #include <QDBusConnectionInterface>
 #include <QDBusMessage>
@@ -214,7 +215,8 @@ void GnomeAdapter::cancelAll(const QString& code,const QString& message){
  auto transfers=std::move(transfers_);transfers_.clear();for(const auto& transfer:transfers){release(transfer->id);auto reply=std::move(transfer->reply);if(reply)reply({{},{code,message,{}}});}
 }
 void GnomeAdapter::cancelAcquisition(){cancelAll("cancelled","GNOME acquisition cancelled");}
-void GnomeAdapter::copy(const CopyPayload& payload,std::function<void(Error)> reply){
+void GnomeAdapter::copy(const CopyPayload& payload,std::function<void(Error)> answer){
+ auto reply=[answer=std::move(answer)](Error e){logging::debug(logClipboard(),"Native copy finished",{{"writer","gnome-helper"},{"ok",!e},{"code",e.code}});answer(std::move(e));};
  if(!ready_){reply({"clipboard_unavailable","GNOME helper cannot own CLIPBOARD",{}});return;}
  QByteArray bytes;QString mime;
  if(payload.kind=="image"){mime="image/png";bytes=payload.encodedImage;}else if(payload.kind=="text"){mime="text/plain;charset=utf-8";bytes=payload.text.toUtf8();}else if(payload.kind=="files"){mime="text/uri-list";for(const auto& file:payload.files)bytes+=QUrl::fromLocalFile(file).toEncoded()+"\r\n";}else {reply({"source_unsupported","GNOME cannot copy this result type",{}});return;}

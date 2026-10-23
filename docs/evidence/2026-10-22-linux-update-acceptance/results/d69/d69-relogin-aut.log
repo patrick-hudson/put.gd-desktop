@@ -1,0 +1,8 @@
+2026-10-23T02:24:38Z shell plasmashell pid 2491608
+2026-10-23T02:24:38Z logout requested (org.kde.Shutdown.logout)
+2026-10-23T02:24:39Z old shell gone
+2026-10-23T02:24:39Z temp drop-in /etc/sddm.conf.d/zz-afa2-relogin.conf (Relogin=true) added
+2026-10-23T02:24:46Z systemctl restart sddm
+2026-10-23T02:24:49Z new shell pid 2501760
+2026-10-23T02:24:52Z temp drop-in removed
+17561 1000 patrick seat0 2501541 user    tty7 no -

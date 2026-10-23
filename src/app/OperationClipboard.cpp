@@ -1,4 +1,5 @@
 #include "OperationService.h"
+#include "core/Log.h"
 #include <QMap>
 #include <QPointer>
 
@@ -22,6 +23,8 @@ struct OperationService::UploadCopy {
  std::shared_ptr<UploadCopyGroup> group;
  int pending=0;
  bool finished=false,waitingForGroup=false,recorded=false,copied=false,suppressed=false;
+ // Why the automatic copy was refused, for the log record (copyGuard).
+ QJsonObject suppression;
  Error error;
  JsonReply reply;
 };
@@ -29,7 +32,18 @@ struct OperationService::UploadCopyGroup {
  quint64 epoch=0,revision=0;
  int pending=0;
  QMap<quint64,std::weak_ptr<UploadCopy>> members;
+ QJsonObject suppression;
 };
+QJsonObject OperationService::copyGuard(bool stopping,bool cancelled,const char* epochGuard,quint64 epoch,quint64 currentEpoch,quint64 revision,quint64 currentRevision) {
+ QString guard;
+ if(stopping)guard="stopping";
+ else if(cancelled)guard="cancelled";
+ else if(epoch!=currentEpoch)guard=QLatin1String(epochGuard);
+ else if(revision!=currentRevision)guard="clipboard_changed";
+ if(guard.isEmpty())return {};
+ return {{"guard",guard},{"revisionAtInvocation",qint64(revision)},{"revisionAtDispatch",qint64(currentRevision)},{"epochAtInvocation",qint64(epoch)},{"epochAtDispatch",qint64(currentEpoch)}};
+}
+QJsonObject OperationService::nativeCopyGuard(const Error& error) {return {{"guard","native_clipboard"},{"code",error.code},{"message",error.message.left(256)}};}
 quint64 OperationService::invalidateCopyEligibility() {
  ++uploadCopyEpoch_;
  if(currentCopy_&&currentCopy_->preparationState)currentCopy_->preparationState->cancelled->store(true);
@@ -86,6 +100,9 @@ void OperationService::uploadLinkReady(const QString& id,const QString& item,int
  if(!state||state->seen.contains(item)||url.isEmpty())return;
  state->seen.insert(item);state->links.insert(index,url);
  if(state->group)return;
+ // The cursor has passed this file already: nothing earlier can still be
+ // waiting on it, so its link is copied now rather than held forever (#478).
+ if(index<state->cursor){queueLinkCopy(state,item,index);return;}
  state->held.insert(index,item);flushUploadLinks(state);
 }
 void OperationService::uploadItemSettled(const QString& id,int index) {
@@ -107,11 +124,15 @@ void OperationService::queueLinkCopy(const std::shared_ptr<UploadCopy>& state,co
  queueCopy([payload]{return *payload;},[this,state,index](Error error) {
   --state->pending;
   if(!error)state->copied=true;
-  else if(error.code=="copy_suppressed")state->suppressed=true;
+  else if(error.code=="copy_suppressed"){state->suppressed=true;if(state->suppression.isEmpty())state->suppression=nativeCopyGuard(error);}
   else if(error.code=="copy_no_result")state->links.remove(index);
   else state->error=error;
   recordUploadCopy(state);
- },[this,state]{return !stopping_&&state->epoch==uploadCopyEpoch_&&!state->cancellation->load()&&state->revision==source_.clipboardRevision();},true,
+ },[this,state]{
+  // An explicit copy or another history action moves the epoch (invalidateCopyEligibility).
+  const auto guard=copyGuard(stopping_,state->cancellation->load(),"superseded",state->epoch,uploadCopyEpoch_,state->revision,source_.clipboardRevision());
+  if(!guard.isEmpty())state->suppression=guard;return guard.isEmpty();
+ },true,
  [this,path,id,item,payload](auto ready) {
   // Resolve the durable item again at dispatch, including every resumed copy.
   background([path,id,item](Error& error) {
@@ -158,7 +179,7 @@ void OperationService::settleUploadGroup(const std::shared_ptr<UploadCopyGroup>&
    for(const auto& url:state->links)urls.append(url);
   }
   payload.text=urls.join('\n');return payload;
- },[this,members,included](Error error) {
+ },[this,members,included,group](Error error) {
   for(const auto& state:members) {
    state->waitingForGroup=false;
    if(included->contains(state->operation.id)) {
@@ -166,9 +187,13 @@ void OperationService::settleUploadGroup(const std::shared_ptr<UploadCopyGroup>&
     else if(error.code=="copy_suppressed")state->suppressed=true;
     else if(error.code!="copy_no_result")state->error=error;
    }else if(error.code=="copy_suppressed"&&!state->links.isEmpty()&&!state->cancellation->load())state->suppressed=true;
+   if(state->suppressed&&state->suppression.isEmpty())state->suppression=group->suppression.isEmpty()?nativeCopyGuard(error):group->suppression;
    recordUploadCopy(state);
   }
- },[this,group]{return !stopping_&&group->epoch==uploadCopyEpoch_&&group->revision==source_.clipboardRevision();},true,
+ },[this,group]{
+  const auto guard=copyGuard(stopping_,false,"superseded",group->epoch,uploadCopyEpoch_,group->revision,source_.clipboardRevision());
+  if(!guard.isEmpty())group->suppression=guard;return guard.isEmpty();
+ },true,
  [this,path,ids,members](auto ready) {
   // Re-read at dispatch rather than group settlement: a clipboard import or
   // another native commit may hold this list after a known deletion/revocation.
@@ -196,8 +221,23 @@ void OperationService::recordUploadCopy(const std::shared_ptr<UploadCopy>& state
  else if(state->cancellation->load()||state->links.isEmpty())op.copyStatus="no_result";
  else if(state->error)op.copyStatus="failed";
  else if(state->suppressed)op.copyStatus="suppressed";
- else op.copyStatus="no_result";
+ else {
+  // A link was available and no copy of it was refused or failed, so none was
+  // ever queued. That is a defect, reported as such rather than as a quiet
+  // "nothing to copy" (#478).
+  state->error={"copy_not_attempted","A link was available but its automatic copy was never attempted",{}};op.copyStatus="failed";
+  logging::warning(logOperation(),"Automatic copy not attempted",{{"operationId",op.id},{"action",op.action},{"behavior",op.settings.uploadClipboardBehavior},{"links",state->links.size()},{"held",state->held.size()},{"cursor",state->cursor}});
+ }
  if(state->error)op.error=state->error;
+ {
+  // One record per upload (#473): the outcome the notification and Activity
+  // show, and for a suppressed copy which guard refused it and the revisions
+  // it compared. Never the links or the clipboard text.
+  QJsonObject fields{{"operationId",op.id},{"action",op.action},{"automatic",true},{"behavior",op.settings.uploadClipboardBehavior},{"copyStatus",op.copyStatus},{"links",state->links.size()},{"cancelled",state->cancellation->load()}};
+  if(state->error)fields["error"]=logging::errorFields(state->error);
+  if(!state->suppression.isEmpty())fields["suppression"]=state->suppression;
+  logging::write(logClipboard(),op.copyStatus=="failed"?QtWarningMsg:QtInfoMsg,"Automatic copy finished",fields);
+ }
  const auto path=databasePath();
  background([path,op](Error& error){HistoryStore store(path);error=store.saveOperation(op);return op.publicJson();},[this,state,op](Error error,QJsonObject result) {
   uploadCopies_.remove(op.id);releaseActive(op.id);

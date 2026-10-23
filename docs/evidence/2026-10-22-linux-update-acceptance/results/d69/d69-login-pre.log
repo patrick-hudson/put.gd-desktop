@@ -1,0 +1,7 @@
+setup
+login enable 1 
+check 26.1022.1019-nightly True
+install installed download e5b7ad2caeca ['.putgd-update-backup-26.1022.1017-nightly.AppImage', 'putgd-26.1022.1017-nightly-x86_64.AppImage']
+configured='/home/patrick/work/put.gd-ua/app/runs/d69-login/apps/putgd-26.1022.1017-nightly-x86_64.AppImage'
+update_information='zsync|https://app.put.gd/dl/nightly/appimage.zsync'
+quit {'quit': True, 'pid': 2491052, 'gone': True}

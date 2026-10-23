@@ -1,0 +1,1483 @@
+{
+ "name": "d69-lab",
+ "runtime": "/tmp/ua-pkg.r01B9s",
+ "session": {
+  "HOME": "/home/patrick",
+  "PATH": "/usr/local/bin:/usr/bin:/bin:/usr/games",
+  "USER": "patrick",
+  "LANG": "en_US.UTF-8",
+  "DISPLAY": ":0",
+  "XAUTHORITY": "/run/user/1000/xauth_MoPwQs",
+  "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus",
+  "XDG_SESSION_TYPE": "wayland",
+  "XDG_CURRENT_DESKTOP": "KDE",
+  "WAYLAND_DISPLAY": "/run/user/1000/wayland-0",
+  "XDG_SESSION_DESKTOP": "KDE",
+  "DESKTOP_SESSION": "plasma",
+  "KDE_FULL_SESSION": "true",
+  "KDE_SESSION_VERSION": "6",
+  "XDG_DATA_DIRS": "/home/patrick/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share:/usr/share"
+ },
+ "shell": "plasmashell",
+ "vnc": 5900,
+ "input": "uinput",
+ "profile": "private",
+ "feed": "lab",
+ "hostPath": "/usr/local/bin:/usr/bin:/bin:/usr/games",
+ "host": "debian",
+ "created": "2026-10-23T00:34:25Z",
+ "pids": {
+  "launch": "putgd-ua-d69-lab-u6lab-7-back-on-nightly-1792718471"
+ },
+ "log": [
+  {
+   "at": "2026-10-23T00:34:30Z",
+   "u6lab-1-L1": {
+    "pid": 2492893,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1019.1019-nightly",
+     "buildChannel": "nightly",
+     "channel": "nightly",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1019.1019-nightly",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "manager": "apt",
+      "updater": {
+       "arguments": [
+        "--mode=updates"
+       ],
+       "id": "gnome-software",
+       "name": "GNOME Software",
+       "program": "/usr/bin/gnome-software"
+      },
+      "channel": "nightly",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "repository": "managed",
+      "otherChannel": {
+       "channel": "stable",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/stable"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installAvailable": false,
+     "installReason": "not_appimage",
+     "error": null
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "44471ecb58e01dd519f8afae1d9c9f1a69a04b6b996b7f2f530a9bac2cd6f994",
+     "sameAs": "/usr/share/putgd/repo/putgd-nightly.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/debian13",
+      "Suites: nightly"
+     ],
+     "installed": "26.1019.1019~nightly",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1019.1019~nightly",
+      "  Candidate: 26.1019.1019~nightly",
+      "  Version table:",
+      " *** 26.1019.1019~nightly 100",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 5c0742f66f1fd5e14be392bf0e480f5a"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/d69-lab/frames/u6lab-1-L1.png"
+   }
+  },
+  {
+   "at": "2026-10-23T00:34:35Z",
+   "u6lab-1-L1": {
+    "pid": 2492893,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1019.1019-nightly",
+     "buildChannel": "nightly",
+     "channel": "nightly",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1019.1019-nightly",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "manager": "apt",
+      "updater": {
+       "arguments": [
+        "--mode=updates"
+       ],
+       "id": "gnome-software",
+       "name": "GNOME Software",
+       "program": "/usr/bin/gnome-software"
+      },
+      "channel": "nightly",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "repository": "managed",
+      "otherChannel": {
+       "channel": "stable",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/stable"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installAvailable": false,
+     "installReason": "not_appimage",
+     "error": null
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "44471ecb58e01dd519f8afae1d9c9f1a69a04b6b996b7f2f530a9bac2cd6f994",
+     "sameAs": "/usr/share/putgd/repo/putgd-nightly.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/debian13",
+      "Suites: nightly"
+     ],
+     "installed": "26.1019.1019~nightly",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1019.1019~nightly",
+      "  Candidate: 26.1019.1019~nightly",
+      "  Version table:",
+      " *** 26.1019.1019~nightly 100",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 5c0742f66f1fd5e14be392bf0e480f5a"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/d69-lab/frames/u6lab-1-L1.png"
+   }
+  },
+  {
+   "at": "2026-10-23T00:34:39Z",
+   "cmds": {
+    "pid": 2492893,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1019.1019-nightly",
+     "buildChannel": "nightly",
+     "channel": "nightly",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1019.1019-nightly",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "manager": "apt",
+      "updater": {
+       "arguments": [
+        "--mode=updates"
+       ],
+       "id": "gnome-software",
+       "name": "GNOME Software",
+       "program": "/usr/bin/gnome-software"
+      },
+      "channel": "nightly",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "repository": "managed",
+      "otherChannel": {
+       "channel": "stable",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/stable"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installAvailable": false,
+     "installReason": "not_appimage",
+     "error": null
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "44471ecb58e01dd519f8afae1d9c9f1a69a04b6b996b7f2f530a9bac2cd6f994",
+     "sameAs": "/usr/share/putgd/repo/putgd-nightly.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/debian13",
+      "Suites: nightly"
+     ],
+     "installed": "26.1019.1019~nightly",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1019.1019~nightly",
+      "  Candidate: 26.1019.1019~nightly",
+      "  Version table:",
+      " *** 26.1019.1019~nightly 100",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 5c0742f66f1fd5e14be392bf0e480f5a"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/d69-lab/frames/cmds.png"
+   }
+  },
+  {
+   "at": "2026-10-23T00:34:47Z",
+   "u6lab-2-stable-older-wait": {
+    "pid": 2492893,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1019.1019-nightly",
+     "buildChannel": "nightly",
+     "channel": "stable",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1018.1020",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "manager": "apt",
+      "updater": {
+       "arguments": [
+        "--mode=updates"
+       ],
+       "id": "gnome-software",
+       "name": "GNOME Software",
+       "program": "/usr/bin/gnome-software"
+      },
+      "channel": "stable",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "repository": "managed",
+      "otherChannel": {
+       "channel": "nightly",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-nightly.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/nightly"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": {
+       "command": "sudo apt install --allow-downgrades putgd/stable",
+       "version": "26.1018.1020"
+      }
+     },
+     "installKind": "update",
+     "installAvailable": false,
+     "installReason": "not_appimage",
+     "error": null
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "6b85c33ada10a956adc7ab66d427c5c71280a26082222421486f0d425b4e2f2f",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/debian13",
+      "Suites: stable"
+     ],
+     "installed": "26.1019.1019~nightly",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1019.1019~nightly",
+      "  Candidate: 26.1019.1019~nightly",
+      "  Version table:",
+      " *** 26.1019.1019~nightly 100",
+      "        100 /var/lib/dpkg/status",
+      "     26.1018.1020 500",
+      "        500 https://pkg.put.gd/lab/apt/debian13 stable/main amd64 Packages"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 5c0742f66f1fd5e14be392bf0e480f5a"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/d69-lab/frames/u6lab-2-stable-older-wait.png"
+   }
+  },
+  {
+   "at": "2026-10-23T00:34:57Z",
+   "u6lab-3-S1": {
+    "pid": 2493201,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1018.1020",
+     "buildChannel": "stable",
+     "channel": "stable",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1018.1020",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "manager": "apt",
+      "updater": {
+       "arguments": [
+        "--mode=updates"
+       ],
+       "id": "gnome-software",
+       "name": "GNOME Software",
+       "program": "/usr/bin/gnome-software"
+      },
+      "channel": "stable",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "repository": "managed",
+      "otherChannel": {
+       "channel": "nightly",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-nightly.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/nightly"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installAvailable": false,
+     "installReason": "not_appimage",
+     "error": null
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "6b85c33ada10a956adc7ab66d427c5c71280a26082222421486f0d425b4e2f2f",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/debian13",
+      "Suites: stable"
+     ],
+     "installed": "26.1018.1020",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1018.1020",
+      "  Candidate: 26.1018.1020",
+      "  Version table:",
+      " *** 26.1018.1020 500",
+      "        500 https://pkg.put.gd/lab/apt/debian13 stable/main amd64 Packages",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 608aa7790be918482edae150d383fd9f"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/d69-lab/frames/u6lab-3-S1.png"
+   }
+  },
+  {
+   "at": "2026-10-23T00:35:01Z",
+   "u6lab-3-S1": {
+    "pid": 2493201,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1018.1020",
+     "buildChannel": "stable",
+     "channel": "stable",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1018.1020",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "manager": "apt",
+      "updater": {
+       "arguments": [
+        "--mode=updates"
+       ],
+       "id": "gnome-software",
+       "name": "GNOME Software",
+       "program": "/usr/bin/gnome-software"
+      },
+      "channel": "stable",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "repository": "managed",
+      "otherChannel": {
+       "channel": "nightly",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-nightly.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/nightly"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installAvailable": false,
+     "installReason": "not_appimage",
+     "error": null
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "6b85c33ada10a956adc7ab66d427c5c71280a26082222421486f0d425b4e2f2f",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/debian13",
+      "Suites: stable"
+     ],
+     "installed": "26.1018.1020",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1018.1020",
+      "  Candidate: 26.1018.1020",
+      "  Version table:",
+      " *** 26.1018.1020 500",
+      "        500 https://pkg.put.gd/lab/apt/debian13 stable/main amd64 Packages",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 608aa7790be918482edae150d383fd9f"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/d69-lab/frames/u6lab-3-S1.png"
+   }
+  },
+  {
+   "at": "2026-10-23T00:35:01Z",
+   "watch": {
+    "label": "u14repo",
+    "pid": 2493270
+   }
+  },
+  {
+   "at": "2026-10-23T00:47:22Z",
+   "u6lab-4-S2-available": {
+    "pid": 2493201,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1018.1020",
+     "buildChannel": "stable",
+     "channel": "stable",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1020.1021",
+     "updateAvailable": true,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "manager": "apt",
+      "updater": {
+       "arguments": [
+        "--mode=updates"
+       ],
+       "id": "gnome-software",
+       "name": "GNOME Software",
+       "program": "/usr/bin/gnome-software"
+      },
+      "channel": "stable",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "repository": "managed",
+      "otherChannel": {
+       "channel": "nightly",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-nightly.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/nightly"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installAvailable": false,
+     "installReason": "not_appimage",
+     "error": null
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "6b85c33ada10a956adc7ab66d427c5c71280a26082222421486f0d425b4e2f2f",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/debian13",
+      "Suites: stable"
+     ],
+     "installed": "26.1018.1020",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1018.1020",
+      "  Candidate: 26.1018.1020",
+      "  Version table:",
+      " *** 26.1018.1020 500",
+      "        500 https://pkg.put.gd/lab/apt/debian13 stable/main amd64 Packages",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 608aa7790be918482edae150d383fd9f"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/d69-lab/frames/u6lab-4-S2-available.png"
+   }
+  },
+  {
+   "at": "2026-10-23T00:47:36Z",
+   "u6lab-5-S2": {
+    "pid": 2494107,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1020.1021",
+     "buildChannel": "stable",
+     "channel": "stable",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1020.1021",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "manager": "apt",
+      "updater": {
+       "arguments": [
+        "--mode=updates"
+       ],
+       "id": "gnome-software",
+       "name": "GNOME Software",
+       "program": "/usr/bin/gnome-software"
+      },
+      "channel": "stable",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "repository": "managed",
+      "otherChannel": {
+       "channel": "nightly",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-nightly.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/nightly"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installAvailable": false,
+     "installReason": "not_appimage",
+     "error": null
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "6b85c33ada10a956adc7ab66d427c5c71280a26082222421486f0d425b4e2f2f",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/debian13",
+      "Suites: stable"
+     ],
+     "installed": "26.1020.1021",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1020.1021",
+      "  Candidate: 26.1020.1021",
+      "  Version table:",
+      " *** 26.1020.1021 500",
+      "        500 https://pkg.put.gd/lab/apt/debian13 stable/main amd64 Packages",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 608aa7790be918482edae150d383fd9f"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/d69-lab/frames/u6lab-5-S2.png"
+   }
+  },
+  {
+   "at": "2026-10-23T00:47:40Z",
+   "u6lab-5-S2": {
+    "pid": 2494107,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1020.1021",
+     "buildChannel": "stable",
+     "channel": "stable",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1020.1021",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "manager": "apt",
+      "updater": {
+       "arguments": [
+        "--mode=updates"
+       ],
+       "id": "gnome-software",
+       "name": "GNOME Software",
+       "program": "/usr/bin/gnome-software"
+      },
+      "channel": "stable",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "repository": "managed",
+      "otherChannel": {
+       "channel": "nightly",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-nightly.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/nightly"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installAvailable": false,
+     "installReason": "not_appimage",
+     "error": null
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "6b85c33ada10a956adc7ab66d427c5c71280a26082222421486f0d425b4e2f2f",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/debian13",
+      "Suites: stable"
+     ],
+     "installed": "26.1020.1021",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1020.1021",
+      "  Candidate: 26.1020.1021",
+      "  Version table:",
+      " *** 26.1020.1021 500",
+      "        500 https://pkg.put.gd/lab/apt/debian13 stable/main amd64 Packages",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 608aa7790be918482edae150d383fd9f"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/d69-lab/frames/u6lab-5-S2.png"
+   }
+  },
+  {
+   "at": "2026-10-23T00:48:08Z",
+   "u6lab-4b-S1-again": {
+    "pid": 2494342,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1018.1020",
+     "buildChannel": "stable",
+     "channel": "stable",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1020.1021",
+     "updateAvailable": true,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "manager": "apt",
+      "updater": {
+       "arguments": [
+        "--mode=updates"
+       ],
+       "id": "gnome-software",
+       "name": "GNOME Software",
+       "program": "/usr/bin/gnome-software"
+      },
+      "channel": "stable",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "repository": "managed",
+      "otherChannel": {
+       "channel": "nightly",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-nightly.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/nightly"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installAvailable": false,
+     "installReason": "not_appimage",
+     "error": null
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "6b85c33ada10a956adc7ab66d427c5c71280a26082222421486f0d425b4e2f2f",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/debian13",
+      "Suites: stable"
+     ],
+     "installed": "26.1018.1020",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1018.1020",
+      "  Candidate: 26.1020.1021",
+      "  Version table:",
+      "     26.1020.1021 500",
+      "        500 https://pkg.put.gd/lab/apt/debian13 stable/main amd64 Packages",
+      " *** 26.1018.1020 100",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 608aa7790be918482edae150d383fd9f"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/d69-lab/frames/u6lab-4b-S1-again.png"
+   }
+  },
+  {
+   "at": "2026-10-23T00:49:12Z",
+   "click": {
+    "x": 797,
+    "y": 835,
+    "keys": null,
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/d69-lab/frames/u6lab-4c-updater-S2.png"
+   }
+  },
+  {
+   "at": "2026-10-23T00:49:52Z",
+   "u6lab-5-S2": {
+    "pid": 2494826,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1020.1021",
+     "buildChannel": "stable",
+     "channel": "stable",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1020.1021",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "manager": "apt",
+      "updater": {
+       "arguments": [
+        "--mode=updates"
+       ],
+       "id": "gnome-software",
+       "name": "GNOME Software",
+       "program": "/usr/bin/gnome-software"
+      },
+      "channel": "stable",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "repository": "managed",
+      "otherChannel": {
+       "channel": "nightly",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-nightly.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/nightly"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installAvailable": false,
+     "installReason": "not_appimage",
+     "error": null
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "6b85c33ada10a956adc7ab66d427c5c71280a26082222421486f0d425b4e2f2f",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/debian13",
+      "Suites: stable"
+     ],
+     "installed": "26.1020.1021",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1020.1021",
+      "  Candidate: 26.1020.1021",
+      "  Version table:",
+      " *** 26.1020.1021 500",
+      "        500 https://pkg.put.gd/lab/apt/debian13 stable/main amd64 Packages",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 608aa7790be918482edae150d383fd9f"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/d69-lab/frames/u6lab-5-S2.png"
+   }
+  },
+  {
+   "at": "2026-10-23T01:20:56Z",
+   "u6lab-6-S3-available": {
+    "pid": 2494826,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1020.1021",
+     "buildChannel": "stable",
+     "channel": "stable",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1021.1023",
+     "updateAvailable": true,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "manager": "apt",
+      "updater": {
+       "arguments": [
+        "--mode=updates"
+       ],
+       "id": "gnome-software",
+       "name": "GNOME Software",
+       "program": "/usr/bin/gnome-software"
+      },
+      "channel": "stable",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "repository": "managed",
+      "otherChannel": {
+       "channel": "nightly",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-nightly.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/nightly"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installAvailable": false,
+     "installReason": "not_appimage",
+     "error": null
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "6b85c33ada10a956adc7ab66d427c5c71280a26082222421486f0d425b4e2f2f",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/debian13",
+      "Suites: stable"
+     ],
+     "installed": "26.1020.1021",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1020.1021",
+      "  Candidate: 26.1020.1021",
+      "  Version table:",
+      " *** 26.1020.1021 500",
+      "        500 https://pkg.put.gd/lab/apt/debian13 stable/main amd64 Packages",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 608aa7790be918482edae150d383fd9f"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/d69-lab/frames/u6lab-6-S3-available.png"
+   }
+  },
+  {
+   "at": "2026-10-23T01:20:56Z",
+   "watch": {
+    "label": "u14repo",
+    "from": "2026-10-23T00:35:01Z",
+    "to": "2026-10-23T01:20:56Z",
+    "notifyCalls": [
+     {
+      "app": "Software",
+      "summary": "Updates Ready to Install",
+      "body": "Software updates are ready and waiting"
+     }
+    ],
+    "putgdNotifyCalls": [],
+    "journal": [
+     {
+      "time": "2026-10-23T00:34:26.868Z",
+      "message": "Update check finished",
+      "fields": {
+       "channel": "nightly",
+       "itemId": null,
+       "latest": "26.1019.1019-nightly",
+       "operationId": null,
+       "updateAvailable": false
+      }
+     },
+     {
+      "time": "2026-10-23T00:34:31.320Z",
+      "message": "Update check finished",
+      "fields": {
+       "channel": "nightly",
+       "itemId": null,
+       "latest": "26.1019.1019-nightly",
+       "operationId": null,
+       "updateAvailable": false
+      }
+     },
+     {
+      "time": "2026-10-23T00:34:35.542Z",
+      "message": "Update check finished",
+      "fields": {
+       "channel": "nightly",
+       "itemId": null,
+       "latest": "26.1019.1019-nightly",
+       "operationId": null,
+       "updateAvailable": false
+      }
+     },
+     {
+      "time": "2026-10-23T00:34:43.740Z",
+      "message": "Update check finished",
+      "fields": {
+       "channel": "stable",
+       "itemId": null,
+       "latest": "26.1018.1020",
+       "operationId": null,
+       "updateAvailable": false
+      }
+     },
+     {
+      "time": "2026-10-23T00:34:52.645Z",
+      "message": "Update check finished",
+      "fields": {
+       "channel": "stable",
+       "itemId": null,
+       "latest": "26.1018.1020",
+       "operationId": null,
+       "updateAvailable": false
+      }
+     },
+     {
+      "time": "2026-10-23T00:34:57.739Z",
+      "message": "Update check finished",
+      "fields": {
+       "channel": "stable",
+       "itemId": null,
+       "latest": "26.1018.1020",
+       "operationId": null,
+       "updateAvailable": false
+      }
+     },
+     {
+      "time": "2026-10-23T00:47:18.597Z",
+      "message": "Update check finished",
+      "fields": {
+       "channel": "stable",
+       "itemId": null,
+       "latest": "26.1020.1021",
+       "operationId": null,
+       "updateAvailable": true
+      }
+     },
+     {
+      "time": "2026-10-23T00:47:32.005Z",
+      "message": "Update check finished",
+      "fields": {
+       "channel": "stable",
+       "itemId": null,
+       "latest": "26.1020.1021",
+       "operationId": null,
+       "updateAvailable": false
+      }
+     },
+     {
+      "time": "2026-10-23T00:47:37.185Z",
+      "message": "Update check finished",
+      "fields": {
+       "channel": "stable",
+       "itemId": null,
+       "latest": "26.1020.1021",
+       "operationId": null,
+       "updateAvailable": false
+      }
+     },
+     {
+      "time": "2026-10-23T00:48:03.866Z",
+      "message": "Update check finished",
+      "fields": {
+       "channel": "stable",
+       "itemId": null,
+       "latest": "26.1020.1021",
+       "operationId": null,
+       "updateAvailable": true
+      }
+     },
+     {
+      "time": "2026-10-23T00:49:48.321Z",
+      "message": "Update check finished",
+      "fields": {
+       "channel": "stable",
+       "itemId": null,
+       "latest": "26.1020.1021",
+       "operationId": null,
+       "updateAvailable": false
+      }
+     },
+     {
+      "time": "2026-10-23T01:20:52.398Z",
+      "message": "Update check finished",
+      "fields": {
+       "channel": "stable",
+       "itemId": null,
+       "latest": "26.1021.1023",
+       "operationId": null,
+       "updateAvailable": true
+      }
+     }
+    ]
+   }
+  },
+  {
+   "at": "2026-10-23T01:21:00Z",
+   "cmds": {
+    "pid": 2494826,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1020.1021",
+     "buildChannel": "stable",
+     "channel": "stable",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1021.1023",
+     "updateAvailable": true,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "manager": "apt",
+      "updater": {
+       "arguments": [
+        "--mode=updates"
+       ],
+       "id": "gnome-software",
+       "name": "GNOME Software",
+       "program": "/usr/bin/gnome-software"
+      },
+      "channel": "stable",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "repository": "managed",
+      "otherChannel": {
+       "channel": "nightly",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-nightly.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/nightly"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installAvailable": false,
+     "installReason": "not_appimage",
+     "error": null
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "6b85c33ada10a956adc7ab66d427c5c71280a26082222421486f0d425b4e2f2f",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/debian13",
+      "Suites: stable"
+     ],
+     "installed": "26.1020.1021",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1020.1021",
+      "  Candidate: 26.1020.1021",
+      "  Version table:",
+      " *** 26.1020.1021 500",
+      "        500 https://pkg.put.gd/lab/apt/debian13 stable/main amd64 Packages",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 608aa7790be918482edae150d383fd9f"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/d69-lab/frames/cmds.png"
+   }
+  },
+  {
+   "at": "2026-10-23T01:21:17Z",
+   "u6lab-7-back-on-nightly": {
+    "pid": 2497737,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1021.1022-nightly",
+     "buildChannel": "nightly",
+     "channel": "nightly",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1021.1022-nightly",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "manager": "apt",
+      "updater": {
+       "arguments": [
+        "--mode=updates"
+       ],
+       "id": "gnome-software",
+       "name": "GNOME Software",
+       "program": "/usr/bin/gnome-software"
+      },
+      "channel": "nightly",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "repository": "managed",
+      "otherChannel": {
+       "channel": "stable",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/stable"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installAvailable": false,
+     "installReason": "not_appimage",
+     "error": null
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "44471ecb58e01dd519f8afae1d9c9f1a69a04b6b996b7f2f530a9bac2cd6f994",
+     "sameAs": "/usr/share/putgd/repo/putgd-nightly.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/debian13",
+      "Suites: nightly"
+     ],
+     "installed": "26.1021.1022~nightly",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1021.1022~nightly",
+      "  Candidate: 26.1021.1022~nightly",
+      "  Version table:",
+      " *** 26.1021.1022~nightly 500",
+      "        500 https://pkg.put.gd/lab/apt/debian13 nightly/main amd64 Packages",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 5c0742f66f1fd5e14be392bf0e480f5a"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/d69-lab/frames/u6lab-7-back-on-nightly.png"
+   }
+  },
+  {
+   "at": "2026-10-23T01:21:21Z",
+   "u6lab-7-back-on-nightly": {
+    "pid": 2497737,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1021.1022-nightly",
+     "buildChannel": "nightly",
+     "channel": "nightly",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1021.1022-nightly",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "manager": "apt",
+      "updater": {
+       "arguments": [
+        "--mode=updates"
+       ],
+       "id": "gnome-software",
+       "name": "GNOME Software",
+       "program": "/usr/bin/gnome-software"
+      },
+      "channel": "nightly",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "repository": "managed",
+      "otherChannel": {
+       "channel": "stable",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/stable"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installAvailable": false,
+     "installReason": "not_appimage",
+     "error": null
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "44471ecb58e01dd519f8afae1d9c9f1a69a04b6b996b7f2f530a9bac2cd6f994",
+     "sameAs": "/usr/share/putgd/repo/putgd-nightly.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/debian13",
+      "Suites: nightly"
+     ],
+     "installed": "26.1021.1022~nightly",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1021.1022~nightly",
+      "  Candidate: 26.1021.1022~nightly",
+      "  Version table:",
+      " *** 26.1021.1022~nightly 500",
+      "        500 https://pkg.put.gd/lab/apt/debian13 nightly/main amd64 Packages",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 5c0742f66f1fd5e14be392bf0e480f5a"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/d69-lab/frames/u6lab-7-back-on-nightly.png"
+   }
+  }
+ ],
+ "before": {
+  "defaultProfile": {
+   "/home/patrick/.config/putgd": false,
+   "/home/patrick/.local/state/putgd": true,
+   "/home/patrick/.cache/putgd": false,
+   "/home/patrick/.local/share/putgd": false
+  },
+  "defaultFiles": {
+   "/home/patrick/.local/state/putgd": [
+    "/home/patrick/.local/state/putgd/logs",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T021422954Z-1189540-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T021423769Z-1189613-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T022611327Z-1211977-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T022612028Z-1212041-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T022623452Z-1212324-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T022634945Z-1212758-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T022646367Z-1213088-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T022657258Z-1214036-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T022709968Z-1214665-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T022721266Z-1214958-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T022722050Z-1215008-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T022722826Z-1215047-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T024447251Z-1225326-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T024447914Z-1225376-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T024459274Z-1225545-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T024510668Z-1225874-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T024522058Z-1226119-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T024532915Z-1226457-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T024545014Z-1227379-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T024556332Z-1228223-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T024557109Z-1228316-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T024557904Z-1228407-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T030820414Z-1240663-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T030831849Z-1241269-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T030843305Z-1241656-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T030854810Z-1241949-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T030905606Z-1242311-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T030917986Z-1242909-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T030929295Z-1243187-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T030930023Z-1243243-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T030930779Z-1243296-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T031207487Z-1251757-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T043244203Z-1286540-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T043255634Z-1287115-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T043306986Z-1287514-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T043318429Z-1287752-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T043329262Z-1288144-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T043341954Z-1288764-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T043353212Z-1289094-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T043353977Z-1289141-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T043354758Z-1289189-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T043640833Z-1297984-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T062258500Z-1422895-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T062259191Z-1422948-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T062310584Z-1423163-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T062322054Z-1423586-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T062333635Z-1423854-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T062345516Z-1424660-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T062358360Z-1425641-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T062409750Z-1426247-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T062411189Z-1426320-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T062412917Z-1426422-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T212720908Z-1703594-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T212721790Z-1703710-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T212733204Z-1704241-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T212744600Z-1704524-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T212756037Z-1705161-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T212806996Z-1706685-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T212818988Z-1707737-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T212830256Z-1708352-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T212831141Z-1708416-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T212831976Z-1708460-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T213925534Z-1720830-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T213937019Z-1721195-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T213948390Z-1721413-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T213959720Z-1721631-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T214010533Z-1721971-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T214022979Z-1722332-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T214034301Z-1722931-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T214035136Z-1722974-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T214035968Z-1723012-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T214350036Z-1733383-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T220237541Z-1748699-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T220238429Z-1748817-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T220249840Z-1749035-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T220301176Z-1749500-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T220312592Z-1749637-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T220323372Z-1750204-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T220336009Z-1751167-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T220347349Z-1752030-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T220348124Z-1752070-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T220348885Z-1752111-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T234437015Z-1786311-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T234437931Z-1786417-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T234449301Z-1786858-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T234500656Z-1787068-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T234512064Z-1787781-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T234522929Z-1789109-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T234534980Z-1789704-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T234546212Z-1790328-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T234547067Z-1790397-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T234547976Z-1790448-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261023T002830035Z-2491920-1.jsonl",
+    "/home/patrick/.local/state/putgd/running.crash",
+    "/home/patrick/.local/state/putgd/running.json",
+    "/home/patrick/.local/state/putgd/running.signal",
+    "/home/patrick/.local/state/putgd/unclean-exits.json"
+   ]
+  }
+ },
+ "units": [
+  "putgd-ua-d69-lab-u6lab-1-L1-1792715665",
+  "putgd-ua-d69-lab-u6lab-3-S1-1792715691",
+  "putgd-ua-d69-lab-u6lab-5-S2-1792716451",
+  "putgd-ua-d69-lab-u6lab-4b-S1-again-1792716482",
+  "putgd-ua-d69-lab-u6lab-5-S2-1792716587",
+  "putgd-ua-d69-lab-u6lab-7-back-on-nightly-1792718471"
+ ],
+ "restarts": [
+  {
+   "old": 2492893,
+   "oldExe": "/usr/bin/putgd (deleted)"
+  },
+  {
+   "old": 2493201,
+   "oldExe": "/usr/bin/putgd (deleted)"
+  },
+  {
+   "old": 2494107,
+   "oldExe": "/usr/bin/putgd (deleted)"
+  },
+  {
+   "old": 2494342,
+   "oldExe": "/usr/bin/putgd (deleted)"
+  },
+  {
+   "old": 2494826,
+   "oldExe": "/usr/bin/putgd (deleted)"
+  }
+ ],
+ "watchStart-u14repo": "2026-10-23T00:35:01Z"
+}

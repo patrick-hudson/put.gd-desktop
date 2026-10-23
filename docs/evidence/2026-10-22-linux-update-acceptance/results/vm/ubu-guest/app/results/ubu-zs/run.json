@@ -1,0 +1,135 @@
+{
+ "name": "ubu-zs",
+ "tool": "real",
+ "live": true,
+ "image": "/home/lab/ua/app/runs/ubu-zs/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+ "imageSha256": "005762e9ede991c78fce115707a41617d899d7870738fb525151c182357b7c3a",
+ "cliDir": "/home/lab/ua/app/runs/ubu-zs/cli/squashfs-root",
+ "runtime": "/tmp/ua-app.jtQPbE",
+ "session": {
+  "HOME": "/home/lab",
+  "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin",
+  "USER": "lab",
+  "LANG": "en_US.UTF-8",
+  "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus",
+  "XDG_SESSION_TYPE": "wayland",
+  "XDG_CURRENT_DESKTOP": "ubuntu:GNOME",
+  "XDG_SESSION_DESKTOP": "ubuntu",
+  "DESKTOP_SESSION": "ubuntu",
+  "XDG_DATA_DIRS": "/usr/share/ubuntu:/usr/share/gnome:/usr/local/share/:/usr/share/:/var/lib/snapd/desktop",
+  "WAYLAND_DISPLAY": "/run/user/1000/wayland-0",
+  "DISPLAY": ":0",
+  "XAUTHORITY": "/run/user/1000/.mutter-Xwaylandauth.JQOBX3"
+ },
+ "shell": "gnome-shell",
+ "hostPath": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin",
+ "host": "putgd-ubuntu-lab",
+ "vnc": 5922,
+ "urls": {},
+ "input": "vnc",
+ "privateData": true,
+ "before": {
+  "dataPutgd": true,
+  "homePutgd": {
+   "/home/lab/.config/putgd": false,
+   "/home/lab/.local/state/putgd": false,
+   "/home/lab/.cache/putgd": false
+  },
+  "autostart": []
+ },
+ "pids": {
+  "apprun": 6568
+ },
+ "created": "2026-10-23T01:32:53Z",
+ "log": [
+  {
+   "at": "2026-10-23T01:32:58Z",
+   "start": {
+    "pid": 6537,
+    "status": {
+     "build": "26.1022.1017-nightly",
+     "channel": "nightly",
+     "latest": null,
+     "updateAvailable": null,
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "/home/lab/ua/app/runs/ubu-zs/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+      "installed": null,
+      "kind": "update",
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle",
+      "switch": null
+     }
+    },
+    "frame": "/home/lab/ua/app/runs/ubu-zs/frames/u7-1-1017-start.png"
+   }
+  },
+  {
+   "at": "2026-10-23T01:33:02Z",
+   "check": {
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1022.1017-nightly",
+     "channel": "nightly",
+     "latest": "26.1022.1019-nightly",
+     "updateAvailable": true,
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "/home/lab/ua/app/runs/ubu-zs/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+      "installed": null,
+      "kind": "update",
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle",
+      "switch": null
+     }
+    },
+    "frame": "/home/lab/ua/app/runs/ubu-zs/frames/u7-2-1019-available.png"
+   }
+  },
+  {
+   "at": "2026-10-23T01:33:17Z",
+   "click": {
+    "x": 514,
+    "y": 705,
+    "keys": null,
+    "frame": null
+   }
+  },
+  {
+   "at": "2026-10-23T01:33:24Z",
+   "frame": {
+    "label": "u7-3-1019-installed",
+    "frame": "/home/lab/ua/app/runs/ubu-zs/frames/u7-3-1019-installed.png"
+   }
+  },
+  {
+   "at": "2026-10-23T01:33:48Z",
+   "click": {
+    "x": 492,
+    "y": 618,
+    "keys": null,
+    "frame": null
+   }
+  },
+  {
+   "at": "2026-10-23T01:33:51Z",
+   "frame": {
+    "label": "u7-4-1019-restarted",
+    "frame": "/home/lab/ua/app/runs/ubu-zs/frames/u7-4-1019-restarted.png"
+   }
+  }
+ ]
+}

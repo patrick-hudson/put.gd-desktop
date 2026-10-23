@@ -19,6 +19,7 @@
 #include <QFileInfo>
 #include <QJsonDocument>
 #include <QPointer>
+#include <QScopeGuard>
 #include <QTimer>
 #include <QUuid>
 #include <chrono>
@@ -539,6 +540,11 @@ Operation OperationService::run(Job job) {
   return true;
  };
  auto settled=[&](int index){QPointer<OperationService> owner(this);QMetaObject::invokeMethod(this,[owner,id=op.id,index]{if(owner&&!owner->stopping_)owner->uploadItemSettled(id,index);},Qt::QueuedConnection);};
+ // A sharing provider (Proton Drive) makes the link in the sharing step below,
+ // after the transfer. Such a file settles there, so each_link ordering waits
+ // for its link instead of passing it and stranding the link (#478).
+ auto linkFollows=[&](const OperationItem& item){return capabilities.sharing&&item.uploadStatus=="uploaded"&&item.receipt.directUrl.isEmpty();};
+ auto settleTransfer=[&](int index){OperationItem item;{std::lock_guard lock(itemsMutex);item=op.items[index];}if(!linkFollows(item))settled(index);};
  auto transfer=[&](int index,const std::shared_ptr<std::atomic_bool>& cancel) {
   OperationItem item;{std::lock_guard lock(itemsMutex);item=op.items[index];}
   ArtifactStore artifacts(root_+"/artifacts");
@@ -621,7 +627,7 @@ Operation OperationService::run(Job job) {
  std::vector<std::thread> workers;
  for(int index=0;index<op.items.size()&&persisted;++index) {
   OperationItem item;{std::lock_guard lock(itemsMutex);item=op.items[index];}
-  if(terminalUpload(item.uploadStatus)||item.uploadStatus=="failed") {settled(index);continue;}
+  if(terminalUpload(item.uploadStatus)||item.uploadStatus=="failed") {settleTransfer(index);continue;}
   if(job.cancelled->load()) {op.cancelled=true;break;}
   const auto cancel=itemCancellation(op.id,item.artifact.id);
   // Waiting for a slot: the operation reads as queued until one of its files transfers.
@@ -632,15 +638,20 @@ Operation OperationService::run(Job job) {
    if(job.cancelled->load()) {op.cancelled=true;break;}
    item.uploadStatus="cancelled";item.phase="cancelled";item.error={"cancelled","Upload cancelled before it started; Retry uploads this file",{}};commit(item,index);settled(index);continue;
   }
-  if(!parallel) {transfer(index,cancel);uploadSlots_.release(op.id);settled(index);continue;}
-  workers.emplace_back([&,index,cancel]{transfer(index,cancel);uploadSlots_.release(op.id);settled(index);});
+  if(!parallel) {transfer(index,cancel);uploadSlots_.release(op.id);settleTransfer(index);continue;}
+  workers.emplace_back([&,index,cancel]{transfer(index,cancel);uploadSlots_.release(op.id);settleTransfer(index);});
  }
  for(auto& worker:workers)worker.join();
  forgetItemCancellations(op.id);
  if(!persisted)return op;
  // Persist the uploaded receipt before the separate sharing mutation. Sharing
  // failure leaves an uploaded file and resumes only the link step on explicit retry.
- for(auto& item:op.items) {
+ for(int index=0;index<op.items.size();++index) {
+  auto& item=op.items[index];
+  // A file whose link this step makes settles when the step ends for it,
+  // whichever way: its link, if any, has been offered by then (#478).
+  const bool deferredSettle=linkFollows(item);
+  const auto settleShared=qScopeGuard([&]{if(deferredSettle)settled(index);});
   if(item.uploadStatus!="uploaded"||job.cancelled->load())continue;
   if(!capabilities.sharing)continue;
   auto lock=objectLock(item.receipt.destination,item.receipt.objectReference,{});std::unique_lock guard(*lock);
@@ -882,18 +893,29 @@ void OperationService::performCopy(Operation op,bool explicitCopy,JsonReply repl
  const bool eligible=(explicitCopy&&ticket==invocation_)||(!explicitCopy&&(op.invocation==invocation_&&op.clipboardRevision==source_.clipboardRevision()));
  const auto path=databasePath();
  QPointer<OperationService> guarded(this);
- auto record=[guarded,path,reply](Operation value) {if(!guarded)return;guarded->background([path,value](Error& e) {HistoryStore store(path);e=store.saveOperation(value);return value.publicJson();},[guarded,value,reply](Error e,QJsonObject result) {if(!guarded)return;emit guarded->changed(value.id);if(!e)emit guarded->resultReady(value.id);if(reply)reply(e,result);});};
- if(!eligible) {op.copyStatus="suppressed";record(op);return;}
+ // `copy` carries the copy's own error and suppression guard for the
+ // putgd.clipboard record (#473); the operation's error may predate the copy.
+ auto record=[guarded,path,reply,explicitCopy](Operation value,QJsonObject copy={}) {if(!guarded)return;
+  copy["operationId"]=value.id;copy["action"]=value.action;copy["automatic"]=!explicitCopy;copy["copyStatus"]=value.copyStatus;
+  logging::write(logClipboard(),value.copyStatus=="failed"?QtWarningMsg:QtInfoMsg,explicitCopy?"Copy finished":"Automatic copy finished",copy);
+  guarded->background([path,value](Error& e) {HistoryStore store(path);e=store.saveOperation(value);return value.publicJson();},[guarded,value,reply](Error e,QJsonObject result) {if(!guarded)return;emit guarded->changed(value.id);if(!e)emit guarded->resultReady(value.id);if(reply)reply(e,result);});};
+ if(!eligible) {
+  op.copyStatus="suppressed";
+  record(op,{{"suppression",explicitCopy?copyGuard(false,false,"superseded",ticket,invocation_,0,0):copyGuard(false,false,"newer_action",op.invocation,invocation_,op.clipboardRevision,source_.clipboardRevision())}});return;
+ }
  QStringList urls,files;QString localKind;
  for(const auto& item:op.items) {if(item.linkAvailable())urls.append(item.receipt.directUrl);if(item.uploadStatus=="local_only"&&item.local.status=="saved") {files.append(item.local.path);localKind=item.artifact.category;}}
  if(urls.isEmpty()&&files.isEmpty()) {op.copyStatus="no_result";record(op);return;}
  CopyPayload payload;
  if(!urls.isEmpty()) {payload.kind="text";payload.text=urls.join('\n');}
  else {payload.kind="files";payload.files=files;}
- const auto completeCopy=[op,record](Error error) mutable {
+ auto suppression=std::make_shared<QJsonObject>();
+ const auto completeCopy=[op,record,suppression](Error error) mutable {
   op.copyStatus=error?(error.code=="copy_suppressed"?"suppressed":"failed"):"copied";
   if(error)op.error=error;
-  record(op);
+  QJsonObject copy;
+  if(error){copy["error"]=logging::errorFields(error);if(error.code=="copy_suppressed")copy["suppression"]=suppression->isEmpty()?nativeCopyGuard(error):*suppression;}
+  record(op,copy);
  };
  // File batches always copy URIs. Detached text/image acquisitions copy their MIME;
  // a recording (video, or an animated GIF/WebP) is a file, never a still PNG.
@@ -916,13 +938,16 @@ void OperationService::performCopy(Operation op,bool explicitCopy,JsonReply repl
     if(!bytes.startsWith(QByteArray::fromHex("89504e470d0a1a0a")))e={"artifact_invalid","Image result is not a PNG",{}};
    }else {prepared->kind="text";prepared->text=QString::fromUtf8(bytes);}
    return QJsonObject{};
-  },[this,op,ticket,revision,record,prepared,completeCopy](Error e,QJsonObject) mutable {
-   if(e) {op.copyStatus="failed";op.error=e;record(op);return;}
-   if(ticket!=invocation_||revision!=source_.clipboardRevision()) {op.copyStatus="suppressed";record(op);return;}
-   deliverCopy(*prepared,completeCopy,[this,ticket,revision]{return ticket==invocation_&&revision==source_.clipboardRevision();});
+  },[this,op,ticket,revision,record,prepared,completeCopy,suppression](Error e,QJsonObject) mutable {
+   if(e) {op.copyStatus="failed";op.error=e;record(op,{{"error",logging::errorFields(e)}});return;}
+   if(const auto guard=copyGuard(false,false,"newer_action",ticket,invocation_,revision,source_.clipboardRevision());!guard.isEmpty()) {op.copyStatus="suppressed";record(op,{{"suppression",guard}});return;}
+   deliverCopy(*prepared,completeCopy,[this,ticket,revision,suppression]{*suppression=copyGuard(false,false,"newer_action",ticket,invocation_,revision,source_.clipboardRevision());return suppression->isEmpty();});
   });return;
  }
- deliverCopy(payload,completeCopy,[this,op,explicitCopy,ticket]{return explicitCopy?ticket==invocation_:(op.invocation==invocation_&&op.clipboardRevision==source_.clipboardRevision());});
+ deliverCopy(payload,completeCopy,[this,op,explicitCopy,ticket,suppression]{
+  *suppression=explicitCopy?copyGuard(false,false,"superseded",ticket,invocation_,0,0):copyGuard(false,false,"newer_action",op.invocation,invocation_,op.clipboardRevision,source_.clipboardRevision());
+  return suppression->isEmpty();
+ });
 }
 void OperationService::copyHistoryImage(const QString& id,JsonReply reply) {
  const auto ticket=invalidateCopyEligibility();auto preparation=std::make_shared<CopyPreparationState>();preparation->revision=source_.clipboardRevision();const auto path=databasePath();auto prepared=std::make_shared<CopyPayload>();

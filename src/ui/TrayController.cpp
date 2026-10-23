@@ -316,9 +316,13 @@ QString TrayController::completionMessage(const QJsonObject& operation,bool hasL
  const auto copy=operation["copyStatus"].toString();
  bool localOnly=!items.isEmpty();
  for(const auto& value:items)localOnly=localOnly&&value.toObject()["uploadStatus"]=="local_only";
- const QString copied=copy=="copied"?(localOnly?"Result copied to the clipboard.":"Link copied to the clipboard."):copy=="failed"?(localOnly?"Could not copy the result.":"Could not copy the link."):QString{};
+ // A suppressed copy (#473) is deliberate: the clipboard moved on, or a newer
+ // copy took its place, between the capture and the link. Say so, and where
+ // the link still is.
+ const QString copied=copy=="copied"?(localOnly?"Result copied to the clipboard.":"Link copied to the clipboard."):copy=="failed"?(localOnly?"Could not copy the result.":"Could not copy the link."):
+  copy=="suppressed"?(localOnly?"Result not copied: the clipboard changed meanwhile. Copy it from Activity.":"Link not copied: the clipboard changed during the upload. Copy it from Activity."):QString{};
  if(!QStringList{"failed","partial","interrupted"}.contains(state)) {
-  if(localOnly)return "Saved locally"+(copy=="copied"?QString("; copied to the clipboard."):copy=="failed"?QString("; could not copy the result."):QString("."));
+  if(localOnly)return "Saved locally"+(copy=="copied"?QString("; copied to the clipboard."):copy=="failed"?QString("; could not copy the result."):copy=="suppressed"?QString("; not copied because the clipboard changed meanwhile. Copy it from Activity."):QString("."));
   QStringList parts{items.size()>1?QString("%1 files uploaded.").arg(items.size()):QString("Uploaded.")};
   if(!copied.isEmpty())parts.append(copied);
   if(hasLink)parts.append("Click to open in browser.");

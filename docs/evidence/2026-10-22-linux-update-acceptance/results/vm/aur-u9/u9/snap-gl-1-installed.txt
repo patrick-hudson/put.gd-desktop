@@ -1,0 +1,18 @@
+## gl-1-installed 2026-10-23T01:58:22Z
+### ls -la /var/home/lab/AppImages
+total 225128
+drwxr-xr-x. 1 lab lab       142 2026-10-22 20:58:21.726238871 -0500 .
+drwx------. 1 lab lab       342 2026-10-22 20:58:10.981316378 -0500 ..
+drwxr-xr-x. 1 lab lab        12 2026-10-22 20:58:10.982753830 -0500 .icons
+-rwxr-xr-x. 1 lab lab 115259896 2026-10-22 20:58:20.271249366 -0500 put.gd.appimage
+-rwxr-xr-x. 1 lab lab 115259896 2026-10-22 20:58:04.980359665 -0500 .putgd-update-backup-26.1022.1017-nightly.AppImage
+### sha256 / inode
+23851 e5b7ad2caecaa7f5737bdfb5d2f0fd4e3c74ce5d98a8a68142caf4efd43525bc  /var/home/lab/AppImages/put.gd.appimage
+### desktop entries
+#### /var/home/lab/.local/share/applications/put.gd.desktop
+Name=put.gd (442144)
+TryExec=/var/home/lab/AppImages/put.gd.appimage
+Exec=env DESKTOPINTEGRATION=1 /var/home/lab/AppImages/put.gd.appimage
+27e6fd88092ebc30eed1db5173d780384dff4515207e522a7208c47ea0be3795  /var/home/lab/.local/share/applications/put.gd.desktop
+### residents
+6160 DESKTOPINTEGRATION=1 APPIMAGE=/var/home/lab/AppImages/put.gd.appimage 

@@ -1,0 +1,12 @@
+2026-10-23T00:28:18Z shell cinnamon pid 261073
+2026-10-23T00:28:18Z logout requested (cinnamon-session-quit --logout)
+2026-10-23T00:28:21Z old shell gone
+2026-10-23T00:28:21Z systemctl restart lightdm
+2026-10-23T00:28:23Z new shell pid 437435
+  c1 1000 patrick seat0 tty7 closing no -
+ c11 1000 patrick seat0 tty7 closing no -
+ c12 1000 patrick seat0 tty7 active  no -
+  c3 1000 patrick seat0 tty7 closing no -
+  c5 1000 patrick seat0 tty7 closing no -
+  c7 1000 patrick seat0 tty7 closing no -
+  c9 1000 patrick seat0 tty7 closing no -

@@ -1,0 +1,4 @@
+setup
+login enable 1
+quit {'quit': True, 'pid': 474501, 'gone': True}
+aut 0 {'putgd-26.1022.1019-nightly-x86_64.AppImage': 'e5b7ad2caecaa7f5737bdfb5d2f0fd4e3c74ce5d98a8a68142caf4efd43525bc'} {'putgd-26.1022.1019-nightly-x86_64.AppImage': True} True

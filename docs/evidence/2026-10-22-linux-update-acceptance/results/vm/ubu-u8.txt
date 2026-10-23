@@ -1,0 +1,9 @@
+8d17a50e2f7502ed
+6f89cd7b025fcc87
+005762e9ede991c7
+recorder -> ps”: putgd326-url.desktop
+aut setup
+aut check 1 update 0 3.1 s new {'putgd-26.1022.1019-nightly-x86_64.AppImage': 'e5b7ad2caecaa7f5737bdfb5d2f0fd4e3c74ce5d98a8a68142caf4efd43525bc'} sums {'putgd-26.1022.1019-nightly-x86_64.AppImage': True} N unchanged True ssl None
+zsync2: Using CA bundle found on system: /etc/ssl/certs/ca-certificates.crt | 
+cleanup True
+/dev/vda2        32G   27G  3.2G  90% /

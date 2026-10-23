@@ -1,0 +1,308 @@
+{
+ "tag": "v26.1022.1017-nightly",
+ "channel": "nightly",
+ "apt": {
+  "ubuntu24.04": {
+   "InRelease with ubuntu24.04-archive-keyring.gpg": {
+    "ok": true,
+    "output": [
+     "gpgv:                using RSA key 4032E28D893BAF66F4AC23D9A11D38D55536B371",
+     "gpgv: Good signature from \"put.gd nightly packages <packages@put.gd>\""
+    ]
+   },
+   "Release.gpg with ubuntu24.04-archive-keyring.gpg": {
+    "ok": true,
+    "output": [
+     "gpgv:                using RSA key 4032E28D893BAF66F4AC23D9A11D38D55536B371",
+     "gpgv: Good signature from \"put.gd nightly packages <packages@put.gd>\""
+    ]
+   },
+   "InRelease with ubuntu24.04-sources-signed-by.gpg": {
+    "ok": true,
+    "output": [
+     "gpgv:                using RSA key 4032E28D893BAF66F4AC23D9A11D38D55536B371",
+     "gpgv: Good signature from \"put.gd nightly packages <packages@put.gd>\""
+    ]
+   },
+   "Release.gpg with ubuntu24.04-sources-signed-by.gpg": {
+    "ok": true,
+    "output": [
+     "gpgv:                using RSA key 4032E28D893BAF66F4AC23D9A11D38D55536B371",
+     "gpgv: Good signature from \"put.gd nightly packages <packages@put.gd>\""
+    ]
+   },
+   "InRelease with repo-putgd-nightly.gpg": {
+    "ok": true,
+    "output": [
+     "gpgv:                using RSA key 4032E28D893BAF66F4AC23D9A11D38D55536B371",
+     "gpgv: Good signature from \"put.gd nightly packages <packages@put.gd>\""
+    ]
+   },
+   "Release.gpg with repo-putgd-nightly.gpg": {
+    "ok": true,
+    "output": [
+     "gpgv:                using RSA key 4032E28D893BAF66F4AC23D9A11D38D55536B371",
+     "gpgv: Good signature from \"put.gd nightly packages <packages@put.gd>\""
+    ]
+   },
+   "InRelease with repo-putgd-stable.gpg": {
+    "ok": false,
+    "output": [
+     "gpgv:                using RSA key 4032E28D893BAF66F4AC23D9A11D38D55536B371"
+    ]
+   },
+   "Release.gpg with repo-putgd-stable.gpg": {
+    "ok": false,
+    "output": [
+     "gpgv:                using RSA key 4032E28D893BAF66F4AC23D9A11D38D55536B371"
+    ]
+   },
+   "date": "Thu, 22 Oct 2026 22:51:42 UTC",
+   "Packages sha256 in InRelease": true,
+   "versions": [
+    "26.1022.1017~nightly"
+   ],
+   "assetListed": true,
+   "pool": {
+    "file": "pool/main/p/putgd/putgd_26.1022.1017~nightly_amd64.deb",
+    "sha256": "f28ab4aebae03d501f007dcfe20a05df6ec701c32e1127b91fd18dce4c0e15a5",
+    "identicalToAsset": true,
+    "Depends": "libqt6sql6-sqlite, qt6-qpa-plugins, qt6-wayland, qt6-image-formats-plugins, libglib2.0-bin, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer1.0-pipewire, xdg-utils, libsecret-1-0, libavcodec60 (>= 7:6.1), libavfilter9 (>= 7:6.0), libavformat60 (>= 7:6.0), libavutil58 (>= 7:6.0), libc6 (>= 2.38), libcurl4t64 (>= 7.18.0), libgcc-s1 (>= 4.2), libglib2.0-0t64 (>= 2.12.0), libgstreamer1.0-0 (>= 1.0.0), libqt6core6t64 (>= 6.4.0), libqt6dbus6t64 (>= 6.4.0), libqt6gui6t64 (>= 6.4.0), libqt6keychain1 (>= 0.13.2), libqt6network6t64 (>= 6.1.2), libqt6sql6t64 (>= 6.1.2), libqt6widgets6t64 (>= 6.4.0), libssl3t64 (>= 3.0.3), libstdc++6 (>= 13.1), libswresample4 (>= 7:6.0), libswscale7 (>= 7:6.0), libwayland-client0 (>= 1.20.0), libxcb-damage0, libxcb-keysyms1 (>= 0.4.0), libxcb-randr0 (>= 1.3), libxcb-render0, libxcb-xfixes0, libxcb-xinput0 (>= 1.15), libxcb1, libxcursor1 (>> 1.1.2), libxkbcommon0 (>= 1.0.0), zlib1g (>= 1:1.1.4)",
+    "Recommends": "gstreamer1.0-plugins-ugly, gstreamer1.0-libav, gstreamer1.0-vaapi"
+   },
+   "dep11 sha256 in InRelease": true,
+   "dep11": "---\nFile: DEP-11\nVersion: '1.0'\nOrigin: putgd-ubuntu24.04-nightly\n---\nType: desktop-application\nID: gd.put.Putgd\nPackage: putgd\nProjectLicense: MIT AND Apache-2.0 AND GPL-3.0-only\nName:\n  C: put.gd\nSummary:\n  C: Capture and share screen regions and clipboard content\nDescription:\n  C: >-\n    <p>A native Linux sharing app. Hit a hotkey and grab a region, a window, the desktop, the clipboard or a screen recording.\n    The public link is on your clipboard as soon as the upload finishes.</p>\n\n    <p>put.gd uploads straight to your own S3-compatible bucket or Proton Drive, with no middleman and no telemetry. It runs\n    on GNOME, KDE Plasma and Cinnamon, on Wayland and X11.</p>\nDeveloper:\n  id: gd.put\n  name:\n    C: put.gd\nCategories:\n- Utility\n- Graphics\nUrl:\n  homepage: https://app.put.gd/\n  bugtracker: https://github.com/patrick-hudson/put.gd-desktop/issues\n  vcs-browser: https://github.com/patrick-hudson/put.gd-desktop\nIcon:\n  cached:\n  - name: gd.put.Putgd.png\n    width: 48\n    height: 48\n  - name: gd.put.Putgd.png\n    width: 64\n    height: 64\n  - name: gd.put.Putgd.png\n    width: 64\n    height: 64\n    scale: 2\n  - name: gd.put.Putgd.png\n    width: 128\n    height: 128\n  - name: gd.put.Putgd.png\n    width: 128\n    height: 128\n    scale: 2\n  stock: putgd\nLaunchable:\n  desktop-id:\n  - putgd.desktop\nProvides:\n  binaries:\n  - putgd\n  - putgd-cli\nReleases:\n- version: 26.1022.1017~nightly\n  type: stable\n  unix-timestamp: 1792627200\nContentRating:\n  oars-1.1: {}\n"
+  },
+  "ubuntu26.04": {
+   "InRelease with ubuntu26.04-archive-keyring.gpg": {
+    "ok": true,
+    "output": [
+     "gpgv:                using RSA key 4032E28D893BAF66F4AC23D9A11D38D55536B371",
+     "gpgv: Good signature from \"put.gd nightly packages <packages@put.gd>\""
+    ]
+   },
+   "Release.gpg with ubuntu26.04-archive-keyring.gpg": {
+    "ok": true,
+    "output": [
+     "gpgv:                using RSA key 4032E28D893BAF66F4AC23D9A11D38D55536B371",
+     "gpgv: Good signature from \"put.gd nightly packages <packages@put.gd>\""
+    ]
+   },
+   "InRelease with ubuntu26.04-sources-signed-by.gpg": {
+    "ok": true,
+    "output": [
+     "gpgv:                using RSA key 4032E28D893BAF66F4AC23D9A11D38D55536B371",
+     "gpgv: Good signature from \"put.gd nightly packages <packages@put.gd>\""
+    ]
+   },
+   "Release.gpg with ubuntu26.04-sources-signed-by.gpg": {
+    "ok": true,
+    "output": [
+     "gpgv:                using RSA key 4032E28D893BAF66F4AC23D9A11D38D55536B371",
+     "gpgv: Good signature from \"put.gd nightly packages <packages@put.gd>\""
+    ]
+   },
+   "InRelease with repo-putgd-nightly.gpg": {
+    "ok": true,
+    "output": [
+     "gpgv:                using RSA key 4032E28D893BAF66F4AC23D9A11D38D55536B371",
+     "gpgv: Good signature from \"put.gd nightly packages <packages@put.gd>\""
+    ]
+   },
+   "Release.gpg with repo-putgd-nightly.gpg": {
+    "ok": true,
+    "output": [
+     "gpgv:                using RSA key 4032E28D893BAF66F4AC23D9A11D38D55536B371",
+     "gpgv: Good signature from \"put.gd nightly packages <packages@put.gd>\""
+    ]
+   },
+   "InRelease with repo-putgd-stable.gpg": {
+    "ok": false,
+    "output": [
+     "gpgv:                using RSA key 4032E28D893BAF66F4AC23D9A11D38D55536B371"
+    ]
+   },
+   "Release.gpg with repo-putgd-stable.gpg": {
+    "ok": false,
+    "output": [
+     "gpgv:                using RSA key 4032E28D893BAF66F4AC23D9A11D38D55536B371"
+    ]
+   },
+   "date": "Thu, 22 Oct 2026 22:51:44 UTC",
+   "Packages sha256 in InRelease": true,
+   "versions": [
+    "26.1022.1017~nightly"
+   ],
+   "assetListed": true,
+   "pool": {
+    "file": "pool/main/p/putgd/putgd_26.1022.1017~nightly_amd64.deb",
+    "sha256": "6f89cd7b025fcc87a7a37459a3f227b490cb88b9282b55c921c88842f996464a",
+    "identicalToAsset": true,
+    "Depends": "libqt6sql6-sqlite, qt6-qpa-plugins, qt6-wayland, qt6-image-formats-plugins, libglib2.0-bin, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer1.0-pipewire, xdg-utils, libsecret-1-0, libavcodec62 (>= 7:8.0.1), libavfilter11 (>= 7:8.0.1), libavformat62 (>= 7:8.0.1), libavutil60 (>= 7:8.0.1), libc6 (>= 2.38), libcurl4t64 (>= 7.18.0), libgcc-s1 (>= 4.2), libglib2.0-0t64 (>= 2.12.0), libgstreamer1.0-0 (>= 1.0.0), liblayershellqtinterface6 (>= 6.1.0), libqt6core6t64 (>= 6.10.2), libqt6dbus6 (>= 6.8.2), libqt6gui6 (>= 6.9.1), libqt6keychain1 (>= 0.13.2), libqt6network6 (>= 6.7.2), libqt6sql6 (>= 6.1.2), libqt6widgets6 (>= 6.4.0), libssl3t64 (>= 3.4.0), libstdc++6 (>= 14), libswresample6 (>= 7:8.0.1), libswscale9 (>= 7:8.0.1), libwayland-client0 (>= 1.20.0), libxcb-damage0, libxcb-keysyms1 (>= 0.4.1), libxcb-randr0 (>= 1.3), libxcb-render0, libxcb-xfixes0, libxcb-xinput0 (>= 1.17.0), libxcb1, libxcursor1 (>> 1.1.2), libxkbcommon0 (>= 1.0.0), zlib1g (>= 1:1.1.4)",
+    "Recommends": "gstreamer1.0-plugins-ugly, gstreamer1.0-libav, gstreamer1.0-vaapi"
+   },
+   "dep11 sha256 in InRelease": true,
+   "dep11": "---\nFile: DEP-11\nVersion: '1.0'\nOrigin: putgd-ubuntu26.04-nightly\n---\nType: desktop-application\nID: gd.put.Putgd\nPackage: putgd\nProjectLicense: MIT AND Apache-2.0 AND GPL-3.0-only\nName:\n  C: put.gd\nSummary:\n  C: Capture and share screen regions and clipboard content\nDescription:\n  C: >-\n    <p>A native Linux sharing app. Hit a hotkey and grab a region, a window, the desktop, the clipboard or a screen recording.\n    The public link is on your clipboard as soon as the upload finishes.</p>\n\n    <p>put.gd uploads straight to your own S3-compatible bucket or Proton Drive, with no middleman and no telemetry. It runs\n    on GNOME, KDE Plasma and Cinnamon, on Wayland and X11.</p>\nDeveloper:\n  id: gd.put\n  name:\n    C: put.gd\nCategories:\n- Utility\n- Graphics\nUrl:\n  homepage: https://app.put.gd/\n  bugtracker: https://github.com/patrick-hudson/put.gd-desktop/issues\n  vcs-browser: https://github.com/patrick-hudson/put.gd-desktop\nIcon:\n  cached:\n  - name: gd.put.Putgd.png\n    width: 48\n    height: 48\n  - name: gd.put.Putgd.png\n    width: 64\n    height: 64\n  - name: gd.put.Putgd.png\n    width: 64\n    height: 64\n    scale: 2\n  - name: gd.put.Putgd.png\n    width: 128\n    height: 128\n  - name: gd.put.Putgd.png\n    width: 128\n    height: 128\n    scale: 2\n  stock: putgd\nLaunchable:\n  desktop-id:\n  - putgd.desktop\nProvides:\n  binaries:\n  - putgd\n  - putgd-cli\nReleases:\n- version: 26.1022.1017~nightly\n  type: stable\n  unix-timestamp: 1792627200\nContentRating:\n  oars-1.1: {}\n"
+  },
+  "debian13": {
+   "InRelease with debian13-archive-keyring.gpg": {
+    "ok": true,
+    "output": [
+     "gpgv:                using RSA key 4032E28D893BAF66F4AC23D9A11D38D55536B371",
+     "gpgv: Good signature from \"put.gd nightly packages <packages@put.gd>\""
+    ]
+   },
+   "Release.gpg with debian13-archive-keyring.gpg": {
+    "ok": true,
+    "output": [
+     "gpgv:                using RSA key 4032E28D893BAF66F4AC23D9A11D38D55536B371",
+     "gpgv: Good signature from \"put.gd nightly packages <packages@put.gd>\""
+    ]
+   },
+   "InRelease with debian13-sources-signed-by.gpg": {
+    "ok": true,
+    "output": [
+     "gpgv:                using RSA key 4032E28D893BAF66F4AC23D9A11D38D55536B371",
+     "gpgv: Good signature from \"put.gd nightly packages <packages@put.gd>\""
+    ]
+   },
+   "Release.gpg with debian13-sources-signed-by.gpg": {
+    "ok": true,
+    "output": [
+     "gpgv:                using RSA key 4032E28D893BAF66F4AC23D9A11D38D55536B371",
+     "gpgv: Good signature from \"put.gd nightly packages <packages@put.gd>\""
+    ]
+   },
+   "InRelease with repo-putgd-nightly.gpg": {
+    "ok": true,
+    "output": [
+     "gpgv:                using RSA key 4032E28D893BAF66F4AC23D9A11D38D55536B371",
+     "gpgv: Good signature from \"put.gd nightly packages <packages@put.gd>\""
+    ]
+   },
+   "Release.gpg with repo-putgd-nightly.gpg": {
+    "ok": true,
+    "output": [
+     "gpgv:                using RSA key 4032E28D893BAF66F4AC23D9A11D38D55536B371",
+     "gpgv: Good signature from \"put.gd nightly packages <packages@put.gd>\""
+    ]
+   },
+   "InRelease with repo-putgd-stable.gpg": {
+    "ok": false,
+    "output": [
+     "gpgv:                using RSA key 4032E28D893BAF66F4AC23D9A11D38D55536B371"
+    ]
+   },
+   "Release.gpg with repo-putgd-stable.gpg": {
+    "ok": false,
+    "output": [
+     "gpgv:                using RSA key 4032E28D893BAF66F4AC23D9A11D38D55536B371"
+    ]
+   },
+   "date": "Thu, 22 Oct 2026 22:51:46 UTC",
+   "Packages sha256 in InRelease": true,
+   "versions": [
+    "26.1022.1017~nightly"
+   ],
+   "assetListed": true,
+   "pool": {
+    "file": "pool/main/p/putgd/putgd_26.1022.1017~nightly_amd64.deb",
+    "sha256": "1241c317f153ab1b986441cd27f4700faed05490643ef534be968498507080c9",
+    "identicalToAsset": true,
+    "Depends": "libqt6sql6-sqlite, qt6-qpa-plugins, qt6-wayland, qt6-image-formats-plugins, libglib2.0-bin, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer1.0-pipewire, xdg-utils, libsecret-1-0, libavcodec61 (>= 7:7.1.5), libavfilter10 (>= 7:7.1.5), libavformat61 (>= 7:7.1.5), libavutil59 (>= 7:7.1.5), libc6 (>= 2.38), libcurl4t64 (>= 7.18.0), libgcc-s1 (>= 4.2), libglib2.0-0t64 (>= 2.12.0), libgstreamer1.0-0 (>= 1.0.0), liblayershellqtinterface6 (>= 6.1.0), libqt6core6t64 (>= 6.8.2), libqt6dbus6 (>= 6.8.2), libqt6gui6 (>= 6.8.2), libqt6keychain1 (>= 0.13.2), libqt6network6 (>= 6.7.2), libqt6sql6 (>= 6.1.2), libqt6widgets6 (>= 6.4.0), libssl3t64 (>= 3.4.0), libstdc++6 (>= 14), libswresample5 (>= 7:7.1.5), libswscale8 (>= 7:7.1.5), libwayland-client0 (>= 1.20.0), libxcb-damage0, libxcb-keysyms1 (>= 0.4.1), libxcb-randr0 (>= 1.3), libxcb-render0, libxcb-xfixes0, libxcb-xinput0 (>= 1.17.0), libxcb1, libxcursor1 (>> 1.1.2), libxkbcommon0 (>= 1.0.0), zlib1g (>= 1:1.1.4)",
+    "Recommends": "gstreamer1.0-plugins-ugly, gstreamer1.0-libav, gstreamer1.0-vaapi"
+   },
+   "dep11 sha256 in InRelease": true,
+   "dep11": "---\nFile: DEP-11\nVersion: '1.0'\nOrigin: putgd-debian13-nightly\n---\nType: desktop-application\nID: gd.put.Putgd\nPackage: putgd\nProjectLicense: MIT AND Apache-2.0 AND GPL-3.0-only\nName:\n  C: put.gd\nSummary:\n  C: Capture and share screen regions and clipboard content\nDescription:\n  C: >-\n    <p>A native Linux sharing app. Hit a hotkey and grab a region, a window, the desktop, the clipboard or a screen recording.\n    The public link is on your clipboard as soon as the upload finishes.</p>\n\n    <p>put.gd uploads straight to your own S3-compatible bucket or Proton Drive, with no middleman and no telemetry. It runs\n    on GNOME, KDE Plasma and Cinnamon, on Wayland and X11.</p>\nDeveloper:\n  id: gd.put\n  name:\n    C: put.gd\nCategories:\n- Utility\n- Graphics\nUrl:\n  homepage: https://app.put.gd/\n  bugtracker: https://github.com/patrick-hudson/put.gd-desktop/issues\n  vcs-browser: https://github.com/patrick-hudson/put.gd-desktop\nIcon:\n  cached:\n  - name: gd.put.Putgd.png\n    width: 48\n    height: 48\n  - name: gd.put.Putgd.png\n    width: 64\n    height: 64\n  - name: gd.put.Putgd.png\n    width: 64\n    height: 64\n    scale: 2\n  - name: gd.put.Putgd.png\n    width: 128\n    height: 128\n  - name: gd.put.Putgd.png\n    width: 128\n    height: 128\n    scale: 2\n  stock: putgd\nLaunchable:\n  desktop-id:\n  - putgd.desktop\nProvides:\n  binaries:\n  - putgd\n  - putgd-cli\nReleases:\n- version: 26.1022.1017~nightly\n  type: stable\n  unix-timestamp: 1792627200\nContentRating:\n  oars-1.1: {}\n"
+  }
+ },
+ "dnf": {
+  "repomdTypes": [
+   "appstream",
+   "appstream-icons",
+   "filelists",
+   "other",
+   "primary"
+  ],
+  "repomd.xml.asc": "HTTP Error 404: Not Found",
+  "primary checksum": true,
+  "packages": [
+   {
+    "version": "26.1022.1017~nightly-1.fc44",
+    "href": "Packages/putgd-26.1022.1017~nightly-1.fc44.x86_64.rpm",
+    "sha256": "f51fcb12f723a70cf2e617fb1632b6163cfb871611b9a0a5d146adf012f8cf2a"
+   },
+   {
+    "version": "26.1022.983~nightly-1.fc44",
+    "href": "Packages/putgd-26.1022.983~nightly-1.fc44.x86_64.rpm",
+    "sha256": "c7a620088c0ada626387800d62d1d292a0b78e366457acd48d04c28773a77b87"
+   },
+   {
+    "version": "26.1022.996~nightly-1.fc44",
+    "href": "Packages/putgd-26.1022.996~nightly-1.fc44.x86_64.rpm",
+    "sha256": "3bf671738f769f85038a8fce1f280de7df5ea4d5cdb50cae312ca3082d9a2597"
+   }
+  ],
+  "rpm": {
+   "file": "Packages/putgd-26.1022.1017~nightly-1.fc44.x86_64.rpm",
+   "sha256": "f51fcb12f723a70cf2e617fb1632b6163cfb871611b9a0a5d146adf012f8cf2a",
+   "assetSha256": "4f5a5c6355b1f138abf11ed1ded25213f5001996e61fd5d39f6882cbb1fb0a42",
+   "headerAndPayloadDigestsEqual": true,
+   "digests": "3d817b965284e3879f3453fef92a31019b1f6410717a8ef4b5a1f9856fe83f5e 3a1138ba2a08a423032c88dc707017e669001ddc5a821255f3d1c7270b6d7860",
+   "repo with fedora44-RPM-GPG-KEY-putgd-nightly": {
+    "rc": 0,
+    "out": [
+     "Header OpenPGP V4 RSA/SHA512 signature, key fingerprint: 4032e28d893baf66f4ac23d9a11d38d55536b371: OK",
+     "Header SHA256 digest: OK",
+     "Payload SHA256 digest: OK"
+    ]
+   },
+   "asset with fedora44-RPM-GPG-KEY-putgd-nightly": {
+    "rc": 0,
+    "out": [
+     "Header SHA256 digest: OK",
+     "Payload SHA256 digest: OK"
+    ]
+   },
+   "repo with fedora44-RPM-GPG-KEY-putgd-stable": {
+    "rc": 1,
+    "out": [
+     "Header OpenPGP V4 RSA/SHA512 signature, key ID a11d38d55536b371: NOKEY",
+     "Header SHA256 digest: OK",
+     "Payload SHA256 digest: OK"
+    ]
+   },
+   "asset with fedora44-RPM-GPG-KEY-putgd-stable": {
+    "rc": 0,
+    "out": [
+     "Header SHA256 digest: OK",
+     "Payload SHA256 digest: OK"
+    ]
+   },
+   "repo with fedora44-RPM-GPG-KEY-putgd": {
+    "rc": 0,
+    "out": [
+     "Header OpenPGP V4 RSA/SHA512 signature, key fingerprint: 4032e28d893baf66f4ac23d9a11d38d55536b371: OK",
+     "Header SHA256 digest: OK",
+     "Payload SHA256 digest: OK"
+    ]
+   },
+   "asset with fedora44-RPM-GPG-KEY-putgd": {
+    "rc": 0,
+    "out": [
+     "Header SHA256 digest: OK",
+     "Payload SHA256 digest: OK"
+    ]
+   }
+  },
+  "appstream": {
+   "href": "repodata/29d2ade9f676a2d25069051162f0811228bac335ccad2d73d9473d627dbb1ad5-appstream.xml.gz",
+   "checksumOk": true
+  },
+  "appstreamXml": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<components version=\"1.0\" origin=\"putgd-nightly\">\n  <component type=\"desktop-application\">\n    <id>gd.put.Putgd</id>\n    <pkgname>putgd</pkgname>\n    <name>put.gd</name>\n    <summary>Capture and share screen regions and clipboard content</summary>\n    <project_license>MIT AND Apache-2.0 AND GPL-3.0-only</project_license>\n    <description>\n      <p>A native Linux sharing app. Hit a hotkey and grab a region, a window, the desktop, the clipboard or a screen recording. The public link is on your clipboard as soon as the upload finishes.</p>\n      <p>put.gd uploads straight to your own S3-compatible bucket or Proton Drive, with no middleman and no telemetry. It runs on GNOME, KDE Plasma and Cinnamon, on Wayland and X11.</p>\n    </description>\n    <developer id=\"gd.put\">\n      <name>put.gd</name>\n    </developer>\n    <developer_name>put.gd</developer_name>\n    <launchable type=\"desktop-id\">putgd.desktop</launchable>\n    <icon type=\"cached\" width=\"48\" height=\"48\">gd.put.Putgd.png</icon>\n    <icon type=\"cached\" width=\"64\" height=\"64\">gd.put.Putgd.png</icon>\n    <icon type=\"cached\" width=\"64\" height=\"64\" scale=\"2\">gd.put.Putgd.png</icon>\n    <icon type=\"cached\" width=\"128\" height=\"128\">gd.put.Putgd.png</icon>\n    <icon type=\"cached\" width=\"128\" height=\"128\" scale=\"2\">gd.put.Putgd.png</icon>\n    <icon type=\"stock\">putgd</icon>\n    <url type=\"homepage\">https://app.put.gd/</url>\n    <url type=\"bugtracker\">https://github.com/patrick-hudson/put.gd-desktop/issues</url>\n    <url type=\"vcs-browser\">https://github.com/patrick-hudson/put.gd-desktop</url>\n    <categories>\n      <category>Utility</category>\n      <category>Graphics</category>\n    </categories>\n    <provides>\n      <binary>putgd</binary>\n      <binary>putgd-cli</binary>\n    </provides>\n    <releases>\n      <release type=\"stable\" version=\"26.1022.1017~nightly\" timestamp=\"1792627200\" />\n    </releases>\n    <content_rating type=\"oars-1.1\" />\n  </component>\n</components>\n",
+  "appstream-icons": {
+   "href": "repodata/206c5993deb8b76321324992f29f81484cc3990d810dfa13a6602aaa42faf324-appstream-icons.tar.gz",
+   "checksumOk": true
+  }
+ }
+}

@@ -1,0 +1,8 @@
+### sudo install -m 644 /usr/share/putgd/repo/putgd-nightly.sources /etc/apt/sources.list.d/putgd.sources
+rc=0
+### sudo apt update
+rc=0
+### sudo apt-get install -y --allow-downgrades putgd/nightly
+Use 'sudo apt autoremove' to remove them.
+0 upgraded, 0 newly installed, 0 to remove and 76 not upgraded.
+putgd	26.1022.1017~nightly

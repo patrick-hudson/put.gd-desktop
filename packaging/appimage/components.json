@@ -16,6 +16,10 @@
                 "usr/share/putgd/build-info.json", "usr/share/putgd/dependency-lock.json",
                 "usr/share/putgd/aws-runtime-manifest.json"],
       "noticeFiles": ["usr/share/doc/putgd/LICENSE", "usr/share/doc/putgd/wayland-*.xml"],
+      "embedded": [
+        {"name": "zkde-screencast-unstable-v1 protocol bindings", "license": "LGPL-2.1-or-later",
+         "licenseText": "usr/share/doc/putgd/bundled-licenses/distro-common/LGPL-2.1"}
+      ],
       "note": "The Wayland protocol files beside the notices keep the copyright and permission text of the protocols whose generated client bindings are compiled into put.gd."
     },
     {
@@ -26,16 +30,31 @@
       "license": "Apache-2.0",
       "licenseTexts": {"Apache-2.0": "usr/share/doc/putgd/aws-sdk-LICENSE"},
       "files": ["usr/lib/putgd/libaws-*", "usr/lib/putgd/libs2n*"],
-      "noticeFiles": ["usr/share/doc/putgd/aws-*-LICENSE"]
+      "noticeFiles": ["usr/share/doc/putgd/aws-*"],
+      "embedded": [
+        {"name": "cJSON", "license": "MIT", "licenseText": "usr/share/doc/putgd/aws-sdk-cJSON-LICENSE"},
+        {"name": "TinyXML-2", "license": "Zlib", "licenseText": "usr/share/doc/putgd/aws-sdk-TinyXML2-LICENSE"},
+        {"name": "libcbor", "license": "MIT", "licenseText": "usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-common-THIRD-PARTY-LICENSES"},
+        {"name": "xxHash", "license": "BSD-2-Clause", "licenseText": "usr/share/doc/putgd/aws-crt-cpp-crt-aws-checksums-xxHash-LICENSE"}
+      ],
+      "note": "The aws-*-NOTICE files are the SDK's and CRT's Apache-2.0 NOTICE files. cJSON, TinyXML-2, libcbor and xxHash are compiled into the SDK and CRT libraries."
     },
     {
       "id": "proton-helper",
       "name": "put.gd Proton Drive helper (Proton Drive SDK, Bun runtime, OpenPGP and crypto libraries)",
       "version": {"from": "protonManifest"},
       "source": {"from": "protonManifest", "catalog": "usr/libexec/putgd/proton/redistribution/SOURCES.json"},
-      "license": "MIT AND GPL-3.0-only",
+      "license": "MIT AND GPL-3.0-or-later",
       "licenseTexts": {"MIT": "usr/share/doc/putgd/proton/LICENSE.proton",
-                       "GPL-3.0-only": "usr/libexec/putgd/proton/redistribution/LICENSE.crypto-GPL-3.0"},
+                       "GPL-3.0-or-later": "usr/libexec/putgd/proton/redistribution/LICENSE.crypto-GPL-3.0"},
+      "embedded": [
+        {"name": "OpenPGP.js", "license": "LGPL-3.0-or-later", "licenseText": "usr/libexec/putgd/proton/THIRD-PARTY-NOTICES.txt"},
+        {"name": "bcryptjs", "license": "BSD-3-Clause", "licenseText": "usr/libexec/putgd/proton/THIRD-PARTY-NOTICES.txt"},
+        {"name": "JavaScriptCore/WebKit (in Bun)", "license": "LGPL-2.0-or-later",
+         "licenseText": "usr/libexec/putgd/proton/redistribution/BUN-THIRD-PARTY-NOTICES.txt.gz"},
+        {"name": "TinyCC (in Bun)", "license": "LGPL-2.1-or-later",
+         "licenseText": "usr/libexec/putgd/proton/redistribution/BUN-THIRD-PARTY-NOTICES.txt.gz"}
+      ],
       "files": ["usr/libexec/putgd/proton/manifest.json", "usr/libexec/putgd/proton/putgd-proton-runtime",
                 "usr/share/putgd/proton-runtime-manifest.json"],
       "noticeFiles": ["usr/libexec/putgd/proton/THIRD-PARTY-NOTICES.txt", "usr/libexec/putgd/proton/redistribution/*",

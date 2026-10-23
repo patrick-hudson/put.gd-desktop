@@ -1,0 +1,37 @@
+start 01:38:33Z load 0.08 0.09 0.39
+appimage 26.1022.1017-nightly A median 30.04 pss 23.67 B median 30.12 pss 23.75 tls [] load [0.033203125, 0.11572265625, 0.34228515625]
+Traceback (most recent call last):
+  File "/home/patrick/work/put.gd-ua/tool/ua_app.py", line 706, in <module>
+    main()
+    ~~~~^^
+  File "/home/patrick/work/put.gd-ua/tool/ua_app.py", line 701, in main
+    {'setup': setup, 'start': start, 'check': check, 'channel': channel, 'install': install, 'restart': restart, 'quit': quit_, 'tamper': tamper, 'mem': mem,
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     'login': login, 'cleanup': cleanup, 'frame': frame_only, 'click': pointer, 'key': pointer, 'refuse': refuse, 'aut': aut, 'watch': watch}[args.cmd](args)
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/home/patrick/work/put.gd-ua/tool/ua_app.py", line 96, in setup
+    shutil.copy2(args.appimage, image); image.chmod(0o755)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/shutil.py", line 529, in copy2
+    copyfile(src, dst, follow_symlinks=follow_symlinks)
+    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/shutil.py", line 313, in copyfile
+    with open(src, 'rb') as fsrc:
+         ~~~~^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/home/patrick/work/put.gd-ua/assets/v26.1022.1019-nightly/putgd-26.1022.1019-nightly-x86_64.AppImage'
+Traceback (most recent call last):
+  File "/home/patrick/work/put.gd-ua/tool/ua_app.py", line 706, in <module>
+    main()
+    ~~~~^^
+  File "/home/patrick/work/put.gd-ua/tool/ua_app.py", line 701, in main
+    {'setup': setup, 'start': start, 'check': check, 'channel': channel, 'install': install, 'restart': restart, 'quit': quit_, 'tamper': tamper, 'mem': mem,
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     'login': login, 'cleanup': cleanup, 'frame': frame_only, 'click': pointer, 'key': pointer, 'refuse': refuse, 'aut': aut, 'watch': watch}[args.cmd](args)
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/home/patrick/work/put.gd-ua/tool/ua_app.py", line 658, in cleanup
+    if not run.meta['before']['dataPutgd'] and (DATA / 'putgd').exists(): shutil.rmtree(DATA / 'putgd')
+           ~~~~~~~~^^^^^^^^^^
+KeyError: 'before'
+package 26.1022.1017-nightly A median 31.84 pss 9.12 B median 31.93 pss 9.22 tls [] load [0.0712890625, 0.13916015625, 0.25732421875]
+package 26.1022.1017-nightly A median 31.9 pss 9.25 B median 32.02 pss 9.3 tls [] load [0.8740234375, 0.380859375, 0.28466796875]
+end 02:00:04Z load 1.17 0.76 0.46; putgd /home/patrick/work/put.gd-ua/tool/rss_n.sh: line 26: rpm: command not found

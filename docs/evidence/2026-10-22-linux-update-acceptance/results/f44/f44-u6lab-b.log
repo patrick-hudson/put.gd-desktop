@@ -1,0 +1,9 @@
+u6lab-4-S2-available 26.1018.1020 stable repository latest 26.1020.1021 available True older None repo /usr/share/putgd/repo/putgd-stable.repo putgd-26.1018.1020-1.fc44.x86_64
+### the system's upgrade
+ putgd             x86_64 0:26.1020.1021-1.fc44 putgd-stable  29.8 MiB
+   replacing putgd x86_64 0:26.1018.1020-1.fc44 putgd-stable  29.8 MiB
+[1/1] putgd-0:26.1020.1021-1.fc44.x86_6 100% |  10.6 MiB/s |   6.9 MiB |  00m01s
+[3/4] Upgrading putgd-0:26.1020.1021-1. 100% |  96.2 MiB/s |  29.8 MiB |  00m00s
+[4/4] Removing putgd-0:26.1018.1020-1.f 100% | 102.0   B/s |  91.0   B |  00m01s
+Complete!
+u6lab-5-S2 26.1020.1021 stable repository latest 26.1020.1021 available False older None repo /usr/share/putgd/repo/putgd-stable.repo putgd-26.1020.1021-1.fc44.x86_64
