@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "status": "completed",
+  "run": "/home/patrick/work/put.gd-ua/vm/src/work/lab-runs/aur-3e84a1",
+  "disk": "/home/patrick/work/put.gd-ua/vm/src/work/lab-runs/aur-3e84a1/disk.qcow2",
+  "diskIdentity": {
+    "device": 49,
+    "inode": 4833904,
+    "size": 12451250176,
+    "mtimeNs": 1792721941235544455,
+    "ctimeNs": 1792721941235544455,
+    "allocatedBytes": 12451188736
+  },
+  "base": "/home/patrick/work/put.gd/work/lab-images/aurora-stable-44.20260908.1-v3-492c3f8945d1/image.qcow2",
+  "stateSha256": "0624f0002dc40b05748c6142d638c5281395dc623ca61796ad6bc9582f3a8d5f",
+  "evidence": {
+    "manifest": "/home/patrick/work/put.gd-ua/vm/evidence-aur/manifest.json",
+    "sha256": "e5c1f46e946587c3bf56f6e4c33245eb63119a6ca32a86965dcdc4433b29f587",
+    "runId": "b02bc55e-5a54-4d32-886a-a56e61276e8c",
+    "mode": "explicit"
+  },
+  "preparedUtc": "2026-10-23T02:19:19.795443+00:00",
+  "completedUtc": "2026-10-23T02:19:19.877126+00:00"
+}

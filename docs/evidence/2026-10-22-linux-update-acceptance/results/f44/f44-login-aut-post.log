@@ -1,0 +1,17 @@
+{
+ "loginCheck": {
+  "residents": [
+   {
+    "pid": 3104110,
+    "appimage": "/home/patrick/work/put.gd-ua/app/runs/f44-login/apps/putgd-26.1022.1019-nightly-x86_64.AppImage",
+    "parent": "AppRun",
+    "started": "21:24:43"
+   }
+  ],
+  "version": "putgd 26.1022.1019-nightly",
+  "imageSha256": "005762e9ede991c78fce115707a41617d899d7870738fb525151c182357b7c3a",
+  "journal": "put.gd login start: starting /home/patrick/work/put.gd-ua/app/runs/f44-login/apps/putgd-26.1022.1019-nightly-x86_64.AppImage, which is newer than /home/patrick/work/put.gd-ua/app/runs/f44-login/apps/putgd-26.1022.1017-nightly-x86_64.AppImage"
+ }
+}
+u11b-1-start.png
+u11b-after-login-aut.png

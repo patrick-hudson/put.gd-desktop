@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "status": "completed",
+  "run": "/home/patrick/work/put.gd-ua/vm/src/work/lab-runs/ubu-4c0235",
+  "disk": "/home/patrick/work/put.gd-ua/vm/src/work/lab-runs/ubu-4c0235/disk.qcow2",
+  "diskIdentity": {
+    "device": 2050,
+    "inode": 7602310,
+    "size": 4304404480,
+    "mtimeNs": 1792721928531092113,
+    "ctimeNs": 1792721928531092113,
+    "allocatedBytes": 4304371712
+  },
+  "base": "/home/patrick/work/put.gd/work/lab-images/transfer-0d2922e34f4b/image.qcow2",
+  "stateSha256": "26b0997680f9d97291dd4e7dfe3ba65c6194de88af51c750d188d4c05d1bf603",
+  "evidence": {
+    "manifest": "/home/patrick/work/put.gd-ua/vm/evidence-ubu/manifest.json",
+    "sha256": "726d4b33c6a48a5e7caba4f5f268de171869b0f29c08dfba36f8ba63d253f1e7",
+    "runId": "8fbec491-a29f-4cb8-8ef9-9797834432b7",
+    "mode": "explicit"
+  },
+  "preparedUtc": "2026-10-23T02:19:17.534637+00:00",
+  "completedUtc": "2026-10-23T02:19:17.639962+00:00"
+}
