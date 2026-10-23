@@ -1,20 +1,32 @@
-"""tools/ci/install-packages.sh retries mirror failures, reports them and falls back to the snapshot (#368)."""
+"""tools/ci/install-packages.sh retries mirror failures and stalls, reports them and falls back to the snapshot (#368, #467)."""
 import os
 from pathlib import Path
 import shutil
 import subprocess
 import tempfile
+import time
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / 'tools/ci/install-packages.sh'
 TOOLS = ('bash', 'cat', 'comm', 'cp', 'cut', 'date', 'dirname', 'find', 'grep', 'mkdir', 'mktemp', 'mv', 'rm',
-         'sleep', 'sort', 'tail', 'tee', 'touch')
+         'sleep', 'sort', 'tail', 'tee', 'timeout', 'touch', 'tr')
 MIRROR_ERROR = 'Librepo error: Cannot download Packages/m/mesa-vulkan-drivers-26.2.4-1.fc44.x86_64.rpm: All mirrors were tried'
+# The last line nightly run 39851369595 printed before it hung for 93 minutes (#467).
+STALL_LINE = 'Get:5 https://archive.ubuntu.com/ubuntu noble-security InRelease [126 kB]'
+# The first $FAKE_STALLS online calls hang: silent prints one line and then nothing,
+# trickle keeps printing and never finishes. Each records its PID in $FAKE_PIDS.
+STALL = r'''stall() {
+  echo $$ >> "$FAKE_PIDS"
+  if [ "${FAKE_STALL_MODE:-silent}" = silent ]; then echo "$STALL_LINE"; exec sleep 60; fi
+  while :; do echo 'Get:658 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 pocketsphinx-en-us all [27.4 MB]'; sleep 0.2; done
+}
+'''
 
 # A package manager that fails its first $FAKE_FAILURES online calls and logs every call.
 FAKE_DNF = r'''#!/bin/bash
 echo "dnf $*" >> "$FAKE_CALLS"
+''' + STALL + r'''
 cachedir=
 for arg; do case "$arg" in --setopt=cachedir=*) cachedir=${arg#--setopt=cachedir=} ;; esac; done
 case " $* " in
@@ -28,6 +40,7 @@ case " $* " in
   *' no-such-package '*) echo 'No match for argument: no-such-package'; exit 1 ;;
 esac
 count=$(($(cat "$FAKE_COUNT" 2>/dev/null || echo 0) + 1)); echo "$count" > "$FAKE_COUNT"
+if [ "$count" -le "${FAKE_STALLS:-0}" ]; then stall; fi
 if [ "$count" -le "${FAKE_FAILURES:-0}" ]; then echo "$FAKE_ERROR"; exit 1; fi
 if [ -n "$cachedir" ]; then
   mkdir -p "$cachedir/updates-0123/packages"
@@ -36,15 +49,18 @@ fi
 '''
 FAKE_APT = r'''#!/bin/bash
 echo "apt-get $*" >> "$FAKE_CALLS"
+''' + STALL + r'''
 case "$1" in
   update)
     count=$(($(cat "$FAKE_COUNT" 2>/dev/null || echo 0) + 1)); echo "$count" > "$FAKE_COUNT"
+    if [ "$count" -le "${FAKE_STALLS:-0}" ]; then stall; fi
     if [ "$count" -le "${FAKE_FAILURES:-0}" ]; then echo 'E: Failed to fetch http://archive.ubuntu.com/ubuntu/dists/noble/InRelease  Hash Sum mismatch'; exit 100; fi ;;
   install) case " $* " in *' --no-download '*) [ "${FAKE_OFFLINE:-ok}" = ok ] || exit 100 ;; esac ;;
 esac
 exit 0
 '''
 FAKE_RPM = '#!/bin/bash\necho mesa-26.2.4-1.fc44.x86_64.rpm\n'
+FAKE_DPKG = '#!/bin/bash\necho "dpkg $*" >> "$FAKE_CALLS"\n'
 
 
 class InstallPackages(unittest.TestCase):
@@ -61,12 +77,14 @@ class InstallPackages(unittest.TestCase):
         self.snapshot = self.dir / 'packages'
 
     def run_script(self, manager, *args, **env):
-        for name, body in ({'dnf': FAKE_DNF, 'rpm': FAKE_RPM} if manager == 'dnf' else {'apt-get': FAKE_APT}).items():
+        fakes = {'dnf': FAKE_DNF, 'rpm': FAKE_RPM} if manager == 'dnf' else {'apt-get': FAKE_APT, 'dpkg': FAKE_DPKG}
+        for name, body in fakes.items():
             (self.bin / name).write_text(body)
             (self.bin / name).chmod(0o755)
         env = {'PATH': str(self.bin), 'PUTGD_PKG_BACKOFF': '0', 'PUTGD_PKG_LABEL': 'native (test)',
                'GITHUB_STEP_SUMMARY': str(self.summary), 'GITHUB_ENV': str(self.github_env),
-               'FAKE_CALLS': str(self.calls), 'FAKE_COUNT': str(self.dir / 'count'), 'FAKE_ERROR': MIRROR_ERROR, **env}
+               'FAKE_CALLS': str(self.calls), 'FAKE_COUNT': str(self.dir / 'count'), 'FAKE_ERROR': MIRROR_ERROR,
+               'FAKE_PIDS': str(self.dir / 'pids'), 'STALL_LINE': STALL_LINE, **env}
         result = subprocess.run([str(self.bin / 'bash'), str(SCRIPT), *args], env=env, text=True,
                                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         calls = self.calls.read_text().splitlines() if self.calls.exists() else []
@@ -163,6 +181,60 @@ class InstallPackages(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertIn('--no-download', calls[-1])
         self.assertIn(f'Dir::State::Lists={self.snapshot}/lists/', calls[-1])
+
+    def assert_stalled_calls_were_stopped(self):
+        for pid in (self.dir / 'pids').read_text().split():
+            self.assertFalse(Path(f'/proc/{pid}').exists(), f'stalled package manager {pid} still runs')
+
+    def test_networked_calls_drop_dead_connections(self):
+        _, calls, _ = self.run_script('apt-get', 'dwz')
+        for call in calls:
+            self.assertIn('-o Acquire::Retries=3 -o Acquire::http::Timeout=60 -o Acquire::https::Timeout=60', call)
+        self.calls.unlink()
+        _, calls, _ = self.run_script('dnf', 'mesa')
+        self.assertIn('--setopt=retries=10 --setopt=timeout=60 --setopt=minrate=1000', calls[0])
+
+    def test_a_silent_stall_is_stopped_and_retried(self):
+        started = time.monotonic()
+        result, calls, summary = self.run_script('apt-get', 'dwz', FAKE_STALLS='1', PUTGD_PKG_STALL='1')
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertLess(time.monotonic() - started, 20)
+        self.assert_stalled_calls_were_stopped()
+        # The retry first finishes whatever dpkg work the stopped attempt left.
+        self.assertEqual([call.split()[1] for call in calls], ['update', '--configure', 'update', 'install'])
+        self.assertIn('| 1 of 4 | **stopped**, retrying in 0 s with refreshed metadata | '
+                      f'`printed nothing for 1 s after: {STALL_LINE}` |', summary)
+        self.assertIn('| 2 of 4 | **passed on retry** |', summary)
+        self.assertIn('::warning::Package install (native (test), apt-get): attempt 1 of 4: **stopped**', result.stdout)
+
+    def test_an_attempt_over_its_time_limit_is_stopped_and_the_snapshot_installs(self):
+        self.snapshot.mkdir()
+        (self.snapshot / 'putgd-snapshot').write_text('2026-10-20T04:00Z\n')
+        started = time.monotonic()
+        result, calls, summary = self.run_script('dnf', 'mesa', FAKE_STALLS='9', FAKE_STALL_MODE='trickle',
+                                                 PUTGD_PKG_ATTEMPTS='2', PUTGD_PKG_TIMEOUT='2',
+                                                 PUTGD_PKG_CACHE=str(self.snapshot))
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertLess(time.monotonic() - started, 20)
+        self.assert_stalled_calls_were_stopped()
+        self.assertEqual(len(calls), 3)
+        self.assertIn('--cacheonly', calls[2])
+        self.assertIn('| 1 of 2 | **stopped**, retrying in 0 s with refreshed metadata | `ran over the 2 s attempt limit '
+                      'after: Get:658 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 pocketsphinx-en-us all '
+                      '[27.4 MB]` |', summary)
+        self.assertIn('| 2 of 2 | **stopped** |', summary)
+        self.assertIn('| snapshot | **installed offline from the package snapshot** saved 2026-10-20T04:00Z |', summary)
+
+    def test_when_every_attempt_stalls_without_a_snapshot_the_install_fails_in_bounded_time(self):
+        started = time.monotonic()
+        result, calls, summary = self.run_script('apt-get', 'dwz', FAKE_STALLS='9', PUTGD_PKG_ATTEMPTS='2',
+                                                 PUTGD_PKG_STALL='1')
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertLess(time.monotonic() - started, 20)
+        self.assert_stalled_calls_were_stopped()
+        self.assertEqual([call.split()[1] for call in calls], ['update', '--configure', 'update'])
+        self.assertIn(f'| 2 of 2 | **stopped** | `printed nothing for 1 s after: {STALL_LINE}` |', summary)
+        self.assertIn('| snapshot | **failed**: no package snapshot to install from |', summary)
 
     def test_metadata_only_refresh_has_no_snapshot_fallback(self):
         result, calls, summary = self.run_script('apt-get', FAKE_FAILURES='9', PUTGD_PKG_ATTEMPTS='2')

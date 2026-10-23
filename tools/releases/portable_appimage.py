@@ -39,7 +39,9 @@ def tools(directory: Path) -> tuple[dict, dict[str, Path]]:
         else:
             temporary = path.with_suffix(path.suffix + ".download")
             try:
-                urllib.request.urlretrieve(item["url"], temporary)
+                # A socket timeout, so a stalled download fails instead of hanging the build (#467).
+                with urllib.request.urlopen(item["url"], timeout=120) as response, temporary.open("wb") as target:
+                    shutil.copyfileobj(response, target)
                 if digest(temporary) != item["sha256"]:
                     raise ValueError("Official deployment tool digest mismatch: " + item["name"])
                 temporary.replace(path)
