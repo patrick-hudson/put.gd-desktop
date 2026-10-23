@@ -483,6 +483,20 @@ builds FFmpeg with `--disable-everything` plus a short list of components, so
 check an FFmpeg finding against `packaging/appimage/media.json` before acting on
 it. The AWS SDK and CRT have no NVD product entries, so nothing matches them.
 
+**Stable releases after they ship.** A stable AppImage keeps the Ubuntu packages,
+Qt and FFmpeg it was built with; it gets none of the fixes published later. So
+`nightly.yml`'s `stable-scan` job re-scans the latest stable release every day,
+whether or not a nightly is built. It downloads that release's published SBOMs,
+checks them against its `SHA256SUMS`, scans them with that day's database
+(`sbom.py scan --released`, which flags and never fails), and keeps one issue
+current: "Stable vYY.MDD.N: bundled components with fixed critical or high CVEs",
+labelled `area: packaging` and `needs-patrick`. The issue is opened when the
+first finding is flagged, and its body is replaced with each day's table after
+that; close it by hand once a new stable ships or every finding is accepted.
+Whether a finding calls for a new stable release is the re-release policy in
+[#420](https://github.com/patrick-hudson/put.gd-desktop/issues/420). Releases
+before the first with SBOMs are skipped.
+
 To scan a published release yourself, download its SBOM and run any CycloneDX
 scanner, for example
 `grype sbom:putgd-VERSION-appimage.cdx.json --distro ubuntu:24.04`.
