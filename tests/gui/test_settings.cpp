@@ -11,6 +11,7 @@
 #include "ui/FileDialog.h"
 #include <QFileDialog>
 #include "ui/ShortcutEditor.h"
+#include "ui/ShortcutKeyboard.h"
 #include "ui/ViewState.h"
 #include "fixtures/UiSessionFixture.h"
 #include "app/DiagnosticsBundle.h"
@@ -849,6 +850,42 @@ private slots:
    else {send(QEvent::KeyRelease,Qt::Key_2,Qt::ControlModifier|Qt::KeypadModifier,88);send(QEvent::KeyRelease,Qt::Key_Control,Qt::NoModifier,37);}
    QCOMPARE(input->text(),QKeySequence(QKeyCombination(Qt::ControlModifier|Qt::KeypadModifier,Qt::Key_2)).toString(QKeySequence::PortableText));QCOMPARE(record->text(),QString("Record shortcut"));
   }
+ }
+ void shortcutRecordingStoresTheUnshiftedKey(){
+  // A US map for scan code 13: Shift+4 is $. KDE never sends Ctrl+Shift+$.
+  ShortcutEditor editor;editor.setRecordingControl([](bool,auto reply){reply({});});
+  editor.setChordResolver([](const QKeyEvent& event){return event.nativeScanCode()==13?unshiftedChord(event.keyCombination(),'4','$'):event.keyCombination();});
+  editor.setActions(Settings::defaults()["actions"].toObject());editor.show();
+  auto* record=editor.findChild<QPushButton*>("recordEditShortcut");auto* input=editor.editors().value("edit");QVERIFY(record);QVERIFY(input);
+  const auto send=[&](QEvent::Type type,int key,Qt::KeyboardModifiers modifiers,quint32 scan){QKeyEvent event(type,key,modifiers,scan,0,0);QApplication::sendEvent(input,&event);};
+  const auto shift=Qt::ControlModifier|Qt::ShiftModifier;
+  record->click();send(QEvent::KeyPress,Qt::Key_Control,Qt::ControlModifier,37);send(QEvent::KeyPress,Qt::Key_Shift,shift,50);
+  send(QEvent::KeyPress,Qt::Key_Dollar,shift,13);
+  QVERIFY(editor.findChild<QLabel*>("shortcutRecordingStatus")->text().startsWith(QKeySequence(shift|Qt::Key_4).toString(QKeySequence::NativeText)));
+  send(QEvent::KeyRelease,Qt::Key_Dollar,shift,13);send(QEvent::KeyRelease,Qt::Key_Shift,Qt::ControlModifier,50);send(QEvent::KeyRelease,Qt::Key_Control,Qt::NoModifier,37);
+  QCOMPARE(input->text(),QString("Ctrl+Shift+4"));
+  // Letters keep Qt's key.
+  record->click();send(QEvent::KeyPress,Qt::Key_Control,Qt::ControlModifier,37);send(QEvent::KeyPress,Qt::Key_Shift,shift,50);
+  send(QEvent::KeyPress,Qt::Key_E,shift,26);send(QEvent::KeyRelease,Qt::Key_E,shift,26);send(QEvent::KeyRelease,Qt::Key_Shift,Qt::ControlModifier,50);send(QEvent::KeyRelease,Qt::Key_Control,Qt::NoModifier,37);
+  QCOMPARE(input->text(),QString("Ctrl+Shift+E"));
+ }
+ void shortcutStatusComparesTheEffectiveBinding(){
+  ShortcutEditor editor;editor.setActions(Settings::defaults()["actions"].toObject());editor.show();
+  auto* input=editor.editors().value("region");auto* label=editor.findChild<QLabel*>("shortcutRegionStatus");QVERIFY(label);
+  input->setText("Ctrl+Shift+1");
+  const auto status=[&](const QJsonObject& entry){editor.setStatus({{"available",true},{"bindings",QJsonObject{{"region",entry}}}});};
+  // KDE holds Ctrl+Shift+1 as Ctrl+!, which is what was asked of it: no line.
+  status({{"requested","Ctrl+Shift+1"},{"effective","Ctrl+!"},{"actual",QJsonArray{"Ctrl+!"}},{"bound",true},{"state","bound"}});
+  QVERIFY(label->isHidden());
+  // A desktop binding other than the effective chord is reported.
+  status({{"requested","Ctrl+Shift+1"},{"effective","Ctrl+!"},{"actual",QJsonArray{"Ctrl+Shift+!"}},{"bound",true},{"state","bound"}});
+  QVERIFY(!label->isHidden());QCOMPARE(label->text(),QString("Active  ·  Ctrl+Shift+!"));
+  // The effective chord of an older request does not vouch for a newer draft.
+  status({{"requested","Ctrl+Shift+2"},{"effective","Ctrl+@"},{"actual",QJsonArray{"Ctrl+@"}},{"bound",true},{"state","bound"}});
+  QVERIFY(!label->isHidden());
+  // Backends without an effective chord still compare the draft.
+  status({{"requested","Ctrl+Shift+1"},{"actual",QJsonArray{"Ctrl+Shift+1"}},{"bound",true},{"state","bound"}});
+  QVERIFY(label->isHidden());
  }
  void shortcutRecordingCancellationAndFailuresReleaseSuspension(){
   QList<bool> transitions;std::function<void(Error)> ready;ShortcutEditor editor;
