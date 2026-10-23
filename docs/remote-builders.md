@@ -491,6 +491,45 @@ lab desktop needs the same treatment.
 - To stop a run, use `systemctl --user stop putgd-stress-weekly.service`. It
   stops only that service's processes.
 
+## Proton sessions on the builders
+
+Each builder holds one put.gd Proton Drive session for the test account
+phudson2@gmail.com, signed in once by Patrick on 2026-10-23. Use it for live Proton
+tests on the builder or in its VMs. The tools, commands and recovery steps are in
+[Proton Drive: lab sessions](proton-drive.md#lab-sessions-on-the-builders); the
+evidence is in [the 2026-10-23 lab sessions](evidence/2026-10-23-proton-lab-sessions/README.md).
+
+| Builder | Keychain reference | Default keyring | Lab app in `~/putgd-lab/proton/` | VMs that can borrow it |
+| --- | --- | --- | --- | --- |
+| f44 | `putgd/proton/lab-f44` | gnome-keyring `putgd lab` | extracted AppImage | Cinnamon, GNOME and KDE goldens |
+| d69 | `putgd/proton/lab-d69` | gnome-keyring `putgd lab` | extracted debian13 .deb (#518) | Cinnamon, GNOME and KDE goldens |
+| k72 | `putgd/proton/lab-k72` | KWallet `putgdlab` | extracted ubuntu26.04 .deb (#518) | none (no goldens) |
+| m74 | `putgd/proton/lab-m74` | gnome-keyring `putgd lab` | extracted AppImage | none (no goldens) |
+
+- **The Proton lock.** Take `desktop_lock.py acquire HOST --resource proton` before
+  using a builder's session in any way: its lab app, a check, or lending it to a VM.
+  It lives in `~/putgd-lab/locks/proton.lock`, next to the desktop lock, and is
+  independent of it. One holder at a time: every refresh rotates the token, and two
+  users of one session can sign it out for both. `status --resource proton` lists it.
+- **Desktop work.** Opening the lab profile's app on the desktop (`proton_lab.py open`,
+  for example for a new sign-in) also needs the desktop lock. Restore the browser
+  handler afterwards: d69 and k72 send https to the ChatGPT app, so sign-ins there
+  need Firefox set temporarily, with `mimeapps.list` backed up and restored byte for byte.
+- **Keyrings.** The blank-password lab keyring is the default on every builder, so
+  sessions survive reboots and re-logins under autologin. That was proven on all four:
+  a reboot on k72, display-manager re-logins elsewhere.
+- **VM guest keys and pins.** These are needed for the Proton-lending goldens:
+  - On d69, the Ubuntu-based goldens accept `lab-bootstrap-d69/rec-ws/identity`. The
+    plain `identity` times out at boot.
+  - On f44, `lab-bootstrap-f44/known_hosts` pins port 22220 to the Cinnamon golden's
+    host key. The GNOME golden needs `lab-bootstrap-f44/known_hosts-gnome`, the same key
+    d69 pins for that golden, remapped to 22220.
+  - KDE uses `known_hosts-kde` (port 22234 on d69, 22434 on f44).
+  - The Mint and Cinnamon golden takes the ubuntu24.04 .deb; the GNOME and KDE goldens
+    are Ubuntu and Kubuntu 26.04 and take the ubuntu26.04 .deb.
+- **Lost session.** Patrick signs in again on that builder only. Nobody else signs in,
+  signs out or copies a session.
+
 ## Remote VM operating procedures
 
 Use [remote VM display tunnels](remote-vm-displays.md) to add each builder-hosted
