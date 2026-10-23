@@ -1,0 +1,52 @@
+{
+ "at": "2026-10-23T20:00:39Z",
+ "graphicalSession": "c38",
+ "session": {
+  "User": "1000",
+  "Display": ":0",
+  "Leader": "540857",
+  "Type": "x11",
+  "Active": "yes",
+  "State": "active",
+  "LockedHint": "no"
+ },
+ "residents": [
+  {
+   "pid": 541268,
+   "exe": "/tmp/.mount_putgd-OJmLLG/usr/bin/putgd",
+   "ppid": 540862,
+   "start": 18351069,
+   "session": "c38",
+   "sessionState": "active",
+   "sessionType": "x11",
+   "cgroup": "/user.slice/user-1000.slice/session-c38.scope",
+   "display": ":0",
+   "sessionIdEnv": "c38"
+  }
+ ],
+ "snapshot": {
+  "ok": true,
+  "error": "",
+  "build": {
+   "baseVersion": "26.1023.1067",
+   "commitCount": 1067,
+   "dirty": false,
+   "gitCommit": "01347aaffc5846a0b6123f7c08e1d5321c6d9261",
+   "gitTree": "75febcf609170e3b5b41851463bad40409e059ec",
+   "packageVersion": "26.1023.1067~dev+g01347aaffc58",
+   "schemaVersion": 1,
+   "sourceProvenance": "git",
+   "version": "26.1023.1067-dev+g01347aaffc58"
+  },
+  "loginSession": {
+   "id": "c38",
+   "type": "x11",
+   "watched": true
+  },
+  "loginStartup": {
+   "applied": true,
+   "enabled": true
+  },
+  "shortcutsAvailable": true
+ }
+}

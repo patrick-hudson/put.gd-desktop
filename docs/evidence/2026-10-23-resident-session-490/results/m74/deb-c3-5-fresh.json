@@ -1,0 +1,18 @@
+{
+ "at": "2026-10-23T19:58:49Z",
+ "graphicalSession": "c36",
+ "fresh": [
+  {
+   "pid": 539992,
+   "exe": "/usr/bin/putgd",
+   "ppid": 539597,
+   "start": 18343558,
+   "session": "c36",
+   "sessionState": "active",
+   "sessionType": "x11",
+   "cgroup": "/user.slice/user-1000.slice/session-c36.scope",
+   "display": ":0",
+   "sessionIdEnv": "c36"
+  }
+ ]
+}

@@ -1,0 +1,5 @@
+2026-10-23T20:02:48Z replace-1058 old resident 546131 in session c46
+2026-10-23T20:04:31Z replace-1058 FAIL old resident 546131 still running 60 s after logout; session c46: closing
+2026-10-23T20:04:36Z replace-1058 relogin requested
+2026-10-23T20:04:42Z replace-1058 fresh resident(s): 548461@c48
+2026-10-23T20:04:52Z replace-1058 capture completed  [{'mime': 'image/png', 'bytes': 852786, 'local': 'saved', 'file': 'Screen-Capture-2026-10-23-15-04-50.png', 'pixels': [1920, 1080], 'error': ''}]

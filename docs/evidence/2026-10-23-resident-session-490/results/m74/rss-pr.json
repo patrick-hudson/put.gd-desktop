@@ -1,0 +1,15 @@
+{
+ "at": "2026-10-23T20:08:34Z",
+ "pid": 549633,
+ "exe": "/tmp/.mount_putgd-aPbGim/usr/bin/putgd",
+ "idleSeconds": 180.0,
+ "rssMiB": 29.94,
+ "pssMiB": 24.11,
+ "threads": 4,
+ "load": [
+  "0.98",
+  "1.31",
+  "1.21"
+ ],
+ "libsystemdMapped": true
+}

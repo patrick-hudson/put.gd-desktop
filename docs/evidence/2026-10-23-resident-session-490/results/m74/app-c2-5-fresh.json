@@ -1,0 +1,18 @@
+{
+ "at": "2026-10-23T20:01:19Z",
+ "graphicalSession": "c42",
+ "fresh": [
+  {
+   "pid": 543697,
+   "exe": "/tmp/.mount_putgd-PHCkhf/usr/bin/putgd",
+   "ppid": 543329,
+   "start": 18358506,
+   "session": "c42",
+   "sessionState": "active",
+   "sessionType": "x11",
+   "cgroup": "/user.slice/user-1000.slice/session-c42.scope",
+   "display": ":0",
+   "sessionIdEnv": "c42"
+  }
+ ]
+}

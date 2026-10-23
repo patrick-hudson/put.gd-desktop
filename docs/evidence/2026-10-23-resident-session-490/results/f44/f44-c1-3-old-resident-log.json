@@ -1,0 +1,143 @@
+[
+ {
+  "category": "putgd.app",
+  "fields": {
+   "architecture": "x86_64",
+   "build": {
+    "baseVersion": "26.1023.1067",
+    "commitCount": 1067,
+    "dirty": false,
+    "gitCommit": "01347aaffc5846a0b6123f7c08e1d5321c6d9261",
+    "gitTree": "75febcf609170e3b5b41851463bad40409e059ec",
+    "packageVersion": "26.1023.1067~dev+g01347aaffc58",
+    "schemaVersion": 1,
+    "sourceProvenance": "git",
+    "version": "26.1023.1067-dev+g01347aaffc58"
+   },
+   "capabilities": {
+    "adapter": "gnome-wayland",
+    "capture": {
+     "desktop": {
+      "available": false,
+      "consent": "one-time-extension-setup",
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "mode": "compositor-native"
+     },
+     "region": {
+      "available": false,
+      "consent": "one-time-extension-setup",
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "mode": "compositor-native"
+     },
+     "window": {
+      "available": false,
+      "consent": "one-time-extension-setup",
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "mode": "compositor-native"
+     }
+    },
+    "clipboard": "<redacted>",
+    "helper": {
+     "available": false,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "outdated": false,
+     "packagedExtensionVersion": 2,
+     "protocol": 1,
+     "recordingVersion": 0,
+     "uuid": "putgd@put.gd"
+    },
+    "shortcuts": {
+     "available": false,
+     "bindings": {
+      "clipboard": "<redacted>",
+      "desktop": {
+       "bound": false,
+       "error": "helper_unavailable",
+       "requested": "Ctrl+Shift+3"
+      },
+      "edit": {
+       "bound": false,
+       "error": "disabled",
+       "requested": ""
+      },
+      "record": {
+       "bound": false,
+       "error": "disabled",
+       "requested": ""
+      },
+      "region": {
+       "bound": false,
+       "error": "helper_unavailable",
+       "requested": "Ctrl+Shift+1"
+      },
+      "window": {
+       "bound": false,
+       "error": "helper_unavailable",
+       "requested": "Ctrl+Shift+2"
+      }
+     }
+    }
+   },
+   "desktop": "GNOME",
+   "itemId": null,
+   "kernel": "6.19.10-300.fc44.x86_64",
+   "locations": {
+    "config": {
+     "path": "/home/patrick/.config/putgd",
+     "state": "current"
+    },
+    "data": {
+     "path": "/home/patrick/.local/share/putgd",
+     "state": "current"
+    },
+    "schemaVersion": 1
+   },
+   "operationId": null,
+   "os": "Fedora Linux 44 (Workstation Edition)",
+   "platform": "none",
+   "qtCompiled": "6.11.2",
+   "qtRuntime": "6.11.2",
+   "resident": "gnome-core",
+   "sessionType": "wayland",
+   "trayAvailable": false
+  },
+  "level": "info",
+  "message": "Resident started",
+  "pid": 3292289,
+  "process": "putgd",
+  "time": "2026-10-23T20:22:58.563Z",
+  "v": 1
+ },
+ {
+  "category": "putgd.app",
+  "fields": {
+   "itemId": null,
+   "operationId": null,
+   "portalActivatable": true,
+   "portalRunning": false,
+   "sessionBus": true
+  },
+  "level": "info",
+  "message": "Desktop portal availability",
+  "pid": 3292289,
+  "process": "putgd",
+  "time": "2026-10-23T20:22:58.565Z",
+  "v": 1
+ }
+]

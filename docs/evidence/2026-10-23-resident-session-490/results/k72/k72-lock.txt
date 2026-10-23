@@ -1,0 +1,23 @@
+{
+ "at": "2026-10-23T20:18:38Z",
+ "command": [
+  0,
+  "",
+  ""
+ ],
+ "locked": "yes"
+}
+1548286
+{
+ "at": "2026-10-23T20:18:48Z",
+ "command": [
+  0,
+  "",
+  ""
+ ],
+ "locked": "no"
+}
+LockedHint=no
+1548286
+ "state": "completed",
+   "local": "saved",
