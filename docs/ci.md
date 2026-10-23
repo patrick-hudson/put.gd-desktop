@@ -192,7 +192,8 @@ personal access token or app. That has three costs:
 - The token cannot change `.github/workflows`, so the action SHAs and the
   container digests in the workflows are not managed by Renovate
   (`enabledManagers` leaves out `github-actions`). A GitHub App token with the
-  workflows permission would lift both of the last two limits.
+  workflows permission would lift both of the last two limits
+  ([#507](https://github.com/patrick-hudson/put.gd-desktop/issues/507)).
 
 **Checking a change to this setup.** A pull request that changes
 `.github/renovate.json`, `renovate.yml` or the two maintenance scripts runs the
