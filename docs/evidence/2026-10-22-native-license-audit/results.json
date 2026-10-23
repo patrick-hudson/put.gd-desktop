@@ -1,0 +1,306 @@
+{
+ "schemaVersion": 1,
+ "date": "2026-10-22",
+ "issue": 383,
+ "assets": {
+  "debian13": {
+   "file": "putgd-26.1022.1017-nightly-debian13-x86_64.deb",
+   "sha256": "1241c317f153ab1b986441cd27f4700faed05490643ef534be968498507080c9",
+   "bytes": 54069902
+  },
+  "fedora44": {
+   "file": "putgd-26.1022.1017-nightly-fedora44-x86_64.rpm",
+   "sha256": "4f5a5c6355b1f138abf11ed1ded25213f5001996e61fd5d39f6882cbb1fb0a42",
+   "bytes": 40528036,
+   "repoSignedSha256": "f51fcb12f723a70cf2e617fb1632b6163cfb871611b9a0a5d146adf012f8cf2a"
+  },
+  "ubuntu24.04": {
+   "file": "putgd-26.1022.1017-nightly-ubuntu24.04-x86_64.deb",
+   "sha256": "f28ab4aebae03d501f007dcfe20a05df6ec701c32e1127b91fd18dce4c0e15a5",
+   "bytes": 54187906
+  },
+  "ubuntu26.04": {
+   "file": "putgd-26.1022.1017-nightly-ubuntu26.04-x86_64.deb",
+   "sha256": "6f89cd7b025fcc87a7a37459a3f227b490cb88b9282b55c921c88842f996464a",
+   "bytes": 54529896
+  }
+ },
+ "release": {
+  "tag": "v26.1022.1017-nightly",
+  "gitCommit": "3582b30af88bb8158c49b92864c6eb3c48038b21",
+  "gitTree": "e5265b28ef2441fe98d7ada12ff4589f7a67fc61",
+  "commitCount": 1017,
+  "ciRun": 39864143584
+ },
+ "auditHosts": {
+  "f44": "Fedora 44: download, extraction, receipts, repos, RPM identity, podman lint",
+  "d69": "Debian 13: minisign, debian13 identity",
+  "m74": "Linux Mint 22.3: ubuntu24.04 identity",
+  "k72": "Ubuntu 26.04.1: ubuntu26.04 identity"
+ },
+ "lintTools": {
+  "lintian": {
+   "ubuntu24.04": "2.117.0ubuntu1.5",
+   "ubuntu26.04": "2.129.0ubuntu2.1",
+   "debian13": "2.122.0"
+  },
+  "rpmlint": "2.8.0"
+ },
+ "rehearsal": "v26.1022.996-nightly gave the same results",
+ "items": [
+  {
+   "id": "P1",
+   "check": "SHA256SUMS lists and verifies the package; pkg.put.gd copy identical",
+   "result": {
+    "ubuntu24.04": "pass",
+    "ubuntu26.04": "pass",
+    "debian13": "pass",
+    "fedora44": "pass"
+   },
+   "issue": null
+  },
+  {
+   "id": "P2",
+   "check": "SHA256SUMS.minisig verifies with nightly key 71440FA5E439AEBB",
+   "result": {
+    "ubuntu24.04": "pass",
+    "ubuntu26.04": "pass",
+    "debian13": "pass",
+    "fedora44": "pass"
+   },
+   "issue": null
+  },
+  {
+   "id": "P3",
+   "check": "Package matches CI run 39864143584 and release-builds.json (digest, manifest, inventory, --version-json, debug build IDs)",
+   "result": {
+    "ubuntu24.04": "pass",
+    "ubuntu26.04": "pass",
+    "debian13": "pass",
+    "fedora44": "pass"
+   },
+   "issue": null
+  },
+  {
+   "id": "P4",
+   "check": "Repo copy matches the release asset (apt pool byte-identical; RPM equal header/payload digests)",
+   "result": {
+    "ubuntu24.04": "pass",
+    "ubuntu26.04": "pass",
+    "debian13": "pass",
+    "fedora44": "pass"
+   },
+   "issue": null
+  },
+  {
+   "id": "P5",
+   "check": "InRelease/Release.gpg and RPM signature verify with the shipped keys; stable key fails (negative control)",
+   "result": {
+    "ubuntu24.04": "pass",
+    "ubuntu26.04": "pass",
+    "debian13": "pass",
+    "fedora44": "pass"
+   },
+   "issue": null
+  },
+  {
+   "id": "P6",
+   "check": "AppStream metainfo, DEP-11 and dnf appstream consistent",
+   "result": {
+    "ubuntu24.04": "pass",
+    "ubuntu26.04": "pass",
+    "debian13": "pass",
+    "fedora44": "pass"
+   },
+   "issue": 471
+  },
+  {
+   "id": "N1",
+   "check": "Licence texts and notices in /usr/share/doc/putgd",
+   "result": {
+    "ubuntu24.04": "pass-with-gap",
+    "ubuntu26.04": "pass-with-gap",
+    "debian13": "pass-with-gap",
+    "fedora44": "pass-with-gap"
+   },
+   "issue": 468
+  },
+  {
+   "id": "N2",
+   "check": "Debian copyright (DEP-5)/changelog; RPM %license",
+   "result": {
+    "ubuntu24.04": "fail",
+    "ubuntu26.04": "fail",
+    "debian13": "fail",
+    "fedora44": "fail"
+   },
+   "issue": 470
+  },
+  {
+   "id": "N3",
+   "check": "Declared licence expression complete",
+   "result": {
+    "ubuntu24.04": "decision",
+    "ubuntu26.04": "decision",
+    "debian13": "decision",
+    "fedora44": "decision"
+   },
+   "issue": 469,
+   "decision": "Main licences (MIT AND Apache-2.0 AND GPL-3.0-or-later) plus a pointer to runtime-notices.txt, which lists every licence (Patrick, 2026-10-22); #468 7c3e7aba"
+  },
+  {
+   "id": "N4",
+   "check": "Proton helper notices; #369 consistency",
+   "result": {
+    "ubuntu24.04": "pass",
+    "ubuntu26.04": "pass",
+    "debian13": "pass",
+    "fedora44": "pass"
+   },
+   "issue": 369
+  },
+  {
+   "id": "N5",
+   "check": "Corresponding source for GPL/LGPL parts (Proton helper)",
+   "result": {
+    "ubuntu24.04": "decision",
+    "ubuntu26.04": "decision",
+    "debian13": "decision",
+    "fedora44": "decision"
+   },
+   "issue": 416,
+   "decision": "Release-page source URL in runtime-notices.txt and proton/SOURCE-LOCATION.txt (Patrick, 2026-10-22); #468 7c3e7aba"
+  },
+  {
+   "id": "N6",
+   "check": "Every bundled component has its licence",
+   "result": {
+    "ubuntu24.04": "pass-with-gap",
+    "ubuntu26.04": "pass-with-gap",
+    "debian13": "pass-with-gap",
+    "fedora44": "pass-with-gap"
+   },
+   "issue": 468
+  },
+  {
+   "id": "C1",
+   "check": "No stray debug or test files",
+   "result": {
+    "ubuntu24.04": "pass-with-gap",
+    "ubuntu26.04": "pass-with-gap",
+    "debian13": "pass-with-gap",
+    "fedora44": "pass-with-gap"
+   },
+   "issue": 471
+  },
+  {
+   "id": "C2",
+   "check": "No secrets",
+   "result": {
+    "ubuntu24.04": "pass",
+    "ubuntu26.04": "pass",
+    "debian13": "pass",
+    "fedora44": "pass"
+   },
+   "issue": null
+  },
+  {
+   "id": "C3",
+   "check": "No absolute build paths; RUNPATHs $ORIGIN only",
+   "result": {
+    "ubuntu24.04": "pass-with-gap",
+    "ubuntu26.04": "pass-with-gap",
+    "debian13": "pass-with-gap",
+    "fedora44": "pass-with-gap"
+   },
+   "issue": 471
+  },
+  {
+   "id": "C3b",
+   "check": "Programs are PIE",
+   "result": {
+    "ubuntu24.04": "pass",
+    "ubuntu26.04": "pass",
+    "debian13": "pass",
+    "fedora44": "fail"
+   },
+   "issue": 475
+  },
+  {
+   "id": "C4",
+   "check": "Control/spec metadata (Depends, conffiles, %ghost, scriptlets)",
+   "result": {
+    "ubuntu24.04": "pass-with-gap",
+    "ubuntu26.04": "pass-with-gap",
+    "debian13": "pass-with-gap",
+    "fedora44": "pass-with-gap"
+   },
+   "issue": 468
+  },
+  {
+   "id": "C5",
+   "check": "Both channels repo files (#428)",
+   "result": {
+    "ubuntu24.04": "pass",
+    "ubuntu26.04": "pass",
+    "debian13": "pass",
+    "fedora44": "pass"
+   },
+   "issue": null
+  },
+  {
+   "id": "L1",
+   "check": "lintian/rpmlint triaged",
+   "result": {
+    "ubuntu24.04": "pass-with-gap",
+    "ubuntu26.04": "pass-with-gap",
+    "debian13": "pass-with-gap",
+    "fedora44": "pass-with-gap"
+   },
+   "issue": 471
+  },
+  {
+   "id": "D1",
+   "check": "Bundled pieces with known CVEs (Proton npm lock, Bun, AWS SDK)",
+   "result": {
+    "ubuntu24.04": "pass",
+    "ubuntu26.04": "pass",
+    "debian13": "pass",
+    "fedora44": "pass"
+   },
+   "issue": null
+  },
+  {
+   "id": "D2",
+   "check": "Codecs: none bundled; distro GStreamer/FFmpeg (report for #419)",
+   "result": {
+    "ubuntu24.04": "pass",
+    "ubuntu26.04": "pass",
+    "debian13": "pass",
+    "fedora44": "pass"
+   },
+   "issue": 419
+  }
+ ],
+ "issues": {
+  "pr": 468,
+  "opened": [
+   469,
+   470,
+   471,
+   475
+  ],
+  "commented": [
+   416,
+   419
+  ]
+ },
+ "decisions": {
+  "by": "Patrick, 2026-10-22, relayed by the coordinator",
+  "licenceExpression": "main licences + pointer to runtime-notices.txt",
+  "protonCrypto": "GPL-3.0-or-later (WebPackages README at 956a713c grants version 3 or any later version)",
+  "protonSourceForAptDnf": "release-page URL in the notices",
+  "codecsNative": "no change",
+  "maintainer": "packages@put.gd"
+ }
+}

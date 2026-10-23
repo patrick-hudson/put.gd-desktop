@@ -1,0 +1,2138 @@
+{
+ "debian13": {
+  "usr/bin/putgd": {
+   "runpath": [],
+   "rpath": [],
+   "needed": [
+    "libxcb-xinput.so.0",
+    "libxcb-randr.so.0",
+    "libxcb-keysyms.so.1",
+    "libxcb.so.1",
+    "libxcb-xfixes.so.0",
+    "libxcb-render.so.0",
+    "libxcb-damage.so.0",
+    "libQt6Widgets.so.6",
+    "libxkbcommon.so.0",
+    "libwayland-client.so.0",
+    "libLayerShellQtInterface.so.6",
+    "libqt6keychain.so.1",
+    "libQt6Gui.so.6",
+    "libQt6DBus.so.6",
+    "libQt6Sql.so.6",
+    "libQt6Core.so.6",
+    "libstdc++.so.6",
+    "libm.so.6",
+    "libgcc_s.so.1",
+    "libc.so.6",
+    "ld-linux-x86-64.so.2"
+   ],
+   "soname": [],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "192f3cbbd217978391a789f40ded24a78ddce6c9"
+  },
+  "usr/bin/putgd-b2-worker": {
+   "runpath": [],
+   "rpath": [],
+   "needed": [
+    "libQt6Network.so.6",
+    "libQt6Gui.so.6",
+    "libQt6Core.so.6",
+    "libstdc++.so.6",
+    "libgcc_s.so.1",
+    "libc.so.6",
+    "ld-linux-x86-64.so.2"
+   ],
+   "soname": [],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "0443c500be64afcc6445a720a818adaa2903512d"
+  },
+  "usr/bin/putgd-capture": {
+   "runpath": [],
+   "rpath": [],
+   "needed": [
+    "libXcursor.so.1",
+    "libxcb-xinput.so.0",
+    "libQt6Widgets.so.6",
+    "libQt6Gui.so.6",
+    "libxcb-damage.so.0",
+    "libQt6DBus.so.6",
+    "libxcb-randr.so.0",
+    "libxcb-keysyms.so.1",
+    "libxcb.so.1",
+    "libxcb-xfixes.so.0",
+    "libQt6Core.so.6",
+    "libstdc++.so.6",
+    "libm.so.6",
+    "libgcc_s.so.1",
+    "libc.so.6",
+    "ld-linux-x86-64.so.2"
+   ],
+   "soname": [],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "6579e43f61a2c89ca81876626ce9463988b41bea"
+  },
+  "usr/bin/putgd-cli": {
+   "runpath": [],
+   "rpath": [],
+   "needed": [
+    "libQt6Network.so.6",
+    "libQt6Gui.so.6",
+    "libQt6Sql.so.6",
+    "libqt6keychain.so.1",
+    "libcrypto.so.3",
+    "libQt6Core.so.6",
+    "libstdc++.so.6",
+    "libm.so.6",
+    "libgcc_s.so.1",
+    "libc.so.6",
+    "ld-linux-x86-64.so.2"
+   ],
+   "soname": [],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "1a05a52f4adb0ec5490970db41d04cafec73a1e8"
+  },
+  "usr/bin/putgd-kde-region": {
+   "runpath": [],
+   "rpath": [],
+   "needed": [
+    "libwayland-client.so.0",
+    "libQt6Widgets.so.6",
+    "libxkbcommon.so.0",
+    "libLayerShellQtInterface.so.6",
+    "libQt6Gui.so.6",
+    "libQt6DBus.so.6",
+    "libQt6Core.so.6",
+    "libstdc++.so.6",
+    "libm.so.6",
+    "libgcc_s.so.1",
+    "libc.so.6",
+    "ld-linux-x86-64.so.2"
+   ],
+   "soname": [],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "6137cdf463fa90075c83bdd04588f2c45aa4bc5c"
+  },
+  "usr/bin/putgd-record": {
+   "runpath": [],
+   "rpath": [],
+   "needed": [
+    "libLayerShellQtInterface.so.6",
+    "libxcb-randr.so.0",
+    "libxcb.so.1",
+    "libQt6Widgets.so.6",
+    "libgstbase-1.0.so.0",
+    "libgstreamer-1.0.so.0",
+    "libgobject-2.0.so.0",
+    "libglib-2.0.so.0",
+    "libavcodec.so.61",
+    "libavformat.so.61",
+    "libavfilter.so.10",
+    "libavutil.so.59",
+    "libswscale.so.8",
+    "libswresample.so.5",
+    "libwayland-client.so.0",
+    "libQt6Gui.so.6",
+    "libQt6DBus.so.6",
+    "libQt6Core.so.6",
+    "libstdc++.so.6",
+    "libm.so.6",
+    "libgcc_s.so.1",
+    "libc.so.6",
+    "ld-linux-x86-64.so.2"
+   ],
+   "soname": [],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "e081fe2a406ad0272158eb6aa966f3ed936b8119"
+  },
+  "usr/bin/putgd-s3-worker": {
+   "runpath": [],
+   "rpath": [],
+   "needed": [
+    "libQt6Gui.so.6",
+    "libQt6Core.so.6",
+    "libstdc++.so.6",
+    "libgcc_s.so.1",
+    "libc.so.6",
+    "ld-linux-x86-64.so.2"
+   ],
+   "soname": [],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "413e08bb160b20c21378b0c336d89a7614275756"
+  },
+  "usr/bin/putgd-ui": {
+   "runpath": [],
+   "rpath": [],
+   "needed": [
+    "libQt6Network.so.6",
+    "libQt6Widgets.so.6",
+    "libQt6Gui.so.6",
+    "libQt6DBus.so.6",
+    "libQt6Core.so.6",
+    "libstdc++.so.6",
+    "libm.so.6",
+    "libgcc_s.so.1",
+    "libc.so.6",
+    "ld-linux-x86-64.so.2"
+   ],
+   "soname": [],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "503024e1af3458567c8cedb52b383f3f33998e92"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libaws-c-auth.so.1.0.0": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libaws-c-sdkutils.so.1.0.0",
+    "libaws-c-http.so.1.0.0",
+    "libaws-c-io.so.1.0.0",
+    "libaws-c-cal.so.1.0.0",
+    "libaws-c-common.so.1",
+    "libc.so.6"
+   ],
+   "soname": [
+    "libaws-c-auth.so.1.0.0"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "f73873b59399a01579a927d43b4be587fa987e68"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libaws-c-cal.so.1.0.0": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libaws-c-common.so.1",
+    "libcrypto.so.3",
+    "libc.so.6"
+   ],
+   "soname": [
+    "libaws-c-cal.so.1.0.0"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "e8c50821a6ac3c44deafab840fd4ed48b00c7be8"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libaws-c-common.so.0.14.5": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libm.so.6",
+    "libc.so.6",
+    "ld-linux-x86-64.so.2"
+   ],
+   "soname": [
+    "libaws-c-common.so.1"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "28e8adf2c2b3e8080449eab7fbf0d902f86e027f"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libaws-c-compression.so.1.0.0": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libaws-c-common.so.1",
+    "libc.so.6"
+   ],
+   "soname": [
+    "libaws-c-compression.so.1.0.0"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "6ecb0b33e9433d2572fb69c5b4cd79c547e5e520"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libaws-c-event-stream.so.1.0.0": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libaws-c-io.so.1.0.0",
+    "libaws-checksums.so.1.0.0",
+    "libaws-c-common.so.1",
+    "libc.so.6"
+   ],
+   "soname": [
+    "libaws-c-event-stream.so.1.0.0"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "2f9e9343e0df783c71037850b532325fd5ec5a03"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libaws-c-http.so.1.0.0": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libaws-c-io.so.1.0.0",
+    "libaws-c-compression.so.1.0.0",
+    "libaws-c-cal.so.1.0.0",
+    "libaws-c-common.so.1",
+    "libc.so.6"
+   ],
+   "soname": [
+    "libaws-c-http.so.1.0.0"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "8d809c8a854adbfe56568c5ae542b3e57831cd01"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libaws-c-io.so.1.0.0": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libs2n.so.1",
+    "libaws-c-cal.so.1.0.0",
+    "libaws-c-common.so.1",
+    "libc.so.6",
+    "ld-linux-x86-64.so.2"
+   ],
+   "soname": [
+    "libaws-c-io.so.1.0.0"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "4707b7ca0832e3c707500669544b4d5d3d1f7ef8"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libaws-c-mqtt.so.1.0.0": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libaws-c-http.so.1.0.0",
+    "libaws-c-io.so.1.0.0",
+    "libaws-c-common.so.1",
+    "libc.so.6"
+   ],
+   "soname": [
+    "libaws-c-mqtt.so.1.0.0"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "fcb58a1e17506e95f798ccc958fe0d33244bf297"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libaws-c-s3.so.1.0.0": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libaws-c-auth.so.1.0.0",
+    "libaws-checksums.so.1.0.0",
+    "libaws-c-http.so.1.0.0",
+    "libaws-c-io.so.1.0.0",
+    "libaws-c-cal.so.1.0.0",
+    "libaws-c-common.so.1",
+    "libc.so.6"
+   ],
+   "soname": [
+    "libaws-c-s3.so.0unstable"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "20f652ac7ee02dbc6749508ff83339c8a129d00d"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libaws-c-sdkutils.so.1.0.0": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libaws-c-common.so.1",
+    "libc.so.6"
+   ],
+   "soname": [
+    "libaws-c-sdkutils.so.1.0.0"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "f13dd3cf7bd8b5d4feaab6d3899d6c1bc356d576"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libaws-checksums.so.1.0.0": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libaws-c-common.so.1",
+    "libc.so.6"
+   ],
+   "soname": [
+    "libaws-checksums.so.1.0.0"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "20d59fecc2a15e9cacf93f15a66114a87d4bd53c"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libaws-cpp-sdk-core.so": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libcurl.so.4",
+    "libaws-crt-cpp.so",
+    "libz.so.1",
+    "libaws-c-event-stream.so.1.0.0",
+    "libaws-c-common.so.1",
+    "libstdc++.so.6",
+    "libm.so.6",
+    "libc.so.6",
+    "ld-linux-x86-64.so.2"
+   ],
+   "soname": [
+    "libaws-cpp-sdk-core.so"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "27b72f1a0079608958b6f02a21d4f82aaa1fd642"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libaws-cpp-sdk-s3.so": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libaws-cpp-sdk-core.so",
+    "libaws-crt-cpp.so",
+    "libaws-c-common.so.1",
+    "libstdc++.so.6",
+    "libc.so.6",
+    "ld-linux-x86-64.so.2"
+   ],
+   "soname": [
+    "libaws-cpp-sdk-s3.so"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "61ef6381324cd0296bddfbe3286c407f7008c054"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libaws-crt-cpp.so": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libaws-c-mqtt.so.1.0.0",
+    "libaws-c-event-stream.so.1.0.0",
+    "libaws-c-s3.so.0unstable",
+    "libaws-c-auth.so.1.0.0",
+    "libaws-c-http.so.1.0.0",
+    "libaws-c-io.so.1.0.0",
+    "libaws-c-cal.so.1.0.0",
+    "libaws-c-sdkutils.so.1.0.0",
+    "libaws-checksums.so.1.0.0",
+    "libaws-c-common.so.1",
+    "libstdc++.so.6",
+    "libgcc_s.so.1",
+    "libc.so.6",
+    "ld-linux-x86-64.so.2"
+   ],
+   "soname": [
+    "libaws-crt-cpp.so"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "18501ef925c69d0cc59ac9b5e6b7c64de7ac97ab"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libputgd-s3.so": {
+   "runpath": [],
+   "rpath": [
+    "$ORIGIN"
+   ],
+   "needed": [
+    "libaws-cpp-sdk-s3.so",
+    "libaws-cpp-sdk-core.so",
+    "libcrypto.so.3",
+    "libcurl.so.4",
+    "libQt6Core.so.6",
+    "libstdc++.so.6",
+    "libgcc_s.so.1",
+    "libc.so.6",
+    "ld-linux-x86-64.so.2"
+   ],
+   "soname": [],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "4cc4df7c167347849ede509842dd795de60e9748"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libs2n.so.1.0.0": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libcrypto.so.3",
+    "libc.so.6",
+    "ld-linux-x86-64.so.2"
+   ],
+   "soname": [
+    "libs2n.so.1"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "27b8659296344096f803006ce808663711850d1e"
+  },
+  "usr/libexec/putgd/proton/putgd-proton-runtime": {
+   "runpath": [],
+   "rpath": [],
+   "needed": [
+    "libc.so.6",
+    "ld-linux-x86-64.so.2",
+    "libpthread.so.0",
+    "libdl.so.2",
+    "libm.so.6"
+   ],
+   "soname": [],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "5afca2666bfab8605a934f1b6231dacae0518a5f"
+  }
+ },
+ "fedora44": {
+  "usr/bin/putgd": {
+   "runpath": [],
+   "rpath": [],
+   "needed": [
+    "libxcb-xinput.so.0",
+    "libxcb-randr.so.0",
+    "libxcb-keysyms.so.1",
+    "libxcb-xfixes.so.0",
+    "libxcb-render.so.0",
+    "libxcb.so.1",
+    "libxcb-damage.so.0",
+    "libQt6Widgets.so.6",
+    "libxkbcommon.so.0",
+    "libwayland-client.so.0",
+    "libLayerShellQtInterface.so.6",
+    "libqt6keychain.so.1",
+    "libQt6Gui.so.6",
+    "libQt6DBus.so.6",
+    "libGLX.so.0",
+    "libOpenGL.so.0",
+    "libQt6Sql.so.6",
+    "libQt6Core.so.6",
+    "libgcc_s.so.1",
+    "libstdc++.so.6",
+    "libm.so.6",
+    "libc.so.6"
+   ],
+   "soname": [],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "e31191e17a29c3016cf5747bf592858c8d91bd9d"
+  },
+  "usr/bin/putgd-b2-worker": {
+   "runpath": [],
+   "rpath": [],
+   "needed": [
+    "libQt6Network.so.6",
+    "libQt6Gui.so.6",
+    "libGLX.so.0",
+    "libOpenGL.so.0",
+    "libQt6Sql.so.6",
+    "libQt6Core.so.6",
+    "libstdc++.so.6",
+    "libm.so.6",
+    "libgcc_s.so.1",
+    "libc.so.6"
+   ],
+   "soname": [],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "3767da92bb03220145e3946ada2eeeef3cfd1dd8"
+  },
+  "usr/bin/putgd-capture": {
+   "runpath": [],
+   "rpath": [],
+   "needed": [
+    "libXcursor.so.1",
+    "libQt6Sql.so.6",
+    "libqt6keychain.so.1",
+    "libxcb-xinput.so.0",
+    "libQt6Widgets.so.6",
+    "libQt6Gui.so.6",
+    "libGLX.so.0",
+    "libOpenGL.so.0",
+    "libxcb-damage.so.0",
+    "libQt6DBus.so.6",
+    "libxcb-randr.so.0",
+    "libxcb-keysyms.so.1",
+    "libxcb-xfixes.so.0",
+    "libxcb-render.so.0",
+    "libxcb.so.1",
+    "libQt6Core.so.6",
+    "libstdc++.so.6",
+    "libm.so.6",
+    "libgcc_s.so.1",
+    "libc.so.6"
+   ],
+   "soname": [],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "6c5cc5913e04187e01a966a8121d1bbd3175a4fe"
+  },
+  "usr/bin/putgd-cli": {
+   "runpath": [],
+   "rpath": [],
+   "needed": [
+    "libQt6Network.so.6",
+    "libQt6Gui.so.6",
+    "libGLX.so.0",
+    "libOpenGL.so.0",
+    "libQt6Sql.so.6",
+    "libqt6keychain.so.1",
+    "libQt6DBus.so.6",
+    "libcrypto.so.3",
+    "libQt6Core.so.6",
+    "libstdc++.so.6",
+    "libm.so.6",
+    "libgcc_s.so.1",
+    "libc.so.6"
+   ],
+   "soname": [],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "c5f37059b3c300f8f0c0fe5b098a27271fddc16a"
+  },
+  "usr/bin/putgd-kde-region": {
+   "runpath": [],
+   "rpath": [],
+   "needed": [
+    "libwayland-client.so.0",
+    "libQt6Sql.so.6",
+    "libqt6keychain.so.1",
+    "libQt6Widgets.so.6",
+    "libxkbcommon.so.0",
+    "libLayerShellQtInterface.so.6",
+    "libQt6Gui.so.6",
+    "libQt6DBus.so.6",
+    "libQt6Core.so.6",
+    "libGLX.so.0",
+    "libOpenGL.so.0",
+    "libgcc_s.so.1",
+    "libstdc++.so.6",
+    "libm.so.6",
+    "libc.so.6"
+   ],
+   "soname": [],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "60a183c58acbbfd5effc033c01884e038fcf1f67"
+  },
+  "usr/bin/putgd-record": {
+   "runpath": [],
+   "rpath": [],
+   "needed": [
+    "libLayerShellQtInterface.so.6",
+    "libxcb-randr.so.0",
+    "libxcb-keysyms.so.1",
+    "libxcb-xfixes.so.0",
+    "libxcb-render.so.0",
+    "libxcb.so.1",
+    "libQt6Widgets.so.6",
+    "libgstvideo-1.0.so.0",
+    "libgstapp-1.0.so.0",
+    "libgstbase-1.0.so.0",
+    "libgstreamer-1.0.so.0",
+    "libgobject-2.0.so.0",
+    "libglib-2.0.so.0",
+    "libavfilter.so.11",
+    "libavformat.so.62",
+    "libavcodec.so.62",
+    "libswscale.so.9",
+    "libswresample.so.6",
+    "libavutil.so.60",
+    "libwayland-client.so.0",
+    "libQt6Gui.so.6",
+    "libQt6DBus.so.6",
+    "libQt6Core.so.6",
+    "libGLX.so.0",
+    "libOpenGL.so.0",
+    "libgcc_s.so.1",
+    "libstdc++.so.6",
+    "libm.so.6",
+    "libc.so.6"
+   ],
+   "soname": [],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "f23ca901a53b72ffbaae484c2e035a29378bcdf1"
+  },
+  "usr/bin/putgd-s3-worker": {
+   "runpath": [],
+   "rpath": [],
+   "needed": [
+    "libQt6Gui.so.6",
+    "libGLX.so.0",
+    "libOpenGL.so.0",
+    "libQt6Sql.so.6",
+    "libQt6Core.so.6",
+    "libstdc++.so.6",
+    "libm.so.6",
+    "libgcc_s.so.1",
+    "libc.so.6"
+   ],
+   "soname": [],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "867970ca528fcd0e7dd2cc9786bb41a74ba42e49"
+  },
+  "usr/bin/putgd-ui": {
+   "runpath": [],
+   "rpath": [],
+   "needed": [
+    "libQt6Network.so.6",
+    "libqt6keychain.so.1",
+    "libQt6Sql.so.6",
+    "libQt6Widgets.so.6",
+    "libQt6Gui.so.6",
+    "libQt6DBus.so.6",
+    "libQt6Core.so.6",
+    "libGLX.so.0",
+    "libOpenGL.so.0",
+    "libstdc++.so.6",
+    "libm.so.6",
+    "libgcc_s.so.1",
+    "libc.so.6"
+   ],
+   "soname": [],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "e36a6845bbfddd81eaa26a18037db9c0c33d51e2"
+  },
+  "usr/lib64/putgd/libaws-c-auth.so.1.0.0": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libaws-c-sdkutils.so.1.0.0",
+    "libaws-c-http.so.1.0.0",
+    "libaws-c-io.so.1.0.0",
+    "libaws-c-cal.so.1.0.0",
+    "libcrypto.so.3",
+    "libs2n.so.1",
+    "libaws-c-compression.so.1.0.0",
+    "libaws-c-common.so.1",
+    "libm.so.6",
+    "libc.so.6"
+   ],
+   "soname": [
+    "libaws-c-auth.so.1.0.0"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "b6a1142fad0428bdac400313d1b92c35928cc973"
+  },
+  "usr/lib64/putgd/libaws-c-cal.so.1.0.0": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libaws-c-common.so.1",
+    "libcrypto.so.3",
+    "libm.so.6",
+    "libc.so.6"
+   ],
+   "soname": [
+    "libaws-c-cal.so.1.0.0"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "dc21038285085e8e8f09e94121e49ab7abdcd200"
+  },
+  "usr/lib64/putgd/libaws-c-common.so.0.14.5": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libm.so.6",
+    "libc.so.6"
+   ],
+   "soname": [
+    "libaws-c-common.so.1"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "26426718773337bc2d25cd6234dc0e4796c22a9c"
+  },
+  "usr/lib64/putgd/libaws-c-compression.so.1.0.0": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libaws-c-common.so.1",
+    "libm.so.6",
+    "libc.so.6"
+   ],
+   "soname": [
+    "libaws-c-compression.so.1.0.0"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "3ba62f75da770375dee062e9acca81fe249bac5c"
+  },
+  "usr/lib64/putgd/libaws-c-event-stream.so.1.0.0": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libaws-c-io.so.1.0.0",
+    "libaws-checksums.so.1.0.0",
+    "libs2n.so.1",
+    "libcrypto.so.3",
+    "libaws-c-cal.so.1.0.0",
+    "libaws-c-common.so.1",
+    "libm.so.6",
+    "libc.so.6"
+   ],
+   "soname": [
+    "libaws-c-event-stream.so.1.0.0"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "eeb8767fe90cca95d3cce61f6658f7d6b8a98159"
+  },
+  "usr/lib64/putgd/libaws-c-http.so.1.0.0": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libaws-c-io.so.1.0.0",
+    "libaws-c-compression.so.1.0.0",
+    "libs2n.so.1",
+    "libcrypto.so.3",
+    "libaws-c-cal.so.1.0.0",
+    "libaws-c-common.so.1",
+    "libm.so.6",
+    "libc.so.6"
+   ],
+   "soname": [
+    "libaws-c-http.so.1.0.0"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "85fffc906b3fe5324b92eefa1712fd9daf85b529"
+  },
+  "usr/lib64/putgd/libaws-c-io.so.1.0.0": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libs2n.so.1",
+    "libaws-c-cal.so.1.0.0",
+    "libcrypto.so.3",
+    "libaws-c-common.so.1",
+    "libm.so.6",
+    "libc.so.6"
+   ],
+   "soname": [
+    "libaws-c-io.so.1.0.0"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "e0325998b55cbddccc32c93c7f84cd1d7ba5453e"
+  },
+  "usr/lib64/putgd/libaws-c-mqtt.so.1.0.0": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libaws-c-http.so.1.0.0",
+    "libaws-c-io.so.1.0.0",
+    "libs2n.so.1",
+    "libcrypto.so.3",
+    "libaws-c-cal.so.1.0.0",
+    "libaws-c-compression.so.1.0.0",
+    "libaws-c-common.so.1",
+    "libm.so.6",
+    "libc.so.6"
+   ],
+   "soname": [
+    "libaws-c-mqtt.so.1.0.0"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "cfd2f068bca5469a7892e272e8cb210187da2f68"
+  },
+  "usr/lib64/putgd/libaws-c-s3.so.1.0.0": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libaws-c-auth.so.1.0.0",
+    "libaws-checksums.so.1.0.0",
+    "libaws-c-sdkutils.so.1.0.0",
+    "libaws-c-http.so.1.0.0",
+    "libaws-c-io.so.1.0.0",
+    "libaws-c-cal.so.1.0.0",
+    "libcrypto.so.3",
+    "libs2n.so.1",
+    "libaws-c-compression.so.1.0.0",
+    "libaws-c-common.so.1",
+    "libm.so.6",
+    "libc.so.6"
+   ],
+   "soname": [
+    "libaws-c-s3.so.0unstable"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "a7d654deeb6c2a22cbe3c81a0515866ad951d5b7"
+  },
+  "usr/lib64/putgd/libaws-c-sdkutils.so.1.0.0": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libaws-c-common.so.1",
+    "libm.so.6",
+    "libc.so.6"
+   ],
+   "soname": [
+    "libaws-c-sdkutils.so.1.0.0"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "6bf27ce0d55b4a69f0472adf890168998a4bcff1"
+  },
+  "usr/lib64/putgd/libaws-checksums.so.1.0.0": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libaws-c-common.so.1",
+    "libm.so.6",
+    "libc.so.6"
+   ],
+   "soname": [
+    "libaws-checksums.so.1.0.0"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "d85b56ca52d266029dfa70c0925225fb90376a7d"
+  },
+  "usr/lib64/putgd/libaws-cpp-sdk-core.so": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libcurl.so.4",
+    "libaws-crt-cpp.so",
+    "libz.so.1",
+    "libaws-c-mqtt.so.1.0.0",
+    "libaws-c-event-stream.so.1.0.0",
+    "libaws-c-s3.so.0unstable",
+    "libaws-c-auth.so.1.0.0",
+    "libaws-c-http.so.1.0.0",
+    "libaws-c-io.so.1.0.0",
+    "libs2n.so.1",
+    "libcrypto.so.3",
+    "libaws-c-compression.so.1.0.0",
+    "libaws-c-cal.so.1.0.0",
+    "libaws-c-sdkutils.so.1.0.0",
+    "libaws-checksums.so.1.0.0",
+    "libaws-c-common.so.1",
+    "libstdc++.so.6",
+    "libm.so.6",
+    "libgcc_s.so.1",
+    "libc.so.6"
+   ],
+   "soname": [
+    "libaws-cpp-sdk-core.so"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "bde1a19e0d8ca749ad0fe7b0d5e5f0612b9ae728"
+  },
+  "usr/lib64/putgd/libaws-cpp-sdk-s3.so": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libaws-cpp-sdk-core.so",
+    "libaws-crt-cpp.so",
+    "libaws-c-mqtt.so.1.0.0",
+    "libaws-c-event-stream.so.1.0.0",
+    "libaws-c-s3.so.0unstable",
+    "libaws-c-auth.so.1.0.0",
+    "libaws-c-http.so.1.0.0",
+    "libaws-c-io.so.1.0.0",
+    "libs2n.so.1",
+    "libcrypto.so.3",
+    "libaws-c-cal.so.1.0.0",
+    "libaws-checksums.so.1.0.0",
+    "libaws-c-compression.so.1.0.0",
+    "libaws-c-sdkutils.so.1.0.0",
+    "libaws-c-common.so.1",
+    "libstdc++.so.6",
+    "libm.so.6",
+    "libgcc_s.so.1",
+    "libc.so.6"
+   ],
+   "soname": [
+    "libaws-cpp-sdk-s3.so"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "852168cc43a0b346e39008a4ec3525257b64b81b"
+  },
+  "usr/lib64/putgd/libaws-crt-cpp.so": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libaws-c-mqtt.so.1.0.0",
+    "libaws-c-event-stream.so.1.0.0",
+    "libaws-c-s3.so.0unstable",
+    "libaws-c-auth.so.1.0.0",
+    "libaws-c-http.so.1.0.0",
+    "libaws-c-io.so.1.0.0",
+    "libs2n.so.1",
+    "libcrypto.so.3",
+    "libaws-c-compression.so.1.0.0",
+    "libaws-c-cal.so.1.0.0",
+    "libaws-c-sdkutils.so.1.0.0",
+    "libaws-checksums.so.1.0.0",
+    "libaws-c-common.so.1",
+    "libstdc++.so.6",
+    "libm.so.6",
+    "libgcc_s.so.1",
+    "libc.so.6"
+   ],
+   "soname": [
+    "libaws-crt-cpp.so"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "bbee7de542db1561048862c796428e009233f536"
+  },
+  "usr/lib64/putgd/libputgd-s3.so": {
+   "runpath": [],
+   "rpath": [
+    "$ORIGIN"
+   ],
+   "needed": [
+    "libaws-cpp-sdk-s3.so",
+    "libaws-cpp-sdk-core.so",
+    "libQt6Network.so.6",
+    "libQt6Gui.so.6",
+    "libGLX.so.0",
+    "libOpenGL.so.0",
+    "libQt6Sql.so.6",
+    "libaws-crt-cpp.so",
+    "libaws-c-mqtt.so.1.0.0",
+    "libaws-c-event-stream.so.1.0.0",
+    "libaws-c-s3.so.0unstable",
+    "libaws-c-auth.so.1.0.0",
+    "libaws-c-http.so.1.0.0",
+    "libaws-c-io.so.1.0.0",
+    "libs2n.so.1",
+    "libcrypto.so.3",
+    "libaws-c-cal.so.1.0.0",
+    "libaws-checksums.so.1.0.0",
+    "libaws-c-compression.so.1.0.0",
+    "libaws-c-sdkutils.so.1.0.0",
+    "libaws-c-common.so.1",
+    "libcurl.so.4",
+    "libQt6Core.so.6",
+    "libstdc++.so.6",
+    "libm.so.6",
+    "libgcc_s.so.1",
+    "libc.so.6"
+   ],
+   "soname": [],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "567cb87508b3d97ef21d41d13728d429d42c9fed"
+  },
+  "usr/lib64/putgd/libs2n.so.1.0.0": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libcrypto.so.3",
+    "libm.so.6",
+    "libc.so.6"
+   ],
+   "soname": [
+    "libs2n.so.1"
+   ],
+   "debugSections": [
+    ".debug_abbrev",
+    ".debug_aranges",
+    ".debug_info",
+    ".debug_line",
+    ".debug_line_str",
+    ".debug_loclists",
+    ".debug_str"
+   ],
+   "symtab": true,
+   "buildId": "ed32bd2e1cc433c351c45fb9cf61fab3ca232d9b"
+  },
+  "usr/libexec/putgd/proton/putgd-proton-runtime": {
+   "runpath": [],
+   "rpath": [],
+   "needed": [
+    "libc.so.6",
+    "ld-linux-x86-64.so.2",
+    "libpthread.so.0",
+    "libdl.so.2",
+    "libm.so.6"
+   ],
+   "soname": [],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "5afca2666bfab8605a934f1b6231dacae0518a5f"
+  }
+ },
+ "ubuntu24.04": {
+  "usr/bin/putgd": {
+   "runpath": [],
+   "rpath": [],
+   "needed": [
+    "libxcb-xinput.so.0",
+    "libxcb-randr.so.0",
+    "libxcb-keysyms.so.1",
+    "libxcb.so.1",
+    "libxcb-xfixes.so.0",
+    "libxcb-render.so.0",
+    "libxcb-damage.so.0",
+    "libQt6Widgets.so.6",
+    "libxkbcommon.so.0",
+    "libwayland-client.so.0",
+    "libqt6keychain.so.1",
+    "libQt6DBus.so.6",
+    "libQt6Gui.so.6",
+    "libQt6Sql.so.6",
+    "libQt6Core.so.6",
+    "libstdc++.so.6",
+    "libm.so.6",
+    "libgcc_s.so.1",
+    "libc.so.6",
+    "ld-linux-x86-64.so.2"
+   ],
+   "soname": [],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "85599186edccc2913a4fe6afcc24abdc28105bc8"
+  },
+  "usr/bin/putgd-b2-worker": {
+   "runpath": [],
+   "rpath": [],
+   "needed": [
+    "libQt6Network.so.6",
+    "libQt6Gui.so.6",
+    "libQt6Core.so.6",
+    "libstdc++.so.6",
+    "libgcc_s.so.1",
+    "libc.so.6",
+    "ld-linux-x86-64.so.2"
+   ],
+   "soname": [],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "3d95d11ff5f1691fdb538c920ae437948c20247f"
+  },
+  "usr/bin/putgd-capture": {
+   "runpath": [],
+   "rpath": [],
+   "needed": [
+    "libXcursor.so.1",
+    "libxcb-xinput.so.0",
+    "libQt6Widgets.so.6",
+    "libQt6Gui.so.6",
+    "libxcb-damage.so.0",
+    "libQt6DBus.so.6",
+    "libxcb-randr.so.0",
+    "libxcb-keysyms.so.1",
+    "libxcb.so.1",
+    "libxcb-xfixes.so.0",
+    "libQt6Core.so.6",
+    "libstdc++.so.6",
+    "libm.so.6",
+    "libgcc_s.so.1",
+    "libc.so.6",
+    "ld-linux-x86-64.so.2"
+   ],
+   "soname": [],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "77a609ae85b6b9590bb471051c33c1b186c9f0df"
+  },
+  "usr/bin/putgd-cli": {
+   "runpath": [],
+   "rpath": [],
+   "needed": [
+    "libQt6Network.so.6",
+    "libQt6Gui.so.6",
+    "libQt6Sql.so.6",
+    "libqt6keychain.so.1",
+    "libcrypto.so.3",
+    "libQt6Core.so.6",
+    "libstdc++.so.6",
+    "libm.so.6",
+    "libgcc_s.so.1",
+    "libc.so.6",
+    "ld-linux-x86-64.so.2"
+   ],
+   "soname": [],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "b4f86571da95dd3e9980e35a2909ec6a3724730c"
+  },
+  "usr/bin/putgd-kde-region": {
+   "runpath": [],
+   "rpath": [],
+   "needed": [
+    "libQt6Widgets.so.6",
+    "libQt6Gui.so.6",
+    "libQt6DBus.so.6",
+    "libQt6Core.so.6",
+    "libxkbcommon.so.0",
+    "libwayland-client.so.0",
+    "libstdc++.so.6",
+    "libm.so.6",
+    "libgcc_s.so.1",
+    "libc.so.6",
+    "ld-linux-x86-64.so.2"
+   ],
+   "soname": [],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "7211579c77e8c5cc2395c5a7c798b1f4d540e1c5"
+  },
+  "usr/bin/putgd-record": {
+   "runpath": [],
+   "rpath": [],
+   "needed": [
+    "libQt6DBus.so.6",
+    "libxcb-randr.so.0",
+    "libxcb.so.1",
+    "libQt6Widgets.so.6",
+    "libQt6Gui.so.6",
+    "libQt6Core.so.6",
+    "libgstbase-1.0.so.0",
+    "libgstreamer-1.0.so.0",
+    "libgobject-2.0.so.0",
+    "libglib-2.0.so.0",
+    "libavcodec.so.60",
+    "libavformat.so.60",
+    "libavfilter.so.9",
+    "libavutil.so.58",
+    "libswscale.so.7",
+    "libswresample.so.4",
+    "libwayland-client.so.0",
+    "libstdc++.so.6",
+    "libm.so.6",
+    "libgcc_s.so.1",
+    "libc.so.6",
+    "ld-linux-x86-64.so.2"
+   ],
+   "soname": [],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "6070f6ce656aa5f46a6cb38d063ef2e83e725feb"
+  },
+  "usr/bin/putgd-s3-worker": {
+   "runpath": [],
+   "rpath": [],
+   "needed": [
+    "libQt6Gui.so.6",
+    "libQt6Core.so.6",
+    "libstdc++.so.6",
+    "libgcc_s.so.1",
+    "libc.so.6",
+    "ld-linux-x86-64.so.2"
+   ],
+   "soname": [],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "64dafa55a9da5d284647cb284e578383426f3eb3"
+  },
+  "usr/bin/putgd-ui": {
+   "runpath": [],
+   "rpath": [],
+   "needed": [
+    "libQt6Network.so.6",
+    "libQt6DBus.so.6",
+    "libQt6Widgets.so.6",
+    "libQt6Gui.so.6",
+    "libQt6Core.so.6",
+    "libstdc++.so.6",
+    "libm.so.6",
+    "libgcc_s.so.1",
+    "libc.so.6",
+    "ld-linux-x86-64.so.2"
+   ],
+   "soname": [],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "896af10e73deabf64de33a6924a81e6b651f508f"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libaws-c-auth.so.1.0.0": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libaws-c-sdkutils.so.1.0.0",
+    "libaws-c-http.so.1.0.0",
+    "libaws-c-io.so.1.0.0",
+    "libaws-c-cal.so.1.0.0",
+    "libaws-c-common.so.1",
+    "libc.so.6"
+   ],
+   "soname": [
+    "libaws-c-auth.so.1.0.0"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "79fb73842b053f7fe75cb170480458bb9cbe1fe7"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libaws-c-cal.so.1.0.0": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libaws-c-common.so.1",
+    "libcrypto.so.3",
+    "libc.so.6"
+   ],
+   "soname": [
+    "libaws-c-cal.so.1.0.0"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "d4505a2ca1c59af4502e1b7c470240b2b99bb6b9"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libaws-c-common.so.0.14.5": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libm.so.6",
+    "libc.so.6",
+    "ld-linux-x86-64.so.2"
+   ],
+   "soname": [
+    "libaws-c-common.so.1"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "2c1fe8e5d1dbf8af96d35908064fe86aceba3811"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libaws-c-compression.so.1.0.0": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libaws-c-common.so.1",
+    "libc.so.6"
+   ],
+   "soname": [
+    "libaws-c-compression.so.1.0.0"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "6e160c3be695bf887d8f5e1cc4752136f10c0f66"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libaws-c-event-stream.so.1.0.0": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libaws-c-io.so.1.0.0",
+    "libaws-checksums.so.1.0.0",
+    "libaws-c-common.so.1",
+    "libc.so.6"
+   ],
+   "soname": [
+    "libaws-c-event-stream.so.1.0.0"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "7631d905243ee61d362d9b4be0050f04eff1c3ce"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libaws-c-http.so.1.0.0": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libaws-c-io.so.1.0.0",
+    "libaws-c-compression.so.1.0.0",
+    "libaws-c-cal.so.1.0.0",
+    "libaws-c-common.so.1",
+    "libc.so.6"
+   ],
+   "soname": [
+    "libaws-c-http.so.1.0.0"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "e14273b197578ea7b9c3b189ce26cbc68c7e58fa"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libaws-c-io.so.1.0.0": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libs2n.so.1",
+    "libaws-c-cal.so.1.0.0",
+    "libaws-c-common.so.1",
+    "libc.so.6",
+    "ld-linux-x86-64.so.2"
+   ],
+   "soname": [
+    "libaws-c-io.so.1.0.0"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "f403c073c868ce6b8da2ce043d129f88e03a493d"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libaws-c-mqtt.so.1.0.0": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libaws-c-http.so.1.0.0",
+    "libaws-c-io.so.1.0.0",
+    "libaws-c-common.so.1",
+    "libc.so.6"
+   ],
+   "soname": [
+    "libaws-c-mqtt.so.1.0.0"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "05b733f16412355903e5c5a1c90a6559d0f8d7a8"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libaws-c-s3.so.1.0.0": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libaws-c-auth.so.1.0.0",
+    "libaws-checksums.so.1.0.0",
+    "libaws-c-http.so.1.0.0",
+    "libaws-c-io.so.1.0.0",
+    "libaws-c-cal.so.1.0.0",
+    "libaws-c-common.so.1",
+    "libc.so.6"
+   ],
+   "soname": [
+    "libaws-c-s3.so.0unstable"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "29c4653962315fb454c00d1024de107d22a10eef"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libaws-c-sdkutils.so.1.0.0": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libaws-c-common.so.1",
+    "libc.so.6"
+   ],
+   "soname": [
+    "libaws-c-sdkutils.so.1.0.0"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "eeca5cbce5107148f6875adfc83e71419f3162c5"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libaws-checksums.so.1.0.0": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libaws-c-common.so.1",
+    "libc.so.6"
+   ],
+   "soname": [
+    "libaws-checksums.so.1.0.0"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "a8a2a2b707afd04525a31a5fcb2b0bc90fb7b959"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libaws-cpp-sdk-core.so": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libcurl.so.4",
+    "libaws-crt-cpp.so",
+    "libz.so.1",
+    "libaws-c-event-stream.so.1.0.0",
+    "libaws-c-common.so.1",
+    "libstdc++.so.6",
+    "libm.so.6",
+    "libc.so.6",
+    "ld-linux-x86-64.so.2"
+   ],
+   "soname": [
+    "libaws-cpp-sdk-core.so"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "1bf4178c3dac5223476056f714a1f37fdc3cb542"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libaws-cpp-sdk-s3.so": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libaws-cpp-sdk-core.so",
+    "libaws-crt-cpp.so",
+    "libaws-c-common.so.1",
+    "libstdc++.so.6",
+    "libc.so.6",
+    "ld-linux-x86-64.so.2"
+   ],
+   "soname": [
+    "libaws-cpp-sdk-s3.so"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "08ca539edf29c1aa28dc5ea81c759eaf4f859b69"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libaws-crt-cpp.so": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libaws-c-mqtt.so.1.0.0",
+    "libaws-c-event-stream.so.1.0.0",
+    "libaws-c-s3.so.0unstable",
+    "libaws-c-auth.so.1.0.0",
+    "libaws-c-http.so.1.0.0",
+    "libaws-c-io.so.1.0.0",
+    "libaws-c-cal.so.1.0.0",
+    "libaws-c-sdkutils.so.1.0.0",
+    "libaws-checksums.so.1.0.0",
+    "libaws-c-common.so.1",
+    "libstdc++.so.6",
+    "libgcc_s.so.1",
+    "libc.so.6",
+    "ld-linux-x86-64.so.2"
+   ],
+   "soname": [
+    "libaws-crt-cpp.so"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "cf8acbf2b786ae7361f6334bfad591f8c256b06f"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libputgd-s3.so": {
+   "runpath": [],
+   "rpath": [
+    "$ORIGIN"
+   ],
+   "needed": [
+    "libaws-cpp-sdk-s3.so",
+    "libaws-cpp-sdk-core.so",
+    "libcrypto.so.3",
+    "libcurl.so.4",
+    "libQt6Core.so.6",
+    "libstdc++.so.6",
+    "libgcc_s.so.1",
+    "libc.so.6",
+    "ld-linux-x86-64.so.2"
+   ],
+   "soname": [],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "4ebab0cebc3f4f95804fb10cd57ab474180abddd"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libs2n.so.1.0.0": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libcrypto.so.3",
+    "libc.so.6",
+    "ld-linux-x86-64.so.2"
+   ],
+   "soname": [
+    "libs2n.so.1"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "ffd55071d6bd7d386bcf7e0d60ad67b686e5fb25"
+  },
+  "usr/libexec/putgd/proton/putgd-proton-runtime": {
+   "runpath": [],
+   "rpath": [],
+   "needed": [
+    "libc.so.6",
+    "ld-linux-x86-64.so.2",
+    "libpthread.so.0",
+    "libdl.so.2",
+    "libm.so.6"
+   ],
+   "soname": [],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "5afca2666bfab8605a934f1b6231dacae0518a5f"
+  }
+ },
+ "ubuntu26.04": {
+  "usr/bin/putgd": {
+   "runpath": [],
+   "rpath": [],
+   "needed": [
+    "libxcb-xinput.so.0",
+    "libxcb-randr.so.0",
+    "libxcb-keysyms.so.1",
+    "libxcb-xfixes.so.0",
+    "libxcb-render.so.0",
+    "libxcb.so.1",
+    "libxcb-damage.so.0",
+    "libQt6Widgets.so.6",
+    "libxkbcommon.so.0",
+    "libwayland-client.so.0",
+    "libLayerShellQtInterface.so.6",
+    "libqt6keychain.so.1",
+    "libQt6Gui.so.6",
+    "libQt6DBus.so.6",
+    "libQt6Sql.so.6",
+    "libQt6Core.so.6",
+    "libstdc++.so.6",
+    "libm.so.6",
+    "libgcc_s.so.1",
+    "libc.so.6",
+    "ld-linux-x86-64.so.2"
+   ],
+   "soname": [],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "11fc752a8485eb99de9b387e822ad179298b7749"
+  },
+  "usr/bin/putgd-b2-worker": {
+   "runpath": [],
+   "rpath": [],
+   "needed": [
+    "libQt6Network.so.6",
+    "libQt6Gui.so.6",
+    "libQt6Core.so.6",
+    "libstdc++.so.6",
+    "libgcc_s.so.1",
+    "libc.so.6",
+    "ld-linux-x86-64.so.2"
+   ],
+   "soname": [],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "0e11f9d027f01de7d20119bb5a783cb9e4ad89c1"
+  },
+  "usr/bin/putgd-capture": {
+   "runpath": [],
+   "rpath": [],
+   "needed": [
+    "libXcursor.so.1",
+    "libxcb-xinput.so.0",
+    "libQt6Widgets.so.6",
+    "libQt6Gui.so.6",
+    "libxcb-damage.so.0",
+    "libQt6DBus.so.6",
+    "libxcb-randr.so.0",
+    "libxcb-keysyms.so.1",
+    "libxcb-xfixes.so.0",
+    "libxcb.so.1",
+    "libQt6Core.so.6",
+    "libstdc++.so.6",
+    "libm.so.6",
+    "libgcc_s.so.1",
+    "libc.so.6",
+    "ld-linux-x86-64.so.2"
+   ],
+   "soname": [],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "046612aacd1630f0294466af9ab4106fa677a69a"
+  },
+  "usr/bin/putgd-cli": {
+   "runpath": [],
+   "rpath": [],
+   "needed": [
+    "libQt6Network.so.6",
+    "libQt6Gui.so.6",
+    "libQt6Sql.so.6",
+    "libqt6keychain.so.1",
+    "libcrypto.so.3",
+    "libQt6Core.so.6",
+    "libstdc++.so.6",
+    "libm.so.6",
+    "libgcc_s.so.1",
+    "libc.so.6",
+    "ld-linux-x86-64.so.2"
+   ],
+   "soname": [],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "4115e6d9e50c0078d6002f79f9fc7888feeefaaa"
+  },
+  "usr/bin/putgd-kde-region": {
+   "runpath": [],
+   "rpath": [],
+   "needed": [
+    "libwayland-client.so.0",
+    "libQt6Widgets.so.6",
+    "libxkbcommon.so.0",
+    "libLayerShellQtInterface.so.6",
+    "libQt6Gui.so.6",
+    "libQt6DBus.so.6",
+    "libQt6Core.so.6",
+    "libstdc++.so.6",
+    "libm.so.6",
+    "libgcc_s.so.1",
+    "libc.so.6",
+    "ld-linux-x86-64.so.2"
+   ],
+   "soname": [],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "18de8c96ece7a1aa55fc36c47cbc2b353abad870"
+  },
+  "usr/bin/putgd-record": {
+   "runpath": [],
+   "rpath": [],
+   "needed": [
+    "libLayerShellQtInterface.so.6",
+    "libxcb-randr.so.0",
+    "libxcb.so.1",
+    "libQt6Widgets.so.6",
+    "libgstbase-1.0.so.0",
+    "libgstreamer-1.0.so.0",
+    "libgobject-2.0.so.0",
+    "libglib-2.0.so.0",
+    "libavfilter.so.11",
+    "libavformat.so.62",
+    "libavcodec.so.62",
+    "libswscale.so.9",
+    "libswresample.so.6",
+    "libavutil.so.60",
+    "libwayland-client.so.0",
+    "libQt6Gui.so.6",
+    "libQt6DBus.so.6",
+    "libQt6Core.so.6",
+    "libstdc++.so.6",
+    "libm.so.6",
+    "libgcc_s.so.1",
+    "libc.so.6",
+    "ld-linux-x86-64.so.2"
+   ],
+   "soname": [],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "29d0802babdca13862bceffa6235645a8080be34"
+  },
+  "usr/bin/putgd-s3-worker": {
+   "runpath": [],
+   "rpath": [],
+   "needed": [
+    "libQt6Gui.so.6",
+    "libQt6Core.so.6",
+    "libstdc++.so.6",
+    "libgcc_s.so.1",
+    "libc.so.6",
+    "ld-linux-x86-64.so.2"
+   ],
+   "soname": [],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "f902320b54a4b895136d11d575f47dc70179e6d7"
+  },
+  "usr/bin/putgd-ui": {
+   "runpath": [],
+   "rpath": [],
+   "needed": [
+    "libQt6Network.so.6",
+    "libQt6Widgets.so.6",
+    "libQt6Gui.so.6",
+    "libQt6DBus.so.6",
+    "libQt6Core.so.6",
+    "libstdc++.so.6",
+    "libm.so.6",
+    "libgcc_s.so.1",
+    "libc.so.6",
+    "ld-linux-x86-64.so.2"
+   ],
+   "soname": [],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "019526c9ef7fd3721ebfbdd7927b5f0754f8f898"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libaws-c-auth.so.1.0.0": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libaws-c-sdkutils.so.1.0.0",
+    "libaws-c-http.so.1.0.0",
+    "libaws-c-io.so.1.0.0",
+    "libaws-c-cal.so.1.0.0",
+    "libaws-c-common.so.1",
+    "libc.so.6"
+   ],
+   "soname": [
+    "libaws-c-auth.so.1.0.0"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "bd3bef8ba952f6d80346830d8024f1e6386a39b0"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libaws-c-cal.so.1.0.0": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libaws-c-common.so.1",
+    "libcrypto.so.3",
+    "libc.so.6"
+   ],
+   "soname": [
+    "libaws-c-cal.so.1.0.0"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "723eb8f020c26e7c00df402b96cf036714000671"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libaws-c-common.so.0.14.5": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libm.so.6",
+    "libc.so.6",
+    "ld-linux-x86-64.so.2"
+   ],
+   "soname": [
+    "libaws-c-common.so.1"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "f1a8aed0d8f11fe0aca216fc15fef50a8f9ae726"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libaws-c-compression.so.1.0.0": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libaws-c-common.so.1",
+    "libc.so.6"
+   ],
+   "soname": [
+    "libaws-c-compression.so.1.0.0"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "c84b086f662ff3fc8bad0bcd879cd095baf107f8"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libaws-c-event-stream.so.1.0.0": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libaws-c-io.so.1.0.0",
+    "libaws-checksums.so.1.0.0",
+    "libaws-c-common.so.1",
+    "libc.so.6"
+   ],
+   "soname": [
+    "libaws-c-event-stream.so.1.0.0"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "7ea3f016e6c8bf8702f20f5e15725286c70f6e2a"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libaws-c-http.so.1.0.0": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libaws-c-io.so.1.0.0",
+    "libaws-c-compression.so.1.0.0",
+    "libaws-c-cal.so.1.0.0",
+    "libaws-c-common.so.1",
+    "libc.so.6"
+   ],
+   "soname": [
+    "libaws-c-http.so.1.0.0"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "583b92672c6b3a4e86c18402fdbaf6cae17bb64b"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libaws-c-io.so.1.0.0": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libs2n.so.1",
+    "libaws-c-cal.so.1.0.0",
+    "libaws-c-common.so.1",
+    "libc.so.6",
+    "ld-linux-x86-64.so.2"
+   ],
+   "soname": [
+    "libaws-c-io.so.1.0.0"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "2a2b4de0a36f165c99b890992887cdcd62ee9640"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libaws-c-mqtt.so.1.0.0": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libaws-c-http.so.1.0.0",
+    "libaws-c-io.so.1.0.0",
+    "libaws-c-common.so.1",
+    "libc.so.6"
+   ],
+   "soname": [
+    "libaws-c-mqtt.so.1.0.0"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "438103eae4536f6685e6ca904dfe34503925400d"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libaws-c-s3.so.1.0.0": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libaws-c-auth.so.1.0.0",
+    "libaws-checksums.so.1.0.0",
+    "libaws-c-http.so.1.0.0",
+    "libaws-c-io.so.1.0.0",
+    "libaws-c-cal.so.1.0.0",
+    "libaws-c-common.so.1",
+    "libc.so.6"
+   ],
+   "soname": [
+    "libaws-c-s3.so.0unstable"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "34f9b83ca8bc117266ae18b6b34795334f4c3447"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libaws-c-sdkutils.so.1.0.0": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libaws-c-common.so.1",
+    "libc.so.6"
+   ],
+   "soname": [
+    "libaws-c-sdkutils.so.1.0.0"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "c7859007971285a15f36e79ed141569e26aabec1"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libaws-checksums.so.1.0.0": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libaws-c-common.so.1",
+    "libc.so.6"
+   ],
+   "soname": [
+    "libaws-checksums.so.1.0.0"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "0d570e30abf8bafee822f6b8b664acd5d96c7933"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libaws-cpp-sdk-core.so": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libcurl.so.4",
+    "libaws-crt-cpp.so",
+    "libz.so.1",
+    "libaws-c-event-stream.so.1.0.0",
+    "libaws-c-common.so.1",
+    "libstdc++.so.6",
+    "libm.so.6",
+    "libc.so.6",
+    "ld-linux-x86-64.so.2"
+   ],
+   "soname": [
+    "libaws-cpp-sdk-core.so"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "901fd6034cd95b7d98e3a1a5614bf35981cd8210"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libaws-cpp-sdk-s3.so": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libaws-cpp-sdk-core.so",
+    "libaws-crt-cpp.so",
+    "libaws-c-common.so.1",
+    "libstdc++.so.6",
+    "libc.so.6",
+    "ld-linux-x86-64.so.2"
+   ],
+   "soname": [
+    "libaws-cpp-sdk-s3.so"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "483d90203fb009b8b2b8b91996076af63da0325a"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libaws-crt-cpp.so": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libaws-c-mqtt.so.1.0.0",
+    "libaws-c-event-stream.so.1.0.0",
+    "libaws-c-s3.so.0unstable",
+    "libaws-c-auth.so.1.0.0",
+    "libaws-c-http.so.1.0.0",
+    "libaws-c-io.so.1.0.0",
+    "libaws-c-cal.so.1.0.0",
+    "libaws-c-sdkutils.so.1.0.0",
+    "libaws-checksums.so.1.0.0",
+    "libaws-c-common.so.1",
+    "libstdc++.so.6",
+    "libgcc_s.so.1",
+    "libc.so.6",
+    "ld-linux-x86-64.so.2"
+   ],
+   "soname": [
+    "libaws-crt-cpp.so"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "216352aca036bab8b1eff5c0c7c407dbdc59b2c9"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libputgd-s3.so": {
+   "runpath": [],
+   "rpath": [
+    "$ORIGIN"
+   ],
+   "needed": [
+    "libaws-cpp-sdk-s3.so",
+    "libaws-cpp-sdk-core.so",
+    "libcrypto.so.3",
+    "libcurl.so.4",
+    "libQt6Core.so.6",
+    "libstdc++.so.6",
+    "libgcc_s.so.1",
+    "libc.so.6",
+    "ld-linux-x86-64.so.2"
+   ],
+   "soname": [],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "84dd437de66232aaa70d14b255a13d13064ea7b3"
+  },
+  "usr/lib/x86_64-linux-gnu/putgd/libs2n.so.1.0.0": {
+   "runpath": [
+    "$ORIGIN"
+   ],
+   "rpath": [],
+   "needed": [
+    "libcrypto.so.3",
+    "libc.so.6",
+    "ld-linux-x86-64.so.2"
+   ],
+   "soname": [
+    "libs2n.so.1"
+   ],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "444afdfcf12fe388912ff3a8dcf374a8d6a3dfa0"
+  },
+  "usr/libexec/putgd/proton/putgd-proton-runtime": {
+   "runpath": [],
+   "rpath": [],
+   "needed": [
+    "libc.so.6",
+    "ld-linux-x86-64.so.2",
+    "libpthread.so.0",
+    "libdl.so.2",
+    "libm.so.6"
+   ],
+   "soname": [],
+   "debugSections": [],
+   "symtab": true,
+   "buildId": "5afca2666bfab8605a934f1b6231dacae0518a5f"
+  }
+ }
+}
