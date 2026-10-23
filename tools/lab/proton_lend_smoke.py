@@ -4,6 +4,8 @@
   proton_lab.py lend RUN ... -- python3 tools/lab/proton_lend_smoke.py
   proton_lab.py lend RUN ... --guest-reference REF -- python3 tools/lab/proton_lend_smoke.py --revoke HISTORY_ID
   proton_lab.py lend RUN ... -- python3 tools/lab/proton_lend_smoke.py --pictures   # plus guest screenshots
+  proton_lab.py lend RUN ... -- python3 tools/lab/proton_lend_smoke.py --browser --hold 900
+      # a run-owned Firefox profile as the guest's link handler; hold before and after revoke for framing
 
 The run's put.gd must be installed (lab.py install). With the borrowed keychain
 reference from PUTGD_LAB_PROTON_REFERENCE, it adds a Proton destination to the
@@ -160,10 +162,14 @@ PY
         self.step(method, outcome=kept)
         return kept
 
-    def links(self):
+    def links(self, hold=None):
         created = self.expect(self.sharing('history.share'), 'shared')
         inspected = self.expect(self.sharing('history.inspectLink'), 'shared')
+        if hold:
+            self.hold(hold, 'before-revoke')  # frame the live link and its share page
         revoked = self.expect(self.sharing('history.revokeLink'), 'revoked')
+        if hold:
+            self.hold(hold, 'after-revoke')  # frame the revoked state
         detail = self.cli('history.detail', {'id': self.result['historyId']})
         self.step('detail', detail={key: detail.get(key) for key in ('remoteStatus', 'shareStatus', 'shareExpiresAt',
                                                                       'uploadStatus')})
@@ -176,11 +182,45 @@ PY
         return outcome
 
     def revoke(self, history_id):
-        """Finish an earlier run: revoke its own link (lend --guest-reference gives back its keychain name)."""
+        """Finish an earlier run (lend --guest-reference gives back its keychain name): inspect its link,
+        which an interrupted create leaves unknown, then revoke it if it exists."""
         self.result['historyId'] = history_id
-        self.expect(self.sharing('history.revokeLink'), 'revoked')
+        inspected = self.sharing('history.inspectLink')
+        if inspected.get('status') == 'shared':
+            self.expect(self.sharing('history.revokeLink'), 'revoked')
+        elif inspected.get('state') != 'completed' or inspected.get('status') == 'unknown':
+            raise lab.LabError('The link could not be settled: ' + json.dumps(inspected))
         detail = self.cli('history.detail', {'id': history_id})
         self.step('detail', detail={key: detail.get(key) for key in ('shareStatus', 'uploadStatus')})
+
+    def browser(self):
+        """Disposable guests only: a new Firefox profile of this run's own as the http(s) handler, so
+        put.gd's Open link shows the share page. First-run pages are skipped; terms are never accepted."""
+        profile = lab.guest_session(self.run, '''set -eu
+if command -v snap >/dev/null && snap list firefox >/dev/null 2>&1; then base=$HOME/snap/firefox/common; else base=$HOME/.cache; fi
+profile=$base/putgd-lab-firefox-$(date +%s)
+mkdir -p "$profile" "$HOME/.local/share/applications"
+cat > "$profile/user.js" <<'JS'
+user_pref("browser.shell.checkDefaultBrowser", false);
+user_pref("browser.startup.homepage_override.mstone", "ignore");
+user_pref("browser.aboutwelcome.enabled", false);
+user_pref("startup.homepage_welcome_url", "");
+user_pref("toolkit.telemetry.reportingpolicy.firstRun", false);
+JS
+cat > "$HOME/.local/share/applications/putgd-lab-firefox.desktop" <<DESKTOP
+[Desktop Entry]
+Type=Application
+Name=Firefox (put.gd lab profile)
+Exec=firefox --new-instance --profile $profile %u
+MimeType=x-scheme-handler/http;x-scheme-handler/https;text/html;
+NoDisplay=true
+DESKTOP
+xdg-mime default putgd-lab-firefox.desktop x-scheme-handler/https x-scheme-handler/http text/html
+update-desktop-database "$HOME/.local/share/applications" 2>/dev/null || true
+printf '%s' "$profile"
+''').strip().splitlines()[-1]
+        self.result['browserProfile'] = profile
+        self.step('browser', profile=profile)
 
     def pictures(self):
         """Evidence frames of the guest's own screen (a disposable VM): Settings with the lent
@@ -190,6 +230,17 @@ PY
             time.sleep(4)
             frame = lab.screenshot(self.run, f'proton-{view}')
             self.step('picture', view=view, path=frame['path'], sha256=frame['sha256'])
+
+    def hold(self, seconds, stage):
+        """Keep the guest's put.gd open (the session stays lent, under the lock) while an operator
+        drives and frames the guest screen through QMP, until RUN/proton-hold-release exists."""
+        release = self.run / 'proton-hold-release'
+        self.step('holding', stage=stage, release=str(release), seconds=seconds)
+        deadline = time.monotonic() + seconds
+        while not release.exists() and time.monotonic() < deadline:
+            time.sleep(2)
+        release.unlink(missing_ok=True)
+        self.step('released')
 
     def finish(self):
         try:
@@ -216,8 +267,10 @@ def main():
         else:
             smoke.configure()
             smoke.folder()
+            if '--browser' in sys.argv[1:]:
+                smoke.browser()
             smoke.upload()
-            smoke.links()
+            smoke.links(int(sys.argv[sys.argv.index('--hold') + 1]) if '--hold' in sys.argv[1:-1] else None)
             if '--pictures' in sys.argv[1:]:
                 smoke.pictures()
         smoke.result['passed'] = True
