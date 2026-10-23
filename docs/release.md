@@ -481,7 +481,12 @@ CPE matching takes NVD's version ranges literally. FFmpeg's maintenance branches
 backport fixes that NVD records only against the next major, and the AppImage
 builds FFmpeg with `--disable-everything` plus a short list of components, so
 check an FFmpeg finding against `packaging/appimage/media.json` before acting on
-it. The AWS SDK and CRT have no NVD product entries, so nothing matches them.
+it. The AWS SDK and CRT have no NVD product entries, so nothing matches them. Qt's
+own security advisories mostly don't reach NVD's CPE data either: on the
+`v26.1023.1058-nightly` AppImage, Qt 6.8.3 matched one medium finding per module,
+while Qt had published about 23 fixes since it (#418). For Qt, the scan is a
+backstop; Renovate's Qt updates, whose patch releases open at once, are the
+main defence.
 
 **Stable releases after they ship.** A stable AppImage keeps the Ubuntu packages,
 Qt and FFmpeg it was built with; it gets none of the fixes published later. So
