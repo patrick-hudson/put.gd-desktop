@@ -1,0 +1,38 @@
+before 26.1022.1017-nightly nightly repository
+### sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources
+rc=0
+### sudo apt update
+Hit:4 http://security.ubuntu.com/ubuntu resolute-security InRelease
+Get:5 https://pkg.put.gd/apt/ubuntu26.04 stable InRelease [1,792 B]
+Fetched 1,792 B in 0s (3,898 B/s)
+Reading package lists...
+rc=0
+### sudo apt install --allow-downgrades putgd/stable
+E: Could not get lock /var/lib/dpkg/lock-frontend. It is held by process 7950 (unattended-upgr)
+E: Unable to acquire the dpkg frontend lock (/var/lib/dpkg/lock-frontend), is another process using it?
+rc=100
+installed 26.1022.1017~nightly
+putgd.sources == putgd-stable.sources
+9d2faa5453a5
+after 26.1022.1017-nightly stable repository latest None available False
+status text: 
+framed
+before 26.1022.1017-nightly stable repository
+### sudo install -m 644 /usr/share/putgd/repo/putgd-nightly.sources /etc/apt/sources.list.d/putgd.sources
+rc=0
+### sudo apt update
+Get:9 https://pkg.put.gd/apt/ubuntu26.04 nightly/main Icons (64x64) [985 B]
+Get:10 https://pkg.put.gd/apt/ubuntu26.04 nightly/main Icons (64x64@2) [1,643 B]
+Fetched 9,717 B in 1s (11.2 kB/s)
+Reading package lists...
+rc=0
+### sudo apt install --allow-downgrades putgd/nightly
+E: Could not get lock /var/lib/dpkg/lock-frontend. It is held by process 7950 (unattended-upgr)
+E: Unable to acquire the dpkg frontend lock (/var/lib/dpkg/lock-frontend), is another process using it?
+rc=100
+installed 26.1022.1017~nightly
+putgd.sources == putgd-nightly.sources
+5d5b79d0154f
+after 26.1022.1017-nightly nightly repository latest 26.1022.1019-nightly available True
+status text: 
+framed

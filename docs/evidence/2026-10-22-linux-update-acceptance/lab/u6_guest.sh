@@ -1,6 +1,6 @@
 #!/bin/bash
-# u6_guest.sh RUN stable|nightly: U6 live in a VM guest whose passwordless sudo covers only apt-get. The guest's
-# documented lab password arrives as the first line of stdin and reaches sudo -S on stdin only (never argv or a log).
+# u6_guest.sh RUN stable|nightly: U6 live in a VM guest . A sudo password, if the guest needs one,
+# lab password (read from the provisioning file by the caller) arrives as the first line of stdin and reaches sudo -S on stdin only (never argv or a log).
 # The Other channel commands come from update.status (action.otherChannel.commands) and run as given, with sudo -S
 # and apt-get -y in place of the prompts. Then: the installed version, the sources file against both packaged
 # channel files, a Check now status and a Settings frame.
@@ -8,7 +8,7 @@ set -u
 run=$1 to=$2
 IFS= read -r pw
 cd ~/ua/tool
-export UPD_VNC_HOST=10.0.2.2 AFA_VNC_HOST=10.0.2.2
+export UPD_VNC_HOST=10.0.2.2 AFA_VNC_HOST=10.0.2.2 UA_ROOT=$HOME/ua/pkg UPD_ROOT=$HOME/ua/app
 log=~/ua/u6-to-$to.log
 status() { python3 -I ua_pkg.py check "$run" --label "$1"; }
 {
@@ -21,7 +21,7 @@ head -1 ~/ua/u6-cmds.txt
 tail -n +2 ~/ua/u6-cmds.txt | while IFS= read -r c; do
   echo "### $c"
   c=${c/sudo apt install/sudo apt-get install -y}; c=${c/sudo apt update/sudo apt-get update}
-  c=${c//sudo /sudo -S -p '' }
+  c=${c//sudo /sudo -S }
   printf '%s\n' "$pw" | bash -c "$c" 2>&1 | tail -4; echo "rc=${PIPESTATUS[1]}"
 done
 echo "installed $(dpkg-query -W -f '${Version}' putgd)"
