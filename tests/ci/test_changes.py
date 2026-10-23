@@ -28,7 +28,7 @@ class Selection(unittest.TestCase):
         self.assertSelects(['tools/lab/lab.py', 'tests/desktop/test_lab.py', 'tests/desktop/kde.yaml',
                             'tests/releases/test_publish.py', 'tests/ci/test_changes.py',
                             'tests/performance/observe_cold_family.py', 'tools/mcp/share_mcp/server.py',
-                            '.github/renovate.json', 'tools/maintenance/refresh_pins.py'],
+                            '.github/renovate.json', '.github/dependabot.yml', 'tools/maintenance/refresh_pins.py'],
                            False, False)
 
     def test_compiled_or_ctest_inputs_build(self):

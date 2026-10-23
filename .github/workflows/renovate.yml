@@ -3,7 +3,8 @@ name: Renovate
 # demand, it opens version-update pull requests against nightly from
 # .github/renovate.json, with this workflow's own token: CI on those pull
 # requests starts after a maintainer approves its workflows, and Renovate cannot
-# change .github/workflows. A pull request that changes this setup runs a
+# change .github/workflows (Dependabot keeps their action SHAs current,
+# .github/dependabot.yml). A pull request that changes this setup runs a
 # read-only lookup instead: the job summary lists every dependency Renovate
 # detects and the update it would propose.
 on:
@@ -33,6 +34,7 @@ jobs:
     # The pull request's own configuration, read-only: extraction and version lookups, no branches.
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Validate the configuration
@@ -66,6 +68,7 @@ jobs:
   renovate:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
+    timeout-minutes: 60
     concurrency:
       group: renovate
       cancel-in-progress: false

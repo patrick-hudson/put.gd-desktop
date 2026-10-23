@@ -70,6 +70,13 @@ class RenovateConfig(unittest.TestCase):
         for command in rules[0]['postUpgradeTasks']['commands']:
             self.assertTrue(any(re.fullmatch(pattern, command) for pattern in json.loads(allowed)))
 
+    def test_dependabot_keeps_the_workflow_actions_current_on_nightly(self):
+        text = (ROOT / '.github/dependabot.yml').read_text()
+        self.assertEqual(re.findall(r'package-ecosystem: (\S+)', text), ['github-actions'])
+        self.assertIn('target-branch: nightly', text)
+        self.assertIn("patterns: ['*']", text)
+        self.assertIn('dependency-name: ilammy/msvc-dev-cmd', text)
+
     def test_bundled_component_majors_and_the_proton_helper_wait_for_approval(self):
         approved = [rule for rule in CONFIG['packageRules'] if rule.get('dependencyDashboardApproval')]
         names = {name for rule in approved for name in rule.get('matchPackageNames', [])}

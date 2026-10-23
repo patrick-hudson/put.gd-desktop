@@ -25,8 +25,8 @@ DOCUMENTATION_FILES = frozenset({'README.md', 'AGENTS.md', 'CLAUDE.md', 'CHANGEL
 CONTRACT_PREFIXES = ('tools/lab/', 'tools/maintenance/', 'tools/mcp/',
                      'tests/ci/', 'tests/releases/', 'tests/maintenance/')
 CONTRACT_SUFFIXES = {'tests/desktop': ('.py', '.yaml'), 'tests/performance': ('.py',)}
-# Renovate's configuration; renovate.yml checks it on its own pull requests.
-CONTRACT_FILES = frozenset({'.github/renovate.json'})
+# The dependency bots' configuration; renovate.yml checks Renovate's on its own pull requests.
+CONTRACT_FILES = frozenset({'.github/renovate.json', '.github/dependabot.yml'})
 
 # Inputs to the package builders, the curated source archive or CI itself.
 PACKAGING_PREFIXES = ('packaging/', 'tools/releases/', 'tools/proton/', 'tools/ci/',

@@ -115,6 +115,7 @@ jobs:
     # docs/release.md). It flags and keeps one issue per release current; it never
     # gates the nightly.
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     permissions:
       contents: read
       issues: write  # one tracking issue per stable release
