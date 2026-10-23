@@ -1,0 +1,43 @@
+2026-10-23T19:36:51Z lock acquire (45 min); Patrick apps: none open
+2026-10-23T19:36:51Z GNOME extension putgd@put.gd v2 (1058 ZIP; integrations/gnome unchanged since 1058) installed as a user copy and enabled; re-login to load it:
+  2026-10-23T19:36:51Z shell gnome-shell pid 3146134
+  2026-10-23T19:36:51Z logout requested (gnome-session-quit --logout)
+  2026-10-23T19:36:52Z old shell gone
+  2026-10-23T19:36:53Z systemctl restart gdm
+  2026-10-23T19:36:54Z new shell pid 3249316
+  14217  1000 patrick     seat0 3249226 user          tty2 no -
+2026-10-23T19:37:23Z extension enabled after the re-login (State ACTIVE)
+2026-10-23T19:37:31Z ac.sh start
+2026-10-23T19:41:25Z ac.sh done rc=0
+2026-10-23T19:46:14Z dk.sh done rc=0
+2026-10-23T19:46:55Z quit the f44 run resident for the quiet RSS pair (coordinator: f44 quiet)
+2026-10-23T19:46:57Z badfile done rc=0
+AK1-DONE
+2026-10-23T20:02:21Z quiet RSS pair done (mem-f44.txt); coordinator told
+2026-10-23T20:03:03Z restarted the f44 run resident (after the RSS pair); clipfile start
+2026-10-23T20:03:04Z clipfile done rc=0
+2026-10-23T20:04:21Z clipfile done rc=0 (second try; first stopped: no theme tokens before putgd-ui started)
+2026-10-23T20:04:27Z B tray picture from put.gd's tray icon (1708,19)
+2026-10-23T20:04:33Z #341 start
+2026-10-23T20:05:00Z #341 done
+2026-10-23T20:05:20Z I: launch at login enabled
+2026-10-23T20:05:20Z I: real logout/login:
+  2026-10-23T20:05:20Z shell gnome-shell pid 3249316
+  2026-10-23T20:05:21Z logout requested (gnome-session-quit --logout)
+  2026-10-23T20:05:22Z old shell gone
+  2026-10-23T20:05:22Z systemctl restart gdm
+  2026-10-23T20:05:23Z new shell pid 3274019
+  14292 1000 patrick seat0 3273924 user    tty2 no -
+2026-10-23T20:06:08Z I: login check done
+2026-10-23T20:06:19Z K prep: quit this run's private resident (ui.quit)
+2026-10-23T20:06:30Z K: quit from put.gd tray icon (1707,17) with a real click
+2026-10-23T20:06:51Z K cleanup: login disable + afa cleanup; two fuse mounts of an old putgd-0.1.1-dev.133 AppImage (not this pass) left alone
+2026-10-23T20:07:15Z F attempt 1 stopped before setup: ffprofile pointed at ~/.mozilla/firefox (absent; Firefox 150 uses ~/.config/mozilla/firefox); removed what it had just created (~/.mozilla/firefox/putgd-qt418-0190f710/user.js and the three empty dirs)
+2026-10-23T20:07:15Z F: ffprofile on ({"profile": "/home/patrick/.config/mozilla/firefox/putgd-qt418-538bfb9f", "installSections": ["Install11457493C5A56847"]})
+2026-10-23T20:07:59Z F: run f44-F, live S3 public-read to put.gd/acceptance/qt418/f44/, banner click (uinput)
+2026-10-23T20:10:31Z F phase B: browser PIDs 3277830 closed; Delete from destination; run cleaned; ffprofile off ({"restored": true, "profileRemoved": true, "profile": "/home/patrick/.config/mozilla/firefox/putgd-qt418-538bfb9f"}); new Firefox paths: 3
+2026-10-23T20:12:41Z J: in-app update 1058 -> lab v26.1023.1068-nightly (run f44-lab1058) start
+2026-10-23T20:13:06Z J: in-app update done; run quit and cleaned
+2026-10-23T20:13:16Z H/J on the lab nightly (run f44-labh) start
+2026-10-23T20:14:43Z H/J on the lab nightly done; run quit and cleaned
+2026-10-23T20:15:10Z uinput agent stopped; GNOME extension user copy uninstalled, enabled-extensions restored to [background-logo, appindicatorsupport]; host checked; lock released --verified-clean

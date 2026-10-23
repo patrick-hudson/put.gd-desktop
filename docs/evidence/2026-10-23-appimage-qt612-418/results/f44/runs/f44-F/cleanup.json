@@ -1,0 +1,30 @@
+{
+ "removed": [
+  "/home/patrick/.local/share/putgd",
+  "/tmp/afa.dLFrDy",
+  "/home/patrick/work/put.gd-qt418/afa/runs/f44-F/appdir",
+  "/home/patrick/work/put.gd-qt418/afa/runs/f44-F/frames",
+  "/home/patrick/work/put.gd-qt418/afa/runs/f44-F/config",
+  "/home/patrick/work/put.gd-qt418/afa/runs/f44-F/cache",
+  "/home/patrick/work/put.gd-qt418/afa/runs/f44-F/archive",
+  "/home/patrick/work/put.gd-qt418/afa/runs/f44-F/working",
+  "/home/patrick/work/put.gd-qt418/afa/runs/f44-F/urldata"
+ ],
+ "fixtureStopped": 3277440,
+ "leftovers": {
+  "processes": [],
+  "mounts": [
+   "/tmp/.mount_putgd-AAhFNi",
+   "/tmp/.mount_putgd-npCIHF"
+  ],
+  "entries": []
+ },
+ "after": {
+  "processes": [],
+  "mounts": [
+   "/tmp/.mount_putgd-AAhFNi",
+   "/tmp/.mount_putgd-npCIHF"
+  ],
+  "entries": []
+ }
+}

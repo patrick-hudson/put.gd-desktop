@@ -1,0 +1,106 @@
+{
+ "at": "2026-10-23T18:55:26Z",
+ "before": {
+  "putgd": [
+   2561916
+  ],
+  "putgd-ui": [
+   2562052
+  ]
+ },
+ "entries": [
+  {
+   "sample": "cve-2025-10729-pattern-orphan.svg",
+   "sha256": "b1b7776ef367bc7e360ea559821347242979005e253df30c4cac5cc647708e54",
+   "bytes": 271,
+   "clipboardOwnerPid": 2565329,
+   "operation": {
+    "id": "3553e34f-5ec1-4db2-999e-03755aed3b18",
+    "state": "completed",
+    "copyStatus": "copied",
+    "items": [
+     {
+      "name": "Image-2026-10-23-13-55-27.png",
+      "mime": "image/png",
+      "uploadStatus": "uploaded",
+      "link": "http://127.0.0.1:44773/fixture/afa/Image-2026-10-23-13-55-27.png",
+      "local": {
+       "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+       },
+       "path": "/home/patrick/work/put.gd-qt418/afa/runs/d69/archive/images/Image-2026-10-23-13-55-27.png",
+       "status": "saved"
+      }
+     }
+    ],
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   "history": {
+    "id": "f6681990-3d8d-4119-979b-c2cefb1e3966",
+    "name": "Image-2026-10-23-13-55-27.png",
+    "mime": "image/png",
+    "uploadStatus": "uploaded",
+    "local": "saved",
+    "newest": true
+   },
+   "preview": {
+    "ok": true,
+    "state": "ready",
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    },
+    "previewExists": true
+   },
+   "afterPreview": {
+    "putgd": [
+     2561916
+    ],
+    "putgd-ui": [
+     2562052
+    ]
+   },
+   "cards": 4,
+   "frame": "/home/patrick/work/put.gd-qt418/afa/runs/d69/full/d69-clipfile-try-0.png",
+   "afterUi": {
+    "putgd": [
+     2561916
+    ],
+    "putgd-ui": [
+     2562052
+    ]
+   }
+  }
+ ],
+ "after": {
+  "putgd": [
+   2561916
+  ],
+  "putgd-ui": [
+   2562052
+  ]
+ },
+ "diagnostics": {
+  "build": {
+   "baseVersion": "26.1023.1068",
+   "commitCount": 1068,
+   "dirty": false,
+   "gitCommit": "6a325a722afd946046a96480ca524db8aa6abcce",
+   "gitTree": "a0a449b23b4eb70f516e3c317b6d93b412aafbbb",
+   "packageVersion": "26.1023.1068~dev+g6a325a722afd",
+   "schemaVersion": 1,
+   "sourceProvenance": "git",
+   "version": "26.1023.1068-dev+g6a325a722afd"
+  },
+  "journalReady": true,
+  "qtVersion": "6.12.0"
+ },
+ "survived": true
+}

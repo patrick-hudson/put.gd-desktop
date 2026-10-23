@@ -1,0 +1,46 @@
+{
+ "name": "aurora-vm-labh",
+ "appimage": "/var/home/lab/put.gd-qt418/afa/images/putgd-26.1023.1068-nightly-x86_64.AppImage",
+ "appdir": "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm-labh/appdir/squashfs-root",
+ "runtime": "/tmp/afa.UmvRRp",
+ "session": {
+  "HOME": "/var/home/lab",
+  "PATH": "/var/home/lab/.local/bin:/var/home/lab/bin:/usr/local/bin:/usr/bin",
+  "USER": "lab",
+  "LANG": "en_US.UTF-8",
+  "DISPLAY": ":0",
+  "XAUTHORITY": "/run/user/1000/xauth_icLszb",
+  "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus",
+  "XDG_SESSION_TYPE": "wayland",
+  "XDG_CURRENT_DESKTOP": "KDE",
+  "WAYLAND_DISPLAY": "/run/user/1000/wayland-0",
+  "XDG_SESSION_DESKTOP": "KDE",
+  "DESKTOP_SESSION": "/usr/share/wayland-sessions/plasma.desktop",
+  "KDE_FULL_SESSION": "true",
+  "KDE_SESSION_VERSION": "6",
+  "XDG_DATA_DIRS": "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm-labh/urldata:/var/home/lab/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share:/usr/share"
+ },
+ "shell": "plasmashell",
+ "host": "aurora-lab",
+ "vnc": 5927,
+ "input": "vnc",
+ "before": {
+  "homePaths": {
+   "/var/home/lab/.config/putgd": null,
+   "/var/home/lab/.cache/putgd": null,
+   "/var/home/lab/.local/state/putgd": null,
+   "/var/home/lab/.local/share/putgd": null
+  },
+  "applications": [],
+  "dataPutgd": false,
+  "autostart": []
+ },
+ "pids": {
+  "fixture": 4063,
+  "apprun": 4142
+ },
+ "created": "2026-10-23T20:49:15Z",
+ "port": 43235,
+ "fullAllowed": true,
+ "started": "2026-10-23T20:49:58Z"
+}

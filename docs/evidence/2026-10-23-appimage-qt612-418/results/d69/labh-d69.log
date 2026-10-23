@@ -1,0 +1,138 @@
+Traceback (most recent call last):
+  File "/home/patrick/work/put.gd-qt418/afa/tool/rerun.py", line 336, in <module>
+    main()
+    ~~~~^^
+  File "/home/patrick/work/put.gd-qt418/afa/tool/rerun.py", line 331, in main
+    {'live-s3': live_s3, 'browser-shot': browser_shot, 'updates-first-open': updates_first_open, 'channel-options': channel_options, 'status-clean': status_clean, 'channel': channel, 'menu-shortcut': menu_shortcut,
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     'region-size': region_size, 'update-check': update_check}[args.cmd](args)
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/home/patrick/work/put.gd-qt418/afa/tool/rerun.py", line 51, in updates_first_open
+    'full': frame_full(run, args.label)}
+            ~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/patrick/work/put.gd-qt418/afa/tool/rerun.py", line 31, in frame_full
+    park(run, inp, size)
+    ~~~~^^^^^^^^^^^^^^^^
+  File "/home/patrick/work/put.gd-qt418/afa/tool/afa.py", line 405, in park
+    inp.move(size[0] - 8, size[1] // 2); time.sleep(.6)
+    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/patrick/work/put.gd-qt418/afa/tool/afa.py", line 359, in move
+    self._qmp([{'type': 'abs', 'data': {'axis': 'x', 'value': int(x * 32767 / (self.size[0] - 1))}},
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+               {'type': 'abs', 'data': {'axis': 'y', 'value': int(y * 32767 / (self.size[1] - 1))}}])
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/patrick/work/put.gd-qt418/afa/tool/afa.py", line 350, in _qmp
+    s = socket.socket(socket.AF_UNIX); s.connect(f'/run/user/{os.getuid()}/putgd-lab-input.sock'); f = s.makefile('rwb')
+                                       ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ConnectionRefusedError: [Errno 111] Connection refused
+Traceback (most recent call last):
+  File "/home/patrick/work/put.gd-qt418/afa/tool/rerun.py", line 336, in <module>
+    main()
+    ~~~~^^
+  File "/home/patrick/work/put.gd-qt418/afa/tool/rerun.py", line 331, in main
+    {'live-s3': live_s3, 'browser-shot': browser_shot, 'updates-first-open': updates_first_open, 'channel-options': channel_options, 'status-clean': status_clean, 'channel': channel, 'menu-shortcut': menu_shortcut,
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     'region-size': region_size, 'update-check': update_check}[args.cmd](args)
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/home/patrick/work/put.gd-qt418/afa/tool/rerun.py", line 100, in channel_options
+    run.ok('ui.show', {'view': 'updates'}); time.sleep(2); park(run, inp, size)
+                                                           ~~~~^^^^^^^^^^^^^^^^
+  File "/home/patrick/work/put.gd-qt418/afa/tool/afa.py", line 405, in park
+    inp.move(size[0] - 8, size[1] // 2); time.sleep(.6)
+    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/patrick/work/put.gd-qt418/afa/tool/afa.py", line 359, in move
+    self._qmp([{'type': 'abs', 'data': {'axis': 'x', 'value': int(x * 32767 / (self.size[0] - 1))}},
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+               {'type': 'abs', 'data': {'axis': 'y', 'value': int(y * 32767 / (self.size[1] - 1))}}])
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/patrick/work/put.gd-qt418/afa/tool/afa.py", line 350, in _qmp
+    s = socket.socket(socket.AF_UNIX); s.connect(f'/run/user/{os.getuid()}/putgd-lab-input.sock'); f = s.makefile('rwb')
+                                       ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ConnectionRefusedError: [Errno 111] Connection refused
+Traceback (most recent call last):
+  File "/home/patrick/work/put.gd-qt418/afa/tool/afa.py", line 1495, in <module>
+    main()
+    ~~~~^^
+  File "/home/patrick/work/put.gd-qt418/afa/tool/afa.py", line 1488, in main
+    {'identity': identity, 'versions': versions, 'setup': setup, 'start': start, 'memory': memory, 'tray-menu': tray_menu, 'history': history,
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     'delete': delete, 'settings': settings, 'cleanup': cleanup, 'processes': processes, 'baseline': baseline, 'shot': shot, 'click': click,
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     'tray-click': tray_click, 'switcher': switcher, 'find-tray': find_tray, 'allow-full': allow_full, 'window': window, 'cover': cover, 'capture': capture, 'edit': edit, 'notify': notify, 'record': record,
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     'control': control, 'update-check': update_check, 'login': login, 'quit-tray': quit_tray, 'recorder-check': recorder_check}[args.cmd](args)
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/home/patrick/work/put.gd-qt418/afa/tool/afa.py", line 1281, in settings
+    park(run, inp, size); base = frames.grab()
+    ~~~~^^^^^^^^^^^^^^^^
+  File "/home/patrick/work/put.gd-qt418/afa/tool/afa.py", line 405, in park
+    inp.move(size[0] - 8, size[1] // 2); time.sleep(.6)
+    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/patrick/work/put.gd-qt418/afa/tool/afa.py", line 359, in move
+    self._qmp([{'type': 'abs', 'data': {'axis': 'x', 'value': int(x * 32767 / (self.size[0] - 1))}},
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+               {'type': 'abs', 'data': {'axis': 'y', 'value': int(y * 32767 / (self.size[1] - 1))}}])
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/patrick/work/put.gd-qt418/afa/tool/afa.py", line 350, in _qmp
+    s = socket.socket(socket.AF_UNIX); s.connect(f'/run/user/{os.getuid()}/putgd-lab-input.sock'); f = s.makefile('rwb')
+                                       ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ConnectionRefusedError: [Errno 111] Connection refused
+Traceback (most recent call last):
+  File "/home/patrick/work/put.gd-qt418/afa/tool/rerun.py", line 336, in <module>
+    main()
+    ~~~~^^
+  File "/home/patrick/work/put.gd-qt418/afa/tool/rerun.py", line 331, in main
+    {'live-s3': live_s3, 'browser-shot': browser_shot, 'updates-first-open': updates_first_open, 'channel-options': channel_options, 'status-clean': status_clean, 'channel': channel, 'menu-shortcut': menu_shortcut,
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     'region-size': region_size, 'update-check': update_check}[args.cmd](args)
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/home/patrick/work/put.gd-qt418/afa/tool/rerun.py", line 92, in channel
+    'full': frame_full(run, f'{args.label}-{args.to}')}
+            ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/patrick/work/put.gd-qt418/afa/tool/rerun.py", line 31, in frame_full
+    park(run, inp, size)
+    ~~~~^^^^^^^^^^^^^^^^
+  File "/home/patrick/work/put.gd-qt418/afa/tool/afa.py", line 405, in park
+    inp.move(size[0] - 8, size[1] // 2); time.sleep(.6)
+    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/patrick/work/put.gd-qt418/afa/tool/afa.py", line 359, in move
+    self._qmp([{'type': 'abs', 'data': {'axis': 'x', 'value': int(x * 32767 / (self.size[0] - 1))}},
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+               {'type': 'abs', 'data': {'axis': 'y', 'value': int(y * 32767 / (self.size[1] - 1))}}])
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/patrick/work/put.gd-qt418/afa/tool/afa.py", line 350, in _qmp
+    s = socket.socket(socket.AF_UNIX); s.connect(f'/run/user/{os.getuid()}/putgd-lab-input.sock'); f = s.makefile('rwb')
+                                       ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ConnectionRefusedError: [Errno 111] Connection refused
+Traceback (most recent call last):
+  File "/home/patrick/work/put.gd-qt418/afa/tool/rerun.py", line 336, in <module>
+    main()
+    ~~~~^^
+  File "/home/patrick/work/put.gd-qt418/afa/tool/rerun.py", line 331, in main
+    {'live-s3': live_s3, 'browser-shot': browser_shot, 'updates-first-open': updates_first_open, 'channel-options': channel_options, 'status-clean': status_clean, 'channel': channel, 'menu-shortcut': menu_shortcut,
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     'region-size': region_size, 'update-check': update_check}[args.cmd](args)
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/home/patrick/work/put.gd-qt418/afa/tool/rerun.py", line 92, in channel
+    'full': frame_full(run, f'{args.label}-{args.to}')}
+            ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/patrick/work/put.gd-qt418/afa/tool/rerun.py", line 31, in frame_full
+    park(run, inp, size)
+    ~~~~^^^^^^^^^^^^^^^^
+  File "/home/patrick/work/put.gd-qt418/afa/tool/afa.py", line 405, in park
+    inp.move(size[0] - 8, size[1] // 2); time.sleep(.6)
+    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/patrick/work/put.gd-qt418/afa/tool/afa.py", line 359, in move
+    self._qmp([{'type': 'abs', 'data': {'axis': 'x', 'value': int(x * 32767 / (self.size[0] - 1))}},
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+               {'type': 'abs', 'data': {'axis': 'y', 'value': int(y * 32767 / (self.size[1] - 1))}}])
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/patrick/work/put.gd-qt418/afa/tool/afa.py", line 350, in _qmp
+    s = socket.socket(socket.AF_UNIX); s.connect(f'/run/user/{os.getuid()}/putgd-lab-input.sock'); f = s.makefile('rwb')
+                                       ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ConnectionRefusedError: [Errno 111] Connection refused
+H.settings {"schemes": {}, "checkNow": null, "status": {"channel": null, "error": null}, "notifsAfterCheck": 0}
+H.statusClean:start {"pass": true, "control": []}
+H.statusClean:settings {"pass": true, "control": []}
+J exit 1 
+LAB-LEG-DONE

@@ -1,0 +1,28 @@
+2026-10-23T19:30:34Z ac.sh start
+2026-10-23T19:34:28Z ac.sh done rc=0
+2026-10-23T19:34:51Z dk.sh start (TRAY_XY 1158,16 checked on a frame)
+2026-10-23T19:39:43Z dk.sh done rc=0
+2026-10-23T19:40:19Z clipfile try (deep-nesting svg) via setclip.py
+2026-10-23T19:40:54Z clipfile try stopped at the Home key (VNC map lacked Home; added); its upload stays in history. Full clipfile start
+2026-10-23T19:41:52Z clipfile done
+2026-10-23T19:42:06Z B tray picture from put.gd's tray icon (1158,16)
+2026-10-23T19:42:12Z #341 start
+2026-10-23T19:42:33Z #341 done
+2026-10-23T19:42:54Z I: launch at login enabled; private resident quit; reboot through the session
+2026-10-23T19:44:14Z I: login check done
+2026-10-23T19:45:02Z I: login check done (after the reboot)
+2026-10-23T19:45:11Z K: quit from put.gd tray icon (1158,16) with a real click
+2026-10-23T19:45:27Z K cleanup: login disable + afa cleanup
+2026-10-23T19:46:27Z F: ffdefault on (guest snap Firefox --profile temp), run ubuntu-vm-F started
+2026-10-23T19:46:40Z F: live S3 public-read to put.gd/acceptance/qt418/ubuntu-vm/, banner click (vnc)
+2026-10-23T19:48:58Z F phase B: browser PIDs 3352 closed; Delete from destination; run cleaned; ffdefault off ({"restored": true, "entryRemoved": true, "profileRemoved": true, "gioBefore": "No default applications for \u201cx-scheme-handler/https\u201d", "gioNow": "No default applications for \u201cx-scheme-ha); new Firefox paths: n/a
+2026-10-23T19:49:19Z J: in-app update 1058 -> lab v26.1023.1068-nightly (run ubuntu-vm-lab1058) start
+2026-10-23T19:49:27Z J: in-app update done; run quit and cleaned
+2026-10-23T19:50:06Z J: in-app update 1058 -> lab v26.1023.1068-nightly (run ubuntu-vm-lab1058; attempt 1 lacked UPD_VNC_HOST, kept as results/ubuntu-vm-lab1058-attempt1)
+2026-10-23T19:51:49Z J: 1058 found 26.1023.1068-nightly on the lab feed; install refused update_verification_failed (lab build update information pkg.put.gd/lab vs 1058 app.put.gd), nothing changed; run quit and cleaned
+2026-10-23T19:51:49Z labh start
+2026-10-23T19:51:49Z H/J on the lab nightly (run ubuntu-vm-labh) start
+2026-10-23T19:53:14Z H/J on the lab nightly done; run quit and cleaned
+2026-10-23T20:15:48Z J: lab leg again against v26.1023.1069-nightly (real nightly update information)
+2026-10-23T20:15:48Z J: in-app update 1058 -> lab v26.1023.1068-nightly (run ubuntu-vm-lab1058) start
+2026-10-23T20:16:11Z J: in-app update done; run quit and cleaned

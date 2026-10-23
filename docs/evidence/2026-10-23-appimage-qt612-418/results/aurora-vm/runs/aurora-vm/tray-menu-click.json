@@ -1,0 +1,46 @@
+{
+ "label": "aurora-vm-tray-menu",
+ "components": [
+  {
+   "blocks": 1111,
+   "box": [
+    960,
+    416,
+    1168,
+    760
+   ]
+  },
+  {
+   "blocks": 85,
+   "box": [
+    240,
+    416,
+    688,
+    520
+   ]
+  },
+  {
+   "blocks": 13,
+   "box": [
+    464,
+    464,
+    528,
+    480
+   ]
+  }
+ ],
+ "colour": [
+  28,
+  28,
+  32
+ ],
+ "inner": [
+  968,
+  418,
+  1163,
+  758
+ ],
+ "changedShare": 1.0,
+ "kept": "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/crops/aurora-vm-tray-menu.png",
+ "full": "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/full/aurora-vm-tray-menu.png"
+}

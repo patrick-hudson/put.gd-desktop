@@ -1,0 +1,72 @@
+{
+ "name": "ubuntu-vm",
+ "appimage": "/home/lab/put.gd-qt418/afa/images/putgd-26.1023.1068-dev+g6a325a722afd-x86_64.AppImage",
+ "appdir": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/appdir/squashfs-root",
+ "runtime": "/tmp/afa.8O7hHI",
+ "session": {
+  "HOME": "/home/lab",
+  "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin",
+  "USER": "lab",
+  "LANG": "en_US.UTF-8",
+  "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus",
+  "XDG_SESSION_TYPE": "wayland",
+  "XDG_CURRENT_DESKTOP": "ubuntu:GNOME",
+  "XDG_SESSION_DESKTOP": "ubuntu",
+  "DESKTOP_SESSION": "ubuntu",
+  "XDG_DATA_DIRS": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/urldata:/usr/share/ubuntu:/usr/share/gnome:/usr/local/share/:/usr/share/:/var/lib/snapd/desktop",
+  "WAYLAND_DISPLAY": "/run/user/1000/wayland-0",
+  "DISPLAY": ":0",
+  "XAUTHORITY": "/run/user/1000/.mutter-Xwaylandauth.LECJX3"
+ },
+ "shell": "gnome-shell",
+ "host": "putgd-ubuntu-lab",
+ "vnc": 5922,
+ "input": "vnc",
+ "before": {
+  "homePaths": {
+   "/home/lab/.config/putgd": null,
+   "/home/lab/.cache/putgd": null,
+   "/home/lab/.local/state/putgd": null,
+   "/home/lab/.local/share/putgd": null
+  },
+  "applications": [],
+  "dataPutgd": false,
+  "autostart": []
+ },
+ "pids": {
+  "fixture": 2750,
+  "apprun": 2993
+ },
+ "created": "2026-10-23T19:30:37Z",
+ "port": 39955,
+ "fullAllowed": true,
+ "started": "2026-10-23T19:31:19Z",
+ "coverLog": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/logs/cover-143644.jsonl",
+ "pattern": null,
+ "userFiles": [
+  "/home/lab/Pictures/afa-ubuntu-vm-edited.png",
+  "/home/lab/afa-ubuntu-vm-review.mp4"
+ ],
+ "recordingId": "46735ac2-2dab-452b-848b-650ae892da59",
+ "handlerRestored": {
+  "restored": {
+   "https": [
+    "Default application for \u201cx-scheme-handler/https\u201d: firefox_firefox.desktop"
+   ],
+   "http": [
+    "Default application for \u201cx-scheme-handler/http\u201d: firefox_firefox.desktop"
+   ]
+  },
+  "before": {
+   "https": [
+    "Default application for \u201cx-scheme-handler/https\u201d: firefox_firefox.desktop"
+   ],
+   "http": [
+    "Default application for \u201cx-scheme-handler/http\u201d: firefox_firefox.desktop"
+   ]
+  },
+  "same": true,
+  "filesMatch": true
+ },
+ "realAutostart": "/home/lab/.config/autostart/putgd.desktop"
+}

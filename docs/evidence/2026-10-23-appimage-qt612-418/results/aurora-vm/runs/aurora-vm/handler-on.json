@@ -1,0 +1,24 @@
+{
+ "backup": {
+  "/var/home/lab/.config/mimeapps.list": false,
+  "/var/home/lab/.config/kde-mimeapps.list": false
+ },
+ "entry": "/var/home/lab/.local/share/applications/putgd326-url.desktop",
+ "before": {
+  "https": [
+   "Default application for \u201cx-scheme-handler/https\u201d: org.mozilla.firefox.desktop"
+  ],
+  "http": [
+   "Default application for \u201cx-scheme-handler/http\u201d: org.mozilla.firefox.desktop"
+  ]
+ },
+ "at": "2026-10-23T20:35:26Z",
+ "after": {
+  "https": [
+   "Default application for \u201cx-scheme-handler/https\u201d: putgd326-url.desktop"
+  ],
+  "http": [
+   "Default application for \u201cx-scheme-handler/http\u201d: putgd326-url.desktop"
+  ]
+ }
+}

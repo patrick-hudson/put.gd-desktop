@@ -1,0 +1,313 @@
+{
+ "at": "2026-10-23T20:39:18Z",
+ "before": {
+  "putgd": [
+   2686
+  ],
+  "putgd-ui": [
+   3320
+  ]
+ },
+ "entries": [
+  {
+   "sample": "cve-2026-8168-deep-nesting.svg",
+   "sha256": "c6980c19fc324275f07df6443eac1bdea38a4f9451c73ea0dd4f12b0c547ac5b",
+   "bytes": 1400111,
+   "clipboardOwnerPid": 6996,
+   "operation": {
+    "id": "a1f9d664-e702-4ea2-9817-5bbb6ca26c5a",
+    "state": "completed",
+    "copyStatus": "copied",
+    "items": [
+     {
+      "name": "cve-2026-8168-deep-nesting.svg",
+      "mime": "image/svg+xml",
+      "uploadStatus": "uploaded",
+      "link": "http://127.0.0.1:33585/fixture/afa/cve-2026-8168-deep-nesting.svg",
+      "local": {
+       "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+       },
+       "path": "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/archive/images/cve-2026-8168-deep-nesting.svg",
+       "status": "saved"
+      }
+     }
+    ],
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   "history": {
+    "id": "6cec85e3-db0f-4add-8ae6-23af3151d6ca",
+    "name": "cve-2026-8168-deep-nesting.svg",
+    "mime": "image/svg+xml",
+    "uploadStatus": "uploaded",
+    "local": "saved",
+    "newest": true
+   },
+   "preview": {
+    "ok": false,
+    "state": null,
+    "error": {
+     "code": "preview_failed",
+     "details": {},
+     "message": "The image preview could not be made"
+    },
+    "previewExists": false
+   },
+   "afterPreview": {
+    "putgd": [
+     2686
+    ],
+    "putgd-ui": [
+     3320
+    ]
+   },
+   "cards": 2,
+   "frame": "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/full/aurora-vm-clipfile-0.png",
+   "afterUi": {
+    "putgd": [
+     2686
+    ],
+    "putgd-ui": [
+     3320
+    ]
+   }
+  },
+  {
+   "sample": "cve-2025-5683-icns-block-length.icns",
+   "sha256": "e639bf43bd190e0660f20c6ae205c366c7b1a8ad9f06127d7837953fb8062717",
+   "bytes": 49,
+   "clipboardOwnerPid": 7061,
+   "operation": {
+    "id": "e6d40b12-7953-4da9-85ce-c4b468ccf479",
+    "state": "completed",
+    "copyStatus": "copied",
+    "items": [
+     {
+      "name": "cve-2025-5683-icns-block-length.icns",
+      "mime": "image/x-icns",
+      "uploadStatus": "uploaded",
+      "link": "http://127.0.0.1:33585/fixture/afa/cve-2025-5683-icns-block-length.icns",
+      "local": {
+       "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+       },
+       "path": "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/archive/images/cve-2025-5683-icns-block-length.icns",
+       "status": "saved"
+      }
+     }
+    ],
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   "history": {
+    "id": "f4c66181-94c6-471e-a18e-2d157525d4b5",
+    "name": "cve-2025-5683-icns-block-length.icns",
+    "mime": "image/x-icns",
+    "uploadStatus": "uploaded",
+    "local": "saved",
+    "newest": true
+   },
+   "preview": {
+    "ok": false,
+    "state": null,
+    "error": {
+     "code": "preview_failed",
+     "details": {},
+     "message": "The image preview could not be made"
+    },
+    "previewExists": false
+   },
+   "afterPreview": {
+    "putgd": [
+     2686
+    ],
+    "putgd-ui": [
+     3320
+    ]
+   },
+   "cards": 3,
+   "frame": "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/full/aurora-vm-clipfile-1.png",
+   "afterUi": {
+    "putgd": [
+     2686
+    ],
+    "putgd-ui": [
+     3320
+    ]
+   }
+  },
+  {
+   "sample": "fuzz-tiff-00.tiff",
+   "sha256": "6f6aa40023069e1f3a3b68cd1755979c8cb8381d176b5a9e37cc88f4f0e409c4",
+   "bytes": 3212,
+   "clipboardOwnerPid": 7131,
+   "operation": {
+    "id": "46cdf349-090e-452c-b984-4f5f1bd365d4",
+    "state": "completed",
+    "copyStatus": "copied",
+    "items": [
+     {
+      "name": "fuzz-tiff-00.tiff",
+      "mime": "image/tiff",
+      "uploadStatus": "uploaded",
+      "link": "http://127.0.0.1:33585/fixture/afa/fuzz-tiff-00.tiff",
+      "local": {
+       "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+       },
+       "path": "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/archive/images/fuzz-tiff-00.tiff",
+       "status": "saved"
+      }
+     }
+    ],
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   "history": {
+    "id": "08d22b52-b8bc-4863-be10-4b7f4a808637",
+    "name": "fuzz-tiff-00.tiff",
+    "mime": "image/tiff",
+    "uploadStatus": "uploaded",
+    "local": "saved",
+    "newest": true
+   },
+   "preview": {
+    "ok": false,
+    "state": null,
+    "error": {
+     "code": "preview_failed",
+     "details": {},
+     "message": "The image preview could not be made"
+    },
+    "previewExists": false
+   },
+   "afterPreview": {
+    "putgd": [
+     2686
+    ],
+    "putgd-ui": [
+     3320
+    ]
+   },
+   "cards": 3,
+   "frame": "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/full/aurora-vm-clipfile-2.png",
+   "afterUi": {
+    "putgd": [
+     2686
+    ],
+    "putgd-ui": [
+     3320
+    ]
+   }
+  },
+  {
+   "sample": "cve-2025-10729-pattern-orphan.svg",
+   "sha256": "b1b7776ef367bc7e360ea559821347242979005e253df30c4cac5cc647708e54",
+   "bytes": 271,
+   "clipboardOwnerPid": 7194,
+   "operation": {
+    "id": "ccac4bd4-a870-404a-b44d-c9938673cb36",
+    "state": "completed",
+    "copyStatus": "pending",
+    "items": [
+     {
+      "name": "cve-2025-10729-pattern-orphan.svg",
+      "mime": "image/svg+xml",
+      "uploadStatus": "uploaded",
+      "link": "http://127.0.0.1:33585/fixture/afa/cve-2025-10729-pattern-orphan.svg",
+      "local": {
+       "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+       },
+       "path": "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/archive/images/cve-2025-10729-pattern-orphan.svg",
+       "status": "saved"
+      }
+     }
+    ],
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   "history": {
+    "id": "82302c22-36cc-4640-bda1-f7bdf6c57d34",
+    "name": "cve-2025-10729-pattern-orphan.svg",
+    "mime": "image/svg+xml",
+    "uploadStatus": "uploaded",
+    "local": "saved",
+    "newest": true
+   },
+   "preview": {
+    "ok": true,
+    "state": "ready",
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    },
+    "previewExists": true
+   },
+   "afterPreview": {
+    "putgd": [
+     2686
+    ],
+    "putgd-ui": [
+     3320
+    ]
+   },
+   "cards": 2,
+   "frame": "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/full/aurora-vm-clipfile-3.png",
+   "afterUi": {
+    "putgd": [
+     2686
+    ],
+    "putgd-ui": [
+     3320
+    ]
+   }
+  }
+ ],
+ "after": {
+  "putgd": [
+   2686
+  ],
+  "putgd-ui": [
+   3320
+  ]
+ },
+ "diagnostics": {
+  "build": {
+   "baseVersion": "26.1023.1068",
+   "commitCount": 1068,
+   "dirty": false,
+   "gitCommit": "6a325a722afd946046a96480ca524db8aa6abcce",
+   "gitTree": "a0a449b23b4eb70f516e3c317b6d93b412aafbbb",
+   "packageVersion": "26.1023.1068~dev+g6a325a722afd",
+   "schemaVersion": 1,
+   "sourceProvenance": "git",
+   "version": "26.1023.1068-dev+g6a325a722afd"
+  },
+  "journalReady": true,
+  "qtVersion": "6.12.0"
+ },
+ "survived": true
+}

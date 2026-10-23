@@ -1,0 +1,45 @@
+{
+ "name": "ubuntu-vm-lab1058",
+ "scenario": "a",
+ "image": "/home/lab/work/put.gd-qt418/afa/upd/runs/ubuntu-vm-lab1058/apps/putgd-26.1023.1058-nightly-x86_64.AppImage",
+ "imageSha256": "ce707fcf4e693b5ca9024da539e5510e149c5edf8a6a17bca28d815e0e20e6db",
+ "cliDir": "/home/lab/work/put.gd-qt418/afa/upd/runs/ubuntu-vm-lab1058/cli/squashfs-root",
+ "runtime": "/tmp/upd293.MkdLnn",
+ "session": {
+  "HOME": "/home/lab",
+  "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin",
+  "USER": "lab",
+  "LANG": "en_US.UTF-8",
+  "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus",
+  "XDG_SESSION_TYPE": "wayland",
+  "XDG_CURRENT_DESKTOP": "ubuntu:GNOME",
+  "XDG_SESSION_DESKTOP": "ubuntu",
+  "DESKTOP_SESSION": "ubuntu",
+  "XDG_DATA_DIRS": "/usr/share/ubuntu:/usr/share/gnome:/usr/local/share/:/usr/share/:/var/lib/snapd/desktop",
+  "WAYLAND_DISPLAY": "/run/user/1000/wayland-0",
+  "DISPLAY": ":0",
+  "XAUTHORITY": "/run/user/1000/.mutter-Xwaylandauth.Y167W3"
+ },
+ "shell": "gnome-shell",
+ "hostPath": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin",
+ "host": "putgd-ubuntu-lab",
+ "vnc": 5922,
+ "urls": {
+  "PUTGD_UPDATE_FEED_URL": "https://pkg.put.gd/lab/update/v1/",
+  "PUTGD_UPDATE_RELEASE_URL": "https://pkg.put.gd/lab/releases",
+  "PUTGD_UPDATE_MIRROR_URL": "https://pkg.put.gd/lab/releases"
+ },
+ "before": {
+  "dataPutgd": false,
+  "homePutgd": {
+   "/home/lab/.config/putgd": false,
+   "/home/lab/.local/state/putgd": false,
+   "/home/lab/.cache/putgd": false
+  },
+  "autostart": []
+ },
+ "pids": {
+  "apprun": 4694
+ },
+ "created": "2026-10-23T19:49:21Z"
+}

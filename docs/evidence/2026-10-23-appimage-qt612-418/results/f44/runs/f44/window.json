@@ -1,0 +1,159 @@
+{
+ "processes": [
+  {
+   "pid": 3251325,
+   "ppid": 3251289,
+   "exe": "/tmp/.mount_putgd-MofdHE/usr/bin/putgd",
+   "comm": "putgd",
+   "cmd": "/tmp/.mount_putgd-MofdHE/usr/bin/putgd --background",
+   "qtPlatformPlugins": [],
+   "QT_QPA_PLATFORM": null,
+   "APPIMAGE": "/home/patrick/work/put.gd-qt418/afa/images/putgd-26.1023.1068-dev+g6a325a722afd-x86_64.AppImage"
+  },
+  {
+   "pid": 3251989,
+   "ppid": 3251325,
+   "exe": "/tmp/.mount_putgd-MofdHE/usr/bin/putgd-ui",
+   "comm": "putgd-ui",
+   "cmd": "/tmp/.mount_putgd-MofdHE/usr/bin/putgd-ui",
+   "qtPlatformPlugins": [
+    "libqwayland.so"
+   ],
+   "QT_QPA_PLATFORM": null,
+   "APPIMAGE": "/home/patrick/work/put.gd-qt418/afa/images/putgd-26.1023.1068-dev+g6a325a722afd-x86_64.AppImage"
+  }
+ ],
+ "entries": [
+  "putgd-record.desktop",
+  "putgd-ui.desktop"
+ ],
+ "window": {
+  "label": "f44-settings-window",
+  "components": [
+   {
+    "blocks": 32400,
+    "box": [
+     0,
+     0,
+     1920,
+     1080
+    ]
+   }
+  ],
+  "colour": [
+   32,
+   32,
+   36
+  ],
+  "inner": [
+   2,
+   2,
+   1826,
+   1078
+  ],
+  "changedShare": 1.0,
+  "ownShare": 0.816,
+  "kept": "/home/patrick/work/put.gd-qt418/afa/runs/f44/crops/f44-settings-window.png"
+ },
+ "full": "/home/patrick/work/put.gd-qt418/afa/runs/f44/full/f44-settings-window.png",
+ "titlebar": {
+  "label": "f44-settings-titlebar",
+  "components": [
+   {
+    "blocks": 1680,
+    "box": [
+     0,
+     0,
+     1920,
+     56
+    ]
+   }
+  ],
+  "colour": [
+   32,
+   32,
+   36
+  ],
+  "inner": [
+   2,
+   2,
+   1918,
+   44
+  ],
+  "changedShare": 1.0,
+  "kept": "/home/patrick/work/put.gd-qt418/afa/runs/f44/crops/f44-settings-titlebar.png"
+ },
+ "switcher": {
+  "label": "f44-settings-switcher",
+  "components": [
+   {
+    "blocks": 2218,
+    "box": [
+     568,
+     168,
+     1552,
+     880
+    ]
+   },
+   {
+    "blocks": 1430,
+    "box": [
+     344,
+     72,
+     1592,
+     960
+    ]
+   },
+   {
+    "blocks": 168,
+    "box": [
+     584,
+     736,
+     1088,
+     792
+    ]
+   },
+   {
+    "blocks": 69,
+    "box": [
+     720,
+     304,
+     1000,
+     328
+    ]
+   },
+   {
+    "blocks": 36,
+    "box": [
+     920,
+     976,
+     1000,
+     1008
+    ]
+   },
+   {
+    "blocks": 29,
+    "box": [
+     720,
+     264,
+     840,
+     288
+    ]
+   }
+  ],
+  "colour": [
+   252,
+   252,
+   252
+  ],
+  "inner": [
+   570,
+   178,
+   1550,
+   878
+  ],
+  "changedShare": 0.142,
+  "kept": null
+ },
+ "switcherFull": "/home/patrick/work/put.gd-qt418/afa/runs/f44/full/f44-settings-switcher.png"
+}

@@ -1,0 +1,47 @@
+{
+ "sessionEntryNow": null,
+ "processes": [
+  {
+   "pid": 1527065,
+   "comm": "AppRun",
+   "exe": "/usr/bin/dash",
+   "APPIMAGE": "/home/patrick/work/put.gd-qt418/afa/images/putgd-26.1023.1068-dev+g6a325a722afd-x86_64.AppImage",
+   "started": "2026-10-23T18:40:22Z",
+   "XDG_CONFIG_HOME": "/home/patrick/work/put.gd-qt418/afa/runs/k72/config"
+  },
+  {
+   "pid": 1527107,
+   "comm": "putgd",
+   "exe": "/tmp/.mount_putgd-PPnoBe/usr/bin/putgd",
+   "APPIMAGE": "/home/patrick/work/put.gd-qt418/afa/images/putgd-26.1023.1068-dev+g6a325a722afd-x86_64.AppImage",
+   "started": "2026-10-23T18:40:22Z",
+   "XDG_CONFIG_HOME": "/home/patrick/work/put.gd-qt418/afa/runs/k72/config"
+  },
+  {
+   "pid": 1534730,
+   "comm": "AppRun",
+   "exe": "/usr/bin/dash",
+   "APPIMAGE": "/home/patrick/work/put.gd-qt418/afa/images/putgd-26.1023.1068-dev+g6a325a722afd-x86_64.AppImage",
+   "started": "2026-10-23T19:03:13Z",
+   "XDG_CONFIG_HOME": null
+  },
+  {
+   "pid": 1534852,
+   "comm": "putgd",
+   "exe": "/tmp/.mount_putgd-HNpHNj/usr/bin/putgd",
+   "APPIMAGE": "/home/patrick/work/put.gd-qt418/afa/images/putgd-26.1023.1068-dev+g6a325a722afd-x86_64.AppImage",
+   "started": "2026-10-23T19:03:13Z",
+   "XDG_CONFIG_HOME": null
+  },
+  {
+   "pid": 1534874,
+   "comm": "putgd-ui",
+   "exe": "/tmp/.mount_putgd-HNpHNj/usr/bin/putgd-ui",
+   "APPIMAGE": "/home/patrick/work/put.gd-qt418/afa/images/putgd-26.1023.1068-dev+g6a325a722afd-x86_64.AppImage",
+   "started": "2026-10-23T19:03:14Z",
+   "XDG_CONFIG_HOME": null
+  }
+ ],
+ "shellStarted": "2026-10-23T19:03:12Z",
+ "fromAppImage": true
+}

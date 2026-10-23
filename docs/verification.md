@@ -125,12 +125,16 @@ pass; it does not certify release bytes.
   ([#420](https://github.com/patrick-hudson/put.gd-desktop/issues/420)).
 - **Open, all release-blockers:** the AppImage notices
   ([#417](https://github.com/patrick-hudson/put.gd-desktop/issues/417)), and
-  three decisions for Patrick: complete source for Qt and the LGPL libraries
-  ([#416](https://github.com/patrick-hudson/put.gd-desktop/issues/416)),
-  Qt 6.8.3's later CVEs
-  ([#418](https://github.com/patrick-hudson/put.gd-desktop/issues/418)) and
+  decisions for Patrick: complete source for Qt and the LGPL libraries
+  ([#416](https://github.com/patrick-hudson/put.gd-desktop/issues/416)) and
   the H.264/H.265/AAC patent posture
   ([#419](https://github.com/patrick-hudson/put.gd-desktop/issues/419)).
+- **Qt 6.8.3's later CVEs
+  ([#418](https://github.com/patrick-hudson/put.gd-desktop/issues/418)):** Patrick
+  chose to bump Qt; the AppImage now bundles Qt 6.12.0
+  ([#497](https://github.com/patrick-hudson/put.gd-desktop/pull/497)), with an
+  A–K re-acceptance on six desktops
+  ([evidence](evidence/2026-10-23-appimage-qt612-418/README.md)).
 
 Not covered: the Proton per-release check. The DEBs and the RPM are in the
 section above.

@@ -1,0 +1,19 @@
+{
+ "browserProcesses": [
+  {
+   "pid": 2568167,
+   "comm": "firefox-esr",
+   "cmd": "firefox-esr --profile /home/patrick/work/put.gd-qt418/afa/ff/putgd-qt418-ea6cbede https://put.gd/acceptance/qt418/d69/Screen-Capture-2026-10-23-14-14-46.png "
+  }
+ ],
+ "opened": [
+  {
+   "itemId": null,
+   "opened": true,
+   "operationId": null,
+   "route": "portal",
+   "target": "notification-link"
+  }
+ ],
+ "full": "/home/patrick/work/put.gd-qt418/afa/runs/d69-F/full/d69-F-browser.png"
+}

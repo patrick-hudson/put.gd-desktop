@@ -1,0 +1,108 @@
+{
+ "pid": 526865,
+ "exe": "/tmp/.mount_putgd-MLoekE/usr/bin/putgd",
+ "seconds": 180,
+ "samples": [
+  {
+   "t": 0.0,
+   "rssBytes": 31551488
+  },
+  {
+   "t": 10.0,
+   "rssBytes": 31449088
+  },
+  {
+   "t": 20.0,
+   "rssBytes": 31449088
+  },
+  {
+   "t": 30.0,
+   "rssBytes": 31428608
+  },
+  {
+   "t": 40.0,
+   "rssBytes": 31428608
+  },
+  {
+   "t": 50.0,
+   "rssBytes": 31428608
+  },
+  {
+   "t": 60.0,
+   "rssBytes": 31748096
+  },
+  {
+   "t": 70.0,
+   "rssBytes": 31748096
+  },
+  {
+   "t": 80.0,
+   "rssBytes": 31748096
+  },
+  {
+   "t": 90.0,
+   "rssBytes": 31748096
+  },
+  {
+   "t": 100.0,
+   "rssBytes": 31748096
+  },
+  {
+   "t": 110.0,
+   "rssBytes": 31748096
+  },
+  {
+   "t": 120.0,
+   "rssBytes": 31748096
+  },
+  {
+   "t": 130.0,
+   "rssBytes": 31748096
+  },
+  {
+   "t": 140.0,
+   "rssBytes": 31748096
+  },
+  {
+   "t": 150.0,
+   "rssBytes": 31748096
+  },
+  {
+   "t": 160.0,
+   "rssBytes": 31748096
+  },
+  {
+   "t": 170.0,
+   "rssBytes": 31748096
+  },
+  {
+   "t": 180.0,
+   "rssBytes": 31748096
+  }
+ ],
+ "finalRssMiB": 30.277,
+ "peakRssMiB": 30.277,
+ "pssMiB": 24.466,
+ "privateMiB": 24.246,
+ "budgetMiB": 40,
+ "flaggedLibraries": {
+  "gtk": [],
+  "kdePlatformTheme": [],
+  "libssl": [],
+  "qtNetwork": []
+ },
+ "libraryCount": 61,
+ "load": [
+  [
+   1.11279296875,
+   1.08251953125,
+   1.0263671875
+  ],
+  [
+   1.064453125,
+   1.05029296875,
+   1.0146484375
+  ]
+ ],
+ "pass": true
+}

@@ -1,0 +1,123 @@
+{
+ "to": "stable",
+ "patch": true,
+ "patchError": {
+  "code": "",
+  "details": {},
+  "message": ""
+ },
+ "check": {
+  "ok": true,
+  "seconds": 1.84,
+  "result": {
+   "action": {
+    "kind": "download",
+    "repository": "none"
+   },
+   "attemptedAt": "2026-10-23T20:17:12Z",
+   "build": {
+    "channel": "nightly",
+    "kind": "nightly",
+    "packageTarget": "appimage",
+    "reason": null,
+    "supported": true,
+    "version": "26.1023.1068-nightly"
+   },
+   "channel": "stable",
+   "channelSetting": "stable",
+   "channelSource": "setting",
+   "check": true,
+   "checkedAt": "2026-10-23T20:17:12Z",
+   "checking": false,
+   "enabled": true,
+   "error": null,
+   "install": {
+    "available": false,
+    "backup": null,
+    "image": "/home/patrick/work/put.gd-qt418/afa/images/putgd-26.1023.1068-nightly-x86_64.AppImage",
+    "installed": null,
+    "kind": "switch",
+    "reason": "no_release",
+    "restartRequired": false,
+    "running": false,
+    "state": "idle",
+    "switch": null
+   },
+   "nextCheckAt": "2026-10-24T19:48:09Z",
+   "notifies": true,
+   "reason": null,
+   "result": {
+    "action": {
+     "kind": "download",
+     "repository": "none"
+    },
+    "asset": null,
+    "channel": "stable",
+    "channelSource": "setting",
+    "checkedAt": "2026-10-23T20:17:12Z",
+    "current": "26.1023.1068-nightly",
+    "downloadUrl": null,
+    "latest": null,
+    "notesUrl": null,
+    "packageTarget": "appimage",
+    "publishedAt": null,
+    "tag": null,
+    "updateAvailable": false
+   },
+   "supported": true
+  },
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  }
+ },
+ "status": {
+  "channel": "stable",
+  "channelSetting": "stable",
+  "supported": true,
+  "reason": null,
+  "notifies": true,
+  "error": null,
+  "result": {
+   "action": {
+    "kind": "download",
+    "repository": "none"
+   },
+   "asset": null,
+   "channel": "stable",
+   "channelSource": "setting",
+   "checkedAt": "2026-10-23T20:17:12Z",
+   "current": "26.1023.1068-nightly",
+   "downloadUrl": null,
+   "latest": null,
+   "notesUrl": null,
+   "packageTarget": "appimage",
+   "publishedAt": null,
+   "tag": null,
+   "updateAvailable": false
+  },
+  "build": {
+   "channel": "nightly",
+   "kind": "nightly",
+   "packageTarget": "appimage",
+   "reason": null,
+   "supported": true,
+   "version": "26.1023.1068-nightly"
+  },
+  "install": {
+   "available": false,
+   "backup": null,
+   "image": "/home/patrick/work/put.gd-qt418/afa/images/putgd-26.1023.1068-nightly-x86_64.AppImage",
+   "installed": null,
+   "kind": "switch",
+   "reason": "no_release",
+   "restartRequired": false,
+   "running": false,
+   "state": "idle",
+   "switch": null
+  }
+ },
+ "notifications": [],
+ "full": "/home/patrick/work/put.gd-qt418/afa/runs/m74-labh/full/m74-labh-344-stable.png"
+}

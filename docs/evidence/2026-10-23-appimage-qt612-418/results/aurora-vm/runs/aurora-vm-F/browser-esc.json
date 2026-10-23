@@ -1,0 +1,19 @@
+{
+ "browserProcesses": [
+  {
+   "pid": 2727,
+   "comm": "firefox-bin",
+   "cmd": "/app/lib/firefox/firefox --name org.mozilla.firefox --profile /var/home/lab/.var/app/org.mozilla.firefox/putgd-qt418-ff/putgd-qt418-9864d895 https://put.gd/acceptance/qt418/aurora-vm/Screen-Capture-2026-10-23-15-45-33.png "
+  }
+ ],
+ "opened": [
+  {
+   "itemId": null,
+   "opened": true,
+   "operationId": null,
+   "route": "portal",
+   "target": "notification-link"
+  }
+ ],
+ "full": "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm-F/full/aurora-vm-F-browser-esc.png"
+}

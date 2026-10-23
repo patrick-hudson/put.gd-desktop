@@ -1,0 +1,19 @@
+{
+ "browserProcesses": [
+  {
+   "pid": 1542626,
+   "comm": "firefox",
+   "cmd": "/snap/firefox/9057/usr/lib/firefox/firefox --profile /home/patrick/work/put.gd-qt418/afa/ff/putgd-qt418-1b6da495 https://put.gd/acceptance/qt418/k72/Screen-Capture-2026-10-23-14-14-47.png "
+  }
+ ],
+ "opened": [
+  {
+   "itemId": null,
+   "opened": true,
+   "operationId": null,
+   "route": "portal",
+   "target": "notification-link"
+  }
+ ],
+ "full": "/home/patrick/work/put.gd-qt418/afa/runs/k72-F/full/k72-F-browser.png"
+}
