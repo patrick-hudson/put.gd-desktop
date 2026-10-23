@@ -125,7 +125,8 @@ host_has_entry() {
     return 1
 }
 # A Wayland compositor finds a window's icon in the desktop entry named by its
-# app ID; Qt 6.8 cannot send one with the window. Add NoDisplay entries for the
+# app ID; Qt sends one with the window only where the compositor offers
+# xdg-toplevel-icon-v1. Add NoDisplay entries for the
 # windowed helpers' app IDs while this mount runs, unless the host has them
 # (a DEB/RPM install, or another running launch). `ln` publishes the complete
 # entry and fails rather than replace one that appeared meanwhile.

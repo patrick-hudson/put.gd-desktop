@@ -55,6 +55,16 @@ def main():
             options += ['-DBUILD_WITH_QT6=ON', '-DBUILD_TEST_APPLICATION=OFF', '-DBUILD_TRANSLATIONS=OFF']
         if name == 'layershell':
             options += ['-DKDE_INSTALL_QTPLUGINDIR=' + str(prefix / 'lib/qt6/plugins')]
+            # Qt's private Wayland headers declare the core protocol from Qt's own
+            # wayland.xml (1.24 in Qt 6.12, with wl_fixes) behind the same include
+            # guard as the builder's older wayland-client-protocol.h (1.22 on
+            # Ubuntu 24.04). Include Qt's copy first so its declarations win; the
+            # protocol code itself is compiled into QtWaylandClient (#418).
+            header = (args.qt_root / 'include/QtWaylandClient' / lock['qt'] /
+                      'QtWaylandClient/private/wayland-wayland-client-protocol.h')
+            if not header.is_file():
+                raise ValueError('Qt Wayland client protocol header missing: ' + str(header))
+            options += ['-DCMAKE_CXX_FLAGS=-include ' + str(header.resolve())]
         if not args.skip_build:
             run('cmake', '-S', str(source), '-B', str(build), '-G', 'Ninja', *options)
             run('cmake', '--build', str(build), '--parallel', '2')

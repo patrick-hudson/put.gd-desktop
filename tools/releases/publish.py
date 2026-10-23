@@ -21,6 +21,9 @@ from github_api import GitHub
 from nightly import published_nightly, public_inventory
 from release_identity import parse_tag, parse_version
 
+# The release notes name the Qt the AppImage bundles (#418).
+APPIMAGE_QT = json.loads((Path(__file__).resolve().parents[2] / 'packaging/appimage/tools.lock.json')
+                         .read_text())['buildInputs']['qt']
 
 
 def github_json(*arguments):
@@ -212,7 +215,7 @@ def publish_nightly(args, release, listed):
             'This does not certify current graphical compositor behavior, memory acceptance or live S3 behavior.\n\n'
             'Individual DEBs, RPM, AppImage, source tarball, GNOME ZIP, release-builds.json, '
             'combined ZIP and SHA256SUMS are available separately. DEB/RPM use distro Qt. '
-            'AppImage bundles dynamically linked Qt 6.8.3 and requires glibc 2.39 or newer. '
+            f'AppImage bundles dynamically linked Qt {APPIMAGE_QT} and requires glibc 2.39 or newer. '
             'Its screen recorder bundles x264, x265 and a GPL FFmpeg, so the AppImage is a GPL-2.0-or-later '
             'combined work; their corresponding source is the appimage-media-source tarball. '
             'The AppImage carries zsync update information for the nightly channel, so AppImageUpdate, '
@@ -328,7 +331,7 @@ def main():
     notes = args.directory / 'release-notes.md'
     notes.write_text('Linux x86_64 ' + kind + ' with individual Ubuntu DEBs, a Fedora RPM, an AppImage, a buildable source tarball and a combined ZIP.\n\n'
                      + changes_section(args.tag, producer) +
-                     'DEB/RPM use distro Qt. AppImage dynamically bundles Qt 6.8.3 and requires glibc 2.39 or newer. '
+                     f'DEB/RPM use distro Qt. AppImage dynamically bundles Qt {APPIMAGE_QT} and requires glibc 2.39 or newer. '
                      'Its screen recorder bundles x264, x265 and a GPL FFmpeg, so the AppImage is a GPL-2.0-or-later combined work; '
                      'their corresponding source is the appimage-media-source tarball. '
                      'The AppImage carries zsync update information for the stable channel, so AppImageUpdate, '

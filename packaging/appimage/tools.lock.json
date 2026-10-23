@@ -49,7 +49,7 @@
   },
   "buildInputs": {
     "distribution": "Ubuntu 24.04",
-    "qt": "6.8.3",
+    "qt": "6.12.0",
     "layerShellQt": {
       "repository": "https://github.com/KDE/layer-shell-qt.git",
       "release": "6.4.6",
@@ -63,28 +63,28 @@
     "qtLicenseSources": [
       {
         "repository": "https://github.com/qt/qtbase.git",
-        "release": "6.8.3",
-        "commit": "c07c2d5a527a644d36e7853d55132ae38921682f"
+        "release": "6.12.0",
+        "commit": "025bdad181de241e81bf853c8a2d7bf3d19261a9"
       },
       {
         "repository": "https://github.com/qt/qtwayland.git",
-        "release": "6.8.3",
-        "commit": "8ab0d5b4cd2db654eb01eb74c9a8bbf7efc87d94"
+        "release": "6.12.0",
+        "commit": "c4f85cd060e3e80a7d71829defac9cf5a40e8ffa"
       },
       {
         "repository": "https://github.com/qt/qtsvg.git",
-        "release": "6.8.3",
-        "commit": "c75099a75e81df35e7347a65e301bbf1011831a5"
+        "release": "6.12.0",
+        "commit": "883a58532078d003cefef0a549bfe9f885ce41f5"
       },
       {
         "repository": "https://github.com/qt/qtimageformats.git",
-        "release": "6.8.3",
-        "commit": "3b6b1fb96041f1bc85a8f42593bef2ee7bcdca6c"
+        "release": "6.12.0",
+        "commit": "dc13f2fbff1d579cfb2eb2d9092e3563b4d05b8e"
       },
       {
         "repository": "https://github.com/qt/qttranslations.git",
-        "release": "6.8.3",
-        "commit": "abe01d7de31d311db8bc485d4e7e8d0c30493425"
+        "release": "6.12.0",
+        "commit": "2811457ceff8f0c24a1c4d14f947a283a17239d0"
       }
     ],
     "icu": {

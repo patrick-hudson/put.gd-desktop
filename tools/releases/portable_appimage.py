@@ -145,8 +145,9 @@ def deployment_qmake(qt: Path, output: Path) -> Path:
 # linuxdeploy's Qt plugin deploys only xcb unless told otherwise. The resident
 # starts its image worker (`putgd-ui --image-job`, src/core/ImageJob.cpp) on
 # offscreen, as do putgd-record and the editor job without a display; Qt aborts
-# a process whose requested platform plugin is absent.
-EXTRA_PLATFORM_PLUGINS = ("libqwayland-generic.so", "libqwayland-egl.so", "libqoffscreen.so")
+# a process whose requested platform plugin is absent. Since Qt 6.10 one
+# libqwayland.so serves the wayland and wayland-egl platform names.
+EXTRA_PLATFORM_PLUGINS = ("libqwayland.so", "libqoffscreen.so")
 
 
 # The image worker decodes History's GIF and WebP previews (#189) with these;
@@ -551,7 +552,7 @@ def main() -> int:
     parser.add_argument("--stage", type=Path, required=True, help="CMake DESTDIR root containing usr/")
     parser.add_argument("--output-dir", type=Path, required=True, help="New output directory")
     parser.add_argument("--tools-dir", type=Path, required=True)
-    parser.add_argument("--qt-root", type=Path, required=True, help="Official Qt 6.8.3 gcc_64 install")
+    parser.add_argument("--qt-root", type=Path, required=True, help="Official Qt gcc_64 install of the locked version (tools.lock.json)")
     parser.add_argument("--dependency-prefix", type=Path, required=True, help="QtKeychain/LayerShellQt install prefix")
     parser.add_argument("--license-source", type=Path, action="append", required=True,
                         help="Pinned licence source of a bundled component, named by its id "

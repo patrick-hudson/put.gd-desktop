@@ -550,7 +550,12 @@ private slots:
   QImage pixel(2,2,QImage::Format_RGB32);pixel.fill(Qt::blue);const auto png=dir.filePath("Dropped.PNG");QVERIFY(pixel.save(png,"PNG"));
   const auto text=dir.filePath("notes.txt");{QFile file(text);QVERIFY(file.open(QIODevice::WriteOnly));file.write("x");}
   auto drop=[&](const QList<QUrl>& urls){
-   QMimeData data;data.setUrls(urls);const QPoint at(20,20);
+   QMimeData data;data.setUrls(urls);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 12, 0)
+   const QPointF at(20,20);
+#else
+   const QPoint at(20,20);
+#endif
    QDragEnterEvent enter(at,Qt::CopyAction,&data,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(edit,&enter);
    const bool accepted=enter.isAccepted();const bool lit=edit->property("dropTarget").toBool();
    QDropEvent dropped(QPointF(at),Qt::CopyAction,&data,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(edit,&dropped);
