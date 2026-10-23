@@ -43,7 +43,8 @@ jobs:
         env:
           GITHUB_COM_TOKEN: ${{ github.token }}
         run: |
-          mkdir -p "$RUNNER_TEMP/renovate"
+          # Renovate runs as its own user, which writes the log here.
+          mkdir -p -m 0777 "$RUNNER_TEMP/renovate"
           # Renovate's user reads the checkout; git must accept another owner's repository.
           docker run --rm --volume "$PWD:/usr/src/app:ro" --workdir /usr/src/app \
             --volume "$RUNNER_TEMP/renovate:/tmp/renovate-log" --env GITHUB_COM_TOKEN \
