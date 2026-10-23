@@ -1,0 +1,171 @@
+[
+ {
+  "category": "putgd.app",
+  "fields": {
+   "architecture": "x86_64",
+   "build": {
+    "baseVersion": "26.1023.1058",
+    "commitCount": 1058,
+    "dirty": false,
+    "gitCommit": "05991d9d42aad68d3bd233a609cf294d839835ed",
+    "gitTree": "5e53f777b912ef958678b2f23b400847c7cb4d33",
+    "packageVersion": "26.1023.1058~nightly",
+    "schemaVersion": 1,
+    "sourceProvenance": "git",
+    "version": "26.1023.1058-nightly"
+   },
+   "capabilities": {
+    "adapter": "cinnamon-core-x11",
+    "capture": {
+     "desktop": {
+      "available": true,
+      "consent": "none",
+      "helper": {
+       "active": false,
+       "build": {
+        "baseVersion": "26.1023.1058",
+        "commitCount": 1058,
+        "dirty": false,
+        "gitCommit": "05991d9d42aad68d3bd233a609cf294d839835ed",
+        "gitTree": "5e53f777b912ef958678b2f23b400847c7cb4d33",
+        "packageVersion": "26.1023.1058~nightly",
+        "schemaVersion": 1,
+        "sourceProvenance": "git",
+        "version": "26.1023.1058-nightly"
+       },
+       "lastExit": {},
+       "processId": 0
+      },
+      "mode": "visible-pixels"
+     },
+     "region": {
+      "available": true,
+      "consent": "none",
+      "helper": {
+       "active": false,
+       "build": {
+        "baseVersion": "26.1023.1058",
+        "commitCount": 1058,
+        "dirty": false,
+        "gitCommit": "05991d9d42aad68d3bd233a609cf294d839835ed",
+        "gitTree": "5e53f777b912ef958678b2f23b400847c7cb4d33",
+        "packageVersion": "26.1023.1058~nightly",
+        "schemaVersion": 1,
+        "sourceProvenance": "git",
+        "version": "26.1023.1058-nightly"
+       },
+       "lastExit": {},
+       "processId": 0
+      },
+      "mode": "visible-pixels"
+     },
+     "window": {
+      "available": true,
+      "consent": "none",
+      "helper": {
+       "active": false,
+       "build": {
+        "baseVersion": "26.1023.1058",
+        "commitCount": 1058,
+        "dirty": false,
+        "gitCommit": "05991d9d42aad68d3bd233a609cf294d839835ed",
+        "gitTree": "5e53f777b912ef958678b2f23b400847c7cb4d33",
+        "packageVersion": "26.1023.1058~nightly",
+        "schemaVersion": 1,
+        "sourceProvenance": "git",
+        "version": "26.1023.1058-nightly"
+       },
+       "lastExit": {},
+       "processId": 0
+      },
+      "mode": "visible-pixels"
+     }
+    },
+    "clipboard": "<redacted>",
+    "shortcuts": {
+     "available": true,
+     "bindings": {
+      "clipboard": "<redacted>",
+      "desktop": {
+       "actual": "Ctrl+Shift+3",
+       "bound": true,
+       "requested": "Ctrl+Shift+3"
+      },
+      "edit": {
+       "bound": false,
+       "error": "disabled",
+       "requested": ""
+      },
+      "record": {
+       "bound": false,
+       "error": "disabled",
+       "requested": ""
+      },
+      "region": {
+       "actual": "Ctrl+Shift+1",
+       "bound": true,
+       "requested": "Ctrl+Shift+1"
+      },
+      "window": {
+       "actual": "Ctrl+Shift+2",
+       "bound": true,
+       "requested": "Ctrl+Shift+2"
+      }
+     },
+     "keyPaths": {
+      "lastActivation": {},
+      "passive": true,
+      "raw": {
+       "available": true,
+       "xinput": "2.2"
+      }
+     }
+    }
+   },
+   "desktop": "X-Cinnamon",
+   "itemId": null,
+   "kernel": "6.14.0-37-generic",
+   "locations": {
+    "config": {
+     "path": "/home/patrick/.config/putgd",
+     "state": "current"
+    },
+    "data": {
+     "path": "/home/patrick/.local/share/putgd",
+     "state": "current"
+    },
+    "schemaVersion": 1
+   },
+   "operationId": null,
+   "os": "Linux Mint 22.3",
+   "platform": "none",
+   "qtCompiled": "6.8.3",
+   "qtRuntime": "6.8.3",
+   "resident": "x11-core",
+   "sessionType": "x11",
+   "trayAvailable": false
+  },
+  "level": "info",
+  "message": "Resident started",
+  "pid": 546131,
+  "process": "putgd",
+  "time": "2026-10-23T20:02:38.166Z",
+  "v": 1
+ },
+ {
+  "category": "putgd.app",
+  "fields": {
+   "itemId": null,
+   "operationId": null,
+   "portalActivatable": true,
+   "portalRunning": true,
+   "sessionBus": true
+  },
+  "level": "info",
+  "message": "Desktop portal availability",
+  "pid": 546131,
+  "process": "putgd",
+  "time": "2026-10-23T20:02:38.180Z",
+  "v": 1
+ }
+]

@@ -1,0 +1,5 @@
+2026-10-23T20:00:39Z app-c1 old resident 541268 in session c38
+2026-10-23T20:00:43Z app-c1 old resident 541268 gone 3.0 s after logout; session c38: closing
+2026-10-23T20:00:48Z app-c1 relogin requested
+2026-10-23T20:00:54Z app-c1 fresh resident(s): 542563@c40
+2026-10-23T20:01:03Z app-c1 capture completed  [{'mime': 'image/png', 'bytes': 852626, 'local': 'saved', 'file': 'Screen-Capture-2026-10-23-15-01-02.png', 'pixels': [1920, 1080], 'error': ''}]
