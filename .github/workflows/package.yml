@@ -170,11 +170,15 @@ jobs:
           # The AppImage's GPL corresponding source includes the bundled distro source packages.
           printf 'Types: deb-src\nURIs: http://archive.ubuntu.com/ubuntu/\nSuites: noble noble-updates noble-security\nComponents: main restricted universe multiverse\nSigned-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\n' | sudo tee /etc/apt/sources.list.d/putgd-appimage-src.sources > /dev/null
           pkg_install
+      - name: The locked Qt version
+        # Renovate updates it in the lock (#420), where the AppImage tools read it too.
+        id: qt
+        run: echo "version=$(python3 -c 'import json; print(json.load(open("packaging/appimage/tools.lock.json"))["buildInputs"]["qt"])')" >> "$GITHUB_OUTPUT"
       - uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4.4.1
         env:
           LOG_CFG: ${{ github.workspace }}/tools/ci/aqt-logging.ini
         with:
-          version: '6.8.3'
+          version: ${{ steps.qt.outputs.version }}
           arch: linux_gcc_64
           modules: qtimageformats
           cache: true
