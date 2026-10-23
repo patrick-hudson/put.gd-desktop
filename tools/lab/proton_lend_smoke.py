@@ -3,6 +3,7 @@
 
   proton_lab.py lend RUN ... -- python3 tools/lab/proton_lend_smoke.py
   proton_lab.py lend RUN ... --guest-reference REF -- python3 tools/lab/proton_lend_smoke.py --revoke HISTORY_ID
+  proton_lab.py lend RUN ... -- python3 tools/lab/proton_lend_smoke.py --pictures   # plus guest screenshots
 
 The run's put.gd must be installed (lab.py install). With the borrowed keychain
 reference from PUTGD_LAB_PROTON_REFERENCE, it adds a Proton destination to the
@@ -181,6 +182,15 @@ PY
         detail = self.cli('history.detail', {'id': history_id})
         self.step('detail', detail={key: detail.get(key) for key in ('shareStatus', 'uploadStatus')})
 
+    def pictures(self):
+        """Evidence frames of the guest's own screen (a disposable VM): Settings with the lent
+        destination and its account, then History with the revoked link. The app keeps both open."""
+        for view in ('settings', 'history'):
+            self.cli('ui.show', {'view': view})
+            time.sleep(4)
+            frame = lab.screenshot(self.run, f'proton-{view}')
+            self.step('picture', view=view, path=frame['path'], sha256=frame['sha256'])
+
     def finish(self):
         try:
             self.cli('ui.quit')
@@ -208,6 +218,8 @@ def main():
             smoke.folder()
             smoke.upload()
             smoke.links()
+            if '--pictures' in sys.argv[1:]:
+                smoke.pictures()
         smoke.result['passed'] = True
     except (lab.LabError, KeyError, ValueError) as error:
         smoke.result['passed'] = False
