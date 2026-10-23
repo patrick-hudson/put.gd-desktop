@@ -5,14 +5,29 @@
     "Renovate changes versions only. Its post-upgrade task, tools/maintenance/refresh_pins.py, re-derives the URLs, SHA-256s and commits that go with them.",
     "Windows pins (the portable job's Qt, tools/ci/provision-portable-deps.sh) belong to the Windows rewrite and are not managed here."
   ],
-  "extends": ["config:recommended"],
-  "baseBranchPatterns": ["nightly"],
-  "enabledManagers": ["custom.regex", "npm", "pep621"],
-  "ignorePaths": ["docs/**", "tests/**", "**/node_modules/**", "packaging/flatpak/**"],
+  "extends": [
+    "config:recommended"
+  ],
+  "baseBranchPatterns": [
+    "nightly"
+  ],
+  "enabledManagers": [
+    "custom.regex",
+    "npm",
+    "pep621"
+  ],
+  "ignorePaths": [
+    "docs/**",
+    "tests/**",
+    "**/node_modules/**",
+    "packaging/flatpak/**"
+  ],
   "semanticCommits": "disabled",
   "commitMessagePrefix": "deps:",
   "commitMessageTopic": "{{depName}}",
-  "labels": ["dependencies"],
+  "labels": [
+    "dependencies"
+  ],
   "automerge": false,
   "platformAutomerge": false,
   "prConcurrentLimit": 5,
@@ -21,58 +36,90 @@
   "separateMajorMinor": true,
   "dependencyDashboard": true,
   "dependencyDashboardTitle": "Dependency updates (Renovate)",
-  "dependencyDashboardLabels": ["dependencies", "tracker"],
+  "dependencyDashboardLabels": [
+    "dependencies",
+    "tracker"
+  ],
   "dependencyDashboardHeader": "Self-hosted Renovate runs weekly from `.github/workflows/renovate.yml` and opens pull requests against `nightly`. Nothing merges automatically. Updates marked for approval are listed below until you tick them. See docs/ci.md, \"Dependency updates\".",
   "customManagers": [
     {
       "description": "Release-asset tools: linuxdeploy, its Qt plugin, appimagetool, the AppImage runtime, Syft and Grype.",
       "customType": "regex",
-      "managerFilePatterns": ["/^packaging/appimage/tools\\.lock\\.json$/", "/^packaging/sbom/tools\\.lock\\.json$/"],
-      "matchStrings": ["\"name\": \"(?<depName>[^\"]+)\",\\s*\"repository\": \"(?<packageName>[^\"]+)\",\\s*\"release\": \"(?<currentValue>[^\"]+)\""],
+      "managerFilePatterns": [
+        "/^packaging/appimage/tools\\.lock\\.json$/",
+        "/^packaging/sbom/tools\\.lock\\.json$/"
+      ],
+      "matchStrings": [
+        "\"name\": \"(?<depName>[^\"]+)\",\\s*\"repository\": \"(?<packageName>[^\"]+)\",\\s*\"release\": \"(?<currentValue>[^\"]+)\""
+      ],
       "datasourceTemplate": "github-releases"
     },
     {
       "description": "Sources the AppImage job builds or reads: the Qt modules' licence sources, LayerShellQt, ECM, QtKeychain, FFmpeg and ICU.",
       "customType": "regex",
-      "managerFilePatterns": ["/^packaging/appimage/tools\\.lock\\.json$/"],
-      "matchStrings": ["\"repository\": \"https://github\\.com/(?<depName>[^\"]+?)(?:\\.git)?\",\\s*\"release\": \"(?<currentValue>[^\"]+)\""],
+      "managerFilePatterns": [
+        "/^packaging/appimage/tools\\.lock\\.json$/"
+      ],
+      "matchStrings": [
+        "\"repository\": \"https://github\\.com/(?<depName>[^\"]+?)(?:\\.git)?\",\\s*\"release\": \"(?<currentValue>[^\"]+)\""
+      ],
       "datasourceTemplate": "github-tags"
     },
     {
       "description": "The official Qt binaries the AppImage bundles (aqt installs this version; the AppImage job reads it from the lock).",
       "customType": "regex",
-      "managerFilePatterns": ["/^packaging/appimage/tools\\.lock\\.json$/"],
-      "matchStrings": ["\"qt\": \"(?<currentValue>[^\"]+)\""],
+      "managerFilePatterns": [
+        "/^packaging/appimage/tools\\.lock\\.json$/"
+      ],
+      "matchStrings": [
+        "\"qt\": \"(?<currentValue>[^\"]+)\""
+      ],
       "depNameTemplate": "qt/qtbase",
       "datasourceTemplate": "github-tags"
     },
     {
       "description": "The AWS SDK for C++ release in the dependency lock.",
       "customType": "regex",
-      "managerFilePatterns": ["/^cmake/dependency-lock\\.json$/"],
-      "matchStrings": ["\"repository\": \"https://github\\.com/(?<depName>aws/aws-sdk-cpp)\\.git\",\\s*\"release\": \"(?<currentValue>[^\"]+)\""],
+      "managerFilePatterns": [
+        "/^cmake/dependency-lock\\.json$/"
+      ],
+      "matchStrings": [
+        "\"repository\": \"https://github\\.com/(?<depName>aws/aws-sdk-cpp)\\.git\",\\s*\"release\": \"(?<currentValue>[^\"]+)\""
+      ],
       "datasourceTemplate": "github-tags"
     },
     {
       "description": "The exact AWS SDK version CMake requires.",
       "customType": "regex",
-      "managerFilePatterns": ["/^cmake/Dependencies\\.cmake$/"],
-      "matchStrings": ["find_package\\(AWSSDK (?<currentValue>[0-9.]+) EXACT"],
+      "managerFilePatterns": [
+        "/^cmake/Dependencies\\.cmake$/"
+      ],
+      "matchStrings": [
+        "find_package\\(AWSSDK (?<currentValue>[0-9.]+) EXACT"
+      ],
       "depNameTemplate": "aws/aws-sdk-cpp",
       "datasourceTemplate": "github-tags"
     },
     {
       "description": "The Proton helper's Bun runtime and SDK as its runtime lock records them.",
       "customType": "regex",
-      "managerFilePatterns": ["/^tools/proton/runtime-lock\\.json$/"],
-      "matchStrings": ["\"sdkVersion\": \"(?<currentValue>[^\"]+)\""],
+      "managerFilePatterns": [
+        "/^tools/proton/runtime-lock\\.json$/"
+      ],
+      "matchStrings": [
+        "\"sdkVersion\": \"(?<currentValue>[^\"]+)\""
+      ],
       "depNameTemplate": "@protontech/drive-sdk",
       "datasourceTemplate": "npm"
     },
     {
       "customType": "regex",
-      "managerFilePatterns": ["/^tools/proton/runtime-lock\\.json$/"],
-      "matchStrings": ["\"bunVersion\": \"(?<currentValue>[^\"]+)\""],
+      "managerFilePatterns": [
+        "/^tools/proton/runtime-lock\\.json$/"
+      ],
+      "matchStrings": [
+        "\"bunVersion\": \"(?<currentValue>[^\"]+)\""
+      ],
       "depNameTemplate": "bun",
       "datasourceTemplate": "npm"
     }
@@ -80,93 +127,194 @@
   "packageRules": [
     {
       "description": "Version-only pins: re-derive their URLs, digests and commits.",
-      "matchManagers": ["custom.regex"],
-      "matchFileNames": ["packaging/appimage/tools.lock.json", "packaging/sbom/tools.lock.json", "cmake/dependency-lock.json", "cmake/Dependencies.cmake"],
+      "matchManagers": [
+        "custom.regex"
+      ],
+      "matchFileNames": [
+        "packaging/appimage/tools.lock.json",
+        "packaging/sbom/tools.lock.json",
+        "cmake/dependency-lock.json",
+        "cmake/Dependencies.cmake"
+      ],
       "postUpgradeTasks": {
-        "commands": ["python3 tools/maintenance/refresh_pins.py"],
-        "fileFilters": ["packaging/appimage/tools.lock.json", "packaging/sbom/tools.lock.json", "cmake/dependency-lock.json"],
+        "commands": [
+          "python3 tools/maintenance/refresh_pins.py"
+        ],
+        "fileFilters": [
+          "packaging/appimage/tools.lock.json",
+          "packaging/sbom/tools.lock.json",
+          "cmake/dependency-lock.json"
+        ],
         "executionMode": "branch"
       }
     },
     {
-      "matchPackageNames": ["linuxdeploy/linuxdeploy", "linuxdeploy/linuxdeploy-plugin-qt"],
+      "matchPackageNames": [
+        "linuxdeploy/linuxdeploy",
+        "linuxdeploy/linuxdeploy-plugin-qt"
+      ],
       "versioning": "regex:^(?<major>1)-alpha-(?<minor>\\d{8})-(?<patch>\\d+)$"
     },
     {
-      "matchPackageNames": ["AppImage/type2-runtime"],
+      "matchPackageNames": [
+        "AppImage/type2-runtime"
+      ],
       "versioning": "regex:^(?<major>\\d{8})$"
     },
     {
       "description": "AppImage packaging tools in one pull request.",
-      "matchPackageNames": ["linuxdeploy/linuxdeploy", "linuxdeploy/linuxdeploy-plugin-qt", "AppImage/appimagetool", "AppImage/type2-runtime"],
+      "matchPackageNames": [
+        "linuxdeploy/linuxdeploy",
+        "linuxdeploy/linuxdeploy-plugin-qt",
+        "AppImage/appimagetool",
+        "AppImage/type2-runtime"
+      ],
       "groupName": "AppImage tools",
-      "labels": ["dependencies", "area: packaging"],
-      "prBodyNotes": ["appimagetool carries the zsyncmake the AppImage job runs. When appimagetool changes, pin its digest in `zsyncmake.sha256` by hand: `./appimagetool-x86_64.AppImage --appimage-extract usr/bin/zsyncmake && sha256sum squashfs-root/usr/bin/zsyncmake`. The AppImage job fails with \"Bundled zsyncmake digest mismatch\" until then."]
+      "labels": [
+        "dependencies",
+        "area: packaging"
+      ],
+      "prBodyNotes": [
+        "appimagetool carries the zsyncmake the AppImage job runs. When appimagetool changes, pin its digest in `zsyncmake.sha256` by hand: `./appimagetool-x86_64.AppImage --appimage-extract usr/bin/zsyncmake && sha256sum squashfs-root/usr/bin/zsyncmake`. The AppImage job fails with \"Bundled zsyncmake digest mismatch\" until then."
+      ]
     },
     {
       "description": "Every Qt module at one version: the binaries (aqt) and their licence sources.",
-      "matchPackageNames": ["qt/**"],
+      "matchPackageNames": [
+        "qt/**"
+      ],
       "extractVersion": "^v(?<version>\\d+\\.\\d+\\.\\d+)$",
       "groupName": "Qt (AppImage)",
-      "labels": ["dependencies", "area: packaging"],
-      "prBodyNotes": ["The AppImage bundles these official Qt binaries. Check that the online installer serves this version (the AppImage job installs it with aqt) and that the ICU in `buildInputs.icu` is still the one these binaries ship; `appimage_notices.py` fails the job when it is not. The Windows job's Qt is the Windows rewrite's and is not changed here."]
+      "labels": [
+        "dependencies",
+        "area: packaging"
+      ],
+      "prBodyNotes": [
+        "The AppImage bundles these official Qt binaries. Check that the online installer serves this version (the AppImage job installs it with aqt) and that the ICU in `buildInputs.icu` is still the one these binaries ship; `appimage_notices.py` fails the job when it is not. The Windows job's Qt is the Windows rewrite's and is not changed here."
+      ]
     },
     {
       "description": "Qt's next minor or major release needs a decision, not a routine merge.",
-      "matchPackageNames": ["qt/**"],
-      "matchUpdateTypes": ["major", "minor"],
+      "matchPackageNames": [
+        "qt/**"
+      ],
+      "matchUpdateTypes": [
+        "major",
+        "minor"
+      ],
       "dependencyDashboardApproval": true
     },
     {
-      "matchPackageNames": ["KDE/**"],
+      "matchPackageNames": [
+        "KDE/**"
+      ],
       "extractVersion": "^v(?<version>\\d+\\.\\d+\\.\\d+)$",
       "groupName": "KDE frameworks (AppImage)",
-      "labels": ["dependencies", "area: packaging"]
+      "labels": [
+        "dependencies",
+        "area: packaging"
+      ]
     },
     {
-      "matchPackageNames": ["frankosterfeld/qtkeychain"],
+      "matchPackageNames": [
+        "frankosterfeld/qtkeychain"
+      ],
       "extractVersion": "^v?(?<version>\\d+\\.\\d+\\.\\d+)$",
-      "labels": ["dependencies", "area: packaging"]
+      "labels": [
+        "dependencies",
+        "area: packaging"
+      ]
     },
     {
       "description": "FFmpeg for the AppImage's recorder; a new major changes its sonames (build-appimage.sh checks libavcodec.so.61).",
-      "matchPackageNames": ["FFmpeg/FFmpeg"],
+      "matchPackageNames": [
+        "FFmpeg/FFmpeg"
+      ],
       "extractVersion": "^n(?<version>\\d+\\.\\d+(?:\\.\\d+)?)$",
-      "labels": ["dependencies", "area: packaging", "area: recording"]
+      "labels": [
+        "dependencies",
+        "area: packaging",
+        "area: recording"
+      ]
     },
     {
-      "matchPackageNames": ["FFmpeg/FFmpeg"],
-      "matchUpdateTypes": ["major", "minor"],
+      "matchPackageNames": [
+        "FFmpeg/FFmpeg"
+      ],
+      "matchUpdateTypes": [
+        "major",
+        "minor"
+      ],
       "dependencyDashboardApproval": true
     },
     {
       "description": "ICU is the build that ships with Qt's binaries; it changes with Qt, not on its own.",
-      "matchPackageNames": ["unicode-org/icu"],
+      "matchPackageNames": [
+        "unicode-org/icu"
+      ],
       "enabled": false
     },
     {
-      "matchPackageNames": ["aws/aws-sdk-cpp"],
+      "matchPackageNames": [
+        "aws/aws-sdk-cpp"
+      ],
       "groupName": "AWS SDK for C++",
-      "labels": ["dependencies", "area: packaging"],
-      "prBodyNotes": ["`refresh_pins.py` re-pins the SDK commit and its CRT submodules in `cmake/dependency-lock.json`; CI clones the release and verifies them with `tools/verify_dependencies.py`."]
+      "labels": [
+        "dependencies",
+        "area: packaging"
+      ],
+      "prBodyNotes": [
+        "`refresh_pins.py` re-pins the SDK commit and its CRT submodules in `cmake/dependency-lock.json`; CI clones the release and verifies them with `tools/verify_dependencies.py`."
+      ]
     },
     {
-      "matchPackageNames": ["anchore/syft", "anchore/grype"],
+      "matchPackageNames": [
+        "anchore/syft",
+        "anchore/grype"
+      ],
       "groupName": "SBOM scanners",
-      "labels": ["dependencies", "area: ci"]
+      "labels": [
+        "dependencies",
+        "area: ci"
+      ]
     },
     {
       "description": "The Proton helper ships its npm dependencies and Bun inside every package, with notices and a corresponding-source catalog that must be rebuilt by hand.",
-      "matchFileNames": ["tools/proton/**"],
+      "matchFileNames": [
+        "tools/proton/**"
+      ],
       "groupName": "Proton helper",
-      "labels": ["dependencies", "area: proton"],
+      "labels": [
+        "dependencies",
+        "area: proton"
+      ],
       "dependencyDashboardApproval": true,
-      "prBodyNotes": ["A Proton helper update is not complete as opened: re-run `tools/proton/provision_runtime.py`, then refresh `tools/proton/runtime-lock.json` (sourceReference for a new SDK), the notices and `tools/proton/notices/SOURCES.json` with the corresponding source (docs/proton-drive.md)."]
+      "prBodyNotes": [
+        "A Proton helper update is not complete as opened: re-run `tools/proton/provision_runtime.py`, then refresh `tools/proton/runtime-lock.json` (sourceReference for a new SDK), the notices and `tools/proton/notices/SOURCES.json` with the corresponding source (docs/proton-drive.md)."
+      ]
     },
     {
-      "matchManagers": ["pep621"],
+      "matchManagers": [
+        "pep621"
+      ],
       "groupName": "MCP helper (Python)",
-      "labels": ["dependencies", "area: lab"]
+      "labels": [
+        "dependencies",
+        "area: lab"
+      ]
+    },
+    {
+      "description": "Acceptance run: the AWS SDK group only.",
+      "matchPackageNames": [
+        "*"
+      ],
+      "enabled": false
+    },
+    {
+      "matchPackageNames": [
+        "aws/aws-sdk-cpp"
+      ],
+      "enabled": true
     }
   ]
 }

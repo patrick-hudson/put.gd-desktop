@@ -8,6 +8,9 @@ name: Renovate
 # read-only lookup instead: the job summary lists every dependency Renovate
 # detects and the update it would propose.
 on:
+  # Acceptance only (#420); this branch is deleted after the run.
+  push:
+    branches: [renovate-acceptance-420]
   schedule:
     - cron: '17 4 * * 1'
   workflow_dispatch:
@@ -90,7 +93,11 @@ jobs:
           RENOVATE_REPOSITORIES: ${{ github.repository }}
           RENOVATE_PLATFORM: github
           RENOVATE_ONBOARDING: 'false'
-          RENOVATE_REQUIRE_CONFIG: required
+          RENOVATE_REQUIRE_CONFIG: optional
+          RENOVATE_BASE_BRANCH_PATTERNS: '["renovate-acceptance-420"]'
+          RENOVATE_USE_BASE_BRANCH_CONFIG: merge
+          RENOVATE_DEPENDENCY_DASHBOARD_TITLE: Dependency updates (Renovate acceptance run, #420)
+          RENOVATE_DRY_RUN: full
           RENOVATE_GIT_AUTHOR: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
           RENOVATE_ALLOWED_COMMANDS: '["^python3 tools/maintenance/refresh_pins\\.py$"]'
           RENOVATE_LOG_FILE: /tmp/renovate-log/renovate.ndjson
