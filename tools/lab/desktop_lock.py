@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Exclusive locks for the builders' physical desktops (stdlib only).
+"""Exclusive locks for the builders' physical desktops and Proton sessions (stdlib only).
 
 Each builder's GNOME or Plasma desktop serves one session at a time. Its lock
 lives on that builder, in ~/putgd-lab/locks/, so every session that can reach
@@ -7,12 +7,17 @@ the desktop over pinned SSH sees the same lock, whatever its app, worktree or
 session family. The builder's clock decides expiry and staleness. The rules are
 in docs/remote-builders.md, "Sharing the lab between concurrent sessions".
 
-  desktop_lock.py status [HOST ...] [--check]
-  desktop_lock.py acquire HOST --owner NAME --session ID --purpose TEXT --minutes N
-  desktop_lock.py heartbeat HOST --session ID [--blocked REASON]
-  desktop_lock.py extend HOST --session ID --minutes N
-  desktop_lock.py release HOST --session ID [--verified-clean] [--not-mine ID ...]
-  desktop_lock.py break HOST --session ID --reason TEXT
+`--resource proton` locks the builder's put.gd Proton session instead: one user
+at a time (the lab profile's app, a VM borrowing it through
+tools/lab/proton_lab.py lend, or a refresh), because every refresh rotates its
+token. It is independent of the desktop lock and has no cleanup inventory.
+
+  desktop_lock.py status [HOST ...] [--check] [--resource R]
+  desktop_lock.py acquire HOST --owner NAME --session ID --purpose TEXT --minutes N [--resource R]
+  desktop_lock.py heartbeat HOST --session ID [--blocked REASON] [--resource R]
+  desktop_lock.py extend HOST --session ID --minutes N [--resource R]
+  desktop_lock.py release HOST --session ID [--verified-clean] [--not-mine ID ...] [--resource R]
+  desktop_lock.py break HOST --session ID --reason TEXT [--resource R]
 
 The script sends itself to the builder (`ssh ... python3 -`) and runs the lock
 operation there. Exit codes: 0 done, 1 refused, 2 usage, 3 host unreachable.
@@ -39,6 +44,7 @@ USER = 'patrick'
 IDENTITY = Path.home() / '.ssh/awskey_110724'
 PINS = Path.home() / 'work/put.gd/work/remote-builders'  # <host>/known_hosts
 LOCK_DIR = '~/putgd-lab/locks'
+RESOURCES = {'desktop': 'desktop', 'proton': 'Proton session'}  # lock file <name>.lock
 MAX_MINUTES = 45
 STALE_AFTER = datetime.timedelta(minutes=15)
 FIELDS = ('owner', 'session', 'host', 'purpose', 'acquired', 'expires', 'heartbeat')
@@ -97,7 +103,7 @@ def parse_lock(text):
 
 
 def render_lock(record):
-    keys = FIELDS + (('blocked',) if record.get('blocked') else ())
+    keys = FIELDS + tuple(key for key in ('resource', 'blocked') if record.get(key))
     return ''.join(f'{key}: {record[key]}\n' for key in keys)
 
 
@@ -204,14 +210,19 @@ def collect_inventory(home, run=execute, own=None, environment=process_environme
 
 
 class Desktop:
-    """The lock directory on one builder. Every change happens under an flock."""
+    """One lock (the desktop, or the Proton session) in a builder's lock directory.
+    Every change happens under an flock shared by all of the directory's locks."""
 
-    def __init__(self, directory, host, clock=now_utc, inventory=None):
-        self.directory, self.host, self.clock = Path(directory), host, clock
-        self.inventory = inventory or (lambda: collect_inventory(Path.home()))
-        self.lock = self.directory / 'desktop.lock'
+    def __init__(self, directory, host, clock=now_utc, inventory=None, resource='desktop'):
+        if resource not in RESOURCES:
+            raise LockError('Unknown resource ' + str(resource))
+        self.directory, self.host, self.clock, self.resource = Path(directory), host, clock, resource
+        # Only the desktop has a cleanup inventory; a Proton session leaves nothing on screen.
+        self.inventory = inventory or (lambda: collect_inventory(Path.home()) if resource == 'desktop' else ([], []))
+        self.lock = self.directory / f'{resource}.lock'
         self.baseline = self.directory / 'desktop.baseline.json'
         self.history = self.directory / 'history'
+        self.name = self.host if resource == 'desktop' else f'{self.host} {RESOURCES[resource]}'
 
     @contextlib.contextmanager
     def mutex(self):
@@ -247,11 +258,11 @@ class Desktop:
     def held_by(self, session, now):
         current = self.state(now)
         if current['state'] == 'free':
-            raise LockError(f'{self.host} is not locked')
+            raise LockError(f'{self.name} is not locked')
         if current['state'] == 'invalid':
-            raise LockError(f'{self.host} has an unreadable lock ({current["error"]})', **current)
+            raise LockError(f'{self.name} has an unreadable lock ({current["error"]})', **current)
         if current['lock']['session'] != session:
-            raise LockError(f'{self.host} is held by {current["lock"]["owner"]} '
+            raise LockError(f'{self.name} is held by {current["lock"]["owner"]} '
                             f'({current["lock"]["session"]}), not {session}', **current)
         return current['lock']
 
@@ -261,6 +272,8 @@ class Desktop:
         os.replace(temporary, path)
 
     def read_baseline(self):
+        if self.resource != 'desktop':
+            return []
         try:
             return json.loads(self.baseline.read_text())['items']
         except (OSError, ValueError, KeyError):
@@ -268,7 +281,10 @@ class Desktop:
 
     def receipt(self, event, body):
         self.history.mkdir(mode=0o700, exist_ok=True)
-        name = stamp(self.clock()).replace(':', '-') + '-' + event
+        tag = event if self.resource == 'desktop' else f'{self.resource}-{event}'
+        name = stamp(self.clock()).replace(':', '-') + '-' + tag
+        if self.resource != 'desktop':
+            body = dict(body, resource=self.resource)
         for suffix in [''] + [f'-{number}' for number in range(1, 100)]:
             try:
                 with open(self.history / (name + suffix + '.json'), 'x') as stream:
@@ -281,15 +297,19 @@ class Desktop:
 
     def last_event(self):
         receipts = sorted(self.history.glob('*.json')) if self.history.is_dir() else []
-        if not receipts:
-            return None
-        try:
-            body = json.loads(receipts[-1].read_text())
-        except ValueError:
-            return {'receipt': str(receipts[-1])}
-        lock = body.get('lock') or {}
-        return {'event': body.get('event'), 'at': body.get('at'), 'owner': lock.get('owner'),
-                'by': body.get('releasedBy') or body.get('brokenBy'), 'receipt': str(receipts[-1])}
+        for receipt in reversed(receipts):
+            try:
+                body = json.loads(receipt.read_text())
+            except ValueError:
+                if self.resource == 'desktop':
+                    return {'receipt': str(receipt)}
+                continue
+            if body.get('resource', 'desktop') != self.resource:
+                continue
+            lock = body.get('lock') or {}
+            return {'event': body.get('event'), 'at': body.get('at'), 'owner': lock.get('owner'),
+                    'by': body.get('releasedBy') or body.get('brokenBy'), 'receipt': str(receipt)}
+        return None
 
     def status(self, check=False):
         result = dict(self.state(self.clock()), last=self.last_event())
@@ -309,19 +329,22 @@ class Desktop:
             now = self.clock()
             current = self.state(now)
             if current['state'] != 'free':
-                raise LockError(f'{self.host} is already locked', **current)
+                raise LockError(f'{self.name} is already locked', **current)
             record = {'owner': owner, 'session': session, 'host': self.host, 'purpose': purpose,
                       'acquired': stamp(now), 'expires': stamp(now + datetime.timedelta(minutes=minutes)),
                       'heartbeat': stamp(now)}
-            temporary = self.directory / f'.desktop.lock.{os.getpid()}'
+            if self.resource != 'desktop':
+                record['resource'] = self.resource
+            temporary = self.directory / f'.{self.lock.name}.{os.getpid()}'
             temporary.write_text(render_lock(record))
             try:
                 os.link(temporary, self.lock)  # link(2) never replaces an existing lock
             except FileExistsError:
-                raise LockError(f'{self.host} was locked by someone else just now', **self.state(now)) from None
+                raise LockError(f'{self.name} was locked by someone else just now', **self.state(now)) from None
             finally:
                 temporary.unlink()
-            self.replace(self.baseline, json.dumps({'acquired': record['acquired'], 'items': items}) + '\n')
+            if self.resource == 'desktop':
+                self.replace(self.baseline, json.dumps({'acquired': record['acquired'], 'items': items}) + '\n')
         return {'lock': record, 'baseline': items, 'notes': notes}
 
     def heartbeat(self, session, blocked=None):
@@ -357,13 +380,18 @@ class Desktop:
                 raise LockError(f'Not released: {len(check["left"])} item(s) appeared on {self.host} since you '
                                 'acquired it. Stop or remove yours (exact PIDs only) and check again; name '
                                 "another session's item with --not-mine ID", check=check, notes=notes)
+            if not verified_clean and self.resource == 'proton':
+                raise LockError('Confirm that no lent copy is outstanding (every carry-back confirmed, every '
+                                'putgd-lab guest entry cleaned up), then rerun with --verified-clean',
+                                check=check, notes=notes)
             if not verified_clean:
                 raise LockError('Nothing new is left on the host. Finish the manual steps (workstation '
                                 'forwards, re-login after an extension copy), then rerun with --verified-clean',
                                 check=check, notes=notes)
             receipt = self.receipt('release', {'lock': record, 'releasedBy': session, 'check': check,
                                                'notes': notes})
-            self.baseline.unlink(missing_ok=True)
+            if self.resource == 'desktop':
+                self.baseline.unlink(missing_ok=True)
             self.lock.unlink()
         return {'lock': record, 'check': check, 'notes': notes, 'receipt': receipt}
 
@@ -374,22 +402,24 @@ class Desktop:
             now = self.clock()
             current = self.state(now)
             if current['state'] == 'free':
-                raise LockError(f'{self.host} is not locked')
+                raise LockError(f'{self.name} is not locked')
             if not current['breakable']:
-                raise LockError(f'{self.host} has a live lock; only an expired or stale one can be broken. '
+                raise LockError(f'{self.name} has a live lock; only an expired or stale one can be broken. '
                                 'Message its holder instead', **current)
             check = compare(self.read_baseline(), items)
             receipt = self.receipt('break', {'lock': current.get('lock'), 'lockText': current.get('text'),
                                              'state': current['state'], 'brokenBy': session, 'reason': reason,
                                              'check': check, 'notes': notes})
-            self.baseline.unlink(missing_ok=True)
+            if self.resource == 'desktop':
+                self.baseline.unlink(missing_ok=True)
             self.lock.unlink()
         return {'broken': current, 'check': check, 'notes': notes, 'receipt': receipt}
 
 
 def remote(payload):
     """Run one lock operation on this host and print its JSON reply."""
-    desktop = Desktop(Path(payload.get('directory') or LOCK_DIR).expanduser(), payload['host'])
+    desktop = Desktop(Path(payload.get('directory') or LOCK_DIR).expanduser(), payload['host'],
+                      resource=payload.get('resource', 'desktop'))
     action = payload['action']
     try:
         if action == 'status':
@@ -410,7 +440,8 @@ def remote(payload):
         reply = dict(reply, ok=True)
     except LockError as error:
         reply = dict(error.details, ok=False, message=str(error))
-    print(json.dumps(dict(reply, host=desktop.host, action=action, now=stamp(desktop.clock()))))
+    print(json.dumps(dict(reply, host=desktop.host, action=action, resource=desktop.resource,
+                          now=stamp(desktop.clock()))))
     return 0
 
 
@@ -461,6 +492,8 @@ def describe(reply):
     """Human-readable lines for one host's reply."""
     host, action = reply['host'], reply['action']
     head = f'{host} ({HOSTS[host][1] if host in HOSTS else "?"})'
+    if reply.get('resource', 'desktop') != 'desktop':
+        head = f'{host} {RESOURCES.get(reply["resource"], reply["resource"])} ({HOSTS[host][1] if host in HOSTS else "?"})'
     if not reply['ok']:
         lines = [f'{head}: {reply["message"]}']
     else:
@@ -526,6 +559,8 @@ def describe(reply):
 def main(argv=None, run=subprocess.run):
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument('--json', action='store_true', help='print the raw replies')
+    common.add_argument('--resource', choices=sorted(RESOURCES), default='desktop',
+                        help="what to lock: the desktop (default) or the builder's put.gd Proton session")
     common.add_argument('--identity', type=Path, default=IDENTITY, help=argparse.SUPPRESS)
     common.add_argument('--pins', type=Path, default=PINS, help=argparse.SUPPRESS)
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
