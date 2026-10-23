@@ -1,5 +1,6 @@
 #pragma once
 #include "core/StorageProvider.h"
+#include <QProcessEnvironment>
 #include <atomic>
 namespace putgd {
 class ProtonProvider final : public StorageProvider {
@@ -22,6 +23,10 @@ public:
  void reconcile(const UploadRequest&,std::function<void(StatResult)>) override;
  void remove(const DeleteRequest&,DurableCheckpoint,std::function<void(DeleteResult)>) override;
  void share(const ShareRequest&,DurableCheckpoint,std::function<void(ShareResult)>) override;
+ // The helper's environment: the host's, as AppRun found it (#518). The helper is a self-contained
+ // Bun program that loads the host libsecret; an AppImage's library path would bind that to the
+ // image's older GLib. Caller-set Proton variables never reach it.
+ static QProcessEnvironment helperEnvironment(const QProcessEnvironment& host,const QString& dataDirectory);
  // Explicit account actions run on the application worker, never during validation.
  QJsonObject setup(const QString&,const Destination&,const QJsonObject&,Error&,SetupEvent={});
 private:

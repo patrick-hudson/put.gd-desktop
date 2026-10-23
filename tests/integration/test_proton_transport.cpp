@@ -4,6 +4,7 @@
 #include <QJsonDocument>
 #include "storage/proton/OutputBudget.h"
 #include "storage/proton/ProtonProvider.h"
+#include "core/HostEnvironment.h"
 #include <QCoreApplication>
 #include <QCryptographicHash>
 #include <QDir>
@@ -28,6 +29,30 @@ class ProtonTransportTest:public QObject {
   req.progress=std::move(progress);UploadResult result;provider.upload(req,[&](UploadResult r){result=r;});return result;
  }
 private slots:
+ // #518: inside an AppImage the helper got AppRun's library path, so the host libsecret it loads
+ // bound to the image's older GLib and every keychain call failed (Debian 13, Ubuntu 26.04).
+ void helperGetsTheHostEnvironmentNotTheAppImages(){
+  QProcessEnvironment current;const QString mount="/tmp/.mount_putgdSynthetic";
+  current.insert("APPDIR",mount);current.insert("APPIMAGE","/home/synthetic/putgd.AppImage");
+  current.insert("LD_LIBRARY_PATH",mount+"/usr/lib:"+mount+"/usr/lib/putgd");
+  current.insert("QT_PLUGIN_PATH",mount+"/usr/plugins:"+mount+"/usr/lib/qt6/plugins");
+  current.insert("PUTGD_HOST_ENVIRONMENT","LD_LIBRARY_PATH QT_PLUGIN_PATH");
+  current.insert("DBUS_SESSION_BUS_ADDRESS","unix:path=/run/user/1000/bus");
+  current.insert("PROTON_DRIVE_SYNTHETIC","1");current.insert("PUTGD_PROTON_DATA_DIR","/synthetic/elsewhere");
+  auto env=ProtonProvider::helperEnvironment(host::environment({current,{},{}}),"/tmp/putgd-proton-synthetic");
+  for(const auto* key:{"LD_LIBRARY_PATH","QT_PLUGIN_PATH","APPDIR","APPIMAGE","PUTGD_HOST_ENVIRONMENT","PROTON_DRIVE_SYNTHETIC"})
+   QVERIFY2(!env.contains(key),key);
+  QCOMPARE(env.value("DBUS_SESSION_BUS_ADDRESS"),QString("unix:path=/run/user/1000/bus"));
+  QCOMPARE(env.value("PUTGD_PROTON_DATA_DIR"),QString("/tmp/putgd-proton-synthetic"));
+  // The host's own library path, as AppRun saved it, comes back.
+  current.insert("PUTGD_HOST_LD_LIBRARY_PATH","/opt/synthetic-host/lib");
+  env=ProtonProvider::helperEnvironment(host::environment({current,{},{}}),"/tmp/putgd-proton-synthetic");
+  QCOMPARE(env.value("LD_LIBRARY_PATH"),QString("/opt/synthetic-host/lib"));
+  // A DEB, RPM or development build passes its environment on unchanged.
+  QProcessEnvironment native;native.insert("LD_LIBRARY_PATH","/opt/synthetic-dev/lib");
+  QCOMPARE(ProtonProvider::helperEnvironment(host::environment({native,{},{}}),"/d").value("LD_LIBRARY_PATH"),
+           QString("/opt/synthetic-dev/lib"));
+ }
  void connectionTestValidatesAccountAndSelectedFolder_data(){
   QTest::addColumn<QString>("root");QTest::addColumn<QString>("folder");QTest::addColumn<QString>("fixture");QTest::addColumn<QString>("expected");
   QTest::newRow("top-level-folder")<<"synthetic-root"<<"synthetic-folder"<<"inspect-account"<<"";
