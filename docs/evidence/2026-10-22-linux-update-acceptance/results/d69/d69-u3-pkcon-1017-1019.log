@@ -1,0 +1,14 @@
+### why pkcon: GNOME Software applies this update only inside a whole-system offline update (coordinator decision, no broad upgrades); pkcon is its PackageKit back end
+### before: 26.1022.1017~nightly
+### sudo pkcon refresh
+ Enabled                              https://pkg.put.gd/apt/debian13 nightly InRelease
+### sudo pkcon update -y putgd
+Package:	putgd-26.1022.1019~nightly.amd64
+Results:
+             putgd-26.1022.1019~nightly.amd64 (put_gd-nightly-main)
+             putgd-26.1022.1019~nightly.amd64 (put_gd-nightly-main)
+Installed    putgd-26.1022.1019~nightly.amd64 (put_gd-nightly-main)
+             putgd-26.1022.1019~nightly.amd64 (put_gd-nightly-main)
+Installed    putgd-26.1022.1019~nightly.amd64 (put_gd-nightly-main)
+rc=0
+### after: 26.1022.1019~nightly

@@ -1,0 +1,35 @@
+sched setup 26.1022.1017-nightly nightly
+sched watch 2487573 2026-10-23T00:05:02Z
+resident not ready (setup); see logs/launch-setup.log
+resident not ready (u7-zs-1-start); see logs/launch-u7-zs-1-start.log
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import json,sys; d=json.load(sys.stdin); v=list(d.values())[0] if len(d)==1 else d; print('zs start', v['status']['build'], v['status']['latest'])
+                       ~~~~~~~~~^^^^^^^^^^^
+  File "/usr/lib/python3.13/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+        cls=cls, object_hook=object_hook,
+        parse_float=parse_float, parse_int=parse_int,
+        parse_constant=parse_constant, object_pairs_hook=object_pairs_hook, **kw)
+  File "/usr/lib/python3.13/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/usr/lib/python3.13/json/decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/json/decoder.py", line 363, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+zs check 26.1022.1019-nightly True True
+zs install installed zsync True 9.8 e5b7ad2caeca ['.putgd-update-backup-26.1022.1017-nightly.AppImage', 'putgd-26.1022.1017-nightly-x86_64.AppImage']
+zs restart None /home/patrick/work/put.gd-ua/app/runs/d69-zs/apps/putgd-26.1022.1017-nightly-x86_64.AppImage {'current': None, 'latest': None, 'updateAvailable': None} ['putgd-26.1022.1017-nightly-x86_64.AppImage'] None
+zs cleanup True
+resident not ready (setup); see logs/launch-setup.log
+resident not ready (u7-cr-1-start); see logs/launch-u7-cr-1-start.log
+cr install installed download crashed 8.5 e5b7ad2caeca
+cr refuse restart {'ok': False, 'error': {'code': 'update_restart_required', 'details': {'installed': '26.1022.1019-nightly'}, 'message': 'Restart put.gd to finish the update that is already installed'}} True False
+cr restart None {'current': None, 'latest': None, 'updateAvailable': None} ['putgd-26.1022.1017-nightly-x86_64.AppImage']
+cr cleanup True
+resident not ready (setup); see logs/launch-setup.log
+aut 1 0 3.7 {'putgd-26.1022.1019-nightly-x86_64.AppImage': 'e5b7ad2caecaa7f5737bdfb5d2f0fd4e3c74ce5d98a8a68142caf4efd43525bc'} {'putgd-26.1022.1019-nightly-x86_64.AppImage': True} True zsync2: Using CA bundle found on system: /etc/ssl/certs/ca-certificates.crt 
+aut cleanup True

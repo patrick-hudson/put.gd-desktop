@@ -1,0 +1,76 @@
+{
+ "name": "f44-aut",
+ "tool": null,
+ "live": true,
+ "image": "/home/patrick/work/put.gd-ua/app/runs/f44-aut/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+ "imageSha256": "005762e9ede991c78fce115707a41617d899d7870738fb525151c182357b7c3a",
+ "cliDir": "/home/patrick/work/put.gd-ua/app/runs/f44-aut/cli/squashfs-root",
+ "runtime": "/tmp/ua-app.XBNrWv",
+ "session": {
+  "HOME": "/home/patrick",
+  "PATH": "/home/patrick/.local/bin:/home/patrick/bin:/usr/lib64/ccache:/usr/local/bin:/usr/bin",
+  "USER": "patrick",
+  "LANG": "en_US.UTF-8",
+  "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus",
+  "XDG_SESSION_TYPE": "wayland",
+  "XDG_CURRENT_DESKTOP": "GNOME",
+  "XDG_SESSION_DESKTOP": "gnome",
+  "DESKTOP_SESSION": "gnome",
+  "XDG_DATA_DIRS": "/home/patrick/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share/:/usr/share/",
+  "WAYLAND_DISPLAY": "/run/user/1000/wayland-0",
+  "DISPLAY": ":0",
+  "XAUTHORITY": "/run/user/1000/.mutter-Xwaylandauth.4MMJX3"
+ },
+ "shell": "gnome-shell",
+ "hostPath": "/home/patrick/.local/bin:/home/patrick/bin:/usr/lib64/ccache:/usr/local/bin:/usr/bin",
+ "host": "fedora",
+ "vnc": 5901,
+ "urls": {},
+ "input": "uinput",
+ "before": {
+  "dataPutgd": true,
+  "homePutgd": {
+   "/home/patrick/.config/putgd": false,
+   "/home/patrick/.local/state/putgd": true,
+   "/home/patrick/.cache/putgd": false
+  },
+  "autostart": []
+ },
+ "pids": {
+  "apprun": 3045294
+ },
+ "created": "2026-10-23T00:12:53Z",
+ "log": [
+  {
+   "at": "2026-10-23T00:13:58Z",
+   "appimageupdatetool": {
+    "tool": "appimageupdatetool-x86_64.AppImage",
+    "toolSha256": "8d17a50e2f7502edacab48216d1b491de3669935858591ea0026cc2db375967c",
+    "sslCertFile": "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem",
+    "check": {
+     "exit": 1,
+     "output": "zsync2: Using CA bundle found on system: /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem\n"
+    },
+    "update": {
+     "exit": 0,
+     "seconds": 2.5,
+     "output": "Checking for updates...\nzsync2: Using CA bundle found on system: /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem\n... done!\n\nUpdating from generic server via ZSync\nzsync2: Using CA bundle found on system: /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem\n\u001b[2K\n0% done\nzsync2: Target file: /home/patrick/work/put.gd-ua/app/runs/f44-aut/apps/putgd-26.1022.1019-nightly-x86_64.AppImage\nzsync2: Reading seed file: /home/patrick/work/put.gd-ua/app/runs/f44-aut/apps/putgd-26.1022.1017-nightly-x86_64.AppImage\n\u001b[2K\n12.253% done (13.47 of 109.92 MiB)...\u001b[2K\n39.88% done (43.84 of 109.92 MiB)...\u001b[2K\n68.07% done (74.83 of 109.92 MiB)...\u001b[2K\n95.04% done (104.47 of 109.92 MiB)...\nzsync2: Usable data from seed files: 99.705046%\nzsync2: Renaming temp file\nzsync2: Fetching remaining blocks\n\u001b[2K\n99.71% done (109.60 of 109.92 MiB)...\nzsync2: Downloading from https://pkg.put.gd/releases/v26.1022.1019-nightly/putgd-26.1022.1019-nightly-x86_64.AppImage\nzsync2: optimized ranges, old requests count 26, new requests count 12\n\n\u001b[2K\n99.71% done (109.60 of 109.92 MiB)...\u001b[2K\n99.74% done (109.63 of 109.92 MiB)...\u001b[2K\n99.83% done (109.74 of 109.92 MiB)...\u001b[2K\n99.95% done (109.86 of 109.92 MiB)...\nzsync2: Verifying downloaded file\n\u001b[2K\n100.00% done (109.92 of 109.92 MiB)...\u001b[2K\n100.00% done (109.92 of 109.92 MiB)...\u001b[2K\n100.00% done (109.92 of 109.92 MiB)...\nzsync2: checksum matches OK\nzsync2: used 114921472 local, fetched 1071608\n\u001b[2K\n100.00% done (109.92 of 109.92 MiB)...\nStarting update...\nValidation warning: AppImage not signed\nUpdate successful. New file created: /home/patrick/work/put.gd-ua/app/runs/f44-aut/apps/putgd-26.1022.1019-nightly-x86_64.AppImage\n"
+    },
+    "before": [
+     "putgd-26.1022.1017-nightly-x86_64.AppImage"
+    ],
+    "after": [
+     "putgd-26.1022.1017-nightly-x86_64.AppImage",
+     "putgd-26.1022.1019-nightly-x86_64.AppImage"
+    ],
+    "new": {
+     "putgd-26.1022.1019-nightly-x86_64.AppImage": "e5b7ad2caecaa7f5737bdfb5d2f0fd4e3c74ce5d98a8a68142caf4efd43525bc"
+    },
+    "matchesSums": {
+     "putgd-26.1022.1019-nightly-x86_64.AppImage": true
+    },
+    "oldUnchanged": true
+   }
+  }
+ ]
+}

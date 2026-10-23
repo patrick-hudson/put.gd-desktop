@@ -1,0 +1,13 @@
+### back to N: sudo apt-get install -y --allow-downgrades ./putgd-26.1022.1017-nightly-debian13-x86_64.deb
+No VM guests are running outdated hypervisor (qemu) binaries on this host.
+putgd	26.1022.1017~nightly
+### U2: sudo apt update && sudo apt install --only-upgrade putgd
+Hit:6 https://pkg.put.gd/apt/debian13 nightly InRelease
+The following packages will be upgraded:
+  putgd
+1 upgraded, 0 newly installed, 0 to remove and 76 not upgraded.
+Preparing to unpack .../putgd_26.1022.1019~nightly_amd64.deb ...
+Unpacking putgd (26.1022.1019~nightly) over (26.1022.1017~nightly) ...
+Setting up putgd (26.1022.1019~nightly) ...
+putgd	26.1022.1019~nightly
+11b30f1c9733

@@ -1,0 +1,3 @@
+{"staged": "/home/patrick/work/put.gd-ua/labstate/stage/lab/stable/v26.1021.1023", "tag": "v26.1021.1023", "next": "python3 tools/releases/sign_stable.py on the workstation"}
+{"receipt": "/home/patrick/work/put.gd-ua/labstate/receipts/lab/v26.1021.1023.json", "tag": "v26.1021.1023", "result": "published", "error": null}
+{"tag": "v26.1021.1023", "version": "26.1021.1023", "publishedAt": "2026-10-23T01:20:32Z"}
