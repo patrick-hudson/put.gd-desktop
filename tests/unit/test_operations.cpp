@@ -43,6 +43,32 @@ public:
   if(pending)std::exchange(pending,{})({"copy_suppressed","Synthetic unsent native commit cancelled",{}});
  }
 };
+// A destination whose link comes from a separate sharing step after the
+// transfer, as Proton Drive's does (#478): uploads of `shareLater` names (or
+// all of them) return no link, and share() waits until the test releases it.
+class LateLinkProvider final:public StorageProvider {
+public:
+ OpaqueProvider storage;bool shareAll=false;QSet<QString> shareLater;QObject* dispatcher=nullptr;QList<std::function<void()>> shares;
+ ProviderCapabilities capabilities(const Destination& d) const override {auto c=storage.capabilities(d);c.sharing=true;return c;}
+ int maximumConcurrentRequests(const Destination& d) const override {return storage.maximumConcurrentRequests(d);}
+ QString serializationKey(const Destination& d,const QJsonObject& o,const QString& n) const override {return storage.serializationKey(d,o,n);}
+ Error validateSettings(const QJsonObject& s) const override {return storage.validateSettings(s);}
+ void checkName(const Destination& d,const QString& n,std::function<void(NameCheck)> cb) override {storage.checkName(d,n,cb);}
+ void upload(const UploadRequest& r,std::function<void(UploadResult)> cb) override {
+  const bool late=shareAll||shareLater.contains(r.candidate);
+  storage.upload(r,[late,cb](UploadResult result){if(late)result.receipt.directUrl.clear();cb(result);});
+ }
+ void stat(const StorageReceipt& r,std::function<void(StatResult)> cb) override {storage.stat(r,cb);}
+ void reconcile(const UploadRequest& r,std::function<void(StatResult)> cb) override {storage.reconcile(r,cb);}
+ void remove(const DeleteRequest& r,DurableCheckpoint d,std::function<void(DeleteResult)> cb) override {storage.remove(r,d,cb);}
+ void share(const ShareRequest& r,DurableCheckpoint durable,std::function<void(ShareResult)> cb) override {
+  durable({{"schemaVersion",1},{"phase","intent"}},[this,r,cb](Error e){
+   if(e){cb({"failed",r.receipt,{},e});return;}
+   auto complete=[r,cb]{auto receipt=r.receipt;receipt.directUrl="https://example.invalid/shared#"+r.receipt.publicationId;cb({"shared",receipt,{},{}});};
+   QMetaObject::invokeMethod(dispatcher,[this,complete]{shares.append(complete);},Qt::QueuedConnection);
+  });
+ }
+};
 class OperationsTest:public QObject {
  Q_OBJECT
 private slots:
@@ -1286,6 +1312,46 @@ private slots:
   finish("batch-2.txt");PUTGD_TRY_COMPARE(journal.operation(id).copyStatus,QString("copied"));
   const auto op=journal.operation(id);QCOMPARE(op.state,QString("completed"));QStringList expected;for(const auto& item:op.items)expected.append(item.receipt.directUrl);
   QCOMPARE(source.copiedTexts,expected);
+ }
+ // #478: Proton Drive's link arrives from the sharing step, after the file's
+ // transfer has settled. each_link must still copy it.
+ void linkThatFollowsTheTransferIsCopied() {
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<LateLinkProvider>();provider->dispatcher=this;provider->shareAll=true;registry.add("opaque",provider);
+  SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));
+  Source source;source.payload=textPayload();OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());HistoryStore journal(operations.databasePath());
+  auto drain=qScopeGuard([&]{(void)putgd::test::waitFor([&]{while(!provider->shares.isEmpty())provider->shares.takeFirst()();return operations.diagnostics()["activeOperations"].toInt()==0;},10000);});
+  QString id;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});
+  // The transfer has ended without a link; the sharing step is still running.
+  PUTGD_TRY_COMPARE(provider->shares.size(),1);
+  {const auto op=journal.operation(id);QCOMPARE(op.items[0].uploadStatus,QString("uploaded"));QVERIFY(op.items[0].receipt.directUrl.isEmpty());QCOMPARE(op.copyStatus,QString("pending"));}
+  PUTGD_COMPARE_STEADY(source.copies,0,100);
+  provider->shares.takeFirst()();
+  PUTGD_TRY_COMPARE(journal.operation(id).copyStatus,QString("copied"));
+  const auto op=journal.operation(id);QCOMPARE(op.state,QString("completed"));QCOMPARE(op.items[0].shareStatus,QString("shared"));QVERIFY(!op.error);
+  QCOMPARE(source.copies,1);QVERIFY(op.items[0].receipt.directUrl.startsWith("https://example.invalid/shared#"));QCOMPARE(source.copied.text,op.items[0].receipt.directUrl);
+ }
+ // #478: file 1's link comes with its upload, file 0's only from sharing. The
+ // batch still copies in source order, so the clipboard ends on the last file.
+ void earlierFileLinkFromSharingStillCopiesFirst() {
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<LateLinkProvider>();provider->dispatcher=this;provider->storage.dispatcher=this;provider->storage.deferUploads=true;provider->storage.concurrency=8;provider->shareLater={"late-0.txt"};registry.add("opaque",provider);
+  SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});auto doc=configuration(d.path());auto limits=doc["limits"].toObject();limits["concurrentUploads"]=2;doc["limits"]=limits;QVERIFY(settings.save(doc,{}));
+  Source source;source.payload.kind="files";for(int i=0;i<2;++i)source.payload.files.append(fixture(d.path(),QString("late-%1.txt").arg(i),QByteArray("synthetic late link ")+QByteArray::number(i)));
+  OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());HistoryStore journal(operations.databasePath());
+  auto drain=qScopeGuard([&]{provider->storage.deferUploads=false;(void)putgd::test::waitFor([&]{while(!provider->storage.completions.isEmpty())provider->storage.completions.takeFirst()();while(!provider->shares.isEmpty())provider->shares.takeFirst()();return operations.diagnostics()["activeOperations"].toInt()==0;},10000);});
+  auto pending=[&]{QStringList names;for(const auto& request:provider->storage.requests)names.append(request.candidate);return names;};
+  auto finish=[&](const QString& name){const auto index=pending().indexOf(name);QVERIFY2(index>=0,qPrintable(name));provider->storage.requests.removeAt(index);provider->storage.completions.takeAt(index)();};
+  QString id;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});
+  PUTGD_TRY_COMPARE(provider->storage.completions.size(),2);
+  // The second file finishes first, link included: it waits for the first.
+  finish("late-1.txt");PUTGD_COMPARE_STEADY(source.copies,0,100);
+  // The first file's transfer ends without a link; its sharing step is pending.
+  finish("late-0.txt");PUTGD_TRY_COMPARE(provider->shares.size(),1);
+  PUTGD_TRY_COMPARE(journal.operation(id).items[0].uploadStatus,QString("uploaded"));PUTGD_COMPARE_STEADY(source.copies,0,100);
+  provider->shares.takeFirst()();
+  PUTGD_TRY_COMPARE(journal.operation(id).copyStatus,QString("copied"));
+  const auto op=journal.operation(id);QCOMPARE(op.state,QString("completed"));QStringList expected;for(const auto& item:op.items)expected.append(item.receipt.directUrl);
+  QVERIFY(expected[0].startsWith("https://example.invalid/shared#"));QVERIFY(expected[1].startsWith("https://example.invalid/direct?"));
+  QCOMPARE(source.copiedTexts,expected);QCOMPARE(source.copied.text,expected[1]);
  }
  void oneFailureLeavesTheRestOfTheBatch() {
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->concurrency=8;provider->failCandidates={"mixed-1.txt"};registry.add("opaque",provider);
