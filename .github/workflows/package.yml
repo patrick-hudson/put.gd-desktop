@@ -19,6 +19,8 @@ jobs:
     name: native (${{ matrix.name }})
     runs-on: ubuntu-24.04
     container: ${{ matrix.image }}
+    # Normally 8-17 minutes. Above four stopped install attempts plus the snapshot fallback (#467).
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
@@ -41,13 +43,16 @@ jobs:
             kde: --require-kde
     steps:
       - name: Bootstrap checkout tools
-        # tools/ci/install-packages.sh is not checked out yet: the same bounded retry, inline (#368).
+        # tools/ci/install-packages.sh is not checked out yet: the same bounded retry, inline (#368),
+        # each attempt stopped after 10 minutes (#467).
         run: |
+          apt=(-o Acquire::Retries=3 -o Acquire::http::Timeout=60 -o Acquire::https::Timeout=60)
+          bounded() { timeout --kill-after=30s 10m "$@"; }
           for attempt in 1 2 3; do
             if command -v apt-get >/dev/null; then
-              apt-get update --error-on=any -o Acquire::Retries=3 && apt-get install -y -o Acquire::Retries=3 git ca-certificates && exit 0
+              bounded apt-get update --error-on=any "${apt[@]}" && bounded apt-get install -y "${apt[@]}" git ca-certificates && exit 0
             else
-              dnf install -y --setopt=retries=10 $([ "$attempt" = 1 ] || echo --refresh) git ca-certificates && exit 0
+              bounded dnf install -y --setopt=retries=10 --setopt=timeout=60 --setopt=minrate=1000 $([ "$attempt" = 1 ] || echo --refresh) git ca-certificates && exit 0
             fi
             echo "::warning::Package install (bootstrap): attempt $attempt of 3 failed"
             [ "$attempt" != 1 ] || printf '### Package install retries (native (%s) bootstrap)\n\n| Attempt | Outcome |\n| --- | --- |\n' '${{ matrix.name }}' >> "$GITHUB_STEP_SUMMARY"
@@ -98,6 +103,7 @@ jobs:
           key: ${{ steps.sdk-key.outputs.key }}
       - name: Verify pinned SDK source
         # Packages ship the SDK licenses and the source export rebuilds against this tree.
+        timeout-minutes: 20
         run: bash tools/ci/sdk-source.sh
       - name: Verify restored prefix
         if: steps.sdk-cache.outputs.cache-hit == 'true'
@@ -115,6 +121,7 @@ jobs:
             build/sdk-cache.json
           key: ${{ steps.sdk-key.outputs.key }}
       - name: Provision pinned Proton helper
+        timeout-minutes: 15
         env:
           # npm's own per-request retries for registry errors (#368); #332's exit 152 is a CPU-time kill, not this.
           npm_config_fetch_retries: '5'
@@ -152,6 +159,8 @@ jobs:
 
   appimage:
     runs-on: ubuntu-24.04
+    # Normally 13 minutes; a slow Azure mirror made it 26-128 minutes on 2026-10-22 (#467).
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -160,10 +169,13 @@ jobs:
       - name: Standard build dependencies
         env:
           PUTGD_PKG_LABEL: appimage
+          # The runner's mirror is sometimes slow but moving: let an attempt run 30 minutes,
+          # and the next one resumes the downloads (#467).
+          PUTGD_PKG_TIMEOUT: '1800'
         run: |
           # Retried package installs (#368); sudo keeps the summary file for the retry report.
-          pkg_install() { sudo --preserve-env=GITHUB_STEP_SUMMARY,PUTGD_PKG_LABEL bash tools/ci/install-packages.sh "$@"; }
-          sudo --preserve-env=GITHUB_STEP_SUMMARY,PUTGD_PKG_LABEL bash tools/releases/install-native-deps.sh
+          pkg_install() { sudo --preserve-env=GITHUB_STEP_SUMMARY,PUTGD_PKG_LABEL,PUTGD_PKG_TIMEOUT bash tools/ci/install-packages.sh "$@"; }
+          sudo --preserve-env=GITHUB_STEP_SUMMARY,PUTGD_PKG_LABEL,PUTGD_PKG_TIMEOUT bash tools/releases/install-native-deps.sh
           # patchelf and the bundled libraries, then screen recording: the pinned FFmpeg's build inputs and the GStreamer plugins the image bundles.
           pkg_install patchelf libgtk-3-dev libsecret-1-dev qt6-base-private-dev libx11-xcb-dev libxcb-cursor-dev libxcb-icccm4-dev libxcb-render-util0-dev libxcb-sync-dev \
             nasm libva-dev libvpx-dev libwebp-dev libopus-dev libffmpeg-nvenc-dev libx264-dev libx265-dev gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-pipewire gstreamer1.0-pulseaudio gstreamer1.0-vaapi
@@ -182,6 +194,7 @@ jobs:
         if: inputs.release_tag != ''
         run: python3 tools/releases/verify_tag.py --tag "$RELEASE_TAG"
       - name: Verify pinned SDK source
+        timeout-minutes: 20
         run: bash tools/ci/sdk-source.sh
       - name: Identify AppImage dependency environment
         id: sdk-key
@@ -218,6 +231,7 @@ jobs:
             build/appimage-deps-cache.json
           key: ${{ steps.sdk-key.outputs.key }}
       - name: Provision pinned Proton helper
+        timeout-minutes: 15
         env:
           # npm's own per-request retries for registry errors (#368); #332's exit 152 is a CPU-time kill, not this.
           npm_config_fetch_retries: '5'
@@ -245,6 +259,7 @@ jobs:
     if: inputs.release_tag == ''
     needs: [native, appimage]
     runs-on: ubuntu-24.04
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -269,6 +284,7 @@ jobs:
     if: inputs.release_tag != ''
     needs: [native, appimage]
     runs-on: ubuntu-24.04
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
