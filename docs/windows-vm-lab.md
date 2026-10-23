@@ -244,6 +244,34 @@ and sparse disks grow with writes up to 80 GiB each. Monitor `free -h` and `df -
 retain useful evidence but remove explicitly disposable stopped runs when space is
 needed. An 80 GiB virtual capacity is not an 80 GiB initial allocation.
 
+## Shared lab guests
+
+Since 2026-10-22 two disposable Windows 11 test copies serve the native Windows
+work, each cloned from its host's verified copy of the sealed `windows11` base and
+started with `--cpus 3 --memory 8192 --network --ssh-forward PORT --audio`. Both
+run Win32-OpenSSH from the GitHub release zip with a dedicated key pair kept on
+their builder, a pinned guest host key, PowerShell as the default shell, the
+`NoAutoUpdate` and `NoAutoRebootWithLoggedOnUsers` Windows Update policy keys and
+a `putgd-resident` interactive scheduled task. Their `HOW-TO-REACH.md` notes in the
+run directory hold the details.
+
+| Alias | Builder | Run directory | VNC | SSH forward | Wall port |
+| --- | --- | --- | --- | --- | --- |
+| `w11` | d69 (`192.168.68.69`) | `~/work/put.gd/work/windows/runs/w11-e3ceec338284` | `5932` | `2232` | `5982` |
+| `w11b` | m74 (`192.168.68.74`) | `~/work/put.gd/work/windows/runs/w11b-3e92324d501c` | `5933` | `2233` | `5984` |
+
+Both builders also cross-build `src/windows` from their `~/work/put.gd-win/` tree
+(d69: mingw-w64 GCC 14; m74: GCC 13). Pick the guest on the builder you build on.
+
+A session holds a guest by creating `GUEST-LOCK.json` in that guest's run directory
+atomically (`set -o noclobber`) with its session name, purpose and an expiry at most
+45 minutes ahead. If the file exists and has not expired, wait and retry. Extend the
+expiry while working and remove the file when done. Run your build from your own
+folder such as `C:\putgd-<topic>\`, leaving `C:\putgd\` as the reference build, and
+back up `%LOCALAPPDATA%\put.gd` before changing settings. Restore it before
+releasing the lock. Credentials go on a guest only when Patrick asks: `w11` holds
+the S3 acceptance key set, `w11b` holds none.
+
 ## Verification boundaries
 
 Run `python3 -m unittest discover -s tests/desktop -p test_windows_lab.py -v`
