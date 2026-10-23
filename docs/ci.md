@@ -24,7 +24,7 @@ schedule, manual runs and release callers always select everything.
 | Changed paths | contracts | linux, portable | packages |
 | --- | --- | --- | --- |
 | `docs/` (except below), `README.md`, `AGENTS.md`, `CLAUDE.md` | yes | no | no |
-| Lab, MCP and maintenance Python; `tests/ci`, `tests/releases`, `tests/maintenance`; Python and YAML directly under `tests/desktop` and `tests/performance`; `.github/renovate.json` | yes | no | no |
+| Lab, MCP and maintenance Python; `tests/ci`, `tests/releases`, `tests/maintenance`; Python and YAML directly under `tests/desktop` and `tests/performance`; `.github/renovate.json`, `.github/dependabot.yml` | yes | no | no |
 | Anything else, including `src/`, C++ tests, schemas and new directories | yes | yes | no |
 | `packaging/`, `tools/releases/`, `tools/proton/`, `tools/ci/`, `cmake/`, `integrations/`, `.github/workflows/`, root CMake files, `LICENSE`, `THIRD_PARTY_NOTICES.md`, `.gitignore`, `docs/build.md`, `docs/proton-drive.md` | yes | yes | yes |
 
@@ -189,11 +189,23 @@ personal access token or app. That has three costs:
 - Pull requests opened with the workflow token don't start workflows by
   themselves. A maintainer approves each one's workflows ("Approve and run
   workflows" on the pull request) and CI then runs as usual.
-- The token cannot change `.github/workflows`, so the action SHAs and the
-  container digests in the workflows are not managed by Renovate
-  (`enabledManagers` leaves out `github-actions`). A GitHub App token with the
-  workflows permission would lift both of the last two limits
+- The token cannot change `.github/workflows`, so Renovate leaves the workflows
+  alone (`enabledManagers` leaves out `github-actions`). Dependabot keeps their
+  action SHAs current instead (below). The container digests, actionlint and
+  the Renovate image inside the workflows are not actions, so neither bot
+  updates them; they stay manual
   ([#507](https://github.com/patrick-hudson/put.gd-desktop/issues/507)).
+
+Patrick chose this setup on 2026-10-23: the workflow token for Renovate, and
+Dependabot for the workflow pins.
+
+**Workflow actions.** `.github/dependabot.yml` has Dependabot update the
+`uses: owner/action@<sha> # vX` pins in `.github/workflows` weekly (Mondays
+04:47 UTC), against `nightly`, in one grouped pull request labelled
+`dependencies` and `area: ci`. `ilammy/msvc-dev-cmd` is Windows-only and left
+to the Windows rewrite. Dependabot's pull requests start CI on their own, with a
+read-only token; the flaky-test tracker then logs a warning instead of
+updating its issues.
 
 **Checking a change to this setup.** A pull request that changes
 `.github/renovate.json`, `renovate.yml` or the two maintenance scripts runs the
