@@ -183,11 +183,15 @@ jobs:
           # The AppImage's GPL corresponding source includes the bundled distro source packages.
           printf 'Types: deb-src\nURIs: http://archive.ubuntu.com/ubuntu/\nSuites: noble noble-updates noble-security\nComponents: main restricted universe multiverse\nSigned-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\n' | sudo tee /etc/apt/sources.list.d/putgd-appimage-src.sources > /dev/null
           pkg_install
+      - name: The locked Qt version
+        # Renovate updates it in the lock (#420), where the AppImage tools read it too.
+        id: qt
+        run: echo "version=$(python3 -c 'import json; print(json.load(open("packaging/appimage/tools.lock.json"))["buildInputs"]["qt"])')" >> "$GITHUB_OUTPUT"
       - uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4.4.1
         env:
           LOG_CFG: ${{ github.workspace }}/tools/ci/aqt-logging.ini
         with:
-          version: '6.8.3'
+          version: ${{ steps.qt.outputs.version }}
           arch: linux_gcc_64
           modules: qtimageformats
           cache: true
@@ -281,9 +285,76 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  sbom:
+    # CycloneDX SBOMs of every package and their Grype report (#420, docs/release.md).
+    # packaging/sbom/policy.json decides which findings flag and which block this channel.
+    needs: [native, appimage]
+    runs-on: ubuntu-24.04
+    # Normally 3 minutes, most of it importing the Grype database.
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.release_tag || github.sha }}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: release-*
+          path: build/downloaded
+      - name: RPM extraction tools
+        run: sudo --preserve-env=GITHUB_STEP_SUMMARY bash tools/ci/install-packages.sh --no-install-recommends rpm2cpio cpio
+      - name: Pinned Syft and Grype
+        run: python3 tools/releases/sbom.py tools --output "$RUNNER_TEMP/sbom-tools"
+      - name: Identify the current Grype database
+        id: grype-db
+        run: |
+          python3 tools/releases/sbom.py database --listing-only --listing build/grype-db.json --output build/grype-db
+          echo "key=grype-db-v6-$(python3 -c 'import json; print(json.load(open("build/grype-db.json"))["sha256"])')" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        id: grype-cache
+        with:
+          path: build/grype-db
+          key: ${{ steps.grype-db.outputs.key }}
+      - name: Download, verify and import the Grype database
+        env:
+          GRYPE_DB_CACHE_DIR: ${{ runner.temp }}/grype-db
+          GRYPE_CHECK_FOR_APP_UPDATE: 'false'
+        run: |
+          python3 tools/releases/sbom.py database --listing build/grype-db.json --output build/grype-db
+          "$RUNNER_TEMP/sbom-tools/grype" db import build/grype-db/vulnerability-db_*.tar.zst
+          "$RUNNER_TEMP/sbom-tools/grype" db status
+      - uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        if: steps.grype-cache.outputs.cache-hit != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        with:
+          path: build/grype-db
+          key: ${{ steps.grype-db.outputs.key }}
+      - name: Generate the packages' SBOMs
+        run: |
+          python3 tools/releases/sbom.py generate --inputs build/downloaded --syft "$RUNNER_TEMP/sbom-tools/syft" \
+            --output build/release-sbom --timestamp "$(git show -s --format=%ct HEAD)"
+      - name: Scan the SBOMs and apply the vulnerability policy
+        env:
+          GRYPE_DB_CACHE_DIR: ${{ runner.temp }}/grype-db
+        run: |
+          python3 tools/releases/sbom.py scan --sboms build/release-sbom --grype "$RUNNER_TEMP/sbom-tools/grype" \
+            --output build/vulnerabilities --database build/grype-db.json --release-tag "$RELEASE_TAG" --summary "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-sbom
+          path: build/release-sbom/
+          if-no-files-found: error
+          retention-days: 30
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: vulnerability-report
+          path: build/vulnerabilities/
+          if-no-files-found: warn
+          retention-days: 90
+
   collect:
     if: inputs.release_tag != ''
-    needs: [native, appimage]
+    needs: [native, appimage, sbom]
     runs-on: ubuntu-24.04
     timeout-minutes: 75
     steps:

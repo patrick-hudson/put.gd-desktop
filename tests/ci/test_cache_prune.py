@@ -51,6 +51,11 @@ class Plan(unittest.TestCase):
         caches = [cache(pkgs + '2026-W42', hour=1), cache(pkgs + '2026-W43', hour=2), cache(other, hour=1)]
         self.assertEqual(deleted(caches), {(pkgs + '2026-W42', NIGHTLY): 'superseded by ' + pkgs + '2026-W43'})
 
+    def test_a_newer_grype_database_supersedes_the_last(self):
+        old, new = 'grype-db-v6-' + 'ab' * 32, 'grype-db-v6-' + 'cd' * 32
+        self.assertEqual(cache_prune.family(new), 'grype-db-v6-')
+        self.assertEqual(deleted([cache(old, hour=1), cache(new, hour=2)]), {(old, NIGHTLY): 'superseded by ' + new})
+
     def test_refs_keep_their_own_newest_entry(self):
         pull = 'refs/pull/7/merge'
         caches = [cache('ctest-cost-linux-24.04-1-1', hour=1), cache('ctest-cost-linux-24.04-2-1', pull, hour=2),
