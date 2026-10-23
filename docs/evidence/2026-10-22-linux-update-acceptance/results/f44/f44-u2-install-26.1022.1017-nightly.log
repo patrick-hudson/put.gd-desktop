@@ -1,0 +1,32 @@
+Updating and loading repositories:
+Repositories loaded.
+Package             Arch   Version                       Repository        Size
+Installing:
+ putgd              x86_64 0:26.1022.1017~nightly-1.fc44 @commandline 115.3 MiB
+Installing dependencies:
+ jasper-libs        x86_64 0:4.2.8-2.fc44                fedora       349.7 KiB
+ libmng             x86_64 0:2.0.3-25.fc44               fedora       553.8 KiB
+ qt6-qtimageformats x86_64 0:6.11.2-1.fc44               updates      435.3 KiB
+
+Transaction Summary:
+ Installing:         4 packages
+
+Total size of inbound packages is 39 MiB. Need to download 493 KiB.
+After this operation, 117 MiB extra will be used (install 117 MiB, remove 0 B).
+Warning: A pending offline transaction initiated by the following command will be invalidated: dnf5daemon-server
+[1/3] jasper-libs-0:4.2.8-2.fc44.x86_64 100% | 407.1 KiB/s | 170.2 KiB |  00m00s
+[2/3] libmng-0:2.0.3-25.fc44.x86_64     100% | 459.8 KiB/s | 194.0 KiB |  00m00s
+[3/3] qt6-qtimageformats-0:6.11.2-1.fc4 100% | 301.7 KiB/s | 128.5 KiB |  00m00s
+--------------------------------------------------------------------------------
+[3/3] Total                             100% | 425.9 KiB/s | 492.7 KiB |  00m01s
+Running transaction
+[1/6] Verify package files              100% |   9.0   B/s |   4.0   B |  00m00s
+[2/6] Prepare transaction               100% |   9.0   B/s |   4.0   B |  00m00s
+[3/6] Installing libmng-0:2.0.3-25.fc44 100% |  18.7 MiB/s | 556.3 KiB |  00m00s
+[4/6] Installing jasper-libs-0:4.2.8-2. 100% |  31.2 MiB/s | 351.2 KiB |  00m00s
+[5/6] Installing qt6-qtimageformats-0:6 100% |  18.2 MiB/s | 448.3 KiB |  00m00s
+[6/6] Installing putgd-0:26.1022.1017~n 100% |  59.1 MiB/s | 115.3 MiB |  00m02s
+Warning: skipped OpenPGP checks for 1 package from repository: @commandline
+Warning: Pending offline transaction has been invalidated.
+To reschedule, run: dnf5daemon-server
+Complete!

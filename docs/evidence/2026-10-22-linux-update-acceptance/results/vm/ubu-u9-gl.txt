@@ -1,0 +1,28 @@
+Update Source   StaticFileUpdater   
+Do you really want to integrate this AppImage? (y/N) /home/lab/AppImages/put.gd.appimage was integrated successfully
+put.gd (442144)   [Not specified]   [StaticFileUpdater|embedded]   /home/lab/AppImages/put.gd.appimage   
+## gl-0-integrated 2026-10-23T01:58:00Z
+2028075 005762e9ede991c78fce115707a41617d899d7870738fb525151c182357b7c3a  /home/lab/AppImages/put.gd.appimage
+#### /home/lab/.local/share/applications/putgd326-url.desktop
+Exec=/home/lab/work/put.gd-ua/record-url.sh %u
+#### /home/lab/.local/share/applications/put.gd.desktop
+Exec=env DESKTOPINTEGRATION=1 /home/lab/AppImages/put.gd.appimage
+entry /home/lab/.local/share/applications/put.gd.desktop
+12609 DESKTOPINTEGRATION=1 APPIMAGE=/home/lab/AppImages/put.gd.appimage 
+install started True 
+install installed download None backup /home/lab/AppImages/.putgd-update-backup-26.1022.1017-nightly.AppImage
+## gl-1-installed 2026-10-23T01:58:11Z
+2028891 e5b7ad2caecaa7f5737bdfb5d2f0fd4e3c74ce5d98a8a68142caf4efd43525bc  /home/lab/AppImages/put.gd.appimage
+#### /home/lab/.local/share/applications/put.gd.desktop
+Exec=env DESKTOPINTEGRATION=1 /home/lab/AppImages/put.gd.appimage
+after restart 26.1022.1019-nightly True
+12817 DESKTOPINTEGRATION=1 APPIMAGE=/home/lab/AppImages/put.gd.appimage 
+menu start 26.1022.1019-nightly
+## gl-2-after-menu-launch 2026-10-23T01:58:24Z
+2028891 e5b7ad2caecaa7f5737bdfb5d2f0fd4e3c74ce5d98a8a68142caf4efd43525bc  /home/lab/AppImages/put.gd.appimage
+#### /home/lab/.local/share/applications/put.gd.desktop
+Exec=env DESKTOPINTEGRATION=1 /home/lab/AppImages/put.gd.appimage
+put.gd (442144)   [Not specified]   [StaticFileUpdater|embedded]   /home/lab/AppImages/put.gd.appimage   
+No updates available
+0
+/dev/vda2        32G   29G  777M  98% /

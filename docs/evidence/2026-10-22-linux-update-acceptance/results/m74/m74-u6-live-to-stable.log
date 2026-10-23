@@ -1,0 +1,4 @@
+install rc=0
+update rc=0
+E: Release 'stable' for 'putgd' was not found
+putgd	26.1022.1017~nightly

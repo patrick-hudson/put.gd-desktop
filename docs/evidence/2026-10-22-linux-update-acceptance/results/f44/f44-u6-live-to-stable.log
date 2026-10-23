@@ -1,0 +1,31 @@
+### sudo install -m 644 /usr/share/putgd/repo/putgd-stable.repo /etc/yum.repos.d/putgd.repo
+rc=0
+[putgd-stable]
+name=put.gd (stable)
+baseurl=https://pkg.put.gd/rpm/fedora/44/x86_64/stable
+enabled=1
+gpgcheck=1
+repo_gpgcheck=0
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable
+metadata_expire=6h
+system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo
+### dnf distro-sync --refresh putgd --assumeno
+ ChatGPT                                100% |   7.0 KiB/s |   3.8 KiB |  00m01s
+ google-chrome                          100% |   2.4 KiB/s |   1.3 KiB |  00m01s
+ Fedora 44 openh264 (From Cisco) - x86_ 100% | 954.0   B/s | 986.0   B |  00m01s
+ Fedora 44 - x86_64                     100% |  27.2 KiB/s |  23.8 KiB |  00m01s
+ Copr repo for PyCharm owned by phracek 100% |   4.5 KiB/s |   2.1 KiB |  00m00s
+ put.gd (stable)                        100% |   3.0 KiB/s |   1.6 KiB |  00m01s
+Repositories loaded.
+Nothing to do.
+### dnf distro-sync --refresh putgd -y
+ put.gd (stable)                        100% |   4.1 KiB/s |   1.5 KiB |  00m00s
+ ChatGPT                                100% |  10.4 KiB/s |   3.8 KiB |  00m00s
+ google-chrome                          100% |   4.3 KiB/s |   1.3 KiB |  00m00s
+ Fedora 44 openh264 (From Cisco) - x86_ 100% |   1.2 KiB/s | 986.0   B |  00m01s
+ Fedora 44 - x86_64                     100% |  38.0 KiB/s |  23.8 KiB |  00m01s
+ Copr repo for PyCharm owned by phracek 100% |   7.1 KiB/s |   2.1 KiB |  00m00s
+Repositories loaded.
+Nothing to do.
+rc=0
+putgd-26.1022.1017~nightly-1.fc44.x86_64

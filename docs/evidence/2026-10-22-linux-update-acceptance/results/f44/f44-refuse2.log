@@ -1,0 +1,6 @@
+setup
+busy False update_install_busy An upload is running; install the update when it has finished True ['putgd-26.1022.1017-nightly-x86_64.AppImage'] {'stored': True, 'submitted': {'operationId': '6f6a9f28-b805-4232-a417-de397f81736a', 'submitted': True}, 'putsSeen': 1}
+cleanup True
+setup
+tamper True {'image': ('failed', 'update_verification_failed', ['putgd-26.1022.1017-nightly-x86_64.AppImage']), 'unsigned': ('failed', 'update_signature_invalid', ['putgd-26.1022.1017-nightly-x86_64.AppImage']), 'sums': ('failed', 'update_signature_invalid', ['putgd-26.1022.1017-nightly-x86_64.AppImage'])}
+cleanup True

@@ -1,0 +1,6 @@
+2026-10-23T00:28:18Z shell gnome-shell pid 2654265
+2026-10-23T00:28:18Z logout requested (gnome-session-quit --logout)
+2026-10-23T00:28:20Z old shell gone
+2026-10-23T00:28:20Z systemctl restart gdm
+2026-10-23T00:28:21Z new shell pid 3053867
+13581 1000 patrick seat0 3053785 user    tty2 no -

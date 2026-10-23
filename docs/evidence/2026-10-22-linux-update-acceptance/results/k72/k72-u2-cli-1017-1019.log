@@ -1,0 +1,13 @@
+### back to N: sudo apt-get install -y --allow-downgrades ./putgd-26.1022.1017-nightly-ubuntu26.04-x86_64.deb
+Processing triggers for desktop-file-utils (0.28-1build1)…
+putgd	26.1022.1017~nightly
+### U2: sudo apt update && sudo apt install --only-upgrade putgd
+Hit:3 https://pkg.put.gd/apt/ubuntu26.04 nightly InRelease
+The following packages will be upgraded:
+  putgd
+1 upgraded, 0 newly installed, 0 to remove and 63 not upgraded.
+Preparing to unpack …/putgd_26.1022.1019~nightly_amd64.deb…
+Unpacking putgd (26.1022.1019~nightly) over (26.1022.1017~nightly)…
+Setting up putgd (26.1022.1019~nightly)…
+putgd	26.1022.1019~nightly
+5d5b79d0154f

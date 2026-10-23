@@ -1,0 +1,6 @@
+start 02:48:18Z load 0.08 0.39 0.75
+appimage 26.1022.1017-nightly A median 29.04 pss 22.76 B median 29.13 pss 22.85 tls [] load [0.03271484375, 0.29052734375, 0.64599609375]
+appimage 26.1022.1019-nightly A median 29.26 pss 23.01 B median 29.29 pss 23.04 tls [] load [0.0107421875, 0.1025390625, 0.4169921875]
+package 26.1022.1017-nightly A median 34.97 pss 21.17 B median 35.0 pss 21.24 tls ['libcrypto.so.3.5.9', 'libcrypto.so.3.5.9'] load [0.20361328125, 0.2412109375, 0.353515625]
+package 26.1022.1019-nightly A median 35.02 pss 21.3 B median 35.05 pss 21.35 tls ['libcrypto.so.3.5.9', 'libcrypto.so.3.5.9'] load [0.037109375, 0.17041015625, 0.27001953125]
+end 03:16:53Z load 0.00 0.08 0.21; putgd package putgd is not installed

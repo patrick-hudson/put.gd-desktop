@@ -1,0 +1,270 @@
+{
+ "name": "ubu-pkg",
+ "runtime": "/tmp/ua-pkg.M51XFx",
+ "session": {
+  "HOME": "/home/lab",
+  "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin",
+  "USER": "lab",
+  "LANG": "en_US.UTF-8",
+  "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus",
+  "XDG_SESSION_TYPE": "wayland",
+  "XDG_CURRENT_DESKTOP": "ubuntu:GNOME",
+  "XDG_SESSION_DESKTOP": "ubuntu",
+  "DESKTOP_SESSION": "ubuntu",
+  "XDG_DATA_DIRS": "/usr/share/ubuntu:/usr/share/gnome:/usr/local/share/:/usr/share/:/var/lib/snapd/desktop",
+  "WAYLAND_DISPLAY": "/run/user/1000/wayland-0",
+  "DISPLAY": ":0",
+  "XAUTHORITY": "/run/user/1000/.mutter-Xwaylandauth.JQOBX3"
+ },
+ "shell": "gnome-shell",
+ "vnc": 5922,
+ "input": "vnc",
+ "profile": "private",
+ "feed": "live",
+ "hostPath": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin",
+ "host": "putgd-ubuntu-lab",
+ "created": "2026-10-23T01:30:12Z",
+ "pids": {
+  "launch": "putgd-ua-ubu-pkg-u4-2-1019-up-to-date-1792719125"
+ },
+ "log": [
+  {
+   "at": "2026-10-23T01:30:17Z",
+   "u4-1-1017": {
+    "pid": 4901,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1022.1017-nightly",
+     "buildChannel": "nightly",
+     "channel": "nightly",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1022.1019-nightly",
+     "updateAvailable": true,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "manager": "apt",
+      "updater": null,
+      "channel": "nightly",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "repository": "managed",
+      "otherChannel": {
+       "channel": "stable",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/stable"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installAvailable": false,
+     "installReason": "not_appimage",
+     "error": null
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "sameAs": "/usr/share/putgd/repo/putgd-nightly.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/apt/ubuntu26.04",
+      "Suites: nightly"
+     ],
+     "installed": "26.1022.1017~nightly",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1022.1017~nightly",
+      "  Candidate: 26.1022.1017~nightly",
+      "  Version table:",
+      " *** 26.1022.1017~nightly 100",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 0bddc60435085b83a461f59d1a549517"
+    },
+    "frame": "/home/lab/ua/pkg/runs/ubu-pkg/frames/u4-1-1017.png"
+   }
+  },
+  {
+   "at": "2026-10-23T01:30:31Z",
+   "u4-1-1017-settings": {
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "sameAs": "/usr/share/putgd/repo/putgd-nightly.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/apt/ubuntu26.04",
+      "Suites: nightly"
+     ],
+     "installed": "26.1022.1017~nightly",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1022.1017~nightly",
+      "  Candidate: 26.1022.1017~nightly",
+      "  Version table:",
+      " *** 26.1022.1017~nightly 100",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 0bddc60435085b83a461f59d1a549517"
+    },
+    "frame": "/home/lab/ua/pkg/runs/ubu-pkg/frames/u4-1-1017-settings.png"
+   }
+  },
+  {
+   "at": "2026-10-23T01:31:26Z",
+   "u3-1-ubuntu-software-updater": {
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "sameAs": "/usr/share/putgd/repo/putgd-nightly.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/apt/ubuntu26.04",
+      "Suites: nightly"
+     ],
+     "installed": "26.1022.1017~nightly",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1022.1017~nightly",
+      "  Candidate: 26.1022.1019~nightly",
+      "  Version table:",
+      "     26.1022.1019~nightly 500",
+      "        500 https://pkg.put.gd/apt/ubuntu26.04 nightly/main amd64 Packages",
+      " *** 26.1022.1017~nightly 100",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 0bddc60435085b83a461f59d1a549517"
+    },
+    "frame": "/home/lab/ua/pkg/runs/ubu-pkg/frames/u3-1-ubuntu-software-updater.png"
+   }
+  },
+  {
+   "at": "2026-10-23T01:31:39Z",
+   "u3-2-software-updater-details": {
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "sameAs": "/usr/share/putgd/repo/putgd-nightly.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/apt/ubuntu26.04",
+      "Suites: nightly"
+     ],
+     "installed": "26.1022.1017~nightly",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1022.1017~nightly",
+      "  Candidate: 26.1022.1019~nightly",
+      "  Version table:",
+      "     26.1022.1019~nightly 500",
+      "        500 https://pkg.put.gd/apt/ubuntu26.04 nightly/main amd64 Packages",
+      " *** 26.1022.1017~nightly 100",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 0bddc60435085b83a461f59d1a549517"
+    },
+    "frame": "/home/lab/ua/pkg/runs/ubu-pkg/frames/u3-2-software-updater-details.png"
+   }
+  },
+  {
+   "at": "2026-10-23T01:32:10Z",
+   "u4-2-1019-up-to-date": {
+    "pid": 5951,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1022.1019-nightly",
+     "buildChannel": "nightly",
+     "channel": "nightly",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1022.1019-nightly",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "manager": "apt",
+      "updater": null,
+      "channel": "nightly",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "repository": "managed",
+      "otherChannel": {
+       "channel": "stable",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/stable"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installAvailable": false,
+     "installReason": "not_appimage",
+     "error": null
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "sameAs": "/usr/share/putgd/repo/putgd-nightly.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/apt/ubuntu26.04",
+      "Suites: nightly"
+     ],
+     "installed": "26.1022.1019~nightly",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1022.1019~nightly",
+      "  Candidate: 26.1022.1019~nightly",
+      "  Version table:",
+      " *** 26.1022.1019~nightly 500",
+      "        500 https://pkg.put.gd/apt/ubuntu26.04 nightly/main amd64 Packages",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 0bddc60435085b83a461f59d1a549517"
+    },
+    "frame": "/home/lab/ua/pkg/runs/ubu-pkg/frames/u4-2-1019-up-to-date.png"
+   }
+  }
+ ],
+ "before": {
+  "defaultProfile": {
+   "/home/lab/.config/putgd": false,
+   "/home/lab/.local/state/putgd": false,
+   "/home/lab/.cache/putgd": false,
+   "/home/lab/.local/share/putgd": false
+  },
+  "defaultFiles": {}
+ },
+ "units": [
+  "putgd-ua-ubu-pkg-u4-1-1017-1792719012",
+  "putgd-ua-ubu-pkg-u4-2-1019-up-to-date-1792719125"
+ ],
+ "restarts": [
+  {
+   "old": 4901,
+   "oldExe": "/usr/bin/putgd (deleted)"
+  }
+ ]
+}

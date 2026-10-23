@@ -1,0 +1,7 @@
+### protect pre-existing orphans (restore to auto afterwards)
+qt6-image-formats-plugins set to manually installed.
+libmng2 set to manually installed.
+83d1c8e34b4724ba11307fbd161d674d0a3b0d4b0664a78fefc1629a30e5fb81  /etc/apt/sources.list.d/putgd.sources
+putgd:
+  Installed: (none)
+  Candidate: 26.1022.1017~nightly

@@ -1,0 +1,137 @@
+{
+ "name": "aur-zs",
+ "tool": "real",
+ "live": true,
+ "image": "/var/home/lab/ua/app/runs/aur-zs/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+ "imageSha256": "005762e9ede991c78fce115707a41617d899d7870738fb525151c182357b7c3a",
+ "cliDir": "/var/home/lab/ua/app/runs/aur-zs/cli/squashfs-root",
+ "runtime": "/tmp/ua-app.elxmlc",
+ "session": {
+  "HOME": "/var/home/lab",
+  "PATH": "/var/home/lab/.local/bin:/var/home/lab/bin:/usr/local/bin:/usr/bin",
+  "USER": "lab",
+  "LANG": "en_US.UTF-8",
+  "DISPLAY": ":0",
+  "XAUTHORITY": "/run/user/1000/xauth_QQnhMF",
+  "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus",
+  "XDG_SESSION_TYPE": "wayland",
+  "XDG_CURRENT_DESKTOP": "KDE",
+  "WAYLAND_DISPLAY": "/run/user/1000/wayland-0",
+  "XDG_SESSION_DESKTOP": "KDE",
+  "DESKTOP_SESSION": "/usr/share/wayland-sessions/plasma.desktop",
+  "KDE_FULL_SESSION": "true",
+  "KDE_SESSION_VERSION": "6",
+  "XDG_DATA_DIRS": "/var/home/lab/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share:/usr/share"
+ },
+ "shell": "plasmashell",
+ "hostPath": "/var/home/lab/.local/bin:/var/home/lab/bin:/usr/local/bin:/usr/bin",
+ "host": "aurora-lab",
+ "vnc": 5926,
+ "urls": {},
+ "input": "vnc",
+ "privateData": true,
+ "before": {
+  "dataPutgd": true,
+  "homePutgd": {
+   "/var/home/lab/.config/putgd": false,
+   "/var/home/lab/.local/state/putgd": false,
+   "/var/home/lab/.cache/putgd": false
+  },
+  "autostart": []
+ },
+ "pids": {
+  "apprun": 2433
+ },
+ "created": "2026-10-23T01:40:02Z",
+ "log": [
+  {
+   "at": "2026-10-23T01:40:08Z",
+   "start": {
+    "pid": 2409,
+    "status": {
+     "build": "26.1022.1017-nightly",
+     "channel": "nightly",
+     "latest": null,
+     "updateAvailable": null,
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "/var/home/lab/ua/app/runs/aur-zs/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+      "installed": null,
+      "kind": "update",
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle",
+      "switch": null
+     }
+    },
+    "frame": "/var/home/lab/ua/app/runs/aur-zs/frames/u7-1-1017-start.png"
+   }
+  },
+  {
+   "at": "2026-10-23T01:40:11Z",
+   "check": {
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1022.1017-nightly",
+     "channel": "nightly",
+     "latest": "26.1022.1019-nightly",
+     "updateAvailable": true,
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "/var/home/lab/ua/app/runs/aur-zs/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+      "installed": null,
+      "kind": "update",
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle",
+      "switch": null
+     }
+    },
+    "frame": "/var/home/lab/ua/app/runs/aur-zs/frames/u7-2-1019-available.png"
+   }
+  },
+  {
+   "at": "2026-10-23T01:40:26Z",
+   "click": {
+    "x": 447,
+    "y": 609,
+    "keys": null,
+    "frame": null
+   }
+  },
+  {
+   "at": "2026-10-23T01:40:33Z",
+   "frame": {
+    "label": "u7-3-1019-installed",
+    "frame": "/var/home/lab/ua/app/runs/aur-zs/frames/u7-3-1019-installed.png"
+   }
+  },
+  {
+   "at": "2026-10-23T01:40:59Z",
+   "click": {
+    "x": 424,
+    "y": 544,
+    "keys": null,
+    "frame": null
+   }
+  },
+  {
+   "at": "2026-10-23T01:41:02Z",
+   "frame": {
+    "label": "u7-4-1019-restarted",
+    "frame": "/var/home/lab/ua/app/runs/aur-zs/frames/u7-4-1019-restarted.png"
+   }
+  }
+ ]
+}

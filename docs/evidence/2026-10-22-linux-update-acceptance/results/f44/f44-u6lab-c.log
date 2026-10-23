@@ -1,0 +1,12 @@
+u6lab-6-S3-available 26.1020.1021 stable repository latest 26.1021.1023 available True older None repo /usr/share/putgd/repo/putgd-stable.repo putgd-26.1020.1021-1.fc44.x86_64
+u14 repo stable 2026-10-23T00:34:57Z 2026-10-23T01:35:15Z putgd notifications [{'app': 'put.gd', 'summary': 'put.gd — update available', 'body': 'put.gd 26.1020.1021 is available. Settings → Updates has the download.'}, {'app': 'put.gd', 'summary': 'put.gd — update available', 'body': 'put.gd 26.1020.1021 is available. Settings → Updates has the download.'}, {'app': 'put.gd', 'summary': 'put.gd — update available', 'body': 'put.gd 26.1021.1023 is available. Settings → Updates has the download.'}, {'app': 'put.gd', 'summary': 'put.gd — update available', 'body': 'put.gd 26.1021.1023 is available. Settings → Updates has the download.'}]
+copied: sudo -n install -m 644 /usr/share/putgd/repo/putgd-nightly.repo /etc/yum.repos.d/putgd.repo
+copied: sudo -n dnf -y distro-sync --refresh putgd
+### sudo -n install -m 644 /usr/share/putgd/repo/putgd-nightly.repo /etc/yum.repos.d/putgd.repo
+### sudo -n dnf -y distro-sync --refresh putgd
+To reschedule, run: dnf5daemon-server
+Complete!
+u6lab-7-back-on-nightly 26.1021.1022-nightly nightly repository latest 26.1021.1022-nightly available False older None repo /usr/share/putgd/repo/putgd-nightly.repo putgd-26.1021.1022~nightly-1.fc44.x86_64
+run cleaned
+### remove put.gd and its repository file
+Complete!

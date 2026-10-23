@@ -1,0 +1,101 @@
+{
+ "name": "m74-nostable",
+ "tool": null,
+ "live": true,
+ "image": "/home/patrick/work/put.gd-ua/app/runs/m74-nostable/apps/putgd-26.1019.1019-nightly-x86_64.AppImage",
+ "imageSha256": "8486fec9d8bc3b79d86b8674fd3412d35011a8366272c67431c0803c9ac1c776",
+ "cliDir": "/home/patrick/work/put.gd-ua/app/runs/m74-nostable/cli/squashfs-root",
+ "runtime": "/tmp/ua-app.H1bVDy",
+ "session": {
+  "HOME": "/home/patrick",
+  "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin",
+  "USER": "patrick",
+  "LANG": "en_US.UTF-8",
+  "DISPLAY": ":0",
+  "XAUTHORITY": "/home/patrick/.Xauthority",
+  "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus",
+  "XDG_SESSION_TYPE": "x11",
+  "XDG_CURRENT_DESKTOP": "X-Cinnamon",
+  "XDG_SESSION_DESKTOP": "cinnamon",
+  "DESKTOP_SESSION": "cinnamon",
+  "XDG_DATA_DIRS": "/usr/share/cinnamon:/home/patrick/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share:/usr/share"
+ },
+ "shell": "cinnamon",
+ "hostPath": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin",
+ "host": "mint-builder",
+ "vnc": 5900,
+ "urls": {},
+ "input": "xdotool",
+ "before": {
+  "dataPutgd": false,
+  "homePutgd": {
+   "/home/patrick/.config/putgd": false,
+   "/home/patrick/.local/state/putgd": true,
+   "/home/patrick/.cache/putgd": false
+  },
+  "autostart": []
+ },
+ "pids": {
+  "apprun": 438082
+ },
+ "created": "2026-10-23T00:29:56Z",
+ "log": [
+  {
+   "at": "2026-10-23T00:30:01Z",
+   "start": {
+    "pid": 438035,
+    "status": {
+     "build": "26.1019.1019-nightly",
+     "channel": "stable",
+     "latest": null,
+     "updateAvailable": null,
+     "install": {
+      "available": false,
+      "backup": null,
+      "image": "/home/patrick/work/put.gd-ua/app/runs/m74-nostable/apps/putgd-26.1019.1019-nightly-x86_64.AppImage",
+      "installed": null,
+      "kind": "switch",
+      "reason": "not_checked",
+      "restartRequired": false,
+      "running": false,
+      "state": "idle",
+      "switch": null
+     }
+    },
+    "frame": "/home/patrick/work/put.gd-ua/app/runs/m74-nostable/frames/u10-0-start.png"
+   }
+  },
+  {
+   "at": "2026-10-23T00:30:05Z",
+   "check": {
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1019.1019-nightly",
+     "channel": "stable",
+     "latest": null,
+     "updateAvailable": false,
+     "install": {
+      "available": false,
+      "backup": null,
+      "image": "/home/patrick/work/put.gd-ua/app/runs/m74-nostable/apps/putgd-26.1019.1019-nightly-x86_64.AppImage",
+      "installed": null,
+      "kind": "switch",
+      "reason": "no_release",
+      "restartRequired": false,
+      "running": false,
+      "state": "idle",
+      "switch": null
+     }
+    },
+    "frame": "/home/patrick/work/put.gd-ua/app/runs/m74-nostable/frames/u10-1-no-stable-yet-live.png"
+   }
+  }
+ ]
+}

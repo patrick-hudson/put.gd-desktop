@@ -1,0 +1,21 @@
+### why pkcon: GNOME Software applies this update only inside a whole-system offline update (coordinator decision, no broad upgrades); pkcon is its PackageKit back end
+### before: putgd-26.1022.1017~nightly-1.fc44.x86_64
+### sudo pkcon refresh
+Results:
+### sudo pkcon update -y putgd
+Results:
+There are no updates available at this time.
+rc=0
+### after: putgd-26.1022.1017~nightly-1.fc44.x86_64
+### (a plain pkcon refresh kept the 6 h metadata: no update seen; force needed)
+### sudo pkcon refresh force
+Results:
+### sudo pkcon update -y putgd
+Package:	putgd_26.1022.1019~nightly-1.fc44.x86_64
+Package:	putgd_26.1022.1017~nightly-1.fc44.x86_64
+Results:
+Updated      putgd-26.1022.1019~nightly-1.fc44.x86_64 (putgd-nightly)
+Cleaned up   putgd-26.1022.1017~nightly-1.fc44.x86_64 (installed)
+rc=0
+### after: putgd-26.1022.1019~nightly-1.fc44.x86_64
+### repo 1d6c2195c06e
