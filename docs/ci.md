@@ -15,6 +15,16 @@ The single required status check is the `CI` job. It fails when any job the
 change selected did not succeed. A cancelled or failed job is never a pass; a
 job skipped because the change cannot affect it is.
 
+## Windows native cross-build
+
+The `windows` job (ubuntu-24.04) builds the native Windows app under `src/windows/`
+with the mingw-w64 cross toolchain file in `cmake/toolchains/`, runs the portable
+core, SigV4 and editor contract tests with the host compiler, and keeps
+`putgd.exe` and `putgd-cli.exe` as the `windows-native` artifact. It is selected
+with the build group and required by the `CI` summary. It proves compilation and the
+portable contracts only; Windows desktop acceptance is recorded in
+[windows.md](windows.md).
+
 ## Job selection
 
 `tools/ci/changes.py` classifies a pull request's changed paths. Pushes, the
