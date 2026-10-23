@@ -296,6 +296,64 @@ class HostInventory(unittest.TestCase):
         self.assertEqual(notes, ['flatpak is not installed'])
 
 
+class ProtonSessionLock(LockTest):
+    def proton(self):
+        return lock.Desktop(self.directory, 'f44', self.clock, resource='proton')
+
+    def test_is_independent_of_the_desktop_lock(self):
+        self.acquire('local_desktop')
+        proton = self.proton()
+        record = proton.acquire('lender', 'local_proton', 'lend to run gnome-1', 30)['lock']
+        self.assertEqual(record['resource'], 'proton')
+        self.assertEqual((self.directory / 'proton.lock').read_text(), (
+            'owner: lender\nsession: local_proton\nhost: f44\npurpose: lend to run gnome-1\n'
+            'acquired: 2026-10-19T03:00:00Z\nexpires: 2026-10-19T03:30:00Z\nheartbeat: 2026-10-19T03:00:00Z\n'
+            'resource: proton\n'))
+        self.assertIn('session: local_desktop', (self.directory / 'desktop.lock').read_text())
+        with self.assertRaises(lock.LockError) as refused:
+            self.proton().acquire('other', 'local_other', 'host app check', 10)
+        self.assertIn('f44 Proton session is already locked', str(refused.exception))
+        self.assertEqual(self.desktop.status()['lock']['session'], 'local_desktop')
+        self.assertEqual(self.proton().status()['lock']['session'], 'local_proton')
+
+    def test_takes_no_inventory_and_release_needs_the_carry_back_confirmed(self):
+        def never(home):
+            raise AssertionError('a Proton session lock takes no desktop inventory')
+        patcher = mock.patch.object(lock, 'collect_inventory', never)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        proton = self.proton()
+        proton.acquire('lender', 'local_proton', 'lend', 30)
+        self.assertFalse((self.directory / 'desktop.baseline.json').exists())
+        with self.assertRaises(lock.LockError) as refused:
+            proton.release('local_proton')
+        self.assertIn('no lent copy is outstanding', str(refused.exception))
+        reply = proton.release('local_proton', verified_clean=True)
+        self.assertTrue(reply['receipt'].endswith('-proton-release.json'))
+        body = json.loads(Path(reply['receipt']).read_text())
+        self.assertEqual((body['resource'], body['event'], body['releasedBy']), ('proton', 'release', 'local_proton'))
+        self.assertFalse((self.directory / 'proton.lock').exists())
+
+    def test_last_event_and_breaking_stay_per_resource(self):
+        self.acquire('local_desktop')
+        self.desktop.release('local_desktop', True)
+        proton = self.proton()
+        self.assertIsNone(proton.status()['last'])
+        proton.acquire('lender', 'local_proton', 'lend', 10)
+        with self.assertRaises(lock.LockError):
+            proton.break_lock('local_x', 'not stale yet')
+        self.clock.advance(minutes=11)
+        broken = proton.break_lock('local_x', 'lender stopped heartbeating')
+        self.assertEqual(broken['broken']['state'], 'expired')
+        self.assertEqual(proton.status()['last']['event'], 'break')
+        self.assertEqual(self.desktop.status()['last']['event'], 'release')
+        self.assertEqual(self.desktop.status()['state'], 'free')
+
+    def test_rejects_an_unknown_resource(self):
+        with self.assertRaises(lock.LockError):
+            lock.Desktop(self.directory, 'f44', self.clock, resource='s3')
+
+
 class RemoteProtocol(unittest.TestCase):
     def test_ssh_uses_the_pinned_host_key_and_never_trusts_on_first_use(self):
         command = lock.ssh_command('k72', '/keys/id', '/pins')
@@ -322,6 +380,18 @@ class RemoteProtocol(unittest.TestCase):
             self.assertEqual(reply['lock']['session'], 'local_a')
             self.assertEqual(call(action='heartbeat', session='local_a')['state'], 'held')
             self.assertIn('session: local_a', (Path(folder) / 'desktop.lock').read_text())
+
+    def test_the_proton_resource_travels_with_the_script(self):
+        with tempfile.TemporaryDirectory() as folder:
+            def call(**payload):
+                return lock.call('k72', dict(payload, directory=folder), command=[sys.executable, '-'])
+            reply = call(action='acquire', owner='o', session='local_a', purpose='p', minutes=5, resource='proton')
+            self.assertTrue(reply['ok'], reply)
+            self.assertEqual(reply['resource'], 'proton')
+            self.assertEqual(call(action='status')['state'], 'free')
+            self.assertEqual(call(action='status', resource='proton')['state'], 'held')
+            self.assertEqual(sorted(path.name for path in Path(folder).glob('*.lock')), ['proton.lock'])
+            self.assertIn('k72 Proton session (Kubuntu', '\n'.join(lock.describe(reply)))
 
     def test_status_reports_unreachable_hosts_with_exit_code_3(self):
         def unreachable(command, **kwargs):
