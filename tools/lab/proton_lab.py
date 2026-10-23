@@ -673,7 +673,7 @@ def carry_back(chain, folder, attempt=1):
 
 
 def lend(layout, run, session, owner, purpose, command, chain_factory=None, guest_factory=Guest,
-         runner=subprocess.call, clock=desktop_lock.now_utc, heartbeat=True):
+         runner=subprocess.call, clock=desktop_lock.now_utc, heartbeat=True, guest_reference=None):
     """Lend the builder's session to one VM run for COMMAND, then carry its refreshed state back."""
     registry = require_registry(layout)
     reference = registry['reference']
@@ -695,7 +695,8 @@ def lend(layout, run, session, owner, purpose, command, chain_factory=None, gues
         note(folder, step='exported', guestBroker=guest_broker)
         progress['outstanding'] = True
         try:
-            borrowed = chain.provision(str(guest.run), guest_broker, folder / 'provision.json')
+            borrowed = chain.provision(str(guest.run), guest_broker, folder / 'provision.json',
+                                       **({'reference': guest_reference} if guest_reference else {}))
         except bridge.ProvisionError:
             if chain.active is not None:
                 note(folder, reference=chain.active)  # an ambiguous import keeps its exact cleanup name
@@ -846,6 +847,9 @@ def main(argv=None):
     lending = commands.add_parser('lend', help='lend the session to one VM run for COMMAND (Proton lock)')
     lending.add_argument('run')
     lending.add_argument('--purpose', required=True)
+    lending.add_argument('--guest-reference', metavar='putgd-lab-UUID',
+                         help="reuse an earlier guest entry's name (now cleaned up), so that guest's put.gd can finish "
+                              'operations recorded under it, such as revoking its own test link')
     recovering = commands.add_parser('recover', help="finish an interrupted lend from its receipts folder")
     recovering.add_argument('receipts')
     for sub in (opening, closing, checking, lending, recovering):
@@ -878,7 +882,8 @@ def main(argv=None):
         elif args.action == 'check':
             reply = check(layout, args.session, args.owner, args.new_folder)
         elif args.action == 'lend':
-            reply = lend(layout, args.run, args.session, args.owner, args.purpose, command)
+            reply = lend(layout, args.run, args.session, args.owner, args.purpose, command,
+                         guest_reference=args.guest_reference)
         else:
             reply = recover(layout, args.receipts, args.session, args.owner)
     except (LabFailure, desktop_lock.LockError, lab.LabError) as error:

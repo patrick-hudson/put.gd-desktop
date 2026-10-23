@@ -512,10 +512,12 @@ class ProtonSessionChain:
         self.host_receipts = {}
         self.pending_source = None
 
-    def provision(self, run, guest_broker, receipt=None):
+    def provision(self, run, guest_broker, receipt=None, reference=None):
+        """reference reuses an earlier, cleaned-up guest name, so that guest's put.gd can finish
+        operations recorded under it; the import still refuses an existing entry."""
         if self.active is not None or self.pending_source is not None:
             _fail()
-        reference = 'putgd-lab-' + str(uuid.uuid4())
+        reference = 'putgd-lab-' + str(uuid.uuid4()) if reference is None else validate_reference(reference, lab_only=True)
         run = _run_name(run)
         value = _receipt_value('proton', 'guest', run, reference, 'chain_guest', 'import_pending', True)
         path = _create_receipt(receipt, value)

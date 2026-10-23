@@ -2,6 +2,7 @@
 """Proton smoke test inside a VM that borrows its builder's session (run by proton_lab.py lend).
 
   proton_lab.py lend RUN ... -- python3 tools/lab/proton_lend_smoke.py
+  proton_lab.py lend RUN ... --guest-reference REF -- python3 tools/lab/proton_lend_smoke.py --revoke HISTORY_ID
 
 The run's put.gd must be installed (lab.py install). With the borrowed keychain
 reference from PUTGD_LAB_PROTON_REFERENCE, it adds a Proton destination to the
@@ -16,6 +17,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import sys
 import time
 
 HERE = Path(__file__).resolve().parent
@@ -158,13 +160,26 @@ PY
         return kept
 
     def links(self):
-        created = self.sharing('history.share')
-        inspected = self.sharing('history.inspectLink')
-        revoked = self.sharing('history.revokeLink')
+        created = self.expect(self.sharing('history.share'), 'shared')
+        inspected = self.expect(self.sharing('history.inspectLink'), 'shared')
+        revoked = self.expect(self.sharing('history.revokeLink'), 'revoked')
         detail = self.cli('history.detail', {'id': self.result['historyId']})
         self.step('detail', detail={key: detail.get(key) for key in ('remoteStatus', 'shareStatus', 'shareExpiresAt',
                                                                       'uploadStatus')})
         self.result['links'] = {'created': scrub(created), 'inspected': scrub(inspected), 'revoked': scrub(revoked)}
+
+    def expect(self, outcome, status):
+        if outcome.get('status') != status:
+            raise lab.LabError(f'{outcome.get("action")} ended {outcome.get("status")} '
+                               f'({outcome.get("error")}), not {status}')
+        return outcome
+
+    def revoke(self, history_id):
+        """Finish an earlier run: revoke its own link (lend --guest-reference gives back its keychain name)."""
+        self.result['historyId'] = history_id
+        self.expect(self.sharing('history.revokeLink'), 'revoked')
+        detail = self.cli('history.detail', {'id': history_id})
+        self.step('detail', detail={key: detail.get(key) for key in ('shareStatus', 'uploadStatus')})
 
     def finish(self):
         try:
@@ -180,11 +195,19 @@ def main():
         print('Run through proton_lab.py lend, which provides PUTGD_LAB_RUN and PUTGD_LAB_PROTON_REFERENCE')
         return 2
     smoke = Smoke(run, reference)
+    revoke = sys.argv[sys.argv.index('--revoke') + 1] if '--revoke' in sys.argv[1:-1] else None
     try:
-        smoke.configure()
-        smoke.folder()
-        smoke.upload()
-        smoke.links()
+        if revoke:
+            try:
+                smoke.cli('capabilities')
+            except (lab.LabError, ValueError):
+                lab.start(smoke.run)
+            smoke.revoke(revoke)
+        else:
+            smoke.configure()
+            smoke.folder()
+            smoke.upload()
+            smoke.links()
         smoke.result['passed'] = True
     except (lab.LabError, KeyError, ValueError) as error:
         smoke.result['passed'] = False

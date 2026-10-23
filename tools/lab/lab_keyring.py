@@ -59,7 +59,8 @@ def lab_keyring():
     if secret_service().get('provider') == 'ksecretd':
         path = kwallet_lab_wallet(call, GLib)
         call(service, 'org.freedesktop.Secret.Service', 'SetAlias', GLib.Variant('(so)', ('default', path)), '()')
-        return {'collection': path, 'previousDefault': None if current == '/' else current}
+        restarted = refresh_ksecretd_alias(bus, call, Gio, GLib)
+        return {'collection': path, 'previousDefault': None if current == '/' else current, 'restarted': restarted}
     for path in call(service, 'org.freedesktop.DBus.Properties', 'Get', GLib.Variant(
             '(ss)', ('org.freedesktop.Secret.Service', 'Collections')), '(v)')[0]:
         label = call(path, 'org.freedesktop.DBus.Properties', 'Get', GLib.Variant(
@@ -76,6 +77,34 @@ def lab_keyring():
                                                      (session, b'', b'', 'text/plain'))), '(o)')[0]
     call(service, 'org.freedesktop.Secret.Service', 'SetAlias', GLib.Variant('(so)', ('default', path)), '()')
     return {'collection': path, 'previousDefault': None if current == '/' else current}
+
+
+def refresh_ksecretd_alias(bus, call, Gio, GLib):
+    """ksecretd builds its aliases/default object when it starts: SetAlias moves ReadAlias and the
+    default wallet, but libsecret writes through aliases/default, which keeps the old wallet until
+    ksecretd restarts. Stop exactly the process that owns the name, then activate it again."""
+    def alias_label():
+        return call('/org/freedesktop/secrets/aliases/default', 'org.freedesktop.DBus.Properties', 'Get',
+                    GLib.Variant('(ss)', ('org.freedesktop.Secret.Collection', 'Label')), '(v)')[0]
+    if alias_label() == KWALLET_LAB:
+        return False
+    pid = bus.call_sync('org.freedesktop.DBus', '/org/freedesktop/DBus', 'org.freedesktop.DBus',
+                        'GetConnectionUnixProcessID', GLib.Variant('(s)', ('org.freedesktop.secrets',)),
+                        GLib.VariantType('(u)'), Gio.DBusCallFlags.NONE, 20000, None).unpack()[0]
+    if Path(f'/proc/{pid}/comm').read_text().strip() != 'ksecretd':
+        raise RuntimeError('org.freedesktop.secrets is not owned by ksecretd')
+    os.kill(pid, 15)
+    deadline = time.monotonic() + 20
+    while Path(f'/proc/{pid}').exists():
+        if time.monotonic() > deadline:
+            raise RuntimeError('ksecretd did not stop')
+        time.sleep(.2)
+    # org.kde.secretservicecompat activates ksecretd; org.freedesktop.secrets alone is not activatable.
+    bus.call_sync('org.kde.secretservicecompat', '/', 'org.freedesktop.DBus.Peer', 'Ping', None, None,
+                  Gio.DBusCallFlags.NONE, 20000, None)
+    if alias_label() != KWALLET_LAB:
+        raise RuntimeError('aliases/default still names another wallet after restarting ksecretd')
+    return True
 
 
 KWALLET_LAB = 'putgdlab'

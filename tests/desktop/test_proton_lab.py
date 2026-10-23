@@ -235,6 +235,22 @@ class LendFailures(LendTest):
         self.assertIn(('cleanup', BORROWED), self.calls)
 
 
+class GuestReference(LendTest):
+    def test_lend_can_reuse_an_earlier_guest_name_to_finish_its_operations(self):
+        given = {}
+        chain = Chain(self.calls)
+        original = chain.provision
+        def provision(run, broker, receipt, reference=None):
+            given['reference'] = reference
+            return original(run, broker, receipt)
+        chain.provision = provision
+        proton.lend(self.layout, self.run_dir, 'local_lender', 'lender', 'revoke the earlier link', ['smoke'],
+                    chain_factory=chain, guest_factory=lambda run: Guest(self.calls, run), runner=self.runner(),
+                    clock=self.clock, heartbeat=False, guest_reference=BORROWED)
+        self.assertEqual(given['reference'], BORROWED)
+        self.assertIn(('cleanup', BORROWED), self.calls)
+
+
 class Recovery(LendTest):
     def interrupted(self):
         with self.assertRaises(proton.bridge.ProvisionError):
@@ -350,7 +366,7 @@ def _context(value):
 class CommandLine(LendTest):
     def test_lend_takes_its_options_anywhere_and_the_test_command_after_the_separator(self):
         seen = {}
-        def lend(layout, run, session, owner, purpose, command):
+        def lend(layout, run, session, owner, purpose, command, guest_reference=None):
             seen.update(run=run, session=session, owner=owner, purpose=purpose, command=command)
             return {}
         with mock.patch.object(proton, 'lend', lend), mock.patch('sys.stdout'):
