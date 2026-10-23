@@ -1013,6 +1013,18 @@ Virtual-3 disconnected (normal left inverted right x axis y axis)
         self.assertEqual(image['sha256'], 'a081ab202cfda17f6924128dbd2de8b63518ac0531bcfe3f1a1b88097c459bd4')
         self.assertEqual(image['signingFingerprint'], '27DEB15644C6B3CF3BD7D291300F846BA25BAE09')
 
+    def test_neon_profile_is_a_bios_deb_plasma_wayland_guest_with_a_locked_iso(self):
+        lock = json.loads((ROOT / 'tools/lab/image-lock.json').read_text())
+        image = lock['images']['kde-neon-user']
+        self.assertEqual(image['sha256'], 'b1b3bd85136a358713b73155cc662170337bed6d702c65488266a40fec842e3a')
+        self.assertEqual(image['signingFingerprint'], 'B74EA2162376765BEAC3AE4345F4C354638D1F29')
+        profile = lab.load_profile('neon-kde-wayland')
+        self.assertEqual((profile['desktop'], profile['session'], profile['session_process']), ('KDE', 'wayland', 'plasmashell'))
+        self.assertEqual(profile['image'], 'kde-neon-user')
+        self.assertIsNone(lab.uefi_firmware(profile))
+        self.assertNotIn('install', profile)
+        self.assertEqual(profile['fixture_hotkeys'], lab.load_profile('kde-wayland')['fixture_hotkeys'])
+
 
 if __name__ == '__main__':
     unittest.main()
