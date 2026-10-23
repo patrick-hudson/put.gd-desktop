@@ -268,6 +268,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS integrations/gnome/metadata.json)
   pkg_check_modules(PUTGD_WAYLAND REQUIRED IMPORTED_TARGET wayland-client)
   pkg_check_modules(PUTGD_XKBCOMMON REQUIRED IMPORTED_TARGET xkbcommon>=1.0.0)
+  # The compositor keymap reader, shared by the KDE adapter and the shortcut recorder.
+  add_library(putgd_keyboard_map STATIC src/platform/kde/KdeKeyboardMap.cpp)
+  target_include_directories(putgd_keyboard_map PUBLIC src)
+  target_link_libraries(putgd_keyboard_map PUBLIC putgd_build_options PkgConfig::PUTGD_XKBCOMMON PRIVATE PkgConfig::PUTGD_WAYLAND)
   find_program(PUTGD_WAYLAND_SCANNER wayland-scanner REQUIRED)
   set(data_control_protocol "${CMAKE_CURRENT_SOURCE_DIR}/src/platform/kde/protocols/ext-data-control-v1.xml")
   set(protocol_dir "${CMAKE_CURRENT_BINARY_DIR}/wayland-protocols")
@@ -301,13 +305,13 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   find_package(Threads REQUIRED)
   add_library(putgd_kde STATIC src/platform/kde/KWinTransfer.cpp src/platform/kde/KWinCapture.cpp
     src/platform/kde/KdeShortcuts.cpp src/platform/kde/KdeShortcutNormalization.cpp
-    src/platform/kde/KdeKeyboardMap.cpp src/platform/kde/DataControlClipboard.cpp
+    src/platform/kde/DataControlClipboard.cpp
     src/platform/kde/KdeRegionOverlay.cpp src/platform/kde/KdeSourceAdapter.cpp src/platform/kde/KdeOutputs.cpp
     "${protocol_dir}/ext-data-control-v1-client-protocol.h" "${protocol_dir}/ext-data-control-v1-protocol.c"
     "${protocol_dir}/wlr-data-control-unstable-v1-client-protocol.h" "${protocol_dir}/wlr-data-control-unstable-v1-protocol.c"
     "${protocol_dir}/xdg-output-unstable-v1-client-protocol.h" "${protocol_dir}/xdg-output-unstable-v1-protocol.c")
   target_include_directories(putgd_kde PRIVATE "${protocol_dir}")
-  target_link_libraries(putgd_kde PUBLIC putgd_app putgd_kde_region_process Qt6::Widgets Qt6::DBus PkgConfig::PUTGD_XKBCOMMON PRIVATE PkgConfig::PUTGD_WAYLAND Threads::Threads)
+  target_link_libraries(putgd_kde PUBLIC putgd_app putgd_kde_region_process putgd_keyboard_map Qt6::Widgets Qt6::DBus PkgConfig::PUTGD_XKBCOMMON PRIVATE PkgConfig::PUTGD_WAYLAND Threads::Threads)
   if(Qt6_VERSION VERSION_GREATER_EQUAL "6.5")
     find_package(LayerShellQt QUIET CONFIG)
     if(TARGET LayerShellQt::Interface)
@@ -368,9 +372,17 @@ target_link_libraries(putgd_file_dialog PUBLIC putgd_visual)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   target_link_libraries(putgd_file_dialog PUBLIC Qt6::DBus)
 endif()
+# The shortcut recorder's view of the session keyboard map (Wayland or X11).
+add_library(putgd_shortcut_keyboard STATIC src/ui/ShortcutKeyboard.cpp)
+target_include_directories(putgd_shortcut_keyboard PUBLIC src)
+target_link_libraries(putgd_shortcut_keyboard PUBLIC Qt6::Gui putgd_build_options)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  target_compile_definitions(putgd_shortcut_keyboard PRIVATE PUTGD_SHORTCUT_KEYBOARD=1)
+  target_link_libraries(putgd_shortcut_keyboard PRIVATE putgd_keyboard_map PkgConfig::PUTGD_XKBCOMMON PkgConfig::PUTGD_WAYLAND PkgConfig::PUTGD_XCB)
+endif()
 add_library(putgd_ui STATIC src/ui/MainWindow.cpp src/ui/RedesignTheme.cpp src/ui/redesign.qrc src/ui/UiSession.cpp src/ui/SettingsWindow.cpp src/ui/ShortcutEditor.cpp
   src/ui/HistoryWindow.cpp src/ui/HistoryModel.cpp)
-target_link_libraries(putgd_ui PUBLIC putgd_core putgd_client putgd_ui_state putgd_visual putgd_appearance putgd_file_dialog PRIVATE putgd_s3_wire putgd_host_open)
+target_link_libraries(putgd_ui PUBLIC putgd_core putgd_client putgd_ui_state putgd_visual putgd_appearance putgd_file_dialog PRIVATE putgd_s3_wire putgd_host_open putgd_shortcut_keyboard)
 # Editing model and canvas for the on-demand editor helper; no storage or IPC.
 add_library(putgd_editor STATIC src/editor/EditDocument.cpp src/editor/EditorCommands.cpp src/editor/EditorCanvas.cpp)
 target_include_directories(putgd_editor PUBLIC src)
@@ -652,6 +664,9 @@ if(BUILD_TESTING)
     add_executable(test_kde_keyboard_map tests/unit/test_kde_keyboard_map.cpp)
     target_link_libraries(test_kde_keyboard_map PRIVATE putgd_kde Qt6::Test)
     add_test(NAME kde_keyboard_map COMMAND test_kde_keyboard_map)
+    add_executable(test_shortcut_keyboard tests/unit/test_shortcut_keyboard.cpp)
+    target_link_libraries(test_shortcut_keyboard PRIVATE putgd_shortcut_keyboard Qt6::Test PkgConfig::PUTGD_XKBCOMMON)
+    add_test(NAME shortcut_keyboard COMMAND test_shortcut_keyboard)
     pkg_check_modules(PUTGD_WAYLAND_TEST_SERVER REQUIRED IMPORTED_TARGET wayland-server)
     add_custom_command(OUTPUT "${protocol_dir}/xdg-output-unstable-v1-server-protocol.h"
       COMMAND "${PUTGD_WAYLAND_SCANNER}" server-header "${xdg_output_protocol}" "${protocol_dir}/xdg-output-unstable-v1-server-protocol.h"
