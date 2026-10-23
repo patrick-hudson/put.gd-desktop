@@ -1,0 +1,7 @@
+2026-10-23T21:09:47Z F2: Firefox Flatpak --profile temporary profile made the https handler (ffdefault_flatpak.py), run aurora-vm-F2 set up
+2026-10-23T21:10:16Z F2: opened the temporary Firefox profile once (about:blank) to reach its first-run Terms of Use screen
+2026-10-23T21:11:05Z F2: clicked Continue on Firefox first-run Terms of Use in the temporary profile only (Patrick approved, relayed by the coordinator)
+2026-10-23T21:11:23Z F2: that Firefox closed by its PID 2467 (the flatpak bwrap parents 2442/2466 exited with it)
+2026-10-23T21:11:33Z F2: live S3 public-read profile to put.gd/acceptance/qt418/aurora-vm/ (key set 2 piped from f44 into stdin, never printed)
+2026-10-23T21:11:44Z F2: upload + banner click (vnc)
+2026-10-23T21:14:13Z F2 phase B: Firefox PID 3484 closed, Delete from destination, run quit + cleaned, ffdefault_flatpak off (mimeapps restored), temporary profile removed

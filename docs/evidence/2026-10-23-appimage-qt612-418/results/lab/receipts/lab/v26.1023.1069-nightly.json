@@ -1,0 +1,191 @@
+{
+ "schemaVersion": 1,
+ "tag": "v26.1023.1069-nightly",
+ "channel": "nightly",
+ "scope": "lab",
+ "startedAt": "2026-10-23T20:11:07Z",
+ "finishedAt": "2026-10-23T20:12:20Z",
+ "result": "published",
+ "source": {
+  "kind": "lab",
+  "repository": "patrick-hudson/put.gd-desktop",
+  "commit": null,
+  "checks": [
+   "lab build: SHA256SUMS and package fields only"
+  ]
+ },
+ "inputs": [
+  {
+   "label": "appimage",
+   "name": "putgd-26.1023.1069-nightly-x86_64.AppImage",
+   "sha256": "f253c1ec30863511ac0f5ed0b4b8599440cab5ad87a6f903edd06ba0be2979e0",
+   "size": 116439544,
+   "checks": [
+    "SHA256SUMS",
+    ".zsync describes the image at https://pkg.put.gd/lab/releases/v26.1023.1069-nightly/putgd-26.1023.1069-nightly-x86_64.AppImage"
+   ]
+  },
+  {
+   "label": "appimage-zsync",
+   "name": "putgd-26.1023.1069-nightly-x86_64.AppImage.zsync",
+   "sha256": "2e5a3e28b850caba60b70ca6947b1dba90ede199554c1261d00d94c20f9a060a",
+   "size": 199306,
+   "checks": [
+    "SHA256SUMS",
+    "URL https://pkg.put.gd/lab/releases/v26.1023.1069-nightly/putgd-26.1023.1069-nightly-x86_64.AppImage"
+   ]
+  }
+ ],
+ "rpm": [],
+ "catalog": {},
+ "signatures": [
+  {
+   "file": "apt/ubuntu24.04/dists/nightly/InRelease",
+   "kind": "openpgp",
+   "key": "4032E28D893BAF66F4AC23D9A11D38D55536B371"
+  },
+  {
+   "file": "apt/ubuntu24.04/dists/nightly/Release.gpg",
+   "kind": "openpgp",
+   "key": "4032E28D893BAF66F4AC23D9A11D38D55536B371"
+  },
+  {
+   "file": "apt/ubuntu26.04/dists/nightly/InRelease",
+   "kind": "openpgp",
+   "key": "4032E28D893BAF66F4AC23D9A11D38D55536B371"
+  },
+  {
+   "file": "apt/ubuntu26.04/dists/nightly/Release.gpg",
+   "kind": "openpgp",
+   "key": "4032E28D893BAF66F4AC23D9A11D38D55536B371"
+  },
+  {
+   "file": "apt/debian13/dists/nightly/InRelease",
+   "kind": "openpgp",
+   "key": "4032E28D893BAF66F4AC23D9A11D38D55536B371"
+  },
+  {
+   "file": "apt/debian13/dists/nightly/Release.gpg",
+   "kind": "openpgp",
+   "key": "4032E28D893BAF66F4AC23D9A11D38D55536B371"
+  },
+  {
+   "file": "releases/v26.1023.1069-nightly/SHA256SUMS.minisig",
+   "kind": "minisign",
+   "key": "nightly"
+  },
+  {
+   "file": "update/v1/nightly.json.minisig",
+   "kind": "minisign",
+   "key": "nightly"
+  }
+ ],
+ "s3": {
+  "uploaded": [
+   {
+    "key": "lab/releases/v26.1023.1069-nightly/putgd-26.1023.1069-nightly-x86_64.AppImage",
+    "sha256": "f253c1ec30863511ac0f5ed0b4b8599440cab5ad87a6f903edd06ba0be2979e0"
+   },
+   {
+    "key": "lab/apt/debian13/dists/nightly/InRelease",
+    "sha256": "276487067ef4ce6e0de2b818aa7b1465a8fbd6afa195f24eb4e1cad22e8d4091"
+   },
+   {
+    "key": "lab/apt/debian13/dists/nightly/Release.gpg",
+    "sha256": "d33c602d9de9e5789b37b9cb68e2415c5c25067bb2b7e06d9b9b7a03a51d53e7"
+   },
+   {
+    "key": "lab/apt/ubuntu24.04/dists/nightly/InRelease",
+    "sha256": "17452f7393d4073a42e13d531ae468490de8acb51b41450e37645f18e49d6ca9"
+   },
+   {
+    "key": "lab/apt/ubuntu24.04/dists/nightly/Release.gpg",
+    "sha256": "25865a2df05406a32a25ab9e8ef4cd1e72c5306ae13c01fd733146448e87dc80"
+   },
+   {
+    "key": "lab/apt/ubuntu26.04/dists/nightly/InRelease",
+    "sha256": "5816319c594b989a38da38ffe834767fc1ea06b9cfc2ea92ceff07f712236454"
+   },
+   {
+    "key": "lab/apt/ubuntu26.04/dists/nightly/Release.gpg",
+    "sha256": "228ab999540ad745f3a1749746d429ae668c89562cf8d6c0ca013cc6dbf1782c"
+   },
+   {
+    "key": "lab/releases/v26.1023.1069-nightly/SHA256SUMS",
+    "sha256": "45f4084754411c4d5f477ec2a0d2469e080d0eb04a5ec247b1701ea6ef894d5a"
+   },
+   {
+    "key": "lab/releases/v26.1023.1069-nightly/SHA256SUMS.minisig",
+    "sha256": "96661f5ee6c02e897b9e249702277f878d2c2a655756e4bf430a175c23502a9c"
+   },
+   {
+    "key": "lab/releases/v26.1023.1069-nightly/putgd-26.1023.1069-nightly-x86_64.AppImage.zsync",
+    "sha256": "2e5a3e28b850caba60b70ca6947b1dba90ede199554c1261d00d94c20f9a060a"
+   },
+   {
+    "key": "lab/dl/nightly/appimage.zsync",
+    "sha256": "2e5a3e28b850caba60b70ca6947b1dba90ede199554c1261d00d94c20f9a060a"
+   },
+   {
+    "key": "lab/update/v1/nightly.json",
+    "sha256": "495c1969417fd63aea7c2e8039c87cbf2a5a9357f75eb11691056241248eccf9"
+   },
+   {
+    "key": "lab/update/v1/nightly.json.minisig",
+    "sha256": "e61402fe4442e761f357f5f6353fa6bafe767c296d9d4152e13c36f1f996b887"
+   }
+  ],
+  "deleted": []
+ },
+ "invalidations": [
+  {
+   "distribution": "EY4KKRLYNFZ1W",
+   "id": "IDRAL3NFFIAZZMA9EJLOBXSLST",
+   "paths": 8
+  },
+  {
+   "distribution": "EY4KKRLYNFZ1W",
+   "id": "IC05OG3R00G6ZJYLQAENTIBEOB",
+   "paths": 3
+  }
+ ],
+ "readback": [
+  {
+   "url": "https://pkg.put.gd/lab/apt/ubuntu24.04/dists/nightly/InRelease",
+   "sha256": "17452f7393d4073a42e13d531ae468490de8acb51b41450e37645f18e49d6ca9"
+  },
+  {
+   "url": "https://pkg.put.gd/lab/apt/ubuntu24.04/dists/nightly/main/binary-amd64/Packages",
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+   "url": "https://pkg.put.gd/lab/apt/ubuntu26.04/dists/nightly/InRelease",
+   "sha256": "5816319c594b989a38da38ffe834767fc1ea06b9cfc2ea92ceff07f712236454"
+  },
+  {
+   "url": "https://pkg.put.gd/lab/apt/ubuntu26.04/dists/nightly/main/binary-amd64/Packages",
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+   "url": "https://pkg.put.gd/lab/apt/debian13/dists/nightly/InRelease",
+   "sha256": "276487067ef4ce6e0de2b818aa7b1465a8fbd6afa195f24eb4e1cad22e8d4091"
+  },
+  {
+   "url": "https://pkg.put.gd/lab/apt/debian13/dists/nightly/main/binary-amd64/Packages",
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+   "url": "https://pkg.put.gd/lab/rpm/fedora/44/x86_64/nightly/repodata/repomd.xml",
+   "sha256": "a642278bcf2ae23ffdb1741fb071a55382e9db5c4f3e785e83a42b880650af81"
+  },
+  {
+   "url": "https://pkg.put.gd/lab/releases/v26.1023.1069-nightly/putgd-26.1023.1069-nightly-x86_64.AppImage.zsync",
+   "sha256": "2e5a3e28b850caba60b70ca6947b1dba90ede199554c1261d00d94c20f9a060a"
+  }
+ ],
+ "feed": {
+  "key": "lab/update/v1/nightly.json",
+  "sha256": "495c1969417fd63aea7c2e8039c87cbf2a5a9357f75eb11691056241248eccf9"
+ },
+ "error": null
+}

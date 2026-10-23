@@ -1,0 +1,91 @@
+{
+ "drag": [
+  600,
+  400,
+  680,
+  460
+ ],
+ "expected": [
+  80,
+  60
+ ],
+ "coords": true,
+ "screenDecodes": {
+  "0,0": [
+   0,
+   0
+  ],
+  "1279,799": [
+   1279,
+   799
+  ],
+  "600,400": [
+   600,
+   400
+  ],
+  "679,459": [
+   679,
+   459
+  ],
+  "640,400": [
+   640,
+   400
+  ]
+ },
+ "screenCovered": true,
+ "operation": {
+  "id": "e0e48cf4-cc02-46d0-8649-cf554dd734d6",
+  "state": "completed",
+  "copyStatus": "copied",
+  "items": [
+   {
+    "name": "Screen-Capture-2026-10-23-14-37-10.png",
+    "mime": "image/png",
+    "uploadStatus": "uploaded",
+    "link": "http://127.0.0.1:39955/fixture/afa/Screen-Capture-2026-10-23-14-37-10.png",
+    "local": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "path": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/archive/images/Screen-Capture-2026-10-23-14-37-10.png",
+     "status": "saved"
+    }
+   }
+  ],
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  }
+ },
+ "png": [
+  80,
+  60
+ ],
+ "consistent": true,
+ "origin": [
+  599,
+  399
+ ],
+ "corners": {
+  "topLeft": [
+   599,
+   399
+  ],
+  "bottomRight": [
+   678,
+   458
+  ]
+ },
+ "originOffset": [
+  -1,
+  -1
+ ],
+ "newHistory": [
+  "54066bae-6926-4605-a3a6-1d1cf76503e2"
+ ],
+ "sizePass": true,
+ "originExact": false
+}

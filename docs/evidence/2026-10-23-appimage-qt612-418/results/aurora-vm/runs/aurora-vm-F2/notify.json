@@ -1,0 +1,121 @@
+{
+ "notificationsOn": true,
+ "operation": {
+  "id": "74e18e85-bcc5-43b1-b77e-d953fb1ddb5d",
+  "state": "completed",
+  "copyStatus": "copied",
+  "items": [
+   {
+    "name": "Screen-Capture-2026-10-23-16-11-45.png",
+    "mime": "image/png",
+    "uploadStatus": "uploaded",
+    "link": "https://put.gd/acceptance/qt418/aurora-vm/Screen-Capture-2026-10-23-16-11-45.png",
+    "local": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "path": "/var/home/lab/put.gd-qt418/afa/runs/aurora-vm-F2/archive/images/Screen-Capture-2026-10-23-16-11-45.png",
+     "status": "saved"
+    }
+   }
+  ],
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  }
+ },
+ "notification": {
+  "logged": [
+   {
+    "category": "putgd.ui",
+    "fields": {
+     "itemId": null,
+     "notificationId": 1,
+     "notificationText": "Uploaded. Link copied to the clipboard. Click to open in browser.",
+     "operationId": null,
+     "summary": "operation_completed",
+     "title": "put.gd \u2014 completed",
+     "warning": false
+    },
+    "level": "info",
+    "message": "Notification shown",
+    "pid": 3279,
+    "process": "putgd",
+    "time": "2026-10-23T21:11:47.979Z",
+    "v": 1
+   }
+  ],
+  "banner": {
+   "label": "aurora-vm-F2-notify-notification",
+   "components": [
+    {
+     "blocks": 551,
+     "box": [
+      904,
+      600,
+      1248,
+      704
+     ]
+    },
+    {
+     "blocks": 42,
+     "box": [
+      272,
+      744,
+      328,
+      792
+     ]
+    },
+    {
+     "blocks": 16,
+     "box": [
+      968,
+      760,
+      1024,
+      784
+     ]
+    },
+    {
+     "blocks": 3,
+     "box": [
+      1272,
+      400,
+      1280,
+      424
+     ]
+    }
+   ],
+   "colour": [
+    40,
+    40,
+    44
+   ],
+   "inner": null
+  },
+  "full": "/var/home/lab/put.gd-qt418/afa/runs/aurora-vm-F2/full/aurora-vm-F2-notify-notification.png",
+  "clicked": [
+   1076,
+   634
+  ],
+  "dbusMembers": [
+   "NameAcquired",
+   "NameLost",
+   "Notify",
+   "ActivationToken",
+   "ActionInvoked",
+   "NotificationClosed"
+  ],
+  "notifyActions": [
+   "default",
+   "Open in browser"
+  ],
+  "actionInvoked": [
+   "default"
+  ],
+  "openedUrls": []
+ },
+ "notificationsOff": true
+}

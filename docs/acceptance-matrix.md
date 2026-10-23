@@ -82,8 +82,9 @@ evidenced on every desktop. A failed item is a finding and gets its own issue; t
 pass still reports it as a fail. An item that can't run on a desktop needs a
 written reason, and Patrick decides whether the pass counts as complete. Nothing
 is skipped silently. The passes so far are
-[2026-10-21, nightly 842](evidence/2026-10-21-appimage-full-acceptance/README.md) and
-[2026-10-22, nightly 942](evidence/2026-10-22-appimage-full-acceptance-rerun/README.md).
+[2026-10-21, nightly 842](evidence/2026-10-21-appimage-full-acceptance/README.md),
+[2026-10-22, nightly 942](evidence/2026-10-22-appimage-full-acceptance-rerun/README.md) and
+[2026-10-23, Qt 6.12.0 (#418)](evidence/2026-10-23-appimage-qt612-418/README.md).
 
 | Desktop | Placement |
 | --- | --- |

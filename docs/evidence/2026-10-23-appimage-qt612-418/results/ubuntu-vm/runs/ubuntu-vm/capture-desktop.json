@@ -1,0 +1,77 @@
+{
+ "kind": "desktop",
+ "operation": {
+  "id": "aba8f5c7-563a-420e-86a7-b6f16e99d726",
+  "state": "completed",
+  "copyStatus": "copied",
+  "items": [
+   {
+    "name": "Screen-Capture-2026-10-23-14-35-28.png",
+    "mime": "image/png",
+    "uploadStatus": "uploaded",
+    "link": "http://127.0.0.1:39955/fixture/afa/Screen-Capture-2026-10-23-14-35-28.png",
+    "local": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "path": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/archive/images/Screen-Capture-2026-10-23-14-35-28.png",
+     "status": "saved"
+    }
+   }
+  ],
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  }
+ },
+ "png": {
+  "bytes": 6056,
+  "sha256": "e5e7450ff17466fd9188a94dcc1b914f40ad8cd829175d739c82cb62b1c2d810",
+  "magic": true,
+  "size": [
+   1280,
+   800
+  ]
+ },
+ "coverCheck": {
+  "edges": {
+   "bottom": 1.0,
+   "left": 1.0,
+   "right": 1.0,
+   "top": 1.0
+  },
+  "fraction": 0.775,
+  "kept": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/out/capture-desktop.png",
+  "minFraction": 0.5,
+  "ok": true,
+  "rect": [
+   0,
+   0,
+   1280,
+   800
+  ],
+  "sha256": "e5e7450ff17466fd9188a94dcc1b914f40ad8cd829175d739c82cb62b1c2d810",
+  "size": [
+   1280,
+   800
+  ]
+ },
+ "clipboard": "http://127.0.0.1:39955/fixture/afa/Screen-Capture-2026-10-23-14-35-28.png",
+ "linkCopied": true,
+ "linkServes": {
+  "status": 200,
+  "sha256": "e5e7450ff17466fd9188a94dcc1b914f40ad8cd829175d739c82cb62b1c2d810",
+  "matchesLocal": true
+ },
+ "historyEntry": {
+  "id": "6f520747-571c-4875-a60c-6dea2c7c029c",
+  "name": "Screen-Capture-2026-10-23-14-35-28.png",
+  "uploadStatus": "uploaded",
+  "local": "saved",
+  "linkAvailable": true
+ },
+ "notifications": []
+}

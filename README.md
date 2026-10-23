@@ -174,7 +174,7 @@ Every build, nightly or stable, ships the same fourteen files. Grab the one for 
 | Ubuntu 26.04 · Kubuntu 26.04 | `putgd-VERSION-ubuntu26.04-x86_64.deb` | distro Qt + LayerShellQt |
 | Debian 13 | `putgd-VERSION-debian13-x86_64.deb` | distro Qt 6.8 + LayerShellQt |
 | Fedora 44 | `putgd-VERSION-fedora44-x86_64.rpm` | distro Qt + LayerShellQt |
-| Anything else with glibc 2.39+ | `putgd-VERSION-x86_64.AppImage` | bundled Qt 6.8.3, dynamically linked |
+| Anything else with glibc 2.39+ | `putgd-VERSION-x86_64.AppImage` | bundled Qt 6.12.0, dynamically linked |
 | GNOME 50 (any of the above) | `putgd-gnome50-VERSION.zip` | host Shell extension; the DEB/RPM already install it |
 | Building it yourself | `putgd-VERSION-source.tar.gz` | curated source with `source-info.json` |
 

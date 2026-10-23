@@ -1,0 +1,109 @@
+{
+ "processes": [
+  {
+   "pid": 1527107,
+   "ppid": 1527065,
+   "exe": "/tmp/.mount_putgd-PPnoBe/usr/bin/putgd",
+   "comm": "putgd",
+   "cmd": "/tmp/.mount_putgd-PPnoBe/usr/bin/putgd --background",
+   "qtPlatformPlugins": [],
+   "QT_QPA_PLATFORM": null,
+   "APPIMAGE": "/home/patrick/work/put.gd-qt418/afa/images/putgd-26.1023.1068-dev+g6a325a722afd-x86_64.AppImage"
+  },
+  {
+   "pid": 1527351,
+   "ppid": 1527107,
+   "exe": "/tmp/.mount_putgd-PPnoBe/usr/bin/putgd-ui",
+   "comm": "putgd-ui",
+   "cmd": "/tmp/.mount_putgd-PPnoBe/usr/bin/putgd-ui",
+   "qtPlatformPlugins": [
+    "libqwayland.so"
+   ],
+   "QT_QPA_PLATFORM": null,
+   "APPIMAGE": "/home/patrick/work/put.gd-qt418/afa/images/putgd-26.1023.1068-dev+g6a325a722afd-x86_64.AppImage"
+  }
+ ],
+ "entries": [
+  "putgd-appimage-AC5oWI7g.desktop",
+  "putgd-record-appimage-qxCPGD6V.desktop",
+  "putgd-record.desktop",
+  "putgd-ui.desktop"
+ ],
+ "window": {
+  "label": "k72-settings-window",
+  "components": [
+   {
+    "blocks": 32400,
+    "box": [
+     0,
+     0,
+     1920,
+     1080
+    ]
+   }
+  ],
+  "colour": [
+   252,
+   252,
+   252
+  ],
+  "inner": [
+   300,
+   245,
+   1620,
+   816
+  ],
+  "changedShare": 1.0,
+  "ownShare": 0.962,
+  "kept": "/home/patrick/work/put.gd-qt418/afa/runs/k72/crops/k72-settings-window.png"
+ },
+ "full": "/home/patrick/work/put.gd-qt418/afa/runs/k72/full/k72-settings-window.png",
+ "titlebar": {
+  "label": "k72-settings-titlebar",
+  "components": [
+   {
+    "blocks": 1680,
+    "box": [
+     0,
+     0,
+     1920,
+     56
+    ]
+   }
+  ],
+  "colour": [
+   144,
+   160,
+   192
+  ],
+  "inner": null
+ },
+ "switcher": {
+  "label": "k72-settings-switcher",
+  "components": [
+   {
+    "blocks": 774,
+    "box": [
+     808,
+     432,
+     1120,
+     656
+    ]
+   }
+  ],
+  "colour": [
+   60,
+   96,
+   116
+  ],
+  "inner": [
+   816,
+   442,
+   1083,
+   647
+  ],
+  "changedShare": 0.816,
+  "kept": "/home/patrick/work/put.gd-qt418/afa/runs/k72/crops/k72-settings-switcher.png"
+ },
+ "switcherFull": "/home/patrick/work/put.gd-qt418/afa/runs/k72/full/k72-settings-switcher.png"
+}

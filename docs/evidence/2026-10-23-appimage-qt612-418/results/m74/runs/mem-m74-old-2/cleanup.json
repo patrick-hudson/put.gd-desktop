@@ -1,0 +1,24 @@
+{
+ "removed": [
+  "/home/patrick/.local/share/putgd",
+  "/tmp/afa.wMzflr",
+  "/home/patrick/work/put.gd-qt418/afa/runs/mem-m74-old-2/appdir",
+  "/home/patrick/work/put.gd-qt418/afa/runs/mem-m74-old-2/frames",
+  "/home/patrick/work/put.gd-qt418/afa/runs/mem-m74-old-2/config",
+  "/home/patrick/work/put.gd-qt418/afa/runs/mem-m74-old-2/cache",
+  "/home/patrick/work/put.gd-qt418/afa/runs/mem-m74-old-2/archive",
+  "/home/patrick/work/put.gd-qt418/afa/runs/mem-m74-old-2/working",
+  "/home/patrick/work/put.gd-qt418/afa/runs/mem-m74-old-2/urldata"
+ ],
+ "fixtureStopped": 525578,
+ "leftovers": {
+  "processes": [],
+  "mounts": [],
+  "entries": []
+ },
+ "after": {
+  "processes": [],
+  "mounts": [],
+  "entries": []
+ }
+}

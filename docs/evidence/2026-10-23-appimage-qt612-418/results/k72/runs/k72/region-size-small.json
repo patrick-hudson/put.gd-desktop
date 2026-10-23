@@ -1,0 +1,71 @@
+{
+ "drag": [
+  1000,
+  500,
+  1080,
+  560
+ ],
+ "expected": [
+  80,
+  60
+ ],
+ "coords": false,
+ "operation": {
+  "id": "b18f9374-a708-44de-80d8-02b0204f2089",
+  "state": "completed",
+  "copyStatus": "copied",
+  "items": [
+   {
+    "name": "Screen-Capture-2026-10-23-13-44-11.png",
+    "mime": "image/png",
+    "uploadStatus": "uploaded",
+    "link": "http://127.0.0.1:37543/fixture/afa/Screen-Capture-2026-10-23-13-44-11.png",
+    "local": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "path": "/home/patrick/work/put.gd-qt418/afa/runs/k72/archive/images/Screen-Capture-2026-10-23-13-44-11.png",
+     "status": "saved"
+    }
+   }
+  ],
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  }
+ },
+ "png": [
+  80,
+  60
+ ],
+ "coverCheck": {
+  "deleted": true,
+  "edges": {
+   "bottom": 0.0,
+   "left": 0.0,
+   "right": 0.0,
+   "top": 0.0
+  },
+  "fraction": 0.0,
+  "minFraction": 0.5,
+  "ok": false,
+  "reason": "uncovered",
+  "rect": [
+   0,
+   0,
+   80,
+   60
+  ],
+  "size": [
+   80,
+   60
+  ]
+ },
+ "newHistory": [
+  "642699b4-d4b2-48a6-9cd2-7503fbd437c6"
+ ],
+ "sizePass": true
+}

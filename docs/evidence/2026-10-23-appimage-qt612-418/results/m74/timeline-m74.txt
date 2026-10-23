@@ -1,0 +1,49 @@
+2026-10-23T18:39:38Z ac.sh start
+2026-10-23T18:43:32Z ac.sh done rc=0
+2026-10-23T18:48:30Z dk.sh done rc=0
+2026-10-23T18:48:30Z badfile done rc=0
+AK1-DONE
+2026-10-23T18:58:06Z clipfile (4 samples via Upload clipboard) start
+2026-10-23T18:58:57Z clipfile done rc=0
+2026-10-23T18:59:27Z clipfile again for the first sample (its first History click found no card)
+2026-10-23T19:00:31Z B tray picture from put.gd's tray icon (1738,1062)
+2026-10-23T19:00:37Z #341 start
+2026-10-23T19:02:14Z #341 done
+2026-10-23T19:02:25Z #341 window case again with DISPLAY=:0 (first try had no DISPLAY for zenity)
+2026-10-23T19:03:03Z I: launch at login enabled
+2026-10-23T19:03:03Z I: real logout/login:
+  2026-10-23T19:03:03Z shell cinnamon pid 497204
+  2026-10-23T19:03:03Z logout requested (cinnamon-session-quit --logout)
+  2026-10-23T19:03:06Z old shell gone
+  2026-10-23T19:03:06Z systemctl restart lightdm
+  2026-10-23T19:03:09Z new shell pid 531780
+    c1 1000 patrick seat0 tty7 closing no -
+   c11 1000 patrick seat0 tty7 closing no -
+   c12 1000 patrick seat0 tty7 closing no -
+   c14 1000 patrick seat0 tty7 closing no -
+   c16 1000 patrick seat0 tty7 closing no -
+   c18 1000 patrick seat0 tty7 closing no -
+   c20 1000 patrick seat0 tty7 closing no -
+   c22 1000 patrick seat0 tty7 closing no -
+   c24 1000 patrick seat0 tty7 closing no -
+   c26 1000 patrick seat0 tty7 closing no -
+   c28 1000 patrick seat0 tty7 active  no -
+    c3 1000 patrick seat0 tty7 closing no -
+    c5 1000 patrick seat0 tty7 closing no -
+    c7 1000 patrick seat0 tty7 closing no -
+    c9 1000 patrick seat0 tty7 closing no -
+2026-10-23T19:03:54Z I: login check done
+2026-10-23T19:04:41Z K prep: quit this run's private resident (ui.quit); the login-started instance stays for K
+2026-10-23T19:05:47Z K: quit from put.gd's tray icon (1737,1060) with a real click
+2026-10-23T19:08:37Z K cleanup: login disable + afa cleanup (autostart entry, data home, profile, caches)
+2026-10-23T19:10:41Z F: ffprofile on ({"profile": "/home/patrick/.mozilla/firefox/putgd-qt418-79e8fb2d", "installSections": ["Install4F96D1932A9F858E"]})
+2026-10-23T19:11:24Z F: run m74-F, live S3 public-read to put.gd/acceptance/qt418/m74/, banner click (xdotool)
+2026-10-23T19:13:48Z F phase B: browser PIDs 532810 closed; Delete from destination; run cleaned; ffprofile off ({"restored": true, "profileRemoved": true, "profile": "/home/patrick/.mozilla/firefox/putgd-qt418-79e8fb2d"}); new Firefox paths: 3
+2026-10-23T19:13:50Z closed Mint Welcome PID 531935 (autostarted on :0 after the item I re-login) by exact PID; the :1 instance 1568 left alone
+2026-10-23T19:21:03Z uinput agent stopped (recorded PIDs); host checked; lock released --verified-clean until the lab leg
+2026-10-23T20:15:21Z lock acquire (30 min) for the lab leg; Patrick apps: none
+2026-10-23T20:15:21Z J: in-app update 1058 -> lab v26.1023.1068-nightly (run m74-lab1058) start
+2026-10-23T20:15:45Z J: in-app update done; run quit and cleaned
+2026-10-23T20:15:45Z H/J on the lab nightly (run m74-labh) start
+2026-10-23T20:17:22Z H/J on the lab nightly done; run quit and cleaned
+2026-10-23T20:18:51Z lab leg done; uinput agent stopped, stale socket removed; host checked; lock released --verified-clean

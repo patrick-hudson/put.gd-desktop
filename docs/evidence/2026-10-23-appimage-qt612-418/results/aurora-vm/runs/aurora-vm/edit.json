@@ -1,0 +1,231 @@
+{
+ "editorId": "931afebe-fc3a-43b6-aa3f-b992c1c5a104",
+ "size": [
+  980,
+  600
+ ],
+ "blur": [
+  294,
+  192,
+  176,
+  204
+ ],
+ "solid": [
+  509,
+  216,
+  137,
+  132
+ ],
+ "apply": true,
+ "inspect": {
+  "canRedo": false,
+  "canUndo": true,
+  "crop": [
+   0,
+   0,
+   980,
+   600
+  ],
+  "destination": "Upload to Loopback fixture",
+  "height": 600,
+  "historyTruncated": false,
+  "modified": true,
+  "operationId": "931afebe-fc3a-43b6-aa3f-b992c1c5a104",
+  "phase": "editing",
+  "shapes": [
+   {
+    "id": 1,
+    "kind": "blur",
+    "rect": [
+     294,
+     192,
+     176,
+     204
+    ],
+    "strength": 24
+   },
+   {
+    "id": 2,
+    "kind": "redact",
+    "rect": [
+     509,
+     216,
+     137,
+     132
+    ]
+   }
+  ],
+  "width": 980
+ },
+ "window": {
+  "label": "editor",
+  "components": [
+   {
+    "blocks": 6793,
+    "box": [
+     0,
+     0,
+     1280,
+     800
+    ]
+   },
+   {
+    "blocks": 2637,
+    "box": [
+     320,
+     216,
+     960,
+     584
+    ]
+   }
+  ],
+  "colour": [
+   252,
+   0,
+   252
+  ],
+  "inner": null
+ },
+ "full": "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/full/editor.png",
+ "editorCommands": [
+  "inspect",
+  "apply",
+  "preview",
+  "saveCopy",
+  "fileDialog",
+  "submit",
+  "cancel",
+  "raise"
+ ],
+ "dialogOpen": {
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  },
+  "ok": true,
+  "requestId": "166d93ed-ca23-431d-bcab-a81133a3e01e",
+  "result": {
+   "backend": "portal",
+   "fallbackReason": null,
+   "last": null,
+   "mode": "save",
+   "open": true,
+   "operationId": "931afebe-fc3a-43b6-aa3f-b992c1c5a104",
+   "parentWindow": "",
+   "title": "Save a copy"
+  },
+  "schemaVersion": 1
+ },
+ "dialogState": {
+  "backend": "portal",
+  "fallbackReason": null,
+  "last": null,
+  "mode": "save",
+  "open": true,
+  "operationId": "931afebe-fc3a-43b6-aa3f-b992c1c5a104",
+  "parentWindow": "",
+  "title": "Save a copy"
+ },
+ "dialogShot": {
+  "label": "save-copy-dialog",
+  "components": [
+   {
+    "blocks": 8599,
+    "box": [
+     96,
+     0,
+     1184,
+     800
+    ]
+   }
+  ],
+  "colour": [
+   32,
+   32,
+   36
+  ],
+  "inner": null
+ },
+ "dialogFull": "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/full/save-copy-dialog.png",
+ "dialogResult": {
+  "backend": null,
+  "fallbackReason": null,
+  "last": {
+   "backend": "portal",
+   "error": null,
+   "fallbackReason": null,
+   "mode": "save",
+   "path": "/var/home/lab/Pictures/afa-aurora-vm-edited.png",
+   "status": "chosen"
+  },
+  "mode": null,
+  "open": false,
+  "operationId": "931afebe-fc3a-43b6-aa3f-b992c1c5a104",
+  "parentWindow": null,
+  "title": null
+ },
+ "savedCopy": {
+  "exists": true,
+  "bytes": 3930,
+  "size": [
+   980,
+   600
+  ],
+  "solidRegion": {
+   "mean": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "spread": 0
+  },
+  "blurChangedShare": 0.424
+ },
+ "upload": {
+  "id": "931afebe-fc3a-43b6-aa3f-b992c1c5a104",
+  "state": "completed",
+  "copyStatus": "copied",
+  "items": [
+   {
+    "name": "Screen-Capture-2026-10-23-15-33-46.png",
+    "mime": "image/png",
+    "uploadStatus": "uploaded",
+    "link": "http://127.0.0.1:33585/fixture/afa/Screen-Capture-2026-10-23-15-33-46.png",
+    "local": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "path": "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/archive/images/Screen-Capture-2026-10-23-15-33-46.png",
+     "status": "saved"
+    }
+   }
+  ],
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  }
+ },
+ "uploaded": {
+  "size": [
+   980,
+   600
+  ],
+  "solidRegion": {
+   "mean": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "spread": 0
+  },
+  "blurChangedShare": 0.424,
+  "unchangedOutsideShare": 1.0
+ },
+ "redactionVerified": true,
+ "clipboard": "http://127.0.0.1:33585/fixture/afa/Screen-Capture-2026-10-23-15-33-46.png",
+ "linkCopied": true
+}

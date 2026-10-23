@@ -248,7 +248,7 @@ and nightly coverage classes continue to apply.
 | Ubuntu 26.04 / Kubuntu DEB | pinned Ubuntu 26.04 container | distro Qt and LayerShellQt |
 | Debian 13 DEB | pinned Debian 13 container | distro Qt 6.8, LayerShellQt and FFmpeg 7.1 |
 | Fedora 44 RPM | pinned Fedora 44 container | distro Qt and LayerShellQt |
-| x86_64 AppImage | Ubuntu 24.04, official Qt 6.8.3, locked ECM/LayerShellQt | dynamically bundled Qt/plugins |
+| x86_64 AppImage | Ubuntu 24.04, official Qt 6.12.0, locked ECM/LayerShellQt | dynamically bundled Qt/plugins |
 
 AppImage requires glibc 2.39 or newer; it does not substitute the host libc.
 DEB/RPM continue using system Qt. AppImage's normal bundled runtime is the

@@ -1,0 +1,28 @@
+{
+ "removed": [
+  "/home/lab/.local/share/putgd",
+  "/tmp/afa.yv9tH5",
+  "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm-F/appdir",
+  "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm-F/frames",
+  "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm-F/config",
+  "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm-F/cache",
+  "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm-F/archive",
+  "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm-F/working",
+  "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm-F/urldata"
+ ],
+ "fixtureStopped": 3013,
+ "leftovers": {
+  "processes": [],
+  "mounts": [],
+  "entries": [
+   "putgd-qt418-firefox.desktop"
+  ]
+ },
+ "after": {
+  "processes": [],
+  "mounts": [],
+  "entries": [
+   "putgd-qt418-firefox.desktop"
+  ]
+ }
+}

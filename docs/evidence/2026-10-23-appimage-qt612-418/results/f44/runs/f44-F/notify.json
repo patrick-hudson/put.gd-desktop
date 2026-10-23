@@ -1,0 +1,106 @@
+{
+ "notificationsOn": true,
+ "operation": {
+  "id": "b5f48f93-ea08-47b7-98a6-65dd36527f75",
+  "state": "completed",
+  "copyStatus": "copied",
+  "items": [
+   {
+    "name": "Screen-Capture-2026-10-23-15-08-01.png",
+    "mime": "image/png",
+    "uploadStatus": "uploaded",
+    "link": "https://put.gd/acceptance/qt418/f44/Screen-Capture-2026-10-23-15-08-01.png",
+    "local": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "path": "/home/patrick/work/put.gd-qt418/afa/runs/f44-F/archive/images/Screen-Capture-2026-10-23-15-08-01.png",
+     "status": "saved"
+    }
+   }
+  ],
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  }
+ },
+ "notification": {
+  "logged": [
+   {
+    "category": "putgd.ui",
+    "fields": {
+     "itemId": null,
+     "notificationId": 1,
+     "notificationText": "Uploaded. Link copied to the clipboard. Click to open in browser.",
+     "operationId": null,
+     "summary": "operation_completed",
+     "title": "put.gd \u2014 completed",
+     "warning": false
+    },
+    "level": "info",
+    "message": "Notification shown",
+    "pid": 3277651,
+    "process": "putgd",
+    "time": "2026-10-23T20:08:03.092Z",
+    "v": 1
+   }
+  ],
+  "banner": {
+   "label": "f44-F-notify-notification",
+   "components": [
+    {
+     "blocks": 900,
+     "box": [
+      696,
+      32,
+      1224,
+      144
+     ]
+    }
+   ],
+   "colour": [
+    84,
+    84,
+    88
+   ],
+   "inner": [
+    707,
+    36,
+    1212,
+    138
+   ],
+   "changedShare": 1.0,
+   "kept": "/home/patrick/work/put.gd-qt418/afa/runs/f44-F/crops/f44-F-notify-notification.png"
+  },
+  "full": "/home/patrick/work/put.gd-qt418/afa/runs/f44-F/full/f44-F-notify-notification.png",
+  "clicked": [
+   959,
+   70
+  ],
+  "dbusMembers": [
+   "NameAcquired",
+   "NameLost",
+   "Notify",
+   "Notify",
+   "ActivationToken",
+   "ActionInvoked",
+   "NotificationClosed",
+   "ActivationToken",
+   "ActionInvoked",
+   "NotificationClosed"
+  ],
+  "notifyActions": [
+   "default",
+   "Open in browser"
+  ],
+  "actionInvoked": [
+   "default",
+   "default"
+  ],
+  "openedUrls": []
+ },
+ "notificationsOff": true
+}

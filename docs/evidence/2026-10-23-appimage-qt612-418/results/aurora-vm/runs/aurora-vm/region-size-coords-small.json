@@ -1,0 +1,91 @@
+{
+ "drag": [
+  600,
+  370,
+  680,
+  430
+ ],
+ "expected": [
+  80,
+  60
+ ],
+ "coords": true,
+ "screenDecodes": {
+  "0,0": [
+   0,
+   0
+  ],
+  "1279,799": [
+   1279,
+   799
+  ],
+  "600,370": [
+   600,
+   370
+  ],
+  "679,429": [
+   679,
+   429
+  ],
+  "640,400": [
+   640,
+   400
+  ]
+ },
+ "screenCovered": true,
+ "operation": {
+  "id": "5358200e-7c9c-4169-adb1-19836d067560",
+  "state": "completed",
+  "copyStatus": "copied",
+  "items": [
+   {
+    "name": "Screen-Capture-2026-10-23-15-35-21.png",
+    "mime": "image/png",
+    "uploadStatus": "uploaded",
+    "link": "http://127.0.0.1:33585/fixture/afa/Screen-Capture-2026-10-23-15-35-21.png",
+    "local": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "path": "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/archive/images/Screen-Capture-2026-10-23-15-35-21.png",
+     "status": "saved"
+    }
+   }
+  ],
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  }
+ },
+ "png": [
+  80,
+  60
+ ],
+ "consistent": true,
+ "origin": [
+  599,
+  369
+ ],
+ "corners": {
+  "topLeft": [
+   599,
+   369
+  ],
+  "bottomRight": [
+   678,
+   428
+  ]
+ },
+ "originOffset": [
+  -1,
+  -1
+ ],
+ "newHistory": [
+  "07919b66-9348-4f53-a548-08948c261483"
+ ],
+ "sizePass": true,
+ "originExact": false
+}

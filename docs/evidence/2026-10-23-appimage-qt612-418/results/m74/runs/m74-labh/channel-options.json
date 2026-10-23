@@ -1,0 +1,16 @@
+{
+ "storedChannel": "build",
+ "status": {
+  "channel": "nightly",
+  "channelSetting": "build",
+  "build": {
+   "channel": "nightly",
+   "kind": "nightly",
+   "packageTarget": "appimage",
+   "reason": null,
+   "supported": true,
+   "version": "26.1023.1068-nightly"
+  }
+ },
+ "closed": "/home/patrick/work/put.gd-qt418/afa/runs/m74-labh/full/m74-labh-channel-closed.png"
+}
