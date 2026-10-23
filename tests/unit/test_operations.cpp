@@ -1,4 +1,5 @@
 #include "fixtures/U2Fixtures.h"
+#include "core/Log.h"
 #include <QScopeGuard>
 #include <utility>
 #include <QSignalSpy>
@@ -219,6 +220,26 @@ private slots:
   source.imports.takeFirst()({textPayload(),{}});PUTGD_TRY_COMPARE(source.copies,2);source.acknowledge();PUTGD_TRY_COMPARE(journal.operation(first).copyStatus,QString("copied"));
   PUTGD_TRY_COMPARE(provider->completions.size(),1);provider->completions.takeFirst()();PUTGD_TRY_COMPARE(source.copies,3);source.acknowledge();
   PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);QCOMPARE(journal.operation(second).copyStatus,QString("copied"));QCOMPARE(provider->uploads.load(),2);
+ }
+ // #473: a refused automatic copy leaves one putgd.clipboard record naming the
+ // guard and the revisions it compared, never the link or the clipboard text;
+ // the explicit copy afterwards is recorded too.
+ void suppressedAutomaticCopyIsLoggedWithItsGuard() {
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;registry.add("opaque",provider);
+  SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));Source source;source.payload=textPayload();
+  logging::open(d.filePath("state/logs"));auto closeLog=qScopeGuard([]{logging::close();});
+  OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());HistoryStore journal(operations.databasePath());
+  QString id;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});PUTGD_TRY_COMPARE(provider->completions.size(),1);
+  ++source.revision; // the user copied something else while the upload ran
+  provider->completions.takeFirst()();PUTGD_TRY_COMPARE(journal.operation(id).copyStatus,QString("suppressed"));PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);QCOMPARE(source.copies,0);
+  const auto records=[&](const QString& message){logging::flush();QList<QJsonObject> found;const QDir logs(d.filePath("state/logs"));for(const auto& name:logs.entryList({"putgd-*.jsonl"},QDir::Files)){QFile f(logs.filePath(name));if(!f.open(QIODevice::ReadOnly))continue;for(const auto& line:f.readAll().split('\n')){const auto object=QJsonDocument::fromJson(line).object();if(object["category"]=="putgd.clipboard"&&object["operationId"]==id&&object["message"]==message)found.append(object);}}return found;};
+  auto automatic=records("Automatic copy finished");QCOMPARE(automatic.size(),1);const auto record=automatic.first();
+  QCOMPARE(record["level"].toString(),QString("info"));const auto fields=record["fields"].toObject();
+  QCOMPARE(fields["copyStatus"].toString(),QString("suppressed"));QVERIFY(fields["automatic"].toBool());QCOMPARE(fields["links"].toInt(),1);QCOMPARE(fields["behavior"].toString(),QString("each_link"));QVERIFY(!fields.contains("error"));
+  const auto suppression=fields["suppression"].toObject();QCOMPARE(suppression["guard"].toString(),QString("clipboard_changed"));QCOMPARE(suppression["revisionAtInvocation"].toInt(),0);QCOMPARE(suppression["revisionAtDispatch"].toInt(),1);QCOMPARE(suppression["epochAtInvocation"].toInt(),suppression["epochAtDispatch"].toInt());
+  const auto text=QString::fromUtf8(QJsonDocument(record).toJson());QVERIFY(!text.contains(journal.operation(id).items.first().receipt.directUrl));QVERIFY(!text.contains("synthetic source content"));
+  bool copied=false;operations.copyResult(id,[&](Error e,QJsonObject){QVERIFY2(!e,qPrintable(e.code));copied=true;});PUTGD_TRY_VERIFY(copied);QCOMPARE(source.copies,1);PUTGD_TRY_COMPARE(journal.operation(id).copyStatus,QString("copied"));
+  const auto explicitCopies=records("Copy finished");QCOMPARE(explicitCopies.size(),1);QCOMPARE(explicitCopies.first()["fields"].toObject()["copyStatus"].toString(),QString("copied"));QVERIFY(!explicitCopies.first()["fields"].toObject()["automatic"].toBool());
  }
  void explicitHistoryCopySupersedesPendingUploadList() {
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;registry.add("opaque",provider);
