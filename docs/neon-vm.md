@@ -59,7 +59,7 @@ allows `lab` only `apt-get`, at both `/usr/bin/apt-get` and neon's
 `/usr/sbin/apt-get` wrapper (sudo's `secure_path` finds the wrapper first). neon
 installs no Spectacle by default.
 
-![neon Unstable after autologin, Plasma 6.9 Dev watermark](evidence/2026-10-23-neon-goldens/01-unstable-plasma-6.9-dev-autologin.png)
+![neon Unstable after autologin, Plasma 6.9 Dev watermark](evidence/2026-10-23-neon-goldens/pictures/01-unstable-plasma-master-autologin.png)
 
 ## Source ISOs
 
@@ -189,8 +189,8 @@ builder:
 
 | Run | Golden | Result |
 | --- | --- | --- |
-| `neon-a955b23` (d69) | Unstable | launch 36 s; `install --appimage` and `start` ok, resident `82a25356…` = receipt; `capabilities`: `source.adapter` `kde-wayland`, desktop, region and window capture `compositor-native` through `org.kde.KWin.ScreenShot2` v5, permission entry matches the executable; dashboard and tray on screen ([picture](evidence/2026-10-23-neon-goldens/02-unstable-appimage-dashboard.png)) |
-| `neon-abd768f` (f44) | User 6.8.1 | same results ([picture](evidence/2026-10-23-neon-goldens/03-user-6.8.1-appimage-dashboard.png)) |
+| `neon-a955b23` (d69) | Unstable | launch 36 s; `install --appimage` and `start` ok, resident `82a25356…` = receipt; `capabilities`: `source.adapter` `kde-wayland`, desktop, region and window capture `compositor-native` through `org.kde.KWin.ScreenShot2` v5, permission entry matches the executable; dashboard and tray on screen ([picture](evidence/2026-10-23-neon-goldens/pictures/02-unstable-appimage-capture-available.png)) |
+| `neon-abd768f` (f44) | User 6.8.1 | same results ([picture](evidence/2026-10-23-neon-goldens/pictures/03-user-6.8.1-appimage-capture-available.png)) |
 | `neon-s9c888e` (d69) | Unstable, Ubuntu 24.04 DEB | installs and runs; desktop and window capture available, region capture unavailable ("requires … LayerShellQt and Qt 6.5 or later") |
 
 All three were retired with an explicit completion manifest; cleanup removed
