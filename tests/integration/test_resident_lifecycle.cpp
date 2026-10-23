@@ -19,6 +19,12 @@ class ResidentLifecycle:public QObject {
   if(!fixture.waitForStarted()||!putgd::test::waitFor([&]{return fixture.canReadLine();}))return false;
   return fixture.readLine()=="ready\n";
  }
+ // The resident's process as a launcher's activation sees it, refused so that nothing is sent.
+ static LocalPeer peerOn(const QString& socket) {
+  LocalPeer found;
+  const auto activation=activateLocalSession(socket,{},[&](const LocalPeer& peer){found=peer;return false;});
+  return activation.refused?found:LocalPeer{};
+ }
  struct Stop {QProcess& process;~Stop(){if(process.state()!=QProcess::NotRunning){process.kill();process.waitForFinished(3000);}}};
 private slots:
  void retireEndsTheExactResident_data() {
@@ -34,7 +40,7 @@ private slots:
   const auto socket=directory.filePath("s.sock");
   QProcess fixture;Stop stop{fixture};
   QVERIFY(startFixture(fixture,socket,mode));
-  const auto peer=localSessionPeer(socket);
+  const auto peer=peerOn(socket);
   QVERIFY(peer.connected);
   QCOMPARE(peer.pid,fixture.processId());
   QCOMPARE(peer.uid,uint(::getuid()));
@@ -50,7 +56,7 @@ private slots:
   const auto socket=directory.filePath("s.sock");
   QProcess fixture;Stop stop{fixture};
   QVERIFY(startFixture(fixture,socket,"stay"));
-  const auto peer=localSessionPeer(socket);QVERIFY(peer.pid>0);
+  const auto peer=peerOn(socket);QVERIFY(peer.pid>0);
   // A later process given the same PID has another start time.
   auto reused=peer;++reused.start;
   QVERIFY(!retireResident(socket,reused,200,200).done);

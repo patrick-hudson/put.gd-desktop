@@ -68,26 +68,33 @@ void launcherError(const QString& line) {
 }
 // #490: hand off only to a resident whose login session is still running. One
 // left behind by an ended session belongs to that session's X server, and its
-// captures fail; it is asked to quit, then signalled by its exact process, and
-// this process takes its place. replaced records what was done, for the log.
-int retireEndedResident(const QString& path,QJsonObject& replaced) {
- const auto peer=putgd::localSessionPeer(path);
- if(!peer.connected||peer.pid<=0)return -1;
- const auto logins=putgd::LoginSessions::system();
- const auto session=putgd::residentSession(*logins,peer.pid,QCoreApplication::applicationPid());
- if(!session.ended)return -1;
- const auto retired=putgd::retireResident(path,peer);
- replaced={{"pid",peer.pid},{"session",session.session.id},{"type",session.session.type},{"state",session.session.state},{"reason",session.reason},{"how",retired.done?retired.how:QStringLiteral("failed")}};
- if(retired.done)return -1;
- launcherError("stale_resident: A put.gd resident left from an ended login session did not stop. Quit put.gd and start it again.");
- return 1;
-}
-int activateResident(const QString& view,bool background) {
+// captures fail. The launcher reads the resident's process from the activation
+// connection before it sends anything; such a resident is asked to quit, then
+// signalled by its exact process, and this process takes its place. replaced
+// records what was done, for the log.
+int activateResident(const QString& view,bool background,QJsonObject& replaced) {
  const auto path=putgd::LocalServer::defaultSocketPath();
- if(background)return putgd::activateLocalSession(path,{}).connected?0:-1;
+ putgd::ResidentSession session;
+ const auto admit=[&session](const putgd::LocalPeer& peer){
+  if(peer.pid<=0)return true;
+  session=putgd::residentSession(*putgd::LoginSessions::system(),peer.pid,QCoreApplication::applicationPid());
+  return !session.ended;
+ };
+ const auto retire=[&](const putgd::LocalPeer& peer){
+  const auto retired=putgd::retireResident(path,peer);
+  replaced={{"pid",peer.pid},{"session",session.session.id},{"type",session.session.type},{"state",session.session.state},{"reason",session.reason},{"how",retired.done?retired.how:QStringLiteral("failed")}};
+  if(retired.done)return -1;
+  launcherError("stale_resident: A put.gd resident left from an ended login session did not stop. Quit put.gd and start it again.");
+  return 1;
+ };
+ if(background) {
+  const auto activation=putgd::activateLocalSession(path,{},admit);
+  return activation.refused?retire(activation.peer):activation.connected?0:-1;
+ }
  const auto id=QUuid::createUuid().toString(QUuid::WithoutBraces);
  const QJsonObject request{{"schemaVersion",1},{"requestId",id},{"session",path},{"method","ui.show"},{"params",QJsonObject{{"view",view}}}};
- const auto activation=putgd::activateLocalSession(path,QJsonDocument(request).toJson(QJsonDocument::Compact)+'\n');
+ const auto activation=putgd::activateLocalSession(path,QJsonDocument(request).toJson(QJsonDocument::Compact)+'\n',admit);
+ if(activation.refused)return retire(activation.peer);
  if(!activation.connected)return -1;
  QString code=activation.errorCode;
  if(code.isEmpty()) {
@@ -181,8 +188,7 @@ int main(int argc,char* argv[]) {
  const auto backgroundOnly=parser.isSet("background")&&!parser.isSet("history")&&!parser.isSet("activity");
  const auto view=parser.isSet("history")?QStringLiteral("history"):parser.isSet("activity")?QStringLiteral("activity"):QStringLiteral("settings");
  QJsonObject replacedResident;
- if(const int retired=retireEndedResident(putgd::LocalServer::defaultSocketPath(),replacedResident);retired>=0)return retired;
- const int activation=activateResident(view,backgroundOnly);if(activation>=0)return activation;
+ const int activation=activateResident(view,backgroundOnly,replacedResident);if(activation>=0)return activation;
  // Resolve the private roots, moving an earlier putgd/putgd layout into place,
  // before settings or the journal open anything.
  const auto locations=putgd::StorageLocations::prepare();
@@ -243,7 +249,7 @@ int main(int argc,char* argv[]) {
 #endif
  putgd::HistoryService history(operations);
  putgd::LocalServer server(settings,operations,history);
- const auto listening=server.listen();if(!listening) {launcherError(listening.error.code);if(listening.error.code=="session_running"){const int retry=activateResident(view,backgroundOnly);return retry>=0?retry:1;}return 1;}
+ const auto listening=server.listen();if(!listening) {launcherError(listening.error.code);if(listening.error.code=="session_running"){const int retry=activateResident(view,backgroundOnly,replacedResident);return retry>=0?retry:1;}return 1;}
  // This process now owns the session: open its persistent log (#74) and the
  // running marker. Helpers inherit QT_FORCE_STDERR_LOGGING, so their Qt
  // warnings reach the stderr pipe the resident collects instead of the journal.
