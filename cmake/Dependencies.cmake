@@ -5,4 +5,4 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif()
 find_package(Qt6Keychain 0.14.2 CONFIG REQUIRED)
 # Provision separately using the SDK's own CMake project; never download at configure time.
-find_package(AWSSDK 1.11.907 EXACT CONFIG REQUIRED COMPONENTS s3)
+find_package(AWSSDK 1.11.916 EXACT CONFIG REQUIRED COMPONENTS s3)
