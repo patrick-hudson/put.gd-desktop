@@ -650,7 +650,8 @@ def note(folder, **fields):
     value = json.loads(path.read_text()) if path.exists() else {}
     value.update(fields, updated=now_text())
     temporary = folder / '.lend.json.tmp'
-    temporary.write_text(json.dumps(value, indent=2, sort_keys=True) + '\n')
+    with open(os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600), 'w') as stream:
+        stream.write(json.dumps(value, indent=2, sort_keys=True) + '\n')
     os.replace(temporary, path)
     return value
 
@@ -845,14 +846,15 @@ def main(argv=None):
     lending = commands.add_parser('lend', help='lend the session to one VM run for COMMAND (Proton lock)')
     lending.add_argument('run')
     lending.add_argument('--purpose', required=True)
-    lending.add_argument('command', nargs=argparse.REMAINDER)
     recovering = commands.add_parser('recover', help="finish an interrupted lend from its receipts folder")
     recovering.add_argument('receipts')
     for sub in (opening, closing, checking, lending, recovering):
         sub.add_argument('--session', required=True, help='your session id')
     for sub in (checking, lending, recovering):
         sub.add_argument('--owner', required=True, help='short session name')
-    args = parser.parse_args(argv)
+    argv = list(sys.argv[1:] if argv is None else argv)
+    command = argv[argv.index('--') + 1:] if '--' in argv else []  # the test command, after --
+    args = parser.parse_args(argv[:argv.index('--')] if '--' in argv else argv)
     layout = Layout()
     try:
         if args.action == 'status':
@@ -876,7 +878,6 @@ def main(argv=None):
         elif args.action == 'check':
             reply = check(layout, args.session, args.owner, args.new_folder)
         elif args.action == 'lend':
-            command = args.command[1:] if args.command[:1] == ['--'] else args.command
             reply = lend(layout, args.run, args.session, args.owner, args.purpose, command)
         else:
             reply = recover(layout, args.receipts, args.session, args.owner)

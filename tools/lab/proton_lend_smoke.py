@@ -11,14 +11,12 @@ upload's own link. It writes proton-smoke.json (nonsecret: names, IDs, states,
 no URLs) into the run, and quits the guest's put.gd. Proton files cannot be
 deleted through put.gd, so the folder and its one file stay for manual removal.
 """
+import datetime
+import importlib.util
 import json
 import os
 from pathlib import Path
-import shlex
-import sys
 import time
-import datetime
-import importlib.util
 
 HERE = Path(__file__).resolve().parent
 _spec = importlib.util.spec_from_file_location('putgd_smoke_lab', HERE / 'lab.py')
@@ -142,7 +140,7 @@ PY
         if final.get('state') != 'completed':
             raise lab.LabError('The synthetic upload did not complete: ' + json.dumps(scrub(final))[:400])
         entries = self.cli('history.list', {'profileId': PROFILE_ID, 'limit': 10})
-        items = entries.get('items') or entries.get('entries') or []
+        items = entries.get('records') or []
         mine = [item for item in items if item.get('operationId') == operation]
         if len(mine) != 1:
             raise lab.LabError('The synthetic upload has no single history entry')
@@ -153,8 +151,11 @@ PY
         outcome = self.wait(lambda: self.cli('share.inspect', {'id': started['shareOperationId']}),
                             lambda value: value.get('status', value.get('state')) not in ('pending', 'running'),
                             method)
-        self.step(method, outcome=outcome)
-        return outcome
+        # Keep the outcome's status, not its receipt (node, revision and destination detail).
+        kept = {key: outcome.get(key) for key in ('action', 'state', 'status', 'expiresAt') if key in outcome}
+        kept['error'] = (outcome.get('error') or {}).get('code') or None
+        self.step(method, outcome=kept)
+        return kept
 
     def links(self):
         created = self.sharing('history.share')

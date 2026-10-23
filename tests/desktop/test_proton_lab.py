@@ -347,6 +347,19 @@ def _context(value):
     return contextlib.nullcontext(value)
 
 
+class CommandLine(LendTest):
+    def test_lend_takes_its_options_anywhere_and_the_test_command_after_the_separator(self):
+        seen = {}
+        def lend(layout, run, session, owner, purpose, command):
+            seen.update(run=run, session=session, owner=owner, purpose=purpose, command=command)
+            return {}
+        with mock.patch.object(proton, 'lend', lend), mock.patch('sys.stdout'):
+            self.assertEqual(proton.main(['lend', '/runs/r1', '--session', 'local_a', '--owner', 'o', '--purpose',
+                                          'p', '--', 'python3', 'smoke.py', '--flag']), 0)
+        self.assertEqual(seen, {'run': '/runs/r1', 'session': 'local_a', 'owner': 'o', 'purpose': 'p',
+                                'command': ['python3', 'smoke.py', '--flag']})
+
+
 class Registry(unittest.TestCase):
     def test_reference_is_per_builder_and_the_registry_is_private_nonsecret_json(self):
         self.assertEqual(proton.reference_for('m74'), 'putgd/proton/lab-m74')
