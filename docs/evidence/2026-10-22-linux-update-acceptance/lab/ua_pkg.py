@@ -157,9 +157,11 @@ def start(args):
     run.meta = {'name': args.name, 'runtime': runtime, 'session': session, 'shell': shell, 'vnc': args.vnc_port, 'input': args.input,
                 'profile': args.profile, 'feed': args.feed, 'hostPath': os.environ.get('PATH', '/usr/bin:/bin'),
                 'host': os.uname().nodename, 'created': afa.iso(), 'pids': {}, 'log': [],
-                'before': {'defaultProfile': {p: Path(p).exists() for p in defaults.values()}}}
-    if args.profile == 'default' and any(run.meta['before']['defaultProfile'].values()):
-        raise SystemExit(f"default profile folders exist: {run.meta['before']['defaultProfile']}; refusing")
+                'before': {'defaultProfile': {p: Path(p).exists() for p in defaults.values()},
+                           # Files already there (earlier sessions' login logs, for example): cleanup leaves exactly these.
+                           'defaultFiles': {p: sorted(str(f) for f in Path(p).rglob('*')) for p in defaults.values() if Path(p).exists()}}}
+    if args.profile == 'default' and Path(defaults['XDG_CONFIG_HOME']).exists():
+        raise SystemExit(f"{defaults['XDG_CONFIG_HOME']} exists; refusing to replace a configuration")
     run.save()
     launch(run, args.label)
     template = run.ok('settings.developmentTemplate')['document']
@@ -189,10 +191,19 @@ def attach(args):
 
 
 def launch(run, label):
-    log = open(run.dir / f'logs/launch-{label}.log', 'ab')
-    p = subprocess.Popen(['/usr/bin/putgd', '--background'], env=run.env(), stdin=subprocess.DEVNULL, stdout=log, stderr=log,
-                         start_new_session=True)
-    run.meta['pids']['launch'] = p.pid; run.save()
+    """The resident as a user unit in the graphical session's user manager (systemd-run --user), as a menu or login start
+    puts it there: programs it starts (the software updater) then get polkit's active-session rules, which a process
+    started from SSH doesn't (#314's Discover lesson; Update Manager's Refresh silently did nothing)."""
+    env = run.env()
+    unit = f"putgd-ua-{run.name}-{label}-{int(time.time())}"
+    command = ['systemd-run', '--user', '--collect', f'--unit={unit}',
+               f"--property=StandardOutput=append:{run.dir / f'logs/launch-{label}.log'}",
+               f"--property=StandardError=append:{run.dir / f'logs/launch-{label}.log'}"]
+    command += [f'--setenv={k}={v}' for k, v in env.items() if k not in ('PATH',)]
+    command += [f"--setenv=PATH={env['PATH']}", '/usr/bin/putgd', '--background']
+    subprocess.run(command, check=True, capture_output=True, env={**os.environ, 'XDG_RUNTIME_DIR': f'/run/user/{os.getuid()}',
+                                                                  'DBUS_SESSION_BUS_ADDRESS': f'unix:path=/run/user/{os.getuid()}/bus'})
+    run.meta['pids']['launch'] = unit; run.meta.setdefault('units', []).append(unit); run.save()
     sock = Path(run.env()['XDG_RUNTIME_DIR']) / 'putgd/session.sock'
     ready = run.wait(lambda: sock.exists() and (lambda d: d.get('ok') and d['result'].get('journalReady'))(run.cli('diagnostics', timeout=15)), 60)
     if not ready: raise SystemExit(f'resident not ready ({label})')
@@ -289,6 +300,14 @@ def socket_request(run, method, params):
     return json.loads(data)
 
 
+def patch(args):
+    """settings.patch at the current revision: what a Settings control writes."""
+    run = Run(args.name)
+    meta = run.ok('settings.get')['metadata']
+    reply = run.cli('settings.patch', {'patch': json.loads(args.patch), 'expectedRevision': meta['observedRevision']})
+    out(run.record('patch', {'patch': json.loads(args.patch), 'ok': reply.get('ok'), 'error': reply.get('error')}))
+
+
 def live_s3(args):
     """rerun.py's live-s3: a live S3 profile (bucket put.gd, public-read, links through https://put.gd) for every action,
     with key set 2 from stdin stored in the session. Nothing here prints or stores the keys."""
@@ -336,17 +355,28 @@ def upload(args):
 
 
 def delete(args):
+    """Delete from destination on every uploaded entry: a fresh deletion, or the retry of one an earlier attempt left
+    (session credentials go with a restart, so live-s3 stores them again first). Waits for each to finish."""
     run = Run(args.name)
-    records = run.ok('history.list', {'limit': 50, 'offset': 0})['records']
-    target = next(r for r in records if r.get('uploadStatus') == 'uploaded')
-    link = (target.get('receipt') or {}).get('directUrl')
-    prep = run.ok('delete.prepare', {'ids': [target['id']]})
-    conf = run.ok('delete.confirm', {'ids': [target['id']], 'acknowledgement': prep['acknowledgement']})
-    fin = run.wait(lambda: (lambda x: x['result'] if x.get('ok') and x['result'].get('state') in ('completed', 'cancelled', 'failed') else None)(
-        run.cli('delete.inspect', {'id': conf.get('id')})), 90)
-    try: urllib.request.urlopen(link, timeout=15); remote = 'still served'
-    except urllib.error.HTTPError as e: remote = f'HTTP {e.code}'
-    out(run.record('delete', {'item': target['name'], 'link': link, 'final': fin, 'remoteAfter': remote}))
+    report = []
+    for target in [r for r in run.ok('history.list', {'limit': 50, 'offset': 0})['records'] if r.get('uploadStatus') == 'uploaded']:
+        link = (target.get('receipt') or {}).get('directUrl')
+        detail = run.ok('history.detail', {'id': target['id']})
+        op = detail.get('deleteOperationId')
+        if op:
+            started = run.cli('delete.retry', {'id': op})
+        else:
+            prep = run.ok('delete.prepare', {'ids': [target['id']]})
+            started = run.cli('delete.confirm', {'ids': [target['id']], 'acknowledgement': prep['acknowledgement']})
+            op = (started.get('result') or {}).get('deleteOperationId') or (started.get('result') or {}).get('id')
+        fin = run.wait(lambda: (lambda x: x['result'] if x.get('ok') and x['result'].get('state') in ('completed', 'cancelled', 'failed') else None)(
+            run.cli('delete.inspect', {'id': op})), 90)
+        try: urllib.request.urlopen(link, timeout=15); remote = 'still served'
+        except urllib.error.HTTPError as e: remote = f'HTTP {e.code}'
+        after = run.ok('history.detail', {'id': target['id']})
+        report.append({'item': target['name'], 'link': link, 'operation': op, 'started': started.get('ok'), 'startError': started.get('error'),
+                       'state': (fin or {}).get('state'), 'remoteStatus': after.get('remoteStatus'), 'remoteAfter': remote})
+    out(run.record('delete', report))
 
 
 def watch(args):
@@ -409,6 +439,13 @@ def cleanup(args):
     if run.meta['profile'] == 'default' and not run.meta.get('attached'):
         for path, existed in run.meta['before']['defaultProfile'].items():
             if not existed and Path(path).exists(): shutil.rmtree(path); removed.append(path)
+            elif existed:
+                keep = set(run.meta['before']['defaultFiles'].get(path, []))
+                for f in sorted(Path(path).rglob('*'), key=lambda x: -len(x.parts)):
+                    if str(f) in keep: continue
+                    if f.is_dir() and not f.is_symlink():
+                        if not any(f.iterdir()): f.rmdir(); removed.append(str(f))
+                    else: f.unlink(); removed.append(str(f))
     shutil.rmtree(run.meta['runtime'], ignore_errors=True)
     keep = ROOT / 'results' / run.name
     keep.mkdir(parents=True, exist_ok=True)
@@ -434,6 +471,7 @@ p = sub.add_parser('click'); p.add_argument('name'); p.add_argument('x', type=in
 p.add_argument('--button', default='left'); p.add_argument('--label'); p.add_argument('--settle', type=float, default=2)
 p = sub.add_parser('key'); p.add_argument('name'); p.add_argument('keys', nargs='+'); p.add_argument('--label'); p.add_argument('--settle', type=float, default=1)
 p = sub.add_parser('type'); p.add_argument('name'); p.add_argument('text'); p.add_argument('--label'); p.add_argument('--settle', type=float, default=1)
+p = sub.add_parser('patch'); p.add_argument('name'); p.add_argument('patch')
 p = sub.add_parser('live-s3'); p.add_argument('name'); p.add_argument('--prefix', required=True)
 p = sub.add_parser('upload'); p.add_argument('name'); p.add_argument('--label', default='upload')
 p = sub.add_parser('watch'); p.add_argument('name'); p.add_argument('action', choices=('start', 'stop')); p.add_argument('--label', required=True)
@@ -444,5 +482,5 @@ for name in ('quit', 'cleanup', 'delete'):
 args = parser.parse_args()
 if args.cmd == 'repo': out(repo())
 else: {'attach': attach, 'start': start, 'check': check, 'frame': frame_only, 'click': pointer, 'key': pointer, 'type': pointer, 'open-updates': open_updates, 'snapshot': snapshot,
-       'live-s3': live_s3, 'upload': upload, 'delete': delete, 'watch': watch, 'restart': restart, 'mem': mem, 'quit': quit_,
+       'patch': patch, 'live-s3': live_s3, 'upload': upload, 'delete': delete, 'watch': watch, 'restart': restart, 'mem': mem, 'quit': quit_,
        'cleanup': cleanup}[args.cmd](args)
