@@ -1,5 +1,6 @@
 #include "OutputBudget.h"
 #include "ProtonProvider.h"
+#include "core/HostEnvironment.h"
 #include <QCoreApplication>
 #include <QCryptographicHash>
 #include <QDateTime>
@@ -40,6 +41,11 @@ bool runtimeVerified() {
  return !QString::fromUtf8(PUTGD_PROTON_RUNTIME_SHA512).isEmpty() && file.open(QIODevice::ReadOnly)
    && hash.addData(&file) && hash.result().toHex()==QByteArray(PUTGD_PROTON_RUNTIME_SHA512);
 }
+}
+QProcessEnvironment ProtonProvider::helperEnvironment(const QProcessEnvironment& host,const QString& dataDirectory) {
+ auto env=host;for(const auto& key:env.keys())if(key.startsWith("PROTON_DRIVE_")||key.startsWith("PUTGD_PROTON_"))env.remove(key);
+ env.insert("PUTGD_PROTON_DATA_DIR",dataDirectory);
+ return env;
 }
 QJsonObject ProtonProvider::defaults() {
  return {{"accountRootUid",""},{"folderUid",""},{"shareByDefault",true},{"linkExpirationDays",0},
@@ -118,9 +124,7 @@ QJsonObject ProtonProvider::call(const QString& method,const Destination& destin
  if(!privateRoot.isValid()){error={"proton_private_storage","Private helper storage is unavailable",{}};return {};}
  QFile::setPermissions(privateRoot.path(),QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner);
  params["schemaVersion"]=1;params["method"]=method;params["destination"]=destination.toJson();
- auto env=QProcessEnvironment::systemEnvironment();for(const auto& key:env.keys())if(key.startsWith("PROTON_DRIVE_")||key.startsWith("PUTGD_PROTON_"))env.remove(key);
- env.insert("PUTGD_PROTON_DATA_DIR",privateRoot.path());
- QProcess process;process.setProcessEnvironment(env);process.setProcessChannelMode(QProcess::SeparateChannels);
+ QProcess process;process.setProcessEnvironment(helperEnvironment(host::environment(),privateRoot.path()));process.setProcessChannelMode(QProcess::SeparateChannels);
  ++active_;struct Release{std::atomic_int& count;~Release(){--count;}} release{active_};
  process.start(runtimePath(),{"--stdio"});
  if(!process.waitForStarted(5000)){error={"proton_runtime_start","The bundled Proton runtime could not start",{}};return {};}
