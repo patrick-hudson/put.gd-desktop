@@ -85,6 +85,10 @@ class Guest:
         self.directory = '/home/lab/putgd-lab-bridge'
         return {'qt': self.directory + '/putgd-lab-secret-bridge', 'proton': self.directory + '/putgd-lab-proton-secrets'}
 
+    def prepare_keyring(self):
+        self.calls.append(('prepare_keyring',))
+        return {'default': '/org/freedesktop/secrets/collection/putgd_5flab', 'locked': False}
+
     def stop_app(self):
         self.calls.append(('stop_app',))
 
@@ -137,9 +141,9 @@ class LendOrder(LendTest):
     def test_lends_tests_collects_carries_back_and_cleans_up_in_order_under_the_lock(self):
         result = self.lend()
         self.assertEqual([call[0] for call in self.calls], [
-            'place_brokers', 'export', 'provision', 'test', 'stop_app', 'collect', 'carry_back', 'cleanup',
+            'place_brokers', 'prepare_keyring', 'export', 'provision', 'test', 'stop_app', 'collect', 'carry_back', 'cleanup',
             'remove_brokers'])
-        self.assertEqual(self.calls[1], ('export', 'putgd/proton/lab-d69'))
+        self.assertEqual(self.calls[2], ('export', 'putgd/proton/lab-d69'))
         self.assertEqual((result['testExit'], result['rotated'], result['reference']), (0, True, BORROWED))
         environment = self.environments[0]
         self.assertEqual(environment['PUTGD_LAB_PROTON_REFERENCE'], BORROWED)
@@ -196,7 +200,8 @@ class LendFailures(LendTest):
     def test_a_failed_import_is_abandoned_and_the_lock_released(self):
         with self.assertRaises(proton.LabFailure):
             self.lend(Chain(self.calls, fail={'provision': 1}))
-        self.assertEqual([call[0] for call in self.calls], ['place_brokers', 'export', 'provision', 'abandon'])
+        self.assertEqual([call[0] for call in self.calls], ['place_brokers', 'prepare_keyring', 'export', 'provision',
+                                                          'abandon'])
         self.assertEqual(self.lock().status()['state'], 'free')
 
     def test_an_ambiguous_carry_back_that_applied_is_confirmed_by_reconciliation(self):

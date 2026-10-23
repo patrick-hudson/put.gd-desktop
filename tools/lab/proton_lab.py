@@ -56,6 +56,7 @@ def _load(name, filename):
 
 desktop_lock = _load('putgd_desktop_lock', 'desktop_lock.py')
 bridge = _load('putgd_live_credentials', 'provision_live_credentials.py')
+keyrings = _load('putgd_lab_keyring', 'lab_keyring.py')
 lab = bridge.lab
 
 ROOT = Path.home() / 'putgd-lab/proton'
@@ -603,6 +604,21 @@ class Guest:
         lab.ssh(self.run, f'set -eu\nchmod 700 -- {self.directory}/{BROKERS[0]} {self.directory}/{BROKERS[1]}\n')
         return {'qt': f'{self.directory}/{BROKERS[0]}', 'proton': f'{self.directory}/{BROKERS[1]}'}
 
+    def prepare_keyring(self):
+        """The disposable guest gets the same blank-password default keyring as the builders, so the
+        lent copy can be stored without a prompt. Only this run's overlay changes."""
+        lab.put(self.run, str(HERE / 'lab_keyring.py'), self.directory + '/lab_keyring.py')
+        try:
+            created = json.loads(lab.guest_session(self.run, f'python3 {self.directory}/lab_keyring.py').strip()
+                                 .splitlines()[-1])
+            state = json.loads(lab.guest_session(self.run, f'python3 {self.directory}/lab_keyring.py --status')
+                               .strip().splitlines()[-1])
+        except (lab.LabError, ValueError, IndexError) as error:
+            raise LabFailure(f'Could not prepare the guest keyring: {error}') from None
+        if state.get('default') != created.get('collection'):
+            raise LabFailure('The guest default keyring is not the lab keyring')
+        return state
+
     def stop_app(self, timeout=60):
         """Quit the guest's put.gd so nothing refreshes the borrowed copy after collection."""
         with contextlib.suppress(lab.LabError, ValueError, subprocess.TimeoutExpired):
@@ -673,6 +689,7 @@ def lend(layout, run, session, owner, purpose, command, chain_factory=None, gues
                  heartbeat=heartbeat) as progress:
         host_broker = brokers(layout.host_bridge)
         guest_broker = guest.place_brokers(layout.guest_bridge)
+        result['guestKeyring'] = guest.prepare_keyring()
         chain = chain_factory(host_broker, reference)
         note(folder, step='exported', guestBroker=guest_broker)
         progress['outstanding'] = True
@@ -747,95 +764,11 @@ def recover(layout, folder, session, owner, chain_factory=None, guest_factory=Gu
         return {'recovered': True, 'carriedBack': carried}
 
 
-def secret_service(run=subprocess.run):
-    """The default Secret Service collection's label and lock state (D-Bus properties only)."""
-    def call(*arguments):
-        result = run(['busctl', '--user', *arguments], capture_output=True, text=True, timeout=20)
-        return result.stdout.strip() if result.returncode == 0 else None
-    owner = call('status', 'org.freedesktop.secrets')
-    provider = next((line.split('=', 1)[1] for line in (owner or '').splitlines() if line.startswith('Comm=')), None)
-    alias = call('call', 'org.freedesktop.secrets', '/org/freedesktop/secrets', 'org.freedesktop.Secret.Service',
-                 'ReadAlias', 's', 'default')
-    path = alias.split('"')[1] if alias and '"' in alias else '/'
-    if path == '/':
-        return {'provider': provider, 'default': None, 'locked': None}
-    label = call('get-property', 'org.freedesktop.secrets', path, 'org.freedesktop.Secret.Collection', 'Label')
-    locked = call('get-property', 'org.freedesktop.secrets', path, 'org.freedesktop.Secret.Collection', 'Locked')
-    return {'provider': provider, 'default': path, 'label': label.split('"')[1] if label and '"' in label else None,
-            'locked': None if locked is None else locked.endswith('true')}
-
-
-LAB_KEYRING = 'putgd lab'
-
-
-def lab_keyring():
-    """gnome-keyring only: create a collection with an empty master password (stored unencrypted, so it
-    is open after every boot and autologin, with no prompt) and make it the default alias. Existing
-    keyrings stay as they are. Patrick approved blank lab keyrings on 2026-10-23."""
-    import gi  # PyGObject, present with GNOME, Cinnamon and Plasma
-    gi.require_version('Gio', '2.0')
-    from gi.repository import Gio, GLib
-    bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
-
-    def call(path, interface, method, parameters, reply):
-        return bus.call_sync('org.freedesktop.secrets', path, interface, method, parameters,
-                             GLib.VariantType(reply), Gio.DBusCallFlags.NONE, 20000, None).unpack()
-
-    service = '/org/freedesktop/secrets'
-    current = call(service, 'org.freedesktop.Secret.Service', 'ReadAlias', GLib.Variant('(s)', ('default',)), '(o)')[0]
-    if secret_service().get('provider') == 'ksecretd':
-        path = kwallet_lab_wallet(call, GLib)
-        call(service, 'org.freedesktop.Secret.Service', 'SetAlias', GLib.Variant('(so)', ('default', path)), '()')
-        return {'collection': path, 'previousDefault': None if current == '/' else current}
-    for path in call(service, 'org.freedesktop.DBus.Properties', 'Get', GLib.Variant(
-            '(ss)', ('org.freedesktop.Secret.Service', 'Collections')), '(v)')[0]:
-        label = call(path, 'org.freedesktop.DBus.Properties', 'Get', GLib.Variant(
-            '(ss)', ('org.freedesktop.Secret.Collection', 'Label')), '(v)')[0]
-        if label == LAB_KEYRING:
-            break
-    else:
-        # The session belongs to this connection; the empty secret is the (blank) master password.
-        session = call(service, 'org.freedesktop.Secret.Service', 'OpenSession',
-                       GLib.Variant('(sv)', ('plain', GLib.Variant('s', ''))), '(vo)')[1]
-        path = call(service, 'org.gnome.keyring.InternalUnsupportedGuiltRiddenInterface', 'CreateWithMasterPassword',
-                    GLib.Variant('(a{sv}(oayays))', ({'org.freedesktop.Secret.Collection.Label':
-                                                      GLib.Variant('s', LAB_KEYRING)},
-                                                     (session, b'', b'', 'text/plain'))), '(o)')[0]
-    call(service, 'org.freedesktop.Secret.Service', 'SetAlias', GLib.Variant('(so)', ('default', path)), '()')
-    return {'collection': path, 'previousDefault': None if current == '/' else current}
-
-
-KWALLET_LAB = 'putgdlab'
-
-
-def kwallet_lab_wallet(call, GLib):
-    """KWallet (ksecretd): create the blank-password wallet the way kwallet-pam creates kdewallet, from
-    a PBKDF2-SHA512 hash (50000 rounds, 56 bytes) of the empty password and a new 56-byte salt. kwalletd
-    opens a wallet whose password is empty without asking, so it is open after every boot."""
-    import hashlib
-    wallets = call('/ksecretd', 'org.kde.KWallet', 'wallets', None, '(as)')[0]
-    if KWALLET_LAB not in wallets:
-        folder = Path.home() / '.local/share/kwalletd'
-        folder.mkdir(mode=0o700, parents=True, exist_ok=True)
-        salt_path = folder / f'{KWALLET_LAB}.salt'
-        if not salt_path.exists():
-            with open(os.open(salt_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), 'wb') as stream:
-                stream.write(os.urandom(56))
-        digest = hashlib.pbkdf2_hmac('sha512', b'', salt_path.read_bytes(), 50000, dklen=56)
-        call('/ksecretd', 'org.kde.KWallet', 'pamOpen', GLib.Variant('(sayi)', (KWALLET_LAB, digest, 0)), '()')
-        deadline = time.monotonic() + 20
-        while KWALLET_LAB not in call('/ksecretd', 'org.kde.KWallet', 'wallets', None, '(as)')[0]:
-            if time.monotonic() > deadline:
-                raise LabFailure('KWallet did not create the lab wallet')
-            time.sleep(.5)
-    return '/org/freedesktop/secrets/collection/' + KWALLET_LAB
-
-
 def keychain(layout):
     """Prove the default collection takes, returns and removes a synthetic put.gd entry without a prompt,
     through the same relay and Bun.secrets path the app and lend use. Records the result."""
     registry = require_registry(layout, signed_in=False)
-    service = secret_service()
+    service = keyrings.secret_service()
     reference = 'putgd-lab-' + str(__import__('uuid').uuid4())
     synthetic = json.dumps({'session': {'uid': 'synthetic-uid', 'accessToken': 'synthetic-access'},
                             'userKeyPassword': 'synthetic-key-password'})
@@ -850,7 +783,7 @@ def keychain(layout):
         with contextlib.suppress(bridge.ProvisionError):
             bridge.host_call(broker, 'proton', {'op': 'delete', 'reference': reference})
     # A blank-password collection may report locked until first use; it then opens without a prompt.
-    registry['keychain'] = dict(service, lockedBefore=service['locked'], locked=secret_service()['locked'],
+    registry['keychain'] = dict(service, lockedBefore=service['locked'], locked=keyrings.secret_service()['locked'],
                                 writable=writable, checked=now_text())
     write_registry(layout, registry)
     if not writable:
@@ -933,7 +866,7 @@ def main(argv=None):
         elif args.action == 'close':
             reply = close_settings(layout, args.session)
         elif args.action == 'lab-keyring':
-            reply = lab_keyring()
+            reply = keyrings.lab_keyring()
         elif args.action == 'keychain':
             reply = keychain(layout)
         elif args.action == 'install-keepalive':
