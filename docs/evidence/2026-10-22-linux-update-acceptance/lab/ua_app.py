@@ -458,6 +458,20 @@ def synthetic_png(path, w=320, h=200):
                            chunk(b'IDAT', zlib.compress(raw, 6)) + chunk(b'IEND', b''))
 
 
+def socket_request(run, method, params):
+    import socket
+    path = str(Path(run.meta['runtime']) / 'putgd/session.sock')
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+        s.settimeout(20); s.connect(path)
+        s.sendall(json.dumps({'schemaVersion': 1, 'requestId': 'ua-' + method, 'session': path, 'method': method, 'params': params}).encode() + b'\n')
+        data = b''
+        while not data.endswith(b'\n'):
+            chunk = s.recv(65536)
+            if not chunk: break
+            data += chunk
+    return json.loads(data)
+
+
 def refuse(args):
     """One U12 case. readonly: the AppImage's folder is read-only. foreign: the AppImage belongs to root (sudo chown, then
     back). diskfull: the resident runs from a copy on a tmpfs with no room for a second copy (sudo mount, then umount).
@@ -511,8 +525,11 @@ def refuse(args):
             doc.setdefault('actions', {}).setdefault('edit', {}).update({'destination': 'upload', 'profileId': 'ua-fixture'})
             (run.dir / 'config/putgd/config.json').write_text(json.dumps(doc, indent=1)); run.ok('settings.reload')
             snap = run.wait(lambda: (lambda s: s if s.get('ok') and s['result']['metadata']['validation']['ok'] else None)(run.cli('settings.get')), 20)
-            stored = run.cli('setup.storeCredentials', {'profileId': 'ua-fixture', 'expectedRevision': snap['result']['metadata']['acceptedRevision'],
-                                                        'credentials': {'accessKey': 'PUTGD_SYNTHETIC_ACCESS', 'secretKey': 'putgd-synthetic-secret-not-a-real-key'}})
+            # The CLI refuses setup.storeCredentials by design (docs/cli.md); the session socket takes it, as Settings does.
+            stored = socket_request(run, 'setup.storeCredentials', {'profileId': 'ua-fixture', 'expectedRevision': snap['result']['metadata']['acceptedRevision'],
+                                                                    'credentials': {'accessKey': 'PUTGD_SYNTHETIC_ACCESS', 'secretKey': 'putgd-synthetic-secret-not-a-real-key'}})
+            if stored.get('ok'):
+                run.wait(lambda: (lambda j: j if j.get('ok') and j['result']['state'] != 'running' else None)(run.cli('setup.inspect', {'id': stored['result']['setupId']})), 40)
             time.sleep(2)
             png = run.dir / 'busy.png'; synthetic_png(png)
             eid = run.ok('editor.open', {'source': 'file', 'path': str(png)})['operationId']
