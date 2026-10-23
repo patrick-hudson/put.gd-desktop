@@ -108,3 +108,90 @@ jobs:
           path: build/publish/publication.json
           if-no-files-found: warn
           retention-days: 90
+
+  stable-scan:
+    # A stable AppImage freezes its bundled components, so every day the latest
+    # stable release's own SBOMs meet the day's vulnerability data (#420,
+    # docs/release.md). It flags and keeps one issue per release current; it never
+    # gates the nightly.
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      issues: write  # one tracking issue per stable release
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: The latest stable release's SBOMs
+        id: stable
+        run: |
+          tag=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=50" --jq '[.[] | select(.draft == false and .prerelease == false)][0].tag_name // ""')
+          mkdir -p build/stable-sbom
+          if [ -z "$tag" ] || ! gh release download "$tag" --repo "$GITHUB_REPOSITORY" --dir build/stable-sbom --pattern '*.cdx.json' --pattern SHA256SUMS; then
+            echo "No published stable release with SBOMs to re-scan${tag:+ ($tag has none)}." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          (cd build/stable-sbom && grep -E '[.]cdx[.]json$' SHA256SUMS | sha256sum --check --strict)
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+      - name: Pinned Grype and the current database
+        if: steps.stable.outputs.tag != ''
+        id: grype-db
+        run: |
+          python3 tools/releases/sbom.py tools --output "$RUNNER_TEMP/sbom-tools"
+          python3 tools/releases/sbom.py database --listing-only --listing build/grype-db.json --output build/grype-db
+          echo "key=grype-db-v6-$(python3 -c 'import json; print(json.load(open("build/grype-db.json"))["sha256"])')" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        if: steps.stable.outputs.tag != ''
+        id: grype-cache
+        with:
+          path: build/grype-db
+          key: ${{ steps.grype-db.outputs.key }}
+      - name: Download, verify and import the Grype database
+        if: steps.stable.outputs.tag != ''
+        env:
+          GRYPE_DB_CACHE_DIR: ${{ runner.temp }}/grype-db
+          GRYPE_CHECK_FOR_APP_UPDATE: 'false'
+        run: |
+          python3 tools/releases/sbom.py database --listing build/grype-db.json --output build/grype-db
+          "$RUNNER_TEMP/sbom-tools/grype" db import build/grype-db/vulnerability-db_*.tar.zst
+      - uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        if: steps.stable.outputs.tag != '' && steps.grype-cache.outputs.cache-hit != 'true'
+        with:
+          path: build/grype-db
+          key: ${{ steps.grype-db.outputs.key }}
+      - name: Re-scan the stable release
+        if: steps.stable.outputs.tag != ''
+        env:
+          GRYPE_DB_CACHE_DIR: ${{ runner.temp }}/grype-db
+          TAG: ${{ steps.stable.outputs.tag }}
+        run: |
+          python3 tools/releases/sbom.py scan --released --sboms build/stable-sbom --grype "$RUNNER_TEMP/sbom-tools/grype" \
+            --output build/stable-vulnerabilities --database build/grype-db.json --release-tag "$TAG" --summary "$GITHUB_STEP_SUMMARY"
+      - name: Keep the release's tracking issue current
+        if: steps.stable.outputs.tag != ''
+        env:
+          TAG: ${{ steps.stable.outputs.tag }}
+        run: |
+          report=build/stable-vulnerabilities
+          flagged=$(python3 -c 'import json, sys; print(sum(1 for f in json.load(open(sys.argv[1]))["findings"] if f["status"].startswith(("blocking", "flagged"))))' "$report/vulnerability-report.json")
+          title="Stable $TAG: bundled components with fixed critical or high CVEs"
+          number=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "in:title $TAG bundled components" --json number,title \
+            --jq "[.[] | select(.title == \"$title\")][0].number // \"\"")
+          {
+            echo "The daily re-scan of \`$TAG\`'s published SBOMs ([run]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)) flags $flagged finding(s)."
+            echo "Policy: \`packaging/sbom/policy.json\`; re-release policy: #420; docs/release.md, \"SBOMs and vulnerability scans\"."
+            echo
+            cat "$report/vulnerability-summary.md"
+          } > "$RUNNER_TEMP/issue.md"
+          if [ -n "$number" ]; then
+            gh issue edit "$number" --repo "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/issue.md"
+          elif [ "$flagged" -gt 0 ]; then
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --label 'area: packaging' --label needs-patrick --body-file "$RUNNER_TEMP/issue.md"
+          fi
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && steps.stable.outputs.tag != ''
+        with:
+          name: stable-vulnerability-report
+          path: build/stable-vulnerabilities/
+          if-no-files-found: warn
+          retention-days: 90

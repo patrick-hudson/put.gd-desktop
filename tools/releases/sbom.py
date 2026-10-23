@@ -406,6 +406,18 @@ def summary_markdown(receipts, items, database, mode, blocks, limit=150):
     return '\n'.join(lines) + '\n'
 
 
+def published_receipts(directory):
+    """A published release's SBOMs (downloaded beside its SHA256SUMS), by package label."""
+    receipts = {}
+    for path in sorted(directory.glob('*.cdx.json')):
+        bom = json.loads(path.read_text())
+        label = next(prop['value'] for prop in bom['metadata']['component']['properties'] if prop['name'] == 'putgd:label')
+        receipts[label] = {'label': label, 'file': path.name, 'components': len(bom['components'])}
+    if not receipts:
+        raise ValueError('No SBOMs in ' + str(directory))
+    return receipts
+
+
 def report(sbom_dir, grype_dir, receipts, policy, mode, database, today):
     items = []
     for label in receipts:
@@ -437,6 +449,8 @@ def main():
     scan_command.add_argument('--release-tag', default='')
     scan_command.add_argument('--policy', type=Path, default=POLICY)
     scan_command.add_argument('--summary', type=Path)
+    scan_command.add_argument('--released', action='store_true',
+                              help="Re-scan a published release's SBOMs: report and flag, never block")
     args = parser.parse_args()
     if args.command == 'tools':
         print(json.dumps(fetch_tools(args.output), indent=2))
@@ -473,10 +487,14 @@ def main():
         (args.output / 'sbom-receipts.json').write_text(json.dumps({'schemaVersion': 1, 'sboms': receipts}, indent=2) + '\n')
         print(json.dumps(receipts, indent=2))
     else:
-        receipts = json.loads((args.sboms / 'sbom-receipts.json').read_text())['sboms']
+        receipts = (published_receipts(args.sboms) if args.released
+                    else json.loads((args.sboms / 'sbom-receipts.json').read_text())['sboms'])
         args.output.mkdir(parents=True, exist_ok=True)
         scan(args.grype, [args.sboms / receipt['file'] for receipt in receipts.values()], args.output)
         policy, mode = load_policy(args.policy), channel(args.release_tag)
+        if args.released:
+            # The release already shipped: what it needs is a new release, not a failed job.
+            mode = 'published ' + mode
         database = json.loads(args.database.read_text())
         today = datetime.datetime.now(datetime.timezone.utc).date()
         items, flagged, blocks = report(args.sboms, args.output, receipts, policy, mode, database, today)

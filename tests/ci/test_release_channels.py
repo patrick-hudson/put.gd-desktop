@@ -235,6 +235,15 @@ class Workflows(unittest.TestCase):
                      'name: release-sbom', 'name: vulnerability-report'):
             self.assertIn(text, sbom)
 
+    def test_nightly_rescans_the_latest_stable_sboms_without_gating_publication(self):
+        nightly = workflow('nightly.yml')
+        scan = job(nightly, 'stable-scan')
+        self.assertNotIn('needs:', scan)
+        self.assertNotIn('stable-scan', job(nightly, 'publish'))
+        self.assertIn('sbom.py scan --released', scan)
+        self.assertIn("grep -E '[.]cdx[.]json$' SHA256SUMS | sha256sum --check --strict", scan)
+        self.assertIn('issues: write', scan)
+
     def test_renovate_uses_the_workflow_token_and_a_read_only_lookup_on_pull_requests(self):
         renovate = workflow('renovate.yml')
         self.assertIn("schedule:\n    - cron: '17 4 * * 1'", renovate)

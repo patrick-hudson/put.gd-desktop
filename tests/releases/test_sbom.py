@@ -189,6 +189,17 @@ class Policy(unittest.TestCase):
             self.assertRegex(tool['sha256'], r'^[0-9a-f]{64}$')
             self.assertTrue(tool['url'].startswith('https://github.com/' + tool['repository'] + '/releases/download/' + tool['release'] + '/'))
 
+    def test_published_sboms_are_read_by_their_labels(self):
+        with tempfile.TemporaryDirectory() as work:
+            directory = Path(work)
+            with self.assertRaisesRegex(ValueError, 'No SBOMs'):
+                sbom.published_receipts(directory)
+            for label in ('appimage', 'fedora44'):
+                (directory / f'putgd-26.1101.1-{label}.cdx.json').write_text(json.dumps({'metadata': {'component': {
+                    'properties': [{'name': 'putgd:label', 'value': label}]}}, 'components': [{}, {}]}))
+            self.assertEqual(sbom.published_receipts(directory)['fedora44'],
+                             {'label': 'fedora44', 'file': 'putgd-26.1101.1-fedora44.cdx.json', 'components': 2})
+
     def test_summary_lists_flagged_serious_findings_first(self):
         items = [self.finding(id='CVE-2026-9', fixState='not-fixed', fixedIn=[]), self.finding(), self.finding(package='debian13', component='s2n')]
         sbom.classify(items, self.policy(), 'nightly', datetime.date(2026, 10, 23))
