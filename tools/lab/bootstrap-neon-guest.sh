@@ -23,7 +23,10 @@ printf 'lab ALL=(root) NOPASSWD: /usr/bin/apt-get, /usr/sbin/apt-get\n' > /etc/s
 chmod 440 /etc/sudoers.d/putgd-lab
 visudo -cf /etc/sudoers.d/putgd-lab
 mkdir -p /etc/plasmalogin.conf.d
-printf '[Autologin]\nUser=lab\nSession=plasma\nRelogin=false\n' > /etc/plasmalogin.conf.d/putgd-lab-autologin.conf
+printf '[Autologin]\nUser=lab\nSession=plasma.desktop\nRelogin=false\n' > /etc/plasmalogin.conf.d/putgd-lab-autologin.conf
+# neon's Calamares writes an absolute Session path into /etc/plasmalogin.conf, which overrides the
+# drop-in; plasmalogin (6.8.1 and master) cannot resolve that path and falls back to the greeter.
+[ -f /etc/plasmalogin.conf ] && sed -i 's#^Session=/usr/share/wayland-sessions/#Session=#' /etc/plasmalogin.conf
 # Lab guests must stay visible on the display wall: no idle lock, dimming, DPMS or suspend.
 su - lab -c 'kwriteconfig6 --file kscreenlockerrc --group Daemon --key Autolock false; kwriteconfig6 --file kscreenlockerrc --group Daemon --key LockOnResume false; for g in AC Battery LowBattery; do kwriteconfig6 --file powerdevilrc --group $g --group Display --key DimDisplayWhenIdle false; kwriteconfig6 --file powerdevilrc --group $g --group Display --key TurnOffDisplayWhenIdle false; kwriteconfig6 --file powerdevilrc --group $g --group SuspendAndShutdown --key AutoSuspendAction 0; done'
 systemctl enable --now ssh

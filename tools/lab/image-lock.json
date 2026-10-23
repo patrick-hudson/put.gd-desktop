@@ -42,6 +42,15 @@
       "signingFingerprint": "B74EA2162376765BEAC3AE4345F4C354638D1F29",
       "checksumUrl": "https://files.kde.org/neon/images/desk/user/20261018-1825/neon-user-desk-20261018-1825.sha256sum",
       "signatureUrl": "https://files.kde.org/neon/images/desk/user/20261018-1825/neon-user-desk-20261018-1825.iso.sig"
+    },
+    "kde-neon-unstable": {
+      "distribution": "KDE neon Unstable Edition 20261017-2157 (Ubuntu 24.04 base, Plasma/Frameworks/Gear git master)",
+      "filename": "neon-unstable-desk-20261017-2157.iso",
+      "url": "https://files.kde.org/neon/images/desk/unstable/20261017-2157/neon-unstable-desk-20261017-2157.iso",
+      "sha256": "e81d627d27a61b0f3d106998d4377b6e3677b1cea6725e24123889b7e01dc6eb",
+      "signingFingerprint": "B74EA2162376765BEAC3AE4345F4C354638D1F29",
+      "checksumUrl": "https://files.kde.org/neon/images/desk/unstable/20261017-2157/neon-unstable-desk-20261017-2157.sha256sum",
+      "signatureUrl": "https://files.kde.org/neon/images/desk/unstable/20261017-2157/neon-unstable-desk-20261017-2157.iso.sig"
     }
   }
 }
