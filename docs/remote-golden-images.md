@@ -57,9 +57,19 @@ That is not a permanent integrity guarantee, so recheck the hash before use.
 
 The sealed Windows bundles are listed in [Windows lab](windows-vm-lab.md#base-storage-and-restore).
 
-The Aurora evaluation goldens (`aurora-stable-44.20260908.1-*`) exist only on
-Fedora `f44` and are described in [Aurora VM](aurora-vm.md); they do not yet
-have Debian or S3 copies.
+The Aurora goldens are named directories rather than `transfer-<id>/`, and each
+holds `source.manifest.json`, `image-info.json`, the pinned guest `known_hosts`
+and the bootstrap inputs beside `image.qcow2`. They are described in
+[Aurora VM](aurora-vm.md). The S3 bucket holds none of them yet: the Fedora 44
+goldens are rebuildable evaluation images that exist only on `f44`, and the
+Fedora 45 golden's S3 copy is pending Patrick's decision (the session that made
+it could not use the AWS session; see [Aurora VM](aurora-vm.md#fedora-45-golden)).
+
+| Name (profile `aurora-kde-wayland`) | SHA-256 | Fedora `f44` | Debian `d69` |
+| --- | --- | --- | --- |
+| `aurora-testing-45.20261022.1-852d34e885c1` (Fedora 45 base, use for acceptance) | `33fedf977f1e0cb7e34b944700f1959f4da5c708fa85dbbc9879077af1278556` | same name | same name; SHA-256 and sidecars verified 2026-10-23 (receipt `work/verification/golden-transfer-1d422e725efb`) |
+| `aurora-stable-44.20260908.1-v3-492c3f8945d1` (Fedora 44 base) | `6a2fb407830f95228bb06f4d20d7cd0bd1aec8ed937ef59430e50eb608b62c2d` | same name | none |
+| `aurora-stable-44.20260908.1-v2-af46889e2a54`, `-f9c006a376e1` (history) | see [Aurora VM](aurora-vm.md#goldens-on-f44) | same name | none |
 
 ## Use a host copy in place
 

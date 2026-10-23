@@ -35,7 +35,13 @@ package matrix above, because Aurora installs no DEB or RPM, and it doesn't
 replace the Kubuntu or Debian KDE/Wayland evidence. It is a required VM desktop,
 alongside the Ubuntu GNOME VM, in the
 [AppImage full-acceptance profile](#appimage-full-acceptance-profile) below. The
-Flatpak's acceptance will use it too.
+Flatpak's acceptance will use it too. The profile has two goldens on `f44`, one
+per Fedora base, and the runner takes either through `--golden`:
+
+| Aurora base | Golden | Plasma / KWin | Role |
+| --- | --- | --- | --- |
+| Fedora 45 (`ghcr.io/ublue-os/aurora:testing`, `testing-45.20261022.1`) | `aurora-testing-45.20261022.1-852d34e885c1` | 6.7.5 / 6.7.5, kernel 7.2.11 | **Required** for the KDE/Wayland AppImage checks. #478 reproduced only on this base. |
+| Fedora 44 (`ghcr.io/ublue-os/aurora:stable`, `44.20260908.1`) | `aurora-stable-44.20260908.1-v3-492c3f8945d1` | 6.7.4 / 6.7.4, kernel 7.1.8 | The base the `stable` tag still shipped on 2026-10-22; run it when a pass compares the two bases or a finding is base-specific. |
 
 XWayland or `QT_QPA_PLATFORM=xcb` inside a Wayland session does not establish a
 native GNOME/X11 or KDE/X11 result. Verify the actual login session/compositor
@@ -86,7 +92,8 @@ is skipped silently. The passes so far are
 | Kubuntu 26.04 Plasma 6.6 Wayland | physical `.72` (k72) |
 | Linux Mint 22.3 Cinnamon X11 | physical `.74` (m74) |
 | Ubuntu 26.04 GNOME Wayland | VM: an overlay of `gnome-provisioned-20261016` on f44 or d69. Remove that golden's old put.gd DEB first, and install the release's extension. |
-| Aurora (Universal Blue, Fedora Atomic KDE) | VM: an overlay of the `aurora-stable-44.20260908.1-*` golden on f44 ([Aurora VM](aurora-vm.md)) |
+| Aurora 45 (Universal Blue, Fedora Atomic KDE, Fedora 45 base) | VM: an overlay of `aurora-testing-45.20261022.1-852d34e885c1` on f44 ([Aurora VM](aurora-vm.md#fedora-45-golden)). Required. |
+| Aurora 44 (Fedora 44 base) | VM: an overlay of `aurora-stable-44.20260908.1-v3-492c3f8945d1` on f44. Optional second Aurora row; its updater pulls a new `stable` image two minutes after boot unless `uupd.timer` is stopped first ([Aurora VM](aurora-vm.md#automatic-updates)). |
 
 Each desktop uses a private profile: `XDG_CONFIG_HOME`, `XDG_STATE_HOME`,
 `XDG_CACHE_HOME` and `XDG_RUNTIME_DIR` of its own. The data home is the user's,
