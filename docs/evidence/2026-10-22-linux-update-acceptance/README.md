@@ -21,12 +21,12 @@ which the builders don't have. The helper plays no part in updates.
 
 ✅ pass · ❌ fail (issue linked) · — not in the profile for this desktop
 
-Each cell names the build and the run. The run name is the folder under `~/work/put.gd-ua/{app,pkg}/runs/`
-on that host, and its `run.json` is in [results/](results/). N = 1017 (`3582b30a`), N+1 = 1019 (`5ba9de0e`).
+Each cell names the build and the run. The run name was the folder under `~/work/put.gd-ua/{app,pkg}/runs/`
+on that host (removed at cleanup); its `run.json` is in [results/](results/). N = 1017 (`3582b30a`), N+1 = 1019 (`5ba9de0e`).
 
 | Item | f44 Fedora 44 GNOME | d69 Debian 13 Plasma | k72 Kubuntu 26.04 Plasma | m74 Mint 22.3 Cinnamon | Ubuntu 26.04 GNOME (VM) | Aurora (VM) |
 | --- | --- | --- | --- | --- | --- | --- |
-| U1 infrastructure | ✅ N and N+1 (`u1-1017-start`, `u1-1019-start`, deep on d69), end: VM_U1_END | | | | | |
+| U1 infrastructure | ✅ N and N+1 (`u1-1017-start`, `u1-1019-start`, deep on d69), end (03:32Z, 1019 still the newest nightly): ✅ 33 checks, 0 failed (`u1-1019-end`) | | | | | |
 | U2 apt / dnf | ✅ RPM N → N+1, `dnf upgrade --refresh putgd`, repo file unchanged (`f44-pkg`) | ✅ DEB `debian13` N → N+1, no conffile prompt (`d69-pkg`) | ✅ DEB `ubuntu26.04` (`k72-pkg`) | ✅ DEB `ubuntu24.04` (`m74-pkg`) | ✅ DEB `ubuntu26.04` N from its file, then `apt-get install --only-upgrade putgd` → N+1 (`ubu-4c0235`) | — |
 | U3 GUI updater | ✅ GNOME Software lists N → N+1; applied with `pkcon update putgd` (offline whole-system update) (`f44-pkg`); also 996 → 1017 (`f44-hop`) | ✅ GNOME Software lists it; `pkcon update putgd` (`d69-pkg`) | ✅ Discover, only putgd ticked, **Update Selected**, no prompt (`k72-pkg`) | ✅ Update Manager, only putgd ticked; Patrick typed the prompt (`m74-pkg`) | ❌ [#486](https://github.com/patrick-hudson/put.gd-desktop/issues/486): no **Open software updates**. Software Updater (`update-manager`) is installed and, opened by hand, lists the updates; N+1 applied with apt (`ubu-4c0235`) | — |
 | U4 Settings, repository install | ✅ N: Nightly read-only, Check now finds N+1, **Open software updates** opens GNOME Software (real click), no Download and install, no notification; N+1: Up to date (`f44-pkg`) | ✅ same, GNOME Software (`d69-pkg`) | ✅ same, Discover (`k72-pkg`) | ✅ same, Update Manager (`m74-pkg`) | ✅ Nightly, N+1 from the repository, Up to date after the upgrade; the missing button is #486 (`ubu-4c0235`) | — |
@@ -37,13 +37,13 @@ on that host, and its `run.json` is in [results/](results/). N = 1017 (`3582b30a
 | U8 appimageupdatetool | ✅ check exit 1 (update), update exit 0 in 2.5 s, = `SHA256SUMS`, N unchanged; needs `SSL_CERT_FILE` (#297) (`f44-aut`) | ✅ 3.7 s (`d69-aut`) | ✅ 2.4 s (`k72-aut`) | ✅ 2.6 s (`m74-aut`) | ✅ check exit 1, update exit 0 in 3.1 s, = `SHA256SUMS`, N unchanged (`ubu-2c94f9`) | ✅ check exit 1, update exit 0 in 2.9 s with `SSL_CERT_FILE` and 3.7 s without (zsync2 found `/etc/ssl/cert.pem`), = `SHA256SUMS`, N unchanged (`aur-b8e4fd`) |
 | U9 Gear Lever, AppImageLauncher | — | — | — | — | ✅ Gear Lever 4.6.2 and AppImageLauncher 3.0.0-beta-2: in-app update from the integrator's entry → N+1 at the same path (= `SHA256SUMS`), entry byte-identical, one entry, both tools then report no update; Gear Lever's own update of a second N → N+1. AppImageLauncher's **Update** menu action fails (missing `libQt5QuickWidgets.so.5`, as in #412) (`ubu-4c0235`) | ✅ Gear Lever 4.6.2: the same results as on Ubuntu, including its own update (`aur-3e84a1`) |
 | U10 AppImage channel | ✅ live and lab stable empty: no stable release yet; L1 → S1 refused then confirmed; S1 → S2; S2 → L2 (`f44-nostable`, `f44-sw`) | — | — | ✅ same, with the real **Yes** in the older-version dialog (`m74-nostable`, `m74-sw`) | — | — |
-| U11 start at login | ✅ in-app update, no restart, real logout/login starts N+1 (`f44-login`); after appimageupdatetool: after appimageupdatetool (N+1 written beside N): login starts N+1, journal "starting …1019… which is newer than …1017…" (`f44-login`, second run) | ✅ (`d69-login`); after appimageupdatetool (N+1 written beside N): login starts N+1, journal "starting …1019… which is newer than …1017…" (`d69-login`, second run) | ✅ (`k72-login`); after appimageupdatetool (N+1 written beside N): login starts N+1 (`k72-login`, second run) | ✅ (`m74-login`); after appimageupdatetool (N+1 written beside N): login starts N+1 (`m74-login`, second run) | ✅ in-app update without a restart, session reboot, autologin starts N+1 from the same path (`ubu-4c0235`) | ✅ the same, KDE session reboot (`aur-3e84a1`) |
+| U11 start at login | ✅ in-app update, no restart, real logout/login starts N+1 (`f44-login`); after appimageupdatetool (N+1 written beside N): login starts N+1, journal "starting …1019… which is newer than …1017…" (`f44-login`, second run) | ✅ (`d69-login`); after appimageupdatetool (N+1 written beside N): login starts N+1, journal "starting …1019… which is newer than …1017…" (`d69-login`, second run) | ✅ (`k72-login`); after appimageupdatetool (N+1 written beside N): login starts N+1 (`k72-login`, second run) | ✅ (`m74-login`); after appimageupdatetool (N+1 written beside N): login starts N+1 (`m74-login`, second run) | ✅ in-app update without a restart, session reboot, autologin starts N+1 from the same path (`ubu-4c0235`) | ✅ the same, KDE session reboot (`aur-3e84a1`) |
 | U12 refusals | ✅ folder not writable, other owner, disk full, upload running (`update_install_busy`), restart pending, `not_appimage` (`f44-pkg`), tampered image, unsigned and rewritten `SHA256SUMS` (`f44-ref`, `f44-cr`) | ✅ restart pending, folder not writable (`d69-ref`, `d69-cr`) | ✅ same (`k72-ref`, `k72-cr`) | ✅ all, as f44 (`m74-ref`, `m74-cr`, `m74-pkg`) | — | — |
-| U13 discovery | ✅ GNOME Software: search, install N, remove, no prompt (`f44-gs`) | ✅ GNOME Software (Patrick typed root) (`d69-gs`) | ✅ Discover (Patrick typed) (`k72-dc`) | ✅ Software Manager "Putgd" (Patrick typed) (`m74-mi`) | — | — |
+| U13 discovery | ✅ GNOME Software: search, install the newest nightly at the time (N; N+1 was published at 23:24Z), remove, no prompt (`f44-gs`) | ✅ GNOME Software (Patrick typed root) (`d69-gs`) | ✅ Discover (Patrick typed) (`k72-dc`) | ✅ Software Manager "Putgd" (Patrick typed) (`m74-mi`) | — | — |
 | U14 nightly never | ✅ AppImage N, the scheduled check 5–15 min after start: 0 notifications (`f44-sched`); repository N, Check now: 0 (`f44-pkg`) | ✅ (`d69-sched`, `d69-pkg`) | ✅ (`k72-sched`, `k72-pkg`) | ✅ (`m74-sched`, `m74-pkg`) | ✅ scheduled check (01:46Z) found N+1: 0 notifications (`ubu-4c0235`) | ✅ scheduled check (01:49Z) found N+1: 0 notifications (`aur-3e84a1`) |
 | U14 stable once per version | ✅ S1 vs S2: one notification (00:58:23Z), none after restart + Check now, S3: one more (01:26Z), click opens the release page in Firefox (`f44-ann`); repository stable: 0 (`f44-lab`) | ✅ repository stable: 0 (`d69-lab`) | ✅ repository stable: 0 (`k72-lab`) | ✅ S2 once (00:57:05Z), S3 once (01:34Z) (`m74-ann`); repository stable: 0 (`m74-lab`) | — | — |
-| U15 idle RSS (N / N+1) | U15_F44 | U15_D69 | ✅ AppImage 30.04 / 30.05 MiB (Pss 23.7 / 23.6); DEB 31.84 / 31.80 MiB (Pss 9.1 / 9.1); no TLS libraries mapped (`k72-mem-*`) | ✅ AppImage 29.59 / 29.39 MiB (Pss 23.8 / 23.6); DEB 28.55 / 28.62 MiB (Pss 18.3 / 18.3); no TLS libraries mapped (`m74-mem-*`) | ✅ AppImage 29.41 / 29.21 MiB (Pss 23.0 / 22.8); no TLS libraries mapped (`ubu-4c0235`, `ubu-2c94f9`) | ✅ AppImage 30.05 / 29.82 MiB (Pss 23.4 / 23.6); no TLS libraries mapped (`aur-3e84a1`, `aur-b8e4fd`) |
-| U16 cleanup | U16 | | | | | |
+| U15 idle RSS (N / N+1) | ✅ AppImage 29.04 / 29.26 MiB (Pss 22.8 / 23.0), no TLS libraries mapped; RPM 34.97 / 35.02 MiB (Pss 21.2 / 21.3), `libcrypto` mapped through Fedora's system libraries as in #293 and #303 (`f44-mem-*`) | ✅ AppImage 30.02 / 30.04 MiB (Pss 24.4 / 24.4); DEB 30.84 / 30.65 MiB (Pss 9.2 / 9.1); no TLS libraries mapped; load 0.5–0.8 from another session's Windows guest (`d69-mem-*`) | ✅ AppImage 30.04 / 30.05 MiB (Pss 23.7 / 23.6); DEB 31.84 / 31.80 MiB (Pss 9.1 / 9.1); no TLS libraries mapped (`k72-mem-*`) | ✅ AppImage 29.59 / 29.39 MiB (Pss 23.8 / 23.6); DEB 28.55 / 28.62 MiB (Pss 18.3 / 18.3); no TLS libraries mapped (`m74-mem-*`) | ✅ AppImage 29.41 / 29.21 MiB (Pss 23.0 / 22.8); no TLS libraries mapped (`ubu-4c0235`, `ubu-2c94f9`) | ✅ AppImage 30.05 / 29.82 MiB (Pss 23.4 / 23.6); no TLS libraries mapped (`aur-3e84a1`, `aur-b8e4fd`) |
+| U16 cleanup | ✅ put.gd, repository files and keys gone; no profile, autostart entry or resident; recorder off, http/https default restored byte for byte (Firefox); uinput agent and socket removed; build container `putgd-ua-applab` removed; `~/work/put.gd-ua` removed; lock released `--verified-clean` 03:35:16Z | ✅ the same; default restored to the ChatGPT app; lab keys shredded and `lab/` empty (01:37Z); lock released 03:35:17Z | ✅ the same; default restored to the ChatGPT app; lock released 03:35:17Z | ✅ the same (no uinput agent: `xdotool`); default Firefox; lock released 03:35:18Z | ✅ overlays retired with `lab.py cleanup`, golden `563730cc…` unchanged, ports free | ✅ overlays retired, golden `6a2fb407…` unchanged |
 
 Findings filed during the pass:
 - **[#481](https://github.com/patrick-hudson/put.gd-desktop/issues/481):** the in-app docs link in
@@ -99,7 +99,7 @@ The drivers are in [lab/](lab/), run on each host over SSH in the real login ses
 - Installs were scoped to `putgd`.
 - GNOME Software's update is a whole-system offline update that can't be limited to one package, so on f44 and
   d69 the picture shows put.gd listed and `pkcon update putgd` applied it (the coordinator's decision).
-- Patrick typed the polkit prompts himself. Nothing typed a password.
+- Patrick typed the polkit prompts on the physical desktops himself; no session typed one.
 
 **Notifications:** U14 watched `org.freedesktop.Notifications` with `dbus-monitor`, and matched put.gd's
 own journal lines to it. The repeat test aged `attemptedAt` by 25 h (#303's method), so the next start
@@ -112,7 +112,8 @@ ran its scheduled check.
 - The lab GPG and minisign keys were shredded.
 
 **Load note:** another session's Aurora F45 golden build loaded f44 from 00:20 to 00:57Z. The f44 U7
-timings from that window are informational. U15 ran later, on quiet hosts.
+timings from that window are informational. U15 ran later; d69's load from another session's Windows guest is
+noted in its cell.
 
 ## Notes
 
@@ -123,7 +124,9 @@ timings from that window are informational. U15 ran later, on quiet hosts.
 - The Ubuntu golden doesn't trust d69's bootstrap key. For these overlays the key was typed in over VNC
   ([#487](https://github.com/patrick-hudson/put.gd-desktop/issues/487)).
 - The guest's passwordless sudo covers only `apt-get`. Patrick added a passwordless sudoers rule to the
-  second Ubuntu overlay and ran U6's commands himself; the rule went with the overlay.
+  second Ubuntu overlay and ran U6's commands himself; the rule went with the overlay. Before that, sudo in
+  that overlay rejected the shared lab password and the Ubuntu install password (two attempts each, from this
+  session, at Patrick's request): this older golden uses neither for `lab`.
 - Aurora 44's `uupd` staged an OS update about 18 minutes after the first overlay booted, so that overlay's
   U11 reboot came up on the new image. On the second overlay `uupd.timer` was stopped first.
 - AppImageLauncher 3.0.0-beta-2's own **Update** menu action fails with a missing `libQt5QuickWidgets.so.5`
