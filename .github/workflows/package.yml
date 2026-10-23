@@ -19,6 +19,8 @@ jobs:
     name: native (${{ matrix.name }})
     runs-on: ubuntu-24.04
     container: ${{ matrix.image }}
+    # Normally 8-17 minutes. Above four stopped install attempts plus the snapshot fallback (#467).
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
@@ -41,13 +43,17 @@ jobs:
             kde: --require-kde
     steps:
       - name: Bootstrap checkout tools
-        # tools/ci/install-packages.sh is not checked out yet: the same bounded retry, inline (#368).
+        # tools/ci/install-packages.sh is not checked out yet: the same bounded retry, inline (#368),
+        # each attempt stopped after 10 minutes (#467).
+        shell: bash
         run: |
+          apt=(-o Acquire::Retries=3 -o Acquire::http::Timeout=60 -o Acquire::https::Timeout=60)
+          bounded() { timeout --kill-after=30s 10m "$@"; }
           for attempt in 1 2 3; do
             if command -v apt-get >/dev/null; then
-              apt-get update --error-on=any -o Acquire::Retries=3 && apt-get install -y -o Acquire::Retries=3 git ca-certificates && exit 0
+              bounded apt-get update --error-on=any "${apt[@]}" && bounded apt-get install -y "${apt[@]}" git ca-certificates && exit 0
             else
-              dnf install -y --setopt=retries=10 $([ "$attempt" = 1 ] || echo --refresh) git ca-certificates && exit 0
+              bounded dnf install -y --setopt=retries=10 --setopt=timeout=60 --setopt=minrate=1000 $([ "$attempt" = 1 ] || echo --refresh) git ca-certificates && exit 0
             fi
             echo "::warning::Package install (bootstrap): attempt $attempt of 3 failed"
             [ "$attempt" != 1 ] || printf '### Package install retries (native (%s) bootstrap)\n\n| Attempt | Outcome |\n| --- | --- |\n' '${{ matrix.name }}' >> "$GITHUB_STEP_SUMMARY"
@@ -98,6 +104,7 @@ jobs:
           key: ${{ steps.sdk-key.outputs.key }}
       - name: Verify pinned SDK source
         # Packages ship the SDK licenses and the source export rebuilds against this tree.
+        timeout-minutes: 20
         run: bash tools/ci/sdk-source.sh
       - name: Verify restored prefix
         if: steps.sdk-cache.outputs.cache-hit == 'true'
@@ -115,6 +122,7 @@ jobs:
             build/sdk-cache.json
           key: ${{ steps.sdk-key.outputs.key }}
       - name: Provision pinned Proton helper
+        timeout-minutes: 15
         env:
           # npm's own per-request retries for registry errors (#368); #332's exit 152 is a CPU-time kill, not this.
           npm_config_fetch_retries: '5'
@@ -152,6 +160,8 @@ jobs:
 
   appimage:
     runs-on: ubuntu-24.04
+    # Normally 13 minutes; a slow Azure mirror made it 26-128 minutes on 2026-10-22 (#467).
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -160,21 +170,28 @@ jobs:
       - name: Standard build dependencies
         env:
           PUTGD_PKG_LABEL: appimage
+          # The runner's mirror is sometimes slow but moving: let an attempt run 30 minutes,
+          # and the next one resumes the downloads (#467).
+          PUTGD_PKG_TIMEOUT: '1800'
         run: |
           # Retried package installs (#368); sudo keeps the summary file for the retry report.
-          pkg_install() { sudo --preserve-env=GITHUB_STEP_SUMMARY,PUTGD_PKG_LABEL bash tools/ci/install-packages.sh "$@"; }
-          sudo --preserve-env=GITHUB_STEP_SUMMARY,PUTGD_PKG_LABEL bash tools/releases/install-native-deps.sh
+          pkg_install() { sudo --preserve-env=GITHUB_STEP_SUMMARY,PUTGD_PKG_LABEL,PUTGD_PKG_TIMEOUT bash tools/ci/install-packages.sh "$@"; }
+          sudo --preserve-env=GITHUB_STEP_SUMMARY,PUTGD_PKG_LABEL,PUTGD_PKG_TIMEOUT bash tools/releases/install-native-deps.sh
           # patchelf and the bundled libraries, then screen recording: the pinned FFmpeg's build inputs and the GStreamer plugins the image bundles.
           pkg_install patchelf libgtk-3-dev libsecret-1-dev qt6-base-private-dev libx11-xcb-dev libxcb-cursor-dev libxcb-icccm4-dev libxcb-render-util0-dev libxcb-sync-dev \
             nasm libva-dev libvpx-dev libwebp-dev libopus-dev libffmpeg-nvenc-dev libx264-dev libx265-dev gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-pipewire gstreamer1.0-pulseaudio gstreamer1.0-vaapi
           # The AppImage's GPL corresponding source includes the bundled distro source packages.
           printf 'Types: deb-src\nURIs: http://archive.ubuntu.com/ubuntu/\nSuites: noble noble-updates noble-security\nComponents: main restricted universe multiverse\nSigned-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\n' | sudo tee /etc/apt/sources.list.d/putgd-appimage-src.sources > /dev/null
           pkg_install
+      - name: The locked Qt version
+        # Renovate updates it in the lock (#420), where the AppImage tools read it too.
+        id: qt
+        run: echo "version=$(python3 -c 'import json; print(json.load(open("packaging/appimage/tools.lock.json"))["buildInputs"]["qt"])')" >> "$GITHUB_OUTPUT"
       - uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4.4.1
         env:
           LOG_CFG: ${{ github.workspace }}/tools/ci/aqt-logging.ini
         with:
-          version: '6.12.0'
+          version: ${{ steps.qt.outputs.version }}
           arch: linux_gcc_64
           modules: qtimageformats
           cache: true
@@ -182,6 +199,7 @@ jobs:
         if: inputs.release_tag != ''
         run: python3 tools/releases/verify_tag.py --tag "$RELEASE_TAG"
       - name: Verify pinned SDK source
+        timeout-minutes: 20
         run: bash tools/ci/sdk-source.sh
       - name: Identify AppImage dependency environment
         id: sdk-key
@@ -218,6 +236,7 @@ jobs:
             build/appimage-deps-cache.json
           key: ${{ steps.sdk-key.outputs.key }}
       - name: Provision pinned Proton helper
+        timeout-minutes: 15
         env:
           # npm's own per-request retries for registry errors (#368); #332's exit 152 is a CPU-time kill, not this.
           npm_config_fetch_retries: '5'
@@ -245,6 +264,7 @@ jobs:
     if: inputs.release_tag == ''
     needs: [native, appimage]
     runs-on: ubuntu-24.04
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -265,10 +285,78 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-  collect:
-    if: inputs.release_tag != ''
+  sbom:
+    # CycloneDX SBOMs of every package and their Grype report (#420, docs/release.md).
+    # packaging/sbom/policy.json decides which findings flag and which block this channel.
     needs: [native, appimage]
     runs-on: ubuntu-24.04
+    # Normally 3 minutes, most of it importing the Grype database.
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.release_tag || github.sha }}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: release-*
+          path: build/downloaded
+      - name: RPM extraction tools
+        run: sudo --preserve-env=GITHUB_STEP_SUMMARY bash tools/ci/install-packages.sh --no-install-recommends rpm2cpio cpio
+      - name: Pinned Syft and Grype
+        run: python3 tools/releases/sbom.py tools --output "$RUNNER_TEMP/sbom-tools"
+      - name: Identify the current Grype database
+        id: grype-db
+        run: |
+          python3 tools/releases/sbom.py database --listing-only --listing build/grype-db.json --output build/grype-db
+          echo "key=grype-db-v6-$(python3 -c 'import json; print(json.load(open("build/grype-db.json"))["sha256"])')" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        id: grype-cache
+        with:
+          path: build/grype-db
+          key: ${{ steps.grype-db.outputs.key }}
+      - name: Download, verify and import the Grype database
+        env:
+          GRYPE_DB_CACHE_DIR: ${{ runner.temp }}/grype-db
+          GRYPE_CHECK_FOR_APP_UPDATE: 'false'
+        run: |
+          python3 tools/releases/sbom.py database --listing build/grype-db.json --output build/grype-db
+          "$RUNNER_TEMP/sbom-tools/grype" db import build/grype-db/vulnerability-db_*.tar.zst
+          "$RUNNER_TEMP/sbom-tools/grype" db status
+      - uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        if: steps.grype-cache.outputs.cache-hit != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        with:
+          path: build/grype-db
+          key: ${{ steps.grype-db.outputs.key }}
+      - name: Generate the packages' SBOMs
+        run: |
+          python3 tools/releases/sbom.py generate --inputs build/downloaded --syft "$RUNNER_TEMP/sbom-tools/syft" \
+            --output build/release-sbom --timestamp "$(git show -s --format=%ct HEAD)"
+      - name: Scan the SBOMs and apply the vulnerability policy
+        env:
+          GRYPE_DB_CACHE_DIR: ${{ runner.temp }}/grype-db
+        run: |
+          python3 tools/releases/sbom.py scan --sboms build/release-sbom --grype "$RUNNER_TEMP/sbom-tools/grype" \
+            --output build/vulnerabilities --database build/grype-db.json --release-tag "$RELEASE_TAG" --summary "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-sbom
+          path: build/release-sbom/
+          if-no-files-found: error
+          retention-days: 30
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: vulnerability-report
+          path: build/vulnerabilities/
+          if-no-files-found: warn
+          retention-days: 90
+
+  collect:
+    if: inputs.release_tag != ''
+    needs: [native, appimage, sbom]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:

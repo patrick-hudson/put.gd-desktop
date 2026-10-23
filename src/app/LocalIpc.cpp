@@ -68,12 +68,31 @@ LocalSessionState probeLocalSession(const QString& path,int timeoutMs) {
  if(fd>=0)::close(fd);
  return state;
 }
-LocalActivation activateLocalSession(const QString& path,const QByteArray& request) {
+quint64 processStartTime(qint64 pid) {
+ QFile stat(QStringLiteral("/proc/%1/stat").arg(pid));
+ if(pid<=0||!stat.open(QIODevice::ReadOnly))return 0;
+ // The command name may hold spaces and parentheses; fields resume after the last ')'.
+ const auto line=stat.readAll();const auto fields=line.mid(line.lastIndexOf(')')+1).split(' ');
+ // fields[0] is empty (the space after ')'); field 22, starttime, is index 20.
+ return fields.size()>20?fields[20].toULongLong():0;
+}
+namespace {
+LocalPeer peerOf(int fd) {
+ LocalPeer peer;peer.connected=true;
+ ucred credentials{};socklen_t size=sizeof(credentials);
+ if(::getsockopt(fd,SOL_SOCKET,SO_PEERCRED,&credentials,&size)==0&&size==sizeof(credentials)&&credentials.pid>0) {
+  peer.pid=credentials.pid;peer.uid=credentials.uid;peer.start=processStartTime(peer.pid);
+ }
+ return peer;
+}
+}
+LocalActivation activateLocalSession(const QString& path,const QByteArray& request,const std::function<bool(const LocalPeer&)>& admit) {
  QDeadlineTimer deadline(activationDeadlineMs);
  LocalSessionState state;
  const int fd=connectSocket(path,200,state);
  if(fd<0)return {};
- LocalActivation result;result.connected=true;
+ LocalActivation result;result.connected=true;result.peer=peerOf(fd);
+ if(admit&&!admit(result.peer)){::close(fd);result.refused=true;return result;}
  if(!request.isEmpty()) {
   qsizetype sent=0;
   while(sent<request.size()&&!deadline.hasExpired()) {
@@ -239,11 +258,13 @@ LocalSessionState probeLocalSession(const QString& path,int timeoutMs) {
  QLocalSocket socket;socket.connectToServer(path);if(socket.waitForConnected(timeoutMs))return LocalSessionState::Connected;
  return socket.error()==QLocalSocket::ServerNotFoundError||socket.error()==QLocalSocket::ConnectionRefusedError?LocalSessionState::Absent:LocalSessionState::Unavailable;
 }
-LocalActivation activateLocalSession(const QString& path,const QByteArray& request) {
+quint64 processStartTime(qint64) {return 0;}
+LocalActivation activateLocalSession(const QString& path,const QByteArray& request,const std::function<bool(const LocalPeer&)>& admit) {
  QDeadlineTimer deadline(activationDeadlineMs);
  QLocalSocket socket;socket.setReadBufferSize(maximumActivationResponse+1);socket.connectToServer(path);
  if(!socket.waitForConnected(200))return {};
- LocalActivation result;result.connected=true;
+ LocalActivation result;result.connected=true;result.peer.connected=true;
+ if(admit&&!admit(result.peer)){result.refused=true;return result;}
  if(request.isEmpty())return result;
  bool written=socket.write(request)==request.size();
  while(written&&socket.bytesToWrite()>0&&!deadline.hasExpired())written=socket.waitForBytesWritten(int(deadline.remainingTime()));

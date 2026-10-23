@@ -24,6 +24,8 @@ def expected_members(version):
         'putgd-' + version + '-appimage-media-source.tar.gz',
         'putgd-' + version + '-source.tar.gz',
         'putgd-gnome50-' + version + '.zip', 'release-builds.json', 'proton-source-catalog.json',
+        # Each package's CycloneDX SBOM (tools/releases/sbom.py, #420).
+        *('putgd-' + version + '-' + label + '.cdx.json' for label in ('appimage', 'ubuntu24.04', 'ubuntu26.04', 'debian13', 'fedora44')),
     ]
 
 

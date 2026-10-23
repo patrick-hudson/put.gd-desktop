@@ -39,9 +39,9 @@ Earlier tags keep their names and stay readable: `v0.1.1-nightly.N`, the
 unpublished `v0.1.1-rc.1` draft, and before 2026-10-18
 `vBASE-dev.COUNT.UTC+gSHORT`. Every calendar version sorts after them.
 Nightlies never replace GitHub's Latest stable release. Every channel publishes
-all sixteen individual downloads listed below, including the three raw DEBs, the RPM,
-the exact compiled curated source archive, the AppImage's media source and `.zsync`, and the
-debug symbols.
+all twenty-one individual downloads listed below, including the three raw DEBs, the RPM,
+the exact compiled curated source archive, the AppImage's media source and `.zsync`, the
+debug symbols and an SBOM of each package.
 
 ### Nightly
 
@@ -382,8 +382,11 @@ publishes `putgd-VERSION-source.tar.gz`, the AppImage's
 `putgd-VERSION-appimage-media-source.tar.gz` and `putgd-VERSION-x86_64.AppImage.zsync`
 (see [AppImage updates](#appimage-updates)), the GNOME extension ZIP, full build
 receipts, the Proton source catalog and two source transport parts,
-`putgd-VERSION-debug-x86_64.tar.zst`, and `SHA256SUMS`.
-`putgd-VERSION-release.zip` contains the eleven smaller underlying
+`putgd-VERSION-debug-x86_64.tar.zst`, a CycloneDX SBOM of each package
+(`putgd-VERSION-LABEL.cdx.json` for `appimage`, `ubuntu24.04`, `ubuntu26.04`,
+`debian13` and `fedora44`; see [SBOMs and vulnerability scans](#sboms-and-vulnerability-scans)),
+and `SHA256SUMS`.
+`putgd-VERSION-release.zip` contains the sixteen smaller underlying
 files and an inner checksum list. The two large source parts and the debug asset
 stay separate; the outer checksum list covers them and the combined ZIP.
 
@@ -420,6 +423,90 @@ The Ubuntu 24.04 packaging job also compiles an extracted export with the normal
 release preset, verifying the archive contains the required compilation inputs.
 The collector requires that successful compilation receipt and publishes the exact
 archive bytes that were tested.
+
+## SBOMs and vulnerability scans
+
+Every `package.yml` run, tagged or not, ends with an `sbom` job (#420). It
+downloads the five packages, pins Syft and Grype by version and SHA-256
+(`packaging/sbom/tools.lock.json`), and runs `tools/releases/sbom.py`:
+
+1. **SBOM.** Each package is unpacked (the AppImage with `--appimage-extract`, DEBs
+   with `dpkg-deb`, the RPM with `rpm2cpio`) and catalogued by Syft. Syft alone
+   finds almost nothing there: the AppImage carries no dpkg database, and it reads
+   FFmpeg's library sonames as FFmpeg versions. So `sbom.py` adds the components
+   the packages' own inventories name, and drops Syft's guesses for the same
+   components:
+   - the AppImage's `bundled-components.json`: the 124 Ubuntu 24.04 packages as
+     `pkg:deb/ubuntu/...?distro=ubuntu-24.04` with their source packages, the Qt
+     modules, the third-party code Qt builds in (libpng, PCRE2, SQLite, HarfBuzz,
+     libjpeg-turbo, libtiff, libwebp, md4c, ...), FFmpeg, ICU, LayerShellQt,
+     QtKeychain and the type2 runtime;
+   - every package's `dependency-lock.json`: the AWS SDK and the CRT libraries it
+     links, by commit;
+   - every package's Proton helper notices: the npm packages bundled into the
+     helper and its embedded Bun runtime.
+   Components with NVD entries carry a CPE (`qt:qt`, `ffmpeg:ffmpeg`, ...). The
+   SBOM's metadata names the package file and its SHA-256, and `collect` checks
+   that binding before publishing it.
+2. **Scan.** Grype matches each SBOM against its vulnerability database. The job
+   downloads the current database archive (about 195 MB), checks it against
+   its listed SHA-256, keeps it in the `grype-db-v6-<sha256>` cache and imports it.
+3. **Report.** `packaging/sbom/policy.json` sorts the findings, which go to the job
+   summary and the `vulnerability-report` artifact (`vulnerability-report.json`
+   and each SBOM's Grype output, kept 90 days).
+
+| Finding | Pull request and nightly | Stable tag |
+| --- | --- | --- |
+| Critical or high, in bundled code, with a fixed version | flagged: warning annotation and summary row | blocks: the `sbom` job fails, so `collect` and the draft don't run |
+| Critical or high with no fix yet, or medium and below | reported | reported |
+| Accepted in `policy.json` and not expired | reported as accepted | reported as accepted |
+
+Bundled code is everything the AppImage ships, Ubuntu packages included (the
+image freezes them), and the pieces the native packages ship themselves: the AWS
+SDK and the Proton helper. The native packages' distro dependencies, Qt among
+them, are the distribution's to fix; their SBOMs don't list them.
+
+Accept a finding only with a reason and an expiry. An expired acceptance counts
+as a new finding again:
+
+```json
+"ignore": [
+  {"id": "CVE-YYYY-NNNNN", "component": "ffmpeg", "reason": "the affected decoder is not built (media.json)",
+   "expires": "2027-01-31", "issue": 420}
+]
+```
+
+`id` also matches a finding's aliases (a GHSA's CVE), and `component` may be `*`.
+CPE matching takes NVD's version ranges literally. FFmpeg's maintenance branches
+backport fixes that NVD records only against the next major, and the AppImage
+builds FFmpeg with `--disable-everything` plus a short list of components, so
+check an FFmpeg finding against `packaging/appimage/media.json` before acting on
+it. The AWS SDK and CRT have no NVD product entries, so nothing matches them. Qt's
+own security advisories mostly don't reach NVD's CPE data either: on the
+`v26.1023.1058-nightly` AppImage, Qt 6.8.3 matched one medium finding per module,
+while Qt had published about 23 fixes since it (#418). For Qt, the scan is a
+backstop; Renovate's Qt updates, whose patch releases open at once, are the
+main defence.
+
+**Stable releases after they ship.** A stable AppImage keeps the Ubuntu packages,
+Qt and FFmpeg it was built with; it gets none of the fixes published later. So
+`nightly.yml`'s `stable-scan` job re-scans the latest stable release every day,
+whether or not a nightly is built. It downloads that release's published SBOMs,
+checks them against its `SHA256SUMS`, scans them with that day's database
+(`sbom.py scan --released`, which flags and never fails), and keeps one issue
+current: "Stable vYY.MDD.N: bundled components with fixed critical or high CVEs",
+labelled `area: packaging` and `needs-patrick`. The issue is opened when the
+first finding is flagged, and its body is replaced with each day's table after
+that; close it by hand once a new stable ships or every finding is accepted.
+Whether a finding calls for a new stable release is the re-release policy in
+[#420](https://github.com/patrick-hudson/put.gd-desktop/issues/420). Releases
+before the first with SBOMs are skipped.
+
+To scan a published release yourself, download its SBOM and run any CycloneDX
+scanner, for example
+`grype sbom:putgd-VERSION-appimage.cdx.json --distro ubuntu:24.04`.
+Renovate keeps the pinned components themselves current
+([ci.md](ci.md#dependency-updates)).
 
 ## Version identity
 
@@ -480,8 +567,9 @@ the build ID of the binary the package installs. Without a tag, the
 release would, as the `debug-symbols-dry-run` artifact.
 
 With a tag, the `collect` job requires the four native assets and the AppImage
-from one clean tagged commit/tree/count/version, and the debug files staged by
-all five builds from that identity. It recalculates each artifact's
+from one clean tagged commit/tree/count/version, the debug files staged by
+all five builds from that identity, and the `sbom` job's five SBOMs, each naming
+its package's SHA-256. It recalculates each artifact's
 SHA256 against its build receipt and assigns distro-specific filenames so the
 three DEBs cannot overwrite each other. The AppImage must embed its tag's update
 information, and its `.zsync` must match the receipt and describe exactly the collected

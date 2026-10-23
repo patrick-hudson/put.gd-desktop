@@ -192,7 +192,7 @@ def changes_section(tag, producer):
 def publish_nightly(args, release, listed):
     """Publish one automated nightly, retaining exact run and byte evidence."""
     if set(listed) | {'SHA256SUMS'} != public_inventory(args.tag):
-        raise ValueError('Collected nightly inventory must contain all sixteen public assets')
+        raise ValueError('Collected nightly inventory must contain all twenty-one public assets')
     producer = run_provenance()
     api = GitHub(producer['repository'])
     expected = {**listed, 'SHA256SUMS': sha256(args.directory / 'SHA256SUMS')}
@@ -227,6 +227,8 @@ def publish_nightly(args, release, listed):
             'download the two source parts separately.\n\n'
             'The debug tar.zst holds every build\'s split debug files by GNU build ID, for symbolizing '
             'crash records (docs/diagnostics.md); it is not part of the combined ZIP.\n\n'
+            'Each package has a CycloneDX SBOM (.cdx.json) of the components it bundles, for any SBOM-aware '
+            'vulnerability scanner (docs/release.md).\n\n'
             + 'Built, tested and packaged by ' + producer['url'] + '\n\n'
             + 'Channel/source and automated producer evidence:\n\n```json\n'
             + json.dumps(receipt, indent=2) + '\n```\n')
@@ -300,7 +302,7 @@ def main():
             raise ValueError('Duplicate collected release checksum')
         listed[name] = digest
     if set(listed) | {'SHA256SUMS'} != public_inventory(args.tag):
-        raise ValueError('Collected release inventory must include all sixteen public assets, including Proton and AppImage media sources and debug symbols')
+        raise ValueError('Collected release inventory must include all twenty-one public assets, including Proton and AppImage media sources, debug symbols and SBOMs')
     if args.nightly:
         publish_nightly(args, release, listed)
         return
@@ -340,6 +342,8 @@ def main():
                      'The combined ZIP includes the catalog; download the two source parts separately.\n\n'
                      'The debug tar.zst holds every build\'s split debug files by GNU build ID, for symbolizing crash records '
                      '(docs/diagnostics.md); it is not part of the combined ZIP.\n\n'
+                     'Each package has a CycloneDX SBOM (.cdx.json) of the components it bundles, for any SBOM-aware '
+                     'vulnerability scanner (docs/release.md).\n\n'
                      'Compiled source identities, dependency inventories, licenses and SHA256 checksums accompany the builds. '
                      'Package-specific acceptance is recorded before this draft is published.\n\n'
                      'Built, tested and packaged by ' + producer['url'] + '\n')

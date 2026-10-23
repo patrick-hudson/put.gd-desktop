@@ -1,4 +1,5 @@
 #include "ShortcutEditor.h"
+#include "ShortcutKeyboard.h"
 #include "VisualStyle.h"
 #include "core/Settings.h"
 #include <QApplication>
@@ -86,6 +87,7 @@ void ShortcutEditor::startRecording(const QString& action){
  recordButtons_[action]->setText("Cancel");recordButtons_[action]->setFocusPolicy(Qt::NoFocus);
  recordingStatus_->setText("Preparing to record… Escape cancels.");recordingStatus_->show();
  editors_[action]->setFocus();qApp->installEventFilter(this);
+ if(!chordResolver_)keyboard_=std::make_unique<ShortcutKeyboard>();
  if(!recordingControl_){finishRecording("Recording is unavailable. Reopen Settings from the running app.");return;}
  QPointer<ShortcutEditor> guard(this);
  recordingControl_(true,[guard,generation](Error error){
@@ -99,7 +101,7 @@ void ShortcutEditor::cancelRecording(){if(!recordingAction_.isEmpty())finishReco
 void ShortcutEditor::finishRecording(const QString& message){
  if(recordingAction_.isEmpty())return;
  ++recordingGeneration_;recordingReady_=false;qApp->removeEventFilter(this);
- recordButtons_[recordingAction_]->setText("Record shortcut");recordButtons_[recordingAction_]->setFocusPolicy(Qt::StrongFocus);recordingAction_.clear();pressed_.clear();chord_={};
+ recordButtons_[recordingAction_]->setText("Record shortcut");recordButtons_[recordingAction_]->setFocusPolicy(Qt::StrongFocus);recordingAction_.clear();pressed_.clear();chord_={};keyboard_.reset();
  recordingStatus_->setText(message);
  if(recordingControl_){QPointer<ShortcutEditor> guard(this);const auto generation=recordingGeneration_;recordingControl_(false,[guard,generation](Error error){
   // Saving settings can supersede this restore. The newer binding request owns
@@ -128,8 +130,11 @@ bool ShortcutEditor::eventFilter(QObject* object,QEvent* event){
   if(key->key()==Qt::Key_unknown||key->key()==0||key->key()==Qt::Key_AltGr||key->modifiers().testFlag(Qt::GroupSwitchModifier)){
    finishRecording("Unsupported key. Choose another shortcut.");return true;
   }
-  if(!chord_.isEmpty()&&chord_[0].key()!=key->key()){finishRecording("Use one key with modifiers. The draft shortcut is unchanged.");return true;}
-  chord_=QKeySequence(key->keyCombination());
+  // Store the physical key's unshifted digit or punctuation (Ctrl+Shift+4,
+  // not Ctrl+Shift+$), the form the defaults and every desktop backend share.
+  const auto pressed=chordResolver_?chordResolver_(*key):keyboard_?keyboard_->chord(*key):key->keyCombination();
+  if(!chord_.isEmpty()&&chord_[0].key()!=pressed.key()){finishRecording("Use one key with modifiers. The draft shortcut is unchanged.");return true;}
+  chord_=QKeySequence(pressed);
   recordingStatus_->setText(chord_.toString(QKeySequence::NativeText)+" — release all keys to keep it. Escape cancels.");
  }else{
   pressed_.remove(identity);
@@ -148,7 +153,12 @@ void ShortcutEditor::setStatus(const QJsonObject& status) {
  else status_->setText("Changes save automatically. Choose a shortcut to record a new combination.");
  const auto bindings=status["bindings"].toObject();
  for(const auto& action:Settings::invocableActionNames()) {
-  auto* label=bindingStates_[action];const auto presentation=bindingPresentation(status,bindings[action].toObject());label->setText(presentation.text);label->setProperty("bindingTone",presentation.tone);VisualStyle::role(label,"binding");const auto entry=bindings[action].toObject();label->setVisible(!(entry["bound"].toBool()&&actualBinding(entry["actual"])==editors_[action]->text()&&entry["error"].toString().isEmpty()));
+  auto* label=bindingStates_[action];const auto presentation=bindingPresentation(status,bindings[action].toObject());label->setText(presentation.text);label->setProperty("bindingTone",presentation.tone);VisualStyle::role(label,"binding");const auto entry=bindings[action].toObject();
+  // KDE registers Ctrl+Shift+1 as Ctrl+! (its "effective" chord). Hide the line
+  // when the desktop holds what was asked of it, not only the literal draft.
+  const auto draft=editors_[action]->text();
+  const auto expected=entry["effective"].isString()&&entry["requested"].toString()==draft?entry["effective"].toString():draft;
+  label->setVisible(!(entry["bound"].toBool()&&actualBinding(entry["actual"])==expected&&entry["error"].toString().isEmpty()));
  }
  details_->setPlainText(QString::fromUtf8(QJsonDocument(status).toJson(QJsonDocument::Indented)));
 }

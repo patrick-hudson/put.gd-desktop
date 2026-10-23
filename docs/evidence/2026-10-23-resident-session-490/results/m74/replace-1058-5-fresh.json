@@ -1,0 +1,18 @@
+{
+ "at": "2026-10-23T20:04:41Z",
+ "graphicalSession": "c48",
+ "fresh": [
+  {
+   "pid": 548461,
+   "exe": "/tmp/.mount_putgd-EmPFhM/usr/bin/putgd",
+   "ppid": 548060,
+   "start": 18378748,
+   "session": "c48",
+   "sessionState": "active",
+   "sessionType": "x11",
+   "cgroup": "/user.slice/user-1000.slice/session-c48.scope",
+   "display": ":0",
+   "sessionIdEnv": "c48"
+  }
+ ]
+}

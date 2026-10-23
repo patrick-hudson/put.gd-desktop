@@ -447,10 +447,10 @@ class NightlyPublicationTest(unittest.TestCase):
         self.assertIs(released, publish.changelog.released_tags)
         return f'## Changes since fixture-previous\n\n- Synthetic change in {tag}\n'
 
-    def test_cli_publishes_all_sixteen_verified_assets_as_nightly_prerelease(self):
+    def test_cli_publishes_all_twenty_one_verified_assets_as_nightly_prerelease(self):
         self.invoke()
         self.assertEqual(self.remote_files, self.files)
-        self.assertEqual(len(self.remote_files), 16)
+        self.assertEqual(len(self.remote_files), 21)
         self.assertFalse(self.metadata['draft'])
         self.assertTrue(self.metadata['prerelease'])
         self.assertIn('--latest=false', self.commands[0])
@@ -568,7 +568,7 @@ class NightlyPublicationTest(unittest.TestCase):
     def test_positive_inventory_is_required_before_any_remote_mutation(self):
         checksums = (self.directory / 'SHA256SUMS').read_text().splitlines()
         (self.directory / 'SHA256SUMS').write_text('\n'.join(checksums[:-1]) + '\n')
-        with self.assertRaisesRegex(ValueError, 'all sixteen'):
+        with self.assertRaisesRegex(ValueError, 'all twenty-one'):
             self.invoke()
         self.assertEqual(self.commands, [])
 

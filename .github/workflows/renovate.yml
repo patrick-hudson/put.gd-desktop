@@ -1,0 +1,112 @@
+name: Renovate
+# Self-hosted Renovate (#420; docs/ci.md, "Dependency updates"). Weekly, or on
+# demand, it opens version-update pull requests against nightly from
+# .github/renovate.json, with this workflow's own token: CI on those pull
+# requests starts after a maintainer approves its workflows, and Renovate cannot
+# change .github/workflows (Dependabot keeps their action SHAs current,
+# .github/dependabot.yml). A pull request that changes this setup runs a
+# read-only lookup instead: the job summary lists every dependency Renovate
+# detects and the update it would propose.
+on:
+  schedule:
+    - cron: '17 4 * * 1'
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: Log what Renovate would do instead of doing it (none runs for real)
+        type: choice
+        options: [none, lookup, full]
+        default: none
+  pull_request:
+    paths:
+      - .github/renovate.json
+      - .github/workflows/renovate.yml
+      - tools/maintenance/refresh_pins.py
+      - tools/maintenance/renovate_summary.py
+permissions:
+  contents: read
+env:
+  # 44.181.0; the digest pins the exact image.
+  RENOVATE_IMAGE: ghcr.io/renovatebot/renovate:44.181.0@sha256:1a06e15f2d8bc08342828ec43c0a90de0ac9192900f513af90e77765e0991b6d
+
+jobs:
+  lookup:
+    # The pull request's own configuration, read-only: extraction and version lookups, no branches.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Validate the configuration
+        run: |
+          docker run --rm --volume "$PWD:/usr/src/app:ro" --workdir /usr/src/app --entrypoint renovate-config-validator \
+            "$RENOVATE_IMAGE" --strict .github/renovate.json
+      - name: Look up every detected dependency
+        env:
+          GITHUB_COM_TOKEN: ${{ github.token }}
+        run: |
+          # Renovate runs as its own user, which writes the log here.
+          mkdir -p -m 0777 "$RUNNER_TEMP/renovate"
+          # Renovate's user reads the checkout; git must accept another owner's repository.
+          docker run --rm --volume "$PWD:/usr/src/app:ro" --workdir /usr/src/app \
+            --volume "$RUNNER_TEMP/renovate:/tmp/renovate-log" --env GITHUB_COM_TOKEN \
+            --env RENOVATE_PLATFORM=local --env RENOVATE_DRY_RUN=lookup --env RENOVATE_REPOSITORY_CACHE=disabled \
+            --env LOG_LEVEL=info --env LOG_FILE=/tmp/renovate-log/renovate.ndjson --env LOG_FILE_LEVEL=debug \
+            --env GIT_CONFIG_COUNT=1 --env GIT_CONFIG_KEY_0=safe.directory --env GIT_CONFIG_VALUE_0='*' \
+            "$RENOVATE_IMAGE"
+      - name: Summarize the lookup
+        if: always()
+        run: python3 tools/maintenance/renovate_summary.py --log "$RUNNER_TEMP/renovate/renovate.ndjson" --summary "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: renovate-lookup
+          path: ${{ runner.temp }}/renovate/
+          if-no-files-found: warn
+          retention-days: 30
+
+  renovate:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    concurrency:
+      group: renovate
+      cancel-in-progress: false
+    permissions:
+      contents: write  # update branches
+      pull-requests: write  # open and update pull requests
+      issues: write  # the dependency dashboard issue
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Prepare the log directory and dry-run mode
+        env:
+          DRY_RUN: ${{ inputs.dry-run }}
+        run: |
+          mkdir -p -m 0777 /tmp/renovate-log
+          # A schedule has no input; `none` runs for real too.
+          if [ -n "$DRY_RUN" ] && [ "$DRY_RUN" != none ]; then echo "RENOVATE_DRY_RUN=$DRY_RUN" >> "$GITHUB_ENV"; fi
+      - uses: renovatebot/github-action@a63d9a7bc606f7336fd20b47f2f32259a35e6213 # v46.3.9
+        env:
+          RENOVATE_REPOSITORIES: ${{ github.repository }}
+          RENOVATE_PLATFORM: github
+          RENOVATE_ONBOARDING: 'false'
+          RENOVATE_REQUIRE_CONFIG: required
+          RENOVATE_GIT_AUTHOR: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+          RENOVATE_ALLOWED_COMMANDS: '["^python3 tools/maintenance/refresh_pins\\.py$"]'
+          RENOVATE_LOG_FILE: /tmp/renovate-log/renovate.ndjson
+          RENOVATE_LOG_FILE_LEVEL: debug
+          LOG_LEVEL: info
+        with:
+          renovate-image: ${{ env.RENOVATE_IMAGE }}
+          token: ${{ github.token }}
+          docker-volumes: /tmp:/tmp
+      - name: Summarize the run
+        if: always()
+        run: python3 tools/maintenance/renovate_summary.py --log /tmp/renovate-log/renovate.ndjson --summary "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: renovate-log-${{ github.run_id }}-${{ github.run_attempt }}
+          path: /tmp/renovate-log/
+          if-no-files-found: warn
+          retention-days: 30

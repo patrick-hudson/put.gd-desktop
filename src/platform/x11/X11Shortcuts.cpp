@@ -148,5 +148,13 @@ void X11Shortcuts::events(){while(auto* raw=xcb_poll_for_event(connection_)){con
  }
  else if(type==XCB_MAPPING_NOTIFY){auto* mapping=reinterpret_cast<xcb_mapping_notify_event_t*>(raw);xcb_refresh_keyboard_mapping(symbols_,mapping);free(raw);bind(requested_);continue;}
  free(raw);}
- for(const auto& press:std::exchange(pending_,{}))deliverRaw(press);}
+ for(const auto& press:std::exchange(pending_,{}))deliverRaw(press);
+ // A read at end of stream marks the connection broken. Its descriptor stays
+ // readable, so stop listening before the notifier spins (#490).
+ if(notifier_&&notifier_->isEnabled()&&xcb_connection_has_error(connection_)){
+  const int error=xcb_connection_has_error(connection_);notifier_->setEnabled(false);
+  logging::warning(logApp(),"X11 connection lost",{{"xcbError",error}});
+  if(error==XCB_CONN_ERROR)emit connectionLost();
+ }
+}
 }

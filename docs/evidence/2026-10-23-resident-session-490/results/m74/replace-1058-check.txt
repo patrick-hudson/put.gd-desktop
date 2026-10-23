@@ -1,0 +1,10 @@
+546131 gone
+548461 /tmp/.mount_putgd-EmPFhM/usr/bin/putgd --background
+2026-10-23T20:04:40.274Z Resident started {"pid": 548461}
+2026-10-23T20:04:40.274Z Replaced a resident from an ended login session {"pid": 548461}
+2026-10-23T20:04:40.277Z Desktop portal availability {"pid": 548461}
+2026-10-23T20:02:38.166Z Resident started
+2026-10-23T20:02:38.180Z Desktop portal availability
+2026-10-23T20:04:39.952Z Resident stopping
+2026-10-23T20:04:39.952Z Resident stopped
+2026-10-23T20:04:40.274Z Replaced a resident from an ended login session

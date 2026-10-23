@@ -1,0 +1,18 @@
+{
+ "at": "2026-10-23T20:23:28Z",
+ "graphicalSession": "14542",
+ "fresh": [
+  {
+   "pid": 3295217,
+   "exe": "/usr/bin/putgd",
+   "ppid": 1397,
+   "start": 57274958,
+   "session": null,
+   "sessionState": null,
+   "sessionType": null,
+   "cgroup": "/user.slice/user-1000.slice/user@1000.service/app.slice/app-gnome-putgd-3295217.scope",
+   "display": ":0",
+   "sessionIdEnv": null
+  }
+ ]
+}

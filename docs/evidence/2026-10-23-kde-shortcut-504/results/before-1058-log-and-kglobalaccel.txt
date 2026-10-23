@@ -1,0 +1,11 @@
+{"category":"default","fields":{"itemId":null,"operationId":null},"level":"warning","message":"Action rejected: output_required","pid":2279,"process":"putgd","time":"2026-10-23T20:12:14.482Z","v":1}
+{"category":"putgd.operation","fields":{"action":"region","itemId":null,"output":"local","profileId":"","provider":""},"level":"info","message":"Operation accepted","operationId":"dd9cacbd-5235-48b8-aa15-550e27290e34","pid":2279,"process":"putgd","time":"2026-10-23T20:13:04.570Z","v":1}
+---
+[putgd]
+_k_friendly_name=put.gd
+clipboard=none,none,clipboard
+desktop=Ctrl+#,none,desktop
+edit=Ctrl+Shift+$,none,edit
+record=none,none,record
+region=Ctrl+!,none,region
+window=Ctrl+@,none,window

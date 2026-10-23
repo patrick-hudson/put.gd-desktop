@@ -1,0 +1,91 @@
+name: Stall demo (#467, throwaway)
+# Never merged: lives only on claude/ci-install-timeouts-467-demo. apt goes through
+# .github/stall-demo/proxy.py, which accepts connections and then stalls.
+on:
+  push:
+    branches: [claude/ci-install-timeouts-467-demo]
+permissions:
+  contents: read
+
+jobs:
+  stall-then-retry:
+    name: stalled attempt, then the retry passes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Route apt through the stalling proxy
+        run: &proxy |
+          sudo rm -f /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources
+          printf 'Types: deb\nURIs: http://archive.ubuntu.com/ubuntu/\nSuites: noble noble-updates noble-security\nComponents: main universe\nSigned-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\n' | sudo tee /etc/apt/sources.list.d/demo.sources
+          echo 'Acquire::http::Proxy "http://127.0.0.1:3128";' | sudo tee /etc/apt/apt.conf.d/99demo-proxy
+          echo relay > "$RUNNER_TEMP/proxy-mode"
+          nohup python3 .github/stall-demo/proxy.py "$RUNNER_TEMP/proxy-mode" > "$RUNNER_TEMP/proxy.log" 2>&1 &
+          sleep 1
+      - name: Install dwz while the mirror stalls for the first 75 s
+        env:
+          PUTGD_PKG_LABEL: stall demo, retry
+          PUTGD_PKG_STALL: '60'
+        run: |
+          # Job summaries need a signed-in viewer: copy this step's summary into the log.
+          trap 'echo "--- step summary ---"; cat "$GITHUB_STEP_SUMMARY"' EXIT
+          echo stall > "$RUNNER_TEMP/proxy-mode"
+          (sleep 75; echo relay > "$RUNNER_TEMP/proxy-mode") &
+          sudo --preserve-env=GITHUB_STEP_SUMMARY,PUTGD_PKG_LABEL,PUTGD_PKG_STALL bash tools/ci/install-packages.sh --no-install-recommends dwz
+          dwz --version | head -n 1
+      - name: Proxy log
+        if: always()
+        run: cat "$RUNNER_TEMP/proxy.log"
+
+  stall-then-snapshot:
+    name: every attempt stalls, the snapshot installs
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      PUTGD_PKG_CACHE: /var/cache/putgd-demo
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Route apt through the stalling proxy
+        run: *proxy
+      - name: Save a package snapshot while the mirror answers
+        env:
+          PUTGD_PKG_LABEL: stall demo, seed
+        run: |
+          sudo --preserve-env=GITHUB_STEP_SUMMARY,PUTGD_PKG_LABEL,PUTGD_PKG_CACHE bash tools/ci/install-packages.sh --no-install-recommends dwz
+          sudo apt-get purge -y dwz
+          cat "$PUTGD_PKG_CACHE/putgd-snapshot"
+      - name: Install dwz while every mirror attempt stalls
+        env:
+          PUTGD_PKG_LABEL: stall demo, snapshot
+          PUTGD_PKG_STALL: '60'
+          PUTGD_PKG_ATTEMPTS: '2'
+        run: |
+          # Job summaries need a signed-in viewer: copy this step's summary into the log.
+          trap 'echo "--- step summary ---"; cat "$GITHUB_STEP_SUMMARY"' EXIT
+          echo stall > "$RUNNER_TEMP/proxy-mode"
+          sudo --preserve-env=GITHUB_STEP_SUMMARY,PUTGD_PKG_LABEL,PUTGD_PKG_CACHE,PUTGD_PKG_STALL,PUTGD_PKG_ATTEMPTS bash tools/ci/install-packages.sh --no-install-recommends dwz
+          dwz --version | head -n 1
+      - name: Proxy log
+        if: always()
+        run: cat "$RUNNER_TEMP/proxy.log"
+
+  stall-forever:
+    # Default limits (10-minute stall, four attempts) and the native jobs' 90-minute timeout.
+    name: every attempt stalls, no snapshot (expected red)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Route apt through the stalling proxy
+        run: *proxy
+      - name: Install dwz while every mirror attempt stalls
+        env:
+          PUTGD_PKG_LABEL: stall demo, no snapshot
+        run: |
+          # Job summaries need a signed-in viewer: copy this step's summary into the log.
+          trap 'echo "--- step summary ---"; cat "$GITHUB_STEP_SUMMARY"' EXIT
+          echo stall > "$RUNNER_TEMP/proxy-mode"
+          sudo --preserve-env=GITHUB_STEP_SUMMARY,PUTGD_PKG_LABEL bash tools/ci/install-packages.sh --no-install-recommends dwz
+      - name: Proxy log
+        if: always()
+        run: cat "$RUNNER_TEMP/proxy.log"

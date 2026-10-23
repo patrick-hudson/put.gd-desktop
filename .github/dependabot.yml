@@ -1,0 +1,24 @@
+# The action SHAs in .github/workflows (#420, docs/ci.md "Dependency updates").
+# Renovate runs with the workflow token, which cannot change workflow files, so
+# Dependabot keeps these current. Container digests, actionlint and the Renovate
+# image inside the workflows are not actions and stay manual (#507).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: nightly
+    schedule:
+      interval: weekly
+      day: monday
+      time: '04:47'
+      timezone: Etc/UTC
+    groups:
+      github-actions:
+        patterns: ['*']
+    ignore:
+      # Windows-only; the Windows rewrite owns it.
+      - dependency-name: ilammy/msvc-dev-cmd
+    labels: [dependencies, 'area: ci']
+    commit-message:
+      prefix: 'deps:'
+    open-pull-requests-limit: 5

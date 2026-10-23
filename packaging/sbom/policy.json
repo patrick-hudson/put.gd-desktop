@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "severities": ["Critical", "High"],
+  "requireFix": true,
+  "block": {
+    "development": false,
+    "nightly": false,
+    "stable": true
+  },
+  "ignore": []
+}

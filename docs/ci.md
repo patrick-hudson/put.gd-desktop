@@ -1,15 +1,16 @@
 # CI coverage and runtime
 
-Four workflows cover every event. Jobs that gate one another run in the same
+Five workflows cover every event. Jobs that gate one another run in the same
 workflow run and are linked with `needs:`; nothing waits on another workflow
 through the Actions API.
 
 | Workflow | Runs on | Does |
 | --- | --- | --- |
 | `ci.yml` | every pull request, pushes to `nightly`, manual runs; called by nightly and release | contracts, Linux tests, clang ASan/UBSan core tests, Windows compile, packages, the AppImage's pipewiresrc on PipeWire 1.6; on `nightly` pushes, cache pruning |
-| `package.yml` | called by `ci.yml` | four native packages, AppImage, and with a tag the collected `release-assets` |
-| `nightly.yml` | 05:23 UTC daily and manual | skip unchanged source, or tag, test, package and publish a nightly, then notify put.gd-site |
+| `package.yml` | called by `ci.yml` | four native packages, AppImage, their SBOMs and vulnerability scan, and with a tag the collected `release-assets` |
+| `nightly.yml` | 05:23 UTC daily and manual | skip unchanged source, or tag, test, package and publish a nightly, then notify put.gd-site; re-scan the latest stable release's SBOMs |
 | `release.yml` | pushes to `main` and manual | cut a candidate (or stable on request), test, package and stage a draft |
+| `renovate.yml` | 04:17 UTC Mondays and manual; pull requests that change it | open dependency-update pull requests against `nightly`; on pull requests, a read-only lookup ([dependency updates](#dependency-updates)) |
 
 The single required status check is the `CI` job. It fails when any job the
 change selected did not succeed. A cancelled or failed job is never a pass; a
@@ -23,7 +24,7 @@ schedule, manual runs and release callers always select everything.
 | Changed paths | contracts | linux, portable | packages |
 | --- | --- | --- | --- |
 | `docs/` (except below), `README.md`, `AGENTS.md`, `CLAUDE.md` | yes | no | no |
-| Lab, MCP and maintenance Python; `tests/ci`, `tests/releases`, `tests/maintenance`; Python and YAML directly under `tests/desktop` and `tests/performance` | yes | no | no |
+| Lab, MCP and maintenance Python; `tests/ci`, `tests/releases`, `tests/maintenance`; Python and YAML directly under `tests/desktop` and `tests/performance`; `.github/renovate.json`, `.github/dependabot.yml` | yes | no | no |
 | Anything else, including `src/`, C++ tests, schemas and new directories | yes | yes | no |
 | `packaging/`, `tools/releases/`, `tools/proton/`, `tools/ci/`, `cmake/`, `integrations/`, `.github/workflows/`, root CMake files, `LICENSE`, `THIRD_PARTY_NOTICES.md`, `.gitignore`, `docs/build.md`, `docs/proton-drive.md` | yes | yes | yes |
 
@@ -106,7 +107,9 @@ built in CI.
 
 **packages** calls `package.yml`. It builds and audits the Ubuntu 24.04,
 Ubuntu 26.04 and Debian 13 DEBs, the Fedora 44 RPM and the AppImage, and compiles the curated source
-export on Ubuntu 24.04. With a release tag, `collect` verifies and assembles the
+export on Ubuntu 24.04. Its `sbom` job writes a CycloneDX SBOM of every package and
+scans them with Grype ([SBOMs and vulnerability scans](release.md#sboms-and-vulnerability-scans)).
+With a release tag, `collect` verifies and assembles the
 public asset set. See [releases](release.md).
 
 **pipewire** checks the AppImage's bundled GStreamer `pipewiresrc` against a PipeWire
@@ -130,6 +133,94 @@ checks it against that release's `SHA256SUMS`. It takes about two minutes, most 
 it installing the container's packages. A branch that drops `min-buffers=1` fails
 it with the #137 error, `error alloc buffers: Invalid argument (-22)`. The job is
 part of the required `CI` summary when selected.
+
+## Dependency updates
+
+Dependabot reads only manifests it knows. Most of put.gd's pins are versions in
+JSON locks and CMake, each with a commit or SHA-256 beside it. Self-hosted
+[Renovate](https://docs.renovatebot.com/) watches them (#420): `renovate.yml`
+runs it weekly from `.github/renovate.json`, and opens update pull requests
+against `nightly`. Nothing merges itself; each update goes through CI and the
+usual acceptance like any other change.
+
+| Pins | File | Source of new versions | Pull requests |
+| --- | --- | --- | --- |
+| Qt binaries for the AppImage and the five modules' licence sources | `packaging/appimage/tools.lock.json` | `qt/*` tags | one group; patch releases open at once, a new minor or major waits for approval |
+| LayerShellQt, extra-cmake-modules | `packaging/appimage/tools.lock.json` | `KDE/*` tags | one group |
+| QtKeychain (AppImage) | `packaging/appimage/tools.lock.json` | tags | one each |
+| FFmpeg (AppImage recorder) | `packaging/appimage/tools.lock.json` | `n*` tags | patch releases at once; a new minor or major waits for approval (its sonames change) |
+| linuxdeploy, its Qt plugin, appimagetool, the type2 runtime | `packaging/appimage/tools.lock.json` | GitHub releases | one group |
+| Syft, Grype | `packaging/sbom/tools.lock.json` | GitHub releases | one group |
+| AWS SDK for C++ | `cmake/dependency-lock.json`, `cmake/Dependencies.cmake` | tags | one group |
+| Proton helper: npm packages, Bun, the SDK | `tools/proton/package.json` and its lock, `tools/proton/runtime-lock.json` | npm | one group, and only after approval |
+| MCP helper | `tools/mcp/pyproject.toml` | PyPI | one group |
+
+ICU is the build that ships inside Qt's binaries, so it moves with Qt and is not
+watched by itself. The flatpak manifest is a research spike and not watched.
+Windows pins (the `portable` job's Qt, `tools/ci/provision-portable-deps.sh`)
+belong to the Windows rewrite and are not managed here.
+
+**Versions only, then a refresh.** Renovate changes the version fields. Its
+post-upgrade task, `tools/maintenance/refresh_pins.py`, then re-derives
+everything that goes with them: each tool's download URL and SHA-256 (checked
+against upstream's checksum file where one is published), each source pin's tag
+commit, and the AWS SDK's commit with all fifteen CRT submodule pins, read from
+tree-only fetches. It never runs what it downloads. That leaves one manual step:
+the digest of the `zsyncmake` inside appimagetool, which the appimagetool pull
+request's body explains; until it is updated the AppImage job fails with
+"Bundled zsyncmake digest mismatch". Run the script by hand after editing a
+version yourself: `python3 tools/maintenance/refresh_pins.py`. The AppImage job
+reads its Qt version from the lock, so a Qt update needs no workflow change.
+
+**Approval.** Updates that need a decision wait on the dependency dashboard, the
+issue titled "Dependency updates (Renovate)": Qt and FFmpeg minor and major
+releases, and every Proton helper update. A Proton helper update also needs its
+notices and corresponding-source catalog rebuilt (docs/proton-drive.md), which
+Renovate cannot do. Tick an update on the dashboard and the next run opens it. At
+most five update pull requests are open at once.
+
+**Token.** The job uses the workflow's own `GITHUB_TOKEN` with
+`contents: write`, `pull-requests: write` and `issues: write`; there is no
+personal access token or app. That has three costs:
+
+- The repository must allow it: Settings, Actions, General, "Allow GitHub
+  Actions to create and approve pull requests". The `nightly` ruleset requires no
+  approving review, so the approval half grants nothing extra.
+- Pull requests opened with the workflow token don't start workflows by
+  themselves. A maintainer approves each one's workflows ("Approve and run
+  workflows" on the pull request) and CI then runs as usual.
+- The token cannot change `.github/workflows`, so Renovate leaves the workflows
+  alone (`enabledManagers` leaves out `github-actions`). Dependabot keeps their
+  action SHAs current instead (below). The container digests, actionlint and
+  the Renovate image inside the workflows are not actions, so neither bot
+  updates them; they stay manual
+  ([#507](https://github.com/patrick-hudson/put.gd-desktop/issues/507)).
+
+Patrick chose this setup on 2026-10-23: the workflow token for Renovate, and
+Dependabot for the workflow pins.
+
+**Workflow actions.** `.github/dependabot.yml` has Dependabot update the
+`uses: owner/action@<sha> # vX` pins in `.github/workflows` weekly (Mondays
+04:47 UTC), against `nightly`, in one grouped pull request labelled
+`dependencies` and `area: ci`. `ilammy/msvc-dev-cmd` is Windows-only and left
+to the Windows rewrite. Dependabot's pull requests start CI on their own, with a
+read-only token; the flaky-test tracker then logs a warning instead of
+updating its issues.
+
+**Checking a change to this setup.** A pull request that changes
+`.github/renovate.json`, `renovate.yml` or the two maintenance scripts runs the
+`lookup` job instead: `renovate-config-validator --strict`, then Renovate's
+local platform in `lookup` mode over the pull request's own checkout, read-only
+(`contents: read`). Its job summary lists every detected dependency, its current
+version and the update Renovate would propose; the full JSON log is the
+`renovate-lookup` artifact. `tests/ci/test_renovate_config.py` checks that every
+regex manager still matches each pin it manages.
+
+**Running it by hand.** `gh workflow run renovate.yml -f dry-run=full` logs the
+branches and pull requests Renovate would create without creating them; with no
+input it runs for real. Each run's summary has the same dependency table and
+its log is an artifact. The Renovate image is pinned by version and digest in
+`renovate.yml`.
 
 ## Notifying put.gd-site
 
@@ -246,8 +337,8 @@ reads the newest one on a ref. Three rules keep the total bounded:
   `GITHUB_TOKEN` (`actions: write`, `pull-requests: read`; the nightly and release
   callers grant them, and the job runs only on `nightly` pushes). It deletes, by id:
   every entry of a rolling family (`ccache-*` and `ctest-cost-*` by
-  `<run>-<attempt>` suffix, `qt-asan-core-<distro>-`, and `putgd-pkgs-v1-*` by ISO
-  week) older than the newest on the
+  `<run>-<attempt>` suffix, `qt-asan-core-<distro>-`, `putgd-pkgs-v1-*` by ISO
+  week, and `grype-db-v6-*` by database) older than the newest on the
   same ref, and every cache of a closed pull request or deleted branch. On `main`,
   `nightly` and `v*` tags it deletes only those superseded entries. Merging a
   pull request pushes to `nightly`, so its caches go with the next run. Exact-key
@@ -267,6 +358,7 @@ Budget per job, measured 2026-10-19 (compressed archive sizes; the ceiling is
 | `install-qt-action-*` (Windows, AppImage) | first miss | 1 each | 650 MB | Qt version |
 | `putgd-sdk-v1-*` (9 environments) | first miss on a ref | 1 per environment | about 60 MB | dependency lock |
 | `ctest-cost-linux-*` | every non-fork run | 1 per ref | under 2 kB | |
+| `grype-db-v6-<sha256>` ([vulnerability database](release.md#sboms-and-vulnerability-scans)) | first `sbom` job to see a new database, per ref | 1 per ref | about 195 MB | one database |
 | `putgd-pkgs-v1-*` ([package snapshots](#package-installs)) | first run of an ISO week, or new dependency scripts, per ref | 1 per package target | 408-544 MB (Fedora 544, Ubuntu 24.04 408, Ubuntu 26.04 422, Debian 13 421 on 2026-10-22) | dependency lists |
 
 The four package snapshots add 1.8 GB on `nightly` to the steady state below. A new week's
@@ -688,6 +780,15 @@ and dwz steps. It works in three layers:
   dnf retries each download 10 times across mirrors (`retries=10`) and apt 3
   times. If a package name doesn't exist, the install fails at once with no
   retry.
+- **Stopped attempts.** An attempt that runs longer than `PUTGD_PKG_TIMEOUT`
+  (900 s) or prints nothing for `PUTGD_PKG_STALL` seconds (600 s) is stopped
+  (`timeout --kill-after=30s`, process group included) and counts as a failed
+  attempt, so the back-off and the snapshot apply. A stopped apt attempt is
+  followed by `dpkg --configure -a` before the retry. Downloaded packages stay
+  in the cache, so the retry resumes them. Inside an attempt, apt drops a
+  connection that moves nothing for 60 s (`Acquire::http(s)::Timeout=60`) and
+  dnf one under 1 kB/s for 60 s (`timeout=60`, `minrate=1000`); both retry the
+  download themselves. See [Stalled installs](#stalled-installs).
 - **Package snapshot.** The native package jobs restore
   `/var/cache/putgd-packages` from `actions/cache`, under the key
   `putgd-pkgs-v1-<target>-<hash of both scripts>-<ISO week>`. It holds the
@@ -700,10 +801,12 @@ and dwz steps. It works in three layers:
   (`dnf --cacheonly`, `apt-get --no-download`). That builds against a package
   set at most a week old instead of failing the job. A dependency list that
   changed since the snapshot can't be satisfied offline, and the step fails.
-- **Reporting.** Each failed attempt, a retry that passed and a snapshot
-  install are warning annotations and rows of a "Package install retries"
-  table in the job summary. A clean install writes nothing. The pre-checkout
-  bootstrap (git only) retries 3 times inline and reports in a table of the same form.
+- **Reporting.** Each failed or stopped attempt, a retry that passed and a
+  snapshot install are warning annotations and rows of a "Package install
+  retries" table in the job summary. A stopped attempt's row says
+  `**stopped**`, which limit stopped it and the last line it printed. A clean
+  install writes nothing. The pre-checkout bootstrap (git only) retries 3 times
+  inline, each attempt limited to 10 minutes, and reports in a table of the same form.
 
 ![After: run 39729960271 (throwaway e8f9443b on aca7858f), retries, snapshot installs and a red all-fail job](https://raw.githubusercontent.com/patrick-hudson/put.gd-desktop/174b27a826aa34532dee6e22c0ddda70682e4a3e/docs/evidence/2026-10-22-package-installs-368/368-after.png)
 
@@ -718,13 +821,71 @@ same lines from the check-runs API. The files are in
 `docs/evidence/2026-10-22-package-installs-368/`. To repeat it, push such a
 wrapper to a pull request branch, never to `nightly`.
 
-Not covered yet: the `linux`, `sanitizers` and `contracts` jobs in `ci.yml`
-still use bare `apt-get`
-([#389](https://github.com/patrick-hudson/put.gd-desktop/issues/389)). `npm ci`
-in the Proton helper step runs with `npm_config_fetch_retries=5`. Its separate
-exit-152 failure
+Not covered yet: the `linux` and `sanitizers` installs in `ci.yml` run before
+checkout with bare `apt-get`. They have the acquire timeouts and a 20-minute
+step limit, but no retry or snapshot
+([#389](https://github.com/patrick-hudson/put.gd-desktop/issues/389)). The
+`contracts` install uses the helper. `npm ci` in the Proton helper step runs
+with `npm_config_fetch_retries=5`. Its separate exit-152 failure
 ([#332](https://github.com/patrick-hudson/put.gd-desktop/issues/332)) is a
 CPU-time kill, not a network error.
+
+### Stalled installs
+
+Before [#467](https://github.com/patrick-hudson/put.gd-desktop/issues/467), an
+attempt that never returned was never retried. Nightly run 39851369595
+(2026-10-22) hung for 93 minutes in `packages / appimage` after
+`Get:5 https://archive.ubuntu.com/ubuntu noble-security InRelease [126 kB]`
+until it was cancelled. apt's own 120 s timeout never fired. Every install
+attempt now runs under the two limits above.
+
+The limits come from the 60 green runs before the change. A normal install
+attempt takes 1–4 minutes. On 2026-10-22 and 2026-10-23, though, the hosted
+runner's Azure mirror served 40–55 kB/s, and five green AppImage installs took
+26 to 113 minutes. The longest silence in them was 8.2 minutes, a 27 MB
+package, so the stall limit is 10 minutes. The AppImage install has no
+snapshot, so its attempts get 30 minutes (`PUTGD_PKG_TIMEOUT=1800`) and resume
+each other's downloads. A snapshot or another mirror for it is
+[#500](https://github.com/patrick-hudson/put.gd-desktop/issues/500).
+
+Every Linux job with a network step has a `timeout-minutes` above its normal
+run time and above its worst bounded install path (four stopped attempts plus
+3.5 minutes of back-off):
+
+| Job | Normal run (p50 / max, min) | `timeout-minutes` |
+| --- | --- | --- |
+| `packages / native` (4 targets) | 8–13 / 17 | 90 |
+| `packages / appimage` | 13 / 128 (slow mirror) | 180 |
+| `packages / debug-symbols`, `collect` | 5–8 / 8 | 75 |
+| `contracts` | 1 / 3 | 75 |
+| `linux` (2 releases) | 5–6 / 10 | 60 |
+| `sanitizers` | 5 / 10, more when QtCore is rebuilt | 90 |
+| `pipewire` | 2 / 15 | 30 |
+| `prune caches`, nightly `plan`, release `tag` | under 1 | 15 |
+| nightly `publish`, release `draft` | 4 / 6 | 60 |
+
+Steps that clone or download outside the helper have step limits:
+"Verify pinned SDK source" 20 minutes, "Provision pinned Proton helper" 15,
+"Provision pinned AWS SDK" 30. The actionlint download uses `curl --retry 3
+--connect-timeout 30 --max-time 300`, and `portable_appimage.py` downloads the
+AppImage tools with a 120 s socket timeout. Two gaps remain: the Windows
+`portable` job, which the Windows rewrite owns
+([#501](https://github.com/patrick-hudson/put.gd-desktop/issues/501)), and
+`provision-qt-asan.sh`'s curl
+([#502](https://github.com/patrick-hudson/put.gd-desktop/issues/502)).
+
+![After #467: a stalled mirror is stopped and retried, the snapshot takes over, and an install where every attempt stalls goes red in 44 minutes](https://raw.githubusercontent.com/patrick-hudson/put.gd-desktop/d0e2883032759494645ef6c6c99cefb824e07128/docs/evidence/2026-10-23-package-install-stalls-467/467-after.png)
+
+The demo ran on throwaway branch `claude/ci-install-timeouts-467-demo` (run
+40008409878, commit `04aac39e`), which is #498's install script plus a
+demo-only workflow and was never merged. apt went through a local proxy that
+accepts every connection, sends response headers, and then sends one body byte
+every 15 s. apt's idle timeout never fires against it, as in the nightly
+hang. With a 60 s stall limit, a stall during the first 75 s was stopped and
+the retry passed. Two stopped attempts were followed by an offline install
+from a snapshot. With the default limits and no snapshot, every attempt
+stalled and the job failed red after 43.5 minutes, inside its 90-minute timeout. Evidence:
+`docs/evidence/2026-10-23-package-install-stalls-467/`.
 
 ## Proton Linux runtime
 
