@@ -1,0 +1,171 @@
+{
+ "build": {
+  "baseVersion": "0.1.1",
+  "commitCount": 133,
+  "dirty": false,
+  "gitCommit": "b0ed0461c600de74e0a924057a59722f2b1851a3",
+  "gitTree": "7b09bbac32a640cc9dcfa7e223c54a26c5d6e92e",
+  "packageVersion": "0.1.1~dev.133.20261013004314+gb0ed0461c600",
+  "schemaVersion": 1,
+  "sourceProvenance": "git",
+  "version": "0.1.1-dev.133.20261013004314+gb0ed0461c600"
+ },
+ "credentials": {
+  "profile": "nfa-fixture",
+  "ok": true,
+  "state": "completed",
+  "error": "",
+  "mode": "session",
+  "reference": "putgd-nfa-M1"
+ },
+ "failed": {
+  "id": "e1050e00-4f0d-43d6-8b95-f63908b3a53a",
+  "state": "partial",
+  "copyStatus": "no_result",
+  "items": [
+   {
+    "name": "Screen-Capture-2026-10-23-00-46-24.png",
+    "mime": "image/png",
+    "uploadStatus": "failed",
+    "link": "",
+    "local": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "path": "/home/patrick/work/put.gd-nfa/runs/M1/archive/images/Screen-Capture-2026-10-23-00-46-24.png",
+     "status": "saved"
+    }
+   }
+  ],
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  }
+ },
+ "uploads": [
+  {
+   "id": "71fec37e-8bc6-4083-baf7-ec3f42355970",
+   "state": "completed",
+   "copyStatus": "copied",
+   "items": [
+    {
+     "name": "Screen-Capture-2026-10-23-00-46-20.png",
+     "mime": "image/png",
+     "uploadStatus": "uploaded",
+     "link": "http://127.0.0.1:40861/fixture/nfa/Screen-Capture-2026-10-23-00-46-20.png",
+     "local": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "path": "/home/patrick/work/put.gd-nfa/runs/M1/archive/images/Screen-Capture-2026-10-23-00-46-20.png",
+      "status": "saved"
+     }
+    }
+   ],
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  {
+   "id": "3879d484-6b97-43cf-988c-2ff3b6ccf8e9",
+   "state": "completed",
+   "copyStatus": "copied",
+   "items": [
+    {
+     "name": "Screen-Capture-2026-10-23-00-46-21.png",
+     "mime": "image/png",
+     "uploadStatus": "uploaded",
+     "link": "http://127.0.0.1:40861/fixture/nfa/Screen-Capture-2026-10-23-00-46-21.png",
+     "local": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "path": "/home/patrick/work/put.gd-nfa/runs/M1/archive/images/Screen-Capture-2026-10-23-00-46-21.png",
+      "status": "saved"
+     }
+    }
+   ],
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  {
+   "id": "f579f051-77ff-4b01-b9aa-5b0b4c8340d8",
+   "state": "completed",
+   "copyStatus": "copied",
+   "items": [
+    {
+     "name": "Screen-Capture-2026-10-23-00-46-22.png",
+     "mime": "image/png",
+     "uploadStatus": "uploaded",
+     "link": "http://127.0.0.1:40861/fixture/nfa/Screen-Capture-2026-10-23-00-46-22.png",
+     "local": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "path": "/home/patrick/work/put.gd-nfa/runs/M1/archive/images/Screen-Capture-2026-10-23-00-46-22.png",
+      "status": "saved"
+     }
+    }
+   ],
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  {
+   "id": "f8f1920a-7138-4c33-a7e7-7d07ad9d5834",
+   "state": "completed",
+   "copyStatus": "copied",
+   "items": [
+    {
+     "name": "Screen-Capture-2026-10-23-00-46-23.png",
+     "mime": "image/png",
+     "uploadStatus": "uploaded",
+     "link": "http://127.0.0.1:40861/fixture/nfa/Screen-Capture-2026-10-23-00-46-23.png",
+     "local": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "path": "/home/patrick/work/put.gd-nfa/runs/M1/archive/images/Screen-Capture-2026-10-23-00-46-23.png",
+      "status": "saved"
+     }
+    }
+   ],
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  }
+ ],
+ "deleted": null,
+ "deletedRow": {
+  "name": "Screen-Capture-2026-10-23-00-46-23.png",
+  "remoteStatus": "removed"
+ },
+ "history": 5,
+ "outputs": [
+  "archive/images/Screen-Capture-2026-10-23-00-46-20.png",
+  "archive/images/Screen-Capture-2026-10-23-00-46-21.png",
+  "archive/images/Screen-Capture-2026-10-23-00-46-22.png",
+  "archive/images/Screen-Capture-2026-10-23-00-46-23.png",
+  "archive/images/Screen-Capture-2026-10-23-00-46-24.png"
+ ]
+}

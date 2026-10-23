@@ -1,0 +1,770 @@
+{
+ "seed": {
+  "build": {
+   "baseVersion": "0.1.1",
+   "commitCount": 133,
+   "dirty": false,
+   "gitCommit": "b0ed0461c600de74e0a924057a59722f2b1851a3",
+   "gitTree": "7b09bbac32a640cc9dcfa7e223c54a26c5d6e92e",
+   "packageVersion": "0.1.1~dev.133.20261013004314+gb0ed0461c600",
+   "schemaVersion": 1,
+   "sourceProvenance": "git",
+   "version": "0.1.1-dev.133.20261013004314+gb0ed0461c600"
+  },
+  "credentials": {
+   "profile": "nfa-fixture",
+   "ok": true,
+   "state": "completed",
+   "error": "",
+   "mode": "session",
+   "reference": "putgd-nfa-M1"
+  },
+  "failed": {
+   "id": "3697df4d-d8aa-4f56-88c1-f547734d39c5",
+   "state": "partial",
+   "copyStatus": "no_result",
+   "items": [
+    {
+     "name": "Screen-Capture-2026-10-22-23-55-37.png",
+     "mime": "image/png",
+     "uploadStatus": "failed",
+     "link": "",
+     "local": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "path": "/home/lab/work/put.gd-nfa/runs/M1/archive/images/Screen-Capture-2026-10-22-23-55-37.png",
+      "status": "saved"
+     }
+    }
+   ],
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "uploads": [
+   {
+    "id": "57f75221-8ff5-42f9-8ead-28f3d32b5fa8",
+    "state": "completed",
+    "copyStatus": "copied",
+    "items": [
+     {
+      "name": "Screen-Capture-2026-10-22-23-55-32.png",
+      "mime": "image/png",
+      "uploadStatus": "uploaded",
+      "link": "http://127.0.0.1:37355/fixture/nfa/Screen-Capture-2026-10-22-23-55-32.png",
+      "local": {
+       "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+       },
+       "path": "/home/lab/work/put.gd-nfa/runs/M1/archive/images/Screen-Capture-2026-10-22-23-55-32.png",
+       "status": "saved"
+      }
+     }
+    ],
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "id": "d342193c-d50e-4699-8e08-ea06cbc95b06",
+    "state": "completed",
+    "copyStatus": "copied",
+    "items": [
+     {
+      "name": "Screen-Capture-2026-10-22-23-55-34.png",
+      "mime": "image/png",
+      "uploadStatus": "uploaded",
+      "link": "http://127.0.0.1:37355/fixture/nfa/Screen-Capture-2026-10-22-23-55-34.png",
+      "local": {
+       "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+       },
+       "path": "/home/lab/work/put.gd-nfa/runs/M1/archive/images/Screen-Capture-2026-10-22-23-55-34.png",
+       "status": "saved"
+      }
+     }
+    ],
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "id": "93b62533-8208-442d-a576-df20539a3340",
+    "state": "completed",
+    "copyStatus": "copied",
+    "items": [
+     {
+      "name": "Screen-Capture-2026-10-22-23-55-35.png",
+      "mime": "image/png",
+      "uploadStatus": "uploaded",
+      "link": "http://127.0.0.1:37355/fixture/nfa/Screen-Capture-2026-10-22-23-55-35.png",
+      "local": {
+       "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+       },
+       "path": "/home/lab/work/put.gd-nfa/runs/M1/archive/images/Screen-Capture-2026-10-22-23-55-35.png",
+       "status": "saved"
+      }
+     }
+    ],
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "id": "a3e8b4eb-dcae-4603-ba94-0d8f51a2da63",
+    "state": "completed",
+    "copyStatus": "copied",
+    "items": [
+     {
+      "name": "Screen-Capture-2026-10-22-23-55-36.png",
+      "mime": "image/png",
+      "uploadStatus": "uploaded",
+      "link": "http://127.0.0.1:37355/fixture/nfa/Screen-Capture-2026-10-22-23-55-36.png",
+      "local": {
+       "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+       },
+       "path": "/home/lab/work/put.gd-nfa/runs/M1/archive/images/Screen-Capture-2026-10-22-23-55-36.png",
+       "status": "saved"
+      }
+     }
+    ],
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   }
+  ],
+  "deleted": null,
+  "history": 5,
+  "outputs": [
+   "archive/images/Screen-Capture-2026-10-22-23-55-32.png",
+   "archive/images/Screen-Capture-2026-10-22-23-55-34.png",
+   "archive/images/Screen-Capture-2026-10-22-23-55-35.png",
+   "archive/images/Screen-Capture-2026-10-22-23-55-36.png",
+   "archive/images/Screen-Capture-2026-10-22-23-55-37.png"
+  ]
+ },
+ "quit:before-grow": {
+  "pids": [
+   3290
+  ],
+  "reply": true,
+  "gone": true,
+  "left": []
+ },
+ "grow": {
+  "db": "/home/lab/.local/share/putgd/putgd/history.sqlite",
+  "userVersion": 5,
+  "realRows": 5,
+  "total": 10000
+ },
+ "launch:dev133-10k": {
+  "seconds": 0.33,
+  "processes": [
+   {
+    "pid": 4804,
+    "ppid": 1310,
+    "exe": "/tmp/.mount_putgd-POmKeL/usr/bin/putgd",
+    "comm": "putgd",
+    "cmd": "/tmp/.mount_putgd-POmKeL/usr/bin/putgd --background ",
+    "qtPlatformPlugins": []
+   }
+  ],
+  "build": {
+   "baseVersion": "0.1.1",
+   "commitCount": 133,
+   "dirty": false,
+   "gitCommit": "b0ed0461c600de74e0a924057a59722f2b1851a3",
+   "gitTree": "7b09bbac32a640cc9dcfa7e223c54a26c5d6e92e",
+   "packageVersion": "0.1.1~dev.133.20261013004314+gb0ed0461c600",
+   "schemaVersion": 1,
+   "sourceProvenance": "git",
+   "version": "0.1.1-dev.133.20261013004314+gb0ed0461c600"
+  },
+  "package": {
+   "manager": "dpkg",
+   "status": "ii",
+   "version": "0.1.1~dev.133.20261013004314+gb0ed0461c600"
+  }
+ },
+ "snapshot:before": {
+  "label": "before",
+  "at": "2026-10-23T04:59:50Z",
+  "package": {
+   "manager": "dpkg",
+   "status": "ii",
+   "version": "0.1.1~dev.133.20261013004314+gb0ed0461c600"
+  },
+  "config": {
+   "sha256": "4db3e1704fea5444dfb8903eb84b42de1cc3352a5e8c4866ee74bb1637bd95ac",
+   "bytes": 2668,
+   "mode": "0o664",
+   "mtime": "2026-10-23T04:55:28Z"
+  },
+  "configFiles": {
+   "/home/lab/.config/putgd/config.json": null,
+   "/home/lab/.config/putgd/putgd/config.json": {
+    "sha256": "4db3e1704fea5444dfb8903eb84b42de1cc3352a5e8c4866ee74bb1637bd95ac",
+    "bytes": 2668,
+    "mode": "0o664",
+    "mtime": "2026-10-23T04:55:28Z"
+   }
+  },
+  "dataRoots": {
+   "/home/lab/.local/share/putgd": [
+    "putgd"
+   ],
+   "/home/lab/.local/share/putgd/putgd": [
+    "artifacts",
+    "history.sqlite",
+    "previews",
+    "resident.lock"
+   ]
+  },
+  "processes": [
+   {
+    "pid": 4804,
+    "ppid": 1310,
+    "exe": "/tmp/.mount_putgd-POmKeL/usr/bin/putgd",
+    "comm": "putgd",
+    "cmd": "/tmp/.mount_putgd-POmKeL/usr/bin/putgd --background ",
+    "qtPlatformPlugins": []
+   }
+  ],
+  "history": {
+   "db": "/home/lab/.local/share/putgd/putgd/history.sqlite",
+   "userVersion": 5,
+   "integrity": "ok",
+   "tables": {
+    "history": 10000,
+    "operations": 5,
+    "deletions": 1,
+    "deletion_targets": 1,
+    "cleared_history": 0,
+    "item_state": 10000
+   },
+   "upload_status": {
+    "failed": 2000,
+    "uploaded": 8000
+   },
+   "local_status": {
+    "saved": 10000
+   },
+   "remote_status": {
+    "not_requested": 8000,
+    "removed": 2000
+   },
+   "itemStateRemote": {
+    "not_requested": 8000,
+    "removed": 2000
+   }
+  },
+  "outputs": {
+   "archive/images/Screen-Capture-2026-10-22-23-55-32.png": "14233b8d4782e5d854849e17f101903f6f308d4151aa2a3e9628b0d2c8d6195b",
+   "archive/images/Screen-Capture-2026-10-22-23-55-34.png": "e79467b8a9d4aac093d1e17b5affb215c32bbf6f4b32668ed04a211b5ceec590",
+   "archive/images/Screen-Capture-2026-10-22-23-55-35.png": "5b5ed7692c8837e34a6b1ad7f2c182c8cb0d7f925337619acabaf81d117adb0b",
+   "archive/images/Screen-Capture-2026-10-22-23-55-36.png": "1e9ec5e100155800d4000db71af9cc5043a106e29f3c87751c2f377015fb5a49",
+   "archive/images/Screen-Capture-2026-10-22-23-55-37.png": "dd30563cb5d1ccca744feffd1a1f2aa9f455a1a6f6b564cadb9e01a1368d045b"
+  },
+  "historyList": {
+   "ok": true,
+   "total": 10000,
+   "seconds": 0.02
+  },
+  "build": {
+   "baseVersion": "0.1.1",
+   "commitCount": 133,
+   "dirty": false,
+   "gitCommit": "b0ed0461c600de74e0a924057a59722f2b1851a3",
+   "gitTree": "7b09bbac32a640cc9dcfa7e223c54a26c5d6e92e",
+   "packageVersion": "0.1.1~dev.133.20261013004314+gb0ed0461c600",
+   "schemaVersion": 1,
+   "sourceProvenance": "git",
+   "version": "0.1.1-dev.133.20261013004314+gb0ed0461c600"
+  },
+  "storage": {
+   "storage": {
+    "s3": {
+     "moduleLiveDrivers": 0,
+     "queuedRequests": 0,
+     "retainedDrivers": 0,
+     "workerStarted": false
+    }
+   }
+  }
+ },
+ "quit:before-upgrade": {
+  "pids": [
+   4804
+  ],
+  "reply": true,
+  "gone": true,
+  "left": []
+ },
+ "pkg:upgrade-1058": {
+  "label": "upgrade-1058",
+  "command": [
+   "apt-get",
+   "install",
+   "-y",
+   "/home/lab/work/put.gd-nfa/assets/putgd-26.1023.1058-nightly-ubuntu26.04-x86_64.deb"
+  ],
+  "before": {
+   "at": "2026-10-23T05:00:04Z",
+   "host": "putgd-ubuntu-lab",
+   "package": {
+    "manager": "dpkg",
+    "status": "ii",
+    "version": "0.1.1~dev.133.20261013004314+gb0ed0461c600"
+   },
+   "files": {
+    "/etc/apt/sources.list.d/putgd.sources": null,
+    "/usr/share/keyrings/putgd-archive-keyring.gpg": null,
+    "/etc/yum.repos.d/putgd.repo": null,
+    "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": {
+     "sha256": "8c3c16a23245f6564ccd4542bd00efc7495c8b49e9037aa2a0aa36ce914b75e2",
+     "bytes": 248,
+     "mode": "0o644",
+     "mtime": "2026-10-13T00:48:23Z"
+    }
+   },
+   "defaultProfile": {
+    "/home/lab/.config/putgd": 2,
+    "/home/lab/.local/state/putgd": null,
+    "/home/lab/.cache/putgd": null,
+    "/home/lab/.local/share/putgd": 24
+   },
+   "autostart": null,
+   "userExtension": false,
+   "processes": [],
+   "enabledExtensions": "['putgd@put.gd']"
+  },
+  "startedAt": "2026-10-23T05:00:04Z",
+  "simulation": {
+   "command": [
+    "apt-get",
+    "-s",
+    "install",
+    "/home/lab/work/put.gd-nfa/assets/putgd-26.1023.1058-nightly-ubuntu26.04-x86_64.deb"
+   ],
+   "exit": 0,
+   "changes": [
+    {
+     "op": "Inst",
+     "package": "putgd",
+     "from": "0.1.1~dev.133.20261013004314+gb0ed0461c600",
+     "to": "26.1023.1058~nightly"
+    }
+   ],
+   "tail": "NOTE: This is only a simulation!\n      apt-get needs root privileges for real execution.\n      Keep also in mind that locking is deactivated,\n      so don't depend on the relevance to the real current situation!\nReading package lists...\nBuilding dependency tree...\nReading state information...\nSolving dependencies...\nThe following packages will be upgraded:\n  putgd\n1 upgraded, 0 newly installed, 0 to remove and 96 not upgraded.\nInst putgd [0.1.1~dev.133.20261013004314+gb0ed0461c600] (26.1023.1058~nightly local-deb [amd64])\nConf putgd (26.1023.1058~nightly local-deb [amd64])\n"
+  },
+  "otherPackages": [],
+  "exit": 0,
+  "seconds": 6.6,
+  "log": "/home/lab/work/put.gd-nfa/runs/M1/logs/pkg-upgrade-1058.log",
+  "conffilePrompt": false,
+  "signature": [],
+  "fetched": [
+   "Preparing to unpack \u2026/putgd_26.1023.1058~nightly_amd64.deb\u2026"
+  ],
+  "tail": "Reading package lists...\nBuilding dependency tree...\nReading state information...\nSolving dependencies...\nThe following packages will be upgraded:\n  putgd\n1 upgraded, 0 newly installed, 0 to remove and 96 not upgraded.\nNeed to get 0 B/54.6 MB of archives.\nAfter this operation, 101 MB of additional disk space will be used.\n(Reading database\u2026 \n(Reading database\u2026 5%\n(Reading database\u2026 10%\n(Reading database\u2026 15%\n(Reading database\u2026 20%\n(Reading database\u2026 25%\n(Reading database\u2026 30%\n(Reading database\u2026 35%\n(Reading database\u2026 40%\n(Reading database\u2026 45%\n(Reading database\u2026 50%\n(Reading database\u2026 55%\n(Reading database\u2026 60%\n(Reading database\u2026 65%\n(Reading database\u2026 70%\n(Reading database\u2026 75%\n(Reading database\u2026 80%\n(Reading database\u2026 85%\n(Reading database\u2026 90%\n(Reading database\u2026 95%\n(Reading database\u2026 100%\n(Reading database\u2026 169666 files and directories currently installed.)\nPreparing to unpack \u2026/putgd_26.1023.1058~nightly_amd64.deb\u2026\nUnpacking putgd (26.1023.1058~nightly) over (0.1.1~dev.133.20261013004314+gb0ed0461c600)\u2026\nSetting up putgd (26.1023.1058~nightly)\u2026\nProcessing triggers for hicolor-icon-theme (0.18-2build1)\u2026\nProcessing triggers for gnome-menus (3.38.1-1ubuntu1)\u2026\nProcessing triggers for desktop-file-utils (0.28-1build1)\u2026\ndebconf: unable to initialize frontend: Dialog\ndebconf: (Dialog frontend will not work on a dumb terminal, an emacs shell buffer, or without a controlling terminal.)\ndebconf: falling back to frontend: Readline\ndebconf: unable to initialize frontend: Readline\ndebconf: (This frontend requires a controlling tty.)\ndebconf: falling back to frontend: Teletype\ndebconf: unable to initialize frontend: Teletype\ndebconf: (This frontend requires a controlling tty.)\ndebconf: falling back to frontend: Noninteractive\n",
+  "after": {
+   "at": "2026-10-23T05:00:12Z",
+   "host": "putgd-ubuntu-lab",
+   "package": {
+    "manager": "dpkg",
+    "status": "ii",
+    "version": "26.1023.1058~nightly"
+   },
+   "files": {
+    "/etc/apt/sources.list.d/putgd.sources": {
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "bytes": 2036,
+     "mode": "0o644",
+     "mtime": "2026-10-23T03:45:19Z"
+    },
+    "/usr/share/keyrings/putgd-archive-keyring.gpg": {
+     "sha256": "76ab1b64e8a1d9504d3922fa44b116d6eb3c680e788be9cec46e106cd5258339",
+     "bytes": 1170,
+     "mode": "0o644",
+     "mtime": "2026-10-23T03:42:11Z"
+    },
+    "/etc/yum.repos.d/putgd.repo": null,
+    "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": {
+     "sha256": "690be5bcfd1ee05783cd57a78851c56c0fe624131711b254cb46d062d0cb8046",
+     "bytes": 248,
+     "mode": "0o644",
+     "mtime": "2026-10-23T03:45:19Z"
+    }
+   },
+   "defaultProfile": {
+    "/home/lab/.config/putgd": 2,
+    "/home/lab/.local/state/putgd": null,
+    "/home/lab/.cache/putgd": null,
+    "/home/lab/.local/share/putgd": 24
+   },
+   "autostart": null,
+   "userExtension": false,
+   "processes": [],
+   "enabledExtensions": "['putgd@put.gd']"
+  }
+ },
+ "launch:after-upgrade": {
+  "seconds": 0.34,
+  "processes": [
+   {
+    "pid": 5156,
+    "ppid": 1310,
+    "exe": "/usr/bin/putgd",
+    "comm": "putgd",
+    "cmd": "/usr/bin/putgd --background ",
+    "qtPlatformPlugins": []
+   }
+  ],
+  "build": {
+   "baseVersion": "26.1023.1058",
+   "commitCount": 1058,
+   "dirty": false,
+   "gitCommit": "05991d9d42aad68d3bd233a609cf294d839835ed",
+   "gitTree": "5e53f777b912ef958678b2f23b400847c7cb4d33",
+   "packageVersion": "26.1023.1058~nightly",
+   "schemaVersion": 1,
+   "sourceProvenance": "git",
+   "version": "26.1023.1058-nightly"
+  },
+  "package": {
+   "manager": "dpkg",
+   "status": "ii",
+   "version": "26.1023.1058~nightly"
+  }
+ },
+ "snapshot:after": {
+  "label": "after",
+  "at": "2026-10-23T05:00:13Z",
+  "package": {
+   "manager": "dpkg",
+   "status": "ii",
+   "version": "26.1023.1058~nightly"
+  },
+  "config": {
+   "sha256": "4db3e1704fea5444dfb8903eb84b42de1cc3352a5e8c4866ee74bb1637bd95ac",
+   "bytes": 2668,
+   "mode": "0o664",
+   "mtime": "2026-10-23T04:55:28Z"
+  },
+  "configFiles": {
+   "/home/lab/.config/putgd/config.json": {
+    "sha256": "4db3e1704fea5444dfb8903eb84b42de1cc3352a5e8c4866ee74bb1637bd95ac",
+    "bytes": 2668,
+    "mode": "0o664",
+    "mtime": "2026-10-23T04:55:28Z"
+   },
+   "/home/lab/.config/putgd/putgd/config.json": null
+  },
+  "dataRoots": {
+   "/home/lab/.local/share/putgd": [
+    "artifacts",
+    "history.sqlite",
+    "previews",
+    "resident.lock"
+   ],
+   "/home/lab/.local/share/putgd/putgd": null
+  },
+  "processes": [
+   {
+    "pid": 5156,
+    "ppid": 1310,
+    "exe": "/usr/bin/putgd",
+    "comm": "putgd",
+    "cmd": "/usr/bin/putgd --background ",
+    "qtPlatformPlugins": []
+   }
+  ],
+  "history": {
+   "db": "/home/lab/.local/share/putgd/history.sqlite",
+   "userVersion": 7,
+   "integrity": "ok",
+   "tables": {
+    "history": 10000,
+    "operations": 5,
+    "deletions": 1,
+    "deletion_targets": 1,
+    "cleared_history": 0,
+    "item_state": 10000,
+    "sharing_operations": 0
+   },
+   "upload_status": {
+    "failed": 2000,
+    "uploaded": 8000
+   },
+   "local_status": {
+    "saved": 10000
+   },
+   "remote_status": {
+    "not_requested": 8000,
+    "removed": 2000
+   },
+   "itemStateRemote": {
+    "not_requested": 8000,
+    "removed": 2000
+   }
+  },
+  "outputs": {
+   "archive/images/Screen-Capture-2026-10-22-23-55-32.png": "14233b8d4782e5d854849e17f101903f6f308d4151aa2a3e9628b0d2c8d6195b",
+   "archive/images/Screen-Capture-2026-10-22-23-55-34.png": "e79467b8a9d4aac093d1e17b5affb215c32bbf6f4b32668ed04a211b5ceec590",
+   "archive/images/Screen-Capture-2026-10-22-23-55-35.png": "5b5ed7692c8837e34a6b1ad7f2c182c8cb0d7f925337619acabaf81d117adb0b",
+   "archive/images/Screen-Capture-2026-10-22-23-55-36.png": "1e9ec5e100155800d4000db71af9cc5043a106e29f3c87751c2f377015fb5a49",
+   "archive/images/Screen-Capture-2026-10-22-23-55-37.png": "dd30563cb5d1ccca744feffd1a1f2aa9f455a1a6f6b564cadb9e01a1368d045b"
+  },
+  "historyList": {
+   "ok": true,
+   "total": 10000,
+   "seconds": 0.03
+  },
+  "build": {
+   "baseVersion": "26.1023.1058",
+   "commitCount": 1058,
+   "dirty": false,
+   "gitCommit": "05991d9d42aad68d3bd233a609cf294d839835ed",
+   "gitTree": "5e53f777b912ef958678b2f23b400847c7cb4d33",
+   "packageVersion": "26.1023.1058~nightly",
+   "schemaVersion": 1,
+   "sourceProvenance": "git",
+   "version": "26.1023.1058-nightly"
+  },
+  "storage": {
+   "locations": {
+    "config": {
+     "path": "/home/lab/.config/putgd",
+     "state": "migrated"
+    },
+    "data": {
+     "path": "/home/lab/.local/share/putgd",
+     "state": "migrated"
+    },
+    "schemaVersion": 1
+   },
+   "storage": {
+    "backblaze-b2": {
+     "activeHelpers": 0,
+     "protocolVersion": 1
+    },
+    "proton-drive": {
+     "activeHelpers": 0,
+     "protocolVersion": 1
+    },
+    "s3": {
+     "lanes": 1,
+     "moduleLiveDrivers": 0,
+     "queuedRequests": 0,
+     "retainedDrivers": 0,
+     "workerStarted": false
+    }
+   }
+  }
+ },
+ "compare:before->after": {
+  "configSame": true,
+  "userVersion": [
+   5,
+   7
+  ],
+  "integrity": "ok",
+  "historyRows": [
+   10000,
+   10000
+  ],
+  "statusCounts": {
+   "upload_status": [
+    {
+     "failed": 2000,
+     "uploaded": 8000
+    },
+    {
+     "failed": 2000,
+     "uploaded": 8000
+    }
+   ],
+   "local_status": [
+    {
+     "saved": 10000
+    },
+    {
+     "saved": 10000
+    }
+   ],
+   "remote_status": [
+    {
+     "not_requested": 8000,
+     "removed": 2000
+    },
+    {
+     "not_requested": 8000,
+     "removed": 2000
+    }
+   ]
+  },
+  "tablesAdded": [
+   "sharing_operations"
+  ],
+  "outputsSame": true,
+  "rowsPreserved": true
+ },
+ "historyCheck": {
+  "sessionCredentials": true,
+  "profiles": [
+   {
+    "id": "nfa-fixture",
+    "credentials": {
+     "mode": "session",
+     "reference": null
+    }
+   },
+   {
+    "id": "nfa-keychain",
+    "credentials": {
+     "mode": "keychain",
+     "reference": "putgd-nfa-M1"
+    }
+   }
+  ],
+  "listSeconds": 0.03,
+  "total": 10000,
+  "search": {
+   "term": "Screen",
+   "ok": true,
+   "total": 10000
+  },
+  "linkedEntry": {
+   "name": "Screen-Capture-2026-10-22-23-55-35.png",
+   "remoteStatus": "not_requested"
+  },
+  "copyLink": true,
+  "copyImage": true,
+  "delete": {
+   "confirm": {
+    "id": null,
+    "state": null
+   },
+   "remoteStatus": "pending",
+   "link": "http://127.0.0.1:37355/fixture/nfa/Screen-Capture-2026-10-22-23-55-35.png",
+   "remoteAfter": "HTTP 404"
+  },
+  "preview": {
+   "state": null,
+   "previewPath": null,
+   "mime": null,
+   "width": null,
+   "height": null
+  },
+  "testConnection": {
+   "nfa-fixture": {
+    "started": true,
+    "error": "",
+    "state": "completed",
+    "result": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   "nfa-keychain": {
+    "started": true,
+    "error": "",
+    "state": "failed",
+    "result": {
+     "code": "credential_setup_required",
+     "details": {},
+     "message": "Restore explicit credentials for this original destination"
+    }
+   }
+  }
+ },
+ "teardown": {
+  "removed": [
+   "/home/lab/.config/putgd",
+   "/home/lab/.local/state/putgd",
+   "/home/lab/.local/share/putgd",
+   "/tmp/nfa.9LuzGZ"
+  ],
+  "kept": [],
+  "keychain": {
+   "reference": "putgd-nfa-M1",
+   "note": "secret-tool missing: remove by hand and record"
+  },
+  "after": {
+   "at": "2026-10-23T05:03:39Z",
+   "host": "putgd-ubuntu-lab",
+   "package": {
+    "manager": "dpkg",
+    "status": "ii",
+    "version": "26.1023.1058~nightly"
+   },
+   "files": {
+    "/etc/apt/sources.list.d/putgd.sources": {
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "bytes": 2036,
+     "mode": "0o644",
+     "mtime": "2026-10-23T03:45:19Z"
+    },
+    "/usr/share/keyrings/putgd-archive-keyring.gpg": {
+     "sha256": "76ab1b64e8a1d9504d3922fa44b116d6eb3c680e788be9cec46e106cd5258339",
+     "bytes": 1170,
+     "mode": "0o644",
+     "mtime": "2026-10-23T03:42:11Z"
+    },
+    "/etc/yum.repos.d/putgd.repo": null,
+    "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": {
+     "sha256": "690be5bcfd1ee05783cd57a78851c56c0fe624131711b254cb46d062d0cb8046",
+     "bytes": 248,
+     "mode": "0o644",
+     "mtime": "2026-10-23T03:45:19Z"
+    }
+   },
+   "defaultProfile": {
+    "/home/lab/.config/putgd": null,
+    "/home/lab/.local/state/putgd": null,
+    "/home/lab/.cache/putgd": null,
+    "/home/lab/.local/share/putgd": null
+   },
+   "autostart": null,
+   "userExtension": false,
+   "processes": [],
+   "enabledExtensions": "['putgd@put.gd']"
+  }
+ }
+}

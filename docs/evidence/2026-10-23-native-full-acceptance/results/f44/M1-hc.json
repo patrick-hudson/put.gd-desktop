@@ -1,0 +1,70 @@
+{
+ "sessionCredentials": true,
+ "profiles": [
+  {
+   "id": "nfa-fixture",
+   "credentials": {
+    "mode": "session",
+    "reference": null
+   }
+  },
+  {
+   "id": "nfa-keychain",
+   "credentials": {
+    "mode": "keychain",
+    "reference": "putgd-nfa-M1"
+   }
+  }
+ ],
+ "listSeconds": 0.03,
+ "total": 10001,
+ "search": {
+  "term": "Screen",
+  "ok": true,
+  "total": 10001
+ },
+ "linkedEntry": {
+  "name": "Screen-Capture-2026-10-23-00-46-50.png",
+  "remoteStatus": "not_requested"
+ },
+ "copyLink": true,
+ "copyImage": true,
+ "delete": {
+  "confirm": {
+   "id": null,
+   "state": null
+  },
+  "remoteStatus": "deleting",
+  "link": "http://127.0.0.1:34821/fixture/nfa/Screen-Capture-2026-10-23-00-46-50.png",
+  "remoteAfter": "still served"
+ },
+ "preview": {
+  "state": "ready",
+  "previewPath": "/home/patrick/.local/share/putgd/artifacts/../previews/8f51d299-bb1a-4ac3-bdce-9d0302ec48ef.png",
+  "mime": null,
+  "width": null,
+  "height": null
+ },
+ "testConnection": {
+  "nfa-fixture": {
+   "started": true,
+   "error": "",
+   "state": "completed",
+   "result": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "nfa-keychain": {
+   "started": true,
+   "error": "",
+   "state": "failed",
+   "result": {
+    "code": "credential_setup_required",
+    "details": {},
+    "message": "Restore explicit credentials for this original destination"
+   }
+  }
+ }
+}

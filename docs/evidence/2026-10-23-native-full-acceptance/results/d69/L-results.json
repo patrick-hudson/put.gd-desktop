@@ -1,0 +1,550 @@
+{
+ "repoAdd": {
+  "package": "putgd-26.1023.1058-nightly-debian13-x86_64.deb",
+  "added": [
+   {
+    "path": "/etc/apt/sources.list.d/putgd.sources",
+    "sha256": "11b30f1c9733b307cb1028e8a05d956a251d15a797173dcffd1e2bc9f165416f"
+   },
+   {
+    "path": "/usr/share/keyrings/putgd-archive-keyring.gpg",
+    "sha256": "76ab1b64e8a1d9504d3922fa44b116d6eb3c680e788be9cec46e106cd5258339"
+   }
+  ]
+ },
+ "pkg:l1-update": {
+  "label": "l1-update",
+  "command": [
+   "apt-get",
+   "update"
+  ],
+  "before": {
+   "at": "2026-10-23T05:30:39Z",
+   "host": "debian",
+   "package": {
+    "manager": "dpkg",
+    "status": null,
+    "version": null
+   },
+   "files": {
+    "/etc/apt/sources.list.d/putgd.sources": {
+     "sha256": "11b30f1c9733b307cb1028e8a05d956a251d15a797173dcffd1e2bc9f165416f",
+     "bytes": 2033,
+     "mode": "0o644",
+     "mtime": "2026-10-23T05:30:39Z"
+    },
+    "/usr/share/keyrings/putgd-archive-keyring.gpg": {
+     "sha256": "76ab1b64e8a1d9504d3922fa44b116d6eb3c680e788be9cec46e106cd5258339",
+     "bytes": 1170,
+     "mode": "0o644",
+     "mtime": "2026-10-23T05:30:39Z"
+    },
+    "/etc/yum.repos.d/putgd.repo": null,
+    "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": null
+   },
+   "defaultProfile": {
+    "/home/patrick/.config/putgd": null,
+    "/home/patrick/.local/state/putgd": 94,
+    "/home/patrick/.cache/putgd": null,
+    "/home/patrick/.local/share/putgd": null
+   },
+   "autostart": null,
+   "userExtension": false,
+   "processes": [],
+   "enabledExtensions": "@as []"
+  },
+  "startedAt": "2026-10-23T05:30:39Z",
+  "exit": 0,
+  "seconds": 5.2,
+  "log": "/home/patrick/work/put.gd-nfa/runs/L/logs/pkg-l1-update.log",
+  "conffilePrompt": false,
+  "signature": [
+   "Get:1 http://security.debian.org/debian-security trixie-security InRelease [43.4 kB]",
+   "Get:2 http://deb.debian.org/debian trixie InRelease [140 kB]",
+   "Get:3 http://deb.debian.org/debian trixie-updates InRelease [47.3 kB]",
+   "Get:8 https://pkg.put.gd/apt/debian13 nightly InRelease [4,801 B]"
+  ],
+  "fetched": [
+   "Get:1 http://security.debian.org/debian-security trixie-security InRelease [43.4 kB]",
+   "Get:2 http://deb.debian.org/debian trixie InRelease [140 kB]",
+   "Get:3 http://deb.debian.org/debian trixie-updates InRelease [47.3 kB]",
+   "Get:4 http://security.debian.org/debian-security trixie-security/main Sources [239 kB]",
+   "Get:7 http://security.debian.org/debian-security trixie-security/main amd64 Packages [269 kB]",
+   "Get:8 https://pkg.put.gd/apt/debian13 nightly InRelease [4,801 B]",
+   "Get:9 https://pkg.put.gd/apt/debian13 nightly/main amd64 Packages [1,020 B]",
+   "Get:10 https://pkg.put.gd/apt/debian13 nightly/main amd64 Components [747 B]",
+   "Get:11 https://pkg.put.gd/apt/debian13 nightly/main Icons (48x48) [776 B]",
+   "Get:12 https://pkg.put.gd/apt/debian13 nightly/main Icons (64x64) [985 B]"
+  ],
+  "tail": "Get:1 http://security.debian.org/debian-security trixie-security InRelease [43.4 kB]\nGet:2 http://deb.debian.org/debian trixie InRelease [140 kB]\nGet:3 http://deb.debian.org/debian trixie-updates InRelease [47.3 kB]\nGet:4 http://security.debian.org/debian-security trixie-security/main Sources [239 kB]\nGet:7 http://security.debian.org/debian-security trixie-security/main amd64 Packages [269 kB]\nGet:8 https://pkg.put.gd/apt/debian13 nightly InRelease [4,801 B]\nGet:9 https://pkg.put.gd/apt/debian13 nightly/main amd64 Packages [1,020 B]\nGet:10 https://pkg.put.gd/apt/debian13 nightly/main amd64 Components [747 B]\nGet:11 https://pkg.put.gd/apt/debian13 nightly/main Icons (48x48) [776 B]\nGet:12 https://pkg.put.gd/apt/debian13 nightly/main Icons (64x64) [985 B]\nFetched 754 kB in 2s (414 kB/s)\nReading package lists...\n",
+  "after": {
+   "at": "2026-10-23T05:30:45Z",
+   "host": "debian",
+   "package": {
+    "manager": "dpkg",
+    "status": null,
+    "version": null
+   },
+   "files": {
+    "/etc/apt/sources.list.d/putgd.sources": {
+     "sha256": "11b30f1c9733b307cb1028e8a05d956a251d15a797173dcffd1e2bc9f165416f",
+     "bytes": 2033,
+     "mode": "0o644",
+     "mtime": "2026-10-23T05:30:39Z"
+    },
+    "/usr/share/keyrings/putgd-archive-keyring.gpg": {
+     "sha256": "76ab1b64e8a1d9504d3922fa44b116d6eb3c680e788be9cec46e106cd5258339",
+     "bytes": 1170,
+     "mode": "0o644",
+     "mtime": "2026-10-23T05:30:39Z"
+    },
+    "/etc/yum.repos.d/putgd.repo": null,
+    "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": null
+   },
+   "defaultProfile": {
+    "/home/patrick/.config/putgd": null,
+    "/home/patrick/.local/state/putgd": 94,
+    "/home/patrick/.cache/putgd": null,
+    "/home/patrick/.local/share/putgd": null
+   },
+   "autostart": null,
+   "userExtension": false,
+   "processes": [],
+   "enabledExtensions": "@as []"
+  }
+ },
+ "pkg:l2-install": {
+  "label": "l2-install",
+  "command": [
+   "apt-get",
+   "install",
+   "-y",
+   "putgd"
+  ],
+  "before": {
+   "at": "2026-10-23T05:30:45Z",
+   "host": "debian",
+   "package": {
+    "manager": "dpkg",
+    "status": null,
+    "version": null
+   },
+   "files": {
+    "/etc/apt/sources.list.d/putgd.sources": {
+     "sha256": "11b30f1c9733b307cb1028e8a05d956a251d15a797173dcffd1e2bc9f165416f",
+     "bytes": 2033,
+     "mode": "0o644",
+     "mtime": "2026-10-23T05:30:39Z"
+    },
+    "/usr/share/keyrings/putgd-archive-keyring.gpg": {
+     "sha256": "76ab1b64e8a1d9504d3922fa44b116d6eb3c680e788be9cec46e106cd5258339",
+     "bytes": 1170,
+     "mode": "0o644",
+     "mtime": "2026-10-23T05:30:39Z"
+    },
+    "/etc/yum.repos.d/putgd.repo": null,
+    "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": null
+   },
+   "defaultProfile": {
+    "/home/patrick/.config/putgd": null,
+    "/home/patrick/.local/state/putgd": 94,
+    "/home/patrick/.cache/putgd": null,
+    "/home/patrick/.local/share/putgd": null
+   },
+   "autostart": null,
+   "userExtension": false,
+   "processes": [],
+   "enabledExtensions": "@as []"
+  },
+  "startedAt": "2026-10-23T05:30:45Z",
+  "simulation": {
+   "command": [
+    "apt-get",
+    "-s",
+    "install",
+    "putgd"
+   ],
+   "exit": 0,
+   "changes": [
+    {
+     "op": "Inst",
+     "package": "putgd",
+     "from": null,
+     "to": "26.1023.1058~nightly"
+    }
+   ],
+   "tail": "NOTE: This is only a simulation!\n      apt-get needs root privileges for real execution.\n      Keep also in mind that locking is deactivated,\n      so don't depend on the relevance to the real current situation!\nReading package lists...\nBuilding dependency tree...\nReading state information...\nThe following packages were automatically installed and are no longer required:\n  libvncclient1 libvncserver1 tcl tk\nUse 'apt autoremove' to remove them.\nThe following NEW packages will be installed:\n  putgd\n0 upgraded, 1 newly installed, 0 to remove and 76 not upgraded.\nInst putgd (26.1023.1058~nightly put.gd:nightly [amd64])\nConf putgd (26.1023.1058~nightly put.gd:nightly [amd64])\n"
+  },
+  "otherPackages": [],
+  "exit": 0,
+  "seconds": 6.0,
+  "log": "/home/patrick/work/put.gd-nfa/runs/L/logs/pkg-l2-install.log",
+  "conffilePrompt": false,
+  "signature": [],
+  "fetched": [
+   "Get:1 https://pkg.put.gd/apt/debian13 nightly/main amd64 putgd amd64 26.1023.1058~nightly [54.1 MB]",
+   "Preparing to unpack .../putgd_26.1023.1058~nightly_amd64.deb ..."
+  ],
+  "tail": "nd 76 not upgraded.\nNeed to get 54.1 MB of archives.\nAfter this operation, 127 MB of additional disk space will be used.\nGet:1 https://pkg.put.gd/apt/debian13 nightly/main amd64 putgd amd64 26.1023.1058~nightly [54.1 MB]\nFetched 54.1 MB in 1s (36.2 MB/s)\nSelecting previously unselected package putgd.\n(Reading database ... \n(Reading database ... 5%\n(Reading database ... 10%\n(Reading database ... 15%\n(Reading database ... 20%\n(Reading database ... 25%\n(Reading database ... 30%\n(Reading database ... 35%\n(Reading database ... 40%\n(Reading database ... 45%\n(Reading database ... 50%\n(Reading database ... 55%\n(Reading database ... 60%\n(Reading database ... 65%\n(Reading database ... 70%\n(Reading database ... 75%\n(Reading database ... 80%\n(Reading database ... 85%\n(Reading database ... 90%\n(Reading database ... 95%\n(Reading database ... 100%\n(Reading database ... 401667 files and directories currently installed.)\nPreparing to unpack .../putgd_26.1023.1058~nightly_amd64.deb ...\nUnpacking putgd (26.1023.1058~nightly) ...\nSetting up putgd (26.1023.1058~nightly) ...\nProcessing triggers for desktop-file-utils (0.28-1) ...\nProcessing triggers for hicolor-icon-theme (0.18-2) ...\nProcessing triggers for gnome-menus (3.36.0-3) ...\nProcessing triggers for mailcap (3.74) ...\n\nRunning kernel seems to be up-to-date.\n\nThe processor microcode seems to be up-to-date.\n\nServices to be restarted:\n systemctl restart avahi-daemon.service\n systemctl restart polkit.service\n\nService restarts being deferred:\n /etc/needrestart/restart.d/dbus.service\n\nNo containers need to be restarted.\n\nUser sessions running outdated binaries:\n patrick @ session #2065: sshd-session[308518]\n patrick @ session #7406: sshd-session[978297]\n patrick @ user service: dbus.service[959,1572], evolution-addressbook-factory.service[1627], evolution-calendar-factory.service[1615], evolution-source-registry.service[1538], wireplumber.service[963]\n\nNo VM guests are running outdated hypervisor (qemu) binaries on this host.\ndebconf: unable to initialize frontend: Dialog\ndebconf: (Dialog frontend will not work on a dumb terminal, an emacs shell buffer, or without a controlling terminal.)\ndebconf: falling back to frontend: Readline\ndebconf: unable to initialize frontend: Readline\ndebconf: (This frontend requires a controlling tty.)\ndebconf: falling back to frontend: Teletype\ndebconf: unable to initialize frontend: Teletype\ndebconf: (This frontend requires a controlling tty.)\ndebconf: falling back to frontend: Noninteractive\n",
+  "after": {
+   "at": "2026-10-23T05:30:52Z",
+   "host": "debian",
+   "package": {
+    "manager": "dpkg",
+    "status": "ii",
+    "version": "26.1023.1058~nightly"
+   },
+   "files": {
+    "/etc/apt/sources.list.d/putgd.sources": {
+     "sha256": "11b30f1c9733b307cb1028e8a05d956a251d15a797173dcffd1e2bc9f165416f",
+     "bytes": 2033,
+     "mode": "0o644",
+     "mtime": "2026-10-23T05:30:39Z"
+    },
+    "/usr/share/keyrings/putgd-archive-keyring.gpg": {
+     "sha256": "76ab1b64e8a1d9504d3922fa44b116d6eb3c680e788be9cec46e106cd5258339",
+     "bytes": 1170,
+     "mode": "0o644",
+     "mtime": "2026-10-23T03:42:08Z"
+    },
+    "/etc/yum.repos.d/putgd.repo": null,
+    "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": {
+     "sha256": "690be5bcfd1ee05783cd57a78851c56c0fe624131711b254cb46d062d0cb8046",
+     "bytes": 248,
+     "mode": "0o644",
+     "mtime": "2026-10-23T03:45:19Z"
+    }
+   },
+   "defaultProfile": {
+    "/home/patrick/.config/putgd": null,
+    "/home/patrick/.local/state/putgd": 94,
+    "/home/patrick/.cache/putgd": null,
+    "/home/patrick/.local/share/putgd": null
+   },
+   "autostart": null,
+   "userExtension": false,
+   "processes": [],
+   "enabledExtensions": "@as []"
+  }
+ },
+ "identity": {
+  "tag": "v26.1023.1058-nightly",
+  "installed": {
+   "manager": "dpkg",
+   "status": "ii",
+   "version": "26.1023.1058~nightly"
+  },
+  "versionJson": {
+   "schemaVersion": 1,
+   "version": "26.1023.1058-nightly",
+   "baseVersion": "26.1023.1058",
+   "packageVersion": "26.1023.1058~nightly",
+   "gitCommit": "05991d9d42aad68d3bd233a609cf294d839835ed",
+   "gitTree": "5e53f777b912ef958678b2f23b400847c7cb4d33",
+   "commitCount": 1058,
+   "dirty": false,
+   "sourceProvenance": "git"
+  },
+  "releaseCommit": "05991d9d42aad68d3bd233a609cf294d839835ed",
+  "commitDateUtc": "2026-10-23T03:39:29Z",
+  "calver": {
+   "expected": "26.1023.1058~nightly",
+   "tagDate": "26.1023",
+   "commitDate": "26.1023",
+   "installedMatches": true
+  },
+  "repositoryPackage": [
+   {
+    "file": "putgd_26.1023.1058~nightly_amd64.deb",
+    "sha256": "d56909f1703c8ca8225d059ac3a78bf1d7889ea610df82746e5b3ea5796fba0c",
+    "matchesRelease": true
+   }
+  ],
+  "releaseAsset": {
+   "name": "putgd-26.1023.1058-nightly-debian13-x86_64.deb",
+   "sha256": "d56909f1703c8ca8225d059ac3a78bf1d7889ea610df82746e5b3ea5796fba0c"
+  },
+  "verify": [
+   "",
+   ""
+  ],
+  "entries": {
+   "desktop": [
+    "/usr/share/applications/putgd-record.desktop",
+    "/usr/share/applications/putgd-ui.desktop",
+    "/usr/share/applications/putgd.desktop",
+    "/usr/share/putgd/autostart/putgd.desktop"
+   ],
+   "icons": [
+    "/usr/share/icons/hicolor",
+    "/usr/share/icons/hicolor/scalable",
+    "/usr/share/icons/hicolor/scalable/apps",
+    "/usr/share/icons/hicolor/scalable/apps/putgd.svg"
+   ],
+   "metainfo": [
+    "/usr/share/metainfo",
+    "/usr/share/metainfo/gd.put.Putgd.metainfo.xml"
+   ],
+   "extension": [
+    "/usr/share/gnome-shell/extensions",
+    "/usr/share/gnome-shell/extensions/putgd@put.gd",
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/extension.js",
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json"
+   ],
+   "executables": [
+    "/usr/bin/putgd",
+    "/usr/bin/putgd-b2-worker",
+    "/usr/bin/putgd-capture",
+    "/usr/bin/putgd-cli",
+    "/usr/bin/putgd-kde-region",
+    "/usr/bin/putgd-launcher",
+    "/usr/bin/putgd-record",
+    "/usr/bin/putgd-s3-worker",
+    "/usr/bin/putgd-ui"
+   ],
+   "repo": [
+    "/etc/apt/sources.list.d",
+    "/etc/apt/sources.list.d/putgd.sources",
+    "/usr/share/putgd/repo/putgd-nightly.sources",
+    "/usr/share/putgd/repo/putgd-stable.sources"
+   ]
+  },
+  "appstream": [
+   0,
+   "\u2714 Validation was successful: pedantic: 1",
+   ""
+  ],
+  "menuEntry": {
+   "Name": "put.gd",
+   "Exec": "/usr/bin/putgd",
+   "Icon": "putgd",
+   "Categories": "Utility;Graphics;"
+  },
+  "policy": [
+   "putgd:",
+   "  Installed: 26.1023.1058~nightly",
+   "  Candidate: 26.1023.1058~nightly",
+   "  Version table:",
+   " *** 26.1023.1058~nightly 500",
+   "        500 https://pkg.put.gd/apt/debian13 nightly/main amd64 Packages",
+   "        100 /var/lib/dpkg/status"
+  ]
+ },
+ "key:": {
+  "chords": [
+   "super"
+  ],
+  "text": null,
+  "frame": null
+ },
+ "type:d69-L-menu-search": {
+  "chords": null,
+  "text": "put.g",
+  "frame": "/home/patrick/work/put.gd-nfa/runs/L/full/d69-L-menu-search.png"
+ },
+ "key:d69-L-first-run": {
+  "chords": [
+   "Return"
+  ],
+  "text": null,
+  "frame": "/home/patrick/work/put.gd-nfa/runs/L/full/d69-L-first-run.png"
+ },
+ "type:d69-L-menu-search-put": {
+  "chords": null,
+  "text": "put",
+  "frame": "/home/patrick/work/put.gd-nfa/runs/L/full/d69-L-menu-search-put.png"
+ },
+ "type:d69-L-menu-control": {
+  "chords": null,
+  "text": "dolphin",
+  "frame": "/home/patrick/work/put.gd-nfa/runs/L/full/d69-L-menu-control.png"
+ },
+ "type:": {
+  "chords": null,
+  "text": "put.g",
+  "frame": null
+ },
+ "type:d69-L-menu-search-after-sycoca": {
+  "chords": null,
+  "text": "put.g",
+  "frame": "/home/patrick/work/put.gd-nfa/runs/L/full/d69-L-menu-search-after-sycoca.png"
+ },
+ "key:d69-L-first-run-menu": {
+  "chords": [
+   "Return"
+  ],
+  "text": null,
+  "frame": "/home/patrick/work/put.gd-nfa/runs/L/full/d69-L-first-run-menu.png"
+ },
+ "capture:region": {
+  "kind": "region",
+  "operation": {
+   "id": "dc237138-3989-487d-835a-f6d047085abb",
+   "state": "completed",
+   "copyStatus": "copied",
+   "items": [
+    {
+     "name": "Screen-Capture-2026-10-23-00-37-19.png",
+     "mime": "image/png",
+     "uploadStatus": "uploaded",
+     "link": "http://127.0.0.1:33893/fixture/afa/Screen-Capture-2026-10-23-00-37-19.png",
+     "local": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "path": "/home/patrick/work/put.gd-nfa/runs/L/archive/images/Screen-Capture-2026-10-23-00-37-19.png",
+      "status": "saved"
+     }
+    }
+   ],
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "png": {
+   "bytes": 4668,
+   "sha256": "f467a591c50996d0b08e1dbb855e2706b6d4253dc412990de4257541abc0a31c",
+   "magic": true,
+   "size": [
+    1120,
+    680
+   ]
+  },
+  "coverCheck": {
+   "edges": {
+    "bottom": 1.0,
+    "left": 1.0,
+    "right": 1.0,
+    "top": 1.0
+   },
+   "fraction": 0.6975,
+   "kept": "/home/patrick/work/put.gd-nfa/runs/L/out/capture-region.png",
+   "minFraction": 0.5,
+   "ok": true,
+   "rect": [
+    0,
+    0,
+    1120,
+    680
+   ],
+   "sha256": "f467a591c50996d0b08e1dbb855e2706b6d4253dc412990de4257541abc0a31c",
+   "size": [
+    1120,
+    680
+   ]
+  },
+  "clipboard": "http://127.0.0.1:33893/fixture/afa/Screen-Capture-2026-10-23-00-37-19.png",
+  "linkCopied": true,
+  "linkServes": {
+   "status": 200,
+   "sha256": "f467a591c50996d0b08e1dbb855e2706b6d4253dc412990de4257541abc0a31c",
+   "matchesLocal": true
+  },
+  "historyEntry": {
+   "id": "762da394-5e19-4b80-bb07-3cf5e6a814ee",
+   "name": "Screen-Capture-2026-10-23-00-37-19.png",
+   "uploadStatus": "uploaded",
+   "local": "saved",
+   "linkAvailable": true
+  },
+  "notifications": []
+ },
+ "teardown": {
+  "removed": [
+   "/home/patrick/.config/putgd",
+   "/home/patrick/.local/state/putgd/logs/putgd-20261023T053648904Z-2514059-1.jsonl",
+   "/home/patrick/.local/state/putgd/logs/putgd-20261023T053436861Z-2513682-1.jsonl",
+   "/home/patrick/.local/state/putgd/logs/putgd-20261023T053201556Z-2513260-1.jsonl",
+   "/home/patrick/.local/share/putgd",
+   "/tmp/nfa.H40Xek"
+  ],
+  "kept": [
+   "/etc/apt/sources.list.d/putgd.sources (owned by the installed package)",
+   "/usr/share/keyrings/putgd-archive-keyring.gpg (owned by the installed package)"
+  ],
+  "after": {
+   "at": "2026-10-23T05:37:40Z",
+   "host": "debian",
+   "package": {
+    "manager": "dpkg",
+    "status": "ii",
+    "version": "26.1023.1058~nightly"
+   },
+   "files": {
+    "/etc/apt/sources.list.d/putgd.sources": {
+     "sha256": "11b30f1c9733b307cb1028e8a05d956a251d15a797173dcffd1e2bc9f165416f",
+     "bytes": 2033,
+     "mode": "0o644",
+     "mtime": "2026-10-23T05:30:39Z"
+    },
+    "/usr/share/keyrings/putgd-archive-keyring.gpg": {
+     "sha256": "76ab1b64e8a1d9504d3922fa44b116d6eb3c680e788be9cec46e106cd5258339",
+     "bytes": 1170,
+     "mode": "0o644",
+     "mtime": "2026-10-23T03:42:08Z"
+    },
+    "/etc/yum.repos.d/putgd.repo": null,
+    "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": {
+     "sha256": "690be5bcfd1ee05783cd57a78851c56c0fe624131711b254cb46d062d0cb8046",
+     "bytes": 248,
+     "mode": "0o644",
+     "mtime": "2026-10-23T03:45:19Z"
+    }
+   },
+   "defaultProfile": {
+    "/home/patrick/.config/putgd": null,
+    "/home/patrick/.local/state/putgd": 94,
+    "/home/patrick/.cache/putgd": null,
+    "/home/patrick/.local/share/putgd": null
+   },
+   "autostart": null,
+   "userExtension": false,
+   "processes": [],
+   "enabledExtensions": "@as []"
+  }
+ },
+ "handlerOff": {
+  "restored": {
+   "https": [
+    "Default application for \u201cx-scheme-handler/https\u201d: chatgpt.desktop"
+   ],
+   "http": [
+    "Default application for \u201cx-scheme-handler/http\u201d: chatgpt.desktop"
+   ]
+  },
+  "before": {
+   "https": [
+    "Default application for \u201cx-scheme-handler/https\u201d: chatgpt.desktop"
+   ],
+   "http": [
+    "Default application for \u201cx-scheme-handler/http\u201d: chatgpt.desktop"
+   ]
+  },
+  "same": true,
+  "filesMatch": true
+ }
+}

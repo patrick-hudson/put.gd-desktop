@@ -1,0 +1,99 @@
+{
+ "label": "purge-dev63",
+ "command": [
+  "apt-get",
+  "purge",
+  "-y",
+  "putgd"
+ ],
+ "before": {
+  "at": "2026-10-23T04:29:58Z",
+  "host": "putgd-ubuntu-lab",
+  "package": {
+   "manager": "dpkg",
+   "status": "ii",
+   "version": "0.1.1~dev.63+g050b702c6a6d"
+  },
+  "files": {
+   "/etc/apt/sources.list.d/putgd.sources": null,
+   "/usr/share/keyrings/putgd-archive-keyring.gpg": null,
+   "/etc/yum.repos.d/putgd.repo": null,
+   "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+   "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": {
+    "sha256": "8c3c16a23245f6564ccd4542bd00efc7495c8b49e9037aa2a0aa36ce914b75e2",
+    "bytes": 248,
+    "mode": "0o644",
+    "mtime": "2026-10-11T04:43:52Z"
+   }
+  },
+  "defaultProfile": {
+   "/home/lab/.config/putgd": null,
+   "/home/lab/.local/state/putgd": null,
+   "/home/lab/.cache/putgd": null,
+   "/home/lab/.local/share/putgd": null
+  },
+  "autostart": null,
+  "userExtension": false,
+  "processes": [],
+  "enabledExtensions": "['putgd@put.gd']"
+ },
+ "startedAt": "2026-10-23T04:29:58Z",
+ "simulation": {
+  "command": [
+   "apt-get",
+   "-s",
+   "purge",
+   "putgd"
+  ],
+  "exit": 0,
+  "changes": [
+   {
+    "op": "Purg",
+    "package": "putgd",
+    "from": "0.1.1~dev.63+g050b702c6a6d",
+    "to": null
+   }
+  ],
+  "tail": "NOTE: This is only a simulation!\n      apt-get needs root privileges for real execution.\n      Keep also in mind that locking is deactivated,\n      so don't depend on the relevance to the real current situation!\nReading package lists...\nBuilding dependency tree...\nReading state information...\nSolving dependencies...\nThe following packages will be REMOVED:\n  putgd*\n0 upgraded, 0 newly installed, 1 to remove and 70 not upgraded.\nPurg putgd [0.1.1~dev.63+g050b702c6a6d]\n"
+ },
+ "otherPackages": [],
+ "exit": 0,
+ "seconds": 4.7,
+ "log": "/home/lab/work/put.gd-nfa/runs/golden/logs/pkg-purge-dev63.log",
+ "conffilePrompt": false,
+ "signature": [],
+ "fetched": [],
+ "tail": "Reading package lists...\nBuilding dependency tree...\nReading state information...\nSolving dependencies...\nThe following packages will be REMOVED:\n  putgd*\n0 upgraded, 0 newly installed, 1 to remove and 70 not upgraded.\nAfter this operation, 27.3 MB disk space will be freed.\n(Reading database\u2026 \n(Reading database\u2026 5%\n(Reading database\u2026 10%\n(Reading database\u2026 15%\n(Reading database\u2026 20%\n(Reading database\u2026 25%\n(Reading database\u2026 30%\n(Reading database\u2026 35%\n(Reading database\u2026 40%\n(Reading database\u2026 45%\n(Reading database\u2026 50%\n(Reading database\u2026 55%\n(Reading database\u2026 60%\n(Reading database\u2026 65%\n(Reading database\u2026 70%\n(Reading database\u2026 75%\n(Reading database\u2026 80%\n(Reading database\u2026 85%\n(Reading database\u2026 90%\n(Reading database\u2026 95%\n(Reading database\u2026 100%\n(Reading database\u2026 168294 files and directories currently installed.)\nRemoving putgd (0.1.1~dev.63+g050b702c6a6d)\u2026\nProcessing triggers for hicolor-icon-theme (0.18-2build1)\u2026\nProcessing triggers for gnome-menus (3.38.1-1ubuntu1)\u2026\nProcessing triggers for desktop-file-utils (0.28-1build1)\u2026\n",
+ "after": {
+  "at": "2026-10-23T04:30:04Z",
+  "host": "putgd-ubuntu-lab",
+  "package": {
+   "manager": "dpkg",
+   "status": null,
+   "version": null
+  },
+  "files": {
+   "/etc/apt/sources.list.d/putgd.sources": null,
+   "/usr/share/keyrings/putgd-archive-keyring.gpg": null,
+   "/etc/yum.repos.d/putgd.repo": null,
+   "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+   "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": null
+  },
+  "defaultProfile": {
+   "/home/lab/.config/putgd": null,
+   "/home/lab/.local/state/putgd": null,
+   "/home/lab/.cache/putgd": null,
+   "/home/lab/.local/share/putgd": null
+  },
+  "autostart": null,
+  "userExtension": false,
+  "processes": [],
+  "enabledExtensions": "['putgd@put.gd']"
+ }
+}

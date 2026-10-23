@@ -1,0 +1,79 @@
+2026-10-23T05:30:17Z lock acquired d69 (native-full-acceptance-d69)
+2026-10-23T05:30:28Z uinput agent started (sudo pid 2512276)
+2026-10-23T05:30:39Z L: repo-add (repo file + key from the 1058 package)
+2026-10-23T05:30:52Z L: apt-get update + install putgd from pkg.put.gd
+2026-10-23T05:31:13Z recorder on (i326 handler-on L)
+2026-10-23T05:31:29Z L: first run from Kickoff (real keys)
+2026-10-23T05:34:29Z note: Kickoff app search on d69 returns no applications (control: dolphin), so starts use its Command Line result
+2026-10-23T05:35:04Z L: fixture destination, region capture + upload
+2026-10-23T05:36:07Z ran kbuildsycoca6 in plasmashell env (app search returned no apps before)
+2026-10-23T05:36:58Z L/B: started from Kickoff Applications entry (real keys)
+2026-10-23T05:37:25Z L: region capture uploaded to fixture
+2026-10-23T05:37:40Z L teardown
+2026-10-23T05:40:43Z P: start + 180 s memory window
+2026-10-23T05:40:50Z P: nk.sh B D E G H start
+2026-10-23T05:45:16Z P: nk.sh done
+2026-10-23T05:46:06Z H: GNOME Software (pid 2516772, opened by Open software updates) closed by PID
+2026-10-23T05:47:05Z recorder off; ffdefault on (temporary Firefox handler for F)
+2026-10-23T05:47:14Z F: live S3 profile (key set 2 via stdin), notify + real click
+2026-10-23T05:48:04Z F: temporary-profile Firefox (pid 2517297) closed by PID
+2026-10-23T05:49:38Z F: object deleted, prefix empty, ffdefault off (mimeapps byte-exact), recorder on again
+2026-10-23T05:49:50Z F: unwound: recorder off, ffdefault off (mimeapps restored byte-exact to the original), recorder on again
+2026-10-23T05:50:02Z K: quit from tray (real click)
+2026-10-23T05:50:35Z K: quit from tray menu (real click at 1567,1050)
+2026-10-23T05:50:49Z P cleaned (recorder off/on around it)
+2026-10-23T05:51:09Z M1: Secret Service default collection Locked=true (autologin) -> session credentials + keychain-reference profile
+2026-10-23T05:51:16Z M1: purge 1058; dev.133 AppImage set up on the default profile
+2026-10-23T05:55:15Z M1: dev.133 seed (captures under cover, failed upload, delete)
+2026-10-23T05:55:27Z M1: grown to 10000, dev.133 reopened, snapshot before
+2026-10-23T05:55:43Z M1: 1058 DEB installed from file over the dev.133 profile; migration checked
+2026-10-23T05:56:00Z M1: history-check + History window frame (10k)
+2026-10-23T05:56:47Z M1 teardown (+ dev.133 AppImage user entry)
+2026-10-23T05:57:11Z M2: purge; 947 installed from file
+2026-10-23T05:57:30Z M2: populated (2 uploads, dark theme), snapshot before
+2026-10-23T05:57:52Z M2: apt update + install --only-upgrade putgd from pkg.put.gd (resident running), restart, compare -- M2 DONE
+2026-10-23T05:58:05Z shell plasmashell pid 2501760
+2026-10-23T05:58:05Z logout requested (org.kde.Shutdown.logout)
+2026-10-23T05:58:06Z old shell gone
+2026-10-23T05:58:06Z temp drop-in /etc/sddm.conf.d/zz-afa2-relogin.conf (Relogin=true) added
+2026-10-23T05:58:13Z systemctl restart sddm
+2026-10-23T05:58:16Z new shell pid 2521503
+2026-10-23T05:58:19Z temp drop-in removed
+18051 1000 patrick seat0 2521264 user    tty1 no -
+2026-10-23T05:58:51Z I: checked after login
+2026-10-23T05:59:03Z I: resident quit before logout (systemd-run unit outlived the first logout); relogin again
+2026-10-23T05:59:03Z shell plasmashell pid 2521503
+2026-10-23T05:59:03Z logout requested (org.kde.Shutdown.logout)
+2026-10-23T05:59:04Z old shell gone
+2026-10-23T05:59:04Z temp drop-in /etc/sddm.conf.d/zz-afa2-relogin.conf (Relogin=true) added
+2026-10-23T05:59:10Z systemctl restart sddm
+2026-10-23T05:59:13Z new shell pid 2522315
+2026-10-23T05:59:16Z temp drop-in removed
+18054 1000 patrick seat0 2522076 user    tty7 no -
+2026-10-23T05:59:43Z I: checked after second login
+2026-10-23T06:00:03Z P: apt remove, apt purge (user data checked)
+2026-10-23T06:00:16Z P: login-started resident pid 2522475 (deleted exe) stopped by PID before logout (SSH keeps user@1000 alive)
+2026-10-23T06:00:16Z shell plasmashell pid 2522315
+2026-10-23T06:00:16Z logout requested (org.kde.Shutdown.logout)
+2026-10-23T06:00:17Z old shell gone
+2026-10-23T06:00:17Z temp drop-in /etc/sddm.conf.d/zz-afa2-relogin.conf (Relogin=true) added
+2026-10-23T06:00:23Z systemctl restart sddm
+2026-10-23T06:00:26Z new shell pid 2523294
+2026-10-23T06:00:29Z temp drop-in removed
+18058 1000 patrick seat0 2523053 user    tty1 no -
+2026-10-23T06:00:55Z P/Q: checked after login
+2026-10-23T06:01:05Z Q: systemsettings kcm_autostart started (pid )
+2026-10-23T06:01:28Z Q: no systemsettings/kcmshell6 binary on d69 (only kcm_autostart.so), so no Autostart page picture
+2026-10-23T06:01:28Z Q: TryExec probe written; relogin
+2026-10-23T06:01:28Z shell plasmashell pid 2523294
+2026-10-23T06:01:28Z logout requested (org.kde.Shutdown.logout)
+2026-10-23T06:01:29Z old shell gone
+2026-10-23T06:01:29Z temp drop-in /etc/sddm.conf.d/zz-afa2-relogin.conf (Relogin=true) added
+2026-10-23T06:01:35Z systemctl restart sddm
+2026-10-23T06:01:38Z new shell pid 2524174
+2026-10-23T06:01:41Z temp drop-in removed
+18064 1000 patrick seat0 2523980 user    tty7 no -
+2026-10-23T06:02:07Z Q: TryExec login checked
+2026-10-23T06:02:29Z cleanup: M2 teardown, recorder off (gio chatgpt), uinput agent stopped by PID, state-end compared
+2026-10-23T06:02:39Z agent socket removed; ff dir removed
+2026-10-23T06:03:09Z runs/ and assets/ removed after copy; lock release

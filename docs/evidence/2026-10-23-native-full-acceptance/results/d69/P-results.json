@@ -1,0 +1,3097 @@
+{
+ "start": {
+  "startSeconds": 0.35,
+  "credentials": "completed",
+  "sessionSock": true,
+  "processes": [
+   {
+    "pid": 2514408,
+    "ppid": 937,
+    "exe": "/usr/bin/putgd",
+    "comm": "putgd",
+    "cmd": "/usr/bin/putgd --background ",
+    "qtPlatformPlugins": []
+   }
+  ],
+  "diagnostics": {
+   "backend": "Qt",
+   "build": {
+    "baseVersion": "26.1023.1058",
+    "commitCount": 1058,
+    "dirty": false,
+    "gitCommit": "05991d9d42aad68d3bd233a609cf294d839835ed",
+    "gitTree": "5e53f777b912ef958678b2f23b400847c7cb4d33",
+    "packageVersion": "26.1023.1058~nightly",
+    "schemaVersion": 1,
+    "sourceProvenance": "git",
+    "version": "26.1023.1058-nightly"
+   },
+   "capabilities": {
+    "editor": {
+     "admissionPixels": 24000000,
+     "available": true,
+     "commands": [
+      "inspect",
+      "apply",
+      "preview",
+      "saveCopy",
+      "fileDialog",
+      "submit",
+      "cancel",
+      "raise"
+     ],
+     "fileFormats": [
+      "png",
+      "jpeg"
+     ],
+     "open": false,
+     "output": "png",
+     "shapes": [
+      "redact",
+      "blur",
+      "arrow",
+      "rectangle",
+      "text",
+      "highlight"
+     ],
+     "sources": [
+      "region",
+      "window",
+      "desktop",
+      "clipboard",
+      "file"
+     ]
+    },
+    "providers": {
+     "backblaze-b2": {
+      "conditionalCreate": true,
+      "conditionalDelete": false,
+      "conditionalReplace": false,
+      "delete": true,
+      "deletionEffect": "Deletes exactly the uploaded B2 file version by its ID. put.gd never uploads over a visible file, so the name then shows nothing, or an older version that was hidden before the upload. Authorized links stop working when they expire.",
+      "maximumNameBytes": 1023,
+      "maximumObjectBytes": 10000000000000,
+      "privateUploads": false,
+      "sharing": false,
+      "stat": true,
+      "urls": true,
+      "versionAddressing": true
+     },
+     "proton-drive": {
+      "conditionalCreate": true,
+      "conditionalDelete": false,
+      "conditionalReplace": false,
+      "delete": false,
+      "deletionEffect": "Safe remote deletion is unavailable: Proton does not expose an atomic revision-guarded file deletion. Revoke share links separately.",
+      "maximumNameBytes": 255,
+      "maximumObjectBytes": null,
+      "privateUploads": true,
+      "sharing": true,
+      "stat": true,
+      "urls": true,
+      "versionAddressing": false
+     },
+     "s3": {
+      "conditionalCreate": true,
+      "conditionalDelete": true,
+      "conditionalReplace": true,
+      "delete": true,
+      "deletionEffect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+      "maximumNameBytes": 1024,
+      "maximumObjectBytes": 5497558138880,
+      "privateUploads": false,
+      "sharing": false,
+      "stat": true,
+      "urls": true,
+      "versionAddressing": true
+     }
+    },
+    "recording": {
+     "active": null,
+     "audio": {
+      "microphone": false,
+      "system": false
+     },
+     "available": false,
+     "codecs": {},
+     "commands": [
+      "prepare",
+      "start",
+      "pause",
+      "resume",
+      "stop",
+      "cancel",
+      "inspect",
+      "select",
+      "raise",
+      "overlay",
+      "edit",
+      "preview",
+      "review",
+      "saveCopy",
+      "upload"
+     ],
+     "editCommands": [
+      "setTrim",
+      "resetTrim",
+      "addMask",
+      "updateMask",
+      "removeMask"
+     ],
+     "formats": [],
+     "limits": {
+      "animationMaxEdge": 1280,
+      "animationMaxUs": 60000000,
+      "maxFileBytes": 1099511627776,
+      "maxMasks": 64
+     },
+     "maskKinds": [
+      "blur",
+      "solid"
+     ],
+     "overlayExclusion": {},
+     "reason": "recording_not_probed",
+     "states": [
+      "preparing",
+      "ready",
+      "starting",
+      "recording",
+      "paused",
+      "stopping",
+      "reviewing",
+      "exporting",
+      "submitted",
+      "cancelled",
+      "failed"
+     ],
+     "targets": [],
+     "timeUnit": "microseconds"
+    },
+    "source": {
+     "adapter": "kde-wayland",
+     "capture": {
+      "desktop": {
+       "available": true,
+       "error": "",
+       "interface": "org.kde.KWin.ScreenShot2",
+       "interface_version": 4,
+       "mode": "compositor-native",
+       "permission": "restricted-desktop-entry",
+       "permission_entry_matches_executable": true,
+       "permission_rejected": false
+      },
+      "region": {
+       "available": true,
+       "error": "",
+       "helper": {
+        "active": false,
+        "build": {
+         "baseVersion": "26.1023.1058",
+         "commitCount": 1058,
+         "dirty": false,
+         "gitCommit": "05991d9d42aad68d3bd233a609cf294d839835ed",
+         "gitTree": "5e53f777b912ef958678b2f23b400847c7cb4d33",
+         "packageVersion": "26.1023.1058~nightly",
+         "schemaVersion": 1,
+         "sourceProvenance": "git",
+         "version": "26.1023.1058-nightly"
+        },
+        "cleanupRequired": false,
+        "lastExit": {},
+        "processId": 0
+       },
+       "interface": "org.kde.KWin.ScreenShot2",
+       "interface_version": 4,
+       "mode": "compositor-native",
+       "permission": "restricted-desktop-entry",
+       "permission_entry_matches_executable": true,
+       "permission_rejected": false
+      },
+      "window": {
+       "available": true,
+       "error": "",
+       "interface": "org.kde.KWin.ScreenShot2",
+       "interface_version": 4,
+       "mode": "compositor-native",
+       "permission": "restricted-desktop-entry",
+       "permission_entry_matches_executable": true,
+       "permission_rejected": false
+      }
+     },
+     "captureHelper": {
+      "active": false,
+      "build": {
+       "baseVersion": "26.1023.1058",
+       "commitCount": 1058,
+       "dirty": false,
+       "gitCommit": "05991d9d42aad68d3bd233a609cf294d839835ed",
+       "gitTree": "5e53f777b912ef958678b2f23b400847c7cb4d33",
+       "packageVersion": "26.1023.1058~nightly",
+       "schemaVersion": 1,
+       "sourceProvenance": "git",
+       "version": "26.1023.1058-nightly"
+      },
+      "cleanupRequired": false,
+      "lastExit": {},
+      "processId": 0
+     },
+     "clipboard": {
+      "available": true,
+      "error": "",
+      "import": "wlr-data-control-unstable-v1",
+      "protocol_version": 2,
+      "result": "wlr-data-control-unstable-v1-clipboard-only",
+      "types": [
+       "files",
+       "image",
+       "text"
+      ]
+     },
+     "outputs": {
+      "available": true,
+      "error": "",
+      "outputs": 1,
+      "protocol": "wl-output+xdg-output",
+      "protocol_version": 3,
+      "revision": 4
+     },
+     "resident": "qt-core",
+     "shortcuts": {
+      "available": true,
+      "bindings": {
+       "clipboard": {
+        "actual": [],
+        "bound": false,
+        "effective": "",
+        "layout": 0,
+        "requested": "",
+        "state": "unbound"
+       },
+       "desktop": {
+        "actual": [
+         "Ctrl+#"
+        ],
+        "bound": true,
+        "effective": "Ctrl+#",
+        "layout": 0,
+        "requested": "Ctrl+Shift+3",
+        "state": "bound"
+       },
+       "edit": {
+        "actual": [],
+        "bound": false,
+        "effective": "",
+        "layout": 0,
+        "requested": "",
+        "state": "unbound"
+       },
+       "record": {
+        "actual": [],
+        "bound": false,
+        "effective": "",
+        "layout": 0,
+        "requested": "",
+        "state": "unbound"
+       },
+       "region": {
+        "actual": [
+         "Ctrl+!"
+        ],
+        "bound": true,
+        "effective": "Ctrl+!",
+        "layout": 0,
+        "requested": "Ctrl+Shift+1",
+        "state": "bound"
+       },
+       "window": {
+        "actual": [
+         "Ctrl+@"
+        ],
+        "bound": true,
+        "effective": "Ctrl+@",
+        "layout": 0,
+        "requested": "Ctrl+Shift+2",
+        "state": "bound"
+       }
+      }
+     }
+    }
+   },
+   "journalReady": true,
+   "qtVersion": "6.8.2",
+   "release": {
+    "kind": "nightly",
+    "url": "https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v26.1023.1058-nightly",
+    "version": "26.1023.1058-nightly"
+   }
+  },
+  "ui": {
+   "ui": {
+    "checkpointBytes": 0,
+    "lastExit": {},
+    "pid": 0,
+    "state": "stopped"
+   },
+   "trayAvailable": true,
+   "trayTint": {
+    "color": "#9bbcff",
+    "panel": "dark",
+    "source": "plasma-style"
+   },
+   "loginStartup": {
+    "applied": true,
+    "enabled": false
+   },
+   "update": {
+    "action": null,
+    "attemptedAt": null,
+    "build": {
+     "channel": "nightly",
+     "kind": "nightly",
+     "packageTarget": "debian13",
+     "reason": null,
+     "supported": true,
+     "version": "26.1023.1058-nightly"
+    },
+    "channel": "nightly",
+    "channelSetting": "build",
+    "channelSource": "setting",
+    "check": true,
+    "checkedAt": null,
+    "checking": false,
+    "enabled": true,
+    "error": null,
+    "install": {
+     "available": false,
+     "backup": null,
+     "image": null,
+     "installed": null,
+     "kind": "update",
+     "reason": "not_appimage",
+     "restartRequired": false,
+     "running": false,
+     "state": "idle",
+     "switch": null
+    },
+    "nextCheckAt": "2026-10-23T05:51:28Z",
+    "notifies": false,
+    "reason": null,
+    "result": null,
+    "supported": true
+   }
+  },
+  "kdeEntries": [
+   "putgd326-url.desktop"
+  ]
+ },
+ "memory": {
+  "pid": 2514408,
+  "exe": "/usr/bin/putgd",
+  "seconds": 180,
+  "samples": [
+   {
+    "t": 0.0,
+    "rssBytes": 32182272
+   },
+   {
+    "t": 10.0,
+    "rssBytes": 31948800
+   },
+   {
+    "t": 20.0,
+    "rssBytes": 31952896
+   },
+   {
+    "t": 30.0,
+    "rssBytes": 31940608
+   },
+   {
+    "t": 40.0,
+    "rssBytes": 31940608
+   },
+   {
+    "t": 50.0,
+    "rssBytes": 31940608
+   },
+   {
+    "t": 60.0,
+    "rssBytes": 32198656
+   },
+   {
+    "t": 70.0,
+    "rssBytes": 32198656
+   },
+   {
+    "t": 80.0,
+    "rssBytes": 32198656
+   },
+   {
+    "t": 90.0,
+    "rssBytes": 32198656
+   },
+   {
+    "t": 100.0,
+    "rssBytes": 32198656
+   },
+   {
+    "t": 110.0,
+    "rssBytes": 32198656
+   },
+   {
+    "t": 120.0,
+    "rssBytes": 32198656
+   },
+   {
+    "t": 130.0,
+    "rssBytes": 32198656
+   },
+   {
+    "t": 140.0,
+    "rssBytes": 32198656
+   },
+   {
+    "t": 150.0,
+    "rssBytes": 32198656
+   },
+   {
+    "t": 160.0,
+    "rssBytes": 32198656
+   },
+   {
+    "t": 170.0,
+    "rssBytes": 32198656
+   },
+   {
+    "t": 180.0,
+    "rssBytes": 32198656
+   }
+  ],
+  "finalRssMiB": 30.707,
+  "peakRssMiB": 30.707,
+  "pssMiB": 9.062,
+  "privateMiB": 7.387,
+  "budgetMiB": 40,
+  "flaggedLibraries": {
+   "gtk": [],
+   "kdePlatformTheme": [],
+   "libssl": [],
+   "qtNetwork": []
+  },
+  "libraryCount": 72,
+  "load": [
+   [
+    0.93798828125,
+    0.99658203125,
+    1.23193359375
+   ],
+   [
+    0.66748046875,
+    0.8232421875,
+    1.1142578125
+   ]
+  ],
+  "pass": true
+ },
+ "findTray": {
+  "tint": "#9bbcff",
+  "size": [
+   1920,
+   1080
+  ],
+  "found": {
+   "bottom": {
+    "pixels": 111,
+    "centre": [
+     184,
+     1056
+    ],
+    "box": [
+     176,
+     1051,
+     192,
+     1061
+    ]
+   }
+  }
+ },
+ "tray:P-tray-menu": {
+  "label": "P-tray-menu",
+  "components": [
+   {
+    "blocks": 1937,
+    "box": [
+     160,
+     616,
+     456,
+     1064
+    ]
+   }
+  ],
+  "colour": [
+   244,
+   244,
+   244
+  ],
+  "inner": [
+   162,
+   618,
+   451,
+   1027
+  ],
+  "changedShare": 1.0,
+  "kept": "/home/patrick/work/put.gd-nfa/runs/P/crops/P-tray-menu.png",
+  "full": "/home/patrick/work/put.gd-nfa/runs/P/full/P-tray-menu.png"
+ },
+ "trayMenu": {
+  "watcherItemCount": 2,
+  "ours": [
+   "org.kde.StatusNotifierItem.putgd_f0e2c1874fc949c8afea5665e230d471"
+  ],
+  "menu": [
+   {
+    "id": 1,
+    "label": "Capture Region",
+    "visible": true,
+    "enabled": true,
+    "type": "standard"
+   },
+   {
+    "id": 5,
+    "label": "Capture Region & Edit",
+    "visible": true,
+    "enabled": true,
+    "type": "standard"
+   },
+   {
+    "id": 2,
+    "label": "Capture Window",
+    "visible": true,
+    "enabled": true,
+    "type": "standard"
+   },
+   {
+    "id": 3,
+    "label": "Capture Desktop",
+    "visible": true,
+    "enabled": true,
+    "type": "standard"
+   },
+   {
+    "id": 16,
+    "label": "Capture Screen Recording",
+    "visible": true,
+    "enabled": true,
+    "type": "standard"
+   },
+   {
+    "id": 13,
+    "label": "Edit Image",
+    "visible": true,
+    "enabled": true,
+    "type": "standard"
+   },
+   {
+    "id": 4,
+    "label": "Upload Clipboard",
+    "visible": true,
+    "enabled": true,
+    "type": "standard"
+   },
+   {
+    "id": 6,
+    "label": null,
+    "visible": true,
+    "enabled": true,
+    "type": "separator"
+   },
+   {
+    "id": 7,
+    "label": "Settings and setup",
+    "visible": true,
+    "enabled": true,
+    "type": "standard"
+   },
+   {
+    "id": 8,
+    "label": "Upload history",
+    "visible": true,
+    "enabled": true,
+    "type": "standard"
+   },
+   {
+    "id": 17,
+    "label": "Update available",
+    "visible": false,
+    "enabled": true,
+    "type": "standard"
+   },
+   {
+    "id": 10,
+    "label": null,
+    "visible": true,
+    "enabled": true,
+    "type": "separator"
+   },
+   {
+    "id": 11,
+    "label": "About put.gd",
+    "visible": true,
+    "enabled": true,
+    "type": "standard"
+   },
+   {
+    "id": 12,
+    "label": "Quit",
+    "visible": true,
+    "enabled": true,
+    "type": "standard"
+   }
+  ],
+  "Id": "putgd",
+  "Title": "put.gd",
+  "Status": "Active",
+  "IconName": ""
+ },
+ "window:P-settings": {
+  "processes": [
+   {
+    "pid": 2514408,
+    "ppid": 937,
+    "exe": "/usr/bin/putgd",
+    "comm": "putgd",
+    "cmd": "/usr/bin/putgd --background ",
+    "qtPlatformPlugins": []
+   },
+   {
+    "pid": 2514536,
+    "ppid": 2514408,
+    "exe": "/usr/bin/putgd-ui",
+    "comm": "putgd-ui",
+    "cmd": "/usr/bin/putgd-ui ",
+    "qtPlatformPlugins": [
+     "libqwayland-generic.so"
+    ]
+   }
+  ],
+  "entries": [
+   "putgd326-url.desktop"
+  ],
+  "window": {
+   "label": "P-settings-window",
+   "components": [
+    {
+     "blocks": 32400,
+     "box": [
+      0,
+      0,
+      1920,
+      1080
+     ]
+    }
+   ],
+   "colour": [
+    252,
+    252,
+    252
+   ],
+   "inner": [
+    300,
+    249,
+    1620,
+    846
+   ],
+   "changedShare": 1.0,
+   "ownShare": 0.979,
+   "kept": "/home/patrick/work/put.gd-nfa/runs/P/crops/P-settings-window.png"
+  },
+  "full": "/home/patrick/work/put.gd-nfa/runs/P/full/P-settings-window.png",
+  "titlebar": {
+   "label": "P-settings-titlebar",
+   "components": [
+    {
+     "blocks": 1680,
+     "box": [
+      0,
+      0,
+      1920,
+      56
+     ]
+    }
+   ],
+   "colour": [
+    36,
+    64,
+    76
+   ],
+   "inner": null
+  },
+  "switcher": {
+   "label": "P-settings-switcher",
+   "components": [
+    {
+     "blocks": 819,
+     "box": [
+      808,
+      432,
+      1120,
+      656
+     ]
+    }
+   ],
+   "colour": [
+    44,
+    80,
+    100
+   ],
+   "inner": [
+    816,
+    441,
+    1112,
+    647
+   ],
+   "changedShare": 0.841,
+   "kept": "/home/patrick/work/put.gd-nfa/runs/P/crops/P-settings-switcher.png"
+  },
+  "switcherFull": "/home/patrick/work/put.gd-nfa/runs/P/full/P-settings-switcher.png"
+ },
+ "key:": {
+  "chords": [
+   "Escape"
+  ],
+  "text": null,
+  "frame": null
+ },
+ "capture:region": {
+  "kind": "region",
+  "operation": {
+   "id": "a7542723-f9aa-4566-a6d3-c0e988c8e062",
+   "state": "completed",
+   "copyStatus": "copied",
+   "items": [
+    {
+     "name": "Screen-Capture-2026-10-23-00-41-17.png",
+     "mime": "image/png",
+     "uploadStatus": "uploaded",
+     "link": "http://127.0.0.1:33501/fixture/afa/Screen-Capture-2026-10-23-00-41-17.png",
+     "local": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "path": "/home/patrick/work/put.gd-nfa/runs/P/archive/images/Screen-Capture-2026-10-23-00-41-17.png",
+      "status": "saved"
+     }
+    }
+   ],
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "png": {
+   "bytes": 4668,
+   "sha256": "f467a591c50996d0b08e1dbb855e2706b6d4253dc412990de4257541abc0a31c",
+   "magic": true,
+   "size": [
+    1120,
+    680
+   ]
+  },
+  "coverCheck": {
+   "edges": {
+    "bottom": 1.0,
+    "left": 1.0,
+    "right": 1.0,
+    "top": 1.0
+   },
+   "fraction": 0.6975,
+   "kept": "/home/patrick/work/put.gd-nfa/runs/P/out/capture-region.png",
+   "minFraction": 0.5,
+   "ok": true,
+   "rect": [
+    0,
+    0,
+    1120,
+    680
+   ],
+   "sha256": "f467a591c50996d0b08e1dbb855e2706b6d4253dc412990de4257541abc0a31c",
+   "size": [
+    1120,
+    680
+   ]
+  },
+  "clipboard": "http://127.0.0.1:33501/fixture/afa/Screen-Capture-2026-10-23-00-41-17.png",
+  "linkCopied": true,
+  "linkServes": {
+   "status": 200,
+   "sha256": "f467a591c50996d0b08e1dbb855e2706b6d4253dc412990de4257541abc0a31c",
+   "matchesLocal": true
+  },
+  "historyEntry": {
+   "id": "334cb90e-4211-4e44-90f0-87304bfef783",
+   "name": "Screen-Capture-2026-10-23-00-41-17.png",
+   "uploadStatus": "uploaded",
+   "local": "saved",
+   "linkAvailable": true
+  },
+  "notifications": []
+ },
+ "capture:window": {
+  "kind": "window",
+  "operation": {
+   "id": "87b7cd81-bf88-4b0e-8a89-1d01fc08e3ad",
+   "state": "completed",
+   "copyStatus": "copied",
+   "items": [
+    {
+     "name": "Screen-Capture-2026-10-23-00-41-24.png",
+     "mime": "image/png",
+     "uploadStatus": "uploaded",
+     "link": "http://127.0.0.1:33501/fixture/afa/Screen-Capture-2026-10-23-00-41-24.png",
+     "local": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "path": "/home/patrick/work/put.gd-nfa/runs/P/archive/images/Screen-Capture-2026-10-23-00-41-24.png",
+      "status": "saved"
+     }
+    }
+   ],
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "png": {
+   "bytes": 10725,
+   "sha256": "2250e86dfa35fc8797ddd15980788af9e94a17b7682782702f8497df0b8542cc",
+   "magic": true,
+   "size": [
+    1920,
+    1080
+   ]
+  },
+  "coverCheck": {
+   "edges": {
+    "bottom": 1.0,
+    "left": 1.0,
+    "right": 1.0,
+    "top": 1.0
+   },
+   "fraction": 0.8889,
+   "kept": "/home/patrick/work/put.gd-nfa/runs/P/out/capture-window.png",
+   "minFraction": 0.5,
+   "ok": true,
+   "rect": [
+    0,
+    0,
+    1920,
+    1080
+   ],
+   "sha256": "2250e86dfa35fc8797ddd15980788af9e94a17b7682782702f8497df0b8542cc",
+   "size": [
+    1920,
+    1080
+   ]
+  },
+  "clipboard": "http://127.0.0.1:33501/fixture/afa/Screen-Capture-2026-10-23-00-41-24.png",
+  "linkCopied": true,
+  "linkServes": {
+   "status": 200,
+   "sha256": "2250e86dfa35fc8797ddd15980788af9e94a17b7682782702f8497df0b8542cc",
+   "matchesLocal": true
+  },
+  "historyEntry": {
+   "id": "88576d28-47fa-447b-9558-89912b2fceb3",
+   "name": "Screen-Capture-2026-10-23-00-41-24.png",
+   "uploadStatus": "uploaded",
+   "local": "saved",
+   "linkAvailable": true
+  },
+  "notifications": []
+ },
+ "capture:desktop": {
+  "kind": "desktop",
+  "operation": {
+   "id": "059034a7-7943-4736-b3b9-83bb9fb4f9a7",
+   "state": "completed",
+   "copyStatus": "copied",
+   "items": [
+    {
+     "name": "Screen-Capture-2026-10-23-00-41-28.png",
+     "mime": "image/png",
+     "uploadStatus": "uploaded",
+     "link": "http://127.0.0.1:33501/fixture/afa/Screen-Capture-2026-10-23-00-41-28.png",
+     "local": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "path": "/home/patrick/work/put.gd-nfa/runs/P/archive/images/Screen-Capture-2026-10-23-00-41-28.png",
+      "status": "saved"
+     }
+    }
+   ],
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "png": {
+   "bytes": 10723,
+   "sha256": "a716da3c191d06dc2bba6245325316a192f074a9cae9e99a8097e54a5c247687",
+   "magic": true,
+   "size": [
+    1920,
+    1080
+   ]
+  },
+  "coverCheck": {
+   "edges": {
+    "bottom": 1.0,
+    "left": 1.0,
+    "right": 1.0,
+    "top": 1.0
+   },
+   "fraction": 0.8889,
+   "kept": "/home/patrick/work/put.gd-nfa/runs/P/out/capture-desktop.png",
+   "minFraction": 0.5,
+   "ok": true,
+   "rect": [
+    0,
+    0,
+    1920,
+    1080
+   ],
+   "sha256": "a716da3c191d06dc2bba6245325316a192f074a9cae9e99a8097e54a5c247687",
+   "size": [
+    1920,
+    1080
+   ]
+  },
+  "clipboard": "http://127.0.0.1:33501/fixture/afa/Screen-Capture-2026-10-23-00-41-28.png",
+  "linkCopied": true,
+  "linkServes": {
+   "status": 200,
+   "sha256": "a716da3c191d06dc2bba6245325316a192f074a9cae9e99a8097e54a5c247687",
+   "matchesLocal": true
+  },
+  "historyEntry": {
+   "id": "e49e08f0-549d-48ea-966f-8cc3d2efb749",
+   "name": "Screen-Capture-2026-10-23-00-41-28.png",
+   "uploadStatus": "uploaded",
+   "local": "saved",
+   "linkAvailable": true
+  },
+  "notifications": []
+ },
+ "edit": {
+  "editorId": "f8997a71-0469-4b9b-9ac9-a7ef55a01141",
+  "size": [
+   1120,
+   680
+  ],
+  "blur": [
+   336,
+   217,
+   201,
+   231
+  ],
+  "solid": [
+   582,
+   244,
+   156,
+   149
+  ],
+  "apply": true,
+  "inspect": {
+   "canRedo": false,
+   "canUndo": true,
+   "crop": [
+    0,
+    0,
+    1120,
+    680
+   ],
+   "destination": "Upload to Loopback fixture",
+   "height": 680,
+   "historyTruncated": false,
+   "modified": true,
+   "operationId": "f8997a71-0469-4b9b-9ac9-a7ef55a01141",
+   "phase": "editing",
+   "shapes": [
+    {
+     "id": 1,
+     "kind": "blur",
+     "rect": [
+      336,
+      217,
+      201,
+      231
+     ],
+     "strength": 24
+    },
+    {
+     "id": 2,
+     "kind": "redact",
+     "rect": [
+      582,
+      244,
+      156,
+      149
+     ]
+    }
+   ],
+   "width": 1120
+  },
+  "window": {
+   "label": "editor",
+   "components": [
+    {
+     "blocks": 7448,
+     "box": [
+      336,
+      72,
+      1584,
+      992
+     ]
+    },
+    {
+     "blocks": 3610,
+     "box": [
+      640,
+      360,
+      1280,
+      728
+     ]
+    },
+    {
+     "blocks": 1440,
+     "box": [
+      0,
+      1032,
+      1920,
+      1080
+     ]
+    }
+   ],
+   "colour": [
+    252,
+    0,
+    252
+   ],
+   "inner": [
+    440,
+    234,
+    1480,
+    876
+   ],
+   "changedShare": 0.339,
+   "ownShare": 0.0,
+   "kept": null
+  },
+  "full": "/home/patrick/work/put.gd-nfa/runs/P/full/editor.png",
+  "editorCommands": [
+   "inspect",
+   "apply",
+   "preview",
+   "saveCopy",
+   "fileDialog",
+   "submit",
+   "cancel",
+   "raise"
+  ],
+  "dialogOpen": {
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   },
+   "ok": true,
+   "requestId": "3de28b30-4425-4a7b-912c-d2871b795a92",
+   "result": {
+    "backend": "portal",
+    "fallbackReason": null,
+    "last": null,
+    "mode": "save",
+    "open": true,
+    "operationId": "f8997a71-0469-4b9b-9ac9-a7ef55a01141",
+    "parentWindow": "",
+    "title": "Save a copy"
+   },
+   "schemaVersion": 1
+  },
+  "dialogState": {
+   "backend": "portal",
+   "fallbackReason": null,
+   "last": null,
+   "mode": "save",
+   "open": true,
+   "operationId": "f8997a71-0469-4b9b-9ac9-a7ef55a01141",
+   "parentWindow": "",
+   "title": "Save a copy"
+  },
+  "dialogShot": {
+   "label": "save-copy-dialog",
+   "components": [
+    {
+     "blocks": 11524,
+     "box": [
+      344,
+      80,
+      1576,
+      976
+     ]
+    },
+    {
+     "blocks": 42,
+     "box": [
+      368,
+      1032,
+      424,
+      1080
+     ]
+    },
+    {
+     "blocks": 33,
+     "box": [
+      264,
+      1032,
+      320,
+      1080
+     ]
+    }
+   ],
+   "colour": [
+    252,
+    252,
+    252
+   ],
+   "inner": [
+    691,
+    308,
+    1337,
+    703
+   ],
+   "changedShare": 1.0,
+   "kept": "/home/patrick/work/put.gd-nfa/runs/P/crops/save-copy-dialog.png"
+  },
+  "dialogFull": "/home/patrick/work/put.gd-nfa/runs/P/full/save-copy-dialog.png",
+  "dialogResult": {
+   "backend": null,
+   "fallbackReason": null,
+   "last": {
+    "backend": "portal",
+    "error": null,
+    "fallbackReason": null,
+    "mode": "save",
+    "path": "/home/patrick/Pictures/afa-P-edited.png",
+    "status": "chosen"
+   },
+   "mode": null,
+   "open": false,
+   "operationId": "f8997a71-0469-4b9b-9ac9-a7ef55a01141",
+   "parentWindow": null,
+   "title": null
+  },
+  "savedCopy": {
+   "exists": true,
+   "bytes": 4958,
+   "size": [
+    1120,
+    680
+   ],
+   "solidRegion": {
+    "mean": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "spread": 0
+   },
+   "blurChangedShare": 0.746
+  },
+  "upload": {
+   "id": "f8997a71-0469-4b9b-9ac9-a7ef55a01141",
+   "state": "completed",
+   "copyStatus": "copied",
+   "items": [
+    {
+     "name": "Screen-Capture-2026-10-23-00-41-32.png",
+     "mime": "image/png",
+     "uploadStatus": "uploaded",
+     "link": "http://127.0.0.1:33501/fixture/afa/Screen-Capture-2026-10-23-00-41-32.png",
+     "local": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "path": "/home/patrick/work/put.gd-nfa/runs/P/archive/images/Screen-Capture-2026-10-23-00-41-32.png",
+      "status": "saved"
+     }
+    }
+   ],
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "uploaded": {
+   "size": [
+    1120,
+    680
+   ],
+   "solidRegion": {
+    "mean": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "spread": 0
+   },
+   "blurChangedShare": 0.746,
+   "unchangedOutsideShare": 1.0
+  },
+  "redactionVerified": true,
+  "clipboard": "http://127.0.0.1:33501/fixture/afa/Screen-Capture-2026-10-23-00-41-32.png",
+  "linkCopied": true
+ },
+ "record": {
+  "capabilities": {
+   "available": true,
+   "reason": null,
+   "acquisition": "kde-screencast",
+   "gstreamer": {
+    "audioSources": [
+     "pulsesrc",
+     "pipewiresrc"
+    ],
+    "available": true,
+    "elements": {
+     "aacparse": "1.26.2",
+     "appsink": "1.26.2",
+     "audioconvert": "1.26.2",
+     "audioresample": "1.26.2",
+     "avenc_aac": "1.26.2",
+     "compositor": "1.26.2",
+     "fdkaacenc": null,
+     "h264parse": "1.26.2",
+     "matroskamux": "1.26.2",
+     "mp4mux": "1.26.2",
+     "openh264enc": "1.26.2",
+     "pipewiresrc": "1.4.2",
+     "pulsesrc": "1.26.2",
+     "vaapih264enc": "1.26.2",
+     "vah264enc": null,
+     "vah264lpenc": "1.26.2",
+     "videoconvert": "1.26.2",
+     "videocrop": "1.26.2",
+     "videorate": "1.26.2",
+     "videoscale": "1.26.2",
+     "voaacenc": "1.26.2",
+     "vp9enc": "1.26.2",
+     "webmmux": "1.26.2",
+     "webpenc": "1.26.2",
+     "x264enc": "1.26.3",
+     "x265enc": "1.26.2",
+     "ximagesrc": "1.26.2"
+    },
+    "encoderFailures": {},
+    "liveAacEncoders": [
+     "avenc_aac",
+     "voaacenc"
+    ],
+    "liveH264Encoders": [
+     "vah264lpenc",
+     "vaapih264enc",
+     "x264enc",
+     "openh264enc"
+    ],
+    "liveSources": [
+     "ximagesrc",
+     "pipewiresrc"
+    ],
+    "pluginDirectories": [
+     "/usr/lib/x86_64-linux-gnu/gstreamer-1.0"
+    ],
+    "usableH264Encoders": [
+     "vah264lpenc",
+     "vaapih264enc",
+     "x264enc",
+     "openh264enc"
+    ],
+    "version": "GStreamer 1.26.2",
+    "webpAnimated": true
+   },
+   "exportEncoders": {
+    "h264": [
+     "h264_vaapi",
+     "libx264"
+    ],
+    "h265": [
+     "libx265"
+    ],
+    "vp9": [
+     "libvpx-vp9"
+    ]
+   },
+   "liveCapture": {
+    "audio": true,
+    "encoder": true,
+    "source": true
+   },
+   "kdeScreencast": {
+    "available": true,
+    "hidesRequester": false,
+    "kwinVersion": "6.3.6",
+    "outputs": [
+     {
+      "logical": [
+       0,
+       0,
+       1920,
+       1080
+      ],
+      "name": "HDMI-A-1"
+     }
+    ],
+    "version": 5
+   },
+   "formats": [
+    "mp4",
+    "webm",
+    "gif",
+    "webp"
+   ]
+  },
+  "entriesDuring": [
+   "putgd326-url.desktop"
+  ],
+  "patternRect": [
+   640,
+   360,
+   1280,
+   720
+  ],
+  "prepare": {
+   "state": "ready",
+   "target": {
+    "kind": "region",
+    "rect": [
+     640,
+     360,
+     640,
+     360
+    ]
+   }
+  },
+  "readyShot": {
+   "label": "record-ready",
+   "components": [
+    {
+     "blocks": 1440,
+     "box": [
+      0,
+      1032,
+      1920,
+      1080
+     ]
+    },
+    {
+     "blocks": 444,
+     "box": [
+      640,
+      728,
+      1232,
+      776
+     ]
+    },
+    {
+     "blocks": 6,
+     "box": [
+      1504,
+      872,
+      1536,
+      896
+     ]
+    }
+   ],
+   "colour": [
+    244,
+    244,
+    248
+   ],
+   "inner": [
+    642,
+    730,
+    1227,
+    773
+   ],
+   "changedShare": 1.0,
+   "kept": "/home/patrick/work/put.gd-nfa/runs/P/crops/record-ready.png"
+  },
+  "liveEncoder": "vah264lpenc",
+  "recordingShot": {
+   "label": "recording",
+   "components": [
+    {
+     "blocks": 28546,
+     "box": [
+      0,
+      0,
+      1920,
+      1080
+     ]
+    }
+   ],
+   "colour": [
+    144,
+    0,
+    144
+   ],
+   "inner": [
+    2,
+    2,
+    1918,
+    1036
+   ],
+   "changedShare": 1.0,
+   "coverHueShare": 0.982,
+   "kept": "/home/patrick/work/put.gd-nfa/runs/P/crops/recording.png"
+  },
+  "recordingFull": "/home/patrick/work/put.gd-nfa/runs/P/full/recording.png",
+  "paused": true,
+  "stopped": {
+   "durationUs": 13000000,
+   "wallSeconds": 15.0,
+   "state": "reviewing"
+  },
+  "reviewSteps": [
+   {
+    "action": "seek",
+    "time": 1000000,
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "action": "setIn",
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "action": "seek",
+    "time": 12000000,
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "action": "setOut",
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "action": "seek",
+    "time": 2000000,
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "action": "addMask",
+    "kind": "blur",
+    "rect": [
+     160,
+     90,
+     320,
+     180
+    ],
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "action": "setMaskIn",
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "action": "seek",
+    "time": 5000000,
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "action": "setMaskOut",
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "action": "strength",
+    "strength": 24,
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "action": "seek",
+    "time": 3000000,
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "action": "format",
+    "format": "mp4",
+    "codec": "h264",
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "action": "format",
+    "format": "webm",
+    "codec": "vp9",
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "action": "format",
+    "format": "gif",
+    "codec": "",
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "action": "format",
+    "format": "webp",
+    "codec": "",
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "action": "format",
+    "format": "mp4",
+    "codec": "h264",
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   }
+  ],
+  "edit": {
+   "masks": [
+    {
+     "end": 5000000,
+     "id": "7de0d6aa-73f3-4b71-bd55-f4f656348774",
+     "kind": "blur",
+     "rect": [
+      160,
+      90,
+      320,
+      180
+     ],
+     "start": 2000000,
+     "strength": 24
+    }
+   ],
+   "revision": 7,
+   "trimEnd": 12000000,
+   "trimStart": 1000000
+  },
+  "reviewShot": {
+   "label": "review",
+   "components": [
+    {
+     "blocks": 6678,
+     "box": [
+      456,
+      192,
+      1464,
+      864
+     ]
+    },
+    {
+     "blocks": 1440,
+     "box": [
+      0,
+      1032,
+      1920,
+      1080
+     ]
+    },
+    {
+     "blocks": 6,
+     "box": [
+      1504,
+      872,
+      1536,
+      896
+     ]
+    }
+   ],
+   "colour": [
+    244,
+    244,
+    248
+   ],
+   "inner": [
+    480,
+    204,
+    1440,
+    831
+   ],
+   "changedShare": 1.0,
+   "ownShare": 0.33,
+   "kept": "/home/patrick/work/put.gd-nfa/runs/P/crops/review.png"
+  },
+  "reviewFull": "/home/patrick/work/put.gd-nfa/runs/P/full/review.png",
+  "exports": {
+   "mp4": {
+    "formatChosen": true,
+    "request": true,
+    "requestError": {
+     "code": "",
+     "details": {},
+     "message": ""
+    },
+    "status": "saved",
+    "bytes": 111987,
+    "error": null,
+    "durationUs": 11000000,
+    "motion": {
+     "motion": 68.042,
+     "compared": 7,
+     "durationMs": 11000,
+     "size": "640x360",
+     "by": "putgd-record"
+    },
+    "sha256": "fd3fb8d9faa2daa08672d742efad567e0e50c019efadbfed53bea3e0c67f1033"
+   },
+   "webm": {
+    "formatChosen": true,
+    "request": true,
+    "requestError": {
+     "code": "",
+     "details": {},
+     "message": ""
+    },
+    "status": "saved",
+    "bytes": 110785,
+    "error": null,
+    "durationUs": 11000000,
+    "motion": {
+     "motion": 68.177,
+     "compared": 7,
+     "durationMs": 11000,
+     "size": "640x360",
+     "by": "putgd-record"
+    },
+    "sha256": "4e027c1ac36a13714b2db0a1daa75340fb20a758d7e9e38a8d09799c265e0605"
+   },
+   "gif": {
+    "formatChosen": true,
+    "request": true,
+    "requestError": {
+     "code": "",
+     "details": {},
+     "message": ""
+    },
+    "status": "saved",
+    "bytes": 4333862,
+    "error": null,
+    "durationUs": 11000000,
+    "motion": {
+     "motion": 67.265,
+     "compared": 7,
+     "durationMs": 11000,
+     "size": "640x360",
+     "by": "putgd-record"
+    },
+    "sha256": "fffc56f2fc8463e93892fb6ba3e9d4c16fe39cddd9d687ae0695e7cec7113d11"
+   },
+   "webp": {
+    "formatChosen": true,
+    "request": true,
+    "requestError": {
+     "code": "",
+     "details": {},
+     "message": ""
+    },
+    "status": "saved",
+    "bytes": 236204,
+    "error": null,
+    "durationUs": 11000000,
+    "motion": {
+     "motion": 81.758,
+     "frames": 165,
+     "size": "640x360",
+     "by": "pillow"
+    },
+    "sha256": "d411e946654357bc42f061f70c7a94b5b801aa4f524234651dc475f59f168ae1"
+   }
+  },
+  "saveCopyDialog": {
+   "open": {
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    },
+    "ok": true,
+    "requestId": "b3f08e4f-ee57-4d63-a949-61dbab941814",
+    "result": {
+     "armed": null,
+     "edit": {
+      "masks": [
+       {
+        "end": 5000000,
+        "id": "7de0d6aa-73f3-4b71-bd55-f4f656348774",
+        "kind": "blur",
+        "rect": [
+         160,
+         90,
+         320,
+         180
+        ],
+        "start": 2000000,
+        "strength": 24
+       }
+      ],
+      "revision": 7,
+      "trimEnd": 12000000,
+      "trimStart": 1000000
+     },
+     "exporting": false,
+     "fileDialog": {
+      "backend": "portal",
+      "fallbackReason": null,
+      "last": null,
+      "mode": "save",
+      "open": true,
+      "parentWindow": "",
+      "title": "Save a copy"
+     },
+     "format": {
+      "codec": "h264",
+      "format": "mp4"
+     },
+     "maskControls": {
+      "list": true,
+      "remove": true,
+      "strength": true,
+      "times": true
+     },
+     "masks": [
+      {
+       "id": "7de0d6aa-73f3-4b71-bd55-f4f656348774",
+       "kind": "blur",
+       "timeline": [
+        165,
+        509,
+        165,
+        5
+       ]
+      }
+     ],
+     "minimumSize": [
+      692,
+      305
+     ],
+     "notice": null,
+     "playheadUs": 3000000,
+     "playing": false,
+     "revision": 7,
+     "scheme": "light",
+     "selectedMaskId": "7de0d6aa-73f3-4b71-bd55-f4f656348774",
+     "size": [
+      960,
+      600
+     ],
+     "speed": 1,
+     "state": "reviewing",
+     "status": "No audio",
+     "timeline": {
+      "lanes": 1,
+      "rect": [
+       47,
+       489,
+       732,
+       30
+      ]
+     },
+     "trim": {
+      "end": 12000000,
+      "start": 1000000
+     },
+     "video": {
+      "rect": [
+       58,
+       8,
+       844,
+       475
+      ],
+      "share": 0.6960069444444444
+     },
+     "visible": true
+    },
+    "schemaVersion": 1
+   },
+   "shot": {
+    "label": "review-save-dialog",
+    "components": [
+     {
+      "blocks": 9000,
+      "box": [
+       448,
+       216,
+       1472,
+       840
+      ]
+     },
+     {
+      "blocks": 41,
+      "box": [
+       416,
+       1032,
+       472,
+       1080
+      ]
+     },
+     {
+      "blocks": 8,
+      "box": [
+       736,
+       768,
+       792,
+       784
+      ]
+     },
+     {
+      "blocks": 4,
+      "box": [
+       808,
+       768,
+       832,
+       784
+      ]
+     },
+     {
+      "blocks": 3,
+      "box": [
+       952,
+       768,
+       984,
+       784
+      ]
+     },
+     {
+      "blocks": 2,
+      "box": [
+       1000,
+       768,
+       1016,
+       784
+      ]
+     }
+    ],
+    "colour": [
+     252,
+     252,
+     252
+    ],
+    "inner": [
+     657,
+     330,
+     1366,
+     664
+    ],
+    "changedShare": 1.0,
+    "kept": "/home/patrick/work/put.gd-nfa/runs/P/crops/review-save-dialog.png"
+   },
+   "full": "/home/patrick/work/put.gd-nfa/runs/P/full/review-save-dialog.png",
+   "inspect": {
+    "backend": null,
+    "fallbackReason": null,
+    "last": {
+     "backend": "portal",
+     "error": null,
+     "fallbackReason": null,
+     "mode": "save",
+     "path": "/home/patrick/afa-P-review.mp4",
+     "status": "chosen"
+    },
+    "mode": null,
+    "open": false,
+    "parentWindow": null,
+    "title": null
+   },
+   "lastExport": {
+    "bytes": 111987,
+    "command": "saveCopy",
+    "durationUs": 11000000,
+    "path": "/home/patrick/afa-P-review.mp4",
+    "revision": 7,
+    "status": "saved"
+   },
+   "exists": true,
+   "bytes": 111987,
+   "motion": {
+    "motion": 68.042,
+    "compared": 7,
+    "durationMs": 11000,
+    "size": "640x360",
+    "by": "putgd-record"
+   }
+  },
+  "upload": {
+   "id": "e321a5f4-d29e-45a0-977b-c809deb1e1d0",
+   "state": "completed",
+   "copyStatus": "copied",
+   "items": [
+    {
+     "name": "Screen-Recording-2026-10-23-00-41-53.mp4",
+     "mime": "video/mp4",
+     "uploadStatus": "uploaded",
+     "link": "http://127.0.0.1:33501/fixture/afa/Screen-Recording-2026-10-23-00-41-53.mp4",
+     "local": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "path": "/home/patrick/work/put.gd-nfa/runs/P/archive/videos/Screen-Recording-2026-10-23-00-41-53.mp4",
+      "status": "saved"
+     }
+    }
+   ],
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "uploadNotifications": [],
+  "entriesAfter": [
+   "putgd326-url.desktop"
+  ]
+ },
+ "control": {
+  "mp4": {
+   "bytes": 6209,
+   "motion": {
+    "motion": 0.0,
+    "compared": 7,
+    "durationMs": 7066,
+    "size": "640x360",
+    "by": "putgd-record"
+   }
+  },
+  "gif": {
+   "bytes": 4276,
+   "motion": {
+    "motion": 0.0,
+    "compared": 7,
+    "durationMs": 7070,
+    "size": "640x360",
+    "by": "putgd-record"
+   }
+  }
+ },
+ "history": {
+  "total": 5,
+  "records": [
+   {
+    "id": "08ec7a5d-ff56-4a51-a6e2-e4af90b172e4",
+    "name": "Screen-Recording-2026-10-23-00-41-53.mp4",
+    "mime": "video/mp4",
+    "uploadStatus": "uploaded",
+    "local": "saved",
+    "linkAvailable": true
+   },
+   {
+    "id": "41fe570f-7f24-431f-a309-6185eb171d9a",
+    "name": "Screen-Capture-2026-10-23-00-41-32.png",
+    "mime": "image/png",
+    "uploadStatus": "uploaded",
+    "local": "saved",
+    "linkAvailable": true
+   },
+   {
+    "id": "e49e08f0-549d-48ea-966f-8cc3d2efb749",
+    "name": "Screen-Capture-2026-10-23-00-41-28.png",
+    "mime": "image/png",
+    "uploadStatus": "uploaded",
+    "local": "saved",
+    "linkAvailable": true
+   },
+   {
+    "id": "88576d28-47fa-447b-9558-89912b2fceb3",
+    "name": "Screen-Capture-2026-10-23-00-41-24.png",
+    "mime": "image/png",
+    "uploadStatus": "uploaded",
+    "local": "saved",
+    "linkAvailable": true
+   },
+   {
+    "id": "334cb90e-4211-4e44-90f0-87304bfef783",
+    "name": "Screen-Capture-2026-10-23-00-41-17.png",
+    "mime": "image/png",
+    "uploadStatus": "uploaded",
+    "local": "saved",
+    "linkAvailable": true
+   }
+  ],
+  "previews": {
+   "Screen-Recording-2026-10-23-00-41-53.mp4": {
+    "ok": true,
+    "state": "ready",
+    "source": null,
+    "exists": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   "Screen-Capture-2026-10-23-00-41-32.png": {
+    "ok": true,
+    "state": "ready",
+    "source": null,
+    "exists": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   "Screen-Capture-2026-10-23-00-41-28.png": {
+    "ok": true,
+    "state": "ready",
+    "source": null,
+    "exists": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   "Screen-Capture-2026-10-23-00-41-24.png": {
+    "ok": true,
+    "state": "ready",
+    "source": null,
+    "exists": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   "Screen-Capture-2026-10-23-00-41-17.png": {
+    "ok": true,
+    "state": "ready",
+    "source": null,
+    "exists": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   }
+  },
+  "copyImage": {
+   "reply": {
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    },
+    "ok": true,
+    "requestId": "2887a6e0-c764-4a6b-ad79-0a6d7ebb93f4",
+    "result": {
+     "copied": true
+    },
+    "schemaVersion": 1
+   },
+   "clipboardPng": true,
+   "clipboardBytes": 4958,
+   "sameSize": true,
+   "samePixels": true
+  },
+  "windowShot": {
+   "label": "history",
+   "components": [
+    {
+     "blocks": 4277,
+     "box": [
+      528,
+      112,
+      1600,
+      928
+     ]
+    },
+    {
+     "blocks": 161,
+     "box": [
+      312,
+      616,
+      496,
+      672
+     ]
+    },
+    {
+     "blocks": 159,
+     "box": [
+      312,
+      504,
+      496,
+      560
+     ]
+    },
+    {
+     "blocks": 40,
+     "box": [
+      920,
+      856,
+      1104,
+      872
+     ]
+    },
+    {
+     "blocks": 4,
+     "box": [
+      1440,
+      288,
+      1448,
+      320
+     ]
+    },
+    {
+     "blocks": 4,
+     "box": [
+      1440,
+      624,
+      1448,
+      656
+     ]
+    }
+   ],
+   "colour": [
+    244,
+    244,
+    248
+   ],
+   "inner": [
+    530,
+    115,
+    1598,
+    892
+   ],
+   "changedShare": 0.855,
+   "ownShare": 0.966,
+   "kept": "/home/patrick/work/put.gd-nfa/runs/P/crops/history.png"
+  },
+  "full": "/home/patrick/work/put.gd-nfa/runs/P/full/history.png"
+ },
+ "delete": {
+  "item": "Screen-Capture-2026-10-23-00-47-16.png",
+  "prepare": {
+   "acknowledgement": "4403d375f2ab732cd28fb5a6557a3cacd997a6a3d74d3eea1da3de1734c06019",
+   "cacheNotice": "Origin deletion does not invalidate browser or CDN caches",
+   "localCopiesPreserved": true,
+   "targets": [
+    {
+     "effect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+     "historyId": "241d57df-2f23-459a-b1de-761b9bc7cceb",
+     "receipt": {
+      "concurrencyToken": "\"09210cff45c4a2d96ecf5ae0c1600b16\"",
+      "destination": {
+       "credentials": {
+        "mode": "session",
+        "reference": null
+       },
+       "profileId": "live-s3",
+       "profileRevision": "8f4331a729303f79b1b499e4633954c2f9d4639068a6fcd827254a3ff77fe3ad",
+       "providerId": "s3",
+       "settings": {
+        "aclMode": "public-read",
+        "addressing": "path",
+        "bucket": "put.gd",
+        "connectTimeoutMs": 10000,
+        "endpoint": "https://s3.us-east-2.amazonaws.com",
+        "lowSpeedBytesPerSecond": 1,
+        "lowSpeedTimeSeconds": 120,
+        "objectPrefix": "acceptance/nfa/d69/",
+        "publicUrlBase": "https://put.gd",
+        "region": "us-east-2",
+        "requestTimeoutMs": 120000,
+        "storageClass": "STANDARD"
+       }
+      },
+      "directUrl": "https://put.gd/acceptance/nfa/d69/Screen-Capture-2026-10-23-00-47-16.png",
+      "objectReference": {
+       "bytes": 4668,
+       "key": "acceptance/nfa/d69/Screen-Capture-2026-10-23-00-47-16.png",
+       "schemaVersion": 1,
+       "sha256": "4342d483bfb564e737770de1198d6a793b6f9b91b7f67680b5eacc9d65d3b1fb",
+       "versionId": ""
+      },
+      "publicationId": "565a8fdd-b7f2-46f9-a2b4-4d68b1f9ed53",
+      "schemaVersion": 1
+     }
+    }
+   ]
+  },
+  "confirm": {
+   "deleteOperationId": "3d3965bf-4182-42bb-b08e-2cbf667c4e8b",
+   "deletion": {
+    "acknowledgement": "4403d375f2ab732cd28fb5a6557a3cacd997a6a3d74d3eea1da3de1734c06019",
+    "cancelled": false,
+    "created": "2026-10-23T05:48:04.948Z",
+    "id": "3d3965bf-4182-42bb-b08e-2cbf667c4e8b",
+    "items": [
+     {
+      "effect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+      "historyId": "241d57df-2f23-459a-b1de-761b9bc7cceb",
+      "progress": {
+       "schemaVersion": 1
+      },
+      "receipt": {
+       "concurrencyToken": "\"09210cff45c4a2d96ecf5ae0c1600b16\"",
+       "destination": {
+        "credentials": {
+         "mode": "session",
+         "reference": null
+        },
+        "profileId": "live-s3",
+        "profileRevision": "8f4331a729303f79b1b499e4633954c2f9d4639068a6fcd827254a3ff77fe3ad",
+        "providerId": "s3",
+        "settings": {
+         "aclMode": "public-read",
+         "addressing": "path",
+         "bucket": "put.gd",
+         "connectTimeoutMs": 10000,
+         "endpoint": "https://s3.us-east-2.amazonaws.com",
+         "lowSpeedBytesPerSecond": 1,
+         "lowSpeedTimeSeconds": 120,
+         "objectPrefix": "acceptance/nfa/d69/",
+         "publicUrlBase": "https://put.gd",
+         "region": "us-east-2",
+         "requestTimeoutMs": 120000,
+         "storageClass": "STANDARD"
+        }
+       },
+       "directUrl": "https://put.gd/acceptance/nfa/d69/Screen-Capture-2026-10-23-00-47-16.png",
+       "objectReference": {
+        "bytes": 4668,
+        "key": "acceptance/nfa/d69/Screen-Capture-2026-10-23-00-47-16.png",
+        "schemaVersion": 1,
+        "sha256": "4342d483bfb564e737770de1198d6a793b6f9b91b7f67680b5eacc9d65d3b1fb",
+        "versionId": ""
+       },
+       "publicationId": "565a8fdd-b7f2-46f9-a2b4-4d68b1f9ed53",
+       "schemaVersion": 1
+      },
+      "status": "pending"
+     }
+    ],
+    "state": "accepted"
+   }
+  },
+  "final": null,
+  "remoteAfter": "HTTP 403",
+  "remoteStatus": "removed",
+  "localPath": "/home/patrick/work/put.gd-nfa/runs/P/archive/images/Screen-Capture-2026-10-23-00-47-16.png",
+  "localExistsAfter": true,
+  "historyRowKept": true
+ },
+ "settings": {
+  "schemes": {
+   "dark": {
+    "patch": true,
+    "appearance": {
+     "theme": "dark",
+     "scheme": "dark",
+     "desktop": "light",
+     "desktopSource": "qt"
+    },
+    "shot": {
+     "label": "settings-dark",
+     "components": [
+      {
+       "blocks": 18425,
+       "box": [
+        296,
+        88,
+        1624,
+        976
+       ]
+      }
+     ],
+     "colour": [
+      24,
+      24,
+      32
+     ],
+     "inner": [
+      300,
+      91,
+      1620,
+      971
+     ],
+     "changedShare": 1.0,
+     "ownShare": 0.981,
+     "kept": "/home/patrick/work/put.gd-nfa/runs/P/crops/settings-dark.png"
+    },
+    "full": "/home/patrick/work/put.gd-nfa/runs/P/full/settings-dark.png"
+   },
+   "light": {
+    "patch": true,
+    "appearance": {
+     "theme": "light",
+     "scheme": "light",
+     "desktop": "light",
+     "desktopSource": "qt"
+    },
+    "shot": {
+     "label": "settings-light",
+     "components": [
+      {
+       "blocks": 4249,
+       "box": [
+        528,
+        112,
+        1600,
+        928
+       ]
+      },
+      {
+       "blocks": 161,
+       "box": [
+        312,
+        616,
+        496,
+        672
+       ]
+      },
+      {
+       "blocks": 159,
+       "box": [
+        312,
+        504,
+        496,
+        560
+       ]
+      },
+      {
+       "blocks": 40,
+       "box": [
+        920,
+        856,
+        1104,
+        872
+       ]
+      },
+      {
+       "blocks": 4,
+       "box": [
+        1440,
+        288,
+        1448,
+        320
+       ]
+      },
+      {
+       "blocks": 4,
+       "box": [
+        1440,
+        624,
+        1448,
+        656
+       ]
+      }
+     ],
+     "colour": [
+      252,
+      252,
+      252
+     ],
+     "inner": [
+      530,
+      114,
+      1598,
+      926
+     ],
+     "changedShare": 0.859,
+     "ownShare": 0.983,
+     "kept": "/home/patrick/work/put.gd-nfa/runs/P/crops/settings-light.png"
+    },
+    "full": "/home/patrick/work/put.gd-nfa/runs/P/full/settings-light.png"
+   },
+   "system": {
+    "patch": true,
+    "appearance": {
+     "theme": "system",
+     "scheme": "light",
+     "desktop": "light",
+     "desktopSource": "qt"
+    },
+    "shot": {
+     "label": "settings-system",
+     "components": [
+      {
+       "blocks": 4262,
+       "box": [
+        528,
+        112,
+        1600,
+        928
+       ]
+      },
+      {
+       "blocks": 161,
+       "box": [
+        312,
+        616,
+        496,
+        672
+       ]
+      },
+      {
+       "blocks": 159,
+       "box": [
+        312,
+        504,
+        496,
+        560
+       ]
+      },
+      {
+       "blocks": 40,
+       "box": [
+        920,
+        856,
+        1104,
+        872
+       ]
+      },
+      {
+       "blocks": 4,
+       "box": [
+        1440,
+        288,
+        1448,
+        320
+       ]
+      },
+      {
+       "blocks": 4,
+       "box": [
+        1440,
+        624,
+        1448,
+        656
+       ]
+      }
+     ],
+     "colour": [
+      252,
+      252,
+      252
+     ],
+     "inner": [
+      530,
+      114,
+      1598,
+      926
+     ],
+     "changedShare": 0.859,
+     "ownShare": 0.983,
+     "kept": "/home/patrick/work/put.gd-nfa/runs/P/crops/settings-system.png"
+    },
+    "full": "/home/patrick/work/put.gd-nfa/runs/P/full/settings-system.png"
+   }
+  },
+  "updateStatus": {
+   "channel": "nightly",
+   "channelSetting": "build",
+   "enabled": true,
+   "supported": true,
+   "reason": null,
+   "notifies": false,
+   "checkedAt": null,
+   "nextCheckAt": "2026-10-23T05:51:28Z",
+   "error": null,
+   "result": null,
+   "build": {
+    "channel": "nightly",
+    "kind": "nightly",
+    "packageTarget": "debian13",
+    "reason": null,
+    "supported": true,
+    "version": "26.1023.1058-nightly"
+   }
+  },
+  "checkNow": {
+   "ok": true,
+   "seconds": 0.45,
+   "result": {
+    "action": {
+     "channel": "nightly",
+     "command": "sudo apt update && sudo apt upgrade",
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "kind": "software-updates",
+     "manager": "apt",
+     "older": null,
+     "otherChannel": {
+      "channel": "stable",
+      "commands": [
+       "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+       "sudo apt update",
+       "sudo apt install --allow-downgrades putgd/stable"
+      ],
+      "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+     },
+     "repository": "managed",
+     "updater": {
+      "arguments": [
+       "--mode=updates"
+      ],
+      "id": "gnome-software",
+      "name": "GNOME Software",
+      "program": "/usr/bin/gnome-software"
+     }
+    },
+    "asset": {
+     "name": "putgd-26.1023.1058-nightly-debian13-x86_64.deb",
+     "sha256": "d56909f1703c8ca8225d059ac3a78bf1d7889ea610df82746e5b3ea5796fba0c",
+     "size": 54108456
+    },
+    "channel": "nightly",
+    "channelSource": "repository",
+    "checkedAt": "2026-10-23T05:44:56Z",
+    "current": "26.1023.1058-nightly",
+    "downloadUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/v26.1023.1058-nightly/putgd-26.1023.1058-nightly-debian13-x86_64.deb",
+    "latest": "26.1023.1058-nightly",
+    "notesUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v26.1023.1058-nightly",
+    "packageTarget": "debian13",
+    "publishedAt": "2026-10-23T04:10:17Z",
+    "tag": "v26.1023.1058-nightly",
+    "updateAvailable": false
+   },
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "notificationsAfterCheck": [],
+  "liveFeed": "{\n  \"schema\": 1,\n  \"channel\": \"nightly\",\n  \"generatedAt\": \"2026-10-23T04:11:47Z\",\n  \"release\": {\n    \"tag\": \"v26.1023.1058-nightly\",\n    \"version\": \"26.1023.1058-nightly\",\n    \"publishedAt\": \"2026-10-23T04:10:17Z\",\n    \"notesUrl\": \"https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v26.1023.1058-nightly\",\n    \"assets\": {\n      \"ubuntu24.04\": {\n        \"name\": \"putgd-26.1023.1058-nightly-ubuntu24.04-x86_64.deb\",\n        \"url\": \"https://github.com/patrick-hudson/put.gd-desktop/releases/download/v26.1023.1058-nightly/putgd-26.1023.1058-nightly-ubuntu24.04-x86_64.deb\",\n        \"size\": 54216822,\n        \"sha256\": \"f9b01cd26b3e3cbb3670658969e62f6a4c45e5c21b8a9029923d41ec56d75833\"\n      },\n      \"ubuntu26.04\": {\n        \"name\": \"putgd-26.1023.1058-nightly-ubuntu26.04-x86_64.deb\",\n        \"url\": \"https://github.com/patrick-hudson/put.gd-desktop/releases/download/v26.1023.1058-nightly/putgd-26.1023.1058-nightly-ubuntu26.04-x86_64.deb\",\n        \"size\": 54572542,\n        \"sha256\": \"a06b63f9e4ff0fc21c57392d5f34fc076ea9badca139e0dd87fe09ed73510feb\"\n      },\n      \"debian13\": {\n        \"name\": \"putgd-26.1023.1058-nightly-debian13-x86_64.deb\",\n        \"url\": \"https://github.com/patrick-hudson/put.gd-desktop/releases/download/v26.1023.1058-nightly/putgd-26.1023.1058-nightly-debian13-x86_64.deb\",\n        \"size\": 54108456,\n        \"sha256\": \"d56909f1703c8ca8225d059ac3a78bf1d7889ea610df82746e5b3ea5796fba0c\"\n      },\n      \"fedora44\": {\n        \"name\": \"putgd-26.1023.1058-nightly-fedora44-x86_64.rpm\",\n        \"url\": \"https://github.com/patrick-hudson/put.gd-desktop/releases/download/v26.1023.1058-nightly/putgd-26.1023.1058-nightly-fedora44-x86_64.rpm\",\n        \"size\": 40554170,\n        \"sha256\": \"d97d711687a4b9e04f77dd71bc87bcfd44529e01c2e7b180655a4a293b828937\"\n      },\n      \"appimage\": {\n        \"name\": \"putgd-26.1023.1058-nightly-x86_64.AppImage\",\n        \"url\": \"https://github.com/patrick-hudson/put.gd-desktop/releases/download/v26.1023.1058-nightly/putgd-26.1023.1058-ni"
+ },
+ "updates:P-updates": {
+  "build": {
+   "channel": "nightly",
+   "kind": "nightly",
+   "packageTarget": "debian13",
+   "reason": null,
+   "supported": true,
+   "version": "26.1023.1058-nightly"
+  },
+  "channel": "nightly",
+  "channelSource": "repository",
+  "channelSetting": "build",
+  "result": {
+   "action": {
+    "channel": "nightly",
+    "command": "sudo apt update && sudo apt upgrade",
+    "file": "/etc/apt/sources.list.d/putgd.sources",
+    "kind": "software-updates",
+    "manager": "apt",
+    "older": null,
+    "otherChannel": {
+     "channel": "stable",
+     "commands": [
+      "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+      "sudo apt update",
+      "sudo apt install --allow-downgrades putgd/stable"
+     ],
+     "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+    },
+    "repository": "managed",
+    "updater": {
+     "arguments": [
+      "--mode=updates"
+     ],
+     "id": "gnome-software",
+     "name": "GNOME Software",
+     "program": "/usr/bin/gnome-software"
+    }
+   },
+   "asset": {
+    "name": "putgd-26.1023.1058-nightly-debian13-x86_64.deb",
+    "sha256": "d56909f1703c8ca8225d059ac3a78bf1d7889ea610df82746e5b3ea5796fba0c",
+    "size": 54108456
+   },
+   "channel": "nightly",
+   "channelSource": "repository",
+   "checkedAt": "2026-10-23T05:45:05Z",
+   "current": "26.1023.1058-nightly",
+   "downloadUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/v26.1023.1058-nightly/putgd-26.1023.1058-nightly-debian13-x86_64.deb",
+   "latest": "26.1023.1058-nightly",
+   "notesUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v26.1023.1058-nightly",
+   "packageTarget": "debian13",
+   "publishedAt": "2026-10-23T04:10:17Z",
+   "tag": "v26.1023.1058-nightly",
+   "updateAvailable": false
+  },
+  "notifies": false,
+  "install": {
+   "kind": "update",
+   "available": false,
+   "reason": "not_appimage"
+  },
+  "action": {
+   "channel": "nightly",
+   "command": "sudo apt update && sudo apt upgrade",
+   "file": "/etc/apt/sources.list.d/putgd.sources",
+   "kind": "software-updates",
+   "manager": "apt",
+   "older": null,
+   "otherChannel": {
+    "channel": "stable",
+    "commands": [
+     "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+     "sudo apt update",
+     "sudo apt install --allow-downgrades putgd/stable"
+    ],
+    "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+   },
+   "repository": "managed",
+   "updater": {
+    "arguments": [
+     "--mode=updates"
+    ],
+    "id": "gnome-software",
+    "name": "GNOME Software",
+    "program": "/usr/bin/gnome-software"
+   }
+  },
+  "check": {
+   "ok": true,
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "repositoryFile": {
+   "/etc/apt/sources.list.d/putgd.sources": {
+    "sha256": "11b30f1c9733b307cb1028e8a05d956a251d15a797173dcffd1e2bc9f165416f",
+    "bytes": 2033,
+    "mode": "0o644",
+    "mtime": "2026-10-23T05:30:39Z"
+   },
+   "/etc/yum.repos.d/putgd.repo": null
+  },
+  "notifications": [],
+  "frame": "/home/patrick/work/put.gd-nfa/runs/P/full/P-updates.png",
+  "openSoftwareUpdates": {
+   "reply": {
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    },
+    "ok": true,
+    "requestId": "5d484c81-1d02-461e-9a38-536773a0c0a3",
+    "result": {
+     "action": {
+      "channel": "nightly",
+      "command": "sudo apt update && sudo apt upgrade",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "kind": "software-updates",
+      "manager": "apt",
+      "older": null,
+      "otherChannel": {
+       "channel": "stable",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/stable"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "repository": "managed",
+      "updater": {
+       "arguments": [
+        "--mode=updates"
+       ],
+       "id": "gnome-software",
+       "name": "GNOME Software",
+       "program": "/usr/bin/gnome-software"
+      }
+     },
+     "opened": "gnome-software"
+    },
+    "schemaVersion": 1
+   },
+   "started": [
+    {
+     "pid": 2516772,
+     "argv": [
+      "/usr/bin/gnome-software",
+      "--mode=updates"
+     ]
+    }
+   ],
+   "frame": "/home/patrick/work/put.gd-nfa/runs/P/full/P-updates-updater.png"
+  }
+ },
+ "frame:d69-H-updater-later": {
+  "at": "2026-10-23T05:45:45Z",
+  "full": "/home/patrick/work/put.gd-nfa/runs/P/full/d69-H-updater-later.png",
+  "processes": [
+   {
+    "pid": 2514408,
+    "ppid": 937,
+    "exe": "/usr/bin/putgd",
+    "comm": "putgd",
+    "cmd": "/usr/bin/putgd --background ",
+    "qtPlatformPlugins": []
+   },
+   {
+    "pid": 2514536,
+    "ppid": 2514408,
+    "exe": "/usr/bin/putgd-ui",
+    "comm": "putgd-ui",
+    "cmd": "/usr/bin/putgd-ui ",
+    "qtPlatformPlugins": [
+     "libqwayland-generic.so"
+    ]
+   }
+  ]
+ },
+ "key:d69-H-updates-readonly-commands": {
+  "chords": [
+   "End"
+  ],
+  "text": null,
+  "frame": "/home/patrick/work/put.gd-nfa/runs/P/full/d69-H-updates-readonly-commands.png"
+ },
+ "liveS3": {
+  "profile": {
+   "aclMode": "public-read",
+   "addressing": "path",
+   "bucket": "put.gd",
+   "connectTimeoutMs": 10000,
+   "endpoint": "https://s3.us-east-2.amazonaws.com",
+   "lowSpeedBytesPerSecond": 1,
+   "lowSpeedTimeSeconds": 120,
+   "objectPrefix": "acceptance/nfa/d69/",
+   "publicUrlBase": "https://put.gd",
+   "region": "us-east-2",
+   "requestTimeoutMs": 120000,
+   "storageClass": "STANDARD"
+  },
+  "stored": true,
+  "storeError": "",
+  "credentials": "completed"
+ },
+ "notify:d69-F-notify": {
+  "notificationsOn": true,
+  "operation": {
+   "id": "18aec4b7-6e71-490b-a877-585e63a45e0f",
+   "state": "completed",
+   "copyStatus": "copied",
+   "items": [
+    {
+     "name": "Screen-Capture-2026-10-23-00-47-16.png",
+     "mime": "image/png",
+     "uploadStatus": "uploaded",
+     "link": "https://put.gd/acceptance/nfa/d69/Screen-Capture-2026-10-23-00-47-16.png",
+     "local": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "path": "/home/patrick/work/put.gd-nfa/runs/P/archive/images/Screen-Capture-2026-10-23-00-47-16.png",
+      "status": "saved"
+     }
+    }
+   ],
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "notification": {
+   "logged": [
+    {
+     "category": "putgd.ui",
+     "fields": {
+      "itemId": null,
+      "notificationId": 1,
+      "notificationText": "Uploaded. Link copied to the clipboard. Click to open in browser.",
+      "operationId": null,
+      "summary": "operation_completed",
+      "title": "put.gd \u2014 completed",
+      "warning": false
+     },
+     "level": "info",
+     "message": "Notification shown",
+     "pid": 2514408,
+     "process": "putgd",
+     "time": "2026-10-23T05:47:17.882Z",
+     "v": 1
+    }
+   ],
+   "banner": {
+    "label": "d69-F-notify-notification",
+    "components": [
+     {
+      "blocks": 588,
+      "box": [
+       1544,
+       880,
+       1888,
+       992
+      ]
+     }
+    ],
+    "colour": [
+     28,
+     40,
+     48
+    ],
+    "inner": [
+     1553,
+     885,
+     1883,
+     984
+    ],
+    "changedShare": 1.0,
+    "kept": "/home/patrick/work/put.gd-nfa/runs/P/crops/d69-F-notify-notification.png"
+   },
+   "full": "/home/patrick/work/put.gd-nfa/runs/P/full/d69-F-notify-notification.png",
+   "clicked": [
+    1718,
+    918
+   ],
+   "dbusMembers": [
+    "NameAcquired",
+    "NameLost",
+    "Notify",
+    "ActivationToken",
+    "ActionInvoked",
+    "NotificationClosed"
+   ],
+   "notifyActions": [
+    "default",
+    "Open in browser"
+   ],
+   "actionInvoked": [
+    "default"
+   ],
+   "openedUrls": []
+  },
+  "notificationsOff": true
+ },
+ "browser:d69-F-browser": {
+  "browserProcesses": [
+   {
+    "pid": 2517297,
+    "comm": "firefox-esr",
+    "cmd": "firefox-esr --profile /home/patrick/work/put.gd-nfa/ff/putgd-afa2-674754ad https://put.gd/acceptance/nfa/d69/Screen-Capture-2026-10-23-00-47-16.png "
+   }
+  ],
+  "opened": [
+   {
+    "itemId": null,
+    "opened": true,
+    "operationId": null,
+    "route": "portal",
+    "target": "notification-link"
+   }
+  ],
+  "full": "/home/patrick/work/put.gd-nfa/runs/P/full/d69-F-browser.png"
+ },
+ "quit": {
+  "menuComponents": [
+   {
+    "blocks": 892,
+    "box": [
+     1544,
+     728,
+     1752,
+     1048
+    ]
+   }
+  ],
+  "hover": [
+   1651,
+   1021
+  ],
+  "menu": {
+   "label": "tray-quit",
+   "components": [
+    {
+     "blocks": 892,
+     "box": [
+      1544,
+      728,
+      1752,
+      1048
+     ]
+    },
+    {
+     "blocks": 3,
+     "box": [
+      1912,
+      536,
+      1920,
+      560
+     ]
+    }
+   ],
+   "colour": [
+    244,
+    244,
+    244
+   ],
+   "inner": [
+    1553,
+    730,
+    1750,
+    1035
+   ],
+   "changedShare": 1.0,
+   "kept": "/home/patrick/work/put.gd-nfa/runs/P/crops/tray-quit.png"
+  },
+  "allGone": true,
+  "after": {
+   "processes": [],
+   "mounts": [],
+   "entries": []
+  }
+ },
+ "tray:d69-P-tray-menu-icon": {
+  "label": "d69-P-tray-menu-icon",
+  "components": [
+   {
+    "blocks": 892,
+    "box": [
+     1544,
+     728,
+     1752,
+     1048
+    ]
+   }
+  ],
+  "colour": [
+   244,
+   244,
+   244
+  ],
+  "inner": [
+   1553,
+   730,
+   1750,
+   1035
+  ],
+  "changedShare": 1.0,
+  "kept": "/home/patrick/work/put.gd-nfa/runs/P/crops/d69-P-tray-menu-icon.png",
+  "full": "/home/patrick/work/put.gd-nfa/runs/P/full/d69-P-tray-menu-icon.png"
+ },
+ "cleanup": {
+  "removed": [
+   "/home/patrick/.local/share/putgd",
+   "/tmp/nfa.iHknHB",
+   "/home/patrick/Pictures/afa-P-edited.png",
+   "/home/patrick/afa-P-review.mp4",
+   "/home/patrick/work/put.gd-nfa/runs/P/frames",
+   "/home/patrick/work/put.gd-nfa/runs/P/config",
+   "/home/patrick/work/put.gd-nfa/runs/P/cache",
+   "/home/patrick/work/put.gd-nfa/runs/P/archive",
+   "/home/patrick/work/put.gd-nfa/runs/P/working",
+   "/home/patrick/work/put.gd-nfa/runs/P/state"
+  ],
+  "fixtureStopped": 2514370,
+  "leftovers": {
+   "processes": [],
+   "mounts": [],
+   "entries": []
+  },
+  "after": {
+   "processes": [],
+   "mounts": [],
+   "entries": []
+  }
+ }
+}

@@ -1,0 +1,521 @@
+{
+ "repoAdd": {
+  "package": "putgd-26.1023.1058-nightly-ubuntu26.04-x86_64.deb",
+  "added": [
+   {
+    "path": "/etc/apt/sources.list.d/putgd.sources",
+    "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852"
+   },
+   {
+    "path": "/usr/share/keyrings/putgd-archive-keyring.gpg",
+    "sha256": "76ab1b64e8a1d9504d3922fa44b116d6eb3c680e788be9cec46e106cd5258339"
+   }
+  ]
+ },
+ "pkg:l-update": {
+  "label": "l-update",
+  "command": [
+   "apt-get",
+   "update"
+  ],
+  "before": {
+   "at": "2026-10-23T05:30:38Z",
+   "host": "kubuntu",
+   "package": {
+    "manager": "dpkg",
+    "status": null,
+    "version": null
+   },
+   "files": {
+    "/etc/apt/sources.list.d/putgd.sources": {
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "bytes": 2036,
+     "mode": "0o644",
+     "mtime": "2026-10-23T05:30:38Z"
+    },
+    "/usr/share/keyrings/putgd-archive-keyring.gpg": {
+     "sha256": "76ab1b64e8a1d9504d3922fa44b116d6eb3c680e788be9cec46e106cd5258339",
+     "bytes": 1170,
+     "mode": "0o644",
+     "mtime": "2026-10-23T05:30:38Z"
+    },
+    "/etc/yum.repos.d/putgd.repo": null,
+    "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": null
+   },
+   "defaultProfile": {
+    "/home/patrick/.config/putgd": null,
+    "/home/patrick/.local/state/putgd": 75,
+    "/home/patrick/.cache/putgd": null,
+    "/home/patrick/.local/share/putgd": null
+   },
+   "autostart": null,
+   "userExtension": false,
+   "processes": []
+  },
+  "startedAt": "2026-10-23T05:30:38Z",
+  "exit": 0,
+  "seconds": 7.7,
+  "log": "/home/patrick/work/put.gd-nfa/runs/L/logs/pkg-l-update.log",
+  "conffilePrompt": false,
+  "signature": [
+   "Hit:3 http://us.archive.ubuntu.com/ubuntu resolute InRelease",
+   "Get:4 http://us.archive.ubuntu.com/ubuntu resolute-updates InRelease [137 kB]",
+   "Get:5 https://pkg.put.gd/apt/ubuntu26.04 nightly InRelease [4,804 B]",
+   "Hit:6 http://security.ubuntu.com/ubuntu resolute-security InRelease",
+   "Hit:8 http://us.archive.ubuntu.com/ubuntu resolute-backports InRelease"
+  ],
+  "fetched": [
+   "Hit:3 http://us.archive.ubuntu.com/ubuntu resolute InRelease",
+   "Get:4 http://us.archive.ubuntu.com/ubuntu resolute-updates InRelease [137 kB]",
+   "Get:5 https://pkg.put.gd/apt/ubuntu26.04 nightly InRelease [4,804 B]",
+   "Hit:6 http://security.ubuntu.com/ubuntu resolute-security InRelease",
+   "Get:7 https://pkg.put.gd/apt/ubuntu26.04 nightly/main amd64 Packages [1,026 B]",
+   "Hit:8 http://us.archive.ubuntu.com/ubuntu resolute-backports InRelease",
+   "Get:9 http://us.archive.ubuntu.com/ubuntu resolute-updates/main amd64 Packages [744 kB]",
+   "Get:10 https://pkg.put.gd/apt/ubuntu26.04 nightly/main amd64 Components [750 B]",
+   "Get:11 http://us.archive.ubuntu.com/ubuntu resolute-updates/universe i386 Packages [176 kB]",
+   "Get:12 http://us.archive.ubuntu.com/ubuntu resolute-updates/universe amd64 Packages [334 kB]",
+   "Get:13 https://pkg.put.gd/apt/ubuntu26.04 nightly/main Icons (48x48) [776 B]",
+   "Get:14 https://pkg.put.gd/apt/ubuntu26.04 nightly/main Icons (64x64) [985 B]",
+   "Get:15 https://pkg.put.gd/apt/ubuntu26.04 nightly/main Icons (64x64@2) [1,643 B]",
+   "Get:16 https://pkg.put.gd/apt/ubuntu26.04 nightly/main Icons (128x128) [1,643 B]"
+  ],
+  "tail": "Hit:3 http://us.archive.ubuntu.com/ubuntu resolute InRelease\nGet:4 http://us.archive.ubuntu.com/ubuntu resolute-updates InRelease [137 kB]\nGet:5 https://pkg.put.gd/apt/ubuntu26.04 nightly InRelease [4,804 B]\nHit:6 http://security.ubuntu.com/ubuntu resolute-security InRelease\nGet:7 https://pkg.put.gd/apt/ubuntu26.04 nightly/main amd64 Packages [1,026 B]\nHit:8 http://us.archive.ubuntu.com/ubuntu resolute-backports InRelease\nGet:9 http://us.archive.ubuntu.com/ubuntu resolute-updates/main amd64 Packages [744 kB]\nGet:10 https://pkg.put.gd/apt/ubuntu26.04 nightly/main amd64 Components [750 B]\nGet:11 http://us.archive.ubuntu.com/ubuntu resolute-updates/universe i386 Packages [176 kB]\nGet:12 http://us.archive.ubuntu.com/ubuntu resolute-updates/universe amd64 Packages [334 kB]\nGet:13 https://pkg.put.gd/apt/ubuntu26.04 nightly/main Icons (48x48) [776 B]\nGet:14 https://pkg.put.gd/apt/ubuntu26.04 nightly/main Icons (64x64) [985 B]\nGet:15 https://pkg.put.gd/apt/ubuntu26.04 nightly/main Icons (64x64@2) [1,643 B]\nGet:16 https://pkg.put.gd/apt/ubuntu26.04 nightly/main Icons (128x128) [1,643 B]\nFetched 1,409 kB in 1s (996 kB/s)\nReading package lists...\n",
+  "after": {
+   "at": "2026-10-23T05:30:46Z",
+   "host": "kubuntu",
+   "package": {
+    "manager": "dpkg",
+    "status": null,
+    "version": null
+   },
+   "files": {
+    "/etc/apt/sources.list.d/putgd.sources": {
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "bytes": 2036,
+     "mode": "0o644",
+     "mtime": "2026-10-23T05:30:38Z"
+    },
+    "/usr/share/keyrings/putgd-archive-keyring.gpg": {
+     "sha256": "76ab1b64e8a1d9504d3922fa44b116d6eb3c680e788be9cec46e106cd5258339",
+     "bytes": 1170,
+     "mode": "0o644",
+     "mtime": "2026-10-23T05:30:38Z"
+    },
+    "/etc/yum.repos.d/putgd.repo": null,
+    "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": null
+   },
+   "defaultProfile": {
+    "/home/patrick/.config/putgd": null,
+    "/home/patrick/.local/state/putgd": 75,
+    "/home/patrick/.cache/putgd": null,
+    "/home/patrick/.local/share/putgd": null
+   },
+   "autostart": null,
+   "userExtension": false,
+   "processes": []
+  }
+ },
+ "pkg:l-install": {
+  "label": "l-install",
+  "command": [
+   "apt-get",
+   "install",
+   "-y",
+   "putgd"
+  ],
+  "before": {
+   "at": "2026-10-23T05:30:46Z",
+   "host": "kubuntu",
+   "package": {
+    "manager": "dpkg",
+    "status": null,
+    "version": null
+   },
+   "files": {
+    "/etc/apt/sources.list.d/putgd.sources": {
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "bytes": 2036,
+     "mode": "0o644",
+     "mtime": "2026-10-23T05:30:38Z"
+    },
+    "/usr/share/keyrings/putgd-archive-keyring.gpg": {
+     "sha256": "76ab1b64e8a1d9504d3922fa44b116d6eb3c680e788be9cec46e106cd5258339",
+     "bytes": 1170,
+     "mode": "0o644",
+     "mtime": "2026-10-23T05:30:38Z"
+    },
+    "/etc/yum.repos.d/putgd.repo": null,
+    "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": null
+   },
+   "defaultProfile": {
+    "/home/patrick/.config/putgd": null,
+    "/home/patrick/.local/state/putgd": 75,
+    "/home/patrick/.cache/putgd": null,
+    "/home/patrick/.local/share/putgd": null
+   },
+   "autostart": null,
+   "userExtension": false,
+   "processes": []
+  },
+  "startedAt": "2026-10-23T05:30:46Z",
+  "simulation": {
+   "command": [
+    "apt-get",
+    "-s",
+    "install",
+    "putgd"
+   ],
+   "exit": 0,
+   "changes": [
+    {
+     "op": "Inst",
+     "package": "putgd",
+     "from": null,
+     "to": "26.1023.1058~nightly"
+    }
+   ],
+   "tail": "NOTE: This is only a simulation!\n      apt-get needs root privileges for real execution.\n      Keep also in mind that locking is deactivated,\n      so don't depend on the relevance to the real current situation!\nReading package lists...\nBuilding dependency tree...\nReading state information...\nSolving dependencies...\nThe following NEW packages will be installed:\n  putgd\n0 upgraded, 1 newly installed, 0 to remove and 63 not upgraded.\nInst putgd (26.1023.1058~nightly put.gd:nightly [amd64])\nConf putgd (26.1023.1058~nightly put.gd:nightly [amd64])\n"
+  },
+  "otherPackages": [],
+  "exit": 0,
+  "seconds": 6.6,
+  "log": "/home/patrick/work/put.gd-nfa/runs/L/logs/pkg-l-install.log",
+  "conffilePrompt": false,
+  "signature": [],
+  "fetched": [
+   "Get:1 https://pkg.put.gd/apt/ubuntu26.04 nightly/main amd64 putgd amd64 26.1023.1058~nightly [54.6 MB]",
+   "Preparing to unpack \u2026/putgd_26.1023.1058~nightly_amd64.deb\u2026"
+  ],
+  "tail": "Reading package lists...\nBuilding dependency tree...\nReading state information...\nSolving dependencies...\nThe following NEW packages will be installed:\n  putgd\n0 upgraded, 1 newly installed, 0 to remove and 63 not upgraded.\nNeed to get 54.6 MB of archives.\nAfter this operation, 129 MB of additional disk space will be used.\nGet:1 https://pkg.put.gd/apt/ubuntu26.04 nightly/main amd64 putgd amd64 26.1023.1058~nightly [54.6 MB]\nFetched 54.6 MB in 1s (45.9 MB/s)\nSelecting previously unselected package putgd.\n(Reading database\u2026 \n(Reading database\u2026 5%\n(Reading database\u2026 10%\n(Reading database\u2026 15%\n(Reading database\u2026 20%\n(Reading database\u2026 25%\n(Reading database\u2026 30%\n(Reading database\u2026 35%\n(Reading database\u2026 40%\n(Reading database\u2026 45%\n(Reading database\u2026 50%\n(Reading database\u2026 55%\n(Reading database\u2026 60%\n(Reading database\u2026 65%\n(Reading database\u2026 70%\n(Reading database\u2026 75%\n(Reading database\u2026 80%\n(Reading database\u2026 85%\n(Reading database\u2026 90%\n(Reading database\u2026 95%\n(Reading database\u2026 100%\n(Reading database\u2026 301599 files and directories currently installed.)\nPreparing to unpack \u2026/putgd_26.1023.1058~nightly_amd64.deb\u2026\nUnpacking putgd (26.1023.1058~nightly)\u2026\nSetting up putgd (26.1023.1058~nightly)\u2026\nProcessing triggers for hicolor-icon-theme (0.18-2build1)\u2026\nProcessing triggers for desktop-file-utils (0.28-1build1)\u2026\ndebconf: unable to initialize frontend: Dialog\ndebconf: (Dialog frontend will not work on a dumb terminal, an emacs shell buffer, or without a controlling terminal.)\ndebconf: falling back to frontend: Readline\ndebconf: unable to initialize frontend: Readline\ndebconf: (This frontend requires a controlling tty.)\ndebconf: falling back to frontend: Teletype\ndebconf: unable to initialize frontend: Teletype\ndebconf: (This frontend requires a controlling tty.)\ndebconf: falling back to frontend: Noninteractive\n",
+  "after": {
+   "at": "2026-10-23T05:30:54Z",
+   "host": "kubuntu",
+   "package": {
+    "manager": "dpkg",
+    "status": "ii",
+    "version": "26.1023.1058~nightly"
+   },
+   "files": {
+    "/etc/apt/sources.list.d/putgd.sources": {
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "bytes": 2036,
+     "mode": "0o644",
+     "mtime": "2026-10-23T05:30:38Z"
+    },
+    "/usr/share/keyrings/putgd-archive-keyring.gpg": {
+     "sha256": "76ab1b64e8a1d9504d3922fa44b116d6eb3c680e788be9cec46e106cd5258339",
+     "bytes": 1170,
+     "mode": "0o644",
+     "mtime": "2026-10-23T03:42:11Z"
+    },
+    "/etc/yum.repos.d/putgd.repo": null,
+    "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": {
+     "sha256": "690be5bcfd1ee05783cd57a78851c56c0fe624131711b254cb46d062d0cb8046",
+     "bytes": 248,
+     "mode": "0o644",
+     "mtime": "2026-10-23T03:45:19Z"
+    }
+   },
+   "defaultProfile": {
+    "/home/patrick/.config/putgd": null,
+    "/home/patrick/.local/state/putgd": 75,
+    "/home/patrick/.cache/putgd": null,
+    "/home/patrick/.local/share/putgd": null
+   },
+   "autostart": null,
+   "userExtension": false,
+   "processes": []
+  }
+ },
+ "identity": {
+  "tag": "v26.1023.1058-nightly",
+  "installed": {
+   "manager": "dpkg",
+   "status": "ii",
+   "version": "26.1023.1058~nightly"
+  },
+  "versionJson": {
+   "schemaVersion": 1,
+   "version": "26.1023.1058-nightly",
+   "baseVersion": "26.1023.1058",
+   "packageVersion": "26.1023.1058~nightly",
+   "gitCommit": "05991d9d42aad68d3bd233a609cf294d839835ed",
+   "gitTree": "5e53f777b912ef958678b2f23b400847c7cb4d33",
+   "commitCount": 1058,
+   "dirty": false,
+   "sourceProvenance": "git"
+  },
+  "releaseCommit": "05991d9d42aad68d3bd233a609cf294d839835ed",
+  "commitDateUtc": "2026-10-23T03:39:29Z",
+  "calver": {
+   "expected": "26.1023.1058~nightly",
+   "tagDate": "26.1023",
+   "commitDate": "26.1023",
+   "installedMatches": true
+  },
+  "repositoryPackage": [
+   {
+    "file": "putgd_26.1023.1058~nightly_amd64.deb",
+    "sha256": "a06b63f9e4ff0fc21c57392d5f34fc076ea9badca139e0dd87fe09ed73510feb",
+    "matchesRelease": true
+   }
+  ],
+  "releaseAsset": {
+   "name": "putgd-26.1023.1058-nightly-ubuntu26.04-x86_64.deb",
+   "sha256": "a06b63f9e4ff0fc21c57392d5f34fc076ea9badca139e0dd87fe09ed73510feb"
+  },
+  "verify": [
+   "",
+   ""
+  ],
+  "entries": {
+   "desktop": [
+    "/usr/share/applications/putgd-record.desktop",
+    "/usr/share/applications/putgd-ui.desktop",
+    "/usr/share/applications/putgd.desktop",
+    "/usr/share/putgd/autostart/putgd.desktop"
+   ],
+   "icons": [
+    "/usr/share/icons/hicolor",
+    "/usr/share/icons/hicolor/scalable",
+    "/usr/share/icons/hicolor/scalable/apps",
+    "/usr/share/icons/hicolor/scalable/apps/putgd.svg"
+   ],
+   "metainfo": [
+    "/usr/share/metainfo",
+    "/usr/share/metainfo/gd.put.Putgd.metainfo.xml"
+   ],
+   "extension": [
+    "/usr/share/gnome-shell/extensions",
+    "/usr/share/gnome-shell/extensions/putgd@put.gd",
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/extension.js",
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json"
+   ],
+   "executables": [
+    "/usr/bin/putgd",
+    "/usr/bin/putgd-b2-worker",
+    "/usr/bin/putgd-capture",
+    "/usr/bin/putgd-cli",
+    "/usr/bin/putgd-kde-region",
+    "/usr/bin/putgd-launcher",
+    "/usr/bin/putgd-record",
+    "/usr/bin/putgd-s3-worker",
+    "/usr/bin/putgd-ui"
+   ],
+   "repo": [
+    "/etc/apt/sources.list.d",
+    "/etc/apt/sources.list.d/putgd.sources",
+    "/usr/share/putgd/repo/putgd-nightly.sources",
+    "/usr/share/putgd/repo/putgd-stable.sources"
+   ]
+  },
+  "appstream": [
+   0,
+   "\u2714 Validation was successful: pedantic: 1",
+   ""
+  ],
+  "menuEntry": {
+   "Name": "put.gd",
+   "Exec": "/usr/bin/putgd",
+   "Icon": "putgd",
+   "Categories": "Utility;Graphics;"
+  },
+  "policy": [
+   "putgd:",
+   "  Installed: 26.1023.1058~nightly",
+   "  Candidate: 26.1023.1058~nightly",
+   "  Version table:",
+   " *** 26.1023.1058~nightly 500",
+   "        500 https://pkg.put.gd/apt/ubuntu26.04 nightly/main amd64 Packages",
+   "        100 /var/lib/dpkg/status"
+  ]
+ },
+ "key:": {
+  "chords": [
+   "super"
+  ],
+  "text": null,
+  "frame": null
+ },
+ "type:k72-L-kickoff-search": {
+  "chords": null,
+  "text": "put.gd",
+  "frame": "/home/patrick/work/put.gd-nfa/runs/L/full/k72-L-kickoff-search.png"
+ },
+ "key:k72-L-first-run": {
+  "chords": [
+   "Return"
+  ],
+  "text": null,
+  "frame": "/home/patrick/work/put.gd-nfa/runs/L/full/k72-L-first-run.png"
+ },
+ "capture:region": {
+  "kind": "region",
+  "operation": {
+   "id": "9e9912d1-18d9-4e90-80bc-beabe0220be3",
+   "state": "completed",
+   "copyStatus": "copied",
+   "items": [
+    {
+     "name": "Screen-Capture-2026-10-23-00-31-49.png",
+     "mime": "image/png",
+     "uploadStatus": "uploaded",
+     "link": "http://127.0.0.1:42109/fixture/afa/Screen-Capture-2026-10-23-00-31-49.png",
+     "local": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "path": "/home/patrick/work/put.gd-nfa/runs/L/archive/images/Screen-Capture-2026-10-23-00-31-49.png",
+      "status": "saved"
+     }
+    }
+   ],
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "png": {
+   "bytes": 5170,
+   "sha256": "ade10c14af0e9ec73db69c4b350a38f0c70cea7576671c0328c60cb61532d420",
+   "magic": true,
+   "size": [
+    1320,
+    680
+   ]
+  },
+  "coverCheck": {
+   "edges": {
+    "bottom": 1.0,
+    "left": 1.0,
+    "right": 1.0,
+    "top": 1.0
+   },
+   "fraction": 0.7433,
+   "kept": "/home/patrick/work/put.gd-nfa/runs/L/out/capture-region.png",
+   "minFraction": 0.5,
+   "ok": true,
+   "rect": [
+    0,
+    0,
+    1320,
+    680
+   ],
+   "sha256": "ade10c14af0e9ec73db69c4b350a38f0c70cea7576671c0328c60cb61532d420",
+   "size": [
+    1320,
+    680
+   ]
+  },
+  "clipboard": "http://127.0.0.1:42109/fixture/afa/Screen-Capture-2026-10-23-00-31-49.png",
+  "linkCopied": true,
+  "linkServes": {
+   "status": 200,
+   "sha256": "ade10c14af0e9ec73db69c4b350a38f0c70cea7576671c0328c60cb61532d420",
+   "matchesLocal": true
+  },
+  "historyEntry": {
+   "id": "ba48c58d-7f67-4fb8-b396-c7aee7c8a2ce",
+   "name": "Screen-Capture-2026-10-23-00-31-49.png",
+   "uploadStatus": "uploaded",
+   "local": "saved",
+   "linkAvailable": true
+  },
+  "notifications": []
+ },
+ "teardown": {
+  "removed": [
+   "/home/patrick/.config/putgd",
+   "/home/patrick/.local/state/putgd/logs/putgd-20261023T053121188Z-1493942-1.jsonl",
+   "/home/patrick/.local/share/putgd",
+   "/tmp/nfa.lga4Hn"
+  ],
+  "kept": [
+   "/etc/apt/sources.list.d/putgd.sources (owned by the installed package)",
+   "/usr/share/keyrings/putgd-archive-keyring.gpg (owned by the installed package)"
+  ],
+  "after": {
+   "at": "2026-10-23T05:32:04Z",
+   "host": "kubuntu",
+   "package": {
+    "manager": "dpkg",
+    "status": "ii",
+    "version": "26.1023.1058~nightly"
+   },
+   "files": {
+    "/etc/apt/sources.list.d/putgd.sources": {
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "bytes": 2036,
+     "mode": "0o644",
+     "mtime": "2026-10-23T05:30:38Z"
+    },
+    "/usr/share/keyrings/putgd-archive-keyring.gpg": {
+     "sha256": "76ab1b64e8a1d9504d3922fa44b116d6eb3c680e788be9cec46e106cd5258339",
+     "bytes": 1170,
+     "mode": "0o644",
+     "mtime": "2026-10-23T03:42:11Z"
+    },
+    "/etc/yum.repos.d/putgd.repo": null,
+    "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": {
+     "sha256": "690be5bcfd1ee05783cd57a78851c56c0fe624131711b254cb46d062d0cb8046",
+     "bytes": 248,
+     "mode": "0o644",
+     "mtime": "2026-10-23T03:45:19Z"
+    }
+   },
+   "defaultProfile": {
+    "/home/patrick/.config/putgd": null,
+    "/home/patrick/.local/state/putgd": 75,
+    "/home/patrick/.cache/putgd": null,
+    "/home/patrick/.local/share/putgd": null
+   },
+   "autostart": null,
+   "userExtension": false,
+   "processes": []
+  }
+ },
+ "handlerOff": {
+  "restored": {
+   "https": [
+    "Default application for \u201cx-scheme-handler/https\u201d: chatgpt.desktop"
+   ],
+   "http": [
+    "Default application for \u201cx-scheme-handler/http\u201d: chatgpt.desktop"
+   ]
+  },
+  "before": {
+   "https": [
+    "Default application for \u201cx-scheme-handler/https\u201d: chatgpt.desktop"
+   ],
+   "http": [
+    "Default application for \u201cx-scheme-handler/http\u201d: chatgpt.desktop"
+   ]
+  },
+  "same": true,
+  "filesMatch": true
+ }
+}
