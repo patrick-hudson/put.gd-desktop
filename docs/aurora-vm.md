@@ -4,8 +4,9 @@ Aurora is Universal Blue's KDE Plasma desktop, an image-based (bootc) Fedora
 Atomic variant: `ghcr.io/ublue-os/aurora:stable`. It installs nothing through a
 package manager, ships Flathub as its only Flatpak remote, and represents the
 user population that will run put.gd as an AppImage or a Flatpak rather than a
-DEB or RPM. It is an evaluation guest, not a row in the
-[release acceptance matrix](acceptance-matrix.md).
+DEB or RPM. It has no row in the package matrix, but the Fedora 45 guest below
+is a required desktop of the
+[AppImage full-acceptance profile](acceptance-matrix.md#appimage-full-acceptance-profile).
 
 The guest was provisioned on the Fedora 44 builder `f44` (`192.168.68.70`) on
 2026-10-19. Private receipts, screenshots and logs are in the workstation's
@@ -30,18 +31,20 @@ host before calling it hung.
 
 ## Goldens on `f44`
 
-All three are standalone qcow2 files (virtual 48 GiB, about 15.4 GB allocated)
-under `~/work/put.gd/work/lab-images/`, each with `source.manifest.json`,
+All four are standalone qcow2 files (virtual 48 GiB) under
+`~/work/put.gd/work/lab-images/`, each with `source.manifest.json`,
 `image-info.json`, the pinned guest `known_hosts` and the bootstrap inputs.
 The [immutable-golden rules](vm-lab.md#base-protection-and-inventory) apply.
-They exist only on `f44`; there is no Debian or S3 copy yet, so the
-[two-copies rule](remote-golden-images.md) is not satisfied for them.
+The three Fedora 44 goldens exist only on `f44` (no Debian or S3 copy, so the
+[two-copies rule](remote-golden-images.md) is not satisfied for them); the
+Fedora 45 golden has a verified Debian copy and no S3 copy yet.
 
-| Directory | SHA-256 | State |
-| --- | --- | --- |
-| `aurora-stable-44.20260908.1-f9c006a376e1` | `65cc3ae1cfb91dc5054ff2c4c50b82e8dddeed8ba53d6c29fd16282b1a0f1811` | First boot plus bootstrap. Its SDDM autologin drop-in is ignored (Aurora uses plasmalogin), so it boots to the greeter. |
-| `aurora-stable-44.20260908.1-v2-af46889e2a54` | `b9ee08f09d8a4fbd4e57de04c8c1b6e9833400685492a1ab58a341d5e76dd7e7` | v1 plus `/etc/plasmalogin.conf.d/putgd-lab-autologin.conf`; autologin verified (`Service=plasmalogin-autologin`, Wayland user session). |
-| `aurora-stable-44.20260908.1-v3-492c3f8945d1` | `6a2fb407830f95228bb06f4d20d7cd0bd1aec8ed937ef59430e50eb608b62c2d` | **Use this one.** v2 plus lab idle settings: no screen lock, dimming, display power-off or suspend. |
+| Directory | Base | SHA-256 | State |
+| --- | --- | --- | --- |
+| `aurora-testing-45.20261022.1-852d34e885c1` | Fedora 45 (`aurora:testing`) | `33fedf977f1e0cb7e34b944700f1959f4da5c708fa85dbbc9879077af1278556` | **Use this one for acceptance.** v3 rebased to `testing-45.20261022.1`, updater timer masked, single deployment; 24.0 GB allocated. See [Fedora 45 golden](#fedora-45-golden). |
+| `aurora-stable-44.20260908.1-v3-492c3f8945d1` | Fedora 44 (`aurora:stable`) | `6a2fb407830f95228bb06f4d20d7cd0bd1aec8ed937ef59430e50eb608b62c2d` | The Fedora 44 base: v2 plus lab idle settings (no screen lock, dimming, display power-off or suspend). Its `uupd.timer` is still enabled; see [automatic updates](#automatic-updates). 15.4 GB allocated. |
+| `aurora-stable-44.20260908.1-v2-af46889e2a54` | Fedora 44 | `b9ee08f09d8a4fbd4e57de04c8c1b6e9833400685492a1ab58a341d5e76dd7e7` | v1 plus `/etc/plasmalogin.conf.d/putgd-lab-autologin.conf`; autologin verified (`Service=plasmalogin-autologin`, Wayland user session). |
+| `aurora-stable-44.20260908.1-f9c006a376e1` | Fedora 44 | `65cc3ae1cfb91dc5054ff2c4c50b82e8dddeed8ba53d6c29fd16282b1a0f1811` | First boot plus bootstrap. Its SDDM autologin drop-in is ignored (Aurora uses plasmalogin), so it boots to the greeter. |
 
 Guest facts recorded from v1: Aurora 44.20260908.1 (`OSTREE_VERSION`), bootc
 booted image `ghcr.io/ublue-os/aurora:stable` built 2026-09-08, kernel-side
@@ -81,6 +84,103 @@ console before pinning. The sudo rule grants `lab` only `rpm-ostree`, `bootc`,
    to a new standalone image, `qemu-img compare` against the source, SHA-256,
    mode 0444, manifest.
 
+### Automatic updates
+
+Universal Blue ships `uupd.timer`, which starts `uupd.service` about two
+minutes after boot; it runs `bootc upgrade` and pulls whatever the booted tag
+currently points at (3.7 GB, about ten minutes of CPU and network on `f44`)
+into the overlay. `sudo bootc status` blocks while it runs. Every overlay of the
+Fedora 44 goldens does this, so a run on v3 that needs a quiet guest, or an
+exact base, should stop it right after SSH answers:
+
+```sh
+sudo -n systemctl stop uupd.service; sudo -n systemctl disable --now uupd.timer
+```
+
+The Fedora 45 golden has the timer disabled and masked, so its overlays stay on
+the base they were made from.
+
+## Fedora 45 golden
+
+`aurora-testing-45.20261022.1-852d34e885c1` is the Aurora guest on a Fedora 45
+base. It was made on 2026-10-23 (UTC) from an overlay of the v3 golden, because
+on 2026-10-22 the `stable` and `latest` Aurora tags still pointed at Fedora 44
+(`44.20261022.1`) and only `ghcr.io/ublue-os/aurora:testing` carried Fedora 45.
+Issue [#478](https://github.com/patrick-hudson/put.gd-desktop/issues/478) was
+reproduced on a hand-rebased copy of this base, which is why the Fedora 45
+guest is a required acceptance target. Provisioning receipts are on `f44` under
+`~/work/put.gd/work/aurora-lab/prov-f45/` (`launch.log`, `bootc-switch.log`,
+`verify.log`, `facts.json`, the scripts and `golden-sha256sums.txt`); the
+golden directory holds `provisioning-verify.log`.
+
+| Item | Value |
+| --- | --- |
+| Image | `ghcr.io/ublue-os/aurora:testing`, version `testing-45.20261022.1`, digest `sha256:969e4f6f164742b9f3f85e74b958faf88e357b65620e7c2f1cc28723948a9930`, built 2026-10-22T03:21:25Z. The `testing` tag is unsigned (`bootc status` shows no `containerPolicy` signature, unlike `stable`). |
+| Guest | `VERSION_ID=45`, kernel `7.2.11-300.fc45`, `plasma-workspace-6.7.5-2.fc45`, `kwin-6.7.5-1.fc45`, `plasma-login-manager-6.7.5-1.fc45`, `qt6-qtbase-6.11.2-3.fc45`, `qt6-qtwayland-6.11.2-1.fc45`, glibc 2.44, flatpak 1.18.4 with the `flathub` system remote. |
+| Session | plasmalogin autologin as `lab` (`Service=plasmalogin-autologin`, `Type=wayland`, `Desktop=KDE`, `Class=user`), `kwin_wayland` with Xwayland, `plasmashell`. |
+| Lab settings | The v3 idle settings survived the rebase (`kscreenlockerrc` `Autolock=false`, `LockOnResume=false`; `powerdevilrc` no dimming, DPMS or auto-suspend for AC, Battery and LowBattery). `uupd.timer` disabled and masked. |
+| Deployments | Single: the Fedora 44 rollback deployment was removed with `rpm-ostree cleanup -r` (5.7 GB freed) before the poweroff. |
+| SSH | Host key unchanged (`SHA256:yeRsgHkd8AI0lIuNZ4H6YE2i4d1D7cxeFI86/uKoWiA`); `known_hosts` pins `[127.0.0.1]:22426` and `[127.0.0.1]:22427`. Only the builder bootstrap key `~/work/put.gd/work/lab-bootstrap-f44/aurora/identity` is authorized; the run-private key that `launch` appends was removed before the poweroff. |
+| Golden | standalone qcow2, 23,965,663,232 bytes, SHA-256 `33fedf977f1e0cb7e34b944700f1959f4da5c708fa85dbbc9879077af1278556`, `qemu-img compare` identical to the source overlay, `qemu-img check` clean, mode 0444. |
+| Copies | `f44` and `d69` (same directory name; the copy was streamed through the workstation on 2026-10-23, its SHA-256 and all sidecar hashes match, `qemu-img check` clean; receipt `work/verification/golden-transfer-1d422e725efb`). No S3 copy: the AWS session was not available to the session that made it, so the upload to `linux/aurora-testing-45.20261022.1-852d34e885c1/` waits for Patrick. |
+
+### How it was made
+
+From the scratch tree `~/work/put.gd-f45` (nightly `5ba9de0e`, `labroot.py`
+pointing the lab roots at `~/work/put.gd`), run `aurora-f45g`
+(id `13172c8d-b2c8-4d91-9453-8af058f17ca4`, SSH `22427`, VNC `5927`):
+
+1. `lab.py launch --profile aurora-kde-wayland --golden <v3>/image.qcow2
+   --known-hosts <pin for 22427>` (the golden's own `known_hosts` pins `22426`
+   only; the pinned key is the same, so a copy with the port rewritten works).
+2. `sudo -n systemctl stop uupd.service; sudo -n systemctl disable --now
+   uupd.timer; sudo -n systemctl mask uupd.timer`. The updater had already been
+   pulling the Fedora 44 `44.20261022.1` stable image for eight minutes.
+3. `sudo -n bootc switch ghcr.io/ublue-os/aurora:testing` (256 layers,
+   3.7 GB, 12 minutes; `Queued for next boot: … testing-45.20261022.1`), then
+   `sudo -n systemctl reboot`; SSH answered 52 s later.
+4. Verification (`verify.log`): `/etc/os-release`, `bootc status`, the
+   `loginctl` session, the plasmalogin drop-in, the idle settings, the masked
+   timer, the sudo rule, package versions, the host key fingerprint, and a
+   `screenshot` of the autologged desktop (`witness-head0.ppm` in the run).
+5. `sudo -n rpm-ostree cleanup -r` (drop the Fedora 44 rollback deployment),
+   authorized_keys reduced to the bootstrap key, `~/putgd-lab` and any
+   `putgd-appimage-*.desktop` removed, `sync`, `sudo -n systemctl poweroff`.
+6. `qemu-img check`, `qemu-img convert -O qcow2` to the new directory,
+   `qemu-img compare` (identical), `qemu-img check`, SHA-256, mode 0444,
+   `known_hosts`, `identity.pub`, `bootstrap.sh`, `provisioning-verify.log`,
+   `source.manifest.json` (the v3 manifest updated with the Fedora 45 facts
+   and the rebase record).
+
+The image is larger than v3 (24.0 GB against 15.4 GB) because the blocks the
+pruned Fedora 44 deployment and the updater's partial pull occupied were not
+discarded before the flatten; a future rebuild can `fstrim -av` in the guest
+on a `discard=unmap` drive before the poweroff.
+
+### Smoke round trip on the new golden
+
+Run `aurora-f45s` from the same scratch tree, nightly AppImage
+`putgd-26.1022.1019-nightly-x86_64.AppImage` (release
+`v26.1022.1019-nightly`, SHA-256
+`e5b7ad2caecaa7f5737bdfb5d2f0fd4e3c74ce5d98a8a68142caf4efd43525bc`, matches
+`SHA256SUMS`), receipts under `~/work/put.gd/work/aurora-lab/prov-f45/smoke.log`
+and the run directory:
+
+| Item | Value |
+| --- | --- |
+| Run | `work/lab-runs/aurora-f45s`, id `4e7d4816-5dc1-40bc-b27a-400eeceb9658`, SSH `22427`, VNC `5927`, KVM, QEMU 10.2.2, golden SHA-256 `33fedf97…8556` recorded in `state.json` |
+| Firmware | `/usr/share/edk2/ovmf/OVMF_CODE_4M.qcow2` read-only; private `vars.qcow2` copied from `OVMF_VARS_4M.qcow2` |
+| `launch` | booted, SSH answered 3 min 18 s after the command (the hash of the 24 GB golden is included) |
+| `install --appimage` | `installed`, guest SHA-256 `e5b7ad2c…25bc` = host file; `--version-json` `26.1022.1019-nightly` at commit `5ba9de0e`; bundled `usr/bin/putgd` `3920fcdf…5059` |
+| `start` | resident pid 2246 running the bundled `putgd` (`3920fcdf…` = receipt), `source: kde-wayland` |
+| `cli --method capabilities` | `source.adapter` `kde-wayland`; desktop, region and window capture `compositor-native` through `org.kde.KWin.ScreenShot2` v5, permission `restricted-desktop-entry`, entry matches the executable, not rejected; recording `recording_not_probed` (expected before the first prepare) |
+| `screenshot` | `witness-head0.ppm`, SHA-256 `80769090c3bd1b5806a60445e76789c96bcdfb65f2f4cb6a251b7ff3cc70178f`, 1280x800: the dashboard open on Settings, version `26.1022.1019-nightly` ([picture](evidence/2026-10-23-aurora-f45-golden/02-smoke-dashboard-26.1022.1019.png)) |
+| `collect` | kernel `7.2.11-300.fc45`, `plasma-workspace-6.7.5-2.fc45`, `qt6-qtbase-6.11.2-3.fc45`, `xdg-desktop-portal-1.22.1-2.fc45`, no `putgd` package (expected) |
+| Retirement | `reset`, then the guarded `cleanup --evidence-manifest` with an explicit completion manifest removed only `disk.qcow2`; receipts under `prov-f45/evidence-aurora-f45s/` |
+
+The autologged Fedora 45 desktop before any install is the provisioning run's
+witness ([picture](evidence/2026-10-23-aurora-f45-golden/01-f45-desktop-autologin.png)).
+
 ## Running a disposable overlay
 
 `tools/lab/lab.py` runs this guest through the `aurora-kde-wayland` profile
@@ -113,15 +213,20 @@ Run the commands on `f44` from a checkout that contains this runner. The lab
 roots (`work/lab-runs`, `work/lab-images`, the lifecycle lock) are resolved
 from the checkout, so a scratch tree needs the `overlay_cleanup.ROOT`
 override described in [the remote-lab notes](vm-lab.md#retire-completed-overlays)
-or the canonical checkout itself. The golden's `known_hosts` pins
-`[127.0.0.1]:22426`; the bootstrap directory's pins `[127.0.0.1]:22425`, the
-port the hand-run `aurora-r1` guest used. Check that the chosen SSH and VNC
-ports are free on the builder first.
+or the canonical checkout itself. Pick the golden with `--golden`: the Fedora
+45 directory for acceptance, the v3 directory for the Fedora 44 base. The
+Fedora 45 golden's `known_hosts` pins `[127.0.0.1]:22426` and `:22427`; the
+Fedora 44 goldens' pin `22426` only, and the bootstrap directory's pins
+`22425`, the port the hand-run `aurora-r1` guest used. The host key is the same
+on all of them, so a copy with the port rewritten authenticates another port.
+Check that the chosen SSH and VNC ports are free on the builder first
+(`ss -ltn`); two Aurora runs on `f44` at once take `22426`/`5926` and
+`22427`/`5927`.
 
 ```sh
 set -eu
 cd ~/work/put.gd
-g=~/work/put.gd/work/lab-images/aurora-stable-44.20260908.1-v3-492c3f8945d1
+g=~/work/put.gd/work/lab-images/aurora-testing-45.20261022.1-852d34e885c1
 r=~/work/put.gd/work/lab-runs/aurora-$(python3 -c 'import uuid; print(uuid.uuid4().hex[:8])')
 test ! -e "$r"
 python3 tools/diagnostics/check_socket_paths.py --socket "$r/qmp.sock"
@@ -230,6 +335,12 @@ or v2, unlock the session on the wall before capture tests.
 - Provide `putgd-desktop-fixture` for this guest (a Fedora 44 userland build
   or a bundled copy) so the `run` scenarios, not only smoke/CLI checks, can
   execute on Aurora; add a Flatpak install path beside `--appimage`.
-- Copy the v3 golden to Debian and S3 to satisfy the two-copies rule, or decide
-  with Patrick that it is a rebuildable evaluation image.
+- Upload the Fedora 45 golden to S3 (`linux/aurora-testing-45.20261022.1-852d34e885c1/`),
+  and decide with Patrick whether the Fedora 44 goldens stay `f44`-only
+  rebuildable evaluation images
+  ([#484](https://github.com/patrick-hudson/put.gd-desktop/issues/484)).
+- Make `bootstrap-aurora-guest.sh` mask `uupd.timer`, and `fstrim` before the
+  next flatten; rebuild the Aurora golden from the signed `stable` tag once it
+  moves to Fedora 45, following [How it was made](#how-it-was-made)
+  ([#483](https://github.com/patrick-hudson/put.gd-desktop/issues/483)).
 - Exercise the Flatpak on this guest once it is implemented.
