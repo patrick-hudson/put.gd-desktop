@@ -1,0 +1,24 @@
+{"category":"default","fields":{"itemId":null,"operationId":null},"level":"warning","message":"Action rejected: output_required","pid":2279,"process":"putgd","time":"2026-10-23T20:12:14.482Z","v":1}
+{"category":"putgd.operation","fields":{"action":"region","itemId":null,"output":"local","profileId":"","provider":""},"level":"info","message":"Operation accepted","operationId":"dd9cacbd-5235-48b8-aa15-550e27290e34","pid":2279,"process":"putgd","time":"2026-10-23T20:13:04.570Z","v":1}
+{"category":"putgd.operation","fields":{"action":"region","byteCount":0,"durationMs":75171,"error":{"code":"cancelled","details":{},"message":"The region helper could not complete selection"},"itemId":null,"items":0,"provider":"","state":"cancelled","uploadStatus":{}},"level":"info","message":"Operation finished","operationId":"dd9cacbd-5235-48b8-aa15-550e27290e34","pid":2279,"process":"putgd","ti
+{"category":"putgd.operation","fields":{"action":"edit","itemId":null,"output":"local","profileId":"","provider":""},"level":"info","message":"Operation accepted","operationId":"1cb8a390-4f8e-497b-92fd-de949c8525e8","pid":4130,"process":"putgd","time":"2026-10-23T20:15:21.294Z","v":1}
+{"category":"putgd.operation","fields":{"action":"edit","byteCount":0,"durationMs":20911,"error":{"code":"capture_permission","details":{},"message":"KWin rejected screenshot permission; install the restricted entry against the running executable"},"itemId":null,"items":0,"provider":"","state":"failed","uploadStatus":{}},"level":"warning","message":"Operation finished","operationId":"1cb8a390-4f8e
+{"category":"putgd.operation","fields":{"action":"edit","itemId":null,"output":"local","profileId":"","provider":""},"level":"info","message":"Operation accepted","operationId":"96a93c80-1cd4-4100-be7d-a7c3b683c477","pid":5064,"process":"putgd","time":"2026-10-23T20:17:25.601Z","v":1}
+{"category":"putgd.operation","fields":{"action":"edit","byteCount":0,"durationMs":27498,"error":{"code":"cancelled","details":{},"message":"Edit discarded; nothing was uploaded"},"itemId":null,"items":0,"provider":"","state":"cancelled","uploadStatus":{}},"level":"info","message":"Operation finished","operationId":"96a93c80-1cd4-4100-be7d-a7c3b683c477","pid":5064,"process":"putgd","time":"2026-10
+{"category":"putgd.operation","fields":{"action":"edit","itemId":null,"output":"local","profileId":"","provider":""},"level":"info","message":"Operation accepted","operationId":"76923cb7-b5d5-43b1-b1b0-2cfa55d08a41","pid":5064,"process":"putgd","time":"2026-10-23T20:20:57.394Z","v":1}
+{"category":"putgd.operation","fields":{"action":"edit","byteCount":0,"durationMs":22690,"error":{"code":"cancelled","details":{},"message":"Edit discarded; nothing was uploaded"},"itemId":null,"items":0,"provider":"","state":"cancelled","uploadStatus":{}},"level":"info","message":"Operation finished","operationId":"76923cb7-b5d5-43b1-b1b0-2cfa55d08a41","pid":5064,"process":"putgd","time":"2026-10
+{"category":"putgd.operation","fields":{"action":"clipboard","itemId":null,"output":"local","profileId":"","provider":""},"level":"info","message":"Operation accepted","operationId":"c512eea5-4e5a-4fa5-8896-118fa95b195d","pid":5064,"process":"putgd","time":"2026-10-23T20:21:22.308Z","v":1}
+{"category":"putgd.operation","fields":{"action":"clipboard","byteCount":0,"durationMs":97,"error":{"code":"source_unsupported","details":{},"message":"Clipboard has no owner"},"itemId":null,"items":0,"provider":"","state":"failed","uploadStatus":{}},"level":"warning","message":"Operation finished","operationId":"c512eea5-4e5a-4fa5-8896-118fa95b195d","pid":5064,"process":"putgd","time":"2026-10-23
+---
+[putgd]
+_k_friendly_name=put.gd
+clipboard=Ctrl+Alt+§,none,clipboard
+desktop=Ctrl+§,none,desktop
+edit=Ctrl+$,none,edit
+record=none,none,record
+region=Ctrl+!,none,region
+window=Ctrl+",none,window
+---
+[Layout]
+LayoutList=de
+Use=true

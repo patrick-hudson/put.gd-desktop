@@ -111,14 +111,39 @@ refresh. Async generation checks reject stale query and registration replies.
 A returned or externally changed sequence must match the effective request before
 it can be reported as bound.
 
+An explicit Shift must reach the key that registration picks. evdev keymaps carry
+one-level copies of some symbols, such as `KEY_DOLLAR` (`<I442>`) and the keypad
+parentheses; Shift does nothing on them. They lose to a key whose Shift level produces
+the symbol, and lower implicit cost still breaks ties. Before this rule, a saved
+`Ctrl+Shift+$` registered `Ctrl+Shift+$` through `<I442>`, while KWin sends `Ctrl+$`
+for Ctrl+Shift+4, so the shortcut never fired (PR #504). A copy that ignores Shift is
+used only when no other key has the symbol.
+
+The Settings recorder saves the configuration form rather than Qt's Shift-level
+symbol. For a Shift press on a digit or ASCII punctuation key it stores the physical
+key's unshifted symbol from the session keymap: Ctrl+Shift+4 on a US layout becomes
+`Ctrl+Shift+4`, and German Shift+3 (`§`) becomes `Ctrl+Shift+3`. The keymap comes from
+a private `wl_keyboard` on Qt's Wayland seat, on its own event queue (Qt 6.5 and
+later), or from the X11 core key symbols. Letters, special keys, non-ASCII base
+symbols such as French `é`, and anything that disagrees with the map keep Qt's key.
+On Qt 6.4 under Wayland the recorder keeps Qt's key, and the registration rule above
+covers KDE. The Settings status line compares the desktop's binding with the
+effective chord (`Ctrl+!` for `Ctrl+Shift+1`), so a correctly bound shifted digit
+shows no line.
+
 The `kde_shortcut_normalization` unit suite checks symbols and consumed modifiers
-across synthetic US/French layouts and Latin-1 shifted symbols such as £, § and ·. `kde_keyboard_map` checks malformed, truncated,
+across synthetic US/French layouts and Latin-1 shifted symbols such as £, § and ·,
+plus one-level `$`, keypad `(` and `<>`-key copies. `shortcut_keyboard` checks the
+recorder's unshifted-key choice on US, French and German fixture maps. `kde_keyboard_map` checks malformed, truncated,
 unsupported and oversized maps and descriptor cleanup. `kde_shortcuts_integration`
 uses a disposable D-Bus fixture to check registration, layout changes, conflicts
 and lifecycle races, including a layout change while the initial event-subscription
 lookup is pending. Normalization failures retain specific status/error codes rather
 than being mislabeled as syntax errors; the GUI preserves the saved draft and exact
-diagnostics. These are protocol/unit checks, not Plasma acceptance.
+diagnostics. These are protocol/unit checks, not Plasma acceptance. The Plasma
+acceptance of the recorder and one-level-copy changes, on Aurora Fedora 45 (US and
+German) and Debian 13, is in the
+[2026-10-23 evidence](evidence/2026-10-23-kde-shortcut-504/README.md).
 
 For native acceptance, preserve the recorded source revision and executable hash;
 start with the unmodified default four shortcuts and invoke each with actual keys.
