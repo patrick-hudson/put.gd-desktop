@@ -102,6 +102,7 @@ jobs:
       - name: Install distro dependencies
         # Not retried yet (#389); a stalled mirror stops it instead of hanging the job (#467).
         timeout-minutes: 20
+        shell: bash
         run: |
           apt=(-o Acquire::Retries=3 -o Acquire::http::Timeout=60 -o Acquire::https::Timeout=60)
           apt-get update "${apt[@]}"
@@ -255,6 +256,7 @@ jobs:
       - name: Install distro dependencies
         # Not retried yet (#389); a stalled mirror stops it instead of hanging the job (#467).
         timeout-minutes: 20
+        shell: bash
         run: |
           apt=(-o Acquire::Retries=3 -o Acquire::http::Timeout=60 -o Acquire::https::Timeout=60)
           apt-get update "${apt[@]}"

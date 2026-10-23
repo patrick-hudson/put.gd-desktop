@@ -45,6 +45,7 @@ jobs:
       - name: Bootstrap checkout tools
         # tools/ci/install-packages.sh is not checked out yet: the same bounded retry, inline (#368),
         # each attempt stopped after 10 minutes (#467).
+        shell: bash
         run: |
           apt=(-o Acquire::Retries=3 -o Acquire::http::Timeout=60 -o Acquire::https::Timeout=60)
           bounded() { timeout --kill-after=30s 10m "$@"; }
