@@ -38,7 +38,7 @@ Each line is one JSON object:
 | `v` | Record schema version, `1` |
 | `time` | UTC timestamp with milliseconds |
 | `level` | `debug`, `info`, `warning`, `error` or `fatal` |
-| `category` | `putgd.app`, `putgd.operation`, `putgd.s3`, `putgd.proton`, `putgd.capture`, `putgd.ui`, `putgd.ipc`, `putgd.settings`, `putgd.history`, `putgd.recording`, or a Qt category such as `default` or `qt.qpa.xcb` |
+| `category` | `putgd.app`, `putgd.operation`, `putgd.s3`, `putgd.proton`, `putgd.capture`, `putgd.ui`, `putgd.ipc`, `putgd.settings`, `putgd.history`, `putgd.recording`, `putgd.clipboard`, or a Qt category such as `default` or `qt.qpa.xcb` |
 | `process`, `pid` | The process the record describes: `putgd` for the resident, or the helper whose stderr it carries |
 | `message` | Text, at most 4096 characters |
 | `operationId`, `itemId` | Present when the record belongs to an operation or one of its items |
@@ -65,6 +65,30 @@ Records at the default level:
   and every item error), and `Automatic copy not attempted` (warning: a link was
   available but the per-link copy ordering never queued it; `behavior`, `links`, `held`
   and `cursor`, see #478).
+- **Clipboard** (`putgd.clipboard`, #473): one record per copy of an operation's
+  result. `Automatic copy finished` follows an upload or local save that copies its
+  result on its own; `Copy finished` follows an explicit copy (Activity's **Copy
+  result**, `operation.copy`). Both carry `action`, `automatic`, the final
+  `copyStatus` (`copied`, `partial`, `failed`, `suppressed` or `no_result`) and the
+  copy's own `error` when it failed; an upload's record also has `behavior`
+  (`each_link` or `list`), `links` (how many links it had, never the links) and
+  `cancelled`. The level is warning when the copy failed, info otherwise. A
+  suppressed copy, which the notification and Activity report as "Link not
+  copied", adds `suppression`, naming the check that refused it in `guard`:
+  - `clipboard_changed`: something else took the clipboard between the invocation
+    and the link. `revisionAtInvocation` and `revisionAtDispatch` are the native
+    clipboard's change counters at those two moments.
+  - `superseded`: an explicit copy or another History action (sharing, a local
+    copy) came first. `epochAtInvocation` and `epochAtDispatch` differ.
+  - `newer_action`: another capture or share was invoked after this one.
+  - `cancelled` or `stopping`: the operation was cancelled, or the resident was
+    shutting down.
+  - `native_clipboard`: the desktop's clipboard itself took ownership away before
+    put.gd's copy was acknowledged; `code` and `message` are its answer.
+
+  The clipboard text is never logged. `history.copyLink` (Activity's **Copy link**)
+  writes no record of its own.
+  Pictures of the notification and Activity: [evidence](evidence/2026-10-23-suppressed-link-copy-473/README.md).
 - **Provider errors:** the error's `code`, `message` and `details`. S3 details carry
   `httpStatus`, `serviceCode`, `requestStage`, `sdkRetryable`, `curlCode`, `elapsedMs`,
   and the S3 request IDs `requestId` (`x-amz-request-id`) and `extendedRequestId`
@@ -144,6 +168,10 @@ never the file name, object key, bucket, endpoint, upload ID or a signed URL, so
 need no hashing in a diagnostics package. The worker sends them in batches of at most
 64; past 256 queued records it counts them in an `Upload diagnostics dropped` record
 rather than slowing the upload.
+
+Each native clipboard write then also ends in a `Native copy finished` record
+(`putgd.clipboard`) with the `writer` (`data-control` on Plasma Wayland, `x11`,
+`gnome-helper`), `ok` and the error `code`, nothing else.
 
 ## Redaction
 
@@ -445,7 +473,10 @@ A preview writes nothing, so it takes none of `upload`, `profileId` and `copyLin
 - **`operation`:** package that one operation, with the log records from ten minutes
   before it was accepted to ten minutes after its last record. `since` is ignored.
 - **`since`:** without `operation`, the failed, partial and interrupted operations
-  created in this window (newest first, at most 50) and its log records. `1m` to
+  created in this window, together with completed uploads whose link did not reach
+  the clipboard (`copyStatus` `suppressed`, `failed` or `partial`, or `no_result`
+  while an item still has a link; #473), newest first, at most 50, and the window's
+  log records. `1m` to
   `365d` with `m`, `h` or `d`; the default is `7d`.
 - **`includeNames`:** keep file names, object keys, URLs, buckets, endpoints and
   labels. Without it they are hashed.
@@ -577,7 +608,7 @@ deleted, and other files in the folder are left alone.
   or a power loss) ended it.
 - **Create diagnostics package…**, a dialog that shows a `preview` first: what the
   package covers, its files with the upload and log record counts, the failed uploads
-  included, the redaction and the folder. **Include file names** sets `includeNames`
+  and uploads whose link was not copied included, the redaction and the folder. **Include file names** sets `includeNames`
   (off each time the dialog opens). **Choose folder…** saves the folder in
   `preferences.diagnostics.packageFolder`, so later packages go there; **Use default**
   clears it. **Save package** calls `diagnostics.bundle` with `notify`, then shows the
