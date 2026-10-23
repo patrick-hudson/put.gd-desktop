@@ -19,6 +19,7 @@ concurrency:
 jobs:
   tag:
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     permissions:
       contents: write  # create the immutable release tag
     outputs:
@@ -59,6 +60,7 @@ jobs:
   draft:
     needs: [tag, ci]
     runs-on: ubuntu-24.04
+    timeout-minutes: 60
     permissions:
       contents: write  # stage the draft release
       pull-requests: read  # labels for the release notes' changes section
