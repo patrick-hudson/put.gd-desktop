@@ -21,11 +21,14 @@ import { RequestCryptoCache } from './crypto-cache';
 export const APP_VERSION = 'external-drive-put_gd@0.1.1-alpha';
 export const SDK_VERSION = 'js@0.22.2';
 export const SECRET_SERVICE = 'ch.proton.drive/putgd';
-export async function privateDataDirectory(): Promise<string> {
+export async function privateDataDirectory(platform: string = process.platform): Promise<string> {
     const input = process.env.PUTGD_PROTON_DATA_DIR;
     if (!input || !path.isAbsolute(input)) throw new ProtocolError('unsafe_data_directory');
     const info = await lstat(input);
-    if (!info.isDirectory() || info.isSymbolicLink() || info.uid !== process.getuid?.() || (info.mode & 0o077) ||
+    // Windows has no uid or POSIX mode here: the resident creates the directory with an
+    // owner-only DACL. Both platforms require a real, absolute, non-link directory.
+    const owned = platform === 'win32' || (info.uid === process.getuid?.() && !(info.mode & 0o077));
+    if (!info.isDirectory() || info.isSymbolicLink() || !owned ||
         await realpath(input) !== path.resolve(input)) throw new ProtocolError('unsafe_data_directory');
     return input;
 }

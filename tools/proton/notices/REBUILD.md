@@ -26,12 +26,17 @@ account email from existing SDK metadata (issue #40) and reports Proton error
 rather than `quota_exceeded` (issue #147), settling it and quota refusals as
 failed when the file's name is still free afterwards (issue #201). It reports a
 refused keychain session write as `keychain_unavailable` (issue #252) and returns
-the confirmed link expiry from share create and inspect (issue #253); SDK, crypto,
-Bun and dependency inputs remain unchanged. The #40 helper reproduced exactly from the original source packet
+the confirmed link expiry from share create and inspect (issue #253), and drops the
+helper's POSIX-only data-directory, path and O_NOFOLLOW assumptions so the same
+sources build for Windows (issue #401); SDK, crypto, Bun and dependency inputs
+remain unchanged. The #40 helper reproduced exactly from the original source packet
 plus its two files. The #147 helper was rebuilt by `provision_runtime.py` from the
 pinned sources plus these three files, on a host that reproduced the #40 helper's
 hash exactly from its own files. The #201 helper was rebuilt the same way, on
-a host that reproduced the #147 helper's hash exactly from unchanged sources.
+a host that reproduced the #147 helper's hash exactly from unchanged sources. The #401 helper (the Windows-portable overlay) was rebuilt the same way, on a
+host that reproduced the #252/#253 helper's hash exactly from unchanged sources;
+the same overlay cross-compiles with `--target windows-x64`, whose artifact ships
+no catalog yet (see its manifest's redistribution note).
 The #252/#253 helper was rebuilt the same way, on a host that reproduced the
 #201 helper's hash exactly from unchanged sources.
 The application source archive and original source packets must travel together.

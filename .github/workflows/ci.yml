@@ -492,6 +492,40 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
+  windows:
+    name: windows (native, mingw cross-build)
+    needs: changes
+    if: needs.changes.outputs.build == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.release_tag || github.sha }}
+      - name: Install the mingw-w64 cross toolchain
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends g++-mingw-w64-x86-64-posix mingw-w64-tools ninja-build
+      - name: Portable core contracts on the host compiler
+        run: |
+          cmake -S src/windows -B build/windows-host -G Ninja -DPUTGD_WINDOWS_PORTABLE_TESTS=ON
+          cmake --build build/windows-host
+          ctest --test-dir build/windows-host --output-on-failure
+      - name: Cross-compile putgd.exe and putgd-cli.exe
+        run: |
+          cmake -S src/windows -B build/windows -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_TOOLCHAIN_FILE="$PWD/cmake/toolchains/x86_64-w64-mingw32.cmake"
+          cmake --build build/windows
+          x86_64-w64-mingw32-objdump -p build/windows/putgd.exe | grep -i 'DLL Name' | sort -u
+      - name: Preserve the Windows executables
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-native
+          path: |
+            build/windows/putgd.exe
+            build/windows/putgd-cli.exe
+          retention-days: 30
+
   packages:
     needs: changes
     if: needs.changes.outputs.packages == 'true'
@@ -544,7 +578,7 @@ jobs:
   ci:
     name: CI
     if: always()
-    needs: [changes, contracts, linux, portable, packages, pipewire]
+    needs: [changes, contracts, linux, portable, windows, packages, pipewire]
     runs-on: ubuntu-24.04
     steps:
       - name: Require every selected job
@@ -558,6 +592,7 @@ jobs:
           expected = {'changes': 'success', 'contracts': 'success',
                       'linux': 'success' if selected.get('build') == 'true' else 'skipped',
                       'portable': 'success' if selected.get('build') == 'true' else 'skipped',
+                      'windows': 'success' if selected.get('build') == 'true' else 'skipped',
                       'packages': 'success' if selected.get('packages') == 'true' else 'skipped',
                       'pipewire': 'success' if selected.get('pipewire') == 'true' else 'skipped'}
           failed = False

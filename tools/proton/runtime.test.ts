@@ -1,12 +1,12 @@
 import { expect, test } from 'bun:test';
-import { mkdtemp, writeFile, rm } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, realpath, writeFile, rm, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { MemberRole, NodeType, RevisionState, NodeWithSameNameExistsValidationError, RateLimitedError, ServerError, ValidationError, type NodeEntity } from '@protontech/drive-sdk';
-import { checkName, createFolder, destinationFolder, inspectAccount, stat, upload, share, serviceFailure } from './runtime';
+import { checkName, createFolder, destinationFolder, inspectAccount, openArtifact, stat, upload, share, serviceFailure } from './runtime';
 import { ProtocolError, makeReceipt, type JsonObject } from './protocol';
-import { saveToKeychain } from './account';
+import { privateDataDirectory, saveToKeychain } from './account';
 import { Credentials } from './upstream/cli/src/credentials/credentials';
 import { AccountApiError, ApiClient } from 'proton-drive-sdk-account';
 
@@ -418,4 +418,59 @@ test('a refused keychain session write reports keychain_unavailable without prov
     let saved = 0;
     await saveToKeychain(async () => { ++saved; });
     expect(saved).toBe(1);
+});
+
+test('upload requires an absolute artifact path before any SDK call', async () => {
+    const stub = context(); let dispatched = 0;
+    (stub.ctx.sdk as any).getFileUploader = async () => { ++dispatched; throw new Error('unreachable'); };
+    for (const relative of ['synthetic.bin', 'relative/synthetic.bin', './synthetic.bin']) {
+        await expect(upload(stub.ctx, { ...statRequest(), method: 'upload', condition: 'absent',
+            artifact: { path: relative, bytes: 1, mime: 'application/octet-stream', sha256: 'a'.repeat(64) } })).rejects.toThrow('invalid_request');
+    }
+    expect(dispatched).toBe(0);
+    expect(stub.calls).toEqual([]);
+});
+
+test('upload rejects a symbolic link or non-regular artifact before opening or dispatch', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'putgd-link-'));
+    const target = join(directory, 'synthetic.bin'), link = join(directory, 'link.bin'), folderPath = join(directory, 'folder');
+    const data = Buffer.alloc(32, 112);
+    await writeFile(target, data, { mode: 0o600 });
+    await symlink(target, link); await mkdir(folderPath);
+    try {
+        for (const candidate of [link, folderPath]) {
+            const stub = context(); let dispatched = 0;
+            (stub.ctx.sdk as any).getFileUploader = async () => { ++dispatched; throw new Error('unreachable'); };
+            await expect(upload(stub.ctx, { ...statRequest(), method: 'upload', condition: 'absent',
+                artifact: { path: candidate, bytes: data.length, mime: 'application/octet-stream',
+                    sha256: createHash('sha256').update(data).digest('hex') } })).rejects.toThrow('artifact_changed');
+            expect(dispatched).toBe(0);
+        }
+        await expect(openArtifact(link)).rejects.toThrow('artifact_changed');
+        const file = await openArtifact(target);
+        try { expect((await file.stat()).size).toBe(data.length); } finally { await file.close(); }
+    } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
+test('private data directory keeps POSIX ownership checks and relies on the resident DACL on Windows', async () => {
+    const original = process.env.PUTGD_PROTON_DATA_DIR;
+    const directory = await realpath(await mkdtemp(join(tmpdir(), 'putgd-data-')));
+    const link = join(directory, 'link'), shared = join(directory, 'shared');
+    await mkdir(shared); await chmod(shared, 0o755); await symlink(shared, link);
+    try {
+        process.env.PUTGD_PROTON_DATA_DIR = directory; // mkdtemp creates 0700.
+        expect(await privateDataDirectory('linux')).toBe(directory);
+        expect(await privateDataDirectory('win32')).toBe(directory);
+        process.env.PUTGD_PROTON_DATA_DIR = shared;
+        await expect(privateDataDirectory('linux')).rejects.toThrow('unsafe_data_directory');
+        expect(await privateDataDirectory('win32')).toBe(shared);
+        for (const unsafe of [link, 'relative/data']) {
+            process.env.PUTGD_PROTON_DATA_DIR = unsafe;
+            for (const platform of ['linux', 'win32'])
+                await expect(privateDataDirectory(platform)).rejects.toThrow('unsafe_data_directory');
+        }
+    } finally {
+        if (original === undefined) delete process.env.PUTGD_PROTON_DATA_DIR; else process.env.PUTGD_PROTON_DATA_DIR = original;
+        await rm(directory, { recursive: true, force: true });
+    }
 });
