@@ -1,0 +1,71 @@
+2026-10-23T05:30:18Z lock acquired k72 (native-full-acceptance-k72)
+2026-10-23T05:30:37Z L start
+2026-10-23T05:30:54Z L installed putgd from pkg.put.gd
+2026-10-23T05:31:30Z L first run from Kickoff (real input)
+2026-10-23T05:31:56Z L region capture uploaded (fixture)
+2026-10-23T05:32:04Z L teardown
+2026-10-23T05:35:13Z C memory window done
+2026-10-23T05:35:19Z nk.sh start (B,D,E,G,H)
+2026-10-23T05:39:39Z nk.sh done
+2026-10-23T05:40:11Z closed Discover PID 1496606 (opened by Open software updates)
+2026-10-23T05:41:01Z F: recorder off (ChatGPT default restored), ffdefault on (temp Firefox handler)
+2026-10-23T05:41:36Z F: live upload + notification click
+2026-10-23T05:41:52Z F: closed temp-profile Firefox PID 1497397
+2026-10-23T05:43:23Z F: ffdefault off, mimeapps.list restored byte-exact (ChatGPT default)
+2026-10-23T05:43:38Z F: ffdefault off (entry + temp profile removed), mimeapps.list byte-exact original; recorder on again
+2026-10-23T05:43:48Z note: original ~/.config/mimeapps.list sha256 27bced99... (ChatGPT default); no kde-mimeapps.list exists
+2026-10-23T05:44:49Z K quit from tray, private run cleaned
+2026-10-23T05:45:21Z MISHAP: find-tray matched a taskbar launcher (211,1059); quit-tray right-clicked the panel and the follow-up click entered Plasma panel edit mode
+2026-10-23T05:45:39Z exited Plasma edit mode (Exit Edit Mode click); appletsrc unchanged (mtime 2026-10-22 21:01)
+2026-10-23T05:46:43Z K: quit via real tray menu (right-click 1553,1052, Quit 1636,1011)
+2026-10-23T05:47:04Z M1 start; kdewallet (ksecretd) Locked=true -> credentials session + keychain-reference profile (no secret stored; no prompt)
+2026-10-23T05:51:25Z M1 dev.133 seeded + grown to 10000 (schema 5)
+2026-10-23T05:51:34Z M1 upgraded dev.133 -> 1058 (apt-get install ./deb), migrated
+2026-10-23T05:51:51Z M1 history-check + History 10k frame
+2026-10-23T05:52:20Z M1 teardown; M2 start
+2026-10-23T05:53:08Z M2 947 populated (2 uploads, theme dark); upgrading via pkg.put.gd with the resident running
+2026-10-23T05:53:27Z M2 done: 947 -> 1058 via pkg.put.gd, restarted, config identical, history kept
+2026-10-23T05:54:18Z I: Launch at login enabled (M2 default profile); sddm.conf backed up; switching autologin to plasmax11.desktop for E-X11
+2026-10-23T05:54:19Z shell plasmashell pid 1484056
+2026-10-23T05:54:19Z logout requested (org.kde.Shutdown.logout)
+2026-10-23T05:54:20Z old shell gone
+2026-10-23T05:54:25Z systemctl restart sddm
+2026-10-23T05:54:29Z new shell pid 1503083
+9296 1000 patrick seat0 1502392 user    tty1 no -
+2026-10-23T05:55:11Z E-X11: M2 resident restarted in the X11 session env
+2026-10-23T05:56:23Z E-X11 recording + static control done
+2026-10-23T05:56:33Z resident quit; /etc/sddm.conf restored byte-exact (Session=plasma.desktop); relogin to Wayland for I
+2026-10-23T05:56:33Z shell plasmashell pid 1503083
+2026-10-23T05:56:33Z logout requested (org.kde.Shutdown.logout)
+2026-10-23T05:56:34Z old shell gone
+2026-10-23T05:56:40Z systemctl restart sddm
+2026-10-23T05:56:42Z new shell pid 1507695
+9301 1000 patrick seat0 1507450 user    tty1 no -
+2026-10-23T05:57:21Z P: apt-get remove
+2026-10-23T05:57:34Z P: apt-get purge; package files left 0
+2026-10-23T05:57:45Z P: user data unchanged after purge; relogin
+2026-10-23T05:57:45Z shell plasmashell pid 1507695
+2026-10-23T05:57:45Z logout requested (org.kde.Shutdown.logout)
+2026-10-23T05:57:46Z old shell gone
+2026-10-23T05:57:52Z systemctl restart sddm
+2026-10-23T05:57:54Z new shell pid 1509224
+9306 1000 patrick seat0 1508977 user    tty5 no -
+2026-10-23T05:58:37Z Q: Plasma Autostart KCM opened (PID 1509724), pictured, closed by PID
+2026-10-23T05:58:59Z Q: TryExec probe written; relogin
+2026-10-23T05:58:59Z shell plasmashell pid 1509224
+2026-10-23T05:58:59Z logout requested (org.kde.Shutdown.logout)
+2026-10-23T05:59:00Z old shell gone
+2026-10-23T05:59:06Z systemctl restart sddm
+2026-10-23T05:59:08Z new shell pid 1511141
+9311 1000 patrick seat0 1510875 user    tty1 no -
+2026-10-23T05:59:30Z Q: Autostart KCM (TryExec) pictured, closed PID 1511549
+2026-10-23T05:59:53Z Q: TryExec login silent (journal since 05:59:05Z empty); Autostart KCM pictured, closed PID 1511549
+2026-10-23T06:00:40Z Q: Autostart KCM (TryExec) pictured, closed PID 1514593
+2026-10-23T06:00:59Z host: xdg-desktop-portal.service failed to start at this login (portal-kde activation timeout); w0vncserver restart-looping; restarting portal user services
+2026-10-23T06:01:31Z portal services active again; w0vncserver serving 5900
+2026-10-23T06:01:39Z Q: Autostart KCM (TryExec) pictured, closed PID 1515949
+2026-10-23T06:01:59Z cleanup: M2 teardown, recorder off (mimeapps original, ChatGPT default)
+2026-10-23T06:02:11Z uinput agent stopped (PIDs 1493296/1493300)
+2026-10-23T06:02:20Z removed ~/afa-M2-review.mp4 (M2 X11 save copy) and the agent socket
+2026-10-23T06:02:39Z runs copied to workstation scratchpad hosts/k72/runs; removing k72 runs/ assets/ ff/; releasing lock
+2026-10-23T06:02:40Z

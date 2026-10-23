@@ -1,12 +1,15 @@
 # Native package full acceptance: drivers
 
 These drivers run the [native package full-acceptance profile](../../../acceptance-matrix.md#native-package-full-acceptance-profile)
-on the builders. There are no results yet: the pass waits for the coordinator's go and the exact nightly to accept.
+on the builders. The first pass is in [../README.md](../README.md) (nightly 1058).
 
 | File | What it is |
 | --- | --- |
 | [nfa.py](nfa.py) | The driver: [afa.py](../../2026-10-22-rail-391-notify-415/lab/afa.py) (#415's guarded AppImage driver) with the installed package in place of the image, plus the lifecycle subcommands. `nfa.py -h` lists them; every afa.py command passes through, and `nfa.py rerun …` and `nfa.py i326 …` run [rerun.py](../../2026-10-22-appimage-full-acceptance-rerun/lab/rerun.py) and [i326.py](../../2026-10-22-rail-391-notify-415/lab/i326.py) on the same runs. |
 | [stage.sh](stage.sh) | Copies nfa.py and what it needs into one folder, for an explicit absolute `rsync` destination on a builder. |
+| [nk.sh](nk.sh) | Items B and D–H on a started private run (from the AppImage pass's `dk.sh`). |
+| [clip_owner.py](clip_owner.py) | A GTK 4 window owning a synthetic PNG on the clipboard (tried for an older build's **Upload clipboard**). |
+| [annotate.py](annotate.py) | Boxes, labels and a footer naming the build, for the README's pictures. |
 
 ## What nfa.py changes in afa.py
 
@@ -91,3 +94,20 @@ The run root is `/home/patrick/work/put.gd-nfa` on each builder (or in the VM gu
 - Remove the run root's `assets/` and `runs/` once the results are copied out. Release the lock with `--verified-clean`.
 
 Rehearse the whole order once on the Ubuntu GNOME VM overlay before the physical desktops. It's a target anyway, and a driver fix there costs no desktop time.
+
+## Hosts and lessons from the first pass
+
+| Host | VNC (wall server) | Input | https default | Logouts |
+| --- | --- | --- | --- | --- |
+| m74 | 5900 | xdotool | Firefox (`ffprofile.py` for F) | `relogin.sh m74` (lightdm) |
+| k72 | 5900 | uinput agent | ChatGPT app (`ffdefault.py` for F) | `relogin.sh k72` (sddm); X11 half via a temporary `Session=plasmax11.desktop` |
+| d69 | 5900 | uinput agent | ChatGPT app (`ffdefault.py` for F) | `relogin.sh d69` (sddm + temporary Relogin drop-in) |
+| f44 | 5901 | uinput agent | Firefox (`ffprofile.py` for F) | `relogin.sh f44` (gdm) |
+| Ubuntu VM | 5922 tunnelled into the guest | vnc | the guest's own Firefox (`NFA_DISPOSABLE_GUEST=1`, honoured only when DMI says QEMU) | guest reboot (gnome-session-quit), autologin |
+
+- **Quit the lab's resident before every login test.** A `systemd-run --user` unit survives a graphical logout while SSH keeps the user manager alive.
+- **Pass `TRAY_XY` explicitly.** `find-tray` can match a pinned taskbar launcher (#495).
+- **Old builds:** dev.133's DEB can't capture on GNOME 50.1 / Qt 6.10, and its RPM no longer installs on Fedora 44. Seed those with `setup --appimage`. Its DEBs work on Mint and on Plasma.
+- **Keychain:** autologin leaves the keychain locked on every host, so M1 uses `--credentials session` (a second profile keeps the keychain reference).
+- **GNOME:** after installing the package, the extension appears only after a re-login (#492).
+- **Ubuntu VM:** the golden doesn't trust d69's bootstrap key (#487). Type the key into the guest over VNC with `vnc.py`-style input, sending shift for symbols.

@@ -1,0 +1,109 @@
+{
+ "label": "install-1058",
+ "command": [
+  "apt-get",
+  "install",
+  "-y",
+  "/home/patrick/work/put.gd-nfa/assets/putgd-26.1023.1058-nightly-ubuntu24.04-x86_64.deb"
+ ],
+ "before": {
+  "at": "2026-10-23T05:56:52Z",
+  "host": "mint-builder",
+  "package": {
+   "manager": "dpkg",
+   "status": null,
+   "version": null
+  },
+  "files": {
+   "/etc/apt/sources.list.d/putgd.sources": null,
+   "/usr/share/keyrings/putgd-archive-keyring.gpg": null,
+   "/etc/yum.repos.d/putgd.repo": null,
+   "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+   "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": null
+  },
+  "defaultProfile": {
+   "/home/patrick/.config/putgd": 1,
+   "/home/patrick/.local/state/putgd": 57,
+   "/home/patrick/.cache/putgd": null,
+   "/home/patrick/.local/share/putgd": 12
+  },
+  "autostart": "[Desktop Entry]\nType=Application\nName=put.gd\nExec=\"/usr/bin/putgd-launcher\" --background\nTerminal=false\nX-putgd-Managed=true\n",
+  "userExtension": false,
+  "processes": []
+ },
+ "startedAt": "2026-10-23T05:56:52Z",
+ "simulation": {
+  "command": [
+   "apt-get",
+   "-s",
+   "install",
+   "/home/patrick/work/put.gd-nfa/assets/putgd-26.1023.1058-nightly-ubuntu24.04-x86_64.deb"
+  ],
+  "exit": 0,
+  "changes": [
+   {
+    "op": "Inst",
+    "package": "putgd",
+    "from": null,
+    "to": "26.1023.1058~nightly"
+   }
+  ],
+  "tail": "NOTE: This is only a simulation!\n      apt-get needs root privileges for real execution.\n      Keep also in mind that locking is deactivated,\n      so don't depend on the relevance to the real current situation!\nReading package lists...\nBuilding dependency tree...\nReading state information...\nThe following NEW packages will be installed:\n  putgd\n0 upgraded, 1 newly installed, 0 to remove and 30 not upgraded.\nInst putgd (26.1023.1058~nightly local-deb [amd64])\nConf putgd (26.1023.1058~nightly local-deb [amd64])\n"
+ },
+ "otherPackages": [],
+ "exit": 0,
+ "seconds": 5.1,
+ "log": "/home/patrick/work/put.gd-nfa/runs/X/logs/pkg-install-1058.log",
+ "conffilePrompt": false,
+ "signature": [],
+ "fetched": [
+  "Preparing to unpack \u2026/putgd_26.1023.1058~nightly_amd64.deb\u2026"
+ ],
+ "tail": "Reading package lists...\nBuilding dependency tree...\nReading state information...\nThe following NEW packages will be installed:\n  putgd\n0 upgraded, 1 newly installed, 0 to remove and 30 not upgraded.\nNeed to get 0 B/54.2 MB of archives.\nAfter this operation, 128 MB of additional disk space will be used.\nSelecting previously unselected package putgd.\n(Reading database\u2026 \n(Reading database\u2026 5%\n(Reading database\u2026 10%\n(Reading database\u2026 15%\n(Reading database\u2026 20%\n(Reading database\u2026 25%\n(Reading database\u2026 30%\n(Reading database\u2026 35%\n(Reading database\u2026 40%\n(Reading database\u2026 45%\n(Reading database\u2026 50%\n(Reading database\u2026 55%\n(Reading database\u2026 60%\n(Reading database\u2026 65%\n(Reading database\u2026 70%\n(Reading database\u2026 75%\n(Reading database\u2026 80%\n(Reading database\u2026 85%\n(Reading database\u2026 90%\n(Reading database\u2026 95%\n(Reading database\u2026 100%\n(Reading database\u2026 504215 files and directories currently installed.)\nPreparing to unpack \u2026/putgd_26.1023.1058~nightly_amd64.deb\u2026\nUnpacking putgd (26.1023.1058~nightly)\u2026\nSetting up putgd (26.1023.1058~nightly)\u2026\nProcessing triggers for desktop-file-utils (0.27-2build1)\u2026\nProcessing triggers for hicolor-icon-theme (0.17-2)\u2026\nProcessing triggers for gnome-menus (3.36.0-1.1ubuntu3)\u2026\nProcessing triggers for mate-menus (1.26.1+mint1)\u2026\nProcessing triggers for mailcap (3.70+nmu1ubuntu1.24.04.1)\u2026\ndebconf: unable to initialize frontend: Dialog\ndebconf: (Dialog frontend will not work on a dumb terminal, an emacs shell buffer, or without a controlling terminal.)\ndebconf: falling back to frontend: Readline\ndebconf: unable to initialize frontend: Readline\ndebconf: (This frontend requires a controlling tty.)\ndebconf: falling back to frontend: Teletype\ndpkg-preconfigure: unable to re-open stdin: \n",
+ "after": {
+  "at": "2026-10-23T05:56:58Z",
+  "host": "mint-builder",
+  "package": {
+   "manager": "dpkg",
+   "status": "ii",
+   "version": "26.1023.1058~nightly"
+  },
+  "files": {
+   "/etc/apt/sources.list.d/putgd.sources": {
+    "sha256": "83d1c8e34b4724ba11307fbd161d674d0a3b0d4b0664a78fefc1629a30e5fb81",
+    "bytes": 2036,
+    "mode": "0o644",
+    "mtime": "2026-10-23T03:44:50Z"
+   },
+   "/usr/share/keyrings/putgd-archive-keyring.gpg": {
+    "sha256": "76ab1b64e8a1d9504d3922fa44b116d6eb3c680e788be9cec46e106cd5258339",
+    "bytes": 1170,
+    "mode": "0o644",
+    "mtime": "2026-10-23T03:42:05Z"
+   },
+   "/etc/yum.repos.d/putgd.repo": null,
+   "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+   "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": {
+    "sha256": "690be5bcfd1ee05783cd57a78851c56c0fe624131711b254cb46d062d0cb8046",
+    "bytes": 248,
+    "mode": "0o644",
+    "mtime": "2026-10-23T03:44:50Z"
+   }
+  },
+  "defaultProfile": {
+   "/home/patrick/.config/putgd": 1,
+   "/home/patrick/.local/state/putgd": 57,
+   "/home/patrick/.cache/putgd": null,
+   "/home/patrick/.local/share/putgd": 12
+  },
+  "autostart": "[Desktop Entry]\nType=Application\nName=put.gd\nExec=\"/usr/bin/putgd-launcher\" --background\nTerminal=false\nX-putgd-Managed=true\n",
+  "userExtension": false,
+  "processes": []
+ }
+}

@@ -1,0 +1,95 @@
+{
+ "tag": "v26.1023.1058-nightly",
+ "installed": {
+  "manager": "rpm",
+  "version": "26.1023.1058~nightly-1.fc44"
+ },
+ "versionJson": {
+  "schemaVersion": 1,
+  "version": "26.1023.1058-nightly",
+  "baseVersion": "26.1023.1058",
+  "packageVersion": "26.1023.1058~nightly",
+  "gitCommit": "05991d9d42aad68d3bd233a609cf294d839835ed",
+  "gitTree": "5e53f777b912ef958678b2f23b400847c7cb4d33",
+  "commitCount": 1058,
+  "dirty": false,
+  "sourceProvenance": "git"
+ },
+ "releaseCommit": "05991d9d42aad68d3bd233a609cf294d839835ed",
+ "commitDateUtc": "2026-10-23T03:39:29Z",
+ "calver": {
+  "expected": "26.1023.1058~nightly",
+  "tagDate": "26.1023",
+  "commitDate": "26.1023",
+  "installedMatches": true
+ },
+ "repositoryPackage": [
+  {
+   "file": "putgd-26.1023.1058~nightly-1.fc44.x86_64.rpm",
+   "sha256": "605cd768534030960530add597860370e490e33e1ab1b1619d32a81090930794",
+   "matchesRelease": false
+  }
+ ],
+ "releaseAsset": {
+  "name": "putgd-26.1023.1058-nightly-fedora44-x86_64.rpm",
+  "sha256": "d97d711687a4b9e04f77dd71bc87bcfd44529e01c2e7b180655a4a293b828937"
+ },
+ "verify": [
+  "",
+  ""
+ ],
+ "entries": {
+  "desktop": [
+   "/usr/share/applications/putgd-record.desktop",
+   "/usr/share/applications/putgd-ui.desktop",
+   "/usr/share/applications/putgd.desktop",
+   "/usr/share/putgd/autostart/putgd.desktop"
+  ],
+  "icons": [
+   "/usr/share/icons/hicolor/scalable/apps/putgd.svg"
+  ],
+  "metainfo": [
+   "/usr/share/metainfo/gd.put.Putgd.metainfo.xml"
+  ],
+  "extension": [
+   "/usr/share/gnome-shell/extensions",
+   "/usr/share/gnome-shell/extensions/putgd@put.gd",
+   "/usr/share/gnome-shell/extensions/putgd@put.gd/extension.js",
+   "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json"
+  ],
+  "executables": [
+   "/usr/bin/putgd",
+   "/usr/bin/putgd-b2-worker",
+   "/usr/bin/putgd-capture",
+   "/usr/bin/putgd-cli",
+   "/usr/bin/putgd-kde-region",
+   "/usr/bin/putgd-launcher",
+   "/usr/bin/putgd-record",
+   "/usr/bin/putgd-s3-worker",
+   "/usr/bin/putgd-ui"
+  ],
+  "repo": [
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd",
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly",
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable",
+   "/usr/share/putgd/repo/putgd-nightly.repo",
+   "/usr/share/putgd/repo/putgd-stable.repo",
+   "/usr/share/putgd/repo/putgd.repo"
+  ]
+ },
+ "appstream": [
+  0,
+  "\u2714 Validation was successful: pedantic: 1",
+  ""
+ ],
+ "menuEntry": {
+  "Name": "put.gd",
+  "Exec": "/usr/bin/putgd",
+  "Icon": "putgd",
+  "Categories": "Utility;Graphics;"
+ },
+ "checkUpdate": [
+  0,
+  ""
+ ]
+}

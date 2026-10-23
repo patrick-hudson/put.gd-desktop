@@ -1,0 +1,22 @@
+{
+ "label": "947-old-shell-ext",
+ "system": {
+  "sha256": "690be5bcfd1ee05783cd57a78851c56c0fe624131711b254cb46d062d0cb8046",
+  "bytes": 248,
+  "mode": "0o644",
+  "mtime": "2026-10-22T05:19:16Z"
+ },
+ "info": [
+  "putgd@put.gd",
+  "  Name: put.gd native capture",
+  "  Description: Native GNOME 50 capture, global actions and bounded background CLIPBOARD transfer for put.gd.",
+  "  Path: /usr/share/gnome-shell/extensions/putgd@put.gd",
+  "  URL: https://put.gd",
+  "  Version: 1",
+  "  Enabled: Yes",
+  "  State: ACTIVE"
+ ],
+ "enabled": "['putgd@put.gd']",
+ "capabilities": {},
+ "snapshot": {}
+}

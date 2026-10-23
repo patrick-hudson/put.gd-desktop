@@ -210,7 +210,7 @@ def safe_defaults(env):
     ok = all(v.endswith((afa.RECORDER, 'putgd-afa2-firefox.desktop')) for v in first.values())
     if ok and all(v.endswith(afa.RECORDER) for v in first.values()) and not (afa.DATA_HOME / 'applications' / afa.RECORDER).exists(): ok = False
     if not ok and all('firefox' in v for v in first.values()):
-        for root in (HOME / '.mozilla/firefox', HOME / 'snap/firefox/common/.mozilla/firefox', HOME / '.var/app/org.mozilla.firefox/.mozilla/firefox'):
+        for root in (HOME / '.mozilla/firefox', HOME / '.config/mozilla/firefox', HOME / 'snap/firefox/common/.mozilla/firefox', HOME / '.var/app/org.mozilla.firefox/.mozilla/firefox'):
             ini = root / 'profiles.ini'
             if ini.exists():
                 c = configparser.RawConfigParser(); c.optionxform = str; c.read(ini)

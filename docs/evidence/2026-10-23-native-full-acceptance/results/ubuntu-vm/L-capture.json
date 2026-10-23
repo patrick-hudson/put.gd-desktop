@@ -1,0 +1,68 @@
+{
+ "kind": "region",
+ "operation": {
+  "id": "87f28045-2eb0-4211-9d5c-85a8a973bd7b",
+  "state": "partial",
+  "copyStatus": "no_result",
+  "items": [
+   {
+    "name": "Screen-Capture-2026-10-22-23-32-48.png",
+    "mime": "image/png",
+    "uploadStatus": "failed",
+    "link": "",
+    "local": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "path": "/home/lab/work/put.gd-nfa/runs/L/archive/images/Screen-Capture-2026-10-22-23-32-48.png",
+     "status": "saved"
+    }
+   }
+  ],
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  }
+ },
+ "png": {
+  "bytes": 1546,
+  "sha256": "1c4fcfc3d0401dc458aa234dc6595795438f117479d2ec5fe0042a311bb28b8c",
+  "magic": true
+ },
+ "coverCheck": {
+  "deleted": true,
+  "edges": {
+   "bottom": 0.242,
+   "left": 1.0,
+   "right": 0.0656,
+   "top": 1.0
+  },
+  "fraction": 0.2917,
+  "minFraction": 0.5,
+  "ok": false,
+  "reason": "uncovered",
+  "rect": [
+   0,
+   0,
+   500,
+   320
+  ],
+  "size": [
+   500,
+   320
+  ]
+ },
+ "clipboard": null,
+ "linkCopied": false,
+ "historyEntry": {
+  "id": "5ff4cffa-fd43-438f-9f71-035a161cb62a",
+  "name": "Screen-Capture-2026-10-22-23-32-48.png",
+  "uploadStatus": "failed",
+  "local": "saved",
+  "linkAvailable": false
+ },
+ "notifications": []
+}

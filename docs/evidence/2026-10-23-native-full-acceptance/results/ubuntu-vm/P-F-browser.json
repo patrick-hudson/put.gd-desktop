@@ -1,0 +1,19 @@
+{
+ "browserProcesses": [
+  {
+   "pid": 16197,
+   "comm": "firefox",
+   "cmd": "/snap/firefox/8763/usr/lib/firefox/firefox https://put.gd/acceptance/nfa/ubu-vm/Screen-Capture-2026-10-22-23-46-40.png "
+  }
+ ],
+ "opened": [
+  {
+   "itemId": null,
+   "opened": true,
+   "operationId": null,
+   "route": "portal",
+   "target": "notification-link"
+  }
+ ],
+ "full": "/home/lab/work/put.gd-nfa/runs/P/full/P-F-browser.png"
+}

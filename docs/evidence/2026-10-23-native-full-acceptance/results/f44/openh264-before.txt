@@ -1,0 +1,4 @@
+openh264-2.6.0-3.fc44.x86_64
+package noopenh264 is not installed
+gstreamer1-plugin-openh264-1.28.1-1.fc44.x86_64
+mozilla-openh264-2.6.0-3.fc44.x86_64

@@ -39,6 +39,30 @@ work packages:
 Flatpak ([#83](https://github.com/patrick-hudson/put.gd-desktop/issues/83)) is
 outside the first stable.
 
+## Native package full acceptance (#375, #377, #382) — 2026-10-23
+
+[Evidence](evidence/2026-10-23-native-full-acceptance/README.md): the
+[native package profile](acceptance-matrix.md#native-package-full-acceptance-profile)
+(A–Q) on nightly `v26.1023.1058-nightly` (`05991d9d`). It covered the `ubuntu24.04` DEB on m74
+(Mint Cinnamon X11), the `ubuntu26.04` DEB on k72 (Kubuntu Plasma Wayland, plus its X11
+session for recording) and on an Ubuntu 26.04 GNOME VM, the `debian13` DEB on d69 and the
+`fedora44` RPM on f44.
+- **Passes everywhere:**
+  - fresh install from pkg.put.gd;
+  - the never-run dev.133 → nightly upgrade with a 10,000-entry history (#56 layout move,
+    schema 5→7, rows, counts and config preserved);
+  - 0.1.1-nightly.947 → CalVer through apt and dnf;
+  - recording with the distro media stack, motion against a static control;
+  - a real browser loading a live upload;
+  - the read-only repository channel;
+  - start at login and removal.
+- **Fails:** item P on m74, because of [#490](https://github.com/patrick-hudson/put.gd-desktop/issues/490):
+  the login-started resident survives logout on Cinnamon.
+- **Other findings:** #491–#495.
+- **#382:** the per-desktop behaviour of the retained login entry, with and without
+  `TryExec`, is recorded for Patrick's decision.
+- **Scope:** a nightly pass. The release campaign reruns the same drivers on the release bytes.
+
 ## DEB/RPM exact-asset audit rehearsal (#383) — 2026-10-22
 
 Assets: the ubuntu24.04, ubuntu26.04 and debian13 DEBs and the fedora44 RPM of

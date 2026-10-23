@@ -1,0 +1,40 @@
+{
+ "label": "after-removal",
+ "entry": "[Desktop Entry]\nType=Application\nName=put.gd\nExec=\"/usr/bin/putgd-launcher\" --background\nTerminal=false\nX-putgd-Managed=true\n",
+ "entryInfo": {
+  "sha256": "4662cdb185a7ab7eea947549bc21e9a38fa9d4fd197e7dc9660323446812307a",
+  "bytes": 125,
+  "mode": "0o600",
+  "mtime": "2026-10-23T05:52:43Z"
+ },
+ "execTargetExists": false,
+ "shellStarted": "2026-10-23T05:52:46Z",
+ "journal": [
+  "user 2026-10-23T00:52:46-05:00 mint-builder dbus-daemon[997]: [session uid=1000 pid=997] Activating via systemd: service name='org.freedesktop.Notifications' unit='xfce4-notifyd.service' requested by ':1.1724' (uid=1000 pid=492002 comm=\"/usr/bin/putgd --background\" label=\"unconfined\")",
+  "user 2026-10-23T00:54:43-05:00 mint-builder dbus-daemon[997]: [session uid=1000 pid=997] Activating via systemd: service name='org.freedesktop.Notifications' unit='xfce4-notifyd.service' requested by ':1.1832' (uid=1000 pid=493470 comm=\"/usr/bin/putgd --background\" label=\"unconfined\")",
+  "user 2026-10-23T00:54:45-05:00 mint-builder cinnamon-session-binary[494134]: WARNING: t+0.06417s: Could not read /home/patrick/.config/autostart/putgd.desktop: Could not parse desktop file putgd.desktop or it references a not found TryExec binary",
+  "system 2026-10-23T00:52:46-05:00 mint-builder dbus-daemon[997]: [session uid=1000 pid=997] Activating via systemd: service name='org.freedesktop.Notifications' unit='xfce4-notifyd.service' requested by ':1.1724' (uid=1000 pid=492002 comm=\"/usr/bin/putgd --background\" label=\"unconfined\")",
+  "system 2026-10-23T00:54:43-05:00 mint-builder dbus-daemon[997]: [session uid=1000 pid=997] Activating via systemd: service name='org.freedesktop.Notifications' unit='xfce4-notifyd.service' requested by ':1.1832' (uid=1000 pid=493470 comm=\"/usr/bin/putgd --background\" label=\"unconfined\")",
+  "system 2026-10-23T00:54:45-05:00 mint-builder cinnamon-session-binary[494134]: WARNING: t+0.06417s: Could not read /home/patrick/.config/autostart/putgd.desktop: Could not parse desktop file putgd.desktop or it references a not found TryExec binary"
+ ],
+ "failedUnits": [
+  "xdg-desktop-portal-gtk.service loaded failed failed Portal service (GTK/GNOME implementation)"
+ ],
+ "autostartUnits": [],
+ "generatorUnit": [],
+ "processes": [
+  {
+   "pid": 493470,
+   "ppid": 1,
+   "exe": "/usr/bin/putgd (deleted)",
+   "comm": "putgd",
+   "cmd": "/usr/bin/putgd --background ",
+   "qtPlatformPlugins": []
+  }
+ ],
+ "package": {
+  "manager": "dpkg",
+  "status": null,
+  "version": null
+ }
+}

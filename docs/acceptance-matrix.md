@@ -340,7 +340,8 @@ The same rules as the AppImage profile apply:
 - an item that can't run needs a written reason, and Patrick decides whether the pass counts as complete.
 
 Nothing is skipped silently. The passes are in the evidence folders named
-`*-native-full-acceptance`; the drivers are in
+`*-native-full-acceptance`. The first was
+[2026-10-23, nightly 1058](evidence/2026-10-23-native-full-acceptance/README.md), and its drivers are in
 [`2026-10-23-native-full-acceptance/lab/`](evidence/2026-10-23-native-full-acceptance/lab/README.md).
 
 | Desktop | Package | Placement |
@@ -413,7 +414,7 @@ On the accepted nightly, installed by item L.
   - Record the capture source (`ximagesrc`, `kde-screencast`, `mutter-screencast` or the portal) and the live encoder.
   - On Plasma Wayland, `kde-screencast` comes from the installed `putgd-record.desktop`.
   - On k72, a second recording in the Plasma X11 session covers the row's `ximagesrc` and VA-API half. That's two extra logouts, each needing the coordinator's OK.
-  - On f44, the stock install pulled Cisco's `openh264` and `gstreamer1-plugin-openh264` through the RPM's Recommends (seen in item L's transaction). With the `noopenh264` placeholder swapped in, the actionable `h264_encoder_unusable` message shows, and recording works again once `openh264` is restored.
+  - On f44, the stock install pulled Cisco's `openh264` and `gstreamer1-plugin-openh264` through the RPM's Recommends (seen in item L's transaction). With the `noopenh264` placeholder swapped in, the actionable `h264_encoder_unusable` message shows, and recording works again once `openh264` is restored. Where `dnf swap` would remove other packages too (`mozilla-openh264` on f44), the extracted placeholder library is loaded into the resident only (`LD_LIBRARY_PATH`), and no host package changes.
 - **F. Notification link:** the link-ready notification for one synthetic PNG uploaded public-read to `put.gd/acceptance/nfa/<desktop>/` (key set 2, in memory only), so that `https://put.gd/<key>` serves it.
   - A real click on the notification opens the link in the desktop's real default browser, which loads the image. The browser runs a temporary profile, never one of Patrick's. On d69 and k72 the default `https` handler is the ChatGPT app, so a temporary Firefox handler (`ffdefault.py`) is used there, and the files are restored byte for byte.
   - The frame shows the address bar and the image. An unauthenticated GET returns the uploaded bytes.

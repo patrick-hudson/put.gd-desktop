@@ -1,0 +1,86 @@
+{
+ "setup": true,
+ "launched": false,
+ "run": {
+  "name": "L",
+  "appimage": "/usr/bin/putgd",
+  "appdir": "/",
+  "exe": "/usr/bin/putgd",
+  "cli": "/usr/bin/putgd-cli",
+  "profile": "default",
+  "runtime": "/tmp/nfa.krLSrk",
+  "session": {
+   "HOME": "/home/patrick",
+   "PATH": "/home/patrick/.local/bin:/home/patrick/bin:/usr/lib64/ccache:/usr/local/bin:/usr/bin",
+   "USER": "patrick",
+   "LANG": "en_US.UTF-8",
+   "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus",
+   "XDG_SESSION_TYPE": "wayland",
+   "XDG_CURRENT_DESKTOP": "GNOME",
+   "XDG_SESSION_DESKTOP": "gnome",
+   "DESKTOP_SESSION": "gnome",
+   "XDG_DATA_DIRS": "/home/patrick/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share/:/usr/share/",
+   "WAYLAND_DISPLAY": "/run/user/1000/wayland-0",
+   "DISPLAY": ":0",
+   "XAUTHORITY": "/run/user/1000/.mutter-Xwaylandauth.54OLX3"
+  },
+  "shell": "gnome-shell",
+  "host": "fedora",
+  "vnc": 5901,
+  "input": "uinput",
+  "before": {
+   "homePaths": {
+    "/home/patrick/.config/putgd": null,
+    "/home/patrick/.local/state/putgd": [
+     "/home/patrick/.local/state/putgd/logs",
+     "/home/patrick/.local/state/putgd/logs/putgd-20261020T060538196Z-1059270-1.jsonl",
+     "/home/patrick/.local/state/putgd/logs/putgd-20261020T060541740Z-1059364-1.jsonl",
+     "/home/patrick/.local/state/putgd/logs/putgd-20261020T060553119Z-1059652-1.jsonl",
+     "/home/patrick/.local/state/putgd/logs/putgd-20261020T060604456Z-1059911-1.jsonl",
+     "/home/patrick/.local/state/putgd/logs/putgd-20261020T060615832Z-1060677-1.jsonl",
+     "/home/patrick/.local/state/putgd/logs/putgd-20261020T060626589Z-1061943-1.jsonl",
+     "/home/patrick/.local/state/putgd/logs/putgd-20261020T060639255Z-1063061-1.jsonl",
+     "/home/patrick/.local/state/putgd/logs/putgd-20261020T060650525Z-1063589-1.jsonl",
+     "/home/patrick/.local/state/putgd/logs/putgd-20261020T060651248Z-1063670-1.jsonl",
+     "/home/patrick/.local/state/putgd/logs/putgd-20261020T060651916Z-1063726-1.jsonl",
+     "/home/patrick/.local/state/putgd/logs/putgd-20261020T192308402Z-1393204-1.jsonl",
+     "/home/patrick/.local/state/putgd/logs/putgd-20261020T192312211Z-1393375-1.jsonl",
+     "/home/patrick/.local/state/putgd/logs/putgd-20261020T192323606Z-1393887-1.jsonl",
+     "/home/patrick/.local/state/putgd/logs/putgd-20261020T192335007Z-1394309-1.jsonl",
+     "/home/patrick/.local/state/putgd/logs/putgd-20261020T192346329Z-1395474-1.jsonl",
+     "/home/patrick/.local/state/putgd/logs/putgd-20261020T192357026Z-1396869-1.jsonl",
+     "/home/patrick/.local/state/putgd/logs/putgd-20261020T192409254Z-1397904-1.jsonl",
+     "/home/patrick/.local/state/putgd/logs/putgd-20261020T192420556Z-1398628-1.jsonl",
+     "/home/patrick/.local/state/putgd/logs/putgd-20261020T192421343Z-1398774-1.jsonl",
+     "/home/patrick/.local/state/putgd/logs/putgd-20261020T192422164Z-1398929-1.jsonl"
+    ],
+    "/home/patrick/.cache/putgd": null,
+    "/home/patrick/.local/share/putgd": null
+   },
+   "applications": [],
+   "autostart": false,
+   "defaultProfile": {
+    "/home/patrick/.config/putgd": false,
+    "/home/patrick/.local/state/putgd": true,
+    "/home/patrick/.cache/putgd": false,
+    "/home/patrick/.local/share/putgd": false
+   }
+  },
+  "pids": {
+   "fixture": 3123594
+  },
+  "created": "2026-10-23T05:30:57Z",
+  "package": {
+   "manager": "rpm",
+   "version": "26.1023.1058~nightly-1.fc44"
+  },
+  "systemFilesAdded": [
+   "/etc/yum.repos.d/putgd.repo",
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd",
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly",
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable"
+  ],
+  "credentialsMode": "keychain",
+  "port": 43139
+ }
+}

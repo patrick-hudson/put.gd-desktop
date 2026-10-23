@@ -1,0 +1,29 @@
+{
+ "at": "2026-10-23T05:30:25Z",
+ "host": "debian",
+ "package": {
+  "manager": "dpkg",
+  "status": null,
+  "version": null
+ },
+ "files": {
+  "/etc/apt/sources.list.d/putgd.sources": null,
+  "/usr/share/keyrings/putgd-archive-keyring.gpg": null,
+  "/etc/yum.repos.d/putgd.repo": null,
+  "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+  "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+  "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+  "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+  "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": null
+ },
+ "defaultProfile": {
+  "/home/patrick/.config/putgd": null,
+  "/home/patrick/.local/state/putgd": 94,
+  "/home/patrick/.cache/putgd": null,
+  "/home/patrick/.local/share/putgd": null
+ },
+ "autostart": null,
+ "userExtension": false,
+ "processes": [],
+ "enabledExtensions": "@as []"
+}
