@@ -23,6 +23,33 @@ here ran on the workstation; the local trials ran on k72 and d69.
 An extract-only run of the same image on d69 (no token, `dryRun=extract`)
 detected the same 32 dependencies.
 
+## Real Renovate run
+
+Patrick turned on "Allow GitHub Actions to create and approve pull requests"
+(`can_approve_pull_request_reviews: true`, checked before the run). The run had
+to happen before #503 merged, so a scratch branch, `renovate-acceptance-420`
+(#503's head plus one commit), added a temporary `push` trigger to
+`renovate.yml`. That commit also passed the branch's `.github/renovate.json` as
+Renovate's global config (`configurationFile`, `RENOVATE_REQUIRE_CONFIG=optional`),
+made the scratch branch the base, and limited updates to the AWS SDK group.
+Renovate can't merge a base branch's config when the default branch has none,
+which is why the first attempt failed
+([run 40015598184](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40015598184)).
+
+| | |
+| --- | --- |
+| Dry run | [run 40015774818](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40015774818), `dryRun=full`: would commit `renovate/aws-sdk-for-c++`; the post-upgrade task ran (`refresh_pins.py`: `aws-sdk-cpp 1.11.916: commit a9f0ffcc2766 -> 5ca639b2aafd`) and its `cmake/dependency-lock.json` was kept |
+| Real run | [run 40016079520](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40016079520), workflow token, 2026-10-23 ~20:05Z |
+| Pull request | [#508](https://github.com/patrick-hudson/put.gd-desktop/pull/508) by `github-actions[bot]`, commit `311b2ef5` "deps: Update aws/aws-sdk-cpp to v1.11.916", labels `dependencies`, `area: packaging`, the group's PR-body note; CI checks 0, waiting for approval |
+| Dashboard | #509 "Dependency updates (Renovate acceptance run," (the env value lost its tail at `#`) |
+| Cleanup | #508 closed unmerged; #509 closed; `renovate/aws-sdk-for-c++` and `renovate-acceptance-420` deleted |
+
+![The pull request Renovate opened, closed after the run](renovate-pr508-annotated.png)
+
+1.11.916 pins the same fifteen CRT submodule commits as 1.11.907, so the lock
+diff is the release and its tag commit only. A refresh from 1.11.907 to
+1.11.700 on a scratch copy changed all fifteen, as expected.
+
 ## SBOMs and the Grype scan
 
 | | |
