@@ -1,0 +1,43 @@
+{
+  "account": "phudson2@gmail.com",
+  "app": {
+    "installed": "2026-10-23T23:42:19Z",
+    "kind": "appimage",
+    "package": "putgd-26.1023.1097-dev+g348815067e18-x86_64.AppImage",
+    "root": "/home/patrick/putgd-lab/proton-519/app/52d609607f25b66f/squashfs-root",
+    "sha256": "52d609607f25b66f259404dac4e48062b5cbe3fe07b3f64b13dd84b3573de457",
+    "version": {
+      "baseVersion": "26.1023.1097",
+      "commitCount": 1097,
+      "dirty": false,
+      "gitCommit": "348815067e18f7088b906a40ed69cbcf3c96c453",
+      "gitTree": "c7d4863c5978580445a4c5590744bb981752a601",
+      "packageVersion": "26.1023.1097~dev+g348815067e18",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1023.1097-dev+g348815067e18"
+    }
+  },
+  "host": "d69",
+  "lastCheck": {
+    "app": "26.1023.1097-dev+g348815067e18",
+    "at": "2026-10-23T23:46:27Z",
+    "by": "proton-lab-sessions",
+    "folderName": "putgd-lab-d69-check-2026-10-23T234633Z",
+    "passed": true,
+    "state": "ok",
+    "testScope": "account-folder"
+  },
+  "profile": {
+    "XDG_CONFIG_HOME": "/home/patrick/putgd-lab/proton-519/config",
+    "XDG_DATA_HOME": "/home/patrick/putgd-lab/proton-519/data",
+    "XDG_STATE_HOME": "/home/patrick/putgd-lab/proton-519/state",
+    "config": "/home/patrick/putgd-lab/proton-519/config/putgd/config.json"
+  },
+  "profileId": "proton-lab",
+  "reference": "putgd/proton/i518-d69",
+  "schema": 1,
+  "service": "ch.proton.drive/putgd",
+  "session": "ok",
+  "signedIn": "2026-10-23T23:46:27Z"
+}
