@@ -112,7 +112,7 @@ private slots:
         QCOMPARE(error.code, QString("poster_failed"));
         QVERIFY(clock.elapsed() < 2000);
         const auto empty = dir_.filePath("empty.mp4");
-        QFile(empty).open(QIODevice::WriteOnly);
+        QVERIFY(QFile(empty).open(QIODevice::WriteOnly));
         QVERIFY(render({}, error, empty).isEmpty());
         QVERIFY(render({}, error, dir_.filePath("missing.mp4")).isEmpty());
     }

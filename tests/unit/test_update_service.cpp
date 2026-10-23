@@ -115,7 +115,7 @@ private slots:
   QCOMPARE(status["result"].toObject()["latest"].toString(),QString("0.1.1"));
   // Someone who checked by hand has seen it: no notification for it later.
   QCOMPARE(announced.size(),0);
-  const auto saved=QJsonDocument::fromJson([&]{QFile f(dir.filePath("update-check.json"));f.open(QIODevice::ReadOnly);return f.readAll();}()).object();
+  const auto saved=QJsonDocument::fromJson([&]{QFile f(dir.filePath("update-check.json"));return f.open(QIODevice::ReadOnly)?f.readAll():QByteArray();}()).object();
   QCOMPARE(saved["notifiedVersion"].toString(),QString("0.1.1"));
  }
  void unreachableFeedWaitsADay(){
@@ -325,7 +325,7 @@ private slots:
   QCOMPARE(calls().last(),"--install-update nightly --method auto --state "+dir.path()+" --switch --allow-older");
   // The login script is written again from the new image, and the version switched to counts as seen.
   QCOMPARE(replaced.size(),1);QCOMPARE(updates->status()["install"].toObject()["restartRequired"].toBool(),true);
-  const auto saved=QJsonDocument::fromJson([&]{QFile f(dir.filePath("update-check.json"));f.open(QIODevice::ReadOnly);return f.readAll();}()).object();
+  const auto saved=QJsonDocument::fromJson([&]{QFile f(dir.filePath("update-check.json"));return f.open(QIODevice::ReadOnly)?f.readAll():QByteArray();}()).object();
   QCOMPARE(saved["notifiedVersions"].toObject()["nightly"].toString(),QString("0.1.1-nightly.900"));
  }
  void aNewerSwitchNeedsOnlyItsChannel(){
@@ -365,7 +365,7 @@ private slots:
   nightly.reset();configure(settings,{{"channel","stable"}});answer(found("stable","0.1.1-nightly.900","0.1.1",true));now=now.addSecs(60);
   auto chosen=service(settings,build("0.1.1-nightly.900"));QSignalSpy first(chosen.get(),&UpdateService::updateAvailable);chosen->start();
   PUTGD_TRY_COMPARE(calls().size(),2);PUTGD_TRY_VERIFY(!chosen->status()["checking"].toBool());QCOMPARE(first.size(),0);
-  auto saved=QJsonDocument::fromJson([&]{QFile f(dir.filePath("update-check.json"));f.open(QIODevice::ReadOnly);return f.readAll();}()).object();
+  auto saved=QJsonDocument::fromJson([&]{QFile f(dir.filePath("update-check.json"));return f.open(QIODevice::ReadOnly)?f.readAll():QByteArray();}()).object();
   QCOMPARE(saved["notifiedVersions"].toObject()["stable"].toString(),QString("0.1.1"));QCOMPARE(saved["notifiedVersion"].toString(),QString("0.1.1"));
   // A later stable release is announced once, as on a stable build.
   chosen.reset();answer(found("stable","0.1.1-nightly.900","0.1.2",true));now=now.addDays(1);
@@ -378,7 +378,7 @@ private slots:
   back.reset();configure(settings,{{"channel","stable"}});answer(found("stable","0.1.1-nightly.900","0.1.2",true));now=now.addDays(1);
   auto again=service(settings,build("0.1.1-nightly.900"));QSignalSpy repeated(again.get(),&UpdateService::updateAvailable);again->start();
   PUTGD_TRY_COMPARE(calls().size(),5);PUTGD_TRY_VERIFY(!again->status()["checking"].toBool());QCOMPARE(repeated.size(),0);
-  saved=QJsonDocument::fromJson([&]{QFile f(dir.filePath("update-check.json"));f.open(QIODevice::ReadOnly);return f.readAll();}()).object();
+  saved=QJsonDocument::fromJson([&]{QFile f(dir.filePath("update-check.json"));return f.open(QIODevice::ReadOnly)?f.readAll():QByteArray();}()).object();
   QCOMPARE(saved["notifiedVersions"].toObject()["stable"].toString(),QString("0.1.2"));QCOMPARE(saved["notifiedVersions"].toObject()["nightly"].toString(),QString("0.1.1-nightly.950"));
   // The nightly version seen in between didn't replace stable's: a day later 0.1.2 stays quiet.
   again.reset();now=now.addDays(1);auto quiet=service(settings,build("0.1.1-nightly.900"));QSignalSpy none(quiet.get(),&UpdateService::updateAvailable);quiet->start();
