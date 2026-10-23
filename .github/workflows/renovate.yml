@@ -96,7 +96,6 @@ jobs:
           RENOVATE_REQUIRE_CONFIG: optional
           RENOVATE_BASE_BRANCH_PATTERNS: '["renovate-acceptance-420"]'
           RENOVATE_DEPENDENCY_DASHBOARD_TITLE: Dependency updates (Renovate acceptance run, #420)
-          RENOVATE_DRY_RUN: full
           RENOVATE_GIT_AUTHOR: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
           RENOVATE_ALLOWED_COMMANDS: '["^python3 tools/maintenance/refresh_pins\\.py$"]'
           RENOVATE_LOG_FILE: /tmp/renovate-log/renovate.ndjson
