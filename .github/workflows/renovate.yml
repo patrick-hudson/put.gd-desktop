@@ -12,10 +12,10 @@ on:
   workflow_dispatch:
     inputs:
       dry-run:
-        description: Log what Renovate would do instead of doing it
+        description: Log what Renovate would do instead of doing it (none runs for real)
         type: choice
-        options: ['', lookup, full]
-        default: ''
+        options: [none, lookup, full]
+        default: none
   pull_request:
     paths:
       - .github/renovate.json
@@ -80,7 +80,8 @@ jobs:
           DRY_RUN: ${{ inputs.dry-run }}
         run: |
           mkdir -p -m 0777 /tmp/renovate-log
-          if [ -n "$DRY_RUN" ]; then echo "RENOVATE_DRY_RUN=$DRY_RUN" >> "$GITHUB_ENV"; fi
+          # A schedule has no input; `none` runs for real too.
+          if [ -n "$DRY_RUN" ] && [ "$DRY_RUN" != none ]; then echo "RENOVATE_DRY_RUN=$DRY_RUN" >> "$GITHUB_ENV"; fi
       - uses: renovatebot/github-action@a63d9a7bc606f7336fd20b47f2f32259a35e6213 # v46.3.9
         env:
           RENOVATE_REPOSITORIES: ${{ github.repository }}
