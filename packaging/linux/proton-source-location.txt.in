@@ -1,0 +1,12 @@
+put.gd Proton Drive helper: where its source is
+
+The corresponding source of putgd-proton-runtime (Proton's Drive SDK and crypto,
+OpenPGP.js, Bun with JavaScriptCore and TinyCC) and the rebuild instructions are
+published with this put.gd release at
+
+@PUTGD_SOURCE_URL@
+
+as putgd-proton-corresponding-source.tar.gz.part1 and .part2 (concatenate them in
+order) and proton-source-catalog.json, a copy of SOURCES.json beside this file,
+which lists every source packet by SHA-256. put.gd's own source is
+putgd-VERSION-source.tar.gz on the same page.

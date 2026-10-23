@@ -20,7 +20,14 @@ PROGRAMS = ("putgd", "putgd-cli", "putgd-ui", "putgd-capture", "putgd-s3-worker"
 SDK_LICENSES = ("aws-sdk-LICENSE", "aws-crt-cpp-LICENSE", *(
     "aws-crt-cpp-crt-" + name + "-LICENSE" for name in (
         "aws-c-auth", "aws-c-cal", "aws-c-common", "aws-c-compression", "aws-c-event-stream",
-        "aws-c-http", "aws-c-io", "aws-c-mqtt", "aws-c-s3", "aws-c-sdkutils", "aws-checksums", "s2n")))
+        "aws-c-http", "aws-c-io", "aws-c-mqtt", "aws-c-s3", "aws-c-sdkutils", "aws-checksums", "s2n")),
+    # Apache-2.0 NOTICE files and the notices of code compiled into the SDK and CRT (#383).
+    "aws-sdk-NOTICE", "aws-crt-cpp-NOTICE", *(
+    "aws-crt-cpp-crt-" + name + "-NOTICE" for name in (
+        "aws-c-auth", "aws-c-cal", "aws-c-common", "aws-c-compression", "aws-c-event-stream",
+        "aws-c-http", "aws-c-io", "aws-c-mqtt", "aws-c-s3", "aws-c-sdkutils", "s2n")),
+    "aws-sdk-cJSON-LICENSE", "aws-sdk-TinyXML2-LICENSE", "aws-crt-cpp-crt-aws-c-common-THIRD-PARTY-LICENSES",
+    "aws-crt-cpp-crt-aws-checksums-xxHash-LICENSE")
 DESKTOP_ASSETS = ("share/applications/putgd.desktop", "share/applications/putgd-ui.desktop",
                   "share/icons/hicolor/scalable/apps/putgd.svg",
                   "share/gnome-shell/extensions/putgd@put.gd/extension.js",

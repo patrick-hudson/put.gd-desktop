@@ -100,6 +100,9 @@ void OperationService::uploadLinkReady(const QString& id,const QString& item,int
  if(!state||state->seen.contains(item)||url.isEmpty())return;
  state->seen.insert(item);state->links.insert(index,url);
  if(state->group)return;
+ // The cursor has passed this file already: nothing earlier can still be
+ // waiting on it, so its link is copied now rather than held forever (#478).
+ if(index<state->cursor){queueLinkCopy(state,item,index);return;}
  state->held.insert(index,item);flushUploadLinks(state);
 }
 void OperationService::uploadItemSettled(const QString& id,int index) {
@@ -218,7 +221,13 @@ void OperationService::recordUploadCopy(const std::shared_ptr<UploadCopy>& state
  else if(state->cancellation->load()||state->links.isEmpty())op.copyStatus="no_result";
  else if(state->error)op.copyStatus="failed";
  else if(state->suppressed)op.copyStatus="suppressed";
- else op.copyStatus="no_result";
+ else {
+  // A link was available and no copy of it was refused or failed, so none was
+  // ever queued. That is a defect, reported as such rather than as a quiet
+  // "nothing to copy" (#478).
+  state->error={"copy_not_attempted","A link was available but its automatic copy was never attempted",{}};op.copyStatus="failed";
+  logging::warning(logOperation(),"Automatic copy not attempted",{{"operationId",op.id},{"action",op.action},{"behavior",op.settings.uploadClipboardBehavior},{"links",state->links.size()},{"held",state->held.size()},{"cursor",state->cursor}});
+ }
  if(state->error)op.error=state->error;
  {
   // One record per upload (#473): the outcome the notification and Activity

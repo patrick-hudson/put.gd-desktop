@@ -1,0 +1,66 @@
+put.gd package dependency notice
+
+Licences. The package's licence metadata names the main licences: MIT (put.gd),
+Apache-2.0 (the AWS SDK for C++) and, with the Proton Drive helper, GPL-3.0-or-later
+(Proton's crypto). This file lists every licence of the code the package contains:
+
+  put.gd                                    MIT                 LICENSE
+  zkde-screencast-unstable-v1 bindings      LGPL-2.1-or-later   wayland-zkde-screencast-unstable-v1.xml
+    (in putgd-record)
+  ext/wlr data-control-v1 bindings          MIT-style           wayland-*-data-control-*.xml
+  AWS SDK for C++, aws-crt-cpp, aws-c-*,    Apache-2.0          aws-*-LICENSE, aws-*-NOTICE
+    s2n-tls
+  cJSON, libcbor (in the AWS libraries)     MIT                 aws-sdk-cJSON-LICENSE,
+                                                                aws-crt-cpp-crt-aws-c-common-THIRD-PARTY-LICENSES
+  xxHash (in the AWS libraries)             BSD-2-Clause        aws-crt-cpp-crt-aws-checksums-xxHash-LICENSE
+  TinyXML-2 (in the AWS libraries)          Zlib                aws-sdk-TinyXML2-LICENSE
+  Proton Drive helper, when included:                           proton/
+    Proton Drive SDK and account code       MIT                 proton/LICENSE.proton
+    Proton crypto (WebPackages)             GPL-3.0-or-later    proton/LICENSE.crypto-GPL-3.0
+    OpenPGP.js                              LGPL-3.0-or-later   proton/THIRD-PARTY-NOTICES.txt
+    bcryptjs                                BSD-3-Clause        proton/THIRD-PARTY-NOTICES.txt
+    other bundled npm packages              MIT                 proton/THIRD-PARTY-NOTICES.txt
+    Bun runtime                             MIT                 proton/BUN-*
+    JavaScriptCore/WebKit (in Bun)          LGPL-2.0-or-later   proton/BUN-THIRD-PARTY-NOTICES.txt.gz
+    TinyCC (in Bun)                         LGPL-2.1-or-later   proton/BUN-THIRD-PARTY-NOTICES.txt.gz
+
+Qt 6 and QtKeychain are dynamically linked distribution packages. Their licenses,
+source and security updates are supplied through the distribution package manager.
+Qt platform plugins and SQLite SQL driver remain distribution owned.
+
+The official AWS SDK for C++ and its CRT shared libraries are privately installed
+under the putgd library directory. Pinned source identities are recorded in
+/usr/share/putgd/dependency-lock.json. AWS SDK and CRT Apache-2.0 license texts
+(aws-*-LICENSE) and their NOTICE files (aws-*-NOTICE) are installed alongside this
+notice; s2n-tls uses Apache-2.0. The SDK and CRT libraries also contain cJSON (MIT,
+aws-sdk-cJSON-LICENSE), TinyXML-2 (Zlib, aws-sdk-TinyXML2-LICENSE), libcbor (MIT,
+aws-crt-cpp-crt-aws-c-common-THIRD-PARTY-LICENSES) and xxHash (BSD-2-Clause,
+aws-crt-cpp-crt-aws-checksums-xxHash-LICENSE). Rebuild the pinned official
+SDK following docs/build.md, update the lock deliberately, and rebuild the DEB to
+update these libraries. No compiler or Qt runtime is bundled.
+
+The ext-data-control-v1, wlr-data-control-unstable-v1 and zkde-screencast-unstable-v1
+Wayland protocol notices are retained in wayland-ext-data-control-v1.xml,
+wayland-wlr-data-control-unstable-v1.xml and wayland-zkde-screencast-unstable-v1.xml
+beside this file, including their original copyright and license text. Generated
+client bindings use those protocols.
+
+When the package includes the Proton Drive helper (/usr/libexec/putgd/proton), its
+licenses, the notices of everything compiled into it and the list of its
+corresponding source are in the proton directory beside this file.
+
+Source. put.gd's own source and the helper's corresponding source (Proton's crypto,
+OpenPGP.js, and Bun with JavaScriptCore and TinyCC, with the rebuild instructions)
+are published with this release at
+@PUTGD_SOURCE_URL@
+as putgd-VERSION-source.tar.gz, putgd-proton-corresponding-source.tar.gz.part1
+and .part2 (concatenate them) and proton-source-catalog.json. proton/SOURCES.json
+lists the source packets by SHA-256, and proton/SOURCE-LOCATION.txt repeats this.
+
+Native packages include desktop integration assets and dependency notices. Release
+artifacts have build identities, package inventories and published checksums. Verify
+these against the exact artifact being installed. Installation and artifact auditing
+alone do not certify compositor support or install/upgrade/removal behavior; consult
+https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/verification.md
+and https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/release.md
+for tested versions and remaining gates, including the complete release license audit.

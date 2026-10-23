@@ -34,7 +34,7 @@ COMMON_LICENSES = LICENSES + "/distro-common"
 METAINFO = "usr/share/metainfo/gd.put.Putgd.metainfo.xml"
 PRIVATE_LIBRARIES = "usr/lib/putgd"
 NOTICE_TITLE = "put.gd AppImage {version}: bundled components and their licences"
-# packaging/linux/runtime-notices.txt describes the DEB and RPM; it is false for the image.
+# packaging/linux/runtime-notices.txt.in describes the DEB and RPM; it is false for the image.
 NATIVE_NOTICE = "No compiler or Qt runtime is bundled"
 # linuxdeploy keeps the launcher it wrapped (our AppRun, installed again
 # afterwards) and the hook of its Qt plugin, which our AppRun never sources.

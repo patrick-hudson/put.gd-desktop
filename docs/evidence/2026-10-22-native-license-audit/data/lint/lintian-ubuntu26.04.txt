@@ -1,0 +1,576 @@
+Lintian v2.129.0ubuntu2.1
+running with root privileges is not recommended!
+N:
+E: putgd: embedded-library libjpeg [usr/libexec/putgd/proton/putgd-proton-runtime]
+N: 
+N:   The given ELF object appears to have been statically linked to a library.
+N:   Doing this is strongly discouraged due to the extra work needed by the
+N:   security team to fix all the extra embedded copies or trigger the package
+N:   rebuilds, as appropriate.
+N:   
+N:   If the package uses a modified version of the given library it is highly
+N:   recommended to coordinate with the library's maintainer to include the
+N:   changes on the system version of the library.
+N: 
+N:   Please refer to Embedded code copies (Section 4.13) in the Debian Policy
+N:   Manual for details.
+N: 
+N:   Visibility: error
+N:   Show-Always: no
+N:   Check: libraries/embedded
+N: 
+N:
+E: putgd: extended-description-is-empty
+N: 
+N:   The extended description (the lines after the first line of the
+N:   "Description:" field) is empty.
+N: 
+N:   Please refer to The description of a package (Section 3.4) in the Debian
+N:   Policy Manual for details.
+N: 
+N:   Visibility: error
+N:   Show-Always: no
+N:   Check: fields/description
+N: 
+N:
+E: putgd: malformed-contact Maintainer put.gd
+N: 
+N:   The named field identifying contact persons could not be parsed according
+N:   to the rules in the Policy Manual.
+N: 
+N:   Please refer to Maintainer (Section 5.6.2) in the Debian Policy Manual,
+N:   Uploaders (Section 5.6.3) in the Debian Policy Manual, and Changed-By
+N:   (Section 5.6.4) in the Debian Policy Manual for details.
+N: 
+N:   Visibility: error
+N:   Show-Always: no
+N:   Check: fields/mail-address
+N:   Renamed from: maintainer-address-missing changed-by-address-missing
+N:   malformed-maintainer-field malformed-uploaders-field
+N:   malformed-changed-by-field maintainer-address-malformed
+N:   uploader-address-malformed changed-by-address-malformed
+N: 
+N:
+E: putgd: no-changelog usr/share/doc/putgd/changelog.gz (native package)
+N: 
+N:   A Debian package that provides a /usr/share/doc/*pkg* directory must
+N:   install a changelog file.
+N:   
+N:   For native packages the best name is /usr/share/doc/*pkg*/changelog.gz.
+N:   
+N:   For non-native packages the best name is
+N:   /usr/share/doc/*pkg*/changelog.Debian.gz.
+N:   
+N:   This tag may also be emitted when the changelog exists but does not
+N:   otherwise resemble a Debian changelog.
+N: 
+N:   Please refer to Changelog files and release notes (Section 12.7) in the
+N:   Debian Policy Manual for details.
+N: 
+N:   Visibility: error
+N:   Show-Always: no
+N:   Check: debian/changelog
+N:   Renamed from: changelog-file-missing-in-native-package
+N:   debian-changelog-file-missing
+N: 
+N:
+E: putgd: no-copyright-file
+N: 
+N:   Each binary package has to include a plain file
+N:   /usr/share/doc/*pkg*/copyright
+N: 
+N:   Please refer to Copyright information (Section 12.5) in the Debian Policy
+N:   Manual for details.
+N: 
+N:   Visibility: error
+N:   Show-Always: no
+N:   Check: debian/copyright
+N: 
+N:
+E: putgd: package-installs-apt-sources [etc/apt/sources.list.d/putgd.sources]
+N: 
+N:   Debian packages should not install files under /etc/apt/sources.list.d/ or
+N:   install an /etc/apt/sources.list file.
+N:   
+N:   The selection of installation sources is under the control of the local
+N:   administrator. Packages are generally not allowed to change the
+N:   administrator's choices.
+N:   
+N:   As a limited exception for the convenience of administrators, packages
+N:   whose names end in the clearly named -apt-source are permitted to install
+N:   such files.
+N: 
+N:   Please refer to the sources.list(5) manual page for details.
+N: 
+N:   Visibility: error
+N:   Show-Always: no
+N:   Check: apt
+N:   Renamed from: package-install-apt-sources
+N: 
+N:
+E: putgd: unstripped-binary-or-object [usr/bin/putgd-b2-worker]
+N: 
+N:   The package installs an unstripped binary or object file.
+N:   
+N:   Please note, that shared libraries have to be stripped with the
+N:   --strip-unneeded option.
+N: 
+N:   Please refer to Binaries (Section 10.1) in the Debian Policy Manual and
+N:   Libraries (Section 10.2) in the Debian Policy Manual for details.
+N: 
+N:   Visibility: error
+N:   Show-Always: no
+N:   Check: binaries/debug-symbols
+N: 
+N:
+E: putgd: unstripped-binary-or-object [usr/bin/putgd-capture]
+N:
+E: putgd: unstripped-binary-or-object [usr/bin/putgd-cli]
+N:
+E: putgd: unstripped-binary-or-object [usr/bin/putgd-kde-region]
+N:
+E: putgd: unstripped-binary-or-object [usr/bin/putgd-record]
+N:
+E: putgd: unstripped-binary-or-object [usr/bin/putgd-s3-worker]
+N:
+E: putgd: unstripped-binary-or-object [usr/bin/putgd-ui]
+N:
+E: putgd: unstripped-binary-or-object [usr/bin/putgd]
+N:
+E: putgd: unstripped-binary-or-object [usr/lib/x86_64-linux-gnu/putgd/libaws-c-auth.so.1.0.0]
+N:
+E: putgd: unstripped-binary-or-object [usr/lib/x86_64-linux-gnu/putgd/libaws-c-cal.so.1.0.0]
+N:
+E: putgd: unstripped-binary-or-object [usr/lib/x86_64-linux-gnu/putgd/libaws-c-common.so.0.14.5]
+N:
+E: putgd: unstripped-binary-or-object [usr/lib/x86_64-linux-gnu/putgd/libaws-c-compression.so.1.0.0]
+N:
+E: putgd: unstripped-binary-or-object [usr/lib/x86_64-linux-gnu/putgd/libaws-c-event-stream.so.1.0.0]
+N:
+E: putgd: unstripped-binary-or-object [usr/lib/x86_64-linux-gnu/putgd/libaws-c-http.so.1.0.0]
+N:
+E: putgd: unstripped-binary-or-object [usr/lib/x86_64-linux-gnu/putgd/libaws-c-io.so.1.0.0]
+N:
+E: putgd: unstripped-binary-or-object [usr/lib/x86_64-linux-gnu/putgd/libaws-c-mqtt.so.1.0.0]
+N:
+E: putgd: unstripped-binary-or-object [usr/lib/x86_64-linux-gnu/putgd/libaws-c-s3.so.1.0.0]
+N:
+E: putgd: unstripped-binary-or-object [usr/lib/x86_64-linux-gnu/putgd/libaws-c-sdkutils.so.1.0.0]
+N:
+E: putgd: unstripped-binary-or-object [usr/lib/x86_64-linux-gnu/putgd/libaws-checksums.so.1.0.0]
+N:
+E: putgd: unstripped-binary-or-object [usr/lib/x86_64-linux-gnu/putgd/libaws-cpp-sdk-core.so]
+N:
+E: putgd: unstripped-binary-or-object [usr/lib/x86_64-linux-gnu/putgd/libaws-cpp-sdk-s3.so]
+N:
+E: putgd: unstripped-binary-or-object [usr/lib/x86_64-linux-gnu/putgd/libaws-crt-cpp.so]
+N:
+E: putgd: unstripped-binary-or-object [usr/lib/x86_64-linux-gnu/putgd/libputgd-s3.so]
+N:
+E: putgd: unstripped-binary-or-object [usr/lib/x86_64-linux-gnu/putgd/libs2n.so.1.0.0]
+N:
+E: putgd: unstripped-binary-or-object [usr/libexec/putgd/proton/putgd-proton-runtime]
+N:
+W: putgd: hardening-no-pie [usr/libexec/putgd/proton/putgd-proton-runtime]
+N: 
+N:   This package provides an ELF executable that was not compiled as a
+N:   position independent executable (PIE).
+N:   
+N:   In Debian, since version 6.2.0-7 of the gcc-6 package GCC will compile ELF
+N:   binaries with PIE by default. In most cases a simple rebuild will be
+N:   sufficient to remove this tag.
+N:   
+N:   PIE is required for fully enabling Address Space Layout Randomization
+N:   (ASLR), which makes "Return-oriented" attacks more difficult.
+N:   
+N:   Historically, PIE has been associated with noticeable performance overhead
+N:   on i386. However, GCC >= 5 has implemented an optimization that can reduce
+N:   the overhead significantly.
+N:   
+N:   If you use dpkg-buildflags with hardening=+all,-pie in
+N:   DEB_BUILD_MAINT_OPTIONS, remove the -pie.
+N: 
+N:   Please refer to https://wiki.debian.org/Hardening,
+N:   https://gcc.gnu.org/gcc-5/changes.html, and
+N:   https://software.intel.com/en-us/blogs/2014/12/26/new-optimizations-for-x86-in-upcoming-gcc-50-32bit-pic-mode
+N:   for details.
+N: 
+N:   Visibility: warning
+N:   Show-Always: no
+N:   Check: binaries/hardening
+N: 
+N:
+W: putgd: hardening-no-relro [usr/libexec/putgd/proton/putgd-proton-runtime]
+N: 
+N:   This package provides an ELF binary that lacks the "read-only relocation"
+N:   link flag. This package was likely not built with the default Debian
+N:   compiler flags defined by dpkg-buildflags. If built using dpkg-buildflags
+N:   directly, be sure to import LDFLAGS.
+N: 
+N:   Please refer to https://wiki.debian.org/Hardening for details.
+N: 
+N:   Visibility: warning
+N:   Show-Always: no
+N:   Check: binaries/hardening
+N: 
+N:
+W: putgd: no-manual-page [usr/bin/putgd-b2-worker]
+N: 
+N:   Each binary in /usr/bin, /usr/sbin, /bin, /sbin or /usr/games should have
+N:   a manual page
+N:   
+N:   Note that though the man program has the capability to check for several
+N:   program names in the NAMES section, each of these programs should have its
+N:   own manual page (a symbolic link to the appropriate manual page is
+N:   sufficient) because other manual page viewers such as xman or tkman don't
+N:   support this.
+N:   
+N:   If the name of the manual page differs from the binary by case, man may be
+N:   able to find it anyway; however, it is still best practice to match the
+N:   exact capitalization of the executable in the manual page.
+N:   
+N:   If the manual pages are provided by another package on which this package
+N:   depends, Lintian may not be able to determine that manual pages are
+N:   available. In this case, after confirming that all binaries do have manual
+N:   pages after this package and its dependencies are installed, please add a
+N:   Lintian override.
+N: 
+N:   Please refer to Manual pages (Section 12.1) in the Debian Policy Manual
+N:   for details.
+N: 
+N:   Visibility: warning
+N:   Show-Always: no
+N:   Check: documentation/manual
+N:   Renamed from: binary-without-manpage
+N: 
+N:
+W: putgd: no-manual-page [usr/bin/putgd-capture]
+N:
+W: putgd: no-manual-page [usr/bin/putgd-cli]
+N:
+W: putgd: no-manual-page [usr/bin/putgd-kde-region]
+N:
+W: putgd: no-manual-page [usr/bin/putgd-launcher]
+N:
+W: putgd: no-manual-page [usr/bin/putgd-record]
+N:
+W: putgd: no-manual-page [usr/bin/putgd-s3-worker]
+N:
+W: putgd: no-manual-page [usr/bin/putgd-ui]
+N:
+W: putgd: no-manual-page [usr/bin/putgd]
+N:
+I: putgd: desktop-entry-lacks-keywords-entry [usr/share/applications/putgd.desktop]
+N: 
+N:   This .desktop file is either missing a Keywords entry, or it does not
+N:   contain keywords above and beyond those already present in the Name or
+N:   GenericName entries.
+N:   
+N:   The Keywords field is intended to show keywords relevant for a .desktop
+N:   file.
+N:   
+N:   Desktop files are organized in key-value pairs and are similar to INI
+N:   files.
+N:   
+N:   The desktop-file-validate tool in the desktop-file-utils package may be
+N:   useful when checking the syntax of desktop entries.
+N: 
+N:   Please refer to
+N:   https://specifications.freedesktop.org/desktop-entry-spec/latest/ar01s06.html,
+N:   Bug#693918, and
+N:   https://wiki.gnome.org/Initiatives/GnomeGoals/DesktopFileKeywords for
+N:   details.
+N: 
+N:   Visibility: info
+N:   Show-Always: no
+N:   Check: menu-format
+N: 
+N:
+I: putgd: extra-license-file [usr/libexec/putgd/proton/redistribution/LICENSE.boltffi-MIT]
+N: 
+N:   All license information should be collected in the debian/copyright file.
+N:   This usually makes it unnecessary for the package to install this
+N:   information in other places as well.
+N: 
+N:   Please refer to Copyright information (Section 12.5) in the Debian Policy
+N:   Manual for details.
+N: 
+N:   Visibility: info
+N:   Show-Always: no
+N:   Check: files/licenses
+N: 
+N:
+I: putgd: extra-license-file [usr/libexec/putgd/proton/redistribution/LICENSE.crypto-GPL-3.0]
+N:
+I: putgd: extra-license-file [usr/libexec/putgd/proton/redistribution/LICENSE.pmcrypto-MIT]
+N:
+I: putgd: extra-license-file [usr/libexec/putgd/proton/redistribution/LICENSE.srp-MIT]
+N:
+I: putgd: extra-license-file [usr/share/doc/putgd/LICENSE]
+N:
+I: putgd: extra-license-file [usr/share/doc/putgd/proton/LICENSE.boltffi-MIT]
+N:
+I: putgd: extra-license-file [usr/share/doc/putgd/proton/LICENSE.crypto-GPL-3.0]
+N:
+I: putgd: extra-license-file [usr/share/doc/putgd/proton/LICENSE.pmcrypto-MIT]
+N:
+I: putgd: extra-license-file [usr/share/doc/putgd/proton/LICENSE.proton]
+N:
+I: putgd: extra-license-file [usr/share/doc/putgd/proton/LICENSE.srp-MIT]
+N:
+I: putgd: hardening-no-bindnow [usr/lib/x86_64-linux-gnu/putgd/libaws-c-auth.so.1.0.0]
+N: 
+N:   This package provides an ELF binary that lacks the "bindnow" linker flag.
+N:   
+N:   This is needed (together with "relro") to make the "Global Offset Table"
+N:   (GOT) fully read-only. The bindnow feature trades startup time for
+N:   improved security. Please consider enabling this feature or consider
+N:   overriding the tag (possibly with a comment about why).
+N:   
+N:   If you use dpkg-buildflags, you may have to add hardening=+bindnow or
+N:   hardening=+all to DEB_BUILD_MAINT_OPTIONS.
+N:   
+N:   The relevant compiler flags are set in LDFLAGS.
+N: 
+N:   Please refer to https://wiki.debian.org/Hardening for details.
+N: 
+N:   Visibility: info
+N:   Show-Always: no
+N:   Check: binaries/hardening
+N: 
+N:
+I: putgd: hardening-no-bindnow [usr/lib/x86_64-linux-gnu/putgd/libaws-c-cal.so.1.0.0]
+N:
+I: putgd: hardening-no-bindnow [usr/lib/x86_64-linux-gnu/putgd/libaws-c-common.so.0.14.5]
+N:
+I: putgd: hardening-no-bindnow [usr/lib/x86_64-linux-gnu/putgd/libaws-c-compression.so.1.0.0]
+N:
+I: putgd: hardening-no-bindnow [usr/lib/x86_64-linux-gnu/putgd/libaws-c-event-stream.so.1.0.0]
+N:
+I: putgd: hardening-no-bindnow [usr/lib/x86_64-linux-gnu/putgd/libaws-c-http.so.1.0.0]
+N:
+I: putgd: hardening-no-bindnow [usr/lib/x86_64-linux-gnu/putgd/libaws-c-io.so.1.0.0]
+N:
+I: putgd: hardening-no-bindnow [usr/lib/x86_64-linux-gnu/putgd/libaws-c-mqtt.so.1.0.0]
+N:
+I: putgd: hardening-no-bindnow [usr/lib/x86_64-linux-gnu/putgd/libaws-c-s3.so.1.0.0]
+N:
+I: putgd: hardening-no-bindnow [usr/lib/x86_64-linux-gnu/putgd/libaws-c-sdkutils.so.1.0.0]
+N:
+I: putgd: hardening-no-bindnow [usr/lib/x86_64-linux-gnu/putgd/libaws-checksums.so.1.0.0]
+N:
+I: putgd: hardening-no-bindnow [usr/lib/x86_64-linux-gnu/putgd/libaws-cpp-sdk-core.so]
+N:
+I: putgd: hardening-no-bindnow [usr/lib/x86_64-linux-gnu/putgd/libaws-cpp-sdk-s3.so]
+N:
+I: putgd: hardening-no-bindnow [usr/lib/x86_64-linux-gnu/putgd/libaws-crt-cpp.so]
+N:
+I: putgd: hardening-no-bindnow [usr/lib/x86_64-linux-gnu/putgd/libputgd-s3.so]
+N:
+I: putgd: hardening-no-bindnow [usr/libexec/putgd/proton/putgd-proton-runtime]
+N:
+I: putgd: package-contains-documentation-outside-usr-share-doc [usr/libexec/putgd/proton/THIRD-PARTY-NOTICES.txt]
+N: 
+N:   This package ships a documentation file outside /usr/share/doc
+N:   Documentation files are normally installed inside /usr/share/doc.
+N:   
+N:   If this file doesn't describe the contents or purpose of the directory it
+N:   is in, please consider moving this file to /usr/share/doc/ or maybe even
+N:   removing it. If this file does describe the contents or purpose of the
+N:   directory it is in, please add a lintian override.
+N: 
+N:   Visibility: info
+N:   Show-Always: no
+N:   Check: documentation
+N: 
+N:   Screen: python/egg/metadata
+N:     Advocates: "Scott Kitterman" <debian@kitterman.com>
+N:     Reason: The folders XXX.dist-info/ and XXX.egg-info/ hold metadata for
+N:             Python modules. Those files are not documentation even though
+N:             some of their names carry the .txt file extension.
+N:             
+N:             Python modules can be both public and private.
+N:             
+N:             Read more in
+N:             https://www.python.org/dev/peps/pep-0427/#the-dist-info-directory,
+N:             https://www.python.org/dev/peps/pep-0376/#id16,
+N:             https://www.python.org/dev/peps/pep-0610/,
+N:             https://www.python.org/dev/peps/pep-0639/,
+N:             https://setuptools.pypa.io/en/latest/deprecated/python_eggs.html,
+N:             and Bug#1003913.
+N: 
+N:
+I: putgd: package-contains-documentation-outside-usr-share-doc [usr/libexec/putgd/proton/redistribution/BUN-LINUX-ATTRIBUTION.md]
+N:
+I: putgd: package-contains-documentation-outside-usr-share-doc [usr/libexec/putgd/proton/redistribution/CRYPTO-PROVENANCE.md]
+N:
+I: putgd: package-contains-documentation-outside-usr-share-doc [usr/libexec/putgd/proton/redistribution/OPENPGP-PREBUNDLED-NOTICES.txt]
+N:
+I: putgd: package-contains-documentation-outside-usr-share-doc [usr/libexec/putgd/proton/redistribution/REBUILD.md]
+N:
+P: putgd: openpgp-file-has-implementation-specific-extension [usr/share/keyrings/putgd-archive-keyring.gpg]
+N: 
+N:   The package includes an OpenPGP file with an implementation specific
+N:   extension such as .gpg, instead of the more correct and neutral .pgp.
+N:   
+N:   The specification for this format is called OpenPGP, and the extension
+N:   name that is short and considered implementation neutral is .pgp. While
+N:   currently the GnuPG project is widely used and one of the most known
+N:   OpenPGP implementations, using an extension after its name is detrimental
+N:   to other alternative implementations, when a better more neutral name can
+N:   be used instead.
+N:   
+N:   Note that many of these files are referenced externally, and as such
+N:   should be considered an interface. Make sure to create backward
+N:   compatibility symlinks for a smooth transition.
+N: 
+N:   Please refer to https://www.openpgp.org/ and
+N:   https://www.rfc-editor.org/rfc/rfc4880 for details.
+N: 
+N:   Visibility: pedantic
+N:   Show-Always: no
+N:   Check: files/openpgp
+N: 
+N:
+X: putgd: duplicate-files usr/share/doc/putgd/aws-crt-cpp-LICENSE usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-auth-LICENSE usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-common-LICENSE usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-compression-LICENSE usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-event-stream-LICENSE usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-http-LICENSE usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-io-LICENSE usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-mqtt-LICENSE usr/share/doc/putgd/aws-crt-cpp-crt-s2n-LICENSE
+N: 
+N:   The package ships the two (or more) files with the exact same contents.
+N:   
+N:   Duplicates can often be replaced with symlinks by running:
+N:   
+N:      jdupes -rl debian/${binary}/usr
+N:   
+N:   ... after they are installed, eg. in override_dh_link. In addition, please
+N:   consider reporting this upstream.
+N:   
+N:   Note: empty files are exempt from this check.
+N: 
+N:   Please refer to the jdupes(1) manual page for details.
+N: 
+N:   Visibility: pedantic
+N:   Show-Always: no
+N:   Check: files/duplicates
+N:   This tag is experimental.
+N: 
+N:
+X: putgd: duplicate-files usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-cal-LICENSE usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-s3-LICENSE usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-sdkutils-LICENSE
+N:
+X: putgd: duplicate-files usr/share/doc/putgd/aws-crt-cpp-crt-aws-checksums-LICENSE usr/share/doc/putgd/aws-sdk-LICENSE
+N:
+X: putgd: hardening-no-fortify-functions [usr/bin/putgd-b2-worker]
+N: 
+N:   This package provides an ELF binary that lacks the use of fortified libc
+N:   functions. Either there are no potentially unfortified functions called by
+N:   any routines, all unfortified calls have already been fully validated at
+N:   compile-time, or the package was not built with the default Debian
+N:   compiler flags defined by dpkg-buildflags. If built using dpkg-buildflags
+N:   directly, be sure to import CPPFLAGS.
+N:   
+N:   NB: Due to false-positives, Lintian ignores some unprotected functions
+N:   (e.g. memcpy).
+N: 
+N:   Please refer to https://wiki.debian.org/Hardening and Bug#673112 for
+N:   details.
+N: 
+N:   Visibility: info
+N:   Show-Always: no
+N:   Check: binaries/hardening
+N:   This tag is experimental.
+N: 
+N:
+X: putgd: hardening-no-fortify-functions [usr/bin/putgd-s3-worker]
+N:
+X: putgd: hardening-no-fortify-functions [usr/lib/x86_64-linux-gnu/putgd/libaws-c-mqtt.so.1.0.0]
+N:
+X: putgd: spelling-error-in-binary Dont Don't [usr/lib/x86_64-linux-gnu/putgd/libaws-c-mqtt.so.1.0.0:1]
+N: 
+N:   Lintian found a spelling error in the given binary. Lintian has a list of
+N:   common misspellings that it looks for. It does not have a dictionary like
+N:   a spelling checker does.
+N:   
+N:   If the string containing the spelling error is translated with the help of
+N:   gettext or a similar tool, please fix the error in the translations as
+N:   well as the English text to avoid making the translations fuzzy. With
+N:   gettext, for example, this means you should also fix the spelling mistake
+N:   in the corresponding msgids in the *.po files.
+N:   
+N:   You can often find the word in the source code by running:
+N:   
+N:    grep -rw <word> <source-tree>
+N:   
+N:   This tag may produce false positives for words that contain non-ASCII
+N:   characters due to limitations in strings.
+N: 
+N:   Visibility: pedantic
+N:   Show-Always: no
+N:   Check: binaries/spelling
+N:   This tag is experimental.
+N: 
+N:
+X: putgd: spelling-error-in-binary Initalizing Initializing [usr/lib/x86_64-linux-gnu/putgd/libaws-c-mqtt.so.1.0.0:1]
+N:
+X: putgd: spelling-error-in-binary Inseperable Inseparable [usr/libexec/putgd/proton/putgd-proton-runtime:1]
+N:
+X: putgd: spelling-error-in-binary Subsituted Substituted [usr/libexec/putgd/proton/putgd-proton-runtime:1]
+N:
+X: putgd: spelling-error-in-binary TyPLE Tuple [usr/libexec/putgd/proton/putgd-proton-runtime:1]
+N:
+X: putgd: spelling-error-in-binary Unexepcted Unexpected [usr/libexec/putgd/proton/putgd-proton-runtime:1]
+N:
+X: putgd: spelling-error-in-binary afterAll after all [usr/libexec/putgd/proton/putgd-proton-runtime:1]
+N:
+X: putgd: spelling-error-in-binary befor before [usr/libexec/putgd/proton/putgd-proton-runtime:1]
+N:
+X: putgd: spelling-error-in-binary cAHR char [usr/libexec/putgd/proton/putgd-proton-runtime:1]
+N:
+X: putgd: spelling-error-in-binary compresion compression [usr/libexec/putgd/proton/putgd-proton-runtime:1]
+N:
+X: putgd: spelling-error-in-binary enty entry [usr/libexec/putgd/proton/putgd-proton-runtime:1]
+N:
+X: putgd: spelling-error-in-binary envrionment environment [usr/lib/x86_64-linux-gnu/putgd/libaws-c-s3.so.1.0.0:1]
+N:
+X: putgd: spelling-error-in-binary iIf if [usr/libexec/putgd/proton/putgd-proton-runtime:1]
+N:
+X: putgd: spelling-error-in-binary implented implemented [usr/libexec/putgd/proton/putgd-proton-runtime:1]
+N:
+X: putgd: spelling-error-in-binary incase in case [usr/libexec/putgd/proton/putgd-proton-runtime:1]
+N:
+X: putgd: spelling-error-in-binary interal internal [usr/libexec/putgd/proton/putgd-proton-runtime:1]
+N:
+X: putgd: spelling-error-in-binary intializer initializer [usr/libexec/putgd/proton/putgd-proton-runtime:1]
+N:
+X: putgd: spelling-error-in-binary isnt isn't [usr/libexec/putgd/proton/putgd-proton-runtime:1]
+N:
+X: putgd: spelling-error-in-binary modifed modified [usr/lib/x86_64-linux-gnu/putgd/libaws-c-s3.so.1.0.0:1]
+N:
+X: putgd: spelling-error-in-binary mumber number [usr/libexec/putgd/proton/putgd-proton-runtime:1]
+N:
+X: putgd: spelling-error-in-binary negociation negotiation [usr/libexec/putgd/proton/putgd-proton-runtime:1]
+N:
+X: putgd: spelling-error-in-binary ofthe of the [usr/libexec/putgd/proton/putgd-proton-runtime:1]
+N:
+X: putgd: spelling-error-in-binary paremeters parameters [usr/libexec/putgd/proton/putgd-proton-runtime:1]
+N:
+X: putgd: spelling-error-in-binary protcol protocol [usr/libexec/putgd/proton/putgd-proton-runtime:1]
+N:
+X: putgd: spelling-error-in-binary protocal protocol [usr/lib/x86_64-linux-gnu/putgd/libaws-c-http.so.1.0.0:1]
+N:
+X: putgd: spelling-error-in-binary reponse response [usr/libexec/putgd/proton/putgd-proton-runtime:1]
+N:
+X: putgd: spelling-error-in-binary stirng string [usr/libexec/putgd/proton/putgd-proton-runtime:1]
+N:
+X: putgd: spelling-error-in-binary succesful successful [usr/libexec/putgd/proton/putgd-proton-runtime:1]
+N:
+X: putgd: spelling-error-in-binary sucessfully successfully [usr/libexec/putgd/proton/putgd-proton-runtime:1]
+N:
+X: putgd: spelling-error-in-binary supercedes supersedes [usr/lib/x86_64-linux-gnu/putgd/libaws-c-sdkutils.so.1.0.0:1]
+N:
+X: putgd: spelling-error-in-binary wASN was [usr/libexec/putgd/proton/putgd-proton-runtime:1]
+N:
+X: putgd: spelling-error-in-binary wTH with [usr/libexec/putgd/proton/putgd-proton-runtime:1]
+N:
+X: putgd: spelling-error-in-binary wether whether [usr/libexec/putgd/proton/putgd-proton-runtime:1]
+N:
+X: putgd: spelling-error-in-binary withthe with the [usr/libexec/putgd/proton/putgd-proton-runtime:1]
+N:
+X: putgd: spelling-error-in-binary yau you [usr/libexec/putgd/proton/putgd-proton-runtime:1]

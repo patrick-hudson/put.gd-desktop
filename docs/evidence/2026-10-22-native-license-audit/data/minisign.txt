@@ -1,0 +1,6 @@
+d69 (Debian 13), 2026-10-22, pkg.put.gd/releases/v26.1022.1017-nightly/SHA256SUMS(.minisig), byte-identical to the GitHub SHA256SUMS
+$ minisign -Vm SHA256SUMS -x SHA256SUMS.minisig -p packaging/linux/repo/keys/putgd-nightly.minisign.pub   (minisign 0.12)
+Signature and comment signature verified
+Trusted comment: put.gd v26.1022.1017-nightly nightly
+$ python3 -I ../2026-10-22-appimage-license-audit/tools/minisign_verify.py <key> SHA256SUMS SHA256SUMS.minisig
+OK alg=ED keyid=71440FA5E439AEBB trusted=put.gd v26.1022.1017-nightly nightly

@@ -55,7 +55,13 @@ Every picture names its build in its caption.
 
 ![After: the whole line](pictures/391-version-after-m74.png)
 
-**Still to come:** the "after, with Update available" picture, from the first nightly that contains #423. #391 stays open until it is in.
+**After, in the first nightly with #423:** `26.1022.1017-nightly` (3582b30a), on m74 on 2026-10-22, about 22:50Z. A loopback test feed in a private profile listed `26.1022.9999-nightly`, so **Update available** shows. At 1280×722 the compact rail fits with it, and the version link shows its whole line. At 1280×805 the rail is full size, and the link shows its descenders.
+
+![Nightly 1017, dark, with Update available](pictures/391-after-nightly1017-m74-1280x722-dark.png)
+
+![Nightly 1017, light, with Update available](pictures/391-after-nightly1017-m74-1280x722-light.png)
+
+![Nightly 1017's version link, whole line](pictures/391-version-after-nightly1017-m74.png)
 
 ## #415: the banner's first click
 
