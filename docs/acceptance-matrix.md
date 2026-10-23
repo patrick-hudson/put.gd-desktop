@@ -341,7 +341,7 @@ The same rules as the AppImage profile apply:
 
 Nothing is skipped silently. The passes are in the evidence folders named
 `*-native-full-acceptance`; the drivers are in
-[`2026-10-22-native-full-acceptance/lab/`](evidence/2026-10-22-native-full-acceptance/lab/README.md).
+[`2026-10-23-native-full-acceptance/lab/`](evidence/2026-10-23-native-full-acceptance/lab/README.md).
 
 | Desktop | Package | Placement |
 | --- | --- | --- |
@@ -428,7 +428,7 @@ On the accepted nightly, installed by item L.
   - **Check now** gives a status from the live feed, and there's no notification.
   - **Open software updates**, with a real click, opens this desktop's updater: Update Manager on m74, Discover on k72, GNOME Software on f44 and d69, and on the VM whatever it finds, or its message with the command.
 - **I. Start at login:** turn on **Launch at login** on the default profile.
-  - `~/.config/autostart/putgd.desktop` is written with `Exec=/usr/bin/putgd --background` and `X-putgd-Managed=true` (record its bytes).
+  - `~/.config/autostart/putgd.desktop` is written with `Exec="/usr/bin/putgd-launcher" --background` and `X-putgd-Managed=true` (record its bytes).
   - After a real logout and login, the resident runs from `/usr/bin/putgd`.
   - Physical desktops: only with the coordinator's OK, and only after checking that none of Patrick's apps are open. VMs: through their autologin.
 - **J. Package manager view:**
@@ -476,8 +476,8 @@ These run in this order on each desktop, around A–K: L, then A–K, then M1, M
   - Check the version ordering (`dpkg --compare-versions 0.1.1~nightly.947 lt YY.MDD.N~nightly`, `rpmdev-vercmp`). The signature is verified, the accepted version installs with no conffile prompt, and the repository file is unchanged.
   - After put.gd restarts, `config.json` and the history are as before (both entries, previews, the link).
 - **O. Companion:**
-  - **GNOME** (f44, the Ubuntu VM): after M1 and M2 the running shell still has the old extension.
-    - Capture reports `helper_outdated` with its message, and a re-login fixes it.
+  - **GNOME** (f44, the Ubuntu VM): after M1 the running shell still has dev.133's extension (`version` 1; 947 and 1058 ship 2, so M2 can't show it).
+    - `capabilities` reports `helper.outdated: true` with both versions, screenshots keep working, and an interactive region recording is refused with `helper_outdated` and its message ([gnome.md](desktops/gnome.md)). A re-login fixes it.
     - `gnome-extensions disable putgd@put.gd` gives the documented message, and `enable` restores capture.
     - After item P, the extension is gone at the next login. `enabled-extensions` is restored to its value before the pass.
   - **Plasma** (k72, d69):
@@ -488,18 +488,18 @@ These run in this order on each desktop, around A–K: L, then A–K, then M1, M
   - `sudo apt remove putgd`:
     - the package files are gone (compared with `dpkg -L` before);
     - the conffile `putgd.sources` stays (record it);
-    - no put.gd process remains.
+    - a resident that was running keeps running from its deleted executable until it quits or the session ends, as for any package (record it).
   - `sudo apt purge putgd`: the repository file and key are gone.
   - Fedora: `sudo dnf remove putgd`. `rpm-postun.sh` removes `putgd.repo`, and the `RPM-GPG-KEY-putgd*` files go with the package.
   - User data is preserved: the default profile's digests match the ones from before.
   - After a real logout and login, there's no put.gd process.
 - **Q. The login-startup entry after uninstall (#382):** observe and record what's there, without changing anything. Patrick hasn't decided between `TryExec` and accepting the entry as it is.
-  - After P's login, `~/.config/autostart/putgd.desktop` is still there: record its bytes, which name a missing `/usr/bin/putgd`.
+  - After P's login, `~/.config/autostart/putgd.desktop` is still there: record its bytes, which name a missing `/usr/bin/putgd-launcher`.
   - What the session does with it at login:
     - the user journal's lines for it, and `systemctl --user --failed` (systemd's `app-putgd@autostart.service` on GNOME and Plasma);
     - any notification;
     - whether the desktop's startup-applications settings list it (picture): Cinnamon's Startup Applications, Plasma's Autostart, GNOME's Background Apps or Tweaks.
-  - **TryExec probe:** replace that entry with the same bytes plus `TryExec=/usr/bin/putgd`, in the run's own recorded file, and log in again. Record the same observations: the entry should be ignored silently.
+  - **TryExec probe:** replace that entry with the same bytes plus `TryExec=` its Exec program (`/usr/bin/putgd-launcher`), in the run's own recorded file, and log in again. Record the same observations: whether the entry is now ignored silently.
   - Put both options' consequences in the results, from these observations:
     - **TryExec:** the entry does nothing and logs nothing after removal, and a reinstall brings the preference back. It needs a code PR (`LoginStartup`, unit test) and docs.
     - **Accept as is:** whatever the first login showed (failed unit, journal lines, a listing in the settings), on every login until the user removes the file. Plus documentation: turn off **Launch at login** before uninstalling.

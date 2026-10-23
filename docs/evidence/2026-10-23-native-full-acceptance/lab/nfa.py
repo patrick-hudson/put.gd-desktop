@@ -36,8 +36,12 @@ through `pkg`, which simulates the transaction first and refuses anything beyond
   nfa.py extension NAME --label L                 GNOME: the packaged extension's state and put.gd's capability
   nfa.py s3list PREFIX [--purge]                  put.gd/PREFIX listed with key set 2 (boto3; d69)
   nfa.py teardown NAME                            default-profile folders, keychain entry, autostart entry the run made
+  nfa.py key NAME CHORD... / type NAME TEXT       real key input, guarded like clicks; --label keeps a full frame
+  nfa.py frame NAME --label L                     a full-desktop frame (allow-full on) and put.gd's processes
+  nfa.py updates NAME --label L [--open]          Settings -> Updates on a repository install; --open: Open software updates
+  nfa.py launch NAME [--exe E --cli C] / quit NAME   start the run's program again (after an upgrade or grow) / quit it
 """
-import argparse, hashlib, json, os, re, shutil, sqlite3, subprocess, sys, tempfile, time, urllib.parse, urllib.request, uuid
+import argparse, hashlib, json, os, re, shutil, sqlite3, subprocess, sys, tempfile, time, urllib.error, urllib.parse, urllib.request, uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -84,8 +88,18 @@ class NativeRun(afa.Run):
         except ValueError: return {'ok': False, 'raw': r.stdout[-400:], 'stderr': r.stderr[-400:], 'exit': r.returncode}
 
     def socket_request(self, method, params):
-        self.meta['runtime'] = self.env()['XDG_RUNTIME_DIR']
-        return super().socket_request(method, params)
+        # Never through meta['runtime']: that is the run's own /tmp/nfa.* folder, which cleanup deletes. A default-profile
+        # run talks to /run/user/UID, the session's real runtime directory (rehearsal 2026-10-23: deleting it broke the session).
+        path = str(Path(self.env()['XDG_RUNTIME_DIR']) / 'putgd/session.sock')
+        with afa.socket.socket(afa.socket.AF_UNIX, afa.socket.SOCK_STREAM) as s:
+            s.settimeout(20); s.connect(path)
+            s.sendall(json.dumps({'schemaVersion': 1, 'requestId': 'nfa-' + method, 'session': path, 'method': method, 'params': params}).encode() + b'\n')
+            data = b''
+            while not data.endswith(b'\n'):
+                chunk = s.recv(65536)
+                if not chunk: break
+                data += chunk
+        return json.loads(data)
 
     @property
     def config_home(self): return Path(self.env().get('XDG_CONFIG_HOME') or HOME / '.config')
@@ -114,16 +128,31 @@ def ensure(run):
     return run
 
 
+class Unit:
+    """The resident's transient user unit, standing in for afa's Popen (quit_resident waits on it)."""
+    def __init__(self, name): self.name = name
+    def wait(self, timeout=None): return 0
+
+
 def native_launch(run, label):
-    """put.gd as the menu entry starts it: /usr/bin/putgd --background in the session's own environment."""
+    """put.gd as a menu start puts it: /usr/bin/putgd --background as a transient unit of the graphical session's user
+    manager (systemd-run --user), so the updater it opens gets polkit's active-session rules, which a child of the SSH
+    shell doesn't (the update profile's lesson, #314/#489)."""
     sock = Path(runtime_of(run)) / 'putgd/session.sock'
-    log = open(run.dir / f'logs/launch-{label}.log', 'ab')
+    logpath = run.dir / f'logs/launch-{label}.log'
     exe = run.meta.get('exe', '/usr/bin/putgd')
-    p = subprocess.Popen([exe, '--background'], env=run.env(), stdin=subprocess.DEVNULL, stdout=log, stderr=log, start_new_session=True)
-    run.meta['pids']['apprun'] = p.pid; run.save()
+    env = run.env()
+    unit = f"putgd-nfa-{run.name}-{label}-{int(time.time())}"
+    command = ['systemd-run', '--user', '--collect', f'--unit={unit}', f'--property=StandardOutput=append:{logpath}',
+               f'--property=StandardError=append:{logpath}'] + [f'--setenv={k}={v}' for k, v in env.items()] + [exe, '--background']
+    subprocess.run(command, check=True, capture_output=True, env={**os.environ, 'XDG_RUNTIME_DIR': f'/run/user/{os.getuid()}',
+                                                                  'DBUS_SESSION_BUS_ADDRESS': f'unix:path=/run/user/{os.getuid()}/bus'})
+    run.meta.setdefault('units', []).append(unit); run.save()
     ready = run.wait(lambda: sock.exists() and (lambda d: d.get('ok') and d['result'].get('journalReady', True))(run.cli('diagnostics', timeout=15)), 90)
     if not ready: raise SystemExit(f'resident not ready ({label}); see logs/launch-{label}.log')
-    return p
+    resident = [x for x in native_tree(run) if x['comm'] == 'putgd']
+    run.meta['pids']['apprun'] = resident[0]['pid'] if resident else None; run.save()
+    return Unit(unit)
 
 
 def put_processes(runtime=None):
@@ -158,7 +187,17 @@ def native_motion(run, clip):
     r = subprocess.run(['/usr/bin/putgd-record', '--motion', str(clip), '8'], env=run.cli_env(), capture_output=True, text=True, timeout=300)
     found = re.search(r'^motion=([0-9.]+) compared=(\d+) samples=(\d+) durationMs=(\d+) size=(\S+)', r.stdout, re.M)
     if found: return {'motion': float(found.group(1)), 'compared': int(found.group(2)), 'durationMs': int(found.group(4)), 'size': found.group(5), 'by': 'putgd-record'}
-    return {'error': (r.stdout + r.stderr).strip()[-300:]}
+    try:  # animated WebP, which FFmpeg can't decode: Pillow, as afa.py does
+        from PIL import Image, ImageChops, ImageStat
+        import statistics
+        image = Image.open(clip); count = getattr(image, 'n_frames', 1)
+        picks = sorted({round(i * (count - 1) / 7) for i in range(8)}) if count > 1 else [0]
+        frames = []
+        for index in picks: image.seek(index); frames.append(image.convert('L').copy())
+        diffs = [statistics.mean(ImageStat.Stat(ImageChops.difference(a, b)).mean) for a, b in zip(frames, frames[1:])]
+        return {'motion': round(statistics.mean(diffs), 3) if diffs else 0.0, 'frames': count, 'size': '%dx%d' % image.size, 'by': 'pillow'}
+    except Exception as error:
+        return {'error': (r.stdout + r.stderr).strip()[-200:] + ' / ' + type(error).__name__}
 
 
 def safe_defaults(env):
@@ -177,6 +216,11 @@ def safe_defaults(env):
                 c = configparser.RawConfigParser(); c.optionxform = str; c.read(ini)
                 installs = [x for x in c.sections() if x.startswith('Install')]
                 ok = bool(installs) and all(c.get(x, 'Default', fallback='').startswith('putgd-afa2-') for x in installs)
+    if not ok and os.environ.get('NFA_DISPOSABLE_GUEST') == '1':
+        # A disposable lab VM (DMI names QEMU) has no personal browser profile: its own default browser may open links,
+        # as in the AppImage pass's VM item F. Never honoured on a physical builder.
+        dmi = Path('/sys/class/dmi/id/sys_vendor').read_text(errors='replace') + Path('/sys/class/dmi/id/product_name').read_text(errors='replace')
+        ok = 'QEMU' in dmi
     if ok: return found
     print(json.dumps({'refused': 'no click: links could reach the user\'s own browser (i326.py handler-on, or ffdefault.py/ffprofile.py on)',
                       'gio': found}), file=sys.stderr, flush=True)
@@ -378,11 +422,10 @@ def pkg(args):
             if bad and not args.allow_other:
                 rep['refused'] = bad; out(run.record('pkg:' + args.label, rep)); raise SystemExit(5)
     log = run.dir / f'logs/pkg-{args.label}.log'
-    env = dict(os.environ, DEBIAN_FRONTEND='readline', LC_ALL='C.UTF-8')
     t0 = time.monotonic()
-    # stdin is /dev/null: a dpkg conffile prompt reads EOF and fails, so a prompt can't pass unseen.
-    r = subprocess.run(['sudo', '-n', 'env', 'DEBIAN_FRONTEND=readline', 'LC_ALL=C.UTF-8'] + cmd, capture_output=True, text=True, timeout=1800,
-                       stdin=subprocess.DEVNULL, env=env)
+    # Plain `sudo -n CMD`: the Ubuntu golden's sudo allows only apt-get. stdin is /dev/null, so a dpkg conffile
+    # prompt reads EOF and fails instead of passing unseen.
+    r = subprocess.run(['sudo', '-n'] + cmd, capture_output=True, text=True, timeout=1800, stdin=subprocess.DEVNULL)
     text = r.stdout + r.stderr
     log.write_text(text)
     rep.update({'exit': r.returncode, 'seconds': round(time.monotonic() - t0, 1), 'log': str(log),
@@ -450,8 +493,11 @@ def setup(args):
     if run.meta and not run.meta.get('stub'): raise SystemExit('run exists')
     stub = run.meta or {}
     before = {str(d): d.exists() for d in DEFAULT_DIRS}
-    if args.profile == 'default' and any(before.values()):
-        raise SystemExit(f'default profile folders exist: {[d for d, e in before.items() if e]}; refusing (ask the coordinator)')
+    # Config and data must be absent. State and cache may hold earlier runs' logs (left as found on the builders):
+    # they're listed, and teardown removes only what this run adds.
+    blocking = [d for d in (HOME / '.config/putgd', HOME / '.local/share/putgd') if d.exists()]
+    if args.profile == 'default' and blocking:
+        raise SystemExit(f'default profile folders exist: {[str(d) for d in blocking]}; refusing (ask the coordinator)')
     if args.profile == 'private' and (HOME / '.local/share/putgd').exists():
         # Private runs keep the user's data home (as afa.py), so put.gd's data root is shared: refuse an existing one.
         raise SystemExit(f'{HOME / ".local/share/putgd"} exists; refusing (ask the coordinator)')
@@ -460,12 +506,23 @@ def setup(args):
         (run.dir / sub).mkdir(mode=0o700, exist_ok=True)
     session, shell, _ = afa.session_environment()
     runtime = subprocess.check_output(['mktemp', '-d', '/tmp/nfa.XXXXXX'], text=True).strip()
+    if args.appimage:
+        # An older AppImage (dev.133 where its DEB can't run): the image is the program, its own extracted putgd-cli the CLI.
+        image = Path(args.appimage).resolve()
+        (run.dir / 'appdir').mkdir(exist_ok=True)
+        subprocess.run([str(image), '--appimage-extract'], cwd=run.dir / 'appdir', check=True, stdout=subprocess.DEVNULL)
+        root = run.dir / 'appdir/squashfs-root'
+        wrapper = run.dir / 'cli.sh'
+        wrapper.write_text(f'#!/bin/sh\nexport LD_LIBRARY_PATH={root}/usr/lib:{root}/usr/lib/putgd QT_PLUGIN_PATH={root}/usr/plugins:{root}/usr/lib/qt6/plugins\n'
+                           f'exec {root}/usr/bin/putgd-cli "$@"\n'); wrapper.chmod(0o700)
+        args.exe, args.cli = str(image), str(wrapper)
     run.meta = {'name': args.name, 'appimage': '/usr/bin/putgd', 'appdir': '/', 'exe': args.exe, 'cli': args.cli, 'profile': args.profile,
                 'runtime': runtime, 'session': session, 'shell': shell, 'host': os.uname().nodename, 'vnc': args.vnc_port, 'input': args.input,
                 'before': {'homePaths': {str(p): (sorted(str(f) for f in p.rglob('*')) if p.exists() else None) for p in DEFAULT_DIRS},
                            'applications': sorted(p.name for p in (afa.DATA_HOME / 'applications').glob('*')) if (afa.DATA_HOME / 'applications').exists() else [],
                            'autostart': AUTOSTART.exists(), 'defaultProfile': before},
-                'pids': {}, 'created': iso(), 'package': installed(), 'systemFilesAdded': stub.get('systemFilesAdded', [])}
+                'pids': {}, 'created': iso(), 'package': installed(), 'systemFilesAdded': stub.get('systemFilesAdded', []),
+                'credentialsMode': args.credentials}
     run.save()
     fixture = subprocess.Popen([sys.executable, '-I', str(HERE / 's3_server.py')], stdout=subprocess.PIPE, stderr=open(run.dir / 'logs/fixture.log', 'w'),
                                text=True, start_new_session=True)
@@ -488,8 +545,15 @@ def configure(args, run=None, resident=None):
     cfg.write_text(json.dumps(doc, indent=1)); run.meta['configPath'] = str(cfg); run.save()
     run.ok('settings.reload')
     snap = run.wait(lambda: (lambda s: s if s.get('ok') and s['result'].get('metadata', {}).get('validation', {}).get('ok', True) else None)(run.cli('settings.get')), 20)
+    # The fixture's own synthetic key pair (tests/fixtures/s3_server.py), as afa.py's `start` stores it.
+    profile_id = 'nfa-fixture' if getattr(args, 'keep_template', False) else 'afa-fixture'
+    stored = run.socket_request('setup.storeCredentials', {'profileId': profile_id, 'expectedRevision': ((snap or {}).get('result') or {}).get('metadata', {}).get('acceptedRevision'),
+                                                            'credentials': {'accessKey': afa.ACCESS, 'secretKey': afa.SECRET}})
+    job = run.wait(lambda: (lambda j: j if j.get('ok') and j['result']['state'] != 'running' else None)(run.cli('setup.inspect', {'id': stored['result']['setupId']})), 30) if stored.get('ok') else None
+    run.meta['credentialsStored'] = {'profile': profile_id, 'ok': stored.get('ok'), 'state': (job or {}).get('result', {}).get('state'), 'error': (stored.get('error') or {}).get('code')}
+    run.save()
     if getattr(args, 'stop', False) and resident: afa.quit_resident(run, resident)
-    out({'setup': bool(snap), 'validation': (snap or {}).get('result', {}).get('metadata', {}).get('validation'), 'run': run.meta})
+    out({'setup': bool(snap), 'validation': (snap or {}).get('result', {}).get('metadata', {}).get('validation'), 'credentials': run.meta['credentialsStored'], 'run': run.meta})
 
 
 def old_build_document(run, template):
@@ -505,6 +569,13 @@ def old_build_document(run, template):
     known = set((template.get('profiles') or [{}])[0].get('settings', {}).keys()) if template.get('profiles') else None
     if known: profile['settings'] = {k: v for k, v in profile['settings'].items() if k in known}
     doc['profiles'] = [profile]
+    if run.meta.get('credentialsMode') == 'session':
+        # A locked login keyring (an autologin VM) can't take the secret without a password prompt: the uploads use
+        # session credentials, and a second profile keeps a keychain reference whose secret is never stored.
+        profile['credentials'] = {'mode': 'session', 'reference': None}
+        keychain = json.loads(json.dumps(profile)); keychain.update({'id': 'nfa-keychain', 'label': 'Keychain reference (nfa)',
+                                                                      'credentials': {'mode': 'keychain', 'reference': ref}})
+        doc['profiles'].append(keychain)
     for name, action in (doc.get('actions') or {}).items():
         if isinstance(action, dict) and 'destination' in action: action.update({'destination': 'upload', 'profileId': 'nfa-fixture'})
     if isinstance(doc.get('actions', {}).get('region'), dict): doc['actions']['region']['shortcut'] = 'Ctrl+Shift+9'
@@ -544,13 +615,7 @@ def seed(args):
     everything, so it isn't used.)"""
     run = NativeRun(args.name)
     rep = {'build': run.ok('ui.snapshot').get('build') if run.cli('ui.snapshot').get('ok') else None}
-    snap = run.ok('settings.get')
-    stored = run.socket_request('setup.storeCredentials', {'profileId': 'nfa-fixture', 'expectedRevision': snap['metadata'].get('acceptedRevision'),
-                                                            'credentials': {'accessKey': afa.ACCESS, 'secretKey': afa.SECRET}})
-    rep['credentials'] = {'stored': stored.get('ok'), 'error': (stored.get('error') or {}).get('code'), 'reference': run.meta.get('keychainReference')}
-    if stored.get('ok'):
-        job = run.wait(lambda: (lambda j: j if j.get('ok') and j['result']['state'] != 'running' else None)(run.cli('setup.inspect', {'id': stored['result']['setupId']})), 40)
-        rep['credentials']['state'] = (job or {}).get('result', {}).get('state')
+    rep['credentials'] = dict(run.meta.get('credentialsStored') or {}, mode=run.meta.get('credentialsMode'), reference=run.meta.get('keychainReference'))
     afa.cover(argparse.Namespace(name=args.name, action='start', pattern=False, video_size='640x360', output=None, precheck=True, quiet=True))
     ops = []
     try:
@@ -574,6 +639,9 @@ def seed(args):
         conf = run.ok('delete.confirm', {'ids': [uploaded[0]['id']], 'acknowledgement': prep['acknowledgement']})
         rep['deleted'] = run.wait(lambda: (lambda x: x['result'] if x.get('ok') and x['result'].get('state') in ('completed', 'failed', 'cancelled') else None)(
             run.cli('delete.inspect', {'id': conf.get('id') or uploaded[0]['id']})), 90)
+        time.sleep(3)
+        rep['deletedRow'] = next(({'name': r['name'], 'remoteStatus': r.get('remoteStatus')} for r in run.ok('history.list', {'limit': 50, 'offset': 0})['records']
+                                  if r['id'] == uploaded[0]['id']), None)
     rep['history'] = run.ok('history.list', {'limit': 1, 'offset': 0}).get('total')
     rep['outputs'] = sorted(str(p.relative_to(run.dir)) for p in (run.dir / 'archive').rglob('*') if p.is_file())
     out(run.record('seed', rep))
@@ -657,23 +725,42 @@ def history_check(args):
     """After the migration: list, search, copy a link and an image, and delete one entry from the destination."""
     run = NativeRun(args.name)
     rep = {}
+    if run.meta.get('credentialsMode') == 'session':  # session credentials end with the resident: enter them again, as a user would
+        snap = run.ok('settings.get')
+        stored = run.socket_request('setup.storeCredentials', {'profileId': 'nfa-fixture', 'expectedRevision': snap['metadata'].get('acceptedRevision'),
+                                                                'credentials': {'accessKey': afa.ACCESS, 'secretKey': afa.SECRET}})
+        rep['sessionCredentials'] = stored.get('ok'); time.sleep(2)
+    rep['profiles'] = [{'id': x.get('id'), 'credentials': x.get('credentials')} for x in run.ok('settings.get')['document'].get('profiles', [])]
     t0 = time.monotonic(); first = run.ok('history.list', {'limit': 20, 'offset': 0}, timeout=120); rep['listSeconds'] = round(time.monotonic() - t0, 2)
     rep['total'] = first.get('total')
     name = (first['records'][0].get('name') or '')[:6] if first['records'] else ''
     found = run.cli('history.list', {'limit': 20, 'offset': 0, 'search': name}, timeout=120)
     rep['search'] = {'term': name, 'ok': found.get('ok'), 'total': (found.get('result') or {}).get('total')}
-    linked = next((r for r in first['records'] if r.get('linkAvailable')), None)
+    page = run.ok('history.list', {'limit': 50, 'offset': 0, 'uploadStatus': 'uploaded', 'remoteStatus': 'not_requested'}, timeout=120)['records']
+    linked = next((r for r in page if r.get('linkAvailable')), None)
+    rep['linkedEntry'] = {'name': linked['name'], 'remoteStatus': linked.get('remoteStatus')} if linked else None
     if linked:
         rep['copyLink'] = run.cli('history.copyLink', {'id': linked['id']}).get('ok')
         rep['copyImage'] = run.cli('history.copyImage', {'id': linked['id']}).get('ok')
         prep = run.ok('delete.prepare', {'ids': [linked['id']]})
         conf = run.ok('delete.confirm', {'ids': [linked['id']], 'acknowledgement': prep['acknowledgement']})
-        rep['delete'] = run.wait(lambda: (lambda x: x['result'] if x.get('ok') and x['result'].get('state') in ('completed', 'failed', 'cancelled') else None)(
-            run.cli('delete.inspect', {'id': conf.get('id') or linked['id']})), 90)
-    rep['preview'] = run.cli('history.preview', {'id': first['records'][0]['id']}, timeout=60).get('result') if first['records'] else None
+        row = lambda: next((r for r in run.ok('history.list', {'limit': 50, 'offset': 0, 'search': linked['name']})['records'] if r['id'] == linked['id']), {})
+        done = run.wait(lambda: row() if row().get('remoteStatus') not in ('not_requested', 'deleting', None) else None, 90)
+        rep['delete'] = {'confirm': {k: conf.get(k) for k in ('id', 'state')}, 'remoteStatus': (done or row()).get('remoteStatus'),
+                         'link': (linked.get('receipt') or {}).get('directUrl')}
+        try: urllib.request.urlopen(rep['delete']['link'], timeout=10); rep['delete']['remoteAfter'] = 'still served'
+        except urllib.error.HTTPError as e: rep['delete']['remoteAfter'] = f'HTTP {e.code}'
+        except Exception as e: rep['delete']['remoteAfter'] = repr(e)[:80]
+    pv = run.cli('history.preview', {'id': first['records'][0]['id']}, timeout=60).get('result') if first['records'] else None
+    rep['preview'] = {k: (pv or {}).get(k) for k in ('state', 'previewPath', 'mime', 'width', 'height')}
     if run.meta.get('keychainReference'):
-        t = run.cli('setup.testDestination', {'profileId': 'nfa-fixture'}, timeout=60)
-        rep['testConnection'] = {'ok': t.get('ok'), 'error': (t.get('error') or {}).get('code')}
+        for pid in ('nfa-fixture', 'nfa-keychain'):
+            rev = run.ok('settings.get')['metadata'].get('acceptedRevision')
+            t = run.cli('setup.testDestination', {'profileId': pid, 'expectedRevision': rev}, timeout=60)
+            job = run.wait(lambda: (lambda j: j if j.get('ok') and j['result']['state'] != 'running' else None)(
+                run.cli('setup.inspect', {'id': t['result']['setupId']})), 60) if t.get('ok') else None
+            rep.setdefault('testConnection', {})[pid] = {'started': t.get('ok'), 'error': (t.get('error') or {}).get('code'),
+                                                         'state': (job or {}).get('result', {}).get('state'), 'result': (job or {}).get('result', {}).get('error')}
     out(run.record('historyCheck', rep))
 
 
@@ -704,8 +791,12 @@ def autostart(args):
     run = NativeRun(args.name)
     env, shell, spid = afa.session_environment()
     since = datetime.fromtimestamp(Path(f'/proc/{spid}').stat().st_mtime, timezone.utc) - __import__('datetime').timedelta(minutes=2)
-    journal = sh('journalctl', '--user', '--since', since.strftime('%Y-%m-%d %H:%M:%S UTC'), '--no-pager', '-o', 'short-iso', timeout=60)[1]
-    lines = [l for l in journal.splitlines() if re.search(r'putgd|put\.gd|autostart', l)]
+    # This boot's user and system journals, matched on the entry and its program, not the host name.
+    pattern = r'autostart/putgd\.desktop|putgd-launcher|/usr/bin/putgd|app-putgd'
+    lines = []
+    for scope in (['--user'], []):
+        journal = sh('journalctl', *scope, '-b', '--since', since.strftime('%Y-%m-%d %H:%M:%S UTC'), '--no-pager', '-o', 'short-iso', timeout=60)[1]
+        lines += [('user ' if scope else 'system ') + l for l in journal.splitlines() if re.search(pattern, l) and 'sudo[' not in l]
     rep = {'label': args.label, 'entry': AUTOSTART.read_text() if AUTOSTART.exists() else None, 'entryInfo': file_info(AUTOSTART),
            'execTargetExists': Path('/usr/bin/putgd').exists(), 'shellStarted': iso(since), 'journal': lines[:80],
            'failedUnits': sh('systemctl', '--user', '--failed', '--no-legend', '--plain', env=env)[1].splitlines(),
@@ -716,14 +807,16 @@ def autostart(args):
 
 
 def tryexec(args):
-    """#382 probe: the run's own retained entry, the same bytes plus TryExec=/usr/bin/putgd. The original bytes are kept."""
+    """#382 probe: the run's own retained entry, the same bytes plus TryExec= its Exec program. The original bytes are kept."""
     run = NativeRun(args.name)
     if not AUTOSTART.exists(): raise SystemExit('no retained entry')
     if not run.meta.get('autostartWritten'): raise SystemExit('this run did not write the entry; refusing')
     original = AUTOSTART.read_bytes()
     (run.dir / 'logs/autostart-original.desktop').write_bytes(original)
     text = original.decode()
-    if 'TryExec=' not in text: text = text.replace('Exec=', 'TryExec=/usr/bin/putgd\nExec=', 1)
+    # TryExec names the Exec line's own program (#382's proposal), e.g. /usr/bin/putgd-launcher.
+    exe = re.search(r'^Exec="?([^"\s]+)', text, re.M).group(1)
+    if 'TryExec=' not in text: text = text.replace('\nExec=', f'\nTryExec={exe}\nExec=', 1)
     AUTOSTART.write_text(text)
     out(run.record('tryexec', {'before': original.decode(), 'after': text}))
 
@@ -740,6 +833,13 @@ def extension(args):
         d = run.cli('diagnostics')
         caps = (d.get('result') or {}).get('capabilities') or {}
         rep['capabilities'] = {k: v for k, v in caps.items() if re.search(r'capture|gnome|helper|extension|screenshot', k, re.I)} if isinstance(caps, dict) else caps
+        def find(v):
+            if isinstance(v, dict):
+                if isinstance(v.get('helper'), dict) and 'outdated' in v['helper']: return v['helper']
+                for x in v.values():
+                    if (h := find(x)) is not None: return h
+            return None
+        rep['helper'] = find(d.get('result') or {})  # GnomeAdapter's helper: extensionVersion, packagedExtensionVersion, outdated
         rep['snapshot'] = {k: v for k, v in ((run.cli('ui.snapshot').get('result') or {}).get('diagnostics') or {}).items() if re.search(r'capture|helper|extension', k, re.I)}
     if args.action in ('enable', 'disable'):
         rep['action'] = {args.action: sh('gnome-extensions', args.action, 'putgd@put.gd', env=env)}
@@ -766,6 +866,13 @@ def s3list(args):
          'versions': len(v.get('Versions', [])), 'deleteMarkers': len(v.get('DeleteMarkers', [])), 'incompleteUploads': len(ups)})
 
 
+def remove_runtime(run, rep):
+    """Only the run's own mktemp folder: /tmp/nfa.XXXXXX, never /run/user/UID."""
+    rt = run.meta.get('runtime') or ''
+    if re.fullmatch(r'/tmp/nfa\.[A-Za-z0-9]{6}', rt) and Path(rt).is_dir(): shutil.rmtree(rt, ignore_errors=True); rep['removed'].append(rt)
+    elif rt: rep.setdefault('kept', []).append(f'{rt} (not this run\'s mktemp folder)')
+
+
 def teardown(args):
     """What a default-profile run made: its folders (only those absent before), its keychain entry (by its recorded
     name), the autostart entry it wrote, the system files repo-add put in place while no package owns them."""
@@ -774,8 +881,15 @@ def teardown(args):
     rep = {'removed': [], 'kept': []}
     pid = run.meta['pids'].get('fixture')
     if pid and Path(f'/proc/{pid}').exists(): os.kill(pid, 15)
-    for d, existed in run.meta['before'].get('defaultProfile', {}).items():
-        if run.meta.get('profile') == 'default' and not existed and Path(d).exists(): shutil.rmtree(d); rep['removed'].append(d)
+    if run.meta.get('profile') == 'default':
+        for home_path, listed in run.meta['before'].get('homePaths', {}).items():
+            path = Path(home_path)
+            if not path.exists(): continue
+            if listed is None: shutil.rmtree(path); rep['removed'].append(str(path)); continue
+            for f in sorted(path.rglob('*'), reverse=True):  # pre-existing folder: only what this run added
+                if str(f) in listed: continue
+                if f.is_dir() and not any(f.iterdir()): f.rmdir(); rep['removed'].append(str(f))
+                elif f.is_file() or f.is_symlink(): f.unlink(); rep['removed'].append(str(f))
     ref = run.meta.get('keychainReference')
     if ref and shutil.which('secret-tool'):
         found = subprocess.run(['secret-tool', 'lookup', 'user', ref, 'server', 'putgd'], capture_output=True, env=run.env()).returncode == 0
@@ -787,15 +901,97 @@ def teardown(args):
     for f in run.meta.get('systemFilesAdded', []):
         if Path(f).exists() and f not in owned: subprocess.run(['sudo', '-n', 'rm', '-f', f]); rep['removed'].append(f)
         elif Path(f).exists(): rep['kept'].append(f + ' (owned by the installed package)')
-    if Path(run.meta['runtime']).exists(): shutil.rmtree(run.meta['runtime'], ignore_errors=True)
+    remove_runtime(run, rep)
     rep['after'] = system_state()
     out(run.record('teardown', rep))
+
+
+# ---------------------------------------------------------------- H: Settings -> Updates on a repository install
+
+UPDATERS = ('mintupdate', 'plasma-discover', 'gnome-software', 'update-manager', 'snap-store')
+
+
+def updaters():
+    found = []
+    for proc in Path('/proc').iterdir():
+        if not proc.name.isdigit(): continue
+        try:
+            if proc.stat().st_uid != os.getuid(): continue
+            argv = (proc / 'cmdline').read_bytes().split(b'\0')
+            if any(u.encode() in a for a in argv[:2] for u in UPDATERS):
+                found.append({'pid': int(proc.name), 'argv': [a.decode(errors='replace') for a in argv if a][:6]})
+        except OSError: continue
+    return found
+
+
+def updates(args):
+    """Settings -> Updates: the channel the repository file sets (read-only), the Other channel commands, Check now,
+    and with --open what Open software updates starts (update.openSoftwareUpdates, the button's own method)."""
+    run = NativeRun(args.name)
+    run.ok('ui.show', {'view': 'updates'}); time.sleep(1.5); run.ok('ui.show', {'view': 'updates'}); time.sleep(1)
+    check = run.cli('update.check', timeout=90)
+    st = run.ok('update.status')
+    action = st.get('action') or {}
+    rep = {'build': st.get('build'), 'channel': st.get('channel'), 'channelSource': st.get('channelSource'), 'channelSetting': st.get('channelSetting'),
+           'result': st.get('result'), 'notifies': st.get('notifies'), 'install': {k: (st.get('install') or {}).get(k) for k in ('kind', 'available', 'reason')},
+           'action': action, 'check': {'ok': check.get('ok'), 'error': check.get('error')},
+           'repositoryFile': {f: file_info(f) for f in ('/etc/apt/sources.list.d/putgd.sources', '/etc/yum.repos.d/putgd.repo')},
+           'notifications': [l.get('fields') for l in run.logs('Notification shown')][-3:]}
+    frames, inp, size = afa.tools(run); time.sleep(1.5)
+    rep['frame'] = afa.fullshot(run, frames.grab(), args.label)
+    if args.open:
+        before = {u['pid'] for u in updaters()}
+        reply = run.cli('update.openSoftwareUpdates', timeout=60)
+        started = run.wait(lambda: [u for u in updaters() if u['pid'] not in before], 30)
+        time.sleep(args.settle)
+        rep['openSoftwareUpdates'] = {'reply': reply, 'started': started, 'frame': afa.fullshot(run, frames.grab(), args.label + '-updater')}
+    out(run.record('updates:' + args.label, rep))
+
+
+def launch_cmd(args):
+    """Start the run's program again (as a menu start would), after an upgrade or a grow; or quit it."""
+    run = NativeRun(args.name)
+    if args.cmd == 'quit':
+        pids = [x['pid'] for x in native_tree(run) if x['comm'] == 'putgd']
+        r = run.cli('ui.quit', timeout=15)
+        gone = run.wait(lambda: not native_tree(run), 40)
+        out(run.record('quit:' + args.label, {'pids': pids, 'reply': r.get('ok'), 'gone': bool(gone), 'left': native_tree(run)})); return
+    if args.exe: run.meta['exe'] = args.exe
+    if args.cli: run.meta['cli'] = args.cli
+    run.save()
+    t0 = time.monotonic(); native_launch(run, args.label)
+    out(run.record('launch:' + args.label, {'seconds': round(time.monotonic() - t0, 2), 'processes': native_tree(run),
+                                            'build': (run.cli('ui.snapshot').get('result') or {}).get('build'), 'package': installed()}))
+
+
+# ---------------------------------------------------------------- real input and frames
+
+def keys(args):
+    """Real key input (xdotool, the uinput agent or the VM's VNC), guarded like every click. `type` sends text."""
+    run = NativeRun(args.name)
+    safe_defaults(run.meta['session'])
+    frames, inp, size = afa.tools(run)
+    if args.cmd == 'type': inp.type(args.text)
+    else:
+        for chord in args.chords: inp.key(*chord.split('+')); time.sleep(args.gap)
+    time.sleep(args.settle)
+    out(run.record(f'{args.cmd}:{args.label or ""}', {'chords': getattr(args, 'chords', None), 'text': getattr(args, 'text', None),
+                                                      'frame': afa.fullshot(run, frames.grab(), args.label) if args.label else None}))
+
+
+def frame(args):
+    """A full-desktop frame of the run's display (only with `allow-full on`), plus put.gd's processes."""
+    run = NativeRun(args.name)
+    frames, inp, size = afa.tools(run)
+    if args.park: afa.park(run, inp, size)
+    time.sleep(args.wait)
+    out(run.record('frame:' + args.label, {'at': iso(), 'full': afa.fullshot(run, frames.grab(), args.label), 'processes': native_tree(run)}))
 
 
 # ---------------------------------------------------------------- main
 
 OWN = {'state', 'fetch', 'repo-add', 'pkg', 'identity', 'setup', 'configure', 'seed', 'grow', 'snapshot', 'compare', 'history-check', 'login', 'autostart',
-       'tryexec', 'extension', 's3list', 'teardown'}
+       'tryexec', 'extension', 's3list', 'teardown', 'key', 'type', 'frame', 'updates', 'launch', 'quit'}
 
 
 def main():
@@ -807,6 +1003,10 @@ def main():
         return module.main()
     if len(sys.argv) > 1 and sys.argv[1] == 'cleanup' and '--appimage' in sys.argv:
         raise SystemExit('cleanup --appimage would delete /usr/bin/putgd; refused')
+    if len(sys.argv) > 2 and sys.argv[1] == 'cleanup':
+        meta = NativeRun(sys.argv[2]).meta
+        if meta and not re.fullmatch(r'/tmp/nfa\.[A-Za-z0-9]{6}', meta.get('runtime') or ''):
+            raise SystemExit(f"cleanup refused: runtime {meta.get('runtime')!r} is not this run's /tmp/nfa.* folder")
     if len(sys.argv) < 2 or sys.argv[1] in ('-h', '--help'):
         print(__doc__); print('Every other subcommand is afa.py\'s (nfa.py COMMAND -h).'); return
     if sys.argv[1] not in OWN:
@@ -823,6 +1023,8 @@ def main():
     a.add_argument('--keep-template', action='store_true', help='an older build: its own template, fixture route only'); a.add_argument('--stop', action='store_true')
     a.add_argument('--config-path', help='builds before #56 (dev.133): ~/.config/putgd/putgd/config.json')
     a.add_argument('--no-launch', action='store_true', help='item L: record the run and start the fixture only')
+    a.add_argument('--credentials', choices=('keychain', 'session'), default='keychain', help='--keep-template: where the fixture secret goes')
+    a.add_argument('--appimage', help='an older AppImage as the program (its extracted putgd-cli as the CLI)')
     a = s.add_parser('configure'); a.add_argument('name'); a.add_argument('--keep-template', action='store_true'); a.add_argument('--config-path')
     a = s.add_parser('seed'); a.add_argument('name'); a.add_argument('--uploads', type=int, default=4)
     a = s.add_parser('grow'); a.add_argument('name'); a.add_argument('--to', type=int, default=10000)
@@ -835,10 +1037,17 @@ def main():
     a = s.add_parser('extension'); a.add_argument('name'); a.add_argument('--label', required=True); a.add_argument('--action', choices=('enable', 'disable'))
     a = s.add_parser('s3list'); a.add_argument('prefix'); a.add_argument('--purge', action='store_true')
     a = s.add_parser('teardown'); a.add_argument('name')
+    for n in ('launch', 'quit'):
+        a = s.add_parser(n); a.add_argument('name'); a.add_argument('--label', default=n); a.add_argument('--exe'); a.add_argument('--cli')
+    a = s.add_parser('updates'); a.add_argument('name'); a.add_argument('--label', required=True); a.add_argument('--open', action='store_true'); a.add_argument('--settle', type=float, default=8)
+    a = s.add_parser('key'); a.add_argument('name'); a.add_argument('chords', nargs='+', help='ctrl+alt+t super Return ...'); a.add_argument('--label')
+    a.add_argument('--gap', type=float, default=.4); a.add_argument('--settle', type=float, default=1)
+    a = s.add_parser('type'); a.add_argument('name'); a.add_argument('text'); a.add_argument('--label'); a.add_argument('--settle', type=float, default=1)
+    a = s.add_parser('frame'); a.add_argument('name'); a.add_argument('--label', required=True); a.add_argument('--wait', type=float, default=0); a.add_argument('--park', action='store_true')
     args = p.parse_args()
     {'state': state, 'fetch': fetch, 'repo-add': repo_add, 'pkg': pkg, 'identity': identity, 'setup': setup, 'configure': configure, 'seed': seed, 'grow': grow,
      'snapshot': snapshot, 'compare': compare, 'history-check': history_check, 'login': login, 'autostart': autostart, 'tryexec': tryexec,
-     'extension': extension, 's3list': s3list, 'teardown': teardown}[args.cmd](args)
+     'extension': extension, 's3list': s3list, 'teardown': teardown, 'key': keys, 'type': keys, 'frame': frame, 'updates': updates, 'launch': launch_cmd, 'quit': launch_cmd}[args.cmd](args)
 
 
 if __name__ == '__main__':
