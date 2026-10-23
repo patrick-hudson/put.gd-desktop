@@ -45,6 +45,7 @@ class Run:
         for key, sub in (('XDG_CONFIG_HOME', 'config'), ('XDG_STATE_HOME', 'state'), ('XDG_CACHE_HOME', 'cache')):
             env[key] = str(self.dir / sub)
         env['XDG_RUNTIME_DIR'] = self.meta['runtime']
+        if self.meta.get('privateData'): env['XDG_DATA_HOME'] = str(self.dir / 'data')  # a second resident beside another
         env.update(self.meta.get('urls') or {})
         env.update(extra or {})
         return env
@@ -89,7 +90,7 @@ def setup(args):
     for tool in ('appimageupdatetool', 'zsync2'):
         if shutil.which(tool): raise SystemExit(f'{tool} is on the host PATH ({shutil.which(tool)}); the runs need it absent')
     run.dir.mkdir(parents=True, mode=0o700)
-    for sub in ('config', 'state', 'cache', 'apps', 'bin', 'frames', 'logs', 'archive', 'cli'):
+    for sub in ('config', 'state', 'cache', 'apps', 'bin', 'frames', 'logs', 'archive', 'cli', 'data'):
         (run.dir / sub).mkdir(mode=0o700)
     session, shell, _ = afa.session_environment()
     image = run.dir / 'apps' / Path(args.appimage).name
@@ -110,7 +111,7 @@ def setup(args):
                 'hostPath': os.environ.get('PATH', '/usr/bin:/bin'), 'host': os.uname().nodename, 'vnc': args.vnc_port,
                 'urls': {} if args.live else {'PUTGD_UPDATE_FEED_URL': LAB + '/update/v1/', 'PUTGD_UPDATE_RELEASE_URL': LAB + '/releases',
                                               'PUTGD_UPDATE_MIRROR_URL': LAB + '/releases'},
-                'input': args.input,
+                'input': args.input, 'privateData': args.private_data,
                 'before': {'dataPutgd': (DATA / 'putgd').exists(),
                            'homePutgd': {str(d): d.exists() for d in REAL_PROFILE},
                            'autostart': sorted(p.name for p in autostart.glob('*')) if autostart.exists() else []},
@@ -618,6 +619,18 @@ def notifications(run, log, label):
             'putgdNotifyCalls': [c for c in calls if (c['app'] or '').lower().startswith('put')], 'journal': journal[-12:]}
 
 
+def age(args):
+    """#303's method: the last attempt in update-check.json made HOURS old (the announced version is kept), so the next
+    start runs its scheduled check 5-15 min later instead of a day later."""
+    from datetime import datetime, timedelta, timezone
+    run = Run(args.name)
+    path = run.dir / 'state/putgd/update-check.json'
+    state = json.loads(path.read_text()); before = state.get('attemptedAt')
+    state['attemptedAt'] = (datetime.now(timezone.utc) - timedelta(hours=args.hours)).strftime('%Y-%m-%dT%H:%M:%SZ')
+    path.write_text(json.dumps(state))
+    out(run.record('age', {'attemptedAt': [before, state['attemptedAt']], 'state': {k: v for k, v in state.items() if k != 'attemptedAt'}}))
+
+
 # ---------------------------------------------------------------- start at login
 
 def login(args):
@@ -691,7 +704,7 @@ def main():
     sub = p.add_subparsers(dest='cmd', required=True)
     a = sub.add_parser('setup'); a.add_argument('name'); a.add_argument('--appimage', required=True); a.add_argument('--channel', default='build')
     a.add_argument('--tool'); a.add_argument('--crash', action='store_true'); a.add_argument('--live', action='store_true')
-    a.add_argument('--notifications', action='store_true'); a.add_argument('--input', choices=('xdotool', 'uinput', 'vnc'), default='vnc')
+    a.add_argument('--notifications', action='store_true'); a.add_argument('--private-data', action='store_true'); a.add_argument('--input', choices=('xdotool', 'uinput', 'vnc'), default='vnc')
     a.add_argument('--vnc-port', type=int, default=5900); a.add_argument('--allow-data-home', action='store_true')
     for name in ('quit', 'cleanup'):
         sub.add_parser(name).add_argument('name')
@@ -713,10 +726,11 @@ def main():
     a = sub.add_parser('refuse'); a.add_argument('name'); a.add_argument('case', choices=('readonly', 'foreign', 'diskfull', 'busy', 'double', 'restart'))
     a.add_argument('--method', default='download', choices=('auto', 'zsync', 'download'))
     a = sub.add_parser('aut'); a.add_argument('name'); a.add_argument('--tool', required=True); a.add_argument('--tag'); a.add_argument('--ssl-cert-file')
+    a = sub.add_parser('age'); a.add_argument('name'); a.add_argument('--hours', type=float, default=25)
     a = sub.add_parser('watch'); a.add_argument('name'); a.add_argument('action', choices=('start', 'stop')); a.add_argument('--label', required=True)
     args = p.parse_args()
     {'setup': setup, 'start': start, 'check': check, 'channel': channel, 'install': install, 'restart': restart, 'quit': quit_, 'tamper': tamper, 'mem': mem,
-     'login': login, 'cleanup': cleanup, 'frame': frame_only, 'click': pointer, 'key': pointer, 'refuse': refuse, 'aut': aut, 'watch': watch}[args.cmd](args)
+     'login': login, 'cleanup': cleanup, 'frame': frame_only, 'click': pointer, 'key': pointer, 'refuse': refuse, 'aut': aut, 'watch': watch, 'age': age}[args.cmd](args)
 
 
 if __name__ == '__main__':
