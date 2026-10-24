@@ -14,12 +14,12 @@ rows and current-candidate evidence remain gates.
 Patrick corrected the contract: remove managed startup links for active accounts
 when the installation disappears, and for inactive accounts at next login;
 preserve settings and keep package scripts out of homes. Code PR #544 and docs
-PR #545 remain drafts for exact-package acceptance at `bca1ff98`. Mint's startup
-CTest and 26 shell tests pass; the 14 source-collection tests also passed before
-the final script-only fix. Real desktop testing exposed a fast-exit GNOME scope
-race; a real Fedora GNOME login with the corrected script passes without that
-journal failure. Earlier package cycles are not accepted as the fixed build.
-Exact native and AppImage package/login rows are pending.
+PR #545 remain drafts for exact-package acceptance at `d5b561dd`. Mint's startup
+CTest and 26 shell tests pass. Real journal gates exposed a fast-exit GNOME
+scope race and monitor stop/recreation races; their corrected bounded/real-user-
+manager regressions pass. Earlier package cycles are superseded. Exact native
+and AppImage development-artifact rows are pending; published-nightly and stable
+asset acceptance remain separate gates.
 [Current evidence and remaining matrix](evidence/2026-10-24-uninstall-startup-382/README.md).
 The retained-link/TryExec tests at `91864c41` are superseded history.
 

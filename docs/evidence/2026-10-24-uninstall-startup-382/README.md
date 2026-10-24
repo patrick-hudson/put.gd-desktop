@@ -127,20 +127,54 @@ exact-package pass**. The [renderer](login-grace/render.py),
 [cleanup receipt](login-grace/release-lock.txt) and
 [checksums](login-grace/checksums.json) are retained.
 
+## Monitor lifecycle regressions
+
+The next pass at `bca1ff98` completed the Fedora, Kubuntu and Mint native
+cycles, but the stricter journal gate rejected Debian and Ubuntu at enabled
+login. [Debian's receipt](monitor-lifecycle/d69-before.json) records transient
+unit files disappearing while an unchanged watch was stopped and recreated.
+[Ubuntu's receipt](monitor-lifecycle/u382a-before.json) records a deliberately
+stopped initial cleanup check reported as a signal failure. Resident startup
+succeeded in both cases; their journal errors still block acceptance. All five
+rows are superseded and their profiles/packages were cleaned up.
+
+Current code: `d5b561ddb94f8255b8bc754c1382552d983a6fa9`, tree
+`797721fa0672581562a8675d0d2010eced7c6bd4`. It preserves a watch when reapplying
+the same installation identity, stops the prior watch when disabling or changing
+identity, and declares SIGTERM successful for the deliberately stopped oneshot
+check. Other failures remain errors. A focused Qt regression checks unchanged
+native identity (including inherited AppImage environment) versus a changed
+launcher; [startup CTest](monitor-lifecycle/ctest.log) and
+[26 shell tests](monitor-lifecycle/script-tests.log) pass.
+
+The [real Debian user-manager regression](monitor-lifecycle/debian-direct.json)
+passed ten rapid watch start/stop cycles with no journal errors. The
+[Mint production-CLI regression](monitor-lifecycle/mint-cli.json) passed ten
+settings changes without replacing the watch, three disable/enable cycles,
+a launcher-location change that retired the old watch, and uninstall racing
+with another settings change. Both owned residents exited 0; no unit journal
+error appeared. These are **bounded/offscreen checks**, not exact-package or
+desktop acceptance. [Source hashes](monitor-lifecycle/source-identity.json),
+[unit driver](monitor-lifecycle/unit-lifecycle.py),
+[CLI driver](monitor-lifecycle/cli-lifecycle.py) and
+[checksums](monitor-lifecycle/checksums.json) preserve the evidence.
+
 ## Exact package and real-login acceptance
 
-The [current full CI/package run](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40066750880)
-builds clean branch commit `bca1ff98`. Native and AppImage desktop rows are
+The [current full CI/package run](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40068126465)
+builds clean branch commit `d5b561dd`. Native and AppImage desktop rows are
 pending. The required native rows are Mint, Kubuntu, Debian, Fedora and the
 Ubuntu GNOME VM; AppImage additionally covers the Aurora 45 KDE VM. Each needs
 exact package identity, real login, active cleanup with the resident quit,
 next-login cleanup without a running watch, unchanged settings/data, explicit
-disable, saved visuals and memory results. The driver now checks startup journal
-errors too and requires complete RFB frames after the login screen is gone.
+disable, saved visuals and memory results. The driver checks startup journal
+errors and requires complete RFB frames after the login screen is gone.
 Earlier source results do not accept the fixed build.
 
-This work accepts the uninstall change only. It does not certify a stable
-release or replace #384's exact-release-asset campaign.
+These are development CI artifacts. Their AppImage has no published-channel
+update information; same-channel replacement is covered by the bounded ELF
+fixture checks, and needs published-nightly evidence after merge. This work
+does not certify a stable release or replace #384's exact-release-asset campaign.
 
 ## Superseded retained-link evidence
 
