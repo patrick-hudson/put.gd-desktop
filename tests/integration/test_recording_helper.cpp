@@ -119,8 +119,12 @@ private slots:
   if(mode!="slow-shutdown-foreign")QCOMPARE(journal.operation(id).error.code,QString("recording_helper_protocol"));
   QVERIFY(journal.operation(id).items.isEmpty());QCOMPARE(h.provider->uploads.load(),0);
  }
+ void budgetEventBeforeStopReplyKeepsItsReasonAndClip_data(){
+  QTest::addColumn<QString>("mode");
+  for(const auto* mode:{"stop-budget-race","stop-budget-adjacent","stop-budget-adjacent-error"})QTest::newRow(mode)<<QString(mode);
+ }
  void budgetEventBeforeStopReplyKeepsItsReasonAndClip(){
-  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());qputenv("PUTGD_TEST_RECORD_MODE","stop-budget-race");
+  QFETCH(QString,mode);Harness h;PUTGD_TRY_VERIFY(h.operations->ready());qputenv("PUTGD_TEST_RECORD_MODE",mode.toUtf8());
   const auto id=h.prepare();QVERIFY(!id.isEmpty());PUTGD_TRY_COMPARE(h.state(id),QString("ready"));QVERIFY(!h.rec("start",{{"id",id}}).error);
   const auto stopped=h.rec("stop",{{"id",id}});QVERIFY(!stopped.error);QCOMPARE(stopped.result["state"].toString(),QString("reviewing"));
   QCOMPARE(stopped.result["stopReason"].toString(),QString("budget"));QCOMPARE(stopped.result["durationUs"].toDouble(),9000000.0);QVERIFY(!stopped.result["stopDetails"].toObject().isEmpty());

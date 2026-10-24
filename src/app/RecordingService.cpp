@@ -6,7 +6,6 @@
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QMetaObject>
-#include <QThread>
 #include <algorithm>
 #include <cmath>
 #include <utility>
@@ -182,8 +181,9 @@ RecordingBackend::Reply RecordingService::marshal(quint64 generation, std::funct
             if (!guard || guard->stopping_ || !guard->session_ || guard->session_->generation != generation) return;
             fn(error, result);
         };
-        if (QThread::currentThread() == guard->thread()) deliver();
-        else QMetaObject::invokeMethod(guard, std::move(deliver), Qt::QueuedConnection);
+        // Events use this same queue. Keep their wire order even when adjacent
+        // event/result frames arrive together on the service's own thread.
+        QMetaObject::invokeMethod(guard, std::move(deliver), Qt::QueuedConnection);
     };
 }
 QJsonObject RecordingService::shellFrame(const Session& s, const QString& state) const {
@@ -249,6 +249,7 @@ void RecordingService::handleEvent(const QJsonObject& event) {
         if (!integer(event["durationUs"], 1, recording::maximumClipUs, &duration)) { fail({"recording_failed", "The recording ended without a usable clip", {}}); return; }
         s.duration = duration;
         s.edit = {};
+        s.captureStopped = true;
         s.stopReason = event["reason"].toString();
         updateCanvas(s.canvas, event["canvas"]);
         recording::clampAnimationSize(s.config, s.canvas, limits(s.op.settings));
@@ -510,7 +511,7 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
             auto& s = *session_;
             // A budget stop can reach review before this command's reply. Keep
             // that finalized clip, reason and edits, just like a duplicate stop.
-            if (command == "stop" && s.state == "reviewing") { reply({}, publicJson(s)); return; }
+            if (command == "stop" && s.captureStopped) { reply({}, publicJson(s)); return; }
             if (error) {
                 if (command == "pause" || command == "resume") { s.pending.clear(); reply(error, {}); return; }
                 fail(error);
@@ -526,6 +527,7 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
                 if (!integer(result["durationUs"], 1, recording::maximumClipUs, &duration)) { fail({"recording_failed", "The recording ended without a usable clip", {}}); reply({"recording_failed", "The recording ended without a usable clip", {}}, {}); return; }
                 s.duration = duration;
                 s.edit = {};
+                s.captureStopped = true;
                 s.stopReason = "user";
                 updateCanvas(s.canvas, result["canvas"]);
                 recording::clampAnimationSize(s.config, s.canvas, limits(s.op.settings));

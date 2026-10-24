@@ -82,9 +82,14 @@ int main(int argc, char** argv) {
             return;
         }
         if (command == "stop") {
-            if (mode == "stop-budget-race") {
+            if (mode.startsWith("stop-budget")) {
                 event("stopped", {{"reason", "budget"}, {"durationUs", 9000000.0}, {"canvas", QJsonArray{1280, 720}}});
-                QTimer::singleShot(100, &app, [&, requestId] { result(requestId, {{"durationUs", 12000000.0}, {"canvas", QJsonArray{1280, 720}}}); });
+                if (mode == "stop-budget-adjacent-error") {
+                    auto frame = envelope; frame["requestId"] = requestId; frame["ok"] = false;
+                    frame["code"] = "recording_state"; frame["message"] = "already stopped"; frame["details"] = QJsonObject{};
+                    control.send("commandResult", frame);
+                } else if (mode == "stop-budget-adjacent") result(requestId, {{"durationUs", 12000000.0}, {"canvas", QJsonArray{1280, 720}}});
+                else QTimer::singleShot(100, &app, [&, requestId] { result(requestId, {{"durationUs", 12000000.0}, {"canvas", QJsonArray{1280, 720}}}); });
             } else result(requestId, {{"durationUs", 12000000.0}, {"canvas", QJsonArray{1280, 720}}});
             return;
         }
