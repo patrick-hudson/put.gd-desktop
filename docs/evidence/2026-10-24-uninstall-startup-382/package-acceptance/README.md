@@ -141,8 +141,10 @@ rule is preserved. Patrick explicitly accepted this legacy-account limitation
 as non-blocking for the first release, given the app’s limited existing usage,
 and authorized closing #382. The [decision/closure receipt](../legacy-rollout-decision.json)
 records that scope change. The measured results remain current-entry tests; they
-do not claim retroactive all-account compatibility. Code #544 and docs #545
-remain open; published-nightly verification continues under #384 after merge.
+do not claim retroactive all-account compatibility. Code #544 merged into `nightly` at
+`35a16d0e6c63bc57bffe8d7bfeeeca5ad428c28c`; companion #545 carries these docs.
+The [merge receipt](../code-integration.json) establishes integration, not new
+desktop-tested bytes. Published-nightly verification continues under #384.
 
 ## Reproduction and cleanup
 
@@ -186,5 +188,5 @@ This targeted campaign does not perform the full native A–Q or AppImage A–K
 profiles, capture/recording/upload, live S3, physical performance, mixed displays,
 full fresh-agent parity, a dated Proton review or exact stable-draft acceptance.
 The remaining release gates retain their own issues. #382 is closed with
-Patrick’s accepted legacy-account exception; code/docs integration remains with
-#544/#545 and published-nightly/exact-release evidence with #384. No release was performed.
+Patrick’s accepted legacy-account exception; code/docs integration is delivered through
+#544/#545 and published-nightly/exact-release evidence remains with #384. No release was performed.

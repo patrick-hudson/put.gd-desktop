@@ -30,9 +30,10 @@ retained. Test VMs were retired after verified export and physical locks release
 #382 is closed per Patrick’s explicit decision that old entries in accounts
 which never ran the updated app are not a first-release blocker given limited
 existing usage. The [decision and closure receipt](evidence/2026-10-24-uninstall-startup-382/legacy-rollout-decision.json)
-record that exception. Code #544 and docs #545 remain open. Published-nightly
-lifecycle verification, including AppImage replacement with real channel
-metadata, continues under #384 after merge. These results are targeted
+record that exception. Code #544 merged into `nightly` at
+`35a16d0e6c63bc57bffe8d7bfeeeca5ad428c28c`; companion #545 carries the docs.
+Published-nightly lifecycle verification, including AppImage replacement with
+real channel metadata, continues under #384. These results are targeted
 development-artifact acceptance, not full A–Q/A–K or stable-draft certification.
 The retained-link/TryExec tests at `91864c41` are superseded history.
 

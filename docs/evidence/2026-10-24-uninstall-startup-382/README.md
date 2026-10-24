@@ -14,7 +14,10 @@ Targeted development-package and real-login acceptance is complete on five nativ
 and six AppImage desktop rows. Patrick accepted the legacy-account rollout
 limitation as non-blocking for the first release and authorized closing #382.
 The [decision and closure receipt](legacy-rollout-decision.json) record the scope.
-Code #544 and docs #545 remain open; release verification continues under #384.
+Code #544 merged into `nightly` at
+`35a16d0e6c63bc57bffe8d7bfeeeca5ad428c28c`; this companion #545 carries the
+documentation. The [merge receipt](code-integration.json) records integration;
+published-nightly and exact stable-asset verification continue under #384.
 
 ## Earlier link-removing implementation and bounded checks
 
@@ -177,7 +180,7 @@ retroactively; Patrick accepted this [rollout limit](package-acceptance/README.m
 as non-blocking given limited existing usage. #382 is closed by his decision.
 
 The published-nightly check (including AppImage replacement with real update
-metadata) remains under #384 after code/docs merge. These targeted rows do not certify a
+metadata) remains under #384 after integration. These targeted rows do not certify a
 stable release or replace #384's exact-release-asset campaign.
 
 ## Superseded retained-link evidence
