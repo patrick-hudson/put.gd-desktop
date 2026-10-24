@@ -18,15 +18,24 @@ saved Cinnamon, GNOME and KDE visuals and separate functional/memory gates.
 The older reproduction and test counts in #410 describe that issue's original
 source; they are not results for the new candidate.
 
-The first candidate was `b11c3ba6d64a60ace215aeb8ef9ac9cd8418f142`, tree
-`f9d1b5e55bb37d76c2522b6229b52faa5af7b6bb`. It is **under revision and has
-not been accepted**. The execution owner reported two additional review findings:
+The current candidate is [`39d1945d3a8a5139d140f8d5748b6f831a392c26`](https://github.com/patrick-hudson/put.gd-desktop/commit/39d1945d3a8a5139d140f8d5748b6f831a392c26),
+tree `b6a69ec6c2d0e4c3133a75615fe344eeb6b1e0e6`. It queues command replies in
+the same order as helper events and retains capture finalization independently
+of the current review/export state. Its regression source includes adjacent
+event/success and event/error replies, a real trim to revision 2 during held
+Save copy/Upload exports, and a cancelled-session successor. Test execution,
+second review and exact-build desktop evidence have not been accepted here yet.
+
+The first candidate, `b11c3ba6d64a60ace215aeb8ef9ac9cd8418f142`, tree
+`f9d1b5e55bb37d76c2522b6229b52faa5af7b6bb`, is **superseded without acceptance**.
+The execution owner reported two additional review findings:
 an event and reply read together can be applied out of order, and a delayed stop
-reply can replace a finalized review after an edit begins exporting. Corrected
-source, failure receipts and passing regressions are pending. The planned
-regressions distinguish the adjacent event/reply race, edited review/export,
-cancelled-session successor callbacks and a later duplicate stop. This paragraph
-records review findings, not a new execution result from the report owner.
+reply can replace a finalized review after an edit begins exporting. The current
+candidate contains the corrections above; failure receipts and passing results
+remain pending. Old build/test attempts remain separate from this revision;
+no graphical or CI credit transfers between these commits. This paragraph
+records source review and reported findings, not a new execution result from
+the report owner.
 
 ## Required receipts
 

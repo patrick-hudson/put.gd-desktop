@@ -13,20 +13,28 @@
   "status": "pending",
   "baselineCommit": "1a70ac7f02b75bc4c75a9d768b2775e837e771a6",
   "candidateSource": {
-    "commit": "b11c3ba6d64a60ace215aeb8ef9ac9cd8418f142",
-    "tree": "f9d1b5e55bb37d76c2522b6229b52faa5af7b6bb",
-    "revisionStatus": "under revision after review",
+    "commit": "39d1945d3a8a5139d140f8d5748b6f831a392c26",
+    "tree": "b6a69ec6c2d0e4c3133a75615fe344eeb6b1e0e6",
+    "revisionStatus": "awaiting execution evidence and second review",
     "executionAccepted": false
   },
+  "supersededCandidates": [
+    {
+      "commit": "b11c3ba6d64a60ace215aeb8ef9ac9cd8418f142",
+      "tree": "f9d1b5e55bb37d76c2522b6229b52faa5af7b6bb",
+      "executionAccepted": false,
+      "reason": "Two additional stop/budget races found during review; no acceptance credit transferred."
+    }
+  ],
   "reviewFindings": [
     {
       "finding": "An event and command reply read together can be applied out of order.",
-      "status": "correction and regression receipts pending",
+      "status": "correction present in 39d1945d; regression receipts and second review pending",
       "basis": "execution-owner report; no execution claimed by report owner"
     },
     {
       "finding": "A delayed stop reply can replace a finalized review after edited export begins.",
-      "status": "correction and regression receipts pending",
+      "status": "correction present in 39d1945d; regression receipts and second review pending",
       "basis": "execution-owner report; no execution claimed by report owner"
     }
   ],

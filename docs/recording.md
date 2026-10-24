@@ -90,8 +90,9 @@ All methods go through `putgd-cli` unchanged. `id` is the recording ID.
 | `recording.upload` | `{id, revision}` | the only publishing action. Replies once the export starts with `state: exporting` and the linked `operationId`; see "Exports" below |
 
 If a helper budget-stop event reaches review before a pending `stop` command's
-reply, that reply returns the existing review rather than replacing its clip
-duration, stop details or edit model. A subsequent `stop` returns the same state.
+reply, that reply returns the current finalized session, including an export
+already in progress. It preserves the clip duration, stop details, edit model
+and current state. A subsequent `stop` while still reviewing returns that review.
 
 ### Exports
 
@@ -983,13 +984,17 @@ and no host-matched library was bundled; the receipt records the result under
   `recording.select`. Its slow-export case holds the fake export open while the
   production `putgd-cli` runs `saveCopy` and `upload`: both answer `exporting`
   at once, `inspect` shows progress, the lock on edits and `lastExport`, and a
-  cancel during the export admits nothing. It also checks that the CLI's wait
+  cancel during the export admits nothing. Deferred stop replies (success or
+  error) preserve a budget-finalized clip and edited revision during a pending
+  Save copy or Upload export; a stale reply cannot mutate a cancelled session's
+  successor. It also checks that the CLI's wait
   for every method that waits on the helper outlasts that helper's deadline.
 - `recording_helper_integration` (`tests/integration/test_recording_helper.cpp`):
   the helper supervisor against a fixture helper (probe caching, lifecycle,
   delayed graceful cancel in ready/recording/paused/reviewing and successor
   sessions, active unknown/malformed replies and foreign shutdown envelopes,
-  a budget-stop event before the pending command reply and a subsequent stop,
+  a budget-stop event before a delayed or adjacent success/error reply and a
+  subsequent stop,
   progress and helper-initiated stop events, crash, silence, wrong build,
   export timeout, broken probes, missing helper) and, when built, the product
   `putgd-record`: its probe JSON, the identity handshake, the explicit
