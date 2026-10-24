@@ -437,7 +437,7 @@ int main(int argc,char* argv[]) {
   const auto executable=QFileInfo::exists(launcher)?launcher:QCoreApplication::applicationFilePath();
   const auto enabled=settings.snapshot().launchAtLogin;
   operations.background([configRoot,dataRoot,executable,enabled,loginMutex,loginGeneration,ticket](putgd::Error& error){std::lock_guard lock(*loginMutex);if(ticket!=loginGeneration->load())return QJsonObject{};
-   const auto stopped=putgd::LoginStartup::monitor(dataRoot,false);
+   const auto stopped=putgd::LoginStartup::prepareMonitor(configRoot,dataRoot,executable,enabled);
    error=putgd::LoginStartup::apply(configRoot,dataRoot,executable,enabled);
    // A setting can change while uninstall removes the executable. Re-arm the
    // previous script's cleanup if apply cannot replace it; keep its error.

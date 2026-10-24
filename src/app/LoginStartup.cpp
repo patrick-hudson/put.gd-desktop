@@ -18,6 +18,9 @@ QString desktopQuoted(QString value) {
  return "\""+value+"\"";
 }
 QString shellQuoted(QString value) {return "'"+value.replace("'","'\\''")+"'";}
+QString startupId(const QString& entry,const QString& configured) {
+ return QString::fromLatin1(QCryptographicHash::hash((entry+'\n'+configured).toUtf8(),QCryptographicHash::Sha256).toHex());
+}
 Error commit(const QString& path,const QByteArray& bytes,QFile::Permissions permissions,const QString& what) {
  constexpr auto shared=QFile::ReadGroup|QFile::WriteGroup|QFile::ExeGroup|QFile::ReadOther|QFile::WriteOther|QFile::ExeOther;
  QFile current(path);
@@ -56,6 +59,26 @@ Error LoginStartup::monitor(const QString& dataRoot,bool enabled) {
  Q_UNUSED(dataRoot);Q_UNUSED(enabled);
 #endif
  return {};
+}
+Error LoginStartup::prepareMonitor(const QString& root,const QString& dataRoot,const QString& executable,bool enabled) {
+#ifdef Q_OS_LINUX
+ if(enabled) {
+  const auto image=qEnvironmentVariable("APPIMAGE"),directory=qEnvironmentVariable("APPDIR");
+  auto configured=executable;
+  if(!image.isEmpty()&&!directory.isEmpty()&&QFileInfo(directory).isAbsolute()&&
+     QDir::cleanPath(executable)==QDir::cleanPath(QDir(directory).filePath("usr/bin/putgd-launcher")))
+   configured=QDir::cleanPath(QFileInfo(image).absoluteFilePath());
+  const auto id=startupId(QDir(root).filePath("autostart/putgd.desktop"),configured);
+  QFile script(scriptPath(dataRoot));
+  if(script.open(QIODevice::ReadOnly)&&script.size()<=64*1024) {
+   const auto bytes=script.readAll();
+   if(bytes.contains("\n# X-putgd-Managed=true\n")&&bytes.contains(("\n# X-putgd-StartupId="+id+'\n').toUtf8()))return {};
+  }
+ }
+#else
+ Q_UNUSED(root);Q_UNUSED(executable);Q_UNUSED(enabled);
+#endif
+ return monitor(dataRoot,false);
 }
 QString LoginStartup::appImageUpdateInformation(const QString& path) {
  QFile file(path);
@@ -127,7 +150,7 @@ Error LoginStartup::apply(const QString& root,const QString& dataRoot,const QStr
   if(!QFileInfo(executable).isFile()||!QFileInfo(executable).isExecutable())return {"autostart_io","Login startup requires an accessible executable",{}};
  }
  if(!QFileInfo(scriptPath).isAbsolute()||scriptPath.contains('\n')||scriptPath.contains('\r'))return {"autostart_io","Login startup requires an absolute script path",{}};
- const auto id=QString::fromLatin1(QCryptographicHash::hash((path+'\n'+configured).toUtf8(),QCryptographicHash::Sha256).toHex());
+ const auto id=startupId(path,configured);
  const QHash<QString,QString> values{{"CONFIGURED",shellQuoted(configured)},{"UPDATE_INFORMATION",shellQuoted(information)},
   {"KIND",shellQuoted(kind)},{"ENTRY",shellQuoted(path)},{"SCRIPT",shellQuoted(scriptPath)},
   {"ID",id},{"WATCH_UNIT",shellQuoted("putgd-login-startup-"+id)}};

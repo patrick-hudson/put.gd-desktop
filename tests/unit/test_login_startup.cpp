@@ -44,6 +44,23 @@ class LoginStartupTest:public QObject {
  Q_OBJECT
 private slots:
 #ifdef Q_OS_LINUX
+ void monitorPreparationPreservesTheSameInstallation() {
+  QTemporaryDir dir;const auto data=dir.filePath("data"),native=dir.filePath("putgd-launcher"),next=dir.filePath("another-launcher");
+  writeImage(native,"#!/bin/sh\nexit 0\n");writeImage(next,"#!/bin/sh\nexit 0\n");
+  AppImageEnvironment environment("/other.AppImage","/tmp/.mount_other");
+  QVERIFY(!LoginStartup::apply(dir.path(),data,native,true));
+  const auto bin=dir.filePath("manager"),receipt=dir.filePath("manager-calls");QVERIFY(QDir().mkpath(bin));
+  auto quoted=receipt;quoted.replace("'","'\\''");
+  writeImage(QDir(bin).filePath("systemctl"),("#!/bin/sh\nprintf 'called\\n' >> '"+quoted+"'\nprintf 'not-found\\n'\n").toUtf8());
+  const auto oldPath=qgetenv("PATH");qputenv("PATH",bin.toUtf8()+':'+oldPath);
+  const auto unchanged=LoginStartup::prepareMonitor(dir.path(),data,native,true);
+  const auto unchangedTouchedManager=QFile::exists(receipt);
+  const auto changed=LoginStartup::prepareMonitor(dir.path(),data,next,true);
+  const auto changedTouchedManager=QFile::exists(receipt);
+  if(oldPath.isNull())qunsetenv("PATH");else qputenv("PATH",oldPath);
+  QVERIFY(!unchanged);QVERIFY(!unchangedTouchedManager);
+  QVERIFY(!changed);QVERIFY(changedTouchedManager);
+ }
  void appImageStartupRunsTheLoginScript() {
   QTemporaryDir dir;const auto image=dir.filePath("put.gd 'preview'.AppImage"),data=dir.filePath("data");
   writeImage(image,elfImage("zsync|https://app.put.gd/dl/nightly/appimage.zsync"));
