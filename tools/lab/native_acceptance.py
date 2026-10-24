@@ -289,6 +289,9 @@ def check_login(before, facts, processes, expected='present'):
         require(not processes, 'Expected no resident after removal/login')
         return {'newSession': facts, 'processes': [], 'newSessionVerified': True, 'expected': expected}
     require(processes, 'No autostarted resident in the selected profile')
+    expected_exe = before.get('stopped', {}).get('exe')
+    if expected_exe:
+        require(any(p['exe'] == expected_exe for p in processes), 'New resident is not the selected package executable')
     hz = os.sysconf('SC_CLK_TCK')
     require(all(p['startTicks'] * 1_000_000 // hz >= int(facts['TimestampMonotonic']) for p in processes),
             'A pre-login resident/helper survived; invalid login evidence')
@@ -470,7 +473,11 @@ def main():
             elif args.cmd == 'tray': result['result'] = tray(args, env)
             elif args.cmd == 'plasma-registration': result['result'] = plasma_registration(env, args.repair, args.probe)
             elif args.cmd == 'login-prepare': result['result'] = prepare_login(args, facts, env)
-            elif args.cmd == 'login-check': result['result'] = check_login(json.loads(private(args.before).read_text())['result'], facts, resident_processes(args.runtime), args.expected)
+            elif args.cmd == 'login-check':
+                before = json.loads(private(args.before).read_text())
+                require(before.get('ok') and before.get('host') == socket.gethostname(), 'Need a successful preparation receipt from this host')
+                require(before.get('result', {}).get('runtime') == str(Path(args.runtime).resolve()), 'Login receipt targets another runtime')
+                result['result'] = check_login(before['result'], facts, resident_processes(args.runtime), args.expected)
             elif args.cmd == 'snapshot': result['result'] = snapshot(args, facts, env)
             elif args.cmd == 'keychain':
                 from native_keychain import lifecycle
