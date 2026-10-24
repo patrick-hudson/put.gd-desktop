@@ -108,7 +108,7 @@ private slots:
   if(gallery)window.findChild<QToolButton*>("historyGridMode")->click();
   // Resize both directions: cached/fixed item heights must not clip a narrower layout.
   for(int target:{width,width+180,width}){
-   window.resize(target,700);putgd::test::settle(30);list->doItemsLayout();const auto index=list->model()->index(0);const auto row=list->visualRect(index);QVERIFY(row.isValid());
+   window.resize(target,700);putgd::test::settle(30);QVERIFY(window.width()<=target);const auto index=list->model()->index(0,0);const auto row=list->visualRect(index);QVERIFY(row.isValid());
    const auto record=index.data(HistoryModel::RecordRole).toJsonObject();QVERIFY(HistoryModel::storedNothing(record));QVERIFY(index.data(HistoryModel::PrimaryActionRole).toString().isEmpty());QVERIFY(index.data(Qt::AccessibleTextRole).toString().contains(message));
    const int heading=gallery?0:34;const int left=gallery?20:107;const int top=gallery?216:heading+75;const int textWidth=row.width()-(gallery?41:128);
    QTextDocument expected;expected.setDocumentMargin(0);expected.setDefaultFont(list->font());auto textOption=expected.defaultTextOption();textOption.setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);expected.setDefaultTextOption(textOption);expected.setPlainText(message);expected.setTextWidth(textWidth);
