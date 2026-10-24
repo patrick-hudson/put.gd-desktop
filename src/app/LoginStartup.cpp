@@ -11,6 +11,11 @@ QString desktopQuoted(QString value) {
  value.replace("\\","\\\\");value.replace("\"","\\\"");value.replace("$","\\$");value.replace("`","\\`");value.replace("%","%%");
  return "\""+value+"\"";
 }
+// TryExec is a desktop-entry string, not an Exec command line.
+QString desktopString(QString value) {
+ value.replace("\\","\\\\");value.replace(" ","\\s");value.replace("\t","\\t");
+ return value;
+}
 QString shellQuoted(QString value) {return "'"+value.replace("'","'\\''")+"'";}
 Error commit(const QString& path,const QByteArray& bytes,QFile::Permissions permissions,const QString& what) {
  constexpr auto shared=QFile::ReadGroup|QFile::WriteGroup|QFile::ExeGroup|QFile::ReadOther|QFile::WriteOther|QFile::ExeOther;
@@ -76,7 +81,7 @@ Error LoginStartup::apply(const QString& root,const QString& dataRoot,const QStr
   if(existing.exists()&&!existing.remove())return {"autostart_io","Cannot remove login startup entry",{}};
   return removeScript(scriptPath);
  }
- QString exec;
+ QString exec,tryExec;
 #ifdef Q_OS_LINUX
  // An AppImage mount is temporary, and an update may write the next version
  // under a new name beside the image or remove it (#307). Persist a script that
@@ -101,10 +106,13 @@ Error LoginStartup::apply(const QString& root,const QString& dataRoot,const QStr
  if(exec.isEmpty()) {
   if(!QFileInfo(executable).isAbsolute()||executable.contains('\n')||executable.contains('\r'))return {"autostart_io","Login startup requires an absolute executable path",{}};
   exec=desktopQuoted(executable);
+  tryExec=desktopString(executable);
   if(auto error=removeScript(scriptPath))return error;
  }
  if(!QDir().mkpath(directory))return {"autostart_io","Cannot create login startup directory",{}};
- const auto bytes=("[Desktop Entry]\nType=Application\nName=put.gd\nExec="+exec+" --background\nTerminal=false\nX-putgd-Managed=true\n").toUtf8();
+ auto entry="[Desktop Entry]\nType=Application\nName=put.gd\nExec="+exec+" --background\n";
+ if(!tryExec.isEmpty())entry+="TryExec="+tryExec+"\n";
+ const auto bytes=(entry+"Terminal=false\nX-putgd-Managed=true\n").toUtf8();
  return commit(path,bytes,QFile::ReadOwner|QFile::WriteOwner,"login startup entry");
 }
 }

@@ -205,9 +205,9 @@ class LoginStartTest(unittest.TestCase):
         self.images.chmod(0o777)
         self.addCleanup(self.images.chmod, 0o700)
         completed, started = self.start(configured)
-        self.assertEqual(completed.returncode, 1)
+        self.assertEqual(completed.returncode, 0)
         self.assertEqual(started, [])
-        self.assertIn("cannot start", completed.stderr)
+        self.assertEqual(completed.stderr, "")
 
     def test_release_orders_after_its_candidate(self):
         configured = self.image("putgd-0.1.2-rc.1-x86_64.AppImage", "0.1.2-rc.1", info=STABLE)
@@ -264,18 +264,28 @@ class LoginStartTest(unittest.TestCase):
         self.image("putgd-0.1.1-nightly.801-x86_64.AppImage", "0.1.1-nightly.801")
         self.assertStarts(configured, configured)
 
-    def test_nothing_to_start_fails_with_a_message(self):
+    def test_removed_images_leave_a_quiet_retained_preference(self):
         completed, started = self.start(self.images / "putgd-0.1.1-nightly.800-x86_64.AppImage")
-        self.assertEqual(completed.returncode, 1)
+        self.assertEqual(completed.returncode, 0)
         self.assertEqual(started, [])
-        self.assertIn("no put.gd AppImage with its update information", completed.stderr)
+        self.assertEqual(completed.stdout, "")
+        self.assertEqual(completed.stderr, "")
+
+    def test_removed_image_folder_leaves_a_quiet_retained_preference(self):
+        configured = self.images / "putgd-26.1023.1058-nightly-x86_64.AppImage"
+        self.images.rmdir()
+        completed, started = self.start(configured)
+        self.assertEqual(completed.returncode, 0)
+        self.assertEqual(started, [])
+        self.assertEqual(completed.stderr, "")
 
     def test_image_without_update_information_starts_only_itself(self):
         configured = self.images / "putgd-0.1.1-dev.795+g71f241b8f5d3-x86_64.AppImage"
         self.image("putgd-0.1.1-dev.796+g0000000-x86_64.AppImage", "0.1.1-dev.796+g0000000", info="")
         completed, started = self.start(configured, info="")
-        self.assertEqual(completed.returncode, 1)
+        self.assertEqual(completed.returncode, 0)
         self.assertEqual(started, [])
+        self.assertEqual(completed.stderr, "")
 
 
 if __name__ == "__main__":

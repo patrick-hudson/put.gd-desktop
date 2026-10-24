@@ -52,6 +52,7 @@ private slots:
   QVERIFY(entry.contains("Exec=/bin/sh \""+script.toUtf8()+"\" --background\n"));
   QVERIFY(entry.contains("\nX-putgd-Managed=true\n"));
   QVERIFY(!entry.contains(".mount_putgd"));
+  QVERIFY(!entry.contains("\nTryExec="));
   const auto text=readAll(script);
   QVERIFY(text.startsWith("#!/bin/sh\n"));
   QVERIFY(text.contains("\n# X-putgd-Managed=true\n"));
@@ -89,6 +90,7 @@ private slots:
   {AppImageEnvironment environment("/other.AppImage","/tmp/.mount_other");result=LoginStartup::apply(dir.path(),data,"/usr/bin/putgd-launcher",true);}
   QVERIFY(!result);
   QVERIFY(readAll(dir.filePath("autostart/putgd.desktop")).contains("Exec=\"/usr/bin/putgd-launcher\" --background"));
+  QVERIFY(readAll(dir.filePath("autostart/putgd.desktop")).contains("\nTryExec=/usr/bin/putgd-launcher\n"));
   QVERIFY(!QFile::exists(LoginStartup::appImageScriptPath(data)));
  }
  void nativeStartupAndDisablingRemoveOnlyPutgdsScript() {
@@ -109,6 +111,22 @@ private slots:
   QCOMPARE(result.code,QString("autostart_io"));QVERIFY(!QFile::exists(dir.filePath("autostart/putgd.desktop")));
  }
 #endif
+ void nativeTryExecUsesAPathRatherThanCommandLineQuoting() {
+  QTemporaryDir dir;const auto executable=dir.filePath("putgd space\\slash\ttab%$`\""),data=dir.filePath("data");
+  QVERIFY(!LoginStartup::apply(dir.path(),data,executable,true));
+  const auto entry=readAll(dir.filePath("autostart/putgd.desktop"));
+  QVERIFY(entry.contains("\nTryExec="+dir.path().toUtf8()+"/putgd\\sspace\\\\slash\\ttab%$`\"\n"));
+ }
+ void nativeStartupRepairsTheRetainedManagedEntry() {
+  QTemporaryDir dir;const auto data=dir.filePath("data"),path=dir.filePath("autostart/putgd.desktop");
+  QVERIFY(!LoginStartup::apply(dir.path(),data,"/usr/bin/putgd-launcher",true));
+  auto old=readAll(path);old.replace("TryExec=/usr/bin/putgd-launcher\n","");
+  QFile entry(path);QVERIFY(entry.open(QIODevice::WriteOnly));QCOMPARE(entry.write(old),qint64(old.size()));entry.close();
+  QVERIFY(!LoginStartup::apply(dir.path(),data,"/usr/bin/putgd-launcher",true));
+  QVERIFY(readAll(path).contains("\nTryExec=/usr/bin/putgd-launcher\n"));
+  QVERIFY(readAll(path).contains("\nExec=\"/usr/bin/putgd-launcher\" --background\n"));
+  QVERIFY(!LoginStartup::apply(dir.path(),data,"/usr/bin/putgd-launcher",false));QVERIFY(!QFile::exists(path));
+ }
  void preferenceOwnsOnlyManagedAutostartEntry() {
   QTemporaryDir dir;const auto executable=dir.filePath("app space/putgd-launcher"),data=dir.filePath("data");
   QVERIFY(!LoginStartup::apply(dir.path(),data,executable,true));QFile entry(dir.filePath("autostart/putgd.desktop"));QVERIFY(entry.open(QIODevice::ReadOnly));const auto bytes=entry.readAll();QVERIFY(bytes.contains("Exec=\""+executable.toUtf8()+"\" --background"));QVERIFY(bytes.contains("X-putgd-Managed=true"));entry.close();

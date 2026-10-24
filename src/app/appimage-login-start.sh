@@ -122,5 +122,8 @@ if [ -n "$best" ]; then
     say "$configured is missing; starting $best"
     exec "$best" "$@"
 fi
+# Retain the user's login preference after every matching image is removed.
+# Reinstalling an image may reactivate it; an absent image is not a login error.
+[ -e "$configured" ] || exit 0
 say "cannot start $configured: it is missing or not executable, and no put.gd AppImage with its update information is beside it"
 exit 1
