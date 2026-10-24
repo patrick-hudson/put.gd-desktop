@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "issue": "https://github.com/patrick-hudson/put.gd-desktop/issues/410",
+  "recordedDate": "2026-10-24",
+  "scope": [
+    "graceful recording cancel and discard shutdown",
+    "action.invoke recording mode session boundary",
+    "command stop reason and budget preservation"
+  ],
+  "codePullRequest": null,
+  "documentationPullRequest": null,
+  "mergeOrder": ["code", "documentation"],
+  "status": "pending",
+  "baselineCommit": "1a70ac7f02b75bc4c75a9d768b2775e837e771a6",
+  "testedSource": null,
+  "automatedChecks": [],
+  "desktopRuns": [],
+  "visualReviews": [],
+  "cleanupReceipts": [],
+  "pendingGates": [
+    "exact-commit regression and build receipts",
+    "Cinnamon functional and memory gates with saved reviewed visuals",
+    "GNOME functional and memory gates with saved reviewed visuals",
+    "KDE functional and memory gates with saved reviewed visuals",
+    "execution cleanup and lock release verification",
+    "required code and documentation CI",
+    "final contract and evidence review"
+  ],
+  "limitations": [
+    "No new execution result is claimed in this draft.",
+    "Historical issue results do not certify the new candidate.",
+    "Headless and fixture checks do not establish desktop acceptance.",
+    "No release, physical performance or package lifecycle certification."
+  ]
+}

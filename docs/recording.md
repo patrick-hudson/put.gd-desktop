@@ -79,7 +79,7 @@ All methods go through `putgd-cli` unchanged. `id` is the recording ID.
 | `recording.capabilities` | | availability and reason, target kinds, formats, codecs per format, audio sources, `active` recording ID, limits, `timeUnit`; no capture, no prompt |
 | `recording.prepare` | `target {kind: monitor\|desktop\|region\|window, identity?, rect?}`, `format mp4\|webm\|gif\|webp`, `codec?`, `fps? (1–60)`, `audio? {system?, microphone?}`, `maxEdge?` | durable intent, then ready bounds/controls and any OS consent; replies at once with `state: preparing`; poll `inspect` for `ready`. A region without `rect` opens the desktop's selector (Escape cancels; `inspect` shows `selecting: true`); the chosen bounds appear in `inspect` as `target.rect`, and `overlayExcluded` / `overlayPlacement` say whether the control bar stayed out of the recorded pixels. Refused with `disk_space_insufficient` (details `freeBytes`, `reserveBytes`, `availableBytes`, `requiredBytes`, `shortfallBytes`, `hint`) before anything is accepted when free disk above the reserve can't hold three 64 MiB budgets (#213) |
 | `recording.select` | `{id, rect: [x, y, w, h]}` | completes an open region selector with that rectangle as a drag would (X11 root pixels, logical desktop pixels on Wayland); `recording_state` when no selector is open |
-| `recording.start` / `pause` / `resume` / `stop` | `{id}` | acknowledged once the backend reached the state; a duplicate of the in-flight command returns the current state, a different one is `recording_busy`; `stop` returns `durationUs` and enters `reviewing`. A `stop` that arrives after the helper stopped on its own (its budget) answers with the `reviewing` state, like a duplicate stop |
+| `recording.start` / `pause` / `resume` / `stop` | `{id}` | acknowledged once the backend reached the state; a duplicate of the in-flight command returns the current state, a different one is `recording_busy`; an acknowledged user `stop` returns `durationUs` and `stopReason: user` and enters `reviewing`, including when stopped through CLI, MCP or the toggle shortcut. A `stop` that arrives after the helper stopped on its own (its budget) answers with the existing `reviewing` state and preserves `stopReason: budget` and `stopDetails`, like a duplicate stop |
 | `recording.cancel` | `{id}` | discards the clip; the operation ends `cancelled` |
 | `recording.inspect` | `{id}` | state, pending command, `selecting`, target, config, canvas, `durationUs`, `retainedUs`, edit, progress (`exportFraction` while exporting), `overlayExcluded`, `overlayPlacement`, `lastExport`, `stopReason` (`user` or `budget`) once the capture stopped, and after a budget stop `stopDetails` (`reason` `disk_space` or `max_file_bytes`, `message`, `hint`, `budgetBytes`, `maxFileBytes`, `durationUs`, and for the disk `freeBytes`, `reserveBytes`, `availableBytes`; see [Capture and export engine](#capture-and-export-engine-x11)), error; an ended session is `recording_unavailable` and its operation holds the outcome |
 | `recording.raise` / `recording.overlay` | `{id}` / `{id, visible}` | overlay control; a hidden bar stays hidden through state changes until `raise` (a full-screen clip without the handle); the recording indicator stays visible |
@@ -169,8 +169,13 @@ child's pipes, mirroring the capture and editor helpers:
   selector restyle at once (#198, [appearance](appearance.md#recording-overlays)).
   Any other value ends the helper as a protocol error.
 - `shutdown` after upload, cancel or failure; the helper must exit normally
-  within 2 s or it is killed. Only control metadata crosses the pipes: frames,
-  audio and files stay in the helper and its private staging.
+  within 2 s or it is killed. Discard settles outstanding requests before
+  shutdown, so a late `commandResult` from the authenticated, ready helper
+  during teardown is ignored rather than treated as an unknown request.
+  Envelope checks still apply; unknown request IDs during an active session
+  remain protocol errors. Cancel on the bar, `recording.cancel` and review
+  Discard use this graceful teardown path. Only control metadata crosses the
+  pipes: frames, audio and files stay in the helper and its private staging.
 
 `putgd-record --capabilities` is a separate transient run whose JSON the backend
 caches for the resident's lifetime (a failed probe is retried after a minute).
@@ -259,6 +264,19 @@ or `paused` one, and otherwise raises. The reply carries the step taken
 `perform_action` tool accepts `record` and the CLI passes `mode` through. An
 open image edit refuses the action with `editor_active`, as a recording refuses
 edits.
+
+`mode` defaults to `open`. The session boundary accepts a nonempty string of at
+most 16 characters; the record action accepts only `open` or `toggle` and refuses
+other values with `invalid_request`. `mode` belongs only to `record`; supplying
+it to another action is also `invalid_request`.
+
+```sh
+putgd-cli action.invoke '{"action":"record","mode":"open"}'
+putgd-cli action.invoke '{"action":"record","mode":"toggle"}'
+```
+
+Each invocation acts on the current session as described above. These calls do
+not authorize upload; a stopped clip stays in private review.
 
 ## Review window
 

@@ -292,6 +292,16 @@ Policy and tools: [CI coverage, flaky tests](ci.md#flaky-tests). Evidence:
 Not covered: the lane is not scheduled (proposal #360); Python contract suites
 (#99, #160 were flakes there) are outside this policy.
 
+## Recording session contract (#410) — 2026-10-24
+
+The [companion report](evidence/2026-10-24-recording-session-410/README.md) and
+[JSON ledger](evidence/2026-10-24-recording-session-410/summary.json) track
+graceful cancel/discard shutdown, recording `action.invoke` modes and command
+stop reasons. Current-candidate regression, Cinnamon/GNOME/KDE functional and
+memory checks, saved visual review and cleanup are pending. The documentation
+PR remains draft; historical #410 results and headless checks do not establish
+new desktop acceptance. Merge the code PR before its documentation companion.
+
 ## Recording closeout (#87, #166, #165, #164, #89) — 2026-10-20
 
 The [closeout receipt](evidence/2026-10-20-recording-closeout.md) finishes #87's
