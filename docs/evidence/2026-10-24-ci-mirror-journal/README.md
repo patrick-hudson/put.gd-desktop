@@ -120,8 +120,10 @@ CPU 0, scale 3 and a 40-second outer timeout. Its socket preflight is retained.
 **Ubuntu24.04 completed:** distro Qt 6.4.2, clean final head; 10/10 full
 `operations_contract` runs through the unmodified builder stress lane, all exit
 codes zero, no failures or interruption. Runs take 86.86–90.40 seconds
-(median 88.02). Full logs confirm 112 QtTest passes, including the resumable
-journal case, with zero failures/skips. [Ledger](stress-u24/ledger.json),
+(conventional median 87.64 seconds). The retained unmodified harness summary
+reports the upper-middle value, 88.02 seconds, as its median. Full logs confirm
+112 QtTest passes, including the resumable journal case, with zero failures/skips.
+[Ledger](stress-u24/ledger.json),
 [summary](stress-u24/summary.md), [final full log](stress-u24/iteration-010-full.log),
 [OS/compiler/Qt/build/hash/environment](context-u24.json),
 [socket preflight](stress-u24-preflight.json). Passing JUnit stdout is truncated
