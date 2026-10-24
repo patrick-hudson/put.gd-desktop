@@ -1,4 +1,4 @@
-# Install, capture and copied-link recovery — work in progress
+# Install, capture and copied-link recovery — scoped evidence
 
 Companion code PR: [#534](https://github.com/patrick-hudson/put.gd-desktop/pull/534),
 source `8a9415c540bee2ac5a8caa0e7606681bafa528a7` from nightly
@@ -49,13 +49,14 @@ checks may use a newly extracted, audited RPM with a temporary matching helper;
 those are **extracted-RPM physical evidence**, never native installation proof.
 Fedora's actual package-install/discovery gate remains blocked under #492.
 
-## Pending gates
+## Remaining merge gate
 
-Fedora native package-install/discovery remains blocked. Current-head physical
-Cinnamon and extracted-RPM Fedora GNOME functional/memory work is in progress;
-KDE local native gates and Ubuntu GNOME install/capture/copy gates below passed.
-This report and the companion PR remain draft while required gates are pending.
-Offscreen and private-bus tests cannot establish compositor acceptance.
+The available scoped native checks below passed. **Fedora native RPM installation
+and fresh system-extension discovery remain blocked** by the protected DNF offline
+transaction, tracked under [#492](https://github.com/patrick-hudson/put.gd-desktop/issues/492).
+The code/docs PRs remain draft; extraction does not waive this lifecycle gate.
+Full release/U9, live remote upload/deletion, recording and additional distro/session
+acceptance are not claimed by this local capture/copy campaign.
 
 ## Physical KDE local native gates
 
@@ -138,7 +139,7 @@ Guest evidence was exported and hash-verified before guarded overlay
 [retirement](ugn/cleanup.json) at 01:34:52 UTC. Only its overlay and owned tunnels
 were retired; the golden, physical desktop, demos and Windows guests were preserved.
 
-## Physical Cinnamon checkpoint (in progress)
+## Physical Cinnamon local native gates
 
 The audited, recorder-enabled Ubuntu 24.04 production DEB was built from the same
 frozen source in the repository's pinned Ubuntu container on f44. Its SHA-256 is
@@ -152,7 +153,18 @@ passed at 28.746 MiB, zero product swap and 0.198% maximum one-core CPU.
 
 The actual inspector Copy link action updated the persisted status, row and
 outcome, then independently pasted the stored synthetic URL. The native Qt/GTK
-matrix and six view reopens passed. Final same-resident post-use pair is running.
+matrix and six view reopens passed. After the driver correction below, a fresh `/tmp/ccmr` profile repeated production
+CLI copied-link recovery and independent paste, all 12 Qt/GTK cases, three
+cancellations and six Settings/History opens/closes. Its final same-resident
+`postA`/`postB` pair passed at **32.074 MiB** in each window. Every tracked fixture
+PID was absent and the private-profile independent-process scan was empty before
+each sampler. Both windows retain PID 572446/start ticks 20425851. The initial UI
+photos belong to `/tmp/ccmf`; [their exact operation and crop identities](m74/ui-first-profile/)
+are separate from the fresh replay. The reinstalled DEB is byte-identical.
+The [replay context](m74/replay-context.json) and initial
+[cleanup refusal](m74/lock-release-refused-first.txt) retain why the earlier numeric
+passes are not the final pair. Only put.gd and the newly added GTK typelib were
+purged; [verified-clean release](m74/lock-release.json) completed at 01:57:32 UTC.
 No recording feature test is claimed: the package is recorder-enabled, while
 this campaign exercises capture/clipboard/history.
 
@@ -176,3 +188,69 @@ clipboard safeguards, the frozen sampler or its limits.
 retain the tests-first failures, SDK/environment corrections and green suite.
 Private bulk archives remain on the builders and in the isolated task workspace;
 their exact digests are retained alongside the compact public evidence.
+
+
+## Physical Fedora extracted-RPM local native gates
+
+f44 runs Fedora 44, GNOME Shell 50.0, native Wayland and dynamic distro Qt 6.11.2.
+The production RPM passed the release inventory/dependency audit; its SHA-256 and
+all other exact assets are in [artifact identities](artifact-identities.json).
+The repository extraction route supplied the actual binaries and a matching
+new temporary user extension. Fresh visible/process checks found no Patrick
+applications or guests before either authorized session restart.
+
+With that helper disabled, a real screenshot request returned actionable
+`helper_unavailable` guidance and preserved native `UnknownMethod`. Enabling
+extension version 2 produced successful real captures and exact independent
+pastes. The actual inspector **Copy link** action changed the row/outcome and
+persisted status to `copied`; native paste, production CLI and official-SDK MCP
+forwarding agreed. The complete Qt/GTK 12-case matrix, three cancellations and
+six normal Settings/History helper closes passed.
+
+![Fedora disabled helper and full recorded guidance](f44/disabled-guidance-annotated.png)
+![Fedora before Copy link](f44/copy-before-selected-annotated.png)
+![Fedora row and inspector after Copy link](f44/copy-after-success-annotated.png)
+
+The private driver also had the older independent Qt witness on this host. Its
+exact PID was stopped before `postB`; `postA` is retained as a pre-cleanup
+observation and is not the final pair. The final `postB`/`postC` pair kept resident
+PID 3401009/start ticks 59175275, with empty fixture admission receipts, and both
+passed at **38.383 MiB**. [Context](f44/post-pair-context.json), raw samples and
+numeric evaluations retain this distinction without changing the frozen sampler.
+
+Cleanup removed the matching owned helper, restored both extension preference
+arrays exactly, and restarted the authorized empty desktop session. The UUID is
+again unregistered and the desktop is visibly idle. [Verification](f44/cleanup-verification.json)
+confirms the original DNF state checksum and nanosecond mtime, no system-update
+trigger, and unchanged primary RPM database metadata. The
+[verified-clean release](f44/lock-release.json) completed at 01:58:06 UTC.
+This is extracted-RPM physical functionality and memory evidence; actual Fedora
+native package installation/discovery remains blocked.
+
+## Final bounded memory observations
+
+Every listed window has 61 samples spanning at least 299.5 seconds, maximum
+sample gap below 7.5 seconds, one exact resident, no UI or escaped product helper,
+zero product swap and maximum one-core CPU below 0.5%. Raw sampler limitations
+remain unchanged. These are sampled cold/post-use local workflow observations,
+not an active-work ceiling, leak proof, uncontended latency or live-S3 result.
+
+| Physical desktop | Cold peak RSS | Final same-resident pair peak RSS | Final raw windows |
+| --- | --- | --- | --- |
+| Kubuntu KDE/Wayland | 31.617 MiB | 34.598 / 34.598 MiB | [postA](k72/postA/), [postB](k72/postB/) |
+| Mint Cinnamon/X11 | 28.746 MiB | 32.074 / 32.074 MiB | [postA](m74/postA/), [postB](m74/postB/) |
+| Fedora GNOME/Wayland, extracted RPM | 35.660 MiB | 38.383 / 38.383 MiB | [postB](f44/postB/), [postC](f44/postC/) |
+
+Mint's protected Windows guest remained running throughout; its measured load and
+end conditions are saved in [the conditions receipt](m74/measurement-conditions-end.txt).
+The earlier fixture cleanup failure and every superseded observation remain in
+private archives with the context/digests recorded above. Final functional
+manifests include per-operation identities and the independent pasted PNGs.
+
+The Mint development configure was initially recorder-disabled because GStreamer
+and FFmpeg development modules were missing. The exact packages and rejected
+GLib/GI-related transaction are in [preparation receipts](preparation-receipts.json).
+That host transaction was not applied. The supported pinned-container package
+route produced the valid recorder-enabled DEB; the disabled build establishes no
+recording/package acceptance. No full recording test is claimed for the final
+packages either.

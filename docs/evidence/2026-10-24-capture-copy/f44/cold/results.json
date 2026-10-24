@@ -1,0 +1,953 @@
+{
+  "schemaVersion": 1,
+  "startedUtc": "2026-10-24T01:33:33.689867+00:00",
+  "command": [
+    "/usr/bin/python3",
+    "/home/patrick/work/pgcc/tests/performance/bench_ui_process.py",
+    "--mode",
+    "split",
+    "--app",
+    "/home/patrick/work/pgcc-rpm/extracted/usr/bin/putgd",
+    "--helper",
+    "/home/patrick/work/pgcc-rpm/extracted/usr/bin/putgd-ui",
+    "--cli",
+    "/home/patrick/work/pgcc-rpm/extracted/usr/bin/putgd-cli",
+    "--source-revision",
+    "8a9415c540bee2ac5a8caa0e7606681bafa528a7",
+    "--output",
+    "/tmp/ccfc/cold",
+    "--pid",
+    "3392606",
+    "--start-ticks",
+    "59135298",
+    "--socket",
+    "/tmp/ccfc/r/putgd/session.sock",
+    "--seconds",
+    "300",
+    "--interval",
+    "5",
+    "--label",
+    "cold"
+  ],
+  "workingDirectory": "/home/patrick",
+  "mode": "split",
+  "scope": "existing-process observation",
+  "parameters": {
+    "mode": "split",
+    "app": "/home/patrick/work/pgcc-rpm/extracted/usr/bin/putgd",
+    "cli": "/home/patrick/work/pgcc-rpm/extracted/usr/bin/putgd-cli",
+    "helper": "/home/patrick/work/pgcc-rpm/extracted/usr/bin/putgd-ui",
+    "source_revision": "8a9415c540bee2ac5a8caa0e7606681bafa528a7",
+    "source_archive": null,
+    "output": "/tmp/ccfc/cold",
+    "allow_dirty": false,
+    "acceptance_receipt": [],
+    "pid": 3392606,
+    "start_ticks": 59135298,
+    "socket": "/tmp/ccfc/r/putgd/session.sock",
+    "label": "cold",
+    "seconds": 300.0,
+    "interval": 5.0,
+    "fixture": null,
+    "cycles": 3,
+    "views": [
+      "settings",
+      "history",
+      "activity",
+      "about"
+    ],
+    "warmup_seconds": 5,
+    "visible_seconds": 2,
+    "quiet_seconds": 30,
+    "timeout": 20
+  },
+  "harnessSha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+  "sourceRevision": "8a9415c540bee2ac5a8caa0e7606681bafa528a7",
+  "binaries": {
+    "app": {
+      "path": "/home/patrick/work/pgcc-rpm/extracted/usr/bin/putgd",
+      "sha256": "58a4a079689b654cca5653f27effea3d309b319ebae317db18ad1b8e93f0649d",
+      "version": "26.1024.1135-dev+g8a9415c540be"
+    },
+    "cli": {
+      "path": "/home/patrick/work/pgcc-rpm/extracted/usr/bin/putgd-cli",
+      "sha256": "f5027704c0e977bea9d4aaabd345f91c193d44a95328fb517bf8bee4d59a4d79",
+      "version": "26.1024.1135-dev+g8a9415c540be"
+    },
+    "helper": {
+      "path": "/home/patrick/work/pgcc-rpm/extracted/usr/bin/putgd-ui",
+      "sha256": "4dc3830bc594b4e1e868f63a3c5e32c661dc926b73ac808f75bd007c75b1edfe",
+      "version": "26.1024.1135-dev+g8a9415c540be"
+    }
+  },
+  "sampleCount": 61,
+  "sampleFile": "samples.jsonl",
+  "samples": [
+    {
+      "label": "cold-0",
+      "elapsedSeconds": 0.22622059006243944,
+      "totals": {
+        "rssBytes": 37150720,
+        "pssBytes": 22258688,
+        "privateBytes": 21315584
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.023410120978951454
+    },
+    {
+      "label": "cold-1",
+      "elapsedSeconds": 5.250979450996965,
+      "totals": {
+        "rssBytes": 37150720,
+        "pssBytes": 22403072,
+        "privateBytes": 21573632
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.02786593697965145
+    },
+    {
+      "label": "cold-2",
+      "elapsedSeconds": 10.27965259202756,
+      "totals": {
+        "rssBytes": 37150720,
+        "pssBytes": 21925888,
+        "privateBytes": 20627456
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.03705345303751528
+    },
+    {
+      "label": "cold-3",
+      "elapsedSeconds": 15.317497904994525,
+      "totals": {
+        "rssBytes": 37150720,
+        "pssBytes": 22332416,
+        "privateBytes": 21426176
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.0230893261032179
+    },
+    {
+      "label": "cold-4",
+      "elapsedSeconds": 20.34135743009392,
+      "totals": {
+        "rssBytes": 37150720,
+        "pssBytes": 22395904,
+        "privateBytes": 21573632
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.02327221806626767
+    },
+    {
+      "label": "cold-5",
+      "elapsedSeconds": 25.365406915079802,
+      "totals": {
+        "rssBytes": 37150720,
+        "pssBytes": 22418432,
+        "privateBytes": 21573632
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.02284998307004571
+    },
+    {
+      "label": "cold-6",
+      "elapsedSeconds": 30.389011516002938,
+      "totals": {
+        "rssBytes": 37150720,
+        "pssBytes": 22253568,
+        "privateBytes": 21282816
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.022896852111443877
+    },
+    {
+      "label": "cold-7",
+      "elapsedSeconds": 35.41269490600098,
+      "totals": {
+        "rssBytes": 37150720,
+        "pssBytes": 22252544,
+        "privateBytes": 21282816
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.022926973993889987
+    },
+    {
+      "label": "cold-8",
+      "elapsedSeconds": 40.43643750110641,
+      "totals": {
+        "rssBytes": 37150720,
+        "pssBytes": 22407168,
+        "privateBytes": 21573632
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.031931116012856364
+    },
+    {
+      "label": "cold-9",
+      "elapsedSeconds": 45.469295592047274,
+      "totals": {
+        "rssBytes": 37150720,
+        "pssBytes": 22434816,
+        "privateBytes": 21573632
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.02747490501496941
+    },
+    {
+      "label": "cold-10",
+      "elapsedSeconds": 50.497639814042486,
+      "totals": {
+        "rssBytes": 37150720,
+        "pssBytes": 22461440,
+        "privateBytes": 21573632
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.022849884000606835
+    },
+    {
+      "label": "cold-11",
+      "elapsedSeconds": 55.521394776995294,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22706176,
+        "privateBytes": 21815296
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.022822315921075642
+    },
+    {
+      "label": "cold-12",
+      "elapsedSeconds": 60.54499269509688,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22717440,
+        "privateBytes": 21815296
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.021245434996671975
+    },
+    {
+      "label": "cold-13",
+      "elapsedSeconds": 65.56710540107451,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22686720,
+        "privateBytes": 21815296
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.03131821705028415
+    },
+    {
+      "label": "cold-14",
+      "elapsedSeconds": 70.59919796604663,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22691840,
+        "privateBytes": 21815296
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.02837655902840197
+    },
+    {
+      "label": "cold-15",
+      "elapsedSeconds": 75.6284687781008,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22690816,
+        "privateBytes": 21815296
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.02911882591433823
+    },
+    {
+      "label": "cold-16",
+      "elapsedSeconds": 80.65834392909892,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22686720,
+        "privateBytes": 21815296
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.030661748023703694
+    },
+    {
+      "label": "cold-17",
+      "elapsedSeconds": 85.68988455610815,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22687744,
+        "privateBytes": 21815296
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.029440092970617115
+    },
+    {
+      "label": "cold-18",
+      "elapsedSeconds": 90.7201296830317,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22510592,
+        "privateBytes": 21565440
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.029455329990014434
+    },
+    {
+      "label": "cold-19",
+      "elapsedSeconds": 95.75037404999603,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22509568,
+        "privateBytes": 21565440
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.03333905106410384
+    },
+    {
+      "label": "cold-20",
+      "elapsedSeconds": 100.78449198207818,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22652928,
+        "privateBytes": 21815296
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.03266009199433029
+    },
+    {
+      "label": "cold-21",
+      "elapsedSeconds": 105.8180166160455,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22490112,
+        "privateBytes": 21532672
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.030301918974146247
+    },
+    {
+      "label": "cold-22",
+      "elapsedSeconds": 110.84909611102194,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22490112,
+        "privateBytes": 21532672
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.028117088018916547
+    },
+    {
+      "label": "cold-23",
+      "elapsedSeconds": 115.87805298005696,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22502400,
+        "privateBytes": 21622784
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.030130332917906344
+    },
+    {
+      "label": "cold-24",
+      "elapsedSeconds": 120.90894685604144,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22651904,
+        "privateBytes": 21815296
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.03466222493443638
+    },
+    {
+      "label": "cold-25",
+      "elapsedSeconds": 125.94437153905164,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22484992,
+        "privateBytes": 21524480
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.03291847091168165
+    },
+    {
+      "label": "cold-26",
+      "elapsedSeconds": 130.97807924007066,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22486016,
+        "privateBytes": 21524480
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.026188366930000484
+    },
+    {
+      "label": "cold-27",
+      "elapsedSeconds": 136.00605850701686,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22652928,
+        "privateBytes": 21815296
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.027078676037490368
+    },
+    {
+      "label": "cold-28",
+      "elapsedSeconds": 141.03388055902906,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22656000,
+        "privateBytes": 21815296
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.030710061895661056
+    },
+    {
+      "label": "cold-29",
+      "elapsedSeconds": 146.06534872506745,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22636544,
+        "privateBytes": 21815296
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.02885243797209114
+    },
+    {
+      "label": "cold-30",
+      "elapsedSeconds": 151.0950692211045,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22653952,
+        "privateBytes": 21815296
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.028268268913961947
+    },
+    {
+      "label": "cold-31",
+      "elapsedSeconds": 156.12411026307382,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22654976,
+        "privateBytes": 21815296
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.02506647806148976
+    },
+    {
+      "label": "cold-32",
+      "elapsedSeconds": 161.14993639301974,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22654976,
+        "privateBytes": 21815296
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.03281323006376624
+    },
+    {
+      "label": "cold-33",
+      "elapsedSeconds": 166.18353986705188,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22648832,
+        "privateBytes": 21815296
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.030251294025219977
+    },
+    {
+      "label": "cold-34",
+      "elapsedSeconds": 171.2160013470566,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22653952,
+        "privateBytes": 21815296
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.04074713296722621
+    },
+    {
+      "label": "cold-35",
+      "elapsedSeconds": 176.2588401430985,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22653952,
+        "privateBytes": 21815296
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.03387188701890409
+    },
+    {
+      "label": "cold-36",
+      "elapsedSeconds": 181.2935172180878,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22161408,
+        "privateBytes": 20836352
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.030491209006868303
+    },
+    {
+      "label": "cold-37",
+      "elapsedSeconds": 186.3249847110128,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22508544,
+        "privateBytes": 21532672
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.03001528698951006
+    },
+    {
+      "label": "cold-38",
+      "elapsedSeconds": 191.35584045306314,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22508544,
+        "privateBytes": 21532672
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.02131965395528823
+    },
+    {
+      "label": "cold-39",
+      "elapsedSeconds": 196.37788348901086,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22673408,
+        "privateBytes": 21815296
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.021610872936435044
+    },
+    {
+      "label": "cold-40",
+      "elapsedSeconds": 201.4003002800746,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22190080,
+        "privateBytes": 20836352
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.023500251933000982
+    },
+    {
+      "label": "cold-41",
+      "elapsedSeconds": 206.4245917040389,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 21758976,
+        "privateBytes": 20033536
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.023308170959353447
+    },
+    {
+      "label": "cold-42",
+      "elapsedSeconds": 211.44869866606314,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22510592,
+        "privateBytes": 21516288
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.022489079972729087
+    },
+    {
+      "label": "cold-43",
+      "elapsedSeconds": 216.47194800002035,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22510592,
+        "privateBytes": 21516288
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.021676678908988833
+    },
+    {
+      "label": "cold-44",
+      "elapsedSeconds": 221.49449313001242,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22510592,
+        "privateBytes": 21516288
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.021273147081956267
+    },
+    {
+      "label": "cold-45",
+      "elapsedSeconds": 226.5165668920381,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22510592,
+        "privateBytes": 21516288
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.02142769901547581
+    },
+    {
+      "label": "cold-46",
+      "elapsedSeconds": 231.53874625603203,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22510592,
+        "privateBytes": 21516288
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.021996602998115122
+    },
+    {
+      "label": "cold-47",
+      "elapsedSeconds": 236.5614885140676,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22510592,
+        "privateBytes": 21516288
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.022878326941281557
+    },
+    {
+      "label": "cold-48",
+      "elapsedSeconds": 241.58597753604408,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22430720,
+        "privateBytes": 21504000
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.042089161928743124
+    },
+    {
+      "label": "cold-49",
+      "elapsedSeconds": 246.62897826405242,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22434816,
+        "privateBytes": 21504000
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.03427824703976512
+    },
+    {
+      "label": "cold-50",
+      "elapsedSeconds": 251.66430247109383,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22434816,
+        "privateBytes": 21504000
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.021590634947642684
+    },
+    {
+      "label": "cold-51",
+      "elapsedSeconds": 256.6867202949943,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22434816,
+        "privateBytes": 21504000
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.0217537060379982
+    },
+    {
+      "label": "cold-52",
+      "elapsedSeconds": 261.70923374104314,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22434816,
+        "privateBytes": 21504000
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.021534129045903683
+    },
+    {
+      "label": "cold-53",
+      "elapsedSeconds": 266.7316032720264,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22510592,
+        "privateBytes": 21516288
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.02131910005118698
+    },
+    {
+      "label": "cold-54",
+      "elapsedSeconds": 271.7537031030515,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22510592,
+        "privateBytes": 21516288
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.02268029295373708
+    },
+    {
+      "label": "cold-55",
+      "elapsedSeconds": 276.77738679910544,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22549504,
+        "privateBytes": 21532672
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.020708205993287265
+    },
+    {
+      "label": "cold-56",
+      "elapsedSeconds": 281.79887542000506,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22549504,
+        "privateBytes": 21532672
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.02488305594306439
+    },
+    {
+      "label": "cold-57",
+      "elapsedSeconds": 286.82452596805524,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22727680,
+        "privateBytes": 21843968
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.021228043013252318
+    },
+    {
+      "label": "cold-58",
+      "elapsedSeconds": 291.8465237090131,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22567936,
+        "privateBytes": 21569536
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.021325196023099124
+    },
+    {
+      "label": "cold-59",
+      "elapsedSeconds": 296.86890486010816,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22567936,
+        "privateBytes": 21569536
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.021742817014455795
+    },
+    {
+      "label": "cold-60",
+      "elapsedSeconds": 300.22642173210625,
+      "totals": {
+        "rssBytes": 37392384,
+        "pssBytes": 22727680,
+        "privateBytes": 21843968
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.021193500026129186
+    }
+  ],
+  "events": [
+    {
+      "elapsedSeconds": 0.22567424504086375,
+      "kind": "diagnostics-identity-checked",
+      "ui": {
+        "checkpointBytes": 0,
+        "lastExit": {},
+        "pid": 0,
+        "state": "stopped"
+      },
+      "trayAvailable": true
+    }
+  ],
+  "status": "complete",
+  "passed": true,
+  "acceptanceReceipts": [],
+  "limitations": [
+    "Summed RSS double-counts pages shared between processes; compare total PSS and private memory as well.",
+    "Shared desktop services outside the resident descendant tree are not charged as separate processes.",
+    "Sequential /proc snapshots are not atomic; a descendant born and exited between samples can be missed.",
+    "This is a sampled memory diagnostic, not a leak proof, rendered tray proof, CPU budget or cold-idle acceptance."
+  ],
+  "environment": {
+    "kernel": "6.19.10-300.fc44.x86_64",
+    "machine": "x86_64",
+    "python": "3.14.3",
+    "desktop": "GNOME",
+    "session": "wayland",
+    "packages": [],
+    "cpu": "Intel(R) Core(TM) i5-6500T CPU @ 2.50GHz",
+    "logicalCpus": 4,
+    "virtualization": "none"
+  },
+  "residentIdentity": {
+    "pid": 3392606,
+    "startTicks": 59135298,
+    "uid": 1000,
+    "executable": "/home/patrick/work/pgcc-rpm/extracted/usr/bin/putgd",
+    "device": 49,
+    "inode": 5506758
+  },
+  "residentBuild": {
+    "baseVersion": "26.1024.1135",
+    "commitCount": 1135,
+    "dirty": false,
+    "gitCommit": "8a9415c540bee2ac5a8caa0e7606681bafa528a7",
+    "gitTree": "9c2dcf250cf07b9d393a56a2533e3fbc069fb5b5",
+    "packageVersion": "26.1024.1135~dev+g8a9415c540be",
+    "schemaVersion": 1,
+    "sourceProvenance": "git",
+    "version": "26.1024.1135-dev+g8a9415c540be"
+  },
+  "exitedProcesses": [],
+  "summary": {
+    "finalTotals": {
+      "rssBytes": 37392384,
+      "pssBytes": 22727680,
+      "privateBytes": 21843968
+    },
+    "peakSampledTotals": {
+      "rssBytes": 37392384,
+      "pssBytes": 22727680,
+      "privateBytes": 21843968
+    },
+    "finalTotalRssAtOrBelow40MiB": true,
+    "coldIdleBudgetEstablished": false,
+    "cold40MiBTargetEstablished": false,
+    "renderedTrayAcceptanceEstablished": false,
+    "peakOpenTotals": null,
+    "finalClosedTotals": null,
+    "medianActivationAcknowledgementMilliseconds": null
+  },
+  "elapsedSeconds": 300.24832122505177
+}
