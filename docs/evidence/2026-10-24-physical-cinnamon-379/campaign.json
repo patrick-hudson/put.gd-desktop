@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "issue": 379,
-  "status": "first_batch_complete_corrected_driver_review_pending",
+  "status": "pilot_and_failed_memory_admission_preserved_final_driver_review_pending",
   "accepted": false,
   "scope": "Newest-published-nightly physical Mint Cinnamon performance rehearsal; no stable-asset certification",
   "product": {
@@ -43,7 +43,7 @@
     "codePullRequest": "https://github.com/patrick-hudson/put.gd-desktop/pull/555",
     "acceptanceReviewStatus": "changes_required; pilot evidence only until corrected reviewed driver rerun",
     "historyGrowHold": "Only root-cleared producer 72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e is staged/hash-verified; not yet executed in this campaign. All old revisions remain held.",
-    "nextPhysicalRunHold": "Performance-driver privacy review found unsafe whole-frame98-percent admission; new physical runs/frame exports require accepted corrected handoff."
+    "nextPhysicalRunHold": "Full f3b review still holds burst/timed-input paths; separately approved empty memory-only M2 failed preinterval admission. No new physical workload until final fixes and review."
   },
   "approvedBudgets": {
     "regionWarmups": 5,
@@ -82,10 +82,15 @@
     {
       "file": "m1-empty-history-pilot.png",
       "meaning": "Reviewed annotated native owned X11 History drawable; no compositor or full-interval claim"
+    },
+    {
+      "file": "m2-admission-failure.png",
+      "meaning": "Reviewed annotated 100% synthetic final cover after failed admission; no scored memory interval or initial readiness proof"
     }
   ],
   "cleanupReceipts": [
-    "batch1-cleanup.json"
+    "batch1-cleanup.json",
+    "attempt-m2.json"
   ],
   "limitations": [
     "Campaign in progress; no performance acceptance pass claimed",
@@ -115,6 +120,13 @@
       "id": "s2",
       "summary": "seed-s2.json",
       "status": "six_operation_fixture_preparation_verified",
+      "accepted": false
+    },
+    {
+      "id": "m2",
+      "summary": "attempt-m2.json",
+      "status": "failed_preinterval_lab_admission_no_metrics",
+      "sourceRevision": "f3b3635132f2d5b909935d8119f1f32908e38cec",
       "accepted": false
     }
   ],

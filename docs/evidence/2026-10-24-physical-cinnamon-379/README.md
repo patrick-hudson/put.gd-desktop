@@ -108,8 +108,20 @@ encoder process. Other low-activity desktop services and the wall stayed up.
   `72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e`, with persisted-network-state,
   DB/runtime and complete helper ownership guards. Its handoff is staged and
   hash-verified; it has not yet been used for this campaign. All old revisions
-  remain held. The performance driver's next review still blocks new physical
-  runs and frame export.
+  remain held. The final performance-driver review still blocks further
+  physical workloads; the separately approved empty-memory attempt below
+  reached no measurement interval.
+- **m2, driver `f3b3635132f2d5b909935d8119f1f32908e38cec`: failed lab admission.**
+  Root reviewed only the empty `memory` scenario's reached paths, with no
+  fixture, endpoint, capture/native driver or accessibility override. The fresh
+  exact-source export and installed/running 1185 binaries were checked.
+  [The source, command, preflight, raw and cleanup hashes](attempt-m2.json)
+  record a stop after 2.8705 seconds at `static_cover_not_visible_on_wall`,
+  before any scored interval. Metrics are empty; this neither confirms the m1
+  memory observation nor establishes a product performance failure. Independent
+  readonly SQL found zero operations, history rows and item states. The one-shot
+  initial VNC admission check did not retain a frame or numerical coverage;
+  later full-cover visibility cannot establish the earlier check's result.
 
 ![c1 post-cancellation recovery frame: only synthetic background, no selector-paint claim](c1-witness-failure.png)
 
@@ -138,6 +150,13 @@ This reviewed image is the native PID-owned X11 drawable saved by the pilot.
 It is not a VNC compositor image or proof of continuous visibility. Corrected
 acceptance must retain that distinction and supply the missing proof.
 
+![M2 stopped before scoring; the later reviewed recovery frame contains only synthetic cover](m2-admission-failure.png)
+
+Every pixel of this attempt's saved recovery source is RGB `(80, 90, 100)`.
+The annotation describes the admission failure; it is not evidence of a memory
+interval or of visibility at the earlier failed precheck. A bounded readiness
+fix remains driver work and must preserve the all-pixel saved-image checks.
+
 ## Evidence and cleanup
 
 [The first-batch cleanup receipt](batch1-cleanup.json) binds verified per-file
@@ -147,6 +166,15 @@ added typelib packages. The desktop lock released verified-clean at
 **15:30:32 UTC**; a follow-up host check was free/clean apart from pre-existing
 shared collectors. No golden/base, browser handler or new tunnel was changed.
 The work continues outside a desktop lock while corrected drivers are reviewed.
+
+For m2, the lock ran **16:07:24–16:11:53 UTC**. The original VM's exact identity
+was revalidated before the coordinated pause and its running state verified
+after resume. The setup resident exited normally with code 0, without forced
+termination; full-family and socket cleanup passed. All nine raw files were
+copied privately and checksum-verified. Only `putgd` was installed and purged;
+no dependency was added. A release precheck refused the still-installed package
+while purge was completing; the subsequent check was clean before verified
+release. No retry or other workload ran under that lock.
 
 ### Actual-frame privacy audit
 
@@ -158,7 +186,9 @@ retained first-batch whole-frame image on m74: all five are exactly one syntheti
 RGB fill across 100% of their pixels. The public c1 annotation uses that reviewed
 safe source. The public m1 annotation uses only the reviewed PID-owned History
 drawable. No actual sensitive content was observed. Originals remain private;
-no next physical run or frame export proceeds until the privacy fix is reviewed.
+The separately scoped m2 path uses the corrected exact-solid save check; its
+saved source was independently verified as 100% synthetic fill too. The remaining
+driver review findings still hold all further physical workloads.
 
 [campaign.json](campaign.json) binds the selected package, budgets and current
 gate status. Private raw samples, exact commands, failures, original visuals and

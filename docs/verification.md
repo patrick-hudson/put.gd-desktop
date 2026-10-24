@@ -52,7 +52,11 @@ corrected fresh confirmation before acceptance classification. A fresh six-row
 mixed image/video fixture was independently checked after correcting a missing
 GTK typelib prerequisite. All first-batch raw exports were checksum-verified;
 the original VM resumed and the desktop released verified-clean at 15:30:32 UTC.
-No capture,
+The separately reviewed empty-memory-only attempt at `f3b3635` stopped before
+scoring on static-cover admission, with empty metrics; its exact command,
+source/preflight/cleanup hashes and reviewed solid recovery visual are retained.
+Normal exit/full-family/socket cleanup passed, the original VM resumed, and m74
+released verified-clean at 16:11:53 UTC. No capture,
 memory, history, burst or network gate is accepted. Driver hardening (#495,
 PR #554) and the performance driver (PR #555) remain separately identified code
 work; old history-growth revisions are held. Unbudgeted response thresholds require
