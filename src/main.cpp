@@ -436,7 +436,12 @@ int main(int argc,char* argv[]) {
   const auto launcher=QFileInfo(QCoreApplication::applicationFilePath()).dir().filePath("putgd-launcher");
   const auto executable=QFileInfo::exists(launcher)?launcher:QCoreApplication::applicationFilePath();
   const auto enabled=settings.snapshot().launchAtLogin;
-  operations.background([configRoot,dataRoot,executable,enabled,loginMutex,loginGeneration,ticket](putgd::Error& error){std::lock_guard lock(*loginMutex);if(ticket!=loginGeneration->load())return QJsonObject{};error=putgd::LoginStartup::apply(configRoot,dataRoot,executable,enabled);return QJsonObject{{"enabled",enabled},{"applied",!error}};},[&,loginGeneration,ticket](putgd::Error error,QJsonObject status){if(ticket!=loginGeneration->load())return;loginStatus=status;if(error)loginStatus["error"]=error.toJson();refreshSettingsDiagnostics();});
+  operations.background([configRoot,dataRoot,executable,enabled,loginMutex,loginGeneration,ticket](putgd::Error& error){std::lock_guard lock(*loginMutex);if(ticket!=loginGeneration->load())return QJsonObject{};
+   const auto stopped=putgd::LoginStartup::monitor(dataRoot,false);
+   error=putgd::LoginStartup::apply(configRoot,dataRoot,executable,enabled);
+   if(!error)error=stopped;
+   if(!error&&enabled)error=putgd::LoginStartup::monitor(dataRoot,true);
+   return QJsonObject{{"enabled",enabled},{"applied",!error}};},[&,loginGeneration,ticket](putgd::Error error,QJsonObject status){if(ticket!=loginGeneration->load())return;loginStatus=status;if(error)loginStatus["error"]=error.toJson();refreshSettingsDiagnostics();});
  };
  configureLogin();QObject::connect(&settings,&putgd::SettingsService::accepted,&app,configureLogin);
  // The login script carries the image's update information; after an install

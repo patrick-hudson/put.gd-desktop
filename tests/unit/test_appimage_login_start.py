@@ -103,23 +103,94 @@ class LoginStartTest(unittest.TestCase):
         Path(str(path) + ".version").write_text(version + "\n")
         return path
 
-    def start(self, configured, info=NIGHTLY):
-        script = self.root / "appimage-start.sh"
+    def render(self, configured, info=NIGHTLY, kind="appimage", entry_text=None):
+        self.script = self.root / "start.sh"
+        self.entry = self.root / "putgd.desktop"
+        self.configuration = self.root / "config.json"
+        if not self.configuration.exists():
+            self.configuration.write_text('{"preferences":{"launchAtLogin":true}}\n')
+        identity = "a" * 64
         text = SCRIPT.read_text()
-        text = text.replace("__PUTGD_CONFIGURED__", shell_quoted(str(configured)))
-        text = text.replace("__PUTGD_UPDATE_INFORMATION__", shell_quoted(info))
-        script.write_text(text)
+        values = {"CONFIGURED": str(configured), "UPDATE_INFORMATION": info, "KIND": kind,
+                  "ENTRY": str(self.entry), "SCRIPT": str(self.script), "WATCH_UNIT": ""}
+        for key, value in values.items():
+            text = text.replace("__PUTGD_" + key + "__", shell_quoted(value))
+        text = text.replace("__PUTGD_ID__", identity)
+        self.script.write_text(text)
+        self.script.chmod(0o700)
+        self.entry.write_text(entry_text if entry_text is not None else
+                              "[Desktop Entry]\nX-putgd-Managed=true\nX-putgd-StartupId=" + identity + "\n")
+        self.entry.chmod(0o600)
+        return self.script
+
+    def run_script(self, *args):
         env = dict(os.environ, PG_RECEIPT=str(self.receipt), PG_PROBES=str(self.probes))
-        completed = subprocess.run(["/bin/sh", str(script), "--background"], env=env, cwd=self.root,
+        completed = subprocess.run(["/bin/sh", str(self.script), *args], env=env, cwd=self.root,
                                    capture_output=True, text=True, timeout=60)
         started = self.receipt.read_text().splitlines() if self.receipt.exists() else []
         return completed, started
+
+    def start(self, configured, info=NIGHTLY):
+        self.render(configured, info)
+        return self.run_script("--background")
 
     def assertStarts(self, configured, expected, info=NIGHTLY):
         completed, started = self.start(configured, info)
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertEqual(started, [str(expected) + " --background"])
         return completed
+
+    def test_missing_native_install_removes_only_managed_startup_files(self):
+        self.render(self.images / "putgd-launcher", kind="native")
+        config = self.configuration.read_bytes()
+        completed, started = self.run_script("--background")
+        self.assertEqual((completed.returncode, completed.stdout, completed.stderr, started), (0, "", "", []))
+        self.assertFalse(self.entry.exists())
+        self.assertFalse(self.script.exists())
+        self.assertEqual(self.configuration.read_bytes(), config)
+
+    def test_missing_appimage_removes_the_link_at_the_next_login(self):
+        self.render(self.images / "putgd-missing.AppImage")
+        config = self.configuration.read_bytes()
+        completed, started = self.run_script("--background")
+        self.assertEqual((completed.returncode, completed.stdout, completed.stderr, started), (0, "", "", []))
+        self.assertFalse(self.entry.exists())
+        self.assertFalse(self.script.exists())
+        self.assertEqual(self.configuration.read_bytes(), config)
+
+    def test_foreign_or_replaced_entry_is_never_removed(self):
+        for entry in ("user entry\n", "X-putgd-Managed=true\nX-putgd-StartupId=another-install\n"):
+            self.render(self.images / "missing.AppImage", entry_text=entry)
+            completed, started = self.run_script("--background")
+            self.assertEqual(completed.returncode, 0)
+            self.assertEqual(self.entry.read_text(), entry)
+            self.assertTrue(self.script.exists())
+
+    def test_symlink_to_an_entry_is_never_removed(self):
+        self.render(self.images / "missing.AppImage")
+        original = self.root / "original.desktop"
+        self.entry.rename(original)
+        self.entry.symlink_to(original)
+        completed, _ = self.run_script("--background")
+        self.assertEqual(completed.returncode, 0)
+        self.assertTrue(self.entry.is_symlink())
+        self.assertTrue(original.exists())
+
+    def test_monitor_keeps_the_link_when_an_eligible_replacement_exists(self):
+        configured = self.images / "putgd-0.1.1-nightly.800-x86_64.AppImage"
+        self.image("putgd-0.1.1-nightly.801-x86_64.AppImage", "0.1.1-nightly.801")
+        self.render(configured)
+        completed, started = self.run_script("--cleanup-if-missing")
+        self.assertEqual((completed.returncode, completed.stdout, completed.stderr, started), (0, "", "", []))
+        self.assertTrue(self.entry.exists())
+        self.assertTrue(self.script.exists())
+
+    def test_monitor_removes_the_link_when_the_last_image_is_gone(self):
+        self.render(self.images / "missing.AppImage")
+        completed, started = self.run_script("--cleanup-if-missing")
+        self.assertEqual((completed.returncode, completed.stdout, completed.stderr, started), (0, "", "", []))
+        self.assertFalse(self.entry.exists())
+        self.assertFalse(self.script.exists())
 
     def test_gear_lever_replaced_in_place_starts_the_configured_image_without_probes(self):
         configured = self.image("put.gd.appimage", "0.1.1-nightly.801")
