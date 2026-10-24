@@ -104,6 +104,10 @@ class ExactSourceInputs(unittest.TestCase):
         self.assertEqual(result['snapshot'], '20261002T000000Z')
         self.assertIn('apparmor=4.0-8', run.call_args_list[-1].args[0])
         self.assertIn('--snapshot', run.call_args_list[-1].args[0])
+        snapshot_env = run.call_args_list[-1].kwargs['env']
+        self.assertIn('APT_CONFIG', snapshot_env)
+        self.assertNotEqual(Path(snapshot_env['APT_CONFIG']).parent, Path('/etc/apt'))
+        self.assertEqual(run.call_args_list[-2].kwargs['env']['APT_CONFIG'], snapshot_env['APT_CONFIG'])
         self.assertTrue(all('--allow-unauthenticated' not in c.args[0] for c in run.call_args_list))
 
     def test_another_publication_cannot_substitute_a_source_version(self):

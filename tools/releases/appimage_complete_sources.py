@@ -11,6 +11,7 @@ import gzip
 import hashlib
 import io
 import json
+import os
 from pathlib import Path
 import re
 import shutil
@@ -121,6 +122,37 @@ def git_source(source, cache, target):
     return result
 
 
+def snapshot_source(args, stamp, target):
+    # A source collector runs without root. Keep snapshot indexes, caches and
+    # configuration private; never update the runner's system apt state/hooks.
+    with tempfile.TemporaryDirectory(prefix='pgapt-') as temp:
+        root = Path(temp)
+        for name in ('parts', 'sourceparts', 'trustedparts', 'lists/partial', 'archives/partial', 'log'):
+            (root / name).mkdir(parents=True)
+        (root / 'empty.conf').touch()
+        (root / 'status').touch()
+        (root / 'ubuntu.sources').write_text(
+            'Types: deb-src\nURIs: https://archive.ubuntu.com/ubuntu/\n'
+            'Suites: noble noble-updates noble-security\n'
+            'Components: main restricted universe multiverse\n'
+            'Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\nSnapshot: yes\n')
+        settings = {'Dir::Etc::main': root / 'empty.conf', 'Dir::Etc::parts': root / 'parts',
+                    'Dir::Etc::sourcelist': root / 'ubuntu.sources',
+                    'Dir::Etc::sourceparts': root / 'sourceparts',
+                    'Dir::Etc::trusted': Path('/usr/share/keyrings/ubuntu-archive-keyring.gpg'),
+                    'Dir::Etc::trustedparts': root / 'trustedparts',
+                    'Dir::State::lists': root / 'lists', 'Dir::State::status': root / 'status',
+                    'Dir::Cache::archives': root / 'archives',
+                    'Dir::Cache::pkgcache': root / 'pkgcache.bin',
+                    'Dir::Cache::srcpkgcache': root / 'srcpkgcache.bin', 'Dir::Log': root / 'log'}
+        config = root / 'apt.conf'
+        config.write_text(''.join(key + ' ' + json.dumps(str(value)) + ';\n'
+                                  for key, value in settings.items()))
+        env = {**os.environ, 'APT_CONFIG': str(config)}
+        subprocess.run(['apt-get', 'update', '-qq', '--snapshot', stamp], env=env, check=True)
+        subprocess.run([*args, '--snapshot', stamp], env=env, check=True, cwd=target)
+
+
 def apt_source(package, version, target):
     args = ['apt-get', 'source', '--download-only', '-qq', package + '=' + version]
     try:
@@ -144,8 +176,7 @@ def apt_source(package, version, target):
             if end <= start:
                 continue
             stamp = (start + (end - start) / 2).astimezone(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
-            subprocess.run(['apt-get', 'update', '-qq', '--snapshot', stamp], check=True)
-            subprocess.run([*args, '--snapshot', stamp], check=True, cwd=target)
+            snapshot_source(args, stamp, target)
             return {'method': 'apt-signed-snapshot', 'snapshot': stamp, 'publication': entry['self_link']}
         raise ValueError('No authenticated source publication for exact retired version: ' + package + '=' + version)
 
