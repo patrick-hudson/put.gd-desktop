@@ -114,6 +114,10 @@ private slots:
   QCOMPARE(h.backend->exports,1);QCOMPARE(h.backend->lastEdit.trimStart,qint64(2000000));QCOMPARE(*h.backend->lastEdit.trimEnd,qint64(8000000));QCOMPARE(h.backend->lastEdit.masks.size(),1);QVERIFY(h.backend->lastConfig.audio.system);QCOMPARE(h.backend->lastConfig.fps,24);
   QCOMPARE(h.rec("saveCopy",{{"id",id},{"path",copyPath}}).error.code,QString("file_exists"));
   QVERIFY(!h.rec("saveCopy",{{"id",id},{"path",copyPath},{"overwrite",true}}).error);
+  // Export acceptance precedes its queued completion. Check stale revisions
+  // once the overwrite has actually returned the session to private review.
+  PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
+  QCOMPARE(h.rec("inspect",{{"id",id}}).result["lastExport"].toObject()["status"].toString(),QString("saved"));
   {HistoryStore journal(h.operations->databasePath());QCOMPARE(journal.operation(id).state,QString("recording"));QCOMPARE(journal.operation(id).items.size(),0);}
   // Only Upload at the reviewed revision admits bytes.
   QCOMPARE(h.rec("upload",{{"id",id},{"revision",1}}).error.code,QString("recording_stale"));
