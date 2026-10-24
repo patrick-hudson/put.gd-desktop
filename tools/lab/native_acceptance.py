@@ -1,0 +1,480 @@
+#!/usr/bin/env python3
+"""Maintained native acceptance primitives; run on the desktop host under its lab lock.
+
+These commands do not install packages, log out, unlock desktops, change keyrings,
+or launch residents. Keep product package and driver source identities separate.
+Use --help on each command. JSON receipts contain facts, never config or secrets.
+"""
+import argparse
+from datetime import datetime, timedelta, timezone
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import socket
+import sqlite3
+import stat
+import struct
+import subprocess
+import sys
+import time
+import uuid
+
+
+class Refused(RuntimeError):
+    """A safe-to-report unmet prerequisite."""
+
+
+def require(condition, message):
+    if not condition:
+        raise Refused(message)
+
+
+def command(argv, env=None, timeout=20):
+    return subprocess.run(argv, env=env, capture_output=True, text=True, timeout=timeout)
+
+
+def private(path, directory=False):
+    path = Path(path)
+    info = path.lstat()
+    require((stat.S_ISDIR(info.st_mode) if directory else stat.S_ISREG(info.st_mode))
+            and info.st_uid == os.getuid() and info.st_mode & 0o077 == 0,
+            'Expected an owned private regular file/directory')
+    return path
+
+
+def socket_path(runtime):
+    path = Path(runtime).resolve() / 'putgd/session.sock'
+    require(len(str(path).encode('utf-8')) <= 107, 'Unix socket path exceeds 107 UTF-8 bytes; choose a new short runtime')
+    return path
+
+
+def process(pid, proc=Path('/proc')):
+    path = proc / str(int(pid))
+    require(path.stat().st_uid == os.getuid(), 'Process belongs to another user')
+    fields = (path / 'stat').read_text().rsplit(') ', 1)[1].split()
+    return {'pid': int(pid), 'exe': os.readlink(path / 'exe'), 'startTicks': int(fields[19])}
+
+
+def environment(pid):
+    # Never return the unrestricted process environment in a receipt.
+    return dict(x.split('=', 1) for x in Path(f'/proc/{pid}/environ').read_bytes().decode().split('\0') if '=' in x)
+
+
+def same_process(identity):
+    try:
+        return process(identity['pid']) == identity
+    except (OSError, Refused):
+        return False
+
+
+def bus(env, *args):
+    reply = command(['busctl', '--user', '--json=short', *map(str, args)], env)
+    require(reply.returncode == 0, 'D-Bus call failed: ' + str(args[0]) + ' (no raw diagnostic retained)')
+    return json.loads(reply.stdout).get('data')
+
+
+def owner(env, service):
+    unique = bus(env, 'call', 'org.freedesktop.DBus', '/org/freedesktop/DBus',
+                 'org.freedesktop.DBus', 'GetNameOwner', 's', service)[0]
+    pid = bus(env, 'call', 'org.freedesktop.DBus', '/org/freedesktop/DBus',
+              'org.freedesktop.DBus', 'GetConnectionUnixProcessID', 's', unique)[0]
+    return unique, int(pid)
+
+
+SESSION_KEYS = ('DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY', 'XDG_CURRENT_DESKTOP',
+                'XDG_SESSION_TYPE', 'XDG_SESSION_DESKTOP', 'DESKTOP_SESSION',
+                'XDG_DATA_DIRS', 'XDG_CONFIG_DIRS', 'KDE_FULL_SESSION', 'KDE_SESSION_VERSION')
+
+
+def choose_session(sessions, requested=None):
+    matches = [s for s in sessions if s.get('User') == str(os.getuid()) and s.get('Active') == 'yes'
+               and s.get('Remote') == 'no' and s.get('Type') in ('x11', 'wayland')
+               and s.get('Seat') == 'seat0' and (requested is None or s['Id'] == requested)]
+    require(len(matches) == 1, 'Expected exactly one active local seat0 graphical session')
+    return matches[0]
+
+
+def session(requested=None):
+    listed = command(['loginctl', 'list-sessions', '--no-legend', '--no-pager'])
+    require(listed.returncode == 0, 'Cannot enumerate logind sessions')
+    sessions = []
+    for line in listed.stdout.splitlines():
+        sid = line.split()[0]
+        reply = command(['loginctl', 'show-session', sid, '--no-pager'])
+        if reply.returncode == 0:
+            sessions.append(dict(l.split('=', 1) for l in reply.stdout.splitlines() if '=' in l))
+    found = choose_session(sessions, requested)
+    env = {'HOME': str(Path.home()), 'USER': os.environ.get('USER', ''), 'PATH': '/usr/local/bin:/usr/bin:/bin',
+           'LANG': 'C.UTF-8', 'XDG_RUNTIME_DIR': f'/run/user/{os.getuid()}',
+           'DBUS_SESSION_BUS_ADDRESS': f'unix:path=/run/user/{os.getuid()}/bus'}
+    shells = []
+    for service, name in (('org.kde.plasmashell', 'plasmashell'), ('org.gnome.Shell', 'gnome-shell'), ('org.Cinnamon', 'cinnamon')):
+        try:
+            _, pid = owner(env, service)
+            identity = process(pid)
+            if Path(identity['exe']).name == name:
+                shells.append((identity, environment(pid)))
+        except (Refused, OSError):
+            pass
+    start = int(found['TimestampMonotonic'])
+    hz = os.sysconf('SC_CLK_TCK')
+    shells = [(p, e) for p, e in shells if p['startTicks'] * 1_000_000 // hz >= start - 2_000_000
+              and (not e.get('XDG_SESSION_ID') or e['XDG_SESSION_ID'] == found['Id'])]
+    require(len(shells) == 1, 'No unique current-session shell; refusing a prior shell/user-manager environment')
+    identity, shell_env = shells[0]
+    env.update({k: shell_env[k] for k in SESSION_KEYS if shell_env.get(k)})
+    require(env.get('DISPLAY') or env.get('WAYLAND_DISPLAY'), 'Current shell has no display environment')
+    facts = {k: found.get(k) for k in ('Id', 'Type', 'Seat', 'Desktop', 'Timestamp', 'TimestampMonotonic', 'Leader')}
+    facts.update({'shell': identity, 'bootId': Path('/proc/sys/kernel/random/boot_id').read_text().strip()})
+    return facts, env
+
+
+def cli(exe, runtime, method, env, params=None):
+    path = socket_path(runtime)
+    if not Path(exe).is_file():
+        return {'ok': False, 'error': {'code': 'cli_missing'}}
+    try:
+        result = command([str(exe), '--socket', str(path), method, json.dumps(params or {})], env, timeout=35)
+        return json.loads(result.stdout)
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        return {'ok': False, 'error': {'code': 'cli_unavailable'}}
+
+
+def checked_resident(pid, exe, runtime=None):
+    identity = process(pid)
+    require(identity['exe'] == str(Path(exe).resolve()), 'Resident executable does not match the explicitly selected build')
+    if runtime is not None:
+        require(Path(environment(pid).get('XDG_RUNTIME_DIR', f'/run/user/{os.getuid()}')).resolve() == Path(runtime).resolve(),
+                'Resident runtime does not match the selected profile')
+    return identity
+
+
+def tray_target(env, identity):
+    require(same_process(identity), 'Resident generation changed')
+    items = bus(env, 'get-property', 'org.kde.StatusNotifierWatcher', '/StatusNotifierWatcher',
+                'org.kde.StatusNotifierWatcher', 'RegisteredStatusNotifierItems')
+    targets = []
+    for item in items:
+        service, sep, suffix = item.partition('/')
+        try:
+            unique, pid = owner(env, service)
+            if pid != identity['pid']:
+                continue
+            path = '/' + suffix if sep else '/StatusNotifierItem'
+            title = bus(env, 'get-property', unique, path, 'org.kde.StatusNotifierItem', 'Title')
+            title = title[0] if isinstance(title, list) else title
+            require(isinstance(title, str) and title.lower().startswith(('put.gd', 'putgd')), 'SNI title is not put.gd')
+            menu = bus(env, 'get-property', unique, path, 'org.kde.StatusNotifierItem', 'Menu')
+            menu = menu[0] if isinstance(menu, list) else menu
+            targets.append({'service': unique, 'path': path, 'menu': menu, 'title': title, 'resident': identity})
+        except Refused:
+            # Unrelated items may disappear between enumeration and lookup.
+            if 'pid' in locals() and pid == identity['pid']:
+                raise
+    require(len(targets) == 1, 'Expected one SNI owned by the selected put.gd resident; no coordinate fallback')
+    require(same_process(identity), 'Resident generation changed during SNI lookup')
+    return targets[0]
+
+
+def quit_action(layout):
+    matches = []
+    def walk(node, enabled=True):
+        if isinstance(node, dict):
+            node = node['data']
+        action, props, children = node
+        values = {k: v.get('data') if isinstance(v, dict) else v for k, v in props.items()}
+        usable = enabled and values.get('visible', True) and values.get('enabled', True)
+        if usable and values.get('label', '').replace('&', '').replace('_', '').strip() == 'Quit':
+            matches.append(action)
+        for child in children:
+            walk(child, usable)
+    walk(layout)
+    require(len(matches) == 1, 'Expected exactly one visible enabled Quit action in the owned tray menu')
+    return matches[0]
+
+
+def tray(args, env):
+    require(not os.environ.get('TRAY_XY'), 'TRAY_XY is unsafe and unsupported; unset it')
+    identity = checked_resident(args.pid, args.exe)
+    target = tray_target(env, identity)
+    if args.action == 'menu':
+        # This addresses the authenticated icon, never a panel coordinate. The
+        # coordinates place its menu only; no pointer input is sent to the host.
+        bus(env, 'call', target['service'], target['path'], 'org.kde.StatusNotifierItem', 'ContextMenu', 'ii', '0', '0')
+    elif args.action == 'quit':
+        layout = bus(env, 'call', target['service'], target['menu'], 'com.canonical.dbusmenu', 'GetLayout', 'iias', '--', '0', '-1', '0')
+        action = quit_action(layout[1])
+        require(tray_target(env, identity) == target, 'Tray ownership changed before activation')
+        bus(env, 'call', target['service'], target['menu'], 'com.canonical.dbusmenu', 'Event', 'isvu',
+            action, 'clicked', 's', '', '0')
+        deadline = time.monotonic() + 20
+        while same_process(identity) and time.monotonic() < deadline:
+            time.sleep(.1)
+        require(not same_process(identity), 'Tray Quit did not stop the selected resident')
+    return {'target': target, 'action': args.action, 'pointerInputSent': False}
+
+
+def plasma_registration(env, repair=False):
+    require('KDE' in env.get('XDG_CURRENT_DESKTOP', '').upper(), 'Plasma registration check requires the current KDE session')
+    # ktraderclient queries the session's sycoca, rather than trusting desktop
+    # files on disk. Missing tooling is a blocked check, never an empty cache.
+    def inspect():
+        reply = command(['ktraderclient6', '--servicetype', 'Application'], env)
+        require(reply.returncode == 0, 'ktraderclient6 failed; install the distro diagnostic tool')
+        names = re.findall(r"DesktopEntryName\s*[:=]\s*['\"]?([\w.-]+)", reply.stdout)
+        return {'applicationCount': len(names), 'putgd': 'putgd' in names, 'dolphin': 'org.kde.dolphin' in names or 'dolphin' in names}
+    before = inspect()
+    missing = not before['applicationCount'] or (Path('/usr/share/applications/putgd.desktop').exists() and not before['putgd'])
+    if missing and repair:
+        reply = command(['kbuildsycoca6', '--noincremental'], env, timeout=60)
+        require(reply.returncode == 0, 'Current-session sycoca rebuild failed')
+    after = inspect() if missing and repair else before
+    return {'before': before, 'after': after, 'repaired': bool(missing and repair),
+            'healthy': bool(after['applicationCount']) and (not Path('/usr/share/applications/putgd.desktop').exists() or after['putgd'])}
+
+
+def resident_processes(runtime):
+    result = []
+    for folder in Path('/proc').iterdir():
+        if not folder.name.isdigit():
+            continue
+        try:
+            identity = process(int(folder.name))
+            if Path(identity['exe']).name not in ('putgd', 'putgd-ui', 'putgd-record'):
+                continue
+            if Path(environment(identity['pid']).get('XDG_RUNTIME_DIR', f'/run/user/{os.getuid()}')).resolve() == Path(runtime).resolve():
+                result.append(identity)
+        except (OSError, Refused):
+            continue
+    return result
+
+
+def prepare_login(args, facts, env):
+    identity = checked_resident(args.pid, args.exe, args.runtime)
+    path = socket_path(args.runtime)
+    require(stat.S_ISSOCK(path.lstat().st_mode) and path.lstat().st_uid == os.getuid(), 'Expected an owned resident socket')
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as probe:
+        probe.settimeout(3)
+        probe.connect(str(path))
+        peer_pid, peer_uid, _ = struct.unpack('3i', probe.getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED, 12))
+    require(peer_pid == identity['pid'] and peer_uid == os.getuid(), 'Socket peer is not the selected resident')
+    reply = cli(args.cli, args.runtime, 'ui.quit', env)
+    require(reply.get('ok'), 'Cannot quit the lab resident before logout')
+    deadline = time.monotonic() + 25
+    while same_process(identity) and time.monotonic() < deadline:
+        time.sleep(.1)
+    remaining = resident_processes(args.runtime)
+    require(not remaining, 'Resident/helper survived ui.quit; logout test would be invalid')
+    return {'prepared': True, 'oldSession': facts, 'stopped': identity, 'runtime': str(Path(args.runtime).resolve()),
+            'preparedAt': datetime.now(timezone.utc).isoformat()}
+
+
+def check_login(before, facts, processes):
+    old = before['oldSession']
+    changed = (old['bootId'], old['Id'], old['TimestampMonotonic']) != (facts['bootId'], facts['Id'], facts['TimestampMonotonic'])
+    require(before.get('prepared') and changed, 'No verified new graphical session after a prepared logout')
+    require(facts['shell'] != old['shell'], 'Prior graphical shell still selected')
+    require(processes, 'No autostarted resident in the selected profile')
+    hz = os.sysconf('SC_CLK_TCK')
+    require(all(p['startTicks'] * 1_000_000 // hz >= int(facts['TimestampMonotonic']) for p in processes),
+            'A pre-login resident/helper survived; invalid login evidence')
+    return {'newSession': facts, 'processes': processes, 'newSessionVerified': True}
+
+
+def database_snapshot(db):
+    if not Path(db).is_file():
+        return {'available': False}
+    with sqlite3.connect(Path(db).resolve().as_uri() + '?mode=ro', uri=True) as con:
+        tables = [r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")]
+        counts = {t: con.execute('SELECT count(*) FROM ' + quote(t)).fetchone()[0] for t in tables}
+        result = {'available': True, 'userVersion': con.execute('PRAGMA user_version').fetchone()[0],
+                  'integrity': con.execute('PRAGMA integrity_check').fetchone()[0], 'tables': counts}
+        if 'history' in tables:
+            result['independentOperations'] = con.execute('SELECT count(DISTINCT operation_id) FROM history').fetchone()[0]
+        return result
+
+
+def snapshot(args, facts, env):
+    procs = resident_processes(args.runtime)
+    reply = cli(args.cli, args.runtime, 'ui.snapshot', env) if procs else {'ok': False, 'error': {'code': 'resident_absent'}}
+    return {'session': facts, 'processes': procs, 'cliExists': Path(args.cli).is_file(),
+            'cliStatus': 'ok' if reply.get('ok') else (reply.get('error') or {}).get('code'),
+            'build': (reply.get('result') or {}).get('build'), 'history': database_snapshot(args.db) if args.db else None}
+
+
+def quote(name):
+    return '"' + name.replace('"', '""') + '"'
+
+
+def insert(con, table, row):
+    con.execute('INSERT INTO ' + quote(table) + '(' + ','.join(map(quote, row)) + ') VALUES (' + ','.join('?' for _ in row) + ')', list(row.values()))
+
+
+def remap(value, substitutions):
+    if isinstance(value, dict):
+        return {k: remap(v, substitutions) for k, v in value.items()}
+    if isinstance(value, list):
+        return [remap(v, substitutions) for v in value]
+    if isinstance(value, str):
+        for old, new in substitutions.items():
+            value = value.replace(old, new)
+    return value
+
+
+def grow_database(db, total):
+    """Transactional cloning of terminal fixture operations, not real uploads.
+
+    Preserve seed payload/preview paths and statuses; each copied journal contains
+    only the matching item. New identities/timestamps are consistent in all three
+    tables. Original multi-item or unrelated cleared journals are not rewritten.
+    """
+    require(1 <= total <= 100_000, '--to must be 1..100000')
+    with sqlite3.connect(db) as con:
+        con.row_factory = sqlite3.Row
+        con.execute('BEGIN IMMEDIATE')
+        version = con.execute('PRAGMA user_version').fetchone()[0]
+        require(version in (5, 6, 7), 'Only schema 5..7 fixture databases are supported')
+        rows = [dict(r) for r in con.execute('SELECT * FROM history')]
+        require(rows and len(rows) <= total, 'Need nonempty seed history no larger than requested total')
+        require(len({r['operation_id'] for r in rows}) == len(rows),
+                'Seed must have independent operations; retire the old five-operation expanded fixture')
+        operations = {r['id']: dict(r) for r in con.execute('SELECT * FROM operations')}
+        states = {r['id']: dict(r) for r in con.execute('SELECT * FROM item_state')}
+        templates = []
+        for row in rows:
+            require(row['operation_id'] in operations and row['id'] in states, 'Seed is missing operation/item-state journals')
+            journal = json.loads(operations[row['operation_id']]['data'])
+            require(journal.get('state') in ('completed', 'partial', 'failed', 'cancelled', 'interrupted'), 'Active operation cannot seed acceptance history')
+            items = [i for i in journal.get('items', []) if i.get('artifact', {}).get('id') == row['item_id']]
+            require(len(items) == 1, 'Seed history item must resolve to exactly one journal item')
+            templates.append((row, journal, items[0]))
+        latest = max(datetime.fromisoformat(r['created'].replace('Z', '+00:00')) for r in rows)
+        for index in range(total - len(rows)):
+            row, journal, item = templates[index % len(templates)]
+            new_item, new_op = str(uuid.uuid4()), str(uuid.uuid4())
+            created = (latest + timedelta(seconds=index + 1)).isoformat(timespec='milliseconds').replace('+00:00', 'Z')
+            substitutions = {row['operation_id']: new_op, row['id']: new_item}
+            if row['item_id'] != row['id']:
+                substitutions[row['item_id']] = new_item
+            # Identity fields and embedded references are replaced, while file
+            # paths keep pointing to the small retained synthetic seed payloads.
+            def clone(value):
+                result = remap(value, substitutions)
+                def restore_paths(old, new):
+                    if isinstance(old, dict):
+                        for k in old:
+                            if k in ('path', 'previewPath'):
+                                new[k] = old[k]
+                            else:
+                                restore_paths(old[k], new[k])
+                    elif isinstance(old, list):
+                        for a, b in zip(old, new):
+                            restore_paths(a, b)
+                restore_paths(value, result)
+                return result
+            record = clone(json.loads(row['data']))
+            record.update(id=new_item, itemId=new_item, operationId=new_op, created=created)
+            copied = dict(row, id=new_item, item_id=new_item, operation_id=new_op, created=created, data=json.dumps(record).encode())
+            operation = clone(journal)
+            operation.update(id=new_op, created=created, items=[clone(item)])
+            state = dict(states[row['id']])
+            state.update(id=new_item, operation_id=new_op, data=json.dumps(clone(json.loads(state['data']))).encode())
+            insert(con, 'operations', dict(operations[row['operation_id']], id=new_op, data=json.dumps(operation).encode()))
+            insert(con, 'history', copied)
+            insert(con, 'item_state', state)
+        require(con.execute('PRAGMA integrity_check').fetchone()[0] == 'ok', 'Cloned fixture failed SQLite integrity')
+        shape = con.execute('SELECT count(*),count(DISTINCT operation_id),count(DISTINCT item_id) FROM history').fetchone()
+        require(shape[0] == total, 'History count mismatch')
+        require(shape[1] == total and shape[2] == total, 'History operations/items are not independent')
+        return {'seedRows': len(rows), 'historyRows': shape[0], 'independentOperations': shape[1], 'independentItems': shape[2],
+                'operationJournals': con.execute('SELECT count(*) FROM operations').fetchone()[0],
+                'itemStates': con.execute('SELECT count(*) FROM item_state').fetchone()[0], 'userVersion': version,
+                'syntheticClones': True, 'realUploadsPerformed': 0, 'integrity': 'ok'}
+
+
+def grow(args):
+    root = private(Path(args.fixture_root).resolve(), directory=True)
+    db = private(args.db)
+    require(db.resolve().is_relative_to(root), 'Database must be inside the explicitly selected private fixture')
+    require(not resident_processes(args.runtime), 'Stop the fixture resident and helpers before grow')
+    require(not socket_path(args.runtime).exists(), 'Fixture socket still exists; verify stopped ownership and remove stale socket before retrying')
+    # Never mutate the source golden or an unlabelled default profile.
+    require((root / 'config/putgd/config.json').is_file(), 'Fixture must include config/putgd/config.json')
+    doc = json.loads((root / 'config/putgd/config.json').read_text())
+    profiles = doc.get('profiles', [])
+    require(profiles and all(re.match(r'^https?://(127\.0\.0\.1|localhost)(:\d+)?(/|$)', p.get('settings', {}).get('endpoint', '')) for p in profiles),
+            'grow requires loopback-only synthetic fixture profiles')
+    return grow_database(db, args.to)
+
+
+def login_input(path):
+    if path is None:
+        return {'available': False, 'reason': 'No protected login input supplied; inspect bootstrap metadata before requesting one'}
+    require(Path(path).name != 'credentials.txt', 'credentials.txt is not a desktop login source')
+    try:
+        private(path)
+    except (OSError, Refused):
+        return {'available': False, 'reason': 'Protected login input absent or not an owned private regular file'}
+    return {'available': True, 'valueRead': False}
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--output', type=Path, help='New private JSON receipt; refuses to overwrite')
+    parser.add_argument('--session', help='Expected active logind session ID')
+    subs = parser.add_subparsers(dest='cmd', required=True)
+    subs.add_parser('session')
+    p = subs.add_parser('tray'); p.add_argument('action', choices=('inspect', 'menu', 'quit'))
+    p.add_argument('--pid', type=int, required=True); p.add_argument('--exe', required=True)
+    p = subs.add_parser('plasma-registration'); p.add_argument('--repair', action='store_true')
+    p = subs.add_parser('login-prepare'); p.add_argument('--pid', type=int, required=True); p.add_argument('--exe', required=True)
+    p.add_argument('--cli', default='/usr/bin/putgd-cli'); p.add_argument('--runtime', required=True)
+    p = subs.add_parser('login-check'); p.add_argument('--before', type=Path, required=True); p.add_argument('--runtime', required=True)
+    p = subs.add_parser('snapshot'); p.add_argument('--runtime', required=True); p.add_argument('--cli', default='/usr/bin/putgd-cli'); p.add_argument('--db')
+    p = subs.add_parser('grow'); p.add_argument('--fixture-root', required=True); p.add_argument('--db', required=True)
+    p.add_argument('--runtime', required=True); p.add_argument('--to', type=int, default=10000)
+    p = subs.add_parser('keychain'); p.add_argument('phase', choices=('status', 'store', 'check', 'cleanup'))
+    p.add_argument('--before', type=Path); p.add_argument('--login-input'); p.add_argument('--credentials-mode', choices=('keychain', 'session', 'reference-only'), default='keychain')
+    args = parser.parse_args()
+    # A directly executed script and its imported keychain helper must share
+    # one refusal type (never print arbitrary backend exception text).
+    sys.modules.setdefault('native_acceptance', sys.modules[__name__])
+    os.umask(0o077)
+    result = {'driverSha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(), 'host': socket.gethostname(),
+              'at': datetime.now(timezone.utc).isoformat(), 'command': args.cmd}
+    try:
+        if hasattr(args, 'runtime'):
+            result['socket'] = {'path': str(socket_path(args.runtime)), 'utf8Bytes': len(str(socket_path(args.runtime)).encode())}
+        if args.cmd == 'grow':
+            result['result'] = grow(args)
+        else:
+            facts, env = session(args.session)
+            result['session'] = facts
+            if args.cmd == 'session': result['result'] = facts
+            elif args.cmd == 'tray': result['result'] = tray(args, env)
+            elif args.cmd == 'plasma-registration': result['result'] = plasma_registration(env, args.repair)
+            elif args.cmd == 'login-prepare': result['result'] = prepare_login(args, facts, env)
+            elif args.cmd == 'login-check': result['result'] = check_login(json.loads(private(args.before).read_text())['result'], facts, resident_processes(args.runtime))
+            elif args.cmd == 'snapshot': result['result'] = snapshot(args, facts, env)
+            elif args.cmd == 'keychain':
+                from native_keychain import lifecycle
+                result['result'] = lifecycle(args.phase, env, json.loads(private(args.before).read_text())['result'] if args.before else None)
+                result['result'].update({'protectedLoginInput': login_input(args.login_input), 'productCredentialMode': args.credentials_mode,
+                                         'productKeychainRoundtripProven': False})
+                if args.credentials_mode != 'keychain':
+                    result['result']['productEvidence'] = 'session credentials/reference-only; no product keychain lifecycle proof'
+        result['ok'] = True
+    except (Refused, OSError, ValueError, sqlite3.Error, subprocess.TimeoutExpired) as error:
+        result.update(ok=False, error=str(error) if isinstance(error, Refused) else type(error).__name__)
+    if args.output:
+        private(args.output.parent, directory=True)
+        with args.output.open('x') as stream:
+            json.dump(result, stream, indent=2); stream.write('\n')
+    print(json.dumps(result, indent=2))
+    return 0 if result['ok'] else 2
+
+
+if __name__ == '__main__':
+    sys.exit(main())
