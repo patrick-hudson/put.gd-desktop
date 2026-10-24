@@ -1,14 +1,73 @@
 #!/usr/bin/env python3
-"""Read-only host/guest capacity gate for existing Linux lab runs (stdlib only)."""
+"""Read-only host/guest capacity gate for existing Linux lab runs (Python + GNU stat)."""
 import argparse
 import datetime
+import inspect
 import json
 import math
 import os
 from pathlib import Path
-import shutil
 import stat
 import subprocess
+
+
+def measure_filesystem(path):
+    # Pin the measured object: statfs identification and fstatvfs must describe
+    # the same filesystem, even for symlinks or a concurrent mount change.
+    path = os.path.realpath(path, strict=True)
+    descriptor = os.open(path, os.O_RDONLY | os.O_CLOEXEC)
+    try:
+        raw = os.fstatvfs(descriptor)
+        identity = subprocess.run(
+            ['stat', '-f', '--format=%T:%t', '--', '/proc/self/fd/%d' % descriptor],
+            pass_fds=(descriptor,), text=True, capture_output=True, timeout=5,
+            env={**os.environ, 'LC_ALL': 'C'})
+        kind, magic = (identity.stdout.strip().split(':') if identity.returncode == 0
+                       and identity.stdout.strip().count(':') == 1 else (None, None))
+        return {'path': path, 'device': os.fstat(descriptor).st_dev,
+                'filesystemType': kind, 'filesystemMagic': magic,
+                'statvfs': {name: getattr(raw, name) for name in dir(raw) if name.startswith('f_')}}
+    finally:
+        os.close(descriptor)
+
+
+def classify_filesystem(value):
+    if not isinstance(value, dict) or set(value) != {
+            'path', 'device', 'filesystemType', 'filesystemMagic', 'statvfs'}:
+        raise ValueError('Unexpected filesystem metrics')
+    if (not isinstance(value['path'], str) or not value['path'].startswith('/') or
+            type(value['device']) is not int or value['device'] < 0):
+        raise ValueError('Invalid measured path or device')
+    raw = value['statvfs']
+    required = {'f_bsize', 'f_frsize', 'f_blocks', 'f_bfree', 'f_bavail',
+                'f_files', 'f_ffree', 'f_favail'}
+    if (not isinstance(raw, dict) or not required <= raw.keys() or
+            any(type(metric) is not int or metric < 0 for metric in raw.values())):
+        raise ValueError('Filesystem metrics must be non-negative integers')
+    if (raw['f_bsize'] == 0 or raw['f_frsize'] == 0 or
+            not raw['f_bavail'] <= raw['f_bfree'] <= raw['f_blocks'] or
+            not raw['f_favail'] <= raw['f_ffree'] <= raw['f_files']):
+        raise ValueError('Inconsistent filesystem metrics')
+    identity = (value['filesystemType'], value['filesystemMagic'])
+    mode = 'unknown'
+    # Linux magic.h and GNU stat's human_fstype. Only Btrfs has a verified
+    # unreported, dynamic inode pool here; other/unidentified zeroes fail closed.
+    # https://btrfs.readthedocs.io/en/stable/Administration.html
+    # Linux fs/statfs.c zeroes kstatfs; fs/btrfs/super.c leaves inode counts
+    # unset and makes f_bavail zero when metadata space is exhausted.
+    if identity == ('btrfs', '9123683e'):
+        if any(raw[name] != 0 for name in ('f_files', 'f_ffree', 'f_favail')):
+            raise ValueError('Unexpected Btrfs inode accounting')
+        mode = 'dynamic'
+    elif identity in (('ext2/ext3', 'ef53'), ('tmpfs', '1021994'), ('xfs', '58465342')):
+        mode = 'reported'
+    elif not all(item is None or isinstance(item, str) for item in identity):
+        raise ValueError('Invalid filesystem identification')
+    return {**value, 'availableBytes': raw['f_bavail'] * raw['f_frsize'],
+            'totalBytes': raw['f_blocks'] * raw['f_frsize'],
+            'availableInodes': raw['f_favail'] if mode == 'reported' else None,
+            'inodeAccounting': mode,
+            'inodeCheckPassed': mode == 'dynamic' or (mode == 'reported' and raw['f_favail'] > 1024)}
 
 
 def measure_guest(run):
@@ -22,13 +81,9 @@ def measure_guest(run):
                  '-o', 'UserKnownHostsFile=' + info['known_hosts'],
                  '-i', str(key), '-p', str(info['ssh_port']),
                  info['guest_user'] + '@127.0.0.1', 'python3', '-']
-    script = '''import json,os
+    script = 'import json,os,subprocess\n' + inspect.getsource(measure_filesystem) + '''
 paths={"home":os.path.expanduser("~"),"tmp":"/tmp"}
-result={}
-for label,path in paths.items():
- s=os.statvfs(path)
- result[label]={"availableBytes":s.f_bavail*s.f_frsize,"totalBytes":s.f_blocks*s.f_frsize,"availableInodes":s.f_favail}
-print(json.dumps(result))
+print(json.dumps({label:measure_filesystem(path) for label,path in paths.items()}))
 '''
     result = subprocess.run(arguments, input=script, text=True, capture_output=True, timeout=30)
     if result.returncode:
@@ -36,22 +91,18 @@ print(json.dumps(result))
     filesystems = json.loads(result.stdout)
     if not isinstance(filesystems, dict) or set(filesystems) != {'home', 'tmp'}:
         raise ValueError('Unexpected guest capacity response')
-    for value in filesystems.values():
-        if not isinstance(value, dict) or set(value) != {'availableBytes', 'totalBytes', 'availableInodes'}:
-            raise ValueError('Unexpected guest filesystem metrics')
-        if any(type(metric) is not int or metric < 0 for metric in value.values()):
-            raise ValueError('Guest filesystem metrics must be non-negative integers')
-    return filesystems
+    return {label: classify_filesystem(value) for label, value in filesystems.items()}
 
 
 def capacity_passes(filesystems, reserve_gib, build_gib):
     return all(value['availableBytes'] >=
                (reserve_gib + (build_gib if label == 'home' else 0)) * 2**30 and
-               value['availableInodes'] > 1024 for label, value in filesystems.items())
+               value['inodeCheckPassed'] for label, value in filesystems.items())
 
 
-def host_capacity_passes(free_bytes, free_inodes, reserve_gib, build_gib, guest_count):
-    return free_bytes >= (reserve_gib + build_gib * guest_count) * 2**30 and free_inodes > 1024
+def host_capacity_passes(filesystem, reserve_gib, build_gib, guest_count):
+    return (filesystem['availableBytes'] >= (reserve_gib + build_gib * guest_count) * 2**30
+            and filesystem['inodeCheckPassed'])
 
 
 def main():
@@ -69,10 +120,9 @@ def main():
         parser.error('Space budgets must be finite and non-negative')
     if args.host_reserve_gib < 10 or args.guest_reserve_gib < 2:
         parser.error('Minimum reserves are 10 GiB host and 2 GiB guest')
-    host_free = shutil.disk_usage(args.host_path).free
-    host_inodes = os.statvfs(args.host_path).f_favail
-    host_device = args.host_path.stat().st_dev
-    host_passed = host_capacity_passes(host_free, host_inodes, args.host_reserve_gib,
+    host = classify_filesystem(measure_filesystem(args.host_path))
+    host_device = host['device']
+    host_passed = host_capacity_passes(host, args.host_reserve_gib,
                                        args.expected_build_gib, len(args.run))
     rows = []
     for run in args.run:
@@ -87,9 +137,9 @@ def main():
         except (OSError, ValueError, subprocess.TimeoutExpired) as exc:
             row.update(passed=False, errorType=type(exc).__name__)
         rows.append(row)
-    receipt = {'schemaVersion': 1, 'timestampUtc': datetime.datetime.now(datetime.timezone.utc).isoformat(),
-               'hostAvailableBytes': host_free, 'hostPassed': host_passed,
-               'hostAvailableInodes': host_inodes,
+    receipt = {'schemaVersion': 2, 'timestampUtc': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+               'hostAvailableBytes': host['availableBytes'], 'hostPassed': host_passed,
+               'hostAvailableInodes': host['availableInodes'], 'hostFilesystem': host,
                'hostExpectedGrowthBytes': args.expected_build_gib * len(args.run) * 2**30,
                'hostReserveGiB': args.host_reserve_gib, 'guestReserveGiB': args.guest_reserve_gib,
                'expectedBuildGiB': args.expected_build_gib, 'guests': rows,
