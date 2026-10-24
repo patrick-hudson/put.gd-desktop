@@ -227,6 +227,22 @@ order and verify the combined hash before extracting. These large source parts
 are separate downloads; the combined application ZIP includes the catalog and
 instructions. Preserve them while the corresponding binary release is available.
 
+Native Linux packages also generate `/usr/share/doc/putgd/copyright` in DEP-5
+format and a deterministic `changelog.gz` from the source commit. The copyright
+file reproduces all shipped attribution, including compressed Bun notices and
+ICU 78.3, so it survives Debian's usual minimized-documentation exception. RPM
+notice files are `%license` and survive `--excludedocs`/`tsflags=nodocs` (#470).
+Product ELF executables explicitly use PIE and full RELRO; the native artifact
+audit rejects regressions (#475). Bun's upstream helper is outside that compiler
+change and remains tracked in #471. Proton's installed dependency notices are
+stable across npm 9/10/11 because the formerly optional peer dependency is pinned
+directly (#369), and ICU 78.3 is bound into both Linux redistribution copies
+(#461).
+
+The [native packaging evidence](evidence/2026-10-24-native-packaging-540/README.md)
+records the clean Fedora/Debian build, strict metadata and filtered-install
+checks, npm-version comparison, original failures and the final CI run.
+
 Final packaged functional/resource acceptance remains a separate receipt.
 Previously tested private deployments do not establish package acceptance. P5
 credits the actual Crypto source update and completed rebuild work; ongoing
