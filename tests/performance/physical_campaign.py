@@ -36,7 +36,7 @@ import time
 import uuid
 
 from bench_ui_process import (EvidenceError, ProcessFamily, identity,
-                              request, same_identity, sha256, verify_socket_owner,
+                              request, same_identity, sha256, stat_fields, verify_socket_owner,
                               write_json)
 from observe_idle import check_physical_session, owned_windows, stop_owned_process_group
 
@@ -545,6 +545,84 @@ class Campaign:
         self.result['metrics']['warmP95DrawablePaintMs'] = data['p95PaintMs']
         self.result['gates']['warmCapture'] = {'status': 'pass' if data['p95PaintMs'] <= 150 else 'fail',
                                               'limitMs': 150, 'driverExit': completed.returncode}
+        self.persist()
+        self.capture_visual()
+
+    def capture_visual(self):
+        """One separate unscored selection; no VNC/encoding during scored35."""
+        self.static_cover()
+        self.family.expected_hashes[str(Path(self.args.capture_helper).resolve())] = (
+            self.result['product']['binaries']['capture_helper']['sha256'])
+        operation_id = self.call('action.invoke', {'action': 'region'})['operationId']
+        helper = None
+        pressed = False
+        try:
+            deadline = time.monotonic() + 10
+            while helper is None:
+                observed = self.sample('unscored-selector-wait')
+                for process in observed['processes']:
+                    if process['executable'] == str(Path(self.args.capture_helper).resolve()):
+                        require(stat_fields(Path(f"/proc/{process['pid']}/stat").read_text())['ppid'] == self.resident.pid,
+                                'visual_capture_helper_not_immediate_child')
+                        helper = process
+                require(time.monotonic() < deadline, 'visual_capture_helper_missing')
+                if helper is None:
+                    time.sleep(.05)
+            deadline = time.monotonic() + 10
+            windows = []
+            while not windows:
+                require(same_identity(identity(helper['pid']), helper), 'visual_capture_helper_changed')
+                tree = subprocess.check_output(['xwininfo', '-root', '-tree'], text=True, timeout=5)
+                for window in re.findall(r'^\s*(0x[0-9a-fA-F]+)', tree, re.M):
+                    prop = subprocess.run(['xprop', '-id', window, '_NET_WM_PID'], capture_output=True,
+                                          text=True, timeout=5)
+                    if not re.search(r'=\s*' + str(helper['pid']) + r'\s*$', prop.stdout):
+                        continue
+                    info = subprocess.check_output(['xwininfo', '-id', window], text=True, timeout=5)
+                    if 'Map State: IsViewable' in info and 'Override Redirect State: yes' in info:
+                        windows.append(window)
+                require(time.monotonic() < deadline, 'visual_owned_selector_did_not_map')
+                if not windows:
+                    time.sleep(.05)
+            def input(*arguments):
+                require(same_identity(identity(helper['pid']), helper), 'visual_capture_helper_changed')
+                subprocess.run(['xdotool', *arguments], check=True, stdout=subprocess.DEVNULL,
+                               stderr=subprocess.DEVNULL, timeout=5)
+            input('mousemove', '--sync', '140', '180')
+            input('mousedown', '1')
+            pressed = True
+            input('mousemove', '--sync', '900', '650')
+            time.sleep(.3)  # Unscored visual settling, explicitly excluded above.
+            sys.path.insert(0, str(REPO / 'tools/lab'))
+            import rfb
+            from cover_player import coverage
+            client = rfb.RFB(self.args.vnc_port)
+            try:
+                width, height, pixels = client.frame()
+            finally:
+                client.close()
+            # Same actual frame is checked and saved; never export a frame
+            # whose synthetic background is hidden by an unrelated window.
+            fraction = coverage(width, height, pixels, 'bgrx', [0, 0, width, height], (80, 90, 100), 10)
+            require(fraction >= .98, 'visual_frame_not_synthetic_covered')
+            require(same_identity(identity(helper['pid']), helper), 'visual_capture_helper_changed')
+            from PIL import Image
+            path = self.root / 'unscored-capture-overlay.png'
+            Image.frombytes('RGB', (width, height), pixels, 'raw', 'BGRX').save(path)
+            self.event('unscored-capture-visual', operationId=operation_id, helperIdentity=helper,
+                       windows=windows, syntheticBackgroundFraction=fraction, screenshot=path.name,
+                       sha256=sha256(path), scored=False, drag=[140, 180, 900, 650])
+        finally:
+            if helper and same_identity(identity(helper['pid']), helper):
+                subprocess.run(['xdotool', 'key', 'Escape'], stdout=subprocess.DEVNULL,
+                               stderr=subprocess.DEVNULL, timeout=5)
+            if pressed:
+                subprocess.run(['xdotool', 'mouseup', '1'], stdout=subprocess.DEVNULL,
+                               stderr=subprocess.DEVNULL, timeout=5)
+        outcome = self.wait_operation(operation_id, seconds=15)
+        require(outcome['state'] == 'cancelled', 'unscored_visual_selection_did_not_cancel')
+        self.event('unscored-capture-cancelled', operationId=operation_id, state=outcome['state'],
+                   timedOperations=35, visualOperations=1)
 
     def memory(self):
         time.sleep(5)
