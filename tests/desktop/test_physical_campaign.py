@@ -180,6 +180,7 @@ class EndpointAndBudgetTests(unittest.TestCase):
             output = str(Path(directory) / ('a' * 80))
             args = campaign.parser().parse_args(['memory', '--output', output, '--package', 'x',
                 '--package-sha256', 'a' * 64, '--version', '26.1024.1185-nightly',
+                '--driver-revision', 'c' * 40,
                 '--source-revision', 'b' * 40, '--desktop-session', '2', '--lock-session', 'owner'])
             observer = campaign.Campaign(args)
             with mock.patch.object(campaign, 'physical_identity') as physical, \
