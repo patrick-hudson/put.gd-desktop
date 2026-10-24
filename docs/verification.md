@@ -96,22 +96,22 @@ session for recording) and on an Ubuntu 26.04 GNOME VM, the `debian13` DEB on d6
 ## Native acceptance driver hardening (#495) — 2026-10-24
 
 The [follow-up record](evidence/2026-10-24-native-acceptance-drivers-495/README.md)
-retires unsafe tray/lifecycle recipes and documents the held interface in
+retires unsafe recipes and documents exact reviewed source `72afd00b` in
 [code PR #554](https://github.com/patrick-hudson/put.gd-desktop/pull/554).
-**HOLD pending independent round 3 on `72afd00b`:** round 2 resolved the five
-original safety findings in `c538f71e`, then found inert-receipt compatibility.
-The bounded fix passes 37 tests and actual serializer/10k synthetic CLI checks.
-Fresh physical m74 Cinnamon/X11 public-CLI evidence on Qt 6.4.2 records owned SNI
-activation/Quit visuals, peer-bound login preparation/same-session refusal,
-separate-process backend roundtrip/cleanup, absent-CLI snapshot and clean release.
+Independent round 3 cleared all five safety findings and inert-receipt
+compatibility. Only exact-72 growth is permitted under every guard; predecessors
+remain held. Final current k72/f44 packets and PR readiness checks are pending.
+Current proof includes 37 tests, actual serializer/unstripped-receipt/10k
+synthetic CLI checks and fresh physical Cinnamon/X11 SNI activation/Quit visuals,
+peer-bound preparation/same-session refusal, separate-process backend roundtrip,
+absent-CLI snapshot and clean release on Qt 6.4.2.
 
-Earlier k72 packets retain their `826c255a`, `6bbbd506` and `c538f71e` identities;
-f44's `64a3257b` check proves compositor-peer session protocol only. The original
-1058 pass preserved 10,000 rows in five operations and used session credentials
-plus a keychain reference; its outcomes and failures remain historical evidence.
+Earlier k72/f44/m74 packets retain their own driver and product identities.
+The original 1058 pass preserved 10,000 rows in five operations and used session
+credentials plus a keychain reference; its outcomes and failures stay historical.
 No positive real logout/login, rendered menu/physical click, product QtKeychain
-lifecycle, backend persistence across login, 10k product UI/performance/migration
-or full package/release acceptance is established by the driver evidence.
+lifecycle, cross-login backend persistence, 10k product UI/performance/migration
+or full package/release acceptance is established by this driver evidence.
 
 ## DEB/RPM exact-asset audit rehearsal (#383) — 2026-10-22
 

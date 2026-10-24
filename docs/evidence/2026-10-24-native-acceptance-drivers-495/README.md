@@ -1,16 +1,11 @@
 # Native acceptance driver hardening (#495) — 2026-10-24
 
-**HOLD — independent round 3 pending.** The candidate recipes below
-are an implementation/evidence record, not a final approved runbook. Do not use
-the old `grow` downstream. Review found five safety gaps in the predecessor
-implementation: persisted external destinations despite localhost configuration,
-a selected-database/unrelated-runtime bypass, incomplete helper inventory,
-lost cleanup/recovery after partial synthetic keychain stores, and output
-reservation only after mutations. Independent round 2 resolved all five in
-`c538f71e`, then found a valid-product-receipt compatibility issue. Its bounded
-fix is `72afd00b`, with 37 saved passing tests, unmodified production-serializer
-proof and a fresh public-CLI m74 packet. Round 3 is running. Existing results do
-not replace that review; the old downstream growth recipes remain on hold.
+Exact `72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e` cleared independent round 3
+with no actionable findings. The five original safety findings and the inert
+receipt compatibility issue are resolved. Growth is permitted only at this
+exact revision with every guard below; predecessor growth recipes remain held.
+The companion PRs stay draft while final k72/f44 receipts, factual review and
+current-head CI are completed. This is driver validation, not release acceptance.
 
 This is the documentation companion to the maintained driver in
 `tools/lab/native_acceptance.py` in [code PR #554](https://github.com/patrick-hudson/put.gd-desktop/pull/554).
@@ -42,18 +37,17 @@ The old outcome tables and failure context are unchanged. In particular, the m74
 P failure (#490) remains a failure in that record. Later host setup or driver fixes
 do not retroactively turn those attempts into passes.
 
-## Candidate command interface (HOLD)
+## Reviewed command interface (exact `72afd` only)
 
-Recorded candidate source: `72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e`,
+Reviewed source: `72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e`,
 `tools/lab/native_acceptance.py` plus `tools/lab/native_keychain.py`. The driver
 SHA-256 is `347934c226f99cb0e509d5466c5df8116896e6bfac07d75fdfa4f4c2d06ca053`;
 the [JSON](summary.json) also records the helper and test hashes. This is
 unmerged harness source, separately identified from the published product
 package under test. The product CLI capabilities are unchanged.
 
-These commands describe that candidate. Preserve their source-specific evidence;
-wait for the final reviewed handoff before treating them as safe
-maintained campaign instructions. In particular, current localhost configuration
+These commands apply only to the reviewed exact source. Preserve source-specific
+evidence and all fixture/ownership/receipt guards. In particular, current localhost configuration
 alone does not establish that stored journals/destinations are safe or that the
 selected database is stopped.
 
@@ -165,7 +159,7 @@ python3 tools/lab/native_acceptance.py --output "$receipt" grow \
 
 Set these paths to the actual disposable fixture on the execution host; use a
 fresh receipt and the same short private runtime used to launch that fixture.
-`grow` does not create a configuration or seed captures. The proposed correction
+`grow` does not create a configuration or seed captures. The reviewed implementation
 requires an owned private root, the exact `ROOT/data/putgd/history.sqlite` and
 private data directory, plus `config/putgd/config.json`. Use fresh synthetic
 seeds with session-only credentials. Numeric loopback HTTP(S) destinations need
@@ -187,12 +181,12 @@ complete isolated destination, and recovery-state validation remains strict.
 Schema 5–7 terminal journals need matching `item_state` rows. Stop the fixture
 normally first: checks cover associated data-home/open-database owners across
 runtimes, plus `putgd` and the full `putgd-*` helper prefix, including deleted
-executables; unreadable owned helpers refuse absence. The proposed guard holds
+executables; unreadable owned helpers refuse absence. The guard holds
 `resident.lock` through the transaction and commit, rechecking owners under the
 lock. It refuses every preexisting lock; never break or delete one to make the
 test proceed. The selected runtime's socket must be absent; do not remove
-another session's socket to satisfy the gate. Round 3 of the current candidate
-remains pending.
+another session's socket to satisfy the gate. Permission does not extend to
+any predecessor source or bypass any of these checks.
 
 Each seed history row must already have its own operation. The old expanded
 five-operation fixture is rejected. Copies receive unique operation/item IDs,
@@ -219,7 +213,7 @@ bytes before launch. Follow [remote-builder locking and visibility](../../remote
 and [VM lifecycle rules](../../vm-lab.md). This documentation thread runs no GUI
 campaign; the code owner coordinates execution and desktop locks.
 
-## Review resolutions and serializer compatibility (`72afd`, round 3 pending)
+## Review resolutions and serializer compatibility (`72afd`)
 
 Independent round 2 source review resolved the five original findings. The
 `c538` resolutions reserve output before actions, validate persisted
@@ -242,7 +236,8 @@ synthetic schema-7 fixture, integrity `ok`, zero uploads. Production serializer,
 witness source/binary, emitted-record and CLI-receipt hashes are indexed.
 This is current `72afd` serializer/unit/CLI proof; the `c538` desktop and 35-test
 records remain predecessor evidence. The current `72afd` Cinnamon packet below
-has its own receipts; independent round 3 remains pending.
+has its own receipts. Independent round 3 cleared this exact source; current
+k72/f44 final receipts are still being assembled.
 
 For a failed keychain store, `c538` persists the canonical synthetic recovery
 reference before creating the item and retains the original safe error and
@@ -254,7 +249,7 @@ still matches. Retain failed and recovery receipts; a successful cleanup does
 not turn the failed store into a roundtrip pass. The fresh public-CLI observations
 below do not approve safety; historical observations are not transferred.
 
-## Fresh public-CLI observations (`c538`, review pending)
+## Predecessor public-CLI observations (`c538`)
 
 The fresh k72 run at 15:19Z uses `c538f71e89afcc6d1e6c599c3c1cb9c3a97e7ced`,
 driver SHA `2f317d31a85741c7a24382849f309433a2581ee127f28c52de3a859a74069258`,
@@ -284,10 +279,10 @@ python3 work/495/final_probe_review2.py /home/patrick/putgd-lab/n495/final-c538 
 Stdout is `/home/patrick/putgd-lab/n495/final-c538.log`; preserve that completed
 directory. The wrapper's original bytes are retained privately. Lock
 `codex-495-r2` was released cleanly at 15:19:51Z with empty cleanup lists;
-package, runtime and synthetic probe were removed. Independent review remains
-pending, so no final safety/readiness credit is assigned to this packet.
+package, runtime and synthetic probe were removed. This predecessor packet
+keeps its original scope; exact-72 permission does not authorize c538 growth.
 
-## Current Cinnamon public-CLI observations (`72afd`, review pending)
+## Current Cinnamon public-CLI observations (`72afd`)
 
 The fresh physical m74 run uses exact driver source
 `72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e`, main SHA `347934c2…`, helper SHA
@@ -324,7 +319,8 @@ Stdout is `/home/patrick/putgd-lab/n495/final-72afd.log`. Lock
 `codex-495-final-mint` was released cleanly at 15:32:08Z with empty cleanup
 lists; the owned package, runtime and synthetic probe were removed and the
 preexisting VM left running. This is bounded functional evidence, not a
-performance/release acceptance pass or approval to lift round 3's HOLD.
+performance/release acceptance pass. Independent review clearance applies only
+to the exact driver and guarded uses described above.
 
 ## Saved k72 results
 

@@ -3,13 +3,13 @@
   "issue": 495,
   "date": "2026-10-24",
   "scope": "Native acceptance lab driver documentation; no new release acceptance claim",
-  "status": "HOLD-independent-round3-pending-current72afd-m74-and-serializer-proof-verified",
+  "status": "exact72-independent-review-clear-final-k72-f44-receipts-and-pr-readiness-pending",
   "codePullRequest": "https://github.com/patrick-hudson/put.gd-desktop/pull/554",
   "driver": {
     "path": "tools/lab/native_acceptance.py",
     "commit": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
     "sha256": "347934c226f99cb0e509d5466c5df8116896e6bfac07d75fdfa4f4c2d06ca053",
-    "stage": "inert-receipt-compatibility-fix-independent-round3-pending",
+    "stage": "independently-reviewed-exact72-only",
     "productCliCapabilitiesChanged": false
   },
   "historicalEvidence": {
@@ -47,7 +47,8 @@
       "realUploadsPerformed": 0,
       "requiresExistingCapturesAndConfig": true,
       "acceptanceScope": "fixture-shape only until separately measured on a product build",
-      "executionStatus": "HOLD-not-current-safe-guidance"
+      "executionStatus": "permitted-exact72-only-under-every-guard",
+      "requiredCommit": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e"
     }
   ],
   "automatedChecks": [
@@ -112,7 +113,7 @@
       "status": "saved-log-verified-pass",
       "privateLog": "review3/inert-receipt-tests-2.log",
       "sha256": "2ed4a4acb2bd4cea53fb3f234afb52668f8a2d72818fa2a491fa869bed4e230b",
-      "scope": "full product-shaped inert receipts; independent round3 pending"
+      "scope": "full product-shaped inert receipts; exact-source independent round3 cleared; runtime proof scope unchanged"
     }
   ],
   "desktopRuns": [
@@ -673,7 +674,7 @@
     },
     {
       "runId": "m74/final-72afd",
-      "sourceScope": "fresh current public-CLI observation; independent round3 pending",
+      "sourceScope": "current72 source-specific functional proof; final packet assembly pending",
       "host": "m74",
       "hostName": "mint-builder",
       "placement": "physical",
@@ -832,7 +833,9 @@
           ]
         }
       },
-      "safetyReadinessCredit": false
+      "independentSourceReviewCleared": true,
+      "includedInDriverValidation": true,
+      "releaseAcceptanceCredit": false
     }
   ],
   "savedVisuals": [
@@ -920,7 +923,8 @@
       "driverCommit": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
       "sanitization": "exact new crop inspected by code owner and documentation thread: only owned app and magenta cover",
       "edited": false,
-      "safetyReadinessCredit": false
+      "includedInDriverValidation": true,
+      "releaseAcceptanceCredit": false
     },
     {
       "path": "docs/evidence/2026-10-24-native-acceptance-drivers-495/pictures/m74-72afd-after-quit.png",
@@ -930,7 +934,8 @@
       "driverCommit": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
       "sanitization": "exact new crop inspected by code owner and documentation thread: only owned app and magenta cover",
       "edited": false,
-      "safetyReadinessCredit": false
+      "includedInDriverValidation": true,
+      "releaseAcceptanceCredit": false
     }
   ],
   "cleanupReceipts": [
@@ -1036,7 +1041,7 @@
     }
   ],
   "limitations": [
-    "Current72afd m74/serializer/unit/CLI results verified; independent round3 pending and downstream grow remains HOLD",
+    "Exact72 independent round3 clear; final current k72/f44 receipts, factual review and current docs CI pending; predecessor growth held",
     "No real logout/login in k72 runs; same-session refusal tested",
     "No physical tray click or rendered menu proof",
     "No product QtKeychain credential lifecycle or backend persistence across login proof",
@@ -1107,13 +1112,13 @@
       "lock": "resident.lock held through commit; actual Qt mutual-exclusion witness saved",
       "ownerChecks": "associated data-home or open DB file descriptors across runtimes; complete putgd helper prefix; unreadable owned helper refuses",
       "persistedState": "all JSON journal/receipt/state and allowed-table checks; session-only fresh synthetic seeds; explicit numeric loopback endpoints with port",
-      "executionStatus": "HOLD pending independent review"
+      "executionStatus": "permitted-exact72-only-under-every-guard"
     },
     "receipts": {
       "mutatingCommandsRequireOutput": true,
       "reservation": "exclusive private --output file reserved before actions",
       "failedStoreRecovery": "canonical reference, original safe error and cleanup status persist; cleanup --before FAILED_RECEIPT supported and idempotent",
-      "independentReview": "pending"
+      "independentReview": "round3 clear at exact72"
     }
   },
   "priorCandidate": {
@@ -2123,7 +2128,7 @@
   "independentSafetyReview": {
     "round": 1,
     "reviewedCommit": "6bbbd506aeef7f8aa4a97c21664c7013ff427627",
-    "status": "round1-five-resolved-round2; inert-receipt-fix-awaiting-round3",
+    "status": "all-five-and-inert-receipt-issue-resolved-round3-clear",
     "privateReport": "/home/patrick/work/put.gd/work/stable-closeout-410-495-379/REVIEW554-round1.md",
     "sha256": "2fb5d13c8cc919f8a938c6975964484d66b05d73543e0174de800fe3a592bfb2",
     "findings": [
@@ -2163,8 +2168,8 @@
         "validationScope": "round2 source review; runtime proofs separately indexed"
       }
     ],
-    "downstreamGrow": "HOLD",
-    "followupReview": "round2 resolved five original findings; round3 running on72afd inert-receipt compatibility fix",
+    "downstreamGrow": "permitted-only-exact72-with-every-guard",
+    "followupReview": "independent round3 clear on exact72",
     "evidencePolicy": "existing observations retain original sources; no final safety/readiness credit",
     "ownerCorrectionCommit": "c538f71e89afcc6d1e6c599c3c1cb9c3a97e7ced",
     "round2": {
@@ -2177,9 +2182,11 @@
     },
     "round3": {
       "reviewedCommit": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
-      "status": "running",
-      "HOLD": true
-    }
+      "status": "clear-no-actionable-findings",
+      "HOLD": false,
+      "authority": "root coordinator05841927-1f2e-40c5-958c-68fbebf5805a direct clearance message"
+    },
+    "predecessorGrow": "HOLD"
   },
   "m74KeychainCorrection": {
     "originalSource": "64a3257b20d7aa33cc25d35c07a628becff4036c",
