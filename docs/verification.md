@@ -59,7 +59,12 @@ Normal exit/full-family/socket cleanup passed, the original VM resumed, and m74
 released verified-clean at 16:11:53 UTC. The next controller refused before
 launching the `02d85059` driver on a private quietness assertion; its missing
 numerical precheck and no-launch limitation are explicit. The original VM
-resumed and m74 released verified-clean at 16:54:28 UTC. No capture,
+resumed and m74 released verified-clean at 16:54:28 UTC. No memory
+interval ran in the later m4 attempt either: the controller retained its
+complete host observation, then refused a new unmeasured `mintUpdate` row before
+driver launch. No CPU percentage or heavy load is inferred. Its 12-file export
+is checksum-verified; the original VM resumed and the matching lease released
+verified-clean at 18:36:08 UTC. No capture,
 memory, history, burst or network gate is accepted. Driver hardening (#495,
 PR #554) and the performance driver (PR #555) remain separately identified code
 work; old history-growth revisions are held. Unbudgeted response thresholds require

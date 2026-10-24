@@ -130,6 +130,14 @@ encoder process. Other low-activity desktop services and the wall stayed up.
   value, competing heavy work or product performance. No benchmark output,
   product GUI, cover, new frame or scored interval was created. This is a
   coordinator admission failure, not a failure of the unlaunched driver.
+- **m4: retained host-admission refusal; no benchmark launch.**
+  [The controller record](attempt-m4.json) retains all 331 rows of its
+  10.033007-second, HZ=100 observation before the refusal predicate. A new
+  `mintUpdate` process had no before CPU sample and 30 ticks in the after
+  sample; its CPU percentage is unassessed. The unchanged controller refused
+  `unknown_activity_unmeasured`. This does not establish heavy load or a
+  product/driver failure. No benchmark profile, GUI, cover, image or scored
+  interval was created. The service and admission criterion were unchanged.
 
 ![c1 post-cancellation recovery frame: only synthetic background, no selector-paint claim](c1-witness-failure.png)
 
@@ -192,6 +200,16 @@ The verified release and source/control/failure receipts are hashed in the
 m3 summary. No retry ran under that lock. Receipt-before-assert handling and
 the coordinator's quiet-host admission require review before a new allocation;
 the frozen performance harness and approved product budgets are unchanged.
+
+For m4, the lease ran **18:35:39–18:36:08 UTC**. The same original VM was
+paused with identity-bound proof and verified running again at 18:36:01 UTC.
+Only the run's installed `putgd` package was purged; owned-process inventory
+was empty and the matching lease released verified-clean. All 12 original
+remote files were exported privately and every SHA-256 verified; originals
+remain on m74, with a restore index. No retry ran under that allocation.
+No benchmark-resident cleanup receipt exists because the driver never started;
+these resource-cleanup receipts cannot substitute for the required complete
+inventory, verified absence, normal exit and full-interval performance proof.
 
 ### Actual-frame privacy audit
 
