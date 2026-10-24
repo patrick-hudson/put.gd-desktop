@@ -316,6 +316,7 @@ class Campaign:
                                       Path(__file__).with_name('campaign_proxy.py'),
                                       Path(__file__).with_name('campaign_lifecycle.py'),
                                       Path(__file__).with_name('build_current_capture.py'),
+                                      Path(__file__).with_name('campaign_frames.py'),
                                       REPO / 'tools/diagnostics/check_socket_paths.py')}},
                        'product': {}, 'parameters': vars(args), 'metrics': {}, 'gates': {},
                        'limitations': ['Capture witness observes X11 drawable paint, not compositor presentation.',
@@ -432,7 +433,6 @@ class Campaign:
 
     def visual(self, label):
         """Save only owned UI drawables, or a prechecked synthetic cover frame."""
-        from PIL import Image
         from campaign_ui import save_visible_window
         if self.family and self.resident and self.resident.poll() is None:
             observed = self.sample(label + '-identity')
@@ -450,16 +450,14 @@ class Campaign:
         require(self.cover is not None and self.cover.poll() is None, 'no_safe_visual_cover')
         sys.path.insert(0, str(REPO / 'tools/lab'))
         import rfb
-        from cover_player import coverage
         client = rfb.RFB(self.args.vnc_port)
         try:
             width, height, pixels = client.frame()
         finally:
             client.close()
-        require(coverage(width, height, pixels, 'bgrx', [0, 0, width, height], (80, 90, 100), 10) >= .98,
-                'visual_frame_not_synthetic_covered')
         path = self.root / (label + '.png')
-        Image.frombytes('RGB', (width, height), pixels, 'raw', 'BGRX').save(path)
+        from campaign_frames import save_cover
+        save_cover(path, width, height, pixels)
         self.event('synthetic-cover-visual', label=label, file=path.name, sha256=sha256(path),
                    limitation='Synthetic cover; companion separately verifies actual desktop tray presentation')
 
@@ -712,7 +710,18 @@ class Campaign:
         self.event('capture-command', command=command)
         before = operation_ids(self.root / 'data/putgd/history.sqlite')
         with (self.root / 'capture-driver.log').open('xb') as log:
-            completed = subprocess.run(command, env=self.environment, stdout=log, stderr=log, timeout=240)
+            process = subprocess.Popen(command, env=self.environment, stdin=subprocess.DEVNULL,
+                                       stdout=log, stderr=log, start_new_session=True)
+            try:
+                driver_code = process.wait(timeout=240)
+            finally:
+                if process.poll() is None:
+                    stop_owned_process_group(process)
+                    # Balance only input this driver can hold, before resident
+                    # cleanup; an interrupted C++ process cannot run its catch.
+                    subprocess.run(['xdotool', 'keyup', 'Control_L', 'Shift_L', 'F12'],
+                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
+                    cancel_visual_input(None, True)
         data = json.loads((self.root / 'capture.json').read_text())
         require(data.get('witnessMode') == ('current-contrast' if self.args.capture_driver_manifest else 'live-outline'),
                 'capture_witness_definition_mismatch')
@@ -730,7 +739,7 @@ class Campaign:
         self.event('capture-outcomes', operations=[{'id': row['id'], 'state': row['state']} for row in outcomes])
         self.result['metrics']['warmP95DrawablePaintMs'] = data['p95PaintMs']
         self.result['gates']['warmCapture'] = {'status': 'pass' if data['p95PaintMs'] <= 150 else 'fail',
-                                              'limitMs': 150, 'driverExit': completed.returncode}
+                                              'limitMs': 150, 'driverExit': driver_code}
         self.persist()
         self.capture_visual()
 
@@ -781,30 +790,34 @@ class Campaign:
             time.sleep(.3)  # Unscored visual settling, explicitly excluded above.
             sys.path.insert(0, str(REPO / 'tools/lab'))
             import rfb
-            from cover_player import coverage
             client = rfb.RFB(self.args.vnc_port)
             try:
                 width, height, pixels = client.frame()
             finally:
                 client.close()
-            # Same actual frame is checked and saved; never export a frame
-            # whose synthetic background is hidden by an unrelated window.
-            fraction = coverage(width, height, pixels, 'bgrx', [0, 0, width, height], (80, 90, 100), 10)
-            require(fraction >= .98, 'visual_frame_not_synthetic_covered')
             require(same_identity(identity(helper['pid']), helper), 'visual_capture_helper_changed')
-            from PIL import Image
+            from campaign_ui import Drawable
+            overlays = []
+            for window in windows:
+                info = subprocess.check_output(['xwininfo', '-id', window], text=True, timeout=5)
+                w = int(re.search(r'Width:\s+(\d+)', info)[1])
+                h = int(re.search(r'Height:\s+(\d+)', info)[1])
+                x = int(re.search(r'Absolute upper-left X:\s+(-?\d+)', info)[1])
+                y = int(re.search(r'Absolute upper-left Y:\s+(-?\d+)', info)[1])
+                draw = Drawable(window, helper)
+                try:
+                    rgba = draw.pixels([0, 0, w, h], alpha=True).tobytes()
+                finally:
+                    draw.close()
+                overlays.append({'x': x, 'y': y, 'width': w, 'height': h, 'rgba': rgba})
             path = self.root / 'unscored-capture-overlay.png'
-            Image.frombytes('RGB', (width, height), pixels, 'raw', 'BGRX').save(path)
+            from campaign_frames import save_selector
+            proof = save_selector(path, width, height, pixels, overlays, [852, 602, 96, 96])
             self.event('unscored-capture-visual', operationId=operation_id, helperIdentity=helper,
-                       windows=windows, syntheticBackgroundFraction=fraction, screenshot=path.name,
+                       windows=windows, attribution=proof, screenshot=path.name,
                        sha256=sha256(path), scored=False, drag=[140, 180, 900, 650])
         finally:
-            if helper and same_identity(identity(helper['pid']), helper):
-                subprocess.run(['xdotool', 'key', 'Escape'], stdout=subprocess.DEVNULL,
-                               stderr=subprocess.DEVNULL, timeout=5)
-            if pressed:
-                subprocess.run(['xdotool', 'mouseup', '1'], stdout=subprocess.DEVNULL,
-                               stderr=subprocess.DEVNULL, timeout=5)
+            cancel_visual_input(helper, pressed)
         outcome = self.wait_operation(operation_id, seconds=15)
         require(outcome['state'] == 'cancelled' and not outcome.get('items') and outcome.get('copyStatus') == 'no_result',
                 'unscored_visual_selection_did_not_cancel')
@@ -881,6 +894,20 @@ def read_line(process, seconds):
         line = process.stdout.readline()
     require(len(line) <= 65536 and bool(line), 'fixture_closed_or_oversized_response')
     return json.loads(line)
+
+
+def cancel_visual_input(helper, pressed, runner=subprocess.run):
+    try:
+        if helper:
+            try:
+                live = same_identity(identity(helper['pid']), helper)
+            except (FileNotFoundError, ProcessLookupError):
+                live = False
+            if live:
+                runner(['xdotool', 'key', 'Escape'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
+    finally:
+        if pressed:
+            runner(['xdotool', 'mouseup', '1'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
 
 
 def verify_fixture(args):

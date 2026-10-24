@@ -133,6 +133,20 @@ class HistoryLifetimeTests(unittest.TestCase):
 
 
 class FinalizationTests(unittest.TestCase):
+    def test_dead_visual_helper_does_not_skip_owned_button_release(self):
+        runner = mock.Mock()
+        with mock.patch.object(physical_campaign, 'identity', side_effect=FileNotFoundError):
+            physical_campaign.cancel_visual_input({'pid': 999999}, True, runner)
+        self.assertEqual(runner.call_args.args[0], ['xdotool', 'mouseup', '1'])
+        self.assertEqual(runner.call_count, 1)
+
+    def test_escape_failure_still_releases_owned_mouse_button(self):
+        runner = mock.Mock(side_effect=[subprocess.TimeoutExpired('xdotool', 5), None])
+        with mock.patch.object(physical_campaign, 'identity', return_value=identity(os.getpid())):
+            with self.assertRaises(subprocess.TimeoutExpired):
+                physical_campaign.cancel_visual_input(identity(os.getpid()), True, runner)
+        self.assertEqual(runner.call_args.args[0], ['xdotool', 'mouseup', '1'])
+
     def test_successful_workload_cannot_return_success_before_failed_cleanup(self):
         run = mock.Mock()
         run.started = time.monotonic()

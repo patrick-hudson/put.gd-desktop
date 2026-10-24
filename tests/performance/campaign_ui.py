@@ -51,7 +51,7 @@ class Drawable:
             self.x.XCloseDisplay(self.display)
             self.display = None
 
-    def pixels(self, rectangle):
+    def pixels(self, rectangle, alpha=False):
         if not same_identity(identity(self.owner['pid']), self.owner):
             raise EvidenceError('drawable_owner_changed')
         started = time.monotonic()
@@ -67,9 +67,12 @@ class Drawable:
             if (info.bits_per_pixel != 32 or info.byte_order != 0 or info.red_mask != 0xff0000
                     or info.green_mask != 0xff00 or info.blue_mask != 0xff):
                 raise EvidenceError('unsupported_x11_observer_pixel_layout')
+            if alpha and info.depth != 32:
+                raise EvidenceError('selector_requires_argb32_drawable')
             raw = C.string_at(info.data, info.bytes_per_line * info.height)
             from PIL import Image
-            pixels = Image.frombytes('RGB', (info.width, info.height), raw, 'raw', 'BGRX', info.bytes_per_line)
+            pixels = Image.frombytes('RGBA' if alpha else 'RGB', (info.width, info.height), raw, 'raw',
+                                     'BGRA' if alpha else 'BGRX', info.bytes_per_line)
         finally:
             self.x.XDestroyImage(image)
         self.probes.append({'completed': time.monotonic(), 'probeSeconds': time.monotonic() - started})
