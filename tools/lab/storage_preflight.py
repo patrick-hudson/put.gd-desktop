@@ -18,14 +18,25 @@ def measure_filesystem(path):
     descriptor = os.open(path, os.O_RDONLY | os.O_CLOEXEC)
     try:
         raw = os.fstatvfs(descriptor)
-        identity = subprocess.run(
-            ['stat', '-f', '--format=%T:%t', '--', '/proc/self/fd/%d' % descriptor],
-            pass_fds=(descriptor,), text=True, capture_output=True, timeout=5,
-            env={**os.environ, 'LC_ALL': 'C'})
-        kind, magic = (identity.stdout.strip().split(':') if identity.returncode == 0
-                       and identity.stdout.strip().count(':') == 1 else (None, None))
+        kind, magic, error = None, None, None
+        try:
+            identity = subprocess.run(
+                ['stat', '-f', '--format=%T:%t', '--', '/proc/self/fd/%d' % descriptor],
+                pass_fds=(descriptor,), text=True, capture_output=True, timeout=5,
+                env={**os.environ, 'LC_ALL': 'C'})
+            if identity.returncode:
+                error = 'CommandFailed'
+            elif identity.stdout.strip().count(':') != 1:
+                error = 'InvalidResponse'
+            else:
+                kind, magic = identity.stdout.strip().split(':')
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            # Never persist command arguments, stdout/stderr or exception text.
+            # Retain the already measured raw capacity with unknown accounting.
+            error = type(exc).__name__
         return {'path': path, 'device': os.fstat(descriptor).st_dev,
                 'filesystemType': kind, 'filesystemMagic': magic,
+                'identificationErrorType': error,
                 'statvfs': {name: getattr(raw, name) for name in dir(raw) if name.startswith('f_')}}
     finally:
         os.close(descriptor)
@@ -33,7 +44,7 @@ def measure_filesystem(path):
 
 def classify_filesystem(value):
     if not isinstance(value, dict) or set(value) != {
-            'path', 'device', 'filesystemType', 'filesystemMagic', 'statvfs'}:
+            'path', 'device', 'filesystemType', 'filesystemMagic', 'identificationErrorType', 'statvfs'}:
         raise ValueError('Unexpected filesystem metrics')
     if (not isinstance(value['path'], str) or not value['path'].startswith('/') or
             type(value['device']) is not int or value['device'] < 0):
@@ -49,6 +60,10 @@ def classify_filesystem(value):
             not raw['f_favail'] <= raw['f_ffree'] <= raw['f_files']):
         raise ValueError('Inconsistent filesystem metrics')
     identity = (value['filesystemType'], value['filesystemMagic'])
+    error = value['identificationErrorType']
+    if error is not None and (not isinstance(error, str) or len(error) > 64 or
+                              not error.isascii() or not error.isidentifier() or identity != (None, None)):
+        raise ValueError('Invalid filesystem identification error')
     mode = 'unknown'
     # Linux magic.h and GNU stat's human_fstype. Only Btrfs has a verified
     # unreported, dynamic inode pool here; other/unidentified zeroes fail closed.
@@ -120,14 +135,21 @@ def main():
         parser.error('Space budgets must be finite and non-negative')
     if args.host_reserve_gib < 10 or args.guest_reserve_gib < 2:
         parser.error('Minimum reserves are 10 GiB host and 2 GiB guest')
-    host = classify_filesystem(measure_filesystem(args.host_path))
-    host_device = host['device']
-    host_passed = host_capacity_passes(host, args.host_reserve_gib,
-                                       args.expected_build_gib, len(args.run))
+    host, host_error = None, None
+    try:
+        host = classify_filesystem(measure_filesystem(args.host_path))
+        host_error = host['identificationErrorType']
+    except (OSError, ValueError, subprocess.TimeoutExpired) as exc:
+        host_error = type(exc).__name__
+    host_device = host['device'] if host else None
+    host_passed = host is not None and host_capacity_passes(
+        host, args.host_reserve_gib, args.expected_build_gib, len(args.run))
     rows = []
     for run in args.run:
         row = {'run': str(run.resolve())}
         try:
+            if host_device is None:
+                raise ValueError('Host filesystem measurement unavailable')
             disk = run / 'disk.qcow2'
             if (disk if disk.exists() else run).stat().st_dev != host_device:
                 raise ValueError('Run each host filesystem separately with --host-path on that filesystem')
@@ -138,8 +160,9 @@ def main():
             row.update(passed=False, errorType=type(exc).__name__)
         rows.append(row)
     receipt = {'schemaVersion': 2, 'timestampUtc': datetime.datetime.now(datetime.timezone.utc).isoformat(),
-               'hostAvailableBytes': host['availableBytes'], 'hostPassed': host_passed,
-               'hostAvailableInodes': host['availableInodes'], 'hostFilesystem': host,
+               'hostAvailableBytes': host['availableBytes'] if host else None, 'hostPassed': host_passed,
+               'hostAvailableInodes': host['availableInodes'] if host else None, 'hostFilesystem': host,
+               'hostErrorType': host_error,
                'hostExpectedGrowthBytes': args.expected_build_gib * len(args.run) * 2**30,
                'hostReserveGiB': args.host_reserve_gib, 'guestReserveGiB': args.guest_reserve_gib,
                'expectedBuildGiB': args.expected_build_gib, 'guests': rows,

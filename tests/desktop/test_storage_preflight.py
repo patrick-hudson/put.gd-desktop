@@ -20,6 +20,7 @@ spec.loader.exec_module(preflight)
 
 def measurement(kind='ext2/ext3', magic='ef53', inodes=2048, available_gib=20):
     return {'path': '/measured', 'device': 1, 'filesystemType': kind, 'filesystemMagic': magic,
+            'identificationErrorType': None,
             'statvfs': {'f_bsize': 4096, 'f_frsize': 4096, 'f_blocks': 32 * 2**18,
                         'f_bfree': int(available_gib * 2**18), 'f_bavail': int(available_gib * 2**18),
                         'f_files': 4096, 'f_ffree': inodes, 'f_favail': inodes}}
@@ -112,6 +113,66 @@ class CapacityContracts(unittest.TestCase):
             expected = subprocess.check_output(['stat', '-f', '--format=%T:%t', '--', folder], text=True).strip()
             self.assertEqual((raw['filesystemType'], raw['filesystemMagic']), tuple(expected.split(':')))
             self.assertEqual(raw['statvfs']['f_frsize'], os.statvfs(folder).f_frsize)
+
+    def test_host_identification_failures_keep_raw_metrics_and_private_failed_receipt(self):
+        failures = [subprocess.TimeoutExpired(['stat', 'protected argument'], 5,
+                                              output='protected output', stderr='protected stderr'),
+                    FileNotFoundError('protected path'),
+                    SimpleNamespace(returncode=1, stdout='protected output', stderr='protected stderr'),
+                    SimpleNamespace(returncode=0, stdout='protected malformed output', stderr='')]
+        for index, failure in enumerate(failures):
+            with self.subTest(failure=type(failure).__name__), tempfile.TemporaryDirectory() as folder:
+                output = Path(folder) / 'failed.json'
+                guests = {name: preflight.classify_filesystem(measurement()) for name in ('home', 'tmp')}
+                options = {'side_effect': failure} if isinstance(failure, Exception) else {'return_value': failure}
+                old_mask = os.umask(0o077)
+                try:
+                    with patch.object(preflight.subprocess, 'run', **options) as command, \
+                            patch.object(preflight, 'measure_guest', return_value=guests), \
+                            patch.object(sys, 'argv', ['storage_preflight.py', '--run', folder,
+                                                     '--host-path', folder, '--output', str(output)]), \
+                            contextlib.redirect_stdout(io.StringIO()):
+                        self.assertEqual(preflight.main(), 2)
+                    receipt = json.loads(output.read_text())
+                    self.assertFalse(receipt['hostPassed'])
+                    self.assertFalse(receipt['passed'])
+                    self.assertEqual(receipt['hostErrorType'],
+                                     ['TimeoutExpired', 'FileNotFoundError', 'CommandFailed', 'InvalidResponse'][index])
+                    host = receipt['hostFilesystem']
+                    self.assertEqual(host['inodeAccounting'], 'unknown')
+                    self.assertIsNone(host['availableInodes'])
+                    self.assertEqual(host['statvfs']['f_files'], os.statvfs(folder).f_files)
+                    self.assertGreater(host['availableBytes'], 0)
+                    self.assertNotIn('protected', output.read_text())
+                    self.assertEqual(output.stat().st_mode & 0o777, 0o600)
+                    descriptor = command.call_args.kwargs['pass_fds'][0]
+                    with self.assertRaises(OSError): os.fstat(descriptor)
+                finally:
+                    os.umask(old_mask)
+
+    def test_unavailable_or_malformed_host_measurement_still_writes_failure(self):
+        for failure in (OSError('protected path'), ValueError('protected metrics')):
+            with tempfile.TemporaryDirectory() as folder:
+                output = Path(folder) / 'failed.json'
+                old_mask = os.umask(0o077)
+                try:
+                    with patch.object(preflight, 'measure_filesystem', side_effect=failure), \
+                            patch.object(preflight, 'measure_guest') as guest, \
+                            patch.object(sys, 'argv', ['storage_preflight.py', '--run', folder,
+                                                     '--host-path', folder, '--output', str(output)]), \
+                            contextlib.redirect_stdout(io.StringIO()):
+                        self.assertEqual(preflight.main(), 2)
+                    receipt = json.loads(output.read_text())
+                    self.assertEqual(receipt['hostErrorType'], type(failure).__name__)
+                    self.assertFalse(receipt['passed'])
+                    self.assertIsNone(receipt['hostFilesystem'])
+                    self.assertIsNone(receipt['hostAvailableBytes'])
+                    self.assertIsNone(receipt['hostAvailableInodes'])
+                    self.assertFalse(receipt['guests'][0]['passed'])
+                    self.assertNotIn('protected', output.read_text())
+                    guest.assert_not_called()
+                finally:
+                    os.umask(old_mask)
 
     def test_shared_guest_probe_is_self_contained(self):
         with tempfile.TemporaryDirectory() as folder:
