@@ -18,12 +18,15 @@ saved Cinnamon, GNOME and KDE visuals and separate functional/memory gates.
 The older reproduction and test counts in #410 describe that issue's original
 source; they are not results for the new candidate.
 
-The candidate code identity is `b11c3ba6d64a60ace215aeb8ef9ac9cd8418f142`,
-tree `f9d1b5e55bb37d76c2522b6229b52faa5af7b6bb`. This identifies the proposed
-implementation, not a tested build. The shutdown guard follows envelope/ready
-validation, the session boundary confines `mode` to `record`, and the stop-reply
-guard preserves an already-finalized review when a budget event wins the race.
-The regression source checks that race and the later duplicate stop separately.
+The first candidate was `b11c3ba6d64a60ace215aeb8ef9ac9cd8418f142`, tree
+`f9d1b5e55bb37d76c2522b6229b52faa5af7b6bb`. It is **under revision and has
+not been accepted**. The execution owner reported two additional review findings:
+an event and reply read together can be applied out of order, and a delayed stop
+reply can replace a finalized review after an edit begins exporting. Corrected
+source, failure receipts and passing regressions are pending. The planned
+regressions distinguish the adjacent event/reply race, edited review/export,
+cancelled-session successor callbacks and a later duplicate stop. This paragraph
+records review findings, not a new execution result from the report owner.
 
 ## Required receipts
 
