@@ -113,7 +113,9 @@ safety tests pass; the saved synthetic 10,000-operation command belongs to `6bbb
 A current-source f44 compositor-peer check proves session protocol only. Actual purge snapshots
 retain their earlier `826c255a` identity. Real logout/login, rendered tray menu or
 physical click, product QtKeychain lifecycle and full package/release acceptance
-are not established. The bounded m74 functional check remains pending.
+are not established. Historical m74 Cinnamon/X11 `853a35d2` observations cover
+the same activation/Quit/preparation scope and a provider-metadata cleanup fix;
+they predate the unresolved safety findings and confer no final readiness credit.
 
 ## DEB/RPM exact-asset audit rehearsal (#383) — 2026-10-22
 

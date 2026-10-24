@@ -15,9 +15,10 @@ This is the documentation companion to the maintained driver in
 Merge #554 before [documentation PR #552](https://github.com/patrick-hudson/put.gd-desktop/pull/552).
 The [structured record](summary.json) distinguishes historical observations,
 driver checks and exact-build desktop evidence. Saved k72 results belong to
-`826c255a` and `6bbbd506`. The maintained candidate has since advanced to
-`64a3257b`; its bounded m74 functional run remains pending. This record does not
-establish a new native-package or release acceptance pass.
+`826c255a` and `6bbbd506`; the f44 protocol check belongs to `64a3257b`, and the
+bounded m74 observations to `64a3257b` / `853a35d2`. These precede the five-finding
+safety resolutions. This record does not establish final driver safety, a new
+native-package pass or release acceptance.
 
 ## Historical evidence and its limits
 
@@ -278,6 +279,39 @@ hash-verified. No app, package, cover, input, logout or screenshot was involved;
 this establishes session-protocol verification, not GNOME tray or graphical
 acceptance. Lock `codex-495-gnome` was released cleanly at 14:58:34Z, with all
 cleanup lists empty; its receipt and hash are indexed.
+
+## Saved m74 observations (historical `853a`)
+
+The bounded slot ran from 15:00:12Z to 15:02:02Z under `codex-495-mint` on
+physical Linux Mint 22.3, Cinnamon 6.6.9 X11, session `c89`, current Cinnamon
+PID `625683`. Product `1185` / `9dfac15c` remained separately identified.
+Source `853a35d21bf56c64eb07944dd360f4bc96a7c718` used main-driver SHA
+`8f1a8f49…` and keychain-helper SHA `6380532f…`; the full hashes and installed
+native binary identities are in the JSON. The Qt package query omitted its
+version, which is a metadata gap rather than an inferred version.
+
+The owned SNI `:1.4843`, resident PID `634132`, activated History and dynamic
+Quit stopped it. A second resident was peer-verified and quit during preparation;
+the same-session check refused. Post-purge snapshot collection succeeded with
+`cliExists: false`. No real logout/login or pointer input occurred. The socket
+preflight passed at 39 bytes and the cover precheck was 100%.
+
+The reviewed exact-byte [activation crop](pictures/m74-853a-activation.png) and
+[after-Quit cover](pictures/m74-853a-after-quit.png) contain only the owned app
+and magenta cover; hashes are indexed. They do not prove a physical tray click
+or rendered context menu. Both the original synthetic entry and the fresh probe
+were removed, the package purged and the owned runtime removed. The release
+receipt has empty cleanup lists. These are source-specific observations before
+the five review findings are resolved; they supply no final safety/readiness
+credit.
+
+On m74 the `64a` helper stored successfully but refused read and cleanup because
+GNOME Secret Service added `xdg:schema`. That failure is retained. The correction
+required the exact application/canonical reference while allowing provider
+metadata, removed the original owned item, then completed a fresh `853a`
+store/read/cleanup sequence in separate processes. Receipts hash the main
+driver; the separate source identity supplies the helper hash. This correction
+does not by itself resolve the five independent safety findings.
 
 ## Keychain results and remaining prerequisites
 
