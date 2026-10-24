@@ -6,8 +6,10 @@ the backend only; a product setup/upload/restart is separate QtKeychain evidence
 PyGObject is loaded only on the desktop host, never needed by the safety tests.
 """
 import os
+from contextlib import contextmanager, nullcontext
 from pathlib import Path
 import re
+import sys
 import time
 import uuid
 
@@ -31,7 +33,26 @@ def owns_probe(attributes, reference):
             and attributes.get('reference') == reference)
 
 
-def lifecycle(phase, env, before=None, unlock_lab=False):
+@contextmanager
+def failed_store_guard(recovery, cleanup):
+    """Keep the original failure and the exact recovery reference on all paths."""
+    from native_acceptance import Refused
+    owned = {'item': None, 'attempted': False}
+    try:
+        yield owned
+    except Exception as error:
+        status = 'needs-exact-cleanup' if owned['attempted'] else 'not-created'
+        if owned['item'] is not None:
+            try:
+                cleanup(owned['item'])
+                status = 'removed'
+            except Exception:
+                status = 'needs-exact-cleanup'
+        message = str(error) if isinstance(error, Refused) else type(error).__name__
+        raise Refused(message, dict(recovery, cleanup=status)) from None
+
+
+def lifecycle(phase, env, before=None, unlock_lab=False, recovery_sink=lambda value: None):
     from native_acceptance import Refused, require
     # Gio uses the process bus, not a subprocess environment.
     for key in ('DBUS_SESSION_BUS_ADDRESS', 'XDG_RUNTIME_DIR'):
@@ -108,6 +129,8 @@ def lifecycle(phase, env, before=None, unlock_lab=False):
     attrs = {'application': 'putgd-native-acceptance', 'reference': reference}
     unlocked, locked_items = call(service, 'org.freedesktop.Secret.Service', 'SearchItems', '(a{ss})', (attrs,), '(aoao)')
     require(not locked_items, 'Probe item is locked; no lifecycle pass')
+    if phase == 'cleanup' and not unlocked:
+        return dict(result, reference=reference, removed=True, alreadyAbsent=True)
     if phase == 'store':
         require(not unlocked, 'Synthetic reference already exists; refusing replacement')
     else:
@@ -117,27 +140,48 @@ def lifecycle(phase, env, before=None, unlock_lab=False):
     session = call(service, 'org.freedesktop.Secret.Service', 'OpenSession', '(sv)',
                    ('plain', GLib.Variant('s', '')), '(vo)')[1]
     synthetic = ('synthetic-backend-probe:' + reference).encode()
-    try:
-        if phase == 'store':
-            props = {'org.freedesktop.Secret.Item.Label': GLib.Variant('s', 'put.gd acceptance synthetic probe'),
-                     'org.freedesktop.Secret.Item.Attributes': GLib.Variant('a{ss}', attrs)}
-            item, prompt = call(collection, 'org.freedesktop.Secret.Collection', 'CreateItem', '(a{sv}(oayays)b)',
-                                (props, (session, b'', synthetic, 'text/plain'), False), '(oo)')
-            require(prompt == '/' and item.startswith(collection + '/'), 'Keychain requested a prompt; no lifecycle pass')
-        else:
-            item = unlocked[0]
-        if phase in ('store', 'check'):
-            secret = call(item, 'org.freedesktop.Secret.Item', 'GetSecret', '(o)', (session,), '((oayays))')[0]
-            require(bytes(secret[2]) == synthetic, 'Synthetic keychain value did not roundtrip')
-            result.update(reference=reference, roundtrip=True)
-        elif phase == 'cleanup':
-            prompt = call(item, 'org.freedesktop.Secret.Item', 'Delete', reply='(o)')[0]
-            require(prompt == '/', 'Synthetic cleanup requested a prompt')
-            remaining = call(service, 'org.freedesktop.Secret.Service', 'SearchItems', '(a{ss})', (attrs,), '(aoao)')
-            require(not any(remaining), 'Synthetic item remains after cleanup')
-            result.update(reference=reference, removed=True)
-        require(call(service, 'org.freedesktop.Secret.Service', 'ReadAlias', '(s)', ('default',), '(o)')[0] == collection,
-                'Default collection changed during the probe; no persistence claim')
-    finally:
-        call(session, 'org.freedesktop.Secret.Session', 'Close')
+    recovery = dict(result, reference=reference)
+    def remove_owned(item):
+        require(item.startswith(collection + '/') and owns_probe(prop(item, 'org.freedesktop.Secret.Item', 'Attributes'), reference),
+                'Cannot verify newly created probe ownership for failure cleanup')
+        prompt = call(item, 'org.freedesktop.Secret.Item', 'Delete', reply='(o)')[0]
+        require(prompt == '/', 'Failure cleanup requested a prompt')
+        remaining = call(service, 'org.freedesktop.Secret.Service', 'SearchItems', '(a{ss})', (attrs,), '(aoao)')
+        require(not any(remaining), 'New synthetic item remains after failure cleanup')
+    guard = failed_store_guard(recovery, remove_owned) if phase == 'store' else nullcontext({'item': None})
+    with guard as owned:
+        try:
+            if phase == 'store':
+                # Persist the unique nonsecret reference BEFORE CreateItem. Even a
+                # later receipt-I/O failure leaves enough information for safe cleanup.
+                recovery_sink(dict(recovery, cleanup='not-yet-created'))
+                props = {'org.freedesktop.Secret.Item.Label': GLib.Variant('s', 'put.gd acceptance synthetic probe'),
+                         'org.freedesktop.Secret.Item.Attributes': GLib.Variant('a{ss}', attrs)}
+                owned['attempted'] = True
+                item, prompt = call(collection, 'org.freedesktop.Secret.Collection', 'CreateItem', '(a{sv}(oayays)b)',
+                                    (props, (session, b'', synthetic, 'text/plain'), False), '(oo)')
+                owned['item'] = item
+                require(prompt == '/' and item.startswith(collection + '/'), 'Keychain requested a prompt; no lifecycle pass')
+            else:
+                item = unlocked[0]
+            if phase in ('store', 'check'):
+                secret = call(item, 'org.freedesktop.Secret.Item', 'GetSecret', '(o)', (session,), '((oayays))')[0]
+                require(bytes(secret[2]) == synthetic, 'Synthetic keychain value did not roundtrip')
+                result.update(reference=reference, roundtrip=True)
+            elif phase == 'cleanup':
+                prompt = call(item, 'org.freedesktop.Secret.Item', 'Delete', reply='(o)')[0]
+                require(prompt == '/', 'Synthetic cleanup requested a prompt')
+                remaining = call(service, 'org.freedesktop.Secret.Service', 'SearchItems', '(a{ss})', (attrs,), '(aoao)')
+                require(not any(remaining), 'Synthetic item remains after cleanup')
+                result.update(reference=reference, removed=True)
+            require(call(service, 'org.freedesktop.Secret.Service', 'ReadAlias', '(s)', ('default',), '(o)')[0] == collection,
+                    'Default collection changed during the probe; no persistence claim')
+        finally:
+            unwinding = sys.exc_info()[0] is not None
+            try:
+                call(session, 'org.freedesktop.Secret.Session', 'Close')
+            except Refused:
+                recovery['sessionCloseFailed'] = True
+                if not unwinding:
+                    raise
     return result

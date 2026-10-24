@@ -6,7 +6,8 @@ or launch residents. Keep product package and driver source identities separate.
 Use --help on each command. JSON receipts contain facts, never config or secrets.
 """
 import argparse
-from contextlib import closing
+from contextlib import closing, contextmanager
+import fcntl
 from datetime import datetime, timedelta, timezone
 import hashlib
 import json
@@ -21,10 +22,14 @@ import subprocess
 import sys
 import time
 import uuid
+from urllib.parse import urlsplit
 
 
 class Refused(RuntimeError):
     """A safe-to-report unmet prerequisite."""
+    def __init__(self, message, recovery=None):
+        super().__init__(message)
+        self.recovery = recovery
 
 
 def require(condition, message):
@@ -273,19 +278,49 @@ def plasma_registration(env, repair=False, probe=None):
             'healthy': bool(after['applicationCount']) and (not Path('/usr/share/applications/putgd.desktop').exists() or after['putgd'])}
 
 
-def resident_processes(runtime):
+def resident_processes(runtime, data_root=None):
     result = []
     for folder in Path('/proc').iterdir():
         if not folder.name.isdigit():
             continue
         try:
             identity = process(int(folder.name))
-            if Path(identity['exe'].removesuffix(' (deleted)')).name not in ('putgd', 'putgd-ui', 'putgd-record'):
+            name = Path(identity['exe'].removesuffix(' (deleted)')).name
+            if name != 'putgd' and not name.startswith('putgd-'):
                 continue
-            if Path(environment(identity['pid']).get('XDG_RUNTIME_DIR', f'/run/user/{os.getuid()}')).resolve() == Path(runtime).resolve():
+            try:
+                env = environment(identity['pid'])
+            except FileNotFoundError:
+                continue
+            except (OSError, UnicodeError):
+                raise Refused('Cannot inspect an owned product process; absence is unproven') from None
+            home = Path(env.get('XDG_DATA_HOME') or Path.home() / '.local/share').resolve()
+            same_data = data_root is not None and Path(data_root).resolve() in (home / 'putgd', home / 'putgd/putgd')
+            if data_root is not None and not same_data:
+                db_info = (Path(data_root) / 'history.sqlite').stat()
+                try:
+                    for fd in (folder / 'fd').iterdir():
+                        try: opened = fd.stat()
+                        except FileNotFoundError: continue
+                        if (opened.st_dev, opened.st_ino) == (db_info.st_dev, db_info.st_ino):
+                            same_data = True
+                            break
+                except FileNotFoundError:
+                    continue
+                except OSError:
+                    raise Refused('Cannot inspect owned product database descriptors; absence is unproven') from None
+            if same_data or Path(env.get('XDG_RUNTIME_DIR', f'/run/user/{os.getuid()}')).resolve() == Path(runtime).resolve():
                 result.append(identity)
-        except (OSError, Refused):
+        except (FileNotFoundError, ProcessLookupError):
             continue
+        except PermissionError:
+            # A disappearing/other-user process is harmless. An unreadable owned
+            # putgd helper is not evidence of its absence.
+            if folder.stat().st_uid == os.getuid() and (folder / 'comm').read_text().startswith('putgd'):
+                raise Refused('Cannot identify an owned product helper; absence is unproven') from None
+        except Refused as error:
+            if str(error) != 'Process belongs to another user':
+                raise
     return result
 
 
@@ -367,7 +402,96 @@ def remap(value, substitutions):
     return value
 
 
-def grow_database(db, total):
+def loopback_url(value):
+    try:
+        parsed = urlsplit(value)
+        return (parsed.scheme in ('http', 'https') and parsed.hostname in ('127.0.0.1', '::1')
+                and parsed.username is None and parsed.password is None and parsed.port is not None
+                and 1 <= parsed.port <= 65535)
+    except (ValueError, TypeError):
+        return False
+
+
+def fixture_network_state(value):
+    """Reject external/unknown routes and recovery work, including old journals.
+
+    No rewriting of an external destination into a fixture is allowed. Review
+    the whole database, not just the rows chosen as cloning templates.
+    """
+    if isinstance(value, list):
+        for item in value: fixture_network_state(item)
+    elif isinstance(value, dict):
+        provider = value.get('providerId', value.get('provider'))
+        if provider:
+            require(provider == 's3' and loopback_url(value.get('settings', {}).get('endpoint')),
+                    'Fixture contains an external or unknown persisted provider destination')
+        for key, item in value.items():
+            normalized = key.replace('_', '').lower()
+            if key == 'credentials' and item:
+                require(isinstance(item, dict) and set(item) <= {'mode', 'reference'}
+                        and item.get('mode') == 'session' and not item.get('reference'),
+                        'Fixture may use session-only credential references; no keychain or embedded credentials')
+            require(not (item and normalized in ('accesskey', 'accesskeyid', 'secretkey', 'secretaccesskey',
+                                                 'sessiontoken', 'accesstoken', 'refreshtoken', 'userkeypassword')),
+                    'Fixture contains embedded credential material')
+            require(not (item and (normalized in ('uploadjournal', 'resume', 'multipart', 'uploadid', 'multipartuploadid',
+                                                  'deleteoperationid', 'deleteprogress', 'shareprogress', 'incompleteupload')
+                                   or normalized.startswith('cleanup'))),
+                    'Fixture contains persisted upload/deletion/cleanup recovery work')
+            if key == 'endpoint' and item:
+                require(loopback_url(item), 'Fixture contains a non-loopback endpoint')
+            if key in ('receipt', 'shareReceipt') and item:
+                require(isinstance(item, dict) and item.get('destination', {}).get('providerId') == 's3'
+                        and loopback_url(item['destination'].get('settings', {}).get('endpoint')),
+                        'Fixture receipt lacks an explicit isolated destination')
+            fixture_network_state(item)
+    elif isinstance(value, str) and '://' in value:
+        require(loopback_url(value), 'Fixture contains a non-loopback persisted URL')
+
+
+def validate_fixture_database(con):
+    allowed = {'history', 'operations', 'item_state', 'deletions', 'deletion_targets', 'cleared_history', 'sharing_operations'}
+    for (table,) in con.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall():
+        require(table in allowed, 'Unknown fixture table; persisted state has not been reviewed')
+        if table in ('deletions', 'deletion_targets', 'sharing_operations'):
+            require(not con.execute('SELECT 1 FROM ' + quote(table) + ' LIMIT 1').fetchone(),
+                    'Fixture contains deletion/sharing journals; use a fresh isolated seed')
+        columns = {r[1] for r in con.execute('PRAGMA table_info(' + quote(table) + ')')}
+        if 'data' in columns:
+            for (data,) in con.execute('SELECT data FROM ' + quote(table)):
+                fixture_network_state(json.loads(data))
+
+
+@contextmanager
+def fixture_data_lock(db):
+    """Hold the application's own resident.lock inode through commit.
+
+    Qt QLockFile uses O_EXCL plus flock on Unix, including when removing a stale
+    file. Refuse every preexisting lock; never break one or remove a foreign
+    inode. Our native flock also prevents a startup racing the initial checks.
+    """
+    db = Path(db)
+    path = db.parent / 'resident.lock'
+    fd = os.open(path, os.O_RDWR | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    identity = os.fstat(fd)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        fields = (str(os.getpid()), Path(os.readlink('/proc/self/exe')).name, socket.gethostname(),
+                  Path('/etc/machine-id').read_text().strip(), Path('/proc/sys/kernel/random/boot_id').read_text().strip())
+        os.write(fd, ('\n'.join(fields) + '\n').encode()); os.fsync(fd)
+        before = db.lstat()
+        yield
+        after = db.lstat()
+        require((before.st_dev, before.st_ino) == (after.st_dev, after.st_ino), 'Fixture database inode changed while locked')
+    finally:
+        try:
+            current = path.lstat()
+            if (current.st_dev, current.st_ino) == (identity.st_dev, identity.st_ino): path.unlink()
+        finally:
+            os.close(fd)
+
+
+def grow_database(db, total, stopped_check=lambda: None):
     """Transactional cloning of terminal fixture operations, not real uploads.
 
     Preserve seed payload/preview paths and statuses; each copied journal contains
@@ -378,6 +502,8 @@ def grow_database(db, total):
     with closing(sqlite3.connect(db)) as con, con:
         con.row_factory = sqlite3.Row
         con.execute('BEGIN IMMEDIATE')
+        stopped_check()
+        validate_fixture_database(con)
         version = con.execute('PRAGMA user_version').fetchone()[0]
         require(version in (5, 6, 7), 'Only schema 5..7 fixture databases are supported')
         rows = [dict(r) for r in con.execute('SELECT * FROM history')]
@@ -428,6 +554,7 @@ def grow_database(db, total):
             insert(con, 'operations', dict(operations[row['operation_id']], id=new_op, data=json.dumps(operation).encode()))
             insert(con, 'history', copied)
             insert(con, 'item_state', state)
+        stopped_check()
         require(con.execute('PRAGMA integrity_check').fetchone()[0] == 'ok', 'Cloned fixture failed SQLite integrity')
         shape = con.execute('SELECT count(*),count(DISTINCT operation_id),count(DISTINCT item_id) FROM history').fetchone()
         require(shape[0] == total, 'History count mismatch')
@@ -441,16 +568,19 @@ def grow_database(db, total):
 def grow(args):
     root = private(Path(args.fixture_root).resolve(), directory=True)
     db = private(args.db)
-    require(db.resolve().is_relative_to(root), 'Database must be inside the explicitly selected private fixture')
-    require(not resident_processes(args.runtime), 'Stop the fixture resident and helpers before grow')
-    require(not socket_path(args.runtime).exists(), 'Fixture socket still exists; verify stopped ownership and remove stale socket before retrying')
+    require(db.resolve() == root / 'data/putgd/history.sqlite', 'Database must be the selected fixture data/putgd/history.sqlite')
+    private(db.parent, directory=True)
+    def stopped():
+        require(not resident_processes(args.runtime, db.parent), 'Fixture data or runtime still has an associated resident/helper')
+        require(not socket_path(args.runtime).exists(), 'Fixture socket still exists; verify stopped ownership before retrying')
+    stopped()
     # Never mutate the source golden or an unlabelled default profile.
     require((root / 'config/putgd/config.json').is_file(), 'Fixture must include config/putgd/config.json')
     doc = json.loads((root / 'config/putgd/config.json').read_text())
-    profiles = doc.get('profiles', [])
-    require(profiles and all(re.match(r'^https?://(127\.0\.0\.1|localhost)(:\d+)?(/|$)', p.get('settings', {}).get('endpoint', '')) for p in profiles),
-            'grow requires loopback-only synthetic fixture profiles')
-    return grow_database(db, args.to)
+    fixture_network_state(doc)
+    with fixture_data_lock(db):
+        stopped()
+        return grow_database(db, args.to, stopped)
 
 
 def login_input(path):
@@ -464,7 +594,14 @@ def login_input(path):
     return {'available': True, 'valueRead': False}
 
 
-def main():
+def write_receipt(stream, result):
+    if stream is not None:
+        stream.seek(0)
+        json.dump(result, stream, indent=2); stream.write('\n'); stream.truncate()
+        stream.flush(); os.fsync(stream.fileno())
+
+
+def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, help='New private JSON receipt; refuses to overwrite')
     parser.add_argument('--session', help='Expected active logind session ID')
@@ -483,13 +620,31 @@ def main():
     p = subs.add_parser('keychain'); p.add_argument('phase', choices=('status', 'store', 'check', 'cleanup'))
     p.add_argument('--unlock-lab', action='store_true', help='Request visible unlock of the existing approved blank lab collection only')
     p.add_argument('--before', type=Path); p.add_argument('--login-input'); p.add_argument('--credentials-mode', choices=('keychain', 'session', 'reference-only'), default='keychain')
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     # A directly executed script and its imported keychain helper must share
     # one refusal type (never print arbitrary backend exception text).
     sys.modules.setdefault('native_acceptance', sys.modules[__name__])
     os.umask(0o077)
     result = {'driverSha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(), 'host': socket.gethostname(),
               'at': datetime.now(timezone.utc).isoformat(), 'command': args.cmd}
+    stream = None
+    # Reserve and validate before session discovery (which can activate D-Bus
+    # services), database locking, ui.quit, or any keychain write/unlock.
+    try:
+        mutating = (args.cmd in ('grow', 'login-prepare') or (args.cmd == 'tray' and args.action in ('activate', 'quit'))
+                    or (args.cmd == 'plasma-registration' and args.repair)
+                    or (args.cmd == 'keychain' and args.phase != 'status'))
+        require(not mutating or args.output is not None, 'Mutating commands require a new private --output receipt')
+        if args.output:
+            private(args.output.parent, directory=True)
+            fd = os.open(args.output, os.O_RDWR | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+            stream = os.fdopen(fd, 'w+')
+            write_receipt(stream, dict(result, ok=False, state='reserved-before-action'))
+    except (OSError, Refused) as error:
+        if stream is not None: stream.close()
+        result.update(ok=False, error=str(error) if isinstance(error, Refused) else type(error).__name__)
+        print(json.dumps(result, indent=2))
+        return 2
     try:
         if hasattr(args, 'runtime'):
             result['socket'] = {'path': str(socket_path(args.runtime)), 'utf8Bytes': len(str(socket_path(args.runtime)).encode())}
@@ -511,19 +666,28 @@ def main():
             elif args.cmd == 'keychain':
                 from native_keychain import lifecycle
                 before = json.loads(private(args.before).read_text()) if args.before else None
-                require(before is None or (before.get('ok') and isinstance(before.get('result'), dict)), 'Prior keychain receipt did not succeed')
-                result['result'] = lifecycle(args.phase, env, before['result'] if before else None, args.unlock_lab)
+                require(before is None or before.get('host') == socket.gethostname(), 'Keychain receipt belongs to another host')
+                recovery = before.get('recovery') if before and args.phase == 'cleanup' else None
+                require(before is None or (before.get('ok') and isinstance(before.get('result'), dict)) or isinstance(recovery, dict),
+                        'Prior keychain receipt has no successful store or exact recovery reference')
+                def durable_recovery(value):
+                    result['recovery'] = value
+                    write_receipt(stream, dict(result, ok=False, state='keychain-reference-reserved'))
+                result['result'] = lifecycle(args.phase, env, recovery or (before['result'] if before else None), args.unlock_lab, durable_recovery)
                 result['result'].update({'protectedLoginInput': login_input(args.login_input), 'productCredentialMode': args.credentials_mode,
                                          'productKeychainRoundtripProven': False})
                 if args.credentials_mode != 'keychain':
                     result['result']['productEvidence'] = 'session credentials/reference-only; no product keychain lifecycle proof'
         result['ok'] = True
-    except (Refused, OSError, ValueError, sqlite3.Error, subprocess.TimeoutExpired) as error:
+    except Exception as error:
         result.update(ok=False, error=str(error) if isinstance(error, Refused) else type(error).__name__)
-    if args.output:
-        private(args.output.parent, directory=True)
-        with args.output.open('x') as stream:
-            json.dump(result, stream, indent=2); stream.write('\n')
+        if isinstance(error, Refused) and error.recovery is not None: result['recovery'] = error.recovery
+    try:
+        write_receipt(stream, result)
+    except OSError:
+        result.update(ok=False, receiptError='Cannot finalize reserved receipt; retain this stdout including recovery reference')
+    finally:
+        if stream is not None: stream.close()
     print(json.dumps(result, indent=2))
     return 0 if result['ok'] else 2
 

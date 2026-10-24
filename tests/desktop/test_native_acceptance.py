@@ -1,11 +1,16 @@
 """Safety/shape contracts only. Real compositor evidence is collected separately."""
 import copy
+import contextlib
 from datetime import datetime, timezone
 import json
+import io
+import fcntl
 import os
 from pathlib import Path
 import sqlite3
 import socket
+import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -17,7 +22,7 @@ import native_keychain
 
 
 def fixture(db, count=5):
-    with sqlite3.connect(db) as con:
+    with contextlib.closing(sqlite3.connect(db)) as con, con:
         con.executescript('''
         PRAGMA user_version=7;
         CREATE TABLE history(id TEXT PRIMARY KEY,operation_id TEXT NOT NULL,item_id TEXT NOT NULL,
@@ -56,7 +61,7 @@ class HistoryShape(unittest.TestCase):
         result = driver.grow_database(self.db, 10000)
         self.assertEqual((result['historyRows'], result['independentOperations'], result['operationJournals'], result['itemStates']),
                          (10000, 10000, 10000, 10000))
-        with sqlite3.connect(self.db) as con:
+        with contextlib.closing(sqlite3.connect(self.db)) as con, con:
             count = con.execute('''SELECT count(*) FROM history h
                 JOIN operations o ON o.id=h.operation_id JOIN item_state s ON s.id=h.id AND s.operation_id=h.operation_id
                 WHERE json_extract(o.data,'$.id')=h.operation_id
@@ -75,29 +80,29 @@ class HistoryShape(unittest.TestCase):
             self.assertEqual(journal['settings']['actions']['desktop']['destination'], 'upload')
 
     def test_multi_item_seed_clones_only_matching_item(self):
-        with sqlite3.connect(self.db) as con:
+        with contextlib.closing(sqlite3.connect(self.db)) as con, con:
             journal = json.loads(con.execute("SELECT data FROM operations WHERE id='op-0'").fetchone()[0])
             journal['items'].append({'artifact': {'id': 'unrelated'}})
             con.execute("UPDATE operations SET data=? WHERE id='op-0'", (json.dumps(journal),))
         driver.grow_database(self.db, 6)
-        with sqlite3.connect(self.db) as con:
+        with contextlib.closing(sqlite3.connect(self.db)) as con, con:
             journal = json.loads(con.execute("SELECT data FROM operations WHERE id NOT LIKE 'op-%'").fetchone()[0])
             self.assertEqual(len(journal['items']), 1)
 
     def test_missing_journal_rolls_back_without_partial_clones(self):
-        with sqlite3.connect(self.db) as con:
+        with contextlib.closing(sqlite3.connect(self.db)) as con, con:
             con.execute("DELETE FROM operations WHERE id='op-4'")
         with self.assertRaises(driver.Refused): driver.grow_database(self.db, 10000)
-        with sqlite3.connect(self.db) as con:
+        with contextlib.closing(sqlite3.connect(self.db)) as con, con:
             self.assertEqual(con.execute('SELECT count(*) FROM history').fetchone()[0], 5)
 
     def test_active_operation_is_refused(self):
-        with sqlite3.connect(self.db) as con:
+        with contextlib.closing(sqlite3.connect(self.db)) as con, con:
             con.execute("UPDATE operations SET data=json_set(data,'$.state','running') WHERE id='op-1'")
         with self.assertRaises(driver.Refused): driver.grow_database(self.db, 10)
 
     def test_old_many_rows_five_operations_shape_is_refused(self):
-        with sqlite3.connect(self.db) as con:
+        with contextlib.closing(sqlite3.connect(self.db)) as con, con:
             con.execute("UPDATE history SET operation_id='op-0' WHERE id='item-1'")
         with self.assertRaisesRegex(driver.Refused, 'independent operations'):
             driver.grow_database(self.db, 10000)
@@ -106,6 +111,39 @@ class HistoryShape(unittest.TestCase):
         absent = self.db.with_name('purged.sqlite')
         self.assertEqual(driver.database_snapshot(absent), {'available': False})
         self.assertFalse(absent.exists())
+
+    def test_reused_external_journals_receipts_and_cleanup_are_refused_without_network(self):
+        changes = [
+            ('operations', 'op-0', {'destination': {'providerId': 's3', 'settings': {'endpoint': 'https://original.invalid:443'}}}),
+            ('operations', 'op-0', {'destination': {'providerId': 's3', 'settings': {}}}),
+            ('operations', 'op-0', {'items': [{'uploadJournal': {'uploadId': 'external-multipart-id'}}]}),
+            ('history', 'item-0', {'receipt': {'destination': {'providerId': 'proton'}}}),
+            ('item_state', 'item-0', {'shareReceipt': {'destination': {'providerId': 's3', 'settings': {'endpoint': 'https://original.invalid:443'}}}}),
+            ('operations', 'op-0', {'destination': {'providerId': 's3', 'settings': {'endpoint': 'http://127.0.0.1:9900'},
+                                                  'credentials': {'mode': 'keychain', 'reference': 'original-account'}}}),
+        ]
+        for table, key, change in changes:
+            with self.subTest(table=table, change=change):
+                target = self.db.with_name(str(len(list(self.db.parent.iterdir()))) + '.sqlite')
+                fixture(target)
+                with contextlib.closing(sqlite3.connect(target)) as con, con:
+                    value = json.loads(con.execute(f'SELECT data FROM {table} WHERE id=?', (key,)).fetchone()[0])
+                    value.update(change)
+                    con.execute(f'UPDATE {table} SET data=? WHERE id=?', (json.dumps(value), key))
+                with mock.patch.object(driver, 'command', side_effect=AssertionError('no network/process commands')):
+                    with self.assertRaises(driver.Refused): driver.grow_database(target, 10)
+                with contextlib.closing(sqlite3.connect(target)) as con, con:
+                    self.assertEqual(con.execute('SELECT count(*) FROM history').fetchone()[0], 5)
+
+    def test_concurrent_owner_recheck_rolls_back_all_copies(self):
+        calls = []
+        def stopped():
+            calls.append(True)
+            if len(calls) == 2: raise driver.Refused('owner appeared before commit')
+        with self.assertRaises(driver.Refused): driver.grow_database(self.db, 30, stopped)
+        with contextlib.closing(sqlite3.connect(self.db)) as con, con:
+            self.assertEqual(con.execute('SELECT count(*) FROM operations').fetchone()[0], 5)
+            self.assertEqual(con.execute('SELECT count(*) FROM history').fetchone()[0], 5)
 
 
 class Safety(unittest.TestCase):
@@ -190,13 +228,30 @@ class Safety(unittest.TestCase):
     def test_user_manager_display_hint_must_be_owned_by_current_shell(self):
         with tempfile.TemporaryDirectory(prefix='w495-', dir='/tmp') as root, \
              socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as server:
-            path = Path(root) / 'wayland-0'; server.bind(str(path)); server.listen()
+            path = Path(root) / 'wayland-0'
+            subprocess.run([sys.executable, str(Path(driver.__file__).parents[1] / 'diagnostics/check_socket_paths.py'),
+                            '--socket', str(path)], check=True, capture_output=True)
+            server.bind(str(path)); server.listen()
             identity = driver.process(os.getpid())
             self.assertEqual(driver.verified_wayland(identity, {'WAYLAND_DISPLAY': 'wayland-0'}, root), str(path))
             with self.assertRaises(driver.Refused):
                 driver.verified_wayland(dict(identity, pid=os.getpid()+1), {'WAYLAND_DISPLAY': 'wayland-0'}, root)
             with self.assertRaises(driver.Refused):
                 driver.verified_wayland(identity, {'WAYLAND_DISPLAY': '/tmp/other-display'}, root)
+
+    def test_complete_owned_helper_family_is_visible(self):
+        for exe in ('putgd-capture', 'putgd-kde-region', 'putgd-s3-worker', 'putgd-proton-drive', 'putgd-ui (deleted)'):
+            identity = {'pid': 17, 'exe': '/owned/' + exe, 'startTicks': 1}
+            with self.subTest(exe=exe), mock.patch.object(driver.Path, 'iterdir', return_value=[Path('/proc/17')]), \
+                 mock.patch.object(driver, 'process', return_value=identity), \
+                 mock.patch.object(driver, 'environment', return_value={'XDG_RUNTIME_DIR': '/tmp/p495'}):
+                self.assertEqual(driver.resident_processes('/tmp/p495'), [identity])
+
+    def test_unreadable_owned_helper_environment_cannot_prove_absence(self):
+        with mock.patch.object(driver.Path, 'iterdir', return_value=[Path('/proc/17')]), \
+             mock.patch.object(driver, 'process', return_value={'pid': 17, 'exe': '/owned/putgd-capture'}), \
+             mock.patch.object(driver, 'environment', side_effect=PermissionError()):
+            with self.assertRaises(driver.Refused): driver.resident_processes('/tmp/p495')
 
     def test_login_check_rejects_prior_shell_and_survivor(self):
         old = {'Id': 'old', 'TimestampMonotonic': '1000000', 'bootId': 'boot', 'shell': {'pid': 1}}
@@ -221,6 +276,155 @@ class Safety(unittest.TestCase):
         self.assertTrue(native_keychain.owns_probe(attributes, ref))
         self.assertFalse(native_keychain.owns_probe(dict(attributes, reference='another-reference'), ref))
         self.assertFalse(native_keychain.owns_probe(dict(attributes, application='another-app'), ref))
+
+    def test_failed_store_removes_only_new_owned_item_and_preserves_original_error(self):
+        removed = []
+        recovery = {'reference': 'putgd-acceptance-12345678-1234-1234-1234-123456789abc', 'defaultCollection': '/lab'}
+        with self.assertRaises(driver.Refused) as caught:
+            with native_keychain.failed_store_guard(recovery, removed.append) as owned:
+                owned.update(item='/lab/new-probe', attempted=True)
+                raise driver.Refused('synthetic read verification failed')
+        self.assertEqual(removed, ['/lab/new-probe'])
+        self.assertEqual(str(caught.exception), 'synthetic read verification failed')
+        self.assertEqual(caught.exception.recovery, dict(recovery, cleanup='removed'))
+
+    def test_failed_store_retains_exact_recovery_reference_when_cleanup_refused(self):
+        def refused(item): raise driver.Refused('ownership changed')
+        with self.assertRaises(driver.Refused) as caught:
+            with native_keychain.failed_store_guard({'reference': 'owned-reference'}, refused) as owned:
+                owned.update(item='/lab/new-probe', attempted=True)
+                raise driver.Refused('original store failure')
+        self.assertEqual(str(caught.exception), 'original store failure')
+        self.assertEqual(caught.exception.recovery, {'reference': 'owned-reference', 'cleanup': 'needs-exact-cleanup'})
+
+    def test_ambiguous_create_failure_preserves_reference_without_guessing_item(self):
+        cleanup = mock.Mock()
+        with self.assertRaises(driver.Refused) as caught:
+            with native_keychain.failed_store_guard({'reference': 'owned-reference'}, cleanup) as owned:
+                owned['attempted'] = True
+                raise driver.Refused('CreateItem transport failed')
+        cleanup.assert_not_called()
+        self.assertEqual(caught.exception.recovery['cleanup'], 'needs-exact-cleanup')
+
+
+class FixtureOwnership(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory(prefix='f495-', dir='/tmp'); self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.data = self.root / 'data/putgd'; self.data.mkdir(parents=True, mode=0o700)
+        self.db = self.data / 'history.sqlite'; fixture(self.db)
+        config = self.root / 'config/putgd'; config.mkdir(parents=True)
+        (config / 'config.json').write_text(json.dumps({'profiles': [{'provider': 's3', 'settings': {'endpoint': 'http://127.0.0.1:9900'}}]}))
+        self.args = type('Args', (), {'fixture_root': str(self.root), 'db': str(self.db), 'runtime': str(self.root / 'unrelated'), 'to': 20})()
+
+    def test_unrelated_runtime_cannot_hide_live_database_owner(self):
+        exe = self.root / 'putgd-capture'; shutil.copyfile('/bin/sh', exe); exe.chmod(0o700)
+        runtime = self.root / 'actual-runtime'
+        subprocess.run([sys.executable, str(Path(driver.__file__).parents[1] / 'diagnostics/check_socket_paths.py'),
+                        '--socket', str(driver.socket_path(runtime)), str(driver.socket_path(self.args.runtime))], check=True, capture_output=True)
+        child = subprocess.Popen([str(exe), '-c', 'read value'], stdin=subprocess.PIPE,
+                                 env=dict(os.environ, XDG_DATA_HOME=str(self.root / 'data'), XDG_RUNTIME_DIR=str(runtime)))
+        try:
+            with self.assertRaisesRegex(driver.Refused, 'associated resident/helper'): driver.grow(self.args)
+        finally:
+            child.terminate(); child.wait(timeout=5); child.stdin.close()
+        with contextlib.closing(sqlite3.connect(self.db)) as con, con:
+            self.assertEqual(con.execute('SELECT count(*) FROM history').fetchone()[0], 5)
+
+    def test_database_inode_descriptor_binding_does_not_trust_environment(self):
+        exe = self.root / 'putgd-s3-worker'; shutil.copyfile('/bin/sh', exe); exe.chmod(0o700)
+        subprocess.run([sys.executable, str(Path(driver.__file__).parents[1] / 'diagnostics/check_socket_paths.py'),
+                        '--socket', str(driver.socket_path('/tmp/unrelated-fd')), str(driver.socket_path(self.args.runtime))],
+                       check=True, capture_output=True)
+        with self.db.open('rb') as opened:
+            child = subprocess.Popen([str(exe), '-c', 'read value'], stdin=subprocess.PIPE, pass_fds=(opened.fileno(),),
+                                     env=dict(os.environ, XDG_DATA_HOME='/tmp/elsewhere', XDG_RUNTIME_DIR='/tmp/unrelated-fd'))
+            try:
+                with self.assertRaisesRegex(driver.Refused, 'associated resident/helper'): driver.grow(self.args)
+            finally:
+                child.terminate(); child.wait(timeout=5); child.stdin.close()
+
+    def test_data_guard_excludes_racing_startups_and_never_breaks_old_lock(self):
+        lock = self.data / 'resident.lock'
+        with driver.fixture_data_lock(self.db):
+            with lock.open('r') as second:
+                with self.assertRaises(BlockingIOError): fcntl.flock(second.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            with self.assertRaises(FileExistsError):
+                with driver.fixture_data_lock(self.db): pass
+            self.assertTrue(lock.exists())
+        self.assertFalse(lock.exists())
+        lock.write_text('preexisting foreign lock'); lock.chmod(0o600)
+        with self.assertRaises(FileExistsError): driver.grow(self.args)
+        self.assertEqual(lock.read_text(), 'preexisting foreign lock')
+
+    def test_reused_fixture_changed_to_loopback_still_rejects_external_journal(self):
+        with contextlib.closing(sqlite3.connect(self.db)) as con, con:
+            con.execute("UPDATE operations SET data=json_set(data,'$.destination.providerId','s3','$.destination.settings.endpoint','https://external.invalid:443') WHERE id='op-0'")
+        with self.assertRaises(driver.Refused): driver.grow(self.args)
+        self.assertFalse((self.data / 'resident.lock').exists())
+
+
+class ReceiptReservation(unittest.TestCase):
+    def test_existing_or_invalid_output_prevents_all_actions(self):
+        with tempfile.TemporaryDirectory() as root:
+            path = Path(root) / 'receipt.json'; path.write_text('preserved')
+            for target in (path, Path(root) / 'absent-parent/receipt.json'):
+                with mock.patch.object(driver, 'grow', side_effect=AssertionError('must not mutate')) as grow, \
+                     mock.patch.object(driver, 'session', side_effect=AssertionError('must not activate bus')) as session, contextlib.redirect_stdout(io.StringIO()):
+                    self.assertEqual(driver.main(['--output', str(target), 'grow', '--fixture-root', root,
+                                                  '--db', str(Path(root) / 'db'), '--runtime', '/tmp/r495']), 2)
+                    grow.assert_not_called(); session.assert_not_called()
+            self.assertEqual(path.read_text(), 'preserved')
+
+    def test_existing_receipt_prevents_quit_keychain_and_cache_actions(self):
+        commands = [
+            ['keychain', 'store', '--unlock-lab'],
+            ['tray', 'quit', '--pid', '123', '--exe', '/usr/bin/putgd'],
+            ['login-prepare', '--pid', '123', '--exe', '/usr/bin/putgd', '--runtime', '/tmp/r495'],
+            ['plasma-registration', '--repair', '--probe', '/owned/probe'],
+        ]
+        with tempfile.TemporaryDirectory() as root:
+            path = Path(root) / 'existing.json'; path.write_text('preserved')
+            for command in commands:
+                with self.subTest(command=command), mock.patch.object(driver, 'session', side_effect=AssertionError('must not act')) as session, \
+                     contextlib.redirect_stdout(io.StringIO()):
+                    self.assertEqual(driver.main(['--output', str(path), *command]), 2)
+                    session.assert_not_called()
+            self.assertEqual(path.read_text(), 'preserved')
+
+    def test_failed_store_receipt_is_durable_before_create_and_usable_for_cleanup(self):
+        ref = 'putgd-acceptance-12345678-1234-1234-1234-123456789abc'
+        recovery = {'reference': ref, 'defaultCollection': '/lab', 'cleanup': 'needs-exact-cleanup'}
+        with tempfile.TemporaryDirectory() as root:
+            path, cleanup = Path(root) / 'failed.json', Path(root) / 'cleanup.json'
+            def store(phase, env, before, unlock, sink):
+                self.assertEqual(phase, 'store')
+                sink(recovery)
+                self.assertEqual(json.loads(path.read_text())['recovery']['reference'], ref)
+                raise driver.Refused('original store verification failed', recovery)
+            with mock.patch.object(driver, 'session', return_value=({}, {})), \
+                 mock.patch.object(native_keychain, 'lifecycle', side_effect=store), contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(driver.main(['--output', str(path), 'keychain', 'store']), 2)
+            with mock.patch.object(driver, 'session', return_value=({}, {})), \
+                 mock.patch.object(native_keychain, 'lifecycle', return_value={'removed': True}) as run, contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(driver.main(['--output', str(cleanup), 'keychain', 'cleanup', '--before', str(path)]), 0)
+                self.assertEqual(run.call_args.args[2], recovery)
+            self.assertEqual(json.loads(path.read_text())['error'], 'original store verification failed')
+
+    def test_new_output_is_reserved_before_mutation_and_retains_failure_recovery(self):
+        with tempfile.TemporaryDirectory() as root:
+            path = Path(root) / 'receipt.json'
+            recovery = {'reference': 'exact-owned-reference', 'cleanup': 'needs-exact-cleanup'}
+            def action(args):
+                self.assertEqual(json.loads(path.read_text())['state'], 'reserved-before-action')
+                raise driver.Refused('original failure', recovery)
+            with mock.patch.object(driver, 'grow', side_effect=action), contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(driver.main(['--output', str(path), 'grow', '--fixture-root', root,
+                                              '--db', str(Path(root) / 'db'), '--runtime', '/tmp/r495']), 2)
+            result = json.loads(path.read_text())
+            self.assertEqual(result['error'], 'original failure')
+            self.assertEqual(result['recovery'], recovery)
+            self.assertEqual(path.stat().st_mode & 0o777, 0o600)
 
 
 if __name__ == '__main__':
