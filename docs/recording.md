@@ -89,6 +89,10 @@ All methods go through `putgd-cli` unchanged. `id` is the recording ID.
 | `recording.saveCopy` | `{id, path, overwrite?}` | exports to an absolute path with the format's extension; no upload. Replies once the export starts with `state: exporting`; poll `inspect` until `reviewing`, then `lastExport.status` is `saved` or `failed` |
 | `recording.upload` | `{id, revision}` | the only publishing action. Replies once the export starts with `state: exporting` and the linked `operationId`; see "Exports" below |
 
+If a helper budget-stop event reaches review before a pending `stop` command's
+reply, that reply returns the existing review rather than replacing its clip
+duration, stop details or edit model. A subsequent `stop` returns the same state.
+
 ### Exports
 
 An export can run for minutes: the helper allows 600 s, and a 60 s GIF or a
@@ -969,7 +973,9 @@ and no host-matched library was bundled; the receipt records the result under
   admission of a `recording` payload with the naming template.
 - `recording_service_integration` (`tests/integration/test_recording_service.cpp`):
   the full lifecycle through `LocalServer` with a fake backend, including
-  stop while paused, stale revisions, local copies, export failure, cancel,
+  user stop reasons (including while paused and through the record toggle),
+  record `mode` forwarding and rejection at the session boundary, stale revisions,
+  local copies, export failure, cancel,
   helper events, animation limits, malformed requests, editor exclusion and
   restart interruption, a fake desktop shell selecting a region and framing
   the bar (`overlayPlacement`), cancelling and driving a shell selection
@@ -981,6 +987,9 @@ and no host-matched library was bundled; the receipt records the result under
   for every method that waits on the helper outlasts that helper's deadline.
 - `recording_helper_integration` (`tests/integration/test_recording_helper.cpp`):
   the helper supervisor against a fixture helper (probe caching, lifecycle,
+  delayed graceful cancel in ready/recording/paused/reviewing and successor
+  sessions, active unknown/malformed replies and foreign shutdown envelopes,
+  a budget-stop event before the pending command reply and a subsequent stop,
   progress and helper-initiated stop events, crash, silence, wrong build,
   export timeout, broken probes, missing helper) and, when built, the product
   `putgd-record`: its probe JSON, the identity handshake, the explicit

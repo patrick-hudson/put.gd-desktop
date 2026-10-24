@@ -7,11 +7,16 @@
     "action.invoke recording mode session boundary",
     "command stop reason and budget preservation"
   ],
-  "codePullRequest": null,
-  "documentationPullRequest": null,
+  "codePullRequest": "https://github.com/patrick-hudson/put.gd-desktop/pull/551",
+  "documentationPullRequest": "https://github.com/patrick-hudson/put.gd-desktop/pull/550",
   "mergeOrder": ["code", "documentation"],
   "status": "pending",
   "baselineCommit": "1a70ac7f02b75bc4c75a9d768b2775e837e771a6",
+  "candidateSource": {
+    "commit": "b11c3ba6d64a60ace215aeb8ef9ac9cd8418f142",
+    "tree": "f9d1b5e55bb37d76c2522b6229b52faa5af7b6bb",
+    "executionAccepted": false
+  },
   "testedSource": null,
   "automatedChecks": [],
   "desktopRuns": [],
