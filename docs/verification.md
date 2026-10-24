@@ -14,13 +14,12 @@ rows and current-candidate evidence remain gates.
 Patrick corrected the contract: remove managed startup links for active accounts
 when the installation disappears, and for inactive accounts at next login;
 preserve settings and keep package scripts out of homes. Code PR #544 and docs
-PR #545 remain drafts for exact-package acceptance. The revised code blobs at
-`b15f47d5` passed Mint Qt 6.4.2 startup CTest, 24 shell tests, and bounded real
-user-manager/GLib/production-CLI checks. With the resident quit, the native watch
-removed startup files in 2.103 s and preserved configuration. A synthetic
-AppImage-directory watch kept an eligible replacement and cleaned after the
-last image disappeared. The inactive path was simulated through GLib; no real
-login, AppImage/FUSE or package acceptance is inferred.
+PR #545 remain drafts for exact-package acceptance at `bca1ff98`. Mint's startup
+CTest and 26 shell tests pass; the 14 source-collection tests also passed before
+the final script-only fix. Real desktop testing exposed a fast-exit GNOME scope
+race; a real Fedora GNOME login with the corrected script passes without that
+journal failure. Earlier package cycles are not accepted as the fixed build.
+Exact native and AppImage package/login rows are pending.
 [Current evidence and remaining matrix](evidence/2026-10-24-uninstall-startup-382/README.md).
 The retained-link/TryExec tests at `91864c41` are superseded history.
 
@@ -46,7 +45,7 @@ work packages:
 | Physical Cinnamon latency, 10,000-entry history, burst, slow network | [#379](https://github.com/patrick-hudson/put.gd-desktop/issues/379) | latency stale (current63, 121.273 ms p95); history/burst/slow network not started |
 | Multi-display geometry in VMs | [#380](https://github.com/patrick-hudson/put.gd-desktop/issues/380) | partial: 3-head Cinnamon X11 region, single-output fractional scale |
 | Physical mixed DPI and rotation | [#381](https://github.com/patrick-hudson/put.gd-desktop/issues/381) | blocked: no builder has two outputs; proposed for 0.1.2 |
-| Uninstall login-startup entry | [#382](https://github.com/patrick-hudson/put.gd-desktop/issues/382) | needs Patrick's decision |
+| Uninstall login-startup entry | [#382](https://github.com/patrick-hudson/put.gd-desktop/issues/382) | decision recorded; current acceptance in progress ([evidence](evidence/2026-10-24-uninstall-startup-382/README.md)) |
 | License, notices, provenance, dependencies | [#383](https://github.com/patrick-hudson/put.gd-desktop/issues/383) | AppImage rehearsal on `v26.1022.968-nightly` ([below](#appimage-exact-asset-audit-rehearsal-383--2026-10-22)): provenance passes; notices, complete source, Qt CVEs and codec patents open (#416–#419); DEB/RPM not yet audited |
 | Release campaign and stable signing | [#384](https://github.com/patrick-hudson/put.gd-desktop/issues/384) | promote.py dry run passed on `0435ed6a` under the old scheme; repeat after #373 |
 | KDE/X11 rows, graphical-store installs | [#385](https://github.com/patrick-hudson/put.gd-desktop/issues/385) | proposed for 0.1.2; GNOME/X11 obsolete (GNOME 50 has no X11 session) |

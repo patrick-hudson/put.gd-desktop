@@ -1,0 +1,32 @@
+{
+  "implementationCommit": "18bf9f340f772490877c8a1eafc39fba4bc5708b",
+  "host": "mint-builder (192.168.68.74)",
+  "checkout": "/home/patrick/work/pg382",
+  "boundedBuildCheckoutAndEmbeddedIdentity": [
+    "91864c41bcc4c430d6ca967593fc2420c6dc706a",
+    "{",
+    "  \"schemaVersion\": 1,",
+    "  \"version\": \"26.1024.1182-dev+g91864c41bcc4.dirty\",",
+    "  \"baseVersion\": \"26.1024.1182\",",
+    "  \"packageVersion\": \"26.1024.1182~dev+g91864c41bcc4.dirty\",",
+    "  \"gitCommit\": \"91864c41bcc4c430d6ca967593fc2420c6dc706a\",",
+    "  \"gitTree\": \"8978e584b61233c42032c50d3a1eb191b0fd047a\",",
+    "  \"commitCount\": 1182,",
+    "  \"dirty\": true,",
+    "  \"sourceProvenance\": \"git\"",
+    "}",
+    ""
+  ],
+  "allNineChangedCodeAndTestFilesMatch": true,
+  "sha256": {
+    "packaging/appimage/runtime-source.json": "bc34a3afcfccc5cf6914c4bb8827cf7d2345833e2bb72b3303054cde0cf512fe",
+    "src/app/LoginStartup.cpp": "b3a26ac88487dcd5b19500d9e28782f43b4ce70436bdcf69f978c60bf979b2c3",
+    "src/app/LoginStartup.h": "5e0a2cd6ba08956ba67810404e0066bf0de86a3d51984336f4ae4ee313ba1093",
+    "src/app/appimage-login-start.sh": "f8c211299c6de65dd4384219e8f003a2ae3866c73fc9d2b39f6d7f5c854667e8",
+    "src/main.cpp": "67d128421c76cd46ef9ad01f8b4b7a6d9e889350b34a3440903a9012d3f784c9",
+    "tests/releases/test_appimage_complete_sources.py": "f6d7c77cc8237b91fa2e7f793d448ea7b89b885dd3d12b34e9984310da225437",
+    "tests/unit/test_appimage_login_start.py": "e992c44b7349a3cef81adf11de12efcf57d384c30fbce12c47bd324aff339c38",
+    "tests/unit/test_login_startup.cpp": "6aee644c2ee84b413010272b6d5f80ae00f0695aa1650370ca7e2916185061a6",
+    "tools/releases/appimage_complete_sources.py": "9378db8d2eedf0f176b119c44bd04297e853d5a731e09a9fca08241c1b99abb3"
+  }
+}

@@ -13,7 +13,7 @@ documents the timing, preserved preference and explicit Settings/CLI/MCP route.
 Both PRs remain drafts until current package and real-login acceptance is recorded.
 #382 remains open until its acceptance and merge requirements are met.
 
-## Revised implementation and bounded checks
+## Earlier link-removing implementation and bounded checks
 
 Code commit: `b15f47d589e8f695fddcb93bc1b6130d42c57b43`, tree
 `51a4ea8d1a403aaff9e5a3e2c641d0463672d8b1`.
@@ -68,15 +68,76 @@ installation-ID-bound user units were stopped. Private profiles, failure logs
 and raw evidence remain on Mint. [Checksums](revised/checksums.json) cover these
 sanitized retained files.
 
+## Race fix and source-collection correction
+
+Current code commit: `18bf9f340f772490877c8a1eafc39fba4bc5708b`, tree
+`87225148c48c7d1cc932be5f7853e611cd08b6fe`.
+All five native desktop lifecycle rows completed at `b15f47d5`, then an
+additional live probe found a settings-change/uninstall race. If the executable
+vanished before startup integration was rewritten, the old watch could be
+disarmed without rearming cleanup. That [failed probe](race-fix/before.json)
+left the entry/script behind. The fixed path re-arms cleanup on apply failure;
+a newly armed watch also starts one settling check for an already-missing file.
+The [same probe after the fix](race-fix/after.json) removed both managed files,
+preserved `launchAtLogin:true`, and retained the original `autostart_io` diagnostic.
+Both owned residents exited 0. These are bounded offscreen production-CLI/real
+user-manager checks, not graphical acceptance.
+
+The updated code passed the focused [Qt startup CTest](race-fix/ctest.log),
+[25 shell tests](race-fix/script-tests.log) and
+[14 complete-source tests](race-fix/source-tests.log) on Mint. This bounded
+build's code bytes match the current commit, but its embedded Git identity is
+the older dirty development checkout; exact package identities are recorded
+separately below. [Before](race-fix/before-probe.py) and
+[after](race-fix/after-probe.py) drivers and
+[checksums](race-fix/checksums.json) preserve the regression.
+
+The previous [full package run](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40063676983)
+failed AppImage complete-source verification on a zlib response; it was not a
+successful CI run or accepted AppImage. The pinned SHA-512 was independently
+verified against upstream and Alpine's pinned mirror. A declared HTTPS mirror
+now provides a fallback that must match the unchanged digest; tests reject
+incorrect primary/mirror bytes and unsafe mirror URLs.
+[Verified mirror identity](race-fix/verified-zlib-mirror.json).
+The failed CI response bytes were not retained, so their cause is unknown.
+
+## GNOME next-login cleanup regression
+
+The next exact-package pass used GitHub's PR test merge `69d277ed28d0`
+(`26.1024.1189-dev+g69d277ed28d0`). Its application/packaging code matched
+`18bf9f34`; the merge added only Neon lab tooling and documentation. Fedora,
+Debian, Kubuntu and the Ubuntu VM completed lifecycle checks, but Fedora's
+next-login journal exposed a [failed GNOME scope](login-grace/before-finding.json):
+the missing-installation cleanup exited before GNOME attached its process.
+The former aggregate checked failed units but missed this transient journal
+failure. Those cycles are **not accepted**. Their raw logs, identities, hashes
+and visuals remain private; Debian had an incomplete RFB frame and Ubuntu had
+a login-transition frame, both excluded as visual proof.
+
+Commit `bca1ff98c9dfb3ab7ec11efd8427659adcf7d3d4`, tree
+`76f01e544acf07b40d6d0273318b66580c41b4f2`, gives missing-installation login
+cleanup the same two-second replacement grace as the monitor. The
+[26 script tests](login-grace/script-tests.log), including a native replacement
+arriving during that grace, and [startup CTest](login-grace/ctest.log) pass.
+A [real Fedora GNOME login](login-grace/result.json) with that exact script
+template removed the files, preserved the preference, and recorded a successful
+scope with no startup journal error. This script-only regression is **not an
+exact-package pass**. The [renderer](login-grace/render.py),
+[driver](login-grace/check.py), [visual](login-grace/cleaned-login.png),
+[cleanup receipt](login-grace/release-lock.txt) and
+[checksums](login-grace/checksums.json) are retained.
+
 ## Exact package and real-login acceptance
 
-The [full CI/package run](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40063676983)
-is building the revised clean commit. The required native rows are Mint,
-Kubuntu, Debian, Fedora and the Ubuntu GNOME VM; AppImage additionally covers
-the Aurora 45 KDE VM. Each needs current package identity, real login, active
-cleanup with the resident quit, next-login cleanup without a running watch,
-preserved settings/data, explicit disable, saved visuals and memory results.
-No row is marked passed by the bounded checks above.
+The [current full CI/package run](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40066750880)
+builds clean branch commit `bca1ff98`. Native and AppImage desktop rows are
+pending. The required native rows are Mint, Kubuntu, Debian, Fedora and the
+Ubuntu GNOME VM; AppImage additionally covers the Aurora 45 KDE VM. Each needs
+exact package identity, real login, active cleanup with the resident quit,
+next-login cleanup without a running watch, unchanged settings/data, explicit
+disable, saved visuals and memory results. The driver now checks startup journal
+errors too and requires complete RFB frames after the login screen is gone.
+Earlier source results do not accept the fixed build.
 
 This work accepts the uninstall change only. It does not certify a stable
 release or replace #384's exact-release-asset campaign.
@@ -86,7 +147,7 @@ release or replace #384's exact-release-asset campaign.
 The files in this folder's root predate Patrick's correction. They document
 source `91864c41`, whose native entry used `TryExec` and deliberately stayed
 behind. Its focused startup tests, 18 AppImage script tests and isolated CLI/GIO
-probe passed for that **superseded** behavior. They do not accept `b15f47d5`.
+probe passed for that **superseded** behavior. They do not accept the current implementation.
 The original [build identity](build-identity.json),
 [host/source](host-source.json), [commands](commands.json),
 [CTest](ctest.log), [script output](appimage-script.log),
