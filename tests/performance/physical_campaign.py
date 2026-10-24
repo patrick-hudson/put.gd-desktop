@@ -433,6 +433,20 @@ class Campaign:
         verify_socket_owner(self.socket, self.family)
         return request(self.args.cli, method, params, environment=self.environment, socket=self.socket)
 
+    def ui_last_exit(self):
+        # Bare diagnostics is OperationService-only. The resident adds UI
+        # lifecycle evidence to the diagnostics object inside ui.snapshot.
+        snapshot = self.call('ui.snapshot')
+        diagnostics = snapshot.get('diagnostics') if isinstance(snapshot, dict) else None
+        ui = diagnostics.get('ui') if isinstance(diagnostics, dict) else None
+        require(isinstance(ui, dict) and isinstance(ui.get('lastExit'), dict),
+                'ui_snapshot_exit_receipt_missing_or_invalid')
+        exited = ui['lastExit']
+        require(not exited or (type(exited.get('generation')) is int and exited['generation'] > 0
+                and type(exited.get('code')) is int and exited.get('status') in ('normal', 'crash')),
+                'ui_snapshot_exit_receipt_missing_or_invalid')
+        return exited
+
     def stop(self):
         from campaign_lifecycle import cleanup
         receipt = {'passed': True, 'scope': 'no current resident'}
@@ -940,7 +954,7 @@ class Campaign:
         for name, value in memory_gates(self.result['metrics']['coldClosed']).items():
             self.result['gates']['cold-' + name] = value
         self.persist()
-        previous_exit = self.call('diagnostics')['ui'].get('lastExit', {}).get('generation', 0)
+        previous_exit = self.ui_last_exit().get('generation', 0)
         start = time.monotonic()
         reply = self.call('ui.show', {'view': 'history'})
         require(reply.get('shown') == 'history', 'history_show_ack_mismatch')
@@ -988,7 +1002,7 @@ class Campaign:
         while self.sample('history-closing')['processCount'] != 1:
             require(time.monotonic() < deadline, 'history_helper_did_not_exit')
             time.sleep(.2)
-        exited = self.call('diagnostics')['ui']['lastExit']
+        exited = self.ui_last_exit()
         require(normal_helper_exit(exited, previous_exit), 'history_helper_exit_not_normal_zero')
         self.event('history-helper-normal-exit', owner=helpers[0], lastExit=exited)
         closed = self.interval('history-closed', 300, closed=True)

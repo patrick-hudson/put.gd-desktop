@@ -444,8 +444,18 @@ class FinalizationTests(unittest.TestCase):
                         (10 + measured, {'totals': {'pssBytes': peak}, 'processes': [{'pid': 2, 'role': 'ui'}]})]
                 run.interval = mock.Mock(return_value=rows)
                 run.sample = mock.Mock(side_effect=[{'processes': [{'pid': 2, 'role': 'ui'}]}, {'processCount': 1}])
-                run.call = mock.Mock(side_effect=[{'ui': {'lastExit': {'generation': 0}}},
-                    {'shown': 'history'}, {'ui': {'lastExit': {'generation': 1, 'code': 0, 'status': 'normal'}}}])
+                # Source-derived production contracts, not a recorded response:
+                # diagnostics has no ui; ui.snapshot nests it under diagnostics.
+                exits = iter([{}, {'generation': 1, 'code': 0, 'status': 'normal'}])
+                def response(method, params=None):
+                    if method == 'diagnostics':
+                        return {'journalReady': True, 'activeOperations': 0}
+                    if method == 'ui.snapshot':
+                        return {'diagnostics': {'journalReady': True, 'ui': {
+                            'state': 'stopped', 'pid': 0, 'checkpointBytes': 0, 'lastExit': next(exits)}}}
+                    self.assertEqual((method, params), ('ui.show', {'view': 'history'}))
+                    return {'shown': 'history'}
+                run.call = mock.Mock(side_effect=response)
                 with mock.patch.object(physical_campaign.time, 'sleep'), \
                      mock.patch.object(physical_campaign, 'owned_windows', side_effect=lambda pid: ['0x2'] if pid == 2 else []), \
                      mock.patch.object(physical_campaign.subprocess, 'run'), \
@@ -460,6 +470,28 @@ class FinalizationTests(unittest.TestCase):
                 self.assertAlmostEqual(gate['measuredSeconds'], measured)
                 self.assertEqual(run.result['metrics']['historyOpenPeakFamilyPssBytes'], peak)
                 self.assertAlmostEqual(run.result['metrics']['historyOpenMeasuredSeconds'], measured)
+                self.assertEqual(run.call.call_args_list, [mock.call('ui.snapshot'),
+                    mock.call('ui.show', {'view': 'history'}), mock.call('ui.snapshot')])
+                self.assertEqual([call.args[:2] for call in run.interval.call_args_list],
+                    [('cold-closed', 300), ('history-open', requested), ('history-closed', 300)])
+
+    def test_ui_exit_receipt_requires_nested_production_snapshot_evidence(self):
+        run = physical_campaign.Campaign.__new__(physical_campaign.Campaign)
+        for malformed in (None, {}, {'ui': {'lastExit': {}}}, {'diagnostics': None},
+                {'diagnostics': {'ui': None}}, {'diagnostics': {'ui': {}}},
+                {'diagnostics': {'ui': {'lastExit': None}}},
+                {'diagnostics': {'ui': {'lastExit': {'generation': 1}}}},
+                {'diagnostics': {'ui': {'lastExit': {'generation': '1', 'code': 0, 'status': 'normal'}}}}):
+            with self.subTest(snapshot=malformed):
+                run.call = mock.Mock(return_value=malformed)
+                with self.assertRaisesRegex(EvidenceError, 'ui_snapshot_exit_receipt_missing_or_invalid'):
+                    run.ui_last_exit()
+                run.call.assert_called_once_with('ui.snapshot')
+        for receipt in ({}, {'generation': 7, 'code': 0, 'status': 'normal'},
+                        {'generation': 8, 'code': 1, 'status': 'crash'}):
+            with self.subTest(receipt=receipt):
+                run.call = mock.Mock(return_value={'diagnostics': {'ui': {'lastExit': receipt}}})
+                self.assertEqual(run.ui_last_exit(), receipt)
 
     def test_timed_capture_caller_releases_mouse_after_child_and_keyboard_timeouts(self):
         # Exercise Campaign.capture itself, not just its mouse-release helper.
