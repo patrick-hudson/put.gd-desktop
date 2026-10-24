@@ -468,6 +468,24 @@ def appimage_path_prefix(profile):
     return 'export PATH="$HOME/putgd-lab/bin:$PATH"\n'
 
 
+def appimage_entries_prefix(profile):
+    # AppRun writes its host desktop entries (the KWin capture permission, the
+    # recorder's screencast entry and the putgd-ui/putgd-record entries that
+    # carry the windows' icons) under XDG_DATA_HOME/applications. The compositor
+    # reads the session's own data home, so with the private one below KWin
+    # showed its generic Wayland icon (#523). Point only applications/ at the
+    # session's; put.gd's own data stays private. A directory with files in it
+    # is left as it is.
+    if install_format(profile) != 'appimage':
+        return ''
+    return '''session_data=$(tr '\\0' '\\n' < /proc/$pid/environ | sed -n 's/^XDG_DATA_HOME=//p')
+session_applications=${session_data:-$HOME/.local/share}/applications
+mkdir -p "$session_applications" "$XDG_DATA_HOME"
+[ -L "$XDG_DATA_HOME/applications" ] || rmdir "$XDG_DATA_HOME/applications" 2>/dev/null || :
+[ -e "$XDG_DATA_HOME/applications" ] || ln -s "$session_applications" "$XDG_DATA_HOME/applications"
+'''
+
+
 def guest_session(run, body):
     # Discover the real desktop session's environment, not SSH's empty DISPLAY.
     info = state(run)
@@ -491,7 +509,7 @@ export QT_QPA_PLATFORM={shlex.quote(profile["qt_platform"])}
 export XDG_RUNTIME_DIR=/run/user/$(id -u)
 {appimage_path_prefix(profile)}{native_display_prefix()}export XDG_CONFIG_HOME=$HOME/putgd-lab/config
 export XDG_DATA_HOME=$HOME/putgd-lab/data
-{body}
+{appimage_entries_prefix(profile)}{body}
 '''
     return ssh(run, script)
 
