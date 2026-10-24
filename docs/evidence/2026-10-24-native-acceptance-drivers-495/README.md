@@ -249,9 +249,19 @@ the release receipt hashes/paths. Owned runtimes were removed and packages
 purged. The later candidate fixes inventory of executables marked `(deleted)`;
 the earlier evidence remains bound to its original driver.
 
-The later `64a3257b` candidate adds authenticated GNOME display fallback and is
-reported to pass 19 tests in 1.261 s. Its saved log and desktop result are pending;
-the saved 18-test and graphical records above remain evidence for `6bbb`.
+The later `64a3257b` candidate adds authenticated GNOME display fallback. Its
+saved k72 test log passes 19 tests in 1.261 s; the saved 18-test and graphical
+records above remain evidence for `6bbb`.
+
+On f44, `64a` performed a session-only protocol check at 14:58:21Z: native
+Wayland session `1100`, current `/usr/bin/gnome-shell` PID `144305`, whose
+environment lacked `WAYLAND_DISPLAY`. The manager hint
+`/run/user/1000/wayland-0` was accepted only after the actual socket peer matched
+that compositor's PID/UID and unchanged generation. Both safe JSON receipts were
+hash-verified. No app, package, cover, input, logout or screenshot was involved;
+this establishes session-protocol verification, not GNOME tray or graphical
+acceptance. Lock `codex-495-gnome` was released cleanly at 14:58:34Z, with all
+cleanup lists empty; its receipt and hash are indexed.
 
 ## Keychain results and remaining prerequisites
 

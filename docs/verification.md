@@ -106,8 +106,9 @@ is recorded at `64a3257b`; its maintained commands and prerequisites are documen
 The saved k72 results below belong to the separately identified `6bbbd506` candidate.
 Saved physical k72 KDE/Wayland evidence proves authenticated SNI activation/Quit,
 peer-bound login preparation and same-session refusal, current-session cache
-inspection and a backend-only Secret Service roundtrip/cleanup. Eighteen focused
-tests and the synthetic 10,000-operation command pass. Actual purge snapshots
+inspection and a backend-only Secret Service roundtrip/cleanup. Nineteen current
+safety tests pass; the saved synthetic 10,000-operation command belongs to `6bbb`.
+A current-source f44 compositor-peer check proves session protocol only. Actual purge snapshots
 retain their earlier `826c255a` identity. Real logout/login, rendered tray menu or
 physical click, product QtKeychain lifecycle and full package/release acceptance
 are not established. The bounded m74 functional check remains pending.

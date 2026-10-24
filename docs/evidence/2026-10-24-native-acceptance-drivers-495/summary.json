@@ -3,7 +3,7 @@
   "issue": 495,
   "date": "2026-10-24",
   "scope": "Native acceptance lab driver documentation; no new release acceptance claim",
-  "status": "k72-prior-candidate-evidence-verified-current64a-m74-pending",
+  "status": "current64a-protocol-and-prior-k72-evidence-verified-m74-pending",
   "codePullRequest": "https://github.com/patrick-hudson/put.gd-desktop/pull/554",
   "driver": {
     "path": "tools/lab/native_acceptance.py",
@@ -84,9 +84,12 @@
       "testCount": 19,
       "secondsReported": 1.261,
       "host": "k72",
-      "status": "code-owner-reported-pass",
-      "savedLog": "pending",
-      "scope": "new compositor-peer fallback safety regression; older18-test export preserved"
+      "status": "saved-log-verified-pass",
+      "scope": "new compositor-peer fallback safety regression; older18-test export preserved",
+      "seconds": 1.261,
+      "sha256": "512f78ba15806d799a062a0b095f7c7c5e5bed4c4044ff6eec09a1cd12e69720",
+      "privateLocalLog": "/home/patrick/.t3/worktrees/put.gd/docs-native-acceptance-drivers-495/work/495/tests-gnome-peer.log",
+      "privateHostLog": "k72:/home/patrick/putgd-lab/n495/tests-gnome-peer.log"
     }
   ],
   "desktopRuns": [
@@ -433,6 +436,23 @@
         "unmatchedNotMine": 0
       },
       "verifiedLocalReceipt": true
+    },
+    {
+      "host": "f44",
+      "path": "/home/patrick/putgd-lab/locks/history/2026-10-24T14-58-34Z-release.json",
+      "localExport": "/home/patrick/.t3/worktrees/put.gd/docs-native-acceptance-drivers-495/work/495/f44-release-64a.json",
+      "sha256": "5df9effebe13366edbb2ed447d5b9efdb1dd286f8ad614b05324ca80fe283cde",
+      "event": "release",
+      "session": "codex-495-gnome",
+      "at": "2026-10-24T14:58:34Z",
+      "checkCounts": {
+        "left": 0,
+        "notMine": 0,
+        "preexisting": 0,
+        "unmatchedNotMine": 0
+      },
+      "verifiedOverPinnedSsh": true,
+      "scope": "session-protocol inspection; no app/package/input/logout/visuals"
     }
   ],
   "limitations": [
@@ -850,6 +870,16 @@
         "sha256": "24e948de0964f010e8d4ca0cc9f4e92dc668800b0c6becbc84f244cf397f40fb",
         "bytes": 740,
         "publicCopy": false
+      },
+      "f44/session-64a.json": {
+        "sha256": "8dea137aabdbb39d9ec646f8a6f888a1457cae30e585a9d6a5133d16bc45c3eb",
+        "bytes": 944,
+        "publicCopy": false
+      },
+      "f44/display-peer-64a.json": {
+        "sha256": "c5bb257933bcc21c6fae8339bb7005ced220975f4f080a9226818560e3cafa51",
+        "bytes": 715,
+        "publicCopy": false
       }
     }
   },
@@ -903,7 +933,7 @@
     "introducedAt": "64a3257b20d7aa33cc25d35c07a628becff4036c",
     "reason": "GNOME compositor environment can omit WAYLAND_DISPLAY",
     "guard": "manager display is only a hint; owned socket inside current runtime must have SO_PEERCRED PID/UID matching current logind-bound shell and unchanged process generation",
-    "desktopProof": "pending current-source run; no transfer from k72 older candidate"
+    "desktopProof": "f44 real session/compositor peer verification; no app/tray/graphical acceptance"
   },
   "factualReview": {
     "reviewerThread": "mcp:982a3d27-ea8e-43c3-93f2-6e8d441f49e4",
@@ -914,5 +944,36 @@
       "maintained source advanced to64a; prior proof scopes retained",
       "private wrapper hash/invocation and exact versions/binary metadata added"
     ]
-  }
+  },
+  "protocolChecks": [
+    {
+      "runId": "f44/session-64a",
+      "host": "f44",
+      "driverCommit": "64a3257b20d7aa33cc25d35c07a628becff4036c",
+      "driverSha256": "8f1a8f49fd3f72d574493ebcb43e7ae51db253da7889a0ca51ef7f68ba8ecf4c",
+      "at": "2026-10-24T14:58:21.683061+00:00",
+      "session": {
+        "Id": "1100",
+        "Type": "wayland",
+        "Seat": "seat0",
+        "Desktop": null,
+        "Timestamp": "Sat 2026-10-24 01:20:43 CDT",
+        "TimestampMonotonic": "14140790842",
+        "Leader": "144202",
+        "shell": {
+          "pid": 144305,
+          "exe": "/usr/bin/gnome-shell",
+          "startTicks": 1414103
+        },
+        "bootId": "6fa33c97-6c65-46ff-abfe-f5db7d3825b8"
+      },
+      "shellEnvironmentHadWaylandDisplay": false,
+      "verifiedWaylandSocket": "/run/user/1000/wayland-0",
+      "peerMatchedCurrentCompositor": true,
+      "appLaunched": false,
+      "pointerInputSent": false,
+      "screenshotTaken": false,
+      "scope": "real current-session compositor peer verification only; no GNOME app/tray/graphical acceptance"
+    }
+  ]
 }
