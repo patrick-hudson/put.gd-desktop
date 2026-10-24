@@ -180,6 +180,22 @@ class NativeInventoryTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, r"transitive \$ORIGIN RPATH"):
                 audit.audit_tree(self.root, self.manifest)
 
+class RpmLicenseMetadataTests(unittest.TestCase):
+    def test_license_flag_and_empty_directory_flags_are_preserved(self):
+        def query(argv):
+            if "%{FILENAMES}" in argv[3]:
+                return "/usr/share/doc/putgd/LICENSE\t100644\troot\troot\tl\t.\n/usr/share/putgd\t40755\troot\troot\t\t."
+            return "putgd"
+        with patch.object(native, "command", side_effect=query):
+            self.assertEqual(native.package_metadata(Path("synthetic.rpm"), "RPM")["format"], "RPM")
+        def missing(argv):
+            if "%{FILENAMES}" in argv[3]:
+                return "/usr/share/doc/putgd/LICENSE\t100644\troot\troot\td\t."
+            return "putgd"
+        with patch.object(native, "command", side_effect=missing), self.assertRaisesRegex(ValueError, "%license"):
+            native.package_metadata(Path("synthetic.rpm"), "RPM")
+
+
 class RuntimePackageTests(unittest.TestCase):
     """Qt image plugins the distros package apart from Qt GUI (#189)."""
     def test_deb_and_rpm_require_the_webp_plugin_package(self):
