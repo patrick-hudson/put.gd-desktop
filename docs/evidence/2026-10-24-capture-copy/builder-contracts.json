@@ -1,0 +1,105 @@
+{
+  "source": "8a9415c540bee2ac5a8caa0e7606681bafa528a7",
+  "testsFirstSource": "c777787deb7b708d9bd70f8ba01da7bcafdef480",
+  "host": "f44",
+  "scope": "builder contracts, not compositor acceptance",
+  "logs": [
+    {
+      "name": "red-configure.log",
+      "sha256": "41120b1ec7d84adeb5981ff69ce6561737d953ab41d273d3b3cb295e7b70c1dd",
+      "bytes": 3216,
+      "excerpts": []
+    },
+    {
+      "name": "red-configure2.log",
+      "sha256": "c321809e8ec857c82e0165a594c278928b411739187bbf923a2fdd85d4625647",
+      "bytes": 996,
+      "excerpts": []
+    },
+    {
+      "name": "red-history.log",
+      "sha256": "857cbe644b55b19bdfd96f8b1c038c5e3ff03847c6d649aff95326195c463541",
+      "bytes": 1675,
+      "excerpts": [
+        "FAIL!  : HistoryGui::suppressedAutomaticCopyNamesTheClipboardChangeAndCopyLinkRecovers() Compared values are not the same",
+        "Totals: 2 passed, 1 failed, 0 skipped, 0 blacklisted, 5724ms"
+      ]
+    },
+    {
+      "name": "red-cli.log",
+      "sha256": "979faf066eca1fe976ac6bb58ad585be9b27791b0ef202b29c8b1186ebacc6bb",
+      "bytes": 746,
+      "excerpts": [
+        "FAIL!  : CliContract::realClientHistoryLinkCopyUpdatesPersistedOperationStatus() Compared values are not the same",
+        "Totals: 2 passed, 1 failed, 0 skipped, 0 blacklisted, 262ms"
+      ]
+    },
+    {
+      "name": "red-operations.log",
+      "sha256": "de768f547da86f384effd15a6c94639c989bba3a5262c63a7c8ddd22b52803ee",
+      "bytes": 6158,
+      "excerpts": [
+        "FAIL!  : OperationsTest::historyLinkCopyOnlyRecordsSuccessfulSingleItemRecovery(suppressed) Compared values are not the same",
+        "FAIL!  : OperationsTest::historyLinkCopyOnlyRecordsSuccessfulSingleItemRecovery(failed) Compared values are not the same",
+        "Totals: 5 passed, 2 failed, 0 skipped, 0 blacklisted, 550ms"
+      ]
+    },
+    {
+      "name": "red-gnome.log",
+      "sha256": "4f636ae71eab89d1da9cb895283af702d1eeb29eea2e58ae5ba4b5fab5e4bd48",
+      "bytes": 3171,
+      "excerpts": [
+        "FAIL!  : GnomeAdapterTransportTest::missingEndpointGuidancePreservesOtherFailures(UnknownMethod) Compared values are not the same",
+        "FAIL!  : GnomeAdapterTransportTest::missingEndpointGuidancePreservesOtherFailures(UnknownObject) Compared values are not the same",
+        "FAIL!  : GnomeAdapterTransportTest::missingEndpointGuidancePreservesOtherFailures(UnknownInterface) Compared values are not the same",
+        "FAIL!  : GnomeAdapterTransportTest::missingEndpointGuidancePreservesOtherFailures(AccessDenied) Compared values are not the same",
+        "FAIL!  : GnomeAdapterTransportTest::missingEndpointGuidancePreservesOtherFailures(NoReply) Compared values are not the same",
+        "FAIL!  : GnomeAdapterTransportTest::missingEndpointGuidancePreservesOtherFailures(malformed) Compared values are not the same",
+        "FAIL!  : GnomeAdapterTransportTest::missingEndpointGuidancePreservesOtherFailures(incompatible) Compared values are not the same",
+        "FAIL!  : GnomeAdapterTransportTest::endpointDisappearingAfterDiscoveryGetsGuidanceButMissingMethodsDoNot() 'helperAvailable(source)' returned FALSE. ()",
+        "Totals: 2 passed, 8 failed, 0 skipped, 0 blacklisted, 6309ms"
+      ]
+    },
+    {
+      "name": "red-gnome-corrected.log",
+      "sha256": "224b19d4781b0a2def8d47562ba1f9987a66034eba9ddc160fbcba4f3cb0d604",
+      "bytes": 2259,
+      "excerpts": [
+        "FAIL!  : GnomeAdapterTransportTest::missingEndpointGuidancePreservesOtherFailures(UnknownMethod) Compared values are not the same",
+        "FAIL!  : GnomeAdapterTransportTest::missingEndpointGuidancePreservesOtherFailures(UnknownObject) Compared values are not the same",
+        "FAIL!  : GnomeAdapterTransportTest::missingEndpointGuidancePreservesOtherFailures(UnknownInterface) Compared values are not the same",
+        "FAIL!  : GnomeAdapterTransportTest::endpointDisappearingAfterDiscoveryGetsGuidanceButMissingMethodsDoNot() 'result.error.message.contains(\"gnome-extensions enable putgd@put.gd\")' returned FALSE. ()",
+        "Totals: 6 passed, 4 failed, 0 skipped, 0 blacklisted, 743ms"
+      ]
+    },
+    {
+      "name": "green-configure.log",
+      "sha256": "d883825fbed199a8cebc6c62caea9cec37e72906877c8ca66d6b4c18073df727",
+      "bytes": 842,
+      "excerpts": []
+    },
+    {
+      "name": "green-build.log",
+      "sha256": "70d08f09b3e470796f59ff652e52dadd4b70cf7c093ad32b7ccc9c96c3bbec22",
+      "bytes": 56178,
+      "excerpts": []
+    },
+    {
+      "name": "green-ctest.log",
+      "sha256": "7bd2071e95a7d4f9638bbfcf87922c8ec3142b8d310e3f5f1edb42ce0f7b1f5b",
+      "bytes": 13581,
+      "excerpts": [
+        "100% tests passed, 0 tests failed out of 108",
+        "Total Test time (real) = 894.82 sec"
+      ]
+    },
+    {
+      "name": "green-mcp.log",
+      "sha256": "2c1b2bd587a6f57d4b86ef5ed401aa5c4a0a0bd5bc432ffc72c23f12c764fb7b",
+      "bytes": 8137,
+      "excerpts": [
+        "Ran 5 tests in 21.295s"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "utc": "2026-10-24T03:38:35.042442+00:00",
+  "source": "171b506e02ca37ba75b27dbbbe859502380926ef",
+  "retiredOnlyExactTemporaryRoots": [
+    "/tmp/hfkc",
+    "/tmp/hfkf"
+  ],
+  "archive": "/home/patrick/work/pgcc-fullerror-k72-native-roots.tar.gz",
+  "sha256": "c956f1fbc6a06f053400e0b1439e78e2f27541577226369472d70e4c506be636",
+  "builderAndWorkstationArchiveVerified": true,
+  "processesStoppedAndDesktopReleasedVerifiedCleanBeforeRetirement": true,
+  "historicalEvidenceAndSourcesPreserved": true
+}

@@ -21,9 +21,16 @@ These sources establish API intent. They do not establish graphical acceptance.
 Use normal distro packages: `gnome-shell` 50, its GJS/Mutter GI runtime, the `gnome-extensions` command supplied by Shell, and the standard GLib runtime. The extension preferences GUI is optional. The application additionally links the distro Qt DBus module (`qt6-base-dev`) and needs the distro Wayland platform plugin (`qt6-wayland`). Root packaging installs the extension files; do not install a substitute Shell/GJS runtime.
 
 Native packages install the helper under
-`/usr/share/gnome-shell/extensions/putgd@put.gd/`. After installing the package,
-enable it with `gnome-extensions enable putgd@put.gd`; do not also copy the source
-directory into your user extension directory. A user copy can shadow a newer
+`/usr/share/gnome-shell/extensions/putgd@put.gd/`. For a new installation:
+
+1. Install the matching DEB or RPM.
+2. Log out of GNOME and log back in, so Shell discovers the new system extension.
+3. Run `gnome-extensions enable putgd@put.gd` in the new session. It becomes active
+   immediately; another logout is unnecessary.
+
+Before that first re-login, `gnome-extensions enable` can report
+`Extension "putgd@put.gd" doesn't exist` even though the package installed it.
+Do not also copy the source directory into your user extension directory. A user copy can shadow a newer
 system package. Check `gnome-extensions info putgd@put.gd` and retain the loaded
 path/version in the acceptance receipt. If a previous manual installation exists,
 disable it and remove only that owned user copy before testing the package.
@@ -41,9 +48,10 @@ updated; log out and back in to load the new version" (#131). Bump
 `metadata.json`'s `version` whenever the extension's D-Bus interface changes.
 
 For a standalone helper installation, install the release's matching GNOME ZIP
-with `gnome-extensions install /absolute/path/to/putgd-gnome50-VERSION.zip`, then
-enable it. Keep its identity aligned with the application. A fresh Wayland login
-may be needed for Shell to discover a newly installed extension. Run the resident application with `QT_QPA_PLATFORM=wayland`. Capture and clipboard actions remain available through the production CLI and GUI. Leave the clipboard shortcut unset until the user explicitly assigns one. Binding diagnostics report the actual result for every configured action; existing Shell/system bindings are never overwritten.
+with `gnome-extensions install /absolute/path/to/putgd-gnome50-VERSION.zip`, log out
+and back in so Shell discovers it, then run
+`gnome-extensions enable putgd@put.gd`. Keep its identity aligned with the
+application. Run the resident application with `QT_QPA_PLATFORM=wayland`. Capture and clipboard actions remain available through the production CLI and GUI. Leave the clipboard shortcut unset until the user explicitly assigns one. Binding diagnostics report the actual result for every configured action; existing Shell/system bindings are never overwritten.
 
 Disable with `gnome-extensions disable putgd@put.gd`. Remove a packaged helper
 through the package manager; remove only its owned user directory for a manual

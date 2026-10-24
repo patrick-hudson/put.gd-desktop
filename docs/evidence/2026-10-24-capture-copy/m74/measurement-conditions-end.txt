@@ -1,0 +1,6 @@
+ 20:57:24 up 2 days,  8:55, 35 users,  load average: 1.02, 0.99, 1.01
+               total        used        free      shared  buff/cache   available
+Mem:           31987        9960         817         121       21785       22026
+Swap:           2047         387        1660
+    PID COMMAND         ELAPSED %CPU
+ 308684 qemu-system-x86  107538  111

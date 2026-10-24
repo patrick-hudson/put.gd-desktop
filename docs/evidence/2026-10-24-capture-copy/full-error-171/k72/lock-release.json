@@ -1,0 +1,24 @@
+{
+  "lock": {
+    "owner": "history-full-errors-493-474",
+    "session": "t3-0aa1b31c",
+    "host": "k72",
+    "purpose": "Quiet final171 native DEB KDE full error UI/capture-copy cold and paired memory",
+    "acquired": "2026-10-24T03:06:36Z",
+    "expires": "2026-10-24T03:51:36Z",
+    "heartbeat": "2026-10-24T03:27:54Z"
+  },
+  "releasedBy": "t3-0aa1b31c",
+  "check": {
+    "left": [],
+    "notMine": [],
+    "preexisting": [],
+    "unmatchedNotMine": []
+  },
+  "notes": [
+    "1 process(es) outside the desktop session (no DISPLAY or WAYLAND_DISPLAY; shared SSH work): 1657"
+  ],
+  "event": "release",
+  "host": "k72",
+  "at": "2026-10-24T03:33:52Z"
+}

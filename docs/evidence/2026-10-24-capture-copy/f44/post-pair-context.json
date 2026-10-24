@@ -1,0 +1,20 @@
+{
+  "scope": "driver correction; not a product regression or sampler modification",
+  "host": "f44",
+  "profile": "/tmp/ccff",
+  "initialObservation": "postA spans removal of leftover independent Qt fixture; retained but not final fixture-free pair",
+  "stoppedWitness": {
+    "pid": 3399962,
+    "startTicks": 59166148,
+    "at": "2026-10-24T01:45:44Z"
+  },
+  "finalPair": [
+    "postB",
+    "postC"
+  ],
+  "resident": {
+    "pid": 3401009,
+    "startTicks": 59175275
+  },
+  "admission": "every tracked independent fixture absent plus private-profile process scan empty before each final sampler"
+}

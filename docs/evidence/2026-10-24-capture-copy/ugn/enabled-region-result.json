@@ -1,0 +1,80 @@
+{
+  "action": "region",
+  "cancelled": false,
+  "clipboardRevision": "3",
+  "copyStatus": "copied",
+  "created": "2026-10-24T01:32:08.996Z",
+  "destination": {
+    "credentials": {},
+    "profileId": "",
+    "profileRevision": "",
+    "providerId": "",
+    "settings": {}
+  },
+  "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+  },
+  "id": "0404d155-e8d0-4b1c-ae67-e96c9da7251c",
+  "invocation": "3",
+  "items": [
+    {
+      "artifact": {
+        "bytes": 329,
+        "category": "images",
+        "id": "b7e7d85d-043b-4f8c-8a8c-8a0c672b50bd",
+        "mime": "image/png",
+        "name": "Screen-Capture-2026-10-23-20-32-08.png",
+        "namingPrepared": true,
+        "originalFile": false,
+        "previewPath": "/tmp/ccuf/d/putgd/artifacts/../previews/b7e7d85d-043b-4f8c-8a8c-8a0c672b50bd.png",
+        "sha256": "4cd057352c94995eec949609c8d05af6f63c467002ba69b9f2b1dd9cda2acbb8"
+      },
+      "candidate": "",
+      "concurrencyToken": "",
+      "condition": "",
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      },
+      "local": {
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "path": "/tmp/ccuf/archive/images/Screen-Capture-2026-10-23-20-32-08.png",
+        "status": "saved"
+      },
+      "objectReference": {},
+      "phase": "stored",
+      "publicationId": "30c491bc-2302-4908-ab8c-b70b51aac472",
+      "receipt": {
+        "concurrencyToken": "",
+        "destination": {
+          "credentials": {},
+          "profileId": "",
+          "profileRevision": "",
+          "providerId": "",
+          "settings": {}
+        },
+        "directUrl": "",
+        "objectReference": {},
+        "publicationId": "",
+        "schemaVersion": 1
+      },
+      "remoteStatus": "not_requested",
+      "shareIntent": "",
+      "shareIntentOptions": {},
+      "shareStatus": "not_requested",
+      "uploadProgress": null,
+      "uploadStatus": "local_only"
+    }
+  ],
+  "phase": "completed",
+  "requestTimeoutMs": null,
+  "settingsRevision": "5c9ce1b815b8d16cc531646d2dce181bda1dc215627b24ab27aa8494f1575f94",
+  "state": "completed"
+}

@@ -1,0 +1,22 @@
+********* Start testing of HistoryGui *********
+Config: Using QtTest library 6.8.2, Qt 6.8.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 14.2.0), debian 13
+PASS   : HistoryGui::initTestCase()
+QWARN  : HistoryGui::fullFailureTextIsPaintedWithoutClipping(list-1000-gnome-guide) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::fullFailureTextIsPaintedWithoutClipping(list-1000-gnome-guide)
+QWARN  : HistoryGui::fullFailureTextIsPaintedWithoutClipping(list-1000-long-token) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::fullFailureTextIsPaintedWithoutClipping(list-1000-long-token)
+QWARN  : HistoryGui::fullFailureTextIsPaintedWithoutClipping(list-600-gnome-guide) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::fullFailureTextIsPaintedWithoutClipping(list-600-gnome-guide)
+QWARN  : HistoryGui::fullFailureTextIsPaintedWithoutClipping(list-600-long-token) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::fullFailureTextIsPaintedWithoutClipping(list-600-long-token)
+QWARN  : HistoryGui::fullFailureTextIsPaintedWithoutClipping(gallery-1000-gnome-guide) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::fullFailureTextIsPaintedWithoutClipping(gallery-1000-gnome-guide)
+QWARN  : HistoryGui::fullFailureTextIsPaintedWithoutClipping(gallery-1000-long-token) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::fullFailureTextIsPaintedWithoutClipping(gallery-1000-long-token)
+QWARN  : HistoryGui::fullFailureTextIsPaintedWithoutClipping(gallery-600-gnome-guide) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::fullFailureTextIsPaintedWithoutClipping(gallery-600-gnome-guide)
+QWARN  : HistoryGui::fullFailureTextIsPaintedWithoutClipping(gallery-600-long-token) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::fullFailureTextIsPaintedWithoutClipping(gallery-600-long-token)
+PASS   : HistoryGui::cleanupTestCase()
+Totals: 10 passed, 0 failed, 0 skipped, 0 blacklisted, 2148ms
+********* Finished testing of HistoryGui *********

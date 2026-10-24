@@ -1,0 +1,96 @@
+{
+  "host": "f44",
+  "source": "171b506e02ca37ba75b27dbbbe859502380926ef",
+  "version": {
+    "schemaVersion": 1,
+    "version": "26.1024.1140-dev+g171b506e02ca",
+    "baseVersion": "26.1024.1140",
+    "packageVersion": "26.1024.1140~dev+g171b506e02ca",
+    "gitCommit": "171b506e02ca37ba75b27dbbbe859502380926ef",
+    "gitTree": "2942cc06bd2361cf915e9d5ffbeeadd7eaa75368",
+    "commitCount": 1140,
+    "dirty": false,
+    "sourceProvenance": "git"
+  },
+  "session": {
+    "DISPLAY": ":0",
+    "WAYLAND_DISPLAY": "wayland-0",
+    "XDG_CURRENT_DESKTOP": "GNOME",
+    "XDG_SESSION_TYPE": "wayland"
+  },
+  "installedFilesMatchAuditedPackage": [
+    {
+      "path": "usr/bin/putgd",
+      "size": 6550056,
+      "mode": "0755",
+      "sha256": "e50fd82c68623439e61336abd3e11715d550202354eb03708f47d7eae7c42dec"
+    },
+    {
+      "path": "usr/bin/putgd-b2-worker",
+      "size": 541264,
+      "mode": "0755",
+      "sha256": "4604a1f35641e1aa54eb395164a5845ce9e3c3c7a2078d6d7a76a9f753999615"
+    },
+    {
+      "path": "usr/bin/putgd-capture",
+      "size": 1011472,
+      "mode": "0755",
+      "sha256": "473fe21635de775b71c0654511d61fca3197e0366ef076cda196deedacc58b98"
+    },
+    {
+      "path": "usr/bin/putgd-cli",
+      "size": 3482808,
+      "mode": "0755",
+      "sha256": "081b3ef497a1b8bdd7638bd6b0ed6a55b147fa68a51c708fcaf2ae50afb9db7d"
+    },
+    {
+      "path": "usr/bin/putgd-kde-region",
+      "size": 1089176,
+      "mode": "0755",
+      "sha256": "971021ff3b2a8d38553428ef3fd500dd3d35b15d1a8cb22e26ed71db61d26084"
+    },
+    {
+      "path": "usr/bin/putgd-launcher",
+      "size": 255,
+      "mode": "0755",
+      "sha256": "27bc4f17ce1f37189474b27f625cd4b13808bfffff6f9c8d0457f89d183e1609"
+    },
+    {
+      "path": "usr/bin/putgd-record",
+      "size": 1504200,
+      "mode": "0755",
+      "sha256": "afc69f025fec8ac3de8810667a8c2c41d2b3ecd7dafd5d649d3d858e4366c877"
+    },
+    {
+      "path": "usr/bin/putgd-s3-worker",
+      "size": 622096,
+      "mode": "0755",
+      "sha256": "bc160cb6b8f6a9ba99ab66ba877967f20b146924b19b72f80c6a2550ae0bc7a9"
+    },
+    {
+      "path": "usr/bin/putgd-ui",
+      "size": 3884536,
+      "mode": "0755",
+      "sha256": "0e412f2968384677be35beed19aa92340b0c67b111d01873e01dc437dd6ef6ca"
+    },
+    {
+      "path": "usr/lib64/putgd/libputgd-s3.so",
+      "size": 443608,
+      "mode": "0755",
+      "sha256": "944c1065c642082ddeaee93091631156d1e3ad299e1171ba1e4a3ec96b2caa0f"
+    },
+    {
+      "path": "usr/share/gnome-shell/extensions/putgd@put.gd/extension.js",
+      "size": 63116,
+      "mode": "0644",
+      "sha256": "cf3138f2bb8a068805d181ba0be11aa59264e6ffde736eb27a7f762f85606106"
+    },
+    {
+      "path": "usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json",
+      "size": 248,
+      "mode": "0644",
+      "sha256": "690be5bcfd1ee05783cd57a78851c56c0fe624131711b254cb46d062d0cb8046"
+    }
+  ],
+  "userHelperAbsent": true
+}

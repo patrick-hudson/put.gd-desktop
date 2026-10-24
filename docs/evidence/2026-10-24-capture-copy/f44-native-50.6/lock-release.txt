@@ -1,0 +1,6 @@
+f44 (Fedora 44 GNOME Wayland): released
+  capture-copy-native-fedora-followup (t3-0aa1b31c), acquired 2026-10-24T02:28:45Z
+  purpose: Quiet native RPM fresh extension discovery and current GNOME50.6 capture-copy/cold+paired memory on frozen8a
+  note: 1 process(es) outside the desktop session (no DISPLAY or WAYLAND_DISPLAY; shared SSH work): 1271
+  receipt on the host: /home/patrick/putgd-lab/locks/history/2026-10-24T02-52-11Z-release.json
+  Tell the next session in the queue and your coordinator

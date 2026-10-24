@@ -1,0 +1,36 @@
+{
+  "allTrackedIndependentFixturePidsAbsent": true,
+  "privateProfileProcessScan": [],
+  "trackedIndependentFixtures": [
+    {
+      "pid": 32099,
+      "startTicks": "310410",
+      "role": "Qt"
+    },
+    {
+      "pid": 33386,
+      "startTicks": "337862",
+      "role": "Qt"
+    },
+    {
+      "pid": 33664,
+      "startTicks": "341649",
+      "role": "Qt"
+    },
+    {
+      "pid": 33440,
+      "startTicks": "338626",
+      "role": "cover"
+    },
+    {
+      "pid": 33592,
+      "startTicks": "340873",
+      "role": "cover"
+    },
+    {
+      "pid": 33542,
+      "startTicks": "340088",
+      "role": "GTK"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "source": "171b506e02ca37ba75b27dbbbe859502380926ef",
+  "host": "k72",
+  "utc": "2026-10-24T03:32:44.197260+00:00",
+  "bootId": "c9926bb9-3536-46ef-95c2-2161ab5a245a",
+  "kernel": "7.0.0-38-generic",
+  "unchangedBaselineRuntimePackages": {
+    "cinnamon": "cinnamon  not-installed",
+    "kwin-wayland": "kwin-wayland 4:6.6.6-0ubuntu0.1 installed",
+    "plasma-workspace": "plasma-workspace 4:6.6.6-0ubuntu0.1 installed",
+    "libqt6core6t64": "libqt6core6t64 6.10.2+dfsg-7 installed",
+    "libgtk-4-1": "libgtk-4-1 4.22.4+ds-0ubuntu0.1 installed",
+    "gir1.2-gtk-4.0": "gir1.2-gtk-4.0 4.22.4+ds-0ubuntu0.1 installed"
+  },
+  "removedOnlyOwnedNewPackages": [
+    "putgd"
+  ],
+  "passed": true
+}

@@ -15,7 +15,7 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/patrick-hudson/put.gd-desktop/ci.yml?branch=nightly&style=for-the-badge&label=CI&logo=githubactions&logoColor=white&labelColor=1b1e25)](https://github.com/patrick-hudson/put.gd-desktop/actions/workflows/ci.yml)
 [![Nightly](https://img.shields.io/github/actions/workflow/status/patrick-hudson/put.gd-desktop/nightly.yml?branch=nightly&style=for-the-badge&label=Nightly&logo=githubactions&logoColor=white&labelColor=1b1e25)](https://github.com/patrick-hudson/put.gd-desktop/actions/workflows/nightly.yml)
 [![Release](https://img.shields.io/github/actions/workflow/status/patrick-hudson/put.gd-desktop/release.yml?branch=main&style=for-the-badge&label=Release&logo=githubactions&logoColor=white&labelColor=1b1e25)](https://github.com/patrick-hudson/put.gd-desktop/actions/workflows/release.yml)
-[![Latest nightly](https://img.shields.io/github/v/release/patrick-hudson/put.gd-desktop?include_prereleases&filter=*-nightly.*&style=for-the-badge&label=nightly&color=9bbcff&labelColor=1b1e25)](https://github.com/patrick-hudson/put.gd-desktop/releases)
+[![Latest nightly](https://img.shields.io/github/v/release/patrick-hudson/put.gd-desktop?include_prereleases&filter=*-nightly&style=for-the-badge&label=nightly&color=9bbcff&labelColor=1b1e25)](https://github.com/patrick-hudson/put.gd-desktop/releases)
 [![Downloads](https://img.shields.io/github/downloads/patrick-hudson/put.gd-desktop/total?style=for-the-badge&color=62d69b&labelColor=1b1e25)](https://github.com/patrick-hudson/put.gd-desktop/releases)
 [![License](https://img.shields.io/badge/license-MIT-526386?style=for-the-badge&labelColor=1b1e25)](LICENSE)
 
@@ -185,7 +185,8 @@ Plus `SHA256SUMS`, `release-builds.json` (full build receipts), a combined `putg
 
 ```bash
 repo=patrick-hudson/put.gd-desktop
-tag=$(gh release list -R "$repo" --exclude-drafts --json tagName -q '[.[].tagName | select(test("-nightly\\."))][0]')
+tag=$(gh release list -R "$repo" --exclude-drafts --json tagName -q '[.[].tagName | select(endswith("-nightly"))][0]')
+[ -n "$tag" ] || { echo "No published nightly release found" >&2; exit 1; }
 gh release download "$tag" -R "$repo" -p '*ubuntu24.04*.deb' -p SHA256SUMS   # or *ubuntu26.04*, *debian13*, *fedora44*, *.AppImage
 sha256sum --check --ignore-missing SHA256SUMS
 ```
@@ -199,7 +200,8 @@ sudo apt install ./putgd-*.deb
 sudo dnf install ./putgd-*.rpm
 # AppImage
 chmod +x putgd-*.AppImage && ./putgd-*.AppImage
-# GNOME 50 only: enable the capture extension, then log out and back in
+# GNOME 50 only: after the DEB/RPM install, log out and back in first.
+# Then enable the capture extension in the new session:
 gnome-extensions enable putgd@put.gd
 ```
 
