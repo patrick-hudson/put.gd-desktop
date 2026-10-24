@@ -123,6 +123,27 @@
         {"name": "zlib", "license": "Zlib"}
       ],
       "note": "The runtime is the start of the AppImage file itself, not a file in the AppDir. appimage-runtime-LICENSE names the libraries linked into it statically."
+    },
+    {
+      "id": "mimalloc",
+      "name": "mimalloc (statically linked into the AppImage runtime)",
+      "version": {
+        "from": "lock",
+        "key": "mimalloc"
+      },
+      "source": {
+        "from": "lock",
+        "key": "mimalloc"
+      },
+      "license": "MIT",
+      "licenseTexts": {
+        "MIT": "LICENSE"
+      },
+      "licenseFiles": [
+        "LICENSE"
+      ],
+      "files": [],
+      "note": "The exact runtime mi_version returns 217, identifying mimalloc 2.1.7. Its source is included in the complete source asset and its original MIT notice is retained here."
     }
   ]
 }

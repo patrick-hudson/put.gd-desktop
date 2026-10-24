@@ -21,7 +21,7 @@ def expected_members(version):
         'putgd-' + version + '-fedora44-x86_64.rpm',
         'putgd-' + version + '-x86_64.AppImage',
         'putgd-' + version + '-x86_64.AppImage.zsync',
-        'putgd-' + version + '-appimage-media-source.tar.gz',
+        'putgd-' + version + '-appimage-complete-source.tar.gz',
         'putgd-' + version + '-source.tar.gz',
         'putgd-gnome50-' + version + '.zip', 'release-builds.json', 'proton-source-catalog.json',
         # Each package's CycloneDX SBOM (tools/releases/sbom.py, #420).

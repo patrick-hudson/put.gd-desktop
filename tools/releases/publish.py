@@ -217,7 +217,7 @@ def publish_nightly(args, release, listed):
             'combined ZIP and SHA256SUMS are available separately. DEB/RPM use distro Qt. '
             f'AppImage bundles dynamically linked Qt {APPIMAGE_QT} and requires glibc 2.39 or newer. '
             'Its screen recorder bundles x264, x265 and a GPL FFmpeg, so the AppImage is a GPL-2.0-or-later '
-            'combined work; their corresponding source is the appimage-media-source tarball. '
+            'combined work; their corresponding source is the appimage-complete-source tarball. '
             'The AppImage carries zsync update information for the nightly channel, so AppImageUpdate, '
             'Gear Lever and AppImageLauncher can update it with the .zsync asset. '
             'GNOME 50 requires the included host extension.\n\n'
@@ -333,7 +333,7 @@ def main():
                      + changes_section(args.tag, producer) +
                      f'DEB/RPM use distro Qt. AppImage dynamically bundles Qt {APPIMAGE_QT} and requires glibc 2.39 or newer. '
                      'Its screen recorder bundles x264, x265 and a GPL FFmpeg, so the AppImage is a GPL-2.0-or-later combined work; '
-                     'their corresponding source is the appimage-media-source tarball. '
+                     'their corresponding source is the appimage-complete-source tarball. '
                      'The AppImage carries zsync update information for the stable channel, so AppImageUpdate, '
                      'Gear Lever and AppImageLauncher can update it with the .zsync asset. '
                      'GNOME 50 requires the included host extension. Flatpak needs no host helper, except that Plasma Wayland loses direct screenshots; it is tracked in issue #83 (docs/flatpak.md).\n\n'

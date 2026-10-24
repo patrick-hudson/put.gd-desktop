@@ -10,7 +10,7 @@ import subprocess
 from audit_native import PROGRAMS, sha256
 from verify_tag import verify
 import proton_sources
-import appimage_media_sources
+import appimage_complete_sources
 import appimage_update
 import debug_symbols
 from release_bundle import create_gnome_zip, create_release_bundle
@@ -135,10 +135,10 @@ def collect(root, inputs, output, tag, repository=appimage_update.REPOSITORY):
     sboms, receipts['sbom'] = verified_sboms(inputs / 'release-sbom', release, {**packages, 'appimage': image})
     selected += sboms
     # The image is a GPL combined work: its codec sources ship beside it.
-    media_receipt = json.loads((directory / appimage_media_sources.RECEIPT_NAME).read_text())
-    media_source = appimage_media_sources.verify(directory, media_receipt, receipt)
-    selected.append((media_source, appimage_media_sources.archive_name(release['version'])))
-    receipts['appimageMediaSource'] = media_receipt
+    media_receipt = json.loads((directory / appimage_complete_sources.RECEIPT_NAME).read_text())
+    media_source = appimage_complete_sources.verify(directory, media_receipt, receipt)
+    selected.append((media_source, appimage_complete_sources.archive_name(release['version'])))
+    receipts['appimageCompleteSource'] = media_receipt
     source, source_receipt, source_build = verified_source(inputs / 'release-native-ubuntu24.04', release)
     selected.append((source, 'putgd-' + release['version'] + '-source.tar.gz'))
     receipts['source'] = source_receipt

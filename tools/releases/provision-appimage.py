@@ -86,7 +86,7 @@ def main():
     records.append({'name': 'ffmpeg', 'commit': item['commit'], 'source': str(source), 'configure': configure})
     # Licence texts only: the Qt modules the image bundles and the ICU build
     # shipped with Qt (tools/releases/appimage_notices.py).
-    for item in [*lock['qtLicenseSources'], lock['icu']]:
+    for item in [*lock['qtLicenseSources'], lock['icu'], lock['mimalloc']]:
         name = item['repository'].rsplit('/', 1)[1].removesuffix('.git')
         source = sources / name
         checkout(item, source, license_only=True)
