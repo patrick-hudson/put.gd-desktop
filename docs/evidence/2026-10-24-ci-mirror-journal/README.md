@@ -19,8 +19,8 @@ direct source URIs are changed to the official archive as well. Existing
 `Signed-By`, suites, components and unrelated repositories stay intact.
 The archive/security mirror fallback stays available. Package installation keeps
 the existing bounded retry/backoff/diagnostics machinery, with three 300-second
-AppImage attempts and a 120-second silence bound per attempt. A failed canonical
-mirror can still consume those bounds; this does not promise universal mirror
+AppImage build-dependency attempts and a 120-second silence bound per attempt. A
+failed canonical mirror can still consume those bounds; this does not promise universal mirror
 availability. It specifically removes the reported slow Azure dependency.
 
 No AppImage package snapshot, cache key or cache save is added. The observed
@@ -52,9 +52,23 @@ snapshots, SDK pins and all Windows jobs remain unchanged.
   enabled. [Replay](replay/mirror_probe.py) uses an ephemeral fixture signing key
   and no installed-package/system-APT state. No fixture private key is retained.
 
-**Pending merge gate at this checkpoint:** real hosted AppImage installation
-and required CI at the exact code head. The coordinator owns event monitoring.
-These targeted results alone do not close #500's real-workflow requirement.
+**Real hosted workflow passed:** [run 40046399060, AppImage job
+120729064869](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40046399060/job/120729064869),
+head `5683c71f4b99f2c64203b67836653f0d41b23baa`, base `50053b01`.
+The mirror rewrite succeeded at 00:44:08Z, changing `apt-mirrors.txt`.
+Standard build dependencies completed from 00:44:08 to 00:47:10Z: **182 seconds**,
+with official archive downloads and no logged retry/stopped attempts. The whole
+AppImage job succeeded from 00:43:59 to 00:55:54Z (11m55s), including restored
+dependency verification and fresh notices. Required `CI` passed; Linux24/26,
+sanitizer, native packages, SBOM and pipewire checks passed. `collect` and cache
+pruning were intentionally skipped; this is not evidence for those jobs or a
+release publication. [Bound head/job/timings](hosted-run-receipt.json),
+[mirror/install log](hosted-mirror-and-install.log),
+[restored dependency/notices log](hosted-restored-dependencies.log).
+Only completed-job evidence was collected; the child did not poll/watch CI.
+This healthy hosted run plus the deterministic slow-primary and signed fallback
+controls establishes the scoped #500 change; a future official-mirror outage
+remains bounded by the installer and is not promised impossible.
 
 ## #393: durable partial state precedes released operation ownership
 
@@ -103,12 +117,28 @@ hashes are in each result. The diagnostic uses the committed patch plus
 `taskset -c 0 test_operations resumableUploadJournalSurvivesForRetry`, one hog on
 CPU 0, scale 3 and a 40-second outer timeout. Its socket preflight is retained.
 
-**Pending merge gates at this checkpoint:** final-head Ubuntu24.04 and 26.04
-builds, repeated loaded `operations_contract` through the builder stress lane,
-and required CI. The first Ubuntu24 configure found a missing XTest development
+**Ubuntu24.04 completed:** distro Qt 6.4.2, clean final head; 10/10 full
+`operations_contract` runs through the unmodified builder stress lane, all exit
+codes zero, no failures or interruption. Runs take 86.86–90.40 seconds
+(median 88.02). Full logs confirm 112 QtTest passes, including the resumable
+journal case, with zero failures/skips. [Ledger](stress-u24/ledger.json),
+[summary](stress-u24/summary.md), [final full log](stress-u24/iteration-010-full.log),
+[OS/compiler/Qt/build/hash/environment](context-u24.json),
+[socket preflight](stress-u24-preflight.json). Passing JUnit stdout is truncated
+by CTest's default; the saved full logs supplement its per-iteration outcomes.
+
+**Pending merge gate at this checkpoint:** final-head Ubuntu26.04 repeated loaded
+stress. Its target built on distro Qt 6.10.2; the ten-run campaign started after
+Ubuntu24 finished, keeping one stress suite per physical host. Required code CI
+has passed on the same exact head. The first Ubuntu24 configure found a missing XTest development
 package ([failure](configure-u24-failed-missing-xtest.log)); the correction installs
 standard `libxcb-xtest0-dev xvfb xauth dbus-daemon` inside its disposable container.
-No host desktop runtime changes were made.
+No host desktop runtime changes were made. Both containers' exact
+[identities](container-identities.txt), [CPU topology](host-cpu.txt),
+[Ubuntu24 packages](packages-u24.txt) and [Ubuntu26 packages](packages-u26.txt)
+are retained. The completed Ubuntu24 container had only its idle `sleep` process
+([check](cleanup-u24-processes.txt)) and was stopped by its exact task-owned name
+([receipt](cleanup-u24-stop.txt)); its files/source/evidence remain intact.
 
 ## Retention and boundaries
 

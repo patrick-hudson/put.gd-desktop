@@ -115,8 +115,8 @@ public asset set. See [releases](release.md).
 The AppImage job excludes the hosted runner's Azure Ubuntu mirror before APT
 installation (#500). It keeps the runner's official archive/security fallback
 and signing settings, including legacy direct and folded deb822 source URIs.
-Its package attempts have a 300-second deadline, a 120-second silence limit and
-three attempts; the shared installer records failures and retry outcomes. It
+Its standard build-dependency attempts have a 300-second deadline, a 120-second
+silence limit and three attempts; the shared installer records failures and retry outcomes. It
 adds no AppImage package snapshot to the shared 10 GB cache. Native container
 snapshots and dependency pins are unchanged. See the
 [independent mirror and journal-retry evidence](evidence/2026-10-24-ci-mirror-journal/README.md)
