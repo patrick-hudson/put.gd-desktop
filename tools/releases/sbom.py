@@ -55,6 +55,10 @@ QT_EMBEDDED = (('harfbuzz', 'harfbuzz'), ('libjpeg-turbo', 'libjpeg-turbo'), ('l
 AWS_REPOSITORIES = {'s2n': 'https://github.com/aws/s2n-tls'}
 AWS_UNSHIPPED = ('aws-lc', 'aws-verification-model-for-libcrypto')
 PROTON_BUNDLED = ('bundled-js', 'embedded-runtime')
+# Dispositions for these libraries describe a particular build, not a version
+# range. Hash the package's actual files (including FFmpeg's compiled configure
+# string), and revoke the disposition if a formerly omitted tool is deployed.
+UNSHIPPED_TOOLS = {'ffmpeg': {'ffmpeg', 'ffprobe', 'ffplay', 'zmqsend'}, 'icu': {'genrb'}}
 
 
 def sha256(path):
@@ -216,6 +220,27 @@ def proton_components(notices):
     return found
 
 
+def appimage_scope_properties(root, item):
+    identifier = item['id']
+    if identifier not in UNSHIPPED_TOOLS or not item.get('files'):
+        return []
+    files = {}
+    for name in sorted(item['files']):
+        path = root / name
+        if not path.resolve().is_relative_to(root.resolve()) or not path.is_file():
+            raise ValueError('Invalid disposition component file: ' + name)
+        files[name] = sha256(path)
+    digest = hashlib.sha256(json.dumps(files, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+    names = {path.name for path in root.rglob('*') if path.is_file()}
+    absent = not names.intersection(UNSHIPPED_TOOLS[identifier])
+    if identifier == 'icu':
+        # Only data, common and internationalisation libraries were audited.
+        # In particular libicutu (tool utilities) must not acquire this waiver.
+        absent = absent and all(re.fullmatch(r'libicu(?:data|i18n|uc)\.so(?:\.[0-9]+)*', name)
+                                for name in names if name.startswith('libicu'))
+    return [('putgd:filesSha256', digest), ('putgd:toolsAbsent', str(absent).lower())]
+
+
 def appimage_components(root):
     inventory = json.loads((root / 'usr/share/doc/putgd/bundled-components.json').read_text())
     found = []
@@ -235,7 +260,7 @@ def appimage_components(root):
         key = 'qt' if identifier.startswith('qt') and identifier != 'qtkeychain' else identifier
         found.append(component(identifier, version, generic_purl(identifier, version), 'bundled', cpes=cpes_for(key, version),
                                license=item.get('license'), repository=(source.get('repository') or '').removesuffix('.git') or None,
-                               commit=source.get('commit')))
+                               commit=source.get('commit'), properties=appimage_scope_properties(root, item)))
         if key == 'qt':
             found += [entry for entry in (qt_embedded(identifier, embedded) for embedded in item.get('embedded', [])) if entry]
     found += aws_components(json.loads((root / 'usr/share/putgd/dependency-lock.json').read_text()))
@@ -322,13 +347,33 @@ def scan(grype, sboms, output):
 
 def load_policy(path=POLICY):
     policy = json.loads(path.read_text())
-    if policy.get('schemaVersion') != 1 or not set(policy['severities']) <= set(SEVERITIES):
+    if policy.get('schemaVersion') not in (1, 2) or not set(policy['severities']) <= set(SEVERITIES):
         raise ValueError('Unsupported vulnerability policy')
+    if policy['schemaVersion'] == 1 and (policy.get('scopes') or any('scope' in entry for entry in policy['ignore'])):
+        raise ValueError('Scoped acceptances require policy schemaVersion 2')
     for entry in policy['ignore']:
+        if policy['schemaVersion'] == 2 and 'scope' not in entry:
+            raise ValueError('Policy schemaVersion 2 requires scoped acceptances')
         missing = {'id', 'component', 'reason', 'expires'} - set(entry)
         if missing or not entry['reason'].strip():
             raise ValueError('Ignore entries need id, component, a reason and an expiry: ' + json.dumps(entry))
         datetime.date.fromisoformat(entry['expires'])
+        if 'scope' in entry and (not isinstance(entry['scope'], str) or entry['scope'] not in policy.get('scopes', {})):
+            raise ValueError('Unknown acceptance scope: ' + str(entry['scope']))
+    for name, scope in policy.get('scopes', {}).items():
+        if (set(scope) != {'package', 'component', 'version', 'properties'}
+                or scope['package'] not in LABELS or not scope['version'] or scope['component'] == '*'):
+            raise ValueError('Invalid acceptance scope: ' + name)
+        props = scope['properties']
+        if (not isinstance(props, dict) or set(props) != {'putgd:commit', 'putgd:filesSha256', 'putgd:toolsAbsent'}
+                or not all(isinstance(value, str) for value in props.values())
+                or not re.fullmatch(r'[0-9a-f]{40}', props['putgd:commit'])
+                or not re.fullmatch(r'[0-9a-f]{64}', props['putgd:filesSha256'])
+                or props['putgd:toolsAbsent'] != 'true'):
+            raise ValueError('Acceptance scope needs a source commit, actual file hashes and absent tools: ' + name)
+    for entry in policy['ignore']:
+        if 'scope' in entry and entry['component'] != policy['scopes'][entry['scope']]['component']:
+            raise ValueError('Acceptance component differs from its scope: ' + entry['id'])
     return policy
 
 
@@ -342,20 +387,34 @@ def findings(bom_path, grype_path):
     bom = json.loads(bom_path.read_text())
     label = next(prop['value'] for prop in bom['metadata']['component']['properties'] if prop['name'] == 'putgd:label')
     origin = {}
+    components = {}
     for item in bom['components']:
         value = next((prop['value'] for prop in item.get('properties', []) if prop['name'] == 'putgd:origin'), 'detected')
         origin[item.get('purl')] = value
         origin[(item['name'], item.get('version'))] = value
+        if item.get('purl'):
+            components[item['purl']] = item
+        components[(item['name'], item.get('version'))] = item
     found = []
     for match in json.loads(grype_path.read_text()).get('matches', []):
         artifact, vulnerability = match['artifact'], match['vulnerability']
         fix = vulnerability.get('fix') or {}
+        actual = components.get(artifact.get('purl')) or components.get((artifact['name'], artifact.get('version'))) or {}
         found.append({'id': vulnerability['id'], 'severity': vulnerability.get('severity') or 'Unknown',
                       'aliases': sorted({item['id'] for item in match.get('relatedVulnerabilities', []) if item['id'] != vulnerability['id']}),
                       'component': artifact['name'], 'version': artifact.get('version', ''),
                       'origin': origin.get(artifact.get('purl')) or origin.get((artifact['name'], artifact.get('version'))) or 'detected',
-                      'fixState': fix.get('state', 'unknown'), 'fixedIn': fix.get('versions', []), 'package': label})
+                      'fixState': fix.get('state', 'unknown'), 'fixedIn': fix.get('versions', []), 'package': label,
+                      'properties': {prop['name']: prop['value'] for prop in actual.get('properties', [])}})
     return found
+
+
+def scope_matches(item, rule, policy):
+    if 'scope' not in rule:
+        return True
+    scope = policy['scopes'][rule['scope']]
+    return (all(item.get(key) == scope[key] for key in ('package', 'component', 'version'))
+            and all(item.get('properties', {}).get(key) == value for key, value in scope['properties'].items()))
 
 
 def classify(items, policy, mode, today):
@@ -363,13 +422,18 @@ def classify(items, policy, mode, today):
     blocks = policy['block'].get(mode, False)
     for item in items:
         names = {item['id'], *item['aliases']}
-        rule = next((entry for entry in policy['ignore'] if entry['id'] in names and entry['component'] in (item['component'], '*')), None)
+        rules = [entry for entry in policy['ignore'] if entry['id'] in names and entry['component'] in (item['component'], '*')]
+        rule = next((entry for entry in rules if scope_matches(item, entry, policy)), None)
+        item.pop('acceptance', None)
         candidate = (item['origin'] in BUNDLED and item['severity'] in policy['severities']
                      and (item['fixState'] == 'fixed' or not policy.get('requireFix', True)))
         if rule and datetime.date.fromisoformat(rule['expires']) >= today:
             item['status'] = 'accepted until ' + rule['expires']
+            item['acceptance'] = {key: rule[key] for key in ('reason', 'expires', 'scope') if key in rule}
         elif candidate:
-            item['status'] = ('blocking' if blocks else 'flagged') + (' (acceptance expired ' + rule['expires'] + ')' if rule else '')
+            detail = (' (acceptance expired ' + rule['expires'] + ')' if rule else
+                      ' (acceptance scope mismatch)' if rules else '')
+            item['status'] = ('blocking' if blocks else 'flagged') + detail
         else:
             item['status'] = 'reported'
     return blocks

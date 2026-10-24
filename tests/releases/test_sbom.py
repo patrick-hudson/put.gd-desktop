@@ -1,5 +1,6 @@
 """SBOM components come from the packages' own inventories; the policy flags or blocks by channel (#420)."""
 import datetime
+import copy
 import json
 from pathlib import Path
 import sys
@@ -137,6 +138,33 @@ class Components(unittest.TestCase):
         self.assertEqual([item['name'] for item in kept], ['go-module'])
         self.assertEqual(kept[0]['properties'], [{'name': 'putgd:origin', 'value': 'detected'}])
 
+    def test_disposition_fingerprint_uses_actual_bytes_and_rejects_added_tools(self):
+        for identifier, library, tool in [('ffmpeg', 'libavcodec.so.61', 'ffmpeg'),
+                                           ('icu', 'libicuuc.so.73', 'genrb')]:
+            with self.subTest(component=identifier):
+                name = 'usr/lib/' + library
+                path = self.root / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(b'synthetic original library')
+                item = {'id': identifier, 'files': [name]}
+                before = dict(sbom.appimage_scope_properties(self.root, item))
+                self.assertEqual(before['putgd:toolsAbsent'], 'true')
+                path.write_bytes(b'synthetic changed build/configuration')
+                after = dict(sbom.appimage_scope_properties(self.root, item))
+                self.assertNotEqual(before['putgd:filesSha256'], after['putgd:filesSha256'])
+                executable = self.root / 'usr/bin' / tool
+                executable.parent.mkdir(parents=True, exist_ok=True)
+                executable.write_bytes(b'synthetic tool')
+                self.assertEqual(dict(sbom.appimage_scope_properties(self.root, item))['putgd:toolsAbsent'], 'false')
+                executable.unlink()
+        (self.root / 'usr/lib/libicutu.so.73').write_bytes(b'synthetic tool utility library')
+        self.assertEqual(dict(sbom.appimage_scope_properties(self.root, item))['putgd:toolsAbsent'], 'false')
+
+    def test_disposition_fingerprint_rejects_missing_or_external_files(self):
+        for name in ['usr/lib/missing.so', '../outside']:
+            with self.subTest(name=name), self.assertRaises(ValueError):
+                sbom.appimage_scope_properties(self.root, {'id': 'icu', 'files': [name]})
+
 
 class Policy(unittest.TestCase):
     def finding(self, **values):
@@ -180,9 +208,82 @@ class Policy(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     sbom.load_policy(path)
 
+    def scoped_policy(self):
+        policy = self.policy([{'id': 'CVE-2026-1', 'component': 'libpng', 'reason': 'synthetic audited build',
+                               'expires': '2027-01-21', 'scope': 'audited'}])
+        policy['schemaVersion'] = 2
+        policy['scopes'] = {'audited': {'package': 'appimage', 'component': 'libpng', 'version': '1.6.47',
+                                       'properties': {'putgd:commit': 'a' * 40, 'putgd:filesSha256': 'b' * 64,
+                                                      'putgd:toolsAbsent': 'true'}}}
+        return policy
+
+    def test_scoped_acceptance_is_bound_to_package_version_commit_and_actual_build(self):
+        policy = self.scoped_policy()
+        props = policy['scopes']['audited']['properties']
+        original = self.finding(properties=props.copy())
+        cases = [self.finding(properties=props.copy(), package='debian13'),
+                 self.finding(properties=props.copy(), version='1.6.48'), self.finding(),
+                 self.finding(properties=props.copy(), id='CVE-2026-NEW')]
+        for key, value in [('putgd:commit', 'c' * 40), ('putgd:filesSha256', 'd' * 64), ('putgd:toolsAbsent', 'false')]:
+            cases.append(self.finding(properties={**props, key: value}))
+        sbom.classify([original, *cases], policy, 'stable', datetime.date(2026, 10, 24))
+        self.assertEqual(original['status'], 'accepted until 2027-01-21')
+        self.assertEqual(original['acceptance']['scope'], 'audited')
+        self.assertTrue(all(item['status'].startswith('blocking') for item in cases))
+        sbom.classify([original], policy, 'stable', datetime.date(2027, 1, 22))
+        self.assertEqual(original['status'], 'blocking (acceptance expired 2027-01-21)')
+        self.assertNotIn('acceptance', original)
+
+    def test_scoped_policy_rejects_incomplete_or_mismatched_guards(self):
+        with tempfile.TemporaryDirectory() as work:
+            path = Path(work) / 'policy.json'
+            mutations = [lambda p: p['ignore'][0].update(scope='unknown'),
+                         lambda p: p.update(schemaVersion=1),
+                         lambda p: p['ignore'][0].pop('scope'),
+                         lambda p: p['scopes']['audited'].pop('version'),
+                         lambda p: p['scopes']['audited'].update(component='ffmpeg'),
+                         lambda p: p['scopes']['audited']['properties'].pop('putgd:filesSha256'),
+                         lambda p: p['scopes']['audited']['properties'].update({'putgd:commit': 'not-a-commit'})]
+            for mutate in mutations:
+                policy = copy.deepcopy(self.scoped_policy())
+                mutate(policy)
+                path.write_text(json.dumps(policy))
+                with self.subTest(policy=policy), self.assertRaises(ValueError):
+                    sbom.load_policy(path)
+
+    def test_findings_take_scope_evidence_from_sbom_not_scanner_claims(self):
+        with tempfile.TemporaryDirectory() as work:
+            root = Path(work)
+            bom, scan = root / 'bom.json', root / 'scan.json'
+            props = self.scoped_policy()['scopes']['audited']['properties']
+            bom.write_text(json.dumps({'metadata': {'component': {'properties': [{'name': 'putgd:label', 'value': 'appimage'}]}},
+                                       'components': [sbom.component('libpng', '1.6.47', 'pkg:generic/libpng@1.6.47', 'bundled',
+                                                                      properties=list(props.items()))]}))
+            scan.write_text(json.dumps({'matches': [{'artifact': {'name': 'libpng', 'version': '1.6.47',
+                                                                  'properties': {'putgd:filesSha256': 'forged'}},
+                                                     'vulnerability': {'id': 'CVE-2026-1', 'severity': 'High'}}]}))
+            self.assertEqual(sbom.findings(bom, scan)[0]['properties']['putgd:filesSha256'], props['putgd:filesSha256'])
+
     def test_repository_policy_and_tool_lock_are_valid(self):
         policy = sbom.load_policy()
+        self.assertEqual(policy['schemaVersion'], 2)
         self.assertTrue(policy['block']['stable'])
+        self.assertTrue(policy['requireFix'])
+        self.assertEqual(policy['severities'], ['Critical', 'High'])
+        self.assertFalse(policy['block']['nightly'])
+        evidence = json.loads((sbom.ROOT / 'packaging/sbom/dispositions/511.json').read_text())
+        self.assertEqual(evidence['scopeFingerprints'], policy['scopes'])
+        inputs = json.loads((sbom.ROOT / 'packaging/appimage/tools.lock.json').read_text())['buildInputs']
+        for scope in policy['scopes'].values():
+            item = inputs[scope['component']]
+            self.assertEqual(scope['version'], item['release'])
+            self.assertEqual(scope['properties']['putgd:commit'], item['commit'])
+        configure = json.loads((sbom.ROOT / 'packaging/appimage/media.json').read_text())['ffmpeg']['configure']
+        self.assertEqual(evidence['ffmpeg']['configuredComponents'], configure,
+                         'FFmpeg configure changes require disposition reassessment')
+        for entry in policy['ignore']:
+            self.assertIn(entry['scope'], policy['scopes'])
+            self.assertEqual(entry['evidence'], 'packaging/sbom/dispositions/511.json')
         lock = json.loads(sbom.TOOLS_LOCK.read_text())
         self.assertEqual({tool['name'] for tool in lock['tools']}, {'syft', 'grype'})
         for tool in lock['tools']:
