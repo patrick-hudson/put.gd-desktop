@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "issue": 379,
-  "status": "pilot_and_operational_admission_refusals_preserved_confirmation_pending",
+  "status": "cold_subset_complete_driver_contract_failure_preserved_full_campaign_pending",
   "accepted": false,
   "scope": "Newest-published-nightly physical Mint Cinnamon performance rehearsal; no stable-asset certification",
   "product": {
@@ -41,13 +41,18 @@
     "dependencyIssue": 495,
     "productBytesRebuilt": false,
     "codePullRequest": "https://github.com/patrick-hudson/put.gd-desktop/pull/555",
-    "acceptanceReviewStatus": "changes_required; pilot evidence only until corrected reviewed driver rerun",
+    "acceptanceReviewStatus": "M6diagnostics caller failure; corrected3259 review/currentCI/fresh-memory validation pending",
     "historyGrowHold": "Only root-cleared producer 72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e is staged/hash-verified; not yet executed in this campaign. All old revisions remain held.",
-    "nextPhysicalRunHold": "No performance gate accepted; M4 and M5 admission refused before driver. No repeat on controller57460; an off-host whole-host CPU-envelope candidate needs review and a separate allocation. Historical observations and approved budgets stay unchanged.",
+    "nextPhysicalRunHold": "M6 completed only its cold subset, then fd259 diagnostics caller failed before History. No repeat/new physical allocation until reviewed corrected handoff/current CI/root allocation; historical budgets and identities stay unchanged.",
     "sourceCommitScope": "First physical pilot batch only; each later attempt keeps its separate actual/planned identities",
     "currentReviewedDriver": {
       "revision": "fd259fae36a0643d198a8730770bcefc6297d9ac",
-      "review": "R8source/controlclear; currentselectedCIgreen; M4andM5didnotlaunchit"
+      "review": "R8source/controlclear historical; M6actualfd259 runtime exposed diagnostics caller KeyErrorui; memory acceptance incomplete"
+    },
+    "pendingDriverCandidate": {
+      "revision": "3259a5b83e4b93b9ba595bafb95e7c9ebddbddd0",
+      "archiveSha256": "d99c6ad88804202eb68976ca965ff16f217065770dfbf6b40bff83d5efb875c1",
+      "status": "Focused root review/current CI pending; no runtime credit or m74 staging"
     }
   },
   "approvedBudgets": {
@@ -71,9 +76,9 @@
   "gates": {
     "regionEmpty": "incomplete_workload_c1; no valid numerical result",
     "regionPopulated": "pending",
-    "coldIdle": "pilot_m1_complete; fresh corrected driver confirmation pending",
-    "closedMemory": "pilot_m1_complete; fresh corrected driver confirmation pending",
-    "historyOpenMemory": "pilot_m1_observed_64821248_bytes_above_62914560; fresh corrected driver confirmation pending",
+    "coldIdle": "m6_300second_cold_subset_within_budget; full_sequence_and_acceptance_pending",
+    "closedMemory": "m6_cold_subset_only; postclose_unrun",
+    "historyOpenMemory": "m1_pilot_above60MiB_unconfirmed; m6_not_started",
     "historyFunctionalAndResponse": "pending_measurements_and_explicit_threshold_approval",
     "burst": "pending",
     "slowStalledNetwork": "pending"
@@ -91,6 +96,10 @@
     {
       "file": "m2-admission-failure.png",
       "meaning": "Reviewed annotated 100% synthetic final cover after failed admission; no scored memory interval or initial readiness proof"
+    },
+    {
+      "file": "m6-cold-segment-driver-failure.png",
+      "meaning": "Reviewed synthetic-cover frame with appended caption; cold segment completed, no History/open-PSS proof"
     }
   ],
   "cleanupReceipts": [
@@ -98,7 +107,8 @@
     "attempt-m2.json",
     "attempt-m3.json",
     "attempt-m4.json",
-    "attempt-m5.json"
+    "attempt-m5.json",
+    "attempt-m6.json"
   ],
   "limitations": [
     "Campaign in progress; no performance acceptance pass claimed",
@@ -159,6 +169,16 @@
       "status": "coordinator_admission_refused_before_driver",
       "plannedDriverRevision": "fd259fae36a0643d198a8730770bcefc6297d9ac",
       "driverLaunched": false,
+      "accepted": false
+    },
+    {
+      "id": "m6",
+      "summary": "attempt-m6.json",
+      "status": "partial_memory_driver_failure_before_history",
+      "actualDriverRevision": "fd259fae36a0643d198a8730770bcefc6297d9ac",
+      "controllerSha256": "ca937c2dd710cdd6b6af071d0c513156f8080f3ba43bce209e7e498f3f8927f7",
+      "driverLaunched": true,
+      "coldSegmentMeasuredSeconds": 300.07672705699224,
       "accepted": false
     }
   ],

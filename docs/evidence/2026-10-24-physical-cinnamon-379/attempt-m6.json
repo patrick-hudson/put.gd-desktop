@@ -1,0 +1,685 @@
+{
+  "schemaVersion": 1,
+  "run": "m6",
+  "status": "partial_memory_driver_failure_before_history",
+  "accepted": false,
+  "scope": "Physical newest-published-nightly empty memory attempt; only cold segment completed, no full-memory/stable certification",
+  "product": {
+    "path": "/home/patrick/putgd-lab/p379/release/putgd-26.1024.1185-nightly-ubuntu24.04-x86_64.deb",
+    "sha256": "2094fd4db8cd915b02f1cdd16eb5c99bb8191948931cd2f558a89c59be5b3f47",
+    "binaries": {
+      "app": {
+        "path": "/usr/bin/putgd",
+        "sha256": "2d51cdd7ca7ed7c53d2c4cda5cd2c9009c3c24b07769a03e80a0da46f7b16af2",
+        "build": {
+          "schemaVersion": 1,
+          "version": "26.1024.1185-nightly",
+          "baseVersion": "26.1024.1185",
+          "packageVersion": "26.1024.1185~nightly",
+          "gitCommit": "9dfac15c1ced201d13a2b70a8afb0c253213768b",
+          "gitTree": "4e96912274d9220ba9476bd1b50333f6cf738f4f",
+          "commitCount": 1185,
+          "dirty": false,
+          "sourceProvenance": "git"
+        }
+      },
+      "capture_helper": {
+        "path": "/usr/bin/putgd-capture",
+        "sha256": "9f122f727a0d84da71cbc7e1dd53895015a34c63606803edb68680659ce74dbf",
+        "build": {
+          "schemaVersion": 1,
+          "version": "26.1024.1185-nightly",
+          "baseVersion": "26.1024.1185",
+          "packageVersion": "26.1024.1185~nightly",
+          "gitCommit": "9dfac15c1ced201d13a2b70a8afb0c253213768b",
+          "gitTree": "4e96912274d9220ba9476bd1b50333f6cf738f4f",
+          "commitCount": 1185,
+          "dirty": false,
+          "sourceProvenance": "git"
+        }
+      },
+      "cli": {
+        "path": "/usr/bin/putgd-cli",
+        "sha256": "af34ea975c73517a39c561a3d65efaba7c2dd0848235d23b2c1158e08cab032f",
+        "build": {
+          "schemaVersion": 1,
+          "version": "26.1024.1185-nightly",
+          "baseVersion": "26.1024.1185",
+          "packageVersion": "26.1024.1185~nightly",
+          "gitCommit": "9dfac15c1ced201d13a2b70a8afb0c253213768b",
+          "gitTree": "4e96912274d9220ba9476bd1b50333f6cf738f4f",
+          "commitCount": 1185,
+          "dirty": false,
+          "sourceProvenance": "git"
+        }
+      },
+      "helper": {
+        "path": "/usr/bin/putgd-ui",
+        "sha256": "35d3ab75050d8b541564fb57c686036133d7151d9ddfcb23f625a4d393644273",
+        "build": {
+          "schemaVersion": 1,
+          "version": "26.1024.1185-nightly",
+          "baseVersion": "26.1024.1185",
+          "packageVersion": "26.1024.1185~nightly",
+          "gitCommit": "9dfac15c1ced201d13a2b70a8afb0c253213768b",
+          "gitTree": "4e96912274d9220ba9476bd1b50333f6cf738f4f",
+          "commitCount": 1185,
+          "dirty": false,
+          "sourceProvenance": "git"
+        }
+      }
+    }
+  },
+  "liveBuild": {
+    "baseVersion": "26.1024.1185",
+    "commitCount": 1185,
+    "dirty": false,
+    "gitCommit": "9dfac15c1ced201d13a2b70a8afb0c253213768b",
+    "gitTree": "4e96912274d9220ba9476bd1b50333f6cf738f4f",
+    "packageVersion": "26.1024.1185~nightly",
+    "schemaVersion": 1,
+    "sourceProvenance": "git",
+    "version": "26.1024.1185-nightly"
+  },
+  "physical": {
+    "hostname": "mint-builder",
+    "kernel": "6.14.0-37-generic",
+    "session": {
+      "Name": "patrick",
+      "Display": ":0",
+      "Remote": "no",
+      "Desktop": "cinnamon",
+      "Leader": "625282",
+      "Type": "x11",
+      "Active": "yes"
+    },
+    "sessionId": "c89",
+    "requestedQtPlatform": "xcb",
+    "systemVersions": {
+      "kernel": "6.14.0-37-generic",
+      "machine": "x86_64",
+      "cpu": "Intel(R) Core(TM) i5-6500T CPU @ 2.50GHz",
+      "desktop": "X-Cinnamon",
+      "session": "x11",
+      "python": "3.12.3",
+      "packages": {
+        "cinnamon": "6.6.9+zena",
+        "libc6": "2.39-0ubuntu8.9",
+        "libcairo2": "1.18.0-3build1",
+        "libgtk-3-0t64": "3.24.41-4ubuntu1.3",
+        "libqt6core6t64": "6.4.2+dfsg-21.1build5",
+        "muffin": "6.6.3+zena"
+      }
+    },
+    "osRelease": "NAME=\"Linux Mint\"\nVERSION=\"22.3 (Zena)\"\nID=linuxmint\nID_LIKE=\"ubuntu debian\"\nPRETTY_NAME=\"Linux Mint 22.3\"\nVERSION_ID=\"22.3\"\nHOME_URL=\"https://www.linuxmint.com/\"\nSUPPORT_URL=\"https://forums.linuxmint.com/\"\nBUG_REPORT_URL=\"http://linuxmint-troubleshooting-guide.readthedocs.io/en/latest/\"\nPRIVACY_POLICY_URL=\"https://www.linuxmint.com/\"\nVERSION_CODENAME=zena\nUBUNTU_CODENAME=noble\n",
+    "loadAverage": [
+      "1.08",
+      "0.84",
+      "0.90"
+    ]
+  },
+  "driver": {
+    "sha256": "8b7e9622ae314ff16da8964fa6017ce5c9de3c6fbb353c42c5b89adfbed99cf5",
+    "revision": "fd259fae36a0643d198a8730770bcefc6297d9ac",
+    "revisionSource": "explicit-declaration",
+    "sourceFiles": {
+      "tests/performance/physical_campaign.py": "8b7e9622ae314ff16da8964fa6017ce5c9de3c6fbb353c42c5b89adfbed99cf5",
+      "tests/performance/bench_ui_process.py": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+      "tests/performance/observe_idle.py": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe",
+      "tests/performance/campaign_fixture.py": "330632490f68fb3621f19261f35e64643849b26190de256c969cdc89e79d41d9",
+      "tests/performance/campaign_ui.py": "68e66b9f4adf2dd75c3ae4b7a8d6ade1f2d138ee23ffdfd3a714d4265b3cfcbd",
+      "tests/performance/campaign_workloads.py": "887a2b10f0a2f93a848fdece433339fb8d2f830933e41b1108be61f8106d9429",
+      "tests/performance/campaign_proxy.py": "39973a4603cedf82ae89250c222ae5f508f36aa127be4d501f2ee3c3eae0e98b",
+      "tests/performance/campaign_lifecycle.py": "e86141e204105fe6834d90933dd065377df0b444786eec5cc1340c11eabe6668",
+      "tests/performance/build_current_capture.py": "dfab0d0aefc471cd13eb3ec6e1bb6b0c57614ac424d2067eca4c5846de0f95bd",
+      "tests/performance/campaign_frames.py": "6c013f4cbce53b96ce6c2dd1b0b1d396f449d5017621654ae2e291a6c5cb6a97",
+      "tools/diagnostics/check_socket_paths.py": "7e8797ec6ea0014eeacd428f822ef3fe545a276247a7ad7e6de9b557a0937f55"
+    }
+  },
+  "driverArchiveSha256": "237c4a0edc55b19d93348e728745ff6b25d9adbe9933275817274bbbe225733e",
+  "controller": {
+    "sourceSha256": "ca937c2dd710cdd6b6af071d0c513156f8080f3ba43bce209e7e498f3f8927f7",
+    "reviewManifestSha256": "bcff50bad49c5be47a6535906c3c0eb2f31eed757d6b6e335a6de86b583aab1f",
+    "allocationId": "root-379-m6-fd259fae-20261024T192703Z",
+    "allocatedConfigSha256": "98a17609644d4643b2238622e419c7a7cf194725fa49ec1c2978a81f48457eef",
+    "accountingScope": "Root-reviewed documented Linux-accounted statistical operational model only; no physical-cycle/instantaneous/arbitrary-accounting-latency guarantee"
+  },
+  "parameters": {
+    "scenario": "memory",
+    "output": "/tmp/p379-m6",
+    "package": "/home/patrick/putgd-lab/p379/release/putgd-26.1024.1185-nightly-ubuntu24.04-x86_64.deb",
+    "package_sha256": "2094fd4db8cd915b02f1cdd16eb5c99bb8191948931cd2f558a89c59be5b3f47",
+    "version": "26.1024.1185-nightly",
+    "source_revision": "9dfac15c1ced201d13a2b70a8afb0c253213768b",
+    "desktop_session": "c89",
+    "lock_session": "codex-379-memory6",
+    "app": "/usr/bin/putgd",
+    "cli": "/usr/bin/putgd-cli",
+    "helper": "/usr/bin/putgd-ui",
+    "capture_helper": "/usr/bin/putgd-capture",
+    "driver": null,
+    "capture_driver_manifest": null,
+    "fixture_root": null,
+    "driver_revision": "fd259fae36a0643d198a8730770bcefc6297d9ac",
+    "open_seconds": 30,
+    "vnc_port": 5900,
+    "endpoint": null,
+    "fixture_pid": null,
+    "fixture_source": null,
+    "enable_accessibility": false,
+    "native_driver": null,
+    "native_driver_revision": null,
+    "native_driver_sha256": null,
+    "threshold_policy": null,
+    "settle_seconds": 300
+  },
+  "actualDriverCommand": [
+    "python3",
+    "/home/patrick/putgd-lab/p379/drivers/fd259fae-m6/tests/performance/physical_campaign.py",
+    "memory",
+    "--output",
+    "/tmp/p379-m6",
+    "--package",
+    "/home/patrick/putgd-lab/p379/release/putgd-26.1024.1185-nightly-ubuntu24.04-x86_64.deb",
+    "--package-sha256",
+    "2094fd4db8cd915b02f1cdd16eb5c99bb8191948931cd2f558a89c59be5b3f47",
+    "--version",
+    "26.1024.1185-nightly",
+    "--source-revision",
+    "9dfac15c1ced201d13a2b70a8afb0c253213768b",
+    "--desktop-session",
+    "c89",
+    "--lock-session",
+    "codex-379-memory6",
+    "--driver-revision",
+    "fd259fae36a0643d198a8730770bcefc6297d9ac"
+  ],
+  "socketPreflight": {
+    "schemaVersion": 1,
+    "passed": true,
+    "limitBytesExcludingNul": 107,
+    "paths": [
+      {
+        "path": "/tmp/p379-m6/runtime/putgd/session.sock",
+        "utf8Bytes": 39,
+        "passed": true
+      }
+    ]
+  },
+  "timing": {
+    "startedUtc": "2026-10-24T19:44:15.290325+00:00",
+    "driverElapsedSeconds": 308.4477599009988,
+    "controllerStartedUtc": "2026-10-24T19:43:53.013523+00:00",
+    "coldMeasuredSeconds": 300.07672705699224,
+    "historyOpenMeasuredSeconds": null,
+    "postcloseMeasuredSeconds": null
+  },
+  "metrics": {
+    "coldClosed": {
+      "seconds": 300.07672705699224,
+      "residentCpuPercentOneCore": 0.006664962056921358,
+      "peakResidentRssBytes": 30220288,
+      "peakFamilyRssBytes": 30220288,
+      "peakFamilyPssBytes": 19122176
+    },
+    "sampledProcessFamily": {
+      "peakTotals": {
+        "rssBytes": 30244864,
+        "pssBytes": 19127296,
+        "privateBytes": 18501632
+      },
+      "cpuPercentOneCoreLowerBound": 0.0066590270394296545,
+      "observedProcessGenerations": 1,
+      "samplingSpanSeconds": 300.3441776339896,
+      "shortLivedChildrenMayBeMissed": true
+    }
+  },
+  "driverScoredGates": {
+    "cold-cpu": {
+      "status": "pass",
+      "minimumSeconds": 300,
+      "exclusiveLimitPercentOneCore": 0.5
+    },
+    "cold-rss": {
+      "status": "pass",
+      "limitBytes": 41943040
+    },
+    "cold-pss": {
+      "status": "pass",
+      "limitBytes": 30408704
+    },
+    "cleanup": {
+      "status": "pass"
+    }
+  },
+  "assessment": "Driver-scored cold values are within the unchanged cold budgets, with a complete 300-second segment. The run failed before History; no full-memory acceptance or open-PSS conclusion.",
+  "approvedBudgets": {
+    "idleSeconds": 300,
+    "idleCpuPercentOneCoreStrictUpperBound": 0.5,
+    "coldClosedFamilyRssMaxBytes": 41943040,
+    "closedFamilyPssMaxBytes": 30408704,
+    "historyOpenFamilyPssMaxBytes": 62914560,
+    "historyOpenMinimumSeconds": 30
+  },
+  "failure": {
+    "type": "KeyError",
+    "key": "ui",
+    "file": "tests/performance/physical_campaign.py",
+    "line": 943,
+    "expression": "self.call('diagnostics')['ui'].get('lastExit', {}).get('generation', 0)",
+    "driverExitCode": 1,
+    "controllerPrimaryError": "driver_nonzero_exit_raw_result_retained",
+    "classification": "Benchmark driver diagnostics-contract failure before any History activation; no product failure or open-memory confirmation inferred",
+    "recordedDiagnosticsResponseAvailable": false,
+    "sourceContractAnalysis": "Source-derived only: exact product9dfac LocalServer.cpp298/305 distinguishes ui.snapshot.diagnostics.ui from bare OperationService diagnostics; no recorded JSON reconstructed and no product rerun"
+  },
+  "emptyHistoryAfterCleanup": {
+    "operations": 0,
+    "history": 0,
+    "item_state": 0
+  },
+  "processSampleCounts": {
+    "cold-closed": 61,
+    "cold-closed-completed-identity": 1,
+    "failed-workload-identity": 1
+  },
+  "historyHelperOrWindowLaunched": false,
+  "residentLaunches": [
+    {
+      "identity": {
+        "pid": 644448,
+        "startTicks": 26896471,
+        "uid": 1000,
+        "executable": "/usr/bin/putgd",
+        "device": 2050,
+        "inode": 10364819
+      },
+      "pidfdHeld": true
+    },
+    {
+      "identity": {
+        "pid": 644488,
+        "startTicks": 26896614,
+        "uid": 1000,
+        "executable": "/usr/bin/putgd",
+        "device": 2050,
+        "inode": 10364819
+      },
+      "pidfdHeld": true
+    }
+  ],
+  "hostAdmission": {
+    "sampleSeconds": 10.033363563998137,
+    "clockTicksPerSecond": 100,
+    "rowCount": 332,
+    "snapshotErrors": [],
+    "admitted": true,
+    "unexplainedUnmeasuredRowCount": 0,
+    "maximumMeasuredProcessCpuPercentOneCore": 1.7940145281476558,
+    "wholeHostBound": {
+      "available": true,
+      "strictlyBelowLimit": false,
+      "scope": "Linux accounted CPU; separate conservative whole-host upper bound, not per-row measured CPU",
+      "busyFields": [
+        "user",
+        "nice",
+        "system",
+        "irq",
+        "softirq",
+        "steal"
+      ],
+      "excludedDuplicateFields": [
+        "guest",
+        "guest_nice"
+      ],
+      "excludedNonExecutingFields": [
+        "idle",
+        "iowait"
+      ],
+      "limitPercentOneCore": 10.0,
+      "aggregateDeltaTicks": {
+        "user": 38,
+        "nice": 0,
+        "system": 33,
+        "idle": 3945,
+        "iowait": 1,
+        "irq": 0,
+        "softirq": 0,
+        "steal": 0,
+        "guest": 0,
+        "guest_nice": 0
+      },
+      "busyDeltaTicks": 71,
+      "bootId": "4ba460ee-1af9-4ae8-b832-d1c54cdb642f",
+      "coreSet": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "hz": 100,
+      "bootTimeSeconds": 1792602091,
+      "roundingUncertaintyTicks": 48,
+      "readUncertaintyNs": 545456,
+      "conservativeUpperCpuNs": 1190545456,
+      "denominatorLowerNs": 10000106093,
+      "upperPercentOneCore": 11.905328252800967,
+      "formula": "100*((sum busy delta + 2*6*possibleCPUs)/HZ + coreCount*readPaddingSeconds)/innerGapLowerSeconds < 10"
+    },
+    "interpretation": "Separate conservative aggregate upper bound 11.9053% is NOT below10 and was not used to discharge an unknown row: no unexplained unmeasured rows existed. Admission used reviewed per-process checks, all measured values <10. No sub10 aggregate pass or per-row invented percentage."
+  },
+  "cleanup": {
+    "residentReceipts": [
+      {
+        "gracefulRequest": true,
+        "exitCode": 0,
+        "forced": false,
+        "remaining": [],
+        "socketAbsent": true,
+        "passed": true,
+        "errors": [],
+        "inventoryComplete": true,
+        "absenceVerified": true,
+        "inventoryDefinition": "observed PID/start/UID generations + resident process group + exact isolated runtime/data environment; no command lines exported"
+      },
+      {
+        "gracefulRequest": true,
+        "exitCode": 0,
+        "forced": false,
+        "remaining": [],
+        "socketAbsent": true,
+        "passed": true,
+        "errors": [],
+        "inventoryComplete": true,
+        "absenceVerified": true,
+        "inventoryDefinition": "observed PID/start/UID generations + resident process group + exact isolated runtime/data environment; no command lines exported"
+      }
+    ],
+    "driverChildCleanup": {
+      "passed": true,
+      "reaped": true,
+      "actions": [],
+      "errors": [],
+      "forced": false,
+      "exitCode": 1
+    },
+    "originalVmFirstRunningAgainVerifiedUtc": "2026-10-24T19:49:23.888160+00:00",
+    "originalVmIdempotentlyRecheckedRunningUtc": "2026-10-24T19:49:28.851559+00:00",
+    "originalVmIdentity": {
+      "pid": 308684,
+      "startTicks": 9741363,
+      "uid": 1000,
+      "executable": "/usr/bin/qemu-system-x86_64",
+      "qmp": "/home/patrick/work/put.gd/work/windows/runs/w11b-3e92324d501c/qmp.sock",
+      "qmpDevice": 2050,
+      "qmpInode": 14055411,
+      "name": "windows11-w11b-3e92324d501c",
+      "uuid": "a2dc24c2-abff-4972-a524-cc44d44c8681"
+    },
+    "lockAcquiredUtc": "2026-10-24T19:43:54Z",
+    "actualLeaseExpiresUtc": "2026-10-24T20:03:54Z",
+    "verifiedReleaseUtc": "2026-10-24T19:49:31.348163+00:00",
+    "releaseReceipt": "2026-10-24T19-49-31Z-release.json",
+    "packagePurged": true,
+    "remainingOwnedProcesses": [],
+    "matchingLeaseReleased": true,
+    "persistenceErrors": [],
+    "noRetryOrServiceChange": true,
+    "allocationConsumed": true
+  },
+  "visuals": {
+    "privacyAudit": "Both1920x1080 saved frames independently verified100%RGB80/90/100; no unrelated pixels",
+    "rawImages": [
+      {
+        "file": "failed-workload.png",
+        "width": 1920,
+        "height": 1080,
+        "allPixelsSynthetic505a64": true,
+        "sha256": "ff83b8e75f7b4fa25e021f1d4027abaab5a6159abb46c875f7d0af6007d24a8d"
+      },
+      {
+        "file": "cold-closed-completed.png",
+        "width": 1920,
+        "height": 1080,
+        "allPixelsSynthetic505a64": true,
+        "sha256": "ff83b8e75f7b4fa25e021f1d4027abaab5a6159abb46c875f7d0af6007d24a8d"
+      }
+    ],
+    "annotatedFigure": "m6-cold-segment-driver-failure.png",
+    "annotatedFigureSha256": "94052f884cc39c0f6b221a298a1f4ca82381780d3ac0fcc77190f360f623e36a",
+    "framePixelsUnchangedInFigure": true,
+    "annotationMethod": "Deterministic report canvas appended below original frame; original1920x1080 pixel rectangle byte-identical. No regenerated/overlaid source pixels."
+  },
+  "privateEvidence": {
+    "archiveSha256": "ed01440f6df4cbe478d70d7b38b573bd9dabfa7978b5acbfb62844af5f5aed72",
+    "exportManifestSha256": "50768d3c0b1693869b251ac4d41f19f9bdfcaf789095662b2312c9eb61850dbd",
+    "exportedOriginalCount": 29,
+    "regularTarMembersIncludingManifest": 30,
+    "rawFileCount": 12,
+    "allFileHashesAndSizesVerified": true,
+    "rawSourceAndCopyHashesVerified": true,
+    "originalsRetained": true,
+    "localOriginalHashes": {
+      "controller.json": "c1f6454e8e96b8b40faf1531f2e88778468166b35a82a69ca40ffe48c9191265",
+      "controller.json.acquire-intent.json": "02d543646d857c1fd76f0ab33d21c6e1f5411a5bb3c03629896bff09efb0f72c",
+      "admission-summary.json": "c3a5cf2c9ea9771d1c7fcbeec7bf6eb5d02a0981f0b6aa0beddaa98dfe2a8031",
+      "first-result-inspection.json": "4b287cc7fd00a73a79b109d5ad8620639820c11509d1d0bce4147e92c198729d"
+    },
+    "remoteOriginalHashes": [
+      {
+        "path": "controllers/m6/command-before-launch.json",
+        "bytes": 997,
+        "sha256": "3e959b309f15996ed7f7164f68de38b94b8549fd2b9c1d08aa75b643f591c8c8",
+        "mode": "0o600",
+        "uid": 1000
+      },
+      {
+        "path": "controllers/m6/config.json",
+        "bytes": 7070,
+        "sha256": "98a17609644d4643b2238622e419c7a7cf194725fa49ec1c2978a81f48457eef",
+        "mode": "0o600",
+        "uid": 1000
+      },
+      {
+        "path": "controllers/m6/driver.log",
+        "bytes": 645,
+        "sha256": "ac72e24e78ea2b6bee66e432b061ca13b04bfbfadd8a0792babbaf1608b95b05",
+        "mode": "0o664",
+        "uid": 1000
+      },
+      {
+        "path": "controllers/m6/install.log",
+        "bytes": 1975,
+        "sha256": "fc12c8a1e897b0175dcbf12216f04bedd67146a3d1e247574a5f1311b2d7901c",
+        "mode": "0o664",
+        "uid": 1000
+      },
+      {
+        "path": "controllers/m6/journal.json",
+        "bytes": 2068,
+        "sha256": "3f7dc04ba44a095db50763e09a2055caf47591d6a769c5076919fa583536ca97",
+        "mode": "0o600",
+        "uid": 1000
+      },
+      {
+        "path": "controllers/m6/launch-outcome.json",
+        "bytes": 2077,
+        "sha256": "2e6a1294e8fe9fe8fb9a6f1527919c08220429670c9abb16cdd2e61a45e95f3b",
+        "mode": "0o600",
+        "uid": 1000
+      },
+      {
+        "path": "controllers/m6/observation.json",
+        "bytes": 317208,
+        "sha256": "4c3813cdfdbe4c76a89c37132bfd3bb3916d94ebd94d86c2ee18fc533014ba64",
+        "mode": "0o600",
+        "uid": 1000
+      },
+      {
+        "path": "controllers/m6/pause.json",
+        "bytes": 562,
+        "sha256": "65c95c156161d04d4fe0595ad5775026f2c19bd6b1809d44850b2b67a718c9fd",
+        "mode": "0o600",
+        "uid": 1000
+      },
+      {
+        "path": "controllers/m6/purge.log",
+        "bytes": 2051,
+        "sha256": "f132616dff96641699dfb3a9218c03bfb24157dfe2d1a49ee37635674a7d5cac",
+        "mode": "0o664",
+        "uid": 1000
+      },
+      {
+        "path": "controllers/m6/raw-export.json",
+        "bytes": 1961,
+        "sha256": "dc3a9ac3891668314c9be55bd0bae018ee71915c5c74c9437007b2126681aa18",
+        "mode": "0o600",
+        "uid": 1000
+      },
+      {
+        "path": "controllers/m6/remaining.json",
+        "bytes": 3,
+        "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+        "mode": "0o600",
+        "uid": 1000
+      },
+      {
+        "path": "controllers/m6/resume.json",
+        "bytes": 562,
+        "sha256": "107cca132a8e99ff81c8172dcba7031e701c3762a9d38e9a1307046a8297efa0",
+        "mode": "0o600",
+        "uid": 1000
+      },
+      {
+        "path": "controllers/m6/socket-preflight.json",
+        "bytes": 596,
+        "sha256": "83bfe7220296f86750512c503a1d6707cdd16a168c10455e14e9b9a96d602157",
+        "mode": "0o600",
+        "uid": 1000
+      },
+      {
+        "path": "controllers/m6/source.py",
+        "bytes": 54829,
+        "sha256": "ca937c2dd710cdd6b6af071d0c513156f8080f3ba43bce209e7e498f3f8927f7",
+        "mode": "0o600",
+        "uid": 1000
+      },
+      {
+        "path": "receipts/m6-source-staged.json",
+        "bytes": 4892,
+        "sha256": "6665d4cdfa854d273e565e004bcdde0bd1fcb1e13af9f1ea44243797f1f037ec",
+        "mode": "0o600",
+        "uid": 1000
+      },
+      {
+        "path": "receipts/m6-admission-readonly.json",
+        "bytes": 8320,
+        "sha256": "651f77ab5133731d2acce13291ba59f265baa24a4447fbda94595c36094b0a74",
+        "mode": "0o600",
+        "uid": 1000
+      },
+      {
+        "path": "locks/history/2026-10-24T19-49-31Z-release.json",
+        "bytes": 661,
+        "sha256": "f73abfd645c4f318ba0164888ab04b9894245dd78810d6724bb99869233bc620",
+        "mode": "0o664",
+        "uid": 1000
+      },
+      {
+        "path": "raw/m6/capabilities-setup.json",
+        "bytes": 3447,
+        "sha256": "504a3e9a482ef1d3228789bce385d47418e88567e7b410ac3aefbee85884e93a",
+        "mode": "0o600",
+        "uid": 1000
+      },
+      {
+        "path": "raw/m6/capabilities.json",
+        "bytes": 6466,
+        "sha256": "a1277cceec32aa53743d99b2060a85246fce6dcd5a5e777e761f91ed372b5e0d",
+        "mode": "0o600",
+        "uid": 1000
+      },
+      {
+        "path": "raw/m6/cold-closed-completed.png",
+        "bytes": 8597,
+        "sha256": "ff83b8e75f7b4fa25e021f1d4027abaab5a6159abb46c875f7d0af6007d24a8d",
+        "mode": "0o600",
+        "uid": 1000
+      },
+      {
+        "path": "raw/m6/config/putgd/config.json",
+        "bytes": 2185,
+        "sha256": "f7c49cc24aff4c7fdfbc0d41e6ee665d8b8e492b8c140e3dc5c6e794499d0a2d",
+        "mode": "0o600",
+        "uid": 1000
+      },
+      {
+        "path": "raw/m6/data/putgd/history.sqlite",
+        "bytes": 122880,
+        "sha256": "589777e524a9062529d66a42d0c700f56c659e19280808728354fadfbaca07cd",
+        "mode": "0o600",
+        "uid": 1000
+      },
+      {
+        "path": "raw/m6/events.jsonl",
+        "bytes": 43032,
+        "sha256": "303aeeab27cc0bb0801897bc7819108cfac245454d2f15d82294b2e0990a379c",
+        "mode": "0o600",
+        "uid": 1000
+      },
+      {
+        "path": "raw/m6/failed-workload.png",
+        "bytes": 8597,
+        "sha256": "ff83b8e75f7b4fa25e021f1d4027abaab5a6159abb46c875f7d0af6007d24a8d",
+        "mode": "0o600",
+        "uid": 1000
+      },
+      {
+        "path": "raw/m6/resident.log",
+        "bytes": 118,
+        "sha256": "902efae7b3849cab95e08f67e58ba16136a79a8fd8799f036c6d26b628726db5",
+        "mode": "0o600",
+        "uid": 1000
+      },
+      {
+        "path": "raw/m6/results.json",
+        "bytes": 10905,
+        "sha256": "0f287a23a788558ad655224b6bb35fb4aa292c3c35ede996aab676574ad9a7ac",
+        "mode": "0o600",
+        "uid": 1000
+      },
+      {
+        "path": "raw/m6/runtime/dconf/user",
+        "bytes": 2,
+        "sha256": "96a296d224f285c67bee93c30f8a309157f0daa35dc5b87e410b78630a09cfc7",
+        "mode": "0o600",
+        "uid": 1000
+      },
+      {
+        "path": "raw/m6/state/putgd/logs/putgd-20261024T194416504Z-644448-1.jsonl",
+        "bytes": 2642,
+        "sha256": "fd85ff6323adf28b5540d7dac63cfc07737fa6eab7adc51e7c5e2fdafef69eff",
+        "mode": "0o600",
+        "uid": 1000
+      },
+      {
+        "path": "raw/m6/state/putgd/logs/putgd-20261024T194417921Z-644488-1.jsonl",
+        "bytes": 3292,
+        "sha256": "ea5b5932b511e2147a4633a9e915822c80e8a4b714a537718936ab88cf4a6f3a",
+        "mode": "0o600",
+        "uid": 1000
+      }
+    ],
+    "resultsSha256": "0f287a23a788558ad655224b6bb35fb4aa292c3c35ede996aab676574ad9a7ac",
+    "eventsSha256": "303aeeab27cc0bb0801897bc7819108cfac245454d2f15d82294b2e0990a379c",
+    "observationSha256": "4c3813cdfdbe4c76a89c37132bfd3bb3916d94ebd94d86c2ee18fc533014ba64",
+    "operatorTransportFailure": "Separate pre-fact operator JSON serialization error retained with original T3 trace reference and failed/corrected operator source; equivalent one-line correction explicitly approved before the single controller attempt"
+  },
+  "limits": [
+    "No History helper/open30/postclose300 or open-PSS measurement; old61.82MiBpilot still unconfirmed",
+    "No full memory/latency/history/burst/network/stable acceptance pass",
+    "No reconstructed recorded diagnostics response or product bug from driver KeyError",
+    "M1\u2013M5 originals/scope/bounds unchanged; no retrospective calculation",
+    "M6 consumed; future code/runtime requires root reviewed handoff/current CI/new allocation"
+  ]
+}

@@ -69,8 +69,14 @@ launch on an exited kernel worker with no after sample; all 332 observed rows
 and the unchanged refusal are retained without a CPU percentage or heavy-load
 inference. Its 12-file export is verified; the original VM resumed and m74
 released verified-clean at 19:03:35 UTC. Neither attempt produced benchmark
-cleanup flags or numerical metrics. No capture,
-memory, history, burst or network gate is accepted. Driver hardening (#495,
+cleanup flags or numerical metrics. M6 then recorded a 300.077-second cold
+segment within the unchanged cold budgets, but its driver raised `KeyError: 'ui'`
+before History activation. No open or post-close interval ran; the open-PSS
+pilot remains unconfirmed. The raw data, safe cover frame and both normal
+resident exits with complete-inventory/verified-absence flags are retained.
+The original VM resumed, only the run-owned package was purged, and m74 released
+verified-clean at 19:49:31 UTC. No full memory sequence or capture,
+history, burst or network gate is accepted. Driver hardening (#495,
 PR #554) and the performance driver (PR #555) remain separately identified code
 work; old history-growth revisions are held. Unbudgeted response thresholds require
 Patrick's approval. The eventual nightly results do not certify stable assets;

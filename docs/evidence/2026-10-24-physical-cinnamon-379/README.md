@@ -150,6 +150,16 @@ encoder process. Other low-activity desktop services and the wall stayed up.
   `unknown_activity_unmeasured`; no heavy-load or product conclusion follows.
   No benchmark profile, GUI, cover, frame or scored interval was created.
 
+
+- **m6: cold segment completed; driver failed before History.**
+  The [sanitized summary](attempt-m6.json) indexes the private raw observations,
+  exact source/command and cleanup receipts. At driver `fd259fae`, the cold
+  interval ran 300.077 seconds; its CPU, RSS and PSS values were within the
+  unchanged cold budgets. The next diagnostics lookup raised `KeyError: 'ui'`
+  before any History activation. Open and post-close intervals did not run;
+  this does not confirm the m1 open-PSS observation or establish full-memory
+  acceptance. The run and its failure retain their original source identity.
+
 ![c1 post-cancellation recovery frame: only synthetic background, no selector-paint claim](c1-witness-failure.png)
 
 This is an annotated recovery frame from the tested nightly after the failed
@@ -183,6 +193,34 @@ Every pixel of this attempt's saved recovery source is RGB `(80, 90, 100)`.
 The annotation describes the admission failure; it is not evidence of a memory
 interval or of visibility at the earlier failed precheck. A bounded readiness
 fix remains driver work and must preserve the all-pixel saved-image checks.
+
+
+### M6 cold segment; incomplete memory sequence
+
+The new attempt used the exact installed/running 1185 binaries, a fresh empty
+profile and the separately reviewed `ca937c2d` coordinator. Its 61 cold samples
+span **300.076727 seconds**: CPU **0.006665%** of one core, peak resident/family
+RSS **30,220,288 bytes**, peak family PSS **19,122,176 bytes**. The driver scored
+its three cold gates within budget, then failed on its own diagnostics caller.
+No History helper or window started and no 30-second open or 300-second
+post-close result exists. The full campaign and memory sequence remain pending.
+The bare diagnostics JSON response was not retained; the caller/production
+contract analysis is explicitly source-derived, not a reconstructed response.
+
+Host admission retained 332 rows over 10.033364 seconds, with no unexplained
+unmeasured row and a maximum measured process value of 1.794015% of one core.
+The separately computed aggregate upper bound was **11.905328%**, including
+conservative uncertainty; it is **not** a sub-10% proof. No missing row needed
+that bound, so the reviewed per-process path admitted the attempt. Its scope
+is Linux-accounted operational CPU, not physical cycles or an instantaneous
+utilization guarantee. The raw counters, brackets, bound and decision are private
+and indexed by the summary; no historical M4/M5 bound is inferred.
+
+![M6 synthetic cover after the driver failed before History; no open-PSS confirmation](m6-cold-segment-driver-failure.png)
+
+Both saved source frames are independently verified as 100% RGB `(80, 90, 100)`.
+This figure appends a caption below the byte-identical original frame. It shows
+only the synthetic cover and makes no History-content or tray claim.
 
 ## Evidence and cleanup
 
@@ -231,6 +269,18 @@ private archive; originals remain in place. No benchmark cleanup flags are
 invented for an unlaunched resident. This allocation is consumed. Further
 work requires reviewed admission logic and a separate allocation; no process
 or service was changed or whitelisted and no retry ran.
+
+
+For m6, the lease ran **19:43:54–19:49:31 UTC**. The exact original VM was
+verified running again at 19:49:23 UTC and rechecked at 19:49:28. Both resident
+cleanup receipts show normal code-0 exits, no forced termination, complete
+inventory, verified absence, no remaining family and no session socket. The
+benchmark driver itself exited 1 on the retained `KeyError`. Only the run-owned
+package was purged; the matching lease released verified-clean. All **29
+original files plus a separate restore manifest** were exported privately and
+every size/hash verified, including the 12-file raw run and its original/copy
+comparison. The earlier one-line JSON transport correction preceded the single
+controller attempt and is retained separately. No retry or new scenario ran.
 
 ### Actual-frame privacy audit
 
