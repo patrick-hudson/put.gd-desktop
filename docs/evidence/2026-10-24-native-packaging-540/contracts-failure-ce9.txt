@@ -1,0 +1,27 @@
+$ python3 tests/ci/test_flake_tools.py
+........F...........
+======================================================================
+FAIL: test_unit_tests_name_registered_tests_and_everything_else_is_integration (__main__.TestPolicy.test_unit_tests_name_registered_tests_and_everything_else_is_integration)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/put.gd-desktop/put.gd-desktop/tests/ci/test_flake_tools.py", line 154, in test_unit_tests_name_registered_tests_and_everything_else_is_integration
+    self.assertEqual((ROOT / 'CMakeLists.txt').read_text().rstrip().splitlines()[-1],
+AssertionError: 'include(cmake/NativeMetadata.cmake)' != 'include(cmake/TestPolicy.cmake)'
+- include(cmake/NativeMetadata.cmake)
++ include(cmake/TestPolicy.cmake)
+
+
+----------------------------------------------------------------------
+Ran 20 tests in 1.820s
+
+FAILED (failures=1)
+flake_ledger: recorded gui_flaky in u
+flake_ledger: reopened u
+flake_ledger: recorded gui_flaky in u
+::warning title=Flaky-test tracker not updated::No GITHUB_TOKEN/GITHUB_REPOSITORY; the flaky tests are listed in the job summary only.
+flake_ledger: opened https://github.invalid/issues/99
+flake_ledger: recorded gui_flaky in https://github.invalid/issues/99
+flake_ledger: opened https://github.invalid/issues/99
+flake_ledger: recorded broken in https://github.invalid/issues/99
+flake_ledger: reopened u
+flake_ledger: recorded gui_flaky in u

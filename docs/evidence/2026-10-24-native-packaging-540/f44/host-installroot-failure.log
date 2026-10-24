@@ -1,0 +1,1 @@
+error: can't create transaction lock on /home/patrick/work/pgpkg-20261024/build/minimal-install-rpm/usr/lib/sysimage/rpm/.rpm.lock (Permission denied)

@@ -1,0 +1,250 @@
+{
+  "suites": [
+    {
+      "command": [
+        "tests/ci/test_cache_prune.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.15
+    },
+    {
+      "command": [
+        "tests/ci/test_changes.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.17
+    },
+    {
+      "command": [
+        "tests/ci/test_flake_tools.py"
+      ],
+      "exitCode": 0,
+      "seconds": 2.53
+    },
+    {
+      "command": [
+        "tests/ci/test_hosted_apt_mirrors.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.15
+    },
+    {
+      "command": [
+        "tests/ci/test_install_packages.py"
+      ],
+      "exitCode": 0,
+      "seconds": 9.8
+    },
+    {
+      "command": [
+        "tests/ci/test_proton_release.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.15
+    },
+    {
+      "command": [
+        "tests/ci/test_release_channels.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.16
+    },
+    {
+      "command": [
+        "tests/ci/test_renovate_config.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.33
+    },
+    {
+      "command": [
+        "tests/ci/test_sdk_cache.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.32
+    },
+    {
+      "command": [
+        "tests/ci/test_stress_weekly.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.42
+    },
+    {
+      "command": [
+        "tests/releases/test_appimage_media_sources.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.24
+    },
+    {
+      "command": [
+        "tests/releases/test_appimage_notices.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.56
+    },
+    {
+      "command": [
+        "tests/releases/test_appimage_root_entry.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.29
+    },
+    {
+      "command": [
+        "tests/releases/test_appimage_update.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.16
+    },
+    {
+      "command": [
+        "tests/releases/test_appstream_catalog.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.21
+    },
+    {
+      "command": [
+        "tests/releases/test_changelog.py"
+      ],
+      "exitCode": 0,
+      "seconds": 2.97
+    },
+    {
+      "command": [
+        "tests/releases/test_check_source_build.py"
+      ],
+      "exitCode": 0,
+      "seconds": 1.01
+    },
+    {
+      "command": [
+        "tests/releases/test_collect.py"
+      ],
+      "exitCode": 0,
+      "seconds": 3.43
+    },
+    {
+      "command": [
+        "tests/releases/test_debug_symbols.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.61
+    },
+    {
+      "command": [
+        "tests/releases/test_native_audit.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.58
+    },
+    {
+      "command": [
+        "tests/releases/test_native_metadata.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.17
+    },
+    {
+      "command": [
+        "tests/releases/test_nightly.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.9
+    },
+    {
+      "command": [
+        "tests/releases/test_pkgrepo.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.42
+    },
+    {
+      "command": [
+        "tests/releases/test_promote.py"
+      ],
+      "exitCode": 0,
+      "seconds": 1.88
+    },
+    {
+      "command": [
+        "tests/releases/test_proton_sources.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.41
+    },
+    {
+      "command": [
+        "tests/releases/test_publish.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.64
+    },
+    {
+      "command": [
+        "tests/releases/test_release_bundle.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.37
+    },
+    {
+      "command": [
+        "tests/releases/test_repository_files.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.31
+    },
+    {
+      "command": [
+        "tests/releases/test_sbom.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.29
+    },
+    {
+      "command": [
+        "tests/releases/test_source_archive.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.74
+    },
+    {
+      "command": [
+        "tests/releases/test_verify_tag.py"
+      ],
+      "exitCode": 0,
+      "seconds": 1.78
+    },
+    {
+      "command": [
+        "tests/unit/test_appimage_diagnostics.py"
+      ],
+      "exitCode": 0,
+      "seconds": 1.17
+    },
+    {
+      "command": [
+        "tests/unit/test_appimage_login_start.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.62
+    },
+    {
+      "command": [
+        "tests/unit/test_portable_appimage.py"
+      ],
+      "exitCode": 0,
+      "seconds": 1.26
+    },
+    {
+      "command": [
+        "tests/unit/test_proton_package_audit.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.51
+    }
+  ],
+  "scope": "Release, packaging and CI tool contracts; no package build or publication"
+}
