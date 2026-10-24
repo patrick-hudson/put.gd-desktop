@@ -21,7 +21,7 @@ def generate(docs, identity, source_url, timestamp):
               ('usr/lib*/putgd/libaws* usr/lib*/putgd/libs2n*',
                'Apache-2.0 and MIT and Zlib and BSD-2-clause',
                [p for p in inputs if p.name.startswith('aws-')]),
-              ('usr/bin/putgd-record', 'LGPL-2.1+',
+              ('usr/bin/putgd-record', 'MIT and LGPL-2.1+',
                [p for p in inputs if p.name.startswith('wayland-')])]
     if (docs / 'proton').is_dir():
         groups.append(('usr/libexec/putgd/proton/*', 'Proton-bundled-notices',
@@ -40,7 +40,7 @@ def generate(docs, identity, source_url, timestamp):
     extra = '\n\n'.join(p.relative_to(docs).as_posix() + ':\n' + p.read_text()
                         for p in inputs if p not in included)
     if extra:
-        text += 'Comment: Additional redistribution notices and source directions.\n' + continuation(extra) + '\n'
+        text = text.rstrip('\n') + '\nComment: Additional redistribution notices and source directions.\n' + continuation(extra) + '\n'
     (docs / 'copyright').write_text(text)
     date = format_datetime(datetime.fromtimestamp(timestamp, timezone.utc))
     changelog = ('putgd (' + identity['packageVersion'] + ') unstable; urgency=medium\n\n'
