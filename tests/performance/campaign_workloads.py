@@ -7,8 +7,10 @@ separate from API acknowledgement and eventual operation completion.
 import hashlib
 import json
 import math
+import os
 from pathlib import Path
 import re
+import stat
 import statistics
 import subprocess
 import sys
@@ -341,7 +343,7 @@ def operation_summary(value):
                        'receipt': item.get('receipt')} for item in value['items']]}
 
 
-def verify_uploaded(run, operation):
+def verify_uploaded(run, operation, source=None):
     require(operation['state'] == 'completed' and operation['items'], 'upload_operation_incomplete')
     from urllib.request import build_opener, ProxyHandler, Request, HTTPRedirectHandler
     class NoRedirect(HTTPRedirectHandler):
@@ -365,15 +367,28 @@ def verify_uploaded(run, operation):
         with opener.open(Request(link), timeout=15) as response:
             require(response.geturl() == link, 'result_link_redirected')
             digest = hashlib.sha256()
+            image_bytes = bytearray() if source else None
             for block in iter(lambda: response.read(65536), b''):
                 digest.update(block)
+                if image_bytes is not None:
+                    require(len(image_bytes) + len(block) <= 1024**2, 'burst_uploaded_image_oversized')
+                    image_bytes.extend(block)
         require(digest.hexdigest() == item['artifact']['sha256'], 'independent_uploaded_bytes_mismatch')
+        if source:
+            import io
+            from PIL import Image
+            with Image.open(io.BytesIO(image_bytes)) as image:
+                require(image.format == 'PNG' and image.size == (source['width'], source['height']) and
+                        hashlib.sha256(image.convert('RGB').tobytes()).hexdigest() == source['pixelSha256'],
+                        'burst_uploaded_pixels_differ_from_attributed_source')
         run.event('upload-independent-verification', operationId=operation['id'], historyId=item_id,
-                  directUrl=link, sha256=digest.hexdigest())
+                  directUrl=link, sha256=digest.hexdigest(),
+                  attributedSourcePixelSha256=source['pixelSha256'] if source else None)
 
 
 def settle(run, baseline):
-    run.clipboard_command('clear')
+    if run.clipboard is not None:
+        run.clipboard_command('clear')
     rows = run.interval('post-upload-settle', run.args.settle_seconds, closed=True)
     final = rows[-1][1]['totals']
     run.result['metrics']['postUploadFinalFamily'] = final
@@ -386,26 +401,126 @@ def settle(run, baseline):
     run.result['limitations'].append('Post-upload sampled growth/plateau is measured; a finite settle does not prove absence of all leaks.')
 
 
+def upload_source(path, root):
+    """Read only our immutable synthetic file, never a display/clipboard source."""
+    import io
+    from PIL import Image
+    path, root = Path(path), Path(root)
+    require(path.is_absolute() and path.resolve() == path and path.parent == root / 'burst-media',
+            'burst_source_outside_private_media')
+    parent = path.parent.lstat()
+    require(stat.S_ISDIR(parent.st_mode) and parent.st_uid == os.getuid()
+            and stat.S_IMODE(parent.st_mode) == 0o700, 'burst_source_directory_not_private')
+    with os.fdopen(os.open(path, os.O_RDONLY | os.O_NOFOLLOW), 'rb') as stream:
+        before = os.fstat(stream.fileno())
+        require(stat.S_ISREG(before.st_mode) and before.st_uid == os.getuid()
+                and stat.S_IMODE(before.st_mode) == 0o400 and 0 < before.st_size < 1024**2,
+                'burst_source_not_owned_immutable_png')
+        data = stream.read(1024**2)
+        after = os.fstat(stream.fileno())
+    identity = lambda info: (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
+    require(identity(before) == identity(after) == identity(path.lstat()), 'burst_source_changed_while_reading')
+    with Image.open(io.BytesIO(data)) as image:
+        require(image.format == 'PNG' and image.size == (320, 180), 'burst_source_geometry_or_format')
+        pixels = image.convert('RGB').tobytes()
+    return {'path': str(path), 'device': before.st_dev, 'inode': before.st_ino, 'bytes': len(data),
+            'mtimeNs': before.st_mtime_ns, 'ctimeNs': before.st_ctime_ns,
+            'sha256': hashlib.sha256(data).hexdigest(), 'width': 320, 'height': 180,
+            'pixelSha256': hashlib.sha256(pixels).hexdigest()}
+
+
+def submit_file_upload(run, source):
+    """Explicit production file editor/Upload, with content proof before submit.
+
+    The native file route stages the specified PNG directly. A notification or
+    occluding window cannot enter that input. Preview bytes are compared only in
+    memory, never logged; this is source attribution, not a GUI paint metric.
+    """
+    import base64
+    import io
+    from PIL import Image
+    require(upload_source(source['path'], run.root) == source, 'burst_source_identity_changed_before_open')
+    operation_id = run.call('editor.open', {'source': 'file', 'path': source['path']})['operationId']
+    submitted = False
+    deadline = time.monotonic() + 30
+    try:
+        while True:
+            try:
+                state = run.call('editor.inspect', {'id': operation_id})
+                break
+            except EvidenceError as error:
+                require(str(error) == 'cli_editor_starting' and time.monotonic() < deadline,
+                        'burst_file_editor_not_ready')
+                time.sleep(.05)
+        require(state.get('phase') == 'editing' and (state.get('width'), state.get('height')) == (320, 180)
+                and state.get('crop') == [0, 0, 320, 180] and state.get('shapes') == []
+                and state.get('modified') is False, 'burst_file_editor_state_changed')
+        preview = run.call('editor.preview', {'id': operation_id, 'maxEdge': 320})
+        require(preview.get('mime') == 'image/png' and
+                (preview.get('width'), preview.get('height'), preview.get('sourceWidth'), preview.get('sourceHeight'))
+                == (320, 180, 320, 180) and len(preview.get('png', '')) < 2 * 1024**2,
+                'burst_file_editor_preview_invalid')
+        with Image.open(io.BytesIO(base64.b64decode(preview['png'], validate=True))) as image:
+            require(image.format == 'PNG' and image.size == (320, 180) and
+                    hashlib.sha256(image.convert('RGB').tobytes()).hexdigest() == source['pixelSha256'],
+                    'burst_file_editor_preview_content_mismatch')
+        require(run.call('editor.inspect', {'id': operation_id}) == state,
+                'burst_file_editor_changed_before_submit')
+        require(upload_source(source['path'], run.root) == source, 'burst_source_identity_changed_before_submit')
+        run.event('burst-file-source-attributed-before-submit', operationId=operation_id, **source)
+        require(run.call('editor.submit', {'id': operation_id}).get('submitted') is True,
+                'burst_file_editor_upload_not_acknowledged')
+        submitted = True
+        # Wait for the editor's normal handoff, not upload completion. Other
+        # operations may keep uploading while the next file editor opens.
+        deadline = time.monotonic() + 130
+        while True:
+            operation = run.call('operation.inspect', {'id': operation_id})
+            require(operation['state'] not in ('failed', 'partial', 'cancelled'), 'burst_file_handoff_failed')
+            if operation.get('items'):
+                require(len(operation['items']) == 1, 'burst_file_handoff_not_single_item')
+                break
+            require(time.monotonic() < deadline, 'burst_file_handoff_timeout')
+            run.sample('burst-file-editor-handoff')
+            time.sleep(.05)
+        require(upload_source(source['path'], run.root) == source, 'burst_source_identity_changed_after_handoff')
+        run.event('burst-file-editor-handed-off', operationId=operation_id,
+                  artifactSha256=operation['items'][0]['artifact']['sha256'], sourceSha256=source['sha256'])
+        return operation_id
+    finally:
+        if not submitted:
+            run.call('editor.cancel', {'id': operation_id})
+
+
 def burst(run):
+    from campaign_fixture import png
+    # Prepare and attribute every input before changing the destination/rules.
+    # The old desktop action is deliberately absent: X11 root-visible pixels
+    # cannot be attributed before product persistence by an earlier cover test.
+    media = run.root / 'burst-media'
+    media.mkdir(mode=0o700)
+    sources = []
+    for index in range(50):
+        path = media / f'queue-{index:02d}-synthetic.png'
+        png(path, index + 100, 320, 180)
+        path.chmod(0o400)
+        sources.append(upload_source(path, run.root))
+    require(len({source['sha256'] for source in sources}) == 50, 'burst_sources_not_distinct')
+    run.result['gates']['captureBurst'] = {'status': 'unassessed',
+        'reason': '50-upload workload uses explicit synthetic file editors; actual capture burst is not exercised'}
+    run.result['burstSourceRecipe'] = {'generator': 'campaign_fixture.png', 'indexStart': 100, 'count': 50,
+        'indexStep': 1, 'width': 320, 'height': 180, 'noise': False, 'fileMode': '0400', 'directoryMode': '0700'}
+    run.result['limitations'].append('Burst measures 50 explicit synthetic file-editor Uploads, not desktop or native capture acceptance.')
     run.upload_configuration()
     baseline = run.sample('pre-burst')['totals']
     initial = tray(run, 'before-burst')
     ui = UI(run)
-    run.fixture('/__rules', {'rules': [{'method': 'PUT', 'delay': 2, 'remaining': 100}]})
+    run.fixture('/__rules', {'rules': [{'method': 'PUT', 'delay': 10, 'remaining': 100}]})
     operations = []
     queued_peak = uploading_peak = 0
     try:
-        for index in range(50):
-            deadline = time.monotonic() + 30
-            while True:
-                try:
-                    operation_id = run.call('action.invoke', {'action': 'desktop'})['operationId']
-                    break
-                except EvidenceError as error:
-                    require(str(error) == 'cli_busy_selecting' and time.monotonic() < deadline,
-                            'burst_capture_admission_failed')
-                    run.event('burst-admission-wait', index=index, code='busy_selecting')
-                    time.sleep(.05)
+        for index, source in enumerate(sources):
+            operation_id = submit_file_upload(run, source)
             operations.append(operation_id)
             run.event('burst-accepted', index=index, operationId=operation_id)
             if index % 5 == 4:
@@ -422,10 +537,10 @@ def burst(run):
                 'burst_did_not_demonstrate_concurrent_queued_uploads')
         require(active['IconPixmap'] != initial['IconPixmap'] or active['ToolTip'] != initial['ToolTip'],
                 'independent_tray_did_not_change_during_burst')
-        for operation_id in operations:
+        for operation_id, source in zip(operations, sources):
             operation = run.wait_operation(operation_id)
             run.event('burst-terminal', **operation_summary(operation))
-            verify_uploaded(run, operation)
+            verify_uploaded(run, operation, source)
         links = {run.call('operation.inspect', {'id': operation_id})['items'][0]['receipt']['directUrl']
                  for operation_id in operations}
         require(len(links) == 50, 'burst_did_not_retain_50_distinct_links')
@@ -433,7 +548,12 @@ def burst(run):
         final = tray(run, 'burst-settled-tray')
         require(not final['workingTitleObserved'], 'tray_did_not_return_to_idle')
         ui.save('burst-completed')
-        run.result['metrics']['burst'] = {'acceptedCaptures': 50, 'concurrentUploadPeakObserved': uploading_peak,
+        for source in sources:
+            require(upload_source(source['path'], run.root) == source, 'burst_source_identity_changed_after_upload')
+        run.result['metrics']['burst'] = {'acceptedFileEditorUploads': 50, 'nativeCapturesExercised': 0,
+                                        'source': 'production editor.open(source=file) then explicit editor.submit',
+                                        'sourceGeometry': [320, 180], 'fixturePutDelaySeconds': 10,
+                                        'concurrentUploadPeakObserved': uploading_peak,
                                         'queuedOperationPeakObserved': queued_peak, 'linksIndependentlyVerified': 50,
                                         'finalTrayStatus': final['Status']}
     finally:

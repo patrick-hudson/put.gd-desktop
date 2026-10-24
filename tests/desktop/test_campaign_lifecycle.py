@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from types import SimpleNamespace
 import unittest
 from unittest import mock
 
@@ -133,6 +134,39 @@ class HistoryLifetimeTests(unittest.TestCase):
 
 
 class FinalizationTests(unittest.TestCase):
+    def test_timed_capture_caller_releases_mouse_after_child_and_keyboard_timeouts(self):
+        # Exercise Campaign.capture itself, not just its mouse-release helper.
+        # No subprocess is launched and no native input is sent.
+        for termination_fails in (False, True):
+            with self.subTest(termination_fails=termination_fails), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                driver = root / 'synthetic-driver'
+                driver.write_bytes(b'unit-test instrumentation identity')
+                run = physical_campaign.Campaign.__new__(physical_campaign.Campaign)
+                run.root, run.environment, run.result = root, {}, {}
+                run.resident, run.event = SimpleNamespace(pid=123), mock.Mock()
+                run.args = SimpleNamespace(driver=str(driver), capture_driver_manifest=None,
+                                           capture_helper='/not-executed')
+                process = mock.Mock()
+                process.poll.return_value = None
+                process.wait.side_effect = subprocess.TimeoutExpired('capture-driver', 240)
+                def input_command(command, **_options):
+                    if command[1] == 'keyup':
+                        raise subprocess.TimeoutExpired('xdotool-keyup', 5)
+                    self.assertEqual(command, ['xdotool', 'mouseup', '1'])
+                with mock.patch.object(physical_campaign, 'operation_ids', return_value=set()), \
+                     mock.patch.object(physical_campaign.subprocess, 'Popen', return_value=process), \
+                     mock.patch.object(physical_campaign.subprocess, 'run', side_effect=input_command) as input_run, \
+                     mock.patch.object(physical_campaign, 'stop_owned_process_group',
+                                       side_effect=subprocess.TimeoutExpired('terminate', 5) if termination_fails else None) as stop:
+                    with self.assertRaises(subprocess.TimeoutExpired) as failure:
+                        run.capture({'source': {'shortcuts': {'bindings': {'region': {'bound': True}}}}})
+                    self.assertEqual(failure.exception.cmd, 'xdotool-keyup')
+                    self.assertIsInstance(failure.exception.__context__, subprocess.TimeoutExpired)
+                stop.assert_called_once_with(process)
+                self.assertEqual([call.args[0] for call in input_run.call_args_list],
+                                 [['xdotool', 'keyup', 'Control_L', 'Shift_L', 'F12'], ['xdotool', 'mouseup', '1']])
+
     def test_dead_visual_helper_does_not_skip_owned_button_release(self):
         runner = mock.Mock()
         with mock.patch.object(physical_campaign, 'identity', side_effect=FileNotFoundError):

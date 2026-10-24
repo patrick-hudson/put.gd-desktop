@@ -423,12 +423,32 @@ class Campaign:
                                       stderr=subprocess.DEVNULL, text=True, start_new_session=True)
         reply = read_line(self.cover, 15)
         require(reply.get('ok') and reply.get('state') == 'covered', 'static_cover_failed')
-        checked = subprocess.run([sys.executable, str(path), 'precheck', '--port', str(self.args.vnc_port),
-                                  '--color', '505a64', '--min-fraction', '0.98'],
-                                 capture_output=True, text=True, timeout=20)
-        require(checked.returncode == 0, 'static_cover_not_visible_on_wall')
+        # GTK's fullscreen placement acknowledgement can precede the VNC tile's
+        # painted frame. Retry readiness only, before any scored/product work.
+        # Saving pixels still requires the independent all-pixel attribution.
+        deadline = time.monotonic() + 20
+        attempts = self.result['staticCover']['visibilityAttempts'] = []
+        for attempt in range(10):
+            require(self.cover.poll() is None, 'static_cover_exited')
+            remaining = deadline - time.monotonic()
+            require(remaining > 0, 'static_cover_not_visible_on_wall')
+            try:
+                checked = subprocess.run([sys.executable, str(path), 'precheck', '--port', str(self.args.vnc_port),
+                                          '--color', '505a64', '--min-fraction', '0.98'],
+                                         capture_output=True, text=True, timeout=min(5, remaining))
+                observation = {'returncode': checked.returncode, 'precheck': json.loads(checked.stdout)}
+            except subprocess.TimeoutExpired:
+                observation = {'error': 'precheck_timeout'}
+            attempts.append(observation)
+            self.event('static-cover-readiness-attempt', attempt=attempt + 1, **observation)
+            self.persist()
+            if observation.get('returncode') == 0:
+                break
+            require(observation.get('returncode', 3) == 3, 'static_cover_precheck_failed')
+            require(attempt < 9 and time.monotonic() < deadline, 'static_cover_not_visible_on_wall')
+            time.sleep(min(.2, max(0, deadline - time.monotonic())))
         self.event('static-cover-visible', pid=self.cover.pid, readiness=reply,
-                   vncPrecheck=json.loads(checked.stdout))
+                   vncPrecheck=observation['precheck'])
         self.persist()
 
     def visual(self, label):
@@ -715,13 +735,17 @@ class Campaign:
             try:
                 driver_code = process.wait(timeout=240)
             finally:
-                if process.poll() is None:
-                    stop_owned_process_group(process)
-                    # Balance only input this driver can hold, before resident
-                    # cleanup; an interrupted C++ process cannot run its catch.
-                    subprocess.run(['xdotool', 'keyup', 'Control_L', 'Shift_L', 'F12'],
-                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
-                    cancel_visual_input(None, True)
+                try:
+                    if process.poll() is None:
+                        stop_owned_process_group(process)
+                finally:
+                    # Each release is independent, including when the child
+                    # already exited abnormally and could not run its catch.
+                    try:
+                        subprocess.run(['xdotool', 'keyup', 'Control_L', 'Shift_L', 'F12'],
+                                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
+                    finally:
+                        cancel_visual_input(None, True)
         data = json.loads((self.root / 'capture.json').read_text())
         require(data.get('witnessMode') == ('current-contrast' if self.args.capture_driver_manifest else 'live-outline'),
                 'capture_witness_definition_mismatch')
@@ -896,7 +920,9 @@ def read_line(process, seconds):
     return json.loads(line)
 
 
-def cancel_visual_input(helper, pressed, runner=subprocess.run):
+def cancel_visual_input(helper, pressed, runner=None):
+    if runner is None:
+        runner = subprocess.run
     try:
         if helper:
             try:

@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Policy, proxy and external-observation contracts, without a product or GUI."""
 import asyncio
+import base64
+import hashlib
 import json
 from pathlib import Path
 import sys
@@ -12,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'performance'))
 import campaign_proxy
 import build_current_capture
 import campaign_workloads as workloads
+import campaign_fixture
 from bench_ui_process import EvidenceError
 
 
@@ -60,6 +63,180 @@ class ThresholdTests(unittest.TestCase):
             with self.assertRaisesRegex(EvidenceError, 'non_loopback_result_link'):
                 workloads.verify_uploaded(run, operation)
             opener.return_value.open.assert_not_called()
+
+
+class FileUploadSafetyTests(unittest.TestCase):
+    def prepare(self, root):
+        media = root / 'burst-media'
+        media.mkdir(mode=0o700)
+        path = media / 'queue-00-synthetic.png'
+        campaign_fixture.png(path, 100, 320, 180)
+        path.chmod(0o400)
+        return path, workloads.upload_source(path, root)
+
+    def backend(self, root, path, change=None):
+        run = mock.Mock()
+        run.root = root
+        state = {'phase': 'editing', 'width': 320, 'height': 180, 'crop': [0, 0, 320, 180],
+                 'shapes': [], 'modified': False}
+        def call(method, params):
+            if method == 'editor.open':
+                self.assertEqual(params, {'source': 'file', 'path': str(path)})
+                if change:
+                    change()
+                return {'operationId': 'edit-1'}
+            if method == 'editor.inspect':
+                return state
+            if method == 'editor.preview':
+                return {'mime': 'image/png', 'png': base64.b64encode(path.read_bytes()).decode(),
+                        'width': 320, 'height': 180, 'sourceWidth': 320, 'sourceHeight': 180}
+            if method == 'editor.submit':
+                return {'submitted': True}
+            if method == 'operation.inspect':
+                return {'state': 'running', 'items': [{'artifact': {'sha256': 'b' * 64}}]}
+            if method == 'editor.cancel':
+                return {'cancelled': True}
+            self.fail('Unsafe/unexpected production method: ' + method)
+        run.call.side_effect = call
+        return run
+
+    def test_explicit_file_preview_is_attributed_before_upload_and_no_capture_is_invoked(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path, source = self.prepare(root)
+            run = self.backend(root, path)
+            self.assertEqual(workloads.submit_file_upload(run, source), 'edit-1')
+            methods = [call.args[0] for call in run.call.call_args_list]
+            self.assertEqual(methods, ['editor.open', 'editor.inspect', 'editor.preview',
+                                      'editor.inspect', 'editor.submit', 'operation.inspect'])
+            calls = run.mock_calls
+            proof = next(i for i, call in enumerate(calls) if call[0] == 'event' and
+                         call.args[0] == 'burst-file-source-attributed-before-submit')
+            submit = next(i for i, call in enumerate(calls) if call[0] == 'call' and call.args[0] == 'editor.submit')
+            self.assertLess(proof, submit)
+            for call in run.event.call_args_list:
+                self.assertNotIn('png', call.kwargs, 'Preview payload must never be logged')
+
+    def test_changed_preview_pixels_cancel_without_upload_even_if_cover_would_pass(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path, source = self.prepare(root)
+            def replace():
+                path.chmod(0o600)
+                campaign_fixture.png(path, 101, 320, 180)
+                path.chmod(0o400)
+            run = self.backend(root, path, replace)
+            with self.assertRaisesRegex(EvidenceError, 'preview_content_mismatch'):
+                workloads.submit_file_upload(run, source)
+            methods = [call.args[0] for call in run.call.call_args_list]
+            self.assertNotIn('editor.submit', methods)
+            self.assertEqual(methods[-1], 'editor.cancel')
+
+    def test_same_pixels_replaced_inode_is_rejected_before_submit(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path, source = self.prepare(root)
+            def replace():
+                replacement = path.with_suffix('.replacement')
+                replacement.write_bytes(path.read_bytes())
+                replacement.chmod(0o400)
+                replacement.replace(path)
+            run = self.backend(root, path, replace)
+            with self.assertRaisesRegex(EvidenceError, 'identity_changed_before_submit'):
+                workloads.submit_file_upload(run, source)
+            self.assertNotIn('editor.submit', [call.args[0] for call in run.call.call_args_list])
+
+    def test_symlink_and_writable_source_refused_before_any_product_call(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path, source = self.prepare(root)
+            run = self.backend(root, path)
+            path.chmod(0o600)
+            with self.assertRaisesRegex(EvidenceError, 'not_owned_immutable_png'):
+                workloads.submit_file_upload(run, source)
+            run.call.assert_not_called()
+            path.chmod(0o400)
+            link = path.with_name('linked.png')
+            link.symlink_to(path)
+            with self.assertRaisesRegex(EvidenceError, 'outside_private_media'):
+                workloads.submit_file_upload(run, {**source, 'path': str(link)})
+            run.call.assert_not_called()
+
+    def test_independent_upload_with_correct_hash_but_wrong_known_pixels_fails(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path, source = self.prepare(root)
+            other = root / 'different.png'
+            campaign_fixture.png(other, 200, 320, 180)
+            data = other.read_bytes()
+            link = 'http://127.0.0.1:12345/fixture/upload.png'
+            operation = {'id': 'op', 'state': 'completed', 'items': [{'uploadStatus': 'uploaded',
+                'artifact': {'id': 'item', 'sha256': hashlib.sha256(data).hexdigest()},
+                'receipt': {'directUrl': link}}]}
+            run = mock.Mock()
+            run.args.endpoint = 'http://127.0.0.1:12345'
+            run.call.return_value = {'operationId': 'op', 'uploadStatus': 'uploaded'}
+            response = mock.MagicMock()
+            response.geturl.return_value = link
+            response.read.side_effect = [data, b'']
+            response.__enter__.return_value = response
+            with mock.patch('urllib.request.build_opener') as opener:
+                opener.return_value.open.return_value = response
+                with self.assertRaisesRegex(EvidenceError, 'uploaded_pixels_differ'):
+                    workloads.verify_uploaded(run, operation, source)
+
+    def test_full_queue_protocol_uses_50_distinct_files_and_leaves_capture_gate_unassessed(self):
+        # Control-flow rehearsal only: no product, GUI, fixture or upload runs.
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            run = mock.Mock()
+            run.root = root
+            run.result = {'metrics': {}, 'gates': {}, 'limitations': []}
+            run.sample.return_value = {'totals': {}}
+            sources, operations = {}, {}
+            current = None
+            state = {'phase': 'editing', 'width': 320, 'height': 180, 'crop': [0, 0, 320, 180],
+                     'shapes': [], 'modified': False}
+            def call(method, params):
+                nonlocal current
+                if method == 'editor.open':
+                    self.assertEqual(params['source'], 'file')
+                    current = 'operation-' + str(len(sources))
+                    sources[current] = Path(params['path'])
+                    operations[current] = {'id': current, 'state': 'running', 'phase': 'queued',
+                        'items': [{'uploadStatus': 'uploading', 'artifact': {'id': current, 'sha256': 'b' * 64},
+                                   'receipt': {'directUrl': 'http://127.0.0.1:12345/fixture/' + current}}]}
+                    return {'operationId': current}
+                if method == 'editor.inspect':
+                    return state
+                if method == 'editor.preview':
+                    return {'mime': 'image/png', 'png': base64.b64encode(sources[current].read_bytes()).decode(),
+                            'width': 320, 'height': 180, 'sourceWidth': 320, 'sourceHeight': 180}
+                if method == 'editor.submit':
+                    return {'submitted': True}
+                if method == 'operation.inspect':
+                    return operations[params['id']]
+                self.fail('Unexpected method: ' + method)
+            run.call.side_effect = call
+            run.wait_operation.side_effect = lambda key: {**operations[key], 'state': 'completed'}
+            tray_states = iter([{'IconPixmap': 'idle', 'ToolTip': 'idle'}] +
+                [{'IconPixmap': 'working', 'ToolTip': 'working'}] * 10 +
+                [{'Status': 'Active', 'workingTitleObserved': False}])
+            with mock.patch.object(workloads, 'tray', side_effect=lambda *args: next(tray_states)), \
+                 mock.patch.object(workloads, 'UI'), \
+                 mock.patch.object(workloads, 'verify_uploaded') as verify, \
+                 mock.patch.object(workloads, 'settle') as settle, \
+                 mock.patch.object(workloads.subprocess, 'run'), \
+                 mock.patch.object(workloads.time, 'sleep'):
+                workloads.burst(run)
+            self.assertEqual(len(sources), 50)
+            self.assertEqual(len({hashlib.sha256(path.read_bytes()).hexdigest() for path in sources.values()}), 50)
+            self.assertEqual([call.args[0] for call in run.call.call_args_list].count('editor.submit'), 50)
+            self.assertEqual(verify.call_count, 50)
+            settle.assert_called_once_with(run, {})
+            self.assertEqual(run.result['metrics']['burst']['acceptedFileEditorUploads'], 50)
+            self.assertEqual(run.result['metrics']['burst']['nativeCapturesExercised'], 0)
+            self.assertEqual(run.result['gates']['captureBurst']['status'], 'unassessed')
 
 
 class ProxyTests(unittest.IsolatedAsyncioTestCase):

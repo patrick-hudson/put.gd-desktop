@@ -24,6 +24,44 @@ def notification(raw, width, x, y, w, h):
 
 
 class FramePrivacyTests(unittest.TestCase):
+    def cover_readiness(self, root, replies):
+        run = campaign.Campaign.__new__(campaign.Campaign)
+        run.root, run.cover, run.result = root, None, {}
+        run.args, run.event, run.persist = SimpleNamespace(vnc_port=5900), mock.Mock(), mock.Mock()
+        process = mock.Mock()
+        process.poll.return_value = None
+        with mock.patch.object(campaign.subprocess, 'Popen', return_value=process), \
+             mock.patch.object(campaign, 'read_line', return_value={'ok': True, 'state': 'covered'}), \
+             mock.patch.object(campaign.subprocess, 'run', side_effect=replies) as precheck, \
+             mock.patch.object(campaign.time, 'sleep'), \
+             mock.patch.object(frames, 'save_rgb') as saver:
+            try:
+                run.static_cover()
+            finally:
+                saver.assert_not_called()
+                self.readiness_run, self.readiness_precheck = run, precheck
+        return run
+
+    def test_cover_placement_waits_for_later_visible_frame_without_saving_any_frame(self):
+        with tempfile.TemporaryDirectory() as directory:
+            run = self.cover_readiness(Path(directory), [
+                SimpleNamespace(returncode=3, stdout='{"ok":false,"fraction":0.0}'),
+                SimpleNamespace(returncode=0, stdout='{"ok":true,"fraction":1.0}')])
+            self.assertEqual(len(run.result['staticCover']['visibilityAttempts']), 2)
+            self.assertEqual(run.result['staticCover']['visibilityAttempts'][0]['precheck']['fraction'], 0)
+            for call in self.readiness_precheck.call_args_list:
+                self.assertEqual(call.args[0][-2:], ['--min-fraction', '0.98'])
+                self.assertLessEqual(call.kwargs['timeout'], 5)
+
+    def test_cover_never_visible_has_bounded_retries_and_retains_each_failure(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaisesRegex(EvidenceError, 'static_cover_not_visible_on_wall'):
+                self.cover_readiness(Path(directory), [
+                    SimpleNamespace(returncode=3, stdout='{"ok":false,"fraction":0.95}') for _ in range(10)])
+            self.assertEqual(self.readiness_precheck.call_count, 10)
+            self.assertEqual(len(self.readiness_run.result['staticCover']['visibilityAttempts']), 10)
+            self.assertEqual(self.readiness_run.persist.call_count, 10)
+
     def test_99_percent_cover_with_ten_thousand_notification_pixels_never_saves(self):
         raw = frame(1000, 1000)
         notification(raw, 1000, 100, 100, 100, 100)
