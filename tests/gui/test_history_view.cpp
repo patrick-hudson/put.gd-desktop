@@ -108,7 +108,10 @@ private slots:
   if(gallery)window.findChild<QToolButton*>("historyGridMode")->click();
   // Resize both directions: cached/fixed item heights must not clip a narrower layout.
   for(int target:{width,width+180,width}){
-   window.resize(target,700);putgd::test::settle(30);QVERIFY(window.width()<=target);const auto index=list->model()->index(0,0);const auto row=list->visualRect(index);QVERIFY(row.isValid());
+   window.resize(target,700);
+   for(bool selected:{false,true}){
+   if(selected)selectRow(list,0);else list->clearSelection();
+   putgd::test::settle(30);QVERIFY(window.width()<=target);const auto index=list->model()->index(0,0);const auto row=list->visualRect(index);QVERIFY(row.isValid());
    const auto record=index.data(HistoryModel::RecordRole).toJsonObject();QVERIFY(HistoryModel::storedNothing(record));QVERIFY(index.data(HistoryModel::PrimaryActionRole).toString().isEmpty());QVERIFY(index.data(Qt::AccessibleTextRole).toString().contains(message));
    const int heading=gallery?0:34;const int left=gallery?20:107;const int top=gallery?216:heading+75;const int textWidth=row.width()-(gallery?41:128);
    QTextDocument expected;expected.setDocumentMargin(0);expected.setDefaultFont(list->font());auto textOption=expected.defaultTextOption();textOption.setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);expected.setDefaultTextOption(textOption);expected.setPlainText(message);expected.setTextWidth(textWidth);
@@ -117,11 +120,12 @@ private slots:
    // Compare the actual delegate's entire painted error rectangle to complete
    // plain text, including the last command/token. A role/string assertion alone
    // would pass the old elided painter and the gallery that omitted errors.
-   QImage actual(row.size(),QImage::Format_ARGB32_Premultiplied);actual.fill(Qt::transparent);QStyleOptionViewItem option;option.initFrom(list);option.font=list->font();option.rect=QRect(QPoint(),row.size());option.state=QStyle::State_Enabled;{QPainter painter(&actual);list->itemDelegate()->paint(&painter,option,index);}
-   QImage complete(QSize(textWidth,height),QImage::Format_ARGB32_Premultiplied);complete.fill(gallery?RedesignTheme::surface():RedesignTheme::bg());{QPainter painter(&complete);QAbstractTextDocumentLayout::PaintContext context;context.palette.setColor(QPalette::Text,RedesignTheme::danger());expected.documentLayout()->draw(&painter,context);}
+   QImage actual(row.size(),QImage::Format_ARGB32_Premultiplied);actual.fill(Qt::transparent);QStyleOptionViewItem option;option.initFrom(list);option.font=list->font();option.rect=QRect(QPoint(),row.size());option.state=QStyle::State_Enabled|(selected?QStyle::State_Selected:QStyle::State_None);{QPainter painter(&actual);list->itemDelegate()->paint(&painter,option,index);}
+   QImage complete(QSize(textWidth,height),QImage::Format_ARGB32_Premultiplied);complete.fill(selected?RedesignTheme::selected():gallery?RedesignTheme::surface():RedesignTheme::bg());{QPainter painter(&complete);QAbstractTextDocumentLayout::PaintContext context;context.palette.setColor(QPalette::Text,RedesignTheme::danger());expected.documentLayout()->draw(&painter,context);}
    QCOMPARE(actual.copy(left,top,textWidth,height),complete);
    // An oversized error remains reachable through the real pixel scroll range.
-   if(row.height()>list->viewport()->height()){QVERIFY(list->verticalScrollBar()->maximum()>0);list->verticalScrollBar()->setValue(list->verticalScrollBar()->maximum());putgd::test::settle(10);QVERIFY(list->visualRect(index).bottom()<=list->viewport()->height());}
+   if(row.height()>list->viewport()->height()){QVERIFY(list->verticalScrollBar()->maximum()>0);list->verticalScrollBar()->setValue(list->verticalScrollBar()->maximum());putgd::test::settle(10);QVERIFY2(list->visualRect(index).bottom()<=list->viewport()->height(),qPrintable(QString("row top=%1 bottom=%2 height=%3 viewport=%4 scroll=%5 max=%6 mode=%7").arg(list->visualRect(index).top()).arg(list->visualRect(index).bottom()).arg(list->visualRect(index).height()).arg(list->viewport()->height()).arg(list->verticalScrollBar()->value()).arg(list->verticalScrollBar()->maximum()).arg(int(list->verticalScrollMode()))));}
+   }
   }
   QCOMPARE(source.reads,0);QCOMPARE(source.copies,0);
  }

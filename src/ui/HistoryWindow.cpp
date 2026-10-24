@@ -91,7 +91,16 @@ std::unique_ptr<QTextDocument> failureText(const QString& text,const QFont& font
 }
 class HistoryDelegate final:public QStyledItemDelegate {
 public:
- explicit HistoryDelegate(QListView* view):QStyledItemDelegate(view),view_(view){}
+ explicit HistoryDelegate(QListView* view):QStyledItemDelegate(view),view_(view){view_->viewport()->installEventFilter(this);}
+ bool eventFilter(QObject* watched,QEvent* event)override{
+  if(watched==view_->viewport()&&event->type()==QEvent::Resize){
+   // A scrollbar changes the wrapping width after the first layout. Recompute
+   // the scroll range from that final width so an oversized error's last lines
+   // remain reachable, including after selecting a row or resizing the splitter.
+   QTimer::singleShot(0,view_,[view=view_]{view->doItemsLayout();});
+  }
+  return QStyledItemDelegate::eventFilter(watched,event);
+ }
  std::function<void(const QModelIndex&)> primary;
  std::function<void(const QModelIndex&,const QPoint&)> menu;
  bool grid()const{return view_->viewMode()==QListView::IconMode;}
