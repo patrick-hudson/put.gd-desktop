@@ -472,11 +472,43 @@ as a new finding again:
 ```json
 "ignore": [
   {"id": "CVE-YYYY-NNNNN", "component": "ffmpeg", "reason": "the affected decoder is not built (media.json)",
-   "expires": "2027-01-31", "issue": 420}
+   "expires": "2027-01-21", "issue": 511, "scope": "appimage-ffmpeg-7.1.5"}
 ]
 ```
 
-`id` also matches a finding's aliases (a GHSA's CVE), and `component` may be `*`.
+`id` also matches a finding's aliases (a GHSA's CVE). Legacy entries permit
+`component: "*"`; the #511 acceptances name one component and an explicit scope.
+Policy schema version 2 requires a scope for every acceptance and is rejected
+by older scanner helpers. The policy's `scopes` bind each acceptance to the package
+label, component version, upstream source commit, actual library bytes and absence
+of the omitted tools. `sbom.py generate` calculates `putgd:filesSha256` from the extracted image's
+component paths and file hashes, and records `putgd:toolsAbsent`. FFmpeg's
+compiled configure string is part of those library bytes. Adding a tool,
+changing a library/configuration, source pin or version, or passing an older
+SBOM without these properties stops the acceptance from matching. Regenerate an
+old SBOM from its verified package; never copy scope properties into it by hand.
+The repository contract also requires reassessment when the locked source or
+`media.json` configure list changes. The existing stable severity/fix gate stays
+unchanged, and all accepted findings remain in the report with reasons and expiry.
+
+The [#511 evidence](../packaging/sbom/dispositions/511.json) records three FFmpeg
+backports and the omitted components behind the other 26 Critical/High matches.
+It also resolves the reachability question for ICU 73.2 CVE-2025-5222: the
+[upstream fix](https://github.com/unicode-org/icu/commit/2c667e31cfd0b6bb1923627a932fd3453a5bac77)
+changes `tools/genrb/parse.cpp`, and that parser and `SRBRoot` belong to the
+`genrb` executable. The audited AppImage ships only `libicudata`, `libicui18n`
+and `libicuuc`; neither `genrb` nor `libicutu` is present. This acceptance applies
+to those exact runtime bytes, not to the ICU source package or a system `genrb`.
+No new upstream patch or ICU ABI substitution is needed for this disposition.
+The acceptances expire on 2027-01-21 and do not cover other CVEs.
+
+The evidence package is the development-identity AppImage from `nightly`
+`50053b01f1bbd7f3776a53513bb8c43151ce0de8` (CI run 40045151634), not a published
+nightly or stable draft. Each later package must satisfy the same fingerprint
+guards, and the exact stable draft still requires its current scan and other
+release acceptance. The libtiff and GStreamer findings without published fixes
+remain reported under the existing policy.
+
 CPE matching takes NVD's version ranges literally. FFmpeg's maintenance branches
 backport fixes that NVD records only against the next major, and the AppImage
 builds FFmpeg with `--disable-everything` plus a short list of components, so
