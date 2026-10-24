@@ -1,5 +1,15 @@
 # Native acceptance driver hardening (#495) — 2026-10-24
 
+**HOLD — independent review requires changes.** The candidate recipes below
+are an implementation/evidence record, not a final approved runbook. Do not use
+the old `grow` downstream. Review found five safety gaps in the predecessor
+implementation: persisted external destinations despite localhost configuration,
+a selected-database/unrelated-runtime bypass, incomplete helper inventory,
+lost cleanup/recovery after partial synthetic keychain stores, and output
+reservation only after mutations. Corrected source, regression results and a
+distinct follow-up independent review are pending. Existing test passes and
+functional observations do not resolve those findings.
+
 This is the documentation companion to the maintained driver in
 `tools/lab/native_acceptance.py` in [code PR #554](https://github.com/patrick-hudson/put.gd-desktop/pull/554).
 Merge #554 before [documentation PR #552](https://github.com/patrick-hudson/put.gd-desktop/pull/552).
@@ -29,14 +39,20 @@ The old outcome tables and failure context are unchanged. In particular, the m74
 P failure (#490) remains a failure in that record. Later host setup or driver fixes
 do not retroactively turn those attempts into passes.
 
-## Maintained commands
+## Candidate command interface (HOLD)
 
-Current driver source: `64a3257b20d7aa33cc25d35c07a628becff4036c`,
+Recorded candidate source: `64a3257b20d7aa33cc25d35c07a628becff4036c`,
 `tools/lab/native_acceptance.py` plus `tools/lab/native_keychain.py`. The driver
 SHA-256 is `8f1a8f49fd3f72d574493ebcb43e7ae51db253da7889a0ca51ef7f68ba8ecf4c`;
 the [JSON](summary.json) also records the helper and test hashes. This is
 unmerged harness source, separately identified from the published product
 package under test. The product CLI capabilities are unchanged.
+
+These commands describe that candidate. Preserve their source-specific evidence;
+wait for the corrected handoff and follow-up review before treating them as safe
+maintained campaign instructions. In particular, current localhost configuration
+alone does not establish that stored journals/destinations are safe or that the
+selected database is stopped.
 
 Start with `python3 tools/lab/native_acceptance.py --help` and the selected
 subcommand's `--help`. Receipts use `--output NEW_PRIVATE_RECEIPT`: its parent
@@ -143,7 +159,7 @@ python3 tools/lab/native_acceptance.py --output "$receipt" grow \
 
 Set these paths to the actual disposable fixture on the execution host; use a
 fresh receipt and the same short private runtime used to launch that fixture.
-`grow` does not create a configuration or seed captures. It requires an owned
+`grow` does not create a configuration or seed captures. This candidate checks an owned
 private root and database, `config/putgd/config.json` with loopback-only profile
 endpoints, and schema 5–7 terminal operation journals with matching `item_state`
 rows. Stop the fixture normally first: no resident/helpers may remain in that

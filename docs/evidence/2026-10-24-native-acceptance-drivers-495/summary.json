@@ -3,13 +3,13 @@
   "issue": 495,
   "date": "2026-10-24",
   "scope": "Native acceptance lab driver documentation; no new release acceptance claim",
-  "status": "current64a-protocol-and-prior-k72-evidence-verified-m74-pending",
+  "status": "HOLD-independent-review-changes-required",
   "codePullRequest": "https://github.com/patrick-hudson/put.gd-desktop/pull/554",
   "driver": {
     "path": "tools/lab/native_acceptance.py",
     "commit": "64a3257b20d7aa33cc25d35c07a628becff4036c",
     "sha256": "8f1a8f49fd3f72d574493ebcb43e7ae51db253da7889a0ca51ef7f68ba8ecf4c",
-    "stage": "draft-code-pr-unmerged-harness",
+    "stage": "review-blocked-candidate-not-final-runbook",
     "productCliCapabilitiesChanged": false
   },
   "historicalEvidence": {
@@ -46,7 +46,8 @@
       "executedByDocumentationThread": false,
       "realUploadsPerformed": 0,
       "requiresExistingCapturesAndConfig": true,
-      "acceptanceScope": "fixture-shape only until separately measured on a product build"
+      "acceptanceScope": "fixture-shape only until separately measured on a product build",
+      "executionStatus": "HOLD-not-current-safe-guidance"
     }
   ],
   "automatedChecks": [
@@ -456,6 +457,7 @@
     }
   ],
   "limitations": [
+    "Five acknowledged independent-review safety findings unresolved; old downstream grow and candidate runbook HOLD",
     "m74 functional window pending",
     "No real logout/login in k72 runs; same-session refusal tested",
     "No physical tray click or rendered menu proof",
@@ -975,5 +977,37 @@
       "screenshotTaken": false,
       "scope": "real current-session compositor peer verification only; no GNOME app/tray/graphical acceptance"
     }
-  ]
+  ],
+  "independentSafetyReview": {
+    "round": 1,
+    "reviewedCommit": "6bbbd506aeef7f8aa4a97c21664c7013ff427627",
+    "status": "five-findings-acknowledged-unresolved",
+    "privateReport": "/home/patrick/work/put.gd/work/stable-closeout-410-495-379/REVIEW554-round1.md",
+    "sha256": "2fb5d13c8cc919f8a938c6975964484d66b05d73543e0174de800fe3a592bfb2",
+    "findings": [
+      {
+        "priority": "P1",
+        "issue": "persisted external destination/journal/receipt/multipart state not validated by localhost current config"
+      },
+      {
+        "priority": "P2",
+        "issue": "selected database can be live while unrelated runtime passes stopped guard"
+      },
+      {
+        "priority": "P2",
+        "issue": "capture/selector/storage helper inventory incomplete"
+      },
+      {
+        "priority": "P2",
+        "issue": "partial synthetic store failure can lose cleanup reference and leak item"
+      },
+      {
+        "priority": "P2",
+        "issue": "output is reserved after mutations; existing output can still permit effects"
+      }
+    ],
+    "downstreamGrow": "HOLD",
+    "followupReview": "required after corrected exact-source handoff; pending",
+    "evidencePolicy": "existing observations retain original sources; no final safety/readiness credit"
+  }
 }
