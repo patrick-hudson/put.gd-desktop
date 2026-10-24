@@ -13,7 +13,13 @@ import uuid
 
 
 def valid_reference(value):
-    return isinstance(value, str) and re.fullmatch(r'putgd-acceptance-[0-9a-f-]{36}', value) is not None
+    if not isinstance(value, str) or not value.startswith('putgd-acceptance-'):
+        return False
+    suffix = value[len('putgd-acceptance-'):]
+    try:
+        return str(uuid.UUID(suffix)) == suffix
+    except ValueError:
+        return False
 
 
 def lifecycle(phase, env, before=None, unlock_lab=False):
@@ -27,12 +33,11 @@ def lifecycle(phase, env, before=None, unlock_lab=False):
         from gi.repository import Gio, GLib
     except ImportError:
         raise Refused('PyGObject is missing; use the distro python3-gi/python3-gobject package') from None
-    connection = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+    try:
+        connection = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+    except GLib.Error:
+        raise Refused('Cannot connect to the current session Secret Service bus') from None
     service = '/org/freedesktop/secrets'
-    provider_pid = connection.call_sync('org.freedesktop.DBus', '/org/freedesktop/DBus', 'org.freedesktop.DBus',
-        'GetConnectionUnixProcessID', GLib.Variant('(s)', ('org.freedesktop.secrets',)),
-        GLib.VariantType('(u)'), Gio.DBusCallFlags.NONE, 15000, None).unpack()[0]
-    provider = Path(os.readlink(f'/proc/{provider_pid}/exe')).name
 
     def call(path, interface, method, signature=None, values=(), reply=None):
         try:
@@ -47,6 +52,13 @@ def lifecycle(phase, env, before=None, unlock_lab=False):
         return call(path, 'org.freedesktop.DBus.Properties', 'Get', '(ss)', (interface, name), '(v)')[0]
 
     collection = call(service, 'org.freedesktop.Secret.Service', 'ReadAlias', '(s)', ('default',), '(o)')[0]
+    try:
+        provider_pid = connection.call_sync('org.freedesktop.DBus', '/org/freedesktop/DBus', 'org.freedesktop.DBus',
+            'GetConnectionUnixProcessID', GLib.Variant('(s)', ('org.freedesktop.secrets',)),
+            GLib.VariantType('(u)'), Gio.DBusCallFlags.NONE, 15000, None).unpack()[0]
+        provider = Path(os.readlink(f'/proc/{provider_pid}/exe')).name
+    except (GLib.Error, OSError):
+        raise Refused('Cannot verify the current Secret Service provider') from None
     result = {'backend': 'org.freedesktop.secrets', 'provider': provider, 'defaultCollection': None if collection == '/' else collection,
               'scope': 'real Secret Service backend; not a product QtKeychain roundtrip', 'phase': phase}
     if collection == '/':
@@ -114,6 +126,8 @@ def lifecycle(phase, env, before=None, unlock_lab=False):
             remaining = call(service, 'org.freedesktop.Secret.Service', 'SearchItems', '(a{ss})', (attrs,), '(aoao)')
             require(not any(remaining), 'Synthetic item remains after cleanup')
             result.update(reference=reference, removed=True)
+        require(call(service, 'org.freedesktop.Secret.Service', 'ReadAlias', '(s)', ('default',), '(o)')[0] == collection,
+                'Default collection changed during the probe; no persistence claim')
     finally:
         call(session, 'org.freedesktop.Secret.Session', 'Close')
     return result

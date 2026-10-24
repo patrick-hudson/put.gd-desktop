@@ -251,7 +251,7 @@ def resident_processes(runtime):
             continue
         try:
             identity = process(int(folder.name))
-            if Path(identity['exe']).name not in ('putgd', 'putgd-ui', 'putgd-record'):
+            if Path(identity['exe'].removesuffix(' (deleted)')).name not in ('putgd', 'putgd-ui', 'putgd-record'):
                 continue
             if Path(environment(identity['pid']).get('XDG_RUNTIME_DIR', f'/run/user/{os.getuid()}')).resolve() == Path(runtime).resolve():
                 result.append(identity)

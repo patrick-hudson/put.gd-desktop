@@ -128,6 +128,13 @@ class Safety(unittest.TestCase):
             self.assertEqual(driver.cli('/does/not/exist', '/tmp/pg495', 'ui.snapshot', {}),
                              {'ok': False, 'error': {'code': 'cli_missing'}})
 
+    def test_removed_executable_resident_remains_visible_in_inventory(self):
+        identity = {'pid': 17, 'exe': '/usr/bin/putgd (deleted)', 'startTicks': 1}
+        with mock.patch.object(driver.Path, 'iterdir', return_value=[Path('/proc/17')]), \
+             mock.patch.object(driver, 'process', return_value=identity), \
+             mock.patch.object(driver, 'environment', return_value={'XDG_RUNTIME_DIR': '/tmp/p495'}):
+            self.assertEqual(driver.resident_processes('/tmp/p495'), [identity])
+
     def test_tray_target_requires_exact_owner_and_generation(self):
         identity = {'pid': 17, 'exe': '/usr/bin/putgd', 'startTicks': 1}
         def fake_bus(env, *args):
@@ -193,7 +200,7 @@ class Safety(unittest.TestCase):
 
     def test_keychain_cleanup_reference_is_scoped(self):
         self.assertTrue(native_keychain.valid_reference('putgd-acceptance-12345678-1234-1234-1234-123456789abc'))
-        for ref in ('putgd/proton/lab-f44', 'login', 'putgd-acceptance-/../../default'):
+        for ref in ('putgd/proton/lab-f44', 'login', 'putgd-acceptance-/../../default', 'putgd-acceptance-' + '-' * 36):
             self.assertFalse(native_keychain.valid_reference(ref))
 
 
