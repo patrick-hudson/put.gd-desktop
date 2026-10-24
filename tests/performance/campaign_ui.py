@@ -7,7 +7,9 @@ timestamps or a count of every rendered frame. Imports do not open a display.
 import ctypes as C
 import hashlib
 import subprocess
+import sys
 import time
+from pathlib import Path
 
 from bench_ui_process import EvidenceError, identity, same_identity
 
@@ -101,6 +103,60 @@ class Drawable:
                 'probeCount': len(self.probes) - first_probe,
                 'maximumProbeMs': max(row['probeSeconds'] for row in self.probes[first_probe:]) * 1000,
                 'definition': 'native owned drawable digest; first sample after action acknowledgement; 10ms requested polling; no compositor presentation claim'}
+
+
+def save_visible_window(window, owner, path, port):
+    """Retain a VNC crop only when it equals the stable owned drawable.
+
+    Park the pointer in the synthetic background; the exact inner client crop
+    excludes compositor decorations/rounded edges. Never persist other pixels
+    from the framebuffer, even when another desktop window obscures this one.
+    """
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'tools/lab'))
+    import rfb
+    from PIL import Image
+    subprocess.run(['wmctrl', '-ia', window], check=True, stdout=subprocess.DEVNULL,
+                   stderr=subprocess.DEVNULL, timeout=5)
+    info = subprocess.check_output(['xwininfo', '-id', window], text=True, timeout=5)
+    import re
+    x = int(re.search(r'Absolute upper-left X:\s+(-?\d+)', info)[1])
+    y = int(re.search(r'Absolute upper-left Y:\s+(-?\d+)', info)[1])
+    width = int(re.search(r'Width:\s+(\d+)', info)[1])
+    height = int(re.search(r'Height:\s+(\d+)', info)[1])
+    inset = 12
+    if width <= 2 * inset or height <= 2 * inset:
+        raise EvidenceError('owned_visual_crop_too_small')
+    draw = Drawable(window, owner)
+    client = rfb.RFB(port)
+    try:
+        # Physical m74's window leaves a synthetic background margin. Refuse
+        # unsupported geometry instead of retaining a cursor-obscured crop.
+        points = [(client.width - 80, client.height - 80), (80, client.height - 80), (client.width - 80, 80)]
+        point = next((p for p in points if not (x <= p[0] < x + width and y <= p[1] < y + height)), None)
+        if point is None:
+            raise EvidenceError('no_synthetic_pointer_parking_margin')
+        subprocess.run(['xdotool', 'mousemove', '--sync', str(point[0]), str(point[1])],
+                       check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
+        rectangle = [inset, inset, width - 2 * inset, height - 2 * inset]
+        for _ in range(12):
+            before = draw.pixels(rectangle).tobytes()
+            w, h, pixels = client.frame()
+            if x < 0 or y < 0 or x + width > w or y + height > h:
+                raise EvidenceError('owned_visual_not_inside_physical_frame')
+            crop = Image.frombytes('RGB', (w, h), pixels, 'raw', 'BGRX').crop(
+                (x + inset, y + inset, x + width - inset, y + height - inset))
+            after = draw.pixels(rectangle).tobytes()
+            if before == crop.tobytes() == after:
+                crop.save(path)
+                return {'pixelSource': 'physical localhost VNC composite crop', 'equalsStableOwnedDrawable': True,
+                        'nativePixelSha256': hashlib.sha256(before).hexdigest(),
+                        'clientCrop': [x + inset, y + inset, width - 2 * inset, height - 2 * inset],
+                        'window': window, 'owner': owner}
+            time.sleep(.1)
+        raise EvidenceError('owned_ui_not_proven_visible_on_physical_wall')
+    finally:
+        draw.close()
+        client.close()
 
 
 class Accessible:

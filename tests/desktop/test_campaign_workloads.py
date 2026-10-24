@@ -10,6 +10,7 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'performance'))
 import campaign_proxy
+import build_current_capture
 import campaign_workloads as workloads
 from bench_ui_process import EvidenceError
 
@@ -33,7 +34,7 @@ class ThresholdTests(unittest.TestCase):
             run.args.threshold_policy = str(path)
             run.result = {'metrics': {}, 'gates': {}}
             workloads.assess(run, 'historySearchP95UpperBoundMs', None)
-            self.assertEqual(run.result['gates']['historySearchP95UpperBoundMs']['status'], 'fail')
+            self.assertEqual(run.result['gates']['historySearchP95UpperBoundMs']['status'], 'unassessed')
             value['approvedBy'] = ''
             path.write_text(json.dumps(value))
             with self.assertRaisesRegex(EvidenceError, 'attribution_required'):
@@ -87,6 +88,27 @@ class ProxyTests(unittest.IsolatedAsyncioTestCase):
             path.write_text('raise RuntimeError("must never execute")\n')
             with self.assertRaisesRegex(ValueError, 'unrecognized_frozen_proxy_startup'):
                 campaign_proxy.load_original(path, 0, 12345, 262144)
+
+
+class CurrentWitnessTests(unittest.TestCase):
+    def test_derivative_retains_frozen_ownership_timer_inputs_samples_and_budget(self):
+        source = (build_current_capture.REPO / 'tests/performance/bench_capture.cpp').read_bytes()
+        current, difference = build_current_capture.generate(source)
+        original = source.decode()
+        before = original[:original.index('bool outlinePainted(')]
+        self.assertEqual(current[:current.index('bool outlinePainted(')], before)
+        tail = original[original.index('bool visibleCanvas('):]
+        tail = tail.replace('result["schemaVersion"]=3;', 'result["schemaVersion"]=4;result["frozenSourceSha256"]="' + build_current_capture.FROZEN_SHA256 + '";')
+        tail = tail.replace('result["witnessMode"]="live-outline";', 'result["witnessMode"]="current-contrast";result["paintCriterion"]="scale1 black outer edge plus white inset edge at the original top-edge position";')
+        self.assertEqual(current[current.index('bool visibleCanvas('):], tail)
+        self.assertIn('1,2,~0u)', current)
+        self.assertIn('qRound(local.y())', difference)
+        self.assertEqual((build_current_capture.REPO / 'tests/performance/bench_capture.cpp').read_bytes(), source)
+
+    def test_unknown_or_changed_frozen_source_is_not_rewritten(self):
+        source = (build_current_capture.REPO / 'tests/performance/bench_capture.cpp').read_bytes()
+        with self.assertRaisesRegex(ValueError, 'frozen_source_hash_mismatch'):
+            build_current_capture.generate(source + b'// changed\n')
 
 
 if __name__ == '__main__':

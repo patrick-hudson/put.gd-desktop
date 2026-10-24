@@ -202,7 +202,7 @@ class EndpointAndBudgetTests(unittest.TestCase):
                 observer = campaign.Campaign(args)
             self.assertEqual(observer.result['driver']['revision'], 'c' * 40)
             self.assertEqual(observer.result['driver']['revisionSource'], 'explicit-declaration')
-            self.assertEqual(len(observer.result['driver']['sourceFiles']), 8)
+            self.assertEqual(len(observer.result['driver']['sourceFiles']), 10)
 
 
 if __name__ == '__main__':

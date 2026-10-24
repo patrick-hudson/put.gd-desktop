@@ -49,7 +49,8 @@ def assess(run, name, measurement):
     if approved:
         run.result['thresholdPolicy'] = approved
     maximum = approved['maximums'].get(name) if approved else None
-    run.result['gates'][name] = ({'status': 'unassessed', 'reason': 'no_explicit_approved_threshold'} if maximum is None else
+    run.result['gates'][name] = ({'status': 'unassessed', 'reason': 'content_endpoint_not_witnessed'} if measurement is None else
+        {'status': 'unassessed', 'reason': 'no_explicit_approved_threshold'} if maximum is None else
         {'status': 'pass' if measurement is not None and measurement <= maximum else 'fail',
          'maximum': maximum, 'approvalReference': approved['approvalReference']})
 
@@ -94,7 +95,8 @@ class UI:
                   cliAcknowledgementMs=(acknowledged - started) * 1000,
                   ownedDrawableObservationUpperBoundMs=open_ms,
                   limitation='Observation begins after ui.show acknowledgement; upper bound, not first compositor-present time')
-        assess(run, 'historyOpenUpperBoundMs', open_ms)
+        run.result['metrics']['historyOpenFirstGenericDrawableObservationMs'] = open_ms
+        assess(run, 'historyOpenUpperBoundMs', None)
         deadline = time.monotonic() + 15
         while True:
             try:
@@ -153,20 +155,19 @@ class UI:
             time.sleep(.01)
 
     def save(self, label):
-        from campaign_ui import Drawable
-        for index, window in enumerate(owned_windows(self.owner['pid'])):
-            draw = self.draw if window == self.window else Drawable(window, self.owner)
+        from campaign_ui import save_visible_window
+        saved = False
+        for index, window in enumerate(reversed(owned_windows(self.owner['pid']))):
             try:
-                info = subprocess.check_output(['xwininfo', '-id', window], text=True, timeout=5)
-                width = int(re.search(r'Width:\s+(\d+)', info)[1])
-                height = int(re.search(r'Height:\s+(\d+)', info)[1])
                 path = self.run.root / (label + '-' + str(index) + '.png')
-                draw.pixels([0, 0, width, height]).save(path)
-                self.run.event('owned-ui-visual', label=label, path=path.name, sha256=sha256(path),
-                               owner=self.owner, window=window, pixelSource='native owned drawable; companion retains wall screenshots')
-            finally:
-                if draw is not self.draw:
-                    draw.close()
+                proof = save_visible_window(window, self.owner, path, self.run.args.vnc_port)
+                self.run.event('owned-ui-visual', label=label, path=path.name, sha256=sha256(path), **proof)
+                saved = True
+            except EvidenceError as error:
+                if str(error) != 'owned_ui_not_proven_visible_on_physical_wall':
+                    raise
+                self.run.event('owned-window-occluded-no-visual-retained', label=label, window=window)
+        require(saved, 'no_owned_ui_proven_visible_on_wall')
 
     def action(self, label, action, rectangle=None, require_change=True):
         value = self.draw.response(rectangle or self.list_rectangle, action)
@@ -229,13 +230,15 @@ def history(run):
         require(seen == 10000, 'whole_list_traversal_incomplete')
         run.result['metrics']['historyWholeListRowsTraversed'] = seen
         run.result['metrics']['historyWholeListWallSecondsIncludingVerification'] = time.monotonic() - traversal_started
-        assess(run, 'historyScrollP95UpperBoundMs', percentile(scrolls))
+        run.result['metrics']['historyScrollP95GenericRepaintMs'] = percentile(scrolls)
+        assess(run, 'historyScrollP95UpperBoundMs', None)
         queries = ['landscape-00', 'motion-01', 'landscape-02', 'motion-03', 'landscape-04', 'motion-05']
         searches = []
         for i in range(30):
             measured, _ = ui.search(queries[i % len(queries)])
             searches.append(measured)
-        assess(run, 'historySearchP95UpperBoundMs', percentile(searches))
+        run.result['metrics']['historySearchP95GenericRepaintMs'] = percentile(searches)
+        assess(run, 'historySearchP95UpperBoundMs', None)
         previews = []
         for term in ('landscape-00', 'motion-01'):
             _, records = ui.search(term)
@@ -476,7 +479,8 @@ def slow(run):
         ui = UI(run)
         response = ui.action('slow-input-response', lambda: ui.accessible.search('synthetic'),
                              [0, 0, min(ui.width, 800), 180])
-        assess(run, 'slowInputUpperBoundMs', response)
+        run.result['metrics']['slowInputGenericRepaintMs'] = response
+        assess(run, 'slowInputUpperBoundMs', None)
         ui.save('slow-upload-progress')
         tray(run, 'slow-progress')
         observed_progress = []

@@ -314,6 +314,8 @@ class Campaign:
                                       Path(__file__).with_name('campaign_ui.py'),
                                       Path(__file__).with_name('campaign_workloads.py'),
                                       Path(__file__).with_name('campaign_proxy.py'),
+                                      Path(__file__).with_name('campaign_lifecycle.py'),
+                                      Path(__file__).with_name('build_current_capture.py'),
                                       REPO / 'tools/diagnostics/check_socket_paths.py')}},
                        'product': {}, 'parameters': vars(args), 'metrics': {}, 'gates': {},
                        'limitations': ['Capture witness observes X11 drawable paint, not compositor presentation.',
@@ -369,6 +371,7 @@ class Campaign:
         self.resident = subprocess.Popen([self.args.app, '--background'], env=self.environment,
                                          stdin=subprocess.DEVNULL, stdout=self.log, stderr=self.log,
                                          start_new_session=True)
+        self.resident_pidfd = os.pidfd_open(self.resident.pid)
         self.family = None
         # Wait until /proc/exe is the launched product, not the forking Python.
         deadline = time.monotonic() + 25
@@ -389,19 +392,22 @@ class Campaign:
         return request(self.args.cli, method, params, environment=self.environment, socket=self.socket)
 
     def stop(self):
-        if self.resident and self.resident.poll() is None:
-            try:
-                require(self.family is not None, 'resident_never_ready')
-                self.call('ui.quit')
-                code = self.resident.wait(timeout=15)
-                self.event('resident-normal-exit', pid=self.resident.pid, exitCode=code,
-                           socketAbsent=not Path(self.socket).exists())
-            except (OSError, EvidenceError, subprocess.SubprocessError, json.JSONDecodeError):
-                self.event('resident-required-termination', pid=self.resident.pid)
-                stop_owned_process_group(self.resident)
-        if self.log:
-            self.log.close()
-        self.resident = self.log = None
+        from campaign_lifecycle import cleanup
+        receipt = {'passed': True, 'scope': 'no current resident'}
+        try:
+            if self.resident:
+                known = list(self.family.known.values()) + self.family.exited if self.family else []
+                receipt = cleanup(self.resident, known, self.environment['XDG_RUNTIME_DIR'],
+                                  self.environment['XDG_DATA_HOME'], self.socket, lambda: self.call('ui.quit'))
+                self.event('resident-cleanup-checked', **receipt)
+                self.result.setdefault('residentCleanup', []).append(receipt)
+            return receipt['passed']
+        finally:
+            if self.log:
+                self.log.close()
+            if self.resident:
+                os.close(self.resident_pidfd)
+            self.resident = self.log = None
 
     def static_cover(self):
         if self.cover is not None:
@@ -427,7 +433,7 @@ class Campaign:
     def visual(self, label):
         """Save only owned UI drawables, or a prechecked synthetic cover frame."""
         from PIL import Image
-        from campaign_ui import Drawable
+        from campaign_ui import save_visible_window
         if self.family and self.resident and self.resident.poll() is None:
             observed = self.sample(label + '-identity')
             saved = False
@@ -435,16 +441,9 @@ class Campaign:
                 if owner['role'] != 'ui':
                     continue
                 for index, window in enumerate(owned_windows(owner['pid'])):
-                    info = subprocess.check_output(['xwininfo', '-id', window], text=True, timeout=5)
-                    width = int(re.search(r'Width:\s+(\d+)', info)[1])
-                    height = int(re.search(r'Height:\s+(\d+)', info)[1])
-                    draw = Drawable(window, owner)
                     path = self.root / f'{label}-{owner["pid"]}-{index}.png'
-                    try:
-                        draw.pixels([0, 0, width, height]).save(path)
-                    finally:
-                        draw.close()
-                    self.event('owned-ui-visual', label=label, file=path.name, sha256=sha256(path), owner=owner)
+                    proof = save_visible_window(window, owner, path, self.args.vnc_port)
+                    self.event('owned-ui-visual', label=label, file=path.name, sha256=sha256(path), **proof)
                     saved = True
             if saved:
                 return
@@ -465,6 +464,7 @@ class Campaign:
                    limitation='Synthetic cover; companion separately verifies actual desktop tray presentation')
 
     def close_fixtures(self):
+        clean = True
         for process in (self.clipboard, self.cover):
             if process is None:
                 continue
@@ -474,15 +474,19 @@ class Campaign:
                     process.stdin.flush()
                     process.wait(timeout=5)
                 except (BrokenPipeError, subprocess.TimeoutExpired):
+                    clean = False
                     stop_owned_process_group(process)
+            clean = clean and process.returncode == 0
             process.stdin.close()
             process.stdout.close()
+        return clean
 
     def clipboard_command(self, action, **values):
         if self.clipboard is None:
-            self.clipboard = subprocess.Popen([sys.executable, str(Path(__file__).with_name('campaign_fixture.py')),
-                '--root', str(self.root)], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                stderr=subprocess.DEVNULL, text=True, start_new_session=True)
+            with (self.root / 'clipboard-fixture.log').open('xb') as log:
+                self.clipboard = subprocess.Popen([sys.executable, str(Path(__file__).with_name('campaign_fixture.py')),
+                    '--root', str(self.root)], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                    stderr=log, text=True, start_new_session=True)
             require(read_line(self.clipboard, 15).get('ok'), 'clipboard_owner_not_ready')
         self.clipboard.stdin.write(json.dumps({'action': action, **values}) + '\n')
         self.clipboard.stdin.flush()
@@ -614,7 +618,7 @@ class Campaign:
         document['preferences'].update(notifications=False, launchAtLogin=False)
         revision = self.call('settings.get')['metadata']['observedRevision']
         self.call('settings.patch', {'patch': document, 'expectedRevision': revision})
-        self.stop()
+        require(self.stop(), 'configuration_resident_cleanup_failed')
 
     def checked_live(self):
         capabilities = self.call('capabilities')
@@ -659,10 +663,17 @@ class Campaign:
             'observedProcessGenerations': len(cpu), 'samplingSpanSeconds': elapsed,
             'shortLivedChildrenMayBeMissed': True}
 
-    def interval(self, label, seconds, closed=False):
+    def interval(self, label, seconds, closed=False, invariant=None):
         rows = []
         started = None
+        next_sample = 0
         while True:
+            if invariant:
+                invariant()
+            now = time.monotonic()
+            if now < next_sample and (started is None or now < started + seconds):
+                time.sleep(min(.1, next_sample - now))
+                continue
             check_lock(self.args)
             require(self.cover is None or self.cover.poll() is None, 'static_cover_exited')
             row = self.sample(label)
@@ -672,16 +683,30 @@ class Campaign:
             rows.append((time.monotonic(), row))
             if started is None:
                 started = rows[0][0]
+            next_sample = time.monotonic() + 5
             remaining = seconds - (time.monotonic() - started)
             if remaining <= 0:
                 return rows
-            time.sleep(min(5, remaining))
+            time.sleep(min(.1, remaining))
 
     def capture(self, capabilities):
         require(capabilities['source']['shortcuts']['bindings'].get('region', {}).get('bound'),
                 'capture_shortcut_unbound')
         driver = Path(self.args.driver).resolve(strict=True)
         self.result['captureDriver'] = {'path': str(driver), 'sha256': sha256(driver)}
+        if self.args.capture_driver_manifest:
+            from build_current_capture import generate, FROZEN_SHA256
+            path = private_path(self.args.capture_driver_manifest)
+            manifest = json.loads(path.read_text())
+            generated, _difference = generate((REPO / 'tests/performance/bench_capture.cpp').read_bytes())
+            require(manifest.get('kind') == 'current-contrast' and manifest.get('syntheticNegativeControlsPassed') is True
+                    and manifest.get('frozenSourceSha256') == FROZEN_SHA256
+                    and manifest.get('generatedSourceSha256') == hashlib.sha256(generated.encode()).hexdigest()
+                    and manifest.get('binarySha256') == sha256(driver) and Path(manifest.get('binary', '')).resolve() == driver
+                    and manifest.get('warmupInvocations') == 5 and manifest.get('sampleCount') == 30
+                    and manifest.get('p95LimitMs') == 150, 'current_contrast_driver_identity_or_controls_invalid')
+            self.result['captureDriver']['derivativeWitness'] = manifest
+            self.result['captureDriver']['manifestSha256'] = sha256(path)
         command = [str(driver), '--resident-pid', str(self.resident.pid), '--capture-helper',
                    self.args.capture_helper, '--live-outline', '--output', str(self.root / 'capture.json')]
         self.event('capture-command', command=command)
@@ -689,6 +714,8 @@ class Campaign:
         with (self.root / 'capture-driver.log').open('xb') as log:
             completed = subprocess.run(command, env=self.environment, stdout=log, stderr=log, timeout=240)
         data = json.loads((self.root / 'capture.json').read_text())
+        require(data.get('witnessMode') == ('current-contrast' if self.args.capture_driver_manifest else 'live-outline'),
+                'capture_witness_definition_mismatch')
         for index, row in enumerate(data['samples']):
             self.event('capture-sample', index=index, **row)
         require(len(data['samples']) == 30 and data['warmupInvocations'] == 5 and not data['error'],
@@ -696,7 +723,10 @@ class Campaign:
         operations = operation_ids(self.root / 'data/putgd/history.sqlite') - before
         require(len(operations) == 35, 'capture_operation_count_mismatch')
         outcomes = [self.call('operation.inspect', {'id': operation}) for operation in sorted(operations)]
-        require(all(row.get('state') == 'cancelled' for row in outcomes), 'capture_did_not_cancel_cleanly')
+        require(all(row.get('state') == 'cancelled' and not row.get('items')
+                    and row.get('copyStatus') == 'no_result' for row in outcomes), 'capture_did_not_cancel_cleanly')
+        require(self.call('history.list', {'limit': 1})['total'] == (10000 if self.args.fixture_root else 0),
+                'cancelled_capture_changed_history')
         self.event('capture-outcomes', operations=[{'id': row['id'], 'state': row['state']} for row in outcomes])
         self.result['metrics']['warmP95DrawablePaintMs'] = data['p95PaintMs']
         self.result['gates']['warmCapture'] = {'status': 'pass' if data['p95PaintMs'] <= 150 else 'fail',
@@ -776,7 +806,8 @@ class Campaign:
                 subprocess.run(['xdotool', 'mouseup', '1'], stdout=subprocess.DEVNULL,
                                stderr=subprocess.DEVNULL, timeout=5)
         outcome = self.wait_operation(operation_id, seconds=15)
-        require(outcome['state'] == 'cancelled', 'unscored_visual_selection_did_not_cancel')
+        require(outcome['state'] == 'cancelled' and not outcome.get('items') and outcome.get('copyStatus') == 'no_result',
+                'unscored_visual_selection_did_not_cancel')
         self.event('unscored-capture-cancelled', operationId=operation_id, state=outcome['state'],
                    timedOperations=35, visualOperations=1)
 
@@ -788,6 +819,7 @@ class Campaign:
         for name, value in memory_gates(self.result['metrics']['coldClosed']).items():
             self.result['gates']['cold-' + name] = value
         self.persist()
+        previous_exit = self.call('diagnostics')['ui'].get('lastExit', {}).get('generation', 0)
         start = time.monotonic()
         reply = self.call('ui.show', {'view': 'history'})
         require(reply.get('shown') == 'history', 'history_show_ack_mismatch')
@@ -806,8 +838,18 @@ class Campaign:
                    milliseconds=(time.monotonic() - start) * 1000, provesPaint=False)
         self.visual('history-open')
         time.sleep(2)
-        opened = self.interval('history-open', self.args.open_seconds)
-        require(any(row['uiProcessCount'] for _, row in opened), 'history_ui_helper_missing')
+        from campaign_lifecycle import HistoryGuard, normal_helper_exit
+        helpers = [row for row in observed['processes'] if row['role'] == 'ui']
+        require(len(helpers) == 1 and len(windows) == 1, 'history_single_helper_window_required')
+        guard = HistoryGuard(helpers[0], windows[0], self.resident.pid)
+        try:
+            opened = self.interval('history-open', self.args.open_seconds, invariant=guard.check)
+            guard.check()
+            self.event('history-interval-guard', owner=helpers[0], window=windows[0],
+                       checks=guard.checks, activation='ui.show history acknowledged',
+                       evidence='pidfd + exact identity/parent + queued X11 unmap/destroy events')
+        finally:
+            guard.close()
         peak = max(row['totals']['pssBytes'] for _, row in opened)
         self.result['metrics']['historyOpenPeakFamilyPssBytes'] = peak
         self.result['gates']['historyOpenPss'] = {'status': 'pass' if peak <= 60 * MIB else 'fail',
@@ -820,6 +862,9 @@ class Campaign:
         while self.sample('history-closing')['processCount'] != 1:
             require(time.monotonic() < deadline, 'history_helper_did_not_exit')
             time.sleep(.2)
+        exited = self.call('diagnostics')['ui']['lastExit']
+        require(normal_helper_exit(exited, previous_exit), 'history_helper_exit_not_normal_zero')
+        self.event('history-helper-normal-exit', owner=helpers[0], lastExit=exited)
         closed = self.interval('history-closed', 300, closed=True)
         self.visual('history-closed-completed')
         self.result['metrics']['historyClosed'] = memory_summary(closed)
@@ -906,6 +951,7 @@ def parser():
     result.add_argument('--helper', default='/usr/bin/putgd-ui')
     result.add_argument('--capture-helper', default='/usr/bin/putgd-capture')
     result.add_argument('--driver', help='Existing unchanged putgd-bench-capture executable')
+    result.add_argument('--capture-driver-manifest', help='Reviewed separate current-contrast witness.json; omit for preserved frozen witness')
     result.add_argument('--fixture-root', help='#495 stopped private independent fixture root')
     result.add_argument('--driver-revision', help='Full driver commit for git-archive exports; declaration plus file hashes retained')
     result.add_argument('--open-seconds', type=int, default=30)
@@ -941,6 +987,7 @@ def main(argv=None):
         raise KeyboardInterrupt()
     signal.signal(signal.SIGTERM, interrupted)
     campaign = Campaign(args)
+    workload_complete = False
     try:
         campaign.initialize()
         campaign.configure()
@@ -955,8 +1002,7 @@ def main(argv=None):
             getattr(campaign_workloads, args.scenario)(campaign)
         else:
             getattr(campaign, args.scenario)()
-        campaign.result['status'] = 'complete'
-        return 1 if any(gate['status'] == 'fail' for gate in campaign.result['gates'].values()) else 0
+        workload_complete = True
     except BaseException as error:
         campaign.result['status'] = 'failed-or-interrupted'
         campaign.result['errorCode'] = str(error) if isinstance(error, EvidenceError) else type(error).__name__
@@ -967,11 +1013,23 @@ def main(argv=None):
                 campaign.result['failureVisualUnavailable'] = True
         raise
     finally:
-        campaign.stop()
-        campaign.close_fixtures()
+        cleanup_passed = True
+        for action in (campaign.stop, campaign.close_fixtures):
+            try:
+                cleanup_passed = action() and cleanup_passed
+            except (OSError, EvidenceError, subprocess.SubprocessError) as error:
+                cleanup_passed = False
+                campaign.result['cleanupErrorCode'] = str(error) if isinstance(error, EvidenceError) else type(error).__name__
+        campaign.result['gates']['cleanup'] = {'status': 'pass' if cleanup_passed else 'fail'}
+        cleanup_passed = cleanup_passed and all(row['passed'] for row in campaign.result.get('residentCleanup', []))
+        campaign.result['gates']['cleanup']['status'] = 'pass' if cleanup_passed else 'fail'
+        campaign.result['status'] = 'complete' if workload_complete and cleanup_passed else 'failed-or-interrupted'
         campaign.summarize_processes()
         campaign.result['elapsedSeconds'] = time.monotonic() - campaign.started
         campaign.persist()
+        if workload_complete and not cleanup_passed:
+            raise EvidenceError('campaign_cleanup_not_normal_complete')
+    return 1 if any(gate['status'] == 'fail' for gate in campaign.result['gates'].values()) else 0
 
 
 if __name__ == '__main__':
