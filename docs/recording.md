@@ -985,10 +985,10 @@ and no host-matched library was bundled; the receipt records the result under
   `recording.select`. Its slow-export case holds the fake export open while the
   production `putgd-cli` runs `saveCopy` and `upload`: both answer `exporting`
   at once, `inspect` shows progress, the lock on edits and `lastExport`, and a
-  cancel during the export admits nothing. Deferred stop replies (success or
-  error) preserve a budget-finalized clip and edited revision during a pending
-  Save copy or Upload export; a stale reply cannot mutate a cancelled session's
-  successor. It also checks that the CLI's wait
+  cancel during the export admits nothing. Deferred successful stop replies
+  preserve a budget-finalized clip and edited revision during pending Save copy
+  and Upload exports; Save copy also covers a late stop error. A stale reply
+  cannot mutate a cancelled session's successor. It also checks that the CLI's wait
   for every method that waits on the helper outlasts that helper's deadline.
 - `recording_helper_integration` (`tests/integration/test_recording_helper.cpp`):
   the helper supervisor against a fixture helper (probe caching, lifecycle,

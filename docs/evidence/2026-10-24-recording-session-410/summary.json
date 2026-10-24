@@ -10,43 +10,45 @@
   "codePullRequest": "https://github.com/patrick-hudson/put.gd-desktop/pull/551",
   "documentationPullRequest": "https://github.com/patrick-hudson/put.gd-desktop/pull/550",
   "mergeOrder": [
-    "code",
-    "documentation"
+    "recording code PR551 and storage prerequisite code PR556",
+    "documentation PR550"
   ],
-  "status": "in progress; final acceptance incomplete",
+  "status": "Exact3440 scoped recording evidence reviewed; full-release and physical GNOME acceptance not established.",
   "baselineCommit": "1a70ac7f02b75bc4c75a9d768b2775e837e771a6",
   "candidateSource": {
     "commit": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
     "tree": "17b445850b0f1d5258b77bf88a8ccbcc5edbb3e8",
-    "revisionStatus": "Relevant exact-build sanitizer evidence verified; full Dev, fifth review, final desktop and CI gates pending",
-    "executionAccepted": false,
-    "scopedExecutionEvidenceAvailable": true
+    "revisionStatus": "Final3440 relevant sanitizer, full Dev/MCP, hosted CI, fifth static review and scoped desktop/memory evidence verified.",
+    "executionAccepted": true,
+    "scopedExecutionEvidenceAvailable": true,
+    "acceptanceScope": "Changed issue410 recording behaviors and independent idle resident memory only; see package/desktop limitations."
   },
   "supersededCandidates": [
     {
       "commit": "b11c3ba6d64a60ace215aeb8ef9ac9cd8418f142",
       "tree": "f9d1b5e55bb37d76c2522b6229b52faa5af7b6bb",
       "executionAccepted": false,
-      "reason": "Two additional stop/budget races found during review; no acceptance credit transferred."
+      "reason": "Two additional stop/budget races found during review; no acceptance credit transferred.",
+      "revisionStatus": "Superseded; historical source/test/failed-attempt scopes retained separately, no final-head credit."
     },
     {
       "commit": "39d1945d3a8a5139d140f8d5748b6f831a392c26",
       "tree": "b6a69ec6c2d0e4c3133a75615fe344eeb6b1e0e6",
-      "revisionStatus": "awaiting execution evidence and second review",
+      "revisionStatus": "Superseded; historical source/test/failed-attempt scopes retained separately, no final-head credit.",
       "executionAccepted": false,
       "reason": "Superseded by 052d4363 with CLI deadline correction and deterministic event/reply regression; no acceptance credit transferred."
     },
     {
       "commit": "052d4363826fc01fa62a552f91db48b74667383b",
       "tree": "05c1e65a2e14c5df3e28315dadaf36aa45da3d28",
-      "revisionStatus": "third static review reported no actionable findings; final execution receipts pending",
+      "revisionStatus": "Superseded; historical source/test/failed-attempt scopes retained separately, no final-head credit.",
       "executionAccepted": false,
       "reason": "Superseded by 102b6708 test-only wait for asynchronous overwrite completion; final source/build identity and acceptance must be rerun."
     },
     {
       "commit": "102b67088abcd11ad3e77b68c17eda9b6fa2ae87",
       "tree": "e50248c3c7eb9ffa75024efbefb642375174c65a",
-      "revisionStatus": "Awaiting minimal approved product-probe leak fix and next candidate identity; no final acceptance",
+      "revisionStatus": "Superseded; historical source/test/failed-attempt scopes retained separately, no final-head credit.",
       "executionAccepted": false,
       "reason": "Superseded by approved minimal product-probe allocation fix in3440ab9c; partial/cancelled102b jobs are not passes."
     }
@@ -54,22 +56,22 @@
   "reviewFindings": [
     {
       "finding": "An event and command reply read together can be applied out of order.",
-      "status": "Correction present in 052d4363; static round 3 reports no actionable findings; final runtime receipts pending",
+      "status": "Corrected source retained in3440; full relevant regressions passed. Graphical late-stop preservation covered; edited pending-export races remain fixture coverage.",
       "basis": "execution-owner report; no execution claimed by report owner"
     },
     {
       "finding": "A delayed stop reply can replace a finalized review after edited export begins.",
-      "status": "Correction present in 052d4363; static round 3 reports no actionable findings; final runtime receipts pending",
+      "status": "Corrected source retained in3440; full relevant regressions passed. Graphical late-stop preservation covered; edited pending-export races remain fixture coverage.",
       "basis": "execution-owner report; no execution claimed by report owner"
     },
     {
       "finding": "action.invoke CLI wait was 15 s while a toggle stop may wait 30 s on the helper.",
-      "status": "Correction present in 052d4363; static round 3 reports no actionable findings; final runtime receipts pending",
+      "status": "Corrected source retained in3440; full relevant regressions passed. Graphical late-stop preservation covered; edited pending-export races remain fixture coverage.",
       "basis": "source review and execution-owner report"
     },
     {
       "finding": "The stale-upload assertion ran before an accepted overwrite export completed.",
-      "status": "102b6708 adds a wait for reviewing and saved export status before preserving the stale-revision oracle; final runtime receipts pending.",
+      "status": "Corrected source retained in3440; full relevant regressions passed. Graphical late-stop preservation covered; edited pending-export races remain fixture coverage.",
       "basis": "reviewed four-line test-only diff and retained expected recording_state vs recording_stale failure on 052d"
     }
   ],
@@ -77,7 +79,10 @@
     "commit": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
     "tree": "17b445850b0f1d5258b77bf88a8ccbcc5edbb3e8",
     "acceptedEvidenceScopes": [
-      "relevant unsuppressed ASan/UBSan whole CTest suites and actual product capabilities probe"
+      "relevant unsuppressed ASan/UBSan whole CTest suites and actual product capabilities probe",
+      "full108-entry Debian Dev CTest and separate5-test MCP suite",
+      "Cinnamon X11 guest, physical Debian KDE Wayland, GNOME Wayland guest changed recording behaviors; separately identified original/corrected Mint packages.",
+      "Independent180s resident RSS/PSS on each full functional build; corrected Mint package has separate three-case smoke only."
     ]
   },
   "automatedChecks": [
@@ -106,6 +111,12 @@
       "receipt": "preexisting-probe-leak.json"
     },
     {
+      "kind": "052d stale-upload asynchronous test oracle",
+      "status": "failed, retained separately; later four-line test-only wait preserves assertion",
+      "candidatePass": false,
+      "receipt": "oracle-results.json"
+    },
+    {
       "kind": "superseded partial development run",
       "sourceCommit": "102b67088abcd11ad3e77b68c17eda9b6fa2ae87",
       "status": "partial/cancelled; not a pass",
@@ -118,6 +129,12 @@
       "sourceCommit": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
       "status": "passed",
       "receipt": "final-3440-sanitizers.json"
+    },
+    {
+      "kind": "final-head full registered Dev and separate MCP suite",
+      "sourceCommit": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
+      "status": "passed108/108 and5/5",
+      "receipt": "final-3440-dev-mcp.json"
     }
   ],
   "desktopRuns": [
@@ -129,6 +146,12 @@
       "receipt": "prior-052d-gnome.json",
       "regionWorkflow": "blocked by absent Shell extension",
       "memoryScope": "debug helper lifetime only; no RSS performance claim"
+    },
+    {
+      "sourceCommit": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
+      "receipt": "final-3440-desktops.json",
+      "packageScopeReceipt": "package-scope.json",
+      "scope": "Cinnamon and GNOME guests; physical d69 KDE. Original Mint full6/idle versus corrected package smoke3 separately bound."
     }
   ],
   "visualReviews": [
@@ -139,29 +162,34 @@
       "sha256": "7391ada52e8d0383aefe1f1105b87a0561eadbb0bbdbcc7deafaaccf097faf82",
       "status": "reviewed safe decisive frame; retained privately",
       "finalCandidateAcceptance": false
+    },
+    {
+      "sourceCommit": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
+      "receipt": "visual-results.json",
+      "publishedImages": 11,
+      "status": "Saved originals reviewed safe, copied unchanged; actual Discard clicks hash-bound."
     }
   ],
-  "cleanupReceipts": [],
-  "pendingGates": [
-    "Full development configure/build/CTest at final3440 source.",
-    "Final-source Cinnamon/GNOME/KDE functional and memory gates with saved reviewed visuals.",
-    "Fifth static recording review and required recording code CI.",
-    "Final execution cleanup, physical lock release and VM export/guarded retirement receipts.",
-    "Current prerequisite556 focused review and required CI for f188 host-error receipt correction.",
-    "Final documentation review and fresh required CI after evidence push."
+  "cleanupReceipts": [
+    "cleanup-results.json"
   ],
+  "pendingGates": [],
   "limitations": [
     "Fixture/headless checks do not establish desktop acceptance.",
     "Prior-candidate tests and visuals retain their original identities and provide no final-head credit.",
     "Baseline negative-control executable hashes were not archived; exact source and test patch remain reproducible.",
     "Physical final-build GNOME product evidence is absent; cover and extension prerequisites blocked prior physical attempts.",
-    "No full release, physical performance, package lifecycle or published-asset certification."
+    "No full release, physical performance, package lifecycle or published-asset certification.",
+    "Original Mint c5bb0700 archive full6/idle results are not relabeled as corrected fb19 package results; identical nine binary hashes plus fresh fb19 smoke3/path access retained.",
+    "Earlier cm1/cm2 and km1/km2 cover failures have numeric receipts only, without a saved failure frame.",
+    "Edited revision2 pending Save copy/Upload race and deferred success/error reply preservation are fixture-only; desktop budget tests cover an actual later stop preserving the complete returned review."
   ],
   "reviewStatus": {
     "round": 5,
-    "scope": "static review including minimal probe ownership fix",
-    "reportedResult": "pending",
-    "sourceCommit": "3440ab9c4fb6bd745d50eb6c0728a318951ee481"
+    "scope": "Round5 minimal probe ownership delta only; broader prior findings resolved in earlier separately bounded rounds.",
+    "reportedResult": "No actionable findings; saved completed task result verified.",
+    "sourceCommit": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
+    "receipt": "review-results.json"
   },
   "documentationChecks": [
     {
@@ -183,13 +211,13 @@
       "host": "f44",
       "run": "g1",
       "status": "pre-launch preparation failure; no product acceptance",
-      "basis": "execution-owner report; sanitized summary/log handoff pending"
+      "basis": "Independently read numeric/source/time/failure-phase subset over pinned SSH; raw file hash retained in physical-gnome-attempts.json. No failed physical pixels collected."
     },
     {
       "host": "f44",
       "run": "g2",
       "status": "cover precheck failed before app launch; no product acceptance",
-      "basis": "execution-owner report; sanitized summary/log handoff pending",
+      "basis": "Independently read numeric/source/time/failure-phase subset over pinned SSH; raw file hash retained in physical-gnome-attempts.json. No failed physical pixels collected.",
       "visualRetention": "Original screenshot remains on host; explicitly excluded from collection because synthetic cover did not hide surrounding desktop.",
       "causeStatus": "GNOME overview suspected from synthetic window geometry; not established as a product defect."
     },
@@ -201,9 +229,8 @@
       "reportedCoveragePercent": 95.93,
       "requiredCoveragePercent": 98,
       "thresholdUnchanged": true,
-      "basis": "execution-owner report; sanitized summary/log handoff pending",
-      "visualRetention": "Private failure image excluded from collection and retained on host.",
-      "pendingFollowup": "g6 with visible-console fullscreen activation; final-harness graphical session selection verified by compositor UID/type/generation and visual capture waits for paint."
+      "basis": "Independently read numeric/source/time/failure-phase subset over pinned SSH; raw file hash retained in physical-gnome-attempts.json. No failed physical pixels collected.",
+      "visualRetention": "Private failure image excluded from collection and retained on host."
     },
     {
       "host": "f44",
@@ -213,7 +240,7 @@
       "reportedCoveragePercent": 95.93,
       "requiredCoveragePercent": 98,
       "thresholdUnchanged": true,
-      "basis": "execution-owner report; numeric sanitized summary handoff pending",
+      "basis": "Independently read numeric/source/time/failure-phase subset over pinned SSH; raw file hash retained in physical-gnome-attempts.json. No failed physical pixels collected.",
       "visualRetention": "Private failure image excluded from collection and retained on host."
     },
     {
@@ -224,7 +251,7 @@
       "reportedCoveragePercent": 95.93,
       "requiredCoveragePercent": 98,
       "thresholdUnchanged": true,
-      "basis": "execution-owner report; numeric sanitized summary handoff pending",
+      "basis": "Independently read numeric/source/time/failure-phase subset over pinned SSH; raw file hash retained in physical-gnome-attempts.json. No failed physical pixels collected.",
       "visualRetention": "Private failure image excluded from collection and retained on host."
     },
     {
@@ -232,8 +259,8 @@
       "run": "/tmp/r410c",
       "sourceCommit": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
       "status": "privacy cover0% while guest idle-locked; before app launch, no product acceptance",
-      "basis": "execution-owner report; safe default-guest clock visual may be collected only at explicit handoff",
-      "followup": "New private/tmp/r410c2 with temporary inhibitor; owned protected login input used only in memory through masked console. No login value retained."
+      "basis": "Original summary and explicitly cleared disposable-clock image verified in immutable Cinnamon79-member export; clock image retained privately.",
+      "followup": "LaterC3/C4 used owned bounded session inhibitor, released on completion; C4 pass remains separately identified."
     }
   ],
   "desktopAttempts": [
@@ -251,7 +278,17 @@
       ],
       "acceptanceScope": "No full GNOME region workflow or final functional/memory pass claimed.",
       "visualRetention": "Private precheck failure image stays on host and is excluded. A different failure frame over the synthetic cover may be transferred only after execution-owner review and exact-name clearance.",
-      "pendingFollowup": "g4 monitor target checks changed cancel/discard and stop behaviors; sanitized receipt handoff pending."
+      "pendingFollowup": "Completed052d g4 monitor subset recorded separately in prior-052d-gnome.json; no final-source credit."
+    },
+    {
+      "target": "Cinnamon guest",
+      "run": "/tmp/r410c3",
+      "sourceCommit": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
+      "status": "partial five cases passed; whole run failed90s budget wait",
+      "fullRunPassed": false,
+      "scope": "Actual review/Discard and five contract cases only; no real-budget completion credit.",
+      "correctedRerun": "C4 uses180s functional harness wait; product budget/threshold unchanged.",
+      "retainedSummarySha256": "ba159c8398f0c37dd653255e9d48a0840ce39db369bd218c7bfca8cf44e36fcc"
     }
   ],
   "physicalGnomeStatus": {
@@ -268,12 +305,13 @@
       "newPid": 165280,
       "result": "No resolved-freeze claim; privacy gate remained failed."
     },
-    "lockStatus": "execution owner reports clean release; receipt pending",
-    "followup": "Fresh appropriate builder-hosted GNOME VM for required region and changed session behavior; retain independent host/guest/build/session identities.",
+    "lockStatus": "Earlier native physical attempt clean release reported; final product acceptance supplied by separately identified fresh guest only.",
+    "followup": "Fresh Ubuntu26.04.1 GNOME50.1 guest completed scoped region/session checks and180s idle; guarded overlay retirement verified.",
     "limitations": [
       "VM evidence will not establish physical/native acceptance.",
       "No gate waiver or transfer from prior052d result."
-    ]
+    ],
+    "attemptReceipt": "physical-gnome-attempts.json"
   },
   "approvedFollowup": {
     "scope": "Minimal gst_version_string caller-ownership leak fix in recording code PR551",
@@ -285,14 +323,65 @@
   "storagePreflightPrerequisite": {
     "pullRequest": "https://github.com/patrick-hudson/put.gd-desktop/pull/556",
     "ownerThread": "mcp:8503500f-d6db-4a1c-80f3-b72b56975744",
-    "verifiedPredecessorHead": "0dbc312cdc4213842b2827b4f5af68cdb23e05c9",
-    "status": "current read-only gate and13-test logs verified; focused re-review and new-head CI pending",
+    "status": "796d exact read-only proof,14-test logs, requiredCI, root focused review and optional review complete.",
     "receipt": "storage-prerequisite.json",
-    "nextGate": "Focused root review and requiredCI for f188 timeout-receipt correction.",
-    "currentVerifiedGateHead": "f1883c9fa23a72ab6aa3f539d8f751a95b476a77"
+    "nextGate": "Merge prerequisite code before companion docs.",
+    "currentVerifiedGateHead": "796d41f291f34aabe60064ae1ac86ad2b221941e",
+    "verifiedPredecessorHeads": [
+      "0dbc312cdc4213842b2827b4f5af68cdb23e05c9",
+      "f1883c9fa23a72ab6aa3f539d8f751a95b476a77"
+    ]
   },
   "mergeConstraints": [
     "Recording code PR551 before documentation PR550.",
     "Btrfs storage-preflight prerequisite code PR556 before documentation PR550."
-  ]
+  ],
+  "codeCi": {
+    "headCommit": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
+    "runURL": "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40105903461",
+    "conclusion": "success",
+    "jobs": [
+      {
+        "name": "changes",
+        "conclusion": "success"
+      },
+      {
+        "name": "contracts",
+        "conclusion": "success"
+      },
+      {
+        "name": "linux (24.04)",
+        "conclusion": "success"
+      },
+      {
+        "name": "portable (windows-2022)",
+        "conclusion": "success"
+      },
+      {
+        "name": "linux (26.04)",
+        "conclusion": "success"
+      },
+      {
+        "name": "sanitizers (clang ASan/UBSan)",
+        "conclusion": "success"
+      },
+      {
+        "name": "pipewire",
+        "conclusion": "success"
+      },
+      {
+        "name": "packages",
+        "conclusion": "skipped"
+      },
+      {
+        "name": "CI",
+        "conclusion": "success"
+      },
+      {
+        "name": "prune caches",
+        "conclusion": "skipped"
+      }
+    ]
+  },
+  "retentionIndex": "retention-index.json"
 }

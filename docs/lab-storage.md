@@ -29,9 +29,10 @@ guest. Verified Btrfs identification with zero inode counters is `dynamic`, with
 Its byte reserves and expected growth still apply. Reported counts must exceed
 1,024; unknown or mismatched identification, invalid numbers and inconsistent
 counters fail closed. See the [actual-host prerequisite evidence](evidence/2026-10-24-recording-session-410/README.md#btrfs-vm-storage-prerequisite).
-Identification failures retain measured raw capacity when available and record
-only sanitized error types; a host measurement failure produces a failed receipt
-and exit 2.
+Identification accepts a bounded ASCII filesystem name and hexadecimal magic;
+malformed command output is discarded. Failures retain measured raw capacity
+when available and record only sanitized error types; a host measurement failure
+produces a failed receipt and exit 2.
 
 Run from the repository root with a new private output directory. For a test
 that uses an already-built package, leave the build estimate at zero:
