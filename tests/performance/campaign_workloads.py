@@ -583,14 +583,29 @@ def slow(run):
             command.append('--stall')
         process = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
                                    stderr=subprocess.DEVNULL, text=True, start_new_session=True)
-        # Proxy prints a single integer, unlike fixture JSON handshakes.
-        import selectors
-        with selectors.DefaultSelector() as selector:
-            selector.register(process.stdout, selectors.EVENT_READ)
-            require(selector.select(10), 'proxy_readiness_timeout')
-            actual_port = int(process.stdout.readline())
-        run.event('owned-proxy-ready', pid=process.pid, port=actual_port, stalled=stall, command=command)
-        return process, actual_port
+        try:
+            # Ownership transfers to the caller only after readiness succeeds.
+            # Until then an interrupt cannot rely on its unassigned proxy var.
+            import selectors
+            with selectors.DefaultSelector() as selector:
+                selector.register(process.stdout, selectors.EVENT_READ)
+                require(selector.select(10), 'proxy_readiness_timeout')
+                actual_port = int(process.stdout.readline())
+            run.event('owned-proxy-ready', pid=process.pid, port=actual_port, stalled=stall, command=command)
+            return process, actual_port
+        except BaseException as failure:
+            # Independent cleanup also covers KeyboardInterrupt and failures
+            # during cleanup. Keep the initiating exception and record any
+            # cleanup errors on it instead of replacing its context.
+            for label, cleanup in (
+                    ('terminate', lambda: stop_owned_process_group(process)),
+                    ('close_stdout', lambda: process.stdout.close()),
+                    ('reap', lambda: process.wait(timeout=5))):
+                try:
+                    cleanup()
+                except BaseException as error:
+                    failure.add_note('proxy_start_cleanup_' + label + ': ' + type(error).__name__)
+            raise
     ui = None
     try:
         proxy, port = start()

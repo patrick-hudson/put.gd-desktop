@@ -4,7 +4,10 @@ import asyncio
 import base64
 import hashlib
 import json
+import os
 from pathlib import Path
+import signal
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -291,6 +294,73 @@ class FileUploadSafetyTests(unittest.TestCase):
             self.assertEqual(run.result['metrics']['burst']['acceptedFileEditorUploads'], 50)
             self.assertEqual(run.result['metrics']['burst']['nativeCapturesExercised'], 0)
             self.assertEqual(run.result['gates']['captureBurst']['status'], 'unassessed')
+
+
+class ProxyStartupTests(unittest.TestCase):
+    def test_readiness_failure_and_interrupt_terminate_close_and_reap_owned_child(self):
+        # Real synthetic children, never the proxy/product/desktop/network.
+        for mode in ('timeout', 'interrupt', 'malformed_port'):
+            with self.subTest(mode=mode), tempfile.TemporaryDirectory() as directory:
+                script = 'import time;time.sleep(30)'
+                if mode == 'malformed_port':
+                    script = 'import time;print("not-a-port",flush=True);time.sleep(30)'
+                child = subprocess.Popen([sys.executable, '-c', script], stdout=subprocess.PIPE,
+                                         text=True, start_new_session=True)
+                try:
+                    run = mock.Mock()
+                    run.root = Path(directory)
+                    run.repo = Path(__file__).resolve().parents[2]
+                    run.result = {}
+                    run.args.endpoint = 'http://127.0.0.1:12345'
+                    run.sample.return_value = {'totals': {}}
+                    interrupted = KeyboardInterrupt('synthetic-startup-interrupt')
+                    expected = KeyboardInterrupt if mode == 'interrupt' else ValueError if mode == 'malformed_port' else EvidenceError
+                    with mock.patch.object(workloads.subprocess, 'Popen', return_value=child) as spawn, \
+                         mock.patch('selectors.DefaultSelector') as selector, \
+                         mock.patch('observe_idle.os.killpg', wraps=os.killpg) as kill_group, \
+                         mock.patch.object(child, 'wait', wraps=child.wait) as wait:
+                        selected = selector.return_value.__enter__.return_value.select
+                        if mode == 'interrupt':
+                            selected.side_effect = interrupted
+                        else:
+                            selected.return_value = [object()] if mode == 'malformed_port' else []
+                        with self.assertRaises(expected) as failure:
+                            workloads.slow(run)
+                        if mode == 'interrupt':
+                            self.assertIs(failure.exception, interrupted)
+                        elif mode == 'timeout':
+                            self.assertEqual(str(failure.exception), 'proxy_readiness_timeout')
+                        self.assertTrue(spawn.call_args.kwargs['start_new_session'])
+                        kill_group.assert_called_once_with(child.pid, signal.SIGTERM)
+                        self.assertEqual(wait.call_args.kwargs, {'timeout': 5})
+                        self.assertTrue(child.stdout.closed)
+                        self.assertIsNotNone(child.poll())
+                        with self.assertRaises(ChildProcessError):
+                            os.waitpid(child.pid, os.WNOHANG)
+                finally:
+                    if child.poll() is None:
+                        os.killpg(child.pid, signal.SIGKILL)
+                    child.wait(timeout=5)
+                    child.stdout.close()
+
+    def test_startup_failure_remains_original_when_termination_cleanup_raises(self):
+        run = mock.Mock()
+        run.repo = Path(__file__).resolve().parents[2]
+        run.result = {}
+        run.args.endpoint = 'http://127.0.0.1:12345'
+        run.sample.return_value = {'totals': {}}
+        child = mock.Mock()
+        interrupted = KeyboardInterrupt('synthetic-startup-interrupt')
+        with mock.patch.object(workloads.subprocess, 'Popen', return_value=child), \
+             mock.patch('selectors.DefaultSelector') as selector, \
+             mock.patch.object(workloads, 'stop_owned_process_group', side_effect=OSError('synthetic-cleanup-error')):
+            selector.return_value.__enter__.return_value.select.side_effect = interrupted
+            with self.assertRaises(KeyboardInterrupt) as failure:
+                workloads.slow(run)
+        self.assertIs(failure.exception, interrupted)
+        child.stdout.close.assert_called_once()
+        child.wait.assert_called_once_with(timeout=5)
+        self.assertIn('proxy_start_cleanup_terminate: OSError', interrupted.__notes__)
 
 
 class ProxyTests(unittest.IsolatedAsyncioTestCase):
