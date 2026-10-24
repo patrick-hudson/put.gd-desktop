@@ -1,5 +1,5 @@
 {
-  "version": 6,
+  "version": 5,
   "configurePresets": [{"name":"dev","generator":"Ninja","binaryDir":"${sourceDir}/build/dev","cacheVariables":{"CMAKE_BUILD_TYPE":"Debug"}}],
   "buildPresets": [{"name":"dev","configurePreset":"dev"}]
 }

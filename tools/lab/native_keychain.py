@@ -95,6 +95,12 @@ def lifecycle(phase, env, before=None, unlock_lab=False, recovery_sink=lambda va
         result.update(available=False, prerequisite='No default collection; provision separately with existing authorization')
         require(phase == 'status', result['prerequisite'])
         return result
+    # Validate the receipt BEFORE any Unlock/Prompt. Even another approved lab
+    # wallet must stay untouched if the default alias changed since storage.
+    if phase not in ('status', 'store'):
+        require(before is not None and valid_reference(before.get('reference')), 'Need an owned private store receipt from this driver')
+        reference = before['reference']
+        require(before.get('defaultCollection') == collection, 'Default collection changed since store; refusing another keyring')
     locked = prop(collection, 'org.freedesktop.Secret.Collection', 'Locked')
     result.update(available=True, locked=locked)
     if phase == 'status':
@@ -122,10 +128,6 @@ def lifecycle(phase, env, before=None, unlock_lab=False, recovery_sink=lambda va
         result.update(lockedBefore=True, locked=False, unlockedExistingLabCollection=True)
     if phase == 'store':
         reference = 'putgd-acceptance-' + str(uuid.uuid4())
-    else:
-        require(before is not None and valid_reference(before.get('reference')), 'Need an owned private store receipt from this driver')
-        reference = before['reference']
-        require(before.get('defaultCollection') == collection, 'Default collection changed since store; refusing another keyring')
     attrs = {'application': 'putgd-native-acceptance', 'reference': reference}
     unlocked, locked_items = call(service, 'org.freedesktop.Secret.Service', 'SearchItems', '(a{ss})', (attrs,), '(aoao)')
     require(not locked_items, 'Probe item is locked; no lifecycle pass')

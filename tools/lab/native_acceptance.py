@@ -345,21 +345,29 @@ def prepare_login(args, facts, env):
 
 
 def check_login(before, facts, processes, expected='present'):
+    """Verify post-login state, not the launch origin of a new resident.
+
+    A new SSH/systemd user-scope start can share the profile and executable.
+    Neither the runtime nor start time can establish desktop autostart.
+    """
     old = before['oldSession']
     changed = (old['bootId'], old['Id'], old['TimestampMonotonic']) != (facts['bootId'], facts['Id'], facts['TimestampMonotonic'])
     require(before.get('prepared') and changed, 'No verified new graphical session after a prepared logout')
     require(facts['shell'] != old['shell'], 'Prior graphical shell still selected')
+    result = {'newSession': facts, 'processes': processes, 'newSessionVerified': True,
+              'postLoginStateVerified': True, 'expected': expected, 'autostartProven': False,
+              'scope': 'Post-login process presence/absence only; resident launch origin is unverified'}
     if expected == 'absent':
         require(not processes, 'Expected no resident after removal/login')
-        return {'newSession': facts, 'processes': [], 'newSessionVerified': True, 'expected': expected}
-    require(processes, 'No autostarted resident in the selected profile')
+        return result
+    require(processes, 'No resident in the selected profile after login')
     expected_exe = before.get('stopped', {}).get('exe')
     if expected_exe:
         require(any(p['exe'] == expected_exe for p in processes), 'New resident is not the selected package executable')
     hz = os.sysconf('SC_CLK_TCK')
     require(all(p['startTicks'] * 1_000_000 // hz >= int(facts['TimestampMonotonic']) for p in processes),
             'A pre-login resident/helper survived; invalid login evidence')
-    return {'newSession': facts, 'processes': processes, 'newSessionVerified': True}
+    return result
 
 
 def database_snapshot(db):
@@ -641,7 +649,9 @@ def main(argv=None):
     p = subs.add_parser('plasma-registration'); p.add_argument('--repair', action='store_true'); p.add_argument('--probe', required=True)
     p = subs.add_parser('login-prepare'); p.add_argument('--pid', type=int, required=True); p.add_argument('--exe', required=True)
     p.add_argument('--cli', default='/usr/bin/putgd-cli'); p.add_argument('--runtime', required=True)
-    p = subs.add_parser('login-check'); p.add_argument('--before', type=Path, required=True); p.add_argument('--runtime', required=True)
+    p = subs.add_parser('login-check', help='Check post-login presence/absence; does not prove autostart',
+                        description='Check a new graphical session and post-login resident state; launch origin and desktop autostart are not proved')
+    p.add_argument('--before', type=Path, required=True); p.add_argument('--runtime', required=True)
     p.add_argument('--expected', choices=('present', 'absent'), default='present')
     p = subs.add_parser('snapshot'); p.add_argument('--runtime', required=True); p.add_argument('--cli', default='/usr/bin/putgd-cli'); p.add_argument('--db')
     p = subs.add_parser('grow'); p.add_argument('--fixture-root', required=True); p.add_argument('--db', required=True)
