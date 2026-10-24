@@ -1,6 +1,6 @@
 # Physical Cinnamon performance campaign (#379)
 
-**Status: M7 completed the empty-History memory workflow and failed the 60 MiB open-PSS gate; the remaining campaign is pending.**
+**Status: CU2 passes empty-history selector p95; M7 fails the 60 MiB History-open PSS gate. The queue exercise stopped at a visibility guard; remaining gates are pending.**
 This is the newest-published-nightly rehearsal requested in
 [#379](https://github.com/patrick-hudson/put.gd-desktop/issues/379).
 [#384](https://github.com/patrick-hudson/put.gd-desktop/issues/384) must repeat
@@ -43,12 +43,12 @@ each isolated launch. Retain failed attempts and corrected commands.
 
 | Workload | Required assessment | Current result |
 | --- | --- | --- |
-| Region overlay, empty history | 5 warmups + 30 warm samples; p95 ≤150 ms | Pending |
+| Region overlay, empty history | 5 warmups + 30 warm samples; p95 ≤150 ms | CU2 passes: native drawable p95 73.359397 ms |
 | Region overlay, populated history | Same protocol with 10,000 independent image/video operation records | Pending |
 | Cold/closed memory and idle CPU | RSS ≤40 MiB; CPU <0.5% of one core over 300 seconds | M7 cold and post-close pass at their empty-profile scope |
 | Closed family / History-open family | Closed RSS ≤40 MiB; PSS ≤29 MiB / ≤60 MiB, with helpers attributed | M7 closed passes; History-open fails: 61.9473 MiB >60 MiB |
 | 10,000-entry history | Open, whole-list scroll, search, image/video preview, Copy image, Delete from destination; response/frame timings, CPU and memory | Pending; unbudgeted response thresholds need Patrick's explicit approval |
-| Upload burst | At least 50 queued captures/uploads, concurrent slots, correct tray/history/links, memory during and after settle | Pending |
+| Upload burst | At least 50 queued captures/uploads, concurrent slots, correct tray/history/links, memory during and after settle | Pending; CU2 file-editor queue stopped at visibility attribution, no 50/settle credit |
 | Slow/stalled S3 | 256 KiB/s proxy, a stalled connection, visible progress, responsive UI/tray, measured cancellation and successful retry | Pending |
 
 The memory limits are the approved plan's [source53 checkpoint](../../plans/2026-10-07-1926-feat-qt-linux-share-plan.md#clean-source53-cinnamon-checkpoint-and-wayland-compatibility).
@@ -108,9 +108,8 @@ encoder process. Other low-activity desktop services and the wall stayed up.
   `72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e`, with persisted-network-state,
   DB/runtime and complete helper ownership guards. Its handoff is staged and
   hash-verified; it has not yet been used for this campaign. All old revisions
-  remain held. The final performance-driver review still blocks further
-  physical workloads; the separately approved empty-memory attempt below
-  reached no measurement interval.
+  remain held. No populated performance measurement has run; the later empty
+  memory and selector results do not discharge these gates.
 - **m2, driver `f3b3635132f2d5b909935d8119f1f32908e38cec`: failed lab admission.**
   Root reviewed only the empty `memory` scenario's reached paths, with no
   fixture, endpoint, capture/native driver or accessibility override. The fresh
@@ -169,6 +168,36 @@ encoder process. Other low-activity desktop services and the wall stayed up.
   bytes (1.947265625 MiB)**. Cold/post-close CPU, RSS and PSS passed their fixed
   budgets. This is a product budget failure on exact 1185, not a driver failure;
   it does not establish a leak, regression cause or stable-asset acceptance.
+
+- **cu1: coordinator prerequisite refusal before acquiring a lock.**
+  Exact controller `86539322` invoked at 23:33:51 UTC and stopped at 23:33:52
+  on `busctl_user_json_support_unavailable`. The [retained summary](attempt-cu1.json)
+  indexes seven private originals and nine local receipts. A separate read-only
+  diagnostic returned exit 0, empty stderr and a valid 179-row JSON list; the
+  object-only coordinator predicate rejects that supported shape. The original
+  failing stdout was not retained, so the diagnostic is identified separately.
+  This is a coordinator compatibility failure, not a missing service or product
+  performance result. No lock, package install, VM pause, unit, GUI, capture
+  sample or file-editor upload occurred. Raw controller launch truth remains
+  `null`; the pre-acquire path and journal's false flags are retained separately.
+  The same original VM was verified running at 23:34:53 UTC and the desktop
+  checked free. No new lease/release or benchmark cleanup receipt is invented.
+  No retry ran under this consumed allocation; M7 and issue #558 are unchanged.
+
+- **cu2: empty-history native selector latency passes; queue exercise incomplete.**
+  The fresh controller accepted the supported busctl JSON shape and ran the
+  exact published product with driver `3259a5b8`. [The sanitized record](attempt-cu2.json)
+  retains all 30 paint samples, exact commands and private artifact hashes.
+  Five warmups plus 30 timed invocations produced **p95 73.359397 ms ≤150 ms**;
+  independent nearest-rank recomputation uses sorted sample index 28. All 35
+  distinct operations cancelled with empty items and `no_result`, with zero
+  history rows. A separate 36th cancelled operation supplied the unscored
+  visual below. The 50-file editor upload queue exercise then observed two
+  queued and three uploading before `no_owned_ui_proven_visible_on_wall`
+  stopped it after 18.363649 seconds. Five journals remained at cleanup:
+  four cancelled, one editing. No 50-operation completion, 300-second settle
+  or native-capture-burst credit is claimed. This visibility refusal does not
+  establish a product bug; the exact intended-window/focus path needs diagnosis.
 
 ![c1 post-cancellation recovery frame: only synthetic background, no selector-paint claim](c1-witness-failure.png)
 
@@ -267,6 +296,47 @@ aggregate upper bound was **11.705048%**, not sub-10%. It was not used to fill
 or discharge any missing row; the reviewed per-process admission path applied.
 Its explicit Linux-accounted statistical scope remains unchanged.
 
+### CU2 native selector timing and partial file-editor queue
+
+The separately built native instrument keeps its actual `3c29bb3b` source,
+Qt 6.4.2 binary hash `3ef7ac07…d1a8d20` and witness manifest
+`d080faef…e5adc2d7`; it is not part of the published product. Its version-correct
+black-outer/white-inset predicate preserves the frozen timer, ownership,
+input, 5+30 protocol and 150 ms budget. The frozen source remains unchanged.
+Paint samples span 40.108506–73.946181 ms. These are native selector drawable
+observations, not content response, compositor frame rate, capture acquisition,
+mixed-DPI or populated-history measurements. No extra VNC sampling or encoding
+ran during the timed invocations.
+
+![CU2 separate unscored selector: actual attributed opaque stroke with all other pixels replaced by declared synthetic background](cu2-empty-selector-unscored.png)
+
+This derivative retains only 4,710 black and 2,355 white actual opaque selector
+pixels verified against the owned helper's drawable. Every other pixel,
+including the cursor rectangle, is declared synthetic RGB `(80, 90, 100)`
+replacement. No unknown raw framebuffer was saved. The appended caption leaves
+the entire reviewed derivative's 1920×1080 RGB rectangle unchanged. It is a
+separate unscored operation, not a picture of one of the 30 timing samples.
+The excluded cursor rectangle intentionally masks the lower-right corner;
+the visible gap is not evidence of a broken product outline.
+
+![CU2 queue visibility refusal: later synthetic recovery cover, no failed-window picture or 50-upload claim](cu2-queue-visibility-refusal.png)
+
+The visibility guard refused `burst-progress-4`, window `0x4c00006`, rather than
+save an unproven/occluded frame. The failed frame was not retained. This later
+recovery picture is exactly solid synthetic fill; it does not show the intended
+window or identify its occluder. The event alone also cannot distinguish
+occlusion from a repaint between the strict native/composite comparisons.
+An off-host trace found normal editor exits before the checkpoint and a caller
+gap: no fresh activation of the pinned History window after editor focus changes.
+The actual cause remains unproven without the missing active-window/geometry
+record. The driver owner is preparing a bounded targeting correction while
+preserving the exact equality/crop/privacy refusal.
+
+CU2 admission retained 331 process rows over 10.032375 seconds. Its separate
+conservative aggregate upper bound was 14.005072%, **not sub-10%**; no unexplained
+unmeasured row needed that bound. The reviewed per-process Linux-accounted
+admission path applied. This is not a physical-cycle or instantaneous CPU claim.
+
 ## Evidence and cleanup
 
 [The first-batch cleanup receipt](batch1-cleanup.json) binds verified per-file
@@ -338,6 +408,21 @@ manifest** are privately exported and hash/size verified, including 14 raw run
 files and their original/copy comparison. Two other saved frames are exact
 synthetic fill. There was no retry, product change, waiver or new allocation.
 
+CU1 acquired no lease and made no package or VM transition. Its seven private
+originals and nine local receipts are hash-indexed separately. CU2 acquired
+the matching 15-minute lease at **23:49:02 UTC** and released verified-clean at
+**23:50:03 UTC**. All four product resident exits were normal code 0, without
+force, with complete inventory, verified absence and absent family/socket.
+The capture child exited 0; the overall worker exited 1 for the queue failure,
+so no normal code-0 worker claim is made. The authenticated allocation cgroup
+drained without force, the loopback fixture was stopped/reaped, scoped key and
+button releases passed, and the same original VM was verified running at
+**23:50:00.936649 UTC**. Only the run-owned package was purged. Independent
+desktop status was free apart from the three pre-existing shared collectors.
+All **128 originals plus a separate restore manifest** are privately exported
+and hash/size verified, including 90 raw phase files and their original/copy
+comparison. No retry or new allocation followed.
+
 ### Actual-frame privacy audit
 
 Review of the draft performance driver found that admitting whole frames after
@@ -349,8 +434,11 @@ RGB fill across 100% of their pixels. The public c1 annotation uses that reviewe
 safe source. The public m1 annotation uses only the reviewed PID-owned History
 drawable. No actual sensitive content was observed. Originals remain private;
 The separately scoped m2 path uses the corrected exact-solid save check; its
-saved source was independently verified as 100% synthetic fill too. The remaining
-driver review findings still hold all further physical workloads.
+saved source was independently verified as 100% synthetic fill too. Later M6/M7
+and CU2 retain their corrected source-specific checks and explicit attribution;
+the old whole-frame path remains held. Current queue visibility failure is
+retained without a failed raw frame. Further physical work needs a separate
+allocation; prior reviews and consumed allocations grant no retry.
 
 [campaign.json](campaign.json) binds the selected package, budgets and current
 gate status. Private raw samples, exact commands, failures, original visuals and

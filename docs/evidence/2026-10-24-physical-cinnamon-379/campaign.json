@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "issue": 379,
-  "status": "complete_empty_memory_workflow_open_pss_failed_remaining_campaign_pending",
+  "status": "empty_selector_p95_pass_memory_open_pss_fail_queue_visibility_refused_remaining_gates_pending",
   "accepted": false,
   "scope": "Newest-published-nightly physical Mint Cinnamon performance rehearsal; no stable-asset certification",
   "product": {
@@ -41,13 +41,13 @@
     "dependencyIssue": 495,
     "productBytesRebuilt": false,
     "codePullRequest": "https://github.com/patrick-hudson/put.gd-desktop/pull/555",
-    "acceptanceReviewStatus": "R9/currentCI3259 clear; M7complete common memory workflow with valid product PSS failure; capture/upload50/slow runtime validation pending",
+    "acceptanceReviewStatus": "R9/currentCI3259 clear; M7 complete memory with valid product PSS failure; CU2 empty selector p95 pass, file-editor queue partial visibility refusal; slow validation pending",
     "historyGrowHold": "Only root-cleared producer 72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e is staged/hash-verified; not yet executed in this campaign. All old revisions remain held.",
-    "nextPhysicalRunHold": "M7 allocation consumed/cleanly released. Independent next operator chunk requires its own reviewed controller/proposal/allocation/fresh notice; ca937 is memory-only.",
+    "nextPhysicalRunHold": "CU1 and CU2 consumed. No physical allocation/retry. Queue visibility path needs bounded off-host diagnosis; any future run needs root allocation and fresh notice. Memory-only ca937 is not an operator-chunk executable.",
     "sourceCommitScope": "First physical pilot batch only; each later attempt keeps its separate actual/planned identities",
     "currentReviewedDriver": {
       "revision": "3259a5b83e4b93b9ba595bafb95e7c9ebddbddd0",
-      "review": "R9/source/currentCI clear; M7 complete memory workflow only, openPSS product budget fails"
+      "review": "R9/currentCI clear; actual M7 memory workflow product open-PSS failure; actual CU2 empty selector pass/queue partial, no50 or settle credit"
     }
   },
   "approvedBudgets": {
@@ -69,16 +69,26 @@
     "destination": "isolated loopback S3 fixture"
   },
   "gates": {
-    "regionEmpty": "incomplete_workload_c1; no valid numerical result",
+    "regionEmpty": "pass_exactCU2_native_drawable_p95_73.359397ms_5warmups_30timed",
     "regionPopulated": "pending",
     "coldIdle": "pass_exactM7_empty_profile_300.118402seconds",
     "closedMemory": "pass_exactM7_postclose_300.112448seconds",
     "historyOpenMemory": "fail_exactM7_64956416_gt62914560_bytes_30.087980seconds",
     "historyFunctionalAndResponse": "pending_measurements_and_explicit_threshold_approval",
-    "burst": "pending",
+    "burst": "pending_CU2_file_editor_queue_visibility_refused_no50_no_settle_no_nativecaptureburst",
     "slowStalledNetwork": "pending"
   },
-  "measurements": [],
+  "measurements": [
+    {
+      "attempt": "cu2",
+      "metric": "warmP95DrawablePaintMs",
+      "value": 73.359397,
+      "limit": 150,
+      "status": "pass",
+      "scope": "Empty-history native selector only; 5warmups+30timed, separate unscored visual",
+      "summary": "attempt-cu2.json"
+    }
+  ],
   "savedVisuals": [
     {
       "file": "c1-witness-failure.png",
@@ -99,6 +109,14 @@
     {
       "file": "m7-history-open-pss-budget-failure.png",
       "meaning": "Reviewed actual physical VNC crop equals stable owned History drawable, appended result caption; valid open-PSS failure, no first-content timing claim"
+    },
+    {
+      "file": "cu2-empty-selector-unscored.png",
+      "meaning": "Separate unscored selector derivative: only attributed opaque actual stroke retained, all other pixels declared synthetic replacement; caption below unchanged derivative"
+    },
+    {
+      "file": "cu2-queue-visibility-refusal.png",
+      "meaning": "Later solid synthetic recovery cover with caption; no failed-window frame/no50/settle/nativecapture-burst claim"
     }
   ],
   "cleanupReceipts": [
@@ -108,7 +126,9 @@
     "attempt-m4.json",
     "attempt-m5.json",
     "attempt-m6.json",
-    "attempt-m7.json"
+    "attempt-m7.json",
+    "attempt-cu1.json",
+    "attempt-cu2.json"
   ],
   "limitations": [
     "Campaign in progress; no performance acceptance pass claimed",
@@ -189,6 +209,28 @@
       "controllerSha256": "ca937c2dd710cdd6b6af071d0c513156f8080f3ba43bce209e7e498f3f8927f7",
       "historyOpenPssBytes": 64956416,
       "limitBytes": 62914560,
+      "accepted": false
+    },
+    {
+      "id": "cu1",
+      "summary": "attempt-cu1.json",
+      "status": "coordinator_prerequisite_refused_before_lock_and_driver",
+      "plannedDriverRevision": "3259a5b83e4b93b9ba595bafb95e7c9ebddbddd0",
+      "controllerSha256": "8653932269c122d08693caf3f0e6dcd9891b34b408ffec464c33c40a98b0a962",
+      "rawDriverLaunched": null,
+      "lockAcquired": false,
+      "guiStarted": false,
+      "accepted": false
+    },
+    {
+      "id": "cu2",
+      "summary": "attempt-cu2.json",
+      "status": "empty_selector_p95_pass_queue_visibility_refused",
+      "actualDriverRevision": "3259a5b83e4b93b9ba595bafb95e7c9ebddbddd0",
+      "controllerSha256": "8fa1edb109ba01b383ea7bc7befdacc1570e469adc24f58e8351704a149b7e4f",
+      "driverLaunched": true,
+      "emptyHistoryP95PaintMs": 73.359397,
+      "queueComplete": false,
       "accepted": false
     }
   ],

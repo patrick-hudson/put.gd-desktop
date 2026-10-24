@@ -81,8 +81,24 @@ CPU/RSS/PSS pass, but History-open family PSS **64,956,416 B exceeds 62,914,560 
 by 2,041,856 B. Its 300 continuous ownership/window checks, normal helper
 generation-1 exit, complete inventory/absence and safe owned VNC crop are
 retained. The original VM resumed and m74 released verified-clean at 20:51:39 UTC.
-This is the valid product budget failure in [#558](https://github.com/patrick-hudson/put.gd-desktop/issues/558), without leak/regression attribution;
-M1 stays a pilot and M6 stays partial. No whole performance/capture, history,
+This is the valid product budget failure in [#558](https://github.com/patrick-hudson/put.gd-desktop/issues/558), without leak/regression attribution.
+CU1 later refused before acquiring a lock or starting any GUI on a coordinator
+JSON-shape check. A separate native read-only diagnostic returned a supported
+179-row JSON list; the object-only predicate rejected that shape. Its originals,
+no-install/no-pause journal and same-VM-running/free-desktop proof are retained;
+there are no capture samples or file-editor uploads and no product result.
+Fresh CU2 then ran exact `3259a5b8` and the separately pinned native instrument:
+5 warmups + 30 timed empty-history selector invocations give independently
+recomputed p95 **73.359397 ms ≤150 ms**. All 35 distinct operations cancelled
+with empty items/no result; the 36th unscored visual preserves only attributed
+opaque stroke with declared synthetic replacement elsewhere. The subsequent
+50-file editor upload queue exercise stopped at its visibility guard after
+18.363649 seconds; queued work was observed, but no 50/settle or native-capture
+burst credit is claimed. No failed raw frame was retained. All four residents
+exited normally with full inventory/absence proof; allocation containment
+drained, the original VM resumed, package purged and m74 released verified-clean
+at 23:50:03 UTC. All 128 originals and the separate restore manifest are verified.
+M1 stays a pilot and M6 stays partial. No whole performance, populated history,
 burst or network acceptance is claimed. Driver hardening (#495,
 PR #554) and the performance driver (PR #555) remain separately identified code
 work; old history-growth revisions are held. Unbudgeted response thresholds require
@@ -108,7 +124,7 @@ work packages:
 | DEB lifecycle, recording rows, live S3 | [#375](https://github.com/patrick-hudson/put.gd-desktop/issues/375) | partial: source144 Cinnamon VM only; no state-preserving upgrade or removal + login on Wayland; schema 5→7 never exercised |
 | RPM lifecycle on f44 | [#377](https://github.com/patrick-hudson/put.gd-desktop/issues/377) | partial: repo upgrade 816→828 only |
 | GUI/CLI/MCP parity, AE17, fresh-agent walkthrough | [#378](https://github.com/patrick-hudson/put.gd-desktop/issues/378) | partial: 2026-10-13, CLI `dev.143` |
-| Physical Cinnamon latency, 10,000-entry history, burst, slow network | [#379](https://github.com/patrick-hudson/put.gd-desktop/issues/379) | nightly 1185 rehearsal: M7 complete memory workflow fails open PSS 61.9473 MiB >60 MiB; cold/post-close pass; capture/10,000-entry/history/burst/slow gates pending ([record](evidence/2026-10-24-physical-cinnamon-379/README.md)) |
+| Physical Cinnamon latency, 10,000-entry history, burst, slow network | [#379](https://github.com/patrick-hudson/put.gd-desktop/issues/379) | nightly 1185: CU2 empty selector p95 73.359397 ms passes; queue visibility refusal, no50/settle credit. M7 open PSS 61.9473 MiB >60 MiB fails; cold/post-close pass. Populated/history/burst/slow pending ([record](evidence/2026-10-24-physical-cinnamon-379/README.md)) |
 | Multi-display geometry in VMs | [#380](https://github.com/patrick-hudson/put.gd-desktop/issues/380) | partial: 3-head Cinnamon X11 region, single-output fractional scale |
 | Physical mixed DPI and rotation | [#381](https://github.com/patrick-hudson/put.gd-desktop/issues/381) | blocked: no builder has two outputs; proposed for 0.1.2 |
 | Uninstall login-startup entry | [#382](https://github.com/patrick-hudson/put.gd-desktop/issues/382) | closed by Patrick; 11 development-artifact rows pass, legacy exception accepted; PR integration and #384 release checks remain ([evidence](evidence/2026-10-24-uninstall-startup-382/README.md)) |
