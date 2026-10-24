@@ -79,7 +79,7 @@ All methods go through `putgd-cli` unchanged. `id` is the recording ID.
 | `recording.capabilities` | | availability and reason, target kinds, formats, codecs per format, audio sources, `active` recording ID, limits, `timeUnit`; no capture, no prompt |
 | `recording.prepare` | `target {kind: monitor\|desktop\|region\|window, identity?, rect?}`, `format mp4\|webm\|gif\|webp`, `codec?`, `fps? (1–60)`, `audio? {system?, microphone?}`, `maxEdge?` | durable intent, then ready bounds/controls and any OS consent; replies at once with `state: preparing`; poll `inspect` for `ready`. A region without `rect` opens the desktop's selector (Escape cancels; `inspect` shows `selecting: true`); the chosen bounds appear in `inspect` as `target.rect`, and `overlayExcluded` / `overlayPlacement` say whether the control bar stayed out of the recorded pixels. Refused with `disk_space_insufficient` (details `freeBytes`, `reserveBytes`, `availableBytes`, `requiredBytes`, `shortfallBytes`, `hint`) before anything is accepted when free disk above the reserve can't hold three 64 MiB budgets (#213) |
 | `recording.select` | `{id, rect: [x, y, w, h]}` | completes an open region selector with that rectangle as a drag would (X11 root pixels, logical desktop pixels on Wayland); `recording_state` when no selector is open |
-| `recording.start` / `pause` / `resume` / `stop` | `{id}` | acknowledged once the backend reached the state; a duplicate of the in-flight command returns the current state, a different one is `recording_busy`; `stop` returns `durationUs` and enters `reviewing`. A `stop` that arrives after the helper stopped on its own (its budget) answers with the `reviewing` state, like a duplicate stop |
+| `recording.start` / `pause` / `resume` / `stop` | `{id}` | acknowledged once the backend reached the state; a duplicate of the in-flight command returns the current state, a different one is `recording_busy`; an acknowledged user `stop` returns `durationUs` and `stopReason: user` and enters `reviewing`, including when stopped through CLI, MCP or the toggle shortcut. A `stop` that arrives after the helper stopped on its own (its budget) answers with the existing `reviewing` state and preserves `stopReason: budget` and `stopDetails`, like a duplicate stop |
 | `recording.cancel` | `{id}` | discards the clip; the operation ends `cancelled` |
 | `recording.inspect` | `{id}` | state, pending command, `selecting`, target, config, canvas, `durationUs`, `retainedUs`, edit, progress (`exportFraction` while exporting), `overlayExcluded`, `overlayPlacement`, `lastExport`, `stopReason` (`user` or `budget`) once the capture stopped, and after a budget stop `stopDetails` (`reason` `disk_space` or `max_file_bytes`, `message`, `hint`, `budgetBytes`, `maxFileBytes`, `durationUs`, and for the disk `freeBytes`, `reserveBytes`, `availableBytes`; see [Capture and export engine](#capture-and-export-engine-x11)), error; an ended session is `recording_unavailable` and its operation holds the outcome |
 | `recording.raise` / `recording.overlay` | `{id}` / `{id, visible}` | overlay control; a hidden bar stays hidden through state changes until `raise` (a full-screen clip without the handle); the recording indicator stays visible |
@@ -88,6 +88,11 @@ All methods go through `putgd-cli` unchanged. `id` is the recording ID.
 | `recording.review` | `{id, action, time?, speed?, kind?, rect?, maskId?, strength?, format?, codec?}`; `action` also `saveCopyDialog` / `closeFileDialog` | works one review-window control as a user does and answers with the window's state and the resident's edit (see [Review window](#review-window)); `reviewing` only, `inspect` also while `exporting` |
 | `recording.saveCopy` | `{id, path, overwrite?}` | exports to an absolute path with the format's extension; no upload. Replies once the export starts with `state: exporting`; poll `inspect` until `reviewing`, then `lastExport.status` is `saved` or `failed` |
 | `recording.upload` | `{id, revision}` | the only publishing action. Replies once the export starts with `state: exporting` and the linked `operationId`; see "Exports" below |
+
+If a helper budget-stop event reaches review before a pending `stop` command's
+reply, that reply returns the current finalized session, including an export
+already in progress. It preserves the clip duration, stop details, edit model
+and current state. A subsequent `stop` while still reviewing returns that review.
 
 ### Exports
 
@@ -158,8 +163,9 @@ child's pipes, mirroring the capture and editor helpers:
   `prepare` (a hands-on drag selection or OS consent), 600 s for `export`; a missed deadline is
   `recording_helper_timeout` and leaves the session where it was. The session
   methods that wait on a command reply only after the helper answers, so
-  `putgd-cli` waits 15 s past the helper's deadline for them (45 s for `stop`,
-  30 s for the others; `LocalServer::replyDeadlineMs`). `prepare` and the exports
+  `putgd-cli` waits 15 s past the helper's deadline for them (45 s for `stop`
+  and `action.invoke`, which can toggle Stop, 30 s for the other recording
+  commands; `LocalServer::replyDeadlineMs`). `prepare` and the exports
   reply when they start.
 - `event {event: progress|stopped|failed, ...}` from the helper is forwarded to
   the service with the session ID; an unexpected exit fails the session with
@@ -169,8 +175,13 @@ child's pipes, mirroring the capture and editor helpers:
   selector restyle at once (#198, [appearance](appearance.md#recording-overlays)).
   Any other value ends the helper as a protocol error.
 - `shutdown` after upload, cancel or failure; the helper must exit normally
-  within 2 s or it is killed. Only control metadata crosses the pipes: frames,
-  audio and files stay in the helper and its private staging.
+  within 2 s or it is killed. Discard settles outstanding requests before
+  shutdown, so a late `commandResult` from the authenticated, ready helper
+  during teardown is ignored rather than treated as an unknown request.
+  Envelope checks still apply; unknown request IDs during an active session
+  remain protocol errors. Cancel on the bar, `recording.cancel` and review
+  Discard use this graceful teardown path. Only control metadata crosses the
+  pipes: frames, audio and files stay in the helper and its private staging.
 
 `putgd-record --capabilities` is a separate transient run whose JSON the backend
 caches for the resident's lifetime (a failed probe is retried after a minute).
@@ -259,6 +270,19 @@ or `paused` one, and otherwise raises. The reply carries the step taken
 `perform_action` tool accepts `record` and the CLI passes `mode` through. An
 open image edit refuses the action with `editor_active`, as a recording refuses
 edits.
+
+`mode` defaults to `open`. The session boundary accepts a nonempty string of at
+most 16 characters; the record action accepts only `open` or `toggle` and refuses
+other values with `invalid_request`. `mode` belongs only to `record`; supplying
+it to another action is also `invalid_request`.
+
+```sh
+putgd-cli action.invoke '{"action":"record","mode":"open"}'
+putgd-cli action.invoke '{"action":"record","mode":"toggle"}'
+```
+
+Each invocation acts on the current session as described above. These calls do
+not authorize upload; a stopped clip stays in private review.
 
 ## Review window
 
@@ -951,7 +975,9 @@ and no host-matched library was bundled; the receipt records the result under
   admission of a `recording` payload with the naming template.
 - `recording_service_integration` (`tests/integration/test_recording_service.cpp`):
   the full lifecycle through `LocalServer` with a fake backend, including
-  stop while paused, stale revisions, local copies, export failure, cancel,
+  user stop reasons (including while paused and through the record toggle),
+  record `mode` forwarding and rejection at the session boundary, stale revisions,
+  local copies, export failure, cancel,
   helper events, animation limits, malformed requests, editor exclusion and
   restart interruption, a fake desktop shell selecting a region and framing
   the bar (`overlayPlacement`), cancelling and driving a shell selection
@@ -959,10 +985,17 @@ and no host-matched library was bundled; the receipt records the result under
   `recording.select`. Its slow-export case holds the fake export open while the
   production `putgd-cli` runs `saveCopy` and `upload`: both answer `exporting`
   at once, `inspect` shows progress, the lock on edits and `lastExport`, and a
-  cancel during the export admits nothing. It also checks that the CLI's wait
+  cancel during the export admits nothing. Deferred successful stop replies
+  preserve a budget-finalized clip and edited revision during pending Save copy
+  and Upload exports; Save copy also covers a late stop error. A stale reply
+  cannot mutate a cancelled session's successor. It also checks that the CLI's wait
   for every method that waits on the helper outlasts that helper's deadline.
 - `recording_helper_integration` (`tests/integration/test_recording_helper.cpp`):
   the helper supervisor against a fixture helper (probe caching, lifecycle,
+  delayed graceful cancel in ready/recording/paused/reviewing and successor
+  sessions, active unknown/malformed replies and foreign shutdown envelopes,
+  a budget-stop event before a delayed or adjacent success/error reply and a
+  subsequent stop,
   progress and helper-initiated stop events, crash, silence, wrong build,
   export timeout, broken probes, missing helper) and, when built, the product
   `putgd-record`: its probe JSON, the identity handshake, the explicit
@@ -971,6 +1004,10 @@ and no host-matched library was bundled; the receipt records the result under
   preview image route against the synthetic peer, a `recording.stop` that the
   peer answers after 16 s still reaching the caller through the production CLI,
   and the adapter's default deadline staying above the CLI's longest wait.
+- `cli_integration` (`tests/integration/test_cli.cpp`): the real `putgd-cli`
+  waits for a toggle stop delayed 16 s by a fake backend, beyond the former
+  `action.invoke` 15 s budget, and returns the same finalized user-stop state
+  as `recording.inspect`. This is client/session evidence, not real capture.
 - `gnome_ui_ownership_contract` (`tests/desktop/test_gnome_ownership.mjs`,
   GNOME hosts only): `SelectArea` answering and `Release` cancelling, bar
   placement order, dim strips cut around the area and the bar, and refusing

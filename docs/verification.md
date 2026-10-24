@@ -292,6 +292,25 @@ Policy and tools: [CI coverage, flaky tests](ci.md#flaky-tests). Evidence:
 Not covered: the lane is not scheduled (proposal #360); Python contract suites
 (#99, #160 were flakes there) are outside this policy.
 
+## Recording session contract (#410) — 2026-10-24
+
+The [companion report](evidence/2026-10-24-recording-session-410/README.md) and
+[JSON ledger](evidence/2026-10-24-recording-session-410/summary.json) bind clean
+`3440ab9c` to 108/108 Dev tests, 5/5 MCP tests, three relevant whole unsuppressed
+ASan/UBSan suites and the actual product probe, plus required code CI.
+Cinnamon X11 and GNOME Wayland guests and physical Debian KDE Wayland passed
+six changed-behavior cases and separate 180-second resident RSS/PSS windows,
+with reviewed saved visuals, graceful helper exits and verified cleanup.
+
+Original Mint `c5bb1171` full-run/idle evidence stays on that private-mode archive;
+corrected `fb19e0c7` has the identical nine binary hashes and a fresh three-case
+package smoke/access check. GNOME uses corrected `73faf5f6` with the active
+version-2 extension. Native physical GNOME prerequisites remain blocked; guest
+proof is not physical or full-release acceptance. Early numeric-only memory
+cover failures and baseline missing binary hashes remain explicit. The separately
+identified #556 Btrfs read-only capacity proof establishes storage only.
+Merge recording #551 and prerequisite #556 before companion #550.
+
 ## Recording closeout (#87, #166, #165, #164, #89) — 2026-10-20
 
 The [closeout receipt](evidence/2026-10-20-recording-closeout.md) finishes #87's

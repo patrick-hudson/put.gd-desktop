@@ -1,0 +1,1672 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
+  "sourceTree": "17b445850b0f1d5258b77bf88a8ccbcc5edbb3e8",
+  "scope": "Issue410 changed recording session behaviors and independent idle resident memory. Physical GNOME remains blocked; guest results stay guest-scoped. Original and corrected Cinnamon package scopes remain separate.",
+  "results": {
+    "cinnamon": {
+      "startedUtc": "2026-10-24T15:35:45Z",
+      "finishedUtc": "2026-10-24T15:38:53Z",
+      "host": "putgd-lab",
+      "desktop": "cinnamon",
+      "environment": {
+        "DISPLAY": ":0",
+        "WAYLAND_DISPLAY": null,
+        "XDG_SESSION_TYPE": "x11",
+        "XDG_CURRENT_DESKTOP": "X-Cinnamon",
+        "QT_QPA_PLATFORM": "xcb"
+      },
+      "run": "/tmp/r410c4",
+      "vm": true,
+      "session": {
+        "Id": "c1",
+        "User": "1000",
+        "Type": "x11",
+        "Desktop": "cinnamon",
+        "Seat": "seat0",
+        "Leader": "892",
+        "Timestamp": "Sat 2026-10-24 10:05:13 CDT",
+        "TimestampMonotonic": "8165830",
+        "LockedHint": "no",
+        "Active": "yes",
+        "Remote": "no"
+      },
+      "compositorPid": 1304,
+      "compositorStartTicks": 1080,
+      "compositorCgroup": "0::/user.slice/user-1000.slice/session-c1.scope\n",
+      "targetKind": "region",
+      "binaries": {
+        "putgd": {
+          "sha256": "30b77118c318ce944a3321ce46e36bba029166b88e6758bad07d8b754c32de9b",
+          "manifest": {
+            "schemaVersion": 1,
+            "version": "26.1024.1209-dev+g3440ab9c4fb6",
+            "baseVersion": "26.1024.1209",
+            "packageVersion": "26.1024.1209~dev+g3440ab9c4fb6",
+            "gitCommit": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
+            "gitTree": "17b445850b0f1d5258b77bf88a8ccbcc5edbb3e8",
+            "commitCount": 1209,
+            "dirty": false,
+            "sourceProvenance": "git"
+          }
+        },
+        "putgd-cli": {
+          "sha256": "0141e3b3a112878f5aa5b6ba3e344d68ab829b2f2b8119fc7f947254d4fb90d5",
+          "manifest": {
+            "schemaVersion": 1,
+            "version": "26.1024.1209-dev+g3440ab9c4fb6",
+            "baseVersion": "26.1024.1209",
+            "packageVersion": "26.1024.1209~dev+g3440ab9c4fb6",
+            "gitCommit": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
+            "gitTree": "17b445850b0f1d5258b77bf88a8ccbcc5edbb3e8",
+            "commitCount": 1209,
+            "dirty": false,
+            "sourceProvenance": "git"
+          }
+        },
+        "putgd-record": {
+          "sha256": "8d1ef06a6181a1109b13750b2f41f300ffe1f5f1e86bd7f4fc24fb37c48dd407",
+          "manifest": {
+            "schemaVersion": 1,
+            "version": "26.1024.1209-dev+g3440ab9c4fb6",
+            "baseVersion": "26.1024.1209",
+            "packageVersion": "26.1024.1209~dev+g3440ab9c4fb6",
+            "gitCommit": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
+            "gitTree": "17b445850b0f1d5258b77bf88a8ccbcc5edbb3e8",
+            "commitCount": 1209,
+            "dirty": false,
+            "sourceProvenance": "git"
+          }
+        }
+      },
+      "cover": {
+        "placement": {
+          "monitorIndex": 0,
+          "ok": true,
+          "output": [
+            "Virtual-1"
+          ],
+          "rect": [
+            0,
+            0,
+            1280,
+            800
+          ],
+          "state": "covered"
+        },
+        "prechecks": [
+          {
+            "check": "precheck",
+            "fraction": 1.0,
+            "framebuffer": [
+              1280,
+              800
+            ],
+            "minFraction": 0.98,
+            "ok": true,
+            "output": [
+              "Virtual-1"
+            ],
+            "rect": [
+              0,
+              0,
+              1280,
+              800
+            ]
+          }
+        ]
+      },
+      "builderHost": "f44",
+      "placement": "Mint22.3 Cinnamon6.6.4 X11 guest",
+      "packageSha256": "c5bb11716e72c91705dd1e814e57bd0cacbe0f01f2370206418adaa52e42b699",
+      "sourceCommit": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
+      "sourceTree": "17b445850b0f1d5258b77bf88a8ccbcc5edbb3e8",
+      "sourceClean": true,
+      "sourceReceiptSha256": "fb7dba27c47d5051ba8a8873f1eeaf94f78540e6a0c9c1f76a2b3d2f642df0a4",
+      "harnessSha256": "6c4c04f043255804fac169e0e752238cb82fe765d3b0c226f6c8676b8027ed5c",
+      "functionalPassed": true,
+      "caseCount": 6,
+      "cases": [
+        {
+          "case": "mode-open-ready-cancel",
+          "helperPids": [
+            4667
+          ],
+          "passed": true,
+          "recordingId": "add6cb7f-9982-4fdf-a183-c185d7bf26fa"
+        },
+        {
+          "case": "mode-toggle-recording-cancel",
+          "helperPids": [
+            4700
+          ],
+          "passed": true,
+          "recordingId": "91db4996-5494-4d7f-97a9-416791686ca4"
+        },
+        {
+          "case": "cli-stop-private-review",
+          "helperPids": [
+            4741
+          ],
+          "passed": true,
+          "recordingId": "b91718a8-0af8-4b98-8e06-10e40e08819c",
+          "stop": {
+            "recordingId": "b91718a8-0af8-4b98-8e06-10e40e08819c",
+            "state": "reviewing",
+            "stopReason": "user",
+            "stopDetails": null,
+            "durationUs": 3061790,
+            "retainedUs": 3061790,
+            "edit": {
+              "masks": [],
+              "revision": 1,
+              "trimEnd": null,
+              "trimStart": 0
+            },
+            "target": {
+              "kind": "region",
+              "rect": [
+                100,
+                100,
+                960,
+                540
+              ]
+            }
+          }
+        },
+        {
+          "case": "mcp-stop-private-review",
+          "helperPids": [
+            4783
+          ],
+          "passed": true,
+          "recordingId": "a1d1b161-7fa4-492b-a315-cb2190e058fb",
+          "stop": {
+            "recordingId": "a1d1b161-7fa4-492b-a315-cb2190e058fb",
+            "state": "reviewing",
+            "stopReason": "user",
+            "stopDetails": null,
+            "durationUs": 4662351,
+            "retainedUs": 4662351,
+            "edit": {
+              "masks": [],
+              "revision": 1,
+              "trimEnd": null,
+              "trimStart": 0
+            },
+            "target": {
+              "kind": "region",
+              "rect": [
+                100,
+                100,
+                960,
+                540
+              ]
+            }
+          }
+        },
+        {
+          "case": "toggle-stop-review-discard",
+          "helperPids": [
+            4829
+          ],
+          "passed": true,
+          "recordingId": "a66017b9-695a-4e52-a997-a3de06ea1bde",
+          "stop": {
+            "recordingId": "a66017b9-695a-4e52-a997-a3de06ea1bde",
+            "state": "reviewing",
+            "stopReason": "user",
+            "stopDetails": null,
+            "durationUs": 3093860,
+            "retainedUs": 3093860,
+            "edit": {
+              "masks": [],
+              "revision": 1,
+              "trimEnd": null,
+              "trimStart": 0
+            },
+            "target": {
+              "kind": "region",
+              "rect": [
+                100,
+                100,
+                960,
+                540
+              ]
+            }
+          }
+        },
+        {
+          "case": "budget-stop",
+          "helperPids": [
+            4890
+          ],
+          "passed": true,
+          "recordingId": "27a134ed-abdd-4d98-9d88-a68c1fbeb31b",
+          "stop": {
+            "recordingId": "27a134ed-abdd-4d98-9d88-a68c1fbeb31b",
+            "state": "reviewing",
+            "stopReason": "budget",
+            "stopDetails": {
+              "budgetBytes": 1048576,
+              "durationUs": 104061976,
+              "hint": "Raise Largest file in Settings > Uploads to record longer",
+              "maxFileBytes": 1048576,
+              "message": "Recording stopped at 1:44: it reached the Largest file limit (1 MiB; recording stops at 1 MiB to leave room to finish the file). The clip so far is kept for review; raise Largest file in Settings > Uploads to record longer.",
+              "reason": "max_file_bytes"
+            },
+            "durationUs": 104061976,
+            "retainedUs": 104061976,
+            "edit": {
+              "masks": [],
+              "revision": 1,
+              "trimEnd": null,
+              "trimStart": 0
+            },
+            "target": {
+              "kind": "region",
+              "rect": [
+                100,
+                100,
+                960,
+                540
+              ]
+            }
+          }
+        }
+      ],
+      "lifetimeMemory": {
+        "kind": "debug functional lifetime samples; no release performance claim",
+        "sampleIntervalSeconds": 0.5,
+        "samples": 357,
+        "durationSeconds": 181.1535168380001,
+        "maxRecordingHelpers": 1,
+        "residentRssMaxBytes": 32960512,
+        "allOwnedHelpersExitedNormally": true,
+        "lifetimeGatePassed": true
+      },
+      "helperLifecycle": [
+        {
+          "pid": 4667,
+          "exitCode": 0,
+          "requested": true,
+          "time": "2026-10-24T15:36:03.592Z"
+        },
+        {
+          "pid": 4700,
+          "exitCode": 0,
+          "requested": true,
+          "time": "2026-10-24T15:36:07.776Z"
+        },
+        {
+          "pid": 4741,
+          "exitCode": 0,
+          "requested": true,
+          "time": "2026-10-24T15:36:12.757Z"
+        },
+        {
+          "pid": 4783,
+          "exitCode": 0,
+          "requested": true,
+          "time": "2026-10-24T15:36:19.573Z"
+        },
+        {
+          "pid": 4829,
+          "exitCode": 0,
+          "requested": true,
+          "time": "2026-10-24T15:36:35.803Z"
+        },
+        {
+          "pid": 4890,
+          "exitCode": 0,
+          "requested": true,
+          "time": "2026-10-24T15:38:23.199Z"
+        }
+      ],
+      "runningImages": {
+        "4623": {
+          "exe": "/usr/bin/putgd",
+          "sha256": "30b77118c318ce944a3321ce46e36bba029166b88e6758bad07d8b754c32de9b",
+          "qtPlatforms": []
+        },
+        "4667": {
+          "exe": "/usr/bin/putgd-record",
+          "sha256": "8d1ef06a6181a1109b13750b2f41f300ffe1f5f1e86bd7f4fc24fb37c48dd407",
+          "qtPlatforms": [
+            "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so"
+          ]
+        },
+        "4700": {
+          "exe": "/usr/bin/putgd-record",
+          "sha256": "8d1ef06a6181a1109b13750b2f41f300ffe1f5f1e86bd7f4fc24fb37c48dd407",
+          "qtPlatforms": [
+            "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so"
+          ]
+        },
+        "4741": {
+          "exe": "/usr/bin/putgd-record",
+          "sha256": "8d1ef06a6181a1109b13750b2f41f300ffe1f5f1e86bd7f4fc24fb37c48dd407",
+          "qtPlatforms": [
+            "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so"
+          ]
+        },
+        "4783": {
+          "exe": "/usr/bin/putgd-record",
+          "sha256": "8d1ef06a6181a1109b13750b2f41f300ffe1f5f1e86bd7f4fc24fb37c48dd407",
+          "qtPlatforms": [
+            "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so"
+          ]
+        },
+        "4829": {
+          "exe": "/usr/bin/putgd-record",
+          "sha256": "8d1ef06a6181a1109b13750b2f41f300ffe1f5f1e86bd7f4fc24fb37c48dd407",
+          "qtPlatforms": [
+            "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so"
+          ]
+        },
+        "4890": {
+          "exe": "/usr/bin/putgd-record",
+          "sha256": "8d1ef06a6181a1109b13750b2f41f300ffe1f5f1e86bd7f4fc24fb37c48dd407",
+          "qtPlatforms": [
+            "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so"
+          ]
+        }
+      },
+      "noProtocolKill": true,
+      "noImplicitPayload": true,
+      "socketPreflight": {
+        "schemaVersion": 1,
+        "passed": true,
+        "limitBytesExcludingNul": 107,
+        "paths": [
+          {
+            "path": "/tmp/r410c4/rt/putgd/session.sock",
+            "utf8Bytes": 33,
+            "passed": true
+          }
+        ]
+      },
+      "rawEvidence": [
+        {
+          "file": "cinnamon-export-3440/r410c4/summary.json",
+          "sha256": "8f484fb697586141eb586f5a1c854a4cd2fd32ebaf127a11a7883516b05070b5"
+        },
+        {
+          "file": "cinnamon-export-3440/r410c4/identity.json",
+          "sha256": "133ba43317ac82ab19ab45f873e5426457c32269b5f5dcd5b4a7991736435e67"
+        },
+        {
+          "file": "cinnamon-export-3440/r410c4/memory.json",
+          "sha256": "471dab8296a477a4548c9af6f1f5777c7088f777e74ea312a0b9f716dfb04ea2"
+        },
+        {
+          "file": "cinnamon-export-3440/r410c4/cli.jsonl",
+          "sha256": "9badc1673e45dc4c0be88785e0f35bf35a0a711ae7c4da4372d99a676927666f"
+        },
+        {
+          "file": "cinnamon-export-3440/r410c4/socket-preflight.json",
+          "sha256": "cb6ed52920ad13a7e3daaf247bfc630fb45e3f61a0e523dc71f54517b71c87e5"
+        },
+        {
+          "file": "cinnamon-export-3440/i410-accept.py",
+          "sha256": "6c4c04f043255804fac169e0e752238cb82fe765d3b0c226f6c8676b8027ed5c"
+        },
+        {
+          "file": "cinnamon-export-3440/r410cm3/summary.json",
+          "sha256": "a64841723bc2a9bf4c87e1e585bb3a3392bb3b692bc18cac5a2dbe96d168b44a"
+        },
+        {
+          "file": "cinnamon-export-3440/i410-memory.py",
+          "sha256": "e46716b4a81d551ec07d77d104636370825e40d7e094ba859fba646d69fcf784"
+        }
+      ],
+      "independentIdleMemory": {
+        "startedUtc": "2026-10-24T15:41:02Z",
+        "finishedUtc": "2026-10-24T15:44:07Z",
+        "residentPid": 5730,
+        "binarySha256": "30b77118c318ce944a3321ce46e36bba029166b88e6758bad07d8b754c32de9b",
+        "functionalIdentitySha256": "133ba43317ac82ab19ab45f873e5426457c32269b5f5dcd5b4a7991736435e67",
+        "harnessSha256": "e46716b4a81d551ec07d77d104636370825e40d7e094ba859fba646d69fcf784",
+        "durationRequiredSeconds": 180,
+        "durationSeconds": 180.00130352899987,
+        "sampleIntervalSeconds": 1,
+        "rssMaxBytes": 32641024,
+        "pssMaxBytes": 21794816,
+        "budgetBytes": 41943040,
+        "residentExit": 0,
+        "mappedLibraries": {
+          "libgtk": false,
+          "libKF6": false,
+          "libssl": false,
+          "libQt6Network": false
+        },
+        "passed": true,
+        "visualSha256": "2c5d0b68cb87e13b2f2354a45b5b51c1ad1d37440ab6e3becea67d354c737ed4",
+        "samples": 181,
+        "load1Min": 0.12939453125,
+        "load1Max": 0.388671875,
+        "scope": "Independent idle resident only; no release, open-helper family, native-hardware performance or full package-matrix acceptance.",
+        "inhibitorReleased": true
+      },
+      "vmIdentity": {
+        "id": "1543038f-acf2-4140-b4ac-f432cebb06a4",
+        "profile": "cinnamon-x11",
+        "golden_sha256": "4a21566d5b741e55f349f4f07e1c687c99d1c99b5394ff0d18ed5c9e685693da",
+        "pid": 165763,
+        "acceleration": "kvm"
+      },
+      "trackedDesktopProcess": {
+        "name": "cinnamon",
+        "pid": 1304,
+        "startTicks": 1080,
+        "originalHarnessField": "compositorPid",
+        "meaning": "Desktop compositor/shell process generation."
+      }
+    },
+    "kde": {
+      "startedUtc": "2026-10-24T15:36:17Z",
+      "finishedUtc": "2026-10-24T15:39:11Z",
+      "host": "debian",
+      "desktop": "plasmashell",
+      "environment": {
+        "DISPLAY": ":0",
+        "WAYLAND_DISPLAY": "/run/user/1000/wayland-0",
+        "XDG_SESSION_TYPE": "wayland",
+        "XDG_CURRENT_DESKTOP": "KDE",
+        "QT_QPA_PLATFORM": "wayland"
+      },
+      "run": "/tmp/r410d/k1",
+      "vm": false,
+      "session": {
+        "Id": "20103",
+        "User": "1000",
+        "Type": "wayland",
+        "Desktop": "KDE",
+        "Seat": "seat0",
+        "Leader": "2755642",
+        "Timestamp": "Sat 2026-10-24 01:20:38 CDT",
+        "TimestampMonotonic": "608680693393",
+        "LockedHint": "no",
+        "Active": "yes",
+        "Remote": "no"
+      },
+      "compositorPid": 2755938,
+      "compositorStartTicks": 60868265,
+      "compositorCgroup": "0::/user.slice/user-1000.slice/user@1000.service/session.slice/plasma-plasmashell.service\n",
+      "targetKind": "region",
+      "binaries": {
+        "putgd": {
+          "sha256": "45e32293d3df90547ab6ac7023a3795e024ca33aa61aeae316999a2e556b8b18",
+          "manifest": {
+            "schemaVersion": 1,
+            "version": "26.1024.1209-dev+g3440ab9c4fb6",
+            "baseVersion": "26.1024.1209",
+            "packageVersion": "26.1024.1209~dev+g3440ab9c4fb6",
+            "gitCommit": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
+            "gitTree": "17b445850b0f1d5258b77bf88a8ccbcc5edbb3e8",
+            "commitCount": 1209,
+            "dirty": false,
+            "sourceProvenance": "git"
+          }
+        },
+        "putgd-cli": {
+          "sha256": "bf60b2c9a9fedddb39022c297eb88bb824b29f0944f6a003d559657144fe010a",
+          "manifest": {
+            "schemaVersion": 1,
+            "version": "26.1024.1209-dev+g3440ab9c4fb6",
+            "baseVersion": "26.1024.1209",
+            "packageVersion": "26.1024.1209~dev+g3440ab9c4fb6",
+            "gitCommit": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
+            "gitTree": "17b445850b0f1d5258b77bf88a8ccbcc5edbb3e8",
+            "commitCount": 1209,
+            "dirty": false,
+            "sourceProvenance": "git"
+          }
+        },
+        "putgd-record": {
+          "sha256": "d947b3c4356af151f63b92db15f5293395e3f73a669b5e3604aec8333e8402b0",
+          "manifest": {
+            "schemaVersion": 1,
+            "version": "26.1024.1209-dev+g3440ab9c4fb6",
+            "baseVersion": "26.1024.1209",
+            "packageVersion": "26.1024.1209~dev+g3440ab9c4fb6",
+            "gitCommit": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
+            "gitTree": "17b445850b0f1d5258b77bf88a8ccbcc5edbb3e8",
+            "commitCount": 1209,
+            "dirty": false,
+            "sourceProvenance": "git"
+          }
+        }
+      },
+      "cover": {
+        "placement": {
+          "monitorIndex": 0,
+          "ok": true,
+          "output": [
+            "HDMI-A-1"
+          ],
+          "rect": [
+            0,
+            0,
+            1920,
+            1080
+          ],
+          "state": "covered"
+        },
+        "prechecks": [
+          {
+            "check": "precheck",
+            "fraction": 0.9999,
+            "framebuffer": [
+              1920,
+              1080
+            ],
+            "minFraction": 0.98,
+            "ok": true,
+            "output": [
+              "HDMI-A-1"
+            ],
+            "rect": [
+              0,
+              0,
+              1920,
+              1080
+            ]
+          }
+        ]
+      },
+      "builderHost": "d69",
+      "placement": "Debian13 Plasma6.3.6 Wayland physical desktop",
+      "packageSha256": "20c9b47eb72d0ef98419281c6c2adbe599deabfe1e3d9d53037c08ff9fb1944b",
+      "sourceCommit": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
+      "sourceTree": "17b445850b0f1d5258b77bf88a8ccbcc5edbb3e8",
+      "sourceClean": true,
+      "sourceReceiptSha256": null,
+      "harnessSha256": "6c4c04f043255804fac169e0e752238cb82fe765d3b0c226f6c8676b8027ed5c",
+      "functionalPassed": true,
+      "caseCount": 6,
+      "cases": [
+        {
+          "case": "mode-open-ready-cancel",
+          "helperPids": [
+            2805390
+          ],
+          "passed": true,
+          "recordingId": "b5df31b7-f92e-42d3-aa00-072fcdc568a7"
+        },
+        {
+          "case": "mode-toggle-recording-cancel",
+          "helperPids": [
+            2805449
+          ],
+          "passed": true,
+          "recordingId": "3467eac0-1ffb-4f80-ac92-a5503f39f7f8"
+        },
+        {
+          "case": "cli-stop-private-review",
+          "helperPids": [
+            2805501
+          ],
+          "passed": true,
+          "recordingId": "306e42a5-3819-41f1-bfd2-3549260d0288",
+          "stop": {
+            "recordingId": "306e42a5-3819-41f1-bfd2-3549260d0288",
+            "state": "reviewing",
+            "stopReason": "user",
+            "stopDetails": null,
+            "durationUs": 3333333,
+            "retainedUs": 3333333,
+            "edit": {
+              "masks": [],
+              "revision": 1,
+              "trimEnd": null,
+              "trimStart": 0
+            },
+            "target": {
+              "kind": "region",
+              "rect": [
+                100,
+                100,
+                960,
+                540
+              ]
+            }
+          }
+        },
+        {
+          "case": "mcp-stop-private-review",
+          "helperPids": [
+            2805567
+          ],
+          "passed": true,
+          "recordingId": "ba770e8c-9d9c-4985-b69c-b8d750b598a1",
+          "stop": {
+            "recordingId": "ba770e8c-9d9c-4985-b69c-b8d750b598a1",
+            "state": "reviewing",
+            "stopReason": "user",
+            "stopDetails": null,
+            "durationUs": 5466666,
+            "retainedUs": 5466666,
+            "edit": {
+              "masks": [],
+              "revision": 1,
+              "trimEnd": null,
+              "trimStart": 0
+            },
+            "target": {
+              "kind": "region",
+              "rect": [
+                100,
+                100,
+                960,
+                540
+              ]
+            }
+          }
+        },
+        {
+          "case": "toggle-stop-review-discard",
+          "helperPids": [
+            2805639
+          ],
+          "passed": true,
+          "recordingId": "e489af25-7eb3-4190-b063-1edef044b3a9",
+          "stop": {
+            "recordingId": "e489af25-7eb3-4190-b063-1edef044b3a9",
+            "state": "reviewing",
+            "stopReason": "user",
+            "stopDetails": null,
+            "durationUs": 3199999,
+            "retainedUs": 3199999,
+            "edit": {
+              "masks": [],
+              "revision": 1,
+              "trimEnd": null,
+              "trimStart": 0
+            },
+            "target": {
+              "kind": "region",
+              "rect": [
+                100,
+                100,
+                960,
+                540
+              ]
+            }
+          }
+        },
+        {
+          "case": "budget-stop",
+          "helperPids": [
+            2805819
+          ],
+          "passed": true,
+          "recordingId": "5ce86aa7-2945-43aa-b440-520bbe0f15b2",
+          "stop": {
+            "recordingId": "5ce86aa7-2945-43aa-b440-520bbe0f15b2",
+            "state": "reviewing",
+            "stopReason": "budget",
+            "stopDetails": {
+              "budgetBytes": 1048576,
+              "durationUs": 56999999,
+              "hint": "Raise Largest file in Settings > Uploads to record longer",
+              "maxFileBytes": 1048576,
+              "message": "Recording stopped at 0:56: it reached the Largest file limit (1 MiB; recording stops at 1 MiB to leave room to finish the file). The clip so far is kept for review; raise Largest file in Settings > Uploads to record longer.",
+              "reason": "max_file_bytes"
+            },
+            "durationUs": 56999999,
+            "retainedUs": 56999999,
+            "edit": {
+              "masks": [],
+              "revision": 1,
+              "trimEnd": null,
+              "trimStart": 0
+            },
+            "target": {
+              "kind": "region",
+              "rect": [
+                100,
+                100,
+                960,
+                540
+              ]
+            }
+          }
+        }
+      ],
+      "lifetimeMemory": {
+        "kind": "debug functional lifetime samples; no release performance claim",
+        "sampleIntervalSeconds": 0.5,
+        "samples": 327,
+        "durationSeconds": 164.67706901102792,
+        "maxRecordingHelpers": 1,
+        "residentRssMaxBytes": 35053568,
+        "allOwnedHelpersExitedNormally": true,
+        "lifetimeGatePassed": true
+      },
+      "helperLifecycle": [
+        {
+          "pid": 2805390,
+          "exitCode": 0,
+          "requested": true,
+          "time": "2026-10-24T15:36:37.863Z"
+        },
+        {
+          "pid": 2805449,
+          "exitCode": 0,
+          "requested": true,
+          "time": "2026-10-24T15:36:42.229Z"
+        },
+        {
+          "pid": 2805501,
+          "exitCode": 0,
+          "requested": true,
+          "time": "2026-10-24T15:36:47.615Z"
+        },
+        {
+          "pid": 2805567,
+          "exitCode": 0,
+          "requested": true,
+          "time": "2026-10-24T15:36:55.248Z"
+        },
+        {
+          "pid": 2805639,
+          "exitCode": 0,
+          "requested": true,
+          "time": "2026-10-24T15:37:40.803Z"
+        },
+        {
+          "pid": 2805819,
+          "exitCode": 0,
+          "requested": true,
+          "time": "2026-10-24T15:38:40.961Z"
+        }
+      ],
+      "runningImages": {
+        "2805321": {
+          "exe": "/usr/bin/putgd",
+          "sha256": "45e32293d3df90547ab6ac7023a3795e024ca33aa61aeae316999a2e556b8b18",
+          "qtPlatforms": []
+        },
+        "2805390": {
+          "exe": "/usr/bin/putgd-record",
+          "sha256": "d947b3c4356af151f63b92db15f5293395e3f73a669b5e3604aec8333e8402b0",
+          "qtPlatforms": [
+            "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland-generic.so"
+          ]
+        },
+        "2805449": {
+          "exe": "/usr/bin/putgd-record",
+          "sha256": "d947b3c4356af151f63b92db15f5293395e3f73a669b5e3604aec8333e8402b0",
+          "qtPlatforms": [
+            "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland-generic.so"
+          ]
+        },
+        "2805501": {
+          "exe": "/usr/bin/putgd-record",
+          "sha256": "d947b3c4356af151f63b92db15f5293395e3f73a669b5e3604aec8333e8402b0",
+          "qtPlatforms": [
+            "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland-generic.so"
+          ]
+        },
+        "2805567": {
+          "exe": "/usr/bin/putgd-record",
+          "sha256": "d947b3c4356af151f63b92db15f5293395e3f73a669b5e3604aec8333e8402b0",
+          "qtPlatforms": [
+            "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland-generic.so"
+          ]
+        },
+        "2805639": {
+          "exe": "/usr/bin/putgd-record",
+          "sha256": "d947b3c4356af151f63b92db15f5293395e3f73a669b5e3604aec8333e8402b0",
+          "qtPlatforms": [
+            "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland-generic.so"
+          ]
+        },
+        "2805819": {
+          "exe": "/usr/bin/putgd-record",
+          "sha256": "d947b3c4356af151f63b92db15f5293395e3f73a669b5e3604aec8333e8402b0",
+          "qtPlatforms": [
+            "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland-generic.so"
+          ]
+        }
+      },
+      "noProtocolKill": true,
+      "noImplicitPayload": true,
+      "socketPreflight": {
+        "schemaVersion": 1,
+        "passed": true,
+        "limitBytesExcludingNul": 107,
+        "paths": [
+          {
+            "path": "/tmp/r410d/k1/rt/putgd/session.sock",
+            "utf8Bytes": 35,
+            "passed": true
+          }
+        ]
+      },
+      "rawEvidence": [
+        {
+          "file": "kde-export-3440/k1/summary.json",
+          "sha256": "fcaf7e75ddb2aef1f17fde2381b244cac1c6adffd7fa6a17ccd2eb5dbc340172"
+        },
+        {
+          "file": "kde-export-3440/k1/identity.json",
+          "sha256": "53e49f009ce4ad404e69ed9d04c003f220a9dc70c53e454b513107ace7479f76"
+        },
+        {
+          "file": "kde-export-3440/k1/memory.json",
+          "sha256": "5975e1026cb6c4852a134da0c0ead523b16bea9f5e41ea16efddebf5ed624ef3"
+        },
+        {
+          "file": "kde-export-3440/k1/cli.jsonl",
+          "sha256": "736d94a7900d2baf3068a77795205f56b2823b4fc147cecb15299d70c7c5bfd3"
+        },
+        {
+          "file": "kde-export-3440/k1/socket-preflight.json",
+          "sha256": "6af0f8717147a820d0e6b002d6b8c961d35704ce6e52a0834e672902f80d6add"
+        },
+        {
+          "file": "kde-export-3440/i410-accept.py",
+          "sha256": "6c4c04f043255804fac169e0e752238cb82fe765d3b0c226f6c8676b8027ed5c"
+        },
+        {
+          "file": "kde-export-3440/km3/summary.json",
+          "sha256": "3864e107f5f7305ecf5f5d9cfae8f088f946e1fe7b823823a4c1a2aad3e8331e"
+        },
+        {
+          "file": "kde-export-3440/i410-memory.py",
+          "sha256": "e46716b4a81d551ec07d77d104636370825e40d7e094ba859fba646d69fcf784"
+        }
+      ],
+      "independentIdleMemory": {
+        "startedUtc": "2026-10-24T15:42:05Z",
+        "finishedUtc": "2026-10-24T15:45:10Z",
+        "residentPid": 2806688,
+        "binarySha256": "45e32293d3df90547ab6ac7023a3795e024ca33aa61aeae316999a2e556b8b18",
+        "functionalIdentitySha256": "53e49f009ce4ad404e69ed9d04c003f220a9dc70c53e454b513107ace7479f76",
+        "harnessSha256": "e46716b4a81d551ec07d77d104636370825e40d7e094ba859fba646d69fcf784",
+        "durationRequiredSeconds": 180,
+        "durationSeconds": 180.0010322399903,
+        "sampleIntervalSeconds": 1,
+        "rssMaxBytes": 34967552,
+        "pssMaxBytes": 11900928,
+        "budgetBytes": 41943040,
+        "residentExit": 0,
+        "mappedLibraries": {
+          "libgtk": false,
+          "libKF6": false,
+          "libssl": false,
+          "libQt6Network": false
+        },
+        "passed": true,
+        "visualSha256": "7cc9d3fe3684124bb5f621d8e538b31bcbfb8c4371881c4045743cfa99b66fa5",
+        "samples": 181,
+        "load1Min": 0.0390625,
+        "load1Max": 0.33251953125,
+        "scope": "Independent idle resident only; no release, open-helper family, native-hardware performance or full package-matrix acceptance."
+      },
+      "trackedDesktopProcess": {
+        "name": "plasmashell",
+        "pid": 2755938,
+        "startTicks": 60868265,
+        "originalHarnessField": "compositorPid",
+        "meaning": "Desktop-shell process generation; on KDE this is plasmashell, not a separate KWin process identity."
+      }
+    },
+    "gnome": {
+      "startedUtc": "2026-10-24T15:55:39Z",
+      "finishedUtc": "2026-10-24T15:59:09Z",
+      "host": "putgd-ubuntu-lab",
+      "desktop": "gnome-shell",
+      "environment": {
+        "DISPLAY": null,
+        "WAYLAND_DISPLAY": "/run/user/1000/wayland-0",
+        "XDG_SESSION_TYPE": "wayland",
+        "XDG_CURRENT_DESKTOP": "ubuntu:GNOME",
+        "QT_QPA_PLATFORM": "wayland"
+      },
+      "run": "/tmp/r410g1",
+      "vm": true,
+      "session": {
+        "Id": "35",
+        "User": "1000",
+        "Type": "wayland",
+        "Desktop": null,
+        "Seat": "seat0",
+        "Leader": "9570",
+        "Timestamp": "Sat 2026-10-24 10:54:28 CDT",
+        "TimestampMonotonic": "466502260",
+        "LockedHint": "no",
+        "Active": "yes",
+        "Remote": "no"
+      },
+      "compositorPid": 9807,
+      "compositorStartTicks": 46695,
+      "compositorCgroup": "0::/user.slice/user-1000.slice/user@1000.service/session.slice/org.gnome.Shell@ubuntu.service\n",
+      "targetKind": "region",
+      "binaries": {
+        "putgd": {
+          "sha256": "daa55b4dfef1f34121a09f16ca5981a7ff0bdedd2be83d80b6ff43ddfaa8a08d",
+          "manifest": {
+            "schemaVersion": 1,
+            "version": "26.1024.1209-dev+g3440ab9c4fb6",
+            "baseVersion": "26.1024.1209",
+            "packageVersion": "26.1024.1209~dev+g3440ab9c4fb6",
+            "gitCommit": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
+            "gitTree": "17b445850b0f1d5258b77bf88a8ccbcc5edbb3e8",
+            "commitCount": 1209,
+            "dirty": false,
+            "sourceProvenance": "git"
+          }
+        },
+        "putgd-cli": {
+          "sha256": "87c4c3fd561b8e83bcff558fc0b7fd69a3a64a3e1e6dc2afc9fb5eb8d7348f0a",
+          "manifest": {
+            "schemaVersion": 1,
+            "version": "26.1024.1209-dev+g3440ab9c4fb6",
+            "baseVersion": "26.1024.1209",
+            "packageVersion": "26.1024.1209~dev+g3440ab9c4fb6",
+            "gitCommit": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
+            "gitTree": "17b445850b0f1d5258b77bf88a8ccbcc5edbb3e8",
+            "commitCount": 1209,
+            "dirty": false,
+            "sourceProvenance": "git"
+          }
+        },
+        "putgd-record": {
+          "sha256": "3b0ea6499618fbe32deb47750eb7b47c5a7f8c8fab4f44b94eff8d3a93480ad7",
+          "manifest": {
+            "schemaVersion": 1,
+            "version": "26.1024.1209-dev+g3440ab9c4fb6",
+            "baseVersion": "26.1024.1209",
+            "packageVersion": "26.1024.1209~dev+g3440ab9c4fb6",
+            "gitCommit": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
+            "gitTree": "17b445850b0f1d5258b77bf88a8ccbcc5edbb3e8",
+            "commitCount": 1209,
+            "dirty": false,
+            "sourceProvenance": "git"
+          }
+        }
+      },
+      "cover": {
+        "placement": {
+          "monitorIndex": 0,
+          "ok": true,
+          "output": [
+            "Virtual-1"
+          ],
+          "rect": [
+            0,
+            0,
+            1280,
+            800
+          ],
+          "state": "covered"
+        },
+        "prechecks": [
+          {
+            "check": "precheck",
+            "fraction": 1.0,
+            "framebuffer": [
+              1280,
+              800
+            ],
+            "minFraction": 0.98,
+            "ok": true,
+            "output": [
+              "Virtual-1"
+            ],
+            "rect": [
+              0,
+              0,
+              1280,
+              800
+            ]
+          }
+        ]
+      },
+      "builderHost": "f44",
+      "placement": "Ubuntu26.04.1 GNOME50.1 Wayland guest",
+      "packageSha256": "73faf5f647d73390b8a64013e8e97136aa7f599e076d86090b247afcb62f13fd",
+      "sourceCommit": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
+      "sourceTree": "17b445850b0f1d5258b77bf88a8ccbcc5edbb3e8",
+      "sourceClean": true,
+      "sourceReceiptSha256": "fb7dba27c47d5051ba8a8873f1eeaf94f78540e6a0c9c1f76a2b3d2f642df0a4",
+      "harnessSha256": "6c4c04f043255804fac169e0e752238cb82fe765d3b0c226f6c8676b8027ed5c",
+      "functionalPassed": true,
+      "caseCount": 6,
+      "cases": [
+        {
+          "case": "mode-open-ready-cancel",
+          "helperPids": [
+            11095
+          ],
+          "passed": true,
+          "recordingId": "591a07a4-65a4-4493-bf95-a28a99c57dfe"
+        },
+        {
+          "case": "mode-toggle-recording-cancel",
+          "helperPids": [
+            11130
+          ],
+          "passed": true,
+          "recordingId": "f2a37524-4412-494f-9855-3dfcb27747fd"
+        },
+        {
+          "case": "cli-stop-private-review",
+          "helperPids": [
+            11171
+          ],
+          "passed": true,
+          "recordingId": "9e0e3397-331f-490f-a32d-a4c6e7c9c1de",
+          "stop": {
+            "recordingId": "9e0e3397-331f-490f-a32d-a4c6e7c9c1de",
+            "state": "reviewing",
+            "stopReason": "user",
+            "stopDetails": null,
+            "durationUs": 3133333,
+            "retainedUs": 3133333,
+            "edit": {
+              "masks": [],
+              "revision": 1,
+              "trimEnd": null,
+              "trimStart": 0
+            },
+            "target": {
+              "kind": "region",
+              "rect": [
+                100,
+                100,
+                960,
+                540
+              ]
+            }
+          }
+        },
+        {
+          "case": "mcp-stop-private-review",
+          "helperPids": [
+            11221
+          ],
+          "passed": true,
+          "recordingId": "bb74cd79-a6a7-4364-9479-62b34f9ef421",
+          "stop": {
+            "recordingId": "bb74cd79-a6a7-4364-9479-62b34f9ef421",
+            "state": "reviewing",
+            "stopReason": "user",
+            "stopDetails": null,
+            "durationUs": 5666666,
+            "retainedUs": 5666666,
+            "edit": {
+              "masks": [],
+              "revision": 1,
+              "trimEnd": null,
+              "trimStart": 0
+            },
+            "target": {
+              "kind": "region",
+              "rect": [
+                100,
+                100,
+                960,
+                540
+              ]
+            }
+          }
+        },
+        {
+          "case": "toggle-stop-review-discard",
+          "helperPids": [
+            11281
+          ],
+          "passed": true,
+          "recordingId": "879402ab-aceb-4263-989c-620aa32fd46e",
+          "stop": {
+            "recordingId": "879402ab-aceb-4263-989c-620aa32fd46e",
+            "state": "reviewing",
+            "stopReason": "user",
+            "stopDetails": null,
+            "durationUs": 3099999,
+            "retainedUs": 3099999,
+            "edit": {
+              "masks": [],
+              "revision": 1,
+              "trimEnd": null,
+              "trimStart": 0
+            },
+            "target": {
+              "kind": "region",
+              "rect": [
+                100,
+                100,
+                960,
+                540
+              ]
+            }
+          }
+        },
+        {
+          "case": "budget-stop",
+          "helperPids": [
+            11378
+          ],
+          "passed": true,
+          "recordingId": "50f6ab49-7e29-44c5-933c-5a868e1f0594",
+          "stop": {
+            "recordingId": "50f6ab49-7e29-44c5-933c-5a868e1f0594",
+            "state": "reviewing",
+            "stopReason": "budget",
+            "stopDetails": {
+              "budgetBytes": 1048576,
+              "durationUs": 112599999,
+              "hint": "Raise Largest file in Settings > Uploads to record longer",
+              "maxFileBytes": 1048576,
+              "message": "Recording stopped at 1:52: it reached the Largest file limit (1 MiB; recording stops at 1 MiB to leave room to finish the file). The clip so far is kept for review; raise Largest file in Settings > Uploads to record longer.",
+              "reason": "max_file_bytes"
+            },
+            "durationUs": 112599999,
+            "retainedUs": 112599999,
+            "edit": {
+              "masks": [],
+              "revision": 1,
+              "trimEnd": null,
+              "trimStart": 0
+            },
+            "target": {
+              "kind": "region",
+              "rect": [
+                100,
+                100,
+                960,
+                540
+              ]
+            }
+          }
+        }
+      ],
+      "lifetimeMemory": {
+        "kind": "debug functional lifetime samples; no release performance claim",
+        "sampleIntervalSeconds": 0.5,
+        "samples": 401,
+        "durationSeconds": 203.05015036500004,
+        "maxRecordingHelpers": 1,
+        "residentRssMaxBytes": 36478976,
+        "allOwnedHelpersExitedNormally": true,
+        "lifetimeGatePassed": true
+      },
+      "helperLifecycle": [
+        {
+          "pid": 11095,
+          "exitCode": 0,
+          "requested": true,
+          "time": "2026-10-24T15:55:58.018Z"
+        },
+        {
+          "pid": 11130,
+          "exitCode": 0,
+          "requested": true,
+          "time": "2026-10-24T15:56:02.277Z"
+        },
+        {
+          "pid": 11171,
+          "exitCode": 0,
+          "requested": true,
+          "time": "2026-10-24T15:56:07.477Z"
+        },
+        {
+          "pid": 11221,
+          "exitCode": 0,
+          "requested": true,
+          "time": "2026-10-24T15:56:15.633Z"
+        },
+        {
+          "pid": 11281,
+          "exitCode": 0,
+          "requested": true,
+          "time": "2026-10-24T15:56:43.339Z"
+        },
+        {
+          "pid": 11378,
+          "exitCode": 0,
+          "requested": true,
+          "time": "2026-10-24T15:58:39.294Z"
+        }
+      ],
+      "runningImages": {
+        "11013": {
+          "exe": "/usr/bin/putgd",
+          "sha256": "daa55b4dfef1f34121a09f16ca5981a7ff0bdedd2be83d80b6ff43ddfaa8a08d",
+          "qtPlatforms": []
+        },
+        "11095": {
+          "exe": "/usr/bin/putgd-record",
+          "sha256": "3b0ea6499618fbe32deb47750eb7b47c5a7f8c8fab4f44b94eff8d3a93480ad7",
+          "qtPlatforms": [
+            "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland.so"
+          ]
+        },
+        "11130": {
+          "exe": "/usr/bin/putgd-record",
+          "sha256": "3b0ea6499618fbe32deb47750eb7b47c5a7f8c8fab4f44b94eff8d3a93480ad7",
+          "qtPlatforms": [
+            "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland.so"
+          ]
+        },
+        "11171": {
+          "exe": "/usr/bin/putgd-record",
+          "sha256": "3b0ea6499618fbe32deb47750eb7b47c5a7f8c8fab4f44b94eff8d3a93480ad7",
+          "qtPlatforms": [
+            "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland.so"
+          ]
+        },
+        "11221": {
+          "exe": "/usr/bin/putgd-record",
+          "sha256": "3b0ea6499618fbe32deb47750eb7b47c5a7f8c8fab4f44b94eff8d3a93480ad7",
+          "qtPlatforms": [
+            "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland.so"
+          ]
+        },
+        "11281": {
+          "exe": "/usr/bin/putgd-record",
+          "sha256": "3b0ea6499618fbe32deb47750eb7b47c5a7f8c8fab4f44b94eff8d3a93480ad7",
+          "qtPlatforms": [
+            "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland.so"
+          ]
+        },
+        "11378": {
+          "exe": "/usr/bin/putgd-record",
+          "sha256": "3b0ea6499618fbe32deb47750eb7b47c5a7f8c8fab4f44b94eff8d3a93480ad7",
+          "qtPlatforms": [
+            "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland.so"
+          ]
+        }
+      },
+      "noProtocolKill": true,
+      "noImplicitPayload": true,
+      "socketPreflight": {
+        "schemaVersion": 1,
+        "passed": true,
+        "limitBytesExcludingNul": 107,
+        "paths": [
+          {
+            "path": "/tmp/r410g1/rt/putgd/session.sock",
+            "utf8Bytes": 33,
+            "passed": true
+          }
+        ]
+      },
+      "rawEvidence": [
+        {
+          "file": "gnome-export-3440/r410g1/summary.json",
+          "sha256": "2902885f191bc66c5ca44310ad4611a8de5b75075c642ed33b20a99a983f7860"
+        },
+        {
+          "file": "gnome-export-3440/r410g1/identity.json",
+          "sha256": "1765c815ea1523946ea8f1a9e8b8874c3895e9edbd0b4459c82f1350df205629"
+        },
+        {
+          "file": "gnome-export-3440/r410g1/memory.json",
+          "sha256": "7ab6d920ec27dc646759c5d689ac0f7939e74f81729845bdc83c919dcb92ad23"
+        },
+        {
+          "file": "gnome-export-3440/r410g1/cli.jsonl",
+          "sha256": "784726497e9f10b6c7c4a919e8cfecdec8611c86de81fd52ae81d260bc4d2587"
+        },
+        {
+          "file": "gnome-export-3440/r410g1/socket-preflight.json",
+          "sha256": "eb813031e5314146c8f11fcf89dd312bace0ba4646ef468c83d0af6da7af0d5f"
+        },
+        {
+          "file": "gnome-export-3440/i410-accept.py",
+          "sha256": "6c4c04f043255804fac169e0e752238cb82fe765d3b0c226f6c8676b8027ed5c"
+        },
+        {
+          "file": "gnome-export-3440/r410gm1/summary.json",
+          "sha256": "abae115e21ed013ae2fd50bfc8003f12494605b07ab7483e3f6bd765d76b11bc"
+        },
+        {
+          "file": "gnome-export-3440/i410-memory.py",
+          "sha256": "e46716b4a81d551ec07d77d104636370825e40d7e094ba859fba646d69fcf784"
+        }
+      ],
+      "independentIdleMemory": {
+        "startedUtc": "2026-10-24T15:59:38Z",
+        "finishedUtc": "2026-10-24T16:02:43Z",
+        "residentPid": 12479,
+        "binarySha256": "daa55b4dfef1f34121a09f16ca5981a7ff0bdedd2be83d80b6ff43ddfaa8a08d",
+        "functionalIdentitySha256": "1765c815ea1523946ea8f1a9e8b8874c3895e9edbd0b4459c82f1350df205629",
+        "harnessSha256": "e46716b4a81d551ec07d77d104636370825e40d7e094ba859fba646d69fcf784",
+        "durationRequiredSeconds": 180,
+        "durationSeconds": 180.00132611599997,
+        "sampleIntervalSeconds": 1,
+        "rssMaxBytes": 35151872,
+        "pssMaxBytes": 23522304,
+        "budgetBytes": 41943040,
+        "residentExit": 0,
+        "mappedLibraries": {
+          "libgtk": false,
+          "libKF6": false,
+          "libssl": false,
+          "libQt6Network": false
+        },
+        "passed": true,
+        "visualSha256": "2c5d0b68cb87e13b2f2354a45b5b51c1ad1d37440ab6e3becea67d354c737ed4",
+        "samples": 181,
+        "load1Min": 0.5263671875,
+        "load1Max": 1.25732421875,
+        "scope": "Independent idle resident only; no release, open-helper family, native-hardware performance or full package-matrix acceptance.",
+        "inhibitorReleased": true
+      },
+      "vmIdentity": {
+        "id": "afa7f719-5f19-4653-86f3-a96e4914044d",
+        "profile": "gnome-wayland",
+        "golden_sha256": "563730cc1d929bd946d20cf30a9aecfe3c4ad40eb12ba7f9abcff1c461e342bb",
+        "pid": 172510,
+        "acceleration": "kvm"
+      },
+      "trackedDesktopProcess": {
+        "name": "gnome-shell",
+        "pid": 9807,
+        "startTicks": 46695,
+        "originalHarnessField": "compositorPid",
+        "meaning": "Desktop compositor/shell process generation."
+      }
+    },
+    "cinnamon-corrected-smoke": {
+      "startedUtc": "2026-10-24T15:59:17Z",
+      "finishedUtc": "2026-10-24T15:59:57Z",
+      "host": "putgd-lab",
+      "desktop": "cinnamon",
+      "environment": {
+        "DISPLAY": ":0",
+        "WAYLAND_DISPLAY": null,
+        "XDG_SESSION_TYPE": "x11",
+        "XDG_CURRENT_DESKTOP": "X-Cinnamon",
+        "QT_QPA_PLATFORM": "xcb"
+      },
+      "run": "/tmp/r410c2",
+      "vm": true,
+      "session": {
+        "Id": "c1",
+        "User": "1000",
+        "Type": "x11",
+        "Desktop": "cinnamon",
+        "Seat": "seat0",
+        "Leader": "939",
+        "Timestamp": "Sat 2026-10-24 10:57:32 CDT",
+        "TimestampMonotonic": "9157915",
+        "LockedHint": "no",
+        "Active": "yes",
+        "Remote": "no"
+      },
+      "compositorPid": 1369,
+      "compositorStartTicks": 1215,
+      "compositorCgroup": "0::/user.slice/user-1000.slice/session-c1.scope\n",
+      "targetKind": "region",
+      "binaries": {
+        "putgd": {
+          "sha256": "30b77118c318ce944a3321ce46e36bba029166b88e6758bad07d8b754c32de9b",
+          "manifest": {
+            "schemaVersion": 1,
+            "version": "26.1024.1209-dev+g3440ab9c4fb6",
+            "baseVersion": "26.1024.1209",
+            "packageVersion": "26.1024.1209~dev+g3440ab9c4fb6",
+            "gitCommit": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
+            "gitTree": "17b445850b0f1d5258b77bf88a8ccbcc5edbb3e8",
+            "commitCount": 1209,
+            "dirty": false,
+            "sourceProvenance": "git"
+          }
+        },
+        "putgd-cli": {
+          "sha256": "0141e3b3a112878f5aa5b6ba3e344d68ab829b2f2b8119fc7f947254d4fb90d5",
+          "manifest": {
+            "schemaVersion": 1,
+            "version": "26.1024.1209-dev+g3440ab9c4fb6",
+            "baseVersion": "26.1024.1209",
+            "packageVersion": "26.1024.1209~dev+g3440ab9c4fb6",
+            "gitCommit": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
+            "gitTree": "17b445850b0f1d5258b77bf88a8ccbcc5edbb3e8",
+            "commitCount": 1209,
+            "dirty": false,
+            "sourceProvenance": "git"
+          }
+        },
+        "putgd-record": {
+          "sha256": "8d1ef06a6181a1109b13750b2f41f300ffe1f5f1e86bd7f4fc24fb37c48dd407",
+          "manifest": {
+            "schemaVersion": 1,
+            "version": "26.1024.1209-dev+g3440ab9c4fb6",
+            "baseVersion": "26.1024.1209",
+            "packageVersion": "26.1024.1209~dev+g3440ab9c4fb6",
+            "gitCommit": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
+            "gitTree": "17b445850b0f1d5258b77bf88a8ccbcc5edbb3e8",
+            "commitCount": 1209,
+            "dirty": false,
+            "sourceProvenance": "git"
+          }
+        }
+      },
+      "cover": {
+        "placement": {
+          "monitorIndex": 0,
+          "ok": true,
+          "output": [
+            "Virtual-1"
+          ],
+          "rect": [
+            0,
+            0,
+            1280,
+            800
+          ],
+          "state": "covered"
+        },
+        "prechecks": [
+          {
+            "check": "precheck",
+            "fraction": 1.0,
+            "framebuffer": [
+              1280,
+              800
+            ],
+            "minFraction": 0.98,
+            "ok": true,
+            "output": [
+              "Virtual-1"
+            ],
+            "rect": [
+              0,
+              0,
+              1280,
+              800
+            ]
+          }
+        ]
+      },
+      "builderHost": "d69",
+      "placement": "Mint22.3 Cinnamon6.6.4 X11 guest",
+      "packageSha256": "fb19e0c7818f41430e1516dfc7526d67131d6e63e034b3b733a6dff45b24b988",
+      "sourceCommit": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
+      "sourceTree": "17b445850b0f1d5258b77bf88a8ccbcc5edbb3e8",
+      "sourceClean": true,
+      "sourceReceiptSha256": "fb7dba27c47d5051ba8a8873f1eeaf94f78540e6a0c9c1f76a2b3d2f642df0a4",
+      "harnessSha256": "090f0cb392ded8d98f7c190579001a341088df9a10d018b947896bd0d0ffbbf2",
+      "functionalPassed": true,
+      "caseCount": 3,
+      "cases": [
+        {
+          "case": "mode-open-ready-cancel",
+          "helperPids": [
+            2924
+          ],
+          "passed": true
+        },
+        {
+          "case": "mode-toggle-recording-cancel",
+          "helperPids": [
+            2958
+          ],
+          "passed": true
+        },
+        {
+          "case": "command-stop-private-review",
+          "helperPids": [
+            3000
+          ],
+          "passed": true,
+          "stop": {
+            "recordingId": "2dd6a7d9-1b56-49f8-8f21-3e4b3630dc37",
+            "state": "reviewing",
+            "stopReason": "user",
+            "stopDetails": null,
+            "durationUs": 3063282,
+            "retainedUs": 3063282,
+            "edit": {
+              "masks": [],
+              "revision": 1,
+              "trimEnd": null,
+              "trimStart": 0
+            },
+            "target": {
+              "kind": "region",
+              "rect": [
+                100,
+                100,
+                960,
+                540
+              ]
+            }
+          }
+        }
+      ],
+      "lifetimeMemory": {
+        "kind": "debug functional lifetime samples; no release performance claim",
+        "sampleIntervalSeconds": 0.5,
+        "samples": 63,
+        "durationSeconds": 32.192767074,
+        "maxRecordingHelpers": 1,
+        "residentRssMaxBytes": 33107968,
+        "allOwnedHelpersExitedNormally": true,
+        "lifetimeGatePassed": true
+      },
+      "helperLifecycle": [
+        {
+          "pid": 2924,
+          "exitCode": 0,
+          "requested": true,
+          "time": "2026-10-24T15:59:26.496Z"
+        },
+        {
+          "pid": 2958,
+          "exitCode": 0,
+          "requested": true,
+          "time": "2026-10-24T15:59:30.657Z"
+        },
+        {
+          "pid": 3000,
+          "exitCode": 0,
+          "requested": true,
+          "time": "2026-10-24T15:59:55.812Z"
+        }
+      ],
+      "runningImages": {
+        "2891": {
+          "exe": "/usr/bin/putgd",
+          "sha256": "30b77118c318ce944a3321ce46e36bba029166b88e6758bad07d8b754c32de9b",
+          "qtPlatforms": []
+        },
+        "2924": {
+          "exe": "/usr/bin/putgd-record",
+          "sha256": "8d1ef06a6181a1109b13750b2f41f300ffe1f5f1e86bd7f4fc24fb37c48dd407",
+          "qtPlatforms": [
+            "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so"
+          ]
+        },
+        "2958": {
+          "exe": "/usr/bin/putgd-record",
+          "sha256": "8d1ef06a6181a1109b13750b2f41f300ffe1f5f1e86bd7f4fc24fb37c48dd407",
+          "qtPlatforms": [
+            "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so"
+          ]
+        },
+        "3000": {
+          "exe": "/usr/bin/putgd-record",
+          "sha256": "8d1ef06a6181a1109b13750b2f41f300ffe1f5f1e86bd7f4fc24fb37c48dd407",
+          "qtPlatforms": [
+            "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so"
+          ]
+        }
+      },
+      "noProtocolKill": true,
+      "noImplicitPayload": true,
+      "socketPreflight": {
+        "schemaVersion": 1,
+        "passed": true,
+        "limitBytesExcludingNul": 107,
+        "paths": [
+          {
+            "path": "/tmp/r410c2/rt/putgd/session.sock",
+            "utf8Bytes": 33,
+            "passed": true
+          }
+        ]
+      },
+      "rawEvidence": [
+        {
+          "file": "cinnamon-c2-export/summary.json",
+          "sha256": "aed2195c93993a86343b4ae845f50015631a836570e046e7dca0645ac08bc767"
+        },
+        {
+          "file": "cinnamon-c2-export/identity.json",
+          "sha256": "3aeee6cfc6af39b2de5c6129fb729b649d73c48407953173440f9fe59b7d3fac"
+        },
+        {
+          "file": "cinnamon-c2-export/memory.json",
+          "sha256": "9a6b350ceb07fe724a68e33251b06e0831d57617420938cf7e996e3324132aad"
+        },
+        {
+          "file": "cinnamon-c2-export/cli.jsonl",
+          "sha256": "d25082e329e287b4d6ec42522b77da6342aa0b4494393aa2ec43071e7d621c43"
+        },
+        {
+          "file": "cinnamon-c2-export/socket-preflight.json",
+          "sha256": "db6ada1da76699d5a6fb1c6f89c90f7b9f67ff9ae40ee99c2191b6244c043d20"
+        },
+        {
+          "file": "cinnamon-c2-export/record_package_smoke.py",
+          "sha256": "090f0cb392ded8d98f7c190579001a341088df9a10d018b947896bd0d0ffbbf2"
+        }
+      ],
+      "vmIdentity": {
+        "id": "7b7493a7-62fc-4da3-abd1-b9902255d37e",
+        "profile": "cinnamon-x11",
+        "golden_sha256": "ebc60005f72aaf67f1c14f51a16e09749cf09d91ad1890e50a0eedda30b40252",
+        "pid": 2807402,
+        "acceleration": "kvm"
+      },
+      "trackedDesktopProcess": {
+        "name": "cinnamon",
+        "pid": 1369,
+        "startTicks": 1215,
+        "originalHarnessField": "compositorPid",
+        "meaning": "Desktop compositor/shell process generation."
+      }
+    }
+  },
+  "reportOwnerVerification": [
+    "Recomputed source/binary/package/active-session/desktop-shell generation and functional-identity joins.",
+    "Paired every helper start with requested normal exit0; recomputed lifetime samples, elapsed time, at-most-one recorder and resident RSS.",
+    "Recomputed all three independent181-sample/180-second RSS/PSS maxima under41943040 bytes.",
+    "Reviewed harness assertions for inspect parity, actual1MiB budget and late subsequent stop equality; edited pending-export races are fixture-only.",
+    "Reviewed saved untouched review/Discard, budget and idle visuals; click point lies inside corresponding visible Discard button."
+  ],
+  "limitations": [
+    "No new GUI execution by report owner. Physical GNOME prerequisite/cover failures remain blocked; no prior052d acceptance transferred.",
+    "No release/published asset, all-package-format, system-audio or physical performance acceptance.",
+    "Idle memory is resident-only; functional lifetime coverage is separate.",
+    "Earlier cm1/cm2 and km1/km2 prelaunch cover failures retain numeric context but had no saved failure frame.",
+    "KDE harness field compositorPid actually tracks plasmashell; no separately fingerprinted KWin PID/version is claimed. Installed gnome-shell version in KDE inventory is not GNOME execution evidence."
+  ]
+}
