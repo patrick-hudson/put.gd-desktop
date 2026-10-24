@@ -12,6 +12,7 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'performance'))
 import physical_campaign as campaign
+import campaign_fixture
 
 
 def fixture(root, count=10000, independent=True):
@@ -89,6 +90,26 @@ class FixtureSafetyTests(unittest.TestCase):
 
 
 class EndpointAndBudgetTests(unittest.TestCase):
+    def test_deterministic_images_are_distinct_valid_pngs(self):
+        import struct
+        with tempfile.TemporaryDirectory() as directory:
+            paths = [Path(directory) / name for name in ('first.png', 'repeat.png', 'second.png')]
+            for index, path in zip((1, 1, 2), paths):
+                campaign_fixture.png(path, index, 96, 64)
+                self.assertEqual(path.read_bytes()[:8], b'\x89PNG\r\n\x1a\n')
+                self.assertEqual(struct.unpack('>II', path.read_bytes()[16:24]), (96, 64))
+            self.assertEqual(campaign.sha256(paths[0]), campaign.sha256(paths[1]))
+            self.assertNotEqual(campaign.sha256(paths[0]), campaign.sha256(paths[2]))
+
+    def test_exact_operation_ids_ignore_activity_limits_and_timestamp_order(self):
+        with tempfile.TemporaryDirectory() as directory:
+            db = fixture(Path(directory))
+            before = campaign.operation_ids(db)
+            with sqlite3.connect(db) as connection:
+                connection.executemany('INSERT INTO operations VALUES(?,?)',
+                                       [('new-' + str(i), b'{}') for i in range(35)])
+            self.assertEqual(len(campaign.operation_ids(db) - before), 35)
+
     def test_only_literal_loopback_http_port_is_allowed(self):
         self.assertTrue(campaign.loopback_endpoint('http://127.0.0.1:19237'))
         for endpoint in ('https://s3.amazonaws.com', 'http://localhost:12', 'http://127.1:12',

@@ -24,13 +24,16 @@ import json
 import os
 from pathlib import Path
 import re
+import selectors
 import shutil
 import sqlite3
 import stat
+import socket
 import subprocess
 import sys
 import tarfile
 import time
+import uuid
 
 from bench_ui_process import (EvidenceError, ProcessFamily, identity,
                               request, same_identity, sha256, verify_socket_owner,
@@ -120,7 +123,7 @@ def copy_fixture(source, destination):
             'fixture_socket_present_stop_and_retire_endpoint_first')
     require(not Path(str(database) + '-wal').exists(), 'fixture_has_wal_checkpoint_and_stop_first')
     summary = fixture_summary(database)
-    for directory in ('config', 'data', 'archive', 'cache'):
+    for directory in ('config', 'data', 'archive', 'cache', 'media'):
         original = source / directory
         if not original.exists():
             continue
@@ -224,7 +227,7 @@ class Campaign:
         self.root = raw.resolve()
         self.root.mkdir(mode=0o700)
         self.started = time.monotonic()
-        self.resident = self.family = self.log = None
+        self.resident = self.family = self.log = self.cover = self.clipboard = None
         revision = args.driver_revision
         if revision is None:
             revision = subprocess.check_output(['git', '-C', str(REPO), 'rev-parse', 'HEAD'],
@@ -312,6 +315,156 @@ class Campaign:
             self.log.close()
         self.resident = self.log = None
 
+    def static_cover(self):
+        path = REPO / 'tools/lab/cover_player.py'
+        self.result['staticCover'] = {'sourceSha256': sha256(path), 'color': '505a64',
+                                      'animation': False, 'chargedToResidentFamily': False}
+        command = [sys.executable, str(path), 'play', '--color', '505a64',
+                   '--title', 'put.gd physical performance — synthetic static background']
+        self.cover = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                      stderr=subprocess.DEVNULL, text=True, start_new_session=True)
+        reply = read_line(self.cover, 15)
+        require(reply.get('ok') and reply.get('state') == 'covered', 'static_cover_failed')
+        checked = subprocess.run([sys.executable, str(path), 'precheck', '--port', str(self.args.vnc_port),
+                                  '--color', '505a64', '--min-fraction', '0.98'],
+                                 capture_output=True, text=True, timeout=20)
+        require(checked.returncode == 0, 'static_cover_not_visible_on_wall')
+        self.event('static-cover-visible', pid=self.cover.pid, readiness=reply,
+                   vncPrecheck=json.loads(checked.stdout))
+        self.persist()
+
+    def close_fixtures(self):
+        for process in (self.clipboard, self.cover):
+            if process is None:
+                continue
+            if process.poll() is None:
+                try:
+                    process.stdin.write('{"action":"quit"}\n' if process is self.clipboard else 'quit\n')
+                    process.stdin.flush()
+                    process.wait(timeout=5)
+                except (BrokenPipeError, subprocess.TimeoutExpired):
+                    stop_owned_process_group(process)
+            process.stdin.close()
+            process.stdout.close()
+
+    def clipboard_command(self, action, **values):
+        if self.clipboard is None:
+            self.clipboard = subprocess.Popen([sys.executable, str(Path(__file__).with_name('campaign_fixture.py')),
+                '--root', str(self.root)], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL, text=True, start_new_session=True)
+            require(read_line(self.clipboard, 15).get('ok'), 'clipboard_owner_not_ready')
+        self.clipboard.stdin.write(json.dumps({'action': action, **values}) + '\n')
+        self.clipboard.stdin.flush()
+        value = read_line(self.clipboard, 15)
+        require(value.get('ok'), 'independent_clipboard_command_failed')
+        return value
+
+    def fixture(self, path='/__state', value=None):
+        """Never persist raw fixture state: it contains request headers/bodies."""
+        from urllib.request import Request, build_opener, ProxyHandler
+        verify_fixture(self.args)
+        url = self.args.endpoint.rstrip('/') + path
+        request = Request(url, data=json.dumps(value).encode() if value is not None else None,
+                          headers={'Content-Type': 'application/json'})
+        with build_opener(ProxyHandler({})).open(request, timeout=15) as reply:
+            return json.load(reply)
+
+    def upload_configuration(self):
+        verify_fixture(self.args)
+        document = self.call('settings.get')['document']
+        template = self.call('settings.developmentTemplate')['document']['profiles'][0]
+        template.update(id='physical-fixture', label='Isolated loopback performance fixture',
+                        credentials={'mode': 'session', 'reference': None})
+        template['settings'].update(endpoint=self.args.endpoint, bucket='fixture', region='us-east-1',
+            publicUrlBase=self.args.endpoint.rstrip('/') + '/fixture', objectPrefix='physical379/',
+            aclMode='public-read', requestTimeoutMs=120000, lowSpeedTimeSeconds=120)
+        document['profiles'] = [template]
+        document['limits'].update(pendingOperations=64, concurrentUploads=4)
+        document['naming']['mode'] = 'original'
+        for action in document['actions'].values():
+            if 'destination' in action:
+                action.update(destination='upload', profileId='physical-fixture', shortcut='')
+        self.call('settings.patch', {'patch': document,
+                                    'expectedRevision': self.call('settings.get')['metadata']['observedRevision']})
+        # Synthetic fixture credentials travel only through the authenticated
+        # production session method, never CLI argv, config, logs or receipts.
+        verify_socket_owner(self.socket, self.family)
+        with socket.socket(socket.AF_UNIX) as connection:
+            connection.settimeout(20)
+            connection.connect(self.socket)
+            request_id = str(uuid.uuid4())
+            connection.sendall(json.dumps({'schemaVersion': 1, 'requestId': request_id,
+                'session': self.socket, 'method': 'setup.storeCredentials', 'params': {
+                    'profileId': 'physical-fixture',
+                    'expectedRevision': self.call('settings.get')['metadata']['acceptedRevision'],
+                    'credentials': {'accessKey': 'PUTGD_SYNTHETIC_ACCESS',
+                                    'secretKey': 'putgd-synthetic-secret-not-a-real-key'}}}).encode() + b'\n')
+            data = bytearray()
+            while not data.endswith(b'\n'):
+                chunk = connection.recv(65536)
+                require(bool(chunk) and len(data) < 1024**2, 'synthetic_setup_transport_failed')
+                data.extend(chunk)
+            reply = json.loads(data)
+        require(reply.get('ok') and reply.get('requestId') == request_id, 'synthetic_setup_refused')
+        setup_id = reply['result']['setupId']
+        deadline = time.monotonic() + 20
+        while True:
+            job = self.call('setup.inspect', {'id': setup_id})
+            if job['state'] != 'running':
+                require(job['state'] == 'completed', 'synthetic_setup_failed')
+                break
+            require(time.monotonic() < deadline, 'synthetic_setup_timeout')
+            time.sleep(.1)
+        self.event('loopback-destination-ready', endpoint=self.args.endpoint, setupId=setup_id,
+                   concurrentUploads=4, pendingOperations=64, credentials='synthetic-session-only')
+
+    def wait_operation(self, operation_id, seconds=180):
+        deadline = time.monotonic() + seconds
+        while True:
+            result = self.call('operation.inspect', {'id': operation_id})
+            if result['state'] in ('completed', 'failed', 'partial', 'cancelled'):
+                return result
+            require(time.monotonic() < deadline, 'operation_timeout')
+            self.sample('operation-active')
+            time.sleep(.25)
+
+    def seed(self):
+        from campaign_fixture import png
+        self.upload_configuration()
+        require(not self.fixture()['objects'], 'seed_fixture_must_start_empty')
+        media = self.root / 'media'
+        media.mkdir(mode=0o700)
+        operations = []
+        for index in range(6):
+            if index % 2 == 0:
+                path = media / f'landscape-{index:02d}-synthetic.png'
+                png(path, index, 640 + index * 32, 360 + index * 16)
+            else:
+                path = media / f'motion-{index:02d}-synthetic.webm'
+                # Distro GStreamer, deterministic finite sources; no FFmpeg CLI.
+                command = ['gst-launch-1.0', '-q', 'videotestsrc', 'num-buffers=20',
+                    f'pattern={index}', '!', f'video/x-raw,width={320 + index * 16},height=180,framerate=10/1',
+                    '!', 'videoconvert', '!', 'vp8enc', 'deadline=1', 'threads=1', '!', 'webmmux',
+                    '!', 'filesink', 'location=' + str(path)]
+                subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=90)
+                self.event('synthetic-video-generated', command=command)
+            self.clipboard_command('file', path=str(path))
+            operation_id = self.call('action.invoke', {'action': 'clipboard'})['operationId']
+            operation = self.wait_operation(operation_id)
+            require(operation['state'] == 'completed' and len(operation['items']) == 1 and
+                    operation['items'][0]['uploadStatus'] == 'uploaded', 'seed_upload_failed')
+            item_id = operation['items'][0]['artifact']['id']
+            preview = self.call('history.preview', {'id': item_id})
+            self.event('synthetic-seed', operationId=operation_id, itemId=item_id, name=path.name,
+                       bytes=path.stat().st_size, sha256=sha256(path), previewStored=bool(preview.get('previewPath')))
+            operations.append(operation_id)
+        self.clipboard_command('clear')
+        rows = self.call('history.list', {'limit': 20})
+        require(rows['total'] == 6 and len(set(operations)) == 6, 'seed_independent_operations_mismatch')
+        self.result['metrics']['seed'] = {'historyRows': 6, 'operations': operations, 'images': 3, 'videos': 3,
+            'captureSource': 'independent GTK4 text/uri-list owner, production action.invoke clipboard',
+            'growRequired': 'Use #495 grow on this stopped root; no 10000 real uploads implied.'}
+
     def configure(self):
         self.start('offscreen')
         # Inspect actual production controls and accepted settings first.
@@ -355,6 +508,7 @@ class Campaign:
         started = None
         while True:
             check_lock(self.args)
+            require(self.cover is None or self.cover.poll() is None, 'static_cover_exited')
             row = self.sample(label)
             if closed:
                 require(row['processCount'] == 1, 'closed_stage_has_live_helpers')
@@ -438,6 +592,38 @@ class Campaign:
                                                        'reason': 'external_paint_scenario_required'}
 
 
+def read_line(process, seconds):
+    with selectors.DefaultSelector() as selector:
+        selector.register(process.stdout, selectors.EVENT_READ)
+        require(selector.select(seconds), 'fixture_readiness_timeout')
+        line = process.stdout.readline()
+    require(len(line) <= 65536 and bool(line), 'fixture_closed_or_oversized_response')
+    return json.loads(line)
+
+
+def verify_fixture(args):
+    require(loopback_endpoint(args.endpoint or ''), 'unsafe_fixture_endpoint')
+    require(args.fixture_pid and args.fixture_source, 'explicit_fixture_identity_required')
+    source = Path(args.fixture_source).resolve(strict=True)
+    require(sha256(source) == sha256(REPO / 'tests/fixtures/s3_server.py'), 'fixture_source_hash_mismatch')
+    process = Path('/proc') / str(args.fixture_pid)
+    require(process.stat().st_uid == os.getuid(), 'fixture_uid_mismatch')
+    command = (process / 'cmdline').read_bytes().split(b'\0')
+    arguments = [item.decode() for item in command[1:] if item and not item.startswith(b'-')]
+    require(arguments == [str(source)], 'fixture_process_source_mismatch')
+    from urllib.parse import urlsplit
+    port = urlsplit(args.endpoint).port
+    inodes = {line.split()[9] for line in Path('/proc/net/tcp').read_text().splitlines()[1:]
+              if line.split()[1].upper() == f'0100007F:{port:04X}' and line.split()[3] == '0A'}
+    links = set()
+    for fd in (process / 'fd').iterdir():
+        try:
+            links.add(os.readlink(fd))
+        except FileNotFoundError:
+            pass
+    require(any('socket:[' + inode + ']' in links for inode in inodes), 'fixture_does_not_own_loopback_listener')
+
+
 def operation_ids(database):
     """Read exact journal IDs; recent-activity caps/timestamps cannot hide work."""
     with sqlite3.connect(database.as_uri() + '?mode=ro', uri=True) as connection:
@@ -468,7 +654,7 @@ def memory_gates(metrics):
 
 def parser():
     result = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    result.add_argument('scenario', choices=('capture', 'memory'))
+    result.add_argument('scenario', choices=('capture', 'memory', 'seed'))
     for name in ('output', 'package', 'package-sha256', 'version', 'source-revision', 'desktop-session', 'lock-session'):
         result.add_argument('--' + name, required=True)
     result.add_argument('--app', default='/usr/bin/putgd')
@@ -479,6 +665,10 @@ def parser():
     result.add_argument('--fixture-root', help='#495 stopped private independent fixture root')
     result.add_argument('--driver-revision', help='Full driver commit for git-archive exports; declaration plus file hashes retained')
     result.add_argument('--open-seconds', type=int, default=30)
+    result.add_argument('--vnc-port', type=int, default=5900, help='Existing host loopback physical wall listener')
+    result.add_argument('--endpoint', help='Literal http://127.0.0.1:PORT of an independently started fixture')
+    result.add_argument('--fixture-pid', type=int)
+    result.add_argument('--fixture-source', help='Exact script argv of the fixture process, same bytes as tests/fixtures/s3_server.py')
     return result
 
 
@@ -493,9 +683,14 @@ def main(argv=None):
     try:
         campaign.initialize()
         campaign.configure()
+        if args.scenario != 'capture':
+            campaign.static_cover()
         campaign.start()
         capabilities = campaign.checked_live()
-        getattr(campaign, args.scenario)(capabilities) if args.scenario == 'capture' else campaign.memory()
+        if args.scenario == 'capture':
+            campaign.capture(capabilities)
+        else:
+            getattr(campaign, args.scenario)()
         campaign.result['status'] = 'complete'
         return 1 if any(gate['status'] == 'fail' for gate in campaign.result['gates'].values()) else 0
     except BaseException as error:
@@ -504,6 +699,7 @@ def main(argv=None):
         raise
     finally:
         campaign.stop()
+        campaign.close_fixtures()
         campaign.result['elapsedSeconds'] = time.monotonic() - campaign.started
         campaign.persist()
 
