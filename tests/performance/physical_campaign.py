@@ -473,10 +473,10 @@ class Campaign:
         self.call('settings.get')
         document = self.call('settings.developmentTemplate')['document']
         document['profiles'] = []
-        document['actions'] = {name: ({'shortcut': ''} if name == 'recording' else
+        document['actions'] = {name: ({'shortcut': ''} if 'destination' not in action else
             {'destination': 'local', 'profileId': None,
              'shortcut': 'Ctrl+Shift+F12' if name == 'region' and self.args.scenario == 'capture' else ''})
-            for name in document['actions']}
+            for name, action in document['actions'].items()}
         document['archive']['root'] = str(self.root / 'archive')
         document['archive']['keepUploads'] = True
         document['preferences'].update(notifications=False, launchAtLogin=False)
