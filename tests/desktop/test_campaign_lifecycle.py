@@ -85,6 +85,45 @@ class CleanupTests(unittest.TestCase):
             self.assertFalse(result['passed'])
             self.assertTrue(result['forced'])
 
+    def test_repeated_inventory_fault_terminates_only_known_owned_generations(self):
+        # Real children; only the unrelated /proc inventory failure is injected.
+        for error in (EvidenceError('product_cleanup_inventory_permission_denied'), PermissionError()):
+            with self.subTest(error=type(error).__name__), tempfile.TemporaryDirectory() as directory:
+                owned, unrelated = self.child(), self.child()
+                unrelated_identity = identity(unrelated.pid)
+                with mock.patch.object(lifecycle, 'profile_inventory', side_effect=error) as inventory, \
+                     mock.patch.object(lifecycle.os, 'pidfd_open', wraps=os.pidfd_open) as pidfd:
+                    result = self.cleanup(owned, Path(directory))
+                self.assertFalse(result['passed'])
+                self.assertTrue(result['forced'])
+                self.assertNotEqual(result['exitCode'], 0)
+                self.assertEqual(result['remaining'], [])
+                self.assertTrue(result['socketAbsent'])
+                self.assertGreaterEqual(inventory.call_count, 3)
+                self.assertEqual({call.args[0] for call in pidfd.call_args_list}, {owned.pid})
+                self.assertIsNotNone(owned.poll())
+                with self.assertRaises(ChildProcessError):
+                    os.waitpid(owned.pid, os.WNOHANG)
+                self.assertIsNone(unrelated.poll())
+                self.assertEqual(identity(unrelated.pid), unrelated_identity)
+                expected = str(error) if isinstance(error, EvidenceError) else 'PermissionError'
+                self.assertTrue(all(value == expected for value in result['errors']))
+
+    def test_final_inventory_fault_returns_failed_receipt_after_normal_exit(self):
+        with tempfile.TemporaryDirectory() as directory:
+            process = self.child()
+            with mock.patch.object(lifecycle, 'profile_inventory', side_effect=[
+                    [], [], [], EvidenceError('product_cleanup_inventory_permission_denied')]) as inventory:
+                result = self.cleanup(process, Path(directory))
+            self.assertEqual(inventory.call_count, 4)
+            self.assertTrue(result['gracefulRequest'])
+            self.assertEqual(result['exitCode'], 0)
+            self.assertFalse(result['forced'])
+            self.assertEqual(result['remaining'], [])
+            self.assertTrue(result['socketAbsent'])
+            self.assertFalse(result['passed'])
+            self.assertEqual(result['errors'], ['product_cleanup_inventory_permission_denied'])
+
 
 class HistoryLifetimeTests(unittest.TestCase):
     def setUp(self):

@@ -76,8 +76,8 @@ def cleanup(process, known, runtime, data, socket, quit_request, grace=15, drain
     # discovery/request failure. A signal is failure context, never a pass.
     try:
         remaining = discover()
-    except OSError as error:
-        receipt['errors'].append(type(error).__name__)
+    except (OSError, EvidenceError) as error:
+        receipt['errors'].append(str(error) if isinstance(error, EvidenceError) else type(error).__name__)
         remaining = [row for row in owned.values() if generation_alive(row)]
     for sig in (signal.SIGTERM, signal.SIGKILL):
         if not remaining:
@@ -101,7 +101,11 @@ def cleanup(process, known, runtime, data, socket, quit_request, grace=15, drain
         while any(generation_alive(row) for row in remaining) and time.monotonic() < deadline:
             time.sleep(.05)
         remaining = [row for row in owned.values() if generation_alive(row)]
-    receipt['remaining'] = discover()
+    try:
+        receipt['remaining'] = discover()
+    except (OSError, EvidenceError) as error:
+        receipt['errors'].append(str(error) if isinstance(error, EvidenceError) else type(error).__name__)
+        receipt['remaining'] = [row for row in owned.values() if generation_alive(row)]
     receipt['socketAbsent'] = not Path(socket).exists()
     receipt['passed'] = (receipt['gracefulRequest'] and receipt['exitCode'] == 0 and not receipt['forced']
                          and not receipt['remaining'] and receipt['socketAbsent'] and not receipt['errors'])
