@@ -106,12 +106,15 @@ private slots:
   {HistoryStore ledger(operations.databasePath());Operation op;op.id="long-failed-capture";op.action="window";op.created="2022-01-01T00:00:00.000Z";op.state="failed";op.error={"helper_unavailable",message,{}};op.settings=settings.snapshot();QVERIFY(!ledger.saveOperation(op));}
   HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);RedesignTheme::apply(window);window.resize(width,700);window.show();auto* list=window.findChild<QListView*>("historyList");PUTGD_TRY_COMPARE(list->model()->rowCount(),1);
   if(gallery)window.findChild<QToolButton*>("historyGridMode")->click();
+  HistoryPaintObserver painted;list->viewport()->installEventFilter(&painted);
   // Resize both directions: cached/fixed item heights must not clip a narrower layout.
   for(int target:{width,width+180,width}){
    window.resize(target,700);
    for(bool selected:{false,true}){
-   if(selected)selectRow(list,0);else list->clearSelection();
-   putgd::test::settle(30);QVERIFY(window.width()<=target);const auto index=list->model()->index(0,0);const auto row=list->visualRect(index);QVERIFY(row.isValid());
+   painted.paints=0;if(selected)selectRow(list,0);else list->clearSelection();list->viewport()->update();
+   const auto index=list->model()->index(0,0);QStyleOptionViewItem layoutOption;layoutOption.initFrom(list);layoutOption.font=list->font();
+   PUTGD_VERIFY_STEADY(painted.paints>0&&window.width()<=target&&list->selectionModel()->selectedRows().size()==int(selected)&&list->visualRect(index).height()==list->itemDelegate()->sizeHint(layoutOption,index).height(),20);
+   const auto row=list->visualRect(index);QVERIFY(row.isValid());
    const auto record=index.data(HistoryModel::RecordRole).toJsonObject();QVERIFY(HistoryModel::storedNothing(record));QVERIFY(index.data(HistoryModel::PrimaryActionRole).toString().isEmpty());QVERIFY(index.data(Qt::AccessibleTextRole).toString().contains(message));
    const int heading=gallery?0:34;const int left=gallery?20:107;const int top=gallery?216:heading+75;const int textWidth=row.width()-(gallery?41:128);
    QTextDocument expected;expected.setDocumentMargin(0);expected.setDefaultFont(list->font());auto textOption=expected.defaultTextOption();textOption.setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);expected.setDefaultTextOption(textOption);expected.setPlainText(message);expected.setTextWidth(textWidth);
@@ -124,7 +127,10 @@ private slots:
    QImage complete(QSize(textWidth,height),QImage::Format_ARGB32_Premultiplied);complete.fill(selected?RedesignTheme::selected():gallery?RedesignTheme::surface():RedesignTheme::bg());{QPainter painter(&complete);QAbstractTextDocumentLayout::PaintContext context;context.palette.setColor(QPalette::Text,RedesignTheme::danger());expected.documentLayout()->draw(&painter,context);}
    QCOMPARE(actual.copy(left,top,textWidth,height),complete);
    // An oversized error remains reachable through the real pixel scroll range.
-   if(row.height()>list->viewport()->height()){QVERIFY(list->verticalScrollBar()->maximum()>0);list->verticalScrollBar()->setValue(list->verticalScrollBar()->maximum());putgd::test::settle(10);QVERIFY2(list->visualRect(index).bottom()<=list->viewport()->height(),qPrintable(QString("row top=%1 bottom=%2 height=%3 viewport=%4 scroll=%5 max=%6 mode=%7").arg(list->visualRect(index).top()).arg(list->visualRect(index).bottom()).arg(list->visualRect(index).height()).arg(list->viewport()->height()).arg(list->verticalScrollBar()->value()).arg(list->verticalScrollBar()->maximum()).arg(int(list->verticalScrollMode()))));}
+   if(row.height()>list->viewport()->height()){
+    QVERIFY(list->verticalScrollBar()->maximum()>0);painted.paints=0;list->verticalScrollBar()->setValue(list->verticalScrollBar()->maximum());list->viewport()->update();
+    PUTGD_VERIFY_STEADY(painted.paints>0&&list->verticalScrollBar()->value()==list->verticalScrollBar()->maximum()&&list->visualRect(index).bottom()<=list->viewport()->height(),20);
+   }
    }
   }
   QCOMPARE(source.reads,0);QCOMPARE(source.copies,0);
