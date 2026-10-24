@@ -325,6 +325,7 @@ class Campaign:
              'shortcut': 'Ctrl+Shift+F12' if name == 'region' and self.args.scenario == 'capture' else ''})
             for name in document['actions']}
         document['archive']['root'] = str(self.root / 'archive')
+        document['archive']['keepUploads'] = True
         document['preferences'].update(notifications=False, launchAtLogin=False)
         revision = self.call('settings.get')['metadata']['observedRevision']
         self.call('settings.patch', {'patch': document, 'expectedRevision': revision})
@@ -374,7 +375,7 @@ class Campaign:
         command = [str(driver), '--resident-pid', str(self.resident.pid), '--capture-helper',
                    self.args.capture_helper, '--live-outline', '--output', str(self.root / 'capture.json')]
         self.event('capture-command', command=command)
-        before = {row['id'] for row in self.call('operation.recent')['operations']}
+        before = operation_ids(self.root / 'data/putgd/history.sqlite')
         with (self.root / 'capture-driver.log').open('xb') as log:
             completed = subprocess.run(command, env=self.environment, stdout=log, stderr=log, timeout=240)
         data = json.loads((self.root / 'capture.json').read_text())
@@ -382,9 +383,9 @@ class Campaign:
             self.event('capture-sample', index=index, **row)
         require(len(data['samples']) == 30 and data['warmupInvocations'] == 5 and not data['error'],
                 'incomplete_capture_workload')
-        operations = [row for row in self.call('operation.recent')['operations'] if row['id'] not in before]
-        require(len({row['id'] for row in operations}) == 35, 'capture_operation_count_mismatch')
-        outcomes = [self.call('operation.inspect', {'id': row['id']}) for row in operations]
+        operations = operation_ids(self.root / 'data/putgd/history.sqlite') - before
+        require(len(operations) == 35, 'capture_operation_count_mismatch')
+        outcomes = [self.call('operation.inspect', {'id': operation}) for operation in sorted(operations)]
         require(all(row.get('state') == 'cancelled' for row in outcomes), 'capture_did_not_cancel_cleanly')
         self.event('capture-outcomes', operations=[{'id': row['id'], 'state': row['state']} for row in outcomes])
         self.result['metrics']['warmP95DrawablePaintMs'] = data['p95PaintMs']
@@ -435,6 +436,12 @@ class Campaign:
             self.result['gates']['closed-' + name] = value
         self.result['gates']['historyPaintResponse'] = {'status': 'unassessed',
                                                        'reason': 'external_paint_scenario_required'}
+
+
+def operation_ids(database):
+    """Read exact journal IDs; recent-activity caps/timestamps cannot hide work."""
+    with sqlite3.connect(database.as_uri() + '?mode=ro', uri=True) as connection:
+        return {row[0] for row in connection.execute('SELECT id FROM operations')}
 
 
 def memory_summary(rows):
