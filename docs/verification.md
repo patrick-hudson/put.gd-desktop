@@ -56,7 +56,10 @@ The separately reviewed empty-memory-only attempt at `f3b3635` stopped before
 scoring on static-cover admission, with empty metrics; its exact command,
 source/preflight/cleanup hashes and reviewed solid recovery visual are retained.
 Normal exit/full-family/socket cleanup passed, the original VM resumed, and m74
-released verified-clean at 16:11:53 UTC. No capture,
+released verified-clean at 16:11:53 UTC. The next controller refused before
+launching the `02d85059` driver on a private quietness assertion; its missing
+numerical precheck and no-launch limitation are explicit. The original VM
+resumed and m74 released verified-clean at 16:54:28 UTC. No capture,
 memory, history, burst or network gate is accepted. Driver hardening (#495,
 PR #554) and the performance driver (PR #555) remain separately identified code
 work; old history-growth revisions are held. Unbudgeted response thresholds require

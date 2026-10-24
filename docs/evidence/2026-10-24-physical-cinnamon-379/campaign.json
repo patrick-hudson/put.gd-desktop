@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "issue": 379,
-  "status": "pilot_and_failed_memory_admission_preserved_final_driver_review_pending",
+  "status": "pilot_and_preinterval_failures_preserved_separate_rehearsal_pending",
   "accepted": false,
   "scope": "Newest-published-nightly physical Mint Cinnamon performance rehearsal; no stable-asset certification",
   "product": {
@@ -90,7 +90,8 @@
   ],
   "cleanupReceipts": [
     "batch1-cleanup.json",
-    "attempt-m2.json"
+    "attempt-m2.json",
+    "attempt-m3.json"
   ],
   "limitations": [
     "Campaign in progress; no performance acceptance pass claimed",
@@ -127,6 +128,14 @@
       "summary": "attempt-m2.json",
       "status": "failed_preinterval_lab_admission_no_metrics",
       "sourceRevision": "f3b3635132f2d5b909935d8119f1f32908e38cec",
+      "accepted": false
+    },
+    {
+      "id": "m3",
+      "summary": "attempt-m3.json",
+      "status": "failed_coordinator_prelaunch_admission",
+      "plannedDriverRevision": "02d85059db836dcb8be33a1c0db150b474c5d9f2",
+      "driverLaunched": false,
       "accepted": false
     }
   ],

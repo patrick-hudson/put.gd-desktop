@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "run": "m3",
+  "status": "failed_coordinator_prelaunch_admission",
+  "accepted": false,
+  "plannedScenario": "memory",
+  "plannedDriverRevision": "02d85059db836dcb8be33a1c0db150b474c5d9f2",
+  "driverActuallyLaunched": false,
+  "outputCreated": false,
+  "scoredIntervalsStarted": false,
+  "metrics": {},
+  "stagedSource": {
+    "archiveSha256": "f7329f9c49849c1325fc358153629edd4f50b2a6df4bb77019d9d177ef33389e",
+    "verifiedRegularFiles": 39,
+    "immutableRevision": "02d85059db836dcb8be33a1c0db150b474c5d9f2"
+  },
+  "product": {
+    "tag": "v26.1024.1185-nightly",
+    "sourceRevision": "9dfac15c1ced201d13a2b70a8afb0c253213768b",
+    "packageSha256": "2094fd4db8cd915b02f1cdd16eb5c99bb8191948931cd2f558a89c59be5b3f47",
+    "dpkgVerifyClean": true,
+    "dependenciesAdded": []
+  },
+  "admission": {
+    "coordinatorPredicate": "vm.startTicks == 9741363 and vm.cpuPercentOneCore == 0",
+    "assertionLocation": "private SSH controller stdin line22",
+    "outcome": "refused before saving numerical quiet receipt or launching benchmark driver",
+    "failedCpuDeltaRetained": false,
+    "initialVmIdentityAndRunningStateRevalidated": true,
+    "vmPauseAndResumeVerified": true,
+    "limitation": "Actual failing CPU delta unavailable; do not infer its value, competing-heavy-work or product performance. This predicate was private coordinator logic, not the approved performance harness."
+  },
+  "graphicalEvidence": {
+    "guiOrBenchmarkStarted": false,
+    "newFrameCaptured": false,
+    "reason": "Refused before product/cover/benchmark launch; no screenshot of unrelated desktop was taken"
+  },
+  "cleanup": {
+    "lockAcquiredUtc": "2026-10-24T16:50:28Z",
+    "verifiedReleaseUtc": "2026-10-24T16:54:28Z",
+    "originalVmResumedRunning": true,
+    "packagePurged": true,
+    "remainingOwnedProcesses": [],
+    "runtimeSocketAbsent": true,
+    "releaseCheckLeft": [],
+    "noRetryOrOtherWorkload": true
+  },
+  "privateReceipts": {
+    "location": "m74:~/putgd-lab/p379/receipts",
+    "sha256": {
+      "installed-b3.json": "154d124f70c93a0f53a36f7a3916711f7712bb430e11af065bd8f74b02c7cc3b",
+      "lock-release.json": "70c50d6a06c4d7c66253c653f46917854005acd2f216c66d79a9363a501ff409",
+      "m3-before-acquire.json": "4cc07cf97447758d2588ead8a2b91fee8b841c5ae41a4e0ce065b388918114d6",
+      "m3-controller-exit.json": "d34e4cf80241ed3b64e9874f4cfc989dc59fcdbb48b207a3d69c4a3a9df1cf67",
+      "m3-prelaunch-failure.json": "e69d52f13e10d01ad982893d52af54b6fea7380c42d30fabafca9f1c2a1abb14",
+      "m3-source-staged.json": "a4cd5e2a54b358e65d07cc7bd8d53f471274b19463faeb7250fae390582b3fbf",
+      "vm-paused-b3.json": "69ef83a90df4b4c6b45f7d8e5a4349374f0c3523ccacd4ee687d16018b72abd4",
+      "vm-resumed-b3.json": "6cd85e555f60a404523e7e802a5ebbfb91af9fc42b34efafc230becc564beb0e"
+    }
+  },
+  "classification": "Coordinator prelaunch admission failure only; not a02d benchmark-driver failure, memory confirmation, product failure or numerical pass",
+  "next": "Review coordinator receipt-before-assert/quietness handling outside a desktop lock; obtain a separate allocation before any retry. M1 remains pilot and M2 remains preinterval admission failure."
+}

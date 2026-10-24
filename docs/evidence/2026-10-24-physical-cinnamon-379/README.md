@@ -122,6 +122,14 @@ encoder process. Other low-activity desktop services and the wall stayed up.
   readonly SQL found zero operations, history rows and item states. The one-shot
   initial VNC admission check did not retain a frame or numerical coverage;
   later full-cover visibility cannot establish the earlier check's result.
+- **m3: coordinator refusal before driver launch.** The separately authorized
+  immutable `02d85059` empty-memory source was staged and hash-checked, but
+  [the private controller stopped before launching it](attempt-m3.json).
+  Its zero-CPU-tick assertion for the paused VM failed before the numerical
+  quiet receipt was saved. The failed delta is unavailable; do not infer its
+  value, competing heavy work or product performance. No benchmark output,
+  product GUI, cover, new frame or scored interval was created. This is a
+  coordinator admission failure, not a failure of the unlaunched driver.
 
 ![c1 post-cancellation recovery frame: only synthetic background, no selector-paint claim](c1-witness-failure.png)
 
@@ -175,6 +183,15 @@ copied privately and checksum-verified. Only `putgd` was installed and purged;
 no dependency was added. A release precheck refused the still-installed package
 while purge was completing; the subsequent check was clean before verified
 release. No retry or other workload ran under that lock.
+
+For m3, the lock ran **16:50:28–16:54:28 UTC**, after a fresh 17-minute notice.
+The controller immediately resumed the same identity-checked VM on refusal and
+verified it running. Only `putgd` had been installed; it was purged, no dependency
+was added, and the cleanup check found no owned process or session socket.
+The verified release and source/control/failure receipts are hashed in the
+m3 summary. No retry ran under that lock. Receipt-before-assert handling and
+the coordinator's quiet-host admission require review before a new allocation;
+the frozen performance harness and approved product budgets are unchanged.
 
 ### Actual-frame privacy audit
 
