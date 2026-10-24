@@ -194,9 +194,15 @@ builder:
 | `neon-s9c888e` (d69) | Unstable, Ubuntu 24.04 DEB | installs and runs; desktop and window capture available, region capture unavailable ("requires … LayerShellQt and Qt 6.5 or later") |
 
 All three were retired with an explicit completion manifest; cleanup removed
-only `disk.qcow2`. On both Plasma versions the AppImage's windows show KWin's
-generic Wayland icon in the title bar, where the DEB shows the put.gd icon
-([#523](https://github.com/patrick-hudson/put.gd-desktop/issues/523)).
+only `disk.qcow2`. On both Plasma versions the 1058 AppImage's windows showed
+KWin's generic Wayland icon in the title bar, where the DEB showed the put.gd
+icon ([#523](https://github.com/patrick-hudson/put.gd-desktop/issues/523)).
+That was a lab artifact. The runner's private `XDG_DATA_HOME` hid AppRun's
+`putgd-ui.desktop` from KWin, and Qt 6.8.3 can't send the icon itself. The Qt
+6.12 AppImage shows the put.gd icon either way, and the runner now links the
+private data home's `applications/` to the session's
+([#530](https://github.com/patrick-hudson/put.gd-desktop/pull/530);
+[evidence](evidence/2026-10-23-appimage-icon-523/README.md)).
 
 ## Follow-ups
 
