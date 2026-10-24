@@ -112,6 +112,16 @@ scans them with Grype ([SBOMs and vulnerability scans](release.md#sboms-and-vuln
 With a release tag, `collect` verifies and assembles the
 public asset set. See [releases](release.md).
 
+The AppImage job excludes the hosted runner's Azure Ubuntu mirror before APT
+installation (#500). It keeps the runner's official archive/security fallback
+and signing settings, including legacy direct and folded deb822 source URIs.
+Its standard build-dependency attempts have a 300-second deadline, a 120-second
+silence limit and three attempts; the shared installer records failures and retry outcomes. It
+adds no AppImage package snapshot to the shared 10 GB cache. Native container
+snapshots and dependency pins are unchanged. See the
+[independent mirror and journal-retry evidence](evidence/2026-10-24-ci-mirror-journal/README.md)
+for targeted checks and the outstanding hosted-run/stress gates.
+
 **pipewire** checks the AppImage's bundled GStreamer `pipewiresrc` against a PipeWire
 1.6 daemon (issue #144). The AppImage bundles Ubuntu 24.04's PipeWire 1.0.5 plugin,
 while hosts run their own daemon, and PipeWire 1.5.81 and later refuse a link whose

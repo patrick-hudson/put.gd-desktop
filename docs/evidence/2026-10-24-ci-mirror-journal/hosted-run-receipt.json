@@ -1,0 +1,44 @@
+{
+  "runId": 40046399060,
+  "runUrl": "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40046399060",
+  "jobId": 120729064869,
+  "jobUrl": "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40046399060/job/120729064869",
+  "head": "5683c71f4b99f2c64203b67836653f0d41b23baa",
+  "pullRequestHead": "5683c71f4b99f2c64203b67836653f0d41b23baa",
+  "base": "50053b01f1bbd7f3776a53513bb8c43151ce0de8",
+  "event": "pull_request",
+  "runConclusion": "success",
+  "jobConclusion": "success",
+  "jobStarted": "2026-10-24T00:43:59Z",
+  "jobCompleted": "2026-10-24T00:55:54Z",
+  "steps": [
+    {
+      "name": "Use official Ubuntu archive mirrors",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 3,
+      "started_at": "2026-10-24T00:44:08Z",
+      "completed_at": "2026-10-24T00:44:08Z"
+    },
+    {
+      "name": "Standard build dependencies",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 4,
+      "started_at": "2026-10-24T00:44:08Z",
+      "completed_at": "2026-10-24T00:47:10Z"
+    },
+    {
+      "name": "Verify restored AppImage dependencies and fresh notices",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 11,
+      "started_at": "2026-10-24T00:48:42Z",
+      "completed_at": "2026-10-24T00:48:58Z"
+    }
+  ],
+  "standardBuildDependenciesSeconds": 182,
+  "sourceLogSha256": "4b7e85cb7abdf876958557f677eaf150af4ef23572b02516dec4aa3900a4a195",
+  "sourceLogPrivatePath": "/home/patrick/.t3/worktrees/put.gd/t3-24b32b4f/work/ci393/collected/hosted-appimage-full.log",
+  "scope": "Selected completed hosted job log intervals exclude checkout/auth material; no release or feed publication; collect/prune skipped intentionally"
+}

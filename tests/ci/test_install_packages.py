@@ -52,6 +52,13 @@ echo "apt-get $*" >> "$FAKE_CALLS"
 ''' + STALL + r'''
 case "$1" in
   update)
+    # Model the hosted runner's mirror choice: Azure keeps making progress but
+    # never completes; either official Ubuntu fallback responds normally.
+    if [ -n "${FAKE_MIRRORS:-}" ]; then
+      read -r mirror rest < "$FAKE_MIRRORS"
+      case "$mirror" in http*://azure.archive.ubuntu.com/ubuntu/*) stall ;; esac
+      echo "Get:1 $mirror noble InRelease [256 kB]"
+    fi
     count=$(($(cat "$FAKE_COUNT" 2>/dev/null || echo 0) + 1)); echo "$count" > "$FAKE_COUNT"
     if [ "$count" -le "${FAKE_STALLS:-0}" ]; then stall; fi
     if [ "$count" -le "${FAKE_FAILURES:-0}" ]; then echo 'E: Failed to fetch http://archive.ubuntu.com/ubuntu/dists/noble/InRelease  Hash Sum mismatch'; exit 100; fi ;;
@@ -241,6 +248,28 @@ class InstallPackages(unittest.TestCase):
         self.assertEqual(result.returncode, 1, result.stdout)
         self.assertEqual([call.split()[1] for call in calls], ['update', 'update'])
         self.assertIn('**failed**: package metadata could not be refreshed', summary)
+
+    def test_hosted_azure_trickle_is_bounded_and_bypassed_without_a_snapshot(self):
+        from test_hosted_apt_mirrors import mirrors, RUNNER_MIRRORS
+        apt = self.dir / 'apt'
+        apt.mkdir()
+        mirror_list = apt / 'apt-mirrors.txt'
+        mirror_list.write_text(RUNNER_MIRRORS)
+        env = dict(FAKE_MIRRORS=str(mirror_list), FAKE_STALL_MODE='trickle',
+                   PUTGD_PKG_ATTEMPTS='1', PUTGD_PKG_TIMEOUT='2')
+        result, _, summary = self.run_script('apt-get', 'dwz', **env)
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn('ran over the 2 s attempt limit', summary)
+        self.assert_stalled_calls_were_stopped()
+        self.calls.unlink()
+        self.summary.unlink()
+        mirrors.configure(apt)
+        result, calls, summary = self.run_script('apt-get', 'dwz', **env)
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn('https://archive.ubuntu.com/ubuntu/ noble InRelease', result.stdout)
+        self.assertEqual([call.split()[1] for call in calls], ['update', 'install'])
+        self.assertEqual(summary, '')
+        self.assertFalse(self.github_env.exists())
 
 
 if __name__ == '__main__':

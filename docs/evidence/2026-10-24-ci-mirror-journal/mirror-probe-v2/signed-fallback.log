@@ -1,0 +1,32 @@
+Get:1 file:/tmp/pgapt.nyeg963p/apt/apt-mirrors.txt Mirrorlist [101 B]
+Ign:2 http://127.0.0.1:43329/archive/ubuntu noble InRelease
+Get:2 http://127.0.0.1:43329/archive/ubuntu noble InRelease [507 B]
+Fetched 507 B in 0s (9976 B/s)
+Reading package lists...
+201 URI Done: file:/tmp/pgapt.nyeg963p/apt/apt-mirrors.txt
+ReceivedHash:
+	- SHA512:c009a93ceac815cb64259d8ce2c286b833d87a88a1daa471ba5cf198180f67ac5805906aee620be550264cceae437b6bf263765c2919c4312d6577f35272a7d8
+	- SHA256:55693959f1c52e689d25a302c681358ecc1860ca9be89b1ff70c7f64d9a29080
+	- SHA1:ce4e953a55e41c3e2635beca8c1e2a4ebb5b68e0
+	- MD5Sum:051737f0494648db30c12b9be0cf7372
+	- Checksum-FileSize:101
+ExpectedHash:
+
+201 URI Done: http://127.0.0.1:43329/security/ubuntu/dists/noble/InRelease
+ReceivedHash:
+	- SHA512:fceb4a440b1b06e05ec08ff7b2b78626e7f016b09dab7dd3b8d1b08d7d0715ae2467e394d47537d53e1ac931e627fbd2a716becc30470edab65264801362bdc3
+	- SHA256:0066a87f2a6c12c26cbc204b977c7fc88c668495ca3f2367550a3435476e3a1a
+	- SHA1:22c8788cad5d61ded5002dcae042ea2757cde45d
+	- MD5Sum:74b06cb896c488a41e09038e381cd317
+	- Checksum-FileSize:507
+ExpectedHash:
+
+201 URI Done: sqv:/tmp/pgapt.nyeg963p/signed-fallback/partial/_tmp_pgapt.nyeg963p_apt_apt-mirrors.txt_dists_noble_InRelease
+ReceivedHash:
+ExpectedHash:
+
+Signature verification succeeded: /tmp/pgapt.nyeg963p/signed-fallback/partial/_tmp_pgapt.nyeg963p_apt_apt-mirrors.txt_dists_noble_InRelease
+Got Codename: noble
+Got Suite: noble
+Expecting Dist: noble
+W: Invalid 'Date' entry in Release file /tmp/pgapt.nyeg963p/signed-fallback/partial/_tmp_pgapt.nyeg963p_apt_apt-mirrors.txt_dists_noble_InRelease

@@ -1,0 +1,227 @@
+{
+ "iterations": [
+  {
+   "exitCode": 0,
+   "failed": [],
+   "iteration": 1,
+   "loadavg": [
+    "2.61",
+    "2.32",
+    "1.34"
+   ],
+   "seconds": 90.4,
+   "tests": 1
+  },
+  {
+   "exitCode": 0,
+   "failed": [],
+   "iteration": 2,
+   "loadavg": [
+    "2.45",
+    "2.34",
+    "1.44"
+   ],
+   "seconds": 88.81,
+   "tests": 1
+  },
+  {
+   "exitCode": 0,
+   "failed": [],
+   "iteration": 3,
+   "loadavg": [
+    "2.50",
+    "2.38",
+    "1.54"
+   ],
+   "seconds": 89.59,
+   "tests": 1
+  },
+  {
+   "exitCode": 0,
+   "failed": [],
+   "iteration": 4,
+   "loadavg": [
+    "2.25",
+    "2.32",
+    "1.60"
+   ],
+   "seconds": 89.14,
+   "tests": 1
+  },
+  {
+   "exitCode": 0,
+   "failed": [],
+   "iteration": 5,
+   "loadavg": [
+    "1.77",
+    "2.18",
+    "1.62"
+   ],
+   "seconds": 88.02,
+   "tests": 1
+  },
+  {
+   "exitCode": 0,
+   "failed": [],
+   "iteration": 6,
+   "loadavg": [
+    "1.32",
+    "1.93",
+    "1.58"
+   ],
+   "seconds": 86.86,
+   "tests": 1
+  },
+  {
+   "exitCode": 0,
+   "failed": [],
+   "iteration": 7,
+   "loadavg": [
+    "1.41",
+    "1.81",
+    "1.57"
+   ],
+   "seconds": 87.06,
+   "tests": 1
+  },
+  {
+   "exitCode": 0,
+   "failed": [],
+   "iteration": 8,
+   "loadavg": [
+    "1.28",
+    "1.67",
+    "1.54"
+   ],
+   "seconds": 86.9,
+   "tests": 1
+  },
+  {
+   "exitCode": 0,
+   "failed": [],
+   "iteration": 9,
+   "loadavg": [
+    "1.60",
+    "1.66",
+    "1.55"
+   ],
+   "seconds": 87.26,
+   "tests": 1
+  },
+  {
+   "exitCode": 0,
+   "failed": [],
+   "iteration": 10,
+   "loadavg": [
+    "1.44",
+    "1.59",
+    "1.54"
+   ],
+   "seconds": 86.9,
+   "tests": 1
+  }
+ ],
+ "schemaVersion": 1,
+ "source": {
+  "PUTGD_TEST_TIME_SCALE": "3",
+  "commit": "5683c71f4b99f2c64203b67836653f0d41b23baa",
+  "contention": "1 busy loops on CPUs 0, tests on CPUs 0",
+  "cpus": 4,
+  "ctestArgs": [
+   "--preset",
+   "dev",
+   "-R",
+   "^operations_contract$",
+   "--parallel",
+   "1"
+  ],
+  "ended": "2026-10-24T01:03:29+00:00",
+  "host": "42f5a9df95e9",
+  "interrupted": false,
+  "iterations": 10,
+  "kind": "stress",
+  "label": "u24-head5683c71f",
+  "requestedIterations": 10,
+  "started": "2026-10-24T00:48:48+00:00"
+ },
+ "tests": {
+  "operations_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 90.3479
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 88.7722
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 89.5165
+    },
+    {
+     "details": [],
+     "iteration": 4,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 89.1047
+    },
+    {
+     "details": [],
+     "iteration": 5,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 87.9528
+    },
+    {
+     "details": [],
+     "iteration": 6,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 86.8115
+    },
+    {
+     "details": [],
+     "iteration": 7,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 86.9999
+    },
+    {
+     "details": [],
+     "iteration": 8,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 86.8477
+    },
+    {
+     "details": [],
+     "iteration": 9,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 87.2091
+    },
+    {
+     "details": [],
+     "iteration": 10,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 86.8453
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  }
+ }
+}
