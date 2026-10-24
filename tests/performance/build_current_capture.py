@@ -16,6 +16,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import time
 
 REPO = Path(__file__).resolve().parents[2]
 FROZEN_SHA256 = 'fcb274049e4279a733b74e6fb9ec80bd4aec6389babe65dcb6497cafd6df887c'
@@ -95,16 +96,32 @@ def generate(source):
                                              fromfile='frozen/bench_capture.cpp', tofile='current/bench_current_capture.cpp'))
 
 
+def test_socket_paths(runtime, display):
+    """All filesystem and abstract X11/bus paths are known before Xvfb starts."""
+    filesystem = [runtime / 'putgd/session.sock', runtime / 'no-bus', Path(f'/tmp/.X11-unix/X{display}')]
+    checks = [{'kind': 'filesystem', 'path': str(path.resolve()),
+               'utf8Bytes': len(str(path.resolve()).encode())} for path in filesystem]
+    abstract = b'\0' + str(filesystem[-1]).encode()
+    checks.append({'kind': 'abstract-X11', 'nameWithoutLeadingNul': str(filesystem[-1]),
+                   'utf8BytesIncludingLeadingNul': len(abstract), 'utf8Bytes': len(abstract)})
+    if any(row['utf8Bytes'] > 107 for row in checks):
+        raise ValueError('test_socket_path_too_long')
+    return checks
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--source-revision', required=True, help='Full separately identified driver source commit')
     parser.add_argument('--build', action='store_true')
     parser.add_argument('--test', action='store_true')
+    parser.add_argument('--test-display', type=int, default=379, help='Explicit unused Xvfb display; no automatic display/socket substitution')
     args = parser.parse_args(argv)
     import re
     if not re.fullmatch('[0-9a-f]{40}', args.source_revision):
         parser.error('full source revision required')
+    if not 1 <= args.test_display <= 65535:
+        parser.error('invalid test display')
     os.umask(0o077)
     root = args.output.resolve()
     root.mkdir(mode=0o700, exist_ok=False)
@@ -136,9 +153,23 @@ def main(argv=None):
         if args.test:
             with tempfile.TemporaryDirectory(prefix='p379-x-') as private:
                 runtime = Path(private) / 'r'; runtime.mkdir(mode=0o700)
-                command([sys.executable, str(REPO / 'tools/diagnostics/check_socket_paths.py'), '--socket', str(runtime / 'putgd/session.sock')])
-                command(['xvfb-run', '-a', str(root / 'build/test-current-capture')],
-                        {**os.environ, 'QT_QPA_PLATFORM': 'xcb', 'XDG_RUNTIME_DIR': str(runtime)})
+                checks = metadata['testSocketPreflight'] = test_socket_paths(runtime, args.test_display)
+                x_socket, x_lock = Path(f'/tmp/.X11-unix/X{args.test_display}'), Path(f'/tmp/.X{args.test_display}-lock')
+                if x_socket.exists() or x_lock.exists():
+                    raise ValueError('requested_test_display_already_in_use')
+                command([sys.executable, str(REPO / 'tools/diagnostics/check_socket_paths.py'), '--socket',
+                         *[row['path'] for row in checks if row['kind'] == 'filesystem']])
+                environment = {**os.environ, 'QT_QPA_PLATFORM': 'xcb', 'XDG_RUNTIME_DIR': str(runtime),
+                               'DBUS_SESSION_BUS_ADDRESS': 'unix:path=' + str(runtime / 'no-bus'),
+                               'QT_QPA_PLATFORMTHEME': ''}
+                environment.pop('DBUS_STARTER_ADDRESS', None)
+                command(['xvfb-run', '-n', str(args.test_display), str(root / 'build/test-current-capture')], environment)
+                deadline = time.monotonic() + 5
+                while (x_socket.exists() or x_lock.exists()) and time.monotonic() < deadline:
+                    time.sleep(.05)
+                metadata['testDisplayRetired'] = not x_socket.exists() and not x_lock.exists()
+                if not metadata['testDisplayRetired']:
+                    raise ValueError('test_display_cleanup_incomplete')
             metadata['syntheticNegativeControlsPassed'] = True
         save()
         return 0

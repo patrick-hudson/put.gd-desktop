@@ -91,6 +91,14 @@ class ProxyTests(unittest.IsolatedAsyncioTestCase):
 
 
 class CurrentWitnessTests(unittest.TestCase):
+    def test_all_headless_socket_paths_are_precomputed_including_abstract_x11(self):
+        paths = build_current_capture.test_socket_paths(Path('/tmp/p379-test/r'), 379)
+        self.assertEqual(len(paths), 4)
+        self.assertIn('/tmp/.X11-unix/X379', [row.get('path') for row in paths])
+        self.assertEqual(paths[-1]['utf8Bytes'], len(b'\0/tmp/.X11-unix/X379'))
+        with self.assertRaisesRegex(ValueError, 'socket_path_too_long'):
+            build_current_capture.test_socket_paths(Path('/tmp/' + 'x' * 100), 379)
+
     def test_derivative_retains_frozen_ownership_timer_inputs_samples_and_budget(self):
         source = (build_current_capture.REPO / 'tests/performance/bench_capture.cpp').read_bytes()
         current, difference = build_current_capture.generate(source)
