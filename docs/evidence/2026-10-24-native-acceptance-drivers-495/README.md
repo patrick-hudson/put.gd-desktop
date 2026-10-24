@@ -4,8 +4,8 @@ Exact `72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e` cleared independent round 3
 with no actionable findings. The five original safety findings and the inert
 receipt compatibility issue are resolved. Growth is permitted only at this
 exact revision with every guard below; predecessor growth recipes remain held.
-The companion PRs stay draft while final k72/f44 receipts, factual review and
-current-head CI are completed. This is driver validation, not release acceptance.
+All final exact-source packets are verified. This documentation PR remains
+draft for final factual review and current-head CI. This is driver validation, not release acceptance.
 
 This is the documentation companion to the maintained driver in
 `tools/lab/native_acceptance.py` in [code PR #554](https://github.com/patrick-hudson/put.gd-desktop/pull/554).
@@ -236,8 +236,9 @@ synthetic schema-7 fixture, integrity `ok`, zero uploads. Production serializer,
 witness source/binary, emitted-record and CLI-receipt hashes are indexed.
 This is current `72afd` serializer/unit/CLI proof; the `c538` desktop and 35-test
 records remain predecessor evidence. The current `72afd` Cinnamon packet below
-has its own receipts. Independent round 3 cleared this exact source; current
-k72/f44 final receipts are still being assembled.
+has its own receipts. Independent round 3 cleared this exact source, including
+25 accepted and 16 rejected validator cases; these are distinct from the 37
+suite tests. Final source-specific k72/f44 packets are recorded below.
 
 For a failed keychain store, `c538` persists the canonical synthetic recovery
 reference before creating the item and retains the original safe error and
@@ -321,6 +322,44 @@ lists; the owned package, runtime and synthetic probe were removed and the
 preexisting VM left running. This is bounded functional evidence, not a
 performance/release acceptance pass. Independent review clearance applies only
 to the exact driver and guarded uses described above.
+
+## Final exact-source KDE and GNOME packets
+
+On physical k72, exact `72afd` reran the public CLI in native Plasma 6.6.6
+Wayland session `906`. New individual receipts and newly captured frames record
+owned SNI inspection/activation/dynamic Quit, peer-bound preparation and
+same-session refusal. The new frames are byte-identical to the linked reviewed
+k72 visuals, with independent `final-72afd` run/hash provenance. Backend
+store/read/cleanup and the actual-purge snapshot succeed. Current-session
+KService inspection is healthy (235 applications, Dolphin and put.gd present);
+no repair was needed or run. Native product 1185 / `9dfac15c` remains separate
+from the driver source. The same public wrapper SHA `93a9bd25…` ran from
+`/home/patrick/work/n495`:
+
+```sh
+python3 work/495/final_probe_review2.py /home/patrick/putgd-lab/n495/final-72afd 72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e
+```
+
+Stdout is `/home/patrick/putgd-lab/n495/final-72afd.log` on k72. Its
+`codex-495-final-kde` lock ran 15:41:57–15:43:03Z and released cleanly after
+package/probe/runtime removal. The export manifest's 17 members were
+independently verified.
+
+On physical f44, exact `72afd` performs session/backend protocol verification
+only: Fedora 44, GNOME `50.6-1.fc44`, Qt `6.11.2-3.fc44`, Wayland session
+`1100`, current GNOME Shell PID `144305`, verified socket
+`/run/user/1000/wayland-0`. Main/helper hashes match the reviewed source.
+Backend status starts locked; the approved existing lab collection is unlocked
+through the guarded protocol and a unique synthetic store/read/cleanup succeeds
+in separate CLI processes. No app, package, cover, pointer input, logout or
+capture ran. This is no GNOME tray or graphical-app acceptance claim.
+
+The f44 `codex-495-final-gnome` lock ran 15:43:25–15:43:58Z and released cleanly,
+with its unique probe removed. Its export manifest's seven members were
+independently verified. All final Cinnamon/KDE/GNOME release receipts have empty
+cleanup lists, and their recorded times verify sequential locks. Preexisting
+collectors and the original VM were preserved. Full source/product/session,
+artifact/visual, failure and cleanup identities remain in [summary.json](summary.json).
 
 ## Saved k72 results
 

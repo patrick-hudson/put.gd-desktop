@@ -100,9 +100,10 @@ retires unsafe recipes and documents exact reviewed source `72afd00b` in
 [code PR #554](https://github.com/patrick-hudson/put.gd-desktop/pull/554).
 Independent round 3 cleared all five safety findings and inert-receipt
 compatibility. Only exact-72 growth is permitted under every guard; predecessors
-remain held. Final current k72/f44 packets and PR readiness checks are pending.
+remain held. Final exact-source Cinnamon/KDE bounded functional packets and
+GNOME session/backend-only protocol evidence are verified; PR review/CI remain.
 Current proof includes 37 tests, actual serializer/unstripped-receipt/10k
-synthetic CLI checks and fresh physical Cinnamon/X11 SNI activation/Quit visuals,
+synthetic CLI checks and fresh physical Cinnamon/X11 and KDE/Wayland SNI activation/Quit visuals,
 peer-bound preparation/same-session refusal, separate-process backend roundtrip,
 absent-CLI snapshot and clean release on Qt 6.4.2.
 
