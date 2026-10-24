@@ -54,12 +54,20 @@ put.gd's managed entry at `$XDG_CONFIG_HOME/autostart/putgd.desktop` (normally
 `~/.config/autostart/putgd.desktop`) and a managed startup script at
 `$XDG_DATA_HOME/putgd/login/start.sh`.
 
-Uninstalling the DEB/RPM or deleting the last matching AppImage removes these
-managed startup files while preserving configuration and user data. For an
+After this version has run with Launch at login enabled, uninstalling the
+DEB/RPM or deleting the last matching AppImage removes these managed startup
+files while preserving configuration and user data. For an
 active account, a user-session file watch performs cleanup even if put.gd has
 been quit, after a short settling delay of about two seconds. An inactive
 account removes the files at its next login. Package scripts do not search or
 delete files in user homes.
+
+Older managed entries are migrated when the updated app runs in that account.
+An account that has never run the updated version can still have a legacy entry
+pointing directly at the executable; that entry cannot clean itself after the
+executable is removed. Run the updated app in each such account before removing
+it, or disable Launch at login there first. No package hook migrates inactive
+accounts by accessing their homes.
 
 The saved **Launch at login** preference remains unchanged. After reinstalling,
 the first manual start reads that preference and recreates startup integration

@@ -1,0 +1,327 @@
+[
+  {
+    "target": "a382a",
+    "mode": "appimage",
+    "platform": "Aurora 45 Plasma 6.7.5 / Wayland (UEFI VM on Fedora)",
+    "summary": "a382a/appimage/summary.json",
+    "sourceCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+    "artifact": {
+      "file": "putgd-26.1024.1186-dev+gd5b561ddb94f-x86_64.AppImage",
+      "sha256": "26a047a98c1c7f514f8d7bb388f39f2aa5ccc9862475fd70c5fd8cc7f922ecb8",
+      "bytes": 116505080,
+      "ciRun": 40068126465,
+      "artifactId": 12550547910
+    },
+    "peakRssMiB": 31.26171875,
+    "endPssMiB": 24.3779296875,
+    "memoryAssessment": {
+      "strictPass": true,
+      "budgetPass": true,
+      "baselineException": null
+    },
+    "functionalPassed": true,
+    "activeSecondsAfterRemovalReturned": 1.501,
+    "sessions": {
+      "enabled": "85",
+      "inactive": "99",
+      "active": "115",
+      "disabled": "127"
+    }
+  },
+  {
+    "target": "d69",
+    "mode": "appimage",
+    "platform": "Debian 13 Plasma 6.3.6 / Wayland (physical)",
+    "summary": "d69/appimage/summary.json",
+    "sourceCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+    "artifact": {
+      "file": "putgd-26.1024.1186-dev+gd5b561ddb94f-x86_64.AppImage",
+      "sha256": "26a047a98c1c7f514f8d7bb388f39f2aa5ccc9862475fd70c5fd8cc7f922ecb8",
+      "bytes": 116505080,
+      "ciRun": 40068126465,
+      "artifactId": 12550547910
+    },
+    "peakRssMiB": 31.16015625,
+    "endPssMiB": 25.265625,
+    "memoryAssessment": {
+      "strictPass": true,
+      "budgetPass": true,
+      "baselineException": null
+    },
+    "functionalPassed": true,
+    "activeSecondsAfterRemovalReturned": 1.501,
+    "sessions": {
+      "enabled": "20055",
+      "inactive": "20071",
+      "active": "20089",
+      "disabled": "20103"
+    }
+  },
+  {
+    "target": "d69",
+    "mode": "native",
+    "platform": "Debian 13 Plasma 6.3.6 / Wayland (physical)",
+    "summary": "d69/native/summary.json",
+    "sourceCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+    "artifact": {
+      "file": "putgd_26.1024.1186~dev+gd5b561ddb94f_amd64.deb",
+      "sha256": "84de10757faa06b35527ff359626a2b0d44cd5b6403aa204914fb759977957cd",
+      "bytes": 57433042,
+      "ciRun": 40068126465,
+      "artifactId": 12550407563
+    },
+    "peakRssMiB": 31.078125,
+    "endPssMiB": 9.099609375,
+    "memoryAssessment": {
+      "strictPass": true,
+      "budgetPass": true,
+      "baselineException": null
+    },
+    "functionalPassed": true,
+    "activeSecondsAfterRemovalReturned": 1.501,
+    "sessions": {
+      "enabled": "19982",
+      "inactive": "19998",
+      "active": "20018",
+      "disabled": "20034"
+    }
+  },
+  {
+    "target": "f44",
+    "mode": "appimage",
+    "platform": "Fedora 44 GNOME 50.6 / Wayland (physical)",
+    "summary": "f44/appimage/summary.json",
+    "sourceCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+    "artifact": {
+      "file": "putgd-26.1024.1186-dev+gd5b561ddb94f-x86_64.AppImage",
+      "sha256": "26a047a98c1c7f514f8d7bb388f39f2aa5ccc9862475fd70c5fd8cc7f922ecb8",
+      "bytes": 116505080,
+      "ciRun": 40068126465,
+      "artifactId": 12550547910
+    },
+    "peakRssMiB": 29.81640625,
+    "endPssMiB": 23.560546875,
+    "memoryAssessment": {
+      "strictPass": true,
+      "budgetPass": true,
+      "baselineException": null
+    },
+    "functionalPassed": true,
+    "activeSecondsAfterRemovalReturned": 1.501,
+    "sessions": {
+      "enabled": "1040",
+      "inactive": "1067",
+      "active": "1087",
+      "disabled": "1100"
+    }
+  },
+  {
+    "target": "f44",
+    "mode": "native",
+    "platform": "Fedora 44 GNOME 50.6 / Wayland (physical)",
+    "summary": "f44/native/summary.json",
+    "sourceCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+    "artifact": {
+      "file": "putgd-26.1024.1186~dev+gd5b561ddb94f-1.fc44.x86_64.rpm",
+      "sha256": "bdf31e37584da849b8afa28e0b73e2fe451d8be99a9d5671c0d1db9ded32c274",
+      "bytes": 45629523,
+      "ciRun": 40068126465,
+      "artifactId": 12550586059
+    },
+    "peakRssMiB": 35.609375,
+    "endPssMiB": 21.400390625,
+    "memoryAssessment": {
+      "strictPass": false,
+      "budgetPass": true,
+      "baselineException": {
+        "mapping": "/usr/lib64/libcrypto.so.3.5.9",
+        "priorSource": "05991d9d (v26.1023.1058-nightly)",
+        "priorEvidence": "docs/evidence/2026-10-23-native-full-acceptance/README.md, item C",
+        "currentEvidence": "fedora-qt-dependencies.txt",
+        "reason": "Pre-existing direct dependency of Fedora Qt6Core; not introduced by the uninstall change. Raw strict failure retained."
+      }
+    },
+    "functionalPassed": true,
+    "activeSecondsAfterRemovalReturned": 0.5,
+    "sessions": {
+      "enabled": "916",
+      "inactive": "935",
+      "active": "964",
+      "disabled": "995"
+    }
+  },
+  {
+    "target": "k72",
+    "mode": "appimage",
+    "platform": "Kubuntu 26.04 Plasma 6.6.6 / Wayland (physical)",
+    "summary": "k72/appimage/summary.json",
+    "sourceCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+    "artifact": {
+      "file": "putgd-26.1024.1186-dev+gd5b561ddb94f-x86_64.AppImage",
+      "sha256": "26a047a98c1c7f514f8d7bb388f39f2aa5ccc9862475fd70c5fd8cc7f922ecb8",
+      "bytes": 116505080,
+      "ciRun": 40068126465,
+      "artifactId": 12550547910
+    },
+    "peakRssMiB": 30.75390625,
+    "endPssMiB": 24.1806640625,
+    "memoryAssessment": {
+      "strictPass": true,
+      "budgetPass": true,
+      "baselineException": null
+    },
+    "functionalPassed": true,
+    "activeSecondsAfterRemovalReturned": 1.501,
+    "sessions": {
+      "enabled": "857",
+      "inactive": "872",
+      "active": "891",
+      "disabled": "906"
+    }
+  },
+  {
+    "target": "k72",
+    "mode": "native",
+    "platform": "Kubuntu 26.04 Plasma 6.6.6 / Wayland (physical)",
+    "summary": "k72/native/summary.json",
+    "sourceCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+    "artifact": {
+      "file": "putgd_26.1024.1186~dev+gd5b561ddb94f_amd64.deb",
+      "sha256": "475eab6afb2ec1e2d5d021443df40f30bf6605c6e890825ad5869c0beeb2777f",
+      "bytes": 57896786,
+      "ciRun": 40068126465,
+      "artifactId": 12549738396
+    },
+    "peakRssMiB": 32.4921875,
+    "endPssMiB": 9.154296875,
+    "memoryAssessment": {
+      "strictPass": true,
+      "budgetPass": true,
+      "baselineException": null
+    },
+    "functionalPassed": true,
+    "activeSecondsAfterRemovalReturned": 0.0,
+    "sessions": {
+      "enabled": "783",
+      "inactive": "799",
+      "active": "820",
+      "disabled": "838"
+    }
+  },
+  {
+    "target": "m74",
+    "mode": "appimage",
+    "platform": "Mint 22.3 Cinnamon 6.6.9 / X11 (physical)",
+    "summary": "m74/appimage/summary.json",
+    "sourceCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+    "artifact": {
+      "file": "putgd-26.1024.1186-dev+gd5b561ddb94f-x86_64.AppImage",
+      "sha256": "26a047a98c1c7f514f8d7bb388f39f2aa5ccc9862475fd70c5fd8cc7f922ecb8",
+      "bytes": 116505080,
+      "ciRun": 40068126465,
+      "artifactId": 12550547910
+    },
+    "peakRssMiB": 30.57421875,
+    "endPssMiB": 24.623046875,
+    "memoryAssessment": {
+      "strictPass": true,
+      "budgetPass": true,
+      "baselineException": null
+    },
+    "functionalPassed": true,
+    "activeSecondsAfterRemovalReturned": 1.501,
+    "sessions": {
+      "enabled": "c83",
+      "inactive": "c85",
+      "active": "c87",
+      "disabled": "c89"
+    }
+  },
+  {
+    "target": "m74",
+    "mode": "native",
+    "platform": "Mint 22.3 Cinnamon 6.6.9 / X11 (physical)",
+    "summary": "m74/native/summary.json",
+    "sourceCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+    "artifact": {
+      "file": "putgd_26.1024.1186~dev+gd5b561ddb94f_amd64.deb",
+      "sha256": "ff3cd261d6159d0e52acd01aa80b8eae9618694c7bf609e4a108531cfedd2730",
+      "bytes": 57552460,
+      "ciRun": 40068126465,
+      "artifactId": 12549999661
+    },
+    "peakRssMiB": 28.90234375,
+    "endPssMiB": 18.2578125,
+    "memoryAssessment": {
+      "strictPass": true,
+      "budgetPass": true,
+      "baselineException": null
+    },
+    "functionalPassed": true,
+    "activeSecondsAfterRemovalReturned": 1.501,
+    "sessions": {
+      "enabled": "c75",
+      "inactive": "c77",
+      "active": "c79",
+      "disabled": "c81"
+    }
+  },
+  {
+    "target": "u382a",
+    "mode": "appimage",
+    "platform": "Ubuntu 26.04 GNOME 50.1 / Wayland (VM on Fedora)",
+    "summary": "u382a/appimage/summary.json",
+    "sourceCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+    "artifact": {
+      "file": "putgd-26.1024.1186-dev+gd5b561ddb94f-x86_64.AppImage",
+      "sha256": "26a047a98c1c7f514f8d7bb388f39f2aa5ccc9862475fd70c5fd8cc7f922ecb8",
+      "bytes": 116505080,
+      "ciRun": 40068126465,
+      "artifactId": 12550547910
+    },
+    "peakRssMiB": 29.90234375,
+    "endPssMiB": 23.6201171875,
+    "memoryAssessment": {
+      "strictPass": true,
+      "budgetPass": true,
+      "baselineException": null
+    },
+    "functionalPassed": true,
+    "activeSecondsAfterRemovalReturned": 1.501,
+    "sessions": {
+      "enabled": "327",
+      "inactive": "340",
+      "active": "356",
+      "disabled": "368"
+    }
+  },
+  {
+    "target": "u382a",
+    "mode": "native",
+    "platform": "Ubuntu 26.04 GNOME 50.1 / Wayland (VM on Fedora)",
+    "summary": "u382a/native/summary.json",
+    "sourceCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+    "artifact": {
+      "file": "putgd_26.1024.1186~dev+gd5b561ddb94f_amd64.deb",
+      "sha256": "475eab6afb2ec1e2d5d021443df40f30bf6605c6e890825ad5869c0beeb2777f",
+      "bytes": 57896786,
+      "ciRun": 40068126465,
+      "artifactId": 12549738396
+    },
+    "peakRssMiB": 31.765625,
+    "endPssMiB": 20.587890625,
+    "memoryAssessment": {
+      "strictPass": true,
+      "budgetPass": true,
+      "baselineException": null
+    },
+    "functionalPassed": true,
+    "activeSecondsAfterRemovalReturned": 0.0,
+    "sessions": {
+      "enabled": "263",
+      "inactive": "278",
+      "active": "296",
+      "disabled": "313"
+    }
+  }
+]

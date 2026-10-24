@@ -1,0 +1,29 @@
+{
+  "run": 40068126465,
+  "artifactId": 12549738396,
+  "name": "release-native-ubuntu26.04",
+  "zipBytes": 168155406,
+  "transferredBytes": 64190001,
+  "members": {
+    "build-info.json": {
+      "sha256": "28f74ca8dc08652b5908b2d0733d4ef16c99dfaa03933ac37a959279b3b1ad0a",
+      "bytes": 345,
+      "zipCrc32": 1451299108
+    },
+    "ci-sdk-environment.json": {
+      "sha256": "4c4d32fde8d4992d7508d7954f42acfce34bf211265dbbc15579db666cc8bacb",
+      "bytes": 40198,
+      "zipCrc32": 3827774537
+    },
+    "native-audit.json": {
+      "sha256": "e49bbe3da039e7838e0d81c0212d94a4af4bafe51888aa4a7f147358c6ee1031",
+      "bytes": 162150,
+      "zipCrc32": 2558028806
+    },
+    "putgd_26.1024.1186~dev+gd5b561ddb94f_amd64.deb": {
+      "sha256": "475eab6afb2ec1e2d5d021443df40f30bf6605c6e890825ad5869c0beeb2777f",
+      "bytes": 57896786,
+      "zipCrc32": 2836176528
+    }
+  }
+}

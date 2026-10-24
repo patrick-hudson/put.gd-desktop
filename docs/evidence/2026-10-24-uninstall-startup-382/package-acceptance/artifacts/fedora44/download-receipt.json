@@ -1,0 +1,29 @@
+{
+  "run": 40068126465,
+  "artifactId": 12550586059,
+  "name": "release-native-fedora44",
+  "zipBytes": 162242548,
+  "transferredBytes": 52971116,
+  "members": {
+    "build-info.json": {
+      "sha256": "28f74ca8dc08652b5908b2d0733d4ef16c99dfaa03933ac37a959279b3b1ad0a",
+      "bytes": 345,
+      "zipCrc32": 1451299108
+    },
+    "ci-sdk-environment.json": {
+      "sha256": "67855afb12ce3b857b6fe6cb0d129a989ea6c8c05eb00953efdbcba923e9c1e7",
+      "bytes": 29179,
+      "zipCrc32": 2035771448
+    },
+    "native-audit.json": {
+      "sha256": "f17a8da20e5d46b67210c18b478fd1ba36debe690ba3acf80240da3c18ea8e24",
+      "bytes": 165342,
+      "zipCrc32": 2084321511
+    },
+    "putgd-26.1024.1186~dev+gd5b561ddb94f-1.fc44.x86_64.rpm": {
+      "sha256": "bdf31e37584da849b8afa28e0b73e2fe451d8be99a9d5671c0d1db9ded32c274",
+      "bytes": 45629523,
+      "zipCrc32": 1284797261
+    }
+  }
+}

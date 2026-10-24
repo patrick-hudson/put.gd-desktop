@@ -1,0 +1,9 @@
+{
+  "guest": "a382a",
+  "archive": "/home/patrick/work/a382/work/exports/i382-final-a382a/guest-work.tar",
+  "bytes": 233932800,
+  "sha256": "35cc96c892b9953365aad40538f4a2b422b5742ceb1915d241bf45d2d20b61ce",
+  "files": 98,
+  "allMembersVerified": true,
+  "scope": "Only owned synthetic test directories; no guest identity key/bootstrap/login material"
+}

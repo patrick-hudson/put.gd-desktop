@@ -1,0 +1,9 @@
+{
+  "reason": "The general qdbus logout route did not end Aurora 45 plasmalogin session. Use the actual display-manager service stop for every real logout, then restart for the next login.",
+  "sourceCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+  "initialDriverSha256": "4b69a41bae2d874d36dfd5c58507bec3c02e18cbc0736e924cb8d89ac0f22658",
+  "correctedDriverSha256": "dc7ebd43cbcd5a586b84450cdc4ed27a7173420d4e47867bb6085b5f29fcadaf",
+  "correctedRemotePath": "/home/lab/work/p382n/i382-aurora.py",
+  "changedGate": false,
+  "resumePoint": "before enabled logout/login; repeat that transition, then normal idle/remaining lifecycle"
+}

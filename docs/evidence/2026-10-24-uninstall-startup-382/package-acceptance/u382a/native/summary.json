@@ -1,0 +1,574 @@
+{
+  "scope": "Targeted Linux managed startup-link uninstall lifecycle; development CI artifacts, not a stable-release campaign",
+  "target": "u382a",
+  "mode": "native",
+  "build": {
+    "baseVersion": "26.1024.1186",
+    "commitCount": 1186,
+    "dirty": false,
+    "gitCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+    "gitTree": "797721fa0672581562a8675d0d2010eced7c6bd4",
+    "packageVersion": "26.1024.1186~dev+gd5b561ddb94f",
+    "schemaVersion": 1,
+    "sourceProvenance": "git",
+    "version": "26.1024.1186-dev+gd5b561ddb94f"
+  },
+  "sourceTree": "797721fa0672581562a8675d0d2010eced7c6bd4",
+  "artifact": {
+    "file": "putgd_26.1024.1186~dev+gd5b561ddb94f_amd64.deb",
+    "sha256": "475eab6afb2ec1e2d5d021443df40f30bf6605c6e890825ad5869c0beeb2777f",
+    "bytes": 57896786,
+    "ciRun": 40068126465,
+    "artifactId": 12549738396
+  },
+  "os": "PRETTY_NAME=\"Ubuntu 26.04.1 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"26.04\"\nVERSION=\"26.04.1 LTS (Resolute Raccoon)\"\nVERSION_CODENAME=resolute\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=resolute\nLOGO=ubuntu-logo\n",
+  "desktopVersions": {
+    "gnome-shell": {
+      "command": [
+        "gnome-shell",
+        "--version"
+      ],
+      "exit": 0,
+      "stdout": "GNOME Shell 50.1\n",
+      "stderr": ""
+    }
+  },
+  "kernel": {
+    "command": [
+      "uname",
+      "-r"
+    ],
+    "exit": 0,
+    "stdout": "7.0.0-38-generic\n",
+    "stderr": ""
+  },
+  "displayEnvironment": {
+    "DISPLAY": ":0",
+    "WAYLAND_DISPLAY": "wayland-0",
+    "XAUTHORITY": "/run/user/1000/.mutter-Xwaylandauth.8R6GX3",
+    "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus",
+    "XDG_RUNTIME_DIR": "/run/user/1000",
+    "XDG_CURRENT_DESKTOP": "ubuntu:GNOME",
+    "XDG_SESSION_TYPE": "wayland",
+    "XDG_SESSION_DESKTOP": "ubuntu",
+    "DESKTOP_SESSION": "ubuntu"
+  },
+  "socketPreflight": {
+    "command": [
+      "/usr/bin/python3",
+      "/home/lab/work/p382n/check_socket_paths.py",
+      "--socket",
+      "/run/user/1000/bus",
+      "/run/user/1000/putgd/session.sock",
+      "/run/user/1000/wayland-0",
+      "/tmp/.X11-unix/X0"
+    ],
+    "exit": 0,
+    "stdout": "{\"schemaVersion\": 1, \"passed\": true, \"limitBytesExcludingNul\": 107, \"paths\": [{\"path\": \"/run/user/1000/bus\", \"utf8Bytes\": 18, \"passed\": true}, {\"path\": \"/run/user/1000/putgd/session.sock\", \"utf8Bytes\": 33, \"passed\": true}, {\"path\": \"/run/user/1000/wayland-0\", \"utf8Bytes\": 24, \"passed\": true}, {\"path\": \"/tmp/.X11-unix/X0\", \"utf8Bytes\": 17, \"passed\": true}]}\n",
+    "stderr": ""
+  },
+  "installedPackageVerification": {
+    "command": [
+      "dpkg",
+      "--verify",
+      "putgd"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "enabledLogin": {
+    "sessionId": "263",
+    "session": {
+      "User": "1000",
+      "Display": "",
+      "Leader": "45445",
+      "Type": "wayland",
+      "Active": "yes",
+      "State": "active",
+      "LockedHint": "no"
+    },
+    "pass": true,
+    "startupJournalErrors": [],
+    "residents": [
+      {
+        "pid": 46088,
+        "exe": "/usr/bin/putgd",
+        "ppid": 45551,
+        "start": 647143,
+        "session": null,
+        "sessionState": null,
+        "sessionType": null,
+        "cgroup": "/user.slice/user-1000.slice/user@1000.service/app.slice/app-gnome-putgd-46088.scope",
+        "display": ":0",
+        "sessionIdEnv": null,
+        "exeSha256": "a0bb1c990ae3b1f4e94ce1af2f16b860a25d375310ccbce6e76a5ce912414200",
+        "appImageEnvironment": {},
+        "qtPlatformPlugins": []
+      }
+    ]
+  },
+  "uiProcesses": [
+    {
+      "pid": 47153,
+      "exe": "/usr/bin/putgd-ui",
+      "ppid": 46088,
+      "start": 666180,
+      "session": null,
+      "sessionState": null,
+      "sessionType": null,
+      "cgroup": "/user.slice/user-1000.slice/user@1000.service/app.slice/app-gnome-putgd-46088.scope",
+      "display": ":0",
+      "sessionIdEnv": null,
+      "exeSha256": "9b19f3415dcbfd8c6da90b6ae36428feadc80015cfc2d02a3603946ddcd6f555",
+      "appImageEnvironment": {},
+      "qtPlatformPlugins": [
+        "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland.so"
+      ]
+    }
+  ],
+  "memory": {
+    "at": "2026-10-24T06:13:23Z",
+    "mode": "native",
+    "host": "putgd-ubuntu-lab",
+    "idleSeconds": 180,
+    "pid": 46088,
+    "rssMiB": 31.765625,
+    "peakRssMiB": 31.765625,
+    "pssMiB": 20.587890625,
+    "samples": [
+      {
+        "seconds": 0.0,
+        "rssMiB": 31.49609375
+      },
+      {
+        "seconds": 10.0,
+        "rssMiB": 31.49609375
+      },
+      {
+        "seconds": 20.0,
+        "rssMiB": 31.49609375
+      },
+      {
+        "seconds": 30.0,
+        "rssMiB": 31.49609375
+      },
+      {
+        "seconds": 40.0,
+        "rssMiB": 31.49609375
+      },
+      {
+        "seconds": 50.0,
+        "rssMiB": 31.49609375
+      },
+      {
+        "seconds": 60.0,
+        "rssMiB": 31.765625
+      },
+      {
+        "seconds": 70.0,
+        "rssMiB": 31.765625
+      },
+      {
+        "seconds": 80.0,
+        "rssMiB": 31.765625
+      },
+      {
+        "seconds": 90.0,
+        "rssMiB": 31.765625
+      },
+      {
+        "seconds": 100.0,
+        "rssMiB": 31.765625
+      },
+      {
+        "seconds": 110.0,
+        "rssMiB": 31.765625
+      },
+      {
+        "seconds": 120.01,
+        "rssMiB": 31.765625
+      },
+      {
+        "seconds": 130.01,
+        "rssMiB": 31.765625
+      },
+      {
+        "seconds": 140.01,
+        "rssMiB": 31.765625
+      },
+      {
+        "seconds": 150.01,
+        "rssMiB": 31.765625
+      },
+      {
+        "seconds": 160.01,
+        "rssMiB": 31.765625
+      },
+      {
+        "seconds": 170.01,
+        "rssMiB": 31.765625
+      },
+      {
+        "seconds": 180.0,
+        "rssMiB": 31.765625
+      }
+    ],
+    "forbiddenMaps": [],
+    "pass": true,
+    "loadBefore": "3.63 0.86 0.36 8/714 46941",
+    "loadAfter": "0.19 0.49 0.31 1/557 47098",
+    "evidenceFile": "memory.json"
+  },
+  "memoryAssessment": {
+    "strictPass": true,
+    "budgetPass": true,
+    "baselineException": null
+  },
+  "removalPhases": {
+    "inactive": {
+      "sessionId": "278",
+      "session": {
+        "User": "1000",
+        "Display": "",
+        "Leader": "48742",
+        "Type": "wayland",
+        "Active": "yes",
+        "State": "active",
+        "LockedHint": "no"
+      },
+      "residentAbsent": true,
+      "entryAbsent": true,
+      "scriptAbsent": true,
+      "savedPreference": true,
+      "startupJournalErrors": [],
+      "startupJournal": {
+        "command": [
+          "journalctl",
+          "--user",
+          "--since",
+          "Sat 2026-10-24 01:13:46 CDT",
+          "--no-pager",
+          "-o",
+          "short-iso"
+        ],
+        "exit": 0,
+        "stdout": "2026-10-24T01:13:49-05:00 putgd-ubuntu-lab systemd[45551]: Started app-gnome-putgd-49119.scope - Application launched by gnome-session-service.\n",
+        "stderr": "",
+        "unfilteredStdoutSha256": "6622598915688c78d3409d96f68ca1c74ba1058a70c08c1f4c6b54cdef6eedf1",
+        "unfilteredLineCount": 255,
+        "scope": "Only app-putgd autostart/scope and managed login-watch messages; original full result retained privately under exportReceipt"
+      },
+      "failedUnits": {
+        "command": [
+          "systemctl",
+          "--user",
+          "--failed",
+          "--no-legend",
+          "--no-pager"
+        ],
+        "exit": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "retention": {
+        "at": "2026-10-24T06:14:11Z",
+        "mode": "native",
+        "host": "putgd-ubuntu-lab",
+        "files": {
+          "/home/lab/.config/putgd/config.json": {
+            "sha256": "d9fbb794211f8a289b68f4bafc1c5775fde980353f768739eda3a7aa93f9999f",
+            "mode": 384
+          },
+          "/home/lab/.local/share/putgd/i382-user-data.txt": {
+            "sha256": "309413a8236143e7ea0e6cba5d20c8716ab50ebce323d56bd4f92b73b90af11a",
+            "mode": 436
+          },
+          "/home/lab/.local/share/putgd/history.sqlite": {
+            "sha256": "ea9a6d5e5587f95815f3aae711f480ca8c435f9f3d10e7c77167b15de28e6532",
+            "mode": 384
+          },
+          "/home/lab/.local/state/putgd/logs/putgd-20261024T060948758Z-44052-1.jsonl": {
+            "sha256": "60170a22281cf222d815b3eeba96f4aef7b22d6086762576766d5709ba0343cf",
+            "mode": 384
+          },
+          "/home/lab/.local/state/putgd/logs/putgd-20261024T061014761Z-46088-1.jsonl": {
+            "sha256": "f4100c118c6bb6c0afc3e55c7455f146fdac0b3cf98099536fd5b76ea5976b0f",
+            "mode": 384
+          }
+        },
+        "entrySha256": null,
+        "scriptSha256": null,
+        "preference": true,
+        "unchanged": true,
+        "evidenceFile": "retention-after-inactive.json"
+      }
+    },
+    "active": {
+      "sessionId": "296",
+      "session": {
+        "User": "1000",
+        "Display": "",
+        "Leader": "52111",
+        "Type": "wayland",
+        "Active": "yes",
+        "State": "active",
+        "LockedHint": "no"
+      },
+      "residentAbsent": true,
+      "entryAbsent": true,
+      "scriptAbsent": true,
+      "savedPreference": true,
+      "startupJournalErrors": [],
+      "startupJournal": {
+        "command": [
+          "journalctl",
+          "--user",
+          "--since",
+          "Sat 2026-10-24 01:14:51 CDT",
+          "--no-pager",
+          "-o",
+          "short-iso"
+        ],
+        "exit": 0,
+        "stdout": "\n",
+        "stderr": "",
+        "unfilteredStdoutSha256": "d314c0aa608bfa8a98bb2198a2853be011bd41e30ebe8363ada2d64828d3d856",
+        "unfilteredLineCount": 432,
+        "scope": "Only app-putgd autostart/scope and managed login-watch messages; original full result retained privately under exportReceipt"
+      },
+      "failedUnits": {
+        "command": [
+          "systemctl",
+          "--user",
+          "--failed",
+          "--no-legend",
+          "--no-pager"
+        ],
+        "exit": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "retention": {
+        "at": "2026-10-24T06:14:36Z",
+        "mode": "native",
+        "host": "putgd-ubuntu-lab",
+        "files": {
+          "/home/lab/.config/putgd/config.json": {
+            "sha256": "d9fbb794211f8a289b68f4bafc1c5775fde980353f768739eda3a7aa93f9999f",
+            "mode": 384
+          },
+          "/home/lab/.local/share/putgd/i382-user-data.txt": {
+            "sha256": "309413a8236143e7ea0e6cba5d20c8716ab50ebce323d56bd4f92b73b90af11a",
+            "mode": 436
+          },
+          "/home/lab/.local/share/putgd/history.sqlite": {
+            "sha256": "ea9a6d5e5587f95815f3aae711f480ca8c435f9f3d10e7c77167b15de28e6532",
+            "mode": 384
+          },
+          "/home/lab/.local/state/putgd/logs/putgd-20261024T060948758Z-44052-1.jsonl": {
+            "sha256": "60170a22281cf222d815b3eeba96f4aef7b22d6086762576766d5709ba0343cf",
+            "mode": 384
+          },
+          "/home/lab/.local/state/putgd/logs/putgd-20261024T061014761Z-46088-1.jsonl": {
+            "sha256": "f4100c118c6bb6c0afc3e55c7455f146fdac0b3cf98099536fd5b76ea5976b0f",
+            "mode": 384
+          },
+          "/home/lab/.local/state/putgd/logs/putgd-20261024T061422526Z-50346-1.jsonl": {
+            "sha256": "1162286cc8282701f84d9809ab57ac628097f018705174f30effe2b508b0cf6c",
+            "mode": 384
+          }
+        },
+        "entrySha256": null,
+        "scriptSha256": null,
+        "preference": true,
+        "unchanged": true,
+        "evidenceFile": "retention-after-active.json"
+      }
+    },
+    "disabled": {
+      "sessionId": "313",
+      "session": {
+        "User": "1000",
+        "Display": "",
+        "Leader": "55531",
+        "Type": "wayland",
+        "Active": "yes",
+        "State": "active",
+        "LockedHint": "no"
+      },
+      "residentAbsent": true,
+      "entryAbsent": true,
+      "scriptAbsent": true,
+      "savedPreference": false,
+      "startupJournalErrors": [],
+      "startupJournal": {
+        "command": [
+          "journalctl",
+          "--user",
+          "--since",
+          "Sat 2026-10-24 01:15:52 CDT",
+          "--no-pager",
+          "-o",
+          "short-iso"
+        ],
+        "exit": 0,
+        "stdout": "\n",
+        "stderr": "",
+        "unfilteredStdoutSha256": "459bdd953fa1d77da42d7dd835216c2cc0e1361b4787196a3a45ae5c11f245cb",
+        "unfilteredLineCount": 250,
+        "scope": "Only app-putgd autostart/scope and managed login-watch messages; original full result retained privately under exportReceipt"
+      },
+      "failedUnits": {
+        "command": [
+          "systemctl",
+          "--user",
+          "--failed",
+          "--no-legend",
+          "--no-pager"
+        ],
+        "exit": 0,
+        "stdout": "",
+        "stderr": ""
+      }
+    }
+  },
+  "activeRemovalObservation": {
+    "at": "2026-10-24T06:14:36Z",
+    "mode": "native",
+    "host": "putgd-ubuntu-lab",
+    "secondsAfterRemovalReturned": 0.0,
+    "state": {
+      "sessionId": "278",
+      "session": {
+        "User": "1000",
+        "Display": "",
+        "Leader": "48742",
+        "Type": "wayland",
+        "Active": "yes",
+        "State": "active",
+        "LockedHint": "no"
+      },
+      "residents": [],
+      "configSha256": "d9fbb794211f8a289b68f4bafc1c5775fde980353f768739eda3a7aa93f9999f",
+      "preference": true,
+      "entry": null,
+      "entrySha256": null,
+      "scriptSha256": null,
+      "personalApps": [],
+      "load": "2.57 1.30 0.61 1/593 50905"
+    },
+    "evidenceFile": "active-removal.json"
+  },
+  "explicitDisable": {
+    "applied": true,
+    "enabled": false
+  },
+  "cleanup": {
+    "at": "2026-10-24T06:16:18Z",
+    "mode": "native",
+    "host": "putgd-ubuntu-lab",
+    "residents": [],
+    "entryAbsent": true,
+    "scriptAbsent": true,
+    "profileAbsent": true,
+    "personalApps": [],
+    "evidenceFile": "cleanup.json"
+  },
+  "exportReceipt": {
+    "host": "u382a",
+    "mode": "native",
+    "remoteRoot": "/home/lab/work/p382n/native",
+    "verifiedFiles": {
+      "logout-active.json": "5a465060131c7ebaaa042fe15bd1fe8027518ab62257793a4c53ae807b78a045",
+      "show-login-enabled.json": "8a5b3a365cd0f929e5a4c61ab540b0568920801d2beea20299c487cc3b2a6126",
+      "active-removal.json": "61d2b01b0f772667becb470c2571fdcc0c3ba42a14d13ce5e196e0062b0fd728",
+      "pkg-inactive.attempt2.json": "5711f03c495bf27b779f540fb7ceb05367bb3dcc8dc51edf5e3600a851e6a08c",
+      "check-disabled.json": "9fe40d8827711ed30fe9d73ff44aab19e57a1af89c374f1d25483bdca5c3a787",
+      "identity.json": "b85c78fc5f30d521cbe5d491a4e67eb940ff79dd0757d3f3ff691b8e59c2559a",
+      "enable.json": "cee9629625aae9322e21bafa56af59120cb4acc4d4f00e5f178c8a17aadc91d2",
+      "memory.json": "ecb46ae15f31a8c1908760edfe03634e1963522293fd27f269415b3e14899bf3",
+      "stop-watch.json": "6632ba8d53bd080d19a53234c43d441fdeccaeba0670d076156514cf1b19cd1e",
+      "quit-disabled.json": "4b8b3fc8cbac8a53b7294bf4789adfd03caa0ee3ec4cfffa85884ad1320c329c",
+      "quit-inactive.json": "3d57fb775e8a119b658238c59f21fe1aa96e5d4fa460ec30542f171ad7b7a07c",
+      "pkg-inactive.json": "a120a5833cd0be857569fcfd39f63184fa281ed5c00447f84c310f41fde5515f",
+      "prepare.json": "a74496dace39478d6b939c3b9582f1246b9969d0835eda0cfecec96c3c47c5c5",
+      "launch-disable-rearm.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "logout-enabled.json": "536cb61bc6301717b5b0db750ff891105b0648cfb17ca9f63c88aad0af818808",
+      "status-frame-active-cleaned-login.json": "a200f02432c22e0eb56573b7196858ed16d1a55d3f27dd85741d1a6a6efa6bee",
+      "pkg-active.json": "116d74a7c10b4d2539bbbf9c9625f8f37b0af8dfa66818c3e61669bdbc41ece9",
+      "quit-prep-login.json": "7781191d7dfd84ed44547a417ff12d3d565a5d33df5053f5b7ce4b80c9f044a9",
+      "check-active.json": "d18c87939092a3140c101232bc6557e76425d7acb384dd502b65e61516c2a503",
+      "pkg-disabled.json": "ee0924585629b28eb4e64d80cbafcecf6b6c7cdb3b9fa51bd08e1dd962f0a5e0",
+      "disable.json": "c9c3d9b77514eff37cbbce5b411abcfda146cb82d86be410ff2e2044a05373eb",
+      "logout-inactive.json": "6920fe4095a8f15b5305d1094587598b36285c9d1db9be5a789bf3c585151e96",
+      "pkg-sim-inactive.json": "ce5422e86f867c76bf4268a3bf7f39142a73c05282e95625200fdfc06f3cd936",
+      "show-disabled.json": "e1fdeb253d5e1a96084c0f0e8bfcff4893f972cbcfb7403b2d26e61a6a047518",
+      "pkg-active.attempt2.json": "0c610c7363d5dad41902f11e336165cca06c03cfb0c56e035b0df638e4446b08",
+      "status-frame-login-settings.json": "87e3f338db0776f9470eed17964d2a76ea32198261900e4ac39aaf5edf2602f2",
+      "status-frame-enabled-login.json": "aa452dd373272ee97686c601522ef4cb69161c20acf1c4a10beb152984e3ca3f",
+      "status-frame-inactive-cleaned-login.json": "af0566723435e403754ead43b656a64f6604e22a2cec714371c61a19bc69ec92",
+      "status-frame-active-cleaned.json": "2cc3134cb760a868516e426ab216062db617fd917aa45247b66e39c841d9a86d",
+      "status-frame-rearmed-settings.json": "3a1985087f9ba8542d947930b1ab736634d93043a6b9bc1e05727f5c5d4ad19c",
+      "inactive-before-removal.json": "a4c64a4e3d12fccd0143a4c9663350058516950a9d7f1afb9aa6cebaf2211a3c",
+      "launch-active-rearm.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "launch-disable-rearm.json": "5644d321b9611ff7b8c22796ec029e89ab4644fef386e66a0452ae0e46e3b54c",
+      "quit-active.json": "c1b6e78071a91298363fdab9a147e56d21c122dffc5831fbf50fdd9fc20af91e",
+      "pkg-sim-active.json": "d9c8c86d2829b8a28921531fd8296994cf1ef83fb01021a52f56a09c3fd15f12",
+      "retention-before-active.json": "cc17cbf5760d22c52ff38bbfa72e1777a8263a73f81887ca71990bcef1dd3e64",
+      "show-rearmed.json": "c330f20102d759e9cd69c7bae7437bbb885f3ee9f1ef0917ccd0a12650f80a5b",
+      "pkg-initial.json": "234a742543e0dd902105aa2fc15b2bf2268fff0d15dccf921764e52dcb8d6147",
+      "pkg-sim-initial.json": "eb217443216fafa0cd9244ffe8ed6992d00761f5bf0dbd276ca9df73b5ef5874",
+      "retention-after-active.json": "5d88a2d67ec4f11088a0f74bce806025caf6cf64797fa54ba92f68a0a6eb2eca",
+      "status-frame-disabled-clean-login.json": "2b4206b911b1f8546daa584e595ec813c8f18c13a4c0c589cb76cc19e27320f1",
+      "status-frame-enabled-settings.json": "fd110f8a43e18f4192e408a66406d6b2b3ae37079bd000bb0e9269a7a7f016a2",
+      "launch-initial.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "launch-initial.json": "cf44aefac504b424c30ff1f34514693251c3b609189ea5e58e1aa6ab1b095245",
+      "cleanup.json": "a52c4bf44e96139a66ce6723124079d655bec415c2c9fb6cb41097df79b334e7",
+      "pkg-sim-active.attempt2.json": "10a622265d82175d5f56259d43826c9eba61106e889d6409c8cb57f0ae90b951",
+      "logout-disabled.json": "a1c86a60cc229421b9d84077883627805ca4f90061f88011b46d18d18c76ad88",
+      "show-enabled.json": "cbd5581dc96bdadd013a02973c167fbc18749c9f2473176ee601d6614663b783",
+      "retention-after-inactive.json": "85d35d39bf064c006427e7ac47496d0279a74d5855938a19f0d2a6327a9bcc8e",
+      "status-frame-disabled-settings.json": "2ae787c47c4e9c5c6fb059e4dd69a4b28e2f08876e2d1598f190c61c1db19c5e",
+      "check-inactive.json": "36c9611271072c4e3dfe5367f72bd58ede0caa033d21f1f25e3c2c0a19f744ba",
+      "retention-before-inactive.json": "4d678c1cd4a832b71453cad017a438999bc41c2edde2250ca6c50c874b0c5dbc",
+      "check-enabled.json": "b5736b7d3218a25e8deadd15f2c486ac572096047a7ff6495021c22b50a43415",
+      "pkg-sim-inactive.attempt2.json": "000c36ec89bd79d5ac0417f35d455136cfc8f42880279c0ee4eb76ec017acd79",
+      "launch-active-rearm.json": "f0d76c8865d44c169546bc31c5d454b29933a6baca5daec14dddb5a125baa6ad",
+      "pkg-sim-disabled.json": "0b1a59314da6a69fb5dbf5e007ac3b47fd06e3833be2f712333bd75af554f81e"
+    },
+    "allHashesVerified": true
+  },
+  "visualReview": {
+    "reviewed": true,
+    "accepted": true,
+    "sourceCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+    "invalidVisuals": [],
+    "notes": "All nine complete frames inspected: actual Settings on/rearmed/off and real login/removal desktops. Stock Mint Welcome, KDE remote-control and Debian IBus notices are unrelated and retained. No protected login value or personal app content appears. Machine receipts establish file/process absence and settings preservation; screenshots supply desktop context.",
+    "files": {
+      "enabled-login.png": "554275c517fead78ad9f8a9396e8542d705e866ad2d38890d636756d01f3347e",
+      "disabled-settings.png": "39e5dd74d8007278a8ff53d4242e14b9f9b7393a2814c6128dca49ca0af85383",
+      "login-settings.png": "1eb1f92dca4dcda610e488adab29730a14cdfebba2dd260e7319d87ab0c64674",
+      "rearmed-settings.png": "d1df6b32c1ea1401a73d75d80c5d4a0372e93f2cc5a0ad0e164d4b49bb093177",
+      "enabled-settings.png": "94597cb7422e267beeb517bc7ef0f5ba803c7c3c634412349725d34f08cb8053",
+      "active-cleaned.png": "e8c791ef6f734ddbd330ca210564a617a9c7e7fff86a6fe215e02a58646360ee",
+      "active-cleaned-login.png": "48ff153207dbcc0fd42d398cb8e1ddebaa8bb9cc9e39da4f5a12957a3dc6b63f",
+      "disabled-clean-login.png": "6b26109fc62b2411fb99558010e5a5d25f51a7e3e48521459438a643ba2a81e1",
+      "inactive-cleaned-login.png": "e8c791ef6f734ddbd330ca210564a617a9c7e7fff86a6fe215e02a58646360ee"
+    }
+  },
+  "completion": {
+    "target": "u382a",
+    "mode": "native",
+    "sourceCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+    "functionalPassed": true,
+    "memoryPassed": true,
+    "memoryAssessment": {
+      "strictPass": true,
+      "budgetPass": true,
+      "baselineException": null
+    },
+    "seconds": 400.3,
+    "visualReviewPending": true
+  }
+}

@@ -10,7 +10,8 @@ supersedes the earlier retained-entry/TryExec proposal.
 [Code PR #544](https://github.com/patrick-hudson/put.gd-desktop/pull/544) implements
 the correction. [Configuration](../../configuration.md#launch-at-login-and-uninstall-linux)
 documents the timing, preserved preference and explicit Settings/CLI/MCP route.
-Both PRs remain drafts until current package and real-login acceptance is recorded.
+Targeted development-package and real-login acceptance is complete on five native
+and six AppImage desktop rows. The separate PRs retain the legacy-account rollout limitation explicitly.
 #382 remains open until its acceptance and merge requirements are met.
 
 ## Earlier link-removing implementation and bounded checks
@@ -70,7 +71,7 @@ sanitized retained files.
 
 ## Race fix and source-collection correction
 
-Current code commit: `18bf9f340f772490877c8a1eafc39fba4bc5708b`, tree
+Superseded race-fix commit: `18bf9f340f772490877c8a1eafc39fba4bc5708b`, tree
 `87225148c48c7d1cc932be5f7853e611cd08b6fe`.
 All five native desktop lifecycle rows completed at `b15f47d5`, then an
 additional live probe found a settings-change/uninstall race. If the executable
@@ -161,20 +162,21 @@ desktop acceptance. [Source hashes](monitor-lifecycle/source-identity.json),
 
 ## Exact package and real-login acceptance
 
-The [current full CI/package run](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40068126465)
-builds clean branch commit `d5b561dd`. Native and AppImage desktop rows are
-pending. The required native rows are Mint, Kubuntu, Debian, Fedora and the
-Ubuntu GNOME VM; AppImage additionally covers the Aurora 45 KDE VM. Each needs
-exact package identity, real login, active cleanup with the resident quit,
-next-login cleanup without a running watch, unchanged settings/data, explicit
-disable, saved visuals and memory results. The driver checks startup journal
-errors and requires complete RFB frames after the login screen is gone.
-Earlier source results do not accept the fixed build.
+All eleven targeted lifecycle rows completed at clean `d5b561dd` using actual
+CI DEB/RPM/AppImage development artifacts, with real logout/login, active cleanup
+with the resident quit, unchanged settings/data, explicit disable, reviewed
+visuals and 180-second memory observations. Both the full branch CI and the PR
+integration CI (attempt 2) passed. Fedora native's pre-existing Qt/OpenSSL strict
+map failure is preserved explicitly. See the [complete matrix, exact artifact
+hashes, annotated pictures, lab corrections and retirement receipts](package-acceptance/README.md).
 
-These are development CI artifacts. Their AppImage has no published-channel
-update information; same-channel replacement is covered by the bounded ELF
-fixture checks, and needs published-nightly evidence after merge. This work
-does not certify a stable release or replace #384's exact-release-asset campaign.
+Legacy entries in accounts that never ran the updated app cannot gain cleanup
+retroactively; the [rollout limit](package-acceptance/README.md#legacy-account-rollout-limitation)
+remains open with #382.
+
+The published-nightly check (including AppImage replacement with real update
+metadata) remains after code/docs merge. These targeted rows do not certify a
+stable release or replace #384's exact-release-asset campaign.
 
 ## Superseded retained-link evidence
 

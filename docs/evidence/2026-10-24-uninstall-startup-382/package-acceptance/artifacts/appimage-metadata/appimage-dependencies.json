@@ -1,0 +1,100 @@
+[
+  {
+    "name": "ecm",
+    "commit": "a5f0366eb92baa2a31b24e65f754fe4bc48ca28e",
+    "source": "/home/runner/work/put.gd-desktop/put.gd-desktop/build/dependencies/appimage/ecm"
+  },
+  {
+    "name": "qtkeychain",
+    "commit": "8eac9889775ca45c106d077bb0d3744754a1570a",
+    "source": "/home/runner/work/put.gd-desktop/put.gd-desktop/build/dependencies/appimage/qtkeychain"
+  },
+  {
+    "name": "layershell",
+    "commit": "b1317ba122420dd0542ad12f4780b02ba7b6288f",
+    "source": "/home/runner/work/put.gd-desktop/put.gd-desktop/build/dependencies/appimage/layershell"
+  },
+  {
+    "name": "ffmpeg",
+    "commit": "3a0867c2bfda4a4d4309ca1a8cbdc6175e67f587",
+    "source": "/home/runner/work/put.gd-desktop/put.gd-desktop/build/dependencies/appimage/ffmpeg",
+    "configure": [
+      "--enable-shared",
+      "--disable-static",
+      "--enable-pic",
+      "--disable-programs",
+      "--disable-avdevice",
+      "--disable-doc",
+      "--disable-debug",
+      "--disable-autodetect",
+      "--disable-everything",
+      "--disable-network",
+      "--disable-xlib",
+      "--enable-gpl",
+      "--enable-pthreads",
+      "--enable-avcodec",
+      "--enable-avformat",
+      "--enable-avfilter",
+      "--enable-swscale",
+      "--enable-swresample",
+      "--enable-vaapi",
+      "--enable-ffnvcodec",
+      "--enable-nvenc",
+      "--enable-libvpx",
+      "--enable-libwebp",
+      "--enable-libopus",
+      "--enable-libx264",
+      "--enable-libx265",
+      "--enable-protocol=file",
+      "--enable-demuxer=matroska,mov,gif",
+      "--enable-muxer=mp4,webm,gif,webp,matroska",
+      "--enable-decoder=h264,aac,libvpx_vp9,opus,gif,mjpeg,pcm_s16le",
+      "--enable-parser=h264,aac,vp9,opus,gif,mjpeg",
+      "--enable-bsfs",
+      "--enable-encoder=h264_vaapi,hevc_vaapi,h264_nvenc,hevc_nvenc,libx264,libx265,libvpx_vp9,gif,libwebp_anim,aac,libopus,mjpeg,pcm_s16le",
+      "--enable-filter=buffer,buffersink,abuffer,abuffersink,null,anull,trim,atrim,setpts,asetpts,format,aformat,aresample,scale,crop,avgblur,drawbox,split,overlay,fps,palettegen,paletteuse"
+    ]
+  },
+  {
+    "name": "qtbase",
+    "commit": "025bdad181de241e81bf853c8a2d7bf3d19261a9",
+    "source": "/home/runner/work/put.gd-desktop/put.gd-desktop/build/dependencies/appimage/qtbase",
+    "licenseOnly": true
+  },
+  {
+    "name": "qtwayland",
+    "commit": "c4f85cd060e3e80a7d71829defac9cf5a40e8ffa",
+    "source": "/home/runner/work/put.gd-desktop/put.gd-desktop/build/dependencies/appimage/qtwayland",
+    "licenseOnly": true
+  },
+  {
+    "name": "qtsvg",
+    "commit": "883a58532078d003cefef0a549bfe9f885ce41f5",
+    "source": "/home/runner/work/put.gd-desktop/put.gd-desktop/build/dependencies/appimage/qtsvg",
+    "licenseOnly": true
+  },
+  {
+    "name": "qtimageformats",
+    "commit": "dc13f2fbff1d579cfb2eb2d9092e3563b4d05b8e",
+    "source": "/home/runner/work/put.gd-desktop/put.gd-desktop/build/dependencies/appimage/qtimageformats",
+    "licenseOnly": true
+  },
+  {
+    "name": "qttranslations",
+    "commit": "2811457ceff8f0c24a1c4d14f947a283a17239d0",
+    "source": "/home/runner/work/put.gd-desktop/put.gd-desktop/build/dependencies/appimage/qttranslations",
+    "licenseOnly": true
+  },
+  {
+    "name": "icu",
+    "commit": "680f521746a3bd6a86f25f25ee50a62d88b489cf",
+    "source": "/home/runner/work/put.gd-desktop/put.gd-desktop/build/dependencies/appimage/icu",
+    "licenseOnly": true
+  },
+  {
+    "name": "mimalloc",
+    "commit": "8c532c32c3c96e5ba1f2283e032f69ead8add00f",
+    "source": "/home/runner/work/put.gd-desktop/put.gd-desktop/build/dependencies/appimage/mimalloc",
+    "licenseOnly": true
+  }
+]
