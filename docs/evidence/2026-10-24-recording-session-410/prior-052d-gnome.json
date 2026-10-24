@@ -1,0 +1,212 @@
+{
+  "schemaVersion": 1,
+  "status": "prior-candidate scoped result; no final-candidate acceptance",
+  "sourceCommit": "052d4363826fc01fa62a552f91db48b74667383b",
+  "sourceTree": "05c1e65a2e14c5df3e28315dadaf36aa45da3d28",
+  "sourceClean": true,
+  "host": "f44",
+  "os": "Fedora 44",
+  "desktop": "GNOME Shell 50.6",
+  "targetKind": "monitor",
+  "vm": false,
+  "startedUtc": "2026-10-24T14:54:13Z",
+  "finishedUtc": "2026-10-24T14:56:37Z",
+  "binaries": {
+    "putgd": {
+      "sha256": "5d682cee686bf69d38febdac1d51c20542007d2b9c283b3fe5e24d68e5955a83",
+      "manifest": {
+        "schemaVersion": 1,
+        "version": "26.1024.1207-dev+g052d4363826f",
+        "baseVersion": "26.1024.1207",
+        "packageVersion": "26.1024.1207~dev+g052d4363826f",
+        "gitCommit": "052d4363826fc01fa62a552f91db48b74667383b",
+        "gitTree": "05c1e65a2e14c5df3e28315dadaf36aa45da3d28",
+        "commitCount": 1207,
+        "dirty": false,
+        "sourceProvenance": "git"
+      }
+    },
+    "putgd-cli": {
+      "sha256": "f0d0aa77b0c0dd2d9192584a8c1e1a534c9509903f969d8e592514560d8472b0",
+      "manifest": {
+        "schemaVersion": 1,
+        "version": "26.1024.1207-dev+g052d4363826f",
+        "baseVersion": "26.1024.1207",
+        "packageVersion": "26.1024.1207~dev+g052d4363826f",
+        "gitCommit": "052d4363826fc01fa62a552f91db48b74667383b",
+        "gitTree": "05c1e65a2e14c5df3e28315dadaf36aa45da3d28",
+        "commitCount": 1207,
+        "dirty": false,
+        "sourceProvenance": "git"
+      }
+    },
+    "putgd-record": {
+      "sha256": "919c6e96682bff3818520c8a9bde379d2d4370743ab2a8dd2b7d289a6fb77025",
+      "manifest": {
+        "schemaVersion": 1,
+        "version": "26.1024.1207-dev+g052d4363826f",
+        "baseVersion": "26.1024.1207",
+        "packageVersion": "26.1024.1207~dev+g052d4363826f",
+        "gitCommit": "052d4363826fc01fa62a552f91db48b74667383b",
+        "gitTree": "05c1e65a2e14c5df3e28315dadaf36aa45da3d28",
+        "commitCount": 1207,
+        "dirty": false,
+        "sourceProvenance": "git"
+      }
+    }
+  },
+  "runningExecutableHashesMatch": true,
+  "graphicalSessionCorrection": {
+    "schemaVersion": 1,
+    "correctsField": "session",
+    "original": "g4 identity/summary incorrectly selected SSH self when compositor lacked XDG_SESSION_ID; originals preserved",
+    "timestampUtc": "2026-10-24T14:58:38Z",
+    "host": "fedora",
+    "compositor": {
+      "pid": 144305,
+      "uid": 1000,
+      "exe": "/usr/bin/gnome-shell",
+      "startTicks": 1414103,
+      "cgroup": "0::/user.slice/user-1000.slice/user@1000.service/session.slice/org.gnome.Shell@user.service\n"
+    },
+    "graphicalSession": {
+      "Id": "1100",
+      "User": "1000",
+      "Seat": "seat0",
+      "Type": "wayland",
+      "Desktop": null,
+      "Leader": "144202",
+      "Timestamp": "Sat 2026-10-24 01:20:43 CDT",
+      "TimestampMonotonic": "14140790842",
+      "Active": "yes",
+      "State": "active",
+      "Remote": "no",
+      "LockedHint": "no"
+    },
+    "method": "unique active local Wayland seat0 session for compositor UID, compositor generation starts within session",
+    "bootId": "6fa33c97-6c65-46ff-abfe-f5db7d3825b8"
+  },
+  "caseResults": [
+    {
+      "case": "mode-open-ready-cancel",
+      "recordingId": "f31d89b7-0be2-42c0-bb37-7310055ddaf2",
+      "passed": true,
+      "stopReason": null
+    },
+    {
+      "case": "mode-toggle-recording-cancel",
+      "recordingId": "7c99c2ae-228d-49c0-9718-22f72730d1a6",
+      "passed": true,
+      "stopReason": null
+    },
+    {
+      "case": "cli-stop-private-review",
+      "recordingId": "3b7a69e0-b1b7-49e0-b8dd-703920f4ad10",
+      "passed": true,
+      "stopReason": "user"
+    },
+    {
+      "case": "mcp-stop-private-review",
+      "recordingId": "e115a502-5b13-4268-94ef-29bb331bc671",
+      "passed": true,
+      "stopReason": "user"
+    },
+    {
+      "case": "toggle-stop-review-discard",
+      "recordingId": "b6ded3d0-81a5-454a-9af9-a89cf25ad88e",
+      "passed": true,
+      "stopReason": "user"
+    },
+    {
+      "case": "budget-stop",
+      "recordingId": "52871bf1-ea57-43fa-99bc-30922675abf0",
+      "passed": true,
+      "stopReason": "budget"
+    }
+  ],
+  "memory": {
+    "samples": 274,
+    "durationSeconds": 138.0792543380012,
+    "maxRecordingHelpers": 1,
+    "residentRssMaxBytes": 40173568,
+    "gate": "debug helper lifetime only; no RSS performance claim"
+  },
+  "helperLifecycle": {
+    "started": 6,
+    "matchedRequestedNormalZeroExits": 6
+  },
+  "visualReview": {
+    "file": "04b-live-review.png",
+    "sha256": "7391ada52e8d0383aefe1f1105b87a0561eadbb0bbdbcc7deafaaccf097faf82",
+    "reviewer": "documentation/evidence owner",
+    "result": "Live Review recording window, Discard button and complete synthetic surround visible; no private content or revealed login/credential value visible.",
+    "discardClickPointMatchesVisibleButton": [
+      1321,
+      852
+    ],
+    "pixelEditing": "none"
+  },
+  "noImplicitPayloadReported": true,
+  "noProtocolKillReported": true,
+  "limitations": [
+    "Existing physical GNOME has no put.gd Shell extension: region selection blocked in g3. Monitor capture covers changed helper/session behavior; mode open raises an explicitly prepared monitor.",
+    "Earlier 04 frame is not decisive for a mapped review window.",
+    "No identity, CI or graphical credit transfers to 102b6708 or any newer build.",
+    "Physical desktop cleanup/release receipt will be checked separately when handed off."
+  ],
+  "rawEvidence": {
+    "remoteRoot": "f44:/tmp/r410f/g4",
+    "privateWorkstationCopy": "/home/patrick/work/put.gd/work/docs410-evidence/f44-052d-g4",
+    "files": [
+      {
+        "file": "summary.json",
+        "remotePath": "/tmp/r410f/g4/summary.json",
+        "sha256": "d8d975fd94ef61440c13275f16c2e07abca9b7ff7c708136022c63f175b28fb6",
+        "sizeBytes": 40107
+      },
+      {
+        "file": "identity.json",
+        "remotePath": "/tmp/r410f/g4/identity.json",
+        "sha256": "dcda91d6e3418d81101f16e615b0456997de9b67894b4a74adbe5a2434d32df4",
+        "sizeBytes": 3262
+      },
+      {
+        "file": "memory.json",
+        "remotePath": "/tmp/r410f/g4/memory.json",
+        "sha256": "f0204d2a693762a50ff0356cd4fded9540ef74d16be3957f458b50c5aba1536b",
+        "sizeBytes": 152358
+      },
+      {
+        "file": "cli.jsonl",
+        "remotePath": "/tmp/r410f/g4/cli.jsonl",
+        "sha256": "02a9780b9c4c00f5ca4ce4285672701a0da7656cc08c64860b7fa03ab55f10e6",
+        "sizeBytes": 295525
+      },
+      {
+        "file": "mcp-stop.json",
+        "remotePath": "/tmp/r410f/g4/mcp-stop.json",
+        "sha256": "27491318a6d3d1b08f86c34103e5e9f335366f8eee0a07c95e870e2c05fde042",
+        "sizeBytes": 1326
+      },
+      {
+        "file": "discard-click.json",
+        "remotePath": "/tmp/r410f/g4/discard-click.json",
+        "sha256": "c389b2f8c62694ffb550a126ce2b3a4c56d5b4af8be0591198d544c72fafaa9a",
+        "sizeBytes": 119
+      },
+      {
+        "file": "04b-live-review.png",
+        "remotePath": "/tmp/r410f/g4/04b-live-review.png",
+        "sha256": "7391ada52e8d0383aefe1f1105b87a0561eadbb0bbdbcc7deafaaccf097faf82",
+        "sizeBytes": 53123
+      },
+      {
+        "file": "graphical-session-correction.json",
+        "remotePath": "/tmp/r410f/g4/graphical-session-correction.json",
+        "sha256": "c9badd993e1ec40477c095cfaa0e6c75e891a4e80f30ecdce7df954856f54de4",
+        "sizeBytes": 979
+      }
+    ],
+    "reportOwnerReviewSha256": "0398aa07e4299343b480608c1f99fd97da68f65156344f84787188b7028861f7"
+  }
+}

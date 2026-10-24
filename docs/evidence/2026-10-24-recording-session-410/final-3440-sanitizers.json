@@ -1,0 +1,226 @@
+{
+  "schemaVersion": 1,
+  "status": "passed relevant unsuppressed sanitizer suites and actual product capabilities probe",
+  "sourceCommit": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
+  "sourceTree": "17b445850b0f1d5258b77bf88a8ccbcc5edbb3e8",
+  "sourceCleanReported": true,
+  "host": "d69",
+  "suiteSelection": [
+    "cli_integration",
+    "recording_service_integration",
+    "recording_helper_integration"
+  ],
+  "functionFilters": [],
+  "suppressionApplied": false,
+  "productProbeExcluded": false,
+  "environmentReportedByExecutionOwner": {
+    "ASAN_OPTIONS": "detect_leaks=1:abort_on_error=1",
+    "UBSAN_OPTIONS": "print_stacktrace=1:halt_on_error=1",
+    "directProbeAdditionalAsanOption": "fast_unwind_on_malloc=0"
+  },
+  "ctest": {
+    "tests": 3,
+    "failed": 0,
+    "skipped": 0,
+    "cases": [
+      {
+        "name": "cli_integration",
+        "seconds": 43.3703,
+        "failure": false,
+        "skipped": false
+      },
+      {
+        "name": "recording_service_integration",
+        "seconds": 5.67846,
+        "failure": false,
+        "skipped": false
+      },
+      {
+        "name": "recording_helper_integration",
+        "seconds": 12.3722,
+        "failure": false,
+        "skipped": false
+      }
+    ],
+    "wallSeconds": 61.42
+  },
+  "directProductProbe": {
+    "commandSuffix": "putgd-record --capabilities",
+    "exitCodeReportedByExecutionOwner": 0,
+    "validJsonVerified": true,
+    "session": "tty",
+    "available": false,
+    "reason": "live_source_missing",
+    "sanitizerFailureSignaturesFound": false
+  },
+  "socketPreflight": {
+    "schemaVersion": 1,
+    "passed": true,
+    "limitBytesExcludingNul": 107,
+    "paths": [
+      {
+        "path": "/tmp/r410d/a344/putgd/session.sock",
+        "utf8Bytes": 34,
+        "passed": true
+      },
+      {
+        "path": "/tmp/r410d/t/test_cli-XXXXXX/runtime/session.sock",
+        "utf8Bytes": 49,
+        "passed": true
+      }
+    ]
+  },
+  "reportOwnerVerification": [
+    "All exported bytes match remote SHA-256.",
+    "Read JUnit and test summary: all three whole CTest entries passed, zero failures/skips.",
+    "Parsed direct actual-helper capabilities JSON; no ASan/LSan/UBSan failure signatures in test/probe logs.",
+    "Clean Git source/tree, all product manifests, seven executable hashes/build IDs and unsuppressed options match the saved identity receipt."
+  ],
+  "rawEvidence": {
+    "remoteRoot": "d69:/tmp/r410d",
+    "privateWorkstationCopy": "/home/patrick/work/put.gd/work/docs410-evidence/asan3440-d69",
+    "files": [
+      {
+        "file": "3440-asan-tests.log",
+        "remotePath": "/tmp/r410d/3440-asan-tests.log",
+        "sha256": "55da4c3786ca260ec676e7c5667efcc0f4ee74ba47693cd7412055d5fd9f97cd",
+        "sizeBytes": 520
+      },
+      {
+        "file": "3440-asan-junit.xml",
+        "remotePath": "/tmp/r410d/3440-asan-junit.xml",
+        "sha256": "71bef719947d193d154a2392c649b5f750f16e3b7507ff2d929185a8681eb823",
+        "sizeBytes": 4257
+      },
+      {
+        "file": "3440-asan-probe.log",
+        "remotePath": "/tmp/r410d/3440-asan-probe.log",
+        "sha256": "04d5dbce57283c0a8aaee95f0b79fa4be839578a7615743d629db5f57ec4d478",
+        "sizeBytes": 1742
+      },
+      {
+        "file": "3440-asan-probe.json",
+        "remotePath": "/tmp/r410d/3440-asan-probe.json",
+        "sha256": "a4fbeb11edca85e24dc332160efe7509d5a8eb67bd4dfb250ffe1a33b1154226",
+        "sizeBytes": 2243
+      },
+      {
+        "file": "3440-asan-socket-preflight.json",
+        "remotePath": "/tmp/r410d/3440-asan-socket-preflight.json",
+        "sha256": "5f3f48d369f280720f86c424fe77c9fe2af1cd2114b1ccd8d13306ab9ffd94de",
+        "sizeBytes": 256
+      },
+      {
+        "collectedAtUTC": "2026-10-24T15:21:06.512193+00:00",
+        "host": "d69",
+        "file": "3440-asan-identities.json",
+        "remotePath": "/tmp/r410d/3440-asan-identities.json",
+        "sha256": "e5de52c6869d7abbc08fc7c370d9c992589d36bbd45fbcd61294342b2c31a0aa",
+        "sizeBytes": 3373
+      }
+    ]
+  },
+  "limitations": [
+    "Relevant whole CTest suites and actual probe only; full Dev, whole-project sanitizer and compositor acceptance remain separate."
+  ],
+  "buildIdentity": {
+    "source": [
+      "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
+      "17b445850b0f1d5258b77bf88a8ccbcc5edbb3e8"
+    ],
+    "sourceStatus": "",
+    "host": "debian",
+    "utc": 1792855158.6973982,
+    "preset": "asan",
+    "ASAN_OPTIONS": "detect_leaks=1:abort_on_error=1",
+    "UBSAN_OPTIONS": "print_stacktrace=1:halt_on_error=1",
+    "directProbeASANOptions": "detect_leaks=1:abort_on_error=1:fast_unwind_on_malloc=0",
+    "LSAN_OPTIONS_present": false,
+    "suppressionUsed": false,
+    "functionsExcluded": [],
+    "binaries": {
+      "putgd": {
+        "sha256": "90c5d8165eb955793ee210060a645f222475bf31f9fe639f441f38424602f393",
+        "manifest": {
+          "schemaVersion": 1,
+          "version": "26.1024.1209-dev+g3440ab9c4fb6",
+          "baseVersion": "26.1024.1209",
+          "packageVersion": "26.1024.1209~dev+g3440ab9c4fb6",
+          "gitCommit": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
+          "gitTree": "17b445850b0f1d5258b77bf88a8ccbcc5edbb3e8",
+          "commitCount": 1209,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "elfBuildId": [
+          "6ad012372a26f11f5cefa46a2a85ab2f43b143a4"
+        ]
+      },
+      "putgd-cli": {
+        "sha256": "6c9d9e0f0f2647c2c7f4f94f07a3fa64d550f6a8c6a5d20d68c1d1462cffd3f1",
+        "manifest": {
+          "schemaVersion": 1,
+          "version": "26.1024.1209-dev+g3440ab9c4fb6",
+          "baseVersion": "26.1024.1209",
+          "packageVersion": "26.1024.1209~dev+g3440ab9c4fb6",
+          "gitCommit": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
+          "gitTree": "17b445850b0f1d5258b77bf88a8ccbcc5edbb3e8",
+          "commitCount": 1209,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "elfBuildId": [
+          "98e33390ae833acf701b19403c9ca8c69c2ffee0"
+        ]
+      },
+      "putgd-record": {
+        "sha256": "e236eb6aab7c456967d6e83cb77fd74b65e611e3aa9bbca2827e970231838463",
+        "manifest": {
+          "schemaVersion": 1,
+          "version": "26.1024.1209-dev+g3440ab9c4fb6",
+          "baseVersion": "26.1024.1209",
+          "packageVersion": "26.1024.1209~dev+g3440ab9c4fb6",
+          "gitCommit": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
+          "gitTree": "17b445850b0f1d5258b77bf88a8ccbcc5edbb3e8",
+          "commitCount": 1209,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "elfBuildId": [
+          "008a442c9431033715841e092a2723591e23ab30"
+        ]
+      },
+      "test_cli": {
+        "sha256": "954faae182cfde5586f86e81e3eddb9866bee14c35749e62a064af45acdc5edf",
+        "elfBuildId": [
+          "e4933e79348001966a16421b909628cc64894ca9"
+        ]
+      },
+      "test_recording_service": {
+        "sha256": "cdc2ecd6354aa452666a2ef96723e5d7b9d76d293e32553116fab82c5fe1be43",
+        "elfBuildId": [
+          "1d3230769b718a2d05dcca4fc4a71d263b06286f"
+        ]
+      },
+      "test_recording_helper": {
+        "sha256": "6c1bbbff8520e0bcc7955070e7d3eacbf2fbf97472c4e8c271f22db7e21ba6e9",
+        "elfBuildId": [
+          "20eda86ef9f14fae064295e77ea975dab978ac9a"
+        ]
+      },
+      "test_record_helper_fixture": {
+        "sha256": "e4b2013c3e5883a5426374e66cdbd3f96623068f95953a17b1b0b1f5c9acbdc4",
+        "elfBuildId": [
+          "28539f12b88280dd15aee19234a16884a6150492"
+        ]
+      }
+    },
+    "cmakeCache": [
+      "CMAKE_BUILD_TYPE:STRING=Debug",
+      "CMAKE_CXX_COMPILER:FILEPATH=/usr/bin/c++",
+      "PUTGD_SANITIZER:STRING=address-undefined",
+      "Qt6_DIR:PATH=/usr/lib/x86_64-linux-gnu/cmake/Qt6"
+    ]
+  },
+  "buildIdentitySha256": "e5de52c6869d7abbc08fc7c370d9c992589d36bbd45fbcd61294342b2c31a0aa"
+}

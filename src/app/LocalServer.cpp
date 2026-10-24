@@ -61,7 +61,8 @@ Result LocalServer::listen(const QString& supplied) {
 // when they start (see RecordingService::exportTo) and need no longer wait.
 int LocalServer::replyDeadlineMs(const QString& method) {
  constexpr int base=15000;
- if(method=="recording.stop")return recording::helperStopMs+base;
+ // A record toggle can stop the helper through action.invoke as well.
+ if(method=="recording.stop"||method=="action.invoke")return recording::helperStopMs+base;
  if(QStringList{"recording.capabilities","recording.prepare","recording.select","recording.start","recording.pause","recording.resume","recording.raise","recording.overlay","recording.preview","recording.review"}.contains(method))return recording::helperCommandMs+base;
  // Reading the logs and compressing up to 20 MiB stays well inside 45 s; an
  // upload adds the destination test and the upload itself (#123).
@@ -122,7 +123,7 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   uiCommand_("moveDestination",p,std::move(reply));return;
  }
  if(method=="action.invoke") {
-  if(!fields(p,{"action"},{"source","path"})||!string(p,"action")||(p.contains("source")&&!string(p,"source",32))||(p.contains("path")&&!string(p,"path",4096))){reply(invalid(),{});return;}
+  if(!fields(p,{"action"},{"source","path","mode"})||!string(p,"action")||(p.contains("source")&&!string(p,"source",32))||(p.contains("path")&&!string(p,"path",4096))||(p.contains("mode")&&(p["action"]!="record"||!string(p,"mode",16)))){reply(invalid(),{});return;}
   auto options=p;options.remove("action");operations_.invoke(p["action"].toString(),reply,options);return;
  }
  if(method=="editor.open") {

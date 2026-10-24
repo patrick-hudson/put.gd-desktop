@@ -1,5 +1,6 @@
 #include "fixtures/U2Fixtures.h"
 #include "app/LocalServer.h"
+#include "fixtures/FakeRecordingBackend.h"
 #include "client/SessionClient.h"
 #include <QLocalSocket>
 #include <QLocalServer>
@@ -15,6 +16,24 @@ class CliContract:public QObject {
  Q_OBJECT
  static QJsonObject raw(const QString& path,const QByteArray& bytes) {QLocalSocket socket;socket.connectToServer(path);if(!socket.waitForConnected(1000))return {};socket.write(bytes);QElapsedTimer timer;timer.start();QByteArray response;while(timer.elapsed()<putgd::test::scaled(5000)&&!response.contains('\n')) {QCoreApplication::processEvents();response+=socket.readAll();putgd::test::settle(1);}return QJsonDocument::fromJson(response).object();}
 private slots:
+ void recordToggleWaitsForASlowStopThroughTheRealClient(){
+  QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));Source source;
+  OperationService ops(d.filePath("data"),settings,registry,source);auto owned=std::make_unique<FakeRecordingBackend>();auto* backend=owned.get();ops.setRecordingBackend(std::move(owned));
+  HistoryService history(ops);LocalServer server(settings,ops,history);QVERIFY(server.listen(d.filePath("runtime")));PUTGD_TRY_VERIFY(ops.ready());
+  auto request=[&](const QString& method,const QJsonObject& params){QProcess client;client.start(PUTGD_CLI_PATH,{"--socket",server.socketPath(),method,QString::fromUtf8(QJsonDocument(params).toJson(QJsonDocument::Compact))});(void)putgd::test::waitFor([&]{return client.state()==QProcess::NotRunning;});return QJsonDocument::fromJson(client.readAllStandardOutput()).object();};
+  auto invoke=[&](const QString& mode){return request("action.invoke",{{"action","record"},{"mode",mode}});};
+  const auto prepared=invoke("open");QVERIFY(prepared["ok"].toBool());const auto id=prepared["result"].toObject()["recordingId"].toString();QVERIFY(!id.isEmpty());
+  PUTGD_TRY_COMPARE(request("recording.inspect",{{"id",id}})["result"].toObject()["state"].toString(),QString("ready"));QCOMPARE(invoke("toggle")["result"].toObject()["step"].toString(),QString("start"));
+  backend->deferStop=true;QProcess client;client.start(PUTGD_CLI_PATH,{"--socket",server.socketPath(),"action.invoke","{\"action\":\"record\",\"mode\":\"toggle\"}"});PUTGD_TRY_VERIFY(backend->pendingStop);
+  // Outlast action.invoke's former 15 s client budget, within the helper's 30 s.
+  QTimer::singleShot(16000,Qt::PreciseTimer,&ops,[backend]{auto done=std::move(backend->pendingStop);done({},{{"durationUs",12000000.0},{"canvas",QJsonArray{1280,720}}});});
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(client.state(),QProcess::NotRunning,LocalServer::replyDeadlineMs("recording.stop")+1000);
+  QCOMPARE(client.exitCode(),0);const auto stopped=QJsonDocument::fromJson(client.readAllStandardOutput()).object();QVERIFY(stopped["ok"].toBool());
+  QCOMPARE(stopped["result"].toObject()["step"].toString(),QString("stop"));QCOMPARE(stopped["result"].toObject()["stopReason"].toString(),QString("user"));
+  client.start(PUTGD_CLI_PATH,{"--socket",server.socketPath(),"recording.inspect",QString("{\"id\":\"%1\"}").arg(id)});PUTGD_TRY_COMPARE(client.state(),QProcess::NotRunning);
+  auto expected=stopped["result"].toObject();expected.remove("step");QCOMPARE(QJsonDocument::fromJson(client.readAllStandardOutput()).object()["result"].toObject(),expected);
+  QVERIFY(request("recording.cancel",{{"id",id}})["ok"].toBool());
+ }
  void historyImageEndpointAcceptsOnlyJournalId(){
   QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config/config.json"));Source source;OperationService operations(d.filePath("data"),settings,registry,source);HistoryService history(operations);LocalServer server(settings,operations,history);PUTGD_TRY_VERIFY(operations.ready());
   for(const auto& params:QList<QJsonObject>{QJsonObject{{"id","missing"}},QJsonObject{{"id","missing"},{"path","/synthetic/untrusted.png"}},QJsonObject{{"id",QJsonArray{}}}}){bool done=false;Error error;server.dispatch({{"schemaVersion",1},{"requestId","image"},{"session",server.socketPath()},{"method","history.copyImage"},{"params",params}},[&](Error e,QJsonObject){error=e;done=true;});PUTGD_TRY_VERIFY(done);QCOMPARE(error.code,params.size()==1&&params["id"].isString()?QString("history_not_found"):QString("invalid_request"));}QCOMPARE(source.copies,0);QCOMPARE(source.reads,0);

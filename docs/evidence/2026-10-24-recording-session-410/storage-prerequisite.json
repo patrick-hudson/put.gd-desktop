@@ -1,0 +1,274 @@
+{
+  "schemaVersion": 1,
+  "status": "Current796d read-only host proof,14-test logs, requiredCI, focused root review and optional review complete at their stated scope.",
+  "codePullRequest": "https://github.com/patrick-hudson/put.gd-desktop/pull/556",
+  "driverCommit": "796d41f291f34aabe60064ae1ac86ad2b221941e",
+  "driverTree": "788d74b5aae77ca60049d37b0ea41c043ab2fe0f",
+  "driverSha256": "9ce6980c0348201a5229b81e60117ca3c0493f812808ac53f1969be5a6fd769d",
+  "scope": "read-only storage prerequisite; no product/desktop acceptance",
+  "originalFailedGate": {
+    "path": "/tmp/r410f/cinnamon-storage-preflight.json",
+    "sha256": "9a4549d37d9e48c43ee874fa2a6fe20516fdebb61d4c15a1b5473daee5c091b1",
+    "bytes": 749,
+    "mode": "0o600",
+    "mtimeNs": 1792854332514614762
+  },
+  "originalBytesMatchIndependentlyCollectedFailure": true,
+  "preservedPredecessorReceipts": {
+    "preservedPredecessorReceipt": {
+      "path": "/tmp/r410f/cinnamon-storage-preflight-0dbc312c.json",
+      "sha256": "69d5f95d03277f77a096441ba46aa2df24b3f6f19d253c796d032ca593a106e3",
+      "bytes": 2564,
+      "mode": "0o600",
+      "mtimeNs": 1792854906198177049
+    },
+    "preservedImmediatePredecessorReceipt": {
+      "path": "/tmp/r410f/cinnamon-storage-preflight-f1883c9f.json",
+      "sha256": "b38409b6eab6971c0d442468b1eb2b79cb69c5ee065180774ebaadfd17463252",
+      "bytes": 2712,
+      "mode": "0o600",
+      "mtimeNs": 1792855499570948304
+    }
+  },
+  "predecessorDriverCommits": [
+    "0dbc312cdc4213842b2827b4f5af68cdb23e05c9",
+    "f1883c9fa23a72ab6aa3f539d8f751a95b476a77"
+  ],
+  "priorReportPrivatePath": "/home/patrick/work/put.gd/work/docs410-evidence/storage-prerequisite-f188-report.json",
+  "correctedGate": {
+    "schemaVersion": 2,
+    "timestampUtc": "2026-10-24T15:29:33.465492+00:00",
+    "hostAvailableBytes": 713978998784,
+    "hostPassed": true,
+    "hostAvailableInodes": null,
+    "hostFilesystem": {
+      "path": "/home/patrick/work/put.gd",
+      "device": 50,
+      "filesystemType": "btrfs",
+      "filesystemMagic": "9123683e",
+      "identificationErrorType": null,
+      "statvfs": {
+        "f_bavail": 174311279,
+        "f_bfree": 174981231,
+        "f_blocks": 243665664,
+        "f_bsize": 4096,
+        "f_favail": 0,
+        "f_ffree": 0,
+        "f_files": 0,
+        "f_flag": 4096,
+        "f_frsize": 4096,
+        "f_fsid": 16985070149090610112,
+        "f_namemax": 255
+      },
+      "availableBytes": 713978998784,
+      "totalBytes": 998054559744,
+      "availableInodes": null,
+      "inodeAccounting": "dynamic",
+      "inodeCheckPassed": true
+    },
+    "hostErrorType": null,
+    "hostExpectedGrowthBytes": 0.0,
+    "hostReserveGiB": 10,
+    "guestReserveGiB": 2,
+    "expectedBuildGiB": 0.0,
+    "guests": [
+      {
+        "run": "/home/patrick/work/put.gd/work/lab-runs/i410c1",
+        "filesystems": {
+          "home": {
+            "path": "/home/lab",
+            "device": 64771,
+            "filesystemType": "ext2/ext3",
+            "filesystemMagic": "ef53",
+            "identificationErrorType": null,
+            "statvfs": {
+              "f_bavail": 5061236,
+              "f_bfree": 5478157,
+              "f_blocks": 8081868,
+              "f_bsize": 4096,
+              "f_favail": 1576773,
+              "f_ffree": 1576773,
+              "f_files": 2064384,
+              "f_flag": 4096,
+              "f_frsize": 4096,
+              "f_fsid": 9855963986932123218,
+              "f_namemax": 255
+            },
+            "availableBytes": 20730822656,
+            "totalBytes": 33103331328,
+            "availableInodes": 1576773,
+            "inodeAccounting": "reported",
+            "inodeCheckPassed": true
+          },
+          "tmp": {
+            "path": "/tmp",
+            "device": 64771,
+            "filesystemType": "ext2/ext3",
+            "filesystemMagic": "ef53",
+            "identificationErrorType": null,
+            "statvfs": {
+              "f_bavail": 5061236,
+              "f_bfree": 5478157,
+              "f_blocks": 8081868,
+              "f_bsize": 4096,
+              "f_favail": 1576773,
+              "f_ffree": 1576773,
+              "f_files": 2064384,
+              "f_flag": 4096,
+              "f_frsize": 4096,
+              "f_fsid": 9855963986932123218,
+              "f_namemax": 255
+            },
+            "availableBytes": 20730822656,
+            "totalBytes": 33103331328,
+            "availableInodes": 1576773,
+            "inodeAccounting": "reported",
+            "inodeCheckPassed": true
+          }
+        },
+        "passed": true
+      }
+    ],
+    "passed": true,
+    "readOnly": true
+  },
+  "correctedGateSha256": "0aae6c7de056a89b3f690fcb671a87084ad3fb7fd71e73e98c7cf03deca5dd37",
+  "historicalCommand": [
+    "python3",
+    "/home/patrick/work/btrfs-preflight-796d41f2/tools/lab/storage_preflight.py",
+    "--run",
+    "/home/patrick/work/put.gd/work/lab-runs/i410c1",
+    "--host-path",
+    "/home/patrick/work/put.gd",
+    "--expected-build-gib",
+    "0",
+    "--output",
+    "/tmp/r410f/cinnamon-storage-preflight-796d41f2.json"
+  ],
+  "historicalCwd": "/home/patrick/work/i410",
+  "commandExitCode": 0,
+  "runIdentity": {
+    "id": "1543038f-acf2-4140-b4ac-f432cebb06a4",
+    "profile": "cinnamon-x11",
+    "ssh_port": 22220,
+    "vnc_port": null,
+    "pid": 165763
+  },
+  "finiteHostControl": {
+    "schemaVersion": 2,
+    "scope": "real read-only host-only finite-inode capacity proof; no guest or desktop acceptance",
+    "timestampUtc": "2026-10-24T15:29:34.249811+00:00",
+    "host": "debian",
+    "kernel": "6.12.107+deb13-amd64",
+    "driverCommit": "796d41f291f34aabe60064ae1ac86ad2b221941e",
+    "driverTree": "788d74b5aae77ca60049d37b0ea41c043ab2fe0f",
+    "driverSha256": "9ce6980c0348201a5229b81e60117ca3c0493f812808ac53f1969be5a6fd769d",
+    "testExitCode": 0,
+    "filesystem": {
+      "path": "/home/patrick/work/put.gd",
+      "device": 2050,
+      "filesystemType": "ext2/ext3",
+      "filesystemMagic": "ef53",
+      "identificationErrorType": null,
+      "statvfs": {
+        "f_bavail": 39310984,
+        "f_bfree": 45092616,
+        "f_blocks": 113456240,
+        "f_bsize": 4096,
+        "f_favail": 27584902,
+        "f_ffree": 27584902,
+        "f_files": 28893184,
+        "f_flag": 4096,
+        "f_frsize": 4096,
+        "f_fsid": 10063896516400431944,
+        "f_namemax": 255
+      },
+      "availableBytes": 161017790464,
+      "totalBytes": 464716759040,
+      "availableInodes": 27584902,
+      "inodeAccounting": "reported",
+      "inodeCheckPassed": true
+    },
+    "mount": {
+      "filesystems": [
+        {
+          "target": "/",
+          "fstype": "ext4",
+          "maj:min": "8:2"
+        }
+      ]
+    },
+    "hostReserveGiB": 10,
+    "expectedBuildGiB": 0,
+    "guestCount": 1,
+    "passed": true,
+    "readOnly": true
+  },
+  "focusedTests": {
+    "f44": {
+      "count": 14,
+      "passed": true,
+      "rawLogSha256": "a969b166c71b844c169eb9db1c794421cb1693cf85fb4fbae3001f5406b8fad7"
+    },
+    "d69": {
+      "count": 14,
+      "passed": true,
+      "rawLogSha256": "3bff0bea1acd9b55226c47627baadc09a90bbb2b45f5244839dc0e593492232e"
+    },
+    "local": "14 passed per implementation owner; not rerun by report owner"
+  },
+  "reviewResolutions": [
+    {
+      "finding": "On0dbc host stat TimeoutExpired could escape before writing failed receipt.",
+      "correction": "f188 retains raw capacity when available, sanitized identificationErrorType/hostErrorType, unknown accounting, failed receipt and exit2; closes descriptor even on inner identification failure.",
+      "verification": "Current796d14-test logs and actual-host driver/receipts hash-verified; exact-head requiredCI passed and root final focused review clear. Predecessor receipts retain their own identities."
+    },
+    {
+      "finding": "f188 could retain malformed one-colon filesystem/magic text.",
+      "correction": "796d validates bounded ASCII filesystem name and hexadecimal magic before assigning identity; invalid text becomes InvalidResponse with null identity, preserving raw metrics/device.",
+      "verification": "Current796d14-test logs and actual-host driver/receipts hash-verified; exact-head requiredCI passed and root final focused review clear. Predecessor receipts retain their own identities."
+    }
+  ],
+  "currentRequiredCi": {
+    "headCommit": "796d41f291f34aabe60064ae1ac86ad2b221941e",
+    "runURL": "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40107259458",
+    "result": "success",
+    "selectedJobs": {
+      "contracts": "success",
+      "changes": "success",
+      "CI": "success"
+    },
+    "otherLanes": "intentionally unselected for contract-only paths; no product-build credit",
+    "privateReceipt": "/home/patrick/work/put.gd/work/stable-closeout-410-495-379/btrfs-preflight-796d41f2/ci-run-40107259458.json",
+    "sha256": "23be64bf7f1cb2490f9c554549dec978fc459e7fc7653980d3df2a96c8d3daac"
+  },
+  "currentRootReview": {
+    "reviewer": "Coordinator 05841927-1f2e-40c5-958c-68fbebf5805a",
+    "commit": "796d41f291f34aabe60064ae1ac86ad2b221941e",
+    "result": "No actionable code findings",
+    "scope": "Read full f188..796d delta; bounded fullmatch and tests resolve malformed-single-colon/private-text issue. Independently reran protected:opaque synthetic case: InvalidResponse/None identity, text withheld, raw capacity retained, fail closed. No filesystem support/reserve/growth/ownership/device relaxation. Recomputed all12 final exported catalog hashes.",
+    "limits": "Root did not rerun all14 tests or real SSH/GUI workflows; reported three-environment focused tests and actual f44/d69 proof retain their scope.",
+    "receiptSha256": "dc5d59b3f824796554d0ba05df767f73adf3f98d52e76325de97bee553fb8c42"
+  },
+  "rawEvidence": {
+    "privateExport": "/home/patrick/work/put.gd/work/stable-closeout-410-495-379/btrfs-preflight-796d41f2",
+    "catalogSha256": "171d564f79e0dea3f5bf249a52e45b1b8445ff588454b273fd620322ffafdae6",
+    "all12IndexedFilesVerified": true
+  },
+  "limitations": [
+    "Read-only capacity proof; no product/desktop/lifecycle acceptance.",
+    "Predecessor CI/review is not transferred to796d.",
+    "Recording and prerequisite code must precede companion documentation."
+  ],
+  "currentOptionalReview": {
+    "result": "success",
+    "completedUtc": "2026-10-24T15:46:23Z",
+    "basis": "final execution-owner handoff; final review dispositions archived privately",
+    "discussionDispositions": {
+      "predecessorTimeout": "resolved/outdated",
+      "newFindings": 0,
+      "unresolvedDiscussions": 0
+    },
+    "dispositionsSha256": "d99c6a54a2a458ff7d16fc2aaef24da4644cf1488ec8b95e3fb1f711ec6ec55e"
+  }
+}

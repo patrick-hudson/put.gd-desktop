@@ -195,6 +195,9 @@ void RecordingHelperBackend::receive(quint64 generation, const QString& type, co
     }
     if (!child_->ready) { failChild(generation, helperError("recording_helper_protocol", "The recording helper spoke before ready")); return; }
     if (type == "commandResult") {
+        // discard() already settled and cleared these requests. The helper can
+        // still answer cancel (or an earlier command) while it tears down.
+        if (child_->shuttingDown) return;
         const auto requestId = payload["requestId"].toString();
         auto found = child_->outstanding.find(requestId);
         if (found == child_->outstanding.end() || !payload["ok"].isBool()) { failChild(generation, helperError("recording_helper_protocol", "The recording helper answered an unknown request")); return; }
