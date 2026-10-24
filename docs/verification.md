@@ -64,7 +64,12 @@ interval ran in the later m4 attempt either: the controller retained its
 complete host observation, then refused a new unmeasured `mintUpdate` row before
 driver launch. No CPU percentage or heavy load is inferred. Its 12-file export
 is checksum-verified; the original VM resumed and the matching lease released
-verified-clean at 18:36:08 UTC. No capture,
+verified-clean at 18:36:08 UTC. A later m5 attempt likewise refused before
+launch on an exited kernel worker with no after sample; all 332 observed rows
+and the unchanged refusal are retained without a CPU percentage or heavy-load
+inference. Its 12-file export is verified; the original VM resumed and m74
+released verified-clean at 19:03:35 UTC. Neither attempt produced benchmark
+cleanup flags or numerical metrics. No capture,
 memory, history, burst or network gate is accepted. Driver hardening (#495,
 PR #554) and the performance driver (PR #555) remain separately identified code
 work; old history-growth revisions are held. Unbudgeted response thresholds require

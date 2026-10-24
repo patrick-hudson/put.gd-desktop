@@ -1,0 +1,195 @@
+{
+  "schemaVersion": 1,
+  "run": "m5",
+  "status": "coordinator_admission_refused_before_driver",
+  "accepted": false,
+  "plannedScenario": "memory",
+  "plannedDriverRevision": "fd259fae36a0643d198a8730770bcefc6297d9ac",
+  "plannedDriverArchiveSha256": "237c4a0edc55b19d93348e728745ff6b25d9adbe9933275817274bbbe225733e",
+  "controllerSourceSha256": "57460ab45ecebd03601911d31d992e76c2578062238b895a01125aa503e81672",
+  "controllerStartedUtc": "2026-10-24T19:03:06.049268+00:00",
+  "driverLaunched": false,
+  "benchmarkResidentOrGuiLaunched": false,
+  "benchmarkOutputCreated": false,
+  "scoredIntervalsStarted": false,
+  "metrics": {},
+  "failure": {
+    "type": "Refusal",
+    "code": "unknown_activity_unmeasured",
+    "classification": "Operational host-admission refusal only; no driver/product failure, heavy-load inference or numerical performance acceptance"
+  },
+  "productInstallation": {
+    "packageSha256": "2094fd4db8cd915b02f1cdd16eb5c99bb8191948931cd2f558a89c59be5b3f47",
+    "manifest": {
+      "schemaVersion": 1,
+      "version": "26.1024.1185-nightly",
+      "baseVersion": "26.1024.1185",
+      "packageVersion": "26.1024.1185~nightly",
+      "gitCommit": "9dfac15c1ced201d13a2b70a8afb0c253213768b",
+      "gitTree": "4e96912274d9220ba9476bd1b50333f6cf738f4f",
+      "commitCount": 1185,
+      "dirty": false,
+      "sourceProvenance": "git"
+    },
+    "changes": [
+      "Inst putgd (26.1024.1185~nightly local-deb [amd64])"
+    ],
+    "dependenciesAdded": [],
+    "scope": "Install verification/version query only; benchmark/resident/helper GUI did not start"
+  },
+  "observation": {
+    "samplingScope": "Operational10second host-admission sample, not a product300second idle interval",
+    "actualElapsedSeconds": 10.03398313204525,
+    "clockTicksPerSecond": 100,
+    "retainedRows": 332,
+    "snapshotErrors": [],
+    "savedBeforePredicate": true,
+    "refusedRow": {
+      "pid": 642328,
+      "startTicks": 26484714,
+      "uid": 0,
+      "parentPid": 2,
+      "comm": "kworker/2:1-cgroup_destroy",
+      "executableName": null,
+      "state": "exited",
+      "beforeCpuTicks": 0,
+      "afterCpuTicks": null,
+      "deltaCpuTicks": null,
+      "cpuPercentOneCore": null,
+      "identifiedControllerOrSharedDescendant": false,
+      "unexplained": true
+    },
+    "knownPausedVmDeltaCpuTicks": 0,
+    "noCpuPercentageInferredForRefusedRow": true
+  },
+  "hostSession": {
+    "host": "m74",
+    "placement": "physical",
+    "desktopSession": "c89",
+    "display": ":0",
+    "type": "x11",
+    "sessionRevalidated": true
+  },
+  "cleanup": {
+    "lockAcquiredUtc": "2026-10-24T19:03:07Z",
+    "vmPauseVerifiedUtc": "2026-10-24T19:03:17.265138+00:00",
+    "originalVmRunningAgainVerifiedUtc": "2026-10-24T19:03:28.433028+00:00",
+    "verifiedReleaseUtc": "2026-10-24T19:03:35.167707+00:00",
+    "leaseReleaseReceipt": "2026-10-24T19-03-35Z-release.json",
+    "packagePurged": true,
+    "remainingOwnedProcesses": [],
+    "matchingLeaseReleased": true,
+    "noRetryOrServiceChange": true,
+    "benchmarkResidentCleanupProduced": false,
+    "inventoryFlagScope": "No benchmark resident existed; do not fabricate inventoryComplete/absenceVerified or memory gate proof"
+  },
+  "visuals": {
+    "newFrameCaptured": false,
+    "reason": "Refusal preceded benchmark/static-cover/GUI launch; no unrelated desktop image was taken"
+  },
+  "privateEvidence": {
+    "originalsRetained": true,
+    "remoteRoot": "m74:~/putgd-lab/p379/controllers/m5",
+    "exportFileCount": 12,
+    "archiveSha256": "9bb38c7501d326d7c8790323a10969ca1dd64615b7889eb95722344c316085ed",
+    "exportManifestSha256": "a27d3c0feffba64341229bd6e17ce43837d925253eb4258e45c9261bd7840f11",
+    "allExportedFileHashesVerified": true,
+    "localOriginalHashes": {
+      "controller.json": "cae8ff5e742313d9167a02096e06c25f223d0692628315758ba4c873cb9cb662",
+      "controller.json.acquire-intent.json": "005ff319a3d7e42d50fc235e1b3c166ae0f74f6ff848fb724b4c1e2252d95e39",
+      "admission-refusal-summary.json": "af1ac5615e438a86ea50b35dfcffc44822d89753b439b8e2575031dab2d77309"
+    },
+    "remoteOriginalFileHashes": [
+      {
+        "path": "controllers/m5/config.json",
+        "sha256": "5687681c4e7aa46ecaf7d0e44cc3c61b892e6454407c7c3586eaa5c94d60af6a",
+        "bytes": 7070,
+        "mode": "0o600",
+        "uid": 1000
+      },
+      {
+        "path": "controllers/m5/install.log",
+        "sha256": "fc12c8a1e897b0175dcbf12216f04bedd67146a3d1e247574a5f1311b2d7901c",
+        "bytes": 1975,
+        "mode": "0o664",
+        "uid": 1000
+      },
+      {
+        "path": "controllers/m5/journal.json",
+        "sha256": "5fe387c5cc15ee0c7e234ed1ec1d98275f88c8bc82c50719a7b8de4a0fe926ad",
+        "bytes": 1810,
+        "mode": "0o600",
+        "uid": 1000
+      },
+      {
+        "path": "controllers/m5/observation.json",
+        "sha256": "cc1d0a38169b47ae1ab231604caef52210c199fbfc7fb01d54ef8db3764452c5",
+        "bytes": 312966,
+        "mode": "0o600",
+        "uid": 1000
+      },
+      {
+        "path": "controllers/m5/pause.json",
+        "sha256": "cf9e36a84ba939ee3db745ea588bb600d231ef736f688f81529051beeb00313b",
+        "bytes": 562,
+        "mode": "0o600",
+        "uid": 1000
+      },
+      {
+        "path": "controllers/m5/purge.log",
+        "sha256": "f132616dff96641699dfb3a9218c03bfb24157dfe2d1a49ee37635674a7d5cac",
+        "bytes": 2051,
+        "mode": "0o664",
+        "uid": 1000
+      },
+      {
+        "path": "controllers/m5/remaining.json",
+        "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+        "bytes": 3,
+        "mode": "0o600",
+        "uid": 1000
+      },
+      {
+        "path": "controllers/m5/resume.json",
+        "sha256": "a75da761f617961b3323d87890aa0af0851406dc2d002ce71239483a17362a3f",
+        "bytes": 562,
+        "mode": "0o600",
+        "uid": 1000
+      },
+      {
+        "path": "controllers/m5/source.py",
+        "sha256": "57460ab45ecebd03601911d31d992e76c2578062238b895a01125aa503e81672",
+        "bytes": 44155,
+        "mode": "0o600",
+        "uid": 1000
+      },
+      {
+        "path": "receipts/m5-source-staged.json",
+        "sha256": "fec3f5ea9a58ce727098f3b2492f798e790506dc7300167c981ad60d74fb2f0d",
+        "bytes": 4852,
+        "mode": "0o600",
+        "uid": 1000
+      },
+      {
+        "path": "receipts/m5-admission-readonly.json",
+        "sha256": "ee4162216d3c1b8f178c9b707d3149ba2696f40b1bec91a77ab0fe66efd62e53",
+        "bytes": 7918,
+        "mode": "0o600",
+        "uid": 1000
+      },
+      {
+        "path": "locks/history/2026-10-24T19-03-35Z-release.json",
+        "sha256": "aa66f01d5b9b22a20b12c8faa57a6b65880b241c173cb1774435a96e18b5c71e",
+        "bytes": 661,
+        "mode": "0o664",
+        "uid": 1000
+      }
+    ]
+  },
+  "limits": [
+    "No CPUpercentage/heavywork inference for exited kernelworker row without after sample",
+    "No controller/criterion/process/service change or whitelist; no retry under M5",
+    "M1 pilot/M2preinterval/M3unlaunched/M4refusal limitations stay unchanged",
+    "Further physical work requires its own explicit allocation and reviewed controller; current M5 consumed"
+  ]
+}

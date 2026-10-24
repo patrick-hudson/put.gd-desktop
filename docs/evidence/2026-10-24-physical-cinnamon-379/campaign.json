@@ -43,11 +43,11 @@
     "codePullRequest": "https://github.com/patrick-hudson/put.gd-desktop/pull/555",
     "acceptanceReviewStatus": "changes_required; pilot evidence only until corrected reviewed driver rerun",
     "historyGrowHold": "Only root-cleared producer 72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e is staged/hash-verified; not yet executed in this campaign. All old revisions remain held.",
-    "nextPhysicalRunHold": "No performance gate accepted; M4 admission refused before driver, and each further physical attempt requires a separately reviewed allocation. Existing frozen budgets and historical limits remain unchanged.",
+    "nextPhysicalRunHold": "No performance gate accepted; M4 and M5 admission refused before driver. No repeat on controller57460; an off-host whole-host CPU-envelope candidate needs review and a separate allocation. Historical observations and approved budgets stay unchanged.",
     "sourceCommitScope": "First physical pilot batch only; each later attempt keeps its separate actual/planned identities",
     "currentReviewedDriver": {
       "revision": "fd259fae36a0643d198a8730770bcefc6297d9ac",
-      "review": "R8source/controlclear; currentselectedCIgreen; M4didnotlaunchit"
+      "review": "R8source/controlclear; currentselectedCIgreen; M4andM5didnotlaunchit"
     }
   },
   "approvedBudgets": {
@@ -97,7 +97,8 @@
     "batch1-cleanup.json",
     "attempt-m2.json",
     "attempt-m3.json",
-    "attempt-m4.json"
+    "attempt-m4.json",
+    "attempt-m5.json"
   ],
   "limitations": [
     "Campaign in progress; no performance acceptance pass claimed",
@@ -147,6 +148,14 @@
     {
       "id": "m4",
       "summary": "attempt-m4.json",
+      "status": "coordinator_admission_refused_before_driver",
+      "plannedDriverRevision": "fd259fae36a0643d198a8730770bcefc6297d9ac",
+      "driverLaunched": false,
+      "accepted": false
+    },
+    {
+      "id": "m5",
+      "summary": "attempt-m5.json",
       "status": "coordinator_admission_refused_before_driver",
       "plannedDriverRevision": "fd259fae36a0643d198a8730770bcefc6297d9ac",
       "driverLaunched": false,

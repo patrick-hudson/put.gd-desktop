@@ -139,6 +139,15 @@ encoder process. Other low-activity desktop services and the wall stayed up.
   product/driver failure. No benchmark profile, GUI, cover, image or scored
   interval was created. The service and admission criterion were unchanged.
 
+
+- **m5: exited-process admission refusal; no benchmark launch.**
+  [The retained record](attempt-m5.json) contains all 332 rows from the
+  10.033983-second, HZ=100 observation, saved before predicates. One exited
+  kernel worker had a before value of zero ticks and no after sample. Its
+  delta and percentage remain unavailable. The unchanged controller refused
+  `unknown_activity_unmeasured`; no heavy-load or product conclusion follows.
+  No benchmark profile, GUI, cover, frame or scored interval was created.
+
 ![c1 post-cancellation recovery frame: only synthetic background, no selector-paint claim](c1-witness-failure.png)
 
 This is an annotated recovery frame from the tested nightly after the failed
@@ -210,6 +219,16 @@ remain on m74, with a restore index. No retry ran under that allocation.
 No benchmark-resident cleanup receipt exists because the driver never started;
 these resource-cleanup receipts cannot substitute for the required complete
 inventory, verified absence, normal exit and full-interval performance proof.
+
+
+For m5, the lease ran **19:03:07–19:03:35 UTC**. The same original VM was
+verified running again at 19:03:28 UTC, only the run-owned package was purged,
+and the matching lease released verified-clean. All 12 original files and
+three local receipts are hash-verified, with a separate restore manifest and
+private archive; originals remain in place. No benchmark cleanup flags are
+invented for an unlaunched resident. This allocation is consumed. Further
+work requires reviewed admission logic and a separate allocation; no process
+or service was changed or whitelisted and no retry ran.
 
 ### Actual-frame privacy audit
 
