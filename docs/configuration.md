@@ -65,7 +65,8 @@ the same path can reactivate it.
 The AppImage entry uses its persistent login script rather than a temporary
 mount path. If the configured image is gone, the script can start an eligible
 same-channel image beside it; if none remains, it exits successfully without a
-message. An image that still exists but is not executable reports an error.
+message. If no eligible replacement can start, an image that still exists but
+is not executable reports an error.
 
 To remove the managed entry and script, turn off **Launch at login** while put.gd
 is running, before uninstalling. The CLI uses the same saved preference:

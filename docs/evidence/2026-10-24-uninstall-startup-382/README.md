@@ -39,7 +39,7 @@ actual package removal, a real login, memory, or a stable release.
   independent of a temporary mount. [CTest](ctest.log), [JUnit](ctest.xml).
 - All **18** `tests/unit/test_appimage_login_start.py` tests passed. Missing
   images, a missing image directory and a missing development image leave a
-  quiet successful preference. An existing non-executable image still fails;
+  quiet successful preference. An existing non-executable image with no eligible replacement still fails;
   channel, ownership, permission, symlink and update-selection tests also pass.
   [Script output](appimage-script.log).
 - The [production resident/CLI check](cli-result.json) passed with private XDG
