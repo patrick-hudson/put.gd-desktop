@@ -3,13 +3,13 @@
   "issue": 495,
   "date": "2026-10-24",
   "scope": "Native acceptance lab driver documentation; no new release acceptance claim",
-  "status": "early-driver-committed-awaiting-desktop-results",
-  "codePullRequest": null,
+  "status": "driver-pr-open-awaiting-final-evidence",
+  "codePullRequest": "https://github.com/patrick-hudson/put.gd-desktop/pull/554",
   "driver": {
     "path": "tools/lab/native_acceptance.py",
-    "commit": "9b9753cae64747c897f1512d3a7d821594765010",
-    "sha256": "27d494fc83954ca715fdc6a23bfb03c4d919fc399c069df4c7dcf559d85ed5eb",
-    "stage": "early-handoff-unmerged-harness",
+    "commit": "826c255a4023daad88d07afb2b82d558f86c9d69",
+    "sha256": "8ef8180e0c6ee9eef040eab633589e93a51b26db30d600ce10b16306656e8e3e",
+    "stage": "draft-code-pr-unmerged-harness",
     "productCliCapabilitiesChanged": false
   },
   "historicalEvidence": {
@@ -52,12 +52,19 @@
   "automatedChecks": [
     {
       "path": "tests/desktop/test_native_acceptance.py",
-      "commit": "9b9753cae64747c897f1512d3a7d821594765010",
-      "testCount": 14,
-      "secondsReported": 2.2,
+      "commit": "826c255a4023daad88d07afb2b82d558f86c9d69",
+      "testCount": 17,
+      "host": "k72",
       "status": "code-owner-reported-pass",
       "savedLog": "pending",
       "scope": "synthetic safety/history-shape contracts; no real desktop or keychain proof"
+    },
+    {
+      "path": "tools/lab/sycoca_probe",
+      "commit": "826c255a4023daad88d07afb2b82d558f86c9d69",
+      "host": "k72",
+      "status": "code-owner-reported-build-pass",
+      "scope": "distro-linked Qt6/KF6Service helper build"
     }
   ],
   "desktopRuns": [],
@@ -70,13 +77,62 @@
     "Current keyring setup must be inspected before any real keychain lifecycle claim"
   ],
   "sourceHashes": {
-    "tools/lab/native_keychain.py": "a7dd277a99e286a628eaa7faef5df6ae0e7c39158643994eca8c4abf67e9a5b1",
-    "tests/desktop/test_native_acceptance.py": "9f15df7847c8b66be39bea4570ed9e9ad908533c031016fd46e9fef768140521"
+    "tools/lab/native_keychain.py": "28b3977417822ce2f0c662d81b49ec388f82e3d8bd66d26944982d54eb7b1a1d",
+    "tests/desktop/test_native_acceptance.py": "d2ad25370a6bda15dd9b62657bbb383fa4af8cd6cc4f82381aab3bc6b6724f5a",
+    "tools/lab/sycoca_probe/CMakeLists.txt": "bc79f4a01c7e458a70fa4b400a165ab01ffa6819ae0da91aecaed9b750069490",
+    "tools/lab/sycoca_probe/CMakePresets.json": "5d2291ac3700ebf427c1e7ffa63cc89b91f2585488f3cd1db37ae5f0c0e01e74",
+    "tools/lab/sycoca_probe/main.cpp": "570422891002af69c64a978fa17185849990bafa892fd2ac3a4caf5714a136b9"
   },
   "keychainScope": {
     "backend": "org.freedesktop.secrets",
-    "probe": "unique synthetic item; no unlock/reset/default-collection change",
+    "probe": "unique synthetic item; optional Unlock/Prompt of exact approved existing provider/label; no password typed, reset or default-collection change",
     "productKeychainRoundtripProven": false,
-    "desktopBackendResults": "pending"
+    "desktopBackendResults": "k72 code-owner reports lockedBefore then store/separate-process read/cleanup success; saved receipts pending",
+    "persistenceAcrossLoginProven": false
+  },
+  "documentationPullRequest": "https://github.com/patrick-hudson/put.gd-desktop/pull/552",
+  "mergeOrder": [
+    554,
+    552
+  ],
+  "earlyHandoff": {
+    "commit": "9b9753cae64747c897f1512d3a7d821594765010",
+    "driverSha256": "27d494fc83954ca715fdc6a23bfb03c4d919fc399c069df4c7dcf559d85ed5eb",
+    "focusedTestsReported": 14,
+    "secondsReported": 2.2
+  },
+  "interfaces": {
+    "tray": {
+      "actions": [
+        "inspect",
+        "menu",
+        "activate",
+        "quit"
+      ],
+      "requires": [
+        "explicit PID",
+        "exact executable",
+        "matching process generation",
+        "owned SNI title/menu"
+      ],
+      "menuRendered": false,
+      "pointerInputSent": false,
+      "coordinateFallback": false
+    },
+    "plasma-registration": {
+      "requiresProbe": "tools/lab/sycoca_probe/build/dev/putgd-sycoca-probe",
+      "repair": "--repair only rebuilds when registrations missing; rechecks current session"
+    },
+    "login-check": {
+      "expected": [
+        "present",
+        "absent"
+      ],
+      "requires": "successful same-host/runtime preparation and new graphical session"
+    },
+    "snapshot": {
+      "missingCliAndDataTolerated": true,
+      "packageRemovalVerdict": false
+    }
   }
 }

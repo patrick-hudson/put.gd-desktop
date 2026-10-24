@@ -101,8 +101,8 @@ findings from product acceptance. The 1058 pass above preserved 10,000 rows in
 five operations and used session credentials plus a retained keychain reference;
 it did not prove realistic 10,000-operation History behavior or a real keychain
 credential lifecycle. Original results and failures remain historical evidence.
-The early driver is committed at `9b9753ca`; its independent-operation grow
-command and prerequisites are documented. Exact desktop results remain pending;
+The driver in [code PR #554](https://github.com/patrick-hudson/put.gd-desktop/pull/554)
+is recorded at `826c255a`; its maintained commands and prerequisites are documented. Exact desktop results remain pending;
 no new desktop or release acceptance is claimed by this documentation update.
 
 ## DEB/RPM exact-asset audit rehearsal (#383) — 2026-10-22

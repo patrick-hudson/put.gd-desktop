@@ -1,7 +1,8 @@
 # Native acceptance driver hardening (#495) — 2026-10-24
 
 This is the documentation companion to the maintained driver in
-`tools/lab/native_acceptance.py`. Merge the code PR before this documentation PR.
+`tools/lab/native_acceptance.py` in [code PR #554](https://github.com/patrick-hudson/put.gd-desktop/pull/554).
+Merge #554 before [documentation PR #552](https://github.com/patrick-hudson/put.gd-desktop/pull/552).
 The [structured record](summary.json) distinguishes historical observations,
 driver checks and exact-build desktop evidence. The early implementation is
 committed; desktop results are pending. This record does not establish a new
@@ -29,9 +30,9 @@ do not retroactively turn those attempts into passes.
 
 ## Maintained commands
 
-Early driver source: `9b9753cae64747c897f1512d3a7d821594765010`,
+Current driver source: `826c255a4023daad88d07afb2b82d558f86c9d69`,
 `tools/lab/native_acceptance.py` plus `tools/lab/native_keychain.py`. The driver
-SHA-256 is `27d494fc83954ca715fdc6a23bfb03c4d919fc399c069df4c7dcf559d85ed5eb`;
+SHA-256 is `8ef8180e0c6ee9eef040eab633589e93a51b26db30d600ce10b16306656e8e3e`;
 the [JSON](summary.json) also records the helper and test hashes. This is
 unmerged harness source, separately identified from the published product
 package under test. The product CLI capabilities are unchanged.
@@ -42,7 +43,88 @@ must be an owned private directory, and the receipt must not already exist.
 Graphical/session commands run on the desktop host under its lock. The tool does
 not launch the app, install packages, log out or unlock a desktop.
 
-The committed history command is:
+Run the following commands from the driver checkout on the execution host. Each
+`--output` target must be new. Use the exact resident PID/executable captured by
+the owned launch, and the actual profile runtime; do not select a resident by
+the first matching process name.
+
+```sh
+python3 tools/lab/native_acceptance.py --output "$session_receipt" session
+python3 tools/lab/native_acceptance.py --output "$tray_receipt" tray inspect --pid "$pid" --exe "$exe"
+python3 tools/lab/native_acceptance.py --output "$menu_receipt" tray menu --pid "$pid" --exe "$exe"
+python3 tools/lab/native_acceptance.py --output "$activation_receipt" tray activate --pid "$pid" --exe "$exe"
+```
+
+`inspect` authenticates the registered SNI against the resident's PID, exact
+executable, process generation and put.gd title. `menu` inspects the owned
+dbusmenu topology and discovers the enabled visible Quit action; it reports
+`menuRendered: false`. `activate` invokes the owned SNI's `Activate` action,
+which opens History. Quit uses the same identity guard and dynamically selected
+action, without hardcoded menu IDs:
+
+```sh
+python3 tools/lab/native_acceptance.py --output "$quit_receipt" tray quit --pid "$pid" --exe "$exe"
+```
+
+These commands send no pointer input. Saved visible activation/Quit results can
+prove those behaviors, but neither menu inspection nor D-Bus success proves a
+rendered context menu or a physical tray-icon click. Those release-profile checks
+remain separate graphical evidence.
+
+For Plasma, build the small KService probe on the remote builder with distro
+Qt 6 and KF6Service development packages. From `tools/lab/sycoca_probe`:
+
+```sh
+cmake --preset dev
+cmake --build --preset dev -j2
+```
+
+Then, from the driver checkout root:
+
+```sh
+python3 tools/lab/native_acceptance.py --output "$cache_receipt" plasma-registration \
+  --probe tools/lab/sycoca_probe/build/dev/putgd-sycoca-probe
+```
+
+Use a new receipt with `--repair` only if repair is needed. The driver queries
+KService in the current session's menu/cache/locale environment, rebuilds sycoca
+only when registrations are missing, and rechecks. A missing probe is a blocked
+check; it does not establish that the cache is empty.
+
+For a login-start check, enable the intended login entry through the product's
+existing interface, then prepare before the real logout:
+
+```sh
+python3 tools/lab/native_acceptance.py --output "$before_login" login-prepare \
+  --pid "$pid" --exe "$exe" --cli "$cli" --runtime "$runtime"
+```
+
+Preparation verifies the IPC peer, quits the exact resident and refuses surviving
+profile processes. Perform the coordinated real logout/login through the visible
+desktop, then check:
+
+```sh
+python3 tools/lab/native_acceptance.py --output "$after_login" login-check \
+  --before "$before_login" --runtime "$runtime" --expected present
+```
+
+The receipt is bound to the same host/runtime and selected package executable;
+the check requires a new graphical session and rejects old process generations.
+For removal, prepare while the installed resident/CLI still exist, perform the
+reviewed package removal, then a real logout/login, and use `--expected absent`
+with that preparation receipt. A same-session snapshot does not replace this
+login gate. Removal-tolerant state capture is:
+
+```sh
+python3 tools/lab/native_acceptance.py --output "$snapshot_receipt" snapshot \
+  --runtime "$runtime" --cli "$cli" --db "$db"
+```
+
+It records `cliExists`, `cliStatus`, processes and available database facts even
+when the CLI or data is absent. An `ok` receipt here means facts were collected;
+it is not itself a package-removal verdict.
+
+The history-growth command is:
 
 ```sh
 python3 tools/lab/native_acceptance.py --output "$receipt" grow \
@@ -62,7 +144,7 @@ satisfy the gate.
 
 Each seed history row must already have its own operation. The old expanded
 five-operation fixture is rejected. Copies receive unique operation/item IDs,
-one matching journal item and spaced timestamps while retaining the small seed
+one matching journal item and spaced past timestamps while retaining the small seed
 payload/preview paths, settings and statuses. The transaction checks integrity
 and the requested independent operation/item counts. It performs no uploads.
 A synthetic shape check does not establish UI performance or migration behavior
@@ -87,17 +169,37 @@ campaign; the code owner coordinates execution and desktop locks.
 
 ## Results and prerequisites
 
-The code owner reports 14 focused safety/history-shape tests passing in 2.2 s at
-the early commit (`tests/desktop/test_native_acceptance.py`). A saved test log,
+The code owner reports 17 focused safety/history-shape tests passing on k72 at
+`826c255a` (`tests/desktop/test_native_acceptance.py`), and the distro-linked
+KService probe builds there. The early `9b9753ca` handoff had 14 tests (2.2 s).
+A saved test log,
 final driver identity, tested application identities, graphical commands/results,
 saved visual hashes and cleanup receipts are pending. Raw bulk artifacts stay
 private. A driver unit test or D-Bus action result alone does not prove visible
 tray behavior or a real logout/login.
 
-The early keychain command exercises a unique synthetic Secret Service item.
-It can report backend availability, locked state and write/read/cleanup, with a
-separate later `check` phase for persistence. It neither unlocks nor resets an
-existing collection. This is backend evidence only: it explicitly reports
+The keychain command exercises a unique synthetic Secret Service item:
+
+```sh
+python3 tools/lab/native_acceptance.py --output "$key_status" keychain status
+python3 tools/lab/native_acceptance.py --output "$key_store" keychain store
+python3 tools/lab/native_acceptance.py --output "$key_check" keychain check --before "$key_store"
+python3 tools/lab/native_acceptance.py --output "$key_cleanup" keychain cleanup --before "$key_store"
+```
+
+Run `check` in a separate process; for a claim across login, retain the same store
+receipt and check after the separately verified real login. `--unlock-lab` may be
+added to the lifecycle commands only for the approved existing lab collection:
+`ksecretd` / `putgdlab` or `gnome-keyring-daemon` / `putgd lab`. It requests Secret
+Service Unlock/Prompt, types no password and refuses any other provider/label.
+It never resets a collection or changes the default alias. A refused prompt is
+an unmet prerequisite, not a lifecycle pass; retain the refusal and any later
+correction. Cleanup targets only the unique synthetic item from the store receipt.
+
+The code owner reports k72 started locked, then store, separate-process read and
+cleanup succeeded through the existing lab backend. Saved receipts are pending;
+this is not yet evidence of persistence across a new login. This is backend
+evidence only: the driver explicitly reports
 `productKeychainRoundtripProven: false`. Product QtKeychain setup, use and
 restart/login remain separate proof, even when the backend roundtrip succeeds.
 
