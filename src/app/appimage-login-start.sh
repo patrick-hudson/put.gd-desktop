@@ -1,7 +1,8 @@
 #!/bin/sh
-# put.gd start at login for an AppImage (#307). put.gd writes this file while
+# put.gd start at login. put.gd writes this file while
 # Launch at login is on and rewrites it at every start; edits are replaced.
 # X-putgd-Managed=true
+# X-putgd-StartupId=__PUTGD_ID__
 #
 # Updaters that follow the image's .zsync write the new version under the
 # .zsync's versioned file name, beside the old image (AppImageLauncher), and may
@@ -13,17 +14,116 @@
 set -u
 configured=__PUTGD_CONFIGURED__
 update_information=__PUTGD_UPDATE_INFORMATION__
+kind=__PUTGD_KIND__
+entry=__PUTGD_ENTRY__
+script=__PUTGD_SCRIPT__
+startup_id='__PUTGD_ID__'
+watch_unit=__PUTGD_WATCH_UNIT__
+watch_description="put.gd managed login startup $startup_id"
+cleanup_only=false
 
 say() {
     printf 'put.gd login start: %s\n' "$*" >&2
 }
 
+# The user manager owns the watch, independently of the resident. No package
+# hook visits home directories, and no extra process polls while the app is off.
+manager() {
+    env -u LD_LIBRARY_PATH -u LD_PRELOAD systemctl --user "$@"
+}
+
+unit_exists() {
+    load_state=$(manager show --property=LoadState --value "$1" 2>/dev/null) || return 1
+    [ -n "$load_state" ] && [ "$load_state" != not-found ]
+}
+
+stop_watch() {
+    [ -n "$watch_unit" ] || return 0
+    for suffix in "$@"; do
+        # Never stop a foreign unit.
+        unit_exists "$watch_unit.$suffix" || continue
+        description=$(manager show --property=Description --value "$watch_unit.$suffix" 2>/dev/null) || continue
+        [ "$description" = "$watch_description" ] || return 1
+        manager stop "$watch_unit.$suffix" >/dev/null 2>&1 || return 1
+    done
+}
+
+install_watch() {
+    [ -n "$watch_unit" ] || return 0
+    if unit_exists "$watch_unit.path"; then
+        description=$(manager show --property=Description --value "$watch_unit.path" 2>/dev/null) || return 1
+        [ "$description" = "$watch_description" ] || return 1
+        manager is-active --quiet "$watch_unit.path" && return 0
+        stop_watch path service || return 1
+    fi
+    watched=$configured
+    [ "$kind" != appimage ] || watched=${configured%/*}
+    env -u LD_LIBRARY_PATH -u LD_PRELOAD systemd-run --user --quiet --collect \
+        --expand-environment=no --unit="$watch_unit" --description="$watch_description" \
+        --path-property="PathChanged=$watched" --property=Type=oneshot \
+        --property=SuccessExitStatus=SIGTERM \
+        /bin/sh "$script" --cleanup-if-missing >/dev/null 2>&1 || return 1
+    # PathChanged does not trigger for an installation already removed before
+    # the watch was armed. Check once after arming, with the same update grace.
+    manager start --no-block "$watch_unit.service" >/dev/null 2>&1
+}
+
+cleanup_missing() {
+    # Bind both files to this exact installation. A replaced or foreign entry,
+    # symlink, or script belongs to its owner, not to this older callback.
+    if [ -O "$entry" ] && [ ! -L "$entry" ] && [ -O "$script" ] && [ ! -L "$script" ] &&
+        grep -Fxq -- 'X-putgd-Managed=true' "$entry" &&
+        grep -Fxq -- "X-putgd-StartupId=$startup_id" "$entry" &&
+        grep -Fxq -- '# X-putgd-Managed=true' "$script" &&
+        grep -Fxq -- "# X-putgd-StartupId=$startup_id" "$script"; then
+        rm -- "$entry" || return 1
+        rm -- "$script" || return 1
+        stop_watch path || return 1
+    fi
+}
+
+start_target() {
+    target=$1; shift
+    [ "$cleanup_only" != true ] || exit 0
+    install_watch || say 'cannot arm the user startup-removal monitor'
+    exec "$target" "$@"
+}
+
+case ${1-} in
+    --install-watch) install_watch; exit $? ;;
+    --stop-watch) stop_watch path service; exit $? ;;
+    --cleanup-if-missing)
+        cleanup_only=true; shift
+        # File replacements during an update must settle before checking.
+        sleep 2
+        ;;
+esac
+
+# A missing installation at login needs the same replacement grace as a watch
+# callback. It also keeps this short-lived cleanup alive long enough for GNOME
+# to attach its autostart scope before the process exits successfully.
+if [ "$cleanup_only" != true ] && [ ! -e "$configured" ]; then
+    sleep 2
+fi
+
+if [ "$kind" = native ]; then
+    if [ -f "$configured" ] && [ -x "$configured" ]; then
+        start_target "$configured" "$@"
+    fi
+    if [ ! -e "$configured" ]; then
+        cleanup_missing
+        exit $?
+    fi
+    say "cannot start $configured: it is not executable"
+    exit 1
+fi
+
 # The user's private group: named after the user, with no other members. With
 # umask 002 (the desktop default on Debian 13, Kubuntu 26.04 and Mint 22.3) the
 # user's files are group-writable.
 own_group=
-user=$(id -un 2>/dev/null) && group=$(id -g 2>/dev/null) && entry=$(getent group "$group" 2>/dev/null) &&
-    case $entry in
+user=$(id -un 2>/dev/null) && group=$(id -g 2>/dev/null) && group_entry=$(getent group "$group" 2>/dev/null) &&
+    case $group_entry in
         "$user":*:"$group": | "$user":*:"$group":"$user") own_group=$group ;;
     esac
 
@@ -106,21 +206,26 @@ fi
 # The configured image is the one put.gd last ran from; like the autostart entry
 # before #307, it only has to be an executable file.
 if [ -f "$configured" ] && [ -x "$configured" ]; then
-    [ -n "$best" ] || exec "$configured" "$@"
+    [ -n "$best" ] || start_target "$configured" "$@"
     # Ask the image which version it is. put.gd's own update (#293) and Gear
     # Lever replace the file in place, so its name can be older than what it
     # holds, or carry no version; the name is only the fallback.
     version=$(bounded "$configured" --version 2>/dev/null | sed -n '1s/^putgd //p')
     [ -n "$version" ] || version=$(name_version "$configured") || version=
     if [ -z "$version" ] || ! newer "$best_version" "$(sortable "$version")"; then
-        exec "$configured" "$@"
+        start_target "$configured" "$@"
     fi
-    say "starting $best, which is newer than $configured"
-    exec "$best" "$@"
+    [ "$cleanup_only" = true ] || say "starting $best, which is newer than $configured"
+    start_target "$best" "$@"
 fi
 if [ -n "$best" ]; then
-    say "$configured is missing; starting $best"
-    exec "$best" "$@"
+    [ "$cleanup_only" = true ] || say "$configured is missing; starting $best"
+    start_target "$best" "$@"
+fi
+# Remove only this installation's managed startup files, keeping configuration.
+if [ ! -e "$configured" ]; then
+    cleanup_missing
+    exit $?
 fi
 say "cannot start $configured: it is missing or not executable, and no put.gd AppImage with its update information is beside it"
 exit 1
