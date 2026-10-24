@@ -37,6 +37,19 @@ real channel metadata, continues under #384. These results are targeted
 development-artifact acceptance, not full A–Q/A–K or stable-draft certification.
 The retained-link/TryExec tests at `91864c41` are superseded history.
 
+## Physical Cinnamon performance (#379) — 2026-10-24
+
+The [physical campaign record](evidence/2026-10-24-physical-cinnamon-379/README.md)
+selects the newest published `v26.1024.1185-nightly` ubuntu24.04 DEB
+(`9dfac15c`, package SHA-256 `2094fd4d…e5b3f47`) for m74 Mint/Cinnamon X11.
+Its release and mirror checksums and nightly minisign signature verify.
+Installation, exact running identities and physical measurements are pending;
+no capture, memory, history, burst or network gate is accepted by this preparation
+record. Driver hardening (#495) and the additional performance driver remain
+separately identified code work. Unbudgeted history/response thresholds require
+Patrick's approval. The eventual nightly results do not certify stable assets;
+#384 must repeat them on those bytes.
+
 ## First stable gate plan — 2026-10-22
 
 No release asset has been accepted yet. The first stable switches to calendar
