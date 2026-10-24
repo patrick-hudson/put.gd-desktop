@@ -50,11 +50,18 @@ def profile_inventory(runtime, data, group):
 def cleanup(process, known, runtime, data, socket, quit_request, grace=15, drain=5):
     """Never equate forced cleanup, exit7 or remaining descendants with success."""
     receipt = {'gracefulRequest': False, 'exitCode': None, 'forced': False,
-               'remaining': [], 'socketAbsent': False, 'passed': False, 'errors': []}
+               'remaining': [], 'socketAbsent': False, 'passed': False, 'errors': [],
+               'inventoryComplete': True, 'absenceVerified': False}
     owned = {(row['pid'], row['startTicks']): row for row in known}
     def discover():
-        for row in profile_inventory(runtime, data, process.pid):
-            owned[(row['pid'], row['startTicks'])] = row
+        try:
+            for row in profile_inventory(runtime, data, process.pid):
+                owned[(row['pid'], row['startTicks'])] = row
+        except (OSError, EvidenceError) as error:
+            receipt['inventoryComplete'] = False
+            receipt['errors'].append(str(error) if isinstance(error, EvidenceError) else type(error).__name__)
+        # An incomplete unrelated inventory must neither suppress the known
+        # resident's graceful request nor prevent its authenticated cleanup.
         return [row for row in owned.values() if generation_alive(row)]
     try:
         discover()
@@ -74,11 +81,7 @@ def cleanup(process, known, runtime, data, socket, quit_request, grace=15, drain
         receipt['errors'].append(str(error) if isinstance(error, EvidenceError) else type(error).__name__)
     # Always attempt cleanup of authenticated owned generations, even after a
     # discovery/request failure. A signal is failure context, never a pass.
-    try:
-        remaining = discover()
-    except (OSError, EvidenceError) as error:
-        receipt['errors'].append(str(error) if isinstance(error, EvidenceError) else type(error).__name__)
-        remaining = [row for row in owned.values() if generation_alive(row)]
+    remaining = discover()
     for sig in (signal.SIGTERM, signal.SIGKILL):
         if not remaining:
             break
@@ -101,14 +104,11 @@ def cleanup(process, known, runtime, data, socket, quit_request, grace=15, drain
         while any(generation_alive(row) for row in remaining) and time.monotonic() < deadline:
             time.sleep(.05)
         remaining = [row for row in owned.values() if generation_alive(row)]
-    try:
-        receipt['remaining'] = discover()
-    except (OSError, EvidenceError) as error:
-        receipt['errors'].append(str(error) if isinstance(error, EvidenceError) else type(error).__name__)
-        receipt['remaining'] = [row for row in owned.values() if generation_alive(row)]
+    receipt['remaining'] = discover()
     receipt['socketAbsent'] = not Path(socket).exists()
+    receipt['absenceVerified'] = receipt['inventoryComplete'] and not receipt['remaining']
     receipt['passed'] = (receipt['gracefulRequest'] and receipt['exitCode'] == 0 and not receipt['forced']
-                         and not receipt['remaining'] and receipt['socketAbsent'] and not receipt['errors'])
+                         and receipt['absenceVerified'] and receipt['socketAbsent'] and not receipt['errors'])
     receipt['inventoryDefinition'] = 'observed PID/start/UID generations + resident process group + exact isolated runtime/data environment; no command lines exported'
     return receipt
 

@@ -395,20 +395,39 @@ class Campaign:
     def stop(self):
         from campaign_lifecycle import cleanup
         receipt = {'passed': True, 'scope': 'no current resident'}
+        retain_ownership = False
         try:
             if self.resident:
                 known = list(self.family.known.values()) + self.family.exited if self.family else []
-                receipt = cleanup(self.resident, known, self.environment['XDG_RUNTIME_DIR'],
-                                  self.environment['XDG_DATA_HOME'], self.socket, lambda: self.call('ui.quit'))
+                try:
+                    receipt = cleanup(self.resident, known, self.environment['XDG_RUNTIME_DIR'],
+                                      self.environment['XDG_DATA_HOME'], self.socket, lambda: self.call('ui.quit'))
+                except BaseException as error:
+                    retain_ownership = True
+                    receipt = {'passed': False, 'scope': 'cleanup raised before final verification',
+                        'errors': [type(error).__name__], 'residentPid': self.resident.pid,
+                        'ownershipRetained': True, 'inventoryComplete': False, 'absenceVerified': False,
+                        'remaining': None, 'socketAbsent': None,
+                        'knownOwned': [{key: row[key] for key in ('pid', 'startTicks', 'uid', 'exe', 'sha256')
+                                        if key in row} for row in known]}
+                    self.result.setdefault('residentCleanup', []).append(receipt)
+                    for label, export in (('event', lambda: self.event('resident-cleanup-unexpected-failure', **receipt)),
+                                          ('persist', self.persist)):
+                        try:
+                            export()
+                        except BaseException as secondary:
+                            error.add_note('resident_cleanup_context_' + label + ': ' + type(secondary).__name__)
+                    raise
                 self.event('resident-cleanup-checked', **receipt)
                 self.result.setdefault('residentCleanup', []).append(receipt)
             return receipt['passed']
         finally:
-            if self.log:
-                self.log.close()
-            if self.resident:
-                os.close(self.resident_pidfd)
-            self.resident = self.log = None
+            if not retain_ownership:
+                if self.log:
+                    self.log.close()
+                if self.resident:
+                    os.close(self.resident_pidfd)
+                self.resident = self.log = None
 
     def static_cover(self):
         if self.cover is not None:
@@ -1072,11 +1091,14 @@ def main(argv=None):
         raise
     finally:
         cleanup_passed = True
+        cleanup_failure = None
         for action in (campaign.stop, campaign.close_fixtures):
             try:
                 cleanup_passed = action() and cleanup_passed
-            except (OSError, EvidenceError, subprocess.SubprocessError) as error:
+            except BaseException as error:
                 cleanup_passed = False
+                if cleanup_failure is None:
+                    cleanup_failure = error
                 campaign.result['cleanupErrorCode'] = str(error) if isinstance(error, EvidenceError) else type(error).__name__
         campaign.result['gates']['cleanup'] = {'status': 'pass' if cleanup_passed else 'fail'}
         cleanup_passed = cleanup_passed and all(row['passed'] for row in campaign.result.get('residentCleanup', []))
@@ -1086,7 +1108,7 @@ def main(argv=None):
         campaign.result['elapsedSeconds'] = time.monotonic() - campaign.started
         campaign.persist()
         if workload_complete and not cleanup_passed:
-            raise EvidenceError('campaign_cleanup_not_normal_complete')
+            raise EvidenceError('campaign_cleanup_not_normal_complete') from cleanup_failure
     return 1 if any(gate['status'] == 'fail' for gate in campaign.result['gates'].values()) else 0
 
 

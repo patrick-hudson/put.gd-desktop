@@ -89,13 +89,16 @@ class CleanupTests(unittest.TestCase):
         # Real children; only the unrelated /proc inventory failure is injected.
         for error in (EvidenceError('product_cleanup_inventory_permission_denied'), PermissionError()):
             with self.subTest(error=type(error).__name__), tempfile.TemporaryDirectory() as directory:
-                owned, unrelated = self.child(), self.child()
+                owned, unrelated = self.child(ignore=True), self.child()
                 unrelated_identity = identity(unrelated.pid)
                 with mock.patch.object(lifecycle, 'profile_inventory', side_effect=error) as inventory, \
                      mock.patch.object(lifecycle.os, 'pidfd_open', wraps=os.pidfd_open) as pidfd:
                     result = self.cleanup(owned, Path(directory))
                 self.assertFalse(result['passed'])
+                self.assertTrue(result['gracefulRequest'])
                 self.assertTrue(result['forced'])
+                self.assertFalse(result['inventoryComplete'])
+                self.assertFalse(result['absenceVerified'])
                 self.assertNotEqual(result['exitCode'], 0)
                 self.assertEqual(result['remaining'], [])
                 self.assertTrue(result['socketAbsent'])
@@ -107,22 +110,43 @@ class CleanupTests(unittest.TestCase):
                 self.assertIsNone(unrelated.poll())
                 self.assertEqual(identity(unrelated.pid), unrelated_identity)
                 expected = str(error) if isinstance(error, EvidenceError) else 'PermissionError'
-                self.assertTrue(all(value == expected for value in result['errors']))
+                self.assertIn(expected, result['errors'])
+                self.assertIn('resident_graceful_exit_timeout', result['errors'])
 
-    def test_final_inventory_fault_returns_failed_receipt_after_normal_exit(self):
+    def test_initial_retry_and_final_inventory_faults_never_claim_absence(self):
+        for stage, fault_index in (('initial', 0), ('retry', 2), ('final', 3)):
+            with self.subTest(stage=stage), tempfile.TemporaryDirectory() as directory:
+                process = self.child()
+                scans = [[], [], [], []]
+                scans[fault_index] = EvidenceError('product_cleanup_inventory_permission_denied')
+                with mock.patch.object(lifecycle, 'profile_inventory', side_effect=scans) as inventory:
+                    result = self.cleanup(process, Path(directory))
+                self.assertEqual(inventory.call_count, 4)
+                self.assertTrue(result['gracefulRequest'])
+                self.assertEqual(result['exitCode'], 0)
+                self.assertFalse(result['forced'])
+                self.assertEqual(result['remaining'], [])
+                self.assertTrue(result['socketAbsent'])
+                self.assertFalse(result['passed'])
+                self.assertFalse(result['inventoryComplete'])
+                self.assertFalse(result['absenceVerified'])
+                self.assertEqual(result['errors'], ['product_cleanup_inventory_permission_denied'])
+
+    def test_stale_known_generation_never_signals_reused_unrelated_pid(self):
         with tempfile.TemporaryDirectory() as directory:
-            process = self.child()
-            with mock.patch.object(lifecycle, 'profile_inventory', side_effect=[
-                    [], [], [], EvidenceError('product_cleanup_inventory_permission_denied')]) as inventory:
-                result = self.cleanup(process, Path(directory))
-            self.assertEqual(inventory.call_count, 4)
-            self.assertTrue(result['gracefulRequest'])
-            self.assertEqual(result['exitCode'], 0)
-            self.assertFalse(result['forced'])
-            self.assertEqual(result['remaining'], [])
-            self.assertTrue(result['socketAbsent'])
-            self.assertFalse(result['passed'])
-            self.assertEqual(result['errors'], ['product_cleanup_inventory_permission_denied'])
+            root, unrelated = self.child(), self.child()
+            before = identity(unrelated.pid)
+            stale = {**before, 'startTicks': before['startTicks'] + 1}
+            def quit_request():
+                root.stdin.write('\n'); root.stdin.flush()
+            with mock.patch.object(lifecycle, 'profile_inventory', return_value=[]), \
+                 mock.patch.object(lifecycle.signal, 'pidfd_send_signal') as send:
+                result = lifecycle.cleanup(root, [identity(root.pid), stale], Path(directory) / 'r',
+                    Path(directory) / 'd', Path(directory) / 's', quit_request, grace=.15, drain=.1)
+            self.assertTrue(result['passed'])
+            send.assert_not_called()
+            self.assertIsNone(unrelated.poll())
+            self.assertEqual(identity(unrelated.pid), before)
 
 
 class HistoryLifetimeTests(unittest.TestCase):
@@ -173,6 +197,69 @@ class HistoryLifetimeTests(unittest.TestCase):
 
 
 class FinalizationTests(unittest.TestCase):
+    def test_unexpected_cleanup_retains_owned_process_pidfd_and_failure_context(self):
+        for export_fails in (False, True):
+            with self.subTest(export_fails=export_fails), tempfile.TemporaryDirectory() as directory:
+                child = subprocess.Popen([sys.executable, '-c', 'import time;time.sleep(30)'], start_new_session=True)
+                pidfd = os.pidfd_open(child.pid)
+                log = (Path(directory) / 'resident.log').open('x')
+                try:
+                    run = physical_campaign.Campaign.__new__(physical_campaign.Campaign)
+                    owner = identity(child.pid)
+                    run.resident, run.log, run.resident_pidfd = child, log, pidfd
+                    run.family = SimpleNamespace(known={child.pid: owner}, exited=[])
+                    run.environment = {'XDG_RUNTIME_DIR': directory + '/r', 'XDG_DATA_HOME': directory + '/d'}
+                    run.socket, run.result = directory + '/s', {}
+                    run.event, run.persist = mock.Mock(), mock.Mock()
+                    if export_fails:
+                        run.event.side_effect = run.persist.side_effect = OSError('synthetic-export-failure')
+                    original = RuntimeError('synthetic-unexpected-cleanup-failure')
+                    with mock.patch.object(lifecycle, 'cleanup', side_effect=original):
+                        with self.assertRaises(RuntimeError) as failure:
+                            run.stop()
+                    self.assertIs(failure.exception, original)
+                    self.assertIs(run.resident, child)
+                    self.assertIs(run.log, log)
+                    os.fstat(pidfd)  # Ownership descriptor remains usable.
+                    self.assertIsNone(child.poll())
+                    receipt = run.result['residentCleanup'][0]
+                    self.assertFalse(receipt['passed'])
+                    self.assertFalse(receipt['absenceVerified'])
+                    self.assertIsNone(receipt['remaining'])
+                    self.assertTrue(receipt['ownershipRetained'])
+                    self.assertEqual(receipt['knownOwned'][0]['startTicks'], owner['startTicks'])
+                    self.assertEqual(receipt['residentPid'], child.pid)
+                    run.event.assert_called_once(); run.persist.assert_called_once()
+                    if export_fails:
+                        self.assertEqual(len(original.__notes__), 2)
+                finally:
+                    child.terminate(); child.wait(timeout=5)
+                    try:
+                        os.close(pidfd)
+                    except OSError:
+                        pass  # Before-control source may have closed it prematurely.
+                    log.close()
+
+    def test_unexpected_stop_failure_still_cleans_fixtures_and_preserves_cause(self):
+        run = mock.Mock()
+        run.started = time.monotonic()
+        run.result = {'gates': {}, 'residentCleanup': [{'passed': False}]}
+        original = RuntimeError('synthetic-unexpected-cleanup-failure')
+        run.stop.side_effect = original
+        run.close_fixtures.return_value = True
+        arguments = ['memory', '--output', '/not-created', '--package', '/not-opened',
+            '--package-sha256', 'a' * 64, '--source-revision', 'b' * 40, '--version', 'test',
+            '--desktop-session', 'not-used', '--lock-session', 'not-used']
+        with mock.patch.object(physical_campaign, 'Campaign', return_value=run), \
+             mock.patch.object(physical_campaign.signal, 'signal'), mock.patch.object(physical_campaign.os, 'umask'):
+            with self.assertRaisesRegex(EvidenceError, 'cleanup_not_normal_complete') as failure:
+                physical_campaign.main(arguments)
+        self.assertIs(failure.exception.__cause__, original)
+        run.close_fixtures.assert_called_once()
+        run.persist.assert_called_once()
+        self.assertEqual(run.result['status'], 'failed-or-interrupted')
+        self.assertEqual(run.result['gates']['cleanup']['status'], 'fail')
+
     def test_memory_caller_requires_30_measured_open_seconds_before_assessment(self):
         budget = 60 * physical_campaign.MIB
         for requested, measured, peak, expected in ((1, 1, budget, 'unassessed'),
