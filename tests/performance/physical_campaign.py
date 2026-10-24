@@ -18,6 +18,7 @@ No history response threshold is inferred. Raw evidence stays private.
 """
 
 import argparse
+from contextlib import closing
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -86,7 +87,7 @@ def safe_document(document):
 
 
 def fixture_summary(database, expected=10000):
-    with sqlite3.connect(database.as_uri() + '?mode=ro', uri=True) as connection:
+    with closing(sqlite3.connect(database.as_uri() + '?mode=ro', uri=True)) as connection:
         require(connection.execute('PRAGMA integrity_check').fetchone() == ('ok',),
                 'fixture_integrity_failed')
         count, operations, items = connection.execute(
@@ -158,7 +159,7 @@ def copy_fixture(source, destination):
             require(url.scheme == 'http' and url.hostname == '127.0.0.1' and url.port
                     and not url.username and not url.password, 'persisted_fixture_url_not_loopback')
     checked_paths(json.loads((source / 'config/putgd/config.json').read_text()))
-    with sqlite3.connect(database.as_uri() + '?mode=ro', uri=True) as connection:
+    with closing(sqlite3.connect(database.as_uri() + '?mode=ro', uri=True)) as connection:
         tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         for table in ('deletions', 'deletion_targets', 'sharing_operations'):
             if table in tables:
@@ -181,7 +182,7 @@ def copy_fixture(source, destination):
     write_json(destination / 'config/putgd/config.json', relocate(document, source, destination))
     # #495 owns distinct operation/item/history IDs. Only paths in the copied
     # fixture move; SQL identifiers come from the copied schema, quoted safely.
-    with sqlite3.connect(destination / 'data/putgd/history.sqlite') as connection:
+    with closing(sqlite3.connect(destination / 'data/putgd/history.sqlite')) as connection, connection:
         for (table,) in connection.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall():
             quoted = '"' + table.replace('"', '""') + '"'
             columns = connection.execute(f'PRAGMA table_info({quoted})').fetchall()
@@ -354,7 +355,8 @@ class Campaign:
         self.result['physical'] = physical_identity(self.args)
         self.result['product'] = verify_package(self.args)
         if self.args.scenario in ('seed', 'history', 'burst', 'slow'):
-            verify_fixture(self.args)
+            self.fixture_identity = verify_fixture(self.args)
+            self.result['fixtureServerIdentity'] = self.fixture_identity
         self.result['harness'] = {name: sha256(Path(__file__).with_name(name))
                                   for name in ('run_capture.py', 'bench_capture.cpp', 'bench_ui_process.py')}
         if self.args.fixture_root:
@@ -491,7 +493,7 @@ class Campaign:
     def fixture(self, path='/__state', value=None):
         """Never persist raw fixture state: it contains request headers/bodies."""
         from urllib.request import Request, build_opener, ProxyHandler
-        verify_fixture(self.args)
+        require(same_identity(verify_fixture(self.args), self.fixture_identity), 'fixture_process_generation_changed')
         url = self.args.endpoint.rstrip('/') + path
         request = Request(url, data=json.dumps(value).encode() if value is not None else None,
                           headers={'Content-Type': 'application/json'})
@@ -499,7 +501,7 @@ class Campaign:
             return json.load(reply)
 
     def upload_configuration(self):
-        verify_fixture(self.args)
+        require(same_identity(verify_fixture(self.args), self.fixture_identity), 'fixture_process_generation_changed')
         document = self.call('settings.get')['document']
         template = self.call('settings.developmentTemplate')['document']['profiles'][0]
         template.update(id='physical-fixture', label='Isolated loopback performance fixture',
@@ -857,11 +859,12 @@ def verify_fixture(args):
         except FileNotFoundError:
             pass
     require(any('socket:[' + inode + ']' in links for inode in inodes), 'fixture_does_not_own_loopback_listener')
+    return {**identity(args.fixture_pid), 'sourceSha256': sha256(source), 'endpoint': args.endpoint}
 
 
 def operation_ids(database):
     """Read exact journal IDs; recent-activity caps/timestamps cannot hide work."""
-    with sqlite3.connect(database.as_uri() + '?mode=ro', uri=True) as connection:
+    with closing(sqlite3.connect(database.as_uri() + '?mode=ro', uri=True)) as connection:
         return {row[0] for row in connection.execute('SELECT id FROM operations')}
 
 
@@ -914,6 +917,7 @@ def parser():
                         help='History/burst/slow only: set QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1; no desktop setting changes')
     result.add_argument('--native-driver', help='#495 committed native_acceptance.py for authenticated SNI ownership')
     result.add_argument('--native-driver-revision', help='Separately identified #495 full commit')
+    result.add_argument('--native-driver-sha256', help='Pinned reviewed #495 script bytes; checked before executing tray witness')
     result.add_argument('--threshold-policy', help='Private approved numerical maximums JSON; omission never passes response gates')
     result.add_argument('--settle-seconds', type=int, default=300)
     return result
@@ -930,7 +934,8 @@ def main(argv=None):
             'accessibility_override_not_permitted_for_capture_or_memory')
     if args.scenario in ('burst', 'slow'):
         require(args.native_driver and args.native_driver_revision and
-                re.fullmatch('[0-9a-f]{40}', args.native_driver_revision), '495_driver_and_revision_required')
+                re.fullmatch('[0-9a-f]{40}', args.native_driver_revision) and args.native_driver_sha256 and
+                re.fullmatch('[0-9a-f]{64}', args.native_driver_sha256), '495_driver_revision_and_hash_required')
     os.umask(0o077)
     def interrupted(_signal, _frame):
         raise KeyboardInterrupt()

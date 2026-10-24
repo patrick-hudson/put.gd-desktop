@@ -11,6 +11,12 @@ import time
 
 from bench_ui_process import EvidenceError, identity, same_identity
 
+_x_errors = []
+@C.CFUNCTYPE(C.c_int, C.c_void_p, C.c_void_p)
+def _x_error(_display, _event):
+    _x_errors[:] = [True]
+    return 0
+
 
 class XImage(C.Structure):
     _fields_ = [('width', C.c_int), ('height', C.c_int), ('xoffset', C.c_int), ('format', C.c_int),
@@ -31,6 +37,8 @@ class Drawable:
                                    C.c_uint, C.c_uint, C.c_ulong, C.c_int]
         self.x.XGetImage.restype = C.POINTER(XImage)
         self.x.XDestroyImage.argtypes = [C.POINTER(XImage)]
+        self.x.XSetErrorHandler.argtypes = [type(_x_error)]
+        self.x.XSetErrorHandler(_x_error)  # A disappearing owned window is a retained failure, not process exit.
         self.display = self.x.XOpenDisplay(None)
         if not self.display:
             raise EvidenceError('x11_observer_display_unavailable')
@@ -45,11 +53,12 @@ class Drawable:
         if not same_identity(identity(self.owner['pid']), self.owner):
             raise EvidenceError('drawable_owner_changed')
         started = time.monotonic()
+        _x_errors.clear()
         x, y, width, height = rectangle
         if min(x, y) < 0 or not 0 < width <= 4096 or not 0 < height <= 4096:
             raise EvidenceError('invalid_drawable_probe_rectangle')
         image = self.x.XGetImage(self.display, self.window, x, y, width, height, C.c_ulong(-1), 2)
-        if not image:
+        if not image or _x_errors:
             raise EvidenceError('drawable_pixels_unavailable')
         try:
             info = image.contents
@@ -128,7 +137,8 @@ class Accessible:
             actual = (node.get_name() or '').replace('&', '')
             if actual == name and node.get_state_set().contains(self.api.StateType.SHOWING):
                 found.append(node)
-            queue.extend(node.get_child_at_index(i) for i in range(max(0, node.get_child_count())))
+            queue.extend(child for i in range(max(0, node.get_child_count()))
+                         if (child := node.get_child_at_index(i)) is not None)
         if len(found) != 1:
             raise EvidenceError('accessible_control_missing_or_ambiguous')
         return found[0]

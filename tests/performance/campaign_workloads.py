@@ -5,7 +5,6 @@ loopback fixture. GUI response numbers are external drawable upper bounds,
 separate from API acknowledgement and eventual operation completion.
 """
 import hashlib
-import importlib.util
 import json
 import math
 from pathlib import Path
@@ -14,6 +13,7 @@ import statistics
 import subprocess
 import sys
 import time
+import types
 from urllib.parse import urlsplit
 
 from bench_ui_process import EvidenceError, identity, sha256
@@ -83,6 +83,8 @@ class UI:
         info = subprocess.check_output(['xwininfo', '-id', self.window], text=True, timeout=5)
         self.width = int(re.search(r'Width:\s+(\d+)', info)[1])
         self.height = int(re.search(r'Height:\s+(\d+)', info)[1])
+        self.x = int(re.search(r'Absolute upper-left X:\s+(-?\d+)', info)[1])
+        self.y = int(re.search(r'Absolute upper-left Y:\s+(-?\d+)', info)[1])
         self.draw = Drawable(self.window, self.owner)
         self.list_rectangle = [24, 180, min(self.width - 48, 480), min(self.height - 260, 280)]
         self.full_rectangle = [0, 0, self.width, self.height]
@@ -109,6 +111,46 @@ class UI:
             'desktopSettingsChanged': False, 'coldIdleAcceptance': False,
             'observerSha256': sha256(Path(__file__).with_name('campaign_ui.py')),
             'requestedProbeSleepMs': 10, 'pixelSource': 'PID-owned native X11 drawable; no product hook/checkpoint'}
+        self.list_rectangle = self.rectangle('Captures and upload activity')
+
+    def rectangle(self, name):
+        node = self.accessible.find(name)
+        box = self.accessible.api.Component.get_extents(node, self.accessible.api.CoordType.SCREEN)
+        rectangle = [box.x - self.x, box.y - self.y, box.width, box.height]
+        require(rectangle[0] >= 0 and rectangle[1] >= 0 and
+                rectangle[0] + rectangle[2] <= self.width and rectangle[1] + rectangle[3] <= self.height,
+                'accessible_probe_geometry_outside_owned_drawable')
+        return rectangle
+
+    def preview(self, path, started):
+        """Match central retained preview pixels, excluding the video badge."""
+        from PIL import Image, ImageChops, ImageStat
+        expected = Image.open(path).convert('RGB')
+        rectangle = self.rectangle('Selected capture preview')
+        deadline = time.monotonic() + 10
+        while True:
+            actual = self.draw.pixels(rectangle)
+            differences = []
+            for padding in (0, 6, 12, 16):
+                available = (actual.width - 2 * padding, actual.height - 2 * padding)
+                if min(available) < 20:
+                    continue
+                scale = min(available[0] / expected.width, available[1] / expected.height)
+                target = expected.resize((round(expected.width * scale), round(expected.height * scale)), Image.Resampling.BILINEAR)
+                left, top = (actual.width - target.width) // 2, (actual.height - target.height) // 2
+                # The center avoids card padding, the play badge and text.
+                crop = (target.width // 4, target.height // 4, target.width * 3 // 4, target.height * 2 // 3)
+                expected_part = target.crop(crop).resize((32, 24))
+                actual_part = actual.crop((left + crop[0], top + crop[1], left + crop[2], top + crop[3])).resize((32, 24))
+                differences.append(statistics.mean(ImageStat.Stat(ImageChops.difference(expected_part, actual_part)).mean))
+            if differences and min(differences) <= 20:
+                value = (time.monotonic() - started) * 1000
+                self.run.event('retained-preview-pixels-observed', upperBoundMs=value,
+                               meanAbsoluteRgbDifference=min(differences), functionalTolerance=20,
+                               previewSha256=sha256(path), rectangle=rectangle)
+                return value
+            require(time.monotonic() < deadline, 'retained_preview_pixels_not_observed')
+            time.sleep(.01)
 
     def save(self, label):
         from campaign_ui import Drawable
@@ -149,6 +191,8 @@ class UI:
         measured = self.action('search', lambda: self.accessible.search(term))
         rows = self.run.call('history.list', {'search': term, 'limit': 50})
         self.wait_rows(rows['records'])
+        self.run.event('history-search-verified', query=term, total=rows['total'],
+                       historyIds=[record['id'] for record in rows['records']])
         return measured, rows['records']
 
 
@@ -160,6 +204,7 @@ def history(run):
         ui.wait_rows(rows['records'])
         ui.save('history-open-10000')
         scrolls, seen = [], 0
+        traversal_started = time.monotonic()
         # Visit every page and actually scroll its list from Home to its last
         # row. API reads verify expected rows; they do not drive the viewport.
         for offset in range(0, 10000, 50):
@@ -175,6 +220,7 @@ def history(run):
             require(ui.accessible.last_row_visible(), 'whole_page_not_scrolled')
             seen += len(page)
             run.event('history-page-traversed', offset=offset, records=len(page),
+                      historyIds=[record['id'] for record in page],
                       visibleAccessibleNamesSha256=hashlib.sha256(json.dumps(names).encode()).hexdigest())
             if offset in (0, 4950, 9950):
                 ui.save('history-scroll-' + str(offset))
@@ -182,6 +228,7 @@ def history(run):
                 ui.action('history-next-page', lambda: ui.accessible.click('Next'))
         require(seen == 10000, 'whole_list_traversal_incomplete')
         run.result['metrics']['historyWholeListRowsTraversed'] = seen
+        run.result['metrics']['historyWholeListWallSecondsIncludingVerification'] = time.monotonic() - traversal_started
         assess(run, 'historyScrollP95UpperBoundMs', percentile(scrolls))
         queries = ['landscape-00', 'motion-01', 'landscape-02', 'motion-03', 'landscape-04', 'motion-05']
         searches = []
@@ -194,12 +241,13 @@ def history(run):
             _, records = ui.search(term)
             selected = records[0]
             # Inspector changes outside the list rectangle; observe it directly.
-            previews.append(ui.action('preview-selection', lambda: ui.accessible.select(0),
-                                      [max(0, ui.width - 360), 180, 330, min(300, ui.height - 200)]))
-            time.sleep(.8)
+            selected_at = time.monotonic()
+            ui.action('preview-selection', lambda: ui.accessible.select(0),
+                      ui.full_rectangle)
             detail = run.call('history.detail', {'id': selected['id']})
             preview = Path(detail['previewPath'])
             require(preview.is_file() and preview.resolve().is_relative_to(run.root), 'retained_preview_not_private')
+            previews.append(ui.preview(preview, selected_at))
             ui.save('history-preview-' + ('image' if term.startswith('landscape') else 'video'))
             run.event('selected-preview', historyId=selected['id'], category=selected['category'],
                       previewSha256=sha256(preview), semanticVerification='owned accessible row + retained synthetic preview + saved pixels')
@@ -255,9 +303,11 @@ def history(run):
 def tray(run, label):
     path = Path(run.args.native_driver).resolve(strict=True) if run.args.native_driver else None
     require(path is not None, '495_native_driver_required_for_tray_witness')
-    spec = importlib.util.spec_from_file_location('campaign_native_acceptance', path)
-    native = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(native)
+    source = path.read_bytes()
+    require(hashlib.sha256(source).hexdigest() == run.args.native_driver_sha256, '495_native_driver_hash_mismatch')
+    native = types.ModuleType('campaign_native_acceptance')
+    native.__file__ = str(path)
+    exec(compile(source, str(path), 'exec'), native.__dict__)
     target = native.tray_target(run.environment, native.checked_resident(run.resident.pid, run.args.app,
                                                                          run.environment['XDG_RUNTIME_DIR']))
     result = {'label': label, 'owner': target, 'driverSha256': sha256(path),
@@ -364,6 +414,9 @@ def burst(run):
             operation = run.wait_operation(operation_id)
             run.event('burst-terminal', **operation_summary(operation))
             verify_uploaded(run, operation)
+        links = {run.call('operation.inspect', {'id': operation_id})['items'][0]['receipt']['directUrl']
+                 for operation_id in operations}
+        require(len(links) == 50, 'burst_did_not_retain_50_distinct_links')
         time.sleep(2)
         final = tray(run, 'burst-settled-tray')
         require(not final['workingTitleObserved'], 'tray_did_not_return_to_idle')
