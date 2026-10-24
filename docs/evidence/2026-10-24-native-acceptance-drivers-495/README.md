@@ -4,10 +4,10 @@ This is the documentation companion to the maintained driver in
 `tools/lab/native_acceptance.py` in [code PR #554](https://github.com/patrick-hudson/put.gd-desktop/pull/554).
 Merge #554 before [documentation PR #552](https://github.com/patrick-hudson/put.gd-desktop/pull/552).
 The [structured record](summary.json) distinguishes historical observations,
-driver checks and exact-build desktop evidence. The current candidate has saved
-k72 activation/Quit, login-preparation, backend and fixture-shape results. A
-bounded m74 functional run remains pending. This record does not establish a new
-native-package or release acceptance pass.
+driver checks and exact-build desktop evidence. Saved k72 results belong to
+`826c255a` and `6bbbd506`. The maintained candidate has since advanced to
+`64a3257b`; its bounded m74 functional run remains pending. This record does not
+establish a new native-package or release acceptance pass.
 
 ## Historical evidence and its limits
 
@@ -31,9 +31,9 @@ do not retroactively turn those attempts into passes.
 
 ## Maintained commands
 
-Current driver source: `6bbbd506aeef7f8aa4a97c21664c7013ff427627`,
+Current driver source: `64a3257b20d7aa33cc25d35c07a628becff4036c`,
 `tools/lab/native_acceptance.py` plus `tools/lab/native_keychain.py`. The driver
-SHA-256 is `1375c3cc43b39be05f42847e19080fc15afb8a6a8b0e881e82d0d7e5173700dc`;
+SHA-256 is `8f1a8f49fd3f72d574493ebcb43e7ae51db253da7889a0ca51ef7f68ba8ecf4c`;
 the [JSON](summary.json) also records the helper and test hashes. This is
 unmerged harness source, separately identified from the published product
 package under test. The product CLI capabilities are unchanged.
@@ -43,6 +43,13 @@ subcommand's `--help`. Receipts use `--output NEW_PRIVATE_RECEIPT`: its parent
 must be an owned private directory, and the receipt must not already exist.
 Graphical/session commands run on the desktop host under its lock. The tool does
 not launch the app, install packages, log out or unlock a desktop.
+
+Session selection uses the active local logind session and current shell
+generation. On GNOME, the compositor's environment can omit `WAYLAND_DISPLAY`.
+The `64a3257b` fallback treats the user-manager value only as a hint: the socket
+must be owned, inside the current runtime and within the Unix socket limit, and
+its `SO_PEERCRED` PID/UID must match the current logind-bound compositor with an
+unchanged process generation. A stale manager export is not accepted on trust.
 
 Run the following commands from the driver checkout on the execution host. Each
 `--output` target must be new. Use the exact resident PID/executable captured by
@@ -175,9 +182,13 @@ Two separately recorded runs used the installed `ubuntu26.04` DEB of
 `9dfac15c1ced201d13a2b70a8afb0c253213768b`, tree
 `4e96912274d9220ba9476bd1b50333f6cf738f4f`. The exported package independently
 hashes to `2f370159c4cd5ebefbe446dc5461daf3c991095bbbe0e7220bb443277fe294ce`.
-They ran on physical k72 (`kubuntu`), native KDE/Wayland, logind session `906`,
-current `/usr/bin/plasmashell` PID `129168`. Exact boot/session/process start
-identities, private receipt paths and SHA-256s are in [summary.json](summary.json).
+They ran on physical k72 (`kubuntu`), Kubuntu 26.04.1 (Ubuntu 26.04.1 LTS), Plasma
+6.6.6 on native Wayland, Qt 6.10.2 and KF6Service 6.24.0, logind session `906`,
+current `/usr/bin/plasmashell` PID `129168`. The exported package's extracted
+`putgd` hashes to `714c046908fe3b24f707323e7dce1e0257767ca30371548a9996bdbd633f1c83`
+and `putgd-ui` to `c973b5e195c710bb73eaa6551e7c723658a1e7f8eea5e87db0432ff580e9de71`.
+Exact boot/session/process start identities, distro package versions, probe
+binary hash, private receipt paths and SHA-256s are in [summary.json](summary.json).
 
 | Run | Driver | What was observed |
 | --- | --- | --- |
@@ -190,6 +201,21 @@ an observation, not an ID embedded in the driver. No pointer input was sent and
 prechecks were 100%. The retained images happen to be byte-identical across the
 two runs; each run's own receipt records its hash, and no acceptance credit is
 transferred between sources.
+
+Execution used the private functional wrapper `work/495/final_probe.py`, SHA-256
+`becbd6aa88281103f3b07755d16c744b1877518c02f83478d3b1cb28128fdf42`.
+It is separate from the maintained tool and the published product. The recorded
+invocation for the completed `6bbb` run was:
+
+```sh
+cd /home/patrick/work/n495
+python3 work/495/final_probe.py /home/patrick/putgd-lab/n495/final-6bbb 6bbbd506aeef7f8aa4a97c21664c7013ff427627
+```
+
+Its stdout is `final-6bbb.log`; preserve the completed output directory. Use a
+new private directory and the selected source identity for another run, after
+the required preflight and lock. Wrapper bytes and each run's independent
+receipts are indexed even though the resulting PNG bytes match.
 
 | Saved visual | Scope |
 | --- | --- |
@@ -216,11 +242,16 @@ This proves collection tolerates removed binaries; it did not include a real
 logout/login and is not a current-`6bbb` removal acceptance claim. Neither k72
 run claims a positive new-session login-start or post-removal login check.
 
-Both locks were released cleanly: `codex-495`, 14:51:37Z and 14:54:13Z, with
-zero `left`, `notMine`, `preexisting` or unmatched entries. The JSON preserves
+Both locks were released cleanly: `codex-495` at 14:51:37Z, then
+`codex-495-final` at 14:54:13Z, with zero `left`, `notMine`, `preexisting` or
+unmatched entries. The JSON preserves
 the release receipt hashes/paths. Owned runtimes were removed and packages
 purged. The later candidate fixes inventory of executables marked `(deleted)`;
 the earlier evidence remains bound to its original driver.
+
+The later `64a3257b` candidate adds authenticated GNOME display fallback and is
+reported to pass 19 tests in 1.261 s. Its saved log and desktop result are pending;
+the saved 18-test and graphical records above remain evidence for `6bbb`.
 
 ## Keychain results and remaining prerequisites
 

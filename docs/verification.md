@@ -102,7 +102,8 @@ five operations and used session credentials plus a retained keychain reference;
 it did not prove realistic 10,000-operation History behavior or a real keychain
 credential lifecycle. Original results and failures remain historical evidence.
 The driver in [code PR #554](https://github.com/patrick-hudson/put.gd-desktop/pull/554)
-is recorded at `6bbbd506`; its maintained commands and prerequisites are documented.
+is recorded at `64a3257b`; its maintained commands and prerequisites are documented.
+The saved k72 results below belong to the separately identified `6bbbd506` candidate.
 Saved physical k72 KDE/Wayland evidence proves authenticated SNI activation/Quit,
 peer-bound login preparation and same-session refusal, current-session cache
 inspection and a backend-only Secret Service roundtrip/cleanup. Eighteen focused

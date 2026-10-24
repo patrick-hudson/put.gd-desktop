@@ -3,12 +3,12 @@
   "issue": 495,
   "date": "2026-10-24",
   "scope": "Native acceptance lab driver documentation; no new release acceptance claim",
-  "status": "k72-current-candidate-evidence-verified-m74-pending",
+  "status": "k72-prior-candidate-evidence-verified-current64a-m74-pending",
   "codePullRequest": "https://github.com/patrick-hudson/put.gd-desktop/pull/554",
   "driver": {
     "path": "tools/lab/native_acceptance.py",
-    "commit": "6bbbd506aeef7f8aa4a97c21664c7013ff427627",
-    "sha256": "1375c3cc43b39be05f42847e19080fc15afb8a6a8b0e881e82d0d7e5173700dc",
+    "commit": "64a3257b20d7aa33cc25d35c07a628becff4036c",
+    "sha256": "8f1a8f49fd3f72d574493ebcb43e7ae51db253da7889a0ca51ef7f68ba8ecf4c",
     "stage": "draft-code-pr-unmerged-harness",
     "productCliCapabilitiesChanged": false
   },
@@ -77,6 +77,16 @@
       "sha256": "fda9b3464105df3ffe2570aa008aaf6430b276fd483bfea9334113d19eb6f971",
       "diagnostics": "SQLite ResourceWarning diagnostics from synthetic fixture connections retained in private log",
       "scope": "safety/history-shape contracts only"
+    },
+    {
+      "path": "tests/desktop/test_native_acceptance.py",
+      "commit": "64a3257b20d7aa33cc25d35c07a628becff4036c",
+      "testCount": 19,
+      "secondsReported": 1.261,
+      "host": "k72",
+      "status": "code-owner-reported-pass",
+      "savedLog": "pending",
+      "scope": "new compositor-peer fallback safety regression; older18-test export preserved"
     }
   ],
   "desktopRuns": [
@@ -202,7 +212,19 @@
             1080
           ]
         }
-      }
+      },
+      "versions": {
+        "os": "Kubuntu 26.04.1",
+        "session": "Plasma 6.6.6 / native Wayland",
+        "Qt": "6.10.2",
+        "KF6Service": "6.24.0",
+        "distroPackageVersions": [
+          "libkf6service6 6.24.0-0ubuntu1",
+          "libqt6core6t64 6.10.2+dfsg-7",
+          "plasma-workspace 4:6.6.6-0ubuntu0.1"
+        ]
+      },
+      "sycocaProbeBinarySha256": "caa332b5cfe4c61bd8796acc2e3f10cfd3b3bcf79b30fd5cfef5a413c9a61029"
     },
     {
       "runId": "k72/final-6bbb",
@@ -326,7 +348,19 @@
             1080
           ]
         }
-      }
+      },
+      "versions": {
+        "os": "Kubuntu 26.04.1",
+        "session": "Plasma 6.6.6 / native Wayland",
+        "Qt": "6.10.2",
+        "KF6Service": "6.24.0",
+        "distroPackageVersions": [
+          "libkf6service6 6.24.0-0ubuntu1",
+          "libqt6core6t64 6.10.2+dfsg-7",
+          "plasma-workspace 4:6.6.6-0ubuntu0.1"
+        ]
+      },
+      "sycocaProbeBinarySha256": "caa332b5cfe4c61bd8796acc2e3f10cfd3b3bcf79b30fd5cfef5a413c9a61029"
     }
   ],
   "savedVisuals": [
@@ -412,7 +446,7 @@
   ],
   "sourceHashes": {
     "tools/lab/native_keychain.py": "d6309c46f2eb42803c74ea1c905004cc2a0b89be3c8b2392d7712d34bbed6384",
-    "tests/desktop/test_native_acceptance.py": "95cb0e5b79db8bd5350d0b6dc4111e20ebf704ebaa6122738ce5f7592e130c08",
+    "tests/desktop/test_native_acceptance.py": "997a9ff0432b8e1ac682d5e48e36a9245380c11de6f977a9267efdfd3d59d64a",
     "tools/lab/sycoca_probe/CMakeLists.txt": "bc79f4a01c7e458a70fa4b400a165ab01ffa6819ae0da91aecaed9b750069490",
     "tools/lab/sycoca_probe/CMakePresets.json": "5d2291ac3700ebf427c1e7ffa63cc89b91f2585488f3cd1db37ae5f0c0e01e74",
     "tools/lab/sycoca_probe/main.cpp": "570422891002af69c64a978fa17185849990bafa892fd2ac3a4caf5714a136b9"
@@ -801,6 +835,21 @@
         "sha256": "fda9b3464105df3ffe2570aa008aaf6430b276fd483bfea9334113d19eb6f971",
         "bytes": 3237,
         "publicCopy": false
+      },
+      "k72-final/source-identity.json": {
+        "sha256": "988483be4d95d5b8327e5c5b929dceb957ef454e7e7f112fc2c2c800b0d616c4",
+        "bytes": 753,
+        "publicCopy": false
+      },
+      "final_probe.py": {
+        "sha256": "becbd6aa88281103f3b07755d16c744b1877518c02f83478d3b1cb28128fdf42",
+        "bytes": 5312,
+        "publicCopy": false
+      },
+      "k72-final/product-binaries.json": {
+        "sha256": "24e948de0964f010e8d4ca0cc9f4e92dc668800b0c6becbc84f244cf397f40fb",
+        "bytes": 740,
+        "publicCopy": false
       }
     }
   },
@@ -815,5 +864,55 @@
       ],
       "evidenceCredit": "826c run preserved; fresh 6bbb run separately verified"
     }
-  ]
+  ],
+  "previousCurrentCandidate": {
+    "path": "tools/lab/native_acceptance.py",
+    "commit": "6bbbd506aeef7f8aa4a97c21664c7013ff427627",
+    "sha256": "1375c3cc43b39be05f42847e19080fc15afb8a6a8b0e881e82d0d7e5173700dc",
+    "stage": "draft-code-pr-unmerged-harness",
+    "productCliCapabilitiesChanged": false
+  },
+  "privateOrchestration": {
+    "path": "work/495/final_probe.py",
+    "sha256": "becbd6aa88281103f3b07755d16c744b1877518c02f83478d3b1cb28128fdf42",
+    "maintainedTool": false,
+    "scope": "private functional wrapper, separate from committed harness and published product",
+    "k72Final6bbbCommand": {
+      "cwd": "/home/patrick/work/n495",
+      "argv": [
+        "python3",
+        "work/495/final_probe.py",
+        "/home/patrick/putgd-lab/n495/final-6bbb",
+        "6bbbd506aeef7f8aa4a97c21664c7013ff427627"
+      ],
+      "stdout": "final-6bbb.log"
+    },
+    "preservedCopy": "/home/patrick/.t3/worktrees/put.gd/docs-native-acceptance-drivers-495/work/495/source/final_probe-becbd6aa.py"
+  },
+  "k72ProductBinaryIdentity": {
+    "source": "k72-final/product-binaries.json",
+    "osReleaseObserved": "Ubuntu 26.04.1 LTS (Resolute Raccoon)",
+    "distributionProfile": "Kubuntu 26.04.1",
+    "binaryScope": "extracted from independently verified ubuntu26.04 native1185 DEB; installed resident path was /usr/bin/putgd",
+    "binarySha256": {
+      "/home/patrick/putgd-lab/n495/product/usr/bin/putgd": "714c046908fe3b24f707323e7dce1e0257767ca30371548a9996bdbd633f1c83",
+      "/home/patrick/putgd-lab/n495/product/usr/bin/putgd-ui": "c973b5e195c710bb73eaa6551e7c723658a1e7f8eea5e87db0432ff580e9de71"
+    }
+  },
+  "sessionDisplayFallback": {
+    "introducedAt": "64a3257b20d7aa33cc25d35c07a628becff4036c",
+    "reason": "GNOME compositor environment can omit WAYLAND_DISPLAY",
+    "guard": "manager display is only a hint; owned socket inside current runtime must have SO_PEERCRED PID/UID matching current logind-bound shell and unchanged process generation",
+    "desktopProof": "pending current-source run; no transfer from k72 older candidate"
+  },
+  "factualReview": {
+    "reviewerThread": "mcp:982a3d27-ea8e-43c3-93f2-6e8d441f49e4",
+    "scope": "command/interface and evidence provenance; not formal GitHub approval",
+    "outcome": "scope correct; corrections applied",
+    "corrections": [
+      "second k72 lock session is codex-495-final",
+      "maintained source advanced to64a; prior proof scopes retained",
+      "private wrapper hash/invocation and exact versions/binary metadata added"
+    ]
+  }
 }
