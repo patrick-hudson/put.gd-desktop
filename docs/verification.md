@@ -98,14 +98,14 @@ session for recording) and on an Ubuntu 26.04 GNOME VM, the `debian13` DEB on d6
 The [follow-up record](evidence/2026-10-24-native-acceptance-drivers-495/README.md)
 retires the old coordinate/tint tray recipes and separates the six lab-driver
 findings from product acceptance. **Candidate recipes and downstream growth are
-on HOLD after five independent-review safety findings. Owner corrections at
-`c538f71e` pass 35 tests and a Qt lock witness; fresh public-CLI k72 observations
-are recorded, with independent round 2 still pending.** The 1058 pass above preserved 10,000 rows in
+on HOLD pending independent round 3. Round 2 resolved the five safety findings
+in `c538f71e` and found inert-receipt compatibility; `72afd00b` passes 37 tests
+and actual serializer/10k CLI checks for the bounded fix.** The 1058 pass above preserved 10,000 rows in
 five operations and used session credentials plus a retained keychain reference;
 it did not prove realistic 10,000-operation History behavior or a real keychain
 credential lifecycle. Original results and failures remain historical evidence.
 The driver in [code PR #554](https://github.com/patrick-hudson/put.gd-desktop/pull/554)
-is recorded at `c538f71e`; its held candidate interface and prerequisites are documented.
+is recorded at `72afd00b`; its held candidate interface and prerequisites are documented.
 Earlier k72 packets retain their `826c255a` / `6bbbd506` identities; the fresh
 `c538f71e` packet records newly reserved public CLI receipts and new captures.
 Saved physical k72 KDE/Wayland evidence proves authenticated SNI activation/Quit,

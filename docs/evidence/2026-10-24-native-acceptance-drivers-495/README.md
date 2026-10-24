@@ -1,15 +1,16 @@
 # Native acceptance driver hardening (#495) — 2026-10-24
 
-**HOLD — independent review requires changes.** The candidate recipes below
+**HOLD — independent round 3 pending.** The candidate recipes below
 are an implementation/evidence record, not a final approved runbook. Do not use
 the old `grow` downstream. Review found five safety gaps in the predecessor
 implementation: persisted external destinations despite localhost configuration,
 a selected-database/unrelated-runtime bypass, incomplete helper inventory,
 lost cleanup/recovery after partial synthetic keychain stores, and output
-reservation only after mutations. Owner-proposed corrections are committed at
-`c538f71e`, with 35 saved passing tests, a real Qt lock witness and a fresh
-public-CLI k72 packet. The distinct follow-up independent review remains pending.
-Existing test passes and functional observations do not approve those corrections.
+reservation only after mutations. Independent round 2 resolved all five in
+`c538f71e`, then found a valid-product-receipt compatibility issue. Its bounded
+fix is `72afd00b`, with 37 saved passing tests and unmodified production-serializer
+proof. Round 3 is running. Existing test passes and functional observations do
+not replace that review; the old downstream growth recipes remain on hold.
 
 This is the documentation companion to the maintained driver in
 `tools/lab/native_acceptance.py` in [code PR #554](https://github.com/patrick-hudson/put.gd-desktop/pull/554).
@@ -43,15 +44,15 @@ do not retroactively turn those attempts into passes.
 
 ## Candidate command interface (HOLD)
 
-Recorded candidate source: `c538f71e89afcc6d1e6c599c3c1cb9c3a97e7ced`,
+Recorded candidate source: `72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e`,
 `tools/lab/native_acceptance.py` plus `tools/lab/native_keychain.py`. The driver
-SHA-256 is `2f317d31a85741c7a24382849f309433a2581ee127f28c52de3a859a74069258`;
+SHA-256 is `347934c226f99cb0e509d5466c5df8116896e6bfac07d75fdfa4f4c2d06ca053`;
 the [JSON](summary.json) also records the helper and test hashes. This is
 unmerged harness source, separately identified from the published product
 package under test. The product CLI capabilities are unchanged.
 
 These commands describe that candidate. Preserve their source-specific evidence;
-wait for the corrected handoff and follow-up review before treating them as safe
+wait for the final reviewed handoff before treating them as safe
 maintained campaign instructions. In particular, current localhost configuration
 alone does not establish that stored journals/destinations are safe or that the
 selected database is stopped.
@@ -175,6 +176,14 @@ keychain/embedded credentials, upload/multipart/cleanup recovery state,
 deletion/sharing journals and unknown tables. Existing external fixtures must
 not be rewritten into apparent localhost fixtures.
 
+The `72afd` compatibility exception accepts only the full exact inert default
+`StorageReceipt` for a terminal operation with `failed`, `local_only`,
+`cancelled`, `skipped` or `conflict` upload status and no requested remote/share
+action. Preserve every serialized field; do not strip `receipt` from the seed.
+Published/unknown/active states or an altered default do not qualify, and the
+exception does not apply to `shareReceipt`. Populated receipts still require a
+complete isolated destination, and recovery-state validation remains strict.
+
 Schema 5–7 terminal journals need matching `item_state` rows. Stop the fixture
 normally first: checks cover associated data-home/open-database owners across
 runtimes, plus `putgd` and the full `putgd-*` helper prefix, including deleted
@@ -182,7 +191,8 @@ executables; unreadable owned helpers refuse absence. The proposed guard holds
 `resident.lock` through the transaction and commit, rechecking owners under the
 lock. It refuses every preexisting lock; never break or delete one to make the
 test proceed. The selected runtime's socket must be absent; do not remove
-another session's socket to satisfy the gate. These changes still await round 2.
+another session's socket to satisfy the gate. Round 3 of the current candidate
+remains pending.
 
 Each seed history row must already have its own operation. The old expanded
 five-operation fixture is rejected. Copies receive unique operation/item IDs,
@@ -209,10 +219,10 @@ bytes before launch. Follow [remote-builder locking and visibility](../../remote
 and [VM lifecycle rules](../../vm-lab.md). This documentation thread runs no GUI
 campaign; the code owner coordinates execution and desktop locks.
 
-## Owner-proposed safety corrections (`c538`, review pending)
+## Review resolutions and serializer compatibility (`72afd`, round 3 pending)
 
-The five acknowledged findings remain open for independent validation. The
-owner's proposed resolutions reserve output before actions, validate persisted
+Independent round 2 source review resolved the five original findings. The
+`c538` resolutions reserve output before actions, validate persisted
 network state, bind growth to the exact database and its resident lock, inspect
 the complete associated helper family, and preserve failed-store recovery.
 The saved 35-test log passes on k72 in 1.550 s. A separate private Qt witness
@@ -220,6 +230,19 @@ reports that an actual `QLockFile` and the growth guard exclude each other in
 both directions, Qt can acquire after release, and no lock remains. Witness
 source/binary hashes and result JSON are indexed. These are safety/protocol
 checks, not a product or graphical acceptance run.
+
+Round 2 also found that real `OperationItem::toJson()` always emits a nonempty
+default receipt, even for failed/local-only items. `72afd00b` accepts only the
+inert case described above. Its saved 37-test log passes in 2.754 s with complete
+product-shaped records. A private standalone Qt witness compiled the actual
+production serializers and emitted failed/local-only items with receipts
+untouched. The validator accepted those records; the actual growth CLI then
+created 10,000 independent operations/items/journals/states from a fresh
+synthetic schema-7 fixture, integrity `ok`, zero uploads. Production serializer,
+witness source/binary, emitted-record and CLI-receipt hashes are indexed.
+This is current `72afd` serializer/unit/CLI proof; the `c538` desktop and 35-test
+records remain predecessor evidence. No current `72afd` final desktop run is
+claimed, and independent round 3 remains pending.
 
 For a failed keychain store, `c538` persists the canonical synthetic recovery
 reference before creating the item and retains the original safe error and

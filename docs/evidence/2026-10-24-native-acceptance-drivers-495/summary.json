@@ -3,13 +3,13 @@
   "issue": 495,
   "date": "2026-10-24",
   "scope": "Native acceptance lab driver documentation; no new release acceptance claim",
-  "status": "HOLD-independent-round2-pending-fresh-c538-public-cli-observations-verified",
+  "status": "HOLD-independent-round3-pending-current72afd-serializer-unit-proof-predecessor-c538-desktop",
   "codePullRequest": "https://github.com/patrick-hudson/put.gd-desktop/pull/554",
   "driver": {
     "path": "tools/lab/native_acceptance.py",
-    "commit": "c538f71e89afcc6d1e6c599c3c1cb9c3a97e7ced",
-    "sha256": "2f317d31a85741c7a24382849f309433a2581ee127f28c52de3a859a74069258",
-    "stage": "owner-corrections-committed-independent-round2-pending",
+    "commit": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+    "sha256": "347934c226f99cb0e509d5466c5df8116896e6bfac07d75fdfa4f4c2d06ca053",
+    "stage": "inert-receipt-compatibility-fix-independent-round3-pending",
     "productCliCapabilitiesChanged": false
   },
   "historicalEvidence": {
@@ -102,6 +102,17 @@
       "privateLog": "review2/review-fixes-commit-tests.log",
       "sha256": "d4f0943e747b564379a04fdd1d07fb540c73b8a89d908aa7913ada87ea4c159e",
       "scope": "safety/shape regression checks for owner-proposed review fixes; independent round2 pending"
+    },
+    {
+      "path": "tests/desktop/test_native_acceptance.py",
+      "commit": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+      "testCount": 37,
+      "seconds": 2.754,
+      "host": "k72",
+      "status": "saved-log-verified-pass",
+      "privateLog": "review3/inert-receipt-tests-2.log",
+      "sha256": "2ed4a4acb2bd4cea53fb3f234afb52668f8a2d72818fa2a491fa869bed4e230b",
+      "scope": "full product-shaped inert receipts; independent round3 pending"
     }
   ],
   "desktopRuns": [
@@ -824,7 +835,7 @@
     }
   ],
   "limitations": [
-    "Owner-c538 corrections and fresh public-CLI observations recorded; root independent round2 pending; downstream grow remains HOLD",
+    "Independent round3 pending for current72afd; c538 desktop/35-test and prior GUI evidence remain predecessor; downstream grow HOLD",
     "No real logout/login in k72 runs; same-session refusal tested",
     "No physical tray click or rendered menu proof",
     "No product QtKeychain credential lifecycle or backend persistence across login proof",
@@ -835,7 +846,7 @@
   ],
   "sourceHashes": {
     "tools/lab/native_keychain.py": "c5b80a68b651108595a150db8eadfadc6ad37986a33096cebb5a937b278e9bf8",
-    "tests/desktop/test_native_acceptance.py": "c00c1dafc1e8ce4e61a2023d885ee8a8893620c3f639614dea6433c7d457e42a",
+    "tests/desktop/test_native_acceptance.py": "5ce8acfb157cd6727e2c9017332c1324e85c52e8fcaaf7da7b87e0596d580f17",
     "tools/lab/sycoca_probe/CMakeLists.txt": "bc79f4a01c7e458a70fa4b400a165ab01ffa6819ae0da91aecaed9b750069490",
     "tools/lab/sycoca_probe/CMakePresets.json": "5d2291ac3700ebf427c1e7ffa63cc89b91f2585488f3cd1db37ae5f0c0e01e74",
     "tools/lab/sycoca_probe/main.cpp": "570422891002af69c64a978fa17185849990bafa892fd2ac3a4caf5714a136b9"
@@ -844,7 +855,7 @@
     "backend": "org.freedesktop.secrets",
     "probe": "unique synthetic item; optional Unlock/Prompt of exact approved existing provider/label; no password typed, reset or default-collection change",
     "productKeychainRoundtripProven": false,
-    "desktopBackendResults": "current 6bbb k72 store/separate-process read/cleanup receipts verified, provider ksecretd; earlier locked refusals and source mismatches retained",
+    "desktopBackendResults": "historical6bbb k72 store/separate-process read/cleanup receipts verified, provider ksecretd; earlier locked refusals and source mismatches retained",
     "persistenceAcrossLoginProven": false
   },
   "documentationPullRequest": "https://github.com/patrick-hudson/put.gd-desktop/pull/552",
@@ -1624,6 +1635,36 @@
         "sha256": "c4951e58aeab7833788c7707135138f7f90647c9f3ec1e7d197ef785c2178459",
         "bytes": 635,
         "publicCopy": false
+      },
+      "review3/product-items.json": {
+        "sha256": "f66615c1e5f88d4c57d5170f9e1ea26c815b6b6022225bc5160460888ee85117",
+        "bytes": 3213,
+        "publicCopy": false
+      },
+      "review3/product-serializer-proof.json": {
+        "sha256": "0958c007c4c1a41a0f32c7b60ca6f14325c660141cdbdefee8fae4f72d8c9de2",
+        "bytes": 812,
+        "publicCopy": false
+      },
+      "review3/grow-product-items-72afd.json": {
+        "sha256": "e52c04b5095bf62e53ceddb44c0fd6e0a6ca947062a78b45a3e9f8e6d575cad1",
+        "bytes": 576,
+        "publicCopy": false
+      },
+      "review3/inert-receipt-tests-2.log": {
+        "sha256": "2ed4a4acb2bd4cea53fb3f234afb52668f8a2d72818fa2a491fa869bed4e230b",
+        "bytes": 136,
+        "publicCopy": false
+      },
+      "review3/product-item-build.log": {
+        "sha256": "042b46eaedb16eb4b915e28296b82a3bf25baa21a2102afa139ed7f8d546b65b",
+        "bytes": 691,
+        "publicCopy": false
+      },
+      "review3/product-item-configure.log": {
+        "sha256": "2eace160e8517ac104d15dc9de2c6dc929f87543a3c9e9ee93ecf407b4ecc2eb",
+        "bytes": 759,
+        "publicCopy": false
       }
     }
   },
@@ -1723,7 +1764,7 @@
   "independentSafetyReview": {
     "round": 1,
     "reviewedCommit": "6bbbd506aeef7f8aa4a97c21664c7013ff427627",
-    "status": "owner-c538-corrections-committed-independent-round2-pending",
+    "status": "round1-five-resolved-round2; inert-receipt-fix-awaiting-round3",
     "privateReport": "/home/patrick/work/put.gd/work/stable-closeout-410-495-379/REVIEW554-round1.md",
     "sha256": "2fb5d13c8cc919f8a938c6975964484d66b05d73543e0174de800fe3a592bfb2",
     "findings": [
@@ -1731,37 +1772,55 @@
         "priority": "P1",
         "issue": "persisted external destination/journal/receipt/multipart state not validated by localhost current config",
         "ownerProposedResolution": "scan persisted JSON journal/receipt/state and reject external/unknown routes, credentials, multipart cleanup/deletion/sharing work and unknown tables",
-        "independentlyValidated": false
+        "independentlyValidated": true,
+        "validationScope": "round2 source review; runtime proofs separately indexed"
       },
       {
         "priority": "P2",
         "issue": "selected database can be live while unrelated runtime passes stopped guard",
         "ownerProposedResolution": "require exact private fixture database; hold resident.lock through commit; inspect data-home/open-FD owners across runtimes",
-        "independentlyValidated": false
+        "independentlyValidated": true,
+        "validationScope": "round2 source review; runtime proofs separately indexed"
       },
       {
         "priority": "P2",
         "issue": "capture/selector/storage helper inventory incomplete",
         "ownerProposedResolution": "include putgd/putgd-* helper family and deleted executables; unreadable owned helpers refuse absence",
-        "independentlyValidated": false
+        "independentlyValidated": true,
+        "validationScope": "round2 source review; runtime proofs separately indexed"
       },
       {
         "priority": "P2",
         "issue": "partial synthetic store failure can lose cleanup reference and leak item",
         "ownerProposedResolution": "persist canonical recovery reference before CreateItem; retain safe original error/cleanup state; support idempotent cleanup from failed receipt",
-        "independentlyValidated": false
+        "independentlyValidated": true,
+        "validationScope": "round2 source review; runtime proofs separately indexed"
       },
       {
         "priority": "P2",
         "issue": "output is reserved after mutations; existing output can still permit effects",
         "ownerProposedResolution": "require mutating command output; exclusive owned private reservation before session discovery or effects",
-        "independentlyValidated": false
+        "independentlyValidated": true,
+        "validationScope": "round2 source review; runtime proofs separately indexed"
       }
     ],
     "downstreamGrow": "HOLD",
-    "followupReview": "required after corrected exact-source handoff; pending",
+    "followupReview": "round2 resolved five original findings; round3 running on72afd inert-receipt compatibility fix",
     "evidencePolicy": "existing observations retain original sources; no final safety/readiness credit",
-    "ownerCorrectionCommit": "c538f71e89afcc6d1e6c599c3c1cb9c3a97e7ced"
+    "ownerCorrectionCommit": "c538f71e89afcc6d1e6c599c3c1cb9c3a97e7ced",
+    "round2": {
+      "reviewedCommit": "c538f71e89afcc6d1e6c599c3c1cb9c3a97e7ced",
+      "privateReport": "/home/patrick/work/put.gd/work/stable-closeout-410-495-379/REVIEW554-round2.md",
+      "sha256": "cf91fd9c52cc095bf33c44be5c1376c2358772d3489aba2e4785dde210639a19",
+      "fiveRound1Findings": "resolved by independent source review",
+      "newFinding": "P2 valid failed/local-only product seeds include a full inert default StorageReceipt; candidate rejected them",
+      "limits": "source/in-memory probes; no independent35-test/Qt/product/GUI/keychain/network/VM rerun"
+    },
+    "round3": {
+      "reviewedCommit": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+      "status": "running",
+      "HOLD": true
+    }
   },
   "m74KeychainCorrection": {
     "originalSource": "64a3257b20d7aa33cc25d35c07a628becff4036c",
@@ -1779,6 +1838,13 @@
       "commit": "64a3257b20d7aa33cc25d35c07a628becff4036c",
       "sha256": "8f1a8f49fd3f72d574493ebcb43e7ae51db253da7889a0ca51ef7f68ba8ecf4c",
       "stage": "review-blocked-candidate-not-final-runbook",
+      "productCliCapabilitiesChanged": false
+    },
+    {
+      "path": "tools/lab/native_acceptance.py",
+      "commit": "c538f71e89afcc6d1e6c599c3c1cb9c3a97e7ced",
+      "sha256": "2f317d31a85741c7a24382849f309433a2581ee127f28c52de3a859a74069258",
+      "stage": "owner-corrections-committed-independent-round2-pending",
       "productCliCapabilitiesChanged": false
     }
   ],
@@ -1825,5 +1891,75 @@
       ],
       "stdout": "/home/patrick/putgd-lab/n495/final-c538.log"
     }
+  },
+  "productionSerializerWitness": {
+    "commit": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+    "host": "k72",
+    "privateReceipt": "review3/product-serializer-proof.json",
+    "proof": {
+      "source": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+      "productItemSerializerUsed": true,
+      "receiptUnmodified": true,
+      "states": [
+        "failed",
+        "local_only"
+      ],
+      "noNetworkCalls": true,
+      "unixSockets": [],
+      "files": {
+        "src/core/Operation.cpp": "212cf4d375d82d620593776816de8bbc14b21fca637f7eafcee5e19d8a6feee4",
+        "src/core/StorageReceipt.cpp": "bb5267f91c5efaa9ff5b839ba0a57af10dc488ee096fb26b4d91cfc5964e767f",
+        "work/495/product-item-witness/main.cpp": "9c7e38c94211bae6b8cbeeb1f2a24448fb9b366b224da48ef178a1ef640c489b",
+        "work/495/product-item-witness/build/dev/product-item-witness": "798134ad5adc9f2e2a6e61ce461e1624068ac19080076048bc7a0a7cd33e9c2f",
+        "/home/patrick/putgd-lab/n495/product-items.json": "f66615c1e5f88d4c57d5170f9e1ea26c815b6b6022225bc5160460888ee85117"
+      }
+    },
+    "privateWitnessSource": "/home/patrick/.t3/worktrees/put.gd/docs-native-acceptance-drivers-495/work/495/product-item-witness-72afd",
+    "sourceFilesSha256": {
+      "CMakeLists.txt": "d04e7d3bd31c2b9984911e74061761cf61b0929bdcd4aa435bce6b217f960ff2",
+      "CMakePresets.json": "d513c89c2d0dff32cc359452aa4722a871951c498f2080a6a2307460a543905e",
+      "main.cpp": "9c7e38c94211bae6b8cbeeb1f2a24448fb9b366b224da48ef178a1ef640c489b"
+    },
+    "growCliReceipt": "review3/grow-product-items-72afd.json",
+    "growCliResult": {
+      "seedRows": 5,
+      "historyRows": 10000,
+      "independentOperations": 10000,
+      "independentItems": 10000,
+      "operationJournals": 10000,
+      "itemStates": 10000,
+      "userVersion": 7,
+      "syntheticClones": true,
+      "realUploadsPerformed": 0,
+      "integrity": "ok"
+    },
+    "socket": {
+      "path": "/tmp/ps495-2amy2_tm/r/putgd/session.sock",
+      "utf8Bytes": 40
+    },
+    "scope": "actual production serializers in standalone witness; unstripped failed/local_only records and fresh synthetic schema7 fixture; no GUI, network, actual upload or product performance/migration proof"
+  },
+  "inertReceiptException": {
+    "introducedAt": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+    "recordShape": "exact full StorageReceipt{}.toJson() default including every field, unmodified",
+    "allowedOperationStates": [
+      "completed",
+      "partial",
+      "failed",
+      "cancelled",
+      "interrupted"
+    ],
+    "allowedUploadStatuses": [
+      "failed",
+      "local_only",
+      "cancelled",
+      "skipped",
+      "conflict"
+    ],
+    "requiredRemoteStatus": "not_requested",
+    "requiredShareStatus": "not_requested",
+    "shareReceiptException": false,
+    "publishedUnknownActiveAlteredReceipts": "refused; populated routes still require complete isolated receipts and whole-state validation",
+    "recoveryValidation": "unchanged strict refusal"
   }
 }
