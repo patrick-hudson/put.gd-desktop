@@ -1,4 +1,5 @@
 import hashlib
+import http.client
 import io
 import json
 from pathlib import Path
@@ -6,7 +7,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'tools/releases'))
@@ -114,6 +115,42 @@ class RuntimeArchiveMirrors(unittest.TestCase):
         with patch.object(complete.urllib.request, 'urlopen', side_effect=[complete.urllib.error.URLError('fixture'), io.BytesIO(self.data)]):
             complete.fetch_archive(self.item, self.target)
         self.assertEqual(self.target.read_bytes(), self.data)
+
+    def test_mid_read_transport_failure_replaces_partial_bytes_from_a_verified_mirror(self):
+        for failure in (ConnectionResetError('fixture reset'), OSError('fixture transport failure'),
+                        http.client.IncompleteRead(b'fixture truncated')):
+            with self.subTest(failure=type(failure).__name__):
+                response = MagicMock()
+                response.__enter__.return_value = response
+                response.read.side_effect = [b'partial unverified primary source', failure]
+                with patch.object(complete.urllib.request, 'urlopen', side_effect=[response, io.BytesIO(self.data)]) as fetch:
+                    complete.fetch_archive(self.item, self.target)
+                self.assertEqual(self.target.read_bytes(), self.data)
+                self.assertEqual([c.args[0] for c in fetch.call_args_list], [self.item['url'], self.item['mirrors'][0]])
+                response.__exit__.assert_called_once()
+
+    def test_local_write_failure_is_not_retried_as_a_transport_failure(self):
+        stream = MagicMock()
+        stream.__enter__.return_value = stream
+        failure = OSError('fixture disk full')
+        stream.write.side_effect = failure
+        with patch.object(complete.urllib.request, 'urlopen', return_value=io.BytesIO(self.data)) as fetch, \
+                patch.object(Path, 'open', return_value=stream), self.assertRaises(OSError) as raised:
+            complete.fetch_archive(self.item, self.target)
+        self.assertIs(raised.exception, failure)
+        self.assertEqual(fetch.call_count, 1)
+
+    def test_failed_reads_cannot_pass_with_a_matching_partial_checksum(self):
+        responses = []
+        for _ in range(2):
+            response = MagicMock()
+            response.__enter__.return_value = response
+            response.read.side_effect = [self.data, ConnectionResetError('fixture reset')]
+            responses.append(response)
+        with patch.object(complete.urllib.request, 'urlopen', side_effect=responses) as fetch, \
+                self.assertRaisesRegex(ValueError, 'pinned checksum'):
+            complete.fetch_archive(self.item, self.target)
+        self.assertEqual(fetch.call_count, 2)
 
     def test_mirror_urls_must_be_https_without_credentials(self):
         for unsafe in ['http://mirror.invalid/source.tar.gz', 'https://user:secret@mirror.invalid/source.tar.gz']:

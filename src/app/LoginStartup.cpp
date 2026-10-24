@@ -168,13 +168,14 @@ Error LoginStartup::apply(const QString& root,const QString& dataRoot,const QStr
  previous.close();
  if(!QDir().mkpath(QFileInfo(scriptPath).path()))return {"autostart_io","Cannot create login startup script directory",{}};
  if(auto error=commit(scriptPath,script.toUtf8(),QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner,"login startup script"))return error;
- if(auto error=removeScript(legacyScript))return error;
  if(!QDir().mkpath(directory))return {"autostart_io","Cannot create login startup directory",{}};
  // No TryExec: an absent installation must still run the user-scoped cleanup
  // at the next login. The shell and this script survive package removal.
  const auto entry="[Desktop Entry]\nType=Application\nName=put.gd\nExec=/bin/sh "+desktopQuoted(scriptPath)+" --background\n";
  const auto bytes=(entry+"Terminal=false\nX-putgd-Managed=true\nX-putgd-StartupId="+id+"\n").toUtf8();
- return commit(path,bytes,QFile::ReadOwner|QFile::WriteOwner,"login startup entry");
+ if(auto error=commit(path,bytes,QFile::ReadOwner|QFile::WriteOwner,"login startup entry"))return error;
+ // A failed entry replacement must leave its legacy login command usable.
+ return removeScript(legacyScript);
 #endif
 }
 }
