@@ -1,0 +1,200 @@
+{
+  "scope": "native resident synthetic stored-link recovery via official SDK stdio/MCP/production CLI",
+  "before": {
+    "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+    },
+    "ok": true,
+    "requestId": "d152c6d0-bf8d-47ed-bf66-851fab6bc7b4",
+    "result": {
+      "action": "window",
+      "cancelled": false,
+      "clipboardRevision": "2",
+      "copyStatus": "suppressed",
+      "created": "2026-10-24T01:31:19.255Z",
+      "destination": {
+        "credentials": {},
+        "profileId": "",
+        "profileRevision": "",
+        "providerId": "",
+        "settings": {}
+      },
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      },
+      "id": "c9122b36-6f1e-4ebf-acd1-b88ea9af8c4f",
+      "invocation": "2",
+      "items": [
+        {
+          "artifact": {
+            "bytes": 18116,
+            "category": "images",
+            "id": "f082e532-df30-4025-a5e8-61599c0053bc",
+            "mime": "image/png",
+            "name": "Synthetic copied-link recovery",
+            "namingPrepared": true,
+            "originalFile": false,
+            "previewPath": "/tmp/ccuf/d/putgd/artifacts/../previews/f082e532-df30-4025-a5e8-61599c0053bc.png",
+            "sha256": "72afe46c2f691af79b42c28911033fd518e2147abc9899b0ba17195e98f0e112"
+          },
+          "candidate": "",
+          "concurrencyToken": "",
+          "condition": "",
+          "error": {
+            "code": "",
+            "details": {},
+            "message": ""
+          },
+          "local": {
+            "error": {
+              "code": "",
+              "details": {},
+              "message": ""
+            },
+            "path": "/tmp/ccuf/archive/images/Screen-Capture-2026-10-23-20-28-22.png",
+            "status": "saved"
+          },
+          "objectReference": {},
+          "phase": "uploaded",
+          "publicationId": "c1b26b80-b6b3-4e46-8996-8f40422b7518",
+          "receipt": {
+            "concurrencyToken": "synthetic",
+            "destination": {
+              "credentials": {},
+              "profileId": "synthetic",
+              "profileRevision": "synthetic",
+              "providerId": "synthetic",
+              "settings": {}
+            },
+            "directUrl": "https://example.invalid/copy-recovery",
+            "objectReference": {
+              "id": "synthetic"
+            },
+            "publicationId": "synthetic",
+            "schemaVersion": 1
+          },
+          "remoteStatus": "not_requested",
+          "shareIntent": "",
+          "shareIntentOptions": {},
+          "shareStatus": "not_requested",
+          "uploadProgress": null,
+          "uploadStatus": "uploaded"
+        }
+      ],
+      "phase": "completed",
+      "requestTimeoutMs": null,
+      "settingsRevision": "5c9ce1b815b8d16cc531646d2dce181bda1dc215627b24ab27aa8494f1575f94",
+      "state": "completed"
+    },
+    "schemaVersion": 1
+  },
+  "copy": {
+    "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+    },
+    "ok": true,
+    "requestId": "8a7b07f0-be8d-474d-bd16-6711abc89174",
+    "result": {
+      "copied": true
+    },
+    "schemaVersion": 1
+  },
+  "after": {
+    "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+    },
+    "ok": true,
+    "requestId": "ed958014-a15a-463f-ac37-64d3dd553c44",
+    "result": {
+      "action": "window",
+      "cancelled": false,
+      "clipboardRevision": "2",
+      "copyStatus": "copied",
+      "created": "2026-10-24T01:31:19.255Z",
+      "destination": {
+        "credentials": {},
+        "profileId": "",
+        "profileRevision": "",
+        "providerId": "",
+        "settings": {}
+      },
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      },
+      "id": "c9122b36-6f1e-4ebf-acd1-b88ea9af8c4f",
+      "invocation": "2",
+      "items": [
+        {
+          "artifact": {
+            "bytes": 18116,
+            "category": "images",
+            "id": "f082e532-df30-4025-a5e8-61599c0053bc",
+            "mime": "image/png",
+            "name": "Synthetic copied-link recovery",
+            "namingPrepared": true,
+            "originalFile": false,
+            "previewPath": "/tmp/ccuf/d/putgd/artifacts/../previews/f082e532-df30-4025-a5e8-61599c0053bc.png",
+            "sha256": "72afe46c2f691af79b42c28911033fd518e2147abc9899b0ba17195e98f0e112"
+          },
+          "candidate": "",
+          "concurrencyToken": "",
+          "condition": "",
+          "error": {
+            "code": "",
+            "details": {},
+            "message": ""
+          },
+          "local": {
+            "error": {
+              "code": "",
+              "details": {},
+              "message": ""
+            },
+            "path": "/tmp/ccuf/archive/images/Screen-Capture-2026-10-23-20-28-22.png",
+            "status": "saved"
+          },
+          "objectReference": {},
+          "phase": "uploaded",
+          "publicationId": "c1b26b80-b6b3-4e46-8996-8f40422b7518",
+          "receipt": {
+            "concurrencyToken": "synthetic",
+            "destination": {
+              "credentials": {},
+              "profileId": "synthetic",
+              "profileRevision": "synthetic",
+              "providerId": "synthetic",
+              "settings": {}
+            },
+            "directUrl": "https://example.invalid/copy-recovery",
+            "objectReference": {
+              "id": "synthetic"
+            },
+            "publicationId": "synthetic",
+            "schemaVersion": 1
+          },
+          "remoteStatus": "not_requested",
+          "shareIntent": "",
+          "shareIntentOptions": {},
+          "shareStatus": "not_requested",
+          "uploadProgress": null,
+          "uploadStatus": "uploaded"
+        }
+      ],
+      "phase": "completed",
+      "requestTimeoutMs": null,
+      "settingsRevision": "5c9ce1b815b8d16cc531646d2dce181bda1dc215627b24ab27aa8494f1575f94",
+      "state": "completed"
+    },
+    "schemaVersion": 1
+  }
+}

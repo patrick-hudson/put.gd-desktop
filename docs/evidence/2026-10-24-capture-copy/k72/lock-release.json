@@ -1,0 +1,24 @@
+{
+  "lock": {
+    "owner": "capture-copy-466-492-493-474",
+    "session": "t3-0aa1b31c",
+    "host": "k72",
+    "purpose": "Quiet current-head #474 native KDE functional and cold/post-use memory",
+    "acquired": "2026-10-24T00:51:37Z",
+    "expires": "2026-10-24T01:36:37Z",
+    "heartbeat": "2026-10-24T01:25:20Z"
+  },
+  "releasedBy": "t3-0aa1b31c",
+  "check": {
+    "left": [],
+    "notMine": [],
+    "preexisting": [],
+    "unmatchedNotMine": []
+  },
+  "notes": [
+    "1 process(es) outside the desktop session (no DISPLAY or WAYLAND_DISPLAY; shared SSH work): 1657"
+  ],
+  "event": "release",
+  "host": "k72",
+  "at": "2026-10-24T01:28:27Z"
+}
