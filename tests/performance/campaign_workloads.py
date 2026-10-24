@@ -113,7 +113,16 @@ class UI:
             'desktopSettingsChanged': False, 'coldIdleAcceptance': False,
             'observerSha256': sha256(Path(__file__).with_name('campaign_ui.py')),
             'requestedProbeSleepMs': 10, 'pixelSource': 'PID-owned native X11 drawable; no product hook/checkpoint'}
-        self.list_rectangle = self.rectangle('Captures and upload activity')
+        try:
+            self.list_rectangle = self.rectangle('Captures and upload activity')
+        except EvidenceError as error:
+            # A fresh burst starts with the empty-state widget, before its first
+            # capture exists. This fallback is a generic-repaint ROI only.
+            if (str(error) != 'accessible_control_missing_or_ambiguous'
+                    or run.call('history.list', {'limit': 1})['total'] != 0):
+                raise
+            self.list_rectangle = self.full_rectangle
+            run.event('empty-history-generic-probe', contentEndpointWitnessed=False)
 
     def rectangle(self, name):
         node = self.accessible.find(name)
