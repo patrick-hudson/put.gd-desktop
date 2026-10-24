@@ -16,8 +16,13 @@ from release_identity import calendar_base
 EXACT_PATHS = frozenset({
     'CMakeLists.txt', 'CMakePresets.json', 'LICENSE', 'THIRD_PARTY_NOTICES.md', '.gitignore',
     'docs/build.md', 'docs/proton-drive.md', 'tools/verify_dependencies.py', 'tools/releases/provision-sdk.sh',
+    'tools/releases/build-appimage.sh', 'tools/releases/provision-appimage.py',
+    'tools/releases/portable_appimage.py', 'tools/releases/appimage_notices.py',
+    'tools/releases/appimage_update.py', 'tools/releases/appimage_diagnostics.py',
+    'tools/releases/appimage_complete_sources.py', 'tools/releases/audit_native.py',
+    'tools/releases/audit_proton.py', 'tools/releases/release_identity.py',
 })
-PREFIXES = ('src', 'cmake', 'packaging/linux', 'integrations/gnome', 'tools/proton')
+PREFIXES = ('src', 'cmake', 'packaging/linux', 'packaging/appimage', 'integrations/gnome', 'tools/proton')
 EXCLUDED_COMPONENTS = frozenset({
     '.git', '.github', '.agents', '.codex', '.compound-engineering', '.context', '.claude',
     'work', 'build',

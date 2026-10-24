@@ -149,3 +149,7 @@ class ExactSourceInputs(unittest.TestCase):
             (cache / tag_key).symlink_to(cache / key, target_is_directory=True)
             with self.assertRaisesRegex(ValueError, 'differs from component commit'):
                 complete.git_source(source, cache, root / 'wrong')
+
+
+if __name__ == '__main__':
+    unittest.main()
