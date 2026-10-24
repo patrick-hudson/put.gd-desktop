@@ -7,8 +7,8 @@ implementation: persisted external destinations despite localhost configuration,
 a selected-database/unrelated-runtime bypass, incomplete helper inventory,
 lost cleanup/recovery after partial synthetic keychain stores, and output
 reservation only after mutations. Owner-proposed corrections are committed at
-`c538f71e`, with 35 saved passing tests and a real Qt lock witness. A distinct
-follow-up independent review and fresh current-source desktop reruns are pending.
+`c538f71e`, with 35 saved passing tests, a real Qt lock witness and a fresh
+public-CLI k72 packet. The distinct follow-up independent review remains pending.
 Existing test passes and functional observations do not approve those corrections.
 
 This is the documentation companion to the maintained driver in
@@ -228,8 +228,41 @@ use a new output with `keychain cleanup --before FAILED_RECEIPT`. Cleanup is
 idempotent when the exact item is already absent. Provider-added metadata such
 as `xdg:schema` is permitted only while required application/reference ownership
 still matches. Retain failed and recovery receipts; a successful cleanup does
-not turn the failed store into a roundtrip pass. Current-source desktop reruns
-follow the independent review; historical observations below are not transferred.
+not turn the failed store into a roundtrip pass. The fresh public-CLI observations
+below do not approve safety; historical observations are not transferred.
+
+## Fresh public-CLI observations (`c538`, review pending)
+
+The fresh k72 run at 15:19Z uses `c538f71e89afcc6d1e6c599c3c1cb9c3a97e7ced`,
+driver SHA `2f317d31a85741c7a24382849f309433a2581ee127f28c52de3a859a74069258`,
+and the installed 1185 product in the separately identified native Wayland
+session `906`. Each public CLI step has a newly reserved individual receipt.
+Owned SNI `:1.6230`, resident PID `145684`, activated History; dynamic Quit
+stopped it. Preparation stopped a second IPC-peer-verified resident and the
+same-session login check correctly refused. Backend store/read/cleanup ran in
+separate CLI processes; the store receipt retains its durable pre-creation
+recovery reference. Post-purge snapshot succeeds with `cliExists: false`.
+
+The socket/cover preflights pass (39 bytes, 100% cover). Newly captured activation
+and after-Quit images again match the exact bytes of the linked k72 visuals;
+their independent `final-c538` receipts and hashes are indexed. This is fresh
+capture provenance, not reused evidence. No real logout/login, physical click,
+rendered context menu or product QtKeychain lifecycle is claimed.
+
+The private public-CLI wrapper is `work/495/final_probe_review2.py`, SHA
+`93a9bd25f81122c5600db8a0ac3f53fc4d74d0d7774f31681556260106f8294a`.
+Recorded completed invocation:
+
+```sh
+cd /home/patrick/work/n495
+python3 work/495/final_probe_review2.py /home/patrick/putgd-lab/n495/final-c538 c538f71e89afcc6d1e6c599c3c1cb9c3a97e7ced
+```
+
+Stdout is `/home/patrick/putgd-lab/n495/final-c538.log`; preserve that completed
+directory. The wrapper's original bytes are retained privately. Lock
+`codex-495-r2` was released cleanly at 15:19:51Z with empty cleanup lists;
+package, runtime and synthetic probe were removed. Independent review remains
+pending, so no final safety/readiness credit is assigned to this packet.
 
 ## Saved k72 results
 
