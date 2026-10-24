@@ -61,7 +61,7 @@ jobs:
             [ "$attempt" = 3 ] || sleep $((attempt * 30))
           done
           exit 1
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           ref: ${{ inputs.release_tag || github.sha }}
@@ -70,7 +70,7 @@ jobs:
         # when every mirror attempt fails the install runs offline from them (#368).
         id: pkg-key
         run: echo "week=$(date -u +%G-W%V)" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         id: pkg-cache
         with:
           path: /var/cache/putgd-packages
@@ -83,7 +83,7 @@ jobs:
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           bash tools/releases/install-native-deps.sh
-      - uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         # Only a snapshot an online install just refreshed, never one it fell back to.
         if: env.PUTGD_PKG_CACHE_REFRESHED == 'true' && steps.pkg-cache.outputs.cache-hit != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         with:
@@ -95,7 +95,7 @@ jobs:
       - name: Identify release dependency environment
         id: sdk-key
         run: python3 tools/ci/sdk_cache.py key
-      - uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         id: sdk-cache
         with:
           path: |
@@ -114,7 +114,7 @@ jobs:
         run: |
           PUTGD_SDK_JOBS="$(nproc)" bash tools/releases/provision-sdk.sh
           python3 tools/ci/sdk_cache.py seal --key '${{ steps.sdk-key.outputs.key }}'
-      - uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         if: steps.sdk-cache.outputs.cache-hit != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         with:
           path: |
@@ -150,7 +150,7 @@ jobs:
       - name: Stage flat native artifact evidence
         if: always()
         run: python3 tools/releases/stage_artifacts.py --kind native
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: release-native-${{ matrix.name }}
@@ -163,7 +163,7 @@ jobs:
     # Package attempts are bounded and bypass the hosted runner's slow Azure mirror (#500).
     timeout-minutes: 180
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           ref: ${{ inputs.release_tag || github.sha }}
@@ -208,7 +208,7 @@ jobs:
       - name: Identify AppImage dependency environment
         id: sdk-key
         run: python3 tools/ci/sdk_cache.py key --contract tools/releases/provision-appimage.py --contract packaging/appimage/tools.lock.json --contract packaging/appimage/media.json
-      - uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         id: sdk-cache
         with:
           path: |
@@ -230,7 +230,7 @@ jobs:
           python3 tools/releases/provision-appimage.py --qt-root "$QT_ROOT_DIR"
           python3 tools/ci/sdk_cache.py seal --key '${{ steps.sdk-key.outputs.key }}'
           python3 tools/ci/sdk_cache.py seal --prefix build/appimage-deps --manifest build/appimage-deps-cache.json --key '${{ steps.sdk-key.outputs.key }}'
-      - uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         if: steps.sdk-cache.outputs.cache-hit != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         with:
           path: |
@@ -254,7 +254,7 @@ jobs:
       - name: Stage flat AppImage artifact evidence
         if: always()
         run: python3 tools/releases/stage_artifacts.py --kind appimage
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: release-appimage
@@ -270,11 +270,11 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 75
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           ref: ${{ github.sha }}
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: release-*
           path: build/downloaded
@@ -282,7 +282,7 @@ jobs:
         run: sudo --preserve-env=GITHUB_STEP_SUMMARY bash tools/ci/install-packages.sh --no-install-recommends dwz
       - name: Assemble the development debug asset
         run: python3 tools/releases/debug_symbols.py dry-run --inputs build/downloaded --output build/debug-asset
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: debug-symbols-dry-run
           path: build/debug-asset/
@@ -297,11 +297,11 @@ jobs:
     # Normally 3 minutes, most of it importing the Grype database.
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           ref: ${{ inputs.release_tag || github.sha }}
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: release-*
           path: build/downloaded
@@ -314,7 +314,7 @@ jobs:
         run: |
           python3 tools/releases/sbom.py database --listing-only --listing build/grype-db.json --output build/grype-db
           echo "key=grype-db-v6-$(python3 -c 'import json; print(json.load(open("build/grype-db.json"))["sha256"])')" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         id: grype-cache
         with:
           path: build/grype-db
@@ -327,7 +327,7 @@ jobs:
           python3 tools/releases/sbom.py database --listing build/grype-db.json --output build/grype-db
           "$RUNNER_TEMP/sbom-tools/grype" db import build/grype-db/vulnerability-db_*.tar.zst
           "$RUNNER_TEMP/sbom-tools/grype" db status
-      - uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         if: steps.grype-cache.outputs.cache-hit != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         with:
           path: build/grype-db
@@ -342,13 +342,13 @@ jobs:
         run: |
           python3 tools/releases/sbom.py scan --sboms build/release-sbom --grype "$RUNNER_TEMP/sbom-tools/grype" \
             --output build/vulnerabilities --database build/grype-db.json --release-tag "$RELEASE_TAG" --summary "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-sbom
           path: build/release-sbom/
           if-no-files-found: error
           retention-days: 30
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: vulnerability-report
@@ -362,11 +362,11 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 75
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           ref: ${{ inputs.release_tag }}
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: release-*
           path: build/downloaded
@@ -376,7 +376,7 @@ jobs:
         run: sudo --preserve-env=GITHUB_STEP_SUMMARY bash tools/ci/install-packages.sh --no-install-recommends dwz
       - name: Verify and collect exact release assets
         run: python3 tools/releases/collect.py --tag "$RELEASE_TAG" --inputs build/downloaded --output build/publish
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-assets
           path: build/publish/

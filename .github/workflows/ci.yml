@@ -28,7 +28,7 @@ jobs:
       sanitizers: ${{ steps.select.outputs.sanitizers }}
       pipewire: ${{ steps.select.outputs.pipewire }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 2
           ref: ${{ inputs.release_tag || github.sha }}
@@ -40,7 +40,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 75
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.release_tag || github.sha }}
       - name: Install QEMU disk utilities and dwz for the contracts
@@ -73,7 +73,7 @@ jobs:
           "$RUNNER_TEMP/actionlint" -color -shellcheck= -pyflakes=
       - name: Preserve contract reports
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: contracts
           path: build/contracts/
@@ -111,7 +111,7 @@ jobs:
             apt-get install -y "${apt[@]}" liblayershellqtinterface-dev
           fi
           useradd --create-home --shell /bin/bash putgd-ci
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           ref: ${{ inputs.release_tag || github.sha }}
@@ -126,7 +126,7 @@ jobs:
         run: python3 tools/ci/sdk_cache.py key --contract tools/ci/provision-linux-sdk.sh
       - name: Restore verified dependency prefix
         id: sdk-cache
-        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             build/sdk
@@ -143,7 +143,7 @@ jobs:
           python3 tools/ci/sdk_cache.py seal --key '${{ steps.sdk-key.outputs.key }}'
       - name: Save verified dependency prefix
         if: steps.sdk-cache.outputs.cache-hit != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-        uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             build/sdk
@@ -153,7 +153,7 @@ jobs:
         timeout-minutes: 15
         run: python3 tools/proton/provision_runtime.py
       - name: Restore compiler cache
-        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: build/ccache
           key: ccache-linux-${{ matrix.distribution }}-${{ github.run_id }}-${{ github.run_attempt }}
@@ -177,13 +177,13 @@ jobs:
         # Only nightly pushes save; pull requests and other runs restore the newest
         # nightly cache. The prune-caches job deletes the entry this one supersedes.
         if: github.event_name == 'push' && github.ref == 'refs/heads/nightly'
-        uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: build/ccache
           key: ccache-linux-${{ matrix.distribution }}-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Restore test durations
         # With earlier durations, CTest starts the longest tests first.
-        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: build/dev/Testing/Temporary/CTestCostData.txt
           key: ctest-cost-linux-${{ matrix.distribution }}-${{ github.run_id }}-${{ github.run_attempt }}
@@ -212,13 +212,13 @@ jobs:
       - name: Save test durations
         # Failed runs save too: CTest records failures and starts them first next time.
         if: always() && hashFiles('build/dev/Testing/Temporary/CTestCostData.txt') != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-        uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: build/dev/Testing/Temporary/CTestCostData.txt
           key: ctest-cost-linux-${{ matrix.distribution }}-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Preserve structured test reports
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ctest-linux-${{ matrix.distribution }}
           path: |
@@ -262,7 +262,7 @@ jobs:
           apt-get update "${apt[@]}"
           DEBIAN_FRONTEND=noninteractive apt-get install -y "${apt[@]}" build-essential clang libclang-rt-dev llvm ccache git ca-certificates curl passwd util-linux python3 cmake ninja-build pkg-config qt6-base-dev qt6-base-dev-tools libqt6sql6-sqlite qt6-wayland-dev qtkeychain-qt6-dev liblayershellqtinterface-dev libxcb1-dev libxcb-keysyms1-dev libxcb-util-dev libxcb-image0-dev libxcb-randr0-dev libxcb-xfixes0-dev libxcb-damage0-dev libxcb-shape0-dev libxcb-xinput-dev libxcb-xtest0-dev xvfb xauth dbus-daemon libxcursor-dev libxkbcommon-dev libxkbcommon-x11-dev libcurl4-openssl-dev libssl-dev zlib1g-dev libwayland-dev wayland-protocols libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libavcodec-dev libavformat-dev libavfilter-dev libavutil-dev libswscale-dev libswresample-dev
           useradd --create-home --shell /bin/bash putgd-ci
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           ref: ${{ inputs.release_tag || github.sha }}
@@ -277,7 +277,7 @@ jobs:
         run: python3 tools/ci/sdk_cache.py key --contract tools/ci/provision-linux-sdk.sh
       - name: Restore verified dependency prefix
         id: sdk-cache
-        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             build/sdk
@@ -294,7 +294,7 @@ jobs:
           python3 tools/ci/sdk_cache.py seal --key '${{ steps.sdk-key.outputs.key }}'
       - name: Save verified dependency prefix
         if: steps.sdk-cache.outputs.cache-hit != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-        uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             build/sdk
@@ -311,7 +311,7 @@ jobs:
           echo "key=qt-asan-core-26.04-qt$qt-clang$clang-$recipe" >> "$GITHUB_OUTPUT"
       - name: Restore instrumented QtCore
         id: qt-cache
-        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: build/qt-asan
           key: ${{ steps.qt-key.outputs.key }}
@@ -320,12 +320,12 @@ jobs:
         run: bash tools/ci/provision-qt-asan.sh build/qt-asan
       - name: Save instrumented QtCore
         if: steps.qt-cache.outputs.cache-hit != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-        uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: build/qt-asan
           key: ${{ steps.qt-key.outputs.key }}
       - name: Restore compiler cache
-        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: build/ccache
           key: ccache-clang-asan-26.04-${{ github.run_id }}-${{ github.run_attempt }}
@@ -349,7 +349,7 @@ jobs:
         # Only nightly pushes save; pull requests and other runs restore the newest
         # nightly cache. The prune-caches job deletes the entry this one supersedes.
         if: github.event_name == 'push' && github.ref == 'refs/heads/nightly'
-        uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: build/ccache
           key: ccache-clang-asan-26.04-${{ github.run_id }}-${{ github.run_attempt }}
@@ -375,7 +375,7 @@ jobs:
           python3 tools/ci/flake_ledger.py issues build/clang-asan/flake-ledger.json
       - name: Preserve structured test reports
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ctest-clang-asan
           path: |
@@ -403,7 +403,7 @@ jobs:
       pull-requests: read  # list open pull requests
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
       - name: Delete superseded caches
@@ -421,7 +421,7 @@ jobs:
         os: [windows-2022]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           ref: ${{ inputs.release_tag || github.sha }}
@@ -444,7 +444,7 @@ jobs:
         run: python tools/ci/sdk_cache.py key --contract tools/ci/provision-portable-deps.sh
       - name: Restore verified dependency prefix
         id: sdk-cache
-        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             build/sdk
@@ -462,7 +462,7 @@ jobs:
           python tools/ci/sdk_cache.py seal --key '${{ steps.sdk-key.outputs.key }}'
       - name: Save verified dependency prefix
         if: steps.sdk-cache.outputs.cache-hit != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-        uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             build/sdk
@@ -482,7 +482,7 @@ jobs:
           cmake --build --preset release --parallel "$(nproc 2>/dev/null || echo 2)"
       - name: Preserve compiled build identity
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: build-identity-${{ matrix.os }}
           path: |
@@ -511,12 +511,12 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.release_tag || github.sha }}
       - name: This run's AppImage
         if: needs.packages.result == 'success'
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: release-appimage
           path: build/pipewire
