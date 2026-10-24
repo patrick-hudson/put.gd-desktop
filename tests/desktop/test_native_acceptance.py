@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import sqlite3
+import socket
 import sys
 import tempfile
 import unittest
@@ -185,6 +186,17 @@ class Safety(unittest.TestCase):
         good = {'Id': 'new', 'User': str(os.getuid()), 'Active': 'yes', 'Remote': 'no', 'Type': 'wayland', 'Seat': 'seat0'}
         self.assertEqual(driver.choose_session([dict(good, Id='old', Active='no'), dict(good, Id='ssh', Type='tty'), good]), good)
         with self.assertRaises(driver.Refused): driver.choose_session([good, dict(good, Id='second')])
+
+    def test_user_manager_display_hint_must_be_owned_by_current_shell(self):
+        with tempfile.TemporaryDirectory(prefix='w495-', dir='/tmp') as root, \
+             socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as server:
+            path = Path(root) / 'wayland-0'; server.bind(str(path)); server.listen()
+            identity = driver.process(os.getpid())
+            self.assertEqual(driver.verified_wayland(identity, {'WAYLAND_DISPLAY': 'wayland-0'}, root), str(path))
+            with self.assertRaises(driver.Refused):
+                driver.verified_wayland(dict(identity, pid=os.getpid()+1), {'WAYLAND_DISPLAY': 'wayland-0'}, root)
+            with self.assertRaises(driver.Refused):
+                driver.verified_wayland(identity, {'WAYLAND_DISPLAY': '/tmp/other-display'}, root)
 
     def test_login_check_rejects_prior_shell_and_survivor(self):
         old = {'Id': 'old', 'TimestampMonotonic': '1000000', 'bootId': 'boot', 'shell': {'pid': 1}}

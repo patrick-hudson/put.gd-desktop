@@ -90,6 +90,29 @@ SESSION_KEYS = ('DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY', 'XDG_CURRENT_DESKTOP
                 'XDG_DATA_HOME', 'XDG_CACHE_HOME', 'KDE_FULL_SESSION', 'KDE_SESSION_VERSION')
 
 
+def verified_wayland(identity, exported, runtime):
+    """A user-manager export is only a hint: bind it to this shell's socket peer.
+
+    GNOME's compositor often predates WAYLAND_DISPLAY being exported. Never
+    accept an unverified user-manager display from a previous graphical login.
+    """
+    name = exported.get('WAYLAND_DISPLAY')
+    require(name, 'Current shell has no display and the user manager has no Wayland hint')
+    path = Path(name) if Path(name).is_absolute() else Path(runtime) / name
+    path = path.resolve()
+    require(path.is_relative_to(Path(runtime).resolve()) and len(str(path).encode()) <= 107,
+            'Wayland hint is outside this user runtime or exceeds the Unix socket limit')
+    info = path.lstat()
+    require(stat.S_ISSOCK(info.st_mode) and info.st_uid == os.getuid(), 'Wayland hint is not an owned socket')
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as probe:
+        probe.settimeout(3)
+        probe.connect(str(path))
+        peer_pid, peer_uid, _ = struct.unpack('3i', probe.getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED, 12))
+    require(peer_pid == identity['pid'] and peer_uid == os.getuid() and same_process(identity),
+            'User-manager Wayland hint does not belong to the current graphical shell')
+    return str(path)
+
+
 def choose_session(sessions, requested=None):
     matches = [s for s in sessions if s.get('User') == str(os.getuid()) and s.get('Active') == 'yes'
                and s.get('Remote') == 'no' and s.get('Type') in ('x11', 'wayland')
@@ -128,6 +151,12 @@ def session(requested=None):
     identity, shell_env = shells[0]
     env.update({k: shell_env[k] for k in SESSION_KEYS if shell_env.get(k)})
     env.update({k: shell_env[k] for k in ('LANG', 'LANGUAGE', 'LC_ALL', 'LC_MESSAGES', 'KDESYCOCA') if shell_env.get(k)})
+    env.setdefault('XDG_SESSION_TYPE', found['Type'])
+    if not env.get('WAYLAND_DISPLAY') and found['Type'] == 'wayland':
+        shown = command(['systemctl', '--user', 'show-environment'], env)
+        require(shown.returncode == 0, 'Cannot inspect the user-manager Wayland hint')
+        exported = dict(l.split('=', 1) for l in shown.stdout.splitlines() if '=' in l)
+        env['WAYLAND_DISPLAY'] = verified_wayland(identity, exported, env['XDG_RUNTIME_DIR'])
     require(env.get('DISPLAY') or env.get('WAYLAND_DISPLAY'), 'Current shell has no display environment')
     facts = {k: found.get(k) for k in ('Id', 'Type', 'Seat', 'Desktop', 'Timestamp', 'TimestampMonotonic', 'Leader')}
     facts.update({'shell': identity, 'bootId': Path('/proc/sys/kernel/random/boot_id').read_text().strip()})
