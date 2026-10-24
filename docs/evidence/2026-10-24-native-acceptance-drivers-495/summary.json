@@ -3,13 +3,13 @@
   "issue": 495,
   "date": "2026-10-24",
   "scope": "Native acceptance lab driver documentation; no new release acceptance claim",
-  "status": "exact72-final-source-packets-verified-awaiting-final-factual-review-and-docs-ci",
+  "status": "exact72-final-evidence-curated",
   "codePullRequest": "https://github.com/patrick-hudson/put.gd-desktop/pull/554",
   "driver": {
     "path": "tools/lab/native_acceptance.py",
     "commit": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
     "sha256": "347934c226f99cb0e509d5466c5df8116896e6bfac07d75fdfa4f4c2d06ca053",
-    "stage": "independently-reviewed-current-packets-complete",
+    "stage": "independently-reviewed-exact-source-evidence-complete",
     "productCliCapabilitiesChanged": false
   },
   "historicalEvidence": {
@@ -674,7 +674,7 @@
     },
     {
       "runId": "m74/final-72afd",
-      "sourceScope": "current72 source-specific functional proof; final packet assembly pending",
+      "sourceScope": "final exact72 source-specific bounded functional evidence",
       "host": "m74",
       "hostName": "mint-builder",
       "placement": "physical",
@@ -839,7 +839,7 @@
     },
     {
       "runId": "k72/final-72afd",
-      "sourceScope": "final exact72 public CLI bounded functional evidence",
+      "sourceScope": "final exact72 source-specific bounded functional evidence",
       "host": "k72",
       "hostName": "kubuntu",
       "placement": "physical",
@@ -1261,12 +1261,11 @@
     }
   ],
   "limitations": [
-    "Exact72 reviewed and final packets verified; final factual review and current docs CI pending; predecessor growth remains held",
     "No real logout/login in k72 runs; same-session refusal tested",
     "No physical tray click or rendered menu proof",
     "No product QtKeychain credential lifecycle or backend persistence across login proof",
     "Synthetic 10k shape check does not establish 10k UI performance/migration on a product build",
-    "Post-purge snapshots belong to 826c, not transferred to newer source",
+    "Historical826c purge receipts retain that source; fresh exact72 KDE/Cinnamon after-actual-purge snapshots are separately indexed and proved",
     "No independent graphical campaign from documentation thread; historical outcomes unchanged"
   ],
   "sourceHashes": {
@@ -2599,13 +2598,31 @@
   },
   "factualReview": {
     "reviewerThread": "mcp:982a3d27-ea8e-43c3-93f2-6e8d441f49e4",
-    "scope": "command/interface and evidence provenance; not formal GitHub approval",
-    "outcome": "scope correct; corrections applied",
-    "corrections": [
-      "second k72 lock session is codex-495-final",
-      "maintained source advanced to64a; prior proof scopes retained",
-      "private wrapper hash/invocation and exact versions/binary metadata added"
-    ]
+    "scope": "evidence/interface review, not formal GitHub approval or a new live workflow",
+    "earlierReview": {
+      "reviewerThread": "mcp:982a3d27-ea8e-43c3-93f2-6e8d441f49e4",
+      "scope": "command/interface and evidence provenance; not formal GitHub approval",
+      "outcome": "scope correct; corrections applied",
+      "corrections": [
+        "second k72 lock session is codex-495-final",
+        "maintained source advanced to64a; prior proof scopes retained",
+        "private wrapper hash/invocation and exact versions/binary metadata added"
+      ]
+    },
+    "finalReview": {
+      "reviewedDocsHead": "7d9f9ea1c46f735b97bf5009578b5c1eed5472df",
+      "driverCommit": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+      "privateArtifactHashesVerified": 102,
+      "sourceSpecificVisualHashesVerified": 12,
+      "uniqueCommittedPngFiles": 6,
+      "hashMismatches": 0,
+      "interfaceAndEvidenceScopes": "confirmed correct",
+      "requestedCorrectionsApplied": [
+        "qualify historical826c purge provenance while retaining separately proved exact72 KDE/Cinnamon purge snapshots",
+        "map Cinnamon toQt6.4.2 and KDE toQt6.10.2 explicitly"
+      ],
+      "reviewStamp": "two requested factual corrections applied; bounded confirmation and exact-head CI recorded onPR552"
+    }
   },
   "protocolChecks": [
     {
@@ -2902,8 +2919,7 @@
     "sameExactSource": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
     "allCleanReleased": true,
     "locksSequential": true,
-    "finalFactualReview": "pending",
-    "currentDocsCi": "required on final docs commit",
+    "currentDocsCi": "required for final head; live result recorded onPR552",
     "sequenceVerifiedFromReceipts": [
       {
         "host": "m74",
@@ -2923,7 +2939,8 @@
         "acquiredAt": "2026-10-24T15:43:25Z",
         "releasedAt": "2026-10-24T15:43:58Z"
       }
-    ]
+    ],
+    "factualReviewRecord": "factualReview.finalReview"
   },
   "currentKdeOrchestration": {
     "privateWrapper": "work/495/final_probe_review2.py",

@@ -4,8 +4,8 @@ Exact `72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e` cleared independent round 3
 with no actionable findings. The five original safety findings and the inert
 receipt compatibility issue are resolved. Growth is permitted only at this
 exact revision with every guard below; predecessor growth recipes remain held.
-All final exact-source packets are verified. This documentation PR remains
-draft for final factual review and current-head CI. This is driver validation, not release acceptance.
+All final exact-source packets are verified; factual review and exact-head CI
+are recorded on documentation PR #552. This is driver validation, not release acceptance.
 
 This is the documentation companion to the maintained driver in
 `tools/lab/native_acceptance.py` in [code PR #554](https://github.com/patrick-hudson/put.gd-desktop/pull/554).
