@@ -60,6 +60,11 @@ class CompleteSources(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Qt source inventory'):
             complete.inventory(self.receipt)
 
+    def test_source_package_paths_cannot_escape_staging(self):
+        self.receipt['notices']['inventory']['components'][-1]['source']['sourcePackage'] = '../outside'
+        with self.assertRaisesRegex(ValueError, 'no exact source package'):
+            complete.inventory(self.receipt)
+
     def test_partial_media_inventory_cannot_pass_as_complete(self):
         self.receipt['notices']['inventory']['components'] = self.receipt['notices']['inventory']['components'][:3]
         with self.assertRaisesRegex(ValueError, 'Incomplete'):

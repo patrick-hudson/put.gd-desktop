@@ -16,6 +16,7 @@ import subprocess
 import tarfile
 import tempfile
 import urllib.request
+from urllib.parse import urlsplit
 
 from audit_native import sha256
 
@@ -35,7 +36,7 @@ def inventory(receipt):
     seen = set()
     for item in components:
         name = item['id']
-        if name in seen or not re.fullmatch(r'[A-Za-z0-9:+_.-]+', name):
+        if name in seen or name in ('.', '..') or not re.fullmatch(r'[A-Za-z0-9:+_.-]+', name):
             raise ValueError('Duplicate or unsafe component in AppImage inventory')
         seen.add(name)
         source = item['source']
@@ -46,7 +47,7 @@ def inventory(receipt):
         elif name == 'proton-helper':
             record = {'id': name, 'external': 'proton-source-catalog.json', 'source': source}
         elif name.startswith('ubuntu:'):
-            if not source.get('sourcePackage') or not source.get('sourceVersion'):
+            if not re.fullmatch(r'[a-z0-9][a-z0-9+.-]*', source.get('sourcePackage', '')) or not re.fullmatch(r'[A-Za-z0-9:.+~_-]+', source.get('sourceVersion', '')):
                 raise ValueError('Distro component has no exact source package')
             record = {'id': name, 'source': source}
         elif source.get('repository') and re.fullmatch(r'[0-9a-f]{40}', source.get('commit', '')):
@@ -85,7 +86,7 @@ def _run(*args, **kwargs):
 def git_source(source, cache, target):
     """Archive a pinned tree and its recursive submodules, including sparse trees."""
     repository, commit = source['repository'], source['commit']
-    if not repository.startswith('https://') or not re.fullmatch(r'[0-9a-f]{40}', commit):
+    if not repository.startswith('https://') or urlsplit(repository).username is not None or not re.fullmatch(r'[0-9a-f]{40}', commit):
         raise ValueError('Source repository must be HTTPS with a full commit pin')
     key = hashlib.sha256((repository + '@' + commit).encode()).hexdigest()
     checkout = cache / key
@@ -105,7 +106,7 @@ def git_source(source, cache, target):
     def archive_tree(tree, pin, relative):
         file = target / (hashlib.sha256(relative.encode()).hexdigest()[:16] + '.tar')
         _run('git', '-C', str(tree), 'archive', '--format=tar', '--output=' + str(file), pin,
-             *source.get('paths', []))
+             '--', *source.get('paths', []))
         result.append({'file': file.name, 'treePath': relative, 'commit': pin})
         entries = _run('git', '-C', str(tree), 'ls-tree', '-rz', pin).stdout
         for entry in entries.split(b'\0'):
