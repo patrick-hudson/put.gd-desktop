@@ -1,0 +1,8 @@
+cmake_minimum_required(VERSION 3.24)
+project(putgd_sycoca_probe LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+find_package(Qt6 6.4.2 REQUIRED COMPONENTS Core)
+find_package(KF6Service REQUIRED)
+add_executable(putgd-sycoca-probe main.cpp)
+target_link_libraries(putgd-sycoca-probe PRIVATE Qt6::Core KF6::Service)

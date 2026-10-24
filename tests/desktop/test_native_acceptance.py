@@ -67,6 +67,7 @@ class HistoryShape(unittest.TestCase):
                 AND json_extract(o.data,'$.created')=h.created''').fetchone()[0]
             self.assertEqual(count, 10000)
             self.assertEqual(con.execute('SELECT count(DISTINCT created) FROM history').fetchone()[0], 10000)
+            self.assertLess(con.execute("SELECT max(created) FROM history WHERE id NOT LIKE 'item-%'").fetchone()[0], '2026-10-23T00:00:00.000Z')
             journal = json.loads(con.execute("SELECT data FROM operations WHERE id NOT LIKE 'op-%' LIMIT 1").fetchone()[0])
             self.assertEqual(journal['items'][0]['artifact']['path'], '/fixture/artifacts/op-0/item-0')
             self.assertEqual(journal['items'][0]['artifact']['previewPath'], '/fixture/previews/item-0.png')
@@ -160,6 +161,8 @@ class Safety(unittest.TestCase):
         with self.assertRaises(driver.Refused): driver.check_login(before, old, [{'startTicks': 3 * hz}])
         with self.assertRaises(driver.Refused): driver.check_login(before, new, [{'startTicks': hz}])
         with self.assertRaises(driver.Refused): driver.check_login(before, new, [])
+        self.assertTrue(driver.check_login(before, new, [], expected='absent')['newSessionVerified'])
+        with self.assertRaises(driver.Refused): driver.check_login(before, new, [{'startTicks': 3 * hz}], expected='absent')
 
     def test_keychain_cleanup_reference_is_scoped(self):
         self.assertTrue(native_keychain.valid_reference('putgd-acceptance-12345678-1234-1234-1234-123456789abc'))

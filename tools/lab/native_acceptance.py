@@ -6,6 +6,7 @@ or launch residents. Keep product package and driver source identities separate.
 Use --help on each command. JSON receipts contain facts, never config or secrets.
 """
 import argparse
+from contextlib import closing
 from datetime import datetime, timedelta, timezone
 import hashlib
 import json
@@ -85,7 +86,8 @@ def owner(env, service):
 
 SESSION_KEYS = ('DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY', 'XDG_CURRENT_DESKTOP',
                 'XDG_SESSION_TYPE', 'XDG_SESSION_DESKTOP', 'DESKTOP_SESSION',
-                'XDG_DATA_DIRS', 'XDG_CONFIG_DIRS', 'KDE_FULL_SESSION', 'KDE_SESSION_VERSION')
+                'XDG_DATA_DIRS', 'XDG_CONFIG_DIRS', 'XDG_MENU_PREFIX', 'XDG_CONFIG_HOME',
+                'XDG_DATA_HOME', 'XDG_CACHE_HOME', 'KDE_FULL_SESSION', 'KDE_SESSION_VERSION')
 
 
 def choose_session(sessions, requested=None):
@@ -125,6 +127,7 @@ def session(requested=None):
     require(len(shells) == 1, 'No unique current-session shell; refusing a prior shell/user-manager environment')
     identity, shell_env = shells[0]
     env.update({k: shell_env[k] for k in SESSION_KEYS if shell_env.get(k)})
+    env.update({k: shell_env[k] for k in ('LANG', 'LANGUAGE', 'LC_ALL', 'LC_MESSAGES', 'KDESYCOCA') if shell_env.get(k)})
     require(env.get('DISPLAY') or env.get('WAYLAND_DISPLAY'), 'Current shell has no display environment')
     facts = {k: found.get(k) for k in ('Id', 'Type', 'Seat', 'Desktop', 'Timestamp', 'TimestampMonotonic', 'Leader')}
     facts.update({'shell': identity, 'bootId': Path('/proc/sys/kernel/random/boot_id').read_text().strip()})
@@ -216,15 +219,15 @@ def tray(args, env):
     return {'target': target, 'action': args.action, 'pointerInputSent': False}
 
 
-def plasma_registration(env, repair=False):
+def plasma_registration(env, repair=False, probe=None):
     require('KDE' in env.get('XDG_CURRENT_DESKTOP', '').upper(), 'Plasma registration check requires the current KDE session')
-    # ktraderclient queries the session's sycoca, rather than trusting desktop
-    # files on disk. Missing tooling is a blocked check, never an empty cache.
+    # KService queries sycoca, rather than trusting desktop files on disk.
+    # Missing tooling is a blocked check, never an empty cache.
+    require(probe and Path(probe).is_file(), 'Build the distro-linked tools/lab/sycoca_probe helper and pass --probe')
     def inspect():
-        reply = command(['ktraderclient6', '--servicetype', 'Application'], env)
-        require(reply.returncode == 0, 'ktraderclient6 failed; install the distro diagnostic tool')
-        names = re.findall(r"DesktopEntryName\s*[:=]\s*['\"]?([\w.-]+)", reply.stdout)
-        return {'applicationCount': len(names), 'putgd': 'putgd' in names, 'dolphin': 'org.kde.dolphin' in names or 'dolphin' in names}
+        reply = command([str(probe)], env)
+        require(reply.returncode == 0, 'KService probe failed')
+        return json.loads(reply.stdout)
     before = inspect()
     missing = not before['applicationCount'] or (Path('/usr/share/applications/putgd.desktop').exists() and not before['putgd'])
     if missing and repair:
@@ -271,11 +274,14 @@ def prepare_login(args, facts, env):
             'preparedAt': datetime.now(timezone.utc).isoformat()}
 
 
-def check_login(before, facts, processes):
+def check_login(before, facts, processes, expected='present'):
     old = before['oldSession']
     changed = (old['bootId'], old['Id'], old['TimestampMonotonic']) != (facts['bootId'], facts['Id'], facts['TimestampMonotonic'])
     require(before.get('prepared') and changed, 'No verified new graphical session after a prepared logout')
     require(facts['shell'] != old['shell'], 'Prior graphical shell still selected')
+    if expected == 'absent':
+        require(not processes, 'Expected no resident after removal/login')
+        return {'newSession': facts, 'processes': [], 'newSessionVerified': True, 'expected': expected}
     require(processes, 'No autostarted resident in the selected profile')
     hz = os.sysconf('SC_CLK_TCK')
     require(all(p['startTicks'] * 1_000_000 // hz >= int(facts['TimestampMonotonic']) for p in processes),
@@ -286,7 +292,7 @@ def check_login(before, facts, processes):
 def database_snapshot(db):
     if not Path(db).is_file():
         return {'available': False}
-    with sqlite3.connect(Path(db).resolve().as_uri() + '?mode=ro', uri=True) as con:
+    with closing(sqlite3.connect(Path(db).resolve().as_uri() + '?mode=ro', uri=True)) as con:
         tables = [r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")]
         counts = {t: con.execute('SELECT count(*) FROM ' + quote(t)).fetchone()[0] for t in tables}
         result = {'available': True, 'userVersion': con.execute('PRAGMA user_version').fetchone()[0],
@@ -331,7 +337,7 @@ def grow_database(db, total):
     tables. Original multi-item or unrelated cleared journals are not rewritten.
     """
     require(1 <= total <= 100_000, '--to must be 1..100000')
-    with sqlite3.connect(db) as con:
+    with closing(sqlite3.connect(db)) as con, con:
         con.row_factory = sqlite3.Row
         con.execute('BEGIN IMMEDIATE')
         version = con.execute('PRAGMA user_version').fetchone()[0]
@@ -350,11 +356,11 @@ def grow_database(db, total):
             items = [i for i in journal.get('items', []) if i.get('artifact', {}).get('id') == row['item_id']]
             require(len(items) == 1, 'Seed history item must resolve to exactly one journal item')
             templates.append((row, journal, items[0]))
-        latest = max(datetime.fromisoformat(r['created'].replace('Z', '+00:00')) for r in rows)
+        earliest = min(datetime.fromisoformat(r['created'].replace('Z', '+00:00')) for r in rows)
         for index in range(total - len(rows)):
             row, journal, item = templates[index % len(templates)]
             new_item, new_op = str(uuid.uuid4()), str(uuid.uuid4())
-            created = (latest + timedelta(seconds=index + 1)).isoformat(timespec='milliseconds').replace('+00:00', 'Z')
+            created = (earliest - timedelta(seconds=index + 1)).isoformat(timespec='milliseconds').replace('+00:00', 'Z')
             substitutions = {row['operation_id']: new_op, row['id']: new_item}
             if row['item_id'] != row['id']:
                 substitutions[row['item_id']] = new_item
@@ -428,10 +434,11 @@ def main():
     subs.add_parser('session')
     p = subs.add_parser('tray'); p.add_argument('action', choices=('inspect', 'menu', 'quit'))
     p.add_argument('--pid', type=int, required=True); p.add_argument('--exe', required=True)
-    p = subs.add_parser('plasma-registration'); p.add_argument('--repair', action='store_true')
+    p = subs.add_parser('plasma-registration'); p.add_argument('--repair', action='store_true'); p.add_argument('--probe', required=True)
     p = subs.add_parser('login-prepare'); p.add_argument('--pid', type=int, required=True); p.add_argument('--exe', required=True)
     p.add_argument('--cli', default='/usr/bin/putgd-cli'); p.add_argument('--runtime', required=True)
     p = subs.add_parser('login-check'); p.add_argument('--before', type=Path, required=True); p.add_argument('--runtime', required=True)
+    p.add_argument('--expected', choices=('present', 'absent'), default='present')
     p = subs.add_parser('snapshot'); p.add_argument('--runtime', required=True); p.add_argument('--cli', default='/usr/bin/putgd-cli'); p.add_argument('--db')
     p = subs.add_parser('grow'); p.add_argument('--fixture-root', required=True); p.add_argument('--db', required=True)
     p.add_argument('--runtime', required=True); p.add_argument('--to', type=int, default=10000)
@@ -454,9 +461,9 @@ def main():
             result['session'] = facts
             if args.cmd == 'session': result['result'] = facts
             elif args.cmd == 'tray': result['result'] = tray(args, env)
-            elif args.cmd == 'plasma-registration': result['result'] = plasma_registration(env, args.repair)
+            elif args.cmd == 'plasma-registration': result['result'] = plasma_registration(env, args.repair, args.probe)
             elif args.cmd == 'login-prepare': result['result'] = prepare_login(args, facts, env)
-            elif args.cmd == 'login-check': result['result'] = check_login(json.loads(private(args.before).read_text())['result'], facts, resident_processes(args.runtime))
+            elif args.cmd == 'login-check': result['result'] = check_login(json.loads(private(args.before).read_text())['result'], facts, resident_processes(args.runtime), args.expected)
             elif args.cmd == 'snapshot': result['result'] = snapshot(args, facts, env)
             elif args.cmd == 'keychain':
                 from native_keychain import lifecycle
