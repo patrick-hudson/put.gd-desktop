@@ -9,6 +9,34 @@ missing profiles, and run physical-hardware release gates on physical machines.
 This requirement is separate from the historical results below; missing new
 rows and current-candidate evidence remain gates.
 
+## Login-startup uninstall contract (#382) — 2026-10-24
+
+Patrick corrected the contract: remove managed startup links for active accounts
+when the installation disappears, and for inactive accounts at next login;
+preserve settings and keep package scripts out of homes. Code PR #544 and docs
+PR #545 implement/document that choice. Clean `d5b561dd` development artifacts
+passed **five native and six actual AppImage** targeted lifecycle rows across
+Mint/Cinnamon X11, Fedora/GNOME Wayland, Debian/Kubuntu Plasma Wayland, Ubuntu
+GNOME Wayland and Aurora Plasma Wayland. Every row includes real enabled and
+post-removal logins, active cleanup with the resident quit, unchanged settings/
+data, explicit CLI disable, reviewed pictures and a 180-second memory check.
+All RSS/PSS measurements are below 40 MiB. Fedora native's strict library-map
+failure is a proven pre-existing distro Qt/OpenSSL dependency and remains
+explicit in the raw receipt. Startup CTest, 26 shell tests, 14 source-collection
+tests and complete branch/integration CI passed; earlier failing attempts are
+retained. Test VMs were retired after verified export and physical locks released.
+
+[Exact matrix, source/artifact identities, pictures and limits](evidence/2026-10-24-uninstall-startup-382/package-acceptance/README.md).
+#382 is closed per Patrick’s explicit decision that old entries in accounts
+which never ran the updated app are not a first-release blocker given limited
+existing usage. The [decision and closure receipt](evidence/2026-10-24-uninstall-startup-382/legacy-rollout-decision.json)
+record that exception. Code #544 merged into `nightly` at
+`35a16d0e6c63bc57bffe8d7bfeeeca5ad428c28c`; companion #545 carries the docs.
+Published-nightly lifecycle verification, including AppImage replacement with
+real channel metadata, continues under #384. These results are targeted
+development-artifact acceptance, not full A–Q/A–K or stable-draft certification.
+The retained-link/TryExec tests at `91864c41` are superseded history.
+
 ## First stable gate plan — 2026-10-22
 
 No release asset has been accepted yet. The first stable switches to calendar
@@ -31,7 +59,7 @@ work packages:
 | Physical Cinnamon latency, 10,000-entry history, burst, slow network | [#379](https://github.com/patrick-hudson/put.gd-desktop/issues/379) | latency stale (current63, 121.273 ms p95); history/burst/slow network not started |
 | Multi-display geometry in VMs | [#380](https://github.com/patrick-hudson/put.gd-desktop/issues/380) | partial: 3-head Cinnamon X11 region, single-output fractional scale |
 | Physical mixed DPI and rotation | [#381](https://github.com/patrick-hudson/put.gd-desktop/issues/381) | blocked: no builder has two outputs; proposed for 0.1.2 |
-| Uninstall login-startup entry | [#382](https://github.com/patrick-hudson/put.gd-desktop/issues/382) | needs Patrick's decision |
+| Uninstall login-startup entry | [#382](https://github.com/patrick-hudson/put.gd-desktop/issues/382) | closed by Patrick; 11 development-artifact rows pass, legacy exception accepted; PR integration and #384 release checks remain ([evidence](evidence/2026-10-24-uninstall-startup-382/README.md)) |
 | License, notices, provenance, dependencies | [#383](https://github.com/patrick-hudson/put.gd-desktop/issues/383) | AppImage rehearsal on `v26.1022.968-nightly` ([below](#appimage-exact-asset-audit-rehearsal-383--2026-10-22)): provenance passes; notices, complete source, Qt CVEs and codec patents open (#416–#419); DEB/RPM not yet audited |
 | Release campaign and stable signing | [#384](https://github.com/patrick-hudson/put.gd-desktop/issues/384) | promote.py dry run passed on `0435ed6a` under the old scheme; repeat after #373 |
 | KDE/X11 rows, graphical-store installs | [#385](https://github.com/patrick-hudson/put.gd-desktop/issues/385) | proposed for 0.1.2; GNOME/X11 obsolete (GNOME 50 has no X11 session) |

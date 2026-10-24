@@ -1,0 +1,9 @@
+{
+  "reason": "Stopping plasmalogin alone left ksmserver/plasmashell from session 1 active in the user manager while session 69 was blank. Stop the owned Plasma workspace targets after stopping the DM, then restart for a genuine clean graphical login.",
+  "sourceCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+  "initialDriverSha256": "4b69a41bae2d874d36dfd5c58507bec3c02e18cbc0736e924cb8d89ac0f22658",
+  "correctedDriverSha256": "7cb27ed8adbab0e42003402c649ac96e65a57d0bd6da2699b06f7df8a2aacaab",
+  "correctedRemotePath": "/home/lab/work/p382n/i382-aurora3.py",
+  "changedGate": false,
+  "resumePoint": "before enabled logout/login; repeat that transition, then normal idle/remaining lifecycle"
+}

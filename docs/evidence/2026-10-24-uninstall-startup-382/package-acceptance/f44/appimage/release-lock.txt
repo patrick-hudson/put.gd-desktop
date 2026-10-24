@@ -1,0 +1,6 @@
+f44 (Fedora 44 GNOME Wayland): released
+  Codex (codex-i382n-acceptance), acquired 2026-10-24T06:16:01Z
+  purpose: #382 corrected startup-link uninstall/login acceptance; work/i382n
+  note: 1 process(es) outside the desktop session (no DISPLAY or WAYLAND_DISPLAY; shared SSH work): 1271
+  receipt on the host: /home/patrick/putgd-lab/locks/history/2026-10-24T06-21-01Z-release.json
+  Tell the next session in the queue and your coordinator

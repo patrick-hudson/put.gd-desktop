@@ -1,0 +1,622 @@
+{
+  "scope": "Targeted Linux managed startup-link uninstall lifecycle; development CI artifacts, not a stable-release campaign",
+  "target": "a382a",
+  "mode": "appimage",
+  "build": {
+    "baseVersion": "26.1024.1186",
+    "commitCount": 1186,
+    "dirty": false,
+    "gitCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+    "gitTree": "797721fa0672581562a8675d0d2010eced7c6bd4",
+    "packageVersion": "26.1024.1186~dev+gd5b561ddb94f",
+    "schemaVersion": 1,
+    "sourceProvenance": "git",
+    "version": "26.1024.1186-dev+gd5b561ddb94f"
+  },
+  "sourceTree": "797721fa0672581562a8675d0d2010eced7c6bd4",
+  "artifact": {
+    "file": "putgd-26.1024.1186-dev+gd5b561ddb94f-x86_64.AppImage",
+    "sha256": "26a047a98c1c7f514f8d7bb388f39f2aa5ccc9862475fd70c5fd8cc7f922ecb8",
+    "bytes": 116505080,
+    "ciRun": 40068126465,
+    "artifactId": 12550547910
+  },
+  "os": "NAME=\"Aurora\"\nVERSION=\"testing-45.20261022.1 (Kinoite)\"\nRELEASE_TYPE=stable\nID=aurora\nID_LIKE=\"fedora\"\nVERSION_ID=45\nVERSION_CODENAME=\"Stargazer\"\nPRETTY_NAME=\"Aurora (Version: testing-45.20261022.1)\"\nANSI_COLOR=\"0;38;2;60;110;180\"\nLOGO=fedora-logo-icon\nCPE_NAME=\"cpe:/o:universal-blue:aurora:45\"\nDEFAULT_HOSTNAME=\"aurora\"\nHOME_URL=\"https://getaurora.dev/\"\nDOCUMENTATION_URL=\"https://docs.getaurora.dev\"\nSUPPORT_URL=\"https://github.com/ublue-os/aurora/issues/\"\nBUG_REPORT_URL=\"https://github.com/ublue-os/aurora/issues/\"\nSUPPORT_END=2027-11-24\nVARIANT=\"Kinoite\"\nVARIANT_ID=aurora\nOSTREE_VERSION='testing-45.20261022.1'\nBUILD_ID=\"54cbc2a\"\nIMAGE_ID=\"aurora\"\nIMAGE_VERSION=\"testing-45.20261022.1\"\n",
+  "desktopVersions": {
+    "plasmashell": {
+      "command": [
+        "plasmashell",
+        "--version"
+      ],
+      "exit": 0,
+      "stdout": "plasmashell 6.7.5\n",
+      "stderr": ""
+    },
+    "kwin_wayland": {
+      "command": [
+        "kwin_wayland",
+        "--version"
+      ],
+      "exit": 0,
+      "stdout": "kwin 6.7.5\n",
+      "stderr": ""
+    }
+  },
+  "kernel": {
+    "command": [
+      "uname",
+      "-r"
+    ],
+    "exit": 0,
+    "stdout": "7.2.11-300.fc45.x86_64\n",
+    "stderr": ""
+  },
+  "displayEnvironment": {
+    "DISPLAY": ":0",
+    "WAYLAND_DISPLAY": "wayland-0",
+    "XAUTHORITY": "/run/user/1000/xauth_pPoZYn",
+    "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus",
+    "XDG_RUNTIME_DIR": "/run/user/1000",
+    "XDG_SESSION_ID": "85",
+    "XDG_CURRENT_DESKTOP": "KDE",
+    "XDG_SESSION_TYPE": "wayland",
+    "XDG_SESSION_DESKTOP": "KDE",
+    "DESKTOP_SESSION": "/usr/share/wayland-sessions/plasma.desktop"
+  },
+  "socketPreflight": {
+    "command": [
+      "/usr/bin/python3",
+      "/var/home/lab/work/p382n/check_socket_paths.py",
+      "--socket",
+      "/run/user/1000/bus",
+      "/run/user/1000/putgd/session.sock",
+      "/run/user/1000/wayland-0",
+      "/tmp/.X11-unix/X0"
+    ],
+    "exit": 0,
+    "stdout": "{\"schemaVersion\": 1, \"passed\": true, \"limitBytesExcludingNul\": 107, \"paths\": [{\"path\": \"/run/user/1000/bus\", \"utf8Bytes\": 18, \"passed\": true}, {\"path\": \"/run/user/1000/putgd/session.sock\", \"utf8Bytes\": 33, \"passed\": true}, {\"path\": \"/run/user/1000/wayland-0\", \"utf8Bytes\": 24, \"passed\": true}, {\"path\": \"/tmp/.X11-unix/X0\", \"utf8Bytes\": 17, \"passed\": true}]}\n",
+    "stderr": ""
+  },
+  "installedPackageVerification": {
+    "imageSha256": "26a047a98c1c7f514f8d7bb388f39f2aa5ccc9862475fd70c5fd8cc7f922ecb8",
+    "expectedImageSha256": "26a047a98c1c7f514f8d7bb388f39f2aa5ccc9862475fd70c5fd8cc7f922ecb8",
+    "exit": 0
+  },
+  "enabledLogin": {
+    "sessionId": "85",
+    "session": {
+      "User": "1000",
+      "Display": "",
+      "Leader": "7058",
+      "Type": "wayland",
+      "Active": "yes",
+      "State": "active",
+      "LockedHint": "no"
+    },
+    "pass": true,
+    "startupJournalErrors": [],
+    "residents": [
+      {
+        "pid": 7698,
+        "exe": "/tmp/.mount_putgd-HMGfBi/usr/bin/putgd",
+        "ppid": 7563,
+        "start": 747680,
+        "session": null,
+        "sessionState": null,
+        "sessionType": null,
+        "cgroup": "/user.slice/user-1000.slice/user@1000.service/app.slice/app-putgd@autostart.service",
+        "display": ":0",
+        "sessionIdEnv": "85",
+        "exeSha256": "371c555814918dab2f3004dec59e0f2dc970645185b3f9a170e24117878946f1",
+        "appImageEnvironment": {
+          "APPDIR": "/tmp/.mount_putgd-HMGfBi",
+          "APPIMAGE": "/var/home/lab/work/p382n/appimage/Applications/putgd-26.1024.1186-dev+gd5b561ddb94f-x86_64.AppImage"
+        },
+        "qtPlatformPlugins": []
+      }
+    ]
+  },
+  "uiProcesses": [
+    {
+      "pid": 8059,
+      "exe": "/tmp/.mount_putgd-HMGfBi/usr/bin/putgd-ui",
+      "ppid": 7698,
+      "start": 766302,
+      "session": null,
+      "sessionState": null,
+      "sessionType": null,
+      "cgroup": "/user.slice/user-1000.slice/user@1000.service/app.slice/app-putgd@autostart.service",
+      "display": ":0",
+      "sessionIdEnv": "85",
+      "exeSha256": "689ba3f653d6a4f78eeedee8c8e0319c354b3749f41f4c8a6564ba608ad8e288",
+      "appImageEnvironment": {
+        "APPDIR": "/tmp/.mount_putgd-HMGfBi",
+        "APPIMAGE": "/var/home/lab/work/p382n/appimage/Applications/putgd-26.1024.1186-dev+gd5b561ddb94f-x86_64.AppImage"
+      },
+      "qtPlatformPlugins": [
+        "/tmp/.mount_putgd-HMGfBi/usr/plugins/platforms/libqwayland.so"
+      ]
+    }
+  ],
+  "memory": {
+    "at": "2026-10-24T06:31:27Z",
+    "mode": "appimage",
+    "host": "aurora-lab",
+    "idleSeconds": 180,
+    "pid": 7698,
+    "rssMiB": 31.26171875,
+    "peakRssMiB": 31.26171875,
+    "pssMiB": 24.3779296875,
+    "samples": [
+      {
+        "seconds": 0.0,
+        "rssMiB": 31.0546875
+      },
+      {
+        "seconds": 10.0,
+        "rssMiB": 31.0546875
+      },
+      {
+        "seconds": 20.0,
+        "rssMiB": 31.0546875
+      },
+      {
+        "seconds": 30.0,
+        "rssMiB": 31.0546875
+      },
+      {
+        "seconds": 40.0,
+        "rssMiB": 31.0546875
+      },
+      {
+        "seconds": 50.0,
+        "rssMiB": 31.0546875
+      },
+      {
+        "seconds": 60.0,
+        "rssMiB": 31.26171875
+      },
+      {
+        "seconds": 70.0,
+        "rssMiB": 31.26171875
+      },
+      {
+        "seconds": 80.0,
+        "rssMiB": 31.26171875
+      },
+      {
+        "seconds": 90.0,
+        "rssMiB": 31.26171875
+      },
+      {
+        "seconds": 100.0,
+        "rssMiB": 31.26171875
+      },
+      {
+        "seconds": 110.01,
+        "rssMiB": 31.26171875
+      },
+      {
+        "seconds": 120.01,
+        "rssMiB": 31.26171875
+      },
+      {
+        "seconds": 130.01,
+        "rssMiB": 31.26171875
+      },
+      {
+        "seconds": 140.01,
+        "rssMiB": 31.26171875
+      },
+      {
+        "seconds": 150.01,
+        "rssMiB": 31.26171875
+      },
+      {
+        "seconds": 160.01,
+        "rssMiB": 31.26171875
+      },
+      {
+        "seconds": 170.01,
+        "rssMiB": 31.26171875
+      },
+      {
+        "seconds": 180.0,
+        "rssMiB": 31.26171875
+      }
+    ],
+    "forbiddenMaps": [],
+    "pass": true,
+    "loadBefore": "1.49 0.39 0.13 1/466 7968",
+    "loadAfter": "0.08 0.23 0.11 1/413 7997",
+    "evidenceFile": "memory.json"
+  },
+  "memoryAssessment": {
+    "strictPass": true,
+    "budgetPass": true,
+    "baselineException": null
+  },
+  "removalPhases": {
+    "inactive": {
+      "sessionId": "99",
+      "session": {
+        "User": "1000",
+        "Display": "",
+        "Leader": "8618",
+        "Type": "wayland",
+        "Active": "yes",
+        "State": "active",
+        "LockedHint": "no"
+      },
+      "residentAbsent": true,
+      "entryAbsent": true,
+      "scriptAbsent": true,
+      "savedPreference": true,
+      "startupJournalErrors": [],
+      "startupJournal": {
+        "command": [
+          "journalctl",
+          "--user",
+          "--since",
+          "Sat 2026-10-24 01:31:40 CDT",
+          "--no-pager",
+          "-o",
+          "short-iso"
+        ],
+        "exit": 0,
+        "stdout": "2026-10-24T01:31:45-05:00 aurora-lab systemd[6928]: Starting app-putgd@autostart.service - put.gd...\n2026-10-24T01:31:46-05:00 aurora-lab systemd[6928]: Started app-putgd@autostart.service - put.gd.\n",
+        "stderr": "",
+        "unfilteredStdoutSha256": "3962157ffdecd736d46bd1f89bb245529389fa7eb5bdf3080495b6e8136b5ca6",
+        "unfilteredLineCount": 2,
+        "scope": "Only app-putgd autostart/scope and managed login-watch messages; original full result retained privately under exportReceipt"
+      },
+      "failedUnits": {
+        "command": [
+          "systemctl",
+          "--user",
+          "--failed",
+          "--no-legend",
+          "--no-pager"
+        ],
+        "exit": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "retention": {
+        "at": "2026-10-24T06:31:58Z",
+        "mode": "appimage",
+        "host": "aurora-lab",
+        "files": {
+          "/var/home/lab/.config/putgd/config.json": {
+            "sha256": "b83860053cc271d5beca4a0936c397b0962f9788edace46385018b0b5710ab23",
+            "mode": 384
+          },
+          "/var/home/lab/.local/share/putgd/history.sqlite": {
+            "sha256": "0ff6a334472030de9e66f576b52751451c01db752194dd6fbc0ea215cb2fecf5",
+            "mode": 384
+          },
+          "/var/home/lab/.local/share/putgd/i382-user-data.txt": {
+            "sha256": "309413a8236143e7ea0e6cba5d20c8716ab50ebce323d56bd4f92b73b90af11a",
+            "mode": 420
+          },
+          "/var/home/lab/.local/state/putgd/logs/putgd-20261024T061605056Z-5222-1.jsonl": {
+            "sha256": "29604687d4eb14ecae0a41b2230a448488be46c6176547decfca8c2e6b2b9e90",
+            "mode": 384
+          },
+          "/var/home/lab/.local/state/putgd/logs/putgd-20261024T061918479Z-6091-1.jsonl": {
+            "sha256": "1c0acf26774b8d608fc107a87a877c42639ad5e0c4dd4926e027463abc511633",
+            "mode": 384
+          },
+          "/var/home/lab/.local/state/putgd/logs/putgd-20261024T062822779Z-7698-1.jsonl": {
+            "sha256": "5b697526f4382aa53e4f87e1bdbfd9ed04dc36ae6f3413ff5ef50648e63cbf90",
+            "mode": 384
+          }
+        },
+        "entrySha256": null,
+        "scriptSha256": null,
+        "preference": true,
+        "unchanged": true,
+        "evidenceFile": "retention-after-inactive.json"
+      }
+    },
+    "active": {
+      "sessionId": "115",
+      "session": {
+        "User": "1000",
+        "Display": "",
+        "Leader": "10255",
+        "Type": "wayland",
+        "Active": "yes",
+        "State": "active",
+        "LockedHint": "no"
+      },
+      "residentAbsent": true,
+      "entryAbsent": true,
+      "scriptAbsent": true,
+      "savedPreference": true,
+      "startupJournalErrors": [],
+      "startupJournal": {
+        "command": [
+          "journalctl",
+          "--user",
+          "--since",
+          "Sat 2026-10-24 01:32:18 CDT",
+          "--no-pager",
+          "-o",
+          "short-iso"
+        ],
+        "exit": 0,
+        "stdout": "\n",
+        "stderr": "",
+        "unfilteredStdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "unfilteredLineCount": 0,
+        "scope": "Only app-putgd autostart/scope and managed login-watch messages; original full result retained privately under exportReceipt"
+      },
+      "failedUnits": {
+        "command": [
+          "systemctl",
+          "--user",
+          "--failed",
+          "--no-legend",
+          "--no-pager"
+        ],
+        "exit": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "retention": {
+        "at": "2026-10-24T06:32:12Z",
+        "mode": "appimage",
+        "host": "aurora-lab",
+        "files": {
+          "/var/home/lab/.config/putgd/config.json": {
+            "sha256": "b83860053cc271d5beca4a0936c397b0962f9788edace46385018b0b5710ab23",
+            "mode": 384
+          },
+          "/var/home/lab/.local/share/putgd/history.sqlite": {
+            "sha256": "0ff6a334472030de9e66f576b52751451c01db752194dd6fbc0ea215cb2fecf5",
+            "mode": 384
+          },
+          "/var/home/lab/.local/share/putgd/i382-user-data.txt": {
+            "sha256": "309413a8236143e7ea0e6cba5d20c8716ab50ebce323d56bd4f92b73b90af11a",
+            "mode": 420
+          },
+          "/var/home/lab/.local/state/putgd/logs/putgd-20261024T061605056Z-5222-1.jsonl": {
+            "sha256": "29604687d4eb14ecae0a41b2230a448488be46c6176547decfca8c2e6b2b9e90",
+            "mode": 384
+          },
+          "/var/home/lab/.local/state/putgd/logs/putgd-20261024T061918479Z-6091-1.jsonl": {
+            "sha256": "1c0acf26774b8d608fc107a87a877c42639ad5e0c4dd4926e027463abc511633",
+            "mode": 384
+          },
+          "/var/home/lab/.local/state/putgd/logs/putgd-20261024T062822779Z-7698-1.jsonl": {
+            "sha256": "5b697526f4382aa53e4f87e1bdbfd9ed04dc36ae6f3413ff5ef50648e63cbf90",
+            "mode": 384
+          },
+          "/var/home/lab/.local/state/putgd/logs/putgd-20261024T063201289Z-9507-1.jsonl": {
+            "sha256": "69723c6c6659402fa4543344e3b4c1c58294afa0b643215ddcdbba399dc15f01",
+            "mode": 384
+          }
+        },
+        "entrySha256": null,
+        "scriptSha256": null,
+        "preference": true,
+        "unchanged": true,
+        "evidenceFile": "retention-after-active.json"
+      }
+    },
+    "disabled": {
+      "sessionId": "127",
+      "session": {
+        "User": "1000",
+        "Display": "",
+        "Leader": "11646",
+        "Type": "wayland",
+        "Active": "yes",
+        "State": "active",
+        "LockedHint": "no"
+      },
+      "residentAbsent": true,
+      "entryAbsent": true,
+      "scriptAbsent": true,
+      "savedPreference": false,
+      "startupJournalErrors": [],
+      "startupJournal": {
+        "command": [
+          "journalctl",
+          "--user",
+          "--since",
+          "Sat 2026-10-24 01:32:52 CDT",
+          "--no-pager",
+          "-o",
+          "short-iso"
+        ],
+        "exit": 0,
+        "stdout": "\n",
+        "stderr": "",
+        "unfilteredStdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "unfilteredLineCount": 0,
+        "scope": "Only app-putgd autostart/scope and managed login-watch messages; original full result retained privately under exportReceipt"
+      },
+      "failedUnits": {
+        "command": [
+          "systemctl",
+          "--user",
+          "--failed",
+          "--no-legend",
+          "--no-pager"
+        ],
+        "exit": 0,
+        "stdout": "",
+        "stderr": ""
+      }
+    }
+  },
+  "activeRemovalObservation": {
+    "at": "2026-10-24T06:32:11Z",
+    "mode": "appimage",
+    "host": "aurora-lab",
+    "secondsAfterRemovalReturned": 1.501,
+    "state": {
+      "sessionId": "99",
+      "session": {
+        "User": "1000",
+        "Display": "",
+        "Leader": "8618",
+        "Type": "wayland",
+        "Active": "yes",
+        "State": "active",
+        "LockedHint": "no"
+      },
+      "residents": [],
+      "configSha256": "b83860053cc271d5beca4a0936c397b0962f9788edace46385018b0b5710ab23",
+      "preference": true,
+      "entry": null,
+      "entrySha256": null,
+      "scriptSha256": null,
+      "personalApps": [],
+      "load": "2.02 0.77 0.30 1/433 9955"
+    },
+    "evidenceFile": "active-removal.json"
+  },
+  "explicitDisable": {
+    "applied": true,
+    "enabled": false
+  },
+  "cleanup": {
+    "at": "2026-10-24T06:33:10Z",
+    "mode": "appimage",
+    "host": "aurora-lab",
+    "residents": [],
+    "entryAbsent": true,
+    "scriptAbsent": true,
+    "profileAbsent": true,
+    "personalApps": [],
+    "evidenceFile": "cleanup.json"
+  },
+  "exportReceipt": {
+    "host": "a382a",
+    "mode": "appimage",
+    "remoteRoot": "/home/lab/work/p382n/appimage",
+    "verifiedFiles": {
+      "meta.json": "fe1270777758506d2aaa1d59472a374ab9bd7a70d5671b8e1713dea920c2da34",
+      "prepare.json": "3afe4611c1d04042946c94db87b0d4a14af0a813804855d961a219feabef844d",
+      "identity.json": "43178b0d0fcba4a79300548aa216d238a59f93a09f2e902504b135399e167b55",
+      "launch-initial.log": "0d4e6f0e9d1d5d4f10ed56df3c01ac41b3cc8a22c7c585918e74a354b43fe8e9",
+      "launch-initial.json": "50128f032c21bc9855eb0ae7845b853ba2914069b355b66185c8653c23bb08cd",
+      "enable.json": "3d06128010f8fbbf1daf8fd8371d9ad7163761d5b5ff23d1d22de2116ec72a18",
+      "show-enabled.json": "325eac2537f59412286fe5e02eeb953fda14ce919b0cd8917b0023f8a5d89022",
+      "status-frame-enabled-settings.json": "7e293c177c024791f3f0ce3c1c857ffc31e93a44c412a608f9573886c565ff94",
+      "quit-prep-login.json": "28bda49baf50a8930b2a60a2a9ed578bd6147c010c202f758552019688646688",
+      "logout-enabled.json": "0ca925b80863c017a41a02e02adace82cb02ef8d959ce333571fbf8a012afb62",
+      "logout-enabled.attempt2.json": "db8d04414cc3cb58ef8f41a3872b7478452febffb5905f94e87d5680424f3857",
+      "relogin-enabled.json": "0c3ff525c075c04390f4910068704cf6637d725dd0f6e4e93ea9c29c1ad2f3a2",
+      "check-enabled.json": "92692d66d373f9f340a2f7b9de1c3441e6e0f9cc3cee2ddfc3663732db79d3bc",
+      "status-frame-enabled-login.json": "f41c38895ec7f6950af26cf66383d67ded9538661608df499f233b0e1f14c117",
+      "status-recovery-inspection.json": "c1f22526927498b198aa0b4eaf1ed8fb0990c0a75cc6150b9b6b26183b282907",
+      "quit-display-recovery.json": "fdc36eb258c1b7475eacdedb52fa34f8cc3b917836c7b9b04fedb74cd0c17bb9",
+      "logout-enabled.attempt3.json": "6cbcdb2a5ca2fa566713b8fbdb71e9ef0f77b348c22f2cbc4074aceb5462d6f7",
+      "logout-workspace-enabled.json": "671e6a6531b99d49bcfa7ad78e628f6d09a321b396753b4dfbea0ca9a8dbc052",
+      "relogin-enabled.attempt2.json": "0287bc9999f2c3f3ca8850d1d43e90f1a2381a48a98317e13d26d35c738fb27a",
+      "check-enabled.attempt2.json": "393c013e46e28f20e9fde00733b0d209017beb18573bf03b446196f9ae999645",
+      "status-frame-enabled-login-recovered3.json": "2be88ac3509e3fb48441f2eeffcd611a81b7957eea1fd0718462d1ced007920d",
+      "identity.attempt2.json": "78491f7054d5cc33e9343db2498c4077a8fe55e8d10f9ea0c8ac7361b630b276",
+      "memory.json": "f7de3f3979bef447c656787b4870b01ec479619fe3a84ce32d1698ab883adc53",
+      "show-login-enabled.json": "a19c09c67ebf16aba4c32093a9e710630f155df185eb42fb8075e6e050124344",
+      "status-frame-login-settings.json": "cad6a5dd54b3ac24a32ccf6b89905ab72a279f7f8cb40a4c24725cee82e7e32e",
+      "quit-inactive.json": "cde5415e41e8000b12aa20d07a2093229401ec95798239a06c25e5ff42d58d55",
+      "stop-watch.json": "6af12d2726d4812fe05a9e5ecef8e80d249d9f4d6f30b032c5da54192f6c97ed",
+      "retention-before-inactive.json": "7b4c3346730b0c554ef2708eb983aac974fd3edf8dc44a8352d2554e111303b0",
+      "logout-inactive.json": "15d1d5f4dff2f370ce4a585626384f12814bb291135430256b67602f13b6eabc",
+      "logout-workspace-inactive.json": "4327d8175d5285fbbfe1bb580b9a52f526a8b32c0b296e5de3e4522d12649ba7",
+      "inactive-before-removal.json": "d6e1451cce23cfb7af130cb50712f91aa22cd2884354b022b85b00faaf878ad2",
+      "image-removed-inactive.json": "880c77166aaaf67e685af230bc95799cc1833c5af503ac8c12ac36c13e61e09f",
+      "relogin-inactive.json": "44bd9a7430043ef96b79cd1cb6e56d25d6e2a0d300c5c61d11323e913ccf098f",
+      "check-inactive.json": "56b75c96ecc663ad7b314d4a436f0aeee76c0e0f2c65c4879480891e7710fbfb",
+      "retention-after-inactive.json": "34aba744ea4bf303cc1f7759524352eeb70d399167ae5893656525a343ed31f9",
+      "status-frame-inactive-cleaned-login.json": "90aad918203c4db6cd4772ae496b0db50675e32a2d019406eee8f93a889be8bf",
+      "image-restored-inactive.json": "99e953b6c870f519f5a1df85baa0334a50e50f5324eb5c6adef831fca9169703",
+      "launch-active-rearm.log": "93b707a6b4df0bc32cedceeeccb60798f32ca8699b74afef332031544cffacbc",
+      "launch-active-rearm.json": "100212776bd79e2128fbeecd057c46faed41c71fa31b4a794c61da05cb080c15",
+      "show-rearmed.json": "3793557d30e06773c363c9faab4fe86676e6feb1f12420d0e8104e2daaadc3ff",
+      "status-frame-rearmed-settings.json": "5411c62b04531cce43ae03149bdaa2cc11d923afb992c8a24b14f85ffa2bc1cf",
+      "quit-active.json": "15442af4bac2ba4bc515f030d6779d0f3ea347930cb1407eb3b47885678d6ebb",
+      "retention-before-active.json": "e485c9a450a4a2ea6e2ef263b37b9e4fd99918e3da23f5125781aa32ddd57a3f",
+      "image-removed-active.json": "c3206964e6cfc607ad3b5af25603d6ba3afeb85f5f021c866e1dc267e6a0dc23",
+      "active-removal.json": "cdea7ba9db69b1e9cd5f85603a4a78dc6cb58ca1979cd58e9a123418d6043636",
+      "retention-after-active.json": "180bc93ba87ce09072fbb73a7007df593da1f425caeb77f11e7d3028d838a91f",
+      "status-frame-active-cleaned.json": "6f5c8a71523837c8b6bc07f8031667a0599e1ad9fd9beae53d2a2280dae70485",
+      "logout-active.json": "ab0979c7389c612fbba2e9e9381dc3ca9c2bb36f027a99b4658f9ce7b8ca323a",
+      "logout-workspace-active.json": "4389072e1d77d4715f2a1b90ad78ab65e2bc3492631f048f1499379c9b58b120",
+      "relogin-active.json": "fcf7ff68ec637481b84423e4ce44a927596b1b8fb8b7ec531ff3e7d81f3bfade",
+      "check-active.json": "3e82e6b733ef261483d0520e956612036930f12e03de71c22c0aa8524f18975c",
+      "status-frame-active-cleaned-login.json": "364f52a0a8d2de897754e0ce0d041a04136ad02d294063b63e9058ce388f246c",
+      "image-restored-active.json": "dcc0845900c8a04fba8adf1ab5f4722fef2e7b9d5bf96e2a4c7c65aeb26c7be6",
+      "launch-disable-rearm.log": "c99fdd998c14152f586f43c3a2617f41ec40afb3f115cf7f0de8067410232f58",
+      "launch-disable-rearm.json": "bc32b92f1447d2b9adf7348bee73a23d13324b431ebeaeb9781ead7cc6aa3489",
+      "disable.json": "b2b09a74e8c04968a1147f629d46244e6183fe98d1df28851315fff10f3b4afd",
+      "show-disabled.json": "599a88cd8516204a72dde4e88da7cc616615b54707bf8942942750c565b6d4b6",
+      "status-frame-disabled-settings.json": "d39bff84f458ffbfe270f9dd849f9fa5b00d0f5d26e62466710652c929a564e3",
+      "quit-disabled.json": "1ac2c4766994515343ae301e52de3248b58bfb6ffc2504e069ed221d023388d3",
+      "image-removed-disabled.json": "bcb7276fa4bfba5af6f4eea3e6a977b34a6cd953e59c30d99ce013e4a368a04e",
+      "logout-disabled.json": "a381dc23d706c8bac447f31641381931bd5a7defab3f47b102e51d4e3463aae8",
+      "logout-workspace-disabled.json": "178448ffcc4fc79e82eebbdc3783771f8efcec970162abab735cc31e53b316fa",
+      "relogin-disabled.json": "0dafb33383f51cfdee913ae9aff574cad673552c72b2186002b03a87707eb5e9",
+      "check-disabled.json": "eb13c74daaeb0d50453b05286144f8e403868a4195b14f9720dba9ee6e7f5c5e",
+      "status-frame-disabled-clean-login.json": "716e8e385566e1cc923c314c10ba9bdd326c2fd90ea529f68bfa49e44cea4cb7",
+      "cleanup.json": "3bef6b8ecd9deb408a9d6227c17eeb64c1eb08f249a7862bb4fbf6a0bab0d57c"
+    },
+    "allHashesVerified": true
+  },
+  "visualReview": {
+    "reviewed": true,
+    "accepted": true,
+    "sourceCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+    "invalidVisuals": [
+      "enabled-login.attempt10.png",
+      "enabled-login.attempt11.png",
+      "enabled-login.attempt12.png",
+      "enabled-login.attempt2.png",
+      "enabled-login.attempt3.png",
+      "enabled-login.attempt4.png",
+      "enabled-login.attempt5.png",
+      "enabled-login.attempt6.png",
+      "enabled-login.attempt7.png",
+      "enabled-login.attempt8.png",
+      "enabled-login.attempt9.png",
+      "enabled-login.png",
+      "logout-driver-failure.png",
+      "recovery-after-wake.png",
+      "recovery-dpms-on.png",
+      "recovery-mode-reset.png",
+      "stale-workspace-after-stop.png",
+      "stale-workspace-failure.png"
+    ],
+    "notes": "All nine selected complete frames inspected: actual Settings on/rearmed/off, recovered enabled login on visible Aurora desktop, and real cleanup/login desktops. Earlier blank/stale/login-driver failure frames are excluded. No protected login value or personal app content appears. Machine receipts establish file/process absence and settings preservation; pictures supply desktop context. Aurora requires stopping stale Plasma workspace targets along with plasmalogin during controlled logout; see harness-correction3.json.",
+    "files": {
+      "enabled-settings.png": "813164958f10ccdacc45633c30beb76e690afa064b3d9aa127bb483c92759bc9",
+      "enabled-login-recovered3.png": "f2ab7c0cdfce8492742f5f4f2f2645a489cc31b4617222c86b8ced8b3d37c0f0",
+      "login-settings.png": "377707c091f4e4541ca7a48565a29a0f73c0e9763de6bb7a07507a2a82c52a08",
+      "inactive-cleaned-login.png": "5b4c1a9581aa3e53dac15cd461a9318a8666eb7e73146a0b1ae7f2ad9aa1ea36",
+      "rearmed-settings.png": "79f364f43a9145de0c6c2be6cddf094a70d5eba5c5675d825addcaf04f0574ab",
+      "active-cleaned.png": "2f1a44ec21a6b3989eb9dc5d7702b1ca91a3e42941c7a8dbe3454f3cf90d23d4",
+      "active-cleaned-login.png": "d151ae79d729f47bf7fec0170a481dbcc6955832a49615df7b5cf0d174fc3409",
+      "disabled-settings.png": "0e18e3bddc30bed8474055f8cbfca70845b1b77fc4cf36de7c79230022572034",
+      "disabled-clean-login.png": "2fd36306f5b10593be1d66fd36b7ea6343abfc10ca31c8cef26a06a04675463e"
+    }
+  },
+  "completion": {
+    "target": "a382a",
+    "mode": "appimage",
+    "sourceCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+    "functionalPassed": true,
+    "memoryPassed": true,
+    "memoryAssessment": {
+      "strictPass": true,
+      "budgetPass": true,
+      "baselineException": null
+    },
+    "seconds": 1028.2,
+    "visualReviewPending": true
+  }
+}

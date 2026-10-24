@@ -1,0 +1,20 @@
+{
+  "scope": "Bounded offscreen settings-change/uninstall race probe; no graphical acceptance",
+  "run": "/tmp/i382-jrijcawu",
+  "entryRemains": true,
+  "scriptRemains": true,
+  "savedLaunchPreference": true,
+  "loginStartup": {
+    "applied": false,
+    "enabled": true,
+    "error": {
+      "code": "autostart_io",
+      "details": {},
+      "message": "Login startup requires an accessible executable"
+    }
+  },
+  "cleanupPassed": false,
+  "ownedProcessExitCodes": [
+    0
+  ]
+}

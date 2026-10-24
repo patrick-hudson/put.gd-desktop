@@ -1,0 +1,9 @@
+{
+  "run": "/home/patrick/work/a382/work/lab-runs/u382a",
+  "runId": "23a76e17-9b10-474a-95f4-0dfe3c34107f",
+  "completed": true,
+  "outcome": "passed",
+  "scope": "Final d5b561dd targeted uninstall lifecycle; earlier failed attempts retained as failures in verified guest/workstation evidence archives",
+  "sourceCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+  "historicalFailuresRecorded": true
+}
