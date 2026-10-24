@@ -53,6 +53,8 @@ private slots:
   QCOMPARE(h.rec("resume",{{"id",id}}).result["state"].toString(),QString("recording"));
   QCOMPARE(h.rec("overlay",{{"id",id},{"visible",false}}).result["state"].toString(),QString("recording"));
   const auto stopped=h.rec("stop",{{"id",id}});QVERIFY2(!stopped.error,qPrintable(stopped.error.message));QCOMPARE(stopped.result["state"].toString(),QString("reviewing"));QCOMPARE(stopped.result["durationUs"].toDouble(),12000000.0);
+  QCOMPARE(stopped.result["stopReason"].toString(),QString("user"));
+  QCOMPARE(h.rec("inspect",{{"id",id}}).result,stopped.result);
   const auto preview=h.rec("preview",{{"id",id},{"time",2000000}});QVERIFY2(!preview.error,qPrintable(preview.error.message));QVERIFY(preview.result["png"].isString());QCOMPARE(preview.result["timeUs"].toDouble(),2000000.0);
   QVERIFY(!h.rec("edit",{{"id",id},{"revision",1},{"commands",QJsonArray{QJsonObject{{"op","setTrim"},{"start",1000000},{"end",7000000}}}}}).error);
   const auto uploaded=h.rec("upload",{{"id",id},{"revision",2}});QVERIFY2(!uploaded.error,qPrintable(uploaded.error.message));QCOMPARE(uploaded.result["state"].toString(),QString("exporting"));
@@ -80,6 +82,50 @@ private slots:
   PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));QCOMPARE(h.rec("inspect",{{"id",id}}).result["durationUs"].toDouble(),9000000.0);
   QCOMPARE(h.rec("cancel",{{"id",id}}).result["state"].toString(),QString("cancelled"));
   PUTGD_TRY_VERIFY(!h.backend->diagnostics()["active"].toBool());
+ }
+ void cancelShutsTheHelperDownWithoutAKill_data(){
+  QTest::addColumn<QString>("state");
+  for(const auto* state:{"ready","recording","paused","reviewing"})QTest::newRow(state)<<QString(state);
+ }
+ void cancelShutsTheHelperDownWithoutAKill(){
+  QFETCH(QString,state);Harness h;PUTGD_TRY_VERIFY(h.operations->ready());qputenv("PUTGD_TEST_RECORD_MODE","slow-shutdown");
+  // Repeat with a successor to catch stale replies/timeouts crossing generations.
+  for(int round=0;round<2;++round){
+   const auto id=h.prepare();QVERIFY(!id.isEmpty());PUTGD_TRY_COMPARE(h.state(id),QString("ready"));
+   if(state!="ready")QCOMPARE(h.rec("start",{{"id",id}}).result["state"].toString(),QString("recording"));
+   if(state=="paused")QCOMPARE(h.rec("pause",{{"id",id}}).result["state"].toString(),QString("paused"));
+   if(state=="reviewing")QCOMPARE(h.rec("stop",{{"id",id}}).result["state"].toString(),QString("reviewing"));
+   QCOMPARE(h.rec("cancel",{{"id",id}}).result["state"].toString(),QString("cancelled"));
+   PUTGD_TRY_VERIFY(!h.backend->diagnostics()["active"].toBool());
+   const auto exit=h.backend->diagnostics()["lastExit"].toObject();QCOMPARE(exit["status"].toString(),QString("normal"));QCOMPARE(exit["code"].toInt(),0);
+   HistoryStore journal(h.operations->databasePath());PUTGD_TRY_COMPARE(journal.operation(id).state,QString("cancelled"));QVERIFY(journal.operation(id).items.isEmpty());
+   QCOMPARE(h.rec("inspect",{{"id",id}}).error.code,QString("recording_unavailable"));QCOMPARE(h.provider->uploads.load(),0);
+  }
+ }
+ void protocolFaultsStillFailTheHelper_data(){
+  QTest::addColumn<QString>("mode");
+  QTest::newRow("unknown request")<<QString("unknown-result");
+  QTest::newRow("malformed result")<<QString("malformed-result");
+  QTest::newRow("foreign shutdown reply")<<QString("slow-shutdown-foreign");
+ }
+ void protocolFaultsStillFailTheHelper(){
+  QFETCH(QString,mode);Harness h;PUTGD_TRY_VERIFY(h.operations->ready());qputenv("PUTGD_TEST_RECORD_MODE",mode.toUtf8());
+  const auto id=h.prepare();QVERIFY(!id.isEmpty());PUTGD_TRY_COMPARE(h.state(id),QString("ready"));
+  if(mode=="slow-shutdown-foreign")QVERIFY(!h.rec("cancel",{{"id",id}}).error);
+  else QCOMPARE(h.rec("start",{{"id",id}}).error.code,QString("recording_helper_protocol"));
+  PUTGD_TRY_VERIFY(!h.backend->diagnostics()["active"].toBool());
+  QCOMPARE(h.backend->diagnostics()["lastExit"].toObject()["status"].toString(),QString("crash"));
+  HistoryStore journal(h.operations->databasePath());PUTGD_TRY_COMPARE(journal.operation(id).state,mode=="slow-shutdown-foreign"?QString("cancelled"):QString("failed"));
+  if(mode!="slow-shutdown-foreign")QCOMPARE(journal.operation(id).error.code,QString("recording_helper_protocol"));
+  QVERIFY(journal.operation(id).items.isEmpty());QCOMPARE(h.provider->uploads.load(),0);
+ }
+ void budgetEventBeforeStopReplyKeepsItsReasonAndClip(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());qputenv("PUTGD_TEST_RECORD_MODE","stop-budget-race");
+  const auto id=h.prepare();QVERIFY(!id.isEmpty());PUTGD_TRY_COMPARE(h.state(id),QString("ready"));QVERIFY(!h.rec("start",{{"id",id}}).error);
+  const auto stopped=h.rec("stop",{{"id",id}});QVERIFY(!stopped.error);QCOMPARE(stopped.result["state"].toString(),QString("reviewing"));
+  QCOMPARE(stopped.result["stopReason"].toString(),QString("budget"));QCOMPARE(stopped.result["durationUs"].toDouble(),9000000.0);QVERIFY(!stopped.result["stopDetails"].toObject().isEmpty());
+  QCOMPARE(h.rec("inspect",{{"id",id}}).result,stopped.result);QCOMPARE(h.rec("stop",{{"id",id}}).result,stopped.result);
+  QVERIFY(!h.rec("cancel",{{"id",id}}).error);PUTGD_TRY_VERIFY(!h.backend->diagnostics()["active"].toBool());
  }
  void silentAndIncompatibleHelpersFailBeforeReady(){
   Harness h;PUTGD_TRY_VERIFY(h.operations->ready());HistoryStore journal(h.operations->databasePath());

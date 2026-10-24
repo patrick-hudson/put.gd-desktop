@@ -65,20 +65,36 @@ int main(int argc, char** argv) {
             return;
         }
         if (type == "appearance") return;
-        if (type == "shutdown") { QTimer::singleShot(0, &app, [&] { app.exit(mode == "exit-dirty" ? 7 : 0); }); return; }
+        // Keep teardown alive while the resident reads late replies, as the real helper does.
+        if (type == "shutdown") { QTimer::singleShot(mode.startsWith("slow-shutdown") ? 300 : 0, &app, [&] { app.exit(mode == "exit-dirty" ? 7 : 0); }); return; }
         if (type != "command") { app.exit(3); return; }
         const auto requestId = payload["requestId"].toString(), command = payload["command"].toString();
         const auto params = payload["params"].toObject();
         if (command == "prepare") { result(requestId, {{"canvas", QJsonArray{1280, 720}}, {"staging", params["staging"]}}); return; }
         if (command == "start") {
             started = true;
+            if (mode == "unknown-result") { result("not-outstanding", {}); return; }
+            if (mode == "malformed-result") { auto frame = envelope; frame["requestId"] = requestId; frame["ok"] = "yes"; frame["result"] = QJsonObject{}; control.send("commandResult", frame); return; }
             result(requestId, {});
             if (mode == "crash-after-start") { QTimer::singleShot(100, &app, [] { std::abort(); }); return; }
             event("progress", {{"durationUs", 1000000.0}, {"bytes", 4321.0}, {"droppedFrames", 0}});
             if (mode == "stop-event") QTimer::singleShot(150, &app, [&] { event("stopped", {{"durationUs", 9000000.0}, {"canvas", QJsonArray{1280, 720}}}); });
             return;
         }
-        if (command == "stop") { result(requestId, {{"durationUs", 12000000.0}, {"canvas", QJsonArray{1280, 720}}}); return; }
+        if (command == "stop") {
+            if (mode == "stop-budget-race") {
+                event("stopped", {{"reason", "budget"}, {"durationUs", 9000000.0}, {"canvas", QJsonArray{1280, 720}}});
+                QTimer::singleShot(100, &app, [&, requestId] { result(requestId, {{"durationUs", 12000000.0}, {"canvas", QJsonArray{1280, 720}}}); });
+            } else result(requestId, {{"durationUs", 12000000.0}, {"canvas", QJsonArray{1280, 720}}});
+            return;
+        }
+        if (command == "cancel" && mode.startsWith("slow-shutdown")) {
+            QTimer::singleShot(50, &app, [&, requestId] {
+                if (mode == "slow-shutdown-foreign") envelope["nonce"] = "foreign";
+                result(requestId, {});
+            });
+            return;
+        }
         if (command == "preview") { result(requestId, {{"png", QString::fromLatin1(QByteArray("\x89PNG\r\n\x1a\n", 8).toBase64())}, {"time", params["time"]}}); return; }
         if (command == "export") {
             if (mode == "slow-export") return;

@@ -94,6 +94,7 @@ private slots:
   QCOMPARE(h.rec("pause",{{"id",id}}).result["state"].toString(),QString("paused"));
   // Stop while paused goes straight to private review.
   const auto stopped=h.rec("stop",{{"id",id}});QVERIFY(!stopped.error);QCOMPARE(stopped.result["state"].toString(),QString("reviewing"));QCOMPARE(stopped.result["durationUs"].toDouble(),12000000.0);QCOMPARE(stopped.result["edit"].toObject()["revision"].toDouble(),1.0);
+  QCOMPARE(stopped.result["stopReason"].toString(),QString("user"));QCOMPARE(h.rec("inspect",{{"id",id}}).result,stopped.result);
   QCOMPARE(h.backend->exports,0);
   const auto preview=h.rec("preview",{{"id",id},{"time",4000000},{"maxEdge",640}});QVERIFY(!preview.error);QVERIFY(preview.result["png"].isString());QVERIFY(preview.result["retained"].toBool());QCOMPARE(preview.result["outputTimeUs"].toDouble(),4000000.0);QCOMPARE(h.backend->lastPreviewTime,qint64(4000000));
   QCOMPARE(h.rec("preview",{{"id",id},{"time",12000000}}).error.code,QString("invalid_request"));
@@ -343,9 +344,14 @@ private slots:
  }
  void recordActionOpensRaisesAndTogglesTheSession(){
   Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
-  auto invoke=[&](const QJsonObject& options){Call c;h.operations->invoke("record",[&](Error e,QJsonObject r){c={e,r,true};},options);(void)putgd::test::waitFor([&]{return c.done;});return c;};
+  auto invoke=[&](QJsonObject options){options["action"]="record";return call(*h.server,"action.invoke",options);};
   QCOMPARE(invoke({{"mode","shell"}}).error.code,QString("invalid_request"));
+  for(const QJsonValue mode:{QJsonValue(),QJsonValue(1),QJsonValue(true),QJsonValue(QJsonObject{}),QJsonValue(QJsonArray{}),QJsonValue(""),QJsonValue(QString(17,'x'))})
+   QCOMPARE(invoke({{"mode",mode}}).error.code,QString("invalid_request"));
+  for(const auto& action:Settings::actionNames())if(action!="record")
+   QCOMPARE(call(*h.server,"action.invoke",{{"action",action},{"mode","open"}}).error.code,QString("invalid_request"));
   QCOMPARE(invoke({{"source","clipboard"}}).error.code,QString("invalid_request"));
+  QCOMPARE(invoke({{"mode","open"},{"path","/synthetic"}}).error.code,QString("invalid_request"));
   auto opened=invoke({});QVERIFY2(!opened.error,qPrintable(opened.error.message));QCOMPARE(opened.result["step"].toString(),QString("prepare"));
   const auto id=opened.result["recordingId"].toString();QVERIFY(!id.isEmpty());PUTGD_TRY_COMPARE(h.state(id),QString("ready"));
   QCOMPARE(h.backend->lastConfig.format,QString("mp4"));
@@ -354,6 +360,7 @@ private slots:
   QCOMPARE(invoke({{"mode","toggle"}}).result["step"].toString(),QString("start"));QCOMPARE(h.state(id),QString("recording"));
   QVERIFY(!h.rec("pause",{{"id",id}}).error);
   QCOMPARE(invoke({{"mode","toggle"}}).result["step"].toString(),QString("stop"));QCOMPARE(h.state(id),QString("reviewing"));
+  QCOMPARE(h.rec("inspect",{{"id",id}}).result["stopReason"].toString(),QString("user"));
   QCOMPARE(invoke({{"mode","toggle"}}).result["step"].toString(),QString("raise"));QCOMPARE(h.state(id),QString("reviewing"));
   QVERIFY(!h.rec("cancel",{{"id",id}}).error);QCOMPARE(h.rec("inspect",{{"id",id}}).error.code,QString("recording_unavailable"));
  }

@@ -508,6 +508,9 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
         if (command == "stop") transition(s, "stopping"), s.pending = command;
         backend_->control(s.op.id, command, {}, marshal(s.generation, [this, command, reply](Error error, QJsonObject result) {
             auto& s = *session_;
+            // A budget stop can reach review before this command's reply. Keep
+            // that finalized clip, reason and edits, just like a duplicate stop.
+            if (command == "stop" && s.state == "reviewing") { reply({}, publicJson(s)); return; }
             if (error) {
                 if (command == "pause" || command == "resume") { s.pending.clear(); reply(error, {}); return; }
                 fail(error);
@@ -523,6 +526,7 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
                 if (!integer(result["durationUs"], 1, recording::maximumClipUs, &duration)) { fail({"recording_failed", "The recording ended without a usable clip", {}}); reply({"recording_failed", "The recording ended without a usable clip", {}}, {}); return; }
                 s.duration = duration;
                 s.edit = {};
+                s.stopReason = "user";
                 updateCanvas(s.canvas, result["canvas"]);
                 recording::clampAnimationSize(s.config, s.canvas, limits(s.op.settings));
                 transition(s, "reviewing");
