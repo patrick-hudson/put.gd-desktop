@@ -103,9 +103,13 @@ encoder process. Other low-activity desktop services and the wall stayed up.
   stopped DB had no open owner, WAL or session socket. This is six-operation
   preparation, not 10,000 uploads or performance acceptance. The fixture was
   stopped during cleanup; the final campaign needs a fresh live fixture/seed.
-- **Populated gates: held.** The earlier #495 grow revision was staged but never
-  executed. Persisted-network-state validation, DB/runtime association and full
-  helper ownership guards require a corrected reviewed handoff before use.
+- **Populated gates: pending.** Earlier #495 grow revisions were staged but never
+  executed. Root review cleared only producer revision
+  `72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e`, with persisted-network-state,
+  DB/runtime and complete helper ownership guards. Its handoff is staged and
+  hash-verified; it has not yet been used for this campaign. All old revisions
+  remain held. The performance driver's next review still blocks new physical
+  runs and frame export.
 
 ![c1 post-cancellation recovery frame: only synthetic background, no selector-paint claim](c1-witness-failure.png)
 
@@ -143,6 +147,18 @@ added typelib packages. The desktop lock released verified-clean at
 **15:30:32 UTC**; a follow-up host check was free/clean apart from pre-existing
 shared collectors. No golden/base, browser handler or new tunnel was changed.
 The work continues outside a desktop lock while corrected drivers are reviewed.
+
+### Actual-frame privacy audit
+
+Review of the draft performance driver found that admitting whole frames after
+only a 98% cover precheck could retain unrelated pixels. That code path is held;
+the precheck alone is not proof that a saved image is safe.
+[The independent source audit](batch1-frame-privacy-audit.json) checked every
+retained first-batch whole-frame image on m74: all five are exactly one synthetic
+RGB fill across 100% of their pixels. The public c1 annotation uses that reviewed
+safe source. The public m1 annotation uses only the reviewed PID-owned History
+drawable. No actual sensitive content was observed. Originals remain private;
+no next physical run or frame export proceeds until the privacy fix is reviewed.
 
 [campaign.json](campaign.json) binds the selected package, budgets and current
 gate status. Private raw samples, exact commands, failures, original visuals and
