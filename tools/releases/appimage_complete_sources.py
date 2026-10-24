@@ -9,6 +9,7 @@ import argparse
 from datetime import datetime, timezone
 import gzip
 import hashlib
+import http.client
 import io
 import json
 import os
@@ -215,10 +216,22 @@ def fetch_archive(item, target):
         raise ValueError('Unsupported runtime source digest')
     for url in urls:
         try:
-            with urllib.request.urlopen(url, timeout=120) as response, target.open('wb') as stream:
-                while block := response.read(1024 * 1024):
-                    stream.write(block)
-        except (urllib.error.URLError, TimeoutError):
+            response = urllib.request.urlopen(url, timeout=120)
+        except (OSError, http.client.HTTPException):
+            continue
+        finished = False
+        with response, target.open('wb') as stream:
+            while True:
+                try:
+                    block = response.read(1024 * 1024)
+                except (OSError, http.client.HTTPException):
+                    break
+                if not block:
+                    finished = True
+                    break
+                # Local open/write/close failures must not trigger mirror retries.
+                stream.write(block)
+        if not finished:
             continue
         with target.open('rb') as stream:
             actual = hashlib.file_digest(stream, algorithm).hexdigest()

@@ -3,6 +3,7 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QFile>
+#include <QScopeGuard>
 #include <QTest>
 #include <QtEndian>
 using namespace putgd;
@@ -124,6 +125,30 @@ private slots:
   QFile foreign(script);QVERIFY(foreign.open(QIODevice::WriteOnly));foreign.write("#!/bin/sh\n# the user's own script\n");foreign.close();
   QVERIFY(!LoginStartup::apply(dir.path(),data,"/usr/bin/putgd-launcher",false));QVERIFY(QFile::exists(script));
   {AppImageEnvironment environment(image,"/tmp/.mount_putgd");QCOMPARE(LoginStartup::apply(dir.path(),data,"/tmp/.mount_putgd/usr/bin/putgd-launcher",true).code,QString("autostart_conflict"));}
+ }
+ void failedAppImageMigrationPreservesLegacyStartupUntilRetry() {
+  QTemporaryDir dir;const auto image=dir.filePath("putgd.AppImage"),data=dir.filePath("data"),directory=dir.filePath("autostart");
+  const auto path=QDir(directory).filePath("putgd.desktop"),legacy=LoginStartup::appImageScriptPath(data);
+  QVERIFY(QDir().mkpath(directory));QVERIFY(QDir().mkpath(QFileInfo(legacy).path()));
+  writeImage(image,elfImage("zsync|https://app.put.gd/dl/stable/appimage.zsync"));
+  const QByteArray oldScript="#!/bin/sh\n# X-putgd-Managed=true\nexit 0\n";
+  writeImage(legacy,oldScript);
+  const auto oldEntry=("[Desktop Entry]\nExec=/bin/sh \""+legacy+"\" --background\nX-putgd-Managed=true\n").toUtf8();
+  QFile entry(path);QVERIFY(entry.open(QIODevice::WriteOnly));QCOMPARE(entry.write(oldEntry),oldEntry.size());entry.close();
+  const auto permissions=QFile::permissions(directory);
+  const auto restore=qScopeGuard([&]{QFile::setPermissions(directory,permissions);});
+  QVERIFY(QFile::setPermissions(directory,QFile::ReadOwner|QFile::ExeOwner));
+  if(QFileInfo(directory).isWritable())QSKIP("Requires an unprivileged user for directory write restrictions");
+  AppImageEnvironment environment(image,"/tmp/.mount_putgd");
+  const auto result=LoginStartup::apply(dir.path(),data,"/tmp/.mount_putgd/usr/bin/putgd-launcher",true);
+  QCOMPARE(result.code,QString("autostart_io"));
+  QVERIFY(QFile::exists(LoginStartup::scriptPath(data)));
+  QCOMPARE(readAll(path),oldEntry);QCOMPARE(readAll(legacy),oldScript);
+  QVERIFY(QFileInfo(legacy).isExecutable());
+  QVERIFY(QFile::setPermissions(directory,permissions));
+  QVERIFY(!LoginStartup::apply(dir.path(),data,"/tmp/.mount_putgd/usr/bin/putgd-launcher",true));
+  QVERIFY(readAll(path).contains("Exec=/bin/sh \""+LoginStartup::scriptPath(data).toUtf8()+"\" --background\n"));
+  QVERIFY(!QFile::exists(legacy));
  }
  void missingAppImageCannotPersistTemporaryMount() {
   QTemporaryDir dir;Error result;
