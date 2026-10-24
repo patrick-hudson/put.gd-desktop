@@ -29,8 +29,8 @@ Configure an MCP client to launch the helper with stdio, for example:
 `--socket /absolute/path/session.sock` selects an explicit same-user session endpoint;
 otherwise the CLI uses `$XDG_RUNTIME_DIR/putgd/session.sock`. Paths containing spaces
 are single argument-vector elements. `--timeout` sets the CLI process deadline in
-seconds (default 60). The CLI bounds its own wait for each method (at most 51 s, for
-`recording.stop`; see [cli.md](cli.md)), so keep `--timeout` above that or slow
+seconds (default 60). The CLI bounds its own wait for each method (up to 51 s for
+`recording.stop` or `action.invoke`; see [cli.md](cli.md)), so keep `--timeout` above that or slow
 recording commands report `cli_timeout`. A deadline terminates the client process, not a resident operation:
 a sent action may already have been accepted. Inspect activity through the CLI before
 invoking another action; do not infer rollback from a transport error. The helper never

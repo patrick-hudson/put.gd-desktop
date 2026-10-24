@@ -297,10 +297,13 @@ Not covered: the lane is not scheduled (proposal #360); Python contract suites
 The [companion report](evidence/2026-10-24-recording-session-410/README.md) and
 [JSON ledger](evidence/2026-10-24-recording-session-410/summary.json) track
 graceful cancel/discard shutdown, recording `action.invoke` modes and command
-stop reasons. Current-candidate regression, Cinnamon/GNOME/KDE functional and
-memory checks, saved visual review and cleanup are pending. The documentation
-PR remains draft; historical #410 results and headless checks do not establish
-new desktop acceptance. Merge the code PR before its documentation companion.
+stop reasons. Clean `3440ab9c` passed the three relevant whole ASan/UBSan CTest
+entries and the actual product probe with leak detection enabled. Full Dev,
+Cinnamon/GNOME/KDE functional/memory checks, final visual review and cleanup
+remain pending. The separately identified #556 read-only Btrfs VM storage gate
+passed; it establishes capacity only. The documentation PR stays draft;
+headless checks and prior-candidate results do not establish new desktop
+acceptance. Merge recording #551 and prerequisite #556 before companion #550.
 
 ## Recording closeout (#87, #166, #165, #164, #89) — 2026-10-20
 

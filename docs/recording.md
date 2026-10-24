@@ -163,8 +163,9 @@ child's pipes, mirroring the capture and editor helpers:
   `prepare` (a hands-on drag selection or OS consent), 600 s for `export`; a missed deadline is
   `recording_helper_timeout` and leaves the session where it was. The session
   methods that wait on a command reply only after the helper answers, so
-  `putgd-cli` waits 15 s past the helper's deadline for them (45 s for `stop`,
-  30 s for the others; `LocalServer::replyDeadlineMs`). `prepare` and the exports
+  `putgd-cli` waits 15 s past the helper's deadline for them (45 s for `stop`
+  and `action.invoke`, which can toggle Stop, 30 s for the other recording
+  commands; `LocalServer::replyDeadlineMs`). `prepare` and the exports
   reply when they start.
 - `event {event: progress|stopped|failed, ...}` from the helper is forwarded to
   the service with the session ID; an unexpected exit fails the session with
@@ -1003,6 +1004,10 @@ and no host-matched library was bundled; the receipt records the result under
   preview image route against the synthetic peer, a `recording.stop` that the
   peer answers after 16 s still reaching the caller through the production CLI,
   and the adapter's default deadline staying above the CLI's longest wait.
+- `cli_integration` (`tests/integration/test_cli.cpp`): the real `putgd-cli`
+  waits for a toggle stop delayed 16 s by a fake backend, beyond the former
+  `action.invoke` 15 s budget, and returns the same finalized user-stop state
+  as `recording.inspect`. This is client/session evidence, not real capture.
 - `gnome_ui_ownership_contract` (`tests/desktop/test_gnome_ownership.mjs`,
   GNOME hosts only): `SelectArea` answering and `Release` cancelling, bar
   placement order, dim strips cut around the area and the bar, and refusing

@@ -10,7 +10,7 @@ host's capacity budget; workstation free space does not establish remote capacit
 
 Before a build or graphical campaign, record available space on the host and
 each guest. Require at least 10 GiB host reserve, 2 GiB guest reserve, and more than 1,024
-free inodes. Add the anticipated build size to the reserve before starting a
+free inodes where the filesystem reports a count. Add the anticipated build size to the reserve before starting a
 new guest build; measure a previous comparable build rather than assuming the
 minimum reserve is enough. Budget that estimate for every guest's growth on the
 shared host filesystem too. Run a separate preflight with `--host-path` for each
@@ -22,6 +22,16 @@ The read-only `storage_preflight.py` accepts repeated `--run` directories,
 existing private SSH identity and strict host verification. It prints numeric
 filesystem capacity only; SSH stderr is withheld. It installs no packages and
 changes no desktop settings, disks, or sessions.
+
+Schema 2 records filesystem type/magic and raw `statvfs` values on both host and
+guest. Verified Btrfs identification with zero inode counters is `dynamic`, with
+`availableInodes: null`: [Btrfs creates inodes from metadata space](https://btrfs.readthedocs.io/en/stable/Administration.html#flexibility).
+Its byte reserves and expected growth still apply. Reported counts must exceed
+1,024; unknown or mismatched identification, invalid numbers and inconsistent
+counters fail closed. See the [actual-host prerequisite evidence](evidence/2026-10-24-recording-session-410/README.md#btrfs-vm-storage-prerequisite).
+Identification failures retain measured raw capacity when available and record
+only sanitized error types; a host measurement failure produces a failed receipt
+and exit 2.
 
 Run from the repository root with a new private output directory. For a test
 that uses an already-built package, leave the build estimate at zero:
