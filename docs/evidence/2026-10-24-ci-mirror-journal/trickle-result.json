@@ -1,0 +1,7 @@
+{
+  "before": 1,
+  "after": 0,
+  "attempts": 1,
+  "timeoutSeconds": 2,
+  "scope": "Deterministic package-manager fixture; original primary trickles until stopped, rewritten mirror completes"
+}

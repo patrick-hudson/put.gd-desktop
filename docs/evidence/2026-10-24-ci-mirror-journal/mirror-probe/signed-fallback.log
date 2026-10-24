@@ -1,0 +1,32 @@
+Get:1 file:/tmp/pgapt.5qui7dw6/apt/apt-mirrors.txt Mirrorlist [101 B]
+Ign:2 http://127.0.0.1:33771/archive/ubuntu noble InRelease
+Get:2 http://127.0.0.1:33771/archive/ubuntu noble InRelease [507 B]
+Fetched 507 B in 0s (9128 B/s)
+Reading package lists...
+201 URI Done: file:/tmp/pgapt.5qui7dw6/apt/apt-mirrors.txt
+ReceivedHash:
+	- SHA512:b19c871db8e61b68d8f21474f0676845e1ed4df4be94598260df10bf97e79c7aded99d7ca2954620d1a0dc924ff3656476832a501409e570ce8722ceb6180efa
+	- SHA256:26091a2c96588ca63ff1ba02e094e0f44529ae56f0b5470795b3f4b001debdb3
+	- SHA1:ce077b9f305b05403aba4e3dc0183e6fd9cdb4b4
+	- MD5Sum:8c5be1679e1b425c07d63d65da36a61a
+	- Checksum-FileSize:101
+ExpectedHash:
+
+201 URI Done: http://127.0.0.1:33771/security/ubuntu/dists/noble/InRelease
+ReceivedHash:
+	- SHA512:77e34d3254b892e5852a9e93f0a3c522e20f7343d81b7e3d443a5b5a0568aceb95bc82d7a4e6d46b12d1f22a70eee08c879a3e59b39cad5dc6c1bc93d048b621
+	- SHA256:4ec4e668583d9041312cc4cd2c589706636d5452ba772c28be4465f906979abc
+	- SHA1:b85cbab8b8cfe63e3f84981269297b767d800508
+	- MD5Sum:040c0af9592f68290f260e83cefd2e09
+	- Checksum-FileSize:507
+ExpectedHash:
+
+201 URI Done: sqv:/tmp/pgapt.5qui7dw6/signed-fallback/partial/_tmp_pgapt.5qui7dw6_apt_apt-mirrors.txt_dists_noble_InRelease
+ReceivedHash:
+ExpectedHash:
+
+Signature verification succeeded: /tmp/pgapt.5qui7dw6/signed-fallback/partial/_tmp_pgapt.5qui7dw6_apt_apt-mirrors.txt_dists_noble_InRelease
+Got Codename: noble
+Got Suite: noble
+Expecting Dist: noble
+W: Invalid 'Date' entry in Release file /tmp/pgapt.5qui7dw6/signed-fallback/partial/_tmp_pgapt.5qui7dw6_apt_apt-mirrors.txt_dists_noble_InRelease

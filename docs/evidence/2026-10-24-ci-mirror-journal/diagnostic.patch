@@ -1,0 +1,27 @@
+diff --git a/tests/unit/test_operations.cpp b/tests/unit/test_operations.cpp
+index b00132f6..5902b0e3 100644
+--- a/tests/unit/test_operations.cpp
++++ b/tests/unit/test_operations.cpp
+@@ -1137,14 +1137,20 @@ private slots:
+  }
+  void resumableUploadJournalSurvivesForRetry() {
+   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->journalThenUnknown=true;registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});QVERIFY(settings.save(configuration(d.path()),{}));
+-  Source source;source.payload=textPayload();OperationService ops(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(ops.ready());QString id;ops.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});
++  Source source;source.payload=textPayload();OperationService ops(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(ops.ready());QString id;bool retried=false,observed=false;
++  connect(&ops,&OperationService::changed,this,[&](const QString& changed){
++   HistoryStore journal(ops.databasePath());if(observed||journal.operation(changed).state!="partial")return;observed=true;
++   qInfo("DIAGNOSTIC: durable partial observed with activeOperations=%d",ops.diagnostics()["activeOperations"].toInt());
++   ops.retry(changed,[&](Error e,QJsonObject){qInfo("DIAGNOSTIC: premature retry error=%s",qPrintable(e.code));QVERIFY(!e);retried=true;});
++  });
++  ops.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});
+   QJsonObject op;PUTGD_TRY_VERIFY([&]{auto done=std::make_shared<bool>(false);ops.inspect(id,[&op,done](Error,QJsonObject r){op=r;*done=true;});if(!putgd::test::waitFor([&]{return *done;}))return false;return op["state"]=="partial";}());
+   QCOMPARE(op["items"].toArray()[0].toObject()["uploadStatus"].toString(),QString("unknown"));
+   // The journal is durable on the item but never part of the public operation.
+   QVERIFY(!op["items"].toArray()[0].toObject().contains("uploadJournal"));
+   HistoryStore store(ops.databasePath());Error error;const auto saved=store.operation(id,&error);QVERIFY(!error);
+   QCOMPARE(saved.items[0].uploadJournal,QJsonObject({{"schemaVersion",1},{"upload","opaque-resumable"}}));
+-  provider->journalThenUnknown=false;bool retried=false;ops.retry(id,[&](Error e,QJsonObject){QVERIFY(!e);retried=true;});PUTGD_TRY_VERIFY(retried);
++  PUTGD_TRY_VERIFY(retried);
+   PUTGD_TRY_COMPARE(provider->uploads.load(),2);PUTGD_TRY_VERIFY(!ops.storageActive()&&ops.activeObservations().isEmpty());
+   QMutexLocker lock(&provider->mutex);QVERIFY(provider->resumes[0].isEmpty());QCOMPARE(provider->resumes[1],saved.items[0].uploadJournal);
+  }
