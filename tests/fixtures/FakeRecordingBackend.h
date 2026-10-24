@@ -33,7 +33,7 @@ public:
   if(command=="review"){if(onReview)onReview(params);reply({},{{"action",params["action"]},{"playheadUs",3000000.0},{"visible",true}});return;}
   if(command=="cancel"){++cancels;reply({},{});return;}
   if(command=="start"&&failStart){reply({"recording_start_failed","Synthetic source refused",{}},{});return;}
-  if(command=="stop"){reply({},{{"durationUs",double(durationUs)},{"canvas",QJsonArray{1280,720}}});return;}
+  if(command=="stop"){if(deferStop){pendingStop=std::move(reply);return;}reply({},{{"durationUs",double(durationUs)},{"canvas",QJsonArray{1280,720}}});return;}
   reply({},{});
  }
  void preview(const QString&,const RecordingEdit& edit,const RecordingConfig&,qint64 time,int,Reply reply) override {++previews;lastEdit=edit;lastPreviewTime=time;reply({},{{"png",QString::fromLatin1(QByteArray("\x89PNG\r\n\x1a\n",8).toBase64())}});}
@@ -47,6 +47,7 @@ public:
   if(deferExports)pendingExports.append(std::move(finish));else finish();
  }
  void discard(const QString&) override {++discards;}
+ bool deferStop=false;Reply pendingStop;
  int editsPushed=0;RecordingEdit pushedEdit;
  QJsonObject pushedLimits,lastControlParams;RecordingConfig pushedConfig;
  void setEdit(const QString&,const RecordingEdit& edit,const RecordingConfig& config,const QJsonObject& limits) override {++editsPushed;pushedEdit=edit;pushedConfig=config;pushedLimits=limits;}

@@ -81,6 +81,8 @@ private:
         QString staging;
         // Why the helper ended the capture: user, or budget when the disk/file cap ran out.
         QString stopReason;
+        // Finalization survives later review/edit/export state transitions.
+        bool captureStopped = false;
         // Which bound set the budget at prepare (disk_space or max_file_bytes), and after
         // a budget stop {reason, message, hint, budgetBytes, maxFileBytes, durationUs, freeBytes?, ...}.
         QString budgetLimit;

@@ -94,6 +94,7 @@ private slots:
   QCOMPARE(h.rec("pause",{{"id",id}}).result["state"].toString(),QString("paused"));
   // Stop while paused goes straight to private review.
   const auto stopped=h.rec("stop",{{"id",id}});QVERIFY(!stopped.error);QCOMPARE(stopped.result["state"].toString(),QString("reviewing"));QCOMPARE(stopped.result["durationUs"].toDouble(),12000000.0);QCOMPARE(stopped.result["edit"].toObject()["revision"].toDouble(),1.0);
+  QCOMPARE(stopped.result["stopReason"].toString(),QString("user"));QCOMPARE(h.rec("inspect",{{"id",id}}).result,stopped.result);
   QCOMPARE(h.backend->exports,0);
   const auto preview=h.rec("preview",{{"id",id},{"time",4000000},{"maxEdge",640}});QVERIFY(!preview.error);QVERIFY(preview.result["png"].isString());QVERIFY(preview.result["retained"].toBool());QCOMPARE(preview.result["outputTimeUs"].toDouble(),4000000.0);QCOMPARE(h.backend->lastPreviewTime,qint64(4000000));
   QCOMPARE(h.rec("preview",{{"id",id},{"time",12000000}}).error.code,QString("invalid_request"));
@@ -113,6 +114,10 @@ private slots:
   QCOMPARE(h.backend->exports,1);QCOMPARE(h.backend->lastEdit.trimStart,qint64(2000000));QCOMPARE(*h.backend->lastEdit.trimEnd,qint64(8000000));QCOMPARE(h.backend->lastEdit.masks.size(),1);QVERIFY(h.backend->lastConfig.audio.system);QCOMPARE(h.backend->lastConfig.fps,24);
   QCOMPARE(h.rec("saveCopy",{{"id",id},{"path",copyPath}}).error.code,QString("file_exists"));
   QVERIFY(!h.rec("saveCopy",{{"id",id},{"path",copyPath},{"overwrite",true}}).error);
+  // Export acceptance precedes its queued completion. Check stale revisions
+  // once the overwrite has actually returned the session to private review.
+  PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
+  QCOMPARE(h.rec("inspect",{{"id",id}}).result["lastExport"].toObject()["status"].toString(),QString("saved"));
   {HistoryStore journal(h.operations->databasePath());QCOMPARE(journal.operation(id).state,QString("recording"));QCOMPARE(journal.operation(id).items.size(),0);}
   // Only Upload at the reviewed revision admits bytes.
   QCOMPARE(h.rec("upload",{{"id",id},{"revision",1}}).error.code,QString("recording_stale"));
@@ -341,11 +346,65 @@ private slots:
   QCOMPARE(h.rec("inspect",{{"id",id}}).error.code,QString("recording_unavailable"));
   QCOMPARE(h.provider->uploads.load(),0);
  }
+ void adjacentBudgetEventAndStopReplyKeepTheirOrder_data(){
+  QTest::addColumn<bool>("failedReply");QTest::newRow("success")<<false;QTest::newRow("error")<<true;
+ }
+ void adjacentBudgetEventAndStopReplyKeepTheirOrder(){
+  QFETCH(bool,failedReply);Harness h;PUTGD_TRY_VERIFY(h.operations->ready());const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);h.backend->deferStop=true;
+  Call stopped;h.server->dispatch({{"schemaVersion",1},{"requestId","pending-stop"},{"session",h.server->socketPath()},{"method","recording.stop"},{"params",QJsonObject{{"id",id}}}},[&](Error e,QJsonObject r){stopped={e,r,true};});QVERIFY(h.backend->pendingStop);
+  // Deliver both on the service thread without letting the event loop run:
+  // deterministic even when the pipe fixture's writes land in separate reads.
+  h.backend->sink({{"id",id},{"event","stopped"},{"reason","budget"},{"durationUs",9000000.0},{"canvas",QJsonArray{1280,720}}});
+  auto late=std::move(h.backend->pendingStop);late(failedReply?Error{"recording_state","already stopped",{}}:Error{},{{"durationUs",12000000.0},{"canvas",QJsonArray{1280,720}}});
+  PUTGD_TRY_VERIFY(stopped.done);QVERIFY(!stopped.error);QCOMPARE(stopped.result["state"].toString(),QString("reviewing"));QCOMPARE(stopped.result["stopReason"].toString(),QString("budget"));QCOMPARE(stopped.result["durationUs"].toDouble(),9000000.0);QCOMPARE(h.rec("inspect",{{"id",id}}).result,stopped.result);
+  QVERIFY(!h.rec("cancel",{{"id",id}}).error);
+ }
+ void lateStopReplyPreservesEditedPendingExport_data(){
+  QTest::addColumn<QString>("command");QTest::addColumn<bool>("failedReply");
+  QTest::newRow("save copy")<<QString("saveCopy")<<false;
+  QTest::newRow("upload")<<QString("upload")<<false;
+  QTest::newRow("save copy after stop error")<<QString("saveCopy")<<true;
+ }
+ void lateStopReplyPreservesEditedPendingExport(){
+  QFETCH(QString,command);QFETCH(bool,failedReply);Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
+  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);h.backend->deferStop=true;
+  Call stopped;h.server->dispatch({{"schemaVersion",1},{"requestId","pending-stop"},{"session",h.server->socketPath()},{"method","recording.stop"},{"params",QJsonObject{{"id",id}}}},[&](Error e,QJsonObject r){stopped={e,r,true};});
+  QVERIFY(!stopped.done);QVERIFY(h.backend->pendingStop);
+  h.backend->sink({{"id",id},{"event","stopped"},{"reason","budget"},{"durationUs",9000000.0},{"canvas",QJsonArray{1280,720}}});PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
+  const auto edited=h.rec("edit",{{"id",id},{"revision",1},{"commands",QJsonArray{QJsonObject{{"op","setTrim"},{"start",1000000},{"end",4000000}}}}});QVERIFY(!edited.error);
+  h.backend->deferExports=true;
+  QJsonObject params{{"id",id}};if(command=="saveCopy")params["path"]=h.dir.filePath("private.mp4");else params["revision"]=2;
+  const auto exporting=h.rec(command,params);QVERIFY(!exporting.error);QCOMPARE(exporting.result["state"].toString(),QString("exporting"));QCOMPARE(h.backend->pendingExports.size(),1);
+  const auto before=h.rec("inspect",{{"id",id}}).result;
+  auto late=std::move(h.backend->pendingStop);late(failedReply?Error{"recording_state","already stopped",{}}:Error{},{{"durationUs",12000000.0},{"canvas",QJsonArray{1280,720}}});
+  PUTGD_TRY_VERIFY(stopped.done);QVERIFY(!stopped.error);QCOMPARE(stopped.result,before);QCOMPARE(h.rec("inspect",{{"id",id}}).result,before);
+  QCOMPARE(before["stopReason"].toString(),QString("budget"));QCOMPARE(before["durationUs"].toDouble(),9000000.0);QCOMPARE(before["edit"].toObject(),edited.result["edit"].toObject());
+  h.backend->pendingExports.takeFirst()();
+  HistoryStore journal(h.operations->databasePath());
+  if(command=="upload"){PUTGD_TRY_COMPARE(journal.operation(id).state,QString("completed"));QCOMPARE(h.rec("inspect",{{"id",id}}).error.code,QString("recording_unavailable"));}
+  else {PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));QCOMPARE(h.rec("inspect",{{"id",id}}).result["edit"].toObject(),before["edit"].toObject());QVERIFY(!h.rec("cancel",{{"id",id}}).error);}
+  QCOMPARE(h.provider->uploads.load(),0);
+ }
+ void lateStopReplyCannotChangeACancelledSessionsSuccessor(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);h.backend->deferStop=true;
+  int replies=0;h.server->dispatch({{"schemaVersion",1},{"requestId","pending-stop"},{"session",h.server->socketPath()},{"method","recording.stop"},{"params",QJsonObject{{"id",id}}}},[&](Error,QJsonObject){++replies;});
+  QVERIFY(h.backend->pendingStop);auto late=std::move(h.backend->pendingStop);QVERIFY(!h.rec("cancel",{{"id",id}}).error);
+  const auto next=h.prepareReady();QVERIFY(!next.isEmpty());QVERIFY(next!=id);
+  late({},{{"durationUs",12000000.0},{"canvas",QJsonArray{1280,720}}});
+  // A command round trip drains queued delivery, including the stale callback.
+  QVERIFY(!h.rec("start",{{"id",next}}).error);QCOMPARE(h.state(next),QString("recording"));QCOMPARE(replies,0);QVERIFY(!h.rec("inspect",{{"id",next}}).result.contains("stopReason"));
+  QVERIFY(!h.rec("cancel",{{"id",next}}).error);
+ }
  void recordActionOpensRaisesAndTogglesTheSession(){
   Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
-  auto invoke=[&](const QJsonObject& options){Call c;h.operations->invoke("record",[&](Error e,QJsonObject r){c={e,r,true};},options);(void)putgd::test::waitFor([&]{return c.done;});return c;};
+  auto invoke=[&](QJsonObject options){options["action"]="record";return call(*h.server,"action.invoke",options);};
   QCOMPARE(invoke({{"mode","shell"}}).error.code,QString("invalid_request"));
+  for(const QJsonValue& mode:{QJsonValue(),QJsonValue(1),QJsonValue(true),QJsonValue(QJsonObject{}),QJsonValue(QJsonArray{}),QJsonValue(""),QJsonValue(QString(17,'x'))})
+   QCOMPARE(invoke({{"mode",mode}}).error.code,QString("invalid_request"));
+  for(const auto& action:Settings::actionNames())if(action!="record")
+   QCOMPARE(call(*h.server,"action.invoke",{{"action",action},{"mode","open"}}).error.code,QString("invalid_request"));
   QCOMPARE(invoke({{"source","clipboard"}}).error.code,QString("invalid_request"));
+  QCOMPARE(invoke({{"mode","open"},{"path","/synthetic"}}).error.code,QString("invalid_request"));
   auto opened=invoke({});QVERIFY2(!opened.error,qPrintable(opened.error.message));QCOMPARE(opened.result["step"].toString(),QString("prepare"));
   const auto id=opened.result["recordingId"].toString();QVERIFY(!id.isEmpty());PUTGD_TRY_COMPARE(h.state(id),QString("ready"));
   QCOMPARE(h.backend->lastConfig.format,QString("mp4"));
@@ -354,6 +413,7 @@ private slots:
   QCOMPARE(invoke({{"mode","toggle"}}).result["step"].toString(),QString("start"));QCOMPARE(h.state(id),QString("recording"));
   QVERIFY(!h.rec("pause",{{"id",id}}).error);
   QCOMPARE(invoke({{"mode","toggle"}}).result["step"].toString(),QString("stop"));QCOMPARE(h.state(id),QString("reviewing"));
+  QCOMPARE(h.rec("inspect",{{"id",id}}).result["stopReason"].toString(),QString("user"));
   QCOMPARE(invoke({{"mode","toggle"}}).result["step"].toString(),QString("raise"));QCOMPARE(h.state(id),QString("reviewing"));
   QVERIFY(!h.rec("cancel",{{"id",id}}).error);QCOMPARE(h.rec("inspect",{{"id",id}}).error.code,QString("recording_unavailable"));
  }
