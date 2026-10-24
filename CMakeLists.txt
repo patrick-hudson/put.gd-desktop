@@ -1237,6 +1237,5 @@ endif()
 include(cmake/Proton.cmake)
 include(cmake/B2Tests.cmake)
 
-include(cmake/TestPolicy.cmake)
-
 include(cmake/NativeMetadata.cmake)
+include(cmake/TestPolicy.cmake)

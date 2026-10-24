@@ -9,7 +9,7 @@ from pathlib import Path
 
 
 def continuation(text):
-    return '\n'.join(' ' + line if line else ' .' for line in text.splitlines())
+    return '\n'.join(' ' + line if line.strip() else ' .' for line in text.splitlines())
 
 
 def generate(docs, identity, source_url, timestamp):

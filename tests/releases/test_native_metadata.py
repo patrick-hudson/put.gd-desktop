@@ -16,13 +16,15 @@ class NativeMetadataTests(unittest.TestCase):
             (docs / 'aws-sdk-LICENSE').write_text('Apache-2.0\nCopyright AWS\n')
             (docs / 'runtime-notices.txt').write_text('Exact source location\n')
             (docs / 'proton').mkdir()
-            (docs / 'proton/BUN-NOTICES.txt.gz').write_bytes(gzip.compress(b'Copyright embedded Bun component\n\nExact grant\n'))
+            (docs / 'proton/BUN-NOTICES.txt.gz').write_bytes(gzip.compress(b'Copyright embedded Bun component\n \n\t\nExact grant\n'))
             (docs / 'proton/LICENSE.icu4c-78.3').write_text('Unicode License V3\nCopyright Unicode\n')
             identity = {'packageVersion': '26.1024.1134', 'gitCommit': 'a' * 40}
             generate(docs, identity, 'https://example.invalid/tag/v26.1024.1134', 1792800000)
             copyright = (docs / 'copyright').read_text()
             for notice in ('Copyright AWS', 'Copyright embedded Bun component', 'Unicode License V3', 'Exact source location'):
                 self.assertIn(notice, copyright)
+            self.assertNotIn('\n  \n', copyright)
+            self.assertNotIn('\n \t\n', copyright)
             before = (docs / 'changelog.gz').read_bytes()
             generate(docs, identity, 'https://example.invalid/tag/v26.1024.1134', 1792800000)
             self.assertEqual((docs / 'copyright').read_text(), copyright)
