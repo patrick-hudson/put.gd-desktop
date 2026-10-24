@@ -91,6 +91,17 @@ session for recording) and on an Ubuntu 26.04 GNOME VM, the `debian13` DEB on d6
   `TryExec`, is recorded for Patrick's decision.
 - **Scope:** a nightly pass. The release campaign reruns the same drivers on the release bytes.
 
+## Native acceptance driver hardening (#495) — 2026-10-24
+
+The [follow-up record](evidence/2026-10-24-native-acceptance-drivers-495/README.md)
+retires the old coordinate/tint tray recipes and separates the six lab-driver
+findings from product acceptance. The 1058 pass above preserved 10,000 rows in
+five operations and used session credentials plus a retained keychain reference;
+it did not prove realistic 10,000-operation History behavior or a real keychain
+credential lifecycle. Original results and failures remain historical evidence.
+Exact driver commands and code-owner results are pending; no new desktop or
+release acceptance is claimed by this documentation update.
+
 ## DEB/RPM exact-asset audit rehearsal (#383) — 2026-10-22
 
 Assets: the ubuntu24.04, ubuntu26.04 and debian13 DEBs and the fedora44 RPM of

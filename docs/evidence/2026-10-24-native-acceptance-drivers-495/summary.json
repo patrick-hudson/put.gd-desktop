@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "issue": 495,
+  "date": "2026-10-24",
+  "scope": "Native acceptance lab driver documentation; no new release acceptance claim",
+  "status": "awaiting-code-owner-results",
+  "codePullRequest": null,
+  "driver": {
+    "path": "tools/lab/native_acceptance.py",
+    "commit": null,
+    "sha256": null
+  },
+  "historicalEvidence": {
+    "path": "docs/evidence/2026-10-23-native-full-acceptance",
+    "tag": "v26.1023.1058-nightly",
+    "sourceAbbreviation": "05991d9d",
+    "preserveDriversResultsAndVisuals": true,
+    "limits": {
+      "tray": "Tint finder selected unrelated taskbar or panel targets; original failures retained",
+      "session": "SSH user-manager resident survived logout; early login attempts invalid",
+      "removal": "Snapshot failed when installed CLI was absent; shell PID selection could use previous login",
+      "history": "10000 entries shared five operations, not 10000 independent captures",
+      "keychain": "Session credentials plus reference preservation; no actual keychain credential lifecycle proof"
+    }
+  },
+  "commands": [],
+  "automatedChecks": [],
+  "desktopRuns": [],
+  "savedVisuals": [],
+  "cleanupReceipts": [],
+  "limitations": [
+    "Exact driver implementation and code-owner test results pending",
+    "No independent graphical campaign from this documentation thread",
+    "Historical outcomes are not changed by new driver checks",
+    "Current keyring setup must be inspected before any real keychain lifecycle claim"
+  ]
+}

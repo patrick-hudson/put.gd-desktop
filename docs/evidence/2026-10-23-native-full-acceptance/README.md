@@ -1,5 +1,13 @@
 # Native package full acceptance, nightly 26.1023.1058 (2026-10-23)
 
+**Historical scope note (#495, 2026-10-24):** the result tables below describe
+the original run. Its 10,000 rows shared five operations; its keychain-related
+checks used session credentials and preserved a reference, without proving a
+real keychain lifecycle. The old tray/lifecycle recipes are retired. Use the
+[maintained driver and follow-up record](../2026-10-24-native-acceptance-drivers-495/README.md)
+for new campaigns. Original driver sources, receipts, visuals and failures remain
+unchanged.
+
 This is one pass of the [native package full-acceptance profile](../../acceptance-matrix.md#native-package-full-acceptance-profile) (items A–Q). It used the DEBs and the RPM of [`v26.1023.1058-nightly`](https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v26.1023.1058-nightly) (`05991d9d`) on five desktops. It covers the package lifecycle of [#375](https://github.com/patrick-hudson/put.gd-desktop/issues/375) (DEB) and [#377](https://github.com/patrick-hudson/put.gd-desktop/issues/377) (RPM), and the observations Patrick needs for [#382](https://github.com/patrick-hudson/put.gd-desktop/issues/382).
 
 **Result:** every item passes on every desktop, except P on m74. That failure is a product bug, [#490](https://github.com/patrick-hudson/put.gd-desktop/issues/490): on Mint Cinnamon the login-started resident survives logout, and the next login reuses it. Five smaller findings are filed below.
