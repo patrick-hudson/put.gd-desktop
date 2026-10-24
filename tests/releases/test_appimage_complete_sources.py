@@ -1,10 +1,12 @@
 import hashlib
+import io
 import json
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'tools/releases'))
@@ -85,3 +87,61 @@ class CompleteSources(unittest.TestCase):
         self.receipt['toolLock']['tools'][0]['sha256'] = 'b' * 64
         with self.assertRaisesRegex(ValueError, 'another runtime binary'):
             complete.runtime_inputs(self.receipt, ROOT / 'packaging/appimage/runtime-source.json')
+
+
+class ExactSourceInputs(unittest.TestCase):
+    def test_signed_snapshot_keeps_the_requested_version(self):
+        entry = {'source_package_name': 'apparmor', 'source_package_version': '4.0-8',
+                 'date_published': '2026-10-01T00:00:00+00:00',
+                 'date_superseded': '2026-10-03T00:00:00+00:00',
+                 'self_link': 'https://api.launchpad.net/1.0/source-publication'}
+        response = io.BytesIO(json.dumps({'entries': [entry]}).encode())
+        results = [subprocess.CalledProcessError(100, 'apt-get'),
+                   subprocess.CompletedProcess([], 0), subprocess.CompletedProcess([], 0)]
+        with patch.object(complete.subprocess, 'run', side_effect=results) as run, \
+                patch.object(complete.urllib.request, 'urlopen', return_value=response):
+            result = complete.apt_source('apparmor', '4.0-8', Path('/synthetic'))
+        self.assertEqual(result['snapshot'], '20261002T000000Z')
+        self.assertIn('apparmor=4.0-8', run.call_args_list[-1].args[0])
+        self.assertIn('--snapshot', run.call_args_list[-1].args[0])
+        self.assertTrue(all('--allow-unauthenticated' not in c.args[0] for c in run.call_args_list))
+
+    def test_another_publication_cannot_substitute_a_source_version(self):
+        response = io.BytesIO(json.dumps({'entries': [
+            {'source_package_name': 'apparmor', 'source_package_version': 'different'}]}).encode())
+        with patch.object(complete.subprocess, 'run', side_effect=subprocess.CalledProcessError(100, 'apt-get')) as run, \
+                patch.object(complete.urllib.request, 'urlopen', return_value=response), \
+                self.assertRaisesRegex(ValueError, 'exact retired version'):
+            complete.apt_source('apparmor', '4.0-8', Path('/synthetic'))
+        self.assertEqual(run.call_count, 1)
+
+    def test_git_archive_preserves_source_and_rejects_tag_object_pins(self):
+        with tempfile.TemporaryDirectory(prefix='pgtrees-') as temp:
+            root = Path(temp)
+            repo = root / 'repo'
+            repo.mkdir()
+            (repo / 'LICENSE').write_text('synthetic licence')
+            (repo / 'program.cpp').write_text('synthetic source')
+            subprocess.run(['git', 'init', '-q', str(repo)], check=True)
+            subprocess.run(['git', '-C', str(repo), 'add', '.'], check=True)
+            subprocess.run(['git', '-C', str(repo), '-c', 'user.name=Fixture',
+                            '-c', 'user.email=fixture@example.invalid', '-c', 'commit.gpgsign=false',
+                            'commit', '-qm', 'fixture'], check=True)
+            commit = subprocess.check_output(['git', '-C', str(repo), 'rev-parse', 'HEAD'], text=True).strip()
+            source = {'repository': 'https://example.invalid/source.git', 'commit': commit}
+            cache = root / 'cache'
+            cache.mkdir()
+            key = hashlib.sha256((source['repository'] + '@' + commit).encode()).hexdigest()
+            repo.rename(cache / key)
+            records = complete.git_source(source, cache, root / 'out')
+            with complete.tarfile.open(root / 'out' / records[0]['file']) as archive:
+                self.assertEqual(set(archive.getnames()), {'LICENSE', 'program.cpp'})
+            subprocess.run(['git', '-C', str(cache / key), '-c', 'user.name=Fixture',
+                            '-c', 'user.email=fixture@example.invalid', '-c', 'tag.gpgsign=false',
+                            'tag', '-am', 'annotated release', 'v1'], check=True)
+            tag = subprocess.check_output(['git', '-C', str(cache / key), 'rev-parse', 'v1'], text=True).strip()
+            source['commit'] = tag
+            tag_key = hashlib.sha256((source['repository'] + '@' + tag).encode()).hexdigest()
+            (cache / tag_key).symlink_to(cache / key, target_is_directory=True)
+            with self.assertRaisesRegex(ValueError, 'differs from component commit'):
+                complete.git_source(source, cache, root / 'wrong')

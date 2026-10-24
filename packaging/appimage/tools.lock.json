@@ -105,7 +105,7 @@
     "mimalloc": {
       "repository": "https://github.com/microsoft/mimalloc.git",
       "release": "2.1.7",
-      "commit": "7c5c43f58b51baace21fadaeed24fdfeb2977ed0"
+      "commit": "8c532c32c3c96e5ba1f2283e032f69ead8add00f"
     }
   }
 }
