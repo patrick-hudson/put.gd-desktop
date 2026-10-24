@@ -665,6 +665,10 @@ def main() -> int:
         distro_licenses.update(system_library_licenses(root, claimed, media_origins))
         return distro_licenses
 
+    # Native DEP-5 metadata includes distro-owned runtime claims. The AppImage
+    # generates its own complete notices and source inventory below.
+    for native_doc in ("copyright", "changelog.gz"):
+        (appdir / "usr/share/doc/putgd" / native_doc).unlink(missing_ok=True)
     notices = appimage_notices.finish(appdir, qt=qt, lock=lock, license_sources=args.license_source,
                                       distro_packages=distro_packages, version=args.version,
                                       build=inventory["manifest"], gpl=gpl)
