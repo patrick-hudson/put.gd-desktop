@@ -1,7 +1,9 @@
 """Curated source export contracts, using synthetic temporary Git repositories."""
+import ast
 import hashlib
 import json
 from pathlib import Path
+import re
 import subprocess
 import sys
 import tarfile
@@ -14,6 +16,32 @@ import source_archive
 
 
 class SourceArchive(unittest.TestCase):
+    def test_appimage_build_script_and_local_import_closure_are_exported(self):
+        root = Path(__file__).resolve().parents[2]
+        script = root / 'tools/releases/build-appimage.sh'
+        pending = {'tools/releases/build-appimage.sh', 'tools/releases/provision-appimage.py'}
+        pending.update(re.findall(r'tools/releases/[A-Za-z0-9_.-]+\.(?:py|sh)', script.read_text()))
+        visited = set()
+        while pending:
+            name = pending.pop()
+            if name in visited:
+                continue
+            visited.add(name)
+            self.assertTrue(source_archive._included(name), name)
+            path = root / name
+            if path.suffix != '.py':
+                continue
+            for node in ast.walk(ast.parse(path.read_text())):
+                modules = ([node.module] if isinstance(node, ast.ImportFrom) else
+                           [alias.name for alias in node.names] if isinstance(node, ast.Import) else [])
+                for module in modules:
+                    dependency = path.parent / ((module or '').split('.')[0] + '.py')
+                    if dependency.is_file():
+                        pending.add(dependency.relative_to(root).as_posix())
+        for path in (root / 'packaging/appimage').iterdir():
+            if path.is_file():
+                self.assertTrue(source_archive._included(path.relative_to(root).as_posix()), path.name)
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix='pgsource-')
         self.addCleanup(self.temp.cleanup)

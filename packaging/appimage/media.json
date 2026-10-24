@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "purpose": "Screen recording runtime inside the AppImage: putgd-record's GStreamer capture plugins and its private FFmpeg export libraries (docs/recording.md, packaging/appimage/README.md). Host GPU encoders come first; the bundled x264/x265 are the fallback. The demuxers and decoders beyond the working clip's Matroska/H.264/AAC, and the MJPEG and PCM encoders, serve only the lab diagnostics (--motion, --preview, --av-marker, --av-sync) on exported MP4, WebM and GIF copies. The image is a GPL-2.0-or-later combined work; its corresponding source is the release's appimage-media-source asset (tools/releases/appimage_media_sources.py).",
+  "purpose": "Screen recording runtime inside the AppImage: putgd-record's GStreamer capture plugins and its private FFmpeg export libraries (docs/recording.md, packaging/appimage/README.md). Host GPU encoders come first; the bundled x264/x265 are the fallback. The demuxers and decoders beyond the working clip's Matroska/H.264/AAC, and the MJPEG and PCM encoders, serve only the lab diagnostics (--motion, --preview, --av-marker, --av-sync) on exported MP4, WebM and GIF copies. The image is a GPL-2.0-or-later combined work; its corresponding source is the release's appimage-complete-source asset (tools/releases/appimage_complete_sources.py).",
   "gstreamer": {
     "plugins": [
       "coreelements",

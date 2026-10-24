@@ -96,12 +96,11 @@ class ReleaseCollection(unittest.TestCase):
         runtime = {'ffmpeg': {'commit': 'f' * 40}, 'gplComponents': [
             {'file': 'libx264.so.164', 'binaryPackage': 'libx264-164', 'binaryVersion': '2:0.164', 'sourcePackage': 'x264', 'sourceVersion': '2:0.164', 'publishSource': True}]}
         (directory / 'appimage-build.json').write_text(json.dumps({'format': 'AppImage', 'architecture': 'x86_64', 'build': identity, 'postDeploymentAudit': {'proton': self.proton_inventory}, 'recordingRuntime': runtime, 'artifact': {'file': path.name, 'sha256': image_sha, 'bytes': path.stat().st_size}}))
-        media = directory / 'synthetic-appimage-media-source.tar.gz'
-        media.write_bytes(b'byte-integrity fixture, not a source archive')
-        (directory / 'appimage-media-source.json').write_text(json.dumps({'schemaVersion': 1, 'format': 'appimage-media-source',
-            'appImage': {'version': identity['version'], 'sha256': image_sha}, 'file': media.name,
-            'sha256': hashlib.sha256(media.read_bytes()).hexdigest(), 'bytes': media.stat().st_size, 'ffmpegCommit': 'f' * 40,
-            'ubuntuSources': [{'sourcePackage': 'x264', 'sourceVersion': '2:0.164'}]}))
+        from complete_source_fixture import add_inventory, write_source
+        image_path = directory / 'appimage-build.json'
+        image = add_inventory(json.loads(image_path.read_text()))
+        image_path.write_text(json.dumps(image))
+        write_source(directory, image)
         self.write_appimage(TAG)
         directory = self.inputs / 'release-native-ubuntu24.04'
         archive = directory / ('putgd-' + identity['version'] + '-source.tar.gz')
@@ -136,10 +135,8 @@ class ReleaseCollection(unittest.TestCase):
             'zsync': {'file': zsync.name, 'url': url, 'sha256': hashlib.sha256(zsync.read_bytes()).hexdigest(),
                       'bytes': zsync.stat().st_size}}
         receipt_path.write_text(json.dumps(receipt))
-        media_path = directory / 'appimage-media-source.json'
-        media = json.loads(media_path.read_text())
-        media['appImage']['sha256'] = receipt['artifact']['sha256']
-        media_path.write_text(json.dumps(media))
+        from complete_source_fixture import write_source
+        write_source(directory, receipt)
         self.write_sboms()
         return receipt_path, zsync
 
@@ -188,7 +185,7 @@ class ReleaseCollection(unittest.TestCase):
         self.assertIn('putgd-26.1022.1-source.tar.gz', files)
         self.assertIn('putgd-26.1022.1-fedora44-x86_64.rpm', files)
         self.assertIn('putgd-26.1022.1-x86_64.AppImage', files)
-        self.assertIn('putgd-26.1022.1-appimage-media-source.tar.gz', files)
+        self.assertIn('putgd-26.1022.1-appimage-complete-source.tar.gz', files)
         self.assertIn('putgd-26.1022.1-x86_64.AppImage.zsync', files)
         self.assertEqual(len(lines), 20)
         for label in ('appimage', 'ubuntu24.04', 'ubuntu26.04', 'debian13', 'fedora44'):

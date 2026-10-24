@@ -101,6 +101,11 @@
       "repository": "https://github.com/FFmpeg/FFmpeg.git",
       "release": "7.1.5",
       "commit": "3a0867c2bfda4a4d4309ca1a8cbdc6175e67f587"
+    },
+    "mimalloc": {
+      "repository": "https://github.com/microsoft/mimalloc.git",
+      "release": "2.1.7",
+      "commit": "8c532c32c3c96e5ba1f2283e032f69ead8add00f"
     }
   }
 }
