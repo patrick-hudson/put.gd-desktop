@@ -139,6 +139,26 @@ pass; it does not certify release bytes.
 Not covered: the Proton per-release check. The DEBs and the RPM are in the
 section above.
 
+## AppImage window icon on Plasma (#523) — 2026-10-23
+
+Lab code: [#530](https://github.com/patrick-hudson/put.gd-desktop/pull/530).
+Evidence: [2026-10-23-appimage-icon-523](evidence/2026-10-23-appimage-icon-523/README.md).
+
+- **Cause.** The neon smoke runs' "W" icon was a lab artifact. `lab.py`'s
+  private `XDG_DATA_HOME` hid AppRun's `putgd-ui.desktop` from KWin, and the
+  1058 AppImage's Qt 6.8.3 can't send the icon itself.
+- **Before and after.** On k72 (Plasma 6.6.6), d69 (Plasma 6.3.6) and a neon
+  User 6.8.1 VM: 1058 showed "W" in the dashboard's and the editor's title bars.
+  The Qt 6.12.0 AppImage (`26.1023.1101-dev+gaa047473ad2e`) showed the put.gd
+  icon in the same setup, sending it over `xdg-toplevel-icon-v1`. 1058 with the
+  real data home showed the put.gd icon too.
+- **Lab fix.** For AppImage profiles, the runner links the private data home's
+  `applications/` to the session's, verified in the neon VM.
+
+Not covered: neon Unstable, and f44/m74 (no app change). Follow-up: launches
+with a different `XDG_DATA_HOME` from the compositor's
+([#531](https://github.com/patrick-hudson/put.gd-desktop/issues/531)).
+
 ## Package install retries and snapshot (#368) — 2026-10-22
 
 Code: [#388](https://github.com/patrick-hudson/put.gd-desktop/pull/388), head

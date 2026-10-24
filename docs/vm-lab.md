@@ -281,6 +281,16 @@ installed resident in the native session with the same `putgd-launcher
 answer, and checks the running executable against the install receipt; use it
 for smoke and `cli` checks on guests without the lab fixture.
 
+Session commands run put.gd with private `XDG_CONFIG_HOME=~/putgd-lab/config`
+and `XDG_DATA_HOME=~/putgd-lab/data`. For AppImage profiles,
+`~/putgd-lab/data/applications` is a link to the session's own applications
+directory (its `XDG_DATA_HOME`, else `~/.local/share`). AppRun writes the KWin
+permission entries and the window-icon entries there, and the compositor reads
+only the session's directory
+([#523](evidence/2026-10-23-appimage-icon-523/README.md)). put.gd's own data
+stays private. An `applications/` directory that already holds files is left
+as it is.
+
 `run` stops the VM on pass, mismatch, timeout or crash and preserves the private run
 directory. After a successful scenario exports its hashed evidence bundle and
 finished journal event, it automatically retires the stopped, unreferenced overlay.
