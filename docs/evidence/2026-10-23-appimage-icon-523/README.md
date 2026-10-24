@@ -118,10 +118,38 @@ pushed file):
 
 ![neon lab fix](pictures/07-neon-lab-fix.png)
 
-A desktop capture in the guest also succeeded with the private data home
-(Qt 6.12 run, operation `completed`, PNG saved in the run folder). On KWin 6.8.1
-the hidden permission entry cost only the icon. A 2026-10-22 Aurora (KWin 6.7)
-lab run had capture refused (`capture_permission`) in the same setup.
+A second fresh overlay, `neon-i523b`, ran the same flow with capture, all
+through `lab.py` at `01d2b9f9` (`install --appimage` 1058, `start`, then `cli`):
+- `~/putgd-lab/data/applications` linked to `/home/lab/.local/share/applications`;
+- all four AppRun entries were there: the `org.kde.KWin.ScreenShot2`
+  permission entry naming the mounted `putgd`, the screencast entry, and
+  `putgd-ui`/`putgd-record` with the mounted icon;
+- put.gd's data was only in `~/putgd-lab/data/putgd`;
+- `capabilities`: desktop `available`, `permission_rejected: false`;
+- `action.invoke desktop`: operation `e8bbd5eb…` completed and saved a
+  117,822-byte PNG through KWin ScreenShot2;
+- after `ui.quit`, `~/.local/share/applications` was empty and no put.gd
+  process was left.
+
+![neon lab fix with capture](pictures/08-neon-lab-fix-capture.png)
+
+### The capture risk behind the follow-up
+
+The hidden permission entry also matters for capture. On k72 (KWin 6.6.6), 1058
+with the private data home failed a desktop capture:
+- the operation failed with `capture_permission`, "KWin rejected screenshot
+  permission";
+- `capabilities` reported `permission_rejected: true` and
+  `permission_entry_matches_executable: true`. put.gd found its own entry, but
+  KWin didn't.
+
+The same build with the real data home captured (`completed`, PNG saved). On
+neon's KWin 6.8.1, a capture with the private data home still worked, so it
+depends on the KWin version. Before #530, KDE capture in lab runs on KWin 6.6
+needed the entry copied by hand (as the Aurora KWin 6.7 session did on
+2026-10-22). Outside the lab, an AppImage started with an `XDG_DATA_HOME` other
+than the session's hits the same refusal:
+[#531](https://github.com/patrick-hudson/put.gd-desktop/issues/531).
 
 ## Lab state and cleanup
 
@@ -136,11 +164,21 @@ lab run had capture refused (`capture_permission`) in the same setup.
   - Both locks were released `--verified-clean`. The gpg-agent of d69's package
     signer and the workstation's memory collectors were there before the slot
     and were left alone.
-- **neon:**
-  - Stopped with QMP `quit` (`lab.py reset`).
-  - The guarded cleanup removed only `disk.qcow2`. Evidence and the manifest
-    are in `work/lab-runs/neon-i523a/evidence-i523/` on f44.
-  - The wall tile and its tunnel were removed, and `remote-displays.json`
+- **k72 capture reproduction:**
+  - It had its own lock (00:19:33Z), released `--verified-clean`.
+  - Both captures stayed in the run folder, which was deleted.
+  - `applications/` was empty before and after, and `~/.local/share/putgd`
+    was removed.
+  - The real-data-home capture put an image of the clean desktop on k72's
+    clipboard (put.gd's copy behaviour). Klipper's history was left alone.
+- **neon (`neon-i523a`, `neon-i523b`):**
+  - Both stopped with QMP `quit` (`lab.py reset`).
+  - The guarded cleanup removed only each `disk.qcow2`. Evidence and manifests
+    are in `work/lab-runs/neon-i523{a,b}/evidence-i523/` on f44.
+  - After both, the golden `image.qcow2` still hashes to
+    `191852a5b552492daa9eac1093acd7e15578b0cc5374f4c9a660037af5863238`, mode
+    0444.
+  - The wall tiles and tunnels were removed, and `remote-displays.json`
     matches its backup.
 
 ## Not covered
@@ -154,5 +192,5 @@ lab run had capture refused (`capture_permission`) in the same setup.
   icon on neon.
 - **Follow-up:** a user who starts the AppImage with an `XDG_DATA_HOME` that
   differs from the compositor's hits the same split. Qt 6.12 covers the icon,
-  but the KWin permission entries are still written there:
+  but KDE capture is refused on KWin 6.6:
   [#531](https://github.com/patrick-hudson/put.gd-desktop/issues/531).

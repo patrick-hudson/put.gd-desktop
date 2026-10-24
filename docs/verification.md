@@ -153,10 +153,14 @@ Evidence: [2026-10-23-appimage-icon-523](evidence/2026-10-23-appimage-icon-523/R
   icon in the same setup, sending it over `xdg-toplevel-icon-v1`. 1058 with the
   real data home showed the put.gd icon too.
 - **Lab fix.** For AppImage profiles, the runner links the private data home's
-  `applications/` to the session's, verified in the neon VM.
+  `applications/` to the session's. In a fresh neon overlay, 1058 run through
+  `lab.py` showed the put.gd icon and captured the desktop through KWin
+  ScreenShot2.
+- **Capture risk.** On k72 (KWin 6.6.6), 1058 with the private data home failed
+  desktop capture with `capture_permission`, and passed with the real one.
 
 Not covered: neon Unstable, and f44/m74 (no app change). Follow-up: launches
-with a different `XDG_DATA_HOME` from the compositor's
+whose `XDG_DATA_HOME` differs from the compositor's lose KDE capture
 ([#531](https://github.com/patrick-hudson/put.gd-desktop/issues/531)).
 
 ## Package install retries and snapshot (#368) — 2026-10-22
