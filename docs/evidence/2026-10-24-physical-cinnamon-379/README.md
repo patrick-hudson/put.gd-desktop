@@ -131,8 +131,9 @@ encoder process. Other low-activity desktop services and the wall stayed up.
   product GUI, cover, new frame or scored interval was created. This is a
   coordinator admission failure, not a failure of the unlaunched driver.
 - **m4: retained host-admission refusal; no benchmark launch.**
-  [The controller record](attempt-m4.json) retains all 331 rows of its
-  10.033007-second, HZ=100 observation before the refusal predicate. A new
+  The private observation retains all 331 rows from its 10.033007-second,
+  HZ=100 sample, saved before the refusal predicate;
+  [the public summary](attempt-m4.json) indexes its identity and hash. A new
   `mintUpdate` process had no before CPU sample and 30 ticks in the after
   sample; its CPU percentage is unassessed. The unchanged controller refused
   `unknown_activity_unmeasured`. This does not establish heavy load or a
@@ -141,8 +142,9 @@ encoder process. Other low-activity desktop services and the wall stayed up.
 
 
 - **m5: exited-process admission refusal; no benchmark launch.**
-  [The retained record](attempt-m5.json) contains all 332 rows from the
-  10.033983-second, HZ=100 observation, saved before predicates. One exited
+  The private observation retains all 332 rows from the 10.033983-second,
+  HZ=100 sample, saved before predicates;
+  [the public summary](attempt-m5.json) indexes its identity and hash. One exited
   kernel worker had a before value of zero ticks and no after sample. Its
   delta and percentage remain unavailable. The unchanged controller refused
   `unknown_activity_unmeasured`; no heavy-load or product conclusion follows.
