@@ -43,10 +43,14 @@ The [physical campaign record](evidence/2026-10-24-physical-cinnamon-379/README.
 selects the newest published `v26.1024.1185-nightly` ubuntu24.04 DEB
 (`9dfac15c`, package SHA-256 `2094fd4d…e5b3f47`) for m74 Mint/Cinnamon X11.
 Its release and mirror checksums and nightly minisign signature verify.
-Installation, exact running identities and physical measurements are pending;
-no capture, memory, history, burst or network gate is accepted by this preparation
-record. Driver hardening (#495) and the additional performance driver remain
-separately identified code work. Unbudgeted history/response thresholds require
+Installation passes `dpkg --verify` and the embedded clean-release identity.
+The first capture attempt has no measured samples: the unchanged witness could
+not validate the current selector. Its failure, raw hashes and reviewed recovery
+frame are retained. A bounded memory pilot is in progress, with draft-driver
+review findings blocking acceptance until a corrected fresh run. No capture,
+memory, history, burst or network gate is accepted. Driver hardening (#495,
+PR #554) and the performance driver (PR #555) remain separately identified code
+work; old history-growth revisions are held. Unbudgeted response thresholds require
 Patrick's approval. The eventual nightly results do not certify stable assets;
 #384 must repeat them on those bytes.
 

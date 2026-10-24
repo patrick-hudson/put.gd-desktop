@@ -1,6 +1,6 @@
 # Physical Cinnamon performance campaign (#379)
 
-**Status: preparation; no performance gate is accepted by this record yet.**
+**Status: campaign in progress; no performance gate is accepted by this record yet.**
 This is the newest-published-nightly rehearsal requested in
 [#379](https://github.com/patrick-hudson/put.gd-desktop/issues/379).
 [#384](https://github.com/patrick-hudson/put.gd-desktop/issues/384) must repeat
@@ -21,10 +21,14 @@ The selected package is the published `ubuntu24.04` DEB from
   signature verifies with nightly public key `71440FA5E439AEBB` and trusted
   comment `put.gd v26.1024.1185-nightly nightly`.
 
-Installation and running-process verification are pending. The package must
+Installation at 15:10 UTC passed `dpkg --verify`; the embedded identity matches
+the clean release commit above. Per-attempt running-process identities remain
+in the raw receipts. The package must
 remain the published bytes; the independently committed lab drivers are recorded
-separately. Driver hardening is owned by #495; additional #379 performance
-drivers are in a separate code PR. This documentation PR contains no driver code.
+separately. Driver hardening is in [#554](https://github.com/patrick-hudson/put.gd-desktop/pull/554)
+(#495); additional #379 performance drivers are in
+[#555](https://github.com/patrick-hudson/put.gd-desktop/pull/555).
+This documentation PR contains no driver code.
 The recording contract fix (#410) has its own development-build evidence and is
 not represented as part of this published package.
 
@@ -59,13 +63,50 @@ reproducible media, timestamps and search parameters. It is a seeded workload,
 not a claim that 10,000 real uploads ran during the campaign. Preparation and
 fixture generation are excluded from quiet measurement intervals.
 
+## Preserved attempts
+
+The physical host is `mint-builder` (m74), Mint 22.3, kernel
+`6.14.0-37-generic`, Intel i5-6500T (four cores), Cinnamon `6.6.9+zena`,
+Muffin `6.6.3+zena`, distro Qt 6.4.2, native login session `c89` / X11 / `:0`.
+The existing powersave governor was preserved. The desktop lock was acquired
+at 15:10:13 UTC. After coordinated reversible quiescence of a pre-existing VM,
+a 10-second activity check recorded zero VM CPU ticks and no build, test or
+encoder process. Other low-activity desktop services and the wall stayed up.
+
+- **c1, driver `daf7145a`: incomplete capture workload.** The first warmup
+  created a distinct cancelled region operation, but the unchanged witness
+  returned `Actual resident selector did not map/paint on every display`.
+  There are **zero measured samples and no valid p95**; raw `-1` is a sentinel,
+  not a latency measurement. [The sanitized attempt](attempt-c1.json) binds
+  the exact raw hashes and normal resident exit events. Source inspection
+  suggests the historical white-at-outer-edge probe conflicts with the current
+  black outer / inset white outline. This attribution is provisional; the
+  frozen witness and failed attempt are unchanged.
+- **m1, driver `daf7145a`: bounded memory pilot, still running.** Independent
+  review identified insufficient continuous History-window checks and cleanup
+  proof in the draft driver. Its summary cannot establish acceptance. Preserve
+  its actual source and raw samples; acceptance requires a fresh run with the
+  corrected, reviewed driver. No extra UI activity is added during its scored
+  intervals.
+- **Populated gates: held.** The earlier #495 grow revision was staged but never
+  executed. Persisted-network-state validation, DB/runtime association and full
+  helper ownership guards require a corrected reviewed handoff before use.
+
+![c1 post-cancellation recovery frame: only synthetic background, no selector-paint claim](c1-witness-failure.png)
+
+This is an annotated recovery frame from the tested nightly after the failed
+warmup and cancellation, not a picture proving that a selector was absent or
+painted. The original reviewed frame contains only synthetic cover pixels;
+its SHA-256 is retained in the attempt JSON.
+
 ## Evidence and cleanup
 
 [campaign.json](campaign.json) binds the selected package, budgets and current
 gate status. Private raw samples, exact commands, failures, original visuals and
 identity/cleanup receipts are retained under m74's private
-`~/putgd-lab/p379/`; reviewed sanitized results and annotated pictures will be
-indexed here when collected. No saved graphical result exists at preparation.
+`~/putgd-lab/p379/` and the per-attempt `/tmp/p379-*` roots; completed run roots
+will be exported before cleanup. Further reviewed sanitized results and
+annotated pictures will be indexed here when collected.
 
 Before measurements, finish the arranged #495 functional window and establish a
 quiet host. A pre-existing VM requires coordinated reversible quiescence; its
