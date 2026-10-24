@@ -395,7 +395,7 @@ private slots:
   MainWindow reopened(fixture.session);
   QVERIFY(reopened.settings()->restoreViewState(state));
   QCOMPARE(reopened.findChild<QListWidget*>("destinationList")->count(),0);
-  fixture.session.invalidate();putgd::test::settle(650);
+  fixture.session.invalidate();PUTGD_VERIFY_STEADY(service.revision().isEmpty(),650);
   QCOMPARE(service.document(),original);
   QVERIFY(service.revision().isEmpty());
   QVERIFY(!QFile::exists(path));
@@ -436,7 +436,7 @@ private slots:
   QCOMPARE(window.findChild<QListWidget*>("destinationList")->count(),doc["profiles"].toArray().size());
   const auto state=window.settings()->saveViewState();QVERIFY(!state.contains("stateError"));
   MainWindow reopened(fixture.session);QVERIFY(reopened.settings()->restoreViewState(state));
-  fixture.session.invalidate();putgd::test::settle(650);
+  fixture.session.invalidate();PUTGD_COMPARE_STEADY(writes,0,650);
   QCOMPARE(writes,0);QCOMPARE(service.document(),doc);QCOMPARE(service.revision(),revision);
   QVERIFY(file.open(QIODevice::ReadOnly));QCOMPARE(file.readAll(),bytes);
  }
