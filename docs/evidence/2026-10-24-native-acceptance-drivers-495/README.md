@@ -32,6 +32,10 @@ Use the code PR's `tools/lab/native_acceptance.py`, starting with
 `python3 tools/lab/native_acceptance.py --help`. The exact interface and checked
 commands will be recorded here when the implementation stabilizes.
 
+The maintained tool covers the focused #495 checks. It does not establish a
+complete A–Q package campaign by itself; a future campaign still needs reviewed
+orchestration for the remaining scenarios and exact-asset evidence.
+
 The old `nfa.py` pass-through, `nk.sh`, `find-tray`, tint/coordinate tray activation
 and `quit-tray` recipes are retired for new campaigns. Do not use `--x`, `--y` or
 `TRAY_XY` as an escape hatch. The preserved [old driver guide](../2026-10-23-native-full-acceptance/lab/README.md)

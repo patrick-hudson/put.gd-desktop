@@ -89,7 +89,9 @@ session for recording) and on an Ubuntu 26.04 GNOME VM, the `debian13` DEB on d6
 - **Other findings:** #491–#495.
 - **#382:** the per-desktop behaviour of the retained login entry, with and without
   `TryExec`, is recorded for Patrick's decision.
-- **Scope:** a nightly pass. The release campaign reruns the same drivers on the release bytes.
+- **Scope:** a historical nightly pass. Release acceptance requires fresh evidence
+  on the exact release bytes with reviewed drivers; use the #495 follow-up below
+  for the retired recipes and maintained replacement checks.
 
 ## Native acceptance driver hardening (#495) — 2026-10-24
 
