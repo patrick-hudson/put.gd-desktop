@@ -14,7 +14,7 @@ from audit_native import sha256
 from release_identity import calendar_base
 
 EXACT_PATHS = frozenset({
-    'CMakeLists.txt', 'CMakePresets.json', 'LICENSE', 'THIRD_PARTY_NOTICES.md', '.gitignore',
+    'tools/releases/native_metadata.py', 'CMakeLists.txt', 'CMakePresets.json', 'LICENSE', 'THIRD_PARTY_NOTICES.md', '.gitignore',
     'docs/build.md', 'docs/proton-drive.md', 'tools/verify_dependencies.py', 'tools/releases/provision-sdk.sh',
 })
 PREFIXES = ('src', 'cmake', 'packaging/linux', 'integrations/gnome', 'tools/proton')

@@ -31,9 +31,11 @@ def package_metadata(package: Path, kind: str) -> dict:
                 "requires": command(["dpkg-deb", "-f", str(package), "Depends"]),
                 "recommends": command(["dpkg-deb", "-f", str(package), "Recommends"])}
     listing = command(["rpm", "-qp", "--qf",
-                       "[%{FILENAMES}\t%{FILEMODES:octal}\t%{FILEUSERNAME}\t%{FILEGROUPNAME}\n]", str(package)])
+                       "[%{FILENAMES}\t%{FILEMODES:octal}\t%{FILEUSERNAME}\t%{FILEGROUPNAME}\t%{FILEFLAGS:fflags}\t.\n]", str(package)])
     for line in listing.splitlines():
-        name, mode, user, group = line.split("\t")
+        name, mode, user, group, flags, sentinel = line.split("\t")
+        if name.startswith("/usr/share/doc/putgd/") and not name.endswith("changelog.gz") and not stat.S_ISDIR(int(mode, 8)) and "l" not in flags:
+            raise ValueError(f"RPM notice is not marked %license: {name}")
         if user != "root" or group != "root":
             raise ValueError(f"RPM entry is not root-owned: {name}")
         bits = int(mode, 8)

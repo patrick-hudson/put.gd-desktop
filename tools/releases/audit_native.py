@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import gzip
 import hashlib
 import json
 import os
@@ -67,12 +68,18 @@ def validate_inventory(root: Path, expected_manifest: dict | None = None, *, req
     required += ["usr/share/putgd/" + name for name in
                  ("build-info.json", "dependency-lock.json", "aws-runtime-manifest.json")]
     required += ["usr/share/doc/putgd/" + name for name in
-                 ("LICENSE", "runtime-notices.txt", "wayland-ext-data-control-v1.xml",
+                 ("LICENSE", "runtime-notices.txt", "copyright", "changelog.gz", "wayland-ext-data-control-v1.xml",
                   "wayland-wlr-data-control-unstable-v1.xml", *SDK_LICENSES)]
     for name in required:
         path = root / name
         if not path.is_file() or path.stat().st_size == 0:
             raise ValueError(f"Required release file missing or empty: {name}")
+    copyright_text = (root / "usr/share/doc/putgd/copyright").read_text()
+    if not copyright_text.startswith("Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/"):
+        raise ValueError("Native copyright is not DEP-5")
+    changelog = gzip.decompress((root / "usr/share/doc/putgd/changelog.gz").read_bytes()).decode()
+    if not changelog.startswith("putgd ("):
+        raise ValueError("Native changelog is invalid")
     for name in programs:
         mode = stat.S_IMODE((root / "usr/bin" / name).stat().st_mode)
         if mode != 0o755:
@@ -125,6 +132,13 @@ def audit_tree(root: Path, expected_manifest=None, *, require_kde=False, require
         if name == "putgd-launcher":
             continue
         path = root / "usr/bin" / name
+        header = command(["readelf", "-hW", str(path)])
+        segments = command(["readelf", "-lW", str(path)])
+        dynamic = command(["readelf", "-dW", str(path)])
+        if not re.search(r"Type:\s+DYN\b", header):
+            raise ValueError(f"Native executable is not PIE: {name}")
+        if "GNU_RELRO" not in segments or not re.search(r"BIND_NOW|FLAGS.*\bNOW\b", dynamic):
+            raise ValueError(f"Native executable lacks full RELRO: {name}")
         # The test-only crash trigger (#124) is compiled out of every release build.
         if b"PUTGD_TEST_CRASH" in path.read_bytes():
             raise ValueError(f"Release binary contains the test-only crash trigger: {name}")

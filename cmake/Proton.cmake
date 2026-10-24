@@ -68,7 +68,7 @@ if(PUTGD_BUNDLE_PROTON)
   endif()
   set(proton_redistribution_files BUN-THIRD-PARTY-NOTICES.txt.gz BUN-NOTICE-PROVENANCE.json.gz
     BUN-LINUX-ATTRIBUTION.md OPENPGP-PREBUNDLED-NOTICES.txt LICENSE.crypto-GPL-3.0
-    LICENSE.pmcrypto-MIT LICENSE.srp-MIT LICENSE.boltffi-MIT CRYPTO-PROVENANCE.md SOURCES.json REBUILD.md OPENPGP-REBUILD.patch)
+    LICENSE.pmcrypto-MIT LICENSE.srp-MIT LICENSE.boltffi-MIT LICENSE.icu4c-78.3 CRYPTO-PROVENANCE.md SOURCES.json REBUILD.md OPENPGP-REBUILD.patch)
   string(JSON proton_redistribution_count LENGTH "${proton_manifest}" redistributionFilesSha256)
   list(LENGTH proton_redistribution_files proton_expected_redistribution_count)
   if(NOT proton_redistribution_count EQUAL proton_expected_redistribution_count)

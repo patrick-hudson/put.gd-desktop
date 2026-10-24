@@ -34,7 +34,7 @@ def patch_once(path, before, after):
 CRYPTO_SOURCE_PATHS = ['packages/crypto/src', 'packages/crypto/package.json', 'LICENSE', 'README.md']
 REDISTRIBUTION_FILES = ['BUN-THIRD-PARTY-NOTICES.txt.gz', 'BUN-NOTICE-PROVENANCE.json.gz',
                         'BUN-LINUX-ATTRIBUTION.md', 'OPENPGP-PREBUNDLED-NOTICES.txt',
-                        'LICENSE.crypto-GPL-3.0', 'LICENSE.pmcrypto-MIT', 'LICENSE.srp-MIT', 'LICENSE.boltffi-MIT',
+                        'LICENSE.crypto-GPL-3.0', 'LICENSE.pmcrypto-MIT', 'LICENSE.srp-MIT', 'LICENSE.boltffi-MIT', 'LICENSE.icu4c-78.3',
                         'CRYPTO-PROVENANCE.md', 'SOURCES.json', 'REBUILD.md', 'OPENPGP-REBUILD.patch']
 
 def apply_crypto_source(work, source, lock):
