@@ -6,9 +6,10 @@ the old `grow` downstream. Review found five safety gaps in the predecessor
 implementation: persisted external destinations despite localhost configuration,
 a selected-database/unrelated-runtime bypass, incomplete helper inventory,
 lost cleanup/recovery after partial synthetic keychain stores, and output
-reservation only after mutations. Corrected source, regression results and a
-distinct follow-up independent review are pending. Existing test passes and
-functional observations do not resolve those findings.
+reservation only after mutations. Owner-proposed corrections are committed at
+`c538f71e`, with 35 saved passing tests and a real Qt lock witness. A distinct
+follow-up independent review and fresh current-source desktop reruns are pending.
+Existing test passes and functional observations do not approve those corrections.
 
 This is the documentation companion to the maintained driver in
 `tools/lab/native_acceptance.py` in [code PR #554](https://github.com/patrick-hudson/put.gd-desktop/pull/554).
@@ -42,9 +43,9 @@ do not retroactively turn those attempts into passes.
 
 ## Candidate command interface (HOLD)
 
-Recorded candidate source: `64a3257b20d7aa33cc25d35c07a628becff4036c`,
+Recorded candidate source: `c538f71e89afcc6d1e6c599c3c1cb9c3a97e7ced`,
 `tools/lab/native_acceptance.py` plus `tools/lab/native_keychain.py`. The driver
-SHA-256 is `8f1a8f49fd3f72d574493ebcb43e7ae51db253da7889a0ca51ef7f68ba8ecf4c`;
+SHA-256 is `2f317d31a85741c7a24382849f309433a2581ee127f28c52de3a859a74069258`;
 the [JSON](summary.json) also records the helper and test hashes. This is
 unmerged harness source, separately identified from the published product
 package under test. The product CLI capabilities are unchanged.
@@ -56,8 +57,11 @@ alone does not establish that stored journals/destinations are safe or that the
 selected database is stopped.
 
 Start with `python3 tools/lab/native_acceptance.py --help` and the selected
-subcommand's `--help`. Receipts use `--output NEW_PRIVATE_RECEIPT`: its parent
-must be an owned private directory, and the receipt must not already exist.
+subcommand's `--help`. Mutating CLI commands require
+`--output NEW_PRIVATE_RECEIPT`: its parent must be an owned private directory,
+and the file is exclusively reserved before session discovery or any action.
+An existing or invalid output refuses before effects. Failed command receipts
+remain usable; retain them and their original safe error.
 Graphical/session commands run on the desktop host under its lock. The tool does
 not launch the app, install packages, log out or unlock a desktop.
 
@@ -160,12 +164,25 @@ python3 tools/lab/native_acceptance.py --output "$receipt" grow \
 
 Set these paths to the actual disposable fixture on the execution host; use a
 fresh receipt and the same short private runtime used to launch that fixture.
-`grow` does not create a configuration or seed captures. This candidate checks an owned
-private root and database, `config/putgd/config.json` with loopback-only profile
-endpoints, and schema 5–7 terminal operation journals with matching `item_state`
-rows. Stop the fixture normally first: no resident/helpers may remain in that
-runtime and its socket must be absent. Do not remove another session's socket to
-satisfy the gate.
+`grow` does not create a configuration or seed captures. The proposed correction
+requires an owned private root, the exact `ROOT/data/putgd/history.sqlite` and
+private data directory, plus `config/putgd/config.json`. Use fresh synthetic
+seeds with session-only credentials. Numeric loopback HTTP(S) destinations need
+an explicit port (`127.0.0.1` or `::1`); `localhost` is not accepted by this guard.
+It inspects persisted JSON journals/receipts/state as well as current config,
+rejecting external/unknown/default-provider routes, non-loopback URLs,
+keychain/embedded credentials, upload/multipart/cleanup recovery state,
+deletion/sharing journals and unknown tables. Existing external fixtures must
+not be rewritten into apparent localhost fixtures.
+
+Schema 5–7 terminal journals need matching `item_state` rows. Stop the fixture
+normally first: checks cover associated data-home/open-database owners across
+runtimes, plus `putgd` and the full `putgd-*` helper prefix, including deleted
+executables; unreadable owned helpers refuse absence. The proposed guard holds
+`resident.lock` through the transaction and commit, rechecking owners under the
+lock. It refuses every preexisting lock; never break or delete one to make the
+test proceed. The selected runtime's socket must be absent; do not remove
+another session's socket to satisfy the gate. These changes still await round 2.
 
 Each seed history row must already have its own operation. The old expanded
 five-operation fixture is rejected. Copies receive unique operation/item IDs,
@@ -192,6 +209,28 @@ bytes before launch. Follow [remote-builder locking and visibility](../../remote
 and [VM lifecycle rules](../../vm-lab.md). This documentation thread runs no GUI
 campaign; the code owner coordinates execution and desktop locks.
 
+## Owner-proposed safety corrections (`c538`, review pending)
+
+The five acknowledged findings remain open for independent validation. The
+owner's proposed resolutions reserve output before actions, validate persisted
+network state, bind growth to the exact database and its resident lock, inspect
+the complete associated helper family, and preserve failed-store recovery.
+The saved 35-test log passes on k72 in 1.550 s. A separate private Qt witness
+reports that an actual `QLockFile` and the growth guard exclude each other in
+both directions, Qt can acquire after release, and no lock remains. Witness
+source/binary hashes and result JSON are indexed. These are safety/protocol
+checks, not a product or graphical acceptance run.
+
+For a failed keychain store, `c538` persists the canonical synthetic recovery
+reference before creating the item and retains the original safe error and
+cleanup status. It attempts exact owned-item cleanup; if recovery is needed,
+use a new output with `keychain cleanup --before FAILED_RECEIPT`. Cleanup is
+idempotent when the exact item is already absent. Provider-added metadata such
+as `xdg:schema` is permitted only while required application/reference ownership
+still matches. Retain failed and recovery receipts; a successful cleanup does
+not turn the failed store into a roundtrip pass. Current-source desktop reruns
+follow the independent review; historical observations below are not transferred.
+
 ## Saved k72 results
 
 Two separately recorded runs used the installed `ubuntu26.04` DEB of
@@ -210,7 +249,7 @@ binary hash, private receipt paths and SHA-256s are in [summary.json](summary.js
 | Run | Driver | What was observed |
 | --- | --- | --- |
 | `k72/final-826c` | `826c255a4023daad88d07afb2b82d558f86c9d69`, SHA `8ef8180e…` | Authenticated SNI `:1.6059`, resident PID `141786`; activation opened History, dynamic Quit stopped it. A second resident was peer-verified and quit by login preparation; a check in the same session correctly refused. |
-| `k72/final-6bbb` | `6bbbd506aeef7f8aa4a97c21664c7013ff427627`, SHA `1375c3cc…` | Fresh repeat after review fixes, SNI `:1.6139`, resident PID `142921`; the same behaviors and same-session refusal, with independent receipts. |
+| `k72/final-6bbb` | `6bbbd506aeef7f8aa4a97c21664c7013ff427627`, SHA `1375c3cc…` | Fresh repeat after earlier local corrections, before independent round 1; SNI `:1.6139`, resident PID `142921`; the same behaviors and same-session refusal, with independent receipts. |
 
 Both runs selected Quit action `12` from the current owned menu; that value is
 an observation, not an ID embedded in the driver. No pointer input was sent and
@@ -244,7 +283,7 @@ bytes. These are activation/Quit visuals, not physical tray-click or rendered
 menu proof. Raw bulk evidence remains private on k72 and in the code owner's
 export; the JSON indexes the reviewed files.
 
-On current `6bbb`, the KService probe found 235 applications, including Dolphin
+On the historical `6bbb` run, the KService probe found 235 applications, including Dolphin
 and put.gd. The cache was healthy, so no repair ran. The repair branch is not
 claimed as a desktop-tested result. The saved 18-test log passes in 1.259 s;
 its synthetic-fixture SQLite `ResourceWarning` diagnostics are retained in the
@@ -334,7 +373,7 @@ an unmet prerequisite, not a lifecycle pass; retain the refusal and any later
 correction. Cleanup targets only the unique synthetic item from the store receipt.
 
 The preserved k72 predecessors include two locked-backend refusals and later
-store/read/cleanup success under different per-phase driver hashes. The current
+store/read/cleanup success under different per-phase driver hashes. The historical
 `6bbb` repeat has separate store, read and cleanup receipts with the same final
 driver hash and provider `ksecretd`; the unique synthetic entry roundtripped and
 was removed. No collection was reset and no default alias changed. This is not

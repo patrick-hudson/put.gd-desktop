@@ -3,13 +3,13 @@
   "issue": 495,
   "date": "2026-10-24",
   "scope": "Native acceptance lab driver documentation; no new release acceptance claim",
-  "status": "HOLD-independent-review-changes-required",
+  "status": "HOLD-owner-c538-corrections-awaiting-independent-round2-and-fresh-reruns",
   "codePullRequest": "https://github.com/patrick-hudson/put.gd-desktop/pull/554",
   "driver": {
     "path": "tools/lab/native_acceptance.py",
-    "commit": "64a3257b20d7aa33cc25d35c07a628becff4036c",
-    "sha256": "8f1a8f49fd3f72d574493ebcb43e7ae51db253da7889a0ca51ef7f68ba8ecf4c",
-    "stage": "review-blocked-candidate-not-final-runbook",
+    "commit": "c538f71e89afcc6d1e6c599c3c1cb9c3a97e7ced",
+    "sha256": "2f317d31a85741c7a24382849f309433a2581ee127f28c52de3a859a74069258",
+    "stage": "owner-corrections-committed-independent-round2-pending",
     "productCliCapabilitiesChanged": false
   },
   "historicalEvidence": {
@@ -91,12 +91,23 @@
       "sha256": "512f78ba15806d799a062a0b095f7c7c5e5bed4c4044ff6eec09a1cd12e69720",
       "privateLocalLog": "/home/patrick/.t3/worktrees/put.gd/docs-native-acceptance-drivers-495/work/495/tests-gnome-peer.log",
       "privateHostLog": "k72:/home/patrick/putgd-lab/n495/tests-gnome-peer.log"
+    },
+    {
+      "path": "tests/desktop/test_native_acceptance.py",
+      "commit": "c538f71e89afcc6d1e6c599c3c1cb9c3a97e7ced",
+      "testCount": 35,
+      "seconds": 1.55,
+      "host": "k72",
+      "status": "saved-log-verified-pass",
+      "privateLog": "review2/review-fixes-commit-tests.log",
+      "sha256": "d4f0943e747b564379a04fdd1d07fb540c73b8a89d908aa7913ada87ea4c159e",
+      "scope": "safety/shape regression checks for owner-proposed review fixes; independent round2 pending"
     }
   ],
   "desktopRuns": [
     {
       "runId": "k72/final-826c",
-      "sourceScope": "predecessor",
+      "sourceScope": "historical source-specific observation before independent review fixes",
       "host": "k72",
       "hostName": "kubuntu",
       "placement": "physical",
@@ -228,11 +239,12 @@
           "plasma-workspace 4:6.6.6-0ubuntu0.1"
         ]
       },
-      "sycocaProbeBinarySha256": "caa332b5cfe4c61bd8796acc2e3f10cfd3b3bcf79b30fd5cfef5a413c9a61029"
+      "sycocaProbeBinarySha256": "caa332b5cfe4c61bd8796acc2e3f10cfd3b3bcf79b30fd5cfef5a413c9a61029",
+      "safetyReadinessCredit": false
     },
     {
       "runId": "k72/final-6bbb",
-      "sourceScope": "current candidate",
+      "sourceScope": "historical source-specific observation before independent review fixes",
       "host": "k72",
       "hostName": "kubuntu",
       "placement": "physical",
@@ -364,11 +376,12 @@
           "plasma-workspace 4:6.6.6-0ubuntu0.1"
         ]
       },
-      "sycocaProbeBinarySha256": "caa332b5cfe4c61bd8796acc2e3f10cfd3b3bcf79b30fd5cfef5a413c9a61029"
+      "sycocaProbeBinarySha256": "caa332b5cfe4c61bd8796acc2e3f10cfd3b3bcf79b30fd5cfef5a413c9a61029",
+      "safetyReadinessCredit": false
     },
     {
       "runId": "m74/final-853a",
-      "sourceScope": "historical predecessor; five review findings remain open",
+      "sourceScope": "historical source-specific observation before independent review fixes",
       "host": "m74",
       "hostName": "mint-builder",
       "placement": "physical",
@@ -623,7 +636,7 @@
     }
   ],
   "limitations": [
-    "Five acknowledged independent-review safety findings unresolved; old downstream grow and candidate runbook HOLD",
+    "Owner-c538 safety corrections committed; independent round2 and fresh current-source desktop reruns pending; old downstream grow remains HOLD",
     "No real logout/login in k72 runs; same-session refusal tested",
     "No physical tray click or rendered menu proof",
     "No product QtKeychain credential lifecycle or backend persistence across login proof",
@@ -633,8 +646,8 @@
     "m74853a observations predate five-finding safety resolutions; Qt version missing in identity query, no final safety/readiness credit"
   ],
   "sourceHashes": {
-    "tools/lab/native_keychain.py": "d6309c46f2eb42803c74ea1c905004cc2a0b89be3c8b2392d7712d34bbed6384",
-    "tests/desktop/test_native_acceptance.py": "997a9ff0432b8e1ac682d5e48e36a9245380c11de6f977a9267efdfd3d59d64a",
+    "tools/lab/native_keychain.py": "c5b80a68b651108595a150db8eadfadc6ad37986a33096cebb5a937b278e9bf8",
+    "tests/desktop/test_native_acceptance.py": "c00c1dafc1e8ce4e61a2023d885ee8a8893620c3f639614dea6433c7d457e42a",
     "tools/lab/sycoca_probe/CMakeLists.txt": "bc79f4a01c7e458a70fa4b400a165ab01ffa6819ae0da91aecaed9b750069490",
     "tools/lab/sycoca_probe/CMakePresets.json": "5d2291ac3700ebf427c1e7ffa63cc89b91f2585488f3cd1db37ae5f0c0e01e74",
     "tools/lab/sycoca_probe/main.cpp": "570422891002af69c64a978fa17185849990bafa892fd2ac3a4caf5714a136b9"
@@ -689,6 +702,19 @@
     "snapshot": {
       "missingCliAndDataTolerated": true,
       "packageRemovalVerdict": false
+    },
+    "grow": {
+      "requiredDb": "ROOT/data/putgd/history.sqlite",
+      "lock": "resident.lock held through commit; actual Qt mutual-exclusion witness saved",
+      "ownerChecks": "associated data-home or open DB file descriptors across runtimes; complete putgd helper prefix; unreadable owned helper refuses",
+      "persistedState": "all JSON journal/receipt/state and allowed-table checks; session-only fresh synthetic seeds; explicit numeric loopback endpoints with port",
+      "executionStatus": "HOLD pending independent review"
+    },
+    "receipts": {
+      "mutatingCommandsRequireOutput": true,
+      "reservation": "exclusive private --output file reserved before actions",
+      "failedStoreRecovery": "canonical reference, original safe error and cleanup status persist; cleanup --before FAILED_RECEIPT supported and idempotent",
+      "independentReview": "pending"
     }
   },
   "priorCandidate": {
@@ -773,7 +799,7 @@
       "applicationCount": 235,
       "putgd": true,
       "dolphin": true,
-      "scope": "current candidate; no repair executed"
+      "scope": "historical6bbb; no repair executed"
     }
   ],
   "keychainReceipts": [
@@ -864,7 +890,7 @@
       "at": "2026-10-24T14:53:57.262942+00:00",
       "driverSha256": "1375c3cc43b39be05f42847e19080fc15afb8a6a8b0e881e82d0d7e5173700dc",
       "ok": true,
-      "scope": "current candidate; no cross-login or product QtKeychain credit",
+      "scope": "historical6bbb; no cross-login or product QtKeychain credit",
       "result": {
         "phase": "store",
         "backend": "org.freedesktop.secrets",
@@ -881,7 +907,7 @@
       "at": "2026-10-24T14:53:57.510952+00:00",
       "driverSha256": "1375c3cc43b39be05f42847e19080fc15afb8a6a8b0e881e82d0d7e5173700dc",
       "ok": true,
-      "scope": "current candidate; no cross-login or product QtKeychain credit",
+      "scope": "historical6bbb; no cross-login or product QtKeychain credit",
       "result": {
         "phase": "check",
         "backend": "org.freedesktop.secrets",
@@ -898,7 +924,7 @@
       "at": "2026-10-24T14:53:57.727409+00:00",
       "driverSha256": "1375c3cc43b39be05f42847e19080fc15afb8a6a8b0e881e82d0d7e5173700dc",
       "ok": true,
-      "scope": "current candidate; no cross-login or product QtKeychain credit",
+      "scope": "historical6bbb; no cross-login or product QtKeychain credit",
       "result": {
         "phase": "cleanup",
         "backend": "org.freedesktop.secrets",
@@ -1254,6 +1280,16 @@
         "sha256": "2596c582fb802a515e99a41ffaf6a2e44a9623e10b0922d176d42b4d485f651e",
         "bytes": 660,
         "publicCopy": false
+      },
+      "review2/review-fixes-commit-tests.log": {
+        "sha256": "d4f0943e747b564379a04fdd1d07fb540c73b8a89d908aa7913ada87ea4c159e",
+        "bytes": 134,
+        "publicCopy": false
+      },
+      "review2/qlock-interop.json": {
+        "sha256": "0cce05a56fab786cc27ec7dd7d88b14b338a9fd36909a168f7b3b97a77ddc132",
+        "bytes": 289,
+        "publicCopy": false
       }
     }
   },
@@ -1353,34 +1389,45 @@
   "independentSafetyReview": {
     "round": 1,
     "reviewedCommit": "6bbbd506aeef7f8aa4a97c21664c7013ff427627",
-    "status": "five-findings-acknowledged-unresolved",
+    "status": "owner-c538-corrections-committed-independent-round2-pending",
     "privateReport": "/home/patrick/work/put.gd/work/stable-closeout-410-495-379/REVIEW554-round1.md",
     "sha256": "2fb5d13c8cc919f8a938c6975964484d66b05d73543e0174de800fe3a592bfb2",
     "findings": [
       {
         "priority": "P1",
-        "issue": "persisted external destination/journal/receipt/multipart state not validated by localhost current config"
+        "issue": "persisted external destination/journal/receipt/multipart state not validated by localhost current config",
+        "ownerProposedResolution": "scan persisted JSON journal/receipt/state and reject external/unknown routes, credentials, multipart cleanup/deletion/sharing work and unknown tables",
+        "independentlyValidated": false
       },
       {
         "priority": "P2",
-        "issue": "selected database can be live while unrelated runtime passes stopped guard"
+        "issue": "selected database can be live while unrelated runtime passes stopped guard",
+        "ownerProposedResolution": "require exact private fixture database; hold resident.lock through commit; inspect data-home/open-FD owners across runtimes",
+        "independentlyValidated": false
       },
       {
         "priority": "P2",
-        "issue": "capture/selector/storage helper inventory incomplete"
+        "issue": "capture/selector/storage helper inventory incomplete",
+        "ownerProposedResolution": "include putgd/putgd-* helper family and deleted executables; unreadable owned helpers refuse absence",
+        "independentlyValidated": false
       },
       {
         "priority": "P2",
-        "issue": "partial synthetic store failure can lose cleanup reference and leak item"
+        "issue": "partial synthetic store failure can lose cleanup reference and leak item",
+        "ownerProposedResolution": "persist canonical recovery reference before CreateItem; retain safe original error/cleanup state; support idempotent cleanup from failed receipt",
+        "independentlyValidated": false
       },
       {
         "priority": "P2",
-        "issue": "output is reserved after mutations; existing output can still permit effects"
+        "issue": "output is reserved after mutations; existing output can still permit effects",
+        "ownerProposedResolution": "require mutating command output; exclusive owned private reservation before session discovery or effects",
+        "independentlyValidated": false
       }
     ],
     "downstreamGrow": "HOLD",
     "followupReview": "required after corrected exact-source handoff; pending",
-    "evidencePolicy": "existing observations retain original sources; no final safety/readiness credit"
+    "evidencePolicy": "existing observations retain original sources; no final safety/readiness credit",
+    "ownerCorrectionCommit": "c538f71e89afcc6d1e6c599c3c1cb9c3a97e7ced"
   },
   "m74KeychainCorrection": {
     "originalSource": "64a3257b20d7aa33cc25d35c07a628becff4036c",
@@ -1391,5 +1438,41 @@
     "originalSyntheticEntryRemoved": true,
     "freshSyntheticEntryRoundtrippedAndRemoved": true,
     "fiveIndependentFindingsResolved": false
+  },
+  "heldCandidateHistory": [
+    {
+      "path": "tools/lab/native_acceptance.py",
+      "commit": "64a3257b20d7aa33cc25d35c07a628becff4036c",
+      "sha256": "8f1a8f49fd3f72d574493ebcb43e7ae51db253da7889a0ca51ef7f68ba8ecf4c",
+      "stage": "review-blocked-candidate-not-final-runbook",
+      "productCliCapabilitiesChanged": false
+    }
+  ],
+  "qlockInteroperability": {
+    "commit": "c538f71e89afcc6d1e6c599c3c1cb9c3a97e7ced",
+    "host": "k72",
+    "privateReceipt": "review2/qlock-interop.json",
+    "result": {
+      "qtBlockedByPython": true,
+      "pythonBlockedByQt": true,
+      "qtAcquiresAfterRelease": true,
+      "noLockLeft": true,
+      "witnessSha256": "81a9d0729e189164bf6c83b77eadfd6fccfc71b62dd7a3ef92107fd901f47bb1",
+      "sourceSha256": "b9222d8ef99399b40c9afdc01d9fe4f47c944abd1e4a1c74b87557df5d86a0ca"
+    },
+    "privateWitnessSource": "/home/patrick/.t3/worktrees/put.gd/docs-native-acceptance-drivers-495/work/495/qlock-witness-c538",
+    "sourceFilesSha256": {
+      "CMakeLists.txt": "eeacb499712418b890f64c9c8d9080893262216d32068bf0eeb5e130319a2290",
+      "CMakePresets.json": "d513c89c2d0dff32cc359452aa4722a871951c498f2080a6a2307460a543905e",
+      "main.cpp": "b9222d8ef99399b40c9afdc01d9fe4f47c944abd1e4a1c74b87557df5d86a0ca"
+    },
+    "scope": "real Qt QLockFile vs grow guard mutual exclusion; no product/GUI/network execution"
+  },
+  "m74ProductPackage": {
+    "target": "ubuntu24.04",
+    "kind": "DEB",
+    "sha256": "2094fd4db8cd915b02f1cdd16eb5c99bb8191948931cd2f558a89c59be5b3f47",
+    "source": "code-owner handoff cites independent #379 checksum verification",
+    "QtVersion": "unqueried after release; quiet m74 gate preserved"
   }
 }
