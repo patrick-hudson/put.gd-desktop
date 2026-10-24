@@ -1,0 +1,24 @@
+{
+  "lock": {
+    "owner": "capture-copy-native-fedora-followup",
+    "session": "t3-0aa1b31c",
+    "host": "f44",
+    "purpose": "Quiet native RPM fresh extension discovery and current GNOME50.6 capture-copy/cold+paired memory on frozen8a",
+    "acquired": "2026-10-24T02:28:45Z",
+    "expires": "2026-10-24T03:13:45Z",
+    "heartbeat": "2026-10-24T02:48:05Z"
+  },
+  "releasedBy": "t3-0aa1b31c",
+  "check": {
+    "left": [],
+    "notMine": [],
+    "preexisting": [],
+    "unmatchedNotMine": []
+  },
+  "notes": [
+    "1 process(es) outside the desktop session (no DISPLAY or WAYLAND_DISPLAY; shared SSH work): 1271"
+  ],
+  "event": "release",
+  "host": "f44",
+  "at": "2026-10-24T02:52:11Z"
+}

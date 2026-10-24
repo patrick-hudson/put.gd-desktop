@@ -1,0 +1,35 @@
+test_all_passing_runs_once (test_flake_tools.Retry.test_all_passing_runs_once) ... ok
+test_ctest_error_without_a_failed_test_is_never_forgiven (test_flake_tools.Retry.test_ctest_error_without_a_failed_test_is_never_forgiven) ... ok
+test_integration_test_failing_twice_fails_the_job (test_flake_tools.Retry.test_integration_test_failing_twice_fails_the_job) ... ok
+test_integration_test_passing_its_retry_is_reported_not_hidden (test_flake_tools.Retry.test_integration_test_passing_its_retry_is_reported_not_hidden) ... ok
+test_no_retry_switch (test_flake_tools.Retry.test_no_retry_switch) ... ok
+test_unit_tests_never_retry (test_flake_tools.Retry.test_unit_tests_never_retry) ... ok
+test_unlabelled_test_is_not_retried (test_flake_tools.Retry.test_unlabelled_test_is_not_retried) ... ok
+test_counts_every_iteration_into_one_ledger_and_stops_its_own_loops (test_flake_tools.Stress.test_counts_every_iteration_into_one_ledger_and_stops_its_own_loops) ... ok
+test_unit_tests_name_registered_tests_and_everything_else_is_integration (test_flake_tools.TestPolicy.test_unit_tests_name_registered_tests_and_everything_else_is_integration) ... ok
+test_wait_helper_scales_budgets_not_settles (test_flake_tools.TestPolicy.test_wait_helper_scales_budgets_not_settles) ... ok
+test_gh_token_is_accepted (test_flake_tools.Tracker.test_gh_token_is_accepted) ... ok
+test_known_flaky_test_gets_a_comment_and_a_closed_one_reopens (test_flake_tools.Tracker.test_known_flaky_test_gets_a_comment_and_a_closed_one_reopens) ... ok
+test_missing_token_warns_and_succeeds (test_flake_tools.Tracker.test_missing_token_warns_and_succeeds) ... ok
+test_new_flaky_test_opens_one_issue_with_the_run_link (test_flake_tools.Tracker.test_new_flaky_test_opens_one_issue_with_the_run_link) ... ok
+test_stress_failures_are_recorded_with_their_counts (test_flake_tools.Tracker.test_stress_failures_are_recorded_with_their_counts) ... ok
+test_accepts_the_helpers_comments_strings_and_other_settles (test_flake_tools.WaitLint.test_accepts_the_helpers_comments_strings_and_other_settles) ... ok
+test_allowlist_counts_are_exact (test_flake_tools.WaitLint.test_allowlist_counts_are_exact) ... ok
+test_every_allowlist_entry_says_why (test_flake_tools.WaitLint.test_every_allowlist_entry_says_why) ... ok
+test_rejects_every_unscaled_primitive (test_flake_tools.WaitLint.test_rejects_every_unscaled_primitive) ... ok
+test_repository_tests_use_the_scaled_helpers (test_flake_tools.WaitLint.test_repository_tests_use_the_scaled_helpers) ... ok
+
+----------------------------------------------------------------------
+Ran 20 tests in 2.612s
+
+OK
+flake_ledger: recorded gui_flaky in u
+flake_ledger: reopened u
+flake_ledger: recorded gui_flaky in u
+::warning title=Flaky-test tracker not updated::No GITHUB_TOKEN/GITHUB_REPOSITORY; the flaky tests are listed in the job summary only.
+flake_ledger: opened https://github.invalid/issues/99
+flake_ledger: recorded gui_flaky in https://github.invalid/issues/99
+flake_ledger: opened https://github.invalid/issues/99
+flake_ledger: recorded broken in https://github.invalid/issues/99
+flake_ledger: reopened u
+flake_ledger: recorded gui_flaky in u

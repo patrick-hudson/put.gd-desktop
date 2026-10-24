@@ -1,0 +1,77 @@
+{
+  "source": "171b506e02ca37ba75b27dbbbe859502380926ef",
+  "host": "k72",
+  "utc": "2026-10-24T03:31:55.819887+00:00",
+  "allTrackedIdentitiesAbsent": [
+    {
+      "role": "resident",
+      "pid": 31365,
+      "startTicks": "1921795"
+    },
+    {
+      "role": "resident",
+      "pid": 33233,
+      "startTicks": "1995606"
+    },
+    {
+      "role": "resident",
+      "pid": 33174,
+      "startTicks": "1995293"
+    },
+    {
+      "role": "resident",
+      "pid": 32891,
+      "startTicks": "1987230"
+    },
+    {
+      "role": "resident",
+      "pid": 32467,
+      "startTicks": "1977516"
+    },
+    {
+      "role": "resident",
+      "pid": 31915,
+      "startTicks": "1954840"
+    },
+    {
+      "role": "resident",
+      "pid": 31856,
+      "startTicks": "1954441"
+    },
+    {
+      "pid": 33683,
+      "startTicks": "1999806",
+      "role": "Qt"
+    },
+    {
+      "pid": 33576,
+      "startTicks": "1999030",
+      "role": "cover"
+    },
+    {
+      "pid": 33521,
+      "startTicks": "1998285",
+      "role": "GTK"
+    },
+    {
+      "pid": 33384,
+      "startTicks": "1996840",
+      "role": "cover"
+    },
+    {
+      "pid": 33292,
+      "startTicks": "1996116",
+      "role": "Qt"
+    },
+    {
+      "pid": 31870,
+      "startTicks": "1954445",
+      "role": "Qt"
+    }
+  ],
+  "allExactPrivateProfileProcessScansEmpty": true,
+  "roots": [
+    "/tmp/hfkc",
+    "/tmp/hfkf"
+  ]
+}

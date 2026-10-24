@@ -1,5 +1,16 @@
 # Install, capture and copied-link recovery — scoped evidence
 
+**Current code: `171b506e02ca37ba75b27dbbbe859502380926ef`.** The complete current native-installed
+Cinnamon/GNOME/KDE full-error UI, capture/copy,9 memory windows, cleanup and
+raw identities are in [full-error-171/README.md](full-error-171/README.md).
+All scoped physical gates passed. Final docs CI/coordinator review remains parent-owned.
+The [updated Fedora8a native baseline](f44-native-50.6/README.md) also preserves
+the first normal-install follow-up after Patrick applied his OS update.
+
+Everything below records the earlier **8a historical checkpoint**; its
+GNOME50.0 extraction and elided rows do not establish the new in-app UI gate.
+
+
 Companion code PR: [#534](https://github.com/patrick-hudson/put.gd-desktop/pull/534),
 source `8a9415c540bee2ac5a8caa0e7606681bafa528a7` from nightly
 `50053b01f1bbd7f3776a53513bb8c43151ce0de8`.
@@ -39,22 +50,16 @@ matrix, production CLI recovery, GNOME transport classification and History
 row/outcome assertions. The separate locked official-SDK MCP suite passed **5/5**, 21.295 seconds.
 These contracts establish no compositor acceptance by themselves.
 
-## Fedora native install blocker
+## Historical Fedora queue constraint, subsequently resolved
 
-f44 has a prepared DNF offline transaction (`download-complete`, no reboot
-trigger). Its DNF 5.4.6 invalidates that queue after successful online installs.
-The coordinator required preserving the queue and rejected both direct RPM
-installation and backing up/restoring its state as bypasses. Scoped physical
-checks may use a newly extracted, audited RPM with a temporary matching helper;
-those are **extracted-RPM physical evidence**, never native installation proof.
-Fedora's actual package-install/discovery gate remains blocked under #492.
+At this original8a/GNOME50.0 checkpoint, f44 had a protected prepared DNF offline
+transaction. Its DNF5.4.6 invalidates the queue after online installs; extraction
+was explicitly scoped and never counted as installation proof. Patrick later
+applied that queued update and rebooted. The [8a native follow-up](f44-native-50.6/README.md)
+and [final171 native campaign](full-error-171/f44/README.md) now establish genuine
+fresh RPM installation → real logout/login → packaged system-extension discovery.
+The former #492 native gate passed; extraction was never used as a waiver.
 
-## Remaining merge gate
-
-The available scoped native checks below passed. **Fedora native RPM installation
-and fresh system-extension discovery remain blocked** by the protected DNF offline
-transaction, tracked under [#492](https://github.com/patrick-hudson/put.gd-desktop/issues/492).
-The code/docs PRs remain draft; extraction does not waive this lifecycle gate.
 Full release/U9, live remote upload/deletion, recording and additional distro/session
 acceptance are not claimed by this local capture/copy campaign.
 
@@ -225,9 +230,10 @@ confirms the original DNF state checksum and nanosecond mtime, no system-update
 trigger, and unchanged primary RPM database metadata. The
 [verified-clean release](f44/lock-release.json) completed at 01:58:06 UTC.
 This is extracted-RPM physical functionality and memory evidence; actual Fedora
-native package installation/discovery remains blocked.
+native package installation/discovery was blocked at this historical checkpoint.
+The current [native-installed171 proof](full-error-171/f44/README.md) closes that gate.
 
-## Final bounded memory observations
+## Historical8a bounded memory observations
 
 Every listed window has 61 samples spanning at least 299.5 seconds, maximum
 sample gap below 7.5 seconds, one exact resident, no UI or escaped product helper,

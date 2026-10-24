@@ -1,0 +1,22 @@
+{
+  "source": "171b506e02ca37ba75b27dbbbe859502380926ef",
+  "host": "m74",
+  "bootId": "4ba460ee-1af9-4ae8-b832-d1c54cdb642f",
+  "kernel": "6.14.0-37-generic",
+  "osRelease": "NAME=\"Linux Mint\"\nVERSION=\"22.3 (Zena)\"\nID=linuxmint\nID_LIKE=\"ubuntu debian\"\nPRETTY_NAME=\"Linux Mint 22.3\"\nVERSION_ID=\"22.3\"\nHOME_URL=\"https://www.linuxmint.com/\"\nSUPPORT_URL=\"https://forums.linuxmint.com/\"\nBUG_REPORT_URL=\"http://linuxmint-troubleshooting-guide.readthedocs.io/en/latest/\"\nPRIVACY_POLICY_URL=\"https://www.linuxmint.com/\"\nVERSION_CODENAME=zena\nUBUNTU_CODENAME=noble\n",
+  "packages": {
+    "cinnamon": "cinnamon 6.6.9+zena installed",
+    "kwin-wayland": "",
+    "plasma-workspace": "",
+    "libqt6core6t64": "libqt6core6t64 6.4.2+dfsg-21.1build5 installed",
+    "libgtk-4-1": "libgtk-4-1 4.14.5+ds-0ubuntu0.10 installed",
+    "gir1.2-gtk-4.0": ""
+  },
+  "packageAbsentBaseline": true,
+  "session": {
+    "DISPLAY": ":0",
+    "XDG_CURRENT_DESKTOP": "X-Cinnamon",
+    "XDG_SESSION_TYPE": "x11"
+  },
+  "protectedWindowsGuest": "m74 w11b PID308684 remains running"
+}

@@ -1,0 +1,2201 @@
+{
+  "manifest": {
+    "schemaVersion": 1,
+    "version": "26.1024.1140-dev+g171b506e02ca",
+    "baseVersion": "26.1024.1140",
+    "packageVersion": "26.1024.1140~dev+g171b506e02ca",
+    "gitCommit": "171b506e02ca37ba75b27dbbbe859502380926ef",
+    "gitTree": "2942cc06bd2361cf915e9d5ffbeeadd7eaa75368",
+    "commitCount": 1140,
+    "dirty": false,
+    "sourceProvenance": "git"
+  },
+  "programs": [
+    "putgd",
+    "putgd-cli",
+    "putgd-ui",
+    "putgd-capture",
+    "putgd-s3-worker",
+    "putgd-b2-worker",
+    "putgd-launcher",
+    "putgd-kde-region",
+    "putgd-record"
+  ],
+  "privateLibraryDirectory": "usr/lib/x86_64-linux-gnu/putgd",
+  "runtimeModule": {
+    "buildIdentity": "8c6b239f988e3d22ebd52645a8106f7884b76e1ac040a2dcd34ef48b73fd6769",
+    "contractVersion": 1,
+    "file": "libputgd-s3.so",
+    "sha256": "5f4a56390d24772fef3dabb9bc6b10db113010322ff9af9cc1861ac15a503308"
+  },
+  "inventory": [
+    {
+      "path": "usr/bin/putgd",
+      "size": 6751176,
+      "mode": "0755",
+      "sha256": "0c7bc43de7a0d9fa4175f634424c32abc9fe9464879edbc23a3bba9b68f0d8e5"
+    },
+    {
+      "path": "usr/bin/putgd-b2-worker",
+      "size": 556736,
+      "mode": "0755",
+      "sha256": "47afa95b13f2ab614b026759050b641a94c2df302be969f1ec79f7cc4d444dbe"
+    },
+    {
+      "path": "usr/bin/putgd-capture",
+      "size": 1044600,
+      "mode": "0755",
+      "sha256": "6afe0a1c1092961e5199b6ecd5f3298f7849d333a9544e9fcd90d62d52b8fa0c"
+    },
+    {
+      "path": "usr/bin/putgd-cli",
+      "size": 3536688,
+      "mode": "0755",
+      "sha256": "5344bea1d410f84b61c26b7c0b309d084267da1f9aad35c399c0335b7f6ba98f"
+    },
+    {
+      "path": "usr/bin/putgd-kde-region",
+      "size": 1109544,
+      "mode": "0755",
+      "sha256": "ddd223fcd4e6dec5ef8a8d51d6f6fad22ae1018a1e618c843a44767d4fcc4425"
+    },
+    {
+      "path": "usr/bin/putgd-launcher",
+      "size": 270,
+      "mode": "0755",
+      "sha256": "f2b1462cb97419bec6c164b6626212f02e6377dc8ffee364c32bbcdaf7e38839"
+    },
+    {
+      "path": "usr/bin/putgd-record",
+      "size": 1536520,
+      "mode": "0755",
+      "sha256": "5299c6a259e1938a9fc2db73678839655d29ae78378d0fc32bebed29ca54e869"
+    },
+    {
+      "path": "usr/bin/putgd-s3-worker",
+      "size": 645096,
+      "mode": "0755",
+      "sha256": "853d8c0092fcad8a580cb580ed0a227da1c6da02e51a6931441ad3a1c92774bd"
+    },
+    {
+      "path": "usr/bin/putgd-ui",
+      "size": 4001608,
+      "mode": "0755",
+      "sha256": "a70fcb46b336dc3592ea3f845bdd20ed434681462da7e064227be8d556060b52"
+    },
+    {
+      "path": "usr/lib/x86_64-linux-gnu/putgd/libaws-c-auth.so",
+      "size": 327128,
+      "mode": "0644",
+      "sha256": "5bfac93bd5a0385ff3b380e53a57a5715e23e53731feb0d448a6ba49c6500e2a"
+    },
+    {
+      "path": "usr/lib/x86_64-linux-gnu/putgd/libaws-c-auth.so.1.0.0",
+      "size": 327128,
+      "mode": "0644",
+      "sha256": "5bfac93bd5a0385ff3b380e53a57a5715e23e53731feb0d448a6ba49c6500e2a"
+    },
+    {
+      "path": "usr/lib/x86_64-linux-gnu/putgd/libaws-c-cal.so",
+      "size": 125936,
+      "mode": "0644",
+      "sha256": "2bf6d26e92c19fb63148cfd3ed7ff89c392d3b86ad40cda242a259826d633bc8"
+    },
+    {
+      "path": "usr/lib/x86_64-linux-gnu/putgd/libaws-c-cal.so.1.0.0",
+      "size": 125936,
+      "mode": "0644",
+      "sha256": "2bf6d26e92c19fb63148cfd3ed7ff89c392d3b86ad40cda242a259826d633bc8"
+    },
+    {
+      "path": "usr/lib/x86_64-linux-gnu/putgd/libaws-c-common.so",
+      "size": 430024,
+      "mode": "0644",
+      "sha256": "2e515616e60e35c533122ae3e5db54643f4e13fb7a3ba1662477128f0cf8a5b7"
+    },
+    {
+      "path": "usr/lib/x86_64-linux-gnu/putgd/libaws-c-common.so.0.14.5",
+      "size": 430024,
+      "mode": "0644",
+      "sha256": "2e515616e60e35c533122ae3e5db54643f4e13fb7a3ba1662477128f0cf8a5b7"
+    },
+    {
+      "path": "usr/lib/x86_64-linux-gnu/putgd/libaws-c-common.so.1",
+      "size": 430024,
+      "mode": "0644",
+      "sha256": "2e515616e60e35c533122ae3e5db54643f4e13fb7a3ba1662477128f0cf8a5b7"
+    },
+    {
+      "path": "usr/lib/x86_64-linux-gnu/putgd/libaws-c-compression.so",
+      "size": 17312,
+      "mode": "0644",
+      "sha256": "d722580549e027c87df8918b4eb7f046bbfa52960e5ec92fcad892b5848516f1"
+    },
+    {
+      "path": "usr/lib/x86_64-linux-gnu/putgd/libaws-c-compression.so.1.0.0",
+      "size": 17312,
+      "mode": "0644",
+      "sha256": "d722580549e027c87df8918b4eb7f046bbfa52960e5ec92fcad892b5848516f1"
+    },
+    {
+      "path": "usr/lib/x86_64-linux-gnu/putgd/libaws-c-event-stream.so",
+      "size": 121464,
+      "mode": "0644",
+      "sha256": "458c37db53315cc16664779156555339a25d8ddf6fd6bad56635850cf00e9dfa"
+    },
+    {
+      "path": "usr/lib/x86_64-linux-gnu/putgd/libaws-c-event-stream.so.1.0.0",
+      "size": 121464,
+      "mode": "0644",
+      "sha256": "458c37db53315cc16664779156555339a25d8ddf6fd6bad56635850cf00e9dfa"
+    },
+    {
+      "path": "usr/lib/x86_64-linux-gnu/putgd/libaws-c-http.so",
+      "size": 497960,
+      "mode": "0644",
+      "sha256": "e1e4a764d722299f215fb771e36d5e5590bde77b7c575a0d1dffb147c402d131"
+    },
+    {
+      "path": "usr/lib/x86_64-linux-gnu/putgd/libaws-c-http.so.1.0.0",
+      "size": 497960,
+      "mode": "0644",
+      "sha256": "e1e4a764d722299f215fb771e36d5e5590bde77b7c575a0d1dffb147c402d131"
+    },
+    {
+      "path": "usr/lib/x86_64-linux-gnu/putgd/libaws-c-io.so",
+      "size": 396232,
+      "mode": "0644",
+      "sha256": "f02a909cf4038ae3424f39e05d94e015e4cc0d902941fe71976058cc5628d938"
+    },
+    {
+      "path": "usr/lib/x86_64-linux-gnu/putgd/libaws-c-io.so.1.0.0",
+      "size": 396232,
+      "mode": "0644",
+      "sha256": "f02a909cf4038ae3424f39e05d94e015e4cc0d902941fe71976058cc5628d938"
+    },
+    {
+      "path": "usr/lib/x86_64-linux-gnu/putgd/libaws-c-mqtt.so",
+      "size": 478384,
+      "mode": "0644",
+      "sha256": "abb563fb95334b9108894f40a261a72188402f94dbfcfbea29b52f90453ae86e"
+    },
+    {
+      "path": "usr/lib/x86_64-linux-gnu/putgd/libaws-c-mqtt.so.1.0.0",
+      "size": 478384,
+      "mode": "0644",
+      "sha256": "abb563fb95334b9108894f40a261a72188402f94dbfcfbea29b52f90453ae86e"
+    },
+    {
+      "path": "usr/lib/x86_64-linux-gnu/putgd/libaws-c-s3.so",
+      "size": 365576,
+      "mode": "0644",
+      "sha256": "c692ade0b8d481d3f4e85c8644b9f39959be776e2e4ff37ffbabfa968986d82c"
+    },
+    {
+      "path": "usr/lib/x86_64-linux-gnu/putgd/libaws-c-s3.so.0unstable",
+      "size": 365576,
+      "mode": "0644",
+      "sha256": "c692ade0b8d481d3f4e85c8644b9f39959be776e2e4ff37ffbabfa968986d82c"
+    },
+    {
+      "path": "usr/lib/x86_64-linux-gnu/putgd/libaws-c-s3.so.1.0.0",
+      "size": 365576,
+      "mode": "0644",
+      "sha256": "c692ade0b8d481d3f4e85c8644b9f39959be776e2e4ff37ffbabfa968986d82c"
+    },
+    {
+      "path": "usr/lib/x86_64-linux-gnu/putgd/libaws-c-sdkutils.so",
+      "size": 145576,
+      "mode": "0644",
+      "sha256": "dfd0334cc0c09d2b4e0e5dc14814ba077254d7aeaa56c35549738ca00f40c73a"
+    },
+    {
+      "path": "usr/lib/x86_64-linux-gnu/putgd/libaws-c-sdkutils.so.1.0.0",
+      "size": 145576,
+      "mode": "0644",
+      "sha256": "dfd0334cc0c09d2b4e0e5dc14814ba077254d7aeaa56c35549738ca00f40c73a"
+    },
+    {
+      "path": "usr/lib/x86_64-linux-gnu/putgd/libaws-checksums.so",
+      "size": 144296,
+      "mode": "0644",
+      "sha256": "e22fd8b1105857d333f8bffc3c1a1d465dfb27db5f71d5ef150725a0d8316c6c"
+    },
+    {
+      "path": "usr/lib/x86_64-linux-gnu/putgd/libaws-checksums.so.1.0.0",
+      "size": 144296,
+      "mode": "0644",
+      "sha256": "e22fd8b1105857d333f8bffc3c1a1d465dfb27db5f71d5ef150725a0d8316c6c"
+    },
+    {
+      "path": "usr/lib/x86_64-linux-gnu/putgd/libaws-cpp-sdk-core.so",
+      "size": 3215464,
+      "mode": "0644",
+      "sha256": "cb20afe1be4f0274db60c5fff79c6a6a4295676499d9f107e3934c527f7739ad"
+    },
+    {
+      "path": "usr/lib/x86_64-linux-gnu/putgd/libaws-cpp-sdk-s3.so",
+      "size": 2628816,
+      "mode": "0644",
+      "sha256": "107a07db1fd1e480e7f253ab4e9ec9c132c24bae9222bd877bccd469e9d3844d"
+    },
+    {
+      "path": "usr/lib/x86_64-linux-gnu/putgd/libaws-crt-cpp.so",
+      "size": 1185864,
+      "mode": "0644",
+      "sha256": "b64757ac318ef8afbe608da0cf2004d208c18899209065a0b449779f1bb357cf"
+    },
+    {
+      "path": "usr/lib/x86_64-linux-gnu/putgd/libputgd-s3.so",
+      "size": 457184,
+      "mode": "0644",
+      "sha256": "5f4a56390d24772fef3dabb9bc6b10db113010322ff9af9cc1861ac15a503308"
+    },
+    {
+      "path": "usr/lib/x86_64-linux-gnu/putgd/libs2n.so",
+      "size": 1621016,
+      "mode": "0644",
+      "sha256": "fb3441690328070c884bc001316fe9a3f382af06af4dbcdea9c61962f39ebd7f"
+    },
+    {
+      "path": "usr/lib/x86_64-linux-gnu/putgd/libs2n.so.1",
+      "size": 1621016,
+      "mode": "0644",
+      "sha256": "fb3441690328070c884bc001316fe9a3f382af06af4dbcdea9c61962f39ebd7f"
+    },
+    {
+      "path": "usr/lib/x86_64-linux-gnu/putgd/libs2n.so.1.0.0",
+      "size": 1621016,
+      "mode": "0644",
+      "sha256": "fb3441690328070c884bc001316fe9a3f382af06af4dbcdea9c61962f39ebd7f"
+    },
+    {
+      "path": "usr/share/applications/putgd-record.desktop",
+      "size": 281,
+      "mode": "0644",
+      "sha256": "93aa3a9079312dedb7347983828be7bc40af986d40dac63a8188acdb9caad7d9"
+    },
+    {
+      "path": "usr/share/applications/putgd-ui.desktop",
+      "size": 141,
+      "mode": "0644",
+      "sha256": "4753a2b4263ff0ef18cff73c0c0643646a281f8ce15301c5628bec59cfc00130"
+    },
+    {
+      "path": "usr/share/applications/putgd.desktop",
+      "size": 260,
+      "mode": "0644",
+      "sha256": "d549e6cb36ff341a901d0a4b97b180db107513ead997ccceb720d5888c140fb9"
+    },
+    {
+      "path": "usr/share/doc/putgd/LICENSE",
+      "size": 1071,
+      "mode": "0644",
+      "sha256": "81d47c7472f65cc0e4a499ae9d6a37d94c160674a52eb0246b691b080cf5f9b3"
+    },
+    {
+      "path": "usr/share/doc/putgd/aws-crt-cpp-LICENSE",
+      "size": 11358,
+      "mode": "0644",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "path": "usr/share/doc/putgd/aws-crt-cpp-NOTICE",
+      "size": 122,
+      "mode": "0644",
+      "sha256": "90f9b4a63a71d4a70420242c414b2fe24ee809c094c2dbac3b8871a646469293"
+    },
+    {
+      "path": "usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-auth-LICENSE",
+      "size": 11358,
+      "mode": "0644",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "path": "usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-auth-NOTICE",
+      "size": 115,
+      "mode": "0644",
+      "sha256": "f228f9b9f0405035d8bc2dbd9f018533b641136c7110f9e6a34edec7dd52e310"
+    },
+    {
+      "path": "usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-cal-LICENSE",
+      "size": 10142,
+      "mode": "0644",
+      "sha256": "09e8a9bcec8067104652c168685ab0931e7868f9c8284b66f5ae6edae5f1130b"
+    },
+    {
+      "path": "usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-cal-NOTICE",
+      "size": 114,
+      "mode": "0644",
+      "sha256": "06da05ec640017cc2bc80e4856cf14a9002efdd57b1ed4655714bfe5e777d216"
+    },
+    {
+      "path": "usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-common-LICENSE",
+      "size": 11358,
+      "mode": "0644",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "path": "usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-common-NOTICE",
+      "size": 86,
+      "mode": "0644",
+      "sha256": "f43576ad8c3330cd2647c8e8dc3572d8bf7dfc47a13d56dbdb8c1abbef900367"
+    },
+    {
+      "path": "usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-common-THIRD-PARTY-LICENSES",
+      "size": 4116,
+      "mode": "0644",
+      "sha256": "f61f646e205572cfeac91f5fd01c193009b0c9d9e3eba7767f16657fa813e20c"
+    },
+    {
+      "path": "usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-compression-LICENSE",
+      "size": 11358,
+      "mode": "0644",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "path": "usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-compression-NOTICE",
+      "size": 122,
+      "mode": "0644",
+      "sha256": "758db6c88293e55e9790adc73e9e58066405c408797afa9d48bef18d308eb49e"
+    },
+    {
+      "path": "usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-event-stream-LICENSE",
+      "size": 11358,
+      "mode": "0644",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "path": "usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-event-stream-NOTICE",
+      "size": 123,
+      "mode": "0644",
+      "sha256": "ca6098641e6982418933b0eb3973e56f544e94932f1244cb9352db60321a040f"
+    },
+    {
+      "path": "usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-http-LICENSE",
+      "size": 11358,
+      "mode": "0644",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "path": "usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-http-NOTICE",
+      "size": 115,
+      "mode": "0644",
+      "sha256": "2d1f498ef5ec8f71a7590ad3447688de6f0276434c619b5c4ce6e53c068ea33e"
+    },
+    {
+      "path": "usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-io-LICENSE",
+      "size": 11358,
+      "mode": "0644",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "path": "usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-io-NOTICE",
+      "size": 241,
+      "mode": "0644",
+      "sha256": "f0604df9ed45fb474874f8b363700aa2e493705799ffd6e1362b899aa70653e4"
+    },
+    {
+      "path": "usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-mqtt-LICENSE",
+      "size": 11358,
+      "mode": "0644",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "path": "usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-mqtt-NOTICE",
+      "size": 115,
+      "mode": "0644",
+      "sha256": "09211ec471e551c78cd57aba8344847091f297a6ae389288beb5d55076ab2c76"
+    },
+    {
+      "path": "usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-s3-LICENSE",
+      "size": 10142,
+      "mode": "0644",
+      "sha256": "09e8a9bcec8067104652c168685ab0931e7868f9c8284b66f5ae6edae5f1130b"
+    },
+    {
+      "path": "usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-s3-NOTICE",
+      "size": 67,
+      "mode": "0644",
+      "sha256": "d4290ed64c2edd0fce1d84e3f9dfb2881240fe534def76b8cd29ed6af683e287"
+    },
+    {
+      "path": "usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-sdkutils-LICENSE",
+      "size": 10142,
+      "mode": "0644",
+      "sha256": "09e8a9bcec8067104652c168685ab0931e7868f9c8284b66f5ae6edae5f1130b"
+    },
+    {
+      "path": "usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-sdkutils-NOTICE",
+      "size": 67,
+      "mode": "0644",
+      "sha256": "d4290ed64c2edd0fce1d84e3f9dfb2881240fe534def76b8cd29ed6af683e287"
+    },
+    {
+      "path": "usr/share/doc/putgd/aws-crt-cpp-crt-aws-checksums-LICENSE",
+      "size": 11357,
+      "mode": "0644",
+      "sha256": "b40930bbcf80744c86c46a12bc9da056641d722716c378f5659b9e555ef833e1"
+    },
+    {
+      "path": "usr/share/doc/putgd/aws-crt-cpp-crt-aws-checksums-xxHash-LICENSE",
+      "size": 1757,
+      "mode": "0644",
+      "sha256": "93b4143044c96ed7f120f425b442e7803149a2c527962a444266d4df73eb6199"
+    },
+    {
+      "path": "usr/share/doc/putgd/aws-crt-cpp-crt-s2n-LICENSE",
+      "size": 11358,
+      "mode": "0644",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "path": "usr/share/doc/putgd/aws-crt-cpp-crt-s2n-NOTICE",
+      "size": 82,
+      "mode": "0644",
+      "sha256": "b009d59fea9a0d7fed87b24f6b174a6ac41e1cf94ce77a8160e29997a4c7883c"
+    },
+    {
+      "path": "usr/share/doc/putgd/aws-sdk-LICENSE",
+      "size": 11357,
+      "mode": "0644",
+      "sha256": "b40930bbcf80744c86c46a12bc9da056641d722716c378f5659b9e555ef833e1"
+    },
+    {
+      "path": "usr/share/doc/putgd/aws-sdk-NOTICE",
+      "size": 810,
+      "mode": "0644",
+      "sha256": "8f43c4888a1e14f48c102b3f5556d581d02ea3afc9cbe31a2b714dae9383ef36"
+    },
+    {
+      "path": "usr/share/doc/putgd/aws-sdk-TinyXML2-LICENSE",
+      "size": 966,
+      "mode": "0644",
+      "sha256": "c416bf417948b895d53c26739a014df6aa0ba06091724fa506a512108910d913"
+    },
+    {
+      "path": "usr/share/doc/putgd/aws-sdk-cJSON-LICENSE",
+      "size": 1211,
+      "mode": "0644",
+      "sha256": "2f5e3ed1cf5c182656fab1c490c3993d7c056c767d4c1bc1bef49da02107a406"
+    },
+    {
+      "path": "usr/share/doc/putgd/runtime-notices.txt",
+      "size": 4591,
+      "mode": "0644",
+      "sha256": "e543a2a8d6ad6b2306bcb21fd8f913e2997685c8069716a22381d2284059a6cf"
+    },
+    {
+      "path": "usr/share/doc/putgd/wayland-ext-data-control-v1.xml",
+      "size": 12029,
+      "mode": "0644",
+      "sha256": "293deba5dfdb974fbcf8dcf891a30a51a36a8bba0047dc6bdf6a03194089b7fb"
+    },
+    {
+      "path": "usr/share/doc/putgd/wayland-wlr-data-control-unstable-v1.xml",
+      "size": 12190,
+      "mode": "0644",
+      "sha256": "5f10d6bf9bfa9d12266a6f423fb77bbb98e415f6d64fe24680710ffb362a7082"
+    },
+    {
+      "path": "usr/share/doc/putgd/wayland-zkde-screencast-unstable-v1.xml",
+      "size": 5460,
+      "mode": "0644",
+      "sha256": "3c27c481cba7bcae790f05eb81acc4ab2568fba231e3d516d1bb28ecc51d8119"
+    },
+    {
+      "path": "usr/share/gnome-shell/extensions/putgd@put.gd/extension.js",
+      "size": 63116,
+      "mode": "0644",
+      "sha256": "cf3138f2bb8a068805d181ba0be11aa59264e6ffde736eb27a7f762f85606106"
+    },
+    {
+      "path": "usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json",
+      "size": 248,
+      "mode": "0644",
+      "sha256": "690be5bcfd1ee05783cd57a78851c56c0fe624131711b254cb46d062d0cb8046"
+    },
+    {
+      "path": "usr/share/icons/hicolor/scalable/apps/putgd.svg",
+      "size": 356,
+      "mode": "0644",
+      "sha256": "1a01313890d20a48cd6c03f444af7341a243cd624cb40ce5dade903408175424"
+    },
+    {
+      "path": "usr/share/metainfo/gd.put.Putgd.metainfo.xml",
+      "size": 1637,
+      "mode": "0644",
+      "sha256": "988abf5f1d8f6579fa0ba666a977d66f49a699d59bc78053af58ca93914d5cb0"
+    },
+    {
+      "path": "usr/share/putgd/autostart/putgd.desktop",
+      "size": 260,
+      "mode": "0644",
+      "sha256": "d549e6cb36ff341a901d0a4b97b180db107513ead997ccceb720d5888c140fb9"
+    },
+    {
+      "path": "usr/share/putgd/aws-runtime-manifest.json",
+      "size": 4379,
+      "mode": "0644",
+      "sha256": "2c8e68f0a1e4d753c4a30fe5754e6ed13cdea0b87934b2d8655532dc61064d07"
+    },
+    {
+      "path": "usr/share/putgd/build-info.json",
+      "size": 345,
+      "mode": "0644",
+      "sha256": "8198840bbe22f5c6e4679c6a913e9d8e14c9618bc8cd71f0b21fc7e40ff56302"
+    },
+    {
+      "path": "usr/share/putgd/dependency-lock.json",
+      "size": 2450,
+      "mode": "0644",
+      "sha256": "c6c41e15a56e4f801c1225966b7b6c309eee54745bfa1788a066378a36621333"
+    }
+  ],
+  "compiledIdentities": {
+    "putgd": {
+      "schemaVersion": 1,
+      "version": "26.1024.1140-dev+g171b506e02ca",
+      "baseVersion": "26.1024.1140",
+      "packageVersion": "26.1024.1140~dev+g171b506e02ca",
+      "gitCommit": "171b506e02ca37ba75b27dbbbe859502380926ef",
+      "gitTree": "2942cc06bd2361cf915e9d5ffbeeadd7eaa75368",
+      "commitCount": 1140,
+      "dirty": false,
+      "sourceProvenance": "git"
+    },
+    "putgd-cli": {
+      "schemaVersion": 1,
+      "version": "26.1024.1140-dev+g171b506e02ca",
+      "baseVersion": "26.1024.1140",
+      "packageVersion": "26.1024.1140~dev+g171b506e02ca",
+      "gitCommit": "171b506e02ca37ba75b27dbbbe859502380926ef",
+      "gitTree": "2942cc06bd2361cf915e9d5ffbeeadd7eaa75368",
+      "commitCount": 1140,
+      "dirty": false,
+      "sourceProvenance": "git"
+    },
+    "putgd-ui": {
+      "schemaVersion": 1,
+      "version": "26.1024.1140-dev+g171b506e02ca",
+      "baseVersion": "26.1024.1140",
+      "packageVersion": "26.1024.1140~dev+g171b506e02ca",
+      "gitCommit": "171b506e02ca37ba75b27dbbbe859502380926ef",
+      "gitTree": "2942cc06bd2361cf915e9d5ffbeeadd7eaa75368",
+      "commitCount": 1140,
+      "dirty": false,
+      "sourceProvenance": "git"
+    },
+    "putgd-capture": {
+      "schemaVersion": 1,
+      "version": "26.1024.1140-dev+g171b506e02ca",
+      "baseVersion": "26.1024.1140",
+      "packageVersion": "26.1024.1140~dev+g171b506e02ca",
+      "gitCommit": "171b506e02ca37ba75b27dbbbe859502380926ef",
+      "gitTree": "2942cc06bd2361cf915e9d5ffbeeadd7eaa75368",
+      "commitCount": 1140,
+      "dirty": false,
+      "sourceProvenance": "git"
+    },
+    "putgd-s3-worker": {
+      "schemaVersion": 1,
+      "version": "26.1024.1140-dev+g171b506e02ca",
+      "baseVersion": "26.1024.1140",
+      "packageVersion": "26.1024.1140~dev+g171b506e02ca",
+      "gitCommit": "171b506e02ca37ba75b27dbbbe859502380926ef",
+      "gitTree": "2942cc06bd2361cf915e9d5ffbeeadd7eaa75368",
+      "commitCount": 1140,
+      "dirty": false,
+      "sourceProvenance": "git"
+    },
+    "putgd-b2-worker": {
+      "schemaVersion": 1,
+      "version": "26.1024.1140-dev+g171b506e02ca",
+      "baseVersion": "26.1024.1140",
+      "packageVersion": "26.1024.1140~dev+g171b506e02ca",
+      "gitCommit": "171b506e02ca37ba75b27dbbbe859502380926ef",
+      "gitTree": "2942cc06bd2361cf915e9d5ffbeeadd7eaa75368",
+      "commitCount": 1140,
+      "dirty": false,
+      "sourceProvenance": "git"
+    },
+    "putgd-kde-region": {
+      "schemaVersion": 1,
+      "version": "26.1024.1140-dev+g171b506e02ca",
+      "baseVersion": "26.1024.1140",
+      "packageVersion": "26.1024.1140~dev+g171b506e02ca",
+      "gitCommit": "171b506e02ca37ba75b27dbbbe859502380926ef",
+      "gitTree": "2942cc06bd2361cf915e9d5ffbeeadd7eaa75368",
+      "commitCount": 1140,
+      "dirty": false,
+      "sourceProvenance": "git"
+    },
+    "putgd-record": {
+      "schemaVersion": 1,
+      "version": "26.1024.1140-dev+g171b506e02ca",
+      "baseVersion": "26.1024.1140",
+      "packageVersion": "26.1024.1140~dev+g171b506e02ca",
+      "gitCommit": "171b506e02ca37ba75b27dbbbe859502380926ef",
+      "gitTree": "2942cc06bd2361cf915e9d5ffbeeadd7eaa75368",
+      "commitCount": 1140,
+      "dirty": false,
+      "sourceProvenance": "git"
+    }
+  },
+  "elfDependencies": {
+    "usr/bin/putgd": {
+      "needed": [
+        "libxcb-xinput.so.0",
+        "libxcb-randr.so.0",
+        "libxcb-keysyms.so.1",
+        "libxcb.so.1",
+        "libxcb-xfixes.so.0",
+        "libxcb-render.so.0",
+        "libxcb-damage.so.0",
+        "libQt6Widgets.so.6",
+        "libxkbcommon.so.0",
+        "libwayland-client.so.0",
+        "libqt6keychain.so.1",
+        "libQt6DBus.so.6",
+        "libQt6Gui.so.6",
+        "libQt6Sql.so.6",
+        "libQt6Core.so.6",
+        "libstdc++.so.6",
+        "libm.so.6",
+        "libgcc_s.so.1",
+        "libc.so.6",
+        "ld-linux-x86-64.so.2"
+      ],
+      "resolved": [
+        "linux-vdso.so.1 (0x00007f6aa6815000)",
+        "\tlibxcb-xinput.so.0 => /lib/x86_64-linux-gnu/libxcb-xinput.so.0 (0x00007f6aa67df000)",
+        "\tlibxcb-randr.so.0 => /lib/x86_64-linux-gnu/libxcb-randr.so.0 (0x00007f6aa67ce000)",
+        "\tlibxcb-keysyms.so.1 => /lib/x86_64-linux-gnu/libxcb-keysyms.so.1 (0x00007f6aa67c9000)",
+        "\tlibxcb.so.1 => /lib/x86_64-linux-gnu/libxcb.so.1 (0x00007f6aa67a0000)",
+        "\tlibxcb-xfixes.so.0 => /lib/x86_64-linux-gnu/libxcb-xfixes.so.0 (0x00007f6aa61f6000)",
+        "\tlibxcb-render.so.0 => /lib/x86_64-linux-gnu/libxcb-render.so.0 (0x00007f6aa61e7000)",
+        "\tlibxcb-damage.so.0 => /lib/x86_64-linux-gnu/libxcb-damage.so.0 (0x00007f6aa61e2000)",
+        "\tlibQt6Widgets.so.6 => /lib/x86_64-linux-gnu/libQt6Widgets.so.6 (0x00007f6aa5aae000)",
+        "\tlibxkbcommon.so.0 => /lib/x86_64-linux-gnu/libxkbcommon.so.0 (0x00007f6aa5a65000)",
+        "\tlibwayland-client.so.0 => /lib/x86_64-linux-gnu/libwayland-client.so.0 (0x00007f6aa5a55000)",
+        "\tlibqt6keychain.so.1 => /lib/x86_64-linux-gnu/libqt6keychain.so.1 (0x00007f6aa5a29000)",
+        "\tlibQt6DBus.so.6 => /lib/x86_64-linux-gnu/libQt6DBus.so.6 (0x00007f6aa5972000)",
+        "\tlibQt6Gui.so.6 => /lib/x86_64-linux-gnu/libQt6Gui.so.6 (0x00007f6aa5241000)",
+        "\tlibQt6Sql.so.6 => /lib/x86_64-linux-gnu/libQt6Sql.so.6 (0x00007f6aa51f6000)",
+        "\tlibQt6Core.so.6 => /lib/x86_64-linux-gnu/libQt6Core.so.6 (0x00007f6aa4cea000)",
+        "\tlibstdc++.so.6 => /lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007f6aa4a6c000)",
+        "\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007f6aa4983000)",
+        "\tlibgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007f6aa4953000)",
+        "\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f6aa4740000)",
+        "\t/lib64/ld-linux-x86-64.so.2 (0x00007f6aa6817000)",
+        "\tlibXau.so.6 => /lib/x86_64-linux-gnu/libXau.so.6 (0x00007f6aa473a000)",
+        "\tlibXdmcp.so.6 => /lib/x86_64-linux-gnu/libXdmcp.so.6 (0x00007f6aa4732000)",
+        "\tlibffi.so.8 => /lib/x86_64-linux-gnu/libffi.so.8 (0x00007f6aa4726000)",
+        "\tlibglib-2.0.so.0 => /lib/x86_64-linux-gnu/libglib-2.0.so.0 (0x00007f6aa45db000)",
+        "\tlibdbus-1.so.3 => /lib/x86_64-linux-gnu/libdbus-1.so.3 (0x00007f6aa458c000)",
+        "\tlibEGL.so.1 => /lib/x86_64-linux-gnu/libEGL.so.1 (0x00007f6aa457a000)",
+        "\tlibfontconfig.so.1 => /lib/x86_64-linux-gnu/libfontconfig.so.1 (0x00007f6aa4529000)",
+        "\tlibX11.so.6 => /lib/x86_64-linux-gnu/libX11.so.6 (0x00007f6aa43eb000)",
+        "\tlibGLX.so.0 => /lib/x86_64-linux-gnu/libGLX.so.0 (0x00007f6aa43b6000)",
+        "\tlibOpenGL.so.0 => /lib/x86_64-linux-gnu/libOpenGL.so.0 (0x00007f6aa438b000)",
+        "\tlibpng16.so.16 => /lib/x86_64-linux-gnu/libpng16.so.16 (0x00007f6aa4353000)",
+        "\tlibharfbuzz.so.0 => /lib/x86_64-linux-gnu/libharfbuzz.so.0 (0x00007f6aa4246000)",
+        "\tlibmd4c.so.0 => /lib/x86_64-linux-gnu/libmd4c.so.0 (0x00007f6aa4234000)",
+        "\tlibfreetype.so.6 => /lib/x86_64-linux-gnu/libfreetype.so.6 (0x00007f6aa4168000)",
+        "\tlibz.so.1 => /lib/x86_64-linux-gnu/libz.so.1 (0x00007f6aa414a000)",
+        "\tlibicui18n.so.74 => /lib/x86_64-linux-gnu/libicui18n.so.74 (0x00007f6aa3dfc000)",
+        "\tlibicuuc.so.74 => /lib/x86_64-linux-gnu/libicuuc.so.74 (0x00007f6aa3bef000)",
+        "\tlibdouble-conversion.so.3 => /lib/x86_64-linux-gnu/libdouble-conversion.so.3 (0x00007f6aa3bda000)",
+        "\tlibb2.so.1 => /lib/x86_64-linux-gnu/libb2.so.1 (0x00007f6aa3bbc000)",
+        "\tlibpcre2-16.so.0 => /lib/x86_64-linux-gnu/libpcre2-16.so.0 (0x00007f6aa3b2e000)",
+        "\tlibzstd.so.1 => /lib/x86_64-linux-gnu/libzstd.so.1 (0x00007f6aa3a74000)",
+        "\tlibbsd.so.0 => /lib/x86_64-linux-gnu/libbsd.so.0 (0x00007f6aa3a5e000)",
+        "\tlibpcre2-8.so.0 => /lib/x86_64-linux-gnu/libpcre2-8.so.0 (0x00007f6aa39c4000)",
+        "\tlibsystemd.so.0 => /lib/x86_64-linux-gnu/libsystemd.so.0 (0x00007f6aa38e4000)",
+        "\tlibGLdispatch.so.0 => /lib/x86_64-linux-gnu/libGLdispatch.so.0 (0x00007f6aa382a000)",
+        "\tlibexpat.so.1 => /lib/x86_64-linux-gnu/libexpat.so.1 (0x00007f6aa37fc000)",
+        "\tlibgraphite2.so.3 => /lib/x86_64-linux-gnu/libgraphite2.so.3 (0x00007f6aa37d6000)",
+        "\tlibbz2.so.1.0 => /lib/x86_64-linux-gnu/libbz2.so.1.0 (0x00007f6aa37c2000)",
+        "\tlibbrotlidec.so.1 => /lib/x86_64-linux-gnu/libbrotlidec.so.1 (0x00007f6aa37b4000)",
+        "\tlibicudata.so.74 => /lib/x86_64-linux-gnu/libicudata.so.74 (0x00007f6aa1a52000)",
+        "\tlibgomp.so.1 => /lib/x86_64-linux-gnu/libgomp.so.1 (0x00007f6aa19fc000)",
+        "\tlibmd.so.0 => /lib/x86_64-linux-gnu/libmd.so.0 (0x00007f6aa19ed000)",
+        "\tlibcap.so.2 => /lib/x86_64-linux-gnu/libcap.so.2 (0x00007f6aa19e0000)",
+        "\tlibgcrypt.so.20 => /lib/x86_64-linux-gnu/libgcrypt.so.20 (0x00007f6aa1897000)",
+        "\tliblz4.so.1 => /lib/x86_64-linux-gnu/liblz4.so.1 (0x00007f6aa1873000)",
+        "\tliblzma.so.5 => /lib/x86_64-linux-gnu/liblzma.so.5 (0x00007f6aa1841000)",
+        "\tlibbrotlicommon.so.1 => /lib/x86_64-linux-gnu/libbrotlicommon.so.1 (0x00007f6aa181e000)",
+        "\tlibgpg-error.so.0 => /lib/x86_64-linux-gnu/libgpg-error.so.0 (0x00007f6aa17f9000)"
+      ]
+    },
+    "usr/bin/putgd-cli": {
+      "needed": [
+        "libQt6Network.so.6",
+        "libQt6Gui.so.6",
+        "libQt6Sql.so.6",
+        "libqt6keychain.so.1",
+        "libcrypto.so.3",
+        "libQt6Core.so.6",
+        "libstdc++.so.6",
+        "libm.so.6",
+        "libgcc_s.so.1",
+        "libc.so.6",
+        "ld-linux-x86-64.so.2"
+      ],
+      "resolved": [
+        "linux-vdso.so.1 (0x00007f40235b0000)",
+        "\tlibQt6Network.so.6 => /lib/x86_64-linux-gnu/libQt6Network.so.6 (0x00007f4023069000)",
+        "\tlibQt6Gui.so.6 => /lib/x86_64-linux-gnu/libQt6Gui.so.6 (0x00007f4022938000)",
+        "\tlibQt6Sql.so.6 => /lib/x86_64-linux-gnu/libQt6Sql.so.6 (0x00007f4023553000)",
+        "\tlibqt6keychain.so.1 => /lib/x86_64-linux-gnu/libqt6keychain.so.1 (0x00007f4023527000)",
+        "\tlibcrypto.so.3 => /lib/x86_64-linux-gnu/libcrypto.so.3 (0x00007f4022424000)",
+        "\tlibQt6Core.so.6 => /lib/x86_64-linux-gnu/libQt6Core.so.6 (0x00007f4021f18000)",
+        "\tlibstdc++.so.6 => /lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007f4021c9a000)",
+        "\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007f4021bb1000)",
+        "\tlibgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007f40234f7000)",
+        "\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f402199e000)",
+        "\t/lib64/ld-linux-x86-64.so.2 (0x00007f40235b2000)",
+        "\tlibgssapi_krb5.so.2 => /lib/x86_64-linux-gnu/libgssapi_krb5.so.2 (0x00007f402194a000)",
+        "\tlibbrotlidec.so.1 => /lib/x86_64-linux-gnu/libbrotlidec.so.1 (0x00007f40234e7000)",
+        "\tlibzstd.so.1 => /lib/x86_64-linux-gnu/libzstd.so.1 (0x00007f4021890000)",
+        "\tlibz.so.1 => /lib/x86_64-linux-gnu/libz.so.1 (0x00007f4021874000)",
+        "\tlibproxy.so.1 => /lib/x86_64-linux-gnu/libproxy.so.1 (0x00007f40234e2000)",
+        "\tlibEGL.so.1 => /lib/x86_64-linux-gnu/libEGL.so.1 (0x00007f4021862000)",
+        "\tlibfontconfig.so.1 => /lib/x86_64-linux-gnu/libfontconfig.so.1 (0x00007f4021811000)",
+        "\tlibX11.so.6 => /lib/x86_64-linux-gnu/libX11.so.6 (0x00007f40216d3000)",
+        "\tlibglib-2.0.so.0 => /lib/x86_64-linux-gnu/libglib-2.0.so.0 (0x00007f402158a000)",
+        "\tlibQt6DBus.so.6 => /lib/x86_64-linux-gnu/libQt6DBus.so.6 (0x00007f40214d5000)",
+        "\tlibxkbcommon.so.0 => /lib/x86_64-linux-gnu/libxkbcommon.so.0 (0x00007f402148c000)",
+        "\tlibGLX.so.0 => /lib/x86_64-linux-gnu/libGLX.so.0 (0x00007f4021459000)",
+        "\tlibOpenGL.so.0 => /lib/x86_64-linux-gnu/libOpenGL.so.0 (0x00007f402142e000)",
+        "\tlibpng16.so.16 => /lib/x86_64-linux-gnu/libpng16.so.16 (0x00007f40213f6000)",
+        "\tlibharfbuzz.so.0 => /lib/x86_64-linux-gnu/libharfbuzz.so.0 (0x00007f40212e9000)",
+        "\tlibmd4c.so.0 => /lib/x86_64-linux-gnu/libmd4c.so.0 (0x00007f40212d7000)",
+        "\tlibfreetype.so.6 => /lib/x86_64-linux-gnu/libfreetype.so.6 (0x00007f402120b000)",
+        "\tlibicui18n.so.74 => /lib/x86_64-linux-gnu/libicui18n.so.74 (0x00007f4020ebd000)",
+        "\tlibicuuc.so.74 => /lib/x86_64-linux-gnu/libicuuc.so.74 (0x00007f4020cb0000)",
+        "\tlibdouble-conversion.so.3 => /lib/x86_64-linux-gnu/libdouble-conversion.so.3 (0x00007f4020c9b000)",
+        "\tlibb2.so.1 => /lib/x86_64-linux-gnu/libb2.so.1 (0x00007f4020c7d000)",
+        "\tlibpcre2-16.so.0 => /lib/x86_64-linux-gnu/libpcre2-16.so.0 (0x00007f4020bf1000)",
+        "\tlibkrb5.so.3 => /lib/x86_64-linux-gnu/libkrb5.so.3 (0x00007f4020b28000)",
+        "\tlibk5crypto.so.3 => /lib/x86_64-linux-gnu/libk5crypto.so.3 (0x00007f4020afc000)",
+        "\tlibcom_err.so.2 => /lib/x86_64-linux-gnu/libcom_err.so.2 (0x00007f4020af6000)",
+        "\tlibkrb5support.so.0 => /lib/x86_64-linux-gnu/libkrb5support.so.0 (0x00007f4020ae9000)",
+        "\tlibbrotlicommon.so.1 => /lib/x86_64-linux-gnu/libbrotlicommon.so.1 (0x00007f4020ac6000)",
+        "\tlibpxbackend-1.0.so => /usr/lib/x86_64-linux-gnu/libproxy/libpxbackend-1.0.so (0x00007f4020ab8000)",
+        "\tlibgobject-2.0.so.0 => /lib/x86_64-linux-gnu/libgobject-2.0.so.0 (0x00007f4020a55000)",
+        "\tlibGLdispatch.so.0 => /lib/x86_64-linux-gnu/libGLdispatch.so.0 (0x00007f402099d000)",
+        "\tlibexpat.so.1 => /lib/x86_64-linux-gnu/libexpat.so.1 (0x00007f402096f000)",
+        "\tlibxcb.so.1 => /lib/x86_64-linux-gnu/libxcb.so.1 (0x00007f4020946000)",
+        "\tlibpcre2-8.so.0 => /lib/x86_64-linux-gnu/libpcre2-8.so.0 (0x00007f40208ac000)",
+        "\tlibdbus-1.so.3 => /lib/x86_64-linux-gnu/libdbus-1.so.3 (0x00007f402085d000)",
+        "\tlibgraphite2.so.3 => /lib/x86_64-linux-gnu/libgraphite2.so.3 (0x00007f4020837000)",
+        "\tlibbz2.so.1.0 => /lib/x86_64-linux-gnu/libbz2.so.1.0 (0x00007f4020823000)",
+        "\tlibicudata.so.74 => /lib/x86_64-linux-gnu/libicudata.so.74 (0x00007f401eac3000)",
+        "\tlibgomp.so.1 => /lib/x86_64-linux-gnu/libgomp.so.1 (0x00007f401ea6b000)",
+        "\tlibkeyutils.so.1 => /lib/x86_64-linux-gnu/libkeyutils.so.1 (0x00007f401ea64000)",
+        "\tlibresolv.so.2 => /lib/x86_64-linux-gnu/libresolv.so.2 (0x00007f401ea52000)",
+        "\tlibcurl-gnutls.so.4 => /lib/x86_64-linux-gnu/libcurl-gnutls.so.4 (0x00007f401e997000)",
+        "\tlibgio-2.0.so.0 => /lib/x86_64-linux-gnu/libgio-2.0.so.0 (0x00007f401e7c7000)",
+        "\tlibduktape.so.207 => /lib/x86_64-linux-gnu/libduktape.so.207 (0x00007f401e77a000)",
+        "\tlibffi.so.8 => /lib/x86_64-linux-gnu/libffi.so.8 (0x00007f401e76e000)",
+        "\tlibXau.so.6 => /lib/x86_64-linux-gnu/libXau.so.6 (0x00007f401e768000)",
+        "\tlibXdmcp.so.6 => /lib/x86_64-linux-gnu/libXdmcp.so.6 (0x00007f401e760000)",
+        "\tlibsystemd.so.0 => /lib/x86_64-linux-gnu/libsystemd.so.0 (0x00007f401e680000)",
+        "\tlibnghttp2.so.14 => /lib/x86_64-linux-gnu/libnghttp2.so.14 (0x00007f401e653000)",
+        "\tlibidn2.so.0 => /lib/x86_64-linux-gnu/libidn2.so.0 (0x00007f401e631000)",
+        "\tlibrtmp.so.1 => /lib/x86_64-linux-gnu/librtmp.so.1 (0x00007f401e613000)",
+        "\tlibssh.so.4 => /lib/x86_64-linux-gnu/libssh.so.4 (0x00007f401e5a1000)",
+        "\tlibpsl.so.5 => /lib/x86_64-linux-gnu/libpsl.so.5 (0x00007f401e58d000)",
+        "\tlibnettle.so.8 => /lib/x86_64-linux-gnu/libnettle.so.8 (0x00007f401e538000)",
+        "\tlibgnutls.so.30 => /lib/x86_64-linux-gnu/libgnutls.so.30 (0x00007f401e33b000)",
+        "\tlibldap.so.2 => /lib/x86_64-linux-gnu/libldap.so.2 (0x00007f401e2dd000)",
+        "\tliblber.so.2 => /lib/x86_64-linux-gnu/liblber.so.2 (0x00007f401e2cd000)",
+        "\tlibgmodule-2.0.so.0 => /lib/x86_64-linux-gnu/libgmodule-2.0.so.0 (0x00007f401e2c6000)",
+        "\tlibmount.so.1 => /lib/x86_64-linux-gnu/libmount.so.1 (0x00007f401e279000)",
+        "\tlibselinux.so.1 => /lib/x86_64-linux-gnu/libselinux.so.1 (0x00007f401e24a000)",
+        "\tlibbsd.so.0 => /lib/x86_64-linux-gnu/libbsd.so.0 (0x00007f401e234000)",
+        "\tlibcap.so.2 => /lib/x86_64-linux-gnu/libcap.so.2 (0x00007f401e227000)",
+        "\tlibgcrypt.so.20 => /lib/x86_64-linux-gnu/libgcrypt.so.20 (0x00007f401e0de000)",
+        "\tliblz4.so.1 => /lib/x86_64-linux-gnu/liblz4.so.1 (0x00007f401e0bc000)",
+        "\tliblzma.so.5 => /lib/x86_64-linux-gnu/liblzma.so.5 (0x00007f401e088000)",
+        "\tlibunistring.so.5 => /lib/x86_64-linux-gnu/libunistring.so.5 (0x00007f401dedb000)",
+        "\tlibhogweed.so.6 => /lib/x86_64-linux-gnu/libhogweed.so.6 (0x00007f401de93000)",
+        "\tlibgmp.so.10 => /lib/x86_64-linux-gnu/libgmp.so.10 (0x00007f401de0f000)",
+        "\tlibp11-kit.so.0 => /lib/x86_64-linux-gnu/libp11-kit.so.0 (0x00007f401dc6b000)",
+        "\tlibtasn1.so.6 => /lib/x86_64-linux-gnu/libtasn1.so.6 (0x00007f401dc53000)",
+        "\tlibsasl2.so.2 => /lib/x86_64-linux-gnu/libsasl2.so.2 (0x00007f401dc39000)",
+        "\tlibblkid.so.1 => /lib/x86_64-linux-gnu/libblkid.so.1 (0x00007f401dbfe000)",
+        "\tlibmd.so.0 => /lib/x86_64-linux-gnu/libmd.so.0 (0x00007f401dbef000)",
+        "\tlibgpg-error.so.0 => /lib/x86_64-linux-gnu/libgpg-error.so.0 (0x00007f401dbca000)"
+      ]
+    },
+    "usr/bin/putgd-ui": {
+      "needed": [
+        "libQt6Network.so.6",
+        "libxkbcommon.so.0",
+        "libxcb-keysyms.so.1",
+        "libQt6DBus.so.6",
+        "libQt6Widgets.so.6",
+        "libQt6Gui.so.6",
+        "libQt6Core.so.6",
+        "libstdc++.so.6",
+        "libm.so.6",
+        "libgcc_s.so.1",
+        "libc.so.6",
+        "ld-linux-x86-64.so.2"
+      ],
+      "resolved": [
+        "linux-vdso.so.1 (0x00007fcbba24d000)",
+        "\tlibQt6Network.so.6 => /lib/x86_64-linux-gnu/libQt6Network.so.6 (0x00007fcbb9c69000)",
+        "\tlibxkbcommon.so.0 => /lib/x86_64-linux-gnu/libxkbcommon.so.0 (0x00007fcbba1f2000)",
+        "\tlibxcb-keysyms.so.1 => /lib/x86_64-linux-gnu/libxcb-keysyms.so.1 (0x00007fcbba1ed000)",
+        "\tlibQt6DBus.so.6 => /lib/x86_64-linux-gnu/libQt6DBus.so.6 (0x00007fcbb9bb4000)",
+        "\tlibQt6Widgets.so.6 => /lib/x86_64-linux-gnu/libQt6Widgets.so.6 (0x00007fcbb9480000)",
+        "\tlibQt6Gui.so.6 => /lib/x86_64-linux-gnu/libQt6Gui.so.6 (0x00007fcbb8d4f000)",
+        "\tlibQt6Core.so.6 => /lib/x86_64-linux-gnu/libQt6Core.so.6 (0x00007fcbb8843000)",
+        "\tlibstdc++.so.6 => /lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007fcbb85c5000)",
+        "\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007fcbb84dc000)",
+        "\tlibgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007fcbba1bd000)",
+        "\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fcbb82c9000)",
+        "\t/lib64/ld-linux-x86-64.so.2 (0x00007fcbba24f000)",
+        "\tlibgssapi_krb5.so.2 => /lib/x86_64-linux-gnu/libgssapi_krb5.so.2 (0x00007fcbb8275000)",
+        "\tlibbrotlidec.so.1 => /lib/x86_64-linux-gnu/libbrotlidec.so.1 (0x00007fcbb8267000)",
+        "\tlibzstd.so.1 => /lib/x86_64-linux-gnu/libzstd.so.1 (0x00007fcbb81ad000)",
+        "\tlibz.so.1 => /lib/x86_64-linux-gnu/libz.so.1 (0x00007fcbb8191000)",
+        "\tlibproxy.so.1 => /lib/x86_64-linux-gnu/libproxy.so.1 (0x00007fcbba1b6000)",
+        "\tlibxcb.so.1 => /lib/x86_64-linux-gnu/libxcb.so.1 (0x00007fcbb8168000)",
+        "\tlibdbus-1.so.3 => /lib/x86_64-linux-gnu/libdbus-1.so.3 (0x00007fcbb8119000)",
+        "\tlibEGL.so.1 => /lib/x86_64-linux-gnu/libEGL.so.1 (0x00007fcbb8107000)",
+        "\tlibfontconfig.so.1 => /lib/x86_64-linux-gnu/libfontconfig.so.1 (0x00007fcbb80b6000)",
+        "\tlibX11.so.6 => /lib/x86_64-linux-gnu/libX11.so.6 (0x00007fcbb7f78000)",
+        "\tlibglib-2.0.so.0 => /lib/x86_64-linux-gnu/libglib-2.0.so.0 (0x00007fcbb7e2f000)",
+        "\tlibGLX.so.0 => /lib/x86_64-linux-gnu/libGLX.so.0 (0x00007fcbb7dfc000)",
+        "\tlibOpenGL.so.0 => /lib/x86_64-linux-gnu/libOpenGL.so.0 (0x00007fcbb7dd1000)",
+        "\tlibpng16.so.16 => /lib/x86_64-linux-gnu/libpng16.so.16 (0x00007fcbb7d99000)",
+        "\tlibharfbuzz.so.0 => /lib/x86_64-linux-gnu/libharfbuzz.so.0 (0x00007fcbb7c8c000)",
+        "\tlibmd4c.so.0 => /lib/x86_64-linux-gnu/libmd4c.so.0 (0x00007fcbb7c7a000)",
+        "\tlibfreetype.so.6 => /lib/x86_64-linux-gnu/libfreetype.so.6 (0x00007fcbb7bae000)",
+        "\tlibicui18n.so.74 => /lib/x86_64-linux-gnu/libicui18n.so.74 (0x00007fcbb7860000)",
+        "\tlibicuuc.so.74 => /lib/x86_64-linux-gnu/libicuuc.so.74 (0x00007fcbb7653000)",
+        "\tlibdouble-conversion.so.3 => /lib/x86_64-linux-gnu/libdouble-conversion.so.3 (0x00007fcbb763e000)",
+        "\tlibb2.so.1 => /lib/x86_64-linux-gnu/libb2.so.1 (0x00007fcbb7620000)",
+        "\tlibpcre2-16.so.0 => /lib/x86_64-linux-gnu/libpcre2-16.so.0 (0x00007fcbb7592000)",
+        "\tlibkrb5.so.3 => /lib/x86_64-linux-gnu/libkrb5.so.3 (0x00007fcbb74c9000)",
+        "\tlibk5crypto.so.3 => /lib/x86_64-linux-gnu/libk5crypto.so.3 (0x00007fcbb749d000)",
+        "\tlibcom_err.so.2 => /lib/x86_64-linux-gnu/libcom_err.so.2 (0x00007fcbb7497000)",
+        "\tlibkrb5support.so.0 => /lib/x86_64-linux-gnu/libkrb5support.so.0 (0x00007fcbb748a000)",
+        "\tlibbrotlicommon.so.1 => /lib/x86_64-linux-gnu/libbrotlicommon.so.1 (0x00007fcbb7465000)",
+        "\tlibpxbackend-1.0.so => /usr/lib/x86_64-linux-gnu/libproxy/libpxbackend-1.0.so (0x00007fcbb7457000)",
+        "\tlibgobject-2.0.so.0 => /lib/x86_64-linux-gnu/libgobject-2.0.so.0 (0x00007fcbb73f4000)",
+        "\tlibXau.so.6 => /lib/x86_64-linux-gnu/libXau.so.6 (0x00007fcbb73ee000)",
+        "\tlibXdmcp.so.6 => /lib/x86_64-linux-gnu/libXdmcp.so.6 (0x00007fcbb73e6000)",
+        "\tlibsystemd.so.0 => /lib/x86_64-linux-gnu/libsystemd.so.0 (0x00007fcbb7304000)",
+        "\tlibGLdispatch.so.0 => /lib/x86_64-linux-gnu/libGLdispatch.so.0 (0x00007fcbb724c000)",
+        "\tlibexpat.so.1 => /lib/x86_64-linux-gnu/libexpat.so.1 (0x00007fcbb721e000)",
+        "\tlibpcre2-8.so.0 => /lib/x86_64-linux-gnu/libpcre2-8.so.0 (0x00007fcbb7184000)",
+        "\tlibgraphite2.so.3 => /lib/x86_64-linux-gnu/libgraphite2.so.3 (0x00007fcbb715e000)",
+        "\tlibbz2.so.1.0 => /lib/x86_64-linux-gnu/libbz2.so.1.0 (0x00007fcbb7148000)",
+        "\tlibicudata.so.74 => /lib/x86_64-linux-gnu/libicudata.so.74 (0x00007fcbb53e8000)",
+        "\tlibgomp.so.1 => /lib/x86_64-linux-gnu/libgomp.so.1 (0x00007fcbb5392000)",
+        "\tlibkeyutils.so.1 => /lib/x86_64-linux-gnu/libkeyutils.so.1 (0x00007fcbb538b000)",
+        "\tlibresolv.so.2 => /lib/x86_64-linux-gnu/libresolv.so.2 (0x00007fcbb5379000)",
+        "\tlibcurl-gnutls.so.4 => /lib/x86_64-linux-gnu/libcurl-gnutls.so.4 (0x00007fcbb52bc000)",
+        "\tlibgio-2.0.so.0 => /lib/x86_64-linux-gnu/libgio-2.0.so.0 (0x00007fcbb50ec000)",
+        "\tlibduktape.so.207 => /lib/x86_64-linux-gnu/libduktape.so.207 (0x00007fcbb50a1000)",
+        "\tlibffi.so.8 => /lib/x86_64-linux-gnu/libffi.so.8 (0x00007fcbb5095000)",
+        "\tlibbsd.so.0 => /lib/x86_64-linux-gnu/libbsd.so.0 (0x00007fcbb507f000)",
+        "\tlibcap.so.2 => /lib/x86_64-linux-gnu/libcap.so.2 (0x00007fcbb5070000)",
+        "\tlibgcrypt.so.20 => /lib/x86_64-linux-gnu/libgcrypt.so.20 (0x00007fcbb4f27000)",
+        "\tliblz4.so.1 => /lib/x86_64-linux-gnu/liblz4.so.1 (0x00007fcbb4f05000)",
+        "\tliblzma.so.5 => /lib/x86_64-linux-gnu/liblzma.so.5 (0x00007fcbb4ed3000)",
+        "\tlibnghttp2.so.14 => /lib/x86_64-linux-gnu/libnghttp2.so.14 (0x00007fcbb4ea8000)",
+        "\tlibidn2.so.0 => /lib/x86_64-linux-gnu/libidn2.so.0 (0x00007fcbb4e84000)",
+        "\tlibrtmp.so.1 => /lib/x86_64-linux-gnu/librtmp.so.1 (0x00007fcbb4e66000)",
+        "\tlibssh.so.4 => /lib/x86_64-linux-gnu/libssh.so.4 (0x00007fcbb4df4000)",
+        "\tlibpsl.so.5 => /lib/x86_64-linux-gnu/libpsl.so.5 (0x00007fcbb4de0000)",
+        "\tlibnettle.so.8 => /lib/x86_64-linux-gnu/libnettle.so.8 (0x00007fcbb4d8b000)",
+        "\tlibgnutls.so.30 => /lib/x86_64-linux-gnu/libgnutls.so.30 (0x00007fcbb4b90000)",
+        "\tlibldap.so.2 => /lib/x86_64-linux-gnu/libldap.so.2 (0x00007fcbb4b30000)",
+        "\tliblber.so.2 => /lib/x86_64-linux-gnu/liblber.so.2 (0x00007fcbb4b20000)",
+        "\tlibgmodule-2.0.so.0 => /lib/x86_64-linux-gnu/libgmodule-2.0.so.0 (0x00007fcbb4b19000)",
+        "\tlibmount.so.1 => /lib/x86_64-linux-gnu/libmount.so.1 (0x00007fcbb4acc000)",
+        "\tlibselinux.so.1 => /lib/x86_64-linux-gnu/libselinux.so.1 (0x00007fcbb4a9f000)",
+        "\tlibmd.so.0 => /lib/x86_64-linux-gnu/libmd.so.0 (0x00007fcbb4a8e000)",
+        "\tlibgpg-error.so.0 => /lib/x86_64-linux-gnu/libgpg-error.so.0 (0x00007fcbb4a69000)",
+        "\tlibunistring.so.5 => /lib/x86_64-linux-gnu/libunistring.so.5 (0x00007fcbb48bc000)",
+        "\tlibhogweed.so.6 => /lib/x86_64-linux-gnu/libhogweed.so.6 (0x00007fcbb4874000)",
+        "\tlibgmp.so.10 => /lib/x86_64-linux-gnu/libgmp.so.10 (0x00007fcbb47f0000)",
+        "\tlibcrypto.so.3 => /lib/x86_64-linux-gnu/libcrypto.so.3 (0x00007fcbb42da000)",
+        "\tlibp11-kit.so.0 => /lib/x86_64-linux-gnu/libp11-kit.so.0 (0x00007fcbb4136000)",
+        "\tlibtasn1.so.6 => /lib/x86_64-linux-gnu/libtasn1.so.6 (0x00007fcbb4120000)",
+        "\tlibsasl2.so.2 => /lib/x86_64-linux-gnu/libsasl2.so.2 (0x00007fcbb4106000)",
+        "\tlibblkid.so.1 => /lib/x86_64-linux-gnu/libblkid.so.1 (0x00007fcbb40cb000)"
+      ]
+    },
+    "usr/bin/putgd-capture": {
+      "needed": [
+        "libXcursor.so.1",
+        "libxcb-xinput.so.0",
+        "libQt6Widgets.so.6",
+        "libQt6Gui.so.6",
+        "libxcb-damage.so.0",
+        "libQt6DBus.so.6",
+        "libxcb-randr.so.0",
+        "libxcb-keysyms.so.1",
+        "libxcb.so.1",
+        "libxcb-xfixes.so.0",
+        "libQt6Core.so.6",
+        "libstdc++.so.6",
+        "libm.so.6",
+        "libgcc_s.so.1",
+        "libc.so.6",
+        "ld-linux-x86-64.so.2"
+      ],
+      "resolved": [
+        "linux-vdso.so.1 (0x00007fc8b56a6000)",
+        "\tlibXcursor.so.1 => /lib/x86_64-linux-gnu/libXcursor.so.1 (0x00007fc8b5567000)",
+        "\tlibxcb-xinput.so.0 => /lib/x86_64-linux-gnu/libxcb-xinput.so.0 (0x00007fc8b5543000)",
+        "\tlibQt6Widgets.so.6 => /lib/x86_64-linux-gnu/libQt6Widgets.so.6 (0x00007fc8b4e0f000)",
+        "\tlibQt6Gui.so.6 => /lib/x86_64-linux-gnu/libQt6Gui.so.6 (0x00007fc8b46de000)",
+        "\tlibxcb-damage.so.0 => /lib/x86_64-linux-gnu/libxcb-damage.so.0 (0x00007fc8b46d9000)",
+        "\tlibQt6DBus.so.6 => /lib/x86_64-linux-gnu/libQt6DBus.so.6 (0x00007fc8b4622000)",
+        "\tlibxcb-randr.so.0 => /lib/x86_64-linux-gnu/libxcb-randr.so.0 (0x00007fc8b4611000)",
+        "\tlibxcb-keysyms.so.1 => /lib/x86_64-linux-gnu/libxcb-keysyms.so.1 (0x00007fc8b460c000)",
+        "\tlibxcb.so.1 => /lib/x86_64-linux-gnu/libxcb.so.1 (0x00007fc8b45e3000)",
+        "\tlibxcb-xfixes.so.0 => /lib/x86_64-linux-gnu/libxcb-xfixes.so.0 (0x00007fc8b45d9000)",
+        "\tlibQt6Core.so.6 => /lib/x86_64-linux-gnu/libQt6Core.so.6 (0x00007fc8b40cd000)",
+        "\tlibstdc++.so.6 => /lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007fc8b3e4d000)",
+        "\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007fc8b3d64000)",
+        "\tlibgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007fc8b3d36000)",
+        "\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fc8b3b23000)",
+        "\t/lib64/ld-linux-x86-64.so.2 (0x00007fc8b56a8000)",
+        "\tlibXrender.so.1 => /lib/x86_64-linux-gnu/libXrender.so.1 (0x00007fc8b3b17000)",
+        "\tlibXfixes.so.3 => /lib/x86_64-linux-gnu/libXfixes.so.3 (0x00007fc8b3b0f000)",
+        "\tlibX11.so.6 => /lib/x86_64-linux-gnu/libX11.so.6 (0x00007fc8b39cf000)",
+        "\tlibEGL.so.1 => /lib/x86_64-linux-gnu/libEGL.so.1 (0x00007fc8b39bd000)",
+        "\tlibfontconfig.so.1 => /lib/x86_64-linux-gnu/libfontconfig.so.1 (0x00007fc8b396c000)",
+        "\tlibglib-2.0.so.0 => /lib/x86_64-linux-gnu/libglib-2.0.so.0 (0x00007fc8b3823000)",
+        "\tlibxkbcommon.so.0 => /lib/x86_64-linux-gnu/libxkbcommon.so.0 (0x00007fc8b37da000)",
+        "\tlibGLX.so.0 => /lib/x86_64-linux-gnu/libGLX.so.0 (0x00007fc8b37a5000)",
+        "\tlibOpenGL.so.0 => /lib/x86_64-linux-gnu/libOpenGL.so.0 (0x00007fc8b377a000)",
+        "\tlibpng16.so.16 => /lib/x86_64-linux-gnu/libpng16.so.16 (0x00007fc8b3742000)",
+        "\tlibharfbuzz.so.0 => /lib/x86_64-linux-gnu/libharfbuzz.so.0 (0x00007fc8b3635000)",
+        "\tlibmd4c.so.0 => /lib/x86_64-linux-gnu/libmd4c.so.0 (0x00007fc8b3623000)",
+        "\tlibfreetype.so.6 => /lib/x86_64-linux-gnu/libfreetype.so.6 (0x00007fc8b3557000)",
+        "\tlibz.so.1 => /lib/x86_64-linux-gnu/libz.so.1 (0x00007fc8b3539000)",
+        "\tlibdbus-1.so.3 => /lib/x86_64-linux-gnu/libdbus-1.so.3 (0x00007fc8b34ea000)",
+        "\tlibXau.so.6 => /lib/x86_64-linux-gnu/libXau.so.6 (0x00007fc8b34e4000)",
+        "\tlibXdmcp.so.6 => /lib/x86_64-linux-gnu/libXdmcp.so.6 (0x00007fc8b34dc000)",
+        "\tlibicui18n.so.74 => /lib/x86_64-linux-gnu/libicui18n.so.74 (0x00007fc8b318e000)",
+        "\tlibicuuc.so.74 => /lib/x86_64-linux-gnu/libicuuc.so.74 (0x00007fc8b2f7f000)",
+        "\tlibdouble-conversion.so.3 => /lib/x86_64-linux-gnu/libdouble-conversion.so.3 (0x00007fc8b2f6a000)",
+        "\tlibb2.so.1 => /lib/x86_64-linux-gnu/libb2.so.1 (0x00007fc8b2f4c000)",
+        "\tlibpcre2-16.so.0 => /lib/x86_64-linux-gnu/libpcre2-16.so.0 (0x00007fc8b2ec0000)",
+        "\tlibzstd.so.1 => /lib/x86_64-linux-gnu/libzstd.so.1 (0x00007fc8b2e06000)",
+        "\tlibGLdispatch.so.0 => /lib/x86_64-linux-gnu/libGLdispatch.so.0 (0x00007fc8b2d4c000)",
+        "\tlibexpat.so.1 => /lib/x86_64-linux-gnu/libexpat.so.1 (0x00007fc8b2d1e000)",
+        "\tlibpcre2-8.so.0 => /lib/x86_64-linux-gnu/libpcre2-8.so.0 (0x00007fc8b2c84000)",
+        "\tlibgraphite2.so.3 => /lib/x86_64-linux-gnu/libgraphite2.so.3 (0x00007fc8b2c5e000)",
+        "\tlibbz2.so.1.0 => /lib/x86_64-linux-gnu/libbz2.so.1.0 (0x00007fc8b2c4a000)",
+        "\tlibbrotlidec.so.1 => /lib/x86_64-linux-gnu/libbrotlidec.so.1 (0x00007fc8b2c3a000)",
+        "\tlibsystemd.so.0 => /lib/x86_64-linux-gnu/libsystemd.so.0 (0x00007fc8b2b5a000)",
+        "\tlibbsd.so.0 => /lib/x86_64-linux-gnu/libbsd.so.0 (0x00007fc8b2b44000)",
+        "\tlibicudata.so.74 => /lib/x86_64-linux-gnu/libicudata.so.74 (0x00007fc8b0de4000)",
+        "\tlibgomp.so.1 => /lib/x86_64-linux-gnu/libgomp.so.1 (0x00007fc8b0d8e000)",
+        "\tlibbrotlicommon.so.1 => /lib/x86_64-linux-gnu/libbrotlicommon.so.1 (0x00007fc8b0d69000)",
+        "\tlibcap.so.2 => /lib/x86_64-linux-gnu/libcap.so.2 (0x00007fc8b0d5c000)",
+        "\tlibgcrypt.so.20 => /lib/x86_64-linux-gnu/libgcrypt.so.20 (0x00007fc8b0c13000)",
+        "\tliblz4.so.1 => /lib/x86_64-linux-gnu/liblz4.so.1 (0x00007fc8b0bf1000)",
+        "\tliblzma.so.5 => /lib/x86_64-linux-gnu/liblzma.so.5 (0x00007fc8b0bbf000)",
+        "\tlibmd.so.0 => /lib/x86_64-linux-gnu/libmd.so.0 (0x00007fc8b0bae000)",
+        "\tlibgpg-error.so.0 => /lib/x86_64-linux-gnu/libgpg-error.so.0 (0x00007fc8b0b89000)"
+      ]
+    },
+    "usr/bin/putgd-s3-worker": {
+      "needed": [
+        "libQt6Gui.so.6",
+        "libQt6Core.so.6",
+        "libstdc++.so.6",
+        "libgcc_s.so.1",
+        "libc.so.6",
+        "ld-linux-x86-64.so.2"
+      ],
+      "resolved": [
+        "linux-vdso.so.1 (0x00007f72892dd000)",
+        "\tlibQt6Gui.so.6 => /lib/x86_64-linux-gnu/libQt6Gui.so.6 (0x00007f7288ac0000)",
+        "\tlibQt6Core.so.6 => /lib/x86_64-linux-gnu/libQt6Core.so.6 (0x00007f72885b4000)",
+        "\tlibstdc++.so.6 => /lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007f7288336000)",
+        "\tlibgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007f7288308000)",
+        "\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f72880f5000)",
+        "\t/lib64/ld-linux-x86-64.so.2 (0x00007f72892df000)",
+        "\tlibEGL.so.1 => /lib/x86_64-linux-gnu/libEGL.so.1 (0x00007f72880e1000)",
+        "\tlibfontconfig.so.1 => /lib/x86_64-linux-gnu/libfontconfig.so.1 (0x00007f7288090000)",
+        "\tlibX11.so.6 => /lib/x86_64-linux-gnu/libX11.so.6 (0x00007f7287f52000)",
+        "\tlibglib-2.0.so.0 => /lib/x86_64-linux-gnu/libglib-2.0.so.0 (0x00007f7287e09000)",
+        "\tlibQt6DBus.so.6 => /lib/x86_64-linux-gnu/libQt6DBus.so.6 (0x00007f7287d54000)",
+        "\tlibxkbcommon.so.0 => /lib/x86_64-linux-gnu/libxkbcommon.so.0 (0x00007f7287d0b000)",
+        "\tlibGLX.so.0 => /lib/x86_64-linux-gnu/libGLX.so.0 (0x00007f7287cd6000)",
+        "\tlibOpenGL.so.0 => /lib/x86_64-linux-gnu/libOpenGL.so.0 (0x00007f7287cab000)",
+        "\tlibpng16.so.16 => /lib/x86_64-linux-gnu/libpng16.so.16 (0x00007f7287c73000)",
+        "\tlibharfbuzz.so.0 => /lib/x86_64-linux-gnu/libharfbuzz.so.0 (0x00007f7287b66000)",
+        "\tlibmd4c.so.0 => /lib/x86_64-linux-gnu/libmd4c.so.0 (0x00007f7287b54000)",
+        "\tlibfreetype.so.6 => /lib/x86_64-linux-gnu/libfreetype.so.6 (0x00007f7287a88000)",
+        "\tlibz.so.1 => /lib/x86_64-linux-gnu/libz.so.1 (0x00007f7287a6a000)",
+        "\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007f7287981000)",
+        "\tlibicui18n.so.74 => /lib/x86_64-linux-gnu/libicui18n.so.74 (0x00007f7287633000)",
+        "\tlibicuuc.so.74 => /lib/x86_64-linux-gnu/libicuuc.so.74 (0x00007f7287426000)",
+        "\tlibdouble-conversion.so.3 => /lib/x86_64-linux-gnu/libdouble-conversion.so.3 (0x00007f7287411000)",
+        "\tlibb2.so.1 => /lib/x86_64-linux-gnu/libb2.so.1 (0x00007f72873f1000)",
+        "\tlibpcre2-16.so.0 => /lib/x86_64-linux-gnu/libpcre2-16.so.0 (0x00007f7287365000)",
+        "\tlibzstd.so.1 => /lib/x86_64-linux-gnu/libzstd.so.1 (0x00007f72872ab000)",
+        "\tlibGLdispatch.so.0 => /lib/x86_64-linux-gnu/libGLdispatch.so.0 (0x00007f72871f3000)",
+        "\tlibexpat.so.1 => /lib/x86_64-linux-gnu/libexpat.so.1 (0x00007f72871c5000)",
+        "\tlibxcb.so.1 => /lib/x86_64-linux-gnu/libxcb.so.1 (0x00007f728719a000)",
+        "\tlibpcre2-8.so.0 => /lib/x86_64-linux-gnu/libpcre2-8.so.0 (0x00007f7287100000)",
+        "\tlibdbus-1.so.3 => /lib/x86_64-linux-gnu/libdbus-1.so.3 (0x00007f72870b1000)",
+        "\tlibgraphite2.so.3 => /lib/x86_64-linux-gnu/libgraphite2.so.3 (0x00007f728708b000)",
+        "\tlibbz2.so.1.0 => /lib/x86_64-linux-gnu/libbz2.so.1.0 (0x00007f7287077000)",
+        "\tlibbrotlidec.so.1 => /lib/x86_64-linux-gnu/libbrotlidec.so.1 (0x00007f7287067000)",
+        "\tlibicudata.so.74 => /lib/x86_64-linux-gnu/libicudata.so.74 (0x00007f7285307000)",
+        "\tlibgomp.so.1 => /lib/x86_64-linux-gnu/libgomp.so.1 (0x00007f72852b1000)",
+        "\tlibXau.so.6 => /lib/x86_64-linux-gnu/libXau.so.6 (0x00007f72852ab000)",
+        "\tlibXdmcp.so.6 => /lib/x86_64-linux-gnu/libXdmcp.so.6 (0x00007f72852a3000)",
+        "\tlibsystemd.so.0 => /lib/x86_64-linux-gnu/libsystemd.so.0 (0x00007f72851c1000)",
+        "\tlibbrotlicommon.so.1 => /lib/x86_64-linux-gnu/libbrotlicommon.so.1 (0x00007f728519e000)",
+        "\tlibbsd.so.0 => /lib/x86_64-linux-gnu/libbsd.so.0 (0x00007f7285188000)",
+        "\tlibcap.so.2 => /lib/x86_64-linux-gnu/libcap.so.2 (0x00007f728517b000)",
+        "\tlibgcrypt.so.20 => /lib/x86_64-linux-gnu/libgcrypt.so.20 (0x00007f7285032000)",
+        "\tliblz4.so.1 => /lib/x86_64-linux-gnu/liblz4.so.1 (0x00007f728500e000)",
+        "\tliblzma.so.5 => /lib/x86_64-linux-gnu/liblzma.so.5 (0x00007f7284fdc000)",
+        "\tlibmd.so.0 => /lib/x86_64-linux-gnu/libmd.so.0 (0x00007f7284fcd000)",
+        "\tlibgpg-error.so.0 => /lib/x86_64-linux-gnu/libgpg-error.so.0 (0x00007f7284fa8000)"
+      ]
+    },
+    "usr/bin/putgd-b2-worker": {
+      "needed": [
+        "libQt6Network.so.6",
+        "libQt6Gui.so.6",
+        "libQt6Core.so.6",
+        "libstdc++.so.6",
+        "libgcc_s.so.1",
+        "libc.so.6",
+        "ld-linux-x86-64.so.2"
+      ],
+      "resolved": [
+        "linux-vdso.so.1 (0x00007f9088054000)",
+        "\tlibQt6Network.so.6 => /lib/x86_64-linux-gnu/libQt6Network.so.6 (0x00007f9087de0000)",
+        "\tlibQt6Gui.so.6 => /lib/x86_64-linux-gnu/libQt6Gui.so.6 (0x00007f90876af000)",
+        "\tlibQt6Core.so.6 => /lib/x86_64-linux-gnu/libQt6Core.so.6 (0x00007f90871a3000)",
+        "\tlibstdc++.so.6 => /lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007f9086f25000)",
+        "\tlibgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007f9086ef7000)",
+        "\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f9086ce2000)",
+        "\t/lib64/ld-linux-x86-64.so.2 (0x00007f9088056000)",
+        "\tlibgssapi_krb5.so.2 => /lib/x86_64-linux-gnu/libgssapi_krb5.so.2 (0x00007f9086c8e000)",
+        "\tlibbrotlidec.so.1 => /lib/x86_64-linux-gnu/libbrotlidec.so.1 (0x00007f9086c80000)",
+        "\tlibzstd.so.1 => /lib/x86_64-linux-gnu/libzstd.so.1 (0x00007f9086bc6000)",
+        "\tlibz.so.1 => /lib/x86_64-linux-gnu/libz.so.1 (0x00007f9086baa000)",
+        "\tlibproxy.so.1 => /lib/x86_64-linux-gnu/libproxy.so.1 (0x00007f9086ba5000)",
+        "\tlibEGL.so.1 => /lib/x86_64-linux-gnu/libEGL.so.1 (0x00007f9086b91000)",
+        "\tlibfontconfig.so.1 => /lib/x86_64-linux-gnu/libfontconfig.so.1 (0x00007f9086b40000)",
+        "\tlibX11.so.6 => /lib/x86_64-linux-gnu/libX11.so.6 (0x00007f9086a02000)",
+        "\tlibglib-2.0.so.0 => /lib/x86_64-linux-gnu/libglib-2.0.so.0 (0x00007f90868b9000)",
+        "\tlibQt6DBus.so.6 => /lib/x86_64-linux-gnu/libQt6DBus.so.6 (0x00007f9086804000)",
+        "\tlibxkbcommon.so.0 => /lib/x86_64-linux-gnu/libxkbcommon.so.0 (0x00007f90867b9000)",
+        "\tlibGLX.so.0 => /lib/x86_64-linux-gnu/libGLX.so.0 (0x00007f9086786000)",
+        "\tlibOpenGL.so.0 => /lib/x86_64-linux-gnu/libOpenGL.so.0 (0x00007f908675b000)",
+        "\tlibpng16.so.16 => /lib/x86_64-linux-gnu/libpng16.so.16 (0x00007f9086723000)",
+        "\tlibharfbuzz.so.0 => /lib/x86_64-linux-gnu/libharfbuzz.so.0 (0x00007f9086616000)",
+        "\tlibmd4c.so.0 => /lib/x86_64-linux-gnu/libmd4c.so.0 (0x00007f9086604000)",
+        "\tlibfreetype.so.6 => /lib/x86_64-linux-gnu/libfreetype.so.6 (0x00007f9086536000)",
+        "\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007f908644d000)",
+        "\tlibicui18n.so.74 => /lib/x86_64-linux-gnu/libicui18n.so.74 (0x00007f90860ff000)",
+        "\tlibicuuc.so.74 => /lib/x86_64-linux-gnu/libicuuc.so.74 (0x00007f9085ef2000)",
+        "\tlibdouble-conversion.so.3 => /lib/x86_64-linux-gnu/libdouble-conversion.so.3 (0x00007f9085edd000)",
+        "\tlibb2.so.1 => /lib/x86_64-linux-gnu/libb2.so.1 (0x00007f9085ebd000)",
+        "\tlibpcre2-16.so.0 => /lib/x86_64-linux-gnu/libpcre2-16.so.0 (0x00007f9085e31000)",
+        "\tlibkrb5.so.3 => /lib/x86_64-linux-gnu/libkrb5.so.3 (0x00007f9085d68000)",
+        "\tlibk5crypto.so.3 => /lib/x86_64-linux-gnu/libk5crypto.so.3 (0x00007f9085d3c000)",
+        "\tlibcom_err.so.2 => /lib/x86_64-linux-gnu/libcom_err.so.2 (0x00007f9085d36000)",
+        "\tlibkrb5support.so.0 => /lib/x86_64-linux-gnu/libkrb5support.so.0 (0x00007f9085d27000)",
+        "\tlibbrotlicommon.so.1 => /lib/x86_64-linux-gnu/libbrotlicommon.so.1 (0x00007f9085d04000)",
+        "\tlibpxbackend-1.0.so => /usr/lib/x86_64-linux-gnu/libproxy/libpxbackend-1.0.so (0x00007f9085cf6000)",
+        "\tlibgobject-2.0.so.0 => /lib/x86_64-linux-gnu/libgobject-2.0.so.0 (0x00007f9085c93000)",
+        "\tlibGLdispatch.so.0 => /lib/x86_64-linux-gnu/libGLdispatch.so.0 (0x00007f9085bdb000)",
+        "\tlibexpat.so.1 => /lib/x86_64-linux-gnu/libexpat.so.1 (0x00007f9085bab000)",
+        "\tlibxcb.so.1 => /lib/x86_64-linux-gnu/libxcb.so.1 (0x00007f9085b82000)",
+        "\tlibpcre2-8.so.0 => /lib/x86_64-linux-gnu/libpcre2-8.so.0 (0x00007f9085ae8000)",
+        "\tlibdbus-1.so.3 => /lib/x86_64-linux-gnu/libdbus-1.so.3 (0x00007f9085a99000)",
+        "\tlibgraphite2.so.3 => /lib/x86_64-linux-gnu/libgraphite2.so.3 (0x00007f9085a73000)",
+        "\tlibbz2.so.1.0 => /lib/x86_64-linux-gnu/libbz2.so.1.0 (0x00007f9085a5d000)",
+        "\tlibicudata.so.74 => /lib/x86_64-linux-gnu/libicudata.so.74 (0x00007f9083cfd000)",
+        "\tlibgomp.so.1 => /lib/x86_64-linux-gnu/libgomp.so.1 (0x00007f9083ca7000)",
+        "\tlibkeyutils.so.1 => /lib/x86_64-linux-gnu/libkeyutils.so.1 (0x00007f9083ca0000)",
+        "\tlibresolv.so.2 => /lib/x86_64-linux-gnu/libresolv.so.2 (0x00007f9083c8e000)",
+        "\tlibcurl-gnutls.so.4 => /lib/x86_64-linux-gnu/libcurl-gnutls.so.4 (0x00007f9083bd1000)",
+        "\tlibgio-2.0.so.0 => /lib/x86_64-linux-gnu/libgio-2.0.so.0 (0x00007f9083a01000)",
+        "\tlibduktape.so.207 => /lib/x86_64-linux-gnu/libduktape.so.207 (0x00007f90839b6000)",
+        "\tlibffi.so.8 => /lib/x86_64-linux-gnu/libffi.so.8 (0x00007f90839aa000)",
+        "\tlibXau.so.6 => /lib/x86_64-linux-gnu/libXau.so.6 (0x00007f90839a4000)",
+        "\tlibXdmcp.so.6 => /lib/x86_64-linux-gnu/libXdmcp.so.6 (0x00007f908399a000)",
+        "\tlibsystemd.so.0 => /lib/x86_64-linux-gnu/libsystemd.so.0 (0x00007f90838ba000)",
+        "\tlibnghttp2.so.14 => /lib/x86_64-linux-gnu/libnghttp2.so.14 (0x00007f908388f000)",
+        "\tlibidn2.so.0 => /lib/x86_64-linux-gnu/libidn2.so.0 (0x00007f908386d000)",
+        "\tlibrtmp.so.1 => /lib/x86_64-linux-gnu/librtmp.so.1 (0x00007f908384f000)",
+        "\tlibssh.so.4 => /lib/x86_64-linux-gnu/libssh.so.4 (0x00007f90837db000)",
+        "\tlibpsl.so.5 => /lib/x86_64-linux-gnu/libpsl.so.5 (0x00007f90837c7000)",
+        "\tlibnettle.so.8 => /lib/x86_64-linux-gnu/libnettle.so.8 (0x00007f9083772000)",
+        "\tlibgnutls.so.30 => /lib/x86_64-linux-gnu/libgnutls.so.30 (0x00007f9083577000)",
+        "\tlibldap.so.2 => /lib/x86_64-linux-gnu/libldap.so.2 (0x00007f9083519000)",
+        "\tliblber.so.2 => /lib/x86_64-linux-gnu/liblber.so.2 (0x00007f9083509000)",
+        "\tlibgmodule-2.0.so.0 => /lib/x86_64-linux-gnu/libgmodule-2.0.so.0 (0x00007f9083500000)",
+        "\tlibmount.so.1 => /lib/x86_64-linux-gnu/libmount.so.1 (0x00007f90834b3000)",
+        "\tlibselinux.so.1 => /lib/x86_64-linux-gnu/libselinux.so.1 (0x00007f9083486000)",
+        "\tlibbsd.so.0 => /lib/x86_64-linux-gnu/libbsd.so.0 (0x00007f9083470000)",
+        "\tlibcap.so.2 => /lib/x86_64-linux-gnu/libcap.so.2 (0x00007f9083463000)",
+        "\tlibgcrypt.so.20 => /lib/x86_64-linux-gnu/libgcrypt.so.20 (0x00007f9083318000)",
+        "\tliblz4.so.1 => /lib/x86_64-linux-gnu/liblz4.so.1 (0x00007f90832f6000)",
+        "\tliblzma.so.5 => /lib/x86_64-linux-gnu/liblzma.so.5 (0x00007f90832c4000)",
+        "\tlibunistring.so.5 => /lib/x86_64-linux-gnu/libunistring.so.5 (0x00007f9083117000)",
+        "\tlibhogweed.so.6 => /lib/x86_64-linux-gnu/libhogweed.so.6 (0x00007f90830cf000)",
+        "\tlibgmp.so.10 => /lib/x86_64-linux-gnu/libgmp.so.10 (0x00007f9083049000)",
+        "\tlibcrypto.so.3 => /lib/x86_64-linux-gnu/libcrypto.so.3 (0x00007f9082b35000)",
+        "\tlibp11-kit.so.0 => /lib/x86_64-linux-gnu/libp11-kit.so.0 (0x00007f9082991000)",
+        "\tlibtasn1.so.6 => /lib/x86_64-linux-gnu/libtasn1.so.6 (0x00007f908297b000)",
+        "\tlibsasl2.so.2 => /lib/x86_64-linux-gnu/libsasl2.so.2 (0x00007f9082961000)",
+        "\tlibblkid.so.1 => /lib/x86_64-linux-gnu/libblkid.so.1 (0x00007f9082924000)",
+        "\tlibmd.so.0 => /lib/x86_64-linux-gnu/libmd.so.0 (0x00007f9082915000)",
+        "\tlibgpg-error.so.0 => /lib/x86_64-linux-gnu/libgpg-error.so.0 (0x00007f90828f0000)"
+      ]
+    },
+    "usr/bin/putgd-kde-region": {
+      "needed": [
+        "libQt6Widgets.so.6",
+        "libQt6Gui.so.6",
+        "libQt6DBus.so.6",
+        "libQt6Core.so.6",
+        "libxkbcommon.so.0",
+        "libwayland-client.so.0",
+        "libstdc++.so.6",
+        "libm.so.6",
+        "libgcc_s.so.1",
+        "libc.so.6",
+        "ld-linux-x86-64.so.2"
+      ],
+      "resolved": [
+        "linux-vdso.so.1 (0x00007f186b5e5000)",
+        "\tlibQt6Widgets.so.6 => /lib/x86_64-linux-gnu/libQt6Widgets.so.6 (0x00007f186ad76000)",
+        "\tlibQt6Gui.so.6 => /lib/x86_64-linux-gnu/libQt6Gui.so.6 (0x00007f186a645000)",
+        "\tlibQt6DBus.so.6 => /lib/x86_64-linux-gnu/libQt6DBus.so.6 (0x00007f186a590000)",
+        "\tlibQt6Core.so.6 => /lib/x86_64-linux-gnu/libQt6Core.so.6 (0x00007f186a084000)",
+        "\tlibxkbcommon.so.0 => /lib/x86_64-linux-gnu/libxkbcommon.so.0 (0x00007f186a03b000)",
+        "\tlibwayland-client.so.0 => /lib/x86_64-linux-gnu/libwayland-client.so.0 (0x00007f186a029000)",
+        "\tlibstdc++.so.6 => /lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007f1869dab000)",
+        "\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007f1869cc2000)",
+        "\tlibgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007f1869c94000)",
+        "\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f1869a81000)",
+        "\t/lib64/ld-linux-x86-64.so.2 (0x00007f186b5e7000)",
+        "\tlibEGL.so.1 => /lib/x86_64-linux-gnu/libEGL.so.1 (0x00007f1869a6f000)",
+        "\tlibfontconfig.so.1 => /lib/x86_64-linux-gnu/libfontconfig.so.1 (0x00007f1869a1c000)",
+        "\tlibX11.so.6 => /lib/x86_64-linux-gnu/libX11.so.6 (0x00007f18698de000)",
+        "\tlibglib-2.0.so.0 => /lib/x86_64-linux-gnu/libglib-2.0.so.0 (0x00007f1869795000)",
+        "\tlibGLX.so.0 => /lib/x86_64-linux-gnu/libGLX.so.0 (0x00007f1869762000)",
+        "\tlibOpenGL.so.0 => /lib/x86_64-linux-gnu/libOpenGL.so.0 (0x00007f1869737000)",
+        "\tlibpng16.so.16 => /lib/x86_64-linux-gnu/libpng16.so.16 (0x00007f18696ff000)",
+        "\tlibharfbuzz.so.0 => /lib/x86_64-linux-gnu/libharfbuzz.so.0 (0x00007f18695f0000)",
+        "\tlibmd4c.so.0 => /lib/x86_64-linux-gnu/libmd4c.so.0 (0x00007f18695de000)",
+        "\tlibfreetype.so.6 => /lib/x86_64-linux-gnu/libfreetype.so.6 (0x00007f1869512000)",
+        "\tlibz.so.1 => /lib/x86_64-linux-gnu/libz.so.1 (0x00007f18694f6000)",
+        "\tlibdbus-1.so.3 => /lib/x86_64-linux-gnu/libdbus-1.so.3 (0x00007f18694a7000)",
+        "\tlibicui18n.so.74 => /lib/x86_64-linux-gnu/libicui18n.so.74 (0x00007f1869157000)",
+        "\tlibicuuc.so.74 => /lib/x86_64-linux-gnu/libicuuc.so.74 (0x00007f1868f4a000)",
+        "\tlibdouble-conversion.so.3 => /lib/x86_64-linux-gnu/libdouble-conversion.so.3 (0x00007f1868f35000)",
+        "\tlibb2.so.1 => /lib/x86_64-linux-gnu/libb2.so.1 (0x00007f1868f17000)",
+        "\tlibpcre2-16.so.0 => /lib/x86_64-linux-gnu/libpcre2-16.so.0 (0x00007f1868e8b000)",
+        "\tlibzstd.so.1 => /lib/x86_64-linux-gnu/libzstd.so.1 (0x00007f1868dd1000)",
+        "\tlibffi.so.8 => /lib/x86_64-linux-gnu/libffi.so.8 (0x00007f1868dc3000)",
+        "\tlibGLdispatch.so.0 => /lib/x86_64-linux-gnu/libGLdispatch.so.0 (0x00007f1868d0b000)",
+        "\tlibexpat.so.1 => /lib/x86_64-linux-gnu/libexpat.so.1 (0x00007f1868cdd000)",
+        "\tlibxcb.so.1 => /lib/x86_64-linux-gnu/libxcb.so.1 (0x00007f1868cb4000)",
+        "\tlibpcre2-8.so.0 => /lib/x86_64-linux-gnu/libpcre2-8.so.0 (0x00007f1868c1a000)",
+        "\tlibgraphite2.so.3 => /lib/x86_64-linux-gnu/libgraphite2.so.3 (0x00007f1868bf2000)",
+        "\tlibbz2.so.1.0 => /lib/x86_64-linux-gnu/libbz2.so.1.0 (0x00007f1868bde000)",
+        "\tlibbrotlidec.so.1 => /lib/x86_64-linux-gnu/libbrotlidec.so.1 (0x00007f1868bd0000)",
+        "\tlibsystemd.so.0 => /lib/x86_64-linux-gnu/libsystemd.so.0 (0x00007f1868af0000)",
+        "\tlibicudata.so.74 => /lib/x86_64-linux-gnu/libicudata.so.74 (0x00007f1866d90000)",
+        "\tlibgomp.so.1 => /lib/x86_64-linux-gnu/libgomp.so.1 (0x00007f1866d38000)",
+        "\tlibXau.so.6 => /lib/x86_64-linux-gnu/libXau.so.6 (0x00007f1866d32000)",
+        "\tlibXdmcp.so.6 => /lib/x86_64-linux-gnu/libXdmcp.so.6 (0x00007f1866d2a000)",
+        "\tlibbrotlicommon.so.1 => /lib/x86_64-linux-gnu/libbrotlicommon.so.1 (0x00007f1866d07000)",
+        "\tlibcap.so.2 => /lib/x86_64-linux-gnu/libcap.so.2 (0x00007f1866cfa000)",
+        "\tlibgcrypt.so.20 => /lib/x86_64-linux-gnu/libgcrypt.so.20 (0x00007f1866baf000)",
+        "\tliblz4.so.1 => /lib/x86_64-linux-gnu/liblz4.so.1 (0x00007f1866b8d000)",
+        "\tliblzma.so.5 => /lib/x86_64-linux-gnu/liblzma.so.5 (0x00007f1866b5b000)",
+        "\tlibbsd.so.0 => /lib/x86_64-linux-gnu/libbsd.so.0 (0x00007f1866b45000)",
+        "\tlibgpg-error.so.0 => /lib/x86_64-linux-gnu/libgpg-error.so.0 (0x00007f1866b20000)",
+        "\tlibmd.so.0 => /lib/x86_64-linux-gnu/libmd.so.0 (0x00007f1866b0f000)"
+      ]
+    },
+    "usr/bin/putgd-record": {
+      "needed": [
+        "libQt6DBus.so.6",
+        "libxcb-randr.so.0",
+        "libxcb.so.1",
+        "libQt6Widgets.so.6",
+        "libQt6Gui.so.6",
+        "libQt6Core.so.6",
+        "libgstbase-1.0.so.0",
+        "libgstreamer-1.0.so.0",
+        "libgobject-2.0.so.0",
+        "libglib-2.0.so.0",
+        "libavcodec.so.60",
+        "libavformat.so.60",
+        "libavfilter.so.9",
+        "libavutil.so.58",
+        "libswscale.so.7",
+        "libswresample.so.4",
+        "libwayland-client.so.0",
+        "libstdc++.so.6",
+        "libm.so.6",
+        "libgcc_s.so.1",
+        "libc.so.6",
+        "ld-linux-x86-64.so.2"
+      ],
+      "resolved": [
+        "linux-vdso.so.1 (0x00007ff8046cf000)",
+        "\tlibQt6DBus.so.6 => /lib/x86_64-linux-gnu/libQt6DBus.so.6 (0x00007ff80447f000)",
+        "\tlibxcb-randr.so.0 => /lib/x86_64-linux-gnu/libxcb-randr.so.0 (0x00007ff80446e000)",
+        "\tlibxcb.so.1 => /lib/x86_64-linux-gnu/libxcb.so.1 (0x00007ff804445000)",
+        "\tlibQt6Widgets.so.6 => /lib/x86_64-linux-gnu/libQt6Widgets.so.6 (0x00007ff803d11000)",
+        "\tlibQt6Gui.so.6 => /lib/x86_64-linux-gnu/libQt6Gui.so.6 (0x00007ff8035e0000)",
+        "\tlibQt6Core.so.6 => /lib/x86_64-linux-gnu/libQt6Core.so.6 (0x00007ff8030d2000)",
+        "\tlibgstbase-1.0.so.0 => /lib/x86_64-linux-gnu/libgstbase-1.0.so.0 (0x00007ff80304d000)",
+        "\tlibgstreamer-1.0.so.0 => /lib/x86_64-linux-gnu/libgstreamer-1.0.so.0 (0x00007ff802efa000)",
+        "\tlibgobject-2.0.so.0 => /lib/x86_64-linux-gnu/libgobject-2.0.so.0 (0x00007ff802e97000)",
+        "\tlibglib-2.0.so.0 => /lib/x86_64-linux-gnu/libglib-2.0.so.0 (0x00007ff802d4e000)",
+        "\tlibavcodec.so.60 => /lib/x86_64-linux-gnu/libavcodec.so.60 (0x00007ff801830000)",
+        "\tlibavformat.so.60 => /lib/x86_64-linux-gnu/libavformat.so.60 (0x00007ff801577000)",
+        "\tlibavfilter.so.9 => /lib/x86_64-linux-gnu/libavfilter.so.9 (0x00007ff800875000)",
+        "\tlibavutil.so.58 => /lib/x86_64-linux-gnu/libavutil.so.58 (0x00007ff7ff75b000)",
+        "\tlibswscale.so.7 => /lib/x86_64-linux-gnu/libswscale.so.7 (0x00007ff7ff6b6000)",
+        "\tlibswresample.so.4 => /lib/x86_64-linux-gnu/libswresample.so.4 (0x00007ff7ff695000)",
+        "\tlibwayland-client.so.0 => /lib/x86_64-linux-gnu/libwayland-client.so.0 (0x00007ff7ff685000)",
+        "\tlibstdc++.so.6 => /lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007ff7ff405000)",
+        "\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007ff7ff31c000)",
+        "\tlibgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007ff7ff2ee000)",
+        "\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007ff7ff0db000)",
+        "\t/lib64/ld-linux-x86-64.so.2 (0x00007ff8046d1000)",
+        "\tlibdbus-1.so.3 => /lib/x86_64-linux-gnu/libdbus-1.so.3 (0x00007ff7ff08c000)",
+        "\tlibXau.so.6 => /lib/x86_64-linux-gnu/libXau.so.6 (0x00007ff7ff084000)",
+        "\tlibXdmcp.so.6 => /lib/x86_64-linux-gnu/libXdmcp.so.6 (0x00007ff7ff07c000)",
+        "\tlibEGL.so.1 => /lib/x86_64-linux-gnu/libEGL.so.1 (0x00007ff7ff06a000)",
+        "\tlibfontconfig.so.1 => /lib/x86_64-linux-gnu/libfontconfig.so.1 (0x00007ff7ff019000)",
+        "\tlibX11.so.6 => /lib/x86_64-linux-gnu/libX11.so.6 (0x00007ff7feedb000)",
+        "\tlibxkbcommon.so.0 => /lib/x86_64-linux-gnu/libxkbcommon.so.0 (0x00007ff7fee92000)",
+        "\tlibGLX.so.0 => /lib/x86_64-linux-gnu/libGLX.so.0 (0x00007ff7fee5d000)",
+        "\tlibOpenGL.so.0 => /lib/x86_64-linux-gnu/libOpenGL.so.0 (0x00007ff7fee32000)",
+        "\tlibpng16.so.16 => /lib/x86_64-linux-gnu/libpng16.so.16 (0x00007ff7fedfa000)",
+        "\tlibharfbuzz.so.0 => /lib/x86_64-linux-gnu/libharfbuzz.so.0 (0x00007ff7feced000)",
+        "\tlibmd4c.so.0 => /lib/x86_64-linux-gnu/libmd4c.so.0 (0x00007ff7fecdb000)",
+        "\tlibfreetype.so.6 => /lib/x86_64-linux-gnu/libfreetype.so.6 (0x00007ff7fec0f000)",
+        "\tlibz.so.1 => /lib/x86_64-linux-gnu/libz.so.1 (0x00007ff7febf1000)",
+        "\tlibicui18n.so.74 => /lib/x86_64-linux-gnu/libicui18n.so.74 (0x00007ff7fe8a3000)",
+        "\tlibicuuc.so.74 => /lib/x86_64-linux-gnu/libicuuc.so.74 (0x00007ff7fe696000)",
+        "\tlibdouble-conversion.so.3 => /lib/x86_64-linux-gnu/libdouble-conversion.so.3 (0x00007ff7fe681000)",
+        "\tlibb2.so.1 => /lib/x86_64-linux-gnu/libb2.so.1 (0x00007ff7fe663000)",
+        "\tlibpcre2-16.so.0 => /lib/x86_64-linux-gnu/libpcre2-16.so.0 (0x00007ff7fe5d5000)",
+        "\tlibzstd.so.1 => /lib/x86_64-linux-gnu/libzstd.so.1 (0x00007ff7fe51b000)",
+        "\tlibgmodule-2.0.so.0 => /lib/x86_64-linux-gnu/libgmodule-2.0.so.0 (0x00007ff7fe514000)",
+        "\tlibunwind.so.8 => /lib/x86_64-linux-gnu/libunwind.so.8 (0x00007ff7fe4f9000)",
+        "\tlibdw.so.1 => /lib/x86_64-linux-gnu/libdw.so.1 (0x00007ff7fe445000)",
+        "\tlibffi.so.8 => /lib/x86_64-linux-gnu/libffi.so.8 (0x00007ff7fe437000)",
+        "\tlibpcre2-8.so.0 => /lib/x86_64-linux-gnu/libpcre2-8.so.0 (0x00007ff7fe39d000)",
+        "\tlibvpx.so.9 => /lib/x86_64-linux-gnu/libvpx.so.9 (0x00007ff7fe056000)",
+        "\tlibwebpmux.so.3 => /lib/x86_64-linux-gnu/libwebpmux.so.3 (0x00007ff7fe048000)",
+        "\tliblzma.so.5 => /lib/x86_64-linux-gnu/liblzma.so.5 (0x00007ff7fe016000)",
+        "\tlibdav1d.so.7 => /lib/x86_64-linux-gnu/libdav1d.so.7 (0x00007ff7fde38000)",
+        "\tlibrsvg-2.so.2 => /lib/x86_64-linux-gnu/librsvg-2.so.2 (0x00007ff7fd7d3000)",
+        "\tlibcairo.so.2 => /lib/x86_64-linux-gnu/libcairo.so.2 (0x00007ff7fd68f000)",
+        "\tlibzvbi.so.0 => /lib/x86_64-linux-gnu/libzvbi.so.0 (0x00007ff7fd602000)",
+        "\tlibsnappy.so.1 => /lib/x86_64-linux-gnu/libsnappy.so.1 (0x00007ff7fd5f7000)",
+        "\tlibaom.so.3 => /lib/x86_64-linux-gnu/libaom.so.3 (0x00007ff7fd078000)",
+        "\tlibcodec2.so.1.2 => /lib/x86_64-linux-gnu/libcodec2.so.1.2 (0x00007ff7fc066000)",
+        "\tlibgsm.so.1 => /lib/x86_64-linux-gnu/libgsm.so.1 (0x00007ff7fc057000)",
+        "\tlibjxl.so.0.7 => /lib/x86_64-linux-gnu/libjxl.so.0.7 (0x00007ff7fbcdc000)",
+        "\tlibjxl_threads.so.0.7 => /lib/x86_64-linux-gnu/libjxl_threads.so.0.7 (0x00007ff7fbcd6000)",
+        "\tlibmp3lame.so.0 => /lib/x86_64-linux-gnu/libmp3lame.so.0 (0x00007ff7fbc60000)",
+        "\tlibopenjp2.so.7 => /lib/x86_64-linux-gnu/libopenjp2.so.7 (0x00007ff7fbbff000)",
+        "\tlibopus.so.0 => /lib/x86_64-linux-gnu/libopus.so.0 (0x00007ff7fbb9e000)",
+        "\tlibrav1e.so.0 => /lib/x86_64-linux-gnu/librav1e.so.0 (0x00007ff7fb87b000)",
+        "\tlibshine.so.3 => /lib/x86_64-linux-gnu/libshine.so.3 (0x00007ff7fb86f000)",
+        "\tlibspeex.so.1 => /lib/x86_64-linux-gnu/libspeex.so.1 (0x00007ff7fb852000)",
+        "\tlibSvtAv1Enc.so.1 => /lib/x86_64-linux-gnu/libSvtAv1Enc.so.1 (0x00007ff7fb030000)",
+        "\tlibtheoraenc.so.1 => /lib/x86_64-linux-gnu/libtheoraenc.so.1 (0x00007ff7faff7000)",
+        "\tlibtheoradec.so.1 => /lib/x86_64-linux-gnu/libtheoradec.so.1 (0x00007ff7fafd7000)",
+        "\tlibtwolame.so.0 => /lib/x86_64-linux-gnu/libtwolame.so.0 (0x00007ff7fafb1000)",
+        "\tlibvorbis.so.0 => /lib/x86_64-linux-gnu/libvorbis.so.0 (0x00007ff7faf83000)",
+        "\tlibvorbisenc.so.2 => /lib/x86_64-linux-gnu/libvorbisenc.so.2 (0x00007ff7faed8000)",
+        "\tlibwebp.so.7 => /lib/x86_64-linux-gnu/libwebp.so.7 (0x00007ff7fae5d000)",
+        "\tlibx264.so.164 => /lib/x86_64-linux-gnu/libx264.so.164 (0x00007ff7fab98000)",
+        "\tlibx265.so.199 => /lib/x86_64-linux-gnu/libx265.so.199 (0x00007ff7f9bf8000)",
+        "\tlibxvidcore.so.4 => /lib/x86_64-linux-gnu/libxvidcore.so.4 (0x00007ff7f9aeb000)",
+        "\tlibva.so.2 => /lib/x86_64-linux-gnu/libva.so.2 (0x00007ff7f9abb000)",
+        "\tlibvpl.so.2 => /lib/x86_64-linux-gnu/libvpl.so.2 (0x00007ff7f9a83000)",
+        "\tlibxml2.so.2 => /lib/x86_64-linux-gnu/libxml2.so.2 (0x00007ff7f98a1000)",
+        "\tlibbz2.so.1.0 => /lib/x86_64-linux-gnu/libbz2.so.1.0 (0x00007ff7f988b000)",
+        "\tlibgme.so.0 => /lib/x86_64-linux-gnu/libgme.so.0 (0x00007ff7f983f000)",
+        "\tlibopenmpt.so.0 => /lib/x86_64-linux-gnu/libopenmpt.so.0 (0x00007ff7f9666000)",
+        "\tlibchromaprint.so.1 => /lib/x86_64-linux-gnu/libchromaprint.so.1 (0x00007ff7f9656000)",
+        "\tlibbluray.so.2 => /lib/x86_64-linux-gnu/libbluray.so.2 (0x00007ff7f95fe000)",
+        "\tlibgnutls.so.30 => /lib/x86_64-linux-gnu/libgnutls.so.30 (0x00007ff7f9403000)",
+        "\tlibrabbitmq.so.4 => /lib/x86_64-linux-gnu/librabbitmq.so.4 (0x00007ff7f93e9000)",
+        "\tlibrist.so.4 => /lib/x86_64-linux-gnu/librist.so.4 (0x00007ff7f93b6000)",
+        "\tlibsrt-gnutls.so.1.5 => /lib/x86_64-linux-gnu/libsrt-gnutls.so.1.5 (0x00007ff7f92ed000)",
+        "\tlibssh-gcrypt.so.4 => /lib/x86_64-linux-gnu/libssh-gcrypt.so.4 (0x00007ff7f9260000)",
+        "\tlibzmq.so.5 => /lib/x86_64-linux-gnu/libzmq.so.5 (0x00007ff7f91be000)",
+        "\tlibpostproc.so.57 => /lib/x86_64-linux-gnu/libpostproc.so.57 (0x00007ff7f91a6000)",
+        "\tlibpocketsphinx.so.3 => /lib/x86_64-linux-gnu/libpocketsphinx.so.3 (0x00007ff7f915d000)",
+        "\tlibsphinxbase.so.3 => /lib/x86_64-linux-gnu/libsphinxbase.so.3 (0x00007ff7f911c000)",
+        "\tlibbs2b.so.0 => /lib/x86_64-linux-gnu/libbs2b.so.0 (0x00007ff7f9115000)",
+        "\tliblilv-0.so.0 => /lib/x86_64-linux-gnu/liblilv-0.so.0 (0x00007ff7f90fc000)",
+        "\tlibrubberband.so.2 => /lib/x86_64-linux-gnu/librubberband.so.2 (0x00007ff7f90ac000)",
+        "\tlibmysofa.so.1 => /lib/x86_64-linux-gnu/libmysofa.so.1 (0x00007ff7f9099000)",
+        "\tlibflite_cmu_us_awb.so.1 => /lib/x86_64-linux-gnu/libflite_cmu_us_awb.so.1 (0x00007ff7f8ca3000)",
+        "\tlibflite_cmu_us_kal.so.1 => /lib/x86_64-linux-gnu/libflite_cmu_us_kal.so.1 (0x00007ff7f8b3e000)",
+        "\tlibflite_cmu_us_kal16.so.1 => /lib/x86_64-linux-gnu/libflite_cmu_us_kal16.so.1 (0x00007ff7f8765000)",
+        "\tlibflite_cmu_us_rms.so.1 => /lib/x86_64-linux-gnu/libflite_cmu_us_rms.so.1 (0x00007ff7f82cc000)",
+        "\tlibflite_cmu_us_slt.so.1 => /lib/x86_64-linux-gnu/libflite_cmu_us_slt.so.1 (0x00007ff7f7ed3000)",
+        "\tlibflite.so.1 => /lib/x86_64-linux-gnu/libflite.so.1 (0x00007ff7f7e99000)",
+        "\tlibfribidi.so.0 => /lib/x86_64-linux-gnu/libfribidi.so.0 (0x00007ff7f7e7b000)",
+        "\tlibplacebo.so.338 => /lib/x86_64-linux-gnu/libplacebo.so.338 (0x00007ff7f75fe000)",
+        "\tlibass.so.9 => /lib/x86_64-linux-gnu/libass.so.9 (0x00007ff7f75c5000)",
+        "\tlibvidstab.so.1.1 => /lib/x86_64-linux-gnu/libvidstab.so.1.1 (0x00007ff7f75b0000)",
+        "\tlibzimg.so.2 => /lib/x86_64-linux-gnu/libzimg.so.2 (0x00007ff7f74e3000)",
+        "\tlibOpenCL.so.1 => /lib/x86_64-linux-gnu/libOpenCL.so.1 (0x00007ff7f74d0000)",
+        "\tlibva-drm.so.2 => /lib/x86_64-linux-gnu/libva-drm.so.2 (0x00007ff7f74cb000)",
+        "\tlibva-x11.so.2 => /lib/x86_64-linux-gnu/libva-x11.so.2 (0x00007ff7f74c3000)",
+        "\tlibvdpau.so.1 => /lib/x86_64-linux-gnu/libvdpau.so.1 (0x00007ff7f74bd000)",
+        "\tlibdrm.so.2 => /lib/x86_64-linux-gnu/libdrm.so.2 (0x00007ff7f74a6000)",
+        "\tlibsoxr.so.0 => /lib/x86_64-linux-gnu/libsoxr.so.0 (0x00007ff7f743e000)",
+        "\tlibsystemd.so.0 => /lib/x86_64-linux-gnu/libsystemd.so.0 (0x00007ff7f735e000)",
+        "\tlibbsd.so.0 => /lib/x86_64-linux-gnu/libbsd.so.0 (0x00007ff7f7348000)",
+        "\tlibGLdispatch.so.0 => /lib/x86_64-linux-gnu/libGLdispatch.so.0 (0x00007ff7f7290000)",
+        "\tlibexpat.so.1 => /lib/x86_64-linux-gnu/libexpat.so.1 (0x00007ff7f7262000)",
+        "\tlibgraphite2.so.3 => /lib/x86_64-linux-gnu/libgraphite2.so.3 (0x00007ff7f723a000)",
+        "\tlibbrotlidec.so.1 => /lib/x86_64-linux-gnu/libbrotlidec.so.1 (0x00007ff7f722c000)",
+        "\tlibicudata.so.74 => /lib/x86_64-linux-gnu/libicudata.so.74 (0x00007ff7f54cc000)",
+        "\tlibgomp.so.1 => /lib/x86_64-linux-gnu/libgomp.so.1 (0x00007ff7f5476000)",
+        "\tlibelf.so.1 => /lib/x86_64-linux-gnu/libelf.so.1 (0x00007ff7f5457000)",
+        "\tlibcairo-gobject.so.2 => /lib/x86_64-linux-gnu/libcairo-gobject.so.2 (0x00007ff7f5449000)",
+        "\tlibgdk_pixbuf-2.0.so.0 => /lib/x86_64-linux-gnu/libgdk_pixbuf-2.0.so.0 (0x00007ff7f541b000)",
+        "\tlibgio-2.0.so.0 => /lib/x86_64-linux-gnu/libgio-2.0.so.0 (0x00007ff7f524b000)",
+        "\tlibpangocairo-1.0.so.0 => /lib/x86_64-linux-gnu/libpangocairo-1.0.so.0 (0x00007ff7f523a000)",
+        "\tlibpango-1.0.so.0 => /lib/x86_64-linux-gnu/libpango-1.0.so.0 (0x00007ff7f51cf000)",
+        "\tlibXext.so.6 => /lib/x86_64-linux-gnu/libXext.so.6 (0x00007ff7f51b9000)",
+        "\tlibXrender.so.1 => /lib/x86_64-linux-gnu/libXrender.so.1 (0x00007ff7f51ad000)",
+        "\tlibxcb-render.so.0 => /lib/x86_64-linux-gnu/libxcb-render.so.0 (0x00007ff7f519e000)",
+        "\tlibxcb-shm.so.0 => /lib/x86_64-linux-gnu/libxcb-shm.so.0 (0x00007ff7f5199000)",
+        "\tlibpixman-1.so.0 => /lib/x86_64-linux-gnu/libpixman-1.so.0 (0x00007ff7f50ea000)",
+        "\tlibhwy.so.1 => /lib/x86_64-linux-gnu/libhwy.so.1 (0x00007ff7f50dc000)",
+        "\tlibbrotlienc.so.1 => /lib/x86_64-linux-gnu/libbrotlienc.so.1 (0x00007ff7f503d000)",
+        "\tliblcms2.so.2 => /lib/x86_64-linux-gnu/liblcms2.so.2 (0x00007ff7f4fdb000)",
+        "\tlibogg.so.0 => /lib/x86_64-linux-gnu/libogg.so.0 (0x00007ff7f4fd1000)",
+        "\tlibsharpyuv.so.0 => /lib/x86_64-linux-gnu/libsharpyuv.so.0 (0x00007ff7f4fc9000)",
+        "\tlibnuma.so.1 => /lib/x86_64-linux-gnu/libnuma.so.1 (0x00007ff7f4fb9000)",
+        "\tlibmpg123.so.0 => /lib/x86_64-linux-gnu/libmpg123.so.0 (0x00007ff7f4f5d000)",
+        "\tlibvorbisfile.so.3 => /lib/x86_64-linux-gnu/libvorbisfile.so.3 (0x00007ff7f4f53000)",
+        "\tlibudfread.so.0 => /lib/x86_64-linux-gnu/libudfread.so.0 (0x00007ff7f4f48000)",
+        "\tlibp11-kit.so.0 => /lib/x86_64-linux-gnu/libp11-kit.so.0 (0x00007ff7f4da4000)",
+        "\tlibidn2.so.0 => /lib/x86_64-linux-gnu/libidn2.so.0 (0x00007ff7f4d80000)",
+        "\tlibunistring.so.5 => /lib/x86_64-linux-gnu/libunistring.so.5 (0x00007ff7f4bd3000)",
+        "\tlibtasn1.so.6 => /lib/x86_64-linux-gnu/libtasn1.so.6 (0x00007ff7f4bbd000)",
+        "\tlibnettle.so.8 => /lib/x86_64-linux-gnu/libnettle.so.8 (0x00007ff7f4b68000)",
+        "\tlibhogweed.so.6 => /lib/x86_64-linux-gnu/libhogweed.so.6 (0x00007ff7f4b20000)",
+        "\tlibgmp.so.10 => /lib/x86_64-linux-gnu/libgmp.so.10 (0x00007ff7f4a9c000)",
+        "\tlibssl.so.3 => /lib/x86_64-linux-gnu/libssl.so.3 (0x00007ff7f49f0000)",
+        "\tlibcrypto.so.3 => /lib/x86_64-linux-gnu/libcrypto.so.3 (0x00007ff7f44dc000)",
+        "\tlibmbedcrypto.so.7 => /lib/x86_64-linux-gnu/libmbedcrypto.so.7 (0x00007ff7f4457000)",
+        "\tlibcjson.so.1 => /lib/x86_64-linux-gnu/libcjson.so.1 (0x00007ff7f444d000)",
+        "\tlibgcrypt.so.20 => /lib/x86_64-linux-gnu/libgcrypt.so.20 (0x00007ff7f4304000)",
+        "\tlibgpg-error.so.0 => /lib/x86_64-linux-gnu/libgpg-error.so.0 (0x00007ff7f42dd000)",
+        "\tlibgssapi_krb5.so.2 => /lib/x86_64-linux-gnu/libgssapi_krb5.so.2 (0x00007ff7f4289000)",
+        "\tlibsodium.so.23 => /lib/x86_64-linux-gnu/libsodium.so.23 (0x00007ff7f4232000)",
+        "\tlibpgm-5.3.so.0 => /lib/x86_64-linux-gnu/libpgm-5.3.so.0 (0x00007ff7f41e8000)",
+        "\tlibnorm.so.1 => /lib/x86_64-linux-gnu/libnorm.so.1 (0x00007ff7f40dd000)",
+        "\tlibblas.so.3 => /lib/x86_64-linux-gnu/libblas.so.3 (0x00007ff7f4034000)",
+        "\tliblapack.so.3 => /lib/x86_64-linux-gnu/liblapack.so.3 (0x00007ff7f3944000)",
+        "\tlibserd-0.so.0 => /lib/x86_64-linux-gnu/libserd-0.so.0 (0x00007ff7f392c000)",
+        "\tlibsord-0.so.0 => /lib/x86_64-linux-gnu/libsord-0.so.0 (0x00007ff7f3923000)",
+        "\tlibsratom-0.so.0 => /lib/x86_64-linux-gnu/libsratom-0.so.0 (0x00007ff7f3918000)",
+        "\tlibzix-0.so.0 => /lib/x86_64-linux-gnu/libzix-0.so.0 (0x00007ff7f3908000)",
+        "\tlibfftw3.so.3 => /lib/x86_64-linux-gnu/libfftw3.so.3 (0x00007ff7f36e5000)",
+        "\tlibsamplerate.so.0 => /lib/x86_64-linux-gnu/libsamplerate.so.0 (0x00007ff7f3576000)",
+        "\tlibflite_usenglish.so.1 => /lib/x86_64-linux-gnu/libflite_usenglish.so.1 (0x00007ff7f354c000)",
+        "\tlibflite_cmulex.so.1 => /lib/x86_64-linux-gnu/libflite_cmulex.so.1 (0x00007ff7f34b5000)",
+        "\tlibasound.so.2 => /lib/x86_64-linux-gnu/libasound.so.2 (0x00007ff7f33a9000)",
+        "\tlibvulkan.so.1 => /lib/x86_64-linux-gnu/libvulkan.so.1 (0x00007ff7f332b000)",
+        "\tlibunibreak.so.5 => /lib/x86_64-linux-gnu/libunibreak.so.5 (0x00007ff7f3309000)",
+        "\tlibXfixes.so.3 => /lib/x86_64-linux-gnu/libXfixes.so.3 (0x00007ff7f3301000)",
+        "\tlibX11-xcb.so.1 => /lib/x86_64-linux-gnu/libX11-xcb.so.1 (0x00007ff7f32fc000)",
+        "\tlibxcb-dri3.so.0 => /lib/x86_64-linux-gnu/libxcb-dri3.so.0 (0x00007ff7f32f3000)",
+        "\tlibcap.so.2 => /lib/x86_64-linux-gnu/libcap.so.2 (0x00007ff7f32e6000)",
+        "\tliblz4.so.1 => /lib/x86_64-linux-gnu/liblz4.so.1 (0x00007ff7f32c4000)",
+        "\tlibmd.so.0 => /lib/x86_64-linux-gnu/libmd.so.0 (0x00007ff7f32b5000)",
+        "\tlibbrotlicommon.so.1 => /lib/x86_64-linux-gnu/libbrotlicommon.so.1 (0x00007ff7f3292000)",
+        "\tlibjpeg.so.8 => /lib/x86_64-linux-gnu/libjpeg.so.8 (0x00007ff7f320d000)",
+        "\tlibmount.so.1 => /lib/x86_64-linux-gnu/libmount.so.1 (0x00007ff7f31c0000)",
+        "\tlibselinux.so.1 => /lib/x86_64-linux-gnu/libselinux.so.1 (0x00007ff7f3193000)",
+        "\tlibpangoft2-1.0.so.0 => /lib/x86_64-linux-gnu/libpangoft2-1.0.so.0 (0x00007ff7f3178000)",
+        "\tlibthai.so.0 => /lib/x86_64-linux-gnu/libthai.so.0 (0x00007ff7f316d000)",
+        "\tlibkrb5.so.3 => /lib/x86_64-linux-gnu/libkrb5.so.3 (0x00007ff7f30a2000)",
+        "\tlibk5crypto.so.3 => /lib/x86_64-linux-gnu/libk5crypto.so.3 (0x00007ff7f3076000)",
+        "\tlibcom_err.so.2 => /lib/x86_64-linux-gnu/libcom_err.so.2 (0x00007ff7f3070000)",
+        "\tlibkrb5support.so.0 => /lib/x86_64-linux-gnu/libkrb5support.so.0 (0x00007ff7f3063000)",
+        "\tlibgfortran.so.5 => /lib/x86_64-linux-gnu/libgfortran.so.5 (0x00007ff7f2d45000)",
+        "\tlibblkid.so.1 => /lib/x86_64-linux-gnu/libblkid.so.1 (0x00007ff7f2d08000)",
+        "\tlibdatrie.so.1 => /lib/x86_64-linux-gnu/libdatrie.so.1 (0x00007ff7f2cff000)",
+        "\tlibkeyutils.so.1 => /lib/x86_64-linux-gnu/libkeyutils.so.1 (0x00007ff7f2cf8000)",
+        "\tlibresolv.so.2 => /lib/x86_64-linux-gnu/libresolv.so.2 (0x00007ff7f2ce6000)"
+      ]
+    },
+    "usr/lib/x86_64-linux-gnu/putgd/libaws-c-auth.so": {
+      "needed": [
+        "libaws-c-sdkutils.so.1.0.0",
+        "libaws-c-http.so.1.0.0",
+        "libaws-c-io.so.1.0.0",
+        "libaws-c-cal.so.1.0.0",
+        "libaws-c-common.so.1",
+        "libc.so.6"
+      ],
+      "resolved": [
+        "linux-vdso.so.1 (0x00007f3ddd065000)",
+        "\tlibaws-c-sdkutils.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-sdkutils.so.1.0.0 (0x00007f3ddcff9000)",
+        "\tlibaws-c-http.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-http.so.1.0.0 (0x00007f3ddcf8d000)",
+        "\tlibaws-c-io.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-io.so.1.0.0 (0x00007f3ddcf37000)",
+        "\tlibaws-c-cal.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-cal.so.1.0.0 (0x00007f3ddcf1d000)",
+        "\tlibaws-c-common.so.1 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-common.so.1 (0x00007f3ddcec4000)",
+        "\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f3ddcca5000)",
+        "\tlibaws-c-compression.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-compression.so.1.0.0 (0x00007f3ddcca0000)",
+        "\tlibs2n.so.1 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libs2n.so.1 (0x00007f3ddcb25000)",
+        "\t/lib64/ld-linux-x86-64.so.2 (0x00007f3ddd067000)",
+        "\tlibcrypto.so.3 => /lib/x86_64-linux-gnu/libcrypto.so.3 (0x00007f3ddc611000)",
+        "\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007f3ddc528000)"
+      ]
+    },
+    "usr/lib/x86_64-linux-gnu/putgd/libaws-c-auth.so.1.0.0": {
+      "needed": [
+        "libaws-c-sdkutils.so.1.0.0",
+        "libaws-c-http.so.1.0.0",
+        "libaws-c-io.so.1.0.0",
+        "libaws-c-cal.so.1.0.0",
+        "libaws-c-common.so.1",
+        "libc.so.6"
+      ],
+      "resolved": [
+        "linux-vdso.so.1 (0x00007f37618fb000)",
+        "\tlibaws-c-sdkutils.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-sdkutils.so.1.0.0 (0x00007f376188f000)",
+        "\tlibaws-c-http.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-http.so.1.0.0 (0x00007f3761823000)",
+        "\tlibaws-c-io.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-io.so.1.0.0 (0x00007f37617cd000)",
+        "\tlibaws-c-cal.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-cal.so.1.0.0 (0x00007f37617b3000)",
+        "\tlibaws-c-common.so.1 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-common.so.1 (0x00007f376175a000)",
+        "\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f376153b000)",
+        "\tlibaws-c-compression.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-compression.so.1.0.0 (0x00007f3761536000)",
+        "\tlibs2n.so.1 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libs2n.so.1 (0x00007f37613bb000)",
+        "\t/lib64/ld-linux-x86-64.so.2 (0x00007f37618fd000)",
+        "\tlibcrypto.so.3 => /lib/x86_64-linux-gnu/libcrypto.so.3 (0x00007f3760ea7000)",
+        "\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007f3760dbe000)"
+      ]
+    },
+    "usr/lib/x86_64-linux-gnu/putgd/libaws-c-cal.so": {
+      "needed": [
+        "libaws-c-common.so.1",
+        "libcrypto.so.3",
+        "libc.so.6"
+      ],
+      "resolved": [
+        "linux-vdso.so.1 (0x00007f61abfb5000)",
+        "\tlibaws-c-common.so.1 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-common.so.1 (0x00007f61abf3a000)",
+        "\tlibcrypto.so.3 => /lib/x86_64-linux-gnu/libcrypto.so.3 (0x00007f61aba1c000)",
+        "\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f61ab809000)",
+        "\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007f61ab720000)",
+        "\t/lib64/ld-linux-x86-64.so.2 (0x00007f61abfb7000)"
+      ]
+    },
+    "usr/lib/x86_64-linux-gnu/putgd/libaws-c-cal.so.1.0.0": {
+      "needed": [
+        "libaws-c-common.so.1",
+        "libcrypto.so.3",
+        "libc.so.6"
+      ],
+      "resolved": [
+        "linux-vdso.so.1 (0x00007fa556fed000)",
+        "\tlibaws-c-common.so.1 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-common.so.1 (0x00007fa556f72000)",
+        "\tlibcrypto.so.3 => /lib/x86_64-linux-gnu/libcrypto.so.3 (0x00007fa556a54000)",
+        "\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fa556841000)",
+        "\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007fa556758000)",
+        "\t/lib64/ld-linux-x86-64.so.2 (0x00007fa556fef000)"
+      ]
+    },
+    "usr/lib/x86_64-linux-gnu/putgd/libaws-c-common.so": {
+      "needed": [
+        "libm.so.6",
+        "libc.so.6",
+        "ld-linux-x86-64.so.2"
+      ],
+      "resolved": [
+        "linux-vdso.so.1 (0x00007f651044a000)",
+        "\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007f65102f6000)",
+        "\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f65100e3000)",
+        "\t/lib64/ld-linux-x86-64.so.2 (0x00007f651044c000)"
+      ]
+    },
+    "usr/lib/x86_64-linux-gnu/putgd/libaws-c-common.so.0.14.5": {
+      "needed": [
+        "libm.so.6",
+        "libc.so.6",
+        "ld-linux-x86-64.so.2"
+      ],
+      "resolved": [
+        "linux-vdso.so.1 (0x00007f7a975f9000)",
+        "\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007f7a974a5000)",
+        "\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f7a97292000)",
+        "\t/lib64/ld-linux-x86-64.so.2 (0x00007f7a975fb000)"
+      ]
+    },
+    "usr/lib/x86_64-linux-gnu/putgd/libaws-c-common.so.1": {
+      "needed": [
+        "libm.so.6",
+        "libc.so.6",
+        "ld-linux-x86-64.so.2"
+      ],
+      "resolved": [
+        "linux-vdso.so.1 (0x00007fb871bd9000)",
+        "\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007fb871a85000)",
+        "\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fb871872000)",
+        "\t/lib64/ld-linux-x86-64.so.2 (0x00007fb871bdb000)"
+      ]
+    },
+    "usr/lib/x86_64-linux-gnu/putgd/libaws-c-compression.so": {
+      "needed": [
+        "libaws-c-common.so.1",
+        "libc.so.6"
+      ],
+      "resolved": [
+        "linux-vdso.so.1 (0x00007eff95299000)",
+        "\tlibaws-c-common.so.1 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-common.so.1 (0x00007eff95233000)",
+        "\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007eff95016000)",
+        "\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007eff94f2d000)",
+        "\t/lib64/ld-linux-x86-64.so.2 (0x00007eff9529b000)"
+      ]
+    },
+    "usr/lib/x86_64-linux-gnu/putgd/libaws-c-compression.so.1.0.0": {
+      "needed": [
+        "libaws-c-common.so.1",
+        "libc.so.6"
+      ],
+      "resolved": [
+        "linux-vdso.so.1 (0x00007f1f636f3000)",
+        "\tlibaws-c-common.so.1 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-common.so.1 (0x00007f1f6368d000)",
+        "\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f1f63470000)",
+        "\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007f1f63387000)",
+        "\t/lib64/ld-linux-x86-64.so.2 (0x00007f1f636f5000)"
+      ]
+    },
+    "usr/lib/x86_64-linux-gnu/putgd/libaws-c-event-stream.so": {
+      "needed": [
+        "libaws-c-io.so.1.0.0",
+        "libaws-checksums.so.1.0.0",
+        "libaws-c-common.so.1",
+        "libc.so.6"
+      ],
+      "resolved": [
+        "linux-vdso.so.1 (0x00007f164334c000)",
+        "\tlibaws-c-io.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-io.so.1.0.0 (0x00007f16432d3000)",
+        "\tlibaws-checksums.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-checksums.so.1.0.0 (0x00007f16432b0000)",
+        "\tlibaws-c-common.so.1 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-common.so.1 (0x00007f1643257000)",
+        "\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f164303a000)",
+        "\tlibs2n.so.1 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libs2n.so.1 (0x00007f1642ebf000)",
+        "\tlibaws-c-cal.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-cal.so.1.0.0 (0x00007f1642ea3000)",
+        "\t/lib64/ld-linux-x86-64.so.2 (0x00007f164334e000)",
+        "\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007f1642dba000)",
+        "\tlibcrypto.so.3 => /lib/x86_64-linux-gnu/libcrypto.so.3 (0x00007f16428a6000)"
+      ]
+    },
+    "usr/lib/x86_64-linux-gnu/putgd/libaws-c-event-stream.so.1.0.0": {
+      "needed": [
+        "libaws-c-io.so.1.0.0",
+        "libaws-checksums.so.1.0.0",
+        "libaws-c-common.so.1",
+        "libc.so.6"
+      ],
+      "resolved": [
+        "linux-vdso.so.1 (0x00007f8c84a89000)",
+        "\tlibaws-c-io.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-io.so.1.0.0 (0x00007f8c84a10000)",
+        "\tlibaws-checksums.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-checksums.so.1.0.0 (0x00007f8c849ed000)",
+        "\tlibaws-c-common.so.1 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-common.so.1 (0x00007f8c84994000)",
+        "\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f8c84777000)",
+        "\tlibs2n.so.1 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libs2n.so.1 (0x00007f8c845fc000)",
+        "\tlibaws-c-cal.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-cal.so.1.0.0 (0x00007f8c845e0000)",
+        "\t/lib64/ld-linux-x86-64.so.2 (0x00007f8c84a8b000)",
+        "\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007f8c844f7000)",
+        "\tlibcrypto.so.3 => /lib/x86_64-linux-gnu/libcrypto.so.3 (0x00007f8c83fe3000)"
+      ]
+    },
+    "usr/lib/x86_64-linux-gnu/putgd/libaws-c-http.so": {
+      "needed": [
+        "libaws-c-io.so.1.0.0",
+        "libaws-c-compression.so.1.0.0",
+        "libaws-c-cal.so.1.0.0",
+        "libaws-c-common.so.1",
+        "libc.so.6"
+      ],
+      "resolved": [
+        "linux-vdso.so.1 (0x00007f8014d84000)",
+        "\tlibaws-c-io.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-io.so.1.0.0 (0x00007f8014cba000)",
+        "\tlibaws-c-compression.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-compression.so.1.0.0 (0x00007f8014cb5000)",
+        "\tlibaws-c-cal.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-cal.so.1.0.0 (0x00007f8014c9b000)",
+        "\tlibaws-c-common.so.1 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-common.so.1 (0x00007f8014c42000)",
+        "\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f8014a25000)",
+        "\tlibs2n.so.1 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libs2n.so.1 (0x00007f80148a8000)",
+        "\t/lib64/ld-linux-x86-64.so.2 (0x00007f8014d86000)",
+        "\tlibcrypto.so.3 => /lib/x86_64-linux-gnu/libcrypto.so.3 (0x00007f8014394000)",
+        "\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007f80142ab000)"
+      ]
+    },
+    "usr/lib/x86_64-linux-gnu/putgd/libaws-c-http.so.1.0.0": {
+      "needed": [
+        "libaws-c-io.so.1.0.0",
+        "libaws-c-compression.so.1.0.0",
+        "libaws-c-cal.so.1.0.0",
+        "libaws-c-common.so.1",
+        "libc.so.6"
+      ],
+      "resolved": [
+        "linux-vdso.so.1 (0x00007f6eed207000)",
+        "\tlibaws-c-io.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-io.so.1.0.0 (0x00007f6eed13d000)",
+        "\tlibaws-c-compression.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-compression.so.1.0.0 (0x00007f6eed138000)",
+        "\tlibaws-c-cal.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-cal.so.1.0.0 (0x00007f6eed11e000)",
+        "\tlibaws-c-common.so.1 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-common.so.1 (0x00007f6eed0c5000)",
+        "\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f6eecea8000)",
+        "\tlibs2n.so.1 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libs2n.so.1 (0x00007f6eecd2b000)",
+        "\t/lib64/ld-linux-x86-64.so.2 (0x00007f6eed209000)",
+        "\tlibcrypto.so.3 => /lib/x86_64-linux-gnu/libcrypto.so.3 (0x00007f6eec817000)",
+        "\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007f6eec72e000)"
+      ]
+    },
+    "usr/lib/x86_64-linux-gnu/putgd/libaws-c-io.so": {
+      "needed": [
+        "libs2n.so.1",
+        "libaws-c-cal.so.1.0.0",
+        "libaws-c-common.so.1",
+        "libc.so.6",
+        "ld-linux-x86-64.so.2"
+      ],
+      "resolved": [
+        "linux-vdso.so.1 (0x00007fd0782f1000)",
+        "\tlibs2n.so.1 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libs2n.so.1 (0x00007fd078118000)",
+        "\tlibaws-c-cal.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-cal.so.1.0.0 (0x00007fd0780fe000)",
+        "\tlibaws-c-common.so.1 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-common.so.1 (0x00007fd0780a5000)",
+        "\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fd077e88000)",
+        "\t/lib64/ld-linux-x86-64.so.2 (0x00007fd0782f3000)",
+        "\tlibcrypto.so.3 => /lib/x86_64-linux-gnu/libcrypto.so.3 (0x00007fd077974000)",
+        "\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007fd077889000)"
+      ]
+    },
+    "usr/lib/x86_64-linux-gnu/putgd/libaws-c-io.so.1.0.0": {
+      "needed": [
+        "libs2n.so.1",
+        "libaws-c-cal.so.1.0.0",
+        "libaws-c-common.so.1",
+        "libc.so.6",
+        "ld-linux-x86-64.so.2"
+      ],
+      "resolved": [
+        "linux-vdso.so.1 (0x00007f03a364f000)",
+        "\tlibs2n.so.1 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libs2n.so.1 (0x00007f03a3476000)",
+        "\tlibaws-c-cal.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-cal.so.1.0.0 (0x00007f03a345c000)",
+        "\tlibaws-c-common.so.1 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-common.so.1 (0x00007f03a3403000)",
+        "\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f03a31e6000)",
+        "\t/lib64/ld-linux-x86-64.so.2 (0x00007f03a3651000)",
+        "\tlibcrypto.so.3 => /lib/x86_64-linux-gnu/libcrypto.so.3 (0x00007f03a2cd2000)",
+        "\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007f03a2be7000)"
+      ]
+    },
+    "usr/lib/x86_64-linux-gnu/putgd/libaws-c-mqtt.so": {
+      "needed": [
+        "libaws-c-http.so.1.0.0",
+        "libaws-c-io.so.1.0.0",
+        "libaws-c-common.so.1",
+        "libc.so.6"
+      ],
+      "resolved": [
+        "linux-vdso.so.1 (0x00007fc2f122d000)",
+        "\tlibaws-c-http.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-http.so.1.0.0 (0x00007fc2f1151000)",
+        "\tlibaws-c-io.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-io.so.1.0.0 (0x00007fc2f10fb000)",
+        "\tlibaws-c-common.so.1 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-common.so.1 (0x00007fc2f10a2000)",
+        "\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fc2f0e85000)",
+        "\tlibaws-c-compression.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-compression.so.1.0.0 (0x00007fc2f0e80000)",
+        "\tlibaws-c-cal.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-cal.so.1.0.0 (0x00007fc2f0e64000)",
+        "\tlibs2n.so.1 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libs2n.so.1 (0x00007fc2f0ce9000)",
+        "\t/lib64/ld-linux-x86-64.so.2 (0x00007fc2f122f000)",
+        "\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007fc2f0c00000)",
+        "\tlibcrypto.so.3 => /lib/x86_64-linux-gnu/libcrypto.so.3 (0x00007fc2f06ec000)"
+      ]
+    },
+    "usr/lib/x86_64-linux-gnu/putgd/libaws-c-mqtt.so.1.0.0": {
+      "needed": [
+        "libaws-c-http.so.1.0.0",
+        "libaws-c-io.so.1.0.0",
+        "libaws-c-common.so.1",
+        "libc.so.6"
+      ],
+      "resolved": [
+        "linux-vdso.so.1 (0x00007f7751da7000)",
+        "\tlibaws-c-http.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-http.so.1.0.0 (0x00007f7751ccb000)",
+        "\tlibaws-c-io.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-io.so.1.0.0 (0x00007f7751c75000)",
+        "\tlibaws-c-common.so.1 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-common.so.1 (0x00007f7751c1c000)",
+        "\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f77519ff000)",
+        "\tlibaws-c-compression.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-compression.so.1.0.0 (0x00007f77519fa000)",
+        "\tlibaws-c-cal.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-cal.so.1.0.0 (0x00007f77519de000)",
+        "\tlibs2n.so.1 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libs2n.so.1 (0x00007f7751863000)",
+        "\t/lib64/ld-linux-x86-64.so.2 (0x00007f7751da9000)",
+        "\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007f775177a000)",
+        "\tlibcrypto.so.3 => /lib/x86_64-linux-gnu/libcrypto.so.3 (0x00007f7751266000)"
+      ]
+    },
+    "usr/lib/x86_64-linux-gnu/putgd/libaws-c-s3.so": {
+      "needed": [
+        "libaws-c-auth.so.1.0.0",
+        "libaws-checksums.so.1.0.0",
+        "libaws-c-http.so.1.0.0",
+        "libaws-c-io.so.1.0.0",
+        "libaws-c-cal.so.1.0.0",
+        "libaws-c-common.so.1",
+        "libc.so.6"
+      ],
+      "resolved": [
+        "linux-vdso.so.1 (0x00007f9258b00000)",
+        "\tlibaws-c-auth.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-auth.so.1.0.0 (0x00007f9258a67000)",
+        "\tlibaws-checksums.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-checksums.so.1.0.0 (0x00007f9258a44000)",
+        "\tlibaws-c-http.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-http.so.1.0.0 (0x00007f92589d8000)",
+        "\tlibaws-c-io.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-io.so.1.0.0 (0x00007f9258982000)",
+        "\tlibaws-c-cal.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-cal.so.1.0.0 (0x00007f9258968000)",
+        "\tlibaws-c-common.so.1 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-common.so.1 (0x00007f925890d000)",
+        "\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f92586f0000)",
+        "\tlibaws-c-sdkutils.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-sdkutils.so.1.0.0 (0x00007f92586d0000)",
+        "\tlibaws-c-compression.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-compression.so.1.0.0 (0x00007f92586cb000)",
+        "\tlibs2n.so.1 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libs2n.so.1 (0x00007f9258550000)",
+        "\t/lib64/ld-linux-x86-64.so.2 (0x00007f9258b02000)",
+        "\tlibcrypto.so.3 => /lib/x86_64-linux-gnu/libcrypto.so.3 (0x00007f925803a000)",
+        "\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007f9257f51000)"
+      ]
+    },
+    "usr/lib/x86_64-linux-gnu/putgd/libaws-c-s3.so.0unstable": {
+      "needed": [
+        "libaws-c-auth.so.1.0.0",
+        "libaws-checksums.so.1.0.0",
+        "libaws-c-http.so.1.0.0",
+        "libaws-c-io.so.1.0.0",
+        "libaws-c-cal.so.1.0.0",
+        "libaws-c-common.so.1",
+        "libc.so.6"
+      ],
+      "resolved": [
+        "linux-vdso.so.1 (0x00007f44efd91000)",
+        "\tlibaws-c-auth.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-auth.so.1.0.0 (0x00007f44efcf8000)",
+        "\tlibaws-checksums.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-checksums.so.1.0.0 (0x00007f44efcd5000)",
+        "\tlibaws-c-http.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-http.so.1.0.0 (0x00007f44efc69000)",
+        "\tlibaws-c-io.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-io.so.1.0.0 (0x00007f44efc13000)",
+        "\tlibaws-c-cal.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-cal.so.1.0.0 (0x00007f44efbf9000)",
+        "\tlibaws-c-common.so.1 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-common.so.1 (0x00007f44efb9e000)",
+        "\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f44ef981000)",
+        "\tlibaws-c-sdkutils.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-sdkutils.so.1.0.0 (0x00007f44ef961000)",
+        "\tlibaws-c-compression.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-compression.so.1.0.0 (0x00007f44ef95c000)",
+        "\tlibs2n.so.1 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libs2n.so.1 (0x00007f44ef7e1000)",
+        "\t/lib64/ld-linux-x86-64.so.2 (0x00007f44efd93000)",
+        "\tlibcrypto.so.3 => /lib/x86_64-linux-gnu/libcrypto.so.3 (0x00007f44ef2cb000)",
+        "\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007f44ef1e2000)"
+      ]
+    },
+    "usr/lib/x86_64-linux-gnu/putgd/libaws-c-s3.so.1.0.0": {
+      "needed": [
+        "libaws-c-auth.so.1.0.0",
+        "libaws-checksums.so.1.0.0",
+        "libaws-c-http.so.1.0.0",
+        "libaws-c-io.so.1.0.0",
+        "libaws-c-cal.so.1.0.0",
+        "libaws-c-common.so.1",
+        "libc.so.6"
+      ],
+      "resolved": [
+        "linux-vdso.so.1 (0x00007fb643a23000)",
+        "\tlibaws-c-auth.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-auth.so.1.0.0 (0x00007fb64398a000)",
+        "\tlibaws-checksums.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-checksums.so.1.0.0 (0x00007fb643967000)",
+        "\tlibaws-c-http.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-http.so.1.0.0 (0x00007fb6438fb000)",
+        "\tlibaws-c-io.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-io.so.1.0.0 (0x00007fb6438a5000)",
+        "\tlibaws-c-cal.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-cal.so.1.0.0 (0x00007fb64388b000)",
+        "\tlibaws-c-common.so.1 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-common.so.1 (0x00007fb643830000)",
+        "\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fb643613000)",
+        "\tlibaws-c-sdkutils.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-sdkutils.so.1.0.0 (0x00007fb6435f3000)",
+        "\tlibaws-c-compression.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-compression.so.1.0.0 (0x00007fb6435ee000)",
+        "\tlibs2n.so.1 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libs2n.so.1 (0x00007fb643473000)",
+        "\t/lib64/ld-linux-x86-64.so.2 (0x00007fb643a25000)",
+        "\tlibcrypto.so.3 => /lib/x86_64-linux-gnu/libcrypto.so.3 (0x00007fb642f5d000)",
+        "\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007fb642e74000)"
+      ]
+    },
+    "usr/lib/x86_64-linux-gnu/putgd/libaws-c-sdkutils.so": {
+      "needed": [
+        "libaws-c-common.so.1",
+        "libc.so.6"
+      ],
+      "resolved": [
+        "linux-vdso.so.1 (0x00007f8ee7ac6000)",
+        "\tlibaws-c-common.so.1 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-common.so.1 (0x00007f8ee7a45000)",
+        "\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f8ee7828000)",
+        "\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007f8ee773f000)",
+        "\t/lib64/ld-linux-x86-64.so.2 (0x00007f8ee7ac8000)"
+      ]
+    },
+    "usr/lib/x86_64-linux-gnu/putgd/libaws-c-sdkutils.so.1.0.0": {
+      "needed": [
+        "libaws-c-common.so.1",
+        "libc.so.6"
+      ],
+      "resolved": [
+        "linux-vdso.so.1 (0x00007f88a7c83000)",
+        "\tlibaws-c-common.so.1 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-common.so.1 (0x00007f88a7c02000)",
+        "\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f88a79e5000)",
+        "\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007f88a78fc000)",
+        "\t/lib64/ld-linux-x86-64.so.2 (0x00007f88a7c85000)"
+      ]
+    },
+    "usr/lib/x86_64-linux-gnu/putgd/libaws-checksums.so": {
+      "needed": [
+        "libaws-c-common.so.1",
+        "libc.so.6"
+      ],
+      "resolved": [
+        "linux-vdso.so.1 (0x00007f4dded82000)",
+        "\tlibaws-c-common.so.1 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-common.so.1 (0x00007f4ddecfe000)",
+        "\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f4ddeae1000)",
+        "\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007f4dde9f8000)",
+        "\t/lib64/ld-linux-x86-64.so.2 (0x00007f4dded84000)"
+      ]
+    },
+    "usr/lib/x86_64-linux-gnu/putgd/libaws-checksums.so.1.0.0": {
+      "needed": [
+        "libaws-c-common.so.1",
+        "libc.so.6"
+      ],
+      "resolved": [
+        "linux-vdso.so.1 (0x00007f5c46fd6000)",
+        "\tlibaws-c-common.so.1 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-common.so.1 (0x00007f5c46f52000)",
+        "\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f5c46d35000)",
+        "\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007f5c46c4c000)",
+        "\t/lib64/ld-linux-x86-64.so.2 (0x00007f5c46fd8000)"
+      ]
+    },
+    "usr/lib/x86_64-linux-gnu/putgd/libaws-cpp-sdk-core.so": {
+      "needed": [
+        "libcurl.so.4",
+        "libaws-crt-cpp.so",
+        "libz.so.1",
+        "libaws-c-event-stream.so.1.0.0",
+        "libaws-c-common.so.1",
+        "libstdc++.so.6",
+        "libm.so.6",
+        "libc.so.6",
+        "ld-linux-x86-64.so.2"
+      ],
+      "resolved": [
+        "linux-vdso.so.1 (0x00007f299a91a000)",
+        "\tlibcurl.so.4 => /lib/x86_64-linux-gnu/libcurl.so.4 (0x00007f299a53f000)",
+        "\tlibaws-crt-cpp.so => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-crt-cpp.so (0x00007f299a475000)",
+        "\tlibz.so.1 => /lib/x86_64-linux-gnu/libz.so.1 (0x00007f299a8ec000)",
+        "\tlibaws-c-event-stream.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-event-stream.so.1.0.0 (0x00007f299a8d1000)",
+        "\tlibaws-c-common.so.1 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-common.so.1 (0x00007f299a878000)",
+        "\tlibstdc++.so.6 => /lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007f299a1f7000)",
+        "\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007f299a10e000)",
+        "\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f2999efb000)",
+        "\t/lib64/ld-linux-x86-64.so.2 (0x00007f299a91c000)",
+        "\tlibnghttp2.so.14 => /lib/x86_64-linux-gnu/libnghttp2.so.14 (0x00007f2999ed0000)",
+        "\tlibidn2.so.0 => /lib/x86_64-linux-gnu/libidn2.so.0 (0x00007f2999eae000)",
+        "\tlibrtmp.so.1 => /lib/x86_64-linux-gnu/librtmp.so.1 (0x00007f2999e90000)",
+        "\tlibssh.so.4 => /lib/x86_64-linux-gnu/libssh.so.4 (0x00007f2999e1e000)",
+        "\tlibpsl.so.5 => /lib/x86_64-linux-gnu/libpsl.so.5 (0x00007f2999e0a000)",
+        "\tlibssl.so.3 => /lib/x86_64-linux-gnu/libssl.so.3 (0x00007f2999d60000)",
+        "\tlibcrypto.so.3 => /lib/x86_64-linux-gnu/libcrypto.so.3 (0x00007f299984c000)",
+        "\tlibgssapi_krb5.so.2 => /lib/x86_64-linux-gnu/libgssapi_krb5.so.2 (0x00007f29997f8000)",
+        "\tlibldap.so.2 => /lib/x86_64-linux-gnu/libldap.so.2 (0x00007f299979a000)",
+        "\tliblber.so.2 => /lib/x86_64-linux-gnu/liblber.so.2 (0x00007f299978a000)",
+        "\tlibzstd.so.1 => /lib/x86_64-linux-gnu/libzstd.so.1 (0x00007f29996d0000)",
+        "\tlibbrotlidec.so.1 => /lib/x86_64-linux-gnu/libbrotlidec.so.1 (0x00007f29996c2000)",
+        "\tlibaws-c-mqtt.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-mqtt.so.1.0.0 (0x00007f299965a000)",
+        "\tlibaws-c-s3.so.0unstable => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-s3.so.0unstable (0x00007f299960d000)",
+        "\tlibaws-c-auth.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-auth.so.1.0.0 (0x00007f29995c9000)",
+        "\tlibaws-c-http.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-http.so.1.0.0 (0x00007f299955d000)",
+        "\tlibaws-c-io.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-io.so.1.0.0 (0x00007f2999507000)",
+        "\tlibaws-c-cal.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-cal.so.1.0.0 (0x00007f29994ed000)",
+        "\tlibaws-c-sdkutils.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-sdkutils.so.1.0.0 (0x00007f29994cd000)",
+        "\tlibaws-checksums.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-checksums.so.1.0.0 (0x00007f29994aa000)",
+        "\tlibgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007f299947c000)",
+        "\tlibunistring.so.5 => /lib/x86_64-linux-gnu/libunistring.so.5 (0x00007f29992cf000)",
+        "\tlibgnutls.so.30 => /lib/x86_64-linux-gnu/libgnutls.so.30 (0x00007f29990d4000)",
+        "\tlibhogweed.so.6 => /lib/x86_64-linux-gnu/libhogweed.so.6 (0x00007f299908c000)",
+        "\tlibnettle.so.8 => /lib/x86_64-linux-gnu/libnettle.so.8 (0x00007f2999037000)",
+        "\tlibgmp.so.10 => /lib/x86_64-linux-gnu/libgmp.so.10 (0x00007f2998fb3000)",
+        "\tlibkrb5.so.3 => /lib/x86_64-linux-gnu/libkrb5.so.3 (0x00007f2998eea000)",
+        "\tlibk5crypto.so.3 => /lib/x86_64-linux-gnu/libk5crypto.so.3 (0x00007f2998ebe000)",
+        "\tlibcom_err.so.2 => /lib/x86_64-linux-gnu/libcom_err.so.2 (0x00007f2998eb8000)",
+        "\tlibkrb5support.so.0 => /lib/x86_64-linux-gnu/libkrb5support.so.0 (0x00007f2998ea9000)",
+        "\tlibsasl2.so.2 => /lib/x86_64-linux-gnu/libsasl2.so.2 (0x00007f2998e8f000)",
+        "\tlibbrotlicommon.so.1 => /lib/x86_64-linux-gnu/libbrotlicommon.so.1 (0x00007f2998e6c000)",
+        "\tlibaws-c-compression.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-compression.so.1.0.0 (0x00007f2998e67000)",
+        "\tlibs2n.so.1 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libs2n.so.1 (0x00007f2998cec000)",
+        "\tlibp11-kit.so.0 => /lib/x86_64-linux-gnu/libp11-kit.so.0 (0x00007f2998b46000)",
+        "\tlibtasn1.so.6 => /lib/x86_64-linux-gnu/libtasn1.so.6 (0x00007f2998b30000)",
+        "\tlibkeyutils.so.1 => /lib/x86_64-linux-gnu/libkeyutils.so.1 (0x00007f2998b29000)",
+        "\tlibresolv.so.2 => /lib/x86_64-linux-gnu/libresolv.so.2 (0x00007f2998b17000)",
+        "\tlibffi.so.8 => /lib/x86_64-linux-gnu/libffi.so.8 (0x00007f2998b0b000)"
+      ]
+    },
+    "usr/lib/x86_64-linux-gnu/putgd/libaws-cpp-sdk-s3.so": {
+      "needed": [
+        "libaws-cpp-sdk-core.so",
+        "libaws-crt-cpp.so",
+        "libaws-c-common.so.1",
+        "libstdc++.so.6",
+        "libc.so.6",
+        "ld-linux-x86-64.so.2"
+      ],
+      "resolved": [
+        "linux-vdso.so.1 (0x00007f709abf3000)",
+        "\tlibaws-cpp-sdk-core.so => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-cpp-sdk-core.so (0x00007f709a600000)",
+        "\tlibaws-crt-cpp.so => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-crt-cpp.so (0x00007f709a92d000)",
+        "\tlibaws-c-common.so.1 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-common.so.1 (0x00007f709a8d4000)",
+        "\tlibstdc++.so.6 => /lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007f709a382000)",
+        "\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f709a16f000)",
+        "\t/lib64/ld-linux-x86-64.so.2 (0x00007f709abf5000)",
+        "\tlibcurl.so.4 => /lib/x86_64-linux-gnu/libcurl.so.4 (0x00007f709a0ae000)",
+        "\tlibz.so.1 => /lib/x86_64-linux-gnu/libz.so.1 (0x00007f709a8ac000)",
+        "\tlibaws-c-event-stream.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-event-stream.so.1.0.0 (0x00007f709a891000)",
+        "\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007f7099fc5000)",
+        "\tlibaws-c-mqtt.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-mqtt.so.1.0.0 (0x00007f7099f5d000)",
+        "\tlibaws-c-s3.so.0unstable => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-s3.so.0unstable (0x00007f7099f10000)",
+        "\tlibaws-c-auth.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-auth.so.1.0.0 (0x00007f7099ecc000)",
+        "\tlibaws-c-http.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-http.so.1.0.0 (0x00007f7099e60000)",
+        "\tlibaws-c-io.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-io.so.1.0.0 (0x00007f7099e0a000)",
+        "\tlibaws-c-cal.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-cal.so.1.0.0 (0x00007f709a875000)",
+        "\tlibaws-c-sdkutils.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-sdkutils.so.1.0.0 (0x00007f7099dea000)",
+        "\tlibaws-checksums.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-checksums.so.1.0.0 (0x00007f7099dc7000)",
+        "\tlibgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007f7099d99000)",
+        "\tlibnghttp2.so.14 => /lib/x86_64-linux-gnu/libnghttp2.so.14 (0x00007f7099d6e000)",
+        "\tlibidn2.so.0 => /lib/x86_64-linux-gnu/libidn2.so.0 (0x00007f7099d4c000)",
+        "\tlibrtmp.so.1 => /lib/x86_64-linux-gnu/librtmp.so.1 (0x00007f7099d2e000)",
+        "\tlibssh.so.4 => /lib/x86_64-linux-gnu/libssh.so.4 (0x00007f7099cbc000)",
+        "\tlibpsl.so.5 => /lib/x86_64-linux-gnu/libpsl.so.5 (0x00007f7099ca8000)",
+        "\tlibssl.so.3 => /lib/x86_64-linux-gnu/libssl.so.3 (0x00007f7099bfe000)",
+        "\tlibcrypto.so.3 => /lib/x86_64-linux-gnu/libcrypto.so.3 (0x00007f70996ea000)",
+        "\tlibgssapi_krb5.so.2 => /lib/x86_64-linux-gnu/libgssapi_krb5.so.2 (0x00007f7099696000)",
+        "\tlibldap.so.2 => /lib/x86_64-linux-gnu/libldap.so.2 (0x00007f7099638000)",
+        "\tliblber.so.2 => /lib/x86_64-linux-gnu/liblber.so.2 (0x00007f7099628000)",
+        "\tlibzstd.so.1 => /lib/x86_64-linux-gnu/libzstd.so.1 (0x00007f709956e000)",
+        "\tlibbrotlidec.so.1 => /lib/x86_64-linux-gnu/libbrotlidec.so.1 (0x00007f7099560000)",
+        "\tlibaws-c-compression.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-compression.so.1.0.0 (0x00007f709955b000)",
+        "\tlibs2n.so.1 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libs2n.so.1 (0x00007f70993e0000)",
+        "\tlibunistring.so.5 => /lib/x86_64-linux-gnu/libunistring.so.5 (0x00007f7099233000)",
+        "\tlibgnutls.so.30 => /lib/x86_64-linux-gnu/libgnutls.so.30 (0x00007f7099038000)",
+        "\tlibhogweed.so.6 => /lib/x86_64-linux-gnu/libhogweed.so.6 (0x00007f7098ff0000)",
+        "\tlibnettle.so.8 => /lib/x86_64-linux-gnu/libnettle.so.8 (0x00007f7098f9b000)",
+        "\tlibgmp.so.10 => /lib/x86_64-linux-gnu/libgmp.so.10 (0x00007f7098f17000)",
+        "\tlibkrb5.so.3 => /lib/x86_64-linux-gnu/libkrb5.so.3 (0x00007f7098e4e000)",
+        "\tlibk5crypto.so.3 => /lib/x86_64-linux-gnu/libk5crypto.so.3 (0x00007f7098e22000)",
+        "\tlibcom_err.so.2 => /lib/x86_64-linux-gnu/libcom_err.so.2 (0x00007f7098e1c000)",
+        "\tlibkrb5support.so.0 => /lib/x86_64-linux-gnu/libkrb5support.so.0 (0x00007f7098e0f000)",
+        "\tlibsasl2.so.2 => /lib/x86_64-linux-gnu/libsasl2.so.2 (0x00007f7098df3000)",
+        "\tlibbrotlicommon.so.1 => /lib/x86_64-linux-gnu/libbrotlicommon.so.1 (0x00007f7098dd0000)",
+        "\tlibp11-kit.so.0 => /lib/x86_64-linux-gnu/libp11-kit.so.0 (0x00007f7098c2c000)",
+        "\tlibtasn1.so.6 => /lib/x86_64-linux-gnu/libtasn1.so.6 (0x00007f7098c16000)",
+        "\tlibkeyutils.so.1 => /lib/x86_64-linux-gnu/libkeyutils.so.1 (0x00007f7098c0f000)",
+        "\tlibresolv.so.2 => /lib/x86_64-linux-gnu/libresolv.so.2 (0x00007f7098bfb000)",
+        "\tlibffi.so.8 => /lib/x86_64-linux-gnu/libffi.so.8 (0x00007f7098bef000)"
+      ]
+    },
+    "usr/lib/x86_64-linux-gnu/putgd/libaws-crt-cpp.so": {
+      "needed": [
+        "libaws-c-mqtt.so.1.0.0",
+        "libaws-c-event-stream.so.1.0.0",
+        "libaws-c-s3.so.0unstable",
+        "libaws-c-auth.so.1.0.0",
+        "libaws-c-http.so.1.0.0",
+        "libaws-c-io.so.1.0.0",
+        "libaws-c-cal.so.1.0.0",
+        "libaws-c-sdkutils.so.1.0.0",
+        "libaws-checksums.so.1.0.0",
+        "libaws-c-common.so.1",
+        "libstdc++.so.6",
+        "libgcc_s.so.1",
+        "libc.so.6",
+        "ld-linux-x86-64.so.2"
+      ],
+      "resolved": [
+        "linux-vdso.so.1 (0x00007fe63f2ef000)",
+        "\tlibaws-c-mqtt.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-mqtt.so.1.0.0 (0x00007fe63f1b5000)",
+        "\tlibaws-c-event-stream.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-event-stream.so.1.0.0 (0x00007fe63f19a000)",
+        "\tlibaws-c-s3.so.0unstable => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-s3.so.0unstable (0x00007fe63f14d000)",
+        "\tlibaws-c-auth.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-auth.so.1.0.0 (0x00007fe63f109000)",
+        "\tlibaws-c-http.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-http.so.1.0.0 (0x00007fe63f09d000)",
+        "\tlibaws-c-io.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-io.so.1.0.0 (0x00007fe63f045000)",
+        "\tlibaws-c-cal.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-cal.so.1.0.0 (0x00007fe63f02b000)",
+        "\tlibaws-c-sdkutils.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-sdkutils.so.1.0.0 (0x00007fe63f00b000)",
+        "\tlibaws-checksums.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-checksums.so.1.0.0 (0x00007fe63efe8000)",
+        "\tlibaws-c-common.so.1 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-common.so.1 (0x00007fe63ef8f000)",
+        "\tlibstdc++.so.6 => /lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007fe63ed05000)",
+        "\tlibgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007fe63ecd7000)",
+        "\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fe63eac4000)",
+        "\t/lib64/ld-linux-x86-64.so.2 (0x00007fe63f2f1000)",
+        "\tlibaws-c-compression.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-compression.so.1.0.0 (0x00007fe63eabf000)",
+        "\tlibs2n.so.1 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libs2n.so.1 (0x00007fe63e944000)",
+        "\tlibcrypto.so.3 => /lib/x86_64-linux-gnu/libcrypto.so.3 (0x00007fe63e42e000)",
+        "\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007fe63e345000)"
+      ]
+    },
+    "usr/lib/x86_64-linux-gnu/putgd/libputgd-s3.so": {
+      "needed": [
+        "libaws-cpp-sdk-s3.so",
+        "libaws-cpp-sdk-core.so",
+        "libcrypto.so.3",
+        "libcurl.so.4",
+        "libQt6Core.so.6",
+        "libstdc++.so.6",
+        "libgcc_s.so.1",
+        "libc.so.6",
+        "ld-linux-x86-64.so.2"
+      ],
+      "resolved": [
+        "linux-vdso.so.1 (0x00007f4366421000)",
+        "\tlibaws-cpp-sdk-s3.so => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-cpp-sdk-s3.so (0x00007f43661cc000)",
+        "\tlibaws-cpp-sdk-core.so => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-cpp-sdk-core.so (0x00007f4365e00000)",
+        "\tlibcrypto.so.3 => /lib/x86_64-linux-gnu/libcrypto.so.3 (0x00007f43658ec000)",
+        "\tlibcurl.so.4 => /lib/x86_64-linux-gnu/libcurl.so.4 (0x00007f4366101000)",
+        "\tlibQt6Core.so.6 => /lib/x86_64-linux-gnu/libQt6Core.so.6 (0x00007f43653e0000)",
+        "\tlibstdc++.so.6 => /lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007f4365162000)",
+        "\tlibgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007f43660d1000)",
+        "\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f4364f4f000)",
+        "\t/lib64/ld-linux-x86-64.so.2 (0x00007f4366423000)",
+        "\tlibaws-crt-cpp.so => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-crt-cpp.so (0x00007f4364e85000)",
+        "\tlibaws-c-common.so.1 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-common.so.1 (0x00007f4366078000)",
+        "\tlibz.so.1 => /lib/x86_64-linux-gnu/libz.so.1 (0x00007f4364e69000)",
+        "\tlibaws-c-event-stream.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-event-stream.so.1.0.0 (0x00007f4364e4e000)",
+        "\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007f4364d65000)",
+        "\tlibnghttp2.so.14 => /lib/x86_64-linux-gnu/libnghttp2.so.14 (0x00007f4364d3a000)",
+        "\tlibidn2.so.0 => /lib/x86_64-linux-gnu/libidn2.so.0 (0x00007f4364d18000)",
+        "\tlibrtmp.so.1 => /lib/x86_64-linux-gnu/librtmp.so.1 (0x00007f4364cfa000)",
+        "\tlibssh.so.4 => /lib/x86_64-linux-gnu/libssh.so.4 (0x00007f4364c88000)",
+        "\tlibpsl.so.5 => /lib/x86_64-linux-gnu/libpsl.so.5 (0x00007f4364c74000)",
+        "\tlibssl.so.3 => /lib/x86_64-linux-gnu/libssl.so.3 (0x00007f4364bca000)",
+        "\tlibgssapi_krb5.so.2 => /lib/x86_64-linux-gnu/libgssapi_krb5.so.2 (0x00007f4364b76000)",
+        "\tlibldap.so.2 => /lib/x86_64-linux-gnu/libldap.so.2 (0x00007f4364b18000)",
+        "\tliblber.so.2 => /lib/x86_64-linux-gnu/liblber.so.2 (0x00007f4364b08000)",
+        "\tlibzstd.so.1 => /lib/x86_64-linux-gnu/libzstd.so.1 (0x00007f4364a4e000)",
+        "\tlibbrotlidec.so.1 => /lib/x86_64-linux-gnu/libbrotlidec.so.1 (0x00007f4364a40000)",
+        "\tlibicui18n.so.74 => /lib/x86_64-linux-gnu/libicui18n.so.74 (0x00007f43646f2000)",
+        "\tlibicuuc.so.74 => /lib/x86_64-linux-gnu/libicuuc.so.74 (0x00007f43644e5000)",
+        "\tlibglib-2.0.so.0 => /lib/x86_64-linux-gnu/libglib-2.0.so.0 (0x00007f436439c000)",
+        "\tlibdouble-conversion.so.3 => /lib/x86_64-linux-gnu/libdouble-conversion.so.3 (0x00007f4364387000)",
+        "\tlibb2.so.1 => /lib/x86_64-linux-gnu/libb2.so.1 (0x00007f4364369000)",
+        "\tlibpcre2-16.so.0 => /lib/x86_64-linux-gnu/libpcre2-16.so.0 (0x00007f43642dd000)",
+        "\tlibaws-c-mqtt.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-mqtt.so.1.0.0 (0x00007f4364275000)",
+        "\tlibaws-c-s3.so.0unstable => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-s3.so.0unstable (0x00007f4364228000)",
+        "\tlibaws-c-auth.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-auth.so.1.0.0 (0x00007f43641e4000)",
+        "\tlibaws-c-http.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-http.so.1.0.0 (0x00007f4364178000)",
+        "\tlibaws-c-io.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-io.so.1.0.0 (0x00007f4364122000)",
+        "\tlibaws-c-cal.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-cal.so.1.0.0 (0x00007f4364108000)",
+        "\tlibaws-c-sdkutils.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-sdkutils.so.1.0.0 (0x00007f43640e8000)",
+        "\tlibaws-checksums.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-checksums.so.1.0.0 (0x00007f43640c5000)",
+        "\tlibunistring.so.5 => /lib/x86_64-linux-gnu/libunistring.so.5 (0x00007f4363f18000)",
+        "\tlibgnutls.so.30 => /lib/x86_64-linux-gnu/libgnutls.so.30 (0x00007f4363d1d000)",
+        "\tlibhogweed.so.6 => /lib/x86_64-linux-gnu/libhogweed.so.6 (0x00007f4363cd5000)",
+        "\tlibnettle.so.8 => /lib/x86_64-linux-gnu/libnettle.so.8 (0x00007f4363c7e000)",
+        "\tlibgmp.so.10 => /lib/x86_64-linux-gnu/libgmp.so.10 (0x00007f4363bfa000)",
+        "\tlibkrb5.so.3 => /lib/x86_64-linux-gnu/libkrb5.so.3 (0x00007f4363b31000)",
+        "\tlibk5crypto.so.3 => /lib/x86_64-linux-gnu/libk5crypto.so.3 (0x00007f4363b05000)",
+        "\tlibcom_err.so.2 => /lib/x86_64-linux-gnu/libcom_err.so.2 (0x00007f4363aff000)",
+        "\tlibkrb5support.so.0 => /lib/x86_64-linux-gnu/libkrb5support.so.0 (0x00007f4363af0000)",
+        "\tlibsasl2.so.2 => /lib/x86_64-linux-gnu/libsasl2.so.2 (0x00007f4363ad6000)",
+        "\tlibbrotlicommon.so.1 => /lib/x86_64-linux-gnu/libbrotlicommon.so.1 (0x00007f4363ab3000)",
+        "\tlibicudata.so.74 => /lib/x86_64-linux-gnu/libicudata.so.74 (0x00007f4361d53000)",
+        "\tlibpcre2-8.so.0 => /lib/x86_64-linux-gnu/libpcre2-8.so.0 (0x00007f4361cb9000)",
+        "\tlibgomp.so.1 => /lib/x86_64-linux-gnu/libgomp.so.1 (0x00007f4361c61000)",
+        "\tlibaws-c-compression.so.1.0.0 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libaws-c-compression.so.1.0.0 (0x00007f4361c5c000)",
+        "\tlibs2n.so.1 => /src/build/native-package-fullerror/extracted/usr/lib/x86_64-linux-gnu/putgd/libs2n.so.1 (0x00007f4361ae1000)",
+        "\tlibp11-kit.so.0 => /lib/x86_64-linux-gnu/libp11-kit.so.0 (0x00007f436193d000)",
+        "\tlibtasn1.so.6 => /lib/x86_64-linux-gnu/libtasn1.so.6 (0x00007f4361927000)",
+        "\tlibkeyutils.so.1 => /lib/x86_64-linux-gnu/libkeyutils.so.1 (0x00007f436191e000)",
+        "\tlibresolv.so.2 => /lib/x86_64-linux-gnu/libresolv.so.2 (0x00007f436190c000)",
+        "\tlibffi.so.8 => /lib/x86_64-linux-gnu/libffi.so.8 (0x00007f4361900000)"
+      ]
+    },
+    "usr/lib/x86_64-linux-gnu/putgd/libs2n.so": {
+      "needed": [
+        "libcrypto.so.3",
+        "libc.so.6",
+        "ld-linux-x86-64.so.2"
+      ],
+      "resolved": [
+        "linux-vdso.so.1 (0x00007f521dba8000)",
+        "\tlibcrypto.so.3 => /lib/x86_64-linux-gnu/libcrypto.so.3 (0x00007f521d507000)",
+        "\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f521d2f4000)",
+        "\t/lib64/ld-linux-x86-64.so.2 (0x00007f521dbaa000)"
+      ]
+    },
+    "usr/lib/x86_64-linux-gnu/putgd/libs2n.so.1": {
+      "needed": [
+        "libcrypto.so.3",
+        "libc.so.6",
+        "ld-linux-x86-64.so.2"
+      ],
+      "resolved": [
+        "linux-vdso.so.1 (0x00007f9add1d3000)",
+        "\tlibcrypto.so.3 => /lib/x86_64-linux-gnu/libcrypto.so.3 (0x00007f9adcb32000)",
+        "\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f9adc91f000)",
+        "\t/lib64/ld-linux-x86-64.so.2 (0x00007f9add1d5000)"
+      ]
+    },
+    "usr/lib/x86_64-linux-gnu/putgd/libs2n.so.1.0.0": {
+      "needed": [
+        "libcrypto.so.3",
+        "libc.so.6",
+        "ld-linux-x86-64.so.2"
+      ],
+      "resolved": [
+        "linux-vdso.so.1 (0x00007fed3c4be000)",
+        "\tlibcrypto.so.3 => /lib/x86_64-linux-gnu/libcrypto.so.3 (0x00007fed3be1d000)",
+        "\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fed3bc0a000)",
+        "\t/lib64/ld-linux-x86-64.so.2 (0x00007fed3c4c0000)"
+      ]
+    }
+  },
+  "updateCheck": {
+    "channel": null,
+    "kind": "none",
+    "packageTarget": "ubuntu24.04",
+    "reason": "development_build",
+    "supported": false,
+    "version": "26.1024.1140-dev+g171b506e02ca"
+  },
+  "schemaVersion": 1,
+  "scope": "native extracted package identity/inventory/dependencies; not desktop acceptance",
+  "package": {
+    "format": "DEB",
+    "name": "putgd",
+    "version": "26.1024.1140~dev+g171b506e02ca",
+    "architecture": "amd64",
+    "requires": "libqt6sql6-sqlite, qt6-qpa-plugins, qt6-wayland, qt6-image-formats-plugins, libglib2.0-bin, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer1.0-pipewire, libavcodec60 (>= 7:6.1), libavfilter9 (>= 7:6.0), libavformat60 (>= 7:6.0), libavutil58 (>= 7:6.0), libc6 (>= 2.38), libcurl4t64 (>= 7.18.0), libgcc-s1 (>= 4.2), libglib2.0-0t64 (>= 2.12.0), libgstreamer1.0-0 (>= 1.0.0), libqt6core6t64 (>= 6.4.0), libqt6dbus6t64 (>= 6.4.0), libqt6gui6t64 (>= 6.4.0), libqt6keychain1 (>= 0.13.2), libqt6network6t64 (>= 6.1.2), libqt6sql6t64 (>= 6.1.2), libqt6widgets6t64 (>= 6.4.0), libssl3t64 (>= 3.0.3), libstdc++6 (>= 13.1), libswresample4 (>= 7:6.0), libswscale7 (>= 7:6.0), libwayland-client0 (>= 1.20.0), libxcb-damage0, libxcb-keysyms1 (>= 0.4.0), libxcb-randr0 (>= 1.3), libxcb-render0, libxcb-xfixes0, libxcb-xinput0 (>= 1.15), libxcb1, libxcursor1 (>> 1.1.2), libxkbcommon0 (>= 1.0.0), zlib1g (>= 1:1.1.4)",
+    "recommends": "gstreamer1.0-plugins-ugly, gstreamer1.0-libav, gstreamer1.0-vaapi",
+    "file": "putgd_26.1024.1140~dev+g171b506e02ca_amd64.deb",
+    "sha256": "bc28bb95b2aebf4510b6c970e8fdec9314f747455d94f241d513a11356210dae",
+    "size": 10927460
+  }
+}

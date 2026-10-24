@@ -1,0 +1,28 @@
+{
+  "crop": [
+    302,
+    137,
+    1618,
+    1013
+  ],
+  "cropMethod": "own-theme-pixels",
+  "ownThemeFraction": 0.9663536939112572,
+  "host": "f44-native-full-errors",
+  "source": {
+    "schemaVersion": 1,
+    "version": "26.1024.1140-dev+g171b506e02ca",
+    "baseVersion": "26.1024.1140",
+    "packageVersion": "26.1024.1140~dev+g171b506e02ca",
+    "gitCommit": "171b506e02ca37ba75b27dbbbe859502380926ef",
+    "gitTree": "2942cc06bd2361cf915e9d5ffbeeadd7eaa75368",
+    "commitCount": 1140,
+    "dirty": false,
+    "sourceProvenance": "git"
+  },
+  "session": {
+    "XDG_CURRENT_DESKTOP": "GNOME",
+    "XDG_SESSION_TYPE": "wayland",
+    "QT_QPA_PLATFORM": "wayland"
+  },
+  "artifact": "installed-before-login-list.png"
+}

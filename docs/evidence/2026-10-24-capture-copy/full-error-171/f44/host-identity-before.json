@@ -1,0 +1,31 @@
+{
+  "source": "171b506e02ca37ba75b27dbbbe859502380926ef",
+  "host": "f44",
+  "bootId": "6fa33c97-6c65-46ff-abfe-f5db7d3825b8",
+  "kernel": "7.2.11-200.fc44.x86_64",
+  "osRelease": "NAME=\"Fedora Linux\"\nVERSION=\"44 (Workstation Edition)\"\nRELEASE_TYPE=stable\nID=fedora\nVERSION_ID=44\nVERSION_CODENAME=\"\"\nPRETTY_NAME=\"Fedora Linux 44 (Workstation Edition)\"\nANSI_COLOR=\"0;38;2;60;110;180\"\nLOGO=fedora-logo-icon\nCPE_NAME=\"cpe:/o:fedoraproject:fedora:44\"\nDEFAULT_HOSTNAME=\"fedora\"\nHOME_URL=\"https://fedoraproject.org/\"\nDOCUMENTATION_URL=\"https://docs.fedoraproject.org/en-US/fedora/f44/\"\nSUPPORT_URL=\"https://ask.fedoraproject.org/\"\nBUG_REPORT_URL=\"https://bugzilla.redhat.com/\"\nREDHAT_BUGZILLA_PRODUCT=\"Fedora\"\nREDHAT_BUGZILLA_PRODUCT_VERSION=44\nREDHAT_SUPPORT_PRODUCT=\"Fedora\"\nREDHAT_SUPPORT_PRODUCT_VERSION=44\nSUPPORT_END=2027-05-19\nVARIANT=\"Workstation Edition\"\nVARIANT_ID=workstation\n",
+  "packages": {
+    "gnome-shell": "gnome-shell-50.6-1.fc44.x86_64",
+    "mutter": "mutter-50.6-1.fc44.x86_64",
+    "qt6-qtbase": "qt6-qtbase-6.11.2-3.fc44.x86_64",
+    "dnf5": "dnf5-5.4.6.0-1.fc44.x86_64"
+  },
+  "packageAbsentBaseline": true,
+  "session": {
+    "DISPLAY": ":0",
+    "WAYLAND_DISPLAY": "wayland-0",
+    "XDG_CURRENT_DESKTOP": "GNOME",
+    "XDG_SESSION_TYPE": "wayland"
+  },
+  "protectedWindowsGuest": "No guest changed",
+  "helperPathsAbsent": [
+    "/usr/share/gnome-shell/extensions/putgd@put.gd",
+    "/home/patrick/.local/share/gnome-shell/extensions/putgd@put.gd"
+  ],
+  "uuidUnregistered": {
+    "returncode": 2,
+    "stdout": "",
+    "stderr": "Extension \u201cputgd@put.gd\u201d doesn't exist\n"
+  },
+  "shellPid": "9589"
+}

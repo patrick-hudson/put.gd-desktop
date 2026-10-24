@@ -1,0 +1,24 @@
+{
+  "lock": {
+    "owner": "history-full-errors-493-474",
+    "session": "t3-0aa1b31c",
+    "host": "m74",
+    "purpose": "Quiet final171 native DEB Cinnamon full error UI/capture-copy cold and paired memory, protected w11b unchanged",
+    "acquired": "2026-10-24T03:06:36Z",
+    "expires": "2026-10-24T03:51:36Z",
+    "heartbeat": "2026-10-24T03:27:54Z"
+  },
+  "releasedBy": "t3-0aa1b31c",
+  "check": {
+    "left": [],
+    "notMine": [],
+    "preexisting": [],
+    "unmatchedNotMine": []
+  },
+  "notes": [
+    "3 process(es) outside the desktop session (no DISPLAY or WAYLAND_DISPLAY; shared SSH work): 2067 313646 313651"
+  ],
+  "event": "release",
+  "host": "m74",
+  "at": "2026-10-24T03:33:53Z"
+}

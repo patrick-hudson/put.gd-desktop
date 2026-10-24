@@ -1,0 +1,15 @@
+{
+  "source": "8a9415c540bee2ac5a8caa0e7606681bafa528a7",
+  "archive": "/home/patrick/work/pgcc-native50-evidence/native-roots.tar.gz",
+  "archiveSha256": "c32ec988791b04655168479697d575ab6b15c84bf0421174c3621459ea3b8464",
+  "archiveBytes": 1820778,
+  "roots": [
+    "/tmp/cnfi",
+    "/tmp/cnfc",
+    "/tmp/cnff"
+  ],
+  "excluded": "runtime directories/sockets; path preflight receipts retained",
+  "createdUtc": "2026-10-24T02:51:35.804041+00:00",
+  "verification": "Every archived regular file checked against retained source bytes before transfer",
+  "restore": "sha256sum archive; extract into a NEW private directory with tar -xzf; cnfi prelogin, cnfc cold, cnff functional+finalpair. Never launch from archived profiles or overwrite prior campaigns."
+}
