@@ -888,9 +888,14 @@ class Campaign:
         finally:
             guard.close()
         peak = max(row['totals']['pssBytes'] for _, row in opened)
+        elapsed = opened[-1][0] - opened[0][0]
         self.result['metrics']['historyOpenPeakFamilyPssBytes'] = peak
-        self.result['gates']['historyOpenPss'] = {'status': 'pass' if peak <= 60 * MIB else 'fail',
-                                               'limitBytes': 60 * MIB}
+        self.result['metrics']['historyOpenMeasuredSeconds'] = elapsed
+        self.result['gates']['historyOpenPss'] = {
+            'status': 'unassessed' if elapsed < 30 else 'pass' if peak <= 60 * MIB else 'fail',
+            'limitBytes': 60 * MIB, 'minimumSeconds': 30, 'measuredSeconds': elapsed}
+        if elapsed < 30:
+            self.result['gates']['historyOpenPss']['reason'] = 'measured_history_open_interval_shorter_than_30_seconds'
         for process in opened[-1][1]['processes']:
             for window in owned_windows(process['pid']):
                 subprocess.run(['wmctrl', '-ic', window], check=True, timeout=5,

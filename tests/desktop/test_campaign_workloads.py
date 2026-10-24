@@ -185,8 +185,16 @@ class FileUploadSafetyTests(unittest.TestCase):
                 with self.assertRaisesRegex(EvidenceError, 'uploaded_pixels_differ'):
                     workloads.verify_uploaded(run, operation, source)
 
-    def test_full_queue_protocol_uses_50_distinct_files_and_leaves_capture_gate_unassessed(self):
-        # Control-flow rehearsal only: no product, GUI, fixture or upload runs.
+    def test_queued_without_items_admits_50_files_and_observes_real_backlog(self):
+        self.queue_protocol(wait_for_items=False)
+
+    def test_waiting_for_worker_created_items_drains_backlog_and_fails_queue_gate(self):
+        self.queue_protocol(wait_for_items=True)
+
+    def queue_protocol(self, wait_for_items):
+        # Production ordering: editor release enqueues empty-item operations;
+        # only four workers dequeue/create artifacts/upload. Synthetic time
+        # keeps both the correct and original blocked-admission cases bounded.
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             run = mock.Mock()
@@ -194,18 +202,34 @@ class FileUploadSafetyTests(unittest.TestCase):
             run.result = {'metrics': {}, 'gates': {}, 'limitations': []}
             run.sample.return_value = {'totals': {}}
             sources, operations = {}, {}
+            pending, active, clock = [], {}, [0.]
+            peak_active = 0
             current = None
             state = {'phase': 'editing', 'width': 320, 'height': 180, 'crop': [0, 0, 320, 180],
                      'shapes': [], 'modified': False}
+            def advance(seconds):
+                nonlocal peak_active
+                clock[0] += seconds
+                for key in list(active):
+                    if active[key] <= clock[0]:
+                        del active[key]
+                        operations[key].update(state='completed', phase='completed')
+                        operations[key]['items'][0]['uploadStatus'] = 'uploaded'
+                while pending and len(active) < 4:
+                    key = pending.pop(0)
+                    active[key] = clock[0] + 10
+                    operations[key].update(state='running', phase='uploading', items=[{
+                        'uploadStatus': 'uploading', 'artifact': {'id': key, 'sha256': 'b' * 64},
+                        'receipt': {'directUrl': 'http://127.0.0.1:12345/fixture/' + key}}])
+                peak_active = max(peak_active, len(active))
             def call(method, params):
                 nonlocal current
+                advance(.05)
                 if method == 'editor.open':
                     self.assertEqual(params['source'], 'file')
                     current = 'operation-' + str(len(sources))
                     sources[current] = Path(params['path'])
-                    operations[current] = {'id': current, 'state': 'running', 'phase': 'queued',
-                        'items': [{'uploadStatus': 'uploading', 'artifact': {'id': current, 'sha256': 'b' * 64},
-                                   'receipt': {'directUrl': 'http://127.0.0.1:12345/fixture/' + current}}]}
+                    operations[current] = {'id': current, 'state': 'editing', 'phase': 'editing', 'items': []}
                     return {'operationId': current}
                 if method == 'editor.inspect':
                     return state
@@ -213,12 +237,26 @@ class FileUploadSafetyTests(unittest.TestCase):
                     return {'mime': 'image/png', 'png': base64.b64encode(sources[current].read_bytes()).decode(),
                             'width': 320, 'height': 180, 'sourceWidth': 320, 'sourceHeight': 180}
                 if method == 'editor.submit':
+                    operations[current]['phase'] = 'queued'
+                    pending.append(current)
+                    advance(0)
                     return {'submitted': True}
                 if method == 'operation.inspect':
                     return operations[params['id']]
                 self.fail('Unexpected method: ' + method)
             run.call.side_effect = call
-            run.wait_operation.side_effect = lambda key: {**operations[key], 'state': 'completed'}
+            def wait_operation(key):
+                while operations[key]['state'] != 'completed':
+                    advance(.2)
+                return operations[key]
+            run.wait_operation.side_effect = wait_operation
+            original_submit = workloads.submit_file_upload
+            def admit(run, source):
+                key = original_submit(run, source)
+                if wait_for_items:
+                    while not operations[key]['items']:
+                        advance(.05)
+                return key
             tray_states = iter([{'IconPixmap': 'idle', 'ToolTip': 'idle'}] +
                 [{'IconPixmap': 'working', 'ToolTip': 'working'}] * 10 +
                 [{'Status': 'Active', 'workingTitleObserved': False}])
@@ -226,12 +264,28 @@ class FileUploadSafetyTests(unittest.TestCase):
                  mock.patch.object(workloads, 'UI'), \
                  mock.patch.object(workloads, 'verify_uploaded') as verify, \
                  mock.patch.object(workloads, 'settle') as settle, \
+                 mock.patch.object(workloads, 'submit_file_upload', side_effect=admit), \
                  mock.patch.object(workloads.subprocess, 'run'), \
-                 mock.patch.object(workloads.time, 'sleep'):
-                workloads.burst(run)
+                 mock.patch.object(workloads.time, 'monotonic', side_effect=lambda: clock[0]), \
+                 mock.patch.object(workloads.time, 'sleep', side_effect=advance):
+                if wait_for_items:
+                    with self.assertRaisesRegex(EvidenceError, 'did_not_demonstrate_concurrent_queued_uploads'):
+                        workloads.burst(run)
+                else:
+                    workloads.burst(run)
             self.assertEqual(len(sources), 50)
             self.assertEqual(len({hashlib.sha256(path.read_bytes()).hexdigest() for path in sources.values()}), 50)
             self.assertEqual([call.args[0] for call in run.call.call_args_list].count('editor.submit'), 50)
+            self.assertEqual(peak_active, 4)
+            queue_observations = [call.kwargs['queued'] for call in run.event.call_args_list
+                                  if call.args[0] == 'burst-queue-observation']
+            self.assertEqual(len(queue_observations), 10)
+            if wait_for_items:
+                self.assertEqual(queue_observations, [0] * 10)
+                verify.assert_not_called()
+                settle.assert_not_called()
+                return
+            self.assertGreater(max(queue_observations), 0)
             self.assertEqual(verify.call_count, 50)
             settle.assert_called_once_with(run, {})
             self.assertEqual(run.result['metrics']['burst']['acceptedFileEditorUploads'], 50)

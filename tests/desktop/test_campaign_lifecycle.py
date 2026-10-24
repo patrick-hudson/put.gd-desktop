@@ -134,6 +134,38 @@ class HistoryLifetimeTests(unittest.TestCase):
 
 
 class FinalizationTests(unittest.TestCase):
+    def test_memory_caller_requires_30_measured_open_seconds_before_assessment(self):
+        budget = 60 * physical_campaign.MIB
+        for requested, measured, peak, expected in ((1, 1, budget, 'unassessed'),
+                (30, 1, budget + 1, 'unassessed'), (30, 29.999, budget, 'unassessed'),
+                (30, 30, budget, 'pass'), (30, 30, budget + 1, 'fail')):
+            with self.subTest(requested=requested, measured=measured, peak=peak):
+                run = physical_campaign.Campaign.__new__(physical_campaign.Campaign)
+                run.args = SimpleNamespace(open_seconds=requested)
+                run.resident = SimpleNamespace(pid=1)
+                run.result = {'metrics': {}, 'gates': {}}
+                run.visual, run.persist, run.event = mock.Mock(), mock.Mock(), mock.Mock()
+                rows = [(10, {'totals': {'pssBytes': peak}, 'processes': [{'pid': 2, 'role': 'ui'}]}),
+                        (10 + measured, {'totals': {'pssBytes': peak}, 'processes': [{'pid': 2, 'role': 'ui'}]})]
+                run.interval = mock.Mock(return_value=rows)
+                run.sample = mock.Mock(side_effect=[{'processes': [{'pid': 2, 'role': 'ui'}]}, {'processCount': 1}])
+                run.call = mock.Mock(side_effect=[{'ui': {'lastExit': {'generation': 0}}},
+                    {'shown': 'history'}, {'ui': {'lastExit': {'generation': 1, 'code': 0, 'status': 'normal'}}}])
+                with mock.patch.object(physical_campaign.time, 'sleep'), \
+                     mock.patch.object(physical_campaign, 'owned_windows', side_effect=lambda pid: ['0x2'] if pid == 2 else []), \
+                     mock.patch.object(physical_campaign.subprocess, 'run'), \
+                     mock.patch.object(physical_campaign, 'memory_summary', return_value={
+                         'seconds': 300, 'residentCpuPercentOneCore': 0, 'peakFamilyRssBytes': 0, 'peakFamilyPssBytes': 0}), \
+                     mock.patch.object(lifecycle, 'HistoryGuard'):
+                    run.memory()
+                gate = run.result['gates']['historyOpenPss']
+                self.assertEqual(gate['status'], expected)
+                self.assertEqual(gate['minimumSeconds'], 30)
+                self.assertEqual(gate['limitBytes'], budget)
+                self.assertAlmostEqual(gate['measuredSeconds'], measured)
+                self.assertEqual(run.result['metrics']['historyOpenPeakFamilyPssBytes'], peak)
+                self.assertAlmostEqual(run.result['metrics']['historyOpenMeasuredSeconds'], measured)
+
     def test_timed_capture_caller_releases_mouse_after_child_and_keyboard_timeouts(self):
         # Exercise Campaign.capture itself, not just its mouse-release helper.
         # No subprocess is launched and no native input is sent.

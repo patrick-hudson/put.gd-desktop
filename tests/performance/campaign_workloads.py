@@ -471,21 +471,22 @@ def submit_file_upload(run, source):
         require(run.call('editor.submit', {'id': operation_id}).get('submitted') is True,
                 'burst_file_editor_upload_not_acknowledged')
         submitted = True
-        # Wait for the editor's normal handoff, not upload completion. Other
-        # operations may keep uploading while the next file editor opens.
+        # Enqueue follows normal editor exit/release. A queued operation has
+        # no items until a worker dequeues it; waiting for artifacts here would
+        # serialize admission behind the four occupied workers.
         deadline = time.monotonic() + 130
         while True:
             operation = run.call('operation.inspect', {'id': operation_id})
             require(operation['state'] not in ('failed', 'partial', 'cancelled'), 'burst_file_handoff_failed')
-            if operation.get('items'):
-                require(len(operation['items']) == 1, 'burst_file_handoff_not_single_item')
+            if operation.get('phase') == 'queued' or operation.get('items'):
                 break
             require(time.monotonic() < deadline, 'burst_file_handoff_timeout')
             run.sample('burst-file-editor-handoff')
             time.sleep(.05)
         require(upload_source(source['path'], run.root) == source, 'burst_source_identity_changed_after_handoff')
         run.event('burst-file-editor-handed-off', operationId=operation_id,
-                  artifactSha256=operation['items'][0]['artifact']['sha256'], sourceSha256=source['sha256'])
+                  observedPhase=operation.get('phase'), artifactPending=not bool(operation.get('items')),
+                  sourceSha256=source['sha256'])
         return operation_id
     finally:
         if not submitted:
@@ -539,6 +540,7 @@ def burst(run):
                 'independent_tray_did_not_change_during_burst')
         for operation_id, source in zip(operations, sources):
             operation = run.wait_operation(operation_id)
+            require(len(operation.get('items', [])) == 1, 'burst_file_handoff_not_single_item')
             run.event('burst-terminal', **operation_summary(operation))
             verify_uploaded(run, operation, source)
         links = {run.call('operation.inspect', {'id': operation_id})['items'][0]['receipt']['directUrl']
