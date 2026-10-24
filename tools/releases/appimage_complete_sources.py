@@ -6,17 +6,19 @@ other bundled components (including static runtime dependencies) are collected
 here. Downloads never execute source code. Missing exact sources are fatal.
 """
 import argparse
+from datetime import datetime, timezone
 import gzip
 import hashlib
 import io
 import json
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import tarfile
 import tempfile
 import urllib.request
-from urllib.parse import urlsplit
+from urllib.parse import urlencode, urlsplit
 
 from audit_native import sha256
 
@@ -120,7 +122,32 @@ def git_source(source, cache, target):
 
 
 def apt_source(package, version, target):
-    subprocess.run(['apt-get', 'source', '--download-only', '-qq', package + '=' + version], check=True, cwd=target)
+    args = ['apt-get', 'source', '--download-only', '-qq', package + '=' + version]
+    try:
+        subprocess.run(args, check=True, cwd=target)
+        return {'method': 'apt-signed-current'}
+    except subprocess.CalledProcessError:
+        # Runner images can contain versions already retired from live indexes.
+        # Launchpad chooses a historical date only; apt still authenticates the
+        # snapshot's signed Ubuntu indexes and downloads the exact version.
+        params = urlencode({'ws.op': 'getPublishedSources', 'source_name': package,
+                            'version': version, 'exact_match': 'true'})
+        url = 'https://api.launchpad.net/1.0/ubuntu/+archive/primary?' + params
+        with urllib.request.urlopen(url, timeout=120) as response:
+            entries = json.load(response)['entries']
+        for entry in entries:
+            if (entry.get('source_package_name') != package or entry.get('source_package_version') != version
+                    or not entry.get('date_published') or not entry.get('date_superseded')):
+                continue
+            start = datetime.fromisoformat(entry['date_published'])
+            end = datetime.fromisoformat(entry['date_superseded'])
+            if end <= start:
+                continue
+            stamp = (start + (end - start) / 2).astimezone(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
+            subprocess.run(['apt-get', 'update', '-qq', '--snapshot', stamp], check=True)
+            subprocess.run([*args, '--snapshot', stamp], check=True, cwd=target)
+            return {'method': 'apt-signed-snapshot', 'snapshot': stamp, 'publication': entry['self_link']}
+        raise ValueError('No authenticated source publication for exact retired version: ' + package + '=' + version)
 
 
 def validate_dsc(target, package, version):
@@ -186,9 +213,19 @@ def build(receipt_path, output, timestamp, cache, runtime_lock, *, git=git_sourc
                 name = 'ubuntu/' + source['sourcePackage'] + '-' + hashlib.sha256(key.encode()).hexdigest()[:12]
                 target = stage / name
                 target.mkdir(parents=True)
-                apt(source['sourcePackage'], source['sourceVersion'], target)
-                validate_dsc(target, source['sourcePackage'], source['sourceVersion'])
-                sources.append({**item, 'sourceKey': key, 'directory': name})
+                cached = cache / 'ubuntu' / hashlib.sha256(key.encode()).hexdigest()
+                source_files = cached / 'files'
+                metadata = cached / 'download.json'
+                source_files.mkdir(parents=True, exist_ok=True)
+                if not metadata.exists():
+                    origin = apt(source['sourcePackage'], source['sourceVersion'], source_files)
+                    validate_dsc(source_files, source['sourcePackage'], source['sourceVersion'])
+                    metadata.write_text(json.dumps(origin))
+                validate_dsc(source_files, source['sourcePackage'], source['sourceVersion'])
+                for path in source_files.iterdir():
+                    shutil.copyfile(path, target / path.name)
+                sources.append({**item, 'sourceKey': key, 'directory': name,
+                                'download': json.loads(metadata.read_text())})
             else:
                 name = 'upstream/' + item['id']
                 target = stage / name
