@@ -235,6 +235,10 @@ only the synthetic cover and makes no History-content or tray claim.
 
 ### M7 complete memory workflow; History-open PSS fails
 
+The specific product failure is tracked in [#558](https://github.com/patrick-hudson/put.gd-desktop/issues/558).
+The evidence here is the completed M7 workflow; no implementation change or
+budget waiver is included.
+
 | Stage | Measured duration | Peak family RSS | Peak family PSS | Resident CPU, one core |
 | --- | --- | --- | --- | --- |
 | Cold/closed | 300.118402 s | 30,507,008 B | 19,247,104 B | 0.003332% |

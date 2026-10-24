@@ -313,7 +313,7 @@
     "driverExitCode": 1,
     "exitMeaning": "Completed scoring returns1 for the failing product PSS gate; no driver exception",
     "attribution": "No memory-leak or regression cause established",
-    "productIssue": null
+    "productIssue": "https://github.com/patrick-hudson/put.gd-desktop/issues/558"
   },
   "emptyHistoryCountsAfterCleanup": {
     "operations": 0,

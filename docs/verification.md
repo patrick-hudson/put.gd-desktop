@@ -81,7 +81,7 @@ CPU/RSS/PSS pass, but History-open family PSS **64,956,416 B exceeds 62,914,560 
 by 2,041,856 B. Its 300 continuous ownership/window checks, normal helper
 generation-1 exit, complete inventory/absence and safe owned VNC crop are
 retained. The original VM resumed and m74 released verified-clean at 20:51:39 UTC.
-This is a valid product budget failure without leak/regression attribution;
+This is the valid product budget failure in [#558](https://github.com/patrick-hudson/put.gd-desktop/issues/558), without leak/regression attribution;
 M1 stays a pilot and M6 stays partial. No whole performance/capture, history,
 burst or network acceptance is claimed. Driver hardening (#495,
 PR #554) and the performance driver (PR #555) remain separately identified code
