@@ -342,6 +342,19 @@ private slots:
   QCOMPARE(h.rec("inspect",{{"id",id}}).error.code,QString("recording_unavailable"));
   QCOMPARE(h.provider->uploads.load(),0);
  }
+ void adjacentBudgetEventAndStopReplyKeepTheirOrder_data(){
+  QTest::addColumn<bool>("failedReply");QTest::newRow("success")<<false;QTest::newRow("error")<<true;
+ }
+ void adjacentBudgetEventAndStopReplyKeepTheirOrder(){
+  QFETCH(bool,failedReply);Harness h;PUTGD_TRY_VERIFY(h.operations->ready());const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);h.backend->deferStop=true;
+  Call stopped;h.server->dispatch({{"schemaVersion",1},{"requestId","pending-stop"},{"session",h.server->socketPath()},{"method","recording.stop"},{"params",QJsonObject{{"id",id}}}},[&](Error e,QJsonObject r){stopped={e,r,true};});QVERIFY(h.backend->pendingStop);
+  // Deliver both on the service thread without letting the event loop run:
+  // deterministic even when the pipe fixture's writes land in separate reads.
+  h.backend->sink({{"id",id},{"event","stopped"},{"reason","budget"},{"durationUs",9000000.0},{"canvas",QJsonArray{1280,720}}});
+  auto late=std::move(h.backend->pendingStop);late(failedReply?Error{"recording_state","already stopped",{}}:Error{},{{"durationUs",12000000.0},{"canvas",QJsonArray{1280,720}}});
+  PUTGD_TRY_VERIFY(stopped.done);QVERIFY(!stopped.error);QCOMPARE(stopped.result["state"].toString(),QString("reviewing"));QCOMPARE(stopped.result["stopReason"].toString(),QString("budget"));QCOMPARE(stopped.result["durationUs"].toDouble(),9000000.0);QCOMPARE(h.rec("inspect",{{"id",id}}).result,stopped.result);
+  QVERIFY(!h.rec("cancel",{{"id",id}}).error);
+ }
  void lateStopReplyPreservesEditedPendingExport_data(){
   QTest::addColumn<QString>("command");QTest::addColumn<bool>("failedReply");
   QTest::newRow("save copy")<<QString("saveCopy")<<false;
@@ -382,7 +395,7 @@ private slots:
   Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
   auto invoke=[&](QJsonObject options){options["action"]="record";return call(*h.server,"action.invoke",options);};
   QCOMPARE(invoke({{"mode","shell"}}).error.code,QString("invalid_request"));
-  for(const QJsonValue mode:{QJsonValue(),QJsonValue(1),QJsonValue(true),QJsonValue(QJsonObject{}),QJsonValue(QJsonArray{}),QJsonValue(""),QJsonValue(QString(17,'x'))})
+  for(const QJsonValue& mode:{QJsonValue(),QJsonValue(1),QJsonValue(true),QJsonValue(QJsonObject{}),QJsonValue(QJsonArray{}),QJsonValue(""),QJsonValue(QString(17,'x'))})
    QCOMPARE(invoke({{"mode",mode}}).error.code,QString("invalid_request"));
   for(const auto& action:Settings::actionNames())if(action!="record")
    QCOMPARE(call(*h.server,"action.invoke",{{"action",action},{"mode","open"}}).error.code,QString("invalid_request"));
