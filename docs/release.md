@@ -40,7 +40,7 @@ unpublished `v0.1.1-rc.1` draft, and before 2026-10-18
 `vBASE-dev.COUNT.UTC+gSHORT`. Every calendar version sorts after them.
 Nightlies never replace GitHub's Latest stable release. Every channel publishes
 all twenty-one individual downloads listed below, including the three raw DEBs, the RPM,
-the exact compiled curated source archive, the AppImage's media source and `.zsync`, the
+the exact compiled curated source archive, the AppImage's complete bundled-component source and `.zsync`, the
 debug symbols and an SBOM of each package.
 
 ### Nightly
@@ -279,22 +279,60 @@ Because of x264, x265 and the GPL FFmpeg, the AppImage is a GPL-2.0-or-later
 combined work; put.gd's own code stays MIT and each component keeps its
 licence. The image carries `usr/share/doc/putgd/APPIMAGE-GPL-NOTICE.txt` and
 the licence texts under `usr/share/doc/putgd/bundled-licenses`. Every release
-publishes the corresponding source as `putgd-VERSION-appimage-media-source.tar.gz`,
-built in the AppImage job by `tools/releases/appimage_media_sources.py`: the
-pinned FFmpeg commit as `git archive` output with its configure options, and
-the Ubuntu source packages (`apt-get source`, checked against the signed
-archive index) of every bundled GPL binary: x264, x265 and
-`gst-plugins-ugly1.0` for the `x264enc` plugin. The collector binds that
-archive to the exact AppImage digest, FFmpeg commit and package versions in the
-AppImage receipt before staging either. put.gd's own source is the
-`-source.tar.gz` asset. Qt, GLib and the other LGPL libraries keep their
-upstream sources, as before.
+publishes `putgd-VERSION-appimage-complete-source.tar.gz`, built automatically by
+`tools/releases/appimage_complete_sources.py` from the exact image's component
+inventory. It carries all pinned Qt module trees (including embedded third-party
+code), LayerShellQt, QtKeychain, ICU, AWS SDK/CRT submodules, FFmpeg with its
+configure/build scripts, and the exact distro sources of every bundled Ubuntu
+binary. Distro source includes the `.dsc`, original archives and Debian changes,
+verified by source version and checksums after download through signed apt
+indexes. The runtime's source, libfuse patch, static-library sources and Alpine
+recipes/patches are included too; their closure is pinned to the runtime digest
+in `packaging/appimage/runtime-source.json`.
 
-For information: H.264 and HEVC are covered by patent pools. Via LA licenses
-H.264 (AVC) and HEVC, and Access Advance also licenses HEVC. The AVC licence
-has a royalty-free tier for small unit volumes (100,000 units a year). The
-DEBs and the RPM use the codecs the distribution supplies; the AppImage ships
-x264 and x265 binaries.
+The source asset's `SOURCES.json` maps every component to its source and checksums.
+`upstream/*/TREES.json` maps root and recursive submodule archives to their
+original paths. The collector rejects missing components, changed Qt/runtime
+pins, a partial media-only asset or mismatched archive contents. put.gd's own
+`-source.tar.gz` and the Proton source catalog/transport parts remain separately
+verified assets on the same release. Keep all these source assets available
+alongside the corresponding binary. No three-year written-offer process or
+separate source mirror is substituted for these automated assets (#416).
+
+The upstream runtime's old build logs have expired. Its exact binary and debug
+hashes, identified static-library versions, available packaging revisions and
+reproduction limits are recorded in the runtime source lock. Source delivery
+is not a claim that the official runtime or Qt binaries rebuild byte for byte.
+The runtime also embeds mimalloc 2.1.7; its original MIT notice is now included
+in the image's notice inventory.
+
+### Codec distribution decision (#419)
+
+Patrick delegated the distribution choice on 2026-10-23. Retain the software
+H.264 encoder/decoder, H.265 encoder and AAC encoder/decoder in the free,
+directly downloadable stable and nightly AppImage. This preserves recording
+fallback and MP4/H.265 export on systems without a working host hardware encoder,
+following the approved functional choice to bundle x264/x265. AAC is included
+explicitly: GStreamer vo-aacenc supplies recording audio and FFmpeg AAC supplies
+working-clip decoding/export. The DEB/RPM continue to use distribution codecs.
+
+This chooses distribution under the upstream software licences, with complete
+notices and corresponding source; it does not assert a patent licence or
+universal patent clearance. Do not infer an exemption from free downloads,
+source availability, small download counts or the AVC royalty threshold. The
+[AVC programme](https://www.via-la.com/licensing-programs/avc-h-264/) describes
+product licensing and threshold terms; the [AAC programme](https://www.via-la.com/licensing-programs/aac/)
+addresses end-user encoder/decoder products; [Access Advance's FAQ](https://accessadvance.com/faq/)
+addresses downloadable HEVC software. Those are the administrators' published
+positions, not a finding that every patent in their pools applies to this build.
+[FFmpeg's legal guidance](https://www.ffmpeg.org/legal.html) distinguishes code
+licensing from jurisdiction-dependent patent questions.
+
+No patent-pool agreement, payment, territorial clearance or downstream patent
+sublicence is represented or entered into by this decision. Reassess this
+posture if distribution becomes paid, bundled with hardware or services, or a
+specific applicable claim/licensing obligation is established. Source compliance
+and the existing security, exact-package and desktop release gates still apply.
 
 GNOME capture currently targets Shell 50 and requires the host extension.
 Release collection also emits the matching extension ZIP. Installing files inside
@@ -379,7 +417,7 @@ permalink yet): [live update](evidence/2026-10-21-appimage-live-294-296/README.m
 The GitHub Release page publishes each installer as an individual download:
 Ubuntu 24.04, Ubuntu 26.04 and Debian 13 DEBs, the Fedora 44 RPM, and the x86_64 AppImage. It also
 publishes `putgd-VERSION-source.tar.gz`, the AppImage's
-`putgd-VERSION-appimage-media-source.tar.gz` and `putgd-VERSION-x86_64.AppImage.zsync`
+`putgd-VERSION-appimage-complete-source.tar.gz` and `putgd-VERSION-x86_64.AppImage.zsync`
 (see [AppImage updates](#appimage-updates)), the GNOME extension ZIP, full build
 receipts, the Proton source catalog and two source transport parts,
 `putgd-VERSION-debug-x86_64.tar.zst`, a CycloneDX SBOM of each package
@@ -506,8 +544,13 @@ The evidence package is the development-identity AppImage from `nightly`
 `50053b01f1bbd7f3776a53513bb8c43151ce0de8` (CI run 40045151634), not a published
 nightly or stable draft. Each later package must satisfy the same fingerprint
 guards, and the exact stable draft still requires its current scan and other
-release acceptance. The libtiff and GStreamer findings without published fixes
-remain reported under the existing policy.
+release acceptance. The [remaining-findings assessment](evidence/2026-10-24-release-blockers-511-416-419/README.md)
+checks the exact source behind libtiff CVE-2026-4775 and GStreamer CVE-2025-3887.
+Qt's pinned libtiff already contains all four upstream overflow corrections.
+GStreamer's affected H.265 parser is bundled and unpatched, but no current
+product input path to it was identified: recording uses explicit H.264/AAC
+graphs, and preview/export uses FFmpeg. Both raw findings remain visible; no
+new policy ignore or release acceptance follows from this assessment.
 
 CPE matching takes NVD's version ranges literally. FFmpeg's maintenance branches
 backport fixes that NVD records only against the next major, and the AppImage

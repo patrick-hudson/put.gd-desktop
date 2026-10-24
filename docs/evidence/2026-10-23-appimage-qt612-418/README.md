@@ -45,7 +45,9 @@ After the pass, #497 merged `nightly` in (head `786ed9fc`, which brings #420's S
   - **Cleared by Qt 6.12:** the Critical/High findings in Qt's embedded PCRE2, libpng, SQLite and libtiff that [#511](https://github.com/patrick-hudson/put.gd-desktop/issues/511) lists against Qt 6.8.3.
   - **Left in Qt's code:**
     - ICU 73.2 (CVE-2025-5222, fixed in 77.1): Qt 6.12.0 still ships ICU 73.2.
-    - libtiff 4.7.2 (CVE-2026-4775): no fixed version yet.
+    - libtiff 4.7.2 (CVE-2026-4775): the scanner reported no fixed version. The
+      [subsequent pinned-source assessment](../2026-10-24-release-blockers-511-416-419/README.md)
+      confirms that Qt's source already contains the upstream correction.
   - **Tracking:** both are recorded on #511 with FFmpeg's.
 
 ![f44: merged head 786ed9fc: region capture and the CVE-2025-10729 SVG in History](pictures/f44-merged-head-recheck.png)
