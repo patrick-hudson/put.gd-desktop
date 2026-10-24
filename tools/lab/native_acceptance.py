@@ -412,15 +412,37 @@ def loopback_url(value):
         return False
 
 
-def fixture_network_state(value):
+TERMINAL_OPERATIONS = {'completed', 'partial', 'failed', 'cancelled', 'interrupted'}
+# StorageReceipt{}.toJson() / Destination{}.toJson(), including every field.
+INERT_RECEIPT = {'schemaVersion': 1,
+                 'destination': {'providerId': '', 'profileId': '', 'profileRevision': '', 'settings': {}, 'credentials': {}},
+                 'objectReference': {}, 'concurrencyToken': '', 'publicationId': '', 'directUrl': ''}
+
+
+def isolated_receipt(receipt):
+    if not isinstance(receipt, dict) or set(receipt) != set(INERT_RECEIPT): return False
+    destination = receipt.get('destination')
+    return (type(receipt['schemaVersion']) is int and receipt['schemaVersion'] == 1
+            and isinstance(destination, dict) and set(destination) == set(INERT_RECEIPT['destination'])
+            and destination['providerId'] == 's3'
+            and all(isinstance(destination[k], str) and destination[k] for k in ('profileId', 'profileRevision'))
+            and isinstance(destination['settings'], dict) and loopback_url(destination['settings'].get('endpoint'))
+            and isinstance(receipt['objectReference'], dict) and bool(receipt['objectReference'])
+            and isinstance(receipt['publicationId'], str) and bool(receipt['publicationId'])
+            and isinstance(receipt['concurrencyToken'], str) and isinstance(receipt['directUrl'], str))
+
+
+def fixture_network_state(value, terminal=False):
     """Reject external/unknown routes and recovery work, including old journals.
 
     No rewriting of an external destination into a fixture is allowed. Review
     the whole database, not just the rows chosen as cloning templates.
     """
     if isinstance(value, list):
-        for item in value: fixture_network_state(item)
+        for item in value: fixture_network_state(item, terminal)
     elif isinstance(value, dict):
+        if 'items' in value and 'state' in value:
+            terminal = value['state'] in TERMINAL_OPERATIONS
         provider = value.get('providerId', value.get('provider'))
         if provider:
             require(provider == 's3' and loopback_url(value.get('settings', {}).get('endpoint')),
@@ -440,11 +462,14 @@ def fixture_network_state(value):
                     'Fixture contains persisted upload/deletion/cleanup recovery work')
             if key == 'endpoint' and item:
                 require(loopback_url(item), 'Fixture contains a non-loopback endpoint')
-            if key in ('receipt', 'shareReceipt') and item:
-                require(isinstance(item, dict) and item.get('destination', {}).get('providerId') == 's3'
-                        and loopback_url(item['destination'].get('settings', {}).get('endpoint')),
-                        'Fixture receipt lacks an explicit isolated destination')
-            fixture_network_state(item)
+            if key in ('receipt', 'shareReceipt'):
+                inert = (key == 'receipt' and isinstance(item, dict) and type(item.get('schemaVersion')) is int
+                         and item == INERT_RECEIPT and terminal
+                         and value.get('uploadStatus') in ('failed', 'local_only', 'cancelled', 'skipped', 'conflict')
+                         and value.get('remoteStatus', 'not_requested') == 'not_requested'
+                         and value.get('shareStatus', 'not_requested') == 'not_requested')
+                require(inert or isolated_receipt(item), 'Fixture receipt is neither inert nonpublished state nor a complete isolated receipt')
+            fixture_network_state(item, terminal)
     elif isinstance(value, str) and '://' in value:
         require(loopback_url(value), 'Fixture contains a non-loopback persisted URL')
 
@@ -458,8 +483,12 @@ def validate_fixture_database(con):
                     'Fixture contains deletion/sharing journals; use a fresh isolated seed')
         columns = {r[1] for r in con.execute('PRAGMA table_info(' + quote(table) + ')')}
         if 'data' in columns:
-            for (data,) in con.execute('SELECT data FROM ' + quote(table)):
-                fixture_network_state(json.loads(data))
+            if table == 'history':
+                for data, state in con.execute("SELECT h.data,json_extract(o.data,'$.state') FROM history h LEFT JOIN operations o ON o.id=h.operation_id"):
+                    fixture_network_state(json.loads(data), state in TERMINAL_OPERATIONS)
+            else:
+                for (data,) in con.execute('SELECT data FROM ' + quote(table)):
+                    fixture_network_state(json.loads(data))
 
 
 @contextmanager

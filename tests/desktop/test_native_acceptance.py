@@ -37,10 +37,25 @@ def fixture(db, count=5):
             created = f'2026-10-23T00:00:0{i}.000Z'
             artifact = {'id': item, 'name': f'capture-{i}.png', 'path': f'/fixture/artifacts/{op}/{item}',
                         'previewPath': f'/fixture/previews/{item}.png'}
+            receipt = copy.deepcopy(driver.INERT_RECEIPT) if i == 4 else {
+                'schemaVersion': 1, 'destination': {'providerId': 's3', 'profileId': 'fixture', 'profileRevision': 'seed-revision',
+                    'settings': {'endpoint': 'http://127.0.0.1:9900'}, 'credentials': {'mode': 'session', 'reference': None}},
+                'objectReference': {'bucket': 'fixture', 'key': f'capture-{i}.png'}, 'publicationId': f'publication-{i}',
+                'concurrencyToken': 'synthetic-etag', 'directUrl': f'http://127.0.0.1:9900/fixture/capture-{i}.png'}
+            # Unstripped OperationItem::toJson shape: even a failed/local item
+            # always contains the full default StorageReceipt object.
+            operation_item = {'artifact': artifact, 'uploadStatus': 'failed' if i == 4 else 'uploaded',
+                              'candidate': '', 'condition': '', 'concurrencyToken': '', 'publicationId': '',
+                              'objectReference': {}, 'receipt': receipt, 'local': {'status': 'saved', 'path': '/fixture/copy.png', 'error': {}},
+                              'remoteStatus': 'not_requested', 'shareStatus': 'not_requested', 'shareIntent': '', 'shareIntentOptions': {},
+                              'error': {}, 'phase': 'failed' if i == 4 else 'uploaded', 'uploadProgress': None, 'uploadJournal': {}}
             journal = {'id': op, 'state': 'failed' if i == 4 else 'completed', 'created': created,
-                       'items': [{'artifact': artifact, 'uploadStatus': 'failed' if i == 4 else 'uploaded'}],
+                       'items': [operation_item],
                        'settings': {'actions': {'desktop': {'destination': 'upload'}}}}
-            record = dict(artifact, id=item, itemId=item, operationId=op, created=created)
+            record = dict(operation_item)
+            record.update(artifact)
+            record.update(id=item, itemId=item, operationId=op, created=created)
+            record.pop('artifact')
             con.execute('INSERT INTO operations VALUES(?,?)', (op, json.dumps(journal).encode()))
             con.execute('INSERT INTO history VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)',
                         (item, op, item, created, artifact['name'], 'image/png', 'image', 'fixture',
@@ -88,6 +103,37 @@ class HistoryShape(unittest.TestCase):
         with contextlib.closing(sqlite3.connect(self.db)) as con, con:
             journal = json.loads(con.execute("SELECT data FROM operations WHERE id NOT LIKE 'op-%'").fetchone()[0])
             self.assertEqual(len(journal['items']), 1)
+
+    def test_unmodified_local_and_failed_product_receipts_are_accepted(self):
+        with contextlib.closing(sqlite3.connect(self.db)) as con, con:
+            failed = json.loads(con.execute("SELECT data FROM operations WHERE id='op-4'").fetchone()[0])
+            self.assertEqual(failed['items'][0]['receipt'], driver.INERT_RECEIPT)
+            journal = json.loads(con.execute("SELECT data FROM operations WHERE id='op-0'").fetchone()[0])
+            item = journal['items'][0]
+            item['uploadStatus'] = 'local_only'; item['phase'] = 'local_only'; item['receipt'] = copy.deepcopy(driver.INERT_RECEIPT)
+            journal['state'] = 'completed'
+            con.execute("UPDATE operations SET data=? WHERE id='op-0'", (json.dumps(journal),))
+            record = json.loads(con.execute("SELECT data FROM history WHERE id='item-0'").fetchone()[0])
+            record['uploadStatus'] = 'local_only'; record['phase'] = 'local_only'; record['receipt'] = copy.deepcopy(driver.INERT_RECEIPT)
+            con.execute("UPDATE history SET data=?,upload_status='local_only' WHERE id='item-0'", (json.dumps(record),))
+        self.assertEqual(driver.grow_database(self.db, 10)['independentOperations'], 10)
+
+    def test_inert_receipt_exception_rejects_published_ambiguous_and_recovery_state(self):
+        base = {'state': 'failed', 'items': [{'uploadStatus': 'failed', 'remoteStatus': 'not_requested',
+                                             'shareStatus': 'not_requested', 'receipt': copy.deepcopy(driver.INERT_RECEIPT), 'uploadJournal': {}}]}
+        driver.fixture_network_state(base)
+        cases = []
+        for field, value in (('publicationId', 'not-inert'), ('objectReference', {'key': 'ambiguous'}),
+                             ('directUrl', 'http://127.0.0.1:9900/ambiguous'), ('schemaVersion', True)):
+            doc = copy.deepcopy(base); doc['items'][0]['receipt'][field] = value; cases.append(doc)
+        for status in ('uploaded', 'unknown', 'uploading', 'stored'):
+            doc = copy.deepcopy(base); doc['items'][0]['uploadStatus'] = status; cases.append(doc)
+        doc = copy.deepcopy(base); doc['state'] = 'running'; cases.append(doc)
+        doc = copy.deepcopy(base); doc['items'][0]['uploadJournal'] = {'uploadId': 'cleanup-id'}; cases.append(doc)
+        doc = copy.deepcopy(base); doc['items'][0]['remoteStatus'] = 'unknown'; cases.append(doc)
+        doc = copy.deepcopy(base); doc['items'][0]['shareReceipt'] = copy.deepcopy(driver.INERT_RECEIPT); cases.append(doc)
+        for doc in cases:
+            with self.subTest(doc=doc), self.assertRaises(driver.Refused): driver.fixture_network_state(doc)
 
     def test_missing_journal_rolls_back_without_partial_clones(self):
         with contextlib.closing(sqlite3.connect(self.db)) as con, con:
