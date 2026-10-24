@@ -73,7 +73,7 @@ def same_process(identity):
 def bus(env, *args):
     reply = command(['busctl', '--user', '--json=short', *map(str, args)], env)
     require(reply.returncode == 0, 'D-Bus call failed: ' + str(args[0]) + ' (no raw diagnostic retained)')
-    return json.loads(reply.stdout).get('data')
+    return json.loads(reply.stdout).get('data') if reply.stdout.strip() else []
 
 
 def owner(env, service):
@@ -161,6 +161,7 @@ def tray_target(env, identity):
     targets = []
     for item in items:
         service, sep, suffix = item.partition('/')
+        pid = None
         try:
             unique, pid = owner(env, service)
             if pid != identity['pid']:
@@ -174,7 +175,7 @@ def tray_target(env, identity):
             targets.append({'service': unique, 'path': path, 'menu': menu, 'title': title, 'resident': identity})
         except Refused:
             # Unrelated items may disappear between enumeration and lookup.
-            if 'pid' in locals() and pid == identity['pid']:
+            if pid == identity['pid']:
                 raise
     require(len(targets) == 1, 'Expected one SNI owned by the selected put.gd resident; no coordinate fallback')
     require(same_process(identity), 'Resident generation changed during SNI lookup')
@@ -203,9 +204,14 @@ def tray(args, env):
     identity = checked_resident(args.pid, args.exe)
     target = tray_target(env, identity)
     if args.action == 'menu':
-        # This addresses the authenticated icon, never a panel coordinate. The
-        # coordinates place its menu only; no pointer input is sent to the host.
-        bus(env, 'call', target['service'], target['path'], 'org.kde.StatusNotifierItem', 'ContextMenu', 'ii', '0', '0')
+        layout = bus(env, 'call', target['service'], target['menu'], 'com.canonical.dbusmenu', 'GetLayout', 'iias', '--', '0', '-1', '0')
+        return {'target': target, 'action': 'menu', 'quitAction': quit_action(layout[1]),
+                'pointerInputSent': False, 'menuRendered': False}
+    elif args.action == 'activate':
+        # Addresses the authenticated tray item. No hit-testing of panels,
+        # launchers or desktop background, and no pointer coordinates accepted.
+        require(tray_target(env, identity) == target, 'Tray ownership changed before activation')
+        bus(env, 'call', target['service'], target['path'], 'org.kde.StatusNotifierItem', 'Activate', 'ii', '0', '0')
     elif args.action == 'quit':
         layout = bus(env, 'call', target['service'], target['menu'], 'com.canonical.dbusmenu', 'GetLayout', 'iias', '--', '0', '-1', '0')
         action = quit_action(layout[1])
@@ -432,7 +438,7 @@ def main():
     parser.add_argument('--session', help='Expected active logind session ID')
     subs = parser.add_subparsers(dest='cmd', required=True)
     subs.add_parser('session')
-    p = subs.add_parser('tray'); p.add_argument('action', choices=('inspect', 'menu', 'quit'))
+    p = subs.add_parser('tray'); p.add_argument('action', choices=('inspect', 'menu', 'activate', 'quit'))
     p.add_argument('--pid', type=int, required=True); p.add_argument('--exe', required=True)
     p = subs.add_parser('plasma-registration'); p.add_argument('--repair', action='store_true'); p.add_argument('--probe', required=True)
     p = subs.add_parser('login-prepare'); p.add_argument('--pid', type=int, required=True); p.add_argument('--exe', required=True)
@@ -443,6 +449,7 @@ def main():
     p = subs.add_parser('grow'); p.add_argument('--fixture-root', required=True); p.add_argument('--db', required=True)
     p.add_argument('--runtime', required=True); p.add_argument('--to', type=int, default=10000)
     p = subs.add_parser('keychain'); p.add_argument('phase', choices=('status', 'store', 'check', 'cleanup'))
+    p.add_argument('--unlock-lab', action='store_true', help='Request visible unlock of the existing approved blank lab collection only')
     p.add_argument('--before', type=Path); p.add_argument('--login-input'); p.add_argument('--credentials-mode', choices=('keychain', 'session', 'reference-only'), default='keychain')
     args = parser.parse_args()
     # A directly executed script and its imported keychain helper must share
@@ -467,7 +474,9 @@ def main():
             elif args.cmd == 'snapshot': result['result'] = snapshot(args, facts, env)
             elif args.cmd == 'keychain':
                 from native_keychain import lifecycle
-                result['result'] = lifecycle(args.phase, env, json.loads(private(args.before).read_text())['result'] if args.before else None)
+                before = json.loads(private(args.before).read_text()) if args.before else None
+                require(before is None or (before.get('ok') and isinstance(before.get('result'), dict)), 'Prior keychain receipt did not succeed')
+                result['result'] = lifecycle(args.phase, env, before['result'] if before else None, args.unlock_lab)
                 result['result'].update({'protectedLoginInput': login_input(args.login_input), 'productCredentialMode': args.credentials_mode,
                                          'productKeychainRoundtripProven': False})
                 if args.credentials_mode != 'keychain':

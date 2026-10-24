@@ -95,6 +95,12 @@ class HistoryShape(unittest.TestCase):
             con.execute("UPDATE operations SET data=json_set(data,'$.state','running') WHERE id='op-1'")
         with self.assertRaises(driver.Refused): driver.grow_database(self.db, 10)
 
+    def test_old_many_rows_five_operations_shape_is_refused(self):
+        with sqlite3.connect(self.db) as con:
+            con.execute("UPDATE history SET operation_id='op-0' WHERE id='item-1'")
+        with self.assertRaisesRegex(driver.Refused, 'independent operations'):
+            driver.grow_database(self.db, 10000)
+
     def test_missing_database_snapshot_does_not_create_database(self):
         absent = self.db.with_name('purged.sqlite')
         self.assertEqual(driver.database_snapshot(absent), {'available': False})
@@ -140,6 +146,27 @@ class Safety(unittest.TestCase):
         with mock.patch.object(driver, 'same_process', return_value=True), mock.patch.object(driver, 'bus', return_value=[]):
             with self.assertRaisesRegex(driver.Refused, 'no coordinate fallback'):
                 driver.tray_target({}, {'pid': 17})
+
+    def test_coordinate_override_is_rejected_before_any_action(self):
+        with mock.patch.dict(os.environ, {'TRAY_XY': '211,1059'}), \
+             mock.patch.object(driver, 'checked_resident', side_effect=AssertionError('must not act')):
+            with self.assertRaisesRegex(driver.Refused, 'TRAY_XY'):
+                driver.tray(None, {})
+
+    def test_cache_repair_only_when_needed_and_in_supplied_session(self):
+        env = {'XDG_MENU_PREFIX': 'plasma-', 'LANG': 'en_US.UTF-8', 'XDG_CURRENT_DESKTOP': 'KDE'}
+        healthy = {'applicationCount': 235, 'putgd': True, 'dolphin': True}
+        def reply(data): return type('Reply', (), {'returncode': 0, 'stdout': json.dumps(data)})()
+        with tempfile.NamedTemporaryFile() as probe, mock.patch.object(driver, 'command', return_value=reply(healthy)) as run:
+            result = driver.plasma_registration(env, repair=True, probe=probe.name)
+            self.assertFalse(result['repaired'])
+            self.assertEqual(run.call_count, 1)
+            self.assertEqual(run.call_args.args[1], env)
+        with tempfile.NamedTemporaryFile() as probe, \
+             mock.patch.object(driver, 'command', side_effect=[reply({'applicationCount': 0}), reply({}), reply(healthy)]) as run:
+            result = driver.plasma_registration(env, repair=True, probe=probe.name)
+            self.assertTrue(result['repaired'])
+            self.assertEqual(run.call_args_list[1].args, (['kbuildsycoca6', '--noincremental'], env))
 
     def test_quit_id_is_dynamic_and_must_be_unique_visible_enabled(self):
         def node(i, label, **props): return [i, {'label': {'data': label}, **{k: {'data': v} for k, v in props.items()}}, []]
