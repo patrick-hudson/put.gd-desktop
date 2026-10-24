@@ -215,6 +215,13 @@ class Safety(unittest.TestCase):
         for ref in ('putgd/proton/lab-f44', 'login', 'putgd-acceptance-/../../default', 'putgd-acceptance-' + '-' * 36):
             self.assertFalse(native_keychain.valid_reference(ref))
 
+    def test_keychain_provider_metadata_does_not_replace_ownership_checks(self):
+        ref = 'putgd-acceptance-12345678-1234-1234-1234-123456789abc'
+        attributes = {'application': 'putgd-native-acceptance', 'reference': ref, 'xdg:schema': 'org.freedesktop.Secret.Generic'}
+        self.assertTrue(native_keychain.owns_probe(attributes, ref))
+        self.assertFalse(native_keychain.owns_probe(dict(attributes, reference='another-reference'), ref))
+        self.assertFalse(native_keychain.owns_probe(dict(attributes, application='another-app'), ref))
+
 
 if __name__ == '__main__':
     unittest.main()

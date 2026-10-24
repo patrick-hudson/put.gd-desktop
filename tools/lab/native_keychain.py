@@ -22,6 +22,15 @@ def valid_reference(value):
         return False
 
 
+def owns_probe(attributes, reference):
+    # Providers may add metadata (gnome-keyring adds xdg:schema). Required
+    # ownership attributes must still match exactly; additional metadata is
+    # neither a credential nor authority to read/delete another reference.
+    return (valid_reference(reference) and isinstance(attributes, dict)
+            and attributes.get('application') == 'putgd-native-acceptance'
+            and attributes.get('reference') == reference)
+
+
 def lifecycle(phase, env, before=None, unlock_lab=False):
     from native_acceptance import Refused, require
     # Gio uses the process bus, not a subprocess environment.
@@ -103,7 +112,8 @@ def lifecycle(phase, env, before=None, unlock_lab=False):
         require(not unlocked, 'Synthetic reference already exists; refusing replacement')
     else:
         require(len(unlocked) == 1 and unlocked[0].startswith(collection + '/'), 'Expected one owned probe item in the original collection')
-        require(prop(unlocked[0], 'org.freedesktop.Secret.Item', 'Attributes') == attrs, 'Probe attributes changed; refusing read/delete')
+        require(owns_probe(prop(unlocked[0], 'org.freedesktop.Secret.Item', 'Attributes'), reference),
+                'Probe ownership attributes changed; refusing read/delete')
     session = call(service, 'org.freedesktop.Secret.Service', 'OpenSession', '(sv)',
                    ('plain', GLib.Variant('s', '')), '(vo)')[1]
     synthetic = ('synthetic-backend-probe:' + reference).encode()
