@@ -127,25 +127,53 @@ journal case, with zero failures/skips. [Ledger](stress-u24/ledger.json),
 [socket preflight](stress-u24-preflight.json). Passing JUnit stdout is truncated
 by CTest's default; the saved full logs supplement its per-iteration outcomes.
 
-**Pending merge gate at this checkpoint:** final-head Ubuntu26.04 repeated loaded
-stress. Its target built on distro Qt 6.10.2; the ten-run campaign started after
-Ubuntu24 finished, keeping one stress suite per physical host. Required code CI
-has passed on the same exact head. The first Ubuntu24 configure found a missing XTest development
+**Ubuntu26.04 completed:** distro Qt 6.10.2, the same clean final head; 10/10
+full `operations_contract` iterations passed, all exit codes zero, no failures
+or interruption. Runs take 86.25–87.20 seconds (median 86.55). Saved full logs
+confirm 112 QtTest passes, including the journal case, with zero failures/skips.
+[Ledger](stress-u26/ledger.json), [summary](stress-u26/summary.md),
+[final full log](stress-u26/iteration-010-full.log),
+[OS/compiler/Qt/build/hash/environment](context-u26.json),
+[socket preflight](stress-u26-preflight.json). Its campaign ran after Ubuntu24,
+keeping one stress suite per physical host. Both ledgers were checked for ten
+actual independent successful iterations; the stress helper's exit code alone
+was not treated as a pass.
+
+Required code CI passed on this exact head. Final documentation-only CI and
+parent review remain before merge. The first Ubuntu24 configure found a missing XTest development
 package ([failure](configure-u24-failed-missing-xtest.log)); the correction installs
 standard `libxcb-xtest0-dev xvfb xauth dbus-daemon` inside its disposable container.
 No host desktop runtime changes were made. Both containers' exact
 [identities](container-identities.txt), [CPU topology](host-cpu.txt),
 [Ubuntu24 packages](packages-u24.txt) and [Ubuntu26 packages](packages-u26.txt)
-are retained. The completed Ubuntu24 container had only its idle `sleep` process
-([check](cleanup-u24-processes.txt)) and was stopped by its exact task-owned name
-([receipt](cleanup-u24-stop.txt)); its files/source/evidence remain intact.
+are retained. The completed containers had only their idle `sleep` processes
+([Ubuntu24](cleanup-u24-processes.txt), [Ubuntu26](cleanup-u26-processes.txt))
+and were stopped by their exact task-owned names
+([Ubuntu24](cleanup-u24-stop.txt), [Ubuntu26](cleanup-u26-stop.txt)).
+[Final container states](cleanup-containers.txt) show both exited with no live
+PID; [native executable cleanup](cleanup-native.json) finds no executable under
+this task's host prefix. Files/source/evidence remain intact. The d69 heavy
+window ended at 01:18:43Z, before its 01:20Z allocation ended; no desktop lock
+was acquired or held.
 
 ## Retention and boundaries
+
+Before the coordinator's d69-only allocation arrived, baseline preparation also
+started in this task's dedicated checkouts on k72 and m74. The k72 build was
+[interrupted after nine of 168 build steps](preparation-k72-build-base.log),
+by terminating only the verified owned build process tree (root PID 14484;
+descendants 14486, 14559, 14560, 14561, 14563, 14564, 14565). The m74 configure
+[failed before any build](preparation-m74-configure-base.log) because the assumed
+shared SDK prefix did not exist. Neither produced acceptance evidence. They
+were stopped/left idle when allocation arrived; all subsequent build/test work
+was confined to d69. Their dedicated source/evidence directories are retained;
+no desktop or system package was changed.
 
 The complete raw run logs, build logs, failed attempts, source bundles and
 container workspaces remain under d69
 `/home/patrick/work/putgd-ci393/`; the workstation private copy is under this
 task's `work/ci393/collected/`. The small curated receipts here are supplemental,
 not a deletion/retirement instruction. No VM, golden, Windows guest, desktop
-session, credentials or demo service was used or changed. Additional distro,
-workflow and cleanup receipts will be appended before acceptance is handed back.
+session, credentials or demo service was used or changed. The two distro
+campaigns, real hosted job and cleanup receipts above complete this task's
+scoped verification. They do not close unrelated release or desktop gates.
