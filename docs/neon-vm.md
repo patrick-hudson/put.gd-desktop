@@ -114,13 +114,51 @@ Each in a fresh provisioning directory (`work/neon-lab/p2` on d69 for Unstable,
    `Session=/usr/share/wayland-sessions/plasma.desktop`, an absolute path, into
    `/etc/plasmalogin.conf`, overriding the drop-in. plasmalogin 6.8.1 and master
    both log "Unable to find autologin session entry" and show the greeter.
-   The bootstrap script rewrites it to `plasma.desktop`
+   The bootstrap script repairs that `[Autologin]` entry to `plasma.desktop`,
+   retaining a private backup of the original main config
    ([#524](https://github.com/patrick-hudson/put.gd-desktop/issues/524)).
 6. Set `Prompt=never`, `apt-get clean`, vacuum the journal, delete the upgrade
    log and shell history, `fstrim -av`, `systemctl poweroff`.
 7. `qemu-img check`, `qemu-img convert -O qcow2` to the new golden directory,
    `qemu-img compare` (identical), `qemu-img check`, SHA-256, mode 0444, then
    the sidecars, the manifest and the bootstrap key directory.
+
+## Repair autologin on an existing installation
+
+If neon returns to the greeter instead of autologging in, and the plasmalogin
+journal reports that it cannot find
+`/usr/share/wayland-sessions/plasma.desktop`, run this from a checkout containing
+the repair mode:
+
+```sh
+sudo sh tools/lab/bootstrap-neon-guest.sh --fix-autologin
+```
+
+This mode needs distro Python 3 and its standard library. It can run on a normal
+neon installation as well as a disposable guest. It changes only
+`Session=/usr/share/wayland-sessions/plasma.desktop` within `[Autologin]` in
+`/etc/plasmalogin.conf`, replacing the value with `plasma.desktop`. The main
+config takes precedence over the lab drop-in, so changing only the drop-in
+does not fix this installer entry. Whitespace and line endings are preserved.
+
+The command prints the exact path of a private backup named
+`/etc/plasmalogin.conf.putgd-524-*.bak` before atomically replacing the config.
+It preserves the config's owner, group, permissions and all other entries.
+An unaffected or absent config is a no-op; symlinks and other nonregular files
+are refused. Repeating the command keeps the original backup. If a later
+installer run reintroduces the path, a new repair saves a separate backup.
+For recovery, copy the exact reported backup over the existing config with
+`sudo cp -- BACKUP_PATH /etc/plasmalogin.conf`.
+
+Repair mode does not enable autologin, select a user, install SSH, alter idle
+settings or restart the desktop. The correction takes effect at the next login;
+save your work before deliberately logging out or rebooting to verify it. In the
+lab, test only an independent overlay and keep it visible on its wall tile.
+Never boot or repair an immutable golden directly.
+
+The [2026-10-23 repair check](evidence/2026-10-23-neon-autologin-524/README.md)
+records the reproduced failures and successful autologin on fresh User and
+Unstable overlays, with exact source identities, saved visuals and cleanup.
 
 ## Copies and S3
 
