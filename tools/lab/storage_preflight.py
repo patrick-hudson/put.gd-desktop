@@ -12,6 +12,8 @@ import subprocess
 
 
 def measure_filesystem(path):
+    import re
+
     # Pin the measured object: statfs identification and fstatvfs must describe
     # the same filesystem, even for symlinks or a concurrent mount change.
     path = os.path.realpath(path, strict=True)
@@ -26,10 +28,16 @@ def measure_filesystem(path):
                 env={**os.environ, 'LC_ALL': 'C'})
             if identity.returncode:
                 error = 'CommandFailed'
-            elif identity.stdout.strip().count(':') != 1:
-                error = 'InvalidResponse'
             else:
-                kind, magic = identity.stdout.strip().split(':')
+                # GNU stat emits one ASCII name and Linux hexadecimal magic,
+                # optionally followed by one newline. Validate before retaining
+                # either field: malformed output may contain private text.
+                match = (re.fullmatch(r'([a-z0-9][a-z0-9_+./-]{0,63}):([0-9a-f]{1,8})\n?',
+                                      identity.stdout) if isinstance(identity.stdout, str) else None)
+                if match is None:
+                    error = 'InvalidResponse'
+                else:
+                    kind, magic = match.groups()
         except (OSError, subprocess.TimeoutExpired) as exc:
             # Never persist command arguments, stdout/stderr or exception text.
             # Retain the already measured raw capacity with unknown accounting.

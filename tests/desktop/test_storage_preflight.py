@@ -115,12 +115,18 @@ class CapacityContracts(unittest.TestCase):
             self.assertEqual(raw['statvfs']['f_frsize'], os.statvfs(folder).f_frsize)
 
     def test_host_identification_failures_keep_raw_metrics_and_private_failed_receipt(self):
-        failures = [subprocess.TimeoutExpired(['stat', 'protected argument'], 5,
-                                              output='protected output', stderr='protected stderr'),
-                    FileNotFoundError('protected path'),
-                    SimpleNamespace(returncode=1, stdout='protected output', stderr='protected stderr'),
-                    SimpleNamespace(returncode=0, stdout='protected malformed output', stderr='')]
-        for index, failure in enumerate(failures):
+        failures = [(subprocess.TimeoutExpired(['stat', 'protected argument'], 5,
+                                               output='protected output', stderr='protected stderr'), 'TimeoutExpired'),
+                    (FileNotFoundError('protected path'), 'FileNotFoundError'),
+                    (SimpleNamespace(returncode=1, stdout='protected output', stderr='protected stderr'), 'CommandFailed')]
+        malformed = ('protected:opaque', 'protected malformed output', 'btrfs:9123683e\nprotected',
+                     'protected\nbtrfs:9123683e', 'btrfs:9123683e:protected',
+                     'protected space:ef53', 'protected\x00:ef53', 'protected\r:ef53',
+                     'protected' * 10 + ':ef53', 'protected:123456789', 'protected:0x123',
+                     'protected:EF53', ':ef53', 'protected:', 'btrfs:9123683e\n\n', None)
+        failures += [(SimpleNamespace(returncode=0, stdout=value, stderr='protected stderr'), 'InvalidResponse')
+                     for value in malformed]
+        for failure, expected_error in failures:
             with self.subTest(failure=type(failure).__name__), tempfile.TemporaryDirectory() as folder:
                 output = Path(folder) / 'failed.json'
                 guests = {name: preflight.classify_filesystem(measurement()) for name in ('home', 'tmp')}
@@ -136,11 +142,13 @@ class CapacityContracts(unittest.TestCase):
                     receipt = json.loads(output.read_text())
                     self.assertFalse(receipt['hostPassed'])
                     self.assertFalse(receipt['passed'])
-                    self.assertEqual(receipt['hostErrorType'],
-                                     ['TimeoutExpired', 'FileNotFoundError', 'CommandFailed', 'InvalidResponse'][index])
+                    self.assertEqual(receipt['hostErrorType'], expected_error)
                     host = receipt['hostFilesystem']
                     self.assertEqual(host['inodeAccounting'], 'unknown')
                     self.assertIsNone(host['availableInodes'])
+                    self.assertIsNone(host['filesystemType'])
+                    self.assertIsNone(host['filesystemMagic'])
+                    self.assertEqual(host['device'], Path(folder).stat().st_dev)
                     self.assertEqual(host['statvfs']['f_files'], os.statvfs(folder).f_files)
                     self.assertGreater(host['availableBytes'], 0)
                     self.assertNotIn('protected', output.read_text())
@@ -149,6 +157,22 @@ class CapacityContracts(unittest.TestCase):
                     with self.assertRaises(OSError): os.fstat(descriptor)
                 finally:
                     os.umask(old_mask)
+
+    def test_valid_identification_forms_are_retained_without_broadening_support(self):
+        for name, magic in (('btrfs', '9123683e'), ('ext2/ext3', 'ef53'),
+                            ('tmpfs', '1021994'), ('xfs', '58465342'), ('futurefs', 'deadbeef')):
+            for ending in ('', '\n'):
+                with tempfile.TemporaryDirectory() as folder, \
+                        patch.object(preflight.subprocess, 'run', return_value=SimpleNamespace(
+                            returncode=0, stdout=name + ':' + magic + ending)):
+                    value = preflight.measure_filesystem(folder)
+                    self.assertEqual(value['filesystemType'], name)
+                    self.assertEqual(value['filesystemMagic'], magic)
+                    self.assertIsNone(value['identificationErrorType'])
+                    if name == 'futurefs':
+                        unknown = preflight.classify_filesystem(value)
+                        self.assertEqual(unknown['inodeAccounting'], 'unknown')
+                        self.assertFalse(unknown['inodeCheckPassed'])
 
     def test_unavailable_or_malformed_host_measurement_still_writes_failure(self):
         for failure in (OSError('protected path'), ValueError('protected metrics')):
