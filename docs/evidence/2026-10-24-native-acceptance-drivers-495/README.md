@@ -8,8 +8,8 @@ a selected-database/unrelated-runtime bypass, incomplete helper inventory,
 lost cleanup/recovery after partial synthetic keychain stores, and output
 reservation only after mutations. Independent round 2 resolved all five in
 `c538f71e`, then found a valid-product-receipt compatibility issue. Its bounded
-fix is `72afd00b`, with 37 saved passing tests and unmodified production-serializer
-proof. Round 3 is running. Existing test passes and functional observations do
+fix is `72afd00b`, with 37 saved passing tests, unmodified production-serializer
+proof and a fresh public-CLI m74 packet. Round 3 is running. Existing results do
 not replace that review; the old downstream growth recipes remain on hold.
 
 This is the documentation companion to the maintained driver in
@@ -241,8 +241,8 @@ created 10,000 independent operations/items/journals/states from a fresh
 synthetic schema-7 fixture, integrity `ok`, zero uploads. Production serializer,
 witness source/binary, emitted-record and CLI-receipt hashes are indexed.
 This is current `72afd` serializer/unit/CLI proof; the `c538` desktop and 35-test
-records remain predecessor evidence. No current `72afd` final desktop run is
-claimed, and independent round 3 remains pending.
+records remain predecessor evidence. The current `72afd` Cinnamon packet below
+has its own receipts; independent round 3 remains pending.
 
 For a failed keychain store, `c538` persists the canonical synthetic recovery
 reference before creating the item and retains the original safe error and
@@ -286,6 +286,45 @@ directory. The wrapper's original bytes are retained privately. Lock
 `codex-495-r2` was released cleanly at 15:19:51Z with empty cleanup lists;
 package, runtime and synthetic probe were removed. Independent review remains
 pending, so no final safety/readiness credit is assigned to this packet.
+
+## Current Cinnamon public-CLI observations (`72afd`, review pending)
+
+The fresh physical m74 run uses exact driver source
+`72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e`, main SHA `347934c2…`, helper SHA
+`c5b80a68…`, on Mint 22.3, Cinnamon `6.6.9+zena` X11 and distro
+`libqt6core6t64 6.4.2+dfsg-21.1build5`. The installed `ubuntu24.04` DEB remains
+product 1185 / `9dfac15c`; its independently verified #379 checksum is
+`2094fd4db8cd915b02f1cdd16eb5c99bb8191948931cd2f558a89c59be5b3f47`.
+Identity JSON records the exact installed resident/CLI/UI binary hashes.
+
+Session `c89` and current Cinnamon PID `625683` are retained in individual,
+newly reserved public CLI receipts. The owned SNI activated History and dynamic
+Quit stopped the resident. Preparation quit an IPC-peer-verified second
+resident; the same-session check refused. Separate-process backend
+store/read/cleanup succeeds with `productKeychainRoundtripProven: false`.
+Post-purge snapshot records the absent CLI without crashing. This is no
+positive real logout/login, cross-login keychain or product QtKeychain proof.
+
+The exact new [activation crop](pictures/m74-72afd-activation.png), SHA
+`e90ce38a1d9eb42df41fc2d24ff13b1a534afaa52fc751368419be985d984833`, and
+[after-Quit cover](pictures/m74-72afd-after-quit.png), SHA
+`6fca3e74cf3cb4d5b4d926b7d1e2921464ac13025a6beafc8ecd2d5784b20a91`,
+were hash-verified and visually inspected: only the owned app and magenta cover
+appear. The socket/cover preflights passed; the after-Quit frame is 100% cover.
+There was no pointer input, physical tray click or rendered-menu proof.
+
+Private wrapper `final_probe_review2.py` retains SHA `93a9bd25…`; the recorded
+command from `/home/patrick/work/n495` was:
+
+```sh
+python3 work/495/final_probe_review2.py /home/patrick/putgd-lab/n495/final-72afd 72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e
+```
+
+Stdout is `/home/patrick/putgd-lab/n495/final-72afd.log`. Lock
+`codex-495-final-mint` was released cleanly at 15:32:08Z with empty cleanup
+lists; the owned package, runtime and synthetic probe were removed and the
+preexisting VM left running. This is bounded functional evidence, not a
+performance/release acceptance pass or approval to lift round 3's HOLD.
 
 ## Saved k72 results
 
@@ -383,7 +422,8 @@ PID `625683`. Product `1185` / `9dfac15c` remained separately identified.
 Source `853a35d21bf56c64eb07944dd360f4bc96a7c718` used main-driver SHA
 `8f1a8f49…` and keychain-helper SHA `6380532f…`; the full hashes and installed
 native binary identities are in the JSON. The Qt package query omitted its
-version, which is a metadata gap rather than an inferred version.
+version; the later `72afd` identity captures it explicitly without rewriting
+that earlier receipt.
 
 The owned SNI `:1.4843`, resident PID `634132`, activated History and dynamic
 Quit stopped it. A second resident was peer-verified and quit during preparation;

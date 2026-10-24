@@ -96,28 +96,22 @@ session for recording) and on an Ubuntu 26.04 GNOME VM, the `debian13` DEB on d6
 ## Native acceptance driver hardening (#495) — 2026-10-24
 
 The [follow-up record](evidence/2026-10-24-native-acceptance-drivers-495/README.md)
-retires the old coordinate/tint tray recipes and separates the six lab-driver
-findings from product acceptance. **Candidate recipes and downstream growth are
-on HOLD pending independent round 3. Round 2 resolved the five safety findings
-in `c538f71e` and found inert-receipt compatibility; `72afd00b` passes 37 tests
-and actual serializer/10k CLI checks for the bounded fix.** The 1058 pass above preserved 10,000 rows in
-five operations and used session credentials plus a retained keychain reference;
-it did not prove realistic 10,000-operation History behavior or a real keychain
-credential lifecycle. Original results and failures remain historical evidence.
-The driver in [code PR #554](https://github.com/patrick-hudson/put.gd-desktop/pull/554)
-is recorded at `72afd00b`; its held candidate interface and prerequisites are documented.
-Earlier k72 packets retain their `826c255a` / `6bbbd506` identities; the fresh
-`c538f71e` packet records newly reserved public CLI receipts and new captures.
-Saved physical k72 KDE/Wayland evidence proves authenticated SNI activation/Quit,
-peer-bound login preparation and same-session refusal, current-session cache
-inspection and a backend-only Secret Service roundtrip/cleanup. Nineteen current
-safety tests pass; the saved synthetic 10,000-operation command belongs to `6bbb`.
-A current-source f44 compositor-peer check proves session protocol only. Actual purge snapshots
-retain their earlier `826c255a` identity. Real logout/login, rendered tray menu or
-physical click, product QtKeychain lifecycle and full package/release acceptance
-are not established. Historical m74 Cinnamon/X11 `853a35d2` observations cover
-the same activation/Quit/preparation scope and a provider-metadata cleanup fix;
-they predate the unresolved safety findings and confer no final readiness credit.
+retires unsafe tray/lifecycle recipes and documents the held interface in
+[code PR #554](https://github.com/patrick-hudson/put.gd-desktop/pull/554).
+**HOLD pending independent round 3 on `72afd00b`:** round 2 resolved the five
+original safety findings in `c538f71e`, then found inert-receipt compatibility.
+The bounded fix passes 37 tests and actual serializer/10k synthetic CLI checks.
+Fresh physical m74 Cinnamon/X11 public-CLI evidence on Qt 6.4.2 records owned SNI
+activation/Quit visuals, peer-bound login preparation/same-session refusal,
+separate-process backend roundtrip/cleanup, absent-CLI snapshot and clean release.
+
+Earlier k72 packets retain their `826c255a`, `6bbbd506` and `c538f71e` identities;
+f44's `64a3257b` check proves compositor-peer session protocol only. The original
+1058 pass preserved 10,000 rows in five operations and used session credentials
+plus a keychain reference; its outcomes and failures remain historical evidence.
+No positive real logout/login, rendered menu/physical click, product QtKeychain
+lifecycle, backend persistence across login, 10k product UI/performance/migration
+or full package/release acceptance is established by the driver evidence.
 
 ## DEB/RPM exact-asset audit rehearsal (#383) — 2026-10-22
 
