@@ -11,14 +11,18 @@ rows and current-candidate evidence remain gates.
 
 ## Login-startup uninstall contract (#382) — 2026-10-24
 
-The approved contract preserves the user's startup preference across uninstall,
-adds native `TryExec`, and removes the managed entry/script when **Launch at
-login** is disabled. [Source91864 evidence](evidence/2026-10-24-uninstall-startup-382/README.md)
-records a clean Mint/Qt 6.4.2 preset build, the passing startup contract and 18
-AppImage script tests, plus an isolated production CLI/GIO check of executable
-absence/restoration and explicit preference removal. Setup/probe failures and
-cleanup are retained. No graphical, package-removal or real-login pass is claimed;
-the current-build five-desktop removal/login gate remains open in #382/#384.
+Patrick corrected the contract: remove managed startup links for active accounts
+when the installation disappears, and for inactive accounts at next login;
+preserve settings and keep package scripts out of homes. Code PR #544 and docs
+PR #545 remain drafts for exact-package acceptance. The revised code blobs at
+`b15f47d5` passed Mint Qt 6.4.2 startup CTest, 24 shell tests, and bounded real
+user-manager/GLib/production-CLI checks. With the resident quit, the native watch
+removed startup files in 2.103 s and preserved configuration. A synthetic
+AppImage-directory watch kept an eligible replacement and cleaned after the
+last image disappeared. The inactive path was simulated through GLib; no real
+login, AppImage/FUSE or package acceptance is inferred.
+[Current evidence and remaining matrix](evidence/2026-10-24-uninstall-startup-382/README.md).
+The retained-link/TryExec tests at `91864c41` are superseded history.
 
 ## First stable gate plan — 2026-10-22
 

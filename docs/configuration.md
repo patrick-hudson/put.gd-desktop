@@ -51,25 +51,30 @@ The Settings window shows the same diagnostics and the configuration file path.
 
 **Settings → General → Launch at login** is off by default. Enabling it writes
 put.gd's managed entry at `$XDG_CONFIG_HOME/autostart/putgd.desktop` (normally
-`~/.config/autostart/putgd.desktop`). An AppImage also writes its managed login
-script at `$XDG_DATA_HOME/putgd/login/appimage-start.sh`.
+`~/.config/autostart/putgd.desktop`) and a managed startup script at
+`$XDG_DATA_HOME/putgd/login/start.sh`.
 
-Uninstalling the DEB/RPM or deleting the AppImage preserves this preference,
-along with the user's configuration and data. Package scripts do not search or
-delete files in user homes. The native entry has `TryExec` naming the launcher,
-so desktop managers can ignore it while the executable is absent. Plasma and
-systemd ignore more of the retained entry with this check; GNOME and Cinnamon
-can still log a line or list the preference in startup settings. Reinstalling at
-the same path can reactivate it.
+Uninstalling the DEB/RPM or deleting the last matching AppImage removes these
+managed startup files while preserving configuration and user data. For an
+active account, a user-session file watch performs cleanup even if put.gd has
+been quit, after a short settling delay of about two seconds. An inactive
+account removes the files at its next login. Package scripts do not search or
+delete files in user homes.
 
-The AppImage entry uses its persistent login script rather than a temporary
-mount path. If the configured image is gone, the script can start an eligible
-same-channel image beside it; if none remains, it exits successfully without a
-message. If no eligible replacement can start, an image that still exists but
-is not executable reports an error.
+The saved **Launch at login** preference remains unchanged. After reinstalling,
+the first manual start reads that preference and recreates startup integration
+if it is still enabled. Removing the link does not delete history, local
+captures or saved credentials.
 
-To remove the managed entry and script, turn off **Launch at login** while put.gd
-is running, before uninstalling. The CLI uses the same saved preference:
+For an AppImage, startup uses the persistent script rather than a temporary
+mount path. An eligible same-channel replacement beside the configured image
+keeps startup working. When none remains, cleanup exits quietly. An image that
+still exists but is not executable reports an error if no eligible replacement
+can start.
+
+To turn the saved preference off and remove startup integration before
+uninstalling, use **Launch at login** while put.gd is running. The CLI uses the
+same saved preference:
 
 ```sh
 putgd-cli settings.get
@@ -86,10 +91,8 @@ The MCP equivalent is `patch_configuration` with
 `expected_revision`. put.gd removes only its managed files; a user-created entry
 is preserved and reported as `autostart_conflict`.
 
-If the program is already uninstalled, the user can remove their own retained
-entry and AppImage login script at the paths above. This does not remove history,
-local captures or saved credentials. The uninstall contract was approved in
-[#382](https://github.com/patrick-hudson/put.gd-desktop/issues/382).
+This contract, including active-account and next-login cleanup, was approved in
+[#382](https://github.com/patrick-hudson/put.gd-desktop/issues/382#issuecomment-6379948629).
 
 ## Settings document
 

@@ -1,0 +1,31 @@
+{
+  "scope": "Bounded offscreen production CLI + real user-manager/desktop-parser checks; no desktop acceptance claim.",
+  "source": "dirty code diff from 91864c41",
+  "run": "/tmp/i382-9ncc8fe7",
+  "host": "mint-builder",
+  "phases": [],
+  "initial": {
+    "applied": true,
+    "enabled": true
+  },
+  "unitBefore": "Paths=/tmp/i382-9ncc8fe7/bin/putgd-launcher (PathChanged)\nActiveState=active\n",
+  "desktopParserStartedTheExactScriptWithSpecialPath": true,
+  "activeRemovalSeconds": 2.103,
+  "activeRemovalPreservedConfiguration": true,
+  "rearmed": {
+    "applied": true,
+    "enabled": true
+  },
+  "desktopParserMissingInstallCleanup": true,
+  "inactiveSimulationPreservedConfiguration": true,
+  "disabled": {
+    "applied": true,
+    "enabled": false
+  },
+  "passed": true,
+  "ownedProcessExitCodes": [
+    0,
+    0,
+    0
+  ]
+}
