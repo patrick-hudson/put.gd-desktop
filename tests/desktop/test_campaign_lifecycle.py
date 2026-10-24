@@ -3,6 +3,7 @@
 import os
 from pathlib import Path
 import select
+import signal
 import subprocess
 import sys
 import tempfile
@@ -149,6 +150,125 @@ class CleanupTests(unittest.TestCase):
             self.assertEqual(identity(unrelated.pid), before)
 
 
+class LaunchOwnershipTests(unittest.TestCase):
+    def run_state(self, root):
+        run = physical_campaign.Campaign.__new__(physical_campaign.Campaign)
+        run.root, run.result = root, {}
+        run.args = SimpleNamespace(app=sys.executable, helper=sys.executable, cli='/not-executed')
+        run.environment = {'XDG_RUNTIME_DIR': str(root / 'r'), 'XDG_DATA_HOME': str(root / 'd')}
+        run.socket = str(root / 'missing-session.sock')
+        run.resident = run.family = run.log = run.launch_identity = run.resident_pidfd = None
+        run.event, run.persist = mock.Mock(), mock.Mock()
+        return run
+
+    def child(self):
+        return subprocess.Popen([sys.executable, '-c', 'import time;time.sleep(30)'], start_new_session=True)
+
+    def finish(self, run, child):
+        if child.poll() is None:
+            child.terminate()
+        child.wait(timeout=5)
+        if run.log:
+            run.log.close()
+        if run.resident_pidfd is not None:
+            try:
+                os.close(run.resident_pidfd)
+            except OSError:
+                pass
+
+    def test_unready_launch_and_spawn_interrupt_keep_authenticated_ownership(self):
+        for phase in ('during_spawn', 'family_authentication'):
+            with self.subTest(phase=phase), tempfile.TemporaryDirectory() as directory:
+                run, child = self.run_state(Path(directory)), self.child()
+                interrupted = KeyboardInterrupt('synthetic-launch-interrupt')
+                def interrupt(_signum, _frame):
+                    raise interrupted
+                previous = signal.signal(signal.SIGTERM, interrupt)
+                try:
+                    def spawn(*_args, **_options):
+                        if phase == 'during_spawn':
+                            os.kill(os.getpid(), signal.SIGTERM)
+                        return child
+                    with mock.patch.object(physical_campaign.subprocess, 'Popen', side_effect=spawn), \
+                         mock.patch.object(physical_campaign, 'ProcessFamily', side_effect=interrupted):
+                        with self.assertRaises(KeyboardInterrupt) as failure:
+                            run.start()
+                    self.assertIs(failure.exception, interrupted)
+                    self.assertIs(run.resident, child)
+                    self.assertIsNone(run.family)
+                    self.assertEqual(run.launch_identity, identity(child.pid))
+                    os.fstat(run.resident_pidfd)
+                    with mock.patch.object(lifecycle, 'profile_inventory', side_effect=EvidenceError('synthetic-inventory-fault')):
+                        self.assertFalse(run.stop())
+                    self.assertIsNotNone(child.poll())
+                    with self.assertRaises(ChildProcessError):
+                        os.waitpid(child.pid, os.WNOHANG)
+                    self.assertIsNone(run.resident)
+                    self.assertFalse(run.result['residentCleanup'][-1]['absenceVerified'])
+                finally:
+                    signal.signal(signal.SIGTERM, previous)
+                    self.finish(run, child)
+
+    def test_family_unset_socket_unavailable_inventory_fault_still_reaps_child(self):
+        with tempfile.TemporaryDirectory() as directory:
+            run, child = self.run_state(Path(directory)), self.child()
+            run.resident, run.log = child, (Path(directory) / 'resident.log').open('x')
+            run.resident_pidfd = os.pidfd_open(child.pid)
+            try:
+                with mock.patch.object(lifecycle, 'profile_inventory', side_effect=EvidenceError('synthetic-inventory-fault')):
+                    self.assertFalse(run.stop())
+                self.assertIsNotNone(child.poll())
+                self.assertIsNone(run.resident)
+                self.assertEqual(run.result['residentLaunches'][0]['identity']['pid'], child.pid)
+                self.assertTrue(run.result['residentCleanup'][0]['forced'])
+                self.assertFalse(run.result['residentCleanup'][0]['absenceVerified'])
+            finally:
+                self.finish(run, child)
+
+    def test_failed_cleanup_return_with_live_root_retains_owner_and_blocks_relaunch(self):
+        for alleged_pass in (False, True):
+            with self.subTest(alleged_pass=alleged_pass), tempfile.TemporaryDirectory() as directory:
+                run, child = self.run_state(Path(directory)), self.child()
+                run.resident, run.log = child, (Path(directory) / 'resident.log').open('x')
+                run.resident_pidfd = os.pidfd_open(child.pid)
+                try:
+                    with mock.patch.object(lifecycle, 'cleanup', return_value={'passed': alleged_pass, 'errors': [],
+                                          'absenceVerified': alleged_pass, 'remaining': []}):
+                        self.assertFalse(run.stop())
+                    self.assertIs(run.resident, child)
+                    self.assertIsNone(child.poll())
+                    self.assertFalse(run.log.closed)
+                    os.fstat(run.resident_pidfd)
+                    receipt = run.result['residentCleanup'][-1]
+                    self.assertFalse(receipt['passed'])
+                    self.assertFalse(receipt['absenceVerified'])
+                    self.assertTrue(receipt['ownershipRetained'])
+                    self.assertTrue(receipt['ownedRootAlive'])
+                    self.assertEqual(receipt['knownOwned'][0]['startTicks'], identity(child.pid)['startTicks'])
+                    with mock.patch.object(physical_campaign.subprocess, 'Popen') as spawn:
+                        with self.assertRaisesRegex(EvidenceError, 'ownership_not_released'):
+                            run.start()
+                        spawn.assert_not_called()
+                finally:
+                    self.finish(run, child)
+
+    def test_launch_authentication_requires_direct_parent_and_uid_not_name(self):
+        with tempfile.TemporaryDirectory() as directory:
+            run, child = self.run_state(Path(directory)), self.child()
+            run.resident = child
+            try:
+                fields = lifecycle.stat_fields(Path(f'/proc/{child.pid}/stat').read_text())
+                with mock.patch.object(physical_campaign, 'stat_fields', return_value={**fields, 'ppid': os.getpid() + 1}), \
+                     mock.patch.object(physical_campaign.os, 'pidfd_open') as opened:
+                    with self.assertRaisesRegex(EvidenceError, 'launch_not_owned_child'):
+                        run.capture_launch()
+                    opened.assert_not_called()
+                self.assertIsNone(run.launch_identity)
+                self.assertIsNone(child.poll())
+            finally:
+                self.finish(run, child)
+
+
 class HistoryLifetimeTests(unittest.TestCase):
     def setUp(self):
         self.process = subprocess.Popen([sys.executable, '-c',
@@ -241,24 +361,73 @@ class FinalizationTests(unittest.TestCase):
                     log.close()
 
     def test_unexpected_stop_failure_still_cleans_fixtures_and_preserves_cause(self):
+        arguments = ['memory', '--output', '/not-created', '--package', '/not-opened',
+            '--package-sha256', 'a' * 64, '--source-revision', 'b' * 40, '--version', 'test',
+            '--desktop-session', 'not-used', '--lock-session', 'not-used']
+        for export_fault in ('none', 'summarize', 'persist', 'both'):
+            with self.subTest(export_fault=export_fault):
+                run = mock.Mock()
+                run.started, run.result = time.monotonic(), {'gates': {}, 'residentCleanup': [{'passed': False}]}
+                original = RuntimeError('synthetic-unexpected-cleanup-failure')
+                run.stop.side_effect = original
+                run.close_fixtures.return_value = True
+                if export_fault in ('summarize', 'both'):
+                    run.summarize_processes.side_effect = OSError('synthetic-summary-failure')
+                if export_fault in ('persist', 'both'):
+                    run.persist.side_effect = OSError('synthetic-persist-failure')
+                with mock.patch.object(physical_campaign, 'Campaign', return_value=run), \
+                     mock.patch.object(physical_campaign.signal, 'signal'), mock.patch.object(physical_campaign.os, 'umask'):
+                    with self.assertRaisesRegex(EvidenceError, 'cleanup_not_normal_complete') as failure:
+                        physical_campaign.main(arguments)
+                self.assertIs(failure.exception.__cause__, original)
+                run.close_fixtures.assert_called_once()
+                run.summarize_processes.assert_called_once(); run.persist.assert_called_once()
+                if export_fault != 'none':
+                    self.assertTrue(original.__notes__)
+                self.assertEqual(run.result['status'], 'failed-or-interrupted')
+                self.assertEqual(run.result['gates']['cleanup']['status'], 'fail')
+
+    def test_primary_workload_error_survives_cleanup_and_both_export_faults(self):
         run = mock.Mock()
-        run.started = time.monotonic()
-        run.result = {'gates': {}, 'residentCleanup': [{'passed': False}]}
-        original = RuntimeError('synthetic-unexpected-cleanup-failure')
-        run.stop.side_effect = original
+        run.started, run.cover = time.monotonic(), None
+        run.result = {'gates': {}, 'residentCleanup': []}
+        primary = ValueError('synthetic-primary-workload-failure')
+        run.memory.side_effect = primary
+        run.stop.side_effect = RuntimeError('synthetic-cleanup-failure')
         run.close_fixtures.return_value = True
+        run.summarize_processes.side_effect = OSError('synthetic-summary-failure')
+        run.persist.side_effect = OSError('synthetic-persist-failure')
         arguments = ['memory', '--output', '/not-created', '--package', '/not-opened',
             '--package-sha256', 'a' * 64, '--source-revision', 'b' * 40, '--version', 'test',
             '--desktop-session', 'not-used', '--lock-session', 'not-used']
         with mock.patch.object(physical_campaign, 'Campaign', return_value=run), \
              mock.patch.object(physical_campaign.signal, 'signal'), mock.patch.object(physical_campaign.os, 'umask'):
-            with self.assertRaisesRegex(EvidenceError, 'cleanup_not_normal_complete') as failure:
+            with self.assertRaises(ValueError) as failure:
                 physical_campaign.main(arguments)
-        self.assertIs(failure.exception.__cause__, original)
-        run.close_fixtures.assert_called_once()
-        run.persist.assert_called_once()
+        self.assertIs(failure.exception, primary)
+        self.assertEqual(len(primary.__notes__), 2)
+        run.close_fixtures.assert_called_once(); run.persist.assert_called_once()
         self.assertEqual(run.result['status'], 'failed-or-interrupted')
-        self.assertEqual(run.result['gates']['cleanup']['status'], 'fail')
+
+    def test_export_failure_alone_fails_and_still_attempts_both_exports(self):
+        for stage in ('summarize', 'persist'):
+            with self.subTest(stage=stage):
+                run = mock.Mock()
+                run.started, run.result = time.monotonic(), {'gates': {}, 'residentCleanup': []}
+                run.stop.return_value = run.close_fixtures.return_value = True
+                original = OSError('synthetic-export-failure')
+                (run.summarize_processes if stage == 'summarize' else run.persist).side_effect = original
+                arguments = ['memory', '--output', '/not-created', '--package', '/not-opened',
+                    '--package-sha256', 'a' * 64, '--source-revision', 'b' * 40, '--version', 'test',
+                    '--desktop-session', 'not-used', '--lock-session', 'not-used']
+                with mock.patch.object(physical_campaign, 'Campaign', return_value=run), \
+                     mock.patch.object(physical_campaign.signal, 'signal'), mock.patch.object(physical_campaign.os, 'umask'):
+                    with self.assertRaises(OSError) as failure:
+                        physical_campaign.main(arguments)
+                self.assertIs(failure.exception, original)
+                run.summarize_processes.assert_called_once(); run.persist.assert_called_once()
+                self.assertEqual(run.result['status'], 'failed-or-interrupted')
+                self.assertEqual(run.result['gates']['evidenceExport']['status'], 'fail')
 
     def test_memory_caller_requires_30_measured_open_seconds_before_assessment(self):
         budget = 60 * physical_campaign.MIB

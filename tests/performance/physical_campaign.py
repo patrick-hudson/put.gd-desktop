@@ -35,6 +35,7 @@ import subprocess
 import sys
 import tarfile
 import time
+from types import SimpleNamespace
 import uuid
 
 from bench_ui_process import (EvidenceError, ProcessFamily, identity,
@@ -298,6 +299,7 @@ class Campaign:
         self.root.mkdir(mode=0o700)
         self.started = time.monotonic()
         self.resident = self.family = self.log = self.cover = self.clipboard = None
+        self.resident_pidfd = self.launch_identity = None
         revision = args.driver_revision
         if revision is None:
             revision = subprocess.check_output(['git', '-C', str(REPO), 'rev-parse', 'HEAD'],
@@ -366,14 +368,53 @@ class Campaign:
             self.result['fixture'] = copy_fixture(Path(self.args.fixture_root), self.root)
         self.persist()
 
+    def capture_launch(self):
+        """Pin our direct child independently of product/family readiness."""
+        owner = identity(self.resident.pid)
+        fields = stat_fields(Path(f'/proc/{self.resident.pid}/stat').read_text())
+        require(owner['uid'] == os.getuid() and fields['ppid'] == os.getpid()
+                and fields['startTicks'] == owner['startTicks'], 'resident_launch_not_owned_child')
+        self.launch_identity = owner
+        if getattr(self, 'resident_pidfd', None) is None:
+            self.resident_pidfd = os.pidfd_open(self.resident.pid)
+        require(same_identity(identity(self.resident.pid), owner), 'resident_launch_generation_changed')
+        self.result.setdefault('residentLaunches', []).append({'identity': owner, 'pidfdHeld': True})
+
     def start(self, platform='xcb'):
+        require(self.resident is None, 'resident_ownership_not_released')
+        self.family = self.launch_identity = self.resident_pidfd = None
         self.environment['QT_QPA_PLATFORM'] = platform
         self.log = (self.root / 'resident.log').open('ab')
-        self.resident = subprocess.Popen([self.args.app, '--background'], env=self.environment,
-                                         stdin=subprocess.DEVNULL, stdout=self.log, stderr=self.log,
-                                         start_new_session=True)
-        self.resident_pidfd = os.pidfd_open(self.resident.pid)
-        self.family = None
+        pending, previous, launch_failure = [], {}, None
+        def defer(signum, frame):
+            pending.append((signum, frame))
+        try:
+            # Defer parent exceptions through Popen assignment and the ownership
+            # pin. Handlers reset on child exec; no blocked mask is inherited.
+            for signum in (signal.SIGINT, signal.SIGTERM):
+                if signal.getsignal(signum) == signal.SIG_IGN:
+                    continue
+                previous[signum] = signal.signal(signum, defer)
+            self.resident = subprocess.Popen([self.args.app, '--background'], env=self.environment,
+                                             stdin=subprocess.DEVNULL, stdout=self.log, stderr=self.log,
+                                             start_new_session=True)
+            self.capture_launch()
+        except BaseException as error:
+            launch_failure = error
+            raise
+        finally:
+            for signum, handler in previous.items():
+                signal.signal(signum, handler)
+            if pending:
+                if launch_failure is not None:
+                    launch_failure.add_note('resident_launch_interrupt_deferred')
+                else:
+                    signum, frame = pending[0]
+                    handler = previous[signum]
+                    if callable(handler):
+                        handler(signum, frame)
+                    elif handler != signal.SIG_IGN:
+                        raise KeyboardInterrupt()
         # Wait until /proc/exe is the launched product, not the forking Python.
         deadline = time.monotonic() + 25
         while time.monotonic() < deadline:
@@ -400,15 +441,33 @@ class Campaign:
             if self.resident:
                 known = list(self.family.known.values()) + self.family.exited if self.family else []
                 try:
+                    if getattr(self, 'launch_identity', None) is None and self.resident.poll() is None:
+                        self.capture_launch()
+                    launch = getattr(self, 'launch_identity', None)
+                    if launch and not any(row['pid'] == launch['pid'] and row['startTicks'] == launch['startTicks']
+                                          for row in known):
+                        known.append(launch)
+                    def quit_owned():
+                        if self.family is not None:
+                            return self.call('ui.quit')
+                        require(launch is not None, 'resident_launch_ownership_unavailable')
+                        verify_socket_owner(self.socket, SimpleNamespace(root=launch))
+                        return request(self.args.cli, 'ui.quit', environment=self.environment, socket=self.socket)
                     receipt = cleanup(self.resident, known, self.environment['XDG_RUNTIME_DIR'],
-                                      self.environment['XDG_DATA_HOME'], self.socket, lambda: self.call('ui.quit'))
+                                      self.environment['XDG_DATA_HOME'], self.socket, quit_owned)
+                    if self.resident.poll() is None:
+                        retain_ownership = True
+                        receipt.update(passed=False, ownershipRetained=True, ownedRootAlive=True, absenceVerified=False)
+                        receipt.setdefault('errors', []).append('owned_resident_still_alive_after_cleanup')
+                        receipt['knownOwned'] = known
                 except BaseException as error:
                     retain_ownership = True
                     receipt = {'passed': False, 'scope': 'cleanup raised before final verification',
                         'errors': [type(error).__name__], 'residentPid': self.resident.pid,
                         'ownershipRetained': True, 'inventoryComplete': False, 'absenceVerified': False,
                         'remaining': None, 'socketAbsent': None,
-                        'knownOwned': [{key: row[key] for key in ('pid', 'startTicks', 'uid', 'exe', 'sha256')
+                        'launchIdentity': getattr(self, 'launch_identity', None),
+                        'knownOwned': [{key: row[key] for key in ('pid', 'startTicks', 'uid', 'executable', 'sha256')
                                         if key in row} for row in known]}
                     self.result.setdefault('residentCleanup', []).append(receipt)
                     for label, export in (('event', lambda: self.event('resident-cleanup-unexpected-failure', **receipt)),
@@ -418,16 +477,22 @@ class Campaign:
                         except BaseException as secondary:
                             error.add_note('resident_cleanup_context_' + label + ': ' + type(secondary).__name__)
                     raise
-                self.event('resident-cleanup-checked', **receipt)
                 self.result.setdefault('residentCleanup', []).append(receipt)
+                self.event('resident-cleanup-checked', **receipt)
             return receipt['passed']
         finally:
+            if self.resident:
+                try:
+                    retain_ownership = retain_ownership or self.resident.poll() is None
+                except BaseException:
+                    retain_ownership = True
             if not retain_ownership:
                 if self.log:
                     self.log.close()
-                if self.resident:
+                if self.resident and getattr(self, 'resident_pidfd', None) is not None:
                     os.close(self.resident_pidfd)
                 self.resident = self.log = None
+                self.resident_pidfd = self.launch_identity = None
 
     def static_cover(self):
         if self.cover is not None:
@@ -1065,6 +1130,7 @@ def main(argv=None):
     signal.signal(signal.SIGTERM, interrupted)
     campaign = Campaign(args)
     workload_complete = False
+    primary_error = None
     try:
         campaign.initialize()
         campaign.configure()
@@ -1081,6 +1147,7 @@ def main(argv=None):
             getattr(campaign, args.scenario)()
         workload_complete = True
     except BaseException as error:
+        primary_error = error
         campaign.result['status'] = 'failed-or-interrupted'
         campaign.result['errorCode'] = str(error) if isinstance(error, EvidenceError) else type(error).__name__
         if campaign.cover:
@@ -1104,11 +1171,27 @@ def main(argv=None):
         cleanup_passed = cleanup_passed and all(row['passed'] for row in campaign.result.get('residentCleanup', []))
         campaign.result['gates']['cleanup']['status'] = 'pass' if cleanup_passed else 'fail'
         campaign.result['status'] = 'complete' if workload_complete and cleanup_passed else 'failed-or-interrupted'
-        campaign.summarize_processes()
         campaign.result['elapsedSeconds'] = time.monotonic() - campaign.started
-        campaign.persist()
-        if workload_complete and not cleanup_passed:
-            raise EvidenceError('campaign_cleanup_not_normal_complete') from cleanup_failure
+        cleanup_outcome_error = EvidenceError('campaign_cleanup_not_normal_complete') if not cleanup_passed else None
+        export_failure = None
+        for label, export in (('summarize', campaign.summarize_processes), ('persist', campaign.persist)):
+            try:
+                export()
+            except BaseException as error:
+                campaign.result['status'] = 'failed-or-interrupted'
+                campaign.result['gates']['evidenceExport'] = {'status': 'fail'}
+                campaign.result.setdefault('secondaryExportErrors', []).append(
+                    {'stage': label, 'type': type(error).__name__})
+                original = primary_error or cleanup_failure or cleanup_outcome_error or export_failure
+                if original is not None:
+                    original.add_note('campaign_final_' + label + ': ' + type(error).__name__)
+                else:
+                    export_failure = error
+        if primary_error is None:
+            if cleanup_outcome_error is not None:
+                raise cleanup_outcome_error from cleanup_failure
+            if export_failure is not None:
+                raise export_failure
     return 1 if any(gate['status'] == 'fail' for gate in campaign.result['gates'].values()) else 0
 
 
