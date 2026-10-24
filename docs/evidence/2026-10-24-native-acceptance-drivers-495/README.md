@@ -1,11 +1,11 @@
 # Native acceptance driver hardening (#495) — 2026-10-24
 
-Latest candidate `61439983e2c2d7b050b846e2f8bd723234247aed` contains three
-narrow optional-review corrections and awaits focused independent review.
-All accepted live packets and the producer proof below remain at `72afd00b`;
-no new live/GUI/logout/m74 workflow is claimed for `61439983`. The accepted
-exact-72 growth handoff and all its guards are unchanged. This documentation
-PR stays draft for the final source/interface review and exact-head CI.
+Latest exact source `61439983e2c2d7b050b846e2f8bd723234247aed` cleared root's
+distinct focused round 4 with no actionable findings. The three optional-review
+issues and prior findings are resolved. Its 39-test and minimal k72 protocol
+packet are source-specific; all accepted GUI/live and actual producer proof
+remain at `72afd00b`. No new product/GUI/logout/m74 workflow is claimed at 614.
+This record distinguishes driver validation from full release acceptance.
 
 This is the documentation companion to the maintained driver in
 `tools/lab/native_acceptance.py` in [code PR #554](https://github.com/patrick-hudson/put.gd-desktop/pull/554).
@@ -37,18 +37,19 @@ The old outcome tables and failure context are unchanged. In particular, the m74
 P failure (#490) remains a failure in that record. Later host setup or driver fixes
 do not retroactively turn those attempts into passes.
 
-## Latest command interface (`61439983`, focused review pending)
+## Reviewed latest command interface (`61439983`)
 
-Candidate source: `61439983e2c2d7b050b846e2f8bd723234247aed`,
+Reviewed source: `61439983e2c2d7b050b846e2f8bd723234247aed`,
 `tools/lab/native_acceptance.py` plus `tools/lab/native_keychain.py`. The driver
 SHA-256 is `7026a15a0ebcb5f6e25a0feb2679a8f6ee241624e8ed8c7bdd950b790a9a6333`;
 the [JSON](summary.json) also records the helper and test hashes. This is
 unmerged harness source, separately identified from the published product
 package under test. The product CLI capabilities are unchanged.
 
-This interface delta is under focused review. Preserve source-specific evidence
-and every fixture/ownership/receipt guard. Accepted growth execution/proof remains
-scoped to exact `72afd00b` until the final handoff; its guard bodies are unchanged. In particular, current localhost configuration
+Preserve source-specific evidence and every fixture/ownership/receipt guard.
+The accepted producer handoff and actual growth proof remain at `72afd00b`;
+its unchanged guard bodies are also covered by the focused 614 review. No
+actual 614 growth result is claimed. In particular, current localhost configuration
 alone does not establish that stored journals/destinations are safe or that the
 selected database is stopped.
 
@@ -154,7 +155,9 @@ It records `cliExists`, `cliStatus`, processes and available database facts even
 when the CLI or data is absent. An `ok` receipt here means facts were collected;
 it is not itself a package-removal verdict.
 
-The history-growth command is:
+For the recorded accepted producer handoff, use exact `72afd00b`. The syntax
+and guard bodies are unchanged in 614, but the actual 10k receipt stays at 72:
+
 
 ```sh
 python3 tools/lab/native_acceptance.py --output "$receipt" grow \
@@ -231,13 +234,46 @@ The saved 39-test k72 log passes in 2.937 s. Running the two new regression
 methods against `72afd` reproduces six unsafe-Unlock subcase failures plus one
 missing-output-scope error, as expected. Source/test and before/after/probe log
 hashes are indexed in `review4/manifest.json`; all prior live evidence remains
-at its original source. No live keychain, graphical or logout rerun is claimed
-for this delta.
+at its original source. Those source/test checks ran no live workflow. The
+later minimal backend protocol packet is recorded below; there is still no
+new graphical or logout run at 614.
 
 Preset listing, configure and build passed with actual distro CMake 4.2.3.
 [CMake's official 3.24 documentation](https://cmake.org/cmake/help/v3.24/manual/cmake-presets.7.html#format)
 identifies preset schema 5 as supported from 3.24. This is a compatibility
-statement, not a claim that CMake 3.24 was executed. Focused review is pending.
+statement, not a claim that CMake 3.24 was executed. Root round 4 cleared the
+bounded source/mocked-test delta; it did not run a live workflow.
+
+## Final minimal `61439983` protocol packet
+
+On k72, lock `codex-495-r4` ran 16:07:55–16:08:31Z and released cleanly; pre/post
+status receipts are free with empty cleanup lists. The product package was not
+installed. No app, input, logout, capture, GUI or m74 work ran. The manifest's
+33 members and its own hash were independently verified, including current
+main/helper/test/preset identities and the probe ELF hash `689f6819…`.
+
+The first private wrapper changed only a synthetic receipt's `result`, leaving
+its original valid `recovery` intact. Cleanup correctly selected that exact owned
+recovery, removed the probe and returned success; the wrapper had incorrectly
+expected refusal. Its original run/source are preserved. Exact cleanup in the
+wrapper's finalizer and a repeat confirmed the item absent. No production
+source changed between attempts.
+
+The corrected wrapper changes both `result` and `recovery`. All 11 public CLI
+checks match their expected exits: session, existing registration, backend
+status/store, four invalid-before refusals, valid read, cleanup and idempotent
+cleanup. The existing keychain was already unlocked. These live refusals do
+not prove a locked-collection/Unlock-monitor result: the source review and six
+mock cases establish the pre-Unlock ordering. No autostart or product QtKeychain
+claim is made.
+
+Current registration has 232 applications, Dolphin present, put.gd absent,
+cache existing and healthy, no repair. Absence is expected because the package
+is absent. Identity records Plasma `4:6.6.6-0ubuntu0.1`, Qt
+`6.10.2+dfsg-7` and KF6Service `6.24.0-0ubuntu1`. Private wrappers are preserved:
+first SHA `0edf10b0…`, corrected SHA `9aba52a7…`. The exact 33-file manifest,
+full source/run/wrapper/probe hashes, public CLI argument lists, first-attempt
+failure context and clean release receipt are indexed in [summary.json](summary.json).
 
 ## Review resolutions and serializer compatibility (`72afd`)
 

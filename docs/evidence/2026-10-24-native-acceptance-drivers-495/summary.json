@@ -3,13 +3,13 @@
   "issue": 495,
   "date": "2026-10-24",
   "scope": "Native acceptance lab driver documentation; no new release acceptance claim",
-  "status": "draft614-focused-review-pending-accepted72-live-and-grow-proof-preserved",
+  "status": "final614-delta-curated-awaiting-factual-delta-signoff-and-exact-head-ci",
   "codePullRequest": "https://github.com/patrick-hudson/put.gd-desktop/pull/554",
   "driver": {
     "path": "tools/lab/native_acceptance.py",
     "commit": "61439983e2c2d7b050b846e2f8bd723234247aed",
     "sha256": "7026a15a0ebcb5f6e25a0feb2679a8f6ee241624e8ed8c7bdd950b790a9a6333",
-    "stage": "optional-bot-focused-review-pending-no614-live-rerun",
+    "stage": "reviewed614-with-minimal-protocol-proof-and-source-scoped72-live-proof",
     "productCliCapabilitiesChanged": false
   },
   "historicalEvidence": {
@@ -1269,10 +1269,29 @@
         "unmatchedNotMine": 0
       },
       "verifiedLocalReceipt": true
+    },
+    {
+      "host": "k72",
+      "path": "/home/patrick/putgd-lab/locks/history/2026-10-24T16-08-31Z-release.json",
+      "localExport": "k72-614/release.json",
+      "sha256": "c175d76aece509dd94dde7302001d344f7458d4d70f26c6fccdaaceeb54b1a14",
+      "event": "release",
+      "session": "codex-495-r4",
+      "acquiredAt": "2026-10-24T16:07:55Z",
+      "at": "2026-10-24T16:08:31Z",
+      "checkCounts": {
+        "left": 0,
+        "notMine": 0,
+        "preexisting": 0,
+        "unmatchedNotMine": 0
+      },
+      "verifiedLocalReceipt": true,
+      "prePostStatusFree": true,
+      "scope": "36-second minimal614 protocol check; no product install/app/input/logout/capture/GUI/m74"
     }
   ],
   "limitations": [
-    "Latest614 optional-bot fixes await focused review; all live packets and accepted producer proof remain72; no new GUI/logout/m74 workflow",
+    "Latest614 root round4 clear with minimal11-check protocol packet; final packet factual sign-off and docs exact-head CI tracked onPR552;72 live/producer proof unchanged",
     "No real logout/login in k72 runs; same-session refusal tested",
     "No physical tray click or rendered menu proof",
     "No product QtKeychain credential lifecycle or backend persistence across login proof",
@@ -1360,7 +1379,7 @@
     "keychainReceiptValidation": {
       "candidate": "61439983e2c2d7b050b846e2f8bd723234247aed",
       "order": "canonical reference and original default collection match before any Unlock/Prompt",
-      "focusedReview": "pending"
+      "focusedReview": "round4 clear on614"
     }
   },
   "priorCandidate": {
@@ -2025,6 +2044,95 @@
         "removed": true,
         "productKeychainRoundtripProven": false
       }
+    },
+    {
+      "receipt": "k72-614/final-614b/keychain-status.json",
+      "at": "2026-10-24T16:08:23.518930+00:00",
+      "driverCommit": "61439983e2c2d7b050b846e2f8bd723234247aed",
+      "driverSha256": "7026a15a0ebcb5f6e25a0feb2679a8f6ee241624e8ed8c7bdd950b790a9a6333",
+      "helperSha256": "1b6be4b02fe467d0458eafcc539edc7caf0c6dde597c5f5a34575f65a32a4559",
+      "ok": true,
+      "scope": "latest614 already-unlocked backend protocol only; no actual locked/Unlock observation, GUI or productQtKeychain proof",
+      "result": {
+        "phase": "status",
+        "backend": "org.freedesktop.secrets",
+        "provider": "ksecretd",
+        "locked": false,
+        "productKeychainRoundtripProven": false
+      }
+    },
+    {
+      "receipt": "k72-614/final-614b/keychain-store.json",
+      "at": "2026-10-24T16:08:23.732762+00:00",
+      "driverCommit": "61439983e2c2d7b050b846e2f8bd723234247aed",
+      "driverSha256": "7026a15a0ebcb5f6e25a0feb2679a8f6ee241624e8ed8c7bdd950b790a9a6333",
+      "helperSha256": "1b6be4b02fe467d0458eafcc539edc7caf0c6dde597c5f5a34575f65a32a4559",
+      "ok": true,
+      "scope": "latest614 already-unlocked backend protocol only; no actual locked/Unlock observation, GUI or productQtKeychain proof",
+      "result": {
+        "phase": "store",
+        "backend": "org.freedesktop.secrets",
+        "provider": "ksecretd",
+        "reference": "putgd-acceptance-1c3d37ab-0e47-4380-a4f7-c998e391f789",
+        "locked": false,
+        "roundtrip": true,
+        "productKeychainRoundtripProven": false
+      }
+    },
+    {
+      "receipt": "k72-614/final-614b/keychain-check.json",
+      "at": "2026-10-24T16:08:24.885277+00:00",
+      "driverCommit": "61439983e2c2d7b050b846e2f8bd723234247aed",
+      "driverSha256": "7026a15a0ebcb5f6e25a0feb2679a8f6ee241624e8ed8c7bdd950b790a9a6333",
+      "helperSha256": "1b6be4b02fe467d0458eafcc539edc7caf0c6dde597c5f5a34575f65a32a4559",
+      "ok": true,
+      "scope": "latest614 already-unlocked backend protocol only; no actual locked/Unlock observation, GUI or productQtKeychain proof",
+      "result": {
+        "phase": "check",
+        "backend": "org.freedesktop.secrets",
+        "provider": "ksecretd",
+        "reference": "putgd-acceptance-1c3d37ab-0e47-4380-a4f7-c998e391f789",
+        "locked": false,
+        "roundtrip": true,
+        "productKeychainRoundtripProven": false
+      }
+    },
+    {
+      "receipt": "k72-614/final-614b/keychain-cleanup.json",
+      "at": "2026-10-24T16:08:25.106591+00:00",
+      "driverCommit": "61439983e2c2d7b050b846e2f8bd723234247aed",
+      "driverSha256": "7026a15a0ebcb5f6e25a0feb2679a8f6ee241624e8ed8c7bdd950b790a9a6333",
+      "helperSha256": "1b6be4b02fe467d0458eafcc539edc7caf0c6dde597c5f5a34575f65a32a4559",
+      "ok": true,
+      "scope": "latest614 already-unlocked backend protocol only; no actual locked/Unlock observation, GUI or productQtKeychain proof",
+      "result": {
+        "phase": "cleanup",
+        "backend": "org.freedesktop.secrets",
+        "provider": "ksecretd",
+        "reference": "putgd-acceptance-1c3d37ab-0e47-4380-a4f7-c998e391f789",
+        "locked": false,
+        "removed": true,
+        "productKeychainRoundtripProven": false
+      }
+    },
+    {
+      "receipt": "k72-614/final-614b/keychain-cleanup-again.json",
+      "at": "2026-10-24T16:08:25.335774+00:00",
+      "driverCommit": "61439983e2c2d7b050b846e2f8bd723234247aed",
+      "driverSha256": "7026a15a0ebcb5f6e25a0feb2679a8f6ee241624e8ed8c7bdd950b790a9a6333",
+      "helperSha256": "1b6be4b02fe467d0458eafcc539edc7caf0c6dde597c5f5a34575f65a32a4559",
+      "ok": true,
+      "scope": "latest614 already-unlocked backend protocol only; no actual locked/Unlock observation, GUI or productQtKeychain proof",
+      "result": {
+        "phase": "cleanup",
+        "backend": "org.freedesktop.secrets",
+        "provider": "ksecretd",
+        "reference": "putgd-acceptance-1c3d37ab-0e47-4380-a4f7-c998e391f789",
+        "locked": false,
+        "removed": true,
+        "alreadyAbsent": true,
+        "productKeychainRoundtripProven": false
+      }
     }
   ],
   "growCommandResult": {
@@ -2594,6 +2702,177 @@
         "sha256": "936ae759665fb2696a2fbffe63fbcc9a5fe7a035f599eeed9904f98889a160c4",
         "bytes": 637,
         "publicCopy": false
+      },
+      "k72-614/release.json": {
+        "sha256": "c175d76aece509dd94dde7302001d344f7458d4d70f26c6fccdaaceeb54b1a14",
+        "bytes": 730,
+        "publicCopy": false
+      },
+      "k72-614/pre-lock-status.json": {
+        "sha256": "1f6d284375d92e780d61c05b71e2b0915e19db984de332089cd0f641cf28442d",
+        "bytes": 556,
+        "publicCopy": false
+      },
+      "k72-614/heartbeat.json": {
+        "sha256": "22794f9e552b06c1296982c65d581bb02b0a953ec2df6a0ea4ba92b562bfeb8a",
+        "bytes": 535,
+        "publicCopy": false
+      },
+      "k72-614/backend_probe.py": {
+        "sha256": "9aba52a7d09d24f58c582226845ab550b8d3b36d629003f78c3fa68113edbb35",
+        "bytes": 3981,
+        "publicCopy": false
+      },
+      "k72-614/acquire.json": {
+        "sha256": "34899cc81ad3ba3a3d95fa7bcccb11fbb623d31d2d2ad229e526fd2ea86449c9",
+        "bytes": 557,
+        "publicCopy": false
+      },
+      "k72-614/post-release-status.json": {
+        "sha256": "577c29fb9efce1576e21798fbfbc54c0793b13d975e459a50c1d962e04c9228a",
+        "bytes": 549,
+        "publicCopy": false
+      },
+      "k72-614/pre-release-status.json": {
+        "sha256": "e2aab21eed0f6197833dcd52a20e99a1a16e4d78a664a1ca313ca67872b28985",
+        "bytes": 1054,
+        "publicCopy": false
+      },
+      "k72-614/backend_probe_attempt1.py": {
+        "sha256": "0edf10b0a3a782149fa8f4bbceabc1d90f63b9e080e4f20905baa8144ea3aa53",
+        "bytes": 3638,
+        "publicCopy": false
+      },
+      "k72-614/final-614/keychain-cleanup-again.json": {
+        "sha256": "90786b0b0bc6f414d7ae6f542d348084d85b7cef796106043208d677d40d16cb",
+        "bytes": 1251,
+        "publicCopy": false
+      },
+      "k72-614/final-614/foreign-default-cleanup.json": {
+        "sha256": "71f94b585f37833ec5ee6a06bcc8c52191aa1c8ca27abdb38146a9031a3f26fd",
+        "bytes": 1224,
+        "publicCopy": false
+      },
+      "k72-614/final-614/foreign-default-before.json": {
+        "sha256": "b00c25b5c2c1286f52e8e4a2d1f966a9f2a312b65074c952676f721443202e53",
+        "bytes": 1657,
+        "publicCopy": false
+      },
+      "k72-614/final-614/run.json": {
+        "sha256": "691d68ae44d2800b1c09ed96a81a99f35616c95135db89b0faec702078927436",
+        "bytes": 3712,
+        "publicCopy": false
+      },
+      "k72-614/final-614/plasma-registration.json": {
+        "sha256": "b165f8a58242c8614b3ea8382772d0c0df5087447c26226ef2006bf818e754db",
+        "bytes": 1060,
+        "publicCopy": false
+      },
+      "k72-614/final-614/keychain-store.json": {
+        "sha256": "6f6acd8acf91903ca19579285f0c56581858401e4e67f06e1900d152d9c8c9c9",
+        "bytes": 1641,
+        "publicCopy": false
+      },
+      "k72-614/final-614/foreign-default-check.json": {
+        "sha256": "8bb26df8665fbbdea9ceb40777126cd670d6ad3e26c1ba9bd5d6d6831f56a1eb",
+        "bytes": 650,
+        "publicCopy": false
+      },
+      "k72-614/final-614/keychain-status.json": {
+        "sha256": "49b2510278843c4091319298a9740a2322ceee97ab6806428bbd601a0713395c",
+        "bytes": 1128,
+        "publicCopy": false
+      },
+      "k72-614/final-614/keychain-cleanup.json": {
+        "sha256": "ba413db17af4f90b3ca6293e73e24d94d308e0860fabbad5028150d8182b7cc9",
+        "bytes": 1251,
+        "publicCopy": false
+      },
+      "k72-614/final-614/session.json": {
+        "sha256": "8ff3af219a95ad340718109e879754a7776502aed6d08ba647ff78a181d7c167",
+        "bytes": 945,
+        "publicCopy": false
+      },
+      "k72-614/final-614b/keychain-cleanup-again.json": {
+        "sha256": "165c4d668e53bbd3ddde510bc71ca0985b7fcdcbc1b6ccb73168c048683d0aa2",
+        "bytes": 1251,
+        "publicCopy": false
+      },
+      "k72-614/final-614b/foreign-default-cleanup.json": {
+        "sha256": "c87ae66ba180c2647bcc49f4788b115b8c14df41a4814480183cbbb42a6eef38",
+        "bytes": 650,
+        "publicCopy": false
+      },
+      "k72-614/final-614b/foreign-default-before.json": {
+        "sha256": "abd5b608ade2156b077451a682ca0e24869358a04a491d3128d9e4ad5bee65e1",
+        "bytes": 1673,
+        "publicCopy": false
+      },
+      "k72-614/final-614b/invalid-reference-check.json": {
+        "sha256": "9295086eaff8c95cf06774c4412bdb52848cbe598aa752ee6556c86ab3d8c36b",
+        "bytes": 638,
+        "publicCopy": false
+      },
+      "k72-614/final-614b/invalid-reference-cleanup.json": {
+        "sha256": "b3f5ac6695f5ed1efb1ee9d9f0ad702645b7bec15831f1e27ccabc8853c49209",
+        "bytes": 638,
+        "publicCopy": false
+      },
+      "k72-614/final-614b/run.json": {
+        "sha256": "d78d0fb43b58c240f74a63b6791994b0fc08aabf7f5f88a869fa3fc4e91b04c9",
+        "bytes": 4826,
+        "publicCopy": false
+      },
+      "k72-614/final-614b/plasma-registration.json": {
+        "sha256": "55212ff450fb6e48124170ac5044fd8b50833c1083757371b24031835829e4f6",
+        "bytes": 1060,
+        "publicCopy": false
+      },
+      "k72-614/final-614b/keychain-store.json": {
+        "sha256": "57eee1d128dbe062a1c67fb015c6a9ca992c3b775d62a9b4e0469beefe5e9c43",
+        "bytes": 1641,
+        "publicCopy": false
+      },
+      "k72-614/final-614b/invalid-reference-before.json": {
+        "sha256": "ea766830ebce16d8980f03373dddb1b52c85d16dac158d861a522c7dea8cc6dd",
+        "bytes": 1601,
+        "publicCopy": false
+      },
+      "k72-614/final-614b/foreign-default-check.json": {
+        "sha256": "94a33774b7fc07d09bf2917ae0b4d4296feec3ea915a727bd48791aea52b423e",
+        "bytes": 650,
+        "publicCopy": false
+      },
+      "k72-614/final-614b/keychain-check.json": {
+        "sha256": "22cc4bccdd3e53d5346ec29e90bed25a030b302821a048712ad3be5ae829335b",
+        "bytes": 1224,
+        "publicCopy": false
+      },
+      "k72-614/final-614b/keychain-status.json": {
+        "sha256": "404f97cd9ae4fd3a59464f57015409e77e53c542826eca4f6aa72594f8b849de",
+        "bytes": 1128,
+        "publicCopy": false
+      },
+      "k72-614/final-614b/keychain-cleanup.json": {
+        "sha256": "e34c0476f6e350daf6c8c498c51413c6b4d29da315c18e970a3f7c5a6616e3d6",
+        "bytes": 1224,
+        "publicCopy": false
+      },
+      "k72-614/final-614b/session.json": {
+        "sha256": "615b03efb9213ef5efff06cd528087324d9bdb2ec8e9e32d78c115310b90d514",
+        "bytes": 945,
+        "publicCopy": false
+      },
+      "k72-614/final-614b/identity.json": {
+        "sha256": "ab86435af886bd677d08c2091d5af40154299751bd2e6454271a76f53eb7da71",
+        "bytes": 238,
+        "publicCopy": false
+      },
+      "k72-614/manifest.json": {
+        "sha256": "0c27110d1b398d762767267032bd0d33a98ea9721b480a29a6fc76651e8350c8",
+        "bytes": 5627,
+        "publicCopy": false,
+        "independentlyVerifiedMemberCount": 33
       }
     }
   },
@@ -2680,9 +2959,12 @@
       "baseDocsHead": "ea4d6f7cbce16d3fb896e015831378d6bc2ec9c9",
       "candidateCommit": "61439983e2c2d7b050b846e2f8bd723234247aed",
       "scope": "only source/interface/focused-test/review delta; prior72 live artifacts unchanged",
-      "status": "pending",
+      "status": "interface/test delta clear on344cc01; final33-member protocol packet submitted for factual review",
       "privateArtifactCountBefore": 102,
-      "privateArtifactCountWithFocusedLogs": 108
+      "privateArtifactCountWithFocusedLogs": 108,
+      "interfaceDeltaReviewedHead": "344cc01c6bd5f61a8e28c3a9808f9fcc8b4b3817",
+      "newProtocolManifestMembers": 33,
+      "totalIndexedPrivateArtifacts": 142
     }
   },
   "protocolChecks": [
@@ -2748,6 +3030,115 @@
       "pointerInputSent": false,
       "screenshotTaken": false,
       "scope": "final exact72 current-session peer and backend protocol only; no app/package/cover/input/logout/capture or GNOMEtray/graphical acceptance",
+      "includedInDriverValidation": true
+    },
+    {
+      "runId": "k72/final-614b",
+      "host": "k72",
+      "driverCommit": "61439983e2c2d7b050b846e2f8bd723234247aed",
+      "driverSha256": "7026a15a0ebcb5f6e25a0feb2679a8f6ee241624e8ed8c7bdd950b790a9a6333",
+      "helperSha256": "1b6be4b02fe467d0458eafcc539edc7caf0c6dde597c5f5a34575f65a32a4559",
+      "probeBinarySha256": "689f68197ea5883a702bacc2c6279bb35af04af0070d21c78f5b966295e6a815",
+      "wrapperSha256": "9aba52a7d09d24f58c582226845ab550b8d3b36d629003f78c3fa68113edbb35",
+      "startedAt": "2026-10-24T16:08:23.094924+00:00",
+      "finishedAt": "2026-10-24T16:08:25.481819+00:00",
+      "session": {
+        "Id": "906",
+        "Type": "wayland",
+        "Seat": "seat0",
+        "Desktop": "KDE",
+        "Timestamp": "Sat 2026-10-24 01:24:11 CDT",
+        "TimestampMonotonic": "31018816964",
+        "Leader": "128842",
+        "shell": {
+          "pid": 129168,
+          "exe": "/usr/bin/plasmashell",
+          "startTicks": 3102035
+        },
+        "bootId": "c9926bb9-3536-46ef-95c2-2161ab5a245a"
+      },
+      "versions": {
+        "plasma-workspace": "4:6.6.6-0ubuntu0.1",
+        "libqt6core6t64": "6.10.2+dfsg-7",
+        "libkf6service6": "6.24.0-0ubuntu1"
+      },
+      "productPackageInstalled": false,
+      "passedChecks": 11,
+      "checks": [
+        {
+          "name": "session",
+          "exit": 0,
+          "expectedExit": 0,
+          "receiptSha256": "615b03efb9213ef5efff06cd528087324d9bdb2ec8e9e32d78c115310b90d514"
+        },
+        {
+          "name": "plasma-registration",
+          "exit": 0,
+          "expectedExit": 0,
+          "receiptSha256": "55212ff450fb6e48124170ac5044fd8b50833c1083757371b24031835829e4f6"
+        },
+        {
+          "name": "keychain-status",
+          "exit": 0,
+          "expectedExit": 0,
+          "receiptSha256": "404f97cd9ae4fd3a59464f57015409e77e53c542826eca4f6aa72594f8b849de"
+        },
+        {
+          "name": "keychain-store",
+          "exit": 0,
+          "expectedExit": 0,
+          "receiptSha256": "57eee1d128dbe062a1c67fb015c6a9ca992c3b775d62a9b4e0469beefe5e9c43"
+        },
+        {
+          "name": "foreign-default-check",
+          "exit": 2,
+          "expectedExit": 2,
+          "receiptSha256": "94a33774b7fc07d09bf2917ae0b4d4296feec3ea915a727bd48791aea52b423e"
+        },
+        {
+          "name": "foreign-default-cleanup",
+          "exit": 2,
+          "expectedExit": 2,
+          "receiptSha256": "c87ae66ba180c2647bcc49f4788b115b8c14df41a4814480183cbbb42a6eef38"
+        },
+        {
+          "name": "invalid-reference-check",
+          "exit": 2,
+          "expectedExit": 2,
+          "receiptSha256": "9295086eaff8c95cf06774c4412bdb52848cbe598aa752ee6556c86ab3d8c36b"
+        },
+        {
+          "name": "invalid-reference-cleanup",
+          "exit": 2,
+          "expectedExit": 2,
+          "receiptSha256": "b3f5ac6695f5ed1efb1ee9d9f0ad702645b7bec15831f1e27ccabc8853c49209"
+        },
+        {
+          "name": "keychain-check",
+          "exit": 0,
+          "expectedExit": 0,
+          "receiptSha256": "22cc4bccdd3e53d5346ec29e90bed25a030b302821a048712ad3be5ae829335b"
+        },
+        {
+          "name": "keychain-cleanup",
+          "exit": 0,
+          "expectedExit": 0,
+          "receiptSha256": "e34c0476f6e350daf6c8c498c51413c6b4d29da315c18e970a3f7c5a6616e3d6"
+        },
+        {
+          "name": "keychain-cleanup-again",
+          "exit": 0,
+          "expectedExit": 0,
+          "receiptSha256": "165c4d668e53bbd3ddde510bc71ca0985b7fcdcbc1b6ccb73168c048683d0aa2"
+        }
+      ],
+      "backendAlreadyUnlocked": true,
+      "actualLockedUnlockOrBusMonitorProof": false,
+      "appLaunched": false,
+      "inputSent": false,
+      "screenshotsCaptured": false,
+      "aliasChanged": false,
+      "scope": "latest614 minimal current-session/read-only cache/backend protocol only; no app/package/input/logout/capture/GUI/m74/autostart proof",
       "includedInDriverValidation": true
     }
   ],
@@ -2815,7 +3206,15 @@
       "rejectedCases": 16,
       "caseSource": "coordinator/code-owner report of root independent review; not added to37-test count"
     },
-    "predecessorGrow": "HOLD"
+    "predecessorGrow": "HOLD",
+    "round4": {
+      "reviewedCommit": "61439983e2c2d7b050b846e2f8bd723234247aed",
+      "privateReport": "/home/patrick/work/put.gd/work/stable-closeout-410-495-379/REVIEW554-round4.md",
+      "sha256": "e7e5bd8feb071e8036020bb70a01aced1386acbb69a151925cbb15164559ad99",
+      "status": "clear-no-actionable-findings",
+      "scope": "bounded source review,8 focused safety tests,2 mocked login dispatch cases and retained inert-receipt probes; no live/GUI/actualCMake3.24 credit",
+      "invalidReceiptComparison": "six inputs attempted Unlock on72; all six reject before Locked on614"
+    }
   },
   "m74KeychainCorrection": {
     "originalSource": "64a3257b20d7aa33cc25d35c07a628becff4036c",
@@ -3002,8 +3401,10 @@
       }
     ],
     "factualReviewRecord": "factualReview.finalReview",
-    "scope": "all accepted live/protocol packets remain at72afd; latest614 interface has no new live rerun",
-    "latestInterfaceCandidate": "61439983e2c2d7b050b846e2f8bd723234247aed"
+    "scope": "accepted72 GUI/live/growth proof retained; latest614 only minimal session/backend/cache protocol",
+    "latestInterfaceCandidate": "61439983e2c2d7b050b846e2f8bd723234247aed",
+    "latestInterfaceReview": "root round4 clear on614",
+    "latestProtocolPacket": "k72/final-614b"
   },
   "currentKdeOrchestration": {
     "privateWrapper": "work/495/final_probe_review2.py",
@@ -3031,7 +3432,7 @@
   "optionalBotFollowup": {
     "baseCommit": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
     "candidateCommit": "61439983e2c2d7b050b846e2f8bd723234247aed",
-    "status": "three-confirmed-findings-fixed-awaiting-distinct-focused-review",
+    "status": "all-three-resolved-distinct-root-round4-clear",
     "deltaFiles": [
       "tools/lab/native_acceptance.py",
       "tools/lab/native_keychain.py",
@@ -3045,9 +3446,10 @@
     ],
     "growGuardBodiesAstUnchanged": true,
     "acceptedProducerProofCommit": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
-    "noLive614Proof": true,
+    "noLive614Proof": false,
     "noNewGuiLogoutM74Work": true,
-    "focusedIndependentReview": "pending"
+    "focusedIndependentReview": "clear on exact614; source/mocked test scope",
+    "latestLiveScope": "minimal k72 session/cache/already-unlocked backend only; no GUI or product launch"
   },
   "newNegativeBaseline": {
     "productionSource": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
@@ -3071,5 +3473,54 @@
       "review4/probe-configure.log",
       "review4/probe-build.log"
     ]
-  }
+  },
+  "minimal614FailureContext": {
+    "firstRun": "k72-614/final-614/run.json",
+    "firstWrapperSha256": "0edf10b0a3a782149fa8f4bbceabc1d90f63b9e080e4f20905baa8144ea3aa53",
+    "expectationMismatch": [
+      {
+        "name": "foreign-default-cleanup",
+        "exit": 0,
+        "expectedExit": 2
+      }
+    ],
+    "cause": "final-614 private wrapper mutated result but retained valid recovery; cleanup used exact original owned recovery as designed and removed ownitem. Preserved before corrected final-614b mutates both branches. No production source change.",
+    "exactOriginalItemCleanupVerified": true,
+    "correctedRun": "k72-614/final-614b/run.json",
+    "correctedWrapperSha256": "9aba52a7d09d24f58c582226845ab550b8d3b36d629003f78c3fa68113edbb35",
+    "correction": "mutate both result and recovery in synthetic invalid before receipts",
+    "productionSourceChangedBetweenAttempts": false,
+    "unlockObservation": "No broad bus monitor or locked-collection side effect reproduced. Source/mocked six-case regression establishes pre-Locked/pre-Unlock order; live CLI proves invalid receipt rejection and successful exact ownitem cleanup.",
+    "privatePreservedWrappers": "/home/patrick/.t3/worktrees/put.gd/docs-native-acceptance-drivers-495/work/495/backend-probe-614"
+  },
+  "latest614InvalidReceiptRefusals": [
+    {
+      "receipt": "k72-614/final-614b/foreign-default-check.json",
+      "driverSha256": "7026a15a0ebcb5f6e25a0feb2679a8f6ee241624e8ed8c7bdd950b790a9a6333",
+      "error": "Default collection changed since store; refusing another keyring",
+      "ok": false,
+      "scope": "live CLI rejection while collection already unlocked; pre-Unlock ordering comes from source/mocked tests"
+    },
+    {
+      "receipt": "k72-614/final-614b/foreign-default-cleanup.json",
+      "driverSha256": "7026a15a0ebcb5f6e25a0feb2679a8f6ee241624e8ed8c7bdd950b790a9a6333",
+      "error": "Default collection changed since store; refusing another keyring",
+      "ok": false,
+      "scope": "live CLI rejection while collection already unlocked; pre-Unlock ordering comes from source/mocked tests"
+    },
+    {
+      "receipt": "k72-614/final-614b/invalid-reference-check.json",
+      "driverSha256": "7026a15a0ebcb5f6e25a0feb2679a8f6ee241624e8ed8c7bdd950b790a9a6333",
+      "error": "Need an owned private store receipt from this driver",
+      "ok": false,
+      "scope": "live CLI rejection while collection already unlocked; pre-Unlock ordering comes from source/mocked tests"
+    },
+    {
+      "receipt": "k72-614/final-614b/invalid-reference-cleanup.json",
+      "driverSha256": "7026a15a0ebcb5f6e25a0feb2679a8f6ee241624e8ed8c7bdd950b790a9a6333",
+      "error": "Need an owned private store receipt from this driver",
+      "ok": false,
+      "scope": "live CLI rejection while collection already unlocked; pre-Unlock ordering comes from source/mocked tests"
+    }
+  ]
 }
