@@ -12,6 +12,7 @@
 #include <QJsonDocument>
 #include <QGuiApplication>
 #include <QDBusMessage>
+#include <QDBusContext>
 #include <QDBusConnectionInterface>
 #include <QScopeGuard>
 #include <QProcess>
@@ -80,18 +81,23 @@ private slots:
 // The Core mode uses a synthetic GNOME session environment and no display.
 // The separate, private-bus peer is synthetic: this proves the resident bridge
 // state machine and D-Bus transport, never GNOME Shell capture acceptance.
-class GnomeHelperFixture final:public QObject {
+class GnomeHelperFixture final:public QObject,protected QDBusContext {
  Q_OBJECT
  Q_CLASSINFO("D-Bus Interface","org.putgd.Gnome50")
  uint currentPid_=0,failPid_=0,failures_=0;
  QJsonArray registrations_,lastAcquireMimes_;
  int hellos_=0,binds_=0,commits_=0;
  QJsonObject lastBindings_;
+ QString helloError_=qEnvironmentVariable("PUTGD_TEST_HELLO_ERROR"),prepareError_=qEnvironmentVariable("PUTGD_TEST_PREPARE_ERROR");
  QString copyId_,copyMime_;QByteArray copyBytes_;qulonglong copySize_=0;
  static QString json(const QJsonObject& value){return QString::fromUtf8(QJsonDocument(value).toJson(QJsonDocument::Compact));}
 public slots:
  // PUTGD_TEST_EXTENSION_VERSION plays an older extension still loaded after an upgrade (#131).
- QString Hello(){++hellos_;return json({{"version",1},{"shellMajor",50},{"uiProcessVersion",1},{"clipboardRevision",1},{"extensionVersion",qEnvironmentVariableIntValue("PUTGD_TEST_EXTENSION_VERSION")?qEnvironmentVariableIntValue("PUTGD_TEST_EXTENSION_VERSION"):putgd::gnome::extensionVersion}});}
+ QString Hello(){++hellos_;
+  if(helloError_=="malformed")return "not-json";
+  if(helloError_=="incompatible")return json({{"version",99},{"shellMajor",50}});
+  if(!helloError_.isEmpty()){sendErrorReply(helloError_,"Synthetic bridge failure");return {};}
+  return json({{"version",1},{"shellMajor",50},{"uiProcessVersion",1},{"clipboardRevision",1},{"extensionVersion",qEnvironmentVariableIntValue("PUTGD_TEST_EXTENSION_VERSION")?qEnvironmentVariableIntValue("PUTGD_TEST_EXTENSION_VERSION"):putgd::gnome::extensionVersion}});}
  QString SetUiProcess(uint pid){
   registrations_.append(int(pid));
   if(pid==failPid_&&failures_){--failures_;return json({{"error",QJsonObject{{"code","helper_unavailable"},{"message","Synthetic registration failure"},{"details",QJsonObject{}}}}});}
@@ -111,7 +117,8 @@ public slots:
   if(id!=copyId_||qulonglong(copyBytes_.size())!=copySize_)return json({{"error",QJsonObject{{"code","bridge_protocol"},{"message","Synthetic copy size mismatch"}}}});
   ++commits_;return json({{"clipboardRevision",2}});
  }
- QString Prepare(const QString& id,const QString&){return json({{"version",1},{"requestId",id}});}
+ void SetErrors(const QString& hello,const QString& prepare){helloError_=hello;prepareError_=prepare;}
+ QString Prepare(const QString& id,const QString&){if(!prepareError_.isEmpty()){sendErrorReply(prepareError_,"Synthetic preparation failure");return {};}return json({{"version",1},{"requestId",id}});}
  QString Acquire(const QString& id,const QString& encoded){
   const auto mimes=QJsonDocument::fromJson(encoded.toUtf8()).object()["imageMimes"].toArray();lastAcquireMimes_=mimes;
   for(const auto& mime:mimes)
@@ -139,9 +146,10 @@ private:
   return QDBusConnection::sessionBus().call(request,QDBus::Block,2000);
  }
  QJsonObject state(){return QJsonDocument::fromJson(control("State").arguments().value(0).toString().toUtf8()).object();}
- bool startFixture(int extensionVersion=0){
+ bool startFixture(int extensionVersion=0,const QString& helloError={}){
   auto environment=QProcessEnvironment::systemEnvironment();
   if(extensionVersion)environment.insert("PUTGD_TEST_EXTENSION_VERSION",QString::number(extensionVersion));else environment.remove("PUTGD_TEST_EXTENSION_VERSION");
+  environment.insert("PUTGD_TEST_HELLO_ERROR",helloError);
   fixture_.setProcessEnvironment(environment);
   fixture_.start(QCoreApplication::applicationFilePath(),{"--gnome-helper-fixture"});
   if(!fixture_.waitForStarted(3000)||!fixture_.waitForReadyRead(3000))return false;
@@ -169,6 +177,33 @@ private slots:
  }
  void init(){QVERIFY2(startFixture(),fixture_.readAllStandardError().constData());}
  void cleanup(){stopFixture();}
+ void missingEndpointGuidancePreservesOtherFailures_data(){
+  QTest::addColumn<QString>("failure");QTest::addColumn<QString>("code");QTest::addColumn<bool>("guidance");
+  for(const char* name:{"UnknownMethod","UnknownObject","UnknownInterface"})QTest::newRow(name)<<QString("org.freedesktop.DBus.Error.")+name<<QString("helper_unavailable")<<true;
+  for(const char* name:{"AccessDenied","NoReply"})QTest::newRow(name)<<QString("org.freedesktop.DBus.Error.")+name<<QString("helper_unavailable")<<false;
+  QTest::newRow("malformed")<<QString("malformed")<<QString("bridge_protocol")<<false;
+  QTest::newRow("incompatible")<<QString("incompatible")<<QString("helper_incompatible")<<false;
+ }
+ void missingEndpointGuidancePreservesOtherFailures(){
+  QFETCH(QString,failure);QFETCH(QString,code);QFETCH(bool,guidance);stopFixture();QVERIFY(startFixture(0,failure));
+  GnomeAdapter source;PUTGD_TRY_VERIFY(!source.capabilities()["helper"].toObject()["error"].toObject()["code"].toString().isEmpty());
+  PayloadResult result;bool done=false;source.acquire("desktop",{},[&](PayloadResult value){result=std::move(value);done=true;});QVERIFY(done);QCOMPARE(result.error.code,code);
+  QCOMPARE(result.error.message.contains("gnome-extensions enable putgd@put.gd"),guidance);
+  if(guidance){QVERIFY(result.error.message.contains("install"));QVERIFY(result.error.message.contains("log out and back in"));}
+  if(failure.startsWith("org."))QCOMPARE(result.error.details["dbusError"].toString(),failure);
+ }
+ void endpointDisappearingAfterDiscoveryGetsGuidanceButMissingMethodsDoNot(){
+  GnomeAdapter source;PUTGD_TRY_VERIFY(helperAvailable(source));const QString missing="org.freedesktop.DBus.Error.UnknownMethod";
+  // A missing Prepare on a live bridge is a different failure from a disabled extension.
+  control("SetErrors",{QString{},missing});PayloadResult result;bool done=false;
+  source.acquire("desktop",{},[&](PayloadResult value){result=std::move(value);done=true;});QVERIFY(done);
+  QCOMPARE(result.error.details["dbusError"].toString(),missing);QVERIFY(!result.error.message.contains("gnome-extensions enable"));
+  control("SetErrors",{missing,missing});done=false;
+  source.acquire("desktop",{},[&](PayloadResult value){result=std::move(value);done=true;});QVERIFY(done);
+  QVERIFY(result.error.message.contains("gnome-extensions enable putgd@put.gd"));
+  control("SetErrors",{QString{},QString{}});done=false;
+  source.acquire("desktop",{},[&](PayloadResult value){result=std::move(value);done=true;});PUTGD_TRY_VERIFY(done);QVERIFY2(!result.error,qPrintable(result.error.message));
+ }
  void nonImageReaderMetadataCannotBreakClipboardAcquisition(){
   GnomeAdapter source;PUTGD_TRY_VERIFY(helperAvailable(source));
   bool completed=false;PayloadResult result;

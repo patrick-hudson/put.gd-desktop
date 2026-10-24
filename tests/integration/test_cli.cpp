@@ -144,6 +144,15 @@ private slots:
   QProcess client;auto environment=QProcessEnvironment::systemEnvironment();environment.insert("XDG_RUNTIME_DIR",runtime);environment.insert("QT_QPA_PLATFORM","offscreen");client.setProcessEnvironment(environment);QElapsedTimer elapsed;elapsed.start();client.start(PUTGD_APP_PATH,{"--history"});
   PUTGD_TRY_COMPARE_WITH_TIMEOUT(client.state(),QProcess::NotRunning,20000);QVERIFY(elapsed.elapsed()>=14000);QVERIFY(elapsed.elapsed()<20000);QCOMPARE(client.exitCode(),1);QCOMPARE(connections,1);QVERIFY(client.readAllStandardError().contains("activation_timeout:"));
  }
+ void realClientHistoryLinkCopyUpdatesPersistedOperationStatus(){
+  QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config.json"));Source source;
+  OperationService ops(d.filePath("data"),settings,registry,source);HistoryService history(ops);LocalServer server(settings,ops,history);QVERIFY(server.listen(d.filePath("runtime")));PUTGD_TRY_VERIFY(ops.ready());
+  Operation op;op.id="copy-recovery";op.state="completed";op.copyStatus="suppressed";OperationItem item;item.artifact.id="stored-link";item.uploadStatus="uploaded";item.receipt.directUrl="https://example.invalid/stored-link";op.items={item};HistoryStore store(ops.databasePath());QVERIFY(!store.saveOperation(op));
+  QProcess client;client.start(PUTGD_CLI_PATH,{"--socket",server.socketPath(),"history.copyLink","{\"id\":\"stored-link\"}"});PUTGD_TRY_COMPARE(client.state(),QProcess::NotRunning);
+  QCOMPARE(client.exitCode(),0);const auto copied=QJsonDocument::fromJson(client.readAllStandardOutput()).object();QVERIFY(copied["ok"].toBool());QVERIFY(copied["result"].toObject()["copied"].toBool());QCOMPARE(source.copied.text,item.receipt.directUrl);
+  client.start(PUTGD_CLI_PATH,{"--socket",server.socketPath(),"operation.inspect","{\"id\":\"copy-recovery\"}"});PUTGD_TRY_COMPARE(client.state(),QProcess::NotRunning);
+  QCOMPARE(client.exitCode(),0);const auto inspected=QJsonDocument::fromJson(client.readAllStandardOutput()).object();QVERIFY(inspected["ok"].toBool());QCOMPARE(inspected["result"].toObject()["copyStatus"].toString(),QString("copied"));
+ }
  void realClientAndMalformedProtocol() {
   QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));Source source;source.payload=textPayload();OperationService ops(d.filePath("data"),settings,registry,source);HistoryService history(ops);LocalServer server(settings,ops,history);QVERIFY(server.listen(d.filePath("runtime")));PUTGD_TRY_VERIFY(ops.ready());
   QProcess client;client.start(PUTGD_CLI_PATH,{"--socket",server.socketPath(),"--request-id","fixture-request","capabilities"});PUTGD_TRY_COMPARE(client.state(),QProcess::NotRunning);QCOMPARE(client.exitCode(),0);auto response=QJsonDocument::fromJson(client.readAllStandardOutput()).object();QCOMPARE(response["schemaVersion"].toInt(),1);QCOMPARE(response["requestId"].toString(),QString("fixture-request"));QVERIFY(response["ok"].toBool());QVERIFY(client.readAllStandardError().isEmpty());

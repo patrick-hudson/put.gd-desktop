@@ -164,6 +164,30 @@ private slots:
   PUTGD_TRY_VERIFY(source.copies==2||operations.diagnostics()["activeOperations"].toInt()==0);if(source.pending)source.acknowledge();PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
   QCOMPARE(source.current,journal.operation(ids[1]).items.first().receipt.directUrl);QCOMPARE(journal.operation(ids[0]).copyStatus,QString("no_result"));QCOMPARE(journal.operation(ids[1]).copyStatus,QString("copied"));QCOMPARE(source.revision,quint64(1));
  }
+ void historyLinkCopyOnlyRecordsSuccessfulSingleItemRecovery_data(){
+  QTest::addColumn<int>("items");QTest::addColumn<QString>("status");QTest::addColumn<QString>("errorCode");
+  QTest::newRow("suppressed")<<1<<QString("suppressed")<<QString{};
+  QTest::newRow("failed")<<1<<QString("failed")<<QString{};
+  QTest::newRow("native-failure")<<1<<QString("failed")<<QString("clipboard_unavailable");
+  QTest::newRow("native-suppression")<<1<<QString("suppressed")<<QString("copy_suppressed");
+  QTest::newRow("batch-subset")<<2<<QString("partial")<<QString{};
+  QTest::newRow("pending-auto-copy")<<1<<QString("pending")<<QString{};
+ }
+ void historyLinkCopyOnlyRecordsSuccessfulSingleItemRecovery(){
+  QFETCH(int,items);QFETCH(QString,status);QFETCH(QString,errorCode);
+  QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config.json"));DeferredClipboardSource source;
+  OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());HistoryService history(operations);HistoryStore journal(operations.databasePath());
+  Operation op;op.id="stored-link";op.state="completed";op.copyStatus=status;
+  for(int i=0;i<items;++i){OperationItem item;item.artifact.id=QString("link-%1").arg(i);item.uploadStatus="uploaded";item.receipt.directUrl=QString("https://example.invalid/link-%1").arg(i);op.items.append(item);}
+  QVERIFY(!journal.saveOperation(op));const auto original=journal.operation(op.id).toJson();const auto detail=journal.detail("link-0");
+  bool done=false;Error error;QJsonObject result;history.copyLink("link-0",[&](Error e,QJsonObject value){error=e;result=value;done=true;});
+  PUTGD_TRY_VERIFY(bool(source.pending));QCOMPARE(journal.operation(op.id).copyStatus,status);
+  source.acknowledge(errorCode.isEmpty()?Error{}:Error{errorCode,"Synthetic copy refusal",{}});PUTGD_TRY_VERIFY(done);
+  QCOMPARE(error.code,errorCode);QCOMPARE(result["copied"].toBool(),errorCode.isEmpty());
+  auto expected=original;if(items==1&&errorCode.isEmpty()&&(status=="failed"||status=="suppressed"))expected["copyStatus"]="copied";
+  QCOMPARE(journal.operation(op.id).toJson(),expected);QCOMPARE(journal.detail("link-0"),detail);
+  QCOMPARE(source.reads,0);QCOMPARE(source.copies,1);
+ }
  void resumedCopiesRecheckDurableRemoval_data() {QTest::addColumn<QString>("mode");QTest::newRow("each-link")<<QString("each_link");QTest::newRow("list")<<QString("list");}
  void resumedCopiesRecheckDurableRemoval() {
   QFETCH(QString,mode);QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;registry.add("opaque",provider);

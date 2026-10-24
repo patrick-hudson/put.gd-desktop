@@ -38,6 +38,9 @@
 #include <QSplitter>
 #include <QStackedWidget>
 #include <QStyledItemDelegate>
+#include <QTextDocument>
+#include <QAbstractTextDocumentLayout>
+#include <cmath>
 #include <QTimer>
 #include <QToolButton>
 #include <QUrl>
@@ -78,16 +81,41 @@ void paintVideoBadge(QPainter& p,const QRect& picture,const QString& length){
  }
  p.restore();
 }
+// One plain-text layout supplies both the failed card's height and its paint.
+// Word-boundary fallback keeps commands, paths and long native error tokens
+// readable without expanding the viewport or treating provider text as HTML.
+std::unique_ptr<QTextDocument> failureText(const QString& text,const QFont& font,int width){
+ auto document=std::make_unique<QTextDocument>();document->setDocumentMargin(0);document->setDefaultFont(font);
+ auto option=document->defaultTextOption();option.setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);document->setDefaultTextOption(option);
+ document->setPlainText(text);document->setTextWidth(qMax(20,width));return document;
+}
 class HistoryDelegate final:public QStyledItemDelegate {
 public:
- explicit HistoryDelegate(QListView* view):QStyledItemDelegate(view),view_(view){}
+ explicit HistoryDelegate(QListView* view):QStyledItemDelegate(view),view_(view){view_->viewport()->installEventFilter(this);}
+ bool eventFilter(QObject* watched,QEvent* event)override{
+  if(watched==view_->viewport()&&event->type()==QEvent::Resize){
+   // A scrollbar changes the wrapping width after the first layout. Recompute
+   // the scroll range from that final width so an oversized error's last lines
+   // remain reachable, including after selecting a row or resizing the splitter.
+   QTimer::singleShot(0,view_,[view=view_]{view->doItemsLayout();});
+  }
+  return QStyledItemDelegate::eventFilter(watched,event);
+ }
  std::function<void(const QModelIndex&)> primary;
  std::function<void(const QModelIndex&,const QPoint&)> menu;
  bool grid()const{return view_->viewMode()==QListView::IconMode;}
  int heading(const QModelIndex& i)const{return !grid()&&!i.data(HistoryModel::DayRole).toString().isEmpty()?34:0;}
- QRect primaryRect(QRect r,const QModelIndex& i)const{r.adjust(6,heading(i)+3,-6,-3);return grid()?QRect(r.left()+14,r.bottom()-44,r.width()-66,32):QRect(r.right()-140,r.center().y()-16,98,32);}
+ QRect primaryRect(QRect r,const QModelIndex& i)const{r.adjust(6,heading(i)+3,-6,-3);return grid()?QRect(r.left()+14,r.bottom()-44,r.width()-66,32):QRect(r.right()-140,i.data(HistoryModel::FailedRole).toBool()?r.top()+33:r.center().y()-16,98,32);}
  QRect menuRect(QRect r,const QModelIndex& i)const{auto b=primaryRect(r,i);return QRect(grid()?r.right()-46:b.right()+8,b.top(),32,32);}
- QSize sizeHint(const QStyleOptionViewItem&,const QModelIndex& i)const override{return grid()?QSize(248,276):QSize(390,106+heading(i));}
+ QSize sizeHint(const QStyleOptionViewItem& option,const QModelIndex& i)const override{
+  const int available=qMax(160,view_->viewport()->width()-2*view_->spacing());const int width=grid()?qMin(248,available):available;
+  int height=grid()?276:106+heading(i);
+  if(i.data(HistoryModel::FailedRole).toBool()){
+   const auto document=failureText(HistoryModel::statusText(i.data(HistoryModel::RecordRole).toJsonObject()),option.font,width-(grid()?41:128));
+   const int errorHeight=int(std::ceil(document->size().height()));height+=grid()?errorHeight:qMax(0,errorHeight-20);
+  }
+  return {width,height};
+ }
  void paint(QPainter* p,const QStyleOptionViewItem& option,const QModelIndex& i)const override{
   using namespace RedesignTheme;p->save();p->setRenderHint(QPainter::Antialiasing);auto outer=option.rect;const auto group=i.data(HistoryModel::DayRole).toString();
   if(heading(i)){auto f=option.font;f.setPointSizeF(qMax(8.0,f.pointSizeF()-1));f.setBold(true);p->setFont(f);p->setPen(textMuted());p->drawText(outer.adjusted(16,0,-8,0),Qt::AlignLeft|Qt::AlignTop,group);}
@@ -100,7 +128,10 @@ public:
   const int titleWidth=grid()?textWidth:qMax(20,primaryBounds.left()-left-10);auto f=option.font;f.setBold(true);p->setFont(f);p->setPen(text());p->drawText(QRect(left,top,titleWidth,24),Qt::AlignVCenter,QFontMetrics(f).elidedText(i.data().toString(),Qt::ElideRight,titleWidth));
   p->setFont(option.font);const auto record=i.data(HistoryModel::RecordRole).toJsonObject();const auto op=record["operation"].toObject();const bool copied=op["copyStatus"]=="copied",suppressed=op["copyStatus"]=="suppressed";const auto copiedText=record["uploadStatus"]=="local_only"?QString("Copied to clipboard"):QString("Link copied");const auto suppressedText=record["uploadStatus"]=="local_only"?QString("Result not copied"):QString("Link not copied");p->setPen(failed?danger():copied?success():textMuted());
   const int metaWidth=grid()?textWidth:qMax(20,primaryBounds.left()-left-10);auto subtitle=i.data(HistoryModel::SubtitleRole).toString();if(failed)subtitle=HistoryModel::failureLabel(record)+(grid()&&record["uploadStatus"]!="local_only"&&record["local"].toObject()["status"]=="saved"?" · Saved locally":"");else if(copied){if(grid())subtitle=HistoryModel::friendlyAction(op["action"].toString(record["category"].toString()))+" · "+HistoryModel::fileSize(record["bytes"].toInteger())+" · "+copiedText;else subtitle.remove(" · "+copiedText);}else if(suppressed&&!grid())subtitle.remove(" · "+suppressedText);p->drawText(QRect(left,top+28,metaWidth,23),Qt::AlignVCenter,option.fontMetrics.elidedText(subtitle,Qt::ElideRight,metaWidth));
-  if(!grid()){const auto state=failed?HistoryModel::statusText(record):copied?copiedText:suppressed?suppressedText+" (clipboard changed)":QString{};p->setPen(failed?danger():suppressed?warning():success());p->drawText(QRect(left,top+55,textWidth,20),Qt::AlignVCenter,option.fontMetrics.elidedText(state,Qt::ElideRight,textWidth));}
+  if(failed){
+   const auto document=failureText(HistoryModel::statusText(record),option.font,textWidth);
+   p->save();p->translate(left,top+55);QAbstractTextDocumentLayout::PaintContext context;context.palette.setColor(QPalette::Text,danger());document->documentLayout()->draw(p,context);p->restore();
+  }else if(!grid()){const auto state=copied?copiedText:suppressed?suppressedText+" (clipboard changed)":QString{};p->setPen(suppressed?warning():success());p->drawText(QRect(left,top+55,textWidth,20),Qt::AlignVCenter,option.fontMetrics.elidedText(state,Qt::ElideRight,textWidth));}
   if(!action.isEmpty()){p->setPen(QPen(failed?accent():borderStrong()));p->setBrush(failed?accent():surface());p->drawRoundedRect(primaryBounds,6,6);p->setPen(failed?bg():text());p->drawText(primaryBounds,Qt::AlignCenter,action);}
   p->setPen(QPen(borderStrong()));p->setBrush(surface());p->drawRoundedRect(moreBounds,6,6);p->setPen(textSecondary());p->drawText(moreBounds,Qt::AlignCenter,QStringLiteral("⋯"));
   if(i.data(HistoryModel::ActiveRole).toBool()){const int progress=i.data(HistoryModel::ProgressRole).toInt();if(progress>=0){QRect bar(left,grid()?r.bottom()-53:r.bottom()-10,qMax(20,textWidth),3);p->setPen(Qt::NoPen);p->setBrush(border());p->drawRoundedRect(bar,1,1);bar.setWidth(bar.width()*progress/100);p->setBrush(accent());p->drawRoundedRect(bar,1,1);}}
@@ -175,7 +206,7 @@ HistoryWindow::HistoryWindow(UiSession& session,QWidget* parent):RetainedWindow(
  setGridMode(false);refresh();
 }
 void HistoryWindow::applyFilters(){searchTimer_->stop();auto q=model_->query();q.offset=0;q.search=findChild<QLineEdit*>("historySearch")->text();q.from=findChild<QLineEdit*>("historyFilterfrom")->text();q.to=findChild<QLineEdit*>("historyFilterto")->text();q.mime=findChild<QLineEdit*>("historyFiltermime")->text();q.profileId=findChild<QLineEdit*>("historyFilterprofileId")->text();q.uploadStatus=findChild<QLineEdit*>("historyFilteruploadStatus")->text();q.localStatus=findChild<QLineEdit*>("historyFilterlocalStatus")->text();q.remoteStatus=findChild<QLineEdit*>("historyFilterremoteStatus")->text();model_->setQuery(q);emit viewStateChanged();}
-void HistoryWindow::setGridMode(bool grid){grid_->setChecked(grid);findChild<QToolButton*>("historyListMode")->setChecked(!grid);table_->setViewMode(grid?QListView::IconMode:QListView::ListMode);table_->setMovement(QListView::Static);table_->setWrapping(grid);table_->setGridSize(grid?QSize(254,282):QSize());table_->setUniformItemSizes(grid);table_->doItemsLayout();updateInspectorLayout();emit viewStateChanged();}
+void HistoryWindow::setGridMode(bool grid){grid_->setChecked(grid);findChild<QToolButton*>("historyListMode")->setChecked(!grid);table_->setViewMode(grid?QListView::IconMode:QListView::ListMode);table_->setMovement(QListView::Static);table_->setWrapping(grid);table_->setGridSize(QSize());table_->setUniformItemSizes(false);table_->doItemsLayout();updateInspectorLayout();emit viewStateChanged();}
 void HistoryWindow::updateInspectorLayout(){if(!split_)return;const bool stacked=width()<800;split_->setOrientation(stacked?Qt::Vertical:Qt::Horizontal);inspectorScroll_->setMinimumWidth(stacked?0:360);inspectorScroll_->setMaximumHeight(stacked?330:QWIDGETSIZE_MAX);split_->setStretchFactor(0,1);split_->setStretchFactor(1,1);inspectorScroll_->setVisible(table_->selectionModel()->selectedRows().size()==1&&!grid_->isChecked());}
 void HistoryWindow::resizeEvent(QResizeEvent* event){RetainedWindow::resizeEvent(event);updateInspectorLayout();}
 void HistoryWindow::refresh(){if(!session_.ready()){awaitingInitialization_=true;VisualStyle::feedback(status_,"Waiting for the resident journal to initialize.");return;}model_->refresh();}

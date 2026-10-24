@@ -22,8 +22,15 @@ namespace {
 const QString service="org.gnome.Shell",client="org.putgd.App.Gnome50",path="/org/gnome/Shell/Extensions/Putgd",interface="org.putgd.Gnome50";
 QString uuid(){return QUuid::createUuid().toString(QUuid::WithoutBraces);}
 QString json(const QJsonObject& value){return QString::fromUtf8(QJsonDocument(value).toJson(QJsonDocument::Compact));}
-QJsonObject parse(const QDBusMessage& message,Error& error){
- if(message.type()==QDBusMessage::ErrorMessage){error={"helper_unavailable","GNOME native helper did not complete the request",{{"dbusError",message.errorName()}}};return {};}
+bool missingEndpoint(const QDBusMessage& message){
+ return message.type()==QDBusMessage::ErrorMessage&&(message.errorName()=="org.freedesktop.DBus.Error.UnknownMethod"||message.errorName()=="org.freedesktop.DBus.Error.UnknownObject"||message.errorName()=="org.freedesktop.DBus.Error.UnknownInterface");
+}
+QJsonObject parse(const QDBusMessage& message,Error& error,bool hello=false){
+ if(message.type()==QDBusMessage::ErrorMessage){
+  const auto guidance="GNOME capture needs the put.gd Shell extension. If it is missing, install the matching put.gd package or extension; after a new installation, log out and back in first. Then run: gnome-extensions enable putgd@put.gd";
+  error={"helper_unavailable",hello&&missingEndpoint(message)?guidance:"GNOME native helper did not complete the request",{{"dbusError",message.errorName()}}};
+  if(hello&&missingEndpoint(message))error.details["helperEndpointMissing"]=true;return {};
+ }
  if(message.arguments().size()!=1||message.arguments().first().metaType().id()!=QMetaType::QString){error={"bridge_protocol","GNOME helper returned an invalid reply",{}};return {};}
  const auto bytes=message.arguments().first().toString().toUtf8();if(bytes.size()>262144){error={"bridge_protocol","GNOME reply exceeds the control-message limit",{}};return {};}
  QJsonParseError e;const auto document=QJsonDocument::fromJson(bytes,&e);if(e.error!=QJsonParseError::NoError||!document.isObject()){error={"bridge_protocol","GNOME helper reply is not a JSON object",{}};return {};}
@@ -64,13 +71,24 @@ GnomeAdapter::~GnomeAdapter(){
 }
 QJsonObject GnomeAdapter::sync(const QString& method,const QVariantList& args,Error& error,int timeout){
  if(owner_.isEmpty()){error=helperError_.code.isEmpty()?Error{"helper_unavailable","Install and enable putgd@put.gd in GNOME 50",{}}:helperError_;return {};}
- auto message=QDBusMessage::createMethodCall(owner_,path,interface,method);message.setArguments(args);return parse(bus_.call(message,QDBus::Block,timeout),error);
+ auto message=QDBusMessage::createMethodCall(owner_,path,interface,method);message.setArguments(args);const auto response=bus_.call(message,QDBus::Block,timeout);
+ auto result=parse(response,error,method=="Hello");
+ if(method!="Hello"&&missingEndpoint(response)){
+  // The extension may have been disabled since discovery. Only a missing Hello
+  // confirms an absent endpoint; a missing method on a live helper is different.
+  Error probe;sync("Hello",{},probe);if(probe.details["helperEndpointMissing"].toBool())error.message=probe.message;
+ }
+ return result;
 }
 void GnomeAdapter::call(const QString& method,const QVariantList& args,Reply reply,int timeout){
  if(owner_.isEmpty()||stopping_){reply({"helper_unavailable","GNOME helper is unavailable",{}},{});return;}
  auto message=QDBusMessage::createMethodCall(owner_,path,interface,method);message.setArguments(args);const auto serial=++callSerial_;pending_.insert(serial,std::move(reply));
  auto* watcher=new QDBusPendingCallWatcher(bus_.asyncCall(message,timeout),this);const auto owner=owner_;
- connect(watcher,&QDBusPendingCallWatcher::finished,this,[this,watcher,serial,owner]{const auto callback=pending_.take(serial);const QDBusMessage message=watcher->reply();watcher->deleteLater();if(!callback)return;Error error;const auto result=parse(message,error);if(owner!=owner_)error={"helper_unavailable","GNOME Shell connection changed",{}};callback(error,result);});
+ connect(watcher,&QDBusPendingCallWatcher::finished,this,[this,watcher,serial,owner,method]{const auto callback=pending_.take(serial);const QDBusMessage message=watcher->reply();watcher->deleteLater();if(!callback)return;Error error;const auto result=parse(message,error,method=="Hello");
+  if(owner!=owner_)error={"helper_unavailable","GNOME Shell connection changed",{}};
+  else if(method!="Hello"&&missingEndpoint(message)){Error probe;sync("Hello",{},probe);if(probe.details["helperEndpointMissing"].toBool())error.message=probe.message;}
+  callback(error,result);
+ });
 }
 void GnomeAdapter::discover(){
  if(!ownsName_||stopping_)return;

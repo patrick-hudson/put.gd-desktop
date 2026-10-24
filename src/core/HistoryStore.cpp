@@ -187,6 +187,17 @@ Error HistoryStore::indexPublications(const ProviderRegistry& providers) {
   QSqlQuery remaining(db_);remaining.prepare("SELECT 1 FROM history WHERE id>? AND publication_identity='' AND upload_status='uploaded' LIMIT 1");remaining.addBindValue(after);if(!remaining.exec())return sqlError();if(!remaining.next())return {};
  }
 }
+Error HistoryStore::recordCopiedLink(const QString& historyId,QString& operationId) {
+ operationId.clear();if(error_)return error_;
+ QSqlQuery lookup(db_);lookup.prepare("SELECT operation_id FROM history WHERE id=?");lookup.addBindValue(historyId);
+ if(!lookup.exec())return sqlError();if(!lookup.next())return {};
+ const auto id=lookup.value(0).toString();lookup.finish();
+ // Patch just this field in the latest snapshot. Re-saving a read operation
+ // could overwrite concurrent sharing, deletion, retry or local-save changes.
+ QSqlQuery update(db_);update.prepare("UPDATE operations SET data=json_set(data,'$.copyStatus','copied') WHERE id=? AND json_array_length(data,'$.items')=1 AND json_extract(data,'$.items[0].artifact.id')=? AND json_extract(data,'$.copyStatus') IN ('suppressed','failed')");
+ update.addBindValue(id);update.addBindValue(historyId);if(!update.exec())return sqlError();
+ if(update.numRowsAffected())operationId=id;return {};
+}
 Operation HistoryStore::operation(const QString& id,Error* error) const {
  if(error_) {if(error)*error=error_;return {};}
  QSqlQuery q(db_);q.prepare("SELECT data FROM operations WHERE id=?");q.addBindValue(id);if(!q.exec()) {if(error)*error=sqlError();return {};}

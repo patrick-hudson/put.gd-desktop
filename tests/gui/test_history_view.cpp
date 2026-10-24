@@ -25,6 +25,14 @@
 #include <QImage>
 #include <QPlainTextEdit>
 #include <QPaintEvent>
+#include <QPainter>
+#include <QStyledItemDelegate>
+#include <QTextDocument>
+#include <QAbstractTextDocumentLayout>
+#include <QTextBlock>
+#include <QTextLayout>
+#include <QScrollBar>
+#include <cmath>
 #include <QSignalBlocker>
 #include <QSqlDatabase>
 #include <QSqlQuery>
@@ -86,6 +94,47 @@ class HistoryGui:public QObject {
   list->window()->activateWindow();list->setFocus();putgd::test::settle(20);auto triggered=std::make_shared<bool>(false);QTimer::singleShot(0,list,[triggered,text]{for(auto* widget:QApplication::topLevelWidgets())if(auto* menu=qobject_cast<QMenu*>(widget);menu&&menu->isVisible()){for(auto* action:menu->actions())if(action->text()==text&&action->isEnabled()){action->trigger();*triggered=true;break;}menu->close();}});list->setFocus();QTest::keyClick(list,Qt::Key_Menu);QCoreApplication::processEvents();return *triggered;
  }
 private slots:
+ void fullFailureTextIsPaintedWithoutClipping_data(){
+  QTest::addColumn<bool>("gallery");QTest::addColumn<int>("width");QTest::addColumn<bool>("longToken");
+  for(bool gallery:{false,true})for(int width:{1000,600})for(bool token:{false,true})QTest::newRow(qPrintable(QString("%1-%2-%3").arg(gallery?"gallery":"list").arg(width).arg(token?"long-token":"gnome-guide")))<<gallery<<width<<token;
+ }
+ void fullFailureTextIsPaintedWithoutClipping(){
+  QFETCH(bool,gallery);QFETCH(int,width);QFETCH(bool,longToken);
+  const QString guide="GNOME capture needs the put.gd Shell extension. If it is missing, install the matching put.gd package or extension; after a new installation, log out and back in first. Then run: gnome-extensions enable putgd@put.gd";
+  const QString message=guide+(longToken?"\nLiteral <b>text</b>: "+QString(1800,'W')+"\nEND OF RECOVERY":QString{});
+  QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
+  {HistoryStore ledger(operations.databasePath());Operation op;op.id="long-failed-capture";op.action="window";op.created="2022-01-01T00:00:00.000Z";op.state="failed";op.error={"helper_unavailable",message,{}};op.settings=settings.snapshot();QVERIFY(!ledger.saveOperation(op));}
+  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);RedesignTheme::apply(window);window.resize(width,700);window.show();auto* list=window.findChild<QListView*>("historyList");PUTGD_TRY_COMPARE(list->model()->rowCount(),1);
+  if(gallery)window.findChild<QToolButton*>("historyGridMode")->click();
+  HistoryPaintObserver painted;list->viewport()->installEventFilter(&painted);
+  // Resize both directions: cached/fixed item heights must not clip a narrower layout.
+  for(int target:{width,width+180,width}){
+   window.resize(target,700);
+   for(bool selected:{false,true}){
+   painted.paints=0;if(selected)selectRow(list,0);else list->clearSelection();list->viewport()->update();
+   const auto index=list->model()->index(0,0);QStyleOptionViewItem layoutOption;layoutOption.initFrom(list);layoutOption.font=list->font();
+   PUTGD_VERIFY_STEADY(painted.paints>0&&window.width()<=target&&list->selectionModel()->selectedRows().size()==int(selected)&&list->visualRect(index).height()==list->itemDelegate()->sizeHint(layoutOption,index).height(),20);
+   const auto row=list->visualRect(index);QVERIFY(row.isValid());
+   const auto record=index.data(HistoryModel::RecordRole).toJsonObject();QVERIFY(HistoryModel::storedNothing(record));QVERIFY(index.data(HistoryModel::PrimaryActionRole).toString().isEmpty());QVERIFY(index.data(Qt::AccessibleTextRole).toString().contains(message));
+   const int heading=gallery?0:34;const int left=gallery?20:107;const int top=gallery?216:heading+75;const int textWidth=row.width()-(gallery?41:128);
+   QTextDocument expected;expected.setDocumentMargin(0);expected.setDefaultFont(list->font());auto textOption=expected.defaultTextOption();textOption.setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);expected.setDefaultTextOption(textOption);expected.setPlainText(message);expected.setTextWidth(textWidth);
+   const int height=int(std::ceil(expected.size().height()));QVERIFY2(top+height+8<=row.height()-(gallery?48:0),qPrintable(QString("Complete error needs y%1 + %2px; row%3").arg(top).arg(height).arg(row.height())));
+   for(auto block=expected.begin();block.isValid();block=block.next())for(int line=0;line<block.layout()->lineCount();++line)QVERIFY(block.layout()->lineAt(line).naturalTextWidth()<=textWidth+1);
+   // Compare the actual delegate's entire painted error rectangle to complete
+   // plain text, including the last command/token. A role/string assertion alone
+   // would pass the old elided painter and the gallery that omitted errors.
+   QImage actual(row.size(),QImage::Format_ARGB32_Premultiplied);actual.fill(Qt::transparent);QStyleOptionViewItem option;option.initFrom(list);option.font=list->font();option.rect=QRect(QPoint(),row.size());option.state=QStyle::State_Enabled|(selected?QStyle::State_Selected:QStyle::State_None);{QPainter painter(&actual);list->itemDelegate()->paint(&painter,option,index);}
+   QImage complete(QSize(textWidth,height),QImage::Format_ARGB32_Premultiplied);complete.fill(selected?RedesignTheme::selected():gallery?RedesignTheme::surface():RedesignTheme::bg());{QPainter painter(&complete);QAbstractTextDocumentLayout::PaintContext context;context.palette.setColor(QPalette::Text,RedesignTheme::danger());expected.documentLayout()->draw(&painter,context);}
+   QCOMPARE(actual.copy(left,top,textWidth,height),complete);
+   // An oversized error remains reachable through the real pixel scroll range.
+   if(row.height()>list->viewport()->height()){
+    QVERIFY(list->verticalScrollBar()->maximum()>0);painted.paints=0;list->verticalScrollBar()->setValue(list->verticalScrollBar()->maximum());list->viewport()->update();
+    PUTGD_VERIFY_STEADY(painted.paints>0&&list->verticalScrollBar()->value()==list->verticalScrollBar()->maximum()&&list->visualRect(index).bottom()<=list->viewport()->height(),20);
+   }
+   }
+  }
+  QCOMPARE(source.reads,0);QCOMPARE(source.copies,0);
+ }
  void externalDeletionAndClearRefreshOpenViews() {
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);
   SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));Source source;source.payload=textPayload();
@@ -310,6 +359,12 @@ private slots:
    selectRow(list,0);PUTGD_TRY_VERIFY(window.findChild<QLabel*>("historyOutcome")->text().contains("Link not copied"));
    auto* copy=window.findChild<QPushButton*>("copyHistoryLink");PUTGD_TRY_VERIFY(copy->isEnabled());QCOMPARE(copy->text(),QString("Copy link"));copy->click();
    PUTGD_TRY_COMPARE(source.copies,1);HistoryStore journal(operations.databasePath());QCOMPARE(source.copied.text,journal.operation(id).items.first().receipt.directUrl);QCOMPARE(provider->uploads.load(),1);
+   PUTGD_TRY_COMPARE(journal.operation(id).copyStatus,QString("copied"));
+   PUTGD_TRY_COMPARE(model->record(0)["operation"].toObject()["copyStatus"].toString(),QString("copied"));
+   QCOMPARE(HistoryModel::statusText(model->record(0)),QString("Uploaded · Link copied"));
+   QVERIFY(row.data(HistoryModel::SubtitleRole).toString().contains("Link copied"));
+   PUTGD_TRY_VERIFY(window.findChild<QLabel*>("historyOutcome")->text().contains("Link copied"));
+   QVERIFY(!window.findChild<QLabel*>("historyOutcome")->text().contains("Copy it again"));
   }
  void failedUploadSavesDiagnosticsForThatOperation(){
   // #122: a failed row offers Save diagnostics for this upload, for that one operation.
