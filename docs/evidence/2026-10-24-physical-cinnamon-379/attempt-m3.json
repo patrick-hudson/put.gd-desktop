@@ -59,5 +59,12 @@
     }
   },
   "classification": "Coordinator prelaunch admission failure only; not a02d benchmark-driver failure, memory confirmation, product failure or numerical pass",
-  "next": "Review coordinator receipt-before-assert/quietness handling outside a desktop lock; obtain a separate allocation before any retry. M1 remains pilot and M2 remains preinterval admission failure."
+  "next": "Review coordinator receipt-before-assert/quietness handling outside a desktop lock; obtain a separate allocation before any retry. M1 remains pilot and M2 remains preinterval admission failure.",
+  "originalException": {
+    "type": "AssertionError",
+    "message": "",
+    "privateTracebackCollection": "Curated from actual tool output; not an original on-host numerical precheck log",
+    "privateCurationSha256": "94c90ecb711a48d56cdd7652d624c0790645c131e35bc5f38e4d2f316b4590f6",
+    "originalRecoveryReceiptSha256": "6cd85e555f60a404523e7e802a5ebbfb91af9fc42b34efafc230becc564beb0e"
+  }
 }
