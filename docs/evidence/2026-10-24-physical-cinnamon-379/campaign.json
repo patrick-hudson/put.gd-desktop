@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "issue": 379,
-  "status": "cold_subset_complete_driver_contract_failure_preserved_full_campaign_pending",
+  "status": "complete_empty_memory_workflow_open_pss_failed_remaining_campaign_pending",
   "accepted": false,
   "scope": "Newest-published-nightly physical Mint Cinnamon performance rehearsal; no stable-asset certification",
   "product": {
@@ -41,18 +41,13 @@
     "dependencyIssue": 495,
     "productBytesRebuilt": false,
     "codePullRequest": "https://github.com/patrick-hudson/put.gd-desktop/pull/555",
-    "acceptanceReviewStatus": "M6diagnostics caller failure; corrected3259 review/currentCI/fresh-memory validation pending",
+    "acceptanceReviewStatus": "R9/currentCI3259 clear; M7complete common memory workflow with valid product PSS failure; capture/upload50/slow runtime validation pending",
     "historyGrowHold": "Only root-cleared producer 72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e is staged/hash-verified; not yet executed in this campaign. All old revisions remain held.",
-    "nextPhysicalRunHold": "M6 completed only its cold subset, then fd259 diagnostics caller failed before History. No repeat/new physical allocation until reviewed corrected handoff/current CI/root allocation; historical budgets and identities stay unchanged.",
+    "nextPhysicalRunHold": "M7 allocation consumed/cleanly released. Independent next operator chunk requires its own reviewed controller/proposal/allocation/fresh notice; ca937 is memory-only.",
     "sourceCommitScope": "First physical pilot batch only; each later attempt keeps its separate actual/planned identities",
     "currentReviewedDriver": {
-      "revision": "fd259fae36a0643d198a8730770bcefc6297d9ac",
-      "review": "R8source/controlclear historical; M6actualfd259 runtime exposed diagnostics caller KeyErrorui; memory acceptance incomplete"
-    },
-    "pendingDriverCandidate": {
       "revision": "3259a5b83e4b93b9ba595bafb95e7c9ebddbddd0",
-      "archiveSha256": "d99c6ad88804202eb68976ca965ff16f217065770dfbf6b40bff83d5efb875c1",
-      "status": "Focused root review/current CI pending; no runtime credit or m74 staging"
+      "review": "R9/source/currentCI clear; M7 complete memory workflow only, openPSS product budget fails"
     }
   },
   "approvedBudgets": {
@@ -76,9 +71,9 @@
   "gates": {
     "regionEmpty": "incomplete_workload_c1; no valid numerical result",
     "regionPopulated": "pending",
-    "coldIdle": "m6_300second_cold_subset_within_budget; full_sequence_and_acceptance_pending",
-    "closedMemory": "m6_cold_subset_only; postclose_unrun",
-    "historyOpenMemory": "m1_pilot_above60MiB_unconfirmed; m6_not_started",
+    "coldIdle": "pass_exactM7_empty_profile_300.118402seconds",
+    "closedMemory": "pass_exactM7_postclose_300.112448seconds",
+    "historyOpenMemory": "fail_exactM7_64956416_gt62914560_bytes_30.087980seconds",
     "historyFunctionalAndResponse": "pending_measurements_and_explicit_threshold_approval",
     "burst": "pending",
     "slowStalledNetwork": "pending"
@@ -100,6 +95,10 @@
     {
       "file": "m6-cold-segment-driver-failure.png",
       "meaning": "Reviewed synthetic-cover frame with appended caption; cold segment completed, no History/open-PSS proof"
+    },
+    {
+      "file": "m7-history-open-pss-budget-failure.png",
+      "meaning": "Reviewed actual physical VNC crop equals stable owned History drawable, appended result caption; valid open-PSS failure, no first-content timing claim"
     }
   ],
   "cleanupReceipts": [
@@ -108,7 +107,8 @@
     "attempt-m3.json",
     "attempt-m4.json",
     "attempt-m5.json",
-    "attempt-m6.json"
+    "attempt-m6.json",
+    "attempt-m7.json"
   ],
   "limitations": [
     "Campaign in progress; no performance acceptance pass claimed",
@@ -180,7 +180,18 @@
       "driverLaunched": true,
       "coldSegmentMeasuredSeconds": 300.07672705699224,
       "accepted": false
+    },
+    {
+      "id": "m7",
+      "summary": "attempt-m7.json",
+      "status": "complete_memory_workflow_history_open_pss_budget_failed",
+      "actualDriverRevision": "3259a5b83e4b93b9ba595bafb95e7c9ebddbddd0",
+      "controllerSha256": "ca937c2dd710cdd6b6af071d0c513156f8080f3ba43bce209e7e498f3f8927f7",
+      "historyOpenPssBytes": 64956416,
+      "limitBytes": 62914560,
+      "accepted": false
     }
   ],
-  "privacyAudit": "batch1-frame-privacy-audit.json"
+  "privacyAudit": "batch1-frame-privacy-audit.json",
+  "productPerformanceIssue": null
 }

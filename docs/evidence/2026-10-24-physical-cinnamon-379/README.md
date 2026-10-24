@@ -1,6 +1,6 @@
 # Physical Cinnamon performance campaign (#379)
 
-**Status: campaign in progress; no performance gate is accepted by this record yet.**
+**Status: M7 completed the empty-History memory workflow and failed the 60 MiB open-PSS gate; the remaining campaign is pending.**
 This is the newest-published-nightly rehearsal requested in
 [#379](https://github.com/patrick-hudson/put.gd-desktop/issues/379).
 [#384](https://github.com/patrick-hudson/put.gd-desktop/issues/384) must repeat
@@ -45,8 +45,8 @@ each isolated launch. Retain failed attempts and corrected commands.
 | --- | --- | --- |
 | Region overlay, empty history | 5 warmups + 30 warm samples; p95 ≤150 ms | Pending |
 | Region overlay, populated history | Same protocol with 10,000 independent image/video operation records | Pending |
-| Cold/closed memory and idle CPU | RSS ≤40 MiB; CPU <0.5% of one core over 300 seconds | Pending |
-| Closed family / History-open family | Closed RSS ≤40 MiB; PSS ≤29 MiB / ≤60 MiB, with helpers attributed | Pending |
+| Cold/closed memory and idle CPU | RSS ≤40 MiB; CPU <0.5% of one core over 300 seconds | M7 cold and post-close pass at their empty-profile scope |
+| Closed family / History-open family | Closed RSS ≤40 MiB; PSS ≤29 MiB / ≤60 MiB, with helpers attributed | M7 closed passes; History-open fails: 61.9473 MiB >60 MiB |
 | 10,000-entry history | Open, whole-list scroll, search, image/video preview, Copy image, Delete from destination; response/frame timings, CPU and memory | Pending; unbudgeted response thresholds need Patrick's explicit approval |
 | Upload burst | At least 50 queued captures/uploads, concurrent slots, correct tray/history/links, memory during and after settle | Pending |
 | Slow/stalled S3 | 256 KiB/s proxy, a stalled connection, visible progress, responsive UI/tray, measured cancellation and successful retry | Pending |
@@ -160,6 +160,16 @@ encoder process. Other low-activity desktop services and the wall stayed up.
   this does not confirm the m1 open-PSS observation or establish full-memory
   acceptance. The run and its failure retain their original source identity.
 
+
+- **m7: complete memory workflow; valid product open-PSS failure.**
+  At exact driver `3259a5b8`, [M7](attempt-m7.json) completed cold, History-open
+  and post-close intervals, with continuous owned-helper/window checks and
+  normal exit/complete cleanup. History-open family PSS peaked at **64,956,416
+  bytes**, exceeding the unchanged **62,914,560-byte** ceiling by **2,041,856
+  bytes (1.947265625 MiB)**. Cold/post-close CPU, RSS and PSS passed their fixed
+  budgets. This is a product budget failure on exact 1185, not a driver failure;
+  it does not establish a leak, regression cause or stable-asset acceptance.
+
 ![c1 post-cancellation recovery frame: only synthetic background, no selector-paint claim](c1-witness-failure.png)
 
 This is an annotated recovery frame from the tested nightly after the failed
@@ -177,9 +187,9 @@ its SHA-256 is retained in the attempt JSON.
 
 The observed open PSS is **1,906,688 bytes (about 1.82 MiB) above** the approved
 62,914,560-byte / 60 MiB ceiling. Do not round it into a pass or apply tolerance.
-Confirm using the corrected, reviewed continuous-History and complete-cleanup
-driver under the same exact product/profile/quiet parameters. A confirmed
-failure needs its own product/performance issue; #379 remains unaccepted.
+M1 remains an unaccepted pilot with its original limitations. The independent,
+corrected M7 workflow below confirms an open-PSS budget failure on the same
+exact product; it does not retroactively accept M1. #379 remains unaccepted.
 
 ![m1 pilot's empty History drawable, with the unchanged budget and confirmation requirement](m1-empty-history-pilot.png)
 
@@ -221,6 +231,37 @@ and indexed by the summary; no historical M4/M5 bound is inferred.
 Both saved source frames are independently verified as 100% RGB `(80, 90, 100)`.
 This figure appends a caption below the byte-identical original frame. It shows
 only the synthetic cover and makes no History-content or tray claim.
+
+
+### M7 complete memory workflow; History-open PSS fails
+
+| Stage | Measured duration | Peak family RSS | Peak family PSS | Resident CPU, one core |
+| --- | --- | --- | --- | --- |
+| Cold/closed | 300.118402 s | 30,507,008 B | 19,247,104 B | 0.003332% |
+| History open | 30.087980 s | See private raw samples | **64,956,416 B — fail** | See private raw samples |
+| After History closed | 300.112448 s | 30,679,040 B | 19,396,608 B | 0.006664% |
+
+All 134 process samples are retained privately: 61 cold, 7 open, 61 closed and
+5 mapping/identity/closing samples. The open interval had **300 continuous
+checks** of the same PID, executable, parent and mapped X11 window. The helper
+then exited normally with code 0 at generation 1. No process escaped the family;
+all four package/running build identities matched exact 1185. The database
+remained empty. The CPU/RSS/PSS totals were independently recomputed from raw
+samples. History content/paint response remains unassessed.
+
+![M7 empty History: measured family PSS exceeds60MiB; original owned physical VNC crop with appended caption](m7-history-open-pss-budget-failure.png)
+
+The original 1296×856 physical VNC crop equals the stable PID-owned native
+X11 drawable byte-for-byte. It was manually reviewed as empty History with no
+credentials or private payload. The caption is appended below the unchanged
+crop and reports the later scored interval; the image is not a memory meter
+or proof of first-content response time.
+
+M7 host admission retained 332 rows with no unexplained unmeasured row and
+maximum measured process CPU 1.594624% of one core. The separate conservative
+aggregate upper bound was **11.705048%**, not sub-10%. It was not used to fill
+or discharge any missing row; the reviewed per-process admission path applied.
+Its explicit Linux-accounted statistical scope remains unchanged.
 
 ## Evidence and cleanup
 
@@ -281,6 +322,17 @@ original files plus a separate restore manifest** were exported privately and
 every size/hash verified, including the 12-file raw run and its original/copy
 comparison. The earlier one-line JSON transport correction preceded the single
 controller attempt and is retained separately. No retry or new scenario ran.
+
+
+For m7, the matching lease ran **20:40:29–20:51:39 UTC**. The original VM was
+verified running again at 20:51:32 UTC and rechecked at 20:51:36. Both residents
+exited normally with code 0, no force, complete inventory and verified absence;
+family and session socket were gone. The driver completed scoring and returned
+1 for the product PSS gate failure. Only the run-owned package was purged and
+the lease released verified-clean. All **31 originals plus a separate restore
+manifest** are privately exported and hash/size verified, including 14 raw run
+files and their original/copy comparison. Two other saved frames are exact
+synthetic fill. There was no retry, product change, waiver or new allocation.
 
 ### Actual-frame privacy audit
 

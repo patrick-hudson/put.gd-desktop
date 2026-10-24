@@ -75,8 +75,15 @@ before History activation. No open or post-close interval ran; the open-PSS
 pilot remains unconfirmed. The raw data, safe cover frame and both normal
 resident exits with complete-inventory/verified-absence flags are retained.
 The original VM resumed, only the run-owned package was purged, and m74 released
-verified-clean at 19:49:31 UTC. No full memory sequence or capture,
-history, burst or network gate is accepted. Driver hardening (#495,
+verified-clean at 19:49:31 UTC. M7 at `3259a5b8` then completed the full
+300.118402/30.087980/300.112448-second memory workflow: cold and post-close
+CPU/RSS/PSS pass, but History-open family PSS **64,956,416 B exceeds 62,914,560 B**
+by 2,041,856 B. Its 300 continuous ownership/window checks, normal helper
+generation-1 exit, complete inventory/absence and safe owned VNC crop are
+retained. The original VM resumed and m74 released verified-clean at 20:51:39 UTC.
+This is a valid product budget failure without leak/regression attribution;
+M1 stays a pilot and M6 stays partial. No whole performance/capture, history,
+burst or network acceptance is claimed. Driver hardening (#495,
 PR #554) and the performance driver (PR #555) remain separately identified code
 work; old history-growth revisions are held. Unbudgeted response thresholds require
 Patrick's approval. The eventual nightly results do not certify stable assets;
@@ -101,7 +108,7 @@ work packages:
 | DEB lifecycle, recording rows, live S3 | [#375](https://github.com/patrick-hudson/put.gd-desktop/issues/375) | partial: source144 Cinnamon VM only; no state-preserving upgrade or removal + login on Wayland; schema 5→7 never exercised |
 | RPM lifecycle on f44 | [#377](https://github.com/patrick-hudson/put.gd-desktop/issues/377) | partial: repo upgrade 816→828 only |
 | GUI/CLI/MCP parity, AE17, fresh-agent walkthrough | [#378](https://github.com/patrick-hudson/put.gd-desktop/issues/378) | partial: 2026-10-13, CLI `dev.143` |
-| Physical Cinnamon latency, 10,000-entry history, burst, slow network | [#379](https://github.com/patrick-hudson/put.gd-desktop/issues/379) | nightly 1185 rehearsal: capture has zero samples; 61.82 MiB open-PSS pilot needs corrected confirmation; fresh memory attempt failed before scoring; 10,000-entry/history/burst/slow gates pending ([record](evidence/2026-10-24-physical-cinnamon-379/README.md)) |
+| Physical Cinnamon latency, 10,000-entry history, burst, slow network | [#379](https://github.com/patrick-hudson/put.gd-desktop/issues/379) | nightly 1185 rehearsal: M7 complete memory workflow fails open PSS 61.9473 MiB >60 MiB; cold/post-close pass; capture/10,000-entry/history/burst/slow gates pending ([record](evidence/2026-10-24-physical-cinnamon-379/README.md)) |
 | Multi-display geometry in VMs | [#380](https://github.com/patrick-hudson/put.gd-desktop/issues/380) | partial: 3-head Cinnamon X11 region, single-output fractional scale |
 | Physical mixed DPI and rotation | [#381](https://github.com/patrick-hudson/put.gd-desktop/issues/381) | blocked: no builder has two outputs; proposed for 0.1.2 |
 | Uninstall login-startup entry | [#382](https://github.com/patrick-hudson/put.gd-desktop/issues/382) | closed by Patrick; 11 development-artifact rows pass, legacy exception accepted; PR integration and #384 release checks remain ([evidence](evidence/2026-10-24-uninstall-startup-382/README.md)) |
