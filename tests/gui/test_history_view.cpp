@@ -310,6 +310,12 @@ private slots:
    selectRow(list,0);PUTGD_TRY_VERIFY(window.findChild<QLabel*>("historyOutcome")->text().contains("Link not copied"));
    auto* copy=window.findChild<QPushButton*>("copyHistoryLink");PUTGD_TRY_VERIFY(copy->isEnabled());QCOMPARE(copy->text(),QString("Copy link"));copy->click();
    PUTGD_TRY_COMPARE(source.copies,1);HistoryStore journal(operations.databasePath());QCOMPARE(source.copied.text,journal.operation(id).items.first().receipt.directUrl);QCOMPARE(provider->uploads.load(),1);
+   PUTGD_TRY_COMPARE(journal.operation(id).copyStatus,QString("copied"));
+   PUTGD_TRY_COMPARE(model->record(0)["operation"].toObject()["copyStatus"].toString(),QString("copied"));
+   QCOMPARE(HistoryModel::statusText(model->record(0)),QString("Uploaded · Link copied"));
+   QVERIFY(row.data(HistoryModel::SubtitleRole).toString().contains("Link copied"));
+   PUTGD_TRY_VERIFY(window.findChild<QLabel*>("historyOutcome")->text().contains("Link copied"));
+   QVERIFY(!window.findChild<QLabel*>("historyOutcome")->text().contains("Copy it again"));
   }
  void failedUploadSavesDiagnosticsForThatOperation(){
   // #122: a failed row offers Save diagnostics for this upload, for that one operation.
