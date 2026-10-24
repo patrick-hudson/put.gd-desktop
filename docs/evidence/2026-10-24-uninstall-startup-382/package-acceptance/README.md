@@ -137,9 +137,12 @@ migrates managed integration when it runs in an account; focused tests cover
 that migration. This campaign does not establish automatic cleanup for an old
 entry in an account that never ran the updated version. Such accounts need an
 updated-app run or explicit disable before uninstall. The no-home-traversal
-rule is preserved. #382 remains open for this rollout limitation as well as
-merge/published-nightly verification; these current-entry tests are not an
-unqualified all-account backward-compatibility pass.
+rule is preserved. Patrick explicitly accepted this legacy-account limitation
+as non-blocking for the first release, given the app’s limited existing usage,
+and authorized closing #382. The [decision/closure receipt](../legacy-rollout-decision.json)
+records that scope change. The measured results remain current-entry tests; they
+do not claim retroactive all-account compatibility. Code #544 and docs #545
+remain open; published-nightly verification continues under #384 after merge.
 
 ## Reproduction and cleanup
 
@@ -182,5 +185,6 @@ signer were left intact. [Final cleanup receipt](lab-final-cleanup.json).
 This targeted campaign does not perform the full native A–Q or AppImage A–K
 profiles, capture/recording/upload, live S3, physical performance, mixed displays,
 full fresh-agent parity, a dated Proton review or exact stable-draft acceptance.
-Those release gates remain with #378–#385 as individually scoped. #382 remains
-open for merge and published-nightly evidence; no release was performed.
+The remaining release gates retain their own issues. #382 is closed with
+Patrick’s accepted legacy-account exception; code/docs integration remains with
+#544/#545 and published-nightly/exact-release evidence with #384. No release was performed.

@@ -11,8 +11,10 @@ supersedes the earlier retained-entry/TryExec proposal.
 the correction. [Configuration](../../configuration.md#launch-at-login-and-uninstall-linux)
 documents the timing, preserved preference and explicit Settings/CLI/MCP route.
 Targeted development-package and real-login acceptance is complete on five native
-and six AppImage desktop rows. The separate PRs retain the legacy-account rollout limitation explicitly.
-#382 remains open until its acceptance and merge requirements are met.
+and six AppImage desktop rows. Patrick accepted the legacy-account rollout
+limitation as non-blocking for the first release and authorized closing #382.
+The [decision and closure receipt](legacy-rollout-decision.json) record the scope.
+Code #544 and docs #545 remain open; release verification continues under #384.
 
 ## Earlier link-removing implementation and bounded checks
 
@@ -171,11 +173,11 @@ map failure is preserved explicitly. See the [complete matrix, exact artifact
 hashes, annotated pictures, lab corrections and retirement receipts](package-acceptance/README.md).
 
 Legacy entries in accounts that never ran the updated app cannot gain cleanup
-retroactively; the [rollout limit](package-acceptance/README.md#legacy-account-rollout-limitation)
-remains open with #382.
+retroactively; Patrick accepted this [rollout limit](package-acceptance/README.md#legacy-account-rollout-limitation)
+as non-blocking given limited existing usage. #382 is closed by his decision.
 
 The published-nightly check (including AppImage replacement with real update
-metadata) remains after code/docs merge. These targeted rows do not certify a
+metadata) remains under #384 after code/docs merge. These targeted rows do not certify a
 stable release or replace #384's exact-release-asset campaign.
 
 ## Superseded retained-link evidence
