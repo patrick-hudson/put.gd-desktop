@@ -1,0 +1,3526 @@
+{
+  "schemaVersion": 1,
+  "issue": 495,
+  "date": "2026-10-24",
+  "scope": "Native acceptance lab driver documentation; no new release acceptance claim",
+  "status": "final614-delta-curated-awaiting-factual-delta-signoff-and-exact-head-ci",
+  "codePullRequest": "https://github.com/patrick-hudson/put.gd-desktop/pull/554",
+  "driver": {
+    "path": "tools/lab/native_acceptance.py",
+    "commit": "61439983e2c2d7b050b846e2f8bd723234247aed",
+    "sha256": "7026a15a0ebcb5f6e25a0feb2679a8f6ee241624e8ed8c7bdd950b790a9a6333",
+    "stage": "reviewed614-with-minimal-protocol-proof-and-source-scoped72-live-proof",
+    "productCliCapabilitiesChanged": false
+  },
+  "historicalEvidence": {
+    "path": "docs/evidence/2026-10-23-native-full-acceptance",
+    "tag": "v26.1023.1058-nightly",
+    "sourceAbbreviation": "05991d9d",
+    "preserveDriversResultsAndVisuals": true,
+    "limits": {
+      "tray": "Tint finder selected unrelated taskbar or panel targets; original failures retained",
+      "session": "SSH user-manager resident survived logout; early login attempts invalid",
+      "removal": "Snapshot failed when installed CLI was absent; shell PID selection could use previous login",
+      "history": "10000 entries shared five operations, not 10000 independent captures",
+      "keychain": "Session credentials plus reference preservation; no actual keychain credential lifecycle proof"
+    }
+  },
+  "commands": [
+    {
+      "purpose": "grow a stopped private synthetic fixture to 10000 independent operations",
+      "argv": [
+        "python3",
+        "tools/lab/native_acceptance.py",
+        "--output",
+        "NEW_PRIVATE_RECEIPT",
+        "grow",
+        "--fixture-root",
+        "ROOT",
+        "--db",
+        "ROOT/data/putgd/history.sqlite",
+        "--runtime",
+        "SHORT_RUNTIME",
+        "--to",
+        "10000"
+      ],
+      "executedByDocumentationThread": false,
+      "realUploadsPerformed": 0,
+      "requiresExistingCapturesAndConfig": true,
+      "acceptanceScope": "fixture-shape only until separately measured on a product build",
+      "executionStatus": "permitted-exact72-only-under-every-guard",
+      "requiredCommit": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e"
+    }
+  ],
+  "automatedChecks": [
+    {
+      "path": "tests/desktop/test_native_acceptance.py",
+      "commit": "826c255a4023daad88d07afb2b82d558f86c9d69",
+      "testCount": 17,
+      "host": "k72",
+      "status": "code-owner-reported-pass",
+      "savedLog": "pending",
+      "scope": "synthetic safety/history-shape contracts; no real desktop or keychain proof"
+    },
+    {
+      "path": "tools/lab/sycoca_probe",
+      "commit": "826c255a4023daad88d07afb2b82d558f86c9d69",
+      "host": "k72",
+      "status": "code-owner-reported-build-pass",
+      "scope": "distro-linked Qt6/KF6Service helper build"
+    },
+    {
+      "path": "tests/desktop/test_native_acceptance.py",
+      "commit": "6bbbd506aeef7f8aa4a97c21664c7013ff427627",
+      "testCount": 18,
+      "seconds": 1.259,
+      "host": "k72",
+      "status": "saved-log-verified-pass",
+      "privateLog": "k72-final/tests-final.log",
+      "sha256": "fda9b3464105df3ffe2570aa008aaf6430b276fd483bfea9334113d19eb6f971",
+      "diagnostics": "SQLite ResourceWarning diagnostics from synthetic fixture connections retained in private log",
+      "scope": "safety/history-shape contracts only"
+    },
+    {
+      "path": "tests/desktop/test_native_acceptance.py",
+      "commit": "64a3257b20d7aa33cc25d35c07a628becff4036c",
+      "testCount": 19,
+      "secondsReported": 1.261,
+      "host": "k72",
+      "status": "saved-log-verified-pass",
+      "scope": "new compositor-peer fallback safety regression; older18-test export preserved",
+      "seconds": 1.261,
+      "sha256": "512f78ba15806d799a062a0b095f7c7c5e5bed4c4044ff6eec09a1cd12e69720",
+      "privateLocalLog": "/home/patrick/.t3/worktrees/put.gd/docs-native-acceptance-drivers-495/work/495/tests-gnome-peer.log",
+      "privateHostLog": "k72:/home/patrick/putgd-lab/n495/tests-gnome-peer.log"
+    },
+    {
+      "path": "tests/desktop/test_native_acceptance.py",
+      "commit": "c538f71e89afcc6d1e6c599c3c1cb9c3a97e7ced",
+      "testCount": 35,
+      "seconds": 1.55,
+      "host": "k72",
+      "status": "saved-log-verified-pass",
+      "privateLog": "review2/review-fixes-commit-tests.log",
+      "sha256": "d4f0943e747b564379a04fdd1d07fb540c73b8a89d908aa7913ada87ea4c159e",
+      "scope": "safety/shape regression checks for owner-proposed review fixes; independent round2 pending"
+    },
+    {
+      "path": "tests/desktop/test_native_acceptance.py",
+      "commit": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+      "testCount": 37,
+      "seconds": 2.754,
+      "host": "k72",
+      "status": "saved-log-verified-pass",
+      "privateLog": "review3/inert-receipt-tests-2.log",
+      "sha256": "2ed4a4acb2bd4cea53fb3f234afb52668f8a2d72818fa2a491fa869bed4e230b",
+      "scope": "full product-shaped inert receipts; exact-source independent round3 cleared; runtime proof scope unchanged"
+    },
+    {
+      "path": "tests/desktop/test_native_acceptance.py",
+      "commit": "61439983e2c2d7b050b846e2f8bd723234247aed",
+      "testCount": 39,
+      "seconds": 2.937,
+      "host": "k72",
+      "status": "saved-log-verified-pass",
+      "privateLog": "review4/after-tests.log",
+      "sha256": "7ef49cabe5ae43cd12823cc7f93d52e8dc400eb6682c2722d865e0ca29e49bfc",
+      "scope": "focused post-login scope and invalid-receipt-before-unlock regressions; no live workflow"
+    }
+  ],
+  "desktopRuns": [
+    {
+      "runId": "k72/final-826c",
+      "sourceScope": "historical source-specific observation before independent review fixes",
+      "host": "k72",
+      "hostName": "kubuntu",
+      "placement": "physical",
+      "driverCommit": "826c255a4023daad88d07afb2b82d558f86c9d69",
+      "driverSha256": "8ef8180e0c6ee9eef040eab633589e93a51b26db30d600ce10b16306656e8e3e",
+      "session": {
+        "Id": "906",
+        "Type": "wayland",
+        "Seat": "seat0",
+        "Desktop": "KDE",
+        "Timestamp": "Sat 2026-10-24 01:24:11 CDT",
+        "TimestampMonotonic": "31018816964",
+        "Leader": "128842",
+        "shell": {
+          "pid": 129168,
+          "exe": "/usr/bin/plasmashell",
+          "startTicks": 3102035
+        },
+        "bootId": "c9926bb9-3536-46ef-95c2-2161ab5a245a"
+      },
+      "productBuild": {
+        "baseVersion": "26.1024.1185",
+        "commitCount": 1185,
+        "dirty": false,
+        "gitCommit": "9dfac15c1ced201d13a2b70a8afb0c253213768b",
+        "gitTree": "4e96912274d9220ba9476bd1b50333f6cf738f4f",
+        "packageVersion": "26.1024.1185~nightly",
+        "schemaVersion": 1,
+        "sourceProvenance": "git",
+        "version": "26.1024.1185-nightly"
+      },
+      "package": {
+        "target": "ubuntu26.04",
+        "kind": "DEB",
+        "sha256": "2f370159c4cd5ebefbe446dc5461daf3c991095bbbe0e7220bb443277fe294ce",
+        "source": "code-owner handoff; independently verified local exported DEB"
+      },
+      "privateHostRoot": "k72:/home/patrick/putgd-lab/n495/final-826c/",
+      "privateLocalExport": "/home/patrick/.t3/worktrees/put.gd/fix-native-acceptance-drivers-495/work/495/k72/final-826c",
+      "scope": "authenticated SNI activation/dynamic Quit, peer-bound preparation and same-session refusal; no real logout/login",
+      "results": {
+        "trayTarget": {
+          "service": ":1.6059",
+          "path": "/StatusNotifierItem",
+          "menu": "/Menu",
+          "title": "put.gd",
+          "resident": {
+            "pid": 141786,
+            "exe": "/usr/bin/putgd",
+            "startTicks": 6142963
+          }
+        },
+        "dynamicQuitAction": 12,
+        "menuRendered": false,
+        "pointerInputSent": false,
+        "activationOpensHistory": true,
+        "quitStopsSelectedResident": true,
+        "loginPrepared": {
+          "prepared": true,
+          "oldSession": {
+            "Id": "906",
+            "Type": "wayland",
+            "Seat": "seat0",
+            "Desktop": "KDE",
+            "Timestamp": "Sat 2026-10-24 01:24:11 CDT",
+            "TimestampMonotonic": "31018816964",
+            "Leader": "128842",
+            "shell": {
+              "pid": 129168,
+              "exe": "/usr/bin/plasmashell",
+              "startTicks": 3102035
+            },
+            "bootId": "c9926bb9-3536-46ef-95c2-2161ab5a245a"
+          },
+          "stopped": {
+            "pid": 141876,
+            "exe": "/usr/bin/putgd",
+            "startTicks": 6143644
+          },
+          "runtime": "/tmp/n495-livis80d/r",
+          "preparedAt": "2026-10-24T14:51:10.272066+00:00"
+        },
+        "sameSessionRejected": "No verified new graphical session after a prepared logout",
+        "realLogoutLoginPerformed": false,
+        "leftovers": [],
+        "runtimeRemoved": true
+      },
+      "preflight": {
+        "socket": {
+          "schemaVersion": 1,
+          "passed": true,
+          "limitBytesExcludingNul": 107,
+          "paths": [
+            {
+              "path": "/tmp/n495-livis80d/r/putgd/session.sock",
+              "utf8Bytes": 39,
+              "passed": true
+            }
+          ]
+        },
+        "cover": {
+          "check": "precheck",
+          "fraction": 1.0,
+          "framebuffer": [
+            1920,
+            1080
+          ],
+          "minFraction": 0.98,
+          "ok": true,
+          "output": [
+            "HDMI-A-1"
+          ],
+          "rect": [
+            0,
+            0,
+            1920,
+            1080
+          ]
+        }
+      },
+      "versions": {
+        "os": "Kubuntu 26.04.1",
+        "session": "Plasma 6.6.6 / native Wayland",
+        "Qt": "6.10.2",
+        "KF6Service": "6.24.0",
+        "distroPackageVersions": [
+          "libkf6service6 6.24.0-0ubuntu1",
+          "libqt6core6t64 6.10.2+dfsg-7",
+          "plasma-workspace 4:6.6.6-0ubuntu0.1"
+        ]
+      },
+      "sycocaProbeBinarySha256": "caa332b5cfe4c61bd8796acc2e3f10cfd3b3bcf79b30fd5cfef5a413c9a61029",
+      "safetyReadinessCredit": false
+    },
+    {
+      "runId": "k72/final-6bbb",
+      "sourceScope": "historical source-specific observation before independent review fixes",
+      "host": "k72",
+      "hostName": "kubuntu",
+      "placement": "physical",
+      "driverCommit": "6bbbd506aeef7f8aa4a97c21664c7013ff427627",
+      "driverSha256": "1375c3cc43b39be05f42847e19080fc15afb8a6a8b0e881e82d0d7e5173700dc",
+      "session": {
+        "Id": "906",
+        "Type": "wayland",
+        "Seat": "seat0",
+        "Desktop": "KDE",
+        "Timestamp": "Sat 2026-10-24 01:24:11 CDT",
+        "TimestampMonotonic": "31018816964",
+        "Leader": "128842",
+        "shell": {
+          "pid": 129168,
+          "exe": "/usr/bin/plasmashell",
+          "startTicks": 3102035
+        },
+        "bootId": "c9926bb9-3536-46ef-95c2-2161ab5a245a"
+      },
+      "productBuild": {
+        "baseVersion": "26.1024.1185",
+        "commitCount": 1185,
+        "dirty": false,
+        "gitCommit": "9dfac15c1ced201d13a2b70a8afb0c253213768b",
+        "gitTree": "4e96912274d9220ba9476bd1b50333f6cf738f4f",
+        "packageVersion": "26.1024.1185~nightly",
+        "schemaVersion": 1,
+        "sourceProvenance": "git",
+        "version": "26.1024.1185-nightly"
+      },
+      "package": {
+        "target": "ubuntu26.04",
+        "kind": "DEB",
+        "sha256": "2f370159c4cd5ebefbe446dc5461daf3c991095bbbe0e7220bb443277fe294ce",
+        "source": "code-owner handoff; independently verified local exported DEB"
+      },
+      "privateHostRoot": "k72:/home/patrick/putgd-lab/n495/final-6bbb/",
+      "privateLocalExport": "/home/patrick/.t3/worktrees/put.gd/fix-native-acceptance-drivers-495/work/495/k72-final/final-6bbb",
+      "scope": "authenticated SNI activation/dynamic Quit, peer-bound preparation and same-session refusal; no real logout/login",
+      "results": {
+        "trayTarget": {
+          "service": ":1.6139",
+          "path": "/StatusNotifierItem",
+          "menu": "/Menu",
+          "title": "put.gd",
+          "resident": {
+            "pid": 142921,
+            "exe": "/usr/bin/putgd",
+            "startTicks": 6159642
+          }
+        },
+        "dynamicQuitAction": 12,
+        "menuRendered": false,
+        "pointerInputSent": false,
+        "activationOpensHistory": true,
+        "quitStopsSelectedResident": true,
+        "loginPrepared": {
+          "prepared": true,
+          "oldSession": {
+            "Id": "906",
+            "Type": "wayland",
+            "Seat": "seat0",
+            "Desktop": "KDE",
+            "Timestamp": "Sat 2026-10-24 01:24:11 CDT",
+            "TimestampMonotonic": "31018816964",
+            "Leader": "128842",
+            "shell": {
+              "pid": 129168,
+              "exe": "/usr/bin/plasmashell",
+              "startTicks": 3102035
+            },
+            "bootId": "c9926bb9-3536-46ef-95c2-2161ab5a245a"
+          },
+          "stopped": {
+            "pid": 143011,
+            "exe": "/usr/bin/putgd",
+            "startTicks": 6160321
+          },
+          "runtime": "/tmp/n495-0chamfcw/r",
+          "preparedAt": "2026-10-24T14:53:57.044235+00:00"
+        },
+        "sameSessionRejected": "No verified new graphical session after a prepared logout",
+        "realLogoutLoginPerformed": false,
+        "leftovers": [],
+        "runtimeRemoved": true
+      },
+      "preflight": {
+        "socket": {
+          "schemaVersion": 1,
+          "passed": true,
+          "limitBytesExcludingNul": 107,
+          "paths": [
+            {
+              "path": "/tmp/n495-0chamfcw/r/putgd/session.sock",
+              "utf8Bytes": 39,
+              "passed": true
+            }
+          ]
+        },
+        "cover": {
+          "check": "precheck",
+          "fraction": 1.0,
+          "framebuffer": [
+            1920,
+            1080
+          ],
+          "minFraction": 0.98,
+          "ok": true,
+          "output": [
+            "HDMI-A-1"
+          ],
+          "rect": [
+            0,
+            0,
+            1920,
+            1080
+          ]
+        }
+      },
+      "versions": {
+        "os": "Kubuntu 26.04.1",
+        "session": "Plasma 6.6.6 / native Wayland",
+        "Qt": "6.10.2",
+        "KF6Service": "6.24.0",
+        "distroPackageVersions": [
+          "libkf6service6 6.24.0-0ubuntu1",
+          "libqt6core6t64 6.10.2+dfsg-7",
+          "plasma-workspace 4:6.6.6-0ubuntu0.1"
+        ]
+      },
+      "sycocaProbeBinarySha256": "caa332b5cfe4c61bd8796acc2e3f10cfd3b3bcf79b30fd5cfef5a413c9a61029",
+      "safetyReadinessCredit": false
+    },
+    {
+      "runId": "m74/final-853a",
+      "sourceScope": "historical source-specific observation before independent review fixes",
+      "host": "m74",
+      "hostName": "mint-builder",
+      "placement": "physical",
+      "driverCommit": "853a35d21bf56c64eb07944dd360f4bc96a7c718",
+      "driverSha256": "8f1a8f49fd3f72d574493ebcb43e7ae51db253da7889a0ca51ef7f68ba8ecf4c",
+      "helperSha256": "6380532f568884e447500b2e4de0884b53228c6befa977fff60dbc4d964428d1",
+      "privateWrapperSha256": "becbd6aa88281103f3b07755d16c744b1877518c02f83478d3b1cb28128fdf42",
+      "session": {
+        "Id": "c89",
+        "Type": "x11",
+        "Seat": "seat0",
+        "Desktop": "cinnamon",
+        "Timestamp": "Sat 2026-10-24 01:26:34 CDT",
+        "TimestampMonotonic": "221102952736",
+        "Leader": "625282",
+        "shell": {
+          "pid": 625683,
+          "exe": "/usr/bin/cinnamon",
+          "startTicks": 22110437
+        },
+        "bootId": "4ba460ee-1af9-4ae8-b832-d1c54cdb642f"
+      },
+      "productBuild": {
+        "baseVersion": "26.1024.1185",
+        "commitCount": 1185,
+        "dirty": false,
+        "gitCommit": "9dfac15c1ced201d13a2b70a8afb0c253213768b",
+        "gitTree": "4e96912274d9220ba9476bd1b50333f6cf738f4f",
+        "packageVersion": "26.1024.1185~nightly",
+        "schemaVersion": 1,
+        "sourceProvenance": "git",
+        "version": "26.1024.1185-nightly"
+      },
+      "productBinarySha256": {
+        "/usr/bin/putgd": "2d51cdd7ca7ed7c53d2c4cda5cd2c9009c3c24b07769a03e80a0da46f7b16af2",
+        "/usr/bin/putgd-cli": "af34ea975c73517a39c561a3d65efaba7c2dd0848235d23b2c1158e08cab032f"
+      },
+      "versions": {
+        "os": "Linux Mint 22.3 Zena",
+        "Cinnamon": "6.6.9+zena",
+        "Qt": "version missing from source-product-identity package query; no inference"
+      },
+      "privateHostRoot": "m74:/home/patrick/putgd-lab/n495/final-853a/",
+      "privateLocalExport": "/home/patrick/.t3/worktrees/put.gd/fix-native-acceptance-drivers-495/work/495/m74-final",
+      "results": {
+        "trayTarget": {
+          "service": ":1.4843",
+          "path": "/StatusNotifierItem",
+          "menu": "/Menu",
+          "title": "put.gd",
+          "resident": {
+            "pid": 634132,
+            "exe": "/usr/bin/putgd",
+            "startTicks": 25199435
+          }
+        },
+        "dynamicQuitAction": 12,
+        "menuRendered": false,
+        "pointerInputSent": false,
+        "activationOpensHistory": true,
+        "quitStopsSelectedResident": true,
+        "loginPrepared": {
+          "prepared": true,
+          "oldSession": {
+            "Id": "c89",
+            "Type": "x11",
+            "Seat": "seat0",
+            "Desktop": "cinnamon",
+            "Timestamp": "Sat 2026-10-24 01:26:34 CDT",
+            "TimestampMonotonic": "221102952736",
+            "Leader": "625282",
+            "shell": {
+              "pid": 625683,
+              "exe": "/usr/bin/cinnamon",
+              "startTicks": 22110437
+            },
+            "bootId": "4ba460ee-1af9-4ae8-b832-d1c54cdb642f"
+          },
+          "stopped": {
+            "pid": 634221,
+            "exe": "/usr/bin/putgd",
+            "startTicks": 25200044
+          },
+          "runtime": "/tmp/n495-hs5u1y5g/r",
+          "preparedAt": "2026-10-24T15:01:32.972792+00:00"
+        },
+        "sameSessionRejected": "No verified new graphical session after a prepared logout",
+        "realLogoutLoginPerformed": false,
+        "leftovers": [],
+        "runtimeRemoved": true
+      },
+      "preflight": {
+        "socket": {
+          "schemaVersion": 1,
+          "passed": true,
+          "limitBytesExcludingNul": 107,
+          "paths": [
+            {
+              "path": "/tmp/n495-hs5u1y5g/r/putgd/session.sock",
+              "utf8Bytes": 39,
+              "passed": true
+            }
+          ]
+        },
+        "cover": {
+          "check": "precheck",
+          "fraction": 1.0,
+          "framebuffer": [
+            1920,
+            1080
+          ],
+          "minFraction": 0.98,
+          "ok": true,
+          "output": [
+            "HDMI-1"
+          ],
+          "rect": [
+            0,
+            0,
+            1920,
+            1080
+          ]
+        }
+      },
+      "safetyReadinessCredit": false
+    },
+    {
+      "runId": "k72/final-c538",
+      "sourceScope": "fresh public-CLI observations; independent review HOLD remains",
+      "host": "k72",
+      "hostName": "kubuntu",
+      "placement": "physical",
+      "driverCommit": "c538f71e89afcc6d1e6c599c3c1cb9c3a97e7ced",
+      "driverSha256": "2f317d31a85741c7a24382849f309433a2581ee127f28c52de3a859a74069258",
+      "session": {
+        "Id": "906",
+        "Type": "wayland",
+        "Seat": "seat0",
+        "Desktop": "KDE",
+        "Timestamp": "Sat 2026-10-24 01:24:11 CDT",
+        "TimestampMonotonic": "31018816964",
+        "Leader": "128842",
+        "shell": {
+          "pid": 129168,
+          "exe": "/usr/bin/plasmashell",
+          "startTicks": 3102035
+        },
+        "bootId": "c9926bb9-3536-46ef-95c2-2161ab5a245a"
+      },
+      "productBuild": {
+        "baseVersion": "26.1024.1185",
+        "commitCount": 1185,
+        "dirty": false,
+        "gitCommit": "9dfac15c1ced201d13a2b70a8afb0c253213768b",
+        "gitTree": "4e96912274d9220ba9476bd1b50333f6cf738f4f",
+        "packageVersion": "26.1024.1185~nightly",
+        "schemaVersion": 1,
+        "sourceProvenance": "git",
+        "version": "26.1024.1185-nightly"
+      },
+      "privateHostRoot": "k72:/home/patrick/putgd-lab/n495/final-c538/",
+      "privateLocalExport": "/home/patrick/.t3/worktrees/put.gd/fix-native-acceptance-drivers-495/work/495/k72-c538",
+      "executionInterface": "newly reserved public CLI outputs, not direct imported primitive calls",
+      "results": {
+        "trayTarget": {
+          "service": ":1.6230",
+          "path": "/StatusNotifierItem",
+          "menu": "/Menu",
+          "title": "put.gd",
+          "resident": {
+            "pid": 145684,
+            "exe": "/usr/bin/putgd",
+            "startTicks": 6312437
+          }
+        },
+        "dynamicQuitAction": 12,
+        "menuRendered": false,
+        "pointerInputSent": false,
+        "activationOpensHistory": true,
+        "quitStopsSelectedResident": true,
+        "loginPrepared": {
+          "prepared": true,
+          "oldSession": {
+            "Id": "906",
+            "Type": "wayland",
+            "Seat": "seat0",
+            "Desktop": "KDE",
+            "Timestamp": "Sat 2026-10-24 01:24:11 CDT",
+            "TimestampMonotonic": "31018816964",
+            "Leader": "128842",
+            "shell": {
+              "pid": 129168,
+              "exe": "/usr/bin/plasmashell",
+              "startTicks": 3102035
+            },
+            "bootId": "c9926bb9-3536-46ef-95c2-2161ab5a245a"
+          },
+          "stopped": {
+            "pid": 145822,
+            "exe": "/usr/bin/putgd",
+            "startTicks": 6313182
+          },
+          "runtime": "/tmp/n495-0pkqjvih/r",
+          "preparedAt": "2026-10-24T15:19:25.690105+00:00"
+        },
+        "sameSessionRejected": "No verified new graphical session after a prepared logout",
+        "realLogoutLoginPerformed": false,
+        "leftovers": [],
+        "runtimeRemoved": true
+      },
+      "individualCliReceipts": {
+        "tray-inspect": {
+          "path": "k72-c538/final-c538/tray-inspect.json",
+          "at": "2026-10-24T15:19:17.670723+00:00",
+          "ok": true
+        },
+        "tray-menu": {
+          "path": "k72-c538/final-c538/tray-menu.json",
+          "at": "2026-10-24T15:19:17.878716+00:00",
+          "ok": true
+        },
+        "tray-activate": {
+          "path": "k72-c538/final-c538/tray-activate.json",
+          "at": "2026-10-24T15:19:18.070926+00:00",
+          "ok": true
+        },
+        "tray-quit": {
+          "path": "k72-c538/final-c538/tray-quit.json",
+          "at": "2026-10-24T15:19:24.087524+00:00",
+          "ok": true
+        },
+        "login-prepare": {
+          "path": "k72-c538/final-c538/login-prepare.json",
+          "at": "2026-10-24T15:19:25.101191+00:00",
+          "ok": true
+        },
+        "login-check-same-session": {
+          "path": "k72-c538/final-c538/login-check-same-session.json",
+          "at": "2026-10-24T15:19:25.792319+00:00",
+          "ok": false,
+          "error": "No verified new graphical session after a prepared logout"
+        }
+      },
+      "preflight": {
+        "socket": {
+          "schemaVersion": 1,
+          "passed": true,
+          "limitBytesExcludingNul": 107,
+          "paths": [
+            {
+              "path": "/tmp/n495-0pkqjvih/r/putgd/session.sock",
+              "utf8Bytes": 39,
+              "passed": true
+            }
+          ]
+        },
+        "cover": {
+          "check": "precheck",
+          "fraction": 1.0,
+          "framebuffer": [
+            1920,
+            1080
+          ],
+          "minFraction": 0.98,
+          "ok": true,
+          "output": [
+            "HDMI-A-1"
+          ],
+          "rect": [
+            0,
+            0,
+            1920,
+            1080
+          ]
+        }
+      },
+      "safetyReadinessCredit": false
+    },
+    {
+      "runId": "m74/final-72afd",
+      "sourceScope": "final exact72 source-specific bounded functional evidence",
+      "host": "m74",
+      "hostName": "mint-builder",
+      "placement": "physical",
+      "driverCommit": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+      "driverSha256": "347934c226f99cb0e509d5466c5df8116896e6bfac07d75fdfa4f4c2d06ca053",
+      "helperSha256": "c5b80a68b651108595a150db8eadfadc6ad37986a33096cebb5a937b278e9bf8",
+      "session": {
+        "Id": "c89",
+        "Type": "x11",
+        "Seat": "seat0",
+        "Desktop": "cinnamon",
+        "Timestamp": "Sat 2026-10-24 01:26:34 CDT",
+        "TimestampMonotonic": "221102952736",
+        "Leader": "625282",
+        "shell": {
+          "pid": 625683,
+          "exe": "/usr/bin/cinnamon",
+          "startTicks": 22110437
+        },
+        "bootId": "4ba460ee-1af9-4ae8-b832-d1c54cdb642f"
+      },
+      "productBuild": {
+        "baseVersion": "26.1024.1185",
+        "commitCount": 1185,
+        "dirty": false,
+        "gitCommit": "9dfac15c1ced201d13a2b70a8afb0c253213768b",
+        "gitTree": "4e96912274d9220ba9476bd1b50333f6cf738f4f",
+        "packageVersion": "26.1024.1185~nightly",
+        "schemaVersion": 1,
+        "sourceProvenance": "git",
+        "version": "26.1024.1185-nightly"
+      },
+      "productBinarySha256": {
+        "/usr/bin/putgd": "2d51cdd7ca7ed7c53d2c4cda5cd2c9009c3c24b07769a03e80a0da46f7b16af2",
+        "/usr/bin/putgd-cli": "af34ea975c73517a39c561a3d65efaba7c2dd0848235d23b2c1158e08cab032f",
+        "/usr/bin/putgd-ui": "35d3ab75050d8b541564fb57c686036133d7151d9ddfcb23f625a4d393644273"
+      },
+      "versions": {
+        "os": "Linux Mint22.3 Zena",
+        "Cinnamon": "6.6.9+zena",
+        "Qt": "libqt6core6t64 6.4.2+dfsg-21.1build5"
+      },
+      "privateHostRoot": "m74:/home/patrick/putgd-lab/n495/final-72afd/",
+      "privateLocalExport": "/home/patrick/.t3/worktrees/put.gd/fix-native-acceptance-drivers-495/work/495/m74-72afd",
+      "executionInterface": "public CLI with new pre-reserved individual outputs",
+      "results": {
+        "trayTarget": {
+          "service": ":1.4940",
+          "path": "/StatusNotifierItem",
+          "menu": "/Menu",
+          "title": "put.gd",
+          "resident": {
+            "pid": 636950,
+            "exe": "/usr/bin/putgd",
+            "startTicks": 25379930
+          }
+        },
+        "dynamicQuitAction": 12,
+        "menuRendered": false,
+        "pointerInputSent": false,
+        "activationOpensHistory": true,
+        "quitStopsSelectedResident": true,
+        "loginPrepared": {
+          "prepared": true,
+          "oldSession": {
+            "Id": "c89",
+            "Type": "x11",
+            "Seat": "seat0",
+            "Desktop": "cinnamon",
+            "Timestamp": "Sat 2026-10-24 01:26:34 CDT",
+            "TimestampMonotonic": "221102952736",
+            "Leader": "625282",
+            "shell": {
+              "pid": 625683,
+              "exe": "/usr/bin/cinnamon",
+              "startTicks": 22110437
+            },
+            "bootId": "4ba460ee-1af9-4ae8-b832-d1c54cdb642f"
+          },
+          "stopped": {
+            "pid": 637253,
+            "exe": "/usr/bin/putgd",
+            "startTicks": 25380719
+          },
+          "runtime": "/tmp/n495-p7ro0ag_/r",
+          "preparedAt": "2026-10-24T15:31:39.815558+00:00"
+        },
+        "sameSessionRejected": "No verified new graphical session after a prepared logout",
+        "realLogoutLoginPerformed": false,
+        "leftovers": [],
+        "runtimeRemoved": true
+      },
+      "individualCliReceipts": {
+        "tray-inspect": {
+          "path": "m74-72afd/final-72afd/tray-inspect.json",
+          "at": "2026-10-24T15:31:31.386268+00:00",
+          "ok": true
+        },
+        "tray-menu": {
+          "path": "m74-72afd/final-72afd/tray-menu.json",
+          "at": "2026-10-24T15:31:31.957038+00:00",
+          "ok": true
+        },
+        "tray-activate": {
+          "path": "m74-72afd/final-72afd/tray-activate.json",
+          "at": "2026-10-24T15:31:32.432570+00:00",
+          "ok": true
+        },
+        "tray-quit": {
+          "path": "m74-72afd/final-72afd/tray-quit.json",
+          "at": "2026-10-24T15:31:37.948185+00:00",
+          "ok": true
+        },
+        "login-prepare": {
+          "path": "m74-72afd/final-72afd/login-prepare.json",
+          "at": "2026-10-24T15:31:39.246029+00:00",
+          "ok": true
+        },
+        "login-check-same-session": {
+          "path": "m74-72afd/final-72afd/login-check-same-session.json",
+          "at": "2026-10-24T15:31:39.901551+00:00",
+          "ok": false,
+          "error": "No verified new graphical session after a prepared logout"
+        }
+      },
+      "preflight": {
+        "socket": {
+          "schemaVersion": 1,
+          "passed": true,
+          "limitBytesExcludingNul": 107,
+          "paths": [
+            {
+              "path": "/tmp/n495-p7ro0ag_/r/putgd/session.sock",
+              "utf8Bytes": 39,
+              "passed": true
+            }
+          ]
+        },
+        "cover": {
+          "check": "precheck",
+          "fraction": 1.0,
+          "framebuffer": [
+            1920,
+            1080
+          ],
+          "minFraction": 0.98,
+          "ok": true,
+          "output": [
+            "HDMI-1"
+          ],
+          "rect": [
+            0,
+            0,
+            1920,
+            1080
+          ]
+        }
+      },
+      "independentSourceReviewCleared": true,
+      "includedInDriverValidation": true,
+      "releaseAcceptanceCredit": false
+    },
+    {
+      "runId": "k72/final-72afd",
+      "sourceScope": "final exact72 source-specific bounded functional evidence",
+      "host": "k72",
+      "hostName": "kubuntu",
+      "placement": "physical",
+      "driverCommit": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+      "driverSha256": "347934c226f99cb0e509d5466c5df8116896e6bfac07d75fdfa4f4c2d06ca053",
+      "helperSha256": "c5b80a68b651108595a150db8eadfadc6ad37986a33096cebb5a937b278e9bf8",
+      "session": {
+        "Id": "906",
+        "Type": "wayland",
+        "Seat": "seat0",
+        "Desktop": "KDE",
+        "Timestamp": "Sat 2026-10-24 01:24:11 CDT",
+        "TimestampMonotonic": "31018816964",
+        "Leader": "128842",
+        "shell": {
+          "pid": 129168,
+          "exe": "/usr/bin/plasmashell",
+          "startTicks": 3102035
+        },
+        "bootId": "c9926bb9-3536-46ef-95c2-2161ab5a245a"
+      },
+      "productBuild": {
+        "baseVersion": "26.1024.1185",
+        "commitCount": 1185,
+        "dirty": false,
+        "gitCommit": "9dfac15c1ced201d13a2b70a8afb0c253213768b",
+        "gitTree": "4e96912274d9220ba9476bd1b50333f6cf738f4f",
+        "packageVersion": "26.1024.1185~nightly",
+        "schemaVersion": 1,
+        "sourceProvenance": "git",
+        "version": "26.1024.1185-nightly"
+      },
+      "package": {
+        "target": "ubuntu26.04",
+        "sha256": "2f370159c4cd5ebefbe446dc5461daf3c991095bbbe0e7220bb443277fe294ce",
+        "scope": "exact immutable1185 DEB digest independently verified from earlier export; current run reports installed build separately"
+      },
+      "versions": {
+        "os": "Kubuntu26.04.1",
+        "Plasma": "6.6.6",
+        "Qt": "6.10.2",
+        "KF6Service": "6.24.0"
+      },
+      "privateHostRoot": "k72:/home/patrick/putgd-lab/n495/final-72afd/",
+      "privateLocalExport": "/home/patrick/.t3/worktrees/put.gd/fix-native-acceptance-drivers-495/work/495/k72-72afd",
+      "results": {
+        "trayTarget": {
+          "service": ":1.6346",
+          "path": "/StatusNotifierItem",
+          "menu": "/Menu",
+          "title": "put.gd",
+          "resident": {
+            "pid": 150692,
+            "exe": "/usr/bin/putgd",
+            "startTicks": 6449720
+          }
+        },
+        "dynamicQuitAction": 12,
+        "menuRendered": false,
+        "pointerInputSent": false,
+        "activationOpensHistory": true,
+        "quitStopsSelectedResident": true,
+        "loginPrepared": {
+          "prepared": true,
+          "oldSession": {
+            "Id": "906",
+            "Type": "wayland",
+            "Seat": "seat0",
+            "Desktop": "KDE",
+            "Timestamp": "Sat 2026-10-24 01:24:11 CDT",
+            "TimestampMonotonic": "31018816964",
+            "Leader": "128842",
+            "shell": {
+              "pid": 129168,
+              "exe": "/usr/bin/plasmashell",
+              "startTicks": 3102035
+            },
+            "bootId": "c9926bb9-3536-46ef-95c2-2161ab5a245a"
+          },
+          "stopped": {
+            "pid": 150830,
+            "exe": "/usr/bin/putgd",
+            "startTicks": 6450466
+          },
+          "runtime": "/tmp/n495-8cu22w0w/r",
+          "preparedAt": "2026-10-24T15:42:18.529278+00:00"
+        },
+        "sameSessionRejected": "No verified new graphical session after a prepared logout",
+        "realLogoutLoginPerformed": false,
+        "leftovers": [],
+        "runtimeRemoved": true
+      },
+      "individualCliReceipts": {
+        "tray-inspect": {
+          "path": "k72-72afd/final-72afd/tray-inspect.json",
+          "at": "2026-10-24T15:42:10.526768+00:00",
+          "ok": true
+        },
+        "tray-menu": {
+          "path": "k72-72afd/final-72afd/tray-menu.json",
+          "at": "2026-10-24T15:42:10.734463+00:00",
+          "ok": true
+        },
+        "tray-activate": {
+          "path": "k72-72afd/final-72afd/tray-activate.json",
+          "at": "2026-10-24T15:42:10.931609+00:00",
+          "ok": true
+        },
+        "tray-quit": {
+          "path": "k72-72afd/final-72afd/tray-quit.json",
+          "at": "2026-10-24T15:42:16.929738+00:00",
+          "ok": true
+        },
+        "login-prepare": {
+          "path": "k72-72afd/final-72afd/login-prepare.json",
+          "at": "2026-10-24T15:42:17.943728+00:00",
+          "ok": true
+        },
+        "login-check-same-session": {
+          "path": "k72-72afd/final-72afd/login-check-same-session.json",
+          "at": "2026-10-24T15:42:18.628014+00:00",
+          "ok": false,
+          "error": "No verified new graphical session after a prepared logout"
+        }
+      },
+      "preflight": {
+        "socket": {
+          "schemaVersion": 1,
+          "passed": true,
+          "limitBytesExcludingNul": 107,
+          "paths": [
+            {
+              "path": "/tmp/n495-8cu22w0w/r/putgd/session.sock",
+              "utf8Bytes": 39,
+              "passed": true
+            }
+          ]
+        },
+        "cover": {
+          "check": "precheck",
+          "fraction": 1.0,
+          "framebuffer": [
+            1920,
+            1080
+          ],
+          "minFraction": 0.98,
+          "ok": true,
+          "output": [
+            "HDMI-A-1"
+          ],
+          "rect": [
+            0,
+            0,
+            1920,
+            1080
+          ]
+        }
+      },
+      "includedInDriverValidation": true,
+      "releaseAcceptanceCredit": false
+    }
+  ],
+  "savedVisuals": [
+    {
+      "path": "docs/evidence/2026-10-24-native-acceptance-drivers-495/pictures/k72-activation.png",
+      "sha256": "992a031d596d7e6e7522a74e48b31aca6ccd7e9ed532e4e0d62a47bf4117bafe",
+      "kind": "SNI activation opens empty History; no physical click",
+      "runId": "k72/final-826c",
+      "driverCommit": "826c255a4023daad88d07afb2b82d558f86c9d69",
+      "sanitization": "original cropped bytes contain only owned app/test cover; visually inspected by code owner and documentation thread; final repeat verified byte-identical",
+      "edited": false
+    },
+    {
+      "path": "docs/evidence/2026-10-24-native-acceptance-drivers-495/pictures/k72-after-quit.png",
+      "sha256": "72da30a440ce90373d3b394810fcb2b0f8bbf3d6cfdd734e3960ef1d1aeae7bb",
+      "kind": "magenta test cover after owned dynamic Quit",
+      "runId": "k72/final-826c",
+      "driverCommit": "826c255a4023daad88d07afb2b82d558f86c9d69",
+      "sanitization": "original cropped bytes contain only owned app/test cover; visually inspected by code owner and documentation thread; final repeat verified byte-identical",
+      "edited": false
+    },
+    {
+      "path": "docs/evidence/2026-10-24-native-acceptance-drivers-495/pictures/k72-activation.png",
+      "sha256": "992a031d596d7e6e7522a74e48b31aca6ccd7e9ed532e4e0d62a47bf4117bafe",
+      "kind": "SNI activation opens empty History; no physical click",
+      "runId": "k72/final-6bbb",
+      "driverCommit": "6bbbd506aeef7f8aa4a97c21664c7013ff427627",
+      "sanitization": "original cropped bytes contain only owned app/test cover; visually inspected by code owner and documentation thread; final repeat verified byte-identical",
+      "edited": false
+    },
+    {
+      "path": "docs/evidence/2026-10-24-native-acceptance-drivers-495/pictures/k72-after-quit.png",
+      "sha256": "72da30a440ce90373d3b394810fcb2b0f8bbf3d6cfdd734e3960ef1d1aeae7bb",
+      "kind": "magenta test cover after owned dynamic Quit",
+      "runId": "k72/final-6bbb",
+      "driverCommit": "6bbbd506aeef7f8aa4a97c21664c7013ff427627",
+      "sanitization": "original cropped bytes contain only owned app/test cover; visually inspected by code owner and documentation thread; final repeat verified byte-identical",
+      "edited": false
+    },
+    {
+      "path": "docs/evidence/2026-10-24-native-acceptance-drivers-495/pictures/m74-853a-activation.png",
+      "sha256": "d46f9a54a522fa97c3a58c84db0436d31ada606c42d42857b3cffe03f37880b9",
+      "kind": "m74 SNI activation opens History; no physical click",
+      "runId": "m74/final-853a",
+      "driverCommit": "853a35d21bf56c64eb07944dd360f4bc96a7c718",
+      "sanitization": "exact saved crop visually inspected by code owner and documentation thread; owned app and magenta cover only",
+      "edited": false,
+      "safetyReadinessCredit": false
+    },
+    {
+      "path": "docs/evidence/2026-10-24-native-acceptance-drivers-495/pictures/m74-853a-after-quit.png",
+      "sha256": "6fca3e74cf3cb4d5b4d926b7d1e2921464ac13025a6beafc8ecd2d5784b20a91",
+      "kind": "m74 magenta cover after owned dynamic Quit",
+      "runId": "m74/final-853a",
+      "driverCommit": "853a35d21bf56c64eb07944dd360f4bc96a7c718",
+      "sanitization": "exact saved crop visually inspected by code owner and documentation thread; owned app and magenta cover only",
+      "edited": false,
+      "safetyReadinessCredit": false
+    },
+    {
+      "path": "docs/evidence/2026-10-24-native-acceptance-drivers-495/pictures/k72-activation.png",
+      "sha256": "992a031d596d7e6e7522a74e48b31aca6ccd7e9ed532e4e0d62a47bf4117bafe",
+      "kind": "newly captured c538 SNI activation.png; no physical click/menu proof",
+      "runId": "k72/final-c538",
+      "driverCommit": "c538f71e89afcc6d1e6c599c3c1cb9c3a97e7ced",
+      "sanitization": "new captures verified byte-identical to already visually inspected exact owned-app/cover images; independent run receipts retained",
+      "edited": false,
+      "safetyReadinessCredit": false
+    },
+    {
+      "path": "docs/evidence/2026-10-24-native-acceptance-drivers-495/pictures/k72-after-quit.png",
+      "sha256": "72da30a440ce90373d3b394810fcb2b0f8bbf3d6cfdd734e3960ef1d1aeae7bb",
+      "kind": "newly captured c538 SNI after-quit.png; no physical click/menu proof",
+      "runId": "k72/final-c538",
+      "driverCommit": "c538f71e89afcc6d1e6c599c3c1cb9c3a97e7ced",
+      "sanitization": "new captures verified byte-identical to already visually inspected exact owned-app/cover images; independent run receipts retained",
+      "edited": false,
+      "safetyReadinessCredit": false
+    },
+    {
+      "path": "docs/evidence/2026-10-24-native-acceptance-drivers-495/pictures/m74-72afd-activation.png",
+      "sha256": "e90ce38a1d9eb42df41fc2d24ff13b1a534afaa52fc751368419be985d984833",
+      "kind": "current72afd m74 SNI activation; no physical click",
+      "runId": "m74/final-72afd",
+      "driverCommit": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+      "sanitization": "exact new crop inspected by code owner and documentation thread: only owned app and magenta cover",
+      "edited": false,
+      "includedInDriverValidation": true,
+      "releaseAcceptanceCredit": false
+    },
+    {
+      "path": "docs/evidence/2026-10-24-native-acceptance-drivers-495/pictures/m74-72afd-after-quit.png",
+      "sha256": "6fca3e74cf3cb4d5b4d926b7d1e2921464ac13025a6beafc8ecd2d5784b20a91",
+      "kind": "current72afd m74 magenta cover after owned Quit",
+      "runId": "m74/final-72afd",
+      "driverCommit": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+      "sanitization": "exact new crop inspected by code owner and documentation thread: only owned app and magenta cover",
+      "edited": false,
+      "includedInDriverValidation": true,
+      "releaseAcceptanceCredit": false
+    },
+    {
+      "path": "docs/evidence/2026-10-24-native-acceptance-drivers-495/pictures/k72-activation.png",
+      "sha256": "992a031d596d7e6e7522a74e48b31aca6ccd7e9ed532e4e0d62a47bf4117bafe",
+      "kind": "fresh current72 KDE activation.png; no pointer click",
+      "runId": "k72/final-72afd",
+      "driverCommit": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+      "sanitization": "actual new capture byte-identical to already visually inspected owned-app/cover image; separate run receipts retained",
+      "edited": false,
+      "includedInDriverValidation": true,
+      "releaseAcceptanceCredit": false
+    },
+    {
+      "path": "docs/evidence/2026-10-24-native-acceptance-drivers-495/pictures/k72-after-quit.png",
+      "sha256": "72da30a440ce90373d3b394810fcb2b0f8bbf3d6cfdd734e3960ef1d1aeae7bb",
+      "kind": "fresh current72 KDE after-quit.png; no pointer click",
+      "runId": "k72/final-72afd",
+      "driverCommit": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+      "sanitization": "actual new capture byte-identical to already visually inspected owned-app/cover image; separate run receipts retained",
+      "edited": false,
+      "includedInDriverValidation": true,
+      "releaseAcceptanceCredit": false
+    }
+  ],
+  "cleanupReceipts": [
+    {
+      "host": "k72",
+      "path": "/home/patrick/putgd-lab/locks/history/2026-10-24T14-51-37Z-release.json",
+      "localExport": "k72-release.json",
+      "sha256": "db02f4450f0cfce1ef2808d868fcb94303eefb193c1fba751ab51de3b523924f",
+      "event": "release",
+      "session": "codex-495",
+      "at": "2026-10-24T14:51:37Z",
+      "checkCounts": {
+        "left": 0,
+        "notMine": 0,
+        "preexisting": 0,
+        "unmatchedNotMine": 0
+      },
+      "verifiedLocalReceipt": true
+    },
+    {
+      "host": "k72",
+      "path": "/home/patrick/putgd-lab/locks/history/2026-10-24T14-54-13Z-release.json",
+      "localExport": "k72-final/release.json",
+      "sha256": "794d8225348f2ea28a66d111e5734ecb7396a44fa341da2b260c5827f9e82462",
+      "event": "release",
+      "session": "codex-495-final",
+      "at": "2026-10-24T14:54:13Z",
+      "checkCounts": {
+        "left": 0,
+        "notMine": 0,
+        "preexisting": 0,
+        "unmatchedNotMine": 0
+      },
+      "verifiedLocalReceipt": true
+    },
+    {
+      "host": "f44",
+      "path": "/home/patrick/putgd-lab/locks/history/2026-10-24T14-58-34Z-release.json",
+      "localExport": "/home/patrick/.t3/worktrees/put.gd/docs-native-acceptance-drivers-495/work/495/f44-release-64a.json",
+      "sha256": "5df9effebe13366edbb2ed447d5b9efdb1dd286f8ad614b05324ca80fe283cde",
+      "event": "release",
+      "session": "codex-495-gnome",
+      "at": "2026-10-24T14:58:34Z",
+      "checkCounts": {
+        "left": 0,
+        "notMine": 0,
+        "preexisting": 0,
+        "unmatchedNotMine": 0
+      },
+      "verifiedOverPinnedSsh": true,
+      "scope": "session-protocol inspection; no app/package/input/logout/visuals"
+    },
+    {
+      "host": "m74",
+      "path": "/home/patrick/putgd-lab/locks/history/2026-10-24T15-02-02Z-release.json",
+      "localExport": "m74-final/release.json",
+      "sha256": "2596c582fb802a515e99a41ffaf6a2e44a9623e10b0922d176d42b4d485f651e",
+      "event": "release",
+      "session": "codex-495-mint",
+      "acquiredAt": "2026-10-24T15:00:12Z",
+      "at": "2026-10-24T15:02:02Z",
+      "checkCounts": {
+        "left": 0,
+        "notMine": 0,
+        "preexisting": 0,
+        "unmatchedNotMine": 0
+      },
+      "verifiedLocalReceipt": true
+    },
+    {
+      "host": "k72",
+      "path": "/home/patrick/putgd-lab/locks/history/2026-10-24T15-19-51Z-release.json",
+      "localExport": "k72-c538/release.json",
+      "sha256": "c4951e58aeab7833788c7707135138f7f90647c9f3ec1e7d197ef785c2178459",
+      "event": "release",
+      "session": "codex-495-r2",
+      "at": "2026-10-24T15:19:51Z",
+      "checkCounts": {
+        "left": 0,
+        "notMine": 0,
+        "preexisting": 0,
+        "unmatchedNotMine": 0
+      },
+      "verifiedLocalReceipt": true
+    },
+    {
+      "host": "m74",
+      "path": "/home/patrick/putgd-lab/locks/history/2026-10-24T15-32-08Z-release.json",
+      "localExport": "m74-72afd/release.json",
+      "sha256": "2f0ef3b65bb8d1b3f394944f8aff8c7b4a04a1e7173a597bcb4c6a08612026ea",
+      "event": "release",
+      "session": "codex-495-final-mint",
+      "acquiredAt": "2026-10-24T15:31:21Z",
+      "at": "2026-10-24T15:32:08Z",
+      "checkCounts": {
+        "left": 0,
+        "notMine": 0,
+        "preexisting": 0,
+        "unmatchedNotMine": 0
+      },
+      "verifiedLocalReceipt": true,
+      "preexistingVm": "left running unchanged, per owner handoff"
+    },
+    {
+      "host": "k72",
+      "path": "/home/patrick/putgd-lab/locks/history/2026-10-24T15-43-03Z-release.json",
+      "localExport": "k72-72afd/release.json",
+      "sha256": "6fbb6689be5aed77779f40a3580e9d6a5161595b0037de258ef3d2c082a55352",
+      "event": "release",
+      "session": "codex-495-final-kde",
+      "acquiredAt": "2026-10-24T15:41:57Z",
+      "at": "2026-10-24T15:43:03Z",
+      "checkCounts": {
+        "left": 0,
+        "notMine": 0,
+        "preexisting": 0,
+        "unmatchedNotMine": 0
+      },
+      "verifiedLocalReceipt": true
+    },
+    {
+      "host": "f44",
+      "path": "/home/patrick/putgd-lab/locks/history/2026-10-24T15-43-58Z-release.json",
+      "localExport": "f44-72afd/release.json",
+      "sha256": "9ef9886e09c7be92e8a1095c75662d2d1503fe859c1ebd3b86911bbc8803b131",
+      "event": "release",
+      "session": "codex-495-final-gnome",
+      "acquiredAt": "2026-10-24T15:43:25Z",
+      "at": "2026-10-24T15:43:58Z",
+      "checkCounts": {
+        "left": 0,
+        "notMine": 0,
+        "preexisting": 0,
+        "unmatchedNotMine": 0
+      },
+      "verifiedLocalReceipt": true
+    },
+    {
+      "host": "k72",
+      "path": "/home/patrick/putgd-lab/locks/history/2026-10-24T16-08-31Z-release.json",
+      "localExport": "k72-614/release.json",
+      "sha256": "c175d76aece509dd94dde7302001d344f7458d4d70f26c6fccdaaceeb54b1a14",
+      "event": "release",
+      "session": "codex-495-r4",
+      "acquiredAt": "2026-10-24T16:07:55Z",
+      "at": "2026-10-24T16:08:31Z",
+      "checkCounts": {
+        "left": 0,
+        "notMine": 0,
+        "preexisting": 0,
+        "unmatchedNotMine": 0
+      },
+      "verifiedLocalReceipt": true,
+      "prePostStatusFree": true,
+      "scope": "36-second minimal614 protocol check; no product install/app/input/logout/capture/GUI/m74"
+    }
+  ],
+  "limitations": [
+    "Latest614 root round4 clear with minimal11-check protocol packet; final packet factual sign-off and docs exact-head CI tracked onPR552;72 live/producer proof unchanged",
+    "No real logout/login in k72 runs; same-session refusal tested",
+    "No physical tray click or rendered menu proof",
+    "No product QtKeychain credential lifecycle or backend persistence across login proof",
+    "Synthetic 10k shape check does not establish 10k UI performance/migration on a product build",
+    "Historical826c purge receipts retain that source; fresh exact72 KDE/Cinnamon after-actual-purge snapshots are separately indexed and proved",
+    "No independent graphical campaign from documentation thread; historical outcomes unchanged"
+  ],
+  "sourceHashes": {
+    "tools/lab/native_keychain.py": "1b6be4b02fe467d0458eafcc539edc7caf0c6dde597c5f5a34575f65a32a4559",
+    "tools/lab/sycoca_probe/CMakePresets.json": "1cccfd0a9c4f7b6f593a0219cf318550b58ff5ac16d10d5fd014e817ac4dc190",
+    "tools/lab/sycoca_probe/CMakeLists.txt": "bc79f4a01c7e458a70fa4b400a165ab01ffa6819ae0da91aecaed9b750069490",
+    "tools/lab/sycoca_probe/main.cpp": "570422891002af69c64a978fa17185849990bafa892fd2ac3a4caf5714a136b9",
+    "tests/desktop/test_native_acceptance.py": "6516a803ff26dae79207d1e427dae32fb44afc3889792d2cf628445da94cada0"
+  },
+  "keychainScope": {
+    "backend": "org.freedesktop.secrets",
+    "probe": "unique synthetic item; optional Unlock/Prompt of exact approved existing provider/label; no password typed, reset or default-collection change",
+    "productKeychainRoundtripProven": false,
+    "desktopBackendResults": "exact72 store/read/cleanup verified in separate CLI processes on Cinnamon/KDE/GNOME backends; no cross-login or productQtKeychain proof",
+    "persistenceAcrossLoginProven": false
+  },
+  "documentationPullRequest": "https://github.com/patrick-hudson/put.gd-desktop/pull/552",
+  "mergeOrder": [
+    554,
+    552
+  ],
+  "earlyHandoff": {
+    "commit": "9b9753cae64747c897f1512d3a7d821594765010",
+    "driverSha256": "27d494fc83954ca715fdc6a23bfb03c4d919fc399c069df4c7dcf559d85ed5eb",
+    "focusedTestsReported": 14,
+    "secondsReported": 2.2
+  },
+  "interfaces": {
+    "tray": {
+      "actions": [
+        "inspect",
+        "menu",
+        "activate",
+        "quit"
+      ],
+      "requires": [
+        "explicit PID",
+        "exact executable",
+        "matching process generation",
+        "owned SNI title/menu"
+      ],
+      "menuRendered": false,
+      "pointerInputSent": false,
+      "coordinateFallback": false
+    },
+    "plasma-registration": {
+      "requiresProbe": "tools/lab/sycoca_probe/build/dev/putgd-sycoca-probe",
+      "repair": "--repair only rebuilds when registrations missing; rechecks current session"
+    },
+    "login-check": {
+      "expected": [
+        "present",
+        "absent"
+      ],
+      "requires": "successful same-host/runtime preparation and new graphical session",
+      "successFields": {
+        "postLoginStateVerified": true,
+        "expected": "present|absent",
+        "autostartProven": false,
+        "scope": "post-login process presence/absence only; resident launch origin unverified"
+      }
+    },
+    "snapshot": {
+      "missingCliAndDataTolerated": true,
+      "packageRemovalVerdict": false
+    },
+    "grow": {
+      "requiredDb": "ROOT/data/putgd/history.sqlite",
+      "lock": "resident.lock held through commit; actual Qt mutual-exclusion witness saved",
+      "ownerChecks": "associated data-home or open DB file descriptors across runtimes; complete putgd helper prefix; unreadable owned helper refuses",
+      "persistedState": "all JSON journal/receipt/state and allowed-table checks; session-only fresh synthetic seeds; explicit numeric loopback endpoints with port",
+      "executionStatus": "permitted-exact72-only-under-every-guard"
+    },
+    "receipts": {
+      "mutatingCommandsRequireOutput": true,
+      "reservation": "exclusive private --output file reserved before actions",
+      "failedStoreRecovery": "canonical reference, original safe error and cleanup status persist; cleanup --before FAILED_RECEIPT supported and idempotent",
+      "independentReview": "round3 clear at exact72"
+    },
+    "keychainReceiptValidation": {
+      "candidate": "61439983e2c2d7b050b846e2f8bd723234247aed",
+      "order": "canonical reference and original default collection match before any Unlock/Prompt",
+      "focusedReview": "round4 clear on614"
+    }
+  },
+  "priorCandidate": {
+    "commit": "826c255a4023daad88d07afb2b82d558f86c9d69",
+    "driverSha256": "8ef8180e0c6ee9eef040eab633589e93a51b26db30d600ce10b16306656e8e3e",
+    "scope": "original k72 final-826c evidence retained separately"
+  },
+  "removalSnapshots": [
+    {
+      "receipt": "k72/snapshot-before-removal.json",
+      "driverSha256": "8ef8180e0c6ee9eef040eab633589e93a51b26db30d600ce10b16306656e8e3e",
+      "at": "2026-10-24T14:51:15.426810+00:00",
+      "host": "kubuntu",
+      "sessionId": "906",
+      "ok": true,
+      "result": {
+        "processes": [],
+        "cliExists": true,
+        "cliStatus": "resident_absent",
+        "history": {
+          "available": false
+        }
+      },
+      "scope": "826c same-session snapshots before/after actual purge; no new-login removal proof"
+    },
+    {
+      "receipt": "k72/snapshot-after-removal.json",
+      "driverSha256": "8ef8180e0c6ee9eef040eab633589e93a51b26db30d600ce10b16306656e8e3e",
+      "at": "2026-10-24T14:51:21.351845+00:00",
+      "host": "kubuntu",
+      "sessionId": "906",
+      "ok": true,
+      "result": {
+        "processes": [],
+        "cliExists": false,
+        "cliStatus": "resident_absent",
+        "history": {
+          "available": false
+        }
+      },
+      "scope": "826c same-session snapshots before/after actual purge; no new-login removal proof"
+    },
+    {
+      "receipt": "m74-final/snapshot-after-purge-853a.json",
+      "driverCommit": "853a35d21bf56c64eb07944dd360f4bc96a7c718",
+      "driverSha256": "8f1a8f49fd3f72d574493ebcb43e7ae51db253da7889a0ca51ef7f68ba8ecf4c",
+      "at": "2026-10-24T15:01:38.360065+00:00",
+      "host": "mint-builder",
+      "sessionId": "c89",
+      "ok": true,
+      "result": {
+        "processes": [],
+        "cliExists": false,
+        "cliStatus": "resident_absent",
+        "history": {
+          "available": false
+        }
+      },
+      "scope": "853a same-session snapshot after actual purge; no real logout/login or final safety credit"
+    },
+    {
+      "receipt": "k72-c538/snapshot-after-purge-c538.json",
+      "driverCommit": "c538f71e89afcc6d1e6c599c3c1cb9c3a97e7ced",
+      "driverSha256": "2f317d31a85741c7a24382849f309433a2581ee127f28c52de3a859a74069258",
+      "at": "2026-10-24T15:19:32.540095+00:00",
+      "host": "kubuntu",
+      "sessionId": "906",
+      "ok": true,
+      "result": {
+        "processes": [],
+        "cliExists": false,
+        "cliStatus": "resident_absent",
+        "history": {
+          "available": false
+        }
+      },
+      "scope": "fresh c538 after actual purge; no positive real-login removal gate"
+    },
+    {
+      "receipt": "m74-72afd/snapshot-after-purge-72afd.json",
+      "driverCommit": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+      "driverSha256": "347934c226f99cb0e509d5466c5df8116896e6bfac07d75fdfa4f4c2d06ca053",
+      "at": "2026-10-24T15:31:49.153267+00:00",
+      "host": "mint-builder",
+      "sessionId": "c89",
+      "ok": true,
+      "result": {
+        "processes": [],
+        "cliExists": false,
+        "cliStatus": "resident_absent",
+        "history": {
+          "available": false
+        }
+      },
+      "scope": "current72afd after actual purge; no positive real-login removal gate"
+    },
+    {
+      "receipt": "k72-72afd/snapshot-after-purge-72afd.json",
+      "driverCommit": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+      "driverSha256": "347934c226f99cb0e509d5466c5df8116896e6bfac07d75fdfa4f4c2d06ca053",
+      "at": "2026-10-24T15:42:25.502656+00:00",
+      "host": "kubuntu",
+      "sessionId": "906",
+      "ok": true,
+      "result": {
+        "processes": [],
+        "cliExists": false,
+        "cliStatus": "resident_absent",
+        "history": {
+          "available": false
+        }
+      },
+      "scope": "final exact72 actual-purge snapshot; no positive real-login removal gate"
+    }
+  ],
+  "plasmaRegistrationObservations": [
+    {
+      "receipt": "k72/registration-1.json",
+      "driverSha256": "c5faf07742771bf1972488b588219463da7061e522e1b35e54cf1c4d0a98dfdc",
+      "at": "2026-10-24T14:45:14.255699+00:00",
+      "sessionId": "906",
+      "repaired": false,
+      "healthy": true,
+      "applicationCount": 235,
+      "putgd": true,
+      "dolphin": true,
+      "scope": "earlier working driver; no repair executed"
+    },
+    {
+      "receipt": "k72-final/registration-final.json",
+      "driverSha256": "1375c3cc43b39be05f42847e19080fc15afb8a6a8b0e881e82d0d7e5173700dc",
+      "at": "2026-10-24T14:53:57.977930+00:00",
+      "sessionId": "906",
+      "repaired": false,
+      "healthy": true,
+      "applicationCount": 235,
+      "putgd": true,
+      "dolphin": true,
+      "scope": "historical6bbb; no repair executed"
+    },
+    {
+      "receipt": "k72-72afd/registration-72afd.json",
+      "driverSha256": "347934c226f99cb0e509d5466c5df8116896e6bfac07d75fdfa4f4c2d06ca053",
+      "driverCommit": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+      "at": "2026-10-24T15:42:19.626207+00:00",
+      "sessionId": "906",
+      "repaired": false,
+      "healthy": true,
+      "applicationCount": 235,
+      "putgd": true,
+      "dolphin": true,
+      "scope": "final exact72 KService inspection; no repair needed or executed"
+    }
+  ],
+  "keychainReceipts": [
+    {
+      "receipt": "k72/keychain-status-1.json",
+      "at": "2026-10-24T14:44:54.009669+00:00",
+      "driverSha256": "c5faf07742771bf1972488b588219463da7061e522e1b35e54cf1c4d0a98dfdc",
+      "ok": true,
+      "scope": "predecessor phase-specific sources; no cross-login or product QtKeychain credit",
+      "result": {
+        "phase": "status",
+        "backend": "org.freedesktop.secrets",
+        "available": true,
+        "locked": true,
+        "productKeychainRoundtripProven": false
+      }
+    },
+    {
+      "receipt": "k72/keychain-store-1.json",
+      "at": "2026-10-24T14:44:54.242975+00:00",
+      "driverSha256": "c5faf07742771bf1972488b588219463da7061e522e1b35e54cf1c4d0a98dfdc",
+      "ok": false,
+      "scope": "predecessor phase-specific sources; no cross-login or product QtKeychain credit",
+      "error": "Default keychain is locked; unlock through its visible console; no lifecycle pass"
+    },
+    {
+      "receipt": "k72/keychain-store-2.json",
+      "at": "2026-10-24T14:45:54.657706+00:00",
+      "driverSha256": "bb71903ded9aa8fde2ff3258e33a0bdb03a7df200768bde9020d41299f6b3708",
+      "ok": false,
+      "scope": "predecessor phase-specific sources; no cross-login or product QtKeychain credit",
+      "error": "Lab keychain requires visible unlock; no lifecycle pass"
+    },
+    {
+      "receipt": "k72/keychain-store-4.json",
+      "at": "2026-10-24T14:48:00.785768+00:00",
+      "driverSha256": "afa6119bae96355a45d3834495c8035abad019394c0420ce2fe96222781f07a1",
+      "ok": true,
+      "scope": "predecessor phase-specific sources; no cross-login or product QtKeychain credit",
+      "result": {
+        "phase": "store",
+        "backend": "org.freedesktop.secrets",
+        "reference": "putgd-acceptance-bcfbb70f-73e3-4232-af25-0c8653058e9a",
+        "available": true,
+        "locked": false,
+        "lockedBefore": true,
+        "unlockedExistingLabCollection": true,
+        "roundtrip": true,
+        "productKeychainRoundtripProven": false
+      }
+    },
+    {
+      "receipt": "k72/keychain-check-4.json",
+      "at": "2026-10-24T14:48:35.112875+00:00",
+      "driverSha256": "af9bebca6f5c7498b1bd6650521474719888a0a14d8b1e72db7b236534f23d33",
+      "ok": true,
+      "scope": "predecessor phase-specific sources; no cross-login or product QtKeychain credit",
+      "result": {
+        "phase": "check",
+        "backend": "org.freedesktop.secrets",
+        "provider": "ksecretd",
+        "reference": "putgd-acceptance-bcfbb70f-73e3-4232-af25-0c8653058e9a",
+        "available": true,
+        "locked": false,
+        "roundtrip": true,
+        "productKeychainRoundtripProven": false
+      }
+    },
+    {
+      "receipt": "k72/keychain-cleanup-4.json",
+      "at": "2026-10-24T14:49:30.029199+00:00",
+      "driverSha256": "af9bebca6f5c7498b1bd6650521474719888a0a14d8b1e72db7b236534f23d33",
+      "ok": true,
+      "scope": "predecessor phase-specific sources; no cross-login or product QtKeychain credit",
+      "result": {
+        "phase": "cleanup",
+        "backend": "org.freedesktop.secrets",
+        "provider": "ksecretd",
+        "reference": "putgd-acceptance-bcfbb70f-73e3-4232-af25-0c8653058e9a",
+        "available": true,
+        "locked": false,
+        "removed": true,
+        "productKeychainRoundtripProven": false
+      }
+    },
+    {
+      "receipt": "k72-final/keychain-store-final.json",
+      "at": "2026-10-24T14:53:57.262942+00:00",
+      "driverSha256": "1375c3cc43b39be05f42847e19080fc15afb8a6a8b0e881e82d0d7e5173700dc",
+      "ok": true,
+      "scope": "historical6bbb; no cross-login or product QtKeychain credit",
+      "result": {
+        "phase": "store",
+        "backend": "org.freedesktop.secrets",
+        "provider": "ksecretd",
+        "reference": "putgd-acceptance-cb057023-b875-4ea4-bdde-e04058380910",
+        "available": true,
+        "locked": false,
+        "roundtrip": true,
+        "productKeychainRoundtripProven": false
+      }
+    },
+    {
+      "receipt": "k72-final/keychain-check-final.json",
+      "at": "2026-10-24T14:53:57.510952+00:00",
+      "driverSha256": "1375c3cc43b39be05f42847e19080fc15afb8a6a8b0e881e82d0d7e5173700dc",
+      "ok": true,
+      "scope": "historical6bbb; no cross-login or product QtKeychain credit",
+      "result": {
+        "phase": "check",
+        "backend": "org.freedesktop.secrets",
+        "provider": "ksecretd",
+        "reference": "putgd-acceptance-cb057023-b875-4ea4-bdde-e04058380910",
+        "available": true,
+        "locked": false,
+        "roundtrip": true,
+        "productKeychainRoundtripProven": false
+      }
+    },
+    {
+      "receipt": "k72-final/keychain-cleanup-final.json",
+      "at": "2026-10-24T14:53:57.727409+00:00",
+      "driverSha256": "1375c3cc43b39be05f42847e19080fc15afb8a6a8b0e881e82d0d7e5173700dc",
+      "ok": true,
+      "scope": "historical6bbb; no cross-login or product QtKeychain credit",
+      "result": {
+        "phase": "cleanup",
+        "backend": "org.freedesktop.secrets",
+        "provider": "ksecretd",
+        "reference": "putgd-acceptance-cb057023-b875-4ea4-bdde-e04058380910",
+        "available": true,
+        "locked": false,
+        "removed": true,
+        "productKeychainRoundtripProven": false
+      }
+    },
+    {
+      "receipt": "m74-final/keychain-check-64a.json",
+      "at": "2026-10-24T15:00:31.933627+00:00",
+      "driverSha256": "8f1a8f49fd3f72d574493ebcb43e7ae51db253da7889a0ca51ef7f68ba8ecf4c",
+      "ok": false,
+      "scope": "historical64a/853a phase; no final safety/cross-login/productQtKeychain credit",
+      "sourceAttribution": "phase filename and code-owner handoff; receipt hashes main driver only, helper captured in separate source identity",
+      "error": "Probe attributes changed; refusing read/delete"
+    },
+    {
+      "receipt": "m74-final/keychain-check-853a.json",
+      "at": "2026-10-24T15:01:33.635461+00:00",
+      "driverSha256": "8f1a8f49fd3f72d574493ebcb43e7ae51db253da7889a0ca51ef7f68ba8ecf4c",
+      "ok": true,
+      "scope": "historical64a/853a phase; no final safety/cross-login/productQtKeychain credit",
+      "sourceAttribution": "phase filename and code-owner handoff; receipt hashes main driver only, helper captured in separate source identity",
+      "result": {
+        "phase": "check",
+        "backend": "org.freedesktop.secrets",
+        "provider": "gnome-keyring-daemon",
+        "reference": "putgd-acceptance-d9e1d9c9-aaff-4394-ba5e-af23a258e48a",
+        "locked": false,
+        "roundtrip": true,
+        "productKeychainRoundtripProven": false
+      }
+    },
+    {
+      "receipt": "m74-final/keychain-cleanup-64a.json",
+      "at": "2026-10-24T15:00:32.388058+00:00",
+      "driverSha256": "8f1a8f49fd3f72d574493ebcb43e7ae51db253da7889a0ca51ef7f68ba8ecf4c",
+      "ok": false,
+      "scope": "historical64a/853a phase; no final safety/cross-login/productQtKeychain credit",
+      "sourceAttribution": "phase filename and code-owner handoff; receipt hashes main driver only, helper captured in separate source identity",
+      "error": "Probe attributes changed; refusing read/delete"
+    },
+    {
+      "receipt": "m74-final/keychain-cleanup-853a.json",
+      "at": "2026-10-24T15:01:34.139268+00:00",
+      "driverSha256": "8f1a8f49fd3f72d574493ebcb43e7ae51db253da7889a0ca51ef7f68ba8ecf4c",
+      "ok": true,
+      "scope": "historical64a/853a phase; no final safety/cross-login/productQtKeychain credit",
+      "sourceAttribution": "phase filename and code-owner handoff; receipt hashes main driver only, helper captured in separate source identity",
+      "result": {
+        "phase": "cleanup",
+        "backend": "org.freedesktop.secrets",
+        "provider": "gnome-keyring-daemon",
+        "reference": "putgd-acceptance-d9e1d9c9-aaff-4394-ba5e-af23a258e48a",
+        "locked": false,
+        "removed": true,
+        "productKeychainRoundtripProven": false
+      }
+    },
+    {
+      "receipt": "m74-final/keychain-cleanup-corrected.json",
+      "at": "2026-10-24T15:01:06.893417+00:00",
+      "driverSha256": "8f1a8f49fd3f72d574493ebcb43e7ae51db253da7889a0ca51ef7f68ba8ecf4c",
+      "ok": true,
+      "scope": "historical64a/853a phase; no final safety/cross-login/productQtKeychain credit",
+      "sourceAttribution": "phase filename and code-owner handoff; receipt hashes main driver only, helper captured in separate source identity",
+      "result": {
+        "phase": "cleanup",
+        "backend": "org.freedesktop.secrets",
+        "provider": "gnome-keyring-daemon",
+        "reference": "putgd-acceptance-d7df6ce1-c8fa-4a14-9627-2bf70d9a89a2",
+        "locked": false,
+        "removed": true,
+        "productKeychainRoundtripProven": false
+      }
+    },
+    {
+      "receipt": "m74-final/keychain-status-64a.json",
+      "at": "2026-10-24T15:00:30.966057+00:00",
+      "driverSha256": "8f1a8f49fd3f72d574493ebcb43e7ae51db253da7889a0ca51ef7f68ba8ecf4c",
+      "ok": true,
+      "scope": "historical64a/853a phase; no final safety/cross-login/productQtKeychain credit",
+      "sourceAttribution": "phase filename and code-owner handoff; receipt hashes main driver only, helper captured in separate source identity",
+      "result": {
+        "phase": "status",
+        "backend": "org.freedesktop.secrets",
+        "provider": "gnome-keyring-daemon",
+        "locked": false,
+        "productKeychainRoundtripProven": false
+      }
+    },
+    {
+      "receipt": "m74-final/keychain-store-64a.json",
+      "at": "2026-10-24T15:00:31.436945+00:00",
+      "driverSha256": "8f1a8f49fd3f72d574493ebcb43e7ae51db253da7889a0ca51ef7f68ba8ecf4c",
+      "ok": true,
+      "scope": "historical64a/853a phase; no final safety/cross-login/productQtKeychain credit",
+      "sourceAttribution": "phase filename and code-owner handoff; receipt hashes main driver only, helper captured in separate source identity",
+      "result": {
+        "phase": "store",
+        "backend": "org.freedesktop.secrets",
+        "provider": "gnome-keyring-daemon",
+        "reference": "putgd-acceptance-d7df6ce1-c8fa-4a14-9627-2bf70d9a89a2",
+        "locked": false,
+        "roundtrip": true,
+        "productKeychainRoundtripProven": false
+      }
+    },
+    {
+      "receipt": "m74-final/keychain-store-853a.json",
+      "at": "2026-10-24T15:01:33.132009+00:00",
+      "driverSha256": "8f1a8f49fd3f72d574493ebcb43e7ae51db253da7889a0ca51ef7f68ba8ecf4c",
+      "ok": true,
+      "scope": "historical64a/853a phase; no final safety/cross-login/productQtKeychain credit",
+      "sourceAttribution": "phase filename and code-owner handoff; receipt hashes main driver only, helper captured in separate source identity",
+      "result": {
+        "phase": "store",
+        "backend": "org.freedesktop.secrets",
+        "provider": "gnome-keyring-daemon",
+        "reference": "putgd-acceptance-d9e1d9c9-aaff-4394-ba5e-af23a258e48a",
+        "locked": false,
+        "roundtrip": true,
+        "productKeychainRoundtripProven": false
+      }
+    },
+    {
+      "receipt": "k72-c538/keychain-store-c538.json",
+      "at": "2026-10-24T15:19:26.069160+00:00",
+      "driverSha256": "2f317d31a85741c7a24382849f309433a2581ee127f28c52de3a859a74069258",
+      "driverCommit": "c538f71e89afcc6d1e6c599c3c1cb9c3a97e7ced",
+      "ok": true,
+      "scope": "fresh c538 public CLI backend phase; no productQtKeychain/cross-login/safety-review credit",
+      "result": {
+        "phase": "store",
+        "backend": "org.freedesktop.secrets",
+        "provider": "ksecretd",
+        "reference": "putgd-acceptance-8dda8383-711e-418a-80e9-44f43855d8ce",
+        "locked": false,
+        "roundtrip": true,
+        "productKeychainRoundtripProven": false
+      },
+      "durablePrecreationRecovery": {
+        "backend": "org.freedesktop.secrets",
+        "provider": "ksecretd",
+        "defaultCollection": "/org/freedesktop/secrets/collection/putgdlab",
+        "reference": "putgd-acceptance-8dda8383-711e-418a-80e9-44f43855d8ce",
+        "cleanup": "not-yet-created"
+      }
+    },
+    {
+      "receipt": "k72-c538/keychain-check-c538.json",
+      "at": "2026-10-24T15:19:26.332728+00:00",
+      "driverSha256": "2f317d31a85741c7a24382849f309433a2581ee127f28c52de3a859a74069258",
+      "driverCommit": "c538f71e89afcc6d1e6c599c3c1cb9c3a97e7ced",
+      "ok": true,
+      "scope": "fresh c538 public CLI backend phase; no productQtKeychain/cross-login/safety-review credit",
+      "result": {
+        "phase": "check",
+        "backend": "org.freedesktop.secrets",
+        "provider": "ksecretd",
+        "reference": "putgd-acceptance-8dda8383-711e-418a-80e9-44f43855d8ce",
+        "locked": false,
+        "roundtrip": true,
+        "productKeychainRoundtripProven": false
+      }
+    },
+    {
+      "receipt": "k72-c538/keychain-cleanup-c538.json",
+      "at": "2026-10-24T15:19:26.563725+00:00",
+      "driverSha256": "2f317d31a85741c7a24382849f309433a2581ee127f28c52de3a859a74069258",
+      "driverCommit": "c538f71e89afcc6d1e6c599c3c1cb9c3a97e7ced",
+      "ok": true,
+      "scope": "fresh c538 public CLI backend phase; no productQtKeychain/cross-login/safety-review credit",
+      "result": {
+        "phase": "cleanup",
+        "backend": "org.freedesktop.secrets",
+        "provider": "ksecretd",
+        "reference": "putgd-acceptance-8dda8383-711e-418a-80e9-44f43855d8ce",
+        "locked": false,
+        "removed": true,
+        "productKeychainRoundtripProven": false
+      }
+    },
+    {
+      "receipt": "m74-72afd/keychain-store-72afd.json",
+      "at": "2026-10-24T15:31:40.457530+00:00",
+      "driverSha256": "347934c226f99cb0e509d5466c5df8116896e6bfac07d75fdfa4f4c2d06ca053",
+      "driverCommit": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+      "helperSha256": "c5b80a68b651108595a150db8eadfadc6ad37986a33096cebb5a937b278e9bf8",
+      "ok": true,
+      "scope": "current72afd separate-process backend roundtrip; no cross-login/productQtKeychain/final review credit",
+      "result": {
+        "phase": "store",
+        "backend": "org.freedesktop.secrets",
+        "provider": "gnome-keyring-daemon",
+        "reference": "putgd-acceptance-b35c7bb0-2a73-4b6a-afc4-21d37445f11b",
+        "locked": false,
+        "roundtrip": true,
+        "productKeychainRoundtripProven": false
+      },
+      "durablePrecreationRecovery": {
+        "backend": "org.freedesktop.secrets",
+        "provider": "gnome-keyring-daemon",
+        "defaultCollection": "/org/freedesktop/secrets/collection/putgd_5flab",
+        "reference": "putgd-acceptance-b35c7bb0-2a73-4b6a-afc4-21d37445f11b",
+        "cleanup": "not-yet-created"
+      }
+    },
+    {
+      "receipt": "m74-72afd/keychain-check-72afd.json",
+      "at": "2026-10-24T15:31:41.018905+00:00",
+      "driverSha256": "347934c226f99cb0e509d5466c5df8116896e6bfac07d75fdfa4f4c2d06ca053",
+      "driverCommit": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+      "helperSha256": "c5b80a68b651108595a150db8eadfadc6ad37986a33096cebb5a937b278e9bf8",
+      "ok": true,
+      "scope": "current72afd separate-process backend roundtrip; no cross-login/productQtKeychain/final review credit",
+      "result": {
+        "phase": "check",
+        "backend": "org.freedesktop.secrets",
+        "provider": "gnome-keyring-daemon",
+        "reference": "putgd-acceptance-b35c7bb0-2a73-4b6a-afc4-21d37445f11b",
+        "locked": false,
+        "roundtrip": true,
+        "productKeychainRoundtripProven": false
+      }
+    },
+    {
+      "receipt": "m74-72afd/keychain-cleanup-72afd.json",
+      "at": "2026-10-24T15:31:41.518750+00:00",
+      "driverSha256": "347934c226f99cb0e509d5466c5df8116896e6bfac07d75fdfa4f4c2d06ca053",
+      "driverCommit": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+      "helperSha256": "c5b80a68b651108595a150db8eadfadc6ad37986a33096cebb5a937b278e9bf8",
+      "ok": true,
+      "scope": "current72afd separate-process backend roundtrip; no cross-login/productQtKeychain/final review credit",
+      "result": {
+        "phase": "cleanup",
+        "backend": "org.freedesktop.secrets",
+        "provider": "gnome-keyring-daemon",
+        "reference": "putgd-acceptance-b35c7bb0-2a73-4b6a-afc4-21d37445f11b",
+        "locked": false,
+        "removed": true,
+        "productKeychainRoundtripProven": false
+      }
+    },
+    {
+      "receipt": "k72-72afd/keychain-store-72afd.json",
+      "at": "2026-10-24T15:42:18.904052+00:00",
+      "driverSha256": "347934c226f99cb0e509d5466c5df8116896e6bfac07d75fdfa4f4c2d06ca053",
+      "driverCommit": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+      "helperSha256": "c5b80a68b651108595a150db8eadfadc6ad37986a33096cebb5a937b278e9bf8",
+      "ok": true,
+      "scope": "exact72 backend protocol in separate CLI processes; no productQtKeychain or cross-login proof",
+      "result": {
+        "phase": "store",
+        "backend": "org.freedesktop.secrets",
+        "provider": "ksecretd",
+        "reference": "putgd-acceptance-5597e1d8-b740-43bb-8752-3c701156eb49",
+        "locked": false,
+        "roundtrip": true,
+        "productKeychainRoundtripProven": false
+      },
+      "durablePrecreationRecovery": {
+        "backend": "org.freedesktop.secrets",
+        "provider": "ksecretd",
+        "defaultCollection": "/org/freedesktop/secrets/collection/putgdlab",
+        "reference": "putgd-acceptance-5597e1d8-b740-43bb-8752-3c701156eb49",
+        "cleanup": "not-yet-created"
+      }
+    },
+    {
+      "receipt": "k72-72afd/keychain-check-72afd.json",
+      "at": "2026-10-24T15:42:19.168059+00:00",
+      "driverSha256": "347934c226f99cb0e509d5466c5df8116896e6bfac07d75fdfa4f4c2d06ca053",
+      "driverCommit": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+      "helperSha256": "c5b80a68b651108595a150db8eadfadc6ad37986a33096cebb5a937b278e9bf8",
+      "ok": true,
+      "scope": "exact72 backend protocol in separate CLI processes; no productQtKeychain or cross-login proof",
+      "result": {
+        "phase": "check",
+        "backend": "org.freedesktop.secrets",
+        "provider": "ksecretd",
+        "reference": "putgd-acceptance-5597e1d8-b740-43bb-8752-3c701156eb49",
+        "locked": false,
+        "roundtrip": true,
+        "productKeychainRoundtripProven": false
+      }
+    },
+    {
+      "receipt": "k72-72afd/keychain-cleanup-72afd.json",
+      "at": "2026-10-24T15:42:19.393205+00:00",
+      "driverSha256": "347934c226f99cb0e509d5466c5df8116896e6bfac07d75fdfa4f4c2d06ca053",
+      "driverCommit": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+      "helperSha256": "c5b80a68b651108595a150db8eadfadc6ad37986a33096cebb5a937b278e9bf8",
+      "ok": true,
+      "scope": "exact72 backend protocol in separate CLI processes; no productQtKeychain or cross-login proof",
+      "result": {
+        "phase": "cleanup",
+        "backend": "org.freedesktop.secrets",
+        "provider": "ksecretd",
+        "reference": "putgd-acceptance-5597e1d8-b740-43bb-8752-3c701156eb49",
+        "locked": false,
+        "removed": true,
+        "productKeychainRoundtripProven": false
+      }
+    },
+    {
+      "receipt": "f44-72afd/keychain-status-72afd.json",
+      "at": "2026-10-24T15:43:37.909271+00:00",
+      "driverSha256": "347934c226f99cb0e509d5466c5df8116896e6bfac07d75fdfa4f4c2d06ca053",
+      "driverCommit": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+      "helperSha256": "c5b80a68b651108595a150db8eadfadc6ad37986a33096cebb5a937b278e9bf8",
+      "ok": true,
+      "scope": "exact72 backend protocol in separate CLI processes; no productQtKeychain or cross-login proof",
+      "result": {
+        "phase": "status",
+        "backend": "org.freedesktop.secrets",
+        "provider": "gnome-keyring-daemon",
+        "locked": true,
+        "productKeychainRoundtripProven": false
+      }
+    },
+    {
+      "receipt": "f44-72afd/keychain-store-72afd.json",
+      "at": "2026-10-24T15:43:38.209548+00:00",
+      "driverSha256": "347934c226f99cb0e509d5466c5df8116896e6bfac07d75fdfa4f4c2d06ca053",
+      "driverCommit": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+      "helperSha256": "c5b80a68b651108595a150db8eadfadc6ad37986a33096cebb5a937b278e9bf8",
+      "ok": true,
+      "scope": "exact72 backend protocol in separate CLI processes; no productQtKeychain or cross-login proof",
+      "result": {
+        "phase": "store",
+        "backend": "org.freedesktop.secrets",
+        "provider": "gnome-keyring-daemon",
+        "reference": "putgd-acceptance-54b8af26-b883-410c-ba66-9bd33824a0d9",
+        "locked": false,
+        "lockedBefore": true,
+        "unlockedExistingLabCollection": true,
+        "roundtrip": true,
+        "productKeychainRoundtripProven": false
+      },
+      "durablePrecreationRecovery": {
+        "backend": "org.freedesktop.secrets",
+        "provider": "gnome-keyring-daemon",
+        "defaultCollection": "/org/freedesktop/secrets/collection/putgd_5flab",
+        "reference": "putgd-acceptance-54b8af26-b883-410c-ba66-9bd33824a0d9",
+        "cleanup": "not-yet-created"
+      }
+    },
+    {
+      "receipt": "f44-72afd/keychain-check-72afd.json",
+      "at": "2026-10-24T15:43:38.522191+00:00",
+      "driverSha256": "347934c226f99cb0e509d5466c5df8116896e6bfac07d75fdfa4f4c2d06ca053",
+      "driverCommit": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+      "helperSha256": "c5b80a68b651108595a150db8eadfadc6ad37986a33096cebb5a937b278e9bf8",
+      "ok": true,
+      "scope": "exact72 backend protocol in separate CLI processes; no productQtKeychain or cross-login proof",
+      "result": {
+        "phase": "check",
+        "backend": "org.freedesktop.secrets",
+        "provider": "gnome-keyring-daemon",
+        "reference": "putgd-acceptance-54b8af26-b883-410c-ba66-9bd33824a0d9",
+        "locked": false,
+        "roundtrip": true,
+        "productKeychainRoundtripProven": false
+      }
+    },
+    {
+      "receipt": "f44-72afd/keychain-cleanup-72afd.json",
+      "at": "2026-10-24T15:43:38.791390+00:00",
+      "driverSha256": "347934c226f99cb0e509d5466c5df8116896e6bfac07d75fdfa4f4c2d06ca053",
+      "driverCommit": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+      "helperSha256": "c5b80a68b651108595a150db8eadfadc6ad37986a33096cebb5a937b278e9bf8",
+      "ok": true,
+      "scope": "exact72 backend protocol in separate CLI processes; no productQtKeychain or cross-login proof",
+      "result": {
+        "phase": "cleanup",
+        "backend": "org.freedesktop.secrets",
+        "provider": "gnome-keyring-daemon",
+        "reference": "putgd-acceptance-54b8af26-b883-410c-ba66-9bd33824a0d9",
+        "locked": false,
+        "removed": true,
+        "productKeychainRoundtripProven": false
+      }
+    },
+    {
+      "receipt": "k72-614/final-614b/keychain-status.json",
+      "at": "2026-10-24T16:08:23.518930+00:00",
+      "driverCommit": "61439983e2c2d7b050b846e2f8bd723234247aed",
+      "driverSha256": "7026a15a0ebcb5f6e25a0feb2679a8f6ee241624e8ed8c7bdd950b790a9a6333",
+      "helperSha256": "1b6be4b02fe467d0458eafcc539edc7caf0c6dde597c5f5a34575f65a32a4559",
+      "ok": true,
+      "scope": "latest614 already-unlocked backend protocol only; no actual locked/Unlock observation, GUI or productQtKeychain proof",
+      "result": {
+        "phase": "status",
+        "backend": "org.freedesktop.secrets",
+        "provider": "ksecretd",
+        "locked": false,
+        "productKeychainRoundtripProven": false
+      }
+    },
+    {
+      "receipt": "k72-614/final-614b/keychain-store.json",
+      "at": "2026-10-24T16:08:23.732762+00:00",
+      "driverCommit": "61439983e2c2d7b050b846e2f8bd723234247aed",
+      "driverSha256": "7026a15a0ebcb5f6e25a0feb2679a8f6ee241624e8ed8c7bdd950b790a9a6333",
+      "helperSha256": "1b6be4b02fe467d0458eafcc539edc7caf0c6dde597c5f5a34575f65a32a4559",
+      "ok": true,
+      "scope": "latest614 already-unlocked backend protocol only; no actual locked/Unlock observation, GUI or productQtKeychain proof",
+      "result": {
+        "phase": "store",
+        "backend": "org.freedesktop.secrets",
+        "provider": "ksecretd",
+        "reference": "putgd-acceptance-1c3d37ab-0e47-4380-a4f7-c998e391f789",
+        "locked": false,
+        "roundtrip": true,
+        "productKeychainRoundtripProven": false
+      }
+    },
+    {
+      "receipt": "k72-614/final-614b/keychain-check.json",
+      "at": "2026-10-24T16:08:24.885277+00:00",
+      "driverCommit": "61439983e2c2d7b050b846e2f8bd723234247aed",
+      "driverSha256": "7026a15a0ebcb5f6e25a0feb2679a8f6ee241624e8ed8c7bdd950b790a9a6333",
+      "helperSha256": "1b6be4b02fe467d0458eafcc539edc7caf0c6dde597c5f5a34575f65a32a4559",
+      "ok": true,
+      "scope": "latest614 already-unlocked backend protocol only; no actual locked/Unlock observation, GUI or productQtKeychain proof",
+      "result": {
+        "phase": "check",
+        "backend": "org.freedesktop.secrets",
+        "provider": "ksecretd",
+        "reference": "putgd-acceptance-1c3d37ab-0e47-4380-a4f7-c998e391f789",
+        "locked": false,
+        "roundtrip": true,
+        "productKeychainRoundtripProven": false
+      }
+    },
+    {
+      "receipt": "k72-614/final-614b/keychain-cleanup.json",
+      "at": "2026-10-24T16:08:25.106591+00:00",
+      "driverCommit": "61439983e2c2d7b050b846e2f8bd723234247aed",
+      "driverSha256": "7026a15a0ebcb5f6e25a0feb2679a8f6ee241624e8ed8c7bdd950b790a9a6333",
+      "helperSha256": "1b6be4b02fe467d0458eafcc539edc7caf0c6dde597c5f5a34575f65a32a4559",
+      "ok": true,
+      "scope": "latest614 already-unlocked backend protocol only; no actual locked/Unlock observation, GUI or productQtKeychain proof",
+      "result": {
+        "phase": "cleanup",
+        "backend": "org.freedesktop.secrets",
+        "provider": "ksecretd",
+        "reference": "putgd-acceptance-1c3d37ab-0e47-4380-a4f7-c998e391f789",
+        "locked": false,
+        "removed": true,
+        "productKeychainRoundtripProven": false
+      }
+    },
+    {
+      "receipt": "k72-614/final-614b/keychain-cleanup-again.json",
+      "at": "2026-10-24T16:08:25.335774+00:00",
+      "driverCommit": "61439983e2c2d7b050b846e2f8bd723234247aed",
+      "driverSha256": "7026a15a0ebcb5f6e25a0feb2679a8f6ee241624e8ed8c7bdd950b790a9a6333",
+      "helperSha256": "1b6be4b02fe467d0458eafcc539edc7caf0c6dde597c5f5a34575f65a32a4559",
+      "ok": true,
+      "scope": "latest614 already-unlocked backend protocol only; no actual locked/Unlock observation, GUI or productQtKeychain proof",
+      "result": {
+        "phase": "cleanup",
+        "backend": "org.freedesktop.secrets",
+        "provider": "ksecretd",
+        "reference": "putgd-acceptance-1c3d37ab-0e47-4380-a4f7-c998e391f789",
+        "locked": false,
+        "removed": true,
+        "alreadyAbsent": true,
+        "productKeychainRoundtripProven": false
+      }
+    }
+  ],
+  "growCommandResult": {
+    "receipt": "k72-final/grow-command-final.json",
+    "driverCommit": "6bbbd506aeef7f8aa4a97c21664c7013ff427627",
+    "driverSha256": "1375c3cc43b39be05f42847e19080fc15afb8a6a8b0e881e82d0d7e5173700dc",
+    "at": "2026-10-24T14:53:12.371961+00:00",
+    "socket": {
+      "path": "/tmp/hf495-lcwun781/r/putgd/session.sock",
+      "utf8Bytes": 40
+    },
+    "result": {
+      "seedRows": 5,
+      "historyRows": 10000,
+      "independentOperations": 10000,
+      "independentItems": 10000,
+      "operationJournals": 10000,
+      "itemStates": 10000,
+      "userVersion": 7,
+      "syntheticClones": true,
+      "realUploadsPerformed": 0,
+      "integrity": "ok"
+    },
+    "scope": "real harness CLI over synthetic schema-7 fixture; no product UI/migration/performance or real upload evidence"
+  },
+  "privateEvidenceFiles": {
+    "localExportRoot": "/home/patrick/.t3/worktrees/put.gd/fix-native-acceptance-drivers-495/work/495",
+    "files": {
+      "k72/final-826c/run.json": {
+        "sha256": "6bb122b9e012c79b237220abca78c71b489666e3d9e6b04a9f277be27e61f95a",
+        "bytes": 4298,
+        "publicCopy": false
+      },
+      "k72/final-826c/socket-preflight.json": {
+        "sha256": "525c30e97fb9ae284284b77d6fb9ef03d22897f52733797fd6c2ddb21139186c",
+        "bytes": 165,
+        "publicCopy": false
+      },
+      "k72/final-826c/cover-precheck.json": {
+        "sha256": "f380aa14dfeca2de6beb1e2d3874dc54cd0f62c9216067d924e27a8e06cfc090",
+        "bytes": 153,
+        "publicCopy": false
+      },
+      "k72-final/final-6bbb/run.json": {
+        "sha256": "f70745e9364a41ef143565be876607a4c76c76ddfbb6ea032a45be3a480dc9b2",
+        "bytes": 4298,
+        "publicCopy": false
+      },
+      "k72-final/final-6bbb/socket-preflight.json": {
+        "sha256": "85a6d813e0159b37e164dab82ff706d4e5afb1bfceb8a8c05d4332bfdab41b72",
+        "bytes": 165,
+        "publicCopy": false
+      },
+      "k72-final/final-6bbb/cover-precheck.json": {
+        "sha256": "f380aa14dfeca2de6beb1e2d3874dc54cd0f62c9216067d924e27a8e06cfc090",
+        "bytes": 153,
+        "publicCopy": false
+      },
+      "k72/snapshot-before-removal.json": {
+        "sha256": "14331aae4c21095b144a41468e78ca8543eb100b1863847b765bc3af3a840d83",
+        "bytes": 1235,
+        "publicCopy": false
+      },
+      "k72/snapshot-after-removal.json": {
+        "sha256": "e47d7905bae73ab9ad0469aa14275d1f3a266dd13edcc7d71d68aeb09947ab94",
+        "bytes": 1236,
+        "publicCopy": false
+      },
+      "k72/registration-1.json": {
+        "sha256": "fbf02481c31299d14dedc2b2a15c2e96529a9ccc75f2a2a0640a0221a9fd0570",
+        "bytes": 1058,
+        "publicCopy": false
+      },
+      "k72-final/registration-final.json": {
+        "sha256": "3a5077b079b4787ca716983642b9e76443fd87dc78464b8128d95aec6c88e867",
+        "bytes": 1058,
+        "publicCopy": false
+      },
+      "k72/keychain-status-1.json": {
+        "sha256": "49fd171e0bc1a05f16dddfdbf388892c6ac56ba28a4e7d13266e47fa1776628c",
+        "bytes": 1099,
+        "publicCopy": false
+      },
+      "k72/keychain-store-1.json": {
+        "sha256": "e582178bbbc7753104d52a9cdc1c7e908dab12790784685b8135a4f5604bb8a4",
+        "bytes": 667,
+        "publicCopy": false
+      },
+      "k72/keychain-store-2.json": {
+        "sha256": "24293dd3f87c4a5bf2cdf320c87f7b85085ddfb775b67c3af425706ebe175c0a",
+        "bytes": 641,
+        "publicCopy": false
+      },
+      "k72/keychain-store-4.json": {
+        "sha256": "bce27df9b50e6482ffd16aaf27e7405cec354e7438758690e19b448d0fff1cdc",
+        "bytes": 1265,
+        "publicCopy": false
+      },
+      "k72/keychain-check-4.json": {
+        "sha256": "1c56df3e7846a7b9d737f221617aaac5622359524735b2bdf23953d00e9a22d4",
+        "bytes": 1224,
+        "publicCopy": false
+      },
+      "k72/keychain-cleanup-4.json": {
+        "sha256": "ba3f28d76d06d12573c671073d2a587f17ec4f5537a510122086a003c3970cc1",
+        "bytes": 1224,
+        "publicCopy": false
+      },
+      "k72-final/keychain-store-final.json": {
+        "sha256": "2f147d94d108e765b0535f0ea85fec3c002c1b556b72387ac365e588ca33d2cd",
+        "bytes": 1224,
+        "publicCopy": false
+      },
+      "k72-final/keychain-check-final.json": {
+        "sha256": "d69fa7abd736963e70920f7d0a96d02c051e19dab03b86d2e5e4b34d001676b4",
+        "bytes": 1224,
+        "publicCopy": false
+      },
+      "k72-final/keychain-cleanup-final.json": {
+        "sha256": "c26c8ae026325e7ee68708279760b141ecd7980be76f19535c7ff29e5a6a7041",
+        "bytes": 1224,
+        "publicCopy": false
+      },
+      "k72-final/grow-command-final.json": {
+        "sha256": "747d5b5985f14311a8de4d490cc1b4625c3d294b166114ee93725cdefa7f4581",
+        "bytes": 576,
+        "publicCopy": false
+      },
+      "k72-final/tests-final.log": {
+        "sha256": "fda9b3464105df3ffe2570aa008aaf6430b276fd483bfea9334113d19eb6f971",
+        "bytes": 3237,
+        "publicCopy": false
+      },
+      "k72-final/source-identity.json": {
+        "sha256": "988483be4d95d5b8327e5c5b929dceb957ef454e7e7f112fc2c2c800b0d616c4",
+        "bytes": 753,
+        "publicCopy": false
+      },
+      "final_probe.py": {
+        "sha256": "becbd6aa88281103f3b07755d16c744b1877518c02f83478d3b1cb28128fdf42",
+        "bytes": 5312,
+        "publicCopy": false
+      },
+      "k72-final/product-binaries.json": {
+        "sha256": "24e948de0964f010e8d4ca0cc9f4e92dc668800b0c6becbc84f244cf397f40fb",
+        "bytes": 740,
+        "publicCopy": false
+      },
+      "f44/session-64a.json": {
+        "sha256": "8dea137aabdbb39d9ec646f8a6f888a1457cae30e585a9d6a5133d16bc45c3eb",
+        "bytes": 944,
+        "publicCopy": false
+      },
+      "f44/display-peer-64a.json": {
+        "sha256": "c5bb257933bcc21c6fae8339bb7005ced220975f4f080a9226818560e3cafa51",
+        "bytes": 715,
+        "publicCopy": false
+      },
+      "m74-final/source-product-identity-853a.json": {
+        "sha256": "28e08b9684f8b01603b2d6db188da23c7c9214f47b2a2ead7dcf39cbec84a9c1",
+        "bytes": 1453,
+        "publicCopy": false
+      },
+      "m74-final/final-853a/run.json": {
+        "sha256": "8eb4cea180dad9350cd3b9cc3aa73b4a4944592081cf5494bf6bff3aac7bb48c",
+        "bytes": 4306,
+        "publicCopy": false
+      },
+      "m74-final/final-853a/socket-preflight.json": {
+        "sha256": "558223605ab3acdbb6099c01a345485632371abe8cb8fc9c6b3c3033f69929c0",
+        "bytes": 165,
+        "publicCopy": false
+      },
+      "m74-final/final-853a/cover-precheck.json": {
+        "sha256": "8444d8824d3854c7f66af5c86cd36b393e055a7b291a4c1198e4c725042fdb37",
+        "bytes": 151,
+        "publicCopy": false
+      },
+      "m74-final/keychain-check-64a.json": {
+        "sha256": "a9ad04d0b5e5d5d6dcf7b667239465eabf3595db601a7a74ca9a17b46f6c6cfa",
+        "bytes": 637,
+        "publicCopy": false
+      },
+      "m74-final/keychain-check-853a.json": {
+        "sha256": "a9588727ea0e592e5fe4feb7100c517401a970279c75177982dd50644d52d411",
+        "bytes": 1244,
+        "publicCopy": false
+      },
+      "m74-final/keychain-cleanup-64a.json": {
+        "sha256": "20294f34513216522bae590fdae4e32146923f135a38c99fab4a6e516db40cbe",
+        "bytes": 637,
+        "publicCopy": false
+      },
+      "m74-final/keychain-cleanup-853a.json": {
+        "sha256": "29564a2a68222bf63acbb3769e8746c5ad5489243b2afe08ec3342b8137b96c9",
+        "bytes": 1244,
+        "publicCopy": false
+      },
+      "m74-final/keychain-cleanup-corrected.json": {
+        "sha256": "9bf46b0b70e1c8718b28fff9ea93a54d69f9416805f89d35cda84880b0e96001",
+        "bytes": 1244,
+        "publicCopy": false
+      },
+      "m74-final/keychain-status-64a.json": {
+        "sha256": "562bddd90d0c7a8e4c34a4a315f7d5bcb5aaa4c542482d2063de98c59045f373",
+        "bytes": 1148,
+        "publicCopy": false
+      },
+      "m74-final/keychain-store-64a.json": {
+        "sha256": "ebf1e31715e3d22564d0a5393e2cc4ca1dbf7190e7d29c07ba4f43ba01810583",
+        "bytes": 1244,
+        "publicCopy": false
+      },
+      "m74-final/keychain-store-853a.json": {
+        "sha256": "7f7d09076e159b14ca6158b8f96d78a26dfcb222d3230e1b6bd4440783979b8e",
+        "bytes": 1244,
+        "publicCopy": false
+      },
+      "m74-final/snapshot-after-purge-853a.json": {
+        "sha256": "16d7b94f0fdbf653c956a630f6015f08b963b30fbc0df79f73b93c3f9a141c2d",
+        "bytes": 1239,
+        "publicCopy": false
+      },
+      "m74-final/release.json": {
+        "sha256": "2596c582fb802a515e99a41ffaf6a2e44a9623e10b0922d176d42b4d485f651e",
+        "bytes": 660,
+        "publicCopy": false
+      },
+      "review2/review-fixes-commit-tests.log": {
+        "sha256": "d4f0943e747b564379a04fdd1d07fb540c73b8a89d908aa7913ada87ea4c159e",
+        "bytes": 134,
+        "publicCopy": false
+      },
+      "review2/qlock-interop.json": {
+        "sha256": "0cce05a56fab786cc27ec7dd7d88b14b338a9fd36909a168f7b3b97a77ddc132",
+        "bytes": 289,
+        "publicCopy": false
+      },
+      "k72-c538/final-c538/run.json": {
+        "sha256": "895c52e8646bb4f0b71fb46a4d54bb8c368335198f7eb8626cd289c29cd5d358",
+        "bytes": 8980,
+        "publicCopy": false
+      },
+      "k72-c538/final-c538/tray-inspect.json": {
+        "sha256": "e7f6844a03a8c1a523a2d00ee17bdafafb8856157c5aac56d53f2ca1364a53f8",
+        "bytes": 890,
+        "publicCopy": false
+      },
+      "k72-c538/final-c538/tray-menu.json": {
+        "sha256": "ea74ec610e19d2f9c4cab6c2ae95a87822a91497d62ec8bc38381cdfe5a5270c",
+        "bytes": 936,
+        "publicCopy": false
+      },
+      "k72-c538/final-c538/tray-activate.json": {
+        "sha256": "bdb85c5b69f0aae89a5745362d6f802ad0faa98bf1cc136c03bc9806454d8ab3",
+        "bytes": 891,
+        "publicCopy": false
+      },
+      "k72-c538/final-c538/tray-quit.json": {
+        "sha256": "4ab0b29a1af6226199e9795f09557f05ed079beba0c3d279d2d6dba2f0d60d4a",
+        "bytes": 887,
+        "publicCopy": false
+      },
+      "k72-c538/final-c538/login-prepare.json": {
+        "sha256": "bbbe1f761c6070c10de32c127134ed6fb95e5b0da1c45f2a0b7251ba52f5c540",
+        "bytes": 1316,
+        "publicCopy": false
+      },
+      "k72-c538/final-c538/login-check-same-session.json": {
+        "sha256": "a8699d3045f8ccffdaf368ea5063ad1eb4b1036eb96fa86be283d9da90d6b50a",
+        "bytes": 740,
+        "publicCopy": false
+      },
+      "k72-c538/final-c538/socket-preflight.json": {
+        "sha256": "4873e69a32f045a5e09be7d64c6f7eabb54630ef08b65990e00e04b6313001c7",
+        "bytes": 165,
+        "publicCopy": false
+      },
+      "k72-c538/final-c538/cover-precheck.json": {
+        "sha256": "f380aa14dfeca2de6beb1e2d3874dc54cd0f62c9216067d924e27a8e06cfc090",
+        "bytes": 153,
+        "publicCopy": false
+      },
+      "k72-c538/keychain-store-c538.json": {
+        "sha256": "ceccd563926a3bf3b4c63050bd9d7fca4d7b20ed1365d919dffc25184df7c5fd",
+        "bytes": 1641,
+        "publicCopy": false
+      },
+      "k72-c538/keychain-check-c538.json": {
+        "sha256": "65b3b7fabe1ddbf4c2060989f6cbde7cc9a49cce7db6497ad32a560aac92856c",
+        "bytes": 1224,
+        "publicCopy": false
+      },
+      "k72-c538/keychain-cleanup-c538.json": {
+        "sha256": "d557201d036bcdeef209b0bb0faa7b63f44f913dc25460a1ea61daf1769a87d6",
+        "bytes": 1224,
+        "publicCopy": false
+      },
+      "k72-c538/snapshot-after-purge-c538.json": {
+        "sha256": "ae9596434ad0c0e103cf285a9ea656eedef0790728fde2d359e68f1e2c274208",
+        "bytes": 1234,
+        "publicCopy": false
+      },
+      "k72-c538/release.json": {
+        "sha256": "c4951e58aeab7833788c7707135138f7f90647c9f3ec1e7d197ef785c2178459",
+        "bytes": 635,
+        "publicCopy": false
+      },
+      "review3/product-items.json": {
+        "sha256": "f66615c1e5f88d4c57d5170f9e1ea26c815b6b6022225bc5160460888ee85117",
+        "bytes": 3213,
+        "publicCopy": false
+      },
+      "review3/product-serializer-proof.json": {
+        "sha256": "0958c007c4c1a41a0f32c7b60ca6f14325c660141cdbdefee8fae4f72d8c9de2",
+        "bytes": 812,
+        "publicCopy": false
+      },
+      "review3/grow-product-items-72afd.json": {
+        "sha256": "e52c04b5095bf62e53ceddb44c0fd6e0a6ca947062a78b45a3e9f8e6d575cad1",
+        "bytes": 576,
+        "publicCopy": false
+      },
+      "review3/inert-receipt-tests-2.log": {
+        "sha256": "2ed4a4acb2bd4cea53fb3f234afb52668f8a2d72818fa2a491fa869bed4e230b",
+        "bytes": 136,
+        "publicCopy": false
+      },
+      "review3/product-item-build.log": {
+        "sha256": "042b46eaedb16eb4b915e28296b82a3bf25baa21a2102afa139ed7f8d546b65b",
+        "bytes": 691,
+        "publicCopy": false
+      },
+      "review3/product-item-configure.log": {
+        "sha256": "2eace160e8517ac104d15dc9de2c6dc929f87543a3c9e9ee93ecf407b4ecc2eb",
+        "bytes": 759,
+        "publicCopy": false
+      },
+      "m74-72afd/identity-72afd.json": {
+        "sha256": "10e50aae772fb55b130e42c81303054ea219a893ee2e7040611d993abbb983fe",
+        "bytes": 1564,
+        "publicCopy": false
+      },
+      "m74-72afd/export-metadata.json": {
+        "sha256": "c388ad85d34c2b2db09c1b633d446c301a079689c971a1c5ea7b7c490bfdf093",
+        "bytes": 1857,
+        "publicCopy": false
+      },
+      "m74-72afd/final-72afd/run.json": {
+        "sha256": "5116c6de5715dbcc481ed8ae9743e9a86e1e45470794afec6db530d3c5a7e012",
+        "bytes": 9018,
+        "publicCopy": false
+      },
+      "m74-72afd/final-72afd/tray-inspect.json": {
+        "sha256": "541a0e811256484c3d7e2125e7bdc2a8bb782f50049166b4ecc8036547839391",
+        "bytes": 896,
+        "publicCopy": false
+      },
+      "m74-72afd/final-72afd/tray-menu.json": {
+        "sha256": "e57be828d3e1224aaebfef1eb94d641c54864521b3faa555ef1acac6a200506a",
+        "bytes": 942,
+        "publicCopy": false
+      },
+      "m74-72afd/final-72afd/tray-activate.json": {
+        "sha256": "4742c2cf9e1e4e67de75431526052133160e66e725187434523e0e449c54e3c5",
+        "bytes": 897,
+        "publicCopy": false
+      },
+      "m74-72afd/final-72afd/tray-quit.json": {
+        "sha256": "a12920a3f2cd3c6547aafb220f288963728590687b2c7347b5f98b9f6c007537",
+        "bytes": 893,
+        "publicCopy": false
+      },
+      "m74-72afd/final-72afd/login-prepare.json": {
+        "sha256": "a82c679d4d04b7738aaf19395423a4ced34eacd032c8427c9b28aad112a3529f",
+        "bytes": 1322,
+        "publicCopy": false
+      },
+      "m74-72afd/final-72afd/login-check-same-session.json": {
+        "sha256": "c8c48cf1fc5290f470321bbccfd4f0233d088998f3b7058d0deb1dd76dfd091c",
+        "bytes": 745,
+        "publicCopy": false
+      },
+      "m74-72afd/final-72afd/socket-preflight.json": {
+        "sha256": "5a7c8269a5a77ae6129aaf1e6f0f74bc9f836555707ea1c9d96cf653f1eb99e8",
+        "bytes": 165,
+        "publicCopy": false
+      },
+      "m74-72afd/final-72afd/cover-precheck.json": {
+        "sha256": "8444d8824d3854c7f66af5c86cd36b393e055a7b291a4c1198e4c725042fdb37",
+        "bytes": 151,
+        "publicCopy": false
+      },
+      "m74-72afd/keychain-store-72afd.json": {
+        "sha256": "03c52a43432fc371730c8f4b0c3b0c0cb819551ddc07f77d2415799ea8a8e969",
+        "bytes": 1676,
+        "publicCopy": false
+      },
+      "m74-72afd/keychain-check-72afd.json": {
+        "sha256": "a6a1c8197b041cd1dbb7fb975e622759f5c64f4849f83fae6a6cfdbb61907a32",
+        "bytes": 1244,
+        "publicCopy": false
+      },
+      "m74-72afd/keychain-cleanup-72afd.json": {
+        "sha256": "f68022d37118175e101afb9ceb9b4e3939d57331df662906d0f6d5942336a553",
+        "bytes": 1244,
+        "publicCopy": false
+      },
+      "m74-72afd/snapshot-after-purge-72afd.json": {
+        "sha256": "adc43ef6fc303630528b11587668158a3a471ede6a02cfec6505cfe68878be75",
+        "bytes": 1239,
+        "publicCopy": false
+      },
+      "m74-72afd/release.json": {
+        "sha256": "2f0ef3b65bb8d1b3f394944f8aff8c7b4a04a1e7173a597bcb4c6a08612026ea",
+        "bytes": 678,
+        "publicCopy": false
+      },
+      "k72-72afd/final-72afd/run.json": {
+        "sha256": "b0ce8d0a90e991e97f1fadedfc00c428d493c71f9f52813928d2abe40d98a682",
+        "bytes": 8980,
+        "publicCopy": false
+      },
+      "k72-72afd/final-72afd/tray-inspect.json": {
+        "sha256": "a55f4216232feae93e087575ed4eb491e6aa4357d0aa67f3ff9a552202e896a8",
+        "bytes": 890,
+        "publicCopy": false
+      },
+      "k72-72afd/final-72afd/tray-menu.json": {
+        "sha256": "9a81b814399a350b0fe7cfa6a54907ec0b7f8f452c67d594c3588582ee3dcd96",
+        "bytes": 936,
+        "publicCopy": false
+      },
+      "k72-72afd/final-72afd/tray-activate.json": {
+        "sha256": "5cbb29426099a58a6e7b5ac2513d7619cd387c9c1c7cfd1e8f828e6e9a81ec4f",
+        "bytes": 891,
+        "publicCopy": false
+      },
+      "k72-72afd/final-72afd/tray-quit.json": {
+        "sha256": "547b312f029dac49c31b38299972f4a430370f4bd4c1cf8b8fdd4a70c3e80492",
+        "bytes": 887,
+        "publicCopy": false
+      },
+      "k72-72afd/final-72afd/login-prepare.json": {
+        "sha256": "eb86bcbc29d0dfb1ec2e0aeb155b6486725d35a5975e6cf7f4391bf1287aeaf9",
+        "bytes": 1316,
+        "publicCopy": false
+      },
+      "k72-72afd/final-72afd/login-check-same-session.json": {
+        "sha256": "2003618bfd99abc1dd1d03fe16a14a3576dc2a268c1b181a552221ec773ac30c",
+        "bytes": 740,
+        "publicCopy": false
+      },
+      "k72-72afd/final-72afd/socket-preflight.json": {
+        "sha256": "e5f2ba36ca8289457417f157163d221f7749e1ed3f50d5a04db70f5ab96fde42",
+        "bytes": 165,
+        "publicCopy": false
+      },
+      "k72-72afd/final-72afd/cover-precheck.json": {
+        "sha256": "f380aa14dfeca2de6beb1e2d3874dc54cd0f62c9216067d924e27a8e06cfc090",
+        "bytes": 153,
+        "publicCopy": false
+      },
+      "k72-72afd/keychain-store-72afd.json": {
+        "sha256": "cd882249bd9b71b477d18c4476afe0a05f167134e379bbd321e56826babe5e1a",
+        "bytes": 1641,
+        "publicCopy": false
+      },
+      "k72-72afd/keychain-check-72afd.json": {
+        "sha256": "618eb9bcf2e08f57cc423583dab84bc963c34bbe15058a3774084191c4320a59",
+        "bytes": 1224,
+        "publicCopy": false
+      },
+      "k72-72afd/keychain-cleanup-72afd.json": {
+        "sha256": "c521087d189919a31b78f006d565c22bdb5ac23d2ed73397e3a302d5186ad1c7",
+        "bytes": 1224,
+        "publicCopy": false
+      },
+      "k72-72afd/snapshot-after-purge-72afd.json": {
+        "sha256": "ab5065463c40029d033f33af467537cef354d2cb77d888c5eab67c0079cbbe98",
+        "bytes": 1234,
+        "publicCopy": false
+      },
+      "k72-72afd/registration-72afd.json": {
+        "sha256": "84c2ceac6cf182946d9391ada5d49d42d8aa6ce040d07f72f30cf22ec59cf740",
+        "bytes": 1058,
+        "publicCopy": false
+      },
+      "k72-72afd/release.json": {
+        "sha256": "6fbb6689be5aed77779f40a3580e9d6a5161595b0037de258ef3d2c082a55352",
+        "bytes": 634,
+        "publicCopy": false
+      },
+      "f44-72afd/identity-72afd.json": {
+        "sha256": "4452207a664bd6d4af1284bb6a6624c890d74428d94ad551c32629824a225828",
+        "bytes": 1663,
+        "publicCopy": false
+      },
+      "f44-72afd/session-72afd.json": {
+        "sha256": "90f389637e6377e422a8828d6616f1c7733de0c83985c96b88b7315503cad300",
+        "bytes": 944,
+        "publicCopy": false
+      },
+      "f44-72afd/keychain-status-72afd.json": {
+        "sha256": "207e238462cdc58cf5a78711637ed435da604cbcd20118ec00e56220d7ab6eee",
+        "bytes": 1141,
+        "publicCopy": false
+      },
+      "f44-72afd/keychain-store-72afd.json": {
+        "sha256": "cfcb54474805e9215bccb0863055cddc124859a3ee5c39293938ba5d9eb18b23",
+        "bytes": 1808,
+        "publicCopy": false
+      },
+      "f44-72afd/keychain-check-72afd.json": {
+        "sha256": "f733be393486522de6f71aaf14f355082146b550cdbd9635e29d79bd9a7d1a5e",
+        "bytes": 1238,
+        "publicCopy": false
+      },
+      "f44-72afd/keychain-cleanup-72afd.json": {
+        "sha256": "29b8ece25cbaef0a2cf816e19045fc2f31f03b5062cab726a775fbdd2c032406",
+        "bytes": 1238,
+        "publicCopy": false
+      },
+      "f44-72afd/release.json": {
+        "sha256": "9ef9886e09c7be92e8a1095c75662d2d1503fe859c1ebd3b86911bbc8803b131",
+        "bytes": 658,
+        "publicCopy": false
+      },
+      "k72-72afd/export-sha256.json": {
+        "sha256": "2cf2be00099dd87cb0f029bafa5ce11666e1a6298e3ce99fff152a7122ac78f3",
+        "bytes": 1721,
+        "publicCopy": false,
+        "independentlyVerifiedMemberCount": 17
+      },
+      "f44-72afd/export-sha256.json": {
+        "sha256": "a48f34788bceab019d1aff37089a9f69694e4bf9f60bd1eda2e6a9ffd9fb271f",
+        "bytes": 672,
+        "publicCopy": false,
+        "independentlyVerifiedMemberCount": 7
+      },
+      "review4/manifest.json": {
+        "sha256": "0de1df16c481c60c4cdd0f9016a3142e7b427ed47ff659d24ee0f37702c7bc86",
+        "bytes": 1479,
+        "publicCopy": false
+      },
+      "review4/presets.log": {
+        "sha256": "083dc7e0fddfd81dbf45047a1f8eb9497e8e5ce5420043888beb1c983d448b4b",
+        "bytes": 38,
+        "publicCopy": false
+      },
+      "review4/after-tests.log": {
+        "sha256": "7ef49cabe5ae43cd12823cc7f93d52e8dc400eb6682c2722d865e0ca29e49bfc",
+        "bytes": 5874,
+        "publicCopy": false
+      },
+      "review4/before-tests.log": {
+        "sha256": "3709162507382d78054bd176ff6a04f54bcae69981d6af6d1b52ca27d893baa9",
+        "bytes": 16547,
+        "publicCopy": false
+      },
+      "review4/probe-build.log": {
+        "sha256": "52688bcac5b7b6e9c39d0d3cda4cfcd38a9eb524ceb98dc6dede23c3f2853637",
+        "bytes": 119,
+        "publicCopy": false
+      },
+      "review4/probe-configure.log": {
+        "sha256": "936ae759665fb2696a2fbffe63fbcc9a5fe7a035f599eeed9904f98889a160c4",
+        "bytes": 637,
+        "publicCopy": false
+      },
+      "k72-614/release.json": {
+        "sha256": "c175d76aece509dd94dde7302001d344f7458d4d70f26c6fccdaaceeb54b1a14",
+        "bytes": 730,
+        "publicCopy": false
+      },
+      "k72-614/pre-lock-status.json": {
+        "sha256": "1f6d284375d92e780d61c05b71e2b0915e19db984de332089cd0f641cf28442d",
+        "bytes": 556,
+        "publicCopy": false
+      },
+      "k72-614/heartbeat.json": {
+        "sha256": "22794f9e552b06c1296982c65d581bb02b0a953ec2df6a0ea4ba92b562bfeb8a",
+        "bytes": 535,
+        "publicCopy": false
+      },
+      "k72-614/backend_probe.py": {
+        "sha256": "9aba52a7d09d24f58c582226845ab550b8d3b36d629003f78c3fa68113edbb35",
+        "bytes": 3981,
+        "publicCopy": false
+      },
+      "k72-614/acquire.json": {
+        "sha256": "34899cc81ad3ba3a3d95fa7bcccb11fbb623d31d2d2ad229e526fd2ea86449c9",
+        "bytes": 557,
+        "publicCopy": false
+      },
+      "k72-614/post-release-status.json": {
+        "sha256": "577c29fb9efce1576e21798fbfbc54c0793b13d975e459a50c1d962e04c9228a",
+        "bytes": 549,
+        "publicCopy": false
+      },
+      "k72-614/pre-release-status.json": {
+        "sha256": "e2aab21eed0f6197833dcd52a20e99a1a16e4d78a664a1ca313ca67872b28985",
+        "bytes": 1054,
+        "publicCopy": false
+      },
+      "k72-614/backend_probe_attempt1.py": {
+        "sha256": "0edf10b0a3a782149fa8f4bbceabc1d90f63b9e080e4f20905baa8144ea3aa53",
+        "bytes": 3638,
+        "publicCopy": false
+      },
+      "k72-614/final-614/keychain-cleanup-again.json": {
+        "sha256": "90786b0b0bc6f414d7ae6f542d348084d85b7cef796106043208d677d40d16cb",
+        "bytes": 1251,
+        "publicCopy": false
+      },
+      "k72-614/final-614/foreign-default-cleanup.json": {
+        "sha256": "71f94b585f37833ec5ee6a06bcc8c52191aa1c8ca27abdb38146a9031a3f26fd",
+        "bytes": 1224,
+        "publicCopy": false
+      },
+      "k72-614/final-614/foreign-default-before.json": {
+        "sha256": "b00c25b5c2c1286f52e8e4a2d1f966a9f2a312b65074c952676f721443202e53",
+        "bytes": 1657,
+        "publicCopy": false
+      },
+      "k72-614/final-614/run.json": {
+        "sha256": "691d68ae44d2800b1c09ed96a81a99f35616c95135db89b0faec702078927436",
+        "bytes": 3712,
+        "publicCopy": false
+      },
+      "k72-614/final-614/plasma-registration.json": {
+        "sha256": "b165f8a58242c8614b3ea8382772d0c0df5087447c26226ef2006bf818e754db",
+        "bytes": 1060,
+        "publicCopy": false
+      },
+      "k72-614/final-614/keychain-store.json": {
+        "sha256": "6f6acd8acf91903ca19579285f0c56581858401e4e67f06e1900d152d9c8c9c9",
+        "bytes": 1641,
+        "publicCopy": false
+      },
+      "k72-614/final-614/foreign-default-check.json": {
+        "sha256": "8bb26df8665fbbdea9ceb40777126cd670d6ad3e26c1ba9bd5d6d6831f56a1eb",
+        "bytes": 650,
+        "publicCopy": false
+      },
+      "k72-614/final-614/keychain-status.json": {
+        "sha256": "49b2510278843c4091319298a9740a2322ceee97ab6806428bbd601a0713395c",
+        "bytes": 1128,
+        "publicCopy": false
+      },
+      "k72-614/final-614/keychain-cleanup.json": {
+        "sha256": "ba413db17af4f90b3ca6293e73e24d94d308e0860fabbad5028150d8182b7cc9",
+        "bytes": 1251,
+        "publicCopy": false
+      },
+      "k72-614/final-614/session.json": {
+        "sha256": "8ff3af219a95ad340718109e879754a7776502aed6d08ba647ff78a181d7c167",
+        "bytes": 945,
+        "publicCopy": false
+      },
+      "k72-614/final-614b/keychain-cleanup-again.json": {
+        "sha256": "165c4d668e53bbd3ddde510bc71ca0985b7fcdcbc1b6ccb73168c048683d0aa2",
+        "bytes": 1251,
+        "publicCopy": false
+      },
+      "k72-614/final-614b/foreign-default-cleanup.json": {
+        "sha256": "c87ae66ba180c2647bcc49f4788b115b8c14df41a4814480183cbbb42a6eef38",
+        "bytes": 650,
+        "publicCopy": false
+      },
+      "k72-614/final-614b/foreign-default-before.json": {
+        "sha256": "abd5b608ade2156b077451a682ca0e24869358a04a491d3128d9e4ad5bee65e1",
+        "bytes": 1673,
+        "publicCopy": false
+      },
+      "k72-614/final-614b/invalid-reference-check.json": {
+        "sha256": "9295086eaff8c95cf06774c4412bdb52848cbe598aa752ee6556c86ab3d8c36b",
+        "bytes": 638,
+        "publicCopy": false
+      },
+      "k72-614/final-614b/invalid-reference-cleanup.json": {
+        "sha256": "b3f5ac6695f5ed1efb1ee9d9f0ad702645b7bec15831f1e27ccabc8853c49209",
+        "bytes": 638,
+        "publicCopy": false
+      },
+      "k72-614/final-614b/run.json": {
+        "sha256": "d78d0fb43b58c240f74a63b6791994b0fc08aabf7f5f88a869fa3fc4e91b04c9",
+        "bytes": 4826,
+        "publicCopy": false
+      },
+      "k72-614/final-614b/plasma-registration.json": {
+        "sha256": "55212ff450fb6e48124170ac5044fd8b50833c1083757371b24031835829e4f6",
+        "bytes": 1060,
+        "publicCopy": false
+      },
+      "k72-614/final-614b/keychain-store.json": {
+        "sha256": "57eee1d128dbe062a1c67fb015c6a9ca992c3b775d62a9b4e0469beefe5e9c43",
+        "bytes": 1641,
+        "publicCopy": false
+      },
+      "k72-614/final-614b/invalid-reference-before.json": {
+        "sha256": "ea766830ebce16d8980f03373dddb1b52c85d16dac158d861a522c7dea8cc6dd",
+        "bytes": 1601,
+        "publicCopy": false
+      },
+      "k72-614/final-614b/foreign-default-check.json": {
+        "sha256": "94a33774b7fc07d09bf2917ae0b4d4296feec3ea915a727bd48791aea52b423e",
+        "bytes": 650,
+        "publicCopy": false
+      },
+      "k72-614/final-614b/keychain-check.json": {
+        "sha256": "22cc4bccdd3e53d5346ec29e90bed25a030b302821a048712ad3be5ae829335b",
+        "bytes": 1224,
+        "publicCopy": false
+      },
+      "k72-614/final-614b/keychain-status.json": {
+        "sha256": "404f97cd9ae4fd3a59464f57015409e77e53c542826eca4f6aa72594f8b849de",
+        "bytes": 1128,
+        "publicCopy": false
+      },
+      "k72-614/final-614b/keychain-cleanup.json": {
+        "sha256": "e34c0476f6e350daf6c8c498c51413c6b4d29da315c18e970a3f7c5a6616e3d6",
+        "bytes": 1224,
+        "publicCopy": false
+      },
+      "k72-614/final-614b/session.json": {
+        "sha256": "615b03efb9213ef5efff06cd528087324d9bdb2ec8e9e32d78c115310b90d514",
+        "bytes": 945,
+        "publicCopy": false
+      },
+      "k72-614/final-614b/identity.json": {
+        "sha256": "ab86435af886bd677d08c2091d5af40154299751bd2e6454271a76f53eb7da71",
+        "bytes": 238,
+        "publicCopy": false
+      },
+      "k72-614/manifest.json": {
+        "sha256": "0c27110d1b398d762767267032bd0d33a98ea9721b480a29a6fc76651e8350c8",
+        "bytes": 5627,
+        "publicCopy": false,
+        "independentlyVerifiedMemberCount": 33
+      }
+    }
+  },
+  "reviewCorrections": [
+    {
+      "candidate": "6bbbd506aeef7f8aa4a97c21664c7013ff427627",
+      "findings": [
+        "removed /proc executable suffix could evade runtime inventory",
+        "Secret Service provider lookup should follow activation",
+        "synthetic reference must use canonical UUID",
+        "default alias must remain identical at end"
+      ],
+      "evidenceCredit": "826c run preserved; fresh 6bbb run separately verified"
+    }
+  ],
+  "previousCurrentCandidate": {
+    "path": "tools/lab/native_acceptance.py",
+    "commit": "6bbbd506aeef7f8aa4a97c21664c7013ff427627",
+    "sha256": "1375c3cc43b39be05f42847e19080fc15afb8a6a8b0e881e82d0d7e5173700dc",
+    "stage": "draft-code-pr-unmerged-harness",
+    "productCliCapabilitiesChanged": false
+  },
+  "privateOrchestration": {
+    "path": "work/495/final_probe.py",
+    "sha256": "becbd6aa88281103f3b07755d16c744b1877518c02f83478d3b1cb28128fdf42",
+    "maintainedTool": false,
+    "scope": "private functional wrapper, separate from committed harness and published product",
+    "k72Final6bbbCommand": {
+      "cwd": "/home/patrick/work/n495",
+      "argv": [
+        "python3",
+        "work/495/final_probe.py",
+        "/home/patrick/putgd-lab/n495/final-6bbb",
+        "6bbbd506aeef7f8aa4a97c21664c7013ff427627"
+      ],
+      "stdout": "final-6bbb.log"
+    },
+    "preservedCopy": "/home/patrick/.t3/worktrees/put.gd/docs-native-acceptance-drivers-495/work/495/source/final_probe-becbd6aa.py"
+  },
+  "k72ProductBinaryIdentity": {
+    "source": "k72-final/product-binaries.json",
+    "osReleaseObserved": "Ubuntu 26.04.1 LTS (Resolute Raccoon)",
+    "distributionProfile": "Kubuntu 26.04.1",
+    "binaryScope": "extracted from independently verified ubuntu26.04 native1185 DEB; installed resident path was /usr/bin/putgd",
+    "binarySha256": {
+      "/home/patrick/putgd-lab/n495/product/usr/bin/putgd": "714c046908fe3b24f707323e7dce1e0257767ca30371548a9996bdbd633f1c83",
+      "/home/patrick/putgd-lab/n495/product/usr/bin/putgd-ui": "c973b5e195c710bb73eaa6551e7c723658a1e7f8eea5e87db0432ff580e9de71"
+    }
+  },
+  "sessionDisplayFallback": {
+    "introducedAt": "64a3257b20d7aa33cc25d35c07a628becff4036c",
+    "reason": "GNOME compositor environment can omit WAYLAND_DISPLAY",
+    "guard": "manager display is only a hint; owned socket inside current runtime must have SO_PEERCRED PID/UID matching current logind-bound shell and unchanged process generation",
+    "desktopProof": "f44 real session/compositor peer verification; no app/tray/graphical acceptance"
+  },
+  "factualReview": {
+    "reviewerThread": "mcp:982a3d27-ea8e-43c3-93f2-6e8d441f49e4",
+    "scope": "evidence/interface review, not formal GitHub approval or a new live workflow",
+    "earlierReview": {
+      "reviewerThread": "mcp:982a3d27-ea8e-43c3-93f2-6e8d441f49e4",
+      "scope": "command/interface and evidence provenance; not formal GitHub approval",
+      "outcome": "scope correct; corrections applied",
+      "corrections": [
+        "second k72 lock session is codex-495-final",
+        "maintained source advanced to64a; prior proof scopes retained",
+        "private wrapper hash/invocation and exact versions/binary metadata added"
+      ]
+    },
+    "finalReview": {
+      "reviewedDocsHead": "7d9f9ea1c46f735b97bf5009578b5c1eed5472df",
+      "driverCommit": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+      "privateArtifactHashesVerified": 102,
+      "sourceSpecificVisualHashesVerified": 12,
+      "uniqueCommittedPngFiles": 6,
+      "hashMismatches": 0,
+      "interfaceAndEvidenceScopes": "confirmed correct",
+      "requestedCorrectionsApplied": [
+        "qualify historical826c purge provenance while retaining separately proved exact72 KDE/Cinnamon purge snapshots",
+        "map Cinnamon toQt6.4.2 and KDE toQt6.10.2 explicitly"
+      ],
+      "reviewStamp": "two requested factual corrections applied; bounded confirmation and exact-head CI recorded onPR552"
+    },
+    "followup614": {
+      "baseDocsHead": "ea4d6f7cbce16d3fb896e015831378d6bc2ec9c9",
+      "candidateCommit": "61439983e2c2d7b050b846e2f8bd723234247aed",
+      "scope": "only source/interface/focused-test/review delta; prior72 live artifacts unchanged",
+      "status": "interface/test delta clear on344cc01; final33-member protocol packet submitted for factual review",
+      "privateArtifactCountBefore": 102,
+      "privateArtifactCountWithFocusedLogs": 108,
+      "interfaceDeltaReviewedHead": "344cc01c6bd5f61a8e28c3a9808f9fcc8b4b3817",
+      "newProtocolManifestMembers": 33,
+      "totalIndexedPrivateArtifacts": 142
+    }
+  },
+  "protocolChecks": [
+    {
+      "runId": "f44/session-64a",
+      "host": "f44",
+      "driverCommit": "64a3257b20d7aa33cc25d35c07a628becff4036c",
+      "driverSha256": "8f1a8f49fd3f72d574493ebcb43e7ae51db253da7889a0ca51ef7f68ba8ecf4c",
+      "at": "2026-10-24T14:58:21.683061+00:00",
+      "session": {
+        "Id": "1100",
+        "Type": "wayland",
+        "Seat": "seat0",
+        "Desktop": null,
+        "Timestamp": "Sat 2026-10-24 01:20:43 CDT",
+        "TimestampMonotonic": "14140790842",
+        "Leader": "144202",
+        "shell": {
+          "pid": 144305,
+          "exe": "/usr/bin/gnome-shell",
+          "startTicks": 1414103
+        },
+        "bootId": "6fa33c97-6c65-46ff-abfe-f5db7d3825b8"
+      },
+      "shellEnvironmentHadWaylandDisplay": false,
+      "verifiedWaylandSocket": "/run/user/1000/wayland-0",
+      "peerMatchedCurrentCompositor": true,
+      "appLaunched": false,
+      "pointerInputSent": false,
+      "screenshotTaken": false,
+      "scope": "real current-session compositor peer verification only; no GNOME app/tray/graphical acceptance"
+    },
+    {
+      "runId": "f44/session-72afd",
+      "host": "f44",
+      "driverCommit": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+      "driverSha256": "347934c226f99cb0e509d5466c5df8116896e6bfac07d75fdfa4f4c2d06ca053",
+      "helperSha256": "c5b80a68b651108595a150db8eadfadc6ad37986a33096cebb5a937b278e9bf8",
+      "at": "2026-10-24T15:43:37.717123+00:00",
+      "session": {
+        "Id": "1100",
+        "Type": "wayland",
+        "Seat": "seat0",
+        "Desktop": null,
+        "Timestamp": "Sat 2026-10-24 01:20:43 CDT",
+        "TimestampMonotonic": "14140790842",
+        "Leader": "144202",
+        "shell": {
+          "pid": 144305,
+          "exe": "/usr/bin/gnome-shell",
+          "startTicks": 1414103
+        },
+        "bootId": "6fa33c97-6c65-46ff-abfe-f5db7d3825b8"
+      },
+      "verifiedWaylandSocket": "/run/user/1000/wayland-0",
+      "peerMatchedCurrentCompositor": true,
+      "versions": {
+        "os": "Fedora44 Workstation",
+        "GNOME": "gnome-shell50.6-1.fc44",
+        "Qt": "6.11.2-3.fc44"
+      },
+      "appLaunched": false,
+      "pointerInputSent": false,
+      "screenshotTaken": false,
+      "scope": "final exact72 current-session peer and backend protocol only; no app/package/cover/input/logout/capture or GNOMEtray/graphical acceptance",
+      "includedInDriverValidation": true
+    },
+    {
+      "runId": "k72/final-614b",
+      "host": "k72",
+      "driverCommit": "61439983e2c2d7b050b846e2f8bd723234247aed",
+      "driverSha256": "7026a15a0ebcb5f6e25a0feb2679a8f6ee241624e8ed8c7bdd950b790a9a6333",
+      "helperSha256": "1b6be4b02fe467d0458eafcc539edc7caf0c6dde597c5f5a34575f65a32a4559",
+      "probeBinarySha256": "689f68197ea5883a702bacc2c6279bb35af04af0070d21c78f5b966295e6a815",
+      "wrapperSha256": "9aba52a7d09d24f58c582226845ab550b8d3b36d629003f78c3fa68113edbb35",
+      "startedAt": "2026-10-24T16:08:23.094924+00:00",
+      "finishedAt": "2026-10-24T16:08:25.481819+00:00",
+      "session": {
+        "Id": "906",
+        "Type": "wayland",
+        "Seat": "seat0",
+        "Desktop": "KDE",
+        "Timestamp": "Sat 2026-10-24 01:24:11 CDT",
+        "TimestampMonotonic": "31018816964",
+        "Leader": "128842",
+        "shell": {
+          "pid": 129168,
+          "exe": "/usr/bin/plasmashell",
+          "startTicks": 3102035
+        },
+        "bootId": "c9926bb9-3536-46ef-95c2-2161ab5a245a"
+      },
+      "versions": {
+        "plasma-workspace": "4:6.6.6-0ubuntu0.1",
+        "libqt6core6t64": "6.10.2+dfsg-7",
+        "libkf6service6": "6.24.0-0ubuntu1"
+      },
+      "productPackageInstalled": false,
+      "passedChecks": 11,
+      "checks": [
+        {
+          "name": "session",
+          "exit": 0,
+          "expectedExit": 0,
+          "receiptSha256": "615b03efb9213ef5efff06cd528087324d9bdb2ec8e9e32d78c115310b90d514"
+        },
+        {
+          "name": "plasma-registration",
+          "exit": 0,
+          "expectedExit": 0,
+          "receiptSha256": "55212ff450fb6e48124170ac5044fd8b50833c1083757371b24031835829e4f6"
+        },
+        {
+          "name": "keychain-status",
+          "exit": 0,
+          "expectedExit": 0,
+          "receiptSha256": "404f97cd9ae4fd3a59464f57015409e77e53c542826eca4f6aa72594f8b849de"
+        },
+        {
+          "name": "keychain-store",
+          "exit": 0,
+          "expectedExit": 0,
+          "receiptSha256": "57eee1d128dbe062a1c67fb015c6a9ca992c3b775d62a9b4e0469beefe5e9c43"
+        },
+        {
+          "name": "foreign-default-check",
+          "exit": 2,
+          "expectedExit": 2,
+          "receiptSha256": "94a33774b7fc07d09bf2917ae0b4d4296feec3ea915a727bd48791aea52b423e"
+        },
+        {
+          "name": "foreign-default-cleanup",
+          "exit": 2,
+          "expectedExit": 2,
+          "receiptSha256": "c87ae66ba180c2647bcc49f4788b115b8c14df41a4814480183cbbb42a6eef38"
+        },
+        {
+          "name": "invalid-reference-check",
+          "exit": 2,
+          "expectedExit": 2,
+          "receiptSha256": "9295086eaff8c95cf06774c4412bdb52848cbe598aa752ee6556c86ab3d8c36b"
+        },
+        {
+          "name": "invalid-reference-cleanup",
+          "exit": 2,
+          "expectedExit": 2,
+          "receiptSha256": "b3f5ac6695f5ed1efb1ee9d9f0ad702645b7bec15831f1e27ccabc8853c49209"
+        },
+        {
+          "name": "keychain-check",
+          "exit": 0,
+          "expectedExit": 0,
+          "receiptSha256": "22cc4bccdd3e53d5346ec29e90bed25a030b302821a048712ad3be5ae829335b"
+        },
+        {
+          "name": "keychain-cleanup",
+          "exit": 0,
+          "expectedExit": 0,
+          "receiptSha256": "e34c0476f6e350daf6c8c498c51413c6b4d29da315c18e970a3f7c5a6616e3d6"
+        },
+        {
+          "name": "keychain-cleanup-again",
+          "exit": 0,
+          "expectedExit": 0,
+          "receiptSha256": "165c4d668e53bbd3ddde510bc71ca0985b7fcdcbc1b6ccb73168c048683d0aa2"
+        }
+      ],
+      "backendAlreadyUnlocked": true,
+      "actualLockedUnlockOrBusMonitorProof": false,
+      "appLaunched": false,
+      "inputSent": false,
+      "screenshotsCaptured": false,
+      "aliasChanged": false,
+      "scope": "latest614 minimal current-session/read-only cache/backend protocol only; no app/package/input/logout/capture/GUI/m74/autostart proof",
+      "includedInDriverValidation": true
+    }
+  ],
+  "independentSafetyReview": {
+    "round": 1,
+    "reviewedCommit": "6bbbd506aeef7f8aa4a97c21664c7013ff427627",
+    "status": "all-five-and-inert-receipt-issue-resolved-round3-clear",
+    "privateReport": "/home/patrick/work/put.gd/work/stable-closeout-410-495-379/REVIEW554-round1.md",
+    "sha256": "2fb5d13c8cc919f8a938c6975964484d66b05d73543e0174de800fe3a592bfb2",
+    "findings": [
+      {
+        "priority": "P1",
+        "issue": "persisted external destination/journal/receipt/multipart state not validated by localhost current config",
+        "ownerProposedResolution": "scan persisted JSON journal/receipt/state and reject external/unknown routes, credentials, multipart cleanup/deletion/sharing work and unknown tables",
+        "independentlyValidated": true,
+        "validationScope": "round2 source review; runtime proofs separately indexed"
+      },
+      {
+        "priority": "P2",
+        "issue": "selected database can be live while unrelated runtime passes stopped guard",
+        "ownerProposedResolution": "require exact private fixture database; hold resident.lock through commit; inspect data-home/open-FD owners across runtimes",
+        "independentlyValidated": true,
+        "validationScope": "round2 source review; runtime proofs separately indexed"
+      },
+      {
+        "priority": "P2",
+        "issue": "capture/selector/storage helper inventory incomplete",
+        "ownerProposedResolution": "include putgd/putgd-* helper family and deleted executables; unreadable owned helpers refuse absence",
+        "independentlyValidated": true,
+        "validationScope": "round2 source review; runtime proofs separately indexed"
+      },
+      {
+        "priority": "P2",
+        "issue": "partial synthetic store failure can lose cleanup reference and leak item",
+        "ownerProposedResolution": "persist canonical recovery reference before CreateItem; retain safe original error/cleanup state; support idempotent cleanup from failed receipt",
+        "independentlyValidated": true,
+        "validationScope": "round2 source review; runtime proofs separately indexed"
+      },
+      {
+        "priority": "P2",
+        "issue": "output is reserved after mutations; existing output can still permit effects",
+        "ownerProposedResolution": "require mutating command output; exclusive owned private reservation before session discovery or effects",
+        "independentlyValidated": true,
+        "validationScope": "round2 source review; runtime proofs separately indexed"
+      }
+    ],
+    "downstreamGrow": "permitted-only-exact72-with-every-guard",
+    "followupReview": "independent round3 clear on exact72",
+    "evidencePolicy": "existing observations retain original sources; no final safety/readiness credit",
+    "ownerCorrectionCommit": "c538f71e89afcc6d1e6c599c3c1cb9c3a97e7ced",
+    "round2": {
+      "reviewedCommit": "c538f71e89afcc6d1e6c599c3c1cb9c3a97e7ced",
+      "privateReport": "/home/patrick/work/put.gd/work/stable-closeout-410-495-379/REVIEW554-round2.md",
+      "sha256": "cf91fd9c52cc095bf33c44be5c1376c2358772d3489aba2e4785dde210639a19",
+      "fiveRound1Findings": "resolved by independent source review",
+      "newFinding": "P2 valid failed/local-only product seeds include a full inert default StorageReceipt; candidate rejected them",
+      "limits": "source/in-memory probes; no independent35-test/Qt/product/GUI/keychain/network/VM rerun"
+    },
+    "round3": {
+      "reviewedCommit": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+      "status": "clear-no-actionable-findings",
+      "HOLD": false,
+      "authority": "root coordinator05841927-1f2e-40c5-958c-68fbebf5805a direct clearance message",
+      "acceptedCases": 25,
+      "rejectedCases": 16,
+      "caseSource": "coordinator/code-owner report of root independent review; not added to37-test count"
+    },
+    "predecessorGrow": "HOLD",
+    "round4": {
+      "reviewedCommit": "61439983e2c2d7b050b846e2f8bd723234247aed",
+      "privateReport": "/home/patrick/work/put.gd/work/stable-closeout-410-495-379/REVIEW554-round4.md",
+      "sha256": "e7e5bd8feb071e8036020bb70a01aced1386acbb69a151925cbb15164559ad99",
+      "status": "clear-no-actionable-findings",
+      "scope": "bounded source review,8 focused safety tests,2 mocked login dispatch cases and retained inert-receipt probes; no live/GUI/actualCMake3.24 credit",
+      "invalidReceiptComparison": "six inputs attempted Unlock on72; all six reject before Locked on614"
+    }
+  },
+  "m74KeychainCorrection": {
+    "originalSource": "64a3257b20d7aa33cc25d35c07a628becff4036c",
+    "observedFailure": "provider-added xdg:schema caused read/delete attribute equality refusal after successful store",
+    "correctedSource": "853a35d21bf56c64eb07944dd360f4bc96a7c718",
+    "helperSha256": "6380532f568884e447500b2e4de0884b53228c6befa977fff60dbc4d964428d1",
+    "correction": "match required application and canonical reference while allowing provider metadata",
+    "originalSyntheticEntryRemoved": true,
+    "freshSyntheticEntryRoundtrippedAndRemoved": true,
+    "fiveIndependentFindingsResolved": false
+  },
+  "heldCandidateHistory": [
+    {
+      "path": "tools/lab/native_acceptance.py",
+      "commit": "64a3257b20d7aa33cc25d35c07a628becff4036c",
+      "sha256": "8f1a8f49fd3f72d574493ebcb43e7ae51db253da7889a0ca51ef7f68ba8ecf4c",
+      "stage": "review-blocked-candidate-not-final-runbook",
+      "productCliCapabilitiesChanged": false
+    },
+    {
+      "path": "tools/lab/native_acceptance.py",
+      "commit": "c538f71e89afcc6d1e6c599c3c1cb9c3a97e7ced",
+      "sha256": "2f317d31a85741c7a24382849f309433a2581ee127f28c52de3a859a74069258",
+      "stage": "owner-corrections-committed-independent-round2-pending",
+      "productCliCapabilitiesChanged": false
+    }
+  ],
+  "qlockInteroperability": {
+    "commit": "c538f71e89afcc6d1e6c599c3c1cb9c3a97e7ced",
+    "host": "k72",
+    "privateReceipt": "review2/qlock-interop.json",
+    "result": {
+      "qtBlockedByPython": true,
+      "pythonBlockedByQt": true,
+      "qtAcquiresAfterRelease": true,
+      "noLockLeft": true,
+      "witnessSha256": "81a9d0729e189164bf6c83b77eadfd6fccfc71b62dd7a3ef92107fd901f47bb1",
+      "sourceSha256": "b9222d8ef99399b40c9afdc01d9fe4f47c944abd1e4a1c74b87557df5d86a0ca"
+    },
+    "privateWitnessSource": "/home/patrick/.t3/worktrees/put.gd/docs-native-acceptance-drivers-495/work/495/qlock-witness-c538",
+    "sourceFilesSha256": {
+      "CMakeLists.txt": "eeacb499712418b890f64c9c8d9080893262216d32068bf0eeb5e130319a2290",
+      "CMakePresets.json": "d513c89c2d0dff32cc359452aa4722a871951c498f2080a6a2307460a543905e",
+      "main.cpp": "b9222d8ef99399b40c9afdc01d9fe4f47c944abd1e4a1c74b87557df5d86a0ca"
+    },
+    "scope": "real Qt QLockFile vs grow guard mutual exclusion; no product/GUI/network execution"
+  },
+  "m74ProductPackage": {
+    "target": "ubuntu24.04",
+    "kind": "DEB",
+    "sha256": "2094fd4db8cd915b02f1cdd16eb5c99bb8191948931cd2f558a89c59be5b3f47",
+    "source": "code-owner handoff cites independent #379 checksum verification",
+    "QtVersion": "libqt6core6t64 6.4.2+dfsg-21.1build5 captured in new current72afd identity; older853a query remains historically incomplete"
+  },
+  "privateCliOrchestration": {
+    "path": "work/495/final_probe_review2.py",
+    "sha256": "93a9bd25f81122c5600db8a0ac3f53fc4d74d0d7774f31681556260106f8294a",
+    "preservedCopy": "/home/patrick/.t3/worktrees/put.gd/docs-native-acceptance-drivers-495/work/495/source/final_probe_review2-93a9bd25.py",
+    "maintainedTool": false,
+    "executionInterface": "public CLI, new --output receipt for every step",
+    "command": {
+      "cwd": "/home/patrick/work/n495",
+      "argv": [
+        "python3",
+        "work/495/final_probe_review2.py",
+        "/home/patrick/putgd-lab/n495/final-c538",
+        "c538f71e89afcc6d1e6c599c3c1cb9c3a97e7ced"
+      ],
+      "stdout": "/home/patrick/putgd-lab/n495/final-c538.log"
+    }
+  },
+  "productionSerializerWitness": {
+    "commit": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+    "host": "k72",
+    "privateReceipt": "review3/product-serializer-proof.json",
+    "proof": {
+      "source": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+      "productItemSerializerUsed": true,
+      "receiptUnmodified": true,
+      "states": [
+        "failed",
+        "local_only"
+      ],
+      "noNetworkCalls": true,
+      "unixSockets": [],
+      "files": {
+        "src/core/Operation.cpp": "212cf4d375d82d620593776816de8bbc14b21fca637f7eafcee5e19d8a6feee4",
+        "src/core/StorageReceipt.cpp": "bb5267f91c5efaa9ff5b839ba0a57af10dc488ee096fb26b4d91cfc5964e767f",
+        "work/495/product-item-witness/main.cpp": "9c7e38c94211bae6b8cbeeb1f2a24448fb9b366b224da48ef178a1ef640c489b",
+        "work/495/product-item-witness/build/dev/product-item-witness": "798134ad5adc9f2e2a6e61ce461e1624068ac19080076048bc7a0a7cd33e9c2f",
+        "/home/patrick/putgd-lab/n495/product-items.json": "f66615c1e5f88d4c57d5170f9e1ea26c815b6b6022225bc5160460888ee85117"
+      }
+    },
+    "privateWitnessSource": "/home/patrick/.t3/worktrees/put.gd/docs-native-acceptance-drivers-495/work/495/product-item-witness-72afd",
+    "sourceFilesSha256": {
+      "CMakeLists.txt": "d04e7d3bd31c2b9984911e74061761cf61b0929bdcd4aa435bce6b217f960ff2",
+      "CMakePresets.json": "d513c89c2d0dff32cc359452aa4722a871951c498f2080a6a2307460a543905e",
+      "main.cpp": "9c7e38c94211bae6b8cbeeb1f2a24448fb9b366b224da48ef178a1ef640c489b"
+    },
+    "growCliReceipt": "review3/grow-product-items-72afd.json",
+    "growCliResult": {
+      "seedRows": 5,
+      "historyRows": 10000,
+      "independentOperations": 10000,
+      "independentItems": 10000,
+      "operationJournals": 10000,
+      "itemStates": 10000,
+      "userVersion": 7,
+      "syntheticClones": true,
+      "realUploadsPerformed": 0,
+      "integrity": "ok"
+    },
+    "socket": {
+      "path": "/tmp/ps495-2amy2_tm/r/putgd/session.sock",
+      "utf8Bytes": 40
+    },
+    "scope": "actual production serializers in standalone witness; unstripped failed/local_only records and fresh synthetic schema7 fixture; no GUI, network, actual upload or product performance/migration proof"
+  },
+  "inertReceiptException": {
+    "introducedAt": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+    "recordShape": "exact full StorageReceipt{}.toJson() default including every field, unmodified",
+    "allowedOperationStates": [
+      "completed",
+      "partial",
+      "failed",
+      "cancelled",
+      "interrupted"
+    ],
+    "allowedUploadStatuses": [
+      "failed",
+      "local_only",
+      "cancelled",
+      "skipped",
+      "conflict"
+    ],
+    "requiredRemoteStatus": "not_requested",
+    "requiredShareStatus": "not_requested",
+    "shareReceiptException": false,
+    "publishedUnknownActiveAlteredReceipts": "refused; populated routes still require complete isolated receipts and whole-state validation",
+    "recoveryValidation": "unchanged strict refusal"
+  },
+  "currentM74Orchestration": {
+    "privateWrapper": "work/495/final_probe_review2.py",
+    "sha256": "93a9bd25f81122c5600db8a0ac3f53fc4d74d0d7774f31681556260106f8294a",
+    "command": {
+      "cwd": "/home/patrick/work/n495",
+      "argv": [
+        "python3",
+        "work/495/final_probe_review2.py",
+        "/home/patrick/putgd-lab/n495/final-72afd",
+        "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e"
+      ],
+      "stdout": "/home/patrick/putgd-lab/n495/final-72afd.log"
+    },
+    "maintainedTool": false
+  },
+  "currentFinalPackets": {
+    "Cinnamon": "m74/final-72afd",
+    "KDE": "k72/final-72afd",
+    "GNOME": "f44/session-72afd",
+    "GNOMEClaim": "session/backend protocol only",
+    "sameExactSource": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+    "allCleanReleased": true,
+    "locksSequential": true,
+    "currentDocsCi": "required for final head; live result recorded onPR552",
+    "sequenceVerifiedFromReceipts": [
+      {
+        "host": "m74",
+        "session": "codex-495-final-mint",
+        "acquiredAt": "2026-10-24T15:31:21Z",
+        "releasedAt": "2026-10-24T15:32:08Z"
+      },
+      {
+        "host": "k72",
+        "session": "codex-495-final-kde",
+        "acquiredAt": "2026-10-24T15:41:57Z",
+        "releasedAt": "2026-10-24T15:43:03Z"
+      },
+      {
+        "host": "f44",
+        "session": "codex-495-final-gnome",
+        "acquiredAt": "2026-10-24T15:43:25Z",
+        "releasedAt": "2026-10-24T15:43:58Z"
+      }
+    ],
+    "factualReviewRecord": "factualReview.finalReview",
+    "scope": "accepted72 GUI/live/growth proof retained; latest614 only minimal session/backend/cache protocol",
+    "latestInterfaceCandidate": "61439983e2c2d7b050b846e2f8bd723234247aed",
+    "latestInterfaceReview": "root round4 clear on614",
+    "latestProtocolPacket": "k72/final-614b"
+  },
+  "currentKdeOrchestration": {
+    "privateWrapper": "work/495/final_probe_review2.py",
+    "sha256": "93a9bd25f81122c5600db8a0ac3f53fc4d74d0d7774f31681556260106f8294a",
+    "command": {
+      "cwd": "/home/patrick/work/n495",
+      "argv": [
+        "python3",
+        "work/495/final_probe_review2.py",
+        "/home/patrick/putgd-lab/n495/final-72afd",
+        "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e"
+      ],
+      "stdout": "/home/patrick/putgd-lab/n495/final-72afd.log"
+    },
+    "maintainedTool": false,
+    "host": "k72"
+  },
+  "acceptedLiveEvidenceDriver": {
+    "path": "tools/lab/native_acceptance.py",
+    "commit": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+    "sha256": "347934c226f99cb0e509d5466c5df8116896e6bfac07d75fdfa4f4c2d06ca053",
+    "stage": "independently-reviewed-exact-source-evidence-complete",
+    "productCliCapabilitiesChanged": false
+  },
+  "optionalBotFollowup": {
+    "baseCommit": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+    "candidateCommit": "61439983e2c2d7b050b846e2f8bd723234247aed",
+    "status": "all-three-resolved-distinct-root-round4-clear",
+    "deltaFiles": [
+      "tools/lab/native_acceptance.py",
+      "tools/lab/native_keychain.py",
+      "tools/lab/sycoca_probe/CMakePresets.json",
+      "tests/desktop/test_native_acceptance.py"
+    ],
+    "resolutions": [
+      "postLoginStateVerified/expected state with autostartProven=false; launch origin explicitly unverified",
+      "canonical reference and original default collection checked before any Unlock/Prompt",
+      "probe preset format6 to5 for declared CMake3.24 compatibility"
+    ],
+    "growGuardBodiesAstUnchanged": true,
+    "acceptedProducerProofCommit": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+    "noLive614Proof": false,
+    "noNewGuiLogoutM74Work": true,
+    "focusedIndependentReview": "clear on exact614; source/mocked test scope",
+    "latestLiveScope": "minimal k72 session/cache/already-unlocked backend only; no GUI or product launch"
+  },
+  "newNegativeBaseline": {
+    "productionSource": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+    "regressionTestsSource": "61439983e2c2d7b050b846e2f8bd723234247aed",
+    "privateLog": "review4/before-tests.log",
+    "sha256": "3709162507382d78054bd176ff6a04f54bcae69981d6af6d1b52ca27d893baa9",
+    "executedNewTestMethods": 2,
+    "expectedResult": "6 unsafe-Unlock subcase failures plus1 output-scope error",
+    "scope": "synthetic regression reproduction, not real keychain/desktop"
+  },
+  "probePresetCompatibility": {
+    "candidate": "61439983e2c2d7b050b846e2f8bd723234247aed",
+    "schemaVersion": 5,
+    "actualTestCMake": "4.2.3",
+    "actualChecks": "preset listing,configure,build-j1 passed",
+    "cmake324Executed": false,
+    "officialCompatibilitySource": "https://cmake.org/cmake/help/v3.24/manual/cmake-presets.7.html#format",
+    "documentationClaim": "schema5 introduced in3.24; source compatibility, not actual3.24 execution",
+    "privateLogs": [
+      "review4/presets.log",
+      "review4/probe-configure.log",
+      "review4/probe-build.log"
+    ]
+  },
+  "minimal614FailureContext": {
+    "firstRun": "k72-614/final-614/run.json",
+    "firstWrapperSha256": "0edf10b0a3a782149fa8f4bbceabc1d90f63b9e080e4f20905baa8144ea3aa53",
+    "expectationMismatch": [
+      {
+        "name": "foreign-default-cleanup",
+        "exit": 0,
+        "expectedExit": 2
+      }
+    ],
+    "cause": "final-614 private wrapper mutated result but retained valid recovery; cleanup used exact original owned recovery as designed and removed ownitem. Preserved before corrected final-614b mutates both branches. No production source change.",
+    "exactOriginalItemCleanupVerified": true,
+    "correctedRun": "k72-614/final-614b/run.json",
+    "correctedWrapperSha256": "9aba52a7d09d24f58c582226845ab550b8d3b36d629003f78c3fa68113edbb35",
+    "correction": "mutate both result and recovery in synthetic invalid before receipts",
+    "productionSourceChangedBetweenAttempts": false,
+    "unlockObservation": "No broad bus monitor or locked-collection side effect reproduced. Source/mocked six-case regression establishes pre-Locked/pre-Unlock order; live CLI proves invalid receipt rejection and successful exact ownitem cleanup.",
+    "privatePreservedWrappers": "/home/patrick/.t3/worktrees/put.gd/docs-native-acceptance-drivers-495/work/495/backend-probe-614"
+  },
+  "latest614InvalidReceiptRefusals": [
+    {
+      "receipt": "k72-614/final-614b/foreign-default-check.json",
+      "driverSha256": "7026a15a0ebcb5f6e25a0feb2679a8f6ee241624e8ed8c7bdd950b790a9a6333",
+      "error": "Default collection changed since store; refusing another keyring",
+      "ok": false,
+      "scope": "live CLI rejection while collection already unlocked; pre-Unlock ordering comes from source/mocked tests"
+    },
+    {
+      "receipt": "k72-614/final-614b/foreign-default-cleanup.json",
+      "driverSha256": "7026a15a0ebcb5f6e25a0feb2679a8f6ee241624e8ed8c7bdd950b790a9a6333",
+      "error": "Default collection changed since store; refusing another keyring",
+      "ok": false,
+      "scope": "live CLI rejection while collection already unlocked; pre-Unlock ordering comes from source/mocked tests"
+    },
+    {
+      "receipt": "k72-614/final-614b/invalid-reference-check.json",
+      "driverSha256": "7026a15a0ebcb5f6e25a0feb2679a8f6ee241624e8ed8c7bdd950b790a9a6333",
+      "error": "Need an owned private store receipt from this driver",
+      "ok": false,
+      "scope": "live CLI rejection while collection already unlocked; pre-Unlock ordering comes from source/mocked tests"
+    },
+    {
+      "receipt": "k72-614/final-614b/invalid-reference-cleanup.json",
+      "driverSha256": "7026a15a0ebcb5f6e25a0feb2679a8f6ee241624e8ed8c7bdd950b790a9a6333",
+      "error": "Need an owned private store receipt from this driver",
+      "ok": false,
+      "scope": "live CLI rejection while collection already unlocked; pre-Unlock ordering comes from source/mocked tests"
+    }
+  ]
+}

@@ -1,6 +1,14 @@
 # Native package full acceptance: drivers
 
-These drivers run the [native package full-acceptance profile](../../../acceptance-matrix.md#native-package-full-acceptance-profile)
+**Retired recipes — historical record only.** These frozen drivers explain the
+nightly 1058 run; do not execute the wrappers or commands below for a new campaign.
+Use the [maintained #495 driver and evidence record](../../2026-10-24-native-acceptance-drivers-495/README.md)
+instead. In particular, `nfa.py` passes through unsafe legacy tray commands and
+`nk.sh` reaches them indirectly. Tint matching, coordinate overrides and
+`TRAY_XY` are not supported by the replacement. Driver source, results and
+historical failures are preserved.
+
+These drivers ran the [native package full-acceptance profile](../../../acceptance-matrix.md#native-package-full-acceptance-profile)
 on the builders. The first pass is in [../README.md](../README.md) (nightly 1058).
 
 | File | What it is |
@@ -26,7 +34,7 @@ on the builders. The first pass is in [../README.md](../README.md) (nightly 1058
   - Each run records the state before and after, the signature lines and the fetched files.
 - **Cleanup:** `cleanup --appimage` is refused, because the "image" here is `/usr/bin/putgd`.
 
-## Per desktop
+## Historical per-desktop sequence (do not execute)
 
 The run root is `/home/patrick/work/put.gd-nfa` on each builder (or in the VM guest): `tool/`, `assets/`, and `runs/` (`AFA_ROOT`). It's the only path the pass removes at the end. Commands below run from it, with `N=python3 -I tool/nfa.py`, `TAG` set to the accepted nightly, `T` the target (`ubuntu24.04`, `ubuntu26.04`, `debian13` or `fedora44`), and the desktop's VNC port and input mode (uinput on physical Wayland, xdotool on X11, vnc in a VM).
 
@@ -106,7 +114,9 @@ Rehearse the whole order once on the Ubuntu GNOME VM overlay before the physical
 | Ubuntu VM | 5922 tunnelled into the guest | vnc | the guest's own Firefox (`NFA_DISPOSABLE_GUEST=1`, honoured only when DMI says QEMU) | guest reboot (gnome-session-quit), autologin |
 
 - **Quit the lab's resident before every login test.** A `systemd-run --user` unit survives a graphical logout while SSH keeps the user manager alive.
-- **Pass `TRAY_XY` explicitly.** `find-tray` can match a pinned taskbar launcher (#495).
+- **Retired workaround:** the pass used `TRAY_XY` because `find-tray` could match
+  a pinned taskbar launcher (#495). Do not reuse either approach; use the
+  maintained driver's verified SNI actions.
 - **Old builds:** dev.133's DEB can't capture on GNOME 50.1 / Qt 6.10, and its RPM no longer installs on Fedora 44. Seed those with `setup --appimage`. Its DEBs work on Mint and on Plasma.
 - **Keychain:** autologin leaves the keychain locked on every host, so M1 uses `--credentials session` (a second profile keeps the keychain reference).
 - **GNOME:** after installing the package, the extension appears only after a re-login (#492).
