@@ -3,13 +3,13 @@
   "issue": 495,
   "date": "2026-10-24",
   "scope": "Native acceptance lab driver documentation; no new release acceptance claim",
-  "status": "exact72-final-evidence-curated",
+  "status": "draft614-focused-review-pending-accepted72-live-and-grow-proof-preserved",
   "codePullRequest": "https://github.com/patrick-hudson/put.gd-desktop/pull/554",
   "driver": {
     "path": "tools/lab/native_acceptance.py",
-    "commit": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
-    "sha256": "347934c226f99cb0e509d5466c5df8116896e6bfac07d75fdfa4f4c2d06ca053",
-    "stage": "independently-reviewed-exact-source-evidence-complete",
+    "commit": "61439983e2c2d7b050b846e2f8bd723234247aed",
+    "sha256": "7026a15a0ebcb5f6e25a0feb2679a8f6ee241624e8ed8c7bdd950b790a9a6333",
+    "stage": "optional-bot-focused-review-pending-no614-live-rerun",
     "productCliCapabilitiesChanged": false
   },
   "historicalEvidence": {
@@ -114,6 +114,17 @@
       "privateLog": "review3/inert-receipt-tests-2.log",
       "sha256": "2ed4a4acb2bd4cea53fb3f234afb52668f8a2d72818fa2a491fa869bed4e230b",
       "scope": "full product-shaped inert receipts; exact-source independent round3 cleared; runtime proof scope unchanged"
+    },
+    {
+      "path": "tests/desktop/test_native_acceptance.py",
+      "commit": "61439983e2c2d7b050b846e2f8bd723234247aed",
+      "testCount": 39,
+      "seconds": 2.937,
+      "host": "k72",
+      "status": "saved-log-verified-pass",
+      "privateLog": "review4/after-tests.log",
+      "sha256": "7ef49cabe5ae43cd12823cc7f93d52e8dc400eb6682c2722d865e0ca29e49bfc",
+      "scope": "focused post-login scope and invalid-receipt-before-unlock regressions; no live workflow"
     }
   ],
   "desktopRuns": [
@@ -1261,6 +1272,7 @@
     }
   ],
   "limitations": [
+    "Latest614 optional-bot fixes await focused review; all live packets and accepted producer proof remain72; no new GUI/logout/m74 workflow",
     "No real logout/login in k72 runs; same-session refusal tested",
     "No physical tray click or rendered menu proof",
     "No product QtKeychain credential lifecycle or backend persistence across login proof",
@@ -1269,11 +1281,11 @@
     "No independent graphical campaign from documentation thread; historical outcomes unchanged"
   ],
   "sourceHashes": {
-    "tools/lab/native_keychain.py": "c5b80a68b651108595a150db8eadfadc6ad37986a33096cebb5a937b278e9bf8",
-    "tests/desktop/test_native_acceptance.py": "5ce8acfb157cd6727e2c9017332c1324e85c52e8fcaaf7da7b87e0596d580f17",
+    "tools/lab/native_keychain.py": "1b6be4b02fe467d0458eafcc539edc7caf0c6dde597c5f5a34575f65a32a4559",
+    "tools/lab/sycoca_probe/CMakePresets.json": "1cccfd0a9c4f7b6f593a0219cf318550b58ff5ac16d10d5fd014e817ac4dc190",
     "tools/lab/sycoca_probe/CMakeLists.txt": "bc79f4a01c7e458a70fa4b400a165ab01ffa6819ae0da91aecaed9b750069490",
-    "tools/lab/sycoca_probe/CMakePresets.json": "5d2291ac3700ebf427c1e7ffa63cc89b91f2585488f3cd1db37ae5f0c0e01e74",
-    "tools/lab/sycoca_probe/main.cpp": "570422891002af69c64a978fa17185849990bafa892fd2ac3a4caf5714a136b9"
+    "tools/lab/sycoca_probe/main.cpp": "570422891002af69c64a978fa17185849990bafa892fd2ac3a4caf5714a136b9",
+    "tests/desktop/test_native_acceptance.py": "6516a803ff26dae79207d1e427dae32fb44afc3889792d2cf628445da94cada0"
   },
   "keychainScope": {
     "backend": "org.freedesktop.secrets",
@@ -1320,7 +1332,13 @@
         "present",
         "absent"
       ],
-      "requires": "successful same-host/runtime preparation and new graphical session"
+      "requires": "successful same-host/runtime preparation and new graphical session",
+      "successFields": {
+        "postLoginStateVerified": true,
+        "expected": "present|absent",
+        "autostartProven": false,
+        "scope": "post-login process presence/absence only; resident launch origin unverified"
+      }
     },
     "snapshot": {
       "missingCliAndDataTolerated": true,
@@ -1338,6 +1356,11 @@
       "reservation": "exclusive private --output file reserved before actions",
       "failedStoreRecovery": "canonical reference, original safe error and cleanup status persist; cleanup --before FAILED_RECEIPT supported and idempotent",
       "independentReview": "round3 clear at exact72"
+    },
+    "keychainReceiptValidation": {
+      "candidate": "61439983e2c2d7b050b846e2f8bd723234247aed",
+      "order": "canonical reference and original default collection match before any Unlock/Prompt",
+      "focusedReview": "pending"
     }
   },
   "priorCandidate": {
@@ -2541,6 +2564,36 @@
         "bytes": 672,
         "publicCopy": false,
         "independentlyVerifiedMemberCount": 7
+      },
+      "review4/manifest.json": {
+        "sha256": "0de1df16c481c60c4cdd0f9016a3142e7b427ed47ff659d24ee0f37702c7bc86",
+        "bytes": 1479,
+        "publicCopy": false
+      },
+      "review4/presets.log": {
+        "sha256": "083dc7e0fddfd81dbf45047a1f8eb9497e8e5ce5420043888beb1c983d448b4b",
+        "bytes": 38,
+        "publicCopy": false
+      },
+      "review4/after-tests.log": {
+        "sha256": "7ef49cabe5ae43cd12823cc7f93d52e8dc400eb6682c2722d865e0ca29e49bfc",
+        "bytes": 5874,
+        "publicCopy": false
+      },
+      "review4/before-tests.log": {
+        "sha256": "3709162507382d78054bd176ff6a04f54bcae69981d6af6d1b52ca27d893baa9",
+        "bytes": 16547,
+        "publicCopy": false
+      },
+      "review4/probe-build.log": {
+        "sha256": "52688bcac5b7b6e9c39d0d3cda4cfcd38a9eb524ceb98dc6dede23c3f2853637",
+        "bytes": 119,
+        "publicCopy": false
+      },
+      "review4/probe-configure.log": {
+        "sha256": "936ae759665fb2696a2fbffe63fbcc9a5fe7a035f599eeed9904f98889a160c4",
+        "bytes": 637,
+        "publicCopy": false
       }
     }
   },
@@ -2622,6 +2675,14 @@
         "map Cinnamon toQt6.4.2 and KDE toQt6.10.2 explicitly"
       ],
       "reviewStamp": "two requested factual corrections applied; bounded confirmation and exact-head CI recorded onPR552"
+    },
+    "followup614": {
+      "baseDocsHead": "ea4d6f7cbce16d3fb896e015831378d6bc2ec9c9",
+      "candidateCommit": "61439983e2c2d7b050b846e2f8bd723234247aed",
+      "scope": "only source/interface/focused-test/review delta; prior72 live artifacts unchanged",
+      "status": "pending",
+      "privateArtifactCountBefore": 102,
+      "privateArtifactCountWithFocusedLogs": 108
     }
   },
   "protocolChecks": [
@@ -2940,7 +3001,9 @@
         "releasedAt": "2026-10-24T15:43:58Z"
       }
     ],
-    "factualReviewRecord": "factualReview.finalReview"
+    "factualReviewRecord": "factualReview.finalReview",
+    "scope": "all accepted live/protocol packets remain at72afd; latest614 interface has no new live rerun",
+    "latestInterfaceCandidate": "61439983e2c2d7b050b846e2f8bd723234247aed"
   },
   "currentKdeOrchestration": {
     "privateWrapper": "work/495/final_probe_review2.py",
@@ -2957,5 +3020,56 @@
     },
     "maintainedTool": false,
     "host": "k72"
+  },
+  "acceptedLiveEvidenceDriver": {
+    "path": "tools/lab/native_acceptance.py",
+    "commit": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+    "sha256": "347934c226f99cb0e509d5466c5df8116896e6bfac07d75fdfa4f4c2d06ca053",
+    "stage": "independently-reviewed-exact-source-evidence-complete",
+    "productCliCapabilitiesChanged": false
+  },
+  "optionalBotFollowup": {
+    "baseCommit": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+    "candidateCommit": "61439983e2c2d7b050b846e2f8bd723234247aed",
+    "status": "three-confirmed-findings-fixed-awaiting-distinct-focused-review",
+    "deltaFiles": [
+      "tools/lab/native_acceptance.py",
+      "tools/lab/native_keychain.py",
+      "tools/lab/sycoca_probe/CMakePresets.json",
+      "tests/desktop/test_native_acceptance.py"
+    ],
+    "resolutions": [
+      "postLoginStateVerified/expected state with autostartProven=false; launch origin explicitly unverified",
+      "canonical reference and original default collection checked before any Unlock/Prompt",
+      "probe preset format6 to5 for declared CMake3.24 compatibility"
+    ],
+    "growGuardBodiesAstUnchanged": true,
+    "acceptedProducerProofCommit": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+    "noLive614Proof": true,
+    "noNewGuiLogoutM74Work": true,
+    "focusedIndependentReview": "pending"
+  },
+  "newNegativeBaseline": {
+    "productionSource": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+    "regressionTestsSource": "61439983e2c2d7b050b846e2f8bd723234247aed",
+    "privateLog": "review4/before-tests.log",
+    "sha256": "3709162507382d78054bd176ff6a04f54bcae69981d6af6d1b52ca27d893baa9",
+    "executedNewTestMethods": 2,
+    "expectedResult": "6 unsafe-Unlock subcase failures plus1 output-scope error",
+    "scope": "synthetic regression reproduction, not real keychain/desktop"
+  },
+  "probePresetCompatibility": {
+    "candidate": "61439983e2c2d7b050b846e2f8bd723234247aed",
+    "schemaVersion": 5,
+    "actualTestCMake": "4.2.3",
+    "actualChecks": "preset listing,configure,build-j1 passed",
+    "cmake324Executed": false,
+    "officialCompatibilitySource": "https://cmake.org/cmake/help/v3.24/manual/cmake-presets.7.html#format",
+    "documentationClaim": "schema5 introduced in3.24; source compatibility, not actual3.24 execution",
+    "privateLogs": [
+      "review4/presets.log",
+      "review4/probe-configure.log",
+      "review4/probe-build.log"
+    ]
   }
 }

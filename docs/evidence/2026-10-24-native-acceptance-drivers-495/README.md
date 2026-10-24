@@ -1,11 +1,11 @@
 # Native acceptance driver hardening (#495) — 2026-10-24
 
-Exact `72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e` cleared independent round 3
-with no actionable findings. The five original safety findings and the inert
-receipt compatibility issue are resolved. Growth is permitted only at this
-exact revision with every guard below; predecessor growth recipes remain held.
-All final exact-source packets are verified; factual review and exact-head CI
-are recorded on documentation PR #552. This is driver validation, not release acceptance.
+Latest candidate `61439983e2c2d7b050b846e2f8bd723234247aed` contains three
+narrow optional-review corrections and awaits focused independent review.
+All accepted live packets and the producer proof below remain at `72afd00b`;
+no new live/GUI/logout/m74 workflow is claimed for `61439983`. The accepted
+exact-72 growth handoff and all its guards are unchanged. This documentation
+PR stays draft for the final source/interface review and exact-head CI.
 
 This is the documentation companion to the maintained driver in
 `tools/lab/native_acceptance.py` in [code PR #554](https://github.com/patrick-hudson/put.gd-desktop/pull/554).
@@ -37,17 +37,18 @@ The old outcome tables and failure context are unchanged. In particular, the m74
 P failure (#490) remains a failure in that record. Later host setup or driver fixes
 do not retroactively turn those attempts into passes.
 
-## Reviewed command interface (exact `72afd` only)
+## Latest command interface (`61439983`, focused review pending)
 
-Reviewed source: `72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e`,
+Candidate source: `61439983e2c2d7b050b846e2f8bd723234247aed`,
 `tools/lab/native_acceptance.py` plus `tools/lab/native_keychain.py`. The driver
-SHA-256 is `347934c226f99cb0e509d5466c5df8116896e6bfac07d75fdfa4f4c2d06ca053`;
+SHA-256 is `7026a15a0ebcb5f6e25a0feb2679a8f6ee241624e8ed8c7bdd950b790a9a6333`;
 the [JSON](summary.json) also records the helper and test hashes. This is
 unmerged harness source, separately identified from the published product
 package under test. The product CLI capabilities are unchanged.
 
-These commands apply only to the reviewed exact source. Preserve source-specific
-evidence and all fixture/ownership/receipt guards. In particular, current localhost configuration
+This interface delta is under focused review. Preserve source-specific evidence
+and every fixture/ownership/receipt guard. Accepted growth execution/proof remains
+scoped to exact `72afd00b` until the final handoff; its guard bodies are unchanged. In particular, current localhost configuration
 alone does not establish that stored journals/destinations are safe or that the
 selected database is stopped.
 
@@ -115,7 +116,7 @@ KService in the current session's menu/cache/locale environment, rebuilds sycoca
 only when registrations are missing, and rechecks. A missing probe is a blocked
 check; it does not establish that the cache is empty.
 
-For a login-start check, enable the intended login entry through the product's
+For a post-login presence check, enable the intended login entry through the product's
 existing interface, then prepare before the real logout:
 
 ```sh
@@ -134,6 +135,11 @@ python3 tools/lab/native_acceptance.py --output "$after_login" login-check \
 
 The receipt is bound to the same host/runtime and selected package executable;
 the check requires a new graphical session and rejects old process generations.
+A successful `61439983` response reports `postLoginStateVerified: true`,
+`expected: present|absent` and `autostartProven: false`. It proves process
+presence/absence after login, not desktop autostart origin: a new SSH/systemd
+user-scope start can satisfy the same state. Independent launch-origin evidence
+is required for an autostart claim.
 For removal, prepare while the installed resident/CLI still exist, perform the
 reviewed package removal, then a real logout/login, and use `--expected absent`
 with that preparation receipt. A same-session snapshot does not replace this
@@ -212,6 +218,26 @@ and check every complete socket path, including `putgd/session.sock`, with
 bytes before launch. Follow [remote-builder locking and visibility](../../remote-builders.md)
 and [VM lifecycle rules](../../vm-lab.md). This documentation thread runs no GUI
 campaign; the code owner coordinates execution and desktop locks.
+
+## Narrow optional-review follow-up (`61439983`)
+
+The four-file delta adds the explicit post-login scope above, validates canonical
+keychain reference and original default collection **before any Unlock/Prompt**,
+and changes the probe preset from schema 6 to 5. Invalid or foreign receipts
+must refuse without unlocking even another approved lab collection. The stored
+reference/default comparison does not wait until after an unlock side effect.
+
+The saved 39-test k72 log passes in 2.937 s. Running the two new regression
+methods against `72afd` reproduces six unsafe-Unlock subcase failures plus one
+missing-output-scope error, as expected. Source/test and before/after/probe log
+hashes are indexed in `review4/manifest.json`; all prior live evidence remains
+at its original source. No live keychain, graphical or logout rerun is claimed
+for this delta.
+
+Preset listing, configure and build passed with actual distro CMake 4.2.3.
+[CMake's official 3.24 documentation](https://cmake.org/cmake/help/v3.24/manual/cmake-presets.7.html#format)
+identifies preset schema 5 as supported from 3.24. This is a compatibility
+statement, not a claim that CMake 3.24 was executed. Focused review is pending.
 
 ## Review resolutions and serializer compatibility (`72afd`)
 

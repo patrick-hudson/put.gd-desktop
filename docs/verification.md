@@ -96,13 +96,17 @@ session for recording) and on an Ubuntu 26.04 GNOME VM, the `debian13` DEB on d6
 ## Native acceptance driver hardening (#495) — 2026-10-24
 
 The [follow-up record](evidence/2026-10-24-native-acceptance-drivers-495/README.md)
-retires unsafe recipes and documents exact reviewed source `72afd00b` in
+retires unsafe recipes and records accepted `72afd00b` live/growth proof for
 [code PR #554](https://github.com/patrick-hudson/put.gd-desktop/pull/554).
+The later `61439983` interface delta has 39 passing tests and awaits focused
+review: post-login state explicitly does not prove autostart origin, keychain
+receipt/default validation precedes Unlock, and probe preset schema is 5. There
+is no new live/GUI/logout evidence at that source.
 Independent round 3 cleared all five safety findings and inert-receipt
 compatibility. Only exact-72 growth is permitted under every guard; predecessors
 remain held. Final exact-source Cinnamon/KDE bounded functional packets and
 GNOME session/backend-only protocol evidence are verified.
-Current proof includes 37 tests, actual serializer/unstripped-receipt/10k
+Accepted `72afd` proof includes 37 tests, actual serializer/unstripped-receipt/10k
 synthetic CLI checks and fresh physical Cinnamon/X11 and KDE/Wayland SNI activation/Quit visuals,
 peer-bound preparation/same-session refusal, separate-process backend roundtrip,
 absent-CLI snapshot and clean release: Cinnamon uses Qt 6.4.2; KDE uses Qt 6.10.2.
