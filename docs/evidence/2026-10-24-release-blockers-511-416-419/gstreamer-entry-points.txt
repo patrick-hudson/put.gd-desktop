@@ -1,0 +1,6 @@
+50053b01f1bbd7f3776a53513bb8c43151ce0de8:src/record/EncoderCheck.cpp:29:    GstElement* pipeline = gst_parse_launch(description.toUtf8().constData(), &error);
+50053b01f1bbd7f3776a53513bb8c43151ce0de8:src/record/MediaProbe.cpp:47:    GstElementFactory* factory = gst_element_factory_find(name);
+50053b01f1bbd7f3776a53513bb8c43151ce0de8:src/record/MediaProbe.cpp:62:    GstElement* instance = gst_element_factory_make(name, nullptr);
+50053b01f1bbd7f3776a53513bb8c43151ce0de8:src/record/RecordSession.cpp:41:    for (const auto& name : names) if (GstElementFactory* f = gst_element_factory_find(name.toUtf8().constData())) { gst_object_unref(f); result.append(name); }
+50053b01f1bbd7f3776a53513bb8c43151ce0de8:src/record/RecordingPipeline.cpp:59:        GstElementFactory* factory = gst_element_factory_find("pipewiresrc");
+50053b01f1bbd7f3776a53513bb8c43151ce0de8:src/record/RecordingPipeline.cpp:170:    GstElement* pipeline = gst_parse_launch(description.toUtf8().constData(), &error);

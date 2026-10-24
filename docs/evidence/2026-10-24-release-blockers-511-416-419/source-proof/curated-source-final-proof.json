@@ -1,0 +1,21 @@
+{
+  "passed": true,
+  "head": "49966f830d04ff1ec99d5c171b43f5c6652c010d",
+  "artifact": {
+    "file": "application-source.tar.gz",
+    "sha256": "d59a6e9579899dcdfc8300f227a60d7d32faeafe02b121bf8f0d835bcb01d5a8",
+    "bytes": 4352592
+  },
+  "exportedFiles": 420,
+  "appimageBuildInputsPresent": true,
+  "identity": {
+    "version": "26.1024.1153-dev+g49966f830d04",
+    "baseVersion": "26.1024.1153",
+    "packageVersion": "26.1024.1153~dev+g49966f830d04",
+    "gitCommit": "49966f830d04ff1ec99d5c171b43f5c6652c010d",
+    "gitTree": "526b421e61bc758e1252fd460dea5952b5b31c21",
+    "commitCount": 1153,
+    "dirty": false,
+    "sourceProvenance": "git"
+  }
+}

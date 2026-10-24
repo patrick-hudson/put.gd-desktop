@@ -1,0 +1,1308 @@
+{
+  "schemaVersion": 1,
+  "format": "appimage-complete-source",
+  "appImage": {
+    "file": "putgd-26.1024.1133-dev+g50053b01f1bb-x86_64.AppImage",
+    "sha256": "cea2f5f6fe98b7782c1eae090e4a0398b620989052a3d340450474f5eb9af426",
+    "bytes": 116472312,
+    "mode": "0755"
+  },
+  "file": "putgd-26.1024.1133-dev+g50053b01f1bb-appimage-complete-source.tar.gz",
+  "sha256": "77de399818e852aad3e897a19096211d4311220617efa15182eb6bea6553b1d2",
+  "bytes": 658780913,
+  "components": [
+    {
+      "id": "appimage-runtime",
+      "source": {
+        "repository": "https://github.com/AppImage/type2-runtime",
+        "commit": "dd6cebedcbddde9c82f89b011e8e1d40b6e43868"
+      }
+    },
+    {
+      "id": "aws-sdk-cpp",
+      "source": {
+        "repository": "https://github.com/aws/aws-sdk-cpp.git",
+        "commit": "a9f0ffcc276664b475230206fa554841ad5bc3de"
+      }
+    },
+    {
+      "id": "ffmpeg",
+      "source": {
+        "repository": "https://github.com/FFmpeg/FFmpeg.git",
+        "commit": "3a0867c2bfda4a4d4309ca1a8cbdc6175e67f587"
+      }
+    },
+    {
+      "id": "icu",
+      "source": {
+        "repository": "https://github.com/unicode-org/icu.git",
+        "commit": "680f521746a3bd6a86f25f25ee50a62d88b489cf"
+      }
+    },
+    {
+      "id": "layershell",
+      "source": {
+        "repository": "https://github.com/KDE/layer-shell-qt.git",
+        "commit": "b1317ba122420dd0542ad12f4780b02ba7b6288f"
+      }
+    },
+    {
+      "id": "proton-helper",
+      "external": "proton-source-catalog.json",
+      "source": {
+        "sourceCatalog": "usr/libexec/putgd/proton/redistribution/SOURCES.json",
+        "commit": "8ffae007b0fbb8bcef53514719d6f093bb32dcf9"
+      }
+    },
+    {
+      "id": "putgd",
+      "external": "putgd-26.1024.1133-dev+g50053b01f1bb-source.tar.gz",
+      "source": {
+        "repository": "https://github.com/patrick-hudson/put.gd-desktop",
+        "commit": "50053b01f1bbd7f3776a53513bb8c43151ce0de8"
+      }
+    },
+    {
+      "id": "qtbase",
+      "source": {
+        "repository": "https://github.com/qt/qtbase.git",
+        "commit": "025bdad181de241e81bf853c8a2d7bf3d19261a9"
+      }
+    },
+    {
+      "id": "qtimageformats",
+      "source": {
+        "repository": "https://github.com/qt/qtimageformats.git",
+        "commit": "dc13f2fbff1d579cfb2eb2d9092e3563b4d05b8e"
+      }
+    },
+    {
+      "id": "qtkeychain",
+      "source": {
+        "repository": "https://github.com/frankosterfeld/qtkeychain.git",
+        "commit": "8eac9889775ca45c106d077bb0d3744754a1570a"
+      }
+    },
+    {
+      "id": "qtsvg",
+      "source": {
+        "repository": "https://github.com/qt/qtsvg.git",
+        "commit": "883a58532078d003cefef0a549bfe9f885ce41f5"
+      }
+    },
+    {
+      "id": "qttranslations",
+      "source": {
+        "repository": "https://github.com/qt/qttranslations.git",
+        "commit": "2811457ceff8f0c24a1c4d14f947a283a17239d0"
+      }
+    },
+    {
+      "id": "qtwayland",
+      "source": {
+        "repository": "https://github.com/qt/qtwayland.git",
+        "commit": "c4f85cd060e3e80a7d71829defac9cf5a40e8ffa"
+      }
+    },
+    {
+      "id": "ubuntu:gstreamer1.0-pipewire",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "pipewire",
+        "sourceVersion": "1.0.5-1ubuntu3.3",
+        "url": "https://launchpad.net/ubuntu/+source/pipewire/1.0.5-1ubuntu3.3"
+      }
+    },
+    {
+      "id": "ubuntu:gstreamer1.0-plugins-bad",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "gst-plugins-bad1.0",
+        "sourceVersion": "1.24.2-1ubuntu4",
+        "url": "https://launchpad.net/ubuntu/+source/gst-plugins-bad1.0/1.24.2-1ubuntu4"
+      }
+    },
+    {
+      "id": "ubuntu:gstreamer1.0-plugins-base",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "gst-plugins-base1.0",
+        "sourceVersion": "1.24.2-1ubuntu0.5",
+        "url": "https://launchpad.net/ubuntu/+source/gst-plugins-base1.0/1.24.2-1ubuntu0.5"
+      }
+    },
+    {
+      "id": "ubuntu:gstreamer1.0-plugins-good",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "gst-plugins-good1.0",
+        "sourceVersion": "1.24.2-1ubuntu1.8",
+        "url": "https://launchpad.net/ubuntu/+source/gst-plugins-good1.0/1.24.2-1ubuntu1.8"
+      }
+    },
+    {
+      "id": "ubuntu:gstreamer1.0-plugins-ugly",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "gst-plugins-ugly1.0",
+        "sourceVersion": "1.24.1-1build1",
+        "url": "https://launchpad.net/ubuntu/+source/gst-plugins-ugly1.0/1.24.1-1build1"
+      }
+    },
+    {
+      "id": "ubuntu:gstreamer1.0-vaapi",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "gstreamer-vaapi",
+        "sourceVersion": "1.24.2-1",
+        "url": "https://launchpad.net/ubuntu/+source/gstreamer-vaapi/1.24.2-1"
+      }
+    },
+    {
+      "id": "ubuntu:libapparmor1",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "apparmor",
+        "sourceVersion": "4.0.1really4.0.1-0ubuntu0.24.04.8",
+        "url": "https://launchpad.net/ubuntu/+source/apparmor/4.0.1really4.0.1-0ubuntu0.24.04.8"
+      }
+    },
+    {
+      "id": "ubuntu:libasyncns0",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libasyncns",
+        "sourceVersion": "0.8-6build4",
+        "url": "https://launchpad.net/ubuntu/+source/libasyncns/0.8-6build4"
+      }
+    },
+    {
+      "id": "ubuntu:libatk-bridge2.0-0t64",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "at-spi2-core",
+        "sourceVersion": "2.52.0-1build1",
+        "url": "https://launchpad.net/ubuntu/+source/at-spi2-core/2.52.0-1build1"
+      }
+    },
+    {
+      "id": "ubuntu:libatk1.0-0t64",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "at-spi2-core",
+        "sourceVersion": "2.52.0-1build1",
+        "url": "https://launchpad.net/ubuntu/+source/at-spi2-core/2.52.0-1build1"
+      }
+    },
+    {
+      "id": "ubuntu:libatspi2.0-0t64",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "at-spi2-core",
+        "sourceVersion": "2.52.0-1build1",
+        "url": "https://launchpad.net/ubuntu/+source/at-spi2-core/2.52.0-1build1"
+      }
+    },
+    {
+      "id": "ubuntu:libblkid1",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "util-linux",
+        "sourceVersion": "2.39.3-9ubuntu6.6",
+        "url": "https://launchpad.net/ubuntu/+source/util-linux/2.39.3-9ubuntu6.6"
+      }
+    },
+    {
+      "id": "ubuntu:libbrotli1",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "brotli",
+        "sourceVersion": "1.1.0-2build2",
+        "url": "https://launchpad.net/ubuntu/+source/brotli/1.1.0-2build2"
+      }
+    },
+    {
+      "id": "ubuntu:libbsd0",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libbsd",
+        "sourceVersion": "0.12.1-1build1.1",
+        "url": "https://launchpad.net/ubuntu/+source/libbsd/0.12.1-1build1.1"
+      }
+    },
+    {
+      "id": "ubuntu:libbz2-1.0",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "bzip2",
+        "sourceVersion": "1.0.8-5.1ubuntu0.1",
+        "url": "https://launchpad.net/ubuntu/+source/bzip2/1.0.8-5.1ubuntu0.1"
+      }
+    },
+    {
+      "id": "ubuntu:libcairo-gobject2",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "cairo",
+        "sourceVersion": "1.18.0-3build1",
+        "url": "https://launchpad.net/ubuntu/+source/cairo/1.18.0-3build1"
+      }
+    },
+    {
+      "id": "ubuntu:libcairo2",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "cairo",
+        "sourceVersion": "1.18.0-3build1",
+        "url": "https://launchpad.net/ubuntu/+source/cairo/1.18.0-3build1"
+      }
+    },
+    {
+      "id": "ubuntu:libcap2",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libcap2",
+        "sourceVersion": "1:2.66-5ubuntu2.4",
+        "url": "https://launchpad.net/ubuntu/+source/libcap2/1:2.66-5ubuntu2.4"
+      }
+    },
+    {
+      "id": "ubuntu:libcurl4t64",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "curl",
+        "sourceVersion": "8.5.0-2ubuntu10.16",
+        "url": "https://launchpad.net/ubuntu/+source/curl/8.5.0-2ubuntu10.16"
+      }
+    },
+    {
+      "id": "ubuntu:libdatrie1",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libdatrie",
+        "sourceVersion": "0.2.13-3build1",
+        "url": "https://launchpad.net/ubuntu/+source/libdatrie/0.2.13-3build1"
+      }
+    },
+    {
+      "id": "ubuntu:libdbus-1-3",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "dbus",
+        "sourceVersion": "1.14.10-4ubuntu4.1",
+        "url": "https://launchpad.net/ubuntu/+source/dbus/1.14.10-4ubuntu4.1"
+      }
+    },
+    {
+      "id": "ubuntu:libdw1t64",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "elfutils",
+        "sourceVersion": "0.190-1.1ubuntu0.1",
+        "url": "https://launchpad.net/ubuntu/+source/elfutils/0.190-1.1ubuntu0.1"
+      }
+    },
+    {
+      "id": "ubuntu:libelf1t64",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "elfutils",
+        "sourceVersion": "0.190-1.1ubuntu0.1",
+        "url": "https://launchpad.net/ubuntu/+source/elfutils/0.190-1.1ubuntu0.1"
+      }
+    },
+    {
+      "id": "ubuntu:libepoxy0",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libepoxy",
+        "sourceVersion": "1.5.10-1build1",
+        "url": "https://launchpad.net/ubuntu/+source/libepoxy/1.5.10-1build1"
+      }
+    },
+    {
+      "id": "ubuntu:libffi8",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libffi",
+        "sourceVersion": "3.4.6-1build1",
+        "url": "https://launchpad.net/ubuntu/+source/libffi/3.4.6-1build1"
+      }
+    },
+    {
+      "id": "ubuntu:libflac12t64",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "flac",
+        "sourceVersion": "1.4.3+ds-2.1ubuntu2",
+        "url": "https://launchpad.net/ubuntu/+source/flac/1.4.3+ds-2.1ubuntu2"
+      }
+    },
+    {
+      "id": "ubuntu:libgcrypt20",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libgcrypt20",
+        "sourceVersion": "1.10.3-2ubuntu0.2",
+        "url": "https://launchpad.net/ubuntu/+source/libgcrypt20/1.10.3-2ubuntu0.2"
+      }
+    },
+    {
+      "id": "ubuntu:libgdk-pixbuf-2.0-0",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "gdk-pixbuf",
+        "sourceVersion": "2.42.10+dfsg-3ubuntu3.3",
+        "url": "https://launchpad.net/ubuntu/+source/gdk-pixbuf/2.42.10+dfsg-3ubuntu3.3"
+      }
+    },
+    {
+      "id": "ubuntu:libgles2",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libglvnd",
+        "sourceVersion": "1.7.0-1build1",
+        "url": "https://launchpad.net/ubuntu/+source/libglvnd/1.7.0-1build1"
+      }
+    },
+    {
+      "id": "ubuntu:libglib2.0-0t64",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "glib2.0",
+        "sourceVersion": "2.80.0-6ubuntu3.10",
+        "url": "https://launchpad.net/ubuntu/+source/glib2.0/2.80.0-6ubuntu3.10"
+      }
+    },
+    {
+      "id": "ubuntu:libgnutls30t64",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "gnutls28",
+        "sourceVersion": "3.8.3-1.1ubuntu3.6",
+        "url": "https://launchpad.net/ubuntu/+source/gnutls28/3.8.3-1.1ubuntu3.6"
+      }
+    },
+    {
+      "id": "ubuntu:libgraphite2-3",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "graphite2",
+        "sourceVersion": "1.3.14-2ubuntu0.24.04.1",
+        "url": "https://launchpad.net/ubuntu/+source/graphite2/1.3.14-2ubuntu0.24.04.1"
+      }
+    },
+    {
+      "id": "ubuntu:libgssapi-krb5-2",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "krb5",
+        "sourceVersion": "1.20.1-6ubuntu2.10",
+        "url": "https://launchpad.net/ubuntu/+source/krb5/1.20.1-6ubuntu2.10"
+      }
+    },
+    {
+      "id": "ubuntu:libgstreamer-gl1.0-0",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "gst-plugins-base1.0",
+        "sourceVersion": "1.24.2-1ubuntu0.5",
+        "url": "https://launchpad.net/ubuntu/+source/gst-plugins-base1.0/1.24.2-1ubuntu0.5"
+      }
+    },
+    {
+      "id": "ubuntu:libgstreamer-plugins-bad1.0-0",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "gst-plugins-bad1.0",
+        "sourceVersion": "1.24.2-1ubuntu4",
+        "url": "https://launchpad.net/ubuntu/+source/gst-plugins-bad1.0/1.24.2-1ubuntu4"
+      }
+    },
+    {
+      "id": "ubuntu:libgstreamer-plugins-base1.0-0",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "gst-plugins-base1.0",
+        "sourceVersion": "1.24.2-1ubuntu0.5",
+        "url": "https://launchpad.net/ubuntu/+source/gst-plugins-base1.0/1.24.2-1ubuntu0.5"
+      }
+    },
+    {
+      "id": "ubuntu:libgstreamer1.0-0",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "gstreamer1.0",
+        "sourceVersion": "1.24.2-1ubuntu0.1",
+        "url": "https://launchpad.net/ubuntu/+source/gstreamer1.0/1.24.2-1ubuntu0.1"
+      }
+    },
+    {
+      "id": "ubuntu:libgtk-3-0t64",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "gtk+3.0",
+        "sourceVersion": "3.24.41-4ubuntu1.3",
+        "url": "https://launchpad.net/ubuntu/+source/gtk+3.0/3.24.41-4ubuntu1.3"
+      }
+    },
+    {
+      "id": "ubuntu:libgudev-1.0-0",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libgudev",
+        "sourceVersion": "238-5ubuntu1",
+        "url": "https://launchpad.net/ubuntu/+source/libgudev/238-5ubuntu1"
+      }
+    },
+    {
+      "id": "ubuntu:libhogweed6t64",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "nettle",
+        "sourceVersion": "3.9.1-2.2build1.1",
+        "url": "https://launchpad.net/ubuntu/+source/nettle/3.9.1-2.2build1.1"
+      }
+    },
+    {
+      "id": "ubuntu:libidn2-0",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libidn2",
+        "sourceVersion": "2.3.7-2build1.1",
+        "url": "https://launchpad.net/ubuntu/+source/libidn2/2.3.7-2build1.1"
+      }
+    },
+    {
+      "id": "ubuntu:libjpeg-turbo8",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libjpeg-turbo",
+        "sourceVersion": "2.1.5-2ubuntu2",
+        "url": "https://launchpad.net/ubuntu/+source/libjpeg-turbo/2.1.5-2ubuntu2"
+      }
+    },
+    {
+      "id": "ubuntu:libk5crypto3",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "krb5",
+        "sourceVersion": "1.20.1-6ubuntu2.10",
+        "url": "https://launchpad.net/ubuntu/+source/krb5/1.20.1-6ubuntu2.10"
+      }
+    },
+    {
+      "id": "ubuntu:libkeyutils1",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "keyutils",
+        "sourceVersion": "1.6.3-3build1",
+        "url": "https://launchpad.net/ubuntu/+source/keyutils/1.6.3-3build1"
+      }
+    },
+    {
+      "id": "ubuntu:libkrb5-3",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "krb5",
+        "sourceVersion": "1.20.1-6ubuntu2.10",
+        "url": "https://launchpad.net/ubuntu/+source/krb5/1.20.1-6ubuntu2.10"
+      }
+    },
+    {
+      "id": "ubuntu:libkrb5support0",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "krb5",
+        "sourceVersion": "1.20.1-6ubuntu2.10",
+        "url": "https://launchpad.net/ubuntu/+source/krb5/1.20.1-6ubuntu2.10"
+      }
+    },
+    {
+      "id": "ubuntu:libldap2",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "openldap",
+        "sourceVersion": "2.6.10+dfsg-0ubuntu0.24.04.1",
+        "url": "https://launchpad.net/ubuntu/+source/openldap/2.6.10+dfsg-0ubuntu0.24.04.1"
+      }
+    },
+    {
+      "id": "ubuntu:liblz4-1",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "lz4",
+        "sourceVersion": "1.9.4-1build1.1",
+        "url": "https://launchpad.net/ubuntu/+source/lz4/1.9.4-1build1.1"
+      }
+    },
+    {
+      "id": "ubuntu:liblzma5",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "xz-utils",
+        "sourceVersion": "5.6.1+really5.4.5-1ubuntu0.4",
+        "url": "https://launchpad.net/ubuntu/+source/xz-utils/5.6.1+really5.4.5-1ubuntu0.4"
+      }
+    },
+    {
+      "id": "ubuntu:libmd0",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libmd",
+        "sourceVersion": "1.1.0-2build1.1",
+        "url": "https://launchpad.net/ubuntu/+source/libmd/1.1.0-2build1.1"
+      }
+    },
+    {
+      "id": "ubuntu:libmount1",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "util-linux",
+        "sourceVersion": "2.39.3-9ubuntu6.6",
+        "url": "https://launchpad.net/ubuntu/+source/util-linux/2.39.3-9ubuntu6.6"
+      }
+    },
+    {
+      "id": "ubuntu:libmp3lame0",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "lame",
+        "sourceVersion": "3.100-6build1",
+        "url": "https://launchpad.net/ubuntu/+source/lame/3.100-6build1"
+      }
+    },
+    {
+      "id": "ubuntu:libmpg123-0t64",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "mpg123",
+        "sourceVersion": "1.32.5-1ubuntu1.1",
+        "url": "https://launchpad.net/ubuntu/+source/mpg123/1.32.5-1ubuntu1.1"
+      }
+    },
+    {
+      "id": "ubuntu:libnettle8t64",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "nettle",
+        "sourceVersion": "3.9.1-2.2build1.1",
+        "url": "https://launchpad.net/ubuntu/+source/nettle/3.9.1-2.2build1.1"
+      }
+    },
+    {
+      "id": "ubuntu:libnghttp2-14",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "nghttp2",
+        "sourceVersion": "1.59.0-1ubuntu0.4",
+        "url": "https://launchpad.net/ubuntu/+source/nghttp2/1.59.0-1ubuntu0.4"
+      }
+    },
+    {
+      "id": "ubuntu:libnuma1",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "numactl",
+        "sourceVersion": "2.0.18-1ubuntu0.24.04.1",
+        "url": "https://launchpad.net/ubuntu/+source/numactl/2.0.18-1ubuntu0.24.04.1"
+      }
+    },
+    {
+      "id": "ubuntu:libogg0",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libogg",
+        "sourceVersion": "1.3.5-3build1",
+        "url": "https://launchpad.net/ubuntu/+source/libogg/1.3.5-3build1"
+      }
+    },
+    {
+      "id": "ubuntu:libopus0",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "opus",
+        "sourceVersion": "1.4-1build1",
+        "url": "https://launchpad.net/ubuntu/+source/opus/1.4-1build1"
+      }
+    },
+    {
+      "id": "ubuntu:liborc-0.4-0t64",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "orc",
+        "sourceVersion": "1:0.4.38-1ubuntu0.1",
+        "url": "https://launchpad.net/ubuntu/+source/orc/1:0.4.38-1ubuntu0.1"
+      }
+    },
+    {
+      "id": "ubuntu:libp11-kit0",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "p11-kit",
+        "sourceVersion": "0.25.3-4ubuntu2.2",
+        "url": "https://launchpad.net/ubuntu/+source/p11-kit/0.25.3-4ubuntu2.2"
+      }
+    },
+    {
+      "id": "ubuntu:libpango-1.0-0",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "pango1.0",
+        "sourceVersion": "1.52.1+ds-1build1",
+        "url": "https://launchpad.net/ubuntu/+source/pango1.0/1.52.1+ds-1build1"
+      }
+    },
+    {
+      "id": "ubuntu:libpangocairo-1.0-0",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "pango1.0",
+        "sourceVersion": "1.52.1+ds-1build1",
+        "url": "https://launchpad.net/ubuntu/+source/pango1.0/1.52.1+ds-1build1"
+      }
+    },
+    {
+      "id": "ubuntu:libpangoft2-1.0-0",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "pango1.0",
+        "sourceVersion": "1.52.1+ds-1build1",
+        "url": "https://launchpad.net/ubuntu/+source/pango1.0/1.52.1+ds-1build1"
+      }
+    },
+    {
+      "id": "ubuntu:libpcre2-8-0",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "pcre2",
+        "sourceVersion": "10.42-4ubuntu2.1",
+        "url": "https://launchpad.net/ubuntu/+source/pcre2/10.42-4ubuntu2.1"
+      }
+    },
+    {
+      "id": "ubuntu:libpixman-1-0",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "pixman",
+        "sourceVersion": "0.42.2-1build1",
+        "url": "https://launchpad.net/ubuntu/+source/pixman/0.42.2-1build1"
+      }
+    },
+    {
+      "id": "ubuntu:libpng16-16t64",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libpng1.6",
+        "sourceVersion": "1.6.43-5ubuntu0.7",
+        "url": "https://launchpad.net/ubuntu/+source/libpng1.6/1.6.43-5ubuntu0.7"
+      }
+    },
+    {
+      "id": "ubuntu:libpsl5t64",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libpsl",
+        "sourceVersion": "0.21.2-1.1build1",
+        "url": "https://launchpad.net/ubuntu/+source/libpsl/0.21.2-1.1build1"
+      }
+    },
+    {
+      "id": "ubuntu:libpulse0",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "pulseaudio",
+        "sourceVersion": "1:16.1+dfsg1-2ubuntu10.1",
+        "url": "https://launchpad.net/ubuntu/+source/pulseaudio/1:16.1+dfsg1-2ubuntu10.1"
+      }
+    },
+    {
+      "id": "ubuntu:librtmp1",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "rtmpdump",
+        "sourceVersion": "2.4+20151223.gitfa8646d.1-2build7",
+        "url": "https://launchpad.net/ubuntu/+source/rtmpdump/2.4+20151223.gitfa8646d.1-2build7"
+      }
+    },
+    {
+      "id": "ubuntu:libsasl2-2",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "cyrus-sasl2",
+        "sourceVersion": "2.1.28+dfsg1-5ubuntu3.1",
+        "url": "https://launchpad.net/ubuntu/+source/cyrus-sasl2/2.1.28+dfsg1-5ubuntu3.1"
+      }
+    },
+    {
+      "id": "ubuntu:libselinux1",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libselinux",
+        "sourceVersion": "3.5-2ubuntu2.1",
+        "url": "https://launchpad.net/ubuntu/+source/libselinux/3.5-2ubuntu2.1"
+      }
+    },
+    {
+      "id": "ubuntu:libsharpyuv0",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libwebp",
+        "sourceVersion": "1.3.2-0.4build3",
+        "url": "https://launchpad.net/ubuntu/+source/libwebp/1.3.2-0.4build3"
+      }
+    },
+    {
+      "id": "ubuntu:libsndfile1",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libsndfile",
+        "sourceVersion": "1.2.2-1ubuntu5.24.04.1",
+        "url": "https://launchpad.net/ubuntu/+source/libsndfile/1.2.2-1ubuntu5.24.04.1"
+      }
+    },
+    {
+      "id": "ubuntu:libssh-4",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libssh",
+        "sourceVersion": "0.10.6-2ubuntu0.5",
+        "url": "https://launchpad.net/ubuntu/+source/libssh/0.10.6-2ubuntu0.5"
+      }
+    },
+    {
+      "id": "ubuntu:libssl3t64",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "openssl",
+        "sourceVersion": "3.0.13-0ubuntu3.16",
+        "url": "https://launchpad.net/ubuntu/+source/openssl/3.0.13-0ubuntu3.16"
+      }
+    },
+    {
+      "id": "ubuntu:libsystemd0",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "systemd",
+        "sourceVersion": "255.4-1ubuntu8.18",
+        "url": "https://launchpad.net/ubuntu/+source/systemd/255.4-1ubuntu8.18"
+      }
+    },
+    {
+      "id": "ubuntu:libtasn1-6",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libtasn1-6",
+        "sourceVersion": "4.19.0-3ubuntu0.24.04.2",
+        "url": "https://launchpad.net/ubuntu/+source/libtasn1-6/4.19.0-3ubuntu0.24.04.2"
+      }
+    },
+    {
+      "id": "ubuntu:libthai0",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libthai",
+        "sourceVersion": "0.1.29-2build1",
+        "url": "https://launchpad.net/ubuntu/+source/libthai/0.1.29-2build1"
+      }
+    },
+    {
+      "id": "ubuntu:libudev1",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "systemd",
+        "sourceVersion": "255.4-1ubuntu8.18",
+        "url": "https://launchpad.net/ubuntu/+source/systemd/255.4-1ubuntu8.18"
+      }
+    },
+    {
+      "id": "ubuntu:libunistring5",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libunistring",
+        "sourceVersion": "1.1-2build1.1",
+        "url": "https://launchpad.net/ubuntu/+source/libunistring/1.1-2build1.1"
+      }
+    },
+    {
+      "id": "ubuntu:libunwind8",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libunwind",
+        "sourceVersion": "1.6.2-3build1.1",
+        "url": "https://launchpad.net/ubuntu/+source/libunwind/1.6.2-3build1.1"
+      }
+    },
+    {
+      "id": "ubuntu:libva-drm2",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libva",
+        "sourceVersion": "2.20.0-2ubuntu0.2",
+        "url": "https://launchpad.net/ubuntu/+source/libva/2.20.0-2ubuntu0.2"
+      }
+    },
+    {
+      "id": "ubuntu:libva2",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libva",
+        "sourceVersion": "2.20.0-2ubuntu0.2",
+        "url": "https://launchpad.net/ubuntu/+source/libva/2.20.0-2ubuntu0.2"
+      }
+    },
+    {
+      "id": "ubuntu:libvo-aacenc0",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "vo-aacenc",
+        "sourceVersion": "0.1.3-2build1",
+        "url": "https://launchpad.net/ubuntu/+source/vo-aacenc/0.1.3-2build1"
+      }
+    },
+    {
+      "id": "ubuntu:libvorbis0a",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libvorbis",
+        "sourceVersion": "1.3.7-1build3",
+        "url": "https://launchpad.net/ubuntu/+source/libvorbis/1.3.7-1build3"
+      }
+    },
+    {
+      "id": "ubuntu:libvorbisenc2",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libvorbis",
+        "sourceVersion": "1.3.7-1build3",
+        "url": "https://launchpad.net/ubuntu/+source/libvorbis/1.3.7-1build3"
+      }
+    },
+    {
+      "id": "ubuntu:libvpx9",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libvpx",
+        "sourceVersion": "1.14.0-1ubuntu2.3",
+        "url": "https://launchpad.net/ubuntu/+source/libvpx/1.14.0-1ubuntu2.3"
+      }
+    },
+    {
+      "id": "ubuntu:libwayland-cursor0",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "wayland",
+        "sourceVersion": "1.22.0-2.1build1",
+        "url": "https://launchpad.net/ubuntu/+source/wayland/1.22.0-2.1build1"
+      }
+    },
+    {
+      "id": "ubuntu:libwayland-egl1",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "wayland",
+        "sourceVersion": "1.22.0-2.1build1",
+        "url": "https://launchpad.net/ubuntu/+source/wayland/1.22.0-2.1build1"
+      }
+    },
+    {
+      "id": "ubuntu:libwebp7",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libwebp",
+        "sourceVersion": "1.3.2-0.4build3",
+        "url": "https://launchpad.net/ubuntu/+source/libwebp/1.3.2-0.4build3"
+      }
+    },
+    {
+      "id": "ubuntu:libwebpmux3",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libwebp",
+        "sourceVersion": "1.3.2-0.4build3",
+        "url": "https://launchpad.net/ubuntu/+source/libwebp/1.3.2-0.4build3"
+      }
+    },
+    {
+      "id": "ubuntu:libx264-164",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "x264",
+        "sourceVersion": "2:0.164.3108+git31e19f9-1",
+        "url": "https://launchpad.net/ubuntu/+source/x264/2:0.164.3108+git31e19f9-1"
+      }
+    },
+    {
+      "id": "ubuntu:libx265-199",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "x265",
+        "sourceVersion": "3.5-2build1",
+        "url": "https://launchpad.net/ubuntu/+source/x265/3.5-2build1"
+      }
+    },
+    {
+      "id": "ubuntu:libxau6",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxau",
+        "sourceVersion": "1:1.0.9-1build6",
+        "url": "https://launchpad.net/ubuntu/+source/libxau/1:1.0.9-1build6"
+      }
+    },
+    {
+      "id": "ubuntu:libxcb-cursor0",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "xcb-util-cursor",
+        "sourceVersion": "0.1.4-1build1",
+        "url": "https://launchpad.net/ubuntu/+source/xcb-util-cursor/0.1.4-1build1"
+      }
+    },
+    {
+      "id": "ubuntu:libxcb-damage0",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxcb",
+        "sourceVersion": "1.15-1ubuntu2",
+        "url": "https://launchpad.net/ubuntu/+source/libxcb/1.15-1ubuntu2"
+      }
+    },
+    {
+      "id": "ubuntu:libxcb-glx0",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxcb",
+        "sourceVersion": "1.15-1ubuntu2",
+        "url": "https://launchpad.net/ubuntu/+source/libxcb/1.15-1ubuntu2"
+      }
+    },
+    {
+      "id": "ubuntu:libxcb-icccm4",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "xcb-util-wm",
+        "sourceVersion": "0.4.1-1.1build3",
+        "url": "https://launchpad.net/ubuntu/+source/xcb-util-wm/0.4.1-1.1build3"
+      }
+    },
+    {
+      "id": "ubuntu:libxcb-image0",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "xcb-util-image",
+        "sourceVersion": "0.4.0-2build1",
+        "url": "https://launchpad.net/ubuntu/+source/xcb-util-image/0.4.0-2build1"
+      }
+    },
+    {
+      "id": "ubuntu:libxcb-keysyms1",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "xcb-util-keysyms",
+        "sourceVersion": "0.4.0-1build4",
+        "url": "https://launchpad.net/ubuntu/+source/xcb-util-keysyms/0.4.0-1build4"
+      }
+    },
+    {
+      "id": "ubuntu:libxcb-randr0",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxcb",
+        "sourceVersion": "1.15-1ubuntu2",
+        "url": "https://launchpad.net/ubuntu/+source/libxcb/1.15-1ubuntu2"
+      }
+    },
+    {
+      "id": "ubuntu:libxcb-render-util0",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "xcb-util-renderutil",
+        "sourceVersion": "0.3.9-1build4",
+        "url": "https://launchpad.net/ubuntu/+source/xcb-util-renderutil/0.3.9-1build4"
+      }
+    },
+    {
+      "id": "ubuntu:libxcb-render0",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxcb",
+        "sourceVersion": "1.15-1ubuntu2",
+        "url": "https://launchpad.net/ubuntu/+source/libxcb/1.15-1ubuntu2"
+      }
+    },
+    {
+      "id": "ubuntu:libxcb-shape0",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxcb",
+        "sourceVersion": "1.15-1ubuntu2",
+        "url": "https://launchpad.net/ubuntu/+source/libxcb/1.15-1ubuntu2"
+      }
+    },
+    {
+      "id": "ubuntu:libxcb-shm0",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxcb",
+        "sourceVersion": "1.15-1ubuntu2",
+        "url": "https://launchpad.net/ubuntu/+source/libxcb/1.15-1ubuntu2"
+      }
+    },
+    {
+      "id": "ubuntu:libxcb-sync1",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxcb",
+        "sourceVersion": "1.15-1ubuntu2",
+        "url": "https://launchpad.net/ubuntu/+source/libxcb/1.15-1ubuntu2"
+      }
+    },
+    {
+      "id": "ubuntu:libxcb-util1",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "xcb-util",
+        "sourceVersion": "0.4.0-1build3",
+        "url": "https://launchpad.net/ubuntu/+source/xcb-util/0.4.0-1build3"
+      }
+    },
+    {
+      "id": "ubuntu:libxcb-xfixes0",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxcb",
+        "sourceVersion": "1.15-1ubuntu2",
+        "url": "https://launchpad.net/ubuntu/+source/libxcb/1.15-1ubuntu2"
+      }
+    },
+    {
+      "id": "ubuntu:libxcb-xinput0",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxcb",
+        "sourceVersion": "1.15-1ubuntu2",
+        "url": "https://launchpad.net/ubuntu/+source/libxcb/1.15-1ubuntu2"
+      }
+    },
+    {
+      "id": "ubuntu:libxcb-xkb1",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxcb",
+        "sourceVersion": "1.15-1ubuntu2",
+        "url": "https://launchpad.net/ubuntu/+source/libxcb/1.15-1ubuntu2"
+      }
+    },
+    {
+      "id": "ubuntu:libxcomposite1",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxcomposite",
+        "sourceVersion": "1:0.4.5-1build3",
+        "url": "https://launchpad.net/ubuntu/+source/libxcomposite/1:0.4.5-1build3"
+      }
+    },
+    {
+      "id": "ubuntu:libxcursor1",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxcursor",
+        "sourceVersion": "1:1.2.1-1build1",
+        "url": "https://launchpad.net/ubuntu/+source/libxcursor/1:1.2.1-1build1"
+      }
+    },
+    {
+      "id": "ubuntu:libxdamage1",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxdamage",
+        "sourceVersion": "1:1.1.6-1build1",
+        "url": "https://launchpad.net/ubuntu/+source/libxdamage/1:1.1.6-1build1"
+      }
+    },
+    {
+      "id": "ubuntu:libxdmcp6",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxdmcp",
+        "sourceVersion": "1:1.1.3-0ubuntu6",
+        "url": "https://launchpad.net/ubuntu/+source/libxdmcp/1:1.1.3-0ubuntu6"
+      }
+    },
+    {
+      "id": "ubuntu:libxext6",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxext",
+        "sourceVersion": "2:1.3.4-1build2",
+        "url": "https://launchpad.net/ubuntu/+source/libxext/2:1.3.4-1build2"
+      }
+    },
+    {
+      "id": "ubuntu:libxfixes3",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxfixes",
+        "sourceVersion": "1:6.0.0-2build1",
+        "url": "https://launchpad.net/ubuntu/+source/libxfixes/1:6.0.0-2build1"
+      }
+    },
+    {
+      "id": "ubuntu:libxi6",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxi",
+        "sourceVersion": "2:1.8.1-1build1",
+        "url": "https://launchpad.net/ubuntu/+source/libxi/2:1.8.1-1build1"
+      }
+    },
+    {
+      "id": "ubuntu:libxinerama1",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxinerama",
+        "sourceVersion": "2:1.1.4-3build1",
+        "url": "https://launchpad.net/ubuntu/+source/libxinerama/2:1.1.4-3build1"
+      }
+    },
+    {
+      "id": "ubuntu:libxkbcommon-x11-0",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxkbcommon",
+        "sourceVersion": "1.6.0-1build1",
+        "url": "https://launchpad.net/ubuntu/+source/libxkbcommon/1.6.0-1build1"
+      }
+    },
+    {
+      "id": "ubuntu:libxkbcommon0",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxkbcommon",
+        "sourceVersion": "1.6.0-1build1",
+        "url": "https://launchpad.net/ubuntu/+source/libxkbcommon/1.6.0-1build1"
+      }
+    },
+    {
+      "id": "ubuntu:libxrandr2",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxrandr",
+        "sourceVersion": "2:1.5.2-2build1",
+        "url": "https://launchpad.net/ubuntu/+source/libxrandr/2:1.5.2-2build1"
+      }
+    },
+    {
+      "id": "ubuntu:libxrender1",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxrender",
+        "sourceVersion": "1:0.9.10-1.1build1",
+        "url": "https://launchpad.net/ubuntu/+source/libxrender/1:0.9.10-1.1build1"
+      }
+    },
+    {
+      "id": "ubuntu:libxtst6",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libxtst",
+        "sourceVersion": "2:1.2.3-1.1ubuntu0.1",
+        "url": "https://launchpad.net/ubuntu/+source/libxtst/2:1.2.3-1.1ubuntu0.1"
+      }
+    },
+    {
+      "id": "ubuntu:libzstd1",
+      "source": {
+        "distribution": "Ubuntu 24.04",
+        "sourcePackage": "libzstd",
+        "sourceVersion": "1.5.5+dfsg2-2build1.1",
+        "url": "https://launchpad.net/ubuntu/+source/libzstd/1.5.5+dfsg2-2build1.1"
+      }
+    }
+  ],
+  "runtime": {
+    "schemaVersion": 1,
+    "runtime": {
+      "commit": "dd6cebedcbddde9c82f89b011e8e1d40b6e43868",
+      "sha256": "2fca8b443c92510f1483a883f60061ad09b46b978b2631c807cd873a47ec260d"
+    },
+    "provenance": {
+      "release": "https://github.com/AppImage/type2-runtime/releases/tag/20251108",
+      "assetCreatedAt": "2025-12-08T17:52:05Z",
+      "buildRun": "https://github.com/AppImage/type2-runtime/actions/runs/20037536435",
+      "debugSha256": "1f3c4a8439e344d74b61bfd0610b89e8499453791bbc3c5b4ae38c181fe54942",
+      "evidence": "Runtime strings identify squashfuse 0.5.2, zstd 1.5.6, zlib 1.3.1 and fuse 3.15.0. Matched debug DWARF identifies musl 1.2.5. mi_version at address 0x63340 returns 0xd9 (217 = mimalloc 2.1.7). Runtime build scripts pin fuse/squashfuse with SHA-256 and include the libfuse patch. Alpine 3.21 recipes below are the latest matching recipes before the asset build, including distro patches. Upstream build logs expired (HTTP 410); no byte-identical rebuild claim."
+    },
+    "archives": [
+      {
+        "file": "fuse-3.15.0.tar.xz",
+        "url": "https://github.com/libfuse/libfuse/releases/download/fuse-3.15.0/fuse-3.15.0.tar.xz",
+        "digest": "70589cfd5e1cff7ccd6ac91c86c01be340b227285c5e200baa284e401eea2ca0"
+      },
+      {
+        "file": "squashfuse-0.5.2.tar.gz",
+        "url": "https://github.com/vasi/squashfuse/archive/0.5.2.tar.gz",
+        "digest": "db0238c5981dabbd80ee09ae15387f390091668ca060a7bc38047912491443d3"
+      },
+      {
+        "file": "musl-1.2.5.tar.gz",
+        "url": "https://musl.libc.org/releases/musl-1.2.5.tar.gz",
+        "algorithm": "sha512",
+        "digest": "7bb7f7833923cd69c7a1a9b8a5f1784bfd5289663eb6061dcd43d583e45987df8a68a1be05d75cc1c88a3f5b610653d1a70f4a9cff4d8f7fd41ae73ee058c17c"
+      },
+      {
+        "file": "zstd-1.5.6.tar.gz",
+        "url": "https://github.com/facebook/zstd/archive/v1.5.6.tar.gz",
+        "algorithm": "sha512",
+        "digest": "ca12dffd86618ca008e1ecc79056c1129cb4e61668bf13a3cd5b2fa5c93bc9c92c80f64c1870c68b9c20009d9b3a834eac70db72242d5106125a1c53cccf8de8"
+      },
+      {
+        "file": "zlib-1.3.1.tar.gz",
+        "url": "https://zlib.net/fossils/zlib-1.3.1.tar.gz",
+        "algorithm": "sha512",
+        "digest": "580677aad97093829090d4b605ac81c50327e74a6c2de0b85dd2e8525553f3ddde17556ea46f8f007f89e435493c9a20bc997d1ef1c1c2c23274528e3c46b94f"
+      },
+      {
+        "file": "mimalloc-2.1.7.tar.gz",
+        "url": "https://github.com/microsoft/mimalloc/archive/v2.1.7/mimalloc-2.1.7.tar.gz",
+        "algorithm": "sha512",
+        "digest": "4e30976758015c76a146acc1bfc8501e2e5c61b81db77d253de0d58a8edef987669243f232210667b32ef8da3a33286642acb56ba526fd24c4ba925b44403730"
+      }
+    ],
+    "recipes": [
+      {
+        "id": "alpine-main-musl",
+        "repository": "https://github.com/alpinelinux/aports.git",
+        "commit": "efd4d5df7be0ea48d98512671f676fc5ceb14899",
+        "paths": [
+          "main/musl"
+        ]
+      },
+      {
+        "id": "alpine-main-zstd",
+        "repository": "https://github.com/alpinelinux/aports.git",
+        "commit": "5c2ddf18f193dafdd25ae7391d96c7e30766eecd",
+        "paths": [
+          "main/zstd"
+        ]
+      },
+      {
+        "id": "alpine-main-zlib",
+        "repository": "https://github.com/alpinelinux/aports.git",
+        "commit": "4c2722e7ecc1c5e3ba882429044a101497121223",
+        "paths": [
+          "main/zlib"
+        ]
+      },
+      {
+        "id": "alpine-community-mimalloc2",
+        "repository": "https://github.com/alpinelinux/aports.git",
+        "commit": "5a1a5dc3216a69e3cd66a57ee07cb5ef01b8be39",
+        "paths": [
+          "community/mimalloc2"
+        ]
+      }
+    ]
+  }
+}

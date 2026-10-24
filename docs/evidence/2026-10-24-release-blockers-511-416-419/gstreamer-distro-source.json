@@ -1,0 +1,61 @@
+{
+  "sourcePackage": "gst-plugins-bad1.0",
+  "sourceVersion": "1.24.2-1ubuntu4",
+  "files": [
+    {
+      "file": "gst-plugins-bad1.0_1.24.2-1ubuntu4.debian.tar.xz",
+      "bytes": 47348,
+      "sha256": "05fefdaf55bd00dfd434caa10e837a4f01fb5ff6fdd54c9c8a0ddddcec15620b"
+    },
+    {
+      "file": "gst-plugins-bad1.0_1.24.2-1ubuntu4.dsc",
+      "bytes": 5850,
+      "sha256": "064b23e05d08dd65a8ea16e8325fe0fc21468d21e3fd0347ba5b069617034d02"
+    },
+    {
+      "file": "gst-plugins-bad1.0_1.24.2.orig.tar.xz",
+      "bytes": 7046860,
+      "sha256": "448e32787bc82b586c6cb2f81c9a8ef404fea4f77f25566fe06e597a3f59136b"
+    },
+    {
+      "file": "gst-plugins-bad1.0_1.24.2.orig.tar.xz.asc",
+      "bytes": 833,
+      "sha256": "a3c06d7c7b09adf0b8a668bea2b657c577fed9d6c11fbe92d8e1d1b55d8c16a7"
+    }
+  ],
+  "upstreamParserSha256": "d0752d902ddf36da0d1dbd7f1eef757147384174928d4de421aae421f345368f",
+  "snippets": [
+    {
+      "line": 2092,
+      "text": "      (sps->sub_layer_ordering_info_present_flag ? 0 :\n          sps->max_sub_layers_minus1); i <= sps->max_sub_layers_minus1; i++) {\n    READ_UE_MAX (&nr, sps->max_dec_pic_buffering_minus1[i], 16);\n    READ_UE_MAX (&nr, sps->max_num_reorder_pics[i],\n        sps->max_dec_pic_buffering_minus1[i]);"
+    },
+    {
+      "line": 2853,
+      "text": "              sps->num_long_term_ref_pics_sps);\n\n        READ_UE_MAX (&nr, slice->num_long_term_pics, 16);\n        limit = slice->num_long_term_sps + slice->num_long_term_pics;\n        for (i = 0; i < limit; i++) {"
+    }
+  ],
+  "debianPatches": [
+    {
+      "file": "debian/patches/02_opencv-data-path.patch",
+      "sha256": "550a4f3ac8c9e1d498bfe44626e6fd7856ce383ec749392e5cd9d416d7391073",
+      "modifiesH265Parser": false
+    },
+    {
+      "file": "debian/patches/Skip-failing-tests.patch",
+      "sha256": "d29c16f937b2a1cb710e1c706c5dca303c2a67be9800d935525dc2b5cc5c6bcb",
+      "modifiesH265Parser": false
+    },
+    {
+      "file": "debian/patches/pcfile-requires-plugins-good",
+      "sha256": "04c985febee798a16e5dd9c7f6d57c753f947f4af82acdedbfb05c55bc794374",
+      "modifiesH265Parser": false
+    },
+    {
+      "file": "debian/patches/series",
+      "sha256": "fb6701e667d71091f686173feeaa7a5021122a00b4ef5f50caa7999c7d1b47f1",
+      "modifiesH265Parser": false
+    }
+  ],
+  "checkedDistroPatchesForParserChange": true,
+  "noDistroParserPatch": true
+}
