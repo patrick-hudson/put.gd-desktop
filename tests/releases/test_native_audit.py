@@ -1,4 +1,5 @@
 """Extracted native-package checks; actual ELF/desktop validation is separate."""
+import gzip
 import json
 from pathlib import Path
 import sys
@@ -23,6 +24,9 @@ class NativeInventoryTests(unittest.TestCase):
         for license_name in audit.SDK_LICENSES:
             self.write("usr/share/doc/putgd/" + license_name, "license")
         self.write("usr/share/doc/putgd/runtime-notices.txt", "notice")
+        self.write("usr/share/doc/putgd/copyright", "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\n")
+        path = self.root / "usr/share/doc/putgd/changelog.gz"
+        path.write_bytes(gzip.compress(b"putgd (0.1.2-rc.1) unstable; urgency=medium\n"))
         self.write("usr/share/doc/putgd/wayland-ext-data-control-v1.xml", "protocol")
         self.write("usr/share/doc/putgd/wayland-wlr-data-control-unstable-v1.xml", "protocol")
         for asset in audit.DESKTOP_ASSETS:
@@ -88,6 +92,12 @@ class NativeInventoryTests(unittest.TestCase):
         if argv[:2] == ["readelf", "--dyn-syms"]:
             return ("     5: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND pthread_create@GLIBC_2.34 (2)\n"
                     "    42: 00000000000109ee   180 FUNC    GLOBAL DEFAULT   16 pthread_create")
+        if argv[:2] == ["readelf", "-hW"]:
+            return "Type: DYN (Position-Independent Executable file)"
+        if argv[:2] == ["readelf", "-lW"]:
+            return "GNU_RELRO"
+        if argv[:2] == ["readelf", "-dW"]:
+            return "(FLAGS) BIND_NOW"
         if argv[0] == "readelf":
             return " 0x000000000000000f (RPATH) Library rpath: [$ORIGIN]"
         if argv[0] == "ldd":
@@ -97,6 +107,18 @@ class NativeInventoryTests(unittest.TestCase):
         if argv[1] == "--update-info":
             return json.dumps({"packageTarget": "debian13", "supported": False, "reason": "development_build"})
         return Path(argv[0]).name + " " + self.manifest["version"]
+
+    def test_non_pie_or_partial_relro_is_rejected(self):
+        for option, output, error in (("-hW", "Type: EXEC", "not PIE"),
+                                      ("-lW", "LOAD", "full RELRO"),
+                                      ("-dW", "NEEDED", "full RELRO")):
+            def commands(argv, *, env=None):
+                if argv[:2] == ["readelf", option]:
+                    return output
+                return self.commands(argv, env=env)
+            with self.subTest(option=option), patch.object(audit, "command", side_effect=commands):
+                with self.assertRaisesRegex(ValueError, error):
+                    audit.audit_tree(self.root, self.manifest)
 
     def test_full_audit_compares_every_compiled_identity(self):
         with patch.object(audit, "command", side_effect=self.commands):

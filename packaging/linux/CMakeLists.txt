@@ -262,4 +262,3 @@ if(PUTGD_GIT AND metainfo_commit MATCHES "^[0-9a-f]+$" AND EXISTS "${PROJECT_SOU
 endif()
 configure_file(gd.put.Putgd.metainfo.xml.in gd.put.Putgd.metainfo.xml @ONLY)
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/gd.put.Putgd.metainfo.xml" DESTINATION "${CMAKE_INSTALL_DATADIR}/metainfo")
-include(CPack)
