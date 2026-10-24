@@ -92,7 +92,7 @@ def fixture_summary(database, expected=10000):
                                      'WHERE o.id IS NULL OR s.id IS NULL').fetchone()[0]
         require(missing == 0, 'fixture_missing_journal_or_item_state')
         kinds = dict(connection.execute('SELECT category,count(*) FROM history GROUP BY category'))
-        require(kinds.get('image', 0) > 0 and kinds.get('video', 0) > 0,
+        require(kinds.get('images', 0) > 0 and kinds.get('videos', 0) > 0,
                 'fixture_requires_images_and_videos')
         return {'historyCount': count, 'independentOperations': operations,
                 'independentItems': items, 'categories': kinds,
@@ -225,10 +225,19 @@ class Campaign:
         self.root.mkdir(mode=0o700)
         self.started = time.monotonic()
         self.resident = self.family = self.log = None
+        revision = args.driver_revision
+        if revision is None:
+            revision = subprocess.check_output(['git', '-C', str(REPO), 'rev-parse', 'HEAD'],
+                                               text=True, stderr=subprocess.DEVNULL).strip()
+        require(re.fullmatch('[0-9a-f]{40}', revision), 'invalid_driver_revision')
         self.result = {'schemaVersion': 1, 'scenario': args.scenario, 'status': 'starting',
                        'startedUtc': datetime.now(timezone.utc).isoformat(),
-                       'driver': {'sha256': sha256(__file__), 'revision': subprocess.check_output(
-                           ['git', '-C', str(REPO), 'rev-parse', 'HEAD'], text=True).strip()},
+                       'driver': {'sha256': sha256(__file__), 'revision': revision,
+                                  'revisionSource': 'explicit-declaration' if args.driver_revision else 'git-HEAD',
+                                  'sourceFiles': {str(path.relative_to(REPO)): sha256(path) for path in (
+                                      Path(__file__), Path(__file__).with_name('bench_ui_process.py'),
+                                      Path(__file__).with_name('observe_idle.py'),
+                                      REPO / 'tools/diagnostics/check_socket_paths.py')}},
                        'product': {}, 'parameters': vars(args), 'metrics': {}, 'gates': {},
                        'limitations': ['Capture witness observes X11 drawable paint, not compositor presentation.',
                            'CLI acknowledgements do not prove painted response.',
@@ -461,6 +470,7 @@ def parser():
     result.add_argument('--capture-helper', default='/usr/bin/putgd-capture')
     result.add_argument('--driver', help='Existing unchanged putgd-bench-capture executable')
     result.add_argument('--fixture-root', help='#495 stopped private independent fixture root')
+    result.add_argument('--driver-revision', help='Full driver commit for git-archive exports; declaration plus file hashes retained')
     result.add_argument('--open-seconds', type=int, default=30)
     return result
 

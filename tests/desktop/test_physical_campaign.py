@@ -30,7 +30,7 @@ def fixture(root, count=10000, independent=True):
             op = 'op-' + str(i if independent else 0)
             value = json.dumps({'path': str(root / 'archive/image.png')}).encode()
             connection.execute('INSERT INTO history VALUES(?,?,?,?,?)', (str(i), op, 'item-' + str(i),
-                                                                        'image' if i % 2 else 'video', value))
+                                                                        'images' if i % 2 else 'videos', value))
             connection.execute('INSERT OR IGNORE INTO operations VALUES(?,?)', (op, value))
             connection.execute('INSERT INTO item_state VALUES(?,?,?)', (str(i), op, value))
     db.chmod(0o600)
@@ -137,6 +137,18 @@ class EndpointAndBudgetTests(unittest.TestCase):
             result = json.loads((Path(output) / 'results.json').read_text())
             self.assertFalse(result['socketPreflight']['passed'])
             self.assertEqual(result['socketPreflight']['paths'][0]['path'], output + '/runtime/putgd/session.sock')
+
+    def test_explicit_driver_revision_works_without_git_metadata(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = str(Path(directory) / 'run')
+            args = campaign.parser().parse_args(['memory', '--output', output, '--package', 'x',
+                '--package-sha256', 'a' * 64, '--version', '26.1024.1185-nightly', '--driver-revision', 'c' * 40,
+                '--source-revision', 'b' * 40, '--desktop-session', '2', '--lock-session', 'owner'])
+            with mock.patch.object(campaign.subprocess, 'check_output', side_effect=AssertionError('git unavailable')):
+                observer = campaign.Campaign(args)
+            self.assertEqual(observer.result['driver']['revision'], 'c' * 40)
+            self.assertEqual(observer.result['driver']['revisionSource'], 'explicit-declaration')
+            self.assertEqual(len(observer.result['driver']['sourceFiles']), 4)
 
 
 if __name__ == '__main__':
