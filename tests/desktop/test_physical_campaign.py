@@ -26,14 +26,16 @@ def fixture(root, count=10000, independent=True):
     with sqlite3.connect(db) as connection:
         connection.executescript('CREATE TABLE history(id TEXT PRIMARY KEY,operation_id TEXT,item_id TEXT,category TEXT,data BLOB);'
                                  'CREATE TABLE operations(id TEXT PRIMARY KEY,data BLOB);'
-                                 'CREATE TABLE item_state(id TEXT PRIMARY KEY,operation_id TEXT,data BLOB);')
+                                 'CREATE TABLE item_state(id TEXT PRIMARY KEY,operation_id TEXT,data BLOB);'
+                                 'PRAGMA user_version=7;')
         for i in range(count):
             op = 'op-' + str(i if independent else 0)
-            value = json.dumps({'path': str(root / 'archive/image.png')}).encode()
+            value = json.dumps({'path': str(root / 'archive/image.png'), 'state': 'completed'}).encode()
             connection.execute('INSERT INTO history VALUES(?,?,?,?,?)', (str(i), op, 'item-' + str(i),
                                                                         'images' if i % 2 else 'videos', value))
             connection.execute('INSERT OR IGNORE INTO operations VALUES(?,?)', (op, value))
             connection.execute('INSERT INTO item_state VALUES(?,?,?)', (str(i), op, value))
+    connection.close()
     db.chmod(0o600)
     root.chmod(0o700)
     return db
@@ -87,6 +89,37 @@ class FixtureSafetyTests(unittest.TestCase):
             Path(str(db) + '-wal').touch()
             with self.assertRaisesRegex(campaign.EvidenceError, 'wal_checkpoint'):
                 campaign.copy_fixture(source, source / 'new')
+
+    def test_live_database_fd_cannot_be_bypassed_with_unrelated_runtime(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            db = fixture(root, count=2)
+            with db.open('rb'):
+                with self.assertRaisesRegex(campaign.EvidenceError, 'database_has_live_owner'):
+                    campaign.copy_fixture(root, root / 'new')
+
+    def test_persisted_external_receipt_is_refused_even_with_local_config(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            db = fixture(root)
+            with sqlite3.connect(db) as connection:
+                connection.execute('UPDATE operations SET data=? WHERE id="op-0"',
+                    (json.dumps({'state': 'completed', 'receipt': {'destination': {
+                        'settings': {'endpoint': 'https://s3.amazonaws.com'}}}}).encode(),))
+            connection.close()
+            with self.assertRaisesRegex(campaign.EvidenceError, 'persisted_fixture_endpoint_not_loopback'):
+                campaign.copy_fixture(root, root / 'new')
+
+    def test_persisted_multipart_cleanup_is_refused(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            db = fixture(root)
+            with sqlite3.connect(db) as connection:
+                connection.execute('UPDATE operations SET data=? WHERE id="op-0"',
+                    (json.dumps({'state': 'completed', 'items': [{'uploadJournal': {'uploadId': 'foreign'}}]}).encode(),))
+            connection.close()
+            with self.assertRaisesRegex(campaign.EvidenceError, 'multipart_cleanup_refused'):
+                campaign.copy_fixture(root, root / 'new')
 
 
 class EndpointAndBudgetTests(unittest.TestCase):
@@ -169,7 +202,7 @@ class EndpointAndBudgetTests(unittest.TestCase):
                 observer = campaign.Campaign(args)
             self.assertEqual(observer.result['driver']['revision'], 'c' * 40)
             self.assertEqual(observer.result['driver']['revisionSource'], 'explicit-declaration')
-            self.assertEqual(len(observer.result['driver']['sourceFiles']), 4)
+            self.assertEqual(len(observer.result['driver']['sourceFiles']), 8)
 
 
 if __name__ == '__main__':

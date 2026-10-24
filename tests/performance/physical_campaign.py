@@ -25,6 +25,7 @@ import os
 from pathlib import Path
 import re
 import selectors
+import signal
 import shutil
 import sqlite3
 import stat
@@ -38,7 +39,7 @@ import uuid
 from bench_ui_process import (EvidenceError, ProcessFamily, identity,
                               request, same_identity, sha256, stat_fields, verify_socket_owner,
                               write_json)
-from observe_idle import check_physical_session, owned_windows, stop_owned_process_group
+from observe_idle import check_physical_session, environment_metadata, owned_windows, stop_owned_process_group
 
 REPO = Path(__file__).resolve().parents[2]
 MIB = 1024 ** 2
@@ -79,6 +80,8 @@ def safe_document(document):
         require(loopback_endpoint(options.get('endpoint', '')), 'unsafe_fixture_endpoint')
         require(not any(key in options for key in ('accessKey', 'secretKey', 'sessionToken')),
                 'inline_credentials_refused')
+        credentials = profile.get('credentials', {})
+        require(set(credentials) <= {'mode', 'reference'}, 'inline_credentials_refused')
     return document
 
 
@@ -94,12 +97,18 @@ def fixture_summary(database, expected=10000):
                                      'ON h.id=s.id AND h.operation_id=s.operation_id '
                                      'WHERE o.id IS NULL OR s.id IS NULL').fetchone()[0]
         require(missing == 0, 'fixture_missing_journal_or_item_state')
+        require(connection.execute("SELECT count(*) FROM operations WHERE json_extract(data,'$.state') "
+                                   "NOT IN ('completed','partial','failed','cancelled','interrupted') "
+                                   "OR json_extract(data,'$.state') IS NULL").fetchone()[0] == 0,
+                'fixture_active_or_invalid_operation')
         kinds = dict(connection.execute('SELECT category,count(*) FROM history GROUP BY category'))
         require(kinds.get('images', 0) > 0 and kinds.get('videos', 0) > 0,
                 'fixture_requires_images_and_videos')
+        version = connection.execute('PRAGMA user_version').fetchone()[0]
+        require(5 <= version <= 7, 'unsupported_fixture_schema')
         return {'historyCount': count, 'independentOperations': operations,
                 'independentItems': items, 'categories': kinds,
-                'schemaVersion': connection.execute('PRAGMA user_version').fetchone()[0],
+                'schemaVersion': version,
                 'databaseSha256': sha256(database)}
 
 
@@ -119,10 +128,45 @@ def copy_fixture(source, destination):
     source = private_path(source, directory=True)
     database = source / 'data/putgd/history.sqlite'
     private_path(database)
+    fixture_stopped(source, database)
     require(not any((source / name).exists() for name in ('runtime/putgd/session.sock',)),
             'fixture_socket_present_stop_and_retire_endpoint_first')
     require(not Path(str(database) + '-wal').exists(), 'fixture_has_wal_checkpoint_and_stop_first')
     summary = fixture_summary(database)
+    def checked_paths(value):
+        if isinstance(value, dict):
+            for key, item in value.items():
+                if key in ('path', 'previewPath', 'root') and isinstance(item, str) and item:
+                    require(Path(item).is_absolute() and Path(item).resolve().is_relative_to(source),
+                            'fixture_payload_path_escapes_root')
+                if key == 'endpoint' and item:
+                    require(loopback_endpoint(item), 'persisted_fixture_endpoint_not_loopback')
+                if key in ('provider', 'providerId') and isinstance(item, str) and item:
+                    require(item == 's3', 'persisted_fixture_provider_not_s3')
+                if key in ('uploadJournal', 'uploadId'):
+                    require(not item, 'persisted_multipart_cleanup_refused')
+                if key == 'credentials' and item:
+                    require(isinstance(item, dict) and item == {'mode': 'session', 'reference': None},
+                            'persisted_non_synthetic_credential_reference')
+                checked_paths(item)
+        elif isinstance(value, list):
+            for item in value:
+                checked_paths(item)
+        elif isinstance(value, str) and value.startswith(('http://', 'https://')):
+            from urllib.parse import urlsplit
+            url = urlsplit(value)
+            require(url.scheme == 'http' and url.hostname == '127.0.0.1' and url.port
+                    and not url.username and not url.password, 'persisted_fixture_url_not_loopback')
+    checked_paths(json.loads((source / 'config/putgd/config.json').read_text()))
+    with sqlite3.connect(database.as_uri() + '?mode=ro', uri=True) as connection:
+        tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        for table in ('deletions', 'deletion_targets', 'sharing_operations'):
+            if table in tables:
+                require(connection.execute(f'SELECT count(*) FROM {table}').fetchone()[0] == 0,
+                        'fixture_contains_unreviewed_management_journal')
+        for table in ('operations', 'history', 'item_state'):
+            for (value,) in connection.execute(f'SELECT data FROM {table}'):
+                checked_paths(json.loads(value))
     for directory in ('config', 'data', 'archive', 'cache', 'media'):
         original = source / directory
         if not original.exists():
@@ -149,6 +193,29 @@ def copy_fixture(source, destination):
                                    f'ELSE replace({name},?,?) END WHERE typeof({name}) IN ("text","blob") '
                                    f'AND instr(CAST({name} AS TEXT),?)>0', (old, new, old, new, old))
     return summary
+
+
+def fixture_stopped(root, database):
+    """Associate liveness with the actual DB, never only a supplied runtime."""
+    expected = database.stat()
+    for process in Path('/proc').iterdir():
+        if not process.name.isdigit():
+            continue
+        try:
+            if process.stat().st_uid != os.getuid():
+                continue
+            fields = (process / 'environ').read_bytes().split(b'\0')
+            associated = f'XDG_DATA_HOME={root / "data"}'.encode() in fields
+            require(not associated, 'fixture_data_profile_has_live_process')
+            for descriptor in (process / 'fd').iterdir():
+                try:
+                    current = descriptor.stat()
+                    require((current.st_dev, current.st_ino) != (expected.st_dev, expected.st_ino),
+                            'fixture_database_has_live_owner')
+                except FileNotFoundError:
+                    pass
+        except (FileNotFoundError, PermissionError, ProcessLookupError):
+            continue
 
 
 def verify_package(args):
@@ -214,7 +281,8 @@ def physical_identity(args):
             session.get('Type') == 'x11' and 'cinnamon' in session.get('Desktop', '').lower() and
             session.get('Display') == ':0', 'loginctl_physical_cinnamon_mismatch')
     return {'hostname': os.uname().nodename, 'kernel': os.uname().release, 'session': session,
-            'sessionId': args.desktop_session, 'qtPlatform': 'xcb',
+            'sessionId': args.desktop_session, 'requestedQtPlatform': 'xcb',
+            'systemVersions': environment_metadata(),
             'osRelease': Path('/etc/os-release').read_text(),
             'loadAverage': Path('/proc/loadavg').read_text().split()[:3]}
 
@@ -222,6 +290,7 @@ def physical_identity(args):
 class Campaign:
     def __init__(self, args):
         self.args = args
+        self.repo = REPO
         raw = Path(args.output).absolute()
         require(not raw.is_symlink() and not raw.exists(), 'output_must_be_new')
         self.root = raw.resolve()
@@ -240,6 +309,10 @@ class Campaign:
                                   'sourceFiles': {str(path.relative_to(REPO)): sha256(path) for path in (
                                       Path(__file__), Path(__file__).with_name('bench_ui_process.py'),
                                       Path(__file__).with_name('observe_idle.py'),
+                                      Path(__file__).with_name('campaign_fixture.py'),
+                                      Path(__file__).with_name('campaign_ui.py'),
+                                      Path(__file__).with_name('campaign_workloads.py'),
+                                      Path(__file__).with_name('campaign_proxy.py'),
                                       REPO / 'tools/diagnostics/check_socket_paths.py')}},
                        'product': {}, 'parameters': vars(args), 'metrics': {}, 'gates': {},
                        'limitations': ['Capture witness observes X11 drawable paint, not compositor presentation.',
@@ -255,6 +328,8 @@ class Campaign:
             path.mkdir(mode=0o700)
             self.environment[key] = str(path)
         self.environment['QT_QPA_PLATFORM'] = 'xcb'
+        if args.scenario in ('history', 'burst', 'slow') and args.enable_accessibility:
+            self.environment['QT_LINUX_ACCESSIBILITY_ALWAYS_ON'] = '1'
         for name in ('APPIMAGE', 'APPDIR', 'PUTGD_TEST_TIME_SCALE'):
             self.environment.pop(name, None)
         self.socket = str(self.root / 'runtime/putgd/session.sock')
@@ -278,6 +353,8 @@ class Campaign:
         require(checked.returncode == 0, 'socket_path_too_long')
         self.result['physical'] = physical_identity(self.args)
         self.result['product'] = verify_package(self.args)
+        if self.args.scenario in ('seed', 'history', 'burst', 'slow'):
+            verify_fixture(self.args)
         self.result['harness'] = {name: sha256(Path(__file__).with_name(name))
                                   for name in ('run_capture.py', 'bench_capture.cpp', 'bench_ui_process.py')}
         if self.args.fixture_root:
@@ -290,6 +367,7 @@ class Campaign:
         self.resident = subprocess.Popen([self.args.app, '--background'], env=self.environment,
                                          stdin=subprocess.DEVNULL, stdout=self.log, stderr=self.log,
                                          start_new_session=True)
+        self.family = None
         # Wait until /proc/exe is the launched product, not the forking Python.
         deadline = time.monotonic() + 25
         while time.monotonic() < deadline:
@@ -309,13 +387,24 @@ class Campaign:
         return request(self.args.cli, method, params, environment=self.environment, socket=self.socket)
 
     def stop(self):
-        if self.resident:
-            stop_owned_process_group(self.resident)
+        if self.resident and self.resident.poll() is None:
+            try:
+                require(self.family is not None, 'resident_never_ready')
+                self.call('ui.quit')
+                code = self.resident.wait(timeout=15)
+                self.event('resident-normal-exit', pid=self.resident.pid, exitCode=code,
+                           socketAbsent=not Path(self.socket).exists())
+            except (OSError, EvidenceError, subprocess.SubprocessError, json.JSONDecodeError):
+                self.event('resident-required-termination', pid=self.resident.pid)
+                stop_owned_process_group(self.resident)
         if self.log:
             self.log.close()
         self.resident = self.log = None
 
     def static_cover(self):
+        if self.cover is not None:
+            require(self.cover.poll() is None, 'static_cover_exited')
+            return
         path = REPO / 'tools/lab/cover_player.py'
         self.result['staticCover'] = {'sourceSha256': sha256(path), 'color': '505a64',
                                       'animation': False, 'chargedToResidentFamily': False}
@@ -332,6 +421,46 @@ class Campaign:
         self.event('static-cover-visible', pid=self.cover.pid, readiness=reply,
                    vncPrecheck=json.loads(checked.stdout))
         self.persist()
+
+    def visual(self, label):
+        """Save only owned UI drawables, or a prechecked synthetic cover frame."""
+        from PIL import Image
+        from campaign_ui import Drawable
+        if self.family and self.resident and self.resident.poll() is None:
+            observed = self.sample(label + '-identity')
+            saved = False
+            for owner in observed['processes']:
+                if owner['role'] != 'ui':
+                    continue
+                for index, window in enumerate(owned_windows(owner['pid'])):
+                    info = subprocess.check_output(['xwininfo', '-id', window], text=True, timeout=5)
+                    width = int(re.search(r'Width:\s+(\d+)', info)[1])
+                    height = int(re.search(r'Height:\s+(\d+)', info)[1])
+                    draw = Drawable(window, owner)
+                    path = self.root / f'{label}-{owner["pid"]}-{index}.png'
+                    try:
+                        draw.pixels([0, 0, width, height]).save(path)
+                    finally:
+                        draw.close()
+                    self.event('owned-ui-visual', label=label, file=path.name, sha256=sha256(path), owner=owner)
+                    saved = True
+            if saved:
+                return
+        require(self.cover is not None and self.cover.poll() is None, 'no_safe_visual_cover')
+        sys.path.insert(0, str(REPO / 'tools/lab'))
+        import rfb
+        from cover_player import coverage
+        client = rfb.RFB(self.args.vnc_port)
+        try:
+            width, height, pixels = client.frame()
+        finally:
+            client.close()
+        require(coverage(width, height, pixels, 'bgrx', [0, 0, width, height], (80, 90, 100), 10) >= .98,
+                'visual_frame_not_synthetic_covered')
+        path = self.root / (label + '.png')
+        Image.frombytes('RGB', (width, height), pixels, 'raw', 'BGRX').save(path)
+        self.event('synthetic-cover-visual', label=label, file=path.name, sha256=sha256(path),
+                   limitation='Synthetic cover; companion separately verifies actual desktop tray presentation')
 
     def close_fixtures(self):
         for process in (self.clipboard, self.cover):
@@ -464,6 +593,7 @@ class Campaign:
         self.result['metrics']['seed'] = {'historyRows': 6, 'operations': operations, 'images': 3, 'videos': 3,
             'captureSource': 'independent GTK4 text/uri-list owner, production action.invoke clipboard',
             'growRequired': 'Use #495 grow on this stopped root; no 10000 real uploads implied.'}
+        self.visual('seed-completed')
 
     def configure(self):
         self.start('offscreen')
@@ -500,8 +630,32 @@ class Campaign:
     def sample(self, label):
         row = self.family.sample()
         require(row['escapedProcessCount'] == 0, 'escaped_product_descendant')
+        for process in row['processes']:
+            process['qtPlatformMappings'] = platform_mappings(process['pid'])
         self.event('process-sample', label=label, **row)
         return row
+
+    def summarize_processes(self):
+        path = self.root / 'events.jsonl'
+        if not path.exists():
+            return
+        rows = [value for line in path.read_text().splitlines()
+                if (value := json.loads(line)).get('kind') == 'process-sample']
+        if not rows:
+            return
+        cpu = {}
+        for row in rows:
+            for process in row['processes']:
+                key = (process['pid'], process['startTicks'])
+                cpu.setdefault(key, [process['cpuTicks'], process['cpuTicks']])[1] = process['cpuTicks']
+        elapsed = rows[-1]['elapsedSeconds'] - rows[0]['elapsedSeconds']
+        self.result['metrics']['sampledProcessFamily'] = {
+            'peakTotals': {name: max(row['totals'][name] for row in rows)
+                           for name in ('rssBytes', 'pssBytes', 'privateBytes')},
+            'cpuPercentOneCoreLowerBound': (100 * sum(end - start for start, end in cpu.values()) /
+                                           os.sysconf('SC_CLK_TCK') / elapsed) if elapsed > 0 else None,
+            'observedProcessGenerations': len(cpu), 'samplingSpanSeconds': elapsed,
+            'shortLivedChildrenMayBeMissed': True}
 
     def interval(self, label, seconds, closed=False):
         rows = []
@@ -627,6 +781,7 @@ class Campaign:
     def memory(self):
         time.sleep(5)
         cold = self.interval('cold-closed', 300, closed=True)
+        self.visual('cold-closed-completed')
         self.result['metrics']['coldClosed'] = memory_summary(cold)
         for name, value in memory_gates(self.result['metrics']['coldClosed']).items():
             self.result['gates']['cold-' + name] = value
@@ -647,6 +802,7 @@ class Campaign:
             time.sleep(.05)
         self.event('history-owned-window-mapped', windows=windows,
                    milliseconds=(time.monotonic() - start) * 1000, provesPaint=False)
+        self.visual('history-open')
         time.sleep(2)
         opened = self.interval('history-open', self.args.open_seconds)
         require(any(row['uiProcessCount'] for _, row in opened), 'history_ui_helper_missing')
@@ -663,6 +819,7 @@ class Campaign:
             require(time.monotonic() < deadline, 'history_helper_did_not_exit')
             time.sleep(.2)
         closed = self.interval('history-closed', 300, closed=True)
+        self.visual('history-closed-completed')
         self.result['metrics']['historyClosed'] = memory_summary(closed)
         for name, value in memory_gates(self.result['metrics']['historyClosed']).items():
             self.result['gates']['closed-' + name] = value
@@ -708,6 +865,12 @@ def operation_ids(database):
         return {row[0] for row in connection.execute('SELECT id FROM operations')}
 
 
+def platform_mappings(pid):
+    """Actual mapped basenames only; a QCoreApplication may have no QPA plugin."""
+    return sorted({Path(line.split()[-1]).name for line in Path(f'/proc/{pid}/maps').read_text().splitlines()
+                   if '/platforms/' in line or 'libQt6XcbQpa' in line})
+
+
 def memory_summary(rows):
     elapsed = rows[-1][0] - rows[0][0]
     first = next(row for row in rows[0][1]['processes'] if row['role'] == 'resident')
@@ -732,7 +895,7 @@ def memory_gates(metrics):
 
 def parser():
     result = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    result.add_argument('scenario', choices=('capture', 'memory', 'seed'))
+    result.add_argument('scenario', choices=('capture', 'memory', 'seed', 'history', 'burst', 'slow'))
     for name in ('output', 'package', 'package-sha256', 'version', 'source-revision', 'desktop-session', 'lock-session'):
         result.add_argument('--' + name, required=True)
     result.add_argument('--app', default='/usr/bin/putgd')
@@ -747,6 +910,12 @@ def parser():
     result.add_argument('--endpoint', help='Literal http://127.0.0.1:PORT of an independently started fixture')
     result.add_argument('--fixture-pid', type=int)
     result.add_argument('--fixture-source', help='Exact script argv of the fixture process, same bytes as tests/fixtures/s3_server.py')
+    result.add_argument('--enable-accessibility', action='store_true',
+                        help='History/burst/slow only: set QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1; no desktop setting changes')
+    result.add_argument('--native-driver', help='#495 committed native_acceptance.py for authenticated SNI ownership')
+    result.add_argument('--native-driver-revision', help='Separately identified #495 full commit')
+    result.add_argument('--threshold-policy', help='Private approved numerical maximums JSON; omission never passes response gates')
+    result.add_argument('--settle-seconds', type=int, default=300)
     return result
 
 
@@ -756,17 +925,29 @@ def main(argv=None):
             re.fullmatch('[0-9a-f]{40}', args.source_revision), 'invalid_identity_digest')
     require(args.scenario != 'capture' or args.driver, 'capture_driver_required')
     require(1 <= args.open_seconds <= 300, 'invalid_history_open_duration')
+    require(1 <= args.settle_seconds <= 1800, 'invalid_settle_duration')
+    require(not args.enable_accessibility or args.scenario in ('history', 'burst', 'slow'),
+            'accessibility_override_not_permitted_for_capture_or_memory')
+    if args.scenario in ('burst', 'slow'):
+        require(args.native_driver and args.native_driver_revision and
+                re.fullmatch('[0-9a-f]{40}', args.native_driver_revision), '495_driver_and_revision_required')
     os.umask(0o077)
+    def interrupted(_signal, _frame):
+        raise KeyboardInterrupt()
+    signal.signal(signal.SIGTERM, interrupted)
     campaign = Campaign(args)
     try:
         campaign.initialize()
         campaign.configure()
-        if args.scenario != 'capture':
-            campaign.static_cover()
+        campaign.static_cover()
         campaign.start()
         capabilities = campaign.checked_live()
         if args.scenario == 'capture':
             campaign.capture(capabilities)
+        elif args.scenario in ('history', 'burst', 'slow'):
+            import campaign_workloads
+            campaign_workloads.policy(args.threshold_policy)  # Reject malformed policy before actions.
+            getattr(campaign_workloads, args.scenario)(campaign)
         else:
             getattr(campaign, args.scenario)()
         campaign.result['status'] = 'complete'
@@ -774,10 +955,16 @@ def main(argv=None):
     except BaseException as error:
         campaign.result['status'] = 'failed-or-interrupted'
         campaign.result['errorCode'] = str(error) if isinstance(error, EvidenceError) else type(error).__name__
+        if campaign.cover:
+            try:
+                campaign.visual('failed-workload')
+            except (OSError, ValueError, EvidenceError, subprocess.SubprocessError):
+                campaign.result['failureVisualUnavailable'] = True
         raise
     finally:
         campaign.stop()
         campaign.close_fixtures()
+        campaign.summarize_processes()
         campaign.result['elapsedSeconds'] = time.monotonic() - campaign.started
         campaign.persist()
 
