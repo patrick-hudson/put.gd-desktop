@@ -1,0 +1,27 @@
+Get:1 file:/tmp/pgapt.nyeg963p/apt/apt-mirrors.txt Mirrorlist [101 B]
+Ign:2 http://127.0.0.1:43329/archive/ubuntu noble InRelease
+Get:2 http://127.0.0.1:43329/archive/ubuntu noble InRelease [507 B]
+Err:2 http://127.0.0.1:43329/archive/ubuntu noble InRelease
+  503  Synthetic primary mirror outage [IP: 127.0.0.1 43329]
+  Sub-process /usr/bin/sqv returned an error code (1), error message is: Verifying signature:            Message has been manipulated
+Reading package lists...
+201 URI Done: file:/tmp/pgapt.nyeg963p/apt/apt-mirrors.txt
+ReceivedHash:
+	- SHA512:c009a93ceac815cb64259d8ce2c286b833d87a88a1daa471ba5cf198180f67ac5805906aee620be550264cceae437b6bf263765c2919c4312d6577f35272a7d8
+	- SHA256:55693959f1c52e689d25a302c681358ecc1860ca9be89b1ff70c7f64d9a29080
+	- SHA1:ce4e953a55e41c3e2635beca8c1e2a4ebb5b68e0
+	- MD5Sum:051737f0494648db30c12b9be0cf7372
+	- Checksum-FileSize:101
+ExpectedHash:
+
+201 URI Done: http://127.0.0.1:43329/security/ubuntu/dists/noble/InRelease
+ReceivedHash:
+	- SHA512:35bbff375861857762113d361703208b3cf150557da3b22211d0aef7edb5c122321e99da7d60c49aca776128784f0269c3be0f9c1aff938e37468f134a89dbfe
+	- SHA256:dd924885b99075fa9b625ec157440c359acceea7e9bf17f65fcef5c7050a18da
+	- SHA1:e36d8273e0bde312ab0ffea65142be766b4a1cc6
+	- MD5Sum:ef6065e5b8ca3c7a01226c032aed2433
+	- Checksum-FileSize:507
+ExpectedHash:
+
+W: OpenPGP signature verification failed: http://127.0.0.1:43329/archive/ubuntu noble InRelease: Sub-process /usr/bin/sqv returned an error code (1), error message is: Verifying signature:            Message has been manipulated
+E: The repository 'mirror+file:/tmp/pgapt.nyeg963p/apt/apt-mirrors.txt noble InRelease' is not signed.

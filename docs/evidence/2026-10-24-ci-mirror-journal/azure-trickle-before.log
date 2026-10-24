@@ -1,0 +1,18 @@
+Get:658 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 pocketsphinx-en-us all [27.4 MB]
+Get:658 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 pocketsphinx-en-us all [27.4 MB]
+Get:658 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 pocketsphinx-en-us all [27.4 MB]
+Get:658 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 pocketsphinx-en-us all [27.4 MB]
+Get:658 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 pocketsphinx-en-us all [27.4 MB]
+Get:658 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 pocketsphinx-en-us all [27.4 MB]
+Get:658 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 pocketsphinx-en-us all [27.4 MB]
+Get:658 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 pocketsphinx-en-us all [27.4 MB]
+Get:658 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 pocketsphinx-en-us all [27.4 MB]
+Get:658 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 pocketsphinx-en-us all [27.4 MB]
+::warning::Package install (native (test), apt-get): attempt 1 of 1: **stopped**: ran over the 2 s attempt limit after: Get:658 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 pocketsphinx-en-us all [27.4 MB]
+::error::Package install (native (test), apt-get): attempt snapshot: **failed**: no package snapshot to install from
+### Package install retries (native (test), apt-get)
+
+| Attempt | Outcome | Detail |
+| --- | --- | --- |
+| 1 of 1 | **stopped** | `ran over the 2 s attempt limit after: Get:658 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 pocketsphinx-en-us all [27.4 MB]` |
+| snapshot | **failed**: no package snapshot to install from |  |
