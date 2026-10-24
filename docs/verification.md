@@ -46,8 +46,13 @@ Its release and mirror checksums and nightly minisign signature verify.
 Installation passes `dpkg --verify` and the embedded clean-release identity.
 The first capture attempt has no measured samples: the unchanged witness could
 not validate the current selector. Its failure, raw hashes and reviewed recovery
-frame are retained. A bounded memory pilot is in progress, with draft-driver
-review findings blocking acceptance until a corrected fresh run. No capture,
+frame are retained. The bounded memory pilot observed 61.82 MiB open-family PSS
+against the unchanged 60 MiB ceiling; draft-driver review findings require a
+corrected fresh confirmation before acceptance classification. A fresh six-row
+mixed image/video fixture was independently checked after correcting a missing
+GTK typelib prerequisite. All first-batch raw exports were checksum-verified;
+the original VM resumed and the desktop released verified-clean at 15:30:32 UTC.
+No capture,
 memory, history, burst or network gate is accepted. Driver hardening (#495,
 PR #554) and the performance driver (PR #555) remain separately identified code
 work; old history-growth revisions are held. Unbudgeted response thresholds require

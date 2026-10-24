@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "issue": 379,
-  "status": "campaign_in_progress",
+  "status": "first_batch_complete_corrected_driver_review_pending",
   "accepted": false,
   "scope": "Newest-published-nightly physical Mint Cinnamon performance rehearsal; no stable-asset certification",
   "product": {
@@ -23,7 +23,8 @@
       "embeddedCommit": "9dfac15c1ced201d13a2b70a8afb0c253213768b",
       "embeddedDirty": false,
       "dpkgVerifyClean": true,
-      "verifiedUtc": "2026-10-24T15:10:42.713627+00:00"
+      "verifiedUtc": "2026-10-24T15:10:42.713627+00:00",
+      "packageRemovedAfterBatch": true
     },
     "runningProcessIdentities": []
   },
@@ -64,16 +65,27 @@
   "gates": {
     "regionEmpty": "incomplete_workload_c1; no valid numerical result",
     "regionPopulated": "pending",
-    "coldIdle": "pilot_m1_running; driver summary not accepted gate proof",
-    "closedMemory": "pilot_m1_running; driver summary not accepted gate proof",
-    "historyOpenMemory": "pilot_m1_running; continuous open-window/cleanup guards require corrected fresh run",
+    "coldIdle": "pilot_m1_complete; fresh corrected driver confirmation pending",
+    "closedMemory": "pilot_m1_complete; fresh corrected driver confirmation pending",
+    "historyOpenMemory": "pilot_m1_observed_64821248_bytes_above_62914560; fresh corrected driver confirmation pending",
     "historyFunctionalAndResponse": "pending_measurements_and_explicit_threshold_approval",
     "burst": "pending",
     "slowStalledNetwork": "pending"
   },
   "measurements": [],
-  "savedVisuals": [],
-  "cleanupReceipts": [],
+  "savedVisuals": [
+    {
+      "file": "c1-witness-failure.png",
+      "meaning": "Annotated post-cancellation synthetic cover; no selector-paint proof"
+    },
+    {
+      "file": "m1-empty-history-pilot.png",
+      "meaning": "Reviewed annotated native owned X11 History drawable; no compositor or full-interval claim"
+    }
+  ],
+  "cleanupReceipts": [
+    "batch1-cleanup.json"
+  ],
   "limitations": [
     "Campaign in progress; no performance acceptance pass claimed",
     "History/response metrics without existing approved numerical budgets need explicit approval before pass assessment",
@@ -84,6 +96,24 @@
       "id": "c1",
       "summary": "attempt-c1.json",
       "status": "incomplete_capture_workload",
+      "accepted": false
+    },
+    {
+      "id": "m1",
+      "summary": "attempt-m1.json",
+      "status": "pilot_complete_not_accepted",
+      "accepted": false
+    },
+    {
+      "id": "s1",
+      "summary": "attempt-s1.json",
+      "status": "failed_gtk4_fixture_prerequisite",
+      "accepted": false
+    },
+    {
+      "id": "s2",
+      "summary": "seed-s2.json",
+      "status": "six_operation_fixture_preparation_verified",
       "accepted": false
     }
   ]

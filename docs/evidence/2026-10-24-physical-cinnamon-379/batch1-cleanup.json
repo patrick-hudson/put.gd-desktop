@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "batch": "first physical pilot/preparation batch",
+  "host": "m74",
+  "lockSession": "codex-379-physical",
+  "acquiredUtc": "2026-10-24T15:10:13Z",
+  "releasedUtc": "2026-10-24T15:30:32Z",
+  "verifiedRelease": true,
+  "originalVmState": "running",
+  "pauseUtc": "2026-10-24T15:10:13.588313+00:00",
+  "pausedState": "paused",
+  "resumeUtc": "2026-10-24T15:29:49.457480+00:00",
+  "verifiedResumedState": "running",
+  "exactVmIdentityRetainedPrivately": true,
+  "ownedLoopbackFixtureStopped": true,
+  "ownedProductAndAddedTypelibPurged": [
+    "putgd",
+    "gir1.2-gtk-4.0"
+  ],
+  "desktopStackChanged": false,
+  "newTunnelsOrBrowserHandlers": false,
+  "rawExportVerified": [
+    "c1",
+    "m1",
+    "s1",
+    "s2"
+  ],
+  "privateReceiptSha256": {
+    "vm-before.json": "00540b44dab1ee6078d0be6c30e8cbd4781c3ed9738773c46158287bccd41200",
+    "vm-paused.json": "6690f771e8897b39c8d8003cf6dac9ac25d4cc82714378b6fc5ebfe3bc06a10b",
+    "vm-resumed.json": "70ecb24da67ffaf8bf0845535462e94ed37984ce1502fa3b8db1c948aaf28d4a",
+    "fixture-stop.json": "e98fbe3169c107e6904e545008de4fe7051654d38bce292f64ac77b580dd01cf",
+    "package-cleanup.json": "eb88561169480c5f5569a5ef0884e2de9ded473eff45b3e7c943c536862da029",
+    "export-c1.json": "b78f1e9ce768275c9f4a1e418fc0663a925d155e94445f65b9874159ad5ea8e1",
+    "export-m1.json": "48fc9d5548ce7621777e3b05be2eb7c44f3d384de4fafc6dfc338a1a8ca6cfa9",
+    "export-s1.json": "256c88528cce776d81478d2a49fc3f1820bc38268509852447e3a01636ab6d10",
+    "export-s2.json": "79c62a0f54e56723303f24755b2cc9b7543c9aa3a5a803f3a03fbf069ebc3503"
+  },
+  "desktopReleaseReceiptSha256": "4edf2f8dfd7283f9811d300cf3b35061177b84829a89b279c5cfcfccc34ca051",
+  "remainingSharedCollectorsWerePreexisting": true,
+  "originalGoldensAndBasesTouched": false
+}

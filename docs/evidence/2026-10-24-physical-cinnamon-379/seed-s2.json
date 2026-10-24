@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "utc": "2026-10-24T15:29:26.502478+00:00",
+  "run": "s2",
+  "status": "fresh_fixture_preparation_verified_not_performance_acceptance",
+  "driverCommit": "daf7145a086b2620422e4fcaefb91bfc347a72ee",
+  "tables": {
+    "history": 6,
+    "operations": 6,
+    "deletions": 0,
+    "deletion_targets": 0,
+    "cleared_history": 0,
+    "item_state": 6,
+    "sharing_operations": 0
+  },
+  "independentOperations": 6,
+  "independentItems": 6,
+  "categories": {
+    "images": 3,
+    "videos": 3
+  },
+  "allPersistedNetworkUrlsLiteralOwnedLoopback": true,
+  "persistedJsonNodesChecked": 1698,
+  "loopbackUrlsChecked": 8,
+  "multipartOrManagementStatePresent": false,
+  "configurationAndDbCredentialRefsSyntheticSessionOnly": true,
+  "dbStoppedOwnershipAndOpenFdCheck": true,
+  "socketAbsent": true,
+  "walAbsent": true,
+  "fixtureObjects": 6,
+  "fixtureMultipartUploads": 0,
+  "fixtureVersioningUnchangedEmpty": true,
+  "fixtureMethodCounts": {
+    "HEAD": 6,
+    "PUT": 6
+  },
+  "putSignaturesValid": true,
+  "normalResidentExits": [
+    {
+      "kind": "resident-normal-exit",
+      "elapsedSeconds": 1.7946801460057031,
+      "pid": 636225,
+      "exitCode": 0,
+      "socketAbsent": true
+    },
+    {
+      "kind": "resident-normal-exit",
+      "elapsedSeconds": 7.460356444993522,
+      "pid": 636278,
+      "exitCode": 0,
+      "socketAbsent": true
+    }
+  ],
+  "dbSha256": "6b482b7a1e12f6a229d66477e4f78bad442c08ae3cb22403f58179223fc12ee0",
+  "oldGrowExecuted": false,
+  "productTag": "v26.1024.1185-nightly",
+  "productCommit": "9dfac15c1ced201d13a2b70a8afb0c253213768b",
+  "acceptedPerformanceGate": false,
+  "fixtureStoppedAfterExport": true,
+  "requiresFreshLiveFixtureAndSeedForNextCampaign": true
+}

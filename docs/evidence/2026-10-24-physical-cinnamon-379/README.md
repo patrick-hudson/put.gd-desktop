@@ -82,12 +82,27 @@ encoder process. Other low-activity desktop services and the wall stayed up.
   suggests the historical white-at-outer-edge probe conflicts with the current
   black outer / inset white outline. This attribution is provisional; the
   frozen witness and failed attempt are unchanged.
-- **m1, driver `daf7145a`: bounded memory pilot, still running.** Independent
+- **m1, driver `daf7145a`: completed bounded memory pilot.** Independent
   review identified insufficient continuous History-window checks and cleanup
   proof in the draft driver. Its summary cannot establish acceptance. Preserve
-  its actual source and raw samples; acceptance requires a fresh run with the
-  corrected, reviewed driver. No extra UI activity is added during its scored
-  intervals.
+  its actual source and [135 sanitized numeric snapshots](attempt-m1.json);
+  acceptance requires a fresh run with the corrected, reviewed driver. No extra
+  UI activity was added during its scored intervals. Both resident launches
+  exited normally with code 0 and absent session sockets.
+- **s1 → s2, driver `daf7145a`: fresh fixture preparation.**
+  [s1 failed before any product operation](attempt-s1.json): the independent
+  clipboard child needed missing Gtk/Gdk 4 typelibs. The direct import failure
+  was retained. Apt simulation and installation added only
+  `gir1.2-gtk-4.0`, without changing GTK libraries or the desktop stack, and the
+  corrected command was recorded before retrying in a new private output.
+  [s2 produced six independent operation/item journals](seed-s2.json), three
+  PNGs and three WebM files, through the production clipboard action and six
+  signed loopback PUTs. Independent checks covered 1,698 persisted JSON nodes:
+  all network state was the owned literal loopback destination, credentials
+  were session references, no multipart/management journal remained, and the
+  stopped DB had no open owner, WAL or session socket. This is six-operation
+  preparation, not 10,000 uploads or performance acceptance. The fixture was
+  stopped during cleanup; the final campaign needs a fresh live fixture/seed.
 - **Populated gates: held.** The earlier #495 grow revision was staged but never
   executed. Persisted-network-state validation, DB/runtime association and full
   helper ownership guards require a corrected reviewed handoff before use.
@@ -99,7 +114,35 @@ warmup and cancellation, not a picture proving that a selector was absent or
 painted. The original reviewed frame contains only synthetic cover pixels;
 its SHA-256 is retained in the attempt JSON.
 
+### Memory pilot observations; no acceptance pass
+
+| Stage | Duration | Peak resident RSS | Peak family PSS | Resident CPU, one core |
+| --- | --- | --- | --- | --- |
+| Cold/closed | 300.037 s | 28.82 MiB | 18.26 MiB | 0.00667% |
+| History open, empty fixture | 30 s | See raw snapshots | **61.82 MiB** | See raw snapshots |
+| After History closed | 300.054 s | 28.98 MiB | 18.40 MiB | 0.00333% |
+
+The observed open PSS is **1,906,688 bytes (about 1.82 MiB) above** the approved
+62,914,560-byte / 60 MiB ceiling. Do not round it into a pass or apply tolerance.
+Confirm using the corrected, reviewed continuous-History and complete-cleanup
+driver under the same exact product/profile/quiet parameters. A confirmed
+failure needs its own product/performance issue; #379 remains unaccepted.
+
+![m1 pilot's empty History drawable, with the unchanged budget and confirmation requirement](m1-empty-history-pilot.png)
+
+This reviewed image is the native PID-owned X11 drawable saved by the pilot.
+It is not a VNC compositor image or proof of continuous visibility. Corrected
+acceptance must retain that distinction and supply the missing proof.
+
 ## Evidence and cleanup
+
+[The first-batch cleanup receipt](batch1-cleanup.json) binds verified per-file
+raw exports for c1/m1/s1/s2, the original VM's pause and verified running-state
+resume, stopped loopback fixture, and purge of only the campaign's put.gd and
+added typelib packages. The desktop lock released verified-clean at
+**15:30:32 UTC**; a follow-up host check was free/clean apart from pre-existing
+shared collectors. No golden/base, browser handler or new tunnel was changed.
+The work continues outside a desktop lock while corrected drivers are reviewed.
 
 [campaign.json](campaign.json) binds the selected package, budgets and current
 gate status. Private raw samples, exact commands, failures, original visuals and
