@@ -12,6 +12,7 @@ import pwd
 import shutil
 import subprocess
 import tempfile
+import threading
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -180,6 +181,25 @@ esac
         self.assertFalse(self.entry.exists())
         self.assertFalse(self.script.exists())
         self.assertEqual(self.configuration.read_bytes(), config)
+
+    def test_login_waits_for_a_native_replacement_before_removing_the_link(self):
+        configured = self.images / "putgd-launcher"
+        self.render(configured, kind="native")
+
+        def replace():
+            configured.write_bytes(self.binary.read_bytes())
+            configured.chmod(0o700)
+
+        replacement = threading.Timer(0.3, replace)
+        replacement.start()
+        try:
+            completed, started = self.run_script("--background")
+        finally:
+            replacement.join()
+        self.assertEqual((completed.returncode, completed.stderr), (0, ""))
+        self.assertEqual(started, [str(configured) + " --background"])
+        self.assertTrue(self.entry.exists())
+        self.assertTrue(self.script.exists())
 
     def test_missing_appimage_removes_the_link_at_the_next_login(self):
         self.render(self.images / "putgd-missing.AppImage")

@@ -98,6 +98,13 @@ case ${1-} in
         ;;
 esac
 
+# A missing installation at login needs the same replacement grace as a watch
+# callback. It also keeps this short-lived cleanup alive long enough for GNOME
+# to attach its autostart scope before the process exits successfully.
+if [ "$cleanup_only" != true ] && [ ! -e "$configured" ]; then
+    sleep 2
+fi
+
 if [ "$kind" = native ]; then
     if [ -f "$configured" ] && [ -x "$configured" ]; then
         start_target "$configured" "$@"
