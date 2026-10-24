@@ -101,8 +101,9 @@ findings from product acceptance. The 1058 pass above preserved 10,000 rows in
 five operations and used session credentials plus a retained keychain reference;
 it did not prove realistic 10,000-operation History behavior or a real keychain
 credential lifecycle. Original results and failures remain historical evidence.
-Exact driver commands and code-owner results are pending; no new desktop or
-release acceptance is claimed by this documentation update.
+The early driver is committed at `9b9753ca`; its independent-operation grow
+command and prerequisites are documented. Exact desktop results remain pending;
+no new desktop or release acceptance is claimed by this documentation update.
 
 ## DEB/RPM exact-asset audit rehearsal (#383) — 2026-10-22
 

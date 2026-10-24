@@ -3,8 +3,9 @@
 This is the documentation companion to the maintained driver in
 `tools/lab/native_acceptance.py`. Merge the code PR before this documentation PR.
 The [structured record](summary.json) distinguishes historical observations,
-driver checks and exact-build desktop evidence. Results are pending; this record
-does not establish a new native-package or release acceptance pass.
+driver checks and exact-build desktop evidence. The early implementation is
+committed; desktop results are pending. This record does not establish a new
+native-package or release acceptance pass.
 
 ## Historical evidence and its limits
 
@@ -28,9 +29,44 @@ do not retroactively turn those attempts into passes.
 
 ## Maintained commands
 
-Use the code PR's `tools/lab/native_acceptance.py`, starting with
-`python3 tools/lab/native_acceptance.py --help`. The exact interface and checked
-commands will be recorded here when the implementation stabilizes.
+Early driver source: `9b9753cae64747c897f1512d3a7d821594765010`,
+`tools/lab/native_acceptance.py` plus `tools/lab/native_keychain.py`. The driver
+SHA-256 is `27d494fc83954ca715fdc6a23bfb03c4d919fc399c069df4c7dcf559d85ed5eb`;
+the [JSON](summary.json) also records the helper and test hashes. This is
+unmerged harness source, separately identified from the published product
+package under test. The product CLI capabilities are unchanged.
+
+Start with `python3 tools/lab/native_acceptance.py --help` and the selected
+subcommand's `--help`. Receipts use `--output NEW_PRIVATE_RECEIPT`: its parent
+must be an owned private directory, and the receipt must not already exist.
+Graphical/session commands run on the desktop host under its lock. The tool does
+not launch the app, install packages, log out or unlock a desktop.
+
+The committed history command is:
+
+```sh
+python3 tools/lab/native_acceptance.py --output "$receipt" grow \
+  --fixture-root "$fixture_root" \
+  --db "$fixture_root/data/putgd/history.sqlite" \
+  --runtime "$runtime" --to 10000
+```
+
+Set these paths to the actual disposable fixture on the execution host; use a
+fresh receipt and the same short private runtime used to launch that fixture.
+`grow` does not create a configuration or seed captures. It requires an owned
+private root and database, `config/putgd/config.json` with loopback-only profile
+endpoints, and schema 5–7 terminal operation journals with matching `item_state`
+rows. Stop the fixture normally first: no resident/helpers may remain in that
+runtime and its socket must be absent. Do not remove another session's socket to
+satisfy the gate.
+
+Each seed history row must already have its own operation. The old expanded
+five-operation fixture is rejected. Copies receive unique operation/item IDs,
+one matching journal item and spaced timestamps while retaining the small seed
+payload/preview paths, settings and statuses. The transaction checks integrity
+and the requested independent operation/item counts. It performs no uploads.
+A synthetic shape check does not establish UI performance or migration behavior
+on a product build; those need their own run identities and results.
 
 The maintained tool covers the focused #495 checks. It does not establish a
 complete A–Q package campaign by itself; a future campaign still needs reviewed
@@ -51,10 +87,19 @@ campaign; the code owner coordinates execution and desktop locks.
 
 ## Results and prerequisites
 
-Exact driver commit, tested application identities, commands, sanitized results,
-saved visual hashes and cleanup receipts are pending from the code owner. Raw
-bulk artifacts stay private. A driver unit test or D-Bus action result alone
-does not prove visible tray behavior or a real logout/login.
+The code owner reports 14 focused safety/history-shape tests passing in 2.2 s at
+the early commit (`tests/desktop/test_native_acceptance.py`). A saved test log,
+final driver identity, tested application identities, graphical commands/results,
+saved visual hashes and cleanup receipts are pending. Raw bulk artifacts stay
+private. A driver unit test or D-Bus action result alone does not prove visible
+tray behavior or a real logout/login.
+
+The early keychain command exercises a unique synthetic Secret Service item.
+It can report backend availability, locked state and write/read/cleanup, with a
+separate later `check` phase for persistence. It neither unlocks nor resets an
+existing collection. This is backend evidence only: it explicitly reports
+`productKeychainRoundtripProven: false`. Product QtKeychain setup, use and
+restart/login remain separate proof, even when the backend roundtrip succeeds.
 
 The original keychain problem described the 2026-10-23 pass. The later
 [builder lab-keyring setup](../../remote-builders.md#proton-sessions-on-the-builders)
