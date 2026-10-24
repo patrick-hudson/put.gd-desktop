@@ -439,6 +439,9 @@ int main(int argc,char* argv[]) {
   operations.background([configRoot,dataRoot,executable,enabled,loginMutex,loginGeneration,ticket](putgd::Error& error){std::lock_guard lock(*loginMutex);if(ticket!=loginGeneration->load())return QJsonObject{};
    const auto stopped=putgd::LoginStartup::monitor(dataRoot,false);
    error=putgd::LoginStartup::apply(configRoot,dataRoot,executable,enabled);
+   // A setting can change while uninstall removes the executable. Re-arm the
+   // previous script's cleanup if apply cannot replace it; keep its error.
+   if(error&&enabled)putgd::LoginStartup::monitor(dataRoot,true);
    if(!error)error=stopped;
    if(!error&&enabled)error=putgd::LoginStartup::monitor(dataRoot,true);
    return QJsonObject{{"enabled",enabled},{"applied",!error}};},[&,loginGeneration,ticket](putgd::Error error,QJsonObject status){if(ticket!=loginGeneration->load())return;loginStatus=status;if(error)loginStatus["error"]=error.toJson();refreshSettingsDiagnostics();});

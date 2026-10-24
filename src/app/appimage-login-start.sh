@@ -61,7 +61,10 @@ install_watch() {
     env -u LD_LIBRARY_PATH -u LD_PRELOAD systemd-run --user --quiet --collect \
         --expand-environment=no --unit="$watch_unit" --description="$watch_description" \
         --path-property="PathChanged=$watched" --property=Type=oneshot \
-        /bin/sh "$script" --cleanup-if-missing >/dev/null 2>&1
+        /bin/sh "$script" --cleanup-if-missing >/dev/null 2>&1 || return 1
+    # PathChanged does not trigger for an installation already removed before
+    # the watch was armed. Check once after arming, with the same update grace.
+    manager start --no-block "$watch_unit.service" >/dev/null 2>&1
 }
 
 cleanup_missing() {

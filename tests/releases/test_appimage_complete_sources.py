@@ -89,6 +89,46 @@ class CompleteSources(unittest.TestCase):
             complete.runtime_inputs(self.receipt, ROOT / 'packaging/appimage/runtime-source.json')
 
 
+class RuntimeArchiveMirrors(unittest.TestCase):
+    def setUp(self):
+        temp = tempfile.TemporaryDirectory(prefix='pgruntime-fetch-')
+        self.addCleanup(temp.cleanup)
+        self.target = Path(temp.name) / 'source.tar.gz'
+        self.data = b'exact pinned runtime source'
+        self.item = {'file': 'source.tar.gz', 'url': 'https://upstream.invalid/source.tar.gz',
+                     'mirrors': ['https://mirror.invalid/source.tar.gz'], 'algorithm': 'sha512',
+                     'digest': hashlib.sha512(self.data).hexdigest()}
+
+    def test_wrong_primary_bytes_require_the_same_pin_from_the_mirror(self):
+        with patch.object(complete.urllib.request, 'urlopen', side_effect=[io.BytesIO(b'wrong'), io.BytesIO(self.data)]) as fetch:
+            complete.fetch_archive(self.item, self.target)
+        self.assertEqual(self.target.read_bytes(), self.data)
+        self.assertEqual([c.args[0] for c in fetch.call_args_list], [self.item['url'], self.item['mirrors'][0]])
+
+    def test_bad_mirror_bytes_cannot_bypass_verification(self):
+        with patch.object(complete.urllib.request, 'urlopen', side_effect=[io.BytesIO(b'wrong'), io.BytesIO(b'also wrong')]), \
+                self.assertRaisesRegex(ValueError, 'pinned checksum'):
+            complete.fetch_archive(self.item, self.target)
+
+    def test_transport_failure_can_use_a_verified_mirror(self):
+        with patch.object(complete.urllib.request, 'urlopen', side_effect=[complete.urllib.error.URLError('fixture'), io.BytesIO(self.data)]):
+            complete.fetch_archive(self.item, self.target)
+        self.assertEqual(self.target.read_bytes(), self.data)
+
+    def test_mirror_urls_must_be_https_without_credentials(self):
+        for unsafe in ['http://mirror.invalid/source.tar.gz', 'https://user:secret@mirror.invalid/source.tar.gz']:
+            self.item['mirrors'] = [unsafe]
+            with patch.object(complete.urllib.request, 'urlopen') as fetch, self.assertRaisesRegex(ValueError, 'Unsafe'):
+                complete.fetch_archive(self.item, self.target)
+            fetch.assert_not_called()
+
+    def test_valid_primary_does_not_fetch_the_mirror(self):
+        with patch.object(complete.urllib.request, 'urlopen', return_value=io.BytesIO(self.data)) as fetch:
+            complete.fetch_archive(self.item, self.target)
+        self.assertEqual(fetch.call_count, 1)
+        self.assertEqual(self.target.read_bytes(), self.data)
+
+
 class ExactSourceInputs(unittest.TestCase):
     def test_signed_snapshot_keeps_the_requested_version(self):
         entry = {'source_package_name': 'apparmor', 'source_package_version': '4.0-8',

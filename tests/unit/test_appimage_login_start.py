@@ -103,7 +103,7 @@ class LoginStartTest(unittest.TestCase):
         Path(str(path) + ".version").write_text(version + "\n")
         return path
 
-    def render(self, configured, info=NIGHTLY, kind="appimage", entry_text=None):
+    def render(self, configured, info=NIGHTLY, kind="appimage", entry_text=None, watch_unit=""):
         self.script = self.root / "start.sh"
         self.entry = self.root / "putgd.desktop"
         self.configuration = self.root / "config.json"
@@ -112,7 +112,7 @@ class LoginStartTest(unittest.TestCase):
         identity = "a" * 64
         text = SCRIPT.read_text()
         values = {"CONFIGURED": str(configured), "UPDATE_INFORMATION": info, "KIND": kind,
-                  "ENTRY": str(self.entry), "SCRIPT": str(self.script), "WATCH_UNIT": ""}
+                  "ENTRY": str(self.entry), "SCRIPT": str(self.script), "WATCH_UNIT": watch_unit}
         for key, value in values.items():
             text = text.replace("__PUTGD_" + key + "__", shell_quoted(value))
         text = text.replace("__PUTGD_ID__", identity)
@@ -125,6 +125,7 @@ class LoginStartTest(unittest.TestCase):
 
     def run_script(self, *args):
         env = dict(os.environ, PG_RECEIPT=str(self.receipt), PG_PROBES=str(self.probes))
+        env.update(getattr(self, "command_env", {}))
         completed = subprocess.run(["/bin/sh", str(self.script), *args], env=env, cwd=self.root,
                                    capture_output=True, text=True, timeout=60)
         started = self.receipt.read_text().splitlines() if self.receipt.exists() else []
@@ -139,6 +140,37 @@ class LoginStartTest(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertEqual(started, [str(expected) + " --background"])
         return completed
+
+    def test_new_watch_checks_an_installation_removed_before_it_was_armed(self):
+        # Model the manager only; the real-user-manager probe is separate.
+        # PathChanged does not report a file already missing when armed.
+        mockbin = self.root / "manager-bin"
+        mockbin.mkdir()
+        manager = mockbin / "systemctl"
+        manager.write_text("""#!/bin/sh
+case "$*" in
+ *--property=LoadState*) [ -e "$PG_ARMED" ] && echo loaded || echo not-found ;;
+ *--property=Description*) printf '%s\\n' "$PG_DESCRIPTION" ;;
+ *is-active*) [ -e "$PG_ARMED" ] ;;
+ *stop*) rm -f -- "$PG_ARMED" ;;
+ *start*) /bin/sh "$PG_SCRIPT" --cleanup-if-missing ;;
+ *) exit 1 ;;
+esac
+""")
+        runner = mockbin / "systemd-run"
+        runner.write_text('#!/bin/sh\n: > "$PG_ARMED"\n')
+        manager.chmod(0o700)
+        runner.chmod(0o700)
+        self.render(self.images / "already-removed", kind="native", watch_unit="putgd-login-startup-fixture")
+        self.command_env = {"PATH": str(mockbin) + os.pathsep + os.environ["PATH"],
+                            "PG_ARMED": str(self.root / "armed"), "PG_SCRIPT": str(self.script),
+                            "PG_DESCRIPTION": "put.gd managed login startup " + "a" * 64}
+        configuration = self.configuration.read_bytes()
+        completed, started = self.run_script("--install-watch")
+        self.assertEqual((completed.returncode, completed.stdout, completed.stderr, started), (0, "", "", []))
+        self.assertFalse(self.entry.exists())
+        self.assertFalse(self.script.exists())
+        self.assertEqual(self.configuration.read_bytes(), configuration)
 
     def test_missing_native_install_removes_only_managed_startup_files(self):
         self.render(self.images / "putgd-launcher", kind="native")

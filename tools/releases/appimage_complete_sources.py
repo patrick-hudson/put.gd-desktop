@@ -19,6 +19,7 @@ import subprocess
 import tarfile
 import tempfile
 import urllib.request
+import urllib.error
 from urllib.parse import urlencode, urlsplit
 
 from audit_native import sha256
@@ -206,18 +207,24 @@ def validate_dsc(target, package, version):
 
 
 def fetch_archive(item, target):
-    if not item['url'].startswith('https://') or not re.fullmatch(r'[A-Za-z0-9._+-]+', item['file']):
+    urls = [item['url'], *item.get('mirrors', [])]
+    if not all(isinstance(url, str) and url.startswith('https://') and urlsplit(url).username is None for url in urls) or not re.fullmatch(r'[A-Za-z0-9._+-]+', item['file']):
         raise ValueError('Unsafe runtime source URL or filename')
-    with urllib.request.urlopen(item['url'], timeout=120) as response, target.open('wb') as stream:
-        while block := response.read(1024 * 1024):
-            stream.write(block)
     algorithm = item.get('algorithm', 'sha256')
     if algorithm not in ('sha256', 'sha512'):
         raise ValueError('Unsupported runtime source digest')
-    with target.open('rb') as stream:
-        actual = hashlib.file_digest(stream, algorithm).hexdigest()
-    if actual != item['digest']:
-        raise ValueError('Runtime source checksum differs: ' + item['file'])
+    for url in urls:
+        try:
+            with urllib.request.urlopen(url, timeout=120) as response, target.open('wb') as stream:
+                while block := response.read(1024 * 1024):
+                    stream.write(block)
+        except (urllib.error.URLError, TimeoutError):
+            continue
+        with target.open('rb') as stream:
+            actual = hashlib.file_digest(stream, algorithm).hexdigest()
+        if actual == item['digest']:
+            return
+    raise ValueError('Cannot obtain runtime source with its pinned checksum: ' + item['file'])
 
 
 def build(receipt_path, output, timestamp, cache, runtime_lock, *, git=git_source, apt=apt_source, fetch=fetch_archive):
