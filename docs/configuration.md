@@ -47,6 +47,49 @@ use) and `state`: `current`, `migrated`, `legacy_retained`, `legacy_active` or
 `conflict`, plus `legacyPath`, `stagingPath`, `conflicts` or `reason` when they apply.
 The Settings window shows the same diagnostics and the configuration file path.
 
+## Launch at login and uninstall (Linux)
+
+**Settings → General → Launch at login** is off by default. Enabling it writes
+put.gd's managed entry at `$XDG_CONFIG_HOME/autostart/putgd.desktop` (normally
+`~/.config/autostart/putgd.desktop`). An AppImage also writes its managed login
+script at `$XDG_DATA_HOME/putgd/login/appimage-start.sh`.
+
+Uninstalling the DEB/RPM or deleting the AppImage preserves this preference,
+along with the user's configuration and data. Package scripts do not search or
+delete files in user homes. The native entry has `TryExec` naming the launcher,
+so desktop managers can ignore it while the executable is absent. Plasma and
+systemd ignore more of the retained entry with this check; GNOME and Cinnamon
+can still log a line or list the preference in startup settings. Reinstalling at
+the same path can reactivate it.
+
+The AppImage entry uses its persistent login script rather than a temporary
+mount path. If the configured image is gone, the script can start an eligible
+same-channel image beside it; if none remains, it exits successfully without a
+message. An image that still exists but is not executable reports an error.
+
+To remove the managed entry and script, turn off **Launch at login** while put.gd
+is running, before uninstalling. The CLI uses the same saved preference:
+
+```sh
+putgd-cli settings.get
+putgd-cli settings.patch '{"patch":{"preferences":{"launchAtLogin":false}},"expectedRevision":"RETURNED-OBSERVED-REVISION"}'
+putgd-cli ui.snapshot
+```
+
+Use `result.metadata.observedRevision` from `settings.get` for the patch. Startup
+integration is applied asynchronously after saving: wait until
+`ui.snapshot` reports `result.diagnostics.loginStartup` with `enabled: false`
+and `applied: true`. If it reports an error, correct it before uninstalling.
+The MCP equivalent is `patch_configuration` with
+`patch: {"preferences":{"launchAtLogin":false}}` and the current
+`expected_revision`. put.gd removes only its managed files; a user-created entry
+is preserved and reported as `autostart_conflict`.
+
+If the program is already uninstalled, the user can remove their own retained
+entry and AppImage login script at the paths above. This does not remove history,
+local captures or saved credentials. The uninstall contract was approved in
+[#382](https://github.com/patrick-hudson/put.gd-desktop/issues/382).
+
 ## Settings document
 
 The resident JSON CLI and Settings window use this service. Native acceptance must

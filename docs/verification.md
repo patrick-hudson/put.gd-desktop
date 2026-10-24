@@ -9,6 +9,17 @@ missing profiles, and run physical-hardware release gates on physical machines.
 This requirement is separate from the historical results below; missing new
 rows and current-candidate evidence remain gates.
 
+## Login-startup uninstall contract (#382) — 2026-10-24
+
+The approved contract preserves the user's startup preference across uninstall,
+adds native `TryExec`, and removes the managed entry/script when **Launch at
+login** is disabled. [Source91864 evidence](evidence/2026-10-24-uninstall-startup-382/README.md)
+records a clean Mint/Qt 6.4.2 preset build, the passing startup contract and 18
+AppImage script tests, plus an isolated production CLI/GIO check of executable
+absence/restoration and explicit preference removal. Setup/probe failures and
+cleanup are retained. No graphical, package-removal or real-login pass is claimed;
+the current-build five-desktop removal/login gate remains open in #382/#384.
+
 ## First stable gate plan — 2026-10-22
 
 No release asset has been accepted yet. The first stable switches to calendar
