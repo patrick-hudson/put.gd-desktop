@@ -1,0 +1,29 @@
+{
+  "run": 40068126465,
+  "artifactId": 12549999661,
+  "name": "release-native-ubuntu24.04",
+  "zipBytes": 162689963,
+  "transferredBytes": 67029003,
+  "members": {
+    "build-info.json": {
+      "sha256": "28f74ca8dc08652b5908b2d0733d4ef16c99dfaa03933ac37a959279b3b1ad0a",
+      "bytes": 345,
+      "zipCrc32": 1451299108
+    },
+    "ci-sdk-environment.json": {
+      "sha256": "1ae8815be65252627786c802466a11881ffbde43dc71e9c1b355dc6a7b116e93",
+      "bytes": 40315,
+      "zipCrc32": 1119242322
+    },
+    "native-audit.json": {
+      "sha256": "8edb326806d96ec622e0367e97fbc9ef317f51c3fdc1d7cd39ff28b7edb23dac",
+      "bytes": 158238,
+      "zipCrc32": 1223426299
+    },
+    "putgd_26.1024.1186~dev+gd5b561ddb94f_amd64.deb": {
+      "sha256": "ff3cd261d6159d0e52acd01aa80b8eae9618694c7bf609e4a108531cfedd2730",
+      "bytes": 57552460,
+      "zipCrc32": 4081305746
+    }
+  }
+}

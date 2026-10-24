@@ -47,6 +47,61 @@ use) and `state`: `current`, `migrated`, `legacy_retained`, `legacy_active` or
 `conflict`, plus `legacyPath`, `stagingPath`, `conflicts` or `reason` when they apply.
 The Settings window shows the same diagnostics and the configuration file path.
 
+## Launch at login and uninstall (Linux)
+
+**Settings → General → Launch at login** is off by default. Enabling it writes
+put.gd's managed entry at `$XDG_CONFIG_HOME/autostart/putgd.desktop` (normally
+`~/.config/autostart/putgd.desktop`) and a managed startup script at
+`$XDG_DATA_HOME/putgd/login/start.sh`.
+
+After this version has run with Launch at login enabled, uninstalling the
+DEB/RPM or deleting the last matching AppImage removes these managed startup
+files while preserving configuration and user data. For an
+active account, a user-session file watch performs cleanup even if put.gd has
+been quit, after a short settling delay of about two seconds. An inactive
+account removes the files at its next login. Package scripts do not search or
+delete files in user homes.
+
+Older managed entries are migrated when the updated app runs in that account.
+An account that has never run the updated version can still have a legacy entry
+pointing directly at the executable; that entry cannot clean itself after the
+executable is removed. Run the updated app in each such account before removing
+it, or disable Launch at login there first. No package hook migrates inactive
+accounts by accessing their homes.
+
+The saved **Launch at login** preference remains unchanged. After reinstalling,
+the first manual start reads that preference and recreates startup integration
+if it is still enabled. Removing the link does not delete history, local
+captures or saved credentials.
+
+For an AppImage, startup uses the persistent script rather than a temporary
+mount path. An eligible same-channel replacement beside the configured image
+keeps startup working. When none remains, cleanup exits quietly. An image that
+still exists but is not executable reports an error if no eligible replacement
+can start.
+
+To turn the saved preference off and remove startup integration before
+uninstalling, use **Launch at login** while put.gd is running. The CLI uses the
+same saved preference:
+
+```sh
+putgd-cli settings.get
+putgd-cli settings.patch '{"patch":{"preferences":{"launchAtLogin":false}},"expectedRevision":"RETURNED-OBSERVED-REVISION"}'
+putgd-cli ui.snapshot
+```
+
+Use `result.metadata.observedRevision` from `settings.get` for the patch. Startup
+integration is applied asynchronously after saving: wait until
+`ui.snapshot` reports `result.diagnostics.loginStartup` with `enabled: false`
+and `applied: true`. If it reports an error, correct it before uninstalling.
+The MCP equivalent is `patch_configuration` with
+`patch: {"preferences":{"launchAtLogin":false}}` and the current
+`expected_revision`. put.gd removes only its managed files; a user-created entry
+is preserved and reported as `autostart_conflict`.
+
+This contract, including active-account and next-login cleanup, was approved in
+[#382](https://github.com/patrick-hudson/put.gd-desktop/issues/382#issuecomment-6379948629).
+
 ## Settings document
 
 The resident JSON CLI and Settings window use this service. Native acceptance must

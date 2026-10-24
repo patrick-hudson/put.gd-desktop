@@ -1,0 +1,10 @@
+{
+  "accepted": false,
+  "reason": "Next-login cleanup exited too fast for GNOME autostart scope attachment; cleanup happened, but the journal contains a failed scope. The original aggregate did not check journal text and is insufficient.",
+  "sourceCommit": "69d277ed28d0924bbd4ae2d49ff494087df1a897",
+  "journal": [
+    "2026-10-24T00:30:30-05:00 fedora systemd[1063]: app-gnome-putgd-79662.scope: No PIDs left to attach to the scope's control group, refusing.",
+    "2026-10-24T00:30:30-05:00 fedora systemd[1063]: app-gnome-putgd-79662.scope: Failed with result 'resources'.",
+    "2026-10-24T00:30:30-05:00 fedora systemd[1063]: Failed to start app-gnome-putgd-79662.scope - Application launched by gnome-session-service."
+  ]
+}

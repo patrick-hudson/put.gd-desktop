@@ -1,0 +1,426 @@
+{
+  "scope": "Real user-manager regression: deliberate stop is successful, rapid rearm is safe.",
+  "templateSha256": "920202539096004a8d5d98558f99e55d25d5eb86598ec23ba3669918263dc938",
+  "socketPreflight": {
+    "paths": [
+      {
+        "path": "/run/user/1000/bus",
+        "utf8Bytes": 18
+      }
+    ],
+    "limit": 107
+  },
+  "unit": "putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2",
+  "iterations": [
+    {
+      "iteration": 1,
+      "start": {
+        "argv": [
+          "/bin/sh",
+          "/tmp/u382m-ds2rz43_/start.sh",
+          "--install-watch"
+        ],
+        "exit": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "serviceBeforeStop": {
+        "argv": [
+          "systemctl",
+          "--user",
+          "show",
+          "putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.service",
+          "-p",
+          "SuccessExitStatus",
+          "-p",
+          "ActiveState"
+        ],
+        "exit": 0,
+        "stdout": "SuccessExitStatus=TERM\nActiveState=activating\n",
+        "stderr": ""
+      },
+      "stop": {
+        "argv": [
+          "/bin/sh",
+          "/tmp/u382m-ds2rz43_/start.sh",
+          "--stop-watch"
+        ],
+        "exit": 0,
+        "stdout": "",
+        "stderr": ""
+      }
+    },
+    {
+      "iteration": 2,
+      "start": {
+        "argv": [
+          "/bin/sh",
+          "/tmp/u382m-ds2rz43_/start.sh",
+          "--install-watch"
+        ],
+        "exit": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "serviceBeforeStop": {
+        "argv": [
+          "systemctl",
+          "--user",
+          "show",
+          "putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.service",
+          "-p",
+          "SuccessExitStatus",
+          "-p",
+          "ActiveState"
+        ],
+        "exit": 0,
+        "stdout": "SuccessExitStatus=TERM\nActiveState=activating\n",
+        "stderr": ""
+      },
+      "stop": {
+        "argv": [
+          "/bin/sh",
+          "/tmp/u382m-ds2rz43_/start.sh",
+          "--stop-watch"
+        ],
+        "exit": 0,
+        "stdout": "",
+        "stderr": ""
+      }
+    },
+    {
+      "iteration": 3,
+      "start": {
+        "argv": [
+          "/bin/sh",
+          "/tmp/u382m-ds2rz43_/start.sh",
+          "--install-watch"
+        ],
+        "exit": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "serviceBeforeStop": {
+        "argv": [
+          "systemctl",
+          "--user",
+          "show",
+          "putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.service",
+          "-p",
+          "SuccessExitStatus",
+          "-p",
+          "ActiveState"
+        ],
+        "exit": 0,
+        "stdout": "SuccessExitStatus=TERM\nActiveState=activating\n",
+        "stderr": ""
+      },
+      "stop": {
+        "argv": [
+          "/bin/sh",
+          "/tmp/u382m-ds2rz43_/start.sh",
+          "--stop-watch"
+        ],
+        "exit": 0,
+        "stdout": "",
+        "stderr": ""
+      }
+    },
+    {
+      "iteration": 4,
+      "start": {
+        "argv": [
+          "/bin/sh",
+          "/tmp/u382m-ds2rz43_/start.sh",
+          "--install-watch"
+        ],
+        "exit": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "serviceBeforeStop": {
+        "argv": [
+          "systemctl",
+          "--user",
+          "show",
+          "putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.service",
+          "-p",
+          "SuccessExitStatus",
+          "-p",
+          "ActiveState"
+        ],
+        "exit": 0,
+        "stdout": "SuccessExitStatus=TERM\nActiveState=activating\n",
+        "stderr": ""
+      },
+      "stop": {
+        "argv": [
+          "/bin/sh",
+          "/tmp/u382m-ds2rz43_/start.sh",
+          "--stop-watch"
+        ],
+        "exit": 0,
+        "stdout": "",
+        "stderr": ""
+      }
+    },
+    {
+      "iteration": 5,
+      "start": {
+        "argv": [
+          "/bin/sh",
+          "/tmp/u382m-ds2rz43_/start.sh",
+          "--install-watch"
+        ],
+        "exit": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "serviceBeforeStop": {
+        "argv": [
+          "systemctl",
+          "--user",
+          "show",
+          "putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.service",
+          "-p",
+          "SuccessExitStatus",
+          "-p",
+          "ActiveState"
+        ],
+        "exit": 0,
+        "stdout": "SuccessExitStatus=TERM\nActiveState=activating\n",
+        "stderr": ""
+      },
+      "stop": {
+        "argv": [
+          "/bin/sh",
+          "/tmp/u382m-ds2rz43_/start.sh",
+          "--stop-watch"
+        ],
+        "exit": 0,
+        "stdout": "",
+        "stderr": ""
+      }
+    },
+    {
+      "iteration": 6,
+      "start": {
+        "argv": [
+          "/bin/sh",
+          "/tmp/u382m-ds2rz43_/start.sh",
+          "--install-watch"
+        ],
+        "exit": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "serviceBeforeStop": {
+        "argv": [
+          "systemctl",
+          "--user",
+          "show",
+          "putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.service",
+          "-p",
+          "SuccessExitStatus",
+          "-p",
+          "ActiveState"
+        ],
+        "exit": 0,
+        "stdout": "SuccessExitStatus=TERM\nActiveState=activating\n",
+        "stderr": ""
+      },
+      "stop": {
+        "argv": [
+          "/bin/sh",
+          "/tmp/u382m-ds2rz43_/start.sh",
+          "--stop-watch"
+        ],
+        "exit": 0,
+        "stdout": "",
+        "stderr": ""
+      }
+    },
+    {
+      "iteration": 7,
+      "start": {
+        "argv": [
+          "/bin/sh",
+          "/tmp/u382m-ds2rz43_/start.sh",
+          "--install-watch"
+        ],
+        "exit": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "serviceBeforeStop": {
+        "argv": [
+          "systemctl",
+          "--user",
+          "show",
+          "putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.service",
+          "-p",
+          "SuccessExitStatus",
+          "-p",
+          "ActiveState"
+        ],
+        "exit": 0,
+        "stdout": "SuccessExitStatus=TERM\nActiveState=activating\n",
+        "stderr": ""
+      },
+      "stop": {
+        "argv": [
+          "/bin/sh",
+          "/tmp/u382m-ds2rz43_/start.sh",
+          "--stop-watch"
+        ],
+        "exit": 0,
+        "stdout": "",
+        "stderr": ""
+      }
+    },
+    {
+      "iteration": 8,
+      "start": {
+        "argv": [
+          "/bin/sh",
+          "/tmp/u382m-ds2rz43_/start.sh",
+          "--install-watch"
+        ],
+        "exit": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "serviceBeforeStop": {
+        "argv": [
+          "systemctl",
+          "--user",
+          "show",
+          "putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.service",
+          "-p",
+          "SuccessExitStatus",
+          "-p",
+          "ActiveState"
+        ],
+        "exit": 0,
+        "stdout": "SuccessExitStatus=TERM\nActiveState=activating\n",
+        "stderr": ""
+      },
+      "stop": {
+        "argv": [
+          "/bin/sh",
+          "/tmp/u382m-ds2rz43_/start.sh",
+          "--stop-watch"
+        ],
+        "exit": 0,
+        "stdout": "",
+        "stderr": ""
+      }
+    },
+    {
+      "iteration": 9,
+      "start": {
+        "argv": [
+          "/bin/sh",
+          "/tmp/u382m-ds2rz43_/start.sh",
+          "--install-watch"
+        ],
+        "exit": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "serviceBeforeStop": {
+        "argv": [
+          "systemctl",
+          "--user",
+          "show",
+          "putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.service",
+          "-p",
+          "SuccessExitStatus",
+          "-p",
+          "ActiveState"
+        ],
+        "exit": 0,
+        "stdout": "SuccessExitStatus=TERM\nActiveState=activating\n",
+        "stderr": ""
+      },
+      "stop": {
+        "argv": [
+          "/bin/sh",
+          "/tmp/u382m-ds2rz43_/start.sh",
+          "--stop-watch"
+        ],
+        "exit": 0,
+        "stdout": "",
+        "stderr": ""
+      }
+    },
+    {
+      "iteration": 10,
+      "start": {
+        "argv": [
+          "/bin/sh",
+          "/tmp/u382m-ds2rz43_/start.sh",
+          "--install-watch"
+        ],
+        "exit": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "serviceBeforeStop": {
+        "argv": [
+          "systemctl",
+          "--user",
+          "show",
+          "putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.service",
+          "-p",
+          "SuccessExitStatus",
+          "-p",
+          "ActiveState"
+        ],
+        "exit": 0,
+        "stdout": "SuccessExitStatus=TERM\nActiveState=activating\n",
+        "stderr": ""
+      },
+      "stop": {
+        "argv": [
+          "/bin/sh",
+          "/tmp/u382m-ds2rz43_/start.sh",
+          "--stop-watch"
+        ],
+        "exit": 0,
+        "stdout": "",
+        "stderr": ""
+      }
+    }
+  ],
+  "cleanup": {
+    "argv": [
+      "/bin/sh",
+      "/tmp/u382m-ds2rz43_/start.sh",
+      "--stop-watch"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "journal": {
+    "argv": [
+      "journalctl",
+      "--user",
+      "-u",
+      "putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.path",
+      "-u",
+      "putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.service",
+      "--since",
+      "@1792821137",
+      "--no-pager",
+      "-o",
+      "short-iso"
+    ],
+    "exit": 0,
+    "stdout": "2026-10-24T00:52:18-05:00 debian systemd[937]: Started putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.path - put.gd managed login startup 0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.\n2026-10-24T00:52:18-05:00 debian systemd[937]: Starting putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.service - put.gd managed login startup 0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2...\n2026-10-24T00:52:18-05:00 debian systemd[937]: Stopped putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.path - put.gd managed login startup 0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.\n2026-10-24T00:52:18-05:00 debian systemd[937]: Stopped putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.service - put.gd managed login startup 0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.\n2026-10-24T00:52:18-05:00 debian systemd[937]: Started putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.path - put.gd managed login startup 0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.\n2026-10-24T00:52:18-05:00 debian systemd[937]: Starting putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.service - put.gd managed login startup 0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2...\n2026-10-24T00:52:18-05:00 debian systemd[937]: Stopped putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.path - put.gd managed login startup 0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.\n2026-10-24T00:52:18-05:00 debian systemd[937]: Stopped putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.service - put.gd managed login startup 0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.\n2026-10-24T00:52:18-05:00 debian systemd[937]: Started putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.path - put.gd managed login startup 0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.\n2026-10-24T00:52:18-05:00 debian systemd[937]: Starting putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.service - put.gd managed login startup 0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2...\n2026-10-24T00:52:18-05:00 debian systemd[937]: Stopped putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.path - put.gd managed login startup 0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.\n2026-10-24T00:52:18-05:00 debian systemd[937]: Stopped putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.service - put.gd managed login startup 0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.\n2026-10-24T00:52:18-05:00 debian systemd[937]: Started putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.path - put.gd managed login startup 0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.\n2026-10-24T00:52:18-05:00 debian systemd[937]: Starting putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.service - put.gd managed login startup 0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2...\n2026-10-24T00:52:18-05:00 debian systemd[937]: Stopped putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.path - put.gd managed login startup 0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.\n2026-10-24T00:52:18-05:00 debian systemd[937]: Stopped putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.service - put.gd managed login startup 0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.\n2026-10-24T00:52:18-05:00 debian systemd[937]: Started putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.path - put.gd managed login startup 0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.\n2026-10-24T00:52:18-05:00 debian systemd[937]: Starting putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.service - put.gd managed login startup 0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2...\n2026-10-24T00:52:18-05:00 debian systemd[937]: Stopped putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.path - put.gd managed login startup 0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.\n2026-10-24T00:52:19-05:00 debian systemd[937]: Stopped putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.service - put.gd managed login startup 0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.\n2026-10-24T00:52:19-05:00 debian systemd[937]: Started putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.path - put.gd managed login startup 0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.\n2026-10-24T00:52:19-05:00 debian systemd[937]: Starting putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.service - put.gd managed login startup 0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2...\n2026-10-24T00:52:19-05:00 debian systemd[937]: Stopped putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.path - put.gd managed login startup 0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.\n2026-10-24T00:52:19-05:00 debian systemd[937]: Stopped putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.service - put.gd managed login startup 0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.\n2026-10-24T00:52:19-05:00 debian systemd[937]: Started putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.path - put.gd managed login startup 0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.\n2026-10-24T00:52:19-05:00 debian systemd[937]: Starting putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.service - put.gd managed login startup 0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2...\n2026-10-24T00:52:19-05:00 debian systemd[937]: Stopped putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.path - put.gd managed login startup 0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.\n2026-10-24T00:52:19-05:00 debian systemd[937]: Stopped putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.service - put.gd managed login startup 0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.\n2026-10-24T00:52:19-05:00 debian systemd[937]: Started putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.path - put.gd managed login startup 0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.\n2026-10-24T00:52:19-05:00 debian systemd[937]: Starting putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.service - put.gd managed login startup 0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2...\n2026-10-24T00:52:19-05:00 debian systemd[937]: Stopped putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.path - put.gd managed login startup 0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.\n2026-10-24T00:52:19-05:00 debian systemd[937]: Stopped putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.service - put.gd managed login startup 0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.\n2026-10-24T00:52:19-05:00 debian systemd[937]: Started putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.path - put.gd managed login startup 0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.\n2026-10-24T00:52:19-05:00 debian systemd[937]: Starting putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.service - put.gd managed login startup 0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2...\n2026-10-24T00:52:19-05:00 debian systemd[937]: Stopped putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.path - put.gd managed login startup 0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.\n2026-10-24T00:52:19-05:00 debian systemd[937]: Stopped putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.service - put.gd managed login startup 0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.\n2026-10-24T00:52:19-05:00 debian systemd[937]: Started putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.path - put.gd managed login startup 0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.\n2026-10-24T00:52:19-05:00 debian systemd[937]: Starting putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.service - put.gd managed login startup 0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2...\n2026-10-24T00:52:19-05:00 debian systemd[937]: Stopped putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.path - put.gd managed login startup 0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.\n2026-10-24T00:52:19-05:00 debian systemd[937]: Stopped putgd-login-startup-0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.service - put.gd managed login startup 0fb31ae7814d7265560f89b40649ec862ac6b8dd964d6fc6da87dff16561b4b2.\n",
+    "stderr": ""
+  },
+  "journalErrors": [],
+  "pass": true
+}

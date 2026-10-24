@@ -1,0 +1,885 @@
+[
+  {
+    "target": "a382a",
+    "mode": "appimage",
+    "scenario": "login-settings",
+    "rawFile": "login-settings.png",
+    "rawSha256": "377707c091f4e4541ca7a48565a29a0f73c0e9763de6bb7a07507a2a82c52a08",
+    "annotatedFile": "a382a/appimage/login-settings-annotated.png",
+    "annotatedSha256": "dfb78adeb5057d258d609b9779d5197d3f04c1c34e5b9929e7a19658394ed1e9",
+    "visual": {
+      "file": "login-settings.png",
+      "at": "2026-10-24T06:31:30Z",
+      "sessionId": "85",
+      "running": [
+        {
+          "pid": 7698,
+          "exe": "/tmp/.mount_putgd-HMGfBi/usr/bin/putgd",
+          "ppid": 7563,
+          "start": 747680,
+          "session": null,
+          "sessionState": null,
+          "sessionType": null,
+          "cgroup": "/user.slice/user-1000.slice/user@1000.service/app.slice/app-putgd@autostart.service",
+          "display": ":0",
+          "sessionIdEnv": "85",
+          "exeSha256": "371c555814918dab2f3004dec59e0f2dc970645185b3f9a170e24117878946f1",
+          "appImageEnvironment": {
+            "APPDIR": "/tmp/.mount_putgd-HMGfBi",
+            "APPIMAGE": "/var/home/lab/work/p382n/appimage/Applications/putgd-26.1024.1186-dev+gd5b561ddb94f-x86_64.AppImage"
+          },
+          "qtPlatformPlugins": []
+        },
+        {
+          "pid": 8059,
+          "exe": "/tmp/.mount_putgd-HMGfBi/usr/bin/putgd-ui",
+          "ppid": 7698,
+          "start": 766302,
+          "session": null,
+          "sessionState": null,
+          "sessionType": null,
+          "cgroup": "/user.slice/user-1000.slice/user@1000.service/app.slice/app-putgd@autostart.service",
+          "display": ":0",
+          "sessionIdEnv": "85",
+          "exeSha256": "689ba3f653d6a4f78eeedee8c8e0319c354b3749f41f4c8a6564ba608ad8e288",
+          "appImageEnvironment": {
+            "APPDIR": "/tmp/.mount_putgd-HMGfBi",
+            "APPIMAGE": "/var/home/lab/work/p382n/appimage/Applications/putgd-26.1024.1186-dev+gd5b561ddb94f-x86_64.AppImage"
+          },
+          "qtPlatformPlugins": [
+            "/tmp/.mount_putgd-HMGfBi/usr/plugins/platforms/libqwayland.so"
+          ]
+        }
+      ],
+      "build": {
+        "baseVersion": "26.1024.1186",
+        "commitCount": 1186,
+        "dirty": false,
+        "gitCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+        "gitTree": "797721fa0672581562a8675d0d2010eced7c6bd4",
+        "packageVersion": "26.1024.1186~dev+gd5b561ddb94f",
+        "schemaVersion": 1,
+        "sourceProvenance": "git",
+        "version": "26.1024.1186-dev+gd5b561ddb94f"
+      },
+      "needsHumanVisualReview": true
+    }
+  },
+  {
+    "target": "a382a",
+    "mode": "appimage",
+    "scenario": "active-cleaned-login",
+    "rawFile": "active-cleaned-login.png",
+    "rawSha256": "d151ae79d729f47bf7fec0170a481dbcc6955832a49615df7b5cf0d174fc3409",
+    "annotatedFile": "a382a/appimage/active-cleaned-login-annotated.png",
+    "annotatedSha256": "810b455dd8c1229ab861d3b6d8b937d68053fcc91f7eec31ffdf4ed4528bb5d6",
+    "visual": {
+      "file": "active-cleaned-login.png",
+      "at": "2026-10-24T06:32:36Z",
+      "sessionId": "115",
+      "running": [],
+      "build": null,
+      "needsHumanVisualReview": true
+    }
+  },
+  {
+    "target": "d69",
+    "mode": "appimage",
+    "scenario": "login-settings",
+    "rawFile": "login-settings.png",
+    "rawSha256": "d9ea53a09fe552d01eda5fecfecd9dea8ce98b0917f8473854b9a69faa6d240d",
+    "annotatedFile": "d69/appimage/login-settings-annotated.png",
+    "annotatedSha256": "f7b782ee55400c5fe351468ea3b7cc04dd9a7e6749b5403ff777e5854cc6020d",
+    "visual": {
+      "file": "login-settings.png",
+      "at": "2026-10-24T06:19:24Z",
+      "sessionId": "20055",
+      "running": [
+        {
+          "pid": 2752362,
+          "exe": "/tmp/.mount_putgd-OBMJDN/usr/bin/putgd",
+          "ppid": 2752195,
+          "start": 60842143,
+          "session": null,
+          "sessionState": null,
+          "sessionType": null,
+          "cgroup": "/user.slice/user-1000.slice/user@1000.service/app.slice/app-putgd@autostart.service",
+          "display": ":0",
+          "sessionIdEnv": "20055",
+          "exeSha256": "371c555814918dab2f3004dec59e0f2dc970645185b3f9a170e24117878946f1",
+          "appImageEnvironment": {
+            "APPDIR": "/tmp/.mount_putgd-OBMJDN",
+            "APPIMAGE": "/home/patrick/work/p382n/appimage/Applications/putgd-26.1024.1186-dev+gd5b561ddb94f-x86_64.AppImage"
+          },
+          "qtPlatformPlugins": []
+        },
+        {
+          "pid": 2752640,
+          "exe": "/tmp/.mount_putgd-OBMJDN/usr/bin/putgd-ui",
+          "ppid": 2752362,
+          "start": 60860440,
+          "session": null,
+          "sessionState": null,
+          "sessionType": null,
+          "cgroup": "/user.slice/user-1000.slice/user@1000.service/app.slice/app-putgd@autostart.service",
+          "display": ":0",
+          "sessionIdEnv": "20055",
+          "exeSha256": "689ba3f653d6a4f78eeedee8c8e0319c354b3749f41f4c8a6564ba608ad8e288",
+          "appImageEnvironment": {
+            "APPDIR": "/tmp/.mount_putgd-OBMJDN",
+            "APPIMAGE": "/home/patrick/work/p382n/appimage/Applications/putgd-26.1024.1186-dev+gd5b561ddb94f-x86_64.AppImage"
+          },
+          "qtPlatformPlugins": [
+            "/tmp/.mount_putgd-OBMJDN/usr/plugins/platforms/libqwayland.so"
+          ]
+        }
+      ],
+      "build": {
+        "baseVersion": "26.1024.1186",
+        "commitCount": 1186,
+        "dirty": false,
+        "gitCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+        "gitTree": "797721fa0672581562a8675d0d2010eced7c6bd4",
+        "packageVersion": "26.1024.1186~dev+gd5b561ddb94f",
+        "schemaVersion": 1,
+        "sourceProvenance": "git",
+        "version": "26.1024.1186-dev+gd5b561ddb94f"
+      },
+      "needsHumanVisualReview": true
+    }
+  },
+  {
+    "target": "d69",
+    "mode": "appimage",
+    "scenario": "active-cleaned-login",
+    "rawFile": "active-cleaned-login.png",
+    "rawSha256": "3f7308e9669a0f9405e0c8ebffbf7000218f6cdec19e0791b45a7930d2c84ae0",
+    "annotatedFile": "d69/appimage/active-cleaned-login-annotated.png",
+    "annotatedSha256": "f9ce16e01254640d9b52141b3810ed270b824b4e21768e824223e8eb9aadb02a",
+    "visual": {
+      "file": "active-cleaned-login.png",
+      "at": "2026-10-24T06:20:23Z",
+      "sessionId": "20089",
+      "running": [],
+      "build": null,
+      "needsHumanVisualReview": true
+    }
+  },
+  {
+    "target": "d69",
+    "mode": "native",
+    "scenario": "login-settings",
+    "rawFile": "login-settings.png",
+    "rawSha256": "258d4d5278b6025b8c127a24b0a2cb6d67eb40a9994c51f95152eae275ab3965",
+    "annotatedFile": "d69/native/login-settings-annotated.png",
+    "annotatedSha256": "851707f2a0e0594c8fba82ee13fe3a735bedf2c296428c5cac9dc8241110826a",
+    "visual": {
+      "file": "login-settings.png",
+      "at": "2026-10-24T06:13:05Z",
+      "sessionId": "19982",
+      "running": [
+        {
+          "pid": 2746686,
+          "exe": "/usr/bin/putgd",
+          "ppid": 937,
+          "start": 60804138,
+          "session": null,
+          "sessionState": null,
+          "sessionType": null,
+          "cgroup": "/user.slice/user-1000.slice/user@1000.service/app.slice/app-putgd@autostart.service",
+          "display": ":0",
+          "sessionIdEnv": "19982",
+          "exeSha256": "2ddbddbc90db7c45d37cfaca740e554e15844adf290a684714c46d309c7506c1",
+          "appImageEnvironment": {},
+          "qtPlatformPlugins": []
+        },
+        {
+          "pid": 2747086,
+          "exe": "/usr/bin/putgd-ui",
+          "ppid": 2746686,
+          "start": 60822481,
+          "session": null,
+          "sessionState": null,
+          "sessionType": null,
+          "cgroup": "/user.slice/user-1000.slice/user@1000.service/app.slice/app-putgd@autostart.service",
+          "display": ":0",
+          "sessionIdEnv": "19982",
+          "exeSha256": "d16e63af2c5ba4da461505f4ccf25b8989a16d4a03547f15191cbbb4ec9b3f60",
+          "appImageEnvironment": {},
+          "qtPlatformPlugins": [
+            "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland-generic.so"
+          ]
+        }
+      ],
+      "build": {
+        "baseVersion": "26.1024.1186",
+        "commitCount": 1186,
+        "dirty": false,
+        "gitCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+        "gitTree": "797721fa0672581562a8675d0d2010eced7c6bd4",
+        "packageVersion": "26.1024.1186~dev+gd5b561ddb94f",
+        "schemaVersion": 1,
+        "sourceProvenance": "git",
+        "version": "26.1024.1186-dev+gd5b561ddb94f"
+      },
+      "needsHumanVisualReview": true
+    }
+  },
+  {
+    "target": "d69",
+    "mode": "native",
+    "scenario": "active-cleaned-login",
+    "rawFile": "active-cleaned-login.png",
+    "rawSha256": "f8b4523ba264469197380d1f5fcdcbdfce0c5eb9772f80f6a2360ba62e3e9cb0",
+    "annotatedFile": "d69/native/active-cleaned-login-annotated.png",
+    "annotatedSha256": "f5d1c66887ae1d1734cd867dbbca5aa9902c386c5df6a6b1bec06859040b8204",
+    "visual": {
+      "file": "active-cleaned-login.png",
+      "at": "2026-10-24T06:14:12Z",
+      "sessionId": "20018",
+      "running": [],
+      "build": null,
+      "needsHumanVisualReview": true
+    }
+  },
+  {
+    "target": "f44",
+    "mode": "appimage",
+    "scenario": "login-settings",
+    "rawFile": "login-settings.png",
+    "rawSha256": "8e996ca7b64eed3ed9d38ace041e8d65b77917d96b4e2a1243c6b5a2201c984a",
+    "annotatedFile": "f44/appimage/login-settings-annotated.png",
+    "annotatedSha256": "f2679c82a252cac557c551eaacfebd652ecea773f8638545807135721c44972a",
+    "visual": {
+      "file": "login-settings.png",
+      "at": "2026-10-24T06:19:28Z",
+      "sessionId": "1040",
+      "running": [
+        {
+          "pid": 134466,
+          "exe": "/tmp/.mount_putgd-MMhcPK/usr/bin/putgd",
+          "ppid": 134123,
+          "start": 1387807,
+          "session": null,
+          "sessionState": null,
+          "sessionType": null,
+          "cgroup": "/user.slice/user-1000.slice/user@1000.service/app.slice/app-gnome-putgd-134123.scope",
+          "display": ":0",
+          "sessionIdEnv": null,
+          "exeSha256": "371c555814918dab2f3004dec59e0f2dc970645185b3f9a170e24117878946f1",
+          "appImageEnvironment": {
+            "APPDIR": "/tmp/.mount_putgd-MMhcPK",
+            "APPIMAGE": "/home/patrick/work/p382n/appimage/Applications/putgd-26.1024.1186-dev+gd5b561ddb94f-x86_64.AppImage"
+          },
+          "qtPlatformPlugins": []
+        },
+        {
+          "pid": 135691,
+          "exe": "/tmp/.mount_putgd-MMhcPK/usr/bin/putgd-ui",
+          "ppid": 134466,
+          "start": 1406215,
+          "session": null,
+          "sessionState": null,
+          "sessionType": null,
+          "cgroup": "/user.slice/user-1000.slice/user@1000.service/app.slice/app-gnome-putgd-134123.scope",
+          "display": ":0",
+          "sessionIdEnv": null,
+          "exeSha256": "689ba3f653d6a4f78eeedee8c8e0319c354b3749f41f4c8a6564ba608ad8e288",
+          "appImageEnvironment": {
+            "APPDIR": "/tmp/.mount_putgd-MMhcPK",
+            "APPIMAGE": "/home/patrick/work/p382n/appimage/Applications/putgd-26.1024.1186-dev+gd5b561ddb94f-x86_64.AppImage"
+          },
+          "qtPlatformPlugins": [
+            "/tmp/.mount_putgd-MMhcPK/usr/plugins/platforms/libqwayland.so"
+          ]
+        }
+      ],
+      "build": {
+        "baseVersion": "26.1024.1186",
+        "commitCount": 1186,
+        "dirty": false,
+        "gitCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+        "gitTree": "797721fa0672581562a8675d0d2010eced7c6bd4",
+        "packageVersion": "26.1024.1186~dev+gd5b561ddb94f",
+        "schemaVersion": 1,
+        "sourceProvenance": "git",
+        "version": "26.1024.1186-dev+gd5b561ddb94f"
+      },
+      "needsHumanVisualReview": true
+    }
+  },
+  {
+    "target": "f44",
+    "mode": "appimage",
+    "scenario": "active-cleaned-login",
+    "rawFile": "active-cleaned-login.png",
+    "rawSha256": "08f706aa7cdf2d93c80232962708049143955380dc75b842ca0a28daec8977bf",
+    "annotatedFile": "f44/appimage/active-cleaned-login-annotated.png",
+    "annotatedSha256": "2e291cb54df2530caa6b8103ddd4ea3f4e0edb5a6bddf121f20853aa9d82777a",
+    "visual": {
+      "file": "active-cleaned-login.png",
+      "at": "2026-10-24T06:20:29Z",
+      "sessionId": "1087",
+      "running": [],
+      "build": null,
+      "needsHumanVisualReview": true
+    }
+  },
+  {
+    "target": "f44",
+    "mode": "native",
+    "scenario": "login-settings",
+    "rawFile": "login-settings.png",
+    "rawSha256": "1e67dbdd44f379eae0d79ed43d031d3969bc6264aeb7040b7674493502cad74a",
+    "annotatedFile": "f44/native/login-settings-annotated.png",
+    "annotatedSha256": "c4b968781855449344beef3d2db80a4ec8e306ea2f56e4818d4a89bfdb763f05",
+    "visual": {
+      "file": "login-settings.png",
+      "at": "2026-10-24T06:13:09Z",
+      "sessionId": "916",
+      "running": [
+        {
+          "pid": 116763,
+          "exe": "/usr/bin/putgd",
+          "ppid": 1063,
+          "start": 1349861,
+          "session": null,
+          "sessionState": null,
+          "sessionType": null,
+          "cgroup": "/user.slice/user-1000.slice/user@1000.service/app.slice/app-gnome-putgd-116763.scope",
+          "display": ":0",
+          "sessionIdEnv": null,
+          "exeSha256": "6a6d989164fd4bec7a1ce7513f46c33870c314c0eccbab01d57c8e9a0fa4fabc",
+          "appImageEnvironment": {},
+          "qtPlatformPlugins": []
+        },
+        {
+          "pid": 117994,
+          "exe": "/usr/bin/putgd-ui",
+          "ppid": 116763,
+          "start": 1368434,
+          "session": null,
+          "sessionState": null,
+          "sessionType": null,
+          "cgroup": "/user.slice/user-1000.slice/user@1000.service/app.slice/app-gnome-putgd-116763.scope",
+          "display": ":0",
+          "sessionIdEnv": null,
+          "exeSha256": "f0bda16f03ca9d4d4de9e62ca0a195bf2147d96d292663c0bb9f24bcaf841d1c",
+          "appImageEnvironment": {},
+          "qtPlatformPlugins": [
+            "/usr/lib64/qt6/plugins/platforms/libqwayland.so"
+          ]
+        }
+      ],
+      "build": {
+        "baseVersion": "26.1024.1186",
+        "commitCount": 1186,
+        "dirty": false,
+        "gitCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+        "gitTree": "797721fa0672581562a8675d0d2010eced7c6bd4",
+        "packageVersion": "26.1024.1186~dev+gd5b561ddb94f",
+        "schemaVersion": 1,
+        "sourceProvenance": "git",
+        "version": "26.1024.1186-dev+gd5b561ddb94f"
+      },
+      "needsHumanVisualReview": true
+    }
+  },
+  {
+    "target": "f44",
+    "mode": "native",
+    "scenario": "active-cleaned-login",
+    "rawFile": "active-cleaned-login.png",
+    "rawSha256": "6a081c013601c621a93e9f3108670d005e3923387e8b5f7e1ea027f29c496727",
+    "annotatedFile": "f44/native/active-cleaned-login-annotated.png",
+    "annotatedSha256": "2398170d05cb46036968ff9331c8428ec8e198f1b0e6b373467811b6ba3a426e",
+    "visual": {
+      "file": "active-cleaned-login.png",
+      "at": "2026-10-24T06:14:22Z",
+      "sessionId": "964",
+      "running": [],
+      "build": null,
+      "needsHumanVisualReview": true
+    }
+  },
+  {
+    "target": "k72",
+    "mode": "appimage",
+    "scenario": "login-settings",
+    "rawFile": "login-settings.png",
+    "rawSha256": "8ca65a6c060bbf9ab296146802cf50e24fafa63c412d041edcf7849bcf3e4f87",
+    "annotatedFile": "k72/appimage/login-settings-annotated.png",
+    "annotatedSha256": "eca0ea478f684f785569270ab49c346e1153f7cfb69f7a92bedf7c8f0dc97355",
+    "visual": {
+      "file": "login-settings.png",
+      "at": "2026-10-24T06:22:36Z",
+      "sessionId": "857",
+      "running": [
+        {
+          "pid": 120047,
+          "exe": "/tmp/.mount_putgd-pBKNEL/usr/bin/putgd",
+          "ppid": 119878,
+          "start": 3073767,
+          "session": null,
+          "sessionState": null,
+          "sessionType": null,
+          "cgroup": "/user.slice/user-1000.slice/user@1000.service/app.slice/app-putgd@autostart.service",
+          "display": ":0",
+          "sessionIdEnv": "857",
+          "exeSha256": "371c555814918dab2f3004dec59e0f2dc970645185b3f9a170e24117878946f1",
+          "appImageEnvironment": {
+            "APPDIR": "/tmp/.mount_putgd-pBKNEL",
+            "APPIMAGE": "/home/patrick/work/p382n/appimage/Applications/putgd-26.1024.1186-dev+gd5b561ddb94f-x86_64.AppImage"
+          },
+          "qtPlatformPlugins": []
+        },
+        {
+          "pid": 124102,
+          "exe": "/tmp/.mount_putgd-pBKNEL/usr/bin/putgd-ui",
+          "ppid": 120047,
+          "start": 3092070,
+          "session": null,
+          "sessionState": null,
+          "sessionType": null,
+          "cgroup": "/user.slice/user-1000.slice/user@1000.service/app.slice/app-putgd@autostart.service",
+          "display": ":0",
+          "sessionIdEnv": "857",
+          "exeSha256": "689ba3f653d6a4f78eeedee8c8e0319c354b3749f41f4c8a6564ba608ad8e288",
+          "appImageEnvironment": {
+            "APPDIR": "/tmp/.mount_putgd-pBKNEL",
+            "APPIMAGE": "/home/patrick/work/p382n/appimage/Applications/putgd-26.1024.1186-dev+gd5b561ddb94f-x86_64.AppImage"
+          },
+          "qtPlatformPlugins": [
+            "/tmp/.mount_putgd-pBKNEL/usr/plugins/platforms/libqwayland.so"
+          ]
+        }
+      ],
+      "build": {
+        "baseVersion": "26.1024.1186",
+        "commitCount": 1186,
+        "dirty": false,
+        "gitCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+        "gitTree": "797721fa0672581562a8675d0d2010eced7c6bd4",
+        "packageVersion": "26.1024.1186~dev+gd5b561ddb94f",
+        "schemaVersion": 1,
+        "sourceProvenance": "git",
+        "version": "26.1024.1186-dev+gd5b561ddb94f"
+      },
+      "needsHumanVisualReview": true
+    }
+  },
+  {
+    "target": "k72",
+    "mode": "appimage",
+    "scenario": "active-cleaned-login",
+    "rawFile": "active-cleaned-login.attempt4.png",
+    "rawSha256": "ecfdffe5a4541bb11305d364ae151b6766c994e6ad0e0badb8e601e9153dc5ac",
+    "annotatedFile": "k72/appimage/active-cleaned-login-annotated.png",
+    "annotatedSha256": "43bdd6967662beec2a350e11dd5aacab24b2dfad90723320ef943f843a3a77c4",
+    "visual": {
+      "file": "active-cleaned-login.attempt4.png",
+      "at": "2026-10-24T06:23:56Z",
+      "sessionId": "891",
+      "running": [],
+      "build": null,
+      "needsHumanVisualReview": true
+    }
+  },
+  {
+    "target": "k72",
+    "mode": "native",
+    "scenario": "login-settings",
+    "rawFile": "login-settings.png",
+    "rawSha256": "ba50503fcbb7df1193196e7f68c5f30970c0a38ce6d017360f8e599524f21754",
+    "annotatedFile": "k72/native/login-settings-annotated.png",
+    "annotatedSha256": "f21a092677e90c4066b6b1cd626637083883dfe1f4127f9bda67313696d68eb9",
+    "visual": {
+      "file": "login-settings.png",
+      "at": "2026-10-24T06:13:09Z",
+      "sessionId": "783",
+      "running": [
+        {
+          "pid": 104323,
+          "exe": "/usr/bin/putgd",
+          "ppid": 1252,
+          "start": 3016962,
+          "session": null,
+          "sessionState": null,
+          "sessionType": null,
+          "cgroup": "/user.slice/user-1000.slice/user@1000.service/app.slice/app-putgd@autostart.service",
+          "display": ":0",
+          "sessionIdEnv": "783",
+          "exeSha256": "a0bb1c990ae3b1f4e94ce1af2f16b860a25d375310ccbce6e76a5ce912414200",
+          "appImageEnvironment": {},
+          "qtPlatformPlugins": []
+        },
+        {
+          "pid": 108523,
+          "exe": "/usr/bin/putgd-ui",
+          "ppid": 104323,
+          "start": 3035334,
+          "session": null,
+          "sessionState": null,
+          "sessionType": null,
+          "cgroup": "/user.slice/user-1000.slice/user@1000.service/app.slice/app-putgd@autostart.service",
+          "display": ":0",
+          "sessionIdEnv": "783",
+          "exeSha256": "9b19f3415dcbfd8c6da90b6ae36428feadc80015cfc2d02a3603946ddcd6f555",
+          "appImageEnvironment": {},
+          "qtPlatformPlugins": [
+            "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland.so"
+          ]
+        }
+      ],
+      "build": {
+        "baseVersion": "26.1024.1186",
+        "commitCount": 1186,
+        "dirty": false,
+        "gitCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+        "gitTree": "797721fa0672581562a8675d0d2010eced7c6bd4",
+        "packageVersion": "26.1024.1186~dev+gd5b561ddb94f",
+        "schemaVersion": 1,
+        "sourceProvenance": "git",
+        "version": "26.1024.1186-dev+gd5b561ddb94f"
+      },
+      "needsHumanVisualReview": true
+    }
+  },
+  {
+    "target": "k72",
+    "mode": "native",
+    "scenario": "active-cleaned-login",
+    "rawFile": "active-cleaned-login.png",
+    "rawSha256": "9cc7a7fb240991cbd4bc724d9c9809bf94991d099f60823bbd96e5abd8aaed61",
+    "annotatedFile": "k72/native/active-cleaned-login-annotated.png",
+    "annotatedSha256": "fc552b02ce09ba44390eb01b5b63e06041dc9bccd3b1d6699a422b1c8ebe5dd9",
+    "visual": {
+      "file": "active-cleaned-login.png",
+      "at": "2026-10-24T06:14:36Z",
+      "sessionId": "820",
+      "running": [],
+      "build": null,
+      "needsHumanVisualReview": true
+    }
+  },
+  {
+    "target": "m74",
+    "mode": "appimage",
+    "scenario": "login-settings",
+    "rawFile": "login-settings.png",
+    "rawSha256": "725c542002498191af1e140520f1ec51f4109a1484d318020ef812c7dc371866",
+    "annotatedFile": "m74/appimage/login-settings-annotated.png",
+    "annotatedSha256": "0f312a1d61a2873e6790041673e435bbb312e0f698fca8386330549d3edfa05d",
+    "visual": {
+      "file": "login-settings.png",
+      "at": "2026-10-24T06:25:02Z",
+      "sessionId": "c83",
+      "running": [
+        {
+          "pid": 619934,
+          "exe": "/tmp/.mount_putgd-aIaBhd/usr/bin/putgd",
+          "ppid": 619350,
+          "start": 22082213,
+          "session": "c83",
+          "sessionState": "active",
+          "sessionType": "x11",
+          "cgroup": "/user.slice/user-1000.slice/session-c83.scope",
+          "display": ":0",
+          "sessionIdEnv": "c83",
+          "exeSha256": "371c555814918dab2f3004dec59e0f2dc970645185b3f9a170e24117878946f1",
+          "appImageEnvironment": {
+            "APPDIR": "/tmp/.mount_putgd-aIaBhd",
+            "APPIMAGE": "/home/patrick/work/p382n/appimage/Applications/putgd-26.1024.1186-dev+gd5b561ddb94f-x86_64.AppImage"
+          },
+          "qtPlatformPlugins": []
+        },
+        {
+          "pid": 620495,
+          "exe": "/tmp/.mount_putgd-aIaBhd/usr/bin/putgd-ui",
+          "ppid": 619934,
+          "start": 22100718,
+          "session": "c83",
+          "sessionState": "active",
+          "sessionType": "x11",
+          "cgroup": "/user.slice/user-1000.slice/session-c83.scope",
+          "display": ":0",
+          "sessionIdEnv": "c83",
+          "exeSha256": "689ba3f653d6a4f78eeedee8c8e0319c354b3749f41f4c8a6564ba608ad8e288",
+          "appImageEnvironment": {
+            "APPDIR": "/tmp/.mount_putgd-aIaBhd",
+            "APPIMAGE": "/home/patrick/work/p382n/appimage/Applications/putgd-26.1024.1186-dev+gd5b561ddb94f-x86_64.AppImage"
+          },
+          "qtPlatformPlugins": [
+            "/tmp/.mount_putgd-aIaBhd/usr/plugins/platforms/libqxcb.so"
+          ]
+        }
+      ],
+      "build": {
+        "baseVersion": "26.1024.1186",
+        "commitCount": 1186,
+        "dirty": false,
+        "gitCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+        "gitTree": "797721fa0672581562a8675d0d2010eced7c6bd4",
+        "packageVersion": "26.1024.1186~dev+gd5b561ddb94f",
+        "schemaVersion": 1,
+        "sourceProvenance": "git",
+        "version": "26.1024.1186-dev+gd5b561ddb94f"
+      },
+      "needsHumanVisualReview": true
+    }
+  },
+  {
+    "target": "m74",
+    "mode": "appimage",
+    "scenario": "active-cleaned-login",
+    "rawFile": "active-cleaned-login.png",
+    "rawSha256": "6a11869451d7dd84fd9dcb3939107d4f36357e55692c2e421d30cbdf98482740",
+    "annotatedFile": "m74/appimage/active-cleaned-login-annotated.png",
+    "annotatedSha256": "fa7d319532d4bcea81ab8ddecdfb50c771bfcb19f2b06d58c3303573c6104781",
+    "visual": {
+      "file": "active-cleaned-login.png",
+      "at": "2026-10-24T06:26:15Z",
+      "sessionId": "c87",
+      "running": [],
+      "build": null,
+      "needsHumanVisualReview": true
+    }
+  },
+  {
+    "target": "m74",
+    "mode": "native",
+    "scenario": "login-settings",
+    "rawFile": "login-settings.png",
+    "rawSha256": "1af0bfdcf62c4a770ddbe3c0a1d45a84daa6c8244ad1a0cc28b6e2cfa9903eb8",
+    "annotatedFile": "m74/native/login-settings-annotated.png",
+    "annotatedSha256": "e4da0e5a48327c6fcf250698067e923c0c2b5d31aad97e30071fb7f0dbfcd2aa",
+    "visual": {
+      "file": "login-settings.png",
+      "at": "2026-10-24T06:16:17Z",
+      "sessionId": "c75",
+      "running": [
+        {
+          "pid": 611874,
+          "exe": "/usr/bin/putgd",
+          "ppid": 611319,
+          "start": 22029767,
+          "session": "c75",
+          "sessionState": "active",
+          "sessionType": "x11",
+          "cgroup": "/user.slice/user-1000.slice/session-c75.scope",
+          "display": ":0",
+          "sessionIdEnv": "c75",
+          "exeSha256": "433d9aee9fc442d7299ddc1fd8b4637aaf0d5725721118d469507d003e089605",
+          "appImageEnvironment": {},
+          "qtPlatformPlugins": []
+        },
+        {
+          "pid": 612411,
+          "exe": "/usr/bin/putgd-ui",
+          "ppid": 611874,
+          "start": 22048258,
+          "session": "c75",
+          "sessionState": "active",
+          "sessionType": "x11",
+          "cgroup": "/user.slice/user-1000.slice/session-c75.scope",
+          "display": ":0",
+          "sessionIdEnv": "c75",
+          "exeSha256": "fba8b38c0e2873e550680314541abf955495c58072a50c54dc6a72675058fbb7",
+          "appImageEnvironment": {},
+          "qtPlatformPlugins": [
+            "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so"
+          ]
+        }
+      ],
+      "build": {
+        "baseVersion": "26.1024.1186",
+        "commitCount": 1186,
+        "dirty": false,
+        "gitCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+        "gitTree": "797721fa0672581562a8675d0d2010eced7c6bd4",
+        "packageVersion": "26.1024.1186~dev+gd5b561ddb94f",
+        "schemaVersion": 1,
+        "sourceProvenance": "git",
+        "version": "26.1024.1186-dev+gd5b561ddb94f"
+      },
+      "needsHumanVisualReview": true
+    }
+  },
+  {
+    "target": "m74",
+    "mode": "native",
+    "scenario": "active-cleaned-login",
+    "rawFile": "active-cleaned-login.png",
+    "rawSha256": "465c878fd6c4f6fe9be57227210e7b58440ed886220daf1097f9da896d6f3fee",
+    "annotatedFile": "m74/native/active-cleaned-login-annotated.png",
+    "annotatedSha256": "b90b94a3d846feb8bd20a4c4d04ac5de68a7e35c86c6755ba9e771a2f0b1a9dd",
+    "visual": {
+      "file": "active-cleaned-login.png",
+      "at": "2026-10-24T06:17:40Z",
+      "sessionId": "c79",
+      "running": [],
+      "build": null,
+      "needsHumanVisualReview": true
+    }
+  },
+  {
+    "target": "u382a",
+    "mode": "appimage",
+    "scenario": "login-settings",
+    "rawFile": "login-settings.png",
+    "rawSha256": "c109552495d77f6cfcb759e0d762bb4bfb35568129273629b618ac9f2cd123c0",
+    "annotatedFile": "u382a/appimage/login-settings-annotated.png",
+    "annotatedSha256": "d767f3c6e021ff7414b501e3296f81b97e2dd42b770e3e2b9c0f1dc80a94c2a4",
+    "visual": {
+      "file": "login-settings.png",
+      "at": "2026-10-24T06:22:52Z",
+      "sessionId": "327",
+      "running": [
+        {
+          "pid": 59149,
+          "exe": "/tmp/.mount_putgd-gBEHOP/usr/bin/putgd",
+          "ppid": 58850,
+          "start": 703494,
+          "session": null,
+          "sessionState": null,
+          "sessionType": null,
+          "cgroup": "/user.slice/user-1000.slice/user@1000.service/app.slice/app-gnome-putgd-58850.scope",
+          "display": ":0",
+          "sessionIdEnv": null,
+          "exeSha256": "371c555814918dab2f3004dec59e0f2dc970645185b3f9a170e24117878946f1",
+          "appImageEnvironment": {
+            "APPDIR": "/tmp/.mount_putgd-gBEHOP",
+            "APPIMAGE": "/home/lab/work/p382n/appimage/Applications/putgd-26.1024.1186-dev+gd5b561ddb94f-x86_64.AppImage"
+          },
+          "qtPlatformPlugins": []
+        },
+        {
+          "pid": 60091,
+          "exe": "/tmp/.mount_putgd-gBEHOP/usr/bin/putgd-ui",
+          "ppid": 59149,
+          "start": 722707,
+          "session": null,
+          "sessionState": null,
+          "sessionType": null,
+          "cgroup": "/user.slice/user-1000.slice/user@1000.service/app.slice/app-gnome-putgd-58850.scope",
+          "display": ":0",
+          "sessionIdEnv": null,
+          "exeSha256": "689ba3f653d6a4f78eeedee8c8e0319c354b3749f41f4c8a6564ba608ad8e288",
+          "appImageEnvironment": {
+            "APPDIR": "/tmp/.mount_putgd-gBEHOP",
+            "APPIMAGE": "/home/lab/work/p382n/appimage/Applications/putgd-26.1024.1186-dev+gd5b561ddb94f-x86_64.AppImage"
+          },
+          "qtPlatformPlugins": [
+            "/tmp/.mount_putgd-gBEHOP/usr/plugins/platforms/libqwayland.so"
+          ]
+        }
+      ],
+      "build": {
+        "baseVersion": "26.1024.1186",
+        "commitCount": 1186,
+        "dirty": false,
+        "gitCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+        "gitTree": "797721fa0672581562a8675d0d2010eced7c6bd4",
+        "packageVersion": "26.1024.1186~dev+gd5b561ddb94f",
+        "schemaVersion": 1,
+        "sourceProvenance": "git",
+        "version": "26.1024.1186-dev+gd5b561ddb94f"
+      },
+      "needsHumanVisualReview": true
+    }
+  },
+  {
+    "target": "u382a",
+    "mode": "appimage",
+    "scenario": "active-cleaned-login",
+    "rawFile": "active-cleaned-login.png",
+    "rawSha256": "82a13868ef1b8fa2834bbdf3efa2f6f25e76078de44a0bb91c4c7500a473734e",
+    "annotatedFile": "u382a/appimage/active-cleaned-login-annotated.png",
+    "annotatedSha256": "26315f9af85a1ae3da41dbf2ae73f7a28fd944dc291d6c99646b2befe688678d",
+    "visual": {
+      "file": "active-cleaned-login.png",
+      "at": "2026-10-24T06:24:19Z",
+      "sessionId": "356",
+      "running": [],
+      "build": null,
+      "needsHumanVisualReview": true
+    }
+  },
+  {
+    "target": "u382a",
+    "mode": "native",
+    "scenario": "login-settings",
+    "rawFile": "login-settings.png",
+    "rawSha256": "1eb1f92dca4dcda610e488adab29730a14cdfebba2dd260e7319d87ab0c64674",
+    "annotatedFile": "u382a/native/login-settings-annotated.png",
+    "annotatedSha256": "a2335ef6bbb4e20127ffc9d6767b8ab024d513122f8c6de1bc7f50472dd2ed48",
+    "visual": {
+      "file": "login-settings.png",
+      "at": "2026-10-24T06:13:27Z",
+      "sessionId": "263",
+      "running": [
+        {
+          "pid": 46088,
+          "exe": "/usr/bin/putgd",
+          "ppid": 45551,
+          "start": 647143,
+          "session": null,
+          "sessionState": null,
+          "sessionType": null,
+          "cgroup": "/user.slice/user-1000.slice/user@1000.service/app.slice/app-gnome-putgd-46088.scope",
+          "display": ":0",
+          "sessionIdEnv": null,
+          "exeSha256": "a0bb1c990ae3b1f4e94ce1af2f16b860a25d375310ccbce6e76a5ce912414200",
+          "appImageEnvironment": {},
+          "qtPlatformPlugins": []
+        },
+        {
+          "pid": 47153,
+          "exe": "/usr/bin/putgd-ui",
+          "ppid": 46088,
+          "start": 666180,
+          "session": null,
+          "sessionState": null,
+          "sessionType": null,
+          "cgroup": "/user.slice/user-1000.slice/user@1000.service/app.slice/app-gnome-putgd-46088.scope",
+          "display": ":0",
+          "sessionIdEnv": null,
+          "exeSha256": "9b19f3415dcbfd8c6da90b6ae36428feadc80015cfc2d02a3603946ddcd6f555",
+          "appImageEnvironment": {},
+          "qtPlatformPlugins": [
+            "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland.so"
+          ]
+        }
+      ],
+      "build": {
+        "baseVersion": "26.1024.1186",
+        "commitCount": 1186,
+        "dirty": false,
+        "gitCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+        "gitTree": "797721fa0672581562a8675d0d2010eced7c6bd4",
+        "packageVersion": "26.1024.1186~dev+gd5b561ddb94f",
+        "schemaVersion": 1,
+        "sourceProvenance": "git",
+        "version": "26.1024.1186-dev+gd5b561ddb94f"
+      },
+      "needsHumanVisualReview": true
+    }
+  },
+  {
+    "target": "u382a",
+    "mode": "native",
+    "scenario": "active-cleaned-login",
+    "rawFile": "active-cleaned-login.png",
+    "rawSha256": "48ff153207dbcc0fd42d398cb8e1ddebaa8bb9cc9e39da4f5a12957a3dc6b63f",
+    "annotatedFile": "u382a/native/active-cleaned-login-annotated.png",
+    "annotatedSha256": "fb5f207b5c89da04d8c788f87e869ac44195bfbd0a52cd4a66ce9ee339342e6e",
+    "visual": {
+      "file": "active-cleaned-login.png",
+      "at": "2026-10-24T06:15:20Z",
+      "sessionId": "296",
+      "running": [],
+      "build": null,
+      "needsHumanVisualReview": true
+    }
+  }
+]
