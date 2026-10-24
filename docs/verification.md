@@ -102,8 +102,14 @@ five operations and used session credentials plus a retained keychain reference;
 it did not prove realistic 10,000-operation History behavior or a real keychain
 credential lifecycle. Original results and failures remain historical evidence.
 The driver in [code PR #554](https://github.com/patrick-hudson/put.gd-desktop/pull/554)
-is recorded at `826c255a`; its maintained commands and prerequisites are documented. Exact desktop results remain pending;
-no new desktop or release acceptance is claimed by this documentation update.
+is recorded at `6bbbd506`; its maintained commands and prerequisites are documented.
+Saved physical k72 KDE/Wayland evidence proves authenticated SNI activation/Quit,
+peer-bound login preparation and same-session refusal, current-session cache
+inspection and a backend-only Secret Service roundtrip/cleanup. Eighteen focused
+tests and the synthetic 10,000-operation command pass. Actual purge snapshots
+retain their earlier `826c255a` identity. Real logout/login, rendered tray menu or
+physical click, product QtKeychain lifecycle and full package/release acceptance
+are not established. The bounded m74 functional check remains pending.
 
 ## DEB/RPM exact-asset audit rehearsal (#383) — 2026-10-22
 

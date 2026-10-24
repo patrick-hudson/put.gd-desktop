@@ -4,8 +4,9 @@ This is the documentation companion to the maintained driver in
 `tools/lab/native_acceptance.py` in [code PR #554](https://github.com/patrick-hudson/put.gd-desktop/pull/554).
 Merge #554 before [documentation PR #552](https://github.com/patrick-hudson/put.gd-desktop/pull/552).
 The [structured record](summary.json) distinguishes historical observations,
-driver checks and exact-build desktop evidence. The early implementation is
-committed; desktop results are pending. This record does not establish a new
+driver checks and exact-build desktop evidence. The current candidate has saved
+k72 activation/Quit, login-preparation, backend and fixture-shape results. A
+bounded m74 functional run remains pending. This record does not establish a new
 native-package or release acceptance pass.
 
 ## Historical evidence and its limits
@@ -30,9 +31,9 @@ do not retroactively turn those attempts into passes.
 
 ## Maintained commands
 
-Current driver source: `826c255a4023daad88d07afb2b82d558f86c9d69`,
+Current driver source: `6bbbd506aeef7f8aa4a97c21664c7013ff427627`,
 `tools/lab/native_acceptance.py` plus `tools/lab/native_keychain.py`. The driver
-SHA-256 is `8ef8180e0c6ee9eef040eab633589e93a51b26db30d600ce10b16306656e8e3e`;
+SHA-256 is `1375c3cc43b39be05f42847e19080fc15afb8a6a8b0e881e82d0d7e5173700dc`;
 the [JSON](summary.json) also records the helper and test hashes. This is
 unmerged harness source, separately identified from the published product
 package under test. The product CLI capabilities are unchanged.
@@ -167,16 +168,61 @@ bytes before launch. Follow [remote-builder locking and visibility](../../remote
 and [VM lifecycle rules](../../vm-lab.md). This documentation thread runs no GUI
 campaign; the code owner coordinates execution and desktop locks.
 
-## Results and prerequisites
+## Saved k72 results
 
-The code owner reports 17 focused safety/history-shape tests passing on k72 at
-`826c255a` (`tests/desktop/test_native_acceptance.py`), and the distro-linked
-KService probe builds there. The early `9b9753ca` handoff had 14 tests (2.2 s).
-A saved test log,
-final driver identity, tested application identities, graphical commands/results,
-saved visual hashes and cleanup receipts are pending. Raw bulk artifacts stay
-private. A driver unit test or D-Bus action result alone does not prove visible
-tray behavior or a real logout/login.
+Two separately recorded runs used the installed `ubuntu26.04` DEB of
+`26.1024.1185-nightly`, product commit
+`9dfac15c1ced201d13a2b70a8afb0c253213768b`, tree
+`4e96912274d9220ba9476bd1b50333f6cf738f4f`. The exported package independently
+hashes to `2f370159c4cd5ebefbe446dc5461daf3c991095bbbe0e7220bb443277fe294ce`.
+They ran on physical k72 (`kubuntu`), native KDE/Wayland, logind session `906`,
+current `/usr/bin/plasmashell` PID `129168`. Exact boot/session/process start
+identities, private receipt paths and SHA-256s are in [summary.json](summary.json).
+
+| Run | Driver | What was observed |
+| --- | --- | --- |
+| `k72/final-826c` | `826c255a4023daad88d07afb2b82d558f86c9d69`, SHA `8ef8180e…` | Authenticated SNI `:1.6059`, resident PID `141786`; activation opened History, dynamic Quit stopped it. A second resident was peer-verified and quit by login preparation; a check in the same session correctly refused. |
+| `k72/final-6bbb` | `6bbbd506aeef7f8aa4a97c21664c7013ff427627`, SHA `1375c3cc…` | Fresh repeat after review fixes, SNI `:1.6139`, resident PID `142921`; the same behaviors and same-session refusal, with independent receipts. |
+
+Both runs selected Quit action `12` from the current owned menu; that value is
+an observation, not an ID embedded in the driver. No pointer input was sent and
+`menuRendered` was false. Both socket preflights passed at 39 UTF-8 bytes; cover
+prechecks were 100%. The retained images happen to be byte-identical across the
+two runs; each run's own receipt records its hash, and no acceptance credit is
+transferred between sources.
+
+| Saved visual | Scope |
+| --- | --- |
+| [k72 activation](pictures/k72-activation.png) | History after authenticated SNI activation; only the owned app and magenta cover are visible. SHA-256 `992a031d596d7e6e7522a74e48b31aca6ccd7e9ed532e4e0d62a47bf4117bafe`. |
+| [k72 after Quit](pictures/k72-after-quit.png) | Only the magenta cover remains after owned dynamic Quit; process termination is established by the paired driver receipt. SHA-256 `72da30a440ce90373d3b394810fcb2b0f8bbf3d6cfdd734e3960ef1d1aeae7bb`. |
+
+The documentation owner verified hashes and inspected the exact saved image
+bytes. These are activation/Quit visuals, not physical tray-click or rendered
+menu proof. Raw bulk evidence remains private on k72 and in the code owner's
+export; the JSON indexes the reviewed files.
+
+On current `6bbb`, the KService probe found 235 applications, including Dolphin
+and put.gd. The cache was healthy, so no repair ran. The repair branch is not
+claimed as a desktop-tested result. The saved 18-test log passes in 1.259 s;
+its synthetic-fixture SQLite `ResourceWarning` diagnostics are retained in the
+private log. The actual harness `grow` command reports 10,000 history rows,
+independent operations/items, operation journals and item states, integrity
+`ok`, and zero uploads. This uses a synthetic schema-7 fixture, not 10,000 real
+captures or a product performance/migration run.
+
+The `826c` snapshots before and after an actual purge both succeeded: the later
+receipt records `cliExists: false`, no profile process and absent database.
+This proves collection tolerates removed binaries; it did not include a real
+logout/login and is not a current-`6bbb` removal acceptance claim. Neither k72
+run claims a positive new-session login-start or post-removal login check.
+
+Both locks were released cleanly: `codex-495`, 14:51:37Z and 14:54:13Z, with
+zero `left`, `notMine`, `preexisting` or unmatched entries. The JSON preserves
+the release receipt hashes/paths. Owned runtimes were removed and packages
+purged. The later candidate fixes inventory of executables marked `(deleted)`;
+the earlier evidence remains bound to its original driver.
+
+## Keychain results and remaining prerequisites
 
 The keychain command exercises a unique synthetic Secret Service item:
 
@@ -196,10 +242,13 @@ It never resets a collection or changes the default alias. A refused prompt is
 an unmet prerequisite, not a lifecycle pass; retain the refusal and any later
 correction. Cleanup targets only the unique synthetic item from the store receipt.
 
-The code owner reports k72 started locked, then store, separate-process read and
-cleanup succeeded through the existing lab backend. Saved receipts are pending;
-this is not yet evidence of persistence across a new login. This is backend
-evidence only: the driver explicitly reports
+The preserved k72 predecessors include two locked-backend refusals and later
+store/read/cleanup success under different per-phase driver hashes. The current
+`6bbb` repeat has separate store, read and cleanup receipts with the same final
+driver hash and provider `ksecretd`; the unique synthetic entry roundtripped and
+was removed. No collection was reset and no default alias changed. This is not
+evidence of persistence across a new login. It is backend evidence only: the
+driver explicitly reports
 `productKeychainRoundtripProven: false`. Product QtKeychain setup, use and
 restart/login remain separate proof, even when the backend roundtrip succeeds.
 
