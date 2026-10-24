@@ -65,3 +65,15 @@ Run `collect_webkit_headers.py --git-dir WEBKIT_GIT` against the exact source bu
 The notice text collection gap is closed by a documented conservative source superset. The absent Bun-wide copyright-bearing form is a documented upstream packaging fact, not an independently inferred prohibition on redistribution: preserve upstream's MIT declaration and a standard MIT reference without manufacturing attribution.
 
 The exact linked ELF notice closure has not been derived. A modified native Bun/JavaScriptCore/TinyCC source build and relink passes in the disposable route documented in `REBUILD.md` and the accompanying rebuild supplement. The rebuilt helper exercises the embedded modified runtime and actual TinyCC compilation. This source/relink proof does not claim byte identity with the official Bun executable, and the marked binaries are not the production candidate. Package assembly must include this notice text, corresponding-source/rebuild materials and integrity manifests. Public source delivery and actual shipping-package acceptance remain separate gates. This corpus is not a legal certification.
+
+## ICU 78.3 in the Linux runtime (#461)
+
+The Linux Bun executable statically links ICU 78.3 from oven-sh/WebKit prebuild
+commit `2e2aa229`. Its exact `icu/LICENSE` is shipped separately as
+`LICENSE.icu4c-78.3`, including Unicode License V3 and the upstream third-party
+code/data notices. It comes from `icu4c-78.3-sources.tgz`, SHA-256
+`3a2e7a47604ba702f345878308e6fefeca612ee895cf4a5f222e7955fabfe0c0`,
+already preserved in the Bun corresponding-source packet. The older ICU text
+in the conservative WebKit notice aggregate does not replace this notice.
+Provisioning, CMake and the installed-package audit bind both shipped copies
+to the runtime manifest by SHA-256.

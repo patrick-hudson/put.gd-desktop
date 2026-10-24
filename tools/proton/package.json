@@ -6,7 +6,8 @@
     "bun": "1.4.2",
     "@protontech/drive-sdk": "0.22.2",
     "@protontech/crypto": "2.0.0",
-    "ky": "1.14.3"
+    "ky": "1.14.3",
+    "@openpgp/web-stream-tools": "0.3.1"
   },
   "devDependencies": {
     "@types/bun": "1.4.2",
