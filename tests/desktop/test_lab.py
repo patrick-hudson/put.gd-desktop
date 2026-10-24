@@ -72,6 +72,64 @@ class LabContracts(unittest.TestCase):
                     # Unset in the session: the login's values stay, as before.
                     self.assertEqual(result, '/etc/xdg|/ssh/share|:7')
 
+    def test_guest_session_shows_appimage_entries_to_the_compositor(self):
+        # #523: AppRun's host entries (KWin permission, icon entries named by the
+        # windows' app IDs) go to XDG_DATA_HOME/applications. KWin reads the
+        # session's data home, so only applications/ points there; put.gd's own
+        # data stays in the private data home.
+        import os, subprocess
+        body = 'printf "%s|%s" "$XDG_DATA_HOME" "$(readlink "$XDG_DATA_HOME/applications")"\n'
+        def script(install):
+            scripts = []
+            with patch.object(lab, 'state', return_value={'guest_user': 'lab', 'profile': 'neon-kde-wayland'}), \
+                 patch.object(lab, 'load_profile', return_value={'session_process': 'plasmashell', 'qt_platform': 'wayland',
+                                                                 'install': install}), \
+                 patch.object(lab, 'ssh', side_effect=lambda _run, text, *a, **k: scripts.append(text) or ''):
+                lab.guest_session('run', body)
+            return scripts[0]
+        def run(text, home, session):
+            root = home / 'bin'
+            root.mkdir(exist_ok=True)
+            shell = subprocess.Popen(['sleep', '30'], env=dict(session, PATH=os.environ['PATH']))
+            try:
+                # Stands in for pgrep, so no real desktop shell on this host is read.
+                (root / 'pgrep').write_text('#!/bin/sh\necho ' + str(shell.pid) + '\n')
+                (root / 'pgrep').chmod(0o700)
+                return subprocess.check_output(['sh', '-c', text], text=True,
+                                               env={'PATH': str(root) + ':' + os.environ['PATH'], 'HOME': str(home)})
+            finally:
+                shell.kill(); shell.wait()
+        appimage = script('appimage')
+        for session_data in (None, 'custom-data'):
+            with self.subTest(session_data=session_data), tempfile.TemporaryDirectory() as directory:
+                home = Path(directory)
+                session = {'XDG_SESSION_TYPE': 'wayland', 'WAYLAND_DISPLAY': '/nonexistent/wayland-0'}
+                if session_data:
+                    session['XDG_DATA_HOME'] = str(home / session_data)
+                expected = home / (session_data or '.local/share') / 'applications'
+                self.assertEqual(run(appimage, home, session), f'{home}/putgd-lab/data|{expected}')
+                self.assertTrue(expected.is_dir())
+                # Entries AppRun writes through the link land where KWin looks.
+                (home / 'putgd-lab/data/applications/putgd-ui.desktop').write_text('[Desktop Entry]\n')
+                self.assertTrue((expected / 'putgd-ui.desktop').is_file())
+                # Every later session command keeps the same link.
+                self.assertEqual(run(appimage, home, session), f'{home}/putgd-lab/data|{expected}')
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            session = {'XDG_SESSION_TYPE': 'wayland', 'WAYLAND_DISPLAY': '/nonexistent/wayland-0'}
+            # An overlay whose private applications/ already holds files keeps it.
+            (home / 'putgd-lab/data/applications').mkdir(parents=True)
+            (home / 'putgd-lab/data/applications/putgd-appimage-OLD.desktop').write_text('[Desktop Entry]\n')
+            self.assertEqual(run(appimage, home, session), f'{home}/putgd-lab/data|')
+            self.assertTrue((home / 'putgd-lab/data/applications/putgd-appimage-OLD.desktop').is_file())
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            session = {'XDG_SESSION_TYPE': 'wayland', 'WAYLAND_DISPLAY': '/nonexistent/wayland-0'}
+            # Package profiles install their entries system-wide; nothing is linked.
+            self.assertNotIn('session_applications', script('deb'))
+            self.assertEqual(run(script('deb'), home, session), f'{home}/putgd-lab/data|')
+            self.assertFalse((home / '.local/share/applications').exists())
+
     def test_tablet_ticks_preserve_pixel_targets_for_native_rounding(self):
         # Actual KWin fullscreen probe: old ticks 15372/17421 delivered
         # 600.46875/680.5078125, so Qt selected 81 instead of 80 pixels.
