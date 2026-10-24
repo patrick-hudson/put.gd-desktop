@@ -171,6 +171,7 @@ private slots:
   QTest::newRow("native-failure")<<1<<QString("failed")<<QString("clipboard_unavailable");
   QTest::newRow("native-suppression")<<1<<QString("suppressed")<<QString("copy_suppressed");
   QTest::newRow("batch-subset")<<2<<QString("partial")<<QString{};
+  QTest::newRow("pending-auto-copy")<<1<<QString("pending")<<QString{};
  }
  void historyLinkCopyOnlyRecordsSuccessfulSingleItemRecovery(){
   QFETCH(int,items);QFETCH(QString,status);QFETCH(QString,errorCode);
@@ -183,7 +184,7 @@ private slots:
   PUTGD_TRY_VERIFY(bool(source.pending));QCOMPARE(journal.operation(op.id).copyStatus,status);
   source.acknowledge(errorCode.isEmpty()?Error{}:Error{errorCode,"Synthetic copy refusal",{}});PUTGD_TRY_VERIFY(done);
   QCOMPARE(error.code,errorCode);QCOMPARE(result["copied"].toBool(),errorCode.isEmpty());
-  auto expected=original;if(items==1&&errorCode.isEmpty())expected["copyStatus"]="copied";
+  auto expected=original;if(items==1&&errorCode.isEmpty()&&(status=="failed"||status=="suppressed"))expected["copyStatus"]="copied";
   QCOMPARE(journal.operation(op.id).toJson(),expected);QCOMPARE(journal.detail("link-0"),detail);
   QCOMPARE(source.reads,0);QCOMPARE(source.copies,1);
  }

@@ -25,7 +25,22 @@ void HistoryService::detail(const QString& id,JsonReply reply) {if(!operations_.
 void HistoryService::preview(const QString& id,JsonReply reply) {operations_.makePreview(id,std::move(reply));}
 void HistoryService::clear(JsonReply reply) {if(!operations_.ready()){reply({"initializing","Wait for resident journal recovery",{}},{});return;}const auto path=operations_.databasePath();operations_.background([path](Error& e) {HistoryStore store(path);e=store.clear();return QJsonObject{{"cleared",!e},{"pendingDeletionTargetsRetained",true}};},[this,reply=std::move(reply)](Error e,QJsonObject result){if(!e)notifyChanged();reply(e,result);});}
 void HistoryService::copyImage(const QString& id,JsonReply reply) {if(!operations_.ready()){reply({"initializing","Wait for resident journal recovery",{}},{});return;}operations_.copyHistoryImage(id,std::move(reply));}
-void HistoryService::copyLink(const QString& id,JsonReply reply) {const auto ticket=operations_.invalidateCopyEligibility();detail(id,[this,reply,ticket](Error e,QJsonObject data) {if(e)reply(e,{});else if(!data["linkAvailable"].toBool())reply({"link_unavailable","This recorded link is no longer available",{}},{});else operations_.copyHistoryUrl(data["receipt"].toObject()["directUrl"].toString(),reply,ticket);});}
+void HistoryService::copyLink(const QString& id,JsonReply reply) {
+ const auto ticket=operations_.invalidateCopyEligibility();
+ detail(id,[this,id,reply,ticket](Error e,QJsonObject data) {
+  if(e){reply(e,{});return;}
+  if(!data["linkAvailable"].toBool()){reply({"link_unavailable","This recorded link is no longer available",{}},{});return;}
+  operations_.copyHistoryUrl(data["receipt"].toObject()["directUrl"].toString(),[this,id,reply](Error e,QJsonObject result) {
+   if(e||!result["copied"].toBool()){reply(e,result);return;}
+   const auto path=operations_.databasePath();
+   operations_.background([path,id](Error& e){HistoryStore store(path);QString operationId;e=store.recordCopiedLink(id,operationId);return QJsonObject{{"operationId",operationId}};},
+    [this,reply,result](Error e,QJsonObject recorded){
+     if(!e&&!recorded["operationId"].toString().isEmpty())emit operations_.changed(recorded["operationId"].toString());
+     reply(e,result);
+    });
+  },ticket);
+ });
+}
 QJsonObject HistoryService::prepare(const QStringList& ids,Error& e) const {
  if(ids.isEmpty()||ids.size()>1000) {e={"invalid_selection","Select between 1 and 1000 confirmed uploads",{}};return {};}
  HistoryStore store(operations_.databasePath());QJsonArray targets;QSet<QString> seen;
