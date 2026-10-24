@@ -20,7 +20,7 @@ def configure(root):
         before = mirrors.read_text()
         lines = before.splitlines(keepends=True)
         after = ''.join(line for line in lines
-                        if line.lstrip().startswith('#') or not AZURE.search(line))
+                        if not line.split() or not AZURE.fullmatch(line.split()[0]))
         if after != before:
             # Fail closed if the runner no longer supplies its official fallback.
             if not any(line.split() and line.split()[0] == ARCHIVE
@@ -33,9 +33,20 @@ def configure(root):
         if not source.exists():
             continue
         before = source.read_text()
-        after = ''.join(AZURE.sub(ARCHIVE, line)
-                        if line.lstrip().startswith(('deb ', 'deb-src ', 'URIs:')) else line
-                        for line in before.splitlines(keepends=True))
+        lines = []
+        uris = False
+        for line in before.splitlines(keepends=True):
+            if not line.strip() or line.lstrip().startswith('#'):
+                lines.append(line)
+                continue
+            if source.suffix == '.sources':
+                if not line[0].isspace():
+                    uris = line.startswith('URIs:')
+                replace = uris
+            else:
+                replace = re.match(r'^\s*deb(?:-src)?\s', line)
+            lines.append(AZURE.sub(ARCHIVE, line) if replace else line)
+        after = ''.join(lines)
         if after != before:
             updates[source] = after
     # Validate all inputs before writing any of them.

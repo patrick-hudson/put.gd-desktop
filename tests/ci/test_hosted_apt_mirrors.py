@@ -34,12 +34,20 @@ class HostedAptMirrors(unittest.TestCase):
         self.assertEqual(source.read_text(), original)
         self.assertEqual(mirrors.configure(self.root), [])
 
+    def test_mirror_comments_do_not_remove_the_official_fallback(self):
+        path = self.root / 'apt-mirrors.txt'
+        original = (RUNNER_MIRRORS + '# http://azure.archive.ubuntu.com/ubuntu/\n'
+                    'https://archive.ubuntu.com/ubuntu/\tpriority:4 # http://azure.archive.ubuntu.com/ubuntu/\n')
+        path.write_text(original)
+        mirrors.configure(self.root)
+        self.assertEqual(path.read_text(), original.split('\n', 1)[1])
+
     def test_direct_deb822_and_legacy_uris_only_change_exact_azure_tokens(self):
         paths = [self.root / 'sources.list', self.root / 'sources.list.d/legacy.list',
                  self.root / 'sources.list.d/ubuntu.sources']
         inputs = [
             'deb [signed-by=/key.gpg] http://azure.archive.ubuntu.com/ubuntu/ noble main\n',
-            'deb-src https://azure.archive.ubuntu.com/ubuntu noble-updates universe\n',
+            'deb-src\thttps://azure.archive.ubuntu.com/ubuntu noble-updates universe\n',
             'Types: deb deb-src\nURIs: https://azure.archive.ubuntu.com/ubuntu/ https://security.ubuntu.com/ubuntu/\n'
             'Suites: noble-security\nComponents: main\nSigned-By: /key.gpg\n',
         ]
@@ -54,6 +62,15 @@ class HostedAptMirrors(unittest.TestCase):
         for path, text in zip(paths, inputs):
             self.assertEqual(path.read_text(), mirrors.AZURE.sub(mirrors.ARCHIVE, text))
         self.assertEqual(third_party.read_text(), unrelated)
+
+    def test_folded_deb822_uris_preserve_other_fields(self):
+        path = self.root / 'sources.list.d/ubuntu.sources'
+        path.write_text('Types: deb\nURIs: https://security.ubuntu.com/ubuntu/\n'
+                        ' https://azure.archive.ubuntu.com/ubuntu/\nSuites: noble\n'
+                        'Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\n')
+        mirrors.configure(self.root)
+        self.assertIn(' https://archive.ubuntu.com/ubuntu/\nSuites: noble\n', path.read_text())
+        self.assertIn('Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\n', path.read_text())
 
     def test_missing_official_fallback_fails_without_partial_writes(self):
         path = self.root / 'apt-mirrors.txt'
