@@ -285,6 +285,7 @@ qint64 RecordingPipeline::retainedUs() const {
 }
 qint64 RecordingPipeline::fileBytes() const { return QFileInfo(output_).size(); }
 RecordingStorage RecordingPipeline::storage() const {
+    if (storageProbe_) return storageProbe_();
     QStorageInfo volume(QFileInfo(output_).absolutePath());
     volume.refresh();
     return {volume.isValid() && volume.isReady() ? volume.bytesAvailable() : -1,
@@ -354,12 +355,19 @@ void RecordingPipeline::poll() {
         gst_message_parse_error(message, &e, &debug);
         Error error{"recording_failed", QStringLiteral("Capture failed: %1").arg(e ? QString::fromUtf8(e->message) : QString()), {{"debug", QString::fromUtf8(debug ? debug : "").left(512)}}};
         const auto disk = storage();
-        if (!diskStop_.isEmpty() || (e && e->domain == GST_RESOURCE_ERROR &&
-                (e->code == GST_RESOURCE_ERROR_NO_SPACE_LEFT || (e->code == GST_RESOURCE_ERROR_WRITE && disk.low())))) {
+        // A previous low-space stop is context, not evidence that a later
+        // encoder/source/drain error was caused by storage. Even a generic WRITE
+        // failure plus low free space does not establish ENOSPC. Keep its diagnosis.
+        if (e && e->domain == GST_RESOURCE_ERROR && e->code == GST_RESOURCE_ERROR_NO_SPACE_LEFT) {
+            const auto cause = error.toJson();
             error = {"recording_disk_full", "The disk filled before the recording could be finalized. No reviewable clip was retained and nothing was uploaded. Free up space and try again.", disk.toJson()};
             error.details["reason"] = "disk_space";
             error.details["finalized"] = false;
-            if (!diskStop_.isEmpty()) error.details["stopDetails"] = diskStop_;
+            error.details["cause"] = cause;
+        }
+        if (!diskStop_.isEmpty()) {
+            error.details["stopDetails"] = diskStop_;
+            error.details["finalized"] = false;
         }
         if (e) g_error_free(e);
         g_free(debug);

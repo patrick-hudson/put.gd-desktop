@@ -64,6 +64,9 @@ signals:
     void failed(putgd::Error);
     void budgetReached(QJsonObject details);
 private:
+    friend class RecordingStorageContract;
+    // In-process storage fault seam; never exposed through helper commands or environment.
+    std::function<RecordingStorage()> storageProbe_;
     // Lab statistics for PUTGD_RECORD_DEBUG_LOG, written on streaming threads and read after teardown.
     struct Spread { gint64 count = 0, min = 0, max = 0, sum = 0; void add(gint64); QString text() const; };
     struct Rebase { std::atomic<gint64> firstPassed{-1}; std::atomic<gint64> lastPassed{-1}; Spread lateness; AudioClockGuard clock; };

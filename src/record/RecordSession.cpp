@@ -80,13 +80,14 @@ RecordSession::RecordSession(QObject* parent) : QObject(parent), pipeline_(this)
                 error = previewFrame(workingClip_, {}, config_, 0, 64, resolved_.canvas, frame);
             }
             if (error || durationUs < 1) {
+                if (!error) error = {"recording_failed", "The clip could not be finalized", {}};
                 if (!details.isEmpty()) {
-                    auto failure = details;
-                    failure["finalized"] = false;
-                    failure["cause"] = error.toJson();
-                    error = {"recording_disk_full", "Recording stopped for low disk space, but the clip could not be finalized for review. Nothing was uploaded. Free up space and try again.", failure};
+                    // Keep a drain/decoder failure's actual diagnosis. Low space
+                    // explains why we stopped, not necessarily why it failed.
+                    error.details["stopDetails"] = details;
+                    error.details["finalized"] = false;
                 }
-                emit event({{"event", "failed"}, {"error", (error ? error : Error{"recording_failed", "The clip could not be finalized", {}}).toJson()}}); return;
+                emit event({{"event", "failed"}, {"error", error.toJson()}}); return;
             }
             durationUs_ = durationUs;
             recorded_ = true;
