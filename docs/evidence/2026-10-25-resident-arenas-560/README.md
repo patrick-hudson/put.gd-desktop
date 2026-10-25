@@ -659,9 +659,9 @@ Historical scripts stay unchanged. The current scripts for any replay:
 | `summarize_o.py` | [`summarize_o2.py`](lab/summarize_o2.py) | Timestamp-based final-270 s window, only after a full settle |
 | `m74-run.sh`, `m74-run-ci.sh` | [`m74-run-v2.sh`](lab/m74-run-v2.sh) | Returns the driver status; lock session is a parameter |
 | `functional_ci.py`, `f-run.sh`, `f-run-v2.sh` | [`f-run-v3.sh`](lab/f-run-v3.sh) | Refuses to launch without an explicit dedicated clipboard scope; `f-run.sh` alone owns the work directory |
-| `module_smoke.sh` … `module_smoke_v3.sh` | [`module_smoke_v4.sh`](lab/module_smoke_v4.sh) | Arguments and canonical roots checked first; maps parsing handles spaces and empty polls; probe status kept; raw probe output kept byte-for-byte, with any classification in a separate file |
-| `identity_check.sh` | [`identity_check_v2.sh`](lab/identity_check_v2.sh) | Requires a full expected revision and a present worker; an absent identity fails |
-| `test_wrappers.sh` (**do not run**) | [`test_wrappers_v2.sh`](lab/test_wrappers_v2.sh) | All output inside its own `mktemp` directory; never creates or deletes fixed campaign paths |
+| `module_smoke.sh` … `module_smoke_v4.sh` | [`module_smoke_v5.sh`](lab/module_smoke_v5.sh) | Arguments and canonical roots checked first; maps parsing handles spaces and empty polls; probe status kept; raw probe output kept byte-for-byte; malformed or wrongly shaped output classified in a separate file before the verdict |
+| `identity_check.sh`, `identity_check_v2.sh` | [`identity_check_v3.sh`](lab/identity_check_v3.sh) | Requires a full expected revision, a present worker and ROUNDS from 1 to 200; an absent identity fails |
+| `test_wrappers.sh` (**do not run**), `test_wrappers_v2.sh`, `test_module_smoke_v4.sh` | [`test_wrappers_v3.sh`](lab/test_wrappers_v3.sh), [`test_wrappers_v3_setup.sh`](lab/test_wrappers_v3_setup.sh) | Guarded setup; output in its own `mktemp` directory; a test-owned stand-in in a separate owned directory; never creates or deletes fixed campaign paths |
 
 - **`resident_burst_o3.py` r3** (#579 Cubic 4372241070): the script now exits non-zero
   when the resident exits abnormally, the forced fallback was used, or tracked
@@ -754,8 +754,11 @@ Historical scripts stay unchanged. The current scripts for any replay:
     only as history and **must not be run**. In `test_wrappers_v2.sh` the stub
     runner writes only inside the test's `mktemp` directory, and the test removes
     only that directory and its own sentinel. A final check confirms that the state
-    of `/tmp/p560ua`, `uab`, `ub`, `ubb` and a foreign sentinel is identical before
-    and after.
+    of `/tmp/p560ua`, `uab`, `ub`, `ubb` and a sentinel is identical before and
+    after. Qualified in round 4: that sentinel is a file the test itself creates
+    directly under `/tmp`, outside its work directory. It is a test-owned stand-in,
+    not literally someone else's file, so v2's confinement is "output in T plus one
+    owned sentinel in `/tmp`".
   - **4372333053:** the `head` line in
     [`fault-results-o5.txt`](lab/fault-checks/fault-results-o5.txt) is the output
     of `ls "st none"`, run to show that the space-containing fake state directory
@@ -772,6 +775,43 @@ Historical scripts stay unchanged. The current scripts for any replay:
     ([output](lab/fault-checks/wrapper-tests-v2-clean-archive.txt)). It covers
     f-run-v3, campaign_o5, phase2_o6, identity_check_v2 and module_smoke_v3, plus
     the ownership check.
+- **Fourth review round** (#579 Cubic review 5645297229). As before, each fix is a
+  new file, and the old bytes and logs are kept.
+  - **4372411646:** in `identity_check_v2.sh` an empty, zero or non-numeric ROUNDS
+    gave an empty `seq` loop and an exit of 0. `identity_check_v3.sh` accepts only
+    a decimal integer from 1 to 200. Stubs reject `''`, 0, -1, `abc`, 1.5, 201,
+    `007` and `2 3`, and accept 3 and the default.
+  - **4372411656:** `test_wrappers_v2.sh` uses `set -u` without `-e`, and an
+    unchecked `T=$(mktemp -d …)`. The sibling `test_module_smoke_v4.sh` has the same
+    pattern. Both are superseded by `test_wrappers_v3.sh`, which checks every setup
+    step explicitly and exits 2 before any other write if one fails: the argument
+    count, `realpath`, the work directory, the stand-in directory and the stand-in
+    file. Errexit is not applied to the expected failures inside the checks.
+    [`test_wrappers_v3_setup.sh`](lab/test_wrappers_v3_setup.sh) injects a fake
+    `mktemp` that fails on its first call (the work directory) or its second (the
+    stand-in directory), and also tries a bad LABDIR. Each exits 2, leaves no new
+    `/tmp` entries, and leaves the caller's own sentinel unchanged.
+  - **4372411661:** in `module_smoke_v4.sh`, parseable JSON of the wrong shape
+    could raise a traceback before any structured verdict. `module_smoke_v5.sh`
+    validates the shape before the checker runs: a top-level object, an
+    `operations` list, operation objects with a `files` list, and file objects
+    with a string `status`. A wrong shape becomes
+    `invalid_schema:<location>` in the separate classification file. The raw bytes
+    and the actual `probeExit` are kept, and a wrong shape can never be filled in
+    as a pass. Stubs:
+    - a valid success, and a valid shape whose probe exits 7;
+    - null or list roots, a missing or non-list `operations`, a non-object
+      operation, a missing or non-list `files`, and a missing or non-string
+      `status`;
+    - non-JSON output.
+
+    Every wrong case fails with exit 1 and keeps the raw bytes, and the fixtures
+    stop.
+  - **4372411665:** the v2 sentinel wording is qualified, as above. In v3 the
+    stand-in sits in its own `mktemp` directory and is described as test-owned.
+  - From a clean `git archive` of `29484435` via `bash`: `test_wrappers_v3.sh`
+    passes 39 of 39 checks, and `test_wrappers_v3_setup.sh` 4 of 4
+    ([output](lab/fault-checks/wrapper-tests-v3-clean-archive.txt)).
 - **Receipts** (Cubic 4372241047): the committed m74 release receipts are
   **sanitized projections**, with the private coordination-notes path removed from
   the lock purpose. The originals (SHA-256 `b235b55b…` for m74 and `63d87a9b…` for
