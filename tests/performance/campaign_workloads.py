@@ -18,7 +18,7 @@ import time
 import types
 from urllib.parse import urlsplit
 
-from bench_ui_process import EvidenceError, identity, sha256
+from bench_ui_process import EvidenceError, identity, same_identity, sha256
 from observe_idle import owned_windows, stop_owned_process_group
 
 
@@ -179,6 +179,35 @@ class UI:
                     raise
                 self.run.event('owned-window-occluded-no-visual-retained', label=label, window=window)
         require(saved, 'no_owned_ui_proven_visible_on_wall')
+
+    def save_history(self, label):
+        """Burst checkpoint after editor handoff; retain the original target."""
+        from campaign_ui import save_visible_window
+        require(same_identity(identity(self.owner['pid']), self.owner), 'history_visual_owner_changed')
+        # File editors have their own process/focus lifecycle. Request the
+        # intended History view again without adopting any replacement helper.
+        reply = self.run.call('ui.show', {'view': 'history'})
+        require(isinstance(reply, dict) and reply.get('shown') == 'history', 'history_show_ack_mismatch')
+        snapshot = self.run.call('ui.snapshot')
+        diagnostics = snapshot.get('diagnostics') if isinstance(snapshot, dict) else None
+        ui = diagnostics.get('ui') if isinstance(diagnostics, dict) else None
+        require(isinstance(ui, dict) and ui.get('pid') == self.owner['pid'] and ui.get('state') == 'ready',
+                'history_visual_helper_changed')
+        require(same_identity(identity(self.owner['pid']), self.owner), 'history_visual_owner_changed')
+        require(self.window in owned_windows(self.owner['pid']), 'history_visual_window_not_mapped')
+        self.run.event('history-visual-presentation-requested', label=label,
+                       window=self.window, owner=self.owner, provesPaint=False)
+        path = self.run.root / (label + '-0.png')
+        try:
+            # This guard still raises the pinned window and requires exact
+            # native-before/composite/native-after equality before any save.
+            proof = save_visible_window(self.window, self.owner, path, self.run.args.vnc_port)
+        except EvidenceError as error:
+            if str(error) != 'owned_ui_not_proven_visible_on_physical_wall':
+                raise
+            self.run.event('owned-window-occluded-no-visual-retained', label=label, window=self.window)
+            raise EvidenceError('no_owned_ui_proven_visible_on_wall') from error
+        self.run.event('owned-ui-visual', label=label, path=path.name, sha256=sha256(path), **proof)
 
     def action(self, label, action, rectangle=None, require_change=True):
         value = self.draw.response(rectangle or self.list_rectangle, action)
@@ -533,7 +562,7 @@ def burst(run):
                 run.sample('burst-active')
                 active = tray(run, 'burst-' + str(index))
                 if index in (4, 24, 49):
-                    ui.save('burst-progress-' + str(index))
+                    ui.save_history('burst-progress-' + str(index))
         require(len(set(operations)) == 50 and uploading_peak >= 2 and queued_peak >= 1,
                 'burst_did_not_demonstrate_concurrent_queued_uploads')
         require(active['IconPixmap'] != initial['IconPixmap'] or active['ToolTip'] != initial['ToolTip'],
@@ -549,7 +578,7 @@ def burst(run):
         time.sleep(2)
         final = tray(run, 'burst-settled-tray')
         require(not final['workingTitleObserved'], 'tray_did_not_return_to_idle')
-        ui.save('burst-completed')
+        ui.save_history('burst-completed')
         for source in sources:
             require(upload_source(source['path'], run.root) == source, 'burst_source_identity_changed_after_upload')
         run.result['metrics']['burst'] = {'acceptedFileEditorUploads': 50, 'nativeCapturesExercised': 0,

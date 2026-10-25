@@ -264,7 +264,7 @@ class FileUploadSafetyTests(unittest.TestCase):
                 [{'IconPixmap': 'working', 'ToolTip': 'working'}] * 10 +
                 [{'Status': 'Active', 'workingTitleObserved': False}])
             with mock.patch.object(workloads, 'tray', side_effect=lambda *args: next(tray_states)), \
-                 mock.patch.object(workloads, 'UI'), \
+                 mock.patch.object(workloads, 'UI') as ui_factory, \
                  mock.patch.object(workloads, 'verify_uploaded') as verify, \
                  mock.patch.object(workloads, 'settle') as settle, \
                  mock.patch.object(workloads, 'submit_file_upload', side_effect=admit), \
@@ -294,6 +294,117 @@ class FileUploadSafetyTests(unittest.TestCase):
             self.assertEqual(run.result['metrics']['burst']['acceptedFileEditorUploads'], 50)
             self.assertEqual(run.result['metrics']['burst']['nativeCapturesExercised'], 0)
             self.assertEqual(run.result['gates']['captureBurst']['status'], 'unassessed')
+            self.assertEqual(ui_factory.return_value.save_history.call_args_list, [
+                mock.call('burst-progress-4'), mock.call('burst-progress-24'),
+                mock.call('burst-progress-49'), mock.call('burst-completed')])
+            ui_factory.return_value.save.assert_not_called()
+
+
+class BurstHistoryVisualTests(unittest.TestCase):
+    """Owned-window protocol controls only; no display, product or pixels read."""
+    def setup_ui(self, root):
+        ui = workloads.UI.__new__(workloads.UI)
+        ui.owner = {'pid': 123, 'startTicks': 456, 'uid': os.getuid(), 'device': 7,
+                    'inode': 8, 'executable': '/not-executed/putgd-ui'}
+        ui.window = '0x2'
+        ui.run = mock.Mock()
+        ui.run.root = root
+        ui.run.args.vnc_port = 5900
+        ui.run.call.side_effect = [{'shown': 'history'},
+            {'diagnostics': {'ui': {'pid': 123, 'state': 'ready'}}}]
+        return ui
+
+    def test_editor_handoff_checkpoint_reactivates_history_before_pinned_window_save(self):
+        with tempfile.TemporaryDirectory() as directory:
+            ui = self.setup_ui(Path(directory))
+            focused = ['editor']
+            order = []
+            def call(method, params=None):
+                order.append(method)
+                if method == 'ui.show':
+                    self.assertEqual(params, {'view': 'history'})
+                    focused[0] = 'history'
+                    return {'shown': 'history'}
+                self.assertEqual(method, 'ui.snapshot')
+                return {'diagnostics': {'ui': {'pid': 123, 'state': 'ready'}}}
+            ui.run.call.side_effect = call
+            def save(window, owner, path, port):
+                self.assertEqual(focused[0], 'history')
+                self.assertEqual(order, ['ui.show', 'ui.snapshot'])
+                self.assertEqual((window, owner, port), ('0x2', ui.owner, 5900))
+                path.write_bytes(b'synthetic unit crop; no desktop access')
+                return {'equalsStableOwnedDrawable': True}
+            with mock.patch.object(workloads, 'identity', return_value=ui.owner), \
+                 mock.patch.object(workloads, 'owned_windows', return_value=['0x2', '0x9']), \
+                 mock.patch('campaign_ui.save_visible_window', side_effect=save) as guard:
+                ui.save_history('burst-progress-4')
+            guard.assert_called_once()
+            events = ui.run.event.call_args_list
+            self.assertEqual(events[0].args[0], 'history-visual-presentation-requested')
+            self.assertFalse(events[0].kwargs['provesPaint'])
+            self.assertEqual(events[1].args[0], 'owned-ui-visual')
+
+    def test_bad_activation_ack_cannot_reach_snapshot_or_visual_guard(self):
+        for reply in (None, {}, {'shown': 'settings'}):
+            with self.subTest(reply=reply), tempfile.TemporaryDirectory() as directory:
+                ui = self.setup_ui(Path(directory))
+                ui.run.call.side_effect = [reply]
+                with mock.patch.object(workloads, 'identity', return_value=ui.owner), \
+                     mock.patch('campaign_ui.save_visible_window') as guard:
+                    with self.assertRaisesRegex(EvidenceError, 'history_show_ack_mismatch'):
+                        ui.save_history('burst-progress-4')
+                guard.assert_not_called()
+                ui.run.call.assert_called_once_with('ui.show', {'view': 'history'})
+
+    def test_wrong_or_missing_common_ui_identity_cannot_adopt_an_editor_or_replacement(self):
+        for snapshot in (None, {}, {'diagnostics': None}, {'diagnostics': {'ui': None}},
+                {'diagnostics': {'ui': {'pid': 999, 'state': 'ready'}}},
+                {'diagnostics': {'ui': {'pid': 123, 'state': 'starting'}}}):
+            with self.subTest(snapshot=snapshot), tempfile.TemporaryDirectory() as directory:
+                ui = self.setup_ui(Path(directory))
+                ui.run.call.side_effect = [{'shown': 'history'}, snapshot]
+                with mock.patch.object(workloads, 'identity', return_value=ui.owner), \
+                     mock.patch('campaign_ui.save_visible_window') as guard:
+                    with self.assertRaisesRegex(EvidenceError, 'history_visual_helper_changed'):
+                        ui.save_history('burst-progress-4')
+                guard.assert_not_called()
+
+    def test_original_generation_uid_and_executable_must_survive_activation(self):
+        for key, value in (('startTicks', 457), ('uid', os.getuid() + 1),
+                           ('executable', '/not-executed/other'), ('device', 9), ('inode', 10)):
+            with self.subTest(changed=key), tempfile.TemporaryDirectory() as directory:
+                ui = self.setup_ui(Path(directory))
+                with mock.patch.object(workloads, 'identity', side_effect=[ui.owner, {**ui.owner, key: value}]), \
+                     mock.patch('campaign_ui.save_visible_window') as guard:
+                    with self.assertRaisesRegex(EvidenceError, 'history_visual_owner_changed'):
+                        ui.save_history('burst-progress-4')
+                guard.assert_not_called()
+
+    def test_missing_pinned_window_cannot_fall_back_to_other_owned_windows(self):
+        with tempfile.TemporaryDirectory() as directory:
+            ui = self.setup_ui(Path(directory))
+            with mock.patch.object(workloads, 'identity', return_value=ui.owner), \
+                 mock.patch.object(workloads, 'owned_windows', return_value=['0x9']), \
+                 mock.patch('campaign_ui.save_visible_window') as guard:
+                with self.assertRaisesRegex(EvidenceError, 'history_visual_window_not_mapped'):
+                    ui.save_history('burst-progress-4')
+            guard.assert_not_called()
+
+    def test_refused_composite_keeps_no_frame_and_cannot_try_another_owned_window(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            ui = self.setup_ui(root)
+            refusal = EvidenceError('owned_ui_not_proven_visible_on_physical_wall')
+            with mock.patch.object(workloads, 'identity', return_value=ui.owner), \
+                 mock.patch.object(workloads, 'owned_windows', return_value=['0x2', '0x9']), \
+                 mock.patch('campaign_ui.save_visible_window', side_effect=refusal) as guard:
+                with self.assertRaisesRegex(EvidenceError, 'no_owned_ui_proven_visible_on_wall') as failure:
+                    ui.save_history('burst-progress-4')
+            guard.assert_called_once_with('0x2', ui.owner, root / 'burst-progress-4-0.png', 5900)
+            self.assertIs(failure.exception.__cause__, refusal)
+            self.assertEqual(list(root.iterdir()), [])
+            self.assertNotIn('owned-ui-visual', [call.args[0] for call in ui.run.event.call_args_list])
+            self.assertEqual(ui.run.event.call_args_list[-1].args[0], 'owned-window-occluded-no-visual-retained')
 
 
 class ProxyStartupTests(unittest.TestCase):
