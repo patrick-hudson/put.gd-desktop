@@ -1,0 +1,30 @@
+********* Start testing of UpdateServiceTest *********
+Config: Using QtTest library 6.8.2, Qt 6.8.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 14.2.0), debian 13
+PASS   : UpdateServiceTest::initTestCase()
+FAIL!  : UpdateServiceTest::changedRepositoryDoesNotAnnounceAnotherChannel(debian13-absent-background) Compared values are not the same
+   Actual   (announced.size()): 1
+   Expected (0)               : 0
+   Loc: [/home/patrick/work/i491/tests/unit/test_update_service.cpp(293)]
+FAIL!  : UpdateServiceTest::changedRepositoryDoesNotAnnounceAnotherChannel(debian13-absent-manual) 'persisted["notifiedVersions"].toObject().isEmpty()' returned FALSE. ()
+   Loc: [/home/patrick/work/i491/tests/unit/test_update_service.cpp(297)]
+FAIL!  : UpdateServiceTest::changedRepositoryDoesNotAnnounceAnotherChannel(debian13-disabled-background) Compared values are not the same
+   Actual   (announced.size()): 1
+   Expected (0)               : 0
+   Loc: [/home/patrick/work/i491/tests/unit/test_update_service.cpp(293)]
+FAIL!  : UpdateServiceTest::changedRepositoryDoesNotAnnounceAnotherChannel(debian13-disabled-manual) 'persisted["notifiedVersions"].toObject().isEmpty()' returned FALSE. ()
+   Loc: [/home/patrick/work/i491/tests/unit/test_update_service.cpp(297)]
+FAIL!  : UpdateServiceTest::changedRepositoryDoesNotAnnounceAnotherChannel(fedora44-absent-background) Compared values are not the same
+   Actual   (announced.size()): 1
+   Expected (0)               : 0
+   Loc: [/home/patrick/work/i491/tests/unit/test_update_service.cpp(293)]
+FAIL!  : UpdateServiceTest::changedRepositoryDoesNotAnnounceAnotherChannel(fedora44-absent-manual) 'persisted["notifiedVersions"].toObject().isEmpty()' returned FALSE. ()
+   Loc: [/home/patrick/work/i491/tests/unit/test_update_service.cpp(297)]
+FAIL!  : UpdateServiceTest::changedRepositoryDoesNotAnnounceAnotherChannel(fedora44-disabled-background) Compared values are not the same
+   Actual   (announced.size()): 1
+   Expected (0)               : 0
+   Loc: [/home/patrick/work/i491/tests/unit/test_update_service.cpp(293)]
+FAIL!  : UpdateServiceTest::changedRepositoryDoesNotAnnounceAnotherChannel(fedora44-disabled-manual) 'persisted["notifiedVersions"].toObject().isEmpty()' returned FALSE. ()
+   Loc: [/home/patrick/work/i491/tests/unit/test_update_service.cpp(297)]
+PASS   : UpdateServiceTest::cleanupTestCase()
+Totals: 2 passed, 8 failed, 0 skipped, 0 blacklisted, 948ms
+********* Finished testing of UpdateServiceTest *********

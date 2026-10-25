@@ -1,0 +1,2 @@
+k72 (Kubuntu 26.04 Plasma Wayland): Nothing new is left on the host. Finish the manual steps (workstation forwards, re-login after an extension copy), then rerun with --verified-clean
+  note: 2 process(es) outside the desktop session (no DISPLAY or WAYLAND_DISPLAY; shared SSH work): 1657 344375

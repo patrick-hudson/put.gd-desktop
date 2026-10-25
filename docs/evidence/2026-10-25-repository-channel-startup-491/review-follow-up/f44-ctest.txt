@@ -1,0 +1,19 @@
+Test project /home/patrick/work/i491/build/dev
+    Start 44: update_feed_contract
+1/5 Test #44: update_feed_contract .............   Passed    0.13 sec
+    Start 45: update_check_request
+2/5 Test #45: update_check_request .............   Passed    0.12 sec
+    Start 49: update_service_schedule
+3/5 Test #49: update_service_schedule ..........   Passed    3.65 sec
+    Start 51: update_system_repository
+4/5 Test #51: update_system_repository .........   Passed    0.02 sec
+    Start 98: gui_settings
+5/5 Test #98: gui_settings .....................   Passed  102.13 sec
+
+100% tests passed, 0 tests failed out of 5
+
+Label Time Summary:
+integration    = 105.78 sec*proc (2 tests)
+unit           =   0.26 sec*proc (3 tests)
+
+Total Test time (real) = 106.04 sec

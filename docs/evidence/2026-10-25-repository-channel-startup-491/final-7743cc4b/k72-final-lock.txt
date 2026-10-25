@@ -1,0 +1,4 @@
+k72 (Kubuntu 26.04 Plasma Wayland): locked
+  #491 final package (codex-491-k72-final), acquired 2026-10-25T09:41:07Z
+  purpose: 7743cc4b startup refresh; work/491 evidence
+  note: 1 process(es) outside the desktop session (no DISPLAY or WAYLAND_DISPLAY; shared SSH work): 1657

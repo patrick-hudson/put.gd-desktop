@@ -1,0 +1,56 @@
+{
+  "scope": "native Qt widget fixture; synthetic supported build, not native package acceptance",
+  "host": "f44",
+  "output": "/home/patrick/work/i491/work/491/native-20261025T042238Z",
+  "root": "/tmp/i491f44-xtkn4z09",
+  "source": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+  "cases": [],
+  "binarySha256": "7050765e939f7f57fcb56f04eb5bf92b535f37038cf22c4bbdbf5f0b28387282",
+  "session": {
+    "DISPLAY": ":0",
+    "WAYLAND_DISPLAY": "wayland-0",
+    "XDG_CURRENT_DESKTOP": "GNOME",
+    "XDG_SESSION_TYPE": "wayland"
+  },
+  "socketPreflight": {
+    "schemaVersion": 1,
+    "passed": true,
+    "limitBytesExcludingNul": 107,
+    "paths": [
+      {
+        "path": "/tmp/i491f44-xtkn4z09/r/putgd/session.sock",
+        "utf8Bytes": 42,
+        "passed": true
+      }
+    ]
+  },
+  "coverSamples": [
+    0.0,
+    0.9706976540616247,
+    0.9706976540616247,
+    0.9706976540616247,
+    0.9706976540616247,
+    0.9706976540616247,
+    0.9706976540616247,
+    0.9706976540616247,
+    0.9706976540616247,
+    0.9706976540616247,
+    0.9706976540616247,
+    0.9706976540616247,
+    0.9706976540616247,
+    0.9706976540616247,
+    0.9706976540616247
+  ],
+  "captureRect": [
+    0,
+    64,
+    1920,
+    952
+  ],
+  "fullCoverFraction": 0.9592901234567901,
+  "coverFraction": 0.9706976540616247,
+  "error": "desktop not covered/unlocked",
+  "passed": false,
+  "coverExit": 0,
+  "socketRemaining": false
+}

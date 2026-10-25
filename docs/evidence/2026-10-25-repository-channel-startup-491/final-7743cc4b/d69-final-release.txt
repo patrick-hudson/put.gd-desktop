@@ -1,0 +1,7 @@
+d69 (Debian 13 Plasma Wayland): released
+  #491 final package (codex-491-d69-final), acquired 2026-10-25T09:41:07Z
+  purpose: 7743cc4b startup refresh; work/491 evidence
+  1 item(s) that were there before the lock stay
+  note: 1 process(es) outside the desktop session (no DISPLAY or WAYLAND_DISPLAY; shared SSH work): 978298
+  receipt on the host: /home/patrick/putgd-lab/locks/history/2026-10-25T09-42-55Z-release.json
+  Tell the next session in the queue and your coordinator
