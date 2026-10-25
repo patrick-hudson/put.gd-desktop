@@ -8,7 +8,9 @@
 
 <br>
 
-**A native Linux sharing app.** Hit a hotkey, grab a region, window, desktop, clipboard or screen recording. The public link lands on your clipboard the moment it uploads. Qt 6 and C++20, talking straight to your own S3 bucket or Proton Drive. No middleman, no telemetry, no silent updates.
+**ShareX-style capture and upload, built for Linux.** Hit a hotkey, grab a region, window, desktop, clipboard or screen recording. The public link lands on your clipboard the moment it uploads.
+
+Send it wherever you like: Amazon S3, Cloudflare R2, Backblaze B2, any S3-compatible bucket, or Proton Drive. Point it at your own storage and nothing sits between you and your files. Native Qt 6 and C++20, no telemetry, no silent updates.
 
 <br>
 
@@ -73,7 +75,7 @@ MP4 (H.264/H.265), WebM (VP9), GIF and animated WebP. Pause and resume on one ti
 <td width="50%" valign="top">
 
 ### <img src="docs/readme/icons/storage.svg" width="32" height="32" align="absmiddle" alt=""> Your storage, your links
-Any S3-compatible bucket with your own link domain, Backblaze B2 through its native API, or Proton Drive through the official SDK. Public-read or private, chosen per destination and per action. Collision policy, naming templates and a Test connection that uploads, verifies the public link and cleans up after itself.
+Amazon S3, Cloudflare R2 or any S3-compatible bucket with your own link domain, Backblaze B2 through its native API, or Proton Drive through the official SDK. Public-read or private, chosen per destination and per action. Collision policy, naming templates and a Test connection that uploads, verifies the public link and cleans up after itself.
 
 </td>
 </tr>
@@ -106,6 +108,21 @@ One resident process; windows, capture helpers, the recorder and the AWS SDK wor
 </td>
 </tr>
 </table>
+
+## <img src="docs/readme/icons/search.svg" width="28" height="28" align="absmiddle" alt=""> Looking for ShareX on Linux?
+
+Windows has had ShareX and Greenshot for years: press a key, capture, and a link is ready to paste. On Linux the usual answer is a screenshot tool plus an upload script, and that pairing breaks on Wayland. put.gd is that whole loop as one native app, built for the desktops Linux people actually run.
+
+| You want to… | put.gd |
+| --- | --- |
+| Capture a region, window or the whole desktop | Global hotkeys, a live region overlay, Escape to cancel |
+| Mark it up or hide something first | Built-in editor: crop, arrows, boxes, highlight, text, and redaction that removes the pixels |
+| Record the screen | MP4, WebM, GIF or animated WebP, with trim and timed blur before upload |
+| Share files, not just images | Upload anything on the clipboard, up to a hundred files at once |
+| Use your own storage | Amazon S3, Cloudflare R2, Backblaze B2, S3-compatible buckets, Proton Drive; custom link domains where supported |
+| Find an old link | Searchable History that works offline, with copy, open and reviewed delete |
+| Script it | A JSON CLI and an optional MCP helper for agents |
+| Run it on Wayland | Native on GNOME 50 and KDE Plasma 6 Wayland, plus Cinnamon on X11 |
 
 ## <img src="docs/readme/icons/screenshots.svg" width="28" height="28" align="absmiddle" alt=""> Screenshots
 

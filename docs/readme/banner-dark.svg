@@ -60,9 +60,9 @@
     <g transform="translate(330 232)" font-size="15" font-weight="600" fill="#c9d3e6">
       <rect width="118" height="32" rx="16" fill="#151a24" stroke="#2f3747"/><text x="59" y="21" text-anchor="middle">Linux desktop</text>
       <rect x="130" width="112" height="32" rx="16" fill="#151a24" stroke="#2f3747"/><text x="186" y="21" text-anchor="middle">Qt 6 · C++20</text>
-      <rect x="254" width="150" height="32" rx="16" fill="#151a24" stroke="#2f3747"/><text x="329" y="21" text-anchor="middle">S3 · Proton Drive</text>
-      <rect x="416" width="124" height="32" rx="16" fill="#151a24" stroke="#2f3747"/><text x="478" y="21" text-anchor="middle">CLI · MCP ready</text>
-      <rect x="552" width="138" height="32" rx="16" fill="#1a2436" stroke="#3b5484"/><text x="621" y="21" text-anchor="middle" fill="#9bbcff">Nightlies daily</text>
+      <rect x="254" width="180" height="32" rx="16" fill="#151a24" stroke="#2f3747"/><text x="344" y="21" text-anchor="middle">S3 · R2 · B2 · Proton</text>
+      <rect x="446" width="124" height="32" rx="16" fill="#151a24" stroke="#2f3747"/><text x="508" y="21" text-anchor="middle">CLI · MCP ready</text>
+      <rect x="582" width="138" height="32" rx="16" fill="#1a2436" stroke="#3b5484"/><text x="651" y="21" text-anchor="middle" fill="#9bbcff">Nightlies daily</text>
     </g>
   </g>
 </svg>
