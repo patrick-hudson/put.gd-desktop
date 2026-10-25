@@ -94,6 +94,16 @@ class HistoryGui:public QObject {
   list->window()->activateWindow();list->setFocus();putgd::test::settle(20);auto triggered=std::make_shared<bool>(false);QTimer::singleShot(0,list,[triggered,text]{for(auto* widget:QApplication::topLevelWidgets())if(auto* menu=qobject_cast<QMenu*>(widget);menu&&menu->isVisible()){for(auto* action:menu->actions())if(action->text()==text&&action->isEnabled()){action->trigger();*triggered=true;break;}menu->close();}});list->setFocus();QTest::keyClick(list,Qt::Key_Menu);QCoreApplication::processEvents();return *triggered;
  }
 private slots:
+ void queuedEditorStatusTakesPrecedence_data(){
+  QTest::addColumn<QString>("state");
+  for(const auto& state:QStringList{"editing","acquiring","stored","running"})QTest::newRow(qPrintable(state))<<state;
+ }
+ void queuedEditorStatusTakesPrecedence(){
+  QFETCH(QString,state);
+  const QJsonObject op{{"action","edit"},{"state",state},{"phase","queued"}};
+  QCOMPARE(HistoryModel::statusText({{"operation",op}}),QString("Waiting to upload…"));
+  QCOMPARE(HistoryModel::statusText({{"operation",QJsonObject{{"action","edit"},{"state","editing"},{"phase","editing"}}}}),QString("Editing · Upload or cancel in the editor window"));
+ }
  void fullFailureTextIsPaintedWithoutClipping_data(){
   QTest::addColumn<bool>("gallery");QTest::addColumn<int>("width");QTest::addColumn<bool>("longToken");
   for(bool gallery:{false,true})for(int width:{1000,600})for(bool token:{false,true})QTest::newRow(qPrintable(QString("%1-%2-%3").arg(gallery?"gallery":"list").arg(width).arg(token?"long-token":"gnome-guide")))<<gallery<<width<<token;
