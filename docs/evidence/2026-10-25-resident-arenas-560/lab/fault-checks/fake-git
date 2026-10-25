@@ -1,11 +1,12 @@
 #!/bin/bash
-S=$FAKE_STATE; mkdir -p $S
+# Fake git for phase2 fault checks; every filesystem use is quoted (#579 Cubic 4372241061).
+S=$FAKE_STATE; mkdir -p -- "$S"
 case "$1" in
  symbolic-ref) echo fake-branch;;
  status) :;;
- rev-parse) cat $S/head 2>/dev/null || echo none;;
- checkout) if [[ $2 == -q && $3 == -- ]]; then rm -f $S/patched; exit 0; fi
-   [[ $FAIL == checkout ]] && exit 1; echo "${3:-$2}" > $S/head;;
- apply) [[ $FAIL == apply ]] && exit 1; [[ $FAIL == noop-apply ]] || touch $S/patched;;
+ rev-parse) cat -- "$S/head" 2>/dev/null || echo none;;
+ checkout) if [[ $2 == -q && $3 == -- ]]; then rm -f -- "$S/patched"; exit 0; fi
+   [[ ${FAIL:-} == checkout ]] && exit 1; printf '%s\n' "${3:-$2}" > "$S/head";;
+ apply) [[ ${FAIL:-} == apply ]] && exit 1; [[ ${FAIL:-} == noop-apply ]] || touch -- "$S/patched";;
  diff) if [[ $2 == --quiet ]]; then [[ -e $S/patched ]] && exit 1 || exit 0; fi; echo "fake diff";;
 esac

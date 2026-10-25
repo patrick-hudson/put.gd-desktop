@@ -133,7 +133,7 @@ bundled, for ubuntu24.04. Both are development versions with clean trees:
 | trunk `putgd_26.1025.1293~dev+g80ffa2e6c0d3_amd64.deb` | `864062f35e57176688a80da3516dfdead493b1b8da73f2192fb98a87f09746a2` | `c8d59a0b…` |
 
 Lock `t3-i560-opus-native1` was held from 19:01:50Z and released verified-clean at
-19:24:06Z ([receipt](m74/release-receipt.json)).
+19:24:06Z ([receipt, sanitized projection](m74/release-receipt.sanitized.json)).
 
 Admission and setup:
 
@@ -192,7 +192,7 @@ embed `4e686c59`.
 - Installed identity: `26.1025.1294-dev+g98878cfe31c2`, not dirty
   ([identity](m74-ci/installed-version.json), [hashes](m74-ci/identities.sha256)).
 - Lock `t3-i560-opus-ci1` was held from 19:31:03Z and released verified-clean at
-  19:52:03Z ([receipt](m74-ci/release-receipt.json)).
+  19:52:03Z ([receipt, sanitized projection](m74-ci/release-receipt.sanitized.json)).
 - The same admission and cleanup rules applied: load 0.06 at start, apt simulation
   of 2 new packages with 0 upgrades, only `putgd` and `gir1.2-gtk-4.0` purged.
 - Host THP was `[madvise]`, with no allocator environment and no prctl.
@@ -236,13 +236,21 @@ dispatch run 40225160437 at `98878cfe`: the f44 Fedora 44 RPM `ad172a3e…` and 
 k72 Kubuntu 26.04 DEB `50564f8f…`. The f44 and k72 locks were held from 19:26:54Z
 and 19:26:55Z and released verified-clean at 19:49:09Z and 19:49:10Z.
 
+**f44 host deviation:** "verified-clean" does not mean the host was left
+unmodified. The Fedora cleanup removed three pre-existing dependency packages,
+although the simulation had not shown that. They were restored straight away with
+the same NEVRAs and the same dependency install reasons, and the coordinator
+verified this. Their install timestamps changed.
+
 The frozen #555 driver requires Cinnamon/X11, so it cannot run on these desktops.
 The coordinator approved two measurements in its place:
 
 - the matrix item C idle check plus scoped functional checks;
-- a separately identified native-Wayland burst **diagnostic**. Its driver,
-  `wayland_burst_diag.py` (r1 `d40c77e4`, r2 `3bf3ba76`), imports the frozen
-  `00ab777f` workload unchanged. It is not the frozen gate.
+- a separately identified native-Wayland burst **diagnostic**, with driver
+  `wayland_burst_diag.py` (r1 `d40c77e4`, r2 `3bf3ba76`). It reimplements the burst
+  orchestration with native Wayland UI and lifecycle adaptations, and borrows the
+  pinned frozen `00ab777f` source, upload and verification functions. It is
+  neither the unmodified frozen `burst()` nor the frozen acceptance gate.
 
 | Desktop | Wayland burst diagnostic (50 uploads, settled) | Matrix C, 180 s idle (`native_c_functional` r2 `109d29ff`) |
 | --- | --- | --- |
@@ -265,16 +273,35 @@ The coordinator approved two measurements in its place:
   contract in `docs/s3.md`. The coordinator classified it as an assertion mismatch,
   neither a regression nor a pass.
 
-Reviewed safe frames show synthetic content and the put.gd window only:
+The coordinator reviewed these safe frames. They show synthetic content and the put.gd
+window, plus the Plasma panel on k72:
 
 - [f44 History](gnome-kde/f44-gnome-history-98878cfe.png)
 - [f44 Settings](gnome-kde/f44-gnome-settings-98878cfe.png)
 - [k72 History](gnome-kde/k72-plasma-history-98878cfe.png)
 - [k72 Settings](gnome-kde/k72-plasma-settings-98878cfe.png)
 
+**Matched trunk (`80ffa2e6`), same protocols.** One diagnostic pair per desktop:
+
+| Desktop | Trunk burst diagnostic | Candidate burst diagnostic |
+| --- | --- | --- |
+| f44 GNOME | RSS 44,077,056 B (**over 40 MiB**) / PSS 29,126,656 B | RSS 41,304,064 B / PSS 26,366,976 B |
+| k72 Plasma | RSS 38,260,736 B / PSS 13,630,464 B | RSS 38,014,976 B / PSS 13,446,144 B |
+
+- **f44:** RSS goes from fail to pass. This is a single pair, with no repeatability
+  claim.
+- **k72:** both builds pass. Quiet admission was **not proven** for the trunk run
+  kt2: load was 1.38 just after kt1, and no CPU sample was taken. No efficacy claim
+  rests on the small k72 delta.
+- **Matrix C:** passes on both desktops for trunk as well.
+- **Functional cancellation:** the trunk runs reproduce the same finalizing-body
+  cancellation, with a stored object and receipt, on both desktops. So that
+  behaviour predates the candidate. The assertion mismatch is still recorded as a
+  mismatch, not as a pass.
+
 Raw evidence stays private in the acceptance task: `work/i560a/evidence/`, with
-`SHA256SUMS` `73726b516606ce875864d206436b37ffd5aa9e3dcc03c1b35c32ad62d624b201` and
-`RESTORE-INDEX.md`. Admission thumbnails and banner crops show the hosts' own
+`SHA256SUMS` `66f3d9712b64fe9487b2967c00d19a93f9193ee7e071d4264b3c9d094aaabdb5`
+(earlier candidate-only manifest `73726b51…`) and `RESTORE-INDEX.md`. Admission thumbnails and banner crops show the hosts' own
 desktops, so they stay private.
 
 ## Headless controls (d69, not desktop acceptance)
@@ -364,13 +391,54 @@ Results: [`d69/cancel2-results.json`](d69/cancel2-results.json),
   | queued | 0.053 / 0.053 s | 0.005 / 0.005 s |
   | transferring | 22.8 / 1.25 s | 22.9 / 1.25 s |
 
-- The fixture inventory afterwards shows **0 PUT requests and 0 objects** for each
-  cancelled queued target. For the transfer targets it reports 0 objects, recorded
-  but not asserted, since an in-flight PUT may take effect.
+- ~~The fixture inventory shows 0 PUT requests and 0 objects for each cancelled
+  queued target, and 0 objects for the transfer targets.~~ **Void.** That check
+  matched source file names, but the editor exports artifacts under generated names
+  (`Screen-Capture-…`). The survivors' own objects did not match either, so zero
+  matches proves nothing about publication. The raw check is kept in
+  `cancel2-results.json`, labelled flawed. The fresh queued witnesses and the
+  `cancelled` terminal states still stand.
 - The two remaining uploads completed and verified. Both runs drained to one
   process, exited 0, and left nothing.
 - The witness and the cancel are separate requests. The held transfers make a
   promotion in between implausible, not impossible; atomicity is not claimed.
+
+**Cancellation, payload-attributed control** (sa base, sb candidate):
+[`lab/resident_burst_o3.py`](lab/resident_burst_o3.py) `I560_MODE=cancel3`, run by
+[`lab/campaign_o3.sh`](lab/campaign_o3.sh) with the same setup as cancel2. Results:
+[`d69/cancel3-results.json`](d69/cancel3-results.json),
+[log](d69/campaign3.log).
+
+The check decodes every stored object version and every PUT body in the fixture's
+`/__state` to pixels, and matches its SHA-256 to each source's `pixelSha256`. That
+is the same equality the frozen `verify_uploaded` checks. Names are never used.
+
+| Check | Required | sa base | sb candidate |
+| --- | --- | --- | --- |
+| Each survivor attributed (objects / PUTs) | exactly 1 / at least 1 | 1/1, 1/1 | 1/1, 1/1 |
+| Unattributed objects or PUTs | 0 | 0 of 4 + 4 | 0 of 4 + 4 |
+| Queued targets (objects / PUTs) | 0 / 0 | 0/0, 0/0 | 0/0, 0/0 |
+| Injection self-test (detected objects / PUTs) | 1 / 1 | 1/1 | 1/1 |
+| Transfer targets (objects / PUTs), reported only | — | 1/1, 1/1 | 1/1, 1/1 |
+
+- **Queued witnesses:** each said `queued` with 0 items. Settle times were
+  0.005–0.053 s for queued targets, and 22.8–22.9 s and 1.25 s for transfers.
+  Both runs exited 0 and left nothing.
+- **Injection self-test:** run after the real inventory. It PUTs one queued
+  target's own source PNG under a `Screen-Capture-…` key and must find it.
+- **Transfer targets:** both cancelled transfers did store their object. Their PUT
+  was already in flight, which is consistent with the in-flight contract in
+  `docs/s3.md` and the native finalizing-body observation.
+- **Attempts r1** (ra/rb, [log](d69/campaign3-r1.log),
+  [script](lab/attempts/resident_burst_o3-r1.py)): both failed with `TimeoutError`.
+  The run's 30 s PUT-delay rule also delayed the self-test PUT past its 10 s client
+  timeout. The failure was in the self-test PUT, after the real assertions had run
+  without raising, but no result event was recorded. r2 clears the rules before the
+  self-test. Both failed runs are retained.
+- **Same assertion:** the acceptance thread's native `queued_cancel.py` uses the
+  same pixel-attribution semantics. The differences are a pre/post state diff, and
+  calling an undecodable payload inconclusive where this check fails it; neither
+  outcome ever passes. The two remain separate runs.
 
 **Multi-item throughput and main-loop responsiveness:** the production
 `OperationService`, `S3Provider` and `putgd-s3-worker` ran against the loopback
@@ -401,8 +469,30 @@ historical probe directories were audited before relying on them:
 - Disassembly shows one `mallopt(-8 = M_ARENA_MAX, …)` call in the candidate probe
   and none in the base probe.
 
+- **S3 module provenance (#579 Greptile 4372226982).** The probe and its worker
+  resolve the S3 module relative to their own directory (see the configured
+  module path in `CMakeLists.txt`). That path resolves to
+  `~/work/i560o-h/lib/x86_64-linux-gnu/putgd/libputgd-s3.so`, not to the copy beside
+  them.
+  - That file is `ae6e0172…`, unchanged since 18:39Z, before the 19:23Z probe runs.
+    It is byte-identical to the module built at both revisions.
+  - No runtime mapping was recorded for those runs. Provenance is therefore
+    inferred from the configured lookup, the single file at that path and its hash;
+    it was not observed.
+  - The adjacent copy made by `phase2_o.sh` was not on the lookup path.
+- **Rebuild check:** [`lab/phase2_o4.sh`](lab/phase2_o4.sh) rebuilt both revisions
+  into separate install-relative layouts
+  ([base](d69/phase2_o4-rev-80ffa2e6-SHA256SUMS),
+  [candidate](d69/phase2_o4-rev-98878cfe-SHA256SUMS)). The rebuilt probe and worker
+  are byte-identical to the historical ones (`e73eda01…`/`d7529771…` and
+  `0ab83a3a…`/`1156f233…`).
+- **Relocated-bundle smoke:** [`lab/module_smoke.sh`](lab/module_smoke.sh) uploaded
+  one file per revision. While the PUT was held, each worker's `/proc/PID/maps`
+  showed its own revision's module
+  ([output](lab/fault-checks/module-smoke-real.txt)).
+
 The historical comparison therefore stands, and it was not rerun.
-[`lab/phase2_o2.sh`](lab/phase2_o2.sh) replaces the build stage:
+[`lab/phase2_o2.sh`](lab/phase2_o2.sh) was the first replacement for the build stage:
 
 - Every stage fails fast, and binaries are copied only into new directories.
 - Copying happens only after the checkout matches, the patch is present, the
@@ -424,6 +514,31 @@ The historical comparison therefore stands, and it was not rerun.
 | existing output root | 2 | none |
 | clean run | 0 | both |
 
+`phase2_o2.sh` had a real-binary bug that the short fake outputs could not expose
+(#579 Greptile 4372226977). It checked `strings worker | grep -q` under
+`pipefail`. On the real workers the identity string is line 1,746 of 38,771, so
+`grep -q` exits early, `strings` gets SIGPIPE, and the pipeline returns 141 in
+20 of 20 runs. A valid build would have been rejected
+([check](lab/fault-checks/identity-check-real-binaries.txt)). It was never run on
+real builds.
+
+- [`phase2_o3.sh`](lab/phase2_o3.sh) writes the strings to an owned file first; the
+  file form passes 20 of 20 runs.
+- [`phase2_o4.sh`](lab/phase2_o4.sh) adds the module and its layout. It exits 8 if
+  the module is missing and 9 if the embedded lookup path is wrong.
+- [`phase2_o5.sh`](lab/phase2_o5.sh) adds argument preflight: at least one full
+  40-hex revision, and canonical roots before any change or `cd`.
+
+The fake `git`/`cmake` now quote every path; the earlier unquoted ones are under
+[`fault-checks/r1/`](lab/fault-checks/r1/). Fault suites:
+
+- [o3](lab/fault-checks/fault-results-o3.txt) and
+  [o4](lab/fault-checks/fault-results-o4.txt);
+- [o5](lab/fault-checks/fault-results-o5.txt), run from relative roots in a
+  directory whose name contains spaces: the 9 fault cases above, plus no revision,
+  a short revision, a missing output parent and a missing source. Each rejection
+  exits non-zero, nothing is copied, and the patch is restored.
+
 The source patch was restored in every case. The same results file shows
 `campaign_o2.sh` logging `exit=37` for a runner that exits 37, and
 [`lab/test_summarize_o2.py`](lab/test_summarize_o2.py) passing 6 cases: 30 s,
@@ -431,13 +546,40 @@ The source patch was restored in every case. The same results file shows
 
 ## Revised scripts
 
-| Historical | Revision | Change |
+Historical scripts stay unchanged. The current scripts for any replay:
+
+| Historical | Current | Change |
 | --- | --- | --- |
-| `resident_burst_o1.py`, `run_o1.sh` | [`resident_burst_o2.py`](lab/resident_burst_o2.py), [`run_o2.sh`](lab/run_o2.sh) | Explicit, validated `I560_SRC`/`I560_HARNESS` roots; `run_o2.sh SRC HARNESS OUT APP` rejects a bad root or an existing output and returns the harness status; corrected `cancel2` mode |
-| `campaign_o.sh` | [`campaign_o2.sh`](lab/campaign_o2.sh) | Captures the run status before logging; returns failure |
-| `phase2_o.sh` (probe stage) | [`phase2_o2.sh`](lab/phase2_o2.sh) | Fail-fast, verified build identity, new output directories, source restore |
+| `resident_burst_o1.py`, `run_o1.sh`; `resident_burst_o2.py`, `run_o2.sh`, `run_o3.sh` | [`resident_burst_o3.py`](lab/resident_burst_o3.py) (r3), [`run_o4.sh`](lab/run_o4.sh) | Explicit roots and payload-attributed `cancel3` (see below) |
+| `campaign_o.sh`, `campaign_o2.sh`, `campaign_o3.sh` | [`campaign_o4.sh`](lab/campaign_o4.sh) | Status captured before logging; failure returned; uses `run_o4.sh` |
+| `phase2_o.sh` … `phase2_o4.sh` | [`phase2_o5.sh`](lab/phase2_o5.sh) | Fail-fast, verified identity and module layout, preflight, source restore |
 | `summarize_o.py` | [`summarize_o2.py`](lab/summarize_o2.py) | Timestamp-based final-270 s window, only after a full settle |
-| `m74-run.sh` | [`m74-run-v2.sh`](lab/m74-run-v2.sh) | Returns the driver status; lock session is a parameter |
+| `m74-run.sh`, `m74-run-ci.sh` | [`m74-run-v2.sh`](lab/m74-run-v2.sh) | Returns the driver status; lock session is a parameter |
+| `functional_ci.py`, `f-run.sh` | [`f-run-v2.sh`](lab/f-run-v2.sh) | Refuses to launch without an explicit dedicated clipboard scope |
+
+- **`resident_burst_o3.py` r3** (#579 Cubic 4372241070): the script now exits non-zero
+  when the resident exits abnormally, the forced fallback was used, or tracked
+  processes remain. A workload failure stays the primary error, and the cleanup
+  evidence is written first. [`test_harness_status.py`](lab/test_harness_status.py)
+  checks this with fake runs: 6 classification cases and 5 propagation cases
+  ([output](lab/fault-checks/harness-status.txt)). Earlier runs' exit-0 product
+  evidence stays with those runs.
+- **`run_o4.sh`** (Cubic 4372241065): canonicalizes SRC, HARNESS and APP before
+  `cd`. Its preflight-only path test passes relative arguments containing spaces,
+  and rejects a missing APP, a relative OUT, a missing HARNESS and too few
+  arguments ([output](lab/fault-checks/run_o4-paths.txt)).
+- **`f-run-v2.sh`** (Cubic 4372241074): f1's clipboard side effect is a
+  **historical deviation**. It is documented above and not fixed after the fact.
+  The replay runner refuses to launch unless
+  `I560_CLIPBOARD_SCOPE=dedicated:<approval>` names a clipboard dedicated to the
+  test. It never reads, saves or restores clipboard contents. Without a scope it
+  exits 3 and creates nothing; with an invalid scope it also exits 3; with no label
+  it exits 2 ([output](lab/fault-checks/f-run-v2-guard.txt)). A nested display
+  would be a separately labelled diagnostic, never physical evidence.
+- **Receipts** (Cubic 4372241047): the committed m74 release receipts are
+  **sanitized projections**, with the private coordination-notes path removed from
+  the lock purpose. The originals (SHA-256 `b235b55b…` for m74 and `63d87a9b…` for
+  m74-ci) stay unchanged in the m74 archives below and on m74.
 
 ## Retained evidence
 
@@ -447,6 +589,7 @@ The source patch was restored in every case. The same results file shows
 | `i560o-d69-evidence.tar` (1909 members) | `d3c77779d5bad10ecf0135b248716df0e3bdf2ca1219008dbb04a4b2f04f88e1` | d69 `~/work/`, workstation task `work/i560o/` |
 | `evidence-m74-ci-e1-m1-f1.tar` (431 members) | `2ff4726efd80a682f03efc6272faa71ffe99ce72156a7c9ea9e376a2ff8bbd71` | m74 `~/work/i560o/`, workstation task `work/i560o/m74ci/` |
 | `i560o-h2-evidence.tar` (136 members, corrected cancel control, summary v2, full ctest log) | `b42ec747efdacc8c7e03ea53d634a91dff5f05431708c7d569b6cc9b4d31ceb5` | d69 `~/work/`, workstation task `work/i560o/` |
+| `i560o-h34-evidence.tar` (323 members: cancel3 r1/r2, real-binary identity check, `phase2_o4` layouts, module smoke) | `3699d08a3c8fe00cf46b8e7508386d80bfc01c14eb300f1beaef9efc0c2a0338` | d69 `~/work/`, workstation task `work/i560o/` |
 | Earlier baseline/diagnostic `evidence-b1-d2.tar.gz` | `4665d849…` | m74 `~/work/i560/`, earlier task `work/i560/` |
 | Earlier d69 handoff `handoff-d69-evidence.tar` | `b458c085…` | d69 `~/work/i560/`, earlier task `work/i560/` |
 
@@ -464,8 +607,8 @@ earlier task.
   approved native matrix and scoped functional checks, plus a separately
   identified native-Wayland burst diagnostic, because the #555 burst driver
   requires Cinnamon/X11. The candidate GNOME and Plasma rows are recorded above.
-  Still pending: matched-trunk `80ffa2e6` rows for GNOME and Plasma, d69, and
-  resolving the functional-cancellation assertion.
+  Matched-trunk GNOME and Plasma rows are recorded too. Still pending: the d69
+  native row, and resolving the native functional-cancellation assertion.
 - `historyOpenPss` fails on the exact candidate (m1) until #558's fix is included.
 - Published-asset gates, after a nightly containing #576 publishes.
 - `captureBurst` and `historyOpenUpperBoundMs` remain unassessed by the driver.

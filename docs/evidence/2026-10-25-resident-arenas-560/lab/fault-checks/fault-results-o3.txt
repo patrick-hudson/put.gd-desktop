@@ -1,0 +1,7 @@
+phase2_o3 checkout exit=1 probeDirsCopied=0 patchRestored=yes stderr=
+phase2_o3 apply exit=1 probeDirsCopied=0 patchRestored=yes stderr=
+phase2_o3 noop-apply exit=5 probeDirsCopied=0 patchRestored=yes stderr=patch not applied 
+phase2_o3 build exit=1 probeDirsCopied=0 patchRestored=yes stderr=
+phase2_o3 stale exit=6 probeDirsCopied=0 patchRestored=yes stderr=stale build/dev/operations_upload_probe for 80ffa2e6c0d34223d2cc0f31254f2e60ac2bd247 
+phase2_o3 identity exit=7 probeDirsCopied=0 patchRestored=yes stderr=worker identity is not 80ffa2e6c0d34223d2cc0f31254f2e60ac2bd247 
+phase2_o3 none exit=0 probeDirsCopied=2 patchRestored=yes stderr=

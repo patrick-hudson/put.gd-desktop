@@ -1,0 +1,8 @@
+     20 141  <- pipe form statuses (/home/patrick/work/i560o-h/probe-80ffa2e6, g80ffa2e6c0d3)
+file form: 20/20 pass (/home/patrick/work/i560o-h/probe-80ffa2e6)
+position of identity in strings output: line 1746
+total lines: 38771
+     20 141  <- pipe form statuses (/home/patrick/work/i560o-h/probe-98878cfe, g98878cfe31c2)
+file form: 20/20 pass (/home/patrick/work/i560o-h/probe-98878cfe)
+position of identity in strings output: line 1746
+total lines: 38771

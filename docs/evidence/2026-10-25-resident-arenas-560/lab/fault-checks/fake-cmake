@@ -1,5 +1,8 @@
 #!/bin/bash
-[[ $FAIL == build ]] && exit 1
-[[ $FAIL == stale ]] && exit 0
-rev=$(cat $FAKE_STATE/head); id=${rev:0:12}; [[ $FAIL == identity ]] && id=g000000000000 || id=g$id
-printf 'probe' > build/dev/operations_upload_probe; printf "worker $id" > build/dev/putgd-s3-worker
+# Fake cmake for phase2 fault checks; quoted paths.
+[[ ${FAIL:-} == build ]] && exit 1
+[[ ${FAIL:-} == stale ]] && exit 0
+rev=$(cat -- "$FAKE_STATE/head"); id=g${rev:0:12}; [[ ${FAIL:-} == identity ]] && id=g000000000000
+rel=../lib/x86_64-linux-gnu/putgd/libputgd-s3.so; [[ ${FAIL:-} == badrelative ]] && rel=../lib/elsewhere/libputgd-s3.so
+printf 'probe' > build/dev/operations_upload_probe; printf "worker %s\n%s\n" "$id" "$rel" > build/dev/putgd-s3-worker
+if [[ ${FAIL:-} == nomodule ]]; then rm -f -- build/dev/libputgd-s3.so; else printf "module-%s" "$id" > build/dev/libputgd-s3.so; fi
