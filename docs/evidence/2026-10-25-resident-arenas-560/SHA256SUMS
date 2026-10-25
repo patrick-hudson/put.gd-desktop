@@ -46,6 +46,7 @@ a43a17a3ec4f2e6481c6b15e52c966b657bdfef96f2e3037aa8843a8531411f5  ./lab/fault-ch
 2d39fd55427391bba42f13b01dcad8ca9ec0b3a13e2f7072b235f9622df80fcf  ./lab/fault-checks/harness-status.txt
 14ca27b00341bdf2763e88f724e8dd09d58977fa13b28857d8ef174e60e6a9e8  ./lab/fault-checks/identity-check-real-binaries.txt
 ca560f64d378b3a82b992603d146a5dfdfbda1e1a417309035cc6988c3942165  ./lab/fault-checks/module-smoke-real.txt
+19ae995950ece7cee5f70f04e543a23dcfba2ee452b36eaac25188c0b1699c75  ./lab/fault-checks/module-smoke-v4-clean-archive.txt
 654c585ce3ad0a6897c5877ff3b7e47a9b98c958401d07eb27d93f2f198afaf8  ./lab/fault-checks/r1/fake-cmake
 0d895ae5f35f35b6b1648fd3da4e9991dae4563b966ba5b90a9893c6149107ab  ./lab/fault-checks/r1/fake-git
 5356b3efa4028afe20b2bf09ea014a35c695bfab4a338960894303fb29c7db09  ./lab/fault-checks/results.txt
@@ -65,6 +66,7 @@ d5261ec61134e6f0a84c7f3b40a2fa7c09f3df25eefcda4b26e41c230718c522  ./lab/m74-run-
 4fbc9706c7f0269323e6c76e47dd83cd558b76d76392fd4ed2d09da6fe55066b  ./lab/module_smoke.sh
 c181579fcd79efa207cde7ba0998d65d64a9ddf2512fc0fa39425d6bde4f5b2d  ./lab/module_smoke_v2.sh
 70e31d27f5e02cee0d8f623e8140821c8c5ef7c2a02db74a5534456637d236b2  ./lab/module_smoke_v3.sh
+731cf1f405f5ec9510bc2479334595a3e362e88d57d3e0e76fcfdb3eedee6eb7  ./lab/module_smoke_v4.sh
 7f57143c05a5faa7be5914d24d348e790b7d6973cb6a0b34a10a0771c7ce7ad0  ./lab/phase2_o2.sh
 63854c19c70db6955241a9f147584c40fd8aa395de03a8a8a3cf5ec000bb411b  ./lab/phase2_o3.sh
 67bb2f8aa93eb8e9f71de5a82638c3f3a4f799f4dcb9c13e5b8909c87974adbc  ./lab/phase2_o4.sh
@@ -82,6 +84,7 @@ d1a34aa478f319f8d3622c00060d8953be19e16e03c5047129915bf3a745e169  ./lab/run_o3.s
 216374ea6917c57c05d1c1cbcd7d113c1a0e28f7c165307adfb365fd842a567e  ./lab/summarize_o2.py
 73745e76b51b9083e990b866d6f6c5b64f784c859d7ab73dd2c3e7169de61894  ./lab/summarize_o.py
 920a8b50b682973f6ec9adeb5accfeef98dd5074bfeaf5aea752804f2f56e7b0  ./lab/test_harness_status.py
+870129daa38608088a315d295a7716c4efeb716da19fe904b78c02a7a7f6e586  ./lab/test_module_smoke_v4.sh
 9ce6b24af86527de700aafba68fa295a594932c9048614f2b46c5ae970f793e6  ./lab/test_summarize_o2.py
 f81ff84fe18867332f2338dc902b63eacea7c5c5e23e189b20a30df13cc85c53  ./lab/test_wrappers.sh
 e349e6362323312548047f58ead237b3291fa0aee79e3e30f6df5c7cbdbe3692  ./lab/test_wrappers_v2.sh
@@ -100,4 +103,4 @@ f99ae4405fcc6b979929ae08403c218d4894d49080a44bb959452586a5d68ceb  ./m74-ci/ident
 be0439e7de77abee678651feaf2fdef36dd19748f4c4a049a5708033ff770141  ./m74/release-receipt.sanitized.json
 3766234a86373aa0d5b946dea4c63c93fc44234cce3813b152b3b95a6e3753bb  ./m74/t1-RETRY-NOTE.txt
 7f996f2fdbf70dd584c9a334b9d50b1f688e0e296daa24a2481771c9980c8963  ./m74/t2-installed-version.json
-aca19153c59a6b16102ff5b3d092be469eb1e4ca4171968d31275c628b5ebe53  ./README.md
+26d95871fc60a2d74dd682015701d2ab3a028052b600620f3d30061f198b557d  ./README.md
