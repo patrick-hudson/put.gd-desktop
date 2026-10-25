@@ -103,7 +103,15 @@ void UiApplicationController::followAppearance(){
 }
 QJsonObject UiApplicationController::snapshot()const{
  auto state=saved_;state["schemaVersion"]=1;state["appearance"]=appearance_.state();
- if(main_){if(auto* settings=main_->existingSettings())state["settings"]=settings->saveViewState();state["history"]=main_->history()->saveViewState();state["main"]=main_->saveViewState();}
+ if(main_){
+  if(auto* settings=main_->existingSettings())state["settings"]=settings->saveViewState();
+  else if(state.contains("settings")){
+   // Keep the recoverable clean draft, but no longer claim its old widget
+   // projection describes Settings that have not been constructed this time.
+   auto retained=state["settings"].toObject();retained.remove("captureRouting");state["settings"]=retained;
+  }
+  state["history"]=main_->history()->saveViewState();state["main"]=main_->saveViewState();
+ }
  return state;
 }
 void UiApplicationController::checkpoint(){
