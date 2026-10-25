@@ -4730,7 +4730,14 @@
       "preparedUtc": "2026-10-25T05:18:16.242796+00:00",
       "completedUtc": "2026-10-25T05:18:16.324992+00:00"
     },
-    "s3Backup": "Blocked: expired AWS auth; explicit aws login confirmation requested."
+    "s3Backup": {
+      "status": "verified",
+      "receipt": "final-7743cc4b/golden-s3-receipt.json",
+      "roundTripVerified": true,
+      "compressedSha256": "f102a09515b5d9f53214edfae312c4ef0b7d9547897b8171f86f0c78491bfba3",
+      "compressedBytes": 3597396735,
+      "key": "linux/ubuntu24-gnome-x11-20261025-491/ubuntu24-gnome-x11-20261025-491.qcow2.zst"
+    }
   },
   "reviewFollowUp": {
     "source": "7743cc4bb9186db69bfd6935569de979d20b8c28",
@@ -4748,7 +4755,7 @@
         "f44Seconds": 3.65
       }
     },
-    "nativeAcceptance": "Pending final-source package/desktop refresh; local test tag exception requested. Predecessor evidence does not certify this source.",
+    "nativeAcceptance": "Passed final-source seven-row native package startup campaign; see final-7743cc4b/summary.json. Predecessor evidence remains separately attributed.",
     "files": {
       "f44-ctest.txt": "63c84309ee38700129c137afbea13e4a6ae6e9c3425934a24598e3985f9862f3",
       "d69-ctest.txt": "49c81f0068fea818ec10f200e22ba4ee3e0e8da3a4d69ccce3fd038b1fe24e48",
@@ -4767,6 +4774,13 @@
         "failed": 0,
         "seconds": 106.04
       }
+    },
+    "finalNativeEvidence": "final-7743cc4b/summary.json",
+    "codeMerge": {
+      "sha": "ef4e567a32faa149f0f44d9a02c97343082ae5db",
+      "at": "2026-10-25T09:55:30Z",
+      "guardedHead": "7743cc4bb9186db69bfd6935569de979d20b8c28",
+      "method": "ordinary protected merge"
     }
   }
 }

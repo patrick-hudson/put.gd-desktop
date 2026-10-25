@@ -2,26 +2,102 @@
 
 Issue: [#491](https://github.com/patrick-hudson/put.gd-desktop/issues/491).
 Code: [#563](https://github.com/patrick-hudson/put.gd-desktop/pull/563).
-This documentation PR follows the code PR; neither is a release approval.
+Code #563 merged into nightly as `ef4e567a32faa149f0f44d9a02c97343082ae5db`
+on 2026-10-25 at 09:55:30Z, guarded against final head `7743cc4b`.
+This documentation PR follows it; neither is a release approval.
 
-## Review follow-up: acceptance refresh pending
+## Final source acceptance: 7743cc4b
 
-Greptile found a valid race on predecessor `29496f5`: when a Nightly repository
-is removed or disabled during a check, its late Nightly reply could announce on
-the now-manual Stable channel and mark that version as seen under Stable.
-Commit `7743cc4bb9186db69bfd6935569de979d20b8c28` requires the reply's channel to
-match the current channel before notification or seen-state tracking. Eight
-controlled in-flight cases (DEB/RPM × removed/disabled × background/manual)
-all fail on the predecessor and pass with the guard. Clean final-source development
-builds (`26.1025.1257-dev+g7743cc4bb918`) passed all five focused CTest suites
-on Debian (96.56 s) and Fedora (106.04 s), including Settings. [Build identities,
-regression failures and final CTest logs](review-follow-up/) are retained.
+The review correction and targeted native acceptance are complete on exact source
+`7743cc4bb9186db69bfd6935569de979d20b8c28`, tree
+`d227590f429e3b71c460f90eb01025aff108f250`. Patrick authorized the local-only
+`v26.1025.1257-nightly` tag on this commit in isolated builders. Clean Release
+builds produced `26.1025.1257-nightly`; every package passed the native audit.
+The tag and packages were never pushed or published. Earlier evidence below
+remains attributed to `29496f5` and is not substituted for this final campaign.
 
-**The completed native package/desktop evidence below remains attributed to
-`29496f5`; it does not certify `7743cc4b`.** Final-source package and graphical
-refresh is pending a new local-only test-tag exception: the prior authorization
-covered only the predecessor. Final-head CI and Greptile 5/5 are also required.
-No release publication is authorized.
+Greptile found a valid race on the predecessor: removing or disabling a Nightly
+repository during a check could announce the late Nightly result under Stable
+and mark it seen there. The final guard requires the result channel to match the
+current channel before notification or seen-state tracking. Eight deterministic
+in-flight cases (DEB/RPM × removed/disabled × background/manual) all fail before
+the guard and pass afterward. Clean final-source development builds
+`26.1025.1257-dev+g7743cc4bb918` passed all five focused CTest suites on Debian
+(96.56 s) and Fedora (106.04 s). [Exact logs](review-follow-up/) are retained.
+Final-head CI passed Linux 24.04/26.04, ASan/UBSan, Windows compile, contracts and
+the required CI summary. Path-skipped jobs are not credited. Greptile's final
+check succeeded; Patrick explicitly confirmed the review as 5/5 and authorized
+normal protected-branch merging without waiting for a rendered score comment.
+
+[Final machine-readable evidence](final-7743cc4b/summary.json) records source,
+package and binary identities, actual session/platform witnesses, first CLI
+state, stored preferences, live MCP parity, picture hashes and cleanup receipts.
+All graphical runs stayed visible on the wall. Every isolated socket passed its
+length preflight before app launch. Actual installed `/usr/bin` executables and
+system repository paths were used, with no build metadata or system-root override.
+
+| Final package / desktop | Result and reviewed visuals |
+| --- | --- |
+| Fedora 44 RPM / physical GNOME Wayland | Five startup cases and live official-SDK MCP/CLI parity passed. [Managed](final-7743cc4b/f44-fresh-managed-first.png), [unmanaged](final-7743cc4b/f44-fresh-absent-first.png) |
+| Debian 13 DEB / physical Plasma Wayland | Five cases passed. [Managed](final-7743cc4b/d69-fresh-managed-first.png), [unmanaged](final-7743cc4b/d69-fresh-absent-first.png) |
+| Ubuntu 26 DEB / physical Kubuntu Plasma Wayland | Five cases passed. [Managed](final-7743cc4b/k72-fresh-managed-first.png), [unmanaged](final-7743cc4b/k72-fresh-absent-first.png) |
+| Ubuntu 24 DEB / physical Mint Cinnamon X11 | Five CLI cases passed; independent manual visual retry passed. [Managed](final-7743cc4b/m74-fresh-managed-first.png), [unmanaged retry](final-7743cc4b/m74-fresh-absent-first.png) |
+| Ubuntu 26 DEB / Ubuntu GNOME Wayland VM on d69 | Fresh managed and stored-choice restart passed. [Managed](final-7743cc4b/gnome-fresh-managed.png), [stored choice](final-7743cc4b/gnome-managed-stored-stable.png) |
+| Ubuntu 26 DEB / Kubuntu KDE X11 VM on d69 | Fresh managed and stored-choice restart passed. [Managed](final-7743cc4b/kde-fresh-managed.png), [stored choice](final-7743cc4b/kde-managed-stored-stable.png) |
+| Ubuntu 24 DEB / Ubuntu GNOME X11 VM on f44 | Fresh managed and stored-choice restart passed. [Managed](final-7743cc4b/u24-fresh-managed.png), [stored choice](final-7743cc4b/u24-managed-stored-stable.png) |
+
+The five physical cases are fresh managed, managed with saved Stable and checks
+off, absent, invalid, and disabled repository configuration. Initial update state
+has no attempted check or result; repository-managed installs immediately show
+Nightly and preserve the stored manual choice. Unmanaged installs allow that
+choice. Opening Settings does not change configuration. The live MCP adapter on
+Fedora reports the same post-patch state as the production CLI in every case.
+The seven rows prove targeted startup behavior, not full release functional,
+performance, memory or fresh-agent acceptance.
+
+| Native package target | SHA-256 |
+| --- | --- |
+| Fedora 44 RPM | `7828c74debe49ced2fb7dd792d025fe347e80d6067d73231969a88362f65fbdf` |
+| Debian 13 DEB | `85e3ec6d0c181b28d894e33e00a04162bea11e805d7f7e47858578e86c1006ad` |
+| Ubuntu 26.04 DEB | `4feb3f55a18eea30b06575068cd4f6b6bb0edd04fbbf2bf8b4d6d00a6a733d4b` |
+| Ubuntu 24.04 DEB | `5d918d1351dbf9e705bfc4960bbfb8b20ce521c8757346e2a45977f0f7b38221` |
+
+Fedora, Debian and physical Kubuntu use app-only scale `.7`; Mint and all three
+VMs use default scale `1`. The physical privacy crops are respectively
+`[0,180,1920,900]`, `[0,0,1540,1000]`, `[0,64,1920,952]` and
+`[0,0,1920,1000]`. Admission remains at least 98% cover; saved frames require at
+least 50% cover and 90% at every edge. These are bounded functional captures.
+Only owned PID windows were positioned. No physical session was logged out or
+its desktop settings changed.
+
+Mint run `native-20261025T094214Z` passed the CLI cases and its managed visual,
+but its [unmanaged frame](final-7743cc4b/m74-rejected-incomplete-manual.png) has
+incomplete sidebar paint and is **not credited**. Fresh independent default-scale
+run `native-20261025T094603Z` supplies the reviewed complete manual image. Both
+attempts and driver versions are retained. The Ubuntu24 wrapper initially refused
+Btrfs's dynamic-inode `f_favail=0`; it was corrected to use the repository's existing
+`storage_preflight` classification, with lab launch guards unchanged. Ubuntu26's
+first old-package purge returned exit 100 without a retained detailed error;
+a logged retry with `DPkg::Lock::Timeout=60` removed it and installed the final
+package successfully. Its owned guest was resized from 1280×800 to 1920×1080 using
+`lab.py layout` before app acceptance. No failed attempt is counted as a pass.
+
+The Ubuntu24 broad `loginctl` probe selected its SSH session (`Type=tty`), not
+the graphical login. The receipt preserves that limitation. Its immutable
+visibly verified GNOME/X11 golden disables Wayland in GDM; the final app launched
+from GNOME Shell’s environment and reported the production X11 adapter with
+`libqxcb.so` loaded. The earlier golden identity is supporting OS/session
+provisioning evidence, not a substitute for the final app checks.
+
+All physical packages and the Mint temporary GTK4 introspection dependency were
+removed, and original absent repository state restored. Checked-clean releases:
+f44 `09:42:54Z`, d69 `09:42:55Z`, k72 `09:42:57Z`, m74 final retry `09:47:11Z`.
+Fresh independent overlays `k491r`, `u24491r` and `g491r` were stopped after their
+saved visuals were reviewed; completion evidence was exported and hash-verified
+before guarded retirement at `09:47:12Z`, `09:51:40Z` and `09:52:19Z` respectively.
+Their wall tiles and tunnels were removed. Immutable goldens and unrelated
+projects/processes were preserved. Raw receipts and build/install logs remain in
+private `work/491/final/` archives, indexed by checksum in the final summary.
 
 ## Change and stored settings
 
@@ -249,9 +325,17 @@ overlay. Its SHA-256 is
 Immutable copies are on f44 and d69 under
 `/home/patrick/work/put.gd/work/lab-images/ubuntu24-gnome-x11-20261025-491/`.
 The streamed Debian replica was checksum-verified and checked independently;
-no disk image or workstation SSH key was copied onto the workstation. S3 backup
-is blocked by expired AWS authentication, with local `aws login` permission
-requested. No golden copy is deleted. Other threads receive this immutable
+no disk image was stored on the workstation, and the workstation SSH key
+remained local. After Patrick authorized local `aws login`, authentication was renewed and the
+required private S3 backup completed. The encrypted Glacier Instant Retrieval
+object and Standard manifest are under
+`linux/ubuntu24-gnome-x11-20261025-491/`. The 3,597,396,735 compressed bytes
+were streamed back and matched SHA-256
+`f102a09515b5d9f53214edfae312c4ef0b7d9547897b8171f86f0c78491bfba3`;
+independent remote decompression matched the uncompressed golden hash above.
+[The retained S3 receipt](final-7743cc4b/golden-s3-receipt.json) records object
+metadata, encryption and verified copies. No image file was stored on the
+workstation, no credentials were copied, and no golden copy was deleted. Other threads receive this immutable
 input and create their own overlays; their acceptance does not count for #491.
 
 The #491 acceptance overlay `u24491`, run
