@@ -220,7 +220,9 @@ Head head(Client& client, const Destination& destination, const QString& key, co
     request.SetBucket(aws(destination.settings["bucket"].toString()));
     request.SetKey(aws(key));
     if (!version.isEmpty()) request.SetVersionId(aws(version));
-    request.SetContinueRequestHandler([cancellation](const Aws::Http::HttpRequest*) { return !stopped(cancellation); });
+    // SdkRuntime installs the SDK continuation handler as Curl progress, even
+    // while a HEAD is waiting for response headers and transfers no body.
+    if (cancellation) request.SetContinueRequestHandler([cancellation](const Aws::Http::HttpRequest*) { return !stopped(cancellation); });
     return client.HeadObject(request);
 }
 QString metadata(const Aws::S3::Model::HeadObjectResult& result, const char* name) {
