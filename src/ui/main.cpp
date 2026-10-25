@@ -36,7 +36,7 @@ int main(int argc,char** argv){
   // Previews and exports allocate full-size rasters and PNG buffers. Without a
   // fixed mmap threshold the freed ones stay in the heap: on Fedora 44 one
   // 1920x1080 preview kept 36 MiB resident until the editor closed.
-  if(!putgd::applyResidentAllocatorPolicy())std::fputs("Could not apply the editor allocation threshold\n",stderr);
+  if(!putgd::applyResidentAllocatorPolicy())std::fputs("Could not apply the editor allocation policy\n",stderr);
  }
  QApplication app(argc,argv);
  QCoreApplication::setOrganizationName("putgd");QCoreApplication::setApplicationName("putgd-ui");
