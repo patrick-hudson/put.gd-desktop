@@ -25,7 +25,7 @@ public:
  QString serializationKey(const Destination& d,const QJsonObject& o,const QString& n)const override{return storage.serializationKey(d,o,n);}
  std::optional<int> retryRequestTimeout(const Destination& d,const QJsonObject& p)const override{return protonSettings?ProtonProvider().retryRequestTimeout(d,p):std::optional<int>{};}
  Error validateSettings(const QJsonObject& s)const override{return protonSettings?ProtonProvider().validateSettings(s):storage.validateSettings(s);}
- void checkName(const Destination& d,const QString& n,std::function<void(NameCheck)> cb)override{storage.checkName(d,n,cb);}
+ void checkName(const Destination& d,const QString& n,std::function<void(NameCheck)> cb, std::shared_ptr<std::atomic_bool> cancellation = {})override{storage.checkName(d,n,cb,cancellation);}
  void upload(const UploadRequest& r,std::function<void(UploadResult)> cb)override{{QMutexLocker lock(&captureMutex);capturedUploads.append(r);}if(draftConflict&&r.candidate==reservedCandidate){++draftCollisions;cb({"collision",{}, explicitDraft?Error{"upload_draft_conflict","An unfinished upload reserves this name",{}}:Error{}});return;}storage.upload(r,[cb](UploadResult result){result.receipt.directUrl.clear();cb(result);});}
  void stat(const StorageReceipt& r,std::function<void(StatResult)> cb)override{storage.stat(r,cb);}
  void reconcile(const UploadRequest& r,std::function<void(StatResult)> cb)override{{QMutexLocker lock(&captureMutex);capturedReconciliations.append(r);}if(reconciliationHook){reconciliationHook(r,cb);return;}if(reconciliationFails&&draftCollisions.load()>0){cb({"unknown",{}, {"proton_request_timeout","Synthetic reconciliation deadline",{{"reason","deadline"},{"timeoutMs",2000},{"method","reconcile"}}}});return;}storage.reconcile(r,cb);}

@@ -57,7 +57,7 @@ public:
  QString defaultPublicationMode(const Destination&)const override{return "private";}
  QString serializationKey(const Destination& d,const QJsonObject& ref,const QString& name)const override{return storage.serializationKey(d,ref,name);}
  Error validateSettings(const QJsonObject& s)const override{return storage.validateSettings(s);}
- void checkName(const Destination& d,const QString& name,std::function<void(NameCheck)> reply)override{storage.checkName(d,name,std::move(reply));}
+ void checkName(const Destination& d,const QString& name,std::function<void(NameCheck)> reply, std::shared_ptr<std::atomic_bool> cancellation = {})override{storage.checkName(d,name,std::move(reply),cancellation);}
  void upload(const UploadRequest& request,std::function<void(UploadResult)> reply)override{storage.upload(request,[reply](UploadResult result){result.receipt.directUrl.clear();reply(result);});}
  void stat(const StorageReceipt& receipt,std::function<void(StatResult)> reply)override{storage.stat(receipt,std::move(reply));}
  void reconcile(const UploadRequest& request,std::function<void(StatResult)> reply)override{storage.reconcile(request,std::move(reply));}
@@ -94,6 +94,11 @@ class HistoryGui:public QObject {
   list->window()->activateWindow();list->setFocus();putgd::test::settle(20);auto triggered=std::make_shared<bool>(false);QTimer::singleShot(0,list,[triggered,text]{for(auto* widget:QApplication::topLevelWidgets())if(auto* menu=qobject_cast<QMenu*>(widget);menu&&menu->isVisible()){for(auto* action:menu->actions())if(action->text()==text&&action->isEnabled()){action->trigger();*triggered=true;break;}menu->close();}});list->setFocus();QTest::keyClick(list,Qt::Key_Menu);QCoreApplication::processEvents();return *triggered;
  }
 private slots:
+ void preflightStatusDescribesDestinationCheck() {
+  const QJsonObject record{{"operation",QJsonObject{{"state","running"},{"phase","preflight"},{"action","clipboard"}}}};
+  QCOMPARE(HistoryModel::statusText(record),QString("Checking the destination…"));
+ }
+
  void queuedEditorStatusTakesPrecedence_data(){
   QTest::addColumn<QString>("state");
   for(const auto& state:QStringList{"editing","acquiring","stored","running"})QTest::newRow(qPrintable(state))<<state;

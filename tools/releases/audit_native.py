@@ -94,7 +94,7 @@ def validate_inventory(root: Path, expected_manifest: dict | None = None, *, req
         raise ValueError("Expected one private S3 module")
     private = module_paths[0].parent
     records = [*runtime["libraries"], module]
-    if not runtime["libraries"] or module["contractVersion"] != 1 or not re.fullmatch(r"[0-9a-f]{64}", module["buildIdentity"]):
+    if not runtime["libraries"] or module["contractVersion"] != 2 or not re.fullmatch(r"[0-9a-f]{64}", module["buildIdentity"]):
         raise ValueError("Incomplete AWS runtime/module manifest")
     for record in records:
         if Path(record["file"]).name != record["file"]:

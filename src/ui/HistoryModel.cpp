@@ -62,6 +62,7 @@ QString HistoryModel::statusText(const QJsonObject& r){
     QStringList parts;if(running)parts<<QString("%1 uploading").arg(running);if(waiting)parts<<QString("%1 waiting").arg(waiting);if(done)parts<<QString("%1 done").arg(done);if(failed)parts<<QString("%1 failed").arg(failed);if(cancelled)parts<<QString("%1 cancelled").arg(cancelled);
     if(!parts.isEmpty())files=" · "+parts.join(", ");}
    const auto progress=aggregateProgress(op);if(progress.total>0)return QString("Uploading · %1%").arg(progress.percent())+files;if(progress.known)return "Uploading · "+ByteSize::summary(progress.sent)+" transferred"+files;return "Uploading…"+files;}
+  if(phase=="preflight")return "Checking the destination…";
   if(phase=="saving_local")return "Saving locally…";
   return "Preparing capture…";
  }

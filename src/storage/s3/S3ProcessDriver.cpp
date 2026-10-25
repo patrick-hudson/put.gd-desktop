@@ -73,8 +73,8 @@ public:
   if(!ready_||failed_){failed_=true;resetProcess();return false;}
   return true;
  }
- void checkName(const Destination& destination,const QString& candidate,std::function<void(NameCheck)> callback)override{
-  QJsonObject result;auto error=run("checkName",{{"destination",destination.toJson()},{"candidate",candidate}},destination,{}, {},result);
+ void checkName(const Destination& destination,const QString& candidate,std::function<void(NameCheck)> callback, std::shared_ptr<std::atomic_bool> cancellation = {})override{
+  QJsonObject result;auto error=run("checkName",{{"destination",destination.toJson()},{"candidate",candidate}},destination,cancellation, {},result);
   NameCheck value;if(error||!s3wire::decode(result,value))value={"inconclusive",{}, {},error?error:uncertain()};callback(std::move(value));
  }
  void upload(const UploadRequest& request,std::function<void(UploadResult)> callback)override{

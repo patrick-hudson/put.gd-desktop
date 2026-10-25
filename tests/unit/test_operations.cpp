@@ -54,7 +54,7 @@ public:
  int maximumConcurrentRequests(const Destination& d) const override {return storage.maximumConcurrentRequests(d);}
  QString serializationKey(const Destination& d,const QJsonObject& o,const QString& n) const override {return storage.serializationKey(d,o,n);}
  Error validateSettings(const QJsonObject& s) const override {return storage.validateSettings(s);}
- void checkName(const Destination& d,const QString& n,std::function<void(NameCheck)> cb) override {storage.checkName(d,n,cb);}
+ void checkName(const Destination& d,const QString& n,std::function<void(NameCheck)> cb, std::shared_ptr<std::atomic_bool> cancellation = {}) override {storage.checkName(d,n,cb,cancellation);}
  void upload(const UploadRequest& r,std::function<void(UploadResult)> cb) override {
   const bool late=shareAll||shareLater.contains(r.candidate);
   storage.upload(r,[late,cb](UploadResult result){if(late)result.receipt.directUrl.clear();cb(result);});

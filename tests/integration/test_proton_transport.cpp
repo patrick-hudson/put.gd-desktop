@@ -29,6 +29,19 @@ class ProtonTransportTest:public QObject {
   req.progress=std::move(progress);UploadResult result;provider.upload(req,[&](UploadResult r){result=r;});return result;
  }
 private slots:
+ void nameCheckPropagatesCancellationToHelper() {
+  ProtonProvider provider;auto d=destination("timeout");d.settings["requestTimeoutMs"]=120000;
+  auto cancellation=std::make_shared<std::atomic_bool>(false);
+  std::jthread cancel([cancellation]{std::this_thread::sleep_for(std::chrono::milliseconds(200));cancellation->store(true);});
+  NameCheck result;QElapsedTimer elapsed;elapsed.start();
+  provider.checkName(d,"synthetic.txt",[&](NameCheck value){result=value;},cancellation);
+  QVERIFY(elapsed.elapsed()<2000);QCOMPARE(result.status,QString("inconclusive"));
+  QCOMPARE(result.error.code,QString("proton_result_unknown"));QCOMPARE(result.error.details["reason"].toString(),QString("cancelled"));
+  QCOMPARE(provider.diagnostics()["activeHelpers"].toInt(),0);
+  provider.checkName(d,"synthetic.txt",[&](NameCheck value){result=value;},cancellation);
+  QCOMPARE(result.error.code,QString("operation_cancelled"));
+ }
+
  // #518: inside an AppImage the helper got AppRun's library path, so the host libsecret it loads
  // bound to the image's older GLib and every keychain call failed (Debian 13, Ubuntu 26.04).
  void helperGetsTheHostEnvironmentNotTheAppImages(){

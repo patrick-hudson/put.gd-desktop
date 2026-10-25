@@ -36,7 +36,7 @@ class NativeInventoryTests(unittest.TestCase):
         self.write("usr/lib64/putgd/libaws-c-common.so", "SDK")
         self.write("usr/lib64/putgd/libputgd-s3.so", "module")
         runtime = {"libraries": [{"file": "libaws-c-common.so", "sha256": audit.sha256(self.root / "usr/lib64/putgd/libaws-c-common.so")}],
-                   "module": {"file": "libputgd-s3.so", "contractVersion": 1, "buildIdentity": "b" * 64,
+                   "module": {"file": "libputgd-s3.so", "contractVersion": 2, "buildIdentity": "b" * 64,
                               "sha256": audit.sha256(self.root / "usr/lib64/putgd/libputgd-s3.so")}}
         self.write("usr/share/putgd/aws-runtime-manifest.json", json.dumps(runtime))
 
@@ -51,6 +51,14 @@ class NativeInventoryTests(unittest.TestCase):
         result = audit.validate_inventory(self.root, self.manifest)
         self.assertEqual(result["manifest"], self.manifest)
         self.assertEqual(result["privateLibraryDirectory"], "usr/lib64/putgd")
+
+    def test_previous_s3_contract_is_rejected(self):
+        path = self.root / "usr/share/putgd/aws-runtime-manifest.json"
+        runtime = json.loads(path.read_text())
+        runtime["module"]["contractVersion"] = 1
+        path.write_text(json.dumps(runtime))
+        with self.assertRaisesRegex(ValueError, "Incomplete AWS runtime/module manifest"):
+            audit.validate_inventory(self.root, self.manifest)
 
     def test_release_excludes_credentials_and_fixtures(self):
         for name in ("usr/share/putgd/credentials.txt", "usr/bin/putgd-desktop-fixture", "usr/bin/putgd-view-bench"):
