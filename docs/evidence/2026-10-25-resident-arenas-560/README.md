@@ -292,8 +292,10 @@ is limited to queued-publication absence plus survivor attribution.
   and [1,1,2,1] on k72, within the up-to-3 attempts that `docs/s3.md` allows.
 - **Cleanup:** helper close and normal quit were normal, with cleanup receipts.
   The slots were released verified-clean at 20:30:14Z and 20:30:15Z.
-- **Lanes:** only about 2 lanes were effective despite `concurrentUploads` 4,
-  because queued blockers had items in `stored`.
+- **Lanes:** at the recorded cancellation witnesses, two blockers were uploading
+  on f44, and the other blockers were queued with stored items. k72 also showed a
+  third blocker uploading. These snapshots do not establish an effective
+  concurrency limit or the cause of the r2 precondition failures.
 - **Not proven:** atomicity (inspect and cancel are separate calls), and byte-level
   retry, key or condition correctness. The earlier native in-flight cancellation
   failures remain failures.
