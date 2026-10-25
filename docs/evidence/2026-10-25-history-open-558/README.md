@@ -94,7 +94,10 @@ no package or Qt 6.4.2 runtime result is yet claimed.
   corrected using the existing verified SDK/source, with the failed log kept.
 - An early widget probe used the existing i559 build and is diagnostic only.
 - Xvfb run `i558b1` queried the wrong diagnostics endpoint for helper readiness;
-  it failed and was cleaned up. The observer was corrected to `ui.snapshot`.
+  it failed and its resident was terminated. A later audit found no owned
+  workload processes and a non-listening stale socket, retained with the failed
+  attempt. The observer was corrected to `ui.snapshot`; successful repeats
+  require normal exit and socket removal.
 - `i558b2` and the first candidate comparison are not final acceptance. Untracked
   configure/build logs had marked the first baseline dirty; logs moved under
   ignored evidence storage and the baseline was rebuilt clean as `i558b3`.
