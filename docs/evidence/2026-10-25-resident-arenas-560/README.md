@@ -281,6 +281,41 @@ window, plus the Plasma panel on k72:
 - [k72 History](gnome-kde/k72-plasma-history-98878cfe.png)
 - [k72 Settings](gnome-kde/k72-plasma-settings-98878cfe.png)
 
+**Native queued-cancel control, r4** (`queued_cancel.py` `b5447229…`, unscored): runs
+gq2 on f44 and kq2 on k72, with the candidate CI packages. Both **pass**. The scope
+is limited to queued-publication absence plus survivor attribution.
+
+- **Witness and cancel:** both targets were witnessed `queued` with 0 items, then
+  cancelled 0.020–0.031 s later. Both ended `cancelled` with no items.
+- **Publication:** decoded pixels put no target in any stored object or PUT body.
+- **Survivors:** all 4 were stored once each. PUT attempts were [1,1,2,2] on f44
+  and [1,1,2,1] on k72, within the up-to-3 attempts that `docs/s3.md` allows.
+- **Cleanup:** helper close and normal quit were normal, with cleanup receipts.
+  The slots were released verified-clean at 20:30:14Z and 20:30:15Z.
+- **Lanes:** only about 2 lanes were effective despite `concurrentUploads` 4,
+  because queued blockers had items in `stored`.
+- **Not proven:** atomicity (inspect and cancel are separate calls), and byte-level
+  retry, key or condition correctness. The earlier native in-flight cancellation
+  failures remain failures.
+- **Earlier r2 attempts** gq1/kq1 failed the harness precondition before any target
+  was cancelled, so they give no verdict. Their raw status `running` is stale.
+- **Headless smoke** qs1/qs2 is not native evidence.
+- **Not a functional or clipboard pass:**
+  - The f44 History rows say "Could not copy link", which is a separate functional
+    limitation this pass does not waive.
+  - The k72 rows say "Link copied", so that run changed the k72 session clipboard
+    with a loopback fixture link. Persistence was not checked, and the clipboard
+    was not inspected or restored.
+
+Both frames show 4 synthetic captures, 4 stored files and 2 cancelled captures
+hidden. The k72 frame also shows the Plasma panel:
+
+- [f44](gnome-kde/f44-gnome-queued-cancel-history-98878cfe.png)
+- [k72](gnome-kde/k72-plasma-queued-cancel-history-98878cfe.png)
+
+Raw evidence is private in the acceptance task (`i560a-f44-qc2-raw.tar.gz` and
+`i560a-k72-qc2-raw.tar.gz`).
+
 **Matched trunk (`80ffa2e6`), same protocols.** The trunk packages come from nightly CI run 40212427980.
 One diagnostic pair per desktop, using the same driver on each:
 
@@ -304,8 +339,9 @@ One diagnostic pair per desktop, using the same driver on each:
   mismatch, not as a pass.
 
 Raw evidence stays private in the acceptance task: `work/i560a/evidence/`, with
-`SHA256SUMS` `66f3d9712b64fe9487b2967c00d19a93f9193ee7e071d4264b3c9d094aaabdb5`
-(earlier candidate-only manifest `73726b51…`) and `RESTORE-INDEX.md`. Admission thumbnails and banner crops show the hosts' own
+`SHA256SUMS` `877b4b9d92211bad1ffc7c4d6b4065f766303e79655e8f4e2d99b0fb7123fa10`,
+which includes the queued-cancel control (earlier manifests: `66f3d971…` with trunk,
+`73726b51…` candidate only), and `RESTORE-INDEX.md`. Admission thumbnails and banner crops show the hosts' own
 desktops, so they stay private.
 
 ## Headless controls (d69, not desktop acceptance)
@@ -644,7 +680,8 @@ earlier task.
   identified native-Wayland burst diagnostic, because the #555 burst driver
   requires Cinnamon/X11. The candidate GNOME and Plasma rows are recorded above.
   Matched-trunk GNOME and Plasma rows are recorded too. Still pending: the d69
-  native row, and resolving the native functional-cancellation assertion.
+  native row, and the native in-flight cancellation assertion. The queued-cancel
+  control passes; that assertion remains a recorded mismatch.
 - `historyOpenPss` fails on the exact candidate (m1) until #558's fix is included.
 - Published-asset gates, after a nightly containing #576 publishes.
 - `captureBurst` and `historyOpenUpperBoundMs` remain unassessed by the driver.
