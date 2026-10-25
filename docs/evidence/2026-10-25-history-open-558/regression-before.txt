@@ -1,0 +1,12 @@
+********* Start testing of UiApplicationTest *********
+Config: Using QtTest library 6.10.2, Qt 6.10.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 15.2.0), ubuntu 26.04
+PASS   : UiApplicationTest::initTestCase()
+QWARN  : UiApplicationTest::historyCloseDoesNotAllocateSettings() This plugin does not support raise()
+FAIL!  : UiApplicationTest::historyCloseDoesNotAllocateSettings() '!window->findChild<SettingsWindow*>()' returned FALSE. ()
+   Loc: [/tmp/i558red/test_ui_application.cpp(65)]
+QWARN  : UiApplicationTest::historyDefersCleanSettingsAndUsesCurrentConfiguration() This plugin does not support raise()
+FAIL!  : UiApplicationTest::historyDefersCleanSettingsAndUsesCurrentConfiguration() '!window->findChild<SettingsWindow*>()' returned FALSE. ()
+   Loc: [/tmp/i558red/test_ui_application.cpp(52)]
+PASS   : UiApplicationTest::cleanupTestCase()
+Totals: 2 passed, 2 failed, 0 skipped, 0 blacklisted, 1256ms
+********* Finished testing of UiApplicationTest *********

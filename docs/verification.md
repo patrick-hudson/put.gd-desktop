@@ -9,6 +9,18 @@ missing profiles, and run physical-hardware release gates on physical machines.
 This requirement is separate from the historical results below; missing new
 rows and current-candidate evidence remain gates.
 
+## History-open memory (#558) — 2026-10-25
+
+The History-only helper now defers hidden Settings/destination construction,
+while retaining active drafts and accepted setup inspection. Controlled builder
+measurements and lifecycle tests are recorded in the
+[History memory evidence](evidence/2026-10-25-history-open-558/README.md).
+The exact local development DEB passes physical Cinnamon 300/30/300 memory
+(46,641,152 B History-open family PSS) and separate targeted native UI checks.
+All 107 configured dev tests pass across two invocations; four minimum-Qt suites
+also pass. Parallel Cinnamon/GNOME/KDE acceptance, paint-response timing and
+published assets remain pending; this evidence does not close #558.
+
 ## Login-startup uninstall contract (#382) — 2026-10-24
 
 Patrick corrected the contract: remove managed startup links for active accounts

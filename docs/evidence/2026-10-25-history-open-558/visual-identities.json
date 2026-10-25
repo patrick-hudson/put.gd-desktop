@@ -1,0 +1,30 @@
+{
+  "history-open.png": {
+    "originalRunFile": "p558m1/history-open-744096-0.png",
+    "sha256": "086fa427aa37755f28ee5f64ed76dc42894d8d67889a19a71426a4b32cfe94a3",
+    "source": "48fd6047b2a8d7830296bc3de78f370719a1574f",
+    "packageSha256": "9c8ff3711ae2b55bd75e44c92ab7496d3e88d5b23a480d7e83d071819817084d",
+    "attribution": "Frozen owned drawable versus wall VNC crop verification; reviewed synthetic-only content"
+  },
+  "destinations-light.png": {
+    "originalRunFile": "p558f1/functional-destinations-light-744621-0.png",
+    "sha256": "bb023ef7625483b8a736526a7c197978c025bbdaf32c4cab0770d8739b5d79e5",
+    "source": "48fd6047b2a8d7830296bc3de78f370719a1574f",
+    "packageSha256": "9c8ff3711ae2b55bd75e44c92ab7496d3e88d5b23a480d7e83d071819817084d",
+    "attribution": "Frozen owned drawable versus wall VNC crop verification; reviewed synthetic-only content"
+  },
+  "settings-light.png": {
+    "originalRunFile": "p558f1/functional-settings-light-744621-0.png",
+    "sha256": "dee88ae5a323c17faa1ce5e3143ef01153993b8f1ac8ee6c673934cd4f0093ba",
+    "source": "48fd6047b2a8d7830296bc3de78f370719a1574f",
+    "packageSha256": "9c8ff3711ae2b55bd75e44c92ab7496d3e88d5b23a480d7e83d071819817084d",
+    "attribution": "Frozen owned drawable versus wall VNC crop verification; reviewed synthetic-only content"
+  },
+  "settings-dark.png": {
+    "originalRunFile": "p558f1/functional-settings-dark-744716-0.png",
+    "sha256": "0316379f477003344b890ae1556aee54bf812f416043bc0291829ea0b08a7e99",
+    "source": "48fd6047b2a8d7830296bc3de78f370719a1574f",
+    "packageSha256": "9c8ff3711ae2b55bd75e44c92ab7496d3e88d5b23a480d7e83d071819817084d",
+    "attribution": "Frozen owned drawable versus wall VNC crop verification; reviewed synthetic-only content"
+  }
+}

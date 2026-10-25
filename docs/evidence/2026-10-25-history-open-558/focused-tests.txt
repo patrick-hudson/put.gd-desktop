@@ -1,0 +1,16 @@
+Test project /home/patrick/work/i558/build/dev
+    Start 97: gui_settings
+    Start 39: gui_application
+1/4 Test #39: gui_application ..................   Passed   47.69 sec
+    Start 98: gui_history_view
+2/4 Test #98: gui_history_view .................   Passed   30.35 sec
+    Start 40: gui_theme
+3/4 Test #40: gui_theme ........................   Passed    0.11 sec
+4/4 Test #97: gui_settings .....................   Passed  103.40 sec
+
+100% tests passed, 0 tests failed out of 4
+
+Label Time Summary:
+integration    = 181.56 sec*proc (4 tests)
+
+Total Test time (real) = 103.41 sec

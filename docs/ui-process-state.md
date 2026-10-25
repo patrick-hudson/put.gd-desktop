@@ -4,6 +4,16 @@
 
 The state also carries a derived, read-only `appearance` object: `theme` (the setting), `desktop` (`dark`, `light` or null), `desktopSource`, the resolved `scheme` and its `tokens` (name to `#rrggbb`). `ui.viewState` returns it unchanged; see [appearance](appearance.md).
 
+Opening History creates its own controls and the shared window shell. Settings and
+Destinations are constructed on their first navigation or agent command. Clean
+retained Settings state stays recoverable without constructing those hidden
+controls; its old `captureRouting` projection is omitted from new checkpoints
+until Settings exists again. Restoration reconciles the retained state with the
+current resident configuration. Dirty/conflicted/blocked drafts, provisional or
+alternate-provider drafts, and accepted setup jobs retain their eager restoration
+and inspection lifecycle. Once constructed, Settings stays alive for the helper's
+lifetime so navigation preserves edits and accepted jobs.
+
 Settings keys: `draft`, `numbers`, `profileEditors`, `baseRevision`, `observedRevision`, `dirty`, `conflict`, `initialProfile`, `profileIndex`, `section`, `advanced`, `geometry`, `setupJobs`, `provisionalProfile`, and the optional derived `captureRouting`.
 
 - `captureRouting` presents Settings → Capture as shown: `default` (Default capture output) and one entry per capture action (region, window, desktop, clipboard, edit). Each has `profileId` (empty for no destination), the displayed `destination` and `sharing` texts, `publicationMode` (default/share/private), `effectivePublicationMode` (share/private, with "Use destination default" resolved for the selected destination; empty without an upload), the `status` line, and `destinationEnabled`/`sharingEnabled`; actions add `inherited` (Use default). An inherited action keeps its card visible with both controls disabled and showing the default's values. The resident returns only this projection and `section` through `ui.viewState` (MCP `get_view_state`), from the last accepted checkpoint; open windows checkpoint 250 ms after a change. Restoring ignores it and recomputes it from `draft`.

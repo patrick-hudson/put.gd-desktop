@@ -1,0 +1,135 @@
+{
+  "package": "putgd_26.1025.1297~dev+g48fd6047b2a8_amd64.deb",
+  "bytes": 10993726,
+  "sha256": "9c8ff3711ae2b55bd75e44c92ab7496d3e88d5b23a480d7e83d071819817084d",
+  "source": "48fd6047b2a8d7830296bc3de78f370719a1574f",
+  "binaries": {
+    "putgd": {
+      "sha256": "356ce69e3f1bba14b000f8cac588271037669393098edf9716717d4ae20dfc06",
+      "build": {
+        "schemaVersion": 1,
+        "version": "26.1025.1297-dev+g48fd6047b2a8",
+        "baseVersion": "26.1025.1297",
+        "packageVersion": "26.1025.1297~dev+g48fd6047b2a8",
+        "gitCommit": "48fd6047b2a8d7830296bc3de78f370719a1574f",
+        "gitTree": "6a25d37f135146a59cdcd8558033238690f1847b",
+        "commitCount": 1297,
+        "dirty": false,
+        "sourceProvenance": "git"
+      },
+      "dynamicQtNeeded": [
+        "libQt6Widgets.so.6",
+        "libQt6DBus.so.6",
+        "libQt6Gui.so.6",
+        "libQt6Sql.so.6",
+        "libQt6Core.so.6"
+      ]
+    },
+    "putgd-ui": {
+      "sha256": "d1c0dc1d4b44acd117f960b6bb11f87e631848dc125cc74727d9a2ceac22b7f6",
+      "build": {
+        "schemaVersion": 1,
+        "version": "26.1025.1297-dev+g48fd6047b2a8",
+        "baseVersion": "26.1025.1297",
+        "packageVersion": "26.1025.1297~dev+g48fd6047b2a8",
+        "gitCommit": "48fd6047b2a8d7830296bc3de78f370719a1574f",
+        "gitTree": "6a25d37f135146a59cdcd8558033238690f1847b",
+        "commitCount": 1297,
+        "dirty": false,
+        "sourceProvenance": "git"
+      },
+      "dynamicQtNeeded": [
+        "libQt6Network.so.6",
+        "libQt6DBus.so.6",
+        "libQt6Widgets.so.6",
+        "libQt6Gui.so.6",
+        "libQt6Core.so.6"
+      ]
+    },
+    "putgd-cli": {
+      "sha256": "fc499c6cf584804e1d85bd3394337980e3dc7f7e59496c62cebbab6498b6aa71",
+      "build": {
+        "schemaVersion": 1,
+        "version": "26.1025.1297-dev+g48fd6047b2a8",
+        "baseVersion": "26.1025.1297",
+        "packageVersion": "26.1025.1297~dev+g48fd6047b2a8",
+        "gitCommit": "48fd6047b2a8d7830296bc3de78f370719a1574f",
+        "gitTree": "6a25d37f135146a59cdcd8558033238690f1847b",
+        "commitCount": 1297,
+        "dirty": false,
+        "sourceProvenance": "git"
+      },
+      "dynamicQtNeeded": [
+        "libQt6Network.so.6",
+        "libQt6Gui.so.6",
+        "libQt6Sql.so.6",
+        "libQt6Core.so.6"
+      ]
+    },
+    "putgd-capture": {
+      "sha256": "d04069d91f46e96fc8f906730132c03e7fb59f257b0fa1e9cb1a966b5a687c43",
+      "build": {
+        "schemaVersion": 1,
+        "version": "26.1025.1297-dev+g48fd6047b2a8",
+        "baseVersion": "26.1025.1297",
+        "packageVersion": "26.1025.1297~dev+g48fd6047b2a8",
+        "gitCommit": "48fd6047b2a8d7830296bc3de78f370719a1574f",
+        "gitTree": "6a25d37f135146a59cdcd8558033238690f1847b",
+        "commitCount": 1297,
+        "dirty": false,
+        "sourceProvenance": "git"
+      },
+      "dynamicQtNeeded": [
+        "libQt6Widgets.so.6",
+        "libQt6Gui.so.6",
+        "libQt6DBus.so.6",
+        "libQt6Core.so.6"
+      ]
+    },
+    "putgd-record": {
+      "sha256": "10f6f8c443fe9f612057256d2fada00191ea7584ff7f4970dc7e3c0fe662b2c3",
+      "build": {
+        "schemaVersion": 1,
+        "version": "26.1025.1297-dev+g48fd6047b2a8",
+        "baseVersion": "26.1025.1297",
+        "packageVersion": "26.1025.1297~dev+g48fd6047b2a8",
+        "gitCommit": "48fd6047b2a8d7830296bc3de78f370719a1574f",
+        "gitTree": "6a25d37f135146a59cdcd8558033238690f1847b",
+        "commitCount": 1297,
+        "dirty": false,
+        "sourceProvenance": "git"
+      },
+      "dynamicQtNeeded": [
+        "libQt6DBus.so.6",
+        "libQt6Widgets.so.6",
+        "libQt6Gui.so.6",
+        "libQt6Core.so.6"
+      ]
+    },
+    "putgd-kde-region": {
+      "sha256": "347d0957843fa2e1f13b575b3d94b142c6db85e8989329390f6d94afe8263206",
+      "build": {
+        "schemaVersion": 1,
+        "version": "26.1025.1297-dev+g48fd6047b2a8",
+        "baseVersion": "26.1025.1297",
+        "packageVersion": "26.1025.1297~dev+g48fd6047b2a8",
+        "gitCommit": "48fd6047b2a8d7830296bc3de78f370719a1574f",
+        "gitTree": "6a25d37f135146a59cdcd8558033238690f1847b",
+        "commitCount": 1297,
+        "dirty": false,
+        "sourceProvenance": "git"
+      },
+      "dynamicQtNeeded": [
+        "libQt6Widgets.so.6",
+        "libQt6Gui.so.6",
+        "libQt6DBus.so.6",
+        "libQt6Core.so.6"
+      ]
+    }
+  },
+  "qtCore": "6.4.2",
+  "qtWidgets": "6.4.2",
+  "gcc": "13.3.0",
+  "packageMetadata": "Package: putgd\nVersion: 26.1025.1297~dev+g48fd6047b2a8\nArchitecture: amd64\nDepends: libqt6sql6-sqlite, qt6-qpa-plugins, qt6-wayland, qt6-image-formats-plugins, libglib2.0-bin, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer1.0-pipewire, libavcodec60 (>= 7:6.1), libavfilter9 (>= 7:6.0), libavformat60 (>= 7:6.0), libavutil58 (>= 7:6.0), libc6 (>= 2.38), libcurl4t64 (>= 7.18.0), libgcc-s1 (>= 4.2), libglib2.0-0t64 (>= 2.12.0), libgstreamer1.0-0 (>= 1.0.0), libqt6core6t64 (>= 6.4.0), libqt6dbus6t64 (>= 6.4.0), libqt6gui6t64 (>= 6.4.0), libqt6keychain1 (>= 0.13.2), libqt6network6t64 (>= 6.1.2), libqt6sql6t64 (>= 6.1.2), libqt6widgets6t64 (>= 6.4.0), libssl3t64 (>= 3.0.3), libstdc++6 (>= 13.1), libswresample4 (>= 7:6.0), libswscale7 (>= 7:6.0), libwayland-client0 (>= 1.20.0), libxcb-damage0, libxcb-keysyms1 (>= 0.4.0), libxcb-randr0 (>= 1.3), libxcb-render0, libxcb-xfixes0, libxcb-xinput0 (>= 1.15), libxcb1, libxcursor1 (>> 1.1.2), libxkbcommon0 (>= 1.0.0), zlib1g (>= 1:1.1.4)\n",
+  "scope": "locally built development DEB; not published asset acceptance"
+}
