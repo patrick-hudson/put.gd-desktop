@@ -106,6 +106,16 @@ copies were suppressed. These are retained in the final-operation witnesses and
 are not reported as clipboard acceptance. This focused change does not modify
 clipboard code or session integration.
 
+The same Fedora failure is independently recorded on #561 source
+`79fd0cb5ee9170580941b175b99d89c3921ed352`, which does not include #559:
+[bounded receipt and binary identity](https://github.com/patrick-hudson/put.gd-desktop/blob/b9a25cf928df8035593717d9157418d50a470300/docs/evidence/2026-10-25-preflight-cancellation-561/final/measurements.json),
+`fedora-wayland.retry`. Operation `1531d49e-99e5-4a42-8460-a30a4ee6c009`
+completed/uploaded in `/tmp/i561f1` while reporting the identical
+`clipboard_unavailable` error. The original retry receipt was verified against
+SHA-256 `2cc9a665af504dc583c51bad9287841516bf4e45fd70e939e4bf257d8457994a`.
+This establishes that the clipboard failure also occurs without the queued-editor
+fix; it does not turn that clipboard result into a pass. No new run was performed.
+
 ### Capture admission and retained failures
 
 All exported app frames passed the existing 50% cover / 90% on every edge gate.
