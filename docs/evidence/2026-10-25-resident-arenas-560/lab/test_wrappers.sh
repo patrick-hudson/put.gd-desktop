@@ -34,11 +34,23 @@ class H(http.server.BaseHTTPRequestHandler):
 s=http.server.HTTPServer(('127.0.0.1',0),H);print(s.server_address[1],flush=True);s.serve_forever()
 PY
 echo 'int putgd_stub_module;' > m.c && cc -shared -fPIC -o "out dir/rev-aaaaaaaa/lib/x86_64-linux-gnu/putgd/libputgd-s3.so" m.c && rm m.c
-cp /bin/sleep "out dir/rev-aaaaaaaa/bin/putgd-s3-worker"
+# Stub worker: like the real one, resolves ../lib/<multiarch>/putgd/libputgd-s3.so from its own executable and
+# loads it (LD_PRELOAD cannot express a path with spaces), then holds briefly so the smoke can read its maps.
+cat > w.c <<'C'
+#include <dlfcn.h>
+#include <libgen.h>
+#include <limits.h>
+#include <stdio.h>
+#include <unistd.h>
+int main(void){char exe[PATH_MAX];ssize_t n=readlink("/proc/self/exe",exe,sizeof exe-1);if(n<0)return 1;exe[n]=0;
+char path[PATH_MAX];snprintf(path,sizeof path,"%s/../lib/x86_64-linux-gnu/putgd/libputgd-s3.so",dirname(exe));
+if(!dlopen(path,RTLD_NOW))return 2;sleep(2);return 0;}
+C
+cc -o "out dir/rev-aaaaaaaa/bin/putgd-s3-worker" w.c -ldl && rm w.c
 cat > "out dir/rev-aaaaaaaa/bin/operations_upload_probe" <<'SH'
 #!/bin/bash
 d=$(dirname "$(realpath "$0")")
-LD_PRELOAD="$d/../lib/x86_64-linux-gnu/putgd/libputgd-s3.so" "$d/putgd-s3-worker" 2 & wait $!
+"$d/putgd-s3-worker" & wait $! || exit 1
 echo '{"operations":[{"files":[{"status":"uploaded"}]}]}'
 SH
 chmod +x "out dir/rev-aaaaaaaa/bin/operations_upload_probe"
