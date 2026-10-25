@@ -30,7 +30,9 @@ PY
  for _ in $(seq 80); do
   for w in $(pgrep -P $probe -x putgd-s3-worker || true); do
    [[ $(readlink /proc/$w/exe) == "$dest/bin/putgd-s3-worker" ]] || continue
-   mapped=$(grep -o '/[^ ]*libputgd-s3\.so' /proc/$w/maps | sort -u | tr '\n' ' ')
+   # The path is the sixth field onward and may contain spaces; a poll before the module is mapped finds nothing,
+   # which must not end the script under set -e/pipefail (v1 parsed with [^ ]* and aborted on an empty poll).
+   mapped=$(awk '{ p=$0; for (i=1;i<=5;i++) sub(/^[^ ]+ +/, "", p); if (p ~ /\/libputgd-s3\.so$/) print p }' "/proc/$w/maps" | sort -u || true)
   done
   [[ -n $mapped ]] && break; sleep .1
  done
@@ -39,7 +41,7 @@ PY
  python3 - "$run/result.json" "$status" "$mapped" "$dest" "$tag" <<'PY'
 import json,sys,os
 r=json.load(open(sys.argv[1]));files=[f for o in r['operations'] for f in o['files']]
-mapped=sys.argv[3].split();expected=os.path.realpath(os.path.join(sys.argv[4],'lib/x86_64-linux-gnu/putgd/libputgd-s3.so'))
+mapped=[m for m in sys.argv[3].split('\n') if m];expected=os.path.realpath(os.path.join(sys.argv[4],'lib/x86_64-linux-gnu/putgd/libputgd-s3.so'))
 ok=int(sys.argv[2])==0 and len(files)==1 and files[0]['status']=='uploaded' and [os.path.realpath(m) for m in mapped]==[expected]
 print(json.dumps({'tag':sys.argv[5],'probeExit':int(sys.argv[2]),'uploaded':[f['status'] for f in files],'workerMappedModule':mapped,'expectedModule':expected,'pass':ok}))
 sys.exit(0 if ok else 1)
