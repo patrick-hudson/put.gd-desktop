@@ -36,6 +36,50 @@ public:
 class UiApplicationTest:public QObject {
  Q_OBJECT
 private slots:
+ // #558: opening and checkpointing History must not construct the hidden
+ // Settings tree; explicit navigation and agent commands still initialize it.
+ void historyDefersCleanSettingsAndUsesCurrentConfiguration(){
+  QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"),[](auto,auto){return Error{};});auto document=Settings::developmentTemplate();QVERIFY(settings.save(document,{}));
+  CredentialStore secrets;UiSessionFixture fixture(settings,secrets);QJsonObject saved;
+  {
+   MainWindow prior(fixture.session);prior.navigate("settings");
+   saved={{"schemaVersion",1},{"settings",prior.settings()->saveViewState()},{"main",prior.saveViewState()}};
+   QVERIFY(!saved["settings"].toObject()["dirty"].toBool());
+  }
+  ControlDevice device;UiControl control(device);UiApplicationController controller(fixture.session,control,saved);
+  device.send("activate",{{"view","history"}});MainWindow* window=nullptr;for(auto* widget:QApplication::topLevelWidgets())if(auto* candidate=qobject_cast<MainWindow*>(widget))window=candidate;
+  QVERIFY(window);QVERIFY(!window->findChild<SettingsWindow*>());QCOMPARE(window->saveViewState()["page"].toInt(),0);
+  PUTGD_TRY_VERIFY(!device.last("checkpoint").isEmpty());
+  QCOMPARE(device.last("checkpoint")["payload"].toObject()["state"].toObject()["settings"],saved["settings"]);QVERIFY(!window->findChild<SettingsWindow*>());
+  auto archive=document["archive"].toObject();archive["root"]=dir.filePath("changed-before-settings");document["archive"]=archive;QVERIFY(settings.save(document,settings.revision()));
+  PUTGD_TRY_COMPARE(fixture.session.revision(),settings.revision());QVERIFY(!window->findChild<SettingsWindow*>());
+  device.send("activate",{{"view","settings"}});QVERIFY(window->findChild<SettingsWindow*>());
+  QCOMPARE(window->findChild<QLineEdit*>("archiveRoot")->text(),archive["root"].toString());
+  auto* instance=window->findChild<SettingsWindow*>();device.send("activate",{{"view","destinations"}});QCOMPARE(window->findChild<SettingsWindow*>(),instance);QCOMPARE(window->saveViewState()["page"].toInt(),1);
+  device.send("activate",{{"view","history"}});QCOMPARE(window->findChild<SettingsWindow*>(),instance);
+ }
+ void historyCloseDoesNotAllocateSettings(){
+  QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);ControlDevice device;UiControl control(device);UiApplicationController controller(fixture.session,control,{});
+  device.send("activate",{{"view","history"}});MainWindow* window=nullptr;for(auto* widget:QApplication::topLevelWidgets())if(auto* candidate=qobject_cast<MainWindow*>(widget))window=candidate;
+  QVERIFY(window);QVERIFY(!window->findChild<SettingsWindow*>());window->close();
+  PUTGD_TRY_VERIFY(!device.last("closeRequested").isEmpty());QVERIFY(!window->findChild<SettingsWindow*>());
+  QVERIFY(!device.last("closeRequested")["payload"].toObject()["state"].toObject().contains("settings"));
+ }
+ void historyRestoresActiveSettingsDraft(){
+  QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(settings.save(Settings::developmentTemplate(),{}));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);QJsonObject saved;
+  {
+   MainWindow prior(fixture.session);auto state=prior.settings()->saveViewState();state["dirty"]=true;state["autosaveBlocked"]=true;auto draft=state["draft"].toObject();auto archive=draft["archive"].toObject();archive["root"]=dir.filePath("retained-draft");draft["archive"]=archive;state["draft"]=draft;saved={{"schemaVersion",1},{"settings",state}};
+  }
+  ControlDevice device;UiControl control(device);UiApplicationController controller(fixture.session,control,saved);device.send("activate",{{"view","history"}});
+  MainWindow* window=nullptr;for(auto* widget:QApplication::topLevelWidgets())if(auto* candidate=qobject_cast<MainWindow*>(widget))window=candidate;
+  QVERIFY(window);QVERIFY(window->findChild<SettingsWindow*>());QVERIFY(window->findChild<SettingsWindow*>()->saveViewState()["dirty"].toBool());QCOMPARE(window->findChild<QLineEdit*>("archiveRoot")->text(),dir.filePath("retained-draft"));
+ }
+ void agentSettingsCommandInitializesFromHistory(){
+  QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(settings.save(Settings::developmentTemplate(),{}));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);ControlDevice device;UiControl control(device);UiApplicationController controller(fixture.session,control,{});device.send("activate",{{"view","history"}});
+  MainWindow* window=nullptr;for(auto* widget:QApplication::topLevelWidgets())if(auto* candidate=qobject_cast<MainWindow*>(widget))window=candidate;QVERIFY(window);QVERIFY(!window->findChild<SettingsWindow*>());
+  device.send("command",{{"version",1},{"command","moveDestination"},{"params",QJsonObject{{"direction","down"},{"profileId","development-s3"}}}});
+  QVERIFY(window->findChild<SettingsWindow*>());QCOMPARE(device.last("commandResult")["payload"].toObject()["error"].toObject()["code"].toString(),QString("destination_move_invalid"));QCOMPARE(window->saveViewState()["page"].toInt(),0);
+ }
  // #60: the appearance setting, saved here or patched by the CLI/MCP, switches
  // the scheme of the running interface without a restart.
  void appearanceSettingAppliesLive(){

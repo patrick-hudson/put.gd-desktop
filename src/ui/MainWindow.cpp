@@ -75,8 +75,12 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  for(const auto& entry:QList<QPair<QString,QString>>{{"history","History"},{"destinations","Destinations"},{"preferences","Settings"}})new QListWidgetItem(VisualStyle::icon(entry.first),entry.second,navigation_);
  navigation_->setFixedHeight(168);railBox->addWidget(navigation_);railBox->addStretch();destination_=new QLabel;destination_->setObjectName("captureOutputSummary");destination_->setTextFormat(Qt::PlainText);destination_->setWordWrap(true);VisualStyle::role(destination_,"muted");railBox->addWidget(destination_);
  auto* changeOutput=new QPushButton("Change capture output…");changeOutput->setObjectName("changeCaptureOutput");VisualStyle::role(changeOutput,"link");railBox->addWidget(changeOutput);railLinks_<<changeOutput;
- pages_=new QStackedWidget;pages_->setObjectName("mainPages");layout->addWidget(pages_,1);settings_=new SettingsWindow(session_,pages_);history_=new HistoryWindow(session_,pages_);pages_->addWidget(history_);pages_->addWidget(settings_->destinationsPage());pages_->addWidget(settings_);
- connect(navigation_,&QListWidget::currentRowChanged,pages_,&QStackedWidget::setCurrentIndex);connect(navigation_,&QListWidget::currentRowChanged,this,[this](int row){if(row==1)settings_->activateDestinations();emit viewStateChanged();});connect(settings_,&SettingsWindow::viewStateChanged,this,&MainWindow::viewStateChanged);connect(history_,&HistoryWindow::viewStateChanged,this,&MainWindow::viewStateChanged);connect(settings_,&SettingsWindow::actionRequested,this,&MainWindow::actionRequested);connect(history_,&HistoryWindow::editRequested,this,&MainWindow::editRequested);connect(history_,&HistoryWindow::chooseImageRequested,this,&MainWindow::chooseImageToEdit);connect(settings_,&SettingsWindow::quitRequested,this,&MainWindow::quitRequested);
+ pages_=new QStackedWidget;pages_->setObjectName("mainPages");layout->addWidget(pages_,1);history_=new HistoryWindow(session_,pages_);pages_->addWidget(history_);
+ // Keep the navigation indexes stable without constructing hidden Settings and
+ // destination controls for a History-only visit (#558).
+ pages_->addWidget(new QWidget(pages_));pages_->addWidget(new QWidget(pages_));
+ connect(navigation_,&QListWidget::currentRowChanged,this,[this](int row){if(row>0)settings();pages_->setCurrentIndex(row);if(row==1)settings_->activateDestinations();emit viewStateChanged();});
+ connect(history_,&HistoryWindow::viewStateChanged,this,&MainWindow::viewStateChanged);connect(history_,&HistoryWindow::editRequested,this,&MainWindow::editRequested);connect(history_,&HistoryWindow::chooseImageRequested,this,&MainWindow::chooseImageToEdit);
  // The running build, from the resident identity About also shows. Stable,
  // candidate and nightly builds link to their GitHub release; development builds
  // are plain text, which may wrap after "+": a dirty one is wider than the rail.
@@ -117,10 +121,24 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  connect(changeOutput,&QPushButton::clicked,this,[this]{navigate("settings");settings_->showCaptureSettings();});
  auto* explanation=new QLabel("Settings save automatically");explanation->setObjectName("autosaveExplanation");statusBar()->setSizeGripEnabled(false);statusBar()->addWidget(explanation);
  saveStatus_=new QLabel;saveStatus_->setObjectName("autosaveStatus");saveStatus_->setAccessibleName("Settings save status");saveStatus_->setTextFormat(Qt::PlainText);statusBar()->addPermanentWidget(saveStatus_);
- auto updateSaveStatus=[this]{const auto text=settings_->autosaveText();saveStatus_->setVisible(!text.isEmpty());VisualStyle::feedback(saveStatus_,text,!text.isEmpty()&&text!="Use Store to save credentials");};
- connect(settings_,&SettingsWindow::viewStateChanged,this,updateSaveStatus);connect(&session_,&UiSession::accepted,this,[updateDestination,updateSaveStatus]{updateDestination();updateSaveStatus();});
+ connect(&session_,&UiSession::accepted,this,[this,updateDestination]{updateDestination();updateSaveStatus();});
  updateDestination();updateSaveStatus();navigation_->setCurrentRow(0);RedesignTheme::apply(*this);
  connect(&Theme::Notifier::instance(),&Theme::Notifier::changed,this,[this]{QTimer::singleShot(0,this,[this]{setRailCompact(false);fitRail();});});
+}
+SettingsWindow* MainWindow::settings(){
+ if(settings_)return settings_;
+ settings_=new SettingsWindow(session_,pages_);
+ auto* destinations=pages_->widget(1);auto* preferences=pages_->widget(2);
+ pages_->removeWidget(destinations);pages_->removeWidget(preferences);delete destinations;delete preferences;
+ pages_->addWidget(settings_->destinationsPage());pages_->addWidget(settings_);
+ connect(settings_,&SettingsWindow::viewStateChanged,this,[this]{updateSaveStatus();emit viewStateChanged();});
+ connect(settings_,&SettingsWindow::actionRequested,this,&MainWindow::actionRequested);
+ connect(settings_,&SettingsWindow::quitRequested,this,&MainWindow::quitRequested);
+ emit settingsCreated(settings_);
+ updateSaveStatus();return settings_;
+}
+void MainWindow::updateSaveStatus(){
+ const auto text=settings_?settings_->autosaveText():QString();saveStatus_->setVisible(!text.isEmpty());VisualStyle::feedback(saveStatus_,text,!text.isEmpty()&&text!="Use Store to save credentials");
 }
 // #391: a rail taller than the window used to squeeze its items into each
 // other. Below its natural height the capture buttons drop their shortcut
@@ -162,7 +180,7 @@ void MainWindow::setRailCompact(bool compact){
  railGaps_[0]->changeSize(0,compact?4:14);railGaps_[1]->changeSize(0,compact?8:16);railGaps_[2]->changeSize(0,compact?0:6);railScroll_->widget()->layout()->invalidate();
 }
 MainWindow::~MainWindow(){
- disconnect(settings_,nullptr,this,nullptr);disconnect(history_,nullptr,this,nullptr);disconnect(navigation_,nullptr,this,nullptr);disconnect(&session_,nullptr,this,nullptr);
+ if(settings_)disconnect(settings_,nullptr,this,nullptr);disconnect(history_,nullptr,this,nullptr);disconnect(navigation_,nullptr,this,nullptr);disconnect(&session_,nullptr,this,nullptr);
 }
 bool MainWindow::chooseImageToEdit(){
  auto folder=QStandardPaths::writableLocation(QStandardPaths::PicturesLocation);if(folder.isEmpty())folder=QDir::homePath();
@@ -186,5 +204,5 @@ bool MainWindow::eventFilter(QObject* watched,QEvent* event){
 }
 void MainWindow::navigate(const QString& name){navigation_->setCurrentRow(name=="settings"?2:name=="destinations"?1:0);if(name=="activity"||name=="history")history_->refresh();}
 QJsonObject MainWindow::saveViewState()const{return {{"page",navigation_->currentRow()},{"geometry",QJsonArray{x(),y(),width(),height()}}};}
-bool MainWindow::restoreViewState(const QJsonObject& state){auto geometry=state["geometry"].toArray();if(geometry.size()!=4)return false;setGeometry(geometry[0].toInt(),geometry[1].toInt(),geometry[2].toInt(),geometry[3].toInt());navigation_->setCurrentRow(qBound(0,state["page"].toInt(),2));return true;}
+bool MainWindow::restoreViewState(const QJsonObject& state,bool restorePage){auto geometry=state["geometry"].toArray();if(geometry.size()!=4)return false;setGeometry(geometry[0].toInt(),geometry[1].toInt(),geometry[2].toInt(),geometry[3].toInt());if(restorePage)navigation_->setCurrentRow(qBound(0,state["page"].toInt(),2));return true;}
 }
