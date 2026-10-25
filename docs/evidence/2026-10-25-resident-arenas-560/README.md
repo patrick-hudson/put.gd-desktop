@@ -229,6 +229,54 @@ with a 6 s PUT delay:
   automatic copying, only its format, so a future unscored run on a shared desktop
   needs a nested display or an explicit clipboard scope.
 
+## Physical GNOME and Plasma, exact CI packages
+
+Recorded by the separate acceptance thread. The packages come from the same exact
+dispatch run 40225160437 at `98878cfe`: the f44 Fedora 44 RPM `ad172a3e…` and the
+k72 Kubuntu 26.04 DEB `50564f8f…`. The f44 and k72 locks were held from 19:26:54Z
+and 19:26:55Z and released verified-clean at 19:49:09Z and 19:49:10Z.
+
+The frozen #555 driver requires Cinnamon/X11, so it cannot run on these desktops.
+The coordinator approved two measurements in its place:
+
+- the matrix item C idle check plus scoped functional checks;
+- a separately identified native-Wayland burst **diagnostic**. Its driver,
+  `wayland_burst_diag.py` (r1 `d40c77e4`, r2 `3bf3ba76`), imports the frozen
+  `00ab777f` workload unchanged. It is not the frozen gate.
+
+| Desktop | Wayland burst diagnostic (50 uploads, settled) | Matrix C, 180 s idle (`native_c_functional` r2 `109d29ff`) |
+| --- | --- | --- |
+| f44 GNOME 50.6 | gb1: RSS 41,304,064 B / PSS 26,366,976 B, both under the 40 / 29 MiB limits | gc3: peak RSS 37,154,816 B / PSS 22,383,616 B, pass |
+| k72 Plasma 6.6.6 | kb2: RSS 38,014,976 B / PSS 13,446,144 B, both under the limits | kc1: peak RSS 33,239,040 B / PSS 8,889,344 B, pass |
+
+- **Burst runs:** both had 50/50 verified uploads, a normal helper exit and normal
+  cleanup. Both exited 1 because of the planned `burstVisualAttribution` fail:
+  automated visual attribution is unassessed on Wayland.
+- **k72 kb1:** it hit the frozen sampler's `/proc` race before scoring and is
+  retained.
+- **f44 gc1 and gc2:** a stale put.gd banner blocked them before measurement. One
+  authorised dismiss click was made, then gc3 ran.
+- **Matrix C mappings:** neither desktop mapped GTK, the native theme, libssl or
+  QtNetwork.
+- **Functional checks:** editor upload, the views, helper close and normal quit pass
+  on both desktops.
+- **Functional cancellation:** recorded as a **fail** on both. The cancel came after
+  the whole 716-byte body had been sent, so the outcome matches the in-flight
+  contract in `docs/s3.md`. The coordinator classified it as an assertion mismatch,
+  neither a regression nor a pass.
+
+Reviewed safe frames show synthetic content and the put.gd window only:
+
+- [f44 History](gnome-kde/f44-gnome-history-98878cfe.png)
+- [f44 Settings](gnome-kde/f44-gnome-settings-98878cfe.png)
+- [k72 History](gnome-kde/k72-plasma-history-98878cfe.png)
+- [k72 Settings](gnome-kde/k72-plasma-settings-98878cfe.png)
+
+Raw evidence stays private in the acceptance task: `work/i560a/evidence/`, with
+`SHA256SUMS` `73726b516606ce875864d206436b37ffd5aa9e3dcc03c1b35c32ad62d624b201` and
+`RESTORE-INDEX.md`. Admission thumbnails and banner crops show the hosts' own
+desktops, so they stay private.
+
 ## Headless controls (d69, not desktop acceptance)
 
 These use a private copy of the earlier #560 v7 harness, [`lab/resident_burst_o1.py`](lab/resident_burst_o1.py).
@@ -415,8 +463,9 @@ earlier task.
   The m74 exact-CI runs above are its Cinnamon part. GNOME and KDE use the
   approved native matrix and scoped functional checks, plus a separately
   identified native-Wayland burst diagnostic, because the #555 burst driver
-  requires Cinnamon/X11. The separate acceptance thread is running those and the
-  matched trunk; their results are not recorded here yet.
+  requires Cinnamon/X11. The candidate GNOME and Plasma rows are recorded above.
+  Still pending: matched-trunk `80ffa2e6` rows for GNOME and Plasma, d69, and
+  resolving the functional-cancellation assertion.
 - `historyOpenPss` fails on the exact candidate (m1) until #558's fix is included.
 - Published-asset gates, after a nightly containing #576 publishes.
 - `captureBurst` and `historyOpenUpperBoundMs` remain unassessed by the driver.
