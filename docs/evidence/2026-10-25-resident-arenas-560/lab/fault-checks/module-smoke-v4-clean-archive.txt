@@ -1,0 +1,7 @@
+PASS module_smoke_v4 pass (0/True 0 None/raw)
+PASS module_smoke_v4 malformed output: failure, probeExit kept (1/False 5 missing_or_invalid_result)
+PASS module_smoke_v4 malformed output: raw bytes preserved (identical)
+PASS module_smoke_v4 malformed output: classification separate (missing_or_invalid_result result.json 45)
+PASS module_smoke_v4 stub fixtures stopped (0)
+5 checks, failed=0
+suite exit=0 at 821fafbf40a2002489f9759014644bdc8d48f532, run from a clean git archive through bash

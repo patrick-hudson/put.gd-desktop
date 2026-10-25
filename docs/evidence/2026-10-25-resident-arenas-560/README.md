@@ -620,7 +620,7 @@ Historical scripts stay unchanged. The current scripts for any replay:
 | `summarize_o.py` | [`summarize_o2.py`](lab/summarize_o2.py) | Timestamp-based final-270 s window, only after a full settle |
 | `m74-run.sh`, `m74-run-ci.sh` | [`m74-run-v2.sh`](lab/m74-run-v2.sh) | Returns the driver status; lock session is a parameter |
 | `functional_ci.py`, `f-run.sh`, `f-run-v2.sh` | [`f-run-v3.sh`](lab/f-run-v3.sh) | Refuses to launch without an explicit dedicated clipboard scope; `f-run.sh` alone owns the work directory |
-| `module_smoke.sh`, `module_smoke_v2.sh` | [`module_smoke_v3.sh`](lab/module_smoke_v3.sh) | Arguments and canonical roots checked first; maps parsing handles spaces and empty polls; probe status and failure records kept |
+| `module_smoke.sh` … `module_smoke_v3.sh` | [`module_smoke_v4.sh`](lab/module_smoke_v4.sh) | Arguments and canonical roots checked first; maps parsing handles spaces and empty polls; probe status kept; raw probe output kept byte-for-byte, with any classification in a separate file |
 | `identity_check.sh` | [`identity_check_v2.sh`](lab/identity_check_v2.sh) | Requires a full expected revision and a present worker; an absent identity fails |
 | `test_wrappers.sh` (**do not run**) | [`test_wrappers_v2.sh`](lab/test_wrappers_v2.sh) | All output inside its own `mktemp` directory; never creates or deletes fixed campaign paths |
 
@@ -699,6 +699,16 @@ Historical scripts stay unchanged. The current scripts for any replay:
     writes a failure result if the probe produced none, always stops the fixture,
     and returns non-zero. Stubs: pass; probe exit 7 recorded; missing result
     recorded as `missing_or_invalid_result`; no stub fixture left running.
+  - **Follow-up on 4372333048:** v3 replaced a malformed `result.json` with
+    fallback JSON, destroying the probe output that explains the failure.
+    `module_smoke_v4.sh` keeps `result.json` byte-for-byte and writes the
+    classification, with the raw byte count, to `result.classified.json`, which the
+    checker reads instead. `probeExit` is kept. Stub run from a clean
+    `git archive` of `821fafbf`, 5 of 5 checks
+    ([output](lab/fault-checks/module-smoke-v4-clean-archive.txt)): a normal pass
+    uses the raw file; malformed output from a probe exiting 5 survives
+    byte-identical; the run fails with exit 1, `probeExit` 5 and
+    `missing_or_invalid_result`; and the stub fixture stops.
   - **4372333052:** a real ownership defect. `test_wrappers.sh` checked that the
     fixed paths `/tmp/p560ua`/`ub` were absent and then later ran `rm -rf` on them,
     so a real campaign starting in between could lose its evidence. It is kept
