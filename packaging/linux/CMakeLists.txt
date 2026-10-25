@@ -53,7 +53,7 @@ set(s3_manifest_install_code [=[
   file(SHA256 "${module_path}" module_hash)
   set(manifest_path "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/@CMAKE_INSTALL_DATADIR@/putgd/aws-runtime-manifest.json")
   file(READ "${manifest_path}" manifest)
-  string(JSON manifest SET "${manifest}" module "{\"file\":\"${module_name}\",\"contractVersion\":1,\"buildIdentity\":\"@PUTGD_S3_BUILD_ID@\",\"sha256\":\"${module_hash}\"}")
+  string(JSON manifest SET "${manifest}" module "{\"file\":\"${module_name}\",\"contractVersion\":2,\"buildIdentity\":\"@PUTGD_S3_BUILD_ID@\",\"sha256\":\"${module_hash}\"}")
   file(WRITE "${manifest_path}" "${manifest}\n")
 ]=])
 string(CONFIGURE "${s3_manifest_install_code}" s3_manifest_install_code @ONLY)
