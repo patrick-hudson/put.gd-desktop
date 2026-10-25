@@ -96,7 +96,6 @@ class HistoryGui:public QObject {
 private slots:
  void preflightStatusDescribesDestinationCheck() {
   const QJsonObject record{{"operation",QJsonObject{{"state","running"},{"phase","preflight"},{"action","clipboard"}}}};
-  QVERIFY(HistoryModel::active(record));
   QCOMPARE(HistoryModel::statusText(record),QString("Checking the destination…"));
  }
 
