@@ -1,0 +1,17 @@
+{
+  "host": "mint-builder",
+  "os": "NAME=\"Linux Mint\"\nVERSION=\"22.3 (Zena)\"\nID=linuxmint\nID_LIKE=\"ubuntu debian\"\nPRETTY_NAME=\"Linux Mint 22.3\"\nVERSION_ID=\"22.3\"\nHOME_URL=\"https://www.linuxmint.com/\"\nSUPPORT_URL=\"https://forums.linuxmint.com/\"\nBUG_REPORT_URL=\"http://linuxmint-troubleshooting-guide.readthedocs.io/en/latest/\"\nPRIVACY_POLICY_URL=\"https://www.linuxmint.com/\"\nVERSION_CODENAME=zena\nUBUNTU_CODENAME=noble\n",
+  "kernel": "6.14.0-37-generic",
+  "cinnamon": "Cinnamon 6.6.9",
+  "files": {
+    "/home/patrick/work/ico25/baseline.AppImage": "26a047a98c1c7f514f8d7bb388f39f2aa5ccc9862475fd70c5fd8cc7f922ecb8",
+    "/home/patrick/work/ico25/squashfs-root/usr/bin/putgd": "371c555814918dab2f3004dec59e0f2dc970645185b3f9a170e24117878946f1",
+    "/home/patrick/work/ico25/squashfs-root/usr/bin/putgd-ui": "689ba3f653d6a4f78eeedee8c8e0319c354b3749f41f4c8a6564ba608ad8e288",
+    "/home/patrick/work/ico25/squashfs-root/AppRun": "ca5ae2b8cd61d3ef6955757a95c270c5565fd8fb818453b0dbd40e2fdfc45e8d",
+    "/home/patrick/work/ico25/source/packaging/appimage/AppRun": "741b0f4f0a271cf291d766a0fc198a38b7d98d5a803efe7e8d679b118d32f639",
+    "/home/patrick/work/ico25/source/packaging/appimage/putgd.desktop": "4b20270d29c6e7be8f54dfb31d5a37a7e80607ceb59fde63c70b996465b7fe6d"
+  },
+  "sourceOfBinaries": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+  "method": "Extracted existing AppImage, changed only AppRun for candidate; baseline AppRun plus visible desktop entry for menu-class",
+  "privateRoot": "/home/patrick/work/ico25"
+}

@@ -1,0 +1,24 @@
+{
+  "lock": {
+    "owner": "codex-icon",
+    "session": "taskbar-icon-1025",
+    "host": "m74",
+    "purpose": "Reproduce and fix AppImage Cinnamon taskbar icon",
+    "acquired": "2026-10-25T15:09:00Z",
+    "expires": "2026-10-25T15:39:00Z",
+    "heartbeat": "2026-10-25T15:11:34Z"
+  },
+  "releasedBy": "taskbar-icon-1025",
+  "check": {
+    "left": [],
+    "notMine": [],
+    "preexisting": [],
+    "unmatchedNotMine": []
+  },
+  "notes": [
+    "3 process(es) outside the desktop session (no DISPLAY or WAYLAND_DISPLAY; shared SSH work): 2067 313646 313651"
+  ],
+  "event": "release",
+  "host": "m74",
+  "at": "2026-10-25T15:14:37Z"
+}
