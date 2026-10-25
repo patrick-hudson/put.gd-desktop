@@ -119,7 +119,7 @@ Windows has had ShareX and Greenshot for years: press a key, capture, and a link
 | Mark it up or hide something first | Built-in editor: crop, arrows, boxes, highlight, text, and redaction that removes the pixels |
 | Record the screen | MP4, WebM, GIF or animated WebP, with trim and timed blur before upload |
 | Share files, not just images | Upload anything on the clipboard, up to a hundred files at once |
-| Use your own storage and domain | Amazon S3, Cloudflare R2, Backblaze B2, S3-compatible buckets, Proton Drive |
+| Use your own storage | Amazon S3, Cloudflare R2, Backblaze B2, S3-compatible buckets, Proton Drive; custom link domains where supported |
 | Find an old link | Searchable History that works offline, with copy, open and reviewed delete |
 | Script it | A JSON CLI and an optional MCP helper for agents |
 | Run it on Wayland | Native on GNOME 50 and KDE Plasma 6 Wayland, plus Cinnamon on X11 |
