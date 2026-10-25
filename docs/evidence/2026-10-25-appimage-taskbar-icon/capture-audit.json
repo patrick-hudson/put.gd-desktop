@@ -1,0 +1,24 @@
+{
+  "host": "mint-builder (192.168.68.74)",
+  "originalDirectory": "/home/patrick/work/ico25",
+  "verification": "Host sha256sum matched local exported files; stat recorded distinct modification times. Original PNG bytes preserved.",
+  "files": {
+    "baseline.png": {
+      "sha256": "b8dfe244cfb0f14aa84b9869a57a8fce3ffb6af6cff80bb75558c95c6bee1374",
+      "hostMtime": "2026-10-25 10:10:24.782663103 -0500"
+    },
+    "candidate.png": {
+      "sha256": "a4ad1cbf0a5477317063517131431b928d4a70c2439258d82d433456842e5cfb",
+      "hostMtime": "2026-10-25 10:11:37.903546327 -0500"
+    },
+    "desktop-class.png": {
+      "sha256": "a4ad1cbf0a5477317063517131431b928d4a70c2439258d82d433456842e5cfb",
+      "hostMtime": "2026-10-25 10:13:13.841087923 -0500"
+    },
+    "menu-class.png": {
+      "sha256": "a4ad1cbf0a5477317063517131431b928d4a70c2439258d82d433456842e5cfb",
+      "hostMtime": "2026-10-25 10:13:48.994555241 -0500"
+    }
+  },
+  "correction": "The hidden-entry trial image shows the correct icon. Prior generic-gear classification was incorrect; no separate failed-trial image was found. Later trials share the Cinnamon session and cannot establish independent cache-free matching."
+}
