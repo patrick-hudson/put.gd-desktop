@@ -1,0 +1,288 @@
+{
+  "scenario": "submitted-editor-queued-burst-559",
+  "passed": true,
+  "source": "9f382fd0b07d7c1237d8a47a25b87ee3d6129535",
+  "run": "/tmp/q559k4",
+  "driverSha256": "b91550789ac54112839f8eaf823d124cd4f5382772a42a8b5df1d411c6aa344a",
+  "command": [
+    "/home/patrick/work/i559/queued_burst.py",
+    "/home/patrick/work/i559",
+    "/home/patrick/work/i559/build/dev",
+    "/tmp/q559k4",
+    "5900"
+  ],
+  "startedUtc": "2026-10-25T05:08:43Z",
+  "checks": {
+    "captureRectPrecheck": true,
+    "00-coveredPrivacy": true,
+    "01-editorPrivacy": true,
+    "fiveSubmittedQueued": true,
+    "editorClosed": true,
+    "persistedHandoff": true,
+    "02-queued-historyPrivacy": true,
+    "drainedFiveCancelledOne": true,
+    "fivePuts": true,
+    "03-drained-historyPrivacy": true
+  },
+  "host": "kubuntu",
+  "osRelease": "PRETTY_NAME=\"Ubuntu 26.04.1 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"26.04\"\nVERSION=\"26.04.1 LTS (Resolute Raccoon)\"\nVERSION_CODENAME=resolute\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=resolute\nLOGO=ubuntu-logo\n",
+  "session": {
+    "Id": "906",
+    "Type": "wayland",
+    "Seat": "seat0",
+    "Desktop": "KDE",
+    "Timestamp": "Sat 2026-10-24 01:24:11 CDT",
+    "TimestampMonotonic": "31018816964",
+    "Leader": "128842",
+    "shell": {
+      "pid": 129168,
+      "exe": "/usr/bin/plasmashell",
+      "startTicks": 3102035
+    },
+    "bootId": "c9926bb9-3536-46ef-95c2-2161ab5a245a"
+  },
+  "qtScaleFactor": "1",
+  "build": {
+    "schemaVersion": 1,
+    "version": "26.1025.1254-dev+g9f382fd0b07d",
+    "baseVersion": "26.1025.1254",
+    "packageVersion": "26.1025.1254~dev+g9f382fd0b07d",
+    "gitCommit": "9f382fd0b07d7c1237d8a47a25b87ee3d6129535",
+    "gitTree": "368c787617a047d52087a16aefd328503aabf147",
+    "commitCount": 1254,
+    "dirty": null,
+    "sourceProvenance": "supplied"
+  },
+  "qtVersion": "6.10.2",
+  "binaries": {
+    "putgd": "5e77d410b011dfec3ea18883f8c99c5dbd019f55ce61afd3d55109a22679c343",
+    "putgd-cli": "234371d4adcfc5757337e26bd5302ff8a5e56782c6f7bd50db4bee8000488f24",
+    "putgd-ui": "24ec41dff563597fdcb1f2f0def1d1f84a211e35fe0c006177a3e85da506979b"
+  },
+  "windowGeometry": {
+    "x": 410,
+    "y": 130,
+    "width": 1100,
+    "height": 700
+  },
+  "captureRect": [
+    0,
+    0,
+    1920,
+    1000
+  ],
+  "fullOutputPrecheck": true,
+  "visuals": [
+    {
+      "file": "00-covered.png",
+      "sha256": "e3f83c998f903f7a44acb5a777e52daaf32dbc0eb5c9a0150cc0952aafcbc985"
+    },
+    {
+      "file": "01-editor.png",
+      "sha256": "c1457778b1a1d320a1c66019cc842a92201cd50bec876a159a4dd98c29a76717"
+    },
+    {
+      "file": "02-queued-history.png",
+      "sha256": "8ffced178dac3862e0cb082d12d49b83c8be6eda34c710a3b57885a6f90ac9cd"
+    },
+    {
+      "file": "03-drained-history.png",
+      "sha256": "37d998e9c87330b296b87f2190e361dacae14225f1257f636b519d4b7796a2fa"
+    }
+  ],
+  "memoryBefore": {
+    "sampleSeconds": 0.44279315999301616,
+    "processes": [
+      {
+        "pid": 202723,
+        "startTicks": 11289330,
+        "uid": 1000,
+        "executable": "/home/patrick/work/i559/build/dev/putgd",
+        "device": 2050,
+        "inode": 3584239,
+        "sha256": "5e77d410b011dfec3ea18883f8c99c5dbd019f55ce61afd3d55109a22679c343",
+        "role": "resident",
+        "rssBytes": 36761600,
+        "pssBytes": 12577792,
+        "privateBytes": 10784768,
+        "privateHugetlbBytes": 0,
+        "swapBytes": 0,
+        "cpuTicks": 3,
+        "threads": 8,
+        "inResidentTree": true
+      },
+      {
+        "pid": 202733,
+        "startTicks": 11289333,
+        "uid": 1000,
+        "executable": "/home/patrick/work/i559/build/dev/putgd-ui",
+        "device": 2050,
+        "inode": 3584241,
+        "sha256": "24ec41dff563597fdcb1f2f0def1d1f84a211e35fe0c006177a3e85da506979b",
+        "role": "ui",
+        "rssBytes": 172920832,
+        "pssBytes": 66243584,
+        "privateBytes": 50614272,
+        "privateHugetlbBytes": 0,
+        "swapBytes": 0,
+        "cpuTicks": 72,
+        "threads": 10,
+        "inResidentTree": true
+      }
+    ],
+    "totals": {
+      "rssBytes": 209682432,
+      "pssBytes": 78821376,
+      "privateBytes": 61399040
+    },
+    "processCount": 2,
+    "uiProcessCount": 1,
+    "escapedProcessCount": 0
+  },
+  "qtPlatformModules": {
+    "01-editor": {
+      "202780": [
+        "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland.so"
+      ]
+    },
+    "02-queued-history": {
+      "202957": [
+        "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland.so"
+      ]
+    },
+    "03-drained-history": {
+      "202957": [
+        "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland.so"
+      ]
+    }
+  },
+  "memoryQueued": {
+    "sampleSeconds": 0.3482064910058398,
+    "processes": [
+      {
+        "pid": 202723,
+        "startTicks": 11289330,
+        "uid": 1000,
+        "executable": "/home/patrick/work/i559/build/dev/putgd",
+        "device": 2050,
+        "inode": 3584239,
+        "sha256": "5e77d410b011dfec3ea18883f8c99c5dbd019f55ce61afd3d55109a22679c343",
+        "role": "resident",
+        "rssBytes": 38825984,
+        "pssBytes": 14226432,
+        "privateBytes": 12492800,
+        "privateHugetlbBytes": 0,
+        "swapBytes": 0,
+        "cpuTicks": 20,
+        "threads": 11,
+        "inResidentTree": true
+      },
+      {
+        "pid": 202835,
+        "startTicks": 11289850,
+        "uid": 1000,
+        "executable": "/home/patrick/work/i559/build/dev/putgd-s3-worker",
+        "device": 2050,
+        "inode": 3584084,
+        "sha256": "0f6ff73d10d82061e562d8624dfac9aec024cb625023affbc0eecc0ee246de69",
+        "role": "auxiliary",
+        "rssBytes": 41893888,
+        "pssBytes": 17842176,
+        "privateBytes": 16338944,
+        "privateHugetlbBytes": 0,
+        "swapBytes": 0,
+        "cpuTicks": 5,
+        "threads": 5,
+        "inResidentTree": true
+      },
+      {
+        "pid": 202957,
+        "startTicks": 11290052,
+        "uid": 1000,
+        "executable": "/home/patrick/work/i559/build/dev/putgd-ui",
+        "device": 2050,
+        "inode": 3584241,
+        "sha256": "24ec41dff563597fdcb1f2f0def1d1f84a211e35fe0c006177a3e85da506979b",
+        "role": "ui",
+        "rssBytes": 166920192,
+        "pssBytes": 66098176,
+        "privateBytes": 56553472,
+        "privateHugetlbBytes": 0,
+        "swapBytes": 0,
+        "cpuTicks": 89,
+        "threads": 10,
+        "inResidentTree": true
+      }
+    ],
+    "totals": {
+      "rssBytes": 247640064,
+      "pssBytes": 98166784,
+      "privateBytes": 85385216
+    },
+    "processCount": 3,
+    "uiProcessCount": 1,
+    "escapedProcessCount": 0
+  },
+  "memoryAfter": {
+    "sampleSeconds": 0.30381469400890637,
+    "processes": [
+      {
+        "pid": 202723,
+        "startTicks": 11289330,
+        "uid": 1000,
+        "executable": "/home/patrick/work/i559/build/dev/putgd",
+        "device": 2050,
+        "inode": 3584239,
+        "sha256": "5e77d410b011dfec3ea18883f8c99c5dbd019f55ce61afd3d55109a22679c343",
+        "role": "resident",
+        "rssBytes": 38379520,
+        "pssBytes": 13869056,
+        "privateBytes": 12046336,
+        "privateHugetlbBytes": 0,
+        "swapBytes": 0,
+        "cpuTicks": 45,
+        "threads": 9,
+        "inResidentTree": true
+      },
+      {
+        "pid": 202957,
+        "startTicks": 11290052,
+        "uid": 1000,
+        "executable": "/home/patrick/work/i559/build/dev/putgd-ui",
+        "device": 2050,
+        "inode": 3584241,
+        "sha256": "24ec41dff563597fdcb1f2f0def1d1f84a211e35fe0c006177a3e85da506979b",
+        "role": "ui",
+        "rssBytes": 174542848,
+        "pssBytes": 70692864,
+        "privateBytes": 57753600,
+        "privateHugetlbBytes": 0,
+        "swapBytes": 0,
+        "cpuTicks": 104,
+        "threads": 10,
+        "inResidentTree": true
+      }
+    ],
+    "totals": {
+      "rssBytes": 212922368,
+      "pssBytes": 84561920,
+      "privateBytes": 69799936
+    },
+    "processCount": 2,
+    "uiProcessCount": 1,
+    "escapedProcessCount": 0
+  },
+  "operationIds": [
+    "ab9f97e0-0bc6-4920-b622-5d80f25bbd51",
+    "f3949ddf-e88d-480a-bb13-103b79abdd10",
+    "97106045-e1a6-4c5c-b479-341df44c8224",
+    "a6bab0aa-ba65-41d5-afc8-8a26e8db02a6",
+    "f30a6408-879c-47d5-ae93-83eb96b307bc",
+    "72e22c3d-9aba-4ed6-8dec-6264d909ea00"
+  ],
+  "cleanup": {
+    "residentExited": true,
+    "fixtureExited": true,
+    "coverExited": true
+  }
+}

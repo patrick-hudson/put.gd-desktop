@@ -3,6 +3,7 @@
 #include <QDirIterator>
 #include <QImageReader>
 #include <QRandomGenerator>
+#include <QScopeGuard>
 #include "core/AllocatorPolicy.h"
 #include "fixtures/Waits.h"
 using namespace putgd;using namespace putgd::test;
@@ -42,10 +43,11 @@ QJsonObject redactSecret(){return {{"commands",QJsonArray{QJsonObject{{"op","add
 struct Fixture {
  QTemporaryDir dir;ProviderRegistry registry;std::shared_ptr<OpaqueProvider> provider=std::make_shared<OpaqueProvider>();
  std::unique_ptr<SettingsService> settings;Source source;std::unique_ptr<OperationService> operations;
- explicit Fixture(bool keepLocal=true){
+ explicit Fixture(bool keepLocal=true,int concurrentUploads=0){
   registry.add("opaque",provider);
   settings=std::make_unique<SettingsService>(dir.filePath("config.json"),[this](auto id,auto value){return registry.validate(id,value);});
   auto doc=configuration(dir.path());auto archive=doc["archive"].toObject();archive["keepUploads"]=keepLocal;doc["archive"]=archive;
+  if(concurrentUploads){auto limits=doc["limits"].toObject();limits["concurrentUploads"]=concurrentUploads;doc["limits"]=limits;}
   if(!settings->save(doc,{}))qFatal("fixture configuration rejected");
   source.payload.kind="image";source.payload.image=capture();
   operations=std::make_unique<OperationService>(dir.filePath("data"),*settings,registry,source);
@@ -58,6 +60,43 @@ class EditOperationsTest:public QObject {
 private slots:
  // Like the resident's main(), fix the allocator policy before any work runs.
  void initTestCase(){QVERIFY(applyResidentAllocatorPolicy());}
+ void submittedEditorWaitsOutsideEditing_data(){
+  QTest::addColumn<bool>("cancelQueued");
+  QTest::newRow("drain")<<false;
+  QTest::newRow("cancel")<<true;
+ }
+ void submittedEditorWaitsOutsideEditing(){
+  QFETCH(bool,cancelQueued);
+  Fixture f(false,1);PUTGD_TRY_VERIFY(f.operations->ready());
+  f.provider->deferUploads=true;f.provider->dispatcher=this;
+  auto drain=qScopeGuard([&]{for(auto complete:std::exchange(f.provider->completions,{}))complete();});
+  // Occupy the only worker until after the real editor has submitted and exited.
+  const auto blocker=call([&](JsonReply r){f.operations->invoke("clipboard",r);}).result["operationId"].toString();
+  PUTGD_TRY_COMPARE(f.provider->completions.size(),1);
+  const auto id=call([&](JsonReply r){f.operations->invoke("edit",r);}).result["operationId"].toString();QVERIFY(!id.isEmpty());
+  QVERIFY(!command(*f.operations,id,"inspect").error);
+  HistoryStore journal(f.operations->databasePath());
+  QCOMPARE(journal.operation(id).state,QString("editing"));
+  QVERIFY(!command(*f.operations,id,"submit").error);
+  PUTGD_TRY_COMPARE(f.operations->editingOperation(),QString());
+  PUTGD_TRY_COMPARE(journal.operation(id).phase,QString("queued"));
+  QCOMPARE(journal.operation(id).state,QString("acquiring"));
+  QVERIFY(journal.operation(id).items.isEmpty());QCOMPARE(f.provider->uploads.load(),1);
+  QCOMPARE(command(*f.operations,id,"inspect").error.code,QString("editor_unavailable"));
+  const auto inspected=call([&](JsonReply r){f.operations->inspect(id,r);});QVERIFY(!inspected.error);
+  QCOMPARE(inspected.result["state"].toString(),QString("acquiring"));QCOMPARE(inspected.result["phase"].toString(),QString("queued"));
+  const auto recent=call([&](JsonReply r){f.operations->recent(r);});QVERIFY(!recent.error);bool found=false;
+  for(const auto& value:recent.result["operations"].toArray())if(value.toObject()["id"]==id){found=true;QCOMPARE(value.toObject()["state"].toString(),QString("acquiring"));QCOMPARE(value.toObject()["phase"].toString(),QString("queued"));}
+  QVERIFY(found);
+  if(cancelQueued)QVERIFY(!call([&](JsonReply r){f.operations->cancel(id,r);}).error);
+  f.provider->completions.takeFirst()();
+  if(!cancelQueued){PUTGD_TRY_COMPARE(f.provider->completions.size(),1);f.provider->completions.takeFirst()();}
+  PUTGD_TRY_COMPARE(journal.operation(id).state,QString(cancelQueued?"cancelled":"completed"));
+  PUTGD_TRY_COMPARE(journal.operation(blocker).state,QString("completed"));
+  QCOMPARE(f.provider->uploads.load(),cancelQueued?1:2);
+  QCOMPARE(journal.operation(id).items.size(),cancelQueued?0:1);
+  PUTGD_TRY_COMPARE(f.operations->diagnostics()["activeOperations"].toInt(),0);
+ }
  void uploadPublishesOnlyTheRedactedResult(){
   Fixture f;PUTGD_TRY_VERIFY(f.operations->ready());
   QVERIFY(f.operations->capabilities()["editor"].toObject()["available"].toBool());

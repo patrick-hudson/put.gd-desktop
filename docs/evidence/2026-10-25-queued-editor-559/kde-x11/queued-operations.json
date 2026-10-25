@@ -1,0 +1,212 @@
+[
+  {
+    "action": "edit",
+    "cancelled": false,
+    "clipboardRevision": "2",
+    "copyStatus": "pending",
+    "created": "2026-10-25T05:14:11.350Z",
+    "destination": {
+      "credentials": {
+        "mode": "session",
+        "reference": null
+      },
+      "profileId": "q559",
+      "profileRevision": "ff043ecfae9457799ec1572ccd9df21709495910460b7a85306f324b15b4fcae",
+      "providerId": "s3",
+      "settings": {
+        "aclMode": "public-read",
+        "addressing": "path",
+        "bucket": "fixture",
+        "connectTimeoutMs": 5000,
+        "endpoint": "http://127.0.0.1:44571",
+        "lowSpeedBytesPerSecond": 1,
+        "lowSpeedTimeSeconds": 120,
+        "objectPrefix": "q559/",
+        "publicUrlBase": "http://127.0.0.1:44571/fixture",
+        "region": "us-east-1",
+        "requestTimeoutMs": 180000,
+        "storageClass": "STANDARD"
+      }
+    },
+    "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+    },
+    "id": "db624952-de0f-4ff5-a0ba-08bf4d85fc9e",
+    "invocation": "2",
+    "items": [],
+    "phase": "queued",
+    "requestTimeoutMs": null,
+    "settingsRevision": "ff043ecfae9457799ec1572ccd9df21709495910460b7a85306f324b15b4fcae",
+    "state": "acquiring"
+  },
+  {
+    "action": "edit",
+    "cancelled": false,
+    "clipboardRevision": "2",
+    "copyStatus": "pending",
+    "created": "2026-10-25T05:14:11.763Z",
+    "destination": {
+      "credentials": {
+        "mode": "session",
+        "reference": null
+      },
+      "profileId": "q559",
+      "profileRevision": "ff043ecfae9457799ec1572ccd9df21709495910460b7a85306f324b15b4fcae",
+      "providerId": "s3",
+      "settings": {
+        "aclMode": "public-read",
+        "addressing": "path",
+        "bucket": "fixture",
+        "connectTimeoutMs": 5000,
+        "endpoint": "http://127.0.0.1:44571",
+        "lowSpeedBytesPerSecond": 1,
+        "lowSpeedTimeSeconds": 120,
+        "objectPrefix": "q559/",
+        "publicUrlBase": "http://127.0.0.1:44571/fixture",
+        "region": "us-east-1",
+        "requestTimeoutMs": 180000,
+        "storageClass": "STANDARD"
+      }
+    },
+    "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+    },
+    "id": "5be238c7-dac0-4506-a173-7b77e8db6008",
+    "invocation": "3",
+    "items": [],
+    "phase": "queued",
+    "requestTimeoutMs": null,
+    "settingsRevision": "ff043ecfae9457799ec1572ccd9df21709495910460b7a85306f324b15b4fcae",
+    "state": "acquiring"
+  },
+  {
+    "action": "edit",
+    "cancelled": false,
+    "clipboardRevision": "2",
+    "copyStatus": "pending",
+    "created": "2026-10-25T05:14:12.381Z",
+    "destination": {
+      "credentials": {
+        "mode": "session",
+        "reference": null
+      },
+      "profileId": "q559",
+      "profileRevision": "ff043ecfae9457799ec1572ccd9df21709495910460b7a85306f324b15b4fcae",
+      "providerId": "s3",
+      "settings": {
+        "aclMode": "public-read",
+        "addressing": "path",
+        "bucket": "fixture",
+        "connectTimeoutMs": 5000,
+        "endpoint": "http://127.0.0.1:44571",
+        "lowSpeedBytesPerSecond": 1,
+        "lowSpeedTimeSeconds": 120,
+        "objectPrefix": "q559/",
+        "publicUrlBase": "http://127.0.0.1:44571/fixture",
+        "region": "us-east-1",
+        "requestTimeoutMs": 180000,
+        "storageClass": "STANDARD"
+      }
+    },
+    "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+    },
+    "id": "1c1c311f-ddbd-45d9-b680-45a32cb0636e",
+    "invocation": "4",
+    "items": [],
+    "phase": "queued",
+    "requestTimeoutMs": null,
+    "settingsRevision": "ff043ecfae9457799ec1572ccd9df21709495910460b7a85306f324b15b4fcae",
+    "state": "acquiring"
+  },
+  {
+    "action": "edit",
+    "cancelled": false,
+    "clipboardRevision": "2",
+    "copyStatus": "pending",
+    "created": "2026-10-25T05:14:13.013Z",
+    "destination": {
+      "credentials": {
+        "mode": "session",
+        "reference": null
+      },
+      "profileId": "q559",
+      "profileRevision": "ff043ecfae9457799ec1572ccd9df21709495910460b7a85306f324b15b4fcae",
+      "providerId": "s3",
+      "settings": {
+        "aclMode": "public-read",
+        "addressing": "path",
+        "bucket": "fixture",
+        "connectTimeoutMs": 5000,
+        "endpoint": "http://127.0.0.1:44571",
+        "lowSpeedBytesPerSecond": 1,
+        "lowSpeedTimeSeconds": 120,
+        "objectPrefix": "q559/",
+        "publicUrlBase": "http://127.0.0.1:44571/fixture",
+        "region": "us-east-1",
+        "requestTimeoutMs": 180000,
+        "storageClass": "STANDARD"
+      }
+    },
+    "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+    },
+    "id": "236f8f71-9ce1-4673-8e7a-570e11bc5579",
+    "invocation": "5",
+    "items": [],
+    "phase": "queued",
+    "requestTimeoutMs": null,
+    "settingsRevision": "ff043ecfae9457799ec1572ccd9df21709495910460b7a85306f324b15b4fcae",
+    "state": "acquiring"
+  },
+  {
+    "action": "edit",
+    "cancelled": false,
+    "clipboardRevision": "2",
+    "copyStatus": "pending",
+    "created": "2026-10-25T05:14:13.491Z",
+    "destination": {
+      "credentials": {
+        "mode": "session",
+        "reference": null
+      },
+      "profileId": "q559",
+      "profileRevision": "ff043ecfae9457799ec1572ccd9df21709495910460b7a85306f324b15b4fcae",
+      "providerId": "s3",
+      "settings": {
+        "aclMode": "public-read",
+        "addressing": "path",
+        "bucket": "fixture",
+        "connectTimeoutMs": 5000,
+        "endpoint": "http://127.0.0.1:44571",
+        "lowSpeedBytesPerSecond": 1,
+        "lowSpeedTimeSeconds": 120,
+        "objectPrefix": "q559/",
+        "publicUrlBase": "http://127.0.0.1:44571/fixture",
+        "region": "us-east-1",
+        "requestTimeoutMs": 180000,
+        "storageClass": "STANDARD"
+      }
+    },
+    "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+    },
+    "id": "8edef2de-c219-451b-85d8-18579c27e9b3",
+    "invocation": "6",
+    "items": [],
+    "phase": "queued",
+    "requestTimeoutMs": null,
+    "settingsRevision": "ff043ecfae9457799ec1572ccd9df21709495910460b7a85306f324b15b4fcae",
+    "state": "acquiring"
+  }
+]

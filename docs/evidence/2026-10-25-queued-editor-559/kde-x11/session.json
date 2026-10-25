@@ -1,0 +1,15 @@
+{
+  "Id": "1",
+  "Type": "x11",
+  "Seat": "seat0",
+  "Desktop": "KDE",
+  "Timestamp": "Sun 2026-10-25 00:12:05 CDT",
+  "TimestampMonotonic": "10004587",
+  "Leader": "908",
+  "shell": {
+    "pid": 1882,
+    "exe": "/usr/bin/plasmashell",
+    "startTicks": 1617
+  },
+  "bootId": "e712511d-cb83-4c32-afd8-5d7e0e8ccf6f"
+}

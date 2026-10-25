@@ -1,0 +1,489 @@
+[
+  {
+    "id": "91242221-52d3-46f3-83bc-263972e2bd87",
+    "state": "completed",
+    "phase": "completed",
+    "copyStatus": "failed",
+    "error": {
+      "code": "clipboard_unavailable",
+      "details": {},
+      "message": "GNOME helper cannot own CLIPBOARD"
+    },
+    "items": [
+      {
+        "artifact": {
+          "bytes": 757,
+          "category": "images",
+          "id": "2243fa2b-b051-4a18-a36c-24fbce1722f5",
+          "mime": "image/png",
+          "name": "Screen-Capture-2026-10-24-23-39-53.png",
+          "namingPrepared": true,
+          "originalFile": false,
+          "previewPath": "/tmp/q559f4/data/putgd/artifacts/../previews/2243fa2b-b051-4a18-a36c-24fbce1722f5.png",
+          "sha256": "55eba1835a74471f4d322e0f3a0b4e750a245ab9147e0cf60ea373c81f4721cf"
+        },
+        "candidate": "Screen-Capture-2026-10-24-23-39-53.png",
+        "concurrencyToken": "",
+        "condition": "absent",
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "local": {
+          "error": {
+            "code": "",
+            "details": {},
+            "message": ""
+          },
+          "path": "",
+          "status": "disabled"
+        },
+        "objectReference": {
+          "key": "q559/Screen-Capture-2026-10-24-23-39-53.png",
+          "schemaVersion": 1
+        },
+        "phase": "uploaded",
+        "publicationId": "543d667a-3713-48b8-8ea5-60e0c5dc410b",
+        "receipt": {
+          "concurrencyToken": "\"47824ddc0198707508090acae7d03c4e\"",
+          "destination": {
+            "credentials": {
+              "mode": "session",
+              "reference": null
+            },
+            "profileId": "q559",
+            "profileRevision": "f6b8db8baf42867cd99723ac3a6c8c8f08a71cc195a120aa82c8ce5641577dc8",
+            "providerId": "s3",
+            "settings": {
+              "aclMode": "public-read",
+              "addressing": "path",
+              "bucket": "fixture",
+              "connectTimeoutMs": 5000,
+              "endpoint": "http://127.0.0.1:40719",
+              "lowSpeedBytesPerSecond": 1,
+              "lowSpeedTimeSeconds": 120,
+              "objectPrefix": "q559/",
+              "publicUrlBase": "http://127.0.0.1:40719/fixture",
+              "region": "us-east-1",
+              "requestTimeoutMs": 180000,
+              "storageClass": "STANDARD"
+            }
+          },
+          "directUrl": "http://127.0.0.1:40719/fixture/q559/Screen-Capture-2026-10-24-23-39-53.png",
+          "objectReference": {
+            "bytes": 757,
+            "key": "q559/Screen-Capture-2026-10-24-23-39-53.png",
+            "schemaVersion": 1,
+            "sha256": "55eba1835a74471f4d322e0f3a0b4e750a245ab9147e0cf60ea373c81f4721cf",
+            "versionId": ""
+          },
+          "publicationId": "543d667a-3713-48b8-8ea5-60e0c5dc410b",
+          "schemaVersion": 1
+        },
+        "remoteStatus": "not_requested",
+        "shareIntent": "",
+        "shareIntentOptions": {},
+        "shareStatus": "not_requested",
+        "uploadProgress": {
+          "bytesTotal": 757,
+          "bytesTransferred": 757,
+          "phase": "finalizing"
+        },
+        "uploadStatus": "uploaded"
+      }
+    ]
+  },
+  {
+    "id": "928e4b89-dd8d-476e-a2e1-0ab0038431e7",
+    "state": "completed",
+    "phase": "completed",
+    "copyStatus": "failed",
+    "error": {
+      "code": "clipboard_unavailable",
+      "details": {},
+      "message": "GNOME helper cannot own CLIPBOARD"
+    },
+    "items": [
+      {
+        "artifact": {
+          "bytes": 757,
+          "category": "images",
+          "id": "bcd9ea9d-3fc0-4852-b3b7-9e240f2d1c91",
+          "mime": "image/png",
+          "name": "Screen-Capture-2026-10-24-23-39-56.png",
+          "namingPrepared": true,
+          "originalFile": false,
+          "previewPath": "/tmp/q559f4/data/putgd/artifacts/../previews/bcd9ea9d-3fc0-4852-b3b7-9e240f2d1c91.png",
+          "sha256": "55eba1835a74471f4d322e0f3a0b4e750a245ab9147e0cf60ea373c81f4721cf"
+        },
+        "candidate": "Screen-Capture-2026-10-24-23-39-56.png",
+        "concurrencyToken": "",
+        "condition": "absent",
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "local": {
+          "error": {
+            "code": "",
+            "details": {},
+            "message": ""
+          },
+          "path": "",
+          "status": "disabled"
+        },
+        "objectReference": {
+          "key": "q559/Screen-Capture-2026-10-24-23-39-56.png",
+          "schemaVersion": 1
+        },
+        "phase": "uploaded",
+        "publicationId": "2904d322-a596-4728-b0ef-26de7c9f500d",
+        "receipt": {
+          "concurrencyToken": "\"47824ddc0198707508090acae7d03c4e\"",
+          "destination": {
+            "credentials": {
+              "mode": "session",
+              "reference": null
+            },
+            "profileId": "q559",
+            "profileRevision": "f6b8db8baf42867cd99723ac3a6c8c8f08a71cc195a120aa82c8ce5641577dc8",
+            "providerId": "s3",
+            "settings": {
+              "aclMode": "public-read",
+              "addressing": "path",
+              "bucket": "fixture",
+              "connectTimeoutMs": 5000,
+              "endpoint": "http://127.0.0.1:40719",
+              "lowSpeedBytesPerSecond": 1,
+              "lowSpeedTimeSeconds": 120,
+              "objectPrefix": "q559/",
+              "publicUrlBase": "http://127.0.0.1:40719/fixture",
+              "region": "us-east-1",
+              "requestTimeoutMs": 180000,
+              "storageClass": "STANDARD"
+            }
+          },
+          "directUrl": "http://127.0.0.1:40719/fixture/q559/Screen-Capture-2026-10-24-23-39-56.png",
+          "objectReference": {
+            "bytes": 757,
+            "key": "q559/Screen-Capture-2026-10-24-23-39-56.png",
+            "schemaVersion": 1,
+            "sha256": "55eba1835a74471f4d322e0f3a0b4e750a245ab9147e0cf60ea373c81f4721cf",
+            "versionId": ""
+          },
+          "publicationId": "2904d322-a596-4728-b0ef-26de7c9f500d",
+          "schemaVersion": 1
+        },
+        "remoteStatus": "not_requested",
+        "shareIntent": "",
+        "shareIntentOptions": {},
+        "shareStatus": "not_requested",
+        "uploadProgress": {
+          "bytesTotal": 757,
+          "bytesTransferred": 757,
+          "phase": "finalizing"
+        },
+        "uploadStatus": "uploaded"
+      }
+    ]
+  },
+  {
+    "id": "a8b50f52-1b12-467b-8d44-aa57f1cf4c3b",
+    "state": "completed",
+    "phase": "completed",
+    "copyStatus": "failed",
+    "error": {
+      "code": "clipboard_unavailable",
+      "details": {},
+      "message": "GNOME helper cannot own CLIPBOARD"
+    },
+    "items": [
+      {
+        "artifact": {
+          "bytes": 757,
+          "category": "images",
+          "id": "cab9060d-bd3f-4ad9-80c7-15bde5a827e4",
+          "mime": "image/png",
+          "name": "Screen-Capture-2026-10-24-23-39-56.png",
+          "namingPrepared": true,
+          "originalFile": false,
+          "previewPath": "/tmp/q559f4/data/putgd/artifacts/../previews/cab9060d-bd3f-4ad9-80c7-15bde5a827e4.png",
+          "sha256": "55eba1835a74471f4d322e0f3a0b4e750a245ab9147e0cf60ea373c81f4721cf"
+        },
+        "candidate": "Screen-Capture-2026-10-24-23-39-56-b25d34fb-5432-4cf9-a8a7-55d4019cbb20.png",
+        "concurrencyToken": "",
+        "condition": "absent",
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "local": {
+          "error": {
+            "code": "",
+            "details": {},
+            "message": ""
+          },
+          "path": "",
+          "status": "disabled"
+        },
+        "objectReference": {
+          "key": "q559/Screen-Capture-2026-10-24-23-39-56-b25d34fb-5432-4cf9-a8a7-55d4019cbb20.png",
+          "schemaVersion": 1
+        },
+        "phase": "uploaded",
+        "publicationId": "86da28a0-5f20-4ce8-a815-b0b120a2829e",
+        "receipt": {
+          "concurrencyToken": "\"47824ddc0198707508090acae7d03c4e\"",
+          "destination": {
+            "credentials": {
+              "mode": "session",
+              "reference": null
+            },
+            "profileId": "q559",
+            "profileRevision": "f6b8db8baf42867cd99723ac3a6c8c8f08a71cc195a120aa82c8ce5641577dc8",
+            "providerId": "s3",
+            "settings": {
+              "aclMode": "public-read",
+              "addressing": "path",
+              "bucket": "fixture",
+              "connectTimeoutMs": 5000,
+              "endpoint": "http://127.0.0.1:40719",
+              "lowSpeedBytesPerSecond": 1,
+              "lowSpeedTimeSeconds": 120,
+              "objectPrefix": "q559/",
+              "publicUrlBase": "http://127.0.0.1:40719/fixture",
+              "region": "us-east-1",
+              "requestTimeoutMs": 180000,
+              "storageClass": "STANDARD"
+            }
+          },
+          "directUrl": "http://127.0.0.1:40719/fixture/q559/Screen-Capture-2026-10-24-23-39-56-b25d34fb-5432-4cf9-a8a7-55d4019cbb20.png",
+          "objectReference": {
+            "bytes": 757,
+            "key": "q559/Screen-Capture-2026-10-24-23-39-56-b25d34fb-5432-4cf9-a8a7-55d4019cbb20.png",
+            "schemaVersion": 1,
+            "sha256": "55eba1835a74471f4d322e0f3a0b4e750a245ab9147e0cf60ea373c81f4721cf",
+            "versionId": ""
+          },
+          "publicationId": "86da28a0-5f20-4ce8-a815-b0b120a2829e",
+          "schemaVersion": 1
+        },
+        "remoteStatus": "not_requested",
+        "shareIntent": "",
+        "shareIntentOptions": {},
+        "shareStatus": "not_requested",
+        "uploadProgress": {
+          "bytesTotal": 757,
+          "bytesTransferred": 757,
+          "phase": "finalizing"
+        },
+        "uploadStatus": "uploaded"
+      }
+    ]
+  },
+  {
+    "id": "63363159-b65d-4472-b3f7-47221cb9f21d",
+    "state": "completed",
+    "phase": "completed",
+    "copyStatus": "failed",
+    "error": {
+      "code": "clipboard_unavailable",
+      "details": {},
+      "message": "GNOME helper cannot own CLIPBOARD"
+    },
+    "items": [
+      {
+        "artifact": {
+          "bytes": 757,
+          "category": "images",
+          "id": "3bcc5e2a-8afc-447b-8ced-f49f0ee875ff",
+          "mime": "image/png",
+          "name": "Screen-Capture-2026-10-24-23-39-57.png",
+          "namingPrepared": true,
+          "originalFile": false,
+          "previewPath": "/tmp/q559f4/data/putgd/artifacts/../previews/3bcc5e2a-8afc-447b-8ced-f49f0ee875ff.png",
+          "sha256": "55eba1835a74471f4d322e0f3a0b4e750a245ab9147e0cf60ea373c81f4721cf"
+        },
+        "candidate": "Screen-Capture-2026-10-24-23-39-57.png",
+        "concurrencyToken": "",
+        "condition": "absent",
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "local": {
+          "error": {
+            "code": "",
+            "details": {},
+            "message": ""
+          },
+          "path": "",
+          "status": "disabled"
+        },
+        "objectReference": {
+          "key": "q559/Screen-Capture-2026-10-24-23-39-57.png",
+          "schemaVersion": 1
+        },
+        "phase": "uploaded",
+        "publicationId": "cabcfb26-b016-4280-ac9a-2bee88b42d4a",
+        "receipt": {
+          "concurrencyToken": "\"47824ddc0198707508090acae7d03c4e\"",
+          "destination": {
+            "credentials": {
+              "mode": "session",
+              "reference": null
+            },
+            "profileId": "q559",
+            "profileRevision": "f6b8db8baf42867cd99723ac3a6c8c8f08a71cc195a120aa82c8ce5641577dc8",
+            "providerId": "s3",
+            "settings": {
+              "aclMode": "public-read",
+              "addressing": "path",
+              "bucket": "fixture",
+              "connectTimeoutMs": 5000,
+              "endpoint": "http://127.0.0.1:40719",
+              "lowSpeedBytesPerSecond": 1,
+              "lowSpeedTimeSeconds": 120,
+              "objectPrefix": "q559/",
+              "publicUrlBase": "http://127.0.0.1:40719/fixture",
+              "region": "us-east-1",
+              "requestTimeoutMs": 180000,
+              "storageClass": "STANDARD"
+            }
+          },
+          "directUrl": "http://127.0.0.1:40719/fixture/q559/Screen-Capture-2026-10-24-23-39-57.png",
+          "objectReference": {
+            "bytes": 757,
+            "key": "q559/Screen-Capture-2026-10-24-23-39-57.png",
+            "schemaVersion": 1,
+            "sha256": "55eba1835a74471f4d322e0f3a0b4e750a245ab9147e0cf60ea373c81f4721cf",
+            "versionId": ""
+          },
+          "publicationId": "cabcfb26-b016-4280-ac9a-2bee88b42d4a",
+          "schemaVersion": 1
+        },
+        "remoteStatus": "not_requested",
+        "shareIntent": "",
+        "shareIntentOptions": {},
+        "shareStatus": "not_requested",
+        "uploadProgress": {
+          "bytesTotal": 757,
+          "bytesTransferred": 757,
+          "phase": "finalizing"
+        },
+        "uploadStatus": "uploaded"
+      }
+    ]
+  },
+  {
+    "id": "8ae298ef-b232-46b8-8f60-b9163328fc2e",
+    "state": "completed",
+    "phase": "completed",
+    "copyStatus": "failed",
+    "error": {
+      "code": "clipboard_unavailable",
+      "details": {},
+      "message": "GNOME helper cannot own CLIPBOARD"
+    },
+    "items": [
+      {
+        "artifact": {
+          "bytes": 757,
+          "category": "images",
+          "id": "c0c89724-bb8f-4228-af4f-64e41ffb47cb",
+          "mime": "image/png",
+          "name": "Screen-Capture-2026-10-24-23-39-57.png",
+          "namingPrepared": true,
+          "originalFile": false,
+          "previewPath": "/tmp/q559f4/data/putgd/artifacts/../previews/c0c89724-bb8f-4228-af4f-64e41ffb47cb.png",
+          "sha256": "55eba1835a74471f4d322e0f3a0b4e750a245ab9147e0cf60ea373c81f4721cf"
+        },
+        "candidate": "Screen-Capture-2026-10-24-23-39-57-b773cdf3-328d-42a9-a048-a4bfab689a98.png",
+        "concurrencyToken": "",
+        "condition": "absent",
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "local": {
+          "error": {
+            "code": "",
+            "details": {},
+            "message": ""
+          },
+          "path": "",
+          "status": "disabled"
+        },
+        "objectReference": {
+          "key": "q559/Screen-Capture-2026-10-24-23-39-57-b773cdf3-328d-42a9-a048-a4bfab689a98.png",
+          "schemaVersion": 1
+        },
+        "phase": "uploaded",
+        "publicationId": "9889d581-5abb-4e79-840b-01fef02c82e9",
+        "receipt": {
+          "concurrencyToken": "\"47824ddc0198707508090acae7d03c4e\"",
+          "destination": {
+            "credentials": {
+              "mode": "session",
+              "reference": null
+            },
+            "profileId": "q559",
+            "profileRevision": "f6b8db8baf42867cd99723ac3a6c8c8f08a71cc195a120aa82c8ce5641577dc8",
+            "providerId": "s3",
+            "settings": {
+              "aclMode": "public-read",
+              "addressing": "path",
+              "bucket": "fixture",
+              "connectTimeoutMs": 5000,
+              "endpoint": "http://127.0.0.1:40719",
+              "lowSpeedBytesPerSecond": 1,
+              "lowSpeedTimeSeconds": 120,
+              "objectPrefix": "q559/",
+              "publicUrlBase": "http://127.0.0.1:40719/fixture",
+              "region": "us-east-1",
+              "requestTimeoutMs": 180000,
+              "storageClass": "STANDARD"
+            }
+          },
+          "directUrl": "http://127.0.0.1:40719/fixture/q559/Screen-Capture-2026-10-24-23-39-57-b773cdf3-328d-42a9-a048-a4bfab689a98.png",
+          "objectReference": {
+            "bytes": 757,
+            "key": "q559/Screen-Capture-2026-10-24-23-39-57-b773cdf3-328d-42a9-a048-a4bfab689a98.png",
+            "schemaVersion": 1,
+            "sha256": "55eba1835a74471f4d322e0f3a0b4e750a245ab9147e0cf60ea373c81f4721cf",
+            "versionId": ""
+          },
+          "publicationId": "9889d581-5abb-4e79-840b-01fef02c82e9",
+          "schemaVersion": 1
+        },
+        "remoteStatus": "not_requested",
+        "shareIntent": "",
+        "shareIntentOptions": {},
+        "shareStatus": "not_requested",
+        "uploadProgress": {
+          "bytesTotal": 757,
+          "bytesTransferred": 757,
+          "phase": "finalizing"
+        },
+        "uploadStatus": "uploaded"
+      }
+    ]
+  },
+  {
+    "id": "e2754490-b6e4-4b96-8530-c8bf17cf1db7",
+    "state": "cancelled",
+    "phase": "cancelled",
+    "copyStatus": "no_result",
+    "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+    },
+    "items": []
+  }
+]

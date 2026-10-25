@@ -99,6 +99,16 @@ private slots:
   QCOMPARE(HistoryModel::statusText(record),QString("Checking the destination…"));
  }
 
+ void queuedEditorStatusTakesPrecedence_data(){
+  QTest::addColumn<QString>("state");
+  for(const auto& state:QStringList{"editing","acquiring","stored","running"})QTest::newRow(qPrintable(state))<<state;
+ }
+ void queuedEditorStatusTakesPrecedence(){
+  QFETCH(QString,state);
+  const QJsonObject op{{"action","edit"},{"state",state},{"phase","queued"}};
+  QCOMPARE(HistoryModel::statusText({{"operation",op}}),QString("Waiting to upload…"));
+  QCOMPARE(HistoryModel::statusText({{"operation",QJsonObject{{"action","edit"},{"state","editing"},{"phase","editing"}}}}),QString("Editing · Upload or cancel in the editor window"));
+ }
  void fullFailureTextIsPaintedWithoutClipping_data(){
   QTest::addColumn<bool>("gallery");QTest::addColumn<int>("width");QTest::addColumn<bool>("longToken");
   for(bool gallery:{false,true})for(int width:{1000,600})for(bool token:{false,true})QTest::newRow(qPrintable(QString("%1-%2-%3").arg(gallery?"gallery":"list").arg(width).arg(token?"long-token":"gnome-guide")))<<gallery<<width<<token;
