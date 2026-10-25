@@ -1,6 +1,7 @@
 # History-open memory investigation (#558)
 
-Status: implementation and headless validation in progress. Physical Cinnamon's
+Status: implementation and k72 development validation complete; minimum-Qt
+validation is in progress. Physical Cinnamon's
 strict 60 MiB History-open gate and the parallel Cinnamon/GNOME/KDE functional
 and memory acceptance remain pending. No stable asset is accepted and #558
 remains open. The unchanged physical memory protocol is 300/30/300 seconds,
@@ -73,9 +74,16 @@ activation, dirty/provisional state and accepted setup inspection, direct agent
 commands, close without constructing Settings, and existing popup geometry.
 
 - [Focused suite output](focused-tests.txt)
+- [Remaining development suite output](remaining-tests.txt)
 - [Expected regression failures against trunk](regression-before.txt)
 
-The remaining 103 development tests are running. The Ubuntu 24.04 Release build
+The remaining 103 development tests also passed (368.72 seconds). Together the
+two separate commands cover all 107 configured development tests; this was not
+a single full-suite invocation. The coordinator confirmed required CI success
+for the exact candidate: contracts, Linux 24/26 and portable passed; ASan/UBSan,
+packages, PipeWire and prune were skipped by selection, not sanitizer passes.
+
+The Ubuntu 24.04 Release build
 uses distro Qt 6.4.2/GCC 13.3 and the verified official AWS SDK 1.11.907. It is
 paused in its owned f44 container for another task's coordinated recording slot;
 no package or Qt 6.4.2 runtime result is yet claimed.
