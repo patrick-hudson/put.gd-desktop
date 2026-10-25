@@ -20,16 +20,21 @@ private slots:
         constexpr qint64 mib = 1LL << 20, gib = 1LL << 30;
         RecordingStorage disk{2 * gib, 8 * gib, 12 * mib};
         QCOMPARE(disk.reserveBytes(), ArtifactStore::reserveFor(disk.totalBytes));
-        QCOMPARE(disk.requiredBytes(), 192 * mib);
+        QCOMPARE(disk.requiredBytes(), 160 * mib);
         QVERIFY(!disk.low());
+        disk.freeBytes = gib + 192 * mib; disk.clipBytes = 0;
+        QVERIFY(!disk.low()); // Exactly the minimum admission still starts.
+        disk.clipBytes = 12 * mib;
         // A competing writer crosses the guard before either ENOSPC or the
         // prepare-time clip cap, including when the paused clip isn't growing.
-        disk.freeBytes = gib + 192 * mib + 1; QVERIFY(!disk.low());
+        disk.freeBytes = gib + 160 * mib + 1; QVERIFY(!disk.low());
+        disk.freeBytes += 64 * mib; QVERIFY(!disk.low()); // Writer releases space before threshold.
+        disk.freeBytes -= 64 * mib;
         --disk.freeBytes; QVERIFY(disk.low());
         QCOMPARE(disk.toJson()["clipBytes"].toInteger(), 12 * mib);
         disk.clipBytes = 256 * mib;
-        QCOMPARE(disk.requiredBytes(), 576 * mib);
-        disk.freeBytes = gib + 576 * mib; QVERIFY(disk.low());
+        QCOMPARE(disk.requiredBytes(), 544 * mib);
+        disk.freeBytes = gib + 544 * mib; QVERIFY(disk.low());
         disk.freeBytes = 0; QVERIFY(disk.low());
         disk.freeBytes = -1; QVERIFY(!disk.low()); // Unknown is not zero.
         QCOMPARE(disk.availableBytes(), -1);

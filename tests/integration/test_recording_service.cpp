@@ -263,7 +263,7 @@ private slots:
   auto doc=configuration(h.dir.path(),true);auto limits=doc["limits"].toObject();limits["maxFileBytes"]=gib;doc["limits"]=limits;QVERIFY(h.settings.save(doc,h.settings.revision()));
   const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);
   QVERIFY(!h.rec("pause",{{"id",id}}).error);
-  const QJsonObject sample{{"reason","disk_space"},{"freeBytes",1200LL<<20},{"reserveBytes",gib},{"availableBytes",176LL<<20},{"requiredBytes",192LL<<20},{"finalizationReserveBytes",64LL<<20},{"clipBytes",12LL<<20}};
+  const QJsonObject sample{{"reason","disk_space"},{"freeBytes",1160LL<<20},{"reserveBytes",gib},{"availableBytes",136LL<<20},{"requiredBytes",160LL<<20},{"finalizationReserveBytes",32LL<<20},{"clipBytes",12LL<<20}};
   h.backend->sink({{"id",id},{"event","stopped"},{"reason","budget"},{"durationUs",3000000},{"canvas",QJsonArray{1280,720}},{"stopDetails",sample}});
   PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
   const auto inspected=h.rec("inspect",{{"id",id}}).result;
