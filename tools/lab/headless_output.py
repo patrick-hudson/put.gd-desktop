@@ -199,7 +199,13 @@ def enable(args):
         root_write(d / 'force', b'unspecified')
         root_write(Path('/sys/class/drm') / (args.card + '-' + args.connector) / 'status', b'on-digital')
         notify(args.card)
-        save(run / 'after.json', snapshot(args.card))
+        after = snapshot(args.card)
+        save(run / 'after.json', after)
+        current = after['outputs'][args.connector]
+        if current['force'] != 'digital' or base64.b64decode(current['override']) != value:
+            raise Refused('Trial was not retained; inspect the rollback receipt')
+        if any(after['outputs'][name]['enabled'] != 'enabled' for name in active):
+            raise Refused('An original head stopped scanning out; trial rolled back')
     except BaseException:
         restore(run)
         raise

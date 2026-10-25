@@ -129,7 +129,7 @@ class Campaign:
         # Resolve all control socket paths before launching any isolated app/fixture.
         resolved = json.loads(lab.ssh(self.run, '''python3 - <<'PY'
 import json,os
-print(json.dumps(['/run/user/%d/putgd/session.sock'%os.getuid()]))
+print(json.dumps([os.environ.get('XDG_RUNTIME_DIR','/run/user/%d'%os.getuid())+'/putgd/session.sock']))
 PY
 '''))
         for value in [str(self.run / 'qmp.sock'), *resolved]:
@@ -252,7 +252,17 @@ PY
         save(self.out / 'identity.json', {'package': package, 'resident': running,
             'capabilities': capabilities, 'run': lab.state(self.run), 'driverSha256': lab.hash_file(__file__)})
         # Retain loginctl/native compositor identity independently of app capability claims.
-        native = self.session('loginctl show-session "${XDG_SESSION_ID:-self}" -p Type -p Desktop -p Active 2>/dev/null || loginctl list-sessions\nuname -a\n')
+        native = self.session('''python3 - <<'PY'
+import subprocess,os
+from pathlib import Path
+pid=subprocess.check_output(['pgrep','-u',str(os.getuid()),'-x',%s],text=True).split()[0]
+env=dict(x.split('=',1) for x in Path('/proc/'+pid+'/environ').read_bytes().decode().split('\\0') if '=' in x)
+session=env.get('XDG_SESSION_ID')
+if not session:raise RuntimeError('Native compositor process has no session identity')
+subprocess.run(['loginctl','show-session',session,'-p','Type','-p','Desktop','-p','Active','-p','State'],check=True)
+print(os.uname())
+PY
+''' % repr(self.profile['session_process']))
         (self.out / 'native-session.txt').write_text(native)
         settings = self.cli('settings.get')
         self.cli('settings.patch', {'expectedRevision': settings['metadata']['acceptedRevision'],
@@ -321,7 +331,8 @@ PY
             prefix = ''
             helper = 'putgd-record'
             if self.package.get('format') == 'appimage':
-                prefix = 'root="$HOME/putgd-lab/appimage/squashfs-root"\nexport LD_LIBRARY_PATH="$root/usr/lib:$root/usr/lib/putgd"\n'
+                root = self.package.get('analysisRoot')
+                prefix = ('root=' + shlex.quote(root) if root else 'root="$HOME/putgd-lab/appimage/squashfs-root"') + '\nexport LD_LIBRARY_PATH="$root/usr/lib:$root/usr/lib/putgd"\n'
                 helper = '"$root/usr/bin/putgd-record"'
             motion = self.session(prefix + helper + ' --motion ' + shlex.quote(path) + ' 8\n')
             result['motionOutput'] = motion
@@ -434,12 +445,22 @@ PY
             save(self.out / (name + '.json'), result)
 
     def cleanup(self):
+        errors = []
         if self.recording_id:
-            self.cli('recording.cancel', {'id': self.recording_id})
-        self.stop_fixture()
-        save(self.out / 'results.json', {'ok': bool(self.results) and all(r['ok'] for r in self.results),
+            try:
+                self.cli('recording.cancel', {'id': self.recording_id})
+            except Exception as error:
+                errors.append('recording: ' + str(error))
+        try:
+            self.stop_fixture()
+        except Exception as error:
+            errors.append('fixture: ' + str(error))
+        save(self.out / 'cleanup.json', {'ok': not errors, 'errors': errors})
+        save(self.out / 'results.json', {'ok': not errors and bool(self.results) and all(r['ok'] for r in self.results),
                                        'results': self.results})
         save(self.out / 'sha256.json', {p.name: lab.hash_file(p) for p in self.out.iterdir() if p.is_file() and p.name != 'sha256.json'})
+        if errors:
+            raise RuntimeError('Campaign cleanup incomplete: ' + '; '.join(errors))
 
 
 def main():
