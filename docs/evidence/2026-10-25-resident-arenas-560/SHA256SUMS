@@ -19,8 +19,10 @@ fb511ef5d57c841318e30f4aa234e99bcb7b6494610ea4a576c3bcf84d6c274b  ./d69/ctest-fo
 2c3fe0f77b1795d78f7e55a6de564ab07b0195ebf5a6595d3a6fce944a67c7ae  ./d69/summary.jsonl
 c714ec5f07960b4386e496196347dc09b5ce6d09f53d0ee8f48868ba9ee12ea7  ./d69/summary-v2.jsonl
 484e9871dae40387fc67f3390c4f9ede6a663086bbbdd5220f39a221c427434b  ./gnome-kde/f44-gnome-history-98878cfe.png
+93dd9de1ee4ba8305f85da7749f3c44201e8666b6efbf461d0ee9c1d2b67ddeb  ./gnome-kde/f44-gnome-queued-cancel-history-98878cfe.png
 492de379ebe74a6f92553832e74f018d9eb93cca5f37b3e628df361ae8f1430f  ./gnome-kde/f44-gnome-settings-98878cfe.png
 32a840dfbfcb940d77f45e77da613dbe7c180bc61e96e3b2f5698c6dc296e2d2  ./gnome-kde/k72-plasma-history-98878cfe.png
+1cbce5b85abead5b57c166a981616da25f54cf2d806970514ab3e6e243047034  ./gnome-kde/k72-plasma-queued-cancel-history-98878cfe.png
 b09fe2bcbf95c0144981ea246f2018322a597672cbe085429a5735621af14c12  ./gnome-kde/k72-plasma-settings-98878cfe.png
 f5a5d596e96901dbde66179c5de363462f868c631262bfcb36ad306f3be6321b  ./lab/arena-strand-microcheck.cpp
 a48e25a80f53c7fc6e0180845da0802fc80c89a5530435510c6d4d3fd842fb10  ./lab/attempts/campaign_o3-ra-rb.sh
@@ -90,4 +92,4 @@ f99ae4405fcc6b979929ae08403c218d4894d49080a44bb959452586a5d68ceb  ./m74-ci/ident
 be0439e7de77abee678651feaf2fdef36dd19748f4c4a049a5708033ff770141  ./m74/release-receipt.sanitized.json
 3766234a86373aa0d5b946dea4c63c93fc44234cce3813b152b3b95a6e3753bb  ./m74/t1-RETRY-NOTE.txt
 7f996f2fdbf70dd584c9a334b9d50b1f688e0e296daa24a2481771c9980c8963  ./m74/t2-installed-version.json
-6dac942e8aed7fabcd29122ffcba9b905f45bc7b216d7ca6277238fee5e03125  ./README.md
+0271bd57d15ff369b314401e9f84738b4a4c25026af2918ecb4a19a0020154ba  ./README.md
