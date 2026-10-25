@@ -433,9 +433,9 @@ class Accessible:
                 return
         except GLib.GError:
             pass  # Qt < 6.5 has no AT-SPI Selection interface.
-        # Row 0 is already current after the focusing click: Space selects
-        # it; Down moves and selects.
-        self.key(*(['Down'] * index or ['space']))
+        # Home makes row 0 current (and selects it when nothing was current);
+        # Space selects the current row; Down moves and selects.
+        self.key('Home', *(['Down'] * index or ['space']))
         if wait:
             self.wait_selected(index)
 
