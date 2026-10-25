@@ -260,6 +260,42 @@ private slots:
   replied=false;restarted->check([&](Error e,QJsonObject){error=e;replied=true;});PUTGD_TRY_VERIFY(replied);
   QCOMPARE(restarted->status()["channelSource"].toString(),QString("setting"));QCOMPARE(restarted->status()["channel"].toString(),QString("nightly"));
  }
+ void changedRepositoryDoesNotAnnounceAnotherChannel_data(){
+  QTest::addColumn<QString>("target");QTest::addColumn<QString>("state");QTest::addColumn<bool>("manual");
+  for(const auto& target:{QString("debian13"),QString("fedora44")})
+   for(const auto& state:{QString("absent"),QString("disabled")})
+    for(const auto manual:{false,true})
+     QTest::newRow(qPrintable(target+"-"+state+(manual?"-manual":"-background")))<<target<<state<<manual;
+ }
+ void changedRepositoryDoesNotAnnounceAnotherChannel(){
+  QFETCH(QString,target);QFETCH(QString,state);QFETCH(bool,manual);
+  repository(target,"nightly");
+  SettingsService settings(dir.filePath("config.json"));configure(settings,{{"channel","stable"}});
+  auto reply=available("nightly","0.1.1-nightly.590");auto result=reply["result"].toObject();
+  result["channelSource"]="repository";reply["result"]=result;answer(reply);
+  auto updates=service(settings,build("0.1.0",target));
+  // Hold the child after it observes Nightly until the local repository changes.
+  updates->setProgram("/bin/sh",{"-c",R"sh(printf '%s\n' "$*" >> "$0.calls"; while [ ! -f "$0.release" ]; do sleep .01; done; cat "$0.out")sh",fake()});
+  if(manual)updates->setRandom([](qint64 low,qint64){return low;});
+  QSignalSpy announced(updates.get(),&UpdateService::updateAvailable);updates->start();
+  bool replied=false;
+  if(manual)updates->check([&](Error error,QJsonObject){QVERIFY(!error);replied=true;});
+  PUTGD_TRY_COMPARE(calls(),QStringList{"--check-update nightly"});
+  if(state=="absent")QVERIFY(QFile::remove(repositoryFile(target)));
+  else repository(target,"nightly","disabled");
+  // Prevent a second scheduled check from obscuring this in-flight result.
+  configure(settings,{{"channel","stable"},{"check",false}});
+  QFile release(fake()+".release");QVERIFY(release.open(QIODevice::WriteOnly));release.close();
+  PUTGD_TRY_VERIFY(!updates->status()["checking"].toBool());
+  if(manual)QVERIFY(replied);
+  QCOMPARE(updates->status()["channel"].toString(),QString("stable"));
+  QCOMPARE(updates->status()["channelSource"].toString(),QString("setting"));
+  QVERIFY(updates->status()["result"].isNull());QCOMPARE(announced.size(),0);
+  QFile saved(dir.filePath("update-check.json"));QVERIFY(saved.open(QIODevice::ReadOnly));
+  const auto persisted=QJsonDocument::fromJson(saved.readAll()).object();
+  QCOMPARE(persisted["attemptedChannel"].toString(),QString("nightly"));
+  QVERIFY(persisted["notifiedVersions"].toObject().isEmpty());
+ }
  void failedCheckKeepsTheLastResult(){
   SettingsService settings(dir.filePath("config.json"));configure(settings);answer(available("stable","0.1.1"));
   auto updates=service(settings,build("0.1.0"));updates->start();PUTGD_TRY_COMPARE(calls().size(),1);PUTGD_TRY_VERIFY(!updates->status()["checking"].toBool());

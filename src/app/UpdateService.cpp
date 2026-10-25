@@ -329,7 +329,7 @@ void UpdateService::finished(bool manual,const QByteArray& output,const Error& f
   // Settings is not announced again; nightly is never announced. Each channel
   // remembers its own, so switching neither repeats nor hides one.
   const bool seen=manual||channelChanged;
-  if(available&&latest!=notified_.value(channel())) {
+  if(result["channel"]==channel()&&available&&latest!=notified_.value(channel())) {
    if(!seen&&notifies(action())&&settings_.snapshot().notifications)emit updateAvailable(result);
    if(seen||channel()=="stable")notified_[channel()]=latest;
   }
