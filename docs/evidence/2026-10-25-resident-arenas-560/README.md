@@ -281,19 +281,23 @@ window, plus the Plasma panel on k72:
 - [k72 History](gnome-kde/k72-plasma-history-98878cfe.png)
 - [k72 Settings](gnome-kde/k72-plasma-settings-98878cfe.png)
 
-**Matched trunk (`80ffa2e6`), same protocols.** One diagnostic pair per desktop:
+**Matched trunk (`80ffa2e6`), same protocols.** The trunk packages come from nightly CI run 40212427980.
+One diagnostic pair per desktop, using the same driver on each:
 
 | Desktop | Trunk burst diagnostic | Candidate burst diagnostic |
 | --- | --- | --- |
 | f44 GNOME | RSS 44,077,056 B (**over 40 MiB**) / PSS 29,126,656 B | RSS 41,304,064 B / PSS 26,366,976 B |
 | k72 Plasma | RSS 38,260,736 B / PSS 13,630,464 B | RSS 38,014,976 B / PSS 13,446,144 B |
 
-- **f44:** RSS goes from fail to pass. This is a single pair, with no repeatability
-  claim.
-- **k72:** both builds pass. Quiet admission was **not proven** for the trunk run
-  kt2: load was 1.38 just after kt1, and no CPU sample was taken. No efficacy claim
+- **f44:** RSS goes from fail to pass. The candidate is 2.64 MiB lower in RSS and
+  2.63 MiB lower in PSS. This is a single pair, with no repeatability claim.
+- **k72:** both builds pass. The candidate is 0.23 MiB lower in RSS and 0.18 MiB
+  lower in PSS. Quiet admission was **not proven** for the trunk run kt2: load was
+  1.38, the tail of the failed kt1 (frozen-sampler `/proc` race, retained), and no
+  CPU sample was taken. No efficacy claim
   rests on the small k72 delta.
-- **Matrix C:** passes on both desktops for trunk as well.
+- **Matrix C:** passes on both desktops for trunk as well: f44 peak RSS 37,249,024 B /
+  PSS 22,436,864 B, k72 33,665,024 B / 9,133,056 B.
 - **Functional cancellation:** the trunk runs reproduce the same finalizing-body
   cancellation, with a stored object and receipt, on both desktops. So that
   behaviour predates the candidate. The assertion mismatch is still recorded as a
