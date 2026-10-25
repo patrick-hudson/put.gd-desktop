@@ -70,7 +70,7 @@ QWidget* UiApplicationController::view(const QString& name){
    // Pending drafts and destination setup keep their existing eager lifecycle.
    // Clean retained settings can wait until navigation or an agent command;
    // restoreViewState reconciles them with the latest resident configuration.
-   const auto settingsState=saved_["settings"].toObject();
+   const auto settingsState=saved_.value("settings").toObject();
    bool active=settingsState["dirty"].toBool()||settingsState["conflict"].toBool()||settingsState["autosaveBlocked"].toBool()||!settingsState["setupJobs"].toArray().isEmpty()||!settingsState["provisionalProfile"].toObject().isEmpty();
    for(const auto& editor:settingsState["profileEditors"].toArray())active|=editor.toObject()["providers"].toObject().size()>1;
    if(active)main_->settings();
