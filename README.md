@@ -18,7 +18,6 @@ Send it wherever you like: Amazon S3, Cloudflare R2, Backblaze B2, any S3-compat
 [![Nightly](https://img.shields.io/github/actions/workflow/status/patrick-hudson/put.gd-desktop/nightly.yml?branch=nightly&style=for-the-badge&label=Nightly&logo=githubactions&logoColor=white&labelColor=1b1e25)](https://github.com/patrick-hudson/put.gd-desktop/actions/workflows/nightly.yml)
 [![Release](https://img.shields.io/github/actions/workflow/status/patrick-hudson/put.gd-desktop/release.yml?branch=main&style=for-the-badge&label=Release&logo=githubactions&logoColor=white&labelColor=1b1e25)](https://github.com/patrick-hudson/put.gd-desktop/actions/workflows/release.yml)
 [![Latest nightly](https://img.shields.io/github/v/release/patrick-hudson/put.gd-desktop?include_prereleases&filter=*-nightly&style=for-the-badge&label=nightly&color=9bbcff&labelColor=1b1e25)](https://github.com/patrick-hudson/put.gd-desktop/releases)
-[![Downloads](https://img.shields.io/github/downloads/patrick-hudson/put.gd-desktop/total?style=for-the-badge&color=62d69b&labelColor=1b1e25)](https://github.com/patrick-hudson/put.gd-desktop/releases)
 [![License](https://img.shields.io/badge/license-MIT-526386?style=for-the-badge&labelColor=1b1e25)](LICENSE)
 
 ![C++20](https://img.shields.io/badge/C%2B%2B-20-00599C?style=flat-square&logo=cplusplus&logoColor=white)
