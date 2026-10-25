@@ -86,6 +86,16 @@ process remains. New-head native acceptance and the full parallel/matrix gates
 are pending. The historical GNOME clipboard and ready-bar limitations below
 remain unresolved; Xvfb clipboard success does not attribute or clear them.
 
+## Repeated harness invocation
+
+Review comment `4371962806` identified that the retained `bad-version` fixture
+prevented a second test invocation. The test now creates a unique retained
+fixture per invocation. Two consecutive runs from the same directory on f44
+passed all five checks each, preserved an existing `bad-version` sentinel, and
+left no test mounts. See the [rerun receipt](harness-safety/rerun/results.json)
+and [first](harness-safety/rerun/run-1.log) / [second](harness-safety/rerun/run-2.log)
+logs. These are harness checks only; product code and native acceptance are unchanged.
+
 ## Harness-only review follow-up (after docs `38f62f04`)
 
 Product code remains `4ee657db`; no product build or capture was repeated.

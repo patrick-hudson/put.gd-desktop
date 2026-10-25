@@ -1,0 +1,10 @@
+test_failure_bundles_and_uncertain_acquisition (__main__.MountSafety.test_failure_bundles_and_uncertain_acquisition) ... ok
+test_invalid_args_do_not_create_run (__main__.MountSafety.test_invalid_args_do_not_create_run) ... ok
+test_known_device_and_acquisition_guard (__main__.MountSafety.test_known_device_and_acquisition_guard) ... ok
+test_parent_and_foreign_mounts_are_untouched (__main__.MountSafety.test_parent_and_foreign_mounts_are_untouched) ... ok
+test_target_type_mismatches_cannot_invoke_umount (__main__.MountSafety.test_target_type_mismatches_cannot_invoke_umount) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 1.248s
+
+OK

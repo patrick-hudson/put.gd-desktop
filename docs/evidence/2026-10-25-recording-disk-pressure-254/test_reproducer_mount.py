@@ -87,12 +87,13 @@ class MountSafety(unittest.TestCase):
     def test_failure_bundles_and_uncertain_acquisition(self):
         # Retain these private failure bundles beside the test, outside /tmp.
         # The short actual run paths keep the production socket preflight valid.
+        # Each invocation retains its own fixture so reruns do not collide.
+        fixture = pathlib.Path(tempfile.mkdtemp(prefix='bad-version-', dir=ROOT))
         for name, build, extra, expected_exit in [
                 ('missing', '/tmp/i254-absent-binaries', [], 1),
-                ('version', str(ROOT/'bad-version'), [], 1),
+                ('version', str(fixture), [], 1),
                 ('interrupt', str(PRODUCT), ['--fail-at', 'after-mount-before-flag'], 130)]:
             if name == 'version':
-                fixture = ROOT/'bad-version'; fixture.mkdir()
                 binary = fixture/'putgd-cli'; binary.write_text('#!/bin/sh\nexit 42\n'); binary.chmod(0o700)
             run = pathlib.Path(tempfile.mkdtemp(prefix='i254-i-', dir='/tmp'))/'r'
             result = subprocess.run([sys.executable, str(ROOT/'reproducer.py'), '--build', build,
