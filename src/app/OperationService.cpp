@@ -387,7 +387,14 @@ void OperationService::startEditing(Operation op,std::shared_ptr<std::atomic_boo
    if(edited->error){op.error=edited->error;op.state="failed";finish(op);return;}
    ClipboardPayload finalized;finalized.kind="png";finalized.bytes=std::move(edited->png);finalized.mime="image/png";
    op.state="acquiring";op.phase="queued";
-   enqueue({op,std::move(finalized),true,flag,{}});
+   // The editor is gone, but the sanitized bytes are not an artifact yet.
+   // Persist the handoff before queueing: readers and crash recovery must no
+   // longer treat this operation as an open, unsubmitted editor.
+   background([path,op](Error& e){HistoryStore store(path);e=store.saveOperation(op);return QJsonObject{};},
+    [this,op,flag,finalized=std::move(finalized)](Error e,QJsonObject) mutable {
+     if(e){op.error=e;op.state="failed";finish(op);return;}
+     enqueue({op,std::move(finalized),true,flag,{}});
+    });
   });
  });
 }

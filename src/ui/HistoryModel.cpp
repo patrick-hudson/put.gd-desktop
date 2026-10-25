@@ -49,6 +49,7 @@ QString HistoryModel::failureLabel(const QJsonObject& r){
 QString HistoryModel::statusText(const QJsonObject& r){
  const auto op=r["operation"].toObject();const auto state=op["state"].toString();const auto phase=op["phase"].toString();
  if(active(r)){
+  if(phase=="queued")return "Waiting to upload…";
   if(state=="editing"||phase=="editing")return "Editing · Upload or cancel in the editor window";
   if(op["action"]=="edit"&&(state=="acquiring"||phase=="acquiring"))return "Choose what to edit… · Press Esc to cancel";
   if(state=="acquiring"||phase=="acquiring")return op["action"]=="region"?"Selecting a region… · Press Esc to cancel":op["action"]=="clipboard"?"Reading the clipboard…":"Selecting a capture…";
@@ -62,7 +63,6 @@ QString HistoryModel::statusText(const QJsonObject& r){
     if(!parts.isEmpty())files=" · "+parts.join(", ");}
    const auto progress=aggregateProgress(op);if(progress.total>0)return QString("Uploading · %1%").arg(progress.percent())+files;if(progress.known)return "Uploading · "+ByteSize::summary(progress.sent)+" transferred"+files;return "Uploading…"+files;}
   if(phase=="saving_local")return "Saving locally…";
-  if(phase=="queued")return "Waiting to upload…";
   return "Preparing capture…";
  }
  auto message=r["error"].toObject()["message"].toString();if(message.isEmpty())message=op["error"].toObject()["message"].toString();
