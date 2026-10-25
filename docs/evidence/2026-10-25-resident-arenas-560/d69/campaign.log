@@ -1,0 +1,11 @@
+2026-10-25T18:42:05Z start o0 bin-base I560_SETTLE=300
+2026-10-25T18:49:46Z end o0 exit=0 {"runExit":0,"busSocketAbsent":true,"xSocketAbsent":true}
+2026-10-25T18:49:46Z start o1 bin-cand I560_SETTLE=300
+2026-10-25T18:57:27Z end o1 exit=0 {"runExit":0,"busSocketAbsent":true,"xSocketAbsent":true}
+2026-10-25T18:57:27Z start o2 bin-base I560_SETTLE=300 MALLOC_ARENA_MAX=1
+2026-10-25T19:05:07Z end o2 exit=0 {"runExit":0,"busSocketAbsent":true,"xSocketAbsent":true}
+2026-10-25T19:05:07Z start oa bin-base I560_MODE=cancel
+2026-10-25T19:06:18Z end oa exit=0 {"runExit":0,"busSocketAbsent":true,"xSocketAbsent":true}
+2026-10-25T19:06:18Z start ob bin-cand I560_MODE=cancel
+2026-10-25T19:07:28Z end ob exit=0 {"runExit":0,"busSocketAbsent":true,"xSocketAbsent":true}
+2026-10-25T19:07:28Z campaign-done

@@ -1,0 +1,35 @@
+diff --git a/tests/performance/operations_upload_probe.cpp b/tests/performance/operations_upload_probe.cpp
+index ea05d7b6..80c9bcc5 100644
+--- a/tests/performance/operations_upload_probe.cpp
++++ b/tests/performance/operations_upload_probe.cpp
+@@ -9,6 +9,8 @@
+ //   GROUP: comma-separated absolute file paths, started 200 ms after the previous group,
+ //          or PUTGD_PROBE_GROUP_GAP_MS after it when that is set
+ #include "app/OperationService.h"
++#include "core/AllocatorPolicy.h"
++#include <malloc.h>
+ #include "storage/s3/S3Provider.h"
+ #include <QCoreApplication>
+ #include <QDir>
+@@ -47,7 +49,12 @@ public:
+ };
+ }
+ int main(int argc, char** argv) {
++    // #560 private control: apply the resident allocator policy exactly as main() does.
++    const bool policy = putgd::applyResidentAllocatorPolicy();
+     QCoreApplication app(argc, argv);
++    QElapsedTimer lagClock; qint64 lagLast = 0, lagMax = 0, lagTotal = 0, lagTicks = 0; QTimer lagTimer; lagTimer.setTimerType(Qt::PreciseTimer);
++    QObject::connect(&lagTimer, &QTimer::timeout, &app, [&] { const auto now = lagClock.nsecsElapsed(); if (lagLast) { const auto late = qMax<qint64>(0, now - lagLast - 10000000); lagMax = qMax(lagMax, late); lagTotal += late; ++lagTicks; } lagLast = now; });
++    lagClock.start(); lagTimer.start(10);
+     const auto args = app.arguments();
+     if (args.size() < 5) { qCritical("usage: operations_upload_probe ENDPOINT BUCKET CONCURRENCY GROUP [GROUP...]"); return 2; }
+     QTemporaryDir root;
+@@ -145,7 +152,7 @@ int main(int argc, char** argv) {
+                 std::lock_guard lock(mutex);
+                 printf("%s\n", QJsonDocument(QJsonObject{{"concurrency", args[3].toInt()}, {"elapsedMs", elapsed}, {"operations", *groups},
+                                                          {"mostWorkersAtOnce", mostWorkers}, {"peakWorkersRssKiB", peakWorkerKiB},
+-                                                         {"peakTotalRssKiB", peakTotalKiB}}).toJson(QJsonDocument::Compact).constData());
++                                                         {"peakTotalRssKiB", peakTotalKiB}, {"policyApplied", policy}, {"mainLoopLagMaxUs", lagMax / 1000}, {"mainLoopLagMeanUs", lagTicks ? lagTotal / lagTicks / 1000 : 0}, {"selfRssAfterKiB", statusKiB("/proc/self/status", "VmRSS:")}, {"heapArenaBytesAfterTrim", [] { malloc_trim(0); return double(mallinfo2().arena); }()}, {"selfRssAfterTrimKiB", statusKiB("/proc/self/status", "VmRSS:")}}).toJson(QJsonDocument::Compact).constData());
+                 app.quit();
+             });
+     });

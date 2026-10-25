@@ -1,0 +1,24 @@
+{
+  "lock": {
+    "owner": "t3-b8aac3fb-i560-opus",
+    "session": "t3-i560-opus-native1",
+    "host": "m74",
+    "purpose": "Quiet performance #560 frozen #555 burst: candidate 98878cfe DEB then matched trunk 80ffa2e6 if time; /home/patrick/work/put.gd/work/stable-triage-20261025/coordination.md",
+    "acquired": "2026-10-25T19:01:50Z",
+    "expires": "2026-10-25T19:46:50Z",
+    "heartbeat": "2026-10-25T19:19:41Z"
+  },
+  "releasedBy": "t3-i560-opus-native1",
+  "check": {
+    "left": [],
+    "notMine": [],
+    "preexisting": [],
+    "unmatchedNotMine": []
+  },
+  "notes": [
+    "3 process(es) outside the desktop session (no DISPLAY or WAYLAND_DISPLAY; shared SSH work): 2067 313646 313651"
+  ],
+  "event": "release",
+  "host": "m74",
+  "at": "2026-10-25T19:24:06Z"
+}

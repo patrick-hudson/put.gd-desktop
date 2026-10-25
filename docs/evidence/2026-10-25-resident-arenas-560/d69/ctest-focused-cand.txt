@@ -1,0 +1,18 @@
+ 6/11 Test  #79: history_contract ....................   Passed    7.51 sec
+      Start  80: operations_contract
+ 7/11 Test  #33: edit_operations_integration .........   Passed   14.97 sec
+      Start  93: settings_contract
+ 8/11 Test  #93: settings_contract ...................   Passed    9.67 sec
+      Start  96: diagnostics_upload_contract
+ 9/11 Test  #96: diagnostics_upload_contract .........   Passed    1.54 sec
+      Start 102: resident_session_contract
+10/11 Test #102: resident_session_contract ...........   Passed    1.72 sec
+11/11 Test  #80: operations_contract .................   Passed   75.09 sec
+
+100% tests passed, 0 tests failed out of 11
+
+Label Time Summary:
+integration    = 107.39 sec*proc (8 tests)
+unit           =   7.56 sec*proc (3 tests)
+
+Total Test time (real) =  87.05 sec

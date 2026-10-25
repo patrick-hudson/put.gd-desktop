@@ -1,0 +1,1 @@
+t1 failed: frozen sampler /proc race ProcessLookupError at 72.3s (bench_ui_process.identity); resident cleanup passed. Retry t2 with identical command.
