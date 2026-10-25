@@ -1,0 +1,1737 @@
+{
+  "schemaVersion": 1,
+  "attempt": "cu3",
+  "issue": 379,
+  "status": "new_head_capture_prelude_complete_corrected_queue_visibility_refused",
+  "accepted": false,
+  "scope": "Actualnew5d99 common-coordinator cancelled capture prelude then corrected50-file editor upload queue attempt. No oldCU2 pass transfer, expanded capturegate or wholecampaign acceptance.",
+  "product": {
+    "path": "/home/patrick/putgd-lab/p379/release/putgd-26.1024.1185-nightly-ubuntu24.04-x86_64.deb",
+    "sha256": "2094fd4db8cd915b02f1cdd16eb5c99bb8191948931cd2f558a89c59be5b3f47",
+    "binaries": {
+      "app": {
+        "path": "/usr/bin/putgd",
+        "sha256": "2d51cdd7ca7ed7c53d2c4cda5cd2c9009c3c24b07769a03e80a0da46f7b16af2",
+        "build": {
+          "schemaVersion": 1,
+          "version": "26.1024.1185-nightly",
+          "baseVersion": "26.1024.1185",
+          "packageVersion": "26.1024.1185~nightly",
+          "gitCommit": "9dfac15c1ced201d13a2b70a8afb0c253213768b",
+          "gitTree": "4e96912274d9220ba9476bd1b50333f6cf738f4f",
+          "commitCount": 1185,
+          "dirty": false,
+          "sourceProvenance": "git"
+        }
+      },
+      "capture_helper": {
+        "path": "/usr/bin/putgd-capture",
+        "sha256": "9f122f727a0d84da71cbc7e1dd53895015a34c63606803edb68680659ce74dbf",
+        "build": {
+          "schemaVersion": 1,
+          "version": "26.1024.1185-nightly",
+          "baseVersion": "26.1024.1185",
+          "packageVersion": "26.1024.1185~nightly",
+          "gitCommit": "9dfac15c1ced201d13a2b70a8afb0c253213768b",
+          "gitTree": "4e96912274d9220ba9476bd1b50333f6cf738f4f",
+          "commitCount": 1185,
+          "dirty": false,
+          "sourceProvenance": "git"
+        }
+      },
+      "cli": {
+        "path": "/usr/bin/putgd-cli",
+        "sha256": "af34ea975c73517a39c561a3d65efaba7c2dd0848235d23b2c1158e08cab032f",
+        "build": {
+          "schemaVersion": 1,
+          "version": "26.1024.1185-nightly",
+          "baseVersion": "26.1024.1185",
+          "packageVersion": "26.1024.1185~nightly",
+          "gitCommit": "9dfac15c1ced201d13a2b70a8afb0c253213768b",
+          "gitTree": "4e96912274d9220ba9476bd1b50333f6cf738f4f",
+          "commitCount": 1185,
+          "dirty": false,
+          "sourceProvenance": "git"
+        }
+      },
+      "helper": {
+        "path": "/usr/bin/putgd-ui",
+        "sha256": "35d3ab75050d8b541564fb57c686036133d7151d9ddfcb23f625a4d393644273",
+        "build": {
+          "schemaVersion": 1,
+          "version": "26.1024.1185-nightly",
+          "baseVersion": "26.1024.1185",
+          "packageVersion": "26.1024.1185~nightly",
+          "gitCommit": "9dfac15c1ced201d13a2b70a8afb0c253213768b",
+          "gitTree": "4e96912274d9220ba9476bd1b50333f6cf738f4f",
+          "commitCount": 1185,
+          "dirty": false,
+          "sourceProvenance": "git"
+        }
+      }
+    }
+  },
+  "liveBuild": {
+    "baseVersion": "26.1024.1185",
+    "commitCount": 1185,
+    "dirty": false,
+    "gitCommit": "9dfac15c1ced201d13a2b70a8afb0c253213768b",
+    "gitTree": "4e96912274d9220ba9476bd1b50333f6cf738f4f",
+    "packageVersion": "26.1024.1185~nightly",
+    "schemaVersion": 1,
+    "sourceProvenance": "git",
+    "version": "26.1024.1185-nightly"
+  },
+  "physical": {
+    "hostname": "mint-builder",
+    "kernel": "6.14.0-37-generic",
+    "session": {
+      "Name": "patrick",
+      "Display": ":0",
+      "Remote": "no",
+      "Desktop": "cinnamon",
+      "Leader": "625282",
+      "Type": "x11",
+      "Active": "yes"
+    },
+    "sessionId": "c89",
+    "requestedQtPlatform": "xcb",
+    "systemVersions": {
+      "kernel": "6.14.0-37-generic",
+      "machine": "x86_64",
+      "cpu": "Intel(R) Core(TM) i5-6500T CPU @ 2.50GHz",
+      "desktop": "X-Cinnamon",
+      "session": "x11",
+      "python": "3.12.3",
+      "packages": {
+        "cinnamon": "6.6.9+zena",
+        "libc6": "2.39-0ubuntu8.9",
+        "libcairo2": "1.18.0-3build1",
+        "libgtk-3-0t64": "3.24.41-4ubuntu1.3",
+        "libqt6core6t64": "6.4.2+dfsg-21.1build5",
+        "muffin": "6.6.3+zena"
+      }
+    },
+    "osRelease": "NAME=\"Linux Mint\"\nVERSION=\"22.3 (Zena)\"\nID=linuxmint\nID_LIKE=\"ubuntu debian\"\nPRETTY_NAME=\"Linux Mint 22.3\"\nVERSION_ID=\"22.3\"\nHOME_URL=\"https://www.linuxmint.com/\"\nSUPPORT_URL=\"https://forums.linuxmint.com/\"\nBUG_REPORT_URL=\"http://linuxmint-troubleshooting-guide.readthedocs.io/en/latest/\"\nPRIVACY_POLICY_URL=\"https://www.linuxmint.com/\"\nVERSION_CODENAME=zena\nUBUNTU_CODENAME=noble\n",
+    "loadAverage": [
+      "0.80",
+      "0.97",
+      "0.99"
+    ]
+  },
+  "driver": {
+    "sha256": "7b52163e0f838712821bc9cf99fccd641dc3dcf1029fd88202558e2f8dc1e796",
+    "revision": "5d99ec9732ad68a86a61d9f5ea33be41f05d294a",
+    "revisionSource": "explicit-declaration",
+    "sourceFiles": {
+      "tests/performance/physical_campaign.py": "7b52163e0f838712821bc9cf99fccd641dc3dcf1029fd88202558e2f8dc1e796",
+      "tests/performance/bench_ui_process.py": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+      "tests/performance/observe_idle.py": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe",
+      "tests/performance/campaign_fixture.py": "330632490f68fb3621f19261f35e64643849b26190de256c969cdc89e79d41d9",
+      "tests/performance/campaign_ui.py": "68e66b9f4adf2dd75c3ae4b7a8d6ade1f2d138ee23ffdfd3a714d4265b3cfcbd",
+      "tests/performance/campaign_workloads.py": "31fdc1f2d5866a2eb5d06c81b5e86b122c6eddc6adc58887acefb68e93b17203",
+      "tests/performance/campaign_proxy.py": "39973a4603cedf82ae89250c222ae5f508f36aa127be4d501f2ee3c3eae0e98b",
+      "tests/performance/campaign_lifecycle.py": "e86141e204105fe6834d90933dd065377df0b444786eec5cc1340c11eabe6668",
+      "tests/performance/build_current_capture.py": "dfab0d0aefc471cd13eb3ec6e1bb6b0c57614ac424d2067eca4c5846de0f95bd",
+      "tests/performance/campaign_frames.py": "6c013f4cbce53b96ce6c2dd1b0b1d396f449d5017621654ae2e291a6c5cb6a97",
+      "tools/diagnostics/check_socket_paths.py": "7e8797ec6ea0014eeacd428f822ef3fe545a276247a7ad7e6de9b557a0937f55"
+    }
+  },
+  "driverArchiveSha256": "1cf37a7f29ab84fa18f9f98d49e80da4a9db2def9082f98f12398e66c05c7844",
+  "controller": {
+    "sourceSha256": "c11569506e258565a1bf1bf29cc2177ada6425fc61c6e7d58232c8b915a6633b",
+    "allocatedConfigSha256": "d45dfd440b03c1678546e1c108693d56d5e02e5f07918f3bfbb26bee56ecb414",
+    "allocationId": "root-379-cu3-5d99ec97-20261025T003622Z",
+    "correctedRecoveryTemplateSha256": "85d87629116c61018306a20bdd6a6614977ab6938f802d78b3903022b36959ca",
+    "invokedUtc": "2026-10-25T00:37:58.251182+00:00",
+    "finishedUtc": "2026-10-25T00:39:02.055208+00:00",
+    "driverLaunched": true,
+    "exitCode": 1,
+    "persistenceErrors": [],
+    "sourceDelta": "Only5 literal pin/error-label/runId/rc3/rb3 replacements from immutable8fa1,2 changedsource lines; reviewed recovery/containment/timings unchanged"
+  },
+  "capture": {
+    "status": "complete",
+    "startedUtc": "2026-10-25T00:38:21.397284+00:00",
+    "elapsedSeconds": 11.869434488005936,
+    "parameters": {
+      "scenario": "capture",
+      "output": "/tmp/p379-rc3",
+      "package": "/home/patrick/putgd-lab/p379/release/putgd-26.1024.1185-nightly-ubuntu24.04-x86_64.deb",
+      "package_sha256": "2094fd4db8cd915b02f1cdd16eb5c99bb8191948931cd2f558a89c59be5b3f47",
+      "version": "26.1024.1185-nightly",
+      "source_revision": "9dfac15c1ced201d13a2b70a8afb0c253213768b",
+      "desktop_session": "c89",
+      "lock_session": "codex-379-capture-upload3",
+      "app": "/usr/bin/putgd",
+      "cli": "/usr/bin/putgd-cli",
+      "helper": "/usr/bin/putgd-ui",
+      "capture_helper": "/usr/bin/putgd-capture",
+      "driver": "/home/patrick/putgd-lab/p379/drivers/current-3c29/build/putgd-bench-current-capture",
+      "capture_driver_manifest": "/home/patrick/putgd-lab/p379/drivers/current-3c29/witness.json",
+      "fixture_root": null,
+      "driver_revision": "5d99ec9732ad68a86a61d9f5ea33be41f05d294a",
+      "open_seconds": 30,
+      "vnc_port": 5900,
+      "endpoint": null,
+      "fixture_pid": null,
+      "fixture_source": null,
+      "enable_accessibility": false,
+      "native_driver": null,
+      "native_driver_revision": null,
+      "native_driver_sha256": null,
+      "threshold_policy": null,
+      "settle_seconds": 300
+    },
+    "actualCommand": [
+      "/usr/bin/python3",
+      "/home/patrick/putgd-lab/p379/drivers/5d99ec97-cu3/tests/performance/physical_campaign.py",
+      "capture",
+      "--output",
+      "/tmp/p379-rc3",
+      "--package",
+      "/home/patrick/putgd-lab/p379/release/putgd-26.1024.1185-nightly-ubuntu24.04-x86_64.deb",
+      "--package-sha256",
+      "2094fd4db8cd915b02f1cdd16eb5c99bb8191948931cd2f558a89c59be5b3f47",
+      "--version",
+      "26.1024.1185-nightly",
+      "--source-revision",
+      "9dfac15c1ced201d13a2b70a8afb0c253213768b",
+      "--driver-revision",
+      "5d99ec9732ad68a86a61d9f5ea33be41f05d294a",
+      "--desktop-session",
+      "c89",
+      "--lock-session",
+      "codex-379-capture-upload3",
+      "--vnc-port",
+      "5900",
+      "--driver",
+      "/home/patrick/putgd-lab/p379/drivers/current-3c29/build/putgd-bench-current-capture",
+      "--capture-driver-manifest",
+      "/home/patrick/putgd-lab/p379/drivers/current-3c29/witness.json"
+    ],
+    "socketPreflight": {
+      "schemaVersion": 1,
+      "passed": true,
+      "limitBytesExcludingNul": 107,
+      "paths": [
+        {
+          "path": "/tmp/p379-rc3/runtime/putgd/session.sock",
+          "utf8Bytes": 40,
+          "passed": true
+        },
+        {
+          "path": "/tmp/.X11-unix/X0",
+          "utf8Bytes": 17,
+          "passed": true
+        },
+        {
+          "path": "/run/user/1000/bus",
+          "utf8Bytes": 18,
+          "passed": true
+        },
+        {
+          "path": "/run/user/1000/at-spi/bus_0",
+          "utf8Bytes": 27,
+          "passed": true
+        },
+        {
+          "path": "/run/user/1000/at-spi/bus_1",
+          "utf8Bytes": 27,
+          "passed": true
+        },
+        {
+          "path": "/tmp/p379-rc3/runtime/at-spi/bus_0",
+          "utf8Bytes": 34,
+          "passed": true
+        },
+        {
+          "path": "/tmp/p379-rc3/runtime/at-spi/bus_1",
+          "utf8Bytes": 34,
+          "passed": true
+        }
+      ],
+      "abstractX11BytesIncludingLeadingNul": 18,
+      "physicalBusAddressPreserved": true
+    },
+    "nativeInstrument": {
+      "path": "/home/patrick/putgd-lab/p379/drivers/current-3c29/build/putgd-bench-current-capture",
+      "sha256": "3ef7ac070d933c0962ab4a5480294084c99b1a5933e63b35139162eb6d1a8d20",
+      "derivativeWitness": {
+        "kind": "current-contrast",
+        "sourceRevision": "3c29bb3b40cebff0214ebe6bb498fc4a09d0b3d8",
+        "frozenSourceSha256": "fcb274049e4279a733b74e6fb9ec80bd4aec6389babe65dcb6497cafd6df887c",
+        "generatorSha256": "74ea2e9c6dfc2647450c52a1582451fea05e2db327103840f05f1d0a17a3a85a",
+        "generatedSourceSha256": "f6776206c592c0c1b4f8de9d43c01a88c305f987fe2ad3a3efd611b23018bbea",
+        "status": "built",
+        "warmupInvocations": 5,
+        "sampleCount": 30,
+        "p95LimitMs": 150,
+        "scope": "separate version-correct paint predicate; unchanged frozen timer/ownership/input/all-display/cancellation/sample/budget source",
+        "negativeControlsAreProductAcceptance": false,
+        "commands": [
+          [
+            "cmake",
+            "-S",
+            "/home/patrick/putgd-lab/p379/drivers/current-3c29",
+            "-B",
+            "/home/patrick/putgd-lab/p379/drivers/current-3c29/build",
+            "-G",
+            "Ninja",
+            "-DCMAKE_BUILD_TYPE=Release"
+          ],
+          [
+            "nice",
+            "-n",
+            "10",
+            "cmake",
+            "--build",
+            "/home/patrick/putgd-lab/p379/drivers/current-3c29/build",
+            "--parallel",
+            "1"
+          ]
+        ],
+        "binary": "/home/patrick/putgd-lab/p379/drivers/current-3c29/build/putgd-bench-current-capture",
+        "binarySha256": "3ef7ac070d933c0962ab4a5480294084c99b1a5933e63b35139162eb6d1a8d20",
+        "syntheticNegativeControlsPassed": true,
+        "syntheticNegativeControlsMethod": "Independently invoked same generated test executable under fixed-display native Xvfb with saved complete socket preflight; not generator automatic --test",
+        "syntheticNegativeControlsCommand": [
+          "nice",
+          "-n",
+          "10",
+          "xvfb-run",
+          "--server-num=379",
+          "/home/patrick/putgd-lab/p379/drivers/current-3c29/build/test-current-capture"
+        ],
+        "syntheticNegativeControlsReceiptSha256": "d2f76a9d89e15f020a76feb1cb6bec5305d09b8230e2af2a79110f07070a8602",
+        "testBinarySha256": "3dfc0208c5f9792aa38d3bd1e151fceb0dc11dbc0da9c0605d2ae7e49271711f",
+        "testSourceSha256": "a51894494acf7d3fe568452443cc5409e8715d0b772ec369a4b098213a1a863f",
+        "qtVersion": "6.4.2",
+        "isolatedDisplaySocketRemoved": true
+      },
+      "manifestSha256": "d080faef79fd6227d10da37dd770105f331dd177062c07006205e511e5adc2d7"
+    },
+    "warmups": 5,
+    "timedSamples": 30,
+    "paintMs": [
+      42.994625,
+      72.188175,
+      65.506549,
+      68.046892,
+      65.422877,
+      72.832518,
+      72.362987,
+      69.025092,
+      60.760561,
+      70.064719,
+      66.503847,
+      71.059224,
+      68.361167,
+      69.904231,
+      72.785046,
+      64.857306,
+      64.398156,
+      73.449413,
+      43.417007,
+      68.462456,
+      68.543096,
+      63.243854,
+      53.509205,
+      68.9044,
+      63.996246,
+      66.843883,
+      71.719338,
+      64.571489,
+      63.622553,
+      73.644495
+    ],
+    "p95IndexZeroBased": 28,
+    "p95PaintMs": 73.449413,
+    "limitMs": 150,
+    "gate": "pass_at_emptyHistory_native_DRAWABLE_scope_only",
+    "distinctTimedHelperGenerations": 30,
+    "cancelledTimedAndWarmupIds": [
+      "05f4e19b-3b85-4c4e-96e7-a021019577d4",
+      "0cf24513-58ff-4249-89ed-54614a11c7ae",
+      "155c3159-65ac-48ac-aee9-3fdeca8394bc",
+      "2617f395-7cdc-460b-9708-3b63c53d890d",
+      "2b994495-790a-445b-84ff-a7d55c7798e8",
+      "3070846a-922e-47ee-80c0-cd58592c46ed",
+      "3264a368-c998-4c92-af11-98ab991620b1",
+      "329fbeb2-2931-4f23-b254-3ddbee7132c1",
+      "35754df0-eadf-4bfd-822f-b9b1908b993e",
+      "3d60f3e4-1e21-4c1d-a231-8727d755773c",
+      "41b19f09-f1c8-4180-9172-e7c562130d9b",
+      "42dfe5b6-be29-4d9b-a7b9-178bbf9914a7",
+      "43c84bf4-1565-4451-afac-c8922285f8e7",
+      "59583eff-7aca-4105-b06a-2d2adc4f3b71",
+      "63ca8634-25d7-4e9c-ae3f-0e8979b10611",
+      "6697ca22-328f-4673-9a17-95a00d4a88f9",
+      "6a0beae8-d784-4876-9708-4c34446240b3",
+      "7868ce93-c233-4eb9-88da-9e31890d8fd9",
+      "83dffafc-a06c-409b-b3c7-399217612607",
+      "88637de9-7236-4df2-98c8-3855a9331b2e",
+      "8a1f0be7-8d9e-43d8-82e6-8b213eaf0b75",
+      "8d8e5f2b-9f0e-40d4-9c59-fd02852bf6a7",
+      "904f0c53-9dbd-48db-a962-5566d236ffab",
+      "9b306745-a58a-4bad-a6e4-1ef0b2686b74",
+      "9d09a3c4-5082-491c-9eca-679df045c70f",
+      "9ec8581d-a9e1-4baf-9409-82c386e4be40",
+      "a0ccc224-df63-468a-8208-b9778fb13074",
+      "a9267b28-b629-4832-9f51-09511c76305e",
+      "aacb371e-5ced-4c16-81e4-9a69af6c40f1",
+      "ad634297-7dfd-4beb-96e8-51ad4daac399",
+      "c6f9d606-3892-4ddd-b032-42303be6f4b1",
+      "e220772d-fda1-4ada-94a5-1c4c44f59c2e",
+      "e39b9591-9849-46d5-a25b-d51f4ff8f895",
+      "f7e67cd3-758c-40f0-875c-da93d28f942b",
+      "fbc59b57-849f-4c57-9392-87a1206ea022"
+    ],
+    "operations36AllCancelledEmptyItemsNoResult": true,
+    "historyRows": 0,
+    "unscoredVisual": {
+      "kind": "unscored-capture-visual",
+      "elapsedSeconds": 11.632045931997709,
+      "operationId": "fb55e972-76ad-4440-8b63-af0a882070f0",
+      "helperIdentity": {
+        "pid": 653886,
+        "startTicks": 28661994,
+        "uid": 1000,
+        "executable": "/usr/bin/putgd-capture",
+        "device": 2050,
+        "inode": 10364821,
+        "sha256": "9f122f727a0d84da71cbc7e1dd53895015a34c63606803edb68680659ce74dbf",
+        "role": "auxiliary",
+        "rssBytes": 26378240,
+        "pssBytes": 11376640,
+        "privateBytes": 6119424,
+        "privateHugetlbBytes": 0,
+        "swapBytes": 0,
+        "cpuTicks": 1,
+        "threads": 3,
+        "inResidentTree": true,
+        "qtPlatformMappings": [
+          "libQt6XcbQpa.so.6.4.2",
+          "libqxcb.so"
+        ]
+      },
+      "windows": [
+        "0x5800001"
+      ],
+      "attribution": {
+        "opaqueBlackPixelsVerified": 4710,
+        "opaqueWhitePixelsVerified": 2355,
+        "allOtherPixelsReplacedWithSyntheticBackground": true,
+        "excludedCursorRectangle": [
+          852,
+          602,
+          96,
+          96
+        ],
+        "rawFramebufferRetained": false
+      },
+      "screenshot": "unscored-capture-overlay.png",
+      "sha256": "175cbaff28dfc5e5bbbabce6e6c9e620c07c325f7db2232a897888f734e3123d",
+      "scored": false,
+      "drag": [
+        140,
+        180,
+        900,
+        650
+      ]
+    },
+    "residentLaunches": [
+      {
+        "identity": {
+          "pid": 653494,
+          "startTicks": 28661082,
+          "uid": 1000,
+          "executable": "/usr/bin/putgd",
+          "device": 2050,
+          "inode": 10364819
+        },
+        "pidfdHeld": true
+      },
+      {
+        "identity": {
+          "pid": 653534,
+          "startTicks": 28661225,
+          "uid": 1000,
+          "executable": "/usr/bin/putgd",
+          "device": 2050,
+          "inode": 10364819
+        },
+        "pidfdHeld": true
+      }
+    ],
+    "residentCleanup": [
+      {
+        "gracefulRequest": true,
+        "exitCode": 0,
+        "forced": false,
+        "remaining": [],
+        "socketAbsent": true,
+        "passed": true,
+        "errors": [],
+        "inventoryComplete": true,
+        "absenceVerified": true,
+        "inventoryDefinition": "observed PID/start/UID generations + resident process group + exact isolated runtime/data environment; no command lines exported"
+      },
+      {
+        "gracefulRequest": true,
+        "exitCode": 0,
+        "forced": false,
+        "remaining": [],
+        "socketAbsent": true,
+        "passed": true,
+        "errors": [],
+        "inventoryComplete": true,
+        "absenceVerified": true,
+        "inventoryDefinition": "observed PID/start/UID generations + resident process group + exact isolated runtime/data environment; no command lines exported"
+      }
+    ],
+    "unassessedRawProcessMetrics": {
+      "peakTotals": {
+        "rssBytes": 57065472,
+        "pssBytes": 27055104,
+        "privateBytes": 17448960
+      },
+      "cpuPercentOneCoreLowerBound": null,
+      "observedProcessGenerations": 2,
+      "samplingSpanSeconds": 0.0,
+      "shortLivedChildrenMayBeMissed": true
+    }
+  },
+  "fileEditorQueue": {
+    "status": "failed-or-interrupted",
+    "publicWorkloadName": "50-file editor upload queue exercise",
+    "nativeCapturesExercised": 0,
+    "startedUtc": "2026-10-25T00:38:33.552836+00:00",
+    "elapsedSeconds": 18.752080142032355,
+    "errorCode": "no_owned_ui_proven_visible_on_wall",
+    "parameters": {
+      "scenario": "burst",
+      "output": "/tmp/p379-rb3",
+      "package": "/home/patrick/putgd-lab/p379/release/putgd-26.1024.1185-nightly-ubuntu24.04-x86_64.deb",
+      "package_sha256": "2094fd4db8cd915b02f1cdd16eb5c99bb8191948931cd2f558a89c59be5b3f47",
+      "version": "26.1024.1185-nightly",
+      "source_revision": "9dfac15c1ced201d13a2b70a8afb0c253213768b",
+      "desktop_session": "c89",
+      "lock_session": "codex-379-capture-upload3",
+      "app": "/usr/bin/putgd",
+      "cli": "/usr/bin/putgd-cli",
+      "helper": "/usr/bin/putgd-ui",
+      "capture_helper": "/usr/bin/putgd-capture",
+      "driver": null,
+      "capture_driver_manifest": null,
+      "fixture_root": null,
+      "driver_revision": "5d99ec9732ad68a86a61d9f5ea33be41f05d294a",
+      "open_seconds": 30,
+      "vnc_port": 5900,
+      "endpoint": "http://127.0.0.1:35379",
+      "fixture_pid": 653967,
+      "fixture_source": "/home/patrick/putgd-lab/p379/drivers/5d99ec97-cu3/tests/fixtures/s3_server.py",
+      "enable_accessibility": true,
+      "native_driver": "/home/patrick/putgd-lab/p379/drivers/72afd00-full/tools/lab/native_acceptance.py",
+      "native_driver_revision": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+      "native_driver_sha256": "347934c226f99cb0e509d5466c5df8116896e6bfac07d75fdfa4f4c2d06ca053",
+      "threshold_policy": null,
+      "settle_seconds": 300
+    },
+    "actualCommand": [
+      "/usr/bin/python3",
+      "/home/patrick/putgd-lab/p379/drivers/5d99ec97-cu3/tests/performance/physical_campaign.py",
+      "burst",
+      "--output",
+      "/tmp/p379-rb3",
+      "--package",
+      "/home/patrick/putgd-lab/p379/release/putgd-26.1024.1185-nightly-ubuntu24.04-x86_64.deb",
+      "--package-sha256",
+      "2094fd4db8cd915b02f1cdd16eb5c99bb8191948931cd2f558a89c59be5b3f47",
+      "--version",
+      "26.1024.1185-nightly",
+      "--source-revision",
+      "9dfac15c1ced201d13a2b70a8afb0c253213768b",
+      "--driver-revision",
+      "5d99ec9732ad68a86a61d9f5ea33be41f05d294a",
+      "--desktop-session",
+      "c89",
+      "--lock-session",
+      "codex-379-capture-upload3",
+      "--vnc-port",
+      "5900",
+      "--native-driver",
+      "/home/patrick/putgd-lab/p379/drivers/72afd00-full/tools/lab/native_acceptance.py",
+      "--native-driver-revision",
+      "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+      "--native-driver-sha256",
+      "347934c226f99cb0e509d5466c5df8116896e6bfac07d75fdfa4f4c2d06ca053",
+      "--endpoint",
+      "http://127.0.0.1:35379",
+      "--fixture-pid",
+      "653967",
+      "--fixture-source",
+      "/home/patrick/putgd-lab/p379/drivers/5d99ec97-cu3/tests/fixtures/s3_server.py",
+      "--enable-accessibility",
+      "--settle-seconds",
+      "300"
+    ],
+    "socketPreflight": {
+      "schemaVersion": 1,
+      "passed": true,
+      "limitBytesExcludingNul": 107,
+      "paths": [
+        {
+          "path": "/tmp/p379-rb3/runtime/putgd/session.sock",
+          "utf8Bytes": 40,
+          "passed": true
+        },
+        {
+          "path": "/tmp/.X11-unix/X0",
+          "utf8Bytes": 17,
+          "passed": true
+        },
+        {
+          "path": "/run/user/1000/bus",
+          "utf8Bytes": 18,
+          "passed": true
+        },
+        {
+          "path": "/run/user/1000/at-spi/bus_0",
+          "utf8Bytes": 27,
+          "passed": true
+        },
+        {
+          "path": "/run/user/1000/at-spi/bus_1",
+          "utf8Bytes": 27,
+          "passed": true
+        },
+        {
+          "path": "/tmp/p379-rb3/runtime/at-spi/bus_0",
+          "utf8Bytes": 34,
+          "passed": true
+        },
+        {
+          "path": "/tmp/p379-rb3/runtime/at-spi/bus_1",
+          "utf8Bytes": 34,
+          "passed": true
+        }
+      ],
+      "abstractX11BytesIncludingLeadingNul": 18,
+      "physicalBusAddressPreserved": true
+    },
+    "fixtureIdentity": {
+      "identity": {
+        "pid": 653967,
+        "startTicks": 28662156,
+        "uid": 1000,
+        "parentPid": 653471,
+        "cpuTicks": 0,
+        "comm": "python3",
+        "executable": "/usr/bin/python3.12",
+        "executableName": "python3.12"
+      },
+      "port": 35379,
+      "sourceSha256": "4f76efaa6af7233f840041aa0a6720f5f4e1e4ee618ab32b9468ace4e412055c"
+    },
+    "events": [
+      {
+        "kind": "burst-queue-observation",
+        "elapsedSeconds": 9.162723975023255,
+        "queued": 2,
+        "uploading": 3
+      },
+      {
+        "kind": "history-visual-presentation-requested",
+        "elapsedSeconds": 9.376338672998827,
+        "label": "burst-progress-4",
+        "window": "0x4c00006",
+        "owner": {
+          "pid": 654056,
+          "startTicks": 28662650,
+          "uid": 1000,
+          "executable": "/usr/bin/putgd-ui",
+          "device": 2050,
+          "inode": 10364827,
+          "sha256": "35d3ab75050d8b541564fb57c686036133d7151d9ddfcb23f625a4d393644273",
+          "role": "ui",
+          "rssBytes": 87580672,
+          "pssBytes": 51068928,
+          "privateBytes": 42041344,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 55,
+          "threads": 10,
+          "inResidentTree": true,
+          "qtPlatformMappings": [
+            "libQt6XcbQpa.so.6.4.2",
+            "libqxcb.so"
+          ]
+        },
+        "provesPaint": false
+      },
+      {
+        "kind": "owned-window-occluded-no-visual-retained",
+        "elapsedSeconds": 11.443169443984516,
+        "label": "burst-progress-4",
+        "window": "0x4c00006"
+      },
+      {
+        "kind": "synthetic-cover-visual",
+        "elapsedSeconds": 13.71224828803679,
+        "label": "failed-workload",
+        "file": "failed-workload.png",
+        "sha256": "ff83b8e75f7b4fa25e021f1d4027abaab5a6159abb46c875f7d0af6007d24a8d",
+        "limitation": "Synthetic cover; companion separately verifies actual desktop tray presentation"
+      }
+    ],
+    "journalOperationCount": 5,
+    "journalStates": {
+      "cancelled": 4,
+      "editing": 1
+    },
+    "historyRows": 4,
+    "no50CompletionOrSettleCredit": true,
+    "noFailedUnknownFrameRetained": true,
+    "interpretation": "The event alone does not distinguish actual occlusion from native/composite/native repaint mismatch. Corrected target/presentation event validates pinned owner/window but explicitly provesPaint=false. No raw failedframe/activewindow/geometry capture exists.",
+    "targetCorrectionReached": true,
+    "physicalFixEstablished": false,
+    "residentLaunches": [
+      {
+        "identity": {
+          "pid": 653981,
+          "startTicks": 28662299,
+          "uid": 1000,
+          "executable": "/usr/bin/putgd",
+          "device": 2050,
+          "inode": 10364819
+        },
+        "pidfdHeld": true
+      },
+      {
+        "identity": {
+          "pid": 654018,
+          "startTicks": 28662441,
+          "uid": 1000,
+          "executable": "/usr/bin/putgd",
+          "device": 2050,
+          "inode": 10364819
+        },
+        "pidfdHeld": true
+      }
+    ],
+    "residentCleanup": [
+      {
+        "gracefulRequest": true,
+        "exitCode": 0,
+        "forced": false,
+        "remaining": [],
+        "socketAbsent": true,
+        "passed": true,
+        "errors": [],
+        "inventoryComplete": true,
+        "absenceVerified": true,
+        "inventoryDefinition": "observed PID/start/UID generations + resident process group + exact isolated runtime/data environment; no command lines exported"
+      },
+      {
+        "gracefulRequest": true,
+        "exitCode": 0,
+        "forced": false,
+        "remaining": [],
+        "socketAbsent": true,
+        "passed": true,
+        "errors": [],
+        "inventoryComplete": true,
+        "absenceVerified": true,
+        "inventoryDefinition": "observed PID/start/UID generations + resident process group + exact isolated runtime/data environment; no command lines exported"
+      }
+    ],
+    "unassessedRawMetrics": {
+      "historyOpenFirstGenericDrawableObservationMs": 665.3248030343093,
+      "historyOpenUpperBoundMs": null,
+      "sampledProcessFamily": {
+        "peakTotals": {
+          "rssBytes": 238616576,
+          "pssBytes": 100669440,
+          "privateBytes": 74801152
+        },
+        "cpuPercentOneCoreLowerBound": 10.129467952439628,
+        "observedProcessGenerations": 8,
+        "samplingSpanSeconds": 8.983690004970413,
+        "shortLivedChildrenMayBeMissed": true
+      }
+    },
+    "gates": {
+      "captureBurst": {
+        "status": "unassessed",
+        "reason": "50-upload workload uses explicit synthetic file editors; actual capture burst is not exercised"
+      },
+      "historyOpenUpperBoundMs": {
+        "status": "unassessed",
+        "reason": "content_endpoint_not_witnessed"
+      },
+      "cleanup": {
+        "status": "pass"
+      }
+    }
+  },
+  "hostAdmission": {
+    "sampleSeconds": 10.031895769992843,
+    "rowCount": 331,
+    "clockTicksPerSecond": 100,
+    "snapshotErrors": [],
+    "unexplainedUnmeasuredRows": [],
+    "decision": {
+      "admitted": true,
+      "admission": {
+        "admitted": true,
+        "rule": "same-generation identity-bound QMP paused; no competing heavy work",
+        "sampleSeconds": 10.031895769992843,
+        "exclusiveCpuLimitOneCorePercent": 10.0,
+        "zeroVmTicksRequired": false,
+        "wholeHostBound": {
+          "available": true,
+          "strictlyBelowLimit": false,
+          "scope": "Linux accounted CPU; separate conservative whole-host upper bound, not per-row measured CPU",
+          "busyFields": [
+            "user",
+            "nice",
+            "system",
+            "irq",
+            "softirq",
+            "steal"
+          ],
+          "excludedDuplicateFields": [
+            "guest",
+            "guest_nice"
+          ],
+          "excludedNonExecutingFields": [
+            "idle",
+            "iowait"
+          ],
+          "limitPercentOneCore": 10.0,
+          "aggregateDeltaTicks": {
+            "user": 37,
+            "nice": 0,
+            "system": 30,
+            "idle": 3949,
+            "iowait": 1,
+            "irq": 0,
+            "softirq": 0,
+            "steal": 0,
+            "guest": 0,
+            "guest_nice": 0
+          },
+          "busyDeltaTicks": 67,
+          "bootId": "4ba460ee-1af9-4ae8-b832-d1c54cdb642f",
+          "coreSet": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "hz": 100,
+          "bootTimeSeconds": 1792602091,
+          "roundingUncertaintyTicks": 48,
+          "readUncertaintyNs": 548320,
+          "conservativeUpperCpuNs": 1150548320,
+          "denominatorLowerNs": 10000182111,
+          "upperPercentOneCore": 11.505273676310553,
+          "formula": "100*((sum busy delta + 2*6*possibleCPUs)/HZ + coreCount*readPaddingSeconds)/innerGapLowerSeconds < 10"
+        }
+      }
+    },
+    "scope": "Reviewed per-process Linux-accounted model. Separate11.505273676310553% aggregate upper bound is NOTsub10; no missingrow needed it; no physical-cycle/instantaneous claim."
+  },
+  "cleanup": {
+    "lease": {
+      "owner": "Codex379",
+      "session": "codex-379-capture-upload3",
+      "host": "m74",
+      "purpose": "379 CAPTURE FILEUPLOAD50 run=cu3 allocation=root-379-cu3-5d99ec97-20261025T003622Z",
+      "acquired": "2026-10-25T00:38:00Z",
+      "expires": "2026-10-25T00:53:00Z",
+      "heartbeat": "2026-10-25T00:38:00Z"
+    },
+    "allFourProductResidentNormal0NonforcedCompleteInventoryAbsenceSocket": true,
+    "captureChild": {
+      "passed": true,
+      "reaped": true,
+      "actions": [],
+      "errors": [],
+      "forced": false,
+      "exitCode": 0
+    },
+    "fixture": {
+      "passed": true,
+      "reaped": true,
+      "actions": [
+        "SIGINT"
+      ],
+      "errors": [],
+      "forced": false,
+      "exitCode": -2
+    },
+    "scopedInput": {
+      "passed": true,
+      "attempts": [
+        {
+          "command": [
+            "xdotool",
+            "keyup",
+            "Control_L",
+            "Shift_L",
+            "F12"
+          ],
+          "exitCode": 0
+        },
+        {
+          "command": [
+            "xdotool",
+            "mouseup",
+            "1"
+          ],
+          "exitCode": 0
+        }
+      ],
+      "scope": "same allocated physical X11 session; key/button releases only; never Escape",
+      "leaseExpiredButStillMatchingOwnedGeneration": false
+    },
+    "containment": {
+      "passed": true,
+      "identity": {
+        "unit": "putgd379-cu3-d858423e8b3f6c69.service",
+        "invocationId": "f40fe6ec33f64634878ddadec629c0c4",
+        "controlGroup": "/user.slice/user-1000.slice/user@1000.service/app.slice/putgd379-cu3-d858423e8b3f6c69.service",
+        "cgroupDevice": 31,
+        "cgroupInode": 468970,
+        "description": "putgd379 allocation=root-379-cu3-5d99ec97-20261025T003622Z nonce=d858423e8b3f6c69",
+        "allocation": "root-379-cu3-5d99ec97-20261025T003622Z",
+        "workerIdentity": {
+          "pid": 653471,
+          "startTicks": 28660928,
+          "uid": 1000,
+          "executable": "/usr/bin/python3.12"
+        }
+      },
+      "forceUsed": false,
+      "absent": true,
+      "normalExitProved": false,
+      "creatorFence": {
+        "passed": true,
+        "sameCreatorInFinalizer": true,
+        "reaped": null
+      },
+      "creatorFenceError": null,
+      "evidencePassed": true,
+      "persistenceErrors": []
+    },
+    "workerExit": {
+      "ExecMainCode": "1",
+      "ExecMainStatus": "1"
+    },
+    "normalWorkerExit0Claimed": false,
+    "originalVmPause": {
+      "pid": 308684,
+      "startTicks": 9741363,
+      "uid": 1000,
+      "executable": "/usr/bin/qemu-system-x86_64",
+      "qmp": "/home/patrick/work/put.gd/work/windows/runs/w11b-3e92324d501c/qmp.sock",
+      "qmpDevice": 2050,
+      "qmpInode": 14055411,
+      "name": "windows11-w11b-3e92324d501c",
+      "uuid": "a2dc24c2-abff-4972-a524-cc44d44c8681",
+      "beforeStatus": {
+        "status": "running",
+        "singlestep": false,
+        "running": true
+      },
+      "status": {
+        "status": "paused",
+        "singlestep": false,
+        "running": false
+      },
+      "checkedUtc": "2026-10-25T00:38:09.650564+00:00"
+    },
+    "originalVmRunningReceipt": {
+      "pid": 308684,
+      "startTicks": 9741363,
+      "uid": 1000,
+      "executable": "/usr/bin/qemu-system-x86_64",
+      "qmp": "/home/patrick/work/put.gd/work/windows/runs/w11b-3e92324d501c/qmp.sock",
+      "qmpDevice": 2050,
+      "qmpInode": 14055411,
+      "name": "windows11-w11b-3e92324d501c",
+      "uuid": "a2dc24c2-abff-4972-a524-cc44d44c8681",
+      "beforeStatus": {
+        "status": "running",
+        "singlestep": false,
+        "running": true
+      },
+      "status": {
+        "status": "running",
+        "singlestep": false,
+        "running": true
+      },
+      "checkedUtc": "2026-10-25T00:38:58.968120+00:00"
+    },
+    "packagePurged": true,
+    "matchingReleasePassed": true,
+    "resourceReleased": true,
+    "releasedUtc": "2026-10-25T00:39:01.894442+00:00",
+    "independentFinalDesktopCheck": [
+      {
+        "state": "free",
+        "breakable": false,
+        "last": {
+          "event": "release",
+          "at": "2026-10-25T00:39:01Z",
+          "owner": "Codex379",
+          "by": "codex-379-capture-upload3",
+          "receipt": "/home/patrick/putgd-lab/locks/history/2026-10-25T00-39-01Z-release.json"
+        },
+        "notes": [
+          "3 process(es) outside the desktop session (no DISPLAY or WAYLAND_DISPLAY; shared SSH work): 2067 313646 313651"
+        ],
+        "present": [],
+        "ok": true,
+        "host": "m74",
+        "action": "status",
+        "resource": "desktop",
+        "now": "2026-10-25T00:39:11Z"
+      }
+    ],
+    "noRetryOrNewAllocation": true
+  },
+  "figures": [
+    {
+      "file": "cu3-selector-and-queue-limit.png",
+      "sha256": "467f9a006ce3b4d4677d9f1b6d0eadc43c5f361b131bd273009faf8c9797e3cb",
+      "size": [
+        1920,
+        1408
+      ],
+      "sourceSha256": "175cbaff28dfc5e5bbbabce6e6c9e620c07c325f7db2232a897888f734e3123d",
+      "sourceRgbSha256": "41ca3154d6606e2b238a42103c46e5c81e0d87aa8c6ab6cb9e5867d068aef9c9",
+      "unchangedSourceRectangle": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "captionAppendedBelowSource": true,
+      "meaning": "Separate unscored sanitized actual stroke; all other pixels synthetic replacement. Caption reports actual new-head timing and failed queue without oldpass transfer. Cursor omission is not product outline defect."
+    }
+  ],
+  "safeRecoverySource": {
+    "phase": "burst",
+    "sha256": "ff83b8e75f7b4fa25e021f1d4027abaab5a6159abb46c875f7d0af6007d24a8d",
+    "size": [
+      1920,
+      1080
+    ],
+    "rgbSha256": "2a41fa075f470a77bff3ab58ddab797d2cc19342cb368b058b2c15aa17adda25",
+    "colors": {
+      "(80, 90, 100)": 2073600
+    }
+  },
+  "privateEvidence": {
+    "remoteArchive": "/home/patrick/putgd-lab/p379/exports/cu3-originals.tar",
+    "archiveSha256": "2e1aaccff7c5d57449912938e9007a4b41960d1f0623f805e0506f1ce9f26612",
+    "archiveBytes": 6584320,
+    "manifestSha256": "4e8992f8116cff5ea42fdb5ed1dfdd79f9eed24dd511d9fc8661e65c9bbbd5d5",
+    "originalCount": 126,
+    "regularArchiveMembersIncludingSeparateManifest": 127,
+    "rawFileCount": 90,
+    "allOriginalsRetained": true,
+    "allHashesAndSizesVerified": true,
+    "rawSourceCopyHashesVerified": true,
+    "originals": [
+      {
+        "path": "p379/controllers/cu3/burst-command.json",
+        "bytes": 2288,
+        "sha256": "9b62e3c67e51b79a5b520d93d26673c225a0a34be03ae3de066e7de109554ad5"
+      },
+      {
+        "path": "p379/controllers/cu3/burst-driver.log",
+        "bytes": 89,
+        "sha256": "2320aa93c61abeebac3fb17110d871daff9c08a78305875c5b8288f56f11cce4"
+      },
+      {
+        "path": "p379/controllers/cu3/burst-owned-child.json",
+        "bytes": 441,
+        "sha256": "a550a75d2fc56a506d36d647cd6428eeab463378c0232552ddd8e0d4de3dada5"
+      },
+      {
+        "path": "p379/controllers/cu3/burst-sockets.json",
+        "bytes": 899,
+        "sha256": "3b6dbddd313758685386cfb2003cce1552843f5710b10234d33f11035c31ef8a"
+      },
+      {
+        "path": "p379/controllers/cu3/capture-command.json",
+        "bytes": 1841,
+        "sha256": "4e12bb1dd311eb0c658af0a80720bff56d7d8f759da6b9be9fbefdace14972cf"
+      },
+      {
+        "path": "p379/controllers/cu3/capture-driver.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "p379/controllers/cu3/capture-owned-child.json",
+        "bytes": 443,
+        "sha256": "eef6e22b43aa588479acde5397a118206c5641f89d0bd4ce666578229aa84d24"
+      },
+      {
+        "path": "p379/controllers/cu3/capture-sockets.json",
+        "bytes": 899,
+        "sha256": "3111ace5555f95e5ac2c5a532e2efad5e390ff4bff7c7c22a22329fa2108fa9a"
+      },
+      {
+        "path": "p379/controllers/cu3/config.json",
+        "bytes": 13732,
+        "sha256": "c1e2df88f2d98ea69d7bd93b71c8875ea2697301a664783ecadc79c202621bf5"
+      },
+      {
+        "path": "p379/controllers/cu3/contained-launch-outcome.json",
+        "bytes": 6165,
+        "sha256": "123b61d9b131b838ca90edddfa019b55132c344a1b659845a461e2e2aa1d0b21"
+      },
+      {
+        "path": "p379/controllers/cu3/fixture-command.json",
+        "bytes": 490,
+        "sha256": "6281cc20702d6d5adb0e17a1cf73bfedbb20a0bbabc3e14a62313cdb2bd56a08"
+      },
+      {
+        "path": "p379/controllers/cu3/fixture-ready.json",
+        "bytes": 334,
+        "sha256": "9e082efa5c2fb4f5b87416f1c22a5349b66b982c88f0d0eb689b133c7edd820c"
+      },
+      {
+        "path": "p379/controllers/cu3/fixture-stderr.log",
+        "bytes": 510,
+        "sha256": "24957134d05adf0e3c7d3dc6f9c8a232016917717428075bcadc94ad818617c8"
+      },
+      {
+        "path": "p379/controllers/cu3/install.log",
+        "bytes": 1975,
+        "sha256": "fc12c8a1e897b0175dcbf12216f04bedd67146a3d1e247574a5f1311b2d7901c"
+      },
+      {
+        "path": "p379/controllers/cu3/journal.json",
+        "bytes": 1866,
+        "sha256": "412927c245f812ecde4639c0ff8399ec1a50b090bf3f3ad5d45a067685cb130f"
+      },
+      {
+        "path": "p379/controllers/cu3/launch-outcome.json",
+        "bytes": 23367,
+        "sha256": "754e417e3bd490a011063a0ea4e82aeab3dda9d8196b609c4b174f9c3de9dcd3"
+      },
+      {
+        "path": "p379/controllers/cu3/launch-owner.json",
+        "bytes": 515,
+        "sha256": "93736e7a5b73e2618c4ce8184a600fb448a5c8597c2205e713ccbec663de52d8"
+      },
+      {
+        "path": "p379/controllers/cu3/launch-primary-error.json",
+        "bytes": 7010,
+        "sha256": "71e83cbc188b576ed12d4d16f62d7256e1e86a2780cfd88d3cc3db02f585d8fe"
+      },
+      {
+        "path": "p379/controllers/cu3/observation.json",
+        "bytes": 315683,
+        "sha256": "9ff820537c4cae7b971982d5a0a9dbb2cdb32e59e625d2825eaaf75ac2b45659"
+      },
+      {
+        "path": "p379/controllers/cu3/pause.json",
+        "bytes": 562,
+        "sha256": "48448a0de313e2bded64fa2f9ed31770458194baf9277bd9b041ea72c207ef41"
+      },
+      {
+        "path": "p379/controllers/cu3/purge-containment-proof.json",
+        "bytes": 873,
+        "sha256": "656c22d0d22ca0e6cf4e96056ae0358a956c5afbb3bb2394311e9472cca1c931"
+      },
+      {
+        "path": "p379/controllers/cu3/purge.log",
+        "bytes": 2051,
+        "sha256": "f132616dff96641699dfb3a9218c03bfb24157dfe2d1a49ee37635674a7d5cac"
+      },
+      {
+        "path": "p379/controllers/cu3/raw-export.json",
+        "bytes": 17827,
+        "sha256": "7e0cf1e47f5bf36d290cf7ec910c194bcdbf6e8d4901122c53f0db1c48c9e9b7"
+      },
+      {
+        "path": "p379/controllers/cu3/resume.json",
+        "bytes": 562,
+        "sha256": "2673361eafce737860786db03695d938df2683dc10de377263a4770e84e68ce5"
+      },
+      {
+        "path": "p379/controllers/cu3/source.py",
+        "bytes": 117673,
+        "sha256": "c11569506e258565a1bf1bf29cc2177ada6425fc61c6e7d58232c8b915a6633b"
+      },
+      {
+        "path": "p379/controllers/cu3/unit-command.json",
+        "bytes": 1187,
+        "sha256": "1f3b04fe1d3d678099fbec602bbc4a0cd2585ec6bda4255c6572d81c66f939df"
+      },
+      {
+        "path": "p379/controllers/cu3/unit-drain.json",
+        "bytes": 820,
+        "sha256": "87c9fb96590e4e849f9c3c407df59eec21ab07a00d40800caf8edce92aad9d35"
+      },
+      {
+        "path": "p379/controllers/cu3/unit-intent.json",
+        "bytes": 919,
+        "sha256": "a5f6a19a473c6f03a4f6d9b5990fc3b2ec52b43b95ce1d7331da810ce60196f3"
+      },
+      {
+        "path": "p379/controllers/cu3/unit-start-reply.json",
+        "bytes": 119,
+        "sha256": "1a5954adda09851b575bd854980127fa59e9ddd1f0b8c8e717a5c95d04c5986f"
+      },
+      {
+        "path": "p379/controllers/cu3/worker-abort.json",
+        "bytes": 61,
+        "sha256": "6ec00d77ee489913c3c14a6be4bdaf64686d444769540453cbaa224633468ac6"
+      },
+      {
+        "path": "p379/controllers/cu3/worker-exit-go.json",
+        "bytes": 57,
+        "sha256": "b47cc81e44cfe88a7c61dca8c9b4dc10b1533acf97f7e1509e03d21cd4645dba"
+      },
+      {
+        "path": "p379/controllers/cu3/worker-go.json",
+        "bytes": 115,
+        "sha256": "4a8d89a291bb669493cb5b7ff10b614c6315a8af2fc078a4030b92c1ef5284ce"
+      },
+      {
+        "path": "p379/controllers/cu3/worker-ready.json",
+        "bytes": 1038,
+        "sha256": "7e192d068b15f3616e1a3653df5cc6e33875903fce5be83c66d5dbbf93bb9f0d"
+      },
+      {
+        "path": "p379/controllers/cu3/worker-result.json",
+        "bytes": 3345,
+        "sha256": "e33d7d32fc75d2057f92ea0ec85704f9e804b589881e56b3d60d954b46a82f3b"
+      },
+      {
+        "path": "p379/raw/cu3/burst/archive/images/Screen-Capture-2026-10-24-19-38-39.png",
+        "bytes": 716,
+        "sha256": "d8f566e56ab57c47bb282860ce5d63852ebbf7e91db4f3e3ee8bc51310780bf5"
+      },
+      {
+        "path": "p379/raw/cu3/burst/archive/images/Screen-Capture-2026-10-24-19-38-40-9625492f-876f-4948-9048-98db18b1c8d5.png",
+        "bytes": 717,
+        "sha256": "feb968edc59c31a7d82202117b814110d3a660c95fd1be7fe93c29c6671b5676"
+      },
+      {
+        "path": "p379/raw/cu3/burst/archive/images/Screen-Capture-2026-10-24-19-38-40.png",
+        "bytes": 717,
+        "sha256": "85489c952373a0ce60995d1eb823e35dc272615755077c8233e2879ef73c4db4"
+      },
+      {
+        "path": "p379/raw/cu3/burst/archive/images/Screen-Capture-2026-10-24-19-38-41.png",
+        "bytes": 717,
+        "sha256": "f699b73a5f222f143b3ea896e36046588ea47ac8d0aec6880e749411efe18db5"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-00-synthetic.png",
+        "bytes": 103730,
+        "sha256": "7693cf45ee949115a0897f65159db3a91eb716d0c73a523db911153e97b6a488"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-01-synthetic.png",
+        "bytes": 103617,
+        "sha256": "5f8805bfad7d90a81f984a5de510e98c761b20434756759263d8cebd2d1ed789"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-02-synthetic.png",
+        "bytes": 103646,
+        "sha256": "8cc651377266a5b0b2fe275d0e01ecda2ac2de2530ffa4ff9354781b2ee655d6"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-03-synthetic.png",
+        "bytes": 103694,
+        "sha256": "dcef790c885c205f5a622e6a2dd718ec3ff9fb8d98af9473f3022f2e8a60e7eb"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-04-synthetic.png",
+        "bytes": 103700,
+        "sha256": "8a3e9c58f498589caf9da05d4ac7eeec64c7a5720f301aad907ceee9be215277"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-05-synthetic.png",
+        "bytes": 103786,
+        "sha256": "32c03ef39e38d3bb4a359be1ac45e1c74acd28dbbe8a14a50a140b706d27beb0"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-06-synthetic.png",
+        "bytes": 103683,
+        "sha256": "79b7b2fb5c4bfa70a75b228e6af128bf3b8c4263183aeb5107320b9c191460f8"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-07-synthetic.png",
+        "bytes": 103763,
+        "sha256": "49f660b6afc1a0f7086621d7e5e1e61059d67b11a5a3ed4723f33dc9c5cee7fc"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-08-synthetic.png",
+        "bytes": 103732,
+        "sha256": "4acead5bceece9c5581ada5ad891ef395f41a90ec54911880b40adcf9800c96b"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-09-synthetic.png",
+        "bytes": 103763,
+        "sha256": "dd59cc50e46b158ae91a64eedd3782e8f55d0f909074eecf8301e51a0f32b74b"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-10-synthetic.png",
+        "bytes": 103561,
+        "sha256": "76c104ea27ae9538c3aa4932f9256b74735b230a658a68dc4ed02c5d12173f63"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-11-synthetic.png",
+        "bytes": 103599,
+        "sha256": "81bd233c6f434a5f7a2639fbd68ab635b5c0a473ab14078cd0edc057a763a566"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-12-synthetic.png",
+        "bytes": 103740,
+        "sha256": "81ca5cbd3f7a5315c8f88e4c4a852b7ffcad38d7097da63f0fedf35bebadaae4"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-13-synthetic.png",
+        "bytes": 103710,
+        "sha256": "8a53ffe1107659e6cd0b3df9dd5a15b6f7ece1a13343a439b13b913d24ae0c15"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-14-synthetic.png",
+        "bytes": 103762,
+        "sha256": "dddef6dc757d4e18f9335bf29930582a2015f87cb0a17d5df250bd77ab184fc5"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-15-synthetic.png",
+        "bytes": 103647,
+        "sha256": "b1a34cadfd10d1a240e93c0eefe325dbf4f8c335c061de3896f29e1459ff8466"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-16-synthetic.png",
+        "bytes": 103758,
+        "sha256": "b4d43391ee214135c2323023b615d2e1fa19a4860866e00717ec0b6736f784bf"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-17-synthetic.png",
+        "bytes": 103742,
+        "sha256": "99e5cc55de4129657c1c445bba01cf22429fb22d6d12ea4d33598d401c73c50c"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-18-synthetic.png",
+        "bytes": 103717,
+        "sha256": "260bd3f9ad5ef007a414a27ffc6804e1dbf2150c094440f3ca3c06c2d92f5e4c"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-19-synthetic.png",
+        "bytes": 103596,
+        "sha256": "4f1a98509b4cc2f7cc5de314b5f5a674884aafaba4ab68ac91bf98eb0620ce1d"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-20-synthetic.png",
+        "bytes": 103590,
+        "sha256": "8727acaeceebf93b363872cce275d1a803fe42f8a3452b1ba1edd8ee8756f59c"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-21-synthetic.png",
+        "bytes": 103747,
+        "sha256": "ba683eee877a372a9b9714337ce2dccae99f027d0b91c1daca2fb7a557db2d28"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-22-synthetic.png",
+        "bytes": 103694,
+        "sha256": "92c5b8ea8951e50d9de5c1c7a9f86a6dfdcaa7eeb1df6e2cc8aebdac07c54d9f"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-23-synthetic.png",
+        "bytes": 103747,
+        "sha256": "9b83368917744e66c6c83a3558689db526304f242b1f5cd630cdee13ab0de3d9"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-24-synthetic.png",
+        "bytes": 103660,
+        "sha256": "ece62a2be630a25d2ebc602c69cbfdeea273ea41d2a8010957be4cf081feb890"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-25-synthetic.png",
+        "bytes": 103736,
+        "sha256": "fb7b92c75b6b274f596307c66fe324c49608de83b953afc4b32a4c5d8725a5ca"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-26-synthetic.png",
+        "bytes": 103739,
+        "sha256": "fbaec86644f3356b91e7184b6db2a2e33772ea8bb4e71643d7a32259242a9fb6"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-27-synthetic.png",
+        "bytes": 103734,
+        "sha256": "ff4828a17c9c75f1bfa2973f3a7648bcc5c1adb74749a4a7a6fd16849d1f44db"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-28-synthetic.png",
+        "bytes": 103585,
+        "sha256": "198fbedc9a5f35dc37c68dc86a669dffe752dac0725f086fe515de4cf7b1b5bd"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-29-synthetic.png",
+        "bytes": 103633,
+        "sha256": "8fbba5f35dad74aef3e89c9b55250431203c70776deb2733cdb6a52d244f8df2"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-30-synthetic.png",
+        "bytes": 103650,
+        "sha256": "0b7ae15c982f24127ca23739d00322dbc5b9ccdf6f353b8d0cc335aa739d0561"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-31-synthetic.png",
+        "bytes": 103714,
+        "sha256": "779f80cef3aaf48ace4e3c4b282f094b6a5f169f807e3dabafeea0e5a83501dc"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-32-synthetic.png",
+        "bytes": 103755,
+        "sha256": "988303fd2b22a682a7f51d7ece95ca9c6b0b4af4ebd2812953b30ba7375cc1cc"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-33-synthetic.png",
+        "bytes": 103693,
+        "sha256": "64303b399d7dd6e40a041287f4662594e3315008852d93d6010ce921ef88eea3"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-34-synthetic.png",
+        "bytes": 103765,
+        "sha256": "afd50515b58eda3f22ab2cdef581f3f80816ebee7d34d49f773a1d731aa4c83c"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-35-synthetic.png",
+        "bytes": 103729,
+        "sha256": "ccaca0ab18f48bf92c075ded6772779931f257adc046ec9ed41a77772f6453b5"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-36-synthetic.png",
+        "bytes": 103794,
+        "sha256": "a8cd05ec1a66c9d2ca7fdd7cf9b6673389b42c236329aac7add79126d0c18fff"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-37-synthetic.png",
+        "bytes": 103668,
+        "sha256": "bf915ea8882133a3dffc8a3c60393b8a886a2917e4c2e07f3609e19670e476af"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-38-synthetic.png",
+        "bytes": 103656,
+        "sha256": "b0dd5521b9adef6360a46c0d4f80be80ed559f09ef1aab4c3b4e224c7fc08082"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-39-synthetic.png",
+        "bytes": 103726,
+        "sha256": "69b49d25111d0f11918dd34ee3b4906917380ac5a4ce3dad89d3d66250a866d6"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-40-synthetic.png",
+        "bytes": 103726,
+        "sha256": "39c8ba370d08e8b07a2220633c8e8d159cb9cbb2275a88c4a789af6b5a8094a8"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-41-synthetic.png",
+        "bytes": 103746,
+        "sha256": "5a067b3a4d206b498992c5219267acdb4622b0fb51b0ba5fcfb8e6ab7610c666"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-42-synthetic.png",
+        "bytes": 103586,
+        "sha256": "8f1b39f97230ce65024ffa91b9c00894125c5e72d5842047a6c1d0f9df818668"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-43-synthetic.png",
+        "bytes": 103737,
+        "sha256": "0a47ca2aa58ed9c0819b9c6f5ac4a991f6b1318664a9793499ef4d0cd32028af"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-44-synthetic.png",
+        "bytes": 103720,
+        "sha256": "69333899db786fc3fe68d557a2758d25921854b08b97273f203f97407d8bafa0"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-45-synthetic.png",
+        "bytes": 103742,
+        "sha256": "60cf2002b77acbe96bc810912ec358696be523fde76c255078f3757104301db1"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-46-synthetic.png",
+        "bytes": 103637,
+        "sha256": "c3b7a19883713f4bcd7ec2c0a1ab6a4975b1048c95240907198507242752cb1b"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-47-synthetic.png",
+        "bytes": 103645,
+        "sha256": "4ac8fde24d89366b69a58e3d2bff8161d585fe917e2ab9057a8f348698041b1e"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-48-synthetic.png",
+        "bytes": 103709,
+        "sha256": "f0ad99858082d44a7ced3062d7ca0f208a05d3dd61e20de269f67a2a1d3d29bf"
+      },
+      {
+        "path": "p379/raw/cu3/burst/burst-media/queue-49-synthetic.png",
+        "bytes": 103697,
+        "sha256": "64ec2bc19115594c361691ff7254513a0bf195702be43e01bd29aec77a4ec653"
+      },
+      {
+        "path": "p379/raw/cu3/burst/capabilities-setup.json",
+        "bytes": 3447,
+        "sha256": "504a3e9a482ef1d3228789bce385d47418e88567e7b410ac3aefbee85884e93a"
+      },
+      {
+        "path": "p379/raw/cu3/burst/capabilities.json",
+        "bytes": 6466,
+        "sha256": "a1277cceec32aa53743d99b2060a85246fce6dcd5a5e777e761f91ed372b5e0d"
+      },
+      {
+        "path": "p379/raw/cu3/burst/config/putgd/config.json",
+        "bytes": 3108,
+        "sha256": "ded89c77ed9c3e19b18ff9feb234b893b691189bde5682dcf3decb2954ecf246"
+      },
+      {
+        "path": "p379/raw/cu3/burst/data/putgd/artifacts/15f5ee91-cf1a-436c-894f-a0be3158a2a2/_manifest.json",
+        "bytes": 485,
+        "sha256": "3905ad992c25802b6d3c610f7be006acf52246a700a3abd13d317c164670e114"
+      },
+      {
+        "path": "p379/raw/cu3/burst/data/putgd/artifacts/15f5ee91-cf1a-436c-894f-a0be3158a2a2/b47c8c65-57e0-4a75-9e76-bf0b8ec62011",
+        "bytes": 717,
+        "sha256": "85489c952373a0ce60995d1eb823e35dc272615755077c8233e2879ef73c4db4"
+      },
+      {
+        "path": "p379/raw/cu3/burst/data/putgd/artifacts/2daa900f-225e-4d8d-8dc3-0fb248722a71/1688a714-8ab7-41da-835c-2df129d2f77e",
+        "bytes": 717,
+        "sha256": "feb968edc59c31a7d82202117b814110d3a660c95fd1be7fe93c29c6671b5676"
+      },
+      {
+        "path": "p379/raw/cu3/burst/data/putgd/artifacts/2daa900f-225e-4d8d-8dc3-0fb248722a71/_manifest.json",
+        "bytes": 485,
+        "sha256": "a560b4ffdcff9ede3736cf4b299b974bbf59a2960eb24835f53b47766b71177a"
+      },
+      {
+        "path": "p379/raw/cu3/burst/data/putgd/artifacts/63efa3c0-2c68-4630-8152-5d17faebf4a5/_manifest.json",
+        "bytes": 485,
+        "sha256": "2ed2f6ad1109c3b139681f6f7f2529ff6aa64bfd340302f9d41b6e2bf21278f2"
+      },
+      {
+        "path": "p379/raw/cu3/burst/data/putgd/artifacts/63efa3c0-2c68-4630-8152-5d17faebf4a5/e17e3335-afc1-4638-b449-44c0c57735df",
+        "bytes": 717,
+        "sha256": "f699b73a5f222f143b3ea896e36046588ea47ac8d0aec6880e749411efe18db5"
+      },
+      {
+        "path": "p379/raw/cu3/burst/data/putgd/artifacts/81d74216-dde8-4154-a9cd-e2dc826773c5/02191321-4d92-45bd-b4a1-17d67e8a11d0",
+        "bytes": 716,
+        "sha256": "d8f566e56ab57c47bb282860ce5d63852ebbf7e91db4f3e3ee8bc51310780bf5"
+      },
+      {
+        "path": "p379/raw/cu3/burst/data/putgd/artifacts/81d74216-dde8-4154-a9cd-e2dc826773c5/_manifest.json",
+        "bytes": 485,
+        "sha256": "791cbe1a29187ca3572dd10405605cb70aa05ddb9483bc13696648294a336ee3"
+      },
+      {
+        "path": "p379/raw/cu3/burst/data/putgd/history.sqlite",
+        "bytes": 163840,
+        "sha256": "2156db0464b56de5492fe0a9bedae952c7226d3c125741504a871e8e97593723"
+      },
+      {
+        "path": "p379/raw/cu3/burst/data/putgd/previews/02191321-4d92-45bd-b4a1-17d67e8a11d0.png",
+        "bytes": 1146,
+        "sha256": "28d511df9d27dade9d50e0e764d71d9aef08fcca27db026bfc6bfe48cf1a515b"
+      },
+      {
+        "path": "p379/raw/cu3/burst/data/putgd/previews/1688a714-8ab7-41da-835c-2df129d2f77e.png",
+        "bytes": 1164,
+        "sha256": "25d804488108fd6c93dcddf17772e55b930e62d86e5e7f881039e9dd8f5fed3a"
+      },
+      {
+        "path": "p379/raw/cu3/burst/data/putgd/previews/b47c8c65-57e0-4a75-9e76-bf0b8ec62011.png",
+        "bytes": 1162,
+        "sha256": "cd8b842e7a67c480658bcce2eb24cf2f989852ac28f8e5b742da17a1fc95b539"
+      },
+      {
+        "path": "p379/raw/cu3/burst/data/putgd/previews/e17e3335-afc1-4638-b449-44c0c57735df.png",
+        "bytes": 1146,
+        "sha256": "feb5cd06c0d00042b8b94b26ed9c3274301be583bb367e3997990897458be8ba"
+      },
+      {
+        "path": "p379/raw/cu3/burst/events.jsonl",
+        "bytes": 24428,
+        "sha256": "643b1bb658e69b66d893bebc5651980b47c4d9afbd68303d8c30eb43d3c8205d"
+      },
+      {
+        "path": "p379/raw/cu3/burst/failed-workload.png",
+        "bytes": 8597,
+        "sha256": "ff83b8e75f7b4fa25e021f1d4027abaab5a6159abb46c875f7d0af6007d24a8d"
+      },
+      {
+        "path": "p379/raw/cu3/burst/resident.log",
+        "bytes": 118,
+        "sha256": "902efae7b3849cab95e08f67e58ba16136a79a8fd8799f036c6d26b628726db5"
+      },
+      {
+        "path": "p379/raw/cu3/burst/results.json",
+        "bytes": 12158,
+        "sha256": "2faf2da77a4fc607332eff13eda3f3e2b55e6d0fda8038995ece965a4bd70065"
+      },
+      {
+        "path": "p379/raw/cu3/burst/runtime/dconf/user",
+        "bytes": 2,
+        "sha256": "96a296d224f285c67bee93c30f8a309157f0daa35dc5b87e410b78630a09cfc7"
+      },
+      {
+        "path": "p379/raw/cu3/burst/state/putgd/logs/putgd-20261025T003834779Z-653981-1.jsonl",
+        "bytes": 2644,
+        "sha256": "dd18b7b9e929d912f5f699544f16e8213af8ddb60645d1c3cf5610240c4f5356"
+      },
+      {
+        "path": "p379/raw/cu3/burst/state/putgd/logs/putgd-20261025T003836200Z-654018-1.jsonl",
+        "bytes": 15568,
+        "sha256": "ebd0d32f5ac258fc5b72b81c6c01dba62a133f0afb6e8c21a7342ea7212a09d3"
+      },
+      {
+        "path": "p379/raw/cu3/capture/capabilities-setup.json",
+        "bytes": 3447,
+        "sha256": "504a3e9a482ef1d3228789bce385d47418e88567e7b410ac3aefbee85884e93a"
+      },
+      {
+        "path": "p379/raw/cu3/capture/capabilities.json",
+        "bytes": 6486,
+        "sha256": "81cba99557c04aaa190eb5f3b796ca30e5b6756da8fdd4034ffb6e53ed9f3820"
+      },
+      {
+        "path": "p379/raw/cu3/capture/capture-driver.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "p379/raw/cu3/capture/capture.json",
+        "bytes": 35152,
+        "sha256": "413316899d29e125231eae927afe875e6134c55869eef748c9db170ce867baf5"
+      },
+      {
+        "path": "p379/raw/cu3/capture/config/putgd/config.json",
+        "bytes": 2200,
+        "sha256": "f7c894f5bb701981c090e7c2124492a2f6fe9df6d8b4df72fed5c82e36f47992"
+      },
+      {
+        "path": "p379/raw/cu3/capture/data/putgd/history.sqlite",
+        "bytes": 196608,
+        "sha256": "1e96eac460743d146782abef4c083eb4ef961d31de1a81f3deebd9e4e8529cf3"
+      },
+      {
+        "path": "p379/raw/cu3/capture/events.jsonl",
+        "bytes": 27622,
+        "sha256": "0f6e88dd81dac99b1b48143179d4216fa53f2b7fc36f48459d54699ffe6ebee0"
+      },
+      {
+        "path": "p379/raw/cu3/capture/resident.log",
+        "bytes": 118,
+        "sha256": "902efae7b3849cab95e08f67e58ba16136a79a8fd8799f036c6d26b628726db5"
+      },
+      {
+        "path": "p379/raw/cu3/capture/results.json",
+        "bytes": 13205,
+        "sha256": "729ad6d594ea94be7ce00e1d78adb29fc4d0dfd14df1d080ba3bfb83f88c70da"
+      },
+      {
+        "path": "p379/raw/cu3/capture/runtime/dconf/user",
+        "bytes": 2,
+        "sha256": "96a296d224f285c67bee93c30f8a309157f0daa35dc5b87e410b78630a09cfc7"
+      },
+      {
+        "path": "p379/raw/cu3/capture/state/putgd/logs/putgd-20261025T003822612Z-653494-1.jsonl",
+        "bytes": 2644,
+        "sha256": "51dd36c464cc2c8dbe0a2f597edc297dfdd4b3990d0e34a4489da9871bc82f11"
+      },
+      {
+        "path": "p379/raw/cu3/capture/state/putgd/logs/putgd-20261025T003824035Z-653534-1.jsonl",
+        "bytes": 54390,
+        "sha256": "7f5716042d12c56c292fd677bb8ddea422cc1f3453f0daadae295d40d596c661"
+      },
+      {
+        "path": "p379/raw/cu3/capture/unscored-capture-overlay.png",
+        "bytes": 8696,
+        "sha256": "175cbaff28dfc5e5bbbabce6e6c9e620c07c325f7db2232a897888f734e3123d"
+      },
+      {
+        "path": "p379/receipts/cu3-admission-readonly.json",
+        "bytes": 9470,
+        "sha256": "dd99ae9bcf16a655d2aa1b273c75933cf42b55d53cd33bc0ac581551489f2495"
+      },
+      {
+        "path": "locks/history/2026-10-25T00-39-01Z-release.json",
+        "bytes": 682,
+        "sha256": "562cc3d356bdd0ec62ef730dd109f638ff072f3ac74d52ac3ba11e09aaa3b26c"
+      }
+    ],
+    "localOriginals": {
+      "controller.json": {
+        "bytes": 2683941,
+        "sha256": "9723b62372b93678f775a26ae5a3a42ba015452c7243889cb5d312b33041ea42"
+      },
+      "controller-stdout.json": {
+        "bytes": 790610,
+        "sha256": "5eb46a42d689dd5dc89b4c0ebf464084f660b013221291ac96db53b6b07b3592"
+      },
+      "controller-stderr.log": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "invocation.json": {
+        "bytes": 724,
+        "sha256": "e96dd4405678f2b8fa5fdbf143a7ec9312552a223f71f70936901dfe74288514"
+      },
+      "local-pins.json": {
+        "bytes": 472,
+        "sha256": "13df68d723a6652c09a99af56df520dc1a2447c822af473a7f4aa44a35acb503"
+      },
+      "release-catalog.json": {
+        "bytes": 86,
+        "sha256": "4b33468659f23a150c83791f9092555c679db9b28dbd1fb91f91eff1cdbf358b"
+      },
+      "admission-readonly.json": {
+        "bytes": 9470,
+        "sha256": "dd99ae9bcf16a655d2aa1b273c75933cf42b55d53cd33bc0ac581551489f2495"
+      },
+      "preflight-desktop-status.json": {
+        "bytes": 579,
+        "sha256": "9b2044a6059244b7b291d6a9be8b7caf009a0b8a1f5985405a46d4ac37bffb7e"
+      },
+      "final-desktop-status.json": {
+        "bytes": 579,
+        "sha256": "6e3d7a0cf1e86aedefbf7bd058416303ddaba2c8b48b643a16e4cd6b3016046d"
+      },
+      "execution-result.json": {
+        "bytes": 79,
+        "sha256": "6ea93f46d6daaca5af6b2d132674e27a7dddd3c2e9f0210ca600c79417d1dae9"
+      },
+      "outcome-readonly.json": {
+        "bytes": 9971,
+        "sha256": "20cd16aa7012d819357ea77551a7f704a5a93cc45b9b147704fa8292caa2b268"
+      }
+    },
+    "independentRawAuditSha256": "bacb45d709f0e9d28526365a01eed7ddec0e008ff05cc80143b631442669267a",
+    "restore": "Verify archive + separate embedded manifest; require safe unique regular members, verify every original hash/size, restore to new private directory."
+  },
+  "limitations": [
+    "ActualCU3/new5d99 metrics only; actualCU2/3259 remains immutable",
+    "OnlyemptyHistory selectorDRAWABLE; no compositor/content/populated/capture-acquisition/mixedDPI credit",
+    "Separatevisual unscored; attributedopaque stroke only, allotherpixels explicitlysynthetic",
+    "Correctedqueue refused exactsameprivacyguard; no50/settle/native50capture credit, actualvisibilitycause unproven",
+    "M7/558 productopenPSS failure remains; no stable/full379 acceptance"
+  ]
+}

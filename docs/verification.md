@@ -37,6 +37,95 @@ real channel metadata, continues under #384. These results are targeted
 development-artifact acceptance, not full A–Q/A–K or stable-draft certification.
 The retained-link/TryExec tests at `91864c41` are superseded history.
 
+## Physical Cinnamon performance (#379) — 2026-10-24
+
+The [physical campaign record](evidence/2026-10-24-physical-cinnamon-379/README.md)
+selects the newest published `v26.1024.1185-nightly` ubuntu24.04 DEB
+(`9dfac15c`, package SHA-256 `2094fd4d…e5b3f47`) for m74 Mint/Cinnamon X11.
+Its release and mirror checksums and nightly minisign signature verify.
+Installation passes `dpkg --verify` and the embedded clean-release identity.
+The first capture attempt has no measured samples: the unchanged witness could
+not validate the current selector. Its failure, raw hashes and reviewed recovery
+frame are retained. The bounded memory pilot observed 61.82 MiB open-family PSS
+against the unchanged 60 MiB ceiling; draft-driver review findings require a
+corrected fresh confirmation before acceptance classification. A fresh six-row
+mixed image/video fixture was independently checked after correcting a missing
+GTK typelib prerequisite. All first-batch raw exports were checksum-verified;
+the original VM resumed and the desktop released verified-clean at 15:30:32 UTC.
+The separately reviewed empty-memory-only attempt at `f3b3635` stopped before
+scoring on static-cover admission, with empty metrics; its exact command,
+source/preflight/cleanup hashes and reviewed solid recovery visual are retained.
+Normal exit/full-family/socket cleanup passed, the original VM resumed, and m74
+released verified-clean at 16:11:53 UTC. The next controller refused before
+launching the `02d85059` driver on a private quietness assertion; its missing
+numerical precheck and no-launch limitation are explicit. The original VM
+resumed and m74 released verified-clean at 16:54:28 UTC. No memory
+interval ran in the later m4 attempt either: the controller retained its
+complete host observation, then refused a new unmeasured `mintUpdate` row before
+driver launch. No CPU percentage or heavy load is inferred. Its 12-file export
+is checksum-verified; the original VM resumed and the matching lease released
+verified-clean at 18:36:08 UTC. A later m5 attempt likewise refused before
+launch on an exited kernel worker with no after sample; all 332 observed rows
+and the unchanged refusal are retained without a CPU percentage or heavy-load
+inference. Its 12-file export is verified; the original VM resumed and m74
+released verified-clean at 19:03:35 UTC. Neither attempt produced benchmark
+cleanup flags or numerical metrics. M6 then recorded a 300.077-second cold
+segment within the unchanged cold budgets, but its driver raised `KeyError: 'ui'`
+before History activation. No open or post-close interval ran; the open-PSS
+pilot remains unconfirmed. The raw data, safe cover frame and both normal
+resident exits with complete-inventory/verified-absence flags are retained.
+The original VM resumed, only the run-owned package was purged, and m74 released
+verified-clean at 19:49:31 UTC. M7 at `3259a5b8` then completed the full
+300.118402/30.087980/300.112448-second memory workflow: cold and post-close
+CPU/RSS/PSS pass, but History-open family PSS **64,956,416 B exceeds 62,914,560 B**
+by 2,041,856 B. Its 300 continuous ownership/window checks, normal helper
+generation-1 exit, complete inventory/absence and safe owned VNC crop are
+retained. The original VM resumed and m74 released verified-clean at 20:51:39 UTC.
+This is the valid product budget failure in [#558](https://github.com/patrick-hudson/put.gd-desktop/issues/558), without leak/regression attribution.
+CU1 later refused before acquiring a lock or starting any GUI on a coordinator
+JSON-shape check. A separate native read-only diagnostic returned a supported
+179-row JSON list; the object-only predicate rejected that shape. Its originals,
+no-install/no-pause journal and same-VM-running/free-desktop proof are retained;
+there are no capture samples or file-editor uploads and no product result.
+Fresh CU2 then ran exact `3259a5b8` and the separately pinned native instrument:
+5 warmups + 30 timed empty-history selector invocations give independently
+recomputed p95 **73.359397 ms ≤150 ms**. All 35 distinct operations cancelled
+with empty items/no result; the 36th unscored visual preserves only attributed
+opaque stroke with declared synthetic replacement elsewhere. The subsequent
+50-file editor upload queue exercise stopped at its visibility guard after
+18.363649 seconds; queued work was observed, but no 50/settle or native-capture
+burst credit is claimed. No failed raw frame was retained. All four residents
+exited normally with full inventory/absence proof; allocation containment
+drained, the original VM resumed, package purged and m74 released verified-clean
+at 23:50:03 UTC. All 128 originals and the separate restore manifest are verified.
+CU3 on 2026-10-25 used actual `5d99ec97`: a fresh cancelled 5+30 prelude
+gave drawable p95 **73.449413 ms ≤150 ms**, without transferring CU2 credit.
+The corrected pinned-History activation path ran, but the queue still refused
+the unchanged visibility comparison after 18.752080 seconds. No 50/settle credit
+or failed raw frame. Four product normal-0/full-cleanup receipts, restored VM,
+purge, containment drain and verified release at 00:39:01 UTC are retained;
+126 originals plus a manifest and 11 local receipt hashes verify.
+M1 stays a pilot and M6 stays partial. No whole performance, populated history,
+burst or network acceptance is claimed. Driver hardening (#495,
+PR #554) and the performance driver (PR #555) remain separately identified code
+work; old history-growth revisions are held. Unbudgeted response thresholds require
+Patrick's approval. The eventual nightly results do not certify stable assets;
+#384 must repeat them on those bytes.
+
+### Complete runs — 2026-10-25
+
+After the driver fixes on #555, every #379 workload ran to completion on m74
+with published nightly 1185 under a normal desktop lock
+([record](evidence/2026-10-24-physical-cinnamon-379/README.md#complete-runs-2026-10-25)).
+Capture with 10,000 History entries: p95 71.803503 ms, pass. 10,000-entry
+History: open ≤627 ms, scroll p95 50.4 ms, search p95 197 ms, preview p95
+872 ms, Copy image and Delete from destination verified; these response gates
+stay unassessed until Patrick approves thresholds. Burst: 50/50 verified
+uploads, then settled RSS 41.1 MiB / PSS 29.9 MiB fail (#560). Slow network:
+progress, responsive input and retry pass; cancel on a stalled preflight took
+115.8 s (#561). Also filed: #559 (queued uploads labelled Editing) and #566
+(delete confirmation shows raw JSON).
+
 ## First stable gate plan — 2026-10-22
 
 No release asset has been accepted yet. The first stable switches to calendar
@@ -56,7 +145,7 @@ work packages:
 | DEB lifecycle, recording rows, live S3 | [#375](https://github.com/patrick-hudson/put.gd-desktop/issues/375) | partial: source144 Cinnamon VM only; no state-preserving upgrade or removal + login on Wayland; schema 5→7 never exercised |
 | RPM lifecycle on f44 | [#377](https://github.com/patrick-hudson/put.gd-desktop/issues/377) | partial: repo upgrade 816→828 only |
 | GUI/CLI/MCP parity, AE17, fresh-agent walkthrough | [#378](https://github.com/patrick-hudson/put.gd-desktop/issues/378) | partial: 2026-10-13, CLI `dev.143` |
-| Physical Cinnamon latency, 10,000-entry history, burst, slow network | [#379](https://github.com/patrick-hudson/put.gd-desktop/issues/379) | latency stale (current63, 121.273 ms p95); history/burst/slow network not started |
+| Physical Cinnamon latency, 10,000-entry history, burst, slow network | [#379](https://github.com/patrick-hudson/put.gd-desktop/issues/379) | nightly 1185, all workloads complete on m74 (2026-10-25): capture p95 73.36 ms empty / 71.80 ms with 10,000 entries, pass. 10,000-entry History complete; response thresholds await approval. Fails: History-open PSS [#558](https://github.com/patrick-hudson/put.gd-desktop/issues/558), post-burst settled RSS/PSS [#560](https://github.com/patrick-hudson/put.gd-desktop/issues/560), stalled-preflight cancel 115.8 s [#561](https://github.com/patrick-hudson/put.gd-desktop/issues/561) ([record](evidence/2026-10-24-physical-cinnamon-379/README.md)) |
 | Multi-display geometry in VMs | [#380](https://github.com/patrick-hudson/put.gd-desktop/issues/380) | partial: 3-head Cinnamon X11 region, single-output fractional scale |
 | Physical mixed DPI and rotation | [#381](https://github.com/patrick-hudson/put.gd-desktop/issues/381) | blocked: no builder has two outputs; proposed for 0.1.2 |
 | Uninstall login-startup entry | [#382](https://github.com/patrick-hudson/put.gd-desktop/issues/382) | closed by Patrick; 11 development-artifact rows pass, legacy exception accepted; PR integration and #384 release checks remain ([evidence](evidence/2026-10-24-uninstall-startup-382/README.md)) |

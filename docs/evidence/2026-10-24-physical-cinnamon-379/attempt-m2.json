@@ -1,0 +1,302 @@
+{
+  "schemaVersion": 1,
+  "run": "m2",
+  "scenario": "memory",
+  "status": "failed_preinterval_lab_admission",
+  "accepted": false,
+  "startedUtc": "2026-10-24T16:09:13.362614+00:00",
+  "elapsedSeconds": 2.8705105019907933,
+  "errorCode": "static_cover_not_visible_on_wall",
+  "metrics": {},
+  "scoredIntervalsStarted": false,
+  "classification": "Lab static-cover admission failure only; no product performance failure or numerical confirmation inferred",
+  "scope": "Explicitly reviewed empty-memory-only reached source paths; no fixture, endpoint, capture/native driver, accessibility override or other scenario",
+  "driver": {
+    "sha256": "097454af245d48f43067a0e406c959113adff899422403a102f9fdf8c4d4a58f",
+    "revision": "f3b3635132f2d5b909935d8119f1f32908e38cec",
+    "revisionSource": "explicit-declaration",
+    "sourceFiles": {
+      "tests/performance/physical_campaign.py": "097454af245d48f43067a0e406c959113adff899422403a102f9fdf8c4d4a58f",
+      "tests/performance/bench_ui_process.py": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+      "tests/performance/observe_idle.py": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe",
+      "tests/performance/campaign_fixture.py": "330632490f68fb3621f19261f35e64643849b26190de256c969cdc89e79d41d9",
+      "tests/performance/campaign_ui.py": "68e66b9f4adf2dd75c3ae4b7a8d6ade1f2d138ee23ffdfd3a714d4265b3cfcbd",
+      "tests/performance/campaign_workloads.py": "2be3cd64941d85370f0f79418109198458c7ab77a851f0dc8798444fe6cef4a6",
+      "tests/performance/campaign_proxy.py": "39973a4603cedf82ae89250c222ae5f508f36aa127be4d501f2ee3c3eae0e98b",
+      "tests/performance/campaign_lifecycle.py": "e49fcba04834857892c174088e72eb200a47cbfbfeb972a28278c3e38cecdf6a",
+      "tests/performance/build_current_capture.py": "dfab0d0aefc471cd13eb3ec6e1bb6b0c57614ac424d2067eca4c5846de0f95bd",
+      "tests/performance/campaign_frames.py": "6c013f4cbce53b96ce6c2dd1b0b1d396f449d5017621654ae2e291a6c5cb6a97",
+      "tools/diagnostics/check_socket_paths.py": "7e8797ec6ea0014eeacd428f822ef3fe545a276247a7ad7e6de9b557a0937f55"
+    }
+  },
+  "command": [
+    "python3",
+    "/home/patrick/putgd-lab/p379/drivers/f3b3635-memory2/tests/performance/physical_campaign.py",
+    "memory",
+    "--output",
+    "/tmp/p379-m2",
+    "--package",
+    "/home/patrick/putgd-lab/p379/release/putgd-26.1024.1185-nightly-ubuntu24.04-x86_64.deb",
+    "--package-sha256",
+    "2094fd4db8cd915b02f1cdd16eb5c99bb8191948931cd2f558a89c59be5b3f47",
+    "--version",
+    "26.1024.1185-nightly",
+    "--source-revision",
+    "9dfac15c1ced201d13a2b70a8afb0c253213768b",
+    "--desktop-session",
+    "c89",
+    "--lock-session",
+    "codex-379-memory2",
+    "--driver-revision",
+    "f3b3635132f2d5b909935d8119f1f32908e38cec"
+  ],
+  "commandRecordedBeforeLaunchSha256": "dd423f729be2ef96100887c78238e048049a929c5339cf99b2bb47adaad8545c",
+  "forcedAccessibility": false,
+  "product": {
+    "package": "putgd-26.1024.1185-nightly-ubuntu24.04-x86_64.deb",
+    "sha256": "2094fd4db8cd915b02f1cdd16eb5c99bb8191948931cd2f558a89c59be5b3f47",
+    "sourceRevision": "9dfac15c1ced201d13a2b70a8afb0c253213768b",
+    "installedAndRunningBinaries": {
+      "app": {
+        "path": "/usr/bin/putgd",
+        "sha256": "2d51cdd7ca7ed7c53d2c4cda5cd2c9009c3c24b07769a03e80a0da46f7b16af2",
+        "build": {
+          "schemaVersion": 1,
+          "version": "26.1024.1185-nightly",
+          "baseVersion": "26.1024.1185",
+          "packageVersion": "26.1024.1185~nightly",
+          "gitCommit": "9dfac15c1ced201d13a2b70a8afb0c253213768b",
+          "gitTree": "4e96912274d9220ba9476bd1b50333f6cf738f4f",
+          "commitCount": 1185,
+          "dirty": false,
+          "sourceProvenance": "git"
+        }
+      },
+      "capture_helper": {
+        "path": "/usr/bin/putgd-capture",
+        "sha256": "9f122f727a0d84da71cbc7e1dd53895015a34c63606803edb68680659ce74dbf",
+        "build": {
+          "schemaVersion": 1,
+          "version": "26.1024.1185-nightly",
+          "baseVersion": "26.1024.1185",
+          "packageVersion": "26.1024.1185~nightly",
+          "gitCommit": "9dfac15c1ced201d13a2b70a8afb0c253213768b",
+          "gitTree": "4e96912274d9220ba9476bd1b50333f6cf738f4f",
+          "commitCount": 1185,
+          "dirty": false,
+          "sourceProvenance": "git"
+        }
+      },
+      "cli": {
+        "path": "/usr/bin/putgd-cli",
+        "sha256": "af34ea975c73517a39c561a3d65efaba7c2dd0848235d23b2c1158e08cab032f",
+        "build": {
+          "schemaVersion": 1,
+          "version": "26.1024.1185-nightly",
+          "baseVersion": "26.1024.1185",
+          "packageVersion": "26.1024.1185~nightly",
+          "gitCommit": "9dfac15c1ced201d13a2b70a8afb0c253213768b",
+          "gitTree": "4e96912274d9220ba9476bd1b50333f6cf738f4f",
+          "commitCount": 1185,
+          "dirty": false,
+          "sourceProvenance": "git"
+        }
+      },
+      "helper": {
+        "path": "/usr/bin/putgd-ui",
+        "sha256": "35d3ab75050d8b541564fb57c686036133d7151d9ddfcb23f625a4d393644273",
+        "build": {
+          "schemaVersion": 1,
+          "version": "26.1024.1185-nightly",
+          "baseVersion": "26.1024.1185",
+          "packageVersion": "26.1024.1185~nightly",
+          "gitCommit": "9dfac15c1ced201d13a2b70a8afb0c253213768b",
+          "gitTree": "4e96912274d9220ba9476bd1b50333f6cf738f4f",
+          "commitCount": 1185,
+          "dirty": false,
+          "sourceProvenance": "git"
+        }
+      }
+    },
+    "dpkgVerifyClean": true
+  },
+  "host": {
+    "id": "m74",
+    "hostname": "mint-builder",
+    "sessionId": "c89",
+    "session": {
+      "Name": "patrick",
+      "Display": ":0",
+      "Remote": "no",
+      "Desktop": "cinnamon",
+      "Leader": "625282",
+      "Type": "x11",
+      "Active": "yes"
+    },
+    "systemVersions": {
+      "kernel": "6.14.0-37-generic",
+      "machine": "x86_64",
+      "cpu": "Intel(R) Core(TM) i5-6500T CPU @ 2.50GHz",
+      "desktop": "X-Cinnamon",
+      "session": "x11",
+      "python": "3.12.3",
+      "packages": {
+        "cinnamon": "6.6.9+zena",
+        "libc6": "2.39-0ubuntu8.9",
+        "libcairo2": "1.18.0-3build1",
+        "libgtk-3-0t64": "3.24.41-4ubuntu1.3",
+        "libqt6core6t64": "6.4.2+dfsg-21.1build5",
+        "muffin": "6.6.3+zena"
+      }
+    }
+  },
+  "socketPreflight": {
+    "schemaVersion": 1,
+    "passed": true,
+    "limitBytesExcludingNul": 107,
+    "paths": [
+      {
+        "path": "/tmp/p379-m2/runtime/putgd/session.sock",
+        "utf8Bytes": 39,
+        "passed": true
+      },
+      {
+        "path": "/tmp/.X11-unix/X0",
+        "utf8Bytes": 17,
+        "passed": true
+      },
+      {
+        "path": "/run/user/1000/bus",
+        "utf8Bytes": 18,
+        "passed": true
+      }
+    ]
+  },
+  "abstractXSocketUtf8Bytes": 18,
+  "emptyStoppedDatabase": {
+    "operations": 0,
+    "history": 0,
+    "item_state": 0,
+    "verification": "Independent post-run readonly SQL counts; fresh isolated output, no fixture-root"
+  },
+  "residentCleanup": [
+    {
+      "gracefulRequest": true,
+      "exitCode": 0,
+      "forced": false,
+      "remaining": [],
+      "socketAbsent": true,
+      "passed": true,
+      "errors": [],
+      "inventoryDefinition": "observed PID/start/UID generations + resident process group + exact isolated runtime/data environment; no command lines exported"
+    }
+  ],
+  "savedVisual": {
+    "schemaVersion": 1,
+    "run": "m2",
+    "sourceDriver": "f3b3635132f2d5b909935d8119f1f32908e38cec",
+    "file": "failed-workload.png",
+    "sha256": "ff83b8e75f7b4fa25e021f1d4027abaab5a6159abb46c875f7d0af6007d24a8d",
+    "dimensions": [
+      1920,
+      1080
+    ],
+    "pixelCount": 2073600,
+    "uniqueRgbColors": [
+      [
+        80,
+        90,
+        100
+      ]
+    ],
+    "exactSyntheticFill": true,
+    "meaning": "Post-failure static cover only; not initial admission evidence or a memory measurement",
+    "annotation": "m2-admission-failure.png",
+    "annotationSha256": "bb09df75033a4db4be7e97e232d921cb0b225a477ec5bf8db94896c130d7d832",
+    "review": "Independently counted every source pixel; human visual inspection of annotation before commit",
+    "initialPrecheckFrameRetained": false,
+    "initialNumericalCoverageRetained": false,
+    "limitation": "The final full synthetic cover does not establish visibility at the failed earlier one-shot precheck"
+  },
+  "privateRawExport": {
+    "location": "m74:~/putgd-lab/p379/raw/m2",
+    "originalRetained": "/tmp/p379-m2",
+    "verified": true,
+    "fileCount": 9,
+    "files": [
+      {
+        "path": "capabilities-setup.json",
+        "sha256": "504a3e9a482ef1d3228789bce385d47418e88567e7b410ac3aefbee85884e93a",
+        "bytes": 3447
+      },
+      {
+        "path": "config/putgd/config.json",
+        "sha256": "2b3b0540a52fd44172f787d7b9065e22c01ca070850a65f59c8978882b9b7353",
+        "bytes": 2185
+      },
+      {
+        "path": "data/putgd/history.sqlite",
+        "sha256": "589777e524a9062529d66a42d0c700f56c659e19280808728354fadfbaca07cd",
+        "bytes": 122880
+      },
+      {
+        "path": "events.jsonl",
+        "sha256": "5078abae30c0ca84be1dbe910d06cb9516e83014b9668897b6fe66768ce25f9d",
+        "bytes": 838
+      },
+      {
+        "path": "failed-workload.png",
+        "sha256": "ff83b8e75f7b4fa25e021f1d4027abaab5a6159abb46c875f7d0af6007d24a8d",
+        "bytes": 8597
+      },
+      {
+        "path": "resident.log",
+        "sha256": "902efae7b3849cab95e08f67e58ba16136a79a8fd8799f036c6d26b628726db5",
+        "bytes": 118
+      },
+      {
+        "path": "results.json",
+        "sha256": "8780bae81b6429b1c93504c0df047da861fb26a7e5179bd832b3452cfec3a847",
+        "bytes": 8295
+      },
+      {
+        "path": "runtime/dconf/user",
+        "sha256": "96a296d224f285c67bee93c30f8a309157f0daa35dc5b87e410b78630a09cfc7",
+        "bytes": 2
+      },
+      {
+        "path": "state/putgd/logs/putgd-20261024T160914583Z-639187-1.jsonl",
+        "sha256": "43e005d52566ecb64841728fa0a6b70e15576f7a11e717601363b3c3984d2a8b",
+        "bytes": 2642
+      }
+    ]
+  },
+  "cleanup": {
+    "lockAcquiredUtc": "2026-10-24T16:07:24Z",
+    "verifiedReleaseUtc": "2026-10-24T16:11:53Z",
+    "normalExitCode": 0,
+    "forcedTermination": false,
+    "socketAbsent": true,
+    "remainingFamily": [],
+    "packagePurged": true,
+    "addedDependencies": [],
+    "originalVmIdentityRevalidated": true,
+    "vmPaused": "paused",
+    "vmResumed": "running",
+    "vmRunning": true,
+    "releaseCheckLeft": [],
+    "initialReleasePrecheck": "Refused while package purge was completing; subsequent clean check preceded verified release",
+    "hashes": {
+      "launch.json": "6df1c2804ebcd4bb921c6ecfbe5ca37462e6cd357994b559c8203b9ba1ecb52a",
+      "cleanup.json": "d57088ce4041499569ccb209c0ceb7101b22b28424146c93456636ed437c833c",
+      "raw-export.json": "dd85be25a51bdb2c0a7f975d92a15d4c74f27fb9215c0be2fcf349d8e8f7532f",
+      "privacy-audit.json": "bfdbc53eacf7c0e4ea7acf82c342aa3827c0f3ed4094c3f74cb304c523450622",
+      "vm-paused-b2.json": "f5fd07e1dc4e510e06db744a804ef5ddc03481ab3e7a8a30332c9434f0e2338e",
+      "vm-resumed.json": "05b46adaf367b381f210cf0434f0297ad16d2bff2f4f81ea4747f35dc89a8947",
+      "lock-release.json": "3275aa6e16bc2fb148c955e6914d40e8e4c61656fac0376c35b561ccc062d537",
+      "m2-all-socket-preflight.json": "119d654079a2653278376e26874e82811e5fbff66df9f398b4c1186edc7e4149",
+      "installed-b2.json": "1cc4c0c38f5ae1ea8bc6706ba62044d48d1dc578c1c3a9600e12b30d20eae211"
+    }
+  },
+  "next": "Use only a separately reviewed final handoff with bounded cover visibility readiness; retain exact all-pixel save checks, budgets and failure source. All other physical workloads remain held."
+}

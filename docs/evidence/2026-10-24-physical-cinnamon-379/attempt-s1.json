@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "run": "s1",
+  "accepted": false,
+  "status": "failed_fixture_preparation",
+  "driverCommit": "daf7145a086b2620422e4fcaefb91bfc347a72ee",
+  "errorCode": "fixture_closed_or_oversized_response",
+  "elapsedSeconds": 3.587730483006453,
+  "productOperationCount": 0,
+  "cause": "Independent GTK4 clipboard child lacked Gtk4/Gdk4 typelibs before readiness; stderr was not retained by this driver",
+  "directPrerequisiteCheck": {
+    "Gtk4Available": false,
+    "Gdk4Available": false,
+    "Atspi2Available": true
+  },
+  "correction": "Install only gir1.2-gtk-4.0; new s2 output, no source/harness change",
+  "files": {
+    "results.json": {
+      "sha256": "fdf5dc16c7d108d2d6b314aaf872e592b81f5a002589b669068311b3fca0d6a9",
+      "bytes": 8315
+    },
+    "events.jsonl": {
+      "sha256": "8fc52b92b22d203c39ca6b18936c538f8a6509df7324921c11c4b741058e555b",
+      "bytes": 2164
+    },
+    "failed-workload.png": {
+      "sha256": "ff83b8e75f7b4fa25e021f1d4027abaab5a6159abb46c875f7d0af6007d24a8d",
+      "bytes": 8597
+    }
+  }
+}

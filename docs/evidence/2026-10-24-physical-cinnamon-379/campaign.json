@@ -1,0 +1,264 @@
+{
+  "schemaVersion": 1,
+  "issue": 379,
+  "status": "empty_selector_drawable_p95_pass_CU2_CU3_memory_open_pss_fail_corrected_queue_visibility_refused_remaining_gates_pending",
+  "accepted": false,
+  "scope": "Newest-published-nightly physical Mint Cinnamon performance rehearsal; no stable-asset certification",
+  "product": {
+    "tag": "v26.1024.1185-nightly",
+    "package": "putgd-26.1024.1185-nightly-ubuntu24.04-x86_64.deb",
+    "packageVersion": "26.1024.1185~nightly",
+    "packageBytes": 57534908,
+    "packageSha256": "2094fd4db8cd915b02f1cdd16eb5c99bb8191948931cd2f558a89c59be5b3f47",
+    "gitCommit": "9dfac15c1ced201d13a2b70a8afb0c253213768b",
+    "gitTree": "4e96912274d9220ba9476bd1b50333f6cf738f4f",
+    "downloadMatchesGithubAssetDigestAndReleaseSums": true,
+    "mirrorSumsEqualGithub": true,
+    "sumsSha256": "695c8579a779a5d37e843a56a3e61fde725fdada962c06160bedd35d755f7290",
+    "minisignVerified": true,
+    "minisignPublicKeyId": "71440FA5E439AEBB",
+    "minisignTrustedComment": "put.gd v26.1024.1185-nightly nightly",
+    "installedIdentity": {
+      "version": "26.1024.1185~nightly",
+      "embeddedCommit": "9dfac15c1ced201d13a2b70a8afb0c253213768b",
+      "embeddedDirty": false,
+      "dpkgVerifyClean": true,
+      "verifiedUtc": "2026-10-24T15:10:42.713627+00:00",
+      "packageRemovedAfterBatch": true
+    },
+    "runningProcessIdentities": []
+  },
+  "host": {
+    "name": "m74",
+    "requiredPlacement": "physical",
+    "requiredOs": "Linux Mint 22.3",
+    "requiredDesktop": "Cinnamon",
+    "requiredSession": "x11",
+    "measuredIdentity": null
+  },
+  "driver": {
+    "sourceCommit": "daf7145a086b2620422e4fcaefb91bfc347a72ee",
+    "dependencyIssue": 495,
+    "productBytesRebuilt": false,
+    "codePullRequest": "https://github.com/patrick-hudson/put.gd-desktop/pull/555",
+    "acceptanceReviewStatus": "R9/3259 and direct5d99 caller review/currentCI clear; M7 productopenPSS fail; actualCU2/3259+CU3/5d99 emptyselector drawable passes; correctedqueue stillvisibilityrefused/no50settle; slowpending",
+    "historyGrowHold": "Only root-cleared producer 72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e is staged/hash-verified; not yet executed in this campaign. All old revisions remain held.",
+    "nextPhysicalRunHold": "CU1/CU2/CU3 consumed. No allocation/retry. CU3 reached pinned History targeting but still refused exact visibility guard; bounded off-host cause diagnosis only. Any future work needs root disposition/allocation/notice. Memory-only ca937 is not an operator-chunk executable.",
+    "sourceCommitScope": "First physical pilot batch only; each later attempt keeps its separate actual/planned identities",
+    "currentReviewedDriver": {
+      "revision": "5d99ec9732ad68a86a61d9f5ea33be41f05d294a",
+      "review": "Direct source/currentCI clear; actualCU3 newhead prelude pass, correctedqueue visibilityrefused/no50settle; no oldpass transfer"
+    }
+  },
+  "approvedBudgets": {
+    "regionWarmups": 5,
+    "regionSamples": 30,
+    "regionP95MaxMs": 150,
+    "idleSeconds": 300,
+    "idleCpuPercentOneCoreStrictUpperBound": 0.5,
+    "coldClosedResidentRssMaxBytes": 41943040,
+    "closedFamilyRssMaxBytes": 41943040,
+    "closedFamilyPssMaxBytes": 30408704,
+    "historyOpenFamilyPssMaxBytes": 62914560
+  },
+  "workload": {
+    "historyIndependentOperations": 10000,
+    "minimumQueuedCapturesUploads": 50,
+    "slowProxyBytesPerSecond": 262144,
+    "payloads": "synthetic",
+    "destination": "isolated loopback S3 fixture"
+  },
+  "gates": {
+    "regionEmpty": "pass_at_native_DRAWABLE_scope_CU2actual3259p95_73.359397ms_CU3actual5d99p95_73.449413ms_each5warm30timed",
+    "regionPopulated": "pending",
+    "coldIdle": "pass_exactM7_empty_profile_300.118402seconds",
+    "closedMemory": "pass_exactM7_postclose_300.112448seconds",
+    "historyOpenMemory": "fail_exactM7_64956416_gt62914560_bytes_30.087980seconds",
+    "historyFunctionalAndResponse": "pending_measurements_and_explicit_threshold_approval",
+    "burst": "pending_CU2_CU3_fileeditor_queue_visibility_refused_no50_no_settle_no_nativecaptureburst",
+    "slowStalledNetwork": "pending"
+  },
+  "measurements": [
+    {
+      "attempt": "cu2",
+      "metric": "warmP95DrawablePaintMs",
+      "value": 73.359397,
+      "limit": 150,
+      "status": "pass",
+      "scope": "Empty-history native selector only; 5warmups+30timed, separate unscored visual",
+      "summary": "attempt-cu2.json"
+    },
+    {
+      "attempt": "cu3",
+      "metric": "warmP95DrawablePaintMs",
+      "value": 73.449413,
+      "limit": 150,
+      "status": "pass",
+      "scope": "Fresh actual5d99 emptyselector prelude,5warm30timed/separateunscoredvisual; no oldpass transfer or expandedcapturegate",
+      "summary": "attempt-cu3.json"
+    }
+  ],
+  "savedVisuals": [
+    {
+      "file": "c1-witness-failure.png",
+      "meaning": "Annotated post-cancellation synthetic cover; no selector-paint proof"
+    },
+    {
+      "file": "m1-empty-history-pilot.png",
+      "meaning": "Reviewed annotated native owned X11 History drawable; no compositor or full-interval claim"
+    },
+    {
+      "file": "m2-admission-failure.png",
+      "meaning": "Reviewed annotated 100% synthetic final cover after failed admission; no scored memory interval or initial readiness proof"
+    },
+    {
+      "file": "m6-cold-segment-driver-failure.png",
+      "meaning": "Reviewed synthetic-cover frame with appended caption; cold segment completed, no History/open-PSS proof"
+    },
+    {
+      "file": "m7-history-open-pss-budget-failure.png",
+      "meaning": "Reviewed actual physical VNC crop equals stable owned History drawable, appended result caption; valid open-PSS failure, no first-content timing claim"
+    },
+    {
+      "file": "cu2-empty-selector-unscored.png",
+      "meaning": "Separate unscored selector derivative: only attributed opaque actual stroke retained, all other pixels declared synthetic replacement; caption below unchanged derivative"
+    },
+    {
+      "file": "cu2-queue-visibility-refusal.png",
+      "meaning": "Later solid synthetic recovery cover with caption; no failed-window frame/no50/settle/nativecapture-burst claim"
+    },
+    {
+      "file": "cu3-selector-and-queue-limit.png",
+      "meaning": "Separate new-run unscored sanitized selector derivative with newhead metrics and correctedqueue refusal; alloriginalRGB preserved, onlyattributedstroke+declaredsynthetic fill"
+    }
+  ],
+  "cleanupReceipts": [
+    "batch1-cleanup.json",
+    "attempt-m2.json",
+    "attempt-m3.json",
+    "attempt-m4.json",
+    "attempt-m5.json",
+    "attempt-m6.json",
+    "attempt-m7.json",
+    "attempt-cu1.json",
+    "attempt-cu2.json",
+    "attempt-cu3.json"
+  ],
+  "limitations": [
+    "Campaign in progress; no performance acceptance pass claimed",
+    "History/response metrics without existing approved numerical budgets need explicit approval before pass assessment",
+    "Exact stable assets require a new campaign under issue 384"
+  ],
+  "attempts": [
+    {
+      "id": "c1",
+      "summary": "attempt-c1.json",
+      "status": "incomplete_capture_workload",
+      "accepted": false
+    },
+    {
+      "id": "m1",
+      "summary": "attempt-m1.json",
+      "status": "pilot_complete_not_accepted",
+      "accepted": false
+    },
+    {
+      "id": "s1",
+      "summary": "attempt-s1.json",
+      "status": "failed_gtk4_fixture_prerequisite",
+      "accepted": false
+    },
+    {
+      "id": "s2",
+      "summary": "seed-s2.json",
+      "status": "six_operation_fixture_preparation_verified",
+      "accepted": false
+    },
+    {
+      "id": "m2",
+      "summary": "attempt-m2.json",
+      "status": "failed_preinterval_lab_admission_no_metrics",
+      "sourceRevision": "f3b3635132f2d5b909935d8119f1f32908e38cec",
+      "accepted": false
+    },
+    {
+      "id": "m3",
+      "summary": "attempt-m3.json",
+      "status": "failed_coordinator_prelaunch_admission",
+      "plannedDriverRevision": "02d85059db836dcb8be33a1c0db150b474c5d9f2",
+      "driverLaunched": false,
+      "accepted": false
+    },
+    {
+      "id": "m4",
+      "summary": "attempt-m4.json",
+      "status": "coordinator_admission_refused_before_driver",
+      "plannedDriverRevision": "fd259fae36a0643d198a8730770bcefc6297d9ac",
+      "driverLaunched": false,
+      "accepted": false
+    },
+    {
+      "id": "m5",
+      "summary": "attempt-m5.json",
+      "status": "coordinator_admission_refused_before_driver",
+      "plannedDriverRevision": "fd259fae36a0643d198a8730770bcefc6297d9ac",
+      "driverLaunched": false,
+      "accepted": false
+    },
+    {
+      "id": "m6",
+      "summary": "attempt-m6.json",
+      "status": "partial_memory_driver_failure_before_history",
+      "actualDriverRevision": "fd259fae36a0643d198a8730770bcefc6297d9ac",
+      "controllerSha256": "ca937c2dd710cdd6b6af071d0c513156f8080f3ba43bce209e7e498f3f8927f7",
+      "driverLaunched": true,
+      "coldSegmentMeasuredSeconds": 300.07672705699224,
+      "accepted": false
+    },
+    {
+      "id": "m7",
+      "summary": "attempt-m7.json",
+      "status": "complete_memory_workflow_history_open_pss_budget_failed",
+      "actualDriverRevision": "3259a5b83e4b93b9ba595bafb95e7c9ebddbddd0",
+      "controllerSha256": "ca937c2dd710cdd6b6af071d0c513156f8080f3ba43bce209e7e498f3f8927f7",
+      "historyOpenPssBytes": 64956416,
+      "limitBytes": 62914560,
+      "accepted": false
+    },
+    {
+      "id": "cu1",
+      "summary": "attempt-cu1.json",
+      "status": "coordinator_prerequisite_refused_before_lock_and_driver",
+      "plannedDriverRevision": "3259a5b83e4b93b9ba595bafb95e7c9ebddbddd0",
+      "controllerSha256": "8653932269c122d08693caf3f0e6dcd9891b34b408ffec464c33c40a98b0a962",
+      "rawDriverLaunched": null,
+      "lockAcquired": false,
+      "guiStarted": false,
+      "accepted": false
+    },
+    {
+      "id": "cu2",
+      "summary": "attempt-cu2.json",
+      "status": "empty_selector_p95_pass_queue_visibility_refused",
+      "actualDriverRevision": "3259a5b83e4b93b9ba595bafb95e7c9ebddbddd0",
+      "controllerSha256": "8fa1edb109ba01b383ea7bc7befdacc1570e469adc24f58e8351704a149b7e4f",
+      "driverLaunched": true,
+      "emptyHistoryP95PaintMs": 73.359397,
+      "queueComplete": false,
+      "accepted": false
+    },
+    {
+      "id": "cu3",
+      "summary": "attempt-cu3.json",
+      "status": "fresh_capture_prelude_complete_corrected_queue_visibility_refused",
+      "actualDriverRevision": "5d99ec9732ad68a86a61d9f5ea33be41f05d294a",
+      "controllerSha256": "c11569506e258565a1bf1bf29cc2177ada6425fc61c6e7d58232c8b915a6633b",
+      "driverLaunched": true,
+      "emptyHistoryP95PaintMs": 73.449413,
+      "queueComplete": false,
+      "accepted": false
+    }
+  ],
+  "privacyAudit": "batch1-frame-privacy-audit.json",
+  "productPerformanceIssue": "https://github.com/patrick-hudson/put.gd-desktop/issues/558"
+}

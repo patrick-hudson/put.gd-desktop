@@ -1,0 +1,1767 @@
+{
+  "schemaVersion": 1,
+  "attempt": "cu2",
+  "issue": 379,
+  "status": "empty_history_native_capture_latency_pass_queue_visibility_refused",
+  "accepted": false,
+  "scope": "Actual published-nightly physical run. Empty-history native drawable p95 passes; partial file-editor queue is not accepted; M7 product PSS failure and remaining gates persist.",
+  "product": {
+    "path": "/home/patrick/putgd-lab/p379/release/putgd-26.1024.1185-nightly-ubuntu24.04-x86_64.deb",
+    "sha256": "2094fd4db8cd915b02f1cdd16eb5c99bb8191948931cd2f558a89c59be5b3f47",
+    "binaries": {
+      "app": {
+        "path": "/usr/bin/putgd",
+        "sha256": "2d51cdd7ca7ed7c53d2c4cda5cd2c9009c3c24b07769a03e80a0da46f7b16af2",
+        "build": {
+          "schemaVersion": 1,
+          "version": "26.1024.1185-nightly",
+          "baseVersion": "26.1024.1185",
+          "packageVersion": "26.1024.1185~nightly",
+          "gitCommit": "9dfac15c1ced201d13a2b70a8afb0c253213768b",
+          "gitTree": "4e96912274d9220ba9476bd1b50333f6cf738f4f",
+          "commitCount": 1185,
+          "dirty": false,
+          "sourceProvenance": "git"
+        }
+      },
+      "capture_helper": {
+        "path": "/usr/bin/putgd-capture",
+        "sha256": "9f122f727a0d84da71cbc7e1dd53895015a34c63606803edb68680659ce74dbf",
+        "build": {
+          "schemaVersion": 1,
+          "version": "26.1024.1185-nightly",
+          "baseVersion": "26.1024.1185",
+          "packageVersion": "26.1024.1185~nightly",
+          "gitCommit": "9dfac15c1ced201d13a2b70a8afb0c253213768b",
+          "gitTree": "4e96912274d9220ba9476bd1b50333f6cf738f4f",
+          "commitCount": 1185,
+          "dirty": false,
+          "sourceProvenance": "git"
+        }
+      },
+      "cli": {
+        "path": "/usr/bin/putgd-cli",
+        "sha256": "af34ea975c73517a39c561a3d65efaba7c2dd0848235d23b2c1158e08cab032f",
+        "build": {
+          "schemaVersion": 1,
+          "version": "26.1024.1185-nightly",
+          "baseVersion": "26.1024.1185",
+          "packageVersion": "26.1024.1185~nightly",
+          "gitCommit": "9dfac15c1ced201d13a2b70a8afb0c253213768b",
+          "gitTree": "4e96912274d9220ba9476bd1b50333f6cf738f4f",
+          "commitCount": 1185,
+          "dirty": false,
+          "sourceProvenance": "git"
+        }
+      },
+      "helper": {
+        "path": "/usr/bin/putgd-ui",
+        "sha256": "35d3ab75050d8b541564fb57c686036133d7151d9ddfcb23f625a4d393644273",
+        "build": {
+          "schemaVersion": 1,
+          "version": "26.1024.1185-nightly",
+          "baseVersion": "26.1024.1185",
+          "packageVersion": "26.1024.1185~nightly",
+          "gitCommit": "9dfac15c1ced201d13a2b70a8afb0c253213768b",
+          "gitTree": "4e96912274d9220ba9476bd1b50333f6cf738f4f",
+          "commitCount": 1185,
+          "dirty": false,
+          "sourceProvenance": "git"
+        }
+      }
+    }
+  },
+  "liveBuild": {
+    "baseVersion": "26.1024.1185",
+    "commitCount": 1185,
+    "dirty": false,
+    "gitCommit": "9dfac15c1ced201d13a2b70a8afb0c253213768b",
+    "gitTree": "4e96912274d9220ba9476bd1b50333f6cf738f4f",
+    "packageVersion": "26.1024.1185~nightly",
+    "schemaVersion": 1,
+    "sourceProvenance": "git",
+    "version": "26.1024.1185-nightly"
+  },
+  "physical": {
+    "hostname": "mint-builder",
+    "kernel": "6.14.0-37-generic",
+    "session": {
+      "Name": "patrick",
+      "Display": ":0",
+      "Remote": "no",
+      "Desktop": "cinnamon",
+      "Leader": "625282",
+      "Type": "x11",
+      "Active": "yes"
+    },
+    "sessionId": "c89",
+    "requestedQtPlatform": "xcb",
+    "systemVersions": {
+      "kernel": "6.14.0-37-generic",
+      "machine": "x86_64",
+      "cpu": "Intel(R) Core(TM) i5-6500T CPU @ 2.50GHz",
+      "desktop": "X-Cinnamon",
+      "session": "x11",
+      "python": "3.12.3",
+      "packages": {
+        "cinnamon": "6.6.9+zena",
+        "libc6": "2.39-0ubuntu8.9",
+        "libcairo2": "1.18.0-3build1",
+        "libgtk-3-0t64": "3.24.41-4ubuntu1.3",
+        "libqt6core6t64": "6.4.2+dfsg-21.1build5",
+        "muffin": "6.6.3+zena"
+      }
+    },
+    "osRelease": "NAME=\"Linux Mint\"\nVERSION=\"22.3 (Zena)\"\nID=linuxmint\nID_LIKE=\"ubuntu debian\"\nPRETTY_NAME=\"Linux Mint 22.3\"\nVERSION_ID=\"22.3\"\nHOME_URL=\"https://www.linuxmint.com/\"\nSUPPORT_URL=\"https://forums.linuxmint.com/\"\nBUG_REPORT_URL=\"http://linuxmint-troubleshooting-guide.readthedocs.io/en/latest/\"\nPRIVACY_POLICY_URL=\"https://www.linuxmint.com/\"\nVERSION_CODENAME=zena\nUBUNTU_CODENAME=noble\n",
+    "loadAverage": [
+      "1.04",
+      "0.98",
+      "1.00"
+    ]
+  },
+  "driver": {
+    "sha256": "7b52163e0f838712821bc9cf99fccd641dc3dcf1029fd88202558e2f8dc1e796",
+    "revision": "3259a5b83e4b93b9ba595bafb95e7c9ebddbddd0",
+    "revisionSource": "explicit-declaration",
+    "sourceFiles": {
+      "tests/performance/physical_campaign.py": "7b52163e0f838712821bc9cf99fccd641dc3dcf1029fd88202558e2f8dc1e796",
+      "tests/performance/bench_ui_process.py": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+      "tests/performance/observe_idle.py": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe",
+      "tests/performance/campaign_fixture.py": "330632490f68fb3621f19261f35e64643849b26190de256c969cdc89e79d41d9",
+      "tests/performance/campaign_ui.py": "68e66b9f4adf2dd75c3ae4b7a8d6ade1f2d138ee23ffdfd3a714d4265b3cfcbd",
+      "tests/performance/campaign_workloads.py": "887a2b10f0a2f93a848fdece433339fb8d2f830933e41b1108be61f8106d9429",
+      "tests/performance/campaign_proxy.py": "39973a4603cedf82ae89250c222ae5f508f36aa127be4d501f2ee3c3eae0e98b",
+      "tests/performance/campaign_lifecycle.py": "e86141e204105fe6834d90933dd065377df0b444786eec5cc1340c11eabe6668",
+      "tests/performance/build_current_capture.py": "dfab0d0aefc471cd13eb3ec6e1bb6b0c57614ac424d2067eca4c5846de0f95bd",
+      "tests/performance/campaign_frames.py": "6c013f4cbce53b96ce6c2dd1b0b1d396f449d5017621654ae2e291a6c5cb6a97",
+      "tools/diagnostics/check_socket_paths.py": "7e8797ec6ea0014eeacd428f822ef3fe545a276247a7ad7e6de9b557a0937f55"
+    }
+  },
+  "driverArchiveSha256": "d99c6ad88804202eb68976ca965ff16f217065770dfbf6b40bff83d5efb875c1",
+  "controller": {
+    "sourceSha256": "8fa1edb109ba01b383ea7bc7befdacc1570e469adc24f58e8351704a149b7e4f",
+    "allocationId": "root-379-cu2-3259a5b8-busfix-20261024T233904Z",
+    "allocatedConfigSha256": "db529329c007b5ef2920a69e58d28f67386ff0f7a05763b524deaf76183dfb06",
+    "correction": "Only busctl capability predicate dict -> (dict,list) and fresh cu2 literal guard from reviewed immutable865; no workload/lease/recovery change",
+    "rawDriverLaunched": true,
+    "invokedUtc": "2026-10-24T23:49:00.465223+00:00",
+    "finishedUtc": "2026-10-24T23:50:03.847306+00:00",
+    "exitCode": 1,
+    "allPersistenceErrors": []
+  },
+  "hostAdmission": {
+    "sampleSeconds": 10.03237460704986,
+    "clockTicksPerSecond": 100,
+    "rowCount": 331,
+    "snapshotErrors": [],
+    "unexplainedUnmeasuredRows": [],
+    "maximumMeasuredProcessCpuPercentOneCore": 1.5948367785984212,
+    "decision": {
+      "admitted": true,
+      "admission": {
+        "admitted": true,
+        "rule": "same-generation identity-bound QMP paused; no competing heavy work",
+        "sampleSeconds": 10.03237460704986,
+        "exclusiveCpuLimitOneCorePercent": 10.0,
+        "zeroVmTicksRequired": false,
+        "wholeHostBound": {
+          "available": true,
+          "strictlyBelowLimit": false,
+          "scope": "Linux accounted CPU; separate conservative whole-host upper bound, not per-row measured CPU",
+          "busyFields": [
+            "user",
+            "nice",
+            "system",
+            "irq",
+            "softirq",
+            "steal"
+          ],
+          "excludedDuplicateFields": [
+            "guest",
+            "guest_nice"
+          ],
+          "excludedNonExecutingFields": [
+            "idle",
+            "iowait"
+          ],
+          "limitPercentOneCore": 10.0,
+          "aggregateDeltaTicks": {
+            "user": 53,
+            "nice": 0,
+            "system": 39,
+            "idle": 3924,
+            "iowait": 1,
+            "irq": 0,
+            "softirq": 0,
+            "steal": 0,
+            "guest": 0,
+            "guest_nice": 0
+          },
+          "busyDeltaTicks": 92,
+          "bootId": "4ba460ee-1af9-4ae8-b832-d1c54cdb642f",
+          "coreSet": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "hz": 100,
+          "bootTimeSeconds": 1792602091,
+          "roundingUncertaintyTicks": 48,
+          "readUncertaintyNs": 556880,
+          "conservativeUpperCpuNs": 1400556880,
+          "denominatorLowerNs": 10000354996,
+          "upperPercentOneCore": 14.00507162555932,
+          "formula": "100*((sum busy delta + 2*6*possibleCPUs)/HZ + coreCount*readPaddingSeconds)/innerGapLowerSeconds < 10"
+        }
+      }
+    },
+    "scope": "Linux-accounted operational model. Separate aggregate upper bound is NOT sub10; no unmeasured row needed that bound. Raw observation/bound/pure decision durable before enforcement; no retrospective M4/M5 inference."
+  },
+  "capture": {
+    "status": "complete",
+    "startedUtc": "2026-10-24T23:49:23.831579+00:00",
+    "elapsedSeconds": 11.676547574985307,
+    "parameters": {
+      "scenario": "capture",
+      "output": "/tmp/p379-rc2",
+      "package": "/home/patrick/putgd-lab/p379/release/putgd-26.1024.1185-nightly-ubuntu24.04-x86_64.deb",
+      "package_sha256": "2094fd4db8cd915b02f1cdd16eb5c99bb8191948931cd2f558a89c59be5b3f47",
+      "version": "26.1024.1185-nightly",
+      "source_revision": "9dfac15c1ced201d13a2b70a8afb0c253213768b",
+      "desktop_session": "c89",
+      "lock_session": "codex-379-capture-upload2",
+      "app": "/usr/bin/putgd",
+      "cli": "/usr/bin/putgd-cli",
+      "helper": "/usr/bin/putgd-ui",
+      "capture_helper": "/usr/bin/putgd-capture",
+      "driver": "/home/patrick/putgd-lab/p379/drivers/current-3c29/build/putgd-bench-current-capture",
+      "capture_driver_manifest": "/home/patrick/putgd-lab/p379/drivers/current-3c29/witness.json",
+      "fixture_root": null,
+      "driver_revision": "3259a5b83e4b93b9ba595bafb95e7c9ebddbddd0",
+      "open_seconds": 30,
+      "vnc_port": 5900,
+      "endpoint": null,
+      "fixture_pid": null,
+      "fixture_source": null,
+      "enable_accessibility": false,
+      "native_driver": null,
+      "native_driver_revision": null,
+      "native_driver_sha256": null,
+      "threshold_policy": null,
+      "settle_seconds": 300
+    },
+    "actualCommand": [
+      "/usr/bin/python3",
+      "/home/patrick/putgd-lab/p379/drivers/3259a5b8-cu1/tests/performance/physical_campaign.py",
+      "capture",
+      "--output",
+      "/tmp/p379-rc2",
+      "--package",
+      "/home/patrick/putgd-lab/p379/release/putgd-26.1024.1185-nightly-ubuntu24.04-x86_64.deb",
+      "--package-sha256",
+      "2094fd4db8cd915b02f1cdd16eb5c99bb8191948931cd2f558a89c59be5b3f47",
+      "--version",
+      "26.1024.1185-nightly",
+      "--source-revision",
+      "9dfac15c1ced201d13a2b70a8afb0c253213768b",
+      "--driver-revision",
+      "3259a5b83e4b93b9ba595bafb95e7c9ebddbddd0",
+      "--desktop-session",
+      "c89",
+      "--lock-session",
+      "codex-379-capture-upload2",
+      "--vnc-port",
+      "5900",
+      "--driver",
+      "/home/patrick/putgd-lab/p379/drivers/current-3c29/build/putgd-bench-current-capture",
+      "--capture-driver-manifest",
+      "/home/patrick/putgd-lab/p379/drivers/current-3c29/witness.json"
+    ],
+    "socketPreflight": {
+      "schemaVersion": 1,
+      "passed": true,
+      "limitBytesExcludingNul": 107,
+      "paths": [
+        {
+          "path": "/tmp/p379-rc2/runtime/putgd/session.sock",
+          "utf8Bytes": 40,
+          "passed": true
+        },
+        {
+          "path": "/tmp/.X11-unix/X0",
+          "utf8Bytes": 17,
+          "passed": true
+        },
+        {
+          "path": "/run/user/1000/bus",
+          "utf8Bytes": 18,
+          "passed": true
+        },
+        {
+          "path": "/run/user/1000/at-spi/bus_0",
+          "utf8Bytes": 27,
+          "passed": true
+        },
+        {
+          "path": "/run/user/1000/at-spi/bus_1",
+          "utf8Bytes": 27,
+          "passed": true
+        },
+        {
+          "path": "/tmp/p379-rc2/runtime/at-spi/bus_0",
+          "utf8Bytes": 34,
+          "passed": true
+        },
+        {
+          "path": "/tmp/p379-rc2/runtime/at-spi/bus_1",
+          "utf8Bytes": 34,
+          "passed": true
+        }
+      ],
+      "abstractX11BytesIncludingLeadingNul": 18,
+      "physicalBusAddressPreserved": true
+    },
+    "nativeInstrument": {
+      "path": "/home/patrick/putgd-lab/p379/drivers/current-3c29/build/putgd-bench-current-capture",
+      "sha256": "3ef7ac070d933c0962ab4a5480294084c99b1a5933e63b35139162eb6d1a8d20",
+      "derivativeWitness": {
+        "kind": "current-contrast",
+        "sourceRevision": "3c29bb3b40cebff0214ebe6bb498fc4a09d0b3d8",
+        "frozenSourceSha256": "fcb274049e4279a733b74e6fb9ec80bd4aec6389babe65dcb6497cafd6df887c",
+        "generatorSha256": "74ea2e9c6dfc2647450c52a1582451fea05e2db327103840f05f1d0a17a3a85a",
+        "generatedSourceSha256": "f6776206c592c0c1b4f8de9d43c01a88c305f987fe2ad3a3efd611b23018bbea",
+        "status": "built",
+        "warmupInvocations": 5,
+        "sampleCount": 30,
+        "p95LimitMs": 150,
+        "scope": "separate version-correct paint predicate; unchanged frozen timer/ownership/input/all-display/cancellation/sample/budget source",
+        "negativeControlsAreProductAcceptance": false,
+        "commands": [
+          [
+            "cmake",
+            "-S",
+            "/home/patrick/putgd-lab/p379/drivers/current-3c29",
+            "-B",
+            "/home/patrick/putgd-lab/p379/drivers/current-3c29/build",
+            "-G",
+            "Ninja",
+            "-DCMAKE_BUILD_TYPE=Release"
+          ],
+          [
+            "nice",
+            "-n",
+            "10",
+            "cmake",
+            "--build",
+            "/home/patrick/putgd-lab/p379/drivers/current-3c29/build",
+            "--parallel",
+            "1"
+          ]
+        ],
+        "binary": "/home/patrick/putgd-lab/p379/drivers/current-3c29/build/putgd-bench-current-capture",
+        "binarySha256": "3ef7ac070d933c0962ab4a5480294084c99b1a5933e63b35139162eb6d1a8d20",
+        "syntheticNegativeControlsPassed": true,
+        "syntheticNegativeControlsMethod": "Independently invoked same generated test executable under fixed-display native Xvfb with saved complete socket preflight; not generator automatic --test",
+        "syntheticNegativeControlsCommand": [
+          "nice",
+          "-n",
+          "10",
+          "xvfb-run",
+          "--server-num=379",
+          "/home/patrick/putgd-lab/p379/drivers/current-3c29/build/test-current-capture"
+        ],
+        "syntheticNegativeControlsReceiptSha256": "d2f76a9d89e15f020a76feb1cb6bec5305d09b8230e2af2a79110f07070a8602",
+        "testBinarySha256": "3dfc0208c5f9792aa38d3bd1e151fceb0dc11dbc0da9c0605d2ae7e49271711f",
+        "testSourceSha256": "a51894494acf7d3fe568452443cc5409e8715d0b772ec369a4b098213a1a863f",
+        "qtVersion": "6.4.2",
+        "isolatedDisplaySocketRemoved": true
+      },
+      "manifestSha256": "d080faef79fd6227d10da37dd770105f331dd177062c07006205e511e5adc2d7"
+    },
+    "warmups": 5,
+    "timedSamples": 30,
+    "paintMs": [
+      68.395296,
+      73.359397,
+      70.739356,
+      66.760343,
+      43.419463,
+      69.312875,
+      68.013266,
+      71.62229,
+      70.723655,
+      67.769888,
+      68.972356,
+      71.820051,
+      73.946181,
+      66.680697,
+      70.463122,
+      66.953235,
+      64.325415,
+      67.169861,
+      46.888334,
+      42.054848,
+      42.508666,
+      42.68485,
+      47.415029,
+      43.218668,
+      53.948848,
+      42.040605,
+      44.203863,
+      40.108506,
+      42.329781,
+      67.032142
+    ],
+    "p95IndexZeroBased": 28,
+    "p95PaintMs": 73.359397,
+    "limitMs": 150,
+    "gate": "pass",
+    "measurementScope": "Empty-History native selector DRAWABLE latency only; no compositor/content/populated/capture-acquisition/mixed-DPI credit",
+    "cancelledTimedAndWarmupOperationIds": [
+      "02755854-4634-4aa1-8fab-6e9837212f50",
+      "0331a5e1-96d3-4fe6-bf94-26b8e977c320",
+      "0365d292-e8ca-4ef1-87c0-789fe91c6d35",
+      "10144273-31aa-4f00-a23e-dfb606f3e991",
+      "164725d1-e9a7-4520-bf2b-6e94b506f7ae",
+      "16e48d55-112d-4305-9250-042888691184",
+      "1c31a7d3-a52b-440a-a61d-88d70f388301",
+      "2b7f1dc2-fffe-4c74-ab4b-2973c9fb3f0f",
+      "3c7630f0-1360-426a-9c56-78c22be2a563",
+      "3f550f2e-fbc2-48cf-b24d-104d4bb2f89b",
+      "4f832dfd-71f9-4b53-a5c1-a1374f53e485",
+      "507305ec-d161-4b30-a74d-53fae0bd4774",
+      "55e9367d-bfed-4aab-b4a6-8d4d36dc0690",
+      "56b1ee4f-8f04-4391-973e-793dc049ba5f",
+      "5841ba6f-6ef5-4cff-af82-1e14e460cbba",
+      "5b30c2ae-55c0-4bed-a502-e589d9cbf877",
+      "5d12eab9-9843-44ce-bbe0-1ecdf5e5566d",
+      "665f6cbf-a162-4091-a428-2dbeee6caef7",
+      "6e73001b-2369-45d5-941f-e0f6b8d0ce3a",
+      "77e7c7e1-d070-4457-b957-1e86c858f51f",
+      "8be993af-47fc-4e08-bddc-f7cb23edf27b",
+      "8d97cf8c-69a7-4fc6-9c5d-943ee4ca3cc8",
+      "905c4764-5bb4-4c3c-a55f-479a60dd7520",
+      "94ef3c29-48a4-4c49-a2ab-533f5973fac3",
+      "9f5198e4-3573-47f8-ad4f-334e11ed8164",
+      "c80e93f2-2f5c-4475-9b47-ead478e63666",
+      "cff58a24-c2aa-428d-ae40-4212b781a30c",
+      "d31cb8c8-b367-448b-b2b4-0c7c3dc3aa32",
+      "df5170d3-0d66-4b04-a4e5-6aa8587c9c4e",
+      "e128de1d-f89a-44a7-a5ce-5aacd0876f17",
+      "e2c16bc0-14a0-41f7-b90a-9c99a369700e",
+      "ea5c7073-d393-4417-859f-ffb1bb92958c",
+      "ec83ca6a-adff-4782-8538-4b3f548e8af2",
+      "f923b546-ebdb-4414-a5e2-5afa62a5d485",
+      "fecd7ce9-23c5-42e8-8f73-6fb449141944"
+    ],
+    "all35DistinctCancelledEmptyItemsNoResult": true,
+    "operationCountIncludingUnscored": 36,
+    "historyRows": 0,
+    "unscoredVisual": {
+      "kind": "unscored-capture-visual",
+      "elapsedSeconds": 11.442346167983487,
+      "operationId": "1d49a5a0-df6f-4ff8-abc6-5542f9a0f33b",
+      "helperIdentity": {
+        "pid": 651109,
+        "startTicks": 28368218,
+        "uid": 1000,
+        "executable": "/usr/bin/putgd-capture",
+        "device": 2050,
+        "inode": 10364821,
+        "sha256": "9f122f727a0d84da71cbc7e1dd53895015a34c63606803edb68680659ce74dbf",
+        "role": "auxiliary",
+        "rssBytes": 26361856,
+        "pssBytes": 11363328,
+        "privateBytes": 6123520,
+        "privateHugetlbBytes": 0,
+        "swapBytes": 0,
+        "cpuTicks": 1,
+        "threads": 3,
+        "inResidentTree": true,
+        "qtPlatformMappings": [
+          "libQt6XcbQpa.so.6.4.2",
+          "libqxcb.so"
+        ]
+      },
+      "windows": [
+        "0x5800001"
+      ],
+      "attribution": {
+        "opaqueBlackPixelsVerified": 4710,
+        "opaqueWhitePixelsVerified": 2355,
+        "allOtherPixelsReplacedWithSyntheticBackground": true,
+        "excludedCursorRectangle": [
+          852,
+          602,
+          96,
+          96
+        ],
+        "rawFramebufferRetained": false
+      },
+      "screenshot": "unscored-capture-overlay.png",
+      "sha256": "175cbaff28dfc5e5bbbabce6e6c9e620c07c325f7db2232a897888f734e3123d",
+      "scored": false,
+      "drag": [
+        140,
+        180,
+        900,
+        650
+      ]
+    },
+    "residentLaunches": [
+      {
+        "identity": {
+          "pid": 650698,
+          "startTicks": 28367326,
+          "uid": 1000,
+          "executable": "/usr/bin/putgd",
+          "device": 2050,
+          "inode": 10364819
+        },
+        "pidfdHeld": true
+      },
+      {
+        "identity": {
+          "pid": 650738,
+          "startTicks": 28367469,
+          "uid": 1000,
+          "executable": "/usr/bin/putgd",
+          "device": 2050,
+          "inode": 10364819
+        },
+        "pidfdHeld": true
+      }
+    ],
+    "residentCleanup": [
+      {
+        "gracefulRequest": true,
+        "exitCode": 0,
+        "forced": false,
+        "remaining": [],
+        "socketAbsent": true,
+        "passed": true,
+        "errors": [],
+        "inventoryComplete": true,
+        "absenceVerified": true,
+        "inventoryDefinition": "observed PID/start/UID generations + resident process group + exact isolated runtime/data environment; no command lines exported"
+      },
+      {
+        "gracefulRequest": true,
+        "exitCode": 0,
+        "forced": false,
+        "remaining": [],
+        "socketAbsent": true,
+        "passed": true,
+        "errors": [],
+        "inventoryComplete": true,
+        "absenceVerified": true,
+        "inventoryDefinition": "observed PID/start/UID generations + resident process group + exact isolated runtime/data environment; no command lines exported"
+      }
+    ],
+    "rawMetrics": {
+      "warmP95DrawablePaintMs": 73.359397,
+      "sampledProcessFamily": {
+        "peakTotals": {
+          "rssBytes": 57028608,
+          "pssBytes": 27017216,
+          "privateBytes": 17477632
+        },
+        "cpuPercentOneCoreLowerBound": null,
+        "observedProcessGenerations": 2,
+        "samplingSpanSeconds": 0.0,
+        "shortLivedChildrenMayBeMissed": true
+      }
+    },
+    "independentRootQa": {
+      "status": "pass_at_scoped_drawable_latency_only",
+      "audit": "review379-cu2-capture-evidence.json",
+      "scope": "128original+8local hashes; allsample/helper witnesses/35+1cancelled journals/p95/product/instrument/normal0/fullcleanup/visual attribution independently verified"
+    },
+    "visualCursorMaskLimitation": "Excluded rectangle852,602,96,96 intentionally replaces lower-right corner; visible gap is not a product outline-break claim"
+  },
+  "fileEditorQueue": {
+    "status": "failed-or-interrupted",
+    "publicWorkloadName": "50-file editor upload queue exercise",
+    "nativeCapturesExercised": 0,
+    "startedUtc": "2026-10-24T23:49:35.773486+00:00",
+    "elapsedSeconds": 18.36364889901597,
+    "errorCode": "no_owned_ui_proven_visible_on_wall",
+    "parameters": {
+      "scenario": "burst",
+      "output": "/tmp/p379-rb2",
+      "package": "/home/patrick/putgd-lab/p379/release/putgd-26.1024.1185-nightly-ubuntu24.04-x86_64.deb",
+      "package_sha256": "2094fd4db8cd915b02f1cdd16eb5c99bb8191948931cd2f558a89c59be5b3f47",
+      "version": "26.1024.1185-nightly",
+      "source_revision": "9dfac15c1ced201d13a2b70a8afb0c253213768b",
+      "desktop_session": "c89",
+      "lock_session": "codex-379-capture-upload2",
+      "app": "/usr/bin/putgd",
+      "cli": "/usr/bin/putgd-cli",
+      "helper": "/usr/bin/putgd-ui",
+      "capture_helper": "/usr/bin/putgd-capture",
+      "driver": null,
+      "capture_driver_manifest": null,
+      "fixture_root": null,
+      "driver_revision": "3259a5b83e4b93b9ba595bafb95e7c9ebddbddd0",
+      "open_seconds": 30,
+      "vnc_port": 5900,
+      "endpoint": "http://127.0.0.1:37299",
+      "fixture_pid": 651190,
+      "fixture_source": "/home/patrick/putgd-lab/p379/drivers/3259a5b8-cu1/tests/fixtures/s3_server.py",
+      "enable_accessibility": true,
+      "native_driver": "/home/patrick/putgd-lab/p379/drivers/72afd00-full/tools/lab/native_acceptance.py",
+      "native_driver_revision": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+      "native_driver_sha256": "347934c226f99cb0e509d5466c5df8116896e6bfac07d75fdfa4f4c2d06ca053",
+      "threshold_policy": null,
+      "settle_seconds": 300
+    },
+    "actualCommand": [
+      "/usr/bin/python3",
+      "/home/patrick/putgd-lab/p379/drivers/3259a5b8-cu1/tests/performance/physical_campaign.py",
+      "burst",
+      "--output",
+      "/tmp/p379-rb2",
+      "--package",
+      "/home/patrick/putgd-lab/p379/release/putgd-26.1024.1185-nightly-ubuntu24.04-x86_64.deb",
+      "--package-sha256",
+      "2094fd4db8cd915b02f1cdd16eb5c99bb8191948931cd2f558a89c59be5b3f47",
+      "--version",
+      "26.1024.1185-nightly",
+      "--source-revision",
+      "9dfac15c1ced201d13a2b70a8afb0c253213768b",
+      "--driver-revision",
+      "3259a5b83e4b93b9ba595bafb95e7c9ebddbddd0",
+      "--desktop-session",
+      "c89",
+      "--lock-session",
+      "codex-379-capture-upload2",
+      "--vnc-port",
+      "5900",
+      "--native-driver",
+      "/home/patrick/putgd-lab/p379/drivers/72afd00-full/tools/lab/native_acceptance.py",
+      "--native-driver-revision",
+      "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+      "--native-driver-sha256",
+      "347934c226f99cb0e509d5466c5df8116896e6bfac07d75fdfa4f4c2d06ca053",
+      "--endpoint",
+      "http://127.0.0.1:37299",
+      "--fixture-pid",
+      "651190",
+      "--fixture-source",
+      "/home/patrick/putgd-lab/p379/drivers/3259a5b8-cu1/tests/fixtures/s3_server.py",
+      "--enable-accessibility",
+      "--settle-seconds",
+      "300"
+    ],
+    "socketPreflight": {
+      "schemaVersion": 1,
+      "passed": true,
+      "limitBytesExcludingNul": 107,
+      "paths": [
+        {
+          "path": "/tmp/p379-rb2/runtime/putgd/session.sock",
+          "utf8Bytes": 40,
+          "passed": true
+        },
+        {
+          "path": "/tmp/.X11-unix/X0",
+          "utf8Bytes": 17,
+          "passed": true
+        },
+        {
+          "path": "/run/user/1000/bus",
+          "utf8Bytes": 18,
+          "passed": true
+        },
+        {
+          "path": "/run/user/1000/at-spi/bus_0",
+          "utf8Bytes": 27,
+          "passed": true
+        },
+        {
+          "path": "/run/user/1000/at-spi/bus_1",
+          "utf8Bytes": 27,
+          "passed": true
+        },
+        {
+          "path": "/tmp/p379-rb2/runtime/at-spi/bus_0",
+          "utf8Bytes": 34,
+          "passed": true
+        },
+        {
+          "path": "/tmp/p379-rb2/runtime/at-spi/bus_1",
+          "utf8Bytes": 34,
+          "passed": true
+        }
+      ],
+      "abstractX11BytesIncludingLeadingNul": 18,
+      "physicalBusAddressPreserved": true
+    },
+    "fixtureIdentity": {
+      "identity": {
+        "pid": 651190,
+        "startTicks": 28368379,
+        "uid": 1000,
+        "parentPid": 650675,
+        "cpuTicks": 0,
+        "comm": "python3",
+        "executable": "/usr/bin/python3.12",
+        "executableName": "python3.12"
+      },
+      "port": 37299,
+      "sourceSha256": "4f76efaa6af7233f840041aa0a6720f5f4e1e4ee618ab32b9468ace4e412055c"
+    },
+    "sourceRecipe": {
+      "generator": "campaign_fixture.png",
+      "indexStart": 100,
+      "count": 50,
+      "indexStep": 1,
+      "width": 320,
+      "height": 180,
+      "noise": false,
+      "fileMode": "0400",
+      "directoryMode": "0700"
+    },
+    "events": [
+      {
+        "kind": "burst-queue-observation",
+        "elapsedSeconds": 9.432199413015042,
+        "queued": 2,
+        "uploading": 3
+      },
+      {
+        "kind": "owned-window-occluded-no-visual-retained",
+        "elapsedSeconds": 11.691854163014796,
+        "label": "burst-progress-4",
+        "window": "0x4c00006"
+      },
+      {
+        "kind": "synthetic-cover-visual",
+        "elapsedSeconds": 13.955411567003466,
+        "label": "failed-workload",
+        "file": "failed-workload.png",
+        "sha256": "ff83b8e75f7b4fa25e021f1d4027abaab5a6159abb46c875f7d0af6007d24a8d",
+        "limitation": "Synthetic cover; companion separately verifies actual desktop tray presentation"
+      }
+    ],
+    "finalJournalOperationCount": 5,
+    "finalJournalStates": {
+      "cancelled": 4,
+      "editing": 1
+    },
+    "historyRows": 4,
+    "no50CompletionOrSettleCredit": true,
+    "noFailedRawFrameRetained": true,
+    "assessment": "Visibility attribution refusal; no product bug inferred. Off-host intended-UI/PID/window/focus diagnosis requested with exact driver source and retained events. Guard unchanged.",
+    "residentLaunches": [
+      {
+        "identity": {
+          "pid": 651204,
+          "startTicks": 28368521,
+          "uid": 1000,
+          "executable": "/usr/bin/putgd",
+          "device": 2050,
+          "inode": 10364819
+        },
+        "pidfdHeld": true
+      },
+      {
+        "identity": {
+          "pid": 651241,
+          "startTicks": 28368669,
+          "uid": 1000,
+          "executable": "/usr/bin/putgd",
+          "device": 2050,
+          "inode": 10364819
+        },
+        "pidfdHeld": true
+      }
+    ],
+    "residentCleanup": [
+      {
+        "gracefulRequest": true,
+        "exitCode": 0,
+        "forced": false,
+        "remaining": [],
+        "socketAbsent": true,
+        "passed": true,
+        "errors": [],
+        "inventoryComplete": true,
+        "absenceVerified": true,
+        "inventoryDefinition": "observed PID/start/UID generations + resident process group + exact isolated runtime/data environment; no command lines exported"
+      },
+      {
+        "gracefulRequest": true,
+        "exitCode": 0,
+        "forced": false,
+        "remaining": [],
+        "socketAbsent": true,
+        "passed": true,
+        "errors": [],
+        "inventoryComplete": true,
+        "absenceVerified": true,
+        "inventoryDefinition": "observed PID/start/UID generations + resident process group + exact isolated runtime/data environment; no command lines exported"
+      }
+    ],
+    "unassessedRawMetrics": {
+      "historyOpenFirstGenericDrawableObservationMs": 693.9859119593166,
+      "historyOpenUpperBoundMs": null,
+      "sampledProcessFamily": {
+        "peakTotals": {
+          "rssBytes": 270344192,
+          "pssBytes": 104726528,
+          "privateBytes": 78254080
+        },
+        "cpuPercentOneCoreLowerBound": 10.806470924994802,
+        "observedProcessGenerations": 9,
+        "samplingSpanSeconds": 9.161177658010274,
+        "shortLivedChildrenMayBeMissed": true
+      }
+    },
+    "gates": {
+      "captureBurst": {
+        "status": "unassessed",
+        "reason": "50-upload workload uses explicit synthetic file editors; actual capture burst is not exercised"
+      },
+      "historyOpenUpperBoundMs": {
+        "status": "unassessed",
+        "reason": "content_endpoint_not_witnessed"
+      },
+      "cleanup": {
+        "status": "pass"
+      }
+    },
+    "offHostTrace": {
+      "historyPid": 651279,
+      "historyStartTicks": 28368878,
+      "historyMappedElapsedSeconds": 5.406,
+      "normalExitEditorPids": [
+        651311,
+        651344,
+        651399,
+        651449,
+        651497
+      ],
+      "lastEditorNormalExitUtc": "2026-10-24T23:49:44.925Z",
+      "historyStillPresentElapsedSeconds": 9.496,
+      "actualOccluderProven": false,
+      "failedFrameActiveWindowGeometryAvailable": false,
+      "comparisonAlsoMayRefuseDynamicPaints": true,
+      "provenCallerGap": "No fresh intended-History activation after editor focus changes; UI.save enumerates all mapped windows under cached History PID instead of targeting original pinned History window",
+      "proposedFixStatus": "Owner preparing bounded target/focus caller fix with exact privacy equality/crop/refusal unchanged; no physical retry authorized"
+    }
+  },
+  "cleanup": {
+    "lease": {
+      "owner": "Codex379",
+      "session": "codex-379-capture-upload2",
+      "host": "m74",
+      "purpose": "379 CAPTURE FILEUPLOAD50 run=cu2 allocation=root-379-cu2-3259a5b8-busfix-20261024T233904Z",
+      "acquired": "2026-10-24T23:49:02Z",
+      "expires": "2026-10-25T00:04:02Z",
+      "heartbeat": "2026-10-24T23:49:02Z"
+    },
+    "productAllFourResidentsNormal0NonforcedInventoryCompleteAbsenceVerified": true,
+    "fixture": {
+      "passed": true,
+      "reaped": true,
+      "actions": [
+        "SIGINT"
+      ],
+      "errors": [],
+      "forced": false,
+      "exitCode": -2
+    },
+    "workerScopedInputRelease": {
+      "passed": true,
+      "attempts": [
+        {
+          "command": [
+            "xdotool",
+            "keyup",
+            "Control_L",
+            "Shift_L",
+            "F12"
+          ],
+          "exitCode": 0
+        },
+        {
+          "command": [
+            "xdotool",
+            "mouseup",
+            "1"
+          ],
+          "exitCode": 0
+        }
+      ],
+      "scope": "same allocated physical X11 session; key/button releases only; never Escape",
+      "leaseExpiredButStillMatchingOwnedGeneration": false
+    },
+    "containedScopedInputRelease": {
+      "passed": true,
+      "attempts": [
+        {
+          "command": [
+            "xdotool",
+            "keyup",
+            "Control_L",
+            "Shift_L",
+            "F12"
+          ],
+          "exitCode": 0
+        },
+        {
+          "command": [
+            "xdotool",
+            "mouseup",
+            "1"
+          ],
+          "exitCode": 0
+        }
+      ],
+      "scope": "same allocated physical X11 session; key/button releases only; never Escape",
+      "leaseExpiredButStillMatchingOwnedGeneration": false
+    },
+    "directCaptureChild": {
+      "passed": true,
+      "reaped": true,
+      "actions": [],
+      "errors": [],
+      "forced": false,
+      "exitCode": 0
+    },
+    "containment": {
+      "passed": true,
+      "identity": {
+        "unit": "putgd379-cu2-c5b6152a5b62ffc6.service",
+        "invocationId": "d15f009355c2450ea31bb232ca57cec1",
+        "controlGroup": "/user.slice/user-1000.slice/user@1000.service/app.slice/putgd379-cu2-c5b6152a5b62ffc6.service",
+        "cgroupDevice": 31,
+        "cgroupInode": 466033,
+        "description": "putgd379 allocation=root-379-cu2-3259a5b8-busfix-20261024T233904Z nonce=c5b6152a5b62ffc6",
+        "allocation": "root-379-cu2-3259a5b8-busfix-20261024T233904Z",
+        "workerIdentity": {
+          "pid": 650675,
+          "startTicks": 28367165,
+          "uid": 1000,
+          "executable": "/usr/bin/python3.12"
+        }
+      },
+      "forceUsed": false,
+      "absent": true,
+      "normalExitProved": false,
+      "creatorFence": {
+        "passed": true,
+        "sameCreatorInFinalizer": true,
+        "reaped": null
+      },
+      "creatorFenceError": null,
+      "evidencePassed": true,
+      "persistenceErrors": []
+    },
+    "workerExit": {
+      "ExecMainCode": "1",
+      "ExecMainStatus": "1"
+    },
+    "normalWorkerExit0Claimed": false,
+    "originalVmPause": {
+      "pid": 308684,
+      "startTicks": 9741363,
+      "uid": 1000,
+      "executable": "/usr/bin/qemu-system-x86_64",
+      "qmp": "/home/patrick/work/put.gd/work/windows/runs/w11b-3e92324d501c/qmp.sock",
+      "qmpDevice": 2050,
+      "qmpInode": 14055411,
+      "name": "windows11-w11b-3e92324d501c",
+      "uuid": "a2dc24c2-abff-4972-a524-cc44d44c8681",
+      "beforeStatus": {
+        "status": "running",
+        "singlestep": false,
+        "running": true
+      },
+      "status": {
+        "status": "paused",
+        "singlestep": false,
+        "running": false
+      },
+      "checkedUtc": "2026-10-24T23:49:11.920353+00:00"
+    },
+    "originalVmRunningReceipt": {
+      "pid": 308684,
+      "startTicks": 9741363,
+      "uid": 1000,
+      "executable": "/usr/bin/qemu-system-x86_64",
+      "qmp": "/home/patrick/work/put.gd/work/windows/runs/w11b-3e92324d501c/qmp.sock",
+      "qmpDevice": 2050,
+      "qmpInode": 14055411,
+      "name": "windows11-w11b-3e92324d501c",
+      "uuid": "a2dc24c2-abff-4972-a524-cc44d44c8681",
+      "beforeStatus": {
+        "status": "running",
+        "singlestep": false,
+        "running": true
+      },
+      "status": {
+        "status": "running",
+        "singlestep": false,
+        "running": true
+      },
+      "checkedUtc": "2026-10-24T23:50:00.936649+00:00"
+    },
+    "packagePurged": true,
+    "matchingReleasePassed": true,
+    "resourceReleased": true,
+    "releasedUtc": "2026-10-24T23:50:03.704226+00:00",
+    "finalDesktopCheck": {
+      "checkedUtc": "2026-10-24T23:52:45.087547+00:00",
+      "argv": [
+        "/usr/bin/python3",
+        "tools/lab/desktop_lock.py",
+        "status",
+        "m74",
+        "--check"
+      ],
+      "exitCode": 0,
+      "stdout": "m74 (Linux Mint 22.3 Cinnamon X11): free\n  last: release of Codex379's lock by codex-379-capture-upload2 at 2026-10-24T23:50:03Z\n  note: 3 process(es) outside the desktop session (no DISPLAY or WAYLAND_DISPLAY; shared SSH work): 2067 313646 313651\n",
+      "stderr": ""
+    },
+    "noRetryOrAdditionalWorkload": true
+  },
+  "figures": [
+    {
+      "file": "cu2-empty-selector-unscored.png",
+      "sha256": "aee5faa0986f72486d46706ac9f6fa6aa34ba8d467a6af54d5a8c5c60c614798",
+      "size": [
+        1920,
+        1370
+      ],
+      "sourceSha256": "175cbaff28dfc5e5bbbabce6e6c9e620c07c325f7db2232a897888f734e3123d",
+      "sourceRgbSha256": "41ca3154d6606e2b238a42103c46e5c81e0d87aa8c6ab6cb9e5867d068aef9c9",
+      "unchangedSourceRectangle": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "captionAppendedBelowSource": true,
+      "manualReview": "Reviewed source and final figure; no private desktop pixels or credentials; only the declared attributed stroke/synthetic fill",
+      "meaning": "CU2 | Empty-history selector: separate unscored visual"
+    },
+    {
+      "file": "cu2-queue-visibility-refusal.png",
+      "sha256": "e01d0f6690594571b49dae47a8bbc2aa8fd78d5df13b5542a81dc41cc6ace769",
+      "size": [
+        1920,
+        1370
+      ],
+      "sourceSha256": "ff83b8e75f7b4fa25e021f1d4027abaab5a6159abb46c875f7d0af6007d24a8d",
+      "sourceRgbSha256": "2a41fa075f470a77bff3ab58ddab797d2cc19342cb368b058b2c15aa17adda25",
+      "unchangedSourceRectangle": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "captionAppendedBelowSource": true,
+      "manualReview": "Reviewed source and final figure; no private desktop pixels or credentials; only the declared attributed stroke/synthetic fill",
+      "meaning": "CU2 | 50-file editor upload queue exercise: incomplete"
+    }
+  ],
+  "privateEvidence": {
+    "remoteRoot": "/home/patrick/putgd-lab/p379",
+    "archiveSha256": "324eb3d470544c35ef765c2b57e0eb28a8cc4ff3ef8decee8024b9fd4ca8f5e5",
+    "archiveBytes": 6461440,
+    "manifestSha256": "24f35567fdbea7fe86354738eefd410a1ac395862ee10e50a49ed7f28410e457",
+    "originalCount": 128,
+    "regularArchiveMembersIncludingSeparateManifest": 129,
+    "rawFileCount": 90,
+    "allOriginalsRetained": true,
+    "allHashesAndSizesVerified": true,
+    "rawSourceCopyHashesVerified": true,
+    "restore": "Verify archive+embedded manifest and every safe regular member hash/size; extract into fresh private directory.",
+    "originals": [
+      {
+        "path": "locks/history/2026-10-24T23-50-03Z-release.json",
+        "bytes": 689,
+        "sha256": "5fa547c64e2c3d634e47faecea73a4a8858c078331b55767c655432cf4808c8a"
+      },
+      {
+        "path": "p379/controllers/cu2/burst-command.json",
+        "bytes": 2288,
+        "sha256": "152869caf04de677e81662b7e5ea855d4a5b4d242f76e978013371cbb21d386f"
+      },
+      {
+        "path": "p379/controllers/cu2/burst-driver.log",
+        "bytes": 89,
+        "sha256": "2320aa93c61abeebac3fb17110d871daff9c08a78305875c5b8288f56f11cce4"
+      },
+      {
+        "path": "p379/controllers/cu2/burst-owned-child.json",
+        "bytes": 441,
+        "sha256": "ad1ccf0e58d88f08b01ac921b3757edaf8869e2e7a300d8ab6dcab327fae82d7"
+      },
+      {
+        "path": "p379/controllers/cu2/burst-sockets.json",
+        "bytes": 899,
+        "sha256": "2e7ef5eaf69b557d05016bee131498e7820c230265f2a2369a71ff48b9e0d47e"
+      },
+      {
+        "path": "p379/controllers/cu2/capture-command.json",
+        "bytes": 1841,
+        "sha256": "a885703c6e2c3ec1e00efbaa62d3ff638221e11671da5cee7d1fdcc7ec84e144"
+      },
+      {
+        "path": "p379/controllers/cu2/capture-driver.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "p379/controllers/cu2/capture-owned-child.json",
+        "bytes": 443,
+        "sha256": "22ef8cf2cc57ddd642fa1dbe53e45223b45d119ed0531c458ec1bd736c32579d"
+      },
+      {
+        "path": "p379/controllers/cu2/capture-sockets.json",
+        "bytes": 899,
+        "sha256": "045c8c9f451a2d859751949b0429603c67606d6e8f8e72d191c27e0e7c540466"
+      },
+      {
+        "path": "p379/controllers/cu2/config.json",
+        "bytes": 13694,
+        "sha256": "6510846776c6f93f0f90ac2896f77df3dc52e142c9b1d2201fcfc3313c663883"
+      },
+      {
+        "path": "p379/controllers/cu2/contained-launch-outcome.json",
+        "bytes": 6179,
+        "sha256": "1b08fc1185e49ee2588b43340bcd51089f2a97fd1cae5fe5763af8c5f55e6c10"
+      },
+      {
+        "path": "p379/controllers/cu2/fixture-command.json",
+        "bytes": 490,
+        "sha256": "ce7f2195f698d31954de5fd2a6fd02c25b9d5d2ad51c8422ba0f585d1aab0770"
+      },
+      {
+        "path": "p379/controllers/cu2/fixture-ready.json",
+        "bytes": 334,
+        "sha256": "fae1e7617b8046510bac27d55409f7bcf21b32a34ace1651d8a0cbbd90495e3c"
+      },
+      {
+        "path": "p379/controllers/cu2/fixture-stderr.log",
+        "bytes": 510,
+        "sha256": "e9f2564ada2f9920e6307cd246e7fe35664a60e05cd3cf8b609ddade50b19a64"
+      },
+      {
+        "path": "p379/controllers/cu2/install.log",
+        "bytes": 1975,
+        "sha256": "fc12c8a1e897b0175dcbf12216f04bedd67146a3d1e247574a5f1311b2d7901c"
+      },
+      {
+        "path": "p379/controllers/cu2/journal.json",
+        "bytes": 1866,
+        "sha256": "087edc200151f6971100f14ce5ff7f8cbc98211d7b139a3c949e6ea401b54872"
+      },
+      {
+        "path": "p379/controllers/cu2/launch-outcome.json",
+        "bytes": 23395,
+        "sha256": "3a48e4bb418b4d653ac52b24ba60ae5b266e8012564b02b7fd3978b05ba2a959"
+      },
+      {
+        "path": "p379/controllers/cu2/launch-owner.json",
+        "bytes": 522,
+        "sha256": "f15f7b032f4cf3ffdc8724f7504adaf85111f8a276ed4035c4abeef79a79845b"
+      },
+      {
+        "path": "p379/controllers/cu2/launch-primary-error.json",
+        "bytes": 7024,
+        "sha256": "f0b446db6912af40f416b086c6032ba97558a32b02332a1650f6a281e3c7232d"
+      },
+      {
+        "path": "p379/controllers/cu2/observation.json",
+        "bytes": 316117,
+        "sha256": "45abbe1a0d54cc3b5a7cf934a22008c17517cebc4be3c99380dbb1850c935b29"
+      },
+      {
+        "path": "p379/controllers/cu2/pause.json",
+        "bytes": 562,
+        "sha256": "55f7636b784c722e85a85a26e28a290f65db5784227691c7b9f82de6058843aa"
+      },
+      {
+        "path": "p379/controllers/cu2/purge-containment-proof.json",
+        "bytes": 887,
+        "sha256": "85a830b12548edea3719654cad4b3a89702f1ef5b37f8cb5b4e993eabf7bfa31"
+      },
+      {
+        "path": "p379/controllers/cu2/purge.log",
+        "bytes": 2051,
+        "sha256": "f132616dff96641699dfb3a9218c03bfb24157dfe2d1a49ee37635674a7d5cac"
+      },
+      {
+        "path": "p379/controllers/cu2/raw-export.json",
+        "bytes": 17827,
+        "sha256": "d7232e943fe0e5ae45dc2a7213e0aa1154edb6661c60e7cdc05998264ce7f075"
+      },
+      {
+        "path": "p379/controllers/cu2/resume.json",
+        "bytes": 562,
+        "sha256": "f8cf014726ccdf952dc2a3e6b21b30094ec38548995451b74146a4376de06c38"
+      },
+      {
+        "path": "p379/controllers/cu2/source.py",
+        "bytes": 117673,
+        "sha256": "8fa1edb109ba01b383ea7bc7befdacc1570e469adc24f58e8351704a149b7e4f"
+      },
+      {
+        "path": "p379/controllers/cu2/unit-command.json",
+        "bytes": 1194,
+        "sha256": "2fd4d4b8dfa5b0f50fdf61282edba5001f292e2f87ace2854015db74c495e5f2"
+      },
+      {
+        "path": "p379/controllers/cu2/unit-drain.json",
+        "bytes": 834,
+        "sha256": "ef4117b5760cf35dfc8470325363f185e97097a6247a0c6ea16e080d5ea2d11d"
+      },
+      {
+        "path": "p379/controllers/cu2/unit-intent.json",
+        "bytes": 940,
+        "sha256": "5645282202379ce278d39bbc73a63dbaa8343bda99137db77fde9fa84dc8222a"
+      },
+      {
+        "path": "p379/controllers/cu2/unit-start-reply.json",
+        "bytes": 119,
+        "sha256": "86f0a49c9fd92844ee2bfd52012eaa670e56aa92a53f33aa8fea022a7eed4faf"
+      },
+      {
+        "path": "p379/controllers/cu2/worker-abort.json",
+        "bytes": 68,
+        "sha256": "368d6860ed5ea819b9df0fbde160d2522b1e82b895b04224ade6d2a8320d1ec4"
+      },
+      {
+        "path": "p379/controllers/cu2/worker-exit-go.json",
+        "bytes": 57,
+        "sha256": "27e7d6ba6b91a518f8dea6267ebe209d96a45ef7a4887d00f1d9fb29f27dc182"
+      },
+      {
+        "path": "p379/controllers/cu2/worker-go.json",
+        "bytes": 122,
+        "sha256": "efbe487145d79d8c5f2ba1eb2f684c1eab17ef2aa1824c345cbb938902d91b5c"
+      },
+      {
+        "path": "p379/controllers/cu2/worker-ready.json",
+        "bytes": 1059,
+        "sha256": "e8e6eadeb90ff8ea37e734cb48cd83efed9e9a7ef3d3f53d67020eb8613f2a32"
+      },
+      {
+        "path": "p379/controllers/cu2/worker-result.json",
+        "bytes": 3345,
+        "sha256": "710157517d3dab869951e6ba61cc47f74449ba0d645316a126dc6af11f93b607"
+      },
+      {
+        "path": "p379/raw/cu2/burst/archive/images/Screen-Capture-2026-10-24-18-49-41.png",
+        "bytes": 716,
+        "sha256": "d8f566e56ab57c47bb282860ce5d63852ebbf7e91db4f3e3ee8bc51310780bf5"
+      },
+      {
+        "path": "p379/raw/cu2/burst/archive/images/Screen-Capture-2026-10-24-18-49-42.png",
+        "bytes": 717,
+        "sha256": "85489c952373a0ce60995d1eb823e35dc272615755077c8233e2879ef73c4db4"
+      },
+      {
+        "path": "p379/raw/cu2/burst/archive/images/Screen-Capture-2026-10-24-18-49-43-56c2e06e-56f2-4664-b424-139e7bf0334b.png",
+        "bytes": 717,
+        "sha256": "f699b73a5f222f143b3ea896e36046588ea47ac8d0aec6880e749411efe18db5"
+      },
+      {
+        "path": "p379/raw/cu2/burst/archive/images/Screen-Capture-2026-10-24-18-49-43.png",
+        "bytes": 717,
+        "sha256": "feb968edc59c31a7d82202117b814110d3a660c95fd1be7fe93c29c6671b5676"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-00-synthetic.png",
+        "bytes": 103730,
+        "sha256": "7693cf45ee949115a0897f65159db3a91eb716d0c73a523db911153e97b6a488"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-01-synthetic.png",
+        "bytes": 103617,
+        "sha256": "5f8805bfad7d90a81f984a5de510e98c761b20434756759263d8cebd2d1ed789"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-02-synthetic.png",
+        "bytes": 103646,
+        "sha256": "8cc651377266a5b0b2fe275d0e01ecda2ac2de2530ffa4ff9354781b2ee655d6"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-03-synthetic.png",
+        "bytes": 103694,
+        "sha256": "dcef790c885c205f5a622e6a2dd718ec3ff9fb8d98af9473f3022f2e8a60e7eb"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-04-synthetic.png",
+        "bytes": 103700,
+        "sha256": "8a3e9c58f498589caf9da05d4ac7eeec64c7a5720f301aad907ceee9be215277"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-05-synthetic.png",
+        "bytes": 103786,
+        "sha256": "32c03ef39e38d3bb4a359be1ac45e1c74acd28dbbe8a14a50a140b706d27beb0"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-06-synthetic.png",
+        "bytes": 103683,
+        "sha256": "79b7b2fb5c4bfa70a75b228e6af128bf3b8c4263183aeb5107320b9c191460f8"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-07-synthetic.png",
+        "bytes": 103763,
+        "sha256": "49f660b6afc1a0f7086621d7e5e1e61059d67b11a5a3ed4723f33dc9c5cee7fc"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-08-synthetic.png",
+        "bytes": 103732,
+        "sha256": "4acead5bceece9c5581ada5ad891ef395f41a90ec54911880b40adcf9800c96b"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-09-synthetic.png",
+        "bytes": 103763,
+        "sha256": "dd59cc50e46b158ae91a64eedd3782e8f55d0f909074eecf8301e51a0f32b74b"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-10-synthetic.png",
+        "bytes": 103561,
+        "sha256": "76c104ea27ae9538c3aa4932f9256b74735b230a658a68dc4ed02c5d12173f63"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-11-synthetic.png",
+        "bytes": 103599,
+        "sha256": "81bd233c6f434a5f7a2639fbd68ab635b5c0a473ab14078cd0edc057a763a566"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-12-synthetic.png",
+        "bytes": 103740,
+        "sha256": "81ca5cbd3f7a5315c8f88e4c4a852b7ffcad38d7097da63f0fedf35bebadaae4"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-13-synthetic.png",
+        "bytes": 103710,
+        "sha256": "8a53ffe1107659e6cd0b3df9dd5a15b6f7ece1a13343a439b13b913d24ae0c15"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-14-synthetic.png",
+        "bytes": 103762,
+        "sha256": "dddef6dc757d4e18f9335bf29930582a2015f87cb0a17d5df250bd77ab184fc5"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-15-synthetic.png",
+        "bytes": 103647,
+        "sha256": "b1a34cadfd10d1a240e93c0eefe325dbf4f8c335c061de3896f29e1459ff8466"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-16-synthetic.png",
+        "bytes": 103758,
+        "sha256": "b4d43391ee214135c2323023b615d2e1fa19a4860866e00717ec0b6736f784bf"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-17-synthetic.png",
+        "bytes": 103742,
+        "sha256": "99e5cc55de4129657c1c445bba01cf22429fb22d6d12ea4d33598d401c73c50c"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-18-synthetic.png",
+        "bytes": 103717,
+        "sha256": "260bd3f9ad5ef007a414a27ffc6804e1dbf2150c094440f3ca3c06c2d92f5e4c"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-19-synthetic.png",
+        "bytes": 103596,
+        "sha256": "4f1a98509b4cc2f7cc5de314b5f5a674884aafaba4ab68ac91bf98eb0620ce1d"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-20-synthetic.png",
+        "bytes": 103590,
+        "sha256": "8727acaeceebf93b363872cce275d1a803fe42f8a3452b1ba1edd8ee8756f59c"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-21-synthetic.png",
+        "bytes": 103747,
+        "sha256": "ba683eee877a372a9b9714337ce2dccae99f027d0b91c1daca2fb7a557db2d28"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-22-synthetic.png",
+        "bytes": 103694,
+        "sha256": "92c5b8ea8951e50d9de5c1c7a9f86a6dfdcaa7eeb1df6e2cc8aebdac07c54d9f"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-23-synthetic.png",
+        "bytes": 103747,
+        "sha256": "9b83368917744e66c6c83a3558689db526304f242b1f5cd630cdee13ab0de3d9"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-24-synthetic.png",
+        "bytes": 103660,
+        "sha256": "ece62a2be630a25d2ebc602c69cbfdeea273ea41d2a8010957be4cf081feb890"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-25-synthetic.png",
+        "bytes": 103736,
+        "sha256": "fb7b92c75b6b274f596307c66fe324c49608de83b953afc4b32a4c5d8725a5ca"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-26-synthetic.png",
+        "bytes": 103739,
+        "sha256": "fbaec86644f3356b91e7184b6db2a2e33772ea8bb4e71643d7a32259242a9fb6"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-27-synthetic.png",
+        "bytes": 103734,
+        "sha256": "ff4828a17c9c75f1bfa2973f3a7648bcc5c1adb74749a4a7a6fd16849d1f44db"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-28-synthetic.png",
+        "bytes": 103585,
+        "sha256": "198fbedc9a5f35dc37c68dc86a669dffe752dac0725f086fe515de4cf7b1b5bd"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-29-synthetic.png",
+        "bytes": 103633,
+        "sha256": "8fbba5f35dad74aef3e89c9b55250431203c70776deb2733cdb6a52d244f8df2"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-30-synthetic.png",
+        "bytes": 103650,
+        "sha256": "0b7ae15c982f24127ca23739d00322dbc5b9ccdf6f353b8d0cc335aa739d0561"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-31-synthetic.png",
+        "bytes": 103714,
+        "sha256": "779f80cef3aaf48ace4e3c4b282f094b6a5f169f807e3dabafeea0e5a83501dc"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-32-synthetic.png",
+        "bytes": 103755,
+        "sha256": "988303fd2b22a682a7f51d7ece95ca9c6b0b4af4ebd2812953b30ba7375cc1cc"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-33-synthetic.png",
+        "bytes": 103693,
+        "sha256": "64303b399d7dd6e40a041287f4662594e3315008852d93d6010ce921ef88eea3"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-34-synthetic.png",
+        "bytes": 103765,
+        "sha256": "afd50515b58eda3f22ab2cdef581f3f80816ebee7d34d49f773a1d731aa4c83c"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-35-synthetic.png",
+        "bytes": 103729,
+        "sha256": "ccaca0ab18f48bf92c075ded6772779931f257adc046ec9ed41a77772f6453b5"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-36-synthetic.png",
+        "bytes": 103794,
+        "sha256": "a8cd05ec1a66c9d2ca7fdd7cf9b6673389b42c236329aac7add79126d0c18fff"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-37-synthetic.png",
+        "bytes": 103668,
+        "sha256": "bf915ea8882133a3dffc8a3c60393b8a886a2917e4c2e07f3609e19670e476af"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-38-synthetic.png",
+        "bytes": 103656,
+        "sha256": "b0dd5521b9adef6360a46c0d4f80be80ed559f09ef1aab4c3b4e224c7fc08082"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-39-synthetic.png",
+        "bytes": 103726,
+        "sha256": "69b49d25111d0f11918dd34ee3b4906917380ac5a4ce3dad89d3d66250a866d6"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-40-synthetic.png",
+        "bytes": 103726,
+        "sha256": "39c8ba370d08e8b07a2220633c8e8d159cb9cbb2275a88c4a789af6b5a8094a8"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-41-synthetic.png",
+        "bytes": 103746,
+        "sha256": "5a067b3a4d206b498992c5219267acdb4622b0fb51b0ba5fcfb8e6ab7610c666"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-42-synthetic.png",
+        "bytes": 103586,
+        "sha256": "8f1b39f97230ce65024ffa91b9c00894125c5e72d5842047a6c1d0f9df818668"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-43-synthetic.png",
+        "bytes": 103737,
+        "sha256": "0a47ca2aa58ed9c0819b9c6f5ac4a991f6b1318664a9793499ef4d0cd32028af"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-44-synthetic.png",
+        "bytes": 103720,
+        "sha256": "69333899db786fc3fe68d557a2758d25921854b08b97273f203f97407d8bafa0"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-45-synthetic.png",
+        "bytes": 103742,
+        "sha256": "60cf2002b77acbe96bc810912ec358696be523fde76c255078f3757104301db1"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-46-synthetic.png",
+        "bytes": 103637,
+        "sha256": "c3b7a19883713f4bcd7ec2c0a1ab6a4975b1048c95240907198507242752cb1b"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-47-synthetic.png",
+        "bytes": 103645,
+        "sha256": "4ac8fde24d89366b69a58e3d2bff8161d585fe917e2ab9057a8f348698041b1e"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-48-synthetic.png",
+        "bytes": 103709,
+        "sha256": "f0ad99858082d44a7ced3062d7ca0f208a05d3dd61e20de269f67a2a1d3d29bf"
+      },
+      {
+        "path": "p379/raw/cu2/burst/burst-media/queue-49-synthetic.png",
+        "bytes": 103697,
+        "sha256": "64ec2bc19115594c361691ff7254513a0bf195702be43e01bd29aec77a4ec653"
+      },
+      {
+        "path": "p379/raw/cu2/burst/capabilities-setup.json",
+        "bytes": 3447,
+        "sha256": "504a3e9a482ef1d3228789bce385d47418e88567e7b410ac3aefbee85884e93a"
+      },
+      {
+        "path": "p379/raw/cu2/burst/capabilities.json",
+        "bytes": 6466,
+        "sha256": "a1277cceec32aa53743d99b2060a85246fce6dcd5a5e777e761f91ed372b5e0d"
+      },
+      {
+        "path": "p379/raw/cu2/burst/config/putgd/config.json",
+        "bytes": 3108,
+        "sha256": "9bb4c70f948d9e85f06d509cbde4a209384fcb9975dbebd9a801d30132bb13ee"
+      },
+      {
+        "path": "p379/raw/cu2/burst/data/putgd/artifacts/302ff7ab-6179-42ea-860d-4703c22914b0/2ed5cfef-d29f-4c64-aad1-cfb823bb12ef",
+        "bytes": 717,
+        "sha256": "85489c952373a0ce60995d1eb823e35dc272615755077c8233e2879ef73c4db4"
+      },
+      {
+        "path": "p379/raw/cu2/burst/data/putgd/artifacts/302ff7ab-6179-42ea-860d-4703c22914b0/_manifest.json",
+        "bytes": 485,
+        "sha256": "c20e8fbe5670ede68b8eb41cdc3454ba44c3dd14ac8cd967765f143214f9a484"
+      },
+      {
+        "path": "p379/raw/cu2/burst/data/putgd/artifacts/5aeeb1f0-1b0c-445d-b9a2-a83b9394d0f8/_manifest.json",
+        "bytes": 485,
+        "sha256": "ed2d000c5e74db1c58a5345abe735e01200d232dbcf472613283285079e60c96"
+      },
+      {
+        "path": "p379/raw/cu2/burst/data/putgd/artifacts/5aeeb1f0-1b0c-445d-b9a2-a83b9394d0f8/a83b3b97-f12b-48a4-8fca-b6ec466bc2df",
+        "bytes": 717,
+        "sha256": "f699b73a5f222f143b3ea896e36046588ea47ac8d0aec6880e749411efe18db5"
+      },
+      {
+        "path": "p379/raw/cu2/burst/data/putgd/artifacts/5d87dcdc-28c6-45b9-8e9f-ef8aa55369b5/24d6e690-de17-407a-9897-e8e12475b5c8",
+        "bytes": 716,
+        "sha256": "d8f566e56ab57c47bb282860ce5d63852ebbf7e91db4f3e3ee8bc51310780bf5"
+      },
+      {
+        "path": "p379/raw/cu2/burst/data/putgd/artifacts/5d87dcdc-28c6-45b9-8e9f-ef8aa55369b5/_manifest.json",
+        "bytes": 485,
+        "sha256": "4a33df76793e0c6154aaf967f17c5177697fc6e30271969b72c6568b2e1cc4ce"
+      },
+      {
+        "path": "p379/raw/cu2/burst/data/putgd/artifacts/5e9b4b5f-08dd-42ad-bcc5-69f3ce215a97/_manifest.json",
+        "bytes": 485,
+        "sha256": "fbaacd82956199f4d5096729db869f4c6e3226312d10c741fe9ce0648e578b9b"
+      },
+      {
+        "path": "p379/raw/cu2/burst/data/putgd/artifacts/5e9b4b5f-08dd-42ad-bcc5-69f3ce215a97/abe34891-f872-491d-834b-13fcb65e172b",
+        "bytes": 717,
+        "sha256": "feb968edc59c31a7d82202117b814110d3a660c95fd1be7fe93c29c6671b5676"
+      },
+      {
+        "path": "p379/raw/cu2/burst/data/putgd/history.sqlite",
+        "bytes": 167936,
+        "sha256": "0253fce9e865aacfdb96ccbc90ca5516e70b05cbc549565f4e5300b42ada5252"
+      },
+      {
+        "path": "p379/raw/cu2/burst/data/putgd/previews/24d6e690-de17-407a-9897-e8e12475b5c8.png",
+        "bytes": 1146,
+        "sha256": "28d511df9d27dade9d50e0e764d71d9aef08fcca27db026bfc6bfe48cf1a515b"
+      },
+      {
+        "path": "p379/raw/cu2/burst/data/putgd/previews/2ed5cfef-d29f-4c64-aad1-cfb823bb12ef.png",
+        "bytes": 1162,
+        "sha256": "cd8b842e7a67c480658bcce2eb24cf2f989852ac28f8e5b742da17a1fc95b539"
+      },
+      {
+        "path": "p379/raw/cu2/burst/data/putgd/previews/a83b3b97-f12b-48a4-8fca-b6ec466bc2df.png",
+        "bytes": 1146,
+        "sha256": "feb5cd06c0d00042b8b94b26ed9c3274301be583bb367e3997990897458be8ba"
+      },
+      {
+        "path": "p379/raw/cu2/burst/data/putgd/previews/abe34891-f872-491d-834b-13fcb65e172b.png",
+        "bytes": 1164,
+        "sha256": "25d804488108fd6c93dcddf17772e55b930e62d86e5e7f881039e9dd8f5fed3a"
+      },
+      {
+        "path": "p379/raw/cu2/burst/events.jsonl",
+        "bytes": 24655,
+        "sha256": "2313646382ebf806472b53693d705bfd666f752ee46d46fc967519154e0ac8ae"
+      },
+      {
+        "path": "p379/raw/cu2/burst/failed-workload.png",
+        "bytes": 8597,
+        "sha256": "ff83b8e75f7b4fa25e021f1d4027abaab5a6159abb46c875f7d0af6007d24a8d"
+      },
+      {
+        "path": "p379/raw/cu2/burst/resident.log",
+        "bytes": 118,
+        "sha256": "902efae7b3849cab95e08f67e58ba16136a79a8fd8799f036c6d26b628726db5"
+      },
+      {
+        "path": "p379/raw/cu2/burst/results.json",
+        "bytes": 12157,
+        "sha256": "b0d53fc9f0dcc1afe4c4e053d1f9ae9f7830e37f6752314344c3bb34f3bc4b09"
+      },
+      {
+        "path": "p379/raw/cu2/burst/runtime/dconf/user",
+        "bytes": 2,
+        "sha256": "96a296d224f285c67bee93c30f8a309157f0daa35dc5b87e410b78630a09cfc7"
+      },
+      {
+        "path": "p379/raw/cu2/burst/state/putgd/logs/putgd-20261024T234936999Z-651204-1.jsonl",
+        "bytes": 2644,
+        "sha256": "f14e5fe4638f30f7654d9ae86e3fe87a25003a526f716e74177688cdc54225d9"
+      },
+      {
+        "path": "p379/raw/cu2/burst/state/putgd/logs/putgd-20261024T234938483Z-651241-1.jsonl",
+        "bytes": 15568,
+        "sha256": "9ef28583a6340f9a024ce9bb3012cea743b710cea3fb5662453d1872892b46d6"
+      },
+      {
+        "path": "p379/raw/cu2/capture/capabilities-setup.json",
+        "bytes": 3447,
+        "sha256": "504a3e9a482ef1d3228789bce385d47418e88567e7b410ac3aefbee85884e93a"
+      },
+      {
+        "path": "p379/raw/cu2/capture/capabilities.json",
+        "bytes": 6486,
+        "sha256": "81cba99557c04aaa190eb5f3b796ca30e5b6756da8fdd4034ffb6e53ed9f3820"
+      },
+      {
+        "path": "p379/raw/cu2/capture/capture-driver.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "p379/raw/cu2/capture/capture.json",
+        "bytes": 35159,
+        "sha256": "93d83d96e75cbbb33b590f472d0aff363805e5a1f29a2cb27ceef056ee535f80"
+      },
+      {
+        "path": "p379/raw/cu2/capture/config/putgd/config.json",
+        "bytes": 2200,
+        "sha256": "b9b042712337b00953939943528a00ae0b3e64f4193f738f7ee3f7d32463d337"
+      },
+      {
+        "path": "p379/raw/cu2/capture/data/putgd/history.sqlite",
+        "bytes": 196608,
+        "sha256": "f7254bd6601f5183cad5bb48621ffa9049a5849b8e1d16b6e08b513e1bb017e9"
+      },
+      {
+        "path": "p379/raw/cu2/capture/events.jsonl",
+        "bytes": 27621,
+        "sha256": "e962ec371c6213f0af103f12267695d58563a3191f3d23cdd0e7792c789062dd"
+      },
+      {
+        "path": "p379/raw/cu2/capture/resident.log",
+        "bytes": 118,
+        "sha256": "902efae7b3849cab95e08f67e58ba16136a79a8fd8799f036c6d26b628726db5"
+      },
+      {
+        "path": "p379/raw/cu2/capture/results.json",
+        "bytes": 13205,
+        "sha256": "fa854e8bc8b5d5b3126e149ed183c6edf76fca14b08e842af75efd0ad90731cd"
+      },
+      {
+        "path": "p379/raw/cu2/capture/runtime/dconf/user",
+        "bytes": 2,
+        "sha256": "96a296d224f285c67bee93c30f8a309157f0daa35dc5b87e410b78630a09cfc7"
+      },
+      {
+        "path": "p379/raw/cu2/capture/state/putgd/logs/putgd-20261024T234925048Z-650698-1.jsonl",
+        "bytes": 2644,
+        "sha256": "d0c116d95e5f7bd9219f700d511aa191b04940ee64d6e385dc46a5650c1779be"
+      },
+      {
+        "path": "p379/raw/cu2/capture/state/putgd/logs/putgd-20261024T234926479Z-650738-1.jsonl",
+        "bytes": 54388,
+        "sha256": "f72c78814a827341b4a5ece0bcc9d3cf69abb8e850451849e48d9dd0ec059dd8"
+      },
+      {
+        "path": "p379/raw/cu2/capture/unscored-capture-overlay.png",
+        "bytes": 8696,
+        "sha256": "175cbaff28dfc5e5bbbabce6e6c9e620c07c325f7db2232a897888f734e3123d"
+      },
+      {
+        "path": "p379/receipts/cu2-admission-readonly.json",
+        "bytes": 525,
+        "sha256": "b6e91bc4e2768685752aa16ed87bff31fdabb4fd4d02745b1cf83d01ee0f5c1a"
+      },
+      {
+        "path": "p379/receipts/cu2-readonly-prerequisites.json",
+        "bytes": 938,
+        "sha256": "402bbb8403bc655dd17e960d5b03304ee3efc2afc1ef71019b3dda9464d42765"
+      },
+      {
+        "path": "p379/receipts/cu2-staged.json",
+        "bytes": 533,
+        "sha256": "2995edf0f620a9adcbee963ba7bdd2a20ec11e76db81af9a2e03c71a1c4864d3"
+      }
+    ],
+    "localOriginals": {
+      "controller.json": {
+        "bytes": 2687474,
+        "sha256": "160d89161941143ed38801af9e5babd37a5c4d8306b7b6b8b5e7c415a93f31ed"
+      },
+      "controller-stdout.json": {
+        "bytes": 791870,
+        "sha256": "a2158a05d5317cc99008fac9f49b5c542940a2cf25c5262c4bf5393a25423692"
+      },
+      "controller-stderr.log": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "invocation.json": {
+        "bytes": 737,
+        "sha256": "0d7b604413ea72fbbd50c227c354a97ad4a0ce721cc01a9741e65b3fc1d7f318"
+      },
+      "local-pins.json": {
+        "bytes": 587,
+        "sha256": "e6a145817822195e3fbc7f44c7a2efab5d9520e61d7ef83be09f78b0d002bec4"
+      },
+      "release-catalog.json": {
+        "bytes": 279,
+        "sha256": "b8dbe682d6bb21d472af6a88ca132f6e8804e9727a141d2781e404560e934e2c"
+      },
+      "staging-receipt.json": {
+        "bytes": 533,
+        "sha256": "2995edf0f620a9adcbee963ba7bdd2a20ec11e76db81af9a2e03c71a1c4864d3"
+      },
+      "final-desktop-status.json": {
+        "bytes": 468,
+        "sha256": "ab98adc53e7849572d8621193c6f84f5d34157514a89c9540cae9637a1fe97da"
+      }
+    },
+    "independentRawAuditSha256": "881e93cdba1f22147aa2ca8d88263da7616a38bfd55dbd7249d165588e6f68b5"
+  },
+  "limitations": [
+    "Empty-History native selector DRAWABLE p95 only; compositor/content/populated/capture-acquisition/mixed-DPI remain unassessed; separate visual unscored and sanitized",
+    "Queue ended at visibility refusal; no50/settle/native50capture credit",
+    "M7 History-open PSS fails unchanged60MiB budget (issue558)",
+    "10k populated/history and slow/stalled tests remain pending; no stable or full performance acceptance"
+  ]
+}

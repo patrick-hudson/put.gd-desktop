@@ -1,0 +1,232 @@
+{
+  "schemaVersion": 1,
+  "attempt": "cu1",
+  "issue": 379,
+  "status": "coordinator_prerequisite_refused_before_lock_and_driver",
+  "accepted": false,
+  "controller": {
+    "sourceSha256": "8653932269c122d08693caf3f0e6dcd9891b34b408ffec464c33c40a98b0a962",
+    "review": "R6 bounded offline source/control clearance; actual prerequisite compatibility failed",
+    "allocationId": "root-379-cu1-3259a5b8-r6-20261024T232139Z",
+    "allocatedConfigSha256": "4dc4facb1ec3f35143c395ae1722053038fe526815fc371d992ce4b4f12bfdb5"
+  },
+  "plannedDriverRevision": "3259a5b83e4b93b9ba595bafb95e7c9ebddbddd0",
+  "product": {
+    "release": "v26.1024.1185-nightly",
+    "sourceRevision": "9dfac15c1ced201d13a2b70a8afb0c253213768b",
+    "packageSha256": "2094fd4db8cd915b02f1cdd16eb5c99bb8191948931cd2f558a89c59be5b3f47",
+    "packageHashVerified": true,
+    "installedInThisAttempt": false,
+    "runningProductIdentity": null
+  },
+  "host": {
+    "target": "m74",
+    "session": "c89",
+    "desktop": "physical Mint Cinnamon X11",
+    "readOnlyAdmissionUtc": "2026-10-24T23:33:22.399403Z"
+  },
+  "times": {
+    "noticeUtc": "2026-10-24T23:20:14.961198Z",
+    "notBeforeUtc": "2026-10-24T23:33:00Z",
+    "invokedUtc": "2026-10-24T23:33:51.151868Z",
+    "refusedUtc": "2026-10-24T23:33:52.308359+00:00"
+  },
+  "failure": {
+    "outer": "remote_prepare_failed",
+    "origin": "busctl_user_json_support_unavailable",
+    "stage": "chunk_prepare_extra before acquire",
+    "guard": "returncode == 0 and isinstance(json.loads(stdout),dict)",
+    "originalFailedCommandStdoutRetained": false,
+    "subsequentReadOnlyDiagnostic": {
+      "checkedUtc": "2026-10-24T23:34:53.129322+00:00",
+      "returncode": 0,
+      "stdoutBytes": 29142,
+      "stdoutSha256": "57928c4a049e01ab14b71db77e12eb45010ad6e7a4ac58f90c4364bd58c5e065",
+      "jsonShape": {
+        "validJson": true,
+        "type": "list",
+        "length": 179
+      },
+      "stderrBytes": 0,
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "rawBusInventoryNotExported": true
+    },
+    "assessment": "Independent native diagnostic returned supported list; object-only coordinator guard rejects that shape. This is a coordinator compatibility failure, not a missing-service or product/performance failure."
+  },
+  "activity": {
+    "controllerRawDriverLaunched": null,
+    "remoteJournalDriverLaunched": false,
+    "desktopLockAcquired": false,
+    "vmPaused": false,
+    "unitIntentCreated": false,
+    "packageInstallAttempted": false,
+    "captureOutputCreated": false,
+    "queueOutputCreated": false,
+    "productResidentLaunched": false,
+    "guiStarted": false,
+    "nativeSamples": 0,
+    "fileEditorUploads": 0,
+    "metrics": {},
+    "savedVisuals": []
+  },
+  "cleanup": {
+    "controllerOutcomes": {
+      "resume": {
+        "passed": true,
+        "skipped": "not_prepared"
+      },
+      "purge": {
+        "passed": true,
+        "skipped": "not_prepared"
+      },
+      "release": {
+        "passed": true,
+        "skipped": "no_matching_owned_lease",
+        "reconciliation": null
+      }
+    },
+    "transport": {
+      "passed": true,
+      "reaped": true,
+      "actions": [],
+      "errors": [],
+      "forced": false,
+      "exitCode": 1
+    },
+    "originalVmReadOnlyRunningProof": {
+      "pid": 308684,
+      "startTicks": 9741363,
+      "uid": 1000,
+      "executable": "/usr/bin/qemu-system-x86_64",
+      "qmp": "/home/patrick/work/put.gd/work/windows/runs/w11b-3e92324d501c/qmp.sock",
+      "qmpDevice": 2050,
+      "qmpInode": 14055411,
+      "name": "windows11-w11b-3e92324d501c",
+      "uuid": "a2dc24c2-abff-4972-a524-cc44d44c8681",
+      "beforeStatus": {
+        "status": "running",
+        "singlestep": false,
+        "running": true
+      },
+      "status": {
+        "status": "running",
+        "singlestep": false,
+        "running": true
+      },
+      "checkedUtc": "2026-10-24T23:34:53.087489+00:00"
+    },
+    "noVmTransitionIssued": true,
+    "productBinaryPresent": false,
+    "desktopCheckUtc": "2026-10-24T23:36:04.988553+00:00",
+    "desktopStatus": "free",
+    "newLeaseOrReleaseReceipt": null,
+    "benchmarkResidentCleanupReceipt": null,
+    "allocationConsumed": true,
+    "retryPerformed": false
+  },
+  "privateEvidence": {
+    "remoteOriginals": [
+      {
+        "path": "controllers/cu1/config.json",
+        "bytes": 13519,
+        "sha256": "4dc4facb1ec3f35143c395ae1722053038fe526815fc371d992ce4b4f12bfdb5",
+        "uid": 1000,
+        "mode": "0o600"
+      },
+      {
+        "path": "controllers/cu1/journal.json",
+        "bytes": 196,
+        "sha256": "6dcedd71cf9910622edab7daa87fc930c306a5ffd3b0340023884c21809a619a",
+        "uid": 1000,
+        "mode": "0o600"
+      },
+      {
+        "path": "controllers/cu1/source.py",
+        "bytes": 117666,
+        "sha256": "8653932269c122d08693caf3f0e6dcd9891b34b408ffec464c33c40a98b0a962",
+        "uid": 1000,
+        "mode": "0o600"
+      },
+      {
+        "path": "receipts/cu1-staged.json",
+        "bytes": 712,
+        "sha256": "109978d9f5868e3d0157d7efb1dee96e602d2d96ca2d7abf4717a9fcf9fc1b71",
+        "uid": 1000,
+        "mode": "0o600"
+      },
+      {
+        "path": "receipts/cu1-readonly-prerequisites.json",
+        "bytes": 2242,
+        "sha256": "5cf7e8e475d7791033d69ff20af8b528f8383ca4e85071b7abdc234a38e922e9",
+        "uid": 1000,
+        "mode": "0o600"
+      },
+      {
+        "path": "receipts/cu1-admission-readonly.json",
+        "bytes": 650,
+        "sha256": "d37914343d00d6d1f42010d8deb8497a8eefea93dff513085d424fe1acb38107",
+        "uid": 1000,
+        "mode": "0o600"
+      },
+      {
+        "path": "receipts/cu1-preparation-refusal-readonly-proof.json",
+        "bytes": 1694,
+        "sha256": "42b09ceff3fdbebfa0d574eb8a77b6fa87e64273c449683319ff14db2a09a287",
+        "uid": 1000,
+        "mode": "0o600"
+      }
+    ],
+    "remoteOriginalCount": 7,
+    "regularArchiveMembers": 8,
+    "archiveSha256": "dd10da0939e2f150438fc31d4c77ee4a073262b0dee5dd1a4c614ac9687e85e4",
+    "restoreManifestSha256": "779f5c10fd38e7862138001c53aaef2376bef8e9379ce42dd3eaabaceef25126",
+    "localOriginals": {
+      "controller.json": {
+        "bytes": 10253,
+        "sha256": "5d4ceeef251a435b69753962d75b5660cc4de84727895a442eedbedc3a6b85e8"
+      },
+      "controller-stdout.json": {
+        "bytes": 5329,
+        "sha256": "8fe5f091fd5461dd4caff0319c536a8b279849c7aa00eae0d89e62ac5f607821"
+      },
+      "controller-stderr.log": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "invocation.json": {
+        "bytes": 729,
+        "sha256": "689374050e9ab87ee23d3e5b055ec067407cc19861fc897fd9b3115524a24124"
+      },
+      "local-pins.json": {
+        "bytes": 1018,
+        "sha256": "37877a55c1a8d75e258e1426795b787b405ed67ffe355b0c8ec22f66e9a15d5d"
+      },
+      "release-catalog.json": {
+        "bytes": 4229,
+        "sha256": "39f7493ab5f31f2c9b062a3a29106818e3b94944ce8db954745adaf6387fc129"
+      },
+      "staging-receipt.json": {
+        "bytes": 712,
+        "sha256": "109978d9f5868e3d0157d7efb1dee96e602d2d96ca2d7abf4717a9fcf9fc1b71"
+      },
+      "root-review-result-copy.json": {
+        "bytes": 3189,
+        "sha256": "4c51badbaa2802f45c15fe411614cb6d12708b41832d825496bb843fa4ddd7ff"
+      },
+      "final-desktop-status.json": {
+        "bytes": 490,
+        "sha256": "d5e8d41e21d7da14bbc16c6702428a27ccaf2e94c99f5c470e36194053b813e6"
+      }
+    },
+    "allHashesAndSizesVerified": true,
+    "originalsRetained": true,
+    "rawBusInventoryExported": false
+  },
+  "limitations": [
+    "No measured product/GUI/performance result or native-capture/queue acceptance",
+    "Raw conservative launch null preserved; separate journal and reached pre-acquire path show no workload launched",
+    "Post-refusal bus diagnostic is a separate readonly reproduction, not retained original failing stdout",
+    "No product normal0/inventory flags or new desktop release receipt invented",
+    "M7/issue558 and all earlier evidence unchanged; stable assets still need issue384 rerun"
+  ]
+}

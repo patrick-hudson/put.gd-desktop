@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "utc": "2026-10-24T15:45:56.223032+00:00",
+  "reason": "Root #555 round2 whole-frame98-percent privacy finding; no assumption of privacy from that threshold",
+  "sourceAudit": [
+    {
+      "run": "c1",
+      "file": "failed-workload.png",
+      "sha256": "ff83b8e75f7b4fa25e021f1d4027abaab5a6159abb46c875f7d0af6007d24a8d",
+      "width": 1920,
+      "height": 1080,
+      "entireImageExactSyntheticBackground": true,
+      "independentlySafeForThisActualImage": true
+    },
+    {
+      "run": "m1",
+      "file": "history-closed-completed.png",
+      "sha256": "ff83b8e75f7b4fa25e021f1d4027abaab5a6159abb46c875f7d0af6007d24a8d",
+      "width": 1920,
+      "height": 1080,
+      "entireImageExactSyntheticBackground": true,
+      "independentlySafeForThisActualImage": true
+    },
+    {
+      "run": "m1",
+      "file": "cold-closed-completed.png",
+      "sha256": "ff83b8e75f7b4fa25e021f1d4027abaab5a6159abb46c875f7d0af6007d24a8d",
+      "width": 1920,
+      "height": 1080,
+      "entireImageExactSyntheticBackground": true,
+      "independentlySafeForThisActualImage": true
+    },
+    {
+      "run": "s1",
+      "file": "failed-workload.png",
+      "sha256": "ff83b8e75f7b4fa25e021f1d4027abaab5a6159abb46c875f7d0af6007d24a8d",
+      "width": 1920,
+      "height": 1080,
+      "entireImageExactSyntheticBackground": true,
+      "independentlySafeForThisActualImage": true
+    },
+    {
+      "run": "s2",
+      "file": "seed-completed.png",
+      "sha256": "ff83b8e75f7b4fa25e021f1d4027abaab5a6159abb46c875f7d0af6007d24a8d",
+      "width": 1920,
+      "height": 1080,
+      "entireImageExactSyntheticBackground": true,
+      "independentlySafeForThisActualImage": true
+    }
+  ],
+  "allRetainedWholeVncFramesAuditedAsExactSyntheticFill": true,
+  "publicFigureSources": {
+    "c1-witness-failure.png": "Raw c1 failed-workload.png was visually reviewed and exact100-percent synthetic fill; annotation derived from that source",
+    "m1-empty-history-pilot.png": "Raw m1 History image is PID-owned X11 drawable, visually reviewed own empty local History only; no whole VNC frame used"
+  },
+  "rawOriginalsPrivate": true,
+  "newFrameExportHeld": true,
+  "actualSensitiveContentObserved": false
+}

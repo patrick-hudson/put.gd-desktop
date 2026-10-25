@@ -1,0 +1,433 @@
+{
+  "schemaVersion": 1,
+  "campaign": "#379 physical Cinnamon, driver fixes and complete runs after the Codex handoff",
+  "product": {
+    "release": "v26.1024.1185-nightly",
+    "package": "putgd-26.1024.1185-nightly-ubuntu24.04-x86_64.deb",
+    "packageSha256": "2094fd4db8cd915b02f1cdd16eb5c99bb8191948931cd2f558a89c59be5b3f47",
+    "sourceRevision": "9dfac15c1ced201d13a2b70a8afb0c253213768b",
+    "binaries": {
+      "app": "2d51cdd7ca7ed7c53d2c4cda5cd2c9009c3c24b07769a03e80a0da46f7b16af2",
+      "capture_helper": "9f122f727a0d84da71cbc7e1dd53895015a34c63606803edb68680659ce74dbf",
+      "cli": "af34ea975c73517a39c561a3d65efaba7c2dd0848235d23b2c1158e08cab032f",
+      "helper": "35d3ab75050d8b541564fb57c686036133d7151d9ddfcb23f625a4d393644273"
+    }
+  },
+  "host": {
+    "hostname": "mint-builder",
+    "kernel": "6.14.0-37-generic",
+    "sessionId": "c89",
+    "requestedQtPlatform": "xcb",
+    "session": {
+      "Type": "x11",
+      "Desktop": "cinnamon",
+      "Display": ":0",
+      "Remote": "no",
+      "Active": "yes"
+    },
+    "packages": {
+      "cinnamon": "6.6.9+zena",
+      "libc6": "2.39-0ubuntu8.9",
+      "libcairo2": "1.18.0-3build1",
+      "libgtk-3-0t64": "3.24.41-4ubuntu1.3",
+      "libqt6core6t64": "6.4.2+dfsg-21.1build5",
+      "muffin": "6.6.3+zena"
+    },
+    "cpu": "Intel(R) Core(TM) i5-6500T CPU @ 2.50GHz"
+  },
+  "lock": {
+    "session": "claude-379-burst1",
+    "acquiredUtc": "2026-10-25T01:57:35Z",
+    "releasedVerifiedCleanUtc": "2026-10-25T04:25:31Z",
+    "releaseReceipt": "/home/patrick/putgd-lab/locks/history/2026-10-25T04-25-31Z-release.json"
+  },
+  "hostChanges": [
+    "Windows VM w11b shut down by ACPI powerdown with Patrick's approval before the runs; left in QMP shutdown state",
+    "putgd 1185 DEB and gir1.2-gtk-4.0 installed for the runs, purged afterwards"
+  ],
+  "fixture10000": {
+    "seed": "Codex s2 seed (3 images, 3 videos), paths relocated",
+    "grownWith": "tools/lab/native_acceptance.py grow --to 10000 (driver 72afd00 copy in #555 archive)",
+    "historyRows": 10000,
+    "independentOperations": 10000,
+    "syntheticClones": true,
+    "realUploadsPerformed": 0
+  },
+  "runs": {
+    "burst3": {
+      "scenario": "burst",
+      "status": "complete",
+      "startedUtc": "2026-10-25T02:12:16.896198+00:00",
+      "elapsedSeconds": 521.98,
+      "driverRevision": "fc2e8f6835d47d62f494da5321338e4afd8d733b",
+      "driverSha256": "3d3af97a8cc187196694a4fb76688a00b8cc5eca642955b042989f862a0d7f41",
+      "gates": {
+        "captureBurst": {
+          "status": "unassessed",
+          "reason": "50-upload workload uses explicit synthetic file editors; actual capture burst is not exercised"
+        },
+        "historyOpenUpperBoundMs": {
+          "status": "unassessed",
+          "reason": "content_endpoint_not_witnessed"
+        },
+        "burstVisualAttribution": {
+          "status": "pass",
+          "attempted": 4,
+          "succeeded": 4,
+          "refused": 0
+        },
+        "settleGrowthBytes": {
+          "status": "unassessed",
+          "reason": "no_explicit_approved_threshold"
+        },
+        "settled-rssBytes": {
+          "status": "fail",
+          "limitBytes": 41943040
+        },
+        "settled-pssBytes": {
+          "status": "fail",
+          "limitBytes": 30408704
+        },
+        "cleanup": {
+          "status": "pass"
+        }
+      },
+      "metrics": {
+        "historyOpenFirstGenericDrawableObservationMs": 648.2002759585157,
+        "historyOpenUpperBoundMs": null,
+        "burst": {
+          "acceptedFileEditorUploads": 50,
+          "nativeCapturesExercised": 0,
+          "source": "production editor.open(source=file) then explicit editor.submit",
+          "sourceGeometry": [
+            320,
+            180
+          ],
+          "fixturePutDelaySeconds": 10,
+          "concurrentUploadPeakObserved": 4,
+          "queuedOperationPeakObserved": 38,
+          "linksIndependentlyVerified": 50,
+          "finalTrayStatus": "Active"
+        },
+        "postUploadFinalFamily": {
+          "rssBytes": 43126784,
+          "pssBytes": 31321088,
+          "privateBytes": 30584832
+        },
+        "settleGrowthBytes": 12139520,
+        "sampledProcessFamily": {
+          "peakTotals": {
+            "rssBytes": 289906688,
+            "pssBytes": 121648128,
+            "privateBytes": 94961664
+          },
+          "cpuPercentOneCoreLowerBound": 4.569125343058415,
+          "observedProcessGenerations": 81,
+          "samplingSpanSeconds": 517.1668147799792,
+          "shortLivedChildrenMayBeMissed": true
+        }
+      },
+      "residentCleanup": [
+        {
+          "gracefulRequest": true,
+          "exitCode": 0,
+          "forced": false,
+          "socketAbsent": true,
+          "inventoryComplete": true,
+          "absenceVerified": true,
+          "passed": true
+        },
+        {
+          "gracefulRequest": true,
+          "exitCode": 0,
+          "forced": false,
+          "socketAbsent": true,
+          "inventoryComplete": true,
+          "absenceVerified": true,
+          "passed": true
+        }
+      ],
+      "limitations": [
+        "Capture witness observes X11 drawable paint, not compositor presentation.",
+        "CLI acknowledgements do not prove painted response.",
+        "Sequential sampled process memory can miss short-lived descendants.",
+        "Family CPU is a lower bound when a child exits between samples.",
+        "Shared desktop daemons are outside the resident process family.",
+        "Host quietness and reviewed sanitized visuals require coordinator evidence.",
+        "Burst measures 50 explicit synthetic file-editor Uploads, not desktop or native capture acceptance.",
+        "Post-upload sampled growth/plateau is measured; a finite settle does not prove absence of all leaks."
+      ]
+    },
+    "slow2": {
+      "scenario": "slow",
+      "status": "complete",
+      "startedUtc": "2026-10-25T03:29:13.839661+00:00",
+      "elapsedSeconds": 477.518,
+      "driverRevision": "00ab777f2413a1fbd7670a7259dc614eced896e6",
+      "driverSha256": "3cb511e0f0e7e4de63afa68d0ae66a56a8f6abcc028aa0f2df426e27d21a6676",
+      "gates": {
+        "historyOpenUpperBoundMs": {
+          "status": "unassessed",
+          "reason": "content_endpoint_not_witnessed"
+        },
+        "slowInputUpperBoundMs": {
+          "status": "unassessed",
+          "reason": "content_endpoint_not_witnessed"
+        },
+        "cancelTerminalMs": {
+          "status": "unassessed",
+          "reason": "no_explicit_approved_threshold"
+        },
+        "settleGrowthBytes": {
+          "status": "unassessed",
+          "reason": "no_explicit_approved_threshold"
+        },
+        "settled-rssBytes": {
+          "status": "pass",
+          "limitBytes": 41943040
+        },
+        "settled-pssBytes": {
+          "status": "pass",
+          "limitBytes": 30408704
+        },
+        "cleanup": {
+          "status": "pass"
+        }
+      },
+      "metrics": {
+        "historyOpenFirstGenericDrawableObservationMs": 712.97221200075,
+        "historyOpenUpperBoundMs": null,
+        "slowInputGenericRepaintMs": 4.58736001746729,
+        "slowInputUpperBoundMs": null,
+        "slowUploadSeconds": 25.194306554971263,
+        "cancelTerminalMs": 115836.23266004724,
+        "postUploadFinalFamily": {
+          "rssBytes": 33587200,
+          "pssBytes": 21472256,
+          "privateBytes": 20742144
+        },
+        "settleGrowthBytes": 2216960,
+        "sampledProcessFamily": {
+          "peakTotals": {
+            "rssBytes": 161325056,
+            "pssBytes": 84622336,
+            "privateBytes": 69414912
+          },
+          "cpuPercentOneCoreLowerBound": 1.3807283174448914,
+          "observedProcessGenerations": 6,
+          "samplingSpanSeconds": 474.38731553801335,
+          "shortLivedChildrenMayBeMissed": true
+        }
+      },
+      "residentCleanup": [
+        {
+          "gracefulRequest": true,
+          "exitCode": 0,
+          "forced": false,
+          "socketAbsent": true,
+          "inventoryComplete": true,
+          "absenceVerified": true,
+          "passed": true
+        },
+        {
+          "gracefulRequest": true,
+          "exitCode": 0,
+          "forced": false,
+          "socketAbsent": true,
+          "inventoryComplete": true,
+          "absenceVerified": true,
+          "passed": true
+        }
+      ],
+      "limitations": [
+        "Capture witness observes X11 drawable paint, not compositor presentation.",
+        "CLI acknowledgements do not prove painted response.",
+        "Sequential sampled process memory can miss short-lived descendants.",
+        "Family CPU is a lower bound when a child exits between samples.",
+        "Shared desktop daemons are outside the resident process family.",
+        "Host quietness and reviewed sanitized visuals require coordinator evidence.",
+        "Post-upload sampled growth/plateau is measured; a finite settle does not prove absence of all leaks."
+      ]
+    },
+    "history10": {
+      "scenario": "history",
+      "status": "complete",
+      "startedUtc": "2026-10-25T03:37:34.735538+00:00",
+      "elapsedSeconds": 2747.324,
+      "driverRevision": "00ab777f2413a1fbd7670a7259dc614eced896e6",
+      "driverSha256": "3cb511e0f0e7e4de63afa68d0ae66a56a8f6abcc028aa0f2df426e27d21a6676",
+      "gates": {
+        "historyOpenUpperBoundMs": {
+          "status": "unassessed",
+          "reason": "content_endpoint_not_witnessed"
+        },
+        "historyWholeListTraversal": {
+          "status": "pass",
+          "rows": 10000
+        },
+        "historyScrollP95UpperBoundMs": {
+          "status": "unassessed",
+          "reason": "content_endpoint_not_witnessed"
+        },
+        "historySearchP95UpperBoundMs": {
+          "status": "unassessed",
+          "reason": "content_endpoint_not_witnessed"
+        },
+        "historyPreviewP95UpperBoundMs": {
+          "status": "unassessed",
+          "reason": "no_explicit_approved_threshold"
+        },
+        "cleanup": {
+          "status": "pass"
+        }
+      },
+      "metrics": {
+        "historyOpenFirstGenericDrawableObservationMs": 627.323143009562,
+        "historyOpenUpperBoundMs": null,
+        "historyWholeListRowsTraversed": 10000,
+        "historyWholeListWallSecondsIncludingVerification": 2645.4466461989796,
+        "historyScrollP95GenericRepaintMs": 50.43190799187869,
+        "historyScrollP95UpperBoundMs": null,
+        "historySearchP95GenericRepaintMs": 197.10664998274297,
+        "historySearchP95UpperBoundMs": null,
+        "historyPreviewP95UpperBoundMs": 872.4665669724345,
+        "sampledProcessFamily": {
+          "peakTotals": {
+            "rssBytes": 185327616,
+            "pssBytes": 108718080,
+            "privateBytes": 92254208
+          },
+          "cpuPercentOneCoreLowerBound": 41.08862223554095,
+          "observedProcessGenerations": 5,
+          "samplingSpanSeconds": 2727.66507860797,
+          "shortLivedChildrenMayBeMissed": true
+        }
+      },
+      "residentCleanup": [
+        {
+          "gracefulRequest": true,
+          "exitCode": 0,
+          "forced": false,
+          "socketAbsent": true,
+          "inventoryComplete": true,
+          "absenceVerified": true,
+          "passed": true
+        },
+        {
+          "gracefulRequest": true,
+          "exitCode": 0,
+          "forced": false,
+          "socketAbsent": true,
+          "inventoryComplete": true,
+          "absenceVerified": true,
+          "passed": true
+        }
+      ],
+      "limitations": [
+        "Capture witness observes X11 drawable paint, not compositor presentation.",
+        "CLI acknowledgements do not prove painted response.",
+        "Sequential sampled process memory can miss short-lived descendants.",
+        "Family CPU is a lower bound when a child exits between samples.",
+        "Shared desktop daemons are outside the resident process family.",
+        "Host quietness and reviewed sanitized visuals require coordinator evidence."
+      ],
+      "fixture": {
+        "historyCount": 10000,
+        "independentOperations": 10000,
+        "independentItems": 10000,
+        "categories": {
+          "images": 5000,
+          "videos": 5000
+        },
+        "schemaVersion": 7,
+        "databaseSha256": "b8dc101768392c504bcab4b0182cf8f222740faa1f6e887ab5b905d8ab0e75ca"
+      }
+    },
+    "capture1": {
+      "scenario": "capture",
+      "status": "complete",
+      "startedUtc": "2026-10-25T04:23:54.454073+00:00",
+      "elapsedSeconds": 27.714,
+      "driverRevision": "00ab777f2413a1fbd7670a7259dc614eced896e6",
+      "driverSha256": "3cb511e0f0e7e4de63afa68d0ae66a56a8f6abcc028aa0f2df426e27d21a6676",
+      "gates": {
+        "warmCapture": {
+          "status": "pass",
+          "limitMs": 150,
+          "driverExit": 0
+        },
+        "cleanup": {
+          "status": "pass"
+        }
+      },
+      "metrics": {
+        "warmP95DrawablePaintMs": 71.803503,
+        "sampledProcessFamily": {
+          "peakTotals": {
+            "rssBytes": 57462784,
+            "pssBytes": 27485184,
+            "privateBytes": 17915904
+          },
+          "cpuPercentOneCoreLowerBound": null,
+          "observedProcessGenerations": 2,
+          "samplingSpanSeconds": 0.0,
+          "shortLivedChildrenMayBeMissed": true
+        }
+      },
+      "residentCleanup": [
+        {
+          "gracefulRequest": true,
+          "exitCode": 0,
+          "forced": false,
+          "socketAbsent": true,
+          "inventoryComplete": true,
+          "absenceVerified": true,
+          "passed": true
+        },
+        {
+          "gracefulRequest": true,
+          "exitCode": 0,
+          "forced": false,
+          "socketAbsent": true,
+          "inventoryComplete": true,
+          "absenceVerified": true,
+          "passed": true
+        }
+      ],
+      "limitations": [
+        "Capture witness observes X11 drawable paint, not compositor presentation.",
+        "CLI acknowledgements do not prove painted response.",
+        "Sequential sampled process memory can miss short-lived descendants.",
+        "Family CPU is a lower bound when a child exits between samples.",
+        "Shared desktop daemons are outside the resident process family.",
+        "Host quietness and reviewed sanitized visuals require coordinator evidence."
+      ],
+      "fixture": {
+        "historyCount": 10000,
+        "independentOperations": 10000,
+        "independentItems": 10000,
+        "categories": {
+          "images": 5000,
+          "videos": 5000
+        },
+        "schemaVersion": 7,
+        "databaseSha256": "b8dc101768392c504bcab4b0182cf8f222740faa1f6e887ab5b905d8ab0e75ca"
+      },
+      "captureDriver": {
+        "sha256": "3ef7ac070d933c0962ab4a5480294084c99b1a5933e63b35139162eb6d1a8d20",
+        "witnessSourceRevision": "3c29bb3b40cebff0214ebe6bb498fc4a09d0b3d8"
+      }
+    }
+  },
+  "rawArchive": {
+    "location": "private: workstation work/claude-379/raw-runs.tar and m74 ~/putgd-lab/p379/claude/raw-runs.tar",
+    "sha256": "3c740643e74296921442f0629038029ce5e4dd1592f2f0b31f34aa01b3e9b4f6",
+    "contains": "all claude379-* outputs including failed attempts burst1-2, history1-9, slow1"
+  },
+  "issuesFiled": {
+    "559": "queued editor uploads labelled Editing",
+    "560": "resident keeps ~12 MB after a 50-upload burst",
+    "561": "cancel ignored during stalled preflight (115.8 s)",
+    "566": "delete confirmation shows raw receipt JSON"
+  }
+}

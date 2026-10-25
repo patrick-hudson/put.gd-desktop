@@ -1,0 +1,195 @@
+{
+  "schemaVersion": 1,
+  "run": "m4",
+  "status": "coordinator_admission_refused_before_driver",
+  "accepted": false,
+  "plannedScenario": "memory",
+  "plannedDriverRevision": "fd259fae36a0643d198a8730770bcefc6297d9ac",
+  "plannedDriverArchiveSha256": "237c4a0edc55b19d93348e728745ff6b25d9adbe9933275817274bbbe225733e",
+  "controllerSourceSha256": "57460ab45ecebd03601911d31d992e76c2578062238b895a01125aa503e81672",
+  "controllerStartedUtc": "2026-10-24T18:35:37.626679+00:00",
+  "driverLaunched": false,
+  "benchmarkResidentOrGuiLaunched": false,
+  "benchmarkOutputCreated": false,
+  "scoredIntervalsStarted": false,
+  "metrics": {},
+  "failure": {
+    "type": "Refusal",
+    "code": "unknown_activity_unmeasured",
+    "classification": "Operational host-admission refusal only; no driver/product failure, heavy-load inference or numerical performance acceptance"
+  },
+  "productInstallation": {
+    "packageSha256": "2094fd4db8cd915b02f1cdd16eb5c99bb8191948931cd2f558a89c59be5b3f47",
+    "manifest": {
+      "schemaVersion": 1,
+      "version": "26.1024.1185-nightly",
+      "baseVersion": "26.1024.1185",
+      "packageVersion": "26.1024.1185~nightly",
+      "gitCommit": "9dfac15c1ced201d13a2b70a8afb0c253213768b",
+      "gitTree": "4e96912274d9220ba9476bd1b50333f6cf738f4f",
+      "commitCount": 1185,
+      "dirty": false,
+      "sourceProvenance": "git"
+    },
+    "changes": [
+      "Inst putgd (26.1024.1185~nightly local-deb [amd64])"
+    ],
+    "dependenciesAdded": [],
+    "scope": "Install verification/version query only; benchmark/resident/helper GUI did not start"
+  },
+  "observation": {
+    "samplingScope": "Operational10second host-admission sample, not a product300second idle interval",
+    "actualElapsedSeconds": 10.033007480960805,
+    "clockTicksPerSecond": 100,
+    "retainedRows": 331,
+    "snapshotErrors": [],
+    "savedBeforePredicate": true,
+    "refusedRow": {
+      "pid": 642501,
+      "startTicks": 26486868,
+      "uid": 1000,
+      "parentPid": 626228,
+      "comm": "mintUpdate",
+      "executableName": "python3.12",
+      "state": "new",
+      "beforeCpuTicks": null,
+      "afterCpuTicks": 30,
+      "deltaCpuTicks": null,
+      "cpuPercentOneCore": null,
+      "identifiedControllerOrSharedDescendant": false,
+      "unexplained": true
+    },
+    "knownPausedVmDeltaCpuTicks": 0,
+    "noCpuPercentageInferredForRefusedRow": true
+  },
+  "hostSession": {
+    "host": "m74",
+    "placement": "physical",
+    "desktopSession": "c89",
+    "display": ":0",
+    "type": "x11",
+    "sessionRevalidated": true
+  },
+  "cleanup": {
+    "lockAcquiredUtc": "2026-10-24T18:35:39Z",
+    "vmPauseVerifiedUtc": "2026-10-24T18:35:50.246392+00:00",
+    "originalVmRunningAgainVerifiedUtc": "2026-10-24T18:36:01.330323+00:00",
+    "verifiedReleaseUtc": "2026-10-24T18:36:08.037820+00:00",
+    "leaseReleaseReceipt": "2026-10-24T18-36-08Z-release.json",
+    "packagePurged": true,
+    "remainingOwnedProcesses": [],
+    "matchingLeaseReleased": true,
+    "noRetryOrServiceChange": true,
+    "benchmarkResidentCleanupProduced": false,
+    "inventoryFlagScope": "No benchmark resident existed; do not fabricate inventoryComplete/absenceVerified or memory gate proof"
+  },
+  "visuals": {
+    "newFrameCaptured": false,
+    "reason": "Refusal preceded benchmark/static-cover/GUI launch; no unrelated desktop image was taken"
+  },
+  "privateEvidence": {
+    "originalsRetained": true,
+    "remoteRoot": "m74:~/putgd-lab/p379/controllers/m4",
+    "exportFileCount": 12,
+    "archiveSha256": "d0ce60e4559ab5d166c281f8ee3f90119b829c60133f6cbaa32c0d32e5b77fa0",
+    "exportManifestSha256": "a407f840b4309ea2106960e816654b08165ac90f445d3d1f689863f93a2d697d",
+    "allExportedFileHashesVerified": true,
+    "localOriginalHashes": {
+      "controller.json": "461e171e639af67227c5bba224ef342f2c1b6ee993d2400d222d16b32e25835e",
+      "controller.json.acquire-intent.json": "265b69e98b5097e3b0b8d8c9ea2f3d325b31e859c71508d091e98fd05c429e12",
+      "admission-refusal-summary.json": "c4639d2ae3dd673083c1377300699296be58dab6c889a9af86f847f32864a226"
+    },
+    "remoteOriginalFileHashes": [
+      {
+        "path": "controllers/m4/config.json",
+        "sha256": "b935b773b5f82b30a29e14cef46209760d066694c52fc9f13be3e99842125986",
+        "bytes": 7070,
+        "mode": "0o600",
+        "uid": 1000
+      },
+      {
+        "path": "controllers/m4/install.log",
+        "sha256": "fc12c8a1e897b0175dcbf12216f04bedd67146a3d1e247574a5f1311b2d7901c",
+        "bytes": 1975,
+        "mode": "0o664",
+        "uid": 1000
+      },
+      {
+        "path": "controllers/m4/journal.json",
+        "sha256": "f0a686317d665222678e58787cd6bc65000b2d82f00c0b482c3d8f8e657bddf0",
+        "bytes": 1810,
+        "mode": "0o600",
+        "uid": 1000
+      },
+      {
+        "path": "controllers/m4/observation.json",
+        "sha256": "e7f92ab8724f9f4a9faee03f1bde43b1d0d596d251f23a0beae373f36cd2b326",
+        "bytes": 312135,
+        "mode": "0o600",
+        "uid": 1000
+      },
+      {
+        "path": "controllers/m4/pause.json",
+        "sha256": "75d40c8000744bc9d5d9234cf2ce9b09c1a856fba38db8f99ea73939c48a1ca3",
+        "bytes": 562,
+        "mode": "0o600",
+        "uid": 1000
+      },
+      {
+        "path": "controllers/m4/purge.log",
+        "sha256": "f132616dff96641699dfb3a9218c03bfb24157dfe2d1a49ee37635674a7d5cac",
+        "bytes": 2051,
+        "mode": "0o664",
+        "uid": 1000
+      },
+      {
+        "path": "controllers/m4/remaining.json",
+        "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+        "bytes": 3,
+        "mode": "0o600",
+        "uid": 1000
+      },
+      {
+        "path": "controllers/m4/resume.json",
+        "sha256": "3a33debe48da08e75460274bf1edfa4ce6e1f41bafb375d9cddc29547f22eaf7",
+        "bytes": 562,
+        "mode": "0o600",
+        "uid": 1000
+      },
+      {
+        "path": "controllers/m4/source.py",
+        "sha256": "57460ab45ecebd03601911d31d992e76c2578062238b895a01125aa503e81672",
+        "bytes": 44155,
+        "mode": "0o600",
+        "uid": 1000
+      },
+      {
+        "path": "receipts/m4-source-staged.json",
+        "sha256": "414da6706e81e3433cb52aed5dfce6e9c31023b0e1fa453f7d97dde519b6e8f4",
+        "bytes": 4920,
+        "mode": "0o600",
+        "uid": 1000
+      },
+      {
+        "path": "receipts/m4-admission-readonly.json",
+        "sha256": "d96014597287c1d9cedc0a2a205df527bf9d7b7beae58e69c32c4020e0b43849",
+        "bytes": 7878,
+        "mode": "0o600",
+        "uid": 1000
+      },
+      {
+        "path": "locks/history/2026-10-24T18-36-08Z-release.json",
+        "sha256": "651ce6991d37b790fa89b91e21fcf713bf247c850aaec28118dede2d19f530a2",
+        "bytes": 661,
+        "mode": "0o664",
+        "uid": 1000
+      }
+    ]
+  },
+  "limits": [
+    "No CPUpercentage/heavywork inference for new mintUpdate row without before sample",
+    "No controller/criterion/service change, killing or disabling MintUpdate",
+    "M1 pilot/M2preinterval/M3unlaunched limitations stay unchanged",
+    "Further physical work requires its own explicit allocation; no retry under M4"
+  ]
+}

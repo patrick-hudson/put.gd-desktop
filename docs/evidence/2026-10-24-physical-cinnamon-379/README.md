@@ -1,0 +1,588 @@
+# Physical Cinnamon performance campaign (#379)
+
+**Status: every #379 workload has now run to completion on m74 (see [complete runs, 2026-10-25](#complete-runs-2026-10-25)). Capture latency passes with empty and 10,000-entry History. Three memory/behaviour gates fail and are filed: History-open PSS ([#558](https://github.com/patrick-hudson/put.gd-desktop/issues/558)), post-burst settled RSS/PSS ([#560](https://github.com/patrick-hudson/put.gd-desktop/issues/560)) and stalled-preflight cancel ([#561](https://github.com/patrick-hudson/put.gd-desktop/issues/561)). History response thresholds still need Patrick's approval.**
+This is the newest-published-nightly rehearsal requested in
+[#379](https://github.com/patrick-hudson/put.gd-desktop/issues/379).
+[#384](https://github.com/patrick-hudson/put.gd-desktop/issues/384) must repeat
+the driver on the exact stable assets. Nightly results cannot certify those bytes.
+
+## Product and driver identities
+
+The selected package is the published `ubuntu24.04` DEB from
+[`v26.1024.1185-nightly`](https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v26.1024.1185-nightly):
+
+- Package: `putgd-26.1024.1185-nightly-ubuntu24.04-x86_64.deb`, 57,534,908 bytes.
+- SHA-256: `2094fd4db8cd915b02f1cdd16eb5c99bb8191948931cd2f558a89c59be5b3f47`.
+- Product source: `9dfac15c1ced201d13a2b70a8afb0c253213768b`;
+  tree: `4e96912274d9220ba9476bd1b50333f6cf738f4f`.
+- Package version: `26.1024.1185~nightly`.
+- The download matches GitHub's asset digest and release `SHA256SUMS`.
+  The mirror's checksum file is byte-identical to GitHub's, and its minisign
+  signature verifies with nightly public key `71440FA5E439AEBB` and trusted
+  comment `put.gd v26.1024.1185-nightly nightly`.
+
+Installation at 15:10 UTC passed `dpkg --verify`; the embedded identity matches
+the clean release commit above. Per-attempt running-process identities remain
+in the raw receipts. The package must
+remain the published bytes; the independently committed lab drivers are recorded
+separately. Driver hardening is in [#554](https://github.com/patrick-hudson/put.gd-desktop/pull/554)
+(#495); additional #379 performance drivers are in
+[#555](https://github.com/patrick-hudson/put.gd-desktop/pull/555).
+This documentation PR contains no driver code.
+The recording contract fix (#410) has its own development-build evidence and is
+not represented as part of this published package.
+
+## Required workload and assessment
+
+Run on physical m74, Linux Mint 22.3 / Cinnamon X11, with the real login session,
+Qt platform, hardware, host load and process identities recorded. Measurements
+require an exclusive desktop lock and no competing heavy SSH, VM or GUI work.
+Keep the wall visible; use synthetic covering content, isolated private profiles
+and the loopback S3 fixture. Preflight complete UTF-8 Unix socket paths before
+each isolated launch. Retain failed attempts and corrected commands.
+
+| Workload | Required assessment | Current result |
+| --- | --- | --- |
+| Region overlay, empty history | 5 warmups + 30 warm samples; p95 ≤150 ms | CU2 73.359397 ms; fresh CU3 73.449413 ms, each at native drawable scope |
+| Region overlay, populated history | Same protocol with 10,000 independent image/video operation records | capture1 **71.803503 ms, pass** |
+| Cold/closed memory and idle CPU | RSS ≤40 MiB; CPU <0.5% of one core over 300 seconds | M7 cold and post-close pass at their empty-profile scope |
+| Closed family / History-open family | Closed RSS ≤40 MiB; PSS ≤29 MiB / ≤60 MiB, with helpers attributed | M7 closed passes; History-open fails: 61.9473 MiB >60 MiB |
+| 10,000-entry history | Open, whole-list scroll, search, image/video preview, Copy image, Delete from destination; response/frame timings, CPU and memory | history10 complete: open ≤627 ms, scroll p95 50.4 ms, search p95 197 ms, preview p95 872 ms; Copy image and Delete verified. Unassessed until Patrick approves thresholds |
+| Upload burst | At least 50 queued captures/uploads, concurrent slots, correct tray/history/links, memory during and after settle | burst3 complete: 50/50 verified, 4 concurrent, 38 queued; settled RSS 41.1 MiB and PSS 29.9 MiB **fail** ([#560](https://github.com/patrick-hudson/put.gd-desktop/issues/560)); file-editor uploads, not native captures |
+| Slow/stalled S3 | 256 KiB/s proxy, a stalled connection, visible progress, responsive UI/tray, measured cancellation and successful retry | slow2 complete: 6.2 MB in 25.2 s with progress, input 4.6 ms, retry succeeds; **cancel 115.8 s** on a stalled preflight ([#561](https://github.com/patrick-hudson/put.gd-desktop/issues/561)) |
+
+The memory limits are the approved plan's [source53 checkpoint](../../plans/2026-10-07-1926-feat-qt-linux-share-plan.md#clean-source53-cinnamon-checkpoint-and-wayland-compatibility).
+The frozen idle harness's older 100 MiB `budgetPassed` field cannot replace the
+40 MiB assessment. Preserve the original capture/idle harnesses and socket
+ownership checks. A CLI acknowledgement is not proof that a frame was painted;
+record those timings and witness limitations separately.
+
+The populated fixture must have independent operation/item/history identities,
+consistent operation journals and item state, mixed image/video records and
+reproducible media, timestamps and search parameters. It is a seeded workload,
+not a claim that 10,000 real uploads ran during the campaign. Preparation and
+fixture generation are excluded from quiet measurement intervals.
+
+## Preserved attempts
+
+The physical host is `mint-builder` (m74), Mint 22.3, kernel
+`6.14.0-37-generic`, Intel i5-6500T (four cores), Cinnamon `6.6.9+zena`,
+Muffin `6.6.3+zena`, distro Qt 6.4.2, native login session `c89` / X11 / `:0`.
+The existing powersave governor was preserved. The desktop lock was acquired
+at 15:10:13 UTC. After coordinated reversible quiescence of a pre-existing VM,
+a 10-second activity check recorded zero VM CPU ticks and no build, test or
+encoder process. Other low-activity desktop services and the wall stayed up.
+
+- **c1, driver `daf7145a`: incomplete capture workload.** The first warmup
+  created a distinct cancelled region operation, but the unchanged witness
+  returned `Actual resident selector did not map/paint on every display`.
+  There are **zero measured samples and no valid p95**; raw `-1` is a sentinel,
+  not a latency measurement. [The sanitized attempt](attempt-c1.json) binds
+  the exact raw hashes and normal resident exit events. Source inspection
+  suggests the historical white-at-outer-edge probe conflicts with the current
+  black outer / inset white outline. This attribution is provisional; the
+  frozen witness and failed attempt are unchanged.
+- **m1, driver `daf7145a`: completed bounded memory pilot.** Independent
+  review identified insufficient continuous History-window checks and cleanup
+  proof in the draft driver. Its summary cannot establish acceptance. Preserve
+  its actual source and [135 sanitized numeric snapshots](attempt-m1.json);
+  acceptance requires a fresh run with the corrected, reviewed driver. No extra
+  UI activity was added during its scored intervals. Both resident launches
+  exited normally with code 0 and absent session sockets.
+- **s1 → s2, driver `daf7145a`: fresh fixture preparation.**
+  [s1 failed before any product operation](attempt-s1.json): the independent
+  clipboard child needed missing Gtk/Gdk 4 typelibs. The direct import failure
+  was retained. Apt simulation and installation added only
+  `gir1.2-gtk-4.0`, without changing GTK libraries or the desktop stack, and the
+  corrected command was recorded before retrying in a new private output.
+  [s2 produced six independent operation/item journals](seed-s2.json), three
+  PNGs and three WebM files, through the production clipboard action and six
+  signed loopback PUTs. Independent checks covered 1,698 persisted JSON nodes:
+  all network state was the owned literal loopback destination, credentials
+  were session references, no multipart/management journal remained, and the
+  stopped DB had no open owner, WAL or session socket. This is six-operation
+  preparation, not 10,000 uploads or performance acceptance. The fixture was
+  stopped during cleanup; the final campaign needs a fresh live fixture/seed.
+- **Populated gates: pending.** Earlier #495 grow revisions were staged but never
+  executed. Root review cleared only producer revision
+  `72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e`, with persisted-network-state,
+  DB/runtime and complete helper ownership guards. Its handoff is staged and
+  hash-verified; it has not yet been used for this campaign. All old revisions
+  remain held. No populated performance measurement has run; the later empty
+  memory and selector results do not discharge these gates.
+- **m2, driver `f3b3635132f2d5b909935d8119f1f32908e38cec`: failed lab admission.**
+  Root reviewed only the empty `memory` scenario's reached paths, with no
+  fixture, endpoint, capture/native driver or accessibility override. The fresh
+  exact-source export and installed/running 1185 binaries were checked.
+  [The source, command, preflight, raw and cleanup hashes](attempt-m2.json)
+  record a stop after 2.8705 seconds at `static_cover_not_visible_on_wall`,
+  before any scored interval. Metrics are empty; this neither confirms the m1
+  memory observation nor establishes a product performance failure. Independent
+  readonly SQL found zero operations, history rows and item states. The one-shot
+  initial VNC admission check did not retain a frame or numerical coverage;
+  later full-cover visibility cannot establish the earlier check's result.
+- **m3: coordinator refusal before driver launch.** The separately authorized
+  immutable `02d85059` empty-memory source was staged and hash-checked, but
+  [the private controller stopped before launching it](attempt-m3.json).
+  Its zero-CPU-tick assertion for the paused VM failed before the numerical
+  quiet receipt was saved. The failed delta is unavailable; do not infer its
+  value, competing heavy work or product performance. No benchmark output,
+  product GUI, cover, new frame or scored interval was created. This is a
+  coordinator admission failure, not a failure of the unlaunched driver.
+- **m4: retained host-admission refusal; no benchmark launch.**
+  The private observation retains all 331 rows from its 10.033007-second,
+  HZ=100 sample, saved before the refusal predicate;
+  [the public summary](attempt-m4.json) indexes its identity and hash. A new
+  `mintUpdate` process had no before CPU sample and 30 ticks in the after
+  sample; its CPU percentage is unassessed. The unchanged controller refused
+  `unknown_activity_unmeasured`. This does not establish heavy load or a
+  product/driver failure. No benchmark profile, GUI, cover, image or scored
+  interval was created. The service and admission criterion were unchanged.
+
+
+- **m5: exited-process admission refusal; no benchmark launch.**
+  The private observation retains all 332 rows from the 10.033983-second,
+  HZ=100 sample, saved before predicates;
+  [the public summary](attempt-m5.json) indexes its identity and hash. One exited
+  kernel worker had a before value of zero ticks and no after sample. Its
+  delta and percentage remain unavailable. The unchanged controller refused
+  `unknown_activity_unmeasured`; no heavy-load or product conclusion follows.
+  No benchmark profile, GUI, cover, frame or scored interval was created.
+
+
+- **m6: cold segment completed; driver failed before History.**
+  The [sanitized summary](attempt-m6.json) indexes the private raw observations,
+  exact source/command and cleanup receipts. At driver `fd259fae`, the cold
+  interval ran 300.077 seconds; its CPU, RSS and PSS values were within the
+  unchanged cold budgets. The next diagnostics lookup raised `KeyError: 'ui'`
+  before any History activation. Open and post-close intervals did not run;
+  this does not confirm the m1 open-PSS observation or establish full-memory
+  acceptance. The run and its failure retain their original source identity.
+
+
+- **m7: complete memory workflow; valid product open-PSS failure.**
+  At exact driver `3259a5b8`, [M7](attempt-m7.json) completed cold, History-open
+  and post-close intervals, with continuous owned-helper/window checks and
+  normal exit/complete cleanup. History-open family PSS peaked at **64,956,416
+  bytes**, exceeding the unchanged **62,914,560-byte** ceiling by **2,041,856
+  bytes (1.947265625 MiB)**. Cold/post-close CPU, RSS and PSS passed their fixed
+  budgets. This is a product budget failure on exact 1185, not a driver failure;
+  it does not establish a leak, regression cause or stable-asset acceptance.
+
+- **cu1: coordinator prerequisite refusal before acquiring a lock.**
+  Exact controller `86539322` invoked at 23:33:51 UTC and stopped at 23:33:52
+  on `busctl_user_json_support_unavailable`. The [retained summary](attempt-cu1.json)
+  indexes seven private originals and nine local receipts. A separate read-only
+  diagnostic returned exit 0, empty stderr and a valid 179-row JSON list; the
+  object-only coordinator predicate rejects that supported shape. The original
+  failing stdout was not retained, so the diagnostic is identified separately.
+  This is a coordinator compatibility failure, not a missing service or product
+  performance result. No lock, package install, VM pause, unit, GUI, capture
+  sample or file-editor upload occurred. Raw controller launch truth remains
+  `null`; the pre-acquire path and journal's false flags are retained separately.
+  The same original VM was verified running at 23:34:53 UTC and the desktop
+  checked free. No new lease/release or benchmark cleanup receipt is invented.
+  No retry ran under this consumed allocation; M7 and issue #558 are unchanged.
+
+- **cu2: empty-history native selector latency passes; queue exercise incomplete.**
+  The fresh controller accepted the supported busctl JSON shape and ran the
+  exact published product with driver `3259a5b8`. [The sanitized record](attempt-cu2.json)
+  retains all 30 paint samples, exact commands and private artifact hashes.
+  Five warmups plus 30 timed invocations produced **p95 73.359397 ms ≤150 ms**;
+  independent nearest-rank recomputation uses sorted sample index 28. All 35
+  distinct operations cancelled with empty items and `no_result`, with zero
+  history rows. A separate 36th cancelled operation supplied the unscored
+  visual below. The 50-file editor upload queue exercise then observed two
+  queued and three uploading before `no_owned_ui_proven_visible_on_wall`
+  stopped it after 18.363649 seconds. Five journals remained at cleanup:
+  four cancelled, one editing. No 50-operation completion, 300-second settle
+  or native-capture-burst credit is claimed. This visibility refusal does not
+  establish a product bug; the exact intended-window/focus path needs diagnosis.
+
+- **cu3, 2026-10-25: fresh new-head prelude; corrected queue still refuses visibility.**
+  [The actual `5d99ec97` record](attempt-cu3.json) preserves a fresh 5+30
+  cancelled-selector prelude, p95 **73.449413 ms ≤150 ms**, and a separate
+  36th unscored cancelled operation. It does not relabel or inherit CU2's pass.
+  The queue exercised the new History activation/pinned-window path, then
+  stopped at the same strict visibility guard after **18.752080 seconds**.
+  It again observed queued 2 / uploading 3; no 50-file completion or settle
+  interval ran. The actual visibility cause remains unproven and no product
+  bug is inferred. Cleanup and verified release completed; no retry followed.
+
+![c1 post-cancellation recovery frame: only synthetic background, no selector-paint claim](c1-witness-failure.png)
+
+This is an annotated recovery frame from the tested nightly after the failed
+warmup and cancellation, not a picture proving that a selector was absent or
+painted. The original reviewed frame contains only synthetic cover pixels;
+its SHA-256 is retained in the attempt JSON.
+
+### Memory pilot observations; no acceptance pass
+
+| Stage | Duration | Peak resident RSS | Peak family PSS | Resident CPU, one core |
+| --- | --- | --- | --- | --- |
+| Cold/closed | 300.037 s | 28.82 MiB | 18.26 MiB | 0.00667% |
+| History open, empty fixture | 30 s | See raw snapshots | **61.82 MiB** | See raw snapshots |
+| After History closed | 300.054 s | 28.98 MiB | 18.40 MiB | 0.00333% |
+
+The observed open PSS is **1,906,688 bytes (about 1.82 MiB) above** the approved
+62,914,560-byte / 60 MiB ceiling. Do not round it into a pass or apply tolerance.
+M1 remains an unaccepted pilot with its original limitations. The independent,
+corrected M7 workflow below confirms an open-PSS budget failure on the same
+exact product; it does not retroactively accept M1. #379 remains unaccepted.
+
+![m1 pilot's empty History drawable, with the unchanged budget and confirmation requirement](m1-empty-history-pilot.png)
+
+This reviewed image is the native PID-owned X11 drawable saved by the pilot.
+It is not a VNC compositor image or proof of continuous visibility. Corrected
+acceptance must retain that distinction and supply the missing proof.
+
+![M2 stopped before scoring; the later reviewed recovery frame contains only synthetic cover](m2-admission-failure.png)
+
+Every pixel of this attempt's saved recovery source is RGB `(80, 90, 100)`.
+The annotation describes the admission failure; it is not evidence of a memory
+interval or of visibility at the earlier failed precheck. A bounded readiness
+fix remains driver work and must preserve the all-pixel saved-image checks.
+
+
+### M6 cold segment; incomplete memory sequence
+
+The new attempt used the exact installed/running 1185 binaries, a fresh empty
+profile and the separately reviewed `ca937c2d` coordinator. Its 61 cold samples
+span **300.076727 seconds**: CPU **0.006665%** of one core, peak resident/family
+RSS **30,220,288 bytes**, peak family PSS **19,122,176 bytes**. The driver scored
+its three cold gates within budget, then failed on its own diagnostics caller.
+No History helper or window started and no 30-second open or 300-second
+post-close result exists. The full campaign and memory sequence remain pending.
+The bare diagnostics JSON response was not retained; the caller/production
+contract analysis is explicitly source-derived, not a reconstructed response.
+
+Host admission retained 332 rows over 10.033364 seconds, with no unexplained
+unmeasured row and a maximum measured process value of 1.794015% of one core.
+The separately computed aggregate upper bound was **11.905328%**, including
+conservative uncertainty; it is **not** a sub-10% proof. No missing row needed
+that bound, so the reviewed per-process path admitted the attempt. Its scope
+is Linux-accounted operational CPU, not physical cycles or an instantaneous
+utilization guarantee. The raw counters, brackets, bound and decision are private
+and indexed by the summary; no historical M4/M5 bound is inferred.
+
+![M6 synthetic cover after the driver failed before History; no open-PSS confirmation](m6-cold-segment-driver-failure.png)
+
+Both saved source frames are independently verified as 100% RGB `(80, 90, 100)`.
+This figure appends a caption below the byte-identical original frame. It shows
+only the synthetic cover and makes no History-content or tray claim.
+
+
+### M7 complete memory workflow; History-open PSS fails
+
+The specific product failure is tracked in [#558](https://github.com/patrick-hudson/put.gd-desktop/issues/558).
+The evidence here is the completed M7 workflow; no implementation change or
+budget waiver is included.
+
+| Stage | Measured duration | Peak family RSS | Peak family PSS | Resident CPU, one core |
+| --- | --- | --- | --- | --- |
+| Cold/closed | 300.118402 s | 30,507,008 B | 19,247,104 B | 0.003332% |
+| History open | 30.087980 s | See private raw samples | **64,956,416 B — fail** | See private raw samples |
+| After History closed | 300.112448 s | 30,679,040 B | 19,396,608 B | 0.006664% |
+
+All 134 process samples are retained privately: 61 cold, 7 open, 61 closed and
+5 mapping/identity/closing samples. The open interval had **300 continuous
+checks** of the same PID, executable, parent and mapped X11 window. The helper
+then exited normally with code 0 at generation 1. No process escaped the family;
+all four package/running build identities matched exact 1185. The database
+remained empty. The CPU/RSS/PSS totals were independently recomputed from raw
+samples. History content/paint response remains unassessed.
+
+![M7 empty History: measured family PSS exceeds60MiB; original owned physical VNC crop with appended caption](m7-history-open-pss-budget-failure.png)
+
+The original 1296×856 physical VNC crop equals the stable PID-owned native
+X11 drawable byte-for-byte. It was manually reviewed as empty History with no
+credentials or private payload. The caption is appended below the unchanged
+crop and reports the later scored interval; the image is not a memory meter
+or proof of first-content response time.
+
+M7 host admission retained 332 rows with no unexplained unmeasured row and
+maximum measured process CPU 1.594624% of one core. The separate conservative
+aggregate upper bound was **11.705048%**, not sub-10%. It was not used to fill
+or discharge any missing row; the reviewed per-process admission path applied.
+Its explicit Linux-accounted statistical scope remains unchanged.
+
+### CU2 native selector timing and partial file-editor queue
+
+The separately built native instrument keeps its actual `3c29bb3b` source,
+Qt 6.4.2 binary hash `3ef7ac07…d1a8d20` and witness manifest
+`d080faef…e5adc2d7`; it is not part of the published product. Its version-correct
+black-outer/white-inset predicate preserves the frozen timer, ownership,
+input, 5+30 protocol and 150 ms budget. The frozen source remains unchanged.
+Paint samples span 40.108506–73.946181 ms. These are native selector drawable
+observations, not content response, compositor frame rate, capture acquisition,
+mixed-DPI or populated-history measurements. No extra VNC sampling or encoding
+ran during the timed invocations.
+
+![CU2 separate unscored selector: actual attributed opaque stroke with all other pixels replaced by declared synthetic background](cu2-empty-selector-unscored.png)
+
+This derivative retains only 4,710 black and 2,355 white actual opaque selector
+pixels verified against the owned helper's drawable. Every other pixel,
+including the cursor rectangle, is declared synthetic RGB `(80, 90, 100)`
+replacement. No unknown raw framebuffer was saved. The appended caption leaves
+the entire reviewed derivative's 1920×1080 RGB rectangle unchanged. It is a
+separate unscored operation, not a picture of one of the 30 timing samples.
+The excluded cursor rectangle intentionally masks the lower-right corner;
+the visible gap is not evidence of a broken product outline.
+
+![CU2 queue visibility refusal: later synthetic recovery cover, no failed-window picture or 50-upload claim](cu2-queue-visibility-refusal.png)
+
+The visibility guard refused `burst-progress-4`, window `0x4c00006`, rather than
+save an unproven/occluded frame. The failed frame was not retained. This later
+recovery picture is exactly solid synthetic fill; it does not show the intended
+window or identify its occluder. The event alone also cannot distinguish
+occlusion from a repaint between the strict native/composite comparisons.
+An off-host trace found normal editor exits before the checkpoint and a caller
+gap: no fresh activation of the pinned History window after editor focus changes.
+The actual cause remains unproven without the missing active-window/geometry
+record. The driver owner is preparing a bounded targeting correction while
+preserving the exact equality/crop/privacy refusal.
+
+CU2 admission retained 331 process rows over 10.032375 seconds. Its separate
+conservative aggregate upper bound was 14.005072%, **not sub-10%**; no unexplained
+unmeasured row needed that bound. The reviewed per-process Linux-accounted
+admission path applied. This is not a physical-cycle or instantaneous CPU claim.
+
+### CU3 corrected History targeting; queue remains incomplete
+
+The burst-only caller correction explicitly presented History and rechecked
+the original helper generation and pinned mapped window. The actual event at
+9.376339 seconds records PID `654056` / start `28662650` / window `0x4c00006`,
+with `provesPaint:false`. The unchanged native-before/composite/native-after
+comparison then refused at 11.443169 seconds. Thus the new targeting path ran,
+but its physical fix is not established. No failed frame, active-window or
+geometry capture exists to distinguish an occluder from painting during the
+strict comparison. The privacy guard and refusal remain unchanged.
+
+![CU3 separate unscored sanitized selector with new-head timing and incomplete queue limits](cu3-selector-and-queue-limit.png)
+
+The reviewed derivative's original 1920×1080 RGB rectangle is unchanged; its
+stroke/fill pixels are byte-identical to CU2's independently captured derivative.
+The caption reports CU3's own measurements, not transferred credit. Only actual
+attributed opaque stroke is retained; all other pixels, including the cursor
+mask, are declared synthetic replacement. The later recovery frame is again
+exact solid fill and is privately hash-indexed, not a failed-window picture.
+
+All 30 timed helper generations were distinct; all 35 timed/warmup operations
+and the separate visual operation cancelled with empty items and `no_result`.
+History remained empty during capture. Queue cleanup retained four cancelled
+journals and one editing journal. CU3 admission retained 331 rows over
+10.031896 seconds, with no unexplained unmeasured row. Its separate aggregate
+upper bound was 11.505274%, **not sub-10%**; the per-process path applied.
+No compositor/content/populated/capture-acquisition/mixed-DPI, 50-file/settle
+or native-capture-burst claim follows.
+
+## Complete runs, 2026-10-25
+
+Claude took the campaign over from Codex on 2026-10-25. Codex's private
+coordinator script was retired: the driver from
+[#555](https://github.com/patrick-hudson/put.gd-desktop/pull/555) ran directly
+on m74 under the normal `desktop_lock.py` lock (`claude-379-burst1`, 01:57:35
+to 04:25:31 UTC, released verified-clean), with a small shell runner that
+installs the DEB, starts the loopback fixture and invokes one scenario. Patrick
+approved shutting down the Windows VM `w11b` on m74 for the quiet slot.
+
+### Why the earlier automated runs failed
+
+Each earlier attempt found one harness defect; none was a product failure.
+The ones fixed on #555 after the handoff, each found by a real m74 run:
+
+| Run | Symptom | Cause | Fix |
+| --- | --- | --- | --- |
+| FU2 | Anonymous `FileNotFoundError` after 7 uploads | `/proc/<pid>/maps` read for an upload worker that had just exited; the error handler kept only the type name | `e8b16bcd`: tolerate exited workers; keep the traceback |
+| burst1 | `process_family_did_not_settle` | Sampler gives up after three disturbed snapshots; workers churn during a burst | `2cba4380`: retry up to 5 s |
+| CU2, CU3, burst1 | Every burst screen check refused as "occluded" | History repaints between the two native reads, so before = VNC = after never holds; the wall frame matched one read | `2cba4380`: accept a wall crop equal to either owned read |
+| burst2 | Settle failed with `closed_stage_has_live_helpers` | The resident's first daily update check (#293) starts `putgd-cli` 5–15 min after launch | `fc2e8f68`: measured profiles set `updates.check` false |
+| history1–4 | AT-SPI focus and selection refused | Qt 6.4.2's bridge has no GrabFocus for item views and no Selection interface (Qt 6.5) | `ce874563`, `ecf34c6c`, `b56ec701`, `00ab777f`: click inside the list, keyboard selection, verify SELECTED |
+| history5, 6 | Clipboard reply crash; delete refused | `kind` key collided with `event(kind)`; seeded receipts point at a fixture instance that no longer exists | `c2a148d0`, `acf7bb25`: rename the key; delete a fresh upload |
+| history2–7 | Search ~1.2 s, preview ~2.5–3 s | The timed action included full AT-SPI tree walks over D-Bus | `a2ab3df9`: resolve controls first, time only the keypress or click |
+| slow1 | `operation_timeout` after cancel | Real product behaviour (#561); the driver gave up after 30 s | `a2ab3df9`: wait up to 180 s and record the latency |
+
+The `gir1.2-gtk-4.0` test prerequisite had been purged by the previous cleanup
+and was reinstalled for the runs (one package; purged again afterwards).
+
+### Results
+
+Product: published `v26.1024.1185-nightly` ubuntu24.04 DEB, SHA-256
+`2094fd4db8cd915b02f1cdd16eb5c99bb8191948931cd2f558a89c59be5b3f47`, source
+`9dfac15c`, live build verified per run. Host: m74 Mint 22.3, Cinnamon
+6.6.9, Muffin 6.6.3, kernel 6.14.0-37-generic, Qt 6.4.2 `xcb`, physical
+session `c89` on `:0`. Every run ended with normal resident exit 0, no forced
+kill, full-family absence and no socket.
+
+| Run | Driver | Workload | Result |
+| --- | --- | --- | --- |
+| capture1 | `00ab777f` + witness `3c29bb3b` | Hotkey to painted region overlay, 10,000 History entries, 5 warmups + 30 samples | **p95 71.803503 ms ≤ 150 ms, pass** (drawable scope, like CU2/CU3) |
+| history10 | `00ab777f` | Open, walk all 200 pages (10,000 rows), 30 searches, image and video preview, Copy image, Delete from destination | Complete. Open drawn ≤627 ms after `ui.show`; scroll p95 50.4 ms; search p95 197 ms; preview p95 872 ms (keypress to the retained preview's pixels); pasted image pixels verified; fixture object gone after delete. Family peak PSS 103.7 MiB with History open |
+| burst3 | `fc2e8f68` | 50 file-editor uploads to the loopback fixture (10 s PUT delay, 4 slots), then 300 s closed settle | Complete. 50/50 uploaded and independently verified (GET, source hash, pixels, History, distinct links); peak 4 uploading, 38 queued; all four screen checks saved. Settled RSS 43,126,784 B and PSS 31,321,088 B **fail** 40/29 MiB, flat for the last 270 s (#560) |
+| slow2 | `00ab777f` | 6.2 MB clipboard PNG via the 256 KiB/s proxy; stalled connection; cancel; retry; 300 s settle | Complete. Upload 25.2 s with progress; search during upload answered in 4.6 ms; **cancel took 115,836 ms** (stalled name check ignores cancel until its 120 s timeout, #561); retry succeeded; settled RSS 32.0 MiB / PSS 20.5 MiB pass |
+
+The 10,000-entry fixture is the six-row `s2` seed (three images, three videos)
+grown with `native_acceptance.py grow --to 10000`: 10,000 independent
+operations, synthetic clones, no real uploads. Numbers above are driver-side
+upper bounds on the owned X11 drawable, not compositor presentation.
+`historyOpenUpperBoundMs`, scroll, search, preview, slow input and cancel gates
+remain **unassessed** until Patrick approves thresholds. The upload burst uses
+explicit file-editor uploads, not native captures.
+
+Sanitized figures, identities, gates and cleanup receipts:
+[`runs-2026-10-25.json`](runs-2026-10-25.json). Raw outputs, including the
+failed attempts burst1–2, history1–9 and slow1, are kept privately
+(archive SHA-256
+`3c740643e74296921442f0629038029ce5e4dd1592f2f0b31f34aa01b3e9b4f6`).
+
+### Product issues found
+
+- [#559](https://github.com/patrick-hudson/put.gd-desktop/issues/559): queued editor uploads say "Editing · Upload or cancel in the editor window".
+- [#560](https://github.com/patrick-hudson/put.gd-desktop/issues/560): the resident keeps about 12 MB after a 50-upload burst; settled RSS/PSS over the idle limits.
+- [#561](https://github.com/patrick-hudson/put.gd-desktop/issues/561): cancel is ignored while a stalled preflight name check runs; the row says "Preparing capture…".
+- [#566](https://github.com/patrick-hudson/put.gd-desktop/issues/566): the Delete from destination confirmation shows the raw receipt JSON.
+
+### Pictures
+
+Each caption names the run, product build and driver commit.
+
+![Burst queue at 50 accepted uploads](burst3-queue-at-50-accepted.png)
+![All 50 burst uploads completed](burst3-all-50-uploaded.png)
+![Last page of the 10,000-entry History](history10-last-page-of-10000.png)
+![Search, image preview and Copy image in 10,000 entries](history10-search-preview-copy-image.png)
+![Video preview in the populated list](history10-video-preview.png)
+![Delete from destination confirmation](history10-delete-confirmation.png)
+![Fresh upload deleted from the fixture](history10-destination-deleted.png)
+![Throttled upload progress](slow2-throttled-upload-progress.png)
+![Stalled preflight and slow cancel](slow2-stalled-preflight.png)
+![Retry after cancel succeeded](slow2-retry-succeeded.png)
+![Region overlay with 10,000 History entries](capture1-region-overlay-10000-history.png)
+
+## Evidence and cleanup
+
+[The first-batch cleanup receipt](batch1-cleanup.json) binds verified per-file
+raw exports for c1/m1/s1/s2, the original VM's pause and verified running-state
+resume, stopped loopback fixture, and purge of only the campaign's put.gd and
+added typelib packages. The desktop lock released verified-clean at
+**15:30:32 UTC**; a follow-up host check was free/clean apart from pre-existing
+shared collectors. No golden/base, browser handler or new tunnel was changed.
+The work continues outside a desktop lock while corrected drivers are reviewed.
+
+For m2, the lock ran **16:07:24–16:11:53 UTC**. The original VM's exact identity
+was revalidated before the coordinated pause and its running state verified
+after resume. The setup resident exited normally with code 0, without forced
+termination; full-family and socket cleanup passed. All nine raw files were
+copied privately and checksum-verified. Only `putgd` was installed and purged;
+no dependency was added. A release precheck refused the still-installed package
+while purge was completing; the subsequent check was clean before verified
+release. No retry or other workload ran under that lock.
+
+For m3, the lock ran **16:50:28–16:54:28 UTC**, after a fresh 17-minute notice.
+The controller immediately resumed the same identity-checked VM on refusal and
+verified it running. Only `putgd` had been installed; it was purged, no dependency
+was added, and the cleanup check found no owned process or session socket.
+The verified release and source/control/failure receipts are hashed in the
+m3 summary. No retry ran under that lock. Receipt-before-assert handling and
+the coordinator's quiet-host admission require review before a new allocation;
+the frozen performance harness and approved product budgets are unchanged.
+
+For m4, the lease ran **18:35:39–18:36:08 UTC**. The same original VM was
+paused with identity-bound proof and verified running again at 18:36:01 UTC.
+Only the run's installed `putgd` package was purged; owned-process inventory
+was empty and the matching lease released verified-clean. All 12 original
+remote files were exported privately and every SHA-256 verified; originals
+remain on m74, with a restore index. No retry ran under that allocation.
+No benchmark-resident cleanup receipt exists because the driver never started;
+these resource-cleanup receipts cannot substitute for the required complete
+inventory, verified absence, normal exit and full-interval performance proof.
+
+
+For m5, the lease ran **19:03:07–19:03:35 UTC**. The same original VM was
+verified running again at 19:03:28 UTC, only the run-owned package was purged,
+and the matching lease released verified-clean. All 12 original files and
+three local receipts are hash-verified, with a separate restore manifest and
+private archive; originals remain in place. No benchmark cleanup flags are
+invented for an unlaunched resident. This allocation is consumed. Further
+work requires reviewed admission logic and a separate allocation; no process
+or service was changed or whitelisted and no retry ran.
+
+
+For m6, the lease ran **19:43:54–19:49:31 UTC**. The exact original VM was
+verified running again at 19:49:23 UTC and rechecked at 19:49:28. Both resident
+cleanup receipts show normal code-0 exits, no forced termination, complete
+inventory, verified absence, no remaining family and no session socket. The
+benchmark driver itself exited 1 on the retained `KeyError`. Only the run-owned
+package was purged; the matching lease released verified-clean. All **29
+original files plus a separate restore manifest** were exported privately and
+every size/hash verified, including the 12-file raw run and its original/copy
+comparison. The earlier one-line JSON transport correction preceded the single
+controller attempt and is retained separately. No retry or new scenario ran.
+
+
+For m7, the matching lease ran **20:40:29–20:51:39 UTC**. The original VM was
+verified running again at 20:51:32 UTC and rechecked at 20:51:36. Both residents
+exited normally with code 0, no force, complete inventory and verified absence;
+family and session socket were gone. The driver completed scoring and returned
+1 for the product PSS gate failure. Only the run-owned package was purged and
+the lease released verified-clean. All **31 originals plus a separate restore
+manifest** are privately exported and hash/size verified, including 14 raw run
+files and their original/copy comparison. Two other saved frames are exact
+synthetic fill. There was no retry, product change, waiver or new allocation.
+
+CU1 acquired no lease and made no package or VM transition. Its seven private
+originals and nine local receipts are hash-indexed separately. CU2 acquired
+the matching 15-minute lease at **23:49:02 UTC** and released verified-clean at
+**23:50:03 UTC**. All four product resident exits were normal code 0, without
+force, with complete inventory, verified absence and absent family/socket.
+The capture child exited 0; the overall worker exited 1 for the queue failure,
+so no normal code-0 worker claim is made. The authenticated allocation cgroup
+drained without force, the loopback fixture was stopped/reaped, scoped key and
+button releases passed, and the same original VM was verified running at
+**23:50:00.936649 UTC**. Only the run-owned package was purged. Independent
+desktop status was free apart from the three pre-existing shared collectors.
+All **128 originals plus a separate restore manifest** are privately exported
+and hash/size verified, including 90 raw phase files and their original/copy
+comparison. No retry or new allocation followed.
+
+CU3's lease ran **2026-10-25 00:38:00–00:39:01 UTC**. All four product residents
+exited normally with code 0, nonforced, complete inventory/verified absence and
+no family or socket. The capture child exited 0; the overall worker exited 1
+for the queue refusal. Containment drained without force, the fixture was
+stopped/reaped, and scoped input releases passed. The same original VM was
+verified running at **00:38:58.968120 UTC**; only the run-owned package was
+purged, the matching lease released verified-clean and independent status
+reported free. All **126 originals plus a separate manifest**, 90 raw phase
+files with original/copy checks and 11 local receipts were exported and
+hash/size verified. CU3 is consumed; no retry or new allocation is implied.
+
+### Actual-frame privacy audit
+
+Review of the draft performance driver found that admitting whole frames after
+only a 98% cover precheck could retain unrelated pixels. That code path is held;
+the precheck alone is not proof that a saved image is safe.
+[The independent source audit](batch1-frame-privacy-audit.json) checked every
+retained first-batch whole-frame image on m74: all five are exactly one synthetic
+RGB fill across 100% of their pixels. The public c1 annotation uses that reviewed
+safe source. The public m1 annotation uses only the reviewed PID-owned History
+drawable. No actual sensitive content was observed. Originals remain private;
+The separately scoped m2 path uses the corrected exact-solid save check; its
+saved source was independently verified as 100% synthetic fill too. Later M6/M7
+and CU2 retain their corrected source-specific checks and explicit attribution;
+the old whole-frame path remains held. Current queue visibility failure is
+retained without a failed raw frame. Further physical work needs a separate
+allocation; prior reviews and consumed allocations grant no retry.
+
+[campaign.json](campaign.json) binds the selected package, budgets and current
+gate status. Private raw samples, exact commands, failures, original visuals and
+identity/cleanup receipts are retained under m74's private
+`~/putgd-lab/p379/` and the per-attempt `/tmp/p379-*` roots; completed run roots
+will be exported before cleanup. Further reviewed sanitized results and
+annotated pictures will be indexed here when collected.
+
+Before measurements, finish the arranged #495 functional window and establish a
+quiet host. A pre-existing VM requires coordinated reversible quiescence; its
+original state and verified resume must be retained. Do not touch immutable
+bases. Stop only campaign-owned processes, restore temporary desktop state,
+remove only campaign-installed package/profile changes and obtain a verified
+desktop-lock release receipt. A failed measurement remains a failure until
+fixed and rerun; missing evidence remains an open gate.
