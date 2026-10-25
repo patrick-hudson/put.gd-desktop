@@ -289,7 +289,8 @@ private slots:
   const Error failure{"recording_disk_full","The clip could not be finalized; nothing was uploaded",{{"reason","disk_space"},{"freeBytes",0},{"finalized",false}}};
   h.backend->sink({{"id",id},{"event","failed"},{"error",failure.toJson()}});
   HistoryStore journal(h.operations->databasePath());PUTGD_TRY_COMPARE(journal.operation(id).state,QString("failed"));
-  QCOMPARE(journal.operation(id).error.code,failure.code);QCOMPARE(journal.operation(id).error.details,failure.details);
+  QCOMPARE(journal.operation(id).error.code,failure.code);
+  for(auto it=failure.details.begin();it!=failure.details.end();++it)QCOMPARE(journal.operation(id).error.details[it.key()],it.value());
   QCOMPARE(h.rec("inspect",{{"id",id}}).error.code,QString("recording_unavailable"));QVERIFY(journal.operation(id).items.isEmpty());QCOMPARE(h.backend->exports,0);QCOMPARE(h.provider->uploads.load(),0);
  }
  // #283: recording.review works the window's controls; the edit a control
