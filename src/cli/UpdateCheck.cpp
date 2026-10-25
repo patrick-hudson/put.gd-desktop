@@ -50,7 +50,8 @@ int runUpdateMode(int argc,char** argv) {
 }
 QJsonObject fetchUpdate(const update::Build& build,const QString& requested,Error& error) {
  // How this installation updates: the system's updater while the package's
- // repository file is in use, else a download. Read here, not in the resident.
+ // repository file is in use, else a download. Re-read it for this check even
+ // though the resident also inspects it at startup.
  // A repository install follows its repository's channel, whichever the
  // resident asked for: that's what apt and dnf install (#386).
  auto action=update::systemAction(build.target);

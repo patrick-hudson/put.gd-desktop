@@ -3,6 +3,7 @@
 #include "core/HostEnvironment.h"
 #include "core/BuildInfo.h"
 #include "core/Log.h"
+#include "core/SystemUpdates.h"
 #include <QCoreApplication>
 #include <QFile>
 #include <QFileInfo>
@@ -37,16 +38,17 @@ UpdateService::UpdateService(SettingsService& settings,QString stateRoot,QString
 }
 qint64 UpdateService::random(qint64 low,qint64 high) const {return random_?random_(low,high):low+qint64(QRandomGenerator::global()->bounded(quint64(high-low+1)));}
 QString UpdateService::channel() const {
- // A repository install follows its repository, as the last check found it (#386).
+ // Local repository ownership is independent of the network check (#491).
  if(const auto followed=repositoryChannel();!followed.isEmpty())return followed;
  const auto chosen=settings_.snapshot().updateChannel;return chosen=="stable"||chosen=="nightly"?chosen:build_.channel;
 }
 QString UpdateService::repositoryChannel() const {
- const auto followed=result_["channelSource"]=="repository"?result_["channel"].toString():QString();
+ const auto followed=systemAction_["kind"]=="software-updates"?systemAction_["channel"].toString():QString();
  return followed=="stable"||followed=="nightly"?followed:QString();
 }
 bool UpdateService::enabled() const {return build_.supported&&settings_.snapshot().checkForUpdates&&!channel().isEmpty();}
 void UpdateService::start() {
+ refreshSystemAction();
  startedAt_=now();startupDelayMs_=random(startupMinimumMs,startupMaximumMs);jitter_=random(-jitterMs,jitterMs);
  QFile file(statePath_);
  if(file.open(QIODevice::ReadOnly)&&file.size()<maximumOutput) {
@@ -91,10 +93,18 @@ void UpdateService::schedule() {
  nextAt_=due;
  timer_.start(int(qBound(qint64(0),now().msecsTo(due),qint64(INT_MAX))));
 }
+void UpdateService::refreshSystemAction() {
+ systemAction_=build_.supported?update::systemAction(build_.target):QJsonObject{};
+}
 QJsonObject UpdateService::action() const {
- // The check child reads the repository file; the last result carries it.
- if(!build_.supported||result_["channel"]!=channel())return {};
- return result_["action"].toObject();
+ auto action=systemAction_;
+ // Only the version comparison needs a feed result. Never restore repository
+ // ownership, updater paths or switch commands from a previous run's cache.
+ if(!repositoryChannel().isEmpty()&&channel()!=build_.channel&&result_["channel"]==channel()&&result_["latest"].isString()){
+  const auto order=update::compareVersions(result_["latest"].toString(),build_.version);
+  if(order&&*order<0)action["older"]=QJsonObject{{"version",result_["latest"]},{"command",update::installFromRepositoryCommand(action["manager"].toString(),channel())}};
+ }
+ return action;
 }
 bool UpdateService::notifies(const QJsonObject& action) const {
  // A system updater that follows our repository already tells the user.
@@ -105,11 +115,13 @@ QJsonObject UpdateService::status() const {
  // Only a result for the current channel is shown.
  const bool current=result_["channel"]==channel()&&!channel().isEmpty();
  const auto offered=action();
+ auto result=result_;
+ if(current){result["action"]=offered;result["channelSource"]=repositoryChannel().isEmpty()?"setting":"repository";}
  return {{"build",build_.toJson()},{"check",snapshot.checkForUpdates},{"channelSetting",snapshot.updateChannel},{"channel",channel().isEmpty()?QJsonValue():QJsonValue(channel())},
   {"channelSource",repositoryChannel().isEmpty()?"setting":"repository"},
   {"enabled",enabled()},{"supported",build_.supported},{"reason",build_.reason.isEmpty()?QJsonValue():QJsonValue(build_.reason)},
   {"notifies",notifies(offered)},{"action",offered.isEmpty()?QJsonValue():QJsonValue(offered)},{"checking",bool(process_)},{"attemptedAt",isoTime(attemptedAt_)},{"checkedAt",current?isoTime(checkedAt_):QJsonValue()},
-  {"nextCheckAt",isoTime(nextAt_)},{"result",current?QJsonValue(result_):QJsonValue()},{"error",error_.isEmpty()?QJsonValue():QJsonValue(error_)},
+  {"nextCheckAt",isoTime(nextAt_)},{"result",current?QJsonValue(result):QJsonValue()},{"error",error_.isEmpty()?QJsonValue():QJsonValue(error_)},
   {"install",installStatus()}};
 }
 QString UpdateService::installUnavailable() const {
@@ -274,6 +286,7 @@ void UpdateService::openSoftwareUpdates(JsonReply reply) {
 }
 void UpdateService::run(bool manual) {
  if(process_)return;
+ refreshSystemAction();
  if(!manual&&!enabled()){schedule();return;}
  manualRunning_=manual;
  auto* process=new QProcess(this);process_=process;process->setProcessChannelMode(QProcess::SeparateChannels);
@@ -294,6 +307,7 @@ void UpdateService::run(bool manual) {
  emit changed();
 }
 void UpdateService::finished(bool manual,const QByteArray& output,const Error& failure) {
+ refreshSystemAction();
  // The first result after the channel was changed shows in Settings, where it
  // was changed: it counts as seen, like a manual check (#344).
  const auto shown=result_["channel"].toString();const bool channelChanged=!shown.isEmpty()&&shown!=channel();
@@ -315,8 +329,8 @@ void UpdateService::finished(bool manual,const QByteArray& output,const Error& f
   // Settings is not announced again; nightly is never announced. Each channel
   // remembers its own, so switching neither repeats nor hides one.
   const bool seen=manual||channelChanged;
-  if(available&&latest!=notified_.value(channel())) {
-   if(!seen&&notifies(result["action"].toObject())&&settings_.snapshot().notifications)emit updateAvailable(result);
+  if(result["channel"]==channel()&&available&&latest!=notified_.value(channel())) {
+   if(!seen&&notifies(action())&&settings_.snapshot().notifications)emit updateAvailable(result);
    if(seen||channel()=="stable")notified_[channel()]=latest;
   }
  }

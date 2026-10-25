@@ -31,9 +31,9 @@ namespace putgd {
 // older, which update.install must allow explicitly.
 //
 // A DEB or RPM whose pkg.put.gd repository file is in use follows that
-// repository's channel instead of the setting (#386): the check child reads the
-// file and checks that channel, and put.gd only explains how to move to the
-// other one. It never changes the file.
+// repository's channel instead of the setting (#386). Startup reads the local
+// file before Settings opens (#491); each check refreshes it independently of
+// the feed. put.gd only explains how to move channels, never changes the file.
 class UpdateService final:public QObject {
  Q_OBJECT
 public:
@@ -52,9 +52,9 @@ public:
  // Checks now, whatever the schedule or the check setting says, and replies
  // with status(). A failed check replies with its error.
  void check(JsonReply);
- // What updating this installation means here, as the last check found it:
+ // What updating this installation means here, from local repository state:
  // the system's software updater when the package's repository file is in
- // use, else a download. The check child reads the file, not the resident.
+ // use, else a download. Available versions still require a feed check.
  QJsonObject action() const;
  // Starts that updater (Update Manager, Discover or GNOME Software) through
  // `putgd-cli --open-software-updates`, which reads the file again.
@@ -89,9 +89,9 @@ signals:
  void imageReplaced();
 private:
  QString channel() const;
- // The channel of the repository a DEB/RPM install updates from, as the last
- // check found it, or empty.
+ // The locally detected channel of a DEB/RPM repository, or empty.
  QString repositoryChannel() const;
+ void refreshSystemAction();
  bool notifies(const QJsonObject& action) const;
  QJsonObject installStatus() const;
  QString installUnavailable() const;
@@ -118,7 +118,7 @@ private:
  bool manualRunning_=false;
  QDateTime startedAt_,attemptedAt_,checkedAt_,nextAt_;
  qint64 startupDelayMs_=0,jitter_=0;
- QJsonObject result_,error_;
+ QJsonObject result_,error_,systemAction_;
  QString attemptedChannel_;
  // The version last announced or seen in Settings, by channel.
  QHash<QString,QString> notified_;
