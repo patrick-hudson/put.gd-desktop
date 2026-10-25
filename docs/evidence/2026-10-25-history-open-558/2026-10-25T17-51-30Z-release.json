@@ -1,0 +1,24 @@
+{
+  "lock": {
+    "owner": "t3-i558",
+    "session": "t3-i558-history1",
+    "host": "m74",
+    "purpose": "Issue558 final48fd6047 History memory300/30/300; notes ~/putgd-lab/i558",
+    "acquired": "2026-10-25T17:37:03Z",
+    "expires": "2026-10-25T18:12:03Z",
+    "heartbeat": "2026-10-25T17:49:49Z"
+  },
+  "releasedBy": "t3-i558-history1",
+  "check": {
+    "left": [],
+    "notMine": [],
+    "preexisting": [],
+    "unmatchedNotMine": []
+  },
+  "notes": [
+    "3 process(es) outside the desktop session (no DISPLAY or WAYLAND_DISPLAY; shared SSH work): 2067 313646 313651"
+  ],
+  "event": "release",
+  "host": "m74",
+  "at": "2026-10-25T17:51:30Z"
+}

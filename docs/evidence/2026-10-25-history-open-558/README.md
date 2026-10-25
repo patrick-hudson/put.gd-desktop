@@ -1,12 +1,11 @@
 # History-open memory investigation (#558)
 
-Status: implementation and k72 development validation complete; minimum-Qt
-validation is in progress. Physical Cinnamon's
-strict 60 MiB History-open gate and the parallel Cinnamon/GNOME/KDE functional
-and memory acceptance remain pending. No stable asset is accepted and #558
-remains open. The unchanged physical memory protocol is 300/30/300 seconds,
-with every resident/helper process counted and a continuously owned History
-window during the open interval.
+Status: the local development candidate passes the unchanged physical Cinnamon
+300/30/300 memory protocol and separate targeted native UI checks. Parallel
+Cinnamon/GNOME/KDE functional and memory acceptance, response-time gates and
+published asset acceptance remain pending. No stable asset is accepted and #558
+remains open. Every resident/helper process was counted; History had a guarded,
+continuously owned native window throughout its open interval.
 
 ## Change and scope
 
@@ -75,6 +74,7 @@ commands, close without constructing Settings, and existing popup geometry.
 
 - [Focused suite output](focused-tests.txt)
 - [Remaining development suite output](remaining-tests.txt)
+- [Qt 6.4.2 Release focused suite output](qt642-focused-tests.txt)
 - [Expected regression failures against trunk](regression-before.txt)
 
 The remaining 103 development tests also passed (368.72 seconds). Together the
@@ -83,10 +83,65 @@ a single full-suite invocation. The coordinator confirmed required CI success
 for the exact candidate: contracts, Linux 24/26 and portable passed; ASan/UBSan,
 packages, PipeWire and prune were skipped by selection, not sanitizer passes.
 
-The Ubuntu 24.04 Release build
-uses distro Qt 6.4.2/GCC 13.3 and the verified official AWS SDK 1.11.907. It is
-paused in its owned f44 container for another task's coordinated recording slot;
-no package or Qt 6.4.2 runtime result is yet claimed.
+The Ubuntu 24.04 Release build uses distro Qt 6.4.2/GCC 13.3 and the verified
+official AWS SDK 1.11.907. All four focused suites pass (174.33 seconds) in
+the owned f44 rootless container, after the coordinator verified the other
+task's clean desktop release. These are headless tests. The development DEB
+was then packaged and verified: all six executables have the same clean source
+identity, use distro Qt dynamically, and no Qt libraries are bundled. Its
+SHA-256 is `9c8ff3711ae2b55bd75e44c92ab7496d3e88d5b23a480d7e83d071819817084d`
+(size 10,993,726 B); [package and binary identities](qt642-package-identity.json)
+retain exact metadata. This is a locally built development package, not an
+accepted published asset. The first packaging attempt correctly refused an
+unbuilt configured KDE region helper; building that target resolved the refusal.
+
+## Physical Mint candidate — 2026-10-25
+
+Physical m74, Mint 22.3, Cinnamon 6.6.9/Muffin 6.6.3, native X11 session `c89`,
+distro Qt 6.4.2 ran the exact development DEB above. The unchanged
+[#555 driver](https://github.com/patrick-hudson/put.gd-desktop/pull/555) at
+`00ab777f2413a1fbd7670a7259dc614eced896e6` used a new private `/tmp/p558m1`;
+the resolved session socket was 38 bytes. Admission recorded a quiet host,
+inactive stress service and the preserved pre-existing VM. No added probes or
+encoding ran inside scored intervals; required visuals were saved outside them.
+
+| Gate | Measured duration | Peak family RSS | Peak family PSS | Resident one-core CPU |
+| --- | ---: | ---: | ---: | ---: |
+| Cold closed | 300.049 s | 30,117,888 B | 19,172,352 B | 0.006666% |
+| History open | 30.070 s | not an RSS gate | **46,641,152 B** | not a CPU gate |
+| Post-close | 300.137 s | 30,281,728 B | 19,314,688 B | 0.003332% |
+
+All scored memory/CPU gates passed. History stayed below **62,914,560 B**;
+closed RSS/PSS stayed below 40/29 MiB and CPU below 0.5% of one core. The
+History guard performed 299 checks with exact PID/start/parent identity and
+queued X11 unmap/destroy events. Its helper exited normally with code 0.
+Both resident cleanup receipts show normal exit 0, no forced termination,
+no remaining owned processes and removed sockets. This demonstrates the local
+candidate's budget result; comparison to older nightly 1185 is not a matched
+build experiment or a regression/leak attribution.
+
+A separate unscored `/tmp/p558f1` run passed fresh History, external configuration
+before first Settings activation, native Destinations navigation, live light/dark
+appearance, retained navigation, clean close/reopen, omission of stale derived
+state and direct agent initialization from History. The intentionally absent
+profile returns the expected `profile_not_found` response. The Settings visual
+shows the externally changed local-copy path. Both functional helper generations
+closed normally; resident/socket/fixture cleanup passed. Dirty/provisional/setup
+lifecycle coverage remains in the automated suites, not a new native claim.
+
+- [Exact native results, gate limits, lifetime and cleanup receipts](native-summary.json)
+- [Verified-clean desktop release at 17:51:30 UTC](2026-10-25T17-51-30Z-release.json)
+- [Visual hashes and source identities](visual-identities.json)
+- Reviewed owned-window visuals: [History](history-open.png),
+  [Destinations](destinations-light.png), [Settings light](settings-light.png),
+  [Settings dark](settings-dark.png).
+
+Only the task DEB and temporary GTK introspection package were installed and
+purged; no desktop packages were upgraded or unrelated automatic dependencies
+removed. The pre-existing VM generation and shared SSH processes were preserved.
+The raw archive SHA-256 is
+`1daa3de9e1b1d2c818466fd4a3744be6d61a44d9b5196aa629e13adf909683e9`;
+original raw artifacts remain private and directly usable.
 
 ## Preserved attempts
 
@@ -115,9 +170,9 @@ this task's evidence export. No failed attempt is relabeled as a passing gate.
 
 ## Pending acceptance
 
-The coordinator must allocate the physical slot after the final Qt 6.4.2 build
-and tests are ready. Save credential-safe visuals, exact installed/live source
-and package identities, normal helper exit and complete cleanup receipts.
-No encoding or extra diagnostic probes belong inside scored intervals. Final
-parallel Cinnamon, GNOME and KDE functional/memory checks remain separate from
-these controlled diagnostics; #384 still requires eventual exact stable assets.
+The frozen driver explicitly leaves `historyPaintResponse` **unassessed**.
+Saved functional visuals are not a paint-response timing result. Final parallel
+Cinnamon, GNOME and KDE functional/memory checks on the exact candidate remain
+coordinator-owned gates, along with the other declared distribution/session rows
+and eventual exact published assets. This targeted local development-package
+pass does not close #558 or certify a stable release.

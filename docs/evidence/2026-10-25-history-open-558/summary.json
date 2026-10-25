@@ -222,7 +222,16 @@
       "failed": 0,
       "elapsedSeconds": 368.72
     },
-    "qt642Release": "build paused for coordinated f44 native slot",
+    "qt642Release": {
+      "command": "ctest --preset release --parallel 1 -R ^(gui_application|gui_settings|gui_history_view|gui_theme)$",
+      "passed": 4,
+      "failed": 0,
+      "elapsedSeconds": 174.33,
+      "qt": "6.4.2",
+      "compiler": "GCC 13.3",
+      "host": "f44 rootless Ubuntu 24.04 container",
+      "source": "48fd6047b2a8d7830296bc3de78f370719a1574f"
+    },
     "configuredDevCoverage": {
       "totalPassed": 107,
       "separateInvocations": 2

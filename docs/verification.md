@@ -15,8 +15,11 @@ The History-only helper now defers hidden Settings/destination construction,
 while retaining active drafts and accepted setup inspection. Controlled builder
 measurements and lifecycle tests are recorded in the
 [History memory evidence](evidence/2026-10-25-history-open-558/README.md).
-Physical 300/30/300 Cinnamon and parallel Cinnamon/GNOME/KDE acceptance remain
-pending; headless measurements do not close #558 or certify stable assets.
+The exact local development DEB passes physical Cinnamon 300/30/300 memory
+(46,641,152 B History-open family PSS) and separate targeted native UI checks.
+All 107 configured dev tests pass across two invocations; four minimum-Qt suites
+also pass. Parallel Cinnamon/GNOME/KDE acceptance, paint-response timing and
+published assets remain pending; this evidence does not close #558.
 
 ## Login-startup uninstall contract (#382) — 2026-10-24
 
