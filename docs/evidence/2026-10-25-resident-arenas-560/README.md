@@ -661,7 +661,7 @@ Historical scripts stay unchanged. The current scripts for any replay:
 | `functional_ci.py`, `f-run.sh`, `f-run-v2.sh` | [`f-run-v3.sh`](lab/f-run-v3.sh) | Refuses to launch without an explicit dedicated clipboard scope; `f-run.sh` alone owns the work directory |
 | `module_smoke.sh` … `module_smoke_v4.sh` | [`module_smoke_v5.sh`](lab/module_smoke_v5.sh) | Arguments and canonical roots checked first; maps parsing handles spaces and empty polls; probe status kept; raw probe output kept byte-for-byte; malformed or wrongly shaped output classified in a separate file before the verdict |
 | `identity_check.sh`, `identity_check_v2.sh` | [`identity_check_v3.sh`](lab/identity_check_v3.sh) | Requires a full expected revision, a present worker and ROUNDS from 1 to 200; an absent identity fails |
-| `test_wrappers.sh` (**do not run**), `test_wrappers_v2.sh`, `test_module_smoke_v4.sh` | [`test_wrappers_v3.sh`](lab/test_wrappers_v3.sh), [`test_wrappers_v3_setup.sh`](lab/test_wrappers_v3_setup.sh) | Guarded setup; output in its own `mktemp` directory; a test-owned stand-in in a separate owned directory; never creates or deletes fixed campaign paths |
+| `test_wrappers.sh` (**do not run**), `test_wrappers_v2.sh`, `test_wrappers_v3.sh`, `test_wrappers_v3_setup.sh`, `test_module_smoke_v4.sh` | [`test_wrappers_v4.sh`](lab/test_wrappers_v4.sh), [`test_wrappers_v4_setup.sh`](lab/test_wrappers_v4_setup.sh) | Guarded setup; output in its own `mktemp` directory; a test-owned stand-in in a separate owned directory; never creates or deletes fixed campaign paths; process checks classify pgrep status and output, and only a clean no-match passes |
 
 - **`resident_burst_o3.py` r3** (#579 Cubic 4372241070): the script now exits non-zero
   when the resident exits abnormally, the forced fallback was used, or tracked
@@ -812,6 +812,41 @@ Historical scripts stay unchanged. The current scripts for any replay:
   - From a clean `git archive` of `29484435` via `bash`: `test_wrappers_v3.sh`
     passes 39 of 39 checks, and `test_wrappers_v3_setup.sh` 4 of 4
     ([output](lab/fault-checks/wrapper-tests-v3-clean-archive.txt)).
+- **Fifth review round** (#579 Cubic review 5645352596). The v3 tests and their
+  logs are kept; the fixes are v4 files.
+  - **4372459168:** the v3 meta-test ran its bad-LABDIR case without the
+    call-counting `mktemp` shim. Its "no leftovers" result therefore does not show
+    that the argument check runs before any `mktemp` call. That historical result
+    is not reinterpreted.
+    [`test_wrappers_v4_setup.sh`](lab/test_wrappers_v4_setup.sh) runs that case
+    under the shim with the counter reset, and asserts exit 2, **zero** `mktemp`
+    calls, no new `/tmp` entries and an unchanged caller sentinel.
+  - **4372459172:** v3 counted `pgrep … | wc -l` and ignored pgrep's own status,
+    so a failed inspection could look like "0 left". In
+    [`test_wrappers_v4.sh`](lab/test_wrappers_v4.sh), `process_state` keeps
+    pgrep's status and output together, never signals any process, and only a
+    clean no-match counts as "stopped":
+
+    | pgrep result | Classification |
+    | --- | --- |
+    | exit 1, no output | `none` (the only result that counts as stopped) |
+    | exit 0 with PIDs | `matches:<pids>` |
+    | exit 2 or higher, or a missing tool | `error:<code>:<output>` |
+    | status and output disagree | `inconsistent:…` |
+
+    Controlled stub cases run through each row: no match, a match, exit 2 with a
+    message, exit 3, exit 0 with no output, exit 1 with output, and a missing
+    `pgrep` (exit 127). Each is checked for its classification and for whether it
+    could pass as stopped; only the no-match stub can. Fixture handling is
+    unchanged.
+  - **Attempt 1 at `af397820`** failed one check, and its log is kept
+    ([log](lab/fault-checks/wrapper-tests-v4-attempt1-af397820.txt)). The fault was
+    in my test vector, not the helper: for empty output the helper reports
+    `error:3: ` with a trailing space, and the vector omitted the space. The
+    helper still classified it as an error, not stopped. The vector was corrected.
+  - From a clean `git archive` of `2b31973d` via `bash`: `test_wrappers_v4.sh`
+    passes 53 of 53 checks and `test_wrappers_v4_setup.sh` 4 of 4
+    ([output](lab/fault-checks/wrapper-tests-v4-clean-archive.txt)).
 - **Receipts** (Cubic 4372241047): the committed m74 release receipts are
   **sanitized projections**, with the private coordination-notes path removed from
   the lock purpose. The originals (SHA-256 `b235b55b…` for m74 and `63d87a9b…` for
