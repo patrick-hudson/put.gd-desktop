@@ -252,7 +252,8 @@ class UI:
             time.sleep(.05)
 
     def search(self, term):
-        measured = self.action('search', lambda: self.accessible.search(term))
+        controls = self.accessible.search_controls()
+        measured = self.action('search', lambda: self.accessible.search(term, controls))
         rows = self.run.call('history.list', {'search': term, 'limit': 50})
         self.wait_rows(rows['records'])
         self.run.event('history-search-verified', query=term, total=rows['total'],
@@ -311,13 +312,15 @@ def history(run):
             _, records = ui.search(term)
             selected = records[0]
             # Inspector changes outside the list rectangle; observe it directly.
+            node = ui.accessible.prepare_selection()
             selected_at = time.monotonic()
-            ui.action('preview-selection', lambda: ui.accessible.select(0),
+            ui.action('preview-selection', lambda: ui.accessible.select(0, node, wait=False),
                       ui.full_rectangle)
             detail = run.call('history.detail', {'id': selected['id']})
             preview = Path(detail['previewPath'])
             require(preview.is_file() and preview.resolve().is_relative_to(run.root), 'retained_preview_not_private')
             previews.append(ui.preview(preview, selected_at))
+            ui.accessible.wait_selected(0)
             ui.save('history-preview-' + ('image' if term.startswith('landscape') else 'video'))
             run.event('selected-preview', historyId=selected['id'], category=selected['category'],
                       previewSha256=sha256(preview), semanticVerification='owned accessible row + retained synthetic preview + saved pixels')
@@ -719,7 +722,8 @@ def slow(run):
         started = time.monotonic()
         operation_id = run.call('action.invoke', {'action': 'clipboard'})['operationId']
         ui = UI(run)
-        response = ui.action('slow-input-response', lambda: ui.accessible.search('synthetic'),
+        controls = ui.accessible.search_controls()
+        response = ui.action('slow-input-response', lambda: ui.accessible.search('synthetic', controls),
                              [0, 0, min(ui.width, 800), 180])
         run.result['metrics']['slowInputGenericRepaintMs'] = response
         assess(run, 'slowInputUpperBoundMs', None)
@@ -745,12 +749,15 @@ def slow(run):
         cancelled_id = run.call('action.invoke', {'action': 'clipboard'})['operationId']
         time.sleep(3)
         run.event('stalled-operation', **operation_summary(run.call('operation.inspect', {'id': cancelled_id})))
-        ui.action('stalled-input-response', lambda: ui.accessible.search('slow'), [0, 0, min(ui.width, 800), 180])
+        controls = ui.accessible.search_controls()
+        ui.action('stalled-input-response', lambda: ui.accessible.search('slow', controls), [0, 0, min(ui.width, 800), 180])
         ui.save('stalled-upload')
         tray(run, 'stalled')
         cancelled_at = time.monotonic()
         run.call('operation.cancel', {'id': cancelled_id})
-        cancelled = run.wait_operation(cancelled_id, 30)
+        # Measure how long cancel really takes (#561: a stalled preflight
+        # ignores cancel until its request times out) instead of aborting.
+        cancelled = run.wait_operation(cancelled_id, 180)
         assess(run, 'cancelTerminalMs', (time.monotonic() - cancelled_at) * 1000)
         require(cancelled['state'] == 'cancelled', 'stalled_upload_not_cancelled')
         run.event('stalled-cancelled', **operation_summary(cancelled))

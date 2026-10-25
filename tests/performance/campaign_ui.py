@@ -387,34 +387,61 @@ class Accessible:
                 raise EvidenceError('accessible_focus_refused')
             time.sleep(.05)
 
-    def search(self, text):
-        node = self.find('Search history by file name')
-        if not self.api.EditableText.set_text_contents(node, text):
+    def search_controls(self):
+        """Resolve controls before timing: each tree walk costs many D-Bus calls."""
+        return self.find('Search history by file name'), self.find('Search')
+
+    def search(self, text, controls=None):
+        field, button = controls or self.search_controls()
+        if not self.api.EditableText.set_text_contents(field, text):
             raise EvidenceError('accessible_search_text_refused')
-        self.click('Search')
+        if not self.api.Action.do_action(button, 0):
+            raise EvidenceError('accessible_action_refused')
 
     def list_names(self):
         node = self.find('Captures and upload activity')
         return [node.get_child_at_index(i).get_name() for i in range(node.get_child_count())]
 
-    def select(self, index):
+    def prepare_selection(self):
+        """Focus the list with nothing selected, outside any timed action.
+
+        The focusing click lands on row 0 and selects it; clear that so the
+        timed keypress makes exactly one selection change.
+        """
         self.focus(self.find('Captures and upload activity'))
+        if self.row_selected(0):
+            self.key('ctrl+space')
+            deadline = time.monotonic() + 2
+            while self.row_selected(0):
+                if time.monotonic() >= deadline:
+                    raise EvidenceError('accessible_selection_not_cleared')
+                time.sleep(.05)
         # A focusing click can rebuild Qt's accessible rows; never reuse the
         # pre-focus object path.
+        return self.find('Captures and upload activity')
+
+    def row_selected(self, index):
         node = self.find('Captures and upload activity')
+        child = node.get_child_at_index(index) if index < node.get_child_count() else None
+        return child is not None and child.get_state_set().contains(self.api.StateType.SELECTED)
+
+    def select(self, index, node=None, wait=True):
+        node = node or self.prepare_selection()
         from gi.repository import GLib
         try:
             if self.api.Selection.select_child(node, index):
                 return
         except GLib.GError:
             pass  # Qt < 6.5 has no AT-SPI Selection interface.
-        self.key('Home', *(['Down'] * index))
+        # Row 0 is already current after the focusing click: Space selects
+        # it; Down moves and selects.
+        self.key(*(['Down'] * index or ['space']))
+        if wait:
+            self.wait_selected(index)
+
+    def wait_selected(self, index):
         deadline = time.monotonic() + 2
-        while True:
-            node = self.find('Captures and upload activity')
-            child = node.get_child_at_index(index) if index < node.get_child_count() else None
-            if child is not None and child.get_state_set().contains(self.api.StateType.SELECTED):
-                return
+        while not self.row_selected(index):
             if time.monotonic() >= deadline:
                 raise EvidenceError('accessible_selection_refused')
             time.sleep(.05)
