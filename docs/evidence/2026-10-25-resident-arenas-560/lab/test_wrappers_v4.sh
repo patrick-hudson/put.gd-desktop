@@ -117,7 +117,7 @@ mkdir "$T/pg"
 stub(){ printf '#!/bin/bash\n%s\n' "$2" > "$T/pg/$1"; chmod +x "$T/pg/$1"; }
 stub none 'exit 1'; stub match 'echo 4242; exit 0'; stub err2 'echo "pgrep: bad pattern" >&2; exit 2'; stub err3 'exit 3'
 stub odd0 'exit 0'; stub odd1 'echo 99; exit 1'
-for c in "none|none" "match|matches:4242 " "err2|error:2:pgrep: bad pattern " "err3|error:3:" "odd0|inconsistent:0-without-output" "odd1|inconsistent:1-with-output:99 " "missing|error:127:"; do
+for c in "none|none" "match|matches:4242 " "err2|error:2:pgrep: bad pattern " "err3|error:3: " "odd0|inconsistent:0-without-output" "odd1|inconsistent:1-with-output:99 " "missing|error:127:"; do
  name=${c%%|*}; want=${c#*|}; got=$(PGREP="$T/pg/$name" process_state "anything")
  # A missing tool reports its own message after "error:127:"; compare that case by prefix, the stubs exactly.
  if [[ $name == missing ]]; then shown=${got:0:${#want}}; else shown=$got; fi
