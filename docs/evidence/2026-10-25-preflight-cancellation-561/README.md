@@ -27,12 +27,20 @@ PUT. Further tests cover already-cancelled S3, stalled B2 lookup/retry, Proton
 helper cancellation and History's “Checking the destination…” wording. #559's
 queued/editor precedence clauses remain separate.
 
-## Current source and verification
+## Tested source and integration verification
 
-Head `8c4923d06b9591dde7d39049fccd4fb50a2a8725`, version
+Desktop-tested source `8c4923d06b9591dde7d39049fccd4fb50a2a8725`, version
 `26.1025.1260-dev+g8c4923d06b95`. The final commit changes only tests and the package
 auditor; runtime source is identical to `79fd0cb5`. Evidence remains tied to its
 actual build, including refreshed head builds for the desktop matrix.
+
+Integration head `951742b967f94cb6ffcebfe24489776fac1f52d6` merges nightly
+`4188212c` after #559 landed. The only conflict was adjacent History test
+insertions; both the queued-status tests and the preflight wording test were
+retained unchanged. The #561 runtime changes are unchanged; the merged runtime
+also includes #559's independently tested queued-editor handoff. Fresh CI is
+required on this integration head. The desktop results below remain evidence
+for their exact `8c4923d0` binaries, not a new desktop run of the integration head.
 
 [Head measurements](head8c/measurements.json) retain binary hashes, build
 manifests, actual session/QPA witnesses, operation IDs, retry outcomes, privacy
@@ -40,7 +48,7 @@ gates and inspected visuals. The targeted workload uses a synthetic PNG through
 the production editor's explicit Submit, an isolated loopback S3 destination,
 30-second stalled HEAD, cancel, then retry. It is not a screen-capture test.
 
-| Exact final-head desktop | Cancellation | Result |
+| Exact 8c4923d0 desktop | Cancellation | Result |
 | --- | ---: | --- |
 | Physical d69, Debian 13 / Plasma Wayland | 854.22 ms | Cancel, same-name upload retry and clipboard passed |
 | Physical f44, Fedora 44 / GNOME Wayland | 935.97 ms | Cancel and upload retry passed; clipboard limitation below |
@@ -50,7 +58,7 @@ the production editor's explicit Submit, an isolated loopback S3 destination,
 | Fresh d69 VM xg561, Ubuntu 24.04.5 / GNOME 46 X11 | 624.68 ms | Default scale; cancel, upload retry and clipboard passed |
 | Fresh d69 VM g561b, Ubuntu 26.04.1 / GNOME 50.1 Wayland | 202.16 ms | Cancel, upload retry and clipboard passed |
 
-The final-head stalled-HEAD regression measured **512 ms**, including active-slot
+The 8c4923d0 stalled-HEAD regression measured **512 ms**, including active-slot
 drain. All **108 CTest suites passed** (78 integration, 30 unit), in 939.02 seconds
 on the shared d69 builder: [full log](head8c/ctest.log),
 [socket preflight](head8c/test-socket-preflight.json). Final CI/review status is
