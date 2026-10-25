@@ -1054,7 +1054,7 @@ private slots:
   CredentialStore secrets;UiSessionFixture fixture(service,secrets);fixture.server.setUpdateService(&updates);
   fixture.server.setUiDiagnostics([&]{return QJsonObject{{"update",updates.status()}};});
   fixture.session.refreshSnapshot();PUTGD_TRY_VERIFY(fixture.session.diagnostics()["update"].isObject());
-  MainWindow window(fixture.session);window.navigate("settings");window.show();PUTGD_TRY_VERIFY(fixture.session.ready());
+  MainWindow window(fixture.session);window.navigate("settings");window.show();window.settings()->showUpdates();PUTGD_TRY_VERIFY(fixture.session.ready());
   auto* channel=window.findChild<QComboBox*>("updateChannel");auto* source=window.findChild<QLabel*>("updateChannelSource");
   auto* text=window.findChild<QLabel*>("otherChannelText");auto* line=window.findChild<QLabel*>("updateStatus");
   QVERIFY(channel&&source&&text&&line);
@@ -1065,7 +1065,7 @@ private slots:
   QJsonObject wire;fixture.server.dispatch({{"schemaVersion",1},{"requestId","startup-update"},{"session",fixture.server.socketPath()},{"method","update.status"},{"params",QJsonObject{}}},[&](Error error,QJsonObject data){QVERIFY(!error);wire=data;});
   QCOMPARE(wire,updates.status());QCOMPARE(wire["channel"].toString(),expected);QVERIFY(wire["attemptedAt"].isNull());
   auto* notifications=window.findChild<QCheckBox*>("notifications");const bool before=notifications->isChecked();notifications->setChecked(!before);
-  PUTGD_TRY_COMPARE(service.snapshot().notifications,!before);QCOMPARE(service.snapshot().updateChannel,chosen);
+  PUTGD_TRY_COMPARE(service.snapshot().notifications,!before);PUTGD_COMPARE_STEADY(service.snapshot().updateChannel,chosen,300);
   if(!managed){
    channel->setCurrentIndex(channel->findData(expected=="stable"?"nightly":"stable"));
    PUTGD_TRY_COMPARE(service.snapshot().updateChannel,expected=="stable"?QString("build"):QString("stable"));
