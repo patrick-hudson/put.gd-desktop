@@ -616,11 +616,13 @@ Historical scripts stay unchanged. The current scripts for any replay:
 | --- | --- | --- |
 | `resident_burst_o1.py`, `run_o1.sh`; `resident_burst_o2.py`, `run_o2.sh`, `run_o3.sh` | [`resident_burst_o3.py`](lab/resident_burst_o3.py) (r3), [`run_o4.sh`](lab/run_o4.sh) | Explicit roots and payload-attributed `cancel3` (see below) |
 | `campaign_o.sh` … `campaign_o4.sh` | [`campaign_o5.sh`](lab/campaign_o5.sh) | Status captured before logging; failure returned; runs `run_o4.sh` through `bash` |
-| `phase2_o.sh` … `phase2_o4.sh` | [`phase2_o5.sh`](lab/phase2_o5.sh) | Fail-fast, verified identity and module layout, preflight, source restore |
+| `phase2_o.sh` … `phase2_o5.sh` | [`phase2_o6.sh`](lab/phase2_o6.sh) | Fail-fast, verified identity and module layout, preflight, source restore; clean-tree check before OUTROOT exists |
 | `summarize_o.py` | [`summarize_o2.py`](lab/summarize_o2.py) | Timestamp-based final-270 s window, only after a full settle |
 | `m74-run.sh`, `m74-run-ci.sh` | [`m74-run-v2.sh`](lab/m74-run-v2.sh) | Returns the driver status; lock session is a parameter |
 | `functional_ci.py`, `f-run.sh`, `f-run-v2.sh` | [`f-run-v3.sh`](lab/f-run-v3.sh) | Refuses to launch without an explicit dedicated clipboard scope; `f-run.sh` alone owns the work directory |
-| `module_smoke.sh` | [`module_smoke_v2.sh`](lab/module_smoke_v2.sh) | Arguments and canonical roots checked first; maps parsing handles spaces and empty polls |
+| `module_smoke.sh`, `module_smoke_v2.sh` | [`module_smoke_v3.sh`](lab/module_smoke_v3.sh) | Arguments and canonical roots checked first; maps parsing handles spaces and empty polls; probe status and failure records kept |
+| `identity_check.sh` | [`identity_check_v2.sh`](lab/identity_check_v2.sh) | Requires a full expected revision and a present worker; an absent identity fails |
+| `test_wrappers.sh` (**do not run**) | [`test_wrappers_v2.sh`](lab/test_wrappers_v2.sh) | All output inside its own `mktemp` directory; never creates or deletes fixed campaign paths |
 
 - **`resident_burst_o3.py` r3** (#579 Cubic 4372241070): the script now exits non-zero
   when the resident exits abnormally, the forced fallback was used, or tracked
@@ -672,6 +674,55 @@ Historical scripts stay unchanged. The current scripts for any replay:
     - `module_smoke_v2.sh`: relative roots with spaces, using a stub fixture, a stub
       probe and a compiled stub worker that loads its module the way the real one
       does; plus a missing TAG, bundle or SRC.
+- **Third review round** (#579 Cubic review 5645176997). The historical bytes and
+  logs are kept; each fix is a new file.
+  - **4372333033, 4372333035, 4372333038:** `campaign_o3.sh`,
+    `attempts/campaign_o3-ra-rb.sh` and `campaign_o4.sh` run their runner directly,
+    which needs an executable mode. They are historical: the ra/rb and sa/sb runs
+    used copies made executable on d69, and `campaign_o4.sh` was never run. The
+    replay route is `campaign_o5.sh`, which runs the runner through `bash`. No
+    rewrite.
+  - **4372333039:** `phase2_o5.sh` created OUTROOT before rejecting a dirty tree,
+    which blocked a retry. `phase2_o6.sh` checks first. Stubs: a dirty tree exits 3
+    and creates no OUTROOT; an existing OUTROOT exits 2 and its content is kept.
+  - **4372333040:** the no-scope case in `test_wrappers.sh` inherited any exported
+    `I560_CLIPBOARD_SCOPE`. `test_wrappers_v2.sh` exports a hostile scope and runs
+    the case under `env -u`: it still refuses with exit 3 and creates nothing.
+  - **4372333045:** `identity_check.sh` took the identity from the worker itself,
+    so a missing identity became `grep -qF ''` and passed. `identity_check_v2.sh`
+    requires a full expected revision and a present worker; a wrong worker exits 1,
+    and a missing worker or short or empty revision exits 2. The retained
+    real-worker log stays valid for its scope: it printed a non-empty identity
+    (`g80ffa2e6c0d3` and `g98878cfe31c2`) for each real worker.
+  - **4372333048:** in `module_smoke_v2.sh`, a non-zero `wait` under `set -e`
+    skipped the status and failure record. `module_smoke_v3.sh` captures the status,
+    writes a failure result if the probe produced none, always stops the fixture,
+    and returns non-zero. Stubs: pass; probe exit 7 recorded; missing result
+    recorded as `missing_or_invalid_result`; no stub fixture left running.
+  - **4372333052:** a real ownership defect. `test_wrappers.sh` checked that the
+    fixed paths `/tmp/p560ua`/`ub` were absent and then later ran `rm -rf` on them,
+    so a real campaign starting in between could lose its evidence. It is kept
+    only as history and **must not be run**. In `test_wrappers_v2.sh` the stub
+    runner writes only inside the test's `mktemp` directory, and the test removes
+    only that directory and its own sentinel. A final check confirms that the state
+    of `/tmp/p560ua`, `uab`, `ub`, `ubb` and a foreign sentinel is identical before
+    and after.
+  - **4372333053:** the `head` line in
+    [`fault-results-o5.txt`](lab/fault-checks/fault-results-o5.txt) is the output
+    of `ls "st none"`, run to show that the space-containing fake state directory
+    held its state file. The raw file is kept;
+    [`fault-results-o5.annotated.txt`](lab/fault-checks/fault-results-o5.annotated.txt)
+    is a derived copy that says so.
+  - **4372333054:** checked rather than accepted. The scripts are tracked as
+    `100644`, not executable. `git archive` writes `0666 & ~tar.umask`, and the
+    default `tar.umask` is `0002` (unset here), so the archive's tar headers really
+    are `0664`. The logged 664 is that header and extracted mode, not a typo. It
+    means non-executable, with group write coming from git archive's default.
+  - [`test_wrappers_v2.sh`](lab/test_wrappers_v2.sh) ran from a clean
+    `git archive` of `f728a98a` through `bash`: 22 of 22 checks pass
+    ([output](lab/fault-checks/wrapper-tests-v2-clean-archive.txt)). It covers
+    f-run-v3, campaign_o5, phase2_o6, identity_check_v2 and module_smoke_v3, plus
+    the ownership check.
 - **Receipts** (Cubic 4372241047): the committed m74 release receipts are
   **sanitized projections**, with the private coordination-notes path removed from
   the lock purpose. The originals (SHA-256 `b235b55b…` for m74 and `63d87a9b…` for
