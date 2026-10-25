@@ -4,6 +4,25 @@ Issue: [#491](https://github.com/patrick-hudson/put.gd-desktop/issues/491).
 Code: [#563](https://github.com/patrick-hudson/put.gd-desktop/pull/563).
 This documentation PR follows the code PR; neither is a release approval.
 
+## Review follow-up: acceptance refresh pending
+
+Greptile found a valid race on predecessor `29496f5`: when a Nightly repository
+is removed or disabled during a check, its late Nightly reply could announce on
+the now-manual Stable channel and mark that version as seen under Stable.
+Commit `7743cc4bb9186db69bfd6935569de979d20b8c28` requires the reply's channel to
+match the current channel before notification or seen-state tracking. Eight
+controlled in-flight cases (DEB/RPM × removed/disabled × background/manual)
+all fail on the predecessor and pass with the guard. Clean final-source development
+builds (`26.1025.1257-dev+g7743cc4bb918`) passed all five focused CTest suites
+on Debian (96.56 s) and Fedora (106.04 s), including Settings. [Build identities,
+regression failures and final CTest logs](review-follow-up/) are retained.
+
+**The completed native package/desktop evidence below remains attributed to
+`29496f5`; it does not certify `7743cc4b`.** Final-source package and graphical
+refresh is pending a new local-only test-tag exception: the prior authorization
+covered only the predecessor. Final-head CI and Greptile 5/5 are also required.
+No release publication is authorized.
+
 ## Change and stored settings
 
 `UpdateService::start()` reads the existing local repository parser before the

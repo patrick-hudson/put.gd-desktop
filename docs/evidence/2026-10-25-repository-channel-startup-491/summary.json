@@ -4731,5 +4731,42 @@
       "completedUtc": "2026-10-25T05:18:16.324992+00:00"
     },
     "s3Backup": "Blocked: expired AWS auth; explicit aws login confirmation requested."
+  },
+  "reviewFollowUp": {
+    "source": "7743cc4bb9186db69bfd6935569de979d20b8c28",
+    "tree": "d227590f429e3b71c460f90eb01025aff108f250",
+    "version": "26.1025.1257-dev+g7743cc4bb918",
+    "finding": "https://github.com/patrick-hudson/put.gd-desktop/pull/563#discussion_r4369774523",
+    "change": "Require matching result/current channel for notifications and seen-state tracking.",
+    "regressions": {
+      "before": {
+        "failed": 8,
+        "scope": "DEB/RPM x removed/disabled x background/manual"
+      },
+      "afterUpdateServiceSuite": {
+        "d69Seconds": 4.52,
+        "f44Seconds": 3.65
+      }
+    },
+    "nativeAcceptance": "Pending final-source package/desktop refresh; local test tag exception requested. Predecessor evidence does not certify this source.",
+    "files": {
+      "f44-ctest.txt": "63c84309ee38700129c137afbea13e4a6ae6e9c3425934a24598e3985f9862f3",
+      "d69-ctest.txt": "49c81f0068fea818ec10f200e22ba4ee3e0e8da3a4d69ccce3fd038b1fe24e48",
+      "d69-identities.txt": "79b7b822f010746d04d355d65771e049aa05eb43a4f2dd418a09cde7442add03",
+      "regression-before.txt": "6c87eaf4b0ffffdb2c692ed8747d48f73a770f140936e8149db41d6644130376",
+      "f44-identities.txt": "195f612df31df43164aa8d2acf806bd1c2bd1136a86cc70e1195d96f190ae8b3"
+    },
+    "focusedCTest": {
+      "d69": {
+        "passed": 5,
+        "failed": 0,
+        "seconds": 96.56
+      },
+      "f44": {
+        "passed": 5,
+        "failed": 0,
+        "seconds": 106.04
+      }
+    }
   }
 }
