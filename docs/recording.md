@@ -228,9 +228,13 @@ while the helper is finalizing. The review banner and tray explain the stop;
 CLI `recording.inspect` and MCP `get_recording` expose the same details.
 
 Sampling cannot prevent an arbitrary writer from consuming all remaining space
-between checks or during finalization. A disk write failure or an undecodable
-clip after the disk stop reports `recording_disk_full`, `reason: disk_space`,
-and `finalized: false`; it does not claim a retained review clip. The operation
+between checks or during finalization. An explicit GStreamer no-space error
+reports `recording_disk_full`, `reason: disk_space`, and `finalized: false`,
+with the original error under structured `cause` (including its existing bounded
+debug details). Other write, encoder, drain or preview errors retain their actual
+error code and message: a prior low-space stop is not proof of their cause.
+When they follow a disk stop, `stopDetails` retains the triggering sample and
+`finalized: false` states that no reviewable clip was retained. The operation
 fails and private staging is discarded under the existing lifecycle. Nothing
 is uploaded. Free space may also need to be restored before export; a failed
 export keeps an existing review open. Preview, save copy and review never

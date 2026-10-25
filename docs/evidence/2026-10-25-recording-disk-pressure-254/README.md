@@ -1,16 +1,85 @@
 # Recording preservation under competing disk writes — #254
 
-Code: [PR #572](https://github.com/patrick-hudson/put.gd-desktop/pull/572),
+Historical tested code: [PR #572](https://github.com/patrick-hudson/put.gd-desktop/pull/572),
 `25b36396ea408c53ff2b0d2daa9572a2faad9cd6`, based on nightly
 `80ffa2e6c0d34223d2cc0f31254f2e60ac2bd247`.
 
 **Bounded filesystem/Xvfb integration and targeted native f44 GNOME/Wayland
-checks pass.** Full parallel current-source Cinnamon, GNOME and KDE
+disk-preservation checks pass on `25b36396`; native clipboard copy failed.**
+The review follow-up below uses a newer code head without native acceptance.
+Full parallel current-source Cinnamon, GNOME and KDE
 functional/memory gates and the remaining declared desktop matrix remain pending
 with the parent lab coordinator. Windows is outside this task.
 No issue closure or release acceptance is claimed.
 
-## Reproduction and result
+## Review follow-up — exact source `4ee657db`
+
+The code follow-up is `4ee657db2d7ee00b2e784a6d7b3f0e4e722f7dd6`.
+It preserves GStreamer message/debug as structured `cause` when an explicit
+no-space error becomes `recording_disk_full`. Generic write errors, including
+ones observed while space is low, and unrelated stream/drain/preview failures
+retain their original diagnosis. A prior disk stop adds `stopDetails` and
+`finalized: false`; it does not establish the cause of a later error.
+
+On f44, the exact clean source was rebuilt with the same distro Qt 6.11.2 and
+official SDK. Four focused CTest suites pass in 22.60 seconds; see
+[final test log](review-followup/i254-review-final-tests.log). The new
+`recording_storage_integration` runs the production helper session and real
+ximagesrc pipeline on a private Xvfb display. A private in-process storage probe
+controls only samples; production start, QTimer polling, signal delivery, EOS
+drain, preview decoding and review still run. Eight rows cover active/paused
+pressure, space recovery, simultaneous byte/disk precedence, byte-only stopping,
+explicit no-space after recovery, generic write failures at low/recovered space,
+and an unrelated stream error during a disk stop. The existing recording
+model/service/helper suites also pass. This is deterministic headless regression
+coverage, not native desktop evidence.
+
+The revised [reproducer](reproducer.py) validates binary identity/version before
+mounting and covers every post-mount operation with `finally`. It verifies mount
+identity before writing or cleanup. Owned helper signaling verifies PID, start
+time and executable, using a pidfd to avoid a PID-reuse race; ownership is first
+established against the resident parent. A stopped helper is resumed before
+normal resident quit, which now waits for exit. Cleanup records mount, helper
+and socket outcomes even when setup fails.
+
+The original committed script is preserved as
+[reproducer-25b36396.py](reproducer-25b36396.py); original results and per-run
+scripts were not relabeled. During follow-up collection, copying a stale private
+socket from an intermediate harness attempt failed. That exposed its immediate
+quit/terminate race. All attempts remain retained; the final `d254s-*` runs have
+no remaining socket, helper or mount and needed no forced helper kill.
+
+| Follow-up run | Result |
+| --- | --- |
+| `d254s-missing`, `d254s-version` | Expected setup failure; no mount acquired; cleanup receipt passes |
+| `d254s-mounted` | Injected failure after verified mount; unmounted, no helpers/socket remain |
+| `d254s-stopped` | Injected exception with owned helper SIGSTOPped; identity-guarded resume, normal quit and cleanup pass |
+| `d254s-exhaust` | Exact candidate, abrupt exhaustion; `recording_disk_full` with structured original cause, `reason: disk_space`, `finalized: false`, failed operation, empty items/archive |
+| `d254q-baseline` | Exact `80ffa2e6`, same paced bounded writer; generic `recording_failed` with no-space message, failed operation, empty items/archive |
+| `d254q-pressure`, `d254q-paused`, `d254s-pressure` | Exact candidate, bounded writer; private review/export and strict FFmpeg decode pass; separate explicit local Upload saves and Xvfb clipboard reports `copied` |
+
+The expected-failure assertion checks the session-unavailable response **and**
+the operation's failed state, scenario-specific error code, empty items and empty
+archive. Candidate exhaustion additionally requires `reason: disk_space` and
+`finalized: false`; the baseline is not required to expose these new fields.
+[Negative fixture checks](test_reproducer_checks.py) replay retained `d254b2`
+and `d254e1`, then reject unrelated session/operation errors, completed states,
+items/publication and incorrect candidate details; see
+[checks.log](review-followup/checks.log). These harness tests ran on f44.
+
+[Review summary](review-followup/review-summary.json) retains exact source/binary
+identities, mount checks, original failure context, cleanup, per-run harness
+hashes and strict decode results. Full private evidence is at
+`/home/patrick/work/i254-review-evidence/` on f44, indexed by
+[review-followup/SHA256.json](review-followup/SHA256.json), whose SHA-256 is
+`9c968f87caeadf56b688621984897d7516d597480fdfe19fe7bf6de5b20b15a6`.
+The index covers retained private files, not only the committed projections.
+No physical lease was acquired for this follow-up, and no owned product/test
+process remains. New-head native acceptance and the full parallel/matrix gates
+are pending. The historical GNOME clipboard and ready-bar limitations below
+remain unresolved; Xvfb clipboard success does not attribute or clear them.
+
+## Historical reproduction and result (`25b36396`)
 
 The issue began as a code-inspection hypothesis. On Fedora 44 (`f44`,
 `192.168.68.70`), the baseline production resident/CLI/recording helper captured
@@ -28,7 +97,7 @@ preview, local MP4 export and full FFmpeg decode succeed. The local archive
 stays empty until a separate explicit Upload call. That Upload is local-only
 and completes without a network destination.
 
-| Final-source run | Scenario | Result |
+| Historical `25b36396` run | Scenario | Result |
 | --- | --- | --- |
 | `d254f2` | Separate paced writer fills 1536 MiB mount to zero | `budget` / `disk_space`; review, preview, export/decode and explicit local Upload pass |
 | `d254p1` | Same pressure while paused | Same preserved review and local output |
@@ -39,7 +108,7 @@ and completes without a network destination.
 | `d254e1` | Freeze only this helper, rapidly fill its mount to zero, resume it | `recording_disk_full`, `reason: disk_space`, `finalized: false`; failed operation, no review claim or uploaded items |
 | `d254f3` | Repeat disk pressure with official-SDK MCP inspection | MCP `get_recording` agrees with CLI stop reason and all stop figures; preview/export/decode and explicit local Upload pass |
 
-All eight final-source runs report successful unmount cleanup. All seven
+All eight historical `25b36396` runs report successful unmount cleanup. All seven
 successful exported clips also pass strict FFmpeg decoding with `-xerror
 -err_detect explode`; receipts are in `summary.json` under `strictDecodes`. Their manifests,
 binary SHA-256 values, stop/operation results and MCP receipts are in
@@ -101,13 +170,20 @@ before showing the synthetic pattern and starting recording.
 
 | Native run | Scenario | Result |
 | --- | --- | --- |
-| `d254g3` | Competing writer during recording | `disk_space` stop; private review, preview, local export, strict full FFmpeg decode, CLI/MCP figure parity and separate explicit local Upload pass |
-| `d254g4` | Competing writer while paused | Same preserved review/output and privacy checks pass |
+| `d254g3` | Competing writer during recording | `disk_space` stop; private review, preview, local export, strict full FFmpeg decode, CLI/MCP figure parity pass; explicit Upload saves locally but clipboard copy fails |
+| `d254g4` | Competing writer while paused | Same preserved review/output and privacy checks pass; explicit Upload saves locally but clipboard copy fails |
 
 Both mounts were independently identified as disposable 1536 MiB tmpfs before
 writing, and both unmounted successfully. The local archive was empty before
-explicit Upload, including after local export. This tests local-only Upload;
-no cloud destination or user objects were involved.
+explicit Upload, including after local export. In both `g3` and `g4`, Upload
+saved the local artifact (`items[0].local.status: saved`,
+`remoteStatus: not_requested`) but **clipboard copy failed**:
+`copyStatus: failed`, `error.code: clipboard_unavailable`, message
+“GNOME helper cannot own CLIPBOARD”. The raw `state: completed` therefore
+establishes local-save success, not clipboard or full Upload-path acceptance.
+The earlier pass summary omitted this error; this correction preserves the raw
+evidence. Attribution and retesting remain required in the final campaign; no
+baseline attribution is claimed. No cloud destination or user objects were involved.
 
 The preview's four edges and exported review crop's four edges all match the
 synthetic background token at 100%. The review screenshots below are cropped
@@ -127,7 +203,8 @@ not user content. No clean-content or overlay-exclusion acceptance is claimed,
 and this observation has not been established to predate the candidate. It is
 retained separately from #254's disk-preservation result; #516 UI work is outside
 this change. The native runs do not replace the full parallel desktop/memory
-gates, declared distro matrix, or audio/overlay capture acceptance.
+gates, declared distro matrix, clipboard/complete Upload-path, or audio/overlay
+capture acceptance.
 
 [Release receipt](native/native-release.json) records verified-clean release at
 17:30:00 UTC with all four cleanup arrays empty. Only the same three pre-existing
@@ -156,7 +233,7 @@ against other writers. It stays below the third 64 MiB admission budget, leaving
 system reserve remains separate and is counted once.
 
 `recording_model_contract`, `recording_service_integration` and
-`recording_helper_integration` pass 3/3 on the exact final source; see
+`recording_helper_integration` pass 3/3 on historical source `25b36396`; see
 [i254-focused-final.log](i254-focused-final.log). Coverage includes threshold
 boundaries, minimum admission, recovery before threshold, unknown free space,
 overflow-safe estimates, preserving the triggering sample after space recovers,
@@ -172,7 +249,8 @@ shared reserve formula and existing recording/edit/export behavior.
 
 The parent coordinator verified required CI success on exact code head
 `25b36396` and earlier documentation head `e553c347`; the child did not poll
-CI. This native evidence update requires a fresh docs-only CI result.
+CI. The review follow-up requires fresh code and docs CI results; the parent
+coordinator watches them.
 
 No idle-resident timer or media dependency was added. Sampling belongs only to
 the active transient recording pipeline and stops with it. The native functional
@@ -187,8 +265,10 @@ logs, clips, synthetic screenshots, parameters, identities and cleanup results.
 the post-native index digest is recorded above. Neither index is a claim that
 all indexed files are committed here. Nothing was deleted or compressed.
 
-[reproducer.py](reproducer.py) and [mcp_inspect.py](mcp_inspect.py) snapshot the
-final lab recipe. They are builder-specific evidence scripts, not a release gate
+[reproducer-25b36396.py](reproducer-25b36396.py) preserves the originally
+committed lab recipe; per-run snapshots remain authoritative for historical
+runs. [reproducer.py](reproducer.py), [reproducer_checks.py](reproducer_checks.py)
+and [mcp_inspect.py](mcp_inspect.py) are the revised follow-up recipe. They are builder-specific evidence scripts, not a release gate
 or an installer. They require a fresh private run path, distro Xvfb/GStreamer/
 FFmpeg, authorized `sudo -n mount`, and the locked MCP environment. The captured
 paths are the real paths used on f44. For example:

@@ -3,7 +3,7 @@
   "os": "NAME=\"Fedora Linux\"\nVERSION=\"44 (Workstation Edition)\"\nRELEASE_TYPE=stable\nID=fedora\nVERSION_ID=44\nVERSION_CODENAME=\"\"\nPRETTY_NAME=\"Fedora Linux 44 (Workstation Edition)\"\nANSI_COLOR=\"0;38;2;60;110;180\"\nLOGO=fedora-logo-icon\nCPE_NAME=\"cpe:/o:fedoraproject:fedora:44\"\nDEFAULT_HOSTNAME=\"fedora\"\nHOME_URL=\"https://fedoraproject.org/\"\nDOCUMENTATION_URL=\"https://docs.fedoraproject.org/en-US/fedora/f44/\"\nSUPPORT_URL=\"https://ask.fedoraproject.org/\"\nBUG_REPORT_URL=\"https://bugzilla.redhat.com/\"\nREDHAT_BUGZILLA_PRODUCT=\"Fedora\"\nREDHAT_BUGZILLA_PRODUCT_VERSION=44\nREDHAT_SUPPORT_PRODUCT=\"Fedora\"\nREDHAT_SUPPORT_PRODUCT_VERSION=44\nSUPPORT_END=2027-05-19\nVARIANT=\"Workstation Edition\"\nVARIANT_ID=workstation\n",
   "kernel": "7.2.11-200.fc44.x86_64",
   "qt": "6.11.2",
-  "acceptance": "Bounded Xvfb integration and targeted native f44 GNOME/Wayland g3/g4 pass; full parallel desktop functional/memory and remaining matrix acceptance pending",
+  "acceptance": "Historical 25b36396 bounded Xvfb and targeted native f44 disk-preservation checks pass; native g3/g4 local Upload save succeeds but clipboard copy fails. New review-follow-up head has no native acceptance; full parallel functional/memory and remaining matrix gates pending.",
   "runs": [
     {
       "identity": {
@@ -2908,5 +2908,23 @@
     }
   ],
   "nativeEvidence": "native/native-results.json",
-  "nativeLimitation": "Own ready control bar/fade appears in first preview, including after overlay(false) in g4; no overlay-exclusion acceptance or proven baseline attribution"
+  "nativeLimitation": "Own ready control bar/fade appears in first preview, including after overlay(false) in g4; no overlay-exclusion acceptance or proven baseline attribution",
+  "nativeUploadObservation": {
+    "runs": [
+      "d254g3",
+      "d254g4"
+    ],
+    "localStatus": "saved",
+    "remoteStatus": "not_requested",
+    "copyStatus": "failed",
+    "errorCode": "clipboard_unavailable",
+    "message": "GNOME helper cannot own CLIPBOARD",
+    "disposition": "Unresolved acceptance limitation requiring attribution and retest; no clipboard/full Upload-path acceptance or baseline attribution"
+  },
+  "reviewFollowup": {
+    "source": "4ee657db2d7ee00b2e784a6d7b3f0e4e722f7dd6",
+    "summary": "review-followup/review-summary.json",
+    "focusedCTest": "4/4 pass,22.60 seconds",
+    "nativeAcceptance": "pending on new head; previous native runs remain25b36396"
+  }
 }

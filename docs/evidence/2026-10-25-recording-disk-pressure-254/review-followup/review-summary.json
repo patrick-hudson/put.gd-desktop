@@ -1,0 +1,1589 @@
+{
+  "source": "4ee657db2d7ee00b2e784a6d7b3f0e4e722f7dd6",
+  "nativeAcceptance": "pending; all native evidence retained under historical25b36396",
+  "runs": [
+    {
+      "baseline": true,
+      "exhaust": false,
+      "paused": false,
+      "run": "/tmp/d254q-baseline",
+      "build": "/home/patrick/work/i254b/build/dev",
+      "identity": {
+        "schemaVersion": 1,
+        "version": "26.1025.1293-dev+g80ffa2e6c0d3",
+        "baseVersion": "26.1025.1293",
+        "packageVersion": "26.1025.1293~dev+g80ffa2e6c0d3",
+        "gitCommit": "80ffa2e6c0d34223d2cc0f31254f2e60ac2bd247",
+        "gitTree": "8e1abcea6b16634af938f14e94b9eff0de1d02b5",
+        "commitCount": 1293,
+        "dirty": false,
+        "sourceProvenance": "git"
+      },
+      "binarySha256": {
+        "putgd": "a1a90b085d03e692c04d538bf9976cf3d0282b69489f1900db26f2569609f9cd",
+        "putgd-cli": "c07273b6fe400424abe755855ced89750a95e9c9fe5774c0a2c2a117a0413694",
+        "putgd-record": "fe959ac24878eed3d86c1a9fe52628efc8a327b7f7be8424445c24c63f0b880f"
+      },
+      "mountLimitBytes": 1610612736,
+      "scenario": "pressure",
+      "faultInjection": null,
+      "mountIdentity": {
+        "target": "/tmp/d254q-baseline/data/putgd/recording",
+        "source": "i254-disposable",
+        "fstype": "tmpfs",
+        "device": 75,
+        "capacityBytes": 1610612736
+      },
+      "after": {
+        "error": {
+          "code": "recording_unavailable",
+          "details": {},
+          "message": "No recording is active"
+        },
+        "ok": false,
+        "requestId": "21eabfee-0cdc-47a4-a5b2-fa7825067793",
+        "result": {},
+        "schemaVersion": 1
+      },
+      "operationBeforeUpload": {
+        "action": "record",
+        "cancelled": false,
+        "clipboardRevision": "1",
+        "copyStatus": "no_result",
+        "created": "2026-10-25T18:18:30.466Z",
+        "destination": {
+          "credentials": {},
+          "profileId": "",
+          "profileRevision": "",
+          "providerId": "",
+          "settings": {}
+        },
+        "error": {
+          "code": "recording_failed",
+          "details": {
+            "debug": "../plugins/elements/gstelements_private.c(364): gst_writev_iovecs (): /GstPipeline:pipeline1/GstFileSink:sink",
+            "step": null
+          },
+          "message": "Capture failed: No space left on the resource."
+        },
+        "id": "cf041cb5-a5ed-4dd3-af84-ffdc9d3ba6cf",
+        "invocation": "1",
+        "items": [],
+        "phase": "failed",
+        "requestTimeoutMs": null,
+        "settingsRevision": "8dda6ce1b632faefad3389418a9903a65dda49a6a0f7a1898a7d43094c7a5a6b",
+        "state": "failed"
+      },
+      "passed": true,
+      "expectedFailure": true,
+      "cleanup": {
+        "mountAcquired": true,
+        "errors": [],
+        "helpers": [],
+        "remainingHelpers": [],
+        "mountRemaining": false,
+        "passed": true
+      },
+      "cleanupUnmount": 0,
+      "harnessSha256": "7511b7506181d189c8f7ca5b89bbf8b56054896429b7bff96f035eb64206e79f"
+    },
+    {
+      "baseline": false,
+      "exhaust": true,
+      "paused": false,
+      "run": "/tmp/d254q-exhaust",
+      "build": "/home/patrick/work/i254/build/dev",
+      "identity": {
+        "schemaVersion": 1,
+        "version": "26.1025.1298-dev+g4ee657db2d7e",
+        "baseVersion": "26.1025.1298",
+        "packageVersion": "26.1025.1298~dev+g4ee657db2d7e",
+        "gitCommit": "4ee657db2d7ee00b2e784a6d7b3f0e4e722f7dd6",
+        "gitTree": "42009aa03781162e36531bb7d96b0dc8f0906adb",
+        "commitCount": 1298,
+        "dirty": false,
+        "sourceProvenance": "git"
+      },
+      "binarySha256": {
+        "putgd": "6f09743e1107b1b6b5643313a724d2a43bebee345ad11c388ab291ccb8cd113b",
+        "putgd-cli": "f79b880e24a02fa2e86e291a70d7e7fafc51645b7be5d3219c38eb78e3350bfa",
+        "putgd-record": "cf7265c5dd12cb7a0fca0006aa79f1e124efc3456f58b98423c96d6683c28f24"
+      },
+      "mountLimitBytes": 1610612736,
+      "scenario": "pressure",
+      "faultInjection": null,
+      "mountIdentity": {
+        "target": "/tmp/d254q-exhaust/data/putgd/recording",
+        "source": "i254-disposable",
+        "fstype": "tmpfs",
+        "device": 75,
+        "capacityBytes": 1610612736
+      },
+      "after": {
+        "error": {
+          "code": "recording_unavailable",
+          "details": {},
+          "message": "No recording is active"
+        },
+        "ok": false,
+        "requestId": "0ba1704a-f8f1-4258-bdb2-cac77ffc4de6",
+        "result": {},
+        "schemaVersion": 1
+      },
+      "operationBeforeUpload": {
+        "action": "record",
+        "cancelled": false,
+        "clipboardRevision": "1",
+        "copyStatus": "no_result",
+        "created": "2026-10-25T18:18:23.029Z",
+        "destination": {
+          "credentials": {},
+          "profileId": "",
+          "profileRevision": "",
+          "providerId": "",
+          "settings": {}
+        },
+        "error": {
+          "code": "recording_disk_full",
+          "details": {
+            "availableBytes": 0,
+            "cause": {
+              "code": "recording_failed",
+              "details": {
+                "debug": "../plugins/elements/gstelements_private.c(364): gst_writev_iovecs (): /GstPipeline:pipeline1/GstFileSink:sink"
+              },
+              "message": "Capture failed: No space left on the resource."
+            },
+            "clipBytes": 32768,
+            "finalizationReserveBytes": 33554432,
+            "finalized": false,
+            "freeBytes": 0,
+            "reason": "disk_space",
+            "requiredBytes": 167772160,
+            "reserveBytes": 1073741824,
+            "step": null,
+            "stopDetails": {
+              "availableBytes": 0,
+              "clipBytes": 30098,
+              "finalizationReserveBytes": 33554432,
+              "freeBytes": 0,
+              "reason": "disk_space",
+              "requiredBytes": 167772160,
+              "reserveBytes": 1073741824
+            }
+          },
+          "message": "The disk filled before the recording could be finalized. No reviewable clip was retained and nothing was uploaded. Free up space and try again."
+        },
+        "id": "a4e3a048-1faf-4d7a-8ee5-ed05310cda82",
+        "invocation": "1",
+        "items": [],
+        "phase": "failed",
+        "requestTimeoutMs": null,
+        "settingsRevision": "4fc30e8c6f55d84d3d011e751a3461e91234bc2ba015622be3983c35d8787a27",
+        "state": "failed"
+      },
+      "passed": true,
+      "expectedFailure": true,
+      "cleanup": {
+        "mountAcquired": true,
+        "errors": [],
+        "helpers": [
+          {
+            "identity": {
+              "pid": 266729,
+              "parent": 266595,
+              "startTicks": "14360004",
+              "exe": "/home/patrick/work/i254/build/dev/putgd-record"
+            },
+            "resumed": false
+          }
+        ],
+        "remainingHelpers": [],
+        "mountRemaining": false,
+        "passed": true
+      },
+      "cleanupUnmount": 0,
+      "harnessSha256": "7511b7506181d189c8f7ca5b89bbf8b56054896429b7bff96f035eb64206e79f"
+    },
+    {
+      "baseline": false,
+      "exhaust": false,
+      "paused": false,
+      "run": "/tmp/d254q-missing",
+      "build": "/tmp/i254-no-binaries",
+      "mountLimitBytes": 1610612736,
+      "scenario": "pressure",
+      "faultInjection": null,
+      "passed": false,
+      "failure": "Traceback (most recent call last):\n  File \"/home/patrick/work/i254-review-harness/reproducer.py\", line 47, in <module>\n    report['identity']=json.loads(subprocess.check_output([str(build/'putgd-cli'),'--version-json'],timeout=15))\n                                  ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib64/python3.14/subprocess.py\", line 473, in check_output\n    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,\n           ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n               **kwargs).stdout\n               ^^^^^^^^^\n  File \"/usr/lib64/python3.14/subprocess.py\", line 555, in run\n    with Popen(*popenargs, **kwargs) as process:\n         ~~~~~^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib64/python3.14/subprocess.py\", line 1039, in __init__\n    self._execute_child(args, executable, preexec_fn, close_fds,\n    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n                        pass_fds, cwd, env,\n                        ^^^^^^^^^^^^^^^^^^^\n    ...<5 lines>...\n                        gid, gids, uid, umask,\n                        ^^^^^^^^^^^^^^^^^^^^^^\n                        start_new_session, process_group)\n                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib64/python3.14/subprocess.py\", line 1875, in _execute_child\n    self._posix_spawn(args, executable, env, restore_signals, close_fds,\n    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n                      p2cread, p2cwrite,\n                      ^^^^^^^^^^^^^^^^^^\n                      c2pread, c2pwrite,\n                      ^^^^^^^^^^^^^^^^^^\n                      errread, errwrite)\n                      ^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib64/python3.14/subprocess.py\", line 1819, in _posix_spawn\n    self.pid = os.posix_spawn(executable, args, env, **kwargs)\n               ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nFileNotFoundError: [Errno 2] No such file or directory: '/tmp/i254-no-binaries/putgd-cli'\n",
+      "cleanup": {
+        "mountAcquired": false,
+        "errors": [],
+        "helpers": [],
+        "remainingHelpers": [],
+        "mountRemaining": false,
+        "passed": true
+      },
+      "cleanupUnmount": null,
+      "harnessSha256": "7511b7506181d189c8f7ca5b89bbf8b56054896429b7bff96f035eb64206e79f"
+    },
+    {
+      "baseline": false,
+      "exhaust": false,
+      "paused": false,
+      "run": "/tmp/d254q-mounted",
+      "build": "/home/patrick/work/i254/build/dev",
+      "identity": {
+        "schemaVersion": 1,
+        "version": "26.1025.1297-dev+g25b36396ea40.dirty",
+        "baseVersion": "26.1025.1297",
+        "packageVersion": "26.1025.1297~dev+g25b36396ea40.dirty",
+        "gitCommit": "25b36396ea408c53ff2b0d2daa9572a2faad9cd6",
+        "gitTree": "f8f882b9929a0d25f6508a283198f5af8bf74145",
+        "commitCount": 1297,
+        "dirty": true,
+        "sourceProvenance": "git"
+      },
+      "binarySha256": {
+        "putgd": "0528890ea4bce6b27a0ecc604e03cb8d09ecb41a41f476eb78d310142b68342a",
+        "putgd-cli": "3bf51412832c0b0b22fe18e5aa3814426c281fec140f51b34d4e5f7e82ce20e6",
+        "putgd-record": "2d2310e3f341708b9f76a2890975bf4ab689e4a95d21d99c42a79d98baae3805"
+      },
+      "mountLimitBytes": 1610612736,
+      "scenario": "pressure",
+      "faultInjection": "after-mount",
+      "mountIdentity": {
+        "target": "/tmp/d254q-mounted/data/putgd/recording",
+        "source": "i254-disposable",
+        "fstype": "tmpfs",
+        "device": 75,
+        "capacityBytes": 1610612736
+      },
+      "passed": false,
+      "failure": "Traceback (most recent call last):\n  File \"/home/patrick/work/i254-review-harness/reproducer.py\", line 57, in <module>\n    if a.fail_at=='after-mount': raise RuntimeError('injected failure after verified disposable mount')\n                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nRuntimeError: injected failure after verified disposable mount\n",
+      "cleanup": {
+        "mountAcquired": true,
+        "errors": [],
+        "helpers": [],
+        "remainingHelpers": [],
+        "mountRemaining": false,
+        "passed": true
+      },
+      "cleanupUnmount": 0,
+      "harnessSha256": "7511b7506181d189c8f7ca5b89bbf8b56054896429b7bff96f035eb64206e79f"
+    },
+    {
+      "baseline": false,
+      "exhaust": false,
+      "paused": true,
+      "run": "/tmp/d254q-paused",
+      "build": "/home/patrick/work/i254/build/dev",
+      "identity": {
+        "schemaVersion": 1,
+        "version": "26.1025.1298-dev+g4ee657db2d7e",
+        "baseVersion": "26.1025.1298",
+        "packageVersion": "26.1025.1298~dev+g4ee657db2d7e",
+        "gitCommit": "4ee657db2d7ee00b2e784a6d7b3f0e4e722f7dd6",
+        "gitTree": "42009aa03781162e36531bb7d96b0dc8f0906adb",
+        "commitCount": 1298,
+        "dirty": false,
+        "sourceProvenance": "git"
+      },
+      "binarySha256": {
+        "putgd": "6f09743e1107b1b6b5643313a724d2a43bebee345ad11c388ab291ccb8cd113b",
+        "putgd-cli": "f79b880e24a02fa2e86e291a70d7e7fafc51645b7be5d3219c38eb78e3350bfa",
+        "putgd-record": "cf7265c5dd12cb7a0fca0006aa79f1e124efc3456f58b98423c96d6683c28f24"
+      },
+      "mountLimitBytes": 1610612736,
+      "scenario": "pressure",
+      "faultInjection": null,
+      "mountIdentity": {
+        "target": "/tmp/d254q-paused/data/putgd/recording",
+        "source": "i254-disposable",
+        "fstype": "tmpfs",
+        "device": 75,
+        "capacityBytes": 1610612736
+      },
+      "after": {
+        "canvas": [
+          640,
+          480
+        ],
+        "config": {
+          "audio": {
+            "microphone": false,
+            "system": false
+          },
+          "budgetBytes": 178956970,
+          "codec": "h264",
+          "format": "mp4",
+          "fps": 15,
+          "mime": "video/mp4"
+        },
+        "durationUs": 3064140,
+        "edit": {
+          "masks": [],
+          "revision": 1,
+          "trimEnd": null,
+          "trimStart": 0
+        },
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "exports": 0,
+        "lastExport": null,
+        "operationId": "95d41441-e75c-40e1-bf3b-d2e104089178",
+        "outputSize": [
+          640,
+          480
+        ],
+        "overlayExcluded": true,
+        "overlayPlacement": "outside",
+        "pending": null,
+        "progress": {
+          "audioEncoder": "",
+          "bytes": 30098,
+          "durationUs": 3064140,
+          "encoder": "openh264enc",
+          "paused": true
+        },
+        "recordingId": "95d41441-e75c-40e1-bf3b-d2e104089178",
+        "retainedUs": 3064140,
+        "selecting": false,
+        "state": "reviewing",
+        "stopDetails": {
+          "availableBytes": 150962176,
+          "budgetBytes": 178956970,
+          "clipBytes": 30098,
+          "durationUs": 3064140,
+          "finalizationReserveBytes": 33554432,
+          "freeBytes": 1224704000,
+          "hint": "Free up space in put.gd's data folder before exporting or recording again",
+          "maxFileBytes": 1099511627776,
+          "message": "Recording stopped at 0:03 because free disk space fell: 1.1 GiB was free, with 1.0 GiB kept for the system and 160 MiB needed for finalization and copies. The clip so far is kept for private review. Free up space before exporting or recording again; nothing was uploaded.",
+          "reason": "disk_space",
+          "requiredBytes": 167772160,
+          "reserveBytes": 1073741824
+        },
+        "stopReason": "budget",
+        "target": {
+          "kind": "region",
+          "rect": [
+            0,
+            0,
+            640,
+            480
+          ]
+        }
+      },
+      "operationBeforeUpload": {
+        "action": "record",
+        "cancelled": false,
+        "clipboardRevision": "1",
+        "copyStatus": "pending",
+        "created": "2026-10-25T18:19:06.729Z",
+        "destination": {
+          "credentials": {},
+          "profileId": "",
+          "profileRevision": "",
+          "providerId": "",
+          "settings": {}
+        },
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "id": "95d41441-e75c-40e1-bf3b-d2e104089178",
+        "invocation": "1",
+        "items": [],
+        "phase": "reviewing",
+        "requestTimeoutMs": null,
+        "settingsRevision": "6bb16244594e7b4d9445e83663ccb32902f550e00b3ed62a13f2c1aa46641773",
+        "state": "recording"
+      },
+      "operationAfterUpload": {
+        "action": "record",
+        "cancelled": false,
+        "clipboardRevision": "1",
+        "copyStatus": "copied",
+        "created": "2026-10-25T18:19:06.729Z",
+        "destination": {
+          "credentials": {},
+          "profileId": "",
+          "profileRevision": "",
+          "providerId": "",
+          "settings": {}
+        },
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "id": "95d41441-e75c-40e1-bf3b-d2e104089178",
+        "invocation": "1",
+        "items": [
+          {
+            "artifact": {
+              "bytes": 63291,
+              "category": "videos",
+              "id": "e1b2b593-1bd1-40b3-a5d0-a4c157f14fc4",
+              "mime": "video/mp4",
+              "name": "Screen-Recording-2026-10-25-13-19-06.mp4",
+              "namingPrepared": true,
+              "originalFile": false,
+              "previewPath": "",
+              "sha256": "b05908ee84c71f3f39f4228faaad715a12ada2346191c91c062d518b1123863c"
+            },
+            "candidate": "",
+            "concurrencyToken": "",
+            "condition": "",
+            "error": {
+              "code": "",
+              "details": {},
+              "message": ""
+            },
+            "local": {
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              },
+              "path": "/tmp/d254q-paused/archive/videos/Screen-Recording-2026-10-25-13-19-06.mp4",
+              "status": "saved"
+            },
+            "objectReference": {},
+            "phase": "stored",
+            "publicationId": "c7b2f0c7-51fc-4ad9-9614-e6c2983005aa",
+            "receipt": {
+              "concurrencyToken": "",
+              "destination": {
+                "credentials": {},
+                "profileId": "",
+                "profileRevision": "",
+                "providerId": "",
+                "settings": {}
+              },
+              "directUrl": "",
+              "objectReference": {},
+              "publicationId": "",
+              "schemaVersion": 1
+            },
+            "remoteStatus": "not_requested",
+            "shareIntent": "",
+            "shareIntentOptions": {},
+            "shareStatus": "not_requested",
+            "uploadProgress": null,
+            "uploadStatus": "local_only"
+          }
+        ],
+        "phase": "completed",
+        "requestTimeoutMs": null,
+        "settingsRevision": "6bb16244594e7b4d9445e83663ccb32902f550e00b3ed62a13f2c1aa46641773",
+        "state": "completed"
+      },
+      "passed": true,
+      "cleanup": {
+        "mountAcquired": true,
+        "errors": [],
+        "helpers": [],
+        "remainingHelpers": [],
+        "mountRemaining": false,
+        "passed": true
+      },
+      "cleanupUnmount": 0,
+      "harnessSha256": "7511b7506181d189c8f7ca5b89bbf8b56054896429b7bff96f035eb64206e79f",
+      "strictDecode": {
+        "exit": 0,
+        "stderr": "",
+        "sha256": "b05908ee84c71f3f39f4228faaad715a12ada2346191c91c062d518b1123863c"
+      }
+    },
+    {
+      "baseline": false,
+      "exhaust": false,
+      "paused": false,
+      "run": "/tmp/d254q-pressure",
+      "build": "/home/patrick/work/i254/build/dev",
+      "identity": {
+        "schemaVersion": 1,
+        "version": "26.1025.1298-dev+g4ee657db2d7e",
+        "baseVersion": "26.1025.1298",
+        "packageVersion": "26.1025.1298~dev+g4ee657db2d7e",
+        "gitCommit": "4ee657db2d7ee00b2e784a6d7b3f0e4e722f7dd6",
+        "gitTree": "42009aa03781162e36531bb7d96b0dc8f0906adb",
+        "commitCount": 1298,
+        "dirty": false,
+        "sourceProvenance": "git"
+      },
+      "binarySha256": {
+        "putgd": "6f09743e1107b1b6b5643313a724d2a43bebee345ad11c388ab291ccb8cd113b",
+        "putgd-cli": "f79b880e24a02fa2e86e291a70d7e7fafc51645b7be5d3219c38eb78e3350bfa",
+        "putgd-record": "cf7265c5dd12cb7a0fca0006aa79f1e124efc3456f58b98423c96d6683c28f24"
+      },
+      "mountLimitBytes": 1610612736,
+      "scenario": "pressure",
+      "faultInjection": null,
+      "mountIdentity": {
+        "target": "/tmp/d254q-pressure/data/putgd/recording",
+        "source": "i254-disposable",
+        "fstype": "tmpfs",
+        "device": 75,
+        "capacityBytes": 1610612736
+      },
+      "after": {
+        "canvas": [
+          640,
+          480
+        ],
+        "config": {
+          "audio": {
+            "microphone": false,
+            "system": false
+          },
+          "budgetBytes": 178956970,
+          "codec": "h264",
+          "format": "mp4",
+          "fps": 15,
+          "mime": "video/mp4"
+        },
+        "durationUs": 5864307,
+        "edit": {
+          "masks": [],
+          "revision": 1,
+          "trimEnd": null,
+          "trimStart": 0
+        },
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "exports": 0,
+        "lastExport": null,
+        "operationId": "3cf9ede8-1055-49fb-8b0a-f24f1af4ed4f",
+        "outputSize": [
+          640,
+          480
+        ],
+        "overlayExcluded": true,
+        "overlayPlacement": "outside",
+        "pending": null,
+        "progress": {
+          "audioEncoder": "",
+          "bytes": 63764,
+          "durationUs": 5864307,
+          "encoder": "openh264enc",
+          "paused": false
+        },
+        "recordingId": "3cf9ede8-1055-49fb-8b0a-f24f1af4ed4f",
+        "retainedUs": 5864307,
+        "selecting": false,
+        "state": "reviewing",
+        "stopDetails": {
+          "availableBytes": 150929408,
+          "budgetBytes": 178956970,
+          "clipBytes": 63764,
+          "durationUs": 5864307,
+          "finalizationReserveBytes": 33554432,
+          "freeBytes": 1224671232,
+          "hint": "Free up space in put.gd's data folder before exporting or recording again",
+          "maxFileBytes": 1099511627776,
+          "message": "Recording stopped at 0:05 because free disk space fell: 1.1 GiB was free, with 1.0 GiB kept for the system and 160 MiB needed for finalization and copies. The clip so far is kept for private review. Free up space before exporting or recording again; nothing was uploaded.",
+          "reason": "disk_space",
+          "requiredBytes": 167772160,
+          "reserveBytes": 1073741824
+        },
+        "stopReason": "budget",
+        "target": {
+          "kind": "region",
+          "rect": [
+            0,
+            0,
+            640,
+            480
+          ]
+        }
+      },
+      "operationBeforeUpload": {
+        "action": "record",
+        "cancelled": false,
+        "clipboardRevision": "1",
+        "copyStatus": "pending",
+        "created": "2026-10-25T18:18:47.756Z",
+        "destination": {
+          "credentials": {},
+          "profileId": "",
+          "profileRevision": "",
+          "providerId": "",
+          "settings": {}
+        },
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "id": "3cf9ede8-1055-49fb-8b0a-f24f1af4ed4f",
+        "invocation": "1",
+        "items": [],
+        "phase": "reviewing",
+        "requestTimeoutMs": null,
+        "settingsRevision": "95f9d6d2a60a3a28cc9bff765c976693af1341964a508167e549f7a308cc5e83",
+        "state": "recording"
+      },
+      "operationAfterUpload": {
+        "action": "record",
+        "cancelled": false,
+        "clipboardRevision": "1",
+        "copyStatus": "copied",
+        "created": "2026-10-25T18:18:47.756Z",
+        "destination": {
+          "credentials": {},
+          "profileId": "",
+          "profileRevision": "",
+          "providerId": "",
+          "settings": {}
+        },
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "id": "3cf9ede8-1055-49fb-8b0a-f24f1af4ed4f",
+        "invocation": "1",
+        "items": [
+          {
+            "artifact": {
+              "bytes": 96891,
+              "category": "videos",
+              "id": "ffbcd33b-5a97-4578-a47d-34466a8e9921",
+              "mime": "video/mp4",
+              "name": "Screen-Recording-2026-10-25-13-18-47.mp4",
+              "namingPrepared": true,
+              "originalFile": false,
+              "previewPath": "",
+              "sha256": "7de394adcee9b1638b82e3102b2e72c91614314a6f730c07ecd0e7de3e9e7b9f"
+            },
+            "candidate": "",
+            "concurrencyToken": "",
+            "condition": "",
+            "error": {
+              "code": "",
+              "details": {},
+              "message": ""
+            },
+            "local": {
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              },
+              "path": "/tmp/d254q-pressure/archive/videos/Screen-Recording-2026-10-25-13-18-47.mp4",
+              "status": "saved"
+            },
+            "objectReference": {},
+            "phase": "stored",
+            "publicationId": "72d0a56c-e47a-407b-9977-cca667d96409",
+            "receipt": {
+              "concurrencyToken": "",
+              "destination": {
+                "credentials": {},
+                "profileId": "",
+                "profileRevision": "",
+                "providerId": "",
+                "settings": {}
+              },
+              "directUrl": "",
+              "objectReference": {},
+              "publicationId": "",
+              "schemaVersion": 1
+            },
+            "remoteStatus": "not_requested",
+            "shareIntent": "",
+            "shareIntentOptions": {},
+            "shareStatus": "not_requested",
+            "uploadProgress": null,
+            "uploadStatus": "local_only"
+          }
+        ],
+        "phase": "completed",
+        "requestTimeoutMs": null,
+        "settingsRevision": "95f9d6d2a60a3a28cc9bff765c976693af1341964a508167e549f7a308cc5e83",
+        "state": "completed"
+      },
+      "passed": true,
+      "cleanup": {
+        "mountAcquired": true,
+        "errors": [],
+        "helpers": [],
+        "remainingHelpers": [],
+        "mountRemaining": false,
+        "passed": true
+      },
+      "cleanupUnmount": 0,
+      "harnessSha256": "7511b7506181d189c8f7ca5b89bbf8b56054896429b7bff96f035eb64206e79f",
+      "strictDecode": {
+        "exit": 0,
+        "stderr": "",
+        "sha256": "7de394adcee9b1638b82e3102b2e72c91614314a6f730c07ecd0e7de3e9e7b9f"
+      }
+    },
+    {
+      "baseline": false,
+      "exhaust": true,
+      "paused": false,
+      "run": "/tmp/d254q-stopped",
+      "build": "/home/patrick/work/i254/build/dev",
+      "identity": {
+        "schemaVersion": 1,
+        "version": "26.1025.1298-dev+g4ee657db2d7e",
+        "baseVersion": "26.1025.1298",
+        "packageVersion": "26.1025.1298~dev+g4ee657db2d7e",
+        "gitCommit": "4ee657db2d7ee00b2e784a6d7b3f0e4e722f7dd6",
+        "gitTree": "42009aa03781162e36531bb7d96b0dc8f0906adb",
+        "commitCount": 1298,
+        "dirty": false,
+        "sourceProvenance": "git"
+      },
+      "binarySha256": {
+        "putgd": "6f09743e1107b1b6b5643313a724d2a43bebee345ad11c388ab291ccb8cd113b",
+        "putgd-cli": "f79b880e24a02fa2e86e291a70d7e7fafc51645b7be5d3219c38eb78e3350bfa",
+        "putgd-record": "cf7265c5dd12cb7a0fca0006aa79f1e124efc3456f58b98423c96d6683c28f24"
+      },
+      "mountLimitBytes": 1610612736,
+      "scenario": "pressure",
+      "faultInjection": "after-stop",
+      "mountIdentity": {
+        "target": "/tmp/d254q-stopped/data/putgd/recording",
+        "source": "i254-disposable",
+        "fstype": "tmpfs",
+        "device": 75,
+        "capacityBytes": 1610612736
+      },
+      "passed": false,
+      "failure": "Traceback (most recent call last):\n  File \"/home/patrick/work/i254-review-harness/reproducer.py\", line 94, in <module>\n    if a.fail_at=='after-stop': raise RuntimeError('injected failure with owned helper stopped')\n                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nRuntimeError: injected failure with owned helper stopped\n",
+      "cleanup": {
+        "mountAcquired": true,
+        "errors": [],
+        "helpers": [
+          {
+            "identity": {
+              "pid": 266493,
+              "parent": 266357,
+              "startTicks": "14359418",
+              "exe": "/home/patrick/work/i254/build/dev/putgd-record"
+            },
+            "resumed": true
+          }
+        ],
+        "remainingHelpers": [],
+        "mountRemaining": false,
+        "passed": true
+      },
+      "cleanupUnmount": 0,
+      "harnessSha256": "7511b7506181d189c8f7ca5b89bbf8b56054896429b7bff96f035eb64206e79f"
+    },
+    {
+      "baseline": false,
+      "exhaust": false,
+      "paused": false,
+      "run": "/tmp/d254q-version",
+      "build": "/home/patrick/work/i254-review-harness/bad-version",
+      "mountLimitBytes": 1610612736,
+      "scenario": "pressure",
+      "faultInjection": null,
+      "passed": false,
+      "failure": "Traceback (most recent call last):\n  File \"/home/patrick/work/i254-review-harness/reproducer.py\", line 47, in <module>\n    report['identity']=json.loads(subprocess.check_output([str(build/'putgd-cli'),'--version-json'],timeout=15))\n                                  ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib64/python3.14/subprocess.py\", line 473, in check_output\n    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,\n           ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n               **kwargs).stdout\n               ^^^^^^^^^\n  File \"/usr/lib64/python3.14/subprocess.py\", line 578, in run\n    raise CalledProcessError(retcode, process.args,\n                             output=stdout, stderr=stderr)\nsubprocess.CalledProcessError: Command '['/home/patrick/work/i254-review-harness/bad-version/putgd-cli', '--version-json']' returned non-zero exit status 42.\n",
+      "cleanup": {
+        "mountAcquired": false,
+        "errors": [],
+        "helpers": [],
+        "remainingHelpers": [],
+        "mountRemaining": false,
+        "passed": true
+      },
+      "cleanupUnmount": null,
+      "harnessSha256": "7511b7506181d189c8f7ca5b89bbf8b56054896429b7bff96f035eb64206e79f"
+    },
+    {
+      "baseline": false,
+      "exhaust": true,
+      "paused": false,
+      "run": "/tmp/d254r-exhaust",
+      "build": "/home/patrick/work/i254/build/dev",
+      "identity": {
+        "schemaVersion": 1,
+        "version": "26.1025.1298-dev+g4ee657db2d7e",
+        "baseVersion": "26.1025.1298",
+        "packageVersion": "26.1025.1298~dev+g4ee657db2d7e",
+        "gitCommit": "4ee657db2d7ee00b2e784a6d7b3f0e4e722f7dd6",
+        "gitTree": "42009aa03781162e36531bb7d96b0dc8f0906adb",
+        "commitCount": 1298,
+        "dirty": false,
+        "sourceProvenance": "git"
+      },
+      "binarySha256": {
+        "putgd": "6f09743e1107b1b6b5643313a724d2a43bebee345ad11c388ab291ccb8cd113b",
+        "putgd-cli": "f79b880e24a02fa2e86e291a70d7e7fafc51645b7be5d3219c38eb78e3350bfa",
+        "putgd-record": "cf7265c5dd12cb7a0fca0006aa79f1e124efc3456f58b98423c96d6683c28f24"
+      },
+      "mountLimitBytes": 1610612736,
+      "scenario": "pressure",
+      "faultInjection": null,
+      "mountIdentity": {
+        "target": "/tmp/d254r-exhaust/data/putgd/recording",
+        "source": "i254-disposable",
+        "fstype": "tmpfs",
+        "device": 75,
+        "capacityBytes": 1610612736
+      },
+      "after": {
+        "error": {
+          "code": "recording_unavailable",
+          "details": {},
+          "message": "No recording is active"
+        },
+        "ok": false,
+        "requestId": "b95f8220-bf3e-4955-99c1-c0afc14db48c",
+        "result": {},
+        "schemaVersion": 1
+      },
+      "operationBeforeUpload": {
+        "action": "record",
+        "cancelled": false,
+        "clipboardRevision": "1",
+        "copyStatus": "no_result",
+        "created": "2026-10-25T18:20:20.233Z",
+        "destination": {
+          "credentials": {},
+          "profileId": "",
+          "profileRevision": "",
+          "providerId": "",
+          "settings": {}
+        },
+        "error": {
+          "code": "recording_disk_full",
+          "details": {
+            "availableBytes": 0,
+            "cause": {
+              "code": "recording_failed",
+              "details": {
+                "debug": "../plugins/elements/gstelements_private.c(364): gst_writev_iovecs (): /GstPipeline:pipeline1/GstFileSink:sink"
+              },
+              "message": "Capture failed: No space left on the resource."
+            },
+            "clipBytes": 32768,
+            "finalizationReserveBytes": 33554432,
+            "finalized": false,
+            "freeBytes": 0,
+            "reason": "disk_space",
+            "requiredBytes": 167772160,
+            "reserveBytes": 1073741824,
+            "step": null,
+            "stopDetails": {
+              "availableBytes": 0,
+              "clipBytes": 30098,
+              "finalizationReserveBytes": 33554432,
+              "freeBytes": 0,
+              "reason": "disk_space",
+              "requiredBytes": 167772160,
+              "reserveBytes": 1073741824
+            }
+          },
+          "message": "The disk filled before the recording could be finalized. No reviewable clip was retained and nothing was uploaded. Free up space and try again."
+        },
+        "id": "bda3ea33-6864-4517-be42-db0f9c48e60c",
+        "invocation": "1",
+        "items": [],
+        "phase": "failed",
+        "requestTimeoutMs": null,
+        "settingsRevision": "d786fe0cdbe56edc0e788aac7853700778303621fa1e33816e9a62da39154a90",
+        "state": "failed"
+      },
+      "passed": true,
+      "expectedFailure": true,
+      "cleanup": {
+        "mountAcquired": true,
+        "errors": [],
+        "helpers": [
+          {
+            "identity": {
+              "pid": 268279,
+              "parent": 268145,
+              "startTicks": "14371725",
+              "exe": "/home/patrick/work/i254/build/dev/putgd-record"
+            },
+            "resumed": false
+          }
+        ],
+        "remainingHelpers": [],
+        "mountRemaining": false,
+        "passed": true
+      },
+      "cleanupUnmount": 0,
+      "harnessSha256": "2e667a3beea2694f55bd1bf5d5ac438bcddfdab1263c7fa6d232ffe612df193f"
+    },
+    {
+      "baseline": false,
+      "exhaust": false,
+      "paused": false,
+      "run": "/tmp/d254r-missing",
+      "build": "/tmp/i254-no-binaries",
+      "mountLimitBytes": 1610612736,
+      "scenario": "pressure",
+      "faultInjection": null,
+      "passed": false,
+      "failure": "Traceback (most recent call last):\n  File \"/home/patrick/work/i254-review-harness/reproducer.py\", line 56, in <module>\n    report['identity']=json.loads(subprocess.check_output([str(build/'putgd-cli'),'--version-json'],timeout=15))\n                                  ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib64/python3.14/subprocess.py\", line 473, in check_output\n    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,\n           ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n               **kwargs).stdout\n               ^^^^^^^^^\n  File \"/usr/lib64/python3.14/subprocess.py\", line 555, in run\n    with Popen(*popenargs, **kwargs) as process:\n         ~~~~~^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib64/python3.14/subprocess.py\", line 1039, in __init__\n    self._execute_child(args, executable, preexec_fn, close_fds,\n    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n                        pass_fds, cwd, env,\n                        ^^^^^^^^^^^^^^^^^^^\n    ...<5 lines>...\n                        gid, gids, uid, umask,\n                        ^^^^^^^^^^^^^^^^^^^^^^\n                        start_new_session, process_group)\n                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib64/python3.14/subprocess.py\", line 1875, in _execute_child\n    self._posix_spawn(args, executable, env, restore_signals, close_fds,\n    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n                      p2cread, p2cwrite,\n                      ^^^^^^^^^^^^^^^^^^\n                      c2pread, c2pwrite,\n                      ^^^^^^^^^^^^^^^^^^\n                      errread, errwrite)\n                      ^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib64/python3.14/subprocess.py\", line 1819, in _posix_spawn\n    self.pid = os.posix_spawn(executable, args, env, **kwargs)\n               ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nFileNotFoundError: [Errno 2] No such file or directory: '/tmp/i254-no-binaries/putgd-cli'\n",
+      "cleanup": {
+        "mountAcquired": false,
+        "errors": [],
+        "helpers": [],
+        "remainingHelpers": [],
+        "mountRemaining": false,
+        "passed": true
+      },
+      "cleanupUnmount": null,
+      "harnessSha256": "2e667a3beea2694f55bd1bf5d5ac438bcddfdab1263c7fa6d232ffe612df193f"
+    },
+    {
+      "baseline": false,
+      "exhaust": false,
+      "paused": false,
+      "run": "/tmp/d254r-mounted",
+      "build": "/home/patrick/work/i254/build/dev",
+      "identity": {
+        "schemaVersion": 1,
+        "version": "26.1025.1298-dev+g4ee657db2d7e",
+        "baseVersion": "26.1025.1298",
+        "packageVersion": "26.1025.1298~dev+g4ee657db2d7e",
+        "gitCommit": "4ee657db2d7ee00b2e784a6d7b3f0e4e722f7dd6",
+        "gitTree": "42009aa03781162e36531bb7d96b0dc8f0906adb",
+        "commitCount": 1298,
+        "dirty": false,
+        "sourceProvenance": "git"
+      },
+      "binarySha256": {
+        "putgd": "6f09743e1107b1b6b5643313a724d2a43bebee345ad11c388ab291ccb8cd113b",
+        "putgd-cli": "f79b880e24a02fa2e86e291a70d7e7fafc51645b7be5d3219c38eb78e3350bfa",
+        "putgd-record": "cf7265c5dd12cb7a0fca0006aa79f1e124efc3456f58b98423c96d6683c28f24"
+      },
+      "mountLimitBytes": 1610612736,
+      "scenario": "pressure",
+      "faultInjection": "after-mount",
+      "mountIdentity": {
+        "target": "/tmp/d254r-mounted/data/putgd/recording",
+        "source": "i254-disposable",
+        "fstype": "tmpfs",
+        "device": 75,
+        "capacityBytes": 1610612736
+      },
+      "passed": false,
+      "failure": "Traceback (most recent call last):\n  File \"/home/patrick/work/i254-review-harness/reproducer.py\", line 66, in <module>\n    if a.fail_at=='after-mount': raise RuntimeError('injected failure after verified disposable mount')\n                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nRuntimeError: injected failure after verified disposable mount\n",
+      "cleanup": {
+        "mountAcquired": true,
+        "errors": [],
+        "helpers": [],
+        "remainingHelpers": [],
+        "mountRemaining": false,
+        "passed": true
+      },
+      "cleanupUnmount": 0,
+      "harnessSha256": "2e667a3beea2694f55bd1bf5d5ac438bcddfdab1263c7fa6d232ffe612df193f"
+    },
+    {
+      "baseline": false,
+      "exhaust": true,
+      "paused": false,
+      "run": "/tmp/d254r-stopped",
+      "build": "/home/patrick/work/i254/build/dev",
+      "identity": {
+        "schemaVersion": 1,
+        "version": "26.1025.1298-dev+g4ee657db2d7e",
+        "baseVersion": "26.1025.1298",
+        "packageVersion": "26.1025.1298~dev+g4ee657db2d7e",
+        "gitCommit": "4ee657db2d7ee00b2e784a6d7b3f0e4e722f7dd6",
+        "gitTree": "42009aa03781162e36531bb7d96b0dc8f0906adb",
+        "commitCount": 1298,
+        "dirty": false,
+        "sourceProvenance": "git"
+      },
+      "binarySha256": {
+        "putgd": "6f09743e1107b1b6b5643313a724d2a43bebee345ad11c388ab291ccb8cd113b",
+        "putgd-cli": "f79b880e24a02fa2e86e291a70d7e7fafc51645b7be5d3219c38eb78e3350bfa",
+        "putgd-record": "cf7265c5dd12cb7a0fca0006aa79f1e124efc3456f58b98423c96d6683c28f24"
+      },
+      "mountLimitBytes": 1610612736,
+      "scenario": "pressure",
+      "faultInjection": "after-stop",
+      "mountIdentity": {
+        "target": "/tmp/d254r-stopped/data/putgd/recording",
+        "source": "i254-disposable",
+        "fstype": "tmpfs",
+        "device": 75,
+        "capacityBytes": 1610612736
+      },
+      "passed": false,
+      "failure": "Traceback (most recent call last):\n  File \"/home/patrick/work/i254-review-harness/reproducer.py\", line 103, in <module>\n    if a.fail_at=='after-stop': raise RuntimeError('injected failure with owned helper stopped')\n                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nRuntimeError: injected failure with owned helper stopped\n",
+      "cleanup": {
+        "mountAcquired": true,
+        "errors": [],
+        "helpers": [
+          {
+            "identity": {
+              "pid": 268046,
+              "parent": 267913,
+              "startTicks": "14371137",
+              "exe": "/home/patrick/work/i254/build/dev/putgd-record"
+            },
+            "resumed": true
+          }
+        ],
+        "remainingHelpers": [],
+        "mountRemaining": false,
+        "passed": true
+      },
+      "cleanupUnmount": 0,
+      "harnessSha256": "2e667a3beea2694f55bd1bf5d5ac438bcddfdab1263c7fa6d232ffe612df193f"
+    },
+    {
+      "baseline": false,
+      "exhaust": false,
+      "paused": false,
+      "run": "/tmp/d254r-version",
+      "build": "/home/patrick/work/i254-review-harness/bad-version",
+      "mountLimitBytes": 1610612736,
+      "scenario": "pressure",
+      "faultInjection": null,
+      "passed": false,
+      "failure": "Traceback (most recent call last):\n  File \"/home/patrick/work/i254-review-harness/reproducer.py\", line 56, in <module>\n    report['identity']=json.loads(subprocess.check_output([str(build/'putgd-cli'),'--version-json'],timeout=15))\n                                  ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib64/python3.14/subprocess.py\", line 473, in check_output\n    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,\n           ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n               **kwargs).stdout\n               ^^^^^^^^^\n  File \"/usr/lib64/python3.14/subprocess.py\", line 578, in run\n    raise CalledProcessError(retcode, process.args,\n                             output=stdout, stderr=stderr)\nsubprocess.CalledProcessError: Command '['/home/patrick/work/i254-review-harness/bad-version/putgd-cli', '--version-json']' returned non-zero exit status 42.\n",
+      "cleanup": {
+        "mountAcquired": false,
+        "errors": [],
+        "helpers": [],
+        "remainingHelpers": [],
+        "mountRemaining": false,
+        "passed": true
+      },
+      "cleanupUnmount": null,
+      "harnessSha256": "2e667a3beea2694f55bd1bf5d5ac438bcddfdab1263c7fa6d232ffe612df193f"
+    },
+    {
+      "baseline": false,
+      "exhaust": true,
+      "paused": false,
+      "run": "/tmp/d254s-exhaust",
+      "build": "/home/patrick/work/i254/build/dev",
+      "identity": {
+        "schemaVersion": 1,
+        "version": "26.1025.1298-dev+g4ee657db2d7e",
+        "baseVersion": "26.1025.1298",
+        "packageVersion": "26.1025.1298~dev+g4ee657db2d7e",
+        "gitCommit": "4ee657db2d7ee00b2e784a6d7b3f0e4e722f7dd6",
+        "gitTree": "42009aa03781162e36531bb7d96b0dc8f0906adb",
+        "commitCount": 1298,
+        "dirty": false,
+        "sourceProvenance": "git"
+      },
+      "binarySha256": {
+        "putgd": "6f09743e1107b1b6b5643313a724d2a43bebee345ad11c388ab291ccb8cd113b",
+        "putgd-cli": "f79b880e24a02fa2e86e291a70d7e7fafc51645b7be5d3219c38eb78e3350bfa",
+        "putgd-record": "cf7265c5dd12cb7a0fca0006aa79f1e124efc3456f58b98423c96d6683c28f24"
+      },
+      "mountLimitBytes": 1610612736,
+      "scenario": "pressure",
+      "faultInjection": null,
+      "mountIdentity": {
+        "target": "/tmp/d254s-exhaust/data/putgd/recording",
+        "source": "i254-disposable",
+        "fstype": "tmpfs",
+        "device": 75,
+        "capacityBytes": 1610612736
+      },
+      "after": {
+        "error": {
+          "code": "recording_unavailable",
+          "details": {},
+          "message": "No recording is active"
+        },
+        "ok": false,
+        "requestId": "c3bdd602-b3b1-4949-9675-cc2b6b17285d",
+        "result": {},
+        "schemaVersion": 1
+      },
+      "operationBeforeUpload": {
+        "action": "record",
+        "cancelled": false,
+        "clipboardRevision": "1",
+        "copyStatus": "no_result",
+        "created": "2026-10-25T18:22:14.504Z",
+        "destination": {
+          "credentials": {},
+          "profileId": "",
+          "profileRevision": "",
+          "providerId": "",
+          "settings": {}
+        },
+        "error": {
+          "code": "recording_disk_full",
+          "details": {
+            "availableBytes": 0,
+            "cause": {
+              "code": "recording_failed",
+              "details": {
+                "debug": "../plugins/elements/gstelements_private.c(364): gst_writev_iovecs (): /GstPipeline:pipeline1/GstFileSink:sink"
+              },
+              "message": "Capture failed: No space left on the resource."
+            },
+            "clipBytes": 32768,
+            "finalizationReserveBytes": 33554432,
+            "finalized": false,
+            "freeBytes": 0,
+            "reason": "disk_space",
+            "requiredBytes": 167772160,
+            "reserveBytes": 1073741824,
+            "step": null,
+            "stopDetails": {
+              "availableBytes": 0,
+              "clipBytes": 30098,
+              "finalizationReserveBytes": 33554432,
+              "freeBytes": 0,
+              "reason": "disk_space",
+              "requiredBytes": 167772160,
+              "reserveBytes": 1073741824
+            }
+          },
+          "message": "The disk filled before the recording could be finalized. No reviewable clip was retained and nothing was uploaded. Free up space and try again."
+        },
+        "id": "0348c331-22d2-4641-acff-d78a506a4698",
+        "invocation": "1",
+        "items": [],
+        "phase": "failed",
+        "requestTimeoutMs": null,
+        "settingsRevision": "7a6777bfd8ebaf9d1ea797562126fa0827e93c262a5d70a2b7eb9ecbff22919d",
+        "state": "failed"
+      },
+      "passed": true,
+      "expectedFailure": true,
+      "cleanup": {
+        "mountAcquired": true,
+        "errors": [],
+        "helpers": [
+          {
+            "identity": {
+              "pid": 268934,
+              "parent": 268800,
+              "startTicks": "14383152",
+              "exe": "/home/patrick/work/i254/build/dev/putgd-record"
+            },
+            "resumed": false
+          }
+        ],
+        "remainingHelpers": [],
+        "mountRemaining": false,
+        "removedStaleSocket": false,
+        "sessionSocketRemaining": false,
+        "passed": true
+      },
+      "cleanupUnmount": 0,
+      "harnessSha256": "1f4af4f3a77a16ea303069611be9d8cdab9fef12887f22d4a7c4813fedf4b9aa"
+    },
+    {
+      "baseline": false,
+      "exhaust": false,
+      "paused": false,
+      "run": "/tmp/d254s-missing",
+      "build": "/tmp/i254-no-binaries",
+      "mountLimitBytes": 1610612736,
+      "scenario": "pressure",
+      "faultInjection": null,
+      "passed": false,
+      "failure": "Traceback (most recent call last):\n  File \"/home/patrick/work/i254-review-harness/reproducer.py\", line 56, in <module>\n    report['identity']=json.loads(subprocess.check_output([str(build/'putgd-cli'),'--version-json'],timeout=15))\n                                  ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib64/python3.14/subprocess.py\", line 473, in check_output\n    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,\n           ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n               **kwargs).stdout\n               ^^^^^^^^^\n  File \"/usr/lib64/python3.14/subprocess.py\", line 555, in run\n    with Popen(*popenargs, **kwargs) as process:\n         ~~~~~^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib64/python3.14/subprocess.py\", line 1039, in __init__\n    self._execute_child(args, executable, preexec_fn, close_fds,\n    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n                        pass_fds, cwd, env,\n                        ^^^^^^^^^^^^^^^^^^^\n    ...<5 lines>...\n                        gid, gids, uid, umask,\n                        ^^^^^^^^^^^^^^^^^^^^^^\n                        start_new_session, process_group)\n                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib64/python3.14/subprocess.py\", line 1875, in _execute_child\n    self._posix_spawn(args, executable, env, restore_signals, close_fds,\n    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n                      p2cread, p2cwrite,\n                      ^^^^^^^^^^^^^^^^^^\n                      c2pread, c2pwrite,\n                      ^^^^^^^^^^^^^^^^^^\n                      errread, errwrite)\n                      ^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib64/python3.14/subprocess.py\", line 1819, in _posix_spawn\n    self.pid = os.posix_spawn(executable, args, env, **kwargs)\n               ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nFileNotFoundError: [Errno 2] No such file or directory: '/tmp/i254-no-binaries/putgd-cli'\n",
+      "cleanup": {
+        "mountAcquired": false,
+        "errors": [],
+        "helpers": [],
+        "remainingHelpers": [],
+        "mountRemaining": false,
+        "removedStaleSocket": false,
+        "sessionSocketRemaining": false,
+        "passed": true
+      },
+      "cleanupUnmount": null,
+      "harnessSha256": "1f4af4f3a77a16ea303069611be9d8cdab9fef12887f22d4a7c4813fedf4b9aa"
+    },
+    {
+      "baseline": false,
+      "exhaust": false,
+      "paused": false,
+      "run": "/tmp/d254s-mounted",
+      "build": "/home/patrick/work/i254/build/dev",
+      "identity": {
+        "schemaVersion": 1,
+        "version": "26.1025.1298-dev+g4ee657db2d7e",
+        "baseVersion": "26.1025.1298",
+        "packageVersion": "26.1025.1298~dev+g4ee657db2d7e",
+        "gitCommit": "4ee657db2d7ee00b2e784a6d7b3f0e4e722f7dd6",
+        "gitTree": "42009aa03781162e36531bb7d96b0dc8f0906adb",
+        "commitCount": 1298,
+        "dirty": false,
+        "sourceProvenance": "git"
+      },
+      "binarySha256": {
+        "putgd": "6f09743e1107b1b6b5643313a724d2a43bebee345ad11c388ab291ccb8cd113b",
+        "putgd-cli": "f79b880e24a02fa2e86e291a70d7e7fafc51645b7be5d3219c38eb78e3350bfa",
+        "putgd-record": "cf7265c5dd12cb7a0fca0006aa79f1e124efc3456f58b98423c96d6683c28f24"
+      },
+      "mountLimitBytes": 1610612736,
+      "scenario": "pressure",
+      "faultInjection": "after-mount",
+      "mountIdentity": {
+        "target": "/tmp/d254s-mounted/data/putgd/recording",
+        "source": "i254-disposable",
+        "fstype": "tmpfs",
+        "device": 75,
+        "capacityBytes": 1610612736
+      },
+      "passed": false,
+      "failure": "Traceback (most recent call last):\n  File \"/home/patrick/work/i254-review-harness/reproducer.py\", line 66, in <module>\n    if a.fail_at=='after-mount': raise RuntimeError('injected failure after verified disposable mount')\n                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nRuntimeError: injected failure after verified disposable mount\n",
+      "cleanup": {
+        "mountAcquired": true,
+        "errors": [],
+        "helpers": [],
+        "remainingHelpers": [],
+        "mountRemaining": false,
+        "removedStaleSocket": false,
+        "sessionSocketRemaining": false,
+        "passed": true
+      },
+      "cleanupUnmount": 0,
+      "harnessSha256": "1f4af4f3a77a16ea303069611be9d8cdab9fef12887f22d4a7c4813fedf4b9aa"
+    },
+    {
+      "baseline": false,
+      "exhaust": false,
+      "paused": false,
+      "run": "/tmp/d254s-pressure",
+      "build": "/home/patrick/work/i254/build/dev",
+      "identity": {
+        "schemaVersion": 1,
+        "version": "26.1025.1298-dev+g4ee657db2d7e",
+        "baseVersion": "26.1025.1298",
+        "packageVersion": "26.1025.1298~dev+g4ee657db2d7e",
+        "gitCommit": "4ee657db2d7ee00b2e784a6d7b3f0e4e722f7dd6",
+        "gitTree": "42009aa03781162e36531bb7d96b0dc8f0906adb",
+        "commitCount": 1298,
+        "dirty": false,
+        "sourceProvenance": "git"
+      },
+      "binarySha256": {
+        "putgd": "6f09743e1107b1b6b5643313a724d2a43bebee345ad11c388ab291ccb8cd113b",
+        "putgd-cli": "f79b880e24a02fa2e86e291a70d7e7fafc51645b7be5d3219c38eb78e3350bfa",
+        "putgd-record": "cf7265c5dd12cb7a0fca0006aa79f1e124efc3456f58b98423c96d6683c28f24"
+      },
+      "mountLimitBytes": 1610612736,
+      "scenario": "pressure",
+      "faultInjection": null,
+      "mountIdentity": {
+        "target": "/tmp/d254s-pressure/data/putgd/recording",
+        "source": "i254-disposable",
+        "fstype": "tmpfs",
+        "device": 75,
+        "capacityBytes": 1610612736
+      },
+      "after": {
+        "canvas": [
+          640,
+          480
+        ],
+        "config": {
+          "audio": {
+            "microphone": false,
+            "system": false
+          },
+          "budgetBytes": 178956970,
+          "codec": "h264",
+          "format": "mp4",
+          "fps": 15,
+          "mime": "video/mp4"
+        },
+        "durationUs": 5930894,
+        "edit": {
+          "masks": [],
+          "revision": 1,
+          "trimEnd": null,
+          "trimStart": 0
+        },
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "exports": 0,
+        "lastExport": null,
+        "operationId": "f8b15950-8260-4b47-a1d1-6fa5b464ee1c",
+        "outputSize": [
+          640,
+          480
+        ],
+        "overlayExcluded": true,
+        "overlayPlacement": "outside",
+        "pending": null,
+        "progress": {
+          "audioEncoder": "",
+          "bytes": 63764,
+          "durationUs": 5864227,
+          "encoder": "openh264enc",
+          "paused": false
+        },
+        "recordingId": "f8b15950-8260-4b47-a1d1-6fa5b464ee1c",
+        "retainedUs": 5930894,
+        "selecting": false,
+        "state": "reviewing",
+        "stopDetails": {
+          "availableBytes": 134152192,
+          "budgetBytes": 178956970,
+          "clipBytes": 63764,
+          "durationUs": 5930894,
+          "finalizationReserveBytes": 33554432,
+          "freeBytes": 1207894016,
+          "hint": "Free up space in put.gd's data folder before exporting or recording again",
+          "maxFileBytes": 1099511627776,
+          "message": "Recording stopped at 0:05 because free disk space fell: 1.1 GiB was free, with 1.0 GiB kept for the system and 160 MiB needed for finalization and copies. The clip so far is kept for private review. Free up space before exporting or recording again; nothing was uploaded.",
+          "reason": "disk_space",
+          "requiredBytes": 167772160,
+          "reserveBytes": 1073741824
+        },
+        "stopReason": "budget",
+        "target": {
+          "kind": "region",
+          "rect": [
+            0,
+            0,
+            640,
+            480
+          ]
+        }
+      },
+      "operationBeforeUpload": {
+        "action": "record",
+        "cancelled": false,
+        "clipboardRevision": "1",
+        "copyStatus": "pending",
+        "created": "2026-10-25T18:22:21.748Z",
+        "destination": {
+          "credentials": {},
+          "profileId": "",
+          "profileRevision": "",
+          "providerId": "",
+          "settings": {}
+        },
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "id": "f8b15950-8260-4b47-a1d1-6fa5b464ee1c",
+        "invocation": "1",
+        "items": [],
+        "phase": "reviewing",
+        "requestTimeoutMs": null,
+        "settingsRevision": "37944f39f7822824d87f392fc6ed11107484c5c093660d79e69d5dba2d207a93",
+        "state": "recording"
+      },
+      "operationAfterUpload": {
+        "action": "record",
+        "cancelled": false,
+        "clipboardRevision": "1",
+        "copyStatus": "copied",
+        "created": "2026-10-25T18:22:21.748Z",
+        "destination": {
+          "credentials": {},
+          "profileId": "",
+          "profileRevision": "",
+          "providerId": "",
+          "settings": {}
+        },
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "id": "f8b15950-8260-4b47-a1d1-6fa5b464ee1c",
+        "invocation": "1",
+        "items": [
+          {
+            "artifact": {
+              "bytes": 96908,
+              "category": "videos",
+              "id": "892bdcca-1a43-4118-9ac8-30e714fca0eb",
+              "mime": "video/mp4",
+              "name": "Screen-Recording-2026-10-25-13-22-21.mp4",
+              "namingPrepared": true,
+              "originalFile": false,
+              "previewPath": "",
+              "sha256": "f05ddfc1e33e2add1ce91723784dbf71dd156e63da443d96a4efe673409f63ca"
+            },
+            "candidate": "",
+            "concurrencyToken": "",
+            "condition": "",
+            "error": {
+              "code": "",
+              "details": {},
+              "message": ""
+            },
+            "local": {
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              },
+              "path": "/tmp/d254s-pressure/archive/videos/Screen-Recording-2026-10-25-13-22-21.mp4",
+              "status": "saved"
+            },
+            "objectReference": {},
+            "phase": "stored",
+            "publicationId": "4d9c8b9e-a363-45bb-ba46-d659488fc4e2",
+            "receipt": {
+              "concurrencyToken": "",
+              "destination": {
+                "credentials": {},
+                "profileId": "",
+                "profileRevision": "",
+                "providerId": "",
+                "settings": {}
+              },
+              "directUrl": "",
+              "objectReference": {},
+              "publicationId": "",
+              "schemaVersion": 1
+            },
+            "remoteStatus": "not_requested",
+            "shareIntent": "",
+            "shareIntentOptions": {},
+            "shareStatus": "not_requested",
+            "uploadProgress": null,
+            "uploadStatus": "local_only"
+          }
+        ],
+        "phase": "completed",
+        "requestTimeoutMs": null,
+        "settingsRevision": "37944f39f7822824d87f392fc6ed11107484c5c093660d79e69d5dba2d207a93",
+        "state": "completed"
+      },
+      "passed": true,
+      "cleanup": {
+        "mountAcquired": true,
+        "errors": [],
+        "helpers": [],
+        "remainingHelpers": [],
+        "mountRemaining": false,
+        "removedStaleSocket": false,
+        "sessionSocketRemaining": false,
+        "passed": true
+      },
+      "cleanupUnmount": 0,
+      "harnessSha256": "1f4af4f3a77a16ea303069611be9d8cdab9fef12887f22d4a7c4813fedf4b9aa",
+      "strictDecode": {
+        "exit": 0,
+        "stderr": "",
+        "sha256": "f05ddfc1e33e2add1ce91723784dbf71dd156e63da443d96a4efe673409f63ca"
+      }
+    },
+    {
+      "baseline": false,
+      "exhaust": true,
+      "paused": false,
+      "run": "/tmp/d254s-stopped",
+      "build": "/home/patrick/work/i254/build/dev",
+      "identity": {
+        "schemaVersion": 1,
+        "version": "26.1025.1298-dev+g4ee657db2d7e",
+        "baseVersion": "26.1025.1298",
+        "packageVersion": "26.1025.1298~dev+g4ee657db2d7e",
+        "gitCommit": "4ee657db2d7ee00b2e784a6d7b3f0e4e722f7dd6",
+        "gitTree": "42009aa03781162e36531bb7d96b0dc8f0906adb",
+        "commitCount": 1298,
+        "dirty": false,
+        "sourceProvenance": "git"
+      },
+      "binarySha256": {
+        "putgd": "6f09743e1107b1b6b5643313a724d2a43bebee345ad11c388ab291ccb8cd113b",
+        "putgd-cli": "f79b880e24a02fa2e86e291a70d7e7fafc51645b7be5d3219c38eb78e3350bfa",
+        "putgd-record": "cf7265c5dd12cb7a0fca0006aa79f1e124efc3456f58b98423c96d6683c28f24"
+      },
+      "mountLimitBytes": 1610612736,
+      "scenario": "pressure",
+      "faultInjection": "after-stop",
+      "mountIdentity": {
+        "target": "/tmp/d254s-stopped/data/putgd/recording",
+        "source": "i254-disposable",
+        "fstype": "tmpfs",
+        "device": 75,
+        "capacityBytes": 1610612736
+      },
+      "passed": false,
+      "failure": "Traceback (most recent call last):\n  File \"/home/patrick/work/i254-review-harness/reproducer.py\", line 103, in <module>\n    if a.fail_at=='after-stop': raise RuntimeError('injected failure with owned helper stopped')\n                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nRuntimeError: injected failure with owned helper stopped\n",
+      "cleanup": {
+        "mountAcquired": true,
+        "errors": [],
+        "helpers": [
+          {
+            "identity": {
+              "pid": 268701,
+              "parent": 268568,
+              "startTicks": "14382558",
+              "exe": "/home/patrick/work/i254/build/dev/putgd-record"
+            },
+            "resumed": true
+          }
+        ],
+        "remainingHelpers": [],
+        "mountRemaining": false,
+        "removedStaleSocket": false,
+        "sessionSocketRemaining": false,
+        "passed": true
+      },
+      "cleanupUnmount": 0,
+      "harnessSha256": "1f4af4f3a77a16ea303069611be9d8cdab9fef12887f22d4a7c4813fedf4b9aa"
+    },
+    {
+      "baseline": false,
+      "exhaust": false,
+      "paused": false,
+      "run": "/tmp/d254s-version",
+      "build": "/home/patrick/work/i254-review-harness/bad-version",
+      "mountLimitBytes": 1610612736,
+      "scenario": "pressure",
+      "faultInjection": null,
+      "passed": false,
+      "failure": "Traceback (most recent call last):\n  File \"/home/patrick/work/i254-review-harness/reproducer.py\", line 56, in <module>\n    report['identity']=json.loads(subprocess.check_output([str(build/'putgd-cli'),'--version-json'],timeout=15))\n                                  ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib64/python3.14/subprocess.py\", line 473, in check_output\n    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,\n           ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n               **kwargs).stdout\n               ^^^^^^^^^\n  File \"/usr/lib64/python3.14/subprocess.py\", line 578, in run\n    raise CalledProcessError(retcode, process.args,\n                             output=stdout, stderr=stderr)\nsubprocess.CalledProcessError: Command '['/home/patrick/work/i254-review-harness/bad-version/putgd-cli', '--version-json']' returned non-zero exit status 42.\n",
+      "cleanup": {
+        "mountAcquired": false,
+        "errors": [],
+        "helpers": [],
+        "remainingHelpers": [],
+        "mountRemaining": false,
+        "removedStaleSocket": false,
+        "sessionSocketRemaining": false,
+        "passed": true
+      },
+      "cleanupUnmount": null,
+      "harnessSha256": "1f4af4f3a77a16ea303069611be9d8cdab9fef12887f22d4a7c4813fedf4b9aa"
+    }
+  ],
+  "ownedProcessesRemaining": [],
+  "collectionNotes": {
+    "initialFailure": "copytree refused stale private session.sock in d254q-exhaust; no evidence removed",
+    "socketNodesOmitted": [
+      "/tmp/d254q-exhaust/runtime/putgd/session.sock",
+      "/tmp/d254q-paused/runtime/putgd/session.sock",
+      "/tmp/d254q-pressure/runtime/putgd/session.sock",
+      "/tmp/d254q-stopped/runtime/putgd/session.sock",
+      "/tmp/d254r-exhaust/runtime/putgd/session.sock",
+      "/tmp/d254r-stopped/runtime/putgd/session.sock"
+    ],
+    "fix": "Revised runner waits for normal resident quit; final d254s runs verify sessionSocketRemaining=false. Original socket nodes remain in private run directories."
+  }
+}
