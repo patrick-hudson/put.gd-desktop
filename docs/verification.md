@@ -112,6 +112,20 @@ work; old history-growth revisions are held. Unbudgeted response thresholds requ
 Patrick's approval. The eventual nightly results do not certify stable assets;
 #384 must repeat them on those bytes.
 
+### Complete runs — 2026-10-25
+
+After the driver fixes on #555, every #379 workload ran to completion on m74
+with published nightly 1185 under a normal desktop lock
+([record](evidence/2026-10-24-physical-cinnamon-379/README.md#complete-runs-2026-10-25)).
+Capture with 10,000 History entries: p95 71.803503 ms, pass. 10,000-entry
+History: open ≤627 ms, scroll p95 50.4 ms, search p95 197 ms, preview p95
+872 ms, Copy image and Delete from destination verified; these response gates
+stay unassessed until Patrick approves thresholds. Burst: 50/50 verified
+uploads, then settled RSS 41.1 MiB / PSS 29.9 MiB fail (#560). Slow network:
+progress, responsive input and retry pass; cancel on a stalled preflight took
+115.8 s (#561). Also filed: #559 (queued uploads labelled Editing) and #566
+(delete confirmation shows raw JSON).
+
 ## First stable gate plan — 2026-10-22
 
 No release asset has been accepted yet. The first stable switches to calendar
@@ -131,7 +145,7 @@ work packages:
 | DEB lifecycle, recording rows, live S3 | [#375](https://github.com/patrick-hudson/put.gd-desktop/issues/375) | partial: source144 Cinnamon VM only; no state-preserving upgrade or removal + login on Wayland; schema 5→7 never exercised |
 | RPM lifecycle on f44 | [#377](https://github.com/patrick-hudson/put.gd-desktop/issues/377) | partial: repo upgrade 816→828 only |
 | GUI/CLI/MCP parity, AE17, fresh-agent walkthrough | [#378](https://github.com/patrick-hudson/put.gd-desktop/issues/378) | partial: 2026-10-13, CLI `dev.143` |
-| Physical Cinnamon latency, 10,000-entry history, burst, slow network | [#379](https://github.com/patrick-hudson/put.gd-desktop/issues/379) | nightly 1185: CU2/CU3 selector drawable p95 73.359397/73.449413 ms pass; corrected queue visibility refusal, no50/settle credit. M7 open PSS 61.9473 MiB >60 MiB fails; cold/post-close pass. Populated/history/burst/slow pending ([record](evidence/2026-10-24-physical-cinnamon-379/README.md)) |
+| Physical Cinnamon latency, 10,000-entry history, burst, slow network | [#379](https://github.com/patrick-hudson/put.gd-desktop/issues/379) | nightly 1185, all workloads complete on m74 (2026-10-25): capture p95 73.36 ms empty / 71.80 ms with 10,000 entries, pass. 10,000-entry History complete; response thresholds await approval. Fails: History-open PSS [#558](https://github.com/patrick-hudson/put.gd-desktop/issues/558), post-burst settled RSS/PSS [#560](https://github.com/patrick-hudson/put.gd-desktop/issues/560), stalled-preflight cancel 115.8 s [#561](https://github.com/patrick-hudson/put.gd-desktop/issues/561) ([record](evidence/2026-10-24-physical-cinnamon-379/README.md)) |
 | Multi-display geometry in VMs | [#380](https://github.com/patrick-hudson/put.gd-desktop/issues/380) | partial: 3-head Cinnamon X11 region, single-output fractional scale |
 | Physical mixed DPI and rotation | [#381](https://github.com/patrick-hudson/put.gd-desktop/issues/381) | blocked: no builder has two outputs; proposed for 0.1.2 |
 | Uninstall login-startup entry | [#382](https://github.com/patrick-hudson/put.gd-desktop/issues/382) | closed by Patrick; 11 development-artifact rows pass, legacy exception accepted; PR integration and #384 release checks remain ([evidence](evidence/2026-10-24-uninstall-startup-382/README.md)) |

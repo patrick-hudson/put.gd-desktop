@@ -1,6 +1,6 @@
 # Physical Cinnamon performance campaign (#379)
 
-**Status: CU2/CU3 pass empty-history selector drawable p95; M7 fails the 60 MiB History-open PSS gate. Both queue attempts stopped at the visibility guard; remaining gates are pending.**
+**Status: every #379 workload has now run to completion on m74 (see [complete runs, 2026-10-25](#complete-runs-2026-10-25)). Capture latency passes with empty and 10,000-entry History. Three memory/behaviour gates fail and are filed: History-open PSS ([#558](https://github.com/patrick-hudson/put.gd-desktop/issues/558)), post-burst settled RSS/PSS ([#560](https://github.com/patrick-hudson/put.gd-desktop/issues/560)) and stalled-preflight cancel ([#561](https://github.com/patrick-hudson/put.gd-desktop/issues/561)). History response thresholds still need Patrick's approval.**
 This is the newest-published-nightly rehearsal requested in
 [#379](https://github.com/patrick-hudson/put.gd-desktop/issues/379).
 [#384](https://github.com/patrick-hudson/put.gd-desktop/issues/384) must repeat
@@ -44,12 +44,12 @@ each isolated launch. Retain failed attempts and corrected commands.
 | Workload | Required assessment | Current result |
 | --- | --- | --- |
 | Region overlay, empty history | 5 warmups + 30 warm samples; p95 ≤150 ms | CU2 73.359397 ms; fresh CU3 73.449413 ms, each at native drawable scope |
-| Region overlay, populated history | Same protocol with 10,000 independent image/video operation records | Pending |
+| Region overlay, populated history | Same protocol with 10,000 independent image/video operation records | capture1 **71.803503 ms, pass** |
 | Cold/closed memory and idle CPU | RSS ≤40 MiB; CPU <0.5% of one core over 300 seconds | M7 cold and post-close pass at their empty-profile scope |
 | Closed family / History-open family | Closed RSS ≤40 MiB; PSS ≤29 MiB / ≤60 MiB, with helpers attributed | M7 closed passes; History-open fails: 61.9473 MiB >60 MiB |
-| 10,000-entry history | Open, whole-list scroll, search, image/video preview, Copy image, Delete from destination; response/frame timings, CPU and memory | Pending; unbudgeted response thresholds need Patrick's explicit approval |
-| Upload burst | At least 50 queued captures/uploads, concurrent slots, correct tray/history/links, memory during and after settle | Pending; CU2/CU3 file-editor queue stopped at visibility attribution, no 50/settle credit |
-| Slow/stalled S3 | 256 KiB/s proxy, a stalled connection, visible progress, responsive UI/tray, measured cancellation and successful retry | Pending |
+| 10,000-entry history | Open, whole-list scroll, search, image/video preview, Copy image, Delete from destination; response/frame timings, CPU and memory | history10 complete: open ≤627 ms, scroll p95 50.4 ms, search p95 197 ms, preview p95 872 ms; Copy image and Delete verified. Unassessed until Patrick approves thresholds |
+| Upload burst | At least 50 queued captures/uploads, concurrent slots, correct tray/history/links, memory during and after settle | burst3 complete: 50/50 verified, 4 concurrent, 38 queued; settled RSS 41.1 MiB and PSS 29.9 MiB **fail** ([#560](https://github.com/patrick-hudson/put.gd-desktop/issues/560)); file-editor uploads, not native captures |
+| Slow/stalled S3 | 256 KiB/s proxy, a stalled connection, visible progress, responsive UI/tray, measured cancellation and successful retry | slow2 complete: 6.2 MB in 25.2 s with progress, input 4.6 ms, retry succeeds; **cancel 115.8 s** on a stalled preflight ([#561](https://github.com/patrick-hudson/put.gd-desktop/issues/561)) |
 
 The memory limits are the approved plan's [source53 checkpoint](../../plans/2026-10-07-1926-feat-qt-linux-share-plan.md#clean-source53-cinnamon-checkpoint-and-wayland-compatibility).
 The frozen idle harness's older 100 MiB `budgetPassed` field cannot replace the
@@ -375,6 +375,88 @@ journals and one editing journal. CU3 admission retained 331 rows over
 upper bound was 11.505274%, **not sub-10%**; the per-process path applied.
 No compositor/content/populated/capture-acquisition/mixed-DPI, 50-file/settle
 or native-capture-burst claim follows.
+
+## Complete runs, 2026-10-25
+
+Claude took the campaign over from Codex on 2026-10-25. Codex's private
+coordinator script was retired: the driver from
+[#555](https://github.com/patrick-hudson/put.gd-desktop/pull/555) ran directly
+on m74 under the normal `desktop_lock.py` lock (`claude-379-burst1`, 01:57:35
+to 04:25:31 UTC, released verified-clean), with a small shell runner that
+installs the DEB, starts the loopback fixture and invokes one scenario. Patrick
+approved shutting down the Windows VM `w11b` on m74 for the quiet slot.
+
+### Why the earlier automated runs failed
+
+Each earlier attempt found one harness defect; none was a product failure.
+The ones fixed on #555 after the handoff, each found by a real m74 run:
+
+| Run | Symptom | Cause | Fix |
+| --- | --- | --- | --- |
+| FU2 | Anonymous `FileNotFoundError` after 7 uploads | `/proc/<pid>/maps` read for an upload worker that had just exited; the error handler kept only the type name | `e8b16bcd`: tolerate exited workers; keep the traceback |
+| burst1 | `process_family_did_not_settle` | Sampler gives up after three disturbed snapshots; workers churn during a burst | `2cba4380`: retry up to 5 s |
+| CU2, CU3, burst1 | Every burst screen check refused as "occluded" | History repaints between the two native reads, so before = VNC = after never holds; the wall frame matched one read | `2cba4380`: accept a wall crop equal to either owned read |
+| burst2 | Settle failed with `closed_stage_has_live_helpers` | The resident's first daily update check (#293) starts `putgd-cli` 5–15 min after launch | `fc2e8f68`: measured profiles set `updates.check` false |
+| history1–4 | AT-SPI focus and selection refused | Qt 6.4.2's bridge has no GrabFocus for item views and no Selection interface (Qt 6.5) | `ce874563`, `ecf34c6c`, `b56ec701`, `00ab777f`: click inside the list, keyboard selection, verify SELECTED |
+| history5, 6 | Clipboard reply crash; delete refused | `kind` key collided with `event(kind)`; seeded receipts point at a fixture instance that no longer exists | `c2a148d0`, `acf7bb25`: rename the key; delete a fresh upload |
+| history2–7 | Search ~1.2 s, preview ~2.5–3 s | The timed action included full AT-SPI tree walks over D-Bus | `a2ab3df9`: resolve controls first, time only the keypress or click |
+| slow1 | `operation_timeout` after cancel | Real product behaviour (#561); the driver gave up after 30 s | `a2ab3df9`: wait up to 180 s and record the latency |
+
+The `gir1.2-gtk-4.0` test prerequisite had been purged by the previous cleanup
+and was reinstalled for the runs (one package; purged again afterwards).
+
+### Results
+
+Product: published `v26.1024.1185-nightly` ubuntu24.04 DEB, SHA-256
+`2094fd4db8cd915b02f1cdd16eb5c99bb8191948931cd2f558a89c59be5b3f47`, source
+`9dfac15c`, live build verified per run. Host: m74 Mint 22.3, Cinnamon
+6.6.9, Muffin 6.6.3, kernel 6.14.0-37-generic, Qt 6.4.2 `xcb`, physical
+session `c89` on `:0`. Every run ended with normal resident exit 0, no forced
+kill, full-family absence and no socket.
+
+| Run | Driver | Workload | Result |
+| --- | --- | --- | --- |
+| capture1 | `00ab777f` + witness `3c29bb3b` | Hotkey to painted region overlay, 10,000 History entries, 5 warmups + 30 samples | **p95 71.803503 ms ≤ 150 ms, pass** (drawable scope, like CU2/CU3) |
+| history10 | `00ab777f` | Open, walk all 200 pages (10,000 rows), 30 searches, image and video preview, Copy image, Delete from destination | Complete. Open drawn ≤627 ms after `ui.show`; scroll p95 50.4 ms; search p95 197 ms; preview p95 872 ms (keypress to the retained preview's pixels); pasted image pixels verified; fixture object gone after delete. Family peak PSS 103.7 MiB with History open |
+| burst3 | `fc2e8f68` | 50 file-editor uploads to the loopback fixture (10 s PUT delay, 4 slots), then 300 s closed settle | Complete. 50/50 uploaded and independently verified (GET, source hash, pixels, History, distinct links); peak 4 uploading, 38 queued; all four screen checks saved. Settled RSS 43,126,784 B and PSS 31,321,088 B **fail** 40/29 MiB, flat for the last 270 s (#560) |
+| slow2 | `00ab777f` | 6.2 MB clipboard PNG via the 256 KiB/s proxy; stalled connection; cancel; retry; 300 s settle | Complete. Upload 25.2 s with progress; search during upload answered in 4.6 ms; **cancel took 115,836 ms** (stalled name check ignores cancel until its 120 s timeout, #561); retry succeeded; settled RSS 32.0 MiB / PSS 20.5 MiB pass |
+
+The 10,000-entry fixture is the six-row `s2` seed (three images, three videos)
+grown with `native_acceptance.py grow --to 10000`: 10,000 independent
+operations, synthetic clones, no real uploads. Numbers above are driver-side
+upper bounds on the owned X11 drawable, not compositor presentation.
+`historyOpenUpperBoundMs`, scroll, search, preview, slow input and cancel gates
+remain **unassessed** until Patrick approves thresholds. The upload burst uses
+explicit file-editor uploads, not native captures.
+
+Sanitized figures, identities, gates and cleanup receipts:
+[`runs-2026-10-25.json`](runs-2026-10-25.json). Raw outputs, including the
+failed attempts burst1–2, history1–9 and slow1, are kept privately
+(archive SHA-256
+`3c740643e74296921442f0629038029ce5e4dd1592f2f0b31f34aa01b3e9b4f6`).
+
+### Product issues found
+
+- [#559](https://github.com/patrick-hudson/put.gd-desktop/issues/559): queued editor uploads say "Editing · Upload or cancel in the editor window".
+- [#560](https://github.com/patrick-hudson/put.gd-desktop/issues/560): the resident keeps about 12 MB after a 50-upload burst; settled RSS/PSS over the idle limits.
+- [#561](https://github.com/patrick-hudson/put.gd-desktop/issues/561): cancel is ignored while a stalled preflight name check runs; the row says "Preparing capture…".
+- [#566](https://github.com/patrick-hudson/put.gd-desktop/issues/566): the Delete from destination confirmation shows the raw receipt JSON.
+
+### Pictures
+
+Each caption names the run, product build and driver commit.
+
+![Burst queue at 50 accepted uploads](burst3-queue-at-50-accepted.png)
+![All 50 burst uploads completed](burst3-all-50-uploaded.png)
+![Last page of the 10,000-entry History](history10-last-page-of-10000.png)
+![Search, image preview and Copy image in 10,000 entries](history10-search-preview-copy-image.png)
+![Video preview in the populated list](history10-video-preview.png)
+![Delete from destination confirmation](history10-delete-confirmation.png)
+![Fresh upload deleted from the fixture](history10-destination-deleted.png)
+![Throttled upload progress](slow2-throttled-upload-progress.png)
+![Stalled preflight and slow cancel](slow2-stalled-preflight.png)
+![Retry after cancel succeeded](slow2-retry-succeeded.png)
+![Region overlay with 10,000 History entries](capture1-region-overlay-10000-history.png)
 
 ## Evidence and cleanup
 
