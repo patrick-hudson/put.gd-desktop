@@ -42,16 +42,31 @@ X11 socket 17 bytes, session bus 18 bytes, all below the 107-byte limit.
 | --- | --- | --- |
 | Unchanged AppRun, no helper desktop entries | Generic taskbar gear; `WM_CLASS` and `_GTK_APPLICATION_ID` both `putgd-ui`; `_NET_WM_ICON` present | [baseline](baseline.png) |
 | #570 AppRun on X11, no integrated menu entry | Correct put.gd taskbar icon; temporary `putgd-ui.desktop` and `putgd-record.desktop` removed after `ui.quit` | [candidate](candidate.png) |
-| Baseline AppRun, trial **hidden** entry under a different filename with `StartupWMClass=putgd-ui` | Generic gear remained in this attempt; not evidence that arbitrary hidden entries work | [failed trial](desktop-class.png) |
+| Baseline AppRun, trial **hidden** entry under a different filename with `StartupWMClass=putgd-ui` | Saved crop shows the correct put.gd icon, identical to the candidate crop; the original report misread this image | [hidden-entry trial](desktop-class.png) |
 | Baseline AppRun, **visible** integrable entry under a different filename, `StartupWMClass=putgd-ui`, absolute icon path | Correct put.gd taskbar icon | [menu match](menu-class.png) |
 
 The menu-entry trial adapted the root desktop entry's Exec and Icon paths to the
-lab artifact. It did not run Gear Lever itself. The hidden trial was preserved;
-the correction removed `NoDisplay=true` and allowed the desktop cache to settle
-before launching again. This matches the visible entry that Gear Lever creates.
-The independently passing AppRun test uses the exact helper desktop filename.
+lab artifact. It did not run Gear Lever itself. The subsequent visible-entry
+trial removed `NoDisplay=true` and waited three seconds before launching again,
+matching the visible entry that Gear Lever creates. These were separate app
+launches within the same Cinnamon session; its application cache was not reset.
+The later menu-entry trials therefore do not independently establish which
+lookup path supplied the icon. The AppRun candidate followed the original
+baseline and uses the exact helper desktop filename.
 
-After verifying the visible menu-entry correction, Patrick's existing local
+### Review correction
+
+Greptile correctly flagged the contradictory hidden-entry outcome. Reinspection
+of the saved pixels shows the put.gd icon, not a gear. `candidate.png`,
+`desktop-class.png` and `menu-class.png` are byte-identical in both the original
+host directory and the exported evidence. The files have distinct host capture
+times; [capture audit](capture-audit.json) records those times and hashes. The
+cropped area excludes the clock and shows the same maximized window and panel,
+so these images cannot support different visual outcomes. No separate failed
+hidden-entry capture was found. The failure claim is withdrawn; the unchanged
+original images are retained. Only `baseline.png` shows the generic gear.
+
+After the visible menu-entry trial, Patrick's existing local
 Gear Lever entry received only `StartupWMClass=putgd-ui`. Its original is backed
 up privately in the task's work evidence. His running app was not restarted,
 and no claim is made that its already-cached taskbar actor immediately refreshed.
@@ -74,7 +89,7 @@ and no claim is made that its already-cached taskbar actor immediately refreshed
   final CI AppImage, GNOME/KDE graphical checks, or release functional/memory
   gates. Full current-version desktop acceptance remains outstanding.
 
-[Probe driver](probe.py), per-scenario JSON, hashes and failure images accompany
+[Probe driver](probe.py), per-scenario JSON, hashes and baseline/candidate images accompany
 this summary. Raw run data remains on m74 at `~/work/ico25`; the workstation
 private evidence is under `work/taskbar-icon/work/evidence` in the root checkout.
 The [cleanup receipt](cleanup.json) reports no leftovers. Temporary entries and
