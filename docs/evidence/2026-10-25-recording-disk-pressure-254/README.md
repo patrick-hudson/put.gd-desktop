@@ -95,6 +95,10 @@ expected exact details while the journal adds `step: null`; the assertion now
 checks the meaningful fields and the whole suite passes. The failure log remains
 in the private retention directory.
 
+The additional payload, pause-timeline, A/V export-sync and review-window suites
+pass 4/4; see [i254-extra-tests.log](i254-extra-tests.log). These checks protect the
+shared reserve formula and existing recording/edit/export behavior.
+
 No idle-resident timer or media dependency was added. Sampling belongs only to
 the active transient recording pipeline and stops with it. The native functional
 and memory gates are still required to measure the deployed behavior.
