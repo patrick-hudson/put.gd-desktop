@@ -26,7 +26,7 @@ resetting existing preferences that may intentionally serve a manual install.
 Regression coverage checks an unrelated deferred settings save as well as
 editable unmanaged startup.
 
-## Verification scope
+## Initial development verification
 
 Exact source: `29496f5871820a4caaaf5d687c35db5a02c8b4f8`, tree
 `c8d83f965c9e8314111665516497784671206f89`, clean Git build
@@ -110,10 +110,10 @@ archives; none was counted as a successful build/test or graphical result.
 Both locks passed their cleanup checks with zero newly left items and no
 `--not-mine` exemptions: f44 `codex-491-f44` released at
 `2026-10-25T04:23:31Z`; d69 `codex-491-d69` at `2026-10-25T04:24:17Z`.
-The next #561 thread received direct handoffs. No packages, extensions or session
+The next #561 thread received direct handoffs. During this initial fixture campaign no packages, extensions or session
 configuration were installed/changed; no logout or new tunnel was needed.
 Pre-existing work and processes were preserved. m74's performance lock was not
-touched. No VM was launched, so no overlay retirement was required.
+touched. No VM was launched during the initial fixture campaign.
 
 ## Reproduction and retained evidence
 
@@ -146,18 +146,117 @@ without deleting the original archive. The private `native-widget*.py` drivers
 are retained with hashes, as are their failed preflights. No test source or
 unique failed result was deleted.
 
-## Blocked acceptance gates
+## Installed native package verification
 
-Supported update checking requires an exact tagged release build. This branch
-is untagged; `Update::build()` intentionally reports `development_build` for its
-native package targets. The task forbids manual `v*` tags, merging, and release
-publication. No tag, manifest override, production bypass, or release was made.
-Native supported DEB/RPM acceptance on the fixed exact release artifact therefore
-remains blocked until an authorized release artifact exists. A Qt regression
-fixture's explicit supported build identity is synthetic and is not package or
-release acceptance.
+Patrick explicitly authorized the local-only test tag `v26.1025.1256-nightly`
+on exact commit `29496f5871820a4caaaf5d687c35db5a02c8b4f8` in isolated builder
+checkouts. Those checkouts have their push URL disabled. The tag was never pushed;
+no release or package was published. Standard Release builds and
+`tools/releases/native.py` produced and audited the actual DEB/RPM files, with
+production update support enabled by normal versioning. There is no synthetic
+build metadata or system-root override in these package checks.
 
-The complete Mint/Ubuntu/Kubuntu/Fedora/Debian and native X11/Wayland matrix,
-release functional/memory gates, and a fresh-agent walkthrough are not established
-by focused widget/core tests. Offscreen results are not desktop proof. These
-limits must remain visible even if CI passes.
+The [machine-readable campaign](summary.json) records package checksums, manifests,
+installed binary hashes, startup timing, CLI responses, settings preservation,
+Qt platform mappings, socket preflights and saved-picture checksums.
+
+| Package / desktop | Targeted result | Saved startup / unmanaged result |
+| --- | --- | --- |
+| Fedora 44 RPM / physical GNOME 50 Wayland | Five cases passed; real official-SDK MCP helper exactly matched production CLI state in every case | [Managed](pictures/f44-fresh-managed-first.png), [manual Stable](pictures/f44-fresh-absent-settled.png) |
+| Ubuntu 26.04 DEB / physical Kubuntu Plasma Wayland | Five cases passed | [Managed](pictures/k72-fresh-managed-first.png), [manual Stable](pictures/k72-fresh-absent-settled.png) |
+| Debian 13 DEB / physical Plasma Wayland | Five cases passed after corrected privacy crop | [Managed](pictures/d69-fresh-managed-first.png), [manual Stable](pictures/d69-fresh-absent-settled.png) |
+| Ubuntu 24.04 DEB / physical Mint 22.3 Cinnamon X11 | Five cases passed; final first-open managed, unmanaged and restart visuals reviewed | [Managed](pictures/m74-fresh-managed-first.png), [manual startup](pictures/m74-fresh-absent-first.png), [stored choice](pictures/m74-managed-stored-stable-first.png) |
+| Ubuntu 26.04 DEB / fresh Ubuntu 26.04.1 GNOME Wayland VM on d69 | Fresh managed startup and restart with saved Stable preference passed | [Fresh](pictures/ubuntu26-gnome-fresh-managed.png), [stored choice](pictures/ubuntu26-gnome-managed-stored-stable.png) |
+
+The five physical-host cases are fresh managed, managed with saved Stable and
+daily checks off, fresh absent repository, fresh invalid file and fresh disabled
+repository. Each uses the actual installed system repository path and a new
+private profile. All initial statuses are supported, with `attemptedAt`,
+`checkedAt` and `result` null. Repository ownership immediately selects Nightly;
+changing the stored manual preference to Stable leaves that effective channel
+Nightly. Unmanaged cases follow the stored Stable choice. Opening Settings does
+not rewrite the configuration. The managed profile is restarted to prove that
+its stored choice survives startup. No network check is invoked.
+
+Fedora, Debian and Kubuntu package runs use application-only
+`QT_SCALE_FACTOR=.7`; the final Mint run uses default scale 1. The certified regions retain the 98% initial magenta admission,
+50% remaining cover and 90% at every edge: f44 `[0,180,1920,900]`, k72 `[0,64,1920,952]`, m74 `[0,0,1920,1000]`, d69 `[0,0,1540,1000]`. These are bounded crop functional
+checks, not whole-desktop/default-scale performance evidence. On m74, only owned
+PID windows move once to `(410,130,1100,700)`. On d69 an immediately unloaded, owned-PID KWin
+script places the window at `(270,150,1000,650)`.
+
+Two additional d69 admission attempts failed (96.57% and 96.02%) before app
+launch; the corrected left crop excludes a right-side obstruction. The first
+Mint attempt had correct startup state but failed the screenshot edge check
+because its window opened at the upper left. No refused pixels were exported.
+The original attempts, scripts and diagnostics remain private; thresholds were
+never lowered. Debian’s later passing run supersedes its graphical refusals. The first scaled Mint run passed numerical gates but failed visual review due to incomplete painting. A default-scale retry, `native-20261025T051010Z`, has fully readable managed, unmanaged and stored-choice first-open frames. Some later post-patch frames remain incomplete and are not credited. The CLI assertions establish the post-patch state independently; failed frames and driver versions remain private.
+
+All test packages were removed and the original absent repository state restored.
+No physical session logout, extension copy or display setting change was made.
+Checked-clean releases were k72 `04:48:49Z`, f44 `04:51:37Z`, m74 final retry `05:11:13Z`,
+and d69 `05:00:44Z` on 2026-10-25. The earlier refused d69 package slot also
+released cleanly at `04:58:20Z`. Pre-existing processes stayed untouched.
+
+The Ubuntu Wayland VM `g491`, run ID
+`7c2c2fd9-c1cd-4162-bbec-d7d466c6a0eb`, used the immutable provisioned golden
+`563730cc1d929bd946d20cf30a9aecfe3c4ad40eb12ba7f9abcff1c461e342bb`.
+Its independent overlay ran with KVM, two vCPUs and 6 GiB RAM, with a separate
+visible wall tunnel. Host/guest capacity passed. The first launch refused a pin
+for a different port before creating a VM; the verified same-guest key was
+remapped to the chosen endpoint. Evidence was exported and its manifest verified,
+then guarded cleanup retired only the owned overlay at `04:52:03Z` UTC. Its tunnel and wall tile were removed; the golden is unchanged.
+
+## Remaining scope
+
+Native GNOME/X11 passed on Ubuntu 24.04.5 / GNOME 46 / Qt 6.4.2 in an independent KVM overlay on f44. [Fresh managed](pictures/ubuntu24-gnome-x11-fresh-managed.png) and [stored-choice restart](pictures/ubuntu24-gnome-x11-managed-stored-stable.png) show repository ownership before any check. Kubuntu 26.04.1 / Plasma 6.6 / Qt 6.10.2 native KDE/X11 also passed, with `kwin_x11`, `Type=x11` and loaded `libqxcb.so` verified. [Fresh managed](pictures/kubuntu-x11-fresh-managed.png) and [stored-choice restart](pictures/kubuntu-x11-managed-stored-stable.png) were reviewed. The targeted startup matrix is complete. Full release functional/memory
+profiles and the complete fresh-agent walkthrough are not established by these
+targeted startup checks. These local test packages are not published release
+assets, and nothing here authorizes release publication.
+
+
+## New GNOME/X11 golden and retention
+
+Ubuntu 24.04.5 supplies the native GNOME/X11 session missing from Ubuntu 26's
+GNOME profile. A new disposable guest was provisioned from the official Ubuntu
+24.04 cloud image (published 2026-10-17; checksum verified against its official
+SHA256SUMS), using standard distro desktop packages. The approved default lab
+login was visibly verified through the masked console; protected inputs and
+private keys are excluded from evidence. The resulting standalone 40 GiB golden
+passed `qemu-img check` and byte-content comparison to the stopped provisioning
+overlay. Its SHA-256 is
+`fff0b55cc2d09d403bea61dd17d46165994cd8a9d0c2d467c5883c7fb795e245`.
+
+Immutable copies are on f44 and d69 under
+`/home/patrick/work/put.gd/work/lab-images/ubuntu24-gnome-x11-20261025-491/`.
+The streamed Debian replica was checksum-verified and checked independently;
+no disk image or workstation SSH key was copied onto the workstation. S3 backup
+is blocked by expired AWS authentication, with local `aws login` permission
+requested. No golden copy is deleted. Other threads receive this immutable
+input and create their own overlays; their acceptance does not count for #491.
+
+The #491 acceptance overlay `u24491`, run
+`9fa63e67-b4b8-4b57-b6a9-5aa43b6d314e`, used KVM, 2 vCPUs, 6 GiB, native X11,
+Qt 6.4.2 and default scale. Its production X11 capability witness and saved
+GNOME desktop images establish the session used. Exact package/binary identities
+are in the summary. Evidence and completion-manifest hashes were exported and
+verified before guarded retirement at `05:17:28Z`; the independent provisioning
+overlay retired at `05:18:16Z`. Two initial cleanup commands refused incorrect
+canonical-root assumptions; rerunning the original checkout's cleanup tool with
+explicit `--images-root /home/patrick/work/put.gd/work/lab-images` passed all
+existing guards. The owned tunnel and wall tile were removed.
+
+
+KDE/X11 used #559's sealed standalone golden
+`5306a311c69220421d3efbbb8929300634c3812214edef3b9203b830ce300826`,
+with an independent overlay `k491` on d69 (run
+`34e65b15-02c5-42e9-a28c-10b544f56a99`, KVM, 2 vCPUs, 6 GiB).
+The inherited old package was replaced by the exact Ubuntu 26 DEB. A preliminary
+run is retained; the credited `vm-x11-20261025T051951Z` run followed visible
+confirmation of the fully loaded desktop. Both startup screenshots and the
+native platform mapping were reviewed. Verified export preceded guarded overlay
+retirement; its receipt is in the summary. The owned wall tile/tunnel were removed.
+
+The [rejected scaled Mint manual frame](pictures/m74-rejected-scaled-manual.png)
+is retained as failed visual evidence, never a passing result. Corrected default-scale
+first-open images above supersede it for the startup check.

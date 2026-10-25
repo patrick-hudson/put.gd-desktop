@@ -11,7 +11,7 @@
     "sourceProvenance": "git"
   },
   "codePr": "https://github.com/patrick-hudson/put.gd-desktop/pull/563",
-  "releaseAcceptance": "blocked: no authorized tagged artifact containing the fix",
+  "releaseAcceptance": "Not claimed: unpublished local test packages; full release functional/memory and fresh-agent gates remain outside targeted startup checks.",
   "hosts": {
     "f44": {
       "buildRoot": "/home/patrick/work/i491",
@@ -197,5 +197,4539 @@
       "pipewire"
     ],
     "scope": "CI success does not establish native release-package acceptance"
+  },
+  "nativePackageCampaign": {
+    "version": "26.1025.1256-nightly",
+    "source": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+    "tagAuthorization": "User explicitly approved v26.1025.1256-nightly locally in isolated builders only for test packaging; never pushed or published.",
+    "scope": "Targeted installed native package startup acceptance, not full release functional/memory acceptance.",
+    "hosts": {
+      "k72": {
+        "scope": "installed native package, actual system repository, no feed check",
+        "build": {
+          "schemaVersion": 1,
+          "version": "26.1025.1256-nightly",
+          "baseVersion": "26.1025.1256",
+          "packageVersion": "26.1025.1256~nightly",
+          "gitCommit": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+          "gitTree": "c8d83f965c9e8314111665516497784671206f89",
+          "commitCount": 1256,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "qtScaleFactor": ".7",
+        "passed": true,
+        "output": "work/491/k72-package/work/491p/native-20261025T044802Z",
+        "cases": [
+          {
+            "case": "fresh-managed",
+            "initialUpdate": {
+              "action": {
+                "channel": "nightly",
+                "command": "sudo apt update && sudo apt upgrade",
+                "file": "/etc/apt/sources.list.d/putgd.sources",
+                "kind": "software-updates",
+                "manager": "apt",
+                "older": null,
+                "otherChannel": {
+                  "channel": "stable",
+                  "commands": [
+                    "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+                    "sudo apt update",
+                    "sudo apt install --allow-downgrades putgd/stable"
+                  ],
+                  "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+                },
+                "repository": "managed",
+                "updater": {
+                  "arguments": [
+                    "--mode",
+                    "update"
+                  ],
+                  "id": "plasma-discover",
+                  "name": "Discover",
+                  "program": "/usr/bin/plasma-discover"
+                }
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "ubuntu26.04",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "nightly",
+              "channelSetting": "build",
+              "channelSource": "repository",
+              "check": true,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": true,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": "2026-10-25T05:02:26Z",
+              "notifies": false,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "afterPatch": {
+              "action": {
+                "channel": "nightly",
+                "command": "sudo apt update && sudo apt upgrade",
+                "file": "/etc/apt/sources.list.d/putgd.sources",
+                "kind": "software-updates",
+                "manager": "apt",
+                "older": null,
+                "otherChannel": {
+                  "channel": "stable",
+                  "commands": [
+                    "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+                    "sudo apt update",
+                    "sudo apt install --allow-downgrades putgd/stable"
+                  ],
+                  "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+                },
+                "repository": "managed",
+                "updater": {
+                  "arguments": [
+                    "--mode",
+                    "update"
+                  ],
+                  "id": "plasma-discover",
+                  "name": "Discover",
+                  "program": "/usr/bin/plasma-discover"
+                }
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "ubuntu26.04",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "nightly",
+              "channelSetting": "stable",
+              "channelSource": "repository",
+              "check": false,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": false,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": null,
+              "notifies": false,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "startupSeconds": 0.12393964499642607,
+            "passed": true,
+            "socketPreflight": {
+              "schemaVersion": 1,
+              "passed": true,
+              "limitBytesExcludingNul": 107,
+              "paths": [
+                {
+                  "path": "/tmp/i491-mnnqr8cv/fresh-managed/r/putgd/session.sock",
+                  "utf8Bytes": 53,
+                  "passed": true
+                }
+              ]
+            },
+            "socketRemaining": false,
+            "maps": {
+              "198837": {
+                "command": "/usr/bin/putgd --background ",
+                "qtPlatform": []
+              },
+              "198850": {
+                "command": "/usr/bin/putgd-ui ",
+                "qtPlatform": [
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland.so"
+                ]
+              }
+            }
+          },
+          {
+            "case": "managed-stored-stable",
+            "initialUpdate": {
+              "action": {
+                "channel": "nightly",
+                "command": "sudo apt update && sudo apt upgrade",
+                "file": "/etc/apt/sources.list.d/putgd.sources",
+                "kind": "software-updates",
+                "manager": "apt",
+                "older": null,
+                "otherChannel": {
+                  "channel": "stable",
+                  "commands": [
+                    "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+                    "sudo apt update",
+                    "sudo apt install --allow-downgrades putgd/stable"
+                  ],
+                  "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+                },
+                "repository": "managed",
+                "updater": {
+                  "arguments": [
+                    "--mode",
+                    "update"
+                  ],
+                  "id": "plasma-discover",
+                  "name": "Discover",
+                  "program": "/usr/bin/plasma-discover"
+                }
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "ubuntu26.04",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "nightly",
+              "channelSetting": "stable",
+              "channelSource": "repository",
+              "check": false,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": false,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": null,
+              "notifies": false,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "afterPatch": {
+              "action": {
+                "channel": "nightly",
+                "command": "sudo apt update && sudo apt upgrade",
+                "file": "/etc/apt/sources.list.d/putgd.sources",
+                "kind": "software-updates",
+                "manager": "apt",
+                "older": null,
+                "otherChannel": {
+                  "channel": "stable",
+                  "commands": [
+                    "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+                    "sudo apt update",
+                    "sudo apt install --allow-downgrades putgd/stable"
+                  ],
+                  "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+                },
+                "repository": "managed",
+                "updater": {
+                  "arguments": [
+                    "--mode",
+                    "update"
+                  ],
+                  "id": "plasma-discover",
+                  "name": "Discover",
+                  "program": "/usr/bin/plasma-discover"
+                }
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "ubuntu26.04",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "nightly",
+              "channelSetting": "stable",
+              "channelSource": "repository",
+              "check": false,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": false,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": null,
+              "notifies": false,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "startupSeconds": 0.12039651900704484,
+            "passed": true,
+            "socketPreflight": {
+              "schemaVersion": 1,
+              "passed": true,
+              "limitBytesExcludingNul": 107,
+              "paths": [
+                {
+                  "path": "/tmp/i491-mnnqr8cv/fresh-managed/r/putgd/session.sock",
+                  "utf8Bytes": 53,
+                  "passed": true
+                }
+              ]
+            },
+            "socketRemaining": false,
+            "maps": {
+              "198898": {
+                "command": "/usr/bin/putgd --background ",
+                "qtPlatform": []
+              },
+              "198917": {
+                "command": "/usr/bin/putgd-ui ",
+                "qtPlatform": [
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland.so"
+                ]
+              }
+            }
+          },
+          {
+            "case": "fresh-absent",
+            "initialUpdate": {
+              "action": {
+                "file": "/etc/apt/sources.list.d/putgd.sources",
+                "kind": "download",
+                "repository": "absent"
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "ubuntu26.04",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "nightly",
+              "channelSetting": "build",
+              "channelSource": "setting",
+              "check": true,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": true,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": "2026-10-25T05:02:43Z",
+              "notifies": false,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "afterPatch": {
+              "action": {
+                "file": "/etc/apt/sources.list.d/putgd.sources",
+                "kind": "download",
+                "repository": "absent"
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "ubuntu26.04",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "stable",
+              "channelSetting": "stable",
+              "channelSource": "setting",
+              "check": false,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": false,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": null,
+              "notifies": true,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "startupSeconds": 0.12361351899744477,
+            "passed": true,
+            "socketPreflight": {
+              "schemaVersion": 1,
+              "passed": true,
+              "limitBytesExcludingNul": 107,
+              "paths": [
+                {
+                  "path": "/tmp/i491-mnnqr8cv/fresh-absent/r/putgd/session.sock",
+                  "utf8Bytes": 52,
+                  "passed": true
+                }
+              ]
+            },
+            "socketRemaining": false,
+            "maps": {
+              "198985": {
+                "command": "/usr/bin/putgd --background ",
+                "qtPlatform": []
+              },
+              "198997": {
+                "command": "/usr/bin/putgd-ui ",
+                "qtPlatform": [
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland.so"
+                ]
+              }
+            }
+          },
+          {
+            "case": "fresh-invalid",
+            "initialUpdate": {
+              "action": {
+                "file": "/etc/apt/sources.list.d/putgd.sources",
+                "kind": "download",
+                "repository": "other"
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "ubuntu26.04",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "nightly",
+              "channelSetting": "build",
+              "channelSource": "setting",
+              "check": true,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": true,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": "2026-10-25T04:59:09Z",
+              "notifies": false,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "afterPatch": {
+              "action": {
+                "file": "/etc/apt/sources.list.d/putgd.sources",
+                "kind": "download",
+                "repository": "other"
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "ubuntu26.04",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "stable",
+              "channelSetting": "stable",
+              "channelSource": "setting",
+              "check": false,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": false,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": null,
+              "notifies": true,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "startupSeconds": 0.12358856700302567,
+            "passed": true,
+            "socketPreflight": {
+              "schemaVersion": 1,
+              "passed": true,
+              "limitBytesExcludingNul": 107,
+              "paths": [
+                {
+                  "path": "/tmp/i491-mnnqr8cv/fresh-invalid/r/putgd/session.sock",
+                  "utf8Bytes": 53,
+                  "passed": true
+                }
+              ]
+            },
+            "socketRemaining": false,
+            "maps": {
+              "199059": {
+                "command": "/usr/bin/putgd --background ",
+                "qtPlatform": []
+              },
+              "199071": {
+                "command": "/usr/bin/putgd-ui ",
+                "qtPlatform": [
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland.so"
+                ]
+              }
+            }
+          },
+          {
+            "case": "fresh-disabled",
+            "initialUpdate": {
+              "action": {
+                "file": "/etc/apt/sources.list.d/putgd.sources",
+                "kind": "download",
+                "repository": "disabled"
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "ubuntu26.04",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "nightly",
+              "channelSetting": "build",
+              "channelSource": "setting",
+              "check": true,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": true,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": "2026-10-25T04:58:47Z",
+              "notifies": false,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "afterPatch": {
+              "action": {
+                "file": "/etc/apt/sources.list.d/putgd.sources",
+                "kind": "download",
+                "repository": "disabled"
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "ubuntu26.04",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "stable",
+              "channelSetting": "stable",
+              "channelSource": "setting",
+              "check": false,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": false,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": null,
+              "notifies": true,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "startupSeconds": 0.12266328900295775,
+            "passed": true,
+            "socketPreflight": {
+              "schemaVersion": 1,
+              "passed": true,
+              "limitBytesExcludingNul": 107,
+              "paths": [
+                {
+                  "path": "/tmp/i491-mnnqr8cv/fresh-disabled/r/putgd/session.sock",
+                  "utf8Bytes": 54,
+                  "passed": true
+                }
+              ]
+            },
+            "socketRemaining": false,
+            "maps": {
+              "199193": {
+                "command": "/usr/bin/putgd --background ",
+                "qtPlatform": []
+              },
+              "199205": {
+                "command": "/usr/bin/putgd-ui ",
+                "qtPlatform": [
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland.so"
+                ]
+              }
+            }
+          }
+        ],
+        "source": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+        "binaryHashes": {
+          "putgd": "b2d35f419987c180061b94370ee1db7aa1c332f74cae20c0e62dd88cf72dc7a7",
+          "putgd-ui": "fd8b38058542734c3dde771c5f075336716f1b46f32bf290c1b96f7d889cd38b",
+          "putgd-cli": "8449c570e130fae8a76f198272c4a477270931af4799f328e29a3f7be579d5cf"
+        },
+        "session": {
+          "DISPLAY": ":0",
+          "WAYLAND_DISPLAY": "wayland-0",
+          "XDG_CURRENT_DESKTOP": "KDE",
+          "XDG_SESSION_TYPE": "wayland"
+        },
+        "loginSessions": "   1 1000 patrick -     1252   manager -    no -\n1652 1000 patrick -     196456 user    -    no -\n1662 1000 patrick -     198643 user    -    no -\n   3 1000 patrick -     1320   user    -    no -\n   4 1000 patrick -     1523   user    -    no -\n   5 1000 patrick -     1522   user    -    no -\n 906 1000 patrick seat0 128842 user    tty7 no -\n",
+        "captureRect": [
+          0,
+          64,
+          1920,
+          952
+        ],
+        "initialCoverFraction": 1.0,
+        "repositoryRestored": true,
+        "coverExit": 0,
+        "packageAudit": {
+          "schemaVersion": 1,
+          "scope": "native extracted package identity/inventory/dependencies; not desktop acceptance",
+          "manifest": {
+            "schemaVersion": 1,
+            "version": "26.1025.1256-nightly",
+            "baseVersion": "26.1025.1256",
+            "packageVersion": "26.1025.1256~nightly",
+            "gitCommit": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+            "gitTree": "c8d83f965c9e8314111665516497784671206f89",
+            "commitCount": 1256,
+            "dirty": false,
+            "sourceProvenance": "git"
+          },
+          "compiledIdentities": {
+            "putgd": {
+              "schemaVersion": 1,
+              "version": "26.1025.1256-nightly",
+              "baseVersion": "26.1025.1256",
+              "packageVersion": "26.1025.1256~nightly",
+              "gitCommit": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+              "gitTree": "c8d83f965c9e8314111665516497784671206f89",
+              "commitCount": 1256,
+              "dirty": false,
+              "sourceProvenance": "git"
+            },
+            "putgd-cli": {
+              "schemaVersion": 1,
+              "version": "26.1025.1256-nightly",
+              "baseVersion": "26.1025.1256",
+              "packageVersion": "26.1025.1256~nightly",
+              "gitCommit": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+              "gitTree": "c8d83f965c9e8314111665516497784671206f89",
+              "commitCount": 1256,
+              "dirty": false,
+              "sourceProvenance": "git"
+            },
+            "putgd-ui": {
+              "schemaVersion": 1,
+              "version": "26.1025.1256-nightly",
+              "baseVersion": "26.1025.1256",
+              "packageVersion": "26.1025.1256~nightly",
+              "gitCommit": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+              "gitTree": "c8d83f965c9e8314111665516497784671206f89",
+              "commitCount": 1256,
+              "dirty": false,
+              "sourceProvenance": "git"
+            },
+            "putgd-capture": {
+              "schemaVersion": 1,
+              "version": "26.1025.1256-nightly",
+              "baseVersion": "26.1025.1256",
+              "packageVersion": "26.1025.1256~nightly",
+              "gitCommit": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+              "gitTree": "c8d83f965c9e8314111665516497784671206f89",
+              "commitCount": 1256,
+              "dirty": false,
+              "sourceProvenance": "git"
+            },
+            "putgd-s3-worker": {
+              "schemaVersion": 1,
+              "version": "26.1025.1256-nightly",
+              "baseVersion": "26.1025.1256",
+              "packageVersion": "26.1025.1256~nightly",
+              "gitCommit": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+              "gitTree": "c8d83f965c9e8314111665516497784671206f89",
+              "commitCount": 1256,
+              "dirty": false,
+              "sourceProvenance": "git"
+            },
+            "putgd-b2-worker": {
+              "schemaVersion": 1,
+              "version": "26.1025.1256-nightly",
+              "baseVersion": "26.1025.1256",
+              "packageVersion": "26.1025.1256~nightly",
+              "gitCommit": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+              "gitTree": "c8d83f965c9e8314111665516497784671206f89",
+              "commitCount": 1256,
+              "dirty": false,
+              "sourceProvenance": "git"
+            },
+            "putgd-kde-region": {
+              "schemaVersion": 1,
+              "version": "26.1025.1256-nightly",
+              "baseVersion": "26.1025.1256",
+              "packageVersion": "26.1025.1256~nightly",
+              "gitCommit": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+              "gitTree": "c8d83f965c9e8314111665516497784671206f89",
+              "commitCount": 1256,
+              "dirty": false,
+              "sourceProvenance": "git"
+            },
+            "putgd-record": {
+              "schemaVersion": 1,
+              "version": "26.1025.1256-nightly",
+              "baseVersion": "26.1025.1256",
+              "packageVersion": "26.1025.1256~nightly",
+              "gitCommit": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+              "gitTree": "c8d83f965c9e8314111665516497784671206f89",
+              "commitCount": 1256,
+              "dirty": false,
+              "sourceProvenance": "git"
+            }
+          },
+          "updateCheck": {
+            "channel": "nightly",
+            "kind": "nightly",
+            "packageTarget": "ubuntu26.04",
+            "reason": null,
+            "supported": true,
+            "version": "26.1025.1256-nightly"
+          },
+          "package": {
+            "format": "DEB",
+            "name": "putgd",
+            "version": "26.1025.1256~nightly",
+            "architecture": "amd64",
+            "requires": "libqt6sql6-sqlite, qt6-qpa-plugins, qt6-wayland, qt6-image-formats-plugins, libglib2.0-bin, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer1.0-pipewire, libavcodec62 (>= 7:8.0.1), libavfilter11 (>= 7:8.0.1), libavformat62 (>= 7:8.0.1), libavutil60 (>= 7:8.0.1), libc6 (>= 2.38), libcurl4t64 (>= 7.18.0), libgcc-s1 (>= 4.2), libglib2.0-0t64 (>= 2.12.0), libgstreamer1.0-0 (>= 1.0.0), liblayershellqtinterface6 (>= 6.1.0), libqt6core6t64 (>= 6.10.2), libqt6dbus6 (>= 6.8.2), libqt6gui6 (>= 6.9.1), libqt6keychain1 (>= 0.13.2), libqt6network6 (>= 6.7.2), libqt6sql6 (>= 6.1.2), libqt6widgets6 (>= 6.4.0), libssl3t64 (>= 3.4.0), libstdc++6 (>= 14), libswresample6 (>= 7:8.0.1), libswscale9 (>= 7:8.0.1), libwayland-client0 (>= 1.20.0), libxcb-damage0, libxcb-keysyms1 (>= 0.4.1), libxcb-randr0 (>= 1.3), libxcb-render0, libxcb-xfixes0, libxcb-xinput0 (>= 1.17.0), libxcb1, libxcursor1 (>> 1.1.2), libxkbcommon0 (>= 1.0.0), zlib1g (>= 1:1.1.4)",
+            "recommends": "gstreamer1.0-plugins-ugly, gstreamer1.0-libav, gstreamer1.0-vaapi",
+            "file": "putgd_26.1025.1256~nightly_amd64.deb",
+            "sha256": "beccdde1f53a98ebe40b6588b292e421dafbaf1183e13d2dc5933f0908e0800c",
+            "size": 11331688
+          }
+        },
+        "packageChecksums": "beccdde1f53a98ebe40b6588b292e421dafbaf1183e13d2dc5933f0908e0800c  putgd_26.1025.1256~nightly_amd64.deb\n",
+        "installedHashes": "b2d35f419987c180061b94370ee1db7aa1c332f74cae20c0e62dd88cf72dc7a7  /usr/bin/putgd\nfd8b38058542734c3dde771c5f075336716f1b46f32bf290c1b96f7d889cd38b  /usr/bin/putgd-ui\n8449c570e130fae8a76f198272c4a477270931af4799f328e29a3f7be579d5cf  /usr/bin/putgd-cli\n",
+        "visuals": [
+          {
+            "file": "pictures/k72-fresh-managed-first.png",
+            "sha256": "5e3ebbdf2f0cbaa9f69bf549bc212b81577077fc47ef6b21f5592257e4ed7b68"
+          },
+          {
+            "file": "pictures/k72-fresh-absent-settled.png",
+            "sha256": "530de41ea4aa1369ec9eade5392387f4ea85e839b1a05e7424de98ff1432bfb2"
+          }
+        ]
+      },
+      "f44": {
+        "scope": "installed native package, actual system repository, no feed check",
+        "build": {
+          "schemaVersion": 1,
+          "version": "26.1025.1256-nightly",
+          "baseVersion": "26.1025.1256",
+          "packageVersion": "26.1025.1256~nightly",
+          "gitCommit": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+          "gitTree": "c8d83f965c9e8314111665516497784671206f89",
+          "commitCount": 1256,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "qtScaleFactor": ".7",
+        "passed": true,
+        "output": "work/491/f44-package/work/491p/native-20261025T045029Z",
+        "cases": [
+          {
+            "case": "fresh-managed",
+            "initialUpdate": {
+              "action": {
+                "channel": "nightly",
+                "command": "sudo dnf upgrade --refresh",
+                "file": "/etc/yum.repos.d/putgd.repo",
+                "kind": "software-updates",
+                "manager": "dnf",
+                "older": null,
+                "otherChannel": {
+                  "channel": "stable",
+                  "commands": [
+                    "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.repo /etc/yum.repos.d/putgd.repo",
+                    "sudo dnf distro-sync --refresh putgd"
+                  ],
+                  "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+                },
+                "repository": "managed",
+                "updater": {
+                  "arguments": [
+                    "--mode=updates"
+                  ],
+                  "id": "gnome-software",
+                  "name": "GNOME Software",
+                  "program": "/usr/bin/gnome-software"
+                }
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "fedora44",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "nightly",
+              "channelSetting": "build",
+              "channelSource": "repository",
+              "check": true,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": true,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": "2026-10-25T04:55:58Z",
+              "notifies": false,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "afterPatch": {
+              "action": {
+                "channel": "nightly",
+                "command": "sudo dnf upgrade --refresh",
+                "file": "/etc/yum.repos.d/putgd.repo",
+                "kind": "software-updates",
+                "manager": "dnf",
+                "older": null,
+                "otherChannel": {
+                  "channel": "stable",
+                  "commands": [
+                    "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.repo /etc/yum.repos.d/putgd.repo",
+                    "sudo dnf distro-sync --refresh putgd"
+                  ],
+                  "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+                },
+                "repository": "managed",
+                "updater": {
+                  "arguments": [
+                    "--mode=updates"
+                  ],
+                  "id": "gnome-software",
+                  "name": "GNOME Software",
+                  "program": "/usr/bin/gnome-software"
+                }
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "fedora44",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "nightly",
+              "channelSetting": "stable",
+              "channelSource": "repository",
+              "check": false,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": false,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": null,
+              "notifies": false,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "startupSeconds": 0.14726330699340906,
+            "passed": true,
+            "socketPreflight": {
+              "schemaVersion": 1,
+              "passed": true,
+              "limitBytesExcludingNul": 107,
+              "paths": [
+                {
+                  "path": "/tmp/i491-rafx3mmc/fresh-managed/r/putgd/session.sock",
+                  "utf8Bytes": 53,
+                  "passed": true
+                }
+              ]
+            },
+            "socketRemaining": false,
+            "maps": {
+              "219648": {
+                "command": "/usr/bin/putgd --background ",
+                "qtPlatform": []
+              },
+              "219663": {
+                "command": "/usr/bin/putgd-ui ",
+                "qtPlatform": [
+                  "/usr/lib64/qt6/plugins/platforms/libqwayland.so",
+                  "/usr/lib64/qt6/plugins/platforms/libqwayland.so",
+                  "/usr/lib64/qt6/plugins/platforms/libqwayland.so",
+                  "/usr/lib64/qt6/plugins/platforms/libqwayland.so"
+                ]
+              }
+            },
+            "mcpEqualsCli": true
+          },
+          {
+            "case": "managed-stored-stable",
+            "initialUpdate": {
+              "action": {
+                "channel": "nightly",
+                "command": "sudo dnf upgrade --refresh",
+                "file": "/etc/yum.repos.d/putgd.repo",
+                "kind": "software-updates",
+                "manager": "dnf",
+                "older": null,
+                "otherChannel": {
+                  "channel": "stable",
+                  "commands": [
+                    "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.repo /etc/yum.repos.d/putgd.repo",
+                    "sudo dnf distro-sync --refresh putgd"
+                  ],
+                  "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+                },
+                "repository": "managed",
+                "updater": {
+                  "arguments": [
+                    "--mode=updates"
+                  ],
+                  "id": "gnome-software",
+                  "name": "GNOME Software",
+                  "program": "/usr/bin/gnome-software"
+                }
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "fedora44",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "nightly",
+              "channelSetting": "stable",
+              "channelSource": "repository",
+              "check": false,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": false,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": null,
+              "notifies": false,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "afterPatch": {
+              "action": {
+                "channel": "nightly",
+                "command": "sudo dnf upgrade --refresh",
+                "file": "/etc/yum.repos.d/putgd.repo",
+                "kind": "software-updates",
+                "manager": "dnf",
+                "older": null,
+                "otherChannel": {
+                  "channel": "stable",
+                  "commands": [
+                    "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.repo /etc/yum.repos.d/putgd.repo",
+                    "sudo dnf distro-sync --refresh putgd"
+                  ],
+                  "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+                },
+                "repository": "managed",
+                "updater": {
+                  "arguments": [
+                    "--mode=updates"
+                  ],
+                  "id": "gnome-software",
+                  "name": "GNOME Software",
+                  "program": "/usr/bin/gnome-software"
+                }
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "fedora44",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "nightly",
+              "channelSetting": "stable",
+              "channelSource": "repository",
+              "check": false,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": false,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": null,
+              "notifies": false,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "startupSeconds": 0.21423732199764345,
+            "passed": true,
+            "socketPreflight": {
+              "schemaVersion": 1,
+              "passed": true,
+              "limitBytesExcludingNul": 107,
+              "paths": [
+                {
+                  "path": "/tmp/i491-rafx3mmc/fresh-managed/r/putgd/session.sock",
+                  "utf8Bytes": 53,
+                  "passed": true
+                }
+              ]
+            },
+            "socketRemaining": false,
+            "maps": {
+              "219934": {
+                "command": "/usr/bin/putgd --background ",
+                "qtPlatform": []
+              },
+              "219963": {
+                "command": "/usr/bin/putgd-ui ",
+                "qtPlatform": [
+                  "/usr/lib64/qt6/plugins/platforms/libqwayland.so",
+                  "/usr/lib64/qt6/plugins/platforms/libqwayland.so",
+                  "/usr/lib64/qt6/plugins/platforms/libqwayland.so",
+                  "/usr/lib64/qt6/plugins/platforms/libqwayland.so"
+                ]
+              }
+            },
+            "mcpEqualsCli": true
+          },
+          {
+            "case": "fresh-absent",
+            "initialUpdate": {
+              "action": {
+                "file": "/etc/yum.repos.d/putgd.repo",
+                "kind": "download",
+                "repository": "absent"
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "fedora44",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "nightly",
+              "channelSetting": "build",
+              "channelSource": "setting",
+              "check": true,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": true,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": "2026-10-25T05:00:53Z",
+              "notifies": false,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "afterPatch": {
+              "action": {
+                "file": "/etc/yum.repos.d/putgd.repo",
+                "kind": "download",
+                "repository": "absent"
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "fedora44",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "stable",
+              "channelSetting": "stable",
+              "channelSource": "setting",
+              "check": false,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": false,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": null,
+              "notifies": true,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "startupSeconds": 0.2437971150066005,
+            "passed": true,
+            "socketPreflight": {
+              "schemaVersion": 1,
+              "passed": true,
+              "limitBytesExcludingNul": 107,
+              "paths": [
+                {
+                  "path": "/tmp/i491-rafx3mmc/fresh-absent/r/putgd/session.sock",
+                  "utf8Bytes": 52,
+                  "passed": true
+                }
+              ]
+            },
+            "socketRemaining": false,
+            "maps": {
+              "220062": {
+                "command": "/usr/bin/putgd --background ",
+                "qtPlatform": []
+              },
+              "220077": {
+                "command": "/usr/bin/putgd-ui ",
+                "qtPlatform": [
+                  "/usr/lib64/qt6/plugins/platforms/libqwayland.so",
+                  "/usr/lib64/qt6/plugins/platforms/libqwayland.so",
+                  "/usr/lib64/qt6/plugins/platforms/libqwayland.so",
+                  "/usr/lib64/qt6/plugins/platforms/libqwayland.so"
+                ]
+              }
+            },
+            "mcpEqualsCli": true
+          },
+          {
+            "case": "fresh-invalid",
+            "initialUpdate": {
+              "action": {
+                "file": "/etc/yum.repos.d/putgd.repo",
+                "kind": "download",
+                "repository": "other"
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "fedora44",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "nightly",
+              "channelSetting": "build",
+              "channelSource": "setting",
+              "check": true,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": true,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": "2026-10-25T05:05:11Z",
+              "notifies": false,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "afterPatch": {
+              "action": {
+                "file": "/etc/yum.repos.d/putgd.repo",
+                "kind": "download",
+                "repository": "other"
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "fedora44",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "stable",
+              "channelSetting": "stable",
+              "channelSource": "setting",
+              "check": false,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": false,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": null,
+              "notifies": true,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "startupSeconds": 0.16238799900747836,
+            "passed": true,
+            "socketPreflight": {
+              "schemaVersion": 1,
+              "passed": true,
+              "limitBytesExcludingNul": 107,
+              "paths": [
+                {
+                  "path": "/tmp/i491-rafx3mmc/fresh-invalid/r/putgd/session.sock",
+                  "utf8Bytes": 53,
+                  "passed": true
+                }
+              ]
+            },
+            "socketRemaining": false,
+            "maps": {
+              "220170": {
+                "command": "/usr/bin/putgd --background ",
+                "qtPlatform": []
+              },
+              "220182": {
+                "command": "/usr/bin/putgd-ui ",
+                "qtPlatform": [
+                  "/usr/lib64/qt6/plugins/platforms/libqwayland.so",
+                  "/usr/lib64/qt6/plugins/platforms/libqwayland.so",
+                  "/usr/lib64/qt6/plugins/platforms/libqwayland.so",
+                  "/usr/lib64/qt6/plugins/platforms/libqwayland.so"
+                ]
+              }
+            },
+            "mcpEqualsCli": true
+          },
+          {
+            "case": "fresh-disabled",
+            "initialUpdate": {
+              "action": {
+                "file": "/etc/yum.repos.d/putgd.repo",
+                "kind": "download",
+                "repository": "disabled"
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "fedora44",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "nightly",
+              "channelSetting": "build",
+              "channelSource": "setting",
+              "check": true,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": true,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": "2026-10-25T04:58:44Z",
+              "notifies": false,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "afterPatch": {
+              "action": {
+                "file": "/etc/yum.repos.d/putgd.repo",
+                "kind": "download",
+                "repository": "disabled"
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "fedora44",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "stable",
+              "channelSetting": "stable",
+              "channelSource": "setting",
+              "check": false,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": false,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": null,
+              "notifies": true,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "startupSeconds": 0.13583943300182,
+            "passed": true,
+            "socketPreflight": {
+              "schemaVersion": 1,
+              "passed": true,
+              "limitBytesExcludingNul": 107,
+              "paths": [
+                {
+                  "path": "/tmp/i491-rafx3mmc/fresh-disabled/r/putgd/session.sock",
+                  "utf8Bytes": 54,
+                  "passed": true
+                }
+              ]
+            },
+            "socketRemaining": false,
+            "maps": {
+              "220252": {
+                "command": "/usr/bin/putgd --background ",
+                "qtPlatform": []
+              },
+              "220266": {
+                "command": "/usr/bin/putgd-ui ",
+                "qtPlatform": [
+                  "/usr/lib64/qt6/plugins/platforms/libqwayland.so",
+                  "/usr/lib64/qt6/plugins/platforms/libqwayland.so",
+                  "/usr/lib64/qt6/plugins/platforms/libqwayland.so",
+                  "/usr/lib64/qt6/plugins/platforms/libqwayland.so"
+                ]
+              }
+            },
+            "mcpEqualsCli": true
+          }
+        ],
+        "source": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+        "binaryHashes": {
+          "putgd": "d79c470645d289f9f20af1db9b413b38d101f59d250a9913cc1432fecc48b9ad",
+          "putgd-ui": "60ffbcbce1bb5b7b95c7a93788dfcc7953599152d250843fcc3295a3a3372fe4",
+          "putgd-cli": "eb8d2224ac3d675f6665a0aac881d91d13ec7a698eab36a4935ec814602c7c80"
+        },
+        "session": {
+          "DISPLAY": ":0",
+          "WAYLAND_DISPLAY": "wayland-0",
+          "XDG_CURRENT_DESKTOP": "GNOME",
+          "XDG_SESSION_TYPE": "wayland"
+        },
+        "loginSessions": "1100 1000 patrick seat0 144202 user    tty2 no -\n   2 1000 patrick -     1063   manager -    no -\n2012 1000 patrick -     210088 user    -    no -\n2026 1000 patrick -     213859 user    -    no -\n2062 1000 patrick -     219520 user    -    no -\n   3 1000 patrick -     1207   user    -    no -\n   4 1000 patrick -     1208   user    -    no -\n   5 1000 patrick -     1209   user    -    no -\n",
+        "captureRect": [
+          0,
+          180,
+          1920,
+          900
+        ],
+        "initialCoverFraction": 1.0,
+        "repositoryRestored": true,
+        "coverExit": 0,
+        "packageAudit": {
+          "schemaVersion": 1,
+          "scope": "native extracted package identity/inventory/dependencies; not desktop acceptance",
+          "manifest": {
+            "schemaVersion": 1,
+            "version": "26.1025.1256-nightly",
+            "baseVersion": "26.1025.1256",
+            "packageVersion": "26.1025.1256~nightly",
+            "gitCommit": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+            "gitTree": "c8d83f965c9e8314111665516497784671206f89",
+            "commitCount": 1256,
+            "dirty": false,
+            "sourceProvenance": "git"
+          },
+          "compiledIdentities": {
+            "putgd": {
+              "schemaVersion": 1,
+              "version": "26.1025.1256-nightly",
+              "baseVersion": "26.1025.1256",
+              "packageVersion": "26.1025.1256~nightly",
+              "gitCommit": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+              "gitTree": "c8d83f965c9e8314111665516497784671206f89",
+              "commitCount": 1256,
+              "dirty": false,
+              "sourceProvenance": "git"
+            },
+            "putgd-cli": {
+              "schemaVersion": 1,
+              "version": "26.1025.1256-nightly",
+              "baseVersion": "26.1025.1256",
+              "packageVersion": "26.1025.1256~nightly",
+              "gitCommit": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+              "gitTree": "c8d83f965c9e8314111665516497784671206f89",
+              "commitCount": 1256,
+              "dirty": false,
+              "sourceProvenance": "git"
+            },
+            "putgd-ui": {
+              "schemaVersion": 1,
+              "version": "26.1025.1256-nightly",
+              "baseVersion": "26.1025.1256",
+              "packageVersion": "26.1025.1256~nightly",
+              "gitCommit": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+              "gitTree": "c8d83f965c9e8314111665516497784671206f89",
+              "commitCount": 1256,
+              "dirty": false,
+              "sourceProvenance": "git"
+            },
+            "putgd-capture": {
+              "schemaVersion": 1,
+              "version": "26.1025.1256-nightly",
+              "baseVersion": "26.1025.1256",
+              "packageVersion": "26.1025.1256~nightly",
+              "gitCommit": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+              "gitTree": "c8d83f965c9e8314111665516497784671206f89",
+              "commitCount": 1256,
+              "dirty": false,
+              "sourceProvenance": "git"
+            },
+            "putgd-s3-worker": {
+              "schemaVersion": 1,
+              "version": "26.1025.1256-nightly",
+              "baseVersion": "26.1025.1256",
+              "packageVersion": "26.1025.1256~nightly",
+              "gitCommit": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+              "gitTree": "c8d83f965c9e8314111665516497784671206f89",
+              "commitCount": 1256,
+              "dirty": false,
+              "sourceProvenance": "git"
+            },
+            "putgd-b2-worker": {
+              "schemaVersion": 1,
+              "version": "26.1025.1256-nightly",
+              "baseVersion": "26.1025.1256",
+              "packageVersion": "26.1025.1256~nightly",
+              "gitCommit": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+              "gitTree": "c8d83f965c9e8314111665516497784671206f89",
+              "commitCount": 1256,
+              "dirty": false,
+              "sourceProvenance": "git"
+            },
+            "putgd-kde-region": {
+              "schemaVersion": 1,
+              "version": "26.1025.1256-nightly",
+              "baseVersion": "26.1025.1256",
+              "packageVersion": "26.1025.1256~nightly",
+              "gitCommit": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+              "gitTree": "c8d83f965c9e8314111665516497784671206f89",
+              "commitCount": 1256,
+              "dirty": false,
+              "sourceProvenance": "git"
+            },
+            "putgd-record": {
+              "schemaVersion": 1,
+              "version": "26.1025.1256-nightly",
+              "baseVersion": "26.1025.1256",
+              "packageVersion": "26.1025.1256~nightly",
+              "gitCommit": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+              "gitTree": "c8d83f965c9e8314111665516497784671206f89",
+              "commitCount": 1256,
+              "dirty": false,
+              "sourceProvenance": "git"
+            }
+          },
+          "updateCheck": {
+            "channel": "nightly",
+            "kind": "nightly",
+            "packageTarget": "fedora44",
+            "reason": null,
+            "supported": true,
+            "version": "26.1025.1256-nightly"
+          },
+          "package": {
+            "format": "RPM",
+            "name": "putgd",
+            "version": "26.1025.1256~nightly",
+            "release": "1.fc44",
+            "architecture": "x86_64",
+            "requires": [
+              "/bin/sh",
+              "/bin/sh",
+              "/bin/sh",
+              "config(putgd) = 26.1025.1256~nightly-1.fc44",
+              "glib2",
+              "gstreamer1-plugins-bad-free",
+              "gstreamer1-plugins-base",
+              "gstreamer1-plugins-good",
+              "libGLX.so.0()(64bit)",
+              "libLayerShellQtInterface.so.6()(64bit)",
+              "libOpenGL.so.0()(64bit)",
+              "libQt6Core.so.6()(64bit)",
+              "libQt6Core.so.6(Qt_6)(64bit)",
+              "libQt6Core.so.6(Qt_6.11)(64bit)",
+              "libQt6DBus.so.6()(64bit)",
+              "libQt6DBus.so.6(Qt_6)(64bit)",
+              "libQt6Gui.so.6()(64bit)",
+              "libQt6Gui.so.6(Qt_6)(64bit)",
+              "libQt6Network.so.6()(64bit)",
+              "libQt6Network.so.6(Qt_6)(64bit)",
+              "libQt6Sql.so.6()(64bit)",
+              "libQt6Sql.so.6(Qt_6)(64bit)",
+              "libQt6Widgets.so.6()(64bit)",
+              "libQt6Widgets.so.6(Qt_6)(64bit)",
+              "libXcursor.so.1()(64bit)",
+              "libavcodec.so.62()(64bit)",
+              "libavcodec.so.62(LIBAVCODEC_62)(64bit)",
+              "libavfilter.so.11()(64bit)",
+              "libavfilter.so.11(LIBAVFILTER_11)(64bit)",
+              "libavformat.so.62()(64bit)",
+              "libavformat.so.62(LIBAVFORMAT_62)(64bit)",
+              "libavutil.so.60()(64bit)",
+              "libavutil.so.60(LIBAVUTIL_60)(64bit)",
+              "libc.so.6()(64bit)",
+              "libc.so.6(GLIBC_2.10)(64bit)",
+              "libc.so.6(GLIBC_2.14)(64bit)",
+              "libc.so.6(GLIBC_2.16)(64bit)",
+              "libc.so.6(GLIBC_2.17)(64bit)",
+              "libc.so.6(GLIBC_2.2.5)(64bit)",
+              "libc.so.6(GLIBC_2.28)(64bit)",
+              "libc.so.6(GLIBC_2.3)(64bit)",
+              "libc.so.6(GLIBC_2.3.2)(64bit)",
+              "libc.so.6(GLIBC_2.3.4)(64bit)",
+              "libc.so.6(GLIBC_2.32)(64bit)",
+              "libc.so.6(GLIBC_2.33)(64bit)",
+              "libc.so.6(GLIBC_2.34)(64bit)",
+              "libc.so.6(GLIBC_2.38)(64bit)",
+              "libc.so.6(GLIBC_2.4)(64bit)",
+              "libc.so.6(GLIBC_2.7)(64bit)",
+              "libc.so.6(GLIBC_2.9)(64bit)",
+              "libc.so.6(GLIBC_ABI_GNU2_TLS)(64bit)",
+              "libcrypto.so.3()(64bit)",
+              "libcrypto.so.3(OPENSSL_3.0.0)(64bit)",
+              "libcrypto.so.3(OPENSSL_3.0.3)(64bit)",
+              "libcrypto.so.3(OPENSSL_3.4.0)(64bit)",
+              "libcurl.so.4()(64bit)",
+              "libgcc_s.so.1()(64bit)",
+              "libgcc_s.so.1(GCC_3.0)(64bit)",
+              "libgcc_s.so.1(GCC_3.3)(64bit)",
+              "libgcc_s.so.1(GCC_3.4)(64bit)",
+              "libgcc_s.so.1(GCC_4.2.0)(64bit)",
+              "libglib-2.0.so.0()(64bit)",
+              "libgobject-2.0.so.0()(64bit)",
+              "libgstapp-1.0.so.0()(64bit)",
+              "libgstbase-1.0.so.0()(64bit)",
+              "libgstreamer-1.0.so.0()(64bit)",
+              "libgstvideo-1.0.so.0()(64bit)",
+              "libm.so.6()(64bit)",
+              "libm.so.6(GLIBC_2.2.5)(64bit)",
+              "libm.so.6(GLIBC_2.29)(64bit)",
+              "libm.so.6(GLIBC_2.38)(64bit)",
+              "libqt6keychain.so.1()(64bit)",
+              "libstdc++.so.6()(64bit)",
+              "libstdc++.so.6(CXXABI_1.3)(64bit)",
+              "libstdc++.so.6(CXXABI_1.3.11)(64bit)",
+              "libstdc++.so.6(CXXABI_1.3.13)(64bit)",
+              "libstdc++.so.6(CXXABI_1.3.15)(64bit)",
+              "libstdc++.so.6(CXXABI_1.3.2)(64bit)",
+              "libstdc++.so.6(CXXABI_1.3.3)(64bit)",
+              "libstdc++.so.6(CXXABI_1.3.5)(64bit)",
+              "libstdc++.so.6(CXXABI_1.3.7)(64bit)",
+              "libstdc++.so.6(CXXABI_1.3.9)(64bit)",
+              "libstdc++.so.6(GLIBCXX_3.4)(64bit)",
+              "libstdc++.so.6(GLIBCXX_3.4.11)(64bit)",
+              "libstdc++.so.6(GLIBCXX_3.4.14)(64bit)",
+              "libstdc++.so.6(GLIBCXX_3.4.15)(64bit)",
+              "libstdc++.so.6(GLIBCXX_3.4.18)(64bit)",
+              "libstdc++.so.6(GLIBCXX_3.4.19)(64bit)",
+              "libstdc++.so.6(GLIBCXX_3.4.20)(64bit)",
+              "libstdc++.so.6(GLIBCXX_3.4.21)(64bit)",
+              "libstdc++.so.6(GLIBCXX_3.4.22)(64bit)",
+              "libstdc++.so.6(GLIBCXX_3.4.26)(64bit)",
+              "libstdc++.so.6(GLIBCXX_3.4.29)(64bit)",
+              "libstdc++.so.6(GLIBCXX_3.4.30)(64bit)",
+              "libstdc++.so.6(GLIBCXX_3.4.31)(64bit)",
+              "libstdc++.so.6(GLIBCXX_3.4.32)(64bit)",
+              "libstdc++.so.6(GLIBCXX_3.4.9)(64bit)",
+              "libswresample.so.6()(64bit)",
+              "libswresample.so.6(LIBSWRESAMPLE_6)(64bit)",
+              "libswscale.so.9()(64bit)",
+              "libswscale.so.9(LIBSWSCALE_9)(64bit)",
+              "libwayland-client.so.0()(64bit)",
+              "libxcb-damage.so.0()(64bit)",
+              "libxcb-keysyms.so.1()(64bit)",
+              "libxcb-randr.so.0()(64bit)",
+              "libxcb-render.so.0()(64bit)",
+              "libxcb-xfixes.so.0()(64bit)",
+              "libxcb-xinput.so.0()(64bit)",
+              "libxcb.so.1()(64bit)",
+              "libxkbcommon.so.0()(64bit)",
+              "libxkbcommon.so.0(V_0.5.0)(64bit)",
+              "libxkbcommon.so.0(V_0.7.0)(64bit)",
+              "libxkbcommon.so.0(V_1.0.0)(64bit)",
+              "libz.so.1()(64bit)",
+              "pipewire-gstreamer",
+              "qt6-qtbase",
+              "qt6-qtbase-gui",
+              "qt6-qtimageformats",
+              "qt6-qtwayland",
+              "rpmlib(CompressedFileNames) <= 3.0.4-1",
+              "rpmlib(FileDigests) <= 4.6.0-1",
+              "rpmlib(PayloadFilesHavePrefix) <= 4.0-1",
+              "rpmlib(PayloadIsZstd) <= 5.4.18-1",
+              "rpmlib(TildeInVersions) <= 4.10.0-1",
+              "rtld(GNU_HASH)"
+            ],
+            "provides": [
+              "application()",
+              "application(putgd-record.desktop)",
+              "application(putgd-ui.desktop)",
+              "application(putgd.desktop)",
+              "config(putgd) = 26.1025.1256~nightly-1.fc44",
+              "metainfo()",
+              "metainfo(gd.put.Putgd.metainfo.xml)",
+              "putgd = 26.1025.1256~nightly-1.fc44",
+              "putgd(x86-64) = 26.1025.1256~nightly-1.fc44"
+            ],
+            "recommends": [
+              "gstreamer1-plugin-openh264",
+              "openh264"
+            ],
+            "file": "putgd-26.1025.1256~nightly-1.fc44.x86_64.rpm",
+            "sha256": "20b1e28c517120a5f355afb6467cb40cfa34a7e4da7040ff218d94fd83daedd9",
+            "size": 7380502
+          }
+        },
+        "packageChecksums": "20b1e28c517120a5f355afb6467cb40cfa34a7e4da7040ff218d94fd83daedd9  putgd-26.1025.1256~nightly-1.fc44.x86_64.rpm\n",
+        "installedHashes": "d79c470645d289f9f20af1db9b413b38d101f59d250a9913cc1432fecc48b9ad  /usr/bin/putgd\n60ffbcbce1bb5b7b95c7a93788dfcc7953599152d250843fcc3295a3a3372fe4  /usr/bin/putgd-ui\neb8d2224ac3d675f6665a0aac881d91d13ec7a698eab36a4935ec814602c7c80  /usr/bin/putgd-cli\n",
+        "visuals": [
+          {
+            "file": "pictures/f44-fresh-managed-first.png",
+            "sha256": "905cd29ae61224e629b69135c5bdb902cd692e5239dc30f8d0d1a8aa4c93201a"
+          },
+          {
+            "file": "pictures/f44-fresh-absent-settled.png",
+            "sha256": "a212f49435256b4186872f40728090e5cdfb919ebbd5543d473a8d1e018a821b"
+          }
+        ]
+      },
+      "ubuntu26-gnome": {
+        "scope": "installed Ubuntu26 DEB in independent GNOME Wayland guest; fresh managed and stored choice restart",
+        "build": {
+          "schemaVersion": 1,
+          "version": "26.1025.1256-nightly",
+          "baseVersion": "26.1025.1256",
+          "packageVersion": "26.1025.1256~nightly",
+          "gitCommit": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+          "gitTree": "c8d83f965c9e8314111665516497784671206f89",
+          "commitCount": 1256,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "qtScaleFactor": ".7",
+        "passed": true,
+        "output": "work/491/ubuntu-package/work/491p/vm-native-20261025T045031Z",
+        "cases": [
+          {
+            "case": "fresh-managed",
+            "initialUpdate": {
+              "action": {
+                "channel": "nightly",
+                "command": "sudo apt update && sudo apt upgrade",
+                "file": "/etc/apt/sources.list.d/putgd.sources",
+                "kind": "software-updates",
+                "manager": "apt",
+                "older": null,
+                "otherChannel": {
+                  "channel": "stable",
+                  "commands": [
+                    "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+                    "sudo apt update",
+                    "sudo apt install --allow-downgrades putgd/stable"
+                  ],
+                  "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+                },
+                "repository": "managed",
+                "updater": null
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "ubuntu26.04",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "nightly",
+              "channelSetting": "build",
+              "channelSource": "repository",
+              "check": true,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": true,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": "2026-10-25T05:03:35Z",
+              "notifies": false,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "afterPatch": {
+              "action": {
+                "channel": "nightly",
+                "command": "sudo apt update && sudo apt upgrade",
+                "file": "/etc/apt/sources.list.d/putgd.sources",
+                "kind": "software-updates",
+                "manager": "apt",
+                "older": null,
+                "otherChannel": {
+                  "channel": "stable",
+                  "commands": [
+                    "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+                    "sudo apt update",
+                    "sudo apt install --allow-downgrades putgd/stable"
+                  ],
+                  "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+                },
+                "repository": "managed",
+                "updater": null
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "ubuntu26.04",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "nightly",
+              "channelSetting": "stable",
+              "channelSource": "repository",
+              "check": false,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": false,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": null,
+              "notifies": false,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "startupSeconds": 1.4396030938951299,
+            "passed": true,
+            "runningIdentity": {
+              "pid": 5079,
+              "startTicks": 28982,
+              "sha256": "b2d35f419987c180061b94370ee1db7aa1c332f74cae20c0e62dd88cf72dc7a7"
+            }
+          },
+          {
+            "case": "managed-stored-stable",
+            "initialUpdate": {
+              "action": {
+                "channel": "nightly",
+                "command": "sudo apt update && sudo apt upgrade",
+                "file": "/etc/apt/sources.list.d/putgd.sources",
+                "kind": "software-updates",
+                "manager": "apt",
+                "older": null,
+                "otherChannel": {
+                  "channel": "stable",
+                  "commands": [
+                    "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+                    "sudo apt update",
+                    "sudo apt install --allow-downgrades putgd/stable"
+                  ],
+                  "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+                },
+                "repository": "managed",
+                "updater": null
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "ubuntu26.04",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "nightly",
+              "channelSetting": "stable",
+              "channelSource": "repository",
+              "check": false,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": false,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": null,
+              "notifies": false,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "afterPatch": {
+              "action": {
+                "channel": "nightly",
+                "command": "sudo apt update && sudo apt upgrade",
+                "file": "/etc/apt/sources.list.d/putgd.sources",
+                "kind": "software-updates",
+                "manager": "apt",
+                "older": null,
+                "otherChannel": {
+                  "channel": "stable",
+                  "commands": [
+                    "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+                    "sudo apt update",
+                    "sudo apt install --allow-downgrades putgd/stable"
+                  ],
+                  "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+                },
+                "repository": "managed",
+                "updater": null
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "ubuntu26.04",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "nightly",
+              "channelSetting": "stable",
+              "channelSource": "repository",
+              "check": false,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": false,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": null,
+              "notifies": false,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "startupSeconds": 1.0652382289990783,
+            "passed": true,
+            "runningIdentity": {
+              "pid": 5868,
+              "startTicks": 29949,
+              "sha256": "b2d35f419987c180061b94370ee1db7aa1c332f74cae20c0e62dd88cf72dc7a7"
+            }
+          }
+        ],
+        "versions": "gnome-shell 50.1-0ubuntu1.2\nlibqt6core6t64 6.10.2+dfsg-7\nmutter \nputgd 26.1025.1256~nightly\nb2d35f419987c180061b94370ee1db7aa1c332f74cae20c0e62dd88cf72dc7a7  /usr/bin/putgd\nfd8b38058542734c3dde771c5f075336716f1b46f32bf290c1b96f7d889cd38b  /usr/bin/putgd-ui\n8449c570e130fae8a76f198272c4a477270931af4799f328e29a3f7be579d5cf  /usr/bin/putgd-cli\n 1 1000 lab seat0 1296 user    tty2 no -\n16 1000 lab -     4934 user    -    no -\n 2 1000 lab -     1320 manager -    no -\n",
+        "socketPreflight": {
+          "path": "/tmp/i491v-AP1oeBJN/r/putgd/session.sock",
+          "utf8Bytes": 40,
+          "passed": true
+        },
+        "vmRun": {
+          "schemaVersion": 1,
+          "id": "7c2c2fd9-c1cd-4162-bbec-d7d466c6a0eb",
+          "profile": "gnome-wayland",
+          "guest_user": "lab",
+          "ssh_port": 22220,
+          "vnc_display": 20,
+          "acceleration": "kvm",
+          "golden": "/home/patrick/work/put.gd/work/lab-images/transfer-0d2922e34f4b/image.qcow2",
+          "golden_sha256": "563730cc1d929bd946d20cf30a9aecfe3c4ad40eb12ba7f9abcff1c461e342bb",
+          "bootstrap_key": "/home/patrick/work/put.gd/work/lab-bootstrap-d69/rec-ws/identity",
+          "known_hosts": "/home/patrick/work/i491p/work/lab-runs/g491/known_hosts",
+          "overlay": "/home/patrick/work/i491p/work/lab-runs/g491/disk.qcow2",
+          "pid": 2855158
+        },
+        "visuals": [
+          {
+            "file": "pictures/ubuntu26-gnome-fresh-managed.png",
+            "sha256": "ea4ea69c400537814ac2e6df35440ee2a89c8c946baf3c148c55609af702fce6"
+          },
+          {
+            "file": "pictures/ubuntu26-gnome-managed-stored-stable.png",
+            "sha256": "e71c394f7744f10c08f11def58d7ab9821655c60bda8d997db873ad97dd4152d"
+          }
+        ]
+      },
+      "d69": {
+        "scope": "installed native package, actual system repository, no feed check",
+        "build": {
+          "schemaVersion": 1,
+          "version": "26.1025.1256-nightly",
+          "baseVersion": "26.1025.1256",
+          "packageVersion": "26.1025.1256~nightly",
+          "gitCommit": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+          "gitTree": "c8d83f965c9e8314111665516497784671206f89",
+          "commitCount": 1256,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "qtScaleFactor": ".7",
+        "passed": true,
+        "output": "work/491/d69-package/work/491p/native-20261025T045941Z",
+        "cases": [
+          {
+            "case": "fresh-managed",
+            "initialUpdate": {
+              "action": {
+                "channel": "nightly",
+                "command": "sudo apt update && sudo apt upgrade",
+                "file": "/etc/apt/sources.list.d/putgd.sources",
+                "kind": "software-updates",
+                "manager": "apt",
+                "older": null,
+                "otherChannel": {
+                  "channel": "stable",
+                  "commands": [
+                    "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+                    "sudo apt update",
+                    "sudo apt install --allow-downgrades putgd/stable"
+                  ],
+                  "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+                },
+                "repository": "managed",
+                "updater": {
+                  "arguments": [
+                    "--mode=updates"
+                  ],
+                  "id": "gnome-software",
+                  "name": "GNOME Software",
+                  "program": "/usr/bin/gnome-software"
+                }
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "debian13",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "nightly",
+              "channelSetting": "build",
+              "channelSource": "repository",
+              "check": true,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": true,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": "2026-10-25T05:10:40Z",
+              "notifies": false,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "afterPatch": {
+              "action": {
+                "channel": "nightly",
+                "command": "sudo apt update && sudo apt upgrade",
+                "file": "/etc/apt/sources.list.d/putgd.sources",
+                "kind": "software-updates",
+                "manager": "apt",
+                "older": null,
+                "otherChannel": {
+                  "channel": "stable",
+                  "commands": [
+                    "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+                    "sudo apt update",
+                    "sudo apt install --allow-downgrades putgd/stable"
+                  ],
+                  "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+                },
+                "repository": "managed",
+                "updater": {
+                  "arguments": [
+                    "--mode=updates"
+                  ],
+                  "id": "gnome-software",
+                  "name": "GNOME Software",
+                  "program": "/usr/bin/gnome-software"
+                }
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "debian13",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "nightly",
+              "channelSetting": "stable",
+              "channelSource": "repository",
+              "check": false,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": false,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": null,
+              "notifies": false,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "startupSeconds": 0.13466025493107736,
+            "passed": true,
+            "socketPreflight": {
+              "schemaVersion": 1,
+              "passed": true,
+              "limitBytesExcludingNul": 107,
+              "paths": [
+                {
+                  "path": "/tmp/i491-ql1i4z0c/fresh-managed/r/putgd/session.sock",
+                  "utf8Bytes": 53,
+                  "passed": true
+                }
+              ]
+            },
+            "socketRemaining": false,
+            "maps": {
+              "2871629": {
+                "command": "/usr/bin/putgd --background ",
+                "qtPlatform": []
+              },
+              "2871641": {
+                "command": "/usr/bin/putgd-ui ",
+                "qtPlatform": [
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland-generic.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland-generic.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland-generic.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland-generic.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland-generic.so"
+                ]
+              }
+            }
+          },
+          {
+            "case": "managed-stored-stable",
+            "initialUpdate": {
+              "action": {
+                "channel": "nightly",
+                "command": "sudo apt update && sudo apt upgrade",
+                "file": "/etc/apt/sources.list.d/putgd.sources",
+                "kind": "software-updates",
+                "manager": "apt",
+                "older": null,
+                "otherChannel": {
+                  "channel": "stable",
+                  "commands": [
+                    "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+                    "sudo apt update",
+                    "sudo apt install --allow-downgrades putgd/stable"
+                  ],
+                  "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+                },
+                "repository": "managed",
+                "updater": {
+                  "arguments": [
+                    "--mode=updates"
+                  ],
+                  "id": "gnome-software",
+                  "name": "GNOME Software",
+                  "program": "/usr/bin/gnome-software"
+                }
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "debian13",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "nightly",
+              "channelSetting": "stable",
+              "channelSource": "repository",
+              "check": false,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": false,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": null,
+              "notifies": false,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "afterPatch": {
+              "action": {
+                "channel": "nightly",
+                "command": "sudo apt update && sudo apt upgrade",
+                "file": "/etc/apt/sources.list.d/putgd.sources",
+                "kind": "software-updates",
+                "manager": "apt",
+                "older": null,
+                "otherChannel": {
+                  "channel": "stable",
+                  "commands": [
+                    "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+                    "sudo apt update",
+                    "sudo apt install --allow-downgrades putgd/stable"
+                  ],
+                  "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+                },
+                "repository": "managed",
+                "updater": {
+                  "arguments": [
+                    "--mode=updates"
+                  ],
+                  "id": "gnome-software",
+                  "name": "GNOME Software",
+                  "program": "/usr/bin/gnome-software"
+                }
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "debian13",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "nightly",
+              "channelSetting": "stable",
+              "channelSource": "repository",
+              "check": false,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": false,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": null,
+              "notifies": false,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "startupSeconds": 0.13032836699858308,
+            "passed": true,
+            "socketPreflight": {
+              "schemaVersion": 1,
+              "passed": true,
+              "limitBytesExcludingNul": 107,
+              "paths": [
+                {
+                  "path": "/tmp/i491-ql1i4z0c/fresh-managed/r/putgd/session.sock",
+                  "utf8Bytes": 53,
+                  "passed": true
+                }
+              ]
+            },
+            "socketRemaining": false,
+            "maps": {
+              "2871708": {
+                "command": "/usr/bin/putgd --background ",
+                "qtPlatform": []
+              },
+              "2871726": {
+                "command": "/usr/bin/putgd-ui ",
+                "qtPlatform": [
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland-generic.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland-generic.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland-generic.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland-generic.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland-generic.so"
+                ]
+              }
+            }
+          },
+          {
+            "case": "fresh-absent",
+            "initialUpdate": {
+              "action": {
+                "file": "/etc/apt/sources.list.d/putgd.sources",
+                "kind": "download",
+                "repository": "absent"
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "debian13",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "nightly",
+              "channelSetting": "build",
+              "channelSource": "setting",
+              "check": true,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": true,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": "2026-10-25T05:11:36Z",
+              "notifies": false,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "afterPatch": {
+              "action": {
+                "file": "/etc/apt/sources.list.d/putgd.sources",
+                "kind": "download",
+                "repository": "absent"
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "debian13",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "stable",
+              "channelSetting": "stable",
+              "channelSource": "setting",
+              "check": false,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": false,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": null,
+              "notifies": true,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "startupSeconds": 0.13055194600019604,
+            "passed": true,
+            "socketPreflight": {
+              "schemaVersion": 1,
+              "passed": true,
+              "limitBytesExcludingNul": 107,
+              "paths": [
+                {
+                  "path": "/tmp/i491-ql1i4z0c/fresh-absent/r/putgd/session.sock",
+                  "utf8Bytes": 52,
+                  "passed": true
+                }
+              ]
+            },
+            "socketRemaining": false,
+            "maps": {
+              "2871790": {
+                "command": "/usr/bin/putgd --background ",
+                "qtPlatform": []
+              },
+              "2871802": {
+                "command": "/usr/bin/putgd-ui ",
+                "qtPlatform": [
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland-generic.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland-generic.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland-generic.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland-generic.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland-generic.so"
+                ]
+              }
+            }
+          },
+          {
+            "case": "fresh-invalid",
+            "initialUpdate": {
+              "action": {
+                "file": "/etc/apt/sources.list.d/putgd.sources",
+                "kind": "download",
+                "repository": "other"
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "debian13",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "nightly",
+              "channelSetting": "build",
+              "channelSource": "setting",
+              "check": true,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": true,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": "2026-10-25T05:09:41Z",
+              "notifies": false,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "afterPatch": {
+              "action": {
+                "file": "/etc/apt/sources.list.d/putgd.sources",
+                "kind": "download",
+                "repository": "other"
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "debian13",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "stable",
+              "channelSetting": "stable",
+              "channelSource": "setting",
+              "check": false,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": false,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": null,
+              "notifies": true,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "startupSeconds": 0.13024829991627485,
+            "passed": true,
+            "socketPreflight": {
+              "schemaVersion": 1,
+              "passed": true,
+              "limitBytesExcludingNul": 107,
+              "paths": [
+                {
+                  "path": "/tmp/i491-ql1i4z0c/fresh-invalid/r/putgd/session.sock",
+                  "utf8Bytes": 53,
+                  "passed": true
+                }
+              ]
+            },
+            "socketRemaining": false,
+            "maps": {
+              "2871865": {
+                "command": "/usr/bin/putgd --background ",
+                "qtPlatform": []
+              },
+              "2871877": {
+                "command": "/usr/bin/putgd-ui ",
+                "qtPlatform": [
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland-generic.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland-generic.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland-generic.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland-generic.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland-generic.so"
+                ]
+              }
+            }
+          },
+          {
+            "case": "fresh-disabled",
+            "initialUpdate": {
+              "action": {
+                "file": "/etc/apt/sources.list.d/putgd.sources",
+                "kind": "download",
+                "repository": "disabled"
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "debian13",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "nightly",
+              "channelSetting": "build",
+              "channelSource": "setting",
+              "check": true,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": true,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": "2026-10-25T05:08:35Z",
+              "notifies": false,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "afterPatch": {
+              "action": {
+                "file": "/etc/apt/sources.list.d/putgd.sources",
+                "kind": "download",
+                "repository": "disabled"
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "debian13",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "stable",
+              "channelSetting": "stable",
+              "channelSource": "setting",
+              "check": false,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": false,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": null,
+              "notifies": true,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "startupSeconds": 0.13253319601062685,
+            "passed": true,
+            "socketPreflight": {
+              "schemaVersion": 1,
+              "passed": true,
+              "limitBytesExcludingNul": 107,
+              "paths": [
+                {
+                  "path": "/tmp/i491-ql1i4z0c/fresh-disabled/r/putgd/session.sock",
+                  "utf8Bytes": 54,
+                  "passed": true
+                }
+              ]
+            },
+            "socketRemaining": false,
+            "maps": {
+              "2871951": {
+                "command": "/usr/bin/putgd --background ",
+                "qtPlatform": []
+              },
+              "2871963": {
+                "command": "/usr/bin/putgd-ui ",
+                "qtPlatform": [
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland-generic.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland-generic.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland-generic.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland-generic.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqwayland-generic.so"
+                ]
+              }
+            }
+          }
+        ],
+        "source": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+        "binaryHashes": {
+          "putgd": "7331ff0c260096a0a1adb16ed0408b03b84eec405f4e2bf72b85a3022ea9b5ad",
+          "putgd-ui": "b0ad76799191d0a80997bb165a0ee7cc869c464187c62446461201b25e1e9cf5",
+          "putgd-cli": "403ba454eae1c9a4e7f9b2c7e3507a537e80615c65569c929531c498fe9df1fa"
+        },
+        "session": {
+          "DISPLAY": ":0",
+          "WAYLAND_DISPLAY": "wayland-0",
+          "XDG_CURRENT_DESKTOP": "KDE",
+          "XDG_SESSION_TYPE": "wayland"
+        },
+        "loginSessions": "13951 1000 patrick -     2008815 user    -    no -\n14690 1000 patrick -     2216782 user    -    no -\n18550 1000 patrick -     2575344 user    -    no -\n    2 1000 patrick -     937     manager -    no -\n20103 1000 patrick seat0 2755642 user    tty1 no -\n 2065 1000 patrick -     308509  user    -    no -\n21080 1000 patrick -     2861226 user    -    no -\n21102 1000 patrick -     2865539 user    -    no -\n21112 1000 patrick -     2866215 user    -    no -\n21139 1000 patrick -     2868907 user    -    no -\n21147 1000 patrick -     2869512 user    -    no -\n21162 1000 patrick -     2870604 user    -    no -\n21187 1000 patrick -     2871320 user    -    no -\n21196 1000 patrick -     2871448 user    -    no -\n21197 1000 patrick -     2871466 user    -    no -\n    3 1000 patrick -     1653    user    -    no -\n 7406 1000 patrick -     978288  user    -    no -\n",
+        "captureRect": [
+          0,
+          0,
+          1540,
+          1000
+        ],
+        "initialCoverFraction": 1.0,
+        "repositoryRestored": true,
+        "coverExit": 0,
+        "windowPlacement": "own PID KWin windows 270,150,1000,650; script unloaded",
+        "packageAudit": {
+          "schemaVersion": 1,
+          "scope": "native extracted package identity/inventory/dependencies; not desktop acceptance",
+          "manifest": {
+            "schemaVersion": 1,
+            "version": "26.1025.1256-nightly",
+            "baseVersion": "26.1025.1256",
+            "packageVersion": "26.1025.1256~nightly",
+            "gitCommit": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+            "gitTree": "c8d83f965c9e8314111665516497784671206f89",
+            "commitCount": 1256,
+            "dirty": false,
+            "sourceProvenance": "git"
+          },
+          "compiledIdentities": {
+            "putgd": {
+              "schemaVersion": 1,
+              "version": "26.1025.1256-nightly",
+              "baseVersion": "26.1025.1256",
+              "packageVersion": "26.1025.1256~nightly",
+              "gitCommit": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+              "gitTree": "c8d83f965c9e8314111665516497784671206f89",
+              "commitCount": 1256,
+              "dirty": false,
+              "sourceProvenance": "git"
+            },
+            "putgd-cli": {
+              "schemaVersion": 1,
+              "version": "26.1025.1256-nightly",
+              "baseVersion": "26.1025.1256",
+              "packageVersion": "26.1025.1256~nightly",
+              "gitCommit": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+              "gitTree": "c8d83f965c9e8314111665516497784671206f89",
+              "commitCount": 1256,
+              "dirty": false,
+              "sourceProvenance": "git"
+            },
+            "putgd-ui": {
+              "schemaVersion": 1,
+              "version": "26.1025.1256-nightly",
+              "baseVersion": "26.1025.1256",
+              "packageVersion": "26.1025.1256~nightly",
+              "gitCommit": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+              "gitTree": "c8d83f965c9e8314111665516497784671206f89",
+              "commitCount": 1256,
+              "dirty": false,
+              "sourceProvenance": "git"
+            },
+            "putgd-capture": {
+              "schemaVersion": 1,
+              "version": "26.1025.1256-nightly",
+              "baseVersion": "26.1025.1256",
+              "packageVersion": "26.1025.1256~nightly",
+              "gitCommit": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+              "gitTree": "c8d83f965c9e8314111665516497784671206f89",
+              "commitCount": 1256,
+              "dirty": false,
+              "sourceProvenance": "git"
+            },
+            "putgd-s3-worker": {
+              "schemaVersion": 1,
+              "version": "26.1025.1256-nightly",
+              "baseVersion": "26.1025.1256",
+              "packageVersion": "26.1025.1256~nightly",
+              "gitCommit": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+              "gitTree": "c8d83f965c9e8314111665516497784671206f89",
+              "commitCount": 1256,
+              "dirty": false,
+              "sourceProvenance": "git"
+            },
+            "putgd-b2-worker": {
+              "schemaVersion": 1,
+              "version": "26.1025.1256-nightly",
+              "baseVersion": "26.1025.1256",
+              "packageVersion": "26.1025.1256~nightly",
+              "gitCommit": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+              "gitTree": "c8d83f965c9e8314111665516497784671206f89",
+              "commitCount": 1256,
+              "dirty": false,
+              "sourceProvenance": "git"
+            },
+            "putgd-kde-region": {
+              "schemaVersion": 1,
+              "version": "26.1025.1256-nightly",
+              "baseVersion": "26.1025.1256",
+              "packageVersion": "26.1025.1256~nightly",
+              "gitCommit": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+              "gitTree": "c8d83f965c9e8314111665516497784671206f89",
+              "commitCount": 1256,
+              "dirty": false,
+              "sourceProvenance": "git"
+            },
+            "putgd-record": {
+              "schemaVersion": 1,
+              "version": "26.1025.1256-nightly",
+              "baseVersion": "26.1025.1256",
+              "packageVersion": "26.1025.1256~nightly",
+              "gitCommit": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+              "gitTree": "c8d83f965c9e8314111665516497784671206f89",
+              "commitCount": 1256,
+              "dirty": false,
+              "sourceProvenance": "git"
+            }
+          },
+          "updateCheck": {
+            "channel": "nightly",
+            "kind": "nightly",
+            "packageTarget": "debian13",
+            "reason": null,
+            "supported": true,
+            "version": "26.1025.1256-nightly"
+          },
+          "package": {
+            "format": "DEB",
+            "name": "putgd",
+            "version": "26.1025.1256~nightly",
+            "architecture": "amd64",
+            "requires": "libqt6sql6-sqlite, qt6-qpa-plugins, qt6-wayland, qt6-image-formats-plugins, libglib2.0-bin, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer1.0-pipewire, libavcodec61 (>= 7:7.1.5), libavfilter10 (>= 7:7.1.5), libavformat61 (>= 7:7.1.5), libavutil59 (>= 7:7.1.5), libc6 (>= 2.38), libcurl4t64 (>= 7.18.0), libgcc-s1 (>= 4.2), libglib2.0-0t64 (>= 2.12.0), libgstreamer1.0-0 (>= 1.0.0), liblayershellqtinterface6 (>= 6.1.0), libqt6core6t64 (>= 6.8.2), libqt6dbus6 (>= 6.8.2), libqt6gui6 (>= 6.8.2), libqt6keychain1 (>= 0.13.2), libqt6network6 (>= 6.7.2), libqt6sql6 (>= 6.1.2), libqt6widgets6 (>= 6.4.0), libssl3t64 (>= 3.4.0), libstdc++6 (>= 14), libswresample5 (>= 7:7.1.5), libswscale8 (>= 7:7.1.5), libwayland-client0 (>= 1.20.0), libxcb-damage0, libxcb-keysyms1 (>= 0.4.1), libxcb-randr0 (>= 1.3), libxcb-render0, libxcb-xfixes0, libxcb-xinput0 (>= 1.17.0), libxcb1, libxcursor1 (>> 1.1.2), libxkbcommon0 (>= 1.0.0), zlib1g (>= 1:1.1.4)",
+            "recommends": "gstreamer1.0-plugins-ugly, gstreamer1.0-libav, gstreamer1.0-vaapi",
+            "file": "putgd_26.1025.1256~nightly_amd64.deb",
+            "sha256": "e0100d571f93932cb7b536e36b205ed67073755dc67fb8ca38b1b0cf7c94554c",
+            "size": 10866360
+          }
+        },
+        "packageChecksums": "e0100d571f93932cb7b536e36b205ed67073755dc67fb8ca38b1b0cf7c94554c  putgd_26.1025.1256~nightly_amd64.deb\n",
+        "installedHashes": "7331ff0c260096a0a1adb16ed0408b03b84eec405f4e2bf72b85a3022ea9b5ad  /usr/bin/putgd\nb0ad76799191d0a80997bb165a0ee7cc869c464187c62446461201b25e1e9cf5  /usr/bin/putgd-ui\n403ba454eae1c9a4e7f9b2c7e3507a537e80615c65569c929531c498fe9df1fa  /usr/bin/putgd-cli\n",
+        "visuals": [
+          {
+            "file": "pictures/d69-fresh-managed-first.png",
+            "sha256": "e92f878b73aee9520cd83066441b3ba5162900fe3c4a29dd0e59918cd89be00b"
+          },
+          {
+            "file": "pictures/d69-fresh-absent-settled.png",
+            "sha256": "7e2207bdaeafe3f4e8ec55ee62ea47249663feaa565df4f7aafbdff3c0de0d88"
+          }
+        ]
+      },
+      "m74": {
+        "scope": "installed native package, actual system repository, no feed check",
+        "build": {
+          "schemaVersion": 1,
+          "version": "26.1025.1256-nightly",
+          "baseVersion": "26.1025.1256",
+          "packageVersion": "26.1025.1256~nightly",
+          "gitCommit": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+          "gitTree": "c8d83f965c9e8314111665516497784671206f89",
+          "commitCount": 1256,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "qtScaleFactor": "1",
+        "passed": true,
+        "output": "work/491/m74-package/work/491p/native-20261025T051010Z",
+        "cases": [
+          {
+            "case": "fresh-managed",
+            "initialUpdate": {
+              "action": {
+                "channel": "nightly",
+                "command": "sudo apt update && sudo apt upgrade",
+                "file": "/etc/apt/sources.list.d/putgd.sources",
+                "kind": "software-updates",
+                "manager": "apt",
+                "older": null,
+                "otherChannel": {
+                  "channel": "stable",
+                  "commands": [
+                    "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+                    "sudo apt update",
+                    "sudo apt install --allow-downgrades putgd/stable"
+                  ],
+                  "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+                },
+                "repository": "managed",
+                "updater": {
+                  "arguments": [],
+                  "id": "mintupdate",
+                  "name": "Update Manager",
+                  "program": "/usr/bin/mintupdate"
+                }
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "ubuntu24.04",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "nightly",
+              "channelSetting": "build",
+              "channelSource": "repository",
+              "check": true,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": true,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": "2026-10-25T05:19:49Z",
+              "notifies": false,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "afterPatch": {
+              "action": {
+                "channel": "nightly",
+                "command": "sudo apt update && sudo apt upgrade",
+                "file": "/etc/apt/sources.list.d/putgd.sources",
+                "kind": "software-updates",
+                "manager": "apt",
+                "older": null,
+                "otherChannel": {
+                  "channel": "stable",
+                  "commands": [
+                    "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+                    "sudo apt update",
+                    "sudo apt install --allow-downgrades putgd/stable"
+                  ],
+                  "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+                },
+                "repository": "managed",
+                "updater": {
+                  "arguments": [],
+                  "id": "mintupdate",
+                  "name": "Update Manager",
+                  "program": "/usr/bin/mintupdate"
+                }
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "ubuntu24.04",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "nightly",
+              "channelSetting": "stable",
+              "channelSource": "repository",
+              "check": false,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": false,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": null,
+              "notifies": false,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "startupSeconds": 0.12121548596769571,
+            "passed": true,
+            "socketPreflight": {
+              "schemaVersion": 1,
+              "passed": true,
+              "limitBytesExcludingNul": 107,
+              "paths": [
+                {
+                  "path": "/tmp/i491-c94ielnd/fresh-managed/r/putgd/session.sock",
+                  "utf8Bytes": 53,
+                  "passed": true
+                }
+              ]
+            },
+            "socketRemaining": false,
+            "maps": {
+              "718956": {
+                "command": "/usr/bin/putgd --background ",
+                "qtPlatform": []
+              },
+              "718973": {
+                "command": "/usr/bin/putgd-ui ",
+                "qtPlatform": [
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so"
+                ]
+              }
+            }
+          },
+          {
+            "case": "managed-stored-stable",
+            "initialUpdate": {
+              "action": {
+                "channel": "nightly",
+                "command": "sudo apt update && sudo apt upgrade",
+                "file": "/etc/apt/sources.list.d/putgd.sources",
+                "kind": "software-updates",
+                "manager": "apt",
+                "older": null,
+                "otherChannel": {
+                  "channel": "stable",
+                  "commands": [
+                    "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+                    "sudo apt update",
+                    "sudo apt install --allow-downgrades putgd/stable"
+                  ],
+                  "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+                },
+                "repository": "managed",
+                "updater": {
+                  "arguments": [],
+                  "id": "mintupdate",
+                  "name": "Update Manager",
+                  "program": "/usr/bin/mintupdate"
+                }
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "ubuntu24.04",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "nightly",
+              "channelSetting": "stable",
+              "channelSource": "repository",
+              "check": false,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": false,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": null,
+              "notifies": false,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "afterPatch": {
+              "action": {
+                "channel": "nightly",
+                "command": "sudo apt update && sudo apt upgrade",
+                "file": "/etc/apt/sources.list.d/putgd.sources",
+                "kind": "software-updates",
+                "manager": "apt",
+                "older": null,
+                "otherChannel": {
+                  "channel": "stable",
+                  "commands": [
+                    "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+                    "sudo apt update",
+                    "sudo apt install --allow-downgrades putgd/stable"
+                  ],
+                  "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+                },
+                "repository": "managed",
+                "updater": {
+                  "arguments": [],
+                  "id": "mintupdate",
+                  "name": "Update Manager",
+                  "program": "/usr/bin/mintupdate"
+                }
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "ubuntu24.04",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "nightly",
+              "channelSetting": "stable",
+              "channelSource": "repository",
+              "check": false,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": false,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": null,
+              "notifies": false,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "startupSeconds": 0.1337203350267373,
+            "passed": true,
+            "socketPreflight": {
+              "schemaVersion": 1,
+              "passed": true,
+              "limitBytesExcludingNul": 107,
+              "paths": [
+                {
+                  "path": "/tmp/i491-c94ielnd/fresh-managed/r/putgd/session.sock",
+                  "utf8Bytes": 53,
+                  "passed": true
+                }
+              ]
+            },
+            "socketRemaining": false,
+            "maps": {
+              "719013": {
+                "command": "/usr/bin/putgd --background ",
+                "qtPlatform": []
+              },
+              "719035": {
+                "command": "/usr/bin/putgd-ui ",
+                "qtPlatform": [
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so"
+                ]
+              }
+            }
+          },
+          {
+            "case": "fresh-absent",
+            "initialUpdate": {
+              "action": {
+                "file": "/etc/apt/sources.list.d/putgd.sources",
+                "kind": "download",
+                "repository": "absent"
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "ubuntu24.04",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "nightly",
+              "channelSetting": "build",
+              "channelSource": "setting",
+              "check": true,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": true,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": "2026-10-25T05:22:07Z",
+              "notifies": false,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "afterPatch": {
+              "action": {
+                "file": "/etc/apt/sources.list.d/putgd.sources",
+                "kind": "download",
+                "repository": "absent"
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "ubuntu24.04",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "stable",
+              "channelSetting": "stable",
+              "channelSource": "setting",
+              "check": false,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": false,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": null,
+              "notifies": true,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "startupSeconds": 0.12180592096410692,
+            "passed": true,
+            "socketPreflight": {
+              "schemaVersion": 1,
+              "passed": true,
+              "limitBytesExcludingNul": 107,
+              "paths": [
+                {
+                  "path": "/tmp/i491-c94ielnd/fresh-absent/r/putgd/session.sock",
+                  "utf8Bytes": 52,
+                  "passed": true
+                }
+              ]
+            },
+            "socketRemaining": false,
+            "maps": {
+              "719061": {
+                "command": "/usr/bin/putgd --background ",
+                "qtPlatform": []
+              },
+              "719077": {
+                "command": "/usr/bin/putgd-ui ",
+                "qtPlatform": [
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so"
+                ]
+              }
+            }
+          },
+          {
+            "case": "fresh-invalid",
+            "initialUpdate": {
+              "action": {
+                "file": "/etc/apt/sources.list.d/putgd.sources",
+                "kind": "download",
+                "repository": "other"
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "ubuntu24.04",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "nightly",
+              "channelSetting": "build",
+              "channelSource": "setting",
+              "check": true,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": true,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": "2026-10-25T05:25:24Z",
+              "notifies": false,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "afterPatch": {
+              "action": {
+                "file": "/etc/apt/sources.list.d/putgd.sources",
+                "kind": "download",
+                "repository": "other"
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "ubuntu24.04",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "stable",
+              "channelSetting": "stable",
+              "channelSource": "setting",
+              "check": false,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": false,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": null,
+              "notifies": true,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "startupSeconds": 0.1212059980025515,
+            "passed": true,
+            "socketPreflight": {
+              "schemaVersion": 1,
+              "passed": true,
+              "limitBytesExcludingNul": 107,
+              "paths": [
+                {
+                  "path": "/tmp/i491-c94ielnd/fresh-invalid/r/putgd/session.sock",
+                  "utf8Bytes": 53,
+                  "passed": true
+                }
+              ]
+            },
+            "socketRemaining": false,
+            "maps": {
+              "719114": {
+                "command": "/usr/bin/putgd --background ",
+                "qtPlatform": []
+              },
+              "719130": {
+                "command": "/usr/bin/putgd-ui ",
+                "qtPlatform": [
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so"
+                ]
+              }
+            }
+          },
+          {
+            "case": "fresh-disabled",
+            "initialUpdate": {
+              "action": {
+                "file": "/etc/apt/sources.list.d/putgd.sources",
+                "kind": "download",
+                "repository": "disabled"
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "ubuntu24.04",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "nightly",
+              "channelSetting": "build",
+              "channelSource": "setting",
+              "check": true,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": true,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": "2026-10-25T05:16:04Z",
+              "notifies": false,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "afterPatch": {
+              "action": {
+                "file": "/etc/apt/sources.list.d/putgd.sources",
+                "kind": "download",
+                "repository": "disabled"
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "ubuntu24.04",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "stable",
+              "channelSetting": "stable",
+              "channelSource": "setting",
+              "check": false,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": false,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": null,
+              "notifies": true,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "startupSeconds": 0.12158023298252374,
+            "passed": true,
+            "socketPreflight": {
+              "schemaVersion": 1,
+              "passed": true,
+              "limitBytesExcludingNul": 107,
+              "paths": [
+                {
+                  "path": "/tmp/i491-c94ielnd/fresh-disabled/r/putgd/session.sock",
+                  "utf8Bytes": 54,
+                  "passed": true
+                }
+              ]
+            },
+            "socketRemaining": false,
+            "maps": {
+              "719167": {
+                "command": "/usr/bin/putgd --background ",
+                "qtPlatform": []
+              },
+              "719182": {
+                "command": "/usr/bin/putgd-ui ",
+                "qtPlatform": [
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so",
+                  "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so"
+                ]
+              }
+            }
+          }
+        ],
+        "source": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+        "binaryHashes": {
+          "putgd": "4d26124db5907375704e4def7378a95559290c7ccb83ea38208016e6902b6757",
+          "putgd-ui": "061e13f57340a0b868c9152a466a3b0b88d7acbbcb7f8dcca16e83d8c9269aad",
+          "putgd-cli": "88ef6ce47299bb209001f0df52c054cc1e8f1d84d0adcbbb7a4f27d69b4e5320"
+        },
+        "session": {
+          "DISPLAY": ":0",
+          "WAYLAND_DISPLAY": null,
+          "XDG_CURRENT_DESKTOP": "X-Cinnamon",
+          "XDG_SESSION_TYPE": "x11"
+        },
+        "loginSessions": "1768 1000 patrick -     -    closing no -\n1774 1000 patrick -     -    active  no -\n1915 1000 patrick -     -    closing no -\n   2 1000 patrick -     -    active  no -\n   3 1000 patrick -     -    active  no -\n   4 1000 patrick -     -    active  no -\n8705 1000 patrick -     -    active  no -\n  c1 1000 patrick seat0 tty7 closing no -\n c11 1000 patrick seat0 tty7 closing no -\n c12 1000 patrick seat0 tty7 closing no -\n c14 1000 patrick seat0 tty7 closing no -\n c16 1000 patrick seat0 tty7 closing no -\n c18 1000 patrick seat0 tty7 closing no -\n c20 1000 patrick seat0 tty7 closing no -\n c22 1000 patrick seat0 tty7 closing no -\n c24 1000 patrick seat0 tty7 closing no -\n c26 1000 patrick seat0 tty7 closing no -\n c28 1000 patrick seat0 tty7 closing no -\n  c3 1000 patrick seat0 tty7 closing no -\n c30 1000 patrick seat0 tty7 closing no -\n c32 1000 patrick seat0 tty7 closing no -\n c34 1000 patrick seat0 tty7 closing no -\n c36 1000 patrick seat0 tty7 closing no -\n c38 1000 patrick seat0 tty7 closing no -\n c40 1000 patrick seat0 tty7 closing no -\n c42 1000 patrick seat0 tty7 closing no -\n c44 1000 patrick seat0 tty7 closing no -\n c46 1000 patrick seat0 tty7 closing no -\n c48 1000 patrick seat0 tty7 closing no -\n  c5 1000 patrick seat0 tty7 closing no -\n c50 1000 patrick seat0 tty7 closing no -\n c52 1000 patrick seat0 tty7 closing no -\n c55 1000 patrick seat0 tty7 closing no -\n c57 1000 patrick seat0 tty7 closing no -\n c59 1000 patrick seat0 tty7 closing no -\n c61 1000 patrick seat0 tty7 closing no -\n c63 1000 patrick seat0 tty7 closing no -\n c65 1000 patrick seat0 tty7 closing no -\n c67 1000 patrick seat0 tty7 closing no -\n c69 1000 patrick seat0 tty7 closing no -\n  c7 1000 patrick seat0 tty7 closing no -\n c71 1000 patrick seat0 tty7 closing no -\n c73 1000 patrick seat0 tty7 closing no -\n c75 1000 patrick seat0 tty7 closing no -\n c77 1000 patrick seat0 tty7 closing no -\n c79 1000 patrick seat0 tty7 closing no -\n c81 1000 patrick seat0 tty7 closing no -\n c83 1000 patrick seat0 tty7 closing no -\n c85 1000 patrick seat0 tty7 closing no -\n c87 1000 patrick seat0 tty7 closing no -\n c89 1000 patrick seat0 tty7 active  no -\n  c9 1000 patrick seat0 tty7 closing no -\n",
+        "captureRect": [
+          0,
+          0,
+          1920,
+          1000
+        ],
+        "initialCoverFraction": 1.0,
+        "repositoryRestored": true,
+        "coverExit": 0,
+        "windowPlacement": "own PID X11 windows placed 410,130,1100,700 at default scale",
+        "packageAudit": {
+          "schemaVersion": 1,
+          "scope": "native extracted package identity/inventory/dependencies; not desktop acceptance",
+          "manifest": {
+            "schemaVersion": 1,
+            "version": "26.1025.1256-nightly",
+            "baseVersion": "26.1025.1256",
+            "packageVersion": "26.1025.1256~nightly",
+            "gitCommit": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+            "gitTree": "c8d83f965c9e8314111665516497784671206f89",
+            "commitCount": 1256,
+            "dirty": false,
+            "sourceProvenance": "git"
+          },
+          "compiledIdentities": {
+            "putgd": {
+              "schemaVersion": 1,
+              "version": "26.1025.1256-nightly",
+              "baseVersion": "26.1025.1256",
+              "packageVersion": "26.1025.1256~nightly",
+              "gitCommit": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+              "gitTree": "c8d83f965c9e8314111665516497784671206f89",
+              "commitCount": 1256,
+              "dirty": false,
+              "sourceProvenance": "git"
+            },
+            "putgd-cli": {
+              "schemaVersion": 1,
+              "version": "26.1025.1256-nightly",
+              "baseVersion": "26.1025.1256",
+              "packageVersion": "26.1025.1256~nightly",
+              "gitCommit": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+              "gitTree": "c8d83f965c9e8314111665516497784671206f89",
+              "commitCount": 1256,
+              "dirty": false,
+              "sourceProvenance": "git"
+            },
+            "putgd-ui": {
+              "schemaVersion": 1,
+              "version": "26.1025.1256-nightly",
+              "baseVersion": "26.1025.1256",
+              "packageVersion": "26.1025.1256~nightly",
+              "gitCommit": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+              "gitTree": "c8d83f965c9e8314111665516497784671206f89",
+              "commitCount": 1256,
+              "dirty": false,
+              "sourceProvenance": "git"
+            },
+            "putgd-capture": {
+              "schemaVersion": 1,
+              "version": "26.1025.1256-nightly",
+              "baseVersion": "26.1025.1256",
+              "packageVersion": "26.1025.1256~nightly",
+              "gitCommit": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+              "gitTree": "c8d83f965c9e8314111665516497784671206f89",
+              "commitCount": 1256,
+              "dirty": false,
+              "sourceProvenance": "git"
+            },
+            "putgd-s3-worker": {
+              "schemaVersion": 1,
+              "version": "26.1025.1256-nightly",
+              "baseVersion": "26.1025.1256",
+              "packageVersion": "26.1025.1256~nightly",
+              "gitCommit": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+              "gitTree": "c8d83f965c9e8314111665516497784671206f89",
+              "commitCount": 1256,
+              "dirty": false,
+              "sourceProvenance": "git"
+            },
+            "putgd-b2-worker": {
+              "schemaVersion": 1,
+              "version": "26.1025.1256-nightly",
+              "baseVersion": "26.1025.1256",
+              "packageVersion": "26.1025.1256~nightly",
+              "gitCommit": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+              "gitTree": "c8d83f965c9e8314111665516497784671206f89",
+              "commitCount": 1256,
+              "dirty": false,
+              "sourceProvenance": "git"
+            },
+            "putgd-kde-region": {
+              "schemaVersion": 1,
+              "version": "26.1025.1256-nightly",
+              "baseVersion": "26.1025.1256",
+              "packageVersion": "26.1025.1256~nightly",
+              "gitCommit": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+              "gitTree": "c8d83f965c9e8314111665516497784671206f89",
+              "commitCount": 1256,
+              "dirty": false,
+              "sourceProvenance": "git"
+            },
+            "putgd-record": {
+              "schemaVersion": 1,
+              "version": "26.1025.1256-nightly",
+              "baseVersion": "26.1025.1256",
+              "packageVersion": "26.1025.1256~nightly",
+              "gitCommit": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+              "gitTree": "c8d83f965c9e8314111665516497784671206f89",
+              "commitCount": 1256,
+              "dirty": false,
+              "sourceProvenance": "git"
+            }
+          },
+          "updateCheck": {
+            "channel": "nightly",
+            "kind": "nightly",
+            "packageTarget": "ubuntu24.04",
+            "reason": null,
+            "supported": true,
+            "version": "26.1025.1256-nightly"
+          },
+          "package": {
+            "format": "DEB",
+            "name": "putgd",
+            "version": "26.1025.1256~nightly",
+            "architecture": "amd64",
+            "requires": "libqt6sql6-sqlite, qt6-qpa-plugins, qt6-wayland, qt6-image-formats-plugins, libglib2.0-bin, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer1.0-pipewire, libavcodec60 (>= 7:6.1), libavfilter9 (>= 7:6.0), libavformat60 (>= 7:6.0), libavutil58 (>= 7:6.0), libc6 (>= 2.38), libcurl4t64 (>= 7.18.0), libgcc-s1 (>= 4.2), libglib2.0-0t64 (>= 2.12.0), libgstreamer1.0-0 (>= 1.0.0), libqt6core6t64 (>= 6.4.0), libqt6dbus6t64 (>= 6.4.0), libqt6gui6t64 (>= 6.4.0), libqt6keychain1 (>= 0.13.2), libqt6network6t64 (>= 6.1.2), libqt6sql6t64 (>= 6.1.2), libqt6widgets6t64 (>= 6.4.0), libssl3t64 (>= 3.0.3), libstdc++6 (>= 13.1), libswresample4 (>= 7:6.0), libswscale7 (>= 7:6.0), libwayland-client0 (>= 1.20.0), libxcb-damage0, libxcb-keysyms1 (>= 0.4.0), libxcb-randr0 (>= 1.3), libxcb-render0, libxcb-xfixes0, libxcb-xinput0 (>= 1.15), libxcb1, libxcursor1 (>> 1.1.2), libxkbcommon0 (>= 1.0.0), zlib1g (>= 1:1.1.4)",
+            "recommends": "gstreamer1.0-plugins-ugly, gstreamer1.0-libav, gstreamer1.0-vaapi",
+            "file": "putgd_26.1025.1256~nightly_amd64.deb",
+            "sha256": "08996fcd101c7437307c867af3d93ee198ba95d6136e46905795d3295cbcfef5",
+            "size": 10989188
+          }
+        },
+        "packageChecksums": "08996fcd101c7437307c867af3d93ee198ba95d6136e46905795d3295cbcfef5  putgd_26.1025.1256~nightly_amd64.deb\n",
+        "installedHashes": "4d26124db5907375704e4def7378a95559290c7ccb83ea38208016e6902b6757  /usr/bin/putgd\n061e13f57340a0b868c9152a466a3b0b88d7acbbcb7f8dcca16e83d8c9269aad  /usr/bin/putgd-ui\n88ef6ce47299bb209001f0df52c054cc1e8f1d84d0adcbbb7a4f27d69b4e5320  /usr/bin/putgd-cli\n",
+        "visuals": [
+          {
+            "file": "pictures/m74-fresh-managed-first.png",
+            "sha256": "87c1214dfa735e761eaf4c2c84297114c1400d68f356ae8d1c70154c33f93fc8"
+          },
+          {
+            "file": "pictures/m74-fresh-absent-first.png",
+            "sha256": "3f5adeefe7ff60c8c193a0a142276733d265717ffd1ac8b93e002280f0523110"
+          },
+          {
+            "file": "pictures/m74-managed-stored-stable-first.png",
+            "sha256": "91b1d0de57b75f3a583f46d820c43b5170fc902160f379cea11f8db327bc0d72"
+          }
+        ],
+        "visualReview": {
+          "firstOpen": "Passed: fresh managed, unmanaged and stored-choice restart fully painted and reviewed.",
+          "laterCaptures": "Some post-patch captures incomplete; not credited as visual proof. Earlier scaled run failed visual review.",
+          "run": "native-20261025T051010Z"
+        }
+      },
+      "ubuntu24-gnome-x11": {
+        "run": {
+          "schemaVersion": 1,
+          "id": "9fa63e67-b4b8-4b57-b6a9-5aa43b6d314e",
+          "profile": "gnome-x11-491",
+          "guest_user": "lab",
+          "ssh_port": 22491,
+          "vnc_display": 61,
+          "acceleration": "kvm",
+          "golden": "/home/patrick/work/put.gd/work/lab-images/ubuntu24-gnome-x11-20261025-491/image.qcow2",
+          "golden_sha256": "fff0b55cc2d09d403bea61dd17d46165994cd8a9d0c2d467c5883c7fb795e245",
+          "bootstrap_key": "/home/patrick/work/put.gd/work/lab-bootstrap-u24x11-491/identity",
+          "known_hosts": "/home/patrick/work/i491p/work/lab-runs/u24491/known_hosts",
+          "overlay": "/home/patrick/work/i491p/work/lab-runs/u24491/disk.qcow2",
+          "heads": [
+            {
+              "head": 0,
+              "port": 5961,
+              "display": "127.0.0.1:5961"
+            }
+          ],
+          "head_layout": "1920x1080+0+0",
+          "pid": 227011,
+          "head_requests": [
+            {
+              "port": 5961,
+              "width": 1920,
+              "height": 1080,
+              "status": 4
+            }
+          ]
+        },
+        "scope": "installed native DEB in independent native X11 guest; fresh managed and stored choice restart",
+        "build": {
+          "schemaVersion": 1,
+          "version": "26.1025.1256-nightly",
+          "baseVersion": "26.1025.1256",
+          "packageVersion": "26.1025.1256~nightly",
+          "gitCommit": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+          "gitTree": "c8d83f965c9e8314111665516497784671206f89",
+          "commitCount": 1256,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "qtScaleFactor": "1",
+        "versions": "gnome-shell 46.0-0ubuntu6~24.04.16\nlibqt6core6 \nlibqt6core6t64 6.4.2+dfsg-21.1build5\nmutter \nputgd 26.1025.1256~nightly\n4d26124db5907375704e4def7378a95559290c7ccb83ea38208016e6902b6757  /usr/bin/putgd\n061e13f57340a0b868c9152a466a3b0b88d7acbbcb7f8dcca16e83d8c9269aad  /usr/bin/putgd-ui\n88ef6ce47299bb209001f0df52c054cc1e8f1d84d0adcbbb7a4f27d69b4e5320  /usr/bin/putgd-cli\n 1 1000 lab seat0 tty2 active no -\n11 1000 lab -     -    active no -\n",
+        "socketPreflight": {
+          "path": "/tmp/i491v-eRGp7t8p/r/putgd/session.sock",
+          "utf8Bytes": 40,
+          "passed": true
+        },
+        "passed": true,
+        "cases": [
+          {
+            "case": "fresh-managed",
+            "initialUpdate": {
+              "action": {
+                "channel": "nightly",
+                "command": "sudo apt update && sudo apt upgrade",
+                "file": "/etc/apt/sources.list.d/putgd.sources",
+                "kind": "software-updates",
+                "manager": "apt",
+                "older": null,
+                "otherChannel": {
+                  "channel": "stable",
+                  "commands": [
+                    "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+                    "sudo apt update",
+                    "sudo apt install --allow-downgrades putgd/stable"
+                  ],
+                  "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+                },
+                "repository": "managed",
+                "updater": null
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "ubuntu24.04",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "nightly",
+              "channelSetting": "build",
+              "channelSource": "repository",
+              "check": true,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": true,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": "2026-10-25T05:19:18Z",
+              "notifies": false,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "afterPatch": {
+              "action": {
+                "channel": "nightly",
+                "command": "sudo apt update && sudo apt upgrade",
+                "file": "/etc/apt/sources.list.d/putgd.sources",
+                "kind": "software-updates",
+                "manager": "apt",
+                "older": null,
+                "otherChannel": {
+                  "channel": "stable",
+                  "commands": [
+                    "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+                    "sudo apt update",
+                    "sudo apt install --allow-downgrades putgd/stable"
+                  ],
+                  "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+                },
+                "repository": "managed",
+                "updater": null
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "ubuntu24.04",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "nightly",
+              "channelSetting": "stable",
+              "channelSource": "repository",
+              "check": false,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": false,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": null,
+              "notifies": false,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "startupSeconds": 0.5488150829914957,
+            "passed": true,
+            "runningIdentity": {
+              "pid": 3095,
+              "startTicks": 18207,
+              "sha256": "4d26124db5907375704e4def7378a95559290c7ccb83ea38208016e6902b6757"
+            }
+          },
+          {
+            "case": "managed-stored-stable",
+            "initialUpdate": {
+              "action": {
+                "channel": "nightly",
+                "command": "sudo apt update && sudo apt upgrade",
+                "file": "/etc/apt/sources.list.d/putgd.sources",
+                "kind": "software-updates",
+                "manager": "apt",
+                "older": null,
+                "otherChannel": {
+                  "channel": "stable",
+                  "commands": [
+                    "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+                    "sudo apt update",
+                    "sudo apt install --allow-downgrades putgd/stable"
+                  ],
+                  "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+                },
+                "repository": "managed",
+                "updater": null
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "ubuntu24.04",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "nightly",
+              "channelSetting": "stable",
+              "channelSource": "repository",
+              "check": false,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": false,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": null,
+              "notifies": false,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "afterPatch": {
+              "action": {
+                "channel": "nightly",
+                "command": "sudo apt update && sudo apt upgrade",
+                "file": "/etc/apt/sources.list.d/putgd.sources",
+                "kind": "software-updates",
+                "manager": "apt",
+                "older": null,
+                "otherChannel": {
+                  "channel": "stable",
+                  "commands": [
+                    "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+                    "sudo apt update",
+                    "sudo apt install --allow-downgrades putgd/stable"
+                  ],
+                  "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+                },
+                "repository": "managed",
+                "updater": null
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "ubuntu24.04",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "nightly",
+              "channelSetting": "stable",
+              "channelSource": "repository",
+              "check": false,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": false,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": null,
+              "notifies": false,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "startupSeconds": 0.5321297150076134,
+            "passed": true,
+            "runningIdentity": {
+              "pid": 4145,
+              "startTicks": 18961,
+              "sha256": "4d26124db5907375704e4def7378a95559290c7ccb83ea38208016e6902b6757"
+            }
+          }
+        ],
+        "visuals": [
+          {
+            "file": "pictures/ubuntu24-gnome-x11-fresh-managed.png",
+            "sha256": "99b745584113161b04ebf6509e54b1f32bd66de3c8cb43369d68f8ed9a2e2bb1"
+          },
+          {
+            "file": "pictures/ubuntu24-gnome-x11-managed-stored-stable.png",
+            "sha256": "cf9d7fb5bab084d58e8abc656919d8d25cffb05ef5af376dbd5d7fd905b0143c"
+          }
+        ],
+        "cleanup": {
+          "schemaVersion": 1,
+          "status": "completed",
+          "run": "/home/patrick/work/i491p/work/lab-runs/u24491",
+          "disk": "/home/patrick/work/i491p/work/lab-runs/u24491/disk.qcow2",
+          "diskIdentity": {
+            "device": 50,
+            "inode": 5973441,
+            "size": 205520896,
+            "mtimeNs": 1792905396454273885,
+            "ctimeNs": 1792905396454273885,
+            "allocatedBytes": 205459456
+          },
+          "base": "/home/patrick/work/put.gd/work/lab-images/ubuntu24-gnome-x11-20261025-491/image.qcow2",
+          "stateSha256": "a6effdf49a31293038eb2414ba6cc334591f6dd95c40f72b7087828ec89a04ef",
+          "evidence": {
+            "manifest": "/home/patrick/work/i491p/work/491p/vm-x11-20261025T051101Z/cleanup-manifest.json",
+            "sha256": "8b024d4b8b9054dc11582acc4a197a12d3e288b6860eb3660f2a97c47f7da18e",
+            "runId": "9fa63e67-b4b8-4b57-b6a9-5aa43b6d314e",
+            "mode": "explicit"
+          },
+          "preparedUtc": "2026-10-25T05:17:28.571129+00:00",
+          "completedUtc": "2026-10-25T05:17:28.658657+00:00"
+        }
+      },
+      "kubuntu-x11": {
+        "run": {
+          "schemaVersion": 1,
+          "id": "34e65b15-02c5-42e9-a28c-10b544f56a99",
+          "profile": "kde-x11",
+          "guest_user": "lab",
+          "ssh_port": 22261,
+          "vnc_display": 63,
+          "acceleration": "kvm",
+          "golden": "/home/patrick/work/put.gd/work/lab-images/kde-x11-20261025-559/image.qcow2",
+          "golden_sha256": "5306a311c69220421d3efbbb8929300634c3812214edef3b9203b830ce300826",
+          "bootstrap_key": "/home/patrick/work/put.gd/work/lab-bootstrap-d69/rec-ws/identity",
+          "known_hosts": "/home/patrick/work/i491p/work/lab-runs/k491/known_hosts",
+          "overlay": "/home/patrick/work/i491p/work/lab-runs/k491/disk.qcow2",
+          "heads": [
+            {
+              "head": 0,
+              "port": 5963,
+              "display": "127.0.0.1:5963"
+            }
+          ],
+          "head_layout": "1920x1080+0+0",
+          "pid": 2879778,
+          "head_requests": [
+            {
+              "port": 5963,
+              "width": 1920,
+              "height": 1080,
+              "status": 4
+            }
+          ]
+        },
+        "scope": "installed native DEB in independent native X11 guest; fresh managed and stored choice restart",
+        "build": {
+          "schemaVersion": 1,
+          "version": "26.1025.1256-nightly",
+          "baseVersion": "26.1025.1256",
+          "packageVersion": "26.1025.1256~nightly",
+          "gitCommit": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+          "gitTree": "c8d83f965c9e8314111665516497784671206f89",
+          "commitCount": 1256,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "qtScaleFactor": "1",
+        "versions": "gnome-shell \nkwin-x11 4:6.6.4-0ubuntu1\nlibqt6core6 \nlibqt6core6t64 6.10.2+dfsg-7\nplasma-workspace 4:6.6.6-0ubuntu0.1\nputgd 26.1025.1256~nightly\nb2d35f419987c180061b94370ee1db7aa1c332f74cae20c0e62dd88cf72dc7a7  /usr/bin/putgd\nfd8b38058542734c3dde771c5f075336716f1b46f32bf290c1b96f7d889cd38b  /usr/bin/putgd-ui\n8449c570e130fae8a76f198272c4a477270931af4799f328e29a3f7be579d5cf  /usr/bin/putgd-cli\n 1 1000 lab seat0 947  user    tty1 no -\n 2 1000 lab -     957  manager -    no -\n41 1000 lab -     5024 user    -    no -\n",
+        "socketPreflight": {
+          "path": "/tmp/i491v-FNwTAIMz/r/putgd/session.sock",
+          "utf8Bytes": 40,
+          "passed": true
+        },
+        "passed": true,
+        "cases": [
+          {
+            "case": "fresh-managed",
+            "initialUpdate": {
+              "action": {
+                "channel": "nightly",
+                "command": "sudo apt update && sudo apt upgrade",
+                "file": "/etc/apt/sources.list.d/putgd.sources",
+                "kind": "software-updates",
+                "manager": "apt",
+                "older": null,
+                "otherChannel": {
+                  "channel": "stable",
+                  "commands": [
+                    "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+                    "sudo apt update",
+                    "sudo apt install --allow-downgrades putgd/stable"
+                  ],
+                  "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+                },
+                "repository": "managed",
+                "updater": {
+                  "arguments": [
+                    "--mode",
+                    "update"
+                  ],
+                  "id": "plasma-discover",
+                  "name": "Discover",
+                  "program": "/usr/bin/plasma-discover"
+                }
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "ubuntu26.04",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "nightly",
+              "channelSetting": "build",
+              "channelSource": "repository",
+              "check": true,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": true,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": "2026-10-25T05:25:00Z",
+              "notifies": false,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "afterPatch": {
+              "action": {
+                "channel": "nightly",
+                "command": "sudo apt update && sudo apt upgrade",
+                "file": "/etc/apt/sources.list.d/putgd.sources",
+                "kind": "software-updates",
+                "manager": "apt",
+                "older": null,
+                "otherChannel": {
+                  "channel": "stable",
+                  "commands": [
+                    "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+                    "sudo apt update",
+                    "sudo apt install --allow-downgrades putgd/stable"
+                  ],
+                  "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+                },
+                "repository": "managed",
+                "updater": {
+                  "arguments": [
+                    "--mode",
+                    "update"
+                  ],
+                  "id": "plasma-discover",
+                  "name": "Discover",
+                  "program": "/usr/bin/plasma-discover"
+                }
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "ubuntu26.04",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "nightly",
+              "channelSetting": "stable",
+              "channelSource": "repository",
+              "check": false,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": false,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": null,
+              "notifies": false,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "startupSeconds": 0.7627186829922721,
+            "passed": true,
+            "runningIdentity": {
+              "pid": 5167,
+              "startTicks": 10972,
+              "sha256": "b2d35f419987c180061b94370ee1db7aa1c332f74cae20c0e62dd88cf72dc7a7"
+            },
+            "platformWitness": "Desktop=KDE\nType=x11\n74891cb5a000-74891cb5c000 r--p 00000000 fd:01 1465580                    /usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so\n74891cb5c000-74891cb5d000 r-xp 00002000 fd:01 1465580                    /usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so\n74891cb5d000-74891cb5e000 r--p 00003000 fd:01 1465580                    /usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so\n74891cb5e000-74891cb5f000 r--p 00003000 fd:01 1465580                    /usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so\n74891cb5f000-74891cb60000 rw-p 00004000 fd:01 1465580                    /usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so\n1884 /usr/bin/kwin_x11 --replace\n"
+          },
+          {
+            "case": "managed-stored-stable",
+            "initialUpdate": {
+              "action": {
+                "channel": "nightly",
+                "command": "sudo apt update && sudo apt upgrade",
+                "file": "/etc/apt/sources.list.d/putgd.sources",
+                "kind": "software-updates",
+                "manager": "apt",
+                "older": null,
+                "otherChannel": {
+                  "channel": "stable",
+                  "commands": [
+                    "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+                    "sudo apt update",
+                    "sudo apt install --allow-downgrades putgd/stable"
+                  ],
+                  "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+                },
+                "repository": "managed",
+                "updater": {
+                  "arguments": [
+                    "--mode",
+                    "update"
+                  ],
+                  "id": "plasma-discover",
+                  "name": "Discover",
+                  "program": "/usr/bin/plasma-discover"
+                }
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "ubuntu26.04",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "nightly",
+              "channelSetting": "stable",
+              "channelSource": "repository",
+              "check": false,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": false,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": null,
+              "notifies": false,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "afterPatch": {
+              "action": {
+                "channel": "nightly",
+                "command": "sudo apt update && sudo apt upgrade",
+                "file": "/etc/apt/sources.list.d/putgd.sources",
+                "kind": "software-updates",
+                "manager": "apt",
+                "older": null,
+                "otherChannel": {
+                  "channel": "stable",
+                  "commands": [
+                    "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+                    "sudo apt update",
+                    "sudo apt install --allow-downgrades putgd/stable"
+                  ],
+                  "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+                },
+                "repository": "managed",
+                "updater": {
+                  "arguments": [
+                    "--mode",
+                    "update"
+                  ],
+                  "id": "plasma-discover",
+                  "name": "Discover",
+                  "program": "/usr/bin/plasma-discover"
+                }
+              },
+              "attemptedAt": null,
+              "build": {
+                "channel": "nightly",
+                "kind": "nightly",
+                "packageTarget": "ubuntu26.04",
+                "reason": null,
+                "supported": true,
+                "version": "26.1025.1256-nightly"
+              },
+              "channel": "nightly",
+              "channelSetting": "stable",
+              "channelSource": "repository",
+              "check": false,
+              "checkedAt": null,
+              "checking": false,
+              "enabled": false,
+              "error": null,
+              "install": {
+                "available": false,
+                "backup": null,
+                "image": null,
+                "installed": null,
+                "kind": "update",
+                "reason": "not_appimage",
+                "restartRequired": false,
+                "running": false,
+                "state": "idle",
+                "switch": null
+              },
+              "nextCheckAt": null,
+              "notifies": false,
+              "reason": null,
+              "result": null,
+              "supported": true
+            },
+            "startupSeconds": 0.672931335051544,
+            "passed": true,
+            "runningIdentity": {
+              "pid": 5945,
+              "startTicks": 11798,
+              "sha256": "b2d35f419987c180061b94370ee1db7aa1c332f74cae20c0e62dd88cf72dc7a7"
+            },
+            "platformWitness": "Desktop=KDE\nType=x11\n717ca9c0a000-717ca9c0c000 r--p 00000000 fd:01 1465580                    /usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so\n717ca9c0c000-717ca9c0d000 r-xp 00002000 fd:01 1465580                    /usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so\n717ca9c0d000-717ca9c0e000 r--p 00003000 fd:01 1465580                    /usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so\n717ca9c0e000-717ca9c0f000 r--p 00003000 fd:01 1465580                    /usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so\n717ca9c0f000-717ca9c10000 rw-p 00004000 fd:01 1465580                    /usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so\n1884 /usr/bin/kwin_x11 --replace\n"
+          }
+        ],
+        "visuals": [
+          {
+            "file": "pictures/kubuntu-x11-fresh-managed.png",
+            "sha256": "f736f2ddeee392ef7272a7d145f51fad9bcd82af57de6c872ef657e99963954e"
+          },
+          {
+            "file": "pictures/kubuntu-x11-managed-stored-stable.png",
+            "sha256": "a7a23a073a283186f4f56d18862d70c93f5df902ce13e708130f8918acbd9a8f"
+          }
+        ],
+        "cleanup": {
+          "schemaVersion": 1,
+          "status": "completed",
+          "run": "/home/patrick/work/i491p/work/lab-runs/k491",
+          "disk": "/home/patrick/work/i491p/work/lab-runs/k491/disk.qcow2",
+          "diskIdentity": {
+            "device": 2050,
+            "inode": 8685002,
+            "size": 703528960,
+            "mtimeNs": 1792905614987506938,
+            "ctimeNs": 1792905614987506938,
+            "allocatedBytes": 703471616
+          },
+          "base": "/home/patrick/work/put.gd/work/lab-images/kde-x11-20261025-559/image.qcow2",
+          "stateSha256": "8b20a4192b9b2726a7de30879aa674f914d7cf9e343b5651253f967ca9aee009",
+          "evidence": {
+            "manifest": "/home/patrick/work/i491p/work/491p/vm-x11-20261025T051951Z/cleanup-manifest.json",
+            "sha256": "ba4af35e608d289b76c636124a059461711bb9b51cb737a16353833cee9e99c8",
+            "runId": "34e65b15-02c5-42e9-a28c-10b544f56a99",
+            "mode": "explicit"
+          },
+          "preparedUtc": "2026-10-25T05:20:22.065037+00:00",
+          "completedUtc": "2026-10-25T05:20:22.187139+00:00"
+        }
+      }
+    }
+  },
+  "newGoldenTransfer": {
+    "name": "ubuntu24-gnome-x11-20261025-491",
+    "sourceHost": "f44",
+    "destinationHost": "d69",
+    "sha256": "fff0b55cc2d09d403bea61dd17d46165994cd8a9d0c2d467c5883c7fb795e245",
+    "verified": true,
+    "standalone": true,
+    "check": "No errors were found on the image.\n110839/655360 = 16.91% allocated, 0.00% fragmented, 0.00% compressed clusters\nImage end offset: 7266762752\n",
+    "bootstrap": "/home/patrick/work/put.gd/work/lab-bootstrap-u24x11-491",
+    "protectedLoginCopied": false,
+    "provisionCleanup": {
+      "schemaVersion": 1,
+      "status": "completed",
+      "run": "/home/patrick/work/i491p/work/lab-runs/u24p491",
+      "disk": "/home/patrick/work/i491p/work/lab-runs/u24p491/disk.qcow2",
+      "diskIdentity": {
+        "device": 50,
+        "inode": 5971593,
+        "size": 5560926208,
+        "mtimeNs": 1792904680549728171,
+        "ctimeNs": 1792904680549728171,
+        "allocatedBytes": 5560864768
+      },
+      "base": "/home/patrick/work/put.gd/work/lab-images/ubuntu24-cloud-20261017/image.qcow2",
+      "stateSha256": "62bffbaf1117f1353e22aa0bf4ea7857bcfbd46c1aaa060db05d90b506fbbfde",
+      "evidence": {
+        "manifest": "/home/patrick/work/i491p/work/491p/u24-provision-evidence/cleanup-manifest.json",
+        "sha256": "8d4873f484e34330da8b4b383b5e0ea2231ae153a832b4f3f0f9a41eb44d12e4",
+        "runId": "u24p491-provision-20261025",
+        "mode": "explicit"
+      },
+      "preparedUtc": "2026-10-25T05:18:16.242796+00:00",
+      "completedUtc": "2026-10-25T05:18:16.324992+00:00"
+    },
+    "s3Backup": "Blocked: expired AWS auth; explicit aws login confirmation requested."
   }
 }
